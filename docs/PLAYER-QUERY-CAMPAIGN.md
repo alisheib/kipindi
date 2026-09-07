@@ -20,14 +20,50 @@
 ## §0 — RESUME AT
 
 ```
-▶ NEXT ACTION — task 2.1 in the board below.
-  Write src/lib/positions/portfolio.ts: the lens · sort · sheet axes · empty causes for
-  /positions, as a contract over lib/query. Then 2.2 the search schema, 2.3 the batched
-  title read (LOAD-BEARING, not an optimisation), 2.4 the page.
+▶ NEXT ACTION — task 3.1 in the board below.
+  Write src/lib/wallet/ledger.ts: the type lens · status lens · window · search for
+  /wallet, as a contract over lib/query. Then 3.2 the windowed read, 3.3 move `tab` and
+  `page` OUT of React state into the URL, 3.4 the bar.
+  🔴 Read the two rulings on Stage 3 before starting: filter the STORED TxnType (never
+  the UI token — it would tell a player their bonus was a deposit), and the 1,000-row
+  cap must be STATED to the player.
 ```
 
-**Stage 2 of 6. Stage 1 is CLOSED at 12/12.** Nothing a player can see has changed yet.
-Stage 2 is the first stage that moves a pixel.
+**Stage 3 of 6. Stages 1–2 CLOSED (12/12, 7/7).** `/positions` answers the complaint.
+
+### What Stage 2 found — read before Stage 3
+
+🔴 **A DEFECT `/markets` HAD ALREADY SHIPPED, AND ONLY A SCREENSHOT FOUND IT.** At 360 the
+44×44 sort-direction button was drawn **on top of** the sort label. Measured before the fix:
+
+| route | summary | direction button | overlap |
+|---|---|---|---|
+| `/markets` **sw** | 16→255 | 154→198 | **44px** |
+| `/markets` **en** | 16→218 | 166→210 | **44px** |
+| `/markets` **zh** | 16→162 | 162→206 | 0 (short labels escape) |
+
+⛔ **Every automated check was green over it.** The DOCUMENT does not overflow
+(`scrollWidth === clientWidth === 360`), so `test:responsive` passed; the pill radius and the
+44px floor were untouched, so `qa:filter-scan` passed. ⚠️ **And the first fix was wrong** —
+`shrink` changed nothing, because the summary is not a flex item (its parent `<details>` is a
+plain block). `w-full` is what binds it. **Re-measure, do not re-reason.**
+
+⭐ **THE PAGE IS THE PROOF, NOT THE SUITE.** Re-derive on any converted route:
+
+```bash
+MSYS_NO_PATHCONV=1 node scripts/live/player-query-shots.mjs $BASE --only=/positions   --widths=360,1280 --locales=sw,en,zh
+```
+
+It refuses to shoot the wrong language (reads `<html lang>` back) and refuses to shoot a page
+whose rail is absent — because **a fixture gap and a broken rail look identical in an image.**
+
+⚠️ **Three gates went red for the right reason and were re-anchored, never loosened:**
+`test:stacking` (the `z-20` moved into `QUERY_BAR_CLASS` — re-anchored onto the shared
+constant, which now guards all sixteen routes rather than one), `test:section-rail`'s
+population floor 15 → 14 (the rail is behind a `Chip` alias, the shape `/markets` has had
+since batch 5), and three `red:filter-language` anchors followed the rail to its new file.
+⭐ **And `red:filter-language` caught MY file:** `unhooked-rail` stayed GREEN because the bar
+imported from `filter-pill` twice, so deleting one import left §3.1 satisfied.
 
 ### What Stage 1 cost, and what it found — read before Stage 2
 
@@ -103,8 +139,8 @@ git fetch && git checkout player-query-campaign
 | # | Stage | Exit condition | State |
 |---|---|---|---|
 | 1 | **The core** | the six existing gates in §8 green **with no edits to those scripts** | ✅ **12/12** |
-| 2 | **`/positions`** | `qa:player-filters` + `qa:count-truth` green on it; 360 Swahili screenshot looked at | ▶ 0/7 |
-| 3 | **`/wallet`** | same, plus the 1,000-row cap is stated to the player | ☐ 0/8 |
+| 2 | **`/positions`** | `qa:player-filters` + `qa:count-truth` green on it; 360 Swahili screenshot looked at | ✅ **7/7** |
+| 3 | **`/wallet`** | same, plus the 1,000-row cap is stated to the player | ▶ 0/8 |
 | 4 | **The other 13 pages** | every census-A and census-B route done, one commit each | ☐ 0/14 |
 | 5 | **The status dictionary** | `position-card.tsx` has no hand-typed tone; `test:gold-is-money` still green | ☐ 0/4 |
 | 6 | **Guards + docs** | the full §8 sweep passes and each new guard's RED control has been *seen to fail* | ☐ 0/9 |
@@ -153,17 +189,17 @@ the same reason; a barrel is how one arrives by accident.
 **without editing those scripts.** If one needs an edit to pass, **the refactor is wrong —
 not the gate.**
 
-### Stage 2 · `/positions` — the complaint (0/7)
+### Stage 2 · `/positions` — the complaint (✅ 7/7, CLOSED)
 
 | | Task | Files |
 |---|---|---|
-| ☐ | **2.1** the contract — lens · sort · sheet axes · empty causes | `src/lib/positions/portfolio.ts` |
-| ☐ | **2.2** `POSITION_SEARCH` schema, **`viewModel: true`** | `src/lib/search/fields.ts` · `src/lib/search/index.ts` |
-| ☐ | **2.3** batched title read, and delete the per-position loop | `src/lib/server/market-dal.ts` · `market-service.ts` · `positions/page.tsx:73-79` |
-| ☐ | **2.4** the page on `QueryBar`; page the **open** list too | `src/app/positions/page.tsx` |
-| ☐ | **2.5** skeleton parity — same tier, same rail height, so the page does not move on load | `src/app/positions/loading.tsx` |
-| ☐ | **2.6** keys in **all three** locales, one edit | `src/lib/i18n-dict.ts` |
-| ☐ | **2.7** declare the rail in the **four** places in §6 | 3 scripts + the page |
+| ☑ | **2.1** the contract — lens · sort · sheet axes · empty causes | `src/lib/positions/portfolio.ts` |
+| ☑ | **2.2** `POSITION_SEARCH` schema, **`viewModel: true`** | `src/lib/search/fields.ts` · `src/lib/search/index.ts` |
+| ☑ | **2.3** batched title read, and delete the per-position loop | `src/lib/server/market-dal.ts` · `market-service.ts` · `positions/page.tsx:73-79` |
+| ☑ | **2.4** the page on `QueryBar`; page the **open** list too | `src/app/positions/page.tsx` |
+| ☑ | **2.5** skeleton parity — same tier, same rail height, so the page does not move on load | `src/app/positions/loading.tsx` |
+| ☑ | **2.6** keys in **all three** locales, one edit | `src/lib/i18n-dict.ts` |
+| ☑ | **2.7** declare the rail in the **four** places in §6 | 3 scripts + the page |
 
 **Lens** `?tab=` — seven pills, one strip (Ali's ruling):
 
