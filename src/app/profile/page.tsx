@@ -16,7 +16,6 @@ import { computeAchievementShelf } from "@/lib/server/achievements";
 import { getServerT } from "@/lib/i18n-server";
 import { formatTzs } from "@/lib/utils";
 import { PageContainer } from "@/components/layout/page-container";
-import { ComingSoonBadge } from "@/components/ui/coming-soon-badge";
 import { inviteIsLiveFor } from "@/lib/feature-state";
 
 export async function generateMetadata() {
@@ -360,7 +359,7 @@ function Step({ n, title, detail, active, done }: { n: number; title: string; de
   );
 }
 
-function SettingRow({ icon: Icon, title, subtitle, href, accent, badge, comingSoon }: { icon: (typeof I)[keyof typeof I]; title: string; subtitle: string; href: string; accent?: boolean; badge?: string; comingSoon?: string }) {
+function SettingRow({ icon: Icon, title, subtitle, href, accent, badge }: { icon: (typeof I)[keyof typeof I]; title: string; subtitle: string; href: string; accent?: boolean; badge?: string }) {
   return (
     <Link
       href={href as never}
@@ -386,10 +385,6 @@ function SettingRow({ icon: Icon, title, subtitle, href, accent, badge, comingSo
               {badge}
             </span>
           )}
-          {/* ⛔ Uses the KIT flag, not the hand-rolled pill above it. `<ComingSoonBadge>` is the
-              product's one "not open yet" mark (gilt sweep, reduced-motion aware); a second
-              spelling of it here is how the two would drift. */}
-          {comingSoon && <ComingSoonBadge label={comingSoon} size="xs" />}
         </p>
         <p className="mt-0.5 text-body-sm text-text-subtle leading-snug">{subtitle}</p>
       </div>

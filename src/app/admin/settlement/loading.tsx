@@ -10,8 +10,6 @@ export default function Loading() {
         <SkCard lines={1} titleW="w-64" />
         {/* KPI band */}
         <SkKpiRow count={4} />
-        {/* ControlledElsewhere strip */}
-        <SkCard lines={1} />
         {/* Payout queue */}
         <SkTableCard cols={7} rows={6} minWidth={720} headW="w-36" />
       </SkBody>
