@@ -276,10 +276,19 @@ const CASES = [
     // 🔴 THE MONEY-DIALOG DEFECT. A non-`[open]` dependency re-runs the effect on every render
     //    and drags focus onto the first control — on the bet-confirm that happened once a
     //    second, so a keyboard user who tabbed to Cancel had focus pulled onto Confirm.
+    /* ⚠️ RE-ANCHORED 2026-09-07 (PLAYER-QUERY stage 1 baseline). The anchor was the bare
+       `  }, [open]);`, which was unique when this case was written and stopped being unique at
+       `c977204e` — the E-288 viewport/orientation effect closes the same way. This case had been
+       ANCHOR-FAILING ("matches 2× — ambiguous, refusing to inject") from that commit onward, so
+       `red:filter-language` exited 1 and 5.6 went unproven. ⭐ THE REFUSAL WAS RIGHT AND IT PAID
+       FOR ITSELF: injecting into the FIRST match would have mutated the wrong effect, and 5.6 —
+       a bare `/\}, \[open\]\);/` at the time — would have stayed green either way. The gate's
+       assertion was re-keyed onto the focus effect in the same commit as this re-anchor; the two
+       now name the same three lines, so neither can drift without the other going loud. */
     name: "focus-thrash (the effect re-runs on every render and drags focus — Modal's own bug)",
     file: SHEET,
-    from: `  }, [open]);`,
-    to: `  }, [open, close]);`,
+    from: `      restoreTo?.focus?.();\n    };\n  }, [open]);`,
+    to: `      restoreTo?.focus?.();\n    };\n  }, [open, close]);`,
     expect: "5.6",
   },
   {

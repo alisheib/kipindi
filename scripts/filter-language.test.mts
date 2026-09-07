@@ -401,8 +401,22 @@ ok(/mat-modal/.test(sheetCode) && /m-sheet-in/.test(sheetCode) && /m-scrim/.test
  * bet-confirm dialog, whose countdown ticks. A keyboard user who tabbed to Cancel had focus
  * pulled onto Confirm inside the second, on a money dialog. Any dependency but `[open]` here
  * reintroduces it, and nothing else in the suite would notice.
+ *
+ * 🔴 RE-KEYED 2026-09-07 — THIS ASSERTION WAS VACUOUS, AND ITS OWN RED CONTROL IS WHAT SAID SO.
+ * It read `/\}, \[open\]\);/` — the bare string, ANYWHERE in the file. That was sound while the
+ * focus effect was the only `[open]` effect; `c977204e` then added the E-288 viewport/orientation
+ * effect, which closes the same way. From that commit the file carried TWO `}, [open]);`, so
+ * mutating the FOCUS effect's array left the OTHER effect satisfying the regex and this assertion
+ * would have stayed GREEN over the reintroduced money-dialog defect. `red:filter-language` case 20
+ * could not inject at all ("anchor matches 2× — ambiguous, refusing to inject") and had been
+ * ANCHOR-FAILING ever since, which is the only reason anybody looked: ⛔ §8's rule that a guard is
+ * not believed until its RED control has been SEEN to fail is what caught this, not the suite.
+ * ⭐ It is now keyed on the focus effect ITSELF — its cleanup's focus-restore, its closing brace
+ * and its dependency array, adjacent, with only whitespace between. No other effect can satisfy
+ * it, so it cannot go vacuous again by a neighbour being added. (SKILL §5b rule 2: assert what the
+ * thing CARRIES, not that the spelling exists somewhere.)
  */
-ok(/\}, \[open\]\);/.test(sheetCode),
+ok(/restoreTo\?\.focus\?\.\(\);\s*\};\s*\}, \[open\]\);/.test(sheetCode),
   "5.6 the focus effect depends on [open] alone — the defect that moved focus on a money dialog");
 ok(/useModalLock\(open\)/.test(sheetCode),
   "5.7 the sheet takes the SAME body scroll/zoom lock the shared <Modal> takes");
