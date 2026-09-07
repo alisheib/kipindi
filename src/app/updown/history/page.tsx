@@ -24,6 +24,7 @@ import { eatDayWindow, isInEatDay, eatDayKey, formatEatDay } from "@/lib/eat-day
 import { pickLocalized } from "@/lib/localized";
 import { formatTzs, formatTzsSigned } from "@/lib/utils";
 import { SearchBox } from "@/components/ui/search-box";
+import { fieldNames, matchesQuery, parseQuery, UD_ROUND_SEARCH } from "@/lib/search";
 import { Pagination, PLAYER_PER_PAGE } from "@/components/ui/pagination";
 import { HistoryBar, type UdCounts } from "./history-bar";
 import {
@@ -172,9 +173,15 @@ export default async function UpDownHistoryPage({ searchParams }: {
   // ⛔ The EAT day arithmetic is the shared one — re-deriving it here is how a digest deep link
   //    and the page it lands on start disagreeing about which rounds belong to a day.
   const inDay = (row: HistoryRow, day: string) => isInEatDay(new Date(row.binnedAtMs).toISOString(), day);
-  const q = state.q.trim().toLowerCase();
-  // A short, honest search: the asset name is the only word on one of these cards.
-  const matchesText = (row: HistoryRow) => !q || row.assetName.toLowerCase().includes(q);
+  /**
+   * ⛔ THE SHARED GRAMMAR, NOT A SUBSTRING MATCH. The first version of this line was
+   * `assetName.toLowerCase().includes(q)` and `test:search-adoption` refused it — correctly:
+   * this platform has ONE search grammar, and re-implementing it here would lose quoted
+   * phrases, `-exclude` and `field:` while creating a second definition of what searching means.
+   */
+  const parsedQ = parseQuery(state.q, { fields: fieldNames(UD_ROUND_SEARCH) });
+  const matchesText = (row: HistoryRow) =>
+    matchesQuery(parsedQ, row as unknown as Record<string, string | null | undefined>, UD_ROUND_SEARCH);
 
   const nowMs = Date.now();
   const collate = new Intl.Collator(locale).compare;

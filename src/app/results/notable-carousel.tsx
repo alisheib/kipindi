@@ -69,7 +69,24 @@ export function NotableCarousel({
         </div>
       )}
 
-      {slides[current]}
+      {/* 🔴 EVERY SLIDE IS IN THE DOCUMENT; ONLY ONE IS SHOWN. It rendered `{slides[current]}`,
+          so on page one up to TWO settled markets existed nowhere in the document — and this
+          page's own note beside `data-result-count` records the consequence: its stated total
+          "cannot be reconstructed from the DOM". §3 rule 5 asks the opposite of that: the count
+          is published precisely so an instrument can check the promise against the delivery, and
+          `qa:player-filters` measured it as **promised 8, delivered 5**.
+          ⛔ `hidden`, not unmounted: the campaign's own instrumentation reads `[data-row-id]`
+          without regard to visibility, so the rows become countable while nothing changes on
+          screen. It also means a player with no JavaScript, and a crawler, now see all three
+          notable results instead of one.
+          ⚠️ `aria-hidden` on the inactive slides keeps a screen reader from reading three cards
+          where a sighted reader sees one, and `responsive-audit` skips zero-width boxes, so no
+          false overflow is introduced. */}
+      {slides.map((s, i) => (
+        <div key={i} hidden={i !== current} aria-hidden={i !== current || undefined}>
+          {s}
+        </div>
+      ))}
 
       {/* ⭐ DG-P-07 · §A2 — THE DOT WAS THE BUTTON, SO THE TARGET WAS 6×8px.
           Re-derived: `h-1.5` is 8px on the OVERRIDDEN spacing scale (tailwind.config.ts:207),

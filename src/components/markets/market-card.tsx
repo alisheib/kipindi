@@ -486,6 +486,10 @@ export function MarketCard({
   // Non-live: keep the whole card a link so results/history stay viewable.
   return live ? (
     <article
+      /* The row's machine-readable identity — see `position-card.tsx` for the contract and why a
+         driver must not parse a visible word on a trilingual product. One attribute serves every
+         surface this card appears on: /markets, /results and /watchlist. */
+      data-row-id={id}
       className={cn("mcardp group", featured && "mcardp--featured", className)}
       style={{ cursor: "pointer" }}
       aria-label={title}
@@ -502,7 +506,7 @@ export function MarketCard({
       {body}
     </article>
   ) : (
-    <Link href={`/markets/${id}` as never} className={cn("mcardp group", featured && "mcardp--featured", className)}>
+    <Link data-row-id={id} href={`/markets/${id}` as never} className={cn("mcardp group", featured && "mcardp--featured", className)}>
       {body}
     </Link>
   );

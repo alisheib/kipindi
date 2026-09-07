@@ -89,7 +89,10 @@ const CSS = "src/app/globals.css";
  */
 const SURFACES = [
   "src/components/markets/discovery-bar.tsx",   // /markets — the reference
-  "src/app/results/page.tsx",                   // /results — sort + category
+  /* ⚠️ RE-DECLARED 2026-09-08 (PLAYER QUERY, task 4.2). The desktop `aside` of full-width
+     pills — a second layout for the same job, at board width, beside `/markets` which uses
+     the bar — is retired. The hook moved with the controls into `results-bar.tsx`. */
+  "src/app/results/results-bar.tsx",            // /results — outcome lens + product/topic/window
   "src/app/proposals/page.tsx",                 // /proposals — hot/new/listed/mine
   /* ⚠️ RE-DECLARED 2026-09-07 (PLAYER QUERY, stage 2). The rail was three pills inside
      `page.tsx`; it is now seven lenses plus side/topic/window in `positions-bar.tsx`, because

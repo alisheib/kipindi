@@ -138,24 +138,6 @@ export const PROPOSAL_SEARCH: EntitySchema = {
 };
 
 /**
- * A PLAYER'S OWN POSITIONS — `/positions`.
- *
- * ⛔ `viewModel: true`, AND IT IS NOT A FORMALITY. A position row is assembled on the server from
- * TWO tables: the `Position` (stake, side, status, payout) and the `PredictionMarket` it belongs
- * to (the three titles, the category). None of the market names are columns on `Position`, so
- * passing this to `queryToWhere` would emit a `where` on columns that do not exist and fail at
- * runtime, in production, on a page holding real money. `matchesQuery` only.
- *
- * ⭐ `title` SPANS ALL THREE LANGUAGES ON PURPOSE. A player reading the Swahili page may still
- * type an English team name — the market carries all three titles and the grammar matches any of
- * them, so the search finds what the player means rather than what the page happens to render.
- *
- * ⚠️ `side` and `status` are `exact` because they are ENUMS. A `contains` on an enum is a type
- * error in SQL and a slow way to write `equals` here; and `status:` is deliberately searchable
- * even though the lens strip already filters it — a player who has learned `status:WIN` should
- * not be told the grammar has an exception.
- */
-/**
  * A PLAYER'S OWN TRANSACTIONS — `/wallet`.
  *
  * ⛔ NOT `TXN_SEARCH`, AND THE DIFFERENCE IS NOT COSMETIC. That schema is the ADMIN one: its
@@ -180,6 +162,44 @@ export const MY_TXN_SEARCH: EntitySchema = {
   viewModel: true,
 };
 
+/**
+ * A PLAYER'S OWN UP & DOWN ROUNDS — `/updown/history`.
+ *
+ * ⛔ SMALL, BUT NOT HAND-ROLLED. The first version of that page's filter matched with
+ * `assetName.toLowerCase().includes(q)` and `test:search-adoption` refused it, correctly: this
+ * platform has ONE search grammar, and a surface that quietly re-implements a substring match
+ * loses quoted phrases, `-exclude` and `field:` — and gains a second definition of what
+ * searching means. A round's only words are its asset's name and its duration.
+ *
+ * ⛔ `viewModel: true`: a row here is a GROUPED ROUND assembled on the server, not a table.
+ */
+export const UD_ROUND_SEARCH: EntitySchema = {
+  fields: {
+    asset: { columns: ["assetName", "assetKey"], kind: "text" },
+    id: { columns: ["id"], kind: "exact" },
+  },
+  default: ["assetName", "assetKey"],
+  viewModel: true,
+};
+
+/**
+ * A PLAYER'S OWN POSITIONS — `/positions`.
+ *
+ * ⛔ `viewModel: true`, AND IT IS NOT A FORMALITY. A position row is assembled on the server from
+ * TWO tables: the `Position` (stake, side, status, payout) and the `PredictionMarket` it belongs
+ * to (the three titles, the category). None of the market names are columns on `Position`, so
+ * passing this to `queryToWhere` would emit a `where` on columns that do not exist and fail at
+ * runtime, in production, on a page holding real money. `matchesQuery` only.
+ *
+ * ⭐ `title` SPANS ALL THREE LANGUAGES ON PURPOSE. A player reading the Swahili page may still
+ * type an English team name — the market carries all three titles and the grammar matches any of
+ * them, so the search finds what the player means rather than what the page happens to render.
+ *
+ * ⚠️ `side` and `status` are `exact` because they are ENUMS. A `contains` on an enum is a type
+ * error in SQL and a slow way to write `equals` here; and `status:` is deliberately searchable
+ * even though the lens strip already filters it — a player who has learned `status:WIN` should
+ * not be told the grammar has an exception.
+ */
 export const POSITION_SEARCH: EntitySchema = {
   fields: {
     title: { columns: ["titleEn", "titleSw", "titleZh"], kind: "text" },

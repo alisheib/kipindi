@@ -13,6 +13,19 @@ import { getCardCharts } from "@/lib/server/market-history";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Pagination, PLAYER_PER_PAGE } from "@/components/ui/pagination";
 import { SearchBox } from "@/components/ui/search-box";
+import { QUERY_BAR_CLASS, QUERY_BAR_ROW1_CLASS, QUERY_BAR_ROW2_CLASS } from "@/components/ui/query-bar";
+import { ResultsBar, type ArchiveCounts } from "./results-bar";
+import {
+  archiveCounts,
+  archiveEmptyCause,
+  archiveExits,
+  buildArchiveHref,
+  filterArchive,
+  parseArchiveParams,
+  sortArchive,
+  type ArchiveRow,
+  type ArchiveState,
+} from "@/lib/results/archive";
 import { parseQuery, matchesQuery, fieldNames, MARKET_SEARCH } from "@/lib/search";
 import { NotableCarousel } from "./notable-carousel";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
@@ -45,32 +58,28 @@ type ProductFilter = LabelProductLine | "all";
 export default async function ResultsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ cat?: string; sort?: string; q?: string; page?: string; product?: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { t } = await getServerT();
   const sp = await searchParams;
-  const activeCat = sp.cat ?? "all";
-  // #4 — the visible split between the two products.
-  //
-  // 🔴 THE DEFAULT IS LONG-FORM, AND THAT IS A MEASUREMENT, NOT A PREFERENCE. Settled rounds on
-  // production 2026-08-19: **UPDOWN 11,112 · MARKET 65** — Up & Down is 99.4% of the archive. A
-  // newest-first read of BOTH lines buries all 65 long-form results under 11,112 price rounds on
-  // page 1. `product-line.test.mts` carried an entry saying exactly this ("Up & Down rounds would
-  // flood it") and it was right.
-  //
-  // ⭐ So both of Jay's requirements hold together: the page READS both lines (#10) and the split
-  // is visible with real counts (#4), while the default view stays legible. The Up & Down pill
-  // shows 11,112 — the rounds are present and one tap away, not hidden.
-  //
-  // ⚠️ "all" remains reachable by URL for a regulator read that wants the undivided archive.
-  const activeProduct: ProductFilter =
-    sp.product === "UPDOWN" || sp.product === "all" ? sp.product : "MARKET";
-  const activeSort: SortField = sp.sort === "volume" ? "volume" : "resolved";
-  // Shared grammar (src/lib/search) — same rule as /markets and every admin list.
-  const parsed = parseQuery(sp.q, { fields: fieldNames(MARKET_SEARCH) });
+  /**
+   * ⭐ ONE PARSE, ONE STATE OBJECT, ONE BUILDER. The page carried five hand-rolled parses and TWO
+   * near-duplicate href builders (`buildHref` and `resultsBaseHref`, differing only in whether
+   * they wrote `page`) — two definitions of one URL grammar, the shape `discovery.ts`'s header
+   * records four of on the board it replaced.
+   *
+   * ⚠️ `?cat=` IS NARROWED NOW, WHICH IT WAS NOT: `sp.cat ?? "all"` let `?cat=lol` through, so a
+   * single typo filtered everything out while painting no pill as selected.
+   *
+   * 🔴 THE PRODUCT DEFAULT IS UNCHANGED AND IS A MEASUREMENT, NOT A PREFERENCE. Settled rows on
+   * production 2026-08-19: **UPDOWN 11,112 · MARKET 65** — a newest-first read of both lines
+   * buries all 65 long-form results under 11,112 price rounds on page one. `?product=all` stays
+   * reachable by URL for a regulator read that wants the undivided archive.
+   */
+  const state = parseArchiveParams(sp);
+  const parsed = parseQuery(state.q, { fields: fieldNames(MARKET_SEARCH) });
   const searching = parsed.mode !== "empty";
-  const qRaw = parsed.raw;
-  const pageNum = Math.max(1, parseInt(sp.page ?? "1", 10) || 1);
+  const pageNum = Math.max(1, parseInt(String(sp.page ?? "1"), 10) || 1);
 
   return (
     <PageContainer tier="board">
@@ -94,14 +103,7 @@ export default async function ResultsPage({
           children are the three bands of whichever branch is showing. */}
       <div className="space-y-5">
         <Suspense fallback={<ResultsSkeleton />}>
-          <ResultsContent
-            activeCat={activeCat}
-            activeProduct={activeProduct}
-            activeSort={activeSort}
-            qRaw={qRaw}
-            searching={searching}
-            pageNum={pageNum}
-          />
+          <ResultsContent state={state} searching={searching} pageNum={pageNum} />
         </Suspense>
       </div>
     </PageContainer>
@@ -109,21 +111,16 @@ export default async function ResultsPage({
 }
 
 async function ResultsContent({
-  activeCat,
-  activeProduct,
-  activeSort,
-  qRaw,
+  state,
   searching,
   pageNum,
 }: {
-  activeCat: string;
-  activeProduct: ProductFilter;
-  activeSort: SortField;
-  qRaw: string;
+  state: ArchiveState;
   searching: boolean;
   pageNum: number;
 }) {
   const { t, locale } = await getServerT();
+  const qRaw = state.q;
 
   // ⛔ DERIVED, NEVER RE-DECLARED. This used to be a hand-written eight-item list; the canonical
   // set is seven (politics is licence-excluded) and lives in MARKET_CATEGORIES. A surface that
@@ -169,35 +166,48 @@ async function ResultsContent({
   // product filter and every category count below are folded from the whole set, so a
   // windowed read would quietly make the counts wrong. It just stops being repeated.
   const terminal = await listTerminalMarkets("ALL");
-  /** Everything the SEARCH admits, across every category — the set the counts are folded from. */
-  const searched = terminal.filter(matches);
-  /** The product filter applies BEFORE the category one, so every category count below is a
-   *  count within the chosen product — pressing a category never changes the product. */
-  const inProduct = activeProduct === "all" ? searched : searched.filter((m) => m.productLine === activeProduct);
-  const all = activeCat === "all" ? inProduct : inProduct.filter((m) => m.category === activeCat);
-  /** Cross-filtered the other way: what each product pill would deliver under this search. */
-  const productCounts = {
-    all: searched.length,
-    MARKET: searched.filter((m) => m.productLine === "MARKET").length,
-    UPDOWN: searched.filter((m) => m.productLine === "UPDOWN").length,
-  } as const;
-  /** Cross-filtered: each number is what pressing that category would deliver under this search. */
-  const catCounts: Record<string, number> = {
-    all: inProduct.length,
-    ...Object.fromEntries(MARKET_CATEGORIES.map((c) => [c, inProduct.filter((m) => m.category === c).length])),
+
+  /**
+   * The rows the contract reasons about.
+   *
+   * ⚠️ `resolvedAtMs` is `resolutionStage2At ?? updatedAt` — the final-confirmation clock, which
+   * is the one the table's own column shows. The old sort compared those two ISO strings with
+   * `localeCompare`; comparing epoch numbers is the same order and lets the shared comparator
+   * partition a row that has neither.
+   */
+  const nowMs = Date.now();
+  const archiveRows: ArchiveRow[] = terminal.map((m) => ({
+    id: m.id,
+    category: m.category,
+    productLine: m.productLine === "UPDOWN" ? "UPDOWN" : "MARKET",
+    // ⚠️ A VOIDED market whose outcome column was never stamped still resolved one way: void.
+    outcome: (m.resolvedOutcome ?? (m.status === "VOIDED" ? "VOID" : null)) as ArchiveRow["outcome"],
+    volume: m.yesPool + m.noPool,
+    resolvedAtMs: Date.parse(m.resolutionStage2At ?? m.updatedAt) || 0,
+    title: pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh),
+    titleEn: m.titleEn,
+    titleSw: m.titleSw ?? "",
+    titleZh: m.titleZh ?? "",
+    criterion: m.resolutionCriterion ?? "",
+  }));
+  const byId = new Map(terminal.map((m) => [m.id, m]));
+
+  const matchesRow = (row: ArchiveRow) => {
+    const m = byId.get(row.id);
+    return m ? matches(m) : false;
   };
 
-  // Sort
-  if (activeSort === "volume") {
-    all.sort((a, b) => (b.yesPool + b.noPool) - (a.yesPool + a.noPool));
-  } else {
-    // Newest resolved first — use resolutionStage2At (final confirmation), fallback to updatedAt
-    all.sort((a, b) => {
-      const aDate = a.resolutionStage2At ?? a.updatedAt;
-      const bDate = b.resolutionStage2At ?? b.updatedAt;
-      return bDate.localeCompare(aDate);
-    });
-  }
+  /**
+   * ⭐ EVERY COUNT CROSS-FILTERED, BY THE SHARED RULE. The page folded four of these by hand —
+   * `productCounts` from `searched`, `catCounts` from `inProduct` — and got them right; what it
+   * could not do by hand is stay right as axes are added. `countsFor` patches the state and
+   * re-runs EVERY axis, so a new filter is accounted for in every existing count the day it
+   * lands. ⚠️ The product-before-category ordering is preserved in `archiveAxes`.
+   */
+  const counts = archiveCounts(archiveRows, state, nowMs, matchesRow) as ArchiveCounts;
+  const matchedRows = sortArchive(filterArchive(archiveRows, state, nowMs, matchesRow), state);
+  // The full market rows, in the order the bar chose — the render below reads market fields.
+  const all = matchedRows.map((r) => byId.get(r.id)!).filter(Boolean);
 
   // Paginate
   const totalCount = all.length;
@@ -244,31 +254,29 @@ async function ResultsContent({
   const cardCharts = await getCardCharts(paged.map((m) => m.id)).catch(() => new Map());
 
   // Helpers
-  const buildHref = (next: { cat?: string; sort?: string; page?: number; product?: ProductFilter }) => {
-    const params = new URLSearchParams();
-    const c = next.cat ?? activeCat;
-    const s = next.sort ?? activeSort;
-    const p = next.page ?? safePage;
-    const pr = next.product ?? activeProduct;
-    if (c !== "all") params.set("cat", c);
-    if (pr !== "all") params.set("product", pr);
-    if (s !== "resolved") params.set("sort", s);
-    if (qRaw) params.set("q", qRaw);
-    if (p > 1) params.set("page", String(p));
-    const qs = params.toString();
-    return qs ? `/results?${qs}` : "/results";
-  };
+  /**
+   * ⛔ TWO BUILDERS BECAME ONE. `buildHref` and `resultsBaseHref` were near-duplicates of one URL
+   * grammar, differing only in whether they wrote `page` — and `buildHref` defaulted `page` to
+   * the CURRENT page, so every rail pill had to remember `page: 1` or a filter press would keep
+   * a page number that may not exist in the new set. `buildArchiveHref` drops the page on any
+   * filter change by construction, so forgetting is no longer possible.
+   */
+  const buildHref = (patch: Partial<ArchiveState>) => buildArchiveHref(state, patch);
+  const resultsBaseHref = buildArchiveHref(state);
 
-  // Base href for the shared pager (current filters minus the page param).
-  const resultsBaseHref = (() => {
-    const params = new URLSearchParams();
-    if (activeCat !== "all") params.set("cat", activeCat);
-    if (activeProduct !== "all") params.set("product", activeProduct);
-    if (activeSort !== "resolved") params.set("sort", activeSort);
-    if (qRaw) params.set("q", qRaw);
-    const qs = params.toString();
-    return qs ? `/results?${qs}` : "/results";
-  })();
+  /**
+   * ⛔ FIVE CAUSES AND A REAL EXIT FOR EACH. Every count below is cross-filtered, so no exit
+   * offered here can lead to another empty page.
+   */
+  const cause = archiveEmptyCause(state, nowMs, matchesRow, totalCount, archiveRows.length);
+  const exits = cause && cause !== "no-rows" ? archiveExits(archiveRows, state, nowMs, matchesRow) : [];
+  const EXIT_LABEL: Record<string, string> = {
+    cat: t.market.catAll,
+    when: t.common.rangeAll,
+    product: t.market.catAll,
+    q: t.common.clearSearch,
+    out: t.common.all,
+  };
 
   return (
     <>
@@ -331,103 +339,18 @@ async function ResultsContent({
         </Suspense>
       </div>
 
-      {/* Filters + Grid — ⛔ no `mt-*`, see the header band above (DG-P-04 · §S1). */}
+      {/* ⭐ THE BAR REPLACES THE SIDEBAR. `/results` carried its rails as a desktop `aside` of
+          full-width pills at board width, beside `/markets` which uses the bar — a second layout
+          for the same job, which is the inconsistency this campaign exists to remove. The two
+          chained sticky offsets went with it (`top-[122px]`, `max-h-[calc(100dvh-134px)]`): both
+          were arithmetic on the search band's height, so neither could survive a bar of a
+          different one. ⚠️ `countClassName` on `FilterPill` existed SOLELY for that sidebar's
+          full-width rows and now has no consumer — left in the primitive deliberately, because
+          removing a prop is a separate decision from removing its only call site. */}
+      <ResultsBar state={state} counts={counts} resultCount={totalCount} t={t} />
+
+      {/* Grid — ⛔ no `mt-*`, see the header band above (DG-P-04 · §S1). */}
       <div className="flex flex-col gap-5 lg:flex-row lg:gap-6">
-        {/* Sidebar filters — sticky on desktop, horizontal scroll on mobile */}
-        {/* `data-filter-rail` makes this addressable to the visual sweep. Without it the sweep
-            looked only for `.kp-discovery-bar`, found nothing on /results and reported
-            "0 controls, minTap -1" — a measurement of nothing, printed beside real ones. */}
-        <aside data-filter-rail className="lg:w-[208px] lg:shrink-0 lg:sticky lg:top-[122px] lg:self-start lg:max-h-[calc(100dvh-134px)] lg:overflow-y-auto lg:overflow-x-hidden kp-thin-scroll lg:pb-3">
-          <div className="space-y-2.5 lg:space-y-4">
-            {/* Sort */}
-            {/* ⚠️ NO `-mx-1 px-1 overflow-x-auto` HERE. It was vestigial and it cost a real
-                overflow: the rail wraps (`flex-wrap`), so a horizontal scroller never engages and
-                the 4px bleed on each side simply pushed the wrapper 4px past its own container at
-                360 and 768 in all three languages. Same shape as the `-mx-3` bleed removed from
-                the /markets strips. */}
-            {/* #4 · THE PRODUCT SPLIT. ⛔ The kit's `FilterPill`, the same control the sort and
-                category groups use — 8 rails already speak this language and hand-rolling a
-                ninth is a documented refusal (DESIGN_AUTHORITY §F). The labels are built from
-                the LEXICON rather than a new dictionary key, so each product is named by the
-                vocabulary it actually uses and all three locales are covered by definition. */}
-            <nav aria-label={t.results.categoriesAria} className="flex flex-wrap items-center gap-1.5 lg:flex-col lg:flex-nowrap lg:items-stretch lg:gap-1">
-              <FilterGroupKey className="pr-1 lg:pr-0 lg:mb-1">{t.market.gameKey}</FilterGroupKey>
-              {([
-                { id: "all" as const, label: t.market.catAll },
-                { id: "MARKET" as const, label: `${sideWord(t, "YES", "MARKET")} / ${sideWord(t, "NO", "MARKET")}` },
-                { id: "UPDOWN" as const, label: `${sideWord(t, "YES", "UPDOWN")} / ${sideWord(t, "NO", "UPDOWN")}` },
-              ]).map((o) => (
-                <FilterPill
-                  key={o.id}
-                  replace
-                  scroll={false}
-                  href={buildHref({ product: o.id, cat: "all", page: 1 })}
-                  label={o.label}
-                  count={productCounts[o.id]}
-                  on={o.id === activeProduct}
-                  testId={`product-${o.id}`}
-                />
-              ))}
-            </nav>
-            <nav aria-label={t.results.sortAria} className="flex flex-wrap items-center gap-1.5 lg:flex-col lg:flex-nowrap lg:items-stretch lg:gap-1">
-              <FilterGroupKey className="pr-1 lg:pr-0 lg:mb-1">{t.common.sort}</FilterGroupKey>
-              {SORT_OPTIONS.map((o) => (
-                <FilterPill
-                  key={o.id}
-                  /* ⛔ `replace`, not a push — a filter is not a navigation (kit README §3, and
-                     every /markets control does this). Without it, pressing five filters left
-                     five history entries and Back walked the player backwards through their own
-                     filter states instead of leaving the page. */
-                  replace
-                  scroll={false}
-                  href={buildHref({ sort: o.id, page: 1 })}
-                  label={o.label}
-                  on={o.id === activeSort}
-                  /* A rail where exactly one option is in force: `aria-current`, not
-                     `aria-pressed`. It had NEITHER before batch 5 — this rail announced no
-                     state at all to a screen reader. */
-                  semantics="tab"
-                  /* The desktop sidebar makes each pill a full-width row; the mobile rail wraps
-                     them as pills. Both stay the same control — only the box it fills changes. */
-                  className="lg:w-full lg:justify-start"
-                />
-              ))}
-            </nav>
-
-            {/* Categories */}
-            <nav aria-label={t.results.categoriesAria} className="flex flex-wrap items-center gap-1.5 lg:flex-col lg:flex-nowrap lg:items-stretch lg:gap-1">
-              <FilterGroupKey className="pr-1 lg:pr-0 lg:mb-1">{t.common.topic}</FilterGroupKey>
-              {CATEGORIES.map((c) => {
-                const active = c.id === activeCat;
-                const Glyph = c.id === "all" ? I.layoutGrid : I[categoryGlyph(c.id)];
-                return (
-                  <FilterPill
-                    key={c.id}
-                    replace
-                    scroll={false}
-                    href={buildHref({ cat: c.id, page: 1 })}
-                    /* Machine-readable so a driver can read the promise and press exactly this
-                       control — the same contract `/markets` chips carry. ⛔ `qa:results-board`
-                       slices this by INDEX (`data-chip`.slice(4)), so the `cat:` prefix is not
-                       decoration; and every count names the set pressing it would show —
-                       cross-filtered by the active search, so it can never promise 22 and
-                       deliver 4. */
-                    testId={`cat:${c.id}`}
-                    count={catCounts[c.id] ?? 0}
-                    label={c.label}
-                    on={active}
-                    semantics="tab"
-                    glyph={<Glyph s={14} className={"shrink-0 " + (active ? "text-brand-300" : "opacity-70")} />}
-                    className="lg:w-full lg:justify-start"
-                    countClassName="lg:ml-auto lg:pl-1.5"
-                  />
-                );
-              })}
-            </nav>
-
-            {/* Outcome breakdown moved to the header donut (C2b) — single source. */}
-          </div>
-        </aside>
 
         {/* Grid */}
         <div className="min-w-0 flex-1">
@@ -446,20 +369,27 @@ async function ResultsContent({
           {/* ⚠️ It used to be painted as a SELECTED pill — outlined, filled, an inline
               `background` — which said "this is the category you are on" about the one control
               on the page that is the way OFF it. It is now the quiet pill every rail uses for a
-              destination, the same treatment `/markets` gives its own Clear-all, and it still
-              carries the real count so the exit names where it leads.
-              ⛔ It must stay an `<a>` whose href OMITS `cat` — `qa:results-board` finds this
-              exit by looking for a `/results` link with a `q=` and no `cat=`. */}
-          {totalCount === 0 && activeCat !== "all" && catCounts.all > 0 && (
-            <FilterPill
-              scroll={false}
-              href={buildHref({ cat: "all", page: 1 })}
-              label={t.market.catAll}
-              count={catCounts.all}
-              on={false}
-              glyph={<I.layoutGrid s={14} className="shrink-0 opacity-70" />}
-              className="mb-3"
-            />
+              destination, and it still carries the real count so the exit names where it leads.
+              ⛔ The category exit must stay an `<a>` whose href OMITS `cat` — `qa:results-board`
+              finds it by looking for a `/results` link with a `q=` and no `cat=`.
+              ⭐ AND THERE IS NOW AN EXIT FOR EVERY AXIS, NOT JUST THE CATEGORY. The page offered
+              no escape from the PRODUCT — so `?product=MARKET`, which is the default, with a
+              search that only matches Up & Down rows produced an empty page whose only way out
+              was "clear the search", while the rows the player wanted sat one pill away. */}
+          {totalCount === 0 && exits.length > 0 && (
+            <div className="mb-3 flex flex-wrap items-center gap-1.5">
+              {exits.map((e) => (
+                <FilterPill
+                  key={e.id}
+                  scroll={false}
+                  href={buildHref(e.patch)}
+                  label={EXIT_LABEL[e.id] ?? e.id}
+                  count={e.count}
+                  on={false}
+                  glyph={e.id === "cat" ? <I.layoutGrid s={14} className="shrink-0 opacity-70" /> : undefined}
+                />
+              ))}
+            </div>
           )}
 
           {paged.length > 0 ? (
@@ -558,6 +488,12 @@ function FeaturedResult({ m, t, locale }: { m: Awaited<ReturnType<typeof listMar
   const yesPct = pricedYesPct(m.yesPool, m.noPool);
   return (
     <Link
+      /* ⚠️ THE NOTABLE CARD IS A SECOND CODE PATH FROM THE GRID and needs the row identity for
+         the same reason it needed its own §L3 fix: an instrument reading `[data-row-id]` would
+         otherwise count the three highest-volume settled markets as absent, and the page's own
+         `data-result-count` would over-promise by exactly three. Measured before this line:
+         promised 8, delivered 5. */
+      data-row-id={m.id}
       href={`/markets/${m.id}` as never}
       className="group relative block overflow-hidden rounded-xl border border-gold-700/40 bg-bg-elevated p-5 lg:p-6"
       style={{ background: "radial-gradient(120% 140% at 100% 0%, oklch(40% 0.10 80 / 0.10), transparent 55%), var(--bg-elevated)" }}
@@ -617,17 +553,29 @@ function ResultsSkeleton() {
           `markets/loading.tsx` already has the right shape to copy (`search-box-wrap`). */}
       <div className="h-[44px] rounded-md bg-bg-overlay kp-shimmer-track" style={{ maxWidth: 460 }} />
 
-      {/* Filters + grid */}
-      <div className="flex flex-col gap-5 lg:flex-row lg:gap-6">
-        {/* Sidebar skeleton */}
-        <aside className="lg:w-[208px] lg:shrink-0 space-y-3">
-          {Array.from({ length: 4 }).map((_, i) => (
-            /* ⚠️ LITERAL, not `h-8` — spacing is overridden (tailwind.config.ts:200-215) so
-               `h-8` drew 48px for sidebar filter pills that render at FilterPill's 44px. */
-            <div key={i} className="h-[44px] rounded-md bg-bg-overlay kp-shimmer-track" />
-          ))}
-        </aside>
+      {/* ⭐ THE GHOST FOLLOWS THE BAR, and its classes are IMPORTED rather than retyped, so a
+          change to the bar's padding or sticky offset moves the ghost in the same commit by
+          construction. It drew a 208px sidebar of four stacked pills; the page no longer has one,
+          and a ghost of a control that is not there moves everything below it on first paint. */}
+      <div className={QUERY_BAR_CLASS} aria-hidden>
+        <div className={QUERY_BAR_ROW1_CLASS}>
+          <div className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden">
+            {[54, 74, 68, 82].map((w, i) => (
+              /* ⚠️ LITERAL 44, not `h-8` — spacing is overridden (tailwind.config.ts:200-215), so
+                 `h-8` would draw 48px for a pill that renders at FilterPill's 44. */
+              <div key={i} className="h-[44px] shrink-0 rounded-pill bg-bg-overlay" style={{ width: w }} />
+            ))}
+          </div>
+          <div className="h-3 w-20 shrink-0 rounded bg-bg-overlay" />
+        </div>
+        <div className={QUERY_BAR_ROW2_CLASS}>
+          <div className="h-[44px] w-[180px] rounded-pill bg-bg-overlay" />
+          <div className="h-[44px] w-[104px] rounded-pill bg-bg-overlay" />
+        </div>
+      </div>
 
+      {/* Grid */}
+      <div className="flex flex-col gap-5 lg:flex-row lg:gap-6">
         {/* Grid skeleton */}
         <div className="min-w-0 flex-1">
           <div className="market-grid" aria-hidden>

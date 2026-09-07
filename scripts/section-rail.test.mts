@@ -226,14 +226,18 @@ for (const r of population) {
  * and by `qa:filter-scan` (measured on the rendered page). ⚠️ What this gate loses sight of is a
  * SECTION rail, and no section rail moved.
  *
- * ⚠️ 14 → 13 ON 2026-09-08 (task 4.1), same cause and same commit as the rail that moved:
+ * ⚠️ 15 → 14 → 10 ACROSS TASKS 4.1 AND 4.2, each step in the same commit as the rail that
+ * moved, and each for the same cause. ⚠️ Task 4.2 accounts for THREE of them at once:
+ * `/results` carried a product rail, a sort rail and a category rail inside one `<aside>`,
+ * and all three retired into the shared bar together. Re-derive rather than predict — the
+ * first attempt guessed 12 and the real population was 10.
  * `/updown/history`'s day rail became six lenses in `history-bar.tsx`, behind the same `Chip`
  * alias every converted route uses. The number will keep stepping down as stage 4 converts the
  * rest; ⛔ that is not filter rails going unguarded — `test:filter-language` and
  * `qa:filter-scan` cover those — it is this gate correctly losing sight of controls that were
  * never SECTION rails to begin with.
  */
-const FLOOR = 13;
+const FLOOR = 10;
 
 let bad = 0;
 if (population.length < FLOOR) {

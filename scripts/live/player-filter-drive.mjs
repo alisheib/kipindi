@@ -90,6 +90,18 @@ const SURFACES = [
     ],
   },
   {
+    id: "/results",
+    path: "/results",
+    param: "out",
+    all: "all",
+    partitions: [
+      // ⚠️ `void` also absorbs a row whose verdict the purge ceremony redacted (`null`) — a
+      //    settlement the archive can no longer state is closer to "no side won" than to
+      //    either side, and leaving it in no lens would break COVERING.
+      { parent: "all", parts: ["yes", "no", "void"] },
+    ],
+  },
+  {
     id: "/wallet",
     path: "/wallet",
     param: "type",

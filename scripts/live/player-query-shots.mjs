@@ -51,6 +51,7 @@ const SURFACES = [
   { id: "wallet", path: "/wallet", must: "data-filter-rail", sheet: true },
   { id: "wallet-payouts", path: "/wallet?type=payout", must: "data-filter-rail", sheet: false },
   { id: "wallet-empty", path: "/wallet?q=zzzznomatch", must: "data-filter-rail", sheet: false },
+  { id: "results", path: "/results", must: "data-filter-rail", sheet: true },
   { id: "markets", path: "/markets", must: "data-filter-rail", sheet: true },
 ];
 
