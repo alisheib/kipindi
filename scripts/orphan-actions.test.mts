@@ -50,6 +50,16 @@ const ok = (l: string, c: boolean, x = "") => { c ? pass++ : fail++; console.log
  * ⛔ Adding a row here is a decision, not a formality — read E-23 first.
  */
 const KNOWN_ORPHANS: Record<string, string> = {
+  // 🔴 FOUND 2026-09-07, THE MOMENT THIS GUARD'S POPULATION STOPPED BEING A FOLDER NAME.
+  // A 2FA-gated operator remedy — reopen a settled market — with ZERO callers anywhere. It lives
+  // in `src/app/markets/actions.ts`, outside `/admin/`, which is the only reason the guard
+  // written to catch exactly this had never seen it.
+  // ⛔ DECLARED RATHER THAN DELETED, deliberately: whether operators need a reopen remedy is a
+  // product question for Ali, and a server action with no caller is inert — it cannot be invoked
+  // without a form that posts to it. So it is inert AND visible, which is the honest state.
+  // ▶ Wire it to `/admin/markets/[id]`, or delete it. Do not leave it here indefinitely.
+  adminReopenMarketAction:
+    "2FA-gated reopen remedy with no UI caller; wire it to /admin/markets or delete it — Ali's call",
   // Superseded by `addContactsStructuredAction` immediately below it in the same file,
   // which IS wired. A leftover twin, not a missing capability — the operator can add
   // contacts. Delete when someone confirms nothing external posts to it.
@@ -100,7 +110,23 @@ const files: string[] = [];
  * that cannot be written about is a guard that stops being documented.
  */
 const text = new Map(files.map((f) => [f, stripComments(readFileSync(f, "utf8"))]));
-const actionFiles = files.filter((f) => /[\\/]admin[\\/].*action.*\.ts$/i.test(f));
+// 🔴 THE POPULATION WAS KEYED ON THE FOLDER; THE PROPERTY IS ABOUT THE GATE (fixed 2026-09-07).
+// This filtered to files whose PATH contains `/admin/`, so `adminReopenMarketAction` — a
+// 2FA-gated operator remedy living in `src/app/markets/actions.ts` — was invisible to the guard
+// written to catch exactly this shape of defect. ⛔ A gate that chooses its own population
+// cannot fail, and this one had drawn its population with a folder name.
+// ⭐ An action is IN SCOPE if it is admin-GATED, wherever it lives: its file calls
+// `requireAdminOrThrow` or `ensureAdmin`. The folder is a convention; the gate is the fact.
+// ⚠️ IT IS A UNION, NOT A REPLACEMENT — and my first attempt got that wrong, which is worth the
+// line: swapping the folder rule FOR the gate rule dropped the population from 33 files to 8 and
+// turned four checks red, including §1.1's own "the scan actually found admin actions" floor.
+// Widening a guard can narrow it. Keep BOTH: everything under `/admin/`, PLUS anything anywhere
+// in `app/` whose file is admin-gated.
+const actionFiles = files.filter(
+  (f) =>
+    /[\\/]admin[\\/].*action.*\.ts$/i.test(f) ||
+    (/[\\/]app[\\/].*action.*\.ts$/i.test(f) && /requireAdminOrThrow|ensureAdmin/.test(text.get(f) ?? "")),
+);
 
 console.log(`\n§1 · every gated admin action is reachable from the product (${actionFiles.length} action files)`);
 
