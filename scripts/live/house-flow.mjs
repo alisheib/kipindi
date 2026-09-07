@@ -104,7 +104,7 @@ console.log("§1 · from the console, not from a URL somebody pasted");
     cur: e.getAttribute("aria-current"), cls: e.className,
   }));
   ok("1.4 · the sidebar marks House as the current page",
-    mark.cur === "page" || /bg-|text-text|active/.test(mark.cls),
+    mark.cur === "page" || /bg-|text-text\b|active/.test(mark.cls),
     `aria-current=${mark.cur} class="${String(mark.cls).slice(0, 80)}"`);
 }
 

@@ -674,3 +674,9 @@ persona that was never actually promoted.
   surface. A ticket UI that renders a raw `from:` address defeats the console masking entirely, and
   the two would then disagree about the same field — which is how a permission model acquires a
   second, private opinion (§6). ⛔ **Whoever builds #13 does not get to re-decide D2.**
+- ⭐ **The agent workstation (`/admin/agents/[id]`, 2026-09-07) is bound by the same tiers.**
+  Applicant and referee phones render through `maskPhone` on the console; the eight document
+  slots are read **only** through `/api/admin/agent-doc`, which re-checks the compliance role and
+  step-up 2FA on every fetch and audits every view — the same shape as the KYC image route. The
+  two referee national-ID scans are third-party data with **no account behind them**: they get no
+  reveal control anywhere, and `/legal/privacy` §9 is the referee's DSAR route.

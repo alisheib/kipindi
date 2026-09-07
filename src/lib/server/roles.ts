@@ -253,6 +253,11 @@ export const ROUTE_DOMAINS: ReadonlyArray<readonly [prefix: string, domain: Admi
   ["/admin/updown", "trading"],
   ["/admin/moderation", "trading"],
   // compliance
+  /* ⭐ THE AGENT PROGRAMME IS COMPLIANCE, NOT GROWTH. The officer who approves, prices,
+   * deactivates and refunds a vetted business partner must be the one who can see every
+   * switch that controls agent money — and `/admin/affiliate` (growth) keeps the PLAYER
+   * promo. Registered ahead of the broader prefixes so the matcher's first-match wins. */
+  ["/admin/agents", "compliance"],
   ["/admin/compliance", "compliance"],
   ["/admin/objections", "compliance"],
   ["/admin/aml", "compliance"],

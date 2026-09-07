@@ -37,7 +37,8 @@ import { getTickerFeed } from "@/lib/server/ticker-feed";
 import { RealityCheckHost } from "@/components/rg/reality-check";
 import { getRgSettings } from "@/lib/server/responsible-gambling";
 import { hasRole, ADMIN_CONSOLE_ROLES, type Role } from "@/lib/server/roles";
-import { inviteIsLiveFor } from "@/lib/feature-state";
+import { inviteIsLiveFor, NO_VIEWER, type InviteViewer } from "@/lib/feature-state";
+import { agentStandingFor } from "@/lib/server/affiliate-service";
 import { displayLabel, displayInitials } from "@/lib/display-label";
 import { getServerT } from "@/lib/i18n-server";
 import { getPlatformConfig, maintenanceMessage } from "@/lib/server/platform-config";
@@ -87,7 +88,8 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
   /** The viewer's role, hoisted out of the session block for the feature-state read below.
    *  ⚠️ Stays null when the user fetch FAILED — which resolves every role-gated feature to
    *  hidden, the only safe direction for a failed read. */
-  let viewerRole: Role | null = null;
+  /** Who is asking about Invite — standing, not role. See `feature-state.ts` → `InviteViewer`. */
+  let inviteViewer: InviteViewer = NO_VIEWER;
   if (session) {
     // Batch all three queries in parallel — eliminates the sequential
     // waterfall. Promise.allSettled so one failing query can't crash
@@ -95,13 +97,20 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
     // ⛔ THE KYC READ JOINS THE EXISTING BATCH — it is NOT awaited separately. This
     // component renders on EVERY page; a fourth sequential round trip here is a latency
     // tax on the whole platform, which is the same rule the ticker note below states.
-    const [uResult, walletResult, rgResult, kycResult] = await Promise.allSettled([
+    const [uResult, walletResult, rgResult, kycResult, affResult] = await Promise.allSettled([
       db.user.findById(session.userId),
       db.wallet.findByUserId(session.userId),
       getRgSettings(session.userId),
       getKycStatus(session.userId),
+      // ⭐ The affiliate row rides in the same batch — invite visibility is decided by the
+      // agent's STANDING (approved + active + account status), never by the role alone, and
+      // a fifth sequential round trip on every page is the latency tax the note above forbids.
+      db.affiliate.findByUserId(session.userId),
     ]);
     const u = uResult.status === "fulfilled" ? uResult.value : null;
+    const aff = affResult.status === "fulfilled" ? affResult.value : null;
+    // ⚠️ A failed user read leaves NO_VIEWER — a failed read must never open a withdrawn programme.
+    inviteViewer = u ? { role: u.role, agentInGoodStanding: agentStandingFor(u, aff).ok } : NO_VIEWER;
     const wallet = walletResult.status === "fulfilled" ? walletResult.value : null;
     const rg = rgResult.status === "fulfilled" ? rgResult.value : null;
     const kyc = kycResult.status === "fulfilled" ? kycResult.value : null;
@@ -123,7 +132,6 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       // hasRole is null-safe, so a failed user fetch simply hides it.
       isAdmin: hasRole(u?.role, ADMIN_CONSOLE_ROLES),
     };
-    viewerRole = u?.role ?? null;
     realityCheckMin = rg?.realityCheckIntervalMin || 30;
     // Email confirmation gates depositing, so an unconfirmed address is a live
     // limitation on the account and belongs on every page — not only on the
@@ -179,8 +187,10 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
      components to save a prop: importing a server module from a client file is what took
      every page in this app down once already.
      ⚠️ `u` is null only when the user fetch above FAILED. Defaulting to hidden is the safe
-     direction — a failed read must never open a withdrawn programme. */
-  const inviteVisible = inviteIsLiveFor(viewerRole);
+     direction — a failed read must never open a withdrawn programme.
+     🔴 AND IT IS STANDING, NOT ROLE (2026-09-07). `inviteIsLiveFor(viewerRole)` kept every
+     entry point open for a DEACTIVATED agent, because deactivation leaves the role in place. */
+  const inviteVisible = inviteIsLiveFor(inviteViewer);
 
   return (
     <div className="min-h-screen bg-bg-base text-text">

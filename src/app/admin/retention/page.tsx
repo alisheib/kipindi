@@ -18,6 +18,7 @@ import { PurgeChainCard } from "./purge-chain-card";
 import type { Route } from "next";
 import { Tabs } from "@/components/ui/tabs";
 import { getFirstSignature } from "./purge-stage1-store";
+import { AGENT_APPROVED_DOC_HOLD_YEARS, AGENT_REJECTED_DOC_HOLD_DAYS, AGENT_REFEREE_DOC_HOLD_DAYS } from "@/lib/server/agent-application-service";
 import { currentSession } from "@/lib/server/auth-service";
 
 export const metadata = { title: "Admin · Data retention" };
@@ -64,6 +65,15 @@ const SCHEDULE: Row[] = [
   { category: "Customer-support tickets", swahili: "Tiketi za usaidizi", retentionYears: "n/a — no ticket store yet (Unit K)", legalBasis: "Tanzania PDPA §22 — applies once built", trigger: "From ticket close", storage: "— not yet stored" },
   { category: "Behavioural-marker logs (RG)", swahili: "Alama za tabia", retentionYears: 5, legalBasis: "LCCP SR Code 3.4.1", trigger: "From event date", storage: "Postgres" },
   { category: "Backup snapshots (HMAC-signed)", swahili: "Nakala rudufu", retentionYears: "90 days rolling", legalBasis: "DR/BCP", trigger: "Per snapshot date", storage: "S3 with SSE-KMS" },
+  // ⭐ AGENT PROGRAMME (2026-09-07) — three rows, because three different people own the data.
+  // The decision record is the platform's (a vetted business partner is a CDD subject); the
+  // applicant's own paperwork follows the decision; and the two referee ID scans belong to
+  // people who never used 50pick — measured from the DECISION, never from an account closure
+  // they do not have. The clocks are the service's constants, so this table cannot drift from
+  // the code that enforces it (`retention.purge.daily`).
+  { category: "Agent application — decision record", swahili: "Maombi ya uwakala · uamuzi", retentionYears: AGENT_APPROVED_DOC_HOLD_YEARS, legalBasis: "POCA Cap 423 §16", trigger: "From the decision (referee names pseudonymised on erasure)", storage: "Postgres" },
+  { category: "Agent application — the applicant's documents (CV, letters, receipt)", swahili: "Nyaraka za mwombaji wa uwakala", retentionYears: `${AGENT_APPROVED_DOC_HOLD_YEARS} years if approved · ${AGENT_REJECTED_DOC_HOLD_DAYS} days if refused`, legalBasis: "POCA Cap 423 §16 (approved) · PDPA 2022 §15 (refused)", trigger: "From the decision", storage: "R2 50pick-kyc (bytes purged nightly by code; row kept as a tombstone)" },
+  { category: "Referee national-ID scans — third-party data", swahili: "Vitambulisho vya wadhamini", retentionYears: `${AGENT_REFEREE_DOC_HOLD_DAYS} days`, legalBasis: "PDPA 2022 §15 · the applicant's attested consent", trigger: "From the decision — immediately on rejection (a referee has no account to close)", storage: "R2 50pick-kyc (bytes purged nightly by code)" },
 ];
 
 export default async function AdminRetentionPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {

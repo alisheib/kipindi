@@ -6,6 +6,58 @@
 
 ---
 
+## 2026-09-07 · The Agent Affiliate programme — a vetted, paid recruiter tier under the COMPLIANCE domain
+
+**Owner decision:** Ali, **2026-09-07**, closing every open question in `docs/AGENT-PROGRAMME.md`
+(sealed in `docs/SESSION-PROMPT-AGENT-BUILD.md`). Built on branch `agent-affiliate-programme`.
+
+**What was decided, and where each decision is enforced**
+
+| Decision | Enforced |
+|---|---|
+| Commission only — no sign-up prize, no deposit bonus, no share of turnover | `policyFor()` returns `flatRewards: false` for AGENT; `test:programme-isolation` |
+| **20%** of the **net** fee (after TRA + GBT), **40%** hard ceiling as a RULE, lifetime, no cap | `RULES.md` §2.10 · `agent-config.ts` · `test:commission-bounded` |
+| Real withdrawable cash via `TxnType.AGENT_COMMISSION`; ⛔ never `BONUS_CREDIT` | `creditInternal` · `HOUSE:AGENT_COMMISSION` · `test:agent-policy` |
+| Single level — a recruit's own recruits earn the agent nothing | `onRecruitSettlement` reads one `recruitedBy` only |
+| Provenance stamped on the recruit at bind (`recruitedProgramme`, `recruitedAt`, `recruitedByCode`); NULL = PLAYER; never re-derived from role | `bindRecruit` · `test:attribution-provenance` |
+| `approvedAt` ALONE identifies an agent; `commissionPct` is nullable with no default; a null rate REFUSES accrual with an audit row | `isApprovedAgent` · `policyFor` · `test:agent-eligibility` |
+| An excluded / suspended / closed / deactivated agent stops recruiting AND accruing; commission already earned is a **PENDING payable**, never HELD | `agentStandingFor` · `/admin/agents` Payables + `settlePayable` |
+| A VOIDED market claws back every accrual it produced (`AGENT_COMMISSION_REVERSAL`) | `clawbackMarketCommission` · `test:agent-clawback` |
+| TZS **100,000 VAT-inclusive** (18%) registration fee, paid out of band to Digital Selcom Bank 0769777877, officer-attested from the receipt; waivable with a typed reason; **refunded within 7 days** of rejection; one receipt = one application (`feeReference` UNIQUE) | `reconcileFee` / `waiveFee` / `recordFeeRefund` · `HOUSE:AGENT_FEE` · the Refunds-owed worklist |
+| **Single officer** — no two-officer lock (Ali's dated call). Self-review is blocked; on an invitation the invitee's acceptance is the second party | `approveAgent` refuses `officerId === app.userId` and `INVITED`; `test:agent-application-security` |
+| Terminal rejections — `SANCTIONED`, `IDENTITY_MISMATCH`, `FRAUD` — bar re-application; others may re-apply after 90 days | `applicantEligibility` |
+| Staff are refused as agents (approval would strip admin access) | `approveAgent` · `issueInvitation` |
+| `/admin/agents*` is the **compliance** domain with step-up 2FA; `/admin/affiliate` stays growth and shows the PLAYER promo only | `roles.ts` · `softRequireStaff("compliance")` · `getAdminAffiliateStats` |
+| Officer invitation requires the invitee's acceptance with an OTP to the officer-entered number; token hashed at rest, single-use, 14-day expiry, revocable | `issueInvitation` / `acceptInvitation` |
+| Public `/agent` reachable from the footer only — it explains and does not solicit ordinary players; the player invite programme stays **withdrawn** (`PRODUCT_STATE`) | `public-footer.tsx` · `inviteStateFor(viewer)` keyed on agent STANDING, not role · `test:withdrawn-features` |
+| Referee national-ID scans are third-party data: 90-day hold from the decision, destroyed immediately on rejection, DSAR via the DPO without an account | `DATA-RETENTION.md` rows · `/legal/privacy` §9 · `retention.purge.daily` |
+| Agent terms (`/legal/agent-terms`, EN binding) accepted at submission with a version stamp on `AgentApplication` | `AGENT_TERMS_VERSION` · `submitForReview` |
+
+**Expand → contract.** `AffiliateAgent.tier` left the schema and every layer with **no DDL**; the
+`DROP COLUMN` is a separate later release, after one deploy has run without reading it.
+
+**⚠️ Two binding documents were corrected in the same change, and the correction is recorded
+here because it changes what a player was told.**
+
+1. `/legal/terms` §3 said *"Identity verification is not required in order to withdraw"* (EN
+   binding, and sw + zh) at version 2026-09-05 — contradicting the 2026-09-05 ruling above
+   (`kyc-gate.ts`: deposit and bet need current APPROVED; withdraw needs `approvedAt != null`).
+   `/legal/aml` §1 said the same in other words (*"not a precondition of withdrawal"*). Both now
+   state the live gate; terms bumped to **2026-09-07**; the AML page gained a version line.
+   **Ruling to confirm (Ali):** this is filed as the *correction of a false statement* — the gate
+   was live from 2026-09-05 and only the document was wrong — rather than a material change of
+   terms under §10's 14-day notice. Every account carrying `acceptedTermsVersion = "2026-09-05"`
+   accepted a document containing the false sentence. If Ali prefers to serve the notice, the
+   version stays and the notice goes out; nothing in code depends on the choice.
+2. `/legal/aml` §4 claimed automated screening against the UN, OFAC, EU and UK HMT lists *"at
+   registration and weekly thereafter"*. No such feed exists (`kyc-risk.ts` deliberately assigns
+   no sanctions points). §4 now states what is done — officer checklist assessment at every
+   identity and EDD review — in all three locales; `admin/reports` stops asserting a "sanctions
+   match" trigger. `test:kyc-copy-truth` §2 now walks the legal pages themselves and carries the
+   old sentences as controls that must be rejected.
+
+---
+
 ## 2026-09-06 · The owner can read a player's full phone number — behind an audited eye, on every admin surface
 
 **Owner decision:** Ali, **2026-09-06**, in his words:

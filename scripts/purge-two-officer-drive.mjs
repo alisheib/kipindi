@@ -138,7 +138,7 @@ for (let i = 0; i < 40; i++) {
      case-sensitive match reads the DOM as authored and the SCREEN as it is not. Anchored on the
      progress caption beside it so the card title "Purge a chain and its history" cannot satisfy it. */
   if (/purged/i.test(txt) && /[0-9]+ of [0-9]+/i.test(txt)) { sawDone = true; break; }
-  if (/failed/i.test(txt) && /evidence pack|verification/i.test(txt)) break;
+  if (/\bfailed\b/i.test(txt) && /evidence pack|verification/i.test(txt)) break;
 }
 await B.screenshot({ path: join(OUT, "drive-5-final.png"), fullPage: true });
 ok("⭐ the progress phases were rendered", sawProgress);

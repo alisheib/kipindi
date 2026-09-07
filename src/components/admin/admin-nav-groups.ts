@@ -132,6 +132,9 @@ export const NAV_GROUPS: ReadonlyArray<NavGroup> = [
   {
     group: { en: "Compliance", sw: "Kanuni" },
     items: [
+      // ⭐ Agents are COMPLIANCE, not Growth: the officer who vets, prices and pays a business
+      // partner is the one who must see every switch that controls agent money.
+      { href: "/admin/agents", label: "Agents", key: "agents", domain: "compliance" },
       { href: "/admin/compliance",      label: "Compliance",     key: "compliance", domain: "compliance" },
       // F11 — an OPEN objection freezes a market's settlement, so this queue holds
       // real money hostage until an officer clears it. It sits high on purpose.
@@ -221,6 +224,7 @@ const ROUTE_KEYS: ReadonlyArray<readonly [prefix: string, key: string]> = [
   ["/admin/updown/proposals", "updown-proposals"],
   ["/admin/updown/rounds", "updown-rounds"],
   ["/admin/updown", "updown"],
+  ["/admin/agents", "agents"],
   ["/admin/affiliate", "affiliate"],
   ["/admin/bonuses", "bonuses"],
   ["/admin/invites", "invites"],

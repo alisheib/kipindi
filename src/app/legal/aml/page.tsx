@@ -14,9 +14,9 @@ const TITLE: Record<Locale, string> = {
   zh: "反洗钱与 KYC 政策",
 };
 const META: Record<Locale, string> = {
-  en: "Aligned with Tanzania AML Act (Cap 423) and the FATF Recommendations.",
-  sw: "Imeoanishwa na Tanzania AML Act (Cap 423) na Mapendekezo ya FATF.",
-  zh: "符合 Tanzania AML Act (Cap 423) 及 FATF 建议。",
+  en: "Version 2026-09-07 · Aligned with Tanzania AML Act (Cap 423) and the FATF Recommendations.",
+  sw: "Toleo 2026-09-07 · Imeoanishwa na Tanzania AML Act (Cap 423) na Mapendekezo ya FATF.",
+  zh: "版本 2026-09-07 · 符合 Tanzania AML Act (Cap 423) 及 FATF 建议。",
 };
 const BINDING: Record<Locale, string> = {
   en: "The English version of this document is the legally binding text; translations are provided for convenience.",
@@ -29,14 +29,14 @@ const CONTENT: Record<Locale, React.ReactNode> = {
     <>
       <LegalSection n="1" title="Customer due diligence (CDD)">
         <p>
-          Identity verification is offered to every player and is <strong>not</strong> a
-          precondition of withdrawal. A player may verify with any one of four documents — a
+          Identity verification is <strong>required</strong> of every player before they
+          deposit, bet or withdraw. A player verifies with any one of four documents — a
           20-digit National ID (NIDA) number, a passport, a driving licence or a voter&apos;s
           card. We check the number against that document&apos;s format rule, enforce that the
           document is unique to a single account, and our compliance team reviews the
           photographic evidence together with a selfie. We capture: full name, date of birth,
-          region, the document type and number, and photographic evidence. Withdrawals of
-          TZS 1,000,000 or more are held for two-officer review regardless of identity status.
+          region, the document type and number, and photographic evidence. Even once identity
+          is verified, withdrawals of TZS 1,000,000 or more are held for two-officer review.
         </p>
       </LegalSection>
 
@@ -63,11 +63,17 @@ const CONTENT: Record<Locale, React.ReactNode> = {
         </p>
       </LegalSection>
 
-      <LegalSection n="4" title="Sanctions screening">
+      <LegalSection n="4" title="Sanctions and politically exposed persons (PEP)">
         <p>
-          All registered users and beneficial owners are screened against the UN consolidated list,
-          OFAC SDN list, the EU sanctions list, and the UK HMT list at registration and weekly
-          thereafter. Matches block transactions and trigger immediate review.
+          We do <strong>not</strong> run an automated screening feed against the UN, OFAC, EU or
+          UK HMT sanctions lists. Sanctions and PEP exposure are assessed by a compliance officer
+          as a checklist item during every identity review and every enhanced due diligence
+          review, using the name, date of birth and document details collected under §1. Where
+          an officer records a concern, the account may be suspended — which stops deposits,
+          bets and withdrawals — and a suspicious-activity report is filed with the Financial
+          Intelligence Unit where the law requires it. This policy states only the screening we
+          actually perform; it will be re-versioned before any automated list screening is
+          introduced.
         </p>
       </LegalSection>
 
@@ -97,14 +103,14 @@ const CONTENT: Record<Locale, React.ReactNode> = {
     <>
       <LegalSection n="1" title="Uchunguzi wa kina wa mteja (CDD)">
         <p>
-          Uthibitisho wa utambulisho unapatikana kwa kila mchezaji na <strong>hauhitajiki</strong>
-          kabla ya kutoa fedha. Mchezaji anaweza kuthibitisha kwa kutumia mojawapo ya nyaraka
-          nne — namba ya NIDA yenye tarakimu 20, pasipoti, leseni ya udereva au kadi ya mpiga
-          kura. Tunakagua namba kwa kanuni ya nyaraka hiyo, tunahakikisha nyaraka inatumika
-          kwenye akaunti moja pekee, na timu yetu ya uzingatiaji hukagua ushahidi wa picha
-          pamoja na selfie. Tunakusanya: jina kamili, tarehe ya kuzaliwa, mkoa, aina na namba
-          ya nyaraka, na ushahidi wa picha. Kutoa TZS 1,000,000 au zaidi kunashikiliwa kwa
-          ukaguzi wa maafisa wawili bila kujali hadhi ya utambulisho.
+          Uthibitisho wa utambulisho <strong>unahitajika</strong> kwa kila mchezaji kabla ya
+          kuweka fedha, kuweka dau au kutoa fedha. Mchezaji anathibitisha kwa kutumia mojawapo
+          ya nyaraka nne — namba ya NIDA yenye tarakimu 20, pasipoti, leseni ya udereva au kadi
+          ya mpiga kura. Tunakagua namba kwa kanuni ya nyaraka hiyo, tunahakikisha nyaraka
+          inatumika kwenye akaunti moja pekee, na timu yetu ya uzingatiaji hukagua ushahidi wa
+          picha pamoja na selfie. Tunakusanya: jina kamili, tarehe ya kuzaliwa, mkoa, aina na
+          namba ya nyaraka, na ushahidi wa picha. Hata utambulisho ukishathibitishwa, kutoa
+          TZS 1,000,000 au zaidi kunashikiliwa kwa ukaguzi wa maafisa wawili.
         </p>
       </LegalSection>
 
@@ -131,11 +137,17 @@ const CONTENT: Record<Locale, React.ReactNode> = {
         </p>
       </LegalSection>
 
-      <LegalSection n="4" title="Uchunguzi wa orodha za vikwazo">
+      <LegalSection n="4" title="Vikwazo na watu wanaojulikana kisiasa (PEP)">
         <p>
-          Watumiaji wote waliosajiliwa na wamiliki wenye manufaa huchunguzwa dhidi ya orodha ya pamoja ya UN,
-          orodha ya OFAC SDN, orodha ya vikwazo ya EU, na orodha ya UK HMT wakati wa kusajili na kila wiki baada ya
-          hapo. Mlinganisho wowote huzuia miamala na kusababisha ukaguzi wa papo hapo.
+          <strong>Hatuendeshi</strong> mfumo wa kiotomatiki wa kuchunguza orodha za vikwazo za UN,
+          OFAC, EU au UK HMT. Hatari ya vikwazo na ya PEP hukaguliwa na afisa wa uzingatiaji kama
+          kipengele cha orodha ya ukaguzi katika kila ukaguzi wa utambulisho na kila ukaguzi wa
+          kina wa mteja (EDD), kwa kutumia jina, tarehe ya kuzaliwa na taarifa za nyaraka
+          zilizokusanywa chini ya §1. Afisa akirekodi wasiwasi, akaunti inaweza kusimamishwa —
+          jambo linalozuia kuweka fedha, kuweka dau na kutoa fedha — na ripoti ya shughuli za
+          kutiliwa shaka huwasilishwa kwa Kitengo cha Intelijensia ya Fedha (FIU) pale sheria
+          inapohitaji. Sera hii inataja tu uchunguzi tunaoufanya kweli; itatolewa toleo jipya
+          kabla ya uchunguzi wowote wa kiotomatiki wa orodha kuanzishwa.
         </p>
       </LegalSection>
 
@@ -166,11 +178,11 @@ const CONTENT: Record<Locale, React.ReactNode> = {
     <>
       <LegalSection n="1" title="客户尽职调查（CDD）">
         <p>
-          我们为每位玩家提供身份验证，但提现<strong>无需</strong>先完成验证。玩家可使用四种证件
+          每位玩家在充值、投注或提现之前均<strong>必须</strong>完成身份验证。玩家可使用四种证件
           之一进行验证——20 位国民身份证（NIDA）号码、护照、驾驶证或选民证。我们按该证件的格式
           规则核对号码，确保一份证件仅绑定一个账户，并由我们的合规团队审核照片证据及自拍照。
           我们采集：全名、出生日期、地区、证件类型与号码以及照片证据。
-          无论身份验证状态如何，TZS 1,000,000 及以上的提现均须经两名合规专员审核。
+          即使身份已验证，TZS 1,000,000 及以上的提现仍须经两名合规专员审核。
         </p>
       </LegalSection>
 
@@ -195,10 +207,13 @@ const CONTENT: Record<Locale, React.ReactNode> = {
         </p>
       </LegalSection>
 
-      <LegalSection n="4" title="制裁名单筛查">
+      <LegalSection n="4" title="制裁与政治公众人物（PEP）">
         <p>
-          所有注册用户及受益所有人在注册时及其后每周，都会对照 UN 综合名单、OFAC SDN 名单、EU 制裁名单以及 UK HMT
-          名单进行筛查。命中者将被阻止交易并触发即时审查。
+          我们<strong>不</strong>运行对照 UN、OFAC、EU 或 UK HMT 制裁名单的自动筛查系统。制裁与 PEP
+          风险由合规专员在每次身份审核及每次强化尽职调查（EDD）中，依据第 1 条采集的姓名、出生日期
+          及证件信息，作为核查清单项目进行人工评估。若专员记录了疑虑，该账户可被暂停——暂停后无法
+          充值、投注或提现——并在法律要求时向金融情报单位（FIU）提交可疑活动报告。本政策仅陈述我们
+          实际执行的筛查；在引入任何自动名单筛查之前，本政策将先行更新版本。
         </p>
       </LegalSection>
 

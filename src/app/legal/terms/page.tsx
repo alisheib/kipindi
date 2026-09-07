@@ -25,9 +25,9 @@ const TITLE: Record<Locale, string> = {
  * that still claims 2026-04-01. `COMPLIANCE-DECISIONS.md` carries the reasoning.
  */
 const META: Record<Locale, string> = {
-  en: "Version 2026-09-05 · Effective on account registration.",
-  sw: "Toleo 2026-09-05 · Yanaanza kutumika unaposajili akaunti.",
-  zh: "版本 2026-09-05 · 自账户注册时生效。",
+  en: "Version 2026-09-07 · Effective on account registration.",
+  sw: "Toleo 2026-09-07 · Yanaanza kutumika unaposajili akaunti.",
+  zh: "版本 2026-09-07 · 自账户注册时生效。",
 };
 const BINDING: Record<Locale, string> = {
   en: "The English version of this document is the legally binding text; translations are provided for convenience.",
@@ -75,13 +75,15 @@ function content(objectionHours: number): Record<Locale, React.ReactNode> { retu
 
       <LegalSection n="3" title="Identity verification (KYC)">
         <p>
-          Identity verification is <strong>not</strong> required in order to withdraw. You may
-          verify at any time with any one of four documents — a National ID (NIDA) number, a
-          passport, a driving licence or a voter&apos;s card — with photographic evidence
-          reviewed by our compliance team. One document may only be used on one account. We may
-          request additional documents (proof of address, source-of-funds declaration) if your
-          activity triggers anti-money-laundering thresholds, and withdrawals of
-          TZS 1,000,000 or more are held for review by two compliance officers.
+          Identity verification is <strong>required</strong> before you can deposit, place a
+          bet or withdraw. You verify once, with any one of four documents — a National ID (NIDA)
+          number, a passport, a driving licence or a voter&apos;s card — with photographic
+          evidence reviewed by our compliance team. One document may only be used on one
+          account. An account that has been verified once keeps the right to withdraw the money
+          it holds even if we later ask it to verify again. We may request additional documents
+          (proof of address, source-of-funds declaration) if your activity triggers
+          anti-money-laundering thresholds, and withdrawals of TZS 1,000,000 or more are held
+          for review by two compliance officers.
         </p>
       </LegalSection>
 
@@ -199,13 +201,15 @@ function content(objectionHours: number): Record<Locale, React.ReactNode> { retu
 
       <LegalSection n="3" title="Uthibitisho wa utambulisho (KYC)">
         <p>
-          Uthibitisho wa utambulisho <strong>hauhitajiki</strong> ili kutoa fedha. Unaweza
-          kuthibitisha wakati wowote kwa kutumia mojawapo ya nyaraka nne — namba ya NIDA,
-          pasipoti, leseni ya udereva au kadi ya mpiga kura — pamoja na ushahidi wa picha
-          unaokaguliwa na timu yetu ya uzingatiaji. Nyaraka moja inaweza kutumika kwenye
-          akaunti moja pekee. Tunaweza kuomba nyaraka za ziada (uthibitisho wa anwani, tamko la
-          chanzo cha fedha) iwapo shughuli zako zitavuka viwango vya kuzuia uoshaji wa fedha,
-          na kutoa TZS 1,000,000 au zaidi kunashikiliwa kwa ukaguzi wa maafisa wawili.
+          Uthibitisho wa utambulisho <strong>unahitajika</strong> kabla ya kuweka fedha, kuweka
+          dau au kutoa fedha. Unathibitisha mara moja, kwa kutumia mojawapo ya nyaraka nne —
+          namba ya NIDA, pasipoti, leseni ya udereva au kadi ya mpiga kura — pamoja na ushahidi
+          wa picha unaokaguliwa na timu yetu ya uzingatiaji. Nyaraka moja inaweza kutumika
+          kwenye akaunti moja pekee. Akaunti iliyothibitishwa mara moja inabaki na haki ya kutoa
+          fedha ilizonazo hata tukiomba baadaye ithibitishwe upya. Tunaweza kuomba nyaraka za
+          ziada (uthibitisho wa anwani, tamko la chanzo cha fedha) iwapo shughuli zako zitavuka
+          viwango vya kuzuia uoshaji wa fedha, na kutoa TZS 1,000,000 au zaidi kunashikiliwa kwa
+          ukaguzi wa maafisa wawili.
         </p>
       </LegalSection>
 
@@ -320,9 +324,10 @@ function content(objectionHours: number): Record<Locale, React.ReactNode> { retu
 
       <LegalSection n="3" title="身份验证（KYC）">
         <p>
-          提现<strong>无需</strong>完成身份验证。您可随时使用四种证件之一进行验证——国民身份证
-          （NIDA）号码、护照、驾驶证或选民证——并提交由我们的合规团队审核的照片证据。
-          一份证件仅可用于一个账户。如果您的活动触发反洗钱阈值，我们可能会要求提供额外文件
+          在充值、投注或提现之前，<strong>必须</strong>先完成身份验证。您只需验证一次，可使用四种
+          证件之一——国民身份证（NIDA）号码、护照、驾驶证或选民证——并提交由我们的合规团队审核的
+          照片证据。一份证件仅可用于一个账户。已完成一次验证的账户，即使我们此后要求重新验证，仍
+          保留提取其账户内资金的权利。如果您的活动触发反洗钱阈值，我们可能会要求提供额外文件
           （地址证明、资金来源声明）；TZS 1,000,000 及以上的提现须经两名合规专员审核。
         </p>
       </LegalSection>

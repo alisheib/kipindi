@@ -9,13 +9,14 @@ import { PhoneInput } from "@/components/ui/phone-input";
 import { PasswordPair } from "@/components/auth/password-pair";
 import { DateSelect } from "@/components/ui/date-select";
 import { SubmitButton } from "@/components/ui/submit-button";
-import { resolveReferralPreview } from "@/lib/server/affiliate-service";
+import { resolveReferralPreview, normalizeReferralCode } from "@/lib/server/affiliate-service";
+import { VerifiedAgentBadge } from "@/components/agent/verified-agent-badge";
 import { bounceIfAuthed } from "../bounce-authed";
 import { getInvitePreview } from "@/lib/server/invite-service";
 import { startRegisterAction } from "./actions";
 import { HELPLINE } from "@/lib/support-config";
 import { getServerT } from "@/lib/i18n-server";
-import { formatTzs } from "@/lib/utils";
+import { formatTzs, fill } from "@/lib/utils";
 import { appUrl } from "@/lib/app-url";
 
 export async function generateMetadata({ searchParams }: { searchParams: Promise<{ ref?: string; invite?: string }> }) {
@@ -48,7 +49,11 @@ export default async function RegisterPage({
   const sp = await searchParams;
   const phoneDefault = (sp.phone ?? "").replace(/^\+255/, "").replace(/\D+/g, "").slice(0, 9);
   const emailDefault = (sp.email ?? "").trim().slice(0, 254);
-  const refCode = (sp.ref ?? "").trim().slice(0, 16);
+  // 🔴 THIS WAS `.slice(0, 16)`, and `50PICK-AG-` is ten characters: every agent code was cut
+  // to a prefix, matched nothing, rendered no ribbon and bound nobody — with no error anywhere.
+  // ⭐ ONE normaliser, shared with the bind: an over-length or malformed code is REFUSED (an
+  // empty string here), never shortened to something that might match somebody else.
+  const refCode = normalizeReferralCode(sp.ref) ?? "";
   // Carry the post-auth destination (e.g. the market the player tapped YES on)
   // through registration so they land back on it — new players are PENDING_KYC
   // but can still bet with the starter balance, so we honor their intent.
@@ -122,7 +127,11 @@ export default async function RegisterPage({
               <div className="flex items-center gap-3 p-3.5">
                 <FiftyMark size={40} />
                 <div className="min-w-0 flex-1">
-                  <p className="text-[14px] font-bold text-text">{t.auth.invitedBy} {referral.referrerName}</p>
+                  {/* ⭐ THE TRUST MARK — one component, derived from the same standing check that
+                      decides whether this code binds. A deactivated agent's ribbon does not render
+                      at all (the preview is null), so this can never vouch for a dead partner. */}
+                  {referral.verifiedAgent && <VerifiedAgentBadge label={t.agent.verifiedBadge} size="sm" className="mb-1" />}
+                  <p className="text-[14px] font-bold text-text">{referral.verifiedAgent ? fill(t.agent.invitedBy, { name: referral.referrerName }) : `${t.auth.invitedBy} ${referral.referrerName}`}</p>
                   {referral.newPlayerBonusTzs > 0 && (
                     <p className="mt-1 text-body-sm font-semibold text-gold-300">
                       {referral.bonusTrigger === "SIGNUP"

@@ -106,6 +106,18 @@ export const EMAIL_TEMPLATES: readonly EmailSpec[] = [
   { template: "kycApprovedHtml",           trigger: "src/lib/server/kyc-service.ts",       audience: "player",  chrome: "gold",  money: false },
   { template: "kycRejectedHtml",           trigger: "src/lib/server/kyc-service.ts",       audience: "player",  chrome: "royal", money: false },
   { template: "kycMoreInfoHtml",           trigger: "src/lib/server/kyc-service.ts",       audience: "player",  chrome: "royal", money: false },
+  // ── Agent affiliate programme ─────────────────────────────────────────────
+  { template: "agentApprovedHtml",              trigger: "src/lib/server/agent-application-service.ts", audience: "player",  chrome: "gold",  money: true },
+  { template: "agentRejectedHtml",              trigger: "src/lib/server/agent-application-service.ts", audience: "player",  chrome: "royal", money: true },
+  { template: "agentInfoRequestedHtml",         trigger: "src/lib/server/agent-application-service.ts", audience: "player",  chrome: "royal", money: false },
+  { template: "agentFeeRefundedHtml",           trigger: "src/lib/server/agent-application-service.ts", audience: "player",  chrome: "royal", money: true },
+  { template: "agentApplicationSubmittedAdminHtml", trigger: "src/lib/server/agent-application-service.ts", audience: "officer", chrome: "royal", money: false },
+  { template: "agentInvitationHtml",            trigger: "src/lib/server/agent-application-service.ts", audience: "player",  chrome: "royal", money: false },
+  { template: "agentDeactivatedHtml",           trigger: "src/lib/server/agent-application-service.ts", audience: "player",  chrome: "royal", money: false },
+  { template: "agentRevokedHtml",               trigger: "src/lib/server/agent-application-service.ts", audience: "player",  chrome: "royal", money: false },
+  { template: "agentRateChangedHtml",           trigger: "src/lib/server/agent-application-service.ts", audience: "player",  chrome: "gold",  money: true },
+  { template: "agentCommissionReversedHtml",    trigger: "src/lib/server/affiliate-service.ts",         audience: "player",  chrome: "royal", money: true },
+  { template: "agentCommissionEarnedHtml",      trigger: "src/lib/server/affiliate-service.ts",         audience: "player",  chrome: "gold",  money: true },
   { template: "kycSubmittedAdminHtml",     trigger: "src/lib/server/kyc-service.ts",       audience: "officer", chrome: "royal", money: false },
   { template: "sofSubmittedHtml",          trigger: "src/app/profile/source-of-funds/actions.ts", audience: "player",  chrome: "royal", money: false },
   { template: "sofDecisionHtml",           trigger: "src/app/admin/approvals/actions.ts",  audience: "player",  chrome: "royal", money: false },
@@ -156,6 +168,9 @@ export const NO_CTA_TEMPLATES: readonly string[] = [
   "passwordChangedHtml",       // security alert — a button is a phishing shape
   "emailChangedHtml",          // same
   "accountClosedHtml",         // the account is closed; there is nowhere to send them
+  "agentFeeRefundedHtml",      // telling someone their own money came back is information, not solicitation
+  "agentDeactivatedHtml",      // a paused partnership must not link into the product; support is the route
+  "agentRevokedHtml",          // the partnership has ended; support is the route
 ];
 
 /* ══ IN-APP ═════════════════════════════════════════════════════════════════ */
@@ -251,6 +266,22 @@ export const NOTIFICATION_EMITTERS: readonly EmitterSpec[] = [
   { fn: "notifyVerdictRecorded",       kind: "VERDICT",           audience: "player" },
   // Officer-facing — same bell, same completeness rule.
   { fn: "notifyAdminKycReview",        kind: "KYC",               audience: "officer" },
+  // ── Agent affiliate programme ─────────────────────────────────────────────
+  // The three that carry money (approval states the rate; rejection and refund state the fee)
+  // are AFFILIATE, a money kind. The four lifecycle notices carry no figure and are filed
+  // under KYC — the compliance review of a person's documents — because a money kind must
+  // state a figure and these have none.
+  { fn: "notifyAgentApplicationSubmitted", kind: "KYC",           audience: "player" },
+  { fn: "notifyAgentApproved",         kind: "AFFILIATE",         audience: "player" },
+  { fn: "notifyAgentRejected",         kind: "AFFILIATE",         audience: "player" },
+  { fn: "notifyAgentInfoRequested",    kind: "KYC",               audience: "player" },
+  { fn: "notifyAgentFeeRefunded",      kind: "AFFILIATE",         audience: "player" },
+  { fn: "notifyAgentDeactivated",      kind: "KYC",               audience: "player" },
+  { fn: "notifyAgentRevoked",          kind: "KYC",               audience: "player" },
+  { fn: "notifyAgentRateChanged",      kind: "AFFILIATE",         audience: "player" },
+  { fn: "notifyAgentCommissionReversed", kind: "AFFILIATE",       audience: "player" },
+  { fn: "notifyAgentCommission",       kind: "AFFILIATE",         audience: "player" },
+  { fn: "notifyAdminAgentReview",      kind: "KYC",               audience: "officer" },
   { fn: "notifyAdminMarketResolution", kind: "PROPOSAL",          audience: "officer" },
   { fn: "notifyAdminMarketCancelled",  kind: "SECURITY",          audience: "officer" },
   { fn: "notifyAdminProposalReview",   kind: "PROPOSAL",          audience: "officer" },

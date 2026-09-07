@@ -164,6 +164,26 @@ export const REVIEW = {
   // date, and the request stays in the queue because nothing else remembers that date.
   dsarPartial:        { en: "Partly done · docs held" },
   dsarFulfilled:      { en: "Fulfilled" },
+  // Agent programme (StoredAgentApplication.status) — the officer's words. The applicant's
+  // words live in `dict.agent.status*` in three languages; these are console English.
+  agentDraft:          { en: "Draft" },
+  agentInvited:        { en: "Invited · awaiting acceptance" },
+  agentKycSubmitted:   { en: "Documents attached" },
+  agentPaymentPending: { en: "Ready to submit" },
+  agentUnderReview:    { en: "Awaiting approval" },
+  agentInfoRequired:   { en: "More information requested" },
+  agentApproved:       { en: "Approved" },
+  agentRejected:       { en: "Rejected" },
+  agentDeclined:       { en: "Declined" },
+  agentExpired:        { en: "Expired" },
+  agentRevoked:        { en: "Revoked" },
+
+  // Agent invitation (StoredAgentInvitation.status) — console English.
+  agentInviteIssued:   { en: "Issued" },
+  agentInviteAccepted: { en: "Accepted" },
+  agentInviteDeclined: { en: "Declined" },
+  agentInviteRevoked:  { en: "Withdrawn" },
+  agentInviteExpired:  { en: "Expired" },
   dsarRejected:       { en: "Rejected" },
   // DSAR request TYPE — what the subject asked for. Added because the queue's Type
   // column printed the raw `DsarType`, and "ERASURE" in database spelling is the
@@ -246,6 +266,62 @@ export const ACCOUNT = {
  * type from `amount >= 0`), and two different words for one direction is how a
  * balance-adjust audit stops being readable.
  */
+/** `StoredAgentApplication.status` → the officer's word. ONE definition site, typed against the
+ *  enum so a new status is a compile error rather than an underscore on a screen. */
+export const AGENT_STATUS: Record<
+  "DRAFT" | "INVITED" | "KYC_SUBMITTED" | "PAYMENT_PENDING" | "UNDER_REVIEW" | "ADDITIONAL_INFO_REQUIRED" | "APPROVED" | "REJECTED" | "DECLINED" | "EXPIRED" | "REVOKED",
+  { en: string }
+> = {
+  DRAFT: REVIEW.agentDraft,
+  INVITED: REVIEW.agentInvited,
+  KYC_SUBMITTED: REVIEW.agentKycSubmitted,
+  PAYMENT_PENDING: REVIEW.agentPaymentPending,
+  UNDER_REVIEW: REVIEW.agentUnderReview,
+  ADDITIONAL_INFO_REQUIRED: REVIEW.agentInfoRequired,
+  APPROVED: REVIEW.agentApproved,
+  REJECTED: REVIEW.agentRejected,
+  DECLINED: REVIEW.agentDeclined,
+  EXPIRED: REVIEW.agentExpired,
+  REVOKED: REVIEW.agentRevoked,
+};
+
+/** Officer-facing words for an agent invitation's state. */
+/** What happened to the registration fee — the officer's words, one home for both console pages. */
+export const AGENT_FEE_DISPOSITION: Record<"NONE" | "WAIVED" | "COLLECTED" | "REFUND_DUE" | "REFUNDED", { en: string }> = {
+  NONE: { en: "Unreconciled" },
+  WAIVED: { en: "Waived" },
+  COLLECTED: { en: "Collected" },
+  REFUND_DUE: { en: "Refund owed" },
+  REFUNDED: { en: "Refunded" },
+};
+
+export const AGENT_INVITATION_STATUS: Record<"ISSUED" | "ACCEPTED" | "DECLINED" | "REVOKED" | "EXPIRED", { en: string }> = {
+  ISSUED: REVIEW.agentInviteIssued,
+  ACCEPTED: REVIEW.agentInviteAccepted,
+  DECLINED: REVIEW.agentInviteDeclined,
+  REVOKED: REVIEW.agentInviteRevoked,
+  EXPIRED: REVIEW.agentInviteExpired,
+};
+
+/** `AgentRejectReason` → the sentence a person reads, EN + SW (emails are bilingual; the
+ *  in-app three-language copy is `dict.agent.reason*`). ⛔ The three terminal reasons are
+ *  deliberately uninformative — a sanctioned or fraudulent applicant is not told what we know. */
+export const AGENT_REJECT_REASON: Record<
+  "INCOMPLETE_DOCUMENTS" | "DOCUMENT_NOT_LEGIBLE" | "UNSATISFACTORY_REFEREE" | "DETAILS_MISMATCH" | "FEE_NOT_RECONCILED" | "STAFF_CONFLICT" | "OTHER" | "SANCTIONED" | "IDENTITY_MISMATCH" | "FRAUD",
+  { en: string; sw: string }
+> = {
+  INCOMPLETE_DOCUMENTS:   { en: "the documents were incomplete", sw: "nyaraka hazikukamilika" },
+  DOCUMENT_NOT_LEGIBLE:   { en: "a document could not be read clearly", sw: "nyaraka moja haikuweza kusomeka vizuri" },
+  UNSATISFACTORY_REFEREE: { en: "a referee could not be accepted", sw: "mdhamini mmoja hakuweza kukubaliwa" },
+  DETAILS_MISMATCH:       { en: "details did not match across the documents", sw: "taarifa hazikulingana kati ya nyaraka" },
+  FEE_NOT_RECONCILED:     { en: "the fee payment could not be matched", sw: "malipo ya ada hayakuweza kulinganishwa" },
+  STAFF_CONFLICT:         { en: "staff accounts cannot be agents", sw: "akaunti za wafanyakazi haziwezi kuwa mawakala" },
+  OTHER:                  { en: "the application did not meet the requirements", sw: "maombi hayakukidhi mahitaji" },
+  SANCTIONED:             { en: "the application cannot be accepted", sw: "maombi hayawezi kukubaliwa" },
+  IDENTITY_MISMATCH:      { en: "the identity could not be verified", sw: "utambulisho haukuweza kuthibitishwa" },
+  FRAUD:                  { en: "the application cannot be accepted", sw: "maombi hayawezi kukubaliwa" },
+};
+
 export const MONEY = {
   // ── Movement type ────────────────────────────────────────────────────────
   typeDeposit:          { en: "Deposit",    sw: "Amana" },
@@ -258,6 +334,10 @@ export const MONEY = {
   typeAdjustmentDebit:  { en: "Adjustment · debit" },
   typeCashout:          { en: "Cash-out" },
   typeHouseFee:         { en: "House fee" },
+  /** Contracted income for a vetted agent — a share of the fee the house kept. */
+  typeAgentCommission:  { en: "Agent commission" },
+  /** The clawback leg: the market that produced the commission was voided. */
+  typeAgentCommissionReversal: { en: "Agent commission · reversed" },
   // ── Movement status ──────────────────────────────────────────────────────
   statusPending:    { en: "Pending", sw: "Inasubiri" },
   statusProcessing: { en: "Processing" },

@@ -893,6 +893,18 @@ self-excluded account · a campaign past its end date · the branded OG image le
 twice · reward on a self-excluded recruit · commission on a reversed/refunded deposit.
 **Exit** Self/cyclic referral impossible, rewards exactly-once, reversal claws back commission,
 6 orphans adopted or deleted.
+**⭐ Agent tier (2026-09-07, `docs/AGENT-PROGRAMME.md`)** — J4 now also owns `agent-config`,
+`agent-application-service` (`AgentApplication`, `AgentApplicationDocument`, `AgentInvitation`)
+and the `/admin/agents*` console. **Gates:** `test:agent-policy` · `test:programme-isolation` ·
+`test:attribution-provenance` · `test:no-double-pay` · `test:agent-clawback` ·
+`test:commission-bounded` · `test:agent-eligibility` · `test:agent-application-security` ·
+`test:dal-parity`, each with a red harness. **Attack (added):** buy AGENT status after farming
+player binds · approve an invitation before acceptance · approve one's own application · reuse a
+fee receipt · set a rate above the 40% rule · pay commission on the gross fee · pay twice on a
+re-settlement · keep commission after a VOID · credit an excluded agent's wallet. **Exit (added):**
+provenance is stamped at bind and immutable; a null rate refuses; the fixture pool 400,000 / fee
+30,000 / stake 100,000 / 30% accrues **1,912** (floor of 30% of the net share, 6,375) and never
+2,250 (the gross share) nor 1,913 (rounded up).
 
 ### J5 · Proposals & voting — `cert:j5` 💰
 **Surfaces** `proposals` `proposals/new` `proposals/[id]` `admin/proposals` · **Owns** `proposals-service` `proposals-config` (`Proposal`, `ProposalVote`, `VoteDirection`)

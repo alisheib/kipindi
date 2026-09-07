@@ -184,7 +184,8 @@ export async function buildGbtMonthly(generatorId: string, packPeriod: string = 
     ],
     notes: [
       "GGR = total stakes − total payouts (voids/refunds excluded from both sides).",
-      "NGR = GGR − bonus cost − payment-processing fees (pre-tax operator bottom line).",
+      "NGR = GGR − bonus cost − agent commission − payment-processing fees (pre-tax operator bottom line).",
+      "Agent commission is contracted income paid to vetted agents out of the operator fee AFTER TRA and GBT levies; it does not reduce the levy base.",
       "All amounts in Tanzanian Shillings (TZS). Rounded to the nearest shilling.",
       // PROVENANCE — must describe what this builder actually reads.
       //

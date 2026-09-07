@@ -20,8 +20,9 @@ import { setRequireTwoOfficerResolution } from "../src/lib/server/resolution-pol
 await setRequireTwoOfficerResolution(true, "concurrency-setup");
 import { positionStore } from "../src/lib/server/market-dal.ts";
 import { withdraw } from "../src/lib/server/wallet-service.ts";
-import { bindRecruit, ensureAffiliateAccount, onRecruitBet } from "../src/lib/server/affiliate-service.ts";
+import { bindRecruit, ensureAffiliateAccount, onRecruitBet, onRecruitSettlement } from "../src/lib/server/affiliate-service.ts";
 import { getAffiliateConfig } from "../src/lib/server/affiliate-config.ts";
+import { approveFixtureAgent } from "./lib/agent-fixtures.mts";
 import { getBonusSummary } from "../src/lib/server/bonus-service.ts";
 
 import "./lib/verified-fixtures.mts";
@@ -266,16 +267,23 @@ async function makeMarket(): Promise<string> {
 // The milestone prize is once-per-recruit. Two concurrent qualifying bets both
 // read the "no prior prize" guard before either records → without the payPrize
 // lock they'd BOTH pay → double reward. The lock makes it exactly-once.
+// 🔴 THE REFERRER IS A PLAYER WITH THE PROMO ON (2026-09-07). This used to fixture
+// `role: "AGENT"` — a role with no approval is not an agent, and the prize it asserted is the
+// PLAYER promo's instrument, which an agent never earns. Same override as `withdrawn-features`
+// §4, restored in a `finally`.
 {
   const cfg = getAffiliateConfig();
   if (cfg.enabled && cfg.prize.enabled && cfg.prize.milestone === "FIRST_BET") {
+    process.env.FEATURE_INVITE = "ACTIVE";
+    try {
     const PRIZE = cfg.prize.amountTzs;
     const ref = "cc_ref_x";
     const rec = "cc_rec_y";
-    await fundedUser(ref, 0, "AGENT"); // ⬅ only an eligible referrer binds (2026-09-06)
+    await fundedUser(ref, 0);
     await fundedUser(rec, 0);
     const acct = await ensureAffiliateAccount(ref);
-    await bindRecruit({ recruitUserId: rec, code: acct.code });
+    const fb = await bindRecruit({ recruitUserId: rec, code: acct.code });
+    ok("F: recruit bound under the player promo", fb.bound === true, JSON.stringify(fb));
     // Confirmed deposit so requireDeposit passes.
     await db.txn.create({
       id: `txn_${rec}_dep`, walletId: `wal_${rec}`, userId: rec, type: "DEPOSIT", status: "CONFIRMED",
@@ -294,9 +302,46 @@ async function makeMarket(): Promise<string> {
     ok("F: exactly one PRIZE reward recorded", prizeRewards.length === 1, `count=${prizeRewards.length}`);
     const bonusDelta = (await getBonusSummary(ref)).bonusBalance - bonusBefore;
     ok("F: referrer credited the prize exactly once", bonusDelta === PRIZE, `Δ=${bonusDelta} expected=${PRIZE}`);
+    } finally {
+      delete process.env.FEATURE_INVITE;
+    }
   } else {
     ok("F: skipped (prize/FIRST_BET not default-enabled)", true);
   }
+}
+
+// ── F2 · Concurrent settlements of the SAME position → an agent is paid EXACTLY ONCE ──
+// Commission was the one reward path with no idempotency key: a resumed or replayed
+// settlement paid it twice. The key is `referral:commission:<marketId>:<positionId>`, re-read
+// under the per-(referrer, recruit) lock. Three concurrent calls for one position must
+// collapse to one row and one credit; three DIFFERENT positions must produce three — so the
+// lock is proven to collapse the right thing and not simply everything.
+{
+  const ref = "cc_agent_a";
+  const rec = "cc_agent_rec";
+  await fundedUser(ref, 0);
+  await fundedUser(rec, 0);
+  const code = await approveFixtureAgent(ref, { commissionPct: 20 });
+  const b = await bindRecruit({ recruitUserId: rec, code });
+  ok("F2: the recruit binds through the approved agent's code (promo OFF)", b.bound === true, JSON.stringify(b));
+  const before = await bal(ref);
+  await Promise.all([
+    onRecruitSettlement(rec, { operatorNetFee: 10_000, marketId: "mkt_cc_a", positionId: "pos_cc_same" }),
+    onRecruitSettlement(rec, { operatorNetFee: 10_000, marketId: "mkt_cc_a", positionId: "pos_cc_same" }),
+    onRecruitSettlement(rec, { operatorNetFee: 10_000, marketId: "mkt_cc_a", positionId: "pos_cc_same" }),
+  ]);
+  const same = (await db.referralReward.listByReferrer(ref)).filter((r) => r.type === "COMMISSION");
+  ok("F2: exactly ONE commission row for one position under concurrency", same.length === 1, `count=${same.length}`);
+  ok("F2: the agent's cash moved exactly once — floor(10,000 × 20%) = 2,000", (await bal(ref)) - before === 2_000, `Δ=${(await bal(ref)) - before}`);
+  // The control: distinct positions are distinct events.
+  await Promise.all([
+    onRecruitSettlement(rec, { operatorNetFee: 10_000, marketId: "mkt_cc_b", positionId: "pos_cc_1" }),
+    onRecruitSettlement(rec, { operatorNetFee: 10_000, marketId: "mkt_cc_b", positionId: "pos_cc_2" }),
+    onRecruitSettlement(rec, { operatorNetFee: 10_000, marketId: "mkt_cc_b", positionId: "pos_cc_3" }),
+  ]);
+  const all = (await db.referralReward.listByReferrer(ref)).filter((r) => r.type === "COMMISSION");
+  ok("F2 CONTROL: three DIFFERENT positions produce three rows (the key collapses duplicates, not events)", all.length === 4, `count=${all.length}`);
+  ok("F2 CONTROL: …and four credits of 2,000", (await bal(ref)) - before === 8_000, `Δ=${(await bal(ref)) - before}`);
 }
 
 // ── G · Resumable settlement — a re-run pays only OPEN, never double-pays ────

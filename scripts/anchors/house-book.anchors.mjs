@@ -21,9 +21,18 @@ export const MUTATIONS = [
     // the whole levy — silently, on the one number the page exists to state.
     name: "house-book.ts — subtract the levies a SECOND time (the owner's profit understated)",
     file: "src/lib/house-book.ts",
-    from: `    netRetained: commission,`,
-    to: `    netRetained: commission - leviesPayable,`,
+    from: `    netRetained: commission + agentCommission,`,
+    to: `    netRetained: commission + agentCommission - leviesPayable,`,
     expect: "2.1",
+  },
+  {
+    // ⭐ AGENT COMMISSION HAS ITS OWN ACCOUNT, debited when a partner is paid. Reading the
+    // commission balance alone reports the agent programme as free on the balance sheet.
+    name: "house-book.ts — ignore the agent commission account (the programme reads as free)",
+    file: "src/lib/house-book.ts",
+    from: `    netRetained: commission + agentCommission,`,
+    to: `    netRetained: commission,`,
+    expect: "2.5",
   },
   {
     // Gross float presented as the owner's money — the number insolvency is built from.
@@ -68,9 +77,19 @@ export const MUTATIONS = [
     // Taking it out here is the file header's own forbidden double-subtraction, one account over.
     name: "house-book.ts — subtract the gateway share that was never in the fee (the header's own ban, one account over)",
     file: "src/lib/house-book.ts",
-    from: `    netRetained: input.feeEarned - input.leviesOut - input.bonusCost,`,
-    to: `    netRetained: input.feeEarned - input.leviesOut - input.aggregatorOut - input.bonusCost,`,
+    from: `    netRetained: input.feeEarned - input.leviesOut - input.bonusCost - input.agentCommissionOut,`,
+    to: `    netRetained: input.feeEarned - input.leviesOut - input.aggregatorOut - input.bonusCost - input.agentCommissionOut,`,
     expect: "5.2",
+  },
+  {
+    // ⭐ AGENT COMMISSION IS A COST OF REVENUE. It is paid out of the fee we kept, to a vetted
+    // partner, and booked to HOUSE:AGENT_COMMISSION. Dropping the term reports the agent
+    // programme as free — the owner reads a net retained that includes money already paid out.
+    name: "house-book.ts — stop subtracting agent commission (the programme reads as free)",
+    file: "src/lib/house-book.ts",
+    from: `    netRetained: input.feeEarned - input.leviesOut - input.bonusCost - input.agentCommissionOut,`,
+    to: `    netRetained: input.feeEarned - input.leviesOut - input.bonusCost,`,
+    expect: "5.8",
   },
   {
     // The other direction: answer the double-subtraction by DELETING the gateway figure. The

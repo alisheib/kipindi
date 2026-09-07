@@ -55,7 +55,7 @@ memoryMarkets  prismaMarkets
 
 | Entity | DAL location | Prisma model | Notes |
 |--------|-------------|--------------|-------|
-| User | `store.ts` / `prisma-dal.ts` | User | |
+| User | `store.ts` / `prisma-dal.ts` | User | ⭐ Attribution provenance `recruitedProgramme` · `recruitedAt` · `recruitedByCode` beside `recruitedBy`, written in the SAME update at bind (`bindRecruit`), never rewritten. NULL programme = PLAYER, never AGENT. `recruitedAt` is in `update`'s date list — forgetting it throws on Postgres only |
 | Wallet | `store.ts` / `prisma-dal.ts` | Wallet | |
 | Transaction | `store.ts` / `prisma-dal.ts` | Transaction | |
 | KYC | `store.ts` / `prisma-dal.ts` | KycSubmission | |
@@ -63,8 +63,11 @@ memoryMarkets  prismaMarkets
 | Notification | `store.ts` / `prisma-dal.ts` | Notification | |
 | ResponsibleGambling | `store.ts` / `prisma-dal.ts` | ResponsibleGambling | |
 | SourceOfFunds | `store.ts` / `prisma-dal.ts` | SourceOfFunds | |
-| Affiliate | `store.ts` / `prisma-dal.ts` | AffiliateAgent | `recruitCount` <-> `totalRecruits` |
-| ReferralReward | `store.ts` / `prisma-dal.ts` | ReferralReward | |
+| Affiliate | `store.ts` / `prisma-dal.ts` | AffiliateAgent | `recruitCount` <-> `totalRecruits` · `totalEarnedTzs` <-> `totalCommission`. ⭐ `approvedAt` ALONE identifies a vetted agent; `commissionPct` is NULLABLE, a PERCENT, and null on every auto-minted row. ⛔ Write map `AFFILIATE_COLUMN` is typed `Record<keyof StoredAffiliateAccount,…>` — a new field is a compile error, not a silent drop (`test:dal-parity`). `tier` left the schema 2026-09-07 (expand step; column still in Postgres) |
+| ReferralReward | `store.ts` / `prisma-dal.ts` | ReferralReward | `programme` (copied from the attribution's stamp) · `rateApplied` (percent snapshot) · `marketId` · `sourceRef` (UNIQUE idempotency key) · `reversedAt` · status `REVERSED` |
+| AgentApplication | `store.ts` / `prisma-dal.ts` | AgentApplication | One live row per user — partial unique index `AgentApplication_userId_active_key` (raw SQL, migration `20260907120200`); `findActiveByUser` mirrors its predicate. `feeReference` UNIQUE. Write map `AGENT_APPLICATION_COLUMN` typed exhaustive |
+| AgentApplicationDocument | `store.ts` / `prisma-dal.ts` | AgentApplicationDocument | One file per `(applicationId, docType)` — re-upload REPLACES. `storageKey` through the KYC storage seam, hint `agentapp/<applicationId>/<docType>` (⛔ never a name or phone). `thirdParty` = referee ID scans (own retention clock) |
+| AgentInvitation | `store.ts` / `prisma-dal.ts` | AgentInvitation | `tokenHash` UNIQUE (the token is never stored readable); bound to `phoneE164`; `applicationId` set on acceptance |
 | Proposal | `store.ts` / `prisma-dal.ts` | Proposal | |
 | ProposalVote | `store.ts` / `prisma-dal.ts` | ProposalVote | |
 | Market | `market-dal.ts` | PredictionMarket | |

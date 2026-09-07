@@ -14,6 +14,7 @@ import { ProposalsStateBadge } from "@/components/ui/proposals-state-badge";
 import { HELPLINE, HELPLINE_TEL, SUPPORT_EMAIL } from "@/lib/support-config";
 import { useT } from "@/lib/i18n";
 import type { ProposalsState } from "@/lib/server/proposals-config";
+import { getAgentConfig } from "@/lib/server/agent-config";
 
 export function PublicFooter({ proposalsState }: { proposalsState: ProposalsState }) {
   const { t } = useT();
@@ -75,6 +76,11 @@ export function PublicFooter({ proposalsState }: { proposalsState: ProposalsStat
             </FooterLink>
           )}
           <FooterLink href="/legal/terms">{t.footer.gameRtp}</FooterLink>
+          {/* ⭐ THE AGENT PROGRAMME'S ONE DOOR. Site chrome, visible signed out, a plain directory
+              line — no badge, no gilt, no number, no earnings verb. ⛔ Never in the account menu:
+              the footer is not the account, and an ordinary player is not solicited. */}
+          {/* The public door closes with the programme; a link to a 404 is not a door. */}
+          {getAgentConfig().enabled && <FooterLink href="/agent">{t.agent.footerLink}</FooterLink>}
           <FooterLink href="/help">{t.footer.helpSupport}</FooterLink>
         </FooterCol>
 

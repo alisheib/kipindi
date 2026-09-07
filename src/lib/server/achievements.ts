@@ -6,7 +6,7 @@
  */
 import { db } from "./store";
 import { listPositionsForUser } from "./market-service";
-import { getPlayerReferralSummary } from "./affiliate-service";
+import { getPlayerReferralSummary, getAgentDashboard, inviteViewerFor } from "./affiliate-service";
 import type { AchievementId } from "@/components/badges/icons";
 import { inviteIsLiveFor } from "@/lib/feature-state";
 
@@ -39,13 +39,19 @@ export async function computeAchievementShelf(userId: string) {
    * vetted and approved to bring in. So the badge is not deleted — it is scoped to the
    * population it describes, and it returns for everyone the moment the state flips back.
    */
-  const viewer = await db.user.findById(userId);
-  const showConnector = inviteIsLiveFor(viewer?.role ?? null);
+  const inviteViewer = await inviteViewerFor(userId);
+  const showConnector = inviteIsLiveFor(inviteViewer);
 
   // Defensive: never let the referral lookup crash the whole shelf render.
+  // ⭐ An agent's count is their AGENT-stamped book (the population they were approved to
+  // bring in); a player's — only under re-enablement — is the player promo's.
   let recruits = 0;
   if (showConnector) {
-    try { recruits = (await getPlayerReferralSummary(userId)).recruitCount; } catch { recruits = 0; }
+    try {
+      recruits = inviteViewer.agentInGoodStanding
+        ? (await getAgentDashboard(userId))?.recruitCount ?? 0
+        : (await getPlayerReferralSummary(userId)).recruitCount;
+    } catch { recruits = 0; }
   }
   const listed = (await db.proposal.listByProposer(userId)).some((p) => p.status === "LISTED" || p.status === "RESOLVED");
 

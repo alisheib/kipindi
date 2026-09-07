@@ -122,6 +122,7 @@ const ok = (label: string, cond: boolean, extra = "") => {
   const REACHED_WITHOUT_NAV: Record<string, string> = {
     // Detail routes — opened by clicking a row in their parent list. A menu entry
     // pointing at "some player" is meaningless.
+    "/admin/agents/[id]": "the agent workstation — from the queue, refunds, invitations and roster tables on /admin/agents",
     "/admin/ai-polls/[id]": "poll detail — from the /admin/ai-polls list",
     "/admin/invites/[id]": "invite detail — from the /admin/invites list",
     "/admin/kyc/[id]": "the KYC workstation — from /admin/approvals (there is no /admin/kyc list page)",

@@ -24,6 +24,13 @@ const BASE = process.env.BASE ?? "http://localhost:3210";
 const OUT = process.env.OUT ?? "shots/withdrawal";
 const WIDTHS = [360, 768, 1280];
 const ROUTES = ["/profile", "/wallet", "/wallet/deposit", "/profile/invite", "/markets", "/positions"];
+/* ⭐ THE AGENT SURFACES (2026-09-07) — the same audit, in every locale the pages ship in. A
+   player-facing page that is read in Swahili and Chinese as often as in English has to be
+   measured in all three: a Chinese string that is 40% wider than its English sibling is how a
+   card overflows at 360 while every English screenshot looks perfect. The demo player is
+   KYC-approved by default, so /agent/apply renders the wizard rather than the identity gate. */
+const AGENT_ROUTES = ["/agent", "/agent/apply", "/agent/status", "/legal/agent-terms"];
+const LOCALES = ["en", "sw", "zh"];
 
 let pass = 0, fail = 0;
 const failures = [];
@@ -189,6 +196,31 @@ for (const width of WIDTHS) {
     ok(`${at} · no lonely card in a multi-column grid`, a.lonelyCards.length === 0, JSON.stringify(a.lonelyCards).slice(0, 300));
   }
 }
+
+// ── The agent surfaces, at every width, in every locale ─────────────────────
+for (const locale of LOCALES) {
+  await ctx.addCookies([{ name: "kp-locale", value: locale, domain: new URL(BASE).hostname, path: "/" }]);
+  for (const width of WIDTHS) {
+    await page.setViewportSize({ width, height: 900 });
+    console.log(`  ── agent · ${locale} · ${width}px ──`);
+    for (const route of AGENT_ROUTES) {
+      await page.goto(`${BASE}${route}`, { waitUntil: "domcontentloaded", timeout: 60000 });
+      await page.waitForTimeout(1200);
+      const slug = route.replace(///g, "_") || "_root";
+      await page.screenshot({ path: `${OUT}/${width}${slug}_${locale}.png`, fullPage: true });
+      const a = await page.evaluate(auditInPage);
+      const at = `${route} [${locale}] @${width}`;
+      ok(`CONTROL · ${at} rendered real content`, a.bodyLen > 200, `bodyLen=${a.bodyLen}`);
+      ok(`${at} · exactly one <main>`, a.mainCount === 1, `count=${a.mainCount}`);
+      ok(`${at} · no horizontal overflow`, a.overflowX <= 1, `overflow=${a.overflowX}px`);
+      ok(`${at} · no empty container still painting`, a.emptyPainted.length === 0, JSON.stringify(a.emptyPainted).slice(0, 300));
+      ok(`${at} · no orphan heading`, a.orphanHeadings.length === 0, JSON.stringify(a.orphanHeadings).slice(0, 300));
+      ok(`${at} · no empty flex/grid reserving space`, a.emptyFlex.length === 0, JSON.stringify(a.emptyFlex).slice(0, 300));
+      ok(`${at} · no lonely card in a multi-column grid`, a.lonelyCards.length === 0, JSON.stringify(a.lonelyCards).slice(0, 300));
+    }
+  }
+}
+await ctx.addCookies([{ name: "kp-locale", value: "en", domain: new URL(BASE).hostname, path: "/" }]);
 
 // ── The nav overflow menu must still be usable after Invite left it ─────────
 await page.setViewportSize({ width: 360, height: 900 });

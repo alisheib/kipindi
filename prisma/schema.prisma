@@ -123,6 +123,15 @@ enum TxnType {
   ADJUSTMENT_CREDIT
   CASHOUT
   HOUSE_FEE
+  /// ⭐ Agent commission — contracted business income for a vetted partner, paid as REAL
+  /// WITHDRAWABLE CASH with no wagering requirement. ⛔ NEVER `BONUS_CREDIT`: that reports
+  /// agent commission to the Gaming Board as *bonus cost*, for a programme we told the
+  /// Board we withdrew. Appended at the end to match the `ALTER TYPE … ADD VALUE`
+  /// migration order (Postgres appends).
+  AGENT_COMMISSION
+  /// The clawback leg. Distinct from `ADJUSTMENT_DEBIT` so the owner's book can net
+  /// commission against its own reversals instead of losing them into admin adjustments.
+  AGENT_COMMISSION_REVERSAL
 }
 
 enum TxnStatus {
@@ -244,6 +253,24 @@ model User {
   affiliateAgent          AffiliateAgent?
   recruitedBy             String?
   recruitedById           AffiliateAgent?      @relation("AgentRecruits", fields: [recruitedBy], references: [userId])
+  /// ⭐ THE PROVENANCE STAMP — which programme this attribution was created under.
+  /// Written in the SAME `db.user.update` that sets `recruitedBy`, and never rewritten.
+  ///
+  /// 🔴 THE EXPLOIT IT CLOSES. Before this column, the programme was DERIVED at accrual
+  /// from the referrer's CURRENT role. So a player could farm attributions for free,
+  /// pay TZS 100,000 for AGENT status, and every one of those old binds would flip to
+  /// paying agent commission at the negotiated rate — a purchasable arbitrage.
+  ///
+  /// ⛔ NULL MEANS PLAYER, NEVER AGENT. The resolver coalesces to PLAYER; there is no
+  /// fall-through to the agent branch. Legacy rows were backfilled to PLAYER, which is
+  /// a historical fact and not a guess: nothing had ever assigned `UserRole.AGENT`.
+  recruitedProgramme      ReferralProgramme?
+  /// When the bind happened. The commission window measures from HERE, not from
+  /// `createdAt` — otherwise an agent's window is silently shortened by however long
+  /// the recruit existed before binding.
+  recruitedAt             DateTime?
+  /// The literal code that was redeemed. History only — never read for pricing.
+  recruitedByCode         String?
   sourceOfFunds           SourceOfFunds?
   referralRewardsGiven    ReferralReward[]     @relation("ReferralRewardsGiven")
   referralRewardsReceived ReferralReward[]     @relation("ReferralRewardsReceived")
@@ -258,9 +285,21 @@ model User {
   pushSubscriptions       PushSubscription[]
   bonusGrants             BonusGrant[]
   inviteCampaigns         InviteCampaign[]
+  agentApplications       AgentApplication[]
 
   @@index([role, status])
   @@index([createdAt])
+  /// "list this agent's recruits" was a full table scan before the agent programme
+  /// gave it a page of its own (`/admin/agents/[id]`, the agent's own dashboard).
+  @@index([recruitedBy])
+}
+
+/// Which programme an attribution was created under. Stamped on `User` at bind and
+/// copied onto every `ReferralReward` it produces, so *one referrer, one programme,
+/// one payment per event* is mechanically true rather than role-dependent.
+enum ReferralProgramme {
+  PLAYER
+  AGENT
 }
 
 /// ⭐ DORMANT, DELIBERATELY KEPT (audit F-05, 2026-08-21). **0 rows on production, measured.**
@@ -327,12 +366,12 @@ model Otp {
 // ============================================================================
 
 model KycSubmission {
-  id             String           @id @default(cuid())
-  userId         String
-  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  status         KycStatus        @default(IN_PROGRESS)
-  rejectReason   KycRejectReason?
-  rejectNote     String?
+  id            String           @id @default(cuid())
+  userId        String
+  user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status        KycStatus        @default(IN_PROGRESS)
+  rejectReason  KycRejectReason?
+  rejectNote    String?
   // ⚠️ `nidaNumber` / `nidaVerifiedAt` LIVED HERE UNTIL 2026-08-20 (CONTRACT STEP).
   // They were the pre-2026-08-20 single-document identity home, backfilled into
   // (`idType`, `idNumber`) by `20260820120000_kyc_identity_document` and mirrored for
@@ -346,19 +385,19 @@ model KycSubmission {
   // three KYC pages the expand release's note estimated.
   /// WHICH of the four documents this submission is built on. Null only before the
   /// identity step is completed.
-  idType         IdDocType?
+  idType        IdDocType?
   /// The identity number, NORMALISED (`normaliseIdNumber`: separators stripped,
   /// uppercased). ⛔ The normalisation is a uniqueness control, not a tidy-up — two
   /// spellings of one passport must never index as two documents.
-  idNumber       String?
+  idNumber      String?
   /// Expiry, for the two documents that carry one (passport, driving licence).
   /// ⛔ Null for NIDA and the voter's card BY DESIGN — asking for a date a document
   /// does not have invites an invented one.
-  idExpiry       DateTime?
+  idExpiry      DateTime?
   /// When the number was ACCEPTED — format valid and unique to this account.
   /// ⛔ Never "an authority confirmed this identity"; there is no authority check
   /// and none is required (docs/IDENTITY-POLICY.md).
-  idVerifiedAt   DateTime?
+  idVerifiedAt  DateTime?
   /// 🔴 THE KEYED HMAC OF (idType, idNumber) — the half of the uniqueness control that
   /// SURVIVES ERASURE. Written for every submission that reaches the identity step
   /// (`identityFingerprint` in `crypto.ts`), never read back into anything a human sees.
@@ -373,13 +412,13 @@ model KycSubmission {
   ///
   /// ⚠️ It is unique-indexed with the SAME partial predicate as the tuple index, so it
   /// can never disagree with it: a duplicate here is a duplicate there.
-  idFingerprint  String?
-  fullName       String?
-  dob            DateTime?
-  gender         String?
-  reviewerId     String?
-  reviewedAt     DateTime?
-  submittedAt    DateTime?
+  idFingerprint String?
+  fullName      String?
+  dob           DateTime?
+  gender        String?
+  reviewerId    String?
+  reviewedAt    DateTime?
+  submittedAt   DateTime?
   /// 🔴 THE FIRST TIME THIS ACCOUNT EVER SATISFIED US — SET ONCE, NEVER CLEARED.
   ///
   /// ⭐ IT EXISTS BECAUSE `status` CANNOT ANSWER THE WITHDRAWAL QUESTION. From
@@ -400,21 +439,16 @@ model KycSubmission {
   /// ⛔ NEVER NULL THIS. Not on force-reverify, not on rejection, not on
   /// `startKyc`'s reset of a REJECTED submission. A cleared value re-opens the
   /// trap silently, and nothing would go red. `test:kyc-gate` drives it.
-  approvedAt     DateTime?
+  approvedAt    DateTime?
   /**
    * Officer-requested extra documents (each with a description). JSON array of
    * { id, description, requestedAt, storageKey, uploadedAt }. Empty normally.
    */
-  extraRequests  Json?
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
+  extraRequests Json?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
 
   documents KycDocument[]
-
-  @@index([userId, status])
-  @@index([status, submittedAt])
-  @@index([idType, idNumber])
-  @@index([idFingerprint])
   // ⚠️ ALSO ON THIS TABLE, but not expressible here: TWO PARTIAL unique indexes.
   //
   // 🔴 THE LIVE ONE, from 2026-08-20 — it is the whole uniqueness control:
@@ -461,6 +495,11 @@ model KycSubmission {
   // prisma/migrations/20260820120000_kyc_identity_document. Do not "tidy" either
   // away as drift: scripts/load/s14-kyc-nida-race.mts proves what happens without
   // one (two accounts, one national ID).
+
+  @@index([userId, status])
+  @@index([status, submittedAt])
+  @@index([idType, idNumber])
+  @@index([idFingerprint])
 }
 
 model KycDocument {
@@ -837,19 +876,324 @@ model AuditLog {
 // AGENT / AFFILIATE PROGRAM
 // ============================================================================
 
+/// The referral account. ⚠️ IT IS TWO THINGS AT ONCE, AND THAT IS THE WHOLE TRAP.
+///
+/// Every player who has ever touched the referral surface owns a row here
+/// (`ensureAffiliateAccount` mints one lazily). So **the existence of a row proves
+/// nothing** — it is not evidence of an agent, a rate, or an approval.
+///
+/// ⭐ `approvedAt` ALONE IDENTIFIES A VETTED AGENT. It is written in exactly one
+/// place (`approveAgent` in `agent-application-service.ts`) and nowhere else.
+///
+/// ⛔ `commissionPct` IS NULLABLE WITH NO DEFAULT, DELIBERATELY. It used to be
+/// `Decimal @default(5.00)`, which meant every one of these auto-minted player rows
+/// carried a 5% rate nobody chose, and any "refuse when the rate is unset" branch was
+/// unreachable — a dropped conjunct anywhere in the resolver would have turned the
+/// whole player base into 5% agents. Null now means *no officer has priced this
+/// partner*, and the agent branch of `policyFor` REFUSES on it rather than falling
+/// back to the player promo's rate.
+///
+/// ⚠️ SCALE: this is a PERCENT (`20.00` = 20%). `affiliate-config`'s
+/// `commission.rate` is a FRACTION (`0.5` = 50%). Feeding one into the other is a
+/// 40× error. Nothing may read this column except `policyFor`.
+///
+/// ⛔ `tier` LEFT THIS MODEL 2026-09-07 (schema + every layer, no DDL — the EXPAND
+/// half of expand→contract). The column is still in Postgres until the contract
+/// migration named in `docs/AGENT-PROGRAMME.md` §5; do not re-add the field.
 model AffiliateAgent {
-  id              String   @id @default(cuid())
-  userId          String   @unique
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  code            String   @unique
-  tier            String   @default("STANDARD")
-  commissionPct   Decimal  @default(5.00) @db.Decimal(5, 2)
-  totalRecruits   Int      @default(0)
-  totalCommission Decimal  @default(0) @db.Decimal(18, 2)
-  active          Boolean  @default(true)
-  createdAt       DateTime @default(now())
+  id              String    @id @default(cuid())
+  userId          String    @unique
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  code            String    @unique
+  /// NULL = no officer has priced this partner. Percent, not fraction. See the note above.
+  commissionPct   Decimal?  @db.Decimal(5, 2)
+  totalRecruits   Int       @default(0)
+  totalCommission Decimal   @default(0) @db.Decimal(18, 2)
+  /// The officer's explicit revocation switch. `true` on every auto-minted player row,
+  /// which is why it is NEVER a sufficient test on its own — it is read only in
+  /// conjunction with `approvedAt`.
+  active          Boolean   @default(true)
+  /// ⭐ THE ONE DISCRIMINATOR. Non-null ⇔ a compliance officer approved this partner.
+  approvedAt      DateTime?
+  approvedBy      String?
+  /// Set when an officer deactivates. Prospective only — accruals already PAID stand.
+  deactivatedAt   DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @default(now()) @updatedAt
 
   recruits User[] @relation("AgentRecruits")
+
+  @@index([approvedAt])
+}
+
+// ============================================================================
+// AGENT AFFILIATE PROGRAMME — application, documents, invitation
+//
+// A vetted business partner who introduces players and earns commission.
+// ⛔ RECRUITER ONLY. An agent never holds float and never touches player money.
+// Authority: docs/AGENT-PROGRAMME.md. Rate rule: docs/RULES.md §2.10.
+// ============================================================================
+
+/// The lifecycle. TWO DOORS, ONE STATE MACHINE — self-service (`/agent` → apply →
+/// pay → submit) and officer-led (invite → INVITED → the invitee ACCEPTS) converge
+/// on UNDER_REVIEW, and a single compliance officer decides.
+///
+/// ⛔ Every value here needs a row in `STATUS_TONE` and an en/sw/zh phrase in
+/// `dict.agent.status*`. These are internal enum names, not copy — `PAYMENT_PENDING`
+/// is not a sentence anyone should read.
+enum AgentApplicationStatus {
+  /// Started, still attaching documents. Expires after `draftExpiryDays`.
+  DRAFT
+  /// An officer proposed it; awaiting the invitee's acceptance.
+  /// ⛔ NEVER APPROVABLE FROM HERE. The invitee's acceptance is the second party that
+  /// self-service gets for free (applicant submits, a different person approves).
+  INVITED
+  /// All seven documents attached.
+  KYC_SUBMITTED
+  /// Fee reference + receipt recorded, or waived. Awaiting submit.
+  PAYMENT_PENDING
+  /// Shown to the applicant as "Awaiting Compliance Approval" — the framework's wording.
+  UNDER_REVIEW
+  /// An officer asked for a clearer document. ⭐ Without this state a blurry scan forces
+  /// a rejection, which triggers a refund and a re-application for something one message
+  /// solves. It has an explicit exit: the applicant replaces the slot and re-submits.
+  ADDITIONAL_INFO_REQUIRED
+  /// Role granted, code minted, rate set.
+  APPROVED
+  /// Refused. Fee refunded in full within `refundDeadlineDays` IF one was reconciled.
+  REJECTED
+  /// The invitee said no.
+  DECLINED
+  /// A DRAFT or an invitation lapsed. Documents purged.
+  EXPIRED
+  /// The partnership ended after approval. Terminal for THIS row, but it frees the
+  /// partial unique index so a revoked partner can re-apply rather than being blocked
+  /// forever by their own dead APPROVED record.
+  REVOKED
+}
+
+/// Which door this application came through. Drives the officer's screen (an invited
+/// application shows who supplied each document) and the two-party control.
+enum AgentApplicationSource {
+  SELF_SERVICE
+  OFFICER_INVITED
+}
+
+/// The seven documents of framework §2, plus the fee receipt.
+///
+/// ⭐ THE FRAMEWORK'S FIFTH ITEM — "Government-Issued Identification" — IS DELIBERATELY
+/// ABSENT. That is the platform's existing KYC (`KycSubmission`), live and certified.
+/// ⛔ Do not build a second identity flow.
+enum AgentDocType {
+  CV
+  REQUEST_LETTER
+  SERIKALI_LETTER
+  REFEREE_ONE_LETTER
+  /// ⛔ THIRD-PARTY PII. This person never used 50pick and never consented in-app.
+  REFEREE_ONE_ID
+  REFEREE_TWO_LETTER
+  /// ⛔ THIRD-PARTY PII. See above.
+  REFEREE_TWO_ID
+  FEE_RECEIPT
+}
+
+/// Why an application was refused. ⛔ THE LAST THREE ARE TERMINAL — a person refused for
+/// any of them may never re-apply. Every other reason re-opens after `reapplyCooldownDays`.
+enum AgentRejectReason {
+  INCOMPLETE_DOCUMENTS
+  DOCUMENT_NOT_LEGIBLE
+  UNSATISFACTORY_REFEREE
+  DETAILS_MISMATCH
+  FEE_NOT_RECONCILED
+  /// The applicant is (or became) staff. Approving would strip their admin access, so the
+  /// refusal exists to route a PAID application out through the ordinary refund path
+  /// rather than stranding it on a hard INVALID at approve.
+  STAFF_CONFLICT
+  OTHER
+  // ── TERMINAL ──────────────────────────────────────────────────────────────
+  SANCTIONED
+  IDENTITY_MISMATCH
+  FRAUD
+}
+
+/// What happened to the TZS 100,000. ⛔ Never a player-ledger `Transaction` — it is money
+/// from a member of the public, so it posts a `LedgerEntry` (`AGENT_REGISTRATION_FEE`).
+enum AgentFeeDisposition {
+  /// No fee has been reconciled. ⭐ THE LOAD-BEARING VALUE: a rejection from here owes
+  /// nothing, and a refunds queue that forgets it tells the platform to pay out money it
+  /// never took.
+  NONE
+  WAIVED
+  COLLECTED
+  REFUND_DUE
+  REFUNDED
+}
+
+enum AgentInvitationStatus {
+  ISSUED
+  ACCEPTED
+  DECLINED
+  REVOKED
+  EXPIRED
+}
+
+/// One agent application. ⭐ `approveAgent` is the ONLY writer of `UserRole.AGENT`, and it
+/// UPDATEs an `AffiliateAgent` row that ALREADY EXISTS with a player-format code.
+model AgentApplication {
+  id     String                 @id @default(cuid())
+  userId String
+  user   User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status AgentApplicationStatus @default(DRAFT)
+  source AgentApplicationSource @default(SELF_SERVICE)
+
+  /// ⛔ REFEREE ACCOUNTABILITY. We have no relationship with a referee, so the APPLICANT is
+  /// the accountable party: they attest that each referee consented and was shown the
+  /// privacy notice. Submission is refused without it.
+  refereeOneName    String?
+  refereeOneContact String?
+  refereeTwoName    String?
+  refereeTwoContact String?
+  refereeConsentAt  DateTime?
+
+  /// The fee, stamped from `agent-config` at reconciliation — ⛔ NEVER a form field. A
+  /// human-typed amount means a TZS 1,000 receipt attested as the fee passes every check.
+  feeAmountTzs       Decimal?            @db.Decimal(18, 2)
+  /// What the officer actually read on the receipt. A mismatch against `feeAmountTzs` is a
+  /// hard refusal at reconcile and at approve, not a note.
+  feeAttestedTzs     Decimal?            @db.Decimal(18, 2)
+  /// Applicant-typed. ⭐ UNIQUE — one receipt, one application.
+  feeReference       String?             @unique
+  /// The officer's own evidence: the bank statement line. The applicant's reference alone
+  /// is a string they chose.
+  feeStatementRef    String?
+  feeReconciledAt    DateTime?
+  feeReconciledById  String?
+  /// Masked destination captured at reconciliation, so a refund can only go back the way
+  /// the money came.
+  feeSourceAccount   String?
+  feeWaivedAt        DateTime?
+  feeWaivedById      String?
+  /// ⭐ Typed and audited. A waiver with no reason is an unexplained TZS 100,000.
+  feeWaiverReason    String?
+  feeDisposition     AgentFeeDisposition @default(NONE)
+  feeRefundDueAt     DateTime?
+  feeRefundedAt      DateTime?
+  feeRefundedById    String?
+  feeRefundReference String?
+  feeRefundAmountTzs Decimal?            @db.Decimal(18, 2)
+
+  reviewerId      String?
+  reviewedAt      DateTime?
+  rejectReason    AgentRejectReason?
+  rejectNote      String?
+  /// The officer's request for a clearer document. Per-slot rejections live on the
+  /// document rows; this is the covering message.
+  infoRequestNote String?
+  infoRequestedAt DateTime?
+
+  /// The rate the officer set at approval, as a PERCENT. Mirrored onto
+  /// `AffiliateAgent.commissionPct`; kept here as the decision record.
+  approvedRatePct Decimal? @db.Decimal(5, 2)
+  /// The `50PICK-AG-…` code minted at approval.
+  agentCode       String?
+
+  acceptedTermsVersion String?
+  acceptedTermsAt      DateTime?
+
+  submittedAt DateTime?
+  /// DRAFT expiry. Documents are purged when it passes.
+  expiresAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  documents  AgentApplicationDocument[]
+  invitation AgentInvitation?
+  // ⚠️ ALSO ON THIS TABLE, not expressible in the Prisma DSL: a PARTIAL unique index.
+  //
+  //   "AgentApplication_userId_active_key" ON ("userId")
+  //     WHERE status NOT IN ('REJECTED','DECLINED','EXPIRED','REVOKED')
+  //
+  // ONE live application per person, enforced by the DATABASE rather than by application
+  // code that can be forgotten. It must stay PARTIAL: a refused, declined, lapsed or ended
+  // application deliberately frees the person to apply again.
+  //
+  // ⛔ THE INDEX IS THE RACE-LOSER BACKSTOP, NOT THE CONTROL. `startApplication` RESUMES an
+  // existing DRAFT / PAYMENT_PENDING / ADDITIONAL_INFO_REQUIRED row (mirroring `startKyc`),
+  // so the index should never fire in normal use — and if it does, the service translates
+  // 23505 into `application_exists` rather than a 500. The memory DAL has no index at all,
+  // which is exactly why the service check is the primary guard.
+  //
+  // Raw SQL — prisma/migrations/20260907120200_agent_application_active_unique.
+
+  @@index([userId, status])
+  @@index([status, submittedAt])
+  /// The refunds-owed worklist reads this directly.
+  @@index([status, feeDisposition])
+}
+
+/// One attached file. ⛔ NEVER a name or a phone in the storage key: that is the one class
+/// of PII erasure can never reach. Keys are `agentapp/<applicationId>/<docType>`.
+model AgentApplicationDocument {
+  id            String           @id @default(cuid())
+  applicationId String
+  application   AgentApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  docType       AgentDocType
+  /// Written + read through the SAME storage seam as KYC (`src/lib/server/storage.ts`):
+  /// an inline data URL by default, `r2:<key>` when `KYC_STORAGE=r2`.
+  storageKey    String
+  mimeType      String
+  sizeBytes     Int
+  /// WHO physically supplied this file. On an officer-invited application the officer may
+  /// supply the business paperwork, but ⛔ never the invitee's own ID or selfie.
+  suppliedById  String
+  uploadedAt    DateTime         @default(now())
+  /// Set by an officer asking for a clearer copy. Only rejected slots are actionable while
+  /// the application sits in ADDITIONAL_INFO_REQUIRED.
+  rejected      Boolean          @default(false)
+  rejectReason  String?
+  /// ⛔ TRUE for the two referee IDs. They belong to people who are not users, have no
+  /// account, and cannot invoke erasure through any surface we have — so they carry their
+  /// own, shorter retention clock (`AGENT_REFEREE_DOC_HOLD_DAYS`).
+  thirdParty    Boolean          @default(false)
+  /// Set by `retention.purge.daily` when the bytes are destroyed. The ROW survives — the
+  /// decision record is what an audit or a re-application needs, and it carries no PII once
+  /// the scan is gone.
+  purgedAt      DateTime?
+
+  /// One file per slot. A re-upload REPLACES rather than appends.
+  @@unique([applicationId, docType])
+  @@index([applicationId])
+  @@index([thirdParty, purgedAt])
+}
+
+/// An officer's proposal to a phone number. ⭐ THE INVITEE'S ACCEPTANCE IS THE SECOND PARTY.
+/// Self-service has a two-party control built in — the applicant submits, a different person
+/// approves. An invitation would remove it, letting one officer mint an agent single-handedly.
+model AgentInvitation {
+  id             String                @id @default(cuid())
+  applicationId  String?               @unique
+  application    AgentApplication?     @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+  /// The officer-entered phone the token is BOUND to. Acceptance requires an OTP delivered
+  /// to THIS number — a link forwarded to someone else is worthless.
+  phoneE164      String
+  displayName    String?
+  /// ⛔ The token is stored HASHED. A readable token in the database is a second copy of the
+  /// credential.
+  tokenHash      String                @unique
+  status         AgentInvitationStatus @default(ISSUED)
+  issuedById     String
+  issuedAt       DateTime              @default(now())
+  expiresAt      DateTime
+  acceptedAt     DateTime?
+  acceptedUserId String?
+  declinedAt     DateTime?
+  revokedAt      DateTime?
+  revokedById    String?
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+
+  @@index([phoneE164, status])
+  @@index([status, expiresAt])
 }
 
 // ============================================================================
@@ -954,6 +1298,10 @@ enum ReferralRewardStatus {
   PAID
   PENDING
   HELD
+  /// Clawed back — the market that produced this accrual was voided after settlement.
+  /// The row survives (a reversed liability is still a fact); the cap and the earnings
+  /// total stop counting it.
+  REVERSED
 }
 
 enum SourceOfFundsReviewStatus {
@@ -996,10 +1344,32 @@ model ReferralReward {
   status          ReferralRewardStatus @default(PENDING)
   recipientUserId String // denormalised — always referrer or recruit
   note            String?
+  /// The programme COPIED from the attribution's stamp at accrual — never re-derived
+  /// from the referrer's role. This is the column that separates agent spend (a
+  /// contracted commission, real cash) from promo cost (a bonus grant) in the owner's
+  /// book and the regulator pack. NULL only on rows written before 2026-09-07.
+  programme       ReferralProgramme?
+  /// The rate that actually priced this row, as a PERCENT. Snapshotted so a later rate
+  /// change never rewrites history — the same discipline as `PredictionMarket.feeSnapshot`.
+  rateApplied     Decimal?             @db.Decimal(5, 2)
+  /// The market this accrual came from. Without it a clawback cannot find the rows to
+  /// reverse when that market is voided after settlement.
+  marketId        String?
+  /// ⭐ THE IDEMPOTENCY KEY, and commission was the ONE reward path that had none.
+  /// `payBonus` and `payPrize` both passed a deterministic ref to `creditBonus`;
+  /// commission passed nothing, so any replay was a double-pay. Unique, so a replay
+  /// tool can be built without becoming a second way to pay twice.
+  sourceRef       String?              @unique
+  /// Set by a clawback. The row stays — a reversed liability is still a fact — and its
+  /// status becomes REVERSED so the cap and the earnings total stop counting it.
+  reversedAt      DateTime?
+  reversedReason  String?
   createdAt       DateTime             @default(now())
 
   @@index([referrerUserId, createdAt])
   @@index([recruitUserId])
+  @@index([marketId])
+  @@index([programme, status])
 }
 
 // ============================================================================
@@ -1180,7 +1550,6 @@ model PredictionMarket {
    * chain-purge ceremony (docs/DATA-RETENTION.md §7). The ROW SURVIVES: pools, feeSnapshot,
    * resolvedOutcome and settledAt are untouched, and every Position, Transaction,
    * LedgerEntry and HousePoolLedger referencing it stays exactly as it was.
-   *
    * ⛔ WHY REDACT RATHER THAN DELETE. LedgerEntry.marketId, HousePoolLedger.marketId and
    * Transaction.positionId are loose strings with NO foreign key. Deleting a market leaves
    * them dangling, and the books still balance to zero while individual accounts name rows
@@ -1188,12 +1557,10 @@ model PredictionMarket {
    * STAKE_DEBIT pairs standing for a market that no longer existed and `house-money.cjs`
    * still printed "the books balance". A grand total of zero is not the statement "every
    * account means what it says". Keeping the row is what makes the second statement true.
-   *
    * ⚠️ NULL MEANS NEVER PURGED, and that reading has to be explicit at every call site.
    * These columns are additive with no backfill, so every pre-existing row reads NULL on
    * day one; a query that treats NULL as anything else is reading a migration artefact as
    * a fact.
-   *
    * ⭐ AND A STAMPED MARKET IS PURGED, NOT FAILED. The 2026-08-04 incident (~2,515 rounds
    * cleared, 1,915 phantom "failures") happened because deletion was SILENT and UNLABELLED,
    * so ops tooling counted what it could not explain as breakage. The label is the fix for
@@ -1623,75 +1990,75 @@ model UpDownObservation {
 // ============================================================================
 
 model MarketCandidate {
-  id                  String         @id @default(cuid())
-  state               CandidateState @default(EXTRACTED)
-  category            String
-  proposedTitleEn     String
-  proposedTitleSw     String?
-  proposedTitleZh     String?
-  resolutionCriterion String
+  id                    String         @id @default(cuid())
+  state                 CandidateState @default(EXTRACTED)
+  category              String
+  proposedTitleEn       String
+  proposedTitleSw       String?
+  proposedTitleZh       String?
+  resolutionCriterion   String
   /// SW / ZH translations of the criterion, carried from the AI generation through
   /// to the published market (F6c). Nullable: null means "no translation", which the
   /// player surface discloses rather than hiding. ⛔ English stays canonical.
   resolutionCriterionSw String?
   resolutionCriterionZh String?
-  resolutionAt        DateTime
-  sources             Json // Array<{ url, publisher, publishedAt?, retrievedAt }>
-  confidence          Int            @default(0)
-  rejectReason        String?
-  rejectNote          String?
-  trace               Json // Array<{ layer, outcome, at }>
-  reviewedBy          String?
-  reviewedAt          DateTime?
-  reviewNote          String?
-  publishedMarketId   String?
-  tokensSpent         Int            @default(0)
-  costUsd             Decimal        @default(0) @db.Decimal(10, 6)
-  createdAt           DateTime       @default(now())
-  updatedAt           DateTime       @updatedAt
+  resolutionAt          DateTime
+  sources               Json // Array<{ url, publisher, publishedAt?, retrievedAt }>
+  confidence            Int            @default(0)
+  rejectReason          String?
+  rejectNote            String?
+  trace                 Json // Array<{ layer, outcome, at }>
+  reviewedBy            String?
+  reviewedAt            DateTime?
+  reviewNote            String?
+  publishedMarketId     String?
+  tokensSpent           Int            @default(0)
+  costUsd               Decimal        @default(0) @db.Decimal(10, 6)
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
 
   @@index([state])
 }
 
 model AIPoll {
-  id                   String      @id @default(cuid())
-  state                AIPollState @default(GENERATING)
-  requestCategory      String
-  requestPrompt        String      @db.Text
-  generation           Json? // AIPollGeneration object
-  rawResponse          String?     @db.Text
-  filterReasons        Json        @default("[]")
-  qualityIndicators    Json        @default("[]")
-  overallQuality       Int         @default(0)
-  titleEn              String
-  titleSw              String
-  titleZh              String?
-  category             String
-  resolutionCriterion  String
+  id                    String      @id @default(cuid())
+  state                 AIPollState @default(GENERATING)
+  requestCategory       String
+  requestPrompt         String      @db.Text
+  generation            Json? // AIPollGeneration object
+  rawResponse           String?     @db.Text
+  filterReasons         Json        @default("[]")
+  qualityIndicators     Json        @default("[]")
+  overallQuality        Int         @default(0)
+  titleEn               String
+  titleSw               String
+  titleZh               String?
+  category              String
+  resolutionCriterion   String
   /// SW / ZH translations of the criterion, as GENERATED (and officer-editable
   /// before publish). Nullable — the model may decline, and null is the honest
   /// value for that. ⛔ Never backfilled with the English: see F8.
   resolutionCriterionSw String?
   resolutionCriterionZh String?
-  resolutionAt         DateTime
-  selectionClosedAt    DateTime?
-  options              Json        @default("[]")
-  sources              Json        @default("[]")
-  confidence           Int         @default(0)
-  reasoning            String      @db.Text
-  reviewedBy           String?
-  reviewedAt           DateTime?
-  reviewNote           String?
-  rejectReasons        Json        @default("[]")
-  publishedMarketId    String?
-  publishedCandidateId String?
-  tokensUsed           Int         @default(0)
-  costUsd              Decimal     @default(0) @db.Decimal(10, 6)
-  latencyMs            Int         @default(0)
-  regenerationOf       String?
-  regenerationCount    Int         @default(0)
-  createdAt            DateTime    @default(now())
-  updatedAt            DateTime    @updatedAt
+  resolutionAt          DateTime
+  selectionClosedAt     DateTime?
+  options               Json        @default("[]")
+  sources               Json        @default("[]")
+  confidence            Int         @default(0)
+  reasoning             String      @db.Text
+  reviewedBy            String?
+  reviewedAt            DateTime?
+  reviewNote            String?
+  rejectReasons         Json        @default("[]")
+  publishedMarketId     String?
+  publishedCandidateId  String?
+  tokensUsed            Int         @default(0)
+  costUsd               Decimal     @default(0) @db.Decimal(10, 6)
+  latencyMs             Int         @default(0)
+  regenerationOf        String?
+  regenerationCount     Int         @default(0)
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
 
   @@index([state])
 }
@@ -1717,56 +2084,56 @@ model AIPoll {
 /// the observation ledger. Settling on a price captured at proposal time would settle on a
 /// figure minutes or hours old, chosen by the same party that proposed the market.
 model UpDownProposal {
-  id                String              @id @default(cuid())
-  state             UpDownProposalState @default(GENERATING)
+  id    String              @id @default(cuid())
+  state UpDownProposalState @default(GENERATING)
 
   /// The operator's request — kept so a regeneration can repeat it verbatim.
-  requestAssetId    String
-  requestPrompt     String              @db.Text
+  requestAssetId String
+  requestPrompt  String @db.Text
 
   /// What the AI proposes. `sourceUrl`/`sourceDomain` are the load-bearing pair: on arming
   /// they become the asset's source, and every round the chain then opens CAPTURES them
   /// (UpDownRound.capturedSourceUrl) and resolves against that capture.
-  asset             UpDownAsset         @relation(fields: [requestAssetId], references: [id], onDelete: Cascade)
-  durationMinutes   Int                 @default(15)
-  marginBps         Int                 @default(50)
-  sourceUrl         String              @default("")
-  sourceDomain      String              @default("")
-  framingEn         String              @default("")
-  framingSw         String              @default("")
-  framingZh         String              @default("")
-  reasoning         String              @db.Text
+  asset           UpDownAsset @relation(fields: [requestAssetId], references: [id], onDelete: Cascade)
+  durationMinutes Int         @default(15)
+  marginBps       Int         @default(50)
+  sourceUrl       String      @default("")
+  sourceDomain    String      @default("")
+  framingEn       String      @default("")
+  framingSw       String      @default("")
+  framingZh       String      @default("")
+  reasoning       String      @db.Text
 
   /// Evidence the link is readable — NOT a price any round settles on. See the note above.
-  observedPrice     Decimal?            @db.Decimal(18, 8)
-  observedQuotedAt  DateTime?
+  observedPrice    Decimal?  @db.Decimal(18, 8)
+  observedQuotedAt DateTime?
 
   generation        Json?
-  rawResponse       String?             @db.Text
-  filterReasons     Json                @default("[]")
-  qualityIndicators Json                @default("[]")
-  overallQuality    Int                 @default(0)
-  confidence        Int                 @default(0)
+  rawResponse       String? @db.Text
+  filterReasons     Json    @default("[]")
+  qualityIndicators Json    @default("[]")
+  overallQuality    Int     @default(0)
+  confidence        Int     @default(0)
 
-  reviewedBy        String?
-  reviewedAt        DateTime?
-  reviewNote        String?
-  rejectReasons     Json                @default("[]")
+  reviewedBy    String?
+  reviewedAt    DateTime?
+  reviewNote    String?
+  rejectReasons Json      @default("[]")
 
   /// The terminal act: which chain this armed, when, and by whom. Set together, only from
   /// the APPROVED state, and only through the same createChain/setChainState the admin UI
   /// uses — so arming cannot bypass a control the console enforces.
-  armedChainId      String?
-  armedAt           DateTime?
-  armedBy           String?
+  armedChainId String?
+  armedAt      DateTime?
+  armedBy      String?
 
-  tokensUsed        Int                 @default(0)
-  costUsd           Decimal             @default(0) @db.Decimal(10, 6)
-  latencyMs         Int                 @default(0)
+  tokensUsed        Int      @default(0)
+  costUsd           Decimal  @default(0) @db.Decimal(10, 6)
+  latencyMs         Int      @default(0)
   regenerationOf    String?
-  regenerationCount Int                 @default(0)
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime            @updatedAt
+  regenerationCount Int      @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   @@index([state])
   @@index([requestAssetId, createdAt])
@@ -1992,8 +2359,8 @@ model AiUsageEvent {
   ///
   /// SOFT REFS, NO FOREIGN KEY, deliberately. Metering must survive a retention delete of
   /// the thing it points at, and an FK would let a metering row block a market delete.
-  subjectType  String?
-  subjectId    String?
+  subjectType String?
+  subjectId   String?
 
   @@index([createdAt])
   @@index([feature, createdAt])
@@ -2091,6 +2458,8 @@ enum LedgerEntryType {
   CASHOUT_FEE // Early-exit fee → operator revenue. Goes to the HOUSE.
   ADJUSTMENT // Admin adjustment (credit or debit)
   INTERNAL_CREDIT // Internal credit (affiliate reward, proposal prize)
+  AGENT_COMMISSION // Operator revenue → agent account (contracted commission, and its reversal)
+  AGENT_REGISTRATION_FEE // Applicant → operator (the TZS 100,000 fee, and its refund)
 
   // ── Retired 2026-07 with the tax/reserve/aggregator rates ────────────────
   // Never written again. Kept because historical LedgerEntry rows reference

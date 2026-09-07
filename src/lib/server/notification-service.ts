@@ -23,7 +23,7 @@ import { db } from "./store";
 import { randomId } from "./crypto";
 import { emit } from "./event-bus";
 import type { StoredNotification } from "./store";
-import { formatTzs } from "@/lib/utils";
+import { formatTzs, formatDateShort } from "@/lib/utils";
 import type { LocalizedText } from "@/lib/localized";
 import { sideWordIn, outcomeWordIn, type StoredSide, type StoredOutcome } from "@/lib/side-label";
 import type { NotificationFilter, NotificationSort } from "@/lib/notification-filters";
@@ -1630,5 +1630,186 @@ export function notifySof(userId: string, status: "ACCEPTED" | "REJECTED" | "MOR
     bodySw: "Tafadhali sasisha tamko la asili ya pesa na uwasilishe tena.",
     bodyZh: "请更新您的资金来源声明并重新提交。",
     href: "/profile/source-of-funds",
+  });
+}
+
+// ─── Agent affiliate programme ────────────────────────────────────────────
+// Filed under AFFILIATE: it IS the affiliate programme, and the bell already knows the tint.
+// ⛔ None of these names a document, an officer, or a reason an officer typed.
+
+/** The applicant's own confirmation that the application went in. */
+export function notifyAgentApplicationSubmitted(userId: string, opts: { applicationId: string }) {
+  return notify({
+    userId,
+    kind: "KYC",
+    titleEn: "Agent application submitted",
+    titleSw: "Maombi ya uwakala yamewasilishwa",
+    titleZh: "代理申请已提交",
+    bodyEn: "Awaiting compliance approval. We will tell you here when there is a decision.",
+    bodySw: "Inasubiri idhini ya uzingatiaji. Tutakujulisha hapa kutakapokuwa na uamuzi.",
+    bodyZh: "正在等待合规审批。有决定时我们会在此通知您。",
+    href: `/agent/status?ref=${encodeURIComponent(opts.applicationId)}`,
+  });
+}
+
+/** Approved — an earned status. */
+export function notifyAgentApproved(userId: string, opts: { agentCode: string; commissionPct: number }) {
+  return notify({
+    userId,
+    kind: "AFFILIATE",
+    titleEn: "You are now a Verified 50pick Agent",
+    titleSw: "Sasa wewe ni Wakala Aliyethibitishwa wa 50pick",
+    titleZh: "您现已成为 50pick 认证代理",
+    bodyEn: `Your code is ${opts.agentCode}. You earn ${opts.commissionPct}% of the net fee on your recruits' play, as withdrawable cash.`,
+    bodySw: `Msimbo wako ni ${opts.agentCode}. Unapata ${opts.commissionPct}% ya ada halisi kwa michezo ya wateja wako, kama pesa taslimu.`,
+    bodyZh: `您的代理码是 ${opts.agentCode}。您将获得所推荐玩家净手续费的 ${opts.commissionPct}%，可直接提现。`,
+    href: "/profile/invite",
+  });
+}
+
+/** Not approved. States the refund when one is due; never the officer's free text. */
+export function notifyAgentRejected(userId: string, opts: { refundDue: boolean; amountTzs: number | null; reason: string }) {
+  const refundEn = opts.refundDue && opts.amountTzs ? ` Your ${formatTzs(opts.amountTzs)} fee will be refunded in full.` : "";
+  const refundSw = opts.refundDue && opts.amountTzs ? ` Ada yako ya ${formatTzs(opts.amountTzs)} itarejeshwa kamili.` : "";
+  const refundZh = opts.refundDue && opts.amountTzs ? ` 您的 ${formatTzs(opts.amountTzs)} 费用将全额退还。` : "";
+  return notify({
+    userId,
+    kind: "AFFILIATE",
+    titleEn: "Agent application not approved",
+    titleSw: "Maombi ya uwakala hayajakubaliwa",
+    titleZh: "代理申请未获批准",
+    bodyEn: `A compliance officer did not approve your application.${refundEn} Tap to see the decision.`,
+    bodySw: `Afisa wa uzingatiaji hakukubali maombi yako.${refundSw} Gusa kuona uamuzi.`,
+    bodyZh: `合规官未批准您的申请。${refundZh} 点击查看决定。`,
+    href: "/agent/status",
+  });
+}
+
+/** One more thing — the exit from ADDITIONAL_INFO_REQUIRED. */
+export function notifyAgentInfoRequested(userId: string, opts: { note: string }) {
+  void opts; // the officer's words go by email; the bell says only that something is needed
+  return notify({
+    userId,
+    kind: "KYC",
+    titleEn: "Your agent application needs one more thing",
+    titleSw: "Maombi yako ya uwakala yanahitaji jambo moja zaidi",
+    titleZh: "您的代理申请还需补充一项",
+    bodyEn: "A compliance officer asked for a clearer document. Replace it and resubmit.",
+    bodySw: "Afisa ameomba nakala iliyo wazi zaidi. Badilisha kisha uwasilishe tena.",
+    bodyZh: "合规官要求提供更清晰的文件。请替换后重新提交。",
+    href: "/agent/apply",
+  });
+}
+
+/** The fee came back. */
+export function notifyAgentFeeRefunded(userId: string, opts: { amountTzs: number; reference: string }) {
+  return notify({
+    userId,
+    kind: "AFFILIATE",
+    titleEn: `Registration fee refunded · ${formatTzs(opts.amountTzs)}`,
+    titleSw: `Ada ya usajili imerejeshwa · ${formatTzs(opts.amountTzs)}`,
+    titleZh: `注册费已退还 · ${formatTzs(opts.amountTzs)}`,
+    bodyEn: `Returned to the account it was paid from. Reference ${opts.reference}.`,
+    bodySw: `Imerejeshwa kwenye akaunti iliyolipa. Kumbukumbu ${opts.reference}.`,
+    bodyZh: `已退回至付款账户。参考号 ${opts.reference}。`,
+    href: "/agent/status",
+  });
+}
+
+/** Paused by an officer. No entry point — support is the route back. */
+export function notifyAgentDeactivated(userId: string) {
+  return notify({
+    userId,
+    kind: "KYC",
+    titleEn: "Your agent account has been paused",
+    titleSw: "Akaunti yako ya uwakala imesitishwa",
+    titleZh: "您的代理账户已暂停",
+    bodyEn: "Your code no longer recruits and no new commission accrues. Commission already paid stays in your wallet.",
+    bodySw: "Msimbo wako hauandikishi tena na hakuna kamisheni mpya. Kamisheni iliyokwisha lipwa inabaki kwenye pochi yako.",
+    bodyZh: "您的代理码不再招募，也不再累积新佣金。已支付的佣金仍在您的钱包中。",
+    // The dashboard shows the paused state read-only — information, not solicitation.
+    href: "/profile/invite",
+  });
+}
+
+/**
+ * The partnership has ENDED — distinct from a pause. The person is a player again and the agent
+ * dashboard is gone, so the honest door is the status page, which carries the re-apply date.
+ */
+export function notifyAgentRevoked(userId: string, opts: { reapplyAt: string | null }) {
+  const when = opts.reapplyAt ? formatDateShort(opts.reapplyAt) : null;
+  return notify({
+    userId,
+    kind: "KYC",
+    titleEn: "Your agent partnership has ended",
+    titleSw: "Ushirikiano wako wa uwakala umekwisha",
+    titleZh: "您的代理合作已结束",
+    bodyEn: `Your code no longer recruits and no new commission accrues. Commission already paid stays in your wallet.${when ? ` You may apply again from ${when}.` : ""}`,
+    bodySw: `Msimbo wako hauandikishi tena na hakuna kamisheni mpya. Kamisheni iliyokwisha lipwa inabaki kwenye pochi yako.${when ? ` Unaweza kuomba tena kuanzia ${when}.` : ""}`,
+    bodyZh: `您的代理码不再招募，也不再累积新佣金。已支付的佣金仍在您的钱包中。${when ? `您可从 ${when} 起重新申请。` : ""}`,
+    href: "/agent/status",
+  });
+}
+
+/** A rate change is prospective — every accrual carries the rate that priced it. States both figures. */
+export function notifyAgentRateChanged(userId: string, opts: { beforePct: number | null; afterPct: number }) {
+  const before = opts.beforePct == null ? "—" : `${opts.beforePct}%`;
+  return notify({
+    userId,
+    kind: "AFFILIATE",
+    titleEn: `Your commission rate is now ${opts.afterPct}%`,
+    titleSw: `Kiwango chako cha kamisheni sasa ni ${opts.afterPct}%`,
+    titleZh: `您的佣金比例现为 ${opts.afterPct}%`,
+    bodyEn: `Changed from ${before} to ${opts.afterPct}% of the net fee. It applies to positions settled from now on; commission already accrued keeps the rate that priced it.`,
+    bodySw: `Imebadilishwa kutoka ${before} hadi ${opts.afterPct}% ya ada halisi. Inatumika kwa nafasi zinazosuluhishwa kuanzia sasa; kamisheni iliyokwisha kusanywa inabaki na kiwango kilichoitoza.`,
+    bodyZh: `已从 ${before} 调整为净手续费的 ${opts.afterPct}%。适用于此后结算的头寸；已累积的佣金保持原比例。`,
+    href: "/profile/invite",
+  });
+}
+
+/** A voided market takes its commission back — the figure, and what was actually recovered. */
+export function notifyAgentCommissionReversed(userId: string, opts: { amountTzs: number; recoveredTzs: number; marketId: string }) {
+  const short = opts.recoveredTzs < opts.amountTzs;
+  return notify({
+    userId,
+    kind: "AFFILIATE",
+    titleEn: `Commission of ${formatTzs(opts.amountTzs)} reversed`,
+    titleSw: `Kamisheni ya ${formatTzs(opts.amountTzs)} imerejeshwa`,
+    titleZh: `${formatTzs(opts.amountTzs)} 佣金已冲回`,
+    bodyEn: `A market was voided and every stake refunded, so the fee it produced — and your ${formatTzs(opts.amountTzs)} share of it — is reversed.${short ? ` ${formatTzs(opts.recoveredTzs)} was recovered from your balance; the rest is recorded as owed.` : ""}`,
+    bodySw: `Soko lilibatilishwa na kila dau kurejeshwa, kwa hiyo ada iliyotokana nalo — na sehemu yako ya ${formatTzs(opts.amountTzs)} — imerejeshwa.${short ? ` ${formatTzs(opts.recoveredTzs)} imechukuliwa kutoka salio lako; iliyobaki imerekodiwa kama deni.` : ""}`,
+    bodyZh: `一个市场已作废且所有投注已退还，因此其产生的手续费——以及您 ${formatTzs(opts.amountTzs)} 的份额——已冲回。${short ? `已从您的余额中收回 ${formatTzs(opts.recoveredTzs)}；其余部分记为欠款。` : ""}`,
+    href: "/wallet",
+  });
+}
+
+/** Agent commission credited — the agent's own voice, never the withdrawn player promo's. Money kind: the figure. */
+export function notifyAgentCommission(userId: string, opts: { amountTzs: number }) {
+  const amount = formatTzs(opts.amountTzs);
+  return notify({
+    userId,
+    kind: "AFFILIATE",
+    titleEn: `Agent commission · ${amount}`,
+    titleSw: `Kamisheni ya wakala · ${amount}`,
+    titleZh: `代理佣金 · ${amount}`,
+    bodyEn: `Credited to your cash balance from a settled position one of your recruits played. Withdrawable now.`,
+    bodySw: `Imewekwa kwenye salio lako la fedha kutoka nafasi iliyosuluhishwa aliyocheza mchezaji uliyemleta. Inaweza kutolewa sasa.`,
+    bodyZh: `已从您推荐玩家结算的头寸计入您的现金余额，可立即提现。`,
+    href: "/profile/invite",
+  });
+}
+
+/** Officer bell: an application is awaiting compliance approval. */
+export function notifyAdminAgentReview(adminUserId: string, opts: { applicantLabel: string; applicationId: string }) {
+  return notify({
+    userId: adminUserId,
+    kind: "KYC",
+    titleEn: "Agent application awaiting approval",
+    titleSw: "Maombi ya uwakala yanasubiri idhini",
+    titleZh: "代理申请等待审批",
+    bodyEn: `${opts.applicantLabel} submitted an agent application. Open the queue to review it.`,
+    bodySw: `${opts.applicantLabel} amewasilisha maombi ya uwakala. Fungua foleni kuyakagua.`,
+    bodyZh: `${opts.applicantLabel} 已提交代理申请。请打开队列进行审核。`,
+    href: `/admin/agents/${opts.applicationId}`,
   });
 }

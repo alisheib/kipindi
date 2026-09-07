@@ -121,6 +121,33 @@ export const STATUS_TONE = {
   /** An OPEN objection FREEZES a market's money, which is why the console's is claret
    *  and a player's own open position is not. */
   OPEN:     { player: "royal", admin: "claret" },
+  // ── Agent programme (2026-09-07) ──────────────────────────────────────────
+  /** An officer proposed it and nobody has answered yet. Waiting — royal. */
+  INVITED:  { player: "royal", admin: "royal" },
+  /** The applicant is still assembling documents. Inert to an officer — slate. */
+  DRAFT:    { player: "royal", admin: "slate" },
+  /** The applicant has done their part. To the officer it is work to DO — amber. To the
+   *  applicant it is waiting — royal (the same reason PENDING is royal). */
+  UNDER_REVIEW: { player: "royal", admin: "amber" },
+  /** The mirror: the APPLICANT must do something — amber for them; the officer waits — royal. */
+  ADDITIONAL_INFO_REQUIRED: { player: "amber", admin: "royal" },
+  /** The invitee said no, or the draft lapsed. Terminal, nobody's fault — slate. */
+  DECLINED: { player: "slate", admin: "slate" },
+  EXPIRED:  { player: "slate", admin: "slate" },
+  /** The partnership ended. Terminal and inert — slate (⛔ not rose: an ended contract is
+   *  not a refusal, and the person may apply again). */
+  REVOKED:  { player: "slate", admin: "slate" },
+  /** Agent standing. Deactivated is a PAUSE an officer applied — amber on the console (the
+   *  officer may need to act on it again), slate to the agent (inert, nothing to do). */
+  DEACTIVATED: { player: "slate", admin: "amber" },
+  /* ⭐ Agent standing + invitation lifecycle (2026-09-07): the console's chips read these, never a
+     variant typed beside the label. SUSPENDED reads claret (an officer's hold, reversible);
+     SELF_EXCLUDED rose (the person's own lock, and the one that ends a partnership). */
+  ACTIVE:   { admin: "green" },
+  SUSPENDED: { admin: "claret" },
+  SELF_EXCLUDED: { admin: "rose" },
+  ISSUED:   { admin: "royal" },
+  ACCEPTED: { admin: "green" },
 } as const satisfies Record<string, Partial<Record<StatusSurface, StatusTone>>>;
 
 /**

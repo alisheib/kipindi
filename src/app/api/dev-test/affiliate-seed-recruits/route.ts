@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
     const r = await bindRecruit({ recruitUserId: rec.id, code });
     if (r.bound) {
       bound++;
-      if (activity && i % 2 === 0) await onRecruitSettlement(rec.id, { operatorFee: 1_500 });
+      if (activity && i % 2 === 0) await onRecruitSettlement(rec.id, { operatorNetFee: 1_500, marketId: "mkt_devtest", positionId: `pos_${crypto.randomUUID()}` });
     }
   }
   return NextResponse.json({ ok: true, bound });

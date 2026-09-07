@@ -19,7 +19,7 @@ export const ADMIN_ROUTES = [
   "/admin/proposals", "/admin/candidates", "/admin/ai-polls", "/admin/ai-usage", "/admin/sources",
   "/admin/updown", "/admin/updown/rounds", "/admin/updown/proposals",
   "/admin/payments", "/admin/transactions", "/admin/approvals", "/admin/bonuses", "/admin/affiliate", "/admin/invites",
-  "/admin/compliance", "/admin/aml", "/admin/self-exclusions", "/admin/privacy", "/admin/retention", "/admin/moderation",
+  "/admin/compliance", "/admin/agents", "/admin/aml", "/admin/self-exclusions", "/admin/privacy", "/admin/retention", "/admin/moderation",
   "/admin/audit", "/admin/events", "/admin/system", "/admin/config", "/admin/insights", "/admin/staff", "/admin/roles",
 ];
 
@@ -27,13 +27,15 @@ export const ADMIN_ROUTES = [
  *  player QA credentials are rejected by production. */
 export const PLAYER_PUBLIC = [
   "/", "/markets", "/updown", "/live", "/results", "/leaderboard", "/proposals", "/fairness", "/help",
-  "/legal/terms", "/legal/privacy", "/legal/responsible-gambling", "/legal/aml",
+  "/legal/terms", "/legal/privacy", "/legal/responsible-gambling", "/legal/aml", "/legal/agent-terms",
+  "/agent",
   "/auth/login", "/auth/register", "/auth/forgot-password",
 ];
 
 /** Player routes that need a session. */
 export const PLAYER_AUTHED = [
   "/wallet", "/wallet/deposit", "/wallet/withdraw", "/positions", "/positions/performance", "/watchlist",
+  "/agent/apply", "/agent/status",
   "/notifications", "/updown/history", "/proposals/new",
   "/profile", "/profile/account", "/profile/activity", "/profile/invite", "/profile/kyc",
   "/profile/notifications", "/profile/responsible-gambling", "/profile/security", "/profile/sessions",

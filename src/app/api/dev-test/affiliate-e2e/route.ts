@@ -132,16 +132,16 @@ export async function POST() {
     );
     const before3 = await balOf(refUser.id);
     // stake 100,000 × opRate 0.03 = 3,000 fee × 0.5 = 1,500 commission.
-    await onRecruitSettlement(recruit.id, { operatorFee: 3_000 });
+    await onRecruitSettlement(recruit.id, { operatorNetFee: 3_000, marketId: "mkt_devtest", positionId: `pos_${crypto.randomUUID()}` });
     const after1Bet = await balOf(refUser.id);
     ok("commission credited", after1Bet - before3 === 1_500, `Δ=${after1Bet - before3} expected 1500`);
     // Second identical bet would add 1,500 → total 3,000, but cap is 2,000,
     // so only 500 more should accrue.
-    await onRecruitSettlement(recruit.id, { operatorFee: 3_000 });
+    await onRecruitSettlement(recruit.id, { operatorNetFee: 3_000, marketId: "mkt_devtest", positionId: `pos_${crypto.randomUUID()}` });
     const after2Bets = await balOf(refUser.id);
     ok("commission respects per-recruit cap", after2Bets - before3 === 2_000, `Δ=${after2Bets - before3} expected 2000 (cap)`);
     // Third bet → nothing more (cap hit).
-    await onRecruitSettlement(recruit.id, { operatorFee: 3_000 });
+    await onRecruitSettlement(recruit.id, { operatorNetFee: 3_000, marketId: "mkt_devtest", positionId: `pos_${crypto.randomUUID()}` });
     ok("commission stops at cap", await balOf(refUser.id) - before3 === 2_000);
 
     // ── 4. First-bet prize (once per recruit) ───────────────────────────
@@ -187,7 +187,7 @@ export async function POST() {
     const pausedRecruit = await mkUser({ displayName: "Rashidi Said" });
     await bindRecruit({ recruitUserId: pausedRecruit.id, code: a1.code });
     const refBeforePause = await balOf(refUser.id);
-    await onRecruitSettlement(pausedRecruit.id, { operatorFee: 3_000 });
+    await onRecruitSettlement(pausedRecruit.id, { operatorNetFee: 3_000, marketId: "mkt_devtest", positionId: `pos_${crypto.randomUUID()}` });
     await onRecruitDeposit(pausedRecruit.id, { cumulativeDepositsTzs: 50_000 });
     ok("no accrual while paused", await balOf(refUser.id) === refBeforePause, `Δ=${await balOf(refUser.id) - refBeforePause}`);
 

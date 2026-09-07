@@ -53,6 +53,11 @@ import type {
   BonusGrantStatus,
   StoredInviteCampaign,
   StoredInviteEntry,
+  StoredAgentApplication,
+  StoredAgentApplicationDocument,
+  StoredAgentInvitation,
+  AgentApplicationStatus,
+  AgentDocType,
 } from "./store";
 
 // ---------------------------------------------------------------------------
@@ -116,6 +121,13 @@ function toStoredUser(u: any): StoredUser {
     lastLoginAt: iso(u.lastLoginAt),
     closedAt: iso(u.closedAt),
     recruitedBy: u.recruitedBy ?? null,
+    // ⭐ THE PROVENANCE STAMP. ⛔ These three must be mapped in ALL FOUR places — here, in
+    // `create`, in `update`'s date list, and in `StoredUser` — or the stamp is written by the
+    // memory DAL, dropped by Prisma, and every suite stays green while production silently
+    // reads NULL and coalesces the whole agent book back to PLAYER.
+    recruitedProgramme: u.recruitedProgramme ?? null,
+    recruitedAt: iso(u.recruitedAt),
+    recruitedByCode: u.recruitedByCode ?? null,
   };
 }
 
@@ -378,6 +390,23 @@ function toStoredSOF(s: any): StoredSourceOfFunds {
   };
 }
 
+/**
+ * 🔴 THE READ HALF OF THE SILENT NO-OP.
+ *
+ * This mapper used to return SIX fields while the table had ten, and an unmapped column is
+ * dropped on READ as surely as an unwhitelisted one is dropped on WRITE. So a rate an officer
+ * set, an approval, a deactivation — all could be written perfectly and then simply not exist
+ * as far as the application was concerned, in production only. The memory DAL spreads whole
+ * objects (`{ ...a, ...patch }`), so every in-memory suite was green throughout.
+ *
+ * ⛔ THE COLUMN NAMES DIVERGE, AND THAT IS THE TRAP THAT MADE IT INVISIBLE. Prisma's
+ * `totalRecruits` / `totalCommission` are the Stored shape's `recruitCount` / `totalEarnedTzs`.
+ * A reader comparing the two files by eye sees two names that do not match and moves on.
+ *
+ * ⭐ `scripts/dal-parity.test.mts` now asserts, at SOURCE level with no database, that every
+ * key of `StoredAffiliateAccount` is named in this function AND in `create` AND in `update`.
+ * Deleting any one mapping turns it red.
+ */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function toStoredAffiliate(a: any): StoredAffiliateAccount {
   return {
@@ -385,8 +414,196 @@ function toStoredAffiliate(a: any): StoredAffiliateAccount {
     code: a.code,
     recruitCount: a.totalRecruits ?? 0,
     totalEarnedTzs: num(a.totalCommission),
+    // ⭐ `approvedAt` is the ONE discriminator between a vetted agent and the row every
+    // player is auto-minted. Dropping it here would make every agent invisible.
+    approvedAt: iso(a.approvedAt),
+    approvedBy: a.approvedBy ?? null,
+    active: a.active ?? true,
+    deactivatedAt: iso(a.deactivatedAt),
+    // ⚠️ Prisma returns Decimal, not number. `num()` is the same coercion the money columns
+    // use; a raw Decimal reaching the arithmetic would be `NaN`-by-string-concatenation.
+    // NULL stays NULL — it means "no officer has priced this partner" and the agent branch
+    // REFUSES on it. ⛔ Never coalesce it to a number here.
+    commissionPct: a.commissionPct === null || a.commissionPct === undefined ? null : num(a.commissionPct),
     createdAt: iso(a.createdAt)!,
     updatedAt: iso(a.updatedAt ?? a.createdAt)!,
+  };
+}
+
+/**
+ * ⭐ THE WRITE MAP — `Stored` field → Prisma column, exhaustive BY TYPE.
+ *
+ * `Record<keyof StoredAffiliateAccount, …>` means adding a field to the Stored shape without
+ * a line here is a COMPILE ERROR. That is deliberately stronger than a test: the previous
+ * mechanism was a hand-maintained `if (patch.x !== undefined)` chain, and a hand-maintained
+ * list is exactly what failed — three of the table's columns were writable and the rest were
+ * silently discarded in production while the memory DAL accepted them all.
+ *
+ * `null` means "deliberately not writable through `update`": the primary key, and the two
+ * timestamps the database owns.
+ */
+const AFFILIATE_COLUMN: Record<
+  keyof StoredAffiliateAccount,
+  { col: string; kind: "plain" | "date" } | null
+> = {
+  userId: null,          // the key — `where`, never `data`
+  createdAt: null,       // set once, at create
+  updatedAt: null,       // @updatedAt — Prisma owns it
+  code: { col: "code", kind: "plain" },
+  recruitCount: { col: "totalRecruits", kind: "plain" },
+  totalEarnedTzs: { col: "totalCommission", kind: "plain" },
+  commissionPct: { col: "commissionPct", kind: "plain" },
+  active: { col: "active", kind: "plain" },
+  approvedAt: { col: "approvedAt", kind: "date" },
+  approvedBy: { col: "approvedBy", kind: "plain" },
+  deactivatedAt: { col: "deactivatedAt", kind: "date" },
+};
+
+// ── AGENT APPLICATION MAPPERS ───────────────────────────────────────────────
+// Prisma column names match the Stored field names one-for-one here (unlike
+// `AffiliateAgent`, whose divergent names are what hid its dropped columns), so the
+// write map only has to say which fields are DATES and which are not writable.
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function toStoredAgentApplication(a: any): StoredAgentApplication {
+  return {
+    id: a.id,
+    userId: a.userId,
+    status: a.status,
+    source: a.source,
+    refereeOneName: a.refereeOneName ?? null,
+    refereeOneContact: a.refereeOneContact ?? null,
+    refereeTwoName: a.refereeTwoName ?? null,
+    refereeTwoContact: a.refereeTwoContact ?? null,
+    refereeConsentAt: iso(a.refereeConsentAt),
+    // ⚠️ Decimal → number on every money column. A raw Prisma Decimal reaching a
+    // comparison reads as an object and `100000 === Decimal(100000)` is false — which on
+    // this path means a correct fee attested against itself would fail reconciliation.
+    feeAmountTzs: a.feeAmountTzs === null || a.feeAmountTzs === undefined ? null : num(a.feeAmountTzs),
+    feeAttestedTzs: a.feeAttestedTzs === null || a.feeAttestedTzs === undefined ? null : num(a.feeAttestedTzs),
+    feeReference: a.feeReference ?? null,
+    feeStatementRef: a.feeStatementRef ?? null,
+    feeReconciledAt: iso(a.feeReconciledAt),
+    feeReconciledById: a.feeReconciledById ?? null,
+    feeSourceAccount: a.feeSourceAccount ?? null,
+    feeWaivedAt: iso(a.feeWaivedAt),
+    feeWaivedById: a.feeWaivedById ?? null,
+    feeWaiverReason: a.feeWaiverReason ?? null,
+    feeDisposition: a.feeDisposition,
+    feeRefundDueAt: iso(a.feeRefundDueAt),
+    feeRefundedAt: iso(a.feeRefundedAt),
+    feeRefundedById: a.feeRefundedById ?? null,
+    feeRefundReference: a.feeRefundReference ?? null,
+    feeRefundAmountTzs: a.feeRefundAmountTzs === null || a.feeRefundAmountTzs === undefined ? null : num(a.feeRefundAmountTzs),
+    reviewerId: a.reviewerId ?? null,
+    reviewedAt: iso(a.reviewedAt),
+    rejectReason: a.rejectReason ?? null,
+    rejectNote: a.rejectNote ?? null,
+    infoRequestNote: a.infoRequestNote ?? null,
+    infoRequestedAt: iso(a.infoRequestedAt),
+    approvedRatePct: a.approvedRatePct === null || a.approvedRatePct === undefined ? null : num(a.approvedRatePct),
+    agentCode: a.agentCode ?? null,
+    acceptedTermsVersion: a.acceptedTermsVersion ?? null,
+    acceptedTermsAt: iso(a.acceptedTermsAt),
+    submittedAt: iso(a.submittedAt),
+    expiresAt: iso(a.expiresAt),
+    createdAt: iso(a.createdAt)!,
+    updatedAt: iso(a.updatedAt ?? a.createdAt)!,
+  };
+}
+
+/** `"date"` = needs `new Date()`. `null` = not writable through `update`. */
+const AGENT_APPLICATION_COLUMN: Record<keyof StoredAgentApplication, "date" | "plain" | null> = {
+  id: null,
+  userId: null,
+  createdAt: null,
+  updatedAt: null,
+  status: "plain",
+  source: "plain",
+  refereeOneName: "plain",
+  refereeOneContact: "plain",
+  refereeTwoName: "plain",
+  refereeTwoContact: "plain",
+  refereeConsentAt: "date",
+  feeAmountTzs: "plain",
+  feeAttestedTzs: "plain",
+  feeReference: "plain",
+  feeStatementRef: "plain",
+  feeReconciledAt: "date",
+  feeReconciledById: "plain",
+  feeSourceAccount: "plain",
+  feeWaivedAt: "date",
+  feeWaivedById: "plain",
+  feeWaiverReason: "plain",
+  feeDisposition: "plain",
+  feeRefundDueAt: "date",
+  feeRefundedAt: "date",
+  feeRefundedById: "plain",
+  feeRefundReference: "plain",
+  feeRefundAmountTzs: "plain",
+  reviewerId: "plain",
+  reviewedAt: "date",
+  rejectReason: "plain",
+  rejectNote: "plain",
+  infoRequestNote: "plain",
+  infoRequestedAt: "date",
+  approvedRatePct: "plain",
+  agentCode: "plain",
+  acceptedTermsVersion: "plain",
+  acceptedTermsAt: "date",
+  submittedAt: "date",
+  expiresAt: "date",
+};
+
+/** Build the full `create` payload, converting every date field exactly once. */
+function agentApplicationCreateData(a: StoredAgentApplication) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const data: Record<string, any> = { id: a.id, userId: a.userId, createdAt: new Date(a.createdAt) };
+  for (const [k, kind] of Object.entries(AGENT_APPLICATION_COLUMN)) {
+    if (kind === null) continue;
+    const v = (a as unknown as Record<string, unknown>)[k];
+    data[k] = kind === "date" ? (v ? new Date(v as string) : null) : v;
+  }
+  return data;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function toStoredAgentDoc(d: any): StoredAgentApplicationDocument {
+  return {
+    id: d.id,
+    applicationId: d.applicationId,
+    docType: d.docType,
+    storageKey: d.storageKey,
+    mimeType: d.mimeType,
+    sizeBytes: d.sizeBytes,
+    suppliedById: d.suppliedById,
+    uploadedAt: iso(d.uploadedAt)!,
+    rejected: d.rejected ?? false,
+    rejectReason: d.rejectReason ?? null,
+    thirdParty: d.thirdParty ?? false,
+    purgedAt: iso(d.purgedAt),
+  };
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function toStoredAgentInvitation(i: any): StoredAgentInvitation {
+  return {
+    id: i.id,
+    applicationId: i.applicationId ?? null,
+    phoneE164: i.phoneE164,
+    displayName: i.displayName ?? null,
+    tokenHash: i.tokenHash,
+    status: i.status,
+    issuedById: i.issuedById,
+    issuedAt: iso(i.issuedAt)!,
+    expiresAt: iso(i.expiresAt)!,
+    acceptedAt: iso(i.acceptedAt),
+    acceptedUserId: i.acceptedUserId ?? null,
+    declinedAt: iso(i.declinedAt),
+    revokedAt: iso(i.revokedAt),
+    revokedById: i.revokedById ?? null,
+    createdAt: iso(i.createdAt)!,
+    updatedAt: iso(i.updatedAt ?? i.createdAt)!,
   };
 }
 
@@ -402,6 +619,16 @@ function toStoredReward(r: any): StoredReferralReward {
     status: r.status,
     recipientUserId: r.recipientUserId,
     note: r.note,
+    // ⛔ `programme` is the column that separates agent spend from promo cost in the owner's
+    // book and the regulator pack. Unmapped here it would be written by the memory DAL,
+    // defaulted by Prisma, and read back as NULL — the single most consequential field on
+    // this row to get wrong, on the ledger the Gaming Board reads.
+    programme: r.programme ?? null,
+    rateApplied: r.rateApplied === null || r.rateApplied === undefined ? null : num(r.rateApplied),
+    marketId: r.marketId ?? null,
+    sourceRef: r.sourceRef ?? null,
+    reversedAt: iso(r.reversedAt),
+    reversedReason: r.reversedReason ?? null,
     createdAt: iso(r.createdAt)!,
   };
 }
@@ -606,6 +833,9 @@ export const prismaDb = {
           lastLoginAt: u.lastLoginAt ? new Date(u.lastLoginAt) : null,
           closedAt: u.closedAt ? new Date(u.closedAt) : null,
           recruitedBy: u.recruitedBy ?? null,
+          recruitedProgramme: u.recruitedProgramme ?? null,
+          recruitedAt: u.recruitedAt ? new Date(u.recruitedAt) : null,
+          recruitedByCode: u.recruitedByCode ?? null,
         },
       });
       return toStoredUser(row);
@@ -616,7 +846,12 @@ export const prismaDb = {
       // Convert date strings to Date objects for Prisma
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const data: Record<string, any> = {};
-      const dateFields = ["lockedUntil", "dob", "acceptedTermsAt", "lastLoginAt", "closedAt", "emailVerifiedAt"] as const;
+      // ⚠️ `recruitedAt` BELONGS HERE, and forgetting it is a silent defect rather than a
+      // loud one: this loop passes anything not listed straight through, so an ISO STRING
+      // would reach a Prisma DateTime column and throw at runtime on Postgres only — with
+      // every memory-backed suite green. The bind writes it in the same update as
+      // `recruitedBy`, so it is on the hot path for every recruited registration.
+      const dateFields = ["lockedUntil", "dob", "acceptedTermsAt", "lastLoginAt", "closedAt", "emailVerifiedAt", "recruitedAt"] as const;
       for (const [k, v] of Object.entries(patch)) {
         if (k === "updatedAt") continue; // Prisma handles @updatedAt
         if (dateFields.includes(k as (typeof dateFields)[number])) {
@@ -666,6 +901,24 @@ export const prismaDb = {
       const rows = await pc().user.findMany({ where: { role: { in: roles as never } } });
       return rows.map(toStoredUser);
     },
+    /** Batched lookup — one query instead of an N+1 loop. Avatars omitted (audit F-11c). */
+    findByIds: async (ids: string[]): Promise<StoredUser[]> => {
+      const unique = Array.from(new Set(ids));
+      if (unique.length === 0) return [];
+      const rows = await pc().user.findMany({ where: { id: { in: unique } }, omit: { avatarDataUrl: true } });
+      return rows.map((r) => toStoredUser({ ...r, avatarDataUrl: null }));
+    },
+    /** Indexed on `recruitedBy` (migration 20260907120100). Newest first. */
+    listByRecruiter: async (referrerUserId: string): Promise<StoredUser[]> => {
+      const rows = await pc().user.findMany({
+        where: { recruitedBy: referrerUserId },
+        orderBy: { createdAt: "desc" },
+        omit: { avatarDataUrl: true },
+      });
+      return rows.map((r) => toStoredUser({ ...r, avatarDataUrl: null }));
+    },
+    /** COUNT(*) WHERE recruitedBy IS NOT NULL — no rows materialised. */
+    countRecruited: async (): Promise<number> => pc().user.count({ where: { recruitedBy: { not: null } } }),
   },
 
   // ── KYC ───────────────────────────────────────────────────────────────────
@@ -1681,21 +1934,59 @@ export const prismaDb = {
           code: a.code,
           totalRecruits: a.recruitCount,
           totalCommission: a.totalEarnedTzs,
+          // ⛔ Written explicitly rather than left to the column defaults. `commissionPct`
+          // has NO default any more — a freshly minted player row must carry NULL, meaning
+          // "no officer has priced this partner", not a rate nobody chose.
+          commissionPct: a.commissionPct,
+          active: a.active,
+          approvedAt: a.approvedAt ? new Date(a.approvedAt) : null,
+          approvedBy: a.approvedBy,
+          deactivatedAt: a.deactivatedAt ? new Date(a.deactivatedAt) : null,
           createdAt: new Date(a.createdAt),
         },
       });
       return toStoredAffiliate(row);
     },
+    /**
+     * 🔴 THIS FUNCTION WAS THE DEFECT. It carried a hand-written allow-list of THREE fields
+     * (`code`, `recruitCount`, `totalEarnedTzs`) and silently discarded everything else,
+     * while the memory DAL did `{ ...a, ...patch }` and accepted anything. So the day an
+     * officer set a commission rate, the write would have succeeded, returned a row, audited
+     * cleanly — and changed nothing in Postgres. Every in-memory suite would have stayed
+     * green. It is the exact shape of "memory-DAL green ≠ Prisma correct", on the money path.
+     *
+     * ⭐ THE FIX IS A COMPILE ERROR, NOT A LONGER LIST. `AFFILIATE_COLUMN` below is typed
+     * `Record<keyof StoredAffiliateAccount, …>`, so adding a field to the Stored shape without
+     * mapping it here does not compile. An unknown runtime key THROWS rather than being
+     * dropped, because a silent no-op is what this whole comment exists about.
+     */
     update: async (userId: string, patch: Partial<StoredAffiliateAccount>): Promise<StoredAffiliateAccount | null> => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const data: Record<string, any> = {};
+      for (const [k, v] of Object.entries(patch)) {
+        if (v === undefined) continue;
+        const spec = AFFILIATE_COLUMN[k as keyof StoredAffiliateAccount];
+        // `null` = deliberately not writable (the key, or a server-managed timestamp).
+        if (spec === null) continue;
+        if (spec === undefined) {
+          throw new Error(`[prisma-dal] affiliate.update: unmapped field "${k}" — add it to AFFILIATE_COLUMN or it is a silent production no-op.`);
+        }
+        data[spec.col] = spec.kind === "date" ? (v ? new Date(v as string) : null) : v;
+      }
+      if (Object.keys(data).length === 0) {
+        // Nothing to write. Return the current row rather than a null that a caller would
+        // read as "row not found" — the two mean very different things at the call site.
+        const row = await pc().affiliateAgent.findUnique({ where: { userId } });
+        return row ? toStoredAffiliate(row) : null;
+      }
       try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const data: Record<string, any> = {};
-        if (patch.code !== undefined) data.code = patch.code;
-        if (patch.recruitCount !== undefined) data.totalRecruits = patch.recruitCount;
-        if (patch.totalEarnedTzs !== undefined) data.totalCommission = patch.totalEarnedTzs;
         const row = await pc().affiliateAgent.update({ where: { userId }, data });
         return toStoredAffiliate(row);
-      } catch {
+      } catch (err) {
+        // ⛔ A swallowed error is indistinguishable from row-not-found, and the two callers
+        // that matter — `approveAgent` and `deactivateAgent` — treat null as a HARD failure.
+        // Log it so a real Prisma fault is not silently reported as a missing agent.
+        console.error(`[prisma-dal] affiliate.update failed for ${userId}:`, err);
         return null;
       }
     },
@@ -1706,6 +1997,17 @@ export const prismaDb = {
         const row = await pc().affiliateAgent.update({ where: { userId }, data: { totalRecruits: { increment: 1 } } });
         return toStoredAffiliate(row);
       } catch {
+        return null;
+      }
+    },
+    /** ⭐ Atomic ± on the MONEY counter — the same lost-update fix `incrementRecruitCount`
+     *  already carries. `delta` is signed; a clawback passes a negative. */
+    incrementEarned: async (userId: string, delta: number): Promise<StoredAffiliateAccount | null> => {
+      try {
+        const row = await pc().affiliateAgent.update({ where: { userId }, data: { totalCommission: { increment: delta } } });
+        return toStoredAffiliate(row);
+      } catch (err) {
+        console.error(`[prisma-dal] affiliate.incrementEarned failed for ${userId}:`, err);
         return null;
       }
     },
@@ -1729,6 +2031,12 @@ export const prismaDb = {
           status: r.status,
           recipientUserId: r.recipientUserId,
           note: r.note,
+          programme: r.programme,
+          rateApplied: r.rateApplied,
+          marketId: r.marketId,
+          sourceRef: r.sourceRef,
+          reversedAt: r.reversedAt ? new Date(r.reversedAt) : null,
+          reversedReason: r.reversedReason,
           createdAt: new Date(r.createdAt),
         },
       });
@@ -1736,10 +2044,17 @@ export const prismaDb = {
     },
     update: async (id: string, patch: Partial<StoredReferralReward>): Promise<StoredReferralReward | null> => {
       try {
-        const { createdAt: _c, ...rest } = patch;
-        const row = await pc().referralReward.update({ where: { id }, data: rest });
+        const { createdAt: _c, reversedAt, ...rest } = patch;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const data: Record<string, any> = { ...rest };
+        // ⚠️ The only DateTime in the patchable set. A raw ISO string reaching a Prisma
+        // DateTime column throws on Postgres and nowhere else, so the clawback would fail
+        // in production with every memory-backed suite green.
+        if (reversedAt !== undefined) data.reversedAt = reversedAt ? new Date(reversedAt) : null;
+        const row = await pc().referralReward.update({ where: { id }, data });
         return toStoredReward(row);
-      } catch {
+      } catch (err) {
+        console.error(`[prisma-dal] referralReward.update failed for ${id}:`, err);
         return null;
       }
     },
@@ -1762,6 +2077,232 @@ export const prismaDb = {
         where: { recruitUserId },
       });
       return rows.map(toStoredReward);
+    },
+    /** ⭐ The idempotency lookup — the key commission never had. */
+    findBySourceRef: async (sourceRef: string): Promise<StoredReferralReward | null> => {
+      const row = await pc().referralReward.findUnique({ where: { sourceRef } });
+      return row ? toStoredReward(row) : null;
+    },
+    /** Every accrual a market produced — the population a clawback reverses. */
+    listByMarket: async (marketId: string): Promise<StoredReferralReward[]> => {
+      const rows = await pc().referralReward.findMany({ where: { marketId } });
+      return rows.map(toStoredReward);
+    },
+    /** ⭐ Grouped aggregate over EVERY row — the fix for the 1,000-row "all-time" truncation.
+     *  `groupBy` omits absent groups; the caller seeds zeros. */
+    totals: async (): Promise<Array<{ programme: "PLAYER" | "AGENT" | null; type: StoredReferralReward["type"]; status: StoredReferralReward["status"]; count: number; sumTzs: number }>> => {
+      const rows = await pc().referralReward.groupBy({
+        by: ["programme", "type", "status"],
+        _count: { _all: true },
+        _sum: { amountTzs: true },
+      });
+      return rows.map((g) => ({
+        programme: (g.programme ?? null) as "PLAYER" | "AGENT" | null,
+        type: g.type as StoredReferralReward["type"],
+        status: g.status as StoredReferralReward["status"],
+        count: g._count._all,
+        sumTzs: num(g._sum.amountTzs),
+      }));
+    },
+  },
+
+  // ── AGENT APPLICATION ─────────────────────────────────────────────────────
+  // ⛔ The write maps below are typed `Record<keyof Stored…, …>` for the same reason
+  // `AFFILIATE_COLUMN` is: a field added to the Stored shape and forgotten here is a
+  // COMPILE ERROR, not a value that writes fine in memory and vanishes in production.
+  agentApplication: {
+    create: async (a: StoredAgentApplication): Promise<StoredAgentApplication> => {
+      // The payload is built field-by-field from AGENT_APPLICATION_COLUMN so it cannot drift
+      // from the Stored shape; Prisma's generated create-input union needs the cast.
+      const row = await pc().agentApplication.create({
+        data: agentApplicationCreateData(a) as unknown as Prisma.AgentApplicationUncheckedCreateInput,
+      });
+      return toStoredAgentApplication(row);
+    },
+    findById: async (id: string): Promise<StoredAgentApplication | null> => {
+      const row = await pc().agentApplication.findUnique({ where: { id } });
+      return row ? toStoredAgentApplication(row) : null;
+    },
+    /** The ONE live application, mirroring the partial unique index's predicate exactly.
+     *  ⛔ If these two ever disagree, the service check and the database disagree about
+     *  what a duplicate is — which is how a second live application appears. */
+    findActiveByUser: async (userId: string): Promise<StoredAgentApplication | null> => {
+      const row = await pc().agentApplication.findFirst({
+        where: { userId, status: { notIn: ["REJECTED", "DECLINED", "EXPIRED", "REVOKED"] } },
+        orderBy: { createdAt: "desc" },
+      });
+      return row ? toStoredAgentApplication(row) : null;
+    },
+    findByFeeReference: async (feeReference: string): Promise<StoredAgentApplication | null> => {
+      const norm = feeReference.trim().toUpperCase();
+      if (!norm) return null;
+      // Case-insensitive on purpose: the reference is typed by a human off a paper receipt,
+      // and `ABC-123` and `abc-123` are the same payment. The unique index is exact, so the
+      // service must normalise before it writes — this read is the matching half.
+      const row = await pc().agentApplication.findFirst({
+        where: { feeReference: { equals: norm, mode: "insensitive" } },
+      });
+      return row ? toStoredAgentApplication(row) : null;
+    },
+    listByUser: async (userId: string): Promise<StoredAgentApplication[]> => {
+      const rows = await pc().agentApplication.findMany({ where: { userId }, orderBy: { createdAt: "desc" } });
+      return rows.map(toStoredAgentApplication);
+    },
+    update: async (id: string, patch: Partial<StoredAgentApplication>): Promise<StoredAgentApplication | null> => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const data: Record<string, any> = {};
+      for (const [k, v] of Object.entries(patch)) {
+        if (v === undefined) continue;
+        const spec = AGENT_APPLICATION_COLUMN[k as keyof StoredAgentApplication];
+        if (spec === null) continue;
+        if (spec === undefined) {
+          throw new Error(`[prisma-dal] agentApplication.update: unmapped field "${k}" — add it to AGENT_APPLICATION_COLUMN or it is a silent production no-op.`);
+        }
+        data[k] = spec === "date" ? (v ? new Date(v as string) : null) : v;
+      }
+      if (Object.keys(data).length === 0) {
+        const row = await pc().agentApplication.findUnique({ where: { id } });
+        return row ? toStoredAgentApplication(row) : null;
+      }
+      try {
+        const row = await pc().agentApplication.update({ where: { id }, data });
+        return toStoredAgentApplication(row);
+      } catch (err) {
+        console.error(`[prisma-dal] agentApplication.update failed for ${id}:`, err);
+        return null;
+      }
+    },
+    list: async (): Promise<StoredAgentApplication[]> => {
+      const rows = await pc().agentApplication.findMany({ orderBy: { createdAt: "desc" } });
+      return rows.map(toStoredAgentApplication);
+    },
+    /** Oldest first — a queue an officer works through, not a feed. */
+    listByStatus: async (statuses: AgentApplicationStatus[]): Promise<StoredAgentApplication[]> => {
+      const rows = await pc().agentApplication.findMany({
+        where: { status: { in: statuses as never } },
+        orderBy: [{ submittedAt: "asc" }, { createdAt: "asc" }],
+      });
+      return rows.map(toStoredAgentApplication);
+    },
+  },
+
+  agentApplicationDoc: {
+    create: async (d: StoredAgentApplicationDocument): Promise<StoredAgentApplicationDocument> => {
+      const row = await pc().agentApplicationDocument.create({
+        data: {
+          id: d.id,
+          applicationId: d.applicationId,
+          docType: d.docType,
+          storageKey: d.storageKey,
+          mimeType: d.mimeType,
+          sizeBytes: d.sizeBytes,
+          suppliedById: d.suppliedById,
+          uploadedAt: new Date(d.uploadedAt),
+          rejected: d.rejected,
+          rejectReason: d.rejectReason,
+          thirdParty: d.thirdParty,
+          purgedAt: d.purgedAt ? new Date(d.purgedAt) : null,
+        },
+      });
+      return toStoredAgentDoc(row);
+    },
+    findById: async (id: string): Promise<StoredAgentApplicationDocument | null> => {
+      const row = await pc().agentApplicationDocument.findUnique({ where: { id } });
+      return row ? toStoredAgentDoc(row) : null;
+    },
+    findSlot: async (applicationId: string, docType: AgentDocType): Promise<StoredAgentApplicationDocument | null> => {
+      const row = await pc().agentApplicationDocument.findUnique({
+        where: { applicationId_docType: { applicationId, docType } },
+      });
+      return row ? toStoredAgentDoc(row) : null;
+    },
+    listByApplication: async (applicationId: string): Promise<StoredAgentApplicationDocument[]> => {
+      const rows = await pc().agentApplicationDocument.findMany({ where: { applicationId } });
+      return rows.map(toStoredAgentDoc);
+    },
+    update: async (id: string, patch: Partial<StoredAgentApplicationDocument>): Promise<StoredAgentApplicationDocument | null> => {
+      try {
+        const { uploadedAt, purgedAt, ...rest } = patch;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const data: Record<string, any> = { ...rest };
+        if (uploadedAt !== undefined) data.uploadedAt = new Date(uploadedAt);
+        if (purgedAt !== undefined) data.purgedAt = purgedAt ? new Date(purgedAt) : null;
+        const row = await pc().agentApplicationDocument.update({ where: { id }, data });
+        return toStoredAgentDoc(row);
+      } catch (err) {
+        console.error(`[prisma-dal] agentApplicationDoc.update failed for ${id}:`, err);
+        return null;
+      }
+    },
+    delete: async (id: string): Promise<boolean> => {
+      try {
+        await pc().agentApplicationDocument.delete({ where: { id } });
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    listUnpurged: async (): Promise<StoredAgentApplicationDocument[]> => {
+      const rows = await pc().agentApplicationDocument.findMany({ where: { purgedAt: null } });
+      return rows.map(toStoredAgentDoc);
+    },
+  },
+
+  agentInvitation: {
+    create: async (i: StoredAgentInvitation): Promise<StoredAgentInvitation> => {
+      const row = await pc().agentInvitation.create({
+        data: {
+          id: i.id,
+          applicationId: i.applicationId,
+          phoneE164: i.phoneE164,
+          displayName: i.displayName,
+          tokenHash: i.tokenHash,
+          status: i.status,
+          issuedById: i.issuedById,
+          issuedAt: new Date(i.issuedAt),
+          expiresAt: new Date(i.expiresAt),
+          acceptedAt: i.acceptedAt ? new Date(i.acceptedAt) : null,
+          acceptedUserId: i.acceptedUserId,
+          declinedAt: i.declinedAt ? new Date(i.declinedAt) : null,
+          revokedAt: i.revokedAt ? new Date(i.revokedAt) : null,
+          revokedById: i.revokedById,
+          createdAt: new Date(i.createdAt),
+        },
+      });
+      return toStoredAgentInvitation(row);
+    },
+    findById: async (id: string): Promise<StoredAgentInvitation | null> => {
+      const row = await pc().agentInvitation.findUnique({ where: { id } });
+      return row ? toStoredAgentInvitation(row) : null;
+    },
+    findByTokenHash: async (tokenHash: string): Promise<StoredAgentInvitation | null> => {
+      const row = await pc().agentInvitation.findUnique({ where: { tokenHash } });
+      return row ? toStoredAgentInvitation(row) : null;
+    },
+    findLiveByPhone: async (phoneE164: string): Promise<StoredAgentInvitation | null> => {
+      const row = await pc().agentInvitation.findFirst({ where: { phoneE164, status: "ISSUED" } });
+      return row ? toStoredAgentInvitation(row) : null;
+    },
+    update: async (id: string, patch: Partial<StoredAgentInvitation>): Promise<StoredAgentInvitation | null> => {
+      try {
+        const { issuedAt, expiresAt, acceptedAt, declinedAt, revokedAt, createdAt: _c, ...rest } = patch;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const data: Record<string, any> = { ...rest };
+        if (issuedAt !== undefined) data.issuedAt = new Date(issuedAt);
+        if (expiresAt !== undefined) data.expiresAt = new Date(expiresAt);
+        if (acceptedAt !== undefined) data.acceptedAt = acceptedAt ? new Date(acceptedAt) : null;
+        if (declinedAt !== undefined) data.declinedAt = declinedAt ? new Date(declinedAt) : null;
+        if (revokedAt !== undefined) data.revokedAt = revokedAt ? new Date(revokedAt) : null;
+        const row = await pc().agentInvitation.update({ where: { id }, data });
+        return toStoredAgentInvitation(row);
+      } catch (err) {
+        console.error(`[prisma-dal] agentInvitation.update failed for ${id}:`, err);
+        return null;
+      }
+    },
+    list: async (): Promise<StoredAgentInvitation[]> => {
+      const rows = await pc().agentInvitation.findMany({ orderBy: { issuedAt: "desc" } });
+      return rows.map(toStoredAgentInvitation);
     },
   },
 

@@ -186,6 +186,25 @@ export const acct = {
    *  ⛔ Never credit PLAYER for this: PLAYER is trial-balanced against the wallet,
    *  so crediting it for money never added to the wallet creates permanent drift. */
   rgSuspense: "HOUSE:RG_SUSPENSE" as const,
+  /**
+   * ⭐ AGENT COMMISSION — a COST OF REVENUE, and it needs its own account for the same
+   * reason bonus cost does: it is a real, recurring outflow against fee income, and the
+   * owner has to be able to see what the agent programme costs without it hiding inside
+   * `SYSTEM:ADJUSTMENT` (where every hand-made officer correction also lives).
+   *
+   * ⛔ IT IS NOT A LEVY AND NEVER TOUCHES `levySplit`. TRA and GBT are computed on the fee
+   * we earned; commission is paid out of what is left after them. Netting it into the levy
+   * base would understate tax.
+   */
+  agentCommission: "HOUSE:AGENT_COMMISSION" as const,
+  /**
+   * The TZS 100,000 registration fee. ⛔ NOT gaming revenue: it buys vetting, not a bet, so
+   * it is deliberately kept out of `HOUSE:COMMISSION`, out of GGR and out of the levy base.
+   * It exists here because it is money taken from a member of the public and it must be
+   * visible to the house book, the trial balance and every tax figure — today it would be
+   * invisible to all three.
+   */
+  agentFee: "HOUSE:AGENT_FEE" as const,
 };
 
 // ── Pre-built entry helpers for each money path ────────────────────────────
@@ -516,6 +535,72 @@ export function internalCreditEntries(opts: {
     { account: acct.adjustment, entryType: "INTERNAL_CREDIT", amount: -opts.amount, txnId: opts.txnId, userId: opts.userId, memo: opts.description },
     { account: acct.player(opts.userId), entryType: "INTERNAL_CREDIT", amount: opts.amount, txnId: opts.txnId, userId: opts.userId, memo: opts.description },
   ];
+}
+
+/**
+ * ⭐ AGENT COMMISSION — operator revenue → the agent's own wallet.
+ *
+ * `amount` is SIGNED: positive pays the agent, negative claws it back when a settled market
+ * is later voided. One helper for both directions so the reversal can never be booked to a
+ * different account from the payment it undoes — which is how a "books don't balance" alarm
+ * appears with no explanation attached to it.
+ *
+ * ⛔ THE COUNTERPART IS A HOUSE ACCOUNT, NOT `EXTERNAL:%`. Anything under `EXTERNAL:` is
+ * swept into `railBacked` as money that left the building through a payment rail; commission
+ * has not left — it moved from the house's pocket into a player wallet inside 50pick.
+ */
+export function agentCommissionEntries(opts: {
+  txnId: string;
+  userId: string;
+  /** Positive = paid to the agent. Negative = clawed back. */
+  amount: number;
+  description: string;
+  marketId?: string | null;
+}): LedgerLine[] {
+  return [
+    { account: acct.agentCommission, entryType: "AGENT_COMMISSION", amount: -opts.amount, txnId: opts.txnId, userId: opts.userId, marketId: opts.marketId ?? undefined, memo: opts.description },
+    { account: acct.player(opts.userId), entryType: "AGENT_COMMISSION", amount: opts.amount, txnId: opts.txnId, userId: opts.userId, marketId: opts.marketId ?? undefined, memo: opts.description },
+  ];
+}
+
+/**
+ * ⭐ THE AGENT REGISTRATION FEE — money in from a member of the public, and its refund.
+ *
+ * ⛔ IT NEVER TOUCHES A PLAYER WALLET. The fee is paid out of band into a Selcom account and
+ * attested by an officer reading a receipt; there is no `Transaction`, no wallet credit, and
+ * therefore no risk to any money invariant. This pair records it against the applicant so a
+ * DSAR bundle and an audit can both find it, without pretending it passed through their
+ * balance.
+ *
+ * `amount` is SIGNED: positive is the fee collected, negative is the refund on rejection.
+ * The refund posts the exact mirror of the collection, so a refunded fee nets to zero.
+ *
+ * ⚠️ VAT. The fee is VAT-INCLUSIVE by decision, so the gross is what the applicant paid and
+ * the VAT component is split out here for the tax pack rather than added on top. When the
+ * treatment is EXCLUSIVE the caller passes the VAT it computed; either way the three lines
+ * sum to zero.
+ */
+export function agentRegistrationFeeEntries(opts: {
+  groupRef: string;
+  userId: string;
+  /** Positive = collected. Negative = refunded. */
+  amount: number;
+  /** The VAT component of `amount`, same sign. 0 when no VAT applies. */
+  vatAmount: number;
+  description: string;
+}): LedgerLine[] {
+  const net = opts.amount - opts.vatAmount;
+  const lines: LedgerLine[] = [
+    // The applicant is the source of the money (or its destination on a refund).
+    { account: acct.external("SELCOM"), entryType: "AGENT_REGISTRATION_FEE", amount: -opts.amount, userId: opts.userId, memo: opts.description },
+    { account: acct.agentFee, entryType: "AGENT_REGISTRATION_FEE", amount: net, userId: opts.userId, memo: opts.description },
+  ];
+  if (opts.vatAmount !== 0) {
+    // VAT is the state's, not ours — booked separately from the first shilling so the tax
+    // pack never has to reconstruct it from a gross figure.
+    lines.push({ account: acct.tax, entryType: "AGENT_REGISTRATION_FEE", amount: opts.vatAmount, userId: opts.userId, memo: `${opts.description} · VAT` });
+  }
+  return lines;
 }
 
 /** Admin adjustment (credit or debit) */

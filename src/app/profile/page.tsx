@@ -8,6 +8,7 @@ import { AvatarUploader } from "@/components/profile/avatar-uploader";
 import { ProfileNameEditor } from "@/components/profile/name-editor";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
+import { inviteViewerFor } from "@/lib/server/affiliate-service";
 import { listPositionsForUser } from "@/lib/server/market-service";
 import { displayInitials } from "@/lib/display-label";
 import { BadgeShelf } from "@/components/badges/Badge";
@@ -282,8 +283,8 @@ export default async function ProfilePage() {
               earning now belongs to vetted, fee-paying, approved AGENTS only, so a badge
               here would advertise a programme this player can never enter. A grid item that
               is not rendered leaves no hole — the remaining rows simply flow up. */}
-          {inviteIsLiveFor(user.role) && (
-            <SettingRow icon={I.gift}          title={t.profile.inviteEarn}          subtitle={t.profile.inviteEarnSub}         href="/profile/invite" accent
+          {inviteIsLiveFor(await inviteViewerFor(user.id)) && (
+            <SettingRow icon={I.shieldcheck}   title={t.agent.dashTitle}             subtitle={t.agent.dashSubtitle}             href="/profile/invite" accent
               badge={t.common.newBadge} />
           )}
           <SettingRow icon={I.user}            title={t.profile.myAccount}           subtitle={t.profile.myAccountSub}            href="/profile/account" />

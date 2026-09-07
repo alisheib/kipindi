@@ -32,7 +32,7 @@ import { paymentMethodName } from "@/lib/payment-providers";
 import { notifyDeposit, notifyWithdraw, notifyAdminsAmlReview } from "./notification-service";
 import { withLock } from "./locks";
 import { emit } from "./event-bus";
-import { postLedgerEntries, depositEntries, rgSuspenseEntries, withdrawalEntries, internalCreditEntries, adjustmentEntries, withMoneyTx } from "./ledger";
+import { postLedgerEntries, depositEntries, rgSuspenseEntries, withdrawalEntries, internalCreditEntries, adjustmentEntries, agentCommissionEntries, withMoneyTx } from "./ledger";
 import { getEffectiveConfig } from "./market-config";
 import { computeWithdrawalFee, minWithdrawalForRate, PROVIDER_MIN_PAYOUT_TZS } from "@/lib/payout";
 import { payoutDestinationFor } from "@/lib/payout-destination";
@@ -1830,7 +1830,14 @@ export async function creditInternal(
       completedAt: now,
     });
     // Dual-write: post internal credit to double-entry ledger (fire-and-forget).
-    postLedgerEntries(`int_${txnId}`, internalCreditEntries({ txnId, userId, amount, description: opts.description })).catch(() => {});
+    // ⭐ AGENT COMMISSION GETS ITS OWN LINE IN THE OWNER'S BOOK. Booked to
+    // `HOUSE:AGENT_COMMISSION` rather than `SYSTEM:ADJUSTMENT`, where every hand-made officer
+    // correction also lives — so the owner can read what the programme costs, and the
+    // statutory pack does not report contracted business income as bonus cost.
+    const lines = txnType === "AGENT_COMMISSION"
+      ? agentCommissionEntries({ txnId, userId, amount, description: opts.description })
+      : internalCreditEntries({ txnId, userId, amount, description: opts.description });
+    postLedgerEntries(`int_${txnId}`, lines).catch(() => {});
     audit({
       category: "WALLET",
       action: "wallet.credit_internal",
@@ -1841,6 +1848,75 @@ export async function creditInternal(
     });
     emit("wallet:balance", { userId, balance: newBalance });
     return newBalance;
+  });
+}
+
+/**
+ * ⭐ INTERNAL DEBIT — the clawback leg of an internal credit, OVERDRAW-GUARDED.
+ *
+ * Reverses money the platform itself put into a wallet (agent commission on a market that
+ * was settled and then voided). It is the mirror of `creditInternal` and it obeys the first
+ * money invariant absolutely: ⛔ A WALLET NEVER GOES NEGATIVE. If the partner has already
+ * withdrawn the money, this recovers what is there and reports the SHORTFALL as a number for
+ * the caller to record as a debt — it does not write a negative balance and it does not
+ * throw. A debt an officer can see is recoverable; a negative wallet is a broken ledger.
+ *
+ * Money-safe: wallet + txn + ledger commit ATOMICALLY (withMoneyTx) inside the wallet lock,
+ * exactly as `adminAdjustBalance` does.
+ */
+export async function debitInternal(
+  userId: string,
+  amount: number,
+  opts: { description: string; type: "AGENT_COMMISSION_REVERSAL" | "ADJUSTMENT_DEBIT"; marketId?: string | null },
+): Promise<{ debited: number; shortfall: number; balance: number | null }> {
+  const want = Math.floor(amount);
+  if (!Number.isFinite(want) || want <= 0) return { debited: 0, shortfall: 0, balance: null };
+
+  return withLock(`wallet:${userId}`, async () => {
+    const wallet = await db.wallet.findByUserId(userId);
+    if (!wallet) return { debited: 0, shortfall: want, balance: null };
+    // Recover what is there, never more. A frozen/closed wallet is still debitable — the
+    // money is ours to take back, and freezing it against the partner would be perverse.
+    const take = Math.max(0, Math.min(want, wallet.balance));
+    if (take <= 0) return { debited: 0, shortfall: want, balance: wallet.balance };
+
+    const txnId = `txn_${randomId(12)}`;
+    const now = new Date().toISOString();
+    let newBalance = wallet.balance;
+    const committed = await withMoneyTx(async (tx) => {
+      const updated = await db.wallet.adjust(wallet.id, { balance: -take }, { requireBalanceGte: take }, tx);
+      if (!updated) return false;
+      newBalance = updated.balance;
+      await db.txn.create({
+        id: txnId,
+        walletId: wallet.id, userId,
+        type: opts.type,
+        status: "CONFIRMED",
+        amount: -take, fee: 0, taxWithheld: 0,
+        balanceAfter: updated.balance, currency: "TZS",
+        provider: "INTERNAL", providerRef: null, msisdn: null,
+        description: opts.description,
+        positionId: null, amlReason: null,
+        createdAt: now, updatedAt: now, completedAt: now,
+      }, tx);
+      const lines = opts.type === "AGENT_COMMISSION_REVERSAL"
+        ? agentCommissionEntries({ txnId, userId, amount: -take, description: opts.description, marketId: opts.marketId })
+        : adjustmentEntries({ txnId, userId, amount: -take, description: opts.description });
+      await postLedgerEntries(`int_${txnId}`, lines, tx);
+      return true;
+    });
+    if (!committed) return { debited: 0, shortfall: want, balance: wallet.balance };
+
+    audit({
+      category: "WALLET",
+      action: "wallet.debit_internal",
+      actorId: null,
+      targetType: "Wallet",
+      targetId: wallet.id,
+      payload: { userId, txnId, type: opts.type, requested: want, debited: take, shortfall: want - take, balanceAfter: newBalance, description: opts.description },
+    });
+    emit("wallet:balance", { userId, balance: newBalance });
+    return { debited: take, shortfall: want - take, balance: newBalance };
   });
 }
 

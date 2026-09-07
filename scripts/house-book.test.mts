@@ -63,7 +63,7 @@ console.log("\n§2 · ⭐ the levies are already out of HOUSE:COMMISSION — tak
   // commission account at settlement, so the account BALANCE is 8,500 and the levy accounts
   // hold 1,000 and 500.
   const p = housePosition({
-    accounts: { commission: 8_500, traLevy: 1_000, gbtLevy: 500, aggregator: 300, rgSuspense: 0, all: {} },
+    accounts: { commission: 8_500, traLevy: 1_000, gbtLevy: 500, aggregator: 300, rgSuspense: 0, agentCommission: 0, all: {} },
     playerLiability: 0,
     custodialCash: 10_300,
     adjustmentBackedLiability: 0,
@@ -77,6 +77,18 @@ console.log("\n§2 · ⭐ the levies are already out of HOUSE:COMMISSION — tak
     p.leviesPayable === 1_500 && p.aggregatorPayable === 300);
   ok("2.4 · ⛔ the aggregator share is never subtracted from commission either",
     p.netRetained === 8_500, "the gateway's share was credited to its own account, never ours");
+  /* ⭐ AGENT COMMISSION IS PAID OUT OF THE FEE WE KEPT and debited to its OWN account, so the
+   * commission balance does not move when a partner is paid. A balance sheet that reads
+   * `commission` alone therefore reports the agent programme as free. 1,000 (not 1,500) so the
+   * answer can never coincide with 7,000 — the figure the double-subtraction defect produced. */
+  const pa = housePosition({
+    accounts: { commission: 8_500, agentCommission: -1_000, traLevy: 1_000, gbtLevy: 500, aggregator: 300, rgSuspense: 0, all: {} },
+    playerLiability: 0, custodialCash: 10_300, adjustmentBackedLiability: 0,
+  });
+  ok("2.5 · ⭐ agent commission paid comes OUT of net retained (its own account, ≤ 0)",
+    pa.netRetained === 7_500, `got ${pa.netRetained}`);
+  ok("2.5.control · …and the gross fee is unmoved by it — commission is not a levy",
+    pa.grossFeeEarned === 10_000, `got ${pa.grossFeeEarned}`);
 }
 
 /* ═══ §3 · THE SOLVENCY LINE ═══════════════════════════════════════════════════════════ */
@@ -84,7 +96,7 @@ console.log("\n§3 · gross float is not profit");
 {
   // The scenario from the brief: 100M held, 92M of it players', 3M unremitted levies.
   const p = housePosition({
-    accounts: { commission: 5_000_000, traLevy: 2_000_000, gbtLevy: 1_000_000, aggregator: 0, rgSuspense: 0, all: {} },
+    accounts: { commission: 5_000_000, traLevy: 2_000_000, gbtLevy: 1_000_000, aggregator: 0, rgSuspense: 0, agentCommission: 0, all: {} },
     playerLiability: 92_000_000,
     custodialCash: 100_000_000,
     adjustmentBackedLiability: 0,
@@ -94,18 +106,18 @@ console.log("\n§3 · gross float is not profit");
     `got ${p.freeHouseCash}; 100,000,000 is the number that builds insolvency`);
   ok("3.2 · the gateway's share also reduces free cash",
     housePosition({
-      accounts: { commission: 1_000, traLevy: 0, gbtLevy: 0, aggregator: 400, rgSuspense: 0, all: {} },
+      accounts: { commission: 1_000, traLevy: 0, gbtLevy: 0, aggregator: 400, rgSuspense: 0, agentCommission: 0, all: {} },
       playerLiability: 0, custodialCash: 1_400, adjustmentBackedLiability: 0,
     }).freeHouseCash === 1_000);
   ok("3.3 · ⚠️ free cash may go NEGATIVE and must SAY so, never clamp to zero",
     housePosition({
-      accounts: { commission: 0, traLevy: 0, gbtLevy: 0, aggregator: 0, rgSuspense: 0, all: {} },
+      accounts: { commission: 0, traLevy: 0, gbtLevy: 0, aggregator: 0, rgSuspense: 0, agentCommission: 0, all: {} },
       playerLiability: 500, custodialCash: 100, adjustmentBackedLiability: 0,
     }).freeHouseCash === -400,
     "a clamped zero hides exactly the condition an owner must be told about");
   ok("3.control · a solvent house reports its real surplus (3.1–3.3 are not vacuous)",
     housePosition({
-      accounts: { commission: 10, traLevy: 0, gbtLevy: 0, aggregator: 0, rgSuspense: 0, all: {} },
+      accounts: { commission: 10, traLevy: 0, gbtLevy: 0, aggregator: 0, rgSuspense: 0, agentCommission: 0, all: {} },
       playerLiability: 0, custodialCash: 10, adjustmentBackedLiability: 0,
     }).freeHouseCash === 10);
 }
@@ -122,7 +134,7 @@ console.log("\n§3 · gross float is not profit");
 console.log("\n§3b · ⭐ admin-credited balances are separated, and NEITHER figure is softened");
 {
   const p = housePosition({
-    accounts: { commission: 312_099, traLevy: 36_658, gbtLevy: 18_374, aggregator: 380, rgSuspense: 0, all: {} },
+    accounts: { commission: 312_099, traLevy: 36_658, gbtLevy: 18_374, aggregator: 380, rgSuspense: 0, agentCommission: 0, all: {} },
     playerLiability: 20_105_687,
     custodialCash: 605_110,
     adjustmentBackedLiability: 20_600_000,
@@ -141,7 +153,7 @@ console.log("\n§3b · ⭐ admin-credited balances are separated, and NEITHER fi
   ok("3b.control · with no adjustments the two lines are IDENTICAL (3b.2 is not vacuous)",
     (() => {
       const q = housePosition({
-        accounts: { commission: 0, traLevy: 0, gbtLevy: 0, aggregator: 0, rgSuspense: 0, all: {} },
+        accounts: { commission: 0, traLevy: 0, gbtLevy: 0, aggregator: 0, rgSuspense: 0, agentCommission: 0, all: {} },
         playerLiability: 1_000, custodialCash: 1_000, adjustmentBackedLiability: 0,
       });
       return q.freeHouseCash === q.freeHouseCashExAdjustments;
@@ -161,7 +173,7 @@ console.log("\n§3b · ⭐ admin-credited balances are separated, and NEITHER fi
 console.log("\n§3c · ⭐ RG suspense is a liability, not free cash");
 {
   const p = housePosition({
-    accounts: { commission: 0, traLevy: 0, gbtLevy: 0, aggregator: 0, rgSuspense: 7_000, all: { "HOUSE:RG_SUSPENSE": 7_000 } },
+    accounts: { commission: 0, traLevy: 0, gbtLevy: 0, aggregator: 0, rgSuspense: 7_000, agentCommission: 0, all: { "HOUSE:RG_SUSPENSE": 7_000 } },
     playerLiability: 0, custodialCash: 10_000, adjustmentBackedLiability: 0,
   });
   ok("3c.1 · ⭐ RG suspense comes OUT of free house cash",
@@ -175,14 +187,14 @@ console.log("\n§3c · ⭐ RG suspense is a liability, not free cash");
   ok("3c.4 · ⭐ every HOUSE account travels with the position, so the page can render the ones nobody named",
     p !== null && Object.keys(
       housePosition({
-        accounts: { commission: 1, traLevy: 0, gbtLevy: 0, aggregator: 0, rgSuspense: 0, all: { "HOUSE:COMMISSION": 1, "HOUSE:TAX": 42 } },
+        accounts: { commission: 1, traLevy: 0, gbtLevy: 0, aggregator: 0, rgSuspense: 0, agentCommission: 0, all: { "HOUSE:COMMISSION": 1, "HOUSE:TAX": 42 } },
         playerLiability: 0, custodialCash: 1, adjustmentBackedLiability: 0,
       }) && { ok: 1 },
     ).length === 1,
     "the retired HOUSE:TAX still carries historical rows and must not vanish from the panel");
   ok("3c.control · with nothing in suspense the line is unmoved (3c.1 is not vacuous)",
     housePosition({
-      accounts: { commission: 0, traLevy: 0, gbtLevy: 0, aggregator: 0, rgSuspense: 0, all: {} },
+      accounts: { commission: 0, traLevy: 0, gbtLevy: 0, aggregator: 0, rgSuspense: 0, agentCommission: 0, all: {} },
       playerLiability: 0, custodialCash: 10_000, adjustmentBackedLiability: 0,
     }).freeHouseCash === 10_000);
 }
@@ -257,6 +269,10 @@ console.log("\n§5 · the waterfall is an identity, not a picture");
   const w = waterfall({
     stakeIn: 950_000, bonusIn: 50_000, winningsPaid: 880_000,
     feeEarned: 100_000, leviesOut: 15_000, aggregatorOut: 5_000, bonusCost: 20_000,
+    // ⭐ 10,000 and not 5,000 on purpose: 65,000 − 5,000 = 60,000 is the exact figure the OLD
+    // defect (gateway double-subtraction) produced, and a fixture that lands on the defect's
+    // number by a different route cannot tell the two apart.
+    agentCommissionOut: 10_000,
   });
   ok("5.1 · GGR is handle minus winnings paid", w.ggr === 120_000);
   /* 🔴 THIS ASSERTION USED TO ENCODE THE DEFECT. It pinned `60_000`, i.e.
@@ -266,18 +282,26 @@ console.log("\n§5 · the waterfall is an identity, not a picture");
    * `feeEarned`, so taking it out here charged the owner for it twice — the file header forbids
    * exactly this, one account over. Measured on production 2026-09-05: 309,719 reported against
    * a booked 310,099. */
-  ok("5.2 · ⭐ net retained subtracts levies and bonus cost — NOT the gateway share",
-    w.netRetained === 65_000, `got ${w.netRetained}`);
+  ok("5.2 · ⭐ net retained subtracts levies, bonus cost and agent commission — NOT the gateway share",
+    w.netRetained === 55_000, `got ${w.netRetained}`);
   ok("5.2b · ⛔ …and the gateway share is still REPORTED, as a pass-through beside the total",
     w.aggregatorOut === 5_000,
     "dropping it would answer the double-subtraction by hiding what the gateway took");
   ok("5.3 · ⛔ bonus cost is its OWN step — never silently netted into GGR",
     w.ggr === 120_000 && w.bonusCost === 20_000,
     "netting it into GGR would flatter the gaming result with money that left");
-  ok("5.4 · ⭐ the identity closes: fee − levies − bonus = net retained",
-    w.feeEarned - w.leviesOut - w.bonusCost === w.netRetained);
+  ok("5.4 · ⭐ the identity closes: fee − levies − bonus − agent commission = net retained",
+    w.feeEarned - w.leviesOut - w.bonusCost - w.agentCommissionOut === w.netRetained);
   ok("5.5 · a losing period reports a NEGATIVE result rather than a floor of zero",
-    waterfall({ stakeIn: 100, bonusIn: 0, winningsPaid: 500, feeEarned: 0, leviesOut: 0, aggregatorOut: 0, bonusCost: 0 }).ggr === -400);
+    waterfall({ stakeIn: 100, bonusIn: 0, winningsPaid: 500, feeEarned: 0, leviesOut: 0, aggregatorOut: 0, bonusCost: 0, agentCommissionOut: 0 }).ggr === -400);
+  /* ⭐ AGENT COMMISSION IS A COST OF REVENUE — paid to a vetted partner out of the fee we kept,
+   * booked to its own account, and therefore INSIDE `feeEarned` (unlike the gateway share). A
+   * waterfall that does not subtract it reports the agent programme as free. */
+  ok("5.8 · ⭐ agent commission is its OWN step, subtracted from the fee we kept",
+    w.agentCommissionOut === 10_000 && w.netRetained === w.feeEarned - w.leviesOut - w.bonusCost - 10_000,
+    `got ${w.netRetained}`);
+  ok("5.8.control · a commission-free period is unmoved (the term is not vacuous)",
+    waterfall({ stakeIn: 0, bonusIn: 0, winningsPaid: 0, feeEarned: 100_000, leviesOut: 15_000, aggregatorOut: 0, bonusCost: 0, agentCommissionOut: 0 }).netRetained === 85_000);
   /* ⭐ 0.2 — the handle counts BOTH legs of the pool. `stakeEntries` credits `STAKE_DEBIT` for
    * the real part and `BONUS_SPEND` for the bonus part, while the payouts from that pool are
    * counted in full; reading one leg understates GGR by every bonus shilling staked. */
@@ -288,7 +312,7 @@ console.log("\n§5 · the waterfall is an identity, not a picture");
     w.stakeIn + w.bonusIn === w.handle && w.bonusIn !== 0,
     "collapsing them would report promotional turnover as money that came in");
   ok("5.control · a bonus-free period is unmoved by 5.6 (the split is not vacuous)",
-    waterfall({ stakeIn: 100, bonusIn: 0, winningsPaid: 0, feeEarned: 0, leviesOut: 0, aggregatorOut: 0, bonusCost: 0 }).handle === 100);
+    waterfall({ stakeIn: 100, bonusIn: 0, winningsPaid: 0, feeEarned: 0, leviesOut: 0, aggregatorOut: 0, bonusCost: 0, agentCommissionOut: 0 }).handle === 100);
 }
 
 /* ═══ §6 · RECONCILIATION HAS NO TOLERANCE ═════════════════════════════════════════════ */
@@ -338,7 +362,7 @@ console.log("\n§7 · ⭐ a game settled before a rate change still reports the 
 console.log("\n§8 · a ledger figure can never be rendered under a rail heading");
 ok("8.1 · the position is stamped `ledger`, out of the same object as its numbers",
   housePosition({
-    accounts: { commission: 1, traLevy: 0, gbtLevy: 0, aggregator: 0, rgSuspense: 0, all: {} },
+    accounts: { commission: 1, traLevy: 0, gbtLevy: 0, aggregator: 0, rgSuspense: 0, agentCommission: 0, all: {} },
     playerLiability: 0, custodialCash: 1, adjustmentBackedLiability: 0,
   }).source === "ledger",
   "the Selcom float is the only `rail` figure and it is read, never derived");

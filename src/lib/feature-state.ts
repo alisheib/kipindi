@@ -86,21 +86,48 @@ function resolvedState(name: FeatureName): FeatureState {
 }
 
 /**
- * Invite's state for a given role. Approved agents get the live programme; everyone
- * else gets whatever the product state says — today, nothing at all.
+ * Who is asking. ⛔ NOT A ROLE STRING ANY MORE, AND THE CHANGE OF SHAPE IS DELIBERATE.
  *
- * ⚠️ `role === "AGENT"` is assigned in exactly ONE place: agent-application approval.
- * It is not self-service and it is not assignable from the staff-roles screen.
+ * 🔴 `inviteStateFor(role)` keyed the agent exception on `role === "AGENT"` alone, and a role is
+ * the wrong fact three ways at once: (1) a DEACTIVATED agent keeps role AGENT and so kept every
+ * entry point, share surface and badge; (2) a test fixture with `role: "AGENT"` and no approval
+ * sailed through as an agent, which is how three predeploy guards asserted an unapproved
+ * "agent" earning the player prize and stayed green; (3) the sealed decision is that
+ * `AffiliateAgent.approvedAt` ALONE identifies an agent — a row's existence proves nothing, and
+ * a role string proves less.
+ *
+ * `agentInGoodStanding` is `agentStandingFor(user, account).ok` — approved, active, and not
+ * closed/suspended/self-excluded — computed by `inviteViewerFor` in `affiliate-service.ts`,
+ * the ONE server helper that loads the two rows. Making it a required field of an object,
+ * rather than an optional second argument, is what forced the compiler to surface every call
+ * site: an optional flag would have let the old role-only answer keep compiling everywhere.
  */
-export function inviteStateFor(role: Role | null | undefined): FeatureState {
+export type InviteViewer = {
+  role: Role | null | undefined;
+  /** ⭐ THE discriminator — never derived from `role`. */
+  agentInGoodStanding: boolean;
+};
+
+/** A signed-out viewer, or a failed user read: the safe, closed default. */
+export const NO_VIEWER: InviteViewer = { role: null, agentInGoodStanding: false };
+
+/**
+ * Invite's state for a given viewer. An agent in good standing gets the live programme;
+ * everyone else gets whatever the product state says — today, nothing at all.
+ *
+ * ⚠️ `role === "AGENT"` is assigned in exactly ONE place: agent-application approval. But it
+ * is NOT what opens the programme — standing is. A deactivated agent keeps the role and loses
+ * the programme, which is exactly the point.
+ */
+export function inviteStateFor(viewer: InviteViewer | null | undefined): FeatureState {
   const state = resolvedState("invite");
   if (state === "ACTIVE") return "ACTIVE";
-  return role === "AGENT" ? "ACTIVE" : state;
+  return viewer?.agentInGoodStanding ? "ACTIVE" : state;
 }
 
-/** True only when this role may actually refer and earn. */
-export function inviteIsLiveFor(role: Role | null | undefined): boolean {
-  return inviteStateFor(role) === "ACTIVE";
+/** True only when this viewer may actually refer and earn. */
+export function inviteIsLiveFor(viewer: InviteViewer | null | undefined): boolean {
+  return inviteStateFor(viewer) === "ACTIVE";
 }
 
 /** Bonus wallet state. No role exception — withdrawn is withdrawn. */

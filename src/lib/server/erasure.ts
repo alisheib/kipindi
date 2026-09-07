@@ -72,6 +72,7 @@ import { removeTotp } from "./totp";
 import { clearBackupCodes } from "./backup-codes";
 import { revokeUserSessions } from "./session-registry";
 import type { KycExtraRequest } from "./store";
+import { pseudonymiseAgentApplications, purgeAgentDocumentsForUser } from "./agent-application-service";
 
 /**
  * How long an identity document is held after account closure before erasure may destroy
@@ -130,6 +131,12 @@ export type AnonymizeOutcome =
         notificationsRedacted: number;
         otps: number;
         pushSubscriptions: number;
+        /** Agent applications whose referee names and officer notes were pseudonymised (immediate). */
+        agentApplicationsRedacted: number;
+        /** Agent documents destroyed under tier ② (the 7-year hold). */
+        agentDocumentsDeleted: number;
+        /** Agent objects R2 refused — their rows keep the key for a re-run. */
+        agentDocumentObjectsFailed: number;
         watchlistEntries: number;
       };
     };
@@ -170,6 +177,7 @@ export async function anonymizeClosedAccount(
 
   const counts = {
     kycSubmissions: 0, idNumbersHashed: 0, documentsDeleted: 0, documentObjectsFailed: 0,
+    agentApplicationsRedacted: 0, agentDocumentsDeleted: 0, agentDocumentObjectsFailed: 0,
     extraRequestsCleared: 0, comments: 0, notificationsDeleted: 0, notificationsRedacted: 0,
     otps: 0, pushSubscriptions: 0, watchlistEntries: 0,
   };
@@ -334,6 +342,20 @@ export async function anonymizeClosedAccount(
         declaredOther: null,
       });
     }
+  }
+
+  // ── 2b · THE AGENT PROGRAMME — a third-party's documents, and the applicant's own ─────
+  // 🔴 A table erasure does not NAME is a table erasure does not reach. `AgentApplication`
+  // carries two referees' names and contacts (people who never used 50pick) plus every
+  // sentence an officer typed; `AgentApplicationDocument` carries their ID scans and the
+  // applicant's CV and residence letter. The words go NOW — no statute keeps a name — and
+  // the bytes go under the same 7-year gate as the KYC images, with the same "the row only
+  // goes if the bytes went" retry shape (`purgeAgentDocumentsForUser`).
+  counts.agentApplicationsRedacted = await pseudonymiseAgentApplications(userId);
+  if (documentsReleased) {
+    const agentDocs = await purgeAgentDocumentsForUser(userId);
+    counts.agentDocumentsDeleted = agentDocs.deleted;
+    counts.agentDocumentObjectsFailed = agentDocs.failed;
   }
 
   // ── 3 · THE PUBLIC THREAD — a frozen mask is still a fragment of a phone number ──────

@@ -1296,7 +1296,7 @@ The authority document states as present fact, in three places:
 
 `docs/RULES.md` §2 runs 2.1 through **2.9** (headings at :65, :111, :118, :136, :187, :249, :293, :300, :310). There is no §2.10. The build prompt §7 correctly says to *create* it — but the authority already speaks in the past tense about it, and the authority is what a later session reads first.
 
-This is the failure mode `feature-state.ts:75-79` records in this very repo: a comment named `scripts/reenablement.test.mts` as evidence a guard existed, and an audit found no such file had ever existed on any branch. "A comment that cites a guard by name is read as evidence the guard exists — so it must name one that does." The same rule applies to a document citing a rule section.
+This is the failure mode `feature-state.ts:75-79` records in this very repo: a comment named `reenablement.test.mts` (under `scripts/`) as evidence a guard existed, and an audit found no such file had ever existed on any branch. "A comment that cites a guard by name is read as evidence the guard exists — so it must name one that does." The same rule applies to a document citing a rule section.
 
 Related: `RULES.md` §7 is "KNOWN DUPLICATES — rates written inline that could not be made data-driven". The claim "nowhere else" is unverified until the TZS 100,000 and the ceiling either appear there or are proven absent from source.
 

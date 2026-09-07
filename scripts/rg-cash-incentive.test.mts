@@ -23,8 +23,9 @@ import "./lib/verified-fixtures.mts";
 import { db, type StoredWallet, type StoredResponsibleGambling } from "../src/lib/server/store.ts";
 import { creditInternal } from "../src/lib/server/wallet-service.ts";
 import { setBonusConfig } from "../src/lib/server/bonus-config.ts";
-import { bindRecruit, ensureAffiliateAccount, onRecruitBet } from "../src/lib/server/affiliate-service.ts";
+import { bindRecruit, ensureAffiliateAccount, onRecruitBet, onRecruitSettlement } from "../src/lib/server/affiliate-service.ts";
 import { setAffiliateConfig } from "../src/lib/server/affiliate-config.ts";
+import { approveFixtureAgent } from "./lib/agent-fixtures.mts";
 
 let pass = 0, fail = 0;
 function ok(label: string, cond: boolean, extra?: string) {
@@ -123,24 +124,83 @@ const HOUR = 3_600_000;
   );
   ok("§5 SETUP · prize enabled on FIRST_BET", affSnap.ok === true);
 
-  // ⚠️ AGENT on purpose. Since 2026-09-06 a code only recruits if its owner may refer, so a
-  // PLAYER referrer would be refused by the ATTRIBUTION gate and this section would pass for
-  // entirely the wrong reason — never reaching the RG gate it exists to measure.
-  await mkUser("aff_referrer", "ACTIVE", "AGENT");
-  await rg("aff_referrer", { coolingOffUntil: new Date(Date.now() + HOUR).toISOString() });
-  const acct = await ensureAffiliateAccount("aff_referrer");
+  // 🔴 THIS SECTION USED TO FIXTURE `role: "AGENT"` AND NOTHING ELSE, because a PLAYER referrer
+  // is refused at the attribution gate while invite is WITHDRAWN. But a role with no approval
+  // is not an agent — and worse, the assertion below was then proving that an "agent" earned
+  // the PLAYER PRIZE, which the agent programme forbids. The honest population for a
+  // player-promo prize is a PLAYER referrer with the promo ON: the same env override
+  // `withdrawn-features` §4 uses to keep the dormant path executable, restored in a `finally`.
+  process.env.FEATURE_INVITE = "ACTIVE";
+  try {
+    await mkUser("aff_referrer");                          // a PLAYER — the promo's population
+    await rg("aff_referrer", { coolingOffUntil: new Date(Date.now() + HOUR).toISOString() });
+    const acct = await ensureAffiliateAccount("aff_referrer");
 
-  await mkUser("aff_recruit");
-  const bound = await bindRecruit({ recruitUserId: "aff_recruit", code: acct.code });
-  ok("§5 recruit bound", bound.bound === true);
+    await mkUser("aff_recruit");
+    const bound = await bindRecruit({ recruitUserId: "aff_recruit", code: acct.code });
+    ok("§5 recruit bound", bound.bound === true, JSON.stringify(bound));
 
-  await onRecruitBet("aff_recruit", { stake: 25_000 });
+    await onRecruitBet("aff_recruit", { stake: 25_000 });
 
-  ok("§5 cooling-off referrer received NO cash", (await cash("aff_referrer")) === 0, `cash=${await cash("aff_referrer")}`);
-  const rewards = await db.referralReward.listByReferrer("aff_referrer");
-  const paid = rewards.filter((r) => r.status === "PAID");
-  ok("§5 no reward is recorded PAID", paid.length === 0, `paid=${paid.length}`);
-  ok("§5 the reward is recorded HELD, not silently dropped", rewards.some((r) => r.status === "HELD"), `rows=${JSON.stringify(rewards.map((r) => r.status))}`);
+    ok("§5 cooling-off referrer received NO cash", (await cash("aff_referrer")) === 0, `cash=${await cash("aff_referrer")}`);
+    const rewards = await db.referralReward.listByReferrer("aff_referrer");
+    const paid = rewards.filter((r) => r.status === "PAID");
+    ok("§5 no reward is recorded PAID", paid.length === 0, `paid=${paid.length}`);
+    ok("§5 the reward is recorded HELD, not silently dropped", rewards.some((r) => r.status === "HELD"), `rows=${JSON.stringify(rewards.map((r) => r.status))}`);
+  } finally {
+    delete process.env.FEATURE_INVITE;
+  }
+  ok("§5 the override is restored, not leaked", process.env.FEATURE_INVITE === undefined);
+}
+
+// ── §5b · THE AGENT RULE DEPARTS FROM THE PLAYER RULE IN ONE PLACE ─────────
+// Agent commission is CONTRACTED INCOME, not a promotion. Three things follow, each asserted:
+//   (a) a SELF-EXCLUDED agent stops recruiting AND stops accruing — no row at all, so nothing
+//       is ever written that no code path can pay;
+//   (b) a COOLING-OFF agent (a break about their OWN play, not the end of the relationship)
+//       keeps accruing, but the RG gate on `creditInternal` refuses the cash — and the row is
+//       PENDING, ⛔ never HELD, because HELD is terminal here and consumes the per-recruit
+//       budget: a partner's income would be written off by a control written for promotions;
+//   (c) the CONTROL — an ACTIVE approved agent on the identical path IS paid, in cash.
+{
+  // (a) self-excluded
+  await mkUser("ag_excluded");
+  const exCode = await approveFixtureAgent("ag_excluded", { commissionPct: 20 });
+  await mkUser("ag_excluded_rec");
+  const exBound = await bindRecruit({ recruitUserId: "ag_excluded_rec", code: exCode });
+  ok("§5b SETUP · the agent recruits while in good standing", exBound.bound === true, JSON.stringify(exBound));
+  await db.user.update("ag_excluded", { status: "SELF_EXCLUDED" });
+  await mkUser("ag_excluded_rec2");
+  const exBound2 = await bindRecruit({ recruitUserId: "ag_excluded_rec2", code: exCode });
+  ok("§5b(a) a self-excluded agent's code no longer recruits", exBound2.bound === false, JSON.stringify(exBound2));
+  await onRecruitSettlement("ag_excluded_rec", { operatorNetFee: 10_000, marketId: "mkt_5b_ex", positionId: "pos_5b_ex" });
+  ok("§5b(a) …and accrues NOTHING on an existing recruit — no cash", (await cash("ag_excluded")) === 0, `cash=${await cash("ag_excluded")}`);
+  ok("§5b(a) …and NO row of any status (nothing unpayable is ever written)",
+     (await db.referralReward.listByReferrer("ag_excluded")).length === 0,
+     JSON.stringify((await db.referralReward.listByReferrer("ag_excluded")).map((r) => r.status)));
+
+  // (b) cooling off
+  await mkUser("ag_cooling");
+  const coolCode = await approveFixtureAgent("ag_cooling", { commissionPct: 20 });
+  await mkUser("ag_cooling_rec");
+  await bindRecruit({ recruitUserId: "ag_cooling_rec", code: coolCode });
+  await rg("ag_cooling", { coolingOffUntil: new Date(Date.now() + HOUR).toISOString() });
+  await onRecruitSettlement("ag_cooling_rec", { operatorNetFee: 10_000, marketId: "mkt_5b_cool", positionId: "pos_5b_cool" });
+  ok("§5b(b) a cooling-off agent receives NO cash (the RG gate holds)", (await cash("ag_cooling")) === 0, `cash=${await cash("ag_cooling")}`);
+  const coolRows = (await db.referralReward.listByReferrer("ag_cooling")).filter((r) => r.type === "COMMISSION");
+  ok("§5b(b) …but the accrual is recorded PENDING — a payable, ⛔ never HELD",
+     coolRows.length === 1 && coolRows[0].status === "PENDING" && coolRows[0].amountTzs === 2_000 && coolRows[0].programme === "AGENT",
+     JSON.stringify(coolRows.map((r) => [r.status, r.amountTzs, r.programme])));
+
+  // (c) CONTROL
+  await mkUser("ag_active");
+  const okCode = await approveFixtureAgent("ag_active", { commissionPct: 20 });
+  await mkUser("ag_active_rec");
+  await bindRecruit({ recruitUserId: "ag_active_rec", code: okCode });
+  await onRecruitSettlement("ag_active_rec", { operatorNetFee: 10_000, marketId: "mkt_5b_ok", positionId: "pos_5b_ok" });
+  ok("§5b(c) CONTROL · an ACTIVE approved agent on the identical path IS paid, in cash, exactly 2,000",
+     (await cash("ag_active")) === 2_000, `cash=${await cash("ag_active")}`);
+  ok("§5b(c) CONTROL · …and the row is PAID", (await db.referralReward.listByReferrer("ag_active")).some((r) => r.type === "COMMISSION" && r.status === "PAID"));
 }
 
 // ── §6 · A PROPOSAL IS APPROVED ON ITS MERITS; ONLY THE PRIZE IS SUPPRESSED ──

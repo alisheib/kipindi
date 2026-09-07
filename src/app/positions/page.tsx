@@ -11,7 +11,7 @@ import { SellButton } from "@/components/markets/sell-button";
 import { formatTzsCompact, formatDeadline } from "@/lib/utils";
 import { listPositionsForUser, getMarket, cashOutValue, isSelectionClosed } from "@/lib/server/market-service";
 import { currentSession } from "@/lib/server/auth-service";
-import { ensureAffiliateAccount } from "@/lib/server/affiliate-service";
+import { ensureAffiliateAccount, inviteViewerFor } from "@/lib/server/affiliate-service";
 import { inviteIsLiveFor } from "@/lib/feature-state";
 import { db } from "@/lib/server/store";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -55,8 +55,9 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
    * ⭐ Now a code is minted and attached ONLY for someone the programme actually belongs to.
    * Everyone else shares a plain link, which is what they always thought they were sharing.
    */
-  const viewer = await db.user.findById(session.userId);
-  const myRefCode = inviteIsLiveFor(viewer?.role ?? null)
+  // ⭐ Standing, not role — same predicate as the bind gate, so the code leaves this link the
+  // moment it stops recruiting.
+  const myRefCode = inviteIsLiveFor(await inviteViewerFor(session.userId))
     ? await ensureAffiliateAccount(session.userId).then((a) => a.code).catch(() => undefined)
     : undefined;
   const open = positions.filter((p) => p.status === "OPEN");

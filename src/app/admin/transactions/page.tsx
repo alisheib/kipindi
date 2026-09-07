@@ -32,7 +32,7 @@ import { Select } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { currentSession } from "@/lib/server/auth-service";
 import { canView } from "@/lib/server/rbac";
-import { db } from "@/lib/server/store";
+import { db, TXN_TYPES } from "@/lib/server/store";
 import { attentionOf, GATEWAY_TYPES, type TxnSearchFilters } from "@/lib/server/txn-filters";
 import { resolveRange } from "@/lib/server/date-range";
 import { DateTimeRangeFilter } from "@/components/ui/datetime-range-filter";
@@ -45,7 +45,9 @@ import { KpiGrid } from "@/components/admin/admin-body";
 
 export const dynamic = "force-dynamic";
 
-const TYPES = ["DEPOSIT", "WITHDRAWAL", "BET_PLACED", "BET_PAYOUT", "BET_REFUND", "BONUS_CREDIT", "ADJUSTMENT_DEBIT", "ADJUSTMENT_CREDIT", "CASHOUT", "HOUSE_FEE"] as const;
+// ⭐ Derived from the store, not hand-typed: a transaction type the officer cannot FILTER
+// is a row nobody can find, and `tsc` cannot see an `as const` array drift from a union.
+const TYPES = TXN_TYPES;
 const STATUSES = ["PENDING", "PROCESSING", "AML_REVIEW", "CONFIRMED", "FAILED", "REVERSED", "CANCELLED"] as const;
 // Status → Chip variant, so the column reads as a badge like every other admin
 // table (was plain grey text). Money semantics: CONFIRMED=success, in-flight=info,

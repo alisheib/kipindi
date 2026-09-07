@@ -47,7 +47,7 @@ import { notifyBetPlaced, notifyWin, notifyLoss, notifyRefund, notifyCashout, no
   // Management ruling ① (2026-09-05) — the seal-time notice that makes the objection window reachable.
   notifyVerdictRecorded } from "./notification-service";
 import { sendEmailToUser, betPlacedHtml, winNotificationHtml, lossNotificationHtml, cashOutReceiptHtml, oneSidedRefundHtml, marketResolutionAdminHtml, marketCancelledRefundHtml, marketCancelledAdminHtml, bonusFulfilledHtml, selectionClosedHtml } from "./email";
-import { onRecruitBet, onRecruitSettlement } from "./affiliate-service";
+import { onRecruitBet, onRecruitSettlement, clawbackMarketCommission } from "./affiliate-service";
 import { postLedgerEntries, stakeEntries, settlementPayoutEntries, refundEntries, cashoutEntries, withMoneyTx } from "./ledger";
 import type { ServiceResult } from "./auth-service";
 import { marketStore, positionStore } from "./market-dal";
@@ -3106,9 +3106,14 @@ export async function settleMarket(
   // could deadlock. Collected inside the lock, applied after it releases.
   const pendingBonusRefunds: Array<{ userId: string; amount: number }> = [];
   const pendingWagerReversals: Array<{ userId: string; stake: number }> = [];
-  // Referral commission — a share of the fee we ACTUALLY charged. Applied after
+  // Referral commission — a share of the fee we ACTUALLY KEPT. Applied after
   // the market lock releases, because it takes the REFERRER's wallet lock.
-  const pendingReferralAccruals: Array<{ userId: string; operatorFee: number }> = [];
+  // `positionId` travels with it: it is the idempotency key's second half, so a resumed
+  // settlement cannot pay the same position twice.
+  const pendingReferralAccruals: Array<{ userId: string; operatorNetFee: number; positionId: string }> = [];
+  // The verdict this settlement executed, captured for the post-lock clawback hook — `opts`
+  // is rebound inside the lock closure and is not visible after it.
+  let settledOutcome: Side | "VOID" | null = null;
   /**
    * ⭐ Whose top-bar balance this settlement changed. WINNERS are collected below; REFUNDED
    * players are already enumerated by `pendingWagerReversals`, so they are not collected twice.
@@ -3168,6 +3173,7 @@ export async function settleMarket(
   // `evidence` are rebound to the market's own recorded verdict so that code
   // reads exactly as it did before the split.
   const opts = { marketId: m.id, outcome: m.resolvedOutcome, officerId: settleOpts.actorId ?? "system" };
+  settledOutcome = m.resolvedOutcome;
   const evidence = m.resolutionEvidence ?? null;
 
   const settledAt = new Date().toISOString();
@@ -3218,6 +3224,19 @@ export async function settleMarket(
   //    `poolFee` charges the correct (losing) side. VOID never reaches the fee.
   const winningSide: Side | undefined = opts.outcome === "YES" || opts.outcome === "NO" ? opts.outcome : undefined;
   const settleFee = poolFee(m.yesPool, m.noPool, settleCfg, winningSide);
+  /**
+   * 🔴 THE LEVIES, SPLIT ONCE — and it is the NET that referral commission is priced on.
+   *
+   * TRA (10%) and GBT (5%) come out of OUR fee before we keep a shilling of it
+   * (`RULES.md` §2.2, `payout.ts` → `levySplit`). Commission used to be computed against
+   * `settleFee.fee`, the GROSS — sharing out roughly 15% of money the state already owned.
+   * `operatorNet` is what the house actually retains, and it is computed HERE, once, so the
+   * audit payload below and the accrual loop read the same number: two `levySplit` calls over
+   * one fee is how the chain and the payout drift apart.
+   * ⚠️ `settleCfg` is the market's FROZEN snapshot (`ratesFor(m)`), so a later levy change
+   * cannot retro-price an old poll's commission — the same guarantee the fee itself has.
+   */
+  const settleLevies = levySplit(settleFee.fee, settleCfg);
 
   // Settle only OPEN positions. A CASHED_OUT (or otherwise already-settled)
   // position has already paid out and had its stake removed from the pool —
@@ -3623,9 +3642,12 @@ export async function settleMarket(
       //
       // The refund branches (one-sided, VOID) never reach this line, so a refunded
       // poll accrues nothing — which is correct, because we earned nothing.
-      if (settleFee.pool > 0 && settleFee.fee > 0) {
-        const attributableFee = (p.stake / settleFee.pool) * settleFee.fee;
-        pendingReferralAccruals.push({ userId: p.userId, operatorFee: attributableFee });
+      //
+      // 🔴 AND IT IS THE NET FEE — `settleLevies.operatorNet`, not `settleFee.fee`. The gross
+      // shares out money that already belongs to TRA and GBT. See the note at `settleLevies`.
+      if (settleFee.pool > 0 && settleLevies.operatorNet > 0) {
+        const attributableNetFee = (p.stake / settleFee.pool) * settleLevies.operatorNet;
+        pendingReferralAccruals.push({ userId: p.userId, operatorNetFee: attributableNetFee, positionId: p.id });
       }
     }
   }
@@ -3665,7 +3687,7 @@ export async function settleMarket(
       fee: Math.round(settleFee.fee),
       feeWasCapped: settleFee.capped,
       netPool: Math.round(settleFee.netPool),
-      levies: levySplit(settleFee.fee, settleCfg),
+      levies: settleLevies,
       winningPool,
       winnersPaid: totalWinnersPaid,
       stage1By: m.resolutionStage1By, stage2By: m.resolutionStage2By,
@@ -3734,18 +3756,43 @@ export async function settleMarket(
   // land on an intermediate and stay there. One emit per player, from the committed wallet.
   await emitWalletBalances([...paidWallets, ...pendingWagerReversals.map((r) => r.userId)]);
 
-  // Referral commission, on the fee we ACTUALLY charged. Outside the market lock
+  // Referral commission, on the fee we ACTUALLY KEPT. Outside the market lock
   // for the same reason as the bonus work above: onRecruitSettlement takes the
   // REFERRER's wallet lock, and taking a wallet lock while holding the market lock
   // would invert buyPosition's wallet→market order and could deadlock.
   //
-  // Best-effort: a dropped referral credit must never break a settlement. It is
-  // audited and can be replayed from the settlement audit entry.
+  // Best-effort: a dropped referral credit must never break a settlement.
+  //
+  // ⚠️ THIS COMMENT USED TO PROMISE "can be replayed from the settlement audit entry", AND
+  // NOTHING COULD. There was no replay tool, and there could not safely have been one:
+  // commission had no idempotency key, so a replay was a double-pay. The key exists now
+  // (`referral:commission:<marketId>:<positionId>`, unique) — so `settleMarket` itself is the
+  // replay: re-running it on a resumed settlement finds the OPEN positions, and any accrual
+  // that already landed loses on the key rather than doubling. The error row below carries
+  // everything needed to re-drive one position by hand.
+  let accrualsCredited = 0;
+  let accrualsErrored = 0;
   for (const r of pendingReferralAccruals) {
     try {
-      await onRecruitSettlement(r.userId, { operatorFee: r.operatorFee });
+      await onRecruitSettlement(r.userId, { operatorNetFee: r.operatorNetFee, marketId, positionId: r.positionId });
+      accrualsCredited++;
     } catch (err) {
-      audit({ category: "SYSTEM", action: "affiliate.settlement_accrual_error", actorId: r.userId, targetType: "Market", targetId: marketId, payload: { error: String(err), operatorFee: r.operatorFee } });
+      accrualsErrored++;
+      audit({ category: "SYSTEM", action: "affiliate.settlement_accrual_error", actorId: r.userId, targetType: "Market", targetId: marketId, payload: { error: String(err), operatorNetFee: r.operatorNetFee, positionId: r.positionId } });
+    }
+  }
+  // ⭐ ONE row per settlement saying how many accruals were attempted, so "why did this agent
+  // earn nothing on that poll?" has a place to start. The per-refusal reasons are their own
+  // `affiliate.accrual_refused` rows, written by the hook.
+  if (pendingReferralAccruals.length > 0) {
+    audit({ category: "SYSTEM", action: "affiliate.settlement_accruals", actorId: null, targetType: "Market", targetId: marketId, payload: { attempted: pendingReferralAccruals.length, dispatched: accrualsCredited, errored: accrualsErrored } });
+  }
+  // A VOID settlement refunded everyone at zero fee, so no commission was accrued on it —
+  // and if a row somehow exists against this market from an earlier path, it must not stand.
+  // Idempotent and cheap on the ordinary case (zero rows).
+  if (result.ok && settledOutcome === "VOID") {
+    try { await clawbackMarketCommission(marketId, "market voided at settlement"); } catch (err) {
+      audit({ category: "SYSTEM", action: "affiliate.clawback_error", actorId: null, targetType: "Market", targetId: marketId, payload: { error: String(err) } });
     }
   }
   // Money has moved — this market has no further time-based transition. Cancel its
@@ -4155,6 +4202,23 @@ export async function emergencyVoidMarket(opts: { marketId: string; officerId: s
   // An emergency void refunds EVERY position, so `pendingWagerReversals` already names every
   // player whose balance moved — there is no winner set to collect here.
   await emitWalletBalances(pendingWagerReversals.map((r) => r.userId));
+  // ⭐ CLAWBACK — the one reversal this platform can actually reach. There is no "un-settle";
+  // the void IS the reversal, so any agent commission that accrued against this market is
+  // taken back here. Outside the market lock for the same reason as every other wallet
+  // movement in this file (it takes the AGENT's wallet lock). Idempotent, and a no-op on the
+  // ordinary case: commission accrues at settlement and a settled market cannot be voided,
+  // so the population is normally empty — but the hook is what makes that a fact rather than
+  // an assumption, and `test:agent-clawback` drives it with a seeded row.
+  if (result.ok) {
+    try {
+      const cb = await clawbackMarketCommission(opts.marketId, `emergency void: ${reason.slice(0, 120)}`);
+      if (cb.reversedRows > 0) {
+        audit({ category: "COMPLIANCE", action: "affiliate.clawback.completed", actorId: opts.officerId, targetType: "Market", targetId: opts.marketId, payload: cb });
+      }
+    } catch (err) {
+      audit({ category: "SYSTEM", action: "affiliate.clawback_error", actorId: opts.officerId, targetType: "Market", targetId: opts.marketId, payload: { error: String(err) } });
+    }
+  }
   // Voided + settled in one action — no further time-based transition. Disarm.
   if (result.ok) void disarmMarketTimer(opts.marketId);
   return result;

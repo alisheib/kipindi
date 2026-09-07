@@ -139,7 +139,7 @@ const FROZEN_RATCHET = new Map<string, number>([
   // gold costume — the gradient, the gilt border, the jackpot glow and the bloom. The
   // panel picks the `.mat-raised` rung now and holds no design value of its own.
   ["src/components/ui/page-hero.tsx", 5],
-  ["src/app/profile/invite/page.tsx", 3],
+  ["src/app/profile/invite/page.tsx", 2],                    // −1, 2026-09-07: the share card reads --royal-950 like its agent sibling
   ["src/app/profile/page.tsx", 3],
   ["src/app/markets/[id]/page.tsx", 2],
   ["src/app/wallet/loading.tsx", 1],

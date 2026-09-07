@@ -27,7 +27,17 @@ const SESSION_COOKIE = "kp_session";
 // each page's own session check). `/watchlist` and `/proposals/new` are
 // user-specific too, so they belong here (audit 2026-07-17). Public `/proposals`
 // (list) and `/proposals/[id]` stay open; only the `/new` composer is gated.
-const PROTECTED_PREFIXES = ["/wallet", "/positions", "/profile", "/watchlist", "/proposals/new", "/updown/history", "/admin"];
+// ⛔ `/agent` ITSELF IS NOT HERE, AND THAT IS DELIBERATE. The matcher below is a PREFIX match,
+// so a bare `/agent` entry would also close `/agent` — the programme's only public discovery
+// door, linked from the site footer and readable signed out. The two user-scoped pages under
+// it are registered as SIBLINGS. `/agent/invite/[token]` stays open too: an invitee may not
+// have an account yet, and the page itself demands sign-in with the bound phone before
+// anything happens. `test:agent-application-security` §proxy asserts all three directions.
+const PROTECTED_PREFIXES = ["/wallet", "/positions", "/profile", "/watchlist", "/proposals/new", "/updown/history", "/admin", "/agent/apply", "/agent/status"];
+/** Exported for the guard — the rule is the prefix match, and a guard must read the real one. */
+export function isProtectedPath(pathname: string): boolean {
+  return isProtected(pathname);
+}
 function isProtected(pathname: string): boolean {
   return PROTECTED_PREFIXES.some(p => pathname === p || pathname.startsWith(p + "/"));
 }

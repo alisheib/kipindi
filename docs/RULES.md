@@ -383,6 +383,38 @@ matches what happened:
 
 ⛔ No screen renders a raw server string as a headline. No screen says only "failed".
 
+### 2.10 · Agent commission — 20% of the NET fee, ceiling 40%, on the stamped programme
+
+**Decided** Ali, 2026-09-07 (`docs/AGENT-PROGRAMME.md` §5; `docs/COMPLIANCE-DECISIONS.md`
+§ 2026-09-07). A vetted **50pick Agent** earns a share of the operator fee 50pick actually
+**kept** from the players that agent recruited. Nothing else: no sign-up prize, no deposit
+bonus, no share of turnover.
+
+| Term | Rule |
+|---|---|
+| **Base** | The **net** operator fee of each settled position — `levySplit(fee).operatorNet`, i.e. the 13% loser-share fee (§2.1) **after** the TRA and GBT levies (§2.2) have left. ⛔ Never the gross fee, never the stake, never turnover: a share of money we never had cannot be paid |
+| **Normal rate** | **20%** of that net fee — `defaultCommissionPct`, pre-filled for a new agent; the officer may set another rate at approval |
+| **Hard ceiling** | **40%** — `PLATFORM_MAX_COMMISSION_PCT`. A **rule**, not a setting: the operator's own ceiling (`maxCommissionPct`) can be narrowed inside it and can never be set above it; `approveAgent` and `setAgentRate` refuse a rate above the operator ceiling; `agent-config` refuses a ceiling above the rule |
+| **Rounding** | `Math.floor` to the shilling, per accrual — a fraction of a shilling is never invented |
+| **Window** | **Lifetime** (`commissionWindowMonths = 0`), measured from each recruit's `recruitedAt` if ever narrowed |
+| **Cap** | **None** per recruit (`capPerRecruitTzs = 0`); a cap, if set, counts PAID + PENDING and excludes REVERSED |
+| **Once** | One accrual per settled position — `sourceRef = referral:commission:<marketId>:<positionId>` is UNIQUE, so a re-settlement cannot pay twice |
+| **Money** | Real, **withdrawable cash** — `TxnType.AGENT_COMMISSION` into the agent's cash balance, its own line in the house book (`HOUSE:AGENT_COMMISSION`). ⛔ Never `BONUS_CREDIT`: agent commission is contractual income, and reporting it as bonus cost would misstate the bonus programme the Board was told is withdrawn |
+| **Clawback** | A VOIDED market reverses every accrual it produced — `AGENT_COMMISSION_REVERSAL`, overdraw-guarded; a shortfall is audited as a debt, never silently forgiven |
+| **Who** | Decided by the programme **stamped on the recruit at bind** (`User.recruitedProgramme = AGENT`), never by the recruiter's current role. A recruit bound under the player promo stays a player-promo recruit for life |
+| **Standing** | Only `AffiliateAgent.approvedAt != null` makes an agent; `active = false` (deactivated), a suspended, closed or self-excluded account stops **both** recruiting and accruing. Commission already earned by an excluded agent is a **PENDING payable** settled out of band by an officer — never `HELD`, never destroyed |
+| **Registration fee** | **TZS 100,000, VAT-inclusive** at 18% (TZS 84,746 net + TZS 15,254 VAT), paid out of band to Digital Selcom Bank 0769777877, attested by a compliance officer from the receipt; waivable with a typed reason; **refunded in full within 7 days** of a rejection. It never enters the player ledger; it posts to `HOUSE:AGENT_FEE` |
+
+| | |
+|---|---|
+| **Enforced in** | `src/lib/server/affiliate-service.ts` — `policyFor()` (one resolver), `onRecruitSettlement()` (the accrual), `clawbackMarketCommission()`; `src/lib/server/agent-config.ts` (`PLATFORM_MAX_COMMISSION_PCT`, every number above); `src/lib/server/agent-application-service.ts` (approval, rate, standing, fee) |
+| **Stated to** | the agent on `/agent` and `/legal/agent-terms` (rate, base, lifetime, once), the officer on `/admin/agents` (settings + "In force now"), the applicant at every step of `/agent/apply` |
+| **Guarded by** | `test:agent-policy` · `test:commission-bounded` (the fixture pool 400,000 / fee 30,000 / stake 100,000 / 30% → **1,912** — floor(6,375 × 0.30); not 2,250, the gross figure, and not 1,913, the rounded one) · `test:no-double-pay` · `test:agent-clawback` · `test:programme-isolation` · `test:attribution-provenance` · `test:agent-eligibility` · `test:agent-application-security` — each with a red harness |
+
+⚠️ **Two scales exist and are not the same.** `AffiliateAgent.commissionPct` is a **percent**
+(`20` = 20%); the player promo's `commission.rate` is a **fraction** (`0.5` = 50%). The agent
+resolver reads the percent. ⛔ Never feed one into the other.
+
 ---
 
 ## §3 · THE TWO FEE MODELS, AND WHY BOTH STILL EXIST
@@ -429,6 +461,7 @@ display rate, the Up & Down round margin and tick floor, and the per-chain stake
 
 | Date | Decision | Record |
 |---|---|---|
+| 2026-09-07 | Agent commission: 20% of the NET fee, 40% hard ceiling, lifetime, uncapped, real cash (`AGENT_COMMISSION`), decided by the programme stamped at bind; TZS 100,000 VAT-inclusive fee, refundable in 7 days | §2.10 · `docs/AGENT-PROGRAMME.md` · `docs/COMPLIANCE-DECISIONS.md` § 2026-09-07 |
 | 2026-08-14 | Up & Down moves to `loser-share`; stake bounds are a rule at 1,000/1,000,000; unlimited positions; one-side bonus wagering; every failure explains itself | `docs/COMPLIANCE-DECISIONS.md` § 2026-08-14 |
 | 2026-08-14 | A human approval wins — the AI 75-confidence gate applies only with no human in the loop | `docs/COMPLIANCE-DECISIONS.md` § 2026-08-14 |
 | 2026-07-26 | Stake bounds 1,000 / 1,000,000 | `src/lib/payout.ts` |

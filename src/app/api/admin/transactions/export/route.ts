@@ -24,7 +24,7 @@ import { currentSession } from "@/lib/server/auth-service";
 import { canView, mayReveal } from "@/lib/server/rbac";
 import { maskPhone } from "@/lib/phone-normalize";
 import { audit } from "@/lib/server/audit";
-import { db } from "@/lib/server/store";
+import { db, TXN_TYPES } from "@/lib/server/store";
 import { attentionOf, type TxnSearchFilters } from "@/lib/server/txn-filters";
 import { resolveRange } from "@/lib/server/date-range";
 import type { StoredTxn } from "@/lib/server/store";
@@ -35,7 +35,8 @@ export const runtime = "nodejs";
 /** Hard ceiling so one click can never try to stream the whole table into memory. */
 const MAX_ROWS = 50_000;
 
-const TYPES = ["DEPOSIT", "WITHDRAWAL", "BET_PLACED", "BET_PAYOUT", "BET_REFUND", "BONUS_CREDIT", "ADJUSTMENT_DEBIT", "ADJUSTMENT_CREDIT", "CASHOUT", "HOUSE_FEE"];
+// ⭐ Derived from the store — a type absent here is silently dropped from the officer's CSV.
+const TYPES: readonly string[] = TXN_TYPES;
 const STATUSES = ["PENDING", "PROCESSING", "AML_REVIEW", "CONFIRMED", "FAILED", "REVERSED", "CANCELLED"];
 const PROVIDERS = ["MPESA", "TIGO_PESA", "AIRTEL_MONEY", "HALO_PESA", "MIXX", "TTCL_PESA", "CARD", "BANK_TRANSFER", "INTERNAL"];
 

@@ -33,7 +33,7 @@ export const MUTATIONS = [
     // §7 on a server surface, proving the rule is not pinned to the client nav files.
     name: "profile/page.tsx — the settings row renders unconditionally",
     file: "src/app/profile/page.tsx",
-    from: `          {inviteIsLiveFor(user.role) && (`,
+    from: `          {inviteIsLiveFor(await inviteViewerFor(user.id)) && (`,
     to: `          {true && (`,
     expect: "§7",
   },
@@ -44,8 +44,8 @@ export const MUTATIONS = [
     // Only a POSITIONAL assertion catches this.
     name: "invite/page.tsx — the gate moves BELOW the referral read (present, now useless)",
     file: "src/app/profile/invite/page.tsx",
-    from: `  if (!inviteIsLiveFor(viewer?.role ?? null)) notFound();`,
-    to: `  const _summaryFirst = await getPlayerReferralSummary(session.userId);\n  if (!inviteIsLiveFor(viewer?.role ?? null)) notFound();`,
+    from: `  if (!inviteIsLiveFor(inviteViewer)) notFound();`,
+    to: `  const _summaryFirst = await getPlayerReferralSummary(session.userId);\n  if (!inviteIsLiveFor(inviteViewer)) notFound();`,
     expect: "§8",
   },
 ];

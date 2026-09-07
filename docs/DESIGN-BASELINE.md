@@ -110,7 +110,10 @@ future site in that file.
 
 **Fourteen admin pages carry a rail** (`/admin/payments` · `reports` · `system` · `roles` ·
 `ai-usage` · `ai-polls` · `finance` · `updown` · `config` · `sources` · `compliance` ·
-`bonuses` · `proposals` · `retention`). Measured at 390: **38 routes, 14 railed, 0 remaining**
+`bonuses` · `proposals` · `retention`) — **fifteen from 2026-09-07:** `/admin/agents`
+(Applications · Agents · Settings), the agent programme's console, railed on section count (the
+queue tab alone holds five cards) with the tab a URL fact; its rows open the workstation
+`/admin/agents/[id]`, which is recorded in `REACHED_WITHOUT_NAV`. Measured at 390: **38 routes, 14 railed, 0 remaining**
 **candidates**. The four still over three screens each fail ① on one dominant panel
 (`updown/proposals` 80% · `markets` 80% · `candidates` 76% · `aml` 67%) — a page with ONE
 section has nothing to tab. ⚠️ `/admin/updown/proposals` is 11,580px of a *paginated* 16-row

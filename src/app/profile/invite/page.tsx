@@ -4,7 +4,8 @@ import { I } from "@/components/ui/glyphs";
 import { BackLink } from "@/components/ui/back-link";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
-import { getPlayerReferralSummary } from "@/lib/server/affiliate-service";
+import { getPlayerReferralSummary, inviteViewerFor, getAgentDashboard } from "@/lib/server/affiliate-service";
+import { AgentDashboard } from "./agent-dashboard";
 import QRCode from "qrcode";
 import { FiftyMark, GiltCorner } from "@/components/brand";
 import { Chip } from "@/components/ui/chip";
@@ -126,8 +127,17 @@ export default async function InvitePage() {
    * 404 is ever required, the gate has to move ahead of the render — `proxy.ts` — not be
    * bought by removing a loading state.
    */
-  const viewer = await db.user.findById(session.userId);
-  if (!inviteIsLiveFor(viewer?.role ?? null)) notFound();
+  const inviteViewer = await inviteViewerFor(session.userId);
+  /**
+   * ⭐ AN APPROVED AGENT GETS THEIR OWN PAGE — a distinct read model (`agent-dashboard.tsx`),
+   * never the player promo's body with fields swapped. It renders for a DEACTIVATED agent too,
+   * read-only: the history is theirs and the share surfaces are gone. `getAgentDashboard`
+   * returns null for anyone not approved, so this mints nothing for a viewer who may not refer —
+   * the same reason the gate below sits above the player summary read.
+   */
+  const agentDash = await getAgentDashboard(session.userId);
+  if (agentDash) return <AgentDashboard dash={agentDash} />;
+  if (!inviteIsLiveFor(inviteViewer)) notFound();
   // B-1 — no swallow: the fallback fabricated "0 recruits · TZS 0 earned ·
   // program off" to a player with real referral earnings. Throw to
   // profile/error.tsx instead.
@@ -236,7 +246,7 @@ export default async function InvitePage() {
       {/* A9 share-card — the visual a referrer sends: FiftyMark, headline, the
           CODE in a GiltCorner frame, QR bottom-right. Shows the code, never a
           balance. Gold is principled here (the invite pays the referrer). */}
-      <section className="relative overflow-hidden rounded-xl border p-5" style={{ background: "#060A50", borderColor: "var(--gold-700)" }}>
+      <section className="relative overflow-hidden rounded-xl border p-5" style={{ background: "var(--royal-950)", borderColor: "var(--gold-700)" }}>
         <GiltCorner size={38} rotate={0} style={{ position: "absolute", top: 6, left: 6 }} />
         <GiltCorner size={38} rotate={180} style={{ position: "absolute", bottom: 6, right: 6 }} />
         <div className="relative flex items-center gap-4">

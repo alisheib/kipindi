@@ -117,6 +117,11 @@ export type MoneySummary = {
   refunds: number;
   ggr: number;
   bonusCost: number;
+  /** ⭐ Agent commission paid out, net of clawbacks. ADDED beside bonus cost, never folded into
+   *  it: the two are different money to the regulator — a promotional grant versus contracted
+   *  income to a vetted partner — and a pack that reports one as the other is wrong in a way
+   *  that survives every arithmetic check. */
+  agentCommissionCost: number;
   fees: number;
   ngr: number;
   holdPct: number;
@@ -140,17 +145,25 @@ function summarise(txns: StoredTxn[]): MoneySummary {
   // or a voided/one-sided poll is taxed on money we never kept.
   const refunds = conf.filter((t) => t.type === "BET_REFUND").reduce((s, t) => s + Math.abs(t.amount), 0);
   const bonusCost = conf.filter((t) => t.type === "BONUS_CREDIT").reduce((s, t) => s + Math.abs(t.amount), 0);
+  // ⭐ Net: the reversal leg is its own type with a negative amount, so `paid − reversed`.
+  const agentCommissionCost =
+    conf.filter((t) => t.type === "AGENT_COMMISSION").reduce((s, t) => s + Math.abs(t.amount), 0)
+    - conf.filter((t) => t.type === "AGENT_COMMISSION_REVERSAL").reduce((s, t) => s + Math.abs(t.amount), 0);
   const fees = conf.filter((t) => t.type === "DEPOSIT" || t.type === "WITHDRAWAL").reduce((s, t) => s + (t.fee || 0), 0);
   const deposits = conf.filter((t) => t.type === "DEPOSIT");
   const withdrawals = conf.filter((t) => t.type === "WITHDRAWAL");
   const ggr = stakes - payouts - refunds;
-  const ngr = ggr - bonusCost - fees;
+  // ⛔ Agent commission does NOT reduce the levy base — TRA and GBT are computed on the fee we
+  // earned, and commission is paid out of what is left AFTER them. It reduces NGR (the
+  // operator's bottom line), never GGR.
+  const ngr = ggr - bonusCost - agentCommissionCost - fees;
   return {
     stakes,
     payouts,
     refunds,
     ggr,
     bonusCost,
+    agentCommissionCost,
     fees,
     ngr,
     holdPct: stakes > 0 ? (ggr / stakes) * 100 : 0,
@@ -427,6 +440,9 @@ export type DailyPnlRow = {
   payouts: number;
   ggr: number;
   bonus: number;
+  /** Agent commission paid that day, net of clawbacks. Its own column, or the daily rows stop
+   *  adding up to NGR. */
+  agentCommission: number;
   fees: number;
   ngr: number;
   holdPct: number;
@@ -459,10 +475,10 @@ export async function dailyPnl(period: Window, now = Date.now(), ctx?: ReportWin
   }
   for (let i = 0; i < dayCount; i++) {
     const m = summarise(buckets[i]);
-    rows.push({ dayMs: firstDay + i * DAY_MS, stakes: m.stakes, payouts: m.payouts, ggr: m.ggr, bonus: m.bonusCost, fees: m.fees, ngr: m.ngr, holdPct: m.holdPct });
+    rows.push({ dayMs: firstDay + i * DAY_MS, stakes: m.stakes, payouts: m.payouts, ggr: m.ggr, bonus: m.bonusCost, agentCommission: m.agentCommissionCost, fees: m.fees, ngr: m.ngr, holdPct: m.holdPct });
   }
   const t = summarise(inWindow);
-  const totals: DailyPnlRow = { dayMs: 0, stakes: t.stakes, payouts: t.payouts, ggr: t.ggr, bonus: t.bonusCost, fees: t.fees, ngr: t.ngr, holdPct: t.holdPct };
+  const totals: DailyPnlRow = { dayMs: 0, stakes: t.stakes, payouts: t.payouts, ggr: t.ggr, bonus: t.bonusCost, agentCommission: t.agentCommissionCost, fees: t.fees, ngr: t.ngr, holdPct: t.holdPct };
   return { rows, totals };
 }
 

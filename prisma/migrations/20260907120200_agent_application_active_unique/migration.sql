@@ -1,0 +1,34 @@
+-- AGENT AFFILIATE PROGRAMME — step 3 of 3: ONE LIVE APPLICATION PER PERSON.
+--
+-- 🔴 THE CONTROL. Two concurrent submissions from one account must not both open an
+-- application: an officer would review one and the other would sit invisible, and the
+-- unique `feeReference` would then bind a TZS 100,000 receipt to whichever row won.
+--
+-- ⭐ IT MUST STAY PARTIAL. A REJECTED, DECLINED, EXPIRED or REVOKED application
+-- deliberately frees the person to apply again — after the cool-down, and never for a
+-- terminal reject reason (SANCTIONED / IDENTITY_MISMATCH / FRAUD), both of which are
+-- service-level rules. A total unique index would make one refusal a life sentence, and
+-- a revoked partner's own dead APPROVED row would block them for ever.
+--
+-- ⛔ THIS IS THE RACE-LOSER BACKSTOP, NOT THE PRIMARY GUARD. `startApplication` RESUMES an
+-- existing DRAFT / PAYMENT_PENDING / ADDITIONAL_INFO_REQUIRED row (a literal mirror of
+-- `startKyc`), so in normal use this index never fires. When it does, the service
+-- translates the 23505 into `application_exists` rather than letting a 500 reach the
+-- person who just paid. The in-memory DAL has no index at all — which is precisely why
+-- the service check has to be the primary control and this the second line.
+--
+-- The Prisma DSL has no partial-unique syntax, so this is raw SQL. ⛔ Do not "tidy" it
+-- away as drift: `scripts/agent-application-security.test.mts` §7 proves what happens
+-- without it. IF NOT EXISTS is load-bearing — on production this index is created BY HAND
+-- with CREATE UNIQUE INDEX CONCURRENTLY (Prisma wraps migrations in a transaction and
+-- CONCURRENTLY cannot run in one), leaving this statement a no-op on the next deploy.
+--
+-- ⚠️ Creation FAILS if duplicates already exist. Check first:
+--   SELECT "userId", count(*) FROM "AgentApplication"
+--    WHERE status NOT IN ('REJECTED','DECLINED','EXPIRED','REVOKED')
+--    GROUP BY 1 HAVING count(*) > 1;
+-- A clean result is guaranteed here only because the table was created empty one
+-- migration ago; re-check it before any hand-application on a table with rows.
+CREATE UNIQUE INDEX IF NOT EXISTS "AgentApplication_userId_active_key"
+    ON "AgentApplication" ("userId")
+    WHERE status NOT IN ('REJECTED', 'DECLINED', 'EXPIRED', 'REVOKED');

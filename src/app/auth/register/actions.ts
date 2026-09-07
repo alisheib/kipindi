@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { registerWithPassword, requestRegisterOtp } from "@/lib/server/auth-service";
+import { normalizeReferralCode } from "@/lib/server/affiliate-service";
 
 /**
  * Phone + password registration. The OTP-only path
@@ -17,7 +18,9 @@ export async function startRegisterAction(formData: FormData) {
   const acceptTerms = formData.get("acceptTerms") === "on" || formData.get("acceptTerms") === "true";
   const acceptAge = formData.get("acceptAge") === "on" || formData.get("acceptAge") === "true";
   const marketingOptIn = formData.get("marketingOptIn") === "on";
-  const referralCode = String(formData.get("ref") ?? "").trim().slice(0, 16) || undefined;
+  // ⛔ NEVER `.slice(0, 16)` — see `MAX_REFERRAL_CODE_LEN` in affiliate-service. Refuse, never
+  // truncate: a cut prefix can match a different partner's code.
+  const referralCode = normalizeReferralCode(String(formData.get("ref") ?? "")) ?? undefined;
   const inviteCode = String(formData.get("invite") ?? "").trim().slice(0, 24) || undefined;
   // Safe post-auth destination (the market the player tapped, etc.). Validated
   // same-origin relative, never an /auth/* loop.

@@ -22,7 +22,8 @@ import { LinkTrackingOptions } from "postmark/dist/client/models/message/Support
 import { resolvePhoneEmail } from "./email-map";
 import { isSuppressed } from "./email-suppression";
 import { appUrl } from "@/lib/app-url";
-import { formatTzs } from "@/lib/utils";
+import { formatTzs, formatDateShort } from "@/lib/utils";
+import { AGENT_REJECT_REASON } from "@/lib/admin-status-lexicon";
 // E-101 · an email that quotes a Reference must link to THAT reference, not to a list.
 import { positionPermalinkHref } from "@/lib/position-permalink";
 
@@ -1653,6 +1654,181 @@ export function accountClosedHtml({ name, time }: { name: string; time: string }
       { label: "Closed", value: time },
     ])}
     <p style="margin:16px 0 0;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11px;color:${TEXT_SUBTLE}">If you did NOT request this, contact <a href="mailto:${REPLY_TO}" style="color:${BRAND_LINK};text-decoration:none">${REPLY_TO}</a> immediately.</p>
+  `);
+}
+
+// ─── Agent affiliate programme ───────────────────────────────────────────
+// EN + SW in one message, like every other template. ⛔ No Chinese in any email.
+// Gold ONLY on earned status / earned money (approval); royal for everything else.
+
+/** Approval — an earned status and a money relationship, so gold. */
+export function agentApprovedHtml({ agentCode, commissionPct, windowMonths = 0 }: { agentCode: string; commissionPct: number; windowMonths?: number }): string {
+  const forHowLong = windowMonths === 0 ? "for as long as they play" : `for ${windowMonths} months after each recruit joins`;
+  return wrapGold(`
+    ${eyebrow("Verified 50pick Agent", "Wakala Aliyethibitishwa", true)}
+    ${heading("Your agent application is approved")}
+    ${subtitle(`You are now a Verified 50pick Agent. Your code is ${agentCode}. You earn ${commissionPct}% of the net fee 50pick keeps on every settled position your recruits play, ${forHowLong} — paid as withdrawable cash, for as long as they play.`)}
+    ${subtitleSw(`Sasa wewe ni Wakala Aliyethibitishwa wa 50pick. Msimbo wako ni ${agentCode}. Unapata ${commissionPct}% ya ada halisi ambayo 50pick inabaki nayo kwa kila dau la wateja wako — hulipwa kama pesa taslimu.`)}
+    ${detailRows([
+      { label: "Agent code", value: agentCode },
+      { label: "Commission", value: `${commissionPct}% of the net fee` },
+      { label: "Paid as", value: "Withdrawable cash" },
+    ])}
+    <p style="margin:14px 0 0;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11px;color:${TEXT_SUBTLE};line-height:1.55">You have been signed out so your new access takes effect — sign in again to see your agent dashboard.</p>
+    ${ctaButton("/profile/invite", "Open your agent dashboard · Fungua", "gold")}
+  `);
+}
+
+/** Rejection — states the refund and its window when a fee was taken. Royal. */
+export function agentRejectedHtml({ reason, note, refundDue, amountTzs, refundDays, reapplyDays }: {
+  reason: string; note: string | null; refundDue: boolean; amountTzs: number | null; refundDays: number; reapplyDays: number | null;
+}): string {
+  // ⛔ The reason is a sentence from the lexicon, never a de-underscored enum; an unknown
+  // code (or a hostile string) falls to the generic sentence rather than being echoed.
+  const why = (AGENT_REJECT_REASON as Record<string, { en: string; sw: string } | undefined>)[reason] ?? AGENT_REJECT_REASON.OTHER;
+  return wrap(`
+    ${eyebrow("Agent application", "Maombi ya uwakala")}
+    ${heading("Your agent application was not approved")}
+    ${subtitle(`A compliance officer reviewed your application and did not approve it: ${why.en}${note ? ` — ${note}` : ""}.`)}
+    ${subtitleSw(`Afisa wa uzingatiaji amekagua maombi yako na hakuyakubali: ${why.sw}.`)}
+    ${refundDue && amountTzs ? detailRows([
+      { label: "Registration fee", value: formatTzs(amountTzs) },
+      { label: "Refund", value: `In full, within ${refundDays} days, to the account it came from` },
+    ]) : ""}
+    ${reapplyDays !== null
+      ? `<p style="margin:14px 0 0;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11px;color:${TEXT_SUBTLE};line-height:1.55">You may apply again after ${reapplyDays} days. · Unaweza kuomba tena baada ya siku ${reapplyDays}.</p>`
+      : `<p style="margin:14px 0 0;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11px;color:${TEXT_SUBTLE};line-height:1.55">This decision is final. · Uamuzi huu ni wa mwisho.</p>`}
+    ${ctaButton("/agent/status", "View the decision · Angalia")}
+  `);
+}
+
+/** More information requested — the exit from ADDITIONAL_INFO_REQUIRED. Royal. */
+export function agentInfoRequestedHtml({ reason, reference }: { reason: string; reference: string }): string {
+  return wrap(`
+    ${eyebrow("Agent application", "Maombi ya uwakala")}
+    ${heading("One more thing before we can decide")}
+    ${subtitle(reason)}
+    ${subtitleSw("Afisa anahitaji nakala iliyo wazi zaidi ya nyaraka fulani. Badilisha zilizoombwa, kisha uwasilishe tena — hii si kukataliwa.")}
+    ${detailRows([{ label: "Reference", value: reference }, { label: "Status", value: "Awaiting your update" }])}
+    ${ctaButton("/agent/apply", "Update & resubmit · Sasisha")}
+  `);
+}
+
+/** The fee came back. Information, not solicitation — no CTA. Royal. */
+export function agentFeeRefundedHtml({ amountTzs, reference, destinationMasked }: { amountTzs: number; reference: string; destinationMasked: string | null }): string {
+  return wrap(`
+    ${eyebrow("Registration fee refunded", "Ada imerejeshwa")}
+    ${heading(`${formatTzs(amountTzs)} has been refunded`)}
+    ${subtitle("Your agent registration fee has been returned to the account it was paid from.")}
+    ${subtitleSw("Ada yako ya usajili wa uwakala imerejeshwa kwenye akaunti iliyolipa.")}
+    ${detailRows([
+      { label: "Amount", value: formatTzs(amountTzs) },
+      { label: "Reference", value: reference },
+      ...(destinationMasked ? [{ label: "To", value: destinationMasked }] : []),
+    ])}
+  `);
+}
+
+/** Officer alert: an application is awaiting compliance approval. Names no documents. */
+export function agentApplicationSubmittedAdminHtml({ reference, applicantLabel, submittedAt, reviewUrl }: { reference: string; applicantLabel: string; submittedAt: string; reviewUrl: string }): string {
+  return wrap(`
+    ${eyebrow("Agent programme · awaiting approval")}
+    ${heading("New agent application to review")}
+    ${subtitle("An applicant has submitted the seven documents and their fee reference, and is waiting on a compliance decision.")}
+    ${detailRows([
+      { label: "Reference", value: reference },
+      { label: "Applicant", value: applicantLabel },
+      { label: "Submitted", value: fmtDateTime(submittedAt) },
+    ])}
+    ${ctaButton(reviewUrl, "Review now")}
+  `);
+}
+
+/** An officer's invitation. Royal — nothing has been earned yet. */
+export function agentInvitationHtml({ link, expiresAt, feeWaivable, feeTzs }: { link: string; expiresAt: string; feeWaivable: boolean; feeTzs: number }): string {
+  return wrap(`
+    ${eyebrow("Invitation", "Mwaliko")}
+    ${heading("You are invited to become a Verified 50pick Agent")}
+    ${subtitle("A 50pick compliance officer has invited you to join the agent programme. Open the link, confirm the code we text you, and complete your application.")}
+    ${subtitleSw("Afisa wa 50pick amekualika kujiunga na mpango wa mawakala. Fungua kiungo, thibitisha msimbo tutakaokutumia, kisha kamilisha maombi yako.")}
+    ${detailRows([
+      { label: "Expires", value: fmtDateTime(expiresAt) },
+      { label: "Registration fee", value: feeWaivable ? `${formatTzs(feeTzs)} · may be waived by the inviting officer` : formatTzs(feeTzs) },
+    ])}
+    ${ctaButton(link, "Open your invitation · Fungua")}
+  `);
+}
+
+/** Deactivated — no link into the product; support is the route back. No CTA. Royal. */
+export function agentDeactivatedHtml(): string {
+  return wrap(`
+    ${eyebrow("Agent programme", "Mpango wa mawakala")}
+    ${heading("Your agent account has been paused")}
+    ${subtitle("A compliance officer has paused your agent account. Your code no longer recruits and no new commission accrues. Commission already paid stays in your wallet. Contact support if you believe this is a mistake.")}
+    ${subtitleSw("Akaunti yako ya uwakala imesitishwa. Msimbo wako hauandikishi tena na hakuna kamisheni mpya. Kamisheni iliyokwisha lipwa inabaki kwenye pochi yako. Wasiliana na msaada.")}
+    <p style="margin:14px 0 0;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11px;color:${TEXT_SUBTLE}">Support: <a href="mailto:${REPLY_TO}" style="color:${BRAND_LINK};text-decoration:none">${REPLY_TO}</a></p>
+  `);
+}
+
+/** The partnership has ENDED. ⛔ No product link — support is the route (NO_PRODUCT_LINK). */
+export function agentRevokedHtml({ reapplyAt }: { reapplyAt: string | null }): string {
+  const when = reapplyAt ? formatDateShort(reapplyAt) : null;
+  return wrap(`
+    ${eyebrow("Agent programme", "Mpango wa mawakala")}
+    ${heading("Your agent partnership has ended")}
+    ${subtitle(`A compliance officer has ended your agent partnership. Your code no longer recruits and no new commission accrues. Commission already paid stays in your wallet.${when ? ` You may apply again from ${when}.` : ""}`)}
+    ${subtitleSw(`Afisa wa uzingatiaji amekomesha ushirikiano wako wa uwakala. Msimbo wako hauandikishi tena na hakuna kamisheni mpya. Kamisheni iliyokwisha lipwa inabaki kwenye pochi yako.${when ? ` Unaweza kuomba tena kuanzia ${when}.` : ""}`)}
+    <p style="margin:14px 0 0;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11px;color:${TEXT_SUBTLE}">Support: <a href="mailto:${REPLY_TO}" style="color:${BRAND_LINK};text-decoration:none">${REPLY_TO}</a></p>
+  `);
+}
+
+/** Agent commission credited — the agent's own words and figure; a link to their dashboard. Gold: money. */
+export function agentCommissionEarnedHtml({ amountTzs }: { amountTzs: number }): string {
+  return wrapGold(`
+    ${eyebrow("Verified 50pick Agent", "Wakala Aliyethibitishwa", true)}
+    ${heading(`Agent commission · ${formatTzs(amountTzs)}`)}
+    ${subtitle(`A position one of your recruits played has settled, and your share of the net fee — ${formatTzs(amountTzs)} — is in your cash balance as withdrawable money.`)}
+    ${subtitleSw(`Nafasi aliyocheza mchezaji uliyemleta imesuluhishwa, na sehemu yako ya ada halisi — ${formatTzs(amountTzs)} — iko kwenye salio lako la fedha, inaweza kutolewa.`)}
+    ${subtitle("You have been signed out of 50pick; sign in again to see your history and any commission already paid.")}
+    ${detailRows([
+      { label: "Commission", value: formatTzs(amountTzs), tone: "good" },
+      { label: "Paid as", value: "Withdrawable cash" },
+    ])}
+    ${ctaButton("/profile/invite", "Open your agent dashboard · Fungua", "gold")}
+  `);
+}
+
+/** A rate change — prospective, both figures stated, the promise the agent terms make. */
+export function agentRateChangedHtml({ beforePct, afterPct }: { beforePct: number | null; afterPct: number }): string {
+  const before = beforePct == null ? "—" : `${beforePct}% of the net fee`;
+  return wrapGold(`
+    ${eyebrow("Verified 50pick Agent", "Wakala Aliyethibitishwa", true)}
+    ${heading(`Your commission rate is now ${afterPct}%`)}
+    ${subtitle(`A compliance officer has set your rate to ${afterPct}% of the net fee 50pick keeps on every settled position your recruits play. It applies to positions settled from now on; commission already accrued keeps the rate that priced it.`)}
+    ${subtitleSw(`Afisa wa uzingatiaji ameweka kiwango chako kuwa ${afterPct}% ya ada halisi ambayo 50pick inabaki nayo kwa kila nafasi inayosuluhishwa. Inatumika kuanzia sasa; kamisheni iliyokwisha kusanywa inabaki na kiwango kilichoitoza.`)}
+    ${detailRows([
+      { label: "Previous rate", value: before },
+      { label: "New rate", value: `${afterPct}% of the net fee` },
+      { label: "Applies to", value: "Positions settled from now on" },
+    ])}
+    ${ctaButton("/profile/invite", "Open your agent dashboard · Fungua", "gold")}
+  `);
+}
+
+/** A voided market took its commission back — the figure, the recovered amount, the market. */
+export function agentCommissionReversedHtml({ amountTzs, recoveredTzs, marketId }: { amountTzs: number; recoveredTzs: number; marketId: string }): string {
+  const short = recoveredTzs < amountTzs;
+  return wrap(`
+    ${eyebrow("Agent programme", "Mpango wa mawakala")}
+    ${heading(`Commission of ${formatTzs(amountTzs)} reversed`)}
+    ${subtitle(`A market was voided and every stake refunded, so the fee it produced — and your ${formatTzs(amountTzs)} share of it — is reversed.${short ? ` ${formatTzs(recoveredTzs)} was recovered from your balance; the rest is recorded as owed.` : ""}`)}
+    ${subtitleSw(`Soko lilibatilishwa na kila dau kurejeshwa, kwa hiyo ada iliyotokana nalo — na sehemu yako ya ${formatTzs(amountTzs)} — imerejeshwa.${short ? ` ${formatTzs(recoveredTzs)} imechukuliwa kutoka salio lako; iliyobaki imerekodiwa kama deni.` : ""}`)}
+    ${detailRows([
+      { label: "Commission reversed", value: formatTzs(amountTzs), tone: "bad" },
+      { label: "Recovered from balance", value: formatTzs(recoveredTzs) },
+      { label: "Market", value: marketId },
+    ])}
+    ${ctaButton("/wallet", "View your wallet · Tazama pochi", "primary")}
   `);
 }
 

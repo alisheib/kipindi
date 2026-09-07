@@ -34,7 +34,7 @@ import { roundStore } from "@/lib/server/updown-dal";
 import { sideToOutcome } from "@/lib/server/updown-service";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
-import { ensureAffiliateAccount } from "@/lib/server/affiliate-service";
+import { ensureAffiliateAccount, inviteViewerFor } from "@/lib/server/affiliate-service";
 import { inviteIsLiveFor } from "@/lib/feature-state";
 import { listComments } from "@/lib/server/comments-store";
 import { CommentsThread } from "@/components/markets/comments-thread";
@@ -189,7 +189,9 @@ export default async function MarketDetail({
    * shares the plain link they always believed they were sharing. Same fix in
    * `positions/page.tsx`, which had the identical line.
    */
-  const myRefCode = session && inviteIsLiveFor((await db.user.findById(session.userId))?.role ?? null)
+  // ⭐ Standing, not role: a deactivated agent's code leaves the share link in the same instant
+  // it leaves the bind (`inviteViewerFor` reads the same predicate the bind gate does).
+  const myRefCode = session && inviteIsLiveFor(await inviteViewerFor(session.userId))
     ? await ensureAffiliateAccount(session.userId).then((a) => a.code).catch(() => undefined)
     : undefined;
   // F3 — is this market on the signed-in player's watchlist?

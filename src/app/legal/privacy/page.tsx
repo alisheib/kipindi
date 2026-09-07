@@ -1,6 +1,8 @@
 import { LegalHeader, LegalSection } from "../_components";
 import { SUPPORT_EMAIL } from "@/lib/support-config";
 import { getServerT, type Locale } from "@/lib/i18n-server";
+// ⭐ The referee clock is the service's constant — §9 states the number the purge actually runs on.
+import { AGENT_REFEREE_DOC_HOLD_DAYS } from "@/lib/server/agent-application-service";
 
 export async function generateMetadata() {
   const { locale } = await getServerT();
@@ -99,6 +101,18 @@ const CONTENT: Record<Locale, React.ReactNode> = {
           encryption via AES-256 in the database tier. Annual ISO 27001 audit cadence; pentest twice a year.
         </p>
       </LegalSection>
+
+      <LegalSection n="9" title="People who are not our customers (referees)">
+        <p>
+          When someone applies to become a 50pick agent, they give us the names, contact details
+          and national-ID scans of two referees, and attest that each referee agreed to this. If
+          you are such a referee: we hold your details only to verify that application; the ID
+          scan is destroyed {AGENT_REFEREE_DOC_HOLD_DAYS} days after the decision, and
+          immediately if the application is refused; we never contact you for marketing; and you
+          may ask us to destroy your information sooner by writing to the data controller named
+          in §1 — you do not need an account to do so.
+        </p>
+      </LegalSection>
     </>
   ),
   sw: (
@@ -176,6 +190,18 @@ const CONTENT: Record<Locale, React.ReactNode> = {
           mwaka; pentest mara mbili kwa mwaka.
         </p>
       </LegalSection>
+
+      <LegalSection n="9" title="Watu ambao si wateja wetu (wadhamini)">
+        <p>
+          Mtu anapoomba kuwa wakala wa 50pick, hutupatia majina, mawasiliano na nakala za
+          vitambulisho vya taifa vya wadhamini wawili, na anathibitisha kuwa kila mdhamini
+          amekubali. Kama wewe ni mdhamini wa aina hiyo: tunahifadhi taarifa zako kwa ajili ya
+          kuhakiki maombi hayo pekee; nakala ya kitambulisho huharibiwa siku {AGENT_REFEREE_DOC_HOLD_DAYS}
+          baada ya uamuzi, na mara moja maombi yakikataliwa; hatuwasiliani nawe kamwe kwa
+          matangazo; na unaweza kutuomba tuharibu taarifa zako mapema zaidi kwa kumwandikia
+          msimamizi wa data aliyetajwa katika §1 — huhitaji kuwa na akaunti.
+        </p>
+      </LegalSection>
     </>
   ),
   zh: (
@@ -250,6 +276,15 @@ const CONTENT: Record<Locale, React.ReactNode> = {
           会话以 HMAC-SHA-256 签名。OTP 验证码采用 scrypt + 每个 OTP 独立盐值（salt）+ 全局胡椒值（pepper）进行哈希。
           密码：采用 scrypt 与每位用户独立盐值（NIST SP 800-132）。所有传输中的数据均通过 TLS 1.2+ 传输。数据库层静态数据通过 AES-256 加密。每年进行
           一次 ISO 27001 审计；每年进行两次渗透测试。
+        </p>
+      </LegalSection>
+
+      <LegalSection n="9" title="非客户人士（推荐人）">
+        <p>
+          当有人申请成为 50pick 代理时，会向我们提供两位推荐人的姓名、联系方式及国民身份证扫描件，
+          并确认每位推荐人均已同意。若您是此类推荐人：我们仅为核实该申请而保存您的信息；身份证扫描件
+          在决定作出后 {AGENT_REFEREE_DOC_HOLD_DAYS} 天销毁，申请被拒绝时立即销毁；我们绝不会为营销目的联系您；
+          您也可以写信给第 1 条所列的数据控制者，要求提前销毁您的信息——无需拥有账户。
         </p>
       </LegalSection>
     </>

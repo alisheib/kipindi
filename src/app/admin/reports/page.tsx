@@ -81,7 +81,7 @@ const TEMPLATES = [
     id: "fiu-sar",
     title: "Suspicious activity report (FIU)",
     sw: "Ripoti ya tuhuma · FIU",
-    body: "Financial Intelligence Unit · suspicious activity flagged by AML triggers (single transaction ≥ TZS 1M, structuring, rapid-cycle pattern, sanctions match). Filed within 7 days of identification per POCA Cap 423.",
+    body: "Financial Intelligence Unit · suspicious activity flagged by AML triggers (single transaction ≥ TZS 1M, structuring, rapid-cycle pattern, an officer-recorded sanctions or PEP concern — there is no automated list feed). Filed within 7 days of identification per POCA Cap 423.",
     formats: ["FIU-format encrypted bundle"],
     cadence: "On-trigger · within 7 days",
     severity: "critical",
@@ -187,7 +187,7 @@ export default async function AdminReportsPage({
     // management sees which game earns what.
     moneyByGame(range.start, range.end, snapshot).catch(() => null),
   ]);
-  const activeRows = pnlRows.filter((r) => r.stakes !== 0 || r.payouts !== 0 || r.bonus !== 0 || r.fees !== 0);
+  const activeRows = pnlRows.filter((r) => r.stakes !== 0 || r.payouts !== 0 || r.bonus !== 0 || r.agentCommission !== 0 || r.fees !== 0);
   // KPI sparklines — real daily series (AdminSpark hides <2 pts, e.g. "today").
   const ggrSpark = pnlRows.map((r) => r.ggr);
   const ngrSpark = pnlRows.map((r) => r.ngr);
@@ -306,6 +306,7 @@ export default async function AdminReportsPage({
                       <th className="text-right">Payouts</th>
                       <th className="text-right">GGR</th>
                       <th className="text-right">Bonus</th>
+                      <th className="text-right">Agent comm.</th>
                       <th className="text-right">Fees</th>
                       <th className="text-right">NGR</th>
                       <th className="text-right">Hold%</th>
@@ -319,6 +320,7 @@ export default async function AdminReportsPage({
                         <td className="font-mono tabular text-right">{formatTzs(r.payouts)}</td>
                         <td className={["font-mono tabular text-right font-semibold", r.ggr < 0 ? "text-danger" : "text-text"].join(" ")}>{formatTzs(r.ggr)}</td>
                         <td className="font-mono tabular text-right text-text-tertiary">{formatTzs(r.bonus)}</td>
+                        <td className="font-mono tabular text-right text-text-tertiary">{formatTzs(r.agentCommission)}</td>
                         <td className="font-mono tabular text-right text-text-tertiary">{formatTzs(r.fees)}</td>
                         <td className={["font-mono tabular text-right font-semibold", r.ngr < 0 ? "text-danger" : "text-text"].join(" ")}>{formatTzs(r.ngr)}</td>
                         <td className="font-mono tabular text-right text-text-secondary">{r.holdPct.toFixed(1)}%</td>
@@ -332,6 +334,7 @@ export default async function AdminReportsPage({
                       <td className="font-mono tabular text-right text-text font-bold">{formatTzs(totals.payouts)}</td>
                       <td className={["font-mono tabular text-right font-bold", totals.ggr < 0 ? "text-danger" : "text-text"].join(" ")}>{formatTzs(totals.ggr)}</td>
                       <td className="font-mono tabular text-right text-text-secondary font-bold">{formatTzs(totals.bonus)}</td>
+                      <td className="font-mono tabular text-right text-text-secondary font-bold">{formatTzs(totals.agentCommission)}</td>
                       <td className="font-mono tabular text-right text-text-secondary font-bold">{formatTzs(totals.fees)}</td>
                       <td className={["font-mono tabular text-right font-bold", totals.ngr < 0 ? "text-danger" : "text-text"].join(" ")}>{formatTzs(totals.ngr)}</td>
                       <td className="font-mono tabular text-right text-text font-bold">{totals.holdPct.toFixed(1)}%</td>

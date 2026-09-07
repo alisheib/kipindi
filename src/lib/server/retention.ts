@@ -21,6 +21,7 @@
 import { db } from "./store";
 import { audit } from "./audit";
 import { aiPollStore } from "./ai-poll-generation";
+import { expireStaleAgentApplications, purgeAgedAgentDocuments, AGENT_REFEREE_DOC_HOLD_DAYS, AGENT_REJECTED_DOC_HOLD_DAYS, AGENT_APPROVED_DOC_HOLD_YEARS } from "./agent-application-service";
 
 /**
  * 🔴 NOTIFICATION RETENTION IS COUPLED TO THE UP & DOWN DIGEST. Read this before changing it.
@@ -91,6 +92,18 @@ export type RetentionResult = {
   aiPollRawResponses: number;
   /** Rows whose `generation` was nulled. */
   aiPollGenerations: number;
+  /**
+   * ⭐ AGENT PROGRAMME — the fourth class, and the first with THIRD-PARTY data in it.
+   * Drafts and invitations that lapsed (rows → EXPIRED, their documents destroyed), and
+   * documents whose hold ran out measured from the DECISION: referee ID scans after
+   * `AGENT_REFEREE_DOC_HOLD_DAYS`, a rejected applicant's own file after
+   * `AGENT_REJECTED_DOC_HOLD_DAYS`, an approved agent's after `AGENT_APPROVED_DOC_HOLD_YEARS`.
+   * ⛔ Documents only — the application ROW is the decision record and never goes.
+   */
+  agentDraftsExpired: number;
+  agentInvitationsExpired: number;
+  agentRefereeDocsPurged: number;
+  agentApplicantDocsPurged: number;
 };
 
 /**
@@ -130,7 +143,20 @@ export async function runRetentionPass(now = Date.now()): Promise<RetentionResul
   //
   // ⚠️ Only when it actually deleted something. A daily no-op entry would add ~365 rows a
   // year to an unprunable chain to record that nothing happened (audit F-10).
-  if (notifications > 0 || otps > 0 || aiPolls.rawResponses > 0 || aiPolls.generations > 0) {
+  // Agent programme — best-effort, after the published classes above. Lapsed drafts and
+  // invitations expire (their documents destroyed); aged documents are purged on the clock
+  // measured from the DECISION. Referee scans are third-party data and get the shortest hold.
+  const agentStale = await expireStaleAgentApplications(now).catch((err) => {
+    console.error("[retention] agent draft/invitation expiry failed:", (err as Error)?.message ?? err);
+    return { drafts: 0, invitations: 0, documents: 0 };
+  });
+  const agentDocs = await purgeAgedAgentDocuments(now).catch((err) => {
+    console.error("[retention] agent document purge failed:", (err as Error)?.message ?? err);
+    return { referee: 0, applicant: 0 };
+  });
+
+  const agentTouched = agentStale.drafts + agentStale.invitations + agentDocs.referee + agentDocs.applicant > 0;
+  if (notifications > 0 || otps > 0 || aiPolls.rawResponses > 0 || aiPolls.generations > 0 || agentTouched) {
     audit({
       category: "SYSTEM",
       action: "retention.purge.daily",
@@ -144,6 +170,9 @@ export async function runRetentionPass(now = Date.now()): Promise<RetentionResul
         aiPollRawResponsesBlanked: aiPolls.rawResponses,
         aiPollGenerationsBlanked: aiPolls.generations,
         aiPollPayloadRetentionDays: AIPOLL_PAYLOAD_RETENTION_DAYS,
+        agentDraftsExpired: agentStale.drafts, agentInvitationsExpired: agentStale.invitations,
+        agentRefereeDocsPurged: agentDocs.referee, agentRefereeDocHoldDays: AGENT_REFEREE_DOC_HOLD_DAYS,
+        agentApplicantDocsPurged: agentDocs.applicant, agentRejectedDocHoldDays: AGENT_REJECTED_DOC_HOLD_DAYS, agentApprovedDocHoldYears: AGENT_APPROVED_DOC_HOLD_YEARS,
       },
     });
   }
@@ -151,5 +180,9 @@ export async function runRetentionPass(now = Date.now()): Promise<RetentionResul
     notifications, otps,
     aiPollRawResponses: aiPolls.rawResponses,
     aiPollGenerations: aiPolls.generations,
+    agentDraftsExpired: agentStale.drafts,
+    agentInvitationsExpired: agentStale.invitations,
+    agentRefereeDocsPurged: agentDocs.referee,
+    agentApplicantDocsPurged: agentDocs.applicant,
   };
 }

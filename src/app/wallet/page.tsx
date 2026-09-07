@@ -22,6 +22,11 @@ function adaptTxn(t: StoredTxn): Transaction {
   const typeMap: Record<StoredTxn["type"], Transaction["type"]> = {
     DEPOSIT: "deposit", WITHDRAWAL: "withdraw", BET_PLACED: "bet", BET_PAYOUT: "payout", BET_REFUND: "refund",
     BONUS_CREDIT: "deposit", ADJUSTMENT_CREDIT: "deposit", ADJUSTMENT_DEBIT: "withdraw", CASHOUT: "payout", HOUSE_FEE: "withdraw",
+    // ⛔ NOT "deposit". An agent's commission is income they earned, and the wallet is the one
+    // surface the agent reads about their own money — folding it into "deposit" would tell
+    // them they put the money in themselves. The row's own `description` names it in full;
+    // this token drives the credit/debit sign and the receipt link, so it must be its own word.
+    AGENT_COMMISSION: "commission", AGENT_COMMISSION_REVERSAL: "reversal",
   };
   // 1:1 with the stored status — no collapsing. This used to fold PROCESSING
   // into "pending" (so an in-flight gateway payment was indistinguishable from

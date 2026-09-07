@@ -70,6 +70,7 @@ export async function readHouseAccounts(): Promise<HouseAccounts | null> {
   const at = (a: string) => all[a] ?? 0;
   return {
     commission: at("HOUSE:COMMISSION"),
+    agentCommission: at("HOUSE:AGENT_COMMISSION"),
     traLevy: at("HOUSE:TRA_LEVY"),
     gbtLevy: at("HOUSE:GBT_LEVY"),
     aggregator: at("HOUSE:AGGREGATOR"),
@@ -181,6 +182,8 @@ export type WaterfallRead = {
   leviesOut: number;
   aggregatorOut: number;
   bonusCost: number;
+  /** Net agent commission that reached partners' wallets in the window (clawbacks subtract). */
+  agentCommissionOut: number;
 };
 
 /**
@@ -237,8 +240,17 @@ export async function readWaterfall(start: Date, end: Date): Promise<WaterfallRe
   const bonusCost = await q(
     `SELECT SUM(amount) AS sum FROM "LedgerEntry"
       WHERE ${win} AND "entryType" = 'BONUS_CREDIT' AND account LIKE 'PLAYER:%'`);
+  /* ⭐ Agent commission that reached a partner's wallet, NET of clawbacks — a clawback is a
+   * NEGATIVE `AGENT_COMMISSION` row on the same `PLAYER:` account (`agentCommissionEntries` is
+   * signed), so the `> 0` filter that overstated bonus cost by 14,000 would do it again here.
+   * ⚠️ Read on the PLAYER side, not on HOUSE:AGENT_COMMISSION, so the figure is what partners
+   * actually received rather than what the house account was debited — the same money, but
+   * the player side is the one the trial balance reconciles against the wallets. */
+  const agentCommissionOut = await q(
+    `SELECT SUM(amount) AS sum FROM "LedgerEntry"
+      WHERE ${win} AND "entryType" = 'AGENT_COMMISSION' AND account LIKE 'PLAYER:%'`);
 
-  return { stakeIn, bonusIn, winningsPaid, feeEarned, leviesOut, aggregatorOut, bonusCost };
+  return { stakeIn, bonusIn, winningsPaid, feeEarned, leviesOut, aggregatorOut, bonusCost, agentCommissionOut };
 }
 
 export type GameLedgerRow = {

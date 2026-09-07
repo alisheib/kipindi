@@ -57,6 +57,14 @@ export type BookSource = "ledger" | "rail";
 export type HouseAccounts = {
   /** `HOUSE:COMMISSION` — our fee, ALREADY net of TRA and GBT. */
   commission: number;
+  /**
+   * ⭐ `HOUSE:AGENT_COMMISSION` — commission PAID to vetted agents out of the fee we kept, as a
+   * balance. It is debited when a partner is paid, so it is ≤ 0 and grows more negative as the
+   * programme costs more; a clawback credits it back. ⛔ It comes out of `netRetained`: it is
+   * money that has left the owner's pocket, and a balance sheet that ignores it reports the
+   * agent programme as free.
+   */
+  agentCommission: number;
   /** `HOUSE:TRA_LEVY` — held, owed to TRA. */
   traLevy: number;
   /** `HOUSE:GBT_LEVY` — held, owed to GBT. */
@@ -136,7 +144,7 @@ export function housePosition(input: {
    */
   adjustmentBackedLiability: number;
 }): HousePosition {
-  const { commission, traLevy, gbtLevy, aggregator, rgSuspense } = input.accounts;
+  const { commission, traLevy, gbtLevy, aggregator, rgSuspense, agentCommission } = input.accounts;
   const leviesPayable = traLevy + gbtLevy;
   // ⛔ `rgSuspense` BELONGS HERE. It is a player's deposit we are holding to return; leaving it
   // out reports it as free cash, which is the one thing it certainly is not.
@@ -148,7 +156,10 @@ export function housePosition(input: {
 
   return {
     // ⛔ NOT `commission - leviesPayable`. See the header: the levies are already out.
-    netRetained: commission,
+    // ⭐ PLUS the agent account, which is ≤ 0: commission paid to partners has left the
+    // owner's pocket, and unlike the levies it was never taken out of HOUSE:COMMISSION —
+    // `agentCommissionEntries` debits its OWN account. Same money, its own line.
+    netRetained: commission + agentCommission,
     // The gross is RECONSTRUCTED by adding the levies back — the inverse of the booking.
     grossFeeEarned: commission + leviesPayable,
     leviesPayable,
@@ -266,6 +277,15 @@ export type Waterfall = {
    */
   aggregatorOut: number;
   bonusCost: number;
+  /**
+   * ⭐ AGENT COMMISSION — contracted income paid to vetted partners out of the fee we kept,
+   * NET of clawbacks. A cost of revenue with its own step, for the same reason `bonusCost`
+   * has one: it is real money that left, and the owner must be able to read what the agent
+   * programme costs without it hiding inside the adjustment account. Read as a NET sum on
+   * the PLAYER side (⛔ never `amount > 0` — a clawback is a negative row on the same account,
+   * and the `> 0` filter is the exact bug that overstated bonus cost by 14,000).
+   */
+  agentCommissionOut: number;
   netRetained: number;
 };
 
@@ -306,6 +326,7 @@ export function waterfall(input: {
   leviesOut: number;
   aggregatorOut: number;
   bonusCost: number;
+  agentCommissionOut: number;
 }): Waterfall {
   const handle = input.stakeIn + input.bonusIn;
   const ggr = handle - input.winningsPaid;
@@ -314,7 +335,9 @@ export function waterfall(input: {
     handle,
     ggr,
     // ⛔ NOT `− input.aggregatorOut`. See the block above: it was never in `feeEarned`.
-    netRetained: input.feeEarned - input.leviesOut - input.bonusCost,
+    // ⭐ Agent commission IS subtracted: it is paid out of `feeEarned` (after the levies) and
+    // is booked to its own account, so — unlike the gateway share — it is inside the fee.
+    netRetained: input.feeEarned - input.leviesOut - input.bonusCost - input.agentCommissionOut,
   };
 }
 

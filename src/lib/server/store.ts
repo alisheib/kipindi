@@ -58,6 +58,25 @@ export type StoredUser = {
    *  organic sign-ups. Optional so snapshots created before the affiliate
    *  feature shipped restore cleanly (treated as null). */
   recruitedBy?: string | null;
+  /**
+   * ⭐ THE PROVENANCE STAMP — which programme this attribution was created under.
+   * Written in the SAME `db.user.update` that sets `recruitedBy`, and never rewritten.
+   *
+   * 🔴 THE EXPLOIT IT CLOSES. Before this field the programme was DERIVED at accrual from
+   * the referrer's CURRENT role, so a player could farm attributions for free, buy AGENT
+   * status, and every old bind would flip to paying agent commission at the negotiated
+   * rate. `programme === "AGENT"` is immutable; a role is not.
+   *
+   * ⛔ NULL MEANS PLAYER, NEVER AGENT — `programmeOf()` is the one place that coalesces,
+   * and it never falls through to the agent branch.
+   */
+  recruitedProgramme?: "PLAYER" | "AGENT" | null;
+  /** When the bind happened. The commission window measures from HERE, not from
+   *  `createdAt` — otherwise an agent's window is silently shortened by however long the
+   *  recruit existed before binding. */
+  recruitedAt?: string | null;
+  /** The literal code redeemed at bind. History only — ⛔ never read for pricing. */
+  recruitedByCode?: string | null;
 };
 
 export type KycExtraRequest = { id: string; description: string; requestedAt: string; storageKey: string | null; uploadedAt: string | null };
@@ -121,7 +140,9 @@ export type StoredOtp = {
   phoneE164: string;
   hashedCode: string;
   salt: string;
-  purpose: "login" | "register" | "withdraw" | "reauth" | "self_exclusion";
+  purpose: "login" | "register" | "withdraw" | "reauth" | "self_exclusion"
+    /** Proves possession of the phone an agent invitation is BOUND to. */
+    | "agent_invite";
   attempts: number;
   consumedAt: string | null;
   expiresAt: string;
@@ -210,11 +231,26 @@ export type StoredInviteEntry = {
   createdAt: string;
 };
 
+/**
+ * ⭐ EVERY TRANSACTION TYPE, AS DATA. The union below is DERIVED from this array so the
+ * four surfaces that enumerate types by hand — the admin filter, the CSV export, the badge
+ * lexicon and the wallet's own label map — can derive from it too, and a new type is a
+ * compile error at each one instead of a row nobody can filter, export or read.
+ * `AGENT_COMMISSION` is contracted income, real cash — ⛔ never `BONUS_CREDIT`.
+ * `AGENT_COMMISSION_REVERSAL` is its clawback leg, kept distinct from ADJUSTMENT_DEBIT so the
+ * owner's book can net commission against its own reversals.
+ */
+export const TXN_TYPES = [
+  "DEPOSIT", "WITHDRAWAL", "BET_PLACED", "BET_PAYOUT", "BET_REFUND", "BONUS_CREDIT",
+  "ADJUSTMENT_DEBIT", "ADJUSTMENT_CREDIT", "CASHOUT", "HOUSE_FEE",
+  "AGENT_COMMISSION", "AGENT_COMMISSION_REVERSAL",
+] as const;
+
 export type StoredTxn = {
   id: string;
   walletId: string;
   userId: string;
-  type: "DEPOSIT" | "WITHDRAWAL" | "BET_PLACED" | "BET_PAYOUT" | "BET_REFUND" | "BONUS_CREDIT" | "ADJUSTMENT_DEBIT" | "ADJUSTMENT_CREDIT" | "CASHOUT" | "HOUSE_FEE";
+  type: (typeof TXN_TYPES)[number];
   status: "PENDING" | "PROCESSING" | "AML_REVIEW" | "CONFIRMED" | "FAILED" | "REVERSED" | "CANCELLED";
   amount: number;
   fee: number;
@@ -350,6 +386,31 @@ export type StoredAffiliateAccount = {
   code: string;
   recruitCount: number;
   totalEarnedTzs: number;
+  /**
+   * ⭐ THE ONE DISCRIMINATOR. Non-null ⇔ a compliance officer approved this partner.
+   * ⛔ THE ROW'S EXISTENCE PROVES NOTHING — one is auto-minted for every player who ever
+   * touched the referral surface. Never test "has an affiliate row" and mean "is an agent".
+   */
+  approvedAt: string | null;
+  approvedBy: string | null;
+  /**
+   * The officer's explicit revocation switch. `true` on every auto-minted player row,
+   * which is why it is NEVER a sufficient test on its own — always in conjunction with
+   * `approvedAt`.
+   */
+  active: boolean;
+  /** Set when an officer deactivates. Prospective only — accruals already PAID stand. */
+  deactivatedAt: string | null;
+  /**
+   * ⚠️ A PERCENT (`20.00` = 20%), NOT a fraction. `affiliate-config`'s `commission.rate`
+   * is a FRACTION (`0.5` = 50%); feeding one into the other is a 40× error.
+   *
+   * ⛔ NULL = no officer has priced this partner, and the agent branch of `policyFor`
+   * REFUSES on it rather than falling back to the player promo's rate. It used to be NOT
+   * NULL defaulting to 5.00 on every auto-minted row, which made that refusal unreachable
+   * and put the whole player base one dropped conjunct away from being 5% agents.
+   */
+  commissionPct: number | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -369,12 +430,185 @@ export type StoredReferralReward = {
   /** Human label e.g. "Commission", "Prize · first bet", "Bonus · sign-up". */
   label: string;
   amountTzs: number;
-  status: "PAID" | "PENDING" | "HELD";
+  status: "PAID" | "PENDING" | "HELD" | "REVERSED";
   /** Recipient of this reward — almost always the referrer, but the bonus
    *  mode can also pay the NEW player; we record who actually received it. */
   recipientUserId: string;
   note: string | null;
+  /**
+   * The programme COPIED from the attribution's stamp at accrual — ⛔ never re-derived
+   * from the referrer's role. This is the column that separates agent spend (contracted
+   * commission, real cash) from promo cost (a bonus grant) in the owner's book and the
+   * regulator pack.
+   */
+  programme: "PLAYER" | "AGENT" | null;
+  /** The rate that actually priced this row, as a PERCENT. Snapshotted so a later rate
+   *  change never rewrites history — the same discipline as `PredictionMarket.feeSnapshot`. */
+  rateApplied: number | null;
+  /** The market this accrual came from. Without it a clawback cannot find the rows to
+   *  reverse when that market is voided after settlement. */
+  marketId: string | null;
+  /** ⭐ THE IDEMPOTENCY KEY. Commission was the ONE reward path that had none — `payBonus`
+   *  and `payPrize` both passed a deterministic ref and commission passed nothing, so any
+   *  replay was a double-pay. Unique in Postgres; NULLs do not collide. */
+  sourceRef: string | null;
+  /** Set by a clawback. The row STAYS — a reversed liability is still a fact — and its
+   *  status becomes REVERSED so the cap and the earnings total stop counting it. */
+  reversedAt: string | null;
+  reversedReason: string | null;
   createdAt: string;
+};
+
+// ── AGENT AFFILIATE PROGRAMME ───────────────────────────────────────────────
+// A vetted business partner who introduces players and earns commission.
+// ⛔ RECRUITER ONLY — never holds float, never touches player money.
+// Authority: docs/AGENT-PROGRAMME.md. Rate rule: docs/RULES.md §2.10.
+
+/** ⛔ Every value needs a `STATUS_TONE` row and an en/sw/zh phrase in `dict.agent`.
+ *  These are enum names, not copy — `PAYMENT_PENDING` is not a sentence anyone reads. */
+export type AgentApplicationStatus =
+  | "DRAFT"
+  | "INVITED"
+  | "KYC_SUBMITTED"
+  | "PAYMENT_PENDING"
+  | "UNDER_REVIEW"
+  | "ADDITIONAL_INFO_REQUIRED"
+  | "APPROVED"
+  | "REJECTED"
+  | "DECLINED"
+  | "EXPIRED"
+  | "REVOKED";
+
+export type AgentApplicationSource = "SELF_SERVICE" | "OFFICER_INVITED";
+
+/** The seven documents of framework §2, plus the fee receipt. ⭐ The framework's fifth
+ *  item — "Government-Issued Identification" — is deliberately absent: that is the
+ *  platform's existing, certified KYC. ⛔ Do not build a second identity flow. */
+export type AgentDocType =
+  | "CV"
+  | "REQUEST_LETTER"
+  | "SERIKALI_LETTER"
+  | "REFEREE_ONE_LETTER"
+  | "REFEREE_ONE_ID"
+  | "REFEREE_TWO_LETTER"
+  | "REFEREE_TWO_ID"
+  | "FEE_RECEIPT";
+
+/** ⛔ The last three are TERMINAL — a person refused for any of them may never re-apply. */
+export type AgentRejectReason =
+  | "INCOMPLETE_DOCUMENTS"
+  | "DOCUMENT_NOT_LEGIBLE"
+  | "UNSATISFACTORY_REFEREE"
+  | "DETAILS_MISMATCH"
+  | "FEE_NOT_RECONCILED"
+  | "STAFF_CONFLICT"
+  | "OTHER"
+  | "SANCTIONED"
+  | "IDENTITY_MISMATCH"
+  | "FRAUD";
+
+/** What happened to the TZS 100,000. ⭐ `NONE` is the load-bearing value: a rejection from
+ *  there owes nothing, and a refunds queue that forgets it tells the platform to pay out
+ *  money it never took. */
+export type AgentFeeDisposition = "NONE" | "WAIVED" | "COLLECTED" | "REFUND_DUE" | "REFUNDED";
+
+export type AgentInvitationStatus = "ISSUED" | "ACCEPTED" | "DECLINED" | "REVOKED" | "EXPIRED";
+
+export type StoredAgentApplication = {
+  id: string;
+  userId: string;
+  status: AgentApplicationStatus;
+  source: AgentApplicationSource;
+  refereeOneName: string | null;
+  refereeOneContact: string | null;
+  refereeTwoName: string | null;
+  refereeTwoContact: string | null;
+  /** ⛔ REFEREE ACCOUNTABILITY. We have no relationship with a referee, so the APPLICANT
+   *  attests that each consented and was shown the notice. Submission is refused without it. */
+  refereeConsentAt: string | null;
+  /** Stamped from `agent-config` at reconciliation — ⛔ NEVER a form field. A human-typed
+   *  amount means a TZS 1,000 receipt attested as the fee passes every check. */
+  feeAmountTzs: number | null;
+  /** What the officer actually read on the receipt. A mismatch is a hard refusal. */
+  feeAttestedTzs: number | null;
+  /** Applicant-typed. ⭐ UNIQUE — one receipt, one application. */
+  feeReference: string | null;
+  /** The officer's own evidence: the bank statement line. */
+  feeStatementRef: string | null;
+  feeReconciledAt: string | null;
+  feeReconciledById: string | null;
+  /** Masked destination captured at reconciliation, so a refund can only go back the way
+   *  the money came. */
+  feeSourceAccount: string | null;
+  feeWaivedAt: string | null;
+  feeWaivedById: string | null;
+  feeWaiverReason: string | null;
+  feeDisposition: AgentFeeDisposition;
+  feeRefundDueAt: string | null;
+  feeRefundedAt: string | null;
+  feeRefundedById: string | null;
+  feeRefundReference: string | null;
+  feeRefundAmountTzs: number | null;
+  reviewerId: string | null;
+  reviewedAt: string | null;
+  rejectReason: AgentRejectReason | null;
+  rejectNote: string | null;
+  infoRequestNote: string | null;
+  infoRequestedAt: string | null;
+  /** The rate the officer set at approval, as a PERCENT. Mirrored onto
+   *  `AffiliateAgent.commissionPct`; kept here as the decision record. */
+  approvedRatePct: number | null;
+  agentCode: string | null;
+  acceptedTermsVersion: string | null;
+  acceptedTermsAt: string | null;
+  submittedAt: string | null;
+  /** DRAFT expiry. Documents are purged when it passes. */
+  expiresAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type StoredAgentApplicationDocument = {
+  id: string;
+  applicationId: string;
+  docType: AgentDocType;
+  /** Written + read through the SAME storage seam as KYC. */
+  storageKey: string;
+  mimeType: string;
+  sizeBytes: number;
+  /** WHO physically supplied this file. ⛔ An officer may supply business paperwork on an
+   *  invited application, but never the invitee's own ID or selfie. */
+  suppliedById: string;
+  uploadedAt: string;
+  rejected: boolean;
+  rejectReason: string | null;
+  /** ⛔ TRUE for the two referee IDs — third-party personal data belonging to people who
+   *  never used 50pick and cannot invoke erasure through any surface we have. */
+  thirdParty: boolean;
+  /** Set by `retention.purge.daily` when the bytes are destroyed. The ROW survives. */
+  purgedAt: string | null;
+};
+
+export type StoredAgentInvitation = {
+  id: string;
+  applicationId: string | null;
+  /** The officer-entered phone the token is BOUND to. Acceptance needs an OTP delivered
+   *  to THIS number — a forwarded link is worthless. */
+  phoneE164: string;
+  displayName: string | null;
+  /** ⛔ HASHED. A readable token in the database is a second copy of the credential. */
+  tokenHash: string;
+  status: AgentInvitationStatus;
+  issuedById: string;
+  issuedAt: string;
+  expiresAt: string;
+  acceptedAt: string | null;
+  acceptedUserId: string | null;
+  declinedAt: string | null;
+  revokedAt: string | null;
+  revokedById: string | null;
+  createdAt: string;
+  updatedAt: string;
 };
 
 /**
@@ -518,6 +752,9 @@ declare global {
     sourceOfFunds: Map<string, StoredSourceOfFunds>;
     affiliates: Map<string, StoredAffiliateAccount>;
     referralRewards: Map<string, StoredReferralReward>;
+    agentApplications: Map<string, StoredAgentApplication>;
+    agentApplicationDocs: Map<string, StoredAgentApplicationDocument>;
+    agentInvitations: Map<string, StoredAgentInvitation>;
     proposals: Map<string, StoredProposal>;
     proposalVotes: Map<string, StoredProposalVote>;
     objections: Map<string, StoredObjection>;
@@ -543,6 +780,9 @@ const store = globalThis.__50PICK_STORE ?? (globalThis.__50PICK_STORE = {
   sourceOfFunds: new Map(),
   affiliates: new Map(),
   referralRewards: new Map(),
+  agentApplications: new Map(),
+  agentApplicationDocs: new Map(),
+  agentInvitations: new Map(),
   proposals: new Map(),
   proposalVotes: new Map(),
   objections: new Map(),
@@ -563,6 +803,9 @@ if (!store.notifications) store.notifications = new Map();
 if (!store.sourceOfFunds) store.sourceOfFunds = new Map();
 if (!store.affiliates)      store.affiliates = new Map();
 if (!store.referralRewards) store.referralRewards = new Map();
+if (!store.agentApplications)    store.agentApplications = new Map();
+if (!store.agentApplicationDocs) store.agentApplicationDocs = new Map();
+if (!store.agentInvitations)     store.agentInvitations = new Map();
 if (!store.proposals)       store.proposals = new Map();
 if (!store.proposalVotes)   store.proposalVotes = new Map();
 if (!store.watchlist)       store.watchlist = new Map();
@@ -613,6 +856,24 @@ const memoryDb = {
     listByRoles: (roles: string[], select?: { id: true; email?: true }): StoredUser[] => {
       void select; // in-memory returns full rows; the Prisma DAL honours select
       return Array.from(store.users.values()).filter((u) => roles.includes(u.role));
+    },
+    /** Batched lookup — replaces the N+1 `findById` loops the affiliate ledger ran. */
+    findByIds: (ids: string[]): StoredUser[] => {
+      const out: StoredUser[] = [];
+      for (const id of new Set(ids)) { const u = store.users.get(id); if (u) out.push(u); }
+      return out;
+    },
+    /** Everyone this referrer recruited — indexed on `recruitedBy` in Postgres, so the agent
+     *  dashboard and `/admin/agents/[id]` stop scanning the whole user table. */
+    listByRecruiter: (referrerUserId: string): StoredUser[] =>
+      Array.from(store.users.values())
+        .filter((u) => u.recruitedBy === referrerUserId)
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+    /** COUNT of attributed users — the admin KPI that used to `list()` the whole table. */
+    countRecruited: (): number => {
+      let n = 0;
+      for (const u of store.users.values()) if (u.recruitedBy) n++;
+      return n;
     },
   },
   kyc: {
@@ -1203,6 +1464,23 @@ const memoryDb = {
       store.affiliates.set(userId, next);
       return next;
     },
+    /**
+     * ⭐ Atomic ± to `totalEarnedTzs` — the SAME fix `incrementRecruitCount` already got, on
+     * the counter that carries money. `recordReward` used to do
+     * `update(userId, { totalEarnedTzs: acct.totalEarnedTzs + amount })`, a read-modify-write
+     * across two different per-recruit locks: two recruits of one agent settling at the same
+     * moment each read the same total and each wrote their own, so one accrual vanished from
+     * the agent's own earnings statement while its reward row survived.
+     *
+     * `delta` is signed — a clawback passes a negative.
+     */
+    incrementEarned: (userId: string, delta: number): StoredAffiliateAccount | null => {
+      const a = store.affiliates.get(userId);
+      if (!a) return null;
+      const next: StoredAffiliateAccount = { ...a, totalEarnedTzs: a.totalEarnedTzs + delta, updatedAt: new Date().toISOString() };
+      store.affiliates.set(userId, next);
+      return next;
+    },
     list: (): StoredAffiliateAccount[] => Array.from(store.affiliates.values()),
   },
   referralReward: {
@@ -1224,6 +1502,130 @@ const memoryDb = {
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
     listByRecruit: (recruitUserId: string): StoredReferralReward[] =>
       Array.from(store.referralRewards.values()).filter((r) => r.recruitUserId === recruitUserId),
+    /** ⭐ The idempotency lookup. Commission is the one reward path that had no key, so any
+     *  replay was a double-pay; this is what makes a replay tool safe to build. */
+    findBySourceRef: (sourceRef: string): StoredReferralReward | null => {
+      for (const r of store.referralRewards.values()) if (r.sourceRef === sourceRef) return r;
+      return null;
+    },
+    /** Every accrual a market produced — the population a clawback reverses. */
+    listByMarket: (marketId: string): StoredReferralReward[] =>
+      Array.from(store.referralRewards.values()).filter((r) => r.marketId === marketId),
+    /**
+     * ⭐ THE TOTALS, OVER EVERY ROW. `/admin/affiliate` computed its "all-time" money
+     * figures over `list(1000)` — the newest thousand rewards, labelled as everything. A
+     * grouped aggregate cannot truncate. Rows are (programme × type × status) with a count
+     * and a sum; the caller seeds absent cells to zero, because a missing group renders as
+     * blank and blank reads as broken rather than as a true zero.
+     */
+    totals: (): Array<{ programme: "PLAYER" | "AGENT" | null; type: StoredReferralReward["type"]; status: StoredReferralReward["status"]; count: number; sumTzs: number }> => {
+      const cells = new Map<string, { programme: "PLAYER" | "AGENT" | null; type: StoredReferralReward["type"]; status: StoredReferralReward["status"]; count: number; sumTzs: number }>();
+      for (const r of store.referralRewards.values()) {
+        const key = `${r.programme ?? "null"}|${r.type}|${r.status}`;
+        const cell = cells.get(key) ?? { programme: r.programme, type: r.type, status: r.status, count: 0, sumTzs: 0 };
+        cell.count += 1;
+        cell.sumTzs += r.amountTzs;
+        cells.set(key, cell);
+      }
+      return Array.from(cells.values());
+    },
+  },
+
+  // ── AGENT APPLICATION ─────────────────────────────────────────────────────
+  agentApplication: {
+    create: (a: StoredAgentApplication): StoredAgentApplication => { store.agentApplications.set(a.id, a); return a; },
+    findById: (id: string): StoredAgentApplication | null => store.agentApplications.get(id) ?? null,
+    /**
+     * The ONE live application for a user, if any. ⛔ "Live" excludes every terminal state:
+     * a refused, declined, lapsed or ended application deliberately frees the person to
+     * apply again. This mirrors the partial unique index in Postgres — and the memory
+     * backend has no index at all, which is exactly why the SERVICE check is the primary
+     * guard and the index only the race-loser backstop.
+     */
+    findActiveByUser: (userId: string): StoredAgentApplication | null => {
+      const terminal = new Set<AgentApplicationStatus>(["REJECTED", "DECLINED", "EXPIRED", "REVOKED"]);
+      for (const a of store.agentApplications.values()) {
+        if (a.userId === userId && !terminal.has(a.status)) return a;
+      }
+      return null;
+    },
+    findByFeeReference: (feeReference: string): StoredAgentApplication | null => {
+      const norm = feeReference.trim().toUpperCase();
+      for (const a of store.agentApplications.values()) {
+        if ((a.feeReference ?? "").trim().toUpperCase() === norm) return a;
+      }
+      return null;
+    },
+    listByUser: (userId: string): StoredAgentApplication[] =>
+      Array.from(store.agentApplications.values())
+        .filter((a) => a.userId === userId)
+        .sort((x, y) => y.createdAt.localeCompare(x.createdAt)),
+    update: (id: string, patch: Partial<StoredAgentApplication>): StoredAgentApplication | null => {
+      const a = store.agentApplications.get(id);
+      if (!a) return null;
+      const next: StoredAgentApplication = { ...a, ...patch, updatedAt: new Date().toISOString() };
+      store.agentApplications.set(id, next);
+      return next;
+    },
+    list: (): StoredAgentApplication[] =>
+      Array.from(store.agentApplications.values()).sort((x, y) => y.createdAt.localeCompare(x.createdAt)),
+    listByStatus: (statuses: AgentApplicationStatus[]): StoredAgentApplication[] => {
+      const want = new Set(statuses);
+      return Array.from(store.agentApplications.values())
+        .filter((a) => want.has(a.status))
+        // Oldest first: a queue an officer works through, not a feed.
+        .sort((x, y) => (x.submittedAt ?? x.createdAt).localeCompare(y.submittedAt ?? y.createdAt));
+    },
+  },
+
+  agentApplicationDoc: {
+    create: (d: StoredAgentApplicationDocument): StoredAgentApplicationDocument => { store.agentApplicationDocs.set(d.id, d); return d; },
+    findById: (id: string): StoredAgentApplicationDocument | null => store.agentApplicationDocs.get(id) ?? null,
+    /** One file per slot — `attachDocument` REPLACES rather than appends, so an officer
+     *  never reviews two versions without knowing which is current. */
+    findSlot: (applicationId: string, docType: AgentDocType): StoredAgentApplicationDocument | null => {
+      for (const d of store.agentApplicationDocs.values()) {
+        if (d.applicationId === applicationId && d.docType === docType) return d;
+      }
+      return null;
+    },
+    listByApplication: (applicationId: string): StoredAgentApplicationDocument[] =>
+      Array.from(store.agentApplicationDocs.values()).filter((d) => d.applicationId === applicationId),
+    update: (id: string, patch: Partial<StoredAgentApplicationDocument>): StoredAgentApplicationDocument | null => {
+      const d = store.agentApplicationDocs.get(id);
+      if (!d) return null;
+      const next: StoredAgentApplicationDocument = { ...d, ...patch };
+      store.agentApplicationDocs.set(id, next);
+      return next;
+    },
+    delete: (id: string): boolean => store.agentApplicationDocs.delete(id),
+    /** The retention sweep's working set: undestroyed scans, newest bound by the caller. */
+    listUnpurged: (): StoredAgentApplicationDocument[] =>
+      Array.from(store.agentApplicationDocs.values()).filter((d) => d.purgedAt === null),
+  },
+
+  agentInvitation: {
+    create: (i: StoredAgentInvitation): StoredAgentInvitation => { store.agentInvitations.set(i.id, i); return i; },
+    findById: (id: string): StoredAgentInvitation | null => store.agentInvitations.get(id) ?? null,
+    findByTokenHash: (tokenHash: string): StoredAgentInvitation | null => {
+      for (const i of store.agentInvitations.values()) if (i.tokenHash === tokenHash) return i;
+      return null;
+    },
+    findLiveByPhone: (phoneE164: string): StoredAgentInvitation | null => {
+      for (const i of store.agentInvitations.values()) {
+        if (i.phoneE164 === phoneE164 && i.status === "ISSUED") return i;
+      }
+      return null;
+    },
+    update: (id: string, patch: Partial<StoredAgentInvitation>): StoredAgentInvitation | null => {
+      const i = store.agentInvitations.get(id);
+      if (!i) return null;
+      const next: StoredAgentInvitation = { ...i, ...patch, updatedAt: new Date().toISOString() };
+      store.agentInvitations.set(id, next);
+      return next;
+    },
+    list: (): StoredAgentInvitation[] =>
+      Array.from(store.agentInvitations.values()).sort((x, y) => y.issuedAt.localeCompare(x.issuedAt)),
   },
   proposal: {
     create: (p: StoredProposal): StoredProposal => { store.proposals.set(p.id, p); return p; },

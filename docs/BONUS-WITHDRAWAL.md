@@ -147,7 +147,7 @@ I ran an 8-dimension refute-by-default audit over the finished branch: 34 claime
 | 4 | **Legacy `recruitedBy` rows still paid** — gating the bind left every attribution written before the gate accruing in real cash, with an email pointing at the dead page | The bind gate looked complete. The older population is the quieter half |
 | 5 | The cashback promo was gated on `/wallet` but **not** on `/wallet/deposit` | One surface of two — the classic half-on |
 | 6 | The chat had a **second layer** (the offline fallback) still teaching the programme and citing `/profile/invite` | I fixed the system prompt and stopped looking |
-| 7 | Two comments cited **`scripts/reenablement.test.mts`, which has never existed** | I named a guard I had planned and not written |
+| 7 | Two comments cited **`reenablement.test.mts` (under `scripts/`), which has never existed** | I named a guard I had planned and not written |
 
 ⭐ **And the red harness caught my own guard being worthless.** The first version of the
 legacy-attribution test (§5d) used the shipped defaults — `requireDeposit: true`,
@@ -208,3 +208,24 @@ One word in `PRODUCT_STATE` in `src/lib/feature-state.ts`, per feature. Then:
    invert.
 3. The bonus machinery needs no change: it was never gated. `test:bonus` (59), `test:bonus-betting`
    (24), `test:bonus-one-side` (22) and `test:cashout` (24) were green throughout this programme.
+
+---
+
+## 9 · The agent programme is NOT a re-opening of this (2026-09-07)
+
+`docs/AGENT-PROGRAMME.md` shipped a vetted, paid recruiter tier on the same attribution table.
+Three things that keep the withdrawal above intact, and the guard that proves each:
+
+- **The player invite programme stays withdrawn.** `inviteStateFor(viewer)` in `feature-state.ts`
+  now takes a viewer and answers `live` only for an agent **in good standing** (`approvedAt` set,
+  `active`, account ACTIVE) — never for a role. An ordinary player, a deactivated agent and a
+  self-excluded agent all still see the withdrawn surface. `test:withdrawn-features` §1/§4/§5
+  re-fixtured through `scripts/lib/agent-fixtures.mts` so a role-only "agent" cannot pass.
+- **Agent commission is cash, not bonus.** `TxnType.AGENT_COMMISSION` credits the cash balance;
+  `bonusBalance` is never touched by an agent accrual (`test:rg-cash-incentive` §5b holds the
+  bonus balance at 0 through an agent settlement). Nothing here reaches `BONUS_CREDIT`, so the
+  bonus-cost figures the Board reads are unchanged by the programme.
+- **The share card and the code exist for agents only.** `/profile/invite` renders the agent
+  dashboard when `getAgentDashboard()` returns a row and otherwise falls through to the withdrawn
+  `notFound()` gate exactly as before; the register-page badge reads `resolveReferralPreview` and
+  shows **Verified 50pick Agent** only when the code belongs to an approved agent.

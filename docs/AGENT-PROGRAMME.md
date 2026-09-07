@@ -10,8 +10,21 @@ decision wherever it speaks. Where it is silent, Ali's rulings fill the gap. Whe
 about this system**, §10 records the correction.
 
 ⛔ **This file is the authority for _what_ the programme is.** Rates live in
-[`RULES.md`](RULES.md) and nowhere else — ⚠️ **§2.10 does not exist yet and must be WRITTEN**;
-`RULES.md` §2 currently stops at §2.9. Do not cite it as though it were already there.
+[`RULES.md`](RULES.md) §2.10 and nowhere else.
+
+> ✅ **BUILT 2026-09-07 on branch `agent-affiliate-programme`** (Ali merges; every push to `main`
+> deploys live). The decision record is `COMPLIANCE-DECISIONS.md` § 2026-09-07; the rule is
+> `RULES.md` §2.10; the code is `src/lib/server/agent-config.ts`, `affiliate-service.ts`
+> (`policyFor`, the one resolver) and `agent-application-service.ts`; the surfaces are `/agent`,
+> `/agent/apply`, `/agent/status`, `/agent/invite/[token]`, `/legal/agent-terms`, the dashboard on
+> `/profile/invite`, and the console `/admin/agents` (+ `/admin/agents/[id]`). Guards, each with a
+> red harness: `test:agent-policy` · `test:programme-isolation` · `test:attribution-provenance` ·
+> `test:no-double-pay` · `test:agent-clawback` · `test:commission-bounded` · `test:agent-eligibility`
+> · `test:agent-application-security` · `test:dal-parity`; the five-persona browser drive is
+> `npm run qa:agent-drive` — it needs a **fresh** `next dev -p 3210` (the in-memory DAL carries an
+> earlier run's enrolled officer and approved agent otherwise; the drive aborts with exit 2 and says
+> so) and `SERVER_LOG=<the dev server's log>` to read OTPs and invitation texts. Sections below
+> marked 🔴/⚠️ describe the world BEFORE the build; the ✅ notes beside them say what closed each one.
 
 ---
 
@@ -54,9 +67,10 @@ OFFICER-LED    invite → INVITED → accept ──────┘         ↘ R
 | `KYC_SUBMITTED` | All documents attached |
 | `PAYMENT_PENDING` | Fee reference + receipt recorded (or waived), awaiting submit |
 | `UNDER_REVIEW` | ⭐ Shown to the applicant as **"Awaiting Compliance Approval"** — the framework's own wording |
-| `ADDITIONAL_INFO_REQUIRED` | An officer asked for a clearer document. ⚠️ **Needs an explicit exit transition** |
+| `ADDITIONAL_INFO_REQUIRED` | An officer asked for a clearer document. ✅ **Exit built (2026-09-07):** re-attaching every slot the officer named and pressing Submit again returns the application to `UNDER_REVIEW` (`submitForReview`) |
 | `APPROVED` | Role granted, code minted |
 | `REJECTED` / `DECLINED` / `EXPIRED` | Refused, declined, or the invitation lapsed. Fee refunded |
+| `REVOKED` | ⭐ **Added 2026-09-07.** An officer revoked an already-approved agent (`revokeAgent`) — distinct from `deactivateAgent`, which pauses standing and keeps the row reactivatable. `REVOKED` closes the application record; the agent's earned commission stays theirs (payable), the code stops binding, and re-application follows the 90-day cooldown unless the reason was terminal |
 
 ⭐ `ADDITIONAL_INFO_REQUIRED` is the state the framework omits, and it is not optional: without
 it a blurry scan forces a rejection, which triggers a refund and a re-application for something
@@ -96,10 +110,12 @@ erasure can never reach.
 business receipt attested by an officer, which is why the programme adds zero risk to the money
 invariants.
 
-🔴 **But it must post a `LedgerEntry`.** This is money taken from a member of the public. Today it
-would be invisible to the house book, the trial balance, the regulator pack and every tax figure.
-⚠️ **VAT on the fee is unhandled anywhere in this repo** — raise it with Ali; do not invent a
-treatment.
+✅ **It posts a `LedgerEntry` (2026-09-07).** `agentRegistrationFeeEntries` books the fee to
+`HOUSE:AGENT_FEE` with its VAT split at reconciliation, so the house book, trial balance,
+regulator pack and the tax figures all see it. **VAT is settled:** the fee is **VAT-inclusive**
+at the configured rate (`feeVatRatePct`, 18% today) — `feeBreakdown()` is the one place the
+split is computed (TZS 84,746 net + TZS 15,254 VAT on TZS 100,000). An `EXCLUSIVE` treatment
+exists in config for a future change of policy and is not in force.
 
 🔴 **One receipt, one application** — `feeReference` is unique. And a refund needs **evidence and a
 deadline**: money *in* requires a receipt image, so money *out* must not be one officer typing a
@@ -122,7 +138,16 @@ revenue that turnover produced. ▶ *"Volume turnover"* is honoured as a **displ
 shows turnover and revenue, and pays on revenue.
 
 **Rate:** ⭐ **one rate per agent** (Ali — the framework specifies no tiers, so there are none).
-⛔ The `tier` column is **dropped**, not left dead.
+⛔ The `tier` column is **dropped**, not left dead — **in two releases, not one** (expand →
+contract on Railway, `docs/…expand-contract`): release 1 (2026-09-07) removed `tier` from
+`schema.prisma`, both DALs and every reader with **no DDL**, so a container still running the
+previous build never selects a column that is gone; release 2, after one deploy has run without
+reading it, is the one-line migration below. ⛔ Do not fold it into a feature migration.
+
+```sql
+-- prisma/migrations/<later>_agent_tier_drop/migration.sql  (release 2 ONLY)
+ALTER TABLE "AffiliateAgent" DROP COLUMN IF EXISTS "tier";
+```
 
 | Term | Value (Ali, 2026-09-07) |
 |---|---|
@@ -258,20 +283,27 @@ Correct these before the document reaches an applicant or the Gaming Board.
 | "displaying fees (**0%**)" | Deposits 0%; **withdrawals 1.5%** |
 | "peer-to-peer top-ups" through an agent | Out of scope — recruiter only (§1) |
 | "volume turnover" as the commission base | Displayed; **paid on the net fee actually collected** (§5) |
+| Agent vetting alongside "sanctions screening of all users and beneficial owners" | ⭐ **There is no automated sanctions feed** (`kyc-risk.ts` assigns no sanctions points by design). Sanctions/PEP is an **officer checklist item** at every identity and EDD review. `/legal/aml` §4 was corrected to say so on 2026-09-07 (`COMPLIANCE-DECISIONS.md`); the framework must describe the officer check, not a feed |
+| Tiered agents (`tier` column) | **None** — one rate per agent (§5). The column is contracted out in two releases; the framework must not describe tiers |
+| "Approved or rejected" as the only outcomes | Plus `ADDITIONAL_INFO_REQUIRED` (§2), `DECLINED` / `EXPIRED` for invitations, and `REVOKED` for an approved agent whose standing is withdrawn |
+| Fee "refunded" with no clock | **Refunded within 7 days** of a rejection (`refundDeadlineDays`), tracked on the Refunds-owed worklist on `/admin/agents` and stated on `/agent` |
 
 ---
 
 ## 11 · Non-negotiables
 
 - `/admin/agents*` → **`compliance`** domain with step-up 2FA. `/admin/affiliate` stays `growth`.
-  ⚠️ Today **every switch controlling agent money sits in `growth`** — the officer who approves and
-  prices an agent cannot see any of them.
+  ✅ **Fixed 2026-09-07:** every switch controlling agent money lives in `agent-config.ts` and is
+  edited only on `/admin/agents?tab=settings` (compliance); the growth officer's `/admin/affiliate`
+  reads the PLAYER promo only (`getAdminAffiliateStats` filters `programme !== "AGENT"`).
 - **Single officer.** ⛔ No two-officer lock — Ali's dated decision; `test:two-admin` asserts its
   absence. Self-review is blocked; the invitee's acceptance is the second party.
 - **Documents through the existing KYC storage seam only**, magic-byte validated on the sniffed mime.
-- **Both DAL backends** plus the `DATA-LAYER.md` entity map. 🔴 `db.affiliate.update` currently
-  whitelists three fields in Prisma while memory spreads everything — a rate change would be a
-  **silent production no-op** with every suite green.
+- **Both DAL backends** plus the `DATA-LAYER.md` entity map. ✅ **Fixed 2026-09-07:**
+  `db.affiliate.update` in Prisma is driven by `AFFILIATE_COLUMN` — a `Record<keyof
+  StoredAffiliateAccount, …>` the compiler refuses to leave incomplete — and **throws** on an
+  unmapped field rather than dropping it. `test:dal-parity` (230 checks) + `red:dal-parity` (5/5)
+  prove a memory-only field cannot ship silently again.
 - **`/agent/*` in en / sw / zh.** Admin console is English. Emails EN+SW; no Chinese in any email.
 - **Approval is the only place `UserRole.AGENT` is ever assigned.**
 - **A red harness per guard.** A guard that has never failed is a hypothesis.

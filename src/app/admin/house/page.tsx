@@ -558,6 +558,7 @@ export default async function AdminHousePage({ searchParams }: { searchParams: P
                       {/* ⛔ BONUS COST IS ITS OWN STEP, NEVER NETTED INTO GGR — netting it there
                           would flatter the gaming result with money that left the platform. */}
                       <tr><td className="text-left">Bonus cost</td><td className="tabular text-right"><Signed v={-flow.bonusCost} /></td><td className="text-left text-text-secondary">bonus that became withdrawable cash, net of re-locks</td></tr>
+                      <tr><td className="text-left">Agent commission</td><td className="tabular text-right"><Signed v={-flow.agentCommissionOut} /></td><td className="text-left text-text-secondary">paid to vetted agents out of the fee kept, net of clawbacks</td></tr>
                       <tr className="font-semibold"><td className="text-left">Net retained</td><td className="tabular text-right"><Amt v={flow.netRetained} /></td><td className="text-left text-text-secondary">what this window left the owner</td></tr>
                     </tbody>
                   </table>
