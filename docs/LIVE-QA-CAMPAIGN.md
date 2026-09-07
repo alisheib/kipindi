@@ -6166,6 +6166,77 @@ a Chinese hand-off *above* every keyword branch); and a NIDA warning I drafted b
 `nida.ts` and finding it already scrupulous. ⭐ **389 "unused exports" measured, then NOT acted
 on** — same-file registration makes that metric mean "exported unnecessarily", not "dead".
 
+### 🔬 THE 10-LANE ADVERSARIAL SWEEP — 95 proposals, 57 approved, 38 blocked
+
+⭐ **The fleet that died on a session limit earlier came back and ran to completion**: 10 lanes ×
+find → **3 independent skeptics per proposal** (correctness · safety · intent), 265 agents,
+17.9M tokens. ⛔ **Deletion required UNANIMITY**, an edit a majority — a wrong deletion on a live
+money platform is far worse than a missed one. 38 proposals were blocked by that panel.
+
+> ### 🔴 THE FOUR IT FOUND THAT MATTERED MOST, ALL CREATED BY THE WITHDRAWAL ITSELF
+>
+> Once `creditBonus` began refusing (CLEANUP-1), an approved proposal started paying **real
+> withdrawable cash** — and every surface went on calling it a bonus.
+>
+> | | |
+> |---|---|
+> | **The receipt lied, in three languages** | email *"your reward has landed in your bonus wallet"* · sw *"pochi yako ya bonasi"* · zh *"已存入您的奖金钱包"* · detail row `Wallet: Bonus wallet` · CTA *"View bonus wallet"* → `/wallet`, where `bonusIsLiveFor()` renders no such card. **A dead end at the end of a false sentence.** |
+> | **And the page did too** | `/proposals/[id]` rendered `creditedToBonusWallet` on every approved proposal |
+> | ⛔ **The campaign still emailed STRANGERS** | `sendCampaign` sends unsolicited mail whose subject line IS the money — *"You're invited — TZS 10,000 bonus"* — for a bonus `bindRegistration` now refuses. **RED proof: with the gate removed the suite returns `{"ok":true,"sent":1}` and flips the entry to SENT.** It actually delivers |
+> | **A money rule on one of two doors** | `registerWithPassword` clamps the starter balance to 0 in live-money mode and says *"no env var or config row can mint"*. `verifyOtpAndAuth` read the same admin-settable knob with **no clamp**. Same config row, same money, different door |
+>
+> ⭐ **It errs in the SAFER direction and is no less false.** A player told their reward is locked
+> play-through money does not try to withdraw cash that is already theirs. The harm is not a wrong
+> number — it is a wrong PERMISSION.
+
+**And four that were nobody's brief:**
+🔴 **The self-exclusion email sent people to the operator.** `email.ts` held a private
+`HELPLINE = "+255 22 211 5811"` — **50pick's own support desk** — and printed it under the words
+*"Contact the Tanzania Gambling Helpline"*. Someone self-excluding because gambling was harming
+them was routed back to the operator they were excluding themselves from. ⛔ **And a guard
+ENFORCED it**, asserting that exact literal, so correcting the number alone would have gone red.
+🔴 **The offline chat invented every money figure it gave players** — a deposit minimum of 1,000
+when it is **500**, a *"daily cap TZS 200,000 before tier 2"* where **"tier 2" exists nowhere in
+the codebase but that sentence**, four SLAs nothing measures, and a dial *"up to 5×"* whose
+`MAX_MULTIPLIER` is **200**.
+🔴 **Seven comments on the money path still said the withdrawal fee is 1%** — it is 1.5%, and the
+worst was the docblock ON the field: *"(0.01 = 1%)"*.
+🔴 **Five private `BASE_URL` constants** defaulting to the retired railway host — password reset,
+email verification, KYC among them — beside `app-url.ts`, whose own header says that default is
+the bug it exists to remove. One of the five sat in a file that **already imported `appUrl`**.
+
+**Deleted, each with zero external references proven by `git grep -w`:** two AML stubs (one
+returning hardcoded zeros for *approved / rejected / time-to-decision* — a fabricated compliance
+number waiting to be wired), `SelfExclusionSchema` (which required an OTP self-exclusion does not),
+`MIN_STAKE`/`MAX_STAKE` (a second copy of the platform bounds, five lines under *"nothing
+money-side is hardcoded any more"*), `payoutForWhole` (`@deprecated`, zero callers, on the money
+path), the entire `.pbar*` probability bar (9 rules + keyframe, dead since 2026-07-20),
+`ControlledElsewhere` (zero renderers — with a skeleton ghosting it and a doc swearing in the
+present tense that `/admin/updown` rendered it), and `SettingRow`'s unreachable `comingSoon` branch.
+
+> ### ⭐ THE RATCHETS EARNED THEIR KEEP — TWICE, IN ONE COMMIT
+>
+> Deleting the `.pbar` rules made `test:dead-css` §1.2 name all seven now-stale BASELINE entries;
+> removing those made §1.1 name a `.pbar-resolved` selector still sitting in the
+> `[data-motion="reduced"]` clamp — **a survivor I would not have found by grepping the block I
+> deleted.** And the comment directly above that list records the identical lesson about
+> `.wc-rays`. Baseline **57 → 49**, may only shrink.
+
+> ### ⚠️ FOUR OF MY OWN MISTAKES, KEPT IN THE RECORD BECAUSE THE MECHANISMS GENERALISE
+>
+> ① **I corrupted the i18n dictionary.** Built strings with `.encode().decode("unicode_escape")`,
+> which re-reads UTF-8 bytes as latin-1 — the Chinese became mojibake. Caught by READING the grep
+> output, reverted, redone with literals plus a UTF-8 round-trip assertion before the write.
+> ② **A guard that ran after the exit gate.** Appending §S to `money-invariants` put it below
+> `process.exit(1)`, so it printed FAIL lines while the suite reported *"84 passed, 0 failed"* and
+> exited 0. **Caught because the failures appeared BELOW the summary — impossible for a real
+> assertion.** ③ **I pushed a red gate, twice**, both times because I wrote a backticked
+> `test:<name>` placeholder into prose and my own new citation check correctly demanded it resolve
+> — the second time inside the paragraph describing the first. ④ **A "control" that measured the
+> wrong server**: `TaskStop` killed the shell but not `next dev`, so the ON-state instance exited
+> on a busy port and every request was answered by the OFF server. **`netstat` named the PID.
+> Always confirm WHICH process answered.**
+
 ### 🟢 Session 88 (2026-09-06) — THE TAB FOR A MARKET NOBODY COULD SEE, AND A PHONE THE MATRIX HAD ONLY PROMISED
 
 #### ⏭️ **RESUME AT (session 88 · PROGRESS-AND-PHONE — both jobs LIVE; read the ONE OWED ITEM and the ONE THING NOT PROVEN LOCALLY below):** 💰 **MONEY POSITION: NOT ONE SHILLING MOVED.** No schema, no migration, no balance, no ledger row. Two pure-module fields (`resolvesAtMs`, `verdictRecorded`), one registry entry pair, one guard rename. ⚠️ **Every number here was re-derived on 2026-09-06; re-derive before relying on one.**
