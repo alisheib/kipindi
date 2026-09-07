@@ -191,7 +191,16 @@ const ROOT_SURFACES: Surface[] = [
   { id: "bottom-nav",          file: "src/components/layout/bottom-nav.tsx",             find: /lg:hidden fixed inset-x-0 bottom-0 z-(\d+) kp-rail/,         z:   40, note: "primary navigation on the phone" },
   { id: "admin-top-bar",       file: "src/components/admin/admin-shell.tsx",             find: /"relative z-(\d+) border-b border-border"/,                  z:   40, note: "elevated above the page body so the AI-toolkit dropdown overlays content" },
   { id: "top-app-bar",         file: "src/components/layout/top-app-bar.tsx",            find: /"sticky top-0 z-(\d+) app-topbar"/,                          z:   30, note: "the player header" },
-  { id: "discovery-bar",       file: "src/components/markets/discovery-bar.tsx",         find: /kp-discovery-bar sticky top-\[56px\] z-(\d+)/,               z:   20, note: "the board's filter rail — the lowest chrome rung" },
+  /* ⚠️ RE-ANCHORED 2026-09-07 (PLAYER QUERY, stage 1). This read
+     `src/components/markets/discovery-bar.tsx`, where the class string used to be written out.
+     The PLAYER QUERY campaign fits the same bar to fifteen more routes, so the string became
+     `QUERY_BAR_CLASS` in `components/ui/query-bar.tsx` — one definition instead of sixteen
+     copies. The locator matched 0 times and this gate went RED, correctly and loudly: a guard
+     pinned to a location stops guarding the moment the code moves.
+     ⭐ THE RE-ANCHOR MAKES IT STRONGER, NOT WEAKER. It now reads the string every page that
+     wears this bar shares, so a z-index drift on ANY of them fails here — where before it could
+     only see `/markets`. The rung, the note and every ranking assertion below are unchanged. */
+  { id: "discovery-bar",       file: "src/components/ui/query-bar.tsx",                   find: /kp-discovery-bar sticky top-\[56px\] z-(\d+)/,               z:   20, note: "the shared query bar's filter rail — the lowest chrome rung" },
 ];
 
 /** A surface sealed inside another surface's stacking context. */

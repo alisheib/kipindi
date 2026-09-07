@@ -54,6 +54,31 @@ export type MarketBook = {
   feeSnapshot: StoredMarket["feeSnapshot"];
 };
 
+/**
+ * What a position card needs to know about its market — twelve columns, not the whole row.
+ *
+ * ⚠️ EVERY FIELD IS HERE BECAUSE THE PAGE READS IT, and the list is worth stating so nobody adds
+ * a thirteenth by habit: the three titles (the card's headline, localised), `category` (the topic
+ * filter), `status` (whether a cash-out is even possible), the two pools + `feeSnapshot`
+ * (`cashOutValue`'s inputs), both deadlines (`isSelectionClosed` and the countdown ring), and
+ * `selectionClosedNotifiedAt` — which is the only honest witness that the payout figure was
+ * restamped, and without which the card would present a stale projection as an exact amount.
+ */
+export type PositionCardMarket = {
+  id: string;
+  titleEn: string;
+  titleSw: string | null;
+  titleZh: string | null;
+  category: string;
+  status: MarketStatus;
+  yesPool: number;
+  noPool: number;
+  resolutionAt: string;
+  selectionClosedAt: string | null;
+  selectionClosedNotifiedAt: string | null;
+  feeSnapshot: StoredMarket["feeSnapshot"];
+};
+
 /** The two position columns a money attribution read uses. See `PositionStore.attribution()`. */
 export type PositionAttribution = { id: string; marketId: string };
 
@@ -207,6 +232,30 @@ export interface MarketStore {
    * means rather than inherit a zero that reads exactly like an empty pool.
    */
   poolsByIds(ids: readonly string[]): Promise<Map<string, { yesPool: number; noPool: number }>>;
+  /**
+   * THE POSITION-CARD PROJECTION — the columns `/positions` needs, for the ids it already holds.
+   *
+   * 🔴 WHY IT EXISTS, AND IT IS NOT AN OPTIMISATION. `/positions` issued **one `getMarket` per
+   * rendered position, awaited in series** — and `get()` is a full-row `findUnique` over the same
+   * very wide `PredictionMarket` table the note on `attribution()` above measures at 2,534 ms for
+   * ONE such read. Re-derive the loop it replaced:
+   *
+   *     git log -S "marketMap.set(mid, await getMarket(mid))" -- src/app/positions/page.tsx
+   *
+   * ⭐ AND THE PLAYER QUERY CAMPAIGN MADE IT LOAD-BEARING RATHER THAN MERELY SLOW. Searching and
+   * sorting by market TITLE needs titles for **every** position a player holds, not only the
+   * twelve on screen — and the old loop was fed from `open + pagedSettled`, i.e. the rows that
+   * survived paging. A filter computed over the rendered page is not a filter.
+   *
+   * ⚠️ IT IS NOT CALLED `titlesByIds`, which is what the campaign's plan provisionally named it.
+   * It returns pools and a fee snapshot too, because the page prices a live cash-out from them; a
+   * function called `titles…` that hands back money inputs is the §L1 defect — a name that does
+   * not describe the thing — in the data layer instead of the UI.
+   *
+   * Absent ids are absent from the map, exactly as `poolsByIds` and `bookByIds` do: a caller must
+   * decide what a missing market means rather than inherit a default that reads like data.
+   */
+  positionCardsByIds(ids: readonly string[]): Promise<Map<string, PositionCardMarket>>;
   /**
    * THE MONEY-ATTRIBUTION PROJECTION — every market row, four columns.
    *
@@ -478,6 +527,30 @@ const memoryMarkets: MarketStore = {
     for (const id of ids) {
       const m = markets.get(id);
       if (m) out.set(id, { yesPool: m.yesPool, noPool: m.noPool });
+    }
+    return out;
+  },
+  async positionCardsByIds(ids) {
+    // Same twelve fields as the Prisma twin, so a suite that passes here means the same thing
+    // in production. ⛔ BOTH HALVES EXIST OR NEITHER DOES.
+    const out = new Map<string, PositionCardMarket>();
+    for (const id of ids) {
+      const m = markets.get(id);
+      if (!m) continue;
+      out.set(id, {
+        id: m.id,
+        titleEn: m.titleEn,
+        titleSw: m.titleSw ?? null,
+        titleZh: m.titleZh ?? null,
+        category: m.category,
+        status: m.status,
+        yesPool: m.yesPool,
+        noPool: m.noPool,
+        resolutionAt: m.resolutionAt,
+        selectionClosedAt: m.selectionClosedAt ?? null,
+        selectionClosedNotifiedAt: m.selectionClosedNotifiedAt ?? null,
+        feeSnapshot: m.feeSnapshot ?? null,
+      });
     }
     return out;
   },
@@ -786,6 +859,39 @@ const prismaMarkets: MarketStore = {
       select: { id: true, yesPool: true, noPool: true },
     });
     for (const r of rows) out.set(r.id, { yesPool: Number(r.yesPool), noPool: Number(r.noPool) });
+    return out;
+  },
+  async positionCardsByIds(ids) {
+    const out = new Map<string, PositionCardMarket>();
+    if (ids.length === 0) return out;
+    // ⛔ TWELVE COLUMNS, NAMED. A `findUnique` per position reads every column of a very wide
+    //    table — see the interface note and `attribution()`'s measurements above.
+    const rows = await pc().predictionMarket.findMany({
+      where: { id: { in: [...ids] } },
+      select: {
+        id: true, titleEn: true, titleSw: true, titleZh: true, category: true, status: true,
+        yesPool: true, noPool: true, resolutionAt: true, selectionClosedAt: true,
+        selectionClosedNotifiedAt: true, feeSnapshot: true,
+      },
+    });
+    for (const r of rows) {
+      out.set(r.id, {
+        id: r.id,
+        titleEn: r.titleEn,
+        titleSw: r.titleSw ?? null,
+        titleZh: r.titleZh ?? null,
+        category: r.category,
+        status: r.status as MarketStatus,
+        // ⚠️ Decimal → number, exactly as `poolsByIds` and `bookByIds` do. A Decimal reaching
+        //    `cashOutValue` would price a player's exit through string arithmetic.
+        yesPool: Number(r.yesPool),
+        noPool: Number(r.noPool),
+        resolutionAt: r.resolutionAt.toISOString(),
+        selectionClosedAt: r.selectionClosedAt ? r.selectionClosedAt.toISOString() : null,
+        selectionClosedNotifiedAt: r.selectionClosedNotifiedAt ? r.selectionClosedNotifiedAt.toISOString() : null,
+        feeSnapshot: (r.feeSnapshot as StoredMarket["feeSnapshot"]) ?? null,
+      });
+    }
     return out;
   },
   async bookByIds(ids) {

@@ -206,7 +206,27 @@ for (const r of population) {
  * even though the SUBJECT SET is not — the difference is a deliberate narrowing, not a blind
  * spot. ⛔ This constant may only shrink, and only in the same commit as the rail it loses.
  */
-const FLOOR = 15;
+/**
+ * 🔴 LOWERED TO 14 ON 2026-09-07 (PLAYER QUERY, stage 2), IN THE SAME COMMIT AS THE RAIL THAT
+ * MOVED — which is what the vacuity message above instructs, and the reason is written here
+ * rather than left to a `git blame`.
+ *
+ * `/positions` used to render its three-pill rail as a `<nav>` that `.map()`ed `<FilterPill>`
+ * directly inside `app/positions/page.tsx`, so this parser could see it. It is now seven lenses
+ * plus side/topic/window in `app/positions/positions-bar.tsx`, rendered through a local `Chip`
+ * wrapper that binds `replace scroll={false}` and `semantics="toggle"` so no call site can forget
+ * either — and a `<Foo>` alias is not `<a>`, `<Link>` or `<FilterPill>`, so the rail leaves this
+ * population.
+ *
+ * ⭐ IT IS THE REFERENCE PAGE'S OWN SHAPE, NOT A NEW HOLE. `components/markets/discovery-bar.tsx`
+ * has had exactly this wrapper since batch 5 and has never been in this population either. The
+ * campaign fits fifteen more routes with the same bar, so the number will keep drifting down as
+ * each one converts — ⛔ and that is precisely why this must NOT be read as "filter rails are
+ * unguarded": they are guarded by `test:filter-language` (the idiom, the paint, the 44px floor)
+ * and by `qa:filter-scan` (measured on the rendered page). ⚠️ What this gate loses sight of is a
+ * SECTION rail, and no section rail moved.
+ */
+const FLOOR = 14;
 
 let bad = 0;
 if (population.length < FLOOR) {

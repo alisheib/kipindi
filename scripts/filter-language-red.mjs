@@ -50,7 +50,12 @@ import { injectDefect } from "./red-anchor.mjs";
 const GATE = "scripts/filter-language.test.mts";
 const PRIMITIVE = "src/components/ui/filter-pill.tsx";
 const CSS = "src/app/globals.css";
-const POSITIONS = "src/app/positions/page.tsx";
+/* ⚠️ RE-ANCHORED 2026-09-07 (PLAYER QUERY, stage 2). The /positions rail moved out of the page
+   and into its own bar component; the hook moved with it, and `test:filter-language`'s SURFACES
+   entry moved in the same commit. These three cases mutate whichever file EMITS the rail, so they
+   follow it — the anchors below are re-pointed at the new call sites, not loosened: each still
+   injects the same defect and still expects the same assertion. */
+const POSITIONS = "src/app/positions/positions-bar.tsx";
 const SHEET = "src/components/markets/filter-sheet.tsx";
 const BAR = "src/components/markets/discovery-bar.tsx";
 /* S-07 — the admin rail used for the two admin-scope plants. candidates rather than ai-polls
@@ -111,17 +116,19 @@ const CASES = [
   {
     name: "inline-paint (the law-82 breach: the selected fill written at the call site)",
     file: POSITIONS,
-    from: `              on={activeTab === tab.id}
-              semantics="tab"`,
-    to: `              on={activeTab === tab.id}
-              semantics="tab"
-              style={activeTab === tab.id ? { background: "var(--pill-active)" } : undefined}`,
+    from: `    <FilterPill {...p} semantics="toggle" replace scroll={false} />`,
+    to: `    <FilterPill {...p} semantics="toggle" replace scroll={false} style={p.on ? { background: "var(--pill-active)" } : undefined} />`,
     expect: "3.3",
   },
   {
     name: "unhooked-rail (a surface stops consuming the primitive and rolls its own)",
     file: POSITIONS,
-    from: `import { FilterPill } from "@/components/ui/filter-pill";\n`,
+    /* ⚠️ The import carries `FilterGroupKey` too — the bar's desktop groups each render a quiet
+       axis key beside their pills. Anchoring on the bare `{ FilterPill }` spelling left a SECOND
+       import from the same module behind, so 3.1 ("imports the primitive") stayed satisfied and
+       this case reported GREEN over a surface that no longer consumed it. Caught by this harness
+       on the conversion itself; the two imports were merged into one in the same commit. */
+    from: `import { FilterPill, FilterGroupKey } from "@/components/ui/filter-pill";\n`,
     to: ``,
     expect: "3.1",
   },
@@ -137,8 +144,8 @@ const CASES = [
     //   has stopped looking at anything, and every case above it proved nothing.
     name: "vacuity (the rail hook is renamed, so the gate's subject set goes EMPTY)",
     file: POSITIONS,
-    from: `          data-filter-rail\n`,
-    to: ``,
+    from: `<div data-filter-rail className={QUERY_BAR_CLASS}>`,
+    to: `<div className={QUERY_BAR_CLASS}>`,
     expect: "0.5",
   },
 

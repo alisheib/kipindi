@@ -137,6 +137,38 @@ export const PROPOSAL_SEARCH: EntitySchema = {
   viewModel: true,
 };
 
+/**
+ * A PLAYER'S OWN POSITIONS — `/positions`.
+ *
+ * ⛔ `viewModel: true`, AND IT IS NOT A FORMALITY. A position row is assembled on the server from
+ * TWO tables: the `Position` (stake, side, status, payout) and the `PredictionMarket` it belongs
+ * to (the three titles, the category). None of the market names are columns on `Position`, so
+ * passing this to `queryToWhere` would emit a `where` on columns that do not exist and fail at
+ * runtime, in production, on a page holding real money. `matchesQuery` only.
+ *
+ * ⭐ `title` SPANS ALL THREE LANGUAGES ON PURPOSE. A player reading the Swahili page may still
+ * type an English team name — the market carries all three titles and the grammar matches any of
+ * them, so the search finds what the player means rather than what the page happens to render.
+ *
+ * ⚠️ `side` and `status` are `exact` because they are ENUMS. A `contains` on an enum is a type
+ * error in SQL and a slow way to write `equals` here; and `status:` is deliberately searchable
+ * even though the lens strip already filters it — a player who has learned `status:WIN` should
+ * not be told the grammar has an exception.
+ */
+export const POSITION_SEARCH: EntitySchema = {
+  fields: {
+    title: { columns: ["titleEn", "titleSw", "titleZh"], kind: "text" },
+    category: { columns: ["category"], kind: "text" },
+    side: { columns: ["side"], kind: "exact" },
+    status: { columns: ["status"], kind: "exact" },
+    market: { columns: ["marketId"], kind: "exact" },
+    id: { columns: ["id"], kind: "exact" },
+  },
+  // What a bare token searches — the words a player can actually see on the card.
+  default: ["titleEn", "titleSw", "titleZh", "category"],
+  viewModel: true,
+};
+
 /** The names a surface should offer as clickable chips in the syntax help. */
 export function fieldNames(s: EntitySchema): string[] {
   return Object.keys(s.fields);

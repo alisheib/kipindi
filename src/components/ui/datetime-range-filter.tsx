@@ -37,10 +37,17 @@ import { FilterPill, filterPillClass, type FilterPillRank } from "@/components/u
 import { cn } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 
-/** Full precise set for admin / finance / reports / transactions / analytics / logs. */
-export const FULL_PRESETS = ["1h", "6h", "24h", "today", "yesterday", "7d", "30d", "mtd"] as const;
-/** Compact set for player-facing surfaces (still with Custom). */
-export const PLAYER_PRESETS = ["today", "yesterday", "7d", "30d", "all"] as const;
+/**
+ * ⭐ THE PRESET IDS MOVED TO `lib/query/windows.ts` ON 2026-09-07 AND ARE RE-EXPORTED HERE, so
+ * every existing import keeps working. Nothing about them changed. What changed is who needs
+ * them: the player-query contracts are pure server-rendered modules, and importing a VALUE out of
+ * a `"use client"` file drags a client module into the server graph — the runtime failure
+ * `CLAUDE.md` records, which a typechecker and a green build both miss.
+ * ⚠️ `test:filter-language` §7.3's prose still says these "live here". They are still exported
+ * here and its assertions read this file's `rank` handling, which is untouched.
+ */
+export { FULL_PRESETS, PLAYER_PRESETS } from "@/lib/query/windows";
+import { FULL_PRESETS as FULL_PRESET_IDS } from "@/lib/query/windows";
 
 function splitIso(s: string | null): { date: string; time: string } {
   if (!s) return { date: "", time: "" };
@@ -49,7 +56,7 @@ function splitIso(s: string | null): { date: string; time: string } {
 }
 
 export function DateTimeRangeFilter({
-  presetIds = FULL_PRESETS as unknown as string[],
+  presetIds = FULL_PRESET_IDS as unknown as string[],
   defaultPreset = "7d",
   allowCustom = true,
   rank = "primary",

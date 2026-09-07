@@ -220,12 +220,41 @@ export function QuerySort({
         /* At 360 sort shares its line with the Filters button, so it is the control that gives:
            the KEY never truncates and the VALUE ellipsises, which is MenuShell's own rule.
            ⛔ An ellipsis is not a defect — the hidden tail IS the "…" — but the amount hidden in
-           Swahili is reported by `qa:filter-scan` so a person can judge it. */
+           Swahili is reported by `qa:filter-scan` so a person can judge it.
+
+           🔴 `shrink` ON THE SUMMARY IS A BUG FIX, NOT A TIDY-UP — AND THE BUG WAS SHIPPED, ON
+           `/markets`, AT 360, IN ENGLISH AND SWAHILI. `menu-shell.tsx`'s summary carries
+           `inline-flex … shrink-0`, so it kept its intrinsic width however narrow its parent got,
+           and the `truncate` on its value span could never engage. Measured on the live board at
+           360 before this line existed:
+
+             /markets sw  summary 16→255 · direction button 154→198  → 44px OVERLAP
+             /markets en  summary 16→218 · direction button 166→210  → 44px OVERLAP
+             /markets zh  summary 16→162 · direction button 162→206  → 0  (short labels escape)
+
+           The 44×44 direction button was drawn ON TOP of the sort label — "Za hivi karibuni" with
+           an arrow through it. ⛔ AND EVERY AUTOMATED CHECK PASSED: the DOCUMENT does not
+           overflow (`scrollWidth === clientWidth === 360`), so `test:responsive` is green; the
+           pill radius and 44px floor are untouched, so `qa:filter-scan` is green. Only opening
+           the screenshot found it — the "clipped-not-scrolled" class the standards name.
+           ⛔ AND THE FIX IS `w-full`, NOT `shrink` — the first attempt WAS `shrink` and it changed
+           nothing, measured, because the summary is not a flex item: its parent `<details>` is a
+           plain block, so `flex-shrink` has no one to negotiate with. `w-full` binds the summary
+           to the width the `<details>` was already shrunk to as a flex item of the row, and only
+           then does the value span's `min-w-0 truncate` have a box to truncate inside.
+           ⚠️ Applied HERE rather than in `menu-shell.tsx`, so the desktop topic menu and
+           `/updown`'s call sites keep the intrinsic width they want. */
         rootClassName="min-w-0 shrink"
         label={label}
         value={value}
         ariaLabel={ariaLabel}
-        className="min-w-0 rounded-l-pill rounded-r-none border-r-0"
+        /* ⚠️ THE KEY STANDS DOWN BELOW `lg`, AND ONLY HERE. With the overlap fixed the value had
+           138px to live in and truncated to "Za…" — the ellipsis was doing the key's job of
+           telling the player nothing. On a phone the fused ↓ button and the caret already say
+           this is a sort, so the VALUE is the label; from `lg` the row has room and the key
+           returns. `aria-label` names the axis at every width. */
+        labelClassName="hidden lg:inline"
+        className="w-full min-w-0 rounded-l-pill rounded-r-none border-r-0"
       >
         {options.map((o) => (
           <QueryOption

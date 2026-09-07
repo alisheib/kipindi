@@ -36,6 +36,7 @@ export function MenuShell({
   count,
   ariaLabel,
   className,
+  labelClassName,
   rootClassName,
   children,
 }: {
@@ -47,6 +48,9 @@ export function MenuShell({
   ariaLabel: string;
   /** Classes for the SUMMARY — the visible control. */
   className?: string;
+  /** Classes for the quiet KEY. Its one use is hiding the key where the row is too tight for
+   *  both — see the note at its render site. */
+  labelClassName?: string;
   /** Classes for the `<details>` root, so the caller can place the control in its row. */
   rootClassName?: string;
   children: React.ReactNode;
@@ -84,8 +88,15 @@ export function MenuShell({
         )}
       >
         {/* The KEY never truncates; the VALUE ellipsises. Swahili short labels measure
-            1.74× p90 / 2.25× p95 against English, so the value is the part that must give. */}
-        <span className="shrink-0 font-mono text-micro font-bold uppercase eyebrow text-text-subtle">
+            1.74× p90 / 2.25× p95 against English, so the value is the part that must give.
+            ⚠️ …UNTIL THE VALUE HAS NOTHING LEFT TO GIVE, which is what `labelClassName` is for.
+            Measured at 360 in Swahili on the sort control, where the whole menu gets 138px: the
+            key took ~76 of them and the value truncated to **"Za…"** — an ellipsis that tells the
+            player nothing about which sort is in force, which is worse than no key at all. A host
+            whose row is that tight passes `hidden lg:inline` and lets the VALUE be the label; the
+            summary's own `aria-label` already names the axis, so nothing is lost to a screen
+            reader. ⛔ Not a default — every other call site has the room and keeps its key. */}
+        <span className={cn("shrink-0 font-mono text-micro font-bold uppercase eyebrow text-text-subtle", labelClassName)}>
           {label}
         </span>
         <span className="min-w-0 truncate text-[13px] font-semibold text-text">{value}</span>

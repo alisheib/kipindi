@@ -72,18 +72,15 @@ import { isSourceTrusted } from "./source-registry";
 export const MIN_STAKE = 1_000;
 export const MAX_STAKE = 1_000_000;
 
-// NOTE: Politics is intentionally NOT in this list — Tanzania Gaming Board
-// licence terms exclude political-event markets. Operators caught listing
-// political markets risk the licence. Do not add it back without a written
-// regulator carve-out.
-export type MarketCategory = "sports" | "macro" | "weather" | "crypto" | "culture" | "tech" | "other";
-
-/** The canonical, ordered set of market categories — the ONE list every surface
- *  (source registry, admin filters, generation) should derive from rather than
- *  re-declaring its own copy. */
-export const MARKET_CATEGORIES: readonly MarketCategory[] = [
-  "sports", "macro", "weather", "crypto", "culture", "tech", "other",
-] as const;
+/**
+ * ⭐ THE LIST AND ITS TYPE MOVED TO `lib/markets/categories.ts` ON 2026-09-07, AND ARE RE-EXPORTED
+ * HERE SO EVERY EXISTING IMPORT KEEPS WORKING. Nothing about them changed — including the licence
+ * note, which travelled with the value it governs. What changed is who needs them: the
+ * player-query contracts are PURE modules, and reaching into this file for a VALUE would drag the
+ * server graph into a client bundle. Read that file's header before touching either.
+ */
+import { MARKET_CATEGORIES, type MarketCategory } from "@/lib/markets/categories";
+export { MARKET_CATEGORIES, type MarketCategory };
 
 const MARKET_CATEGORY_SET = new Set<string>(MARKET_CATEGORIES);
 
@@ -480,6 +477,21 @@ export async function listTerminalMarkets(
 
 export async function getMarket(id: string) {
   return (await marketStore.get(id)) ?? null;
+}
+
+/**
+ * The markets behind a set of positions, in ONE query, twelve columns.
+ *
+ * ⛔ USE THIS, NOT `getMarket` IN A LOOP. `/positions` awaited one full-row `findUnique` per
+ * rendered position; `market-dal.ts`'s own note measures what reading every column of that table
+ * costs. ⭐ And the PLAYER QUERY campaign made it correctness rather than speed: searching and
+ * sorting by market TITLE needs titles for **every** position a player holds, not only the ones
+ * that survived paging — a filter computed over the rendered page is not a filter.
+ *
+ * Absent ids are absent from the map; a caller decides what a missing market means.
+ */
+export async function positionCardMarkets(ids: readonly string[]) {
+  return marketStore.positionCardsByIds(ids);
 }
 
 /**

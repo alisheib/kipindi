@@ -130,6 +130,31 @@ export type PositionStatusValue = "OPEN" | "WIN" | "LOSS" | "VOID" | "CASHED_OUT
  * exactly why this is product-aware rather than one flat map. `CASHED_OUT` is shared: the
  * product has one word for it and there is no `udPosCashedOut` to disagree with.
  */
+/**
+ * The SHORT word for a position's state — the one a FILTER PILL wears.
+ *
+ * ⭐ WHY IT IS NOT `positionStatusWord`. That function is the CHIP's word, and on a long-form
+ * market it returns *"Resolved · Win"* — a lifecycle stage plus an outcome, which is right on a
+ * card and wrong in a rail, where every pill must read as one choice. ⛔ The fix is not to type
+ * "Won" at the call site: §L3 says no enum ever reaches a sentence and §L2 says the lexicon is
+ * PRODUCT-AWARE, so the short word gets a lexicon entry like the long one.
+ *
+ * ⚠️ Up & Down already had exactly these words (`udPosWon` / `udPosLost` / `udPosRefunded`), which
+ * is the tell that the market product was the one missing them — not that a new concept was being
+ * invented. `posWon` / `posLost` are the two keys added; `voided` and `cashedOut` were already
+ * shared, and are the same words the card uses.
+ */
+export function positionOutcomeWord(t: Dict, status: PositionStatusValue, productLine: LabelProductLine): string {
+  if (productLine === "UPDOWN") return positionStatusWord(t, status, productLine);
+  switch (status) {
+    case "OPEN": return t.common.open;
+    case "WIN": return t.market.posWon;
+    case "LOSS": return t.market.posLost;
+    case "VOID": return t.common.voided;
+    case "CASHED_OUT": return t.common.cashedOut;
+  }
+}
+
 export function positionStatusWord(t: Dict, status: PositionStatusValue, productLine: LabelProductLine): string {
   if (productLine === "UPDOWN") {
     switch (status) {

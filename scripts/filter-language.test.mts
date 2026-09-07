@@ -91,7 +91,15 @@ const SURFACES = [
   "src/components/markets/discovery-bar.tsx",   // /markets — the reference
   "src/app/results/page.tsx",                   // /results — sort + category
   "src/app/proposals/page.tsx",                 // /proposals — hot/new/listed/mine
-  "src/app/positions/page.tsx",                 // /positions — all/open/settled
+  /* ⚠️ RE-DECLARED 2026-09-07 (PLAYER QUERY, stage 2). The rail was three pills inside
+     `page.tsx`; it is now seven lenses plus side/topic/window in `positions-bar.tsx`, because
+     `page.tsx` already reads five stores and prices every open exit and a hundred lines of
+     control markup would double the file a reader must hold to change this page.
+     ⛔ THE HOOK MOVED WITH IT, WHICH IS WHY THIS LINE MOVED. §0.4 went red on the new file being
+     undeclared and §0.5 on the old file no longer carrying `data-filter-rail` — both correct, and
+     both are the loud stop §6 of `docs/PLAYER-QUERY-CAMPAIGN.md` says to expect. The file named
+     here must always be the one that emits the hook. */
+  "src/app/positions/positions-bar.tsx",        // /positions — 7 lenses + side/topic/window
   "src/components/updown/updown-board-tabs.tsx", // /updown — assets + durations
   "src/app/updown/history/page.tsx",            // /updown/history — the day rail
   "src/app/profile/activity/page.tsx",          // /profile/activity — period
