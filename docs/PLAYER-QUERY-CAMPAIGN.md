@@ -20,16 +20,40 @@
 ## §0 — RESUME AT
 
 ```
-▶ NEXT ACTION — task 3.1 in the board below.
-  Write src/lib/wallet/ledger.ts: the type lens · status lens · window · search for
-  /wallet, as a contract over lib/query. Then 3.2 the windowed read, 3.3 move `tab` and
-  `page` OUT of React state into the URL, 3.4 the bar.
-  🔴 Read the two rulings on Stage 3 before starting: filter the STORED TxnType (never
-  the UI token — it would tell a player their bonus was a deposit), and the 1,000-row
-  cap must be STATED to the player.
+▶ NEXT ACTION — task 4.1 in the board below.
+  /updown/history: lens All · In play · Up wins · Down wins · Refunded; sheet Asset ·
+  Duration · When (the day rail FOLDS INTO the window); sort; paging. The 400 cap stays
+  stated. One commit per route, in the order §1 lists them.
 ```
 
-**Stage 3 of 6. Stages 1–2 CLOSED (12/12, 7/7).** `/positions` answers the complaint.
+**Stage 4 of 6. Stages 1–3 CLOSED (12/12, 7/7, 8/8).**
+
+### The shape every remaining route follows
+
+⭐ **THE PATTERN IS SETTLED — copy `/positions` or `/wallet`, do not re-invent it.** A route
+needs four files' worth of work and no more:
+
+1. **a contract** in `src/lib/<area>/…` over `lib/query` — ids, defaults, predicates, a sort
+   spec, exits. ⛔ Pure: no server imports, no words.
+2. **a `<route>-bar.tsx`** beside the page. ⛔ It carries `data-filter-rail` and renders
+   `<FilterPill>` **in its own source** — `test:filter-language` §0.5/§3.1/§3.2 require it of a
+   declared surface, which is why `components/ui/query-bar.tsx` owns the MECHANISMS and never
+   the controls.
+3. **the page** — parse, decorate, filter, count, sort, page. The counts come from the same read
+   as the rows, so a count cannot disagree with the list under it.
+4. **the four declarations** in §6, in the SAME commit.
+
+⚠️ **Two rulings from Stage 3 generalise, and both would be easy to get wrong again:**
+
+- 🔴 **Grep for who WRITES a param before naming one.** `/wallet` uses `?state=` and not
+  `?status=` because `wallet/deposit/actions.ts` already redirects to
+  `/wallet?deposited=…&status=…`. A filter on `?status=` would have silently narrowed the
+  wallet of every player returning from a deposit.
+- 🔴 **Filter the STORED enum, never a display token.** `adaptTxn` folds `BONUS_CREDIT` into
+  `deposit`, so a lens built on the token would have told a player their bonus was a deposit.
+
+⚠️ **And a cap is detected by reading CAP + 1 rows**, never `rows.length === CAP` — otherwise a
+player with exactly the cap is told their history was truncated when it was complete.
 
 ### What Stage 2 found — read before Stage 3
 
@@ -140,8 +164,8 @@ git fetch && git checkout player-query-campaign
 |---|---|---|---|
 | 1 | **The core** | the six existing gates in §8 green **with no edits to those scripts** | ✅ **12/12** |
 | 2 | **`/positions`** | `qa:player-filters` + `qa:count-truth` green on it; 360 Swahili screenshot looked at | ✅ **7/7** |
-| 3 | **`/wallet`** | same, plus the 1,000-row cap is stated to the player | ▶ 0/8 |
-| 4 | **The other 13 pages** | every census-A and census-B route done, one commit each | ☐ 0/14 |
+| 3 | **`/wallet`** | same, plus the 1,000-row cap is stated to the player | ✅ **8/8** |
+| 4 | **The other 13 pages** | every census-A and census-B route done, one commit each | ▶ 0/14 |
 | 5 | **The status dictionary** | `position-card.tsx` has no hand-typed tone; `test:gold-is-money` still green | ☐ 0/4 |
 | 6 | **Guards + docs** | the full §8 sweep passes and each new guard's RED control has been *seen to fail* | ☐ 0/9 |
 
@@ -237,18 +261,18 @@ rendered position today. Add `titlesByIds(ids)` beside the existing `poolsByIds`
 `bookByIds` in `market-dal.ts` — a narrow projection: id, the three titles, category,
 status, both deadlines. **The page ends up faster than it is now.**
 
-### Stage 3 · `/wallet` — the second complaint (0/8)
+### Stage 3 · `/wallet` — the second complaint (✅ 8/8, CLOSED)
 
 | | Task | Files |
 |---|---|---|
-| ☐ | **3.1** the contract — type lens · status lens · window · search | `src/lib/wallet/ledger.ts` |
-| ☐ | **3.2** a windowed, filtered player-transaction read | `src/lib/server/prisma-dal.ts` |
-| ☐ | **3.3** move `tab` and `page` out of React state into the URL | `src/app/wallet/page.tsx` |
-| ☐ | **3.4** the bar; the three `Tabs` **stay** a section rail | `src/app/wallet/wallet-client.tsx` |
-| ☐ | **3.5** state the row cap to the player when it bites | `wallet-client.tsx` |
-| ☐ | **3.6** bonus grants — lens + "show all" | `wallet/page.tsx` · `wallet-client.tsx` |
-| ☐ | **3.7** keys in all three locales | `src/lib/i18n-dict.ts` |
-| ☐ | **3.8** declare the rail in the four places | 3 scripts + the page |
+| ☑ | **3.1** the contract — type lens · status lens · window · search | `src/lib/wallet/ledger.ts` |
+| ☑ | **3.2** a windowed, filtered player-transaction read | `src/lib/server/prisma-dal.ts` |
+| ☑ | **3.3** move `tab` and `page` out of React state into the URL | `src/app/wallet/page.tsx` |
+| ☑ | **3.4** the bar; the three `Tabs` **stay** a section rail | `src/app/wallet/wallet-client.tsx` |
+| ☑ | **3.5** state the row cap to the player when it bites | `wallet-client.tsx` |
+| ☑ | **3.6** bonus grants — lens + "show all" | `wallet/page.tsx` · `wallet-client.tsx` |
+| ☑ | **3.7** keys in all three locales | `src/lib/i18n-dict.ts` |
+| ☑ | **3.8** declare the rail in the four places | 3 scripts + the page |
 
 🔴 **Filter the stored `TxnType`, never the UI token.** `wallet/page.tsx:22-30` deliberately
 folds `BONUS_CREDIT` and `ADJUSTMENT_CREDIT` into `deposit`, and `CASHOUT` and `HOUSE_FEE`
