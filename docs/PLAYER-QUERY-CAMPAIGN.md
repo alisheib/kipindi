@@ -20,13 +20,49 @@
 ## §0 — RESUME AT
 
 ```
-▶ NEXT ACTION — task 4.1 in the board below.
-  /updown/history: lens All · In play · Up wins · Down wins · Refunded; sheet Asset ·
-  Duration · When (the day rail FOLDS INTO the window); sort; paging. The 400 cap stays
-  stated. One commit per route, in the order §1 lists them.
+▶ NEXT ACTION — task 4.3 in the board below.
+  /watchlist: lens All · Live · In progress · Settled; sheet Topic; sort; search; paging.
+  It is ONE unfiltered, unsorted, unpaged grid today — and its read is an UNBOUNDED
+  listMarkets({productLine:"ALL"}) re-run every 20s by a poller. One commit per route.
 ```
 
-**Stage 4 of 6. Stages 1–3 CLOSED (12/12, 7/7, 8/8).**
+**Stage 4 of 6. Stages 1–3 CLOSED (12/12, 7/7, 8/8). 4.1 and 4.2 done; 12 routes left.**
+
+### What tasks 4.1 and 4.2 found — read before 4.3
+
+🔴 **`/results` HAD BEEN OVER-PROMISING ITS OWN COUNT BY THREE.** `data-result-count` said 8
+while the document held 5. The notable carousel rendered `{slides[current]}`, so on page one up
+to TWO settled markets existed nowhere in the DOM, and `FeaturedResult` — a second code path
+from the grid — carried no row identity. ⛔ The page's own note said its total *"cannot be
+reconstructed from the DOM"*, which is the opposite of what §3 rule 5 publishes it for.
+**Only `qa:player-filters` found it; every static gate was green.**
+
+⭐ **A LENS SET MUST COVER ITS PARENT, AND TWICE NOW THE PLAN UNDERCOUNTED IT.**
+`/updown/history` needed a SIXTH lens the plan had not named — a round whose bets have settled
+but whose settlement PRICE is still being confirmed is none of up/down/void, and the card has
+always had a fifth chip for it. Read the CARD's chip ladder before writing a lens set.
+
+⛔ **A WORD THAT VARIES BY PRODUCT CANNOT SIT IN ONE RAIL.** `/results`' outcome lens is
+withheld entirely under `?product=all`, because "Yes won" and "Up won" cannot both be the label
+— E-169 is that defect already shipped once.
+
+⚠️ **Three gates went red for the right reason and none was loosened:**
+`test:search-adoption` refused a hand-rolled `.toLowerCase().includes()` (it became
+`UD_ROUND_SEARCH` through the shared grammar); `test:section-rail`'s floor stepped 15 → 14 → 10,
+each in the commit that moved the rail — ⚠️ **and the first attempt GUESSED 12 when the real
+population was 10. Re-derive, never predict.**
+
+⭐ **`qa:player-filters` NOW HAS A THIRD OUTCOME.** Some arms need the fixture to hold a
+particular shape — "at least one lens is present but not universal" cannot be exercised when
+every row sits in one lens. ⛔ Reporting that as a FAILURE is a false finding about working
+code; reporting it as a PASS is vacuous green. It prints 🔶, counts separately, never adds to
+`pass`, and is named in the summary.
+
+⚠️ **THE INSTRUMENTATION CONTRACT IS NOW THREE ATTRIBUTES, and a new row type must carry the
+third or the driver refuses to run:** `data-result-count` on the bar, `data-chip`/`data-count`
+on each pill, and **`data-row-id` on every row**. It is read without regard to visibility, so
+disjoint/covering can be proven over SETS rather than by parsing a visible word — which would
+only work in English.
 
 ### The shape every remaining route follows
 
@@ -165,7 +201,7 @@ git fetch && git checkout player-query-campaign
 | 1 | **The core** | the six existing gates in §8 green **with no edits to those scripts** | ✅ **12/12** |
 | 2 | **`/positions`** | `qa:player-filters` + `qa:count-truth` green on it; 360 Swahili screenshot looked at | ✅ **7/7** |
 | 3 | **`/wallet`** | same, plus the 1,000-row cap is stated to the player | ✅ **8/8** |
-| 4 | **The other 13 pages** | every census-A and census-B route done, one commit each | ▶ 0/14 |
+| 4 | **The other 13 pages** | every census-A and census-B route done, one commit each | ▶ **2/14** |
 | 5 | **The status dictionary** | `position-card.tsx` has no hand-typed tone; `test:gold-is-money` still green | ☐ 0/4 |
 | 6 | **Guards + docs** | the full §8 sweep passes and each new guard's RED control has been *seen to fail* | ☐ 0/9 |
 
@@ -309,10 +345,10 @@ One commit each, in this order. Same bar, same nine rules.
 
 | | Route | What it gets |
 |---|---|---|
-| ☐ | **4.1** `/updown/history` | lens `All · In play · Up wins · Down wins · Refunded`; sheet Asset · Duration · When (the day rail folds into the window); sort; paging. The 400 cap **stays stated** |
-| ☐ | **4.2** `/results` | lens `All · Yes won · No won · Refunded`; sheet Product · Topic · When; direction on the existing two sorts. ⚠️ **retires the desktop sidebar** — see below |
+| ☑ | **4.1** `/updown/history` | lens `All · In play · Up wins · Down wins · Refunded`; sheet Asset · Duration · When (the day rail folds into the window); sort; paging. The 400 cap **stays stated** |
+| ☑ | **4.2** `/results` | lens `All · Yes won · No won · Refunded`; sheet Product · Topic · When; direction on the existing two sorts. ⚠️ **retires the desktop sidebar** — see below |
 | ☐ | **4.3** `/watchlist` | lens `All · Live · In progress · Settled`; sheet Topic; sort; search; paging. One unfiltered, unsorted, unpaged grid today |
-| ☐ | **4.4** `/proposals` | all six `ProposalStatus` lenses — `DECLINED` and `CHANGES_REQUESTED` have **no way in** today, so a proposer cannot find their own declined proposal; sheet Topic · When; sort; search |
+| ☐ | **4.4** `/proposals` | all six `ProposalStatus` lenses. ⚠️ **CORRECTED 2026-09-08:** this row said `DECLINED` and `CHANGES_REQUESTED` have *no way in*. Re-derived — they ARE reachable (`f=new` and `f=mine` apply no status predicate); what they have is **no dedicated lens**, so a proposer must scroll a 12-per-page list ordered `createdAt desc` with declines intermixed. `APPROVED` is likewise unselectable. The data is fully hydrated today; only the control is missing. Sheet Topic · When; sort; search |
 | ☐ | **4.5** `/notifications` | **search** (the only lens surface without it) + the `data-filter-rail` hook it has never carried |
 | ☐ | **4.6** `/profile/account` | counts on the existing category rail; When; sort; search |
 | ☐ | **4.7** `/fairness` | include `VOIDED`, then lens `All · Resolved · Voided`. It reads `RESOLVED` only, so **voided settlements are invisible on the page that exists to prove settlements** |
@@ -375,7 +411,7 @@ from disagreeing about what refunded looks like.**
 | ☐ | **6.2** `red:lifecycle-reach` | new control, `lifecycle-reach-red.mjs` † |
 | ☐ | **6.3** `test:route-census` — globs every non-admin `page.tsx`; a new route without a ruling fails | new gate, `route-census.test.mts` † |
 | ☐ | **6.4** `red:route-census` | new control, `route-census-red.mjs` † |
-| ☐ | **6.5** `qa:player-filters` — the two-arm invariant, borrowed verbatim | new drive, `player-filter-drive.mjs` † |
+| ☑ | **6.5** `qa:player-filters` — pulled forward to stage 4 so each route is verified as it lands | [`scripts/live/player-filter-drive.mjs`](../scripts/live/player-filter-drive.mjs) |
 | ☐ | **6.6** `qa:count-truth` — generalise the `/markets`-only probe | new probe, `count-truth-probe.mjs` † |
 | ☐ | **6.7** the rule, in §K, as an extension of rule 6 | `docs/DESIGN_AUTHORITY.md` |
 | ☐ | **6.8** the shape, as record and on-ramp | `docs/DESIGN-BASELINE.md` **§3c** |
