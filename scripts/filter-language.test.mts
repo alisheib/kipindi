@@ -100,6 +100,11 @@ const SURFACES = [
      both are the loud stop §6 of `docs/PLAYER-QUERY-CAMPAIGN.md` says to expect. The file named
      here must always be the one that emits the hook. */
   "src/app/positions/positions-bar.tsx",        // /positions — 7 lenses + side/topic/window
+  /* DECLARED 2026-09-08 (PLAYER QUERY, stage 3). The wallet had NO filter rail at all — all
+     seven TxnStatus values were labelled 1:1 on screen and not one was filterable. It is a
+     server component inside a client page, so its controls are real <Link>s and its counts
+     come from the same read as the rows. */
+  "src/app/wallet/wallet-bar.tsx",              // /wallet — 9 money lenses + state/window
   "src/components/updown/updown-board-tabs.tsx", // /updown — assets + durations
   "src/app/updown/history/page.tsx",            // /updown/history — the day rail
   "src/app/profile/activity/page.tsx",          // /profile/activity — period

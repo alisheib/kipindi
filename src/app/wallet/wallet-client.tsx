@@ -163,17 +163,71 @@ const BONUS_SOURCE_LABEL: Record<string, string> = {
  * its full amount pending activation". That is money in the account, so it is never hidden:
  * Law 1 gates the OFFER, never the balance.
  */
+/**
+ * The word a player reads for a transaction's KIND.
+ *
+ * The eight tokens are `adaptTxn`'s display fold, not the stored enum — see `wallet/page.tsx`.
+ * They are labelled here because the row printed the raw token at a player; the FILTER reads the
+ * stored type instead, through `lib/wallet/ledger.ts`.
+ */
+function TOKEN_LABEL(t: ReturnType<typeof useT>["t"]): Record<string, string> {
+  return {
+    deposit: t.common.deposit,
+    withdraw: t.common.withdraw,
+    bet: t.wallet.typeBet,
+    payout: t.wallet.typePayout,
+    refund: t.wallet.typeRefund,
+    commission: t.wallet.typeCommission,
+    reversal: t.wallet.typeReversal,
+  };
+}
+
 function bonusCardHasContent(bonusBalance: number, activeCount: number, grantCount: number): boolean {
   return bonusBalance > 0 || activeCount > 0 || grantCount > 0;
 }
 
+/**
+ * THE WORD FOR A GRANT'S STATE — every one of the seven, from the dictionary.
+ *
+ * FIVE OF THE SEVEN HAD NO WORD BECAUSE THEY HAD NO SCREEN. The wallet listed `ACTIVE` and
+ * `QUEUED` only, so a bonus that expired, was cancelled, was forfeited, was FULFILLED, or is
+ * waiting on the player's own ID check simply did not exist as far as the product was concerned —
+ * a player could not see a bonus they had been granted and lost. Re-derive the population with
+ * `sed -n '/^enum BonusGrantStatus/,/^}/p' prisma/schema.prisma`.
+ * No stored token ever reaches the screen (L3): a fallback would print `FORFEITED` at a player,
+ * so an unknown status renders nothing rather than its own name.
+ */
+function grantStatusWord(t: ReturnType<typeof useT>["t"], status: string | undefined): string | null {
+  switch (status) {
+    case "ACTIVE": return t.wallet.grantStatusActive;
+    case "QUEUED": return t.wallet.grantStatusQueued;
+    case "PENDING_KYC": return t.wallet.grantStatusPendingKyc;
+    case "FULFILLED": return t.wallet.grantStatusFulfilled;
+    case "EXPIRED": return t.wallet.grantStatusExpired;
+    case "CANCELLED": return t.wallet.grantStatusCancelled;
+    case "FORFEITED": return t.wallet.grantStatusForfeited;
+    default: return null;
+  }
+}
+
+/** A grant whose money is still in play. The others are history, and history is read, not summed. */
+const GRANT_IS_LIVE = (s: string | undefined) => s === "ACTIVE" || s === "QUEUED" || s === "PENDING_KYC";
+
+/** How many grants are listed before the overflow line. */
+const GRANTS_SHOWN = 5;
+
 function BonusWalletCard({
-  bonusBalance, activeCount, grants, currency, featureLive = false,
-}: { bonusBalance: number; activeCount: number; grants: (BonusGrantView & { status?: "ACTIVE" | "QUEUED" })[]; currency: string; featureLive?: boolean }) {
+  bonusBalance, activeCount, grants, currency, featureLive = false, showAllGrants = false, grantsToggleHref,
+}: { bonusBalance: number; activeCount: number; grants: (BonusGrantView & { status?: string })[]; currency: string; featureLive?: boolean; showAllGrants?: boolean; grantsToggleHref?: string }) {
   const { t } = useT();
-  const totalReq = grants.reduce((s, g) => s + g.wagerRequiredTzs, 0);
-  const totalWagered = grants.reduce((s, g) => s + Math.min(g.wageredTzs, g.wagerRequiredTzs), 0);
-  const totalRemainingWager = grants.reduce((s, g) => s + g.remainingWagerTzs, 0);
+  /* THE TOTALS COUNT ONLY LIVE GRANTS, and with finished ones now listed that stopped being a
+     formality: summing an EXPIRED grant's wagering requirement into "play X more to unlock" would
+     quote a player a target for money that is gone. The LIST shows history; the BAR shows what is
+     still in play. */
+  const liveGrants = grants.filter((g) => GRANT_IS_LIVE(g.status));
+  const totalReq = liveGrants.reduce((s, g) => s + g.wagerRequiredTzs, 0);
+  const totalWagered = liveGrants.reduce((s, g) => s + Math.min(g.wageredTzs, g.wagerRequiredTzs), 0);
+  const totalRemainingWager = liveGrants.reduce((s, g) => s + g.remainingWagerTzs, 0);
   const overallPct = totalReq > 0 ? Math.min(100, Math.round((totalWagered / totalReq) * 100)) : 0;
   const hasBonus = bonusCardHasContent(bonusBalance, activeCount, grants.length);
 
@@ -284,24 +338,32 @@ function BonusWalletCard({
 
             {grants.length > 0 && (
               <div className="mt-4 space-y-2">
-                {grants.slice(0, 5).map((g) => {
-                  const isQueued = g.status === "QUEUED";
+                {grants.slice(0, GRANTS_SHOWN).map((g) => {
+                  const live = GRANT_IS_LIVE(g.status);
+                  const running = g.status === "ACTIVE";
+                  const word = grantStatusWord(t, g.status);
                   return (
-                    <div key={g.id} className={`rounded-md px-3 py-2 border ${isQueued ? "bg-bg-overlay/40 border-border/40 opacity-70" : "bg-gold-500/[0.06] border-gold-700/25"}`}>
+                    <div key={g.id} className={`rounded-md px-3 py-2 border ${running ? "bg-gold-500/[0.06] border-gold-700/25" : "bg-bg-overlay/40 border-border/40 opacity-70"}`}>
                       <div className="flex items-center justify-between gap-2">
                         <span className="font-mono text-micro uppercase tracking-[0.1em] text-gold-200/80 flex items-center gap-1.5">
                           {BONUS_SOURCE_LABEL[g.source] ?? g.source}
-                          {isQueued && (
+                          {/* EVERY state but the running one is named. It used to badge `QUEUED`
+                              alone, so the four finished states would have rendered as though they
+                              were still running — gilt panel, progress bar and all — the moment
+                              they became visible. */}
+                          {!running && word && (
                             <span className="inline-flex items-center rounded-pill px-1.5 py-px text-[8px] font-bold bg-warning-bg border border-warning-border text-warning-fg">
-                              {t.common.queued}
+                              {word}
                             </span>
                           )}
                         </span>
                         <span className="font-mono text-[12px] font-bold text-text tabular-nums"><Cash>{formatTzs(g.remainingTzs)}</Cash></span>
                       </div>
-                      {isQueued ? (
+                      {!running ? (
                         <p className="mt-1.5 text-body-sm text-text-muted italic">
-                          {t.common.queuedHint}
+                          {/* A queued grant is waiting its turn; a finished one is simply what it
+                              is, and its badge already says so. Neither has progress to draw. */}
+                          {g.status === "QUEUED" ? t.common.queuedHint : (live ? t.common.queuedHint : "")}
                         </p>
                       ) : (
                         <>
@@ -326,8 +388,21 @@ function BonusWalletCard({
                     </div>
                   );
                 })}
-                {grants.length > 3 && (
-                  <p className="text-center font-mono text-[10px] text-gold-200/60">+{grants.length - 3} {grants.length - 3 > 1 ? t.common.moreBonuses : t.common.moreBonus}</p>
+                {/* THE OVERFLOW LINE COUNTED FROM 3 WHILE THE LIST RENDERED 5 — a shipped
+                    off-by-two. With four grants it drew all four and then said "+1 more"; with
+                    six it drew five and said "+3 more". One constant now feeds both, so the two
+                    cannot disagree again. */}
+                {grants.length > GRANTS_SHOWN && (
+                  <p className="text-center font-mono text-[10px] text-gold-200/60">+{grants.length - GRANTS_SHOWN} {grants.length - GRANTS_SHOWN > 1 ? t.common.moreBonuses : t.common.moreBonus}</p>
+                )}
+                {/* The way into the other five statuses. A `<Link>`, so it is a real address a
+                    player can share or come back to. */}
+                {grantsToggleHref && (
+                  <p className="text-center">
+                    <Link href={grantsToggleHref as never} replace scroll={false} className="font-mono text-[10px] text-gold-200/80 underline underline-offset-2 hover:text-gold-100">
+                      {showAllGrants ? t.wallet.grantsShowLive : t.wallet.grantsShowAll}
+                    </Link>
+                  </p>
                 )}
               </div>
             )}
@@ -431,7 +506,11 @@ function TxnRow({ tx }: { tx: Transaction }) {
         <div className="px-3 pb-3 pt-0 grid grid-cols-2 gap-2 text-[11px]">
           <div className="rounded-md border border-border/60 bg-bg-overlay/40 px-2.5 py-1.5">
             <p className="font-mono text-micro uppercase eyebrow text-text-faint">{t.common.txnType}</p>
-            <p className="font-semibold text-text">{tx.type}</p>
+            {/* THIS PRINTED THE RAW TOKEN — `deposit`, `payout`, `commission` — in English, at
+                every locale, on a money row. L3: no enum ever reaches a sentence, and L4: a
+                translated string carries no English enum token. A Swahili player read "payout"
+                beside a page reading "Malipo". The words come from the dictionary now. */}
+            <p className="font-semibold text-text">{TOKEN_LABEL(t)[tx.type] ?? tx.type}</p>
           </div>
           <div className="rounded-md border border-border/60 bg-bg-overlay/40 px-2.5 py-1.5">
             <p className="font-mono text-micro uppercase eyebrow text-text-faint">{t.wallet.amount}</p>
@@ -493,7 +572,6 @@ function TxnRow({ tx }: { tx: Transaction }) {
 }
 
 
-type TabValue = "activity" | "methods" | "limits";
 
 // Supported payment channels (not per-user saved accounts — saved methods aren't
 // a feature yet). The player picks one and enters their number at deposit/withdrawal.
@@ -508,21 +586,48 @@ const METHODS: Method[] = [
 export function WalletPageClient({
   balance, pending, hold, currency,
   transactions,
+  resultCount, page, totalPages, pagerBaseHref,
+  section, sectionHrefs, activityBar,
+  emptyCause, emptyTitle, emptyBody, emptyExits,
+  capped, rowCap,
   balanceSeries = [],
   bonusBalance, bonusActiveCount, bonusWagerRemaining, bonusGrants, bonusFeatureLive = false,
+  showAllGrants = false, grantsToggleHref,
   cashbackPercent = 0,
   cashbackMode = "REQUEST",
   limits,
   isAuthed,
 }: {
   balance: number; pending: number; hold: number; currency: string;
+  /** One PAGE of rows — the server filtered, counted and paged them. */
   transactions: Transaction[];
+  /** The SAME variable the bar published as `data-result-count`. Never recomputed. */
+  resultCount: number;
+  page: number; totalPages: number; pagerBaseHref: string;
+  /**
+   * THE SECTION COMES FROM THE URL, NOT FROM `useState` — DESIGN_AUTHORITY K 7b. It was React
+   * state, so a player could not share, bookmark or refresh back into the part of the page they
+   * were reading, and the back button did nothing.
+   */
+  section: "activity" | "methods" | "limits";
+  sectionHrefs: Record<string, string>;
+  /** The filter bar, rendered on the SERVER and handed in — see `wallet-bar.tsx`. */
+  activityBar: React.ReactNode;
+  emptyCause: string | null;
+  emptyTitle: string; emptyBody: string;
+  /** Each carries a REAL, cross-filtered count — never an exit to another empty page. */
+  emptyExits: Array<{ id: string; label: string; href: string }>;
+  /** Whether the row cap BIT. Never inferred from `rows.length === cap`. */
+  capped: boolean; rowCap: number;
   /** 30-day end-of-day balance points for the A9 spark; <2 hides it. */
   balanceSeries?: number[];
-  bonusBalance: number; bonusActiveCount: number; bonusWagerRemaining: number; bonusGrants: (BonusGrantView & { status?: "ACTIVE" | "QUEUED" })[];
+  bonusBalance: number; bonusActiveCount: number; bonusWagerRemaining: number; bonusGrants: (BonusGrantView & { status?: string })[];
   /** Product feature state, resolved on the server. Gates the OFFER only — a live grant
    *  still renders, because hiding money a player holds is not a feature flag. */
   bonusFeatureLive?: boolean;
+  /** Whether every grant status is listed, or only the live ones. */
+  showAllGrants?: boolean;
+  grantsToggleHref?: string;
   cashbackPercent?: number;
   cashbackMode?: "REQUEST" | "AUTO";
   /** Single-txn money caps, threaded from the server's zod validators (the
@@ -534,16 +639,14 @@ export function WalletPageClient({
   /** ⛔ THE GRID AND THE CARD MUST AGREE — see `bonusCardHasContent`. Derived once, here, and
    *  used both to choose the column count and (inside the card) to decide whether to render. */
   const bonusCardVisible = bonusFeatureLive || bonusCardHasContent(bonusBalance, bonusActiveCount, bonusGrants.length);
-  const [tab, setTab] = useState<TabValue>("activity");
-  const [page, setPage] = useState(0);
-  const pageCount = Math.max(1, Math.ceil(transactions.length / TXNS_PER_PAGE));
-  const safePage = Math.min(page, pageCount - 1);
-  const pagedTxns = transactions.slice(safePage * TXNS_PER_PAGE, safePage * TXNS_PER_PAGE + TXNS_PER_PAGE);
-
+  /* NO `useState` FOR THE SECTION OR THE PAGE. Both live in the URL, so every view of this page
+     is a real address: shareable, refresh-safe and back-button-safe. K 7b names the URL as what
+     makes `aria-current="page"` honest, which is what `Tabs` emits once each item has an
+     `href` — so this rail stops announcing a selection it could not address. */
   const tabs = [
-    { value: "activity", labelEn: t.common.activity },
-    { value: "methods",  labelEn: t.common.methods },
-    { value: "limits",   labelEn: t.common.limits },
+    { value: "activity", labelEn: t.common.activity, href: sectionHrefs.activity },
+    { value: "methods",  labelEn: t.common.methods,  href: sectionHrefs.methods },
+    { value: "limits",   labelEn: t.common.limits,   href: sectionHrefs.limits },
   ];
 
   // Derived from the server validators (via props) — never a hand-typed literal.
@@ -594,7 +697,7 @@ export function WalletPageClient({
           defect class, and `qa:withdrawal-visual` now measures it by name. */}
       <div className={cn("grid grid-cols-1 gap-4 items-stretch", bonusCardVisible && "lg:grid-cols-2")}>
         <BalanceCard balance={balance} pending={pending} hold={hold} currency={currency} />
-        <BonusWalletCard bonusBalance={bonusBalance} activeCount={bonusActiveCount} grants={bonusGrants} currency={currency} featureLive={bonusFeatureLive} />
+        <BonusWalletCard bonusBalance={bonusBalance} activeCount={bonusActiveCount} grants={bonusGrants} currency={currency} featureLive={bonusFeatureLive} showAllGrants={showAllGrants} grantsToggleHref={grantsToggleHref} />
       </div>
       {bonusWagerRemaining > 0 && (
         <p className="sr-only">{t.common.bonus}: {formatTzs(bonusWagerRemaining)}</p>
@@ -607,49 +710,83 @@ export function WalletPageClient({
       <Tabs
         variant="line"
         tabs={tabs}
-        value={tab}
-        onChange={(v) => setTab(v as TabValue)}
+        value={section}
         ariaLabel={t.common.walletLabel}
       />
 
-      {tab === "activity" && (
-        transactions.length > 0 ? (
-          <section className="space-y-3">
-            <BalanceSpark series={balanceSeries} label={`${t.common.available2} · ${t.common.days30}`} />
-            <div className="rounded-xl glass-panel overflow-hidden">
-              {pagedTxns.map((tx) => <TxnRow key={tx.id} tx={tx} />)}
-              <Pagination
-                total={transactions.length}
-                page={safePage + 1}
-                perPage={TXNS_PER_PAGE}
-                onNavigate={(p) => setPage(Math.min(Math.max(0, p - 1), pageCount - 1))}
-                ofLabel={t.common.of}
-                prevLabel={t.common.previousPage}
-                nextLabel={t.common.nextPage}
-firstLabel={t.common.firstPage}
-lastLabel={t.common.lastPage}
-              />
-            </div>
-          </section>
-        ) : (
-          <EmptyState
-            kind="audit"
-            title={t.common.noActivityYet}
-            body={t.common.firstDepositHint}
-            action={
-              /* D5 — the third gold Deposit. Brand, for the reason stated on the
-                 header CTA above: the header's gilt is the one. */
-              isAuthed ? (
-                <Link href="/wallet/deposit" className="btn btn-primary btn-md">
-                  {t.common.depositCta}
-                </Link>
-              ) : undefined
-            }
-          />
-        )
+      {section === "activity" && (
+        <>
+          {/* THE BAR RENDERS EVEN WHEN THE LIST IS EMPTY, and that is the point: a player who has
+              filtered to nothing must be able to see WHICH controls are on and press them off.
+              Hiding the rail along with the rows is how an empty page becomes a trap. It is
+              withheld only when the account genuinely has no transactions at all. */}
+          {emptyCause !== "no-rows" && activityBar}
+
+          {/* THE CAP IS STATED WHEN IT BITES. The read takes at most `rowCap` rows and nothing
+              anywhere said so — while the pager printed "1-12 of 1000", which reads as "you have
+              exactly 1000 transactions" to the one player for whom it is false. `/updown/history`
+              is the precedent; the DATE WINDOW is the control that actually reaches past the cap,
+              and the hint names it rather than leaving the player to guess. */}
+          {capped && (
+            <p className="rounded-lg border border-border bg-bg-elevated/60 px-3 py-2 text-body-sm text-text-muted">
+              {t.wallet.capped.replace("{n}", formatNumber(rowCap))}{" "}
+              <span className="text-text-subtle">{t.wallet.cappedHint}</span>
+            </p>
+          )}
+
+          {transactions.length > 0 ? (
+            <section className="space-y-3">
+              <BalanceSpark series={balanceSeries} label={`${t.common.available2} · ${t.common.days30}`} />
+              <div className="rounded-xl glass-panel overflow-hidden">
+                {transactions.map((tx) => <TxnRow key={tx.id} tx={tx} />)}
+                <Pagination
+                  total={resultCount}
+                  page={page}
+                  perPage={TXNS_PER_PAGE}
+                  /* The base carries every ACTIVE filter, so page 2 of "Payouts" is page 2 of
+                     "Payouts" — and the builder omits defaults, so a clean view has a clean URL. */
+                  baseHref={pagerBaseHref}
+                  ofLabel={t.common.of}
+                  prevLabel={t.common.previousPage}
+                  nextLabel={t.common.nextPage}
+                  firstLabel={t.common.firstPage}
+                  lastLabel={t.common.lastPage}
+                />
+              </div>
+            </section>
+          ) : (
+            <EmptyState
+              kind="audit"
+              title={emptyTitle}
+              body={emptyBody}
+              action={
+                /* D5 — the third gold Deposit. Brand, for the reason stated on the header CTA
+                   above: the header's gilt is the one.
+                   The deposit CTA is offered only when the account is genuinely empty; a FILTERED
+                   empty state offers the ways OUT of the filter instead, each labelled with the
+                   real number of rows it leads to. */
+                emptyCause === "no-rows" ? (
+                  isAuthed ? (
+                    <Link href="/wallet/deposit" className="btn btn-primary btn-md">
+                      {t.common.depositCta}
+                    </Link>
+                  ) : undefined
+                ) : emptyExits.length > 0 ? (
+                  <div className="flex flex-wrap items-center justify-center gap-2">
+                    {emptyExits.map((e) => (
+                      <Link key={e.id} href={e.href as never} replace scroll={false} className="btn btn-ghost btn-sm">
+                        {e.label}
+                      </Link>
+                    ))}
+                  </div>
+                ) : undefined
+              }
+            />
+          )}
+        </>
       )}
 
-      {tab === "methods" && (
+      {section === "methods" && (
         <section className="space-y-3">
           <p className="text-body-sm text-text-muted leading-snug">
             {t.common.supportedChannels}
@@ -671,7 +808,7 @@ lastLabel={t.common.lastPage}
         </section>
       )}
 
-      {tab === "limits" && (
+      {section === "limits" && (
         <section className="space-y-3">
           <p className="text-body-sm text-text-muted leading-snug">
             {t.common.platformLimits}

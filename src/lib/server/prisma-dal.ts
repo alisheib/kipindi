@@ -1309,6 +1309,22 @@ export const prismaDb = {
       });
       return rows.map(toStoredTxn);
     },
+    /**
+     * One player's transactions inside a date window, newest first — see the memory twin in
+     * `store.ts` for why the window is applied in the STORE rather than over a truncated page.
+     * ⛔ BOTH HALVES EXIST OR NEITHER DOES.
+     *
+     * ⚠️ Bounds are `gte` / `lt`, matching `listInRange`, so two reads of one span cannot disagree
+     * about a row that landed exactly on the boundary.
+     */
+    findByUserWindow: async (userId: string, fromMs: number, toMs: number, limit: number): Promise<StoredTxn[]> => {
+      const rows = await pc().transaction.findMany({
+        where: { userId, createdAt: { gte: new Date(fromMs), lt: new Date(toMs) } },
+        orderBy: { createdAt: "desc" },
+        take: limit,
+      });
+      return rows.map(toStoredTxn);
+    },
     findById: async (id: string): Promise<StoredTxn | null> => {
       const row = await pc().transaction.findUnique({ where: { id } });
       return row ? toStoredTxn(row) : null;

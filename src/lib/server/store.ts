@@ -1105,6 +1105,29 @@ const memoryDb = {
   txn: {
     create: (t: StoredTxn) => { store.txns.set(t.id, t); return t; },
     findByUser: (userId: string, limit = 50) => Array.from(store.txns.values()).filter((t) => t.userId === userId).slice(-limit).reverse(),
+    /**
+     * ⭐ ONE PLAYER'S TRANSACTIONS INSIDE A DATE WINDOW, NEWEST FIRST — the read `/wallet` filters
+     * over. The window is applied HERE, in the store, and that is the whole point: filtering an
+     * already-truncated page would search only the newest 1,000 rows, so a player narrowing to
+     * "last 30 days" to find an older withdrawal would be searching the very rows the cap had
+     * already handed them. ⛔ A filter over an incomplete population is a check that lies.
+     *
+     * ⚠️ IT SORTS BY `createdAt` EXPLICITLY, WHERE `findByUser` ABOVE SORTS BY INSERTION ORDER
+     * (`.slice(-limit).reverse()`). That divergence is pre-existing and is not widened here: the
+     * Prisma twin orders `createdAt: "desc"`, so this half now says the same thing in the same
+     * words, and a suite that passes against the memory store means the same in production.
+     *
+     * Bounds match `listInRange` — `>= from`, `< to` — so two reads of one span cannot disagree.
+     */
+    findByUserWindow: (userId: string, fromMs: number, toMs: number, limit: number): StoredTxn[] =>
+      Array.from(store.txns.values())
+        .filter((t) => {
+          if (t.userId !== userId) return false;
+          const at = Date.parse(t.createdAt);
+          return at >= fromMs && at < toMs;
+        })
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+        .slice(0, limit),
     findById: (id: string) => store.txns.get(id) ?? null,
     findByProviderRef: (providerRef: string) => Array.from(store.txns.values()).find((t) => t.providerRef === providerRef) ?? null,
     update: (id: string, patch: Partial<StoredTxn>) => {

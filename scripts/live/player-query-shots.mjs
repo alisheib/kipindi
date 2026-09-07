@@ -47,6 +47,9 @@ const SURFACES = [
   { id: "positions", path: "/positions", must: "data-filter-rail", sheet: true },
   { id: "positions-won", path: "/positions?tab=win", must: "data-filter-rail", sheet: false },
   { id: "positions-empty", path: "/positions?q=zzzznomatch", must: "data-filter-rail", sheet: false },
+  { id: "wallet", path: "/wallet", must: "data-filter-rail", sheet: true },
+  { id: "wallet-payouts", path: "/wallet?type=payout", must: "data-filter-rail", sheet: false },
+  { id: "wallet-empty", path: "/wallet?q=zzzznomatch", must: "data-filter-rail", sheet: false },
   { id: "markets", path: "/markets", must: "data-filter-rail", sheet: true },
 ];
 

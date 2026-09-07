@@ -55,6 +55,10 @@ const SURFACES = [
   // Two rails: assets (primary) and durations (secondary).
   { id: "/updown", path: "/updown", auth: false, rails: 2 },
   { id: "/positions", path: "/positions", auth: true, rails: 1 },
+  // DECLARED 2026-09-08 (PLAYER QUERY, stage 3). `rails: 1` is the per-route vacuity control:
+  // the wallet renders ONE filter rail, and its Activity/Methods/Limits rail is a SECTION rail
+  // (`data-section-rail`), which K rule 7 keeps out of this language by design.
+  { id: "/wallet", path: "/wallet", auth: true, rails: 1 },
   { id: "/profile/activity", path: "/profile/activity", auth: true, rails: 1 },
   { id: "/profile/account", path: "/profile/account", auth: true, rails: 1 },
   { id: "/updown/history", path: "/updown/history", auth: true, rails: 1 },

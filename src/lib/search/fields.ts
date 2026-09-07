@@ -155,6 +155,31 @@ export const PROPOSAL_SEARCH: EntitySchema = {
  * even though the lens strip already filters it — a player who has learned `status:WIN` should
  * not be told the grammar has an exception.
  */
+/**
+ * A PLAYER'S OWN TRANSACTIONS — `/wallet`.
+ *
+ * ⛔ NOT `TXN_SEARCH`, AND THE DIFFERENCE IS NOT COSMETIC. That schema is the ADMIN one: its
+ * fields are `msisdn` and `user`, and its default columns are `id / providerRef / msisdn /
+ * userId`. Handing it to a player surface would (a) advertise `user:` and `msisdn:` as clickable
+ * help chips on a page where another person's identifiers have no business being typed, and
+ * (b) fail to search the one field a player would actually reach for — the row's own
+ * `description`, which is the sentence they can see.
+ *
+ * ⛔ `viewModel: true`: the row a player's wallet renders is assembled on the server and carries
+ * the STORED `type`/`status` beside the folded display token. `matchesQuery` only.
+ */
+export const MY_TXN_SEARCH: EntitySchema = {
+  fields: {
+    ref: { columns: ["providerRef"], kind: "text" },
+    type: { columns: ["type"], kind: "exact" },
+    status: { columns: ["status"], kind: "exact" },
+    id: { columns: ["id"], kind: "exact" },
+  },
+  // What a bare token searches — the sentence on the row, which is what a player can see.
+  default: ["description"],
+  viewModel: true,
+};
+
 export const POSITION_SEARCH: EntitySchema = {
   fields: {
     title: { columns: ["titleEn", "titleSw", "titleZh"], kind: "text" },
