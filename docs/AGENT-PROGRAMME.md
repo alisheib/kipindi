@@ -12,8 +12,8 @@ about this system**, §10 records the correction.
 ⛔ **This file is the authority for _what_ the programme is.** Rates live in
 [`RULES.md`](RULES.md) §2.10 and nowhere else.
 
-> ✅ **BUILT 2026-09-07 on branch `agent-affiliate-programme`** (Ali merges; every push to `main`
-> deploys live). The decision record is `COMPLIANCE-DECISIONS.md` § 2026-09-07; the rule is
+> ✅ **BUILT 2026-09-07 on branch `agent-affiliate-programme` · MERGED to `main` as `a783299f` and LIVE on
+> 50pick.tz at 13:54 UTC the same day, on Ali's instruction** (every push to `main` deploys live). The decision record is `COMPLIANCE-DECISIONS.md` § 2026-09-07; the rule is
 > `RULES.md` §2.10; the code is `src/lib/server/agent-config.ts`, `affiliate-service.ts`
 > (`policyFor`, the one resolver) and `agent-application-service.ts`; the surfaces are `/agent`,
 > `/agent/apply`, `/agent/status`, `/agent/invite/[token]`, `/legal/agent-terms`, the dashboard on
@@ -145,7 +145,7 @@ previous build never selects a column that is gone; release 2, after one deploy 
 reading it, is the one-line migration below. ⛔ Do not fold it into a feature migration.
 
 ```sql
--- prisma/migrations/<later>_agent_tier_drop/migration.sql  (release 2 ONLY)
+-- prisma/migrations/20260907140000_agent_tier_drop/migration.sql  (release 2 ONLY — release 1 went live 13:54 UTC 2026-09-07; SAFE TO SHIP NOW)
 ALTER TABLE "AffiliateAgent" DROP COLUMN IF EXISTS "tier";
 ```
 

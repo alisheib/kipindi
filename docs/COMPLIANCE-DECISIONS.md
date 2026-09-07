@@ -11,6 +11,8 @@
 **Owner decision:** Ali, **2026-09-07**, closing every open question in `docs/AGENT-PROGRAMME.md`
 (sealed in `docs/SESSION-PROMPT-AGENT-BUILD.md`). Built on branch `agent-affiliate-programme`.
 
+**Went live:** 2026-09-07 13:54 UTC — `main` `a783299f`, pushed on Ali's instruction after the final verification (browser drive 55/55 on a fresh server, 8 red harnesses 1/1, dal-parity 5/5, build clean, 30 gates green). The first production deploy carrying `RULES.md` §2.10. Ali authorised database changes explicitly ("make any database changes needed … still test data"); release 2 (`20260907140000_agent_tier_drop`, the contract half of the `tier` removal) is ready and safe to ship (release 1 reads no such column).
+
 **What was decided, and where each decision is enforced**
 
 | Decision | Enforced |
@@ -44,11 +46,14 @@ here because it changes what a player was told.**
    (`kyc-gate.ts`: deposit and bet need current APPROVED; withdraw needs `approvedAt != null`).
    `/legal/aml` §1 said the same in other words (*"not a precondition of withdrawal"*). Both now
    state the live gate; terms bumped to **2026-09-07**; the AML page gained a version line.
-   **Ruling to confirm (Ali):** this is filed as the *correction of a false statement* — the gate
-   was live from 2026-09-05 and only the document was wrong — rather than a material change of
-   terms under §10's 14-day notice. Every account carrying `acceptedTermsVersion = "2026-09-05"`
-   accepted a document containing the false sentence. If Ali prefers to serve the notice, the
-   version stays and the notice goes out; nothing in code depends on the choice.
+   **Ruling (2026-09-07, made on Ali's delegation — "decide on such things based on what seems more
+   logical for the platform"):** this is filed as the *correction of a false statement* — the gate
+   was live from 2026-09-05 and only the document was wrong — NOT a material change of terms under
+   §10's 14-day notice. §10 governs a change in what the platform does; nothing the platform does
+   changed. Serving the notice would have kept a false sentence in front of players for 14 more days,
+   which is the worse outcome for players and for the regulator. Every account carrying
+   `acceptedTermsVersion = "2026-09-05"` accepted a document containing the false sentence; no
+   re-acceptance is required because the corrected sentence describes what they already experienced.
 2. `/legal/aml` §4 claimed automated screening against the UN, OFAC, EU and UK HMT lists *"at
    registration and weekly thereafter"*. No such feed exists (`kyc-risk.ts` deliberately assigns
    no sanctions points). §4 now states what is done — officer checklist assessment at every
