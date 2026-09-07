@@ -20,13 +20,72 @@
 ## §0 — RESUME AT
 
 ```
-▶ NEXT ACTION — task 1.2 in the board below.
-  Write src/lib/query/sort.ts, then 1.3 href.ts, 1.4 counts.ts, 1.5 empty.ts.
-  Lift each rule VERBATIM from src/lib/markets/discovery.ts. Do not improve it.
+▶ NEXT ACTION — task 2.1 in the board below.
+  Write src/lib/positions/portfolio.ts: the lens · sort · sheet axes · empty causes for
+  /positions, as a contract over lib/query. Then 2.2 the search schema, 2.3 the batched
+  title read (LOAD-BEARING, not an optimisation), 2.4 the page.
 ```
 
-**Stage 1 of 6. 1 task of 12 done.** Nothing a player can see has changed yet, and nothing
-should until Stage 2.
+**Stage 2 of 6. Stage 1 is CLOSED at 12/12.** Nothing a player can see has changed yet.
+Stage 2 is the first stage that moves a pixel.
+
+### What Stage 1 cost, and what it found — read before Stage 2
+
+⛔ **Three things were only found because a RED control refused to agree with its gate.** All
+three are the same disease: a check adjacent to the truth.
+
+1. 🔴 **`red:filter-language` was RED at HEAD, inherited from `main`.** `c977204e` gave
+   `filter-sheet.tsx` a second effect closing `}, [open]);`, so case 20's anchor matched twice
+   and refused to inject. The refusal was the smaller half: assertion **5.6 was vacuous** — a
+   bare `/\}, \[open\]\);/` over the whole file — so mutating the FOCUS effect would have left
+   the OTHER effect satisfying it and the gate would have stayed **green over the reintroduced
+   money-dialog focus defect**. Both halves re-keyed onto the focus effect's own three lines.
+2. 🔴 **The first refactor disarmed a proof and every other signal said it was fine.**
+   `sortRows` was collapsed to `sortBy(SORT_SPEC, …)`: typecheck clean, orderings
+   byte-identical, `test:discovery-contract` green — and `ties-left-to-sort-stability` went
+   from RED to GREEN, because the product had stopped calling `compareRows` while the gate
+   went on importing it. ⭐ **The product path must BE the proved path.**
+3. 🔴 **Two dev fixtures had been silently vacuous since KYC became a money gate (2026-09-05).**
+   `stress-bulk-bet` had every bet rejected and reported `poolMath: "PASS"` — 0 ≡ 0 when
+   nothing is accepted. And nothing could give a **signed-in** player a portfolio, so
+   `/positions` hid its rail and the scan reported *"0 `data-filter-rail`, expected 1"*:
+   ⛔ **a fixture gap and a missing rail are indistinguishable from outside.**
+
+⭐ **`test:query-core`'s own RED control then found two of ITS assertions vacuous** (15/17 on
+the first run) before either was believed. Both repaired; 17/17.
+
+⚠️ **`discovery.ts` keeps three lines it could have delegated** — in `compareRows`, `countFor`
+and `buildDiscoveryHref` — because `red:discovery-contract` is anchored on them and
+`scripts/discovery-contract-red.mjs` reads ONE file, so those anchors cannot follow the rules
+into `lib/query/`. §8's rule is that the gate does not bend. ⭐ **So the duplication is a
+CHECKED EQUIVALENCE, not a comment:** `test:query-core` §7 asserts the copies and the core
+agree over 432 comparator pairs and 5,184 URLs. Read the note at each of the three sites
+before touching them.
+
+⛔ **`components/ui/query-bar.tsx` does not render your pills for you, and that is forced by a
+gate that is right.** `test:filter-language` §3.1/§3.2 require every declared surface to import
+`filter-pill` and render `<FilterPill>` **in its own source**, and §0.5 that it carry
+`data-filter-rail` literally. A bar that swallowed both would make every page it serves
+invisible to the gate — §6's blind spot, built deliberately. **It owns the mechanisms; the page
+owns the controls.**
+
+### The fixture every live run from here depends on
+
+⛔ **A live gate over an empty product is a SKIPPED RUN, not a pass.** Re-derive the data before
+believing any drive:
+
+```bash
+curl -s -X POST $BASE/api/dev-test/seed-real-markets
+curl -s -X POST $BASE/api/dev-test/seed-markets
+curl -s "$BASE/auth/demo" -c cj.txt -o /dev/null -L
+curl -s -X POST $BASE/api/dev-test/seed-player-portfolio -b cj.txt \
+     -H 'content-type: application/json' -d '{"markets":14,"stake":1500}'
+curl -s -X POST $BASE/api/dev-test/updown-seed -H 'content-type: application/json' -d '{}'
+```
+
+`seed-player-portfolio` drives the REAL money paths and returns `byStatus` **read back from the
+store, never from its own plan** — so it reports what the product produced, not what it meant
+to. It must show all five `PositionStatus` values before a lens over them proves anything.
 
 ### Find the repo on this machine
 
@@ -43,8 +102,8 @@ git fetch && git checkout player-query-campaign
 
 | # | Stage | Exit condition | State |
 |---|---|---|---|
-| 1 | **The core** | the six existing gates in §8 green **with no edits to those scripts** | ▶ **1/12** |
-| 2 | **`/positions`** | `qa:player-filters` + `qa:count-truth` green on it; 360 Swahili screenshot looked at | ☐ 0/7 |
+| 1 | **The core** | the six existing gates in §8 green **with no edits to those scripts** | ✅ **12/12** |
+| 2 | **`/positions`** | `qa:player-filters` + `qa:count-truth` green on it; 360 Swahili screenshot looked at | ▶ 0/7 |
 | 3 | **`/wallet`** | same, plus the 1,000-row cap is stated to the player | ☐ 0/8 |
 | 4 | **The other 13 pages** | every census-A and census-B route done, one commit each | ☐ 0/14 |
 | 5 | **The status dictionary** | `position-card.tsx` has no hand-typed tone; `test:gold-is-money` still green | ☐ 0/4 |
@@ -57,22 +116,22 @@ git fetch && git checkout player-query-campaign
 Every task names its files. A task is done when it typechecks, its stage's gates are green,
 and — for anything visible — its 360 Swahili screenshot has been looked at.
 
-### Stage 1 · the core — no user-visible change (1/12)
+### Stage 1 · the core — no user-visible change (✅ 12/12, CLOSED)
 
 | | Task | Files |
 |---|---|---|
 | ☑ | **1.1** parse primitives — `oneParam` · `oneOf` · `parseDir` · `clampText` | `src/lib/query/parse.ts` |
-| ☐ | **1.2** the comparator — `SortSpec` · `compareBy` · `sortBy` · `effectiveDir`. Null-last in **both** directions, explicit tie-break, `id` final | `src/lib/query/sort.ts` |
-| ☐ | **1.3** the href builder — `buildQueryHref`, defaults **omitted**, `page` dropped on any filter change | `src/lib/query/href.ts` |
-| ☐ | **1.4** the cross-filter rule — `matchesAll` · `countFor`, predicates take `(row, state)` so a patched count reads the patched state | `src/lib/query/counts.ts` |
-| ☐ | **1.5** empty causes — `relaxations`, exits carry real counts, capped at 3, never an exit to another empty page | `src/lib/query/empty.ts` |
-| ☐ | **1.6** refactor the reference onto the core — **behaviour-identical** | `src/lib/markets/discovery.ts` |
-| ☐ | **1.7** refactor the second contract — its `parseFilter`/`parseSort` become `oneOf` | `src/lib/notification-filters.ts` |
-| ☐ | **1.8** the generic bar, driven by a `QuerySpec` | `src/components/ui/query-bar.tsx` |
-| ☐ | **1.9** `DiscoveryBar` becomes a thin `/markets` binding of it | `src/components/markets/discovery-bar.tsx` |
-| ☐ | **1.10** `test:query-core` + its `package.json` key | new gate, `query-core.test.mts` † |
-| ☐ | **1.11** `red:query-core` — the control, built **before** the gate is believed | new control, `query-core-red.mjs` † |
-| ☐ | **1.12** run the exit condition | — |
+| ☑ | **1.2** the comparator — `SortSpec` · `compareBy` · `sortBy` · `effectiveDir`. Null-last in **both** directions, explicit tie-break, `id` final | `src/lib/query/sort.ts` |
+| ☑ | **1.3** the href builder — `buildQueryHref`, defaults **omitted**, `page` dropped on any filter change | `src/lib/query/href.ts` |
+| ☑ | **1.4** the cross-filter rule — `matchesAll` · `countFor`, predicates take `(row, state)` so a patched count reads the patched state | `src/lib/query/counts.ts` |
+| ☑ | **1.5** empty causes — `relaxations`, exits carry real counts, capped at 3, never an exit to another empty page | `src/lib/query/empty.ts` |
+| ☑ | **1.6** refactor the reference onto the core — **behaviour-identical** | `src/lib/markets/discovery.ts` |
+| ☑ | **1.7** refactor the second contract — its `parseFilter`/`parseSort` become `oneOf` | `src/lib/notification-filters.ts` |
+| ☑ | **1.8** the shared bar MECHANISMS — root class, lens strip, sort+direction, option row, result count, clear. ⛔ **Not** a bar that renders the pills; see §0 | `src/components/ui/query-bar.tsx` |
+| ☑ | **1.9** `DiscoveryBar` becomes a binding of them, keeping the literals §5.16–5.22 pin | `src/components/markets/discovery-bar.tsx` |
+| ☑ | **1.10** `test:query-core` — 65 assertions, incl. §7's two equivalences | [`scripts/query-core.test.mts`](../scripts/query-core.test.mts) |
+| ☑ | **1.11** `red:query-core` — 17/17, and it found 2 of the gate's own assertions vacuous first | [`scripts/query-core-red.mjs`](../scripts/query-core-red.mjs) + [anchors](../scripts/anchors/query-core.anchors.mjs) |
+| ☑ | **1.12** run the exit condition — all six green, none edited | — |
 
 † **Why the planned gates are named without their directory, here and in Stage 6.** They
 live under `scripts/` with every other gate — but `test:docs` resolves **every** `scripts/…`
