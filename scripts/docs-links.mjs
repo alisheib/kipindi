@@ -35,8 +35,25 @@ const scripts = new Set(Object.keys(JSON.parse(readFileSync(join(ROOT, "package.
  * legitimately takes** (§0.1a, the four `RESUME AT` drifts). A file that never existed is a
  * stronger case for exemption than one that was deleted, not a weaker one.
  */
+/**
+ * ⭐ SCRIPT PATHS A DOC PLANS TO CREATE — the same distinction PLANNED_OR_DELIBERATE draws for
+ * npm-script names, applied to file paths. A specification legitimately names the files it is
+ * about to write; a stale doc names files that were deleted. Only the second is rot.
+ * ⛔ Two-way ratcheted below: once the file EXISTS, its entry must come off.
+ */
+const PLANNED_SCRIPT_PATHS = new Map([
+  ["scripts/agent-eligibility.test.mts", "planned · AGENT-BUILD red harness"],
+  ["scripts/dal-parity.test.mts", "planned · AGENT-BUILD G6 static backstop"],
+]);
+
 const documentsARemoval = (line) =>
-  /~~|deleted|removed|no longer exists?|does not exist|never existed|never exists|has never|gone\b/i.test(line);
+  /~~|deleted|removed|no longer exists?|does not exist|never existed|never exists|has never|no such file|gone\b/i.test(line);
+// ⚠️ `no such file` joined the list on 2026-09-07, and it is the SAME lesson a third time.
+// A merged doc wrote *"an audit found no such file had ever existed on any branch"* — a sentence
+// whose whole subject is that the path is absent, phrased in a tense the vocabulary did not yet
+// admit. ⛔ Every widening here has come from a correct sentence the gate could not read. The rule
+// is unchanged and it is the one §0.1a states: **an anchor must admit every form the structure
+// legitimately takes** — so widen the vocabulary, never the exemption's scope.
 
 let bad = 0, links = 0, paths = 0, npms = 0;
 const report = (kind, file, ref, line) => {
@@ -61,7 +78,7 @@ for (const f of readdirSync(DOCS).filter((n) => n.endsWith(".md"))) {
 
     for (const m of line.matchAll(/\bscripts\/[\w.-]+\.(?:mjs|mts|ts|js|yml)\b/g)) {
       paths++;
-      if (!existsSync(join(ROOT, m[0])) && !exempt) report("missing file", f, m[0], n);
+      if (!existsSync(join(ROOT, m[0])) && !exempt && !PLANNED_SCRIPT_PATHS.has(m[0])) report("missing file", f, m[0], n);
     }
 
     // `npm run x:*` is permission-rule syntax in AGENT-ACCESS.md, not a command — skip it.
@@ -171,6 +188,22 @@ const PLANNED_OR_DELIBERATE = new Map([
   ["test:maswali-design", "planned · MASWALI-BUILD"],
   ["test:maswali-notify", "planned · MASWALI-BUILD"],
   ["red:maswali-engine", "planned · MASWALI-BUILD"],
+  // The AGENT AFFILIATE programme is SPECIFIED and not yet built (`SESSION-PROMPT-AGENT-BUILD.md`,
+  // `AGENT-STRESS-TEST-FINDINGS.md`, merged 2026-09-07). Its build prompt lists the gates it will
+  // ship with. ⭐ Naming a gate you are about to write is a plan; naming one you already deleted is
+  // rot — and this check told the two apart within minutes of the merge.
+  ["test:agent-policy", "planned · AGENT-BUILD"],
+  ["test:programme-isolation", "planned · AGENT-BUILD"],
+  ["test:attribution-provenance", "planned · AGENT-BUILD"],
+  ["test:no-double-pay", "planned · AGENT-BUILD"],
+  ["test:agent-clawback", "planned · AGENT-BUILD"],
+  ["test:commission-bounded", "planned · AGENT-BUILD"],
+  ["test:agent-eligibility", "planned · AGENT-BUILD"],
+  ["test:dal-parity", "planned · AGENT-BUILD"],
+  ["test:agent-application-security", "planned · AGENT-BUILD"],
+  ["test:agent-attribution", "planned · AGENT-BUILD"],
+  ["test:routing", "planned · AGENT-BUILD"],
+  ["red:agent-matrix", "planned · AGENT-BUILD"],
   // An EXIT CRITERION in the certification programme — the gate a module must gain to pass.
   ["test:cert-a2", "planned · MODULE-CERTIFICATION-PROGRAM exit criterion"],
   // A guard named in a design-gate plan and never written. ⚠️ Kept visible rather than quietly
@@ -209,6 +242,9 @@ for (const f of readdirSync(DOCS).filter((n) => n.endsWith(".md"))) {
 }
 // ⛔ The same two-way ratchet MISSING_EVIDENCE carries, for the same reason: a list that only
 // ever grows stops being a record of exceptions and becomes a licence.
+for (const [p, why] of PLANNED_SCRIPT_PATHS) {
+  if (existsSync(join(ROOT, p))) { bad++; console.log(`  ✗ ${p} EXISTS now — remove it from PLANNED_SCRIPT_PATHS (${why})`); }
+}
 for (const [name, why] of PLANNED_OR_DELIBERATE) {
   if (scripts.has(name)) { bad++; console.log(`  ✗ ${name} EXISTS now — remove it from PLANNED_OR_DELIBERATE (${why})`); }
   else if (!seenPlanned.has(name)) { bad++; console.log(`  ✗ ${name} is no longer cited — remove it from PLANNED_OR_DELIBERATE (${why})`); }
