@@ -16,8 +16,27 @@
  * stay in `market-service.ts`, which is their one home; the page decorates each row with the
  * results and hands them here as `DiscoveryRow`. This file must never re-derive them — that is
  * how two surfaces start disagreeing about what "closed" means.
+ *
+ * ── 2026-09-07 · THIS FILE IS NOW A CONTRACT OVER `lib/query`, NOT A SECOND COPY OF IT ───────
+ * ⭐ It reached the right shape first, so the GENERIC half was lifted out of it — verbatim — and
+ * `lib/query/{parse,sort,href,counts,empty}.ts` is where it now lives, for this page and the
+ * fifteen the PLAYER QUERY campaign adds. What stays here is what is actually about `/markets`:
+ * which lifecycle a lens admits, what a row is worth for each sort, which axes exist, and the
+ * words in the URL. ⛔ No rule was re-derived or "improved" in the move.
+ *
+ * ⚠️ THREE FUNCTIONS BELOW KEEP A LINE THEY COULD HAVE DELEGATED, AND IT IS DELIBERATE.
+ * `compareRows`, `countFor` and `buildDiscoveryHref` are each anchored by
+ * `scripts/anchors/discovery-contract.anchors.mjs`, and every anchor must resolve EXACTLY ONCE
+ * against real source or `test:red-anchors` §3 goes red. Collapsing them would have deleted the
+ * proof of three defects this product actually shipped. §8's rule is that the gate does not
+ * bend — so the seams were cut around the proofs (`comparePrimary`, `countMatching`), and each
+ * site says so where it sits. ⛔ Do not "tidy" any of the three without reading its note.
  */
 import { MAX_QUERY_LEN } from "@/lib/search/query";
+import { clampText, oneOf, oneParam, parseDir } from "@/lib/query/parse";
+import { byId, comparePrimary, type SortDir, type SortSpec } from "@/lib/query/sort";
+import { countMatching, filterRows as filterByAxes, type Axes } from "@/lib/query/counts";
+import { relaxations as exitsFor, type ExitCandidate } from "@/lib/query/empty";
 
 /* ─────────────────────────── the row this module reasons about ────────────────────────── */
 
@@ -118,7 +137,8 @@ export type SortId = (typeof SORT_IDS)[number];
 export type OddsId = (typeof ODDS_IDS)[number];
 export type PoolId = (typeof POOL_IDS)[number];
 export type Density = (typeof DENSITY_IDS)[number];
-export type SortDir = "asc" | "desc";
+/** ⭐ Re-exported, not re-declared — `lib/query/sort.ts` owns it. §0a: one fact, one home. */
+export type { SortDir };
 
 /**
  * ⭐ THE DEFAULTS, IN ONE PLACE.
@@ -165,9 +185,6 @@ export const DISCOVERY_STORE_KEY = "50pick.discovery.v1";
 
 /* ─────────────────────────────────────── parsing ──────────────────────────────────────── */
 
-const oneOf = <T extends string>(allowed: readonly T[], raw: unknown, fallback: T): T =>
-  typeof raw === "string" && (allowed as readonly string[]).includes(raw) ? (raw as T) : fallback;
-
 /**
  * Max query length — the shared search parser's clamp itself, not a mirror of it.
  *
@@ -190,19 +207,15 @@ export function parseDiscoveryParams(
   sp: Record<string, string | string[] | undefined>,
   topicIds: readonly string[],
 ): DiscoveryState {
-  const one = (k: string): string | undefined => {
-    const v = sp[k];
-    return Array.isArray(v) ? v[0] : v;
-  };
-  const rawDir = one("dir");
+  const one = (k: string) => oneParam(sp, k);
   return {
     status: oneOf(STATUS_IDS, one("status"), DEFAULTS.status),
     sort: oneOf(SORT_IDS, one("sort"), DEFAULTS.sort),
-    dir: rawDir === "asc" || rawDir === "desc" ? rawDir : DEFAULTS.dir,
+    dir: parseDir(one("dir")),
     odds: oneOf(ODDS_IDS, one("odds"), DEFAULTS.odds),
     pool: oneOf(POOL_IDS, one("pool"), DEFAULTS.pool),
     topic: oneOf(["all", ...topicIds] as const, one("topic"), DEFAULTS.topic),
-    q: (one("q") ?? "").trim().slice(0, MAX_QUERY_LEN),
+    q: clampText(one("q"), MAX_QUERY_LEN),
   };
 }
 
@@ -212,6 +225,18 @@ export function parseDiscoveryParams(
  *
  * Defaults are OMITTED — a clean board has a clean URL (`/markets`, not
  * `/markets?status=open&sort=closing&odds=any&pool=any&topic=all`).
+ *
+ * ⛔ THIS BODY IS PINNED IN PLACE BY A RED PROOF — DO NOT COLLAPSE IT INTO `buildQueryHref`.
+ * `scripts/anchors/discovery-contract.anchors.mjs`'s `default-written-into-the-url` mutation is
+ * anchored on the `status` line below, and `scripts/discovery-contract-red.mjs` reads ONE file
+ * (`const SRC = "src/lib/markets/discovery.ts"`), so the anchor cannot follow the rule into
+ * `lib/query/href.ts` without editing the harness — which §8 forbids for exactly the reason it
+ * would be tempting here.
+ * ⭐ SO THE DUPLICATION IS TURNED INTO A CHECKED EQUIVALENCE INSTEAD. `test:query-core` asserts
+ * that this builder and `buildQueryHref("/markets", …)` produce BYTE-IDENTICAL URLs across the
+ * state space — a copy that cannot disagree is not a drift, and unlike a comment the assertion
+ * fails the day someone edits one of them. ⚠️ If you change a line here, run `test:query-core`
+ * before assuming the two still agree.
  */
 export function buildDiscoveryHref(
   state: DiscoveryState,
@@ -444,17 +469,37 @@ const TIE_BREAK: Record<SortId, (a: DiscoveryRow, b: DiscoveryRow) => number> = 
   new: (a, b) => a.bettableUntilMs - b.bettableUntilMs,
 };
 
-/** Final tie-break so the order is total and stable across renders. */
-const byId = (a: DiscoveryRow, b: DiscoveryRow) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+/**
+ * ⭐ THE BOARD'S ORDERING, AS DATA. What used to be an algorithm here is now a set of facts about
+ * `/markets` — which sorts exist, which way each points, what a row is worth for each, and how a
+ * tie is broken. The algorithm reading them lives in `lib/query/sort.ts` and is shared with every
+ * other player list, so "closing soonest" cannot mean two things in one product.
+ *
+ * ⚠️ Declared HERE, below `sortKey` and `TIE_BREAK`, and not beside `effectiveDir` where it would
+ * read better: a module-level `const` referencing `TIE_BREAK` before its declaration is a
+ * temporal-dead-zone throw at import time, on a module the board imports on every request.
+ */
+const SORT_SPEC: SortSpec<DiscoveryRow, SortId> = {
+  ids: SORT_IDS,
+  natural: SORT_NATURAL_DIR,
+  key: sortKey,
+  tieBreak: TIE_BREAK,
+};
 
+/**
+ * ⛔ THIS BODY IS PINNED IN PLACE BY A RED PROOF — DO NOT COLLAPSE IT INTO `compareBy`.
+ * `scripts/anchors/discovery-contract.anchors.mjs`'s `ties-left-to-sort-stability` mutation is
+ * anchored on the last line below plus its closing brace, and every anchor must resolve exactly
+ * once against real source (`test:red-anchors` §3). Deleting the line would disarm the proof
+ * that ties are broken deterministically — a defect that made the grid reshuffle under the
+ * reader on every 30s refresh. §8: the gate does not bend, so the seam was cut around it.
+ * ⭐ Nothing is duplicated: the partition and the direction fork are `comparePrimary`, and `byId`
+ * is imported. What is written out here is only the ORDER the two are applied in.
+ */
 export function compareRows(a: DiscoveryRow, b: DiscoveryRow, sort: SortId, dir: SortDir): number {
-  const ka = sortKey(a, sort);
-  const kb = sortKey(b, sort);
-  // Rows with no value for this sort go LAST, in both directions.
-  if (ka == null && kb == null) return TIE_BREAK[sort](a, b) || byId(a, b);
-  if (ka == null) return 1;
-  if (kb == null) return -1;
-  const primary = dir === "asc" ? ka - kb : kb - ka;
+  // Rows with no value for this sort go LAST, in both directions — `comparePrimary` returns 0
+  // when NEITHER row has a value, which is "equal here, ask the tie-break".
+  const primary = comparePrimary(SORT_SPEC, a, b, sort, dir);
   if (primary !== 0) return primary;
   return TIE_BREAK[sort](a, b) || byId(a, b);
 }
@@ -466,6 +511,17 @@ export function compareRows(a: DiscoveryRow, b: DiscoveryRow, sort: SortId, dir:
  * which is how the hero and the board would start disagreeing about "closing soonest".
  */
 export function sortRows<T extends DiscoveryRow>(rows: readonly T[], state: Pick<DiscoveryState, "sort" | "dir">): T[] {
+  // 🔴 IT GOES THROUGH `compareRows`, AND THE FIRST ATTEMPT AT THIS REFACTOR DID NOT.
+  // Delegating to `sortBy(SORT_SPEC, …)` typechecked, kept every ordering byte-identical, and
+  // `test:discovery-contract` stayed green — while `red:discovery-contract`'s
+  // `ties-left-to-sort-stability` mutation went from RED to GREEN. Replacing `compareRows`'s
+  // body with `return 0` no longer changed a single row on the board, because the product had
+  // stopped calling it: the gate imports `compareRows` directly, so it was testing a function
+  // NOTHING rendered. ⛔ That is SKILL §5b's own defect — a check adjacent to the truth — and
+  // it is invisible to a typechecker, to the suite, and to a screenshot.
+  // ⭐ So the product path IS the proved path. `test:query-core` asserts `compareRows` and
+  // `compareBy(SORT_SPEC, …)` return the same sign for every pair, which is what keeps the one
+  // line written out below from drifting away from the core it was lifted from.
   const dir = effectiveDir(state);
   return [...rows].sort((a, b) => compareRows(a, b, state.sort, dir));
 }
@@ -482,6 +538,29 @@ export function sortRows<T extends DiscoveryRow>(rows: readonly T[], state: Pick
  */
 export type Axis = "status" | "odds" | "pool" | "topic" | "q";
 
+/**
+ * ⭐ THE BOARD'S FILTER, AS DATA — the five axes, keyed by the state field each one reads.
+ *
+ * ⚠️ Built per call rather than declared once at module level, because two of its inputs are
+ * per-request: `nowMs` (a lens like `today` is a question about the clock) and `matchesText`
+ * (the parsed search, whose grammar lives in `src/lib/search` and is deliberately NOT
+ * re-implemented here — see `countFor`'s note below and this file's header).
+ *
+ * ⛔ THE ORDER IS THE `&&` CHAIN'S ORDER AND IT IS PRESERVED. `matchesAll` iterates
+ * `Object.keys`, which is insertion order, and stops at the first `false` — so the cheap
+ * lifecycle test still runs before the text match, exactly as the hand-written chain did.
+ */
+const axesFor = (
+  nowMs: number,
+  matchesText: (row: DiscoveryRow) => boolean,
+): Axes<DiscoveryRow, DiscoveryState> => ({
+  status: (r, s) => matchesStatus(r, s.status, nowMs),
+  odds: (r, s) => matchesOdds(r, s.odds),
+  pool: (r, s) => matchesPool(r, s.pool),
+  topic: (r, s) => matchesTopic(r, s.topic),
+  q: (r, s) => !s.q || matchesText(r),
+});
+
 export function filterRows(
   rows: readonly DiscoveryRow[],
   state: DiscoveryState,
@@ -489,14 +568,7 @@ export function filterRows(
   matchesText: (row: DiscoveryRow) => boolean,
   except?: Axis,
 ): DiscoveryRow[] {
-  return rows.filter(
-    (r) =>
-      (except === "status" || matchesStatus(r, state.status, nowMs)) &&
-      (except === "odds" || matchesOdds(r, state.odds)) &&
-      (except === "pool" || matchesPool(r, state.pool)) &&
-      (except === "topic" || matchesTopic(r, state.topic)) &&
-      (except === "q" || !state.q || matchesText(r)),
-  );
+  return filterByAxes(rows, state, axesFor(nowMs, matchesText), except);
 }
 
 /**
@@ -513,6 +585,13 @@ export function filterRows(
  * a result line reading `9` with two filters pressed.
  *
  * ⛔ Never render a count computed over a wider set than the one its control would show.
+ *
+ * ⛔ THE PATCH LINE IS PINNED IN PLACE BY A RED PROOF — DO NOT COLLAPSE THIS INTO `countFor`
+ * FROM `lib/query/counts`. `scripts/anchors/discovery-contract.anchors.mjs`'s
+ * `counts-over-the-census` mutation is anchored on it, and every anchor must resolve exactly
+ * once against real source (`test:red-anchors` §3). It is the proof of the 2026-08-10 defect
+ * itself, so the seam was cut around it: the patch happens here, the matching loop is
+ * `countMatching`, and neither is written twice. §8: the gate does not bend.
  */
 export function countFor(
   rows: readonly DiscoveryRow[],
@@ -522,14 +601,7 @@ export function countFor(
   patch: Partial<DiscoveryState>,
 ): number {
   const next = { ...state, ...patch };
-  return rows.filter(
-    (r) =>
-      matchesStatus(r, next.status, nowMs) &&
-      matchesOdds(r, next.odds) &&
-      matchesPool(r, next.pool) &&
-      matchesTopic(r, next.topic) &&
-      (!next.q || matchesText(r)),
-  ).length;
+  return countMatching(rows, next, axesFor(nowMs, matchesText));
 }
 
 /* ─────────────────────────────── empty-state relaxations ──────────────────────────────── */
@@ -547,23 +619,23 @@ export type Relaxation = { id: RelaxationId; patch: Partial<DiscoveryState>; cou
  * the see-wider nudge in particular required `live.length > 0`, so it switched off exactly when
  * the board was emptiest.
  */
+const EXITS: readonly ExitCandidate<DiscoveryState, RelaxationId>[] = [
+  { id: "pool", patch: { pool: "any" } },
+  { id: "odds", patch: { odds: "any" } },
+  { id: "topic", patch: { topic: "all" } },
+  { id: "q", patch: { q: "" } },
+  // ⚠️ `all`, NOT `DEFAULTS.status` (`open`). `Clear all` returns to the default board;
+  //    `Include everything` widens PAST it. Two different actions, named apart above.
+  { id: "status", patch: { status: "all" } },
+];
+
 export function relaxations(
   rows: readonly DiscoveryRow[],
   state: DiscoveryState,
   nowMs: number,
   matchesText: (row: DiscoveryRow) => boolean,
 ): Relaxation[] {
-  const out: Relaxation[] = [];
-  const add = (id: RelaxationId, patch: Partial<DiscoveryState>) => {
-    const count = countFor(rows, state, nowMs, matchesText, patch);
-    if (count > 0) out.push({ id, patch, count });
-  };
-  if (state.pool !== DEFAULTS.pool) add("pool", { pool: "any" });
-  if (state.odds !== DEFAULTS.odds) add("odds", { odds: "any" });
-  if (state.topic !== DEFAULTS.topic) add("topic", { topic: "all" });
-  if (state.q) add("q", { q: "" });
-  if (state.status !== "all") add("status", { status: "all" });
-  return out.slice(0, 3);
+  return exitsFor(rows, state, axesFor(nowMs, matchesText), EXITS);
 }
 
 /** The three genuinely different reasons a board can be empty. Never one generic message. */

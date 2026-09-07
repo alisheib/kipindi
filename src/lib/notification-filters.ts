@@ -20,6 +20,7 @@
  * bell, not to destroy a receipt.
  */
 import { MONEY_KINDS, type NotificationKind } from "@/lib/server/comms-registry";
+import { oneOf } from "@/lib/query/parse";
 
 export const NOTIFICATION_FILTERS = ["all", "unread", "money", "account", "cleared"] as const;
 export type NotificationFilter = (typeof NOTIFICATION_FILTERS)[number];
@@ -44,18 +45,23 @@ export const MONEY_FILTER_KINDS: readonly NotificationKind[] = MONEY_KINDS;
  */
 export const ACCOUNT_FILTER_KINDS: readonly NotificationKind[] = ["KYC", "SECURITY", "RG"];
 
-/** Narrow an untrusted `?filter=` query value. Anything unknown falls back to the default. */
+/**
+ * Narrow an untrusted `?filter=` query value. Anything unknown falls back to the default.
+ *
+ * ⭐ 2026-09-07 — BOTH OF THESE WERE THE SAME FUNCTION WRITTEN TWICE, AND `discovery.ts` HELD A
+ * THIRD PRIVATE COPY. They now call `oneOf` from `lib/query/parse`, which is the one home for
+ * "narrow a raw value against a closed set, or fall back". ⛔ The cast is gone with them: each
+ * copy ended `(raw as NotificationFilter)`, and a cast is a promise the compiler stops checking
+ * — `oneOf` proves the membership and returns the narrowed type, so the promise is kept by the
+ * type system instead of by the author.
+ */
 export function parseFilter(raw: string | undefined): NotificationFilter {
-  return (NOTIFICATION_FILTERS as readonly string[]).includes(raw ?? "")
-    ? (raw as NotificationFilter)
-    : DEFAULT_FILTER;
+  return oneOf(NOTIFICATION_FILTERS, raw, DEFAULT_FILTER);
 }
 
 /** Narrow an untrusted `?sort=` query value. */
 export function parseSort(raw: string | undefined): NotificationSort {
-  return (NOTIFICATION_SORTS as readonly string[]).includes(raw ?? "")
-    ? (raw as NotificationSort)
-    : DEFAULT_SORT;
+  return oneOf(NOTIFICATION_SORTS, raw, DEFAULT_SORT);
 }
 
 /**

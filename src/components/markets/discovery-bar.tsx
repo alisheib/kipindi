@@ -26,11 +26,18 @@
  * ⛔ Every href comes from `buildDiscoveryHref`. Never hand-assemble a query string here — the
  * page this replaces had four independent builders and one of them had drifted.
  */
-import Link from "next/link";
-import { I } from "@/components/ui/glyphs";
 import { FilterPill, FilterGroupKey } from "@/components/ui/filter-pill";
-import { StripAutoScroll } from "@/components/ui/strip-autoscroll";
-import { cn } from "@/lib/utils";
+import {
+  QUERY_BAR_CLASS,
+  QUERY_BAR_ROW1_CLASS,
+  QUERY_BAR_ROW2_CLASS,
+  QueryClear,
+  QueryGroupDivider,
+  QueryOption,
+  QueryResultCount,
+  QuerySort,
+  QueryStrip,
+} from "@/components/ui/query-bar";
 import {
   ODDS_IDS,
   POOL_IDS,
@@ -51,6 +58,23 @@ import {
 import type { Dict } from "@/lib/i18n-dict";
 import { MenuShell } from "./menu-shell";
 import { FilterSheet, FilterSheetGroup } from "./filter-sheet";
+
+/**
+ * ⭐ 2026-09-07 · THIS BAR IS NOW A BINDING OF `components/ui/query-bar.tsx`, NOT A SECOND COPY.
+ * Every mechanism it used to own — the sticky wrapper's class, the auto-scrolling lens strip, the
+ * fused sort + direction control, the flat option row, the `data-result-count` contract, the
+ * clear link and the desktop dividers — moved there so the fifteen routes the PLAYER QUERY
+ * campaign fits with a bar run the same code rather than a good copy of it.
+ *
+ * ⛔ WHAT STAYED HERE, AND WHY IT IS NOT AN OVERSIGHT. `/markets` keeps its own `<Chip>`, its own
+ * `<FilterSheet>` and its own two desktop groups because `test:filter-language` requires it:
+ * §3.1/§3.2 assert that every declared surface imports `filter-pill` and renders `<FilterPill>`
+ * **in its own source**, §0.5 that it carries `data-filter-rail` literally, and §5.16–5.22 that
+ * this file renders the sheet with exactly three groups — odds, pool, topic — with sort NOT among
+ * them. A bar component that swallowed those would make this page, and every page it served,
+ * invisible to the gate. ⛔ Do not "finish the extraction" without reading §6 of
+ * `docs/PLAYER-QUERY-CAMPAIGN.md`: the blind spot it describes is exactly what that would build.
+ */
 
 /* ───────────────────────────────────── the chip ───────────────────────────────────────── */
 
@@ -153,62 +177,21 @@ export function DiscoveryBar({
   const statuses = STATUS_IDS.filter((s) => s !== "watch" || signedIn);
 
   /* The phrase the bar, the pager and the sheet's dismiss button all read — ONE variable, so
-     the number a player leaves the sheet with is the number they arrive at. */
+     the number a player leaves the sheet with is the number they arrive at.
+     ⚠️ It used to be computed here AND inlined a second time in the count element below, which
+     is two definitions of one sentence sitting four lines apart. One now feeds both. */
   const resultPhrase =
     resultCount === 1 ? t.market.oneResult : t.market.nResults.replace("{n}", String(resultCount));
   const sheetCount = sheetFilterCount(state);
 
-  /**
-   * One flat option row — the shape shared by the desktop menus and the mobile sheet.
-   *
-   * ⭐ EXTRACTED IN BATCH 6 because it had already been written twice in this file (sort and
-   * topic), and the sheet would have made it four. The selected fill is `.kp-fopt[data-on]` in
-   * globals.css — the same token the selected pill uses, so a menu row, a sheet row and a chip
-   * can never drift apart.
-   */
-  const Opt = ({
-    href: optHref,
-    on,
-    children,
-    trailing,
-  }: {
-    href: string;
-    on: boolean;
-    children: React.ReactNode;
-    trailing?: React.ReactNode;
-  }) => (
-    <Link
-      href={optHref as never}
-      replace
-      scroll={false}
-      role="option"
-      aria-selected={on}
-      data-on={on || undefined}
-      className={cn(
-        "kp-fopt flex min-h-[44px] items-center justify-between gap-4 px-3 text-[13px] font-semibold",
-        on ? "text-text" : "text-text-muted hover:bg-bg-overlay hover:text-text",
-      )}
-    >
-      {children}
-      {trailing}
-    </Link>
+  /* ⭐ `Opt` and the `Clear all` link left this file on 2026-09-07 — they are `QueryOption` and
+     `QueryClear` in `components/ui/query-bar.tsx` now, unchanged, and every new rail uses them. */
+  const clearAll = (
+    <QueryClear
+      href={active ? buildDiscoveryHref(clearedState(state)) : null}
+      label={t.market.clearAll}
+    />
   );
-
-  /* `Clear all`, shared by both layouts. On a phone it lives in the sheet's footer rather than
-     beside the result count: the kit puts it on the count line, but at 360 in Swahili
-     "Futa zote" lands hard against "masoko 40" — the exact collision §8.7c removed from the
-     status strip ("Mpymasoko 40"). Same control, one line lower, no width fight. */
-  const clearAll = active ? (
-    <Link
-      href={buildDiscoveryHref(clearedState(state)) as never}
-      replace
-      scroll={false}
-      className="inline-flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-pill px-3 text-[13px] font-semibold text-text-muted hover:text-text lg:ml-auto"
-    >
-      <I.x s={14} aria-hidden />
-      {t.market.clearAll}
-    </Link>
-  ) : null;
 
   return (
     /**
@@ -225,27 +208,10 @@ export function DiscoveryBar({
      * JavaScript, unlike the kit's mobile filter sheet. The strips bleed to the viewport edge
      * (`-mx-3 px-3`) so a half-visible chip signals "more this way".
      */
-    <div data-filter-rail className="kp-discovery-bar sticky top-[56px] z-20 -mx-3 bg-bg-base px-3 lg:-mx-6 lg:px-6">
+    <div data-filter-rail className={QUERY_BAR_CLASS}>
       {/* ── row 1 · status · count ───────────────────────────────────────────────────── */}
-      <div className="flex items-center gap-x-3 pt-2.5">
-        <nav
-          aria-label={t.market.statusAria}
-          /* ⚠️ NO EDGE BLEED. `-mx-3 px-3` used to run both strips 16px past the content box so a
-             half-visible chip would signal "more this way". It cost more than it bought: on the
-             right it ate the whole gap before the result count, so a clipped chip landed hard
-             against it and "Mpya" + "masoko 40" rendered as one broken word; and the bleed made
-             the row overflow its own container by 16px. `.kp-strip-fade` now carries the
-             "there is more this way" signal properly, so the strips sit inside the content box
-             and nothing overflows. */
-          /* ⭐ THE PRESSED CHIP IS SCROLLED INTO VIEW ON LOAD — <StripAutoScroll/>, below.
-             Measured at 360 on 2026-09-06: six chips in a 328px box, so the fourth (In progress)
-             starts past the fold and the board opened with the ACTIVE lens entirely off-screen,
-             reading `Open · Closing today · Mpy…`. Pre-existing for Watching and All; the sixth
-             chip is what landed it on the lens a player had just pressed. */
-          data-strip-autoscroll
-          className="kp-thin-scroll kp-strip-fade flex min-w-0 flex-1 items-center gap-1 overflow-x-auto pr-2 lg:flex-wrap lg:overflow-visible lg:pr-0"
-        >
-          <StripAutoScroll />
+      <div className={QUERY_BAR_ROW1_CLASS}>
+        <QueryStrip ariaLabel={t.market.statusAria}>
           {statuses.map((s) => (
             <Chip
               key={s}
@@ -256,7 +222,7 @@ export function DiscoveryBar({
               testId={`status:${s}`}
             />
           ))}
-        </nav>
+        </QueryStrip>
 
         {/* The pager total and this number are the SAME value — never recomputed.
             ⬜ DEFERRED, deliberately: the kit's density toggle sits here. It promises a
@@ -264,9 +230,7 @@ export function DiscoveryBar({
             seven columns with their own hide points (COMPONENTS §5). A toggle carrying that
             label while only restyling the cards would be a false promise, so it is recorded as
             an open item in PLAN-OF-RECORD §8.8 rather than half-built. */}
-        <p aria-live="polite" data-result-count={resultCount} className="shrink-0 font-mono text-[11.5px] tabular-nums text-text-subtle">
-          {resultCount === 1 ? t.market.oneResult : t.market.nResults.replace("{n}", String(resultCount))}
-        </p>
+        <QueryResultCount count={resultCount} phrase={resultPhrase} />
       </div>
 
       {/* ── row 2 · sort + direction, then EITHER the phone sheet OR the desktop groups ──
@@ -292,52 +256,25 @@ export function DiscoveryBar({
           options and 0 of 8 topics reachable at 360px. ⛔ Every automated check passed while that
           was true; only OPENING the control found it. This row WRAPS, it does not scroll, on
           either axis — which is what lets sort keep its panel here at every width. */}
-      <div className="flex flex-wrap items-center gap-x-2 pb-2.5 pt-1.5">
-        {/* ⛔ NO GOLD — sort is view state, and the kit's round-2 final withdrew the gilt shell it
-            had proposed. Gold is money on this platform (test:gold-is-money). */}
-        <div className="flex min-w-0 flex-1 items-center lg:flex-none">
-          <MenuShell
-            /* At 360 sort shares its line with the Filters button, so it is the control that
-               gives: the KEY never truncates and the VALUE ellipsises, which is MenuShell's own
-               rule. ⛔ An ellipsis is not a defect — the hidden tail IS the "…" — but the amount
-               hidden in Swahili is reported by `qa:filter-scan` so a person can judge it. */
-            rootClassName="min-w-0 shrink"
-            label={t.common.sort}
-            value={SORT_LABEL[state.sort]}
-            ariaLabel={t.market.sortAria}
-            className="min-w-0 rounded-l-pill rounded-r-none border-r-0"
-          >
-            {SORT_IDS.map((s) => (
-              <Opt key={s} href={href({ sort: s, dir: null })} on={state.sort === s}
-                trailing={
-                  <span className="font-mono text-[11px] text-text-faint">
-                    {SORT_NATURAL_DIR[s] === "asc" ? "↑" : "↓"}
-                  </span>
-                }
-              >
-                {SORT_LABEL[s]}
-              </Opt>
-            ))}
-          </MenuShell>
-          {/* Direction is fused to the sort control's right edge (COMPONENTS §4). Choosing a
-              new sort resets direction to null — that is why the options above pass dir:null. */}
-          <Link
-            href={href({ dir: dir === "asc" ? "desc" : "asc" }) as never}
-            replace
-            scroll={false}
-            aria-label={dir === "asc" ? t.market.sortedAsc : t.market.sortedDesc}
-            title={dir === "asc" ? t.market.sortedAsc : t.market.sortedDesc}
-            className="inline-flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-r-pill border border-border-control bg-bg-inset text-text-muted hover:text-text"
-          >
-            <span
-              aria-hidden
-              className="kp-sortdir inline-block font-mono text-[13px] leading-none"
-              data-dir={dir}
-            >
-              ↑
-            </span>
-          </Link>
-        </div>
+      <div className={QUERY_BAR_ROW2_CLASS}>
+        {/* Choosing a new sort resets direction to null — that is why every option passes
+            `dir: null`, and `SORT_NATURAL_DIR` then decides which way it arrives pointing. */}
+        <QuerySort
+          label={t.common.sort}
+          value={SORT_LABEL[state.sort]}
+          ariaLabel={t.market.sortAria}
+          options={SORT_IDS.map((s) => ({
+            id: s,
+            label: SORT_LABEL[s],
+            href: href({ sort: s, dir: null }),
+            on: state.sort === s,
+            naturalDir: SORT_NATURAL_DIR[s],
+          }))}
+          dir={dir}
+          dirHref={href({ dir: dir === "asc" ? "desc" : "asc" })}
+          ascLabel={t.market.sortedAsc}
+          descLabel={t.market.sortedDesc}
+        />
 
         {/* ── PHONE · odds, pool and topic behind one button (kit COMPONENTS §21) ──────────
             ⛔ EVERYTHING IN HERE IS A PILL. §21 lists the sheet's groups as "Odds, Pool size,
@@ -398,7 +335,7 @@ export function DiscoveryBar({
             "Any" chip, so without a visible key the bar renders two identical "Any" pills side
             by side and neither says what it clears. The key uses the same quiet mono treatment
             as the sort and topic menus, so all four groups read as one family. */}
-        <span aria-hidden className="mx-0.5 hidden h-5 w-px shrink-0 bg-border lg:block" />
+        <QueryGroupDivider />
 
         <nav aria-label={t.market.oddsAria} className="hidden shrink-0 items-center gap-1 lg:flex">
           <FilterGroupKey>{t.market.oddsKey}</FilterGroupKey>
@@ -414,7 +351,7 @@ export function DiscoveryBar({
           ))}
         </nav>
 
-        <span aria-hidden className="mx-0.5 hidden h-5 w-px shrink-0 bg-border lg:block" />
+        <QueryGroupDivider />
 
         <nav aria-label={t.market.poolAria} className="hidden shrink-0 items-center gap-1 lg:flex">
           <FilterGroupKey>{t.market.poolKey}</FilterGroupKey>
@@ -430,7 +367,7 @@ export function DiscoveryBar({
           ))}
         </nav>
 
-        <span aria-hidden className="mx-0.5 hidden h-5 w-px shrink-0 bg-border lg:block" />
+        <QueryGroupDivider />
 
         {/* Topic is ONE menu HERE, not eight pills. The kit flipped this twice; correction round
             2.6 — the LAST one — replaced the eight-pill wall with a single menu, and "round 2
@@ -448,7 +385,7 @@ export function DiscoveryBar({
           className="rounded-pill"
         >
           {topics.map((tp) => (
-            <Opt key={tp.id} href={href({ topic: tp.id })} on={state.topic === tp.id}
+            <QueryOption key={tp.id} href={href({ topic: tp.id })} on={state.topic === tp.id}
               trailing={
                 <span className="shrink-0 font-mono text-[11px] tabular-nums text-text-faint">
                   {counts.topic[tp.id] ?? 0}
@@ -456,7 +393,7 @@ export function DiscoveryBar({
               }
             >
               <span className="truncate">{tp.label}</span>
-            </Opt>
+            </QueryOption>
           ))}
         </MenuShell>
 
