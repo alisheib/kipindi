@@ -189,6 +189,24 @@ export async function POST(req: Request) {
     }
   }
 
+  /**
+   * ⭐ AND SOME UP & DOWN ROUNDS, because `/updown/history` is a separate portfolio and its rail
+   * is hidden behind having any. An Up & Down bet goes through the SAME `buyPosition` path with
+   * the ROUND's marketId — there is no second money door — so this is the real one.
+   * ⚠️ Bets are spread across rounds and both sides, because a history where every round is the
+   * same asset on the same side cannot tell a working lens from a broken one.
+   */
+  const udLive = (await listMarkets({ status: "LIVE", productLine: "UPDOWN" }).catch(() => [])).slice(0, 12);
+  let udPlaced = 0;
+  for (const [i, m] of udLive.entries()) {
+    const side: Side = i % 2 === 0 ? "YES" : "NO";
+    // ⚠️ 1,000 is the live platform minimum, not a number chosen here — a fixture that bets
+    //    below it produces refusals that look like a broken seeder.
+    const r = await buyPosition(uid, { marketId: m.id, side, stake: 1000 + ((i * 500) % 3000) });
+    if (r.ok) udPlaced++;
+    else refusals.push(`updown ${m.id}: ${r.code ?? ""} ${r.error ?? "refused"}`.trim());
+  }
+
   // ⛔ REPORTED FROM THE STORE, NOT FROM THE PLAN. What was intended and what the money paths
   //    actually produced are different questions, and only the second one is evidence.
   const after = await listPositionsForUser(uid, 500, "MARKET");
@@ -198,6 +216,7 @@ export async function POST(req: Request) {
   return NextResponse.json({
     ok: true,
     placed: placed.length,
+    updownPlaced: udPlaced,
     intended: plan.reduce<Record<string, number>>((a, p) => ({ ...a, [p.want]: (a[p.want] ?? 0) + 1 }), {}),
     byStatus,
     refusals,

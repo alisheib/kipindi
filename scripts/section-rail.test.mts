@@ -225,8 +225,15 @@ for (const r of population) {
  * unguarded": they are guarded by `test:filter-language` (the idiom, the paint, the 44px floor)
  * and by `qa:filter-scan` (measured on the rendered page). ⚠️ What this gate loses sight of is a
  * SECTION rail, and no section rail moved.
+ *
+ * ⚠️ 14 → 13 ON 2026-09-08 (task 4.1), same cause and same commit as the rail that moved:
+ * `/updown/history`'s day rail became six lenses in `history-bar.tsx`, behind the same `Chip`
+ * alias every converted route uses. The number will keep stepping down as stage 4 converts the
+ * rest; ⛔ that is not filter rails going unguarded — `test:filter-language` and
+ * `qa:filter-scan` cover those — it is this gate correctly losing sight of controls that were
+ * never SECTION rails to begin with.
  */
-const FLOOR = 14;
+const FLOOR = 13;
 
 let bad = 0;
 if (population.length < FLOOR) {

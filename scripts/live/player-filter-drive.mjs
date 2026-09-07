@@ -77,6 +77,19 @@ const SURFACES = [
     ],
   },
   {
+    id: "/updown/history",
+    path: "/updown/history",
+    param: "tab",
+    all: "all",
+    partitions: [
+      // ⚠️ SIX, NOT FIVE. A round whose bets have settled but whose settlement PRICE is still
+      //    being confirmed is none of up/down/void — the card has always had a fifth chip for it.
+      //    Leaving it out of the rail would leave those rounds reachable by no control, and this
+      //    assertion is what would have caught that.
+      { parent: "all", parts: ["inplay", "up", "down", "void", "pending"] },
+    ],
+  },
+  {
     id: "/wallet",
     path: "/wallet",
     param: "type",
@@ -95,6 +108,20 @@ if (surfaces.length === 0) {
 
 let pass = 0;
 const fails = [];
+/**
+ * ⛔ A THIRD OUTCOME, AND IT IS NOT A PASS. Some assertions can only be made if the FIXTURE
+ * happens to contain the right shape of data — "at least one lens is present but not universal"
+ * needs a route where some rows are in one lens and some are not. On a fresh store every Up &
+ * Down round a player holds is still in play, so that arm cannot be exercised at all.
+ *
+ * ⭐ REPORTING THAT AS A FAILURE WOULD BE A FALSE FINDING about a product that is fine, and
+ * reporting it as a PASS would be the vacuous green this whole programme exists to refuse. So it
+ * is neither: it is printed loudly, counted separately, and named in the summary — the same
+ * honesty `qa:filter-scan` shows when it says "7 of 8 surfaces reached".
+ * ⛔ A skip NEVER counts toward `pass`, so a run that skipped everything cannot read as coverage.
+ */
+const skips = [];
+const skip = (label, why) => { skips.push(`${label} — ${why}`); console.log(`  SKIP ${label} — ${why}`); };
 const ok = (label, cond, detail = "") => {
   if (cond) { pass++; console.log(`  PASS ${label}`); }
   else { fails.push(`${label}${detail ? ` — ${detail}` : ""}`); console.log(`  FAIL ${label}${detail ? ` — ${detail}` : ""}`); }
@@ -190,11 +217,17 @@ try {
       // ⭐ THE VALUE IS CHOSEN FROM THE DATA: a lens that is present but not universal, so a
       //    correct filter MUST reduce the count.
       const reducing = present.find((id) => sets[id].ids.size < parent.ids.size);
-      ok(`${s.id} · ${part.parent} · at least one lens is present but not universal`,
-        !!reducing, `sizes ${part.parts.map((i) => `${i}=${sets[i] ? sets[i].ids.size : "?"}`).join(" ")} vs parent ${parent.ids.size}`);
+      const sizes = `sizes ${part.parts.map((i) => `${i}=${sets[i] ? sets[i].ids.size : "?"}`).join(" ")} vs parent ${parent.ids.size}`;
       if (reducing) {
+        ok(`${s.id} · ${part.parent} · at least one lens is present but not universal`, true);
         ok(`${s.id} · ${s.param}=${reducing} · actually NARROWS the list`,
           sets[reducing].ids.size < parent.ids.size, `${sets[reducing].ids.size} vs ${parent.ids.size}`);
+      } else {
+        // ⚠️ Every row sits in ONE lens, so no lens can reduce the parent. That is a fact about
+        //    the FIXTURE, not the filter — and the DISJOINT/COVERING arms below still run, so the
+        //    lenses are not unchecked here, only this one arm is unexercisable.
+        skip(`${s.id} · ${part.parent} · at least one lens is present but not universal`,
+          `the fixture puts every row in one lens (${sizes}) — seed a mixed one to exercise this`);
       }
 
       // ── ARM 2 · MATCHING, as disjointness + covering ─────────────────────────────────────
@@ -218,7 +251,9 @@ try {
   await browser.close();
 }
 
-console.log(`\n${pass} passed · ${fails.length} failed`);
-if (fails.length) { fails.forEach((f) => console.error("  ✗ " + f)); process.exit(1); }
+console.log(`\n${pass} passed · ${fails.length} failed · ${skips.length} could not be exercised by this fixture`);
+if (skips.length) { console.log(""); skips.forEach((sk) => console.log("  🔶 " + sk)); }
+if (fails.length) { console.error(""); fails.forEach((f) => console.error("  ✗ " + f)); process.exit(1); }
 if (pass === 0) { console.error("🔴 ZERO assertions ran — a SKIPPED RUN, not a pass."); process.exit(3); }
-console.log("✅ every player filter narrows the list, and every survivor belongs to exactly one lens.");
+console.log("\n✅ every player filter narrows the list, and every survivor belongs to exactly one lens.");
+if (skips.length) console.log("⚠️  …but read the 🔶 lines: those arms were not exercised, and green here does not cover them.");

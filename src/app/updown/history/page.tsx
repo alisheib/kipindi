@@ -21,9 +21,21 @@ import { currentSession } from "@/lib/server/auth-service";
 import { getMyUpDownHistory, type MyRoundRow } from "@/lib/server/updown-board";
 import { getServerT } from "@/lib/i18n-server";
 import { eatDayWindow, isInEatDay, eatDayKey, formatEatDay } from "@/lib/eat-day";
-import { FilterPill, FilterGroupKey } from "@/components/ui/filter-pill";
 import { pickLocalized } from "@/lib/localized";
 import { formatTzs, formatTzsSigned } from "@/lib/utils";
+import { SearchBox } from "@/components/ui/search-box";
+import { Pagination, PLAYER_PER_PAGE } from "@/components/ui/pagination";
+import { HistoryBar, type UdCounts } from "./history-bar";
+import {
+  buildUdHref,
+  filterUd,
+  parseUdParams,
+  sortUd,
+  udCounts,
+  udEmptyCause,
+  udExits,
+  type HistoryRow,
+} from "@/lib/updown/history-query";
 
 export const dynamic = "force-dynamic";
 
@@ -46,12 +58,14 @@ const fmtDate = (iso: string) => {
 import { usd } from "@/lib/usd-price"; // the ONE spelling (session 80)
 
 /**
- * How many recent EAT days the picker offers. A week is the span a player reasons about on a
- * game whose rounds turn over in minutes, and it keeps the rail on ONE line at 360px in
- * Swahili — the constraint that actually binds here. Older days stay reachable through the
- * digest's own deep link, which is where this filter came from in the first place.
+ * ⭐ `DAY_PICKER_DAYS` RETIRED 2026-09-08 WITH THE RAIL IT SIZED. Its whole reason was that a
+ * seven-day rail is what fits on ONE line at 360 in Swahili — a real constraint, and the right
+ * answer for a rail of literal dates. The shared WINDOW replaces it with five spans that say the
+ * same thing in the vocabulary `/wallet` and `/positions` use, so "last 7 days" now means one
+ * span across the product instead of seven pills that only exist here.
+ * ⛔ `?day=` ITSELF DID NOT RETIRE — the digest deep-links to an exact day and those links are
+ * already delivered. See `lib/updown/history-query.ts`.
  */
-const DAY_PICKER_DAYS = 7;
 
 /**
  * How many of the player's most recent Up & Down positions this page reads.
@@ -63,7 +77,7 @@ const DAY_PICKER_DAYS = 7;
 const UD_HISTORY_LIMIT = 400;
 
 export default async function UpDownHistoryPage({ searchParams }: {
-  searchParams?: Promise<{ day?: string }>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { t, locale } = await getServerT();
   const session = await currentSession();
@@ -90,9 +104,7 @@ export default async function UpDownHistoryPage({ searchParams }: {
   // ⭐ Batch 5 made that dead end structurally impossible rather than merely fixed: the day
   // rail below renders from the player's OWN rounds and always offers "All days", so an
   // unparseable `?day=` now lands on a page whose way out is a control, not just a link.
-  const rawDay = (await searchParams)?.day ?? null;
-  const dayWindow = rawDay ? eatDayWindow(rawDay) : null;
-  const dayKey = dayWindow ? rawDay : null;   // null ⇒ no filter, no chip, no empty state
+  const sp = (await searchParams) ?? {};
 
   // ⛔ UD-15 · no swallow: a failed read must never render as "you have no bets"
   // (B-1's exact defect class, on a money history). Throws reach error.tsx.
@@ -107,9 +119,83 @@ export default async function UpDownHistoryPage({ searchParams }: {
   // Filter on `settledAt` when the round has settled, and on `placedAt` while it
   // has not — the digest bins by settlement, and a still-open round has no
   // settlement to bin by but is still part of the day the player was playing.
-  const rows = dayKey
-    ? allRows.filter((r) => isInEatDay(r.settledAt ?? r.placedAt, dayKey))
-    : allRows;
+  /**
+   * ⭐ THE ROUND IS THE ROW. A player who quick-bet the same round three times played ONE round —
+   * the day counts already folded that way, with the reason written beside them. Everything the
+   * bar filters, counts and sorts is therefore a round, and grouping happens BEFORE filtering so
+   * a lens can never split a round's bets across two answers.
+   */
+  const preGroups = new Map<string, { row: MyRoundRow; bets: MyRoundRow[]; stake: number; returned: number; anyOpen: boolean; latest: number; binned: number }>();
+  for (const r of allRows) {
+    const g = preGroups.get(r.marketId) ?? { row: r, bets: [], stake: 0, returned: 0, anyOpen: false, latest: 0, binned: 0 };
+    g.bets.push(r);
+    g.stake += r.stake;
+    g.returned += r.payout ?? 0;
+    if (r.status === "OPEN") g.anyOpen = true;
+    const at = Date.parse(r.placedAt) || 0;
+    if (at >= g.latest) g.latest = at;
+    // The clock the day filter and the digest both bin by — settlement when there is one, and
+    // the placement while there is not, because an open round is still part of the day it was
+    // played in.
+    const binned = Date.parse(r.settledAt ?? r.placedAt) || 0;
+    if (binned >= g.binned) g.binned = binned;
+    preGroups.set(r.marketId, g);
+  }
+
+  /** The asset and duration pills a player is offered — derived from THEIR rounds, never typed. */
+  const assetIds = [...new Set(allRows.map((r) => r.assetKey))].sort();
+  const durIds = [...new Set(allRows.map((r) => String(r.durationMinutes)))]
+    .sort((a, b) => Number(a) - Number(b));
+
+  /**
+   * 🔴 ONE VALIDATED VALUE DRIVES THE FILTER, THE BAR AND THE EMPTY STATE — the rule this page
+   * paid for. The first version validated `?day=` for the chip but filtered on the RAW param, so
+   * `?day=lol` matched no round, hid every card, and rendered no control to clear it: a dead end
+   * reached by one typo. The parser owns it now, for every axis at once.
+   */
+  const state = parseUdParams(sp, assetIds, durIds, (d) => !!d && !!eatDayWindow(d));
+  const dayKey = state.day || null;
+
+  const udRows: HistoryRow[] = [...preGroups.values()].map((g) => ({
+    id: g.row.marketId,
+    assetKey: g.row.assetKey,
+    durationMinutes: g.row.durationMinutes,
+    anyOpen: g.anyOpen,
+    outcome: g.row.outcome,
+    stake: g.stake,
+    returned: g.returned,
+    latestMs: g.latest,
+    binnedAtMs: g.binned,
+    assetName: pickLocalized(locale, g.row.assetNameEn, g.row.assetNameSw, g.row.assetNameZh),
+  }));
+
+  // ⛔ The EAT day arithmetic is the shared one — re-deriving it here is how a digest deep link
+  //    and the page it lands on start disagreeing about which rounds belong to a day.
+  const inDay = (row: HistoryRow, day: string) => isInEatDay(new Date(row.binnedAtMs).toISOString(), day);
+  const q = state.q.trim().toLowerCase();
+  // A short, honest search: the asset name is the only word on one of these cards.
+  const matchesText = (row: HistoryRow) => !q || row.assetName.toLowerCase().includes(q);
+
+  const nowMs = Date.now();
+  const collate = new Intl.Collator(locale).compare;
+  const counts = udCounts(udRows, state, nowMs, matchesText, inDay, assetIds, durIds) as UdCounts;
+  const matched = sortUd(filterUd(udRows, state, nowMs, matchesText, inDay), state, collate);
+
+  const pageNum = Math.max(1, parseInt(String(sp.page ?? "1"), 10) || 1);
+  const totalPages = Math.max(1, Math.ceil(matched.length / PLAYER_PER_PAGE));
+  const safePage = Math.min(pageNum, totalPages);
+  const pagedIds = new Set(matched.slice((safePage - 1) * PLAYER_PER_PAGE, safePage * PLAYER_PER_PAGE).map((r) => r.id));
+
+  const cause = udEmptyCause(state, nowMs, matchesText, inDay, matched.length, udRows.length);
+  const exits = cause && cause !== "no-rows" ? udExits(udRows, state, nowMs, matchesText, inDay) : [];
+  const EXIT_LABEL: Record<string, string> = {
+    asset: t.market.udAssets, dur: t.market.udDurations, when: t.common.rangeAll,
+    q: t.common.clearSearch, tab: t.common.all,
+  };
+
+  // The bets the P&L strip reasons over — still every bet, so the figures describe the whole
+  // filtered view rather than the twelve rounds on screen.
+  const rows = allRows.filter((r) => matched.some((m) => m.id === r.marketId));
 
   /* ⭐ THE DAY PICKER — batch 5. Until now this page had a FILTER WITH NO CONTROL: `?day=` was
      reachable only from the daily digest's deep link, so a player who cleared it could never
@@ -133,11 +219,6 @@ export default async function UpDownHistoryPage({ searchParams }: {
     seen.add(r.marketId);
     dayRounds.set(k, seen);
   }
-  const recentDays = [...dayRounds.keys()].sort().reverse().slice(0, DAY_PICKER_DAYS);
-  // A digest link can name a day older than the rail's window. Never drop the ACTIVE day from
-  // the rail: a selected control that is not on screen is how a player concludes the filter is
-  // stuck. It is appended in date order, so the rail still reads newest-first.
-  const dayOptions = dayKey && !recentDays.includes(dayKey) ? [...recentDays, dayKey] : recentDays;
 
   // GROUP BY ROUND. Up & Down is a fast game — placing many bets on one 5-minute round is
   // normal, so a per-position list reads as a redundant cluster and miscounts "rounds".
@@ -159,7 +240,12 @@ export default async function UpDownHistoryPage({ searchParams }: {
     if (at >= g.latest) { g.latest = at; }
     groups.set(r.marketId, g);
   }
-  const rounds = [...groups.values()].sort((a, b) => b.latest - a.latest);
+  // ⛔ ORDERED BY THE BAR'S SORT, PAGED BY THE BAR'S PAGER. It was hardcoded newest-placement
+  //    first with no control and no paging; a player with 400 rounds got all 400 in one DOM.
+  const rounds = matched
+    .filter((m) => pagedIds.has(m.id))
+    .map((m) => groups.get(m.id)!)
+    .filter(Boolean);
 
   // P&L strip — ROUND-level now. A round counts once; a round is "won" when the player's
   // net on it is positive (settled, non-void). Open rounds carry no realised result.
@@ -195,42 +281,66 @@ export default async function UpDownHistoryPage({ searchParams }: {
           key reads "Showing": the rail is a sentence.
           ⛔ No `?day=` link may ever match `a[href^="/updown/udr_"]` — that is how
           `live-updown-digest.mjs` counts round cards. Query links are safe by construction. */}
-      {dayOptions.length > 0 && (
-        <nav aria-label={t.market.udHistoryTitle} data-filter-rail className="mt-4 flex flex-wrap items-center gap-1.5">
-          <FilterGroupKey>{t.market.udShowingDay}</FilterGroupKey>
-          <FilterPill
-            href="/updown/history"
-            label={t.market.udAllDays}
-            on={!dayKey}
-            semantics="tab"
-            replace
-            scroll={false}
+      {/* ⭐ Search sits outside the sheet at every width — a player who can see the box knows
+          the page is searchable. The asset name is the only word on one of these cards. */}
+      {allRows.length > 0 && (
+        <div className="mt-4 space-y-3">
+          <SearchBox
+            placeholder={t.market.udSearchPlaceholder}
+            ariaLabel={t.market.udSearchPlaceholder}
           />
-          {dayOptions.map((d) => (
-            <FilterPill
-              key={d}
-              href={`/updown/history?day=${d}`}
-              label={formatEatDay(d, t.common.monthsShort, locale)}
-              count={dayRounds.get(d)?.size}
-              on={d === dayKey}
-              semantics="tab"
-              rank="secondary"
-              replace
-              scroll={false}
-            />
-          ))}
-        </nav>
+          <HistoryBar
+            state={state}
+            counts={counts}
+            resultCount={matched.length}
+            assets={[
+              { id: "all", label: t.common.all },
+              ...assetIds.map((a) => ({
+                id: a,
+                label: pickLocalized(
+                  locale,
+                  allRows.find((r) => r.assetKey === a)?.assetNameEn ?? a,
+                  allRows.find((r) => r.assetKey === a)?.assetNameSw ?? a,
+                  allRows.find((r) => r.assetKey === a)?.assetNameZh ?? null,
+                ),
+              })),
+            ]}
+            durations={["all", ...durIds]}
+            dayLabel={dayKey ? formatEatDay(dayKey, t.common.monthsShort, locale) : null}
+            t={t}
+          />
+        </div>
       )}
 
-      {rows.length === 0 ? (
+      {matched.length === 0 ? (
         <div className="mt-6">
+          {/* ⛔ FIVE CAUSES, NEVER ONE MESSAGE. It had two — "no rounds that day" and "no history
+              yet" — which was right for one axis and becomes a lie the moment there are five:
+              a player who filtered to `Up wins` and saw nothing would have been told they had
+              never played. Each exit carries a REAL cross-filtered count, so none of them leads
+              to another empty page. */}
           <EmptyState
-            title={dayKey ? t.market.udNoRoundsThatDay : t.market.udNoHistory}
-            body={dayKey ? t.market.udHistoryBody : t.market.udNoHistoryBody}
+            title={
+              cause === "no-rows" ? t.market.udNoHistory
+              : cause === "search-miss" ? t.market.udNoRoundsThatDay
+              : cause === "window-miss" ? t.market.udNoRoundsThatDay
+              : t.market.udNoRoundsThatDay
+            }
+            body={cause === "no-rows" ? t.market.udNoHistoryBody : t.market.udHistoryBody}
             action={
-              dayKey
-                ? <Link href="/updown/history" className="btn btn-primary btn-md">{t.market.udAllDays}</Link>
-                : <Link href="/updown" className="btn btn-primary btn-md">{t.market.udTitle}</Link>
+              cause === "no-rows" ? (
+                <Link href="/updown" className="btn btn-primary btn-md">{t.market.udTitle}</Link>
+              ) : exits.length > 0 ? (
+                <div className="flex flex-wrap items-center justify-center gap-2">
+                  {exits.map((e) => (
+                    <Link key={e.id} href={buildUdHref(state, e.patch) as never} replace scroll={false} className="btn btn-ghost btn-sm">
+                      {`${EXIT_LABEL[e.id] ?? e.id} (${e.count})`}
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <Link href="/updown/history" className="btn btn-primary btn-md">{t.market.udAllDays}</Link>
+              )
             }
           />
         </div>
@@ -297,6 +407,9 @@ export default async function UpDownHistoryPage({ searchParams }: {
               return (
                 <CardTag
                   key={r.marketId}
+                  /* The row's machine-readable identity — the ROUND is the row here, so the id is
+                     the market, not a position. See `position-card.tsx` for the contract. */
+                  data-row-id={r.marketId}
                   {...(roundLink ? { href: roundLink } : {})}
                   className={"ticket-scope block scroll-mt-24 rounded-xl border border-border bg-bg-elevated p-3.5 transition-colors" + (roundLink ? " hover:border-brand-400" : "")}
                 >
@@ -364,6 +477,24 @@ export default async function UpDownHistoryPage({ searchParams }: {
               );
             })}
           </div>
+          {/* ⛔ IT WAS UNPAGED. A player with 400 rounds got all 400 in one DOM — the
+              player-facing half of the no-grid-without-paging rule. The base carries every
+              ACTIVE filter, so page 2 of "Up wins" is page 2 of "Up wins". */}
+          {totalPages > 1 && (
+            <div className="mt-4 rounded-lg border border-border bg-bg-elevated/40 overflow-hidden">
+              <Pagination
+                total={matched.length}
+                page={safePage}
+                perPage={PLAYER_PER_PAGE}
+                baseHref={buildUdHref(state)}
+                ofLabel={t.common.of}
+                prevLabel={t.common.previousPage}
+                nextLabel={t.common.nextPage}
+                firstLabel={t.common.firstPage}
+                lastLabel={t.common.lastPage}
+              />
+            </div>
+          )}
           <p className="mt-3 flex items-center gap-1.5 text-body-sm text-text-subtle">
             <I.info s={12} />
             {t.market.udHistoryBody}
