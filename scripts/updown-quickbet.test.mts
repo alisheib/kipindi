@@ -17,7 +17,8 @@
 process.env.SESSION_SECRET ??= "test-only-session-secret-32chars-min-aaaa";
 
 import { db } from "../src/lib/server/store.ts";
-import { buyPosition, MAX_STAKE } from "../src/lib/server/market-service.ts";
+import { buyPosition } from "../src/lib/server/market-service.ts";
+import { PLATFORM_MAX_STAKE } from "../src/lib/payout.ts";
 import { getBoard } from "../src/lib/server/updown-board.ts";
 import { createAsset, setAssetEnabled, createChain, setChainState, stakeBoundsFor, __resetUpDownConfig } from "../src/lib/server/updown-config.ts";
 import { chainStore, observationStore, __resetUpDownMemoryStores } from "../src/lib/server/updown-dal.ts";
@@ -182,7 +183,7 @@ async function mine(userId: string | undefined): Promise<{ up: number; down: num
   const bal = (await db.wallet.findByUserId(broke))!.balance;
   ok("15 · a refused bet moved no money", bal === 10_000, `balance ${bal}`);
 
-  const huge = await buyPosition(alice, { marketId, side: "YES", stake: MAX_STAKE + 1, idempotencyKey: "qb-huge" });
+  const huge = await buyPosition(alice, { marketId, side: "YES", stake: PLATFORM_MAX_STAKE + 1, idempotencyKey: "qb-huge" });
   ok("16 · over-max stake is refused", !huge.ok, huge.ok ? "accepted an over-max stake!" : "");
 
   const zero = await buyPosition(alice, { marketId, side: "YES", stake: 0, idempotencyKey: "qb-zero" });
