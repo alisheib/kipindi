@@ -475,7 +475,7 @@ create a role at `/admin/roles` with `trading` VIEW but no ACT, and that role mu
 | Control | Its only home |
 |---|---|
 | Assets, durations, stake bounds, rate profile, thresholds, reading method | `/admin/updown/*` — **never** mirrored into `/admin/config` |
-| The AI pause switch | The **AI-toolkit top-bar dropdown** (the one home for every AI switch), config key `ai.controls.pollGenEnabled`. `/admin/updown` renders it read-only via `controlled-elsewhere.tsx`. It now gates **both** generators — long-form polls and Up & Down proposals — and is enforced **inside** `generateAIPoll`, not only in the actions that call it |
+| The AI pause switch | The **AI-toolkit top-bar dropdown** (the one home for every AI switch), config key `ai.controls.pollGenEnabled`. ⚠️ **CORRECTED 2026-09-07 — this said `/admin/updown` renders it read-only via `controlled-elsewhere`. It does not, and had not for months: that component had ZERO renderers anywhere and was deleted. The switch's one home is still the AI-toolkit dropdown; what was false is the claim that this page mirrors it. |
 | Price source domains | The existing `/admin/sources` trusted-source registry — **no second allowlist** |
 | The host-match rule | `hostMatchesDomain` in `updown-feed.ts` — **one** definition, shared by the AI reader's gate 2, the feed's endpoint check, the round-level source check and the sentinel chip |
 | Resolution authorization | `resolution-policy.ts` (untouched by this feature) |
