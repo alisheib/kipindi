@@ -478,8 +478,14 @@ const TIE_BREAK: Record<SortId, (a: DiscoveryRow, b: DiscoveryRow) => number> = 
  * ⚠️ Declared HERE, below `sortKey` and `TIE_BREAK`, and not beside `effectiveDir` where it would
  * read better: a module-level `const` referencing `TIE_BREAK` before its declaration is a
  * temporal-dead-zone throw at import time, on a module the board imports on every request.
+ *
+ * ⚠️ EXPORTED FOR ONE REASON, AND IT IS NOT GENERAL USE. `compareRows` below writes out the order
+ * its tie-break and `byId` are applied in, because a red proof is anchored on that line; this
+ * export is what lets `test:query-core` assert that `compareRows` and `compareBy(SORT_SPEC, …)`
+ * return the same sign for EVERY pair, turning that one written-out line from a copy that could
+ * drift into an equivalence that cannot. ⛔ Sort through `sortRows`, never through this.
  */
-const SORT_SPEC: SortSpec<DiscoveryRow, SortId> = {
+export const SORT_SPEC: SortSpec<DiscoveryRow, SortId> = {
   ids: SORT_IDS,
   natural: SORT_NATURAL_DIR,
   key: sortKey,
