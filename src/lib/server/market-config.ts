@@ -833,17 +833,8 @@ export async function clearMarketOverride(marketId: string, officerId: string): 
 // alongside a third copy in payout.ts. That is how the dial ended up quoting a
 // different number than settlement paid.
 
-/**
- * Projection for a bet NOT YET PLACED — the stake is added to the chosen side.
- * @deprecated Prefer importing `payoutFor` from `@/lib/payout` directly.
- */
-export function payoutForWhole(
-  opts: { yesPool: number; noPool: number; side: "YES" | "NO"; stake: number },
-  rates: FeeRatesLike,
-): { payout: number; net: number; share: number; ratio: number } {
-  const r = payoutFor(opts, rates);
-  return { payout: r.payout, net: r.net, share: r.share, ratio: r.ratio };
-}
+// 🔴 `payoutForWhole()` DELETED 2026-09-07 — an @deprecated adapter with ZERO callers,
+// left sitting on the money path it was written to protect. Use `payoutFor` from `@/lib/payout`.
 
 /**
  * SETTLEMENT payout — the pools are final and already contain this stake.

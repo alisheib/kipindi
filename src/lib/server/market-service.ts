@@ -69,8 +69,10 @@ import { isSourceTrusted } from "./source-registry";
 // OPERATOR_MARGIN (a dead 0.09 constant with no call sites) is gone. So is
 // CASHOUT_SLIPPAGE. Rates live in RateConfig and, for a poll that exists, in its
 // immutable feeSnapshot — nothing money-side is hardcoded any more.
-export const MIN_STAKE = 1_000;
-export const MAX_STAKE = 1_000_000;
+// 🔴 `MIN_STAKE` / `MAX_STAKE` DELETED 2026-09-07 — a second copy of the platform stake
+// bounds, five lines under a comment celebrating that "nothing money-side is hardcoded any
+// more". `PLATFORM_MIN_STAKE` / `PLATFORM_MAX_STAKE` in `@/lib/payout` are the one home (31 and
+// 33 consumers); MIN_STAKE had ZERO and MAX_STAKE had one test importing it from here.
 
 /**
  * ⭐ THE LIST AND ITS TYPE MOVED TO `lib/markets/categories.ts` ON 2026-09-07, AND ARE RE-EXPORTED
