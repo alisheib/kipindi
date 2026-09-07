@@ -23,7 +23,7 @@ import {
   startApplication, attachAgentDocument, setReferees, recordFeePayment, submitForReview, applicantView,
   reconcileFee, waiveFee, recordFeeRefund, requestMoreInfo, rejectApplication, approveAgent, deactivateAgent, reactivateAgent, revokeAgent,
   issueInvitation, requestInvitationOtp, acceptInvitation, revokeInvitation, invitationPreview, applicantEligibility,
-  REQUIRED_DOC_SLOTS, ALL_DOC_SLOTS,
+  REQUIRED_DOC_SLOTS, ALL_DOC_SLOTS, feeBreakdown,
 } from "../src/lib/server/agent-application-service.ts";
 
 let pass = 0, fail = 0;
@@ -34,7 +34,20 @@ const PNG = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJA
 const GIF_AS_PNG = "data:image/png;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
 
 const cfg = getAgentConfig();
-const FEE = cfg.registrationFeeTzs;
+/**
+ * 🔴 THE TOTAL THE APPLICANT PAYS, NOT `registrationFeeTzs`.
+ *
+ * This read `cfg.registrationFeeTzs` and was correct only by coincidence: while the shipped
+ * VAT treatment was `INCLUSIVE` the fee and the total were the same number. Management moved
+ * the treatment to `EXCLUSIVE` on 2026-09-08 ("TZS 100,000 + VAT = 118,000"), and the
+ * coincidence ended — this suite then attested 100,000 against a 118,000 fee and four
+ * downstream legs (reconcile → approve → reject → refund) failed as a chain from one wrong
+ * fixture.
+ *
+ * ⛔ `feeBreakdown` IS THE ONLY PLACE THAT KNOWS WHAT AN APPLICANT OWES. Anything that
+ * attests, validates or refunds a payment reads `totalTzs` from it — never a raw config field.
+ */
+const FEE = feeBreakdown(cfg).totalTzs;
 const DAY = 86_400_000;
 await mkFixtureUser("sec_officer", { role: "COMPLIANCE" });
 await mkFixtureUser("sec_admin", { role: "ADMIN" });

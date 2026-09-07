@@ -14,7 +14,7 @@
  */
 import "./lib/verified-fixtures.mts";
 import { db } from "../src/lib/server/store.ts";
-import { mkFixtureUser, approveFixtureAgent, cashOf, bonusOf } from "./lib/agent-fixtures.mts";
+import { mkFixtureUser, approveFixtureAgent, cashOf, bonusOf, netAfterWht } from "./lib/agent-fixtures.mts";
 import { bindRecruit, onRecruitBet, onRecruitDeposit, onRecruitSettlement, ensureAffiliateAccount } from "../src/lib/server/affiliate-service.ts";
 import { getAffiliateConfig, setAffiliateConfig } from "../src/lib/server/affiliate-config.ts";
 import { getAgentConfig, setAgentConfig } from "../src/lib/server/agent-config.ts";
@@ -57,7 +57,7 @@ try {
     ok("1.nodeposit · a deposit milestone paid the agent nothing", (await cashOf("iso_agent")) === 0 && (await bonusOf("iso_agent")) === 0);
 
     await onRecruitSettlement("iso_rec", { operatorNetFee: 10_000, marketId: "mkt_iso_1", positionId: pos() });
-    ok("1.commission · the settlement pays commission — and ONLY commission — as cash", (await cashOf("iso_agent")) === 2_000 && (await bonusOf("iso_agent")) === 0, `cash=${await cashOf("iso_agent")} bonus=${await bonusOf("iso_agent")}`);
+    ok("1.commission · the settlement pays commission — and ONLY commission — as cash", (await cashOf("iso_agent")) === netAfterWht(2_000) && (await bonusOf("iso_agent")) === 0, `cash=${await cashOf("iso_agent")} bonus=${await bonusOf("iso_agent")}`);
     const rows = await db.referralReward.listByReferrer("iso_agent");
     ok("1.rows · exactly one row, type COMMISSION, programme AGENT", rows.length === 1 && rows[0].type === "COMMISSION" && rows[0].programme === "AGENT", JSON.stringify(rows.map((r) => [r.type, r.programme, r.status])));
   }
@@ -89,7 +89,7 @@ try {
     const bound = await bindRecruit({ recruitUserId: "iso_rec2", code });
     ok("3.bind · the growth officer pausing the player promo does not stop an agent recruiting", bound.bound === true, JSON.stringify(bound));
     await onRecruitSettlement("iso_rec2", { operatorNetFee: 10_000, marketId: "mkt_iso_3", positionId: pos() });
-    ok("3.accrue · …or accruing", (await cashOf("iso_agent2")) === 2_000, `cash=${await cashOf("iso_agent2")}`);
+    ok("3.accrue · …or accruing", (await cashOf("iso_agent2")) === netAfterWht(2_000), `cash=${await cashOf("iso_agent2")}`);
 
     // Attribution is SHARED (one system, always) — a pause is an ECONOMIC switch, so the bind
     // still records who recruited whom; what stops is the money.
@@ -117,7 +117,7 @@ try {
     const r = setAgentConfig({ defaultCommissionPct: 30 }, "test-officer");
     ok("4.setup · the default for NEW agents moves to 30%", r.ok === true, JSON.stringify(r));
     await onRecruitSettlement("iso_rec3", { operatorNetFee: 10_000, marketId: "mkt_iso_4", positionId: pos() });
-    ok("4.own · an existing agent still earns at THEIR rate (20%), not the new default", (await cashOf("iso_agent3")) === 2_000, `cash=${await cashOf("iso_agent3")}`);
+    ok("4.own · an existing agent still earns at THEIR rate (20%), not the new default", (await cashOf("iso_agent3")) === netAfterWht(2_000), `cash=${await cashOf("iso_agent3")}`);
     setAgentConfig({ defaultCommissionPct: agentSnap.defaultCommissionPct }, "test-officer");
   }
 } finally {

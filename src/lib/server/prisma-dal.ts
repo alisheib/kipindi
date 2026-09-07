@@ -616,6 +616,12 @@ function toStoredReward(r: any): StoredReferralReward {
     type: r.type,
     label: r.label,
     amountTzs: num(r.amountTzs),
+    // ⚠️ NULL IS MEANINGFUL AND MUST SURVIVE THE MAP. A pre-2026-09-08 row has no gross
+    // recorded, and the per-recruit cap reads `grossAmountTzs ?? amountTzs` to stay correct
+    // over that history — coalescing either of these to 0 here would silently zero every
+    // capped agent's historical spend and re-open a budget that was already used.
+    grossAmountTzs: r.grossAmountTzs === null || r.grossAmountTzs === undefined ? null : num(r.grossAmountTzs),
+    taxWithheldTzs: r.taxWithheldTzs === null || r.taxWithheldTzs === undefined ? null : num(r.taxWithheldTzs),
     status: r.status,
     recipientUserId: r.recipientUserId,
     note: r.note,
@@ -2028,6 +2034,8 @@ export const prismaDb = {
           type: r.type,
           label: r.label,
           amountTzs: r.amountTzs,
+          grossAmountTzs: r.grossAmountTzs,
+          taxWithheldTzs: r.taxWithheldTzs,
           status: r.status,
           recipientUserId: r.recipientUserId,
           note: r.note,

@@ -14,7 +14,7 @@
  */
 import "./lib/verified-fixtures.mts";
 import { db } from "../src/lib/server/store.ts";
-import { mkFixtureUser, approveFixtureAgent, cashOf, bonusOf } from "./lib/agent-fixtures.mts";
+import { mkFixtureUser, approveFixtureAgent, cashOf, bonusOf, netAfterWht } from "./lib/agent-fixtures.mts";
 import { policyFor, bindRecruit, onRecruitSettlement, getAgentDashboard, ensureAffiliateAccount } from "../src/lib/server/affiliate-service.ts";
 import { getAffiliateConfig, setAffiliateConfig } from "../src/lib/server/affiliate-config.ts";
 import { getAgentConfig, setAgentConfig } from "../src/lib/server/agent-config.ts";
@@ -74,12 +74,12 @@ const posId = (() => { let n = 0; return () => `pos_pol_${++n}`; })();
   ok("2.bound · the agent's code binds a recruit", bound.bound === true, JSON.stringify(bound));
 
   await onRecruitSettlement("pol_rec", { operatorNetFee: 10_000, marketId: "mkt_pol_1", positionId: posId() });
-  ok("2.cash · 20% of a TZS 10,000 net fee lands as TZS 2,000 of CASH", (await cashOf("pol_agent")) === 2_000, `cash=${await cashOf("pol_agent")}`);
+  ok("2.cash · 20% of a TZS 10,000 net fee grosses TZS 2,000 and lands as CASH, less withholding", (await cashOf("pol_agent")) === netAfterWht(2_000), `cash=${await cashOf("pol_agent")}`);
   ok("2.bonus · …and NOTHING in the bonus balance", (await bonusOf("pol_agent")) === 0, `bonus=${await bonusOf("pol_agent")}`);
 
   const txns = await db.txn.findByUser("pol_agent");
   const commissionTxn = txns.find((t) => t.type === "AGENT_COMMISSION");
-  ok("2.txn · the credit is its own transaction type, AGENT_COMMISSION, for the exact amount", !!commissionTxn && commissionTxn.amount === 2_000, JSON.stringify(txns.map((t) => [t.type, t.amount])));
+  ok("2.txn · the credit is its own transaction type, AGENT_COMMISSION, for the exact amount", !!commissionTxn && commissionTxn.amount === netAfterWht(2_000), JSON.stringify(txns.map((t) => [t.type, t.amount])));
   ok("2.notbonus · no BONUS_CREDIT transaction was written for an agent accrual", !txns.some((t) => t.type === "BONUS_CREDIT"));
 
   const rows = await db.referralReward.listByReferrer("pol_agent");
@@ -124,7 +124,7 @@ const posId = (() => { let n = 0; return () => `pos_pol_${++n}`; })();
     const bound = await bindRecruit({ recruitUserId: "pol_door_rec", code });
     ok("4.recruit · an approved agent still recruits with the door shut", bound.bound === true, JSON.stringify(bound));
     await onRecruitSettlement("pol_door_rec", { operatorNetFee: 10_000, marketId: "mkt_pol_3", positionId: posId() });
-    ok("4.accrue · …and still accrues (TZS 2,500 at 25%)", (await cashOf("pol_door_agent")) === 2_500, `cash=${await cashOf("pol_door_agent")}`);
+    ok("4.accrue · …and still accrues (TZS 2,500 gross at 25%)", (await cashOf("pol_door_agent")) === netAfterWht(2_500), `cash=${await cashOf("pol_door_agent")}`);
 
     await mkFixtureUser("pol_door_applicant");
     const elig = await applicantEligibility("pol_door_applicant");

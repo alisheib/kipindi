@@ -20,6 +20,7 @@ import { db, type StoredAffiliateAccount, type StoredReferralReward, type Stored
 import { inviteIsLiveFor, NO_VIEWER, type InviteViewer } from "@/lib/feature-state";
 import { getAffiliateConfig } from "./affiliate-config";
 import { getAgentConfig, commissionWindowEnd, type AgentConfig } from "./agent-config";
+import { splitWithholding } from "@/lib/agent-commission";
 import { displayLabel } from "@/lib/display-label";
 import { audit } from "./audit";
 import { randomId } from "./crypto";
@@ -285,6 +286,15 @@ export type ReferralPolicy = {
   capPerRecruitTzs: number;
   /** 0 = lifetime. Measured from the BIND. */
   windowMonths: number;
+  /**
+   * ⭐ LOCAL WITHHOLDING TAX ON THE RECIPIENT'S EARNINGS, as a PERCENT of the gross accrual.
+   * Management's waterfall, 2026-09-08. `0` means no tax applies and the gross is credited.
+   *
+   * ⛔ AGENT ONLY, AND `0` FOR PLAYER BY CONSTRUCTION. The player promo pays a promotional
+   * grant, not commission income — there is nothing to withhold against, and a tax line on
+   * a bonus would misreport promotional spend as remitted tax in the statutory pack.
+   */
+  withholdingPct: number;
   /** Whether the flat player rewards (sign-up bonus, first-bet prize) apply at all.
    *  ⛔ FALSE for AGENT — the programme is commission-only BY CONSTRUCTION, so `payPrize`
    *  and `payBonus` are never reached with an agent context and there is no early return
@@ -421,6 +431,10 @@ export function policyFor(
         txnType: "AGENT_COMMISSION",
         capPerRecruitTzs: agentCfg.capPerRecruitTzs,
         windowMonths: agentCfg.commissionWindowMonths,
+        // ⭐ THE WITHHOLDING RATE TRAVELS ON THE POLICY, like the commission rate does, so
+        // the accrual never reads config a second time and a mid-settlement config edit
+        // cannot tax half a market's positions at one rate and half at another.
+        withholdingPct: agentCfg.agentWithholdingTaxPct,
         // ⛔ COMMISSION-ONLY BY CONSTRUCTION. The flat prize and the sign-up bonus are the
         // PLAYER promo's instruments; an agent is paid a share of revenue they generated,
         // and nothing else. On the shipped config the prize is ON and commission is OFF, so
@@ -445,6 +459,10 @@ export function policyFor(
       txnType: "BONUS_CREDIT",
       capPerRecruitTzs: cfg.commission.capPerRecruitTzs,
       windowMonths: cfg.commission.windowMonths,
+      // ⛔ ZERO FOR PLAYER, BY CONSTRUCTION AND NOT BY CONFIG. A player promo pays a
+      // promotional grant; there is no commission income to withhold against, and a tax
+      // line on a bonus would report promotional spend to TRA as remitted tax.
+      withholdingPct: 0,
       flatRewards: true,
     },
   };
@@ -632,6 +650,9 @@ async function creditWallet(
   description: string,
   sourceRef: string | undefined,
   policy: ReferralPolicy,
+  /** ⭐ Withholding tax already deducted from the gross by the caller. `amount` is the NET.
+   *  Only ever non-zero on the AGENT cash path — see `ReferralPolicy.withholdingPct`. */
+  taxWithheld = 0,
 ): Promise<boolean> {
   /**
    * 🔴 THE WALLET DEFECT, AND IT WAS LIVE ON THE SHIPPED DEFAULTS.
@@ -651,7 +672,7 @@ async function creditWallet(
    * statutory regulator pack from reporting a commission payment as bonus cost.
    */
   if (policy.destination === "CASH") {
-    return (await creditInternal(userId, amount, { description, type: policy.txnType })) !== null;
+    return (await creditInternal(userId, amount, { description, type: policy.txnType, taxWithheld })) !== null;
   }
   const bcfg = getBonusConfig();
   if (bcfg.enabled && bcfg.affiliateToBonus) {
@@ -672,7 +693,13 @@ async function recordReward(input: {
   recipientUserId: string;
   type: StoredReferralReward["type"];
   label: string;
+  /** ⚠️ THE NET — what actually reached the wallet. See the call site in the accrual. */
   amountTzs: number;
+  /** The commission before withholding tax. Null for a reward that is not priced off a rate
+   *  (a flat prize or sign-up bonus) and for anything with no tax to withhold. */
+  grossAmountTzs?: number | null;
+  /** The withholding tax deducted from `grossAmountTzs`. Null/0 when none applies. */
+  taxWithheldTzs?: number | null;
   status: StoredReferralReward["status"];
   note?: string | null;
   /** ⭐ COPIED from the attribution's stamp — ⛔ never re-derived from the referrer's role. */
@@ -691,6 +718,8 @@ async function recordReward(input: {
     type: input.type,
     label: input.label,
     amountTzs: input.amountTzs,
+    grossAmountTzs: input.grossAmountTzs ?? null,
+    taxWithheldTzs: input.taxWithheldTzs ?? null,
     status: input.status,
     note: input.note ?? null,
     programme: input.programme,
@@ -1194,6 +1223,20 @@ export async function onRecruitSettlement(
   if (grossCut <= 0) return;
 
   /**
+   * ⭐ AND THE WITHHOLDING TAX IS APPLIED **AFTER** THE CAP, NOT HERE.
+   *
+   * Management's waterfall (2026-09-08) withholds a percent of the agent's gross commission.
+   * The order of the three operations is load-bearing and it is: price the gross → clamp it
+   * against the per-recruit budget → withhold on what remains. Withholding first would remit
+   * tax on money the cap then refused to accrue, which is money nobody ever earned; and
+   * capping the NET would let a partner accrue more gross than their budget allows, because
+   * the cap would be measured on a figure the tax had already shrunk.
+   *
+   * `splitWithholding` is therefore called inside the lock below, on the capped `cut`.
+   */
+
+
+  /**
    * ⭐ THE IDEMPOTENCY KEY COMMISSION NEVER HAD.
    *
    * `payBonus` and `payPrize` both pass a deterministic `sourceRef`; commission passed none,
@@ -1222,14 +1265,25 @@ export async function onRecruitSettlement(
         // ⚠️ PENDING and HELD DO count. The cap is a budget on ACCRUAL, and a suppressed
         // accrual is still money we owe — dropping it would let a released backlog overshoot.
         .filter((r) => r.status !== "REVERSED")
-        .reduce((s, r) => s + r.amountTzs, 0);
+        // ⭐ THE CAP IS A BUDGET ON GROSS COMMISSION EARNED, NOT ON CASH RECEIVED.
+        // `amountTzs` is the NET credited since withholding began (2026-09-08), so summing it
+        // alone would silently widen every capped agent's budget by the tax they never saw.
+        // ⚠️ The fallback is what keeps history correct: rows accrued BEFORE withholding have
+        // no `grossAmountTzs`, and for those `amountTzs` WAS the gross.
+        .reduce((s, r) => s + (r.grossAmountTzs ?? r.amountTzs), 0);
       const remaining = policy.capPerRecruitTzs - already;
       if (remaining <= 0) return null;
       cut = Math.min(cut, remaining);
     }
     if (cut <= 0) return null;
 
-    const credited = await creditWallet(referrerUserId, cut, "Agent commission", sourceRef, policy);
+    // ⭐ ONE FUNCTION, SHARED WITH `/agent`'s WATERFALL. The page's worked example and this
+    // credit cannot disagree, because they are the same arithmetic — `test:agent-waterfall`
+    // is that assertion.
+    const split = splitWithholding(cut, policy.withholdingPct);
+    if (split.netTzs <= 0) return null;
+
+    const credited = await creditWallet(referrerUserId, split.netTzs, "Agent commission", sourceRef, policy, split.taxWithheldTzs);
     /**
      * ⛔ AN AGENT ACCRUAL IS NEVER `HELD`. `HELD` is terminal in this codebase — no code path
      * has ever paid one out — and it consumes the per-recruit budget, so a partner's
@@ -1249,7 +1303,14 @@ export async function onRecruitSettlement(
       recipientUserId: referrerUserId,
       type: "COMMISSION",
       label: policy.programme === "AGENT" ? "Agent commission" : "Commission",
-      amountTzs: cut,
+      // ⭐ `amountTzs` IS THE NET — the money that actually moved. Every existing reader
+      // (the agent's dashboard, the payables table, the owner's book, the clawback) means
+      // "what the partner got" by it, and changing that meaning would have been the invasive
+      // choice. The gross and the tax are recorded beside it so the withholding line can be
+      // shown and reversed without anybody re-deriving it from a rate.
+      amountTzs: split.netTzs,
+      grossAmountTzs: split.grossTzs,
+      taxWithheldTzs: split.taxWithheldTzs,
       status,
       note: credited ? null : "credit suppressed — payable, settle out of band",
       // ⭐ The stamp and the priced rate travel onto the row, so a later rate change never
@@ -1329,6 +1390,10 @@ export async function clawbackMarketCommission(
         const res = await debitInternal(current.referrerUserId, current.amountTzs, {
           description: "Agent commission reversed — market voided",
           type: "AGENT_COMMISSION_REVERSAL",
+          // ⭐ The withholding tax on this accrual goes back too, in proportion to what is
+          // actually recovered — see `debitInternal`. ⚠️ `?? 0` is what keeps a pre-2026-09-08
+          // row (no tax column) reversing exactly as it always did.
+          taxWithheld: current.taxWithheldTzs ?? 0,
         });
         recovered = res.debited;
         if (res.shortfall > 0) {
@@ -1339,7 +1404,7 @@ export async function clawbackMarketCommission(
             actorId: null,
             targetType: "User",
             targetId: current.referrerUserId,
-            payload: { marketId, rewardId: current.id, owed: current.amountTzs, recovered, shortfall: res.shortfall, reason },
+            payload: { marketId, rewardId: current.id, owed: current.amountTzs, recovered, shortfall: res.shortfall, taxReversed: res.taxReversed, reason },
           });
         }
       }

@@ -18,6 +18,8 @@
  */
 import { db, type StoredWallet } from "../../src/lib/server/store.ts";
 import { ensureAffiliateAccount, AGENT_CODE_PREFIX } from "../../src/lib/server/affiliate-service.ts";
+import { splitWithholding } from "../../src/lib/agent-commission.ts";
+import { getAgentConfig } from "../../src/lib/server/agent-config.ts";
 
 const now = () => new Date().toISOString();
 let seq = 0;
@@ -73,3 +75,34 @@ export async function deactivateFixtureAgent(userId: string): Promise<void> {
 
 export const cashOf = async (uid: string) => (await db.wallet.findByUserId(uid))?.balance ?? -1;
 export const bonusOf = async (uid: string) => (await db.wallet.findByUserId(uid))?.bonusBalance ?? -1;
+
+/**
+ * ⭐ THE CASH A GROSS ACCRUAL ACTUALLY LANDS AS, after management's withholding tax.
+ *
+ * 🔴 WHY THIS IS ONE HELPER AND NOT A LITERAL IN EACH SUITE. On 2026-09-08 management's
+ * waterfall added a 5% withholding line, and every agent engine guard that asserted a wallet
+ * balance went red at once — five suites, twenty-three assertions, all of them stating the
+ * pre-tax figure. Editing 1,900 into each by hand is how the suites stop describing an
+ * arithmetic and start describing a snapshot: the next rate change breaks them all again, and
+ * the reader can no longer tell which literals are the CLAIM and which are just today's
+ * value.
+ *
+ * ⛔ SO A GUARD STATES THE GROSS — the number the programme's rules produce — and wraps it in
+ * `netAfterWht`. `netAfterWht(2_000)` reads as "TZS 2,000 of commission, less whatever is
+ * withheld", which is the assertion the suite actually means.
+ *
+ * ⚠️ IT READS THE LIVE RATE AND USES THE ENGINE'S OWN FUNCTION, so it cannot drift from what
+ * the accrual pays. That makes it unsuitable as the SOLE assertion about the tax itself —
+ * a helper sharing the engine's function agrees with a broken engine. The tax arithmetic is
+ * pinned to literals in `commission-bounded.test.mts` §1/§6/§7, which is where that claim
+ * belongs; here the helper is only removing an irrelevant deduction from an assertion about
+ * something else (idempotency, isolation, a clawback).
+ */
+export function netAfterWht(grossTzs: number): number {
+  return splitWithholding(grossTzs, getAgentConfig().agentWithholdingTaxPct).netTzs;
+}
+
+/** The tax withheld from a gross accrual, by the same route. */
+export function whtOn(grossTzs: number): number {
+  return splitWithholding(grossTzs, getAgentConfig().agentWithholdingTaxPct).taxWithheldTzs;
+}

@@ -1769,9 +1769,30 @@ export async function listTransactions(userId: string, limit = 50) {
 export async function creditInternal(
   userId: string,
   amount: number,
-  opts: { description: string; type?: StoredTxn["type"] },
+  opts: {
+    description: string;
+    type?: StoredTxn["type"];
+    /**
+     * ⭐ TAX WITHHELD FROM THE GROSS THIS CREDIT WAS CUT FROM — the agent commission
+     * withholding line management added on 2026-09-08. `amount` is the NET the wallet
+     * receives; this is what was kept back and remitted, so `amount + taxWithheld` is the
+     * house's cost.
+     *
+     * ⛔ IT IS NOT DEDUCTED HERE. The caller has already withheld it (`agentCommissionSplit`)
+     * and passes the net, because the cap and the tax have to be applied in a fixed order
+     * upstream. Passing a gross here and expecting this function to net it would be a second
+     * place that knows the rate.
+     *
+     * ⛔ NOT THE DELETED WITHDRAWAL TAX. `Transaction.taxWithheld` is a generic column that
+     * has read 0 since the 15% withdrawal tax was removed in 2026-07; this is a different
+     * tax, on commission income, at the moment it is earned. The withdrawal path still
+     * writes 0 and must keep doing so.
+     */
+    taxWithheld?: number;
+  },
 ): Promise<number | null> {
   if (!Number.isFinite(amount) || amount <= 0) return null;
+  const taxWithheld = Number.isFinite(opts.taxWithheld) && (opts.taxWithheld ?? 0) > 0 ? Math.round(opts.taxWithheld!) : 0;
 
   // 🔴 RESPONSIBLE-GAMBLING SUPPRESSION ON THE **CASH** INCENTIVE PATH (GLI-19 / LCCP SR 3.4).
   //
@@ -1816,7 +1837,9 @@ export async function creditInternal(
       status: "CONFIRMED",
       amount,
       fee: 0,
-      taxWithheld: 0,
+      // ⭐ The withholding line, on the transaction the agent can see. `amount` stays the
+      // net that moved, so `balanceAfter` and the wallet still agree to the shilling.
+      taxWithheld,
       balanceAfter: newBalance,
       currency: "TZS",
       provider: "INTERNAL",
@@ -1835,7 +1858,7 @@ export async function creditInternal(
     // correction also lives — so the owner can read what the programme costs, and the
     // statutory pack does not report contracted business income as bonus cost.
     const lines = txnType === "AGENT_COMMISSION"
-      ? agentCommissionEntries({ txnId, userId, amount, description: opts.description })
+      ? agentCommissionEntries({ txnId, userId, amount, taxWithheld, description: opts.description })
       : internalCreditEntries({ txnId, userId, amount, description: opts.description });
     postLedgerEntries(`int_${txnId}`, lines).catch(() => {});
     audit({
@@ -1844,7 +1867,7 @@ export async function creditInternal(
       actorId: null,
       targetType: "Wallet",
       targetId: wallet.id,
-      payload: { userId, txnId, type: txnType, amount, balanceAfter: newBalance, description: opts.description },
+      payload: { userId, txnId, type: txnType, amount, taxWithheld, balanceAfter: newBalance, description: opts.description },
     });
     emit("wallet:balance", { userId, balance: newBalance });
     return newBalance;
@@ -1867,18 +1890,45 @@ export async function creditInternal(
 export async function debitInternal(
   userId: string,
   amount: number,
-  opts: { description: string; type: "AGENT_COMMISSION_REVERSAL" | "ADJUSTMENT_DEBIT"; marketId?: string | null },
-): Promise<{ debited: number; shortfall: number; balance: number | null }> {
+  opts: {
+    description: string;
+    type: "AGENT_COMMISSION_REVERSAL" | "ADJUSTMENT_DEBIT";
+    marketId?: string | null;
+    /**
+     * ⭐ THE WITHHOLDING TAX THAT WAS TAKEN OUT OF THE ACCRUAL NOW BEING REVERSED — the full
+     * figure from the `ReferralReward` row, not a proportion. `amount` is the NET that was
+     * credited, so the accrual's gross was `amount + taxWithheld`.
+     *
+     * 🔴 REVERSED IN PROPORTION TO WHAT IS ACTUALLY RECOVERED, AND THAT IS NOT A ROUNDING
+     * CHOICE — IT IS THE ONLY BALANCED ONE. This function recovers `take ≤ amount`, because
+     * ⛔ a wallet never goes negative and the partner may already have withdrawn. Reversing
+     * the FULL tax while debiting only part of the net produces a ledger group that does not
+     * sum to zero, and `postLedgerEntries` refuses those outright — so the clawback would
+     * fail closed and a voided market would keep paying.
+     *
+     * ⭐ And it is also the true statement: the tax on the portion we clawed back is an
+     * over-remittance we can reclaim; the tax on the portion the partner kept was genuinely
+     * owed and genuinely remitted. The unrecovered net is reported as a `shortfall` for the
+     * caller to file as a debt, exactly as before.
+     */
+    taxWithheld?: number;
+  },
+): Promise<{ debited: number; shortfall: number; balance: number | null; taxReversed: number }> {
   const want = Math.floor(amount);
-  if (!Number.isFinite(want) || want <= 0) return { debited: 0, shortfall: 0, balance: null };
+  if (!Number.isFinite(want) || want <= 0) return { debited: 0, shortfall: 0, balance: null, taxReversed: 0 };
+  const taxTotal = Number.isFinite(opts.taxWithheld) && (opts.taxWithheld ?? 0) > 0 ? Math.round(opts.taxWithheld!) : 0;
 
   return withLock(`wallet:${userId}`, async () => {
     const wallet = await db.wallet.findByUserId(userId);
-    if (!wallet) return { debited: 0, shortfall: want, balance: null };
+    if (!wallet) return { debited: 0, shortfall: want, balance: null, taxReversed: 0 };
     // Recover what is there, never more. A frozen/closed wallet is still debitable — the
     // money is ours to take back, and freezing it against the partner would be perverse.
     const take = Math.max(0, Math.min(want, wallet.balance));
-    if (take <= 0) return { debited: 0, shortfall: want, balance: wallet.balance };
+    if (take <= 0) return { debited: 0, shortfall: want, balance: wallet.balance, taxReversed: 0 };
+
+    // The tax on the slice we actually recovered. `take === want` on a full clawback, so this
+    // is the whole tax then; on a partial recovery it is the matching proportion.
+    const taxBack = taxTotal > 0 ? Math.round((taxTotal * take) / want) : 0;
 
     const txnId = `txn_${randomId(12)}`;
     const now = new Date().toISOString();
@@ -1892,7 +1942,8 @@ export async function debitInternal(
         walletId: wallet.id, userId,
         type: opts.type,
         status: "CONFIRMED",
-        amount: -take, fee: 0, taxWithheld: 0,
+        // Negative: the tax reclaimed alongside the money recovered, mirroring the credit.
+        amount: -take, fee: 0, taxWithheld: -taxBack,
         balanceAfter: updated.balance, currency: "TZS",
         provider: "INTERNAL", providerRef: null, msisdn: null,
         description: opts.description,
@@ -1900,12 +1951,12 @@ export async function debitInternal(
         createdAt: now, updatedAt: now, completedAt: now,
       }, tx);
       const lines = opts.type === "AGENT_COMMISSION_REVERSAL"
-        ? agentCommissionEntries({ txnId, userId, amount: -take, description: opts.description, marketId: opts.marketId })
+        ? agentCommissionEntries({ txnId, userId, amount: -take, taxWithheld: -taxBack, description: opts.description, marketId: opts.marketId })
         : adjustmentEntries({ txnId, userId, amount: -take, description: opts.description });
       await postLedgerEntries(`int_${txnId}`, lines, tx);
       return true;
     });
-    if (!committed) return { debited: 0, shortfall: want, balance: wallet.balance };
+    if (!committed) return { debited: 0, shortfall: want, balance: wallet.balance, taxReversed: 0 };
 
     audit({
       category: "WALLET",
@@ -1913,10 +1964,10 @@ export async function debitInternal(
       actorId: null,
       targetType: "Wallet",
       targetId: wallet.id,
-      payload: { userId, txnId, type: opts.type, requested: want, debited: take, shortfall: want - take, balanceAfter: newBalance, description: opts.description },
+      payload: { userId, txnId, type: opts.type, requested: want, debited: take, shortfall: want - take, taxReversed: taxBack, balanceAfter: newBalance, description: opts.description },
     });
     emit("wallet:balance", { userId, balance: newBalance });
-    return { debited: take, shortfall: want - take, balance: newBalance };
+    return { debited: take, shortfall: want - take, balance: newBalance, taxReversed: taxBack };
   });
 }
 

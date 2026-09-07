@@ -38,7 +38,7 @@ import type { ServiceResult } from "./auth-service";
 import { audit } from "./audit";
 import { randomId, generateOtp, hashOtp, verifyOtp } from "./crypto";
 import { withLock } from "./locks";
-import { getAgentConfig, type AgentConfig } from "./agent-config";
+import { getAgentConfig, type AgentConfig, type FeeVatTreatment } from "./agent-config";
 import { ensureAffiliateAccount, isApprovedAgent, agentStandingFor, AGENT_CODE_PREFIX } from "./affiliate-service";
 import { getKycStatus, reviewKyc, validateDocImage } from "./kyc-service";
 import { putKycDocument, deleteKycDocument } from "./storage";
@@ -107,16 +107,68 @@ const iso = () => new Date().toISOString();
 //  THE FEE — one place computes it, from config
 // ═══════════════════════════════════════════════════════════════════════════
 
-/** What the applicant pays in total, and the VAT component of it, from the config's treatment.
- *  INCLUSIVE keeps the applicant-facing figure exactly the published TZS 100,000. */
+/**
+ * What the applicant pays in total, and the VAT component of it, from the config's treatment.
+ *
+ * ⭐ ON THE SHIPPED CONFIG (2026-09-08) THE TREATMENT IS `EXCLUSIVE`: `registrationFeeTzs` is
+ * the NET 100,000, VAT is 18,000, and the applicant pays 118,000 — management's
+ * "TZS 100,000 + VAT = 118,000". `INCLUSIVE` remains supported for an operator who publishes
+ * a gross price, and backs the VAT out of it instead.
+ *
+ * ⛔ EVERY SURFACE READS `totalTzs` FOR THE PRICE AND `cfg.feeVatTreatment` FOR THE WORDING.
+ * Three surfaces used to state "VAT inclusive" in prose regardless of the setting, which
+ * turned a config flip into a lie on the public page and in the binding terms. A guard
+ * (`test:agent-fee-copy`) now holds that shut.
+ */
 export function feeBreakdown(cfg: AgentConfig = getAgentConfig()): { totalTzs: number; vatTzs: number; netTzs: number } {
-  const rate = cfg.feeVatRatePct / 100;
-  if (cfg.feeVatTreatment === "EXCLUSIVE") {
-    const vat = Math.round(cfg.registrationFeeTzs * rate);
-    return { totalTzs: cfg.registrationFeeTzs + vat, vatTzs: vat, netTzs: cfg.registrationFeeTzs };
+  return feeBreakdownFor(cfg.registrationFeeTzs, cfg.feeVatTreatment, cfg.feeVatRatePct);
+}
+
+/**
+ * The same split for an ARBITRARY fee figure — the one the refund path needs.
+ *
+ * ⭐ WHY IT IS SEPARATE. A refund must return exactly what was COLLECTED, and what was
+ * collected is stamped on the application (`feeAmountTzs`), not read from today's config: an
+ * operator who changes the fee between collection and refund must still hand back the
+ * original amount, with the original VAT component, or the tax pack and the bank statement
+ * disagree.
+ *
+ * 🔴 AND THIS FIXES A REAL BUG. The refund used to back the VAT out with the INCLUSIVE
+ * formula (`amount × rate / (1 + rate)`) whenever the stamped amount differed from today's
+ * expected total — even when the treatment was `EXCLUSIVE`, where the VAT component of a
+ * gross 118,000 is 18,000 and the inclusive formula returns 18,000 only by coincidence of
+ * the rate. At any other rate it under- or over-reverses `HOUSE:TAX` and leaves a permanent
+ * residue in the one account the statutory pack is read from.
+ */
+export function feeBreakdownFor(
+  feeTzs: number,
+  treatment: FeeVatTreatment,
+  vatRatePct: number,
+): { totalTzs: number; vatTzs: number; netTzs: number } {
+  const rate = vatRatePct / 100;
+  if (treatment === "EXCLUSIVE") {
+    const vat = Math.round(feeTzs * rate);
+    return { totalTzs: feeTzs + vat, vatTzs: vat, netTzs: feeTzs };
   }
-  const vat = Math.round(cfg.registrationFeeTzs * (rate / (1 + rate)));
-  return { totalTzs: cfg.registrationFeeTzs, vatTzs: vat, netTzs: cfg.registrationFeeTzs - vat };
+  const vat = Math.round(feeTzs * (rate / (1 + rate)));
+  return { totalTzs: feeTzs, vatTzs: vat, netTzs: feeTzs - vat };
+}
+
+/**
+ * The VAT component OF A GROSS AMOUNT ALREADY PAID, under a given treatment.
+ *
+ * ⭐ THIS IS THE REFUND'S QUESTION, AND IT IS NOT THE SAME AS `feeBreakdownFor`'s. The refund
+ * knows the gross it is handing back and needs the VAT inside it. Under `INCLUSIVE` the gross
+ * IS `registrationFeeTzs`, so the inclusive back-out applies. Under `EXCLUSIVE` the gross is
+ * `net × (1 + rate)`, so the VAT inside it is `gross × rate / (1 + rate)` — which is the same
+ * algebra, and that is the point: for a GROSS input the back-out formula is treatment-
+ * independent. It is stated once, here, so nobody has to re-derive that and get it wrong
+ * again.
+ */
+export function vatWithinGross(grossTzs: number, vatRatePct: number): number {
+  const rate = vatRatePct / 100;
+  if (!Number.isFinite(rate) || rate <= 0) return 0;
+  return Math.round(grossTzs * (rate / (1 + rate)));
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -662,10 +714,16 @@ export async function recordFeeRefund(officerId: string, applicationId: string, 
     }
     const now = iso();
     const cfg = getAgentConfig();
-    const fee = feeBreakdown(cfg);
     await db.agentApplication.update(app.id, { feeDisposition: "REFUNDED", feeRefundedAt: now, feeRefundedById: officerId, feeRefundReference: ref, feeRefundAmountTzs: amount });
+    // ⭐ THE VAT INSIDE THE GROSS THAT WAS ACTUALLY COLLECTED — not today's expected split.
+    // `amount` is already proved equal to `app.feeAmountTzs` above, so this reverses exactly
+    // what `reconcileFee` posted and `HOUSE:TAX` nets to zero on a refunded application.
+    // 🔴 This used to branch on whether the stamped amount still matched config and otherwise
+    // apply the INCLUSIVE back-out unconditionally, which mis-reversed the tax leg under an
+    // EXCLUSIVE treatment at any rate other than the one in force. See `vatWithinGross`.
     await postLedgerEntries(`agentfee_refund_${app.id}`, agentRegistrationFeeEntries({
-      groupRef: app.id, userId: app.userId, amount: -amount, vatAmount: -(app.feeAmountTzs === fee.totalTzs ? fee.vatTzs : Math.round(amount * (cfg.feeVatRatePct / (100 + cfg.feeVatRatePct)))),
+      groupRef: app.id, userId: app.userId, amount: -amount,
+      vatAmount: -vatWithinGross(amount, cfg.feeVatRatePct),
       description: `Agent registration fee refunded · ${ref}`,
     })).catch(() => {});
     audit({ category: "COMPLIANCE", action: "agent.fee.refunded", actorId: officerId, targetType: "AgentApplication", targetId: app.id, payload: { amountTzs: amount, reference: ref, rejectedBy: app.reviewerId, destination: app.feeSourceAccount } });

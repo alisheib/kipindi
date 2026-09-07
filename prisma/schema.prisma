@@ -1340,7 +1340,18 @@ model ReferralReward {
   recruitUser     User                 @relation("ReferralRewardsReceived", fields: [recruitUserId], references: [id])
   type            ReferralRewardType
   label           String
+  /// ⚠️ THE NET — the money that actually reached the wallet, after any withholding tax.
+  /// Every reader (the dashboard, the payables table, the owner's book, the clawback) has
+  /// always meant "what the partner got" by this column, and it still does.
   amountTzs       Decimal              @db.Decimal(18, 2)
+  /// ⭐ The commission BEFORE the local withholding tax management added on 2026-09-08.
+  /// NULL on every row accrued before that date — and for those, `amountTzs` WAS the gross,
+  /// which is why the per-recruit cap sums `grossAmountTzs ?? amountTzs`.
+  grossAmountTzs  Decimal?             @db.Decimal(18, 2)
+  /// ⭐ The withholding tax deducted from `grossAmountTzs` and remitted to `HOUSE:TAX`.
+  /// NULL/0 where none applies (every PLAYER promo row, and every row before 2026-09-08).
+  /// ⛔ NOT the 15% withdrawal tax, which was deleted in 2026-07 and stays deleted.
+  taxWithheldTzs  Decimal?             @db.Decimal(18, 2)
   status          ReferralRewardStatus @default(PENDING)
   recipientUserId String // denormalised — always referrer or recruit
   note            String?

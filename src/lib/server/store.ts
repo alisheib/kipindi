@@ -429,7 +429,15 @@ export type StoredReferralReward = {
   type: "COMMISSION" | "BONUS" | "PRIZE";
   /** Human label e.g. "Commission", "Prize · first bet", "Bonus · sign-up". */
   label: string;
+  /** ⚠️ THE NET — what actually reached the wallet, after any withholding tax. */
   amountTzs: number;
+  /** ⭐ The commission BEFORE the local withholding tax (management, 2026-09-08). `null` on
+   *  every row accrued before that date, where `amountTzs` WAS the gross — which is why the
+   *  per-recruit cap sums `grossAmountTzs ?? amountTzs`. */
+  grossAmountTzs: number | null;
+  /** ⭐ The withholding tax deducted from the gross and remitted to `HOUSE:TAX`. `null`/0
+   *  where none applies. ⛔ Not the 15% withdrawal tax, deleted in 2026-07. */
+  taxWithheldTzs: number | null;
   status: "PAID" | "PENDING" | "HELD" | "REVERSED";
   /** Recipient of this reward — almost always the referrer, but the bonus
    *  mode can also pay the NEW player; we record who actually received it. */
