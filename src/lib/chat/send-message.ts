@@ -29,6 +29,19 @@
  */
 
 import type { Citation, Lang, Message } from "@/components/chat/types";
+// 🔴 EVERY MONEY FIGURE IN THIS OFFLINE FALLBACK WAS INVENTED (fixed 2026-09-07).
+// It told players: a deposit minimum of "TZS 1,000" when `DEPOSIT_MIN_TZS` is **500**, so it
+// turned away people who could in fact deposit; a "daily cap TZS 200,000 before tier 2" —
+// **"tier 2" and that cap exist nowhere in this codebase except those sentences**; "funds arrive
+// in about 30 seconds", "within 2 minutes", "auto-reverses within 24 hours", "tier 2
+// verification (5 minutes)" — SLAs nothing measures or promises; and a dial that "scales from
+// the base (TZS 500) up to 5×" when the base is 1,000 and `MAX_MULTIPLIER` is **200**.
+// ⛔ A-5: never render a number nobody produced. The bounds now come from the same constants the
+// deposit form validates against, and every claim that could not be sourced is DELETED rather
+// than softened — a vaguer invented number is still invented.
+import { DEPOSIT_MIN_TZS, DEPOSIT_MAX_TZS } from "@/lib/server/validators";
+import { PLATFORM_MIN_STAKE } from "@/lib/payout";
+import { formatTzs } from "@/lib/utils";
 
 let __id = 0;
 const nextId = () => `m_${Date.now().toString(36)}_${__id++}`;
@@ -145,9 +158,9 @@ function stubReply(userText: string, lang: Lang): Reply {
         "To deposit money on 50pick:",
         "1. Open your **Wallet** and tap **Deposit**[1]",
         "2. Choose your payment method — M-Pesa, Airtel Money, or HaloPesa",
-        "3. Enter the amount — min {TZS 1,000}, daily cap {TZS 200,000} before tier 2",
-        "4. Confirm the payment on your phone — funds arrive in about {30 seconds}",
-        "If the deposit doesn't arrive within {2 minutes}, it usually means a soft failure — your money is safe and auto-reverses within {24 hours}[2]. For higher limits, complete tier 2 verification ({5 minutes})[3].",
+        `3. Enter the amount — from {${formatTzs(DEPOSIT_MIN_TZS)}} to {${formatTzs(DEPOSIT_MAX_TZS)}}`,
+        "4. Confirm the payment on your phone",
+        "If a deposit does not arrive, your money is safe — the receipt in your wallet shows its exact state, and support can trace it[2]. Deposits need a confirmed email; withdrawals need verified identity[3].",
       ],
       citations: [
         { n: 1, href: "/wallet/deposit", label: "/wallet/deposit" },
@@ -166,7 +179,7 @@ function stubReply(userText: string, lang: Lang): Reply {
         "Here's how the conviction dial works:",
         "1. Drag the dial toward **YES** (left) or **NO** (right)",
         "2. The further from centre, the stronger your conviction — and the bigger your stake",
-        "3. Your stake scales from the base ({TZS 500}) up to {5×} at the extremes[1]",
+        `3. Your stake scales up from the platform minimum ({${formatTzs(PLATFORM_MIN_STAKE)}}) as you move toward an edge[1]`,
         "4. Tap confirm — the popup locks the quote so you can't accidentally move the dial",
         "The locked quote is exactly what gets placed. No surprises.",
       ],
