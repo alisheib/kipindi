@@ -447,7 +447,9 @@ function TxnRow({ tx }: { tx: Transaction }) {
   const arrowBg =
     isCredit ? "bg-yes-500/10 text-yes-300" : "bg-no-500/10 text-no-300";
   return (
-    <div className="border-b border-border last:border-b-0">
+    /* The row's machine-readable identity — see `position-card.tsx` for the contract and why a
+       driver must not parse the visible status word on a trilingual product. */
+    <div data-row-id={tx.id} className="border-b border-border last:border-b-0">
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}

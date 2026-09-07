@@ -56,6 +56,16 @@ export function PositionCard({ marketId, marketTitle, side, productLine, stake, 
   const statusLabel = positionStatusWord(t, status, productLine);
   return (
     <Link
+      /**
+       * ⭐ THE ROW'S MACHINE-READABLE IDENTITY — the third half of this campaign's instrumentation
+       * contract, beside `data-result-count` on the bar and `data-chip`/`data-count` on each pill.
+       * `qa:player-filters` reads these to prove the two arms of its invariant over SETS rather
+       * than over words: filtered ⊆ unfiltered, and the outcome lenses are disjoint and together
+       * cover Settled exactly. ⛔ Parsing the visible status word instead would make the driver
+       * locale-dependent, and a check that only works in English is not a check on a trilingual
+       * product.
+       */
+      data-row-id={positionId}
       href={`/markets/${marketId}` as never}
       className={cn("block w-full rounded-xl border border-border bg-bg-elevated p-4 transition-all duration-200 ease-out hover:-translate-y-[3px] hover:border-[var(--brand-500)] hover:shadow-[0_0_0_1px_var(--brand-500),0_14px_34px_oklch(8%_0.08_264_/_0.6)]", className)}
     >
