@@ -102,7 +102,18 @@ function RouteCard({
   );
 }
 
-export function BonusAdminClient({ config }: { config: BonusConfig }) {
+/**
+ * 🔴 `productWithdrawn` — THE OPERATOR MUST NOT BE TOLD THE PROGRAMME IS LIVE WHEN IT IS NOT.
+ *
+ * Since 2026-09-07 `creditBonus` refuses whenever the PRODUCT state is WITHDRAWN, whatever this
+ * screen's master switch says — that is the whole point of `feature-state.ts` outranking the
+ * DB-backed config. This page went on reporting *"Live — bonuses can be granted and route per
+ * the toggles below"* off `config.enabled` alone, which ships `true`.
+ *
+ * ⛔ So an officer read "Live", flipped toggles that route money, saved, and nothing happened.
+ * A control panel that reports a state it does not govern is worse than a disabled one.
+ */
+export function BonusAdminClient({ config, productWithdrawn = false }: { config: BonusConfig; productWithdrawn?: boolean }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const { deferToast, toast } = useDeferredToast(pending);
@@ -148,9 +159,11 @@ export function BonusAdminClient({ config }: { config: BonusConfig }) {
             Bonus program · <span className="font-normal italic text-text-subtle text-[12.5px]">Mpango wa bonasi</span>
           </div>
           <div className="mt-0.5 text-[12px] text-text-muted">
-            {on
-              ? "Live — bonuses can be granted and route per the toggles below."
-              : "Paused — no new bonus grants from any source. Existing bonuses keep running."}
+            {productWithdrawn
+              ? "WITHDRAWN from the product — no bonus can be granted from any source, and these toggles do not change that. Existing grants keep wagering, fulfilling and expiring. Re-enabling is a product decision (src/lib/feature-state.ts), not a switch on this page."
+              : on
+                ? "Live — bonuses can be granted and route per the toggles below."
+                : "Paused — no new bonus grants from any source. Existing bonuses keep running."}
           </div>
         </div>
         <Toggle on={on} onClick={() => setC((p) => ({ ...p, enabled: !p.enabled }))} aria-label="Bonus program master switch" />

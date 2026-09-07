@@ -5,6 +5,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { I } from "@/components/ui/glyphs";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { getBonusConfig } from "@/lib/server/bonus-config";
+import { bonusIsLiveFor } from "@/lib/feature-state";
 import { getAdminBonusStats } from "@/lib/server/bonus-service";
 import { formatTzs, formatBalancePill, formatDateShort } from "@/lib/utils";
 import { BonusAdminClient, GrantBonusForm, CancelGrantButton } from "./bonus-admin-client";
@@ -53,6 +54,8 @@ export default async function AdminBonusesPage({
   const tabHref = (t: (typeof BON_TABS)[number]) =>
     (t === "grants" ? "/admin/bonuses" : `/admin/bonuses?tab=${t}`) as Route;
   const config = getBonusConfig();
+  // The PRODUCT state outranks this screen's switch — see BonusAdminClient.
+  const productWithdrawn = !bonusIsLiveFor();
   const stats = await getAdminBonusStats().catch(() => ({
     outstandingTzs: 0, activeGrants: 0, totalGrantedTzs: 0, totalFulfilledTzs: 0, ledger: [],
   }));
@@ -66,7 +69,7 @@ export default async function AdminBonusesPage({
       <AdminPageHead
         title="Bonus wallet"
         sw="Pochi ya bonasi"
-        actions={<Chip size="sm" variant={config.enabled ? "active" : "paused"}>{config.enabled ? "Active" : "Paused"}</Chip>}
+        actions={<Chip size="sm" variant={productWithdrawn ? "paused" : config.enabled ? "active" : "paused"}>{productWithdrawn ? "Withdrawn" : config.enabled ? "Active" : "Paused"}</Chip>}
       />
 
       <AdminBody>
@@ -156,7 +159,7 @@ export default async function AdminBonusesPage({
         </>)}
         {tab === "settings" && (<>
         {/* Config editor */}
-        <BonusAdminClient config={config} />
+        <BonusAdminClient config={config} productWithdrawn={productWithdrawn} />
 
         {/* How it works note */}
         <AdminCard className="border-royal-700/40 bg-royal-500/[0.06]">
