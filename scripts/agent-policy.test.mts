@@ -140,6 +140,18 @@ const posId = (() => { let n = 0; return () => `pos_pol_${++n}`; })();
   const playerSnap = getAffiliateConfig();
   setAffiliateConfig({ enabled: true, commission: { enabled: true, rate: 0.5, windowMonths: 24, capPerRecruitTzs: 250_000 } }, "test-officer");
   process.env.FEATURE_INVITE = "ACTIVE";
+  /**
+   * ⭐ THE BONUS WALLET IS WITHDRAWN FROM THE PRODUCT, AND THIS SECTION DRIVES ITS ON PATH
+   * DELIBERATELY — scoped, beside the FEATURE_INVITE line that has always been here.
+   *
+   * ⛔ THE ASSERTION BELOW MUST NOT BE RELAXED TO "…lands in CASH". This section is a CONTROL:
+   * its whole job is to prove the agent/player split is REAL by showing the identical hook pays
+   * an AGENT in cash and a PLAYER somewhere else. If the player also paid cash, the two arms
+   * would agree and the control would pass while proving nothing — a gate that cannot fail.
+   * So the feature state is declared, per `scripts/lib/bonus-feature-on.mts`'s doctrine, rather
+   * than the expectation being softened to match whatever the product currently does.
+   */
+  process.env.FEATURE_BONUS = "ACTIVE";
   try {
     await mkFixtureUser("pol_player_ref");
     const acct = await ensureAffiliateAccount("pol_player_ref");
@@ -155,6 +167,7 @@ const posId = (() => { let n = 0; return () => `pos_pol_${++n}`; })();
     ok("5.txn · CONTROL — no AGENT_COMMISSION transaction exists for a player referrer", !txns.some((t) => t.type === "AGENT_COMMISSION" || t.type === "AGENT_COMMISSION_REVERSAL"), JSON.stringify(txns.map((t) => t.type)));
   } finally {
     delete process.env.FEATURE_INVITE;
+    delete process.env.FEATURE_BONUS;
     setAffiliateConfig({ enabled: playerSnap.enabled, commission: playerSnap.commission }, "test-officer");
   }
 }
