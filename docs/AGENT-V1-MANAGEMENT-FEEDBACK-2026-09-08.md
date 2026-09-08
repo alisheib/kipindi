@@ -154,6 +154,7 @@ mismatch when management changed the unit; "about 5 days" and a 5-calendar-day c
 | `qa:agent-visual-authed` | **32/32** — the application form's hints/examples/inline refusal, the console's search and pagers, the workstation's case file |
 | `test:all` | **294/300**, failing on exactly the six already red at `origin/main` (§7) |
 | red harnesses | **11/11 proven RED** across the eight agent gates (three mutations are new) |
+| `qa:live` | **132/134** — the house deploy gate, run because `app-shell.tsx` and `public-footer.tsx` reach EVERY page. Both failures are proven not-mine: see §7 |
 | `next build` | green |
 
 ⚠️ **`next start` cannot serve locally** — the store refuses the in-memory fallback in
@@ -188,6 +189,13 @@ Listed so the next session does not attribute them to this one:
 
 `test:read-tiers` · `test:updown-source-class` · `test:tracker-hygiene` · `test:popup-fit` ·
 `test:failure-reasons` · `test:updown-handover`
+
+### And `qa:live`'s two, both proven not-mine rather than assumed
+
+| Failure | Why it is not this work |
+|---|---|
+| `invite shows 10,000 reward` | ⭐ PROVEN BY IDENTITY, not by argument: every file in that page's data path is byte-identical to `origin/main` — `profile/invite/page.tsx`, `affiliate-config.ts`, `feature-state.ts`, `profile/invite/invite-client.tsx`. The only file I touched under that route is `agent-dashboard.tsx`, which renders for an APPROVED AGENT and never for the demo player this leg signs in as. ⚠️ The assertion also looks stale: `qa:agent-drive` §6 asserts the OPPOSITE for an ordinary player — that `/profile/invite` is the not-found view with no code and no link — so two gates disagree about the same page. Worth someone's attention, but not this session's change. |
+| `at least one bettable market exists` | A bare in-memory store has no markets. `qa:live` expects a seeded environment; nothing in the agent programme creates or reads one. |
 
 ---
 
