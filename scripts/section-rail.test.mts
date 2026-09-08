@@ -244,8 +244,15 @@ for (const r of population) {
  * §A5/§7g confusion this gate exists to name. It is now seven lifecycle lenses in
  * `app/proposals/proposals-bar.tsx` behind the shared bar's wrapper, plus a real sort control.
  * ⛔ Re-derived from the run, not predicted: the gate printed `population 9`.
+ *
+ * ⚠️ 9 → 7 ON TASK 4.5, TWO AT ONCE, and both were the same kind of loss. `/notifications`
+ * rendered TWO stacked `<nav>`s of pills inside `page.tsx` — one filtering and one SORTING,
+ * identical in shape — which is the §A5/§7g confusion this gate is named for, sitting inside its
+ * own population. The lenses moved into `app/notifications/notifications-bar.tsx` behind the
+ * shared bar's wrapper, and the sort became a menu, so both leave.
+ * ⛔ Re-derived from the run: the gate printed `population 7`.
  */
-const FLOOR = 9;
+const FLOOR = 7;
 
 let bad = 0;
 if (population.length < FLOOR) {

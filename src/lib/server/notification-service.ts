@@ -197,6 +197,9 @@ export async function pageForUser(q: {
   sort: NotificationSort;
   page: number;
   perPage: number;
+  /** Raw search text. ⛔ Pushed into the DAL rather than applied here — see `NOTIFICATION_SEARCH`
+   *  for why this one player surface searches in SQL instead of in JS. */
+  q?: string;
 }) {
   return await db.notification.page(q);
 }

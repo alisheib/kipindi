@@ -83,6 +83,7 @@ const SURFACES = [
   { id: "/wallet", path: "/wallet", minControls: 8 },
   { id: "/updown/history", path: "/updown/history", minControls: 8 },
   { id: "/proposals", path: "/proposals", minControls: 10 },
+  { id: "/notifications", path: "/notifications", minControls: 6 },
   { id: "/watchlist", path: "/watchlist", minControls: 6 },
 ];
 

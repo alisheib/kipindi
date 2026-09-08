@@ -13,6 +13,8 @@ export {
   POLL_SEARCH, CANDIDATE_SEARCH, PROPOSAL_SEARCH, POSITION_SEARCH, MY_TXN_SEARCH, UD_ROUND_SEARCH,
   // ⛔ The PLAYER board's schema — see its header for why it is not `PROPOSAL_SEARCH`.
   BOARD_PROPOSAL_SEARCH,
+  // ⭐ The one player schema that is NOT a view model — it goes into the SQL. See its header.
+  NOTIFICATION_SEARCH,
   fieldNames, allColumns,
 } from "./fields";
 export type { EntitySchema, FieldSpec, FieldKind } from "./fields";

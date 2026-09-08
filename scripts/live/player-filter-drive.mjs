@@ -142,6 +142,24 @@ const SURFACES = [
       { parent: "all", parts: ["in", "out", "bet", "payout", "refund", "bonus", "adjust", "commission"] },
     ],
   },
+  /**
+   * ⛔ `/notifications` IS DELIBERATELY ABSENT, AND THIS NOTE IS WHY — so nobody "fixes" the
+   * omission by inventing a partition that is not there. Its five lenses answer THREE
+   * different questions: `unread` is a read-state, `money`/`account` are kinds, `cleared` is a
+   * visibility. An unread money row is in two of them at once, so DISJOINT is false by
+   * construction and no set of them COVERS the parent.
+   *
+   * ⭐ THAT IS NOT A DEFECT — IT IS DOCUMENTED AND REASONED UPSTREAM. `notification-filters.ts`
+   * states the one disjointness the product DOES enforce and why: *"a money row appearing
+   * under two lenses reads as two events — this product has already shipped a duplicate-
+   * notification defect where a player was told twice they had won (28 byte-identical rows on
+   * production, 2026-07-31)"*, so `money ∩ account = ∅` and `all ∩ cleared = ∅`.
+   *
+   * ⚠️ DECLARING A FALSE PARTITION WOULD BE WORSE THAN DECLARING NONE: this driver would then
+   * report a real failure about a page that is behaving exactly as designed. The claim that
+   * matters here — every pill's number is what pressing it shows — is proved by
+   * `qa:count-truth`, which needs no partition.
+   */
 ];
 
 const surfaces = ONLY ? SURFACES.filter((s) => s.id === ONLY || s.path === ONLY) : SURFACES;

@@ -65,6 +65,9 @@ const SURFACES = [
   //    markets" are five controls that cannot act), so the `must` string below is what separates
   //    "the bar was withheld correctly" from "the bar failed to render". ⛔ `watchlist-lens-empty`
   //    is the shot that must still show a bar: the list has rows, this LENS does not.
+  { id: "notifications", path: "/notifications", must: "data-filter-rail", sheet: false },
+  { id: "notifications-money", path: "/notifications?filter=money", must: "data-filter-rail", sheet: false },
+  { id: "notifications-search-empty", path: "/notifications?q=zzzznomatch", must: "data-filter-rail", sheet: false },
   { id: "watchlist", path: "/watchlist", must: "data-filter-rail", sheet: true },
   { id: "watchlist-void", path: "/watchlist?lens=void", must: "data-filter-rail", sheet: false },
   { id: "watchlist-lens-empty", path: "/watchlist?lens=void&cat=sports", must: "data-filter-rail", sheet: false },

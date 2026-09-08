@@ -127,6 +127,12 @@ const SURFACES = [
      WHOLE lifecycle (a star survives settlement, while `/markets` reads the unsettled book and
      `/results` the terminal archive), which is why its lens set partitions all five statuses. */
   "src/app/watchlist/watchlist-bar.tsx",        // /watchlist — 5 lifecycle lenses + topic
+  /* 🔴 DECLARED 2026-09-08 (PLAYER QUERY, task 4.5), AND §6 NAMED IT IN ADVANCE. This page has
+     rendered a real `FilterPill` rail since it was built and carried NO `data-filter-rail`, so it
+     appeared in neither declared list — *"not a missing feature, a gate reporting on a smaller
+     population than it claims"*. The hook lands with the bar. ⚠️ §6 also predicted this gate may
+     go red here on copy nobody has inspected; if it does, that is the FINDING. */
+  "src/app/notifications/notifications-bar.tsx", // /notifications — 5 lenses + sort
   "src/app/profile/activity/page.tsx",          // /profile/activity — period
   "src/app/profile/account/page.tsx",           // /profile/account — activity category
 ];

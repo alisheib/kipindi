@@ -62,6 +62,9 @@ const SURFACES = [
   { id: "/wallet", path: "/wallet", minPills: 12 },
   { id: "/updown/history", path: "/updown/history", minPills: 8 },
   { id: "/proposals", path: "/proposals", minPills: 14 },
+  // ⚠️ FIVE, NOT MORE. This route's rail is lenses only — its sort is a MENU, not pills, so it
+  // publishes no `data-count` and is correctly outside this driver's population.
+  { id: "/notifications", path: "/notifications", minPills: 5 },
   { id: "/watchlist", path: "/watchlist", minPills: 10 },
 ];
 

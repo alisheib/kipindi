@@ -254,6 +254,41 @@ export const BOARD_PROPOSAL_SEARCH: EntitySchema = {
   viewModel: true,
 };
 
+/**
+ * A PLAYER'S OWN INBOX — `/notifications`.
+ *
+ * ⭐ THE ONLY PLAYER SEARCH SCHEMA THAT IS **NOT** A VIEW MODEL, and that is the whole reason it
+ * looks different from `MY_TXN_SEARCH` and `POSITION_SEARCH`. Those describe rows assembled on the
+ * server from several tables, so they can only be matched in JS. A notification is ONE table row
+ * with real columns — so this goes through `queryToWhere` into the SQL, which is what lets the
+ * page keep paging in the database.
+ *
+ * 🔴 THAT IS NOT AN OPTIMISATION, IT IS THE ONLY WORKABLE SHAPE. `notification-service.ts` records
+ * the measurement: Up & Down writes a row per settled round, "20 rows to one player in an hour,
+ * and 360/day if a 3-minute chain runs". Reading a player's whole inbox into JS to search it —
+ * the approach every other player surface in this campaign takes — would be tens of thousands of
+ * rows on a page that a player opens to find one receipt.
+ *
+ * ⛔ `event` IS DELIBERATELY NOT SEARCHABLE. It is the internal emitter key (`bet.won`,
+ * `kyc.approved`) and it is not rendered anywhere a player can see — offering it as a chip would
+ * teach a vocabulary the screen never speaks (§L3), and matching it would return rows whose
+ * visible words contain nothing the player typed.
+ *
+ * ⚠️ BOTH TITLE AND BODY, ACROSS ALL THREE LANGUAGES. The body is where the amount and the market
+ * name live, so "won" finds a title and "Yanga" finds a body; and a Swahili reader may still type
+ * an English team name, which is `POSITION_SEARCH`'s rule applied to a second surface.
+ */
+export const NOTIFICATION_SEARCH: EntitySchema = {
+  fields: {
+    title: { columns: ["titleEn", "titleSw", "titleZh"], kind: "text" },
+    body: { columns: ["bodyEn", "bodySw", "bodyZh"], kind: "text" },
+    kind: { columns: ["kind"], kind: "exact" },
+    id: { columns: ["id"], kind: "exact" },
+  },
+  // What a bare token searches — every word a player can actually read on the row.
+  default: ["titleEn", "titleSw", "titleZh", "bodyEn", "bodySw", "bodyZh"],
+};
+
 /** The names a surface should offer as clickable chips in the syntax help. */
 export function fieldNames(s: EntitySchema): string[] {
   return Object.keys(s.fields);

@@ -38,7 +38,10 @@ import { PageContainer } from "@/components/layout/page-container";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import { IconPlate } from "@/components/ui/icon-plate";
-import { FilterPill, FilterGroupKey } from "@/components/ui/filter-pill";
+import { Suspense } from "react";
+import { SearchBox } from "@/components/ui/search-box";
+import { fieldNames, NOTIFICATION_SEARCH } from "@/lib/search";
+import { NotificationsBar } from "./notifications-bar";
 import { Pagination, PLAYER_PER_PAGE } from "@/components/ui/pagination";
 import { getSession } from "@/lib/server/session";
 import { pageForUser } from "@/lib/server/notification-service";
@@ -46,7 +49,7 @@ import { getServerT } from "@/lib/i18n-server";
 import { cn } from "@/lib/utils";
 import { iconFor, tintFor } from "@/lib/notification-appearance";
 import {
-  NOTIFICATION_FILTERS, NOTIFICATION_SORTS, parseFilter, parseSort,
+  parseFilter, parseSort,
   type NotificationFilter, type NotificationSort,
 } from "@/lib/notification-filters";
 import { NotificationRowActions } from "./row-actions";
@@ -72,7 +75,7 @@ function relTime(iso: string, t: Awaited<ReturnType<typeof getServerT>>["t"]): s
 export default async function NotificationsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ filter?: string; sort?: string; page?: string }>;
+  searchParams: Promise<{ filter?: string; sort?: string; page?: string; q?: string }>;
 }) {
   const { t, locale } = await getServerT();
   const session = await getSession();
@@ -84,6 +87,16 @@ export default async function NotificationsPage({
   const filter = parseFilter(sp.filter);
   const sort = parseSort(sp.sort);
   const page = Math.max(1, Number.parseInt(sp.page ?? "1", 10) || 1);
+  /**
+   * ⭐ THE SEARCH GOES INTO THE SQL, WHICH IS WHY IT IS PASSED DOWN RATHER THAN APPLIED HERE.
+   * Every other player surface in this campaign reads its rows and filters them in JS; this one
+   * cannot. `notification-service.ts` records the measurement: Up & Down writes a row per settled
+   * round — *"20 rows to one player in an hour, and 360/day if a 3-minute chain runs"* — so an
+   * inbox is unbounded and reading all of it to find one receipt is not a search, it is an outage.
+   * ⛔ `clampText` is applied by the shared parser inside the DAL; the raw value never reaches a
+   * query builder untrimmed.
+   */
+  const q = typeof sp.q === "string" ? sp.q : "";
 
   const { items, total, counts } = await pageForUser({
     userId: session.userId,
@@ -91,6 +104,7 @@ export default async function NotificationsPage({
     sort,
     page,
     perPage: PLAYER_PER_PAGE,
+    q,
   });
 
   const pickTitle = (n: (typeof items)[number]) =>
@@ -98,28 +112,32 @@ export default async function NotificationsPage({
   const pickBody = (n: (typeof items)[number]) =>
     locale === "sw" ? (n.bodySw || n.bodyEn) : locale === "zh" ? (n.bodyZh || n.bodyEn) : n.bodyEn;
 
-  const FILTER_LABEL: Record<NotificationFilter, string> = {
-    all: t.notif.filterAll,
-    unread: t.notif.filterUnread,
-    money: t.notif.filterMoney,
-    account: t.notif.filterAccount,
-    cleared: t.notif.filterCleared,
-  };
-  const SORT_LABEL: Record<NotificationSort, string> = {
-    newest: t.notif.sortNewest,
-    oldest: t.notif.sortOldest,
-  };
+  /* ⛔ `FILTER_LABEL` / `SORT_LABEL` MOVED TO `notifications-bar.tsx` RATHER THAN BEING COPIED
+     THERE. Both were declared here and consumed only by the two pill rails the bar replaced;
+     leaving them would have put one fact in two homes (§0a) — the shape `notification-filters.ts`
+     opens by warning about: *"Three copies of a kind list is how one of them quietly stops
+     matching a kind that was added later."* */
 
   /** A link that keeps every other lens setting and resets paging — changing a filter must
    *  never leave the reader on page 4 of a list that now has one page. */
-  const hrefWith = (next: Partial<{ filter: NotificationFilter; sort: NotificationSort; page: number }>) => {
-    const q = new URLSearchParams();
+  const hrefWith = (next: Partial<{ filter: NotificationFilter; sort: NotificationSort; page: number; q: string }>) => {
+    const params = new URLSearchParams();
     const f = next.filter ?? filter;
     const s = next.sort ?? sort;
-    if (f !== "all") q.set("filter", f);
-    if (s !== "newest") q.set("sort", s);
-    if (next.page && next.page > 1) q.set("page", String(next.page));
-    const qs = q.toString();
+    if (f !== "all") params.set("filter", f);
+    if (s !== "newest") params.set("sort", s);
+    // ⛔ THE SEARCH SURVIVES EVERY PILL PRESS. A lens link that dropped `?q=` would silently widen
+    //    the result the moment a player changed lens — and its own pill count, folded WITH the
+    //    search, would then disagree with what arrived. That is the exact defect `qa:count-truth`
+    //    exists to catch, introduced by an omission in a URL builder rather than in a count.
+    // ⛔ `next.q` MAY BE THE EMPTY STRING, WHICH MEANS "CLEAR THE SEARCH" — so this reads
+    //    `?? q`, never `|| q`. Clearing is a value in the grammar, not a string edit on a URL:
+    //    the first draft of the empty-state exit stripped `q=` with a regex, which is a SECOND
+    //    definition of this builder and would drift from it the day a param is added.
+    const searchText = next.q ?? q;
+    if (searchText) params.set("q", searchText);
+    if (next.page && next.page > 1) params.set("page", String(next.page));
+    const qs = params.toString();
     return `/notifications${qs ? `?${qs}` : ""}`;
   };
   /** Base for the shared pager: the current lens, minus `page`. */
@@ -143,44 +161,32 @@ export default async function NotificationsPage({
         title={t.notif.title}
       />
 
-      {/* ── Lenses. ⛔ Every count is a real count over the same predicate its page uses
-          (`FilterPill`: "Omit where no honest count exists. Never invent one — A-5"). */}
-      <div className="space-y-2">
-        {/* ⛔ `flex-wrap`, NOT a horizontal scroller — the pattern `/results` uses, and it
-            removed a scroller from exactly this spot with a comment saying why: a rail that
-            wraps never engages the scroller, and the bleed it needs pushes the wrapper past
-            its own container at 360.
-            🔴 AND HERE IT WOULD HAVE HIDDEN THE SAFETY LENS. At 360 the first draft scrolled,
-            so **Account & security** and **Cleared** were off-screen with no affordance that
-            anything followed — and `Cleared` is the only route back to a notification that
-            `CLEAR ALL` hid. A filter a player cannot see is a filter they do not have. */}
-        <nav aria-label={t.notif.showLabel} className="flex flex-wrap items-center gap-1.5">
-          <FilterGroupKey>{t.notif.showLabel}</FilterGroupKey>
-          {NOTIFICATION_FILTERS.map((f) => (
-            <FilterPill
-              key={f}
-              href={hrefWith({ filter: f, page: 1 })}
-              label={FILTER_LABEL[f]}
-              count={counts[f]}
-              on={filter === f}
-              testId={`notif-filter-${f}`}
-            />
-          ))}
-        </nav>
-        <nav aria-label={t.notif.sortLabel} className="flex flex-wrap items-center gap-1.5">
-          <FilterGroupKey>{t.notif.sortLabel}</FilterGroupKey>
-          {NOTIFICATION_SORTS.map((s) => (
-            <FilterPill
-              key={s}
-              href={hrefWith({ sort: s, page: 1 })}
-              label={SORT_LABEL[s]}
-              on={sort === s}
-              rank="secondary"
-              testId={`notif-sort-${s}`}
-            />
-          ))}
-        </nav>
-      </div>
+      {/* ⭐ SEARCH — the last player lens surface without one, and the one that needed it most:
+          this is where a player comes to find ONE receipt among a year of round results. */}
+      <Suspense>
+        <SearchBox
+          placeholder={t.notif.searchNotifications}
+          ariaLabel={t.notif.searchNotifications}
+          helpFields={fieldNames(NOTIFICATION_SEARCH)}
+        />
+      </Suspense>
+
+      {/* 🔴 THE RAIL CARRIES `data-filter-rail` NOW, AND IT NEVER HAS. §6 of the campaign names
+          this page as one of two that render a real `FilterPill` rail while being invisible to
+          `test:filter-language` — *"not a missing feature, a gate reporting on a smaller
+          population than it claims"*. Both declared lists gain it in this same commit.
+          ⭐ THE LENSES ARE UNCHANGED, DELIBERATELY. Their counts were already real and already
+          cross-filtered, and the wrap-not-scroll ruling below is preserved by `QueryStrip`, which
+          wraps above `lg` and scrolls below it. What moved is the SORT: it was a second rail of
+          pills, identical in shape to the lens rail, ORDERING rather than filtering. */}
+      <NotificationsBar
+        filter={filter}
+        sort={sort}
+        counts={counts}
+        resultCount={total}
+        hrefWith={hrefWith}
+        t={t}
+      />
 
       {/* ⛔ Says out loud that clearing HIDES rather than deletes. Without this sentence a
           player reads "Clear all" as destructive and never taps it — or taps it and believes
@@ -198,10 +204,28 @@ export default async function NotificationsPage({
       />
 
       {items.length === 0 ? (
+        /**
+         * 🔴 A SEARCH MISS IS NOT AN EMPTY INBOX, AND SAYING SO WOULD BE A LIE THIS PAGE MADE
+         * WORSE BY GAINING A SEARCH. Measured on the fixture before this branch existed:
+         * `?q=zzzznomatch` rendered *"No notifications yet — We'll buzz here when a bet settles
+         * or a market resolves"* over an inbox holding **71 rows**. The five `EMPTY[filter]`
+         * sentences are each correct about a LENS and each wrong about a search.
+         *
+         * ⭐ AND THE WAY OUT IS THE POINT, NOT THE WORDING. A player who cannot find the receipt
+         * they searched for needs the search cleared, not an explanation — so the action keeps
+         * every other setting and drops only `q`.
+         */
         <EmptyState
-          title={EMPTY[filter].title}
-          body={EMPTY[filter].body}
+          title={q ? `${t.results.noResultsMatch} "${q}"` : EMPTY[filter].title}
+          body={q ? t.results.tryDifferentKeywords : EMPTY[filter].body}
           illustration={<I.bellRing s={30} />}
+          action={
+            q ? (
+              <Link href={hrefWith({ q: "", page: 1 }) as never} className="btn btn-ghost btn-sm">
+                {t.common.clearSearch}
+              </Link>
+            ) : undefined
+          }
         />
       ) : (
         <ul className="space-y-2" data-notif-total={total}>
@@ -212,6 +236,11 @@ export default async function NotificationsPage({
               <li
                 key={n.id}
                 className="rounded-xl glass-panel overflow-hidden"
+                /* ⛔ `data-row-id` — the third leg of the instrumentation contract. The two
+                   `data-notif-*` attributes below stay: `qa:notifications-page` reads them, and
+                   they say what KIND a row is, which is a different question from which row it
+                   is. Three attributes, three claims, no overlap. */
+                data-row-id={n.id}
                 data-notif-kind={n.kind ?? "NONE"}
                 data-notif-unread={isUnread ? "1" : "0"}
               >

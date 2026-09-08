@@ -15,6 +15,7 @@ import {
   kindsFor, showsCleared, MONEY_FILTER_KINDS, ACCOUNT_FILTER_KINDS,
   type NotificationFilter, type NotificationSort,
 } from "@/lib/notification-filters";
+import { parseQuery, matchesQuery, fieldNames, NOTIFICATION_SEARCH } from "@/lib/search";
 
 export type StoredUser = {
   id: string;
@@ -1337,8 +1338,24 @@ const memoryDb = {
       sort: NotificationSort;
       page: number;
       perPage: number;
+      /** The raw search text — see the Prisma twin. `undefined`/`""` mean "no search". */
+      q?: string;
     }) => {
-      const mine = Array.from(store.notifications.values()).filter((n) => n.userId === q.userId);
+      /**
+       * ⛔ `matchesQuery`, THE TWIN OF THE PRISMA HALF'S `queryToWhere`. The two are asserted
+       * equivalent by `scripts/search-grammar.test.mts`, which is the whole reason a search may be
+       * pushed into SQL on one side and run in JS on the other without the screen changing meaning
+       * between a Postgres deploy and an in-memory boot.
+       */
+      const parsed = parseQuery(q.q ?? "", { fields: fieldNames(NOTIFICATION_SEARCH) });
+      const hit = (n: StoredNotification) =>
+        matchesQuery(parsed, n as unknown as Record<string, string | null | undefined>, NOTIFICATION_SEARCH);
+
+      const mineAll = Array.from(store.notifications.values()).filter((n) => n.userId === q.userId);
+      // ⛔ The search narrows the COUNTS as well as the rows — see the Prisma twin's note. A pill
+      //    that promised a number folded over the unsearched inbox would over-promise on every
+      //    lens the moment a player types.
+      const mine = mineAll.filter(hit);
       const live = mine.filter((n) => !n.dismissedAt);
       const kinds = kindsFor(q.filter);
       const base = showsCleared(q.filter) ? mine.filter((n) => !!n.dismissedAt) : live;

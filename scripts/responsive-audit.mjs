@@ -105,6 +105,10 @@ const PLAYER = [
      ⭐ `test:route-census` is the mechanism that stops this recurring — a hand-typed list cannot
      police itself, which is the whole lesson of E-196 and of DG-A-08 below. */
   "/watchlist",
+  /* ADDED 2026-09-08 (PLAYER QUERY, task 4.5) — one of the five plain static player routes the
+     re-derivation above named as simply missing from this hand-typed list. Four remain:
+     `/profile/activity` · `/profile/notifications` · `/profile/security` · `/legal/agent-terms`. */
+  "/notifications",
   "/", "/markets", "/positions", "/positions/performance", "/leaderboard",
   "/proposals", "/proposals/new", "/results", "/live", "/wallet",
   "/wallet/deposit", "/wallet/withdraw", "/profile", "/profile/account",

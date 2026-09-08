@@ -63,6 +63,9 @@ const SURFACES = [
   // the wallet renders ONE filter rail, and its Activity/Methods/Limits rail is a SECTION rail
   // (`data-section-rail`), which K rule 7 keeps out of this language by design.
   { id: "/wallet", path: "/wallet", auth: true, rails: 1 },
+  // DECLARED 2026-09-08 (PLAYER QUERY, task 4.5). `rails: 1` re-derived by counting
+  // `data-filter-rail` wrappers in `notifications-bar.tsx`, which emits one.
+  { id: "/notifications", path: "/notifications", auth: true, rails: 1 },
   { id: "/profile/activity", path: "/profile/activity", auth: true, rails: 1 },
   { id: "/profile/account", path: "/profile/account", auth: true, rails: 1 },
   { id: "/updown/history", path: "/updown/history", auth: true, rails: 1 },

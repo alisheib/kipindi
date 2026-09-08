@@ -33,6 +33,7 @@ import {
   kindsFor, showsCleared, MONEY_FILTER_KINDS, ACCOUNT_FILTER_KINDS,
   type NotificationFilter, type NotificationSort,
 } from "@/lib/notification-filters";
+import { parseQuery, queryToWhere, fieldNames, NOTIFICATION_SEARCH } from "@/lib/search";
 import type {
   StoredUser,
   StoredKyc,
@@ -1756,8 +1757,25 @@ export const prismaDb = {
       sort: NotificationSort;
       page: number;
       perPage: number;
+      /**
+       * ⭐ THE RAW SEARCH TEXT, PUSHED DOWN INTO SQL — see `NOTIFICATION_SEARCH`. Every other
+       * player surface in this campaign reads its rows and filters them in JS; this one cannot,
+       * because Up & Down writes a row per settled round (360/day on a 3-minute chain) and a
+       * player's inbox is unbounded. ⛔ `undefined` and `""` both mean "no search", never
+       * "match nothing".
+       */
+      q?: string;
     }): Promise<{ items: StoredNotification[]; total: number; counts: Record<NotificationFilter, number> }> => {
       const kinds = kindsFor(q.filter);
+      /**
+       * ⛔ `null` FROM `queryToWhere` MEANS "RETURN ZERO ROWS", NEVER "RETURN EVERYTHING" — its own
+       * header says so. An invalid query must show a player an empty inbox with an honest
+       * search-miss message, not their entire history as though the search had run.
+       */
+      const parsed = parseQuery(q.q ?? "", { fields: fieldNames(NOTIFICATION_SEARCH) });
+      const searchWhere = queryToWhere(parsed, NOTIFICATION_SEARCH);
+      const search = searchWhere ?? { id: "__no_such_notification__" };
+
       // Every lens except `cleared` hides dismissed rows; `cleared` shows only them.
       const dismissed = showsCleared(q.filter) ? { not: null } : null;
       const where = {
@@ -1765,8 +1783,15 @@ export const prismaDb = {
         dismissedAt: dismissed,
         ...(q.filter === "unread" ? { readAt: null } : {}),
         ...(kinds ? { kind: { in: [...kinds] } } : {}),
+        ...search,
       };
       const skip = Math.max(0, (q.page - 1) * q.perPage);
+      /**
+       * ⛔ THE SEARCH NARROWS EVERY COUNT TOO, AND LEAVING IT OUT IS THE DEFECT `qa:count-truth`
+       * EXISTS TO CATCH. A pill's number is a promise about what pressing it would show — with the
+       * search still on — so a count folded over the unsearched inbox would over-promise on every
+       * lens the moment a player types. Same rule as `countsFor` on every other route.
+       */
       const [items, total, cAll, cUnread, cMoney, cAccount, cCleared] = await Promise.all([
         pc().notification.findMany({
           where,
@@ -1775,11 +1800,11 @@ export const prismaDb = {
           take: q.perPage,
         }),
         pc().notification.count({ where }),
-        pc().notification.count({ where: { userId: q.userId, dismissedAt: null } }),
-        pc().notification.count({ where: { userId: q.userId, dismissedAt: null, readAt: null } }),
-        pc().notification.count({ where: { userId: q.userId, dismissedAt: null, kind: { in: [...MONEY_FILTER_KINDS] } } }),
-        pc().notification.count({ where: { userId: q.userId, dismissedAt: null, kind: { in: [...ACCOUNT_FILTER_KINDS] } } }),
-        pc().notification.count({ where: { userId: q.userId, dismissedAt: { not: null } } }),
+        pc().notification.count({ where: { userId: q.userId, dismissedAt: null, ...search } }),
+        pc().notification.count({ where: { userId: q.userId, dismissedAt: null, readAt: null, ...search } }),
+        pc().notification.count({ where: { userId: q.userId, dismissedAt: null, kind: { in: [...MONEY_FILTER_KINDS] }, ...search } }),
+        pc().notification.count({ where: { userId: q.userId, dismissedAt: null, kind: { in: [...ACCOUNT_FILTER_KINDS] }, ...search } }),
+        pc().notification.count({ where: { userId: q.userId, dismissedAt: { not: null }, ...search } }),
       ]);
       return {
         items: items.map(toStoredNotification),
