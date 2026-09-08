@@ -20,14 +20,45 @@
 ## §0 — RESUME AT
 
 ```
-▶ NEXT ACTION — task 4.5 in the board below.
-  /notifications: SEARCH (the only lens surface without it) + the data-filter-rail hook
-  it has never carried. ⚠️ §6 predicts this gate may go RED on copy nobody has inspected
-  the moment the hook lands — that is the FINDING, not a regression.
+▶ NEXT ACTION — task 4.6 in the board below.
+  /profile/account: counts on the existing category rail; When; sort; search.
   One commit per route.
 ```
 
-**Stage 4 of 6. Stages 1–3 CLOSED (12/12, 7/7, 8/8). 4.1–4.4 done; 10 routes left.**
+**Stage 4 of 6. Stages 1–3 CLOSED (12/12, 7/7, 8/8). 4.1–4.5 done; 9 routes left.**
+
+### What task 4.5 found — read before 4.6
+
+⭐ **A PAGE CAN BE MOSTLY RIGHT, AND THE CAMPAIGN'S JOB IS THEN TO CHANGE LESS, NOT MORE.**
+`/notifications` already had real cross-filtered counts, a rail that wraps rather than scrolls
+(with a note recording that a scroller had hidden the SAFETY lens at 360), and a written analysis
+of lens overlap. ⛔ Its five lenses were kept **verbatim**. What was missing was the hook, a
+search, and a sort that is a sort.
+
+🔴 **ITS SORT WAS A SECOND PILL RAIL** — two stacked `<nav>`s, identical in shape, one filtering
+and one ORDERING. That is the §A5/§7g confusion by name, sitting *inside the population of the
+gate named for it*: `test:section-rail`'s floor fell **9 → 7** when they left, two at once.
+
+⭐ **THIS ROUTE'S SEARCH RUNS IN SQL, AND THAT IS FORCED.** `notification-service.ts` measures the
+inbox as unbounded — *"20 rows to one player in an hour, and 360/day if a 3-minute chain runs"* —
+so the read-all-and-filter-in-JS shape every other route uses is not available.
+`NOTIFICATION_SEARCH` is the only PLAYER schema that is not a `viewModel`.
+⛔ **A SQL-SIDE SEARCH MUST NARROW THE COUNTS BY HAND.** A JS-side one gets it free; all five
+count queries carry the search fragment, or every pill over-promises the moment a player types.
+
+🔴 **AND THE SEARCH ARRIVED CARRYING A LIE.** `?q=zzzznomatch` rendered *"No notifications yet —
+We'll buzz here when a bet settles or a market resolves"* over an inbox holding **71 rows**. Five
+per-lens empty sentences, each correct about a LENS and each wrong about a SEARCH. ⚠️ **Adding a
+filter adds an empty CAUSE — check every existing empty state the same day.**
+
+⛔ **NOT EVERY ROUTE BELONGS IN `qa:player-filters`, AND THE REASON IS NOW IN THE DRIVER.** These
+lenses answer three different questions, so DISJOINT is false *by design*. Declaring a partition
+that is not there would make a correct page report a real failure; the omission is documented so
+nobody "fixes" it.
+
+⭐ **KEEPING THE OLD `testId`s WAS WORTH MORE THAN THE NAMING CONVENTION.** `qa:notifications-page`
+addresses these pills by `notif-filter-<id>` and its **210 assertions** stayed green through the
+whole rewrite. A convention is a convention; a working instrument is evidence.
 **Stage 6 tasks 6.6 (`qa:count-truth`) and a NEW `qa:bar-geometry` LANDED EARLY — see below.**
 
 ### ⭐ `qa:bar-geometry` — the gate that measures what a person sees, and the three defects it found
@@ -325,7 +356,7 @@ git fetch && git checkout player-query-campaign
 | 1 | **The core** | the six existing gates in §8 green **with no edits to those scripts** | ✅ **12/12** |
 | 2 | **`/positions`** | `qa:player-filters` + `qa:count-truth` green on it; 360 Swahili screenshot looked at | ✅ **7/7** |
 | 3 | **`/wallet`** | same, plus the 1,000-row cap is stated to the player | ✅ **8/8** |
-| 4 | **The other 13 pages** | every census-A and census-B route done, one commit each | ▶ **4/14** |
+| 4 | **The other 13 pages** | every census-A and census-B route done, one commit each | ▶ **5/14** |
 | 5 | **The status dictionary** | `position-card.tsx` has no hand-typed tone; `test:gold-is-money` still green | ☐ 0/4 |
 | 6 | **Guards + docs** | the full §8 sweep passes and each new guard's RED control has been *seen to fail* | ▶ **3/9** (6.5, 6.6, + `qa:bar-geometry`, unplanned) |
 
@@ -473,7 +504,7 @@ One commit each, in this order. Same bar, same nine rules.
 | ☑ | **4.2** `/results` | lens `All · Yes won · No won · Refunded`; sheet Product · Topic · When; direction on the existing two sorts. ⚠️ **retires the desktop sidebar** — see below |
 | ☑ | **4.3** `/watchlist` | lens `All · Open · In progress · Resolved · Void` — ⚠️ **FIVE, and the plan's `Live`/`Settled` were both wrong**; sheet Topic; 4 sorts (`starred` default = today's order); search; paging. 🔴 Also replaced an **unbounded 20-second-polled board read** with `playerMarketsByIds`. See above |
 | ☑ | **4.4** `/proposals` | lens `All · Under review · Changes requested · Approved · Live · Resolved · Declined` — SEVEN, and COVERING is enforced by the TYPE system (`Record<ProposalStatus, …>`); sheet Mine · Topic · When; 3 sorts; search. 🔴 The old rail asked THREE questions at once (`hot`/`new` were ORDERINGS), and its default view was gated on **200 net votes**. Legacy `?f=` proven equivalent row-for-row |
-| ☐ | **4.5** `/notifications` | **search** (the only lens surface without it) + the `data-filter-rail` hook it has never carried |
+| ☑ | **4.5** `/notifications` | the `data-filter-rail` hook it had NEVER carried, + **search that runs in SQL** (the inbox is unbounded — 360 rows/day), + the sort moved out of a second pill rail into the shared control. ⛔ Lenses kept VERBATIM — they were already right. 🔴 The new search arrived saying *"No notifications yet"* over 71 rows |
 | ☐ | **4.6** `/profile/account` | counts on the existing category rail; When; sort; search |
 | ☐ | **4.7** `/fairness` | include `VOIDED`, then lens `All · Resolved · Voided`. It reads `RESOLVED` only, so **voided settlements are invisible on the page that exists to prove settlements** |
 | ☐ | **4.8** `/leaderboard` | sort only — ROI · net · streak · volume. Hard-wired in SQL today |
