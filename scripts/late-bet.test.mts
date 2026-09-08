@@ -11,6 +11,11 @@
  * Also unit-tests refundBonusLocked (the lock-free unwind primitive) for exact
  * money conservation.
  */
+// ⭐ THIS SUITE DRIVES THE BONUS MACHINERY, WHICH IS WITHDRAWN FROM THE PRODUCT.
+// `creditBonus` refuses while the wallet sleeps, so the bonus-stake restore assertions read
+// bonus=0 and fail on something that names neither the feature state nor the gate behind it.
+// ⛔ NOT a bypass — it sets the same server-side var an operator would, so the real resolver runs.
+import "./lib/bonus-feature-on.mts";
 import { db, type StoredWallet } from "../src/lib/server/store.ts";
 import { createMarket, buyPosition, getMarket } from "../src/lib/server/market-service.ts";
 import { creditBonus, spendBonusLocked, refundBonusLocked } from "../src/lib/server/bonus-service.ts";

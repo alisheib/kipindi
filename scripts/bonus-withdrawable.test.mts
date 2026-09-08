@@ -48,6 +48,11 @@
  */
 process.env.SESSION_SECRET ??= "test-only-session-secret-32chars-min-aaaa";
 
+// ⭐ THIS SUITE DRIVES THE BONUS MACHINERY, WHICH IS WITHDRAWN FROM THE PRODUCT.
+// `creditBonus` refuses while the wallet sleeps, so the grant this suite reads back is
+// `undefined` and it dies on `.status` — a crash that names neither the state nor the gate.
+// ⛔ NOT a bypass — it sets the same server-side var an operator would, so the real resolver runs.
+import "./lib/bonus-feature-on.mts";
 import { db, type StoredWallet } from "../src/lib/server/store.ts";
 import { withdraw } from "../src/lib/server/wallet-service.ts";
 import { creditBonus, recordWagering } from "../src/lib/server/bonus-service.ts";

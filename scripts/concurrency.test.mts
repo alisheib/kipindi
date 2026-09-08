@@ -11,6 +11,11 @@
  *   B · Concurrent double-submit (same idempotencyKey) → ONE debit, ONE position.
  *   C · Concurrent double stage-2 settle → winner paid ONCE (no double payout).
  */
+// ⭐ THIS SUITE DRIVES THE BONUS MACHINERY, WHICH IS WITHDRAWN FROM THE PRODUCT.
+// `creditBonus` refuses while the wallet sleeps, so without this the referral-prize race reads
+// Δ=0 and fails on something that names neither the feature state nor the gate that produced it.
+// ⛔ NOT a bypass — it sets the same server-side var an operator would, so the real resolver runs.
+import "./lib/bonus-feature-on.mts";
 import { db, type StoredWallet } from "../src/lib/server/store.ts";
 import { createMarket, buyPosition, resolveMarket, settleMarket, getMarket, cashOutPosition } from "../src/lib/server/market-service.ts";
 import { setRequireTwoOfficerResolution } from "../src/lib/server/resolution-policy.ts";

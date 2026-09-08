@@ -13,6 +13,12 @@
  * Red harness: `npm run red:programme-isolation`.
  */
 import "./lib/verified-fixtures.mts";
+// ⭐ THE PLAYER-SIDE CONTROL DRIVES THE BONUS MACHINERY, WHICH IS WITHDRAWN FROM THE PRODUCT.
+// §2's control asserts a PLAYER commission row lands in BONUS — that is how this suite proves
+// the agent/player split is real. `creditBonus` refuses while the wallet sleeps, so without this
+// it reads bonus=0. ⛔ Do NOT relax the control to expect cash: both arms would then agree and
+// the suite would pass while proving nothing. Declare the state instead.
+import "./lib/bonus-feature-on.mts";
 import { db } from "../src/lib/server/store.ts";
 import { mkFixtureUser, approveFixtureAgent, cashOf, bonusOf, netAfterWht } from "./lib/agent-fixtures.mts";
 import { bindRecruit, onRecruitBet, onRecruitDeposit, onRecruitSettlement, ensureAffiliateAccount } from "../src/lib/server/affiliate-service.ts";

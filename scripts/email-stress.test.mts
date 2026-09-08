@@ -11,6 +11,10 @@
  *   - a 250-contact invite campaign sends every entry with zero failures
  *   - no unhandledRejection fires across a burst of concurrent sends
  */
+// ⭐ THIS SUITE DRIVES A BULK BONUS CAMPAIGN SEND, AND THE BONUS WALLET IS WITHDRAWN.
+// `creditBonus` refuses while it sleeps, so the 250-message send completes with sends missing.
+// ⛔ NOT a bypass — it sets the same server-side var an operator would, so the real resolver runs.
+import "./lib/bonus-feature-on.mts";
 import { db, type StoredWallet } from "../src/lib/server/store.ts";
 import {
   sendEmail, sendEmailToUser,

@@ -33,70 +33,40 @@ import { cashOutValue } from "../src/lib/server/market-service.ts";
 import { db } from "../src/lib/server/store.ts";
 import { bindRecruit, ensureAffiliateAccount, resolveReferralPreview, onRecruitBet, onRecruitSettlement } from "../src/lib/server/affiliate-service.ts";
 import { setAffiliateConfig } from "../src/lib/server/affiliate-config.ts";
-// ⭐ THE AGENT CONTROLS BELOW NEED A REAL APPROVED AGENT, NOT A USER WITH `role: "AGENT"`.
-// Standing is `approvedAt != null` (`agentStandingFor`), and role alone buys nothing — which is
-// the whole point of the agent programme's design. This is the same helper its own suites use.
-import { approveFixtureAgent } from "./lib/agent-fixtures.mts";
+// ⭐ ONE way to mint an approved agent across every agent guard — see the file's header for
+// why three suites fixturing `role: "AGENT"` and nothing else was the defect.
+import { approveFixtureAgent, netAfterWht } from "./lib/agent-fixtures.mts";
 
 let pass = 0, fail = 0;
 function ok(label: string, cond: boolean, extra?: string) {
   if (cond) { pass++; } else { fail++; console.log(`FAIL ${label}${extra ? ` — ${extra}` : ""}`); }
 }
 
-/**
- * 🔴 THE VIEWER SHAPE IS THE LIVE API, AND PASSING A ROLE STRING HERE IS A SILENT DISASTER.
- *
- * `inviteIsLiveFor` / `inviteStateFor` take `InviteViewer = { role, agentInGoodStanding }`, and
- * the discriminator is **standing**, never the role (`feature-state.ts` says so in its own
- * header: an agent who is deactivated keeps the role and loses the programme).
- *
- * ⛔ This suite used to call it with a bare role string. That reads `undefined` for
- * BOTH fields, so the seam refused it — and every NEGATIVE assertion below passed for the wrong
- * reason: they would have passed just as happily with the gate deleted. Only the §1 CONTROL,
- * which asserts an agent IS live, could ever notice, and that is exactly why it is there.
- *
- * ⚠️ `scripts/**.mts` SITS OUTSIDE THE TYPECHECKER (E-317), so `tsc` cannot catch this. These
- * two constants are the only thing that keeps the call sites honest — use them, and never
- * inline a role string at a call site again.
- */
-const PLAYER_VIEWER = { role: "PLAYER", agentInGoodStanding: false } as const;
-const AGENT_VIEWER = { role: "AGENT", agentInGoodStanding: true } as const;
-
-// ── §1 · THE SEAM ANSWERS PER ROLE ─────────────────────────────────────────
+// ── §1 · THE SEAM ANSWERS PER VIEWER — STANDING, NOT ROLE ──────────────────
+// 🔴 THIS SECTION USED TO PASS ROLE STRINGS, and `inviteIsLiveFor("AGENT")` was the control.
+// A role is the wrong fact: a DEACTIVATED agent keeps role AGENT, and a fixture with
+// `role: "AGENT"` and no approval read as an agent — which is how three predeploy guards
+// asserted an unapproved "agent" earning the PLAYER prize and stayed green. The seam now takes
+// an `InviteViewer` whose `agentInGoodStanding` is derived from `approvedAt` + `active` +
+// account status by `agentStandingFor`, and role alone opens nothing.
 {
-  ok("§1 invite is WITHDRAWN for a player", inviteStateFor(PLAYER_VIEWER) === "WITHDRAWN", inviteStateFor(PLAYER_VIEWER));
-  ok("§1 invite is not live for a player", !inviteIsLiveFor(PLAYER_VIEWER));
+  const player = { role: "PLAYER" as const, agentInGoodStanding: false };
+  const roleOnlyAgent = { role: "AGENT" as const, agentInGoodStanding: false };
+  const approvedAgent = { role: "AGENT" as const, agentInGoodStanding: true };
+  ok("§1 invite is WITHDRAWN for a player", inviteStateFor(player) === "WITHDRAWN", inviteStateFor(player));
+  ok("§1 invite is not live for a player", !inviteIsLiveFor(player));
   ok("§1 invite is not live for a signed-out viewer", !inviteIsLiveFor(null));
+  // ⛔ THE ROLE-ONLY TRAP, PINNED. An AGENT role with no standing is a deactivated agent, or a
+  // fixture nobody approved — and both must read as WITHDRAWN.
+  ok("§1 ⛔ role AGENT with NO standing is NOT live — a role opens nothing on its own", !inviteIsLiveFor(roleOnlyAgent));
   // ⭐ THE CONTROL. Without this the suite would pass by refusing everyone, and a seam that
   // refuses everyone is indistinguishable from a seam that is simply broken.
-  ok("§1 CONTROL · invite IS live for an approved AGENT", inviteIsLiveFor(AGENT_VIEWER));
+  ok("§1 CONTROL · invite IS live for an agent IN GOOD STANDING", inviteIsLiveFor(approvedAgent));
   ok("§1 bonus is not live for anyone", !bonusIsLiveFor("PLAYER") && !bonusIsLiveFor("AGENT") && !bonusIsLiveFor(null));
   // ⛔ WITHDRAWN, NOT COMING_SOON. A gilt "coming soon" badge is a PROMISE, and we are not
-  // promising players this programme.
-  //
-  // 🔴 THIS ASSERTION USED TO COMPARE THE PLAYER STATE AGAINST `COMING_SOON`, AND IT WENT
-  // VACUOUS ON 2026-09-06, silently. `COMING_SOON` was removed from `FeatureState` that day —
-  // it was a third state no consumer ever distinguished — so the comparison became
-  // `"WITHDRAWN" !== "COMING_SOON"`, true by construction, for ever. ⛔ And `tsc` could not tell
-  // us: `scripts/**.mts` sits OUTSIDE the typechecker (E-317), so the impossible comparison a
-  // typed file would have rejected compiles fine here. **A suite is exactly where a dead
-  // assertion hides best, because it keeps passing.**
-  //
-  // ⭐ So it now asserts the property that actually matters and CAN still fail: the retired
-  // value, if an operator sets it, must not switch the feature on. That is the real risk —
-  // someone reading an old runbook and exporting `FEATURE_INVITE=COMING_SOON`.
-  {
-    const prev = process.env.FEATURE_INVITE;
-    process.env.FEATURE_INVITE = "COMING_SOON";
-    try {
-      ok("§1 the retired COMING_SOON value does not enable invite", !inviteIsLiveFor(PLAYER_VIEWER));
-      ok("§1 …and it resolves to the shipped constant, not to itself",
-         inviteStateFor(PLAYER_VIEWER) === "WITHDRAWN", inviteStateFor(PLAYER_VIEWER));
-    } finally {
-      if (prev === undefined) delete process.env.FEATURE_INVITE;
-      else process.env.FEATURE_INVITE = prev;
-    }
-  }
+  // promising players this programme. If someone softens the constant back to COMING_SOON,
+  // every entry point starts advertising again and this is the line that says so.
+  ok("§1 the state is WITHDRAWN, never COMING_SOON", inviteStateFor(player) !== "COMING_SOON");
 }
 
 // ── §2 · LAW 1 — THE REFUSAL IS NOT GATED ──────────────────────────────────
@@ -162,25 +132,6 @@ const AGENT_VIEWER = { role: "AGENT", agentInGoodStanding: true } as const;
   }
   ok("§3 no player route reads the invite coming-soon copy", offenders.length === 0, offenders.join(" · "));
 
-  // ⭐ §3b · AND THE COPY ITSELF IS GONE, which is why §3 above did not become vacuous.
-  //
-  // 🔴 The three keys were RETAINED-BUT-UNRENDERED, under a comment saying they were kept
-  // "because the state is reversible". Checked 2026-09-06: **nothing in the repo read them** —
-  // the only hit outside the dictionary was this suite asserting nothing reads them. And they
-  // could never be reached in ANY state: `WITHDRAWN` renders nothing, `ACTIVE` renders the live
-  // page, and no consumer of `feature-state.ts` distinguishes `COMING_SOON` at all. Nine strings
-  // across three locales, promising a programme we had decided not to offer, reachable by no
-  // code path. That is not a reversible-state affordance, it is misleading copy with no reader.
-  //
-  // ⛔ WITHOUT THIS LINE §3 WOULD NOW BE A GATE OVER AN EMPTY SET — it scans player files for
-  // keys that no longer exist, so it passes by construction. A check whose population went to
-  // zero has stopped being a check. This asserts the stronger property that replaced it: the
-  // vocabulary is not merely unrendered, it is ABSENT.
-  const dictSrc = readFileSync("src/lib/i18n-dict.ts", "utf8");
-  const stillThere = WITHDRAWN_KEYS.filter((k) => dictSrc.includes(k));
-  ok("§3b the withdrawn coming-soon copy is gone from the dictionary, in all three locales",
-     stillThere.length === 0, stillThere.join(" · "));
-
   // The old single-switch module must stay gone: a shim would let a role-blind
   // `inviteIsLive()` keep compiling at call sites that must now ask about a role.
   const shimUsers = files.filter((f) => readFileSync(f, "utf8").includes("invite-feature"));
@@ -195,8 +146,8 @@ const AGENT_VIEWER = { role: "AGENT", agentInGoodStanding: true } as const;
   process.env.FEATURE_INVITE = "ACTIVE";
   process.env.FEATURE_BONUS = "ACTIVE";
   try {
-    ok("§4 invite re-enables for an ordinary player", inviteIsLiveFor(PLAYER_VIEWER));
-    ok("§4 invite stays live for an agent", inviteIsLiveFor(AGENT_VIEWER));
+    ok("§4 invite re-enables for an ordinary player", inviteIsLiveFor({ role: "PLAYER", agentInGoodStanding: false }));
+    ok("§4 invite stays live for an agent", inviteIsLiveFor({ role: "AGENT", agentInGoodStanding: true }));
     ok("§4 bonus re-enables", bonusIsLiveFor("PLAYER"));
   } finally {
     delete process.env.FEATURE_INVITE;
@@ -204,7 +155,7 @@ const AGENT_VIEWER = { role: "AGENT", agentInGoodStanding: true } as const;
   }
   // ⛔ And the override must not leak past this block, or every later assertion in any suite
   // that imports this module would be measuring the wrong state.
-  ok("§4 the override is restored, not leaked", !inviteIsLiveFor(PLAYER_VIEWER) && !bonusIsLiveFor("PLAYER"));
+  ok("§4 the override is restored, not leaked", !inviteIsLiveFor({ role: "PLAYER", agentInGoodStanding: false }) && !bonusIsLiveFor("PLAYER"));
 }
 
 // ── §5 · ATTRIBUTION — A CODE ONLY RECRUITS IF ITS OWNER MAY REFER ─────────
@@ -235,15 +186,17 @@ const AGENT_VIEWER = { role: "AGENT", agentInGoodStanding: true } as const;
 
   await mk("w5_player_ref", "PLAYER");
   await mk("w5_agent_ref", "AGENT");
+  await mk("w5_roleonly_ref", "AGENT");
   await mk("w5_recruit_a", "PLAYER");
   await mk("w5_recruit_b", "PLAYER");
+  await mk("w5_recruit_c", "PLAYER");
 
   const playerCode = (await ensureAffiliateAccount("w5_player_ref")).code;
-  // ⛔ APPROVED, not merely role AGENT — and the code comes from the approval, because the real
-  // approval MINTS a new agent-format code and retires the player-format one the row was
-  // auto-created with. Binding through the old code would measure a code the product no longer
-  // hands out.
+  // ⭐ APPROVED — `approvedAt` set, a rate, `active`. A role alone is not an agent.
   const agentCode = await approveFixtureAgent("w5_agent_ref");
+  // ⛔ THE TRAP, PINNED: role AGENT and NOTHING else. This is what all three guards used to
+  // call an agent, and it must recruit nothing.
+  const roleOnlyCode = (await ensureAffiliateAccount("w5_roleonly_ref")).code;
 
   // §5a · an ordinary player's code must not recruit
   const viaPlayer = await bindRecruit({ recruitUserId: "w5_recruit_a", code: playerCode });
@@ -263,6 +216,22 @@ const AGENT_VIEWER = { role: "AGENT", agentInGoodStanding: true } as const;
   ok("§5c CONTROL · recruitedBy is written for the agent", recB?.recruitedBy === "w5_agent_ref", `recruitedBy=${recB?.recruitedBy}`);
   const previewAgent = await resolveReferralPreview(agentCode);
   ok("§5c CONTROL · the ribbon renders for an agent", previewAgent !== null && typeof previewAgent?.referrerName === "string", JSON.stringify(previewAgent));
+  ok("§5c CONTROL · …and it is the VERIFIED badge, not the player promo's welcome bonus",
+     previewAgent?.verifiedAgent === true && previewAgent?.programme === "AGENT" && previewAgent?.newPlayerBonusTzs === 0, JSON.stringify(previewAgent));
+  // ⭐ THE STAMP. The attribution records WHICH programme it was created under, in the same
+  // write as `recruitedBy`, and that stamp — never the referrer's current role — is what
+  // every accrual reads from now on.
+  ok("§5c ⭐ the attribution is STAMPED programme=AGENT at bind", recB?.recruitedProgramme === "AGENT" && typeof recB?.recruitedAt === "string" && recB?.recruitedByCode === agentCode,
+     JSON.stringify({ programme: recB?.recruitedProgramme, at: recB?.recruitedAt, code: recB?.recruitedByCode }));
+
+  // §5c2 · ⛔ ROLE ALONE RECRUITS NOTHING. An AGENT role with no `approvedAt` is a deactivated
+  // agent, a stripped agent, or a fixture nobody approved — and its code must be refused
+  // exactly as a withdrawn player's is. This is the case whose absence let three predeploy
+  // guards stay green while asserting the wrong answer.
+  const viaRoleOnly = await bindRecruit({ recruitUserId: "w5_recruit_c", code: roleOnlyCode });
+  ok("§5c2 ⛔ role AGENT with no approval does NOT recruit", viaRoleOnly.bound === false && viaRoleOnly.reason === "referrer_not_eligible", JSON.stringify(viaRoleOnly));
+  ok("§5c2 …and no ribbon vouches for it", (await resolveReferralPreview(roleOnlyCode)) === null);
+  ok("§5c2 …and nothing was attributed", !(await db.user.findById("w5_recruit_c"))?.recruitedBy);
 }
 
 // ── §5d · THE LEGACY ATTRIBUTION — bound BEFORE the gate existed ───────────
@@ -318,167 +287,93 @@ const AGENT_VIEWER = { role: "AGENT", agentInGoodStanding: true } as const;
   ok("§5d …and nothing in bonus either", (wLegacy?.bonusBalance ?? -1) === 0, `bonus=${wLegacy?.bonusBalance}`);
   ok("§5d …and writes no reward row at all", (await db.referralReward.listByReferrer("w5d_ref")).length === 0);
 
-  // §5e · CONTROL — the SAME shape with an AGENT referrer DOES pay.
-  // ⛔ Without this, §5d passes whenever the reward path is broken for any reason at all —
-  // which is exactly how its first version passed with the gate removed.
-  await mkPair("w5e", "AGENT");
-  /**
-   * ⛔ THE CONTROL MUST BIND THROUGH THE REAL PATH, AND THAT IS NOT A DETAIL.
-   *
-   * `mkPair` writes `recruitedBy` DIRECTLY — the legacy row shape §5d exists to measure. Since
-   * the agent programme shipped, the programme is STAMPED AT BIND on `User.recruitedProgramme`
-   * and an unstamped row reads NULL = PLAYER, permanently (`AGENT-PROGRAMME.md` §6b: provenance
-   * is immutable from bind, and that immutability is what closes the back-dating exploit).
-   *
-   * So a legacy row with an approved agent as referrer pays NOTHING — correctly. If this control
-   * simply approved the agent and left the hand-written row, it would be asserting exactly the
-   * exploit the agent programme was built to close, and its failure would look like a bug in the
-   * withdrawal. Clear the hand-written attribution and bind for real.
-   */
-  const agentCodeE = await approveFixtureAgent("w5e_ref");
+  // §5e · CONTROL — an APPROVED AGENT, recruited through their OWN code, IS paid.
+  //
+  // 🔴 THIS SECTION USED TO ASSERT A DEFECT AS ITS CONTROL. It wrote `recruitedBy` directly
+  // (a PLAYER-era attribution), fired `onRecruitBet`, and asserted `cash + bonus > 0` — so it
+  // was proving that an AGENT referrer earned the PLAYER FLAT PRIZE on a legacy attribution,
+  // into whichever wallet, which is three things the programme forbids at once: (1) an agent
+  // earns commission only, never a flat prize; (2) agent money is CASH, never the bonus
+  // wallet; (3) a pre-approval attribution pays an agent NOTHING (that is §5g below). And a
+  // SUM cannot see a split: `cash + bonus > 0` is satisfied by money in the wrong wallet.
+  //
+  // ⭐ The control now binds THROUGH the approved agent's own code (so the attribution is
+  // stamped AGENT), settles a position with a NET fee, and asserts the exact wallet, the
+  // exact type and the exact amount — never a sum.
+  await mkPair("w5e", "PLAYER");                       // creates w5e_ref + w5e_rec with wallets
+  // ⚠️ mkPair wrote a legacy `recruitedBy`; clear it so this pair binds through the code.
   await db.user.update("w5e_rec", { recruitedBy: null });
-  await bindRecruit({ recruitUserId: "w5e_rec", code: agentCodeE });
-  /**
-   * ⛔ THE AGENT'S EARNING HOOK IS SETTLEMENT, NOT THE FIRST BET — and the difference is a
-   * deliberate property of the programme, not an accident of wiring.
-   *
-   * `onRecruitBet` pays the PLAYER promo's flat prize. The agent programme sets
-   * `policy.flatRewards = false`, so that hook refuses an agent outright and audits
-   * `agent_commission_only`: an agent is paid a COMMISSION on the operator's net fee at
-   * settlement, and nothing on a first bet. That inverse was itself a live defect once — the
-   * shipped config had `prize.enabled` true and `commission.enabled` false, so an agent would
-   * have earned flat prizes and zero commission, the exact inverse of what they were charged for.
-   *
-   * ⚠️ So this control drives `onRecruitSettlement`. Calling `onRecruitBet` here would assert
-   * that an agent earns on a hook the programme deliberately closes to them — the control would
-   * read zero and the failure would look like the withdrawal breaking the reward path, which is
-   * the one conclusion §5d must never be able to reach by accident.
-   */
-  await onRecruitSettlement("w5e_rec", { operatorNetFee: 25_000, marketId: "mkt_w5e", positionId: "pos_w5e" });
+  const w5eCode = await approveFixtureAgent("w5e_ref", { commissionPct: 20 });
+  const w5eBind = await bindRecruit({ recruitUserId: "w5e_rec", code: w5eCode });
+  ok("§5e SETUP · the recruit binds through the approved agent's own code", w5eBind.bound === true, JSON.stringify(w5eBind));
+  ok("§5e SETUP · …and is stamped AGENT", (await db.user.findById("w5e_rec"))?.recruitedProgramme === "AGENT");
+
+  // The player prize is ON (from §5d's config) and the recruit places a qualifying bet —
+  // an agent must earn NOTHING from it. The flat prize is the player promo's instrument.
+  await onRecruitBet("w5e_rec", { stake: 25_000 });
+  const w5eAfterBet = await db.wallet.findByUserId("w5e_ref");
+  ok("§5e ⛔ an agent earns NO flat prize on a recruit's first bet (commission-only, by construction)",
+     w5eAfterBet?.balance === 0 && w5eAfterBet?.bonusBalance === 0, `cash=${w5eAfterBet?.balance} bonus=${w5eAfterBet?.bonusBalance}`);
+  ok("§5e ⛔ …and no PRIZE row was written", (await db.referralReward.listByReferrer("w5e_ref")).filter((r) => r.type === "PRIZE").length === 0);
+
+  // Now a settlement with a NET fee of 10,000 on this recruit's position.
+  await onRecruitSettlement("w5e_rec", { operatorNetFee: 10_000, marketId: "mkt_w5e", positionId: "pos_w5e_1" });
   const wAgent = await db.wallet.findByUserId("w5e_ref");
-  ok("§5e CONTROL · an AGENT referrer on the same path IS paid",
-     (wAgent?.balance ?? 0) + (wAgent?.bonusBalance ?? 0) > 0,
-     `cash=${wAgent?.balance} bonus=${wAgent?.bonusBalance}`);
-  ok("§5e CONTROL · …and a reward row exists", (await db.referralReward.listByReferrer("w5e_ref")).length > 0);
-
-  // ── §5e2 · WHICH WALLET THE AGENT IS PAID INTO — the assertion §5e deliberately would not make
-  //
-  // 🔴 §5e above sums `balance + bonusBalance`, so it passes whichever wallet the money lands in.
-  // It passed while the money was landing in the WRONG one, and printed the proof in its own run
-  // log: `bonus.credited … BonusGrant#bg_ef1914…` and an email titled "Bonus added · TZS 10,000".
-  // An approved agent's COMMISSION was being paid as a played-through grant — carrying a wagering
-  // requirement and an expiry — into a wallet the product declares WITHDRAWN for every role.
-  //
-  // ⛔ THREE PLACES ASSERTED THE OPPOSITE IN PROSE and none of them was a measurement:
-  // `affiliate-service.ts` §referrerMayEarn, §5d's own comment directly above, and
-  // `docs/BONUS-WITHDRAWAL.md` §1 — all say the reward "now lands as REAL, WITHDRAWABLE CASH
-  // rather than a played-through grant". A sentence is not a guard. This is the guard.
-  ok("§5e2 the agent's commission is paid in REAL CASH", (wAgent?.balance ?? 0) > 0, `cash=${wAgent?.balance}`);
-  ok("§5e2 …and NOT as a bonus grant in a withdrawn wallet",
-     (wAgent?.bonusBalance ?? -1) === 0, `bonus=${wAgent?.bonusBalance}`);
-  const agentGrants = await db.bonusGrant.listByUser("w5e_ref");
-  ok("§5e2 …and no BonusGrant row was minted at all", agentGrants.length === 0,
-     `grants=${agentGrants.length}`);
+  ok("§5e CONTROL · an APPROVED agent IS paid — into CASH, floor(10,000 × 20%) = 2,000 gross less withholding",
+     wAgent?.balance === netAfterWht(2_000), `cash=${wAgent?.balance}`);
+  ok("§5e CONTROL · …and NOT into the bonus wallet (exact wallet, never a sum)",
+     wAgent?.bonusBalance === 0, `bonus=${wAgent?.bonusBalance}`);
+  const w5eRows = await db.referralReward.listByReferrer("w5e_ref");
+  const w5eCommission = w5eRows.filter((r) => r.type === "COMMISSION");
+  ok("§5e CONTROL · exactly one COMMISSION row, stamped programme=AGENT with the rate applied",
+     w5eCommission.length === 1 && w5eCommission[0].programme === "AGENT" && w5eCommission[0].rateApplied === 20 && w5eCommission[0].status === "PAID" && w5eCommission[0].amountTzs === netAfterWht(2_000) && w5eCommission[0].grossAmountTzs === 2_000,
+     JSON.stringify(w5eCommission));
+  const w5eTxns = await db.txn.findByUser("w5e_ref", 50);
+  ok("§5e CONTROL · the credit is booked as AGENT_COMMISSION, never BONUS_CREDIT",
+     w5eTxns.some((t) => t.type === "AGENT_COMMISSION" && t.amount === netAfterWht(2_000)) && !w5eTxns.some((t) => t.type === "BONUS_CREDIT"),
+     JSON.stringify(w5eTxns.map((t) => [t.type, t.amount])));
+  // ⭐ ONE PAYMENT PER EVENT. Replaying the same settlement must not pay twice.
+  await onRecruitSettlement("w5e_rec", { operatorNetFee: 10_000, marketId: "mkt_w5e", positionId: "pos_w5e_1" });
+  ok("§5e ⭐ replaying the same position pays NOTHING more (idempotency key)",
+     (await db.wallet.findByUserId("w5e_ref"))?.balance === netAfterWht(2_000) && (await db.referralReward.listByReferrer("w5e_ref")).filter((r) => r.type === "COMMISSION").length === 1);
 }
 
-// ── §5g · THE FUNNEL ITSELF — an operator cannot re-enable a withdrawn feature by a row ────
-//
-// 🔴 THE GUARANTEE THIS SECTION IS THE ONLY ENFORCEMENT OF. `feature-state.ts` says in its own
-// header: *"Product off ⇒ off, whatever the config says. An operator cannot switch a withdrawn
-// feature back on by editing a row."* GRANTING is the one thing that promise is about, and it
-// was the one thing nothing checked — `getBonusConfig()` ships `enabled: true`, so every
-// incentive path kept minting grants with the wallet withdrawn from the product.
-//
-// ⛔ THE CONTROL IS THE POINT. §5g2 re-enables the PRODUCT state (not the config) and proves the
-// same call succeeds — without it this section would pass just as well if `creditBonus` were
-// simply broken, which is the failure mode §5d shipped with once already.
+// ── §5g · THE EXPLOIT — a PLAYER-stamped attribution pays an AGENT NOTHING ──────────────
+// 🔴 THE PURCHASABLE ARBITRAGE THIS CLOSES. Farm attributions for free as an ordinary player
+// (every shared market link carried your code), pay TZS 100,000 for AGENT status, and every
+// one of those old binds flips to paying agent commission at the negotiated rate. The programme
+// is stamped on the attribution at BIND and is immutable; a role is mutable and purchasable.
+// ⛔ And the obvious second discriminator — `boundAt >= approvedAt` — is a trap: deactivate →
+// reactivate restamps `approvedAt` and silently deletes the agent's real book. The stamp alone.
 {
-  const { creditBonus } = await import("../src/lib/server/bonus-service.ts");
   const stamp = () => new Date().toISOString();
-  await db.user.create({
-    id: "w5g_p", phoneE164: "+255790000091", email: "w5g_p@t.tz",
-    passwordHash: null, passwordSalt: null, failedLoginCount: 0, lockedUntil: null,
-    role: "PLAYER", status: "ACTIVE", locale: "EN", displayName: null, dob: null, region: null,
-    acceptedTermsVersion: null, acceptedTermsAt: null, marketingOptIn: false,
-    twoFactorEnabled: false, avatarDataUrl: null, recruitedBy: null,
-    createdAt: stamp(), updatedAt: stamp(), lastLoginAt: null, closedAt: null,
-  } as never);
-  await db.wallet.create({ id: "wal_w5g_p", userId: "w5g_p", balance: 0, pending: 0, hold: 0, bonusBalance: 0, currency: "TZS", status: "ACTIVE", createdAt: stamp(), updatedAt: stamp() } as never);
-
-  // §5g1 · the operator config is ON (the shipped default) and it must not be enough
-  const cfgNow = (await import("../src/lib/server/bonus-config.ts")).getBonusConfig();
-  ok("§5g1 PRECONDITION · the operator config really does say enabled", cfgNow.enabled === true,
-     `enabled=${cfgNow.enabled}`);
-  const refused = await creditBonus("w5g_p", { amountTzs: 5_000, source: "ADMIN", note: "audit probe" });
-  ok("§5g1 …and creditBonus still refuses", refused.ok === false, JSON.stringify(refused));
-  ok("§5g1 …naming the product state, not the config",
-     refused.ok === false && refused.code === "WITHDRAWN",
-     refused.ok === false ? refused.code : "ok");
-  const wNone = await db.wallet.findByUserId("w5g_p");
-  ok("§5g1 …and no bonus money exists", (wNone?.bonusBalance ?? -1) === 0, `bonus=${wNone?.bonusBalance}`);
-
-  // §5g2 · CONTROL — re-enable the PRODUCT state and the identical call must succeed.
-  process.env.FEATURE_BONUS = "ACTIVE";
-  try {
-    const allowed = await creditBonus("w5g_p", { amountTzs: 5_000, source: "ADMIN", note: "audit probe control" });
-    ok("§5g2 CONTROL · the same call succeeds once the product state is ACTIVE", allowed.ok === true,
-       JSON.stringify(allowed));
-  } finally {
-    delete process.env.FEATURE_BONUS;
+  // A legacy attribution: recruitedBy written directly, NO programme stamp (NULL = PLAYER).
+  for (const [id, ref] of [["w5g_ref", null], ["w5g_rec", "w5g_ref"]] as const) {
+    await db.user.create({
+      id, phoneE164: `+25579500${id.length}${id.endsWith("ref") ? "1" : "2"}`, email: `${id}@t.tz`,
+      passwordHash: null, passwordSalt: null, failedLoginCount: 0, lockedUntil: null,
+      role: "PLAYER", status: "ACTIVE", locale: "EN", displayName: null, dob: null, region: null,
+      acceptedTermsVersion: null, acceptedTermsAt: null, marketingOptIn: false,
+      twoFactorEnabled: false, avatarDataUrl: null, recruitedBy: ref,
+      createdAt: stamp(), updatedAt: stamp(), lastLoginAt: null, closedAt: null,
+    } as never);
+    await db.wallet.create({ id: `wal_${id}`, userId: id, balance: 0, pending: 0, hold: 0, bonusBalance: 0, currency: "TZS", status: "ACTIVE", createdAt: stamp(), updatedAt: stamp() } as never);
   }
-}
+  // THEN the referrer buys AGENT status.
+  await approveFixtureAgent("w5g_ref", { commissionPct: 40 });
+  ok("§5g PRECONDITION · the legacy attribution is on the row with NO programme stamp",
+     (await db.user.findById("w5g_rec"))?.recruitedBy === "w5g_ref" && !(await db.user.findById("w5g_rec"))?.recruitedProgramme);
+  ok("§5g PRECONDITION · …and the referrer IS now an approved agent", !!(await db.affiliate.findByUserId("w5g_ref"))?.approvedAt);
 
-// ── §5h · THE PAGE MAY NOT PROMISE A WALLET THE PAYER DOES NOT USE ─────────
-//
-// 🔴 A FALSE MONEY STATEMENT, IN THREE LOCALES, TO THE ONLY AUDIENCE THAT CAN READ THE PAGE.
-// `/profile/invite` is agent-only now, and its requirements list stated flatly: *"Bonus credited
-// to your Bonus Wallet — {wager}× wagering required before withdrawal"*, *"Bonuses expire 30 days
-// after being credited"*, *"Bonuses are used one at a time"*. With the bonus wallet withdrawn the
-// reward lands as real, withdrawable cash — so all three were wrong for every approved agent, in
-// en, sw AND zh. Nothing was hidden and nothing crashed; the page simply described a different
-// product.
-//
-// ⛔ THE RULE IS "ONE HOME", NOT "SOME CONDITION". The page must consult
-// `referralRewardDestination()` — the SAME predicate `creditWallet` routes on — rather than
-// re-deriving "is bonus on?" from `bonusIsLiveFor` or `getBonusConfig` locally. A second copy of
-// the condition is exactly how the promise and the payment drifted apart the first time.
-{
-  const { referralRewardDestination } = await import("../src/lib/server/affiliate-service.ts");
-  const page = readFileSync("src/app/profile/invite/page.tsx", "utf8");
-  const stripped = decomment(page);
-
-  ok("§5h a referral reward lands as CASH while the wallet is withdrawn",
-     referralRewardDestination() === "CASH", referralRewardDestination());
-
-  ok("§5h the page reads the payer's own predicate",
-     stripped.includes("referralRewardDestination"),
-     "the page does not consult referralRewardDestination()");
-
-  // ⛔ POSITIONAL, not a mention: the wagering line must sit INSIDE the BONUS branch. A page that
-  // imports the predicate and then renders the bonus copy anyway passes a "does it check?" rule.
-  const branchAt = stripped.search(/rewardDestination\s*===\s*"BONUS"/);
-  const wagerAt = stripped.search(/inviteReqWager/);
-  ok("§5h …and the wagering promise sits BELOW the destination branch",
-     branchAt >= 0 && wagerAt > branchAt, `branch=${branchAt} wager=${wagerAt}`);
-
-  ok("§5h …and the cash copy exists for the state we are actually in",
-     stripped.includes("inviteReqCash"), "no cash-destination copy on the page");
-
-  // ⭐ THE CONTROL. Without it this section passes just as well if the predicate is hard-wired to
-  // "CASH" — which would be a seam that has stopped asking, indistinguishable from one that works.
-  process.env.FEATURE_BONUS = "ACTIVE";
-  try {
-    ok("§5h CONTROL · with the product state ACTIVE the reward routes to BONUS again",
-       referralRewardDestination() === "BONUS", referralRewardDestination());
-  } finally {
-    delete process.env.FEATURE_BONUS;
-  }
-
-  // ⚠️ All three locales, because a false money statement hides best in the one nobody reads.
-  const dict = readFileSync("src/lib/i18n-dict.ts", "utf8");
-  const cashKeys = dict.match(/inviteReqCash:/g) ?? [];
-  ok("§5h the cash copy is translated in all three locales", cashKeys.length === 3,
-     `found=${cashKeys.length}`);
+  await onRecruitBet("w5g_rec", { stake: 25_000 });
+  await onRecruitSettlement("w5g_rec", { operatorNetFee: 10_000, marketId: "mkt_w5g", positionId: "pos_w5g_1" });
+  const w5g = await db.wallet.findByUserId("w5g_ref");
+  ok("§5g 🔴 a PLAYER/NULL-stamped attribution pays a newly-approved AGENT NOTHING in cash", w5g?.balance === 0, `cash=${w5g?.balance}`);
+  ok("§5g …and nothing in bonus", w5g?.bonusBalance === 0, `bonus=${w5g?.bonusBalance}`);
+  ok("§5g …and writes no reward row of any type", (await db.referralReward.listByReferrer("w5g_ref")).length === 0,
+     JSON.stringify((await db.referralReward.listByReferrer("w5g_ref")).map((r) => [r.type, r.programme, r.amountTzs])));
+  // The CONTROL for this section is §5e above — the identical hooks DO pay on an AGENT-stamped
+  // attribution — so this refusal cannot be a broken reward path wearing a green tick.
 }
 
 // ── §5f · THE SKELETON MUST DESCRIBE THE PAGE THAT IS COMING ───────────────
