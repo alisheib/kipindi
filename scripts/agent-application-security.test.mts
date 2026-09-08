@@ -107,6 +107,52 @@ async function fullDraft(uid: string, feeRef: string) {
   ok("2.control · CONTROL — a real PNG attaches", cv.ok, JSON.stringify(cv));
   const noConsent = await setReferees("sec_app1", { oneName: "Amina J", oneContact: "+255711000001", twoName: "Baraka K", twoContact: "+255711000002", consent: false });
   ok("2.consent · referees without the consent attestation are refused", !noConsent.ok, JSON.stringify(noConsent));
+
+  /**
+   * ⭐ THE REFEREE CONTACT IS A REACHABILITY RULE, AND EVERY REFUSAL NAMES ITS BOX.
+   *
+   * 🔴 The only rule used to be `length >= 6`, so "aaaaaa" passed and an officer discovered
+   * the unreachable referee days later, at the point of a decision. And all four boxes shared
+   * two sentences ("Each referee needs a name" / "…a phone number or email"), delivered as a
+   * TOAST on a four-step form — so an applicant could not tell WHICH box was wrong, on a step
+   * that might not even be on screen.
+   *
+   * ⚠️ THE PERMISSIVE CASES MATTER AS MUCH AS THE REFUSALS. A referee is not a 50pick account
+   * holder: an office landline and an international number must PASS, because refusing them
+   * would make an applicant invent a mobile number to get past the form — which is worse than
+   * accepting the landline. The registration-grade `/^\+255[67]\d{8}$/` is deliberately NOT
+   * the rule here.
+   */
+  {
+    const base = { oneName: "Amina J", oneContact: "+255711000001", twoName: "Baraka K", twoContact: "+255711000002", consent: true };
+    const junk = await setReferees("sec_app1", { ...base, oneContact: "aaaaaa" });
+    ok("2.reach · a contact with no way to reach anybody is refused (the old length>=6 rule passed this)", !junk.ok, JSON.stringify(junk));
+    ok("2.reachfield · …and the refusal names the box, so it can land on the input", !junk.ok && (junk as { field?: string }).field === "oneContact", JSON.stringify(junk));
+    ok("2.reachrule · …and states the rule rather than saying \"invalid\"", !junk.ok && /0712 345 678|referee@example/.test(junk.error), JSON.stringify(junk));
+
+    const numberAsName = await setReferees("sec_app1", { ...base, twoName: "0712345678" });
+    ok("2.namedigits · a phone number typed into the NAME box is refused", !numberAsName.ok && (numberAsName as { field?: string }).field === "twoName", JSON.stringify(numberAsName));
+
+    const shortName = await setReferees("sec_app1", { ...base, oneName: "A" });
+    ok("2.nameshort · a one-character name is refused, naming its box", !shortName.ok && (shortName as { field?: string }).field === "oneName", JSON.stringify(shortName));
+
+    const noContact = await setReferees("sec_app1", { ...base, twoContact: "   " });
+    ok("2.blank · a blank contact is refused, naming its box", !noContact.ok && (noContact as { field?: string }).field === "twoContact", JSON.stringify(noContact));
+
+    ok("2.consentfield · the consent refusal names the checkbox", !noConsent.ok && (noConsent as { field?: string }).field === "consent", JSON.stringify(noConsent));
+
+    // CONTROLS — the shapes that must be accepted.
+    const email = await setReferees("sec_app1", { ...base, oneContact: "referee@example.com" });
+    ok("2.email · CONTROL — an email address is accepted", email.ok, JSON.stringify(email));
+    const landline = await setReferees("sec_app1", { ...base, oneContact: "022 211 5811" });
+    ok("2.landline · CONTROL — a Dar landline with spaces is accepted (a referee is not an account holder)", landline.ok, JSON.stringify(landline));
+    const intl = await setReferees("sec_app1", { ...base, oneContact: "+44 20 7946 0958" });
+    ok("2.intl · CONTROL — an international number is accepted", intl.ok, JSON.stringify(intl));
+    const local = await setReferees("sec_app1", { ...base, oneContact: "0712-345-678" });
+    ok("2.dashes · CONTROL — a local number written with dashes is accepted", local.ok, JSON.stringify(local));
+    // Restore the fixture the rest of the suite expects.
+    await setReferees("sec_app1", base);
+  }
   const early = await submitForReview("sec_app1", { acceptedTermsVersion: AGENT_TERMS_VERSION });
   ok("2.incomplete · submitting an incomplete draft is refused and NAMES what is missing", !early.ok && Array.isArray((early as { data?: { missing?: string[] } }).data?.missing) && ((early as { data?: { missing?: string[] } }).data!.missing!.length > 0), JSON.stringify(early));
   const badRef = await recordFeePayment("sec_app1", { feeReference: "x" });

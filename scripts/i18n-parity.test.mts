@@ -35,6 +35,17 @@ function flatten(o: Obj, prefix = ""): Map<string, string> {
 
 /** Key paths that are intentionally identical to English (proper nouns, codes, units). */
 const IDENTICAL_OK = new Set<string>([
+  // ⭐ THE THREE FIELD EXAMPLES ON /agent/apply. Each is a literal specimen of a FORMAT, not
+  // a sentence — a Tanzanian personal name, a Tanzanian mobile number, and a bank receipt
+  // reference. They are written the same way in Swahili and in Chinese because the FORMAT is
+  // the same; translating "Asha Juma Mwinyi" would mean inventing a different person, and
+  // localising "0712 345 678" would mean printing a number shape that does not exist here.
+  // ⚠️ Same reasoning the three title placeholders below already carry, and note that the
+  // three HINTS and three RULES beside these examples ARE translated — which is what proves
+  // these three are a decision and not an omission.
+  "agent.refNameExample",       // "Asha Juma Mwinyi" — a specimen name, not prose
+  "agent.refContactExample",    // "0712 345 678" — the TZ mobile format, identical everywhere
+  "agent.payReferenceExample",  // "FT25090812345" — a bank reference format, not language
   "home.heroLocation",          // "Tanzania · Dar es Salaam" — place names
   // The hero headline is verbatim in all three locales — a DECIDED CALL, not an omission
   // (PLAN-OF-RECORD §7b): YES and NO are product terms and the sentence is the brand line.

@@ -15,11 +15,24 @@ import { MAX_DOC_BYTES } from "@/lib/id-documents";
 import type { AgentDocType } from "@/lib/server/store";
 import {
   startApplication, attachAgentDocument, setReferees, recordFeePayment, submitForReview, ALL_DOC_SLOTS,
+  type FeeRefusal,
 } from "@/lib/server/agent-application-service";
 import { AGENT_TERMS_VERSION } from "@/lib/agent-terms-version";
 
 export type UploadFailure = "type" | "size" | "magic" | "locked" | "generic";
-export type ActionResult<T = void> = { ok: true; data?: T } | { ok: false; error: string; failure?: UploadFailure; missing?: string[] };
+export type ActionResult<T = void> =
+  | { ok: true; data?: T }
+  | {
+      ok: false;
+      error: string;
+      failure?: UploadFailure;
+      missing?: string[];
+      /** ⭐ The `data-field` of the control at fault, so the form can focus it. */
+      field?: string;
+      /** ⭐ The service's own named refusal, so the form renders TRANSLATED copy instead of
+       *  pattern-matching English prose. See `FeeRefusal` in the service. */
+      refusal?: FeeRefusal;
+    };
 
 async function me(): Promise<string> {
   const s = await currentSession();
@@ -59,15 +72,20 @@ export async function setRefereesAction(formData: FormData): Promise<ActionResul
   const r = await setReferees(userId, {
     oneName: String(formData.get("oneName") ?? ""), oneContact: String(formData.get("oneContact") ?? ""),
     twoName: String(formData.get("twoName") ?? ""), twoContact: String(formData.get("twoContact") ?? ""),
+    // ⚠️ `"true"` is what the client sends; `"on"` is what a plain <form> POST would send.
+    // Both are honoured because this action is reachable either way.
     consent: formData.get("consent") === "on" || formData.get("consent") === "true",
   });
-  return r.ok ? { ok: true } : { ok: false, error: r.error };
+  // ⭐ The field travels, so the refusal lands on the box at fault rather than in a toast on
+  // a four-step form where the offending step may not even be on screen.
+  return r.ok ? { ok: true } : { ok: false, error: r.error, ...(r.field ? { field: r.field } : {}) };
 }
 
 export async function recordFeePaymentAction(formData: FormData): Promise<ActionResult<{ status: string }>> {
   const userId = await me();
   const r = await recordFeePayment(userId, { feeReference: String(formData.get("feeReference") ?? "") });
-  return r.ok ? { ok: true, data: r.data } : { ok: false, error: r.error };
+  if (!r.ok) return { ok: false, error: r.error, refusal: r.refusal, ...(r.field ? { field: r.field } : {}) };
+  return { ok: true, data: r.data };
 }
 
 export async function submitAgentApplicationAction(formData: FormData): Promise<ActionResult<{ missing: string[] }>> {

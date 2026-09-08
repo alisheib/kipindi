@@ -417,16 +417,67 @@ async function recomputeDraftStatus(app: StoredAgentApplication): Promise<Stored
 
 /** Referee names + contacts, and the applicant's attestation that each consented. ⛔ The
  *  applicant is the accountable party — we have no relationship with the referee. */
+/**
+ * ⭐ IS THIS CONTACT ONE A COMPLIANCE OFFICER COULD ACTUALLY USE?
+ *
+ * The field accepts a phone number OR an email, so it needs both shapes. ⚠️ Deliberately
+ * permissive on the PHONE side: a referee is not a 50pick account holder, so a landline
+ * (`022 …`), a number written with spaces or dashes, and an international number all have to
+ * pass. What must NOT pass is a string with no plausible way to reach anybody — which is
+ * everything the old `length >= 6` rule let through.
+ *
+ * ⛔ NOT A REGISTRATION-GRADE PHONE CHECK. `/^\+255[67]\d{8}$/` is right for a 50pick account
+ * (it must be a Tanzanian mobile that can receive an OTP) and wrong here: refusing a
+ * referee's office landline would make an applicant fabricate a mobile number to get past
+ * the form, which is worse than accepting the landline.
+ */
+export function isReachableContact(raw: string): boolean {
+  const value = (raw ?? "").trim();
+  if (!value) return false;
+  // An email: something@something.tld, no spaces or list separators.
+  if (/^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]{2,}$/.test(value)) return true;
+  // A phone: at least nine digits once punctuation is stripped, and nothing but digits and
+  // the punctuation people actually write numbers with.
+  if (!/^[+()\-.\s\d]+$/.test(value)) return false;
+  const digits = value.replace(/\D/g, "");
+  return digits.length >= 9 && digits.length <= 15;
+}
+
 export async function setReferees(
   userId: string,
   input: { oneName: string; oneContact: string; twoName: string; twoContact: string; consent: boolean },
 ): Promise<ServiceResult> {
-  const clean = (s: string) => (s ?? "").trim().slice(0, 120);
+  const clean = (s: string) => (s ?? "").trim().replace(/\s+/g, " ").slice(0, 120);
   const oneName = clean(input.oneName), twoName = clean(input.twoName);
   const oneContact = clean(input.oneContact), twoContact = clean(input.twoContact);
-  if (oneName.length < 2 || twoName.length < 2) return { ok: false, error: "Each referee needs a name.", code: "INVALID" };
-  if (oneContact.length < 6 || twoContact.length < 6) return { ok: false, error: "Each referee needs a phone number or email.", code: "INVALID" };
-  if (!input.consent) return { ok: false, error: "Confirm that both referees agreed to be named.", code: "INVALID" };
+  /**
+   * 🔴 EVERY REFUSAL HERE NAMES ITS FIELD, and the format rules are real.
+   *
+   * This used to say "Each referee needs a name" for either name and "Each referee needs a
+   * phone number or email" for either contact — a refusal an applicant could not act on
+   * without guessing which of the four boxes was wrong, delivered as a TOAST, on a
+   * four-step form where the offending step may not even be on screen. And the only rule on
+   * the contact was `length >= 6`, so `aaaaaa` passed and an officer discovered the
+   * unreachable referee days later, at the point of a decision.
+   *
+   * ⛔ THE RULE IS NAMED IN FULL, never "invalid" (§F4). A referee is a real person a
+   * compliance officer has to be able to REACH — that is the entire purpose of the field —
+   * so a contact that cannot be dialled or written to is worse than an empty one, because
+   * an empty one is visibly missing.
+   */
+  for (const [field, value] of [["oneName", oneName], ["twoName", twoName]] as const) {
+    if (value.length < 2) return fieldFailure(field, "Enter the referee's full name, as it appears on their letter.");
+    // ⛔ A name is not a phone number. Somebody pasting a number into both boxes of a pair is
+    // a real slip, and it leaves the officer with a contact and no idea who it belongs to.
+    if (!/[A-Za-z]/.test(value)) return fieldFailure(field, "Enter the referee's name in letters — this is who they are, not how to reach them.");
+  }
+  for (const [field, value] of [["oneContact", oneContact], ["twoContact", twoContact]] as const) {
+    if (!value) return fieldFailure(field, "Enter a phone number or an email address for this referee.");
+    if (!isReachableContact(value)) {
+      return fieldFailure(field, "Enter a reachable contact — a Tanzanian mobile number like 0712 345 678 or +255 712 345 678, or an email address like referee@example.com.");
+    }
+  }
+  if (!input.consent) return fieldFailure("consent", "Confirm that both referees agreed to be named.");
   return withLock(`agentapp:${userId}`, async () => {
     const e = await editableApplication(userId);
     if (!e.ok) return { ok: false as const, error: e.error, code: e.code };
@@ -445,23 +496,44 @@ export async function setReferees(
  * not take a second TZS 100,000. Refused here — at the payment — not at the door, so the
  * applicant can still assemble documents while the refund is processed.
  */
-export async function recordFeePayment(userId: string, input: { feeReference: string }): Promise<ServiceResult<{ status: StoredAgentApplication["status"] }>> {
+/**
+ * ⭐ EVERY REFUSAL THIS CAN PRODUCE IS A NAMED TOKEN, not a sentence to be pattern-matched.
+ *
+ * 🔴 The form used to tell them apart with `/already in use/i.test(r.error)` and
+ * `/refund/i.test(r.error)`, and rendered `r.error` raw for everything else — so a Swahili or
+ * Chinese applicant met English server prose on the money step, and a reworded sentence would
+ * have silently broken the two branches that did work. This is the same discipline the upload
+ * path in `apply/actions.ts` already states in its header: the UI must not substring-match
+ * English prose to tell two failures apart.
+ */
+export type FeeRefusal = "reference_format" | "reference_taken" | "receipt_missing" | "refund_owed" | "not_editable";
+
+export type FeeResult =
+  | { ok: true; data: { status: StoredAgentApplication["status"] } }
+  | { ok: false; error: string; code: "INVALID" | "NOT_FOUND"; field?: string; refusal: FeeRefusal };
+
+export async function recordFeePayment(userId: string, input: { feeReference: string }): Promise<FeeResult> {
   const ref = (input.feeReference ?? "").trim().toUpperCase().replace(/\s+/g, "");
+  // ⛔ THE RULE IS NAMED, and the refusal carries its field so it lands ON the input.
   if (ref.length < 4 || ref.length > 64 || !/^[A-Z0-9-]+$/.test(ref)) {
-    return { ok: false, error: "Enter the receipt reference exactly as printed (letters, numbers and dashes).", code: "INVALID" };
+    return { ok: false, error: "Enter the receipt reference exactly as printed — letters, numbers and dashes only, at least 4 characters.", code: "INVALID", field: "feeReference", refusal: "reference_format" };
   }
   return withLock(`agentapp:${userId}`, async () => {
     const e = await editableApplication(userId);
-    if (!e.ok) return { ok: false as const, error: e.error, code: e.code };
+    if (!e.ok) return { ok: false as const, error: e.error, code: e.code, refusal: "not_editable" as const };
     const app = e.app;
     const owed = await refundOwedTo(userId);
-    if (owed && owed.id !== app.id) return { ok: false as const, error: "A refund from your previous application is still being processed. Wait for it before paying again.", code: "INVALID" as const };
+    // ⭐ `refusal` is a MACHINE TOKEN, so the form renders translated copy instead of
+    // substring-matching this English sentence — which is exactly what it used to do
+    // (`/refund/i.test(r.error)`), and which put raw English into a Swahili UI for every
+    // other refusal this call can produce.
+    if (owed && owed.id !== app.id) return { ok: false as const, error: "A refund from your previous application is still being processed. Wait for it before paying again.", code: "INVALID" as const, refusal: "refund_owed" as const };
     const receipt = await db.agentApplicationDoc.findSlot(app.id, "FEE_RECEIPT");
-    if (!receipt || receipt.purgedAt) return { ok: false as const, error: "Upload the receipt first.", code: "INVALID" as const };
+    if (!receipt || receipt.purgedAt) return { ok: false as const, error: "Upload the receipt first.", code: "INVALID" as const, refusal: "receipt_missing" as const };
     const holder = await db.agentApplication.findByFeeReference(ref);
     if (holder && holder.id !== app.id) {
       audit({ category: "SECURITY", action: "agent.fee.duplicate_reference", actorId: userId, targetType: "AgentApplication", targetId: app.id, payload: { holder: holder.id } });
-      return { ok: false as const, error: "That receipt reference is already in use.", code: "INVALID" as const };
+      return { ok: false as const, error: "That receipt reference is already in use.", code: "INVALID" as const, field: "feeReference", refusal: "reference_taken" as const };
     }
     // A changed receipt on an ADDITIONAL_INFO_REQUIRED application clears the officer's
     // reconciliation: the payment they matched is no longer the one on the row.

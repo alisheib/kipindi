@@ -76,4 +76,28 @@ export const MUTATIONS = [
     to: `  if (false) {`,
     expect: "3.self",
   },
+  {
+    gate: "agent-application-security",
+    name: "agent-application-service.ts — the referee contact reverts to a bare length check (an unreachable referee passes)",
+    file: "src/lib/server/agent-application-service.ts",
+    from: `    if (!isReachableContact(value)) {`,
+    to: `    if (value.length < 6) {`,
+    expect: "2.reach",
+  },
+  {
+    gate: "commission-bounded",
+    name: "agent-commission.ts — the withholding tax is skipped and the agent is credited the GROSS",
+    file: "src/lib/agent-commission.ts",
+    from: `  const taxWithheldTzs = Math.round(gross * (pct / 100));`,
+    to: `  const taxWithheldTzs = 0;`,
+    expect: "1.tax",
+  },
+  {
+    gate: "commission-bounded",
+    name: "agent-commission.ts — the waterfall prices the agent share off the GROSS fee, before TRA and GBT",
+    file: "src/lib/agent-commission.ts",
+    from: `  const split = agentCommissionSplit(netFee, rates.agentPct, rates.withholdingPct);`,
+    to: `  const split = agentCommissionSplit(grossFee, rates.agentPct, rates.withholdingPct);`,
+    expect: "7.share",
+  },
 ];
