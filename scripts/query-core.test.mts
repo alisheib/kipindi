@@ -60,6 +60,8 @@ import { buildQueryHref, hasActiveFilters, sheetFilterCount } from "../src/lib/q
 import { countFor, countMatching, countsFor, filterRows as filterByAxes, matchesAll, type Axes } from "../src/lib/query/counts.ts";
 import { MAX_EXITS, emptyKind, relaxations, type ExitCandidate } from "../src/lib/query/empty.ts";
 import { DAY_MS, PLAYER_PRESETS, inWindow } from "../src/lib/query/windows.ts";
+import { eatDayStartMs } from "../src/lib/eat-day.ts";
+import { readFileSync } from "node:fs";
 import { matchesWindow, type PortfolioRow } from "../src/lib/positions/portfolio.ts";
 import { matchesLedgerWindow, type LedgerRow } from "../src/lib/wallet/ledger.ts";
 import { matchesArchiveWindow, type ArchiveRow } from "../src/lib/results/archive.ts";
@@ -545,11 +547,74 @@ log("\n── 9 · the date window: one span, five surfaces ──────�
 {
   // A fixed clock. ⛔ Not `Date.now()` — "today" would then depend on the hour the suite runs,
   //    which is how a boundary test comes to pass all day and fail at midnight.
-  const NOW = new Date(2026, 8, 8, 14, 30, 0).getTime(); // 2026-09-08 14:30 local
-  const startOfToday = new Date(2026, 8, 8).getTime();
+  //    ⚠️ Stated as an INSTANT (UTC), not a local wall time, because the boundary under test is a
+  //    zone: `new Date(2026, 8, 8, 14, 30)` would mean a different instant on every machine and the
+  //    assertions below would then be measuring the runner rather than the product.
+  const NOW = Date.parse("2026-09-08T11:30:00.000Z"); // 14:30 EAT
+  const startOfToday = eatDayStartMs("2026-09-08");   // 2026-09-07T21:00:00Z
 
   ok("9.1 `all` admits everything, including a row stamped in the future",
     inWindow(0, "all", NOW) && inWindow(NOW + 10 * DAY_MS, "all", NOW));
+
+  /**
+   * 🔴 THE ASSERTION THE LIVE DEFECT NEEDED. All five contracts computed the day boundary as
+   * `new Date(y, m, d)` — the SERVER's midnight — while every row on the same page renders in
+   * `Africa/Dar_es_Salaam`. No `TZ` is set in this repo, so on Railway those are three hours apart:
+   * a row stamped 01:00 EAT prints today's date and fell under the `Yesterday` pill.
+   *
+   * ⛔ THIS IS WRITTEN AS TWO CLAIMS, NOT ONE. The first is that the boundary IS the EAT day. The
+   * second is that it is NOT the UTC day — and it is the second that would have caught the defect,
+   * because a suite whose runner happens to sit on UTC (CI does) makes the two indistinguishable
+   * and an "is it EAT" check alone passes over the bug.
+   */
+  const utcMidnight = Date.parse("2026-09-08T00:00:00.000Z");
+  ok("9.1a the day boundary is the EAT day, not the runner's local midnight",
+    inWindow(startOfToday, "today", NOW) && !inWindow(startOfToday - 1, "today", NOW),
+    `eat start ${new Date(startOfToday).toISOString()}`);
+  ok("9.1b ⛔ CONTROL: an instant between EAT midnight and UTC midnight counts as TODAY",
+    startOfToday < utcMidnight && inWindow(startOfToday + 60_000, "today", NOW)
+      && !inWindow(startOfToday + 60_000, "yesterday", NOW),
+    `a row at 00:01 EAT (${new Date(startOfToday + 60_000).toISOString()}) must not be "yesterday"`);
+
+  /**
+   * ⛔ AND 9.1c EXISTS BECAUSE 9.1a AND 9.1b DO NOT DISCRIMINATE ON EVERY MACHINE — a fact found by
+   * mutating the product and watching them PASS.
+   *
+   * 🔴 MEASURED: with `inWindow` reverted to the server-local idiom, 9.1a and 9.1b stayed GREEN on
+   * a laptop in `Asia/Beirut`, because Beirut in September is UTC+3 and therefore indistinguishable
+   * from EAT. The same mutation under `TZ=UTC` failed both. So the behavioural arms prove the
+   * boundary only where the runner's zone differs from EAT — true on CI and on Railway, false on
+   * this developer's machine for half the year. ⭐ An instrument that is only sharp on some hosts
+   * reports a pass on the others, which is the whole "pinned to ONE machine" failure class.
+   *
+   * ⚠️ So this arm is deliberately a SOURCE assertion, and its narrowness is the point: it does not
+   * test the span (9.1a–9.5 do that), it tests that the ZONE-BEARING IDIOM has not come back. It
+   * discriminates identically on every host, and the two kinds together are what make the property
+   * checkable everywhere: behaviour where the zones differ, provenance where they do not.
+   *
+   * ⛔ It reads the file rather than the module because that is the only way to see HOW the answer
+   * was computed. `zoneAware` names the exact idiom every one of the five copies used.
+   *
+   * 🔴 AND COMMENTS ARE STRIPPED FIRST, WHICH IS NOT TIDINESS — THE FIRST DRAFT FAILED ON ITS OWN
+   * DOCUMENTATION. `windows.ts`'s note says *"never a re-typed `3 * 60 * 60 * 1000`"*, and the
+   * scan matched that sentence and reported the repaired file as still zone-aware. ⭐ A source
+   * check that reads PROSE is satisfied — or, here, falsified — by a comment; `grid-paging.test.mts`
+   * strips them for the same reason and this borrows its exact two replacements.
+   */
+  const winSrc = readFileSync(new URL("../src/lib/query/windows.ts", import.meta.url), "utf8");
+  const winCode = winSrc.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+  const zoneAware = /new Date\(\s*d\.getFullYear\(\)/.test(winCode)
+    || /getTimezoneOffset/.test(winCode)
+    || /3\s*\*\s*60\s*\*\s*60\s*\*\s*1000/.test(winCode);
+  ok("9.1c the day boundary is taken from lib/eat-day, and the server-zone idiom is not back",
+    !zoneAware && /from "@\/lib\/eat-day"/.test(winCode) && /eatDayStartMs\(/.test(winCode),
+    zoneAware ? "windows.ts computes a day boundary in the SERVER's zone" : "eat-day import missing");
+
+  // ⛔ CONTROL FOR THE CONTROL: if this file could not be read, 9.1c's `!zoneAware` would be
+  //    vacuously true and the arm would pass over an unread file — an absence check that passes
+  //    because the READER is broken.
+  ok("9.1d ⛔ CONTROL: 9.1c actually read windows.ts", winSrc.includes("export function inWindow"),
+    `${winSrc.length} bytes read`);
 
   ok("9.2 `today` is a CALENDAR day — its first instant is in, the one before it is out",
     inWindow(startOfToday, "today", NOW) && !inWindow(startOfToday - 1, "today", NOW),

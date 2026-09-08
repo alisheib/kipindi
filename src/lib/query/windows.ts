@@ -16,8 +16,13 @@
  * even though it gains no other control. A player who reads "last 30 days" on their wallet and
  * "last 30 days" on their positions is entitled to the same window.
  *
- * ⛔ NO IMPORTS.
+ * ⛔ ONE IMPORT, AND ONLY ONE: `lib/eat-day.ts`. That file is itself import-free and is the single
+ * home of the EAT offset — its own header forbids copying it — so taking the day boundary from it
+ * is the rule being followed rather than an exception to "no imports". ⛔ Nothing else may be
+ * imported here: this module is read by pure contracts that must not drag a server or client
+ * module into the wrong graph.
  */
+import { eatDayKey, eatDayStartMs } from "@/lib/eat-day";
 
 /** Full precise set for admin / finance / reports / transactions / analytics / logs. */
 export const FULL_PRESETS = ["1h", "6h", "24h", "today", "yesterday", "7d", "30d", "mtd"] as const;
@@ -60,12 +65,31 @@ export const DAY_MS = 24 * 3600_000;
  * other; `/profile/activity` labelled a rolling 30-day window *"This month"* and that is a false
  * statement about a span, not a naming preference (task 4.13).
  *
- * ⚠️ THE DAY BOUNDARY IS THE SERVER'S LOCAL MIDNIGHT, via `new Date(y, m, d)`. That is what every
- * copy did and it is not re-decided here. It is NOT the EAT-anchored `startOfEatDay` that
- * `lib/server/date-range.ts` uses for the admin range vocabulary — a difference that matters only
- * for a deployment whose server clock is not on EAT, and one that must be changed in a single
- * commit for every surface if it is ever changed at all. Recording it is the point: it now has one
- * home to change.
+ * 🔴 THE DAY BOUNDARY IS EAT, AND REPAIRING THAT IS WHY THIS FUNCTION EARNS ITS EXISTENCE RATHER
+ * THAN MERELY TIDYING FIVE COPIES. Every copy computed `new Date(d.getFullYear(), d.getMonth(),
+ * d.getDate())` — midnight in whatever zone the SERVER happens to run in. No `TZ` is set anywhere
+ * in this repo, so on Railway that is UTC, while every timestamp on the same page is rendered
+ * through `formatDateTime`, which uses the platform timezone (`Africa/Dar_es_Salaam`, `utils.ts`).
+ * The two disagree by three hours and the failure is concrete:
+ *
+ *     a deposit at 01:00 EAT on the 8th  ==  22:00 UTC on the 7th
+ *     the row RENDERS "8 Sep" (EAT) and the `Today` pill EXCLUDES it,
+ *     because the UTC day does not begin until 03:00 EAT
+ *
+ * ⛔ So a player looking for what they did an hour ago pressed `Today` and was told it had not
+ * happened — on the one axis this campaign exists to make trustworthy, on five shipped routes at
+ * once. ⚠️ `lib/eat-day.ts` states the rule and it was not followed: *"If you need EAT day maths
+ * anywhere else, import it; do not copy the offset."* It was copied five times.
+ *
+ * ⭐ `utils.ts:289-295` records the SAME defect class already fixed once, for RENDERING — three
+ * player-facing surfaces formatted "in whatever zone the server happens to run in — three hours off
+ * EAT". The render was repaired and the FILTER was not, so the page went on printing an EAT date
+ * beside a UTC-bucketed pill. ⛔ A date that is displayed in one calendar and filtered in another
+ * is not a smaller bug than a wrong number; it is the same bug twice.
+ *
+ * ⚠️ `7d` AND `30d` ARE UNAFFECTED and stay rolling from `nowMs`: "7 days" is a length of time, not
+ * a calendar span, so it has no day boundary to get wrong. Only `today` and `yesterday` are
+ * calendar days — which is exactly why only those two were wrong.
  *
  * ⛔ TAKES A NUMBER, NOT A ROW. Each contract keeps its own one-line predicate naming WHICH date it
  * windows over — `placedAt` on `/positions`, `createdAt` on `/wallet`, `resolvedAt` on `/results`
@@ -74,8 +98,9 @@ export const DAY_MS = 24 * 3600_000;
  */
 export function inWindow(ms: number, when: PlayerPresetId, nowMs: number): boolean {
   if (when === "all") return true;
-  const d = new Date(nowMs);
-  const startOfToday = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  // ⛔ THE EAT DAY, through the one module that owns the offset — never `new Date(y, m, d)`, which
+  //    is the server's zone, and never a re-typed `3 * 60 * 60 * 1000`.
+  const startOfToday = eatDayStartMs(eatDayKey(nowMs));
   switch (when) {
     case "today": return ms >= startOfToday;
     case "yesterday": return ms >= startOfToday - DAY_MS && ms < startOfToday;
