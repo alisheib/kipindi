@@ -27,7 +27,7 @@
  *  ⛔ NO NUMBER IS A LITERAL. Every amount, window and day count is read from `agent-config`.
  *
  * ── GATE THE OFFER, NEVER THE REFUSAL ───────────────────────────────────────────────────
- * Every refusal that would strand TZS 100,000 — staff, self-excluded, terminal rejection,
+ * Every refusal that would strand the registration fee — staff, self-excluded, terminal rejection,
  * cool-down, KYC — bites at `startApplication` and on the /agent page's CTA, BEFORE the
  * applicant is told to pay out of band. A refusal that first appears at review routes through
  * the refund path as a rejection, never a silent block.

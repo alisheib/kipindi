@@ -36,7 +36,9 @@ export const dynamic = "force-dynamic";
  *
  * The CTA is decided by the SAME eligibility the service enforces (`applicantEligibility`), so
  * the page never offers what `startApplication` is about to refuse — and never before the
- * applicant is told to send TZS 100,000 out of band.
+ * applicant is told to send the registration fee out of band. ⛔ The fee is `feeBreakdown().
+ * totalTzs`, never a literal — it was TZS 100,000 VAT-inclusive until management moved the
+ * treatment on 2026-09-08 and became TZS 118,000.
  */
 export default async function AgentProgrammePage({ searchParams }: { searchParams: Promise<{ refused?: string }> }) {
   const sp = await searchParams;
@@ -47,7 +49,7 @@ export default async function AgentProgrammePage({ searchParams }: { searchParam
   /**
    * 🔴 THE DOOR CLOSES ON NEW APPLICANTS, NEVER ON PEOPLE ALREADY INSIDE (four-lens review,
    * 2026-09-07). This was `if (!cfg.enabled) notFound()` above the read: switching the
-   * programme off 404'd every applicant mid-flight — including one who had paid TZS 100,000 and
+   * programme off 404'd every applicant mid-flight — including one who had paid the fee and
    * was waiting for a decision — and turned the footer link into a dead end for them. The same
    * rule the engine already keeps (`policyFor`: `enabled` closes the DOOR, not the room) applies
    * to the page: someone with a live application, or an approved agent, still reads their state
@@ -107,8 +109,8 @@ export default async function AgentProgrammePage({ searchParams }: { searchParam
     /**
      * ⭐ A STATE MUST NAME ITS NEXT STEP. This read only "You have an invitation waiting" — true,
      * and a dead end: the invitation link is a single-use token we store only as a hash, so this
-     * page cannot rebuild it. What it CAN do is say where the link is (texted to their number),
-     * when it lapses, and who to ask if it is lost (four-lens review, 2026-09-07).
+     * page cannot rebuild it. What it CAN do is say where the link is (emailed to them since
+     * 2026-09-08), when it lapses, and who to ask if it is lost (four-lens review, 2026-09-07).
      */
     cta = { kind: "none" };
     notice = {

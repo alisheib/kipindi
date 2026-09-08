@@ -383,19 +383,27 @@ matches what happened:
 
 ⛔ No screen renders a raw server string as a headline. No screen says only "failed".
 
-### 2.10 · Agent commission — 20% of the NET fee, ceiling 40%, on the stamped programme
+### 2.10 · Agent commission — 10% of the NET fee less 5% withholding, ceiling 40%, on the stamped programme
 
-**Decided** Ali, 2026-09-07 (`docs/AGENT-PROGRAMME.md` §5; `docs/COMPLIANCE-DECISIONS.md`
-§ 2026-09-07). A vetted **50pick Agent** earns a share of the operator fee 50pick actually
-**kept** from the players that agent recruited. Nothing else: no sign-up prize, no deposit
-bonus, no share of turnover.
+**Decided** Ali, 2026-09-07, **as amended by management 2026-09-08** (`docs/AGENT-PROGRAMME.md`
+§5/§5a; `docs/COMPLIANCE-DECISIONS.md` § 2026-09-07). A vetted **50pick Agent** earns a share of
+the operator fee 50pick actually **kept** from the players that agent recruited, less the local
+withholding tax on that income. Nothing else: no sign-up prize, no deposit bonus, no share of
+turnover.
+
+⚠️ **Management's 2026-09-08 amendment moved four things** — the rate 20% → **10%**, the fee
+from VAT-inclusive to **VAT-exclusive** (so the applicant pays **TZS 118,000**), the review
+promise into **working** days, and a **5% withholding tax** on the agent's own commission that
+the platform did not previously model. Their feedback document is five annotated screenshots;
+the waterfall they drew is rendered on `/agent` from `src/lib/agent-commission.ts`.
 
 | Term | Rule |
 |---|---|
 | **Base** | The **net** operator fee of each settled position — `levySplit(fee).operatorNet`, i.e. the 13% loser-share fee (§2.1) **after** the TRA and GBT levies (§2.2) have left. ⛔ Never the gross fee, never the stake, never turnover: a share of money we never had cannot be paid |
-| **Normal rate** | **20%** of that net fee — `defaultCommissionPct`, pre-filled for a new agent; the officer may set another rate at approval |
+| **Normal rate** | **10%** of that net fee — `defaultCommissionPct`, pre-filled for a new agent; the officer may set another rate at approval. ⚠️ A config change pre-fills NEW approvals only: an agent already approved keeps their own `AffiliateAgent.commissionPct` until an officer re-prices them with `setAgentRate`, which emails them |
 | **Hard ceiling** | **40%** — `PLATFORM_MAX_COMMISSION_PCT`. A **rule**, not a setting: the operator's own ceiling (`maxCommissionPct`) can be narrowed inside it and can never be set above it; `approveAgent` and `setAgentRate` refuse a rate above the operator ceiling; `agent-config` refuses a ceiling above the rule |
-| **Rounding** | `Math.floor` to the shilling, per accrual — a fraction of a shilling is never invented |
+| **Withholding** | **5%** of the agent's gross commission (`agentWithholdingTaxPct`), deducted at accrual and remitted to `HOUSE:TAX` in the same balanced ledger group as the credit. The wallet receives the **net**; the row records gross, tax and net. ⛔ NOT the 15% withdrawal tax, which was deleted in 2026-07 and stays deleted — this is a deduction on commission INCOME at the moment it is earned. A clawback reclaims the tax **in proportion to what it actually recovers**, because a full reversal against a partial wallet debit would not sum to zero and `postLedgerEntries` refuses an unbalanced group |
+| **Rounding** | `Math.floor` to the shilling on the agent's share; `Math.round` on the withholding tax, matching how `levySplit` already rounds TRA and GBT. A fraction of a shilling is never invented |
 | **Window** | **Lifetime** (`commissionWindowMonths = 0`), measured from each recruit's `recruitedAt` if ever narrowed |
 | **Cap** | **None** per recruit (`capPerRecruitTzs = 0`); a cap, if set, counts PAID + PENDING and excludes REVERSED |
 | **Once** | One accrual per settled position — `sourceRef = referral:commission:<marketId>:<positionId>` is UNIQUE, so a re-settlement cannot pay twice |
@@ -403,17 +411,25 @@ bonus, no share of turnover.
 | **Clawback** | A VOIDED market reverses every accrual it produced — `AGENT_COMMISSION_REVERSAL`, overdraw-guarded; a shortfall is audited as a debt, never silently forgiven |
 | **Who** | Decided by the programme **stamped on the recruit at bind** (`User.recruitedProgramme = AGENT`), never by the recruiter's current role. A recruit bound under the player promo stays a player-promo recruit for life |
 | **Standing** | Only `AffiliateAgent.approvedAt != null` makes an agent; `active = false` (deactivated), a suspended, closed or self-excluded account stops **both** recruiting and accruing. Commission already earned by an excluded agent is a **PENDING payable** settled out of band by an officer — never `HELD`, never destroyed |
-| **Registration fee** | **TZS 100,000, VAT-inclusive** at 18% (TZS 84,746 net + TZS 15,254 VAT), paid out of band to Digital Selcom Bank 0769777877, attested by a compliance officer from the receipt; waivable with a typed reason; **refunded in full within 7 days** of a rejection. It never enters the player ledger; it posts to `HOUSE:AGENT_FEE` |
+| **Registration fee** | **TZS 118,000** — TZS 100,000 **plus** 18% VAT (TZS 18,000), `feeVatTreatment = EXCLUSIVE` since management's 2026-09-08 amendment. ⚠️ `registrationFeeTzs` is the **net**; what an applicant owes is `feeBreakdown().totalTzs`, and every surface that quotes, validates or refunds a payment reads THAT — a guard exists because `agent-application-security` attested the net against the total and four downstream legs failed as a chain. Paid out of band to Digital Selcom Bank 0769777877, attested by a compliance officer from the receipt; waivable with a typed reason; **refunded in full within 7 days** of a rejection. It never enters the player ledger; it posts to `HOUSE:AGENT_FEE` (net) + `HOUSE:TAX` (VAT) |
+| **Review promise** | **5 WORKING days** (`reviewSlaDays`), measured with `workingDaysBetween` in `src/lib/business-days.ts`. ⛔ The console's "Past SLA" chip uses the same function, so the promise and the policing are one fact — they were calendar-vs-working before 2026-09-08. Public holidays are deliberately not modelled: the count runs slightly FAST across one, so an officer chases sooner, which is the only direction that cannot become a broken promise |
 
 | | |
 |---|---|
 | **Enforced in** | `src/lib/server/affiliate-service.ts` — `policyFor()` (one resolver), `onRecruitSettlement()` (the accrual), `clawbackMarketCommission()`; `src/lib/server/agent-config.ts` (`PLATFORM_MAX_COMMISSION_PCT`, every number above); `src/lib/server/agent-application-service.ts` (approval, rate, standing, fee) |
 | **Stated to** | the agent on `/agent` and `/legal/agent-terms` (rate, base, lifetime, once), the officer on `/admin/agents` (settings + "In force now"), the applicant at every step of `/agent/apply` |
-| **Guarded by** | `test:agent-policy` · `test:commission-bounded` (the fixture pool 400,000 / fee 30,000 / stake 100,000 / 30% → **1,912** — floor(6,375 × 0.30); not 2,250, the gross figure, and not 1,913, the rounded one) · `test:no-double-pay` · `test:agent-clawback` · `test:programme-isolation` · `test:attribution-provenance` · `test:agent-eligibility` · `test:agent-application-security` — each with a red harness |
+| **Guarded by** | `test:agent-policy` · `test:commission-bounded` (the fixture pool 400,000 / fee 30,000 / stake 100,000 / 30% → gross **1,912** — floor(6,375 × 0.30); not 2,250, the gross-fee figure, and not 1,913, the rounded one — then **96** withheld and **1,816** credited; and §7 reproduces management's whole waterfall from a TZS 1,000,000 pool, joining the page's table to the engine's own `splitWithholding`) · `test:no-double-pay` · `test:agent-clawback` · `test:programme-isolation` · `test:attribution-provenance` · `test:agent-eligibility` · `test:agent-application-security` — each with a red harness (12 mutations across the eight gates) |
 
 ⚠️ **Two scales exist and are not the same.** `AffiliateAgent.commissionPct` is a **percent**
-(`20` = 20%); the player promo's `commission.rate` is a **fraction** (`0.5` = 50%). The agent
+(`10` = 10%); the player promo's `commission.rate` is a **fraction** (`0.5` = 50%). The agent
 resolver reads the percent. ⛔ Never feed one into the other.
+
+⚠️ **And the three amended numbers do not reach production on deploy if an `agent.config` row
+exists.** `defineConfig` hydrates `{ ...defaults, ...restored }`, so a persisted row overrides
+the rate, the VAT treatment and the SLA with whatever an officer last saved;
+`agentWithholdingTaxPct` is new and takes the default either way. ⭐ The post-deploy step is to
+open `/admin/agents` → Settings and confirm all four. A deploy that silently keeps the old rate
+is indistinguishable from a successful one.
 
 ---
 

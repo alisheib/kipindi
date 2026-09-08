@@ -223,7 +223,7 @@ export function maskedRosterLabel(
 //  🔴 THE EXPLOIT THAT FORCES THIS SHAPE. Until 2026-09-07 the programme was DERIVED at
 //  accrual from `inviteIsLiveFor(referrer.role)`. So the play was: farm attributions for
 //  free as an ordinary player — every shared market and position link carried your code —
-//  then pay TZS 100,000 for AGENT status, and every one of those old binds flipped to
+//  then pay the registration fee for AGENT status, and every one of those old binds flipped to
 //  paying agent commission at the negotiated rate, on relationships nobody was vetted for,
 //  with the window opening on recruits who joined months earlier. A role is mutable and
 //  purchasable; a stamp written at bind is neither.
@@ -660,7 +660,7 @@ async function creditWallet(
    * `bonus-config` ships `enabled: true` and `affiliateToBonus: true`, and production has NO
    * `bonus.config` row — so the file's defaults ARE the live values. Agent commission would
    * therefore have landed in the BONUS wallet with a 5× wagering requirement and a 30-day
-   * expiry: contracted business income for a partner who paid TZS 100,000, converted into a
+   * expiry: contracted business income for a partner who paid the registration fee, converted into a
    * promotional grant they must gamble through before they can touch it.
    *
    * ⛔ THE AGENT BRANCH NEVER CONSULTS `bonus-config` AT ALL. Not "consults it and usually

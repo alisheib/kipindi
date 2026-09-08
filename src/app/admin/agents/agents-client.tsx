@@ -159,6 +159,7 @@ export function AgentSettingsForm({ cfg }: { cfg: AgentConfig }) {
   const [v, setV] = useState<Record<string, string>>({
     enabled: cfg.enabled ? "true" : "false",
     defaultCommissionPct: String(cfg.defaultCommissionPct), maxCommissionPct: String(cfg.maxCommissionPct),
+    agentWithholdingTaxPct: String(cfg.agentWithholdingTaxPct),
     registrationFeeTzs: String(cfg.registrationFeeTzs), feeVatTreatment: cfg.feeVatTreatment, feeVatRatePct: String(cfg.feeVatRatePct),
     feeDestinationName: cfg.feeDestinationName, feeDestinationAccount: cfg.feeDestinationAccount,
     commissionWindowMonths: String(cfg.commissionWindowMonths), capPerRecruitTzs: String(cfg.capPerRecruitTzs),
@@ -186,6 +187,11 @@ export function AgentSettingsForm({ cfg }: { cfg: AgentConfig }) {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {num("defaultCommissionPct", "Default commission (% of net fee)", { decimal: true, hint: "Pre-filled for a new agent" })}
         {num("maxCommissionPct", "Officer ceiling (%)", { decimal: true, hint: `Never above ${PLATFORM_MAX_COMMISSION_PCT}% — the rule (RULES.md §2.10)` })}
+        {/* 🔴 THIS FIELD WAS MISSING, AND THE LIVE DRIVE IS WHAT FOUND IT. The withholding
+            rate went into `agent-config`, into the accrual, into the ledger, into the terms and
+            onto the public waterfall — and the officer who is accountable for it had no way to
+            see or change it. A config value with no control is a value nobody can operate. */}
+        {num("agentWithholdingTaxPct", "Agent withholding tax (% of commission)", { decimal: true, hint: "Deducted from the agent's commission and remitted · 0 = does not apply" })}
         {num("registrationFeeTzs", "Registration fee", { money: true })}
         <Field label="VAT treatment">
           <Select name="feeVatTreatment" value={v.feeVatTreatment} disabled={!mayAct} onChange={(val: string) => setV((x) => ({ ...x, feeVatTreatment: val }))} options={[{ value: "INCLUSIVE", label: "VAT inclusive" }, { value: "EXCLUSIVE", label: "VAT exclusive" }]} />
@@ -199,7 +205,10 @@ export function AgentSettingsForm({ cfg }: { cfg: AgentConfig }) {
         {num("draftExpiryDays", "Draft expiry (days)")}
         {num("refundDeadlineDays", "Refund deadline (days)")}
         {num("reapplyCooldownDays", "Re-apply cool-down (days)")}
-        {num("reviewSlaDays", "Review time promised (days)")}
+        {/* ⚠️ WORKING days, and the label has to say so. Management moved the unit on
+            2026-09-08 and `/admin/agents` measures the SLA with `workingDaysBetween`; a field
+            still labelled "(days)" would have an officer typing 5 and meaning a calendar week. */}
+        {num("reviewSlaDays", "Review time promised (working days)", { hint: "Weekends are not counted — the same measure the queue's Past-SLA chip uses" })}
       </div>
       <Button type="submit" variant="primary" size="md" disabled={!mayAct || pending} loading={pending}>Save settings</Button>
     </form>

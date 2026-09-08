@@ -394,7 +394,7 @@ export default async function AdminAgentsPage({ searchParams }: { searchParams: 
             </AdminCard>
 
             <AdminCard title="Invitations" sw="Mialiko"
-              action={<span className="font-mono text-body-sm text-text-subtle">expire after {cfg.invitationExpiryDays} days · acceptance needs an OTP to the invited number</span>}>
+              action={<span className="font-mono text-body-sm text-text-subtle">expire after {cfg.invitationExpiryDays} days · acceptance needs a code emailed to the invited address</span>}>
               <div className="space-y-4">
                 {cfg.enabled ? <InviteComposer expiryDays={cfg.invitationExpiryDays} /> : (
                   <p className="text-body-sm text-text-secondary">Invitations cannot be issued while the programme is switched off.</p>
@@ -624,6 +624,15 @@ export default async function AdminAgentsPage({ searchParams }: { searchParams: 
                   <dt className="font-mono text-micro uppercase eyebrow text-text-faint">Commission</dt>
                   <dd className="mt-0.5 font-mono text-text">{cfg.defaultCommissionPct}% default · {cfg.maxCommissionPct}% ceiling</dd>
                   <dd className="text-body-sm text-text-subtle">of the net fee after TRA and GBT · platform rule {PLATFORM_MAX_COMMISSION_PCT}% (RULES.md §2.10) — the ceiling cannot be set above it</dd>
+                  {/* ⭐ THE WITHHOLDING LINE, BESIDE THE RATE IT REDUCES. Management added it on
+                      2026-09-08 and it is the difference between what an agent EARNS and what
+                      reaches their wallet — so an officer reading the commission rate has to see
+                      it in the same breath, not two cards away. */}
+                  <dd className="text-body-sm text-text-subtle">
+                    {cfg.agentWithholdingTaxPct > 0
+                      ? <>less {cfg.agentWithholdingTaxPct}% local withholding tax, deducted at accrual and remitted to HOUSE:TAX</>
+                      : <>no withholding tax applies — the agent is credited their gross commission</>}
+                  </dd>
                 </div>
                 <div>
                   <dt className="font-mono text-micro uppercase eyebrow text-text-faint">Earning window</dt>
