@@ -11,6 +11,17 @@ import { Callout } from "@/components/ui/callout";
 import { PageContainer } from "@/components/layout/page-container";
 import { VerifiedAgentBadge } from "@/components/agent/verified-agent-badge";
 import { ReferralShare } from "./invite-client";
+import { RecruitsBar } from "./recruits-bar";
+import { Pagination, PLAYER_PER_PAGE } from "@/components/ui/pagination";
+import {
+  buildRecruitHref,
+  filterRecruits,
+  parseRecruitParams,
+  recruitCounts,
+  recruitEmptyCause,
+  sortRecruits,
+  type RecruitRow,
+} from "@/lib/affiliate/recruits";
 import { getServerT } from "@/lib/i18n-server";
 import { fillNodes } from "@/lib/fill-nodes";
 import { fill, formatNumber, formatTzs, formatDateShort as fmtDate } from "@/lib/utils";
@@ -32,8 +43,47 @@ import type { AgentDashboard as AgentDashboardModel } from "@/lib/server/affilia
  *
  * Gold + mono on money only (§M3). ⛔ No emoji. Kit atoms throughout.
  */
-export async function AgentDashboard({ dash }: { dash: AgentDashboardModel }) {
-  const { t } = await getServerT();
+export async function AgentDashboard({
+  dash,
+  sp,
+}: {
+  dash: AgentDashboardModel;
+  /** ⛔ The raw params, narrowed HERE by the contract — never read directly below. */
+  sp: Record<string, string | string[] | undefined>;
+}) {
+  const { t, locale } = await getServerT();
+
+  /**
+   * ⭐ PLAYER QUERY, TASK 4.11 — THE RECRUIT BOOK GETS ITS BAR, AND IT IS THIS COMPONENT'S LIST
+   * rather than the player promo body's, because the player body cannot be reached by a live
+   * viewer at all (see `lib/affiliate/recruits.ts` for the three lines that prove it).
+   *
+   * 🔴 THE BOOK WAS UNBOUNDED, UNSORTED, UNPAGED AND UNFILTERED. `db.user.listByRecruiter` has no
+   * `take`, so an agent with three hundred recruits rendered three hundred rows — and the DAL
+   * ordered them by `createdAt desc` while each row PRINTED `recruitedAt ?? createdAt`, so for an
+   * existing player recruited later the dates ran out of order down the column and nothing said so.
+   * The clock the list is ordered by is now the clock it shows.
+   */
+  const state = parseRecruitParams(sp);
+  const collate = new Intl.Collator(locale).compare;
+  const rows: RecruitRow[] = dash.recruits.map((r) => ({
+    id: r.userId,
+    maskedName: r.maskedName,
+    boundAtMs: Date.parse(r.boundAt) || 0,
+    paidTzs: r.paidTzs,
+    pendingTzs: r.pendingTzs,
+    reversedTzs: r.reversedTzs,
+    settlements: r.settlements,
+  }));
+  const byId = new Map(dash.recruits.map((r) => [r.userId, r] as const));
+  const counts = recruitCounts(rows, state).lens;
+  const matched = sortRecruits(filterRecruits(rows, state), state, collate);
+  // ⛔ ONE `totalCount`, shared by the bar and the pager — never recomputed.
+  const totalCount = matched.length;
+  const totalPages = Math.max(1, Math.ceil(totalCount / PLAYER_PER_PAGE));
+  const recruitPage = Math.min(Math.max(1, parseInt(String(sp.page ?? "1"), 10) || 1), totalPages);
+  const paged = matched.slice((recruitPage - 1) * PLAYER_PER_PAGE, recruitPage * PLAYER_PER_PAGE);
+  const cause = recruitEmptyCause(state, totalCount, rows.length);
   const hdrs = await headers();
   const host = hdrs.get("x-forwarded-host") ?? hdrs.get("host");
   const proto = hdrs.get("x-forwarded-proto") ?? "https";
@@ -135,23 +185,63 @@ export async function AgentDashboard({ dash }: { dash: AgentDashboardModel }) {
       {dash.preAgentRecruitCount > 0 && (
         <p className="text-body-sm leading-relaxed text-text-subtle">{fill(t.agent.dashPreAgent, { n: String(dash.preAgentRecruitCount) })}</p>
       )}
-      {dash.recruits.length > 0 ? (
-        <div className="overflow-hidden rounded-xl glass-panel">
-          {dash.recruits.map((r, i) => (
-            <div key={r.userId} className={`flex items-center gap-3 px-3 py-2 ${i < dash.recruits.length - 1 ? "border-b border-border" : ""}`}>
-              <Avatar initials={r.maskedName.slice(0, 2)} size="sm" seed={r.maskedName} />
-              <div className="min-w-0 flex-1">
-                <p className="font-mono text-body-sm font-medium truncate">{r.maskedName}</p>
-                <p className="font-mono text-body-sm text-text-subtle">{t.common.joined} {fmtDate(r.boundAt)} · {r.settlements} {t.agent.dashRecruitHint}</p>
-              </div>
-              <div className={`w-[72px] text-right font-mono text-body-sm font-semibold tabular-nums ${r.commissionTzs > 0 ? "text-gold-300" : "text-text-subtle"}`}>
-                {r.commissionTzs > 0 ? "+" + formatNumber(r.commissionTzs) : "—"}
-              </div>
-            </div>
-          ))}
-        </div>
+      {/* ⛔ THE BAR IS WITHHELD ON AN EMPTY BOOK, and only then — five pills all reading 0 above
+          "no recruits yet" are five controls that cannot act (§A5). Every other empty state keeps
+          it, because there the bar is the way out. */}
+      {rows.length > 0 && (
+        <RecruitsBar state={state} counts={counts} resultCount={totalCount} t={t} />
+      )}
+
+      {rows.length > 0 && totalCount > 0 ? (
+        <>
+          <div className="overflow-hidden rounded-xl glass-panel">
+            {paged.map((row, i) => {
+              const r = byId.get(row.id)!;
+              return (
+                /* ⛔ `data-row-id` — the instrumentation contract's third attribute, so
+                   disjointness and no-double-counting are checkable over SETS rather than by
+                   reading a word that changes with the locale. */
+                <div key={r.userId} data-row-id={r.userId} className={`flex items-center gap-3 px-3 py-2 ${i < paged.length - 1 ? "border-b border-border" : ""}`}>
+                  <Avatar initials={r.maskedName.slice(0, 2)} size="sm" seed={r.maskedName} />
+                  <div className="min-w-0 flex-1">
+                    <p className="font-mono text-body-sm font-medium truncate">{r.maskedName}</p>
+                    <p className="font-mono text-body-sm text-text-subtle">{t.common.joined} {fmtDate(r.boundAt)} · {r.settlements} {t.agent.dashRecruitHint}</p>
+                  </div>
+                  <div className={`w-[72px] text-right font-mono text-body-sm font-semibold tabular-nums ${r.commissionTzs > 0 ? "text-gold-300" : "text-text-subtle"}`}>
+                    {r.commissionTzs > 0 ? "+" + formatNumber(r.commissionTzs) : "—"}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          {/* ⛔ THE BOOK IS PAGED NOW. `listByRecruiter` has no `take`, so an agent with three
+              hundred recruits rendered three hundred rows into one panel. */}
+          <Pagination
+            total={totalCount}
+            page={recruitPage}
+            perPage={PLAYER_PER_PAGE}
+            baseHref={buildRecruitHref(state)}
+            ofLabel={t.common.of}
+            prevLabel={t.common.previousPage}
+            nextLabel={t.common.nextPage}
+            firstLabel={t.common.firstPage}
+            lastLabel={t.common.lastPage}
+          />
+        </>
       ) : (
-        <EmptyState kind="leaderboard" title={t.agent.dashEmpty} body={dash.active ? t.agent.dashEmptyBody : t.agent.dashPausedBody} />
+        /* ⚠️ TWO CAUSES. `no-rows` is the agent with no recruits at all; `lens-empty` is an agent
+           whose book simply has nothing in THIS state — and on this page an empty `reversed` pill
+           is good news, not a failed filter. Reading one sentence for both would tell an agent
+           with forty earning recruits that they have none. */
+        <EmptyState
+          kind="leaderboard"
+          title={cause === "lens-empty" ? t.agent.dashLensEmpty : t.agent.dashEmpty}
+          body={
+            cause === "lens-empty" ? t.agent.dashLensEmptyBody
+            : dash.active ? t.agent.dashEmptyBody
+            : t.agent.dashPausedBody
+          }
+        />
       )}
     </PageContainer>
   );

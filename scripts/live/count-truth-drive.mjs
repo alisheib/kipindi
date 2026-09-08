@@ -90,6 +90,23 @@ const SURFACES = [
      THE WHOLE RAIL here, so a persona settled on one product only renders a single pill and this
      row is vacuous — seed both lines. */
   { id: "/positions/performance", path: "/positions/performance", minPills: 3 },
+  /**
+   * ⛔ `/profile/invite` IS DELIBERATELY ABSENT FROM ALL FOUR LIVE DRIVERS, AND THIS NOTE IS WHY —
+   * so nobody "fixes" the omission by adding it and watching every driver go red.
+   *
+   * Its list is the AGENT RECRUIT BOOK (PLAYER QUERY, task 4.11), and that book renders only for a
+   * viewer whose affiliate account has `approvedAt` set. Every driver here signs in at
+   * `/auth/demo`, which mints a PLAYER — and for a player this route is `notFound()`, because
+   * `PRODUCT_STATE.invite` is WITHDRAWN and `inviteIsLiveFor` needs the same `approvedAt`. So a
+   * declaration here would report "no `data-filter-rail` found" on a page that is behaving exactly
+   * as designed: a FIXTURE GAP wearing the costume of a broken rail, which is the confusion this
+   * campaign has already paid for twice.
+   *
+   * ⭐ IT IS NOT UNCHECKED. `test:filter-language` declares `recruits-bar.tsx` and is a SOURCE
+   * check, so the idiom, the hook and the `FilterPill` usage are all guarded; and `qa:agent-drive`
+   * is the driver that actually mints an approved agent and walks their dashboard. ⛔ If a live
+   * assertion on this rail is ever wanted, it belongs THERE, not here.
+   */
 ];
 
 const surfaces = ONLY ? SURFACES.filter((s) => s.id === ONLY || s.path === ONLY) : SURFACES;

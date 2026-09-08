@@ -246,10 +246,35 @@ if (LOCAL) {
   ok(`/wallet renders`, (await page.locator("body").innerText()).length > 60);
   ok(`/wallet no error overlay`, !(await hasErrorOverlay(page)));
 
-  // Invite — single reward only
+  /**
+   * 🔴 THIS BLOCK ASSERTED A VIEW ITS OWN PERSONA CANNOT REACH, and it is now the other way round.
+   *
+   * It read `ok("invite shows 10,000 reward", inv.includes("10,000") && /first bet/i.test(inv))`.
+   * Session 90's handover recorded it as an unresolved disagreement between two gates:
+   * `qa:agent-drive` §6 asserts the OPPOSITE for an ordinary player. `qa:agent-drive` is right,
+   * and the proof is three lines of shipped code (PLAYER QUERY, task 4.11):
+   *
+   *   · `feature-state.ts` — `PRODUCT_STATE = { invite: "WITHDRAWN", … }`, so `inviteIsLiveFor`
+   *     is true only for an agent in good standing, which requires `approvedAt`;
+   *   · `getAgentDashboard` returns non-null on exactly that same condition;
+   *   · and `page.tsx` consults it FIRST — approved ⇒ the agent dashboard, not approved ⇒
+   *     `notFound()`.
+   *
+   * ⛔ THIS SCRIPT SIGNS IN AT `/auth/demo`, WHICH MINTS A PLAYER (`role: "PLAYER"`, and no
+   * affiliate account), so the promo body it was looking for opens only under
+   * `FEATURE_INVITE=ACTIVE`. The assertion could not pass against the shipped product state, and a
+   * gate that cannot pass is not a gate — it is a permanent red that teaches people to ignore reds.
+   *
+   * ⚠️ THE STATUS IS 200, NOT 404 — measured, and recorded in `invite/page.tsx`'s own note. Next's
+   * `notFound()` renders the not-found BODY at 200 here, so this must assert on CONTENT and never
+   * on a status code.
+   */
   await page.goto(BASE + "/profile/invite", { waitUntil: "domcontentloaded" }); await page.waitForTimeout(400);
   const inv = await page.locator("body").innerText();
-  ok(`invite shows 10,000 reward`, inv.includes("10,000") && /first bet/i.test(inv));
+  ok(`invite is the not-found view for a PLAYER (invite is WITHDRAWN)`,
+     !/50PICK-/i.test(inv) && !/first bet/i.test(inv),
+     inv.slice(0, 160));
+  ok(`invite leaks no referral code or link to a player`, !/\/auth\/register\?ref=/i.test(inv));
   ok(`invite has NO 50% commission line`, !inv.includes("50%"));
   ok(`invite has NO deposit-bonus line`, !/bonus on each/i.test(inv));
   ok(`invite no error overlay`, !(await hasErrorOverlay(page)));

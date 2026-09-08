@@ -1607,6 +1607,18 @@ export type AgentRecruitRow = {
   /** How many settled positions accrued commission — activity, without exposing turnover
    *  (⛔ a recruit's betting turnover is not the agent's to see; it is the officer's). */
   settlements: number;
+  /**
+   * ⭐ ADDED FOR THE LENS (PLAYER QUERY, task 4.11), and both are STORED-ENUM sums rather than
+   * display tokens. `lib/affiliate/recruits.ts` classifies a recruit from these three figures, so
+   * the rail filters `ReferralRewardStatus` — never the English words the chip used to print.
+   *
+   * ⛔ `reversedTzs` IS WHY THE LENS CAN HAVE A FOURTH ARM AT ALL. The dashboard already shows a
+   * `Reversed` money TILE, so the page could state that a clawback happened and could not point
+   * at WHO — and folding a clawed-back recruit in with one who has never bet is the same "one word
+   * for two outcomes" defect that forced `/watchlist` to five arms.
+   */
+  paidTzs: number;
+  reversedTzs: number;
 };
 
 export type AgentDashboard = {
@@ -1668,7 +1680,13 @@ export async function getAgentDashboard(userId: string): Promise<AgentDashboard 
     .map((u) => {
       const mine = rewards.filter((r) => r.recruitUserId === u.id && r.type === "COMMISSION");
       const paid = mine.filter((r) => r.status === "PAID").reduce((s, r) => s + r.amountTzs, 0);
-      const pending = mine.filter((r) => r.status === "PENDING").reduce((s, r) => s + r.amountTzs, 0);
+      // ⚠️ `HELD` COUNTS AS OWED, not as nothing. It is money accrued and not yet credited — the
+      //    same fact `PENDING` states, held for a different reason — and a lens that ignored it
+      //    would put a recruit with held commission in the "never bet" arm.
+      const pending = mine
+        .filter((r) => r.status === "PENDING" || r.status === "HELD")
+        .reduce((s, r) => s + r.amountTzs, 0);
+      const reversed = mine.filter((r) => r.status === "REVERSED").reduce((s, r) => s + r.amountTzs, 0);
       return {
         userId: u.id,
         maskedName: maskedRosterLabel(u, u.phoneE164),
@@ -1676,6 +1694,8 @@ export async function getAgentDashboard(userId: string): Promise<AgentDashboard 
         commissionTzs: paid + pending,
         pendingTzs: pending,
         settlements: mine.filter((r) => r.status !== "REVERSED").length,
+        paidTzs: paid,
+        reversedTzs: reversed,
       };
     });
 

@@ -92,7 +92,12 @@ function Cap({ children, className = "" }: { children: React.ReactNode; classNam
  *
  * `Cap` survives — it still has two standalone caption call sites below. */
 
-export default async function InvitePage() {
+export default async function InvitePage({
+  searchParams,
+}: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const sp = (await searchParams) ?? {};
   const session = await currentSession();
   if (!session) redirect("/auth/login?next=/profile/invite");
 
@@ -136,7 +141,17 @@ export default async function InvitePage() {
    * the same reason the gate below sits above the player summary read.
    */
   const agentDash = await getAgentDashboard(session.userId);
-  if (agentDash) return <AgentDashboard dash={agentDash} />;
+  /**
+   * ⭐ PLAYER QUERY, TASK 4.11 — the params are threaded to the agent dashboard because THAT is
+   * where this route's list lives. `getAgentDashboard` returns non-null exactly when `approvedAt`
+   * is set, and `inviteIsLiveFor` on the line below needs the same `approvedAt` via
+   * `agentInGoodStanding` — so with `PRODUCT_STATE.invite = "WITHDRAWN"` there is no third case:
+   * an approved agent lands here, everyone else lands on `notFound()`. The player promo body below
+   * opens only under `FEATURE_INVITE=ACTIVE`, which exists so the dormant branch does not rot.
+   * ⛔ So a bar on the player body would be copy nobody can proofread. It is on the book a live
+   * viewer actually reads.
+   */
+  if (agentDash) return <AgentDashboard dash={agentDash} sp={sp} />;
   if (!inviteIsLiveFor(inviteViewer)) notFound();
   // B-1 — no swallow: the fallback fabricated "0 recruits · TZS 0 earned ·
   // program off" to a player with real referral earnings. Throw to

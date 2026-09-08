@@ -156,6 +156,17 @@ const SURFACES = [
      rows to order), no search (no words), no window (a summary whose tiles disagreed about their
      span would be worse than one with no window at all). */
   "src/app/positions/performance/performance-bar.tsx", // /positions/performance — product lens
+  /* DECLARED 2026-09-08 (PLAYER QUERY, task 4.11). 🔴 THE LIST ON THIS ROUTE IS THE AGENT RECRUIT
+     BOOK, NOT THE PLAYER PROMO BODY, and that is the task's whole finding: `PRODUCT_STATE.invite`
+     is WITHDRAWN, so `inviteIsLiveFor` is true only for an agent in good standing — which requires
+     `approvedAt` — and `getAgentDashboard` returns non-null on exactly that same condition, and is
+     consulted FIRST. Approved ⇒ the dashboard; not approved ⇒ notFound(). The player promo body
+     opens only under FEATURE_INVITE=ACTIVE, which exists so the dormant branch does not rot.
+     ⚠️ THIS GATE IS A SOURCE CHECK, WHICH IS WHY THE ROUTE CAN BE DECLARED HERE AND NOT IN THE
+     LIVE DRIVERS — those sign in as a demo PLAYER, who gets notFound() on this URL, so declaring
+     it there would report a fixture gap as a broken rail. See the note in
+     `scripts/live/count-truth-drive.mjs`. */
+  "src/app/profile/invite/recruits-bar.tsx",    // /profile/invite — the agent recruit book
 ];
 
 /**
