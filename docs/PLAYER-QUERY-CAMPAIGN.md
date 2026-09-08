@@ -20,7 +20,7 @@
 ## §0 — RESUME AT
 
 ```
-▶ NEXT ACTION — Stage 5.1 in the board below (the status dictionary).
+▶ NEXT ACTION — Stage 6: the four remaining guards and the three doc tasks.
   /positions/performance: product lens All / Polls / Up & Down.
   ⛔ IT IS NOT A LIST AND IT TAKES NO PROPS. `performance/page.tsx` has no searchParams,
      no pager and no rows to filter — it is five money tiles, a P&L chart and a
@@ -42,7 +42,7 @@
   ⛔ BRANCH OFF `main`. There is no campaign branch any more — what was built is LIVE.
 ```
 
-**Stages 1–4 CLOSED (12/12, 7/7, 8/8, 14/14). Next: Stage 5, the status dictionary.**
+**Stages 1–5 CLOSED (12/12, 7/7, 8/8, 14/14, 4/4). Next: Stage 6.**
 
 > ⭐ **EVERYTHING BUILT SO FAR IS ON PRODUCTION** (2026-09-08, `main` `4e667633`). The branch
 > was merged and deleted, so a session that goes looking for `player-query-campaign` will not
@@ -561,14 +561,14 @@ Stage 4 is additive.
 already the primitive, and the board shows one current round plus at most two neighbours.
 A lens there would be a control with no job.
 
-### Stage 5 · the status dictionary (0/4)
+### Stage 5 · the status dictionary (4/4 — CLOSED)
 
 | | Task | Files |
 |---|---|---|
-| ☐ | **5.1** add `WIN` · `LOSS` · `CASHED_OUT` (and `OPEN` for the player surface) to the dictionary | `src/lib/status-tone.ts` |
-| ☐ | **5.2** record the `LOSS` divergence as a **decision**, with its reason | `STATUS_TONE_EXCEPTIONS` |
-| ☐ | **5.3** route the card through `TONE_CHIP`; **keep** the explicit fallback and the §L2 comment | `src/components/markets/position-card.tsx` |
-| ☐ | **5.4** confirm `test:gold-is-money` and `test:labels` still green | — |
+| ☑ | **5.1** `WIN` · `LOSS` · `CASHED_OUT` added. ⚠️ `OPEN` was **already there** — the plan's parenthetical was stale. ⭐ A typed `playerStatusChip()` accessor came with them: `STATUS_TONE` is `as const`, so its value type is a UNION and not every entry has a `player` arm, which makes `.player` at a call site a type error whose obvious workaround is a cast | `src/lib/status-tone.ts` |
+| ☑ | **5.2** `LOSS` recorded — and the divergence is **status-vs-betting**, not player-vs-console. Measured: `no` is `ROSE`; the status `rose` resolves to `danger`, `oklch(55% 0.20 25 / 0.22)`, the platform's FAILURE colour. Harmonising would paint a lost bet as a failure **and** put two different reds on one card, beside the No chip. `CASHED_OUT` filed too | `STATUS_TONE_EXCEPTIONS` |
+| ☑ | **5.3** routed. **Two chips repaint, both toward the dictionary:** `VOID` `neutral`→`pending` (Ali's ruling verbatim — five player surfaces already paint it royal, the card was the odd one out) and `OPEN` `info`→`pending` (`info` is not one of the nine status variants at all). `WIN`/`LOSS`/`CASHED_OUT` are byte-identical. Fallback explicit, §L2 comment alive | `src/components/markets/position-card.tsx` |
+| ☑ | **5.4** both green, plus `test:contrast`, `test:ui-consistency`, `test:tokens`. ⚠️ **`red:labels` is RED and it is NOT mine** — measured on `origin/main` in a throwaway worktree: exit 1, **11/12** mutations caught, the same one missing. ⛔ It is invisible to the suite because `test:all` enumerates `test:*`, not `red:*` — a red control with a hole that nothing runs | — |
 
 `status-tone.ts` has no entry for three of the five position statuses, so the card
 hand-types its tone in a ternary — the exact shape §B11 calls *"a chip variant hand-typed

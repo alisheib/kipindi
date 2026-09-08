@@ -148,7 +148,65 @@ export const STATUS_TONE = {
   SELF_EXCLUDED: { admin: "rose" },
   ISSUED:   { admin: "royal" },
   ACCEPTED: { admin: "green" },
+  // ── A PLAYER'S OWN POSITION (2026-09-08 · PLAYER QUERY, stage 5) ───────────────────────────
+  /**
+   * ⭐ THREE OF THE FIVE `PositionStatus` VALUES HAD NO ENTRY HERE, so `position-card.tsx`
+   * hand-typed its chip variant in a ternary beside the status label — the exact shape §B11 names
+   * as a defect ("a chip variant hand-typed beside a status label"). `home/trust-band.tsx` was
+   * already doing it correctly and is the pattern this follows.
+   *
+   * ⛔ THIS IS WHAT STOPS THE NEW *Refunded* LENS AND THE CARD IT FILTERS TO FROM DISAGREEING
+   * ABOUT WHAT REFUNDED LOOKS LIKE. Stage 4 gave five player surfaces a `void` pill; the card is
+   * where the row lands, and until now its colour for that word came from a different place than
+   * every other surface's.
+   *
+   * ⚠️ MEASURED, NOT CHOSEN — §B11's Player column records the SHIPPED state. Each tone below is
+   * what the card already paints, resolved through `TONE_CHIP`, except the two divergences that
+   * are named in `STATUS_TONE_EXCEPTIONS` as decisions.
+   */
+  /**
+   * ⭐ `gilt` RESOLVES TO THE `gold` VARIANT — byte-identical to what the card paints today, and
+   * that is Ali's ruling verbatim: *"WIN carries `gold` verbatim. `test:gold-is-money` passes
+   * today because a winning position IS a money outcome. Normalising it to `success` for tidiness
+   * would give that gate an opinion."* ⛔ Do not "harmonise" this to green.
+   */
+  WIN:  { player: "gilt" },
+  /**
+   * ⛔ THE STATUS READING IS ROSE — but the card paints the BETTING rose, which is a different
+   * token, and that is a DECISION. See `STATUS_TONE_EXCEPTIONS.LOSS`.
+   */
+  LOSS: { player: "rose" },
+  /**
+   * ⚠️ AMBER IS WHAT THE CARD ALREADY PAINTS, via the ternary's final arm, and it is recorded here
+   * as measured rather than repainted. ⛔ BUT THE MEANING DOES NOT FIT AND THAT IS FILED RATHER
+   * THAN SILENTLY CORRECTED: this file defines amber as *"an officer must DO something that is not
+   * simply waiting"*, and a cashed-out position is terminal, settled, and asks nothing of anyone.
+   * `slate` is the tone the vocabulary would give it. Repainting a live chip on a money surface is
+   * a design decision, not a dictionary entry — so the entry states the truth and the campaign
+   * board carries the question.
+   */
+  CASHED_OUT: { player: "amber" },
 } as const satisfies Record<string, Partial<Record<StatusSurface, StatusTone>>>;
+
+/**
+ * ⭐ THE PLAYER-SURFACE ACCESSOR (2026-09-08 · PLAYER QUERY, stage 5.3).
+ *
+ * ⛔ WHY IT IS A FUNCTION AND NOT AN INDEX AT THE CALL SITE. `STATUS_TONE` is `as const`, so its
+ * value type is a UNION of the entry shapes — and not every entry has a `player` arm (`APPROVED`
+ * and `ACTIVE` are console-only). Reading `.player` off that union is a type error, and the
+ * obvious way around it at a call site is a cast — which is how a surface ends up reading a tone
+ * the dictionary never gave it.
+ *
+ * ⚠️ IT RETURNS `null`, NOT A DEFAULT. A word with no player entry is a word this dictionary has
+ * no opinion about on a player surface, and that is a different fact from "royal". The caller
+ * supplies its own fallback and can SEE itself doing so — Ali's ruling: *"A bare map lookup
+ * returning `undefined` is an untoned chip that no gate would catch."*
+ */
+export function playerStatusChip(word: string): StatusChipVariant | null {
+  const entry = (STATUS_TONE as Record<string, Partial<Record<StatusSurface, StatusTone>>>)[word];
+  const tone = entry?.player;
+  return tone ? TONE_CHIP[tone] : null;
+}
 
 /**
  * ⛔ THE DIVERGENCES THAT ARE DECISIONS, STATED AS DECISIONS.
@@ -205,4 +263,36 @@ export const STATUS_TONE_EXCEPTIONS = {
    * repaints when it lands.
    */
   VOID: "Royal to a player (a refund is not a fault) · slate in the console market table (terminal, inert) · claret in the resolver's settlement ceremony (§B4a, an irreversible operator act).",
+  /**
+   * ⭐ ADDED 2026-09-08 (PLAYER QUERY, stage 5.2) — ALI'S RULING, recorded as a decision so it
+   * stops looking like a drift: *"`LOSS` keeps the betting rose, recorded in
+   * `STATUS_TONE_EXCEPTIONS` with its reason — a lost bet is betting semantics."*
+   *
+   * ⛔ THE DIVERGENCE IS NOT PLAYER-vs-CONSOLE, IT IS STATUS-vs-BETTING, and that is why it needs
+   * writing down. Every other entry in this dictionary resolves through `TONE_CHIP`, whose nine
+   * variants are the STATUS vocabulary. `LOSS` on a position card paints the `no` variant — the
+   * BETTING rose, the same colour the card's own side chip uses for the No side, one row above it.
+   *
+   * ⚠️ THEY ARE DIFFERENT TOKENS, MEASURED: `no` is `ROSE`; `rose` resolves to `danger`, which is
+   * `oklch(55% 0.20 25 / 0.22)` — a redder, hotter red. Harmonising `LOSS` onto `danger` would
+   * paint a lost bet in the platform's FAILURE colour, and a bet that lost is not a failure of
+   * anything: it is the ordinary other half of a two-sided market. ⛔ It would also put a
+   * different red beside the No chip it sits next to, on the same card, in the same row.
+   *
+   * ⭐ SO THE CARD KEEPS AN EXPLICIT `"no"` ARM rather than reading `TONE_CHIP[STATUS_TONE.LOSS…]`,
+   * and the arm carries a pointer back to this entry. The table's `rose` records what the STATUS
+   * reading would be — for any surface that renders the word outside a betting context — and this
+   * note records why the card does not use it.
+   */
+  LOSS: "Betting rose (`no`) on a position card — the same red as the No side chip beside it — NOT the status `rose`/`danger`, which is the platform's failure colour. A bet that lost is the ordinary other half of a two-sided market, not a fault.",
+  /**
+   * ⚠️ NOT A DIVERGENCE — AN OPEN QUESTION, recorded here because this is where someone will look.
+   * `CASHED_OUT` is entered in the table as `amber`, which is what the card already paints, and
+   * this file defines amber as "an officer must DO something that is not simply waiting". A
+   * cashed-out position is terminal and asks nothing of anyone; `slate` is what the vocabulary
+   * would give it. ⛔ Repainting a live chip on a money surface is Ali's call, so the entry states
+   * the shipped truth and the campaign board carries the question. Whoever answers it: if the
+   * answer is slate, the table entry changes and this note is deleted, not amended.
+   */
+  CASHED_OUT: "Entered as amber because that is what the card paints; amber's stated meaning does not fit a terminal player-side state. Slate is the vocabulary's answer. Ali's call — filed, not repainted.",
 } as const satisfies Partial<Record<keyof typeof STATUS_TONE, string>>;
