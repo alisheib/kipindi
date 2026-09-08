@@ -23,6 +23,16 @@ import { RefreshPoller } from "@/components/ui/refresh-poller";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { getServerT, type Dict } from "@/lib/i18n-server";
 import { PageContainer } from "@/components/layout/page-container";
+import { QUERY_BAR_ROW2_CLASS, QuerySort } from "@/components/ui/query-bar";
+import {
+  LEADER_NATURAL_DIR,
+  LEADER_SORTS,
+  buildLeaderHref,
+  leaderDir,
+  parseLeaderParams,
+  type LeaderSortId,
+  type LeaderState,
+} from "@/lib/leaderboard/board";
 
 export async function generateMetadata() {
   const { t } = await getServerT();
@@ -112,7 +122,7 @@ function dailyStakes(positions: Array<{ stake: number; placedAt: string }>, days
   return out;
 }
 
-async function buildLeaderboard() {
+async function buildLeaderboard(state: LeaderState): Promise<{ rows: Row[]; capped: boolean }> {
   // 🔴 This used to load EVERY user with no `where` or `take`, then fire one positions
   // query per user. The old comment said "N+1 → 1"; running them in parallel does not
   // remove an N+1, it aims all of it at the connection pool at once. Measured at 1,000
@@ -123,8 +133,19 @@ async function buildLeaderboard() {
   // B-1 — no swallow: a failed aggregate must throw to leaderboard/error.tsx.
   // The old `catch { return [] }` rendered an empty board (or, worse, the
   // non-production SYNTHETIC board) whenever the read failed.
-  const ranked = await positionStore.leaderboard(BOARD_SIZE);
-  if (ranked.length === 0) return [];
+  /**
+   * ⛔ THE SORT GOES INTO THE QUERY, NOT OVER ITS RESULT. On this board the ORDER BY chooses the
+   * rows, so a JS sort would leave the SELECTION on ROI and change only the label — "most staked"
+   * would mean *the biggest staker among the fifty best ROIs*. See `lib/leaderboard/board.ts`.
+   *
+   * ⭐ AND `BOARD_SIZE + 1` IS HOW THE CAP IS DETECTED. ⛔ Never `ranked.length === BOARD_SIZE`,
+   * which tells a platform with EXACTLY fifty ranked players that its board was truncated when it
+   * was complete. One extra row is fetched, the extra is dropped, and its existence is the answer.
+   */
+  const over = await positionStore.leaderboard(BOARD_SIZE + 1, { sort: state.sort, dir: leaderDir(state) });
+  const capped = over.length > BOARD_SIZE;
+  const ranked = over.slice(0, BOARD_SIZE);
+  if (ranked.length === 0) return { rows: [], capped: false };
 
   // Only the rows actually being rendered need a name and a streak, so this is bounded
   // by BOARD_SIZE — 50 — no matter how large the platform grows.
@@ -175,7 +196,7 @@ async function buildLeaderboard() {
       spark: dailyStakes(detail[i].positions, 14),
     });
   }
-  return out;
+  return { rows: out, capped };
 }
 
 /** Demo-mode filler — synthesizes a believable leaderboard so the UI is
@@ -204,9 +225,11 @@ function syntheticLeaderboard(): Row[] {
   }).sort((a, b) => b.roi - a.roi);
 }
 
-export default async function LeaderboardPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
+export default async function LeaderboardPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const { t } = await getServerT();
-  const real = await buildLeaderboard();
+  const sp = await searchParams;
+  const state = parseLeaderParams(sp);
+  const { rows: real, capped } = await buildLeaderboard(state);
   // Show REAL players from the very first one so a player can always see
   // themselves ranked. The synthetic sample board is a NON-PRODUCTION demo
   // convenience only — a licensed real-money site must never present
@@ -215,14 +238,31 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
   const isSynthetic = real.length === 0 && process.env.NODE_ENV !== "production";
   const rows = isSynthetic ? syntheticLeaderboard() : real;
   // Paginate the ranking the same way every other list on the platform paginates.
-  const sp = await searchParams;
+  // ⛔ `baseHref` CARRIES THE SORT. It was the bare string "/leaderboard", so turning a page
+  //    silently dropped the ordering and put the reader back on ROI without saying so.
+  const baseHref = buildLeaderHref(state);
   const totalPages = Math.max(1, Math.ceil(rows.length / PLAYER_PER_PAGE));
-  const safePage = Math.min(Math.max(1, parseInt(sp.page ?? "1", 10) || 1), totalPages);
+  const safePage = Math.min(Math.max(1, parseInt(String(sp.page ?? "1"), 10) || 1), totalPages);
   const offset = (safePage - 1) * PLAYER_PER_PAGE;
   const pagedRows = rows.slice(offset, offset + PLAYER_PER_PAGE);
 
   // Tier display name from the dict (first word of the tier description)
   const tierDisplayName = (tier: Tier) => t.leaderboard[`tier${tier.charAt(0).toUpperCase()}${tier.slice(1)}` as keyof typeof t.leaderboard].split(" ")[0];
+
+  /**
+   * ⛔ EVERY SORT LABEL IS A NUMBER THIS TABLE PRINTS, or the figure the page leads with. A sort
+   * named for something the reader cannot see is ordering by an invisible key — the defect
+   * `/results` shipped when it sorted on a clock its cards were not showing.
+   */
+  const sortLabel = (s: LeaderSortId) => {
+    switch (s) {
+      case "roi": return t.leaderboard.bestRoi;
+      case "net": return t.leaderboard.sortNet;
+      case "staked": return t.leaderboard.sortStaked;
+      case "resolved": return t.leaderboard.tableResolved;
+    }
+  };
+  const dir = leaderDir(state);
 
   return (
     <PageContainer tier="reading" className="space-y-6">
@@ -242,9 +282,63 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
         stats={[
           { label: t.leaderboard.topTier, value: tierDisplayName(rows[0]?.tier ?? "bronze"), accent: "gold" },
           { label: t.leaderboard.bestRoi, value: `${rows[0]?.roi.toFixed(1) ?? "0"}%`, accent: "yes" },
-          { label: t.leaderboard.predictorsCount, value: rows.length.toLocaleString("en-US") },
+          /**
+           * 🔴 THIS PRINTED THE BOARD SIZE UNDER THE LABEL "PREDICTORS". `rows` is the ranking,
+           * capped at BOARD_SIZE, so a platform with a thousand ranked players advertised **50** —
+           * a false public figure on the page a player checks to see how they compare, and it got
+           * *less* true the more the platform grew. ⛔ It is now stated as what it is: the number
+           * of players ON the board, with the cap named when it bites.
+           */
+          {
+            label: capped ? t.leaderboard.rankedShown : t.leaderboard.predictorsCount,
+            value: rows.length.toLocaleString("en-US"),
+          },
         ]}
       />
+
+      {/**
+        * ⭐ THE SORT, AND NOTHING ELSE — no `data-filter-rail` and no pills, deliberately.
+        * `test:filter-language` requires a DECLARED surface to render `<FilterPill>` in its own
+        * source, and this page has no filter: a sort narrows nothing, every ranked row is still on
+        * the board. Declaring it would put an empty rail into four instruments' populations and
+        * make each of them report a pass over a control that does not exist. `/notifications`'
+        * sort is outside `qa:count-truth` for exactly this reason — a menu publishes no
+        * `data-count` to check.
+        *
+        * ⚠️ IT IS THE SHARED CONTROL ALL THE SAME, so the sort a player learned on `/positions`
+        * behaves identically here — same fused direction button, same tri-state, same reset-to-
+        * natural on choosing a new key.
+        */}
+      <div className={QUERY_BAR_ROW2_CLASS}>
+        <QuerySort
+          label={t.common.sort}
+          value={sortLabel(state.sort)}
+          ariaLabel={t.leaderboard.topPredictors}
+          options={LEADER_SORTS.map((s) => ({
+            id: s,
+            label: sortLabel(s),
+            href: buildLeaderHref(state, { sort: s, dir: null }),
+            on: state.sort === s,
+            naturalDir: LEADER_NATURAL_DIR[s],
+          }))}
+          dir={dir}
+          dirHref={buildLeaderHref(state, { dir: dir === "asc" ? "desc" : "asc" })}
+          ascLabel={t.market.sortedAsc}
+          descLabel={t.market.sortedDesc}
+        />
+      </div>
+
+      {/* ⛔ THE CAP, STATED WHEN IT BITES — detected by reading BOARD_SIZE + 1, never by
+          `rows.length === BOARD_SIZE`, which tells a platform with exactly fifty ranked players
+          that its board was truncated when it was complete. */}
+      {/* ⚠️ `text-body-sm`, NOT `text-[11px]`. This is a SENTENCE — §T4's 12.5px reading floor
+          applies, and `text-caption`/`text-label` sit below it and do not count as a fix.
+          `test:type-scale` §3 caught it as a NEW offender the moment it was written. */}
+      {capped && (
+        <p className="text-body-sm text-text-subtle">
+          {fill(t.leaderboard.boardCapped, { n: String(rows.length) })}
+        </p>
+      )}
 
       {/* A10 podium — top-3, #1 raised in a gilt ring + crown. Real players
           from row 1; only shown with a genuine top-3. */}
@@ -277,7 +371,7 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
                   ⛔ `transition-colors` STAYS. The background still changes on hover — it just
                   comes from the canon — and this class is what eases it. */}
             {pagedRows.map((r, i) => (
-              <tr key={r.userId} className="border-b border-border last:border-b-0 transition-colors">
+              <tr key={r.userId} data-row-id={r.userId} className="border-b border-border last:border-b-0 transition-colors">
                 <td className="p-3 font-mono font-bold tabular-nums">
                   <span className={offset + i < 3 ? "text-brand-300" : "text-text-subtle"}>{offset + i + 1}</span>
                 </td>
@@ -314,7 +408,7 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
 
       {totalPages > 1 && (
         <div className="rounded-lg border border-border bg-bg-elevated/40 overflow-hidden">
-          <Pagination total={rows.length} page={safePage} perPage={PLAYER_PER_PAGE} baseHref="/leaderboard" ofLabel={t.common.of} prevLabel={t.common.previousPage} nextLabel={t.common.nextPage} firstLabel={t.common.firstPage} lastLabel={t.common.lastPage} />
+          <Pagination total={rows.length} page={safePage} perPage={PLAYER_PER_PAGE} baseHref={baseHref} ofLabel={t.common.of} prevLabel={t.common.previousPage} nextLabel={t.common.nextPage} firstLabel={t.common.firstPage} lastLabel={t.common.lastPage} />
         </div>
       )}
         </>

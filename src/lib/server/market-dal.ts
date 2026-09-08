@@ -406,7 +406,24 @@ export interface PositionStore {
    * same rows the page rendered, chosen by the database rather than by loading the
    * platform into memory and sorting it there.
    */
-  leaderboard(limit: number): Promise<Array<{
+  /**
+   * ⛔ `opts` IS NOT A CONVENIENCE — THE ORDER BY *IS* THE SELECTION ON THIS BOARD.
+   *
+   * 🔴 The aggregate returns the top `limit` rows chosen BY the ordering, so a JS sort applied
+   * afterwards would answer a different question from the one its label asks. "Most staked" over
+   * a ROI-selected fifty means *the biggest staker among the fifty best ROIs* — a player with the
+   * platform's largest book and a poor ROI is not in the fifty, never appears, and nothing on the
+   * page says so. That is §3 rule 4's own failure ("the number was true and the board was still a
+   * lie") with the promise moved from a count into a sort label.
+   *
+   * ⚠️ The direction matters for the same reason: `?sort=roi&dir=asc` over a JS re-sort would read
+   * "the worst predictors" and in fact be "the 50th- through 1st-BEST".
+   *
+   * ⛔ THE URL NEVER REACHES THE SQL. `sort` and `dir` are closed sets narrowed by `oneOf` before
+   * they get here, and they select a LITERAL fragment from a table — no interpolation of request
+   * text, at any point.
+   */
+  leaderboard(limit: number, opts?: { sort: LeaderSortKey; dir: "asc" | "desc" }): Promise<Array<{
     userId: string;
     resolved: number;
     staked: number;
@@ -649,7 +666,7 @@ const memoryPositions: PositionStore = {
   async listForUserAndMarket(userId, marketId) {
     return Array.from(positions.values()).filter((p) => p.userId === userId && p.marketId === marketId);
   },
-  async leaderboard(limit) {
+  async leaderboard(limit, opts) {
     // Same shape as the SQL below, so the page renders identical rows either way.
     const acc = new Map<string, { resolved: number; staked: number; paidOut: number }>();
     for (const p of positions.values()) {
@@ -660,8 +677,11 @@ const memoryPositions: PositionStore = {
       e.paidOut += p.finalPayout ?? 0;
       acc.set(p.userId, e);
     }
+    // ⛔ THROUGH THE SHARED COMPARATOR, not a local `roiOf(b) - roiOf(a)`. The ordering CHOOSES
+    //    the rows here (`.slice(limit)` below), so the two stores disagreeing about it would mean
+    //    two different boards — and `test:dal-parity` exists because they have disagreed before.
     return Array.from(acc, ([userId, v]) => ({ userId, ...v }))
-      .sort((a, b) => roiOf(b) - roiOf(a))
+      .sort((a, b) => leaderboardCompare(opts, a, b))
       .slice(0, limit);
   },
   async findByIdempotencyKey(key, _tx) {
@@ -701,6 +721,90 @@ const DIGESTED_STATUSES = ["WIN", "LOSS", "VOID"] as const;
  *  cannot drift into ranking by three slightly different numbers. */
 export function roiOf(r: { staked: number; paidOut: number }): number {
   return r.staked > 0 ? ((r.paidOut - r.staked) / r.staked) * 100 : 0;
+}
+
+/**
+ * The four orderings the leaderboard can be selected by. ⛔ A CLOSED SET, and the only thing the
+ * URL contributes is which member of it — the fragments themselves are literals in this file.
+ *
+ * ⚠️ `streak` IS DELIBERATELY ABSENT and the page's own note says why: it is not in this aggregate
+ * and cannot be pushed down, so offering it would mean re-ordering an already-chosen fifty — the
+ * exact defect this whole seam exists to prevent.
+ */
+export type LeaderSortKey = "roi" | "net" | "staked" | "resolved";
+
+/**
+ * The ORDER BY for one leaderboard sort, as literal SQL.
+ *
+ * ⛔ `nulls last` IS WRITTEN ON BOTH DIRECTIONS, EXPLICITLY, AND THAT IS NOT NOISE. Postgres
+ * defaults to `nulls first` for `desc` and `nulls last` for `asc` — so a player whose ROI is NULL
+ * (a zero-stake group, which `nullif(sum("stake"), 0)` produces) would sit at the TOP of an
+ * ascending board and the BOTTOM of a descending one. `lib/query/sort.ts` states the same rule for
+ * the JS comparator in its own words: rows with no value for this sort go last in BOTH directions,
+ * because coercing them lands them last one way and FIRST the moment the reader flips the arrow.
+ * The two halves of the product must agree about it.
+ *
+ * ⭐ EVERY SORT CARRIES ITS TIE-BREAK IN THE SQL, mirroring the contract's `tieBreak` record. Two
+ * players with an identical ROI are not interchangeable, and without a tie-break their order is
+ * whatever the plan happened to produce — on a public board that re-reads every 30 seconds, that
+ * is a ranking that reshuffles under the reader for no reason they can see.
+ */
+const LEADERBOARD_ORDER: Record<LeaderSortKey, string> = {
+  roi: `(coalesce(sum("finalPayout"), 0) - coalesce(sum("stake"), 0)) / nullif(sum("stake"), 0)`,
+  net: `(coalesce(sum("finalPayout"), 0) - coalesce(sum("stake"), 0))`,
+  staked: `coalesce(sum("stake"), 0)`,
+  resolved: `count(*)`,
+};
+
+/** The secondary keys, per sort — identical in intent to the contract's `tieBreak`. */
+const LEADERBOARD_TIE: Record<LeaderSortKey, string> = {
+  roi: `count(*) desc`,
+  net: `coalesce(sum("stake"), 0) desc`,
+  staked: `count(*) desc`,
+  resolved: `(coalesce(sum("finalPayout"), 0) - coalesce(sum("stake"), 0)) / nullif(sum("stake"), 0) desc nulls last`,
+};
+
+export function leaderboardOrderBy(opts?: { sort: LeaderSortKey; dir: "asc" | "desc" }): string {
+  // ⛔ The default is ROI descending — byte-identical to the ordering this board shipped with, so
+  //    `/leaderboard` with no params renders exactly the page a player already knows.
+  const sort: LeaderSortKey = opts?.sort ?? "roi";
+  const dir = opts?.dir === "asc" ? "asc" : "desc";
+  // ⛔ `"userId" asc` LAST, ALWAYS — the total order. Without a final unique key the tie-break
+  //    itself can tie, and the board reshuffles between two polls.
+  return `${LEADERBOARD_ORDER[sort]} ${dir} nulls last, ${LEADERBOARD_TIE[sort]}, "userId" asc`;
+}
+
+/** The in-memory twin of one leaderboard ordering. ⛔ Must agree with `LEADERBOARD_ORDER`. */
+export function leaderboardCompare(
+  opts: { sort: LeaderSortKey; dir: "asc" | "desc" } | undefined,
+  a: { userId: string; resolved: number; staked: number; paidOut: number },
+  b: { userId: string; resolved: number; staked: number; paidOut: number },
+): number {
+  const sort: LeaderSortKey = opts?.sort ?? "roi";
+  const dir = opts?.dir === "asc" ? "asc" : "desc";
+  // ⛔ `null` FOR A ZERO-STAKE ROI, mirroring `nullif(sum("stake"), 0)`. `roiOf` returns 0 there,
+  //    and 0 is a POSITION on this scale rather than an absence — the memory store used to rank
+  //    such a row as "exactly break-even" while the SQL excluded it from the ordering entirely.
+  const key = (r: { resolved: number; staked: number; paidOut: number }): number | null => {
+    switch (sort) {
+      case "roi": return r.staked > 0 ? roiOf(r) : null;
+      case "net": return r.paidOut - r.staked;
+      case "staked": return r.staked;
+      case "resolved": return r.resolved;
+    }
+  };
+  const ka = key(a), kb = key(b);
+  // Nulls last in BOTH directions — the same rule the SQL writes as `nulls last` twice.
+  if (ka == null && kb == null) return 0;
+  if (ka == null) return 1;
+  if (kb == null) return -1;
+  const primary = dir === "asc" ? ka - kb : kb - ka;
+  if (primary !== 0) return primary;
+  const tie =
+    sort === "net" ? b.staked - a.staked
+    : sort === "resolved" ? (b.staked > 0 ? roiOf(b) : -Infinity) - (a.staked > 0 ? roiOf(a) : -Infinity)
+    : b.resolved - a.resolved;
+  return tie !== 0 ? tie : (a.userId < b.userId ? -1 : a.userId > b.userId ? 1 : 0);
 }
 
 // ---------------------------------------------------------------------------
@@ -1059,10 +1163,13 @@ const prismaPositions: PositionStore = {
     });
     return rows.map(toStoredPosition);
   },
-  async leaderboard(limit) {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async leaderboard(limit, opts) {
     // ONE aggregate. Raw SQL rather than Prisma groupBy because the ORDER BY is a
     // computed ratio (ROI), not a column, and `nullif` keeps a zero-stake row from
     // dividing by zero instead of excluding it.
+    // ⛔ The ORDER BY moves with the sort — see the interface note: on this board the
+    //    ordering chooses the rows, so a JS sort would relabel a ROI-selected fifty.
     const rows = await pc().$queryRawUnsafe<
       Array<{ userId: string; resolved: bigint; staked: string; paidOut: string }>
     >(
@@ -1073,8 +1180,7 @@ const prismaPositions: PositionStore = {
          from "public"."Position"
         where "status" <> 'OPEN'
         group by "userId"
-        order by (coalesce(sum("finalPayout"), 0) - coalesce(sum("stake"), 0))
-                 / nullif(sum("stake"), 0) desc nulls last
+        order by ${leaderboardOrderBy(opts)}
         limit $1`,
       limit,
     );

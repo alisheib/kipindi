@@ -269,8 +269,9 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
             read, not from `rows.length === CAP` — the shape that tells a player with exactly the
             cap that their history was cut when it was complete. `/updown/history` is the precedent
             for saying it at all; what it did not have is a count to say it WITH. */}
+        {/* ⚠️ `text-body-sm` — a sentence is reading copy and §T4's 12.5px floor applies. */}
         {own.truncated && (
-          <p className="font-mono text-[11px] text-text-subtle">
+          <p className="text-body-sm text-text-subtle">
             {t.profile.activityCapped
               .replace("{n}", String(allActivity.length))
               .replace("{total}", String(own.total))}

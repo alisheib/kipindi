@@ -20,21 +20,23 @@
 ## §0 — RESUME AT
 
 ```
-▶ NEXT ACTION — task 4.8 in the board below.
-  /leaderboard: sort only — ROI · net · streak · volume.
-  ⛔ THREE OF THOSE FOUR ARE FREE AND ONE IS NOT. `positionStore.leaderboard(limit)` has NO
-     sort parameter and its SQL orders by ROI; net and volume are already SELECTed
-     (`sum(finalPayout) - sum(stake)` is literally the ORDER BY's numerator, and
-     `sum(stake) as staked` is returned). But STREAK is computed in JS, per user, from a
-     bounded 200-position read AFTER the top-50-by-ROI have been chosen — so a "streak"
-     sort would re-order the wrong 50 and call it a leaderboard. Decide that in the
-     contract, in writing, before building it.
+▶ NEXT ACTION — task 4.9 in the board below.
+  /live: move `q` into the URL (mode="url"), so a shared link keeps the search.
+  ⛔ THE PAGE TAKES NO PROPS AT ALL TODAY — `export default async function LivePage()` —
+     so this is not a one-word change to `mode`: the page has to start accepting
+     searchParams, and the wall is a "use client" grid that filters an already-loaded
+     list. Decide whether the URL drives the SERVER read or only seeds the client
+     filter, and write down which — `/live` is the ONE player board that deliberately
+     shows BOTH product lines (`listMarkets({status:"LIVE", productLine:"ALL"})`), and
+     that read is UNBOUNDED, so moving the filter server-side changes what it costs.
+  ⚠️ MARKET_SEARCH advertises `criterion:` and `status:` as chips, but neither field is
+     on /live's view model — those two queries can never match. Fix or narrow the chips.
   One commit per route.
 
   ⛔ BRANCH OFF `main`. There is no campaign branch any more — what was built is LIVE.
 ```
 
-**Stage 4 of 6. Stages 1–3 CLOSED (12/12, 7/7, 8/8). 4.1–4.7 done; 7 routes left.**
+**Stage 4 of 6. Stages 1–3 CLOSED (12/12, 7/7, 8/8). 4.1–4.8 done; 6 routes left.**
 
 > ⭐ **EVERYTHING BUILT SO FAR IS ON PRODUCTION** (2026-09-08, `main` `4e667633`). The branch
 > was merged and deleted, so a session that goes looking for `player-query-campaign` will not
@@ -384,7 +386,7 @@ git fetch && git checkout player-query-campaign
 | 1 | **The core** | the six existing gates in §8 green **with no edits to those scripts** | ✅ **12/12** |
 | 2 | **`/positions`** | `qa:player-filters` + `qa:count-truth` green on it; 360 Swahili screenshot looked at | ✅ **7/7** |
 | 3 | **`/wallet`** | same, plus the 1,000-row cap is stated to the player | ✅ **8/8** |
-| 4 | **The other 13 pages** | every census-A and census-B route done, one commit each | ▶ **7/14** |
+| 4 | **The other 13 pages** | every census-A and census-B route done, one commit each | ▶ **8/14** |
 | 5 | **The status dictionary** | `position-card.tsx` has no hand-typed tone; `test:gold-is-money` still green | ☐ 0/4 |
 | 6 | **Guards + docs** | the full §8 sweep passes and each new guard's RED control has been *seen to fail* | ▶ **3/9** (6.5, 6.6, + `qa:bar-geometry`, unplanned) |
 
@@ -522,7 +524,7 @@ grep -n "grants.slice\|status: {" src/app/wallet/page.tsx src/app/wallet/wallet-
 Five of the seven statuses are invisible on **every** player surface, so a player cannot see
 a bonus they were granted and lost.
 
-### Stage 4 · the other thirteen pages (7/14)
+### Stage 4 · the other thirteen pages (8/14)
 
 One commit each, in this order. Same bar, same nine rules.
 
@@ -535,7 +537,7 @@ One commit each, in this order. Same bar, same nine rules.
 | ☑ | **4.5** `/notifications` | the `data-filter-rail` hook it had NEVER carried, + **search that runs in SQL** (the inbox is unbounded — 360 rows/day), + the sort moved out of a second pill rail into the shared control. ⛔ Lenses kept VERBATIM — they were already right. 🔴 The new search arrived saying *"No notifications yet"* over 71 rows |
 | ☑ | **4.6** `/profile/account` | counts on the existing category rail; When; sort; search. 🔴 Its read was the **in-memory audit ring** — 10,000 rows GLOBALLY, per-container, emptied by every deploy — so the counts this task adds would have been an accident of uptime. `getAuditForActorDurable` now, which also repairs the **GDPR Art. 15 export** that read the same ring. 🔴 `?act=` was passed through unnarrowed (`?act=lol` emptied the table with nothing to clear it), and the rail hid itself below TWO categories while the filter stayed applied. 🔴 The stored enum reached the player in **three** places, one of them inside a translated sentence |
 | ☑ | **4.7** `/fairness` | 🔴 It read `listMarkets({status:"RESOLVED"})` — an exact equality, not an `IN` — so **voided settlements were invisible on the page that exists to prove settlements**. Now `listTerminalMarkets()`: `RESOLVED ∪ VOIDED`, memoised, and strictly cheaper than the uncached read it replaces. ⛔ **The plan's lens `All · Resolved · Voided` was WRONG twice** — an enumeration where a residual belongs, and *coarser than the column beside it* (status and outcome are in bijection here, so `Resolved` is exactly `yes ∪ no` on a page that already prints them apart). It is `?out=all · yes · no · void`, byte-identical to `/results`, with `void` as a **negation**. 🔴 Three more live defects on the way: the table was ordered **oldest-first under a heading saying "Recently resolved"** (and by the market's *scheduled* clock, not the settlement one it prints); it rendered the **literal characters `…`** three times, because `…` as a JSX *text child* is not an escape; and it **published 12 characters of internal officer user-ids on an unauthenticated page** while its own sibling feed refuses to, in writing |
-| ☐ | **4.8** `/leaderboard` | sort only — ROI · net · streak · volume. Hard-wired in SQL today |
+| ☑ | **4.8** `/leaderboard` | ⛔ **"Sort only" was not available here, because the SORT *IS* THE SELECTION.** `leaderboard(limit)` is `order by … limit 50`, so a JS sort would have left the selection on ROI and changed only the label — *"most staked"* meaning **the biggest staker among the fifty best ROIs**. The ORDER BY moves with the sort, into BOTH stores. 🔴 **`streak` is CUT** — it is not in the aggregate, so it could only re-order an already-chosen fifty; and it is walked in `placedAt` order while a streak is a fact about SETTLEMENT order, which on a table mixing 5-minute rounds with multi-week polls routinely disagree. The column stays; making it *selectable* is refused, in writing. `volume` → `staked` (this platform already uses "volume" for a market's pool). 🔴 The ribbon printed the **board size** under the label "Predictors", so a platform with 1,000 ranked players advertised **50** — a false public number that got *less* true as the platform grew. New gate `test:leaderboard-order` 31/31, red-proven against a JS re-label |
 | ☐ | **4.9** `/live` | move `q` into the URL (`mode="url"`), so a shared link keeps the search |
 | ☐ | **4.10** `/positions/performance` | product lens `All · Polls · Up & Down` — the one player list that mixes both product lines |
 | ☐ | **4.11** `/profile/invite` | lens `All · Earning · First bet · Signed up` + sort. Unbounded and unsorted today |
