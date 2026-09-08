@@ -69,6 +69,8 @@
     "qa:withdrawn-render": "node scripts/live/withdrawn-render-drive.mjs",
     "qa:withdrawal-visual": "node scripts/live/withdrawal-visual-drive.mjs",
     "qa:agent-drive": "node scripts/live/agent-programme-drive.mjs",
+    "qa:agent-visual": "node scripts/live/agent-v1-visual.mjs",
+    "qa:agent-visual-authed": "node scripts/live/agent-v1-visual-authed.mjs",
     "red:rg-doors": "node scripts/red-rg-doors.mjs",
     "test:webhook-sec": "tsx scripts/webhook-security.test.mts",
     "test:lock-hash": "tsx scripts/lock-hash.test.mts",
