@@ -12,6 +12,7 @@ import { PageContainer } from "@/components/layout/page-container";
 import { VerifiedAgentBadge } from "@/components/agent/verified-agent-badge";
 import { ReferralShare } from "./invite-client";
 import { getServerT } from "@/lib/i18n-server";
+import { fillNodes } from "@/lib/fill-nodes";
 import { fill, formatNumber, formatTzs, formatDateShort as fmtDate } from "@/lib/utils";
 import type { AgentDashboard as AgentDashboardModel } from "@/lib/server/affiliate-service";
 
@@ -66,7 +67,7 @@ export async function AgentDashboard({ dash }: { dash: AgentDashboardModel }) {
             <li>{t.agent.dashPaidAs}</li>
             <li>{t.agent.dashNoWagering}</li>
             <li>{dash.windowMonths === 0 ? t.agent.earnLifetime : fill(t.agent.earnWindow, { months: String(dash.windowMonths) })}</li>
-            <li>{dash.capPerRecruitTzs === 0 ? t.agent.earnUncapped : fill(t.agent.earnCapped, { amount: formatTzs(dash.capPerRecruitTzs) })}</li>
+            <li>{dash.capPerRecruitTzs === 0 ? t.agent.earnUncapped : fillNodes(t.agent.earnCapped, { amount: <span className="amount">{formatTzs(dash.capPerRecruitTzs)}</span> })}</li>
             <li>{t.agent.earnSingleLevel}</li>
           </ul>
         </div>

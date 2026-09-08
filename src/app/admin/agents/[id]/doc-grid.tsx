@@ -36,7 +36,7 @@ export function DocGrid({ applicationId, tiles, thirdPartyHoldDays }: { applicat
             <button key={d.docType} type="button" disabled={!present} onClick={() => present && setOpen(d)}
               className={`min-h-[120px] rounded-xl border p-3 text-left transition-colors ${
                 !present ? "border-border bg-bg-overlay/30 cursor-not-allowed"
-                : d.rejected ? "border-warning-500/60 bg-warning-500/[0.06] hover:border-warning-400"
+                : d.rejected ? "border-warning-500/60 bg-warning-500/[0.06] hover:border-warning"
                 : "border-border bg-bg-overlay/40 hover:border-brand-400"
               }`}>
               <div className="flex items-start justify-between gap-2">

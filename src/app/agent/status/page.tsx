@@ -32,7 +32,7 @@ export const dynamic = "force-dynamic";
  * they may apply again.
  *
  * ⛔ B-1: a failed read THROWS to the route's error boundary. This page never fabricates
- * "you have no application" on a degraded read — that is a TZS 100,000 receipt it would be
+ * "you have no application" on a degraded read — that is a paid registration fee it would be
  * denying.
  */
 export default async function AgentStatusPage() {

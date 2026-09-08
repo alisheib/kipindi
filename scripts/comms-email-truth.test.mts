@@ -167,8 +167,16 @@ const RENDERS: Rendered[] = [
     benign:  E.agentApplicationSubmittedAdminHtml({ reference: "agp_a1", applicantLabel: "Asha M.", submittedAt: "2026-09-07T10:00:00.000Z", reviewUrl: "https://www.50pick.tz/admin/agents/agp_a1" }),
     hostile: E.agentApplicationSubmittedAdminHtml({ reference: HOSTILE, applicantLabel: HOSTILE, submittedAt: "2026-09-07T10:00:00.000Z", reviewUrl: "https://www.50pick.tz/admin/agents/agp_a1" }) },
   { template: "agentInvitationHtml",
-    benign:  E.agentInvitationHtml({ link: "https://www.50pick.tz/agent/invite/tok", expiresAt: "2026-09-21T10:00:00.000Z", feeWaivable: true, feeTzs: 100_000 }),
-    hostile: E.agentInvitationHtml({ link: "https://www.50pick.tz/agent/invite/tok", expiresAt: "2026-09-21T10:00:00.000Z", feeWaivable: false, feeTzs: 100_000 }) },
+    // ⚠️ 118_000 — the applicant-facing TOTAL under management's EXCLUSIVE VAT treatment
+    // (2026-09-08). The fee CONFIG is still 100,000; what a person is told to pay is not.
+    benign:  E.agentInvitationHtml({ link: "https://www.50pick.tz/agent/invite/tok", expiresAt: "2026-09-21T10:00:00.000Z", feeWaivable: true, feeTzs: 118_000 }),
+    hostile: E.agentInvitationHtml({ link: "https://www.50pick.tz/agent/invite/tok", expiresAt: "2026-09-21T10:00:00.000Z", feeWaivable: false, feeTzs: 118_000 }) },
+  // ⭐ The invitation's one-time code, by email since 2026-09-08. The hostile fixture drives
+  // a code full of markup: the template `esc()`s it, and this suite renders every builder
+  // twice for exactly that reason.
+  { template: "agentInviteOtpHtml",
+    benign:  E.agentInviteOtpHtml({ code: "483920", minutes: 5 }),
+    hostile: E.agentInviteOtpHtml({ code: HOSTILE, minutes: 5 }) },
   { template: "agentDeactivatedHtml",
     benign:  E.agentDeactivatedHtml(),
     hostile: E.agentDeactivatedHtml() },
@@ -277,7 +285,7 @@ ok("every template is rendered by this suite",
   exported.every((n) => RENDERS.some((r) => r.template === n)),
   `never rendered: ${exported.filter((n) => !RENDERS.some((r) => r.template === n)).join(", ") || "-"}`);
 // 56 = the 49 certified 2026-07-31 plus the agent programme's seven (2026-09-07).
-ok(`the inventory is 60 templates (found ${exported.length})`, exported.length === 60);
+ok(`the inventory is 61 templates (found ${exported.length})`, exported.length === 61);
 
 // ── 2 · Every template has a real sender ───────────────────────────────────────
 section("2 · wiring — a template with no sender is a template nobody gets");

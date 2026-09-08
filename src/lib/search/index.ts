@@ -15,6 +15,8 @@ export {
   BOARD_PROPOSAL_SEARCH,
   // ⭐ The one player schema that is NOT a view model — it goes into the SQL. See its header.
   NOTIFICATION_SEARCH,
+  // ⭐ The two ADMIN agent schemas, from the Agent v1 console work — both view models.
+  AGENT_SEARCH, AGENT_ROSTER_SEARCH,
   fieldNames, allColumns,
 } from "./fields";
 export type { EntitySchema, FieldSpec, FieldKind } from "./fields";

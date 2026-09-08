@@ -47,8 +47,20 @@ const AGENT_CONFIG_KEY = "agent.config";
  */
 export const PLATFORM_MAX_COMMISSION_PCT = 40;
 
-/** VAT treatment of the registration fee. INCLUSIVE keeps the applicant-facing figure
- *  exactly the TZS 100,000 the management framework already published. */
+/**
+ * VAT treatment of the registration fee.
+ *
+ * ⚠️ `registrationFeeTzs` MEANS A DIFFERENT THING UNDER EACH TREATMENT, and flipping this
+ * moves the applicant-facing figure by the VAT rate. Under `INCLUSIVE` the fee IS the gross
+ * the applicant pays and the VAT is backed out of it for the tax pack. Under `EXCLUSIVE` the
+ * fee is the NET and the applicant pays `fee × (1 + rate)`.
+ *
+ * ⭐ MANAGEMENT SET THIS TO `EXCLUSIVE` ON 2026-09-08. Their annotation on the "What it
+ * costs" card reads "TZS 100,000 + VAT = 118,000" — so the published price is the net plus
+ * VAT on top, not a VAT-inclusive hundred thousand. Every surface that names the treatment
+ * now reads this field instead of asserting "VAT inclusive" in prose; the three places that
+ * used to hard-code it were the reason this comment exists.
+ */
 export type FeeVatTreatment = "INCLUSIVE" | "EXCLUSIVE";
 
 export type AgentConfig = {
@@ -62,6 +74,22 @@ export type AgentConfig = {
   /** The officer ceiling. ⛔ `validate()` refuses anything above
    *  `PLATFORM_MAX_COMMISSION_PCT` — an operator may narrow, never widen. */
   maxCommissionPct: number;
+
+  /**
+   * ⭐ LOCAL WITHHOLDING TAX ON THE AGENT'S OWN EARNINGS, as a PERCENT of their gross
+   * commission. Management's 2026-09-08 waterfall added it as a line item: the agent's 10%
+   * share is computed, 5% of THAT is withheld, and the remainder is the cash credited.
+   *
+   * ⛔ IT IS NOT THE 15% WITHDRAWAL TAX. That one was deleted in 2026-07 and must stay
+   * deleted (`wallet-service.ts` carries the marker). This is a deduction on commission
+   * INCOME at the moment it is earned, remitted to `HOUSE:TAX` in the same balanced ledger
+   * group as the credit — a different tax, on a different base, at a different moment.
+   *
+   * ⭐ `0` IS A LEGITIMATE SETTING and means the tax does not apply: the agent is credited
+   * their gross. It is not a sentinel for "unset", so the accrual must handle it as a real
+   * rate rather than falling back to anything.
+   */
+  agentWithholdingTaxPct: number;
 
   /** The registration fee, in whole TZS. */
   registrationFeeTzs: number;
@@ -92,25 +120,51 @@ export type AgentConfig = {
   /** Cool-down before a rejected applicant may apply again. ⛔ Does not apply to the three
    *  TERMINAL reject reasons, which never re-open. */
   reapplyCooldownDays: number;
-  /** What `/agent` and `/agent/status` promise about review time. Read from here so the
-   *  page never invents a number, and so a timeline says WHEN, not just where. */
+  /**
+   * What `/agent` and `/agent/status` promise about review time, in WORKING days. Read from
+   * here so the page never invents a number, and so a timeline says WHEN, not just where.
+   *
+   * ⚠️ WORKING DAYS SINCE 2026-09-08, on management's instruction. The unit is not
+   * decoration: `/admin/agents` measures the same promise with `workingDaysBetween` from
+   * `src/lib/business-days.ts`, so the console's "Past SLA" chip and the applicant's
+   * expectation are one fact. ⛔ Never compare this against a calendar-day difference.
+   */
   reviewSlaDays: number;
 };
 
 /**
- * Ali's decisions, 2026-09-07 — recorded in docs/AGENT-PROGRAMME.md §5 and RULES.md §2.10.
+ * Ali's decisions, 2026-09-07, as amended by management's feedback of 2026-09-08 —
+ * recorded in docs/AGENT-PROGRAMME.md §5/§5a and RULES.md §2.10.
  *
  * ⚠️ THESE DEFAULTS ARE WHAT PRODUCTION RUNS ON UNTIL A ROW EXISTS. `define-config` only
  * merges a persisted snapshot if one is there, and the agent programme is new, so on the day
  * it ships there is no `agent.config` row and every value below IS the live value. Check the
  * live state, not the file, before quoting any of these anywhere.
+ *
+ * ⚠️ AND IF A ROW DOES EXIST, THREE OF THESE EDITS DO NOT REACH PRODUCTION ON DEPLOY.
+ * `defineConfig` hydrates `{ ...defaults, ...restored }`, so a persisted `agent.config` row
+ * overrides `defaultCommissionPct`, `feeVatTreatment` and `reviewSlaDays` with whatever an
+ * officer last saved. `agentWithholdingTaxPct` is NEW, so it takes the default either way.
+ * ⭐ The post-deploy step is therefore to open `/admin/agents` → Settings and confirm the
+ * three amended values, or to run `ops:agent-config-sync`. This is written here because a
+ * deploy that silently keeps the old rate is indistinguishable from a successful one.
  */
 export const DEFAULT_AGENT_CONFIG: AgentConfig = {
   enabled: true,
-  defaultCommissionPct: 20,
+  // ⭐ 20 → 10 on management's instruction, 2026-09-08: "Agent fee = 10% of commission on
+  // winnings after tax". ⛔ This only PRE-FILLS a new approval. Agents already approved keep
+  // their own `AffiliateAgent.commissionPct` and must be re-priced one at a time with
+  // `setAgentRate` (which emails them) — a config edit must never silently re-cut a
+  // contracted partner's income.
+  defaultCommissionPct: 10,
   maxCommissionPct: 40,
+  // ⭐ 5% of the agent's gross commission, withheld and remitted. Management's waterfall,
+  // 2026-09-08. See `agentWithholdingTaxPct` above for why this is not the deleted 15%.
+  agentWithholdingTaxPct: 5,
   registrationFeeTzs: 100_000,
-  feeVatTreatment: "INCLUSIVE",
+  // ⭐ INCLUSIVE → EXCLUSIVE on management's instruction, 2026-09-08: "TZS 100,000 + VAT =
+  // 118,000". The published price is the net; the applicant pays the net plus VAT.
+  feeVatTreatment: "EXCLUSIVE",
   feeVatRatePct: 18,
   feeDestinationName: "Digital Selcom Bank",
   feeDestinationAccount: "0769777877",
@@ -134,6 +188,12 @@ function validate(c: AgentConfig): { ok: true } | { ok: false; reason: string } 
   // form is about to refuse.
   if (c.defaultCommissionPct > c.maxCommissionPct)
     return { ok: false, reason: "Default commission cannot exceed the maximum." };
+  // ⛔ 100% IS THE BOUND, NOT 40. A withholding rate above 100 makes the agent's net payout
+  // NEGATIVE, and a negative credit is refused silently downstream — so the partner would see
+  // "no commission" and nobody would see a misconfiguration. 0 is allowed and means the tax
+  // does not apply.
+  if (!Number.isFinite(c.agentWithholdingTaxPct) || c.agentWithholdingTaxPct < 0 || c.agentWithholdingTaxPct > 100)
+    return { ok: false, reason: "Agent withholding tax must be 0–100%." };
   if (!Number.isFinite(c.registrationFeeTzs) || c.registrationFeeTzs < 0 || c.registrationFeeTzs > 10_000_000)
     return { ok: false, reason: "Registration fee must be 0–10,000,000 TZS." };
   if (!Number.isInteger(c.registrationFeeTzs))

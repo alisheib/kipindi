@@ -22,7 +22,7 @@ import { positionStore } from "../src/lib/server/market-dal.ts";
 import { withdraw } from "../src/lib/server/wallet-service.ts";
 import { bindRecruit, ensureAffiliateAccount, onRecruitBet, onRecruitSettlement } from "../src/lib/server/affiliate-service.ts";
 import { getAffiliateConfig } from "../src/lib/server/affiliate-config.ts";
-import { approveFixtureAgent } from "./lib/agent-fixtures.mts";
+import { approveFixtureAgent, netAfterWht } from "./lib/agent-fixtures.mts";
 import { getBonusSummary } from "../src/lib/server/bonus-service.ts";
 
 import "./lib/verified-fixtures.mts";
@@ -332,7 +332,11 @@ async function makeMarket(): Promise<string> {
   ]);
   const same = (await db.referralReward.listByReferrer(ref)).filter((r) => r.type === "COMMISSION");
   ok("F2: exactly ONE commission row for one position under concurrency", same.length === 1, `count=${same.length}`);
-  ok("F2: the agent's cash moved exactly once — floor(10,000 × 20%) = 2,000", (await bal(ref)) - before === 2_000, `Δ=${(await bal(ref)) - before}`);
+  // ⭐ `netAfterWht` — management's 2026-09-08 withholding line means a TZS 2,000 gross
+  // accrual lands as TZS 1,900 of cash. The GROSS is still what the programme's rules
+  // produce and is what this assertion is about; the tax is an unrelated deduction, and its
+  // own arithmetic is pinned in `commission-bounded` §1/§6/§7.
+  ok("F2: the agent's cash moved exactly once — floor(10,000 × 20%) = 2,000 gross", (await bal(ref)) - before === netAfterWht(2_000), `Δ=${(await bal(ref)) - before}`);
   // The control: distinct positions are distinct events.
   await Promise.all([
     onRecruitSettlement(rec, { operatorNetFee: 10_000, marketId: "mkt_cc_b", positionId: "pos_cc_1" }),
@@ -341,7 +345,7 @@ async function makeMarket(): Promise<string> {
   ]);
   const all = (await db.referralReward.listByReferrer(ref)).filter((r) => r.type === "COMMISSION");
   ok("F2 CONTROL: three DIFFERENT positions produce three rows (the key collapses duplicates, not events)", all.length === 4, `count=${all.length}`);
-  ok("F2 CONTROL: …and four credits of 2,000", (await bal(ref)) - before === 8_000, `Δ=${(await bal(ref)) - before}`);
+  ok("F2 CONTROL: …and four credits of 2,000 gross", (await bal(ref)) - before === 4 * netAfterWht(2_000), `Δ=${(await bal(ref)) - before}`);
 }
 
 // ── G · Resumable settlement — a re-run pays only OPEN, never double-pays ────

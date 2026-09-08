@@ -147,6 +147,7 @@ const EXEMPT: Record<string, string> = {
   "app/admin/markets/page.tsx": "② status/category filter, submitted as searchParams",
   "app/admin/markets/[id]/page.tsx": "② side/status filter, submitted as searchParams",
   "app/admin/players/page.tsx": "② player search + filter, submitted as searchParams",
+  "app/admin/agents/page.tsx": "② application + roster search, submitted as searchParams",
   "app/admin/resolver-queue/page.tsx": "② window/category filter, submitted as searchParams",
   "app/admin/transactions/page.tsx": "② range/from/to filter, submitted as searchParams",
   // ③ flipping is the save

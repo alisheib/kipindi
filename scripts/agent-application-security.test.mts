@@ -5,8 +5,10 @@
  * Applicant: start · documents (sniffed mime) · referees (consent) · fee (unique receipt) ·
  * submit (complete + terms). Officer: reconcile (exact amount) · waive (typed reason) · more
  * info · reject (refund owed, clocked) · refund · approve (self-review, staff, ceiling, twice,
- * before acceptance) · standing. Invitation: issue (refusals) · OTP to the bound phone · accept
- * (phone must match) · revoke. Edge: the proxy protects exactly the signed-in agent routes.
+ * before acceptance) · standing. Invitation: issue (refusals) · a code EMAILED to the bound
+ * mailbox · accept (the signed-in account must own that address) · revoke, plus a phone-era row
+ * that must still preview and must refuse a code honestly. Edge: the proxy protects exactly the
+ * signed-in agent routes.
  *
  * Red harness: `npm run red:agent-application-security`.
  */
@@ -15,15 +17,17 @@ import { db } from "../src/lib/server/store.ts";
 import { mkFixtureUser, approveFixtureAgent } from "./lib/agent-fixtures.mts";
 import { isApprovedAgent } from "../src/lib/server/affiliate-service.ts";
 import { getAgentConfig, setAgentConfig } from "../src/lib/server/agent-config.ts";
-import { sms } from "../src/lib/server/sms.ts";
+import { emailOutbox, clearEmailOutbox } from "../src/lib/server/email.ts";
 import { AGENT_TERMS_VERSION } from "../src/lib/agent-terms-version.ts";
 import { isProtectedPath } from "../src/proxy.ts";
 import { getAuditPage } from "../src/lib/server/audit.ts";
+import { AGENT_AUDIT_ACTION, auditActionLabel } from "../src/lib/admin-status-lexicon.ts";
+import { readFileSync } from "node:fs";
 import {
   startApplication, attachAgentDocument, setReferees, recordFeePayment, submitForReview, applicantView,
   reconcileFee, waiveFee, recordFeeRefund, requestMoreInfo, rejectApplication, approveAgent, deactivateAgent, reactivateAgent, revokeAgent,
   issueInvitation, requestInvitationOtp, acceptInvitation, revokeInvitation, invitationPreview, applicantEligibility,
-  REQUIRED_DOC_SLOTS, ALL_DOC_SLOTS,
+  REQUIRED_DOC_SLOTS, ALL_DOC_SLOTS, feeBreakdown,
 } from "../src/lib/server/agent-application-service.ts";
 
 let pass = 0, fail = 0;
@@ -34,7 +38,20 @@ const PNG = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJA
 const GIF_AS_PNG = "data:image/png;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
 
 const cfg = getAgentConfig();
-const FEE = cfg.registrationFeeTzs;
+/**
+ * 🔴 THE TOTAL THE APPLICANT PAYS, NOT `registrationFeeTzs`.
+ *
+ * This read `cfg.registrationFeeTzs` and was correct only by coincidence: while the shipped
+ * VAT treatment was `INCLUSIVE` the fee and the total were the same number. Management moved
+ * the treatment to `EXCLUSIVE` on 2026-09-08 ("TZS 100,000 + VAT = 118,000"), and the
+ * coincidence ended — this suite then attested 100,000 against a 118,000 fee and four
+ * downstream legs (reconcile → approve → reject → refund) failed as a chain from one wrong
+ * fixture.
+ *
+ * ⛔ `feeBreakdown` IS THE ONLY PLACE THAT KNOWS WHAT AN APPLICANT OWES. Anything that
+ * attests, validates or refunds a payment reads `totalTzs` from it — never a raw config field.
+ */
+const FEE = feeBreakdown(cfg).totalTzs;
 const DAY = 86_400_000;
 await mkFixtureUser("sec_officer", { role: "COMPLIANCE" });
 await mkFixtureUser("sec_admin", { role: "ADMIN" });
@@ -92,6 +109,52 @@ async function fullDraft(uid: string, feeRef: string) {
   ok("2.control · CONTROL — a real PNG attaches", cv.ok, JSON.stringify(cv));
   const noConsent = await setReferees("sec_app1", { oneName: "Amina J", oneContact: "+255711000001", twoName: "Baraka K", twoContact: "+255711000002", consent: false });
   ok("2.consent · referees without the consent attestation are refused", !noConsent.ok, JSON.stringify(noConsent));
+
+  /**
+   * ⭐ THE REFEREE CONTACT IS A REACHABILITY RULE, AND EVERY REFUSAL NAMES ITS BOX.
+   *
+   * 🔴 The only rule used to be `length >= 6`, so "aaaaaa" passed and an officer discovered
+   * the unreachable referee days later, at the point of a decision. And all four boxes shared
+   * two sentences ("Each referee needs a name" / "…a phone number or email"), delivered as a
+   * TOAST on a four-step form — so an applicant could not tell WHICH box was wrong, on a step
+   * that might not even be on screen.
+   *
+   * ⚠️ THE PERMISSIVE CASES MATTER AS MUCH AS THE REFUSALS. A referee is not a 50pick account
+   * holder: an office landline and an international number must PASS, because refusing them
+   * would make an applicant invent a mobile number to get past the form — which is worse than
+   * accepting the landline. The registration-grade `/^\+255[67]\d{8}$/` is deliberately NOT
+   * the rule here.
+   */
+  {
+    const base = { oneName: "Amina J", oneContact: "+255711000001", twoName: "Baraka K", twoContact: "+255711000002", consent: true };
+    const junk = await setReferees("sec_app1", { ...base, oneContact: "aaaaaa" });
+    ok("2.reach · a contact with no way to reach anybody is refused (the old length>=6 rule passed this)", !junk.ok, JSON.stringify(junk));
+    ok("2.reachfield · …and the refusal names the box, so it can land on the input", !junk.ok && (junk as { field?: string }).field === "oneContact", JSON.stringify(junk));
+    ok("2.reachrule · …and states the rule rather than saying \"invalid\"", !junk.ok && /0712 345 678|referee@example/.test(junk.error), JSON.stringify(junk));
+
+    const numberAsName = await setReferees("sec_app1", { ...base, twoName: "0712345678" });
+    ok("2.namedigits · a phone number typed into the NAME box is refused", !numberAsName.ok && (numberAsName as { field?: string }).field === "twoName", JSON.stringify(numberAsName));
+
+    const shortName = await setReferees("sec_app1", { ...base, oneName: "A" });
+    ok("2.nameshort · a one-character name is refused, naming its box", !shortName.ok && (shortName as { field?: string }).field === "oneName", JSON.stringify(shortName));
+
+    const noContact = await setReferees("sec_app1", { ...base, twoContact: "   " });
+    ok("2.blank · a blank contact is refused, naming its box", !noContact.ok && (noContact as { field?: string }).field === "twoContact", JSON.stringify(noContact));
+
+    ok("2.consentfield · the consent refusal names the checkbox", !noConsent.ok && (noConsent as { field?: string }).field === "consent", JSON.stringify(noConsent));
+
+    // CONTROLS — the shapes that must be accepted.
+    const email = await setReferees("sec_app1", { ...base, oneContact: "referee@example.com" });
+    ok("2.email · CONTROL — an email address is accepted", email.ok, JSON.stringify(email));
+    const landline = await setReferees("sec_app1", { ...base, oneContact: "022 211 5811" });
+    ok("2.landline · CONTROL — a Dar landline with spaces is accepted (a referee is not an account holder)", landline.ok, JSON.stringify(landline));
+    const intl = await setReferees("sec_app1", { ...base, oneContact: "+44 20 7946 0958" });
+    ok("2.intl · CONTROL — an international number is accepted", intl.ok, JSON.stringify(intl));
+    const local = await setReferees("sec_app1", { ...base, oneContact: "0712-345-678" });
+    ok("2.dashes · CONTROL — a local number written with dashes is accepted", local.ok, JSON.stringify(local));
+    // Restore the fixture the rest of the suite expects.
+    await setReferees("sec_app1", base);
+  }
   const early = await submitForReview("sec_app1", { acceptedTermsVersion: AGENT_TERMS_VERSION });
   ok("2.incomplete · submitting an incomplete draft is refused and NAMES what is missing", !early.ok && Array.isArray((early as { data?: { missing?: string[] } }).data?.missing) && ((early as { data?: { missing?: string[] } }).data!.missing!.length > 0), JSON.stringify(early));
   const badRef = await recordFeePayment("sec_app1", { feeReference: "x" });
@@ -221,70 +284,97 @@ async function fullDraft(uid: string, feeRef: string) {
 }
 
 // ═══ §6 · INVITATION — the invitee's acceptance is the second party ═══
+//
+// ⭐ BY EMAIL SINCE 2026-09-08. The programme shipped inviting by SMS while no SMS provider
+// was licensed (`sms.ts`: `console` by default, two adapters that throw, one unsigned
+// contract), so the officer's console promised a text that was never sent. This section now
+// drives the real channel — Postmark, captured through `emailOutbox()`.
+//
+// ⚠️ THE OUTBOX, NOT A MONKEY-PATCHED SEND. `email.ts` warns outright against asserting
+// delivery from a log line: every logged address is masked under PDPA 2022, so such an
+// assertion would be matching on `n•••@t.tz`. `EMAIL_OUTBOX_CAPTURE=1` is the sanctioned
+// hook and it carries the unmasked `to` this suite has to check.
 {
-  const sent: { to: string; msg: string }[] = [];
-  const realSend = sms.send;
-  sms.send = (async (to: string, msg: string) => { sent.push({ to, msg }); return { ok: true } as never; }) as typeof sms.send;
+  process.env.EMAIL_OUTBOX_CAPTURE = "1";
+  clearEmailOutbox();
+  const codeFrom = (html: string) => html.match(/>(\d{6})</)?.[1] ?? html.match(/\b(\d{6})\b/)?.[1] ?? "";
+  const mailTo = (addr: string) => emailOutbox().filter((m) => m.to.toLowerCase() === addr.toLowerCase());
   try {
-    const bad = await issueInvitation("sec_officer", { phoneE164: "+44 7700 900000" });
-    ok("6.phone · a non-Tanzanian number is refused", !bad.ok);
-    const staffPhone = (await db.user.findById("sec_admin"))!.phoneE164;
-    const staff = await issueInvitation("sec_officer", { phoneE164: staffPhone });
-    ok("6.staff · a staff number is refused", !staff.ok, JSON.stringify(staff));
-    const agentPhone = (await db.user.findById("sec_app1"))!.phoneE164;
-    const alreadyAgent = await issueInvitation("sec_officer", { phoneE164: agentPhone });
-    ok("6.agent · an existing agent's number is refused", !alreadyAgent.ok, JSON.stringify(alreadyAgent));
+    const bad = await issueInvitation("sec_officer", { email: "not-an-email" });
+    ok("6.shape · a malformed address is refused, and the refusal names the field", !bad.ok && (bad as { field?: string }).field === "email", JSON.stringify(bad));
+    const staffEmail = (await db.user.findById("sec_admin"))!.email!;
+    const staff = await issueInvitation("sec_officer", { email: staffEmail });
+    ok("6.staff · a staff address is refused", !staff.ok, JSON.stringify(staff));
+    const agentEmail = (await db.user.findById("sec_app1"))!.email!;
+    const alreadyAgent = await issueInvitation("sec_officer", { email: agentEmail });
+    ok("6.agent · an existing agent's address is refused", !alreadyAgent.ok, JSON.stringify(alreadyAgent));
+    const self = await issueInvitation("sec_officer", { email: (await db.user.findById("sec_officer"))!.email! });
+    ok("6.self · an officer cannot invite themselves", !self.ok, JSON.stringify(self));
 
-    // A NEW person — no account yet.
-    const NEW_PHONE = "+255719000111";
-    const inv = await issueInvitation("sec_officer", { phoneE164: NEW_PHONE, displayName: "Neema" });
-    ok("6.issue · CONTROL — an invitation is issued with a one-time token", inv.ok && !!inv.data?.token && inv.data.link.includes(inv.data.token), JSON.stringify(inv.ok));
+    // A NEW person — no account yet. This is who officer-invitation exists for.
+    const NEW_EMAIL = "neema.invited@example.tz";
+    const inv = await issueInvitation("sec_officer", { email: NEW_EMAIL, displayName: "Neema" });
+    ok("6.issue · CONTROL — an invitation is issued with a one-time token", inv.ok && !!inv.data?.token && inv.data.link.includes(inv.data.token), JSON.stringify(inv.ok ? "ok" : inv));
     const token = inv.ok ? inv.data!.token : "";
     const stored = await db.agentInvitation.findById(inv.ok ? inv.data!.invitationId : "");
     ok("6.hashed · the token is stored only as a hash", !!stored && stored.tokenHash !== token && !JSON.stringify(stored).includes(token));
-    ok("6.sms · the link was texted to the invited number", sent.some((s) => s.to === NEW_PHONE && s.msg.includes(token)));
-    const dupLive = await issueInvitation("sec_officer", { phoneE164: NEW_PHONE });
-    ok("6.duplicate · a second live invitation for the same number is refused", !dupLive.ok, JSON.stringify(dupLive));
+    ok("6.bound · the row is bound to the EMAIL and carries no phone", !!stored && (stored.email ?? "").toLowerCase() === NEW_EMAIL && stored.phoneE164 === null, JSON.stringify(stored && { email: stored.email, phone: stored.phoneE164 }));
+    ok("6.mail · the link was emailed to the invited address", mailTo(NEW_EMAIL).some((m) => m.html.includes(token)));
+    ok("6.delivery · …and the officer is told what the provider actually did", inv.ok && typeof inv.data!.delivery === "string" && inv.data!.delivery.length > 0, JSON.stringify(inv.ok ? inv.data!.delivery : null));
+    const dupLive = await issueInvitation("sec_officer", { email: NEW_EMAIL.toUpperCase() });
+    ok("6.duplicate · a second live invitation for the same mailbox is refused, whatever its case", !dupLive.ok, JSON.stringify(dupLive));
+
     const preview = await invitationPreview(token);
-    ok("6.preview · the public preview masks the phone and never returns the token", preview.ok && !preview.phoneMasked.includes("9000111"), JSON.stringify(preview));
+    ok("6.preview · the public preview MASKS the address and never returns the token",
+      preview.ok && preview.channel === "EMAIL" && !preview.addressMasked.includes("neema.invited") && !JSON.stringify(preview).includes(token),
+      JSON.stringify(preview));
+    ok("6.previewdomain · …but keeps the domain, so the invitee can recognise their own mailbox",
+      preview.ok && preview.addressMasked.includes("@example.tz"), JSON.stringify(preview.ok ? preview.addressMasked : null));
     const garbage = await invitationPreview("not-a-token");
     ok("6.garbage · an unknown token previews as invalid", !garbage.ok && garbage.reason === "invalid");
 
     // The wrong person signs in and tries to accept.
-    await mkFixtureUser("sec_wrong_person", { phone: "+255719000222" });
+    await mkFixtureUser("sec_wrong_person");
+    clearEmailOutbox();
     await requestInvitationOtp(token);
-    const otp = sent.filter((s) => s.to === NEW_PHONE).map((s) => s.msg.match(/\b(\d{6})\b/)?.[1]).filter(Boolean).pop() ?? "";
-    ok("6.otp · an OTP was texted to the INVITED number, not the signed-in one", otp.length === 6 && !sent.some((s) => s.to === "+255719000222"));
-    const wrongPhone = await acceptInvitation("sec_wrong_person", token, otp);
-    ok("6.wrongphone · an account on a different phone cannot accept even with the right code", !wrongPhone.ok, JSON.stringify(wrongPhone));
+    const otp = codeFrom(mailTo(NEW_EMAIL).map((m) => m.html).pop() ?? "");
+    ok("6.otp · the code was emailed to the INVITED address, and to nobody else", otp.length === 6 && emailOutbox().every((m) => m.to.toLowerCase() === NEW_EMAIL), JSON.stringify(emailOutbox().map((m) => m.to)));
+    ok("6.otpnolink · the code mail carries NO link — a mail asking for a secret must not train a click", !mailTo(NEW_EMAIL).some((m) => m.tag === "agent-invite-otp" && m.html.includes("/agent/invite/")));
+    const wrongAccount = await acceptInvitation("sec_wrong_person", token, otp);
+    ok("6.wrongaccount · an account on a different address cannot accept even with the right code", !wrongAccount.ok, JSON.stringify(wrongAccount));
 
-    // The right person.
-    await mkFixtureUser("sec_invitee", { phone: NEW_PHONE });
+    // The right person — and note the CASE difference, which must not lock them out.
+    await mkFixtureUser("sec_invitee");
+    await db.user.update("sec_invitee", { email: NEW_EMAIL.toUpperCase() });
     const wrongCode = await acceptInvitation("sec_invitee", token, "000000");
     ok("6.wrongcode · the wrong code is refused", !wrongCode.ok, JSON.stringify(wrongCode));
     const acc = await acceptInvitation("sec_invitee", token, otp);
-    ok("6.accept · CONTROL — the invited person accepts with the code delivered to their phone", acc.ok && !!acc.data?.applicationId, JSON.stringify(acc));
+    ok("6.accept · CONTROL — the invited person accepts with the code sent to their mailbox, case notwithstanding", acc.ok && !!acc.data?.applicationId, JSON.stringify(acc));
     ok("6.state · the invitation is ACCEPTED and the application opens as an OFFICER_INVITED draft",
       (await db.agentInvitation.findById(inv.ok ? inv.data!.invitationId : ""))!.status === "ACCEPTED" && (await db.agentApplication.findById(acc.ok ? acc.data!.applicationId : ""))!.source === "OFFICER_INVITED");
     const replay = await acceptInvitation("sec_invitee", token, otp);
-    ok("6.replay · the token is single-use", !replay.ok);
+    ok("6.replay · the same token cannot be accepted twice", !replay.ok, JSON.stringify(replay));
 
-    // Approve BEFORE acceptance — a second invitation to an EXISTING account.
-    await mkFixtureUser("sec_existing", { phone: "+255719000333" });
-    const inv2 = await issueInvitation("sec_officer", { phoneE164: "+255719000333" });
-    ok("6.existing · inviting an existing account opens an INVITED application at once", inv2.ok && (await db.agentApplication.findActiveByUser("sec_existing"))?.status === "INVITED");
-    const invitedApp = (await db.agentApplication.findActiveByUser("sec_existing"))!;
-    const tooEarly = await approveAgent("sec_officer", invitedApp.id, { commissionPct: 20 });
-    ok("6.beforeacceptance · approving an INVITED application is refused — the invitee has not accepted", !tooEarly.ok, JSON.stringify(tooEarly));
-    ok("6.beforeacceptance.audit · …and the refusal is audited", getAuditPage({ category: "COMPLIANCE", limit: 300 }).some((e) => e.action === "agent.approve.refused" && e.targetId === invitedApp.id));
-    const startBlocked = await startApplication("sec_existing");
-    ok("6.acceptfirst · the invitee cannot sidestep the invitation with a self-service draft", !startBlocked.ok);
-    const revoke = await revokeInvitation("sec_officer", inv2.ok ? inv2.data!.invitationId : "", "issued in error");
-    ok("6.revoke · an officer can withdraw an invitation", revoke.ok && (await db.agentInvitation.findById(inv2.ok ? inv2.data!.invitationId : ""))!.status === "REVOKED", JSON.stringify(revoke));
-    const afterRevoke = await invitationPreview(inv2.ok ? inv2.data!.token : "");
-    ok("6.revoked · a revoked token previews as revoked", !afterRevoke.ok && afterRevoke.reason === "revoked", JSON.stringify(afterRevoke));
+    // ⭐ A PHONE-ERA INVITATION IS STILL READABLE, AND REFUSES A CODE HONESTLY. The programme
+    // went live 2026-09-07, so a day-old phone-bound link exists and its holder has done
+    // nothing wrong. ⛔ The refusal must name the remedy — arming a "text me a code" button
+    // that cannot deliver is the whole defect this change removed.
+    {
+      // ⭐ ISSUED THROUGH THE REAL PATH, THEN MOVED BACK TO THE OLD SHAPE. ⛔ Not hand-built
+      // with a locally computed token hash: that would duplicate the service's hashing, and a
+      // fixture that hashes differently from production is a fixture that proves nothing.
+      const legacyIssue = await issueInvitation("sec_officer", { email: "legacy.era@example.tz", displayName: "Legacy" });
+      const legacyToken = legacyIssue.ok ? legacyIssue.data!.token : "";
+      await db.agentInvitation.update(legacyIssue.ok ? legacyIssue.data!.invitationId : "", { email: null, phoneE164: "+255719000777" });
+      const legacyPreview = await invitationPreview(legacyToken);
+      ok("6.legacypreview · a phone-era invitation still previews, as a PHONE channel", legacyPreview.ok && legacyPreview.channel === "PHONE", JSON.stringify(legacyPreview));
+      const legacyOtp = await requestInvitationOtp(legacyToken);
+      ok("6.legacyotp · …and refuses to send a code, naming the remedy rather than failing silently",
+        !legacyOtp.ok && /withdraw/i.test(legacyOtp.error), JSON.stringify(legacyOtp));
+    }
   } finally {
-    sms.send = realSend;
+    clearEmailOutbox();
+    delete process.env.EMAIL_OUTBOX_CAPTURE;
   }
 }
 
@@ -298,6 +388,34 @@ async function fullDraft(uid: string, feeRef: string) {
   ok("7.terms · /legal/agent-terms is public", !isProtectedPath("/legal/agent-terms"));
   ok("7.prefix · a prefix that merely STARTS with the word is not matched", !isProtectedPath("/agents") && !isProtectedPath("/agent-status"));
   ok("7.slots · the document slot list is closed and the required set is inside it", REQUIRED_DOC_SLOTS.every((s) => ALL_DOC_SLOTS.includes(s)) && ALL_DOC_SLOTS.length === REQUIRED_DOC_SLOTS.length + 1);
+}
+
+// ═══ §8 · THE HISTORY PANEL CAN NAME EVERY ACTION IT WILL EVER BE SHOWN ═══
+//
+// ⭐ THE POPULATION IS RE-DERIVED FROM THE SERVICE SOURCE, not from a list somebody typed.
+// The workstation's History card renders `auditActionLabel(e.action)`, and the map behind it
+// was FIRST WRITTEN FROM MEMORY: five of its keys named actions that do not exist and five
+// real audited actions had no entry at all. A map that is merely plausible is exactly the
+// failure `docs/...MEASURE-THE-RIGHT-POPULATION` records — a true-looking artefact measured
+// against the wrong set.
+//
+// ⛔ AND THE FALLBACK IS ASSERTED TOO. An unlabelled action must still APPEAR: a decision that
+// is invisible on a case file is worse than one spelled awkwardly, so `auditActionLabel` is
+// required to return the raw action rather than "—" or "".
+{
+  const svc = readFileSync(new URL("../src/lib/server/agent-application-service.ts", import.meta.url), "utf8");
+  const audited = [...new Set([...svc.matchAll(/action: "(agent\.[a-z_.]+)"/g)].map((m) => m[1]))].sort();
+  ok("8.population · the scan reaches the service's audited actions (a vacuous pass is not a pass)", audited.length >= 25, String(audited.length));
+
+  const unlabelled = audited.filter((a) => AGENT_AUDIT_ACTION[a] === undefined);
+  ok("8.covered · every audited agent action has a label in the lexicon", unlabelled.length === 0, unlabelled.join(", "));
+
+  const phantom = Object.keys(AGENT_AUDIT_ACTION).filter((k) => !audited.includes(k));
+  ok("8.nophantom · …and no label names an action the service never writes", phantom.length === 0, phantom.join(", "));
+
+  ok("8.words · a label is a sentence, never the dotted machine name", audited.every((a) => AGENT_AUDIT_ACTION[a] !== a && !AGENT_AUDIT_ACTION[a].includes(".")), "");
+  ok("8.fallback · an UNKNOWN action falls back to the raw action, never to nothing", auditActionLabel("agent.something.new") === "agent.something.new");
+  ok("8.fallbacknotblank · …and never to an em-dash or an empty string", auditActionLabel("agent.something.new").trim().length > 0);
 }
 
 console.log(`\nagent-application-security: ${pass} passed, ${fail} failed`);

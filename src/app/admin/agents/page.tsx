@@ -4,7 +4,10 @@ import { AdminPageHead, AdminCard, AdminKpi, AdminLoadError } from "@/components
 import { AdminBody, KpiGrid } from "@/components/admin/admin-body";
 import { EmptyState } from "@/components/ui/empty-state";
 import type { ComponentProps } from "react";
-import { buildBaseHref } from "@/components/admin/admin-pagination";
+import { AdminPagination, parsePage, buildBaseHref, PER_PAGE } from "@/components/admin/admin-pagination";
+import { SortTh } from "@/components/admin/admin-sort";
+import { Select } from "@/components/ui/select";
+import { parseQuery, matchesQuery, fieldNames, AGENT_SEARCH, AGENT_ROSTER_SEARCH } from "@/lib/search";
 import { Tabs } from "@/components/ui/tabs";
 import { Chip } from "@/components/ui/chip";
 import { Button } from "@/components/ui/button";
@@ -15,11 +18,12 @@ import { I } from "@/components/ui/glyphs";
 import { db, type StoredAgentApplication, type StoredAgentInvitation, type StoredReferralReward, type StoredUser } from "@/lib/server/store";
 import { getAgentConfig, PLATFORM_MAX_COMMISSION_PCT } from "@/lib/server/agent-config";
 import { getAgentRoster, type AgentRosterRow } from "@/lib/server/affiliate-service";
-import { feeBreakdown } from "@/lib/server/agent-application-service";
+import { feeBreakdown, invitationChannel, maskChannel } from "@/lib/server/agent-application-service";
 import { AGENT_STATUS, AGENT_REJECT_REASON, AGENT_INVITATION_STATUS, AGENT_FEE_DISPOSITION } from "@/lib/admin-status-lexicon";
 import { STATUS_TONE, TONE_CHIP } from "@/lib/status-tone";
 import { displayLabel } from "@/lib/display-label";
 import { formatDateShort, formatDateTime, formatTzs } from "@/lib/utils";
+import { workingDaysBetween } from "@/lib/business-days";
 import { SettlePayable, InviteComposer, RevokeInvitation, AgentSettingsForm } from "./agents-client";
 
 export const metadata = { title: "Admin · Agents" };
@@ -32,7 +36,7 @@ type Tab = (typeof TABS)[number];
 /** Statuses that are still someone's turn — the applicant's, an invitee's, or the officer's. */
 const IN_PROGRESS: readonly StoredAgentApplication["status"][] = ["DRAFT", "INVITED", "KYC_SUBMITTED", "PAYMENT_PENDING", "ADDITIONAL_INFO_REQUIRED"];
 const CLOSED: readonly StoredAgentApplication["status"][] = ["APPROVED", "REJECTED", "DECLINED", "EXPIRED", "REVOKED"];
-const CLOSED_PAGE = 20;
+/** The closed-invitation HISTORY pages at this size; live invitations are never paged. */
 const INVITATION_HISTORY_PAGE = 10;
 /** The payables TABLE is a page of the newest rows; the KPI above it is a grouped total. */
 const PAYABLES_PAGE = 5000;
@@ -61,10 +65,33 @@ async function read<T>(fn: () => Promise<T> | T): Promise<Read<T>> {
  * Agent money is this officer's, not the growth officer's: `/admin/affiliates` shows the player
  * promo only, so pausing the promo there cannot be mistaken for switching the agents off.
  */
-export default async function AdminAgentsPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
+type SP = {
+  tab?: string;
+  /** Applications tab: the search box and the status filter. */
+  q?: string; status?: string;
+  /** Agents tab: its own search box, so the two tabs do not fight over one param. */
+  rq?: string;
+  /** One page cursor per table — the three that can genuinely overflow. */
+  dpage?: string; ipage?: string; ppage?: string;
+  /** Roster ordering. `SortTh` preserves every other param and drops the page. */
+  rsort?: string; rdir?: string;
+};
+
+export default async function AdminAgentsPage({ searchParams }: { searchParams: Promise<SP> }) {
   const sp = await searchParams;
   const tab: Tab = (TABS as readonly string[]).includes(sp.tab ?? "") ? (sp.tab as Tab) : "applications";
-  const tabHref = (t: Tab) => buildBaseHref("/admin/agents", { tab: t === "applications" ? undefined : t }) as Route;
+  /**
+   * ⛔ EVERY URL FACT IS CARRIED THROUGH THE TAB LINKS, or switching tabs would silently
+   * discard the officer's search and show them a different set than the one they asked for
+   * while the box still reads what they typed.
+   */
+  const tabHref = (t: Tab) => buildBaseHref("/admin/agents", {
+    tab: t === "applications" ? undefined : t,
+    q: sp.q, status: sp.status, rq: sp.rq, rsort: sp.rsort, rdir: sp.rdir,
+  }) as Route;
+  const query = (sp.q ?? "").trim();
+  const statusFilter = (sp.status ?? "").trim();
+  const rosterQuery = (sp.rq ?? "").trim();
 
   const cfg = getAgentConfig();
   const fee = feeBreakdown(cfg);
@@ -78,44 +105,122 @@ export default async function AdminAgentsPage({ searchParams }: { searchParams: 
     read(() => db.referralReward.totals()),
   ]);
 
-  // ── Applications, partitioned by whose turn it is ──
-  const apps = appsR.ok ? appsR.data : [];
-  const review = apps.filter((a) => a.status === "UNDER_REVIEW").sort((x, y) => (x.submittedAt ?? x.updatedAt).localeCompare(y.submittedAt ?? y.updatedAt));
-  const inProgress = apps.filter((a) => IN_PROGRESS.includes(a.status)).sort((x, y) => y.updatedAt.localeCompare(x.updatedAt));
-  const closed = apps.filter((a) => CLOSED.includes(a.status)).sort((x, y) => (y.reviewedAt ?? y.updatedAt).localeCompare(x.reviewedAt ?? x.updatedAt));
-  const refundsOwed = apps.filter((a) => a.feeDisposition === "REFUND_DUE").sort((x, y) => (x.feeRefundDueAt ?? "").localeCompare(y.feeRefundDueAt ?? ""));
-  const overdueReviews = review.filter((a) => a.submittedAt && now - Date.parse(a.submittedAt) > cfg.reviewSlaDays * DAY_MS).length;
-  const overdueRefunds = refundsOwed.filter((a) => a.feeRefundDueAt && Date.parse(a.feeRefundDueAt) < now).length;
-  const refundsOwedTzs = refundsOwed.reduce((s, a) => s + (a.feeAmountTzs ?? 0), 0);
+  // ── Applications ──
+  const allApps = appsR.ok ? appsR.data : [];
+  /**
+   * ⛔ THE KPI BAND AND THE TAB COUNTS MEASURE THE WHOLE PROGRAMME, NEVER THE SEARCH RESULT.
+   * An officer who types a name must not see "Awaiting review: 1" and read it as the size of
+   * the queue. These are deliberately computed over `allApps`; the CARDS below are the
+   * filtered view and say so in their own captions.
+   */
+  const allReview = allApps.filter((a) => a.status === "UNDER_REVIEW");
+  const allRefundsOwed = allApps.filter((a) => a.feeDisposition === "REFUND_DUE");
+  // 🔴 WORKING DAYS, BECAUSE THAT IS WHAT THE APPLICANT WAS PROMISED. This measured CALENDAR
+  // days against a promise management moved to working days on 2026-09-08, so an application
+  // submitted on a Friday was chipped "Past SLA" on the following Wednesday while `/agent` had
+  // promised the applicant until Friday. `workingDaysBetween` now decides both.
+  const overdueReviews = allReview.filter((a) => a.submittedAt && workingDaysBetween(a.submittedAt, new Date(now)) > cfg.reviewSlaDays).length;
+  const overdueRefunds = allRefundsOwed.filter((a) => a.feeRefundDueAt && Date.parse(a.feeRefundDueAt) < now).length;
+  const refundsOwedTzs = allRefundsOwed.reduce((s, a) => s + (a.feeAmountTzs ?? 0), 0);
 
   // ── Invitations ──
   const invitations = invR.ok ? invR.data : [];
   const liveInvitations = invitations.filter((i) => i.status === "ISSUED").sort((x, y) => x.expiresAt.localeCompare(y.expiresAt));
-  const pastInvitations = invitations.filter((i) => i.status !== "ISSUED").sort((x, y) => y.updatedAt.localeCompare(x.updatedAt)).slice(0, INVITATION_HISTORY_PAGE);
+  // ⭐ Live invitations always show in full — they are a worklist. Only the HISTORY pages,
+  // and it now discloses its own size instead of silently cutting at ten.
+  const pastAll = invitations.filter((i) => i.status !== "ISSUED").sort((x, y) => y.updatedAt.localeCompare(x.updatedAt));
+  const iPage = parsePage(sp.ipage, pastAll.length);
+  const pastInvitations = pastAll.slice((iPage - 1) * INVITATION_HISTORY_PAGE, iPage * INVITATION_HISTORY_PAGE);
 
   // ── Roster + payables ──
-  const roster = rosterR.ok ? rosterR.data : [];
-  const rosterByUser = new Map(roster.map((r) => [r.userId, r] as const));
-  const activeAgents = roster.filter((r) => r.standing === "ACTIVE").length;
-  const payables = (rewardsR.ok ? rewardsR.data : [])
+  const rosterAll = rosterR.ok ? rosterR.data : [];
+  const rosterByUser = new Map(rosterAll.map((r) => [r.userId, r] as const));
+  // ⛔ Over the WHOLE roster, like the other KPIs — not over a search result.
+  const activeAgents = rosterAll.filter((r) => r.standing === "ACTIVE").length;
+  const rosterParsed = parseQuery(rosterQuery, { fields: fieldNames(AGENT_ROSTER_SEARCH) });
+  const rosterFiltered = rosterAll.filter((r) => matchesQuery(rosterParsed, r as unknown as Record<string, string | null | undefined>, AGENT_ROSTER_SEARCH));
+  /**
+   * ⭐ THE ROSTER IS SORTABLE, and the default stays what the caption has always claimed:
+   * by net fee generated. ⚠️ Every comparator ends in a stable tie-break on `userId`, because
+   * `sort.ts` is explicit that without one the order of two equal rows is whatever order they
+   * arrived in — a list that reshuffles under the reader on every navigation for no reason
+   * they can see.
+   */
+  const rsort = (["fee", "commission", "recruits", "name"] as const).includes(sp.rsort as never) ? (sp.rsort as "fee" | "commission" | "recruits" | "name") : "fee";
+  const rdir: "asc" | "desc" = sp.rdir === "asc" ? "asc" : "desc";
+  const rosterSorted = [...rosterFiltered].sort((x, y) => {
+    const n = rsort === "name"
+      ? String(x.handle || x.userId).localeCompare(String(y.handle || y.userId))
+      : rsort === "recruits" ? x.recruits - y.recruits
+      : rsort === "commission" ? x.commissionTzs - y.commissionTzs
+      : x.revenueTzs - y.revenueTzs;
+    return (rdir === "asc" ? n : -n) || x.userId.localeCompare(y.userId);
+  });
+  const roster = rosterSorted;
+
+  const payablesAll = (rewardsR.ok ? rewardsR.data : [])
     .filter((r) => r.programme === "AGENT" && r.type === "COMMISSION" && r.status === "PENDING")
     .sort((x, y) => x.createdAt.localeCompare(y.createdAt));
+  const pPage = parsePage(sp.ppage, payablesAll.length);
+  const payables = payablesAll.slice((pPage - 1) * PER_PAGE, pPage * PER_PAGE);
   // ⛔ The KPI is NOT the page summed — it is the grouped aggregate, which cannot truncate.
   const payableCell = (totalsR.ok ? totalsR.data : []).filter((c) => c.programme === "AGENT" && c.type === "COMMISSION" && c.status === "PENDING");
   const payableTzs = payableCell.reduce((s, c) => s + c.sumTzs, 0);
   const payableCount = payableCell.reduce((s, c) => s + c.count, 0);
   // The workstation is keyed by APPLICATION; the roster by user. One map joins them.
-  const approvedAppByUser = new Map(apps.filter((a) => a.status === "APPROVED").map((a) => [a.userId, a.id] as const));
+  // ⛔ Over `allApps`, NOT the filtered set: this join decides whether a roster row has a
+  // "Rate · standing" link at all, and a row whose link vanished because the officer typed
+  // something in the OTHER tab's search box would be unmanageable for no visible reason.
+  const approvedAppByUser = new Map(allApps.filter((a) => a.status === "APPROVED").map((a) => [a.userId, a.id] as const));
 
-  // ── One batched user lookup for every row on the page ──
+  /**
+   * ⭐ THE SEARCH FILTERS THE APPLICATIONS BEFORE THEY ARE PARTITIONED, so every card below
+   * shows the same population and their counts cannot disagree with each other.
+   *
+   * ⛔ AND THE NAME AND PHONE ARE JOINED FIRST. `AGENT_SEARCH` is a VIEW-MODEL schema: an
+   * officer searches for "Asha" or a phone number, neither of which is a column on
+   * AgentApplication. Filtering before the join would have made the two most useful search
+   * terms silently match nothing — the failure mode that looks exactly like "no results".
+   */
   const ids = new Set<string>();
-  for (const a of apps) ids.add(a.userId);
+  for (const a of allApps) ids.add(a.userId);
   for (const r of payables) { ids.add(r.referrerUserId); ids.add(r.recruitUserId); }
   const usersR = await read(() => (ids.size ? db.user.findByIds(Array.from(ids)) : Promise.resolve([] as StoredUser[])));
   const userById = new Map((usersR.ok ? usersR.data : []).map((u) => [u.id, u] as const));
   const nameOf = (userId: string) => { const u = userById.get(userId); return u ? displayLabel({ id: u.id, displayName: u.displayName }) : "—"; };
 
-  const ageDays = (iso: string | null) => (iso ? Math.floor((now - Date.parse(iso)) / DAY_MS) : null);
+  const parsed = parseQuery(query, { fields: fieldNames(AGENT_SEARCH) });
+  const apps = allApps.filter((a) => {
+    if (statusFilter && a.status !== statusFilter) return false;
+    const u = userById.get(a.userId);
+    return matchesQuery(parsed, {
+      ...a,
+      name: u ? displayLabel({ id: u.id, displayName: u.displayName }) : null,
+      phone: u?.phoneE164 ?? null,
+    } as unknown as Record<string, string | null | undefined>, AGENT_SEARCH);
+  });
+  const filtering = query !== "" || statusFilter !== "";
+
+  // Partitioned by whose turn it is — over the FILTERED set.
+  const review = apps.filter((a) => a.status === "UNDER_REVIEW").sort((x, y) => (x.submittedAt ?? x.updatedAt).localeCompare(y.submittedAt ?? y.updatedAt));
+  const inProgress = apps.filter((a) => IN_PROGRESS.includes(a.status)).sort((x, y) => y.updatedAt.localeCompare(x.updatedAt));
+  const closedAll = apps.filter((a) => CLOSED.includes(a.status)).sort((x, y) => (y.reviewedAt ?? y.updatedAt).localeCompare(x.reviewedAt ?? x.updatedAt));
+  const refundsOwed = apps.filter((a) => a.feeDisposition === "REFUND_DUE").sort((x, y) => (x.feeRefundDueAt ?? "").localeCompare(y.feeRefundDueAt ?? ""));
+
+  /**
+   * 🔴 REAL PAGINATION, replacing three silent truncations.
+   *
+   * "Decided" was `closed.slice(0, 20)` with a caption reading "newest 20 of 143" and NO next
+   * page — so application #21 onward was unreachable from this console at all, and the caption
+   * was honest about a dead end rather than being an exit. Invitations were sliced to 10 with
+   * the truncation not disclosed anywhere. Payables read 5,000 rows and rendered every match.
+   *
+   * ⛔ THE COUNT AND THE PAGER READ THE SAME VARIABLE. `counts.ts` records the 2026-08-10
+   * incident — a board printing "40 live" over a grid of zero cards — and its rule is that a
+   * count is never computed over a wider set than its control would show.
+   */
+  const dPage = parsePage(sp.dpage, closedAll.length);
+  const closed = closedAll.slice((dPage - 1) * PER_PAGE, dPage * PER_PAGE);
 
   return (
     <>
@@ -136,34 +241,94 @@ export default async function AdminAgentsPage({ searchParams }: { searchParams: 
           value={tab}
           ariaLabel="Agent programme sections"
           tabs={[
-            { value: "applications", labelEn: "Applications", count: review.length, href: tabHref("applications") },
-            { value: "agents", labelEn: "Agents", count: roster.length, href: tabHref("agents") },
+            /* ⛔ THE TAB COUNT IS THE PROGRAMME'S, NOT THE SEARCH'S. A rail badge is
+               navigation — it tells an officer where the work is — so it must not shrink to
+               1 because they typed a name, which would read as "there is one application
+               left to review". The filtered figures live in the cards' own captions. */
+            { value: "applications", labelEn: "Applications", count: allReview.length, href: tabHref("applications") },
+            { value: "agents", labelEn: "Agents", count: rosterAll.length, href: tabHref("agents") },
             { value: "settings", labelEn: "Settings", href: tabHref("settings") },
           ]}
         />
 
-        {!cfg.enabled && (
+        {/* ⛔ THE "PROGRAMME IS OFF" WARNING BELONGS WHERE THE WORK IS. On the Settings tab
+            it sat directly above the switch that causes it, restating what the toggle already
+            shows — and the officer who needs the warning is the one looking at a queue they
+            cannot act on, not the one already holding the switch. */}
+        {!cfg.enabled && tab !== "settings" && (
           <Callout tone="warning" size="md">
             The programme is switched off: the public page shows no application button, invitations cannot be issued and drafts cannot be submitted. Approved agents keep recruiting and earning. Switch it on under Settings.
           </Callout>
         )}
 
-        <KpiGrid cols="4">
-          <AdminKpi label="Awaiting review" sw="Zinasubiri" value={review.length} unavailable={!appsR.ok}
-            delta={review.length === 0 ? "queue clear" : overdueReviews > 0 ? `${overdueReviews} past the ${cfg.reviewSlaDays}-day SLA` : `all within ${cfg.reviewSlaDays} days`} />
-          <AdminKpi label="Active agents" sw="Mawakala hai" value={activeAgents} unavailable={!rosterR.ok}
-            delta={roster.length === activeAgents ? `${roster.length} approved` : `${roster.length - activeAgents} of ${roster.length} not active`} />
-          <AdminKpi label="Commission payable" sw="Kamisheni inayodaiwa" value={formatTzs(payableTzs)} gold unavailable={!totalsR.ok}
-            delta={payableCount === 0 ? "nothing pending" : `${payableCount} accrual${payableCount === 1 ? "" : "s"} could not be credited`} />
-          <AdminKpi label="Refunds owed" sw="Marejesho" value={formatTzs(refundsOwedTzs)} gold unavailable={!appsR.ok}
-            delta={refundsOwed.length === 0 ? "none owed" : overdueRefunds > 0 ? `${overdueRefunds} past the ${cfg.refundDeadlineDays}-day deadline` : `${refundsOwed.length} within ${cfg.refundDeadlineDays} days`} />
-        </KpiGrid>
+        {/**
+          * ⭐ THE BAND MEASURES THE PROGRAMME, AND IT IS NOT RENDERED ON SETTINGS.
+          *
+          * 🔴 Two defects here. It was drawn on all three tabs, including Settings, where
+          * four programme totals are noise above a form about configuration. And every figure
+          * was computed from the POST-FILTER lists, so an officer who searched a name would
+          * have read "Awaiting review: 1" as the size of the queue — a true number over the
+          * wrong population, which `counts.ts` records as the 2026-08-10 incident and treats
+          * as a lie regardless of its arithmetic.
+          */}
+        {tab !== "settings" && (
+          <KpiGrid cols="4">
+            <AdminKpi label="Awaiting review" sw="Zinasubiri" value={allReview.length} unavailable={!appsR.ok}
+              delta={allReview.length === 0 ? "queue clear" : overdueReviews > 0 ? `${overdueReviews} past the ${cfg.reviewSlaDays}-working-day SLA` : `all within ${cfg.reviewSlaDays} working days`} />
+            <AdminKpi label="Active agents" sw="Mawakala hai" value={activeAgents} unavailable={!rosterR.ok}
+              delta={rosterAll.length === activeAgents ? `${rosterAll.length} approved` : `${rosterAll.length - activeAgents} of ${rosterAll.length} not active`} />
+            <AdminKpi label="Commission payable" sw="Kamisheni inayodaiwa" value={formatTzs(payableTzs)} gold unavailable={!totalsR.ok}
+              delta={payableCount === 0 ? "nothing pending" : `${payableCount} accrual${payableCount === 1 ? "" : "s"} could not be credited`} />
+            <AdminKpi label="Refunds owed" sw="Marejesho" value={formatTzs(refundsOwedTzs)} gold unavailable={!appsR.ok}
+              delta={allRefundsOwed.length === 0 ? "none owed" : overdueRefunds > 0 ? `${overdueRefunds} past the ${cfg.refundDeadlineDays}-day deadline` : `${allRefundsOwed.length} within ${cfg.refundDeadlineDays} days`} />
+          </KpiGrid>
+        )}
+
+        {/* ⭐ SEARCH — a plain GET form inside an AdminCard, the same shape /admin/players
+            pioneered. No JavaScript: the officer's query is a URL fact, so a filtered queue is
+            shareable, survives a refresh, and can be pasted into a ticket. */}
+        {tab === "applications" && (
+          <AdminCard>
+            <form className="flex flex-wrap items-end gap-2">
+              <input type="hidden" name="tab" value="applications" />
+              <div className="min-w-0 flex-1 sm:min-w-[280px]">
+                <label htmlFor="agent-q" className="mb-1 block font-mono text-micro uppercase eyebrow text-text-tertiary">Search applications</label>
+                <div className="relative">
+                  <I.search s={14} aria-hidden className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-subtle" />
+                  {/* ⚠️ A LITERAL HEIGHT, not `h-8`. `theme.extend.spacing` is overridden in
+                      tailwind.config.ts, so `h-8` renders 48px against a 32px contract — the
+                      one admin-search height, matching the xs Select beside it. */}
+                  <input id="agent-q" name="q" defaultValue={query} placeholder="Name, phone, application id, receipt reference, or 50PICK-AG code"
+                    aria-label="Search agent applications"
+                    className="h-[var(--h-control-xs)] w-full rounded-md border border-border bg-bg-overlay pl-9 pr-3 text-body-sm text-text outline-none admin-focus transition-colors placeholder:text-text-subtle" />
+                </div>
+              </div>
+              <div className="w-full sm:w-[210px]">
+                <label htmlFor="agent-status" className="mb-1 block font-mono text-micro uppercase eyebrow text-text-tertiary">Status</label>
+                <Select name="status" defaultValue={statusFilter} size="xs" placeholder="All statuses" ariaLabel="Filter by application status"
+                  options={[{ value: "", label: "All statuses" }, ...([...IN_PROGRESS, "UNDER_REVIEW" as const, ...CLOSED].map((st) => ({ value: st, label: AGENT_STATUS[st].en })))]} />
+              </div>
+              {/* ⛔ THE KIT BUTTON, not a hand-typed `.btn` — §K5, "extend the kit; never fork
+                  it", and `test:ui-consistency` fails the build on a raw `.btn` class. It
+                  submits the plain GET form, so search still works with JavaScript off. */}
+              <Button type="submit" variant="primary" size="xs">Search</Button>
+              {filtering && <a href="/admin/agents" className="btn btn-ghost btn-xs">Clear</a>}
+            </form>
+            {/* ⛔ THE COUNT IS OVER THE SAME SET THE CARDS BELOW RENDER — `counts.ts`, the
+                2026-08-10 incident: a true number over the wrong population is still a lie. */}
+            <p className="mt-2 text-body-sm text-text-tertiary">
+              {filtering
+                ? `${apps.length} of ${allApps.length} ${allApps.length === 1 ? "application" : "applications"} match`
+                : `${allApps.length} ${allApps.length === 1 ? "application" : "applications"}`}
+            </p>
+          </AdminCard>
+        )}
 
         {/* ═══════════════ APPLICATIONS ═══════════════ */}
         {tab === "applications" && (<>
           {!appsR.ok ? <AdminLoadError what="the application queue" /> : (<>
             <AdminCard title="Review queue" sw="Foleni ya mapitio" padding="p-0"
-              action={<span className="font-mono text-body-sm text-text-subtle">oldest first · SLA {cfg.reviewSlaDays} days</span>}>
+              action={<span className="font-mono text-body-sm text-text-subtle">oldest first · SLA {cfg.reviewSlaDays} working days</span>}>
               {review.length === 0 ? (
                 <EmptyBlock kind="kyc" title="Nothing to review" body="Submitted applications appear here, oldest first." />
               ) : (
@@ -180,7 +345,7 @@ export default async function AdminAgentsPage({ searchParams }: { searchParams: 
                     </tr>
                   </thead>
                   <tbody>
-                    {review.map((a) => <ApplicationRow key={a.id} app={a} name={nameOf(a.userId)} phone={userById.get(a.userId)?.phoneE164 ?? null} waitingDays={ageDays(a.submittedAt)} slaDays={cfg.reviewSlaDays} />)}
+                    {review.map((a) => <ApplicationRow key={a.id} app={a} name={nameOf(a.userId)} phone={userById.get(a.userId)?.phoneE164 ?? null} waitingDays={a.submittedAt ? workingDaysBetween(a.submittedAt, new Date(now)) : null} slaDays={cfg.reviewSlaDays} />)}
                   </tbody>
                 </table>
               </ScrollX>
@@ -229,7 +394,7 @@ export default async function AdminAgentsPage({ searchParams }: { searchParams: 
             </AdminCard>
 
             <AdminCard title="Invitations" sw="Mialiko"
-              action={<span className="font-mono text-body-sm text-text-subtle">expire after {cfg.invitationExpiryDays} days · acceptance needs an OTP to the invited number</span>}>
+              action={<span className="font-mono text-body-sm text-text-subtle">expire after {cfg.invitationExpiryDays} days · acceptance needs a code emailed to the invited address</span>}>
               <div className="space-y-4">
                 {cfg.enabled ? <InviteComposer expiryDays={cfg.invitationExpiryDays} /> : (
                   <p className="text-body-sm text-text-secondary">Invitations cannot be issued while the programme is switched off.</p>
@@ -241,7 +406,7 @@ export default async function AdminAgentsPage({ searchParams }: { searchParams: 
                     <table className="admin-tbl min-w-[640px]">
                       <thead className="font-mono text-micro eyebrow uppercase text-text-tertiary border-b border-border-subtle">
                         <tr>
-                          <th className="text-left py-2 pr-3">Number</th>
+                          <th className="text-left py-2 pr-3">Sent to</th>
                           <th className="text-left py-2 pr-3">Name</th>
                           <th className="text-left py-2 pr-3">Status</th>
                           <th className="text-left py-2 pr-3">Issued</th>
@@ -255,6 +420,15 @@ export default async function AdminAgentsPage({ searchParams }: { searchParams: 
                     </table>
                   </ScrollX>
                   )}
+                {/* ⭐ The history was `slice(0, 10)` with the truncation disclosed NOWHERE — an
+                    officer looking for a withdrawn invitation from last month simply could not
+                    see it and had no way to know it existed. */}
+                {pastAll.length > INVITATION_HISTORY_PAGE && (
+                  <div className="mt-2 border-t border-border-subtle pt-2">
+                    <p className="mb-1.5 font-mono text-body-sm text-text-tertiary">{pastAll.length} closed invitations in total</p>
+                    <AdminPagination page={iPage} total={pastAll.length} perPage={INVITATION_HISTORY_PAGE} baseHref={buildBaseHref("/admin/agents", { tab: "applications", q: sp.q, status: sp.status })} param="ipage" />
+                  </div>
+                )}
               </div>
             </AdminCard>
 
@@ -293,8 +467,8 @@ export default async function AdminAgentsPage({ searchParams }: { searchParams: 
             </AdminCard>
 
             <AdminCard title="Decided" sw="Zilizoamuliwa" padding="p-0"
-              action={<span className="font-mono text-body-sm text-text-subtle">newest {Math.min(closed.length, CLOSED_PAGE)} of {closed.length}</span>}>
-              {closed.length === 0 ? (
+              action={<span className="font-mono text-body-sm text-text-subtle">newest decision first · {closedAll.length} in total</span>}>
+              {closedAll.length === 0 ? (
                 <EmptyBlock kind="admin" title="No decisions yet" body="Approved, rejected, declined, expired and revoked applications are kept here." />
               ) : (
               <ScrollX label="Decided applications">
@@ -310,7 +484,7 @@ export default async function AdminAgentsPage({ searchParams }: { searchParams: 
                     </tr>
                   </thead>
                   <tbody>
-                    {closed.slice(0, CLOSED_PAGE).map((a) => (
+                    {closed.map((a) => (
                       <tr key={a.id} className="border-b border-border-subtle">
                         <td className="p-3"><Link href={`/admin/players/${a.userId}` as Route} className="text-text hover:underline">{nameOf(a.userId)}</Link>{a.agentCode && <span className="ml-2 font-mono text-body-sm text-text-subtle">{a.agentCode}</span>}</td>
                         <td className="p-3"><Chip variant={statusVariant(a.status)}>{AGENT_STATUS[a.status].en}</Chip></td>
@@ -324,15 +498,49 @@ export default async function AdminAgentsPage({ searchParams }: { searchParams: 
                 </table>
               </ScrollX>
               )}
+              {/* ⭐ THE EXIT THAT WAS MISSING. Application #21 onward used to be unreachable. */}
+              {closedAll.length > PER_PAGE && (
+                <div className="border-t border-border-subtle px-3 py-2">
+                  <AdminPagination page={dPage} total={closedAll.length} perPage={PER_PAGE} baseHref={buildBaseHref("/admin/agents", { tab: "applications", q: sp.q, status: sp.status })} param="dpage" />
+                </div>
+              )}
             </AdminCard>
           </>)}
         </>)}
 
         {/* ═══════════════ AGENTS ═══════════════ */}
         {tab === "agents" && (<>
+          {/* ⭐ ITS OWN SEARCH PARAM. Sharing `?q=` with the Applications tab would mean
+              switching tabs silently re-interpreted the officer's query against a different
+              entity — a receipt reference matching nothing on a roster reads as "no agents". */}
+          <AdminCard>
+            <form className="flex flex-wrap items-end gap-2">
+              <input type="hidden" name="tab" value="agents" />
+              <div className="min-w-0 flex-1 sm:min-w-[280px]">
+                <label htmlFor="roster-q" className="mb-1 block font-mono text-micro uppercase eyebrow text-text-tertiary">Search agents</label>
+                <div className="relative">
+                  <I.search s={14} aria-hidden className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-subtle" />
+                  <input id="roster-q" name="rq" defaultValue={rosterQuery} placeholder="Agent handle or 50PICK-AG code"
+                    aria-label="Search the agent roster"
+                    className="h-[var(--h-control-xs)] w-full rounded-md border border-border bg-bg-overlay pl-9 pr-3 text-body-sm text-text outline-none admin-focus transition-colors placeholder:text-text-subtle" />
+                </div>
+              </div>
+              <Button type="submit" variant="primary" size="xs">Search</Button>
+              {rosterQuery && <a href="/admin/agents?tab=agents" className="btn btn-ghost btn-xs">Clear</a>}
+            </form>
+            <p className="mt-2 text-body-sm text-text-tertiary">
+              {rosterQuery
+                ? `${roster.length} of ${rosterAll.length} ${rosterAll.length === 1 ? "agent" : "agents"} match`
+                : `${rosterAll.length} ${rosterAll.length === 1 ? "agent" : "agents"} · ${activeAgents} active`}
+            </p>
+          </AdminCard>
+          {/* ⛔ THE ROSTER CAPTION NO LONGER ASSERTS AN ORDER THE HEADERS CAN CHANGE. It used
+              to read "by net fee generated" as a flat statement; with sortable columns that
+              becomes false the moment an officer clicks one. It now names the DERIVATION,
+              which is the part that stays true — and the sorted column says the order. */}
           {!rosterR.ok ? <AdminLoadError what="the agent roster" /> : (
             <AdminCard title="Roster" sw="Orodha ya mawakala" padding="p-0"
-              action={<span className="font-mono text-body-sm text-text-subtle">by net fee generated (derived from each accrual and its rate) · ceiling {cfg.maxCommissionPct}%</span>}>
+              action={<span className="font-mono text-body-sm text-text-subtle">net fee derived from each accrual and its rate · ceiling {cfg.maxCommissionPct}%</span>}>
               {roster.length === 0 ? (
                 <EmptyBlock kind="leaderboard" title="No approved agents" body="An agent appears here the moment an application is approved." />
               ) : (
@@ -340,12 +548,12 @@ export default async function AdminAgentsPage({ searchParams }: { searchParams: 
                 <table className="admin-tbl min-w-[1080px]">
                   <thead className="font-mono text-micro eyebrow uppercase text-text-tertiary border-b border-border-subtle bg-bg-sunken/50">
                     <tr>
-                      <th className="text-left p-3">Agent</th>
+                      <SortTh field="name" label="Agent" current={rsort} dir={rdir} sp={{ ...sp, tab: "agents" }} baseHref="/admin/agents" prefix="r" />
                       <th className="text-left p-3">Code</th>
                       <th className="text-left p-3">Standing</th>
-                      <th className="text-right p-3">Recruits</th>
-                      <th className="text-right p-3">Net fee generated</th>
-                      <th className="text-right p-3">Commission</th>
+                      <SortTh field="recruits" label="Recruits" current={rsort} dir={rdir} align="right" sp={{ ...sp, tab: "agents" }} baseHref="/admin/agents" prefix="r" />
+                      <SortTh field="fee" label="Net fee generated" current={rsort} dir={rdir} align="right" sp={{ ...sp, tab: "agents" }} baseHref="/admin/agents" prefix="r" />
+                      <SortTh field="commission" label="Commission" current={rsort} dir={rdir} align="right" sp={{ ...sp, tab: "agents" }} baseHref="/admin/agents" prefix="r" />
                       <th className="text-left p-3">Signal</th>
                       <th className="text-right p-3">Manage</th>
                     </tr>
@@ -383,6 +591,14 @@ export default async function AdminAgentsPage({ searchParams }: { searchParams: 
                 </table>
               </ScrollX>
               )}
+              {/* ⭐ The table read 5,000 rows and rendered every match with no pager — the KPI
+                  above it is deliberately the grouped aggregate so IT cannot truncate, but the
+                  table could, silently. */}
+              {payablesAll.length > PER_PAGE && (
+                <div className="border-t border-border-subtle px-3 py-2">
+                  <AdminPagination page={pPage} total={payablesAll.length} perPage={PER_PAGE} baseHref={buildBaseHref("/admin/agents", { tab: "agents", rq: sp.rq, rsort: sp.rsort, rdir: sp.rdir })} param="ppage" />
+                </div>
+              )}
           </AdminCard>
         </>)}
 
@@ -408,6 +624,15 @@ export default async function AdminAgentsPage({ searchParams }: { searchParams: 
                   <dt className="font-mono text-micro uppercase eyebrow text-text-faint">Commission</dt>
                   <dd className="mt-0.5 font-mono text-text">{cfg.defaultCommissionPct}% default · {cfg.maxCommissionPct}% ceiling</dd>
                   <dd className="text-body-sm text-text-subtle">of the net fee after TRA and GBT · platform rule {PLATFORM_MAX_COMMISSION_PCT}% (RULES.md §2.10) — the ceiling cannot be set above it</dd>
+                  {/* ⭐ THE WITHHOLDING LINE, BESIDE THE RATE IT REDUCES. Management added it on
+                      2026-09-08 and it is the difference between what an agent EARNS and what
+                      reaches their wallet — so an officer reading the commission rate has to see
+                      it in the same breath, not two cards away. */}
+                  <dd className="text-body-sm text-text-subtle">
+                    {cfg.agentWithholdingTaxPct > 0
+                      ? <>less {cfg.agentWithholdingTaxPct}% local withholding tax, deducted at accrual and remitted to HOUSE:TAX</>
+                      : <>no withholding tax applies — the agent is credited their gross commission</>}
+                  </dd>
                 </div>
                 <div>
                   <dt className="font-mono text-micro uppercase eyebrow text-text-faint">Earning window</dt>
@@ -416,7 +641,7 @@ export default async function AdminAgentsPage({ searchParams }: { searchParams: 
                 </div>
                 <div>
                   <dt className="font-mono text-micro uppercase eyebrow text-text-faint">Clocks</dt>
-                  <dd className="mt-0.5 font-mono text-text">review {cfg.reviewSlaDays}d · refund {cfg.refundDeadlineDays}d</dd>
+                  <dd className="mt-0.5 font-mono text-text">review {cfg.reviewSlaDays} working d · refund {cfg.refundDeadlineDays}d</dd>
                   <dd className="font-mono text-body-sm text-text-subtle">invitation {cfg.invitationExpiryDays}d · draft {cfg.draftExpiryDays}d · re-apply after {cfg.reapplyCooldownDays}d</dd>
                 </div>
               </dl>
@@ -472,11 +697,26 @@ function ApplicationRow({ app, name, phone, waitingDays, slaDays }: { app: Store
 const invitationVariant = (status: StoredAgentInvitation["status"]) => TONE_CHIP[(STATUS_TONE as Record<string, { admin?: keyof typeof TONE_CHIP }>)[status]?.admin ?? "royal"];
 
 function InvitationRow({ inv, now }: { inv: StoredAgentInvitation; now: number }) {
-  
   const expiringSoon = inv.status === "ISSUED" && Date.parse(inv.expiresAt) - now < 2 * DAY_MS;
+  /**
+   * ⭐ THE ADDRESS COLUMN SHOWS WHICHEVER ADDRESS THE ROW CARRIES, and says which. Invitations
+   * issued before 2026-09-08 are phone-bound; every one since is email-bound. ⛔ Rendering
+   * `inv.phoneE164` unconditionally would print "null•••ull" on every new row.
+   */
+  const ch = invitationChannel(inv);
   return (
     <tr className="border-b border-border-subtle">
-      <td className="py-2 pr-3 font-mono">{inv.acceptedUserId ? <Sensitive field="phone" subjectId={inv.acceptedUserId} value={inv.phoneE164} /> : `${inv.phoneE164.slice(0, 4)}•••${inv.phoneE164.slice(-3)}`}</td>
+      <td className="py-2 pr-3 font-mono">
+        {!ch ? <span className="text-text-subtle">—</span>
+          : ch.kind === "PHONE"
+            ? (inv.acceptedUserId
+                ? <Sensitive field="phone" subjectId={inv.acceptedUserId} value={ch.address} />
+                : maskChannel(ch))
+            /* An email is shown masked to the same rule the invitation page uses — first
+               character plus the whole domain. The officer typed it; this is confirmation,
+               not disclosure, and the console is not the place to re-print a full address. */
+            : <span title="Invited by email">{maskChannel(ch)}</span>}
+      </td>
       <td className="py-2 pr-3 text-text-secondary">{inv.displayName ?? "—"}</td>
       <td className="py-2 pr-3"><Chip variant={invitationVariant(inv.status)}>{AGENT_INVITATION_STATUS[inv.status].en}</Chip></td>
       <td className="py-2 pr-3 font-mono whitespace-nowrap">{formatDateShort(inv.issuedAt)}</td>

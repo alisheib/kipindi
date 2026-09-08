@@ -28,6 +28,60 @@ about this system**, §10 records the correction.
 
 ---
 
+## AMENDMENT · 2026-09-08 · MANAGEMENT'S FEEDBACK ON v1
+
+⭐ **READ THIS BEFORE §5.** It supersedes four of the decisions recorded there — the rate, the
+VAT treatment, the unit of the review promise — and adds a deduction the platform did not model.
+`RULES.md` §2.10 carries the same amendment as the rule.
+
+**Source** *Feedback for the Agent v1* (`~/Downloads`), five annotated screenshots of the live
+`/agent` page. Their annotations, verbatim, and what each became:
+
+| Their note, against | What it said | What was done |
+|---|---|---|
+| the "What you earn" tile | "Agent fee = 10% of commission on winnings after tax" | `defaultCommissionPct` 20 → **10** |
+| the "What it costs" tile | "TZS 100,000 + VAT = 118,000" | `feeVatTreatment` INCLUSIVE → **EXCLUSIVE**; the applicant-facing total is now TZS 118,000 |
+| the "Approval time" tile | "5 Working days" | the copy reads **working days** in all three locales, and `/admin/agents` measures the SLA with `workingDaysBetween` so the promise and the "Past SLA" chip are one fact |
+| the commission paragraph | "Remove this and Keep this below:" — followed by an eight-row financial waterfall | the paragraph (`agent.earnBody`) is **deleted**; the waterfall is rendered on `/agent` from `src/lib/agent-commission.ts` |
+
+### The waterfall they drew, and the one line the platform did not have
+
+Their table adds a row the platform had never modelled: **local withholding tax, 5% of the
+agent's earnings**. Drawing it while the engine credited the gross would have been a false money
+statement, so it is implemented for real — deducted at accrual, remitted to `HOUSE:TAX` in the
+same balanced ledger group as the credit, recorded on the `ReferralReward` row as gross/tax/net,
+and reversed **in proportion** by a clawback.
+
+| Step | Their figure | Ours | Why |
+|---|---|---|---|
+| Referred players' winnings | 1,000,000.00 | 1,000,000 | the worked example's base |
+| Gross platform commission (13%) | 130,000.00 | 130,000 | §2.1 loser-share fee |
+| · TRA (10% of the fee) | 13,000.00 | 13,000 | `levySplit` |
+| · GBT (5% of the fee) | 6,500.00 | 6,500 | `levySplit` |
+| Net 50pick commission | 110,500.00 | 110,500 | the only base an agent is paid on |
+| Agent share (10% of net) | 11,050.00 | 11,050 | `Math.floor` |
+| · Local withholding (5%) | 552.50 | **553** | ⚠️ see below |
+| **Net agent payout** | **10,497.50** | **10,497** | ⚠️ see below |
+
+⚠️ **THE ONE PLACE WE DO NOT REPRODUCE THEIR SPREADSHEET TO THE CENT.** TZS has no
+circulating subunit and every money column in this platform is a whole number of shillings, so
+5% of 11,050 is `Math.round(552.5)` = **553** and the payout is **10,497**. Their figures carry
+two decimals. This is a PRESENTATION difference of half a shilling, not an economics one — and
+rendering a decimal the ledger cannot pay would be the worse error. `Math.round` was chosen over
+floor or ceil because it is how `levySplit` already rounds TRA and GBT: the same kind of
+statutory deduction on the same fee, rounded the same way, needs no special pleading.
+
+⚠️ **Their table's last row is labelled "NET AGENT PAYOUT PER WINNING PLAYER".** It is not per
+player — it is the payout on the whole TZS 1,000,000 aggregate the table starts from. The
+rendered row reads **"Net agent payout"**; keeping their label would have made the table
+contradict its own first line.
+
+⚠️ **Two columns, not their three.** Their document sets PARAMETER · AMOUNT · NOTES side by
+side. §A6's floor is zero horizontal overflow at 360px, and in Swahili — 35–40% longer than
+English — a third prose column either scrolls sideways or wraps to six lines a row. Every word
+of every note is kept, set UNDER its parameter instead of beside it. Verified at 360/768/1280 in
+all three locales: `node scripts/live/agent-v1-visual.mjs` (135 assertions).
+
 ## 1 · What an agent is, and is not
 
 A vetted, fee-paying, compliance-approved business partner who introduces players and earns
@@ -100,7 +154,7 @@ erasure can never reach.
 
 | | |
 |---|---|
-| **Amount** | TZS 100,000, ⭐ **VAT-INCLUSIVE** (Ali, 2026-09-07) — so the applicant-facing figure stays exactly what the management framework already published. Stated in `RULES.md` §2.10 (to be written) |
+| **Amount** | ⭐ **TZS 118,000 — TZS 100,000 PLUS 18% VAT** (management, 2026-09-08; supersedes the VAT-inclusive decision of 2026-09-07). `registrationFeeTzs` holds the **net** 100,000 and `feeVatTreatment = EXCLUSIVE`; ⛔ what an applicant owes is `feeBreakdown().totalTzs` and nothing may quote the raw config field. Stated in `RULES.md` §2.10 |
 | **Destination** | Digital Selcom Bank, account **0769777877** |
 | **How** | Paid **out of band**; the applicant uploads the receipt and types the reference |
 | **Waiver** | ⭐ An officer may waive it or record it as collected in cash — **with a typed reason, audited** (Ali, 2026-09-06) |
@@ -112,9 +166,9 @@ invariants.
 
 ✅ **It posts a `LedgerEntry` (2026-09-07).** `agentRegistrationFeeEntries` books the fee to
 `HOUSE:AGENT_FEE` with its VAT split at reconciliation, so the house book, trial balance,
-regulator pack and the tax figures all see it. **VAT is settled:** the fee is **VAT-inclusive**
+regulator pack and the tax figures all see it. **VAT is settled:** the fee is **VAT-EXCLUSIVE**
 at the configured rate (`feeVatRatePct`, 18% today) — `feeBreakdown()` is the one place the
-split is computed (TZS 84,746 net + TZS 15,254 VAT on TZS 100,000). An `EXCLUSIVE` treatment
+split is computed (TZS 100,000 net + TZS 18,000 VAT = TZS 118,000 payable). The `INCLUSIVE` treatment
 exists in config for a future change of policy and is not in force.
 
 🔴 **One receipt, one application** — `feeReference` is unique. And a refund needs **evidence and a
@@ -151,13 +205,13 @@ ALTER TABLE "AffiliateAgent" DROP COLUMN IF EXISTS "tier";
 
 | Term | Value (Ali, 2026-09-07) |
 |---|---|
-| **Normal rate** | **20%** of the net operator fee — of every TZS 100 we keep from that agent's recruit, TZS 20 goes to the agent |
+| **Normal rate** | **10%** of the net operator fee (management, 2026-09-08; was 20%) — of every TZS 100 we keep from that agent's recruit, TZS 10 is allocated to the agent, and **5% of that is withheld** as local tax, so TZS 9.50 reaches their wallet |
 | **Hard ceiling** | **40%** — no officer may set more. A *rule*, so it belongs in `RULES.md` §2.10 |
 | **Window** | **Lifetime** — an agent earns for as long as the recruit keeps playing |
 | **Per-recruit cap** | **None** |
 
 ⚠️ **TWO SCALES EXIST IN THIS CODEBASE AND THEY ARE NOT THE SAME.** `AffiliateAgent.commissionPct`
-is a **percent** (`20.00` = 20%); the player config's `commission.rate` is a **fraction**
+is a **percent** (`10.00` = 10%); the player config's `commission.rate` is a **fraction**
 (`0.5` = 50%). ⛔ Never feed one into the other. The agent resolver reads the percent.
 
 ⭐ **Lifetime and uncapped is safe** precisely because the base is the fee we *kept*: the house
@@ -207,7 +261,7 @@ today reads the **role** and never the **account status**.
 
 **v1 was wrong.** It put `programme` only on the *reward*, derived at accrual from the referrer's
 **current role**. That is a **purchasable arbitrage**: farm attributions for free as an ordinary
-player, then pay TZS 100,000 for AGENT status, and every one of those old binds flips to paying
+player, then pay the registration fee for AGENT status, and every one of those old binds flips to paying
 agent commission at the negotiated rate — with the window opening on recruits who joined months
 ago.
 
@@ -279,7 +333,7 @@ Correct these before the document reaches an applicant or the Gaming Board.
 | Framework says | Reality |
 |---|---|
 | "Secure **AWS S3** with AES-256" | Cloudflare **R2** (`50pick-kyc`, WEUR), or base64 in Postgres when `KYC_STORAGE` is unset |
-| "**Automated webhook** matching TZS 100,000 deposits via Selcom Bank API" | Does not exist. Reconciliation is a **human officer** reading a receipt |
+| "**Automated webhook** matching registration-fee deposits via Selcom Bank API" | Does not exist. Reconciliation is a **human officer** reading a receipt |
 | "displaying fees (**0%**)" | Deposits 0%; **withdrawals 1.5%** |
 | "peer-to-peer top-ups" through an agent | Out of scope — recruiter only (§1) |
 | "volume turnover" as the commission base | Displayed; **paid on the net fee actually collected** (§5) |

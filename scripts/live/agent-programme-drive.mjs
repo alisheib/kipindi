@@ -15,9 +15,9 @@
  *   4 · Agent     — /agent CTA → dashboard (code · link · QR) · /agent/status redirects ·
  *                   register page shows the Verified badge for the code · a recruit registers
  *                   through the link (OTP) and appears on the roster
- *   5 · Invitee   — officer issues an invitation → link → create account (OTP) → "Text me a
- *                   code" (OTP) → accept → application opens; officer's Approve names why it
- *                   cannot fire yet
+ *   5 · Invitee   — officer issues an invitation BY EMAIL → link → create account (OTP) →
+ *                   "Email me a code" → the code is read from the server outbox → accept →
+ *                   application opens; officer's Approve names why it cannot fire yet
  *   6 · Player    — an ordinary signed-in player finds no invite / bonus solicitation
  *
  * ⛔ Every assertion is against RENDERED TEXT OR GEOMETRY, never against a status code alone.
@@ -58,12 +58,23 @@ function otpFor(phone) {
   if (!code) throw new Error(`no OTP in the server log for ${phone}`);
   return code;
 }
-function lastSmsFor(phone) {
-  const log = readFileSync(LOG, "utf8");
-  const re = new RegExp(`\\[SMS → ${phone.replace(/\+/g, "\\+")}\\]\\s*\\n\\s*([^\\n]+)`, "g");
-  let last = null, m;
-  while ((m = re.exec(log))) last = m[1];
-  return last;
+/**
+ * ⭐ THE INVITATION CODE, READ FROM THE SERVER'S OWN OUTBOX.
+ *
+ * ⛔ NOT FROM THE LOG. `email.ts` masks every address it logs under PDPA 2022 and prints no
+ * body at all — `[email-stub] To: n•••@t.tz | Subject: …` — so a log scrape cannot find
+ * either the recipient or the code. The file says so outright: never assert delivery from a
+ * log line; arm `EMAIL_OUTBOX_CAPTURE=1` and read the outbox.
+ *
+ * ⚠️ The route distinguishes "capture not armed" (409) from "no mail" (404), and this
+ * surfaces that difference instead of collapsing both into "no code" — they are different
+ * faults with different fixes.
+ */
+async function otpForEmail(page, email) {
+  const r = await page.request.get(`${BASE}/api/dev-test/last-otp?email=${encodeURIComponent(email)}`);
+  const body = await r.json().catch(() => ({}));
+  if (!body?.ok) throw new Error(`no invitation code for ${email} (HTTP ${r.status()}): ${body?.error ?? "unknown"}`);
+  return body.code;
 }
 
 /** RFC 6238 — six digits, 30-second step, SHA-1 — from the base32 secret the setup page shows. */
@@ -115,6 +126,13 @@ async function goto(page, path) {
 // One run, one set of phones — the memory DAL keeps state for the life of the server.
 const RUN = String(Date.now()).slice(-4);
 const PHONE_RECRUIT = `7190${RUN}1`.slice(0, 9), PHONE_INVITEE = `7190${RUN}2`.slice(0, 9), PHONE_PLAYER = `7190${RUN}3`.slice(0, 9);
+/**
+ * ⭐ RUN-SCOPED, LIKE THE PHONES ABOVE, AND FOR A HARDER REASON. `issueInvitation` refuses a
+ * second live invitation to the same mailbox — correctly — so a fixed address would pass on
+ * the first run of the day and fail on every one after it, with a refusal that looks like a
+ * product defect rather than a stale fixture.
+ */
+const EMAIL_INVITEE = `neema.${RUN}@50pick.test`;
 async function clickButton(page, name, opts = {}) {
   const b = page.getByRole("button", { name }).locator("visible=true").first();
   await b.waitFor({ state: "visible", timeout: opts.timeout ?? 30_000 });
@@ -209,11 +227,18 @@ const officer = await officerCtx.newPage();
   // The KPI label is painted uppercase by CSS and innerText carries the transform — compare case-blind.
   ok("1.kpi · the four KPIs are on screen", /Awaiting review/i.test(t) && /Active agents/i.test(t) && /Commission payable/i.test(t) && /Refunds owed/i.test(t), t.slice(0, 200));
   ok("1.empty · the queue says so, in words", /Nothing to review/.test(t));
-  ok("1.invite · the invitation composer is on the Applications tab", /Invitations/.test(t) && (await officer.locator('input[name="phone"]').count()) > 0);
+  // ⭐ AN EMAIL FIELD, NOT A PHONE ONE (2026-09-08). ⛔ The composer is asserted by the input
+  // it actually renders — a locator left pointing at the old field would have gone on passing
+  // for as long as ANY page on the console had a phone input, which is most of them.
+  ok("1.invite · the invitation composer is on the Applications tab, addressed by email",
+    /Invitations/.test(t) && (await officer.locator('input[name="email"]').count()) > 0 && (await officer.locator('input[name="phone"]').count()) === 0);
   await shot(officer, "1_admin-agents-applications-1280");
   await goto(officer, "/admin/agents?tab=settings");
   const ts = await text(officer);
-  ok("1.settings · Programme settings + In force now", /Programme settings/.test(ts) && /In force now/.test(ts) && /TZS\s?100,000/i.test(ts) && /20% default/i.test(ts) && /40% ceiling/.test(ts), ts.slice(0, 200));
+  // ⭐ MANAGEMENT'S NUMBERS, 2026-09-08: the agent share is 10% and the fee is EXCLUSIVE of
+  // VAT, so the applicant-facing total is 118,000. ⛔ 118,000 not 100,000 — `registrationFeeTzs`
+  // is still 100,000; what a person is told to PAY is the total, and this asserts the surface.
+  ok("1.settings · Programme settings + In force now", /Programme settings/.test(ts) && /In force now/.test(ts) && /TZS\s?118,000/i.test(ts) && /10% default/i.test(ts) && /40% ceiling/.test(ts), ts.slice(0, 200));
   await shot(officer, "1_admin-agents-settings-1280");
   await goto(officer, "/admin/agents?tab=agents");
   ok("1.roster · the empty roster says so", /No approved agents/.test(await text(officer)));
@@ -228,7 +253,19 @@ const applicant = await applicantCtx.newPage();
   await goto(applicant, "/auth/demo?kyc=approved");
   await goto(applicant, "/agent");
   const t = await text(applicant);
-  ok("2.public · /agent explains the programme with the fee and the rate", /TZS\s?100,000/i.test(t) && /20%/i.test(t), t.slice(0, 200));
+  ok("2.public · /agent explains the programme with the fee and the rate", /TZS\s?118,000/i.test(t) && /10%/i.test(t), t.slice(0, 200));
+  // ⭐ MANAGEMENT'S WATERFALL, ON THE PAGE. Every row derived, and the two figures whose
+  // arithmetic nobody can do in their head are the ones asserted — the net platform
+  // commission and the net agent payout. ⛔ If the paragraph it replaced ever comes back,
+  // `2.noprose` catches it: "Remove this and Keep this below" was the instruction.
+  ok("2.waterfall · the commission waterfall is rendered, row by row",
+    /Commission, line by line/i.test(t) && /Referred players/i.test(t) && /Tanzania Revenue Authority/i.test(t) && /Gaming Board of Tanzania/i.test(t) && /Local withholding tax/i.test(t), t.slice(0, 400));
+  ok("2.waterfallmath · …with the derived figures, not a typed table",
+    /110,500/.test(t) && /11,050/.test(t) && /10,497/.test(t), t.slice(0, 400));
+  ok("2.noprose · the paragraph management struck out is gone",
+    !/Commission is a share of the net operator fee/i.test(t));
+  ok("2.workingdays · the review promise is stated in WORKING days", /working days/i.test(t), t.slice(0, 300));
+  ok("2.vatplus · …and the fee names VAT as an ADDITION, not as included", /\+\s*TZS\s?18,000\s*VAT|100,000\s*\+/i.test(t), t.slice(0, 400));
   ok("2.cta · a verified player sees Apply now", /Apply now/.test(t));
   ok("2.footer · the footer carries the agent link", (await applicant.locator('footer a[href="/agent"]').count()) > 0);
   await shot(applicant, "2_agent-public-1280");
@@ -257,7 +294,12 @@ const applicant = await applicantCtx.newPage();
   await clickButton(applicant, /^(Continue|Next|Endelea)$/i);
   // Payment — receipt first, then the reference.
   await attachAll(applicant, 1);
-  await applicant.locator('input[placeholder="As printed on the receipt"]').fill("RCPT-DRIVE-001");
+  // ⛔ BY ITS `data-field`, NOT BY ITS PLACEHOLDER. The placeholder is COPY — it changed on
+  // 2026-09-08 from a description ("As printed on the receipt") to a literal example, per
+  // finding A-5 — and a drive keyed to copy breaks every time a word improves. `data-field`
+  // is structure: it is the address a refusal names, so it cannot drift without the refusal
+  // drifting too, and `test:validation-focus` §4 already holds that.
+  await applicant.locator('[data-field="feeReference"] input').fill("RCPT-DRIVE-001");
   await clickButton(applicant, /^Save/i);
   await sleep(1200);
   await applicant.getByText(/I accept the agent terms/).click();
@@ -283,7 +325,12 @@ const applicant = await applicantCtx.newPage();
   await officer.waitForURL(/\/admin\/agents\/agp_/, { timeout: 120_000 });
   await sleep(800);
   const w = await text(officer);
-  ok("3.workstation · the workstation renders the applicant, documents and the fee", /Documents/i.test(w) && /Registration fee/i.test(w) && /TZS\s?100,000/i.test(w));
+  ok("3.workstation · the workstation renders the applicant, documents and the fee", /Documents/i.test(w) && /Registration fee/i.test(w) && /TZS\s?118,000/i.test(w));
+  // ⭐ THE CASE FILE. The workstation rendered no history at all before 2026-09-08.
+  ok("3.history · …and the decision history, in words rather than dotted machine names",
+    /History/i.test(w) && !/agent\.fee\.reference_recorded/.test(w), w.slice(0, 300));
+  ok("3.contact · …and the applicant's OWN contact details, not only the referees'",
+    /Phone/i.test(w) && /Email/i.test(w), w.slice(0, 300));
   ok("3.blocks · the rail names why Approve cannot fire yet", /neither reconciled nor waived/i.test(w), w.slice(0, 200));
   await shot(officer, "3_workstation-before");
   // Every document through the gated route.
@@ -304,7 +351,24 @@ const applicant = await applicantCtx.newPage();
   ok("3.gated · every document image loads through /api/admin/agent-doc", tileCount === 8 && loaded === 8, `${loaded}/${tileCount}`);
   // Reconcile.
   // The attestation is typed, never pre-filled — the officer reads the receipt.
-  await officer.locator('input[name="attestedTzs"]').fill("100000");
+  /**
+   * 🔴 THE ATTESTED AMOUNT IS READ OFF THE PAGE, NOT TYPED.
+   *
+   * This filled "100000" — correct only while the fee was VAT-INCLUSIVE. Management moved the
+   * treatment to EXCLUSIVE on 2026-09-08 and the fee became TZS 118,000, so the drive attested
+   * the NET against the TOTAL and `reconcileFee` refused it, exactly as it should:
+   *   "The receipt reads TZS 100,000; the fee is TZS 118,000."
+   * ⭐ The refusal was the PRODUCT working. The defect was the fixture — the same one
+   * `agent-application-security` carried, where one wrong figure failed four legs downstream.
+   *
+   * ⛔ SO IT READS THE FIGURE THE OFFICER IS LOOKING AT. The rail prints the expected fee
+   * above this input; a drive that re-derives it from config would just be a second place the
+   * number lives, and one that types a literal is wrong the next time an operator edits it.
+   */
+  const feeShown = (await officer.locator('input[name="attestedTzs"]').locator("xpath=ancestor::*[self::div][1]").innerText().catch(() => "")) || (await text(officer));
+  const feeDigits = (feeShown.match(/TZS\s?([\d,]{4,})/) ?? [])[1]?.replace(/,/g, "");
+  ok("3.feeread · the rail states the fee the officer must attest, so the drive can read it", !!feeDigits && Number(feeDigits) > 0, String(feeDigits));
+  await officer.locator('input[name="attestedTzs"]').fill(feeDigits ?? "118000");
   await officer.locator('input[name="statementRef"]').fill("STMT-DRIVE-1");
   await officer.locator('input[name="sourceAccount"]').fill("07•• ••• 877");
   await clickButton(officer, /Reconcile/i);
@@ -349,7 +413,7 @@ const applicant = await applicantCtx.newPage();
   ok("4.cta · /agent offers the dashboard to the approved agent", /Open your agent dashboard/.test(await text(applicant)));
   await goto(applicant, "/profile/invite");
   const d = await text(applicant);
-  ok("4.dashboard · the dashboard shows the code, the rate and the cash destination", !!code && d.includes(code) && /20%/i.test(d), d.slice(0, 300));
+  ok("4.dashboard · the dashboard shows the code, the rate and the cash destination", !!code && d.includes(code) && /10%/i.test(d), d.slice(0, 300));
   ok("4.qr · a QR is rendered", (await applicant.locator("main svg, main img").count()) > 0);
   ok("4.link · the share link carries the code", (await applicant.locator(`main :text("${code}")`).count()) > 0);
   await shot(applicant, "4_dashboard-1280");
@@ -377,14 +441,21 @@ const applicant = await applicantCtx.newPage();
 // ═══════════════════════ 5 · INVITEE — invitation, OTP, acceptance ═══════════════════════
 {
   await goto(officer, "/admin/agents");
-  await officer.locator('input[name="phone"]').fill(`+255${PHONE_INVITEE}`);
+  // ⭐ AN EMAIL, NOT A PHONE (2026-09-08). No SMS provider is licensed — `sms.ts` ships
+  // `console` by default and both other adapters throw — so the officer's console promised a
+  // text that was never sent. The invitation and its code go through Postmark now.
+  await officer.locator('input[name="email"]').fill(EMAIL_INVITEE);
   await officer.locator('input[name="displayName"]').fill("Neema Invitee");
   await clickButton(officer, /^Invite$/);
   await waitText(officer, /Invitation issued/i, 60_000);
   const t = await text(officer);
   const link = t.match(/https?:\/\/\S+\/agent\/invite\/\S+/)?.[0]?.replace(/[).,]+$/, "");
   ok("5.issued · the invitation is issued and the link shown once", !!link, t.slice(0, 200));
-  ok("5.sms · the link was texted to the invited number", (lastSmsFor(`+255${PHONE_INVITEE}`) ?? "").includes("/agent/invite/"));
+  // ⛔ THE CONSOLE REPORTS WHAT THE PROVIDER DID, and never asserts a delivery it did not
+  // make. It used to read "A text with the link is on its way" unconditionally.
+  ok("5.delivery · the console reports the real delivery outcome, not a blanket promise",
+    /(email has been sent|NOT sent|could not be delivered|No mail provider|not be confirmed)/i.test(t), t.slice(0, 300));
+  ok("5.notext · …and never claims a text was sent", !/text with the link/i.test(t));
   ok("5.table · the invitations table lists it as Issued with a Withdraw control", /Issued/i.test(t) && /Withdraw/i.test(t));
   await shot(officer, "5_invitation-issued");
 
@@ -395,16 +466,17 @@ const applicant = await applicantCtx.newPage();
   const p = await text(invitee);
   ok("5.landing · the invitation page reads the invitation and offers sign in / create account", /invited to become a Verified 50pick Agent/i.test(p) && /Create account|Sign in/i.test(p), p.slice(0, 200));
   await shot(invitee, "5_invite-landing-390");
-  await register(invitee, { phone9: PHONE_INVITEE, email: "neema.drive@50pick.test", next: path });
+  // ⛔ THE ACCOUNT'S EMAIL MUST BE THE INVITED ONE — that match IS the second party now.
+  await register(invitee, { phone9: PHONE_INVITEE, email: EMAIL_INVITEE, next: path });
   if (!invitee.url().includes("/agent/invite/")) await goto(invitee, path);
-  await clickButton(invitee, /Text me a code/i);
+  await clickButton(invitee, /Email me a code/i);
   await waitText(invitee, /Enter the 6-digit code/i, 60_000);
   await sleep(500);
-  const otp = otpFor(`+255${PHONE_INVITEE}`);
+  const otp = await otpForEmail(invitee, EMAIL_INVITEE);
   await invitee.locator('input[inputmode="numeric"]').first().fill(otp);
   await clickButton(invitee, /Accept and continue/i);
   await waitText(invitee, /Invitation accepted|About you|Continue your application/i, 120_000);
-  ok("5.accepted · the invitee accepted with the code delivered to THEIR phone", /Invitation accepted|About you|Continue your application/i.test(await text(invitee)));
+  ok("5.accepted · the invitee accepted with the code delivered to THEIR mailbox", /Invitation accepted|About you|Continue your application/i.test(await text(invitee)));
   await shot(invitee, "5_invite-accepted-390");
   await goto(invitee, "/agent");
   ok("5.cta · /agent now offers Continue your application to the invitee", /Continue your application/.test(await text(invitee)));

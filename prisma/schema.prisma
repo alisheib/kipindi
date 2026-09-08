@@ -349,15 +349,26 @@ model Otp {
   id         String    @id @default(cuid())
   userId     String?
   user       User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
-  phoneE164  String
+  /// The address a code was sent to, when that address is a PHONE. Nullable since
+  /// 2026-09-08: an agent invitation is delivered by email, so its code has no phone.
+  /// ⛔ Exactly one of `phoneE164` / `email` is set on any row — never both, never neither.
+  phoneE164  String?
+  /// ⭐ The address a code was sent to, when that address is an EMAIL. Added 2026-09-08:
+  /// the platform has no licensed SMS provider (`sms.ts` — Beem and Africa's Talking both
+  /// throw, Selcom is unsigned), so the agent invitation moved to Postmark, which is live
+  /// and already carries the transactional mail. ⛔ An email was NOT stored in `phoneE164`:
+  /// a column whose name asserts one kind of address and holds another is how a PII sweep
+  /// or an erasure query silently misses rows.
+  email      String?
   codeHash   String
-  purpose    String // login, register, withdraw, reauth, password_reset
+  purpose    String // login, register, withdraw, reauth, password_reset, agent_invite
   attempts   Int       @default(0)
   consumedAt DateTime?
   expiresAt  DateTime
   createdAt  DateTime  @default(now())
 
   @@index([phoneE164, purpose])
+  @@index([email, purpose])
   @@index([expiresAt])
 }
 
@@ -1173,9 +1184,17 @@ model AgentInvitation {
   id             String                @id @default(cuid())
   applicationId  String?               @unique
   application    AgentApplication?     @relation(fields: [applicationId], references: [id], onDelete: SetNull)
-  /// The officer-entered phone the token is BOUND to. Acceptance requires an OTP delivered
-  /// to THIS number — a link forwarded to someone else is worthless.
-  phoneE164      String
+  /// The officer-entered phone a PRE-2026-09-08 token was bound to. ⚠️ Nullable now, and
+  /// NULL on every invitation issued since: the programme moved to email delivery because
+  /// there is no licensed SMS provider. Kept — not dropped — so invitations issued in the
+  /// programme's first days stay readable, revocable and acceptable.
+  phoneE164      String?
+  /// ⭐ THE ADDRESS THE TOKEN IS BOUND TO, since 2026-09-08. Acceptance requires an OTP
+  /// delivered to THIS mailbox AND a signed-in account whose own email matches it — so a
+  /// forwarded link is worthless, which is exactly the property the phone binding gave.
+  /// ⛔ Exactly one of `phoneE164` / `email` is set; `invitationChannel()` is the only
+  /// place that decides which, and every other surface asks it.
+  email          String?
   displayName    String?
   /// ⛔ The token is stored HASHED. A readable token in the database is a second copy of the
   /// credential.
@@ -1193,6 +1212,7 @@ model AgentInvitation {
   updatedAt      DateTime              @updatedAt
 
   @@index([phoneE164, status])
+  @@index([email, status])
   @@index([status, expiresAt])
 }
 
@@ -1340,7 +1360,18 @@ model ReferralReward {
   recruitUser     User                 @relation("ReferralRewardsReceived", fields: [recruitUserId], references: [id])
   type            ReferralRewardType
   label           String
+  /// ⚠️ THE NET — the money that actually reached the wallet, after any withholding tax.
+  /// Every reader (the dashboard, the payables table, the owner's book, the clawback) has
+  /// always meant "what the partner got" by this column, and it still does.
   amountTzs       Decimal              @db.Decimal(18, 2)
+  /// ⭐ The commission BEFORE the local withholding tax management added on 2026-09-08.
+  /// NULL on every row accrued before that date — and for those, `amountTzs` WAS the gross,
+  /// which is why the per-recruit cap sums `grossAmountTzs ?? amountTzs`.
+  grossAmountTzs  Decimal?             @db.Decimal(18, 2)
+  /// ⭐ The withholding tax deducted from `grossAmountTzs` and remitted to `HOUSE:TAX`.
+  /// NULL/0 where none applies (every PLAYER promo row, and every row before 2026-09-08).
+  /// ⛔ NOT the 15% withdrawal tax, which was deleted in 2026-07 and stays deleted.
+  taxWithheldTzs  Decimal?             @db.Decimal(18, 2)
   status          ReferralRewardStatus @default(PENDING)
   recipientUserId String // denormalised — always referrer or recruit
   note            String?

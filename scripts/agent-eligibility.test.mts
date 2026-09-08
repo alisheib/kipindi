@@ -12,7 +12,7 @@
  */
 import "./lib/verified-fixtures.mts";
 import { db } from "../src/lib/server/store.ts";
-import { mkFixtureUser, approveFixtureAgent, deactivateFixtureAgent, cashOf } from "./lib/agent-fixtures.mts";
+import { mkFixtureUser, approveFixtureAgent, deactivateFixtureAgent, cashOf, netAfterWht } from "./lib/agent-fixtures.mts";
 import { bindRecruit, onRecruitSettlement, agentStandingFor, inviteViewerFor, ensureAffiliateAccount } from "../src/lib/server/affiliate-service.ts";
 import { inviteIsLiveFor, inviteStateFor, NO_VIEWER } from "../src/lib/feature-state.ts";
 
@@ -53,7 +53,7 @@ await db.affiliate.update("el_deact", { active: true, deactivatedAt: null });
 ok("3.control · reactivated → live again", await live("el_deact"));
 ok("3.control.bind · …and binding again", (await tryBind(deactCode)).bound === true);
 await onRecruitSettlement(recruitBefore, { operatorNetFee: 10_000, marketId: "mkt_el_1", positionId: "pos_el_2" });
-ok("3.control.accrue · …and accruing again (prospective, TZS 2,000)", (await cashOf("el_deact")) === 2_000, `cash=${await cashOf("el_deact")}`);
+ok("3.control.accrue · …and accruing again (prospective, TZS 2,000 gross)", (await cashOf("el_deact")) === netAfterWht(2_000), `cash=${await cashOf("el_deact")}`);
 
 // ── §4 · ACCOUNT STATUS ends the relationship — each with its control ──────────────────
 for (const status of ["SUSPENDED", "CLOSED", "SELF_EXCLUDED"] as const) {

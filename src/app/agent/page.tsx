@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Callout } from "@/components/ui/callout";
 import { I } from "@/components/ui/glyphs";
 import { VerifiedAgentBadge } from "@/components/agent/verified-agent-badge";
+import { CommissionWaterfall } from "@/components/agent/commission-waterfall";
+import { getGlobalConfig } from "@/lib/server/market-config";
 import { getServerT } from "@/lib/i18n-server";
 import { currentSession } from "@/lib/server/auth-service";
 import { getAgentConfig } from "@/lib/server/agent-config";
@@ -34,7 +36,9 @@ export const dynamic = "force-dynamic";
  *
  * The CTA is decided by the SAME eligibility the service enforces (`applicantEligibility`), so
  * the page never offers what `startApplication` is about to refuse — and never before the
- * applicant is told to send TZS 100,000 out of band.
+ * applicant is told to send the registration fee out of band. ⛔ The fee is `feeBreakdown().
+ * totalTzs`, never a literal — it was TZS 100,000 VAT-inclusive until management moved the
+ * treatment on 2026-09-08 and became TZS 118,000.
  */
 export default async function AgentProgrammePage({ searchParams }: { searchParams: Promise<{ refused?: string }> }) {
   const sp = await searchParams;
@@ -45,7 +49,7 @@ export default async function AgentProgrammePage({ searchParams }: { searchParam
   /**
    * 🔴 THE DOOR CLOSES ON NEW APPLICANTS, NEVER ON PEOPLE ALREADY INSIDE (four-lens review,
    * 2026-09-07). This was `if (!cfg.enabled) notFound()` above the read: switching the
-   * programme off 404'd every applicant mid-flight — including one who had paid TZS 100,000 and
+   * programme off 404'd every applicant mid-flight — including one who had paid the fee and
    * was waiting for a decision — and turned the footer link into a dead end for them. The same
    * rule the engine already keeps (`policyFor`: `enabled` closes the DOOR, not the room) applies
    * to the page: someone with a live application, or an approved agent, still reads their state
@@ -56,6 +60,40 @@ export default async function AgentProgrammePage({ searchParams }: { searchParam
   // The ONE gate every /profile/invite link sits beside: an approved agent in good standing.
   const viewer = session ? await inviteViewerFor(session.userId) : null;
   const fee = feeBreakdown(cfg);
+  /**
+   * ⭐ THE VAT SENTENCE, DERIVED FROM THE TREATMENT RATHER THAN ASSERTED.
+   *
+   * Under `EXCLUSIVE` (management's shipped decision, 2026-09-08) the published price is the
+   * net and VAT sits on top, so the honest line is the sum — "TZS 100,000 + TZS 18,000 VAT" —
+   * beside a headline that is already the total. Under `INCLUSIVE` the total IS the price and
+   * the VAT is inside it. ⛔ Three surfaces used to state "VAT inclusive" in prose regardless,
+   * including the binding terms.
+   */
+  const vatLine = cfg.feeVatTreatment === "EXCLUSIVE"
+    ? fill(t.agent.feeVatPlus, { net: formatTzs(fee.netTzs), vat: formatTzs(fee.vatTzs) })
+    : t.agent.feeVatInclusive;
+  const vatHint = cfg.feeVatTreatment === "EXCLUSIVE" ? t.agent.statCostHintPlus : t.agent.statCostHint;
+  /**
+   * ⭐ THE WATERFALL'S RATES, READ LIVE FROM `market.config` — ⛔ never the cold-start
+   * constants in `payout.ts`.
+   *
+   * The fee and the two levies are operator-editable at `/admin/config`, and a public page
+   * quoting the module defaults would silently disagree with what settlement actually charges
+   * the moment anyone touched that form. `getGlobalConfig()` is the persisted snapshot merged
+   * over those defaults, which is the same thing `ratesFor` freezes onto each new market.
+   *
+   * ⚠️ The agent's own two numbers come from `agent-config` and are PERCENTS; the four fee
+   * numbers are FRACTIONS. `WaterfallRates` names the scale on every field for that reason.
+   */
+  const rateCfg = await getGlobalConfig();
+  const waterfallRates = {
+    platformFeeRate: rateCfg.platformFeeRate,
+    operatorFeeRate: rateCfg.operatorFeeRate,
+    traTaxOnCommissionRate: rateCfg.traTaxOnCommissionRate,
+    gbtLevyOnCommissionRate: rateCfg.gbtLevyOnCommissionRate,
+    agentPct: cfg.defaultCommissionPct,
+    withholdingPct: cfg.agentWithholdingTaxPct,
+  };
   const mb = Math.round(MAX_DOC_BYTES / (1024 * 1024));
   const fmtDate = (iso: string) => formatDateShort(iso);
 
@@ -71,8 +109,8 @@ export default async function AgentProgrammePage({ searchParams }: { searchParam
     /**
      * ⭐ A STATE MUST NAME ITS NEXT STEP. This read only "You have an invitation waiting" — true,
      * and a dead end: the invitation link is a single-use token we store only as a hash, so this
-     * page cannot rebuild it. What it CAN do is say where the link is (texted to their number),
-     * when it lapses, and who to ask if it is lost (four-lens review, 2026-09-07).
+     * page cannot rebuild it. What it CAN do is say where the link is (emailed to them since
+     * 2026-09-08), when it lapses, and who to ask if it is lost (four-lens review, 2026-09-07).
      */
     cta = { kind: "none" };
     notice = {
@@ -117,10 +155,14 @@ export default async function AgentProgrammePage({ searchParams }: { searchParam
           label={t.agent.statEarn}
           value={<span className="amount">{fill(t.agent.statEarnValue, { pct: String(cfg.defaultCommissionPct) })}</span>}
           hint={t.agent.statEarnHint} icon={<I.percent s={14} />} iconAlign="end" />
+        {/* ⛔ THE HINT NAMES THE TREATMENT, IT DOES NOT ASSERT ONE. It read "VAT inclusive"
+            unconditionally, so management's 2026-09-08 flip to EXCLUSIVE would have left the
+            public page stating the opposite of what the applicant is charged. The figure
+            above it is `fee.totalTzs` either way — what an applicant owes, never the net. */}
         <Stat size="xl" boxed="glass" labelStyle="strong" tone="gold"
           label={t.agent.statCost}
           value={<span className="amount">{formatTzs(fee.totalTzs)}</span>}
-          hint={t.agent.statCostHint} icon={<I.coins s={14} />} iconAlign="end" />
+          hint={vatHint} icon={<I.coins s={14} />} iconAlign="end" />
         <Stat size="xl" boxed="glass" labelStyle="strong"
           label={t.agent.statTime}
           value={fill(t.agent.statTimeValue, { days: String(cfg.reviewSlaDays) })}
@@ -197,17 +239,21 @@ export default async function AgentProgrammePage({ searchParams }: { searchParam
       <section className="rounded-xl border border-gold-700 p-4" style={{ background: "color-mix(in oklab, var(--gold-500) 8%, var(--bg-elevated))" }}>
         <p className="font-mono text-micro uppercase eyebrow font-bold text-gold-300">{t.agent.feeTitle}</p>
         <p className="mt-2 amount text-title-lg font-bold text-gold-300">{formatTzs(fee.totalTzs)}</p>
-        <p className="mt-0.5 font-mono text-body-sm text-text-subtle">{t.agent.feeVatInclusive}</p>
+        <p className="mt-0.5 font-mono text-body-sm text-text-subtle">{vatLine}</p>
         <p className="mt-3 text-body-sm leading-relaxed text-text">
           {fillNodes(t.agent.feeBody, { amount: <span className="amount text-gold-300">{formatTzs(fee.totalTzs)}</span>, name: cfg.feeDestinationName, account: cfg.feeDestinationAccount })}
         </p>
         <p className="mt-2 text-body-sm leading-relaxed text-text-muted">{fill(t.agent.feeRefund, { days: String(cfg.refundDeadlineDays) })}</p>
       </section>
 
-      {/* How you are paid */}
+      {/* ⭐ HOW YOU ARE PAID — the terms, then management's waterfall underneath them.
+          The paragraph that used to sit here ("Commission is a share of the net operator
+          fee…") was struck out in their 2026-09-08 feedback and replaced by the table: a
+          partner about to pay TZS 118,000 wants to FOLLOW the arithmetic, not be told its
+          shape. The five bullets stay — they are the CONTRACT (window, cap, single level),
+          which is a different question from where the money comes from. */}
       <section className="rounded-xl glass-panel p-4 space-y-2">
         <p className="font-display text-title-sm font-bold leading-tight">{t.agent.earnTitle}</p>
-        <p className="text-body-sm leading-relaxed text-text-muted">{t.agent.earnBody}</p>
         <ul className="space-y-1.5 text-body-sm text-text-muted leading-snug list-disc pl-4">
           <li>{cfg.commissionWindowMonths === 0 ? t.agent.earnLifetime : fill(t.agent.earnWindow, { months: String(cfg.commissionWindowMonths) })}</li>
           <li>{cfg.capPerRecruitTzs === 0 ? t.agent.earnUncapped : fillNodes(t.agent.earnCapped, { amount: <span className="amount">{formatTzs(cfg.capPerRecruitTzs)}</span> })}</li>
@@ -216,6 +262,10 @@ export default async function AgentProgrammePage({ searchParams }: { searchParam
           <li>{t.agent.recruiterOnly}</li>
         </ul>
       </section>
+
+      {/* Management's financial waterfall. ⛔ Every figure derived, none typed — see
+          `src/lib/agent-commission.ts` and `test:commission-bounded` §7. */}
+      <CommissionWaterfall t={t} rates={waterfallRates} />
 
       <p className="text-center text-body-sm text-text-subtle">
         <Link href={"/legal/agent-terms" as never} className="text-brand-300 underline-offset-2 hover:underline">{t.agent.termsLink}</Link>

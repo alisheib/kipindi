@@ -552,15 +552,37 @@ export function internalCreditEntries(opts: {
 export function agentCommissionEntries(opts: {
   txnId: string;
   userId: string;
-  /** Positive = paid to the agent. Negative = clawed back. */
+  /** Positive = paid to the agent. Negative = clawed back. ⚠️ THE NET — what the wallet moved. */
   amount: number;
+  /**
+   * ⭐ THE LOCAL WITHHOLDING TAX, same sign as `amount`. 0 when the rate is 0.
+   *
+   * Management's waterfall (2026-09-08) withholds a percent of the agent's gross commission
+   * and remits it. So the house's COST is the gross — `amount + taxWithheld` — split two
+   * ways: the net into the partner's wallet, the tax into `HOUSE:TAX`.
+   *
+   * ⛔ THE HOUSE SIDE MUST CARRY THE GROSS, NOT THE NET. Debiting `HOUSE:AGENT_COMMISSION`
+   * by only the net would understate what the programme costs by the whole tax line in the
+   * owner's book, and would leave `HOUSE:TAX` credited out of nothing — an unbalanced group
+   * that `postLedgerEntries` refuses outright.
+   */
+  taxWithheld?: number;
   description: string;
   marketId?: string | null;
 }): LedgerLine[] {
-  return [
-    { account: acct.agentCommission, entryType: "AGENT_COMMISSION", amount: -opts.amount, txnId: opts.txnId, userId: opts.userId, marketId: opts.marketId ?? undefined, memo: opts.description },
+  const tax = opts.taxWithheld ?? 0;
+  const gross = opts.amount + tax;
+  const lines: LedgerLine[] = [
+    { account: acct.agentCommission, entryType: "AGENT_COMMISSION", amount: -gross, txnId: opts.txnId, userId: opts.userId, marketId: opts.marketId ?? undefined, memo: opts.description },
     { account: acct.player(opts.userId), entryType: "AGENT_COMMISSION", amount: opts.amount, txnId: opts.txnId, userId: opts.userId, marketId: opts.marketId ?? undefined, memo: opts.description },
   ];
+  if (tax !== 0) {
+    // The state's, not ours — booked from the first shilling so the tax pack never has to
+    // reconstruct it from a gross commission figure. Same discipline as the registration
+    // fee's VAT leg above.
+    lines.push({ account: acct.tax, entryType: "AGENT_COMMISSION", amount: tax, txnId: opts.txnId, userId: opts.userId, marketId: opts.marketId ?? undefined, memo: `${opts.description} · withholding tax` });
+  }
+  return lines;
 }
 
 /**

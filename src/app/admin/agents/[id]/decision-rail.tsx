@@ -17,6 +17,7 @@ import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/input";
+import { AGENT_INVITATION_STATUS } from "@/lib/admin-status-lexicon";
 import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -52,7 +53,10 @@ export type RailState = {
   maxRatePct: number;
   docSlots: { value: AgentDocType; label: string }[];
   kycStatus: string | null;
-  invitation: { id: string; status: string; expiresAt: string } | null;
+  /** ⛔ THE REAL UNION, not `string`. The loose type is why this panel reached for
+   *  `status.toLowerCase()` instead of the lexicon: a widened enum cannot index the label
+   *  map, so the display fell back to printing the raw value. */
+  invitation: { id: string; status: keyof typeof AGENT_INVITATION_STATUS; expiresAt: string } | null;
   agent: { code: string; commissionPct: number | null; active: boolean } | null;
 };
 
@@ -76,6 +80,8 @@ export function DecisionRail({ state }: { state: RailState }) {
   const [pending, start] = useTransition();
   const formRef = useRef<HTMLDivElement>(null);
   const [field, setField] = useState<{ name: string; message: string } | null>(null);
+  /** ⭐ Its OWN state, so it cannot be confused with the applicant-facing info-request note. */
+  const [withdrawReason, setWithdrawReason] = useState("");
 
   const [rate, setRate] = useState(String(state.agent?.commissionPct ?? state.defaultRatePct));
   const [rejectReason, setRejectReason] = useState<AgentRejectReason>("INCOMPLETE_DOCUMENTS");
@@ -159,11 +165,26 @@ export function DecisionRail({ state }: { state: RailState }) {
         <div className="rounded-md border border-border bg-bg-overlay/40 p-3 space-y-2">
           <div className="flex items-center justify-between">
             <span className="font-mono text-micro uppercase eyebrow text-text-faint">Invitation</span>
-            <Chip variant={state.invitation.status === "ACCEPTED" ? "success" : state.invitation.status === "ISSUED" ? "pending" : "neutral"}>{state.invitation.status.toLowerCase()}</Chip>
+            {/* ⛔ THE LEXICON, NOT `.toLowerCase()`. This printed the raw enum — "issued",
+                "revoked" — while every other status on this console reads its word from
+                `AGENT_INVITATION_STATUS`. One concept, two vocabularies, is what
+                `admin-status-lexicon.ts` exists to prevent. */}
+            <Chip variant={state.invitation.status === "ACCEPTED" ? "success" : state.invitation.status === "ISSUED" ? "pending" : "neutral"}>{AGENT_INVITATION_STATUS[state.invitation.status].en}</Chip>
           </div>
           {state.invitation.status === "ISSUED" && (
+            <>
+              {/* 🔴 THIS REASON HAD NO FIELD OF ITS OWN. It reused `note` — the "Ask for
+                  more information" box further down the rail — so an officer who typed a note
+                  to the applicant and then withdrew the invitation silently filed that note as
+                  the withdrawal reason, in the audit chain, under the wrong action. */}
+              <Field label="Reason for withdrawing" hint="Recorded on the invitation and in the audit chain" dataField="withdrawReason">
+                <Input value={withdrawReason} onChange={(e) => setWithdrawReason(e.target.value)} maxLength={200} placeholder="Issued to the wrong address" disabled={!mayAct} />
+              </Field>
+            </>
+          )}
+          {state.invitation.status === "ISSUED" && (
             <ConfirmDialog tone="warning" title="Withdraw this invitation?" body="The link stops working. The application (if one exists) is closed as declined."
-              confirmLabel="Withdraw" cancelLabel="Keep" onConfirm={() => run("Withdrawing…", () => { const f = new FormData(); f.set("invitationId", state.invitation!.id); f.set("reason", note || "withdrawn by officer"); return revokeInvitationAction(f); }, "Invitation withdrawn.")}
+              confirmLabel="Withdraw" cancelLabel="Keep" onConfirm={() => run("Withdrawing…", () => { const f = new FormData(); f.set("invitationId", state.invitation!.id); f.set("reason", withdrawReason.trim() || "withdrawn by officer"); return revokeInvitationAction(f); }, "Invitation withdrawn.")}
               trigger={<Button variant="ghost" size="sm" disabled={!mayAct || pending}>Withdraw invitation</Button>} />
           )}
         </div>

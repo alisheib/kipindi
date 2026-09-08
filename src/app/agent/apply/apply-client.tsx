@@ -24,6 +24,7 @@ import { Field, Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Chip } from "@/components/ui/chip";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Callout } from "@/components/ui/callout";
 import { Spinner } from "@/components/ui/spinner";
 import { I } from "@/components/ui/glyphs";
 import { useToast } from "@/components/ui/toast";
@@ -34,6 +35,7 @@ import type { KycGateState } from "@/lib/kyc-gate-state";
 import { useT } from "@/lib/i18n";
 import { fill, formatTzs } from "@/lib/utils";
 import { fileToDataUrl } from "@/lib/client/kyc-image";
+import { focusFirstInvalid } from "@/lib/client/focus-first-invalid";
 import type { AgentDocType } from "@/lib/server/store";
 import { attachAgentDocumentAction, setRefereesAction, recordFeePaymentAction, submitAgentApplicationAction, type UploadFailure } from "./actions";
 import { fillNodes } from "@/lib/fill-nodes";
@@ -94,6 +96,19 @@ export function ApplyClient({ app, documents, missing, kycGate, fee, limits }: P
   const feeDirty = !app.feeWaived && !feeSaved && feeRef.trim() !== (app.feeReference ?? "");
   const [feePending, startFee] = useTransition();
 
+  /**
+   * ⭐ THE FIELD A REFUSAL POINTS AT — the applicant-side half of DG-S-05/06.
+   *
+   * 🔴 Every refusal on this form used to surface as a TOAST. On a four-step form that is the
+   * worst possible channel: "Each referee needs a name" told an applicant nothing about WHICH
+   * of the four boxes was wrong, and the toast could be read on a step that did not contain
+   * the box at all. `Field` has supported `error` and `dataField` all along and the admin side
+   * uses both; this form passed neither.
+   */
+  const formRef = useRef<HTMLDivElement>(null);
+  const [fieldErr, setFieldErr] = useState<{ name: string; message: string } | null>(null);
+  const errOf = (name: string) => (fieldErr?.name === name ? fieldErr.message : undefined);
+
   // Submit
   const [accept, setAccept] = useState(false);
   const [submitPending, startSubmit] = useTransition();
@@ -130,7 +145,7 @@ export function ApplyClient({ app, documents, missing, kycGate, fee, limits }: P
   };
 
   return (
-    <div className="space-y-5">
+    <div ref={formRef} className="space-y-5">
       <UnsavedChangesGuard dirty={refDirty || feeDirty} title={t.agent.unsavedTitle} body={t.agent.unsavedBody} />
 
       {/* Title row + the persistent counter */}
@@ -140,10 +155,11 @@ export function ApplyClient({ app, documents, missing, kycGate, fee, limits }: P
       </div>
 
       {infoRequired && app.infoRequestNote && (
-        <div className="flex gap-2 rounded-xl border p-3" style={{ background: "color-mix(in oklab, var(--warning-500) 12%, transparent)", borderColor: "color-mix(in oklab, var(--warning-500) 30%, transparent)" }}>
-          <span className="shrink-0" style={{ color: "var(--warning-500)" }}><I.info s={16} /></span>
-          <p className="text-body-sm leading-relaxed text-text">{app.infoRequestNote}</p>
-        </div>
+        /* ⛔ THE KIT CALLOUT, not a second warning surface. This was a hand-rolled panel with
+           its own inline `color-mix` borders and its own glyph — §K5's "one-off that
+           duplicates a primitive", and the officer's note is the single most important thing
+           on this page when it is present. */
+        <Callout tone="warning" size="md">{app.infoRequestNote}</Callout>
       )}
 
       {/* The rail */}
@@ -180,6 +196,10 @@ export function ApplyClient({ app, documents, missing, kycGate, fee, limits }: P
       {step === 1 && (
         <section className="rounded-xl glass-panel p-4 space-y-3">
           <p className="font-display text-title-sm font-bold leading-tight">{t.agent.stepWhere}</p>
+          {/* 🔴 THIS STEP HAD NO EXPLANATION AT ALL — a heading and an upload box, and the
+              applicant was never told what a Serikali ya Mtaa letter must contain or who
+              issues one. It is the single most commonly rejected document in the set. */}
+          <p className="text-body-sm leading-relaxed text-text-muted">{t.agent.stepWhereHelp}</p>
           <Slot docType="SERIKALI_LETTER" label={docLabel.SERIKALI_LETTER} doc={docs.SERIKALI_LETTER} infoRequired={infoRequired} onDone={(d) => setDocs((x) => ({ ...x, SERIKALI_LETTER: d }))} maxMb={limits.maxMb} />
         </section>
       )}
@@ -187,17 +207,42 @@ export function ApplyClient({ app, documents, missing, kycGate, fee, limits }: P
       {/* STEP 3 · Referees — two PAIRED cards */}
       {step === 2 && (
         <section className="space-y-3">
+          {/* ⭐ WHO A REFEREE MAY BE, before the first box. The eligibility rule (not family,
+              not staff) was only ever stated in the terms; an applicant who chases a letter
+              from a cousin discovers that at the decision. */}
+          <p className="text-body-sm leading-relaxed text-text-muted">{t.agent.refereesHelp}</p>
           {([["one", "REFEREE_ONE_LETTER", "REFEREE_ONE_ID", t.agent.refereeOne], ["two", "REFEREE_TWO_LETTER", "REFEREE_TWO_ID", t.agent.refereeTwo]] as const).map(([k, letter, id, title]) => (
             <div key={k} className="rounded-xl glass-panel p-4 space-y-3">
               <p className="font-display text-title-sm font-bold leading-tight">{title}</p>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <Field label={t.agent.refName}><Input value={k === "one" ? ref.oneName : ref.twoName} onChange={(e) => { setRefSaved(false); setRef((r) => ({ ...r, [k === "one" ? "oneName" : "twoName"]: e.target.value })); }} maxLength={120} autoComplete="off" /></Field>
-                <Field label={t.agent.refContact}><Input value={k === "one" ? ref.oneContact : ref.twoContact} onChange={(e) => { setRefSaved(false); setRef((r) => ({ ...r, [k === "one" ? "oneContact" : "twoContact"]: e.target.value })); }} maxLength={120} autoComplete="off" /></Field>
+                {/* ⭐ EACH FIELD NOW SAYS WHAT IT IS AND SHOWS AN EXAMPLE (management's
+                    feedback, and Ali's brief). The SHAPE goes in `hint`, the RULE in `title`
+                    — the same three-tier convention `id-documents.ts` sets for KYC — and the
+                    placeholder is a literal example that could never be mistaken for a value
+                    (finding A-5: a placeholder must never become a value). */}
+                <Field label={t.agent.refName} hint={t.agent.refNameHint} error={errOf(k === "one" ? "oneName" : "twoName")} dataField={k === "one" ? "oneName" : "twoName"}>
+                  <Input
+                    value={k === "one" ? ref.oneName : ref.twoName}
+                    onChange={(e) => { setRefSaved(false); setFieldErr(null); setRef((r) => ({ ...r, [k === "one" ? "oneName" : "twoName"]: e.target.value })); }}
+                    maxLength={120} autoComplete="off" placeholder={t.agent.refNameExample} title={t.agent.refNameRule}
+                  />
+                </Field>
+                <Field label={t.agent.refContact} hint={t.agent.refContactHint} error={errOf(k === "one" ? "oneContact" : "twoContact")} dataField={k === "one" ? "oneContact" : "twoContact"}>
+                  <Input
+                    value={k === "one" ? ref.oneContact : ref.twoContact}
+                    onChange={(e) => { setRefSaved(false); setFieldErr(null); setRef((r) => ({ ...r, [k === "one" ? "oneContact" : "twoContact"]: e.target.value })); }}
+                    maxLength={120} autoComplete="off" placeholder={t.agent.refContactExample} title={t.agent.refContactRule}
+                  />
+                </Field>
               </div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <Slot docType={letter} label={docLabel[letter]} doc={docs[letter]} infoRequired={infoRequired} onDone={(d) => setDocs((x) => ({ ...x, [letter]: d }))} maxMb={limits.maxMb} />
                 <Slot docType={id} label={docLabel[id]} doc={docs[id]} infoRequired={infoRequired} onDone={(d) => setDocs((x) => ({ ...x, [id]: d }))} maxMb={limits.maxMb} />
               </div>
+              {/* ⭐ The applicant is uploading SOMEONE ELSE'S identity document. The admin tile
+                  says "3rd party" and the terms explain the retention, but the person actually
+                  handing it over was never told either. */}
+              <p className="text-body-sm leading-relaxed text-text-faint">{t.agent.refIdNote}</p>
             </div>
           ))}
           <div className="rounded-xl glass-panel p-4 space-y-3">
@@ -209,7 +254,15 @@ export function ApplyClient({ app, documents, missing, kycGate, fee, limits }: P
                 fd.set("oneName", ref.oneName); fd.set("oneContact", ref.oneContact); fd.set("twoName", ref.twoName); fd.set("twoContact", ref.twoContact); fd.set("consent", ref.consented ? "true" : "false");
                 let r: Awaited<ReturnType<typeof setRefereesAction>>;
                 try { r = await setRefereesAction(fd); } catch { r = { ok: false, error: t.error.somethingDidntWork }; }
-                if (!r.ok) { toast({ title: t.toast.couldntSubmit, description: r.error, variant: "danger" }); return; }
+                if (!r.ok) {
+                  // ⭐ ON the field, and scrolled to. The toast stays as the ANNOUNCEMENT (a
+                  // screen reader needs one), but it is no longer the only place the applicant
+                  // can learn what to fix.
+                  if (r.field) { setFieldErr({ name: r.field, message: r.error }); focusFirstInvalid(formRef.current, [r.field]); }
+                  toast({ title: t.toast.couldntSubmit, description: r.error, variant: "danger" });
+                  return;
+                }
+                setFieldErr(null);
                 setRefSaved(true); toast({ title: t.common.save, variant: "success" }); router.refresh();
               })}>
               {refSaved ? t.common.submitted : t.common.save}
@@ -235,14 +288,37 @@ export function ApplyClient({ app, documents, missing, kycGate, fee, limits }: P
           {!app.feeWaived && (
             <div className="rounded-xl glass-panel p-4 space-y-3">
               <Slot docType="FEE_RECEIPT" label={docLabel.FEE_RECEIPT} doc={docs.FEE_RECEIPT} infoRequired={infoRequired} onDone={(d) => setDocs((x) => ({ ...x, FEE_RECEIPT: d }))} maxMb={limits.maxMb} />
-              <Field label={t.agent.payReference}><Input placeholder={t.agent.payReferencePlaceholder} mono value={feeRef} onChange={(e) => { setFeeSaved(false); setFeeRef(e.target.value.toUpperCase()); }} maxLength={64} autoComplete="off" /></Field>
+              {/* ⭐ The RULE the server enforces (letters, numbers and dashes; 4–64) was
+                  never communicated up front — only afterwards, as a toast. It is in the hint
+                  now, and the placeholder is a literal example. */}
+              <Field label={t.agent.payReference} hint={t.agent.payReferenceHint} error={errOf("feeReference")} dataField="feeReference">
+                <Input placeholder={t.agent.payReferenceExample} title={t.agent.payReferenceRule} mono value={feeRef}
+                  onChange={(e) => { setFeeSaved(false); setFieldErr(null); setFeeRef(e.target.value.toUpperCase()); }}
+                  maxLength={64} autoComplete="off" inputMode="text" spellCheck={false} />
+              </Field>
               <Button type="button" variant="primary" size="md" loading={feePending} disabled={feePending || feeSaved || !docs.FEE_RECEIPT}
                 onClick={() => startFee(async () => {
                   const fd = new FormData(); fd.set("feeReference", feeRef);
                   let r: Awaited<ReturnType<typeof recordFeePaymentAction>>;
                   try { r = await recordFeePaymentAction(fd); } catch { r = { ok: false, error: t.error.somethingDidntWork }; }
-                  // The two refusals this step can meet have translated copy; the server's English is the fallback.
-                  if (!r.ok) { toast({ title: t.toast.couldntSubmit, description: /already in use/i.test(r.error) ? t.agent.payDuplicate : /refund/i.test(r.error) ? t.agent.payRefundOwed : r.error, variant: "danger", durationMs: 0 }); return; }
+                  if (!r.ok) {
+                    /**
+                     * ⭐ TRANSLATED COPY FROM A TOKEN, not from a regex over English prose.
+                     * 🔴 This read `/already in use/i.test(r.error)` and `/refund/i.test(r.error)`
+                     * and fell through to `r.error` — so every OTHER refusal on the money step
+                     * rendered raw English into a Swahili or Chinese UI, and rewording a server
+                     * sentence would have silently broken the two branches that worked.
+                     */
+                    const copy = r.refusal === "reference_taken" ? t.agent.payDuplicate
+                      : r.refusal === "refund_owed" ? t.agent.payRefundOwed
+                      : r.refusal === "receipt_missing" ? t.agent.payReceiptFirst
+                      : r.refusal === "reference_format" ? t.agent.payReferenceRule
+                      : r.error;
+                    if (r.field) { setFieldErr({ name: r.field, message: copy }); focusFirstInvalid(formRef.current, [r.field]); }
+                    toast({ title: t.toast.couldntSubmit, description: copy, variant: "danger", durationMs: 0 });
+                    return;
+                  }
+                  setFieldErr(null);
                   setFeeSaved(true); toast({ title: t.common.save, variant: "success" }); router.refresh();
                 })}>
                 {feeSaved ? t.common.submitted : t.common.save}
@@ -349,7 +425,7 @@ function Slot({ docType, label, doc, infoRequired, onDone, maxMb }: {
         className={`w-full min-h-[96px] overflow-hidden rounded-md border-2 border-dashed p-3 text-center transition-colors ${
           locked ? "border-border bg-bg-overlay/30 cursor-not-allowed opacity-70"
           : working ? "border-brand-400 bg-bg-overlay/40 cursor-wait"
-          : rejected ? "border-warning-500 bg-warning-500/[0.08] cursor-pointer hover:border-warning-400"
+          : rejected ? "border-warning-500 bg-warning-500/[0.08] cursor-pointer hover:border-warning-fg"
           : done ? "border-yes-700 bg-yes-500/[0.07] cursor-pointer hover:border-yes-500"
           : "border-border bg-bg-overlay/40 hover:border-brand-400 cursor-pointer"
         }`}>

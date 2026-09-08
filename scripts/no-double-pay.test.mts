@@ -10,7 +10,7 @@
  */
 import "./lib/verified-fixtures.mts";
 import { db } from "../src/lib/server/store.ts";
-import { mkFixtureUser, approveFixtureAgent, cashOf } from "./lib/agent-fixtures.mts";
+import { mkFixtureUser, approveFixtureAgent, cashOf, netAfterWht } from "./lib/agent-fixtures.mts";
 import { bindRecruit, onRecruitSettlement } from "../src/lib/server/affiliate-service.ts";
 
 let pass = 0, fail = 0;
@@ -26,7 +26,7 @@ const rows = async () => db.referralReward.listByReferrer("ndp_agent");
 // ── §1 · the same position settled twice in sequence ─────────────────────────────────────
 await onRecruitSettlement("ndp_rec", { operatorNetFee: 10_000, marketId: "mkt_ndp_1", positionId: "pos_ndp_1" });
 await onRecruitSettlement("ndp_rec", { operatorNetFee: 10_000, marketId: "mkt_ndp_1", positionId: "pos_ndp_1" });
-ok("1.once · a replayed settlement credits ONCE — TZS 2,000, not 4,000", (await cashOf("ndp_agent")) === 2_000, `cash=${await cashOf("ndp_agent")}`);
+ok("1.once · a replayed settlement credits ONCE — one TZS 2,000 accrual, not two", (await cashOf("ndp_agent")) === netAfterWht(2_000), `cash=${await cashOf("ndp_agent")}`);
 ok("1.row · exactly one row", (await rows()).length === 1, String((await rows()).length));
 ok("1.key · the row carries the deterministic key", (await rows())[0]?.sourceRef === "referral:commission:mkt_ndp_1:pos_ndp_1", String((await rows())[0]?.sourceRef));
 
@@ -36,12 +36,12 @@ await Promise.all([
   onRecruitSettlement("ndp_rec", { operatorNetFee: 10_000, marketId: "mkt_ndp_2", positionId: "pos_ndp_2" }),
   onRecruitSettlement("ndp_rec", { operatorNetFee: 10_000, marketId: "mkt_ndp_2", positionId: "pos_ndp_2" }),
 ]);
-ok("2.race · three concurrent settlements of one position credit once", (await cashOf("ndp_agent")) === 4_000, `cash=${await cashOf("ndp_agent")}`);
+ok("2.race · three concurrent settlements of one position credit once", (await cashOf("ndp_agent")) === 2 * netAfterWht(2_000), `cash=${await cashOf("ndp_agent")}`);
 ok("2.rows · two rows in total (one per position)", (await rows()).length === 2, String((await rows()).length));
 
 // ── §3 · CONTROL — a DIFFERENT position on the same market pays again ────────────────────
 await onRecruitSettlement("ndp_rec", { operatorNetFee: 10_000, marketId: "mkt_ndp_2", positionId: "pos_ndp_3" });
-ok("3.control · a second position on the same market is a second accrual", (await cashOf("ndp_agent")) === 6_000, `cash=${await cashOf("ndp_agent")}`);
+ok("3.control · a second position on the same market is a second accrual", (await cashOf("ndp_agent")) === 3 * netAfterWht(2_000), `cash=${await cashOf("ndp_agent")}`);
 ok("3.rows · three rows", (await rows()).length === 3);
 ok("3.keys · every key is distinct", new Set((await rows()).map((r) => r.sourceRef)).size === 3);
 
@@ -51,8 +51,8 @@ ok("4.market · the key includes the market, so a position id reused elsewhere i
 
 // ── §5 · a replay with a DIFFERENT amount still loses — the first write is the truth ─────
 await onRecruitSettlement("ndp_rec", { operatorNetFee: 999_999, marketId: "mkt_ndp_1", positionId: "pos_ndp_1" });
-ok("5.amount · a replay cannot re-price an accrual", (await rows()).find((r) => r.sourceRef === "referral:commission:mkt_ndp_1:pos_ndp_1")?.amountTzs === 2_000);
-ok("5.cash · …and cash is unchanged", (await cashOf("ndp_agent")) === 8_000, `cash=${await cashOf("ndp_agent")}`);
+ok("5.amount · a replay cannot re-price an accrual", (await rows()).find((r) => r.sourceRef === "referral:commission:mkt_ndp_1:pos_ndp_1")?.amountTzs === netAfterWht(2_000));
+ok("5.cash · …and cash is unchanged", (await cashOf("ndp_agent")) === 4 * netAfterWht(2_000), `cash=${await cashOf("ndp_agent")}`);
 
 console.log(`\nno-double-pay: ${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);

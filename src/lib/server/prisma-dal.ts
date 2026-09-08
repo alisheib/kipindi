@@ -255,7 +255,8 @@ function toStoredOtp(row: any): StoredOtp {
   const parts = (row.codeHash as string).split(OTP_SEP);
   return {
     id: row.id,
-    phoneE164: row.phoneE164,
+    phoneE164: row.phoneE164 ?? null,
+    email: row.email ?? null,
     hashedCode: parts[0],
     salt: parts[1] ?? "",
     purpose: row.purpose as StoredOtp["purpose"],
@@ -591,7 +592,11 @@ function toStoredAgentInvitation(i: any): StoredAgentInvitation {
   return {
     id: i.id,
     applicationId: i.applicationId ?? null,
-    phoneE164: i.phoneE164,
+    // ⛔ NEITHER IS COALESCED TO A STRING. Exactly one is set, and `invitationChannel()`
+    // decides which by reading for null — an empty string here would make an email
+    // invitation look like a phone one and send the acceptance check down the wrong branch.
+    phoneE164: i.phoneE164 ?? null,
+    email: i.email ?? null,
     displayName: i.displayName ?? null,
     tokenHash: i.tokenHash,
     status: i.status,
@@ -617,6 +622,12 @@ function toStoredReward(r: any): StoredReferralReward {
     type: r.type,
     label: r.label,
     amountTzs: num(r.amountTzs),
+    // ⚠️ NULL IS MEANINGFUL AND MUST SURVIVE THE MAP. A pre-2026-09-08 row has no gross
+    // recorded, and the per-recruit cap reads `grossAmountTzs ?? amountTzs` to stay correct
+    // over that history — coalescing either of these to 0 here would silently zero every
+    // capped agent's historical spend and re-open a budget that was already used.
+    grossAmountTzs: r.grossAmountTzs === null || r.grossAmountTzs === undefined ? null : num(r.grossAmountTzs),
+    taxWithheldTzs: r.taxWithheldTzs === null || r.taxWithheldTzs === undefined ? null : num(r.taxWithheldTzs),
     status: r.status,
     recipientUserId: r.recipientUserId,
     note: r.note,
@@ -1108,7 +1119,8 @@ export const prismaDb = {
       const row = await pc().otp.create({
         data: {
           id: o.id,
-          phoneE164: o.phoneE164,
+          phoneE164: o.phoneE164 ?? null,
+          email: o.email ?? null,
           codeHash: `${o.hashedCode}${OTP_SEP}${o.salt}`,
           purpose: o.purpose,
           attempts: o.attempts,
@@ -1152,6 +1164,22 @@ export const prismaDb = {
       const rows = await pc().otp.findMany({
         where: {
           phoneE164: phone,
+          purpose,
+          consumedAt: null,
+          expiresAt: { gt: new Date() },
+        },
+        orderBy: { createdAt: "desc" },
+      });
+      return rows.map(toStoredOtp);
+    },
+    /** ⭐ The same read keyed on a MAILBOX — the agent invitation's channel since
+     *  2026-09-08. ⚠️ `mode: "insensitive"` because an email address is case-insensitive
+     *  and the invitee's stored account email may differ in case from what the officer
+     *  typed. Without it, capitalisation locks the invitee out of their own invitation. */
+    findAllActiveByEmail: async (email: string, purpose: string): Promise<StoredOtp[]> => {
+      const rows = await pc().otp.findMany({
+        where: {
+          email: { equals: email.trim(), mode: "insensitive" },
           purpose,
           consumedAt: null,
           expiresAt: { gt: new Date() },
@@ -2069,6 +2097,8 @@ export const prismaDb = {
           type: r.type,
           label: r.label,
           amountTzs: r.amountTzs,
+          grossAmountTzs: r.grossAmountTzs,
+          taxWithheldTzs: r.taxWithheldTzs,
           status: r.status,
           recipientUserId: r.recipientUserId,
           note: r.note,
@@ -2295,7 +2325,8 @@ export const prismaDb = {
         data: {
           id: i.id,
           applicationId: i.applicationId,
-          phoneE164: i.phoneE164,
+          phoneE164: i.phoneE164 ?? null,
+          email: i.email ?? null,
           displayName: i.displayName,
           tokenHash: i.tokenHash,
           status: i.status,
@@ -2322,6 +2353,13 @@ export const prismaDb = {
     },
     findLiveByPhone: async (phoneE164: string): Promise<StoredAgentInvitation | null> => {
       const row = await pc().agentInvitation.findFirst({ where: { phoneE164, status: "ISSUED" } });
+      return row ? toStoredAgentInvitation(row) : null;
+    },
+    /** ⚠️ Case-insensitive: two invitations to `A@x.tz` and `a@x.tz` are two invitations to
+     *  ONE mailbox, and the "only one live invitation per person" rule has to see them as the
+     *  same person or it does not hold at all. */
+    findLiveByEmail: async (email: string): Promise<StoredAgentInvitation | null> => {
+      const row = await pc().agentInvitation.findFirst({ where: { email: { equals: email.trim(), mode: "insensitive" }, status: "ISSUED" } });
       return row ? toStoredAgentInvitation(row) : null;
     },
     update: async (id: string, patch: Partial<StoredAgentInvitation>): Promise<StoredAgentInvitation | null> => {

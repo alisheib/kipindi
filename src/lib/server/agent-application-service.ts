@@ -27,7 +27,7 @@
  *  ⛔ NO NUMBER IS A LITERAL. Every amount, window and day count is read from `agent-config`.
  *
  * ── GATE THE OFFER, NEVER THE REFUSAL ───────────────────────────────────────────────────
- * Every refusal that would strand TZS 100,000 — staff, self-excluded, terminal rejection,
+ * Every refusal that would strand the registration fee — staff, self-excluded, terminal rejection,
  * cool-down, KYC — bites at `startApplication` and on the /agent page's CTA, BEFORE the
  * applicant is told to pay out of band. A refusal that first appears at review routes through
  * the refund path as a rejection, never a silent block.
@@ -38,7 +38,7 @@ import type { ServiceResult } from "./auth-service";
 import { audit } from "./audit";
 import { randomId, generateOtp, hashOtp, verifyOtp } from "./crypto";
 import { withLock } from "./locks";
-import { getAgentConfig, type AgentConfig } from "./agent-config";
+import { getAgentConfig, type AgentConfig, type FeeVatTreatment } from "./agent-config";
 import { ensureAffiliateAccount, isApprovedAgent, agentStandingFor, AGENT_CODE_PREFIX } from "./affiliate-service";
 import { getKycStatus, reviewKyc, validateDocImage } from "./kyc-service";
 import { putKycDocument, deleteKycDocument } from "./storage";
@@ -46,13 +46,10 @@ import { isStaffRole } from "./roles";
 import { isLockedOut, selfExclusionStanding } from "./responsible-gambling";
 import { revokeUserSessions } from "./session-registry";
 import { postLedgerEntries, agentRegistrationFeeEntries } from "./ledger";
-import { sms, otpMessage } from "./sms";
 import { appUrl } from "@/lib/app-url";
 import { formatTzs } from "@/lib/utils";
 import { AGENT_STATUS } from "@/lib/admin-status-lexicon";
 
-/** The audit chain never carries a whole phone number. Same shape as the auth audits. */
-const maskPhoneForAudit = (p: string) => (p.length > 6 ? `${p.slice(0, 4)}•••${p.slice(-2)}` : "•••");
 import {
   notifyAgentApplicationSubmitted, notifyAgentApproved, notifyAgentRejected, notifyAgentInfoRequested,
   notifyAgentFeeRefunded, notifyAgentDeactivated, notifyAdminAgentReview,
@@ -61,7 +58,9 @@ import {
 import {
   sendEmailToUser, agentApprovedHtml, agentRejectedHtml, agentInfoRequestedHtml, agentFeeRefundedHtml,
   agentApplicationSubmittedAdminHtml, agentInvitationHtml, agentDeactivatedHtml,
-  agentRevokedHtml, agentRateChangedHtml,
+  agentRevokedHtml, agentRateChangedHtml, agentInviteOtpHtml,
+  stubIsRetrievable,
+  type SendResult,
 } from "./email";
 import { kycNotifyEmails } from "./kyc-service";
 import { sendEmail } from "./email";
@@ -107,16 +106,68 @@ const iso = () => new Date().toISOString();
 //  THE FEE — one place computes it, from config
 // ═══════════════════════════════════════════════════════════════════════════
 
-/** What the applicant pays in total, and the VAT component of it, from the config's treatment.
- *  INCLUSIVE keeps the applicant-facing figure exactly the published TZS 100,000. */
+/**
+ * What the applicant pays in total, and the VAT component of it, from the config's treatment.
+ *
+ * ⭐ ON THE SHIPPED CONFIG (2026-09-08) THE TREATMENT IS `EXCLUSIVE`: `registrationFeeTzs` is
+ * the NET 100,000, VAT is 18,000, and the applicant pays 118,000 — management's
+ * "TZS 100,000 + VAT = 118,000". `INCLUSIVE` remains supported for an operator who publishes
+ * a gross price, and backs the VAT out of it instead.
+ *
+ * ⛔ EVERY SURFACE READS `totalTzs` FOR THE PRICE AND `cfg.feeVatTreatment` FOR THE WORDING.
+ * Three surfaces used to state "VAT inclusive" in prose regardless of the setting, which
+ * turned a config flip into a lie on the public page and in the binding terms. A guard
+ * (`test:agent-fee-copy`) now holds that shut.
+ */
 export function feeBreakdown(cfg: AgentConfig = getAgentConfig()): { totalTzs: number; vatTzs: number; netTzs: number } {
-  const rate = cfg.feeVatRatePct / 100;
-  if (cfg.feeVatTreatment === "EXCLUSIVE") {
-    const vat = Math.round(cfg.registrationFeeTzs * rate);
-    return { totalTzs: cfg.registrationFeeTzs + vat, vatTzs: vat, netTzs: cfg.registrationFeeTzs };
+  return feeBreakdownFor(cfg.registrationFeeTzs, cfg.feeVatTreatment, cfg.feeVatRatePct);
+}
+
+/**
+ * The same split for an ARBITRARY fee figure — the one the refund path needs.
+ *
+ * ⭐ WHY IT IS SEPARATE. A refund must return exactly what was COLLECTED, and what was
+ * collected is stamped on the application (`feeAmountTzs`), not read from today's config: an
+ * operator who changes the fee between collection and refund must still hand back the
+ * original amount, with the original VAT component, or the tax pack and the bank statement
+ * disagree.
+ *
+ * 🔴 AND THIS FIXES A REAL BUG. The refund used to back the VAT out with the INCLUSIVE
+ * formula (`amount × rate / (1 + rate)`) whenever the stamped amount differed from today's
+ * expected total — even when the treatment was `EXCLUSIVE`, where the VAT component of a
+ * gross 118,000 is 18,000 and the inclusive formula returns 18,000 only by coincidence of
+ * the rate. At any other rate it under- or over-reverses `HOUSE:TAX` and leaves a permanent
+ * residue in the one account the statutory pack is read from.
+ */
+export function feeBreakdownFor(
+  feeTzs: number,
+  treatment: FeeVatTreatment,
+  vatRatePct: number,
+): { totalTzs: number; vatTzs: number; netTzs: number } {
+  const rate = vatRatePct / 100;
+  if (treatment === "EXCLUSIVE") {
+    const vat = Math.round(feeTzs * rate);
+    return { totalTzs: feeTzs + vat, vatTzs: vat, netTzs: feeTzs };
   }
-  const vat = Math.round(cfg.registrationFeeTzs * (rate / (1 + rate)));
-  return { totalTzs: cfg.registrationFeeTzs, vatTzs: vat, netTzs: cfg.registrationFeeTzs - vat };
+  const vat = Math.round(feeTzs * (rate / (1 + rate)));
+  return { totalTzs: feeTzs, vatTzs: vat, netTzs: feeTzs - vat };
+}
+
+/**
+ * The VAT component OF A GROSS AMOUNT ALREADY PAID, under a given treatment.
+ *
+ * ⭐ THIS IS THE REFUND'S QUESTION, AND IT IS NOT THE SAME AS `feeBreakdownFor`'s. The refund
+ * knows the gross it is handing back and needs the VAT inside it. Under `INCLUSIVE` the gross
+ * IS `registrationFeeTzs`, so the inclusive back-out applies. Under `EXCLUSIVE` the gross is
+ * `net × (1 + rate)`, so the VAT inside it is `gross × rate / (1 + rate)` — which is the same
+ * algebra, and that is the point: for a GROSS input the back-out formula is treatment-
+ * independent. It is stated once, here, so nobody has to re-derive that and get it wrong
+ * again.
+ */
+export function vatWithinGross(grossTzs: number, vatRatePct: number): number {
+  const rate = vatRatePct / 100;
+  if (!Number.isFinite(rate) || rate <= 0) return 0;
+  return Math.round(grossTzs * (rate / (1 + rate)));
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -256,6 +307,16 @@ export function isAgentApplicationDuplicate(err: unknown): boolean {
   return e.code === "P2002" || e.code === "23505" || e.meta?.code === "23505" || text.includes(AGENT_APPLICATION_ACTIVE_INDEX);
 }
 
+/**
+ * Refuse, and say WHERE. ⛔ `field` first in the signature on purpose — the same construction
+ * as `fieldError` in `src/lib/server/field-error.ts`, for the same reason: the address of the
+ * control the operator must fix is not an afterthought. The client hands it to
+ * `focusFirstInvalid`, so the refusal lands on the input rather than in a toast.
+ */
+function fieldFailure(field: string, error: string): ServiceResult<never> {
+  return { ok: false, error, code: "INVALID", field };
+}
+
 function refusalResult(elig: Extract<ApplicantEligibility, { ok: false }>): ServiceResult<never> {
   const messages: Record<ApplyRefusal, string> = {
     programme_disabled: "The agent programme is not accepting applications right now.",
@@ -357,16 +418,67 @@ async function recomputeDraftStatus(app: StoredAgentApplication): Promise<Stored
 
 /** Referee names + contacts, and the applicant's attestation that each consented. ⛔ The
  *  applicant is the accountable party — we have no relationship with the referee. */
+/**
+ * ⭐ IS THIS CONTACT ONE A COMPLIANCE OFFICER COULD ACTUALLY USE?
+ *
+ * The field accepts a phone number OR an email, so it needs both shapes. ⚠️ Deliberately
+ * permissive on the PHONE side: a referee is not a 50pick account holder, so a landline
+ * (`022 …`), a number written with spaces or dashes, and an international number all have to
+ * pass. What must NOT pass is a string with no plausible way to reach anybody — which is
+ * everything the old `length >= 6` rule let through.
+ *
+ * ⛔ NOT A REGISTRATION-GRADE PHONE CHECK. `/^\+255[67]\d{8}$/` is right for a 50pick account
+ * (it must be a Tanzanian mobile that can receive an OTP) and wrong here: refusing a
+ * referee's office landline would make an applicant fabricate a mobile number to get past
+ * the form, which is worse than accepting the landline.
+ */
+export function isReachableContact(raw: string): boolean {
+  const value = (raw ?? "").trim();
+  if (!value) return false;
+  // An email: something@something.tld, no spaces or list separators.
+  if (/^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]{2,}$/.test(value)) return true;
+  // A phone: at least nine digits once punctuation is stripped, and nothing but digits and
+  // the punctuation people actually write numbers with.
+  if (!/^[+()\-.\s\d]+$/.test(value)) return false;
+  const digits = value.replace(/\D/g, "");
+  return digits.length >= 9 && digits.length <= 15;
+}
+
 export async function setReferees(
   userId: string,
   input: { oneName: string; oneContact: string; twoName: string; twoContact: string; consent: boolean },
 ): Promise<ServiceResult> {
-  const clean = (s: string) => (s ?? "").trim().slice(0, 120);
+  const clean = (s: string) => (s ?? "").trim().replace(/\s+/g, " ").slice(0, 120);
   const oneName = clean(input.oneName), twoName = clean(input.twoName);
   const oneContact = clean(input.oneContact), twoContact = clean(input.twoContact);
-  if (oneName.length < 2 || twoName.length < 2) return { ok: false, error: "Each referee needs a name.", code: "INVALID" };
-  if (oneContact.length < 6 || twoContact.length < 6) return { ok: false, error: "Each referee needs a phone number or email.", code: "INVALID" };
-  if (!input.consent) return { ok: false, error: "Confirm that both referees agreed to be named.", code: "INVALID" };
+  /**
+   * 🔴 EVERY REFUSAL HERE NAMES ITS FIELD, and the format rules are real.
+   *
+   * This used to say "Each referee needs a name" for either name and "Each referee needs a
+   * phone number or email" for either contact — a refusal an applicant could not act on
+   * without guessing which of the four boxes was wrong, delivered as a TOAST, on a
+   * four-step form where the offending step may not even be on screen. And the only rule on
+   * the contact was `length >= 6`, so `aaaaaa` passed and an officer discovered the
+   * unreachable referee days later, at the point of a decision.
+   *
+   * ⛔ THE RULE IS NAMED IN FULL, never "invalid" (§F4). A referee is a real person a
+   * compliance officer has to be able to REACH — that is the entire purpose of the field —
+   * so a contact that cannot be dialled or written to is worse than an empty one, because
+   * an empty one is visibly missing.
+   */
+  for (const [field, value] of [["oneName", oneName], ["twoName", twoName]] as const) {
+    if (value.length < 2) return fieldFailure(field, "Enter the referee's full name, as it appears on their letter.");
+    // ⛔ A name is not a phone number. Somebody pasting a number into both boxes of a pair is
+    // a real slip, and it leaves the officer with a contact and no idea who it belongs to.
+    if (!/[A-Za-z]/.test(value)) return fieldFailure(field, "Enter the referee's name in letters — this is who they are, not how to reach them.");
+  }
+  for (const [field, value] of [["oneContact", oneContact], ["twoContact", twoContact]] as const) {
+    if (!value) return fieldFailure(field, "Enter a phone number or an email address for this referee.");
+    if (!isReachableContact(value)) {
+      return fieldFailure(field, "Enter a reachable contact — a Tanzanian mobile number like 0712 345 678 or +255 712 345 678, or an email address like referee@example.com.");
+    }
+  }
+  if (!input.consent) return fieldFailure("consent", "Confirm that both referees agreed to be named.");
   return withLock(`agentapp:${userId}`, async () => {
     const e = await editableApplication(userId);
     if (!e.ok) return { ok: false as const, error: e.error, code: e.code };
@@ -385,23 +497,44 @@ export async function setReferees(
  * not take a second TZS 100,000. Refused here — at the payment — not at the door, so the
  * applicant can still assemble documents while the refund is processed.
  */
-export async function recordFeePayment(userId: string, input: { feeReference: string }): Promise<ServiceResult<{ status: StoredAgentApplication["status"] }>> {
+/**
+ * ⭐ EVERY REFUSAL THIS CAN PRODUCE IS A NAMED TOKEN, not a sentence to be pattern-matched.
+ *
+ * 🔴 The form used to tell them apart with `/already in use/i.test(r.error)` and
+ * `/refund/i.test(r.error)`, and rendered `r.error` raw for everything else — so a Swahili or
+ * Chinese applicant met English server prose on the money step, and a reworded sentence would
+ * have silently broken the two branches that did work. This is the same discipline the upload
+ * path in `apply/actions.ts` already states in its header: the UI must not substring-match
+ * English prose to tell two failures apart.
+ */
+export type FeeRefusal = "reference_format" | "reference_taken" | "receipt_missing" | "refund_owed" | "not_editable";
+
+export type FeeResult =
+  | { ok: true; data: { status: StoredAgentApplication["status"] } }
+  | { ok: false; error: string; code: "INVALID" | "NOT_FOUND"; field?: string; refusal: FeeRefusal };
+
+export async function recordFeePayment(userId: string, input: { feeReference: string }): Promise<FeeResult> {
   const ref = (input.feeReference ?? "").trim().toUpperCase().replace(/\s+/g, "");
+  // ⛔ THE RULE IS NAMED, and the refusal carries its field so it lands ON the input.
   if (ref.length < 4 || ref.length > 64 || !/^[A-Z0-9-]+$/.test(ref)) {
-    return { ok: false, error: "Enter the receipt reference exactly as printed (letters, numbers and dashes).", code: "INVALID" };
+    return { ok: false, error: "Enter the receipt reference exactly as printed — letters, numbers and dashes only, at least 4 characters.", code: "INVALID", field: "feeReference", refusal: "reference_format" };
   }
   return withLock(`agentapp:${userId}`, async () => {
     const e = await editableApplication(userId);
-    if (!e.ok) return { ok: false as const, error: e.error, code: e.code };
+    if (!e.ok) return { ok: false as const, error: e.error, code: e.code, refusal: "not_editable" as const };
     const app = e.app;
     const owed = await refundOwedTo(userId);
-    if (owed && owed.id !== app.id) return { ok: false as const, error: "A refund from your previous application is still being processed. Wait for it before paying again.", code: "INVALID" as const };
+    // ⭐ `refusal` is a MACHINE TOKEN, so the form renders translated copy instead of
+    // substring-matching this English sentence — which is exactly what it used to do
+    // (`/refund/i.test(r.error)`), and which put raw English into a Swahili UI for every
+    // other refusal this call can produce.
+    if (owed && owed.id !== app.id) return { ok: false as const, error: "A refund from your previous application is still being processed. Wait for it before paying again.", code: "INVALID" as const, refusal: "refund_owed" as const };
     const receipt = await db.agentApplicationDoc.findSlot(app.id, "FEE_RECEIPT");
-    if (!receipt || receipt.purgedAt) return { ok: false as const, error: "Upload the receipt first.", code: "INVALID" as const };
+    if (!receipt || receipt.purgedAt) return { ok: false as const, error: "Upload the receipt first.", code: "INVALID" as const, refusal: "receipt_missing" as const };
     const holder = await db.agentApplication.findByFeeReference(ref);
     if (holder && holder.id !== app.id) {
       audit({ category: "SECURITY", action: "agent.fee.duplicate_reference", actorId: userId, targetType: "AgentApplication", targetId: app.id, payload: { holder: holder.id } });
-      return { ok: false as const, error: "That receipt reference is already in use.", code: "INVALID" as const };
+      return { ok: false as const, error: "That receipt reference is already in use.", code: "INVALID" as const, field: "feeReference", refusal: "reference_taken" as const };
     }
     // A changed receipt on an ADDITIONAL_INFO_REQUIRED application clears the officer's
     // reconciliation: the payment they matched is no longer the one on the row.
@@ -662,10 +795,16 @@ export async function recordFeeRefund(officerId: string, applicationId: string, 
     }
     const now = iso();
     const cfg = getAgentConfig();
-    const fee = feeBreakdown(cfg);
     await db.agentApplication.update(app.id, { feeDisposition: "REFUNDED", feeRefundedAt: now, feeRefundedById: officerId, feeRefundReference: ref, feeRefundAmountTzs: amount });
+    // ⭐ THE VAT INSIDE THE GROSS THAT WAS ACTUALLY COLLECTED — not today's expected split.
+    // `amount` is already proved equal to `app.feeAmountTzs` above, so this reverses exactly
+    // what `reconcileFee` posted and `HOUSE:TAX` nets to zero on a refunded application.
+    // 🔴 This used to branch on whether the stamped amount still matched config and otherwise
+    // apply the INCLUSIVE back-out unconditionally, which mis-reversed the tax leg under an
+    // EXCLUSIVE treatment at any rate other than the one in force. See `vatWithinGross`.
     await postLedgerEntries(`agentfee_refund_${app.id}`, agentRegistrationFeeEntries({
-      groupRef: app.id, userId: app.userId, amount: -amount, vatAmount: -(app.feeAmountTzs === fee.totalTzs ? fee.vatTzs : Math.round(amount * (cfg.feeVatRatePct / (100 + cfg.feeVatRatePct)))),
+      groupRef: app.id, userId: app.userId, amount: -amount,
+      vatAmount: -vatWithinGross(amount, cfg.feeVatRatePct),
       description: `Agent registration fee refunded · ${ref}`,
     })).catch(() => {});
     audit({ category: "COMPLIANCE", action: "agent.fee.refunded", actorId: officerId, targetType: "AgentApplication", targetId: app.id, payload: { amountTzs: amount, reference: ref, rejectedBy: app.reviewerId, destination: app.feeSourceAccount } });
@@ -963,26 +1102,52 @@ const OTP_TTL_MS = 5 * 60 * 1000;
  * already belongs to an agent, to staff, or to a self-excluded person; or a live invitation
  * already stands for it. The token is returned ONCE and stored only as a hash.
  */
-export async function issueInvitation(officerId: string, input: { phoneE164: string; displayName?: string }): Promise<ServiceResult<{ invitationId: string; token: string; expiresAt: string; link: string }>> {
-  const phone = (input.phoneE164 ?? "").trim();
-  if (!/^\+255[67]\d{8}$/.test(phone)) return { ok: false, error: "Enter a Tanzanian mobile number as +255…", code: "INVALID" };
+/**
+ * ⭐ ISSUE AN INVITATION, BY EMAIL.
+ *
+ * 🔴 WHY IT IS EMAIL AND NOT SMS. The programme shipped inviting by phone, and the officer's
+ * console said "A text with the link is on its way". It was not: `src/lib/server/sms.ts`
+ * defaults to the `console` provider, Beem and Africa's Talking are declared stubs that
+ * THROW, and the Selcom adapter's body is written against an unsigned contract. In production
+ * `sms.ts` logged "console provider active in PRODUCTION … NOT delivered" while the console
+ * promised delivery and the applicant's own status page said the link "was texted to your
+ * number". Three surfaces asserting a delivery that could not happen.
+ *
+ * ⭐ POSTMARK IS LIVE AND CARRIES EVERY OTHER TRANSACTIONAL MAIL ON THE PLATFORM, so the
+ * invitation now goes there — and `sendEmail` returns a `reason` (`sent` · `stub` ·
+ * `no-address` · `suppressed` · `failed`) which this function READS and reports, because a
+ * caller that makes a promise to a person must read it (`email.ts:107`).
+ *
+ * ⛔ AND THE ADDRESS IS THE SECURITY BOUNDARY, NOT A CONVENIENCE. Acceptance requires a code
+ * delivered to THIS mailbox and a signed-in account whose own email matches it — the same
+ * two-party control the phone binding gave. A forwarded link is worthless either way.
+ */
+export async function issueInvitation(officerId: string, input: { email: string; displayName?: string }): Promise<ServiceResult<{ invitationId: string; token: string; expiresAt: string; link: string; delivery: SendResult["reason"] }>> {
+  const email = (input.email ?? "").trim().toLowerCase();
+  // ⛔ A SHAPE CHECK, NOT A VALIDATION OF EXISTENCE. It refuses the typo classes an officer
+  // actually makes (no @, no dot, a trailing comma, whitespace inside) and nothing more:
+  // there is no way to know from here whether a well-formed address is real, and the
+  // delivery `reason` below is what actually answers that.
+  if (!/^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]{2,}$/.test(email) || email.length > 254) {
+    return fieldFailure("email", "Enter the applicant's email address — for example agent@example.com.");
+  }
   const cfg = getAgentConfig();
   if (!cfg.enabled) return { ok: false, error: "The agent programme is switched off.", code: "INVALID" };
-  const existing = await db.user.findByPhone(phone);
+  const existing = await db.user.findByEmail(email);
   if (existing) {
-    if (existing.id === officerId) return { ok: false, error: "You cannot invite yourself.", code: "INVALID" };
-    if (isStaffRole(existing.role)) return { ok: false, error: "That number belongs to a staff account.", code: "INVALID" };
-    if (isApprovedAgent(await db.affiliate.findByUserId(existing.id))) return { ok: false, error: "That person is already an agent.", code: "INVALID" };
-    if (existing.status === "SELF_EXCLUDED" || existing.status === "CLOSED" || existing.status === "SUSPENDED") return { ok: false, error: `That account is ${existing.status.toLowerCase().replace("_", "-")}.`, code: "INVALID" };
-    if ((await selfExclusionStanding(existing.id)).state !== "none") return { ok: false, error: "That person has a self-exclusion on record.", code: "INVALID" };
-    if (await db.agentApplication.findActiveByUser(existing.id)) return { ok: false, error: "That person already has a live application.", code: "INVALID" };
+    if (existing.id === officerId) return fieldFailure("email", "You cannot invite yourself.");
+    if (isStaffRole(existing.role)) return fieldFailure("email", "That address belongs to a staff account.");
+    if (isApprovedAgent(await db.affiliate.findByUserId(existing.id))) return fieldFailure("email", "That person is already an agent.");
+    if (existing.status === "SELF_EXCLUDED" || existing.status === "CLOSED" || existing.status === "SUSPENDED") return fieldFailure("email", `That account is ${existing.status.toLowerCase().replace("_", "-")}.`);
+    if ((await selfExclusionStanding(existing.id)).state !== "none") return fieldFailure("email", "That person has a self-exclusion on record.");
+    if (await db.agentApplication.findActiveByUser(existing.id)) return fieldFailure("email", "That person already has a live application.");
   }
-  if (await db.agentInvitation.findLiveByPhone(phone)) return { ok: false, error: "A live invitation already stands for that number — revoke it first.", code: "INVALID" };
+  if (await db.agentInvitation.findLiveByEmail(email)) return fieldFailure("email", "A live invitation already stands for that address — withdraw it first.");
   const token = randomId(24);
   const now = iso();
   const expiresAt = new Date(Date.now() + cfg.invitationExpiryDays * DAY_MS).toISOString();
   const inv = await db.agentInvitation.create({
-    id: `agi_${randomId(10)}`, applicationId: null, phoneE164: phone, displayName: (input.displayName ?? "").trim().slice(0, 80) || null,
+    id: `agi_${randomId(10)}`, applicationId: null, phoneE164: null, email, displayName: (input.displayName ?? "").trim().slice(0, 80) || null,
     tokenHash: tokenHash(token), status: "ISSUED", issuedById: officerId, issuedAt: now, expiresAt,
     acceptedAt: null, acceptedUserId: null, declinedAt: null, revokedAt: null, revokedById: null, createdAt: now, updatedAt: now,
   });
@@ -1000,12 +1165,29 @@ export async function issueInvitation(officerId: string, input: { phoneE164: str
     await db.agentInvitation.update(inv.id, { applicationId: app.id });
   }
   const link = `${appUrl()}/agent/invite/${token}`;
-  audit({ category: "COMPLIANCE", action: "agent.invitation.issued", actorId: officerId, targetType: "AgentInvitation", targetId: inv.id, payload: { phone: maskPhoneForAudit(phone), expiresAt, existingUser: !!existing } });
-  sms.send(phone, `50pick: you have been invited to become a Verified 50pick Agent · umealikwa kuwa Wakala Aliyethibitishwa wa 50pick. Open / Fungua ${link} — expires in / inaisha baada ya siku ${cfg.invitationExpiryDays}.`).catch(() => {});
-  if (existing) {
-    sendEmailToUser(existing.id, (email) => ({ to: email, subject: "You are invited to become a Verified 50pick Agent", html: agentInvitationHtml({ link, expiresAt, feeWaivable: true, feeTzs: feeBreakdown(cfg).totalTzs }), tag: "agent-invitation" })).catch(() => {});
-  }
-  return { ok: true, data: { invitationId: inv.id, token, expiresAt, link } };
+  /**
+   * ⭐ AWAITED, AND ITS `reason` IS RETURNED. Every other mail on this platform is
+   * fire-and-forget, correctly — a receipt that fails to send must not fail the payment. This
+   * one is the opposite: the mail IS the invitation, and the officer is about to be told
+   * something about it. `email.ts` states the rule outright — "callers that make a PROMISE to
+   * the player must read it" — so the console reports what actually happened instead of
+   * asserting delivery the way the SMS copy did.
+   *
+   * ⛔ `sendEmail` DIRECTLY, NOT `sendEmailToUser`. The invitee may have no 50pick account
+   * yet, which is the whole point of an officer-issued invitation; `sendEmailToUser` looks up
+   * a userId and would silently skip exactly the people this feature exists for.
+   */
+  const delivery = await sendEmail({
+    to: email,
+    subject: "You are invited to become a Verified 50pick Agent",
+    html: agentInvitationHtml({ link, expiresAt, feeWaivable: true, feeTzs: feeBreakdown(cfg).totalTzs }),
+    tag: "agent-invitation",
+    // ⛔ Postmark's click-tracking redirect would rewrite the one-time token link. The same
+    // reason the KYC deep link opts out.
+    trackLinks: false,
+  });
+  audit({ category: "COMPLIANCE", action: "agent.invitation.issued", actorId: officerId, targetType: "AgentInvitation", targetId: inv.id, payload: { email: maskEmailForAudit(email), expiresAt, existingUser: !!existing, delivery: delivery.reason } });
+  return { ok: true, data: { invitationId: inv.id, token, expiresAt, link, delivery: delivery.reason } };
 }
 
 export async function revokeInvitation(officerId: string, invitationId: string, reason: string): Promise<ServiceResult> {
@@ -1019,9 +1201,15 @@ export async function revokeInvitation(officerId: string, invitationId: string, 
   return { ok: true };
 }
 
-/** What an invite link shows before anyone proves anything: the masked phone, the expiry,
- *  whether it is still live. Never the full number. */
-export async function invitationPreview(token: string): Promise<{ ok: true; invitationId: string; phoneMasked: string; displayName: string | null; expiresAt: string; status: StoredAgentInvitation["status"] } | { ok: false; reason: "invalid" | "expired" | "revoked" | "used" | "declined" }> {
+/** What an invite link shows before anyone proves anything: the MASKED address it was sent
+ *  to, the channel, the expiry, whether it is still live. ⛔ Never the full address — this
+ *  page is readable by anyone holding the link. */
+export async function invitationPreview(
+  token: string,
+  /** ⭐ Optional. When the reader is signed in, pass them so the identity match is decided
+   *  against the REAL address rather than by string-matching the mask on the page. */
+  viewer?: Pick<StoredUser, "email" | "phoneE164"> | null,
+): Promise<{ ok: true; invitationId: string; channel: InvitationChannel["kind"]; addressMasked: string; displayName: string | null; expiresAt: string; status: StoredAgentInvitation["status"]; viewerMatches: boolean } | { ok: false; reason: "invalid" | "expired" | "revoked" | "used" | "declined" }> {
   const inv = await db.agentInvitation.findByTokenHash(tokenHash((token ?? "").trim()));
   if (!inv) return { ok: false, reason: "invalid" };
   if (inv.status === "REVOKED") return { ok: false, reason: "revoked" };
@@ -1031,8 +1219,25 @@ export async function invitationPreview(token: string): Promise<{ ok: true; invi
     if (inv.status !== "EXPIRED") await expireInvitation(inv);
     return { ok: false, reason: "expired" };
   }
-  const digits = inv.phoneE164.replace(/\D/g, "");
-  return { ok: true, invitationId: inv.id, phoneMasked: `+${digits.slice(0, 3)} ••• ••• ${digits.slice(-3)}`, displayName: inv.displayName, expiresAt: inv.expiresAt, status: inv.status };
+  const ch = invitationChannel(inv);
+  if (!ch) return { ok: false, reason: "invalid" };
+  /**
+   * 🔴 THE MATCH IS DECIDED HERE, ON THE REAL ADDRESS — not on the page, against the MASK.
+   *
+   * `/agent/invite/[token]` used to compute it by string-matching the masked value:
+   *   `preview.phoneMasked.endsWith(viewer.phoneE164.slice(-3)) && …startsWith(…)`
+   * Two different numbers sharing a country code and their last three digits therefore
+   * "matched", and any change to the mask's punctuation silently broke it. It is one
+   * comparison, and it belongs where the unmasked address is — which is here.
+   *
+   * ⛔ The boolean is all that leaves. The address itself never does.
+   */
+  const viewerMatches = viewer
+    ? (ch.kind === "EMAIL"
+        ? (viewer.email ?? "").trim().toLowerCase() === ch.address.toLowerCase()
+        : viewer.phoneE164 === ch.address)
+    : false;
+  return { ok: true, invitationId: inv.id, channel: ch.kind, addressMasked: maskChannel(ch), displayName: inv.displayName, expiresAt: inv.expiresAt, status: inv.status, viewerMatches };
 }
 
 async function expireInvitation(inv: StoredAgentInvitation): Promise<void> {
@@ -1043,17 +1248,93 @@ async function expireInvitation(inv: StoredAgentInvitation): Promise<void> {
 
 /** Send the OTP to the phone the invitation is BOUND to. The invitee proves possession of THAT
  *  number, not of the link — a forwarded link is worthless. */
-export async function requestInvitationOtp(token: string): Promise<ServiceResult<{ expiresAt: string }>> {
+/**
+ * ⭐ THE ONE PLACE THAT DECIDES WHICH ADDRESS AN INVITATION IS BOUND TO.
+ *
+ * Invitations issued before 2026-09-08 carry a phone; every one since carries an email. Both
+ * must stay acceptable — the programme went live on 2026-09-07 and an applicant holding a
+ * day-old link has done nothing wrong. ⛔ So the two eras are not two code paths: every
+ * caller asks this, and the OTP, the delivery, the mask and the identity check all follow the
+ * channel it returns. Inventing an email for a phone row to "unify" them would fabricate the
+ * exact fact the acceptance check is built on.
+ */
+export type InvitationChannel =
+  | { kind: "EMAIL"; address: string }
+  | { kind: "PHONE"; address: string };
+
+export function invitationChannel(inv: Pick<StoredAgentInvitation, "email" | "phoneE164">): InvitationChannel | null {
+  if (inv.email && inv.email.trim()) return { kind: "EMAIL", address: inv.email.trim() };
+  if (inv.phoneE164 && inv.phoneE164.trim()) return { kind: "PHONE", address: inv.phoneE164.trim() };
+  // ⛔ Never a fallback. A row with neither address cannot prove anything about anybody, so
+  // the callers refuse rather than accept on a token alone.
+  return null;
+}
+
+/** The address, masked for display and for an audit row. Never the whole thing. */
+export function maskChannel(ch: InvitationChannel): string {
+  if (ch.kind === "PHONE") {
+    const digits = ch.address.replace(/\D/g, "");
+    return `+${digits.slice(0, 3)} ••• ••• ${digits.slice(-3)}`;
+  }
+  return maskEmailForAudit(ch.address);
+}
+
+/**
+ * ⚠️ A MASK THAT SHOWS THE FIRST CHARACTER AND THE WHOLE DOMAIN — `a•••@gmail.com`.
+ *
+ * ⛔ Not a full address: this is rendered on a page anyone holding the link can open, and the
+ * platform masks every logged address under PDPA 2022 (`email.ts` → `maskEmail`).
+ * ⭐ But the DOMAIN stays, because the mask has a job: the invitee has to recognise their own
+ * mailbox to know whether to sign in with a different account. A mask that hides everything
+ * makes the mismatch branch unreadable, which is how that branch became a dead end.
+ */
+export function maskEmailForAudit(email: string): string {
+  const at = email.indexOf("@");
+  if (at <= 0) return "•••";
+  return `${email[0]}•••${email.slice(at)}`;
+}
+
+export async function requestInvitationOtp(token: string): Promise<ServiceResult<{ expiresAt: string; delivery: SendResult["reason"]; deliverable: boolean }>> {
   const p = await invitationPreview(token);
   if (!p.ok) return { ok: false, error: "This invitation is no longer valid.", code: "INVALID" };
   const inv = (await db.agentInvitation.findById(p.invitationId))!;
+  const ch = invitationChannel(inv);
+  if (!ch) return { ok: false, error: "This invitation is no longer valid.", code: "INVALID" };
+  /**
+   * ⛔ A PHONE-ERA INVITATION CANNOT BE SENT A CODE, AND SAYS SO PLAINLY. There is no
+   * licensed SMS provider, so offering to "text me a code" would arm a button that cannot
+   * deliver — the defect this whole change exists to remove. The honest answer names the
+   * remedy: an officer withdraws it and issues a new one by email.
+   */
+  if (ch.kind === "PHONE") {
+    return { ok: false, error: "This invitation was sent by text, and we can no longer deliver codes that way. Ask the officer who invited you to withdraw it and send a new invitation to your email address.", code: "INVALID" };
+  }
   const code = generateOtp();
   const salt = randomId(8);
   const expiresAt = new Date(Date.now() + OTP_TTL_MS).toISOString();
-  await db.otp.create({ id: `otp_${randomId(12)}`, phoneE164: inv.phoneE164, hashedCode: await hashOtp(code, salt), salt, purpose: INVITE_OTP_PURPOSE, attempts: 0, consumedAt: null, expiresAt, createdAt: iso() });
-  audit({ category: "AUTH", action: "otp.agent_invite.sent", actorId: null, targetType: "Phone", targetId: maskPhoneForAudit(inv.phoneE164), payload: { invitationId: inv.id } });
-  sms.send(inv.phoneE164, otpMessage(code, "SW")).catch(() => {});
-  return { ok: true, data: { expiresAt } };
+  await db.otp.create({ id: `otp_${randomId(12)}`, phoneE164: null, email: ch.address, hashedCode: await hashOtp(code, salt), salt, purpose: INVITE_OTP_PURPOSE, attempts: 0, consumedAt: null, expiresAt, createdAt: iso() });
+  // ⭐ AWAITED and its reason returned, for the same reason the invitation mail is: the page
+  // is about to tell the invitee a code is in their inbox.
+  const delivery = await sendEmail({
+    to: ch.address,
+    subject: "Your 50pick agent invitation code",
+    html: agentInviteOtpHtml({ code, minutes: Math.round(OTP_TTL_MS / 60_000) }),
+    tag: "agent-invite-otp",
+    trackLinks: false,
+  });
+  audit({ category: "AUTH", action: "otp.agent_invite.sent", actorId: null, targetType: "Email", targetId: maskEmailForAudit(ch.address), payload: { invitationId: inv.id, delivery: delivery.reason } });
+  /**
+   * ⭐ TWO FACTS, TWO FIELDS. `delivery` is what the provider actually said — it goes to the
+   * audit row and to an officer diagnosing a failure. `deliverable` is the only thing the
+   * INVITEE'S screen needs: may it open a code box, or is that a dead end?
+   *
+   * ⛔ A `stub` send is deliverable ONLY where the outbox is armed, which `stubIsRetrievable`
+   * decides and which is false in production whatever the env says. Without this the local
+   * end-to-end drive could never read a code — and papering over it by treating every `stub`
+   * as sent would have shipped a code box that a misconfigured deployment can never satisfy.
+   */
+  const deliverable = delivery.reason === "sent" || (delivery.reason === "stub" && stubIsRetrievable());
+  return { ok: true, data: { expiresAt, delivery: delivery.reason, deliverable } };
 }
 
 /**
@@ -1066,12 +1347,34 @@ export async function acceptInvitation(userId: string, token: string, otpCode: s
   const inv = (await db.agentInvitation.findById(p.invitationId))!;
   const user = await db.user.findById(userId);
   if (!user) return { ok: false, error: "Sign in first.", code: "INVALID" };
-  if (user.phoneE164 !== inv.phoneE164) {
-    audit({ category: "SECURITY", action: "agent.invitation.phone_mismatch", actorId: userId, targetType: "AgentInvitation", targetId: inv.id });
-    return { ok: false, error: "This invitation was sent to a different phone number.", code: "INVALID" };
+  const ch = invitationChannel(inv);
+  if (!ch) return { ok: false, error: "This invitation is no longer valid.", code: "INVALID" };
+  /**
+   * ⭐ THE SECOND PARTY: the signed-in account must OWN the address the invitation was sent
+   * to. This is what makes a forwarded link worthless, and it is unchanged in substance —
+   * only the address moved from a phone to a mailbox.
+   *
+   * ⚠️ CASE-INSENSITIVE ON EMAIL. Addresses are, and an invitee whose account reads
+   * `Ali@x.tz` against an invitation typed `ali@x.tz` is the same person; refusing them would
+   * be a lockout produced entirely by capitalisation.
+   */
+  const identityMatches = ch.kind === "EMAIL"
+    ? (user.email ?? "").trim().toLowerCase() === ch.address.toLowerCase()
+    : user.phoneE164 === ch.address;
+  if (!identityMatches) {
+    audit({ category: "SECURITY", action: "agent.invitation.identity_mismatch", actorId: userId, targetType: "AgentInvitation", targetId: inv.id, payload: { channel: ch.kind } });
+    return {
+      ok: false,
+      error: ch.kind === "EMAIL"
+        ? "This invitation was sent to a different email address. Sign in with the account that uses it."
+        : "This invitation was sent to a different phone number.",
+      code: "INVALID",
+    };
   }
-  // OTP — check every active code for the phone + purpose, consume all on match.
-  const active = await db.otp.findAllActive(inv.phoneE164, INVITE_OTP_PURPOSE);
+  // OTP — check every active code for the bound ADDRESS + purpose, consume all on match.
+  const active = ch.kind === "EMAIL"
+    ? await db.otp.findAllActiveByEmail(ch.address, INVITE_OTP_PURPOSE)
+    : await db.otp.findAllActive(ch.address, INVITE_OTP_PURPOSE);
   let matched = false;
   for (const o of active) { if (await verifyOtp((otpCode ?? "").trim(), o.salt, o.hashedCode)) { matched = true; break; } }
   if (!matched) {

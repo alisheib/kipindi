@@ -11,7 +11,7 @@
  */
 import "./lib/verified-fixtures.mts";
 import { db } from "../src/lib/server/store.ts";
-import { mkFixtureUser, approveFixtureAgent, cashOf } from "./lib/agent-fixtures.mts";
+import { mkFixtureUser, approveFixtureAgent, cashOf, netAfterWht } from "./lib/agent-fixtures.mts";
 import { bindRecruit, onRecruitSettlement, ensureAffiliateAccount, programmeOf, attributionFor } from "../src/lib/server/affiliate-service.ts";
 import { getAffiliateConfig, setAffiliateConfig } from "../src/lib/server/affiliate-config.ts";
 
@@ -59,7 +59,7 @@ try {
   const b = (await db.user.findById("prov_b"))!;
   ok("3.stamp · recruitedProgramme is AGENT, with the agent code", b.recruitedProgramme === "AGENT" && b.recruitedByCode === agentCode, JSON.stringify([b.recruitedProgramme, b.recruitedByCode]));
   await onRecruitSettlement("prov_b", { operatorNetFee: 10_000, marketId: "mkt_prov_2", positionId: pos() });
-  ok("3.cash · CONTROL — the post-approval recruit pays TZS 2,000", (await cashOf("prov_ref")) === 2_000, `cash=${await cashOf("prov_ref")}`);
+  ok("3.cash · CONTROL — the post-approval recruit accrues TZS 2,000 gross", (await cashOf("prov_ref")) === netAfterWht(2_000), `cash=${await cashOf("prov_ref")}`);
   ok("3.row · one AGENT row", (await agentRows("prov_ref")).length === 1);
 
   // ── §4 · the stamp is immutable: a second bind is refused, nothing rewritten ───────────
