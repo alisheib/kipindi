@@ -1,14 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { BrandSpinner, TippingBar } from "@/components/brand";
-import { EmptyState } from "@/components/ui/empty-state";
 import { I, categoryGlyph } from "@/components/ui/glyphs";
 import { pickLocalized } from "@/lib/localized";
 import { useT } from "@/lib/i18n";
 import { SearchBox } from "@/components/ui/search-box";
-import { parseQuery, matchesQuery, fieldNames, MARKET_SEARCH } from "@/lib/search";
+import { fieldNames, MARKET_SEARCH } from "@/lib/search";
 import { sideWord } from "@/lib/side-label";
 
 type Market = {
@@ -44,39 +43,32 @@ const BATCH = 24;
 
 export function LivePulseGrid({ markets }: { markets: Market[] }) {
   const { t } = useT();
-  // Search-only (no filter tab): instant client-side filter of the already-loaded
-  // live wall by question text (EN/SW) or category. Same kit search primitives as
-  // the Markets board so height, sunken bg, focus ring, and iOS font polish match.
-  const [query, setQuery] = useState("");
-  // Shared grammar (src/lib/search). Client-side by design: the wall is already
-  // loaded, so a URL round-trip would buy nothing. Same rule as every other
-  // surface — this one previously did a single contiguous `.includes()`.
-  const filtered = useMemo(() => {
-    const parsed = parseQuery(query, { fields: fieldNames(MARKET_SEARCH) });
-    if (parsed.mode === "empty") return markets;
-    return markets.filter((m) =>
-      matchesQuery(parsed, m as unknown as Record<string, string | null | undefined>, MARKET_SEARCH));
-  }, [markets, query]);
-
+  /**
+   * ⛔ THE FILTER IS GONE FROM HERE — it lives on the server now (PLAYER QUERY, task 4.9). What
+   * arrives in `markets` is already the searched set, so this component's only job is to reveal it
+   * in batches. Keeping a second filter would be two definitions of "matches", and the one that
+   * used to live here matched a SNAPSHOT missing two of the five columns its own chips advertised.
+   */
   // Render in batches and append as the user scrolls — keeps the DOM light
   // (a live wall can be thousands of bars) and gives a real "loading more"
   // affordance instead of dumping everything at once.
   const [count, setCount] = useState(() => Math.min(BATCH, markets.length));
   const sentinelRef = useRef<HTMLDivElement>(null);
   const busyRef = useRef(false);
-  const hasMore = count < filtered.length;
+  const hasMore = count < markets.length;
 
-  // B-17 — reset the visible batch on a NEW QUERY only. This used to key on
-  // `filtered.length`, so the 15s poll tick changing the live count chopped a
-  // scrolled reader back to 24 cards. A data change now only CLAMPS the count
-  // into range (functional update — no reset, no lost scroll position).
+  /**
+   * B-17 — a DATA change only CLAMPS the visible count into range; it never resets it, so the 15s
+   * poll tick cannot chop a scrolled reader back to 24 cards.
+   *
+   * ⚠️ THE OLD "RESET ON A NEW QUERY" EFFECT IS GONE AND IS NOT NEEDED. A new query is now a new
+   * URL, so the server re-renders with a different `markets` array and this component remounts its
+   * count from the initialiser — the reset happens by navigation instead of by an effect watching
+   * a piece of state this file no longer holds.
+   */
   useEffect(() => {
-    setCount(Math.min(BATCH, filtered.length));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query]);
-  useEffect(() => {
-    setCount((c) => Math.min(Math.max(c, Math.min(BATCH, filtered.length)), Math.max(filtered.length, BATCH)));
-  }, [filtered.length]);
+    setCount((c) => Math.min(Math.max(c, Math.min(BATCH, markets.length)), Math.max(markets.length, BATCH)));
+  }, [markets.length]);
 
   useEffect(() => {
     if (!hasMore) return;
@@ -88,7 +80,7 @@ export function LivePulseGrid({ markets }: { markets: Market[] }) {
           busyRef.current = true;
           // V-6 — the next batch is in-memory; the 350ms setTimeout here was
           // manufactured latency and is gone. Reveal immediately.
-          setCount((c) => Math.min(c + BATCH, filtered.length));
+          setCount((c) => Math.min(c + BATCH, markets.length));
           busyRef.current = false;
         }
       },
@@ -96,40 +88,44 @@ export function LivePulseGrid({ markets }: { markets: Market[] }) {
     );
     obs.observe(el);
     return () => obs.disconnect();
-  }, [hasMore, filtered.length, count]); // re-arm after each append
+  }, [hasMore, markets.length, count]); // re-arm after each append
 
   return (
     <>
-      {/* One SearchBox everywhere. `controlled` because the wall is already
-          loaded — a URL round-trip would buy nothing here. The duplicated
-          max-w-[460px] is gone: the cap now rides `.search-box` from the field
-          measure token (DESIGN_AUTHORITY B7). */}
-      <SearchBox
-        mode="controlled"
-        value={query}
-        onChange={setQuery}
-        placeholder={t.common.searchLiveMarkets}
-        ariaLabel={t.common.searchLiveMarkets}
-        helpFields={fieldNames(MARKET_SEARCH)}
-      />
-
-      {filtered.length === 0 ? (
-        <EmptyState
-          kind="markets"
-          title={`${t.market.noLiveMatch} “${query.trim()}”`}
-          action={
-            <button type="button" className="btn btn-ghost btn-sm btn-pill" onClick={() => setQuery("")}>
-              {t.common.clearSearch}
-            </button>
-          }
+      {/**
+        * ⭐ `mode="url"` (THE DEFAULT) — PLAYER QUERY, TASK 4.9. It was `controlled`, with the
+        * reason *"the wall is already loaded, so a URL round-trip would buy nothing here."*
+        *
+        * 🔴 IT BOUGHT MORE THAN A SHAREABLE LINK: IT BOUGHT AN HONEST HEADER. The count line in
+        * `page.tsx` was computed over the UNFILTERED board while this component filtered, so
+        * typing `zzz` printed "40 live · 6 tipping" and a six-slide featured carousel above an
+        * empty grid — `counts.ts`'s opening paragraph, live. With the query in the URL the server
+        * filters once and the count, the hero and this wall come from ONE array.
+        *
+        * ⭐ AND IT REPAIRS THE SEARCH: the snapshot this component received carries neither
+        * `resolutionCriterion` nor `status`, while the chips below advertise both. Matching now
+        * happens against the stored market, so every advertised field is real.
+        *
+        * ⚠️ The batch-append reveal is untouched — the URL drives WHICH markets arrive, not how
+        * many of them are painted at once.
+        */}
+      {/* ⚠️ SUSPENSE: in `url` mode `SearchBox` reads `useSearchParams`, which needs a boundary —
+          every other surface that uses it wraps it the same way. */}
+      <Suspense>
+        <SearchBox
+          placeholder={t.common.searchLiveMarkets}
+          ariaLabel={t.common.searchLiveMarkets}
+          helpFields={fieldNames(MARKET_SEARCH)}
         />
-      ) : (
-        <div className="market-grid">
-          {filtered.slice(0, count).map((m, i) => (
-            <PulseCard key={m.id} market={m} index={i} />
-          ))}
-        </div>
-      )}
+      </Suspense>
+
+      {/* ⛔ The search-miss empty state lives in `page.tsx` now, beside the count it must agree
+          with. A second one here would be a second definition of "nothing matched". */}
+      <div className="market-grid">
+        {markets.slice(0, count).map((m, i) => (
+          <PulseCard key={m.id} market={m} index={i} />
+        ))}
+      </div>
 
       {hasMore && (
         <div

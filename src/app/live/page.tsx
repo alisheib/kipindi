@@ -20,6 +20,8 @@ import { PageHero } from "@/components/ui/page-hero";
 import { EmptyState } from "@/components/ui/empty-state";
 // ⛔ THE ONE COLD-START RULE (§C2 / RULES law 5) — see the `yesPct` note below.
 import { pricedYesPct } from "@/lib/markets/discovery";
+import { parseQuery, matchesQuery, fieldNames, MARKET_SEARCH, MAX_QUERY_LEN } from "@/lib/search";
+import { clampText, oneParam } from "@/lib/query/parse";
 import { LivePulseGrid } from "./pulse-grid";
 import { FeaturedContest } from "./featured-contest";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
@@ -34,7 +36,11 @@ export async function generateMetadata() {
 }
 export const dynamic = "force-dynamic";
 
-export default async function LivePage() {
+export default async function LivePage({
+  searchParams,
+}: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const [{ t, locale }, liveRaw] = await Promise.all([
     getServerT(),
     // "ON LIVE — shows everything" (Markets Appearing.txt). This is the ONE player
@@ -60,7 +66,37 @@ export default async function LivePage() {
 
   // Exclude markets whose resolution time has passed — they're closed/awaiting
   // settlement, not live, and must not show a LIVE badge on the board.
-  const all = liveRaw.filter((m) => !isClosedByTime(m));
+  const live = liveRaw.filter((m) => !isClosedByTime(m));
+
+  /**
+   * ⭐ PLAYER QUERY, TASK 4.9 — `?q=` MOVES INTO THE URL, AND THE FILTER MOVES WITH IT.
+   *
+   * 🔴 THE 2026-08-10 DEFECT WAS LIVE ON THIS PAGE. The hero printed
+   * `{markets.length} live · {tipping} tipping` over the UNFILTERED set while the wall filtered
+   * client-side, so typing `zzz` rendered **"40 live · 6 tipping"** and a six-slide featured
+   * carousel above an EMPTY grid. `lib/query/counts.ts` opens with that exact failure in its own
+   * words — *"The number was factually true. The board was still a lie."* — and it was still here.
+   *
+   * ⛔ MOVING THE SEARCH TO THE SERVER IS WHAT FIXES IT, not a second count. The header figure, the
+   * tipping figure, the featured carousel and the wall are now all derived from ONE array, so they
+   * cannot disagree by construction rather than by remembering to update four places.
+   *
+   * ⭐ AND IT REPAIRS THE SEARCH ITSELF. The client filtered a SNAPSHOT that carries neither
+   * `resolutionCriterion` nor `status`, while the box advertised `criterion:` and `status:` chips
+   * from `fieldNames(MARKET_SEARCH)` — two field prefixes that could never match anything, and a
+   * bare token searching four of the five declared columns. Matching against the STORED market, the
+   * way `/markets` does, makes every advertised chip real.
+   *
+   * ⚠️ The wall's batch-append reveal is UNTOUCHED. `/live`'s stated job is identity, the endless
+   * scroll is part of that, and replacing it with a pager is a visible product change nobody asked
+   * for — see the campaign board's note.
+   */
+  const q = clampText(oneParam((await searchParams) ?? {}, "q"), MAX_QUERY_LEN);
+  const parsedQ = parseQuery(q, { fields: fieldNames(MARKET_SEARCH) });
+  const all = parsedQ.mode === "empty"
+    ? live
+    : live.filter((m) =>
+        matchesQuery(parsedQ, m as unknown as Record<string, string | null | undefined>, MARKET_SEARCH));
 
   // ⚠️ Scoped to THIS wall, and sequential on purpose — see traderSeedsByMarket. It
   // used to run in the Promise.all above and therefore could not know which markets it
@@ -164,7 +200,15 @@ export default async function LivePage() {
                 </PulseRing>
                 <p className="font-mono text-label uppercase eyebrow font-bold text-text">{t.home.liveSection}</p>
               </div>
-              <p className="font-mono text-[10.5px] text-text-subtle tabular-nums whitespace-nowrap">
+              {/* ⛔ `data-result-count` — §3 rule 5. The promise is published so an instrument can
+                  check it against the delivery; it is the attribute `qa:count-truth` reads. And
+                  the number is now over the FILTERED set: this line printed the census above a
+                  searched wall until task 4.9. */}
+              <p
+                aria-live="polite"
+                data-result-count={markets.length}
+                className="font-mono text-[10.5px] text-text-subtle tabular-nums whitespace-nowrap"
+              >
                 {markets.length} {t.market.liveCount}{tippingMarkets > 0 ? ` · ${tippingMarkets} ${t.market.tipping}` : ""}
               </p>
             </div>
@@ -173,13 +217,21 @@ export default async function LivePage() {
         </div>
 
         {markets.length === 0 ? (
+          /**
+           * ⛔ TWO CAUSES, TWO SENTENCES — adding a filter adds an empty CAUSE. With the search on
+           * the server this branch now catches a search miss as well as a genuinely quiet board,
+           * and telling a player "No markets live right now" over forty live markets they simply
+           * did not match would be the same class of false statement task 4.5 found on
+           * `/notifications`. ⚠️ The exit out of a search miss is a link that CLEARS the search,
+           * not one that leaves the page — the player wanted this board.
+           */
           <EmptyState
             kind="markets"
-            title={t.market.noLiveNow}
-            body={t.market.noLiveBody}
+            title={q ? `${t.market.noLiveMatch} "${q}"` : t.market.noLiveNow}
+            body={q ? t.results.tryDifferentKeywords : t.market.noLiveBody}
             action={
-              <Link href={"/markets" as never} className="btn btn-primary btn-md">
-                {t.common.browseAll}
+              <Link href={(q ? "/live" : "/markets") as never} className="btn btn-primary btn-md">
+                {q ? t.common.clearSearch : t.common.browseAll}
               </Link>
             }
           />
