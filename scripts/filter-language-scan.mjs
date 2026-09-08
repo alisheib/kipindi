@@ -103,6 +103,24 @@ const SURFACES = [
   // ⛔ The seeded persona needs settled positions on BOTH product lines. If this row goes red,
   // check the FIXTURE before the page.
   { id: "/positions/performance", path: "/positions/performance", auth: true, rails: 1 },
+  /**
+   * ⛔ `/profile/kyc` IS DELIBERATELY ABSENT, AND THIS TOMBSTONE IS WHY — PLAYER QUERY, task 4.14.
+   *
+   * It renders a real `FilterPill` rail and always has: the IDENTITY-DOCUMENT chooser, four
+   * `ID_DOC_TYPES` a player may prove identity with. ⭐ But it is not a FILTER. It selects which
+   * form to fill in, not which rows to see — its value is copied into the submitted form as a
+   * hidden input, and the whole rail disappears once identity is verified. There is no list on the
+   * page, no `orderBy`, and nothing for a query probe to address.
+   *
+   * ⛔ SO IT MUST NEVER CARRY `data-filter-rail`, which is the ONLY thing this scan discovers by.
+   * A row here would report `rails: 0` forever, or — worse, if the hook were added to satisfy it —
+   * would point a live query probe at a form input and call the result a filter.
+   *
+   * ⭐ IT IS NOT UNGUARDED. `test:filter-language` §0.6–§0.9 declare it as a NAMED NON-FILTER
+   * PILL RAIL, with four assertions in both directions: that it is accounted for at all, that the
+   * exemption is still true, that it has not silently grown the hook, and a ratchet on the size of
+   * that list. All four were seen to FAIL under mutation before the list was believed.
+   */
 ];
 
 /** Inside a rail, these are the pressable controls. Menu triggers count; static keys do not. */

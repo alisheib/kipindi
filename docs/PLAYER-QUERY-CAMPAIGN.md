@@ -20,7 +20,7 @@
 ## §0 — RESUME AT
 
 ```
-▶ NEXT ACTION — task 4.14 in the board below.
+▶ NEXT ACTION — Stage 5.1 in the board below (the status dictionary).
   /positions/performance: product lens All / Polls / Up & Down.
   ⛔ IT IS NOT A LIST AND IT TAKES NO PROPS. `performance/page.tsx` has no searchParams,
      no pager and no rows to filter — it is five money tiles, a P&L chart and a
@@ -42,7 +42,7 @@
   ⛔ BRANCH OFF `main`. There is no campaign branch any more — what was built is LIVE.
 ```
 
-**Stage 4 of 6. Stages 1–3 CLOSED (12/12, 7/7, 8/8). 4.1–4.13 done; 1 route left.**
+**Stages 1–4 CLOSED (12/12, 7/7, 8/8, 14/14). Next: Stage 5, the status dictionary.**
 
 > ⭐ **EVERYTHING BUILT SO FAR IS ON PRODUCTION** (2026-09-08, `main` `4e667633`). The branch
 > was merged and deleted, so a session that goes looking for `player-query-campaign` will not
@@ -392,7 +392,7 @@ git fetch && git checkout player-query-campaign
 | 1 | **The core** | the six existing gates in §8 green **with no edits to those scripts** | ✅ **12/12** |
 | 2 | **`/positions`** | `qa:player-filters` + `qa:count-truth` green on it; 360 Swahili screenshot looked at | ✅ **7/7** |
 | 3 | **`/wallet`** | same, plus the 1,000-row cap is stated to the player | ✅ **8/8** |
-| 4 | **The other 13 pages** | every census-A and census-B route done, one commit each | ▶ **13/14** |
+| 4 | **The other 13 pages** | every census-A and census-B route done, one commit each | ✅ **14/14** |
 | 5 | **The status dictionary** | `position-card.tsx` has no hand-typed tone; `test:gold-is-money` still green | ☐ 0/4 |
 | 6 | **Guards + docs** | the full §8 sweep passes and each new guard's RED control has been *seen to fail* | ▶ **3/9** (6.5, 6.6, + `qa:bar-geometry`, unplanned) |
 
@@ -530,7 +530,7 @@ grep -n "grants.slice\|status: {" src/app/wallet/page.tsx src/app/wallet/wallet-
 Five of the seven statuses are invisible on **every** player surface, so a player cannot see
 a bonus they were granted and lost.
 
-### Stage 4 · the other thirteen pages (13/14)
+### Stage 4 · the other thirteen pages (14/14 — CLOSED)
 
 One commit each, in this order. Same bar, same nine rules.
 
@@ -549,7 +549,7 @@ One commit each, in this order. Same bar, same nine rules.
 | ☑ | **4.11** `/profile/invite` | 🔴 **THE PLAN NAMED A BODY NO LIVE VIEWER CAN REACH.** `PRODUCT_STATE.invite` is `WITHDRAWN`, so `inviteIsLiveFor` is true only for an agent in good standing — which requires `approvedAt` — and `getAgentDashboard` returns non-null on **exactly that same condition** and is consulted **first**. Approved ⇒ the agent dashboard; not approved ⇒ `notFound()`. There is no third case outside `FEATURE_INVITE=ACTIVE`. ⇒ The list a live viewer sees is the **agent recruit book**, and that is where the bar went. ⛔ Its three planned lens ids were **display tokens** (`"Signed up" \| "First bet" \| "Earning"`, an English string union the chip printed raw) — rule 2 forbids filtering a word. Five arms now, a **ladder ending in a residual**, keyed on the stored `ReferralRewardStatus`: `all · paid · owed · reversed · joined`. ⭐ `reversed` is the arm the page could already state in a money tile and could not point at. 🔴 Also: the book was **unbounded, unpaged**, and ordered by `createdAt` while each row **printed** `recruitedAt` — so displayed dates ran out of order. ⚠️ **And it settles the session-90 gate dispute:** `qa:live` asserted this page *shows* a 10,000 reward — a view its own demo persona cannot open. Repaired to assert the not-found view, matching `qa:agent-drive` §6 |
 | ☑ | **4.12** `/markets/[id]` comments | ⛔ **"newest · oldest" is ONE sort and its direction, not two.** A comment has exactly one orderable key (`createdAt`); `reports` is a moderator number and there are no votes, replies or score. So it is the degenerate spelling `/notifications` documents — two ids reading the same key in opposite directions and **no `?dir=` at all**, because `?csort=oldest&dir=desc` answers nothing. 🔴 **And the real defect was the READ.** `store.listForMarket` has accepted a `limit` since it was written and no caller ever passed one, so a four-thousand-comment thread read four thousand rows **and issued an author lookup per row** to paint fifteen — `INITIAL_SHOW` is a render cap, not a read cap. Bounded at 200, ordered **before** the cap (so "oldest" is the oldest 200, not the newest 200 reversed), cap stated when it bites. ⛔ Not declared as a filter surface — same collision `/leaderboard` hit: a sort is not a filter |
 | ☑ | **4.13** `/profile/activity` | ⛔ **THE PLAN NAMED THE WRONG DEFECT — the spans were ALREADY identical.** `periodSince` returns `now - 7*DAY_MS` / `now - 30*DAY_MS`; `inWindow` computes the same. 🔴 **The defect was the WORD:** those rolling windows were labelled *"This week"* / *"This month"* — `Wiki hii` / `Mwezi huu`, 本周 / 本月 — so on 8 September "This month" showed **9 August to 8 September**, mostly August, on the one page whose header calls itself a money-honesty surface. An A-5 breach in three locales. Labels now come from the shared vocabulary itself (`range7d`/`range30d`/`rangeAll`) and the three false keys are **deleted**, not corrected, so they cannot be re-adopted. 🔴 Second defect: **the empty state swallowed the responsible-gambling limit panel** — a player who had set a deposit limit and had a quiet 30 days saw no limits, no usage and no link to change them, on an RG surface. ⚠️ `today`/`yesterday` are **not** adopted: `yesterday` is the only two-sided preset and the whole read is one-sided (`gte` with no upper bound), so it needs a new bounded aggregate AND its in-memory twin — and `dal-parity` checks stored FIELDS, not signatures, so a twin that dropped the bound would stay green while `yesterday` returned all-time. Filed, not faked |
-| ☐ | **4.14** `/profile/kyc` | **no visible change** — declare its non-filter pill rail as a named exemption with its reason, so the gate's population becomes honest |
+| ☑ | **4.14** `/profile/kyc` | **no visible change**, as planned — but ⛔ **the planned MECHANISM could not work.** `SWEEP_EXEMPT` is the only named-exemption list and its consumer sweeps `/admin/` files only, so the entry would have exempted nothing; and §6.10 tests that the key still matches a *selection capsule*, which only recognises tags painting selection at the call site — a `<FilterPill>` paints nothing, so it would have gone **RED on its first run**. ⛔ The census ruling "keep the pill geometry through `filterPillClass`" was a regression dressed as a keep: that helper is for controls that CANNOT be links, and this one IS a link, which the page calls the feature. **New list `NON_FILTER_PILL_RAILS` (§0.6–§0.9)** instead, two-directional: accounted-for, still-true, has-not-grown-the-hook, plus a size ratchet and a reason-length floor. All four seen to FAIL under mutation. ⭐ Its population is `<FilterGroupKey>` — the first draft convicted **six innocent files** rendering a lone empty-state exit pill |
 
 ⚠️ **4.2 is the campaign's one visible change to a page that already works.** `/results`
 carries its category rail as a desktop `aside` of full-width pills — a second layout for the

@@ -290,6 +290,116 @@ ok(unhooked.length === 0,
   "0.5 every declared surface exposes the data-filter-rail hook a live probe addresses",
   unhooked.join(", "));
 
+/**
+ * ⭐ §0.6–§0.9 · THE PILL RAILS THAT ARE NOT FILTERS — PLAYER QUERY, task 4.14.
+ *
+ * 🔴 §6 OF THE CAMPAIGN NAMED THIS BLIND SPOT IN ADVANCE AND IT WAS STILL OPEN: this gate finds
+ * rails ONLY by the literal `data-filter-rail`, so a surface that renders a real `<FilterPill>`
+ * rail and emits no hook appears in NEITHER declared list and is invisible to §0.4, to
+ * `qa:filter-scan`, to `qa:bar-geometry` and to `qa:count-truth`. Its words are:
+ *   *"This is not a missing feature — it is a gate reporting on a smaller population than it
+ *   claims."*
+ * `/notifications` was one of the two it named; task 4.5 closed that one by making it a real
+ * filter surface. This is the other, and it CANNOT be closed the same way, because it is not a
+ * filter at all.
+ *
+ * ⛔ `/profile/kyc`'s PILL RAIL IS THE IDENTITY-DOCUMENT CHOOSER. It picks which of the four
+ * `ID_DOC_TYPES` a submission is BUILT ON — the value is copied into the submitted form as a
+ * hidden input, and the rail disappears entirely once identity is verified. It narrows no list;
+ * there is no list. Giving it `data-filter-rail` would point a QUERY probe at a form input, which
+ * is the same class of error `SWEEP_EXEMPT`'s three existing form-picker entries record.
+ *
+ * ⛔ AND `SWEEP_EXEMPT` STRUCTURALLY CANNOT HOLD IT, which is why this list exists rather than an
+ * entry there. Its consumer sweeps `allSrc.filter(x => /\.tsx$/.test(x) && /\/admin\//.test(x))`
+ * — player files are never swept, so the entry would exempt nothing — and §6.10 tests that the
+ * entry's key still matches a "selection capsule", which only recognises `<button|a|Link>` tags
+ * painting selection AT THE CALL SITE. The KYC chooser is a `<FilterPill>` component tag that
+ * paints nothing, so it would match no capsule and §6.10 would go RED on its first run.
+ *
+ * ⚠️ TWO-DIRECTIONAL, DELIBERATELY. A list of exemptions with no upward pressure is a place to
+ * hide a rail: §0.7 asserts every entry is still TRUE (the file exists and still renders the
+ * primitive), and §0.9 is a RATCHET — the list may shrink and may not grow without the number
+ * being lowered in the same commit. ⛔ An exemption list that can grow silently is how a
+ * population stops being a population.
+ */
+const NON_FILTER_PILL_RAILS: Array<{ file: string; why: string }> = [
+  {
+    file: "src/app/profile/kyc/page.tsx",
+    why:
+      "The IDENTITY-DOCUMENT chooser. It is a rail of the four ID_DOC_TYPES a player may prove " +
+      "identity with, and it selects WHICH FORM TO FILL IN, not which rows to see: the value is " +
+      "copied into the submitted form as a hidden input so what is VALIDATED is what was on " +
+      "screen, and the whole rail is removed once `idDone`. The page has no list, no orderBy and " +
+      "nothing to filter. ⛔ Do not give it the hook — a live query probe addressing a form input " +
+      "would report a filter that does not exist. ⚠️ And do not 'keep the geometry' by moving it " +
+      "to `filterPillClass`: that helper exists for controls that CANNOT be links, and this one " +
+      "IS a link, which the page's own note calls the feature (it works with no JavaScript at " +
+      "all). `id-documents.test.mts` asserts both the `<FilterPill` tag and the href.",
+  },
+];
+
+/**
+ * ⛔ §0.6 IS THE ASSERTION THAT MAKES THE POPULATION HONEST. Every file that renders the primitive
+ * must be accounted for: it is a declared FILTER surface, or it is a declared NON-filter rail, or
+ * this gate does not know about it — and the third case is the blind spot §6 named.
+ *
+ * ⚠️ THE POPULATION IS A LABELLED GROUP OF PILLS, NOT ANY FILE THAT RENDERS ONE — and the first
+ * draft got that wrong, which is worth recording because it reported six innocent files.
+ *
+ * 🔴 IT FLAGGED `fairness`, `profile/account`, `proposals`, `results`, `watchlist` and
+ * `datetime-range-filter`. Five of those render a single `<FilterPill>` as an EMPTY-STATE EXIT —
+ * one control offering one way out, carrying a real cross-filtered count — and the sixth is the
+ * kit's own range control. ⛔ A lone exit pill is not a rail: there is no axis, no set of
+ * mutually-exclusive options, and nothing for a query probe to address. Convicting them would
+ * have been the "guard whose POPULATION is blind" failure in its other direction — too WIDE, which
+ * is just as useless as too narrow because it trains people to add exemptions.
+ *
+ * ⭐ `<FilterGroupKey>` IS THE DISCRIMINATOR, and it is a fact about the design rather than a
+ * heuristic: it is the primitive that gives a group of pills its NAME, so a file rendering it is
+ * declaring "these pills are one axis". Re-derived across the six false positives — none renders
+ * it; the KYC chooser renders exactly one.
+ *
+ * ⚠️ AND IT IS THE TAG, NOT THE IMPORT. `results/page.tsx` imports `FilterGroupKey` and never
+ * renders it, so keying on the identifier would have kept one of the six false positives. ⚠️ On
+ * `strip`ped source, too: `proposals/page.tsx` contains the characters `<nav>` inside a COMMENT,
+ * which is what an unstripped scan would have matched.
+ */
+const rendersPillRail = allSrc.filter(
+  (f) => f !== PRIMITIVE && /<FilterPill\b/.test(strip(read(f))) && /<FilterGroupKey\b/.test(strip(read(f))),
+);
+const accountedFor = new Set([...DECLARED, ...NON_FILTER_PILL_RAILS.map((e) => e.file)]);
+const unaccounted = rendersPillRail.filter((f) => !accountedFor.has(f) && !discovered.includes(f));
+ok(unaccounted.length === 0,
+  "0.6 every file rendering a FilterPill is declared — as a filter rail or as a named non-filter",
+  `unaccounted: ${unaccounted.join(", ")}`);
+
+const staleNonFilter = NON_FILTER_PILL_RAILS.filter(
+  (e) => !existsSync(join(ROOT, e.file)) || !/<FilterPill\b/.test(strip(read(e.file))),
+);
+ok(staleNonFilter.length === 0,
+  "0.7 every non-filter exemption is still TRUE — the file exists and still renders the primitive",
+  staleNonFilter.map((e) => e.file).join(", "));
+
+// ⛔ AND AN EXEMPTION MUST NOT SILENTLY BECOME A FILTER. If one of these files ever emits the
+//    hook, it has become a query surface and belongs in SURFACES with the rest.
+const exemptButHooked = NON_FILTER_PILL_RAILS.filter(
+  (e) => existsSync(join(ROOT, e.file)) && /data-filter-rail/.test(strip(read(e.file))),
+);
+ok(exemptButHooked.length === 0,
+  "0.8 no non-filter exemption emits the rail hook — that would make it a filter surface",
+  exemptButHooked.map((e) => e.file).join(", "));
+
+/**
+ * ⛔ THE RATCHET. ⚠️ Every entry must carry a REASON long enough to be a reason: a one-line
+ * "not a filter" is the shape that lets the next entry in without an argument.
+ */
+const RATCHET_NON_FILTER_RAILS = 1;
+ok(NON_FILTER_PILL_RAILS.length <= RATCHET_NON_FILTER_RAILS,
+  `0.9 the non-filter exemption list has not grown past ${RATCHET_NON_FILTER_RAILS}`,
+  `${NON_FILTER_PILL_RAILS.length} entries — lower RATCHET_NON_FILTER_RAILS in the SAME commit if one legitimately leaves`);
+ok(NON_FILTER_PILL_RAILS.every((e) => e.why.length >= 120),
+  "0.9b every non-filter exemption states WHY, at length — a one-liner is how the next one gets in");
+
 // ── §1 · THE PRIMITIVE — the language, defined once ───────────────────────────────────────────
 
 ok(/rounded-pill/.test(primitiveCode),
