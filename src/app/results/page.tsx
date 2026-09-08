@@ -236,14 +236,38 @@ async function ResultsContent({
     (l) => winsIn(l, "YES") + winsIn(l, "NO") > 0,
   );
 
-  // C2b / A19 — "notable results" featured above the grid = the highest-volume
-  // settled markets. Only on page 1 with no active search. On a healthy result set
-  // we spotlight the top 3 in a small swipeable carousel; with fewer results it
-  // stays a single card (unchanged behaviour). Featured ids are excluded from the
-  // page-1 grid so nothing is shown twice.
+  /**
+   * C2b / A19 — "notable results" featured above the grid = the highest-volume settled markets.
+   * Only on page 1 with no active search. On a healthy result set we spotlight the top 3 in a
+   * small swipeable carousel; with fewer results it stays a single card.
+   *
+   * 🔴 IT IS PICKED FROM `paged`, NOT FROM `all` — CORRECTED 2026-09-08, AND THE OLD LINE PUT THE
+   * SAME MARKET ON TWO PAGES. It sorted the WHOLE result set by volume and took the top 3, but
+   * `notableIds` is only subtracted from the page-1 grid. So a high-volume market whose natural
+   * slice position is page 2 rendered in page 1's carousel AND again in page 2's grid. Measured
+   * on the seeded store before this line: **2 of the 3 notables duplicated**, page 1 carrying 14
+   * rows against page 2's 8, and paging the archive showing the same two settlements twice.
+   *
+   * ⛔ IT WAS INVISIBLE UNTIL BOTH HALVES OF THE EARLIER FIX LANDED. Before task 4.2 the carousel
+   * rendered only `slides[current]` and `FeaturedResult` carried no row identity, so two of the
+   * three duplicates were not in the DOM at all — the page under-reported instead of
+   * double-reporting, which is the defect that fix was for. ⭐ Repairing an instrument exposes
+   * what it could not see; the second finding is not a regression from the first.
+   *
+   * ⚠️ AND THE ALTERNATIVE WAS WORSE. Lifting the notables OUT of the pageable list instead would
+   * make the pager count a different population from the bar — "1–12 of 19" under a bar promising
+   * 22 results, i.e. two totals for one question. Promoting from within the page keeps the pages
+   * a true partition: every page holds exactly `PER_PAGE` rows, and the sum across pages is the
+   * `data-result-count` the bar publishes.
+   *
+   * ⚠️ THE MEANING NARROWS SLIGHTLY AND HONESTLY: "notable" is now the highest-volume of the
+   * results on this page rather than of the whole archive. Under the default `sort=resolved` that
+   * reads as "notable among the most recent", and under `sort=volume` page 1 already holds the
+   * archive's top by volume, so the two definitions coincide exactly where it matters.
+   */
   const showFeatured = !searching && safePage === 1 && all.length > 0;
   const notableList = showFeatured
-    ? [...all].sort((a, b) => (b.yesPool + b.noPool) - (a.yesPool + a.noPool)).slice(0, all.length >= 8 ? 3 : 1)
+    ? [...paged].sort((a, b) => (b.yesPool + b.noPool) - (a.yesPool + a.noPool)).slice(0, all.length >= 8 ? 3 : 1)
     : [];
   const notableIds = new Set(notableList.map((m) => m.id));
 

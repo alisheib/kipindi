@@ -28,6 +28,51 @@
 ```
 
 **Stage 4 of 6. Stages 1–3 CLOSED (12/12, 7/7, 8/8). 4.1–4.3 done; 11 routes left.**
+**Stage 6 task 6.6 (`qa:count-truth` + its RED control) LANDED EARLY — see below for why.**
+
+### 🔴 `/results` WAS SHOWING TWO SETTLEMENTS TWICE, AND ONLY A NEW GATE COULD SEE IT
+
+`notableList` took the archive's three highest-volume markets from **`all`**, but `notableIds` was
+subtracted only from **page 1's** slice. So a high-volume market whose natural position was page 2
+rendered in page 1's carousel **and again in page 2's grid**. Measured before the fix: page 1
+carried 14 rows against page 2's 8, and paging the archive showed the same two settlements twice.
+
+⛔ **NOTHING ALREADY IN THE PIPELINE COULD HAVE FOUND IT.** `data-result-count` was right; every
+lens assertion was right; every survivor belonged to its lens. Only the PARTITION ACROSS PAGES was
+broken — a property no single page can observe.
+
+⚠️ **AND IT WAS INVISIBLE UNTIL TASK 4.2 REPAIRED THE INSTRUMENT.** Before that fix the carousel
+rendered only `slides[current]` and `FeaturedResult` carried no row identity, so two of the three
+duplicates were not in the DOM at all — the page UNDER-reported instead of double-reporting.
+⭐ **Repairing an instrument exposes what it could not see. The second finding is not a regression
+from the first.**
+
+The fix promotes from **within the page** (`[...paged]`, not `[...all]`). ⛔ Lifting the notables
+out of the pageable list instead would make the pager count a different population from the bar —
+*"1–12 of 19"* under a bar promising 22 — i.e. two totals for one question.
+
+### ⭐ `qa:count-truth` + `red:count-truth` — task 6.6, landed here because this is where it earned it
+
+Shipping a fix without the guard that found it is what this repo forbids. It reads every pill's
+`data-count`, follows the href, walks EVERY page, and checks three things: the promise is
+delivered, the destination agrees with its own `data-result-count`, and **no row is counted
+twice**. Green: **98 pills across all six rail surfaces, 0 failed.**
+
+⛔ **ITS RED CONTROL FOUND A REAL HOLE IN THE DRIVER ITSELF, WHICH IS THE WHOLE ARGUMENT FOR RED
+CONTROLS.** The walk stopped on `ids.length >= promised` — **the very number under test**. A page
+that over-renders therefore ended the walk early, and whatever it double-counted on a later page
+was never fetched: the `pages-overlap` mutation slipped straight through a gate that looked
+correct. ⭐ **A stop condition derived from the thing being measured cannot measure it.** The end
+of a list is now detected from the product's own clamp (`safePage` re-serves the last page, so an
+identical id sequence means "no more pages"). 4/4 mutations caught, tree restored byte-identical.
+
+⚠️ **AND TWO MUTATIONS HAD TO BE REPAIRED BEFORE THE PROOF MEANT ANYTHING.** The verbatim `/results`
+defect **stayed GREEN** — on that fixture all three notables happened to land on page 1, so the
+mutated and correct code picked the same three. A mutation that reproduces its defect only on some
+data is a red proof that passes by luck. It is now deterministic, **and it declares the fixture
+shape it needs** (`?product=all`, which crosses a page boundary where the default view does not),
+so an un-posable case reports 🔶 rather than failing wrongly — `qa:player-filters`' third outcome,
+borrowed.
 
 ### What task 4.3 found — read before 4.4
 
@@ -248,7 +293,7 @@ git fetch && git checkout player-query-campaign
 | 3 | **`/wallet`** | same, plus the 1,000-row cap is stated to the player | ✅ **8/8** |
 | 4 | **The other 13 pages** | every census-A and census-B route done, one commit each | ▶ **3/14** |
 | 5 | **The status dictionary** | `position-card.tsx` has no hand-typed tone; `test:gold-is-money` still green | ☐ 0/4 |
-| 6 | **Guards + docs** | the full §8 sweep passes and each new guard's RED control has been *seen to fail* | ☐ 0/9 |
+| 6 | **Guards + docs** | the full §8 sweep passes and each new guard's RED control has been *seen to fail* | ▶ **2/9** |
 
 ---
 
@@ -457,7 +502,7 @@ from disagreeing about what refunded looks like.**
 | ☐ | **6.3** `test:route-census` — globs every non-admin `page.tsx`; a new route without a ruling fails | new gate, `route-census.test.mts` † |
 | ☐ | **6.4** `red:route-census` | new control, `route-census-red.mjs` † |
 | ☑ | **6.5** `qa:player-filters` — pulled forward to stage 4 so each route is verified as it lands | [`scripts/live/player-filter-drive.mjs`](../scripts/live/player-filter-drive.mjs) |
-| ☐ | **6.6** `qa:count-truth` — generalise the `/markets`-only probe | new probe, `count-truth-probe.mjs` † |
+| ☑ | **6.6** `qa:count-truth` + `red:count-truth` — landed 2026-09-08 alongside the `/results` defect it found. 98 pills / 6 surfaces green; 4/4 mutations caught | [`scripts/live/count-truth-drive.mjs`](../scripts/live/count-truth-drive.mjs) · [`scripts/red-count-truth.mjs`](../scripts/red-count-truth.mjs) |
 | ☐ | **6.7** the rule, in §K, as an extension of rule 6 | `docs/DESIGN_AUTHORITY.md` |
 | ☐ | **6.8** the shape, as record and on-ramp | `docs/DESIGN-BASELINE.md` **§3c** |
 | ☐ | **6.9** the component spec + provenance | `docs/design-system/v2-2026-07-27/02-components/query-bar/` |
