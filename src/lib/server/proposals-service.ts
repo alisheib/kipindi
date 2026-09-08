@@ -433,11 +433,46 @@ async function toView(p: StoredProposal, viewerId: string | null): Promise<Propo
 /** Default board page size when a caller doesn't specify one. */
 const BOARD_PAGE_SIZE = 12;
 
-export async function listBoard(viewerId: string | null, filter: BoardFilter = "hot", page = 1, perPage = BOARD_PAGE_SIZE) {
+/**
+ * EVERY hydrated board row, in recency order, plus the board's own totals.
+ *
+ * 🔴 IT RETURNS THE WHOLE SET BECAUSE FILTERING AND SORTING MOVED TO THE URL CONTRACT
+ * (`lib/proposals/board.ts`), and that is a correctness change rather than a tidy-up. The old
+ * `listBoard` applied ONE of four mutually-exclusive views in here — so `mine` and `new` were the
+ * same control and could not compose, and no pill could ever state a cross-filtered count because
+ * the function only ever knew about one filter at a time.
+ *
+ * ⚠️ IT IS NOT A NEW READ, AND THE ARITHMETIC MATTERS. `listBoard` already read `db.proposal.list(
+ * 5000)` and already ran `toView` over EVERY row before slicing a page out of the result — the
+ * cost was paid in full and then thrown away. Returning the rows costs nothing more; it stops the
+ * page paying for work it was denied.
+ *
+ * ⛔ `toView` IS N+1 (a `user.findById` and a `proposalVote.get` per proposal) and that is
+ * UNCHANGED here, deliberately: it is a real problem, it predates this campaign, and fixing it is
+ * a different commit from the one that adds a filter rail. ⚠️ Do not cite this note as approval.
+ */
+export async function listAllProposals(viewerId: string | null) {
   const cfg = getProposalsConfig();
   const all = await db.proposal.list(5000);
   const totalVotes = all.reduce((s, p) => s + p.up + p.down, 0);
-  let views = await Promise.all(all.map((p) => toView(p, viewerId)));
+  const views = await Promise.all(all.map((p) => toView(p, viewerId)));
+  return {
+    views,
+    totalProposals: all.length,
+    totalVotes,
+    state: cfg.state,
+    active: isProposalsActive(cfg),
+  };
+}
+
+/**
+ * ⚠️ THE LEGACY FOUR-VIEW BOARD — kept ONLY for `api/dev-test/proposals-e2e`, which asserts these
+ * exact semantics as a read-model contract. ⛔ The player page no longer calls it: it uses
+ * `listAllProposals` and `lib/proposals/board.ts`. Do not add a caller; add a lens instead.
+ */
+export async function listBoard(viewerId: string | null, filter: BoardFilter = "hot", page = 1, perPage = BOARD_PAGE_SIZE) {
+  const { views: hydrated, totalProposals, totalVotes, state, active } = await listAllProposals(viewerId);
+  let views = hydrated;
   if (filter === "hot") views = views.filter((v) => v.isHot).sort((a, b) => b.score - a.score);
   else if (filter === "listed") views = views.filter((v) => v.status === "LISTED" || v.status === "RESOLVED");
   else if (filter === "mine") views = views.filter((v) => v.isMine);
@@ -448,10 +483,10 @@ export async function listBoard(viewerId: string | null, filter: BoardFilter = "
   return {
     proposals: views.slice((safePage - 1) * perPage, safePage * perPage),
     matchedCount,
-    totalProposals: all.length,
+    totalProposals,
     totalVotes,
-    state: cfg.state,
-    active: isProposalsActive(cfg),
+    state,
+    active,
     page: safePage,
     perPage,
   };

@@ -214,6 +214,46 @@ export const POSITION_SEARCH: EntitySchema = {
   viewModel: true,
 };
 
+/**
+ * THE PUBLIC PROPOSAL BOARD — `/proposals`.
+ *
+ * ⛔ NOT `PROPOSAL_SEARCH`, AND THE DIFFERENCE IS NOT COSMETIC — the same split `MY_TXN_SEARCH`
+ * had to make from `TXN_SEARCH`. That schema is the ADMIN queue's: its title column is `title`
+ * (the officer view flattens the three languages into one before it reaches the list), so pointing
+ * it at a player row — which carries `titleEn` / `titleSw` / `titleZh` — would search a column
+ * that is not there and match NOTHING, while echoing the query back as though it had run. That is
+ * `regex-advertised-never-executed` with a different cause.
+ *
+ * ⭐ `title` SPANS ALL THREE LANGUAGES, for the reason `POSITION_SEARCH` gives: a player reading
+ * the Swahili board may still type an English team name, and the proposal carries all three.
+ *
+ * ⭐ `description` AND `criterion` ARE SEARCHABLE AND THE ADMIN SCHEMA'S ARE NOT. They are the two
+ * fields that say what a proposal actually MEANS — the officer queue triages by title and
+ * proposer, but a player looking for "the one about the bridge" is remembering the sentence.
+ *
+ * ⚠️ `status` IS `exact` BECAUSE IT IS AN ENUM, and it is deliberately searchable even though the
+ * lens strip already filters it — a player who has learned `status:DECLINED` should not be told
+ * the grammar has an exception.
+ *
+ * ⛔ `viewModel: true`. A board row is assembled by `toView` from the proposal AND its proposer's
+ * user row (`proposerMasked` is computed, never stored), so `queryToWhere` would emit a `where` on
+ * a column that does not exist. `matchesQuery` only.
+ */
+export const BOARD_PROPOSAL_SEARCH: EntitySchema = {
+  fields: {
+    title: { columns: ["titleEn", "titleSw", "titleZh"], kind: "text" },
+    category: { columns: ["category"], kind: "text" },
+    description: { columns: ["description"], kind: "text" },
+    criterion: { columns: ["criterion"], kind: "text" },
+    proposer: { columns: ["proposerMasked"], kind: "text" },
+    status: { columns: ["status"], kind: "exact" },
+    id: { columns: ["id"], kind: "exact" },
+  },
+  // What a bare token searches — the words a player can actually read on the card.
+  default: ["titleEn", "titleSw", "titleZh", "category", "description", "criterion"],
+  viewModel: true,
+};
+
 /** The names a surface should offer as clickable chips in the syntax help. */
 export function fieldNames(s: EntitySchema): string[] {
   return Object.keys(s.fields);

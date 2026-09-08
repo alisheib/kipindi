@@ -1642,7 +1642,13 @@ export const dict = {
       perListedMarket: "per listed market",
       createProposal: "Create proposal",
       proposalsPaused: "Proposals are paused right now — the board is read-only.",
+      // ⚠️ `filterHot` / `filterNew` / `filterListed` ARE STILL USED, but not as a rail: the
+      // PLAYER QUERY campaign split that four-pill rail into a lifecycle LENS, a SORT and an
+      // ownership axis, because two of its four pills were sorts wearing lens clothing. `Hot` and
+      // `New` are sort labels now; `Listed` survives only in the legacy `?f=` shim's documentation.
       filterHot: "Hot", filterNew: "New", filterListed: "Listed", filterMine: "Mine",
+      searchProposals: "Search proposals",
+      oneProposal: "1 proposal", nProposals: "{n} proposals",
       filterAria: "Filter proposals",
       noProposalsYet: "No proposals yet",
       noProposalsBody: "Be the first to propose a market.",
@@ -3722,6 +3728,8 @@ export const dict = {
       createProposal: "Pendekeza soko",
       proposalsPaused: "Mapendekezo yamesimama kwa sasa — bodi ni ya kusoma tu.",
       filterHot: "Moto", filterNew: "Mpya", filterListed: "Zilizoorodheshwa", filterMine: "Zangu",
+      searchProposals: "Tafuta mapendekezo",
+      oneProposal: "Pendekezo 1", nProposals: "Mapendekezo {n}",
       filterAria: "Chuja mapendekezo",
       noProposalsYet: "Bado hakuna mapendekezo",
       noProposalsBody: "Kuwa wa kwanza kupendekeza soko.",
@@ -5688,6 +5696,8 @@ export const dict = {
       createProposal: "创建提议",
       proposalsPaused: "提议目前已暂停 — 仅供浏览。",
       filterHot: "热门", filterNew: "最新", filterListed: "已上线", filterMine: "我的",
+      searchProposals: "搜索提案",
+      oneProposal: "1 个提案", nProposals: "{n} 个提案",
       filterAria: "筛选提议",
       noProposalsYet: "暂无提议",
       noProposalsBody: "成为第一个提议市场的人。",

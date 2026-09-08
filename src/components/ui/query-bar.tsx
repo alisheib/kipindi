@@ -338,3 +338,29 @@ export function QueryClear({
 export function QueryGroupDivider() {
   return <span aria-hidden className="mx-0.5 hidden h-5 w-px shrink-0 bg-border lg:block" />;
 }
+
+/**
+ * A DESKTOP GROUP of pills — the `<nav>` that sits beside the sort above `lg`.
+ *
+ * 🔴 IT WRAPS, AND THAT IS A REPAIR RATHER THAN A PREFERENCE. Every bar wrote this wrapper by
+ * hand as `hidden shrink-0 items-center gap-1 lg:flex`, and `shrink-0` with no wrap means a group
+ * whose pills are wider than the space left simply runs off the screen. Measured on `/proposals`
+ * at 1280 in Swahili, by `qa:bar-geometry` on its first full run:
+ *
+ *     CLIPPED "Mchanganyiko / Zote"  1239→1442  vs viewport 1280   (162px off the right edge)
+ *
+ * ⚠️ IT IS NOT A `/proposals` BUG, IT IS A LATENT ONE EVERYWHERE, and only that route has been
+ * unlucky enough to prove it. Its topic axis carries EIGHT categories rather than the market
+ * board's seven (`ProposalCategory` adds `infrastructure` and `mixed`), and Swahili renders
+ * "Mixed / All" as "Mchanganyiko / Zote" — the longest single pill label on the platform. The
+ * same markup on `/results` survives today only because its words are shorter.
+ *
+ * ⛔ THE ROW ALREADY WRAPS; THE GROUP DID NOT. `QUERY_BAR_ROW2_CLASS` is `flex-wrap`, so a group
+ * that no longer fits drops to its own line — and then overflows THAT line, because inside the
+ * group `shrink-0` forbids both shrinking and wrapping. Wrapping inside the group is what makes
+ * the row's wrap actually sufficient.
+ *
+ * ⚠️ `min-w-0` IS LOAD-BEARING BESIDE `flex-wrap`: without it the group's min-content width is its
+ * widest pill, so a flex parent will still let it exceed the line rather than break.
+ */
+export const QUERY_GROUP_CLASS = "hidden min-w-0 flex-wrap items-center gap-1 lg:flex";

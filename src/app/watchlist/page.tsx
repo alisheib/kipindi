@@ -177,7 +177,9 @@ export default async function WatchlistPage({
           empty state keeps the bar, because there the bar is the way OUT of the empty state. */}
       {rows.length > 0 && (
         <>
-          <div className="sticky top-[56px] z-20 bg-bg-base py-2.5">
+          {/* ⛔ NOT STICKY — see `/results/page.tsx`'s note. `QUERY_BAR_CLASS` already sticks at
+              `top-[56px]`, so a second sticky band at the same offset overlaps it by 91px. */}
+          <div className="py-2.5">
             <Suspense>
               <SearchBox
                 placeholder={t.common.searchMarkets}

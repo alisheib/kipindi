@@ -236,8 +236,16 @@ for (const r of population) {
  * rest; ⛔ that is not filter rails going unguarded — `test:filter-language` and
  * `qa:filter-scan` cover those — it is this gate correctly losing sight of controls that were
  * never SECTION rails to begin with.
+ *
+ * ⚠️ 10 → 9 ON TASK 4.4, and this one is the clearest case yet of a rail this gate SHOULD lose.
+ * `/proposals` rendered `Hot · New · Listed · Mine` as a bare `<nav>` of `<FilterPill>`s inside
+ * `page.tsx` — visible to this parser — and it was never a rail of DESTINATIONS at all: two of
+ * its four pills were ORDERINGS, one a status and one an ownership filter, which is precisely the
+ * §A5/§7g confusion this gate exists to name. It is now seven lifecycle lenses in
+ * `app/proposals/proposals-bar.tsx` behind the shared bar's wrapper, plus a real sort control.
+ * ⛔ Re-derived from the run, not predicted: the gate printed `population 9`.
  */
-const FLOOR = 10;
+const FLOOR = 9;
 
 let bad = 0;
 if (population.length < FLOOR) {

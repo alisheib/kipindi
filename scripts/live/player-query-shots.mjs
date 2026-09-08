@@ -53,6 +53,13 @@ const SURFACES = [
   { id: "wallet-empty", path: "/wallet?q=zzzznomatch", must: "data-filter-rail", sheet: false },
   { id: "results", path: "/results", must: "data-filter-rail", sheet: true },
   { id: "markets", path: "/markets", must: "data-filter-rail", sheet: true },
+  // ⚠️ `/proposals?lens=declined` IS THE SHOT THAT MATTERS MOST HERE. A declined proposal was
+  //    reachable before this campaign but SELECTABLE by nothing — a proposer had to scroll a
+  //    12-per-page list ordered by score with declines intermixed. This capture is the proof that
+  //    the state now has a control, and that its copy reads as a fact rather than as a failure.
+  { id: "proposals", path: "/proposals", must: "data-filter-rail", sheet: true },
+  { id: "proposals-declined", path: "/proposals?lens=declined", must: "data-filter-rail", sheet: false },
+  { id: "proposals-search-empty", path: "/proposals?q=zzzznomatch", must: "data-filter-rail", sheet: false },
   // ⚠️ `/watchlist` NEEDS ITS EMPTY SHOTS MORE THAN MOST PAGES DO. It is the only surface that
   //    WITHHOLDS its whole bar (§A5 — five pills all reading 0 above "you're not following any
   //    markets" are five controls that cannot act), so the `must` string below is what separates

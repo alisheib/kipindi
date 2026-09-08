@@ -1,8 +1,9 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
 import { currentSession } from "@/lib/server/auth-service";
-import { listBoard, type BoardFilter, type ProposalView } from "@/lib/server/proposals-service";
+import { listAllProposals, type ProposalView } from "@/lib/server/proposals-service";
 import { getProposalsConfig, isProposalsActive } from "@/lib/server/proposals-config";
 import { Chip } from "@/components/ui/chip";
 import { FilterPill } from "@/components/ui/filter-pill";
@@ -21,6 +22,21 @@ import { getServerT } from "@/lib/i18n-server";
 import { pickLocalized } from "@/lib/localized";
 import { formatTzs, formatNumber } from "@/lib/utils";
 import { PageContainer } from "@/components/layout/page-container";
+import { SearchBox } from "@/components/ui/search-box";
+import { parseQuery, matchesQuery, fieldNames, BOARD_PROPOSAL_SEARCH } from "@/lib/search";
+import { ProposalsBar, type BoardCounts } from "./proposals-bar";
+import {
+  boardCounts,
+  boardEmptyCause,
+  boardExits,
+  buildBoardHref,
+  filterBoard,
+  needsSession,
+  parseBoardParams,
+  sortBoard,
+  type BoardRow,
+  type BoardState,
+} from "@/lib/proposals/board";
 
 export async function generateMetadata() {
   const { t } = await getServerT();
@@ -34,7 +50,11 @@ export async function generateMetadata() {
 }
 export const dynamic = "force-dynamic";
 
-export default async function ProposalsPage({ searchParams }: { searchParams: Promise<{ f?: string; page?: string }> }) {
+export default async function ProposalsPage({
+  searchParams,
+}: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const { t, locale } = await getServerT();
 
   // Feature gate (read once, up front). DISABLED hides the whole board and shows
@@ -57,13 +77,6 @@ export default async function ProposalsPage({ searchParams }: { searchParams: Pr
     );
   }
 
-  const FILTERS: Array<{ id: BoardFilter; label: string }> = [
-    { id: "hot", label: t.proposals.filterHot },
-    { id: "new", label: t.proposals.filterNew },
-    { id: "listed", label: t.proposals.filterListed },
-    { id: "mine", label: t.proposals.filterMine },
-  ];
-
   function ageStr(iso: string): string {
     const ms = Date.now() - Date.parse(iso);
     const d = Math.floor(ms / 86_400_000);
@@ -74,16 +87,81 @@ export default async function ProposalsPage({ searchParams }: { searchParams: Pr
     return `${m} ${t.proposals.mAgo}`;
   }
 
-  const sp = await searchParams;
-  const filter: BoardFilter = (["hot", "new", "listed", "mine"] as const).includes(sp.f as BoardFilter) ? (sp.f as BoardFilter) : "hot";
+  const sp = (await searchParams) ?? {};
+  const qs = parseBoardParams(sp);
   const session = await currentSession();
-  // B-14 — round-trip the FILTER too: the player asked for "mine", so landing
-  // them back on the default board after login silently lost their intent.
-  if (filter === "mine" && !session) redirect(`/auth/login?next=${encodeURIComponent("/proposals?f=mine")}`);
+  /**
+   * B-14 — round-trip the FILTER too: the player asked for their own proposals, so landing them
+   * back on the default board after login silently lost their intent.
+   *
+   * ⚠️ THE ROUND-TRIP NOW CARRIES THE WHOLE QUERY, not just the one pill. `?mine=mine&lens=changes`
+   * is a real destination — "the proposals of mine that are waiting on ME" — and returning a
+   * player to `?f=mine` after login would drop the half that made the link worth following.
+   */
+  if (needsSession(qs) && !session) {
+    redirect(`/auth/login?next=${encodeURIComponent(buildBoardHref(qs))}`);
+  }
 
-  const pageNum = Math.max(1, parseInt(sp.page ?? "1", 10) || 1);
-  const { proposals, matchedCount, totalProposals, totalVotes, page } = await listBoard(session?.userId ?? null, filter, pageNum, PLAYER_PER_PAGE).catch(() => ({ proposals: [] as ProposalView[], matchedCount: 0, totalProposals: 0, totalVotes: 0, state, active, page: 1 }));
-  const proposalsBaseHref = `/proposals?f=${filter}`;
+  const pageNum = Math.max(1, parseInt(String(sp.page ?? "1"), 10) || 1);
+  const { views, totalProposals, totalVotes } = await listAllProposals(session?.userId ?? null)
+    .catch(() => ({ views: [] as ProposalView[], totalProposals: 0, totalVotes: 0 }));
+
+  /**
+   * The rows the contract reasons about. ⚠️ `resolutionAtMs` is `null` rather than 0 when the date
+   * will not parse — see `boardKey`: a 0 would sort such a proposal as "closing in 1970", i.e.
+   * first, at the top of the board.
+   */
+  const nowMs = Date.now();
+  const rows: BoardRow[] = views.map((v) => ({
+    id: v.id,
+    status: v.status,
+    category: v.category,
+    score: v.score,
+    isHot: v.isHot,
+    isMine: v.isMine,
+    createdAtMs: Date.parse(v.createdAt) || 0,
+    resolutionAtMs: Number.isFinite(Date.parse(v.resolutionDate)) ? Date.parse(v.resolutionDate) : null,
+    titleEn: v.titleEn,
+    titleSw: v.titleSw ?? "",
+    titleZh: v.titleZh ?? "",
+    description: v.description ?? "",
+    criterion: v.resolutionCriterion ?? "",
+    proposerMasked: v.proposerMasked,
+  }));
+
+  // ⛔ Through the shared grammar — `test:search-adoption` refuses a hand-rolled `.includes()`,
+  //    and BOARD_PROPOSAL_SEARCH is the PLAYER schema (see its header for why not PROPOSAL_SEARCH).
+  const parsed = parseQuery(qs.q, { fields: fieldNames(BOARD_PROPOSAL_SEARCH) });
+  const matchesRow = (row: BoardRow) =>
+    matchesQuery(parsed, row as unknown as Record<string, string | null | undefined>, BOARD_PROPOSAL_SEARCH);
+
+  const counts = boardCounts(rows, qs, nowMs, matchesRow) as BoardCounts;
+  const matched = sortBoard(filterBoard(rows, qs, nowMs, matchesRow), qs);
+
+  const matchedCount = matched.length;
+  const totalPages = Math.max(1, Math.ceil(matchedCount / PLAYER_PER_PAGE));
+  const page = Math.min(pageNum, totalPages);
+  const byId = new Map(views.map((v) => [v.id, v] as const));
+  const proposals = matched
+    .slice((page - 1) * PLAYER_PER_PAGE, page * PLAYER_PER_PAGE)
+    .map((r) => byId.get(r.id)!)
+    .filter(Boolean);
+  const proposalsBaseHref = buildBoardHref(qs);
+
+  /**
+   * ⭐ FIVE CAUSES, FIVE SENTENCES — the page had TWO, and one of them was wrong more often than
+   * it was right. `noProposalsInFilter` covered every non-empty-board case, so a player whose
+   * SEARCH missed and a player who chose an empty lens read the identical "try another filter".
+   */
+  const cause = boardEmptyCause(qs, nowMs, matchesRow, matchedCount, rows.length);
+  const exits = cause && cause !== "no-rows" ? boardExits(rows, qs, nowMs, matchesRow) : [];
+  const EXIT_LABEL: Record<string, string> = {
+    cat: t.market.catAll,
+    when: t.common.rangeAll,
+    mine: t.common.all,
+    q: t.common.clearSearch,
+    lens: t.common.all,
+  };
 
   return (
     <PageContainer tier="reading" className="space-y-6">
@@ -134,24 +212,52 @@ export default async function ProposalsPage({ searchParams }: { searchParams: Pr
         body={state === "MAINTENANCE" ? t.proposals.maintenanceBody : t.proposals.comingSoonBody}
       />
 
-      {/* Stats + filters */}
-      <div className="flex flex-wrap items-center justify-between gap-2.5">
-        <p className="font-mono text-[12px] text-text-muted">{totalProposals.toLocaleString()} {t.proposals.proposalsCount} · {totalVotes.toLocaleString()} {t.proposals.votesCount}</p>
-        {/* ⚠️ It was a bare `<div>` with no `aria-label` and no per-control state — the only one
-            of the eight rails that announced NOTHING to a screen reader. It is a `<nav>` with a
-            label now, and each pill states `aria-current`. */}
-        <nav aria-label={t.proposals.filterAria} data-filter-rail className="flex flex-wrap gap-1.5">
-          {FILTERS.map((f) => (
+      {/* The board's own totals — the whole table, never the filtered view. ⛔ These two numbers
+          answer "how big is this board", which is a different question from "how many match", and
+          the bar's `data-result-count` answers the second one. Two questions, two numbers. */}
+      <p className="font-mono text-[12px] text-text-muted">{totalProposals.toLocaleString()} {t.proposals.proposalsCount} · {totalVotes.toLocaleString()} {t.proposals.votesCount}</p>
+
+      {/* ⛔ THE CONTROLS ARE WITHHELD ON AN EMPTY BOARD, and only then — §A5: seven pills all
+          reading 0 above "no proposals yet" are seven controls that cannot act. Every other empty
+          state keeps the bar, because there the bar is the way OUT of it. */}
+      {rows.length > 0 && (
+        <>
+          {/* ⛔ NOT STICKY — see `/results/page.tsx`'s note. `QUERY_BAR_CLASS` already sticks at
+              `top-[56px]`, so a second sticky band at the same offset overlaps it by 91px. */}
+          <div className="py-2.5">
+            <Suspense>
+              <SearchBox
+                placeholder={t.proposals.searchProposals}
+                ariaLabel={t.proposals.searchProposals}
+                helpFields={fieldNames(BOARD_PROPOSAL_SEARCH)}
+              />
+            </Suspense>
+          </div>
+          {/* ⭐ THE BAR REPLACES A RAIL THAT ASKED THREE QUESTIONS AT ONCE — see `proposals-bar.tsx`.
+              ⚠️ The old rail's one genuine improvement is KEPT, not lost in the swap: it had been a
+              bare `<div>` with no `aria-label` and no per-control state, and it became a labelled
+              `<nav>` whose pills state `aria-current`. `QueryStrip` renders exactly that. */}
+          <ProposalsBar state={qs} counts={counts} resultCount={matchedCount} t={t} />
+        </>
+      )}
+
+      {/* Per-cause exit, carrying a REAL count — every count is cross-filtered, so no exit
+          offered here can lead to another empty page. */}
+      {matchedCount === 0 && exits.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          {exits.map((e) => (
             <FilterPill
-              key={f.id}
-              href={`/proposals?f=${f.id}`}
-              label={f.label}
-              on={f.id === filter}
-              semantics="tab"
+              key={e.id}
+              scroll={false}
+              href={buildBoardHref(qs, e.patch)}
+              label={EXIT_LABEL[e.id] ?? e.id}
+              count={e.count}
+              on={false}
+              glyph={e.id === "cat" ? <I.layoutGrid s={14} className="shrink-0 opacity-70" /> : undefined}
             />
           ))}
-        </nav>
-      </div>
+        </div>
+      )}
 
       {/* List / empty */}
       {proposals.length > 0 ? (
@@ -172,7 +278,7 @@ export default async function ProposalsPage({ searchParams }: { searchParams: Pr
            first to propose" empty state here would invite an action that is
            blocked (and, for the reward, advertise a gated inducement). */
         null
-      ) : totalProposals === 0 ? (
+      ) : cause === "no-rows" ? (
         <EmptyState
           kind="proposals"
           title={t.proposals.noProposalsYet}
@@ -182,10 +288,21 @@ export default async function ProposalsPage({ searchParams }: { searchParams: Pr
           }
         />
       ) : (
+        /* ⭐ THE CAUSE DECIDES THE SENTENCE. A missed SEARCH is not "try another filter" — the
+           player typed words, and the honest answer names them. A chosen lens that is empty is
+           not a failure at all on a young board: nothing declined is a GOOD board. */
         <EmptyState
           kind="proposals"
-          title={t.proposals.noProposalsInFilter}
-          body={t.proposals.noProposalsInFilterBody}
+          title={
+            cause === "search-miss" ? `${t.results.noResultsMatch} "${qs.q}"`
+            : cause === "lens-empty" ? t.proposals.noProposalsInFilter
+            : t.market.filterMissTitle
+          }
+          body={
+            cause === "search-miss" ? t.results.tryDifferentKeywords
+            : cause === "lens-empty" ? t.proposals.noProposalsInFilterBody
+            : t.market.filterMissBody
+          }
           action={
             <Link href={"/proposals/new" as never}><Button variant="gold" size="sm" leading={<I.plus s={12} />}>{t.proposals.create}</Button></Link>
           }
@@ -197,7 +314,14 @@ export default async function ProposalsPage({ searchParams }: { searchParams: Pr
 
 function ProposalCard({ p, disabled, t, locale, ageStr }: { p: ProposalView; disabled?: boolean; t: import("@/lib/i18n-server").Dict; locale: import("@/lib/i18n-server").Locale; ageStr: (iso: string) => string }) {
   return (
-    <div className="group flex items-start gap-3 rounded-xl glass-panel p-3.5 transition-all hover:-translate-y-[3px] hover:border-[var(--brand-500)] hover:shadow-[var(--shadow-4)]">
+    /* ⛔ `data-row-id` — the third leg of the instrumentation contract, and this card needed it
+       added rather than inherited: unlike `/watchlist`, `/results` and `/positions`, a proposal
+       row is markup local to this file, not a shared card that already emits one. Without it
+       `qa:count-truth` and `qa:player-filters` would read ZERO rows here and report that as the
+       answer. ⚠️ It goes on the OUTER wrapper, not the inner `<Link>`: the vote control is
+       outside the link, and a row identity that excluded half the row would be a smaller claim
+       than the driver makes. */
+    <div data-row-id={p.id} className="group flex items-start gap-3 rounded-xl glass-panel p-3.5 transition-all hover:-translate-y-[3px] hover:border-[var(--brand-500)] hover:shadow-[var(--shadow-4)]">
       <VoteControl proposalId={p.id} up={p.up} down={p.down} myVote={p.myVote} disabled={disabled} />
       <Link href={`/proposals/${p.id}` as never} className="min-w-0 flex-1">
         <div className="mb-1.5 flex flex-wrap items-center gap-2">

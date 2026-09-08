@@ -51,6 +51,10 @@ if (SHOTS) mkdirSync(SHOTS, { recursive: true });
 const SURFACES = [
   { id: "/markets", path: "/markets", auth: false, rails: 1 },
   { id: "/results", path: "/results", auth: false, rails: 1 },
+  // RE-DECLARED 2026-09-08 (PLAYER QUERY, task 4.4). Still `rails: 1`, but it is a different
+  // rail: the four-pill hot/new/listed/mine strip became a two-row bar of seven lifecycle
+  // lenses plus a sort and a sheet. The count is unchanged BY COINCIDENCE, not by inertia —
+  // re-derived by counting `data-filter-rail` wrappers in `proposals-bar.tsx`, which emits one.
   { id: "/proposals", path: "/proposals", auth: false, rails: 1 },
   // Two rails: assets (primary) and durations (secondary).
   { id: "/updown", path: "/updown", auth: false, rails: 2 },

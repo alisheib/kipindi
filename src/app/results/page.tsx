@@ -353,7 +353,21 @@ async function ResultsContent({
       </div>
 
       {/* Search — sticky below app bar, same as /markets */}
-      <div className="sticky top-[56px] z-20 bg-bg-base py-2.5">
+      {/* 🔴 THE SEARCH BAND IS NOT STICKY, AND MAKING IT STICKY IS WHAT BROKE THIS PAGE.
+          Measured 2026-09-08 at 1280, scrolled: the band and the query bar BOTH stuck at
+          `top: 56px` and overlapped by **91px** — one drawn straight through the other, on
+          `/results`, `/watchlist` and `/proposals` alike. ⛔ `QUERY_BAR_CLASS` carries
+          `sticky top-[56px]`, so any second sticky element at the same offset collides with it
+          by construction; two sticky surfaces cannot share one offset.
+          ⚠️ AND THE CLEARANCE USED TO EXIST. `/results`' retired sidebar sat at `top-[122px]`
+          with `max-h-[calc(100dvh-134px)]` precisely to clear this band — chained arithmetic on
+          its height, which task 4.2 correctly called unable to survive a bar of a different
+          height, and then removed WITHOUT replacing what it was buying.
+          ⭐ THE FIX IS THE MAJORITY SHAPE, NOT NEW GEOMETRY. `/markets`, `/positions`, `/wallet`
+          and `/updown/history` all render `SearchBox` unstuck; the BAR is the control worth
+          pinning, because it is how a player changes the view. Seven of seven routes now agree,
+          and one fewer number is derived from another element's height. */}
+      <div className="py-2.5">
         <Suspense>
           <SearchBox
             placeholder={t.common.searchResults}

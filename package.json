@@ -697,6 +697,7 @@
     "red:query-core": "node scripts/query-core-red.mjs",
     "qa:player-filters": "node scripts/live/player-filter-drive.mjs",
     "qa:count-truth": "node scripts/live/count-truth-drive.mjs",
+    "qa:bar-geometry": "node scripts/live/bar-geometry-drive.mjs",
     "red:count-truth": "node scripts/red-count-truth.mjs"
   },
   "dependencies": {

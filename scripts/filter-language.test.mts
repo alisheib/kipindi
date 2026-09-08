@@ -93,7 +93,14 @@ const SURFACES = [
      pills — a second layout for the same job, at board width, beside `/markets` which uses
      the bar — is retired. The hook moved with the controls into `results-bar.tsx`. */
   "src/app/results/results-bar.tsx",            // /results — outcome lens + product/topic/window
-  "src/app/proposals/page.tsx",                 // /proposals — hot/new/listed/mine
+  /* ⚠️ RE-DECLARED 2026-09-08 (PLAYER QUERY, task 4.4). The rail was four pills inside
+     `page.tsx` — and it asked THREE different questions at once: `hot` and `new` were ORDERINGS,
+     `listed` a STATUS and `mine` an OWNERSHIP filter, all in one mutually-exclusive strip. So a
+     player could not ask for "my proposals, newest first", because `mine` and `new` were the same
+     control. Sorting is the sort now, ownership is an axis, and the rail is a lifecycle lens.
+     ⛔ THE HOOK MOVED WITH THE CONTROLS, WHICH IS WHY THIS LINE MOVED — the file named here must
+     always be the one that emits `data-filter-rail`. */
+  "src/app/proposals/proposals-bar.tsx",        // /proposals — 7 lifecycle lenses + mine/topic/when
   /* ⚠️ RE-DECLARED 2026-09-07 (PLAYER QUERY, stage 2). The rail was three pills inside
      `page.tsx`; it is now seven lenses plus side/topic/window in `positions-bar.tsx`, because
      `page.tsx` already reads five stores and prices every open exit and a hundred lines of

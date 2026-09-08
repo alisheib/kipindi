@@ -61,6 +61,7 @@ const SURFACES = [
   { id: "/positions", path: "/positions", minPills: 10 },
   { id: "/wallet", path: "/wallet", minPills: 12 },
   { id: "/updown/history", path: "/updown/history", minPills: 8 },
+  { id: "/proposals", path: "/proposals", minPills: 14 },
   { id: "/watchlist", path: "/watchlist", minPills: 10 },
 ];
 
@@ -71,6 +72,8 @@ if (surfaces.length === 0) {
 }
 
 let pass = 0;
+/** ⛔ Counted and printed — a run that quietly retried its way to green is a vacuous pass. */
+let retries = 0;
 const fails = [];
 const browser = await chromium.launch();
 const ctx = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
@@ -158,18 +161,51 @@ for (const s of surfaces) {
   }
   console.log(`  ${pills.length} pills · ${dests.size} distinct destinations (floor ${s.minPills})`);
 
+  /**
+   * ⚠️ A DISAGREEMENT IS RE-MEASURED BEFORE IT IS REPORTED, AND THIS IS NOT LENIENCY.
+   *
+   * The pill's promise is read at one instant and its rows are walked at another — two page loads
+   * — and some of these pages are LIVE. `/wallet?when=30d` is a window ending at *now*, and the
+   * ledger gains rows continuously while the fixture's markets settle; measured 2026-09-08, one
+   * run reported *"promised 57, delivered 58"* and two immediate re-runs were clean. ⛔ Reporting
+   * that as a defect is a false finding about correct arithmetic.
+   *
+   * ⭐ THE TWO CASES HAVE DIFFERENT SIGNATURES, AND THAT IS WHAT SEPARATES THEM. A race gives a
+   * DIFFERENT answer next time; a broken fold gives the SAME wrong answer every time. So a
+   * mismatch is measured again from scratch — both sides — and only a repeat is a failure.
+   * ⛔ Every retry is COUNTED AND PRINTED. A run that quietly retried its way to green would be
+   * exactly the vacuous pass this driver exists to refuse.
+   */
   for (const [href, p] of dests) {
     if (p.count === null) { fails.push(`${s.id} · "${p.chip}" carries no data-count`); continue; }
-    const promisedByPill = Number(p.count);
-    const { ids, promised } = await walk(href);
-    const distinct = new Set(ids).size;
+
+    let promisedByPill = Number(p.count);
+    let { ids, promised } = await walk(href);
+    let distinct = new Set(ids).size;
+    let retried = false;
+
+    if (distinct !== promisedByPill || (promised !== null && promised !== promisedByPill)) {
+      // Re-read the PROMISE as well as the rows — the origin page may itself have moved on.
+      await page.goto(`${BASE}${s.path}`, { waitUntil: "domcontentloaded", timeout: 40_000 });
+      await page.waitForSelector("[data-filter-rail]", { timeout: 20_000 }).catch(() => {});
+      await page.waitForTimeout(300);
+      const again = await page.$$eval("[data-filter-rail] [data-chip]", (els) =>
+        els.map((e) => ({ count: e.getAttribute("data-count"), href: e.getAttribute("href") })),
+      );
+      const re = again.find((x) => x.href === href);
+      if (re && re.count !== null) promisedByPill = Number(re.count);
+      ({ ids, promised } = await walk(href));
+      distinct = new Set(ids).size;
+      retried = true;
+      retries++;
+    }
 
     if (ids.length !== distinct) {
       fails.push(`${s.id} · "${p.chip}" · ${ids.length - distinct} DUPLICATE data-row-id across pages of ${href} — the pages are not a partition`);
     } else if (distinct !== promisedByPill) {
-      fails.push(`${s.id} · "${p.chip}" · promised ${promisedByPill}, ${href} delivered ${distinct}`);
+      fails.push(`${s.id} · "${p.chip}" · promised ${promisedByPill}, ${href} delivered ${distinct}${retried ? " (twice — not a race)" : ""}`);
     } else if (promised !== null && promised !== promisedByPill) {
-      fails.push(`${s.id} · "${p.chip}" · promised ${promisedByPill} but the destination's own bar says ${promised}`);
+      fails.push(`${s.id} · "${p.chip}" · promised ${promisedByPill} but the destination's own bar says ${promised}${retried ? " (twice — not a race)" : ""}`);
     } else {
       pass++;
     }
@@ -179,7 +215,7 @@ for (const s of surfaces) {
 
 await browser.close();
 
-console.log(`\n${pass} pill${pass === 1 ? "" : "s"} verified · ${fails.length} failed\n`);
+console.log(`\n${pass} pill${pass === 1 ? "" : "s"} verified · ${fails.length} failed · ${retries} re-measured after a disagreement\n`);
 for (const f of fails) console.log(`  ✗ ${f}`);
 if (fails.length) {
   console.log("\n🔴 A COUNT THAT DISAGREES WITH ITS OWN PAGE. Either the fold and the filter apply different rules, or the pages overlap. Both are visible to a player as a number that lies.");

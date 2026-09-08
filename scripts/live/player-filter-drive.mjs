@@ -102,6 +102,22 @@ const SURFACES = [
     ],
   },
   {
+    id: "/proposals",
+    path: "/proposals",
+    param: "lens",
+    all: "all",
+    partitions: [
+      // ⚠️ SEVEN, AND `changes` IS THE ONE A PLAN WOULD DROP. `status-badge.tsx` gives
+      //    `CHANGES_REQUESTED` its own word AND its own glyph, because it is the single state
+      //    where the PROPOSER has to act — so folding it into "under review" would hide the one
+      //    thing on this board that is waiting on the person reading it.
+      //    ⛔ COVERING is enforced in the contract by the TYPE system: `LENS_OF` is a
+      //    `Record<ProposalStatus, …>`, so a status added to the enum cannot compile until it has
+      //    a lens. This assertion proves the rendering half of the same claim.
+      { parent: "all", parts: ["review", "changes", "approved", "live", "resolved", "declined"] },
+    ],
+  },
+  {
     id: "/watchlist",
     path: "/watchlist",
     param: "lens",
