@@ -495,6 +495,31 @@ export async function positionCardMarkets(ids: readonly string[]) {
 }
 
 /**
+ * WHOLE MARKET ROWS for the ids a player already holds — demo fixtures excluded.
+ *
+ * 🔴 WHY IT EXISTS. `/watchlist` hydrated a handful of starred cards by reading the ENTIRE
+ * board — `listMarkets({ productLine: "ALL" })`, which has no limit and no status filter, over the
+ * table `MarketStore.attribution`'s note measures at ~13,000 rows — and then threw away every row
+ * the player had not starred. ⚠️ The page polls, so it re-paid that read THREE TIMES A MINUTE per
+ * open tab. Its B-17 note is right that ONE read beats an N+1 `getMarket` fan-out; this is the
+ * third option it did not have — one indexed read of exactly the ids.
+ *
+ * ⛔ THE `isDemoMarket` FILTER IS THE BEHAVIOUR BEING PRESERVED, NOT AN EXTRA. Every
+ * player-facing listing reaches the store through `listMarkets`, which drops `Demo · ` rows; a
+ * bare `marketStore.marketsByIds` would put a starred demo fixture back onto one board and no
+ * other. That is why the name says PLAYER: a money or regulator read must never come here — it
+ * calls `marketStore.marketsByIds` directly and says so, exactly as `attribution()` does.
+ *
+ * Absent ids are absent from the map; a caller decides what a missing market means.
+ */
+export async function playerMarketsByIds(ids: readonly string[]) {
+  const rows = await marketStore.marketsByIds(ids);
+  const out = new Map<string, StoredMarket>();
+  for (const [id, m] of rows) if (!isDemoMarket(m)) out.set(id, m);
+  return out;
+}
+
+/**
  * Markets a player might bet on NEXT, for the "Similar markets" rail on the detail
  * page — so a confirmed bet flows straight into another rather than a dead end.
  *

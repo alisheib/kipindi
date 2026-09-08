@@ -83,6 +83,28 @@ const PLAYER = [
   // DIFFERENT driver entirely, on a width this sweep does cover, purely by luck.
   // ⛔ A second product line is not an edge case; it is half the product.
   "/updown", "/updown/history",
+  /* 🔴 `/watchlist` WAS NEVER IN THIS LIST EITHER — added 2026-09-08 (PLAYER QUERY, task 4.3),
+     and it now carries a sticky search band plus a two-row bar of five lenses, which is exactly
+     the geometry this sweep exists to measure in Swahili at 360.
+
+     ⚠️ RE-DERIVED WHILE ADDING IT, BECAUSE THIS LIST IS HAND-TYPED AND HAS LOST A PRODUCT LINE
+     BEFORE (E-196, the note above). Measured 2026-09-08:
+
+         find src/app -name page.tsx | grep -v /admin/ | wc -l   →  51 routes
+         this list                                              →  32 after the line below
+
+     Most of the gap is unvisitable by construction — dynamic segments (`/markets/[id]`,
+     `/positions/[positionId]`, `/proposals/[id]`, `/updown/[roundId]`, `/wallet/receipt/[id]`),
+     token-gated auth steps (`/auth/2fa`, `/auth/otp`, `/auth/reset-password`,
+     `/auth/verify-email`), the PWA shell (`/offline`), and `/agent*`, which belongs to a
+     parallel programme. ⛔ BUT FIVE ARE PLAIN STATIC PLAYER PAGES AND ARE SIMPLY MISSING:
+     `/notifications` · `/profile/activity` · `/profile/notifications` · `/profile/security` ·
+     `/legal/agent-terms`. They are NAMED here rather than added, because each lands in its own
+     task (the campaign's one-commit-per-route rule) and adding five routes to this sweep inside
+     the watchlist's commit would attribute their findings to this page.
+     ⭐ `test:route-census` is the mechanism that stops this recurring — a hand-typed list cannot
+     police itself, which is the whole lesson of E-196 and of DG-A-08 below. */
+  "/watchlist",
   "/", "/markets", "/positions", "/positions/performance", "/leaderboard",
   "/proposals", "/proposals/new", "/results", "/live", "/wallet",
   "/wallet/deposit", "/wallet/withdraw", "/profile", "/profile/account",

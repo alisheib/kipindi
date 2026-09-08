@@ -29,6 +29,8 @@ import { marketStore } from "../src/lib/server/market-dal.ts";
 import { listMarkets, type StoredMarket } from "../src/lib/server/market-service.ts";
 import { TERMINAL_TTL_MS, TERMINAL_TTL_CEILING_MS } from "../src/lib/server/market-service.ts";
 import { loadMoneyAttribution } from "../src/lib/server/report-money.ts";
+// ⛔ THE ARCHIVE'S FLOOD PROTECTION IS NOW A FACT, NOT A STRING — see RESULTS_FLOOD_GUARD below.
+import { ARCHIVE_DEFAULTS, parseArchiveParams } from "../src/lib/results/archive.ts";
 
 const ROOT = process.cwd();
 let pass = 0, fail = 0;
@@ -187,10 +189,27 @@ const MUST_STAY_DEFAULT = [
   ok(`A · ${file} reads BOTH product lines (Board instruction #10)`,
      calls.length > 0 && optedIn.length === calls.length,
      `${calls.length - optedIn.length} of ${calls.length} listMarkets call(s) still on the MARKET default`);
-  // The default must be a product, never the "all" view — that is the flood protection.
-  ok(`A · ${file} still DEFAULTS to one product, so the archive cannot flood`,
-     /\?\s*sp\.product\s*:\s*"MARKET"/.test(src),
-     'the product filter no longer falls back to "MARKET" — 99.4% of settled rows are Up & Down');
+  /**
+   * The default must be a product, never the "all" view — that is the flood protection.
+   *
+   * 🔴 RE-ANCHORED 2026-09-08 (PLAYER QUERY, task 4.3), AND THE STALENESS IS THE FINDING. This
+   * asserted the literal `? sp.product : "MARKET"` — the page's old hand-rolled parse. Task 4.2
+   * moved that default into `ARCHIVE_DEFAULTS` in the contract, where it is still `"MARKET"` and
+   * still applied, and this guard went RED over a product that was correct. ⛔ It stayed red
+   * through a commit because `test:product-line` is not in §6's "glob-based, therefore
+   * automatic" list — it is named per-route, and task 4.2 never named it.
+   *
+   * ⭐ SO IT IS NOW A BEHAVIOUR, NOT A GREP, AND STRICTLY STRONGER. A regex over one file can
+   * only see the spelling in that file; this CALLS the parser the page calls and asks what it
+   * does with no params. It survives the default moving again, and it catches a default that is
+   * spelled `"MARKET"` but overridden downstream — which the old check could not see at all.
+   */
+  ok(`A · ${file}'s parser DEFAULTS to one product, so the archive cannot flood`,
+     parseArchiveParams({}).product === "MARKET",
+     `parseArchiveParams({}).product === ${JSON.stringify(parseArchiveParams({}).product)} — 99.4% of settled rows are Up & Down, so an "all" default buries every long-form result`);
+  ok(`A · ${file} reaches that default through the shared contract`,
+     /parseArchiveParams\(/.test(src) && ARCHIVE_DEFAULTS.product === "MARKET",
+     "the page no longer parses through `parseArchiveParams`, so the default above is not the one it uses");
 }
 
 for (const file of MUST_STAY_DEFAULT) {

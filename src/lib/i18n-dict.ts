@@ -1508,6 +1508,17 @@ export const dict = {
       emptyBody: "Star a market to follow it. We’ll tell you when it closes and when it settles.",
       browseMarkets: "Browse markets",
       alertsHint: "We’ll tell you when a followed market closes or settles.",
+      // ⭐ THE DEFAULT ORDER, AND THE ONE WORD THIS BAR COULD NOT BORROW. Every other sort on the
+      // watchlist reuses `market.sort*`; this one names an act only this page has — the star.
+      // ⛔ IT SAYS "ADDED", NOT A DATE. `FollowRow.starRank` is a rank derived from the order
+      // `listWatchedMarketIds` returns, not a timestamp — there is no star date on the read path,
+      // so a label promising one would be a claim the page cannot support.
+      sortStarred: "Recently added",
+      // ⭐ AN EMPTY LENS ON A WATCHLIST IS THE ORDINARY CASE, NOT A MISS. A player following three
+      // live markets has an empty "Resolved" pill by definition — three of the five lenses are
+      // empty on a healthy small list, so this copy must read as a fact rather than a failure.
+      lensEmptyTitle: "Nothing you follow is here yet",
+      lensEmptyBody: "Markets move through these as they run: open while they take bets, in progress once betting stops, then resolved or void. Pick another to see the rest of your list.",
     },
     push: {
       eyebrow: "Notifications",
@@ -3589,6 +3600,9 @@ export const dict = {
       emptyBody: "Weka nyota kwenye soko ili kulifuatilia. Tutakujulisha linapofunga na linapotatuliwa.",
       browseMarkets: "Vinjari masoko",
       alertsHint: "Tutakujulisha soko unalofuatilia linapofunga au kutatuliwa.",
+      sortStarred: "Yaliyoongezwa karibuni",
+      lensEmptyTitle: "Hakuna unalofuatilia hapa bado",
+      lensEmptyBody: "Masoko hupita hatua hizi yanapoendelea: wazi yanapopokea dau, yanaendelea dau linapokoma, kisha yametatuliwa au batili. Chagua nyingine kuona orodha yako yote.",
     },
     push: {
       eyebrow: "Arifa",
@@ -5552,6 +5566,9 @@ export const dict = {
       emptyBody: "为市场加星即可关注。市场关闭和结算时我们会通知你。",
       browseMarkets: "浏览市场",
       alertsHint: "你关注的市场关闭或结算时，我们会通知你。",
+      sortStarred: "最近添加",
+      lensEmptyTitle: "你关注的市场中还没有这一类",
+      lensEmptyBody: "市场会依次经历这些阶段：接受投注时为开放，停止投注后为进行中，随后是已结算或已作废。选择其他类别可查看列表的其余部分。",
     },
     push: {
       eyebrow: "通知",

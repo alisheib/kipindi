@@ -53,6 +53,15 @@ const SURFACES = [
   { id: "wallet-empty", path: "/wallet?q=zzzznomatch", must: "data-filter-rail", sheet: false },
   { id: "results", path: "/results", must: "data-filter-rail", sheet: true },
   { id: "markets", path: "/markets", must: "data-filter-rail", sheet: true },
+  // ⚠️ `/watchlist` NEEDS ITS EMPTY SHOTS MORE THAN MOST PAGES DO. It is the only surface that
+  //    WITHHOLDS its whole bar (§A5 — five pills all reading 0 above "you're not following any
+  //    markets" are five controls that cannot act), so the `must` string below is what separates
+  //    "the bar was withheld correctly" from "the bar failed to render". ⛔ `watchlist-lens-empty`
+  //    is the shot that must still show a bar: the list has rows, this LENS does not.
+  { id: "watchlist", path: "/watchlist", must: "data-filter-rail", sheet: true },
+  { id: "watchlist-void", path: "/watchlist?lens=void", must: "data-filter-rail", sheet: false },
+  { id: "watchlist-lens-empty", path: "/watchlist?lens=void&cat=sports", must: "data-filter-rail", sheet: false },
+  { id: "watchlist-search-empty", path: "/watchlist?q=zzzznomatch", must: "data-filter-rail", sheet: false },
 ];
 
 const surfaces = ONLY ? SURFACES.filter((s) => s.path.startsWith(ONLY) || s.id === ONLY.replace("/", "")) : SURFACES;

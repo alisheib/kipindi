@@ -62,6 +62,13 @@ const SURFACES = [
   { id: "/profile/activity", path: "/profile/activity", auth: true, rails: 1 },
   { id: "/profile/account", path: "/profile/account", auth: true, rails: 1 },
   { id: "/updown/history", path: "/updown/history", auth: true, rails: 1 },
+  // DECLARED 2026-09-08 (PLAYER QUERY, task 4.3). ⚠️ `rails: 1` IS A CONDITIONAL 1 ON THIS ROUTE
+  // AND NOWHERE ELSE. `/watchlist` withholds its whole bar when the player follows nothing —
+  // five pills all reading 0 above "you're not following any markets" are five controls that
+  // cannot do anything (§A5). So this row is vacuous unless the persona has at least one star,
+  // and a `rails: 0` here would be the scan reporting a pass over an absent instrument.
+  // ⛔ The seeded persona must hold stars. If this row goes red, check the FIXTURE before the page.
+  { id: "/watchlist", path: "/watchlist", auth: true, rails: 1 },
 ];
 
 /** Inside a rail, these are the pressable controls. Menu triggers count; static keys do not. */

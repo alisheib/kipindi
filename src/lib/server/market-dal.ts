@@ -257,6 +257,28 @@ export interface MarketStore {
    */
   positionCardsByIds(ids: readonly string[]): Promise<Map<string, PositionCardMarket>>;
   /**
+   * WHOLE MARKET ROWS for the ids a caller already holds.
+   *
+   * 🔴 WHY IT EXISTS. `/watchlist` hydrated a handful of starred cards by reading the ENTIRE
+   * board — `listMarkets({ productLine: "ALL" })`, which has no limit and no status filter — and
+   * then threw away every row the player had not starred. That is the same very wide table
+   * `attribution()` below measures at ~13,000 rows and 2,534 ms for ONE such read, and the
+   * watchlist re-paid it every 20 SECONDS because the page polls.
+   *
+   * ⚠️ IT RETURNS FULL ROWS, unlike `positionCardsByIds`' twelve columns, and that is deliberate:
+   * a market CARD reads a wide slice (both pools, predictor count, both deadlines, outcome,
+   * product line, all three titles, source URL) and a projection that missed one would fail at the
+   * call site rather than here. The saving being bought is the ROW COUNT, which is the half that
+   * grows; the column count for a dozen starred markets is not the problem.
+   *
+   * ⛔ THERE IS NO `productLine` PARAMETER AND NO DEMO FILTER. This is the raw store read; the
+   * player-facing rule that hides `Demo · ` fixtures lives one layer up in
+   * `market-service.playerMarketsByIds`, so a money read can still see every row it is owed.
+   *
+   * Absent ids are absent from the map, exactly as `poolsByIds` and `positionCardsByIds` do.
+   */
+  marketsByIds(ids: readonly string[]): Promise<Map<string, StoredMarket>>;
+  /**
    * THE MONEY-ATTRIBUTION PROJECTION — every market row, four columns.
    *
    * 🔴 WHY IT EXISTS, measured on production 2026-08-29. `categoryBreakdown()` and
@@ -527,6 +549,14 @@ const memoryMarkets: MarketStore = {
     for (const id of ids) {
       const m = markets.get(id);
       if (m) out.set(id, { yesPool: m.yesPool, noPool: m.noPool });
+    }
+    return out;
+  },
+  async marketsByIds(ids) {
+    const out = new Map<string, StoredMarket>();
+    for (const id of ids) {
+      const m = markets.get(id);
+      if (m) out.set(id, m);
     }
     return out;
   },
@@ -859,6 +889,14 @@ const prismaMarkets: MarketStore = {
       select: { id: true, yesPool: true, noPool: true },
     });
     for (const r of rows) out.set(r.id, { yesPool: Number(r.yesPool), noPool: Number(r.noPool) });
+    return out;
+  },
+  async marketsByIds(ids) {
+    const out = new Map<string, StoredMarket>();
+    if (ids.length === 0) return out;
+    // ⛔ ONE indexed read of exactly the ids — never the whole board filtered down.
+    const rows = await pc().predictionMarket.findMany({ where: { id: { in: [...ids] } } });
+    for (const r of rows) out.set(r.id, toStoredMarket(r));
     return out;
   },
   async positionCardsByIds(ids) {

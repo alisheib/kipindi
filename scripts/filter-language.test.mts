@@ -114,6 +114,12 @@ const SURFACES = [
      itself survives — the digest deep-links to an exact EAT day and those links are already
      delivered — so the bar states a pinned day as one pill the player can press off. */
   "src/app/updown/history/history-bar.tsx",     // /updown/history — 6 lenses + asset/duration/window
+  /* DECLARED 2026-09-08 (PLAYER QUERY, task 4.3). `/watchlist` had NO controls of any kind —
+     no `searchParams`, no filter, no sort, no pager — so a market that settled a month ago sat
+     in the grid between two still taking bets. It is also the only player board spanning the
+     WHOLE lifecycle (a star survives settlement, while `/markets` reads the unsettled book and
+     `/results` the terminal archive), which is why its lens set partitions all five statuses. */
+  "src/app/watchlist/watchlist-bar.tsx",        // /watchlist — 5 lifecycle lenses + topic
   "src/app/profile/activity/page.tsx",          // /profile/activity — period
   "src/app/profile/account/page.tsx",           // /profile/account — activity category
 ];

@@ -102,6 +102,22 @@ const SURFACES = [
     ],
   },
   {
+    id: "/watchlist",
+    path: "/watchlist",
+    param: "lens",
+    all: "all",
+    partitions: [
+      // ⚠️ FIVE, NOT THE FOUR THE PLAN NAMED, and this assertion is what enforces both
+      //    corrections. `progress` is the RESIDUAL arm — "not open and not settled" — so COVERING
+      //    holds for every one of the five stored `PredictionMarketStatus` values including
+      //    `DRAFT`, which `createMarket` never writes today but `@default(DRAFT)` keeps alive.
+      //    ⛔ And `void` is its own part rather than being folded into `done`: the campaign's
+      //    complaint ends "cannot tell won from lost from voided-and-refunded", so a single
+      //    "Settled" pill would re-commit the defect on the page that names it.
+      { parent: "all", parts: ["open", "progress", "done", "void"] },
+    ],
+  },
+  {
     id: "/wallet",
     path: "/wallet",
     param: "type",

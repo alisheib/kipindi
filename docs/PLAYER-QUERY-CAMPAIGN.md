@@ -20,15 +20,60 @@
 ## §0 — RESUME AT
 
 ```
-▶ NEXT ACTION — task 4.3 in the board below.
-  /watchlist: lens All · Live · In progress · Settled; sheet Topic; sort; search; paging.
-  It is ONE unfiltered, unsorted, unpaged grid today — and its read is an UNBOUNDED
-  listMarkets({productLine:"ALL"}) re-run every 20s by a poller. One commit per route.
+▶ NEXT ACTION — task 4.4 in the board below.
+  /proposals: all six ProposalStatus lenses; sheet Topic · When; sort; search.
+  ⚠️ READ THE ROW FIRST — its original claim ("DECLINED has no way in") was REFUTED and
+  the row now records what is actually missing: the control, not the data.
+  One commit per route.
 ```
 
-**Stage 4 of 6. Stages 1–3 CLOSED (12/12, 7/7, 8/8). 4.1 and 4.2 done; 12 routes left.**
+**Stage 4 of 6. Stages 1–3 CLOSED (12/12, 7/7, 8/8). 4.1–4.3 done; 11 routes left.**
 
-### What tasks 4.1 and 4.2 found — read before 4.3
+### What task 4.3 found — read before 4.4
+
+⛔ **A LENS SET IS THE CARD'S CHIP LADDER, AND THE PLAN UNDERCOUNTED IT FOR THE THIRD TIME.**
+The board said `/watchlist` gets `All · Live · In progress · Settled`. Both middle words were
+wrong, and **both corrections came from copy already in the tree rather than from reasoning**:
+
+- 🔴 **`i18n-dict.ts` ALREADY FORBIDS THE WORD "LIVE" HERE**, in its own note on `statusOpen`:
+  *"`statusOpen` is NOT `statusLive`. A market can be LIVE and no longer taking bets, and the
+  card already labels exactly that case 'Closed'."* A `Live` pill on a watchlist collects
+  markets a player can no longer act on — the confusion this campaign exists to remove.
+- 🔴 **"Settled" IS ONE WORD FOR TWO OUTCOMES.** The campaign's own complaint ends *"cannot tell
+  won from lost from **voided-and-refunded**"*. Folding `VOIDED` into `Settled` re-commits that
+  defect on the page that names it. Five lenses: `all · open · progress · done · void`.
+
+⭐ **AND COVERING IS NOW BY CONSTRUCTION, NOT BY ENUMERATION.** `progress` is the RESIDUAL arm —
+*not open and not settled* — so every value of `PredictionMarketStatus` lands in exactly one lens
+**including `DRAFT`**, which `createMarket` never writes but `@default(DRAFT)` keeps alive. ⚠️ A
+four-status enumeration would have dropped such a row into no pill at all. ⛔ Do not "simplify"
+a residual arm into a status list.
+
+🔴 **`/watchlist` IS THE ONLY PLAYER BOARD THAT SPANS THE WHOLE LIFECYCLE.** `/markets` reads the
+unsettled book, `/results` the terminal archive — each can assume away half. A star survives
+settlement, so this page can assume nothing. That is why its lens set partitions all five
+statuses while every other route's partitions one half.
+
+🔴 **ITS READ WAS UNBOUNDED ON A PAGE THAT POLLS EVERY 20 SECONDS.** `listMarkets({productLine:
+"ALL"})` — no limit, no status filter, the ~13,000-row table `attribution()` measures at 2,534 ms
+for ONE read — to keep a dozen starred rows and discard the rest, **three times a minute per open
+tab**. It is now `playerMarketsByIds`, one indexed read of exactly the ids. ⚠️ **THE OPTIMISATION
+NEARLY REPEALED A PRODUCT RULE:** `listMarkets` drops `Demo · ` fixtures from every player
+listing, so the replacement had to apply `isDemoMarket` itself or a starred demo would reappear
+on one board and no other. **A faster read is a different read — check what the old one filtered.**
+
+⚠️ **`MarketCard` ALREADY EMITS `data-row-id`.** A wrapper adding it too would have put TWO
+matching nodes per market in the DOM: set arithmetic survives that, but anything that COUNTS the
+attribute reports exactly double — `/results`' "promised 8, delivered 5" with its sign reversed.
+**Check the component before instrumenting around it.**
+
+⛔ **AND THE INSTRUMENT WAS WRONG BEFORE THE PAGE WAS.** A fresh overlap/clipping probe reported
+18 defects on `/watchlist` — and reproduced every one of them on `/markets`, the reference bar.
+Both classes were artifacts this repo had already paid for and written down: a **closed
+`<details>` still lays out its subtree** (`clip.mjs`'s exemption 2), and a control inside a
+**horizontally scrolling strip** is not clipped when it runs past the viewport. ⭐ **Run a new
+instrument against the reference surface first. If the reference fails, the instrument is the
+defect.**
 
 🔴 **`/results` HAD BEEN OVER-PROMISING ITS OWN COUNT BY THREE.** `data-result-count` said 8
 while the document held 5. The notable carousel rendered `{slides[current]}`, so on page one up
@@ -201,7 +246,7 @@ git fetch && git checkout player-query-campaign
 | 1 | **The core** | the six existing gates in §8 green **with no edits to those scripts** | ✅ **12/12** |
 | 2 | **`/positions`** | `qa:player-filters` + `qa:count-truth` green on it; 360 Swahili screenshot looked at | ✅ **7/7** |
 | 3 | **`/wallet`** | same, plus the 1,000-row cap is stated to the player | ✅ **8/8** |
-| 4 | **The other 13 pages** | every census-A and census-B route done, one commit each | ▶ **2/14** |
+| 4 | **The other 13 pages** | every census-A and census-B route done, one commit each | ▶ **3/14** |
 | 5 | **The status dictionary** | `position-card.tsx` has no hand-typed tone; `test:gold-is-money` still green | ☐ 0/4 |
 | 6 | **Guards + docs** | the full §8 sweep passes and each new guard's RED control has been *seen to fail* | ☐ 0/9 |
 
@@ -347,7 +392,7 @@ One commit each, in this order. Same bar, same nine rules.
 |---|---|---|
 | ☑ | **4.1** `/updown/history` | lens `All · In play · Up wins · Down wins · Refunded`; sheet Asset · Duration · When (the day rail folds into the window); sort; paging. The 400 cap **stays stated** |
 | ☑ | **4.2** `/results` | lens `All · Yes won · No won · Refunded`; sheet Product · Topic · When; direction on the existing two sorts. ⚠️ **retires the desktop sidebar** — see below |
-| ☐ | **4.3** `/watchlist` | lens `All · Live · In progress · Settled`; sheet Topic; sort; search; paging. One unfiltered, unsorted, unpaged grid today |
+| ☑ | **4.3** `/watchlist` | lens `All · Open · In progress · Resolved · Void` — ⚠️ **FIVE, and the plan's `Live`/`Settled` were both wrong**; sheet Topic; 4 sorts (`starred` default = today's order); search; paging. 🔴 Also replaced an **unbounded 20-second-polled board read** with `playerMarketsByIds`. See above |
 | ☐ | **4.4** `/proposals` | all six `ProposalStatus` lenses. ⚠️ **CORRECTED 2026-09-08:** this row said `DECLINED` and `CHANGES_REQUESTED` have *no way in*. Re-derived — they ARE reachable (`f=new` and `f=mine` apply no status predicate); what they have is **no dedicated lens**, so a proposer must scroll a 12-per-page list ordered `createdAt desc` with declines intermixed. `APPROVED` is likewise unselectable. The data is fully hydrated today; only the control is missing. Sheet Topic · When; sort; search |
 | ☐ | **4.5** `/notifications` | **search** (the only lens surface without it) + the `data-filter-rail` hook it has never carried |
 | ☐ | **4.6** `/profile/account` | counts on the existing category rail; When; sort; search |
