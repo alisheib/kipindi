@@ -106,11 +106,13 @@ export default async function MarketDetail({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ side?: "YES" | "NO"; w?: string }>;
+  searchParams: Promise<{ side?: "YES" | "NO"; w?: string; csort?: string }>;
 }) {
   const { t, locale } = await getServerT();
   const { id } = await params;
-  const { side } = await searchParams;
+  const sp = await searchParams;
+  const { side } = sp;
+  const commentOrder = sp.csort === "oldest" ? "oldest" : "newest";
   // B-1 — no swallow on the PRIMARY read: a failed query must throw to
   // markets/error.tsx (retry), never 404 a market that may be holding money.
   // notFound() fires only when the query succeeded and the row is absent.
@@ -309,8 +311,21 @@ export default async function MarketDetail({
   // does for genuinely-sparse markets.
   let probChart: Awaited<ReturnType<typeof getProbabilityChart>> = { series: {}, ranges: [] };
   try { probChart = await getProbabilityChart(m.id); } catch { /* graceful */ }
-  let comments: Awaited<ReturnType<typeof listComments>> = [];
-  try { comments = await listComments(m.id, session?.userId ?? null); } catch { /* graceful */ }
+  /**
+   * ⭐ PLAYER QUERY, TASK 4.12 — BOUNDED, AND ORDERED BY THE URL.
+   *
+   * 🔴 THIS READ HAD NO LIMIT, on a page anyone can open. `store.listForMarket` has accepted a
+   * `limit` since it was written and no caller ever passed one — and because `toView` resolves an
+   * author per comment, a four-thousand-comment thread issued four thousand `db.user.findById`
+   * calls to render fifteen. ⛔ The thread's `INITIAL_SHOW = 15` is a RENDER cap, not a read cap.
+   *
+   * ⚠️ THE ORDER IS APPLIED BEFORE THE CAP, inside the store. "Oldest first" therefore returns the
+   * OLDEST 200 rather than the newest 200 read backwards — which is what a client-side `.reverse()`
+   * would have given, and it would have been indistinguishable from the truth on any thread short
+   * enough to check by hand.
+   */
+  let comments: Awaited<ReturnType<typeof listComments>> = { comments: [], total: 0, capped: false };
+  try { comments = await listComments(m.id, session?.userId ?? null, { order: commentOrder }); } catch { /* graceful */ }
 
   // Pre-fetch wallet balance so we don't have an unguarded await in JSX.
   // B-1: a failed read used to render balance=0 → the dial fired "insufficient
@@ -951,7 +966,11 @@ export default async function MarketDetail({
       {/* ── Comments — full width, below both columns ── */}
       <CommentsThread
         marketId={m.id}
-        initialComments={comments}
+        initialComments={comments.comments}
+        total={comments.total}
+        capped={comments.capped}
+        order={commentOrder}
+        marketHref={`/markets/${m.id}`}
         canPost={!!session}
         signInHref={`/auth/login?next=${encodeURIComponent("/markets/" + m.id)}`}
       />

@@ -179,19 +179,56 @@ async function toView(c: StoredComment, viewerId: string | null): Promise<Commen
   };
 }
 
-/** Public list for a market, newest first. Hidden/deleted comments are dropped
- *  for everyone except their author (who sees their own, labelled) and mods. */
-export async function listComments(marketId: string, viewerId: string | null): Promise<CommentView[]> {
+/**
+ * How much of a thread one page load may read.
+ *
+ * 🔴 THIS READ HAD NO BOUND AT ALL, on a market anyone can open. `store.listForMarket` has taken a
+ * `limit` since it was written and no caller ever passed one — so a market with four thousand
+ * comments loaded four thousand rows AND, because `toView` resolves an author per comment, issued
+ * four thousand `db.user.findById` calls to render fifteen. ⛔ The `INITIAL_SHOW = 15` in the
+ * client is a RENDER cap, not a read cap: it truncates what is painted, never what is fetched.
+ *
+ * ⚠️ 200 IS A DELIBERATE NUMBER, NOT A ROUND ONE. It is well above any thread this platform has
+ * produced and low enough that the per-comment author lookup is bounded. ⛔ It is stated to the
+ * reader when it bites rather than silently swallowing the tail — a thread that quietly stops
+ * reads as a complete one.
+ */
+export const COMMENT_READ_CAP = 200;
+
+/**
+ * Public list for a market. Hidden/deleted comments are dropped for everyone except their author
+ * (who sees their own, labelled) and mods.
+ *
+ * ⚠️ `oldest` IS A REAL ORDER, NOT A REVERSED PAGE. The cap is applied AFTER the ordering, so
+ * "oldest first" returns the OLDEST 200 and not the newest 200 read backwards — which is what a
+ * client-side `.reverse()` on an already-capped array would have given, and it would have been
+ * indistinguishable from the truth on any thread short enough to test by hand.
+ */
+export async function listComments(
+  marketId: string,
+  viewerId: string | null,
+  opts: { order?: "newest" | "oldest"; limit?: number } = {},
+): Promise<{ comments: CommentView[]; total: number; capped: boolean }> {
+  const limit = opts.limit ?? COMMENT_READ_CAP;
   const viewerIsMod = viewerId ? await isMod(viewerId) : false;
   const all = await store.listForMarket(marketId);
+  // ⛔ VISIBILITY FIRST, THEN ORDER, THEN CAP. Capping before the visibility filter would let a
+  //    run of hidden rows eat the budget and return a short thread that looks complete.
+  const visible = all.filter((c) => {
+    if (c.deleted && !viewerIsMod) return false;
+    if (c.hidden && !viewerIsMod && c.userId !== viewerId) return false;
+    return true;
+  });
+  visible.sort((a, b) =>
+    opts.order === "oldest"
+      ? (a.createdAt < b.createdAt ? -1 : 1)
+      : (a.createdAt < b.createdAt ? 1 : -1));
+  const total = visible.length;
+  const page = visible.slice(0, limit);
+  // ⚠️ The author lookup is now bounded by `limit` rather than by the size of the thread.
   const out: CommentView[] = [];
-  for (const c of all) {
-    if (c.deleted && !viewerIsMod) continue;
-    if (c.hidden && !viewerIsMod && c.userId !== viewerId) continue;
-    out.push(await toView(c, viewerId));
-  }
-  out.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)); // newest first
-  return out;
+  for (const c of page) out.push(await toView(c, viewerId));
+  return { comments: out, total, capped: total > page.length };
 }
 
 /** Count of visible comments (for the section header / card meta). */

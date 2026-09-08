@@ -49,19 +49,19 @@ export async function POST() {
     const cid = a.comment.id;
 
     // 2 · viewer-relative flags
-    const asViewer = (await listComments(MK, viewer.id)).find((c) => c.id === cid)!;
+    const asViewer = (await listComments(MK, viewer.id)).comments.find((c) => c.id === cid)!;
     ok("viewer: not mine", asViewer.mine === false);
     ok("viewer: cannot delete", asViewer.canDelete === false);
-    const asAuthor = (await listComments(MK, author.id)).find((c) => c.id === cid)!;
+    const asAuthor = (await listComments(MK, author.id)).comments.find((c) => c.id === cid)!;
     ok("author: mine + canDelete", asAuthor.mine === true && asAuthor.canDelete === true);
-    const asMod = (await listComments(MK, mod.id)).find((c) => c.id === cid)!;
+    const asMod = (await listComments(MK, mod.id)).comments.find((c) => c.id === cid)!;
     ok("moderator: canDelete", asMod.canDelete === true);
 
     // 3 · report dedup + auto-hide at threshold (3)
     ok("author cannot report own", (await reportComment(author.id, cid)).ok === false);
     await reportComment(r1.id, cid);
     await reportComment(r1.id, cid); // duplicate — must not double count
-    const afterDup = (await listComments(MK, mod.id)).find((c) => c.id === cid)!;
+    const afterDup = (await listComments(MK, mod.id)).comments.find((c) => c.id === cid)!;
     ok("report dedup (still 1)", afterDup.reports === 1, `reports=${afterDup.reports}`);
     ok("not hidden under threshold", afterDup.hidden === false);
     await reportComment(r2.id, cid);
@@ -69,9 +69,9 @@ export async function POST() {
     ok("auto-hidden at 3 reports", rr.ok === true && "hidden" in rr && rr.hidden === true);
 
     // 4 · hidden visibility — public hidden, author + mod still see
-    ok("public can't see hidden", (await listComments(MK, viewer.id)).some((c) => c.id === cid) === false);
-    ok("author still sees own hidden", (await listComments(MK, author.id)).some((c) => c.id === cid) === true);
-    ok("mod still sees hidden", (await listComments(MK, mod.id)).some((c) => c.id === cid) === true);
+    ok("public can't see hidden", (await listComments(MK, viewer.id)).comments.some((c) => c.id === cid) === false);
+    ok("author still sees own hidden", (await listComments(MK, author.id)).comments.some((c) => c.id === cid) === true);
+    ok("mod still sees hidden", (await listComments(MK, mod.id)).comments.some((c) => c.id === cid) === true);
     ok("hidden excluded from count", await countComments(MK) === 0, `count=${await countComments(MK)}`);
 
     // 4b · moderation queue (admin) — hidden comment shows up; mod can restore
@@ -79,13 +79,13 @@ export async function POST() {
     ok("moderationCount ≥ 1", await moderationCount() >= 1);
     ok("non-mod cannot restore", (await restoreComment(viewer.id, cid)).ok === false);
     ok("mod restores (clears hide + reports)", (await restoreComment(mod.id, cid)).ok === true);
-    ok("restored comment public again", (await listComments(MK, viewer.id)).some((c) => c.id === cid) === true);
+    ok("restored comment public again", (await listComments(MK, viewer.id)).comments.some((c) => c.id === cid) === true);
     ok("restored comment left the queue", (await listForModeration()).some((m) => m.id === cid) === false);
 
     // 5 · soft delete
     ok("non-owner non-mod can't delete", (await deleteComment(viewer.id, cid)).ok === false);
     ok("author can delete own", (await deleteComment(author.id, cid)).ok === true);
-    ok("deleted gone for public", (await listComments(MK, viewer.id)).some((c) => c.id === cid) === false);
+    ok("deleted gone for public", (await listComments(MK, viewer.id)).comments.some((c) => c.id === cid) === false);
 
     // 6 · mod delete on a fresh comment
     const b = await addComment(viewer.id, MK, "Second opinion here.", "NO");

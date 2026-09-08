@@ -20,7 +20,7 @@
 ## §0 — RESUME AT
 
 ```
-▶ NEXT ACTION — task 4.12 in the board below.
+▶ NEXT ACTION — task 4.13 in the board below.
   /positions/performance: product lens All / Polls / Up & Down.
   ⛔ IT IS NOT A LIST AND IT TAKES NO PROPS. `performance/page.tsx` has no searchParams,
      no pager and no rows to filter — it is five money tiles, a P&L chart and a
@@ -42,7 +42,7 @@
   ⛔ BRANCH OFF `main`. There is no campaign branch any more — what was built is LIVE.
 ```
 
-**Stage 4 of 6. Stages 1–3 CLOSED (12/12, 7/7, 8/8). 4.1–4.11 done; 3 routes left.**
+**Stage 4 of 6. Stages 1–3 CLOSED (12/12, 7/7, 8/8). 4.1–4.12 done; 2 routes left.**
 
 > ⭐ **EVERYTHING BUILT SO FAR IS ON PRODUCTION** (2026-09-08, `main` `4e667633`). The branch
 > was merged and deleted, so a session that goes looking for `player-query-campaign` will not
@@ -392,7 +392,7 @@ git fetch && git checkout player-query-campaign
 | 1 | **The core** | the six existing gates in §8 green **with no edits to those scripts** | ✅ **12/12** |
 | 2 | **`/positions`** | `qa:player-filters` + `qa:count-truth` green on it; 360 Swahili screenshot looked at | ✅ **7/7** |
 | 3 | **`/wallet`** | same, plus the 1,000-row cap is stated to the player | ✅ **8/8** |
-| 4 | **The other 13 pages** | every census-A and census-B route done, one commit each | ▶ **11/14** |
+| 4 | **The other 13 pages** | every census-A and census-B route done, one commit each | ▶ **12/14** |
 | 5 | **The status dictionary** | `position-card.tsx` has no hand-typed tone; `test:gold-is-money` still green | ☐ 0/4 |
 | 6 | **Guards + docs** | the full §8 sweep passes and each new guard's RED control has been *seen to fail* | ▶ **3/9** (6.5, 6.6, + `qa:bar-geometry`, unplanned) |
 
@@ -530,7 +530,7 @@ grep -n "grants.slice\|status: {" src/app/wallet/page.tsx src/app/wallet/wallet-
 Five of the seven statuses are invisible on **every** player surface, so a player cannot see
 a bonus they were granted and lost.
 
-### Stage 4 · the other thirteen pages (11/14)
+### Stage 4 · the other thirteen pages (12/14)
 
 One commit each, in this order. Same bar, same nine rules.
 
@@ -547,7 +547,7 @@ One commit each, in this order. Same bar, same nine rules.
 | ☑ | **4.9** `/live` | move `q` into the URL — and 🔴 **the 2026-08-10 defect was LIVE on this page.** The hero printed `{markets.length} live · {n} tipping` over the **unfiltered** board while the wall filtered client-side, so typing `zzz` rendered *"40 live · 6 tipping"* and a six-slide featured carousel **above an empty grid** — `counts.ts`'s opening paragraph, verbatim, in production. Moving the search to the SERVER is what fixes it: the count, the tipping figure, the hero carousel and the wall now come from ONE array. 🔴 It also repairs the search itself — the client filtered a snapshot carrying neither `resolutionCriterion` nor `status` while the box advertised `criterion:` and `status:` chips, so two field prefixes could never match and a bare token searched 4 of 5 declared columns. ⚠️ **The infinite-scroll wall is deliberately KEPT** — replacing it with a pager is a visible change to the page whose stated job is identity, and that is Ali's call, not this task's |
 | ☑ | **4.10** `/positions/performance` | product lens — ⛔ but **it is not a LIST**, so the lens re-scopes five money tiles, a P&L curve and two streaks rather than filtering rows. Every aggregate moves or none may. 🔴 `productLine` is on the MARKET, not the position, so the page could not partition its own rows: it now reads the two product sets by indexed join and keeps the UNFILTERED read as the parent, so `all` stays byte-identical to what shipped. ⭐ `other` is a RESIDUAL arm — a settled position whose market row cannot be read lands there instead of inside `all` with no pill able to reach it — and it draws only when it holds something. ⚠️ The board called this *"the one player list that mixes both product lines"*; that is **false** — `/live` says in its own source that IT is the board that opts into both, and `product-line.test.mts` pins it |
 | ☑ | **4.11** `/profile/invite` | 🔴 **THE PLAN NAMED A BODY NO LIVE VIEWER CAN REACH.** `PRODUCT_STATE.invite` is `WITHDRAWN`, so `inviteIsLiveFor` is true only for an agent in good standing — which requires `approvedAt` — and `getAgentDashboard` returns non-null on **exactly that same condition** and is consulted **first**. Approved ⇒ the agent dashboard; not approved ⇒ `notFound()`. There is no third case outside `FEATURE_INVITE=ACTIVE`. ⇒ The list a live viewer sees is the **agent recruit book**, and that is where the bar went. ⛔ Its three planned lens ids were **display tokens** (`"Signed up" \| "First bet" \| "Earning"`, an English string union the chip printed raw) — rule 2 forbids filtering a word. Five arms now, a **ladder ending in a residual**, keyed on the stored `ReferralRewardStatus`: `all · paid · owed · reversed · joined`. ⭐ `reversed` is the arm the page could already state in a money tile and could not point at. 🔴 Also: the book was **unbounded, unpaged**, and ordered by `createdAt` while each row **printed** `recruitedAt` — so displayed dates ran out of order. ⚠️ **And it settles the session-90 gate dispute:** `qa:live` asserted this page *shows* a 10,000 reward — a view its own demo persona cannot open. Repaired to assert the not-found view, matching `qa:agent-drive` §6 |
-| ☐ | **4.12** `/markets/[id]` comments | sort only — newest · oldest |
+| ☑ | **4.12** `/markets/[id]` comments | ⛔ **"newest · oldest" is ONE sort and its direction, not two.** A comment has exactly one orderable key (`createdAt`); `reports` is a moderator number and there are no votes, replies or score. So it is the degenerate spelling `/notifications` documents — two ids reading the same key in opposite directions and **no `?dir=` at all**, because `?csort=oldest&dir=desc` answers nothing. 🔴 **And the real defect was the READ.** `store.listForMarket` has accepted a `limit` since it was written and no caller ever passed one, so a four-thousand-comment thread read four thousand rows **and issued an author lookup per row** to paint fifteen — `INITIAL_SHOW` is a render cap, not a read cap. Bounded at 200, ordered **before** the cap (so "oldest" is the oldest 200, not the newest 200 reversed), cap stated when it bites. ⛔ Not declared as a filter surface — same collision `/leaderboard` hit: a sort is not a filter |
 | ☐ | **4.13** `/profile/activity` | the **shared** window vocabulary, so "last 30 days" means the same span as on `/wallet`. Stays a summary — no sort, no search, no paging |
 | ☐ | **4.14** `/profile/kyc` | **no visible change** — declare its non-filter pill rail as a named exemption with its reason, so the gate's population becomes honest |
 

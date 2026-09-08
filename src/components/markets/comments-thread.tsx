@@ -47,11 +47,36 @@ export function CommentsThread({
   initialComments,
   canPost,
   signInHref,
+  total,
+  capped,
+  order,
+  marketHref,
 }: {
   marketId: string;
   initialComments: CommentView[];
   canPost: boolean;
   signInHref: string;
+  /**
+   * ⭐ PLAYER QUERY, TASK 4.12 — the four props below are the whole task, and none of them is a
+   * control this component owns.
+   *
+   * 🔴 THE READ WAS UNBOUNDED AND THE ORDER WAS FIXED. `listComments` never passed the `limit`
+   * its own store has always accepted, so a market with four thousand comments read four thousand
+   * rows AND issued an author lookup per row — to paint fifteen. ⛔ `INITIAL_SHOW` is a RENDER cap;
+   * it truncates what is drawn, never what is fetched.
+   *
+   * ⛔ AND "NEWEST / OLDEST" IS ONE SORT AND ITS DIRECTION, NOT TWO SORTS. A comment has exactly
+   * one orderable key — `createdAt`. `reports` is a moderator's number, and there are no votes, no
+   * replies and no score. So this is the degenerate spelling `/notifications` already uses and
+   * documents: two ids reading the SAME key in opposite directions, with NO `?dir=` at all.
+   * Writing both `?csort=newest|oldest` and a tri-state `?dir=` would give one axis two spellings
+   * that can contradict each other (`?csort=oldest&dir=desc` answers nothing).
+   */
+  total: number;
+  capped: boolean;
+  order: "newest" | "oldest";
+  /** The market's own path, so the order links round-trip without this component knowing the route. */
+  marketHref: string;
 }) {
   const INITIAL_SHOW = 15;
   const [comments, setComments] = useState<CommentView[]>(initialComments);
@@ -156,11 +181,19 @@ export function CommentsThread({
   const remaining = COMMENT_MAX_LEN - body.length;
 
   return (
-    <section className="mt-8 rounded-lg border border-border bg-bg-elevated p-5 lg:p-6">
+    /* ⛔ `id="discussion"` IS LOAD-BEARING, NOT DECORATION. The order links below carry
+       `#discussion`, and this page is long: without an anchor to land on, changing the order would
+       navigate the reader to the TOP of a market detail page — a control that appears to have
+       thrown them away. ⚠️ There was no `id` on this section at all; it was grepped for before the
+       links were written rather than assumed. */
+    <section id="discussion" className="mt-8 rounded-lg border border-border bg-bg-elevated p-5 lg:p-6">
       <div className="mb-4 flex items-center gap-2">
         <I.comment s={16} />
         <h2 className="font-display text-[17px] font-semibold text-text">{t.common.discussion}</h2>
-        <span className="ml-auto font-mono text-[11px] text-text-subtle tabular-nums">{comments.length}</span>
+        {/* ⛔ THE TOTAL, NOT THE PAGE. `comments.length` is what was READ (capped at 200); `total`
+            is how many exist. A header counting the read while the cap notice counts the truth
+            would be two numbers for one question, one line apart. */}
+        <span className="ml-auto font-mono text-[11px] text-text-subtle tabular-nums" data-result-count={total}>{total}</span>
       </div>
 
       {canPost ? (
@@ -195,6 +228,50 @@ export function CommentsThread({
         >
           {t.market.signInToPredict}
         </Link>
+      )}
+
+      {/**
+        * ⭐ THE ORDER, AS TWO LINKS AND NOT AS A MENU. Two options is not a menu — a `MenuShell`
+        * that opens to reveal a choice between two things costs a tap to say what two words say
+        * for free, and this control sits below a bet dial where a stray tap is expensive.
+        *
+        * ⛔ NO `data-filter-rail` AND NOT DECLARED AS A FILTER SURFACE. `test:filter-language`
+        * §3.1/§3.2 require every DECLARED surface to import `filter-pill` and render `<FilterPill>`
+        * in its own source; an order control renders neither, so declaring it would fail §3.2, and
+        * emitting the hook without declaring would fail §0.4. ⚠️ That is the same collision
+        * `/leaderboard` hit in task 4.8 — the campaign has a whole "sort only" bucket that
+        * collides with a gate it did not know about, and the resolution in both places is the
+        * same: a sort is not a filter, so it joins neither the hook nor the four live drivers.
+        */}
+      {total > 1 && (
+        <nav aria-label={t.common.sort} className="mb-3 flex items-center gap-2">
+          {(["newest", "oldest"] as const).map((o) => (
+            <Link
+              key={o}
+              href={`${marketHref}${o === "newest" ? "" : "?csort=oldest"}#discussion` as never}
+              replace
+              scroll={false}
+              aria-current={order === o ? "true" : undefined}
+              /* ⚠️ `text-body-sm` (the 13px LADDER RUNG), not `text-[13px]`. The ratchet tightened
+                 in task 4.8 caught this the moment it was written — which is what a ratchet at the
+                 tree's real number buys and a ratchet left slack does not. */
+              className={`inline-flex min-h-[44px] items-center px-2 text-body-sm font-semibold ${
+                order === o ? "text-text underline" : "text-text-muted hover:text-text"
+              }`}
+            >
+              {o === "newest" ? t.common.newestFirst : t.common.oldestFirst}
+            </Link>
+          ))}
+        </nav>
+      )}
+
+      {/* ⛔ THE CAP, STATED WHEN IT BITES. A thread that quietly stops at 200 reads as a complete
+          one — the silent-truncation failure this repo has met on the Decided table, the ISO
+          export, /updown/history and (this stage) the player's own activity feed. */}
+      {capped && (
+        <p className="mb-3 text-body-sm text-text-subtle">
+          {t.market.commentsCapped.replace("{n}", String(comments.length)).replace("{total}", String(total))}
+        </p>
       )}
 
       {comments.length === 0 ? (
