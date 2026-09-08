@@ -11,6 +11,11 @@
  * can't run in a plain script — we drive bindRegistration(), the exact function
  * the registration path calls after creating the user.
  */
+// ⚠️ THE BONUS WALLET IS WITHDRAWN FROM THE PRODUCT (`src/lib/feature-state.ts`), and since
+// 2026-09-06 `creditBonus` enforces that: the product state outranks the operator config, so no
+// grant is minted while the feature sleeps. This suite exercises the bonus machinery a
+// re-enablement depends on, so it drives the ON path — Law 2, one home, see the module header.
+import "./lib/bonus-feature-on.mts";
 import { db, type StoredWallet } from "../src/lib/server/store.ts";
 import {
   createCampaign, addContacts, sendCampaign, cancelCampaign,
