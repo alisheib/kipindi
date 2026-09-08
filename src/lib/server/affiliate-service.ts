@@ -17,7 +17,7 @@
  * Money rule: every figure is whole TZS. No fractional shillings.
  */
 import { db, type StoredAffiliateAccount, type StoredReferralReward, type StoredUser } from "./store";
-import { inviteIsLiveFor, NO_VIEWER, type InviteViewer } from "@/lib/feature-state";
+import { inviteIsLiveFor, bonusIsLiveFor, NO_VIEWER, type InviteViewer } from "@/lib/feature-state";
 import { getAffiliateConfig } from "./affiliate-config";
 import { getAgentConfig, commissionWindowEnd, type AgentConfig } from "./agent-config";
 import { splitWithholding } from "@/lib/agent-commission";
@@ -640,6 +640,36 @@ export async function resolveReferralPreview(code: string) {
 }
 
 // ── Wallet credit (internal) ─────────────────────────────────────────────
+/**
+ * ⭐ WHERE A PLAYER'S REFERRAL REWARD LANDS — asked by the PAYER and by the PAGE THAT PROMISES
+ * IT, so the two cannot disagree.
+ *
+ * 🔴 THEY DID DISAGREE. `/profile/invite` renders a requirements list stating, in all three
+ * locales: *"Bonus credited to your Bonus Wallet — 5× wagering required before withdrawal"*,
+ * *"Bonuses expire 30 days after being credited"* and *"Bonuses are used one at a time"*. Once
+ * the bonus wallet was withdrawn from the product the reward began landing as real, withdrawable
+ * cash — and those three lines became false, on a money surface. A promise about money is not
+ * decoration.
+ *
+ * ⛔ SO THIS IS THE ONE HOME (DESIGN_AUTHORITY B9 / LAWS 81: a derived state on more than one
+ * surface is defined once). A second copy of this condition on the page is exactly how the two
+ * drifted apart the first time.
+ *
+ * ⚠️ THIS ANSWERS FOR THE **PLAYER** PATH ONLY, AND THAT BOUNDARY IS LOAD-BEARING. An AGENT's
+ * destination is a property of the stamped `ReferralPolicy`, resolved before `creditWallet` ever
+ * reaches this — see the `policy.destination === "CASH"` short-circuit below. ⛔ Do not widen
+ * this function to answer for an agent: no bonus switch may move a partner's contracted income.
+ */
+export type ReferralRewardDestination = "BONUS" | "CASH";
+
+export function referralRewardDestination(): ReferralRewardDestination {
+  // The PRODUCT state outranks the operator config — `creditBonus` refuses outright while the
+  // wallet is withdrawn, so routing there would only take the fall-through the long way round.
+  if (!bonusIsLiveFor()) return "CASH";
+  const bcfg = getBonusConfig();
+  return bcfg.enabled && bcfg.affiliateToBonus ? "BONUS" : "CASH";
+}
+
 /** Credit a referral reward. Routes to the BONUS wallet when the bonus program
  *  is enabled and affiliate→bonus routing is on (Ali's default — rewards must be
  *  played through); otherwise credits real balance directly. Falls back to real
@@ -674,8 +704,7 @@ async function creditWallet(
   if (policy.destination === "CASH") {
     return (await creditInternal(userId, amount, { description, type: policy.txnType, taxWithheld })) !== null;
   }
-  const bcfg = getBonusConfig();
-  if (bcfg.enabled && bcfg.affiliateToBonus) {
+  if (referralRewardDestination() === "BONUS") {
     // Pass a deterministic sourceRef so creditBonus dedupes: even if a reward
     // payer is somehow re-entered, the grant lands at most once. (The payer's
     // own lock + existence check is the primary guard; this is belt-and-suspenders

@@ -4,7 +4,7 @@ import { I } from "@/components/ui/glyphs";
 import { BackLink } from "@/components/ui/back-link";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
-import { getPlayerReferralSummary, inviteViewerFor, getAgentDashboard } from "@/lib/server/affiliate-service";
+import { getPlayerReferralSummary, inviteViewerFor, getAgentDashboard, referralRewardDestination } from "@/lib/server/affiliate-service";
 import { AgentDashboard } from "./agent-dashboard";
 import QRCode from "qrcode";
 import { FiftyMark, GiltCorner } from "@/components/brand";
@@ -144,6 +144,9 @@ export default async function InvitePage() {
   const s = await getPlayerReferralSummary(session.userId);
   // F5 · the wagering multiple the requirements list quotes — READ, never written.
   const bonusCfg = getBonusConfig();
+  // Where a reward ACTUALLY lands — the same predicate `creditWallet` routes on, so the
+  // requirements list below can never promise a wallet the payer does not use.
+  const rewardDestination = referralRewardDestination();
   const ringValue = s.recruitCount === 0 ? 0 : Math.min(100, 30 + s.recruitCount * 12);
   const ringLabel = s.earnedTzs > 0 ? formatCompactNumber(s.earnedTzs) : "0";
   const shareText = t.profile.shareText;
@@ -343,10 +346,27 @@ export default async function InvitePage() {
           <li>{t.profile.inviteReqRegister}</li>
           <li>{t.profile.inviteReqDeposit}</li>
           <li>{t.profile.inviteReqBet}</li>
-          {/* F5 · the multiple is READ from bonus-config, not written into the copy. */}
-          <li>{fill(t.profile.inviteReqWager, { wager: bonusCfg.defaultWagerMultiplier })}</li>
-          <li>{t.profile.inviteReqExpiry}</li>
-          <li>{t.profile.inviteReqSequential}</li>
+          {/*
+            🔴 THESE THREE LINES ARE A PROMISE ABOUT MONEY, AND THEY WERE FALSE.
+            They stated the reward lands in the Bonus Wallet under a wagering requirement, with an
+            expiry and a one-at-a-time queue. Once the bonus wallet left the product the reward
+            began landing as real, withdrawable cash — and every one of those sentences became
+            wrong, in all three locales, on the only page an approved AGENT reads to learn how they
+            are paid.
+            ⛔ The condition is NOT re-derived here. `referralRewardDestination()` is the same
+            predicate `creditWallet` routes on, so the promise and the payment cannot drift apart
+            again — which is exactly how they drifted apart the first time.
+            F5 · the multiple is still READ from bonus-config, never written into the copy.
+          */}
+          {rewardDestination === "BONUS" ? (
+            <>
+              <li>{fill(t.profile.inviteReqWager, { wager: bonusCfg.defaultWagerMultiplier })}</li>
+              <li>{t.profile.inviteReqExpiry}</li>
+              <li>{t.profile.inviteReqSequential}</li>
+            </>
+          ) : (
+            <li>{t.profile.inviteReqCash}</li>
+          )}
         </ul>
       </section>
 

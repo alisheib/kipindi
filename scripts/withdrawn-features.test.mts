@@ -328,6 +328,59 @@ function ok(label: string, cond: boolean, extra?: string) {
   }
 }
 
+// ── §5h · THE PAGE MAY NOT PROMISE A WALLET THE PAYER DOES NOT USE ─────────
+//
+// 🔴 A FALSE MONEY STATEMENT, IN THREE LOCALES, TO THE ONLY AUDIENCE THAT CAN READ THE PAGE.
+// `/profile/invite` is agent-only now, and its requirements list stated flatly: *"Bonus credited
+// to your Bonus Wallet — {wager}× wagering required before withdrawal"*, *"Bonuses expire 30 days
+// after being credited"*, *"Bonuses are used one at a time"*. With the bonus wallet withdrawn the
+// reward lands as real, withdrawable cash — so all three were wrong for every approved agent, in
+// en, sw AND zh. Nothing was hidden and nothing crashed; the page simply described a different
+// product.
+//
+// ⛔ THE RULE IS "ONE HOME", NOT "SOME CONDITION". The page must consult
+// `referralRewardDestination()` — the SAME predicate `creditWallet` routes on — rather than
+// re-deriving "is bonus on?" from `bonusIsLiveFor` or `getBonusConfig` locally. A second copy of
+// the condition is exactly how the promise and the payment drifted apart the first time.
+{
+  const { referralRewardDestination } = await import("../src/lib/server/affiliate-service.ts");
+  const page = readFileSync("src/app/profile/invite/page.tsx", "utf8");
+  const stripped = decomment(page);
+
+  ok("§5h a referral reward lands as CASH while the wallet is withdrawn",
+     referralRewardDestination() === "CASH", referralRewardDestination());
+
+  ok("§5h the page reads the payer's own predicate",
+     stripped.includes("referralRewardDestination"),
+     "the page does not consult referralRewardDestination()");
+
+  // ⛔ POSITIONAL, not a mention: the wagering line must sit INSIDE the BONUS branch. A page that
+  // imports the predicate and then renders the bonus copy anyway passes a "does it check?" rule.
+  const branchAt = stripped.search(/rewardDestination\s*===\s*"BONUS"/);
+  const wagerAt = stripped.search(/inviteReqWager/);
+  ok("§5h …and the wagering promise sits BELOW the destination branch",
+     branchAt >= 0 && wagerAt > branchAt, `branch=${branchAt} wager=${wagerAt}`);
+
+  ok("§5h …and the cash copy exists for the state we are actually in",
+     stripped.includes("inviteReqCash"), "no cash-destination copy on the page");
+
+  // ⭐ THE CONTROL. Without it this section passes just as well if the predicate is hard-wired to
+  // "CASH" — which would be a seam that has stopped asking, indistinguishable from one that works.
+  process.env.FEATURE_BONUS = "ACTIVE";
+  try {
+    ok("§5h CONTROL · with the product state ACTIVE the reward routes to BONUS again",
+       referralRewardDestination() === "BONUS", referralRewardDestination());
+  } finally {
+    delete process.env.FEATURE_BONUS;
+  }
+
+  // ⚠️ All three locales, because a false money statement hides best in the one nobody reads.
+  const dict = readFileSync("src/lib/i18n-dict.ts", "utf8");
+  const cashKeys = dict.match(/inviteReqCash:/g) ?? [];
+  ok("§5h the cash copy is translated in all three locales", cashKeys.length === 3,
+     `found=${cashKeys.length}`);
+}
+
 // ── §5f · THE SKELETON MUST DESCRIBE THE PAGE THAT IS COMING ───────────────
 // 🔴 A LOADING STATE IS A PROMISE ABOUT THE NEXT FRAME. `wallet/loading.tsx` ghosted TWO
 // cards side by side — main + bonus — because that is what the page used to render. With the
