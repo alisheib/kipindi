@@ -704,6 +704,7 @@
     "qa:player-filters": "node scripts/live/player-filter-drive.mjs",
     "qa:count-truth": "node scripts/live/count-truth-drive.mjs",
     "qa:bar-geometry": "node scripts/live/bar-geometry-drive.mjs",
+    "qa:player-shots": "node scripts/live/player-query-shots.mjs",
     "red:count-truth": "node scripts/red-count-truth.mjs"
   },
   "dependencies": {

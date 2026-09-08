@@ -66,6 +66,21 @@ const SURFACES = [
   // publishes no `data-count` and is correctly outside this driver's population.
   { id: "/notifications", path: "/notifications", minPills: 5 },
   { id: "/watchlist", path: "/watchlist", minPills: 10 },
+  /* DECLARED 2026-09-08 (PLAYER QUERY, task 4.6).
+     ⛔ THIS LIST IS THE DECLARATION PLACE §6 OF THE CAMPAIGN DOC DOES NOT NAME. §6 names four —
+     the hook, `filter-language.test.mts`, `filter-language-scan.mjs` and `responsive-audit.mjs` —
+     and this driver, `bar-geometry-drive.mjs`, `player-filter-drive.mjs` and
+     `player-query-shots.mjs` each carry their own hand-typed SURFACES on top of those. None of the
+     four fails loudly when a route is missing: an absent route is simply never visited, and the
+     run reports a cheerful pass over a surface it never opened. §6 has been corrected.
+
+     ⚠️ `minPills: 7` IS A FLOOR OVER A VARIABLE RAIL, which no other row here has to be. The lens
+     population is the player's OWN audit categories, so it is `all` + however many kinds of event
+     that persona has produced — not a module constant. The floor is therefore the smallest honest
+     bar: `all` + at least one category (2) + the five window pills (5). ⛔ Do not raise it to match
+     whatever a particular fixture happens to render; that would make a correct page red for a
+     player with a short history. */
+  { id: "/profile/account", path: "/profile/account", minPills: 7 },
 ];
 
 const surfaces = ONLY ? SURFACES.filter((s) => s.id === ONLY || s.path === ONLY) : SURFACES;

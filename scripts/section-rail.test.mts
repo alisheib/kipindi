@@ -251,8 +251,19 @@ for (const r of population) {
  * own population. The lenses moved into `app/notifications/notifications-bar.tsx` behind the
  * shared bar's wrapper, and the sort became a menu, so both leave.
  * ⛔ Re-derived from the run: the gate printed `population 7`.
+ *
+ * ⚠️ 7 → 6 ON TASK 4.6, and it is the same kind of loss for the fourth time. `/profile/account`
+ * rendered its activity-category rail as a bare `<nav>` of `<FilterPill semantics="tab">` inside
+ * `page.tsx`, so this parser saw it — and `tab` was the wrong semantic for it: those pills do not
+ * navigate between sections, they narrow one table in place, which is `aria-pressed` and not
+ * `aria-current` (`filter-pill.tsx:38-48`). It is now a `toggle` rail inside
+ * `app/profile/account/account-bar.tsx`, behind the shared bar's wrapper, so it leaves this
+ * population correctly rather than being lost from view.
+ * ⛔ Re-derived from the run, not predicted: the gate printed `population 6`.
+ * ⚠️ The three remaining offenders are unchanged and are NOT mine — `profile/activity/page.tsx:64`
+ * and `updown-board-tabs.tsx:249,275` were the same three before this commit.
  */
-const FLOOR = 7;
+const FLOOR = 6;
 
 let bad = 0;
 if (population.length < FLOOR) {

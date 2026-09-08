@@ -20,28 +20,36 @@
 ## §0 — RESUME AT
 
 ```
-▶ NEXT ACTION — task 4.6 in the board below.
-  /profile/account: counts on the existing category rail; When; sort; search.
+▶ NEXT ACTION — task 4.7 in the board below.
+  /fairness: include VOIDED, then lens All · Resolved · Voided.
+  ⛔ AND ITS `listMarkets({status:"RESOLVED"})` ALSO OMITS `productLine`, so it inherits
+     DEFAULT_PRODUCT_LINE = "MARKET" — every Up & Down settlement is invisible on the page
+     that exists to PROVE settlements. The lens set is not the whole fix.
   One commit per route.
 
   ⛔ BRANCH OFF `main`. There is no campaign branch any more — what was built is LIVE.
 ```
 
-**Stage 4 of 6. Stages 1–3 CLOSED (12/12, 7/7, 8/8). 4.1–4.5 done; 9 routes left.**
+**Stage 4 of 6. Stages 1–3 CLOSED (12/12, 7/7, 8/8). 4.1–4.6 done; 8 routes left.**
 
 > ⭐ **EVERYTHING BUILT SO FAR IS ON PRODUCTION** (2026-09-08, `main` `4e667633`). The branch
 > was merged and deleted, so a session that goes looking for `player-query-campaign` will not
 > find it and must not recreate it from an older base. `git checkout -b <new-lane> main`.
 >
-> ⚠️ **TWO DEBTS THIS BOARD OWES, both filed rather than fixed** — read before trusting §1:
-> **①** `qa:bar-geometry` is counted toward Stage 6 but has **no RED control**, which Stage 6's
-> own exit condition requires ("each new guard's RED control has been *seen to fail*"). The three
-> geometry defects it found were fixed on the strength of an unreproducible hand mutation. Build
-> its control before crediting it. **②** The §1 stage headings still read `(0/14)`, `(0/4)`,
-> `(0/9)` while the board above reads 5/14 and 3/9, and §5 still marks four shipped core files as
-> ☐ and hands out `src/lib/watchlist/query.ts`, a path that does not exist (the file is
-> `following.ts`). A session that skims to §1 as this file instructs will re-do five finished
-> routes. ⛔ Fix the headings in the same commit as task 4.6.
+> ✅ **DEBT ② IS PAID (2026-09-08, with task 4.6).** The §1 stage headings now read `(6/14)`,
+> `(0/4)` — which was always accurate, Stage 5 has genuinely not started — and
+> `(3/9 — 6.5, 6.6, + qa:bar-geometry)`, matching the board above rather than contradicting it.
+> §5's four core files are ticked, `windows.ts` is listed, and the contract list is re-derived from
+> disk with the command that re-derives it: it used to hand out `src/lib/watchlist/query.ts`, a
+> path that has never existed.
+>
+> ⚠️ **DEBT ① IS STILL OPEN.** `qa:bar-geometry` is counted toward Stage 6 but has **no RED
+> control**, which Stage 6's own exit condition requires ("each new guard's RED control has been
+> *seen to fail*"). The three geometry defects it found were fixed on the strength of an
+> unreproducible hand mutation. ⛔ Build its control before crediting it — and note that
+> `QUERY_GROUP_CLASS`, the constant created BY that fix, still has **one adopter**: fourteen
+> `<nav>`s across six other bars carry the unrepaired `hidden shrink-0 items-center gap-1 lg:flex`.
+> The repair landed in a constant and was never rolled out.
 
 ### What task 4.5 found — read before 4.6
 
@@ -372,7 +380,7 @@ git fetch && git checkout player-query-campaign
 | 1 | **The core** | the six existing gates in §8 green **with no edits to those scripts** | ✅ **12/12** |
 | 2 | **`/positions`** | `qa:player-filters` + `qa:count-truth` green on it; 360 Swahili screenshot looked at | ✅ **7/7** |
 | 3 | **`/wallet`** | same, plus the 1,000-row cap is stated to the player | ✅ **8/8** |
-| 4 | **The other 13 pages** | every census-A and census-B route done, one commit each | ▶ **5/14** |
+| 4 | **The other 13 pages** | every census-A and census-B route done, one commit each | ▶ **6/14** |
 | 5 | **The status dictionary** | `position-card.tsx` has no hand-typed tone; `test:gold-is-money` still green | ☐ 0/4 |
 | 6 | **Guards + docs** | the full §8 sweep passes and each new guard's RED control has been *seen to fail* | ▶ **3/9** (6.5, 6.6, + `qa:bar-geometry`, unplanned) |
 
@@ -510,7 +518,7 @@ grep -n "grants.slice\|status: {" src/app/wallet/page.tsx src/app/wallet/wallet-
 Five of the seven statuses are invisible on **every** player surface, so a player cannot see
 a bonus they were granted and lost.
 
-### Stage 4 · the other thirteen pages (0/14)
+### Stage 4 · the other thirteen pages (6/14)
 
 One commit each, in this order. Same bar, same nine rules.
 
@@ -521,7 +529,7 @@ One commit each, in this order. Same bar, same nine rules.
 | ☑ | **4.3** `/watchlist` | lens `All · Open · In progress · Resolved · Void` — ⚠️ **FIVE, and the plan's `Live`/`Settled` were both wrong**; sheet Topic; 4 sorts (`starred` default = today's order); search; paging. 🔴 Also replaced an **unbounded 20-second-polled board read** with `playerMarketsByIds`. See above |
 | ☑ | **4.4** `/proposals` | lens `All · Under review · Changes requested · Approved · Live · Resolved · Declined` — SEVEN, and COVERING is enforced by the TYPE system (`Record<ProposalStatus, …>`); sheet Mine · Topic · When; 3 sorts; search. 🔴 The old rail asked THREE questions at once (`hot`/`new` were ORDERINGS), and its default view was gated on **200 net votes**. Legacy `?f=` proven equivalent row-for-row |
 | ☑ | **4.5** `/notifications` | the `data-filter-rail` hook it had NEVER carried, + **search that runs in SQL** (the inbox is unbounded — 360 rows/day), + the sort moved out of a second pill rail into the shared control. ⛔ Lenses kept VERBATIM — they were already right. 🔴 The new search arrived saying *"No notifications yet"* over 71 rows |
-| ☐ | **4.6** `/profile/account` | counts on the existing category rail; When; sort; search |
+| ☑ | **4.6** `/profile/account` | counts on the existing category rail; When; sort; search. 🔴 Its read was the **in-memory audit ring** — 10,000 rows GLOBALLY, per-container, emptied by every deploy — so the counts this task adds would have been an accident of uptime. `getAuditForActorDurable` now, which also repairs the **GDPR Art. 15 export** that read the same ring. 🔴 `?act=` was passed through unnarrowed (`?act=lol` emptied the table with nothing to clear it), and the rail hid itself below TWO categories while the filter stayed applied. 🔴 The stored enum reached the player in **three** places, one of them inside a translated sentence |
 | ☐ | **4.7** `/fairness` | include `VOIDED`, then lens `All · Resolved · Voided`. It reads `RESOLVED` only, so **voided settlements are invisible on the page that exists to prove settlements** |
 | ☐ | **4.8** `/leaderboard` | sort only — ROI · net · streak · volume. Hard-wired in SQL today |
 | ☐ | **4.9** `/live` | move `q` into the URL (`mode="url"`), so a shared link keeps the search |
@@ -574,7 +582,7 @@ from disagreeing about what refunded looks like.**
   the chip printed the stored enum, so a Swahili player read "YES" beside a page reading
   "NDIO". **Keep the comment alive** or the next session reintroduces what it records.
 
-### Stage 6 · guards, docs, verification (0/9)
+### Stage 6 · guards, docs, verification (3/9 — 6.5, 6.6, + `qa:bar-geometry`, unplanned)
 
 | | Task | Files |
 |---|---|---|
@@ -760,19 +768,41 @@ including those two, imports it** (§0a: one fact, one home).
 ```
 src/lib/query/
   parse.ts   oneParam · oneOf · parseDir · clampText              ☑ 1.1
-  sort.ts    SortSpec · compareBy · sortBy · effectiveDir          ☐ 1.2
-  href.ts    buildQueryHref — defaults OMITTED, page dropped       ☐ 1.3
-  counts.ts  matchesAll · countFor — the cross-filter rule, once   ☐ 1.4
-  empty.ts   relaxations — exits carry real counts, capped at 3    ☐ 1.5
+  sort.ts    SortSpec · compareBy · sortBy · effectiveDir          ☑ 1.2
+  href.ts    buildQueryHref — defaults OMITTED, page dropped       ☑ 1.3
+  counts.ts  matchesAll · countFor — the cross-filter rule, once   ☑ 1.4
+  empty.ts   relaxations — exits carry real counts, capped at 3    ☑ 1.5
+  windows.ts PLAYER_PRESETS · inWindow — the EAT day boundary      ☑ (2026-09-08)
 ```
+
+⛔ **THE FOUR BOXES ABOVE READ ☐ UNTIL 2026-09-08 WHILE ALL FOUR FILES WERE ON PRODUCTION.** Stage 1
+closed 12/12 and this list was never re-ticked, so a session skimming §5 as §0 instructs would have
+concluded the core did not exist and written a second one. Fixed with task 4.6; ⚠️ this is the
+second debt of exactly this shape in one document — see §0.
+
+🔴 **`windows.ts` WAS NOT IN THIS LIST AND ITS ABSENCE COST A REAL DEFECT.** It owned the preset
+IDs while the day arithmetic was hand-written five times, and every copy computed midnight in the
+SERVER's zone while the rows beside it rendered in EAT — so `Today` excluded rows stamped today, on
+five shipped routes. One home now, and `test:query-core` §9 asserts all five surfaces agree.
 
 ⛔ **Every rule is lifted VERBATIM from `discovery.ts`, never re-derived or "improved"** —
 the null-last comparator, the omit-defaults builder, count honesty, the relaxation rule.
 Its own header explains why it is pure and what three independent href builders cost.
 
-Then one thin contract per page: `src/lib/positions/portfolio.ts` ·
-`src/lib/wallet/ledger.ts` · `src/lib/updown/history-query.ts` ·
-`src/lib/results/archive.ts` · `src/lib/watchlist/query.ts`.
+Then one thin contract per page. ⛔ **RE-DERIVED FROM DISK 2026-09-08, because the list below used
+to hand out `src/lib/watchlist/query.ts` — a path that has never existed** (the file is
+`following.ts`), which is the same "a doc that hands out a file nobody can follow" failure
+`test:docs` exists to catch and which §1's own footnote describes:
+
+```bash
+ls src/lib/positions/portfolio.ts src/lib/wallet/ledger.ts src/lib/updown/history-query.ts \
+   src/lib/results/archive.ts src/lib/watchlist/following.ts src/lib/proposals/board.ts \
+   src/lib/notification-filters.ts src/lib/account/activity.ts
+```
+
+`positions/portfolio.ts` · `wallet/ledger.ts` · `updown/history-query.ts` · `results/archive.ts` ·
+`watchlist/following.ts` · `proposals/board.ts` · `notification-filters.ts` ·
+`account/activity.ts`.
 
 ### One bar, driven by a spec
 
@@ -824,16 +854,35 @@ population than it claims.** When those rails are hooked or exempted the gate ma
 copy nobody ever inspected; **if it does, that is the finding, not a regression introduced
 here.**
 
-### ⛔ Four places every touched page must be declared, IN THE SAME COMMIT
+### ⛔ EIGHT places every touched page must be declared, IN THE SAME COMMIT
+
+🔴 **THIS TABLE SAID "FOUR" UNTIL 2026-09-08 AND THE REAL NUMBER WAS EIGHT.** Re-derived, not
+counted from memory — every hand-typed enumeration of player surfaces in `scripts/`:
+
+```bash
+grep -rn "^const SURFACES\|^const PLAYER\b" scripts/ scripts/live/
+```
+
+⛔ **The four this table used to omit are the four LIVE DRIVERS, and every one of them fails
+SILENTLY.** An undeclared route is simply never visited, so the run reports a clean pass over a
+surface it never opened — which is the "guard whose POPULATION is blind" shape, four times.
 
 | | Where | Why it must be there |
 |---|---|---|
-| 1 | `data-filter-rail` on the rail wrapper | the gate's only discovery key |
+| 1 | `data-filter-rail` on the rail wrapper | the gate's only discovery key. ⛔ It must sit on the file the lists below NAME — when a rail moves out of `page.tsx` into a `*-bar.tsx`, the declaration moves with it |
 | 2 | `SURFACES` in `scripts/filter-language.test.mts` | §0.4 fails without it — the loud, correct stop |
 | 3 | `SURFACES` in `scripts/filter-language-scan.mjs`, **with its `rails` count** | that number is the per-route vacuity control |
 | 4 | `PLAYER` in `scripts/responsive-audit.mjs` | **hand-typed, and it lost a whole product line before** — `/updown` was unaudited at every width until E-196 |
+| 5 | `SURFACES` in `scripts/live/count-truth-drive.mjs`, **with its `minPills` floor** | `qa:count-truth`. An absent route is never walked, so its counts are never checked |
+| 6 | `SURFACES` in `scripts/live/bar-geometry-drive.mjs`, **with its `minControls` floor** | `qa:bar-geometry`. The only instrument that asks whether two controls share pixels |
+| 7 | `SURFACES` in `scripts/live/player-filter-drive.mjs` | `qa:player-filters` — SUBSET + MATCHING. ⚠️ If the lenses are genuinely not a partition, declare the EXCLUSION with its reason (the `/notifications` block is the model); a false partition makes a correct page report a real failure |
+| 8 | `SURFACES` in `scripts/live/player-query-shots.mjs` | the screenshots. ⚠️ **This script had NO npm key at all until 2026-09-08** — `test:orphans` was red about it while this document handed out its command line. It is `qa:player-shots` now |
 
-⚠️ **Only #2 fails loudly. #3 and #4 are silent.**
+⚠️ **Only #2 fails loudly. #3–#8 are all silent.**
+
+⭐ **AND THE REAL LESSON IS THAT A HAND-TYPED LIST CANNOT POLICE ITSELF** — which is what task 6.3
+(`test:route-census`) exists to end. Until it lands, this table is the only thing standing between a
+new rail and four instruments that will report success without looking at it.
 
 Glob-based, therefore automatic: `test:measure` · `test:integrity` ·
 `test:search-adoption` · `test:tap-target` · `test:section-rail` · `test:type-scale` ·

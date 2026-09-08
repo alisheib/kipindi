@@ -85,6 +85,14 @@ const SURFACES = [
   { id: "/proposals", path: "/proposals", minControls: 10 },
   { id: "/notifications", path: "/notifications", minControls: 6 },
   { id: "/watchlist", path: "/watchlist", minControls: 6 },
+  /* DECLARED 2026-09-08 (PLAYER QUERY, task 4.6). ⛔ This SURFACES list is one of the four
+     declaration places §6 of the campaign doc does not name — see the note in
+     `count-truth-drive.mjs`, which says it once for all four.
+     ⚠️ `minControls: 6` is deliberately below what the bar renders at 1280 (all + ≥1 category, the
+     sort summary, the direction button, and five window pills), because this route's lens
+     population is the PLAYER's own audit categories and varies per persona. A floor tuned to one
+     fixture would fail a correct page for a player with a short history. */
+  { id: "/profile/account", path: "/profile/account", minControls: 6 },
 ];
 
 const surfaces = ONLY ? SURFACES.filter((s) => s.id === ONLY || s.path === ONLY) : SURFACES;

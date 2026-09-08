@@ -160,6 +160,33 @@ const SURFACES = [
    * matters here — every pill's number is what pressing it shows — is proved by
    * `qa:count-truth`, which needs no partition.
    */
+  /**
+   * DECLARED 2026-09-08 (PLAYER QUERY, task 4.6). ⛔ This SURFACES list is one of the four
+   * declaration places §6 of the campaign doc does not name — see the note in
+   * `count-truth-drive.mjs`, which states it once for all four.
+   *
+   * ⭐ UNLIKE `/notifications`, THIS ONE REALLY IS A PARTITION. Every audit row carries exactly one
+   * `AuditCategory`, so the categories are disjoint by construction and their union is `all` — the
+   * two arms this driver exists to check are both true here, and declaring them is what proves it
+   * rather than asserting it.
+   *
+   * ⚠️ THE PARTS ARE THE WHOLE ENUM, THOUGH NO PERSONA PRODUCES ALL EIGHT. `getAuditForActorDurable`
+   * filters on `actorId`, so `ADMIN` / `SECURITY` / `SYSTEM` rows do not normally reach a player's
+   * own feed and their pills are simply not rendered. That is handled rather than fudged: the
+   * driver filters to `present` before choosing a narrowing lens, and reports 🔶 rather than a pass
+   * when an arm is unexercisable on the seeded data. ⛔ Declaring only the categories one fixture
+   * happens to hold would make the partition a description of that fixture instead of of the enum,
+   * and a category that stopped being covered would never be noticed.
+   */
+  {
+    id: "/profile/account",
+    path: "/profile/account",
+    param: "act",
+    all: "all",
+    partitions: [
+      { parent: "all", parts: ["AUTH", "KYC", "WALLET", "BET", "ADMIN", "COMPLIANCE", "SECURITY", "SYSTEM"] },
+    ],
+  },
 ];
 
 const surfaces = ONLY ? SURFACES.filter((s) => s.id === ONLY || s.path === ONLY) : SURFACES;

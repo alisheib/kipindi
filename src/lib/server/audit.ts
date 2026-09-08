@@ -610,6 +610,78 @@ export async function getAuditForTargetDurable(
 }
 
 /**
+ * ⭐ EVERY AUDITED EVENT AN ACTOR PERFORMED, NEWEST FIRST — the durable twin of
+ * `getAuditForActor`, and what the player's own activity feed reads.
+ *
+ * 🔴 WHY IT HAD TO EXIST. `getAuditForActor` serves the ring, and its own doc line names its
+ * caller: *"used by the user's self-service activity feed."* But this file had ALREADY ruled on
+ * exactly that shape, twenty lines above `getAuditForTargetDurable`: *"The ring is capped at
+ * MAX_IN_MEM, is per-container, and EMPTIES ON EVERY DEPLOY. A 'who did what, when' panel served
+ * from it would show a full history on a warm instance and an empty one an hour later, which is
+ * worse than showing nothing."* A player's activity feed IS that panel — the file argued against
+ * its own caller and the player-facing door was left on the ring.
+ *
+ * ⛔ AND THE CAMPAIGN IS WHAT MADE IT INTOLERABLE RATHER THAN MERELY WRONG. `/profile/account`
+ * now puts a CROSS-FILTERED COUNT on every category pill. Served from the ring those numbers are
+ * an accident of uptime: the same player, in the same minute, reads `WALLET 40` on a warm
+ * container and `WALLET 3` on one that restarted — and `MAX_IN_MEM` is 10,000 GLOBALLY, across
+ * every user, so a busy hour evicts a quiet player's whole history. A count that is honest about
+ * its filter and dishonest about its population is not an improvement on having no count.
+ *
+ * ⚠️ `total` IS A REAL `COUNT`, NOT `entries.length`, so a caller can state the cap when it bites
+ * without the `CAP + 1` trick — and `truncated` is returned because a history that quietly stops
+ * at N reads as a complete one. Same contract as `getAuditForTargetDurable`; ⛔ neither is a copy
+ * of the other, they answer different questions against the same table.
+ *
+ * ⭐ ONE INDEXED READ. `@@index([actorId, createdAt])` already exists on `AuditLog`
+ * (`prisma/schema.prisma:882`), so this is a covered range scan rather than the full scan of a
+ * 10,000-element in-memory array that the page performed on every request.
+ */
+export async function getAuditForActorDurable(
+  actorId: string,
+  opts: { limit?: number } = {},
+): Promise<{ entries: AuditEntry[]; total: number; truncated: boolean }> {
+  const limit = opts.limit ?? 200;
+  const db = prisma();
+  if (!db) {
+    // No database (tests, local no-DB runs) — the ring is all there is. Report honestly rather
+    // than implying completeness, exactly as the target-side twin does.
+    const all = [...ring].filter((e) => e.actorId === actorId).reverse();
+    return { entries: all.slice(0, limit), total: all.length, truncated: all.length > limit };
+  }
+  const where = { actorId };
+  const total = await db.auditLog.count({ where });
+  const rows = await db.auditLog.findMany({
+    where,
+    // ⛔ NEWEST FIRST — a player opens their own history to see what happened last. The page then
+    //    re-orders it through the shared comparator, but the READ must still be newest-first or
+    //    `take` would keep the oldest N rows and call them a recent-activity feed.
+    orderBy: { createdAt: "desc" },
+    take: limit,
+    select: {
+      id: true, category: true, action: true, actorId: true, targetType: true,
+      targetId: true, payload: true, ip: true, userAgent: true, createdAt: true,
+      prevHash: true, entryHash: true,
+    },
+  });
+  const entries: AuditEntry[] = rows.map((r) => ({
+    id: r.id,
+    category: r.category as AuditCategory,
+    action: r.action,
+    actorId: r.actorId,
+    targetType: r.targetType,
+    targetId: r.targetId,
+    payload: (r.payload ?? undefined) as Record<string, unknown> | undefined,
+    ip: r.ip,
+    userAgent: r.userAgent,
+    createdAt: r.createdAt.toISOString(),
+    prevHash: r.prevHash,
+    entryHash: r.entryHash,
+  }));
+  return { entries, total, truncated: total > entries.length };
+}
+
+/**
  * Verify the entire chain end-to-end. Returns the first tamper point, or null
  * if the chain is fully intact. Used by the admin dashboard's "verify chain"
  * action and by automated tests.

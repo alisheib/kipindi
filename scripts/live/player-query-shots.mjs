@@ -72,6 +72,20 @@ const SURFACES = [
   { id: "watchlist-void", path: "/watchlist?lens=void", must: "data-filter-rail", sheet: false },
   { id: "watchlist-lens-empty", path: "/watchlist?lens=void&cat=sports", must: "data-filter-rail", sheet: false },
   { id: "watchlist-search-empty", path: "/watchlist?q=zzzznomatch", must: "data-filter-rail", sheet: false },
+  /* DECLARED 2026-09-08 (PLAYER QUERY, task 4.6). ⛔ This SURFACES list is one of the four
+     declaration places §6 of the campaign doc does not name — see `count-truth-drive.mjs`.
+     ⚠️ AND THIS SCRIPT HAD NO npm KEY AT ALL until this commit, so nothing in CI ran it while the
+     campaign doc handed out its command line — `test:orphans` was red about exactly this file
+     ("nothing runs these and nothing admits it"). It is `qa:player-shots` now.
+     ⭐ `account-legacy-act` IS THE SHOT THAT MATTERS MOST HERE. `?act=` used to be passed through
+     unnarrowed, so a stale bookmark could empty the table with no control able to clear it. It now
+     falls back to `all` — and a fallback is invisible in a suite and obvious in a picture, which is
+     the whole argument for capturing it rather than asserting it. */
+  { id: "account", path: "/profile/account", must: "data-filter-rail", sheet: true },
+  { id: "account-money", path: "/profile/account?act=WALLET", must: "data-filter-rail", sheet: false },
+  { id: "account-window-empty", path: "/profile/account?when=yesterday", must: "data-filter-rail", sheet: false },
+  { id: "account-search-empty", path: "/profile/account?q=zzzznomatch", must: "data-filter-rail", sheet: false },
+  { id: "account-legacy-act", path: "/profile/account?act=lol", must: "data-filter-rail", sheet: false },
 ];
 
 const surfaces = ONLY ? SURFACES.filter((s) => s.path.startsWith(ONLY) || s.id === ONLY.replace("/", "")) : SURFACES;

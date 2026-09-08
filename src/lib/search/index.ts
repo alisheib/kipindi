@@ -17,6 +17,9 @@ export {
   NOTIFICATION_SEARCH,
   // ⭐ The two ADMIN agent schemas, from the Agent v1 console work — both view models.
   AGENT_SEARCH, AGENT_ROSTER_SEARCH,
+  // ⭐ The player's own audit trail on /profile/account — see its header for why its two
+  //    searchable fields are stored TOKENS rather than words.
+  ACCOUNT_ACTIVITY_SEARCH,
   fieldNames, allColumns,
 } from "./fields";
 export type { EntitySchema, FieldSpec, FieldKind } from "./fields";

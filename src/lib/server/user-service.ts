@@ -10,7 +10,7 @@
  *  - AML retention overrides: financial + KYC records persist for 7 years even
  *    after closure (handled in production by a scheduled redaction job).
  */
-import { audit, getAuditForActor, type AuditEntry } from "./audit";
+import { audit, getAuditForActorDurable, type AuditEntry } from "./audit";
 import { db } from "./store";
 import { dsarUserView } from "./privacy";
 import { destroySession } from "./session";
@@ -51,7 +51,20 @@ export async function exportUserData(userId: string) {
     wallet: await db.wallet.findByUserId(userId),
     responsibleGambling: await db.responsible.get(userId),
     transactions: await db.txn.findByUser(userId, 1000),
-    auditEntries: getAuditForActor(userId, 1000),
+    /**
+     * 🔴 THIS READ WAS THE RING, ON THE GDPR ART. 15 DOOR. The file a player downloads to
+     * exercise a statutory right of access contained only whatever of their events happened to
+     * survive inside a 10,000-row GLOBAL sliding window on whichever container answered — and
+     * empty after a deploy. ⛔ `audit.ts:494-508` records this EXACT defect against the ISO 27001
+     * export ("described itself as 'genesis → now' … returned at most 10,000 rows from one
+     * container") and repaired it there with `getAuditPageDurable`; the player-facing door was
+     * left behind.
+     *
+     * ⚠️ `truncated` AND `total` ARE IN THE ARTIFACT, not discarded. A 1,000-row cap on a right-of-
+     * access export is defensible; a capped export that does not say it is capped is not — the
+     * recipient cannot tell an empty history from a withheld one.
+     */
+    auditEntries: await getAuditForActorDurable(userId, { limit: 1000 }),
   };
 }
 
@@ -119,7 +132,33 @@ export async function closeAccount(userId: string, reason?: string): Promise<Ser
   return { ok: true, data: { closedAt } };
 }
 
-/** Get a user's own activity feed — what they themselves have done. */
-export function getOwnActivity(userId: string, limit = 100): AuditEntry[] {
-  return getAuditForActor(userId, limit);
+/**
+ * A user's own activity feed — what they themselves have done.
+ *
+ * 🔴 IT WAS THE RING, AND `audit.ts` HAD ALREADY RULED THAT OUT FOR THIS SHAPE. `getAuditForActor`
+ * reads a 10,000-row, GLOBAL, per-container sliding window that empties on every deploy; that
+ * file's own note on `getAuditForTargetDurable` says a "who did what, when" panel served from it
+ * *"would show a full history on a warm instance and an empty one an hour later, which is worse
+ * than showing nothing."* This feed is that panel — and `getAuditForActor`'s doc line names it as
+ * the caller, so the file argued against itself.
+ *
+ * ⛔ THE PLAYER QUERY CAMPAIGN IS WHAT FORCED IT (task 4.6). `/profile/account` now renders a
+ * cross-filtered COUNT on every category pill. Over the ring those counts are an accident of
+ * uptime — `WALLET 40` on a warm container, `WALLET 3` after a restart, same player, same minute —
+ * and a busy hour evicts a quiet player's history entirely because the cap is platform-wide.
+ *
+ * ⚠️ NOW ASYNC, AND THAT IS THE VISIBLE COST. One indexed read on `@@index([actorId, createdAt])`
+ * replaces a full scan of a 10,000-element in-memory array per request, so the page should end up
+ * faster — the same argument task 2.3 made for `titlesByIds`. ⛔ Measure it rather than trust it:
+ * `AuditLog` is the largest table in the product.
+ *
+ * ⚠️ `total` AND `truncated` ARE RETURNED AND THE CALLER MUST RENDER THEM. A history that quietly
+ * stops at `limit` reads as a complete one — the silent-truncation failure this repo has now been
+ * bitten by on the Decided table, the ISO export and `/updown/history`.
+ */
+export async function getOwnActivity(
+  userId: string,
+  limit = 100,
+): Promise<{ entries: AuditEntry[]; total: number; truncated: boolean }> {
+  return getAuditForActorDurable(userId, { limit });
 }

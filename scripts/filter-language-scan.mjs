@@ -67,6 +67,19 @@ const SURFACES = [
   // `data-filter-rail` wrappers in `notifications-bar.tsx`, which emits one.
   { id: "/notifications", path: "/notifications", auth: true, rails: 1 },
   { id: "/profile/activity", path: "/profile/activity", auth: true, rails: 1 },
+  // RE-DECLARED 2026-09-08 (PLAYER QUERY, task 4.6). Still `rails: 1` — `account-bar.tsx` emits
+  // exactly one `data-filter-rail` wrapper, re-derived by counting them in that file rather than
+  // carried over.
+  // ⚠️ `rails: 1` IS A CONDITIONAL 1 ON THIS ROUTE, for the same reason it is on `/watchlist`, and
+  // it was NOT documented before — the row passed because the seeded persona happened to qualify.
+  // The bar is withheld when the player has NO audit rows at all (a bar of pills all reading 0
+  // above "no activity yet" is a row of controls that cannot do anything, §A5).
+  // ⛔ THE OLD CONDITION WAS MUCH WORSE AND IS THE DEFECT TASK 4.6 FIXED: the rail rendered only on
+  // `activityCategories.length > 1`, so a player with 300 events in a SINGLE category got no rail
+  // at all — while `?act=` stayed applied, which is a filtered empty table with nothing to clear
+  // it. The test is now whether there are ROWS, not whether there are two kinds of row.
+  // ⛔ If this row goes red, check the FIXTURE (does the persona have any audit history?) before
+  // the page.
   { id: "/profile/account", path: "/profile/account", auth: true, rails: 1 },
   { id: "/updown/history", path: "/updown/history", auth: true, rails: 1 },
   // DECLARED 2026-09-08 (PLAYER QUERY, task 4.3). ⚠️ `rails: 1` IS A CONDITIONAL 1 ON THIS ROUTE

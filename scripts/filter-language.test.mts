@@ -134,7 +134,14 @@ const SURFACES = [
      go red here on copy nobody has inspected; if it does, that is the FINDING. */
   "src/app/notifications/notifications-bar.tsx", // /notifications — 5 lenses + sort
   "src/app/profile/activity/page.tsx",          // /profile/activity — period
-  "src/app/profile/account/page.tsx",           // /profile/account — activity category
+  /* ⚠️ RE-DECLARED 2026-09-08 (PLAYER QUERY, task 4.6). ⛔ THE HOOK MOVED WITH THE CONTROLS, WHICH
+     IS WHY THIS LINE MOVED — the file named here must always be the one that emits
+     `data-filter-rail`. This is the one route in stage 4 that already CARRIED the hook (since the
+     G-1 paging repair), so this is a move rather than an addition: `page.tsx` no longer emits one.
+     What the rail lacked was a count on any pill, a date window, an order and a search — and its
+     `?act=` was passed through unnarrowed, so `?act=lol` emptied the table and drew no control
+     that could clear it. */
+  "src/app/profile/account/account-bar.tsx",    // /profile/account — activity category + when
 ];
 
 /**

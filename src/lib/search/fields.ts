@@ -338,6 +338,41 @@ export const AGENT_ROSTER_SEARCH: EntitySchema = {
   viewModel: true,
 };
 
+/**
+ * A PLAYER'S OWN AUDIT TRAIL — the activity table on `/profile/account` (task 4.6).
+ *
+ * ⛔ `viewModel: true`. The rows come from `getOwnActivity`, which reads the in-memory audit RING
+ * (`getAuditForActor`) rather than a table this process can put a `where` on — `market-dal` never
+ * sees this query. `matchesQuery` only.
+ *
+ * ⚠️ THIS IS THE ONE PLAYER SCHEMA WHOSE SEARCHABLE FIELDS ARE STORED TOKENS, and it is deliberate
+ * rather than an oversight of §L3. Every other player surface searches WORDS — a market title, a
+ * notification body — because those are what the page renders. This table renders `e.category` and
+ * `e.action` verbatim in its Category and Action columns, so the token IS the visible word here.
+ * ⛔ A search that matched something the reader cannot see would be the opposite failure:
+ * `NOTIFICATION_SEARCH`'s note refuses `event` for exactly that reason — *"it is not rendered
+ * anywhere a player can see"* — and the same test admits these two.
+ *
+ * ⚠️ `category` IS `text`, NOT `exact`, THOUGH IT IS AN ENUM. The lens strip already gives exact
+ * category selection with a real count on every pill; what the search adds is the ability to type
+ * `wall` and reach WALLET without knowing the enum is upper-case. An `exact` kind would make
+ * `category:wallet` silently match nothing while looking like it worked — the shape this file's
+ * own header calls "advertised, never executed".
+ *
+ * ⛔ NO `id` FIELD. Every other schema offers one because an operator or a deep link carries a row
+ * id; an audit entry id appears on no screen, in no email and in no URL a player can hold, so a
+ * chip for it would teach a vocabulary nothing speaks.
+ */
+export const ACCOUNT_ACTIVITY_SEARCH: EntitySchema = {
+  fields: {
+    action: { columns: ["action"], kind: "text" },
+    category: { columns: ["category"], kind: "text" },
+  },
+  // What a bare token searches — both columns the table actually prints.
+  default: ["action", "category"],
+  viewModel: true,
+};
+
 /** The names a surface should offer as clickable chips in the syntax help. */
 export function fieldNames(s: EntitySchema): string[] {
   return Object.keys(s.fields);
