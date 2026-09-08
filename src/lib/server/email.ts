@@ -84,7 +84,41 @@ const OUTBOX_MAX = 500;
 // would still find a const captured as `false`.
 const outboxArmed = (): boolean =>
   process.env.EMAIL_OUTBOX_CAPTURE === "1" && process.env.NODE_ENV !== "production";
-const _outbox: { to: string; subject: string; html: string; tag?: string }[] = [];
+/**
+ * 🔴 PINNED ON `globalThis`, FOR THE REASON THIS FILE ALREADY RECORDS 100 LINES DOWN.
+ *
+ * Next.js hands route handlers a DIFFERENT MODULE INSTANCE from server actions and RSC, so a
+ * module-scope array is per-route: the mail a server action captured is invisible to
+ * `/api/dev-test/last-otp`, which reads an outbox that has always been empty. The email-health
+ * counter is pinned for exactly this trap and says so; the outbox was not, and the symptom is
+ * the worst kind — an end-to-end drive that reports "no mail for that address" while the mail
+ * was captured perfectly well, one module instance away.
+ *
+ * ⛔ This changes nothing about production: `outboxArmed()` is false whenever
+ * `NODE_ENV === "production"`, so the array is never written there.
+ */
+type OutboxEntry = { to: string; subject: string; html: string; tag?: string };
+declare global {
+  // eslint-disable-next-line no-var
+  var __50PICK_EMAIL_OUTBOX: OutboxEntry[] | undefined;
+}
+const outbox = (): OutboxEntry[] => (globalThis.__50PICK_EMAIL_OUTBOX ??= []);
+
+/**
+ * ⭐ IS A `stub` SEND STILL RETRIEVABLE? — the one question a surface needs that `reason`
+ * alone cannot answer.
+ *
+ * `sendEmail` returns `stub` when no provider is configured. In PRODUCTION that means nobody
+ * received anything, and a surface that then shows a code box has built a dead end. On a dev
+ * or test run with the outbox armed the mail IS there and readable, which is how every
+ * end-to-end drive gets its codes. Two different facts behind one `reason`, so the boolean is
+ * named rather than inferred at each call site.
+ *
+ * ⛔ IT CANNOT LOOSEN PRODUCTION: `outboxArmed()` is already false whenever
+ * `NODE_ENV === "production"`, whatever the env var says — the same guard the capture itself
+ * uses, not a second copy of it.
+ */
+export const stubIsRetrievable = (): boolean => outboxArmed();
 
 /**
  * Everything captured so far (empty unless armed).
@@ -99,11 +133,11 @@ const _outbox: { to: string; subject: string; html: string; tag?: string }[] = [
  * Arm it with `EMAIL_OUTBOX_CAPTURE=1` (ignored in production) and read the `to` field.
  */
 export function emailOutbox(): readonly { to: string; subject: string; html: string; tag?: string }[] {
-  return _outbox;
+  return outbox();
 }
 /** Drop captured mail — call between test cases so assertions can't read stale sends. */
 export function clearEmailOutbox(): void {
-  _outbox.length = 0;
+  outbox().length = 0;
 }
 
 /**
@@ -269,8 +303,8 @@ export async function sendEmail({ to, subject, html, tag, trackLinks = true }: S
   // Capture BEFORE the skip/suppression returns below, so a test can assert on
   // mail addressed to a stub/suppressed address too.
   if (outboxArmed()) {
-    if (_outbox.length >= OUTBOX_MAX) _outbox.shift();
-    _outbox.push({ to, subject, html, tag });
+    if (outbox().length >= OUTBOX_MAX) outbox().shift();
+    outbox().push({ to, subject, html, tag });
   }
   // Skip stub addresses (phone-only users without email)
   if (!to || to.endsWith("@stub") || to.endsWith("@none")) {

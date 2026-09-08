@@ -96,9 +96,12 @@ export function InviteClient({
              * you a code" after a suppressed or failed send is the same class of lie the SMS
              * copy told, and it would strand the invitee on a screen with no way forward.
              */
-            const delivery = r.data?.delivery;
-            if (delivery === "suppressed") { setError(t.agent.inviteOtpSuppressed); return; }
-            if (delivery === "failed" || delivery === "stub" || delivery === "no-address") { setError(t.agent.inviteOtpUndeliverable); return; }
+            // ⭐ `deliverable`, NOT the raw reason. The server owns that judgement — a `stub`
+            // send is retrievable where the test outbox is armed and a dead end in production,
+            // and only the server can tell those apart. `suppressed` keeps its own sentence
+            // because the remedy differs: that address will NEVER accept mail.
+            if (r.data?.delivery === "suppressed") { setError(t.agent.inviteOtpSuppressed); return; }
+            if (r.data?.deliverable === false) { setError(t.agent.inviteOtpUndeliverable); return; }
             setError(null); setSent(true);
           })}>
           {t.agent.inviteOtpSend}

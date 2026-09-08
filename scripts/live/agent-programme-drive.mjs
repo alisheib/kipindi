@@ -15,9 +15,9 @@
  *   4 · Agent     — /agent CTA → dashboard (code · link · QR) · /agent/status redirects ·
  *                   register page shows the Verified badge for the code · a recruit registers
  *                   through the link (OTP) and appears on the roster
- *   5 · Invitee   — officer issues an invitation → link → create account (OTP) → "Text me a
- *                   code" (OTP) → accept → application opens; officer's Approve names why it
- *                   cannot fire yet
+ *   5 · Invitee   — officer issues an invitation BY EMAIL → link → create account (OTP) →
+ *                   "Email me a code" → the code is read from the server outbox → accept →
+ *                   application opens; officer's Approve names why it cannot fire yet
  *   6 · Player    — an ordinary signed-in player finds no invite / bonus solicitation
  *
  * ⛔ Every assertion is against RENDERED TEXT OR GEOMETRY, never against a status code alone.
@@ -227,7 +227,11 @@ const officer = await officerCtx.newPage();
   // The KPI label is painted uppercase by CSS and innerText carries the transform — compare case-blind.
   ok("1.kpi · the four KPIs are on screen", /Awaiting review/i.test(t) && /Active agents/i.test(t) && /Commission payable/i.test(t) && /Refunds owed/i.test(t), t.slice(0, 200));
   ok("1.empty · the queue says so, in words", /Nothing to review/.test(t));
-  ok("1.invite · the invitation composer is on the Applications tab", /Invitations/.test(t) && (await officer.locator('input[name="phone"]').count()) > 0);
+  // ⭐ AN EMAIL FIELD, NOT A PHONE ONE (2026-09-08). ⛔ The composer is asserted by the input
+  // it actually renders — a locator left pointing at the old field would have gone on passing
+  // for as long as ANY page on the console had a phone input, which is most of them.
+  ok("1.invite · the invitation composer is on the Applications tab, addressed by email",
+    /Invitations/.test(t) && (await officer.locator('input[name="email"]').count()) > 0 && (await officer.locator('input[name="phone"]').count()) === 0);
   await shot(officer, "1_admin-agents-applications-1280");
   await goto(officer, "/admin/agents?tab=settings");
   const ts = await text(officer);
@@ -290,7 +294,12 @@ const applicant = await applicantCtx.newPage();
   await clickButton(applicant, /^(Continue|Next|Endelea)$/i);
   // Payment — receipt first, then the reference.
   await attachAll(applicant, 1);
-  await applicant.locator('input[placeholder="As printed on the receipt"]').fill("RCPT-DRIVE-001");
+  // ⛔ BY ITS `data-field`, NOT BY ITS PLACEHOLDER. The placeholder is COPY — it changed on
+  // 2026-09-08 from a description ("As printed on the receipt") to a literal example, per
+  // finding A-5 — and a drive keyed to copy breaks every time a word improves. `data-field`
+  // is structure: it is the address a refusal names, so it cannot drift without the refusal
+  // drifting too, and `test:validation-focus` §4 already holds that.
+  await applicant.locator('[data-field="feeReference"] input').fill("RCPT-DRIVE-001");
   await clickButton(applicant, /^Save/i);
   await sleep(1200);
   await applicant.getByText(/I accept the agent terms/).click();
@@ -342,7 +351,24 @@ const applicant = await applicantCtx.newPage();
   ok("3.gated · every document image loads through /api/admin/agent-doc", tileCount === 8 && loaded === 8, `${loaded}/${tileCount}`);
   // Reconcile.
   // The attestation is typed, never pre-filled — the officer reads the receipt.
-  await officer.locator('input[name="attestedTzs"]').fill("100000");
+  /**
+   * 🔴 THE ATTESTED AMOUNT IS READ OFF THE PAGE, NOT TYPED.
+   *
+   * This filled "100000" — correct only while the fee was VAT-INCLUSIVE. Management moved the
+   * treatment to EXCLUSIVE on 2026-09-08 and the fee became TZS 118,000, so the drive attested
+   * the NET against the TOTAL and `reconcileFee` refused it, exactly as it should:
+   *   "The receipt reads TZS 100,000; the fee is TZS 118,000."
+   * ⭐ The refusal was the PRODUCT working. The defect was the fixture — the same one
+   * `agent-application-security` carried, where one wrong figure failed four legs downstream.
+   *
+   * ⛔ SO IT READS THE FIGURE THE OFFICER IS LOOKING AT. The rail prints the expected fee
+   * above this input; a drive that re-derives it from config would just be a second place the
+   * number lives, and one that types a literal is wrong the next time an operator edits it.
+   */
+  const feeShown = (await officer.locator('input[name="attestedTzs"]').locator("xpath=ancestor::*[self::div][1]").innerText().catch(() => "")) || (await text(officer));
+  const feeDigits = (feeShown.match(/TZS\s?([\d,]{4,})/) ?? [])[1]?.replace(/,/g, "");
+  ok("3.feeread · the rail states the fee the officer must attest, so the drive can read it", !!feeDigits && Number(feeDigits) > 0, String(feeDigits));
+  await officer.locator('input[name="attestedTzs"]').fill(feeDigits ?? "118000");
   await officer.locator('input[name="statementRef"]').fill("STMT-DRIVE-1");
   await officer.locator('input[name="sourceAccount"]').fill("07•• ••• 877");
   await clickButton(officer, /Reconcile/i);

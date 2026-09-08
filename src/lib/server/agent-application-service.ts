@@ -59,6 +59,7 @@ import {
   sendEmailToUser, agentApprovedHtml, agentRejectedHtml, agentInfoRequestedHtml, agentFeeRefundedHtml,
   agentApplicationSubmittedAdminHtml, agentInvitationHtml, agentDeactivatedHtml,
   agentRevokedHtml, agentRateChangedHtml, agentInviteOtpHtml,
+  stubIsRetrievable,
   type SendResult,
 } from "./email";
 import { kycNotifyEmails } from "./kyc-service";
@@ -1293,7 +1294,7 @@ export function maskEmailForAudit(email: string): string {
   return `${email[0]}•••${email.slice(at)}`;
 }
 
-export async function requestInvitationOtp(token: string): Promise<ServiceResult<{ expiresAt: string; delivery: SendResult["reason"] }>> {
+export async function requestInvitationOtp(token: string): Promise<ServiceResult<{ expiresAt: string; delivery: SendResult["reason"]; deliverable: boolean }>> {
   const p = await invitationPreview(token);
   if (!p.ok) return { ok: false, error: "This invitation is no longer valid.", code: "INVALID" };
   const inv = (await db.agentInvitation.findById(p.invitationId))!;
@@ -1322,7 +1323,18 @@ export async function requestInvitationOtp(token: string): Promise<ServiceResult
     trackLinks: false,
   });
   audit({ category: "AUTH", action: "otp.agent_invite.sent", actorId: null, targetType: "Email", targetId: maskEmailForAudit(ch.address), payload: { invitationId: inv.id, delivery: delivery.reason } });
-  return { ok: true, data: { expiresAt, delivery: delivery.reason } };
+  /**
+   * ⭐ TWO FACTS, TWO FIELDS. `delivery` is what the provider actually said — it goes to the
+   * audit row and to an officer diagnosing a failure. `deliverable` is the only thing the
+   * INVITEE'S screen needs: may it open a code box, or is that a dead end?
+   *
+   * ⛔ A `stub` send is deliverable ONLY where the outbox is armed, which `stubIsRetrievable`
+   * decides and which is false in production whatever the env says. Without this the local
+   * end-to-end drive could never read a code — and papering over it by treating every `stub`
+   * as sent would have shipped a code box that a misconfigured deployment can never satisfy.
+   */
+  const deliverable = delivery.reason === "sent" || (delivery.reason === "stub" && stubIsRetrievable());
+  return { ok: true, data: { expiresAt, delivery: delivery.reason, deliverable } };
 }
 
 /**
