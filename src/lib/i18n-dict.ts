@@ -1457,7 +1457,15 @@ export const dict = {
       title: "Your activity",
       settingSub: "Your staked, won & net — plus your limits",
       periodAria: "Filter by period",
-      periodWeek: "This week", periodMonth: "This month", periodAll: "All time",
+      /* 🔴 `periodWeek` / `periodMonth` / `periodAll` ARE DELETED (PLAYER QUERY, task 4.13). They
+         read "This week" / "This month" over ROLLING 7- and 30-day windows — on 8 September "This
+         month" showed 9 August to 8 September, mostly August — in all three locales, on the one
+         page whose own header calls itself a money-honesty surface. ⛔ An A-5 breach: a statement
+         about a span that is not the span. `/profile/activity` reads `t.common.range7d` /
+         `range30d` / `rangeAll` now, the same words every other windowed surface uses.
+         ⚠️ THEY ARE REMOVED RATHER THAN CORRECTED because a false label left in a dictionary is a
+         false label waiting to be re-adopted, and the honest words already existed. Re-derived
+         before deleting: zero call sites outside this file. */
       emptyTitle: "No activity yet",
       emptyBody: "Once you deposit or place a bet, your money summary shows here.",
       browseMarkets: "Browse markets",
@@ -3657,7 +3665,6 @@ export const dict = {
       title: "Shughuli zako",
       settingSub: "Ulizoweka, ulizoshinda na salio — pamoja na vikomo vyako",
       periodAria: "Chuja kwa kipindi",
-      periodWeek: "Wiki hii", periodMonth: "Mwezi huu", periodAll: "Muda wote",
       emptyTitle: "Bado hakuna shughuli",
       emptyBody: "Ukiweka fedha au kuweka dau, muhtasari wa fedha zako utaonekana hapa.",
       browseMarkets: "Vinjari masoko",
@@ -5712,7 +5719,6 @@ export const dict = {
       title: "你的活动",
       settingSub: "你的投注、盈利与净额——以及你的限额",
       periodAria: "按时间段筛选",
-      periodWeek: "本周", periodMonth: "本月", periodAll: "全部时间",
       emptyTitle: "暂无活动",
       emptyBody: "存款或下注后，你的资金摘要将显示在此处。",
       browseMarkets: "浏览市场",

@@ -47,8 +47,39 @@ export default async function ActivityPage({ searchParams }: { searchParams: Pro
     getRgUsage(session.userId),
   ]);
 
+  /**
+   * ⭐ PLAYER QUERY, TASK 4.13 — AND THE BOARD NAMED THE WRONG DEFECT.
+   *
+   * The plan said *"adopt the shared window vocabulary so 'last 30 days' means the same span as on
+   * `/wallet`."* That is ALREADY TRUE, byte for byte: `periodSince` returns `now - 7 * DAY_MS` and
+   * `now - 30 * DAY_MS`, and `windows.ts`' `inWindow` computes `ms >= nowMs - 7 * DAY_MS` and
+   * `ms >= nowMs - 30 * DAY_MS`. The spans were never in disagreement.
+   *
+   * 🔴 THE DEFECT IS THE WORD. These rolling windows were labelled *"This week"* and *"This
+   * month"* — `Wiki hii` / `Mwezi huu`, 本周 / 本月 — in all three locales. On 8 September, "This
+   * month" showed **9 August to 8 September**: mostly August. A CALENDAR word over a ROLLING
+   * window, on the one page whose own header calls itself a money-honesty surface. ⛔ That is an
+   * A-5 breach — a statement about a span that is not the span — and it is the reason to do this
+   * task at all.
+   *
+   * ⭐ SO THE LABELS NOW COME FROM THE SHARED VOCABULARY ITSELF (`t.common.range7d` /
+   * `range30d` / `rangeAll`), which is what "adopt the vocabulary" can honestly mean here: the
+   * same words `/wallet`, `/positions`, `/results` and `/updown/history` put on the same spans.
+   * A player reading "30 days" on two pages is now entitled to the same window AND is told the
+   * same thing about it.
+   *
+   * ⛔ THE IDS STAY `week|month|all`, AND THAT IS DELIBERATE. `?period=` is this page's own param
+   * and pre-dates the shared vocabulary; renaming the values would break every bookmark and
+   * in-product link for the sake of matching a convention no player can see — Stage 3's ruling,
+   * applied. ⚠️ AND `today`/`yesterday` CANNOT BE ADOPTED YET, which is why this is a words-only
+   * change: `yesterday` is the only preset with a TWO-SIDED bound, and the entire read is
+   * one-sided — `sumUserByTypesSince` builds `createdAt: { gte: … }` with no upper bound anywhere.
+   * Adopting it needs a new bounded aggregate AND its in-memory twin, and `test:dal-parity` checks
+   * stored FIELDS rather than method signatures, so a twin that quietly dropped the upper bound
+   * would leave every suite green while `yesterday` returned all-time. Filed, not faked.
+   */
   const periodLabel: Record<ActivityPeriod, string> = {
-    week: t.activity.periodWeek, month: t.activity.periodMonth, all: t.activity.periodAll,
+    week: t.common.range7d, month: t.common.range30d, all: t.common.rangeAll,
   };
 
   return (
@@ -73,14 +104,27 @@ export default async function ActivityPage({ searchParams }: { searchParams: Pro
         ))}
       </nav>
 
-      {summary.empty ? (
+      {/**
+        * 🔴 THE EMPTY STATE SWALLOWED THE RESPONSIBLE-GAMBLING PANEL. `summary.empty` describes the
+        * MONEY SUMMARY for the chosen window — so a player who had set a deposit limit and simply
+        * had a quiet 30 days saw no limits at all: not their cap, not their usage, not the link to
+        * change them. The panel below is the one thing on this page that is NOT about the window
+        * (its meters are daily/weekly/monthly by definition), and it was hidden by a window's
+        * emptiness.
+        *
+        * ⛔ AND IT IS AN RG SURFACE, WHICH IS WHY THIS IS NOT A LAYOUT NICETY. A player looking for
+        * their own limits — the population most likely to be looking — was shown "no activity yet"
+        * and invited to go and bet. ⭐ Only the money section is conditional now.
+        */}
+      {summary.empty && (
         <EmptyState
           kind="positions"
           title={t.activity.emptyTitle}
           body={t.activity.emptyBody}
           action={<Link href={"/markets" as never} className="btn btn-primary btn-sm">{t.activity.browseMarkets}</Link>}
         />
-      ) : (
+      )}
+      {!summary.empty && (
         <>
           {/* Money-honesty tiles — all wrapped in <Cash> (privacy mask). */}
           <section className="rounded-xl glass-panel p-5">
@@ -105,22 +149,25 @@ export default async function ActivityPage({ searchParams }: { searchParams: Pro
             </div>
             <p className="mt-3 text-body-sm leading-relaxed text-text-subtle">{t.activity.netNote}</p>
           </section>
-
-          {/* Responsible-gambling limits — used vs your cap (real, matches the gate). */}
-          <section className="rounded-xl glass-panel p-5 space-y-4">
-            <div className="flex items-center justify-between gap-3">
-              <p className="gilt-eyebrow">{t.activity.limitsEyebrow}</p>
-              <Link href="/profile/responsible-gambling" className="inline-flex items-center gap-1 font-mono text-[11px] text-accent-400 hover:text-text underline">
-                {t.activity.manageLimits}<I.chevronRight s={12} />
-              </Link>
-            </div>
-            <LimitMeter label={t.activity.depositDaily}   used={rg.dailyDeposit.used}   limit={rg.dailyDeposit.limit}   t={t} />
-            <LimitMeter label={t.activity.depositWeekly}  used={rg.weeklyDeposit.used}  limit={rg.weeklyDeposit.limit}  t={t} />
-            <LimitMeter label={t.activity.depositMonthly} used={rg.monthlyDeposit.used} limit={rg.monthlyDeposit.limit} t={t} />
-            <LimitMeter label={t.activity.lossDaily}      used={rg.dailyLoss.used}      limit={rg.dailyLoss.limit}      t={t} tone="no" />
-          </section>
         </>
       )}
+
+      {/* ⛔ RESPONSIBLE-GAMBLING LIMITS — OUTSIDE THE WINDOW CONDITIONAL, ALWAYS. Its meters are
+          daily / weekly / monthly by definition and have nothing to do with `?period=`; hiding
+          them because the chosen window happened to be quiet took a player's own limits away from
+          them at exactly the moment they were most likely to be looking for them. */}
+      <section className="rounded-xl glass-panel p-5 space-y-4">
+        <div className="flex items-center justify-between gap-3">
+          <p className="gilt-eyebrow">{t.activity.limitsEyebrow}</p>
+          <Link href="/profile/responsible-gambling" className="inline-flex items-center gap-1 font-mono text-[11px] text-accent-400 hover:text-text underline">
+            {t.activity.manageLimits}<I.chevronRight s={12} />
+          </Link>
+        </div>
+        <LimitMeter label={t.activity.depositDaily}   used={rg.dailyDeposit.used}   limit={rg.dailyDeposit.limit}   t={t} />
+        <LimitMeter label={t.activity.depositWeekly}  used={rg.weeklyDeposit.used}  limit={rg.weeklyDeposit.limit}  t={t} />
+        <LimitMeter label={t.activity.depositMonthly} used={rg.monthlyDeposit.used} limit={rg.monthlyDeposit.limit} t={t} />
+        <LimitMeter label={t.activity.lossDaily}      used={rg.dailyLoss.used}      limit={rg.dailyLoss.limit}      t={t} tone="no" />
+      </section>
     </PageContainer>
   );
 }
