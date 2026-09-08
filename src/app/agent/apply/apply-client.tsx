@@ -240,7 +240,7 @@ export function ApplyClient({ app, documents, missing, kycGate, fee, limits }: P
               {/* ⭐ The applicant is uploading SOMEONE ELSE'S identity document. The admin tile
                   says "3rd party" and the terms explain the retention, but the person actually
                   handing it over was never told either. */}
-              <p className="text-caption leading-relaxed text-text-faint">{t.agent.refIdNote}</p>
+              <p className="text-body-sm leading-relaxed text-text-faint">{t.agent.refIdNote}</p>
             </div>
           ))}
           <div className="rounded-xl glass-panel p-4 space-y-3">
@@ -423,7 +423,7 @@ function Slot({ docType, label, doc, infoRequired, onDone, maxMb }: {
         className={`w-full min-h-[96px] overflow-hidden rounded-md border-2 border-dashed p-3 text-center transition-colors ${
           locked ? "border-border bg-bg-overlay/30 cursor-not-allowed opacity-70"
           : working ? "border-brand-400 bg-bg-overlay/40 cursor-wait"
-          : rejected ? "border-warning-500 bg-warning-500/[0.08] cursor-pointer hover:border-warning-400"
+          : rejected ? "border-warning-500 bg-warning-500/[0.08] cursor-pointer hover:border-warning-fg"
           : done ? "border-yes-700 bg-yes-500/[0.07] cursor-pointer hover:border-yes-500"
           : "border-border bg-bg-overlay/40 hover:border-brand-400 cursor-pointer"
         }`}>

@@ -1,5 +1,6 @@
 import { commissionWaterfall, type WaterfallRates, type WaterfallStepId } from "@/lib/agent-commission";
 import { fill, formatTzs } from "@/lib/utils";
+import { fillNodes } from "@/lib/fill-nodes";
 import type { Dict } from "@/lib/i18n-dict";
 
 /**
@@ -75,68 +76,88 @@ export function CommissionWaterfall({
             bottom row as a forecast of their own earnings. */}
         <p className="font-mono text-micro uppercase eyebrow text-text-faint">{t.agent.wfEyebrow}</p>
       </div>
+      {/* ⚠️ THE FIGURE KEEPS THE MONEY LADDER even inside a sentence (§T5 · §M4): the prose
+          keeps its voice, the number keeps mono + tabular figures. `test:type-scale` §1 fails
+          a money element that inherits a proportional family from the paragraph around it. */}
       <p className="mt-1 text-body-sm leading-relaxed text-text-muted">
-        {fill(t.agent.wfBasis, { amount: formatTzs(basisTzs) })}
+        {fillNodes(t.agent.wfBasis, { amount: <span className="font-mono tabular-nums">{formatTzs(basisTzs)}</span> })}
       </p>
 
-      <table className="mt-3 w-full border-collapse text-left">
-        <caption className="sr-only">{t.agent.wfTitle}</caption>
-        <thead>
-          <tr className="border-b border-border">
-            <th scope="col" className="pb-1.5 font-mono text-micro uppercase eyebrow font-normal text-text-faint">{t.agent.wfColParam}</th>
-            <th scope="col" className="pb-1.5 text-right font-mono text-micro uppercase eyebrow font-normal text-text-faint">{t.agent.wfColAmount}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {steps.map((s) => {
-            const label = s.ratePct === null
-              ? a[LABEL_KEY[s.id]]
-              : fill(a[LABEL_KEY[s.id]], { pct: formatPct(s.ratePct) });
-            return (
-              <tr
-                key={s.id}
+      {/**
+        * ⛔ A `<dl>`, NOT A `<table>`, AND THAT IS THE HOUSE PATTERN RATHER THAN AN EVASION.
+        *
+        * Every `<table>` in this product is in the admin console and wears `.admin-tbl`
+        * (`test:ui-consistency`, rule `table-not-admin-tbl`). There is no player table skin in
+        * the kit, and there should not be one for a single panel: borrowing the console's
+        * density and ink onto a player page, or minting a second table style beside it, are
+        * both the "one-off that duplicates a primitive" §K5 names as how a design system dies.
+        *
+        * ⭐ AND A DESCRIPTION LIST IS WHAT THIS ACTUALLY IS. Every other label/figure block on
+        * a player surface — the fee panel here, the receipt rows on the wallet confirms, the
+        * workstation's applicant card — is a `<dl>`. Eight labelled amounts is a description
+        * list, and a screen reader reads the pairing without needing column headers.
+        */}
+      <dl className="mt-3">
+        <div className="flex items-baseline justify-between gap-4 border-b border-border pb-1.5">
+          <span className="font-mono text-micro uppercase eyebrow text-text-faint">{t.agent.wfColParam}</span>
+          <span className="font-mono text-micro uppercase eyebrow text-text-faint">{t.agent.wfColAmount}</span>
+        </div>
+        {steps.map((s) => {
+          const label = s.ratePct === null
+            ? a[LABEL_KEY[s.id]]
+            : fill(a[LABEL_KEY[s.id]], { pct: formatPct(s.ratePct) });
+          return (
+            <div
+              key={s.id}
+              className={`flex items-start justify-between gap-4 ${rowPad(s.id)}${
                 // The final row is separated by a rule rather than a colour: it is a total,
-                // and a total that changes hue would be reaching for the money palette.
-                className={s.id === "netPayout" ? "border-t border-border-strong" : undefined}
-              >
-                <th scope="row" className={cellPad(s.id)}>
-                  <span className={s.deduction
-                    // ⭐ A statutory deduction is INDENTED and prefixed, so the eye reads it
-                    // as coming out of the line above rather than as a step of its own —
-                    // which is exactly how management's document sets these three rows.
-                    ? "block pl-3 text-body-sm font-normal leading-snug text-text-muted before:mr-1.5 before:text-text-faint before:content-['·']"
+                // and a total that changed hue would be reaching for the money palette.
+                s.id === "netPayout" ? " border-t border-border-strong" : ""
+              }`}
+            >
+              <dt className={s.deduction ? "min-w-0 pl-3" : "min-w-0"}>
+                <span className={
+                  s.deduction
+                    // ⭐ A statutory deduction is INDENTED and prefixed, so the eye reads it as
+                    // coming out of the line above rather than as a step of its own — exactly
+                    // how management's document sets these three rows.
+                    ? "block text-body-sm leading-snug text-text-muted before:mr-1.5 before:text-text-faint before:content-['·']"
                     : s.id === "netPayout"
                       ? "block text-body-sm font-bold leading-snug text-text"
                       : s.subtotal
                         ? "block text-body-sm font-semibold leading-snug text-text"
-                        : "block text-body-sm font-normal leading-snug text-text"}>
-                    {label}
-                  </span>
-                  <span className={s.deduction
-                    ? "mt-0.5 block pl-3 text-caption leading-snug text-text-faint"
-                    : "mt-0.5 block text-caption leading-snug text-text-faint"}>
-                    {a[NOTE_KEY[s.id]]}
-                  </span>
-                </th>
-                <td className={`${cellPad(s.id)} align-top text-right`}>
-                  <span className={`amount tabular-nums ${s.id === "netPayout"
-                    ? "text-body font-bold text-text"
-                    : s.deduction
-                      ? "text-body-sm text-text-muted"
-                      : s.subtotal
-                        ? "text-body-sm font-semibold text-text"
-                        : "text-body-sm text-text"}`}>
-                    {/* A deduction is shown with a minus so the column can be added up by
-                        eye. ⛔ Never `text-no-*`: red is losing MONEY (§B2), and a tax line
-                        in an illustration is not a loss the reader has suffered. */}
-                    {s.deduction ? `−${formatTzs(s.amountTzs)}` : formatTzs(s.amountTzs)}
-                  </span>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+                        : "block text-body-sm leading-snug text-text"
+                }>
+                  {label}
+                </span>
+                {/* ⚠️ `text-body-sm`, NOT an eyebrow and NOT `text-caption`. These notes are
+                    management's own full SENTENCES: §T3 reserves the sub-micro uppercase tier
+                    for microlabels ("a SENTENCE in an eyebrow's clothes" is one of the seven
+                    roles the tracking census names), and §T4 puts a 12.5px floor under reading
+                    copy — `text-caption` is 11px. The hierarchy against the parameter name
+                    above comes from COLOUR, which is the lever §T leaves open. */}
+                <span className="mt-0.5 block text-body-sm leading-snug text-text-faint">
+                  {a[NOTE_KEY[s.id]]}
+                </span>
+              </dt>
+              <dd className={`amount shrink-0 tabular-nums text-right ${
+                s.id === "netPayout"
+                  ? "text-body font-bold text-text"
+                  : s.deduction
+                    ? "text-body-sm text-text-muted"
+                    : s.subtotal
+                      ? "text-body-sm font-semibold text-text"
+                      : "text-body-sm text-text"
+              }`}>
+                {/* A deduction carries a minus so the column can be added up by eye.
+                    ⛔ Never `text-no-*`: red is money LOST (§B2), and a tax line in a worked
+                    example is not a loss the reader has suffered. */}
+                {s.deduction ? `−${formatTzs(s.amountTzs)}` : formatTzs(s.amountTzs)}
+              </dd>
+            </div>
+          );
+        })}
+      </dl>
 
       {/* ⭐ THE QUESTION THE TABLE RAISES AND ONLY THIS LINE ANSWERS: a headline rate of 10%
           is a share of the NET FEE, which is a far smaller base than the pool. Stating what
@@ -146,13 +167,15 @@ export function CommissionWaterfall({
       <p className="mt-3 text-body-sm leading-relaxed text-text">
         {fill(t.agent.wfEffective, { pct: formatPct(effectivePctOfWinnings) })}
       </p>
-      <p className="mt-1.5 text-caption leading-relaxed text-text-faint">{t.agent.wfDisclaimer}</p>
+      {/* Also reading copy — and it is the sentence that stops the table being read as a
+          forecast, which makes it the last thing that should be set below the floor. */}
+      <p className="mt-1.5 text-body-sm leading-relaxed text-text-faint">{t.agent.wfDisclaimer}</p>
     </section>
   );
 }
 
 /** The last row gets breathing room above it; every other row is evenly spaced. */
-function cellPad(id: WaterfallStepId): string {
+function rowPad(id: WaterfallStepId): string {
   return id === "netPayout" ? "pt-2.5 pb-1" : "py-1.5";
 }
 

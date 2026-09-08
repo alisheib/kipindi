@@ -11,6 +11,7 @@ export { queryToWhere } from "./prisma-where";
 export {
   MARKET_SEARCH, USER_SEARCH, TXN_SEARCH, AI_USAGE_SEARCH,
   POLL_SEARCH, CANDIDATE_SEARCH, PROPOSAL_SEARCH,
+  AGENT_SEARCH, AGENT_ROSTER_SEARCH,
   fieldNames, allColumns,
 } from "./fields";
 export type { EntitySchema, FieldSpec, FieldKind } from "./fields";

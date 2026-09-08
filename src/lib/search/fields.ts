@@ -137,6 +137,55 @@ export const PROPOSAL_SEARCH: EntitySchema = {
   viewModel: true,
 };
 
+/**
+ * ⭐ THE AGENT APPLICATION QUEUE — /admin/agents, Applications tab.
+ *
+ * 🔴 WHY IT EXISTS: the console had NO SEARCH AT ALL. An officer holding a phone number, an
+ * application id or a receipt reference could not look it up — they scrolled the queue or
+ * pasted the id into the URL by hand — and the Decided table was a hard `slice(0, 20)` with no
+ * next page, so application #21 onward was unreachable from the console entirely.
+ *
+ * ⚠️ A VIEW MODEL. The rows this filters carry `name` and `phone` joined from a batched user
+ * lookup, plus `agentCode` / `feeReference` off the application. ⛔ Never pass it to
+ * `queryToWhere`: `name` is not a column on AgentApplication.
+ *
+ * ⛔ THE PHONE IS SEARCHABLE BUT NEVER RENDERED UNMASKED — the tables wrap it in `Sensitive`.
+ * Being able to FIND an applicant by the number they gave support is the whole point; that is a
+ * different question from printing it in a list.
+ */
+export const AGENT_SEARCH: EntitySchema = {
+  fields: {
+    name: { columns: ["name"], kind: "text" },
+    phone: { columns: ["phone"], kind: "text" },
+    id: { columns: ["id"], kind: "exact" },
+    user: { columns: ["userId"], kind: "exact" },
+    status: { columns: ["status"], kind: "exact" },
+    source: { columns: ["source"], kind: "exact" },
+    fee: { columns: ["feeDisposition"], kind: "exact" },
+    /** The receipt reference an applicant types — what an officer holds when finance calls. */
+    receipt: { columns: ["feeReference"], kind: "text" },
+    /** The 50PICK-AG code, on an approved row. */
+    code: { columns: ["agentCode"], kind: "text" },
+  },
+  default: ["name", "phone", "id", "feeReference", "agentCode"],
+  viewModel: true,
+};
+
+/**
+ * ⭐ THE APPROVED ROSTER — /admin/agents, Agents tab. Separate from `AGENT_SEARCH` because it
+ * filters a different shape (an agent, not an application) with a different useful default: an
+ * officer looking for an agent holds their CODE or their handle, not a receipt reference.
+ */
+export const AGENT_ROSTER_SEARCH: EntitySchema = {
+  fields: {
+    name: { columns: ["handle"], kind: "text" },
+    code: { columns: ["code"], kind: "text" },
+    user: { columns: ["userId"], kind: "exact" },
+  },
+  default: ["handle", "code", "userId"],
+  viewModel: true,
+};
+
 /** The names a surface should offer as clickable chips in the syntax help. */
 export function fieldNames(s: EntitySchema): string[] {
   return Object.keys(s.fields);
