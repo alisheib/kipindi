@@ -48,6 +48,12 @@ tsconfig.tsbuildinfo
 
 # Local QA screenshots
 scripts/_walkthrough/
+# ⭐ AGENT v1 VISUAL EVIDENCE (qa:agent-visual / qa:agent-visual-authed, SHOT_DIR default).
+# ⛔ NOT COMMITTED, and that is the rule rather than an omission: evidence is REGENERABLE and a
+# guard is not. The two drives are tracked and assert everything the shots show — 13MB of PNGs
+# would be a snapshot of one afternoon, going stale the first time a token moves, while
+# `npm run qa:agent-visual` re-derives them against whatever the page actually is.
+docs/shots/
 
 # Material-system merge shots (scripts/live-material-probe.mjs, SHOT_DIR=.qa-design).
 # Evidence, not source: the probe is committed so anyone can RE-SHOOT, and the images
