@@ -113,6 +113,10 @@ export const EMAIL_TEMPLATES: readonly EmailSpec[] = [
   { template: "agentFeeRefundedHtml",           trigger: "src/lib/server/agent-application-service.ts", audience: "player",  chrome: "royal", money: true },
   { template: "agentApplicationSubmittedAdminHtml", trigger: "src/lib/server/agent-application-service.ts", audience: "officer", chrome: "royal", money: false },
   { template: "agentInvitationHtml",            trigger: "src/lib/server/agent-application-service.ts", audience: "player",  chrome: "royal", money: false },
+  // ⭐ The invitation's one-time code. SMS-only until 2026-09-08, when the agent programme
+  // moved to Postmark because no SMS provider is licensed (`sms.ts` — two stubs that throw,
+  // one unsigned contract, `console` as the shipped default).
+  { template: "agentInviteOtpHtml",             trigger: "src/lib/server/agent-application-service.ts", audience: "player",  chrome: "royal", money: false },
   { template: "agentDeactivatedHtml",           trigger: "src/lib/server/agent-application-service.ts", audience: "player",  chrome: "royal", money: false },
   { template: "agentRevokedHtml",               trigger: "src/lib/server/agent-application-service.ts", audience: "player",  chrome: "royal", money: false },
   { template: "agentRateChangedHtml",           trigger: "src/lib/server/agent-application-service.ts", audience: "player",  chrome: "gold",  money: true },

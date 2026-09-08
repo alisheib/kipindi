@@ -137,11 +137,18 @@ export type StoredKyc = {
 
 export type StoredOtp = {
   id: string;
-  phoneE164: string;
+  /** The address the code went to, when it is a phone. ⛔ Exactly one of `phoneE164` /
+   *  `email` is set on a row — never both, never neither. */
+  phoneE164: string | null;
+  /** ⭐ The address the code went to, when it is a mailbox (`agent_invite` since
+   *  2026-09-08). ⛔ An email is NEVER stored in `phoneE164`: `erasure.ts` deletes OTPs BY
+   *  PHONE, so a mis-filed address is a row a data-subject request cannot reach. */
+  email: string | null;
   hashedCode: string;
   salt: string;
   purpose: "login" | "register" | "withdraw" | "reauth" | "self_exclusion"
-    /** Proves possession of the phone an agent invitation is BOUND to. */
+    /** Proves live control of the ADDRESS an agent invitation is BOUND to — a mailbox
+     *  since 2026-09-08, a phone on rows issued before it. */
     | "agent_invite";
   attempts: number;
   consumedAt: string | null;
@@ -600,9 +607,14 @@ export type StoredAgentApplicationDocument = {
 export type StoredAgentInvitation = {
   id: string;
   applicationId: string | null;
-  /** The officer-entered phone the token is BOUND to. Acceptance needs an OTP delivered
-   *  to THIS number — a forwarded link is worthless. */
-  phoneE164: string;
+  /** The phone a PRE-2026-09-08 token was bound to. ⚠️ NULL on every invitation since:
+   *  the programme delivers by email, because no SMS provider is licensed. */
+  phoneE164: string | null;
+  /** ⭐ THE MAILBOX THE TOKEN IS BOUND TO, since 2026-09-08. Acceptance needs an OTP
+   *  delivered to THIS address AND a signed-in account whose email matches it — a
+   *  forwarded link is worthless, which is the property the phone binding gave.
+   *  ⛔ Exactly one of `phoneE164` / `email` is set. Ask `invitationChannel()`. */
+  email: string | null;
   displayName: string | null;
   /** ⛔ HASHED. A readable token in the database is a second copy of the credential. */
   tokenHash: string;
@@ -1031,6 +1043,16 @@ const memoryDb = {
       const now = Date.now();
       return Array.from(store.otps.values())
         .filter((o) => o.phoneE164 === phone && o.purpose === purpose && !o.consumedAt && new Date(o.expiresAt).getTime() > now)
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    },
+    /** ⭐ The same read, keyed on an EMAIL address — the channel an agent invitation uses
+     *  since 2026-09-08. ⚠️ Case-insensitive: a code sent to `A@x.tz` must be findable when
+     *  the account's stored email is `a@x.tz`, or the invitee is locked out by capitalisation. */
+    findAllActiveByEmail: (email: string, purpose: string): StoredOtp[] => {
+      const now = Date.now();
+      const want = email.trim().toLowerCase();
+      return Array.from(store.otps.values())
+        .filter((o) => (o.email ?? "").toLowerCase() === want && o.purpose === purpose && !o.consumedAt && new Date(o.expiresAt).getTime() > now)
         .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     },
     consume: (id: string) => {
@@ -1622,6 +1644,16 @@ const memoryDb = {
     findLiveByPhone: (phoneE164: string): StoredAgentInvitation | null => {
       for (const i of store.agentInvitations.values()) {
         if (i.phoneE164 === phoneE164 && i.status === "ISSUED") return i;
+      }
+      return null;
+    },
+    /** ⚠️ Case-insensitive, because an email address is. Two invitations to `A@x.tz` and
+     *  `a@x.tz` are two invitations to one mailbox, and the "one live invitation" rule has
+     *  to see them as the same person or it does not hold at all. */
+    findLiveByEmail: (email: string): StoredAgentInvitation | null => {
+      const want = email.trim().toLowerCase();
+      for (const i of store.agentInvitations.values()) {
+        if ((i.email ?? "").toLowerCase() === want && i.status === "ISSUED") return i;
       }
       return null;
     },

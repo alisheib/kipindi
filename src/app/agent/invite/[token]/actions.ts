@@ -4,12 +4,16 @@ import { redirect } from "next/navigation";
 import { currentSession } from "@/lib/server/auth-service";
 import { requestInvitationOtp, acceptInvitation, declineInvitation } from "@/lib/server/agent-application-service";
 
-export type InviteActionResult = { ok: true; data?: { applicationId?: string; expiresAt?: string } } | { ok: false; error: string; code?: string };
+/** ⭐ `delivery` is `SendResult["reason"]` — `sent` · `stub` · `no-address` ·
+ *  `suppressed` · `failed`. The client reads it before claiming a code is in the invitee's
+ *  inbox: opening a code box after a suppressed send strands them on a screen they can never
+ *  complete. `email.ts` states the rule — a caller that makes a promise must read the reason. */
+export type InviteActionResult = { ok: true; data?: { applicationId?: string; expiresAt?: string; delivery?: string } } | { ok: false; error: string; code?: string };
 
 export async function requestInvitationOtpAction(formData: FormData): Promise<InviteActionResult> {
   const token = String(formData.get("token") ?? "");
   const r = await requestInvitationOtp(token);
-  return r.ok ? { ok: true, data: { expiresAt: r.data?.expiresAt } } : { ok: false, error: r.error, code: r.code };
+  return r.ok ? { ok: true, data: { expiresAt: r.data?.expiresAt, delivery: r.data?.delivery } } : { ok: false, error: r.error, code: r.code };
 }
 
 export async function acceptInvitationAction(formData: FormData): Promise<InviteActionResult> {

@@ -87,7 +87,15 @@ export type ServiceResult<T = void> =
   // as numbers, so a reworded service sentence can never drop a bound off the player's
   // screen the way `tzsFigures`' regex does.
   // ⚠️ A service that has not been converted simply omits both and renders exactly as before.
-  | { ok: false; error: string; code?: "RATE_LIMITED" | "INVALID" | "EXPIRED" | "ALREADY_EXISTS" | "EMAIL_EXISTS" | "NOT_FOUND" | "TOO_MANY_ATTEMPTS" | "SUSPENDED" | "SELECTION_CLOSED" | "CONFLICT" | "TOO_EARLY" | "OBJECTION_OPEN" | "EMAIL_UNVERIFIED" | "BUSY"; retryAfterSec?: number; reason?: FailureReason; detail?: FailureDetail };
+  // ⭐ `field` IS THE THIRD ADDITIVE OPTIONAL, on the same argument as `reason` and `detail`
+  // above: `code` says what class of refusal it is and `reason` says why, but neither says
+  // WHERE — which control the operator must actually fix. It carries the `data-field` of that
+  // control so an action can hand it to `focusFirstInvalid` and the refusal lands ON the
+  // input instead of in a toast the reader has to translate back into a field themselves.
+  // Same shape as `ActionFailure.field` in `src/lib/server/field-error.ts`, deliberately, so
+  // an admin action can pass one straight through. ⚠️ Purely optional: a service that has not
+  // been converted omits it and renders exactly as before.
+  | { ok: false; error: string; code?: "RATE_LIMITED" | "INVALID" | "EXPIRED" | "ALREADY_EXISTS" | "EMAIL_EXISTS" | "NOT_FOUND" | "TOO_MANY_ATTEMPTS" | "SUSPENDED" | "SELECTION_CLOSED" | "CONFLICT" | "TOO_EARLY" | "OBJECTION_OPEN" | "EMAIL_UNVERIFIED" | "BUSY"; retryAfterSec?: number; reason?: FailureReason; detail?: FailureDetail; field?: string };
 
 /**
  * THE ONE ACCOUNT-STATUS GATE EVERY SIGN-IN PATH MUST PASS (E-240, E-238).
@@ -270,6 +278,11 @@ async function issueOtp(phone: string, purpose: "login" | "register" | "withdraw
   const otp = await db.otp.create({
     id: `otp_${randomId(12)}`,
     phoneE164: phone,
+    // ⛔ EXPLICITLY NULL, not omitted. `Otp` carries both an `email` and a `phoneE164` since
+    // 2026-09-08 (an agent invitation's code goes to a mailbox) and exactly one is ever set.
+    // Every auth OTP on this platform is a phone code, and stating the null here is what
+    // makes that a decision a reader can see rather than a field somebody forgot.
+    email: null,
     hashedCode: await hashOtp(code, salt),
     salt,
     purpose,

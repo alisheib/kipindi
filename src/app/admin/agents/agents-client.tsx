@@ -58,30 +58,68 @@ export function SettlePayable({ rewardId }: { rewardId: string }) {
   );
 }
 
-/** Issue an invitation to a phone number. The token is shown ONCE. */
+/**
+ * Issue an invitation to an EMAIL address. The token is shown ONCE.
+ *
+ * 🔴 IT USED TO SAY "A text with the link is on its way." It was not. `sms.ts` ships the
+ * `console` provider by default, Beem and Africa's Talking are stubs that throw, and the
+ * Selcom contract is unsigned — so in production the log read "console provider active in
+ * PRODUCTION … NOT delivered" while this sentence promised an officer it had gone. Worse, the
+ * sibling invite paths (`invite-service.ts`, `/admin/invites/[id]`) both consult
+ * `smsConfigured()` before promising anything; only the agent path did not.
+ *
+ * ⭐ SO THE SENTENCE NOW REPORTS WHAT THE PROVIDER ACTUALLY RETURNED. `sendEmail` answers
+ * `sent` · `stub` · `suppressed` · `failed`, and each gets its own sentence — including the
+ * two an officer must ACT on: `suppressed` means the address hard-bounced before and nothing
+ * will ever reach it, `stub` means no mail provider is configured on this deployment.
+ */
 export function InviteComposer({ expiryDays }: { expiryDays: number }) {
   const mayAct = useMayAct();
   const { ov, pending, field, run } = useRunner();
   const ref = useRef<HTMLDivElement>(null);
-  const [phone, setPhone] = useState("+255");
+  const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [link, setLink] = useState<string | null>(null);
-  const dirty = !link && (phone !== "+255" || name.trim() !== "");
+  const dirty = !link && (email.trim() !== "" || name.trim() !== "");
   if (!mayAct) return <ActReadOnly />;
   return (
     <div ref={ref} className="space-y-3">
       <ActionOverlay state={ov.state} onDismiss={ov.dismiss} />
       <UnsavedChangesGuard dirty={dirty} body="An invitation has been typed but not issued. Leaving now discards it." />
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-[200px_1fr_auto] md:items-end">
-        <Field label="Phone (+255…)" error={field?.name === "phone" ? field.message : undefined} dataField="phone">
-          <Input mono name="phone" value={phone} onChange={(e) => setPhone(e.target.value.replace(/[^\d+]/g, ""))} maxLength={13} />
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(220px,280px)_1fr_auto] md:items-end">
+        <Field
+          label="Email address"
+          hint="Where the invitation and its code are sent — the invitee accepts with the account that uses this address"
+          error={field?.name === "email" ? field.message : undefined}
+          dataField="email"
+        >
+          {/* ⭐ A LITERAL EXAMPLE that could never be mistaken for a value (finding A-5: a
+              placeholder must never become a value). `type="email"` gets the right keyboard
+              on a phone; the real refusals come from the server, which knows far more than a
+              shape check can. */}
+          <Input
+            name="email" type="email" inputMode="email" autoComplete="off" spellCheck={false}
+            placeholder="agent@example.com" maxLength={254}
+            value={email} onChange={(e) => setEmail(e.target.value.trim())}
+          />
         </Field>
-        <Field label="Name (optional)">
-          <Input name="displayName" value={name} onChange={(e) => setName(e.target.value)} maxLength={80} />
+        <Field label="Name (optional)" hint="Shown on the invitation page so the invitee knows it is for them" error={field?.name === "displayName" ? field.message : undefined} dataField="displayName">
+          <Input name="displayName" value={name} onChange={(e) => setName(e.target.value)} maxLength={80} placeholder="Asha Mwinyi" />
         </Field>
-        <Button variant="primary" size="md" disabled={pending} loading={pending}
-          onClick={() => run(ref.current, "Issuing invitation…", () => { const f = new FormData(); f.set("phone", phone); f.set("displayName", name); return issueInvitationAction(f); },
-            (r) => { const d = (r as { data?: { link?: string } }).data; if (d?.link) setLink(d.link); return `Invitation issued · expires in ${expiryDays} days. A text with the link is on its way — copy it below in case the text does not arrive.`; })}>
+        <Button variant="primary" size="md" disabled={pending || !email.trim()} loading={pending}
+          onClick={() => run(ref.current, "Issuing invitation…", () => { const f = new FormData(); f.set("email", email); f.set("displayName", name); return issueInvitationAction(f); },
+            (r) => {
+              const d = (r as { data?: { link?: string; delivery?: string } }).data;
+              if (d?.link) setLink(d.link);
+              const head = `Invitation issued · expires in ${expiryDays} days.`;
+              switch (d?.delivery) {
+                case "sent": return `${head} The invitation email has been sent. The link is below if they need it another way.`;
+                case "suppressed": return `${head} ⛔ The email was NOT sent: that address has hard-bounced before and is suppressed. Send them the link below directly, or invite a different address.`;
+                case "stub": return `${head} ⚠️ No mail provider is configured on this deployment, so nothing was sent. Send them the link below directly.`;
+                case "failed": return `${head} ⚠️ The email could not be delivered. Send them the link below directly, or try again.`;
+                default: return `${head} Delivery could not be confirmed — send them the link below directly.`;
+              }
+            })}>
           Invite
         </Button>
       </div>

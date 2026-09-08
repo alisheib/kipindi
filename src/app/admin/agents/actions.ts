@@ -128,12 +128,19 @@ export async function settlePayableAction(formData: FormData): Promise<Result> {
   return { ok: true };
 }
 
-export async function issueInvitationAction(formData: FormData): Promise<Result<{ link: string; expiresAt: string }>> {
+export async function issueInvitationAction(formData: FormData): Promise<Result<{ link: string; expiresAt: string; delivery: string }>> {
   const g = await gate("issueInvitation"); if ("error" in g) return { ok: false, error: g.error };
-  const r = await issueInvitation(g.userId, { phoneE164: String(formData.get("phone") ?? ""), displayName: String(formData.get("displayName") ?? "") });
-  if (!r.ok) return { ok: false, error: r.error, field: "phone" };
+  const r = await issueInvitation(g.userId, { email: String(formData.get("email") ?? ""), displayName: String(formData.get("displayName") ?? "") });
+  // ⭐ THE SERVICE NAMES THE FIELD NOW, so a refusal about the address focuses the address and
+  // a refusal about anything else does not. This used to hard-code `field: "phone"` on EVERY
+  // refusal, including "the programme is switched off" — which pointed the officer at an
+  // input that was not the problem.
+  if (!r.ok) return { ok: false, error: r.error, ...(r.field ? { field: r.field } : {}) };
   revalidate();
-  return { ok: true, data: { link: r.data!.link, expiresAt: r.data!.expiresAt } };
+  // ⭐ THE DELIVERY OUTCOME TRAVELS TO THE UI. `sendEmail` distinguishes `sent` from `stub`
+  // (no provider configured), `suppressed` (the address hard-bounced) and `failed` — and the
+  // console is about to tell an officer whether to expect the invitee to receive anything.
+  return { ok: true, data: { link: r.data!.link, expiresAt: r.data!.expiresAt, delivery: r.data!.delivery } };
 }
 
 export async function revokeInvitationAction(formData: FormData): Promise<Result> {

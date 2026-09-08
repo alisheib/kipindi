@@ -1749,13 +1749,39 @@ export function agentInvitationHtml({ link, expiresAt, feeWaivable, feeTzs }: { 
   return wrap(`
     ${eyebrow("Invitation", "Mwaliko")}
     ${heading("You are invited to become a Verified 50pick Agent")}
-    ${subtitle("A 50pick compliance officer has invited you to join the agent programme. Open the link, confirm the code we text you, and complete your application.")}
-    ${subtitleSw("Afisa wa 50pick amekualika kujiunga na mpango wa mawakala. Fungua kiungo, thibitisha msimbo tutakaokutumia, kisha kamilisha maombi yako.")}
+    ${/* ⚠️ "email you" — it read "text you" while no SMS provider was licensed. The
+          invitation itself now arrives here, so the code does too. */ ""}
+    ${subtitle("A 50pick compliance officer has invited you to join the agent programme. Open the link, confirm the code we email you, and complete your application.")}
+    ${subtitleSw("Afisa wa 50pick amekualika kujiunga na mpango wa mawakala. Fungua kiungo, thibitisha msimbo tutakaokutumia kwa barua pepe, kisha kamilisha maombi yako.")}
     ${detailRows([
       { label: "Expires", value: fmtDateTime(expiresAt) },
       { label: "Registration fee", value: feeWaivable ? `${formatTzs(feeTzs)} · may be waived by the inviting officer` : formatTzs(feeTzs) },
     ])}
     ${ctaButton(link, "Open your invitation · Fungua")}
+  `);
+}
+
+/**
+ * ⭐ THE INVITATION CODE — the second party's proof, delivered by the only channel that works.
+ *
+ * ⛔ NO CTA AND NO LINK. A one-time code is the one mail where a button is a liability: it
+ * trains the recipient to click through from a message that asks for a secret, which is the
+ * exact shape of a phishing mail. The invitee already has the page open — they came from it.
+ *
+ * ⛔ AND `trackLinks: false` AT THE CALL SITE, because Postmark's click-through rewrite would
+ * mangle a one-time token if one were ever added here.
+ *
+ * ⚠️ The code is set large and letter-spaced rather than put in `detailRows`, because it is
+ * going to be read off a phone screen and typed into another window.
+ */
+export function agentInviteOtpHtml({ code, minutes }: { code: string; minutes: number }): string {
+  return wrap(`
+    ${eyebrow("Agent invitation", "Mwaliko wa uwakala")}
+    ${heading("Your invitation code")}
+    ${subtitle(`Enter this code on the invitation page to accept. It expires in ${minutes} minutes.`)}
+    ${subtitleSw(`Weka msimbo huu kwenye ukurasa wa mwaliko ili kukubali. Unaisha baada ya dakika ${minutes}.`)}
+    <p style="margin:18px 0 0;font-family:'IBM Plex Mono',Menlo,monospace;font-size:30px;font-weight:700;letter-spacing:0.22em;color:${TEXT}">${esc(code)}</p>
+    <p style="margin:14px 0 0;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11px;color:${TEXT_SUBTLE}">50pick staff will never ask you for this code. If you did not ask to become an agent, ignore this message.<br>Wafanyakazi wa 50pick hawatakuomba msimbo huu. Kama hukuomba kuwa wakala, puuza ujumbe huu.</p>
   `);
 }
 

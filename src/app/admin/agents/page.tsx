@@ -15,11 +15,12 @@ import { I } from "@/components/ui/glyphs";
 import { db, type StoredAgentApplication, type StoredAgentInvitation, type StoredReferralReward, type StoredUser } from "@/lib/server/store";
 import { getAgentConfig, PLATFORM_MAX_COMMISSION_PCT } from "@/lib/server/agent-config";
 import { getAgentRoster, type AgentRosterRow } from "@/lib/server/affiliate-service";
-import { feeBreakdown } from "@/lib/server/agent-application-service";
+import { feeBreakdown, invitationChannel, maskChannel } from "@/lib/server/agent-application-service";
 import { AGENT_STATUS, AGENT_REJECT_REASON, AGENT_INVITATION_STATUS, AGENT_FEE_DISPOSITION } from "@/lib/admin-status-lexicon";
 import { STATUS_TONE, TONE_CHIP } from "@/lib/status-tone";
 import { displayLabel } from "@/lib/display-label";
 import { formatDateShort, formatDateTime, formatTzs } from "@/lib/utils";
+import { workingDaysBetween } from "@/lib/business-days";
 import { SettlePayable, InviteComposer, RevokeInvitation, AgentSettingsForm } from "./agents-client";
 
 export const metadata = { title: "Admin · Agents" };
@@ -84,7 +85,11 @@ export default async function AdminAgentsPage({ searchParams }: { searchParams: 
   const inProgress = apps.filter((a) => IN_PROGRESS.includes(a.status)).sort((x, y) => y.updatedAt.localeCompare(x.updatedAt));
   const closed = apps.filter((a) => CLOSED.includes(a.status)).sort((x, y) => (y.reviewedAt ?? y.updatedAt).localeCompare(x.reviewedAt ?? x.updatedAt));
   const refundsOwed = apps.filter((a) => a.feeDisposition === "REFUND_DUE").sort((x, y) => (x.feeRefundDueAt ?? "").localeCompare(y.feeRefundDueAt ?? ""));
-  const overdueReviews = review.filter((a) => a.submittedAt && now - Date.parse(a.submittedAt) > cfg.reviewSlaDays * DAY_MS).length;
+  // 🔴 WORKING DAYS, BECAUSE THAT IS WHAT THE APPLICANT WAS PROMISED. This measured
+  // CALENDAR days against a promise management moved to working days on 2026-09-08, so an
+  // application submitted on a Friday was chipped "Past SLA" on the following Wednesday while
+  // `/agent` had promised the applicant until Friday. One function decides both.
+  const overdueReviews = review.filter((a) => a.submittedAt && workingDaysBetween(a.submittedAt, new Date(now)) > cfg.reviewSlaDays).length;
   const overdueRefunds = refundsOwed.filter((a) => a.feeRefundDueAt && Date.parse(a.feeRefundDueAt) < now).length;
   const refundsOwedTzs = refundsOwed.reduce((s, a) => s + (a.feeAmountTzs ?? 0), 0);
 
@@ -150,7 +155,7 @@ export default async function AdminAgentsPage({ searchParams }: { searchParams: 
 
         <KpiGrid cols="4">
           <AdminKpi label="Awaiting review" sw="Zinasubiri" value={review.length} unavailable={!appsR.ok}
-            delta={review.length === 0 ? "queue clear" : overdueReviews > 0 ? `${overdueReviews} past the ${cfg.reviewSlaDays}-day SLA` : `all within ${cfg.reviewSlaDays} days`} />
+            delta={review.length === 0 ? "queue clear" : overdueReviews > 0 ? `${overdueReviews} past the ${cfg.reviewSlaDays}-working-day SLA` : `all within ${cfg.reviewSlaDays} working days`} />
           <AdminKpi label="Active agents" sw="Mawakala hai" value={activeAgents} unavailable={!rosterR.ok}
             delta={roster.length === activeAgents ? `${roster.length} approved` : `${roster.length - activeAgents} of ${roster.length} not active`} />
           <AdminKpi label="Commission payable" sw="Kamisheni inayodaiwa" value={formatTzs(payableTzs)} gold unavailable={!totalsR.ok}
@@ -163,7 +168,7 @@ export default async function AdminAgentsPage({ searchParams }: { searchParams: 
         {tab === "applications" && (<>
           {!appsR.ok ? <AdminLoadError what="the application queue" /> : (<>
             <AdminCard title="Review queue" sw="Foleni ya mapitio" padding="p-0"
-              action={<span className="font-mono text-body-sm text-text-subtle">oldest first · SLA {cfg.reviewSlaDays} days</span>}>
+              action={<span className="font-mono text-body-sm text-text-subtle">oldest first · SLA {cfg.reviewSlaDays} working days</span>}>
               {review.length === 0 ? (
                 <EmptyBlock kind="kyc" title="Nothing to review" body="Submitted applications appear here, oldest first." />
               ) : (
@@ -180,7 +185,7 @@ export default async function AdminAgentsPage({ searchParams }: { searchParams: 
                     </tr>
                   </thead>
                   <tbody>
-                    {review.map((a) => <ApplicationRow key={a.id} app={a} name={nameOf(a.userId)} phone={userById.get(a.userId)?.phoneE164 ?? null} waitingDays={ageDays(a.submittedAt)} slaDays={cfg.reviewSlaDays} />)}
+                    {review.map((a) => <ApplicationRow key={a.id} app={a} name={nameOf(a.userId)} phone={userById.get(a.userId)?.phoneE164 ?? null} waitingDays={a.submittedAt ? workingDaysBetween(a.submittedAt, new Date(now)) : null} slaDays={cfg.reviewSlaDays} />)}
                   </tbody>
                 </table>
               </ScrollX>
@@ -241,7 +246,7 @@ export default async function AdminAgentsPage({ searchParams }: { searchParams: 
                     <table className="admin-tbl min-w-[640px]">
                       <thead className="font-mono text-micro eyebrow uppercase text-text-tertiary border-b border-border-subtle">
                         <tr>
-                          <th className="text-left py-2 pr-3">Number</th>
+                          <th className="text-left py-2 pr-3">Sent to</th>
                           <th className="text-left py-2 pr-3">Name</th>
                           <th className="text-left py-2 pr-3">Status</th>
                           <th className="text-left py-2 pr-3">Issued</th>
@@ -416,7 +421,7 @@ export default async function AdminAgentsPage({ searchParams }: { searchParams: 
                 </div>
                 <div>
                   <dt className="font-mono text-micro uppercase eyebrow text-text-faint">Clocks</dt>
-                  <dd className="mt-0.5 font-mono text-text">review {cfg.reviewSlaDays}d · refund {cfg.refundDeadlineDays}d</dd>
+                  <dd className="mt-0.5 font-mono text-text">review {cfg.reviewSlaDays} working d · refund {cfg.refundDeadlineDays}d</dd>
                   <dd className="font-mono text-body-sm text-text-subtle">invitation {cfg.invitationExpiryDays}d · draft {cfg.draftExpiryDays}d · re-apply after {cfg.reapplyCooldownDays}d</dd>
                 </div>
               </dl>
@@ -472,11 +477,26 @@ function ApplicationRow({ app, name, phone, waitingDays, slaDays }: { app: Store
 const invitationVariant = (status: StoredAgentInvitation["status"]) => TONE_CHIP[(STATUS_TONE as Record<string, { admin?: keyof typeof TONE_CHIP }>)[status]?.admin ?? "royal"];
 
 function InvitationRow({ inv, now }: { inv: StoredAgentInvitation; now: number }) {
-  
   const expiringSoon = inv.status === "ISSUED" && Date.parse(inv.expiresAt) - now < 2 * DAY_MS;
+  /**
+   * ⭐ THE ADDRESS COLUMN SHOWS WHICHEVER ADDRESS THE ROW CARRIES, and says which. Invitations
+   * issued before 2026-09-08 are phone-bound; every one since is email-bound. ⛔ Rendering
+   * `inv.phoneE164` unconditionally would print "null•••ull" on every new row.
+   */
+  const ch = invitationChannel(inv);
   return (
     <tr className="border-b border-border-subtle">
-      <td className="py-2 pr-3 font-mono">{inv.acceptedUserId ? <Sensitive field="phone" subjectId={inv.acceptedUserId} value={inv.phoneE164} /> : `${inv.phoneE164.slice(0, 4)}•••${inv.phoneE164.slice(-3)}`}</td>
+      <td className="py-2 pr-3 font-mono">
+        {!ch ? <span className="text-text-subtle">—</span>
+          : ch.kind === "PHONE"
+            ? (inv.acceptedUserId
+                ? <Sensitive field="phone" subjectId={inv.acceptedUserId} value={ch.address} />
+                : maskChannel(ch))
+            /* An email is shown masked to the same rule the invitation page uses — first
+               character plus the whole domain. The officer typed it; this is confirmation,
+               not disclosure, and the console is not the place to re-print a full address. */
+            : <span title="Invited by email">{maskChannel(ch)}</span>}
+      </td>
       <td className="py-2 pr-3 text-text-secondary">{inv.displayName ?? "—"}</td>
       <td className="py-2 pr-3"><Chip variant={invitationVariant(inv.status)}>{AGENT_INVITATION_STATUS[inv.status].en}</Chip></td>
       <td className="py-2 pr-3 font-mono whitespace-nowrap">{formatDateShort(inv.issuedAt)}</td>

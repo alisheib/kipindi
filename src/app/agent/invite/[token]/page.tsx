@@ -25,7 +25,11 @@ export const dynamic = "force-dynamic";
 export default async function AgentInvitePage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
   const { t } = await getServerT();
-  const preview = await invitationPreview(token);
+  // ⭐ The viewer is read BEFORE the preview so the identity match can be decided against the
+  // real address inside the service, rather than by string-matching the mask out here.
+  const session = await currentSession();
+  const viewer = session ? await db.user.findById(session.userId) : null;
+  const preview = await invitationPreview(token, viewer);
 
   if (!preview.ok) {
     const why = preview.reason === "expired" ? t.agent.inviteExpired : preview.reason === "revoked" ? t.agent.inviteRevoked : preview.reason === "used" ? t.agent.inviteUsed : preview.reason === "declined" ? t.agent.inviteDeclined : t.agent.inviteInvalid;
@@ -38,21 +42,25 @@ export default async function AgentInvitePage({ params }: { params: Promise<{ to
     );
   }
 
-  const session = await currentSession();
-  const viewer = session ? await db.user.findById(session.userId) : null;
-  // The page never reveals the full number; the invitee proves they hold it.
-  const viewerMatches = !!viewer && preview.phoneMasked.endsWith(viewer.phoneE164.slice(-3)) && preview.phoneMasked.startsWith(`+${viewer.phoneE164.replace(/\D/g, "").slice(0, 3)}`);
-
   return (
     <PageContainer tier="reading" className="space-y-5">
       <PageHeader eyebrow={t.agent.eyebrow} title={t.agent.inviteTitle} subtitle={t.agent.inviteBody} />
       <section className="rounded-xl glass-panel p-4 space-y-1">
         <p className="font-mono text-micro uppercase eyebrow font-bold text-text-subtle">{t.agent.inviteSentTo}</p>
-        <p className="font-mono text-title-sm font-bold tabular-nums text-text">{preview.phoneMasked}</p>
+        {/* ⚠️ `tabular-nums` only on a phone number — it aligns digits, and on an email
+            address it just widens the letters for no reason. `break-all` because a long
+            address must not push the panel wider than the measure at 360px. */}
+        <p className={`font-mono text-title-sm font-bold text-text ${preview.channel === "PHONE" ? "tabular-nums" : "break-all"}`}>{preview.addressMasked}</p>
         <p className="text-body-sm text-text-muted">{fill(t.agent.inviteExpires, { date: formatDateShort(preview.expiresAt) })}</p>
       </section>
       <p className="text-body-sm leading-relaxed text-text-muted">{t.agent.inviteKycNote}</p>
-      <InviteClient token={token} signedIn={!!session} viewerMatches={viewerMatches} phoneMasked={preview.phoneMasked} />
+      <InviteClient
+        token={token}
+        signedIn={!!session}
+        viewerMatches={preview.viewerMatches}
+        addressMasked={preview.addressMasked}
+        channel={preview.channel}
+      />
     </PageContainer>
   );
 }

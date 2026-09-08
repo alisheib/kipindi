@@ -46,13 +46,10 @@ import { isStaffRole } from "./roles";
 import { isLockedOut, selfExclusionStanding } from "./responsible-gambling";
 import { revokeUserSessions } from "./session-registry";
 import { postLedgerEntries, agentRegistrationFeeEntries } from "./ledger";
-import { sms, otpMessage } from "./sms";
 import { appUrl } from "@/lib/app-url";
 import { formatTzs } from "@/lib/utils";
 import { AGENT_STATUS } from "@/lib/admin-status-lexicon";
 
-/** The audit chain never carries a whole phone number. Same shape as the auth audits. */
-const maskPhoneForAudit = (p: string) => (p.length > 6 ? `${p.slice(0, 4)}•••${p.slice(-2)}` : "•••");
 import {
   notifyAgentApplicationSubmitted, notifyAgentApproved, notifyAgentRejected, notifyAgentInfoRequested,
   notifyAgentFeeRefunded, notifyAgentDeactivated, notifyAdminAgentReview,
@@ -61,7 +58,8 @@ import {
 import {
   sendEmailToUser, agentApprovedHtml, agentRejectedHtml, agentInfoRequestedHtml, agentFeeRefundedHtml,
   agentApplicationSubmittedAdminHtml, agentInvitationHtml, agentDeactivatedHtml,
-  agentRevokedHtml, agentRateChangedHtml,
+  agentRevokedHtml, agentRateChangedHtml, agentInviteOtpHtml,
+  type SendResult,
 } from "./email";
 import { kycNotifyEmails } from "./kyc-service";
 import { sendEmail } from "./email";
@@ -306,6 +304,16 @@ export function isAgentApplicationDuplicate(err: unknown): boolean {
   if (!e) return false;
   const text = `${e.message ?? ""} ${e.meta?.message ?? ""} ${JSON.stringify(e.meta?.target ?? "")}`;
   return e.code === "P2002" || e.code === "23505" || e.meta?.code === "23505" || text.includes(AGENT_APPLICATION_ACTIVE_INDEX);
+}
+
+/**
+ * Refuse, and say WHERE. ⛔ `field` first in the signature on purpose — the same construction
+ * as `fieldError` in `src/lib/server/field-error.ts`, for the same reason: the address of the
+ * control the operator must fix is not an afterthought. The client hands it to
+ * `focusFirstInvalid`, so the refusal lands on the input rather than in a toast.
+ */
+function fieldFailure(field: string, error: string): ServiceResult<never> {
+  return { ok: false, error, code: "INVALID", field };
 }
 
 function refusalResult(elig: Extract<ApplicantEligibility, { ok: false }>): ServiceResult<never> {
@@ -1021,26 +1029,52 @@ const OTP_TTL_MS = 5 * 60 * 1000;
  * already belongs to an agent, to staff, or to a self-excluded person; or a live invitation
  * already stands for it. The token is returned ONCE and stored only as a hash.
  */
-export async function issueInvitation(officerId: string, input: { phoneE164: string; displayName?: string }): Promise<ServiceResult<{ invitationId: string; token: string; expiresAt: string; link: string }>> {
-  const phone = (input.phoneE164 ?? "").trim();
-  if (!/^\+255[67]\d{8}$/.test(phone)) return { ok: false, error: "Enter a Tanzanian mobile number as +255…", code: "INVALID" };
+/**
+ * ⭐ ISSUE AN INVITATION, BY EMAIL.
+ *
+ * 🔴 WHY IT IS EMAIL AND NOT SMS. The programme shipped inviting by phone, and the officer's
+ * console said "A text with the link is on its way". It was not: `src/lib/server/sms.ts`
+ * defaults to the `console` provider, Beem and Africa's Talking are declared stubs that
+ * THROW, and the Selcom adapter's body is written against an unsigned contract. In production
+ * `sms.ts` logged "console provider active in PRODUCTION … NOT delivered" while the console
+ * promised delivery and the applicant's own status page said the link "was texted to your
+ * number". Three surfaces asserting a delivery that could not happen.
+ *
+ * ⭐ POSTMARK IS LIVE AND CARRIES EVERY OTHER TRANSACTIONAL MAIL ON THE PLATFORM, so the
+ * invitation now goes there — and `sendEmail` returns a `reason` (`sent` · `stub` ·
+ * `no-address` · `suppressed` · `failed`) which this function READS and reports, because a
+ * caller that makes a promise to a person must read it (`email.ts:107`).
+ *
+ * ⛔ AND THE ADDRESS IS THE SECURITY BOUNDARY, NOT A CONVENIENCE. Acceptance requires a code
+ * delivered to THIS mailbox and a signed-in account whose own email matches it — the same
+ * two-party control the phone binding gave. A forwarded link is worthless either way.
+ */
+export async function issueInvitation(officerId: string, input: { email: string; displayName?: string }): Promise<ServiceResult<{ invitationId: string; token: string; expiresAt: string; link: string; delivery: SendResult["reason"] }>> {
+  const email = (input.email ?? "").trim().toLowerCase();
+  // ⛔ A SHAPE CHECK, NOT A VALIDATION OF EXISTENCE. It refuses the typo classes an officer
+  // actually makes (no @, no dot, a trailing comma, whitespace inside) and nothing more:
+  // there is no way to know from here whether a well-formed address is real, and the
+  // delivery `reason` below is what actually answers that.
+  if (!/^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]{2,}$/.test(email) || email.length > 254) {
+    return fieldFailure("email", "Enter the applicant's email address — for example agent@example.com.");
+  }
   const cfg = getAgentConfig();
   if (!cfg.enabled) return { ok: false, error: "The agent programme is switched off.", code: "INVALID" };
-  const existing = await db.user.findByPhone(phone);
+  const existing = await db.user.findByEmail(email);
   if (existing) {
-    if (existing.id === officerId) return { ok: false, error: "You cannot invite yourself.", code: "INVALID" };
-    if (isStaffRole(existing.role)) return { ok: false, error: "That number belongs to a staff account.", code: "INVALID" };
-    if (isApprovedAgent(await db.affiliate.findByUserId(existing.id))) return { ok: false, error: "That person is already an agent.", code: "INVALID" };
-    if (existing.status === "SELF_EXCLUDED" || existing.status === "CLOSED" || existing.status === "SUSPENDED") return { ok: false, error: `That account is ${existing.status.toLowerCase().replace("_", "-")}.`, code: "INVALID" };
-    if ((await selfExclusionStanding(existing.id)).state !== "none") return { ok: false, error: "That person has a self-exclusion on record.", code: "INVALID" };
-    if (await db.agentApplication.findActiveByUser(existing.id)) return { ok: false, error: "That person already has a live application.", code: "INVALID" };
+    if (existing.id === officerId) return fieldFailure("email", "You cannot invite yourself.");
+    if (isStaffRole(existing.role)) return fieldFailure("email", "That address belongs to a staff account.");
+    if (isApprovedAgent(await db.affiliate.findByUserId(existing.id))) return fieldFailure("email", "That person is already an agent.");
+    if (existing.status === "SELF_EXCLUDED" || existing.status === "CLOSED" || existing.status === "SUSPENDED") return fieldFailure("email", `That account is ${existing.status.toLowerCase().replace("_", "-")}.`);
+    if ((await selfExclusionStanding(existing.id)).state !== "none") return fieldFailure("email", "That person has a self-exclusion on record.");
+    if (await db.agentApplication.findActiveByUser(existing.id)) return fieldFailure("email", "That person already has a live application.");
   }
-  if (await db.agentInvitation.findLiveByPhone(phone)) return { ok: false, error: "A live invitation already stands for that number — revoke it first.", code: "INVALID" };
+  if (await db.agentInvitation.findLiveByEmail(email)) return fieldFailure("email", "A live invitation already stands for that address — withdraw it first.");
   const token = randomId(24);
   const now = iso();
   const expiresAt = new Date(Date.now() + cfg.invitationExpiryDays * DAY_MS).toISOString();
   const inv = await db.agentInvitation.create({
-    id: `agi_${randomId(10)}`, applicationId: null, phoneE164: phone, displayName: (input.displayName ?? "").trim().slice(0, 80) || null,
+    id: `agi_${randomId(10)}`, applicationId: null, phoneE164: null, email, displayName: (input.displayName ?? "").trim().slice(0, 80) || null,
     tokenHash: tokenHash(token), status: "ISSUED", issuedById: officerId, issuedAt: now, expiresAt,
     acceptedAt: null, acceptedUserId: null, declinedAt: null, revokedAt: null, revokedById: null, createdAt: now, updatedAt: now,
   });
@@ -1058,12 +1092,29 @@ export async function issueInvitation(officerId: string, input: { phoneE164: str
     await db.agentInvitation.update(inv.id, { applicationId: app.id });
   }
   const link = `${appUrl()}/agent/invite/${token}`;
-  audit({ category: "COMPLIANCE", action: "agent.invitation.issued", actorId: officerId, targetType: "AgentInvitation", targetId: inv.id, payload: { phone: maskPhoneForAudit(phone), expiresAt, existingUser: !!existing } });
-  sms.send(phone, `50pick: you have been invited to become a Verified 50pick Agent · umealikwa kuwa Wakala Aliyethibitishwa wa 50pick. Open / Fungua ${link} — expires in / inaisha baada ya siku ${cfg.invitationExpiryDays}.`).catch(() => {});
-  if (existing) {
-    sendEmailToUser(existing.id, (email) => ({ to: email, subject: "You are invited to become a Verified 50pick Agent", html: agentInvitationHtml({ link, expiresAt, feeWaivable: true, feeTzs: feeBreakdown(cfg).totalTzs }), tag: "agent-invitation" })).catch(() => {});
-  }
-  return { ok: true, data: { invitationId: inv.id, token, expiresAt, link } };
+  /**
+   * ⭐ AWAITED, AND ITS `reason` IS RETURNED. Every other mail on this platform is
+   * fire-and-forget, correctly — a receipt that fails to send must not fail the payment. This
+   * one is the opposite: the mail IS the invitation, and the officer is about to be told
+   * something about it. `email.ts` states the rule outright — "callers that make a PROMISE to
+   * the player must read it" — so the console reports what actually happened instead of
+   * asserting delivery the way the SMS copy did.
+   *
+   * ⛔ `sendEmail` DIRECTLY, NOT `sendEmailToUser`. The invitee may have no 50pick account
+   * yet, which is the whole point of an officer-issued invitation; `sendEmailToUser` looks up
+   * a userId and would silently skip exactly the people this feature exists for.
+   */
+  const delivery = await sendEmail({
+    to: email,
+    subject: "You are invited to become a Verified 50pick Agent",
+    html: agentInvitationHtml({ link, expiresAt, feeWaivable: true, feeTzs: feeBreakdown(cfg).totalTzs }),
+    tag: "agent-invitation",
+    // ⛔ Postmark's click-tracking redirect would rewrite the one-time token link. The same
+    // reason the KYC deep link opts out.
+    trackLinks: false,
+  });
+  audit({ category: "COMPLIANCE", action: "agent.invitation.issued", actorId: officerId, targetType: "AgentInvitation", targetId: inv.id, payload: { email: maskEmailForAudit(email), expiresAt, existingUser: !!existing, delivery: delivery.reason } });
+  return { ok: true, data: { invitationId: inv.id, token, expiresAt, link, delivery: delivery.reason } };
 }
 
 export async function revokeInvitation(officerId: string, invitationId: string, reason: string): Promise<ServiceResult> {
@@ -1077,9 +1128,15 @@ export async function revokeInvitation(officerId: string, invitationId: string, 
   return { ok: true };
 }
 
-/** What an invite link shows before anyone proves anything: the masked phone, the expiry,
- *  whether it is still live. Never the full number. */
-export async function invitationPreview(token: string): Promise<{ ok: true; invitationId: string; phoneMasked: string; displayName: string | null; expiresAt: string; status: StoredAgentInvitation["status"] } | { ok: false; reason: "invalid" | "expired" | "revoked" | "used" | "declined" }> {
+/** What an invite link shows before anyone proves anything: the MASKED address it was sent
+ *  to, the channel, the expiry, whether it is still live. ⛔ Never the full address — this
+ *  page is readable by anyone holding the link. */
+export async function invitationPreview(
+  token: string,
+  /** ⭐ Optional. When the reader is signed in, pass them so the identity match is decided
+   *  against the REAL address rather than by string-matching the mask on the page. */
+  viewer?: Pick<StoredUser, "email" | "phoneE164"> | null,
+): Promise<{ ok: true; invitationId: string; channel: InvitationChannel["kind"]; addressMasked: string; displayName: string | null; expiresAt: string; status: StoredAgentInvitation["status"]; viewerMatches: boolean } | { ok: false; reason: "invalid" | "expired" | "revoked" | "used" | "declined" }> {
   const inv = await db.agentInvitation.findByTokenHash(tokenHash((token ?? "").trim()));
   if (!inv) return { ok: false, reason: "invalid" };
   if (inv.status === "REVOKED") return { ok: false, reason: "revoked" };
@@ -1089,8 +1146,25 @@ export async function invitationPreview(token: string): Promise<{ ok: true; invi
     if (inv.status !== "EXPIRED") await expireInvitation(inv);
     return { ok: false, reason: "expired" };
   }
-  const digits = inv.phoneE164.replace(/\D/g, "");
-  return { ok: true, invitationId: inv.id, phoneMasked: `+${digits.slice(0, 3)} ••• ••• ${digits.slice(-3)}`, displayName: inv.displayName, expiresAt: inv.expiresAt, status: inv.status };
+  const ch = invitationChannel(inv);
+  if (!ch) return { ok: false, reason: "invalid" };
+  /**
+   * 🔴 THE MATCH IS DECIDED HERE, ON THE REAL ADDRESS — not on the page, against the MASK.
+   *
+   * `/agent/invite/[token]` used to compute it by string-matching the masked value:
+   *   `preview.phoneMasked.endsWith(viewer.phoneE164.slice(-3)) && …startsWith(…)`
+   * Two different numbers sharing a country code and their last three digits therefore
+   * "matched", and any change to the mask's punctuation silently broke it. It is one
+   * comparison, and it belongs where the unmasked address is — which is here.
+   *
+   * ⛔ The boolean is all that leaves. The address itself never does.
+   */
+  const viewerMatches = viewer
+    ? (ch.kind === "EMAIL"
+        ? (viewer.email ?? "").trim().toLowerCase() === ch.address.toLowerCase()
+        : viewer.phoneE164 === ch.address)
+    : false;
+  return { ok: true, invitationId: inv.id, channel: ch.kind, addressMasked: maskChannel(ch), displayName: inv.displayName, expiresAt: inv.expiresAt, status: inv.status, viewerMatches };
 }
 
 async function expireInvitation(inv: StoredAgentInvitation): Promise<void> {
@@ -1101,17 +1175,82 @@ async function expireInvitation(inv: StoredAgentInvitation): Promise<void> {
 
 /** Send the OTP to the phone the invitation is BOUND to. The invitee proves possession of THAT
  *  number, not of the link — a forwarded link is worthless. */
-export async function requestInvitationOtp(token: string): Promise<ServiceResult<{ expiresAt: string }>> {
+/**
+ * ⭐ THE ONE PLACE THAT DECIDES WHICH ADDRESS AN INVITATION IS BOUND TO.
+ *
+ * Invitations issued before 2026-09-08 carry a phone; every one since carries an email. Both
+ * must stay acceptable — the programme went live on 2026-09-07 and an applicant holding a
+ * day-old link has done nothing wrong. ⛔ So the two eras are not two code paths: every
+ * caller asks this, and the OTP, the delivery, the mask and the identity check all follow the
+ * channel it returns. Inventing an email for a phone row to "unify" them would fabricate the
+ * exact fact the acceptance check is built on.
+ */
+export type InvitationChannel =
+  | { kind: "EMAIL"; address: string }
+  | { kind: "PHONE"; address: string };
+
+export function invitationChannel(inv: Pick<StoredAgentInvitation, "email" | "phoneE164">): InvitationChannel | null {
+  if (inv.email && inv.email.trim()) return { kind: "EMAIL", address: inv.email.trim() };
+  if (inv.phoneE164 && inv.phoneE164.trim()) return { kind: "PHONE", address: inv.phoneE164.trim() };
+  // ⛔ Never a fallback. A row with neither address cannot prove anything about anybody, so
+  // the callers refuse rather than accept on a token alone.
+  return null;
+}
+
+/** The address, masked for display and for an audit row. Never the whole thing. */
+export function maskChannel(ch: InvitationChannel): string {
+  if (ch.kind === "PHONE") {
+    const digits = ch.address.replace(/\D/g, "");
+    return `+${digits.slice(0, 3)} ••• ••• ${digits.slice(-3)}`;
+  }
+  return maskEmailForAudit(ch.address);
+}
+
+/**
+ * ⚠️ A MASK THAT SHOWS THE FIRST CHARACTER AND THE WHOLE DOMAIN — `a•••@gmail.com`.
+ *
+ * ⛔ Not a full address: this is rendered on a page anyone holding the link can open, and the
+ * platform masks every logged address under PDPA 2022 (`email.ts` → `maskEmail`).
+ * ⭐ But the DOMAIN stays, because the mask has a job: the invitee has to recognise their own
+ * mailbox to know whether to sign in with a different account. A mask that hides everything
+ * makes the mismatch branch unreadable, which is how that branch became a dead end.
+ */
+export function maskEmailForAudit(email: string): string {
+  const at = email.indexOf("@");
+  if (at <= 0) return "•••";
+  return `${email[0]}•••${email.slice(at)}`;
+}
+
+export async function requestInvitationOtp(token: string): Promise<ServiceResult<{ expiresAt: string; delivery: SendResult["reason"] }>> {
   const p = await invitationPreview(token);
   if (!p.ok) return { ok: false, error: "This invitation is no longer valid.", code: "INVALID" };
   const inv = (await db.agentInvitation.findById(p.invitationId))!;
+  const ch = invitationChannel(inv);
+  if (!ch) return { ok: false, error: "This invitation is no longer valid.", code: "INVALID" };
+  /**
+   * ⛔ A PHONE-ERA INVITATION CANNOT BE SENT A CODE, AND SAYS SO PLAINLY. There is no
+   * licensed SMS provider, so offering to "text me a code" would arm a button that cannot
+   * deliver — the defect this whole change exists to remove. The honest answer names the
+   * remedy: an officer withdraws it and issues a new one by email.
+   */
+  if (ch.kind === "PHONE") {
+    return { ok: false, error: "This invitation was sent by text, and we can no longer deliver codes that way. Ask the officer who invited you to withdraw it and send a new invitation to your email address.", code: "INVALID" };
+  }
   const code = generateOtp();
   const salt = randomId(8);
   const expiresAt = new Date(Date.now() + OTP_TTL_MS).toISOString();
-  await db.otp.create({ id: `otp_${randomId(12)}`, phoneE164: inv.phoneE164, hashedCode: await hashOtp(code, salt), salt, purpose: INVITE_OTP_PURPOSE, attempts: 0, consumedAt: null, expiresAt, createdAt: iso() });
-  audit({ category: "AUTH", action: "otp.agent_invite.sent", actorId: null, targetType: "Phone", targetId: maskPhoneForAudit(inv.phoneE164), payload: { invitationId: inv.id } });
-  sms.send(inv.phoneE164, otpMessage(code, "SW")).catch(() => {});
-  return { ok: true, data: { expiresAt } };
+  await db.otp.create({ id: `otp_${randomId(12)}`, phoneE164: null, email: ch.address, hashedCode: await hashOtp(code, salt), salt, purpose: INVITE_OTP_PURPOSE, attempts: 0, consumedAt: null, expiresAt, createdAt: iso() });
+  // ⭐ AWAITED and its reason returned, for the same reason the invitation mail is: the page
+  // is about to tell the invitee a code is in their inbox.
+  const delivery = await sendEmail({
+    to: ch.address,
+    subject: "Your 50pick agent invitation code",
+    html: agentInviteOtpHtml({ code, minutes: Math.round(OTP_TTL_MS / 60_000) }),
+    tag: "agent-invite-otp",
+    trackLinks: false,
+  });
+  audit({ category: "AUTH", action: "otp.agent_invite.sent", actorId: null, targetType: "Email", targetId: maskEmailForAudit(ch.address), payload: { invitationId: inv.id, delivery: delivery.reason } });
+  return { ok: true, data: { expiresAt, delivery: delivery.reason } };
 }
 
 /**
@@ -1124,12 +1263,34 @@ export async function acceptInvitation(userId: string, token: string, otpCode: s
   const inv = (await db.agentInvitation.findById(p.invitationId))!;
   const user = await db.user.findById(userId);
   if (!user) return { ok: false, error: "Sign in first.", code: "INVALID" };
-  if (user.phoneE164 !== inv.phoneE164) {
-    audit({ category: "SECURITY", action: "agent.invitation.phone_mismatch", actorId: userId, targetType: "AgentInvitation", targetId: inv.id });
-    return { ok: false, error: "This invitation was sent to a different phone number.", code: "INVALID" };
+  const ch = invitationChannel(inv);
+  if (!ch) return { ok: false, error: "This invitation is no longer valid.", code: "INVALID" };
+  /**
+   * ⭐ THE SECOND PARTY: the signed-in account must OWN the address the invitation was sent
+   * to. This is what makes a forwarded link worthless, and it is unchanged in substance —
+   * only the address moved from a phone to a mailbox.
+   *
+   * ⚠️ CASE-INSENSITIVE ON EMAIL. Addresses are, and an invitee whose account reads
+   * `Ali@x.tz` against an invitation typed `ali@x.tz` is the same person; refusing them would
+   * be a lockout produced entirely by capitalisation.
+   */
+  const identityMatches = ch.kind === "EMAIL"
+    ? (user.email ?? "").trim().toLowerCase() === ch.address.toLowerCase()
+    : user.phoneE164 === ch.address;
+  if (!identityMatches) {
+    audit({ category: "SECURITY", action: "agent.invitation.identity_mismatch", actorId: userId, targetType: "AgentInvitation", targetId: inv.id, payload: { channel: ch.kind } });
+    return {
+      ok: false,
+      error: ch.kind === "EMAIL"
+        ? "This invitation was sent to a different email address. Sign in with the account that uses it."
+        : "This invitation was sent to a different phone number.",
+      code: "INVALID",
+    };
   }
-  // OTP — check every active code for the phone + purpose, consume all on match.
-  const active = await db.otp.findAllActive(inv.phoneE164, INVITE_OTP_PURPOSE);
+  // OTP — check every active code for the bound ADDRESS + purpose, consume all on match.
+  const active = ch.kind === "EMAIL"
+    ? await db.otp.findAllActiveByEmail(ch.address, INVITE_OTP_PURPOSE)
+    : await db.otp.findAllActive(ch.address, INVITE_OTP_PURPOSE);
   let matched = false;
   for (const o of active) { if (await verifyOtp((otpCode ?? "").trim(), o.salt, o.hashedCode)) { matched = true; break; } }
   if (!matched) {
