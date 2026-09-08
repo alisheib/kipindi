@@ -545,6 +545,71 @@ export async function getAuditPageDurable(
 }
 
 /**
+ * ⭐ EVERY AUDITED EVENT AGAINST ONE TARGET, NEWEST FIRST — the decision history a
+ * case-file surface shows.
+ *
+ * 🔴 WHY IT IS DURABLE AND NOT `getAuditPage`. The ring is capped at MAX_IN_MEM, is
+ * per-container, and EMPTIES ON EVERY DEPLOY. A "who did what, when" panel served from it
+ * would show a full history on a warm instance and an empty one an hour later, which is worse
+ * than showing nothing: an officer reading a blank history concludes nothing happened. This
+ * file already records that exact class of defect against the ISO 27001 export.
+ *
+ * ⚠️ `truncated` IS RETURNED AND CALLERS MUST RENDER IT. `limit` is a real bound, and a
+ * history that quietly stops at N reads as a complete one — the silent-truncation failure
+ * `counts.ts` and the Decided table were both bitten by.
+ *
+ * ⚠️ AND THE NAME IS THE FILE'S OWN CONVENTION, not a second version of one thing. This
+ * module already pairs `getAuditPage` (the ring) with `getAuditPageDurable` (the table) and
+ * explains at length why both are legitimate: the ring is right for a recent-activity view and
+ * wrong for anything claiming completeness. `getAuditForTarget` below is the ring reader two
+ * player/staff surfaces use synchronously; this is its durable twin, and ⛔ neither is a copy
+ * of the other — they read different stores and answer different questions.
+ */
+export async function getAuditForTargetDurable(
+  targetType: string,
+  targetId: string,
+  opts: { limit?: number } = {},
+): Promise<{ entries: AuditEntry[]; total: number; truncated: boolean }> {
+  const limit = opts.limit ?? 50;
+  const db = prisma();
+  if (!db) {
+    // No database (tests, local no-DB runs) — the ring is all there is. Report honestly
+    // rather than implying completeness.
+    const all = [...ring].filter((e) => e.targetType === targetType && e.targetId === targetId).reverse();
+    return { entries: all.slice(0, limit), total: all.length, truncated: all.length > limit };
+  }
+  const where = { targetType, targetId };
+  const total = await db.auditLog.count({ where });
+  const rows = await db.auditLog.findMany({
+    where,
+    // ⛔ NEWEST FIRST here, unlike the export — an officer opens a case file to see what
+    // happened LAST, not what happened at the beginning.
+    orderBy: { createdAt: "desc" },
+    take: limit,
+    select: {
+      id: true, category: true, action: true, actorId: true, targetType: true,
+      targetId: true, payload: true, ip: true, userAgent: true, createdAt: true,
+      prevHash: true, entryHash: true,
+    },
+  });
+  const entries: AuditEntry[] = rows.map((r) => ({
+    id: r.id,
+    category: r.category as AuditCategory,
+    action: r.action,
+    actorId: r.actorId,
+    targetType: r.targetType,
+    targetId: r.targetId,
+    payload: (r.payload ?? undefined) as Record<string, unknown> | undefined,
+    ip: r.ip,
+    userAgent: r.userAgent,
+    createdAt: r.createdAt.toISOString(),
+    prevHash: r.prevHash,
+    entryHash: r.entryHash,
+  }));
+  return { entries, total, truncated: total > entries.length };
+}
+
+/**
  * Verify the entire chain end-to-end. Returns the first tamper point, or null
  * if the chain is fully intact. Used by the admin dashboard's "verify chain"
  * action and by automated tests.

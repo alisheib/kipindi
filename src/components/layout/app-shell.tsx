@@ -1,5 +1,6 @@
 import { Suspense, lazy } from "react";
 import { headers } from "next/headers";
+import { getAgentConfig } from "@/lib/server/agent-config";
 
 const LazyOfflineBanner = lazy(() =>
   import("@/components/ui/offline-banner").then((m) => ({ default: m.OfflineBanner })),
@@ -192,6 +193,24 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
      entry point open for a DEACTIVATED agent, because deactivation leaves the role in place. */
   const inviteVisible = inviteIsLiveFor(inviteViewer);
 
+  /**
+   * 🔴 THE AGENT DOOR IS RESOLVED HERE FOR THE REASON THE COMMENT ABOVE ALREADY GIVES.
+   *
+   * `public-footer.tsx` is `"use client"` and was calling `getAgentConfig()` directly — the
+   * exact thing the note above forbids ("importing a server module from a client file is what
+   * took every page in this app down once already"). And it was WRONG as well as forbidden:
+   * `defineConfig`'s cache does not cross to the browser bundle, so the client read the
+   * module DEFAULT (`enabled: true`) and the footer link would have stayed up no matter what
+   * an officer saved. A switch that does not switch anything is worse than no switch.
+   *
+   * ⭐ AND THE DOOR STAYS OPEN FOR PEOPLE ALREADY INSIDE, matching `/agent` itself: that page
+   * deliberately keeps rendering for anyone with standing, so closing the programme must not
+   * strip an approved agent — or a paid applicant awaiting a decision — of their only
+   * navigational route to it. Gating on `enabled` alone made the footer a dead end for exactly
+   * the people who had paid TZS 118,000.
+   */
+  const agentDoorVisible = getAgentConfig().enabled || inviteViewer.agentInGoodStanding;
+
   return (
     <div className="min-h-screen bg-bg-base text-text">
       {/* Skip-to-content — WCAG 2.4.1. Visually hidden until focused,
@@ -243,7 +262,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       <main id="main-content" className="pb-[calc(88px+env(safe-area-inset-bottom))] lg:pb-0">
         <RouteTransition>{children}</RouteTransition>
       </main>
-      <PublicFooter proposalsState={proposalsState} />
+      <PublicFooter proposalsState={proposalsState} agentDoorVisible={agentDoorVisible} />
       {/* DG-P-11 — the rail's `More` needs the feature state for the same two reasons the bar
           and the footer already take it: DISABLED hides every proposals entry point, and the
           state flag (coming-soon / maintenance) must read the same on a phone as on a laptop. */}

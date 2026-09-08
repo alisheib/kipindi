@@ -92,7 +92,11 @@ export async function setAgentRateAction(formData: FormData): Promise<Result> {
   const userId = String(formData.get("userId") ?? "");
   const r = await setAgentRate(g.userId, userId, Number(formData.get("commissionPct")), String(formData.get("reason") ?? ""));
   if (!r.ok) return { ok: false, error: r.error, field: /rate/i.test(r.error) ? "commissionPct" : "reason" };
-  revalidate();
+  // ⭐ THE DETAIL PATH TOO. These four actions are taken FROM the workstation, and they
+  // revalidated only the queue — so the page the officer is standing on kept its cached
+  // render and a colleague opening it saw the old rate. The rail's `router.refresh()` hid
+  // this from whoever clicked, and from nobody else.
+  revalidate(String(formData.get("applicationId") ?? "") || undefined);
   return { ok: true };
 }
 
@@ -100,7 +104,7 @@ export async function deactivateAgentAction(formData: FormData): Promise<Result>
   const g = await gate("deactivateAgent"); if ("error" in g) return { ok: false, error: g.error };
   const r = await deactivateAgent(g.userId, String(formData.get("userId") ?? ""), String(formData.get("reason") ?? ""));
   if (!r.ok) return { ok: false, error: r.error, field: "reason" };
-  revalidate();
+  revalidate(String(formData.get("applicationId") ?? "") || undefined);
   return { ok: true };
 }
 
@@ -108,7 +112,7 @@ export async function reactivateAgentAction(formData: FormData): Promise<Result>
   const g = await gate("reactivateAgent"); if ("error" in g) return { ok: false, error: g.error };
   const r = await reactivateAgent(g.userId, String(formData.get("userId") ?? ""), String(formData.get("reason") ?? ""));
   if (!r.ok) return { ok: false, error: r.error, field: "reason" };
-  revalidate();
+  revalidate(String(formData.get("applicationId") ?? "") || undefined);
   return { ok: true };
 }
 
@@ -116,7 +120,7 @@ export async function revokeAgentAction(formData: FormData): Promise<Result> {
   const g = await gate("revokeAgent"); if ("error" in g) return { ok: false, error: g.error };
   const r = await revokeAgent(g.userId, String(formData.get("userId") ?? ""), String(formData.get("reason") ?? ""));
   if (!r.ok) return { ok: false, error: r.error, field: "reason" };
-  revalidate();
+  revalidate(String(formData.get("applicationId") ?? "") || undefined);
   return { ok: true };
 }
 

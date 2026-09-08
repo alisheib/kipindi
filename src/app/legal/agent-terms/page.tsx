@@ -4,7 +4,6 @@ import { getServerT, type Locale } from "@/lib/i18n-server";
 import { getAgentConfig } from "@/lib/server/agent-config";
 import { feeBreakdown, AGENT_REFEREE_DOC_HOLD_DAYS } from "@/lib/server/agent-application-service";
 import { AGENT_TERMS_VERSION } from "@/lib/agent-terms-version";
-import { PLATFORM_MAX_COMMISSION_PCT } from "@/lib/server/agent-config";
 import { formatTzs } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";

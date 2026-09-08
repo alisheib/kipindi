@@ -14,9 +14,20 @@ import { ProposalsStateBadge } from "@/components/ui/proposals-state-badge";
 import { HELPLINE, HELPLINE_TEL, SUPPORT_EMAIL } from "@/lib/support-config";
 import { useT } from "@/lib/i18n";
 import type { ProposalsState } from "@/lib/server/proposals-config";
-import { getAgentConfig } from "@/lib/server/agent-config";
 
-export function PublicFooter({ proposalsState }: { proposalsState: ProposalsState }) {
+export function PublicFooter({
+  proposalsState,
+  /**
+   * ⛔ A PROP, NOT A CONFIG READ. This file is `"use client"`, and it used to call
+   * `getAgentConfig()` — which in a browser bundle returns the module DEFAULT rather than the
+   * persisted row, so the link ignored the operator's switch entirely. The shell resolves it
+   * on the server and threads the ANSWER down, exactly as `proposalsState` is threaded.
+   */
+  agentDoorVisible,
+}: {
+  proposalsState: ProposalsState;
+  agentDoorVisible: boolean;
+}) {
   const { t } = useT();
   const license = process.env.NEXT_PUBLIC_LICENSE_REF ?? "TZ-GBT-2026-XXXX (pending)";
   return (
@@ -79,8 +90,9 @@ export function PublicFooter({ proposalsState }: { proposalsState: ProposalsStat
           {/* ⭐ THE AGENT PROGRAMME'S ONE DOOR. Site chrome, visible signed out, a plain directory
               line — no badge, no gilt, no number, no earnings verb. ⛔ Never in the account menu:
               the footer is not the account, and an ordinary player is not solicited. */}
-          {/* The public door closes with the programme; a link to a 404 is not a door. */}
-          {getAgentConfig().enabled && <FooterLink href="/agent">{t.agent.footerLink}</FooterLink>}
+          {/* The public door closes with the programme — a link to a 404 is not a door — but
+              it stays open for anyone already inside it. Resolved in `app-shell.tsx`. */}
+          {agentDoorVisible && <FooterLink href="/agent">{t.agent.footerLink}</FooterLink>}
           <FooterLink href="/help">{t.footer.helpSupport}</FooterLink>
         </FooterCol>
 

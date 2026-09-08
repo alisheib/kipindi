@@ -24,6 +24,7 @@ import { Field, Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Chip } from "@/components/ui/chip";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Callout } from "@/components/ui/callout";
 import { Spinner } from "@/components/ui/spinner";
 import { I } from "@/components/ui/glyphs";
 import { useToast } from "@/components/ui/toast";
@@ -154,10 +155,11 @@ export function ApplyClient({ app, documents, missing, kycGate, fee, limits }: P
       </div>
 
       {infoRequired && app.infoRequestNote && (
-        <div className="flex gap-2 rounded-xl border p-3" style={{ background: "color-mix(in oklab, var(--warning-500) 12%, transparent)", borderColor: "color-mix(in oklab, var(--warning-500) 30%, transparent)" }}>
-          <span className="shrink-0" style={{ color: "var(--warning-500)" }}><I.info s={16} /></span>
-          <p className="text-body-sm leading-relaxed text-text">{app.infoRequestNote}</p>
-        </div>
+        /* ⛔ THE KIT CALLOUT, not a second warning surface. This was a hand-rolled panel with
+           its own inline `color-mix` borders and its own glyph — §K5's "one-off that
+           duplicates a primitive", and the officer's note is the single most important thing
+           on this page when it is present. */
+        <Callout tone="warning" size="md">{app.infoRequestNote}</Callout>
       )}
 
       {/* The rail */}

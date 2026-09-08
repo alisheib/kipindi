@@ -306,6 +306,55 @@ export const AGENT_INVITATION_STATUS: Record<"ISSUED" | "ACCEPTED" | "DECLINED" 
 /** `AgentRejectReason` → the sentence a person reads, EN + SW (emails are bilingual; the
  *  in-app three-language copy is `dict.agent.reason*`). ⛔ The three terminal reasons are
  *  deliberately uninformative — a sanctioned or fraudulent applicant is not told what we know. */
+/**
+ * ⭐ THE AUDITED ACTIONS ON AN AGENT APPLICATION, IN WORDS — the workstation's History panel.
+ *
+ * ⛔ AN OFFICER READS A SENTENCE, NOT AN ENUM (labels §L2). The audit chain stores dotted
+ * machine names (`agent.fee.amount_mismatch`), and `/admin/players` renders those raw; on a
+ * case file that is the difference between "Fee reconciled" and `agent.fee.reconciled`.
+ *
+ * ⚠️ AND AN UNKNOWN ACTION IS HUMANISED, NEVER HIDDEN. `auditActionLabel` falls back to the
+ * raw action rather than to "—" or to nothing: a new audited action that nobody has added
+ * here must still APPEAR in the history, because a decision that is invisible on the case file
+ * is worse than one that is spelled awkwardly. ⛔ Never make the fallback empty.
+ */
+export const AGENT_AUDIT_ACTION: Record<string, string> = {
+  "agent.application.document_uploaded": "Document attached",
+  "agent.application.expired": "Application expired",
+  "agent.application.info_requested": "More information requested",
+  "agent.application.referees_set": "Referees recorded",
+  "agent.application.rejected": "Rejected",
+  "agent.application.started": "Application started",
+  "agent.application.submitted": "Submitted for review",
+  "agent.approve.refused": "Approval refused",
+  "agent.approve.write_failed": "Approval failed to write — investigate",
+  "agent.approved": "Approved",
+  "agent.deactivated": "Agent paused",
+  "agent.fee.amount_mismatch": "Fee refused — amount did not match",
+  "agent.fee.duplicate_reference": "Fee refused — receipt reference already in use",
+  "agent.fee.reconciled": "Fee reconciled",
+  "agent.fee.reference_recorded": "Receipt reference recorded",
+  "agent.fee.refunded": "Fee refunded",
+  "agent.fee.waived": "Fee waived",
+  "agent.invitation.accepted": "Invitation accepted",
+  "agent.invitation.declined": "Invitation declined",
+  "agent.invitation.expired": "Invitation expired",
+  "agent.invitation.identity_mismatch": "Acceptance refused — wrong account",
+  "agent.invitation.issued": "Invitation issued",
+  "agent.invitation.otp_failed": "Invitation code refused",
+  "agent.invitation.revoked": "Invitation withdrawn",
+  "agent.payable.settled": "Payable settled out of band",
+  "agent.rate.changed": "Commission rate changed",
+  "agent.reactivated": "Agent reactivated",
+  "agent.review.self_blocked": "Self-review blocked",
+  "agent.revoked": "Agent status revoked",
+};
+
+/** The action in words, or the raw action when it has no entry — never nothing. */
+export function auditActionLabel(action: string): string {
+  return AGENT_AUDIT_ACTION[action] ?? action;
+}
+
 export const AGENT_REJECT_REASON: Record<
   "INCOMPLETE_DOCUMENTS" | "DOCUMENT_NOT_LEGIBLE" | "UNSATISFACTORY_REFEREE" | "DETAILS_MISMATCH" | "FEE_NOT_RECONCILED" | "STAFF_CONFLICT" | "OTHER" | "SANCTIONED" | "IDENTITY_MISMATCH" | "FRAUD",
   { en: string; sw: string }

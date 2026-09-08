@@ -21,6 +21,8 @@ import { emailOutbox, clearEmailOutbox } from "../src/lib/server/email.ts";
 import { AGENT_TERMS_VERSION } from "../src/lib/agent-terms-version.ts";
 import { isProtectedPath } from "../src/proxy.ts";
 import { getAuditPage } from "../src/lib/server/audit.ts";
+import { AGENT_AUDIT_ACTION, auditActionLabel } from "../src/lib/admin-status-lexicon.ts";
+import { readFileSync } from "node:fs";
 import {
   startApplication, attachAgentDocument, setReferees, recordFeePayment, submitForReview, applicantView,
   reconcileFee, waiveFee, recordFeeRefund, requestMoreInfo, rejectApplication, approveAgent, deactivateAgent, reactivateAgent, revokeAgent,
@@ -386,6 +388,34 @@ async function fullDraft(uid: string, feeRef: string) {
   ok("7.terms · /legal/agent-terms is public", !isProtectedPath("/legal/agent-terms"));
   ok("7.prefix · a prefix that merely STARTS with the word is not matched", !isProtectedPath("/agents") && !isProtectedPath("/agent-status"));
   ok("7.slots · the document slot list is closed and the required set is inside it", REQUIRED_DOC_SLOTS.every((s) => ALL_DOC_SLOTS.includes(s)) && ALL_DOC_SLOTS.length === REQUIRED_DOC_SLOTS.length + 1);
+}
+
+// ═══ §8 · THE HISTORY PANEL CAN NAME EVERY ACTION IT WILL EVER BE SHOWN ═══
+//
+// ⭐ THE POPULATION IS RE-DERIVED FROM THE SERVICE SOURCE, not from a list somebody typed.
+// The workstation's History card renders `auditActionLabel(e.action)`, and the map behind it
+// was FIRST WRITTEN FROM MEMORY: five of its keys named actions that do not exist and five
+// real audited actions had no entry at all. A map that is merely plausible is exactly the
+// failure `docs/...MEASURE-THE-RIGHT-POPULATION` records — a true-looking artefact measured
+// against the wrong set.
+//
+// ⛔ AND THE FALLBACK IS ASSERTED TOO. An unlabelled action must still APPEAR: a decision that
+// is invisible on a case file is worse than one spelled awkwardly, so `auditActionLabel` is
+// required to return the raw action rather than "—" or "".
+{
+  const svc = readFileSync(new URL("../src/lib/server/agent-application-service.ts", import.meta.url), "utf8");
+  const audited = [...new Set([...svc.matchAll(/action: "(agent\.[a-z_.]+)"/g)].map((m) => m[1]))].sort();
+  ok("8.population · the scan reaches the service's audited actions (a vacuous pass is not a pass)", audited.length >= 25, String(audited.length));
+
+  const unlabelled = audited.filter((a) => AGENT_AUDIT_ACTION[a] === undefined);
+  ok("8.covered · every audited agent action has a label in the lexicon", unlabelled.length === 0, unlabelled.join(", "));
+
+  const phantom = Object.keys(AGENT_AUDIT_ACTION).filter((k) => !audited.includes(k));
+  ok("8.nophantom · …and no label names an action the service never writes", phantom.length === 0, phantom.join(", "));
+
+  ok("8.words · a label is a sentence, never the dotted machine name", audited.every((a) => AGENT_AUDIT_ACTION[a] !== a && !AGENT_AUDIT_ACTION[a].includes(".")), "");
+  ok("8.fallback · an UNKNOWN action falls back to the raw action, never to nothing", auditActionLabel("agent.something.new") === "agent.something.new");
+  ok("8.fallbacknotblank · …and never to an em-dash or an empty string", auditActionLabel("agent.something.new").trim().length > 0);
 }
 
 console.log(`\nagent-application-security: ${pass} passed, ${fail} failed`);
