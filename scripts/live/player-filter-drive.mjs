@@ -187,6 +187,28 @@ const SURFACES = [
       { parent: "all", parts: ["AUTH", "KYC", "WALLET", "BET", "ADMIN", "COMPLIANCE", "SECURITY", "SYSTEM"] },
     ],
   },
+  /**
+   * DECLARED 2026-09-08 (PLAYER QUERY, task 4.7).
+   *
+   * ⭐ COVERING IS BY CONSTRUCTION HERE, WHICH IS WHY THIS ROUTE IS WORTH DECLARING. `void` is
+   * written as the NEGATION `outcome !== "YES" && outcome !== "NO"`, not as a list, so
+   * `yes ∪ no ∪ void = all` and the three are pairwise disjoint for ANY value of the raw
+   * `resolvedOutcome` column — including `null` and including a verdict token added tomorrow.
+   * ⛔ If someone "simplifies" that arm into `=== "VOID" || === null`, this driver is what notices:
+   * the union stops covering the parent the day an unenumerated value appears.
+   *
+   * ⚠️ SAME `param` AND SAME IDS AS `/results`, deliberately — the two pages read the same
+   * `RESOLVED ∪ VOIDED` population through the same chip.
+   */
+  {
+    id: "/fairness",
+    path: "/fairness",
+    param: "out",
+    all: "all",
+    partitions: [
+      { parent: "all", parts: ["yes", "no", "void"] },
+    ],
+  },
 ];
 
 const surfaces = ONLY ? SURFACES.filter((s) => s.id === ONLY || s.path === ONLY) : SURFACES;

@@ -86,6 +86,14 @@ const SURFACES = [
   { id: "account-window-empty", path: "/profile/account?when=yesterday", must: "data-filter-rail", sheet: false },
   { id: "account-search-empty", path: "/profile/account?q=zzzznomatch", must: "data-filter-rail", sheet: false },
   { id: "account-legacy-act", path: "/profile/account?act=lol", must: "data-filter-rail", sheet: false },
+  /* DECLARED 2026-09-08 (PLAYER QUERY, task 4.7). ⭐ `fairness-void` IS THE SHOT THAT MATTERS: a
+     voided settlement was UNREACHABLE on this page until this task — the read asked for
+     `status === "RESOLVED"` by equality — so this capture is the proof that the record now
+     contains what it exists to publish. ⚠️ And this is the one surface here that needs NO session,
+     so it is also the cheapest shot in the set to re-run. */
+  { id: "fairness", path: "/fairness", must: "data-filter-rail", sheet: true },
+  { id: "fairness-void", path: "/fairness?out=void", must: "data-filter-rail", sheet: false },
+  { id: "fairness-search-empty", path: "/fairness?q=zzzznomatch", must: "data-filter-rail", sheet: false },
 ];
 
 const surfaces = ONLY ? SURFACES.filter((s) => s.path.startsWith(ONLY) || s.id === ONLY.replace("/", "")) : SURFACES;

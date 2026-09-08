@@ -294,6 +294,15 @@ export const dict = {
       fairnessSettlementBody: "Winners receive their money directly in their wallet. Payouts hit wallets the moment the second signature lands.",
       recentlyResolved: "Recently resolved",
       noResolvedMarketsYet: "No resolved markets yet",
+      // PLAYER QUERY task 4.7 — /fairness. ⭐ An empty `void` lens is GOOD NEWS on an attestation
+      // record, so it reads as a fact about the platform rather than as a failed filter.
+      noVoidedSettlements: "No settlement has been voided",
+      noVoidedSettlementsBody: "Every market on this record settled with a verdict. A voided market appears here if stakes are ever returned.",
+      // ⛔ These replace twelve characters of an internal officer user-id that this page published
+      //    on an unauthenticated URL. What the public record must prove is that two DISTINCT
+      //    officers signed — never who they were.
+      twoOfficerSealed: "Two officers",
+      oneOfficerSealed: "One officer",
       attestationPublishHint: "Resolution attestations publish here automatically the moment a market settles.",
       thMarket: "Market",
       thOutcome: "Outcome",
@@ -2717,6 +2726,10 @@ export const dict = {
       fairnessSettlementBody: "Washindi wanapokea pesa moja kwa moja kwenye pochi. Malipo yanafika mara saini ya pili inapowekwa.",
       recentlyResolved: "Matokeo ya hivi karibuni",
       noResolvedMarketsYet: "Bado hakuna soko lililotatuliwa",
+      noVoidedSettlements: "Hakuna utatuzi uliobatilishwa",
+      noVoidedSettlementsBody: "Kila soko kwenye rekodi hii lilitatuliwa kwa uamuzi. Soko lililobatilishwa litaonekana hapa iwapo dau zitarudishwa.",
+      twoOfficerSealed: "Maafisa wawili",
+      oneOfficerSealed: "Afisa mmoja",
       attestationPublishHint: "Uthibitisho wa utatuzi unachapishwa hapa moja kwa moja soko linapokamilika.",
       thMarket: "Soko",
       thOutcome: "Matokeo",
@@ -4754,6 +4767,10 @@ export const dict = {
       fairnessSettlementBody: "赢家直接在钱包中收到资金。第二个签名落地的那一刻资金到账。",
       recentlyResolved: "最近结算",
       noResolvedMarketsYet: "暂无已结算市场",
+      noVoidedSettlements: "没有被作废的结算",
+      noVoidedSettlementsBody: "此记录中的每个市场都已给出裁定。若曾退回本金，被作废的市场会显示在这里。",
+      twoOfficerSealed: "两位审核员",
+      oneOfficerSealed: "一位审核员",
       attestationPublishHint: "市场结算后结算证明会自动发布在此。",
       thMarket: "市场",
       thOutcome: "结果",

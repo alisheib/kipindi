@@ -142,6 +142,14 @@ const SURFACES = [
      `?act=` was passed through unnarrowed, so `?act=lol` emptied the table and drew no control
      that could clear it. */
   "src/app/profile/account/account-bar.tsx",    // /profile/account — activity category + when
+  /* DECLARED 2026-09-08 (PLAYER QUERY, task 4.7). 🔴 `/fairness` had NO controls at all and — worse
+     — could not show a VOIDED settlement, because it read `listMarkets({ status: "RESOLVED" })`,
+     an exact equality rather than an `IN`. The page whose entire purpose is proving how a market
+     settled was silent about every market that settled by being voided, and about the stakes
+     refunded with it. ⚠️ It is also the only SIGNED-OUT surface in this list, so its whole bar must
+     work with no JavaScript and no session — the audience includes a regulator opening the URL
+     cold. */
+  "src/app/fairness/fairness-bar.tsx",          // /fairness — outcome lens + when
 ];
 
 /**

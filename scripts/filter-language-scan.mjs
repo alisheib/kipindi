@@ -89,6 +89,14 @@ const SURFACES = [
   // and a `rails: 0` here would be the scan reporting a pass over an absent instrument.
   // ⛔ The seeded persona must hold stars. If this row goes red, check the FIXTURE before the page.
   { id: "/watchlist", path: "/watchlist", auth: true, rails: 1 },
+  // DECLARED 2026-09-08 (PLAYER QUERY, task 4.7). `auth: false` — this is the public attestation
+  // record and the ONLY signed-out surface in this list, which is exactly why it is worth scanning:
+  // its bar must speak the same language with no session at all. `rails: 1` re-derived by counting
+  // `data-filter-rail` wrappers in `fairness-bar.tsx`, which emits one.
+  // ⚠️ Conditional on the platform having settled at least one market — the bar is withheld over a
+  // genuinely empty record. If this row goes red, check whether the fixture has any terminal
+  // market before looking at the page.
+  { id: "/fairness", path: "/fairness", auth: false, rails: 1 },
 ];
 
 /** Inside a rail, these are the pressable controls. Menu triggers count; static keys do not. */

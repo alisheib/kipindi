@@ -93,6 +93,10 @@ const SURFACES = [
      population is the PLAYER's own audit categories and varies per persona. A floor tuned to one
      fixture would fail a correct page for a player with a short history. */
   { id: "/profile/account", path: "/profile/account", minControls: 6 },
+  /* DECLARED 2026-09-08 (PLAYER QUERY, task 4.7). ⚠️ THE ONE SIGNED-OUT SURFACE THIS DRIVER
+     MEASURES, which makes it the cheapest to run and the easiest to forget. Four outcome pills +
+     sort + direction + five window pills at 1280. */
+  { id: "/fairness", path: "/fairness", minControls: 8 },
 ];
 
 const surfaces = ONLY ? SURFACES.filter((s) => s.id === ONLY || s.path === ONLY) : SURFACES;

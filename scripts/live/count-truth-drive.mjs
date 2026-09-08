@@ -81,6 +81,10 @@ const SURFACES = [
      whatever a particular fixture happens to render; that would make a correct page red for a
      player with a short history. */
   { id: "/profile/account", path: "/profile/account", minPills: 7 },
+  /* DECLARED 2026-09-08 (PLAYER QUERY, task 4.7). ⭐ Unlike its neighbours this route's lens
+     population is FIXED — four outcome arms — so the floor can be exact rather than conservative:
+     4 outcome pills + 5 window pills = 9 distinct destinations. */
+  { id: "/fairness", path: "/fairness", minPills: 9 },
 ];
 
 const surfaces = ONLY ? SURFACES.filter((s) => s.id === ONLY || s.path === ONLY) : SURFACES;

@@ -93,6 +93,22 @@ const MUST_OPT_IN: Array<{ file: string; why: string; minCalls: number }> = [
  */
 function listMarketsCalls(src: string): string[] {
   const out: string[] = [];
+  /**
+   * 🔴 COMMENTS ARE STRIPPED FIRST, AND THIS GUARD WENT RED ON PROSE BEFORE THEY WERE (2026-09-08,
+   * PLAYER QUERY task 4.7). `/fairness` was moved onto the terminal read and its comment EXPLAINED
+   * why the both-products argument must never be passed — by naming that call form. The matcher
+   * read the sentence and reported the file as opted in, while the code was correct.
+   *
+   * ⭐ THIS IS A HARDENING, NOT A SOFTENING, and the difference matters: a real call is code and is
+   * still caught, byte for byte. What is no longer caught is a mention. A guard that fires on its
+   * own documentation is a guard that teaches people to stop writing documentation — and §D of
+   * this repo's standards names "a check that matches SYNTAX, not meaning" as a defect class in
+   * its own right. §8.4 below is the control that proves the strip did not blind it.
+   *
+   * ⚠️ THE LINE-COMMENT PATTERN IS ANCHORED AT `^\s*`, deliberately, and is borrowed verbatim from
+   * `grid-paging.test.mts`. An unanchored `//` would eat the rest of any line containing a URL.
+   */
+  src = src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
   const re = /\blist(?:Terminal)?Markets\s*\(/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(src))) {
@@ -417,6 +433,41 @@ const ids = (rows: Array<{ id: string }>) => rows.map((r) => r.id).filter((i) =>
   // that moves. C1 above is the assertion that still carries the real relationship.
   okC("C3 CONTROL · the archive ceiling is a fixed 24h bound, not a copy of the live window",
     TERMINAL_TTL_CEILING_MS === 24 * 60 * 60 * 1000);
+}
+
+/**
+ * §8.4 · THE CONTROL FOR THE COMMENT STRIP — proof that hardening `listMarketsCalls` against prose
+ * did not blind it to code.
+ *
+ * ⛔ WITHOUT THIS, THE STRIP IS AN UNPROVEN CLAIM. It would be trivially possible to write a
+ * replacement that removed the calls along with the comments, and every A-check above would then
+ * pass over a file that had genuinely opted in — a guard reporting green because it can no longer
+ * see its subject, which is the exact failure this suite exists to prevent one level down.
+ *
+ * ⭐ FOUR CASES, EACH ONE A DIFFERENT WAY THE STRIP COULD BE WRONG: a real call survives; the same
+ * call inside a block comment does not; inside a line comment does not; and a call sharing a line
+ * with a URL survives — which is what anchoring the line-comment pattern to the start of the line
+ * buys; an unanchored one would eat everything after the slashes inside the URL.
+ *
+ * ⚠️ AND WRITING THAT SENTENCE THE OBVIOUS WAY BROKE THE FILE. Quoting the anchored pattern inline
+ * put a star immediately before a slash INSIDE this block comment, which closed the comment early
+ * and left the rest of the paragraph as code — "Unterminated regular expression", from prose. The
+ * same delimiter-in-prose trap the page under test hit ten minutes earlier, one level up.
+ */
+{
+  const REAL = `const a = await listTerminalMarkets("ALL");`;
+  const BLOCK = `/* never write listTerminalMarkets("ALL") here */`;
+  const LINE = `  // listMarkets({ productLine: "ALL" }) is forbidden on this page`;
+  const URLY = `const u = "https://x.tz/a//b"; const c = listMarkets({ productLine: "ALL" });`;
+
+  ok("8.4a CONTROL · a REAL opted-in call is still seen after the comment strip",
+    listMarketsCalls(REAL).filter(readsAllProducts).length === 1);
+  ok("8.4b CONTROL · the same call inside a BLOCK comment is not",
+    listMarketsCalls(BLOCK).length === 0);
+  ok("8.4c CONTROL · the same call inside a LINE comment is not",
+    listMarketsCalls(LINE).length === 0);
+  ok("8.4d CONTROL · a call sharing a line with a `//` inside a string URL still counts",
+    listMarketsCalls(URLY).filter(readsAllProducts).length === 1);
 }
 
 console.log(`\nproduct-line: ${pass} passed, ${fail} failed`);
