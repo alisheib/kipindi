@@ -1642,6 +1642,9 @@ export const dict = {
       recentSettled: "Recent settled",
       noPerformance: "No settled positions yet",
       noPerformanceBody: "Place your first prediction to start tracking your performance",
+      // PLAYER QUERY task 4.10 — the RESIDUAL arm of the product lens. It means "this settled
+      // position's market row could not be read", so the word must not claim a product.
+      productOther: "Unattributed",
       viewPerformance: "View performance",
     },
     results: {
@@ -3811,6 +3814,7 @@ export const dict = {
       recentSettled: "Zilizomalizika hivi karibuni",
       noPerformance: "Hakuna nafasi zilizomalizika bado",
       noPerformanceBody: "Weka utabiri wako wa kwanza kuanza kufuatilia utendaji wako",
+      productOther: "Hayajaainishwa",
       viewPerformance: "Angalia utendaji",
     },
     results: {
@@ -5857,6 +5861,7 @@ export const dict = {
       recentSettled: "最近结算",
       noPerformance: "暂无已结算持仓",
       noPerformanceBody: "进行您的第一次预测以开始追踪您的表现",
+      productOther: "未归类",
       viewPerformance: "查看表现",
     },
     results: {

@@ -150,6 +150,12 @@ const SURFACES = [
      work with no JavaScript and no session — the audience includes a regulator opening the URL
      cold. */
   "src/app/fairness/fairness-bar.tsx",          // /fairness — outcome lens + when
+  /* DECLARED 2026-09-08 (PLAYER QUERY, task 4.10). ⚠️ THE ONE RAIL IN THIS LIST THAT NARROWS
+     AGGREGATES RATHER THAN A LIST — there are no rows on that page, so the lens re-scopes five
+     money tiles, a P&L curve and two streaks. It is a lens strip and nothing else: no sort (no
+     rows to order), no search (no words), no window (a summary whose tiles disagreed about their
+     span would be worse than one with no window at all). */
+  "src/app/positions/performance/performance-bar.tsx", // /positions/performance — product lens
 ];
 
 /**

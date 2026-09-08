@@ -209,6 +209,30 @@ const SURFACES = [
       { parent: "all", parts: ["yes", "no", "void"] },
     ],
   },
+  /**
+   * DECLARED 2026-09-08 (PLAYER QUERY, task 4.10).
+   *
+   * ⚠️ THIS SURFACE HAS NO ROWS, so the SUBSET and DISJOINT arms are checked over an empty id set
+   * and pass vacuously — and that is stated rather than hidden. What this row really buys is the
+   * PROMISE arm: each pill publishes a `data-count`, and the page's own "Total predictions" tile is
+   * computed from the same filtered array, so a pill that over-promises is a pill disagreeing with
+   * a money figure one line below it. ⛔ `data-row-id` is deliberately absent here (there is no
+   * list), which is why this entry is about counts and not about sets.
+   *
+   * ⭐ COVERING STILL HOLDS BY CONSTRUCTION: `other` is the residual — a settled position whose
+   * market row could not be read lands there rather than inside `all` with no pill able to reach
+   * it. The driver reports 🔶 for `other` on a healthy book, which is correct: the arm exists and
+   * is unexercisable, not missing.
+   */
+  {
+    id: "/positions/performance",
+    path: "/positions/performance",
+    param: "product",
+    all: "all",
+    partitions: [
+      { parent: "all", parts: ["poll", "updown", "other"] },
+    ],
+  },
 ];
 
 const surfaces = ONLY ? SURFACES.filter((s) => s.id === ONLY || s.path === ONLY) : SURFACES;

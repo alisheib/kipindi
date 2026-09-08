@@ -97,6 +97,12 @@ const SURFACES = [
   // genuinely empty record. If this row goes red, check whether the fixture has any terminal
   // market before looking at the page.
   { id: "/fairness", path: "/fairness", auth: false, rails: 1 },
+  // DECLARED 2026-09-08 (PLAYER QUERY, task 4.10). ⚠️ `rails: 1` IS DOUBLY CONDITIONAL HERE — the
+  // rail is withheld when the player has settled NOTHING, and also when only ONE product has
+  // anything (a one-pill rail is not a filter, so `perfLensesToRender` returns just `all`).
+  // ⛔ The seeded persona needs settled positions on BOTH product lines. If this row goes red,
+  // check the FIXTURE before the page.
+  { id: "/positions/performance", path: "/positions/performance", auth: true, rails: 1 },
 ];
 
 /** Inside a rail, these are the pressable controls. Menu triggers count; static keys do not. */

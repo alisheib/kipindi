@@ -14,6 +14,13 @@ import { getServerT } from "@/lib/i18n-server";
 import { pickLocalized } from "@/lib/localized";
 import { sideWord } from "@/lib/side-label";
 import { PageContainer } from "@/components/layout/page-container";
+import { PerformanceBar } from "./performance-bar";
+import {
+  parsePerfParams,
+  perfCounts,
+  perfLensesToRender,
+  type PerfProduct,
+} from "@/lib/positions/performance";
 
 export async function generateMetadata() {
   const { t } = await getServerT();
@@ -21,15 +28,56 @@ export async function generateMetadata() {
 }
 export const dynamic = "force-dynamic";
 
-export default async function PerformancePage() {
+export default async function PerformancePage({
+  searchParams,
+}: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const { t, locale } = await getServerT();
   const session = await currentSession();
   if (!session) redirect("/auth/login?next=/positions/performance");
 
+  const state = parsePerfParams((await searchParams) ?? {});
+
+  /**
+   * ⭐ PLAYER QUERY, TASK 4.10 — THE PRODUCT LENS.
+   *
+   * 🔴 `productLine` IS NOT ON THE POSITION, IT IS ON THE MARKET. `StoredPosition` carries a
+   * `marketId` and no product, so this page could not partition its own rows without asking the
+   * market table — which is why every figure below has, until now, summed long-form poll results
+   * and five-minute Up & Down rounds into ONE ROI, one win rate and one P&L curve.
+   *
+   * ⛔ THE UNFILTERED READ IS KEPT AS THE PARENT, DELIBERATELY. `all` must stay byte-identical to
+   * what this page has always computed — the page's own note is the standard: *"a performance
+   * summary that hid half a player's book would be a lie about their money."* The two extra reads
+   * are indexed joins on the same bounded set and exist only to ATTRIBUTE each position, never to
+   * replace the population.
+   *
+   * ⚠️ A POSITION IN NEITHER PRODUCT SET IS REAL AND IS NOT DROPPED. Its market row could not be
+   * read — deleted, or not yet on a replica — so it lands in the `other` residual arm rather than
+   * being counted by `all` and reachable by no pill.
+   */
   // B-1 — no swallow: a failed positions read must throw to positions/error.tsx,
   // never render the "no performance yet" empty state to a player with history.
-  const positions = await listPositionsForUser(session.userId, 5_000);
-  const settled = positions.filter((p) => p.status !== "OPEN");
+  const [positions, pollPositions, udPositions] = await Promise.all([
+    listPositionsForUser(session.userId, 5_000),
+    listPositionsForUser(session.userId, 5_000, "MARKET"),
+    listPositionsForUser(session.userId, 5_000, "UPDOWN"),
+  ]);
+  const pollIds = new Set(pollPositions.map((p) => p.id));
+  const udIds = new Set(udPositions.map((p) => p.id));
+  const productOf = (id: string): PerfProduct =>
+    pollIds.has(id) ? "poll" : udIds.has(id) ? "updown" : "other";
+
+  const settledAll = positions.filter((p) => p.status !== "OPEN");
+  const perfRows = settledAll.map((p) => ({ id: p.id, product: productOf(p.id) }));
+  const counts = perfCounts(perfRows, state).product;
+  const lenses = perfLensesToRender(counts);
+  // ⛔ EVERY AGGREGATE BELOW READS `settled`, so the lens re-scopes ALL of them or none. A tile
+  //    left on the unfiltered set would print a lifetime figure beside a per-product one.
+  const settled = state.product === "all"
+    ? settledAll
+    : settledAll.filter((p) => productOf(p.id) === state.product);
 
   // ── Core stats (unchanged real aggregation) ─────────────────────────
   const totalBets = settled.length;
@@ -123,6 +171,22 @@ export default async function PerformancePage() {
     <PageContainer tier="reading" className="space-y-6">
       <BackLink fallbackHref="/positions" label={t.common.positions} />
       <PageHeader eyebrow={t.common.positions} title={t.performance.title} />
+
+      {/* ⛔ THE RAIL IS WITHHELD WHEN THE PLAYER HAS SETTLED NOTHING AT ALL, and only then — a
+          strip of pills all reading 0 above "no settled positions yet" is a row of controls that
+          cannot act (§A5). ⚠️ It is ALSO withheld when only ONE product has anything, because a
+          two-pill rail whose second pill is `All` and whose first is the whole book is a control
+          with no job: `perfLensesToRender` returns just `all` there, and a one-pill rail is not a
+          filter. */}
+      {settledAll.length > 0 && lenses.length > 1 && (
+        <PerformanceBar
+          state={state}
+          lenses={lenses}
+          counts={counts}
+          resultCount={totalBets}
+          t={t}
+        />
+      )}
 
       {totalBets === 0 ? (
         /* ⭐ PV-03 — `fill`, and this instance was found by the GUARD rather than by the audit:

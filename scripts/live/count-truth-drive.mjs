@@ -85,6 +85,11 @@ const SURFACES = [
      population is FIXED — four outcome arms — so the floor can be exact rather than conservative:
      4 outcome pills + 5 window pills = 9 distinct destinations. */
   { id: "/fairness", path: "/fairness", minPills: 9 },
+  /* DECLARED 2026-09-08 (PLAYER QUERY, task 4.10). `minPills: 3` — `all` plus the two product
+     arms; the `other` residual draws only when a market row could not be read. ⚠️ The FLOOR IS
+     THE WHOLE RAIL here, so a persona settled on one product only renders a single pill and this
+     row is vacuous — seed both lines. */
+  { id: "/positions/performance", path: "/positions/performance", minPills: 3 },
 ];
 
 const surfaces = ONLY ? SURFACES.filter((s) => s.id === ONLY || s.path === ONLY) : SURFACES;

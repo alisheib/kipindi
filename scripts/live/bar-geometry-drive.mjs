@@ -97,6 +97,10 @@ const SURFACES = [
      MEASURES, which makes it the cheapest to run and the easiest to forget. Four outcome pills +
      sort + direction + five window pills at 1280. */
   { id: "/fairness", path: "/fairness", minControls: 8 },
+  /* DECLARED 2026-09-08 (PLAYER QUERY, task 4.10). Three pills and no second row — the smallest
+     bar in this list, and worth measuring precisely because it is small: a three-pill strip has
+     nowhere to hide a collision. */
+  { id: "/positions/performance", path: "/positions/performance", minControls: 3 },
 ];
 
 const surfaces = ONLY ? SURFACES.filter((s) => s.id === ONLY || s.path === ONLY) : SURFACES;

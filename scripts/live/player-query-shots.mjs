@@ -94,6 +94,11 @@ const SURFACES = [
   { id: "fairness", path: "/fairness", must: "data-filter-rail", sheet: true },
   { id: "fairness-void", path: "/fairness?out=void", must: "data-filter-rail", sheet: false },
   { id: "fairness-search-empty", path: "/fairness?q=zzzznomatch", must: "data-filter-rail", sheet: false },
+  /* DECLARED 2026-09-08 (PLAYER QUERY, task 4.10). ⭐ `perf-updown` IS THE SHOT THAT MATTERS: it
+     is the first time a player can read their Up & Down P&L apart from their poll P&L, and the
+     proof is that EVERY tile changes, not just a row count. */
+  { id: "perf", path: "/positions/performance", must: "data-filter-rail", sheet: false },
+  { id: "perf-updown", path: "/positions/performance?product=updown", must: "data-filter-rail", sheet: false },
 ];
 
 const surfaces = ONLY ? SURFACES.filter((s) => s.path.startsWith(ONLY) || s.id === ONLY.replace("/", "")) : SURFACES;
