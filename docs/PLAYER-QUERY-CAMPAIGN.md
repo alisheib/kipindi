@@ -20,15 +20,49 @@
 ## §0 — RESUME AT
 
 ```
-▶ NEXT ACTION — task 4.4 in the board below.
-  /proposals: all six ProposalStatus lenses; sheet Topic · When; sort; search.
-  ⚠️ READ THE ROW FIRST — its original claim ("DECLINED has no way in") was REFUTED and
-  the row now records what is actually missing: the control, not the data.
+▶ NEXT ACTION — task 4.5 in the board below.
+  /notifications: SEARCH (the only lens surface without it) + the data-filter-rail hook
+  it has never carried. ⚠️ §6 predicts this gate may go RED on copy nobody has inspected
+  the moment the hook lands — that is the FINDING, not a regression.
   One commit per route.
 ```
 
-**Stage 4 of 6. Stages 1–3 CLOSED (12/12, 7/7, 8/8). 4.1–4.3 done; 11 routes left.**
-**Stage 6 task 6.6 (`qa:count-truth` + its RED control) LANDED EARLY — see below for why.**
+**Stage 4 of 6. Stages 1–3 CLOSED (12/12, 7/7, 8/8). 4.1–4.4 done; 10 routes left.**
+**Stage 6 tasks 6.6 (`qa:count-truth`) and a NEW `qa:bar-geometry` LANDED EARLY — see below.**
+
+### ⭐ `qa:bar-geometry` — the gate that measures what a person sees, and the three defects it found
+
+⛔ **IT CLOSES THE HOLE §2 NAMED IN WRITING.** The `/markets` 44px overlap shipped with *every
+automated check green*: the DOCUMENT does not overflow, so `test:responsive` passed; the radius
+and tap floor were untouched, so `qa:filter-scan` passed. **Neither asks whether two controls
+occupy the same pixels, or whether a control has fallen off the screen.** This does, per surface ×
+width × locale, and it captures the bar as an image beside every measurement.
+
+Three defects on its first two runs, none of which any existing gate could see:
+
+1. 🔴 **`/proposals sw 1280: CLIPPED "Mchanganyiko / Zote" 1239→1442 vs viewport 1280`** — 162px
+   off the right edge, in Swahili, at desktop width. ⚠️ **Not a `/proposals` bug — a LATENT one
+   everywhere:** every bar hand-wrote its desktop group as `shrink-0` with no wrap, and only that
+   route has EIGHT categories *and* the platform's longest pill label. `QUERY_GROUP_CLASS` owns
+   that wrapper now.
+2. 🔴 **THREE ROUTES DREW A SEARCH BAND STRAIGHT THROUGH THE BAR — 91px of overlap.** Both stuck
+   at `top-[56px]`, and **two sticky surfaces cannot share one offset.** ⛔ The clearance used to
+   exist: `/results`' retired sidebar sat at `top-[122px]` precisely to clear it, and **task 4.2
+   deleted that arithmetic without replacing what it was buying.** Fixed on all three at once —
+   one defect, one cause.
+3. 🔴 **`/updown/history` reported `bar@-252` while every other surface reported `bar@56`.** Its
+   bar sat inside a **247px wrapper**, and a sticky element only sticks within its PARENT's box —
+   so it unpinned after a quarter of a screen, on the one route that renders four hundred rows.
+
+⚠️ **NONE OF THE THREE IS VISIBLE AT SCROLL 0, WHICH IS WHERE EVERY SCREENSHOT IN THIS CAMPAIGN
+HAD BEEN TAKEN.** The stick assertion is mutation-proven: putting the bar back inside the short
+wrapper reports `top -52`; taking it out reports `top 56`.
+
+⭐ **AND THE INSTRUMENT WAS RUN AGAINST THE REFERENCE FIRST.** Its first draft reported EIGHTEEN
+defects on `/markets` and every one reproduced there — both were exemptions this repo had already
+written down (a closed `<details>` still lays out; a control in a scrolling strip is not clipped).
+**Run a new instrument against the reference surface first. If the reference fails, the instrument
+is the defect.**
 
 ### 🔴 `/results` WAS SHOWING TWO SETTLEMENTS TWICE, AND ONLY A NEW GATE COULD SEE IT
 
@@ -291,9 +325,9 @@ git fetch && git checkout player-query-campaign
 | 1 | **The core** | the six existing gates in §8 green **with no edits to those scripts** | ✅ **12/12** |
 | 2 | **`/positions`** | `qa:player-filters` + `qa:count-truth` green on it; 360 Swahili screenshot looked at | ✅ **7/7** |
 | 3 | **`/wallet`** | same, plus the 1,000-row cap is stated to the player | ✅ **8/8** |
-| 4 | **The other 13 pages** | every census-A and census-B route done, one commit each | ▶ **3/14** |
+| 4 | **The other 13 pages** | every census-A and census-B route done, one commit each | ▶ **4/14** |
 | 5 | **The status dictionary** | `position-card.tsx` has no hand-typed tone; `test:gold-is-money` still green | ☐ 0/4 |
-| 6 | **Guards + docs** | the full §8 sweep passes and each new guard's RED control has been *seen to fail* | ▶ **2/9** |
+| 6 | **Guards + docs** | the full §8 sweep passes and each new guard's RED control has been *seen to fail* | ▶ **3/9** (6.5, 6.6, + `qa:bar-geometry`, unplanned) |
 
 ---
 
@@ -438,7 +472,7 @@ One commit each, in this order. Same bar, same nine rules.
 | ☑ | **4.1** `/updown/history` | lens `All · In play · Up wins · Down wins · Refunded`; sheet Asset · Duration · When (the day rail folds into the window); sort; paging. The 400 cap **stays stated** |
 | ☑ | **4.2** `/results` | lens `All · Yes won · No won · Refunded`; sheet Product · Topic · When; direction on the existing two sorts. ⚠️ **retires the desktop sidebar** — see below |
 | ☑ | **4.3** `/watchlist` | lens `All · Open · In progress · Resolved · Void` — ⚠️ **FIVE, and the plan's `Live`/`Settled` were both wrong**; sheet Topic; 4 sorts (`starred` default = today's order); search; paging. 🔴 Also replaced an **unbounded 20-second-polled board read** with `playerMarketsByIds`. See above |
-| ☐ | **4.4** `/proposals` | all six `ProposalStatus` lenses. ⚠️ **CORRECTED 2026-09-08:** this row said `DECLINED` and `CHANGES_REQUESTED` have *no way in*. Re-derived — they ARE reachable (`f=new` and `f=mine` apply no status predicate); what they have is **no dedicated lens**, so a proposer must scroll a 12-per-page list ordered `createdAt desc` with declines intermixed. `APPROVED` is likewise unselectable. The data is fully hydrated today; only the control is missing. Sheet Topic · When; sort; search |
+| ☑ | **4.4** `/proposals` | lens `All · Under review · Changes requested · Approved · Live · Resolved · Declined` — SEVEN, and COVERING is enforced by the TYPE system (`Record<ProposalStatus, …>`); sheet Mine · Topic · When; 3 sorts; search. 🔴 The old rail asked THREE questions at once (`hot`/`new` were ORDERINGS), and its default view was gated on **200 net votes**. Legacy `?f=` proven equivalent row-for-row |
 | ☐ | **4.5** `/notifications` | **search** (the only lens surface without it) + the `data-filter-rail` hook it has never carried |
 | ☐ | **4.6** `/profile/account` | counts on the existing category rail; When; sort; search |
 | ☐ | **4.7** `/fairness` | include `VOIDED`, then lens `All · Resolved · Voided`. It reads `RESOLVED` only, so **voided settlements are invisible on the page that exists to prove settlements** |

@@ -290,12 +290,23 @@ export default async function UpDownHistoryPage({ searchParams }: {
           `live-updown-digest.mjs` counts round cards. Query links are safe by construction. */}
       {/* ⭐ Search sits outside the sheet at every width — a player who can see the box knows
           the page is searchable. The asset name is the only word on one of these cards. */}
+      {/* 🔴 THE BAR IS NOT INSIDE THIS WRAPPER, AND IT USED TO BE — WHICH UNPINNED IT.
+          `QUERY_BAR_CLASS` is `sticky top-[56px]`, but a sticky element only sticks WITHIN its
+          parent's box, and this wrapper holds the search and the bar and nothing else: measured
+          2026-09-08 at 1280, it is **247px tall**, while the rows it is meant to filter live
+          outside it. So the bar pinned for a quarter of a screen and then scrolled away — on the
+          one route that can render four hundred rows.
+          ⛔ Measured, not reasoned: `qa:bar-geometry` reported `bar@-252` here while every other
+          surface reported `bar@56`. ⭐ The bar is now a direct child of the page container, which
+          spans the list — the same shape the other six query surfaces already had. */}
       {allRows.length > 0 && (
-        <div className="mt-4 space-y-3">
+        <>
+        <div className="mt-4">
           <SearchBox
             placeholder={t.market.udSearchPlaceholder}
             ariaLabel={t.market.udSearchPlaceholder}
           />
+        </div>
           <HistoryBar
             state={state}
             counts={counts}
@@ -316,7 +327,7 @@ export default async function UpDownHistoryPage({ searchParams }: {
             dayLabel={dayKey ? formatEatDay(dayKey, t.common.monthsShort, locale) : null}
             t={t}
           />
-        </div>
+        </>
       )}
 
       {matched.length === 0 ? (

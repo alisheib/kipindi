@@ -25,6 +25,18 @@
  *   1 · NO OVERLAP  — no two visible controls on the same visual row share pixels.
  *   2 · NO CLIPPING — no control runs past the viewport, unless it lives in a strip that scrolls.
  *   3 · NO SHORT CONTROL — every one reaches the 44px tap floor.
+ *   4 · THE BAR ACTUALLY STICKS, AND NOTHING IS DRAWN THROUGH IT. Two defects, one measurement,
+ *       both found by this driver on 2026-09-08 and both invisible until the page was SCROLLED:
+ *         · `/results`, `/watchlist` and `/proposals` each stuck a search band at `top-[56px]` —
+ *           the offset `QUERY_BAR_CLASS` already occupies — so the two surfaces overlapped by
+ *           **91px**, one drawn straight through the other. ⛔ Two sticky surfaces cannot share
+ *           one offset.
+ *         · `/updown/history` reported `bar@-252` while every other surface reported `bar@56`:
+ *           its bar sat inside a 247px wrapper, and a sticky element only sticks within its
+ *           PARENT'S box, so it unpinned after a quarter of a screen — on the one route that can
+ *           render four hundred rows.
+ *       ⚠️ NEITHER IS VISIBLE AT SCROLL 0, which is where every screenshot in this campaign was
+ *       taken until this assertion existed.
  *
  * ── TWO EXEMPTIONS, ADOPTED FROM `scripts/live/clip.mjs` RATHER THAN RE-DERIVED ───────────────
  * ⛔ The first draft of this driver invented its own and reported EIGHTEEN false defects on
@@ -164,6 +176,46 @@ for (const locale of LOCALES) {
           problems.push(`${s.id} ${locale} ${width}: CLIPPED "${b.text}" ${b.x}→${b.x + b.w} vs viewport ${width}`);
         }
         if (b.h < 44) problems.push(`${s.id} ${locale} ${width}: SHORT ${b.h}px "${b.text}"`);
+      }
+
+      /**
+       * 4 · SCROLL, THEN LOOK AGAIN — see the header. ⛔ Only the widest width is checked, and
+       * deliberately: below `lg` the bar is one of several stacked surfaces and the app shell's
+       * own bars legitimately share the band. The desktop layout is where a second sticky element
+       * at the same offset is a defect rather than a design.
+       */
+      if (width >= 1280) {
+        await page.evaluate(() => window.scrollTo(0, 1200));
+        await page.waitForTimeout(450);
+        const stuck = await page.evaluate(() => {
+          const bar = document.querySelector("[data-filter-rail]");
+          if (!bar) return null;
+          const rb = bar.getBoundingClientRect();
+          const hits = [];
+          for (const e of document.querySelectorAll("body *")) {
+            if (e === bar || bar.contains(e) || e.contains(bar)) continue;
+            const cs = getComputedStyle(e);
+            if (cs.position !== "sticky" && cs.position !== "fixed") continue;
+            const r = e.getBoundingClientRect();
+            if (r.width < 200 || r.height < 8) continue;
+            const v = Math.min(rb.bottom, r.bottom) - Math.max(rb.top, r.top);
+            const h = Math.min(rb.right, r.right) - Math.max(rb.left, r.left);
+            if (v > 2 && h > 2) hits.push(`${e.tagName.toLowerCase()}.${String(e.className).trim().split(/\s+/).slice(0, 2).join(".")} by ${Math.round(v)}px`);
+          }
+          return { top: Math.round(rb.top), hits };
+        });
+        if (stuck) {
+          // ⚠️ A bar ABOVE the viewport has scrolled away — it did not stick. The tolerance is
+          //    generous (0 ≤ top ≤ 200) because the exact offset is the shell's business, not this
+          //    driver's; what is being asserted is that the bar is still ON SCREEN.
+          if (stuck.top < 0 || stuck.top > 200) {
+            problems.push(`${s.id} ${locale} ${width}: THE BAR DID NOT STICK — after scrolling it sits at top ${stuck.top}. A sticky element only sticks within its PARENT's box; check the wrapper's height.`);
+          }
+          for (const h of stuck.hits) {
+            problems.push(`${s.id} ${locale} ${width}: ANOTHER STICKY SURFACE IS DRAWN THROUGH THE BAR — ${h}. Two sticky surfaces cannot share one offset.`);
+          }
+        }
+        await page.evaluate(() => window.scrollTo(0, 0));
       }
     }
     await ctx.close();
