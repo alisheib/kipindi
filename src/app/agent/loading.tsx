@@ -44,11 +44,16 @@ export default async function AgentLoading() {
       <div className="rounded-xl glass-panel p-4 space-y-3" aria-hidden>
         <div className="h-4 w-48 rounded bg-bg-overlay/60" />
         <div className="h-3 w-2/3 rounded bg-bg-overlay/40" />
-        <div className="space-y-2.5 pt-1">
+        {/* ⚠️ `space-y-2`, not `2.5` — the overridden scale makes `2.5` (10px) smaller than
+            `2` (12px). See `test:spacing-scale`. */}
+        <div className="space-y-2 pt-1">
           {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
             <div key={i} className="flex items-start justify-between gap-6">
               <div className="h-3 flex-1 max-w-[28ch] rounded bg-bg-overlay/40" />
-              <div className="h-3 w-20 shrink-0 rounded bg-bg-overlay/40" />
+              {/* ⚠️ A LITERAL, not `w-20`. On the overridden scale `w-20` and `w-10` both
+                  paint 80px, so the key says nothing true about the size; the amount column
+                  ghost wants ~80px and now says so. */}
+              <div className="h-3 w-[80px] shrink-0 rounded bg-bg-overlay/40" />
             </div>
           ))}
         </div>

@@ -35,7 +35,7 @@ import { bindRecruit, ensureAffiliateAccount, resolveReferralPreview, onRecruitB
 import { setAffiliateConfig } from "../src/lib/server/affiliate-config.ts";
 // ⭐ ONE way to mint an approved agent across every agent guard — see the file's header for
 // why three suites fixturing `role: "AGENT"` and nothing else was the defect.
-import { approveFixtureAgent } from "./lib/agent-fixtures.mts";
+import { approveFixtureAgent, netAfterWht } from "./lib/agent-fixtures.mts";
 
 let pass = 0, fail = 0;
 function ok(label: string, cond: boolean, extra?: string) {
@@ -319,23 +319,23 @@ function ok(label: string, cond: boolean, extra?: string) {
   // Now a settlement with a NET fee of 10,000 on this recruit's position.
   await onRecruitSettlement("w5e_rec", { operatorNetFee: 10_000, marketId: "mkt_w5e", positionId: "pos_w5e_1" });
   const wAgent = await db.wallet.findByUserId("w5e_ref");
-  ok("§5e CONTROL · an APPROVED agent IS paid — into CASH, exactly floor(10,000 × 20%) = 2,000",
-     wAgent?.balance === 2_000, `cash=${wAgent?.balance}`);
+  ok("§5e CONTROL · an APPROVED agent IS paid — into CASH, floor(10,000 × 20%) = 2,000 gross less withholding",
+     wAgent?.balance === netAfterWht(2_000), `cash=${wAgent?.balance}`);
   ok("§5e CONTROL · …and NOT into the bonus wallet (exact wallet, never a sum)",
      wAgent?.bonusBalance === 0, `bonus=${wAgent?.bonusBalance}`);
   const w5eRows = await db.referralReward.listByReferrer("w5e_ref");
   const w5eCommission = w5eRows.filter((r) => r.type === "COMMISSION");
   ok("§5e CONTROL · exactly one COMMISSION row, stamped programme=AGENT with the rate applied",
-     w5eCommission.length === 1 && w5eCommission[0].programme === "AGENT" && w5eCommission[0].rateApplied === 20 && w5eCommission[0].status === "PAID" && w5eCommission[0].amountTzs === 2_000,
+     w5eCommission.length === 1 && w5eCommission[0].programme === "AGENT" && w5eCommission[0].rateApplied === 20 && w5eCommission[0].status === "PAID" && w5eCommission[0].amountTzs === netAfterWht(2_000) && w5eCommission[0].grossAmountTzs === 2_000,
      JSON.stringify(w5eCommission));
   const w5eTxns = await db.txn.findByUser("w5e_ref", 50);
   ok("§5e CONTROL · the credit is booked as AGENT_COMMISSION, never BONUS_CREDIT",
-     w5eTxns.some((t) => t.type === "AGENT_COMMISSION" && t.amount === 2_000) && !w5eTxns.some((t) => t.type === "BONUS_CREDIT"),
+     w5eTxns.some((t) => t.type === "AGENT_COMMISSION" && t.amount === netAfterWht(2_000)) && !w5eTxns.some((t) => t.type === "BONUS_CREDIT"),
      JSON.stringify(w5eTxns.map((t) => [t.type, t.amount])));
   // ⭐ ONE PAYMENT PER EVENT. Replaying the same settlement must not pay twice.
   await onRecruitSettlement("w5e_rec", { operatorNetFee: 10_000, marketId: "mkt_w5e", positionId: "pos_w5e_1" });
   ok("§5e ⭐ replaying the same position pays NOTHING more (idempotency key)",
-     (await db.wallet.findByUserId("w5e_ref"))?.balance === 2_000 && (await db.referralReward.listByReferrer("w5e_ref")).filter((r) => r.type === "COMMISSION").length === 1);
+     (await db.wallet.findByUserId("w5e_ref"))?.balance === netAfterWht(2_000) && (await db.referralReward.listByReferrer("w5e_ref")).filter((r) => r.type === "COMMISSION").length === 1);
 }
 
 // ── §5g · THE EXPLOIT — a PLAYER-stamped attribution pays an AGENT NOTHING ──────────────

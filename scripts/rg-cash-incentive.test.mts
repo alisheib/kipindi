@@ -25,7 +25,7 @@ import { creditInternal } from "../src/lib/server/wallet-service.ts";
 import { setBonusConfig } from "../src/lib/server/bonus-config.ts";
 import { bindRecruit, ensureAffiliateAccount, onRecruitBet, onRecruitSettlement } from "../src/lib/server/affiliate-service.ts";
 import { setAffiliateConfig } from "../src/lib/server/affiliate-config.ts";
-import { approveFixtureAgent } from "./lib/agent-fixtures.mts";
+import { approveFixtureAgent, netAfterWht } from "./lib/agent-fixtures.mts";
 
 let pass = 0, fail = 0;
 function ok(label: string, cond: boolean, extra?: string) {
@@ -189,7 +189,7 @@ const HOUR = 3_600_000;
   ok("§5b(b) a cooling-off agent receives NO cash (the RG gate holds)", (await cash("ag_cooling")) === 0, `cash=${await cash("ag_cooling")}`);
   const coolRows = (await db.referralReward.listByReferrer("ag_cooling")).filter((r) => r.type === "COMMISSION");
   ok("§5b(b) …but the accrual is recorded PENDING — a payable, ⛔ never HELD",
-     coolRows.length === 1 && coolRows[0].status === "PENDING" && coolRows[0].amountTzs === 2_000 && coolRows[0].programme === "AGENT",
+     coolRows.length === 1 && coolRows[0].status === "PENDING" && coolRows[0].amountTzs === netAfterWht(2_000) && coolRows[0].grossAmountTzs === 2_000 && coolRows[0].programme === "AGENT",
      JSON.stringify(coolRows.map((r) => [r.status, r.amountTzs, r.programme])));
 
   // (c) CONTROL
@@ -198,8 +198,8 @@ const HOUR = 3_600_000;
   await mkUser("ag_active_rec");
   await bindRecruit({ recruitUserId: "ag_active_rec", code: okCode });
   await onRecruitSettlement("ag_active_rec", { operatorNetFee: 10_000, marketId: "mkt_5b_ok", positionId: "pos_5b_ok" });
-  ok("§5b(c) CONTROL · an ACTIVE approved agent on the identical path IS paid, in cash, exactly 2,000",
-     (await cash("ag_active")) === 2_000, `cash=${await cash("ag_active")}`);
+  ok("§5b(c) CONTROL · an ACTIVE approved agent on the identical path IS paid, in cash — 2,000 gross, less withholding",
+     (await cash("ag_active")) === netAfterWht(2_000), `cash=${await cash("ag_active")}`);
   ok("§5b(c) CONTROL · …and the row is PAID", (await db.referralReward.listByReferrer("ag_active")).some((r) => r.type === "COMMISSION" && r.status === "PAID"));
 }
 

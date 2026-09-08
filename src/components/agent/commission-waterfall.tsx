@@ -176,7 +176,10 @@ export function CommissionWaterfall({
 
 /** The last row gets breathing room above it; every other row is evenly spaced. */
 function rowPad(id: WaterfallStepId): string {
-  return id === "netPayout" ? "pt-2.5 pb-1" : "py-1.5";
+  // ⚠️ `pt-2`, NOT `pt-2.5`. `theme.extend.spacing` is overridden in tailwind.config.ts, so
+  // `2.5` paints 10px where `2` paints 12 — the larger-looking key is the smaller box, and
+  // `test:spacing-scale` ratchets that inversion down. +2px of air above the total row.
+  return id === "netPayout" ? "pt-2 pb-1" : "py-1.5";
 }
 
 /**
