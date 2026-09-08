@@ -12,6 +12,8 @@ import { getGlobalConfig } from "@/lib/server/market-config";
 import { getServerT } from "@/lib/i18n-server";
 import { currentSession } from "@/lib/server/auth-service";
 import { getAgentConfig } from "@/lib/server/agent-config";
+import { lipaDisplay } from "@/lib/server/lipa-config";
+import { LipaQrPanel } from "@/components/pay/lipa-qr-panel";
 import { applicantView, feeBreakdown } from "@/lib/server/agent-application-service";
 import { inviteViewerFor } from "@/lib/server/affiliate-service";
 import { inviteIsLiveFor } from "@/lib/feature-state";
@@ -245,6 +247,12 @@ export default async function AgentProgrammePage({ searchParams }: { searchParam
         </p>
         <p className="mt-2 text-body-sm leading-relaxed text-text-muted">{fill(t.agent.feeRefund, { days: String(cfg.refundDeadlineDays) })}</p>
       </section>
+
+      {/* How to pay it, on the page that first states the fee — so an applicant knows
+          before they start that there is nothing to type. Same component and same
+          safety rule as the one inside the form; it renders nothing unless the fee
+          destination IS the Lipa number the QR encodes. */}
+      <LipaQrPanel lipa={lipaDisplay()} account={cfg.feeDestinationAccount} amountTzs={fee.totalTzs} />
 
       {/* ⭐ HOW YOU ARE PAID — the terms, then management's waterfall underneath them.
           The paragraph that used to sit here ("Commission is a share of the net operator

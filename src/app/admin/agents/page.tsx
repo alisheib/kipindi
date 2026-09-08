@@ -17,6 +17,7 @@ import { ScrollX } from "@/components/ui/scroll-x";
 import { I } from "@/components/ui/glyphs";
 import { db, type StoredAgentApplication, type StoredAgentInvitation, type StoredReferralReward, type StoredUser } from "@/lib/server/store";
 import { getAgentConfig, PLATFORM_MAX_COMMISSION_PCT } from "@/lib/server/agent-config";
+import { getLipaConfig } from "@/lib/server/lipa-config";
 import { getAgentRoster, type AgentRosterRow } from "@/lib/server/affiliate-service";
 import { feeBreakdown, invitationChannel, maskChannel } from "@/lib/server/agent-application-service";
 import { AGENT_STATUS, AGENT_REJECT_REASON, AGENT_INVITATION_STATUS, AGENT_FEE_DISPOSITION } from "@/lib/admin-status-lexicon";
@@ -24,7 +25,7 @@ import { STATUS_TONE, TONE_CHIP } from "@/lib/status-tone";
 import { displayLabel } from "@/lib/display-label";
 import { formatDateShort, formatDateTime, formatTzs } from "@/lib/utils";
 import { workingDaysBetween } from "@/lib/business-days";
-import { SettlePayable, InviteComposer, RevokeInvitation, AgentSettingsForm } from "./agents-client";
+import { SettlePayable, InviteComposer, RevokeInvitation, AgentSettingsForm, LipaSettingsForm } from "./agents-client";
 
 export const metadata = { title: "Admin · Agents" };
 export const dynamic = "force-dynamic";
@@ -94,6 +95,7 @@ export default async function AdminAgentsPage({ searchParams }: { searchParams: 
   const rosterQuery = (sp.rq ?? "").trim();
 
   const cfg = getAgentConfig();
+  const lipaCfg = getLipaConfig();
   const fee = feeBreakdown(cfg);
   const now = Date.now();
 
@@ -607,6 +609,13 @@ export default async function AdminAgentsPage({ searchParams }: { searchParams: 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_320px]">
             <AdminCard title="Programme settings" sw="Mipangilio ya mpango">
               <AgentSettingsForm cfg={cfg} />
+            </AdminCard>
+            {/* Its own card, directly under the fee it is paid into. The form states
+                whether the QR is actually live, because the rule that keeps it honest
+                (it renders only when the Lipa number IS the fee destination) can
+                otherwise hide it after a perfectly valid-looking save. */}
+            <AdminCard title="Lipa payment (QR)" sw="Malipo kwa Lipa (QR)">
+              <LipaSettingsForm cfg={lipaCfg} feeDestinationAccount={cfg.feeDestinationAccount} />
             </AdminCard>
             <AdminCard title="In force now" sw="Inayotumika sasa">
               <dl className="space-y-3 text-body-sm">

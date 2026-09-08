@@ -4,6 +4,7 @@ import { BackLink } from "@/components/ui/back-link";
 import { getServerT } from "@/lib/i18n-server";
 import { currentSession } from "@/lib/server/auth-service";
 import { getAgentConfig } from "@/lib/server/agent-config";
+import { lipaDisplay } from "@/lib/server/lipa-config";
 import { applicantView, feeBreakdown, AGENT_REFEREE_DOC_HOLD_DAYS } from "@/lib/server/agent-application-service";
 import { getKycStatus } from "@/lib/server/kyc-service";
 import { kycGateState } from "@/lib/kyc-gate-state";
@@ -58,6 +59,11 @@ export default async function AgentApplyPage() {
         missing={view.missing}
         kycGate={kycGate}
         fee={{ totalTzs: fee.totalTzs, destinationName: cfg.feeDestinationName, destinationAccount: cfg.feeDestinationAccount }}
+        /* The merchant identity behind the QR. `lipaDisplay()` drops the pinned payload —
+           that is a build-time assertion, not something a browser needs. The panel renders
+           nothing unless this number IS `feeDestinationAccount` above, so the two can never
+           name different destinations. */
+        lipa={lipaDisplay()}
         limits={{ maxMb: Math.round(MAX_DOC_BYTES / (1024 * 1024)), refereeHoldDays: AGENT_REFEREE_DOC_HOLD_DAYS, reviewSlaDays: cfg.reviewSlaDays }}
       />
     </PageContainer>

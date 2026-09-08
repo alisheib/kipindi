@@ -39,6 +39,8 @@ import { focusFirstInvalid } from "@/lib/client/focus-first-invalid";
 import type { AgentDocType } from "@/lib/server/store";
 import { attachAgentDocumentAction, setRefereesAction, recordFeePaymentAction, submitAgentApplicationAction, type UploadFailure } from "./actions";
 import { fillNodes } from "@/lib/fill-nodes";
+import { LipaQrPanel } from "@/components/pay/lipa-qr-panel";
+import type { LipaDisplay } from "@/lib/lipa";
 
 type DocView = { docType: AgentDocType; uploadedAt: string; rejected: boolean; rejectReason: string | null; sizeBytes: number; thirdParty: boolean };
 
@@ -52,12 +54,15 @@ type Props = {
   /** Only for an OFFICER_INVITED applicant: their own identity gate, null once submitted/approved. */
   kycGate: KycGateState | null;
   fee: { totalTzs: number; destinationName: string; destinationAccount: string };
+  /** Selcom merchant QR, or null when it is not configured. Rendered only when it names
+   *  the SAME account as `fee.destinationAccount` — see `shouldShowLipaQr`. */
+  lipa: LipaDisplay | null;
   limits: { maxMb: number; refereeHoldDays: number; reviewSlaDays: number };
 };
 
 const REQUIRED: AgentDocType[] = ["CV", "REQUEST_LETTER", "SERIKALI_LETTER", "REFEREE_ONE_LETTER", "REFEREE_ONE_ID", "REFEREE_TWO_LETTER", "REFEREE_TWO_ID"];
 
-export function ApplyClient({ app, documents, missing, kycGate, fee, limits }: Props) {
+export function ApplyClient({ app, documents, missing, kycGate, fee, lipa, limits }: Props) {
   const { t } = useT();
   const router = useRouter();
   const { toast } = useToast();
@@ -285,6 +290,12 @@ export function ApplyClient({ app, documents, missing, kycGate, fee, limits }: P
               </>
             )}
           </div>
+          {/* The gold block above says WHAT is owed; this says HOW to pay it without
+              typing an account number. Deliberately not gold: two gold money blocks
+              stacked read as two separate charges. Renders itself away when the fee is
+              waived, when the operator has switched the QR off, or when the fee
+              destination is not the Lipa number the QR encodes. */}
+          {!app.feeWaived && <LipaQrPanel lipa={lipa} account={fee.destinationAccount} amountTzs={fee.totalTzs} />}
           {!app.feeWaived && (
             <div className="rounded-xl glass-panel p-4 space-y-3">
               <Slot docType="FEE_RECEIPT" label={docLabel.FEE_RECEIPT} doc={docs.FEE_RECEIPT} infoRequired={infoRequired} onDone={(d) => setDocs((x) => ({ ...x, FEE_RECEIPT: d }))} maxMb={limits.maxMb} />

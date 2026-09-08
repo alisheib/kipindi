@@ -1489,6 +1489,25 @@ export const dict = {
       errGeneric: "Share link not created",
       errGenericBody: "We couldn’t reach the server. Tap Share again in a moment.",
     },
+    /* Selcom "Lipa Namba" merchant QR. Top-level rather than under `agent` because the
+       panel that reads it (components/pay/lipa-qr-panel.tsx) is generic and a second
+       payment surface will reuse it. ⛔ "Lipa namba" / "Lipa kwa QR" stay in Swahili in
+       all three locales for the same reason payment-providers.ts keeps "M-Pesa"
+       untranslated: it is the wording printed on the merchant's own poster and shown by
+       the payer's own wallet app, so translating it would stop matching what they see. */
+    lipa: {
+      title: "Pay by QR",
+      lead: "Scan with any bank or mobile-money app — there is nothing to type.",
+      payingLabel: "Paying",
+      numberLabel: "Lipa number",
+      amountLabel: "Amount to pay",
+      copied: "Lipa number copied",
+      ussdLabel: "Can’t scan? Dial",
+      step1: "Open your bank or mobile-money app and choose Scan, or Lipa kwa QR.",
+      step2: "Scan this code, then enter the amount shown above.",
+      step3: "Keep the receipt — you upload it below.",
+      verify: "Before you confirm, check that your app shows the name above. If it shows anyone else, stop and tell us.",
+    },
     watchlist: {
       eyebrow: "Following",
       title: "Watchlist",
@@ -3631,6 +3650,19 @@ export const dict = {
       errGeneric: "Kiungo cha kushiriki hakikutengenezwa",
       errGenericBody: "Hatukuweza kufikia seva. Gonga Shiriki tena baada ya muda mfupi.",
     },
+    lipa: {
+      title: "Lipa kwa QR",
+      lead: "Skani kwa app yoyote ya benki au pesa za simu — huhitaji kuandika chochote.",
+      payingLabel: "Unamlipa",
+      numberLabel: "Lipa namba",
+      amountLabel: "Kiasi cha kulipa",
+      copied: "Lipa namba imenakiliwa",
+      ussdLabel: "Huwezi kuskani? Piga",
+      step1: "Fungua app yako ya benki au pesa za simu kisha chagua Skani, au Lipa kwa QR.",
+      step2: "Skani msimbo huu, kisha weka kiasi kilichoonyeshwa hapo juu.",
+      step3: "Hifadhi risiti — utaipakia hapa chini.",
+      verify: "Kabla ya kuthibitisha, hakikisha app yako inaonyesha jina lililo hapo juu. Ikionyesha jina lingine, simama na utujulishe.",
+    },
     watchlist: {
       eyebrow: "Unafuatilia",
       title: "Orodha ya kufuatilia",
@@ -5642,6 +5674,19 @@ export const dict = {
       wonText: "我在“{title}”赢得了 {amount} — 50pick",
       errGeneric: "未能生成分享链接",
       errGenericBody: "我们无法连接服务器。请稍后再次点击分享。",
+    },
+    lipa: {
+      title: "扫码支付",
+      lead: "使用任意银行或手机钱包应用扫码即可 — 无需输入任何信息。",
+      payingLabel: "收款方",
+      numberLabel: "Lipa 商户号",
+      amountLabel: "应付金额",
+      copied: "已复制 Lipa 商户号",
+      ussdLabel: "无法扫码？请拨打",
+      step1: "打开您的银行或手机钱包应用，选择“扫一扫”或“Lipa kwa QR”。",
+      step2: "扫描此二维码，然后输入上方显示的金额。",
+      step3: "请保留收据 — 您需要在下方上传。",
+      verify: "确认付款前，请核对应用中显示的名称是否与上方一致。若显示其他名称，请立即停止并联系我们。",
     },
     watchlist: {
       eyebrow: "关注中",

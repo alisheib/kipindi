@@ -18,8 +18,12 @@ import { useMayAct, ActReadOnly } from "@/components/admin/act-gate";
 import { runAdminAction } from "@/lib/client/run-admin-action";
 import { focusFirstInvalid } from "@/lib/client/focus-first-invalid";
 import { PLATFORM_MAX_COMMISSION_PCT, type AgentConfig } from "@/lib/server/agent-config";
+import type { LipaConfig } from "@/lib/server/lipa-config";
+import { formatLipaNumber, normalizeLipaNumber, shouldShowLipaQr } from "@/lib/lipa";
+import { I } from "@/components/ui/glyphs";
 import {
   setAgentRateAction, deactivateAgentAction, reactivateAgentAction, settlePayableAction, issueInvitationAction, revokeInvitationAction, saveAgentConfigAction,
+  saveLipaConfigAction,
 } from "./actions";
 
 type Res = { ok: true; data?: unknown } | { ok: false; error: string; field?: string };
@@ -211,6 +215,88 @@ export function AgentSettingsForm({ cfg }: { cfg: AgentConfig }) {
         {num("reviewSlaDays", "Review time promised (working days)", { hint: "Weekends are not counted — the same measure the queue's Past-SLA chip uses" })}
       </div>
       <Button type="submit" variant="primary" size="md" disabled={!mayAct || pending} loading={pending}>Save settings</Button>
+    </form>
+  );
+}
+
+/**
+ * The Lipa (Selcom merchant QR) identity.
+ *
+ * ── ⭐ WHY IT SHOWS A LIVE VERDICT INSTEAD OF JUST FIELDS ────────────────────
+ * The QR renders to applicants ONLY when this Lipa number IS the fee destination
+ * account (`shouldShowLipaQr`) — a deliberate rule, so the code and the words beside
+ * it can never name different places to send money. The cost of that rule is that an
+ * officer can make a perfectly valid edit here and have the QR silently vanish from
+ * a public page, with a green "Saved" and no clue why.
+ *
+ * So the form states the consequence in the same breath as the fields: whether the
+ * QR is live right now, and if not, exactly which two values disagree. A setting
+ * whose real effect is invisible is a setting somebody will get wrong at 11pm.
+ *
+ * ⛔ There is no control for the QR image or its pinned payload, and there must not
+ * be — see `saveLipaConfigAction`.
+ */
+export function LipaSettingsForm({ cfg, feeDestinationAccount }: { cfg: LipaConfig; feeDestinationAccount: string }) {
+  const mayAct = useMayAct();
+  const { ov, pending, field, run } = useRunner();
+  const ref = useRef<HTMLFormElement>(null);
+  const [v, setV] = useState<Record<string, string>>({
+    lipaEnabled: cfg.enabled ? "true" : "false",
+    lipaMerchantName: cfg.merchantName,
+    lipaNumber: cfg.lipaNumber,
+    lipaUssdCode: cfg.ussdCode,
+  });
+  const savedRef = useRef(JSON.stringify(v));
+  const dirty = JSON.stringify(v) !== savedRef.current;
+  const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement>) => setV((x) => ({ ...x, [k]: e.target.value }));
+
+  // The same predicate the public surfaces use — imported, never re-implemented, so this
+  // verdict cannot drift from the behaviour it is describing.
+  const live = shouldShowLipaQr(
+    { enabled: v.lipaEnabled === "true", merchantName: v.lipaMerchantName, lipaNumber: normalizeLipaNumber(v.lipaNumber), ussdCode: v.lipaUssdCode, qrAssetPath: cfg.qrAssetPath },
+    feeDestinationAccount,
+  );
+  const offBecauseSwitch = v.lipaEnabled !== "true";
+
+  return (
+    <form ref={ref} className="space-y-4" onSubmit={(e) => { e.preventDefault(); run(ref.current, "Saving Lipa settings…", () => { const f = new FormData(); for (const [k, val] of Object.entries(v)) f.set(k, val); return saveLipaConfigAction(f); }, () => { savedRef.current = JSON.stringify(v); return "Lipa settings saved. /agent and /agent/apply now render the new values."; }); }}>
+      <ActionOverlay state={ov.state} onDismiss={ov.dismiss} />
+      <UnsavedChangesGuard dirty={dirty} body="The Lipa payment settings have been changed but not saved. Leaving now discards the change." />
+      {!mayAct && <ActReadOnly />}
+      {mayAct
+        ? <Checkbox checked={v.lipaEnabled === "true"} onChange={(c) => setV((x) => ({ ...x, lipaEnabled: c ? "true" : "false" }))} label="Show the Lipa QR on the agent fee pages" />
+        : <p className="text-body-sm text-text-secondary">Lipa QR shown: <span className="font-mono text-text">{v.lipaEnabled === "true" ? "on" : "off"}</span></p>}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <Field label="Merchant name" hint="Shown to the payer to confirm who they are paying" error={field?.name === "lipaMerchantName" ? field.message : undefined} dataField="lipaMerchantName">
+          <Input name="lipaMerchantName" value={v.lipaMerchantName} onChange={set("lipaMerchantName")} maxLength={80} disabled={!mayAct} />
+        </Field>
+        <Field label="Lipa number" hint="Digits only — a space is fine, it is stripped on save" error={field?.name === "lipaNumber" ? field.message : undefined} dataField="lipaNumber">
+          <Input mono inputMode="numeric" name="lipaNumber" value={v.lipaNumber} onChange={set("lipaNumber")} maxLength={24} disabled={!mayAct} />
+        </Field>
+        <Field label="USSD fallback" hint="For a handset that cannot scan · blank to hide" error={field?.name === "lipaUssdCode" ? field.message : undefined} dataField="lipaUssdCode">
+          <Input mono name="lipaUssdCode" value={v.lipaUssdCode} onChange={set("lipaUssdCode")} maxLength={20} disabled={!mayAct} />
+        </Field>
+      </div>
+
+      {/* The consequence, stated where the change is made. */}
+      {live ? (
+        <p className="flex gap-1.5 text-body-sm leading-relaxed text-success-500">
+          <I.checkCircle s={14} className="mt-0.5 shrink-0" />
+          <span>The QR is live on /agent and /agent/apply — it pays Lipa <span className="font-mono">{formatLipaNumber(v.lipaNumber)}</span>, which is the fee destination account.</span>
+        </p>
+      ) : (
+        <p className="flex gap-1.5 text-body-sm leading-relaxed text-warning-500">
+          <I.warning s={14} className="mt-0.5 shrink-0" />
+          <span>
+            {offBecauseSwitch
+              ? "The QR is hidden because the switch above is off. Applicants still see the fee destination account as text."
+              : <>The QR is hidden: the fee destination account is <span className="font-mono">{feeDestinationAccount || "(empty)"}</span>, which is not this Lipa number. Applicants see that account as text and no QR. Set them to the same number to show it — a QR that pays somewhere other than the account beside it is how money goes missing.</>}
+          </span>
+        </p>
+      )}
+
+      <p className="font-mono text-micro text-text-faint">Artwork: {cfg.qrAssetPath} · verified by <span className="text-text-subtle">npm run test:lipa-qr</span> · replaced only by re-running scripts/extract-lipa-qr.mjs</p>
+      <Button type="submit" variant="primary" size="md" disabled={!mayAct || pending} loading={pending}>Save Lipa settings</Button>
     </form>
   );
 }

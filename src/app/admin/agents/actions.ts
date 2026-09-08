@@ -16,6 +16,7 @@ import {
   issueInvitation, revokeInvitation, ALL_DOC_SLOTS,
 } from "@/lib/server/agent-application-service";
 import { setAgentConfig, type AgentConfig } from "@/lib/server/agent-config";
+import { setLipaConfig, type LipaConfig } from "@/lib/server/lipa-config";
 
 type Result<T = void> = { ok: true; data?: T } | { ok: false; error: string; field?: string };
 
@@ -181,5 +182,50 @@ export async function saveAgentConfigAction(formData: FormData): Promise<Result>
   if (!r.ok) return { ok: false, error: r.error, field: /maximum|ceiling/i.test(r.error) ? "maxCommissionPct" : /default/i.test(r.error) ? "defaultCommissionPct" : undefined };
   revalidate();
   revalidatePath("/agent");
+  return { ok: true };
+}
+
+/**
+ * The Lipa (Selcom merchant QR) identity.
+ *
+ * ⚠️ IT LIVES HERE, BESIDE THE FEE, ON PURPOSE. The QR renders only when the Lipa number
+ * IS `feeDestinationAccount` (see `shouldShowLipaQr`), so the two settings are one
+ * decision wearing two fields, and an officer who can change one must see the other.
+ * ⛔ It shares this file's ONE `gate` rather than growing a second copy of the guard —
+ * the rule this module's header states.
+ *
+ * ⛔ `qrAssetPath` and `qrPayload` are NOT writable from here and must not become so.
+ * The image is a picture that moves money; it is replaced by re-running
+ * `scripts/extract-lipa-qr.mjs` against a Selcom-issued poster, which re-verifies the
+ * EMVCo CRC and the merchant id and refuses to write anything that fails. A text field
+ * would let an officer paste a path to an image nobody has ever decoded.
+ */
+export async function saveLipaConfigAction(formData: FormData): Promise<Result> {
+  const g = await gate("saveLipaConfig"); if ("error" in g) return { ok: false, error: g.error };
+  const updates: Partial<LipaConfig> = {
+    enabled: formData.get("lipaEnabled") === "on" || formData.get("lipaEnabled") === "true",
+    merchantName: String(formData.get("lipaMerchantName") ?? "").trim().slice(0, 80),
+    // Digits only — the operator may type "7006 3747" off the poster and mean the number.
+    // Normalising here rather than refusing is the difference between a setting that works
+    // and a support ticket about an invisible QR.
+    lipaNumber: String(formData.get("lipaNumber") ?? "").replace(/\D/g, "").slice(0, 20),
+    ussdCode: String(formData.get("lipaUssdCode") ?? "").trim().slice(0, 20),
+  };
+  const r = setLipaConfig(updates, g.userId);
+  if (!r.ok) {
+    return {
+      ok: false,
+      error: r.error,
+      field: /lipa number/i.test(r.error) ? "lipaNumber"
+        : /merchant name/i.test(r.error) ? "lipaMerchantName"
+        : /ussd/i.test(r.error) ? "lipaUssdCode"
+        : undefined,
+    };
+  }
+  revalidate();
+  // Both surfaces that render the QR are statically cached; without these an officer
+  // saves, sees "Saved", and the applicant keeps seeing the old number.
+  revalidatePath("/agent");
+  revalidatePath("/agent/apply");
   return { ok: true };
 }

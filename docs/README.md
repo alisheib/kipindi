@@ -98,6 +98,7 @@ to teal and resurrects the killed light theme.
 | [`SELCOM-PAYOUT-RAILS.md`](SELCOM-PAYOUT-RAILS.md) | 🟢 LAW | **The single source of truth for payout state.** Everything else in `SELCOM-*` is history or evidence. Contains the `railway run` vs `railway ssh` trap and two fenced wrong diagnoses. |
 | [`SELCOM-DISBURSEMENT-ACTIVATION.md`](SELCOM-DISBURSEMENT-ACTIVATION.md) | 🔵 LIVE | Activation runbook. Carries a "CORRECTED 2026-07-30" banner — read that first. |
 | [`SELCOM-API-DIGEST.md`](SELCOM-API-DIGEST.md) | 🟢 LAW | Real-money signing reference for the adapter. |
+| [`LIPA-QR.md`](LIPA-QR.md) | 🟢 LAW | The merchant QR (Lipa 7006 3747): what it is (decoded, not assumed — EMVCo tag 01 = **static**), the one surface it may appear on, and ⛔ **why it must never go on `/wallet/deposit`** — it credits no wallet and nothing goes red. |
 | [`SELCOM-010-INVESTIGATION.md`](SELCOM-010-INVESTIGATION.md) | ⚪ RECORD | ✅ Closed. Kept deliberately as the reasoning trail — the wrong answer was confident. |
 | [`SELCOM-PAYOUT-INCIDENT-2026-07-30.md`](SELCOM-PAYOUT-INCIDENT-2026-07-30.md) | ⚪ RECORD | The incident itself. |
 | [`SELCOM-DISBURSEMENT-REQUEST.md`](SELCOM-DISBURSEMENT-REQUEST.md) | ⚪ RECORD | ✅ Granted 2026-07-27. |

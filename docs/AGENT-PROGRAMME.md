@@ -156,7 +156,7 @@ erasure can never reach.
 |---|---|
 | **Amount** | ⭐ **TZS 118,000 — TZS 100,000 PLUS 18% VAT** (management, 2026-09-08; supersedes the VAT-inclusive decision of 2026-09-07). `registrationFeeTzs` holds the **net** 100,000 and `feeVatTreatment = EXCLUSIVE`; ⛔ what an applicant owes is `feeBreakdown().totalTzs` and nothing may quote the raw config field. Stated in `RULES.md` §2.10 |
 | **Destination** | Digital Selcom Bank, account **0769777877** |
-| **How** | Paid **out of band**; the applicant uploads the receipt and types the reference |
+| **How** | Paid **out of band**; the applicant uploads the receipt and types the reference. ⭐ **Scannable since 2026-09-08** — see the note below |
 | **Waiver** | ⭐ An officer may waive it or record it as collected in cash — **with a typed reason, audited** (Ali, 2026-09-06) |
 | **On rejection** | **Refunded in full** — we did not provide the service |
 
@@ -174,6 +174,24 @@ exists in config for a future change of policy and is not in force.
 🔴 **One receipt, one application** — `feeReference` is unique. And a refund needs **evidence and a
 deadline**: money *in* requires a receipt image, so money *out* must not be one officer typing a
 string. Reject and refund need **one worklist**, or TZS 100,000 sits owed with nothing tracking it.
+
+### 4a · Paying it by QR (2026-09-08)
+
+The fee may be paid by scanning Ocean Entertainment's Selcom merchant QR instead of typing an
+account number. **The authority is [`LIPA-QR.md`](LIPA-QR.md); read it before touching any of
+this.** The two things that matter here:
+
+- ⭐ **This is the only surface the QR is allowed on**, and the reason is the row above: the fee
+  is reconciled by a *person*. The QR is **static** (EMVCo tag 01 = `11`, decoded from the
+  artwork, not assumed) — it carries no amount and no per-payment reference, and our rail
+  credits a wallet solely on the `dep_…` order id we mint. On a self-service top-up it would
+  take money and credit nobody, silently. `test:lipa-qr` §4.4 enforces that.
+- ⚠️ **The QR shows only while the fee destination IS the Lipa number it encodes**
+  (`shouldShowLipaQr`). The **Destination** row above still reads `0769777877` while the QR pays
+  `70063747`, so until an officer changes it at `/admin/agents` → Settings the QR stays hidden
+  and applicants see the account as text — the safe direction, and the console says so in words
+  rather than leaving it to be discovered. ⛔ Changing that row is a decision about where the
+  programme's money goes, so it is left to Ali, not made by a migration.
 
 ---
 
