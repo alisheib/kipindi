@@ -81,10 +81,18 @@ const SURFACES = [
      whatever a particular fixture happens to render; that would make a correct page red for a
      player with a short history. */
   { id: "/profile/account", path: "/profile/account", minPills: 7 },
-  /* DECLARED 2026-09-08 (PLAYER QUERY, task 4.7). ⭐ Unlike its neighbours this route's lens
-     population is FIXED — four outcome arms — so the floor can be exact rather than conservative:
-     4 outcome pills + 5 window pills = 9 distinct destinations. */
-  { id: "/fairness", path: "/fairness", minPills: 9 },
+  /**
+   * DECLARED 2026-09-08 (PLAYER QUERY, task 4.7). ⭐ Unlike its neighbours this route's lens
+   * population is FIXED — four outcome arms — so the floor can be exact rather than conservative.
+   *
+   * 🔴 AND THE FIRST NUMBER WAS WRONG, MEASURED: 4 outcome pills + 5 window pills is NINE PILLS
+   * but EIGHT DESTINATIONS. `out=all` and `when=all` are both the page's default, so
+   * `buildQueryHref` omits them and BOTH pills point at the bare `/fairness` — and this driver
+   * de-duplicates by href, exactly as its own header says to. ⛔ The floor is a count of
+   * DESTINATIONS, not of pills, and the two are not the same number on any bar with more than one
+   * axis. Re-derived from the run rather than predicted a second time.
+   */
+  { id: "/fairness", path: "/fairness", minPills: 8 },
   /* DECLARED 2026-09-08 (PLAYER QUERY, task 4.10). `minPills: 3` — `all` plus the two product
      arms; the `other` residual draws only when a market row could not be read. ⚠️ The FLOOR IS
      THE WHOLE RAIL here, so a persona settled on one product only renders a single pill and this

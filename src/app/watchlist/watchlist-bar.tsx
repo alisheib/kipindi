@@ -21,6 +21,7 @@ import {
   QUERY_BAR_CLASS,
   QUERY_BAR_ROW1_CLASS,
   QUERY_BAR_ROW2_CLASS,
+  QUERY_GROUP_CLASS,
   QueryClear,
   QueryGroupDivider,
   QueryResultCount,
@@ -183,7 +184,7 @@ export function WatchlistBar({
         </FilterSheet>
 
         <QueryGroupDivider />
-        <nav aria-label={t.market.topicAria} className="hidden shrink-0 items-center gap-1 lg:flex">
+        <nav aria-label={t.market.topicAria} className={QUERY_GROUP_CLASS}>
           <FilterGroupKey>{t.common.topic}</FilterGroupKey>
           {topicChips}
         </nav>

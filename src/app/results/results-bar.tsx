@@ -26,6 +26,7 @@ import {
   QUERY_BAR_CLASS,
   QUERY_BAR_ROW1_CLASS,
   QUERY_BAR_ROW2_CLASS,
+  QUERY_GROUP_CLASS,
   QueryClear,
   QueryGroupDivider,
   QueryResultCount,
@@ -217,19 +218,19 @@ export function ResultsBar({
 
         <QueryGroupDivider />
         {/* ⛔ ITS OWN aria-label. The sidebar gave this rail and the category rail the SAME name. */}
-        <nav aria-label={t.market.gameKey} className="hidden shrink-0 items-center gap-1 lg:flex">
+        <nav aria-label={t.market.gameKey} className={QUERY_GROUP_CLASS}>
           <FilterGroupKey>{t.market.gameKey}</FilterGroupKey>
           {productChips}
         </nav>
 
         <QueryGroupDivider />
-        <nav aria-label={t.common.when} className="hidden shrink-0 items-center gap-1 lg:flex">
+        <nav aria-label={t.common.when} className={QUERY_GROUP_CLASS}>
           <FilterGroupKey>{t.common.when}</FilterGroupKey>
           {whenChips}
         </nav>
 
         <QueryGroupDivider />
-        <nav aria-label={t.results.categoriesAria} className="hidden shrink-0 items-center gap-1 lg:flex">
+        <nav aria-label={t.results.categoriesAria} className={QUERY_GROUP_CLASS}>
           <FilterGroupKey>{t.common.topic}</FilterGroupKey>
           {topicChips}
         </nav>

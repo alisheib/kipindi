@@ -31,6 +31,7 @@ import {
   QUERY_BAR_CLASS,
   QUERY_BAR_ROW1_CLASS,
   QUERY_BAR_ROW2_CLASS,
+  QUERY_GROUP_CLASS,
   QueryClear,
   QueryGroupDivider,
   QueryOption,
@@ -337,7 +338,7 @@ export function DiscoveryBar({
             as the sort and topic menus, so all four groups read as one family. */}
         <QueryGroupDivider />
 
-        <nav aria-label={t.market.oddsAria} className="hidden shrink-0 items-center gap-1 lg:flex">
+        <nav aria-label={t.market.oddsAria} className={QUERY_GROUP_CLASS}>
           <FilterGroupKey>{t.market.oddsKey}</FilterGroupKey>
           {ODDS_IDS.map((o) => (
             <Chip
@@ -353,7 +354,7 @@ export function DiscoveryBar({
 
         <QueryGroupDivider />
 
-        <nav aria-label={t.market.poolAria} className="hidden shrink-0 items-center gap-1 lg:flex">
+        <nav aria-label={t.market.poolAria} className={QUERY_GROUP_CLASS}>
           <FilterGroupKey>{t.market.poolKey}</FilterGroupKey>
           {POOL_IDS.map((p) => (
             <Chip

@@ -92,7 +92,19 @@ const SURFACES = [
      sort summary, the direction button, and five window pills), because this route's lens
      population is the PLAYER's own audit categories and varies per persona. A floor tuned to one
      fixture would fail a correct page for a player with a short history. */
-  { id: "/profile/account", path: "/profile/account", minControls: 6 },
+  /**
+   * ⛔ `sticky: false` — AND IT IS A DECLARATION, NOT AN EXEMPTION. This rail filters ONE table
+   * inside one of five panels on the page (profile · activity · export · privacy · close account).
+   * A page-level sticky band would follow the reader down and hover over *Close account*, a
+   * one-way ceremony — a filter for a table you can no longer see, on top of the most dangerous
+   * control on the page. It takes `QUERY_BAR_CLASS_PANEL` and promises no offset.
+   *
+   * 🔴 THIS DRIVER FOUND THAT, on its first run against the bar: `bar@-93` at 1280. The bar was
+   * inside a bounded `glass-panel` and a sticky element only sticks within its PARENT's box — the
+   * same sentence that explains `/updown/history`'s `bar@-252`. ⚠️ The fix was NOT to hoist it out
+   * of the panel; it was to stop claiming an offset it cannot hold, and to say so here.
+   */
+  { id: "/profile/account", path: "/profile/account", minControls: 6, sticky: false },
   /* DECLARED 2026-09-08 (PLAYER QUERY, task 4.7). ⚠️ THE ONE SIGNED-OUT SURFACE THIS DRIVER
      MEASURES, which makes it the cheapest to run and the easiest to forget. Four outcome pills +
      sort + direction + five window pills at 1280. */
@@ -111,6 +123,13 @@ if (surfaces.length === 0) {
 
 const LANG = { en: "en", sw: "sw", zh: "zh" };
 const problems = [];
+/**
+ * ⛔ THE THIRD OUTCOME, borrowed from `qa:player-filters` which invented it for the same reason.
+ * An assertion the FIXTURE cannot pose is neither a pass nor a failure: reporting it as passed is
+ * vacuous green, and reporting it as failed is a false finding about working code. It is printed
+ * loudly, counted separately, never added to `measured`, and named in the summary.
+ */
+const notMeasured = [];
 let measured = 0;
 
 const browser = await chromium.launch();
@@ -201,9 +220,32 @@ for (const locale of LOCALES) {
        * own bars legitimately share the band. The desktop layout is where a second sticky element
        * at the same offset is a defect rather than a design.
        */
-      if (width >= 1280) {
+      /**
+       * ⛔ TWO PRECONDITIONS, BOTH ADDED 2026-09-08 AFTER THIS ASSERTION REPORTED TWO FALSE
+       * DEFECTS ON ITS FIRST RUN AGAINST A SPARSE FIXTURE.
+       *
+       * 🔴 ① A PAGE THAT CANNOT SCROLL CANNOT PROVE A STICK. `scrollTo(0, 1200)` on a short page
+       * does NOTHING, so the bar is measured at its natural offset and reported as "did not
+       * stick" — a defect invented by the instrument out of a thin fixture. `/notifications`
+       * reported `top 237` for exactly this reason. ⚠️ It is reported as NOT MEASURED rather than
+       * skipped silently: an unexercisable assertion that prints nothing reads as a pass.
+       *
+       * 🔴 ② NOT EVERY BAR PROMISES A PAGE-LEVEL OFFSET. `/profile/account`'s rail filters ONE
+       * table inside one of five panels; a sticky band there would follow the reader down and
+       * hover over *Close account*, a one-way ceremony. It uses `QUERY_BAR_CLASS_PANEL` and
+       * declares `sticky: false` — ⛔ the declaration is what keeps this assertion sharp for the
+       * bars that DO promise the offset, instead of being loosened for all of them.
+       */
+      if (width >= 1280 && s.sticky !== false) {
         await page.evaluate(() => window.scrollTo(0, 1200));
         await page.waitForTimeout(450);
+        const scrolled = await page.evaluate(() => Math.round(window.scrollY));
+        if (scrolled < 200) {
+          console.log(`  🔶 ${s.id} ${locale} ${width}: STICK NOT MEASURED — the page scrolled ${scrolled}px, so nothing was proved. Seed more rows.`);
+          notMeasured.push(`${s.id} ${locale} ${width} (page scrolled only ${scrolled}px)`);
+          await page.evaluate(() => window.scrollTo(0, 0));
+          continue;
+        }
         const stuck = await page.evaluate(() => {
           const bar = document.querySelector("[data-filter-rail]");
           if (!bar) return null;
@@ -248,4 +290,10 @@ if (problems.length) {
 }
 // ⛔ Zero boxes is a skipped run, not a pass.
 if (measured === 0) { console.error("🔴 ZERO controls measured — a skipped run, not a pass."); process.exit(3); }
+// ⚠️ NAMED IN THE SUMMARY, not swallowed — an unexercisable assertion that prints nothing reads
+//    as one that passed.
+if (notMeasured.length) {
+  console.log(`\n🔶 ${notMeasured.length} stick assertion(s) NOT MEASURED — the fixture could not pose them:`);
+  notMeasured.forEach((n) => console.log("   " + n));
+}
 console.log("✅ no two controls overlap, nothing is clipped, nothing is under 44px.");

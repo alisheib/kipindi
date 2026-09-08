@@ -21,7 +21,7 @@
 import { FilterPill, FilterGroupKey } from "@/components/ui/filter-pill";
 import { FilterSheet, FilterSheetGroup } from "@/components/markets/filter-sheet";
 import {
-  QUERY_BAR_CLASS,
+  QUERY_BAR_CLASS_PANEL,
   QUERY_BAR_ROW1_CLASS,
   QUERY_BAR_ROW2_CLASS,
   QUERY_GROUP_CLASS,
@@ -116,7 +116,7 @@ export function AccountActivityBar({
   ));
 
   return (
-    <div data-filter-rail className={QUERY_BAR_CLASS}>
+    <div data-filter-rail className={QUERY_BAR_CLASS_PANEL}>
       {/* ── row 1 · the category lenses, each now carrying a real cross-filtered count ───── */}
       <div className={QUERY_BAR_ROW1_CLASS}>
         <QueryStrip ariaLabel={t.profile.activityFilter}>

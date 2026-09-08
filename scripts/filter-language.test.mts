@@ -400,6 +400,42 @@ ok(NON_FILTER_PILL_RAILS.length <= RATCHET_NON_FILTER_RAILS,
 ok(NON_FILTER_PILL_RAILS.every((e) => e.why.length >= 120),
   "0.9b every non-filter exemption states WHY, at length — a one-liner is how the next one gets in");
 
+/**
+ * ⭐ §0.10 · THE DESKTOP GROUP WRAPPER IS THE CONSTANT, NOT A STRING EACH BAR RETYPES.
+ *
+ * 🔴 `QUERY_GROUP_CLASS` WAS CREATED BY A REPAIR AND THEN NOT ROLLED OUT — for a month it had ONE
+ * adopter while FOURTEEN `<nav>`s across six other bars still carried the unrepaired
+ * `hidden shrink-0 items-center gap-1 lg:flex`. `shrink-0` with no wrap means a group whose pills
+ * outgrow the space left simply runs off the screen, and it was measured doing exactly that:
+ *
+ *     /proposals sw 1280 — CLIPPED "Mchanganyiko / Zote" 1239→1442 vs viewport 1280
+ *
+ * ⚠️ THAT WAS NEVER A `/proposals` BUG. Every bar had the same markup; only that route had EIGHT
+ * categories AND the platform's longest pill label, so only it was unlucky enough to prove it. The
+ * others survived on shorter words — which is not a fix, it is a coincidence with a deadline.
+ *
+ * ⛔ SO THE FIX LIVING IN A CONSTANT IS NOT THE SAME AS THE FIX BEING APPLIED, and this assertion
+ * is the difference. Rolled out to all 15 sites 2026-09-08 (PLAYER QUERY, stage 6); this stops the
+ * literal coming back one bar at a time.
+ */
+const primitiveGroupClass =
+  (strip(read("src/components/ui/query-bar.tsx")).match(/QUERY_GROUP_CLASS\s*=\s*"([^"]*)"/) ?? [, ""])[1] ?? "";
+const groupStrays = allSrc.filter(
+  (f) => f !== "src/components/ui/query-bar.tsx"
+    && /hidden shrink-0 items-center gap-1 lg:flex/.test(strip(read(f))),
+);
+ok(groupStrays.length === 0,
+  "0.10 no bar hand-writes the desktop group wrapper — it is QUERY_GROUP_CLASS or it is a clip waiting for a long word",
+  groupStrays.join(", "));
+
+// ⛔ CONTROL FOR §0.10: the constant must still CONTAIN the repair. An assertion that only
+//    forbids the old literal would pass over a QUERY_GROUP_CLASS that had been edited back to
+//    `shrink-0` — the strays would be gone and the defect would be everywhere at once.
+ok(/flex-wrap/.test(primitiveGroupClass) && /min-w-0/.test(primitiveGroupClass)
+  && !/shrink-0/.test(primitiveGroupClass),
+  "0.10b CONTROL: QUERY_GROUP_CLASS itself still wraps (flex-wrap + min-w-0, never shrink-0)",
+  primitiveGroupClass);
+
 // ── §1 · THE PRIMITIVE — the language, defined once ───────────────────────────────────────────
 
 ok(/rounded-pill/.test(primitiveCode),
@@ -663,9 +699,25 @@ const barSrc = strip(read("src/components/markets/discovery-bar.tsx"));
 ok(/<FilterSheet\b/.test(barSrc), "5.16 the bar actually renders the sheet");
 ok(/className="kp-fsheet lg:hidden"/.test(sheetCode),
   "5.17 the sheet is phone-only (lg:hidden)");
-// The desktop copies of the SAME three groups must be desktop-only, or both render at once.
-ok((barSrc.match(/className="hidden shrink-0 items-center gap-1 lg:flex"/g) ?? []).length === 2,
-  "5.18 …and both desktop chip groups are desktop-only (hidden … lg:flex) — no width renders both");
+/**
+ * The desktop copies of the SAME groups must be desktop-only, or both layouts render at once.
+ *
+ * 🔴 RE-ANCHORED 2026-09-08 (PLAYER QUERY, stage 6), AND THE STALENESS WAS THE FINDING. This
+ * asserted the LITERAL `className="hidden shrink-0 items-center gap-1 lg:flex"` twice in
+ * `discovery-bar.tsx`. That literal is the UNREPAIRED wrapper — `shrink-0` with no wrap, which ran
+ * a Swahili pill group 162px off a 1280 viewport on `/proposals` — and it moved into
+ * `QUERY_GROUP_CLASS` when the repair was finally rolled out to all fifteen sites. So the
+ * assertion went red over a bar that had just been FIXED, while still passing on every bar that
+ * had not been.
+ *
+ * ⭐ IT IS STRICTLY STRONGER ON THE CONSTANT. The old form checked two call sites in one file for
+ * a string; this checks that both groups take the shared class AND — via §0.10b — that the shared
+ * class still carries the repair. `test:stacking` was re-anchored the same way when `z-20` moved
+ * into `QUERY_BAR_CLASS`, and for the same reason: a rule that lives in a constant is guarded by
+ * asserting the constant, not by asserting one of its readers.
+ */
+ok((barSrc.match(/className=\{QUERY_GROUP_CLASS\}/g) ?? []).length === 2,
+  "5.18 …and both desktop chip groups take QUERY_GROUP_CLASS (desktop-only, and it wraps — §0.10)");
 ok(/rootClassName="hidden max-w-full lg:block"/.test(barSrc),
   "5.19 …and so is the desktop topic menu");
 

@@ -23,6 +23,7 @@ import {
   QUERY_BAR_CLASS,
   QUERY_BAR_ROW1_CLASS,
   QUERY_BAR_ROW2_CLASS,
+  QUERY_GROUP_CLASS,
   QueryClear,
   QueryGroupDivider,
   QueryResultCount,
@@ -161,7 +162,7 @@ export function WalletBar({
 
         {/* DESKTOP — the same two axes along the bar. */}
         <QueryGroupDivider />
-        <nav aria-label={t.wallet.stateKey} className="hidden shrink-0 items-center gap-1 lg:flex">
+        <nav aria-label={t.wallet.stateKey} className={QUERY_GROUP_CLASS}>
           <FilterGroupKey>{t.wallet.stateKey}</FilterGroupKey>
           {LEDGER_STATES.map((s) => (
             <Chip key={s} href={href({ state: s })} label={stateLabel(t, s)} count={counts.state[s]}
@@ -170,7 +171,7 @@ export function WalletBar({
         </nav>
 
         <QueryGroupDivider />
-        <nav aria-label={t.common.when} className="hidden shrink-0 items-center gap-1 lg:flex">
+        <nav aria-label={t.common.when} className={QUERY_GROUP_CLASS}>
           <FilterGroupKey>{t.common.when}</FilterGroupKey>
           {LEDGER_WHEN_IDS.map((w) => (
             <Chip key={w} href={href({ when: w })} label={whenLabel(t, w)} count={counts.when[w]}

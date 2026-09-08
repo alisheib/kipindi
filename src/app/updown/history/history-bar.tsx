@@ -19,6 +19,7 @@ import {
   QUERY_BAR_CLASS,
   QUERY_BAR_ROW1_CLASS,
   QUERY_BAR_ROW2_CLASS,
+  QUERY_GROUP_CLASS,
   QueryClear,
   QueryGroupDivider,
   QueryResultCount,
@@ -187,7 +188,7 @@ export function HistoryBar({
         </FilterSheet>
 
         <QueryGroupDivider />
-        <nav aria-label={t.market.udAssets} className="hidden shrink-0 items-center gap-1 lg:flex">
+        <nav aria-label={t.market.udAssets} className={QUERY_GROUP_CLASS}>
           <FilterGroupKey>{t.market.udAssets}</FilterGroupKey>
           {assets.map((a) => (
             <Chip key={a.id} href={href({ asset: a.id })} label={a.label} count={counts.asset[a.id]}
@@ -196,7 +197,7 @@ export function HistoryBar({
         </nav>
 
         <QueryGroupDivider />
-        <nav aria-label={t.market.udDurations} className="hidden shrink-0 items-center gap-1 lg:flex">
+        <nav aria-label={t.market.udDurations} className={QUERY_GROUP_CLASS}>
           <FilterGroupKey>{t.market.udDurations}</FilterGroupKey>
           {durations.map((d) => (
             <Chip key={d} href={href({ dur: d })}
@@ -206,7 +207,7 @@ export function HistoryBar({
         </nav>
 
         <QueryGroupDivider />
-        <nav aria-label={t.common.when} className="hidden shrink-0 items-center gap-1 lg:flex">
+        <nav aria-label={t.common.when} className={QUERY_GROUP_CLASS}>
           <FilterGroupKey>{t.common.when}</FilterGroupKey>
           {UD_WHEN_IDS.map((w) => (
             <Chip key={w} href={href({ when: w, day: "" })} label={whenLabel(t, w)} count={counts.when[w]}

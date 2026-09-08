@@ -178,7 +178,14 @@ export default async function PerformancePage({
           two-pill rail whose second pill is `All` and whose first is the whole book is a control
           with no job: `perfLensesToRender` returns just `all` there, and a one-pill rail is not a
           filter. */}
-      {settledAll.length > 0 && lenses.length > 1 && (
+      {/* 🔴 `> 2`, NOT `> 1` — CAUGHT BY `qa:bar-geometry` ON A ONE-PRODUCT PERSONA, and the
+          condition contradicted the comment above it. `perfLensesToRender` returns `all` plus every
+          product the player has settled positions in, so a player with polls only yields
+          `["all", "poll"]` — length 2 — and `> 1` rendered a TWO-pill rail whose second pill shows
+          exactly what the first one does. That is the control with no job this note already
+          forbade; the code just did not implement it. Three arms is the smallest rail that can
+          narrow anything here. */}
+      {settledAll.length > 0 && lenses.length > 2 && (
         <PerformanceBar
           state={state}
           lenses={lenses}

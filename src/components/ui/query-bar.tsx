@@ -53,6 +53,32 @@ import type { SortDir } from "@/lib/query/sort";
 export const QUERY_BAR_CLASS =
   "kp-discovery-bar sticky top-[56px] z-20 -mx-3 bg-bg-base px-3 lg:-mx-6 lg:px-6";
 
+/**
+ * ⭐ THE SAME BAR, NOT STICKY — for a rail that filters ONE PANEL rather than the page.
+ *
+ * 🔴 FOUND BY `qa:bar-geometry` ON `/profile/account`, and it is the defect that driver's fourth
+ * assertion exists for, arriving from a new direction. Measured at 1280: `bar@-93` — the bar had
+ * scrolled clean off the top. Its parent is a `glass-panel` section holding the activity heading,
+ * the table and the pager, and **a sticky element only sticks within its PARENT's box**, so it
+ * unpinned the moment that panel scrolled away. The same sentence that explains `/updown/history`'s
+ * `bar@-252`.
+ *
+ * ⛔ AND THE FIX IS NOT TO HOIST IT OUT OF THE PANEL. `/profile/account` is FIVE panels — profile,
+ * activity, export, privacy, close account — and this rail filters exactly one table inside one of
+ * them. A page-level sticky band would follow the reader down and hover over *Close account*,
+ * which is a one-way ceremony: a filter for a table you can no longer see, sitting on top of the
+ * most dangerous control on the page. ⛔ The bar is right to be scoped; what was wrong was
+ * claiming an offset it cannot hold.
+ *
+ * ⚠️ IT IS A SECOND CONSTANT AND NOT A PROP, deliberately: `test:filter-language` §5.9/§5.10 key
+ * the sheet-stacking rules off the `kp-discovery-bar` class by name, so a panel-scoped bar must
+ * keep that class and lose only the position. ⛔ The surface must also DECLARE itself non-sticky
+ * in `scripts/live/bar-geometry-drive.mjs`, or that driver will keep asserting an offset this bar
+ * does not promise.
+ */
+export const QUERY_BAR_CLASS_PANEL =
+  "kp-discovery-bar relative z-20 -mx-2 bg-bg-base px-2";
+
 /** Row 1 — the lens strip and the result count. Row 2 — sort, then filters. */
 export const QUERY_BAR_ROW1_CLASS = "flex items-center gap-x-3 pt-2.5";
 export const QUERY_BAR_ROW2_CLASS = "flex flex-wrap items-center gap-x-2 pb-2.5 pt-1.5";

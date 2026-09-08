@@ -23,6 +23,7 @@ import {
   QUERY_BAR_CLASS,
   QUERY_BAR_ROW1_CLASS,
   QUERY_BAR_ROW2_CLASS,
+  QUERY_GROUP_CLASS,
   QueryClear,
   QueryGroupDivider,
   QueryResultCount,
@@ -219,7 +220,7 @@ export function PositionsBar({
             and window both open with an "Any"-shaped chip, and without a key the bar renders two
             of them side by side with neither saying what it clears. */}
         <QueryGroupDivider />
-        <nav aria-label={t.positions.sideKey} className="hidden shrink-0 items-center gap-1 lg:flex">
+        <nav aria-label={t.positions.sideKey} className={QUERY_GROUP_CLASS}>
           <FilterGroupKey>{t.positions.sideKey}</FilterGroupKey>
           {SIDE_IDS.map((s) => (
             <Chip key={s} href={href({ side: s })} label={sideLabel(t, s)} count={counts.side[s]}
@@ -228,7 +229,7 @@ export function PositionsBar({
         </nav>
 
         <QueryGroupDivider />
-        <nav aria-label={t.common.when} className="hidden shrink-0 items-center gap-1 lg:flex">
+        <nav aria-label={t.common.when} className={QUERY_GROUP_CLASS}>
           <FilterGroupKey>{t.common.when}</FilterGroupKey>
           {WHEN_IDS.map((w) => (
             <Chip key={w} href={href({ when: w })} label={whenLabel(t, w)} count={counts.when[w]}
@@ -237,7 +238,7 @@ export function PositionsBar({
         </nav>
 
         <QueryGroupDivider />
-        <nav aria-label={t.common.topic} className="hidden shrink-0 items-center gap-1 lg:flex">
+        <nav aria-label={t.common.topic} className={QUERY_GROUP_CLASS}>
           <FilterGroupKey>{t.common.topic}</FilterGroupKey>
           {TOPIC_IDS.map((c) => (
             <Chip key={c} href={href({ topic: c })}

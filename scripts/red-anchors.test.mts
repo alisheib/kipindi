@@ -161,7 +161,26 @@ console.log("\n§4 · the ratchet — harnesses still outside the anchor audit")
   // cases into `scripts/anchors/`. ⭐ The board one is why: its inline `new` anchor rotted the
   // moment a live defect in that arm was repaired, and this ratchet was structurally unable to
   // notice — §3 audits declaration files, and it had none.
-  const UNDECLARED_CEILING = 65;
+  /**
+   * ⚠️ 65 → 66 ON 2026-09-08, AND A RATCHET GOING THE WRONG WAY IS RECORDED RATHER THAN HIDDEN.
+   *
+   * The one addition is `scripts/red-route-census.mjs` (PLAYER QUERY, task 6.4). ⛔ Its mutations
+   * are NOT source anchors and an anchors file for it would be a fiction: case 1 CREATES a
+   * `page.tsx` that does not exist, case 2 deletes a route's ruling from a MARKDOWN table, and
+   * case 3 renames a heading in that same document. `red-anchor.mjs` resolves a `from` string
+   * against a source file — there is no source file for "a route that has not been written yet".
+   *
+   * ⭐ ITS TWO SIBLINGS FROM THE SAME STAGE DO DECLARE THEIRS: `red-bar-geometry.mjs` →
+   * `anchors/bar-geometry.anchors.mjs`, `red-lifecycle-reach.mjs` →
+   * `anchors/lifecycle-reach.anchors.mjs`. So this is one harness whose subject is a DOCUMENT, not
+   * a pattern of avoidance.
+   *
+   * ⛔ OWED, AND NAMED SO IT IS NOT FORGOTTEN: either `red-anchor.mjs` grows a second resolver for
+   * document-and-filesystem mutations (which would let this harness declare its three cases and
+   * bring the ceiling back to 65), or this harness is excluded from the population with its reason
+   * — but NOT by raising this number again. See the campaign board's Stage 6 row.
+   */
+  const UNDECLARED_CEILING = 66;
   const declaredNames = new Set(declFiles.map((f) => f.replace(/\.anchors\.mjs$/, "")));
   // A harness "declares" when a declaration file exists whose name appears in its command.
   const undeclared = harnesses.filter((key) => {

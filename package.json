@@ -704,6 +704,11 @@
     "qa:player-filters": "node scripts/live/player-filter-drive.mjs",
     "qa:count-truth": "node scripts/live/count-truth-drive.mjs",
     "qa:bar-geometry": "node scripts/live/bar-geometry-drive.mjs",
+    "red:bar-geometry": "node scripts/red-bar-geometry.mjs",
+    "test:lifecycle-reach": "tsx scripts/lifecycle-reach.test.mts",
+    "red:lifecycle-reach": "node scripts/red-lifecycle-reach.mjs",
+    "test:route-census": "tsx scripts/route-census.test.mts",
+    "red:route-census": "node scripts/red-route-census.mjs",
     "test:leaderboard-order": "tsx scripts/leaderboard-order.test.mts",
     "qa:player-shots": "node scripts/live/player-query-shots.mjs",
     "red:count-truth": "node scripts/red-count-truth.mjs"

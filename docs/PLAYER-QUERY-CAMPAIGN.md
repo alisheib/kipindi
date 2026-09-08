@@ -594,14 +594,14 @@ from disagreeing about what refunded looks like.**
   the chip printed the stored enum, so a Swahili player read "YES" beside a page reading
   "NDIO". **Keep the comment alive** or the next session reintroduces what it records.
 
-### Stage 6 · guards, docs, verification (3/9 — 6.5, 6.6, + `qa:bar-geometry`, unplanned)
+### Stage 6 · guards, docs, verification (7/9 — 6.1–6.6 + `qa:bar-geometry`; 6.7–6.9 OPEN)
 
 | | Task | Files |
 |---|---|---|
-| ☐ | **6.1** `test:lifecycle-reach` — population **derived from `prisma/schema.prisma`, never typed** | new gate, `lifecycle-reach.test.mts` † |
-| ☐ | **6.2** `red:lifecycle-reach` | new control, `lifecycle-reach-red.mjs` † |
-| ☐ | **6.3** `test:route-census` — globs every non-admin `page.tsx`; a new route without a ruling fails | new gate, `route-census.test.mts` † |
-| ☐ | **6.4** `red:route-census` | new control, `route-census-red.mjs` † |
+| ☑ | **6.1** `test:lifecycle-reach` — **39 assertions green.** Population parsed out of `prisma/schema.prisma` (never the generated client — that is a build artefact and this repo has a recorded case of it going stale). Runs the contracts' REAL predicates over a synthetic row per enum value, so what is asserted is what the page does | [`scripts/lifecycle-reach.test.mts`](../scripts/lifecycle-reach.test.mts) |
+| ☑ | **6.2** `red:lifecycle-reach` — **3/3 caught, tree restored.** ⭐ **AND IT FOUND A HOLE IN 6.1 BEFORE 6.1 WAS BELIEVED:** the `cashed` mutation stayed GREEN because `/positions`' `settled` UNION pill still matched the row. That is reachability in NAME only — the complaint is that a player cannot tell won from lost from refunded, and a union pill does not answer it. Declared unions are now excluded from the reachability population | [`scripts/red-lifecycle-reach.mjs`](../scripts/red-lifecycle-reach.mjs) |
+| ☑ | **6.3** `test:route-census` — **52 routes on disk, 52 named in §4, both directions clean.** 🔴 **It found `/auth/admin` on its first run** — the staff sign-in page, a client-facing route NOT under `/admin/`, which §11's exclusion never covered and this census never named through four stages of hand maintenance | [`scripts/route-census.test.mts`](../scripts/route-census.test.mts) |
+| ☑ | **6.4** `red:route-census` — **3/3 caught**, doc restored, probe directory removed, verified by comparison. Mutates in BOTH directions (a route with no ruling; a ruling deleted while the route stays) plus one on the gate's own eyesight. ⚠️ Its first `/help` mutation stayed GREEN and the gate was RIGHT — `/help` is named TWICE in §4, so deleting the table row left the real ruling standing. Re-derived: `/agent/status` is named exactly once | [`scripts/red-route-census.mjs`](../scripts/red-route-census.mjs) |
 | ☑ | **6.5** `qa:player-filters` — pulled forward to stage 4 so each route is verified as it lands | [`scripts/live/player-filter-drive.mjs`](../scripts/live/player-filter-drive.mjs) |
 | ☑ | **6.6** `qa:count-truth` + `red:count-truth` — landed 2026-09-08 alongside the `/results` defect it found. 98 pills / 6 surfaces green; 4/4 mutations caught | [`scripts/live/count-truth-drive.mjs`](../scripts/live/count-truth-drive.mjs) · [`scripts/red-count-truth.mjs`](../scripts/red-count-truth.mjs) |
 | ☐ | **6.7** the rule, in §K, as an extension of rule 6 | `docs/DESIGN_AUTHORITY.md` |
@@ -735,11 +735,18 @@ total written in prose.
 |---|---|---|
 | Live board | `/updown` | The board shows one current round plus at most two neighbours; its pills are already the primitive. A lens would be a control with no job. |
 | Single object | `/updown/[roundId]` · `/proposals/[id]` · `/wallet/receipt/[id]` · `/positions/[positionId]` (a redirect) · `/agent/invite/[token]` · `/wallet/deposit/return` | One object, or a handful of the viewer's own rows on it. A filter over three rows is noise. |
-| Forms and flows | `/auth/login` · `/auth/register` · `/auth/otp` · `/auth/2fa` · `/auth/forgot-password` · `/auth/reset-password` · `/auth/verify-email` · `/proposals/new` · `/wallet/deposit` · `/wallet/withdraw` · `/profile/source-of-funds` | Nothing is listed. |
+| Forms and flows | `/auth/login` · `/auth/register` · `/auth/otp` · `/auth/2fa` · `/auth/forgot-password` · `/auth/reset-password` · `/auth/verify-email` · `/auth/admin` · `/proposals/new` · `/wallet/deposit` · `/wallet/withdraw` · `/profile/source-of-funds` | Nothing is listed. |
 | Settings | `/profile` · `/profile/notifications` · `/profile/responsible-gambling` · `/profile/security` · `/profile/sessions` | Fixed short lists of controls, not collections. `/profile/sessions` renders exactly one device **by design** — single-session model. |
 | Public agent | `/agent` · `/agent/apply` · `/agent/status` | Static copy and a form. |
 | Legal | `/legal/terms` · `/legal/aml` · `/legal/privacy` · `/legal/responsible-gambling` · `/legal/agent-terms` | A document is read, not queried — but see the ruling below. |
 | Other | `/` · `/help` · `/offline` | See the rulings below. |
+
+> 🔴 **`/auth/admin` WAS MISSING FROM THIS CENSUS UNTIL 2026-09-08, AND `test:route-census` FOUND
+> IT ON ITS FIRST RUN.** It is the staff sign-in page — a client-facing route that is NOT under
+> `/admin/`, so §11's admin exclusion never covered it and the census never named it. Its ruling is
+> the ordinary one for a form: nothing is listed, so there is nothing to query. ⭐ That is the gate
+> doing precisely the job §6.3 describes on the day it was written, which is the strongest argument
+> for it: this section was hand-maintained through four stages and still lost a route.
 
 **Three of those 34 needed a decision, not a shrug:**
 
