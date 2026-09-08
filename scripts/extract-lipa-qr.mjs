@@ -2,20 +2,20 @@
  * extract-lipa-qr — turn the Selcom Lipa poster PDF into the shipped QR asset.
  *
  * ── WHY THIS SCRIPT EXISTS ───────────────────────────────────────────────────
- * `public/pay/selcom-lipa-qr.png` is a picture that MOVES REAL MONEY. If it is
- * ever wrong — a re-crop that clips a finder pattern, a "helpful" recompression,
+ * `public/pay/selcom-lipa-qr.<hash>.svg` is a picture that MOVES REAL MONEY. If it
+ * is ever wrong — a re-crop that clips a finder pattern, a "helpful" recompression,
  * the wrong merchant's QR pasted in — an applicant pays a stranger and we find out
  * from them, not from a test. So the asset is not hand-exported from a PDF viewer
- * and dropped in the tree as folklore. It is extracted by this script, and the
- * script PROVES what it extracted before it writes anything:
+ * and dropped in the tree as folklore. It is derived by this script, and the
+ * script PROVES what it derived before it writes anything:
  *
- *   1. the QR decodes at all,
+ *   1. the QR in the poster decodes at all,
  *   2. its EMVCo CRC-16 checks out (so the bytes are intact, not merely readable),
  *   3. it names the merchant id we expect,
- *   4. the PNG it writes decodes to the SAME payload the PDF did.
+ *   4. the SVG it writes decodes to the SAME payload the PDF did.
  *
- * Step 4 is the one people skip. Padding and rescaling are image edits; an edit
- * that silently broke the code would otherwise ship looking perfect.
+ * Step 4 is the one people skip, and it is the whole point: the shipped asset is a
+ * re-render, so "it came out of the PDF" is not a claim anyone may take on faith.
  *
  * ── THE QUIET ZONE IS NOT DECORATION ─────────────────────────────────────────
  * The 300×300 image inside the PDF has NO quiet zone — the modules run to the
@@ -66,7 +66,7 @@ const PAY_DIR = path.join(ROOT, "public", "pay");
  * so there is nothing to remember and nothing to bump.
  */
 const assetName = (payload) =>
-  `selcom-lipa-qr.${crypto.createHash("sha256").update(payload, "utf8").digest("hex").slice(0, 8)}.png`;
+  `selcom-lipa-qr.${crypto.createHash("sha256").update(payload, "utf8").digest("hex").slice(0, 8)}.svg`;
 
 /** The merchant id this poster must name. A poster that does not is the wrong poster. */
 const EXPECT_MERCHANT_ID = "70063747";
@@ -254,23 +254,54 @@ if (!crcOk || !namesMerchant) {
 }
 
 // ── 4. Build the asset, then re-verify what we actually wrote ─────────────────
-const outW = (hit.obj.width + QUIET_ZONE_PX * 2) * SCALE;
-const png = await sharp(hit.pixels, { raw: { width: hit.obj.width, height: hit.obj.height, channels: hit.channels } })
-  .extend({ top: QUIET_ZONE_PX, bottom: QUIET_ZONE_PX, left: QUIET_ZONE_PX, right: QUIET_ZONE_PX, background: "#ffffff" })
-  .resize(outW, outW, { kernel: "nearest" })
-  .png({ compressionLevel: 9, palette: true })
-  .toBuffer();
+/**
+ * ⭐ THE SHIPPED ASSET IS AN SVG RE-RENDER OF THIS EXACT PAYLOAD, NOT THE BITMAP.
+ *
+ * The bitmap out of the PDF is the PROVENANCE — it is what proves the payload above is
+ * Selcom's and not something we invented, and the CRC check is what makes that proof
+ * real. But a raster QR is not a safe thing to put on a responsive page. Measured with
+ * `qa:lipa-qr` against the 840px bitmap, the code painted in the browser decoded at
+ * 160px, FAILED at 176 and 192, decoded at 208, failed at 240 and 256, decoded at 288 —
+ * and the pattern moved again at a different devicePixelRatio. That is not a resolution
+ * floor you can design around, it is moiré: the module grid beating against the pixel
+ * grid as the browser resamples. Shipping it would mean some players can scan and some
+ * cannot, unpredictably, with the file on disk perfect and every screenshot looking fine.
+ *
+ * A vector QR has no resampling to alias. It is crisp at every size and every DPR.
+ *
+ * ⛔ THIS IS NOT "GUESSING A PAYLOAD" — the one thing the header forbids. The payload is
+ * the one decoded from Selcom's own artwork and CRC-verified above; the SVG re-renders
+ * those exact bytes, and the check below rasterises the SVG we just wrote and decodes it,
+ * refusing to write unless it comes back byte-identical to what the PDF carried. The
+ * scanner sees the same TIPS string either way.
+ *
+ * ⚠️ The Selcom "S" logo is NOT carried over. It is an occlusion the symbol survives only
+ * on error correction, and re-introducing it over a regenerated symbol would trade
+ * scannability for decoration on a code that moves money. The merchant name and Lipa
+ * number are rendered as text beside it, which is what a payer actually verifies against.
+ */
+const QRCode = require("qrcode");
+const svg = await QRCode.toString(payload, {
+  type: "svg",
+  errorCorrectionLevel: "H",   // as issued — the poster's symbol carries a logo, so H
+  margin: 4,                    // the spec's four-module quiet zone, in the vector itself
+  color: { dark: "#000000", light: "#ffffff" },
+});
 
-const back = await sharp(png).raw().toBuffer({ resolveWithObject: true });
+// Rasterise what we are about to write and decode THAT. An SVG that renders to an
+// unreadable symbol would otherwise ship looking perfect.
+const proof = await sharp(Buffer.from(svg), { density: 300 }).resize(900, 900, { fit: "contain" }).png().toBuffer();
+const back = await sharp(proof).raw().toBuffer({ resolveWithObject: true });
 const roundTrip = decodeRaw(back.data, back.info.width, back.info.height, back.info.channels);
 const identical = roundTrip === payload;
 console.log("");
-console.log(`  written asset     ${outW}×${outW}, ${(png.length / 1024).toFixed(1)} KiB`);
+console.log(`  written asset     SVG, ${(svg.length / 1024).toFixed(1)} KiB (vector — no resampling at any size or DPR)`);
 console.log(`  round-trip decode ${identical ? "IDENTICAL ✅" : "DIFFERS ❌"}`);
 if (!identical) {
-  console.error("\n❌ refusing to write — the PNG does not decode to the payload the PDF carried");
+  console.error("\n❌ refusing to write — the SVG does not decode to the payload the PDF carried");
   process.exit(1);
 }
+const png = Buffer.from(svg, "utf8");
 
 const OUT = path.join(PAY_DIR, assetName(payload));
 const publicPath = "/pay/" + path.basename(OUT);
@@ -285,7 +316,7 @@ fs.writeFileSync(OUT, png);
 // Any previously-extracted QR is now dead weight: the config names exactly one
 // asset, and leaving strays invites someone to point at the wrong one later.
 for (const f of fs.readdirSync(PAY_DIR)) {
-  if (/^selcom-lipa-qr\..*\.png$/.test(f) && f !== path.basename(OUT)) {
+  if (/^selcom-lipa-qr..*.(png|svg)$/.test(f) && f !== path.basename(OUT)) {
     fs.unlinkSync(path.join(PAY_DIR, f));
     console.log(`   removed superseded ${f}`);
   }

@@ -82,7 +82,13 @@ if (assetExists) {
     // rescue this symbol (the centre logo shifts its binarisation) and the code is only
     // found when the pixels are inverted before jsQR sees them. Dropping the second pass
     // would make this guard report "not a QR" for a QR every phone reads.
-    const { data, info } = await sharp(assetAbs).raw().toBuffer({ resolveWithObject: true });
+    // `density` + an explicit raster size matter: the asset is a VECTOR symbol, and
+    // sharp would otherwise rasterise it at its nominal size, which is small enough to
+    // reintroduce the very aliasing the SVG exists to avoid.
+    const { data, info } = await sharp(assetAbs, { density: 300 })
+      .resize(900, 900, { fit: "contain", background: "#ffffff" })
+      .raw()
+      .toBuffer({ resolveWithObject: true });
     const px = info.width * info.height;
     const rgba = Buffer.alloc(px * 4);
     for (let i = 0; i < px; i++) {
@@ -128,7 +134,7 @@ check("1.5 the payload names the configured Lipa number", namesNumber, namesNumb
 // would leave returning players scanning the old merchant indefinitely. The filename
 // is a hash of the payload precisely so that cannot happen — this proves it still is.
 const wantHash = crypto.createHash("sha256").update(cfg.qrPayload, "utf8").digest("hex").slice(0, 8);
-const gotHash = /selcom-lipa-qr\.([0-9a-f]{8})\.png$/.exec(cfg.qrAssetPath)?.[1] ?? null;
+const gotHash = /selcom-lipa-qr\.([0-9a-f]{8})\.svg$/.exec(cfg.qrAssetPath)?.[1] ?? null;
 check(
   "1.6 the filename's hash matches the payload (so a reissued QR gets a new URL)",
   gotHash === wantHash,

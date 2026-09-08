@@ -81,8 +81,50 @@ async function decodePng(buf) {
 
 const SEL = "[data-lipa-qr] img";
 
+/**
+ * ⭐ THE DRIVE ARRANGES ITS OWN PRECONDITION, AND RESTORES IT.
+ *
+ * The QR renders only when the agent fee destination IS the Lipa number
+ * (`shouldShowLipaQr`), and the shipped default points elsewhere on purpose —
+ * changing it rewrites `/legal/agent-terms` in three languages, which is a business
+ * decision, not this drive's. So the drive sets the destination for the run and puts
+ * it back, and asserts BOTH states: matched → the QR is painted and decodes;
+ * mismatched → it is gone. Asserting only the first would pass with the safety rule
+ * deleted.
+ */
+async function setFeeDestination(account, name) {
+  const res = await fetch(`${BASE}/api/dev-test/agent-set-config`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ feeDestinationAccount: account, feeDestinationName: name }),
+  }).catch((e) => ({ ok: false, status: 0, _err: e }));
+  if (!res.ok) {
+    console.error(`🔴 could not set the fee destination (HTTP ${res.status ?? "?"}). This route is dev-only;`);
+    console.error("   a run that could not arrange its precondition has measured nothing.");
+    process.exit(2);
+  }
+  const j = await res.json();
+  if (j?.config?.feeDestinationAccount !== account) {
+    console.error(`🔴 the server did not take the fee destination: asked ${account}, got ${j?.config?.feeDestinationAccount}`);
+    process.exit(2);
+  }
+}
+
+// Remember what was there, so the drive leaves the tree as it found it.
+const beforeCfg = await fetch(`${BASE}/api/dev-test/agent-set-config`, {
+  method: "POST", headers: { "Content-Type": "application/json" }, body: "{}",
+}).then((r) => r.json()).catch(() => null);
+if (!beforeCfg?.config) {
+  console.error("🔴 /api/dev-test/agent-set-config did not answer — is this a `next dev` server? `next start` closes the dev-test doors.");
+  process.exit(2);
+}
+const RESTORE = { account: beforeCfg.config.feeDestinationAccount, name: beforeCfg.config.feeDestinationName };
+console.log(`Lipa QR live drive · ${BASE}`);
+console.log(`fee destination before: ${RESTORE.name} / ${RESTORE.account} (restored at the end)\n`);
+
+await setFeeDestination(EXPECT_NUMBER, "Ocean Entertainment Limited");
+
 const browser = await chromium.launch();
-console.log(`Lipa QR live drive · ${BASE}\n`);
 
 for (const locale of LOCALES) {
   for (const width of WIDTHS) {
@@ -129,6 +171,7 @@ for (const locale of LOCALES) {
         vw: window.innerWidth, vh: window.innerHeight,
         visible: cs.visibility !== "hidden" && cs.display !== "none" && Number(cs.opacity) > 0.01,
         rendering: cs.imageRendering,
+        src: e.getAttribute("src") || "",
         complete: e.complete && e.naturalWidth > 0,
       };
     });
@@ -138,7 +181,13 @@ for (const locale of LOCALES) {
     ok(`${tag} it is at least ${MIN_CSS_PX}px on screen`, Math.min(box.w, box.h) >= MIN_CSS_PX, `${Math.round(box.w)}×${Math.round(box.h)} CSS px`);
     ok(`${tag} it is square`, Math.abs(box.w - box.h) <= 2, `${Math.round(box.w)}×${Math.round(box.h)}`);
     ok(`${tag} it is not clipped horizontally`, box.x >= -0.5 && box.x + box.w <= box.vw + 0.5, `x=${Math.round(box.x)} w=${Math.round(box.w)} vw=${box.vw}`);
-    ok(`${tag} module edges are not smoothed`, box.rendering === "pixelated", `image-rendering: ${box.rendering}`);
+    // ⚠️ THE ASSET MUST BE VECTOR, and this drive is what established that. Against the
+    // 840px bitmap the painted code decoded at 160px, FAILED at 176 and 192, decoded at
+    // 208, failed at 240 and 256 — the pattern moving again at a different DPR. That is
+    // moiré between the module grid and the pixel grid, not a resolution floor, and it
+    // would have shipped as "some players can scan it, unpredictably". A raster QR on a
+    // responsive page is the defect; this names it if anyone swaps one back in.
+    ok(`${tag} the QR is a vector asset (no resampling to alias)`, /\.svg(\?|$)/.test(box.src), box.src);
 
     // ── THE REAL PROOF: decode what the browser painted ───────────────────────
     const shot = await img.screenshot();
@@ -166,6 +215,31 @@ for (const locale of LOCALES) {
     await ctx.close();
   }
 }
+
+// ── THE SAFETY RULE, PROVEN ON A REAL PAGE ────────────────────────────────────
+// Point the fee somewhere else and the QR must vanish — without this arm, every
+// check above would pass just as happily with `lipaQrIsSafeFor` returning `true`.
+await setFeeDestination("0769777877", "Digital Selcom Bank");
+{
+  const ctx = await browser.newContext({ viewport: { width: 393, height: 900 } });
+  const page = await ctx.newPage();
+  await page.goto(`${BASE}/auth/demo?kyc=APPROVED`, { waitUntil: "domcontentloaded", timeout: 90_000 });
+  await page.goto(`${BASE}/agent`, { waitUntil: "domcontentloaded", timeout: 60_000 });
+  await page.waitForTimeout(400);
+  const stillThere = await page.$(SEL);
+  ok("mismatched destination → the QR is GONE", stillThere === null,
+    "the QR is rendering beside an account it does not pay — the safety rule is not holding");
+
+  // …and the number is still communicated, as text. Hiding the QR must not hide the
+  // way to pay; that would trade a money defect for a dead end.
+  const txt = await page.evaluate(() => (document.body.innerText || "").replace(/\s+/g, " "));
+  ok("…and the account is still shown as text", txt.replace(/\D/g, "").includes("0769777877"),
+    "the fee destination vanished with the QR — an applicant now has no way to pay");
+  await ctx.close();
+}
+
+await setFeeDestination(RESTORE.account, RESTORE.name);
+console.log(`\nfee destination restored: ${RESTORE.name} / ${RESTORE.account}`);
 
 await browser.close();
 console.log(`\n${fail === 0 ? "ALL PASS" : `${fail} FAILED`} — ${pass} checks · shots in ${SHOTS}/`);

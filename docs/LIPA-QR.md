@@ -80,12 +80,41 @@ in words whether the QR is live right now, and if not, which two values disagree
 
 ## 4. The artwork
 
-`public/pay/selcom-lipa-qr.<hash>.png` — the bitmap Selcom produced, extracted from the poster
-with a 40px quiet zone added (the embedded image has none, and without it real scanners are
-flaky) and upscaled ×2 with nearest-neighbour so module edges stay crisp.
+`public/pay/selcom-lipa-qr.<hash>.svg` — a **vector** symbol carrying the payload decoded and
+CRC-verified from Selcom's own poster. `scripts/extract-lipa-qr.mjs` rasterises the SVG it is
+about to write and decodes it, refusing to write unless it comes back byte-identical to what
+the PDF carried.
+
+### 4a. 🔴 Why it is a vector, and why a raster QR is a defect here
+
+The first version shipped the bitmap straight out of the PDF — 840px, quiet zone added, the
+Selcom "S" logo intact. It looked perfect in every screenshot. Then `qa:lipa-qr` decoded the
+symbol **as the browser painted it**, and found:
+
+| rendered size | 160 | 176 | 192 | 208 | 224 | 240 | 256 | 288 |
+|---|---|---|---|---|---|---|---|---|
+| decodes? | ✅ | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ | ✅ |
+
+…and the pattern *moved* at a different `devicePixelRatio`. That is not a resolution floor you
+can design around — it is **moiré**: the QR's module grid beating against the device pixel grid
+as the browser resamples an 840px image down to ~190. No `image-rendering` value fixes it;
+`pixelated` drops module edges on a downscale and smooth blurs them, and which one wins depends
+on the exact ratio.
+
+Shipped, that would have meant **some players can scan it and some cannot, unpredictably**, with
+the file on disk perfect, every screenshot fine, and every unit test green. A vector symbol has
+nothing to resample and decodes at every size and DPR tested.
+
+⚠️ The Selcom "S" logo is **not** carried over. It is an occlusion the symbol survives only on
+error correction; re-adding it over a regenerated code would trade scannability for decoration
+on something that moves money. The merchant name and Lipa number sit beside it in text, which is
+what a payer actually checks against their wallet app.
+
+⛔ **Do not swap in a `.png` "for consistency with the other `/pay/` marks."** Those are logos.
+This is money.
 
 ⭐ **The filename is a hash of the payload, and that is a money guard.** `public/sw.js` serves
-every `.png` **cache-first until `CACHE_NAME` is bumped** — its own comment records the
+every `.svg`/`.png` **cache-first until `CACHE_NAME` is bumped** — its own comment records the
 mixx/halopesa marks needing exactly that bump. For a logo a stale cache is cosmetic. For a QR
 it would leave every returning player scanning a **superseded merchant code** indefinitely,
 invisibly to anyone testing in a fresh browser. Content-hashing the name means a reissued QR is
@@ -101,12 +130,12 @@ QR at an image nobody has decoded.
 
 | Guard | Holds |
 |---|---|
-| `test:lipa-qr` §1 | the shipped PNG **decodes** to the pinned payload byte-for-byte; its EMVCo CRC re-derives; it names the configured Lipa number; the filename hash matches; exactly one asset exists |
+| `test:lipa-qr` §1 | the shipped SVG **decodes** to the pinned payload byte-for-byte; its EMVCo CRC re-derives; it names the configured Lipa number; the filename hash matches; exactly one asset exists |
 | `test:lipa-qr` §2 | the safety rule — shows on a match, hides on a mismatch, an empty account, a switched-off operator toggle, and a number that merely *contains* the Lipa number |
 | `test:lipa-qr` §3 | the config refuses a non-numeric number, a bad USSD string, an asset path outside `/pay/`, an empty pin |
 | `test:lipa-qr` §4 | **the money rule** — an allow-list of surfaces, both directions, plus an explicit "no wallet surface renders this" arm |
 | `red:lipa-qr` | **10/10 caught, 0 missed, 0 broken harness.** Plants a *valid but different* QR, a one-character payload edit, a de-hashed filename, four separate corruptions of the safety rule, the deposit-page wiring, and two validator holes — each must fail the gate **on its own named check** |
-| `qa:lipa-qr` | screenshots the element as painted and **decodes that**, at 360/393/768/1280 × en/sw/zh: a rectangle, a ≥150 CSS-px floor, no clipping, `image-rendering: pixelated`, the printed number matches the encoded one — and the same selector matches **nothing** on `/wallet/deposit` |
+| `qa:lipa-qr` | **122 checks.** Screenshots the element as painted and **decodes that**, at 360/393/768/1280 × en/sw/zh: a rectangle, a ≥150 CSS-px floor, square, no clipping, a vector source, the printed number matching the encoded one. Then it sets the fee destination to a *different* account and asserts the QR is **gone** while the account is still shown as text — and on every pass the same selector must match **nothing** on `/wallet/deposit`. It restores the destination it found |
 
 ⚠️ `red:lipa-qr` scores a run as CAUGHT only when the gate read the **mutant** tree and failed
 on the **targeted** check. "It exited non-zero" is not evidence, and an unmatched anchor is

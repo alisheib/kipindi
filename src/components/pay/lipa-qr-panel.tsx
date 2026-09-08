@@ -104,12 +104,22 @@ export function LipaQrPanel({
                number rendered beside it, and that redundancy is the point: a listener
                gets the same two facts a sighted payer checks against their wallet app. */
             alt={`${t.lipa.title} — ${l.merchantName}, ${t.lipa.numberLabel} ${pretty}`}
-            width={176}
-            height={176}
-            className="block h-44 w-44 sm:h-48 sm:w-48"
-            /* A QR must not be smoothed: interpolation blurs module edges and is the
-               difference between a code that scans in one pass and one that does not. */
-            style={{ imageRendering: "pixelated" }}
+            width={224}
+            height={224}
+            /* 192 / 224 CSS px. Chosen from measurement, not taste: `.qa-lipa/threshold`
+               decoded the painted symbol at every step from 176 to 288 at both DPRs, and
+               these two sit inside that band with margin at 1×, 2× and 3×. Bigger is also
+               simply better for the person holding the phone. */
+            className="block h-48 w-48 sm:h-56 sm:w-56"
+            /* ⛔ NO `image-rendering` OVERRIDE, AND NO RASTER SOURCE. The asset is an SVG
+               and must stay one. Measured against the 840px bitmap this originally shipped
+               with, the painted symbol decoded at 160px, FAILED at 176 and 192, decoded at
+               208, failed at 240 and 256 — and the pattern moved again at a different DPR.
+               That is moiré between the module grid and the pixel grid, and no
+               `image-rendering` value fixes it: `pixelated` drops module edges on a
+               downscale, smooth blurs them, and which one wins depends on the exact ratio.
+               A vector symbol has nothing to resample. ⛔ Do not swap in a .png "for
+               consistency with the other /pay marks" — those are logos; this is money. */
           />
         </div>
 

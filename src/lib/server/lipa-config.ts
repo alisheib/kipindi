@@ -59,12 +59,22 @@ export type LipaConfig = {
    * Public path of the verified QR image. Not operator-editable — see the header.
    *
    * ⭐ THE `.d997c1d2.` IS A HASH OF `qrPayload`, NOT DECORATION. `public/sw.js`
-   * serves every `.png` **cache-first until `CACHE_NAME` is bumped** (its own
+   * serves every `.svg`/`.png` **cache-first until `CACHE_NAME` is bumped** (its own
    * comment records the mixx/halopesa marks needing exactly that). A stale logo is
    * cosmetic; a stale QR keeps a returning player paying a merchant account that
    * may no longer be ours, silently, and a tester on a fresh browser would never
    * see it. Because the name is derived from the content, a reissued QR is a new
    * URL and the stale-cache trap cannot arise — nothing to remember, nothing to bump.
+   *
+   * ⭐ AND IT IS AN SVG, WHICH IS A SCANNABILITY DECISION, NOT A FILE-SIZE ONE. The
+   * bitmap Selcom ships is the PROVENANCE — it is what proves this payload is theirs —
+   * but painted through a browser's resampler it decoded at 160px, FAILED at 176 and
+   * 192, decoded at 208 and failed again at 240, with the pattern moving at a different
+   * devicePixelRatio. That is moiré between the module grid and the pixel grid, not a
+   * resolution floor, and it would have shipped as "some players can scan it". A vector
+   * symbol has nothing to resample. `scripts/extract-lipa-qr.mjs` re-renders the
+   * CRC-verified payload and refuses to write unless the SVG decodes back to it
+   * byte-for-byte. ⛔ Do not swap this back to a raster.
    */
   qrAssetPath: string;
   /**
@@ -89,7 +99,7 @@ export const DEFAULT_LIPA_CONFIG: LipaConfig = {
   merchantName: "OCEAN ENTERTAINMENT LIMITED",
   lipaNumber: "70063747",
   ussdCode: "*150*50#",
-  qrAssetPath: "/pay/selcom-lipa-qr.d997c1d2.png",
+  qrAssetPath: "/pay/selcom-lipa-qr.d997c1d2.svg",
   qrPayload:
     "000201010211041552545429990002026390014tz.go.bot.tips0105039980208700637475204599953038345802TZ5920OCEAN ENTERTAINMENT 6013DAR ES SALAAM610512345621203087006374781510012tz.co.selcom0131 https://selcompay.me/70063747 630450F1",
 };
