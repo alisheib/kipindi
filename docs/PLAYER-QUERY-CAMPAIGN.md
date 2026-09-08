@@ -10,10 +10,10 @@
 | | |
 |---|---|
 | **Opened** | 2026-09-07, on Ali's instruction |
-| **Branch** | `player-query-campaign`, off `1f64ca1a` |
+| **Branch** | ⛔ **NONE — `player-query-campaign` was merged and DELETED 2026-09-08. Work from `main`.** |
 | **Approved** | the plan in §2–§5, by Ali, 2026-09-07 |
 | **Scope** | every client-facing page. ⛔ **Admin explicitly excluded** — §11 |
-| **Merged?** | **No.** Nothing is on `main`. Nothing is deployed. |
+| **Merged?** | ✅ **YES — stages 1–3 and tasks 4.1–4.5 are LIVE on 50pick.tz** (`main` `4e667633`, deploy `107e28f6`, 2026-09-08 11:22 EAT). The remaining tasks are NOT built. |
 
 ---
 
@@ -23,9 +23,25 @@
 ▶ NEXT ACTION — task 4.6 in the board below.
   /profile/account: counts on the existing category rail; When; sort; search.
   One commit per route.
+
+  ⛔ BRANCH OFF `main`. There is no campaign branch any more — what was built is LIVE.
 ```
 
 **Stage 4 of 6. Stages 1–3 CLOSED (12/12, 7/7, 8/8). 4.1–4.5 done; 9 routes left.**
+
+> ⭐ **EVERYTHING BUILT SO FAR IS ON PRODUCTION** (2026-09-08, `main` `4e667633`). The branch
+> was merged and deleted, so a session that goes looking for `player-query-campaign` will not
+> find it and must not recreate it from an older base. `git checkout -b <new-lane> main`.
+>
+> ⚠️ **TWO DEBTS THIS BOARD OWES, both filed rather than fixed** — read before trusting §1:
+> **①** `qa:bar-geometry` is counted toward Stage 6 but has **no RED control**, which Stage 6's
+> own exit condition requires ("each new guard's RED control has been *seen to fail*"). The three
+> geometry defects it found were fixed on the strength of an unreproducible hand mutation. Build
+> its control before crediting it. **②** The §1 stage headings still read `(0/14)`, `(0/4)`,
+> `(0/9)` while the board above reads 5/14 and 3/9, and §5 still marks four shipped core files as
+> ☐ and hands out `src/lib/watchlist/query.ts`, a path that does not exist (the file is
+> `following.ts`). A session that skims to §1 as this file instructs will re-do five finished
+> routes. ⛔ Fix the headings in the same commit as task 4.6.
 
 ### What task 4.5 found — read before 4.6
 

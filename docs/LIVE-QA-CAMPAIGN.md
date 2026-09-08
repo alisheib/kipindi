@@ -5958,6 +5958,82 @@ state**, 1,338,504 of players' stakes in escrow, and every ledger entry ever wri
 > landing one atom per commit. Read the block directly below this note before touching
 > `src/app/globals.css`, `src/app/motion.css`, or anything under `src/components/ui/`.
 
+### 🟢 Session 91 (2026-09-08) — THREE STREAMS SHIPPED, THE BRANCH LIST EMPTIED, AND A GUARD I CLOBBERED MYSELF
+
+#### ⏭️ **RESUME AT (session 91 · EVERYTHING THAT WAS UNMERGED IS NOW LIVE. `main` = `b3d0412c`.):**
+💰 **MONEY POSITION: three deploys, all SUCCESS, no production money moved by this session.**
+
+**⭐ THE ONE-LINE STATE: there is nothing unmerged. Branch off `main` and start.**
+Every branch that carried unshipped work has been merged and deleted. `git branch -r` now shows
+`main` plus dormant older lanes only.
+
+| What | Was | Now |
+|---|---|---|
+| Agent v1 (management's feedback, 13 commits) | unmerged, session 90 blocked on E-326 | ✅ LIVE `4ece8f00`, deploy `c588c2fa` |
+| Player query campaign (20 commits) | unmerged, 13 behind | ✅ LIVE `4e667633`, deploy `107e28f6` |
+| Sanitize / cleanup (18 src commits) | stranded since 09-07 03:27, **2 behind** | ✅ LIVE `b3d0412c`, deploy `805751ce` |
+
+**⛔ `audit/system-cleanup-2026-09-06` IS DELETED, AND ITS DELETION IS THE POINT.** It could
+never be merged: its `affiliate-service.ts` predates `a783299f`, so a merge resolved its way
+would have put agent commission back into the bonus wallet with a 5× wagering requirement and a
+30-day expiry, for partners who each paid TZS 100,000. That is why it sat untouched. All 18 of
+its `src/` commits were cherry-picked instead and are live; the whole branch is preserved at the
+tag **`archive/system-cleanup-2026-09-06`** (`f681e77e`), whose message repeats the do-not-merge
+warning. ⚠️ Nothing player-facing is stranded there — but its `docs/`+`scripts/` commits are
+tag-only, so read the tag, never resurrect the branch.
+
+**What the sanitize rescue actually fixed on production** — the two that matter most:
+`src/lib/server/email.ts` carried a private `HELPLINE = "+255 22 211 5811"` — **50pick's own
+support desk** — and printed it under *"Contact the Tanzania Gambling Helpline"* in the
+self-exclusion email, so a person excluding themselves because gambling was harming them was
+routed back to the operator. `support-config.ts` had the real national helpline (`0800 11 0011`)
+all along; `email.ts` now imports `HELPLINE()` from it. And `stubReply()` in
+`src/lib/chat/send-message.ts` — which every player reaches whenever the AI returns null,
+**including on any error** — quoted a deposit minimum of TZS 1,000 while `DEPOSIT_MIN_TZS` is
+**500**, plus a daily cap and a "tier 2" tier that exist nowhere; it reads the validators now.
+Also live: the withdrawn bonus wallet can no longer mint grants (`bonus-service.ts` consults the
+PRODUCT state, which `feature-state.ts` had only ever claimed in prose); `/profile/invite` stopped
+promising a Bonus Wallet, 5× wagering and a 30-day expiry for money that lands as cash; an
+approved proposal paying cash stopped saying "bonus" in three languages; the live-money starter
+clamp now guards **both** registration doors; and edge-runtime errors actually reach Sentry.
+
+#### 🔴 TWO MISTAKES I MADE HERE, BOTH CAUGHT ONLY BY MEASURING A BASELINE
+
+⛔ **I RESOLVED A CONFLICT WITH `git checkout --theirs` AND CLOBBERED A FILE THE TRUNK HAD
+ALREADY FIXED.** `scripts/withdrawn-features.test.mts` on `main` was 499 lines and already
+carried the viewer-object reconciliation (7 uses of `agentInGoodStanding`, 4 of
+`approveFixtureAgent`). Taking the sanitize branch's older copy wholesale reverted all of it, and
+I then spent real effort **re-deriving a worse version of a fix that already existed** — mine
+scored 59/0, main's restored copy scores 61/0. ⭐ **Never `--theirs` a whole file on a trunk that
+has moved. Resolve hunks, or take OURS and port the intent.**
+
+⛔ **AND A `sed -i` INSERTION SILENTLY COMMENTED OUT THE FIX.** Inserting a 5-line comment plus
+an `import` collapsed onto ONE line, so the import ended up inside a `//` and never executed. The
+suites stayed red and read as a product failure. Same family as the CRLF/heredoc trap already in
+`CLAUDE.md`: **prose and multi-line inserts go through the editor, never `sed -i`.**
+
+⭐ **THE DISCIPLINE THAT SAVED IT: `test:all` came back 286/304 and I did NOT assume the 18 reds
+were pre-existing.** Checking out `origin/main` and running the same suites proved **7 were mine**.
+After fixing them the board is **293/304, and all 11 remaining reds reproduce on `origin/main`**:
+`recategorise · read-tiers · responsive · motion · spacing-scale · updown-digest ·
+updown-source-class · orphans · popup-fit · failure-reasons · updown-handover`. ⚠️ `responsive`
+needs a running dev server and fails without one — it is environmental, not a defect.
+
+**Why those 7 were red, and the rule it teaches.** CLEANUP-1 makes `creditBonus` consult the
+product state, which turns **every bonus-machinery suite** red — its own commit message predicted
+this and shipped the remedy, `scripts/lib/bonus-feature-on.mts`. Five suites written *after* that
+branch had never been given the declaration: `concurrency`, `late-bet`, `email-stress`,
+`bonus-withdrawable`, `programme-isolation`. ⛔ **`programme-isolation` §2 and `agent-policy` §5
+are CONTROLS asserting a PLAYER row lands in BONUS — that is how they prove the agent/player split
+is real. Relaxing either to expect CASH would make both arms agree and the gate would pass while
+proving nothing. Declare the feature state; never soften a control to match current behaviour.**
+
+**⚠️ STILL OPEN AND NOT MINE — three live findings this session surfaced but did not fix:**
+`security.adminTotp` reads **DISABLED** on production (`/api/health`), so the admin console is
+password-only against a live book · SMS is the `console` stub and `sms.successRate` reports
+**1.0** while every message is dropped, a metric structurally incapable of showing the outage ·
+the `AffiliateAgent.tier` DROP COLUMN (release 2) is **still unwritten** after three deploys.
+
 ### 🟡 Session 90 (2026-09-08) — AGENT v1: MANAGEMENT'S FEEDBACK, DONE AND VERIFIED — BUT **NOT MERGED TO `main`**
 
 #### ⏭️ **RESUME AT (session 90 · AGENT v1 MANAGEMENT FEEDBACK — VERIFIED AND PUSHED TO `origin/agent-v1-mgmt-feedback`, ⛔ NOT LIVE. THE FIRST THING TO DO IS E-326.):** 💰 **MONEY POSITION: NO PRODUCTION MONEY MOVED, AND NO PRODUCTION CODE CHANGED** — every verification below ran on the in-memory DAL and a local `next dev`. The 12 commits are on `origin/agent-v1-mgmt-feedback`; `main` is still at `1f64ca1a`.
