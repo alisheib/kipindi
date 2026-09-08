@@ -1278,15 +1278,6 @@ export const dict = {
       badgesHint: "More badges unlock as you predict, win and propose.",
       account: "Account",
       inviteEarn: "Invite & Earn", inviteEarnSub: "Refer friends · earn rewards",
-      // ⚠️ RETAINED, UNRENDERED. Invite is WITHDRAWN for players (`src/lib/feature-state.ts`),
-      // not coming soon, so no surface reads these three keys today — a withdrawn destination
-      // is absent, never badged. They are kept, in all three locales, because the state is
-      // reversible and `scripts/withdrawn-features.test.mts` §4 drives the ON path every deploy.
-      // ⛔ The withdrawn-vocabulary guard asserts these never reach a player RENDER; that is a
-      // check on the rendered page, not on this dictionary.
-      inviteComingSoonTag: "Coming soon",
-      inviteComingSoonTitle: "Invite & Earn is coming soon",
-      inviteComingSoonBody: "Soon you'll be able to invite friends and earn a reward when they join and play. Check back shortly.",
       myAccount: "My account", myAccountSub: "Activity · Export · Close",
       responsibleGambling: "Responsible gambling", responsibleGamblingSub: "Limits · Self-exclusion",
       verifyIdSub: "NIDA · documents · review",
@@ -3444,9 +3435,6 @@ export const dict = {
       badgesHint: "Beji zaidi zinafunguliwa unapocheza, kushinda na kupendekeza.",
       account: "Akaunti",
       inviteEarn: "Alika na upate zawadi", inviteEarnSub: "Alika marafiki · pata zawadi",
-      inviteComingSoonTag: "Inakuja",
-      inviteComingSoonTitle: "Alika na upate zawadi inakuja hivi karibuni",
-      inviteComingSoonBody: "Hivi karibuni utaweza kualika marafiki na kupata zawadi wanapojiunga na kucheza. Rudi tena hivi karibuni.",
       myAccount: "Akaunti yangu", myAccountSub: "Shughuli · Hamisha · Funga",
       responsibleGambling: "Vikomo", responsibleGamblingSub: "Mipaka · Kujitenga",
       verifyIdSub: "NIDA · nyaraka · ukaguzi",
@@ -5459,9 +5447,6 @@ export const dict = {
       badgesHint: "随着您的预测、获胜和提议，更多徽章将解锁。",
       account: "账户",
       inviteEarn: "邀请赚钱", inviteEarnSub: "推荐好友 · 赢取奖励",
-      inviteComingSoonTag: "即将推出",
-      inviteComingSoonTitle: "邀请赚钱即将推出",
-      inviteComingSoonBody: "很快您就可以邀请好友，并在他们加入并参与后获得奖励。敬请期待。",
       myAccount: "我的账户", myAccountSub: "活动 · 导出 · 关闭",
       responsibleGambling: "负责任博彩", responsibleGamblingSub: "限额 · 自我排除",
       verifyIdSub: "NIDA · 文件 · 审核",

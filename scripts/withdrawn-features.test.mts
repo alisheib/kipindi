@@ -49,9 +49,31 @@ function ok(label: string, cond: boolean, extra?: string) {
   ok("§1 CONTROL · invite IS live for an approved AGENT", inviteIsLiveFor("AGENT"));
   ok("§1 bonus is not live for anyone", !bonusIsLiveFor("PLAYER") && !bonusIsLiveFor("AGENT") && !bonusIsLiveFor(null));
   // ⛔ WITHDRAWN, NOT COMING_SOON. A gilt "coming soon" badge is a PROMISE, and we are not
-  // promising players this programme. If someone softens the constant back to COMING_SOON,
-  // every entry point starts advertising again and this is the line that says so.
-  ok("§1 the state is WITHDRAWN, never COMING_SOON", inviteStateFor("PLAYER") !== "COMING_SOON");
+  // promising players this programme.
+  //
+  // 🔴 THIS ASSERTION USED TO READ `inviteStateFor("PLAYER") !== "COMING_SOON"` AND IT WENT
+  // VACUOUS ON 2026-09-06, silently. `COMING_SOON` was removed from `FeatureState` that day —
+  // it was a third state no consumer ever distinguished — so the comparison became
+  // `"WITHDRAWN" !== "COMING_SOON"`, true by construction, for ever. ⛔ And `tsc` could not tell
+  // us: `scripts/**.mts` sits OUTSIDE the typechecker (E-317), so the impossible comparison a
+  // typed file would have rejected compiles fine here. **A suite is exactly where a dead
+  // assertion hides best, because it keeps passing.**
+  //
+  // ⭐ So it now asserts the property that actually matters and CAN still fail: the retired
+  // value, if an operator sets it, must not switch the feature on. That is the real risk —
+  // someone reading an old runbook and exporting `FEATURE_INVITE=COMING_SOON`.
+  {
+    const prev = process.env.FEATURE_INVITE;
+    process.env.FEATURE_INVITE = "COMING_SOON";
+    try {
+      ok("§1 the retired COMING_SOON value does not enable invite", !inviteIsLiveFor("PLAYER"));
+      ok("§1 …and it resolves to the shipped constant, not to itself",
+         inviteStateFor("PLAYER") === "WITHDRAWN", inviteStateFor("PLAYER"));
+    } finally {
+      if (prev === undefined) delete process.env.FEATURE_INVITE;
+      else process.env.FEATURE_INVITE = prev;
+    }
+  }
 }
 
 // ── §2 · LAW 1 — THE REFUSAL IS NOT GATED ──────────────────────────────────
@@ -116,6 +138,25 @@ function ok(label: string, cond: boolean, extra?: string) {
     }
   }
   ok("§3 no player route reads the invite coming-soon copy", offenders.length === 0, offenders.join(" · "));
+
+  // ⭐ §3b · AND THE COPY ITSELF IS GONE, which is why §3 above did not become vacuous.
+  //
+  // 🔴 The three keys were RETAINED-BUT-UNRENDERED, under a comment saying they were kept
+  // "because the state is reversible". Checked 2026-09-06: **nothing in the repo read them** —
+  // the only hit outside the dictionary was this suite asserting nothing reads them. And they
+  // could never be reached in ANY state: `WITHDRAWN` renders nothing, `ACTIVE` renders the live
+  // page, and no consumer of `feature-state.ts` distinguishes `COMING_SOON` at all. Nine strings
+  // across three locales, promising a programme we had decided not to offer, reachable by no
+  // code path. That is not a reversible-state affordance, it is misleading copy with no reader.
+  //
+  // ⛔ WITHOUT THIS LINE §3 WOULD NOW BE A GATE OVER AN EMPTY SET — it scans player files for
+  // keys that no longer exist, so it passes by construction. A check whose population went to
+  // zero has stopped being a check. This asserts the stronger property that replaced it: the
+  // vocabulary is not merely unrendered, it is ABSENT.
+  const dictSrc = readFileSync("src/lib/i18n-dict.ts", "utf8");
+  const stillThere = WITHDRAWN_KEYS.filter((k) => dictSrc.includes(k));
+  ok("§3b the withdrawn coming-soon copy is gone from the dictionary, in all three locales",
+     stillThere.length === 0, stillThere.join(" · "));
 
   // The old single-switch module must stay gone: a shim would let a role-blind
   // `inviteIsLive()` keep compiling at call sites that must now ask about a role.
