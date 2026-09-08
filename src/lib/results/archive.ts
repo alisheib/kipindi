@@ -9,7 +9,7 @@
  * ⛔ NO SERVER IMPORTS. The page reads the terminal archive and hands rows here.
  */
 import { MARKET_CATEGORIES } from "@/lib/markets/categories";
-import { PLAYER_PRESETS } from "@/lib/query/windows";
+import { PLAYER_PRESETS, inWindow } from "@/lib/query/windows";
 import { clampText, oneOf, oneParam, parseDir } from "@/lib/query/parse";
 import { buildQueryHref, hasActiveFilters, sheetFilterCount } from "@/lib/query/href";
 import { countFor, countsFor, filterRows, type Axes } from "@/lib/query/counts";
@@ -161,18 +161,9 @@ export function matchesOutcome(row: ArchiveRow, lens: ArchiveLens): boolean {
   }
 }
 
-export const ARCHIVE_DAY_MS = 24 * 3600_000;
-
+/** ⚠️ The window is about when the market RESOLVED — the date this archive is ordered by. */
 export function matchesArchiveWindow(row: ArchiveRow, when: ArchiveWhenId, nowMs: number): boolean {
-  if (when === "all") return true;
-  const d = new Date(nowMs);
-  const startOfToday = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-  switch (when) {
-    case "today": return row.resolvedAtMs >= startOfToday;
-    case "yesterday": return row.resolvedAtMs >= startOfToday - ARCHIVE_DAY_MS && row.resolvedAtMs < startOfToday;
-    case "7d": return row.resolvedAtMs >= nowMs - 7 * ARCHIVE_DAY_MS;
-    case "30d": return row.resolvedAtMs >= nowMs - 30 * ARCHIVE_DAY_MS;
-  }
+  return inWindow(row.resolvedAtMs, when, nowMs);
 }
 
 export function archiveAxes(

@@ -30,7 +30,7 @@
  * means.
  */
 import { MARKET_CATEGORIES } from "@/lib/markets/categories";
-import { PLAYER_PRESETS } from "@/lib/query/windows";
+import { PLAYER_PRESETS, inWindow } from "@/lib/query/windows";
 import { clampText, oneOf, oneParam, parseDir } from "@/lib/query/parse";
 import { buildQueryHref, hasActiveFilters, sheetFilterCount } from "@/lib/query/href";
 import { countFor, countsFor, filterRows, type Axes } from "@/lib/query/counts";
@@ -221,18 +221,20 @@ export function matchesTopic(row: PortfolioRow, topic: string): boolean {
  * days" means one span across the product.
  */
 export function matchesWindow(row: PortfolioRow, when: WhenId, nowMs: number): boolean {
-  if (when === "all") return true;
-  const d = new Date(nowMs);
-  const startOfToday = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-  switch (when) {
-    case "today": return row.placedAtMs >= startOfToday;
-    case "yesterday": return row.placedAtMs >= startOfToday - DAY_MS && row.placedAtMs < startOfToday;
-    case "7d": return row.placedAtMs >= nowMs - 7 * DAY_MS;
-    case "30d": return row.placedAtMs >= nowMs - 30 * DAY_MS;
-  }
+  return inWindow(row.placedAtMs, when, nowMs);
 }
 
-export const DAY_MS = 24 * 3600_000;
+/**
+ * ⚠️ `DAY_MS` IS GONE FROM THIS FILE, and deleting it rather than re-exporting it is the point:
+ * re-derived before removal, it had ZERO readers outside this module —
+ *
+ *     grep -rn "\bDAY_MS\b" src scripts | grep positions   →  none
+ *
+ * — and the same was true of `BOARD_DAY_MS`, `ARCHIVE_DAY_MS`, `UD_DAY_MS` and `LEDGER_DAY_MS`.
+ * Five exported constants that existed only to be read by the copy of the predicate beside them.
+ * The sixty-odd other `DAY_MS` occurrences in the tree are each a private const in their own file
+ * and are untouched by this — none of them was importing from here.
+ */
 
 /**
  * The five axes, keyed by the state field each reads.

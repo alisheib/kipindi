@@ -59,6 +59,12 @@ import {
 import { buildQueryHref, hasActiveFilters, sheetFilterCount } from "../src/lib/query/href.ts";
 import { countFor, countMatching, countsFor, filterRows as filterByAxes, matchesAll, type Axes } from "../src/lib/query/counts.ts";
 import { MAX_EXITS, emptyKind, relaxations, type ExitCandidate } from "../src/lib/query/empty.ts";
+import { DAY_MS, PLAYER_PRESETS, inWindow } from "../src/lib/query/windows.ts";
+import { matchesWindow, type PortfolioRow } from "../src/lib/positions/portfolio.ts";
+import { matchesLedgerWindow, type LedgerRow } from "../src/lib/wallet/ledger.ts";
+import { matchesArchiveWindow, type ArchiveRow } from "../src/lib/results/archive.ts";
+import { matchesUdWindow, type HistoryRow } from "../src/lib/updown/history-query.ts";
+import { matchesBoardWindow, type BoardRow } from "../src/lib/proposals/board.ts";
 
 let fail = 0;
 const log = (m: string) => console.log(m);
@@ -517,6 +523,95 @@ log("\n── 8 · this gate refuses to pass over nothing ───────�
     [oneOf, oneParam, parseDir, clampText, byId, compareBy, comparePrimary, effectiveDir, sortBy,
      buildQueryHref, hasActiveFilters, sheetFilterCount, countFor, countMatching, countsFor,
      filterByAxes, matchesAll, relaxations, emptyKind].every((f) => typeof f === "function"));
+}
+
+/* ── §9 · THE DATE WINDOW — one span, five surfaces ──────────────────────────────────────── */
+/**
+ * 🔴 THIS SECTION EXISTS BECAUSE THE WINDOW HAD NO GATE AT ALL. Re-derived before writing it:
+ *
+ *     grep -rln "matchesWindow\|matchesLedgerWindow\|matchesArchiveWindow" scripts/   →  none
+ *
+ * The predicate that decides which of a player's OWN money rows they are shown was asserted
+ * nowhere, on any surface, while the same four lines of arithmetic were copied into five contract
+ * modules. `windows.ts`'s header promised *"'LAST 30 DAYS' MUST MEAN THE SAME SPAN EVERYWHERE"* and
+ * nothing checked it — so a retune of one copy would have shipped two meanings of one word with
+ * every suite green.
+ *
+ * ⛔ §9.5 IS THE ONE THAT MATTERS: it asserts the five surfaces AGREE, over the same instants, by
+ * running all five predicates rather than by trusting that they read the same helper. A gate that
+ * only tested `inWindow` would pass the day someone re-inlined a copy.
+ */
+log("\n── 9 · the date window: one span, five surfaces ────────────────");
+{
+  // A fixed clock. ⛔ Not `Date.now()` — "today" would then depend on the hour the suite runs,
+  //    which is how a boundary test comes to pass all day and fail at midnight.
+  const NOW = new Date(2026, 8, 8, 14, 30, 0).getTime(); // 2026-09-08 14:30 local
+  const startOfToday = new Date(2026, 8, 8).getTime();
+
+  ok("9.1 `all` admits everything, including a row stamped in the future",
+    inWindow(0, "all", NOW) && inWindow(NOW + 10 * DAY_MS, "all", NOW));
+
+  ok("9.2 `today` is a CALENDAR day — its first instant is in, the one before it is out",
+    inWindow(startOfToday, "today", NOW) && !inWindow(startOfToday - 1, "today", NOW),
+    `startOfToday ${startOfToday}`);
+
+  // ⛔ THE HALF-OPEN BOUNDARY, ASSERTED FROM BOTH SIDES. `yesterday` ends where `today` begins;
+  //    if either arm used `<=` the same instant would belong to two windows and the two pills
+  //    would each count it — the count-honesty defect §4 exists for, in the time dimension.
+  ok("9.3 `yesterday` is half-open: [startOfYesterday, startOfToday)",
+    inWindow(startOfToday - DAY_MS, "yesterday", NOW)
+      && inWindow(startOfToday - 1, "yesterday", NOW)
+      && !inWindow(startOfToday, "yesterday", NOW)
+      && !inWindow(startOfToday - DAY_MS - 1, "yesterday", NOW));
+
+  ok("9.4 `today` and `yesterday` are DISJOINT and `7d` covers both",
+    PLAYER_PRESETS.includes("7d")
+      && [startOfToday - DAY_MS, startOfToday - 1, startOfToday, NOW].every(
+        (ms) => !(inWindow(ms, "today", NOW) && inWindow(ms, "yesterday", NOW))
+          && inWindow(ms, "7d", NOW)));
+
+  ok("9.5 `7d`/`30d` are ROLLING from now, not calendar — the edge is inclusive",
+    inWindow(NOW - 7 * DAY_MS, "7d", NOW)
+      && !inWindow(NOW - 7 * DAY_MS - 1, "7d", NOW)
+      && inWindow(NOW - 30 * DAY_MS, "30d", NOW)
+      && !inWindow(NOW - 30 * DAY_MS - 1, "30d", NOW));
+
+  /**
+   * ⭐ THE AGREEMENT ASSERTION. Five contracts, five different date fields, one answer required.
+   * Each row is built with ONLY the field its own predicate reads set to the instant under test —
+   * the rest are cast through `as` because these predicates take a whole row and read one field,
+   * and constructing five full fixtures would test the fixtures rather than the rule.
+   */
+  const INSTANTS = [
+    startOfToday - DAY_MS - 1, startOfToday - DAY_MS, startOfToday - 1, startOfToday,
+    NOW - 30 * DAY_MS - 1, NOW - 30 * DAY_MS, NOW - 7 * DAY_MS - 1, NOW - 7 * DAY_MS, NOW,
+  ];
+  const SURFACES: [string, (ms: number, w: (typeof PLAYER_PRESETS)[number]) => boolean][] = [
+    ["/positions", (ms, w) => matchesWindow({ placedAtMs: ms } as PortfolioRow, w, NOW)],
+    ["/wallet", (ms, w) => matchesLedgerWindow({ createdAtMs: ms } as LedgerRow, w, NOW)],
+    ["/results", (ms, w) => matchesArchiveWindow({ resolvedAtMs: ms } as ArchiveRow, w, NOW)],
+    ["/updown/history", (ms, w) => matchesUdWindow({ binnedAtMs: ms } as HistoryRow, w, NOW)],
+    ["/proposals", (ms, w) => matchesBoardWindow({ createdAtMs: ms } as BoardRow, w, NOW)],
+  ];
+  const disagreements: string[] = [];
+  for (const w of PLAYER_PRESETS) {
+    for (const ms of INSTANTS) {
+      const truth = inWindow(ms, w, NOW);
+      for (const [id, fn] of SURFACES) {
+        if (fn(ms, w) !== truth) disagreements.push(`${id} ${w} @${ms}`);
+      }
+    }
+  }
+  ok("9.6 all five player surfaces answer identically to the core, over every preset × edge",
+    disagreements.length === 0, disagreements.slice(0, 5).join(" · "));
+
+  // ⛔ THE VACUITY CONTROL. §9.6 compares predicates to `inWindow`; if the fixture instants all
+  //    fell inside every window, five `true`s would agree and prove nothing. This asserts the
+  //    comparison set actually contains both answers.
+  const answers = new Set(PLAYER_PRESETS.flatMap((w) => INSTANTS.map((ms) => inWindow(ms, w, NOW))));
+  ok("9.7 CONTROL: the instants under test produce BOTH answers, so §9.6 could fail",
+    answers.has(true) && answers.has(false),
+    `${SURFACES.length} surfaces × ${PLAYER_PRESETS.length} presets × ${INSTANTS.length} instants`);
 }
 
 log("");

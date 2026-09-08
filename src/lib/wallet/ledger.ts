@@ -21,7 +21,7 @@
  *
  * ⛔ NO SERVER IMPORTS. The page reads the store and hands rows here as `LedgerRow`.
  */
-import { PLAYER_PRESETS } from "@/lib/query/windows";
+import { PLAYER_PRESETS, inWindow } from "@/lib/query/windows";
 import { clampText, oneOf, oneParam } from "@/lib/query/parse";
 import { buildQueryHref, hasActiveFilters, sheetFilterCount } from "@/lib/query/href";
 import { countFor, countsFor, filterRows, type Axes } from "@/lib/query/counts";
@@ -212,19 +212,18 @@ export function matchesLedgerState(row: LedgerRow, state: LedgerState): boolean 
   return state === "any" || STATE_STATUSES[state].includes(row.status);
 }
 
-export const LEDGER_DAY_MS = 24 * 3600_000;
-
-/** Same vocabulary, same spans, as `/positions` — see `lib/query/windows.ts`. */
+/**
+ * Same vocabulary, same spans, as `/positions` — and now literally the same code, which is what
+ * that sentence used to only promise. ⚠️ `createdAtMs` is when the transaction was STAMPED.
+ *
+ * ⛔ `app/wallet/page.tsx`'s `windowBounds` is the RANGE twin of this predicate and is deliberately
+ * left where it is: it produces `{fromMs, toMs}` for a windowed SQL read rather than a yes/no over
+ * a row, and its `toMs` is generously `now + 1 day` to absorb clock skew between the app and the
+ * database. Its note already records that the two must agree; they now agree by sharing this
+ * file's day boundary rather than by two copies of the same four lines.
+ */
 export function matchesLedgerWindow(row: LedgerRow, when: LedgerWhenId, nowMs: number): boolean {
-  if (when === "all") return true;
-  const d = new Date(nowMs);
-  const startOfToday = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-  switch (when) {
-    case "today": return row.createdAtMs >= startOfToday;
-    case "yesterday": return row.createdAtMs >= startOfToday - LEDGER_DAY_MS && row.createdAtMs < startOfToday;
-    case "7d": return row.createdAtMs >= nowMs - 7 * LEDGER_DAY_MS;
-    case "30d": return row.createdAtMs >= nowMs - 30 * LEDGER_DAY_MS;
-  }
+  return inWindow(row.createdAtMs, when, nowMs);
 }
 
 export function ledgerAxes(

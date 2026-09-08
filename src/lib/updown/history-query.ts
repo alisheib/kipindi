@@ -9,7 +9,7 @@
  *
  * ⛔ NO SERVER IMPORTS. The page reads `getMyUpDownHistory`, groups, and hands rows here.
  */
-import { PLAYER_PRESETS } from "@/lib/query/windows";
+import { PLAYER_PRESETS, inWindow } from "@/lib/query/windows";
 import { clampText, oneOf, oneParam, parseDir } from "@/lib/query/parse";
 import { buildQueryHref, hasActiveFilters, sheetFilterCount } from "@/lib/query/href";
 import { countFor, countsFor, filterRows, type Axes } from "@/lib/query/counts";
@@ -172,18 +172,14 @@ export function matchesUdLens(row: HistoryRow, lens: UdLens): boolean {
   }
 }
 
-export const UD_DAY_MS = 24 * 3600_000;
-
+/**
+ * ⚠️ The window is over `binnedAtMs` — the round's own EAT day bin, not its settlement clock. ⛔ It
+ * is deliberately NOT the same date `?day=` pins: that axis is injected (`inDay`, see below)
+ * because EAT day arithmetic is shared with the digest and re-deriving it here is what would make
+ * a deep link and the page it lands on disagree about which rounds belong to a day.
+ */
 export function matchesUdWindow(row: HistoryRow, when: UdWhenId, nowMs: number): boolean {
-  if (when === "all") return true;
-  const d = new Date(nowMs);
-  const startOfToday = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-  switch (when) {
-    case "today": return row.binnedAtMs >= startOfToday;
-    case "yesterday": return row.binnedAtMs >= startOfToday - UD_DAY_MS && row.binnedAtMs < startOfToday;
-    case "7d": return row.binnedAtMs >= nowMs - 7 * UD_DAY_MS;
-    case "30d": return row.binnedAtMs >= nowMs - 30 * UD_DAY_MS;
-  }
+  return inWindow(row.binnedAtMs, when, nowMs);
 }
 
 /**
