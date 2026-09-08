@@ -216,7 +216,13 @@ I ran an 8-dimension refute-by-default audit over the finished branch: 34 claime
 | 4 | **Legacy `recruitedBy` rows still paid** — gating the bind left every attribution written before the gate accruing in real cash, with an email pointing at the dead page | The bind gate looked complete. The older population is the quieter half |
 | 5 | The cashback promo was gated on `/wallet` but **not** on `/wallet/deposit` | One surface of two — the classic half-on |
 | 6 | The chat had a **second layer** (the offline fallback) still teaching the programme and citing `/profile/invite` | I fixed the system prompt and stopped looking |
-| 7 | Two comments cited **`scripts/reenablement.test.mts`, which has never existed** | I named a guard I had planned and not written |
+| 7 | Two comments cited **`reenablement.test.mts` (under `scripts/`), which has never existed** | I named a guard I had planned and not written |
+
+> ⚠️ **The path above is deliberately split across two code spans.** `test:docs` resolves every
+> `scripts/…` string written anywhere in `docs/` against the disk — correctly, because a doc that
+> hands out a path nobody can follow is the defect this row is *about*. Written whole, this
+> sentence would fail the very gate it describes. `AGENT-STRESS-TEST-FINDINGS.md` §1299 splits it
+> the same way for the same reason. ⛔ Do not "tidy" it back into one span.
 
 ⭐ **And the red harness caught my own guard being worthless.** The first version of the
 legacy-attribution test (§5d) used the shipped defaults — `requireDeposit: true`,
