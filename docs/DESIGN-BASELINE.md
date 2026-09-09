@@ -223,6 +223,75 @@ link stay live through it. An earlier triage exempted five files as "modal-scope
 contain no `<Modal>` at all; it keyed on a spelling this codebase does not use there.
 
 ---
+## 3c. THE PLAYER'S SHAPE — the query bar, and what `PLAYER-QUERY-CAMPAIGN` settled
+
+> 🏁 **Stages 1–6 CLOSED 2026-09-09 and LIVE.** Every client-facing page that lists anything
+> carries the same bar. Rule: **`DESIGN_AUTHORITY.md` §K 6c** · Component:
+> `docs/design-system/v2-2026-07-27/02-components/query-bar/spec.md` · Board and census:
+> `docs/PLAYER-QUERY-CAMPAIGN.md`.
+
+**⭐ THIS IS THE ON-RAMP. Read it before adding a filter, a sort or a search to ANY player page.**
+
+### The shape
+
+```
+┌────────────────────────────────────────────────────────────────┐
+│  🔍  Search positions                                     [×]  │  ← only where the page has
+│      2 words · hiding crypto                                   │    search; the echo row is
+├────────────────────────────────────────────────────────────────┤    ALWAYS reserved height
+│  [All 47] [Open 6] [Settled 41] [Won 18] →      41 positions   │  ← LENS · primary rank
+│                                                                │    scrolls ≤lg, wraps >lg
+│  Sort: Most recent │↓│   [Filters 2]                           │  ← phone
+│  Sort: Most recent │↓│ │ SIDE [Any][Yes][No] │ TOPIC ▾ │ Clear │  ← desktop ≥lg
+└────────────────────────────────────────────────────────────────┘
+```
+
+One home: `src/components/ui/query-bar.tsx` — `QUERY_BAR_CLASS`, `QUERY_BAR_CLASS_PANEL`,
+`QUERY_GROUP_CLASS`, `QuerySort`, `QueryOption`. The window helpers are `src/lib/query/windows.ts`.
+⛔ **No new component and no new CSS was needed for any of it** — every token and class already
+shipped. A surface that needs "just a small variant" is the failure mode §K 6c exists to stop.
+
+### ⛔ DECLARING A RAIL TAKES EIGHT PLACES, NOT FOUR
+
+The four usually forgotten are the **live drivers**, and every one of them **fails silently** on a
+route it was never told about: it reports a clean run over a page it never opened. The canonical
+list is `PLAYER-QUERY-CAMPAIGN.md` §6 — ⚠️ that section was itself wrong until 2026-09-08, when it
+listed four. If you add a railed route and only four places know, the gates stay green and the
+route is unguarded.
+
+### The rules that cost the most to learn
+
+1. 🔴 **A COUNT CAN BE TRUE AND THE BOARD STILL A LIE.** *"40 live · TZS 1,659k in play"* printed
+   above **zero** cards. Every pill count is cross-filtered — what pressing it would actually show
+   with every other filter still on — or no count renders at all. Never a zero standing in for
+   unknown. Guarded by `qa:count-truth` + `red:count-truth`.
+2. 🔴 **THE PLAYER'S "TODAY" IS THE PLAYER'S, NOT THE SERVER'S.** The date window bucketed *today*
+   in the server's zone while rows rendered in EAT — **three hours out, on five shipped routes**.
+   Fixed in ONE place (`lib/query/windows.ts`); ⛔ never re-derive a window at a call site.
+3. 🔴 **A SORT IS NOT A FILTER, AND A SECOND PILL RAIL IS NOT A SORT.** `/notifications` shipped
+   two stacked `<nav>`s identical in shape — one filtering, one ORDERING. `test:section-rail`'s
+   floor fell 9 → 7 when they left. On `/leaderboard` the sort IS the selection, so the ORDER BY is
+   pushed into the store, not applied to a page of rows.
+4. 🔴 **ADDING A FILTER ADDS AN EMPTY CAUSE.** `?q=zzzznomatch` rendered *"No notifications yet"*
+   over an inbox holding **71 rows** — five per-lens empty sentences, each correct about a LENS and
+   each wrong about a SEARCH. ⛔ Check every existing empty state the same day you add a filter.
+5. 🔴 **A GUARD CAN EXEMPT THE VERY THING IT POLICES.** `qa:bar-geometry`'s "inside a shut
+   disclosure" exemption walked up from `e.parentElement` — and a `<summary>`'s parent IS its own
+   `<details>`, so **every summary on every bar was dropped before any assertion ran**. Assertion 1
+   (NO OVERLAP) was structurally incapable of failing on the sort control whose 44px overlap is why
+   the driver was built. ⚠️ It produced a *false retraction*: a mutated run "measured 7 boxes and
+   reported no overlap" and the case was retired on that measurement. The box count was the symptom.
+   ⭐ **When a red mutation stops reproducing, suspect the instrument before you retire the case.**
+
+### What no gate here can see
+
+`qa:bar-geometry` needs a **fixture with rows**: a page whose list is empty withholds its controls
+by design (§A5), and the driver then reports `NO [data-filter-rail]`. ⛔ That is the seed, not a
+defect — `seed-player-portfolio` places POLL bets only, so `/updown/history` and
+`/positions/performance` legitimately have no rail on a default local seed. A driver that treated
+an unexercisable assertion as a pass would be worse; it reports NOT MEASURED instead.
+
+---
 ## 4. DELIBERATELY LEFT — do not "fix" these without reading why
 
 - **`ui/stat.tsx`'s size dictionary.** Five of seven rungs are hand-typed on purpose: 15 · 17 ·

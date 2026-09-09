@@ -1778,6 +1778,62 @@ Extends §B5 (one definition site per motion token) and §M2 (a surface picks a 
    filter control while the kit's own reference sat one import away, and the divergence reached
    four control heights and two radii before anyone measured it.
 
+6c. ⛔ **AND THE PILLS SIT IN ONE BAR, WHICH IS THE SAME BAR ON EVERY PAGE THAT LISTS ANYTHING**
+   (added 2026-09-09, PLAYER QUERY campaign task 6.7). Rule 6 settled the *control*; it never
+   said what the control sits in, and for five stages that gap was filled per-surface. The bar is
+   `src/components/ui/query-bar.tsx` — `QUERY_BAR_CLASS`, `QUERY_GROUP_CLASS`, `QuerySort`,
+   `QueryOption` — and its shape is fixed:
+
+   > search · **lens rail** (primary rank, cross-filtered counts) · sort + fused direction ·
+   > `Filters` sheet below `lg`, the same options inline from `lg`.
+
+   The rules that are NOT negotiable per surface, each because it was paid for:
+
+   · ⛔ **Lens and sort never go behind a click, at any width.** This is 6b's other half: 6b sent
+     odds, pool and topic into the sheet; it never licensed sending the first two questions a
+     punter has in there with them.
+   · ⛔ **A filter pill is never coloured by its status.** `Won` does not go gold, `Lost` does not
+     go rose. Four colours in one rail is a second control language and it collides with the
+     status chips on the cards below, which *are* the status language (§B11). **Pills stay
+     brand-outline; cards carry the tone.**
+   · ⛔ **Every count is cross-filtered, or no count renders.** The number on a pill is what
+     pressing it would actually show with every other filter still on. A board once printed
+     *"40 live · TZS 1,659k in play"* above **zero** cards — every number true, the board still a
+     lie. Where no honest number exists, none is drawn; never a zero standing in for unknown
+     (§C, A-5).
+   · ⛔ **The result count is ONE variable**, shared by the bar and the pager and published as
+     `data-result-count`, so an instrument can check the promise against the delivery.
+   · ⛔ **Every state is in the URL**, defaults omitted. Filters navigate with `replace` +
+     `scroll: false` — **a filter is not a navigation** — and changing anything resets to page 1.
+   · ⛔ **An empty result names its own cause** and offers an exit only when that exit's real
+     count is `> 0`. Never an exit that leads to another empty page. ⚠️ **Adding a filter adds an
+     empty CAUSE**: check every existing empty state the same day, or a search over a 71-row
+     inbox renders *"No notifications yet"*.
+   · ⛔ **A scrolling rail scrolls its active pill into view on load** (`StripAutoScroll`), or a
+     seven-pill strip at 360 opens on a lens the player cannot see.
+
+   ⭐ **NONE OF IT NEEDED A NEW COMPONENT OR ONE LINE OF NEW CSS** — `--pill-active`,
+   `.kp-fchip[data-on]`, `.kp-fopt`, `.kp-fsheet-trigger`, `.kp-strip-fade` and `.search-box`
+   were all already shipped. That is the argument for the rule, not a footnote to it.
+
+   ⛔ **DECLARING A RAIL TAKES EIGHT PLACES, NOT FOUR**, and the four usually forgotten are the
+   live drivers — every one of which **fails silently** on a route it was never told about,
+   reporting a clean run over nothing. The list is `docs/PLAYER-QUERY-CAMPAIGN.md` §6.
+
+   Spec: `docs/design-system/v2-2026-07-27/02-components/query-bar/spec.md`. Shape and on-ramp:
+   `docs/DESIGN-BASELINE.md` §3c. Guarded by `npm run qa:bar-geometry` + `red:bar-geometry`
+   (geometry a person can see: overlap, clipping, the 44px floor, and the stick after a scroll),
+   `qa:count-truth` + `red:count-truth` (rule 4), `test:route-census` + `red:route-census` (no
+   client-facing route escapes a ruling), `test:lifecycle-reach` (every stored state is reachable
+   by some lens), and `qa:player-filters`.
+
+   ⚠️ **AND THE GEOMETRY GUARD EXISTS BECAUSE THE OTHERS CANNOT SEE THIS CLASS OF DEFECT.** A
+   44×44 button was drawn straight through the sort label on `/markets` at 360 in two of three
+   languages, and every automated check was green: the document does not overflow, so
+   `test:responsive` passed; the radius and tap floor were untouched, so `qa:filter-scan` passed.
+   ⛔ **Nothing else on this platform asks whether two controls occupy the same pixels, or whether
+   a control has fallen off the right edge.**
+
 7. ⛔ **THERE IS ONE SECTION RAIL, AND A TAB IS NOT A FILTER** (added 2026-08-31,
    `DESIGN-GATE-2026-08-28` step 5, DG-S-01 — Ali's commission: *"admin pages n tabs — some
    pages are so large to scroll down"*).

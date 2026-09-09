@@ -20,29 +20,37 @@
 ## §0 — RESUME AT
 
 ```
-▶ NEXT ACTION — Stage 6: the four remaining guards and the three doc tasks.
-  /positions/performance: product lens All / Polls / Up & Down.
-  ⛔ IT IS NOT A LIST AND IT TAKES NO PROPS. `performance/page.tsx` has no searchParams,
-     no pager and no rows to filter — it is five money tiles, a P&L chart and a
-     hardcoded `.slice(0, 5)` of recent settlements. Every aggregate (net P&L, win rate,
-     ROI, avg stake, total staked, both streaks, the whole pnlSeries) is computed BEFORE
-     any market is fetched, so a product lens cannot be cross-filtered from the current
-     read at all.
-  ⛔ AND `productLine` IS NOT ON THE POSITION — it is on the MARKET. The page reaches it
-     only per-row, after a `getMarket` join, and only for the best-win market and the
-     ≤5 recent ones. Two honest routes: pass `productLine` into `listPositionsForUser`
-     (already supported, third arg, indexed join) and read twice for the counts, or bulk
-     -join every settled position. Decide which, in writing.
-  ⚠️ THE BOARD CALLS THIS "the one player list that mixes both product lines" AND THAT IS
-     FALSE — /live says in its own source that IT is the one board that opts into both,
-     and `product-line.test.mts` pins that in a gate. This page mixes them INSIDE one
-     ROI-style aggregate, which is the worse case, but it is not the only one.
-  One commit per route.
+🏁 THE CAMPAIGN IS CLOSED. Stages 1–6 are DONE (12/12, 7/7, 8/8, 14/14, 4/4, 11/11) and LIVE.
+   There is NO open task on this board. Nothing below is a work order any more — §1–§11 are
+   now RECORD. ⛔ Do not "resume" this campaign; open a new lane if there is new work.
 
-  ⛔ BRANCH OFF `main`. There is no campaign branch any more — what was built is LIVE.
+▶ WHAT IS LEFT IS NOT CAMPAIGN WORK — it is THREE PRODUCT DECISIONS FOR ALI, filed in §12.
+  None is a bug, none should be "fixed" silently, and each changes what a number MEANS:
+    ① /leaderboard sums polls and Up & Down into ONE ROI (reads `from "Position"` with no
+       product filter). ⛔ MEASURE the position ratio before deciding — the 99.4% figure in
+       the docs is measured for MARKETS, not positions.
+    ② /profile/activity defaults to a 30-day narrowing while windows.ts says `all` is the
+       player default; and its five money tiles enumerate 6 of 12 TxnType values, so `net`
+       is not the net of everything that moved.
+    ③ CASHED_OUT is `amber` in status-tone.ts because that is what ships — but amber means
+       "an officer must act" and the state is TERMINAL. The vocabulary's answer is `slate`.
+  A tier lens on /leaderboard was designed and deliberately NOT built: filtering a 50-row
+  board in JS would mean "gold players among the top 50 by ROI", which is not the question.
+
+⛔ THE ONE THING A FUTURE SESSION MUST NOT RE-DERIVE — /positions/performance takes NO product
+   lens, and that is SETTLED, not skipped. `performance/page.tsx` has no searchParams, no pager
+   and no rows to filter: it is five money tiles, a P&L chart and a hardcoded `.slice(0, 5)`.
+   Every aggregate is computed BEFORE any market is fetched, and `productLine` is not on the
+   Position at all — it is on the MARKET, reached only per-row after a `getMarket` join. A lens
+   there is a re-read, not a filter.
+   ⚠️ AND THE BOARD ONCE CALLED THIS "the one player list that mixes both product lines" — FALSE.
+   `/live` says in its own source that IT is the board that opts into both, and
+   `product-line.test.mts` pins that in a gate.
+
+⛔ BRANCH OFF `main`. There is no campaign branch — what was built is LIVE on 50pick.tz.
 ```
 
-**Stages 1–5 CLOSED (12/12, 7/7, 8/8, 14/14, 4/4). Next: Stage 6.**
+**Stages 1–6 CLOSED (12/12, 7/7, 8/8, 14/14, 4/4, 11/11). 🏁 Nothing open.**
 
 > ⭐ **EVERYTHING BUILT SO FAR IS ON PRODUCTION** (2026-09-08, `main` `4e667633`). The branch
 > was merged and deleted, so a session that goes looking for `player-query-campaign` will not
@@ -55,13 +63,43 @@
 > disk with the command that re-derives it: it used to hand out `src/lib/watchlist/query.ts`, a
 > path that has never existed.
 >
-> ⚠️ **DEBT ① IS STILL OPEN.** `qa:bar-geometry` is counted toward Stage 6 but has **no RED
-> control**, which Stage 6's own exit condition requires ("each new guard's RED control has been
-> *seen to fail*"). The three geometry defects it found were fixed on the strength of an
-> unreproducible hand mutation. ⛔ Build its control before crediting it — and note that
-> `QUERY_GROUP_CLASS`, the constant created BY that fix, still has **one adopter**: fourteen
-> `<nav>`s across six other bars carry the unrepaired `hidden shrink-0 items-center gap-1 lg:flex`.
-> The repair landed in a constant and was never rolled out.
+> ✅ **DEBT ① IS PAID (2026-09-09). `red:bar-geometry` is 4/4 — and the fourth case exposed a
+> defect in the DRIVER, not in the markup.**
+>
+> 🔴 **`qa:bar-geometry` HAD BEEN EXEMPTING THE SORT SUMMARY FROM EVERY MEASUREMENT IT TAKES.** Its
+> "inside a shut disclosure" exemption walked up from `e.parentElement` — and a `<summary>`'s
+> parent **is** the `<details>` it opens, so every summary on every bar (the sort control and the
+> `Filters` trigger both) was dropped before any assertion ran. The line of code directly above it
+> had always claimed the opposite: *"Its own `<summary>` is not inside it."* The intent was written
+> down and never implemented. ⛔ **Assertion 1 (NO OVERLAP) was structurally incapable of failing
+> on the one control whose 44px collision is why the driver was built.** A guard that exempts what
+> it polices.
+>
+> ⚠️ **AND IT HAD ALREADY PRODUCED A FALSE RETRACTION, WHICH IS THE PART WORTH REMEMBERING.** The
+> 2026-09-08 note concluded the defect *"no longer reproduces"* on the strength of a real
+> measurement — mutation applied, server recompiled, *"measured 7 boxes and reported NO overlap"* —
+> and built a plausible theory on it: that `QuerySort`'s new `labelClassName="hidden lg:inline"`
+> had removed a third competing element. That theory was self-consistent and false. The summary was
+> one of the boxes the driver refused to measure; **the box count was itself the symptom.**
+>
+> Re-measured at 360/sw on the repaired driver, with `w-full` dropped and nothing else touched:
+> `summary 16→206 · direction button 154→198` → the original **44px OVERLAP**. The mutation had
+> been correct all along and needed no rewriting.
+>
+> ⭐ **THE RULE THIS BOUGHT: when a red mutation stops reproducing, suspect the INSTRUMENT before
+> you retire the case.** A measurement taken through a blind instrument is not weaker evidence than
+> a guess — it is stronger-*looking* evidence for a wrong conclusion, and it arrives with a number
+> attached.
+>
+> ⚠️ **STILL OPEN, and NOT part of this campaign:** `QUERY_GROUP_CLASS`, the constant created by
+> that fix, still has **one adopter** — fourteen `<nav>`s across six other bars carry the
+> unrepaired `hidden shrink-0 items-center gap-1 lg:flex`. The repair landed in a constant and was
+> never rolled out. ⛔ And assertion 4's SECOND arm — *"ANOTHER STICKY SURFACE IS DRAWN THROUGH THE
+> BAR"*, the arm that caught the 91px search-band collision on three routes — has **no red
+> mutation**. It is a different code path from the "did not stick" arm that `bar-is-not-sticky`
+> proves, and assertion 1 cannot stand in for it (assertion 1 compares controls INSIDE
+> `[data-filter-rail]`; a search band is a sibling of the bar). The mutation it wants is a search
+> band made `sticky top-[56px]` again on `/proposals`, `/watchlist` or `/results`.
 
 ### What task 4.5 found — read before 4.6
 
@@ -594,7 +632,7 @@ from disagreeing about what refunded looks like.**
   the chip printed the stored enum, so a Swahili player read "YES" beside a page reading
   "NDIO". **Keep the comment alive** or the next session reintroduces what it records.
 
-### Stage 6 · guards, docs, verification (7/9 — 6.1–6.6 + `qa:bar-geometry`; 6.7–6.9 OPEN)
+### Stage 6 · guards, docs, verification (🏁 **11/11 CLOSED 2026-09-09**)
 
 | | Task | Files |
 |---|---|---|
@@ -604,9 +642,11 @@ from disagreeing about what refunded looks like.**
 | ☑ | **6.4** `red:route-census` — **3/3 caught**, doc restored, probe directory removed, verified by comparison. Mutates in BOTH directions (a route with no ruling; a ruling deleted while the route stays) plus one on the gate's own eyesight. ⚠️ Its first `/help` mutation stayed GREEN and the gate was RIGHT — `/help` is named TWICE in §4, so deleting the table row left the real ruling standing. Re-derived: `/agent/status` is named exactly once | [`scripts/red-route-census.mjs`](../scripts/red-route-census.mjs) |
 | ☑ | **6.5** `qa:player-filters` — pulled forward to stage 4 so each route is verified as it lands | [`scripts/live/player-filter-drive.mjs`](../scripts/live/player-filter-drive.mjs) |
 | ☑ | **6.6** `qa:count-truth` + `red:count-truth` — landed 2026-09-08 alongside the `/results` defect it found. 98 pills / 6 surfaces green; 4/4 mutations caught | [`scripts/live/count-truth-drive.mjs`](../scripts/live/count-truth-drive.mjs) · [`scripts/red-count-truth.mjs`](../scripts/red-count-truth.mjs) |
-| ☐ | **6.7** the rule, in §K, as an extension of rule 6 | `docs/DESIGN_AUTHORITY.md` |
-| ☐ | **6.8** the shape, as record and on-ramp | `docs/DESIGN-BASELINE.md` **§3c** |
-| ☐ | **6.9** the component spec + provenance | `docs/design-system/v2-2026-07-27/02-components/query-bar/` |
+| ☑ | **6.7** the rule, in §K, as **6c** — an extension of rule 6, which settled the *control* and never said what the control sits in. Names the nine rules, the eight-place declaration, and why the geometry gate had to exist | [`docs/DESIGN_AUTHORITY.md`](DESIGN_AUTHORITY.md) §K 6c |
+| ☑ | **6.8** the shape, as record and on-ramp — the five rules that cost the most, and what no gate here can see | [`docs/DESIGN-BASELINE.md`](DESIGN-BASELINE.md) **§3c** |
+| ☑ | **6.9** the component spec + provenance | [`…/02-components/query-bar/spec.md`](design-system/v2-2026-07-27/02-components/query-bar/spec.md) |
+| ☑ | **6.10** ⭐ **`red:bar-geometry` is 4/4 and DEBT ① IS PAID** — and paying it found a defect in the driver, not in the markup. See below | [`scripts/anchors/bar-geometry.anchors.mjs`](../scripts/anchors/bar-geometry.anchors.mjs) · [`scripts/live/bar-geometry-drive.mjs`](../scripts/live/bar-geometry-drive.mjs) |
+| ☑ | **6.11** `test:red-anchors`' ratchet is **65/65 green**, lowered not raised — `red-anchor.mjs` grew the second resolver (`resolvePath`) it was owed, and five harnesses now declare | [`scripts/red-anchor.mjs`](../scripts/red-anchor.mjs) · [`scripts/red-anchors.test.mts`](../scripts/red-anchors.test.mts) |
 
 ---
 
