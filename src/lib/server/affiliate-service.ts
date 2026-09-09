@@ -19,7 +19,7 @@
 import { db, type StoredAffiliateAccount, type StoredReferralReward, type StoredUser } from "./store";
 import { inviteIsLiveFor, bonusIsLiveFor, NO_VIEWER, type InviteViewer } from "@/lib/feature-state";
 import { getAffiliateConfig } from "./affiliate-config";
-import { getAgentConfig, commissionWindowEnd, type AgentConfig } from "./agent-config";
+import { getAgentConfig, commissionWindowEnd, PLATFORM_MAX_COMMISSION_PCT, type AgentConfig } from "./agent-config";
 import { splitWithholding } from "@/lib/agent-commission";
 import { displayLabel } from "@/lib/display-label";
 import { audit } from "./audit";
@@ -421,7 +421,23 @@ export function policyFor(
     // Clamped at the platform ceiling as a belt-and-braces on a money path: `validate()`
     // and the officer's field both enforce it, but a rate that somehow got past both must
     // not be able to pay more than the rule allows.
-    const capped = Math.min(pct, agentCfg.maxCommissionPct);
+    // 🔴 AND THE PLATFORM CEILING IS IN THIS MIN, NOT JUST THE OPERATOR'S. It used to read
+    // `Math.min(pct, agentCfg.maxCommissionPct)` — which clamps to the OPERATOR'S setting and
+    // therefore follows it wherever it goes, while the comment above promised a belt-and-
+    // braces against `RULES.md` §2.10's 40% hard rule. It was not one.
+    //
+    // ⛔ AND THE HOLE IS REACHABLE BY THE ROUTE THAT HAS ALREADY BITTEN THIS PLATFORM ONCE.
+    // `validate()` refuses `maxCommissionPct > PLATFORM_MAX_COMMISSION_PCT`, but it only runs
+    // on `set()`. `defineConfig` hydrates a persisted row as `{ ...defaults, ...restored }`
+    // with NO validation, so a `SystemConfig["agent.config"]` carrying `maxCommissionPct: 90`
+    // — a direct DB write, a bad migration, a snapshot predating the ceiling — would hydrate
+    // unchecked and this line would pay 90% of the net fee, 2.25× the rule's maximum.
+    // That is exactly how `feeVatRatePct` reached production as 0 (§7.1): a persisted row
+    // overriding a shipped default without ever passing the validator.
+    //
+    // ⭐ `PLATFORM_MAX_COMMISSION_PCT` is a RULE, not a setting. An operator may narrow inside
+    // it; nothing may widen past it. `npm run test:agent-waterfall` §3 holds this shut.
+    const capped = Math.min(pct, agentCfg.maxCommissionPct, PLATFORM_MAX_COMMISSION_PCT);
     return {
       ok: true,
       policy: {

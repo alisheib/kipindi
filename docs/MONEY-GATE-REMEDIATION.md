@@ -22,14 +22,14 @@ below as a launch verdict.
 
 | | |
 |---|---|
-| **Session 3 work** | ✅ **DONE and SHIPPED** — 6 defects fixed, 3 new guards, each proven RED |
+| **Session 3 work** | ✅ **DONE and SHIPPED** — 7 defects fixed, 5 new guards, each proven RED |
 | **`e2e:money` against real Postgres** | ✅ **RAN — the first time ever. 64 passed, 0 failed** (§7.4) |
 | **Production reads (§4.3)** | ✅ **DONE** — and one of them found a live rate divergence (§7.1) |
 | **§4.4 — the agent terms stamp** | ✅ **ANSWERED, no action needed** (§7.2) |
 | **Blockers** | ✅ **ALL 15 ADJUDICATED — 8 fixed · 5 refuted · 2 duplicates · 0 unverified** |
-| **The 35 HIGH findings** | 🟠 **5 adjudicated (3 refuted, 2 confirmed) · 3 attempted-and-died · 27 untouched** |
+| **The 35 HIGH findings** | 🟠 **9 adjudicated (4 refuted, 5 confirmed) · 26 untouched** — the 3 that died have been re-run |
 | **42 MEDIUM · 14 LOW** | 🔴 **none attempted** |
-| **The five dead lanes** | 🔴 **still never run** — `settlement-lifecycle` · `agent-commission` · `updown-money` · `docs-drift` · `controls-and-guards` |
+| **The five dead lanes** | 🟠 **`controls-and-guards` RUN BY HAND** (§7.12 — 10 phantom guards, 1 on money). 🔴 Still never run: `settlement-lifecycle` · `agent-commission` · `updown-money` · `docs-drift` |
 | **Ali's decisions** | 🟠 **§7.1 the agent VAT rate — ✅ DECIDED and shipped (§7.10). §4.1 kill-switch · §4.2 clawback · §4.5 rebaseline — still open** |
 
 ### ✅ THE BIGGEST FINDING OF SESSION 3, AND ALI HAS ALREADY RULED ON IT
@@ -92,7 +92,7 @@ to the state, not as house cash.
 `test:payout-callback-identity` · `test:aml-dispatch-window` — plus session 1's
 `test:payment-control` · `red:payment-control` · `test:webhook-sec` · `red:webhook-money` ·
 `test:fee-model-caption` · `red:fee-model-caption` — plus session 3's
-`test:config-audit-diff` · `test:terms-cancellation` · `test:agent-fee-copy`, and **`e2e:money`, which is the only
+`test:config-audit-diff` · `test:terms-cancellation` · `test:agent-fee-copy` · `test:agent-waterfall` · `test:guards-exist`, and **`e2e:money`, which is the only
 behavioural one and needs a real Postgres** (`scripts/load/README.md`).
 
 ⛔ **All of these are `test:` or `red:` scripts EXCEPT `e2e:money`, which is deliberately not in
@@ -1397,3 +1397,98 @@ re-implementation of its logic.
 
 **Suites re-run green:** `agent-policy` 36/0 · `agent-eligibility` 30/0 ·
 `agent-application-security` 109/0 · `agent-clawback` 23/0 · `ledger` 89/0 · `tsc` clean.
+
+### 7.12 · ✅ THE `controls-and-guards` LANE, RUN BY HAND — 10 phantom guards, one of them on money
+
+`scripts/guards-exist.test.mts` (new, `npm run test:guards-exist`)
+
+§7.11 found ONE guard that was cited but did not exist. The obvious question is how many more
+there are, and that question is the whole `controls-and-guards` lane — one of the five that had
+never run. **It was answered by a scan, not by a workflow.**
+
+**Method:** every `npm run x` or backticked `` `x` `` across `src/`, `scripts/`, `docs/` and
+`prisma/`, checked against `package.json`. 2,145 files, **680 distinct script names cited**.
+
+| where | phantoms | verdict |
+|---|---|---|
+| **cited from CODE** (`src/`, `scripts/`, `prisma/`) | **10** | ⛔ a lie to the next reader |
+| cited only in docs | 35 | ⚠️ reported, not failed — see below |
+
+⭐ **THE FIRST DRAFT OF THIS GUARD CRIED WOLF, AND THAT MATTERED.** It matched any colon-word
+and reported `test:5433` (a port), `red:true` (a YAML value) and `red:52:human` as missing
+guards, and it failed on the entire `maswali-*` family — a **proposed** product whose
+implementation plan legitimately names the scripts it intends to create. A guard that fails on
+correct work gets switched off, which is worse than not having it. It now requires a real
+citation (`npm run x`, or backticks) and fails **only on code**; documents are listed.
+
+#### 🔴 The one that was money: `test:agent-waterfall`
+
+Two source files — `src/lib/agent-commission.ts` and `src/lib/server/affiliate-service.ts` —
+cited `test:agent-waterfall`, one of them as *"is that assertion"*. **There was no such
+script.** What it claimed to assert is that `/agent`'s published commission waterfall and the
+credit the wallet actually receives cannot disagree.
+
+**They are computed on two different scales, thirty lines apart.** The page prices with
+`agentCommissionSplit(netFee, agentPct, …)` — a **PERCENT**. The engine prices with
+`Math.floor(operatorNetFee * policy.rate)` — a **FRACTION**. `agent-config.ts` warns in its own
+header that feeding one into the other is a 40× error.
+
+`npm run test:agent-waterfall` now exists — **41/0** — and drives both scales: 1,003
+settlements across the live stake range plus the boundary cases, `policyFor`'s single
+percent→fraction conversion, and the page's own worked example (**1,000,000 of winnings →
+10,497 credited**, which is the figure the docblock quotes). ⚠️ Its positive control proves the
+comparison can fail: feeding the percent where the fraction belongs is caught as a **100×
+overpayment (2,099 → 209,950)**, a doubled rate is caught, a wrong withholding is caught — and
+the correct arithmetic matches.
+
+### 7.13 · 🔴 FIXED — the agent commission ceiling clamped to the setting, not to the rule
+
+`src/lib/server/affiliate-service.ts` → `policyFor`
+
+Writing §7.12's guard turned up a live defect the guard's own §3 then caught:
+
+```
+const capped = Math.min(pct, agentCfg.maxCommissionPct);      // ← the defect
+```
+
+The comment directly above it promises *"Clamped at the platform ceiling as a belt-and-braces
+on a money path … a rate that somehow got past both must not be able to pay more than the rule
+allows."* **It clamps to the OPERATOR'S setting, so it follows that setting wherever it goes.**
+`PLATFORM_MAX_COMMISSION_PCT` — RULES §2.10's 40% hard rule — was imported nowhere near it.
+
+⛔ **AND IT IS REACHABLE BY THE ROUTE THAT HAS ALREADY BITTEN THIS PLATFORM ONCE.** `validate()`
+does refuse `maxCommissionPct > 40` — but it only runs on `set()`. `defineConfig` hydrates a
+persisted row as `{ ...defaults, ...restored }` with **no validation at all**, so a
+`SystemConfig["agent.config"]` carrying `maxCommissionPct: 90` — a direct DB write, a bad
+migration, a snapshot predating the ceiling — hydrates unchecked and `policyFor` pays **90% of
+the net fee, 2.25× the rule's maximum**. That is precisely how `feeVatRatePct` reached
+production as 0 (§7.1): a persisted row overriding a shipped default without passing a
+validator. ⭐ **The same unvalidated-hydration hole, found twice in one session by two different
+routes** — and `LEAD-B.3`, CONFIRMED in the same batch, is that hole named directly.
+
+**Fixed:** `Math.min(pct, agentCfg.maxCommissionPct, PLATFORM_MAX_COMMISSION_PCT)`.
+
+**Guard `test:agent-waterfall` §3 · RED on the pre-fix line** (`rate=0.9` against a 40%
+ceiling), green on the fix, restored and re-verified. ⚠️ Realised loss today is **TZS 0** —
+production's `maxCommissionPct` is 10 and its one agent is approved at 10.00.
+
+⚠️ **Also corrected while here:** `agent-config.ts` offered an `ops:agent-config-sync` script as
+the post-deploy way to confirm the amended values. No such script has ever existed — and the
+failure it describes is exactly what happened on 2026-09-08. The paragraph now says to read the
+live row. ⭐ The dead name is written there **without backticks on purpose**, because the new
+guard reads a backticked name as a citation: a correction that quotes what it deleted
+re-creates the claim it is removing, which is the trap §6.15 hit when an absence check matched
+its own docblock.
+
+#### The eight inherited phantoms, named and ratcheted
+
+The remaining eight code citations are listed by **exact name** in `INHERITED_PHANTOMS`, and the
+guard fails on any **new** one. Seven are one-word slips naming a guard that does exist under a
+neighbouring prefix (`qa:install-invite` → `red:install-invite`, `red:refusal` → `qa:refusal`,
+and so on); one lives in `scripts/anchors/`, which belongs to the anchors ratchet and is **not
+this programme's to edit**.
+
+⭐ **It is a list of NAMES, not a count** — and the guard also fails if an entry becomes stale,
+so the list can only shrink. A ratchet on a number can be satisfied by deleting an unrelated
+citation and can overstate the debt without ever going red; this programme has already been
+bitten by exactly that.

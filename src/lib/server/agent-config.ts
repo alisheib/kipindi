@@ -145,9 +145,21 @@ export type AgentConfig = {
  * `defineConfig` hydrates `{ ...defaults, ...restored }`, so a persisted `agent.config` row
  * overrides `defaultCommissionPct`, `feeVatTreatment` and `reviewSlaDays` with whatever an
  * officer last saved. `agentWithholdingTaxPct` is NEW, so it takes the default either way.
- * ⭐ The post-deploy step is therefore to open `/admin/agents` → Settings and confirm the
- * three amended values, or to run `ops:agent-config-sync`. This is written here because a
- * deploy that silently keeps the old rate is indistinguishable from a successful one.
+ * ⭐ The post-deploy step is therefore to READ the live `SystemConfig["agent.config"]` row and
+ * confirm the amended values. This is written here because a deploy that silently keeps the
+ * old rate is indistinguishable from a successful one.
+ *
+ * ⛔ THIS PARAGRAPH USED TO OFFER AN ops-agent-config-sync SCRIPT AS THE ALTERNATIVE. There is
+ * no such script and there never was. On 2026-09-08 exactly the failure it describes then
+ * happened: a persisted row carried `feeVatRatePct` 0 while three documents said 18, and it
+ * went unnoticed for a day (`MONEY-GATE-REMEDIATION.md` §7.1). A comment naming a tool that
+ * does not exist tells a reader the check is handled and stops them doing it by hand.
+ * `npm run test:guards-exist` now refuses that class of claim from any source file.
+ *
+ * ⚠️ The dead name is written above WITHOUT backticks on purpose. That guard reads a
+ * backticked name as a citation, so a correction that quoted what it deleted would re-create
+ * the very claim it is removing — the trap §6.15 hit when an absence check matched its own
+ * docblock quoting the line it had just removed.
  */
 export const DEFAULT_AGENT_CONFIG: AgentConfig = {
   enabled: true,
