@@ -15,28 +15,18 @@
 
 **Last touched: 2026-09-09, session 3. Everything below is LIVE on `main` and deployed.**
 
-> ### 🚧 SESSION 3 IS STILL RUNNING — what another session needs to know
+> ### ✅ SESSION 3 IS CLOSED — everything below is committed, pushed and DEPLOYED
 >
-> **Everything described in this file is COMMITTED AND PUSHED TO `main`. Nothing is
-> half-applied.** Each tranche was committed, rebased and pushed before the next began, so
-> `main` is always consistent. If a section has no **FIXED** marker it is a VERDICT, not a
-> change.
+> **Nothing is half-applied.** Every tranche was committed, rebased onto `main` and pushed
+> before the next began, and each deploy was polled to SUCCESS. If a section has no **FIXED**
+> marker it is a VERDICT, not a change — §7.16 lists every confirmed finding left unfixed and
+> why.
 >
-> **Files this session is editing** — message before touching:
-> `docs/MONEY-GATE-REMEDIATION.md` · `docs/RULES.md` · `docs/COMPLIANCE-DECISIONS.md` ·
-> `docs/AGENT-PROGRAMME.md` · `src/lib/server/{define-config,config-store,affiliate-service,
-> agent-config,ledger,market-config,payment-control,updown-config,agent-application-service}.ts`
-> · `src/lib/agent-terms-version.ts` · `src/app/legal/{terms,agent-terms}/page.tsx` ·
-> `src/app/agent/*` · the nine `scripts/*` guards listed under **Guards this programme owns**.
->
-> ⛔ **NOT touched, by agreement with the other sessions:** `scripts/anchors/` and the anchors
-> ratchet (`UNDECLARED_CEILING` stays at 65 — this session added only `test:` scripts, which do
-> not touch it) · `src/lib/wallet/ledger.ts`, the PLAYER contract and a DIFFERENT file from
-> `src/lib/server/ledger.ts` · `src/lib/server/activity-summary.ts` · `src/lib/i18n-dict.ts` ·
-> `CLAUDE.md`.
->
-> ⚠️ **Still in flight:** the adversarial verify pass over the remaining findings, and fixes
-> for the CONFIRMED-but-unfixed rows.
+> ⛔ **What this session did NOT touch, by agreement with the parallel sessions:**
+> `scripts/anchors/` and the anchors ratchet — `UNDECLARED_CEILING` is **65** and only `test:`
+> scripts were added, which do not touch it · `src/lib/wallet/ledger.ts` (the PLAYER contract,
+> a DIFFERENT file from `src/lib/server/ledger.ts`) · `src/lib/server/activity-summary.ts` ·
+> `src/lib/i18n-dict.ts` · `CLAUDE.md`.
 
 ⛔ **THE PROGRAMME IS NOT FINISHED, AND "MONEY IS SAFE" IS NOT A CONCLUSION ANYONE HAS EARNED
 YET.** Do not read the ✅ rows below as a launch verdict.
@@ -48,9 +38,9 @@ YET.** Do not read the ✅ rows below as a launch verdict.
 | **Production reads (§4.3)** | ✅ **DONE** — and one of them found a live rate divergence (§7.1) |
 | **§4.4 — the agent terms stamp** | ✅ **ANSWERED, no action needed** (§7.2) |
 | **Blockers** | ✅ **ALL 15 ADJUDICATED — 8 fixed · 5 refuted · 2 duplicates · 0 unverified** |
-| **The 35 HIGH findings** | 🟠 **17 adjudicated (6 refuted, 11 confirmed) · 18 untouched** |
-| **42 MEDIUM · 14 LOW** | 🔴 **none attempted** |
-| **The five dead lanes** | 🟠 **`controls-and-guards` RUN BY HAND** (§7.12 — 10 phantom guards, 1 on money). 🔴 Still never run: `settlement-lifecycle` · `agent-commission` · `updown-money` · `docs-drift` |
+| **The 35 HIGH findings** | 🟠 **25 adjudicated (12 refuted, 13 confirmed) · 10 untouched** — 7 batches, every one 12/12 agents with 0 errors |
+| **42 MEDIUM · 14 LOW** | 🔴 **none attempted** — the largest block left |
+| **The five dead lanes** | 🟠 **TWO run by hand** — `controls-and-guards` (§7.12, 10 phantom guards, 1 on money) and `docs-drift` (§7.9). 🔴 Still never run: `settlement-lifecycle` · `agent-commission` · `updown-money` |
 | **Ali's decisions** | 🟠 **§7.1 the agent VAT rate — ✅ DECIDED and shipped (§7.10). §4.1 kill-switch · §4.2 clawback · §4.5 rebaseline — still open** |
 
 ### ✅ THE BIGGEST FINDING OF SESSION 3, AND ALI HAS ALREADY RULED ON IT
@@ -83,14 +73,18 @@ to the state, not as house cash.
 
 ### Where to start next session
 
-1. **Re-run the three that died: `LEAD-B.3`, `LEAD-C.1`, `LEAD-C.3`.** Builder and template are
-   at `scratchpad/build-slice3.cjs` + `verify-workflow3.js`; `node build-slice3.cjs high 4 8`
-   rebuilds that exact slice. ⛔ **Four findings — twelve agents — per batch, and check
-   `agents_done` against `agent_count` before believing a word of the output.**
-2. Then `high 8-12` onward, then MEDIUM, then LOW.
-3. **The five dead lanes**, starting with `agent-commission` and `docs-drift` — §7.1 is evidence
-   there is something in them.
-4. Ali: §7.1 first, then §4.1, §4.2, §4.5.
+1. **Finish the HIGH block — 10 left.** `node build-slice3.cjs high 0 4` in the session-3
+   scratchpad rebuilds the next slice; its DONE set already excludes all 25 adjudicated.
+   ⛔ **Four findings, twelve agents, per batch**, and check `agents_done` against
+   `agent_count` plus `<failures>` before believing a word of the output.
+2. Then the **42 MEDIUM and 14 LOW** — `node build-slice3.cjs medium 0 4`, same harness.
+3. **The three lanes that have still never run:** `settlement-lifecycle`, `agent-commission`,
+   `updown-money`. ⭐ Both lanes run by hand this session found real defects, and the biggest
+   finding of the session (§7.1) came from a production READ rather than any lane.
+4. **§7.16's confirmed-but-unfixed list.** `LEAD-G.4` first — `POOL:*` and `HOUSE:*` are
+   checked by nothing on a schedule.
+5. **Ali:** §4.1 the kill-switch direction · §4.2 chargeback clawback · §4.5 the rebaseline
+   step · and the **TZS 18,000 of VAT owed to TRA** (§7.10) — who remits it, and when.
 
 ### What shipped, in order
 
@@ -1651,3 +1645,39 @@ they sit behind the eight that were fixed, not because they are not real.
 | `LEAD-H.2` | the in-app assistant's prompt states the wrong cash-out narrowing | player-facing copy; `test:terms-cancellation` now covers the binding document, not the chat prompt |
 | `LEAD-H.3` | `rate-copy.test.mts` PINS 13% and 1.5% as required literals, so RULES §7's "the table is EMPTY" is false | a docs/guard-inventory correction |
 | `MO-10.c` | the two-person rule on large adjustments has no lock | ⭐ **capped by deployment, not by code**: the cross-replica replay needs a second container, and `RAILWAY-LIVE.md` §13 keeps the service deliberately single-replica. The single-process TOCTOU is real and should get the `withLock` its AML twin already has |
+
+### 7.17 · THE VERIFY PASS — seven batches, and what they were worth
+
+| batch | agents | done | errors | CONFIRMED | REFUTED | UNVERIFIED |
+|---|---|---|---|---|---|---|
+| `high 0-4` | 12 | 12 | 0 | 2 | 2 | 0 |
+| `high 4-8` | 12 | **4** | **8** | 0 | 1 | **3** |
+| `high 4-8` **re-run** | 12 | 12 | 0 | 3 | 1 | 0 |
+| `high` (D.b · F.1 · F.2 · F.3) | 12 | 12 | 0 | 4 | 0 | 0 |
+| `high` (G.4 · H.2 · H.3 · MO-10.b) | 12 | 12 | 0 | 3 | 1 | 0 |
+| `high` (MO-10.c · MO-2.b/c/d) | 12 | 12 | 0 | 1 | 3 | 0 |
+| `high` (MO-3.b/c/e · MO-4.c) | 12 | 12 | 0 | 0 | 4 | 0 |
+| **total** | | | | **13** | **12** | **0** |
+
+⛔ **THE SECOND BATCH IS WHY §0 EXISTS AND IT EARNED ITS PLACE AGAIN.** The account session limit
+killed 8 of its 12 agents; the harness bucketed the three findings whose lenses died as
+**UNVERIFIED, not refuted**, exactly as designed. They were re-run after the limit reset and all
+three came back decided. **A no-vote is not a verdict**, and this is the third session in which
+that distinction changed the answer.
+
+⭐ **NEARLY HALF THE HIGH FINDINGS WERE NOT REAL — 12 of 25.** And the pattern in the refutations
+is worth more than the count: **10 of the 12 were closed by fixes this programme had ALREADY
+SHIPPED** in sessions 2 and 3. `MO-3.b`, `MO-3.e`, `MO-2.c` and `MO-10.b` all died to the tx
+threading of §6.2/§6.15; `LEAD-C.1` died to §7.6, a fix made *in this same session*. A finder
+list is a snapshot, and it rots against its own programme's progress.
+
+⭐ **AND THE CONFIRMATIONS ALMOST ALL CAME DOWN IN SEVERITY.** Of the 13 confirmed, **every one
+was re-rated to medium or low**, and **every one is TZS 0 realised on production today**. Not one
+HIGH finding turned out to be losing money right now. The defects that WERE losing money — or
+about to — came from somewhere else entirely: a production read (§7.1), a suite nobody had ever
+executed (§7.4), and a guard that did not exist (§7.11).
+
+⛔ **WHICH IS THE LESSON TO CARRY.** The finder lanes are good at reading code and poor at
+knowing what is live. Three of this session's ten fixes were found by *running* something —
+`e2e:money`, a config read, a scan for guards that exist — and none of those three appears
+anywhere in the 106 findings.
