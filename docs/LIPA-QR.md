@@ -5,11 +5,12 @@ where it may appear, and — the part that matters — **where it may not**.
 
 ⛔ **Read §1 before adding a caller.** The one-line version: this QR cannot credit a wallet.
 
-✅ **Status 2026-09-09 — LIVE on the agent registration fee, and nowhere else.** The QR renders on
-`50pick.tz/agent` (§3b, verified against production). Guards green by execution: `test:lipa-qr`
-27 checks, `red:lipa-qr` **10/10 caught · 0 missed · 0 broken**, `qa:lipa-qr` **122 checks** live.
-Phase 2 — a per-**order** dynamic QR on `/wallet/deposit` — is still **not built** and still
-blocked on one question about Selcom's Checkout API (§6).
+🛑 **Status 2026-09-09 — the QR is WITHDRAWN (`LIPA_QR_RELEASED = false`). See §3d.** It renders
+nowhere, and the agent fee runs on the normal flow: destination in text, receipt uploaded, officer
+reconciles. **Deposits and cashout were never touched.** ⭐ The reason: a Lipa payment carries no
+reference on any network, so it cannot be traced to the payer (§3c) — and payment without
+traceability is the problem. Re-enabling requires **Selcom confirming a verifiable per-order QR**
+(§6), not a preference.
 
 ---
 
@@ -148,6 +149,63 @@ QR credit anything: see the C2B prohibition in §6.
 The on-screen copy already tells the payer the truth — *"Keep the receipt — you upload it below"*
 and *"check that your app shows the name above. If it shows anyone else, stop and tell us."*
 ⛔ Never reword that into anything implying a scan is confirmed, tracked, or received.
+
+### 3d. 🛑 WITHDRAWN 2026-09-09 — `LIPA_QR_RELEASED = false`
+
+**Management decision.** The QR is off everywhere, on every surface, in every locale, and the
+agent fee runs on the normal flow: the applicant is told the destination in text, pays it, uploads
+the receipt, and a compliance officer reconciles it (§3c). **Nothing else changed** — deposits,
+cashout and every other money path were not touched.
+
+> ⭐ **The reason, in one line: payment without traceability is the problem, and the QR is the
+> shortcut to it.** A Lipa Namba payment has nowhere to carry our reference — on M-Pesa, Mixx,
+> Airtel and HaloPesa alike the payer enters the **Lipa number** and the **amount** and is never
+> asked for a reference. So the money cannot be attributed to a person by the system, only by a
+> human reading a statement. Scanning does not change that; it only saves typing.
+
+⚠️ **Withdrawing the QR did NOT buy traceability, and it was never claimed to.** The fee is still
+an out-of-band Lipa transfer, still reconciled by hand. What the withdrawal removes is the
+*encouragement* of an untraceable payment on a page that looked like a modern, tracked checkout.
+The traceable answer is §6 — putting the fee through Checkout as a real **order** — and that is
+still blocked on Selcom.
+
+#### How it is switched off, and why not the operator toggle
+
+⛔ **`LIPA_QR_RELEASED` in `src/lib/lipa.ts` is a CONSTANT, deliberately.** `lipaConfig.enabled`
+already existed and would have hidden the QR too — but it is persisted in `SystemConfig`, and **a
+persisted row beats a code default**. Turning the QR off by editing a default would have changed
+nothing in production. That is not hypothetical: it is the exact trap this feature already walked
+into once (§3b). A constant cannot be overridden by a row, an operator, or an environment, so
+"off" means off everywhere, provably.
+
+`shouldShowLipaQr` consults it **first and unconditionally**. Nothing below can re-open the
+affordance.
+
+#### The guards did not go quiet with it
+
+⭐ **A withdrawn feature must not blind its own guards.** With the gate off, every assertion of the
+form `!shouldShowLipaQr(…)` is true by construction — it would hold with the safety rule
+**deleted**. Five guards would have retired silently and been handed back broken on the day the QR
+returned. So:
+
+| | Now tests |
+|---|---|
+| `test:lipa-qr` §2 | the safety **rule**, via `lipaQrWouldShow`, which bypasses the gate on purpose |
+| `test:lipa-qr` §2b | the **gate** — and §2b.3 proves the rule *would* have shown the perfect config, so it is the gate refusing and not a broken setting |
+| `red:lipa-qr` | **11/11**, the new case being *"the release gate is switched back on"* → must fail `2b.1` |
+| `qa:lipa-qr` | absence at every width × locale, each led by a **positive control** (the page rendered, N chars read) because a 500, a redirect and a withheld QR look identical to a selector |
+
+⛔ The painted-pixel decode and the CSS-pixel floor were **removed, not left passing** — there is
+no symbol on screen to measure, and a check with nothing to measure is not coverage.
+
+#### Re-enabling
+
+⛔ **The condition is not "someone wants the QR back".** It is **Selcom confirming that a QR payment
+can be verified against the payer** — a per-order QR from Checkout whose `order_id` reaches our
+webhook, exactly as a deposit already does (§6). Then: flip the constant, restore the presence and
+decode arms in the drive (`git show 6a5701cd:scripts/live/lipa-qr-drive.mjs`), and re-run all three
+gates. Everything behind the flag was kept alive and guarded for that day — the verified vector
+artwork, the payload pin, the safety rule, the console card.
 
 ## 4. The artwork
 

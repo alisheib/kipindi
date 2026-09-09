@@ -77,13 +77,64 @@ export function lipaQrIsSafeFor(account: string | null | undefined, lipaNumber: 
 }
 
 /**
- * Should the QR affordance render at all, for this destination?
+ * ⛔ THE RELEASE GATE — the QR is WITHHELD until Selcom can verify a QR payment.
  *
- * Folds the operator switch into the safety rule so no call site can consult one
- * and forget the other — the "half-on" failure `feature-state.ts` exists to stop.
+ * Set to `false` on 2026-09-09 by management decision. Read `docs/LIPA-QR.md` §3d
+ * before changing it.
+ *
+ * ⭐ WHY A CONSTANT AND NOT THE OPERATOR SWITCH. `lipaConfig.enabled` already exists
+ * and would hide the QR too — but it is persisted in `SystemConfig`, and **a persisted
+ * row beats a code default**. Turning the QR off by editing a default would have
+ * changed nothing in production, which is the exact trap this feature already walked
+ * into once: the handover recorded the QR as invisible in production because the
+ * shipped default disagreed, while production held a row saying otherwise and was
+ * rendering it. A constant cannot be overridden by a row, an operator, or an
+ * environment — so "off" means off everywhere, provably.
+ *
+ * ⚠️ THE REASON, so it is never re-enabled for the wrong one. A Lipa Namba payment has
+ * nowhere to carry our reference: on M-Pesa, Mixx, Airtel and HaloPesa alike the payer
+ * enters the Lipa number and the amount and is never asked for a reference. Money
+ * arriving that way cannot be attributed to a person by the system — only by a human
+ * reading a bank statement (§3c). Scanning changes none of that; the QR only saves
+ * typing. Payment without traceability is what is being withdrawn, and the QR goes
+ * with it because it is the shortcut TO it.
+ *
+ * ⭐ RE-ENABLING IS THIS ONE FLAG, and everything behind it is kept alive and guarded
+ * for that day: the safety rule below, the verified vector artwork, the payload pin,
+ * the console card, and the whole of `test:lipa-qr` / `red:lipa-qr`. The condition is
+ * NOT "someone wants the QR back" — it is **Selcom confirming a QR payment can be
+ * verified against the payer**: a per-order QR from Checkout whose `order_id` reaches
+ * our webhook, exactly as a deposit already does (§6).
  */
-export function shouldShowLipaQr(lipa: LipaDisplay | null | undefined, account: string | null | undefined): boolean {
+export const LIPA_QR_RELEASED = false;
+
+/**
+ * Would the QR be shown for this config and destination, **ignoring the release gate**?
+ *
+ * ⭐ THIS EXISTS SO WITHDRAWING THE QR DOES NOT BLIND ITS OWN GUARDS. With the gate
+ * off, every `shouldShowLipaQr` assertion of the form "hides when …" passes no matter
+ * what — it would pass with the safety rule deleted, which is a check that has stopped
+ * testing anything. The rule is therefore expressed here and tested here, while the
+ * gate is tested separately for the one thing it must do: refuse **everything**.
+ *
+ * ⛔ NOT A CALL SITE. Rendering surfaces must call `shouldShowLipaQr`, never this. It
+ * answers "is this config coherent", not "may this be on screen".
+ */
+export function lipaQrWouldShow(lipa: LipaDisplay | null | undefined, account: string | null | undefined): boolean {
   if (!lipa || !lipa.enabled) return false;
   if (!lipa.qrAssetPath) return false;
   return lipaQrIsSafeFor(account, lipa.lipaNumber);
+}
+
+/**
+ * Should the QR affordance render at all, for this destination?
+ *
+ * Folds the release gate and the operator switch into the safety rule so no call site
+ * can consult one and forget another — the "half-on" failure `feature-state.ts` exists
+ * to stop.
+ */
+export function shouldShowLipaQr(lipa: LipaDisplay | null | undefined, account: string | null | undefined): boolean {
+  // ⛔ FIRST, and unconditional. Nothing below can re-open the affordance.
+  if (!LIPA_QR_RELEASED) return false;
+  return lipaQrWouldShow(lipa, account);
 }

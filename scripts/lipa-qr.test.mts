@@ -29,7 +29,7 @@ import path from "node:path";
 import crypto from "node:crypto";
 import { createRequire } from "node:module";
 import { DEFAULT_LIPA_CONFIG } from "../src/lib/server/lipa-config.ts";
-import { formatLipaNumber, lipaQrIsSafeFor, normalizeLipaNumber, shouldShowLipaQr } from "../src/lib/lipa.ts";
+import { LIPA_QR_RELEASED, formatLipaNumber, lipaQrIsSafeFor, lipaQrWouldShow, normalizeLipaNumber, shouldShowLipaQr } from "../src/lib/lipa.ts";
 
 const require = createRequire(import.meta.url);
 const sharp = require("sharp");
@@ -151,16 +151,48 @@ log("\n§2 the QR cannot contradict the account named beside it");
 
 const display = { enabled: true, merchantName: cfg.merchantName, lipaNumber: cfg.lipaNumber, ussdCode: cfg.ussdCode, qrAssetPath: cfg.qrAssetPath };
 
-check("2.1 shows when the destination IS the Lipa number", shouldShowLipaQr(display, cfg.lipaNumber));
-check("2.2 hides when the destination is a DIFFERENT account", !shouldShowLipaQr(display, "0769777877"));
-check("2.3 hides when the operator switch is off", !shouldShowLipaQr({ ...display, enabled: false }, cfg.lipaNumber));
-check("2.4 hides when the destination is empty (absence is not agreement)", !shouldShowLipaQr(display, ""));
-check("2.5 hides when there is no asset", !shouldShowLipaQr({ ...display, qrAssetPath: "" }, cfg.lipaNumber));
+// ⛔ 2.1–2.5 assert the RULE, via `lipaQrWouldShow`, deliberately bypassing the release
+// gate. While the QR is withheld every `shouldShowLipaQr` "hides when …" assertion is
+// true by construction — it would hold with the safety rule DELETED. Testing the rule
+// through the gate would therefore have retired five guards the moment the QR went off,
+// silently, and handed them back broken on the day it came back on. §2b tests the gate.
+check("2.1 shows when the destination IS the Lipa number", lipaQrWouldShow(display, cfg.lipaNumber));
+check("2.2 hides when the destination is a DIFFERENT account", !lipaQrWouldShow(display, "0769777877"));
+check("2.3 hides when the operator switch is off", !lipaQrWouldShow({ ...display, enabled: false }, cfg.lipaNumber));
+check("2.4 hides when the destination is empty (absence is not agreement)", !lipaQrWouldShow(display, ""));
+check("2.5 hides when there is no asset", !lipaQrWouldShow({ ...display, qrAssetPath: "" }, cfg.lipaNumber));
 // An operator typing the number off the poster gets the spaces. That must still match,
 // or the QR silently disappears for a setting that is correct in every way that matters.
 check("2.6 a spaced or dashed form of the same number still matches", lipaQrIsSafeFor("7006 3747", cfg.lipaNumber) && lipaQrIsSafeFor("7006-3747", cfg.lipaNumber));
 check("2.7 a number that merely CONTAINS the Lipa number does not match", !lipaQrIsSafeFor("170063747", cfg.lipaNumber) && !lipaQrIsSafeFor("700637470", cfg.lipaNumber));
 check("2.8 the display form groups as the poster prints it", formatLipaNumber(cfg.lipaNumber) === "7006 3747", formatLipaNumber(cfg.lipaNumber));
+
+// ── §2b THE RELEASE GATE ──────────────────────────────────────────────────────
+// ⛔ THE MONEY RULE WHILE THE QR IS WITHHELD. A Lipa payment carries no reference on
+// any network, so it cannot be attributed to a payer by the system (§3c/§3d). Until
+// Selcom confirms a verifiable per-order QR, NOTHING may render the affordance — and
+// "nothing" has to mean the matching, fully-configured, operator-enabled case too,
+// because that is the only one that would otherwise show.
+log("\n§2b the release gate withholds the QR everywhere, whatever the config says");
+
+check("2b.1 ⛔ the release gate is OFF — the QR is withheld", LIPA_QR_RELEASED === false, `LIPA_QR_RELEASED=${String(LIPA_QR_RELEASED)}`);
+check(
+  "2b.2 ⛔ the PERFECT config — matching account, switch on, asset present — still renders NOTHING",
+  !shouldShowLipaQr(display, cfg.lipaNumber),
+);
+// ⭐ DISCRIMINATION. 2b.2 alone would pass if the rule merely happened to reject this
+// config, so prove the rule WOULD have shown it and that the gate is what refuses.
+check(
+  "2b.3 ⭐ …and the rule itself WOULD have shown it, so it is the GATE refusing, not a broken config",
+  lipaQrWouldShow(display, cfg.lipaNumber) && !shouldShowLipaQr(display, cfg.lipaNumber),
+);
+// Every other shape stays refused too — no path around the gate.
+check(
+  "2b.4 no config shape reaches the screen while withheld",
+  [cfg.lipaNumber, "0769777877", "", "7006 3747", "170063747"].every((a) => !shouldShowLipaQr(display, a)) &&
+    !shouldShowLipaQr({ ...display, enabled: false }, cfg.lipaNumber) &&
+    !shouldShowLipaQr({ ...display, qrAssetPath: "" }, cfg.lipaNumber),
+);
 
 // ── §3 THE CONFIG DEFENDS ITSELF ──────────────────────────────────────────────
 log("\n§3 the config refuses values that would break the affordance");

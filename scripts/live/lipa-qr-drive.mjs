@@ -1,18 +1,27 @@
 /**
- * LIPA QR · LIVE DRIVE — is the code on the SCREEN the code we shipped?
+ * LIPA QR · LIVE DRIVE — the QR is WITHHELD, and the way to pay still works.
  *
- * ⭐ WHY THIS EXISTS ON TOP OF `test:lipa-qr`. That gate decodes the PNG on disk. It
- * cannot see CSS. A stylesheet that scales the image to 40px, softens its edges with
- * interpolation, inverts it under a dark theme, or clips it at the panel edge produces a
- * page that looks fine in a screenshot review and a code no phone can read — and the
- * file on disk stays perfect throughout. So this drive screenshots the element as the
- * browser actually paints it and DECODES THAT.
+ * ⛔ WHAT THIS DRIVE NOW PROVES, AND WHY IT CHANGED. On 2026-09-09 the QR was withdrawn
+ * (`LIPA_QR_RELEASED = false`, `src/lib/lipa.ts`): a Lipa Namba payment carries no
+ * reference on any network, so it cannot be attributed to a payer by the system, and the
+ * QR was the shortcut to exactly that. This drive used to screenshot the painted symbol
+ * and decode it. There is no symbol on screen any more, so those arms measured nothing
+ * and were removed rather than left passing on an empty selector.
  *
- * ⭐ AND IT DISCRIMINATES. A drive that only asserts "the QR is present" passes just as
- * happily when its selector matches nothing and the loop body never runs. So every run
- * also visits a surface where the QR MUST NOT appear (`/wallet/deposit` — a static QR
- * there would take a player's money and credit no wallet) and fails if it finds one.
- * Presence and absence are both asserted, against the same selector.
+ * ⭐ AN ABSENCE CHECK IS THE EASIEST KIND TO FAKE, so every viewport here leads with a
+ * POSITIVE CONTROL. A 500, a redirect to sign-in, an empty body and a genuinely-withheld
+ * QR are all indistinguishable to `$(SEL)` — so the drive first proves the page rendered
+ * and that it can read the page, and only then believes "the QR is gone". It also asserts
+ * the fee destination is still stated as TEXT: withdrawing the QR must not withdraw the
+ * payment instruction, which would trade an untraceable shortcut for a dead end.
+ *
+ * ⭐ AND IT STILL DISCRIMINATES on the money rule: `/wallet/deposit` must never carry this
+ * selector, and the fee text must FOLLOW the configured destination rather than echo a
+ * hard-coded number.
+ *
+ * The artwork itself is still fully guarded for the day it returns — `test:lipa-qr` §1
+ * decodes the shipped vector against the pinned payload, and `red:lipa-qr` §11 catches
+ * the release gate being switched back on.
  *
  * ⛔ DEV ONLY. It signs in through `/auth/demo`, which 404s in production by construction.
  * ⛔ `next dev` is the only local host that serves those doors — `next start` closes them.
@@ -21,12 +30,6 @@
  */
 import { chromium } from "playwright";
 import { readFileSync, mkdirSync } from "node:fs";
-import { createRequire } from "node:module";
-
-const require = createRequire(import.meta.url);
-const jsQRmod = require("jsqr");
-const jsQR = jsQRmod.default ?? jsQRmod;
-const sharp = require("sharp");
 
 const BASE = process.env.BASE ?? "http://localhost:3033";
 const SHOTS = process.env.SHOT_DIR ?? ".qa-lipa";
@@ -37,12 +40,11 @@ const WIDTHS = [360, 393, 768, 1280];
 const LOCALES = ["en", "sw", "zh"];
 
 /**
- * ⭐ A FLOOR IN CSS PIXELS, NOT A GUESS. Below roughly 150 CSS px a 57-module symbol gives
- * a camera under ~2.6px per module, which is where real handsets start failing in poor
- * light. The panel asks for 176px; this refuses anything under 150 so a later layout
- * change that shrinks it gets caught here rather than by an applicant in a shop.
+ * (The CSS-pixel floor and the painted-pixel decoder lived here. They measured a QR on
+ * screen, and there is no longer one to measure — see the withdrawal note in the header.
+ * git show 6a5701cd:scripts/live/lipa-qr-drive.mjs has them for the re-enable.)
  */
-const MIN_CSS_PX = 150;
+
 
 let pass = 0, fail = 0;
 const ok = (label, cond, extra) => {
@@ -60,24 +62,6 @@ if (!EXPECT_PAYLOAD || !EXPECT_NUMBER) {
   process.exit(2);
 }
 
-/** Decode a PNG buffer as a QR. Two passes — see the note in scripts/extract-lipa-qr.mjs. */
-async function decodePng(buf) {
-  const { data, info } = await sharp(buf).raw().toBuffer({ resolveWithObject: true });
-  const px = info.width * info.height;
-  const rgba = Buffer.alloc(px * 4);
-  for (let i = 0; i < px; i++) {
-    const r = data[i * info.channels];
-    const g = info.channels > 1 ? data[i * info.channels + 1] : r;
-    const b = info.channels > 2 ? data[i * info.channels + 2] : r;
-    rgba[i * 4] = r; rgba[i * 4 + 1] = g; rgba[i * 4 + 2] = b; rgba[i * 4 + 3] = 255;
-  }
-  for (const invert of [false, true]) {
-    const view = invert ? Buffer.from(rgba.map((v, i) => (i % 4 === 3 ? v : 255 - v))) : rgba;
-    const code = jsQR(new Uint8ClampedArray(view), info.width, info.height, { inversionAttempts: "attemptBoth" });
-    if (code?.data) return code.data;
-  }
-  return null;
-}
 
 const SEL = "[data-lipa-qr] img";
 
@@ -147,61 +131,35 @@ for (const locale of LOCALES) {
 
     const tag = `${locale}·${width}`;
 
-    // ── PRESENCE: the agent landing page carries the QR ───────────────────────
+    // ── ABSENCE: the QR is WITHHELD, and the way to pay survives ──────────────
     await page.goto(`${BASE}/agent`, { waitUntil: "domcontentloaded", timeout: 60_000 });
     const lang = await page.getAttribute("html", "lang");
     if (lang !== locale) { ok(`${tag} locale actually applied`, false, `<html lang="${lang}">`); await ctx.close(); continue; }
-
-    const img = await page.waitForSelector(SEL, { timeout: 20_000 }).catch(() => null);
-    if (!img) {
-      ok(`${tag} the QR is on /agent`, false, "no [data-lipa-qr] img — either it is not rendered or the fee destination is not the Lipa number");
-      await ctx.close();
-      continue;
-    }
-    await img.scrollIntoViewIfNeeded();
     await page.waitForTimeout(250);
 
-    // ⭐ A RECTANGLE, not "it is in the DOM". An element can be present, styled, and
-    // 119px below the fold or 0px wide; all three read as "rendered".
-    const box = await img.evaluate((e) => {
-      const r = e.getBoundingClientRect();
-      const cs = getComputedStyle(e);
-      return {
-        x: r.x, y: r.y, w: r.width, h: r.height,
-        vw: window.innerWidth, vh: window.innerHeight,
-        visible: cs.visibility !== "hidden" && cs.display !== "none" && Number(cs.opacity) > 0.01,
-        rendering: cs.imageRendering,
-        src: e.getAttribute("src") || "",
-        complete: e.complete && e.naturalWidth > 0,
-      };
-    });
+    // ⭐ POSITIVE CONTROL FIRST, AND IT IS NOT CEREMONY. Everything here is an ABSENCE
+    // check, and an absence check passes when the READER is broken: a 500, a redirect to
+    // sign-in, an empty body and a genuinely-withheld QR are indistinguishable to
+    // `$(SEL)`. So prove the page RENDERED and that this drive can read it before
+    // believing any "it is gone" — otherwise the drive goes green against a blank page.
+    const bodyText = await page.evaluate(() => (document.body.innerText || "").replace(/\s+/g, " ").trim());
+    ok(`${tag} ⭐ CONTROL · the agent page actually rendered — ${bodyText.length} chars of body text`, bodyText.length > 400,
+      `only ${bodyText.length} chars — a redirect or an error page reads as "the QR is absent" too`);
 
-    ok(`${tag} the QR image actually loaded`, box.complete, `naturalWidth 0 — the asset 404'd`);
-    ok(`${tag} it is visible`, box.visible && box.w > 0 && box.h > 0, JSON.stringify(box));
-    ok(`${tag} it is at least ${MIN_CSS_PX}px on screen`, Math.min(box.w, box.h) >= MIN_CSS_PX, `${Math.round(box.w)}×${Math.round(box.h)} CSS px`);
-    ok(`${tag} it is square`, Math.abs(box.w - box.h) <= 2, `${Math.round(box.w)}×${Math.round(box.h)}`);
-    ok(`${tag} it is not clipped horizontally`, box.x >= -0.5 && box.x + box.w <= box.vw + 0.5, `x=${Math.round(box.x)} w=${Math.round(box.w)} vw=${box.vw}`);
-    // ⚠️ THE ASSET MUST BE VECTOR, and this drive is what established that. Against the
-    // 840px bitmap the painted code decoded at 160px, FAILED at 176 and 192, decoded at
-    // 208, failed at 240 and 256 — the pattern moving again at a different DPR. That is
-    // moiré between the module grid and the pixel grid, not a resolution floor, and it
-    // would have shipped as "some players can scan it, unpredictably". A raster QR on a
-    // responsive page is the defect; this names it if anyone swaps one back in.
-    ok(`${tag} the QR is a vector asset (no resampling to alias)`, /\.svg(\?|$)/.test(box.src), box.src);
+    // ⛔ And the way to pay must still be ON the page, in words. Withdrawing the QR must
+    // not withdraw the payment instruction: that would trade an untraceable shortcut for
+    // a dead end, which is worse for the applicant than either.
+    const bodyDigits = bodyText.replace(/\D/g, "");
+    ok(`${tag} the fee destination is still stated as TEXT`, bodyDigits.includes(EXPECT_NUMBER),
+      `${EXPECT_NUMBER} is not on the page — an applicant now has no way to pay the fee`);
 
-    // ── THE REAL PROOF: decode what the browser painted ───────────────────────
-    const shot = await img.screenshot();
-    const painted = await decodePng(shot);
-    ok(`${tag} the painted QR decodes`, painted !== null, "the code on screen could not be read");
-    ok(`${tag} it decodes to the pinned payload`, painted === EXPECT_PAYLOAD,
-      painted === null ? "nothing decoded" : `screen says ${JSON.stringify(String(painted).slice(0, 40))}…`);
-
-    // The number beside it must be the number inside it — the whole safety rule, on screen.
-    const panelText = await page.$eval("[data-lipa-qr]", (e) => (e.textContent || "").replace(/\s+/g, " ").trim()).catch(() => "");
-    const digitsOnScreen = panelText.replace(/\D/g, "");
-    ok(`${tag} the printed number matches the encoded one`, digitsOnScreen.includes(EXPECT_NUMBER), `panel text: ${panelText.slice(0, 120)}`);
+    // The withdrawal itself, on a real page at every width and locale.
+    const withheld = await page.$(SEL);
+    ok(`${tag} ⛔ the QR is WITHHELD on /agent`, withheld === null,
+      "the QR is rendering while LIPA_QR_RELEASED is false — the release gate is not holding");
 
     await page.screenshot({ path: `${SHOTS}/agent-${width}-${locale}.png`, fullPage: false });
+
 
     // ── DISCRIMINATION: it must NOT be on a self-service top-up ───────────────
     // ⛔ If this selector ever matches here, the money defect is live: the player pays,
@@ -216,9 +174,17 @@ for (const locale of LOCALES) {
   }
 }
 
-// ── THE SAFETY RULE, PROVEN ON A REAL PAGE ────────────────────────────────────
-// Point the fee somewhere else and the QR must vanish — without this arm, every
-// check above would pass just as happily with `lipaQrIsSafeFor` returning `true`.
+// ── THE NORMAL FLOW FOLLOWS THE CONFIGURED DESTINATION ────────────────────────
+// ⚠️ THIS ARM USED TO CLAIM "mismatched destination → the QR is GONE". While the release
+// gate is off, that claim is VACUOUS — the QR is gone for every destination, so the
+// assertion would hold with the safety rule deleted. It is not a check any more, it is a
+// restatement of the gate, and it is deleted rather than left to look like coverage.
+// (The safety rule itself is still proven, on `lipaQrWouldShow`, at test:lipa-qr §2.)
+//
+// ⭐ WHAT IS WORTH PROVING INSTEAD, and what Ali actually asked for: the fee still WORKS
+// on the normal flow. Point the destination at a different account and the page must
+// state THAT account — so an applicant is told where to pay, from configuration, with no
+// QR involved anywhere.
 await setFeeDestination("0769777877", "Digital Selcom Bank");
 {
   const ctx = await browser.newContext({ viewport: { width: 393, height: 900 } });
@@ -226,15 +192,17 @@ await setFeeDestination("0769777877", "Digital Selcom Bank");
   await page.goto(`${BASE}/auth/demo?kyc=APPROVED`, { waitUntil: "domcontentloaded", timeout: 90_000 });
   await page.goto(`${BASE}/agent`, { waitUntil: "domcontentloaded", timeout: 60_000 });
   await page.waitForTimeout(400);
-  const stillThere = await page.$(SEL);
-  ok("mismatched destination → the QR is GONE", stillThere === null,
-    "the QR is rendering beside an account it does not pay — the safety rule is not holding");
 
-  // …and the number is still communicated, as text. Hiding the QR must not hide the
-  // way to pay; that would trade a money defect for a dead end.
   const txt = await page.evaluate(() => (document.body.innerText || "").replace(/\s+/g, " "));
-  ok("…and the account is still shown as text", txt.replace(/\D/g, "").includes("0769777877"),
-    "the fee destination vanished with the QR — an applicant now has no way to pay");
+  const digits = txt.replace(/\D/g, "");
+  ok("the normal flow names the CONFIGURED destination", digits.includes("0769777877"),
+    "the fee destination is not on the page — an applicant has no way to pay");
+  // ⭐ DISCRIMINATION on that very check: it must be reading the CONFIG, not echoing a
+  // hard-coded number. The previous destination must be gone from the page.
+  ok("…and it is the config it is reading, not a hard-coded number", !digits.includes(EXPECT_NUMBER),
+    `${EXPECT_NUMBER} is still on the page after the destination changed — the page is not following the setting`);
+  ok("and the QR is still withheld on the other destination too", (await page.$(SEL)) === null,
+    "the QR appeared for a non-Lipa destination — both the gate AND the safety rule are broken");
   await ctx.close();
 }
 

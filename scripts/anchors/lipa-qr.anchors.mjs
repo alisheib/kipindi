@@ -194,5 +194,19 @@ export const MUTATIONS = [
     from: '  if (!/^\\/pay\\/[A-Za-z0-9._-]+\\.svg$/.test(c.qrAssetPath))',
     to: "  if (false)",
   },
+  {
+    // ⛔ THE WITHDRAWAL ITSELF, GUARDED. The QR was withheld on 2026-09-09 because a Lipa
+    // payment carries no reference on any network and so cannot be attributed to a payer
+    // by the system. Without this case the gate could be flipped back on by anyone — an
+    // edit, a merge, a well-meaning "it was only a flag" — and no guard would object.
+    // ⭐ The re-enable condition is Selcom confirming a VERIFIABLE per-order QR, not a
+    // preference. So the flag is treated as a money control and mutated like one.
+    name: "the release gate is switched back on",
+    why: "the QR would return while a Lipa payment still cannot be traced to the payer — the untraceable shortcut back on screen, and nothing anywhere going red",
+    check: "2b.1 ⛔ the release gate is OFF — the QR is withheld",
+    file: "src/lib/lipa.ts",
+    from: "export const LIPA_QR_RELEASED = false;",
+    to: "export const LIPA_QR_RELEASED = true;",
+  },
 ];
 
