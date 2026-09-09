@@ -49,7 +49,27 @@ function adminBootstrapPhones(): Set<string> {
 }
 
 const OTP_TTL_MS = 5 * 60 * 1000;
-const TERMS_VERSION = "2026-04-01";
+/**
+ * The version stamped on `User.acceptedTermsVersion` at registration — i.e. WHICH TEXT of
+ * `/legal/terms` that person actually agreed to.
+ *
+ * ⛔ MOVE THIS WHENEVER THE BINDING TEXT MOVES, IN THE SAME COMMIT. `RULES.md` §2.10 records
+ * the identical defect on the agent side: `cc946bbb` rewrote two clauses of
+ * `/legal/agent-terms` and `AGENT_TERMS_VERSION` went on reading the old date, so the document
+ * a person read and the version recorded as accepted diverged — and the rows already written
+ * could not afterwards be told apart.
+ *
+ * 2026-04-01 → 2026-09-09: §4's cash-out clause was rewritten in EN, SW and ZH to state the
+ * RUNWAY condition, to name the Up & Down 3- and 5-minute rounds where cash-out is never
+ * available, and to state that a bonus-funded position can never be sold (money-gate §6.12).
+ * That narrows a right the previous text promised flatly, so it is a material change and the
+ * stamp must move with it.
+ *
+ * ⚠️ Nothing compares this to a stored value, so moving it does NOT force anyone to re-accept.
+ * Existing rows keep `2026-04-01`, which is the correct record of what those players were
+ * actually shown.
+ */
+const TERMS_VERSION = "2026-09-09";
 
 /**
  * Best-effort request metadata for audit entries (IP + user agent).

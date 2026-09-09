@@ -41,11 +41,29 @@ function ok(label: string, cond: boolean, detail = "") {
   else { fail++; console.log(`  FAIL ${label}${detail ? ` · ${detail}` : ""}`); }
 }
 
-/** The body of `fn`, from its opening line to the matching close at the same indent. */
-function blockAfter(src: string, anchor: string): string {
+/** The body of `fn`, from its opening line onward. */
+function blockAfter(src: string, anchor: string, span = 4000): string {
   const i = src.indexOf(anchor);
   if (i < 0) return "";
-  return src.slice(i, i + 4000);
+  return src.slice(i, i + span);
+}
+
+/**
+ * ⛔ COMMENTS STRIPPED BEFORE MATCHING, AND THIS FILE IS WHY.
+ *
+ * §2c asserts that `updated?.balance ?? wallet.balance + amount` is GONE from
+ * `creditInternal`. The fix's own docblock quotes that exact line to explain what it
+ * replaced — so the naive scanner found its own prose and reported the defect as live, on
+ * source that is correct. An absence check that reads comments is measuring the
+ * explanation, not the code.
+ *
+ * ⚠️ It cuts the other way too, and that is the dangerous direction: a PRESENCE check could
+ * be satisfied by a comment mentioning the right call, over code that never makes it.
+ */
+function codeOnly(src: string): string {
+  return src
+    .replace(/\/\*[\s\S]*?\*\//g, "")   // block comments, including JSDoc
+    .replace(/^[ \t]*\/\/.*$/gm, "");   // whole-line // comments
 }
 
 const wallet = read("src/lib/server/wallet-service.ts");
@@ -102,6 +120,40 @@ console.log("\n§2b · settleWithdrawalFailed commits the refund and the status 
     "the status write does not receive tx — this is the half that repeats");
 }
 
+// ── §2c · creditInternal — the path that puts money IN ──────────────────────
+//
+// 🔴 IT INVENTED THE BALANCE. `const newBalance = updated?.balance ?? wallet.balance + amount;`
+// — so when `db.wallet.adjust` returned null (a guarded updateMany matching zero rows, or a
+// throw swallowed to null by the self-committing arm) NO MONEY MOVED and the function carried
+// on: a CONFIRMED transaction, a `balanceAfter` never persisted, a balanced ledger group, and
+// that fabricated number returned to the caller as success. `onRecruitSettlement` writes the
+// agent's commission as PAID on it and remits 5% withholding to HOUSE:TAX — tax on income the
+// agent never received. Every caller's `!== null` test passes.
+// ⭐ `debitInternal` — the mirror, right below it — has always threaded `tx` and aborted on
+// null. The path taking money OUT was safe; the path putting money IN was not.
+console.log("\n§2c · creditInternal refuses rather than inventing a balance");
+{
+  // ⚠️ The span must clear the whole function INCLUDING its docblocks. At 5000 it stopped
+  // between 2c.2 and 2c.3 and reported a defect that is not there — the third time this
+  // file's own span has had to grow, and the reason §3 re-runs every pattern against fixed
+  // text: a scanner that under-reads accuses working code exactly as loudly as it misses
+  // broken code.
+  const credit = codeOnly(blockAfter(wallet, "export async function creditInternal", 9000));
+  ok("2c.1  its lock callback NAMES the transaction",
+    /withLock\(`wallet:\$\{userId\}`,\s*async \(tx\)/.test(credit),
+    "callback is `async ()` — the credit, the txn row and the ledger group autocommit apart");
+  ok("2c.2  the credit is passed the tx",
+    /db\.wallet\.adjust\(wallet\.id, \{ balance: amount \}, undefined, tx\)/.test(credit));
+  ok("2c.3  ⛔ it REFUSES on a null write instead of fabricating the balance",
+    /if \(!updated\) \{/.test(credit) && /const newBalance = updated\.balance;/.test(credit),
+    "the `?? wallet.balance + amount` fallback is back — money can be recorded as PAID that never moved");
+  ok("2c.4  and the `??` fabrication is gone entirely",
+    !/updated\?\.balance \?\? wallet\.balance \+ amount/.test(credit));
+  ok("2c.5  the ledger group is posted ON the tx and AWAITED, not fire-and-forget",
+    /await postLedgerEntries\(`int_\$\{txnId\}`, lines, tx\)/.test(credit),
+    "a fire-and-forget group can be lost while the wallet moved");
+}
+
 // ── §3 · POSITIVE CONTROL — the scanner can still say NO ─────────────────────
 //
 // ⛔ WITHOUT THIS, §2 COULD PASS BY MATCHING NOTHING. Each assertion is re-run against the
@@ -137,6 +189,18 @@ console.log("\n§3 · POSITIVE CONTROL · the pre-fix shape must be REJECTED");
   const preFixFailed = `const done = await withLock(\`wallet:\${pre.userId}\`, async (): Promise<StoredTxn | null> => {
     if (w) await db.wallet.adjust(w.id, { balance: amt, hold: -amt });
     await db.txn.update(txnId, { status: "FAILED", description: \`Withdrawal failed: \${reason}\` });`;
+  // …and §2c's, against the credit path's real pre-fix text.
+  const preFixCredit = `return withLock(\`wallet:\${userId}\`, async () => {
+    const updated = await db.wallet.adjust(wallet.id, { balance: amount });
+    const newBalance = updated?.balance ?? wallet.balance + amount;
+    postLedgerEntries(\`int_\${txnId}\`, lines).catch(() => {});`;
+  ok("3.6  pre-fix creditInternal is rejected by all of §2c",
+    !/withLock\(`wallet:\$\{userId\}`,\s*async \(tx\)/.test(preFixCredit)
+    && !/db\.wallet\.adjust\(wallet\.id, \{ balance: amount \}, undefined, tx\)/.test(preFixCredit)
+    && !/if \(!updated\) \{/.test(preFixCredit)
+    && /updated\?\.balance \?\? wallet\.balance \+ amount/.test(preFixCredit)
+    && !/await postLedgerEntries\(`int_\$\{txnId\}`, lines, tx\)/.test(preFixCredit));
+
   ok("3.5  pre-fix settleWithdrawalFailed is rejected by all three of §2b",
     !/withLock\(`wallet:\$\{pre\.userId\}`,\s*async \(tx\)/.test(preFixFailed)
     && !/db\.wallet\.adjust\(w\.id, \{ balance: amt, hold: -amt \}, undefined, tx\)/.test(preFixFailed)

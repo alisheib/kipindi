@@ -21,10 +21,11 @@ what is open is most of the surface.
 
 | | |
 |---|---|
-| **Session 2 work** | ✅ **DONE and SHIPPED** — nine defects fixed, each verified, each guarded RED |
+| **Session 2 work** | ✅ **DONE and SHIPPED** — eleven defects fixed, each verified, each guarded RED |
 | **`money-out` lane** | ✅ **AUDITED ONCE** (first pass ever). 18 finder lanes, 18/18 returned |
-| **Adversarial verify pass** | 🔴 **12 of 106 findings verified.** 94 remain UNVERIFIED |
-| **Blockers** | 🟠 **8 fixed/closed · 4 refuted · 1 UNVERIFIED** (`MO-10.a`) |
+| **The 35 HIGH findings** | 🔴 **none verified** — the next batch, and the largest block left |
+| **Adversarial verify pass** | 🟠 **15 of 106 findings verified.** 91 remain UNVERIFIED |
+| **Blockers** | ✅ **ALL 13 ADJUDICATED — 8 fixed · 5 refuted · 0 unverified** |
 | **Ali's four decisions (§4)** | 🔴 **all four still open** |
 | **Production reads (§4.3)** | 🔴 **not done** — `PAYMENT_AGGREGATOR`, `agent.config` |
 | **`e2e:money` against real Postgres** | 🔴 **never run this session** — the behavioural proof for §6.2/§6.9 |
@@ -507,7 +508,7 @@ MO-1.a are the two fixed above.
 | `LEAD-G.3` | 🔴 | ❌ **REFUTED §6.10** — The nightly production trial-balance run DOES have an alarm channel beside it — and that channel is structurally deaf: `backupHealth()` never reads `sourceWarnings`, so a drifting production ledger is | `src/lib/server/backup/state.ts` → `backupHealth` | certain · yes |
 | `LEAD-H.1` | 🔴 | ✅ **FIXED §6.12** — /legal/terms §4 promises free cancellation with ONLY the window condition, in all three languages — the runway condition that makes it unreachable on Up & Down 3- and 5-minute rounds is absent from th | `src/app/legal/terms/page.tsx` → `content(objectionHours) — LegalSection n="4" "How price-comp` | certain · yes |
 | `MO-1.a` | 🔴 | ~~The withdrawal debit and its Transaction row are in SEPARATE commits — a failure between them strands the player's money in `hold` with no record, invisible to reconcile AND to the trial balance~~ ✅ **FIXED §6.2** | `src/lib/server/wallet-service.ts` → `withdraw (Phase A)` | certain · yes |
-| `MO-10.a` | 🔴 | creditInternal fabricates the new balance when the wallet UPDATE fails and returns a non-null number, so every caller records money as PAID that never moved | `src/lib/server/wallet-service.ts` → `creditInternal` | certain · needs-production-read |
+| `MO-10.a` | 🔴 | ✅ **FIXED §6.15** (CONFIRMED 3/3) — creditInternal fabricates the new balance when the wallet UPDATE fails and returns a non-null number, so every caller records money as PAID that never moved | `src/lib/server/wallet-service.ts` → `creditInternal` | certain · needs-production-read |
 | `MO-2.a` | 🔴 | ✅ **CLOSED §6.13** — duplicate of MO-4.a, fixed by §6.9 — An AML-held withdrawal carries a NEVER-DISPATCHED id in `providerRef`, and approve-dispatch flips the row to PROCESSING without clearing it — the reconcile sweep then re-queries a transid Selcom never | `src/lib/server/wallet-service.ts` → `dispatchApprovedWithdrawal (claim at 733-738) + withdraw (17` | likely · needs-production-read |
 | `MO-3.a` | 🔴 | settleWithdrawalFailed refunds and flips status in TWO separate commits outside the lock transaction — the 5-minute sweep then refunds a second time | `src/lib/server/wallet-service.ts` → `settleWithdrawalFailed` | certain · yes |
 | `MO-4.a` | 🔴 | ✅ **FIXED §6.9** — The sweep can auto-reverse an AML-approved payout by querying a providerRef that was never sent to any gateway — the payout is in flight and the player gets the money back | `src/lib/server/wallet-service.ts` → `dispatchApprovedWithdrawal + reconcileStalePayments` | likely · yes |
@@ -825,6 +826,78 @@ override was equally permissive before; what changed is that the COMPLIANCE audi
 honest *"not asked"* instead of a fabricated provider verdict. ⛔ **Left unfixed deliberately:**
 tightening an officer's deliberate override path is a policy call, and the docstring states that
 proceeding on a non-terminal answer *"is what this action is FOR"*. Filed for the next session.
+
+### 6.14 · THE BLOCKER LANE IS CLOSED — 13 of 13 adjudicated
+
+9/9 done, 0 errors on the final batch. **Every blocker in the set now has a verdict.**
+
+| bucket | count | ids |
+|---|---|---|
+| ✅ **FIXED** | **8** | `LEAD-A.1` `MO-1.a` `MO-3.a` `MO-4.a` `MO-6.a` `LEAD-B.2a` `LEAD-H.1` `MO-10.a` |
+| ❌ **REFUTED** | **5** | `MO-4.b` `LEAD-G.1` `LEAD-G.2` `LEAD-G.3` `MO-2.a` (duplicate) |
+| 🔴 UNVERIFIED | **0** | — |
+
+⭐ **FIVE OF THIRTEEN BLOCKERS WERE NOT REAL**, and that is the number that justifies the whole
+verify pass. Three (`LEAD-G.*`) died to a single grep of the wrong noun; one (`MO-4.b`) to a
+deployed CHECK constraint; one (`MO-2.a`) was a second view of another. Acting on the finder
+list unverified would have meant four unnecessary changes to live money code.
+
+⚠️ **`LEAD-H.1` and `MO-2.a` are recorded REFUTED "as live" only because I had already fixed
+them** between the finder and the verifier. All three lenses confirmed the findings were
+substantively RIGHT and the fixes accurate — `LEAD-H.1`'s source lens independently re-derived
+the runway arithmetic (`closesAt - openMs = 180,000ms` on a 3-minute chain, never ≥ a 300,000ms
+grace) and confirmed *"can never be met"* is fair rather than an overstatement. Read those two
+rows as **fixed**, not as **wrong**.
+
+### 6.15 · FIXED — `creditInternal` invented a balance nobody had written
+
+`src/lib/server/wallet-service.ts` → `creditInternal` (finding `MO-10.a`, CONFIRMED 3/3)
+
+```
+const newBalance = updated?.balance ?? wallet.balance + amount;   // ← the defect
+```
+
+`db.wallet.adjust` returns `null` for two different reasons and that line could tell neither
+apart: the guarded `updateMany` matched zero rows, or the write threw and the self-committing
+arm swallowed it. **Either way no money moved** — and the function then wrote a CONFIRMED
+transaction, stamped `balanceAfter` with a figure never persisted, posted a balanced ledger
+group for it, and returned that figure to its caller as success. `onRecruitSettlement` records
+the agent's commission as **PAID** on it, and the 5% withholding is remitted to `HOUSE:TAX` —
+tax withheld from income the agent never received. Every caller's `!== null` test passes.
+
+⭐ **`debitInternal`, its own mirror twenty lines below, has always been correct**: it threads
+the lock's `tx` and ABORTS on a null. The path taking money OUT was safe; the path putting money
+IN was not.
+
+**Fixed:** the callback takes `tx`, both writes and the ledger group are threaded onto it, the
+group is `await`ed rather than fire-and-forget (so an imbalanced or failed group throws and
+rolls the whole credit back), and a null write now **refuses** — audited
+`wallet.credit_internal_failed` (COMPLIANCE), caller sees null, the accrual stays a retryable
+PENDING payable exactly as RULES §2.10 requires.
+
+Guard `test:lock-tx-threading` extended to **22/0** with a new §2c, RED on the genuine pre-fix
+file (**11 failures** across §2/§2b/§2c). §3.6 pins the credit path's pre-fix text.
+
+⚠️ **AND THE GUARD CAUGHT ITSELF FIRST.** §2c.4 asserts the `??` fabrication is *gone* — and it
+failed on correct source, because the fix's own docblock **quotes the defective line** to
+explain what it replaced, and the scanner matched its own prose. An absence check that reads
+comments measures the explanation, not the code; a presence check could be satisfied by a
+comment over code that never makes the call. `codeOnly()` now strips comments before matching.
+That is the third span/matcher flaw §3's positive control has caught in this file, which is
+what a positive control is for.
+
+### 6.16 · Corrected while here — the player terms version stamp
+
+`src/lib/server/auth-service.ts` — `TERMS_VERSION` read `2026-04-01` and is stamped on every
+registration as `User.acceptedTermsVersion`. §6.12 materially narrowed §4 of the binding terms
+in all three languages **the same day**, so the document a new player is shown and the version
+recorded as accepted had diverged.
+
+⛔ **Exactly the defect RULES §2.10 records for `AGENT_TERMS_VERSION`** — caught here by a
+verify lens, on a divergence this session's own fix created. Now `2026-09-09`, with the reason
+in the constant's docblock. ⚠️ Nothing compares it to a stored value, so moving it forces **no**
+re-acceptance; existing rows keep `2026-04-01`, which is the correct record of what those
+players were actually shown.
 
 ### 6.4 · Corrected while here — documents that contradicted the law
 

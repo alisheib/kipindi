@@ -1969,11 +1969,43 @@ export async function creditInternal(
     return null;
   }
 
-  return withLock(`wallet:${userId}`, async () => {
-    const wallet = await db.wallet.findByUserId(userId);
+  return withLock(`wallet:${userId}`, async (tx) => {
+    const wallet = await db.wallet.findByUserId(userId, tx);
     if (!wallet || wallet.status !== "ACTIVE") return null;
-    const updated = await db.wallet.adjust(wallet.id, { balance: amount });
-    const newBalance = updated?.balance ?? wallet.balance + amount;
+    const updated = await db.wallet.adjust(wallet.id, { balance: amount }, undefined, tx);
+    /**
+     * 🔴 NEVER INVENT THE BALANCE. This read `updated?.balance ?? wallet.balance + amount`,
+     * so when `wallet.adjust` returned null it FABRICATED the figure and carried on.
+     *
+     * `adjust` returns null for two different reasons and that line could not tell them
+     * apart: the guarded `updateMany` matched zero rows, or the write threw and the
+     * self-committing arm swallowed it to null (`prisma-dal.ts`). Either way NO MONEY MOVED —
+     * and the code then wrote a CONFIRMED transaction, stamped `balanceAfter` with a number
+     * never persisted, posted a balanced ledger group for it, and returned that number to the
+     * caller as success. `onRecruitSettlement` records the agent's commission as PAID on it,
+     * and the 5% withholding is remitted to `HOUSE:TAX` — tax withheld from income the agent
+     * never received. Every caller's `!== null` test passes.
+     *
+     * ⭐ `debitInternal`, its own mirror below, has always done this correctly: it threads the
+     * lock's `tx` and ABORTS on a null. The path that takes money OUT was safe; the path that
+     * puts money IN was not.
+     *
+     * Refusing is the only honest answer: the caller sees null, the accrual stays unpaid and
+     * retryable, and nothing claims money moved that did not. RULES §2.10 — commission not
+     * actually paid is a PENDING payable, never a PAID row.
+     */
+    if (!updated) {
+      audit({
+        category: "COMPLIANCE",
+        action: "wallet.credit_internal_failed",
+        actorId: null,
+        targetType: "Wallet",
+        targetId: wallet.id,
+        payload: { userId, amount, type: opts.type ?? "BONUS_CREDIT", description: opts.description, note: "the wallet write did not land — no transaction, ledger group or PAID record was written" },
+      });
+      return null;
+    }
+    const newBalance = updated.balance;
     const now = new Date().toISOString();
     const txnId = `txn_${randomId(12)}`;
     const txnType = opts.type ?? "BONUS_CREDIT";
@@ -1999,8 +2031,7 @@ export async function creditInternal(
       createdAt: now,
       updatedAt: now,
       completedAt: now,
-    });
-    // Dual-write: post internal credit to double-entry ledger (fire-and-forget).
+    }, tx);
     // ⭐ AGENT COMMISSION GETS ITS OWN LINE IN THE OWNER'S BOOK. Booked to
     // `HOUSE:AGENT_COMMISSION` rather than `SYSTEM:ADJUSTMENT`, where every hand-made officer
     // correction also lives — so the owner can read what the programme costs, and the
@@ -2008,7 +2039,13 @@ export async function creditInternal(
     const lines = txnType === "AGENT_COMMISSION"
       ? agentCommissionEntries({ txnId, userId, amount, taxWithheld, description: opts.description })
       : internalCreditEntries({ txnId, userId, amount, description: opts.description });
-    postLedgerEntries(`int_${txnId}`, lines).catch(() => {});
+    // ⛔ ON THE LOCK'S TRANSACTION, AND AWAITED — no longer fire-and-forget. With `tx` supplied
+    // `postLedgerEntries` THROWS on an imbalanced or failed group instead of retrying and
+    // raising an audit, so the whole credit rolls back rather than leaving a wallet moved with
+    // no ledger behind it. That is the same contract `withMoneyTx` gives every other money
+    // path, and it is what makes the fabricated-balance fix above complete: the balance, the
+    // transaction row and the books now land together or not at all.
+    await postLedgerEntries(`int_${txnId}`, lines, tx);
     audit({
       category: "WALLET",
       action: "wallet.credit_internal",
