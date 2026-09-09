@@ -5,6 +5,12 @@ where it may appear, and — the part that matters — **where it may not**.
 
 ⛔ **Read §1 before adding a caller.** The one-line version: this QR cannot credit a wallet.
 
+✅ **Status 2026-09-09 — LIVE on the agent registration fee, and nowhere else.** The QR renders on
+`50pick.tz/agent` (§3b, verified against production). Guards green by execution: `test:lipa-qr`
+27 checks, `red:lipa-qr` **10/10 caught · 0 missed · 0 broken**, `qa:lipa-qr` **122 checks** live.
+Phase 2 — a per-**order** dynamic QR on `/wallet/deposit` — is still **not built** and still
+blocked on one question about Selcom's Checkout API (§6).
+
 ---
 
 ## 1. What this QR is, established by decoding it
@@ -77,6 +83,32 @@ unrepresentable rather than merely discouraged.
 ⚠️ **Consequence for operators:** switching the fee destination silently hides the QR. That is
 the safe direction, but it is invisible — so `/admin/agents` → Settings → *Lipa payment* states
 in words whether the QR is live right now, and if not, which two values disagree.
+
+### 3b. ✅ Live in production since 2026-09-09 — the two values now AGREE
+
+⭐ **The QR is rendering on `50pick.tz/agent` today.** The fee destination was switched to the
+Lipa number at `/admin/agents` → Settings, so `shouldShowLipaQr` is satisfied and the panel shows.
+Verified against the live site, not inferred:
+
+```
+account: "7006 3747"                                  ← the fee destination
+<img src="/pay/selcom-lipa-qr.d997c1d2.svg" width=224 …>
+"Digital Selcom Bank" — 0 occurrences
+/pay/selcom-lipa-qr.d997c1d2.svg → HTTP 200, image/svg+xml
+```
+
+⛔ **The handover this replaces said the opposite** — that the QR "renders NOTHING in production
+by design" because the shipped default `0769777877` still disagreed with `70063747`. That was
+true of the **code default** and false of **production**, because a persisted `SystemConfig` row
+wins over the default and one had been written. 🎯 **A default is not a deployment.** Anything
+claiming what this QR does in production has to be read off production; the two disagree by
+design, since the whole point of the operator setting is to override the default.
+
+⚠️ So the safety rule is now load-bearing in the live direction rather than the hidden one: the
+QR is visible, and it stays honest only because the account printed beside it is the same number
+it encodes. Point the fee destination anywhere else and the panel vanishes on its own — which is
+correct, and which is also the moment `/admin/agents` → Settings becomes the only place that says
+so in words.
 
 ## 4. The artwork
 
