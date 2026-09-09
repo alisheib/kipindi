@@ -197,4 +197,37 @@ export const MUTATIONS = [
     expect: "OVERLAP",
     route: "/markets",
   },
+  {
+    /**
+     * 🔴 THE 91px SEARCH BAND, and it closes the LAST unproven arm of this driver. Assertion 4 has
+     * two arms and they are different code paths: "THE BAR DID NOT STICK" (proved by
+     * `bar-is-not-sticky`) reads the bar's own offset after a scroll, while this one walks every
+     * `position: sticky|fixed` element on the page and asks whether any of them is drawn THROUGH
+     * the bar's rectangle. Nothing exercised the second arm until now.
+     *
+     * ⛔ AND ASSERTION 1 CANNOT STAND IN FOR IT. Assertion 1 compares controls INSIDE
+     * `[data-filter-rail]`; a search band is a SIBLING of the bar, so no pair of measured boxes
+     * ever contains both. Two assertions, two mutations — a driver with one proof for two arms is
+     * a driver with one proof.
+     *
+     * Measured when it shipped: three routes stuck a search band at `top-[56px]`, the same offset
+     * `QUERY_BAR_CLASS` uses, and **two sticky surfaces cannot share one offset** — 91px of the
+     * bar was painted over. ⚠️ The clearance used to exist and was deleted rather than replaced:
+     * `/results`' retired sidebar sat at `top-[122px]` precisely to clear this band, and task 4.2
+     * removed that arithmetic without replacing what it bought.
+     *
+     * ⭐ `/proposals` IS THE SUBJECT BECAUSE ITS BAND IS THE ONE THAT CANNOT HIDE. All three
+     * routes carry the same repaired `<div className="py-2.5">` with a comment saying why it is
+     * not sticky, and the anchor is unique in each file — but `/proposals` is already under proof
+     * here for the desktop clip, so the driver is warmed on it and the precondition is honest.
+     * ⚠️ 1280, not 360: the assertion only runs at `width >= 1280`, deliberately, because below
+     * `lg` the app shell's own bars legitimately share the band.
+     */
+    name: "search-band-shares-the-bar-offset",
+    file: "src/app/proposals/page.tsx",
+    from: '          <div className="py-2.5">',
+    to: '          <div className="sticky top-[56px] z-20 py-2.5">',
+    expect: "ANOTHER STICKY SURFACE IS DRAWN THROUGH THE BAR",
+    route: "/proposals",
+  },
 ];

@@ -91,15 +91,27 @@
 > a guess — it is stronger-*looking* evidence for a wrong conclusion, and it arrives with a number
 > attached.
 >
-> ⚠️ **STILL OPEN, and NOT part of this campaign:** `QUERY_GROUP_CLASS`, the constant created by
-> that fix, still has **one adopter** — fourteen `<nav>`s across six other bars carry the
-> unrepaired `hidden shrink-0 items-center gap-1 lg:flex`. The repair landed in a constant and was
-> never rolled out. ⛔ And assertion 4's SECOND arm — *"ANOTHER STICKY SURFACE IS DRAWN THROUGH THE
-> BAR"*, the arm that caught the 91px search-band collision on three routes — has **no red
-> mutation**. It is a different code path from the "did not stick" arm that `bar-is-not-sticky`
-> proves, and assertion 1 cannot stand in for it (assertion 1 compares controls INSIDE
-> `[data-filter-rail]`; a search band is a sibling of the bar). The mutation it wants is a search
-> band made `sticky top-[56px]` again on `/proposals`, `/watchlist` or `/results`.
+> ✅ **BOTH REMAINING DEBTS ARE CLOSED (2026-09-09), and ONE OF THEM DID NOT EXIST.**
+>
+> · **Assertion 4's SECOND arm now has a red mutation** — `search-band-shares-the-bar-offset`
+>   sticks `/proposals`' search band back at `top-[56px]` and the driver catches it with
+>   *"ANOTHER STICKY SURFACE IS DRAWN THROUGH THE BAR"*. `red:bar-geometry` is **5/5**, files
+>   restored, green after restore. It needed its own case because it is a different code path from
+>   the "did not stick" arm, and assertion 1 cannot reach it: assertion 1 compares controls INSIDE
+>   `[data-filter-rail]` and a search band is a SIBLING of the bar.
+>
+> · 🔴 **`QUERY_GROUP_CLASS` WAS ALREADY FULLY ROLLED OUT, AND THIS NOTE WAS THE DEFECT.** It
+>   claimed "one adopter — fourteen `<nav>`s across six other bars carry the unrepaired string".
+>   Re-derived: **19 call sites across all 9 bars**, every one applying the constant, and the ONLY
+>   surviving occurrence of `hidden shrink-0 items-center gap-1 lg:flex` anywhere in `src/` is
+>   inside a COMMENT in `query-bar.tsx` explaining the original defect. The three remaining
+>   hand-written `hidden … lg:flex` groups are the admin sidebar, the auth page's decorative panel
+>   and the primary NAV — and §K rule 7 excludes a nav from the filter language BY NAME.
+>   ⚠️ **The claim was inherited from an older board and repeated twice today without being
+>   measured** — including into the component spec. Same disease as the three wrong ratchets and
+>   the three wrong product ratios: a number carried forward instead of re-derived. ⛔ Re-derive
+>   before believing any count in this document:
+>   `grep -rn 'hidden shrink-0 items-center gap-1 lg:flex' src/`
 
 ### What task 4.5 found — read before 4.6
 

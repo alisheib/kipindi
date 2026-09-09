@@ -55,6 +55,10 @@ const SHAPE = {
   "desktop-group-does-not-wrap": { widths: "1280", locales: "sw" },
   "bar-is-not-sticky": { widths: "1280", locales: "sw" },
   "control-below-the-tap-floor": { widths: "1280", locales: "sw" },
+  // ⚠️ 1280 IS NOT A PREFERENCE HERE, IT IS THE ONLY WIDTH THAT CAN PROVE IT. Assertion 4 runs
+  // only at `width >= 1280`, because below `lg` the app shell's own bars legitimately share the
+  // band — a run at 360 would report NOT CAUGHT and the harness would look like the defect.
+  "search-band-shares-the-bar-offset": { widths: "1280", locales: "sw" },
 };
 
 const runDriver = (only, shape) => {

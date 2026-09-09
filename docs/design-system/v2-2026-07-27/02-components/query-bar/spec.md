@@ -109,7 +109,7 @@ Stated once in `DESIGN_AUTHORITY.md` §K 6c. In brief, and none of them optional
 |---|---|
 | `data-filter-rail` | on the rail. Every geometry and count instrument keys on it |
 | `data-result-count` | the ONE result number, on the bar |
-| `QUERY_GROUP_CLASS` | the desktop group's class. ⚠️ **fourteen `<nav>`s across six other bars still carry the unrepaired `hidden shrink-0 items-center gap-1 lg:flex`** — the repair landed in a constant and was never rolled out |
+| `QUERY_GROUP_CLASS` | the desktop group's class. ✅ **Fully adopted — 19 call sites across all 9 bars**, re-derived 2026-09-09. ⚠️ This row previously claimed "fourteen `<nav>`s still carry the unrepaired string"; that was inherited from an older board and was FALSE when written. The only surviving occurrence of `hidden shrink-0 items-center gap-1 lg:flex` in `src/` is inside a COMMENT in `query-bar.tsx` explaining the defect. Re-derive rather than trust this cell: `grep -rn 'hidden shrink-0 items-center gap-1 lg:flex' src/` |
 | locale | the bar is measured in `sw` / `en` / `zh`; Swahili runs 35–40% longer than English |
 
 ## Guarded by
