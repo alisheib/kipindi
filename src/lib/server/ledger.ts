@@ -721,6 +721,38 @@ export async function ledgerAccountBalance(account: string): Promise<number> {
   return Number(result[0]?.sum ?? 0);
 }
 
+/**
+ * What ONE account actually received in ONE posted group — or `null` if we could not ask.
+ *
+ * ⭐ THE THREE-STATE RETURN IS THE WHOLE POINT, and it is §1.2/§6.11's lesson applied to a read
+ * instead of a config: `null` means "the store did not answer", `0` means "it answered, and
+ * nothing was booked". Collapsing those is how a caller reverses nothing and calls it a refund.
+ * `ledgerAccountBalance` above returns 0 with no database because its callers are display
+ * surfaces; this one feeds a money decision, so it refuses to guess.
+ *
+ * 🔴 WRITTEN FOR THE AGENT FEE REFUND. That path reversed VAT computed from TODAY's
+ * `feeVatRatePct`, so once Ali moved the rate 18 → 0 (2026-09-09) refunding the application
+ * collected at 18% would have returned the full gross and reversed VAT of ZERO — leaving
+ * `HOUSE:TAX` holding 18,000 against money that went entirely back, while the comment beside it
+ * claimed "HOUSE:TAX nets to zero on a refunded application". Reversing what the LEDGER says was
+ * booked is exact by construction and cannot rot the next time a rate moves.
+ */
+export async function ledgerGroupAccountSum(groupId: string, account: string): Promise<number | null> {
+  const pc = prisma();
+  if (!pc) return null;
+  try {
+    const result = await pc.$queryRawUnsafe<Array<{ sum: string | null }>>(
+      `SELECT SUM(amount) as sum FROM "LedgerEntry" WHERE "groupId" = $1 AND account = $2`,
+      groupId,
+      account,
+    );
+    return Number(result[0]?.sum ?? 0);
+  } catch (err) {
+    console.error(`[ledger] group sum ${groupId}/${account} failed:`, (err as Error)?.message ?? err);
+    return null;
+  }
+}
+
 // ── Trial balance: wallet ↔ ledger reconciliation (audit C3) ────────────────
 //
 // reconcileLedger() only asks "does each group sum to zero?" — which

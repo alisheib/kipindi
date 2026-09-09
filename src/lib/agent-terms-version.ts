@@ -18,7 +18,22 @@
  * module is shared by the page and the stamp is to make that impossible, and a stale value
  * defeats it just as completely as two separate constants would.
  *
- * ⚠️ Applications stamped `2026-09-07` **after** `cc946bbb` deployed were shown the 09-08
- * text. That is a production-data question, not a code one — see `docs/RULES.md` §2.10.
+ * ✅ **THAT PRODUCTION QUESTION IS NOW ANSWERED, AND THE ANSWER IS: NOTHING TO DO.** Read off
+ * the live database 2026-09-09 — there is exactly ONE `AgentApplication`
+ * (`agp_2031e6c2c4fd32545a18`, APPROVED), it accepted at **2026-09-07T13:05:49Z**, and
+ * `cc946bbb` was authored 2026-09-08T02:37, nearly half a day LATER. The applicant was shown
+ * `a783299f`'s text, which declared `2026-09-07`, and that is what the row records. The
+ * acceptance record is accurate; no officer note and no rewrite are needed.
+ * `MONEY-GATE-REMEDIATION.md` §7.2.
+ *
+ * 🔴 **BUMPED 2026-09-09 — the binding EN text moved again.** Ali set the registration fee
+ * VAT-free (`feeVatRatePct` 18 → 0), and §2's fee clause is derived from the config: at a zero
+ * rate the VAT parenthetical is now EMPTY where it previously read "(TZS 100,000 plus TZS
+ * 18,000 VAT)". The price a signatory is quoted changed from 118,000 to 100,000, which is
+ * exactly the kind of change this constant exists to version. `COMPLIANCE-DECISIONS.md`
+ * § 2026-09-09.
+ *
+ * ⚠️ Nothing compares this to a stored value, so moving it forces NO re-acceptance. The one
+ * existing row keeps `2026-09-07`, which is the correct record of what that person was shown.
  */
-export const AGENT_TERMS_VERSION = "2026-09-08";
+export const AGENT_TERMS_VERSION = "2026-09-09";

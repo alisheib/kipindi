@@ -71,10 +71,20 @@ export default async function AgentProgrammePage({ searchParams }: { searchParam
    * the VAT is inside it. ⛔ Three surfaces used to state "VAT inclusive" in prose regardless,
    * including the binding terms.
    */
-  const vatLine = cfg.feeVatTreatment === "EXCLUSIVE"
+  /**
+   * ⛔ NO VAT COMPONENT, NO VAT SENTENCE — both of these go SILENT when the computed VAT is
+   * 0 (Ali set the registration fee VAT-free on 2026-09-09). Every string available here
+   * asserts a VAT treatment: `feeVatPlus` renders "TZS 100,000 + TZS 0 VAT" and BOTH hint
+   * strings end "VAT inclusive". At a zero rate each of them is a false statement about a
+   * tax, on the public page that quotes the price, so the honest render is NEITHER.
+   * `Stat` already guards `hint`, so dropping it renders nothing rather than an empty line.
+   * ⭐ Keyed on the computed component, not on the rate or the treatment.
+   */
+  const noVat = fee.vatTzs === 0;
+  const vatLine = noVat ? null : cfg.feeVatTreatment === "EXCLUSIVE"
     ? fill(t.agent.feeVatPlus, { net: formatTzs(fee.netTzs), vat: formatTzs(fee.vatTzs) })
     : t.agent.feeVatInclusive;
-  const vatHint = cfg.feeVatTreatment === "EXCLUSIVE" ? t.agent.statCostHintPlus : t.agent.statCostHint;
+  const vatHint = noVat ? undefined : cfg.feeVatTreatment === "EXCLUSIVE" ? t.agent.statCostHintPlus : t.agent.statCostHint;
   /**
    * ⭐ THE WATERFALL'S RATES, READ LIVE FROM `market.config` — ⛔ never the cold-start
    * constants in `payout.ts`.
@@ -241,7 +251,7 @@ export default async function AgentProgrammePage({ searchParams }: { searchParam
       <section className="rounded-xl border border-gold-700 p-4" style={{ background: "color-mix(in oklab, var(--gold-500) 8%, var(--bg-elevated))" }}>
         <p className="font-mono text-micro uppercase eyebrow font-bold text-gold-300">{t.agent.feeTitle}</p>
         <p className="mt-2 amount text-title-lg font-bold text-gold-300">{formatTzs(fee.totalTzs)}</p>
-        <p className="mt-0.5 font-mono text-body-sm text-text-subtle">{vatLine}</p>
+        {vatLine ? <p className="mt-0.5 font-mono text-body-sm text-text-subtle">{vatLine}</p> : null}
         <p className="mt-3 text-body-sm leading-relaxed text-text">
           {fillNodes(t.agent.feeBody, { amount: <span className="amount text-gold-300">{formatTzs(fee.totalTzs)}</span>, name: cfg.feeDestinationName, account: cfg.feeDestinationAccount })}
         </p>

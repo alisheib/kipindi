@@ -22,7 +22,7 @@ below as a launch verdict.
 
 | | |
 |---|---|
-| **Session 3 work** | ✅ **DONE and SHIPPED** — 3 defects fixed, 2 new guards, both proven RED |
+| **Session 3 work** | ✅ **DONE and SHIPPED** — 6 defects fixed, 3 new guards, each proven RED |
 | **`e2e:money` against real Postgres** | ✅ **RAN — the first time ever. 64 passed, 0 failed** (§7.4) |
 | **Production reads (§4.3)** | ✅ **DONE** — and one of them found a live rate divergence (§7.1) |
 | **§4.4 — the agent terms stamp** | ✅ **ANSWERED, no action needed** (§7.2) |
@@ -30,17 +30,24 @@ below as a launch verdict.
 | **The 35 HIGH findings** | 🟠 **5 adjudicated (3 refuted, 2 confirmed) · 3 attempted-and-died · 27 untouched** |
 | **42 MEDIUM · 14 LOW** | 🔴 **none attempted** |
 | **The five dead lanes** | 🔴 **still never run** — `settlement-lifecycle` · `agent-commission` · `updown-money` · `docs-drift` · `controls-and-guards` |
-| **Ali's decisions** | 🔴 **§4.1 kill-switch · §4.2 clawback · §4.5 rebaseline — open. PLUS §7.1, new and the most urgent** |
+| **Ali's decisions** | 🟠 **§7.1 the agent VAT rate — ✅ DECIDED and shipped (§7.10). §4.1 kill-switch · §4.2 clawback · §4.5 rebaseline — still open** |
 
-### 🔴 THE ONE THING TO PUT IN FRONT OF ALI FIRST
+### ✅ THE BIGGEST FINDING OF SESSION 3, AND ALI HAS ALREADY RULED ON IT
 
-**Production charges TZS 100,000 for an agent registration and remits no VAT, while RULES §6,
-`AGENT-PROGRAMME.md` §5a and `COMPLIANCE-DECISIONS.md` all say TZS 118,000 at 18%.**
-`agent.config.feeVatRatePct` is **0**. It moved 18 → 0 on 2026-09-08T17:42:24Z inside a save
-whose evident purpose was changing the Lipa fee destination, and no screen could show that
-because the audit's `changes` field was the whole posted form. **Exposure is TZS 0 so far** — the
-one agent who has ever registered paid 118,000, before the change. ⛔ **Not actioned: it is a
-rate, so RULES §5 step 1 applies.** Full evidence in **§7.1**.
+Production was charging **TZS 100,000** for an agent registration and remitting no VAT, while
+RULES §6, `AGENT-PROGRAMME.md` §5a and `COMPLIANCE-DECISIONS.md` all said **118,000 at 18%**.
+`agent.config.feeVatRatePct` had moved **18 → 0** on 2026-09-08T17:42:24Z inside the save that
+changed the Lipa fee destination, and no screen could show it because the audit's `changes`
+field was the whole posted form.
+
+⭐ **Ali ruled 2026-09-09: the fee bears NO VAT. Production was right; the documents were
+wrong.** The law now says so deliberately — `COMPLIANCE-DECISIONS.md` § 2026-09-09, RULES §2.10,
+`AGENT-PROGRAMME.md` §5a — and the copy, the terms version and the refund path moved with it
+(§7.10). ⛔ **Not retroactive:** the one agent registered before it paid 118,000 and the 18,000
+in `HOUSE:TAX` is a real liability to TRA.
+
+⚠️ **The one shilling still open: who remits that 18,000, and when.** It is recorded as owed
+to the state, not as house cash.
 
 ### ⛔ THE THREE WAYS SESSION 4 GETS THIS WRONG
 
@@ -76,7 +83,8 @@ rate, so RULES §5 step 1 applies.** Full evidence in **§7.1**.
 | `46ace149` | §6.9 the AML phantom `providerRef` · §6.8 the verify pass that survived |
 | `ae4a3bbf` | **session 3** — §7.4 `e2e:money` executed at last, and the retired 1% it was asserting · the §4.3/§4.4 production reads |
 | `3ebb9c6b` | §7.6 the config audit's `changes` becomes a real diff — `LEAD-B.1a`, the defect that hid §7.1's VAT rate |
-| `(this)` | §7.7 the last retired-1% fixture · §7.8 `/legal/terms` §4 gets the guard it never had |
+| `94a3445d` | §7.7 the last retired-1% fixture · §7.8 `/legal/terms` §4 gets the guard it never had |
+| `(this)` | §7.10 Ali's VAT ruling, the copy, the terms version and the refund's booked-VAT reversal · §7.11 `test:agent-fee-copy`, the guard two docblocks swore existed |
 
 ### Guards this programme owns
 
@@ -84,7 +92,7 @@ rate, so RULES §5 step 1 applies.** Full evidence in **§7.1**.
 `test:payout-callback-identity` · `test:aml-dispatch-window` — plus session 1's
 `test:payment-control` · `red:payment-control` · `test:webhook-sec` · `red:webhook-money` ·
 `test:fee-model-caption` · `red:fee-model-caption` — plus session 3's
-`test:config-audit-diff` · `test:terms-cancellation`, and **`e2e:money`, which is the only
+`test:config-audit-diff` · `test:terms-cancellation` · `test:agent-fee-copy`, and **`e2e:money`, which is the only
 behavioural one and needs a real Postgres** (`scripts/load/README.md`).
 
 ⛔ **All of these are `test:` or `red:` scripts EXCEPT `e2e:money`, which is deliberately not in
@@ -1300,3 +1308,92 @@ mattered less.
 | **§6.13's `reverseStuckPayoutAction` residual** | Untouched. Still an officer override that records *"not asked (no provider reference)"*. Left because tightening a deliberate override is a policy call, exactly as §6.13 concluded — and this session had no capacity to put it to Ali properly |
 | **§6.10's `maybeReconcileLedger` 24h clock** | Untouched, and **now refuted-adjacent**: `LEAD-G.2` was REFUTED 3/3 in session 2. Session 2 already rated it low because three other runners cover the question. No action taken and none obviously needed |
 | **`AGENT-PROGRAMME.md` line 97's stale fee destination** | ⛔ **Deliberately NOT corrected.** It names the OLD destination while production carries the new one. A sibling session verified the new destination is live and correct and is putting it to Ali *separately from the VAT rate* — the two halves of that one save are a settled fact and an open compliance question respectively, and correcting them in one edit would imply they were one decision |
+
+### 7.10 · ✅ RESOLVED BY ALI — the fee is VAT-free, and three things had to move with it
+
+**Ali ruled on 2026-09-09: the agent registration fee is TZS 100,000 and bears no VAT.** §7.1 put
+the divergence to him with the production evidence; he decided the **documents** were wrong and
+production was right. `COMPLIANCE-DECISIONS.md` § 2026-09-09 is the record, and RULES §5's seven
+steps ran in one commit.
+
+⭐ **THE DECISION RATIFIES PRODUCTION RATHER THAN CHANGING IT.** No config was edited on the live
+database by this programme. `feeVatRatePct` has read 0 there since 2026-09-08T17:42:24Z; what
+changed is that the law now says so deliberately instead of by accident.
+
+⛔ **NOT RETROACTIVE.** The one agent registered before it paid TZS 118,000, and the 18,000 in
+`HOUSE:TAX` stays a genuine liability to TRA — VAT lawfully collected under the rate then in
+force. A rate change never reprices what has already been collected, the same doctrine that
+forbids backfilling `PredictionMarket.feeSnapshot`. ⚠️ **The one shilling still open:** who
+remits that 18,000, and when. It is recorded as owed to the state, not as house cash.
+
+**Three things the decision dragged with it, none of them obvious from the rate alone:**
+
+**① The binding contract was about to say "plus TZS 0 VAT".** `feeVatTreatment` stayed
+`EXCLUSIVE` while the rate went to zero, so `/legal/agent-terms` §2 rendered
+**"(TZS 100,000 plus TZS 0 VAT)"** and `/agent` showed *"TZS 100,000 + TZS 0 VAT"* under the hint
+*"one-off registration fee, VAT included in this total"* — three assertions about a tax on a fee
+that bears none. Both now go **silent** when the computed component is 0, in all three languages.
+⭐ Keyed on the **computed component**, not on the rate or the treatment, so it is right for
+every combination rather than for today's. ⛔ `/admin/agents` deliberately still shows `0%` —
+that is the officer screen where a wrong rate gets caught, and blanking it would remove the very
+visibility this programme is trying to add.
+
+**② `AGENT_TERMS_VERSION` → 2026-09-09.** The price a signatory is quoted moved from 118,000 to
+100,000, which is exactly what this constant versions. ⚠️ Nothing compares it to a stored value,
+so it forces no re-acceptance; the existing row keeps `2026-09-07`, the correct record of what
+that person was shown.
+
+**③ 🔴 A REFUND WOULD HAVE STRANDED 18,000 IN `HOUSE:TAX`.** `recordFeeRefund` reversed
+`vatWithinGross(amount, cfg.feeVatRatePct)` — **today's** rate. The moment the rate became 0,
+refunding the application collected at 18% would have returned the full 118,000 and reversed VAT
+of **zero**, while the comment three lines above promised *"`HOUSE:TAX` nets to zero on a refunded
+application"*. That promise held only while a rate never moved between collection and refund, and
+it had just moved.
+
+⭐ **Fixed by reading the ledger instead of the config.** New `ledgerGroupAccountSum(groupId,
+account)` returns what the collection actually posted to `HOUSE:TAX` — exact by construction, no
+schema change, and it cannot rot the next time a rate moves. ⛔ **It returns `null` for "could
+not ask" and `0` for "asked, nothing booked"**, and only `null` falls back to computing; the
+audit records which source was used. That three-state return is §1.2/§6.11's lesson applied to a
+read rather than a config — collapsing "no answer" into "no value" is how a caller reverses
+nothing and calls it a refund.
+
+⚠️ **Population today is zero** — nothing is in `REFUND_DUE`, so no money was ever at risk. The
+mechanism was armed, not fired.
+
+### 7.11 · ⛔ A GUARD THAT TWO DOCBLOCKS SWORE EXISTED, AND NEVER DID
+
+`scripts/agent-fee-copy.test.mts` (new, `npm run test:agent-fee-copy`)
+
+While fixing ①, both docblocks that govern the fee copy turned out to cite a guard that has
+never existed:
+
+- `src/app/legal/agent-terms/page.tsx` — *"`test:agent-fee-copy` refuses a locale that states a
+  treatment the config does not have"*
+- `src/lib/server/agent-application-service.ts` — *"A guard (`test:agent-fee-copy`) now holds
+  that shut."*
+
+**There was no such script and no such npm entry.** `grep` across the repo returns those two
+comments and nothing else.
+
+⭐ **AND THE THING IT CLAIMED TO PREVENT IS EXACTLY WHAT HAPPENED.** The copy asserted a VAT
+treatment the config did not have, in the binding contract, for a day — which is the sentence
+the comment describes almost word for word. **A comment naming a guard is worse than silence:
+the next reader stops looking.** This belongs to the `controls-and-guards` lane, which has still
+never run — and it was found by walking into it, not by auditing for it. ⚠️ **There may be more
+of these**, and the lane is the way to find out.
+
+The guard now exists, at 27/0, and it tests `agentFeeVatClause()` — the function
+`/legal/agent-terms` actually calls, extracted to module scope for the purpose — rather than a
+re-implementation of its logic.
+
+| arm | result |
+|---|---|
+| **GREEN** | 27 passed, 0 failed |
+| **RED** — rate put back to 18 | **6 failures**, §2 rendering `"(TZS 100,000 plus TZS 18,000 VAT)"` |
+| **RED** — copy fix reverted at rate 0 | **5 failures**, rendering the exact absurd strings: `"(TZS 100,000 plus TZS 0 VAT)"`, `"(TZS 100,000 pamoja na VAT TZS 0)"`, `"（TZS 100,000 加 TZS 0 增值税）"` |
+| ⚠️ **POSITIVE CONTROL** | §4 stayed GREEN through **both** red runs — it catches all three pre-fix forms and does **not** fire on clean copy |
+| ⛔ **§5, the refund** | proves today's rate reverses 0 of an 18,000 leg, the booked figure reverses all of it, and a `null` read falls back to computing rather than silently reversing nothing |
+
+**Suites re-run green:** `agent-policy` 36/0 · `agent-eligibility` 30/0 ·
+`agent-application-security` 109/0 · `agent-clawback` 23/0 · `ledger` 89/0 · `tsc` clean.

@@ -45,7 +45,7 @@ import { putKycDocument, deleteKycDocument } from "./storage";
 import { isStaffRole } from "./roles";
 import { isLockedOut, selfExclusionStanding } from "./responsible-gambling";
 import { revokeUserSessions } from "./session-registry";
-import { postLedgerEntries, agentRegistrationFeeEntries } from "./ledger";
+import { postLedgerEntries, agentRegistrationFeeEntries, ledgerGroupAccountSum, acct } from "./ledger";
 import { appUrl } from "@/lib/app-url";
 import { formatTzs } from "@/lib/utils";
 import { AGENT_STATUS } from "@/lib/admin-status-lexicon";
@@ -802,12 +802,29 @@ export async function recordFeeRefund(officerId: string, applicationId: string, 
     // 🔴 This used to branch on whether the stamped amount still matched config and otherwise
     // apply the INCLUSIVE back-out unconditionally, which mis-reversed the tax leg under an
     // EXCLUSIVE treatment at any rate other than the one in force. See `vatWithinGross`.
+    // 🔴 REVERSE WHAT WAS BOOKED, NOT WHAT TODAY'S RATE WOULD BOOK. This read
+    // `vatWithinGross(amount, cfg.feeVatRatePct)` — the rate in force NOW — and the comment
+    // above promised `HOUSE:TAX` nets to zero on a refunded application. That promise held
+    // only while the rate never moved between collection and refund, and on 2026-09-09 it
+    // moved: Ali set `feeVatRatePct` 18 → 0. Refunding the application collected at 18%
+    // would then have returned the full 118,000 and reversed VAT of ZERO, stranding 18,000
+    // in `HOUSE:TAX` against money that went entirely back.
+    //
+    // ⭐ The ledger already knows the answer exactly: the collection posted the VAT leg into
+    // `agentfee_${app.id}`. Reading it back is exact by construction, needs no new column,
+    // and cannot rot the next time a rate moves.
+    //
+    // ⛔ `null` means the store DID NOT ANSWER — not "no VAT". Only then do we fall back to
+    // computing it, and the audit records which source was used so a reversal can always be
+    // explained. Treating an unanswered read as 0 is exactly the §1.2 defect.
+    const bookedVat = await ledgerGroupAccountSum(`agentfee_${app.id}`, acct.tax);
+    const vatReversed = bookedVat ?? vatWithinGross(amount, cfg.feeVatRatePct);
     await postLedgerEntries(`agentfee_refund_${app.id}`, agentRegistrationFeeEntries({
       groupRef: app.id, userId: app.userId, amount: -amount,
-      vatAmount: -vatWithinGross(amount, cfg.feeVatRatePct),
+      vatAmount: -vatReversed,
       description: `Agent registration fee refunded · ${ref}`,
     })).catch(() => {});
-    audit({ category: "COMPLIANCE", action: "agent.fee.refunded", actorId: officerId, targetType: "AgentApplication", targetId: app.id, payload: { amountTzs: amount, reference: ref, rejectedBy: app.reviewerId, destination: app.feeSourceAccount } });
+    audit({ category: "COMPLIANCE", action: "agent.fee.refunded", actorId: officerId, targetType: "AgentApplication", targetId: app.id, payload: { amountTzs: amount, reference: ref, rejectedBy: app.reviewerId, destination: app.feeSourceAccount, vatReversedTzs: vatReversed, vatSource: bookedVat === null ? "computed-from-config" : "ledger" } });
     notifyAgentFeeRefunded(app.userId, { amountTzs: amount, reference: ref });
     sendEmailToUser(app.userId, (email) => ({ to: email, subject: `Your agent registration fee has been refunded · ${formatTzs(amount)}`, html: agentFeeRefundedHtml({ amountTzs: amount, reference: ref, destinationMasked: app.feeSourceAccount }), tag: "agent-fee-refunded" })).catch(() => {});
     return { ok: true as const };

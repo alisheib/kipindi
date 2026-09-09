@@ -165,7 +165,22 @@ export const DEFAULT_AGENT_CONFIG: AgentConfig = {
   // ⭐ INCLUSIVE → EXCLUSIVE on management's instruction, 2026-09-08: "TZS 100,000 + VAT =
   // 118,000". The published price is the net; the applicant pays the net plus VAT.
   feeVatTreatment: "EXCLUSIVE",
-  feeVatRatePct: 18,
+  // 🔴 18 → 0, Ali's decision 2026-09-09. The registration fee is NOT VAT-bearing, so an
+  // applicant owes the published TZS 100,000 and nothing is booked to `HOUSE:TAX`.
+  //
+  // ⛔ THE DECISION RATIFIES PRODUCTION, IT DOES NOT CHANGE IT. `agent.config` on the live
+  // database has carried `feeVatRatePct: 0` since 2026-09-08T17:42:24Z, where it travelled —
+  // unannounced — inside the save that changed the Lipa fee destination. The money gate found
+  // it on a production read; the platform had already been quoting 100,000 for a day; and Ali
+  // ruled that the 100,000 is right and the documents were what needed correcting.
+  // `COMPLIANCE-DECISIONS.md` § 2026-09-09 carries the reasoning, RULES §5 the procedure.
+  //
+  // ⛔ IT IS NOT RETROACTIVE. The one agent registered before it paid TZS 118,000 under the
+  // 18% then in force, and `HOUSE:TAX` holds that 18,000 as a genuine liability to TRA. A rate
+  // change never reprices what has already been collected — the same doctrine that forbids
+  // backfilling `PredictionMarket.feeSnapshot`. The refund path reverses the VAT that was
+  // actually BOOKED, not today's rate, so that application still nets `HOUSE:TAX` to zero.
+  feeVatRatePct: 0,
   feeDestinationName: "Digital Selcom Bank",
   feeDestinationAccount: "0769777877",
   commissionWindowMonths: 0,

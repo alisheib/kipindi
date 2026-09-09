@@ -40,7 +40,7 @@ VAT treatment, the unit of the review promise — and adds a deduction the platf
 | Their note, against | What it said | What was done |
 |---|---|---|
 | the "What you earn" tile | "Agent fee = 10% of commission on winnings after tax" | `defaultCommissionPct` 20 → **10** |
-| the "What it costs" tile | "TZS 100,000 + VAT = 118,000" | `feeVatTreatment` INCLUSIVE → **EXCLUSIVE**; the applicant-facing total is now TZS 118,000 |
+| the "What it costs" tile | "TZS 100,000 + VAT = 118,000" | `feeVatTreatment` INCLUSIVE → **EXCLUSIVE**; the applicant-facing total was TZS 118,000. ⭐ **SUPERSEDED 2026-09-09** — Ali ruled the fee bears **no VAT**, `feeVatRatePct` is **0**, and the tile now reads **TZS 100,000** with no VAT sentence at all |
 | the "Approval time" tile | "5 Working days" | the copy reads **working days** in all three locales, and `/admin/agents` measures the SLA with `workingDaysBetween` so the promise and the "Past SLA" chip are one fact |
 | the commission paragraph | "Remove this and Keep this below:" — followed by an eight-row financial waterfall | the paragraph (`agent.earnBody`) is **deleted**; the waterfall is rendered on `/agent` from `src/lib/agent-commission.ts` |
 
@@ -154,8 +154,8 @@ erasure can never reach.
 
 | | |
 |---|---|
-| **Amount** | ⭐ **TZS 118,000 — TZS 100,000 PLUS 18% VAT** (management, 2026-09-08; supersedes the VAT-inclusive decision of 2026-09-07). `registrationFeeTzs` holds the **net** 100,000 and `feeVatTreatment = EXCLUSIVE`; ⛔ what an applicant owes is `feeBreakdown().totalTzs` and nothing may quote the raw config field. Stated in `RULES.md` §2.10 |
-| **Destination** | Digital Selcom Bank, account **0769777877** |
+| **Amount** | ⭐ **TZS 100,000 — NO VAT** (Ali, 2026-09-09; supersedes management's 2026-09-08 VAT-exclusive 118,000, which superseded the VAT-inclusive decision of 2026-09-07). `registrationFeeTzs` holds 100,000, `feeVatTreatment` stays `EXCLUSIVE` and `feeVatRatePct` is **0**, so `feeBreakdown().totalTzs` is **100,000** and `vatTzs` is **0**. ⛔ What an applicant owes is `feeBreakdown().totalTzs` and nothing may quote the raw config field. ⛔ At a zero component **no surface may state a VAT treatment** — the binding terms and `/agent` go silent, or they render "(TZS 100,000 plus TZS 0 VAT)". ⛔ **NOT retroactive**: the one agent registered before it paid **118,000** and `HOUSE:TAX` holds that 18,000 as a genuine liability to TRA. Stated in `RULES.md` §2.10 · `COMPLIANCE-DECISIONS.md` § 2026-09-09 · `npm run test:agent-fee-copy` |
+| **Destination** | ⚠️ **THIS ROW IS STALE, AND IS A SEPARATE OPEN ITEM — NOT corrected here.** It reads "Digital Selcom Bank, account **0769777877**"; production has read `Selcom LIPA NAMBA - OCEAN ENTERTAINMENT LIMITED` / `7006 3747` since 2026-09-08T17:42:24Z. ⛔ Left uncorrected deliberately: the destination is a **settled live fact** awaiting a doc owner, while the VAT rate that moved in the SAME save was an **open compliance question**. Correcting them together would imply they were one decision. See `MONEY-GATE-REMEDIATION.md` §7.1 |
 | **How** | Paid **out of band**; the applicant uploads the receipt and types the reference. ⭐ **Scannable since 2026-09-08** — see the note below |
 | **Waiver** | ⭐ An officer may waive it or record it as collected in cash — **with a typed reason, audited** (Ali, 2026-09-06) |
 | **On rejection** | **Refunded in full** — we did not provide the service |
@@ -166,10 +166,17 @@ invariants.
 
 ✅ **It posts a `LedgerEntry` (2026-09-07).** `agentRegistrationFeeEntries` books the fee to
 `HOUSE:AGENT_FEE` with its VAT split at reconciliation, so the house book, trial balance,
-regulator pack and the tax figures all see it. **VAT is settled:** the fee is **VAT-EXCLUSIVE**
-at the configured rate (`feeVatRatePct`, 18% today) — `feeBreakdown()` is the one place the
-split is computed (TZS 100,000 net + TZS 18,000 VAT = TZS 118,000 payable). The `INCLUSIVE` treatment
-exists in config for a future change of policy and is not in force.
+regulator pack and the tax figures all see it. ⭐ **VAT is settled, and the answer is NONE**
+(Ali, 2026-09-09): `feeVatRatePct` is **0**, so `feeBreakdown()` — still the one place the split
+is computed — returns **TZS 100,000 payable with a zero VAT component**, and
+`agentRegistrationFeeEntries` omits the `HOUSE:TAX` leg entirely. The `EXCLUSIVE` treatment
+remains set but adds nothing at a zero rate, and the `INCLUSIVE` treatment exists in config for
+a future change of policy and is not in force.
+
+⛔ **A REFUND REVERSES WHAT WAS BOOKED, NOT TODAY'S RATE.** `recordFeeRefund` reads the VAT leg
+the collection actually posted (`ledgerGroupAccountSum`), so the one application collected at
+18% still nets `HOUSE:TAX` to zero if it is ever refunded. Computing the reversal from live
+config would have returned its full 118,000 and reversed **zero**.
 
 🔴 **One receipt, one application** — `feeReference` is unique. And a refund needs **evidence and a
 deadline**: money *in* requires a receipt image, so money *out* must not be one officer typing a

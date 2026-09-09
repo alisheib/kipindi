@@ -32,6 +32,34 @@ const META: Record<Locale, string> = {
   zh: `版本 ${AGENT_TERMS_VERSION} · 提交代理申请时即视为接受。`,
 };
 
+/**
+ * ⛔ NO VAT COMPONENT, NO VAT SENTENCE. When the computed VAT is 0 the clause is EMPTY in
+ * all three languages — the fee is simply the published figure.
+ *
+ * 🔴 THE DEFECT THIS CLOSES. `feeVatTreatment` is still `EXCLUSIVE` while the rate went to
+ * 0 (Ali, 2026-09-09), and the unconditional form rendered the BINDING contract as
+ * "(TZS 100,000 plus TZS 0 VAT)" — literally true, absurd to read, and asserting a VAT
+ * treatment on a fee that bears none. Under `INCLUSIVE` at rate 0 it was worse: a flat
+ * "(VAT inclusive)" claiming a tax sits inside a price that contains none.
+ *
+ * ⭐ The condition is on the COMPUTED component, not on the rate or the treatment, so it is
+ * right for every combination of the two rather than for the one in force today.
+ * `npm run test:agent-fee-copy` holds it — and ⚠️ that guard did NOT exist until 2026-09-09,
+ * although this very docblock claimed it did.
+ */
+export function agentFeeVatClause(
+  fee: { netTzs: number; vatTzs: number },
+  treatment: "INCLUSIVE" | "EXCLUSIVE",
+): Record<Locale, string> {
+  const exclusive = treatment === "EXCLUSIVE";
+  const full: Record<Locale, string> = {
+    en: exclusive ? `(${formatTzs(fee.netTzs)} plus ${formatTzs(fee.vatTzs)} VAT)` : "(VAT inclusive)",
+    sw: exclusive ? `(${formatTzs(fee.netTzs)} pamoja na VAT ${formatTzs(fee.vatTzs)})` : "(ikijumuisha VAT)",
+    zh: exclusive ? `\uff08${formatTzs(fee.netTzs)} \u52a0 ${formatTzs(fee.vatTzs)} \u589e\u503c\u7a0e\uff09` : "\uff08\u542b\u589e\u503c\u7a0e\uff09",
+  };
+  return fee.vatTzs === 0 ? { en: "", sw: "", zh: "" } : full;
+}
+
 export default async function AgentTermsPage() {
   const { t, locale } = await getServerT();
   const cfg = getAgentConfig();
@@ -47,11 +75,7 @@ export default async function AgentTermsPage() {
   /** ⭐ Management's withholding line (2026-09-08) is a term of the contract, so §3 states it. */
   const whtPct = String(cfg.agentWithholdingTaxPct);
   const exclusive = cfg.feeVatTreatment === "EXCLUSIVE";
-  const vatClause: Record<Locale, string> = {
-    en: exclusive ? `(${formatTzs(fee.netTzs)} plus ${formatTzs(fee.vatTzs)} VAT)` : "(VAT inclusive)",
-    sw: exclusive ? `(${formatTzs(fee.netTzs)} pamoja na VAT ${formatTzs(fee.vatTzs)})` : "(ikijumuisha VAT)",
-    zh: exclusive ? `\uff08${formatTzs(fee.netTzs)} \u52a0 ${formatTzs(fee.vatTzs)} \u589e\u503c\u7a0e\uff09` : "\uff08\u542b\u589e\u503c\u7a0e\uff09",
-  };
+  const vatClause = agentFeeVatClause(fee, cfg.feeVatTreatment);
   const rate = String(cfg.defaultCommissionPct);
   const cap = String(cfg.maxCommissionPct);
   const refundDays = String(cfg.refundDeadlineDays);

@@ -145,6 +145,7 @@
     "test:config": "tsx scripts/config-persist.test.mts",
     "test:config-audit-diff": "tsx scripts/config-audit-diff.test.mts",
     "test:terms-cancellation": "tsx scripts/terms-cancellation.test.mts",
+    "test:agent-fee-copy": "tsx scripts/agent-fee-copy.test.mts",
     "test:ai-usage": "tsx scripts/ai-usage.test.mts",
     "test:ai-budget": "tsx scripts/ai-budget-enforcement.test.mts",
     "test:ai-cycles": "tsx scripts/ai-cycles.test.mts",

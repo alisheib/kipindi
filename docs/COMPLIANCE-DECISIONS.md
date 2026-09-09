@@ -6,6 +6,87 @@
 
 ---
 
+## 2026-09-09 · The agent registration fee is NOT VAT-bearing — TZS 100,000, no VAT
+
+**Decision:** Ali, **2026-09-09**, put to him by the money-gate programme with the production
+evidence below. The agent registration fee is **TZS 100,000 and bears no VAT**.
+`feeVatRatePct` is **0**. This **supersedes** the 2026-09-08 entry below *as to the VAT
+treatment only* — the 10% commission, the 5% withholding, the 5-working-day SLA, the 40%
+ceiling and everything else in that entry **STAND**.
+
+| Term | Was (2026-09-08) | Is (2026-09-09) | Enforced |
+|---|---|---|---|
+| What an applicant owes | **TZS 118,000** (100,000 + 18% VAT) | **TZS 100,000**, no VAT | `feeBreakdown().totalTzs` · `test:agent-fee-copy` |
+| `feeVatRatePct` | 18 | **0** | `agent-config.ts` default · the live `agent.config` row |
+| `feeVatTreatment` | `EXCLUSIVE` | `EXCLUSIVE` — **unchanged** | at a 0 rate the treatment adds nothing |
+| VAT booked to `HOUSE:TAX` per registration | 18,000 | **0** | `agentRegistrationFeeEntries` omits the leg at 0 |
+
+### ⛔ THIS DECISION RATIFIES PRODUCTION — IT DID NOT CHANGE IT
+
+**The rate had already been 0 on the live database for a day before anyone knew.** It moved
+**18 → 0** at **2026-09-08T17:42:24Z** inside an `agent.config.updated` save whose evident
+purpose was the Lipa fee destination (`Digital Selcom Bank` / `0769777877` →
+`Selcom LIPA NAMBA - OCEAN ENTERTAINMENT LIMITED` / `7006 3747`). Nothing else in that save
+moved. The money gate found it on a production read on 2026-09-09, by which time every
+applicant-facing surface had been quoting TZS 100,000 for a day.
+
+⭐ **AND NO SCREEN COULD HAVE SHOWN IT.** That audit row's `changes` field listed **all sixteen**
+config fields, because `changes` was the whole posted form rather than a diff. An officer
+reviewing it saw sixteen indistinguishable "changes" and could not tell that one of them was a
+statutory rate going to zero. That defect is fixed in the same programme
+(`MONEY-GATE-REMEDIATION.md` §7.6, `npm run test:config-audit-diff`) — a config audit now
+records `{ field: { from, to } }` for the fields that actually moved.
+
+⛔ **The lesson is recorded because it will recur:** reading the ONE production field you came
+for tells you nothing about the others written in the same save.
+
+### ⛔ NOT RETROACTIVE
+
+The one agent registered before this decision (`agp_2031e6c2c4fd32545a18`, APPROVED
+2026-09-07) paid **TZS 118,000** under the 18% then in force. `HOUSE:AGENT_FEE` holds 100,000
+and `HOUSE:TAX` holds **18,000**, and that 18,000 remains a **genuine liability to TRA** — it is
+VAT lawfully collected under the rate in force at the time.
+
+⛔ **It is not to be refunded, reclassified or backfilled.** A rate change never reprices what
+has already been collected — the same doctrine that forbids rewriting
+`PredictionMarket.feeSnapshot`, and for the same reason: the two regimes never mix.
+
+⚠️ **Ali should confirm the remittance path for that 18,000** — this entry records it as owed to
+the state, not as house cash. It is the only shilling this decision leaves open.
+
+### What changed in code, in one commit (RULES §5 step 4)
+
+- `agent-config.ts` — `feeVatRatePct` default **18 → 0**.
+- `/legal/agent-terms` — the fee clause's VAT parenthetical is **empty in all three languages**
+  when the computed VAT is 0. It rendered **"(TZS 100,000 plus TZS 0 VAT)"**, which is literally
+  true, absurd to read, and asserts a VAT treatment on a fee that bears none. Extracted as
+  `agentFeeVatClause()` so a guard tests the function the page actually calls.
+- `/agent` — the VAT line and the "VAT inclusive" stat hint **both go silent** at a zero
+  component. Every available string asserted a tax.
+- ⭐ **`/admin/agents` deliberately still shows `plus VAT 0% · 0 tax`.** An officer screen SHOULD
+  display the configured rate, including when it is zero — that is the screen on which this
+  would have been caught.
+- `AGENT_TERMS_VERSION` → **2026-09-09**. The binding EN text moved: the price a signatory is
+  quoted went from 118,000 to 100,000. ⚠️ Nothing compares it to a stored value, so it forces no
+  re-acceptance; the existing row keeps `2026-09-07`, the correct record of what that person saw.
+- 🔴 **The refund now reverses the VAT actually BOOKED, not today's rate.** It read
+  `vatWithinGross(amount, cfg.feeVatRatePct)`, so after this decision a refund of the
+  application collected at 18% would have returned the full 118,000 and reversed VAT of **zero**,
+  stranding 18,000 in `HOUSE:TAX` against money that went entirely back — while the comment
+  beside it promised "`HOUSE:TAX` nets to zero on a refunded application". New
+  `ledgerGroupAccountSum()` reads the VAT leg the collection posted. ⛔ It returns **`null` for
+  "could not ask"** and `0` for "asked, nothing booked"; only `null` falls back to computing, and
+  the audit records which source was used.
+
+**Guards:** `npm run test:agent-fee-copy` — **27/0**, and ⚠️ **it did not exist until today
+although two docblocks claimed it did** (`agent-terms/page.tsx` and `agent-application-service.ts`
+both cited `test:agent-fee-copy`; no such script or npm entry had ever been written). Proven RED
+twice: with the rate put back to 18 (**6 failures**) and with the copy fix reverted at rate 0
+(**5 failures**, rendering the exact absurd strings), the §4 positive control staying green
+through both.
+
+---
+
 ## 2026-09-08 · Management's amendment to the agent programme, and the money rail nobody chose
 
 ### 1 · Management's amendment (their decision, recorded here because it moves four numbers)
