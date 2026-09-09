@@ -15,7 +15,28 @@
 
 **Last touched: 2026-09-09, session 3. Everything below is LIVE on `main` and deployed.**
 
-> ### ✅ SESSION 3 IS CLOSED — everything below is committed, pushed and DEPLOYED
+> ### ✅ SESSION 3 IS CLOSED — committed, pushed, deployed, health green
+>
+> **What is true of money moving NOW, all measured on production 2026-09-09 — not asserted:**
+>
+> | | |
+> |---|---|
+> | every player wallet vs the ledger | ✅ **113 wallets, zero drift** |
+> | the ledger sums to zero, no unbalanced group | ✅ **0 / 0** |
+> | markets created since 1 Sep with a broken pool | ✅ **0 of 8,479** (8,494 settled) |
+> | the full money path against a real Postgres | ✅ **`e2e:money` 64/64** |
+> | live rates vs the law | ✅ 13% (3+10) · TRA 10 · GBT 5 · 1.5%/0.5pp · 1k–1M |
+> | the payment rail | ✅ `selcom` on BOTH the env and the officer row |
+> | levy divergence | ✅ 43/203 baseline unchanged · GBT-booked-zero **0** |
+>
+> ⛔ **THAT IS NOT "THE MONEY IS SAFE", AND THIS FILE STILL DOES NOT SAY IT.** 56 findings — 42
+> MEDIUM and 14 LOW — have no verdict, and three audit lanes have never run. What can be said is
+> narrower and worth saying: **of the 29 HIGH findings adjudicated, every confirmed one is TZS 0
+> realised today.** Not one was losing money.
+>
+> ⭐ **AND THE THREE THINGS THAT WERE ACTUALLY WRONG CAME FROM RUNNING SOMETHING, NOT FROM THE
+> FINDING LIST** — a suite nobody had executed (§7.4), a config nobody had read (§7.1), and a
+> guard that did not exist (§7.11). None of the three appears anywhere in the 106 findings.
 >
 > **Nothing is half-applied.** Every tranche was committed, rebased onto `main` and pushed
 > before the next began, and each deploy was polled to SUCCESS. If a section has no **FIXED**
