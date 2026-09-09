@@ -45,7 +45,7 @@
  * `UNDECLARED_CEILING` is the one edit this file forbids.
  */
 import { readFileSync, existsSync, readdirSync } from "node:fs";
-import { resolveAnchor } from "./red-anchor.mjs";
+import { resolveAnchor, resolvePath } from "./red-anchor.mjs";
 
 const ROOT = new URL("..", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1");
 const pkg = JSON.parse(readFileSync(`${ROOT}/package.json`, "utf8")) as { scripts: Record<string, string> };
@@ -105,7 +105,7 @@ const declFiles = existsSync(declaredDir) ? readdirSync(declaredDir).filter((f) 
 {
   ok("3.0 · fixture · at least one harness declares its anchors", declFiles.length >= 1, `${declFiles.length} declaration file(s)`);
   for (const f of declFiles) {
-    const mod = await import(`./anchors/${f}`) as { MUTATIONS: Array<{ name: string; file: string; from: string; combineInto?: string }> };
+    const mod = await import(`./anchors/${f}`) as { MUTATIONS: Array<{ name: string; file: string; from: string; combineInto?: string; kind?: string; path?: string; presence?: "present" | "absent" }> };
     const muts = mod.MUTATIONS ?? [];
     ok(`3.${f} · declares mutations`, muts.length > 0, `${muts.length}`);
 
@@ -123,6 +123,19 @@ const declFiles = existsSync(declaredDir) ? readdirSync(declaredDir).filter((f) 
     }
 
     for (const m of muts) {
+      // ⭐ TWO KINDS OF SUBJECT, TWO RESOLVERS. A mutation that edits a STRING inside a file is
+      // audited by `resolveAnchor`; one whose subject is a PATH — a file it creates, or an asset
+      // it rewrites in place — is audited by `resolvePath`. Before the second resolver existed
+      // the path-shaped harnesses simply could not declare, and §4's ratchet was RAISED to make
+      // room for one of them. See `red-anchor.mjs` for that history.
+      if (m.kind === "path") {
+        // ⛔ Injected predicate, so this stays a reader: it asks whether a path is there, and
+        // never opens one for writing.
+        const r = resolvePath((rel) => existsSync(`${ROOT}/${rel}`), m as unknown as { path: string; presence: "present" | "absent" });
+        ok(`3.${f}:${m.name.slice(0, 44)} · declared path is ${m.presence}`, r.ok,
+           r.ok ? m.path ?? "" : (r as { reason: string }).reason);
+        continue;
+      }
       const path = `${ROOT}/${m.file}`;
       if (!ok(`3.${f}:${m.name.slice(0, 44)} · target file exists`, existsSync(path), m.file)) continue;
       // ⛔ THE SAME RESOLVER THE HARNESS INJECTS WITH. A second implementation here could
@@ -149,6 +162,28 @@ console.log("\n§3b · CONTROL — the audit can fail, in both directions");
   // a file that holds \r\n, or every multi-line case in the fleet is a coin flip on checkout.
   ok("3b.4 · ⭐ a \\n anchor resolves inside a CRLF file — the trap red-anchor.mjs exists for",
      resolveAnchor("alpha\r\nbeta\r\ngamma\r\n", "alpha\nbeta").ok);
+
+  // ⭐ THE SECOND RESOLVER GETS THE SAME TREATMENT, and for the same reason §3b exists at all:
+  // §3 passing over a fleet whose declared paths all happen to be fine is indistinguishable from
+  // §3 being unable to fail on them. The predicate is injected, so these run against a fixture
+  // rather than the tree — nothing here touches disk.
+  const present = (p: string) => p === "here.txt";
+  ok("3b.5 · a CREATION whose target already exists is REFUSED",
+     !resolvePath(present, { path: "here.txt", presence: "absent" }).ok,
+     "a creation-mutation would overwrite it, and its undo would delete it");
+  ok("3b.6 · a creation whose target is absent resolves",
+     resolvePath(present, { path: "nowhere.txt", presence: "absent" }).ok);
+  ok("3b.7 · ⛔ an asset mutation whose subject has MOVED is REFUSED — it would plant nothing",
+     !resolvePath(present, { path: "gone.png", presence: "present" }).ok);
+  ok("3b.8 · an asset mutation whose subject is there resolves",
+     resolvePath(present, { path: "here.txt", presence: "present" }).ok);
+  // ⛔ AND THE ONE THAT MATTERS MOST: an UNDECLARED presence must not silently mean "present".
+  // Defaulting would pass every creation-mutation ever written, which is the exact case this
+  // resolver was added for.
+  ok("3b.9 · ⛔ a mutation that declares NO presence is refused, never defaulted",
+     !resolvePath(present, { path: "here.txt" } as unknown as { path: string; presence: "present" }).ok);
+  ok("3b.10 · a mutation that declares no path at all is refused",
+     !resolvePath(present, {} as unknown as { path: string; presence: "present" }).ok);
 }
 
 console.log("\n§4 · the ratchet — harnesses still outside the anchor audit");
@@ -162,25 +197,42 @@ console.log("\n§4 · the ratchet — harnesses still outside the anchor audit")
   // moment a live defect in that arm was repaired, and this ratchet was structurally unable to
   // notice — §3 audits declaration files, and it had none.
   /**
-   * ⚠️ 65 → 66 ON 2026-09-08, AND A RATCHET GOING THE WRONG WAY IS RECORDED RATHER THAN HIDDEN.
+   * ✅ BACK TO 65 ON 2026-09-09 — THE DEBT BELOW IS PAID, AND THE NOTE THAT REPLACED IT WAS WRONG
+   * IN A WAY WORTH KEEPING ON THE RECORD.
    *
-   * The one addition is `scripts/red-route-census.mjs` (PLAYER QUERY, task 6.4). ⛔ Its mutations
-   * are NOT source anchors and an anchors file for it would be a fiction: case 1 CREATES a
-   * `page.tsx` that does not exist, case 2 deletes a route's ruling from a MARKDOWN table, and
-   * case 3 renames a heading in that same document. `red-anchor.mjs` resolves a `from` string
-   * against a source file — there is no source file for "a route that has not been written yet".
+   * ⚠️ WHAT THE 65 → 66 BUMP ACTUALLY WAS. Re-derived from history rather than believed:
    *
-   * ⭐ ITS TWO SIBLINGS FROM THE SAME STAGE DO DECLARE THEIRS: `red-bar-geometry.mjs` →
-   * `anchors/bar-geometry.anchors.mjs`, `red-lifecycle-reach.mjs` →
-   * `anchors/lifecycle-reach.anchors.mjs`. So this is one harness whose subject is a DOCUMENT, not
-   * a pattern of avoidance.
+   *     37f8ed2e   ceiling 65 · real 65     ← the last legitimately green state
+   *     adc3718f   ceiling 66 · real 67     ← RED the moment it merged, and red for a day after
+   *     0ac97836   ceiling 66 · real 70     ← three more harnesses arrived undeclared
    *
-   * ⛔ OWED, AND NAMED SO IT IS NOT FORGOTTEN: either `red-anchor.mjs` grows a second resolver for
-   * document-and-filesystem mutations (which would let this harness declare its three cases and
-   * bring the ceiling back to 65), or this harness is excluded from the population with its reason
-   * — but NOT by raising this number again. See the campaign board's Stage 6 row.
+   * TWO harnesses landed in the `adc3718f` merge, from two sessions working the same day:
+   * `red:route-census` and `red:lipa-qr`. The bump counted only the one its author could see, and
+   * the note left here claimed in writing that *"the one addition is red-route-census.mjs"* — a
+   * sentence that was false the instant the other branch merged. Nobody re-ran this gate, so it
+   * sat red on `main` while reading as a considered decision.
+   *
+   * 🎯 **A RATCHET CONSTANT BUMPED BY ONE SESSION IS WRONG AS SOON AS A SECOND SESSION MERGES ITS
+   * OWN ADDITION.** Neither can see the other's at bump time. That is the argument for the rule
+   * this file already states: ⛔ the COUNT comes down to meet the ceiling, never the reverse.
+   *
+   * ⭐ AND THE CLAIM THAT ONE OF THEM *COULD NOT* DECLARE WAS TWO-THIRDS FALSE. `red-route-census`
+   * was said to be unanchorable because it edits a markdown table and creates a `page.tsx`. But
+   * `resolveAnchor` neither knows nor cares whether a file is `.ts` or `.md`, so two of its three
+   * cases were ordinary anchors all along; only the CREATION needed anything new, and what it
+   * needed was one resolver — `resolvePath` in `red-anchor.mjs` — not a higher number.
+   *
+   * ⭐ WHAT DECLARING BOUGHT, beyond stopping anchors from rotting: moving `red:levy-allocation`
+   * onto the shared resolver immediately exposed a defect its hand-rolled matcher had hidden —
+   * `if (traLevyAmt > 0) {` matches TWICE in `ledger.ts`, and a `split().join()` had been mutating
+   * BOTH sites while the tally reported one. It went red for a WIDER reason than it claimed and
+   * still printed 7/7. ⛔ So this audit does not only catch anchors that stopped matching; it
+   * catches harnesses quietly testing more than they say.
+   *
+   * The five that closed the gap: `route-census`, `lipa-qr`, `webhook-money`, `payment-control`
+   * (this session) and `levy-allocation` (the money-gate session, concurrently).
    */
-  const UNDECLARED_CEILING = 66;
+  const UNDECLARED_CEILING = 65;
   const declaredNames = new Set(declFiles.map((f) => f.replace(/\.anchors\.mjs$/, "")));
   // A harness "declares" when a declaration file exists whose name appears in its command.
   const undeclared = harnesses.filter((key) => {

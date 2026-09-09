@@ -20,10 +20,17 @@
  */
 import { readFileSync, writeFileSync, mkdirSync, rmSync, existsSync } from "node:fs";
 import { execFileSync } from "node:child_process";
+import { MUTATIONS } from "./anchors/route-census.anchors.mjs";
+import { injectDefect } from "./red-anchor.mjs";
 
-const DOC = "docs/PLAYER-QUERY-CAMPAIGN.md";
-const PROBE_DIR = "src/app/__red_census_probe__";
-const PROBE = `${PROBE_DIR}/page.tsx`;
+// ⛔ EVERY PATH AND EVERY ANCHOR IS DERIVED FROM THE DECLARATION, never restated here. Restating
+// them is `RULES.md` §7's "a number written twice", and the half that rots is always the copy
+// nobody is looking at — which for a red harness means it stops planting its defect while still
+// printing a verdict. `test:red-anchors` §3 audits that declaration; it can only audit what is
+// declared, which is the whole reason this harness now has a file in `scripts/anchors/`.
+const PATH_CASE = MUTATIONS.find((m) => m.kind === "path");
+const PROBE_DIR = PATH_CASE.dir;
+const DOCS = [...new Set(MUTATIONS.filter((m) => m.file).map((m) => m.file))];
 
 const runGate = () => {
   try {
@@ -41,60 +48,54 @@ if (base.code !== 0) {
 }
 console.log("precondition: the gate is GREEN on the untouched tree\n");
 
-const originalDoc = readFileSync(DOC, "utf8");
+// ⚠️ SNAPSHOT EVERY DOCUMENT BEFORE THE FIRST MUTATION, so `undo` restores bytes rather than
+//    re-deriving them. A restore that rebuilds text is a second implementation of the mutation.
+const originals = new Map(DOCS.map((f) => [f, readFileSync(f, "utf8")]));
 let caught = 0;
 const problems = [];
-const CASES = [];
 
-/* ── 1 · a route on disk with no ruling ──────────────────────────────────────────────────── */
-CASES.push({
-  name: "route-ships-without-a-ruling",
-  expect: "NO RULING for: /__red_census_probe__",
-  apply() {
-    mkdirSync(PROBE_DIR, { recursive: true });
-    writeFileSync(PROBE, "export default function Probe() { return null; }\n", "utf8");
-  },
-  undo() { rmSync(PROBE_DIR, { recursive: true, force: true }); },
-});
-
-/* ── 2 · a ruling removed while the route stays ──────────────────────────────────────────── */
-CASES.push({
-  name: "ruling-deleted-from-the-census",
-  expect: "NO RULING for: /agent/status",
-  /**
-   * 🔴 THE FIRST DRAFT USED `/help` AND STAYED GREEN — and the gate was RIGHT, not blind. `/help`
-   * is named TWICE in §4: once in the bucket-D table row and again in a detailed ruling below it.
-   * Deleting the table row left the real ruling standing, so the route still had one.
-   *
-   * ⭐ A MUTATION THAT DOES NOT REPRODUCE ITS DEFECT IS A RED PROOF THAT PASSES BY LUCK — the
-   * failure task 6.6 already recorded on `qa:count-truth`, where a verbatim `/results` defect
-   * stayed green because all three notables happened to land on one page. Re-derived instead of
-   * guessed: `/agent/status` is named EXACTLY ONCE in §4, so removing that span removes the whole
-   * ruling.
-   *
-   *     node -e "…count backticked routes inside §4…"   →  45 routes named exactly once
-   */
-  apply() {
-    const cut = originalDoc.replace("`/agent` · `/agent/apply` · `/agent/status`", "`/agent` · `/agent/apply`");
-    if (cut === originalDoc) throw new Error("anchor for the /agent/status ruling not found — the census changed shape");
-    writeFileSync(DOC, cut, "utf8");
-  },
-  undo() { writeFileSync(DOC, originalDoc, "utf8"); },
-});
-
-/* ── 3 · the gate's own eyesight ─────────────────────────────────────────────────────────── */
-CASES.push({
-  name: "census-section-cannot-be-parsed",
-  expect: "2.2 CONTROL",
-  apply() {
-    // ⛔ Rename the heading the gate slices on. Every route then reads as undeclared — but the
-    //    assertion that must fire FIRST is the CONTROL, because a gate that cannot see its own
-    //    subject must say so rather than reporting 52 findings.
-    const broken = originalDoc.replace("## §4 — THE CENSUS", "## §4x — THE CENSUS");
-    if (broken === originalDoc) throw new Error("anchor for the §4 heading not found");
-    writeFileSync(DOC, broken, "utf8");
-  },
-  undo() { writeFileSync(DOC, originalDoc, "utf8"); },
+/* ── the cases, BUILT FROM THE DECLARATION ───────────────────────────────────────────────────
+ *
+ * ⛔ THE MUTATIONS ARE DATA IN `anchors/route-census.anchors.mjs`; only the MECHANICS live here.
+ * That split is what lets `test:red-anchors` §3 audit this harness statically — until it existed,
+ * this was one of the harnesses the §4 ratchet had to count as un-audited, and the ratchet was
+ * raised to make room for it instead. See that file's header for why two of these three cases
+ * were anchorable all along.
+ *
+ * ⚠️ EACH `apply` RE-CHECKS WHAT THE DECLARATION CLAIMS rather than trusting it. The auditor runs
+ * at a different time — `test:red-anchors` reads and never mutates — so a tree that changed
+ * between the audit and this run would otherwise let a creation-mutation overwrite a real file.
+ */
+const CASES = MUTATIONS.map((m) => {
+  if (m.kind === "path") {
+    return {
+      name: m.name,
+      expect: m.expect,
+      apply() {
+        // ⛔ THE ABSENCE IS VERIFIED HERE TOO, not just declared. `undo` is a RECURSIVE DELETE of
+        //    this directory; if the path had become real, this harness would remove live source
+        //    and its own restore check would still report the tree clean.
+        if (existsSync(m.path)) {
+          throw new Error(`${m.path} already exists — refusing to overwrite it, and refusing to rm -rf ${m.dir} afterwards`);
+        }
+        mkdirSync(m.dir, { recursive: true });
+        writeFileSync(m.path, m.content, "utf8");
+      },
+      undo() { rmSync(m.dir, { recursive: true, force: true }); },
+    };
+  }
+  return {
+    name: m.name,
+    expect: m.expect,
+    apply() {
+      // ⛔ `injectDefect` REFUSES A NO-OP AND REFUSES AN AMBIGUOUS ANCHOR. The hand-rolled
+      //    `replace` this used to do would silently write the file back unchanged if the anchor
+      //    had rotted — the case would then run against a pristine tree and report the gate
+      //    "did not catch" a defect that was never planted.
+      writeFileSync(m.file, injectDefect(readFileSync(m.file, "utf8"), m.from, m.to), "utf8");
+    },
+    undo() { writeFileSync(m.file, originals.get(m.file), "utf8"); },
+  };
 });
 
 for (const [i, c] of CASES.entries()) {
@@ -125,13 +126,17 @@ for (const [i, c] of CASES.entries()) {
 }
 
 // ⚠️ RESTORATION IS MEASURED, NOT INFERRED — including the probe DIRECTORY, which a `finally`
-//    could have failed to remove while every other signal looked clean.
-if (readFileSync(DOC, "utf8") !== originalDoc) problems.push(`${DOC} NOT RESTORED — the working tree is dirty`);
+//    could have failed to remove while every other signal looked clean. Every document the
+//    declaration named is compared, not just the one that happens to be first.
+const docsRestored = DOCS.every((f) => readFileSync(f, "utf8") === originals.get(f));
+for (const f of DOCS) {
+  if (readFileSync(f, "utf8") !== originals.get(f)) problems.push(`${f} NOT RESTORED — the working tree is dirty`);
+}
 if (existsSync(PROBE_DIR)) problems.push(`${PROBE_DIR} NOT REMOVED — the working tree is dirty`);
 const after = runGate();
 if (after.code !== 0) problems.push("the gate is RED after restore");
 
-console.log(`\n${caught}/${CASES.length} cases caught · doc restored: ${readFileSync(DOC, "utf8") === originalDoc} · probe removed: ${!existsSync(PROBE_DIR)} · green after restore: ${after.code === 0}`);
+console.log(`\n${caught}/${CASES.length} cases caught · ${DOCS.length} doc(s) restored: ${docsRestored} · probe removed: ${!existsSync(PROBE_DIR)} · green after restore: ${after.code === 0}`);
 if (problems.length) { console.error("\nPROBLEMS:"); problems.forEach((p) => console.error("  ✗ " + p)); process.exit(1); }
 if (caught === 0) { console.error("\n✗ ZERO cases exercised — this run proves nothing about the gate."); process.exit(1); }
 console.log("RED PROOF COMPLETE — test:route-census refuses every defect it names.");

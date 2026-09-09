@@ -47,55 +47,24 @@ if (suiteFails()) {
 }
 console.log("  ✓ CONTROL  the unmutated tree is GREEN — a red below is caused by the mutation\n");
 
-const MUTATIONS = [
-  {
-    name: "reversal-acked-as-a-duplicate",
-    why: "⭐ THE ACTUAL PRE-2026-09-08 STATE — a chargeback of already-credited money returns `already-confirmed` and disappears. No audit, no needs-review row, no officer",
-    file: WS,
-    from: `    const contradicted =
-      (txn.status === "CONFIRMED" && input.status === "FAILED") ||
-      ((txn.status === "FAILED" || txn.status === "REVERSED") && input.status === "CONFIRMED");`,
-    to: `    const contradicted = false;`,
-  },
-  {
-    name: "over-correction-every-terminal-txn-refused",
-    why: "⚠️ NOT THE OLD DEFECT — the mirror. An honest at-least-once retry is answered `handled:false`, so the provider never stops retrying. The positive control must catch it",
-    file: WS,
-    from: `    return { handled: true, reason: \`already-\${txn.status.toLowerCase()}\` };
-  }`,
-    to: `    return { handled: false, reason: \`already-\${txn.status.toLowerCase()}\` };
-  }`,
-  },
-  {
-    name: "selcom-restored-to-the-generic-lane",
-    why: "⭐ THE OTHER PRE-FIX STATE — `X-Provider: selcom` settles a deposit from the callback body, skipping the signed order-status re-query that is the whole authority of the money-in path",
-    file: ROUTE,
-    from: `const KNOWN_PROVIDERS: Record<string, string> = {
-  azampay: "AZAMPAY_WEBHOOK_SECRET",`,
-    to: `const KNOWN_PROVIDERS: Record<string, string> = {
-  selcom:  "SELCOM_WEBHOOK_SECRET",
-  azampay: "AZAMPAY_WEBHOOK_SECRET",`,
-  },
-  {
-    name: "explicit-refusal-removed",
-    why: "★ the map is clean but the guard is gone — a selcom callback falls through to `unknown-provider` with no SECURITY row, so nobody learns the weaker door is being tried",
-    file: ROUTE,
-    from: `  if (AUTHORITATIVE_ONLY.has(provider)) {`,
-    to: `  if (false && AUTHORITATIVE_ONLY.has(provider)) {`,
-  },
-];
+import { MUTATIONS } from "./anchors/webhook-money.anchors.mjs";
+// ⛔ THE DECLARATION HOLDS REPO-RELATIVE STRINGS so test:red-anchors §3 can resolve them; this
+//    harness reads files by URL. Convert at the ONE boundary rather than storing a shape the
+//    auditor cannot follow — that drift is why it refuses to guess at undeclared harnesses.
+const fileUrl = (rel) => new URL(`../${rel}`, import.meta.url);
+
 
 let caught = 0;
 const problems = [];
 
 for (const m of MUTATIONS) {
   restore();
-  const src = readFileSync(m.file, "utf8");
+  const src = readFileSync(fileUrl(m.file), "utf8");
   const asCRLF = m.from.replace(/\n/g, "\r\n");
   const anchor = src.includes(m.from) ? m.from : src.includes(asCRLF) ? asCRLF : null;
   if (anchor === null) { problems.push(`${m.name} — HARNESS ERROR: anchor not found`); continue; }
-  writeFileSync(m.file, src.replace(anchor, anchor === asCRLF ? m.to.replace(/\n/g, "\r\n") : m.to));
-  const after = readFileSync(m.file, "utf8");
+  writeFileSync(fileUrl(m.file), src.replace(anchor, anchor === asCRLF ? m.to.replace(/\n/g, "\r\n") : m.to));
+  const after = readFileSync(fileUrl(m.file), "utf8");
   if (after === src) { problems.push(`${m.name} — HARNESS ERROR: file unchanged after write`); continue; }
   const reinserted = m.to.replace(/\r\n/g, "\n").includes(m.from.replace(/\r\n/g, "\n"));
   if (!reinserted && after.includes(anchor)) { problems.push(`${m.name} — HARNESS ERROR: anchor still present`); continue; }
