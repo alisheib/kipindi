@@ -98,6 +98,20 @@ export function PositionCard({ marketId, marketTitle, side, productLine, stake, 
             * returning `undefined` is an untoned chip that no gate would catch."* `TONE_CHIP` is
             * total over `StatusTone`, but `STATUS_TONE` is not total over every string a status
             * column can hold, so the `??` is what makes this expression total.
+            *
+            * ⭐ `CASHED_OUT` IS SLATE HERE SINCE 2026-09-09, AND THIS CARD IS THE ONLY PLACE THE
+            * CHANGE IS VISIBLE. It shipped amber, which is what this ternary's final arm used to
+            * paint before the dictionary had an opinion; stage 5.3 recorded that amber as measured
+            * and filed the mismatch instead of repainting a live money chip. Ali answered `slate`:
+            * amber means *somebody must act*, and a cashed-out position is terminal. ⛔ The
+            * `STATUS_TONE_EXCEPTIONS` entry that used to hold the question is DELETED, not
+            * amended — so if you came here looking for it, the dictionary is now simply being
+            * obeyed and there is nothing left to except.
+            *
+            * ⚠️ `playerStatusChip` is now total over all five `PositionStatus` values, so the `??`
+            * arm below is unreachable from this card today. It stays because that totality is a
+            * property of the dictionary, not of this file, and a status column can hold a word the
+            * dictionary has no player opinion about.
             */}
           <Chip size="sm" variant={
             // ⛔ Ali's ruling — the betting rose, not the status rose. See the exception.

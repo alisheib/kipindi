@@ -380,6 +380,7 @@ as a decision stops being a drift.
 | **APPROVED** | — | success green | *success green* (was struck gilt) |
 | **REJECTED** | — | rose | claret |
 | **OPEN** | royal | claret | — |
+| **CASHED_OUT** | *slate* (was amber) | ⚠️ amber — see below | — |
 
 **The three corrections.**
 
@@ -394,6 +395,32 @@ as a decision stops being a drift.
 That leaves **amber with exactly one meaning in the console**: *an officer must do something
 that is not simply waiting* — "More information needed", a cooling-off period, a payment
 awaiting a decision. Slate keeps its own: **terminal or inert**.
+
+⚠️ **AND THE RULE IS ACTUALLY "SOMEBODY MUST ACT", NOT "AN OFFICER MUST ACT"** — the sentence
+above is scoped to the console, and the dictionary itself has always contradicted the narrow
+reading: `ADDITIONAL_INFO_REQUIRED` is **player amber**, which is the same rule seen from the other
+side — *the applicant* must do something. `src/lib/status-tone.ts` drops the "in the console"
+qualifier and states it unconditionally, and that is the version the platform ships. Read amber as
+**somebody must act**; it fails a terminal state either way, which is what the fourth correction
+below turns on.
+
+**4. CASHED_OUT is slate on the player's card** (added 2026-09-09, Ali's ruling — PLAYER QUERY §12
+③). It shipped **amber**, inherited from the position card's hand-typed fallback before this
+dictionary had an opinion about the word. Stage 5.3 recorded that amber *as measured* and filed the
+mismatch rather than repainting a live money chip on its own authority. A cashed-out position is
+**terminal** — settled, paid, asking nothing of anyone — and amber says the opposite in the one
+voice this dictionary gives it. ⭐ It is the only terminal state in the table that was toned amber;
+`DECLINED`, `EXPIRED` and `REVOKED` were already slate, and `VOID` is royal to the player by a
+separate decision.
+
+⚠️ **THE CONSOLE STILL PAINTS THIS WORD AMBER, AND THE SPLIT IS RECORDED RATHER THAN RESOLVED.**
+`src/app/admin/markets/[id]/page.tsx` carries a **file-local** `STATUS_VARIANT` with
+`CASHED_OUT: "warning"`, so the console does not read this dictionary for that word at all. §B11 is
+*one word, one tone, **per surface***, so a player/console split is legal here — but an **unwritten**
+one is exactly the drift this section exists to prevent, and the admin console is out of scope by
+standing ruling. ⛔ So it is named, not swept up: whoever next opens that page finds the reason
+instead of a puzzle, and the honest state is that the console's amber on a terminal word is still
+owed an answer.
 
 **⛔ THE ONE KEPT SPLIT — LIVE — AND IT IS A DECISION, NOT A LEFTOVER.** LIVE is two facts
 wearing one word. To a **player** it is a broadcast — *this is open, money is moving, act

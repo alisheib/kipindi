@@ -177,15 +177,29 @@ export const STATUS_TONE = {
    */
   LOSS: { player: "rose" },
   /**
-   * ⚠️ AMBER IS WHAT THE CARD ALREADY PAINTS, via the ternary's final arm, and it is recorded here
-   * as measured rather than repainted. ⛔ BUT THE MEANING DOES NOT FIT AND THAT IS FILED RATHER
-   * THAN SILENTLY CORRECTED: this file defines amber as *"an officer must DO something that is not
-   * simply waiting"*, and a cashed-out position is terminal, settled, and asks nothing of anyone.
-   * `slate` is the tone the vocabulary would give it. Repainting a live chip on a money surface is
-   * a design decision, not a dictionary entry — so the entry states the truth and the campaign
-   * board carries the question.
+   * ⭐ SLATE, AND IT IS THE VOCABULARY'S OWN ANSWER — Ali's ruling, 2026-09-09.
+   *
+   * This entry shipped as `amber` because amber is what the card painted, recorded as measured
+   * rather than repainted, with the mismatch filed for a human instead of corrected in passing.
+   * The answer came back `slate`: amber means *somebody must act* (§B11 says "an officer must do
+   * something that is not simply waiting"; `ADDITIONAL_INFO_REQUIRED` gives the player half of the
+   * same rule), and a cashed-out position is **terminal** — settled, paid, asking nothing of
+   * anyone. `slate` is defined one screen up as *"terminal, inert, or 'nothing here yet'"*, which
+   * is exactly what this word is.
+   *
+   * ⚠️ THE CONSOLE STILL PAINTS THIS WORD AMBER, AND THAT IS RECORDED RATHER THAN SWEPT UP.
+   * `src/app/admin/markets/[id]/page.tsx` carries a file-local `STATUS_VARIANT` with
+   * `CASHED_OUT: "warning"`, and this entry has no `admin` arm to route it through. §B11 is *one
+   * word, one tone, PER SURFACE*, so a player/console split is legal — but an unwritten one is the
+   * drift B11 exists to prevent, and admin is out of scope by Ali's standing ruling. Named here so
+   * whoever next opens that console page finds the reason instead of a puzzle.
+   *
+   * ⛔ There is no `STATUS_TONE_EXCEPTIONS` entry for this word any more, deliberately. It was
+   * deleted rather than amended, on the instruction the old note itself carried — an exceptions
+   * key for a word that is no longer an exception would freeze this tone against future correction
+   * by paperwork.
    */
-  CASHED_OUT: { player: "amber" },
+  CASHED_OUT: { player: "slate" },
 } as const satisfies Record<string, Partial<Record<StatusSurface, StatusTone>>>;
 
 /**
@@ -285,14 +299,16 @@ export const STATUS_TONE_EXCEPTIONS = {
    * note records why the card does not use it.
    */
   LOSS: "Betting rose (`no`) on a position card — the same red as the No side chip beside it — NOT the status `rose`/`danger`, which is the platform's failure colour. A bet that lost is the ordinary other half of a two-sided market, not a fault.",
-  /**
-   * ⚠️ NOT A DIVERGENCE — AN OPEN QUESTION, recorded here because this is where someone will look.
-   * `CASHED_OUT` is entered in the table as `amber`, which is what the card already paints, and
-   * this file defines amber as "an officer must DO something that is not simply waiting". A
-   * cashed-out position is terminal and asks nothing of anyone; `slate` is what the vocabulary
-   * would give it. ⛔ Repainting a live chip on a money surface is Ali's call, so the entry states
-   * the shipped truth and the campaign board carries the question. Whoever answers it: if the
-   * answer is slate, the table entry changes and this note is deleted, not amended.
+  /*
+   * ⛔ `CASHED_OUT` USED TO HAVE AN ENTRY HERE AND IT IS GONE ON PURPOSE — answered by Ali
+   * 2026-09-09, and the note it replaced carried the instruction followed here verbatim: *"if the
+   * answer is slate, the table entry changes and this note is deleted, not amended."*
+   *
+   * ⭐ WHY DELETION IS THE CORRECT EDIT AND NOT PEDANTRY. This map's own contract, one screen up,
+   * is that everything in it is DELIBERATE and must not be "harmonised". An entry for a word that
+   * is no longer an exception would invert that protection: it would tell every future reader that
+   * `slate` on a terminal state is a considered divergence to be preserved, when it is simply the
+   * dictionary being obeyed. The exceptions list only means something while every line in it is
+   * still an exception.
    */
-  CASHED_OUT: "Entered as amber because that is what the card paints; amber's stated meaning does not fit a terminal player-side state. Slate is the vocabulary's answer. Ali's call — filed, not repainted.",
 } as const satisfies Partial<Record<keyof typeof STATUS_TONE, string>>;
