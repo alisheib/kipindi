@@ -317,6 +317,8 @@ declare global {
   var __50PICK_UPDOWN_CONFIG: UpDownConfig | undefined;
   // eslint-disable-next-line no-var
   var __50PICK_UPDOWN_CONFIG_HYDRATED: boolean | undefined;
+  // eslint-disable-next-line no-var
+  var __50PICK_UPDOWN_CONFIG_HYDRATING: Promise<void> | undefined;
 }
 
 function cfgStore(): UpDownConfig {
@@ -390,9 +392,22 @@ export function reconcileUpDownDefaults(
   return { config: c, changed };
 }
 
+/**
+ * 🔴 SAME DEFECT AS `market-config.ts`, ON THE OTHER PRODUCT — the flag was raised
+ * before the await, so one swallowed DB error pinned a container on code defaults for
+ * life, and every Up & Down round opened in that window froze those defaults as its
+ * rates. Flag AFTER the read; shared in-flight promise; a failure retries.
+ */
 async function ensureHydrated(): Promise<void> {
   if (globalThis.__50PICK_UPDOWN_CONFIG_HYDRATED) return;
-  globalThis.__50PICK_UPDOWN_CONFIG_HYDRATED = true;
+  if (!globalThis.__50PICK_UPDOWN_CONFIG_HYDRATING) {
+    globalThis.__50PICK_UPDOWN_CONFIG_HYDRATING = hydrateUpDownNow()
+      .finally(() => { globalThis.__50PICK_UPDOWN_CONFIG_HYDRATING = undefined; });
+  }
+  await globalThis.__50PICK_UPDOWN_CONFIG_HYDRATING;
+}
+
+async function hydrateUpDownNow(): Promise<void> {
   const stored = await loadConfig<Partial<UpDownConfig> & { v?: number }>(UPDOWN_CONFIG_KEY);
   // Merge OVER the defaults, so a newly-added field gets its default rather than
   // undefined on a deployment whose persisted blob predates it.
@@ -408,6 +423,8 @@ async function ensureHydrated(): Promise<void> {
       if (changed) console.log(`[updown-config] reconciled v${storedVersion} → v${UPDOWN_CONFIG_VERSION}: stake bounds now ${config.defaultMinStake}/${config.defaultMaxStake}`);
     }
   }
+  // ⛔ LAST, not first: only a read that actually landed may close the gate.
+  globalThis.__50PICK_UPDOWN_CONFIG_HYDRATED = true;
 }
 
 export async function getUpDownConfig(): Promise<UpDownConfig> {

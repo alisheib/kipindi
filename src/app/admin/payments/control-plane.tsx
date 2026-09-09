@@ -28,6 +28,10 @@ import { runAdminAction } from "@/lib/client/run-admin-action";
 import { useMayAct, useActDisabledReason } from "@/components/admin/act-gate";
 
 const PROVIDER_LABEL: Record<PaymentProviderId, string> = { mock: "Mock (test)", selcom: "Selcom", azampay: "AzamPay" };
+/** ⛔ `null` is NOT "the mock" — it is "real money is live and no rail is chosen",
+ *  which refuses deposits and withdrawals. Naming it as a provider is the exact lie
+ *  this screen exists to prevent, so it gets its own word. */
+const providerLabel = (p: PaymentProviderId | null) => (p === null ? "NONE — money refused" : PROVIDER_LABEL[p]);
 
 /**
  * ⛔ THE TIER AND THE TYPED WORD ARE ONE VALUE, NOT TWO INDEPENDENT OPTIONALS.
@@ -156,9 +160,9 @@ export function ControlPlane({ controls }: { controls: PaymentControlsView }) {
               the selector. These are the two facts an operator needs before
               touching anything ("is this real money, and who is taking it?"),
               and reading them used to mean reading two separate cards. */}
-          <Chip size="lg" variant={controls.simulationActiveOnLiveMoney ? "warning" : "neutral"}>
+          <Chip size="lg" variant={controls.moneyRailUnset ? "danger" : controls.simulationActiveOnLiveMoney ? "warning" : "neutral"}>
             <I.mobileMoney s={14} />
-            {PROVIDER_LABEL[controls.provider]}
+            {providerLabel(controls.provider)}
             {controls.simulationActiveOnLiveMoney && <span className="ml-1 font-mono text-[10px]">· SIM</span>}
             {!controls.simulationActiveOnLiveMoney && controls.gatewayConfigured && controls.provider !== "mock" && <I.check s={13} className="text-yes-300" />}
           </Chip>
@@ -166,11 +170,47 @@ export function ControlPlane({ controls }: { controls: PaymentControlsView }) {
             <p className="font-mono text-micro uppercase eyebrow text-text-subtle">Operations mode · Hali ya uendeshaji</p>
             <p className="text-caption text-text-secondary">
               {live
-                ? "Real deposits & withdrawals move real money. The provider is operator-switchable; the kill-switch is the emergency stop."
+                ? controls.moneyRailUnset
+                  ? "Real money is live but NO payment rail is chosen — deposits and withdrawals are refused. Betting and settlement are unaffected."
+                  : "Real deposits & withdrawals move real money. The provider is operator-switchable; the kill-switch is the emergency stop."
                 : "Pre-launch test float — no real money. Toggles below are freely settable for testing."}
             </p>
           </div>
         </div>
+
+        {/* ── NO RAIL CHOSEN, ON REAL MONEY — THE REFUSAL, NOT A SIMULATION ──
+            Real money is live and nothing has been chosen: an unset or typo'd
+            PAYMENT_AGGREGATOR with no officer row. Money-in and money-out are
+            REFUSED at dispatch. ⛔ This used to resolve to the mock and RUN, which
+            credited real wallets for money never received. It is a red alert, not a
+            warning, because the platform is taking no money at all in this state. */}
+        {controls.moneyRailUnset && (
+          <Callout
+            tone="danger"
+            emphasis="strong"
+            live
+            glyph="warning"
+            className="mt-3"
+            title="No payment rail is chosen — deposits and withdrawals are refused"
+          >
+            <p>
+              Real money is <strong>LIVE</strong>, but no payment provider has been selected, so every
+              deposit and withdrawal fails with <code className="font-mono">PROVIDER_DOWN</code>.
+              {controls.moneyRailUnsetReason ? ` (${controls.moneyRailUnsetReason})` : null}
+            </p>
+            <p className="mt-2">
+              This is <strong>deliberate</strong>. The alternative was the <strong>mock</strong>, which
+              fabricates confirmations — it would credit real wallets for money that never arrived.
+              Betting and settlement are <strong>unaffected</strong>.
+            </p>
+            <p className="mt-2">
+              <strong className="text-text">To take payments:</strong> press <strong>Selcom</strong> below
+              {controls.selectable.selcom
+                ? ", or set PAYMENT_AGGREGATOR=selcom in Railway."
+                : " — it is not selectable yet because its credentials are missing (PAYMENT_API_KEY, PAYMENT_API_SECRET, PAYMENT_VENDOR_ID, PAYMENT_API_URL). Set them in Railway first."}
+            </p>
+          </Callout>
+        )}
 
         {/* ── PERSISTENT SIMULATION BANNER ───────────────────────────────────
             Real money is on AND the active rail is the mock — a deliberate
@@ -209,10 +249,12 @@ export function ControlPlane({ controls }: { controls: PaymentControlsView }) {
             disagree, say so, and say which one is actually in force. */}
         {controls.providerExplicit && controls.provider !== controls.env.provider && (
           <Callout tone="warning" glyph="info" className="mt-3">
-            This overrides the environment. <code className="font-mono">PAYMENT_AGGREGATOR</code> is
-            set to <strong>{controls.env.provider}</strong>, but an officer saved{" "}
-            <strong>{controls.provider}</strong> here and the saved value wins. What you see above is
-            what is actually running.
+            This overrides the environment. <code className="font-mono">PAYMENT_AGGREGATOR</code> is{" "}
+            {controls.env.provider === null
+              ? <>{controls.env.providerRaw ? <>set to <strong>{controls.env.providerRaw}</strong>, which is not a provider this platform knows</> : <><strong>unset</strong></>}</>
+              : <>set to <strong>{controls.env.provider}</strong></>}, but an officer saved{" "}
+            <strong>{providerLabel(controls.provider)}</strong> here and the saved value wins. What you see
+            above is what is actually running.
           </Callout>
         )}
       </div>
@@ -223,7 +265,7 @@ export function ControlPlane({ controls }: { controls: PaymentControlsView }) {
           <span className="inline-flex items-center gap-2 font-mono text-micro uppercase eyebrow text-text-subtle">
             <I.mobileMoney s={14} className="text-text-tertiary" /> Payment provider · Mtoa huduma
           </span>
-          {controls.provider !== "mock" && (
+          {controls.provider !== "mock" && controls.provider !== null && (
             <Chip size="sm" variant={controls.gatewayConfigured ? "success" : "danger"}>
               {controls.gatewayConfigured ? "Configured" : "Creds missing"}
             </Chip>
@@ -257,7 +299,13 @@ export function ControlPlane({ controls }: { controls: PaymentControlsView }) {
         </div>
         <div className="mt-1.5 flex items-center justify-between gap-2 flex-wrap">
           <p className="font-mono text-[10px] text-text-tertiary max-w-[80%]">
-            {controls.providerExplicit ? "Set by an officer." : `Inherited from env (PAYMENT_AGGREGATOR=${controls.env.provider}).`}
+            {controls.providerExplicit
+              ? "Set by an officer."
+              : controls.env.provider !== null
+                ? `Inherited from env (PAYMENT_AGGREGATOR=${controls.env.provider}).`
+                : controls.env.providerRaw
+                  ? `PAYMENT_AGGREGATOR=${controls.env.providerRaw} is not a known provider — nothing is inherited.`
+                  : "PAYMENT_AGGREGATOR is unset — nothing is inherited."}
             {" "}Selcom ships integrated but off — flip here when ready; the kill-switch is the emergency stop.
           </p>
           <Button

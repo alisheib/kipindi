@@ -535,10 +535,16 @@ export const PROVIDER_MIN_PAYOUT_TZS = 1_000;
  * The smallest GROSS withdrawal whose NET still clears `PROVIDER_MIN_PAYOUT_TZS`.
  *
  * ⚠️ Derived, never hardcoded — and that is the whole point. `withdrawalFeeRate` is
- * admin-tunable at `/admin/config` (it is 1.5% in production today, not the 1% default),
- * so a constant "minimum is 1,016" would silently break the day someone edits the fee, in
- * exactly the way that is invisible until a player is refused. The gateway's floor is on
- * the NET, so the check belongs on the NET.
+ * admin-tunable at `/admin/config`, so a constant "minimum is 1,016" would silently break
+ * the day someone edits the fee, in exactly the way that is invisible until a player is
+ * refused. The gateway's floor is on the NET, so the check belongs on the NET.
+ *
+ * ⚠️ This note used to add *"(it is 1.5% in production today, not the 1% default)"*.
+ * That parenthetical outlived its own fact: `DEFAULT_WITHDRAWAL_FEE_RATE` has read 0.015
+ * since 2026-08-14, so there has been no "1% default" to contrast with for weeks — in the
+ * one file that owns the arithmetic. ⛔ It states no rate now, by design: the rule lives in
+ * `docs/RULES.md` §2.7, the fallback in `DEFAULT_WITHDRAWAL_FEE_RATE` above, and the live
+ * value in `market.config`. A number written twice is a number that will disagree with itself.
  */
 export function minWithdrawalForRate(rate: number): number {
   const r = Math.min(Math.max(0, rate), 0.9); // a fee ≥ 100% has no solution; clamp rather than divide by ~0

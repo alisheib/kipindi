@@ -925,14 +925,66 @@ export async function settleDepositFromReturn(userId: string, orderId: string): 
 export async function settlePaymentWebhook(input: { providerRef: string; status: "CONFIRMED" | "FAILED"; amount?: number }): Promise<{ handled: boolean; reason: string }> {
   const txn = await db.txn.findByProviderRef(input.providerRef);
   if (!txn) return { handled: false, reason: "unknown-reference" };
-  if (txn.status !== "PROCESSING") return { handled: true, reason: `already-${txn.status.toLowerCase()}` };
+  if (txn.status !== "PROCESSING") {
+    // 🔴 A TERMINAL TRANSACTION BEING TOLD THE OPPOSITE IS NOT A DUPLICATE CALLBACK.
+    // Every non-PROCESSING txn used to return `already-<status>` with `handled: true`,
+    // which is right for a provider's at-least-once retry and WRONG for a contradiction:
+    //   · CONFIRMED deposit → FAILED  is a CHARGEBACK or a mobile-money REVERSAL of
+    //     money we have already credited and the player can already have withdrawn.
+    //     `normalizeStatus` maps "REVERSED" to FAILED, so this is exactly the shape a
+    //     real reversal arrives in — and it was acked as a benign duplicate, silently,
+    //     with no audit, no ledger entry and nothing in front of an officer. Repeatable,
+    //     uncapped loss to the house.
+    //   · FAILED/REVERSED deposit → CONFIRMED is the mirror: money taken and not
+    //     credited, which is the player's loss.
+    // ⛔ NOTHING IS AUTO-REVERSED HERE, AND THAT IS DELIBERATE. Debiting a player for a
+    // chargeback is a policy decision Ali has not made (overdraw them? what if the cash
+    // is already withdrawn? what about the bets it funded?), and inventing one inside a
+    // webhook handler is how a wrong answer becomes permanent. What this must never do
+    // again is stay QUIET. Detect, alarm, escalate, and leave the money decision to a
+    // human — see docs/RULES.md §2.8 and the money-gate handover.
+    const contradicted =
+      (txn.status === "CONFIRMED" && input.status === "FAILED") ||
+      ((txn.status === "FAILED" || txn.status === "REVERSED") && input.status === "CONFIRMED");
+    if (contradicted) {
+      audit({
+        category: "SECURITY",
+        action: "webhook.terminal_contradicted",
+        actorId: txn.userId,
+        targetType: "Transaction",
+        targetId: txn.id,
+        payload: {
+          providerRef: input.providerRef, type: txn.type, was: txn.status, nowReported: input.status,
+          amount: txn.amount,
+          note: txn.status === "CONFIRMED" && txn.type === "DEPOSIT"
+            ? "The provider reversed a deposit we have already credited. The cash is in the player's wallet and may already be spent or withdrawn. NOT clawed back automatically — an officer must decide."
+            : "The provider's final verdict contradicts the state we recorded. Money may have moved without a matching credit/debit.",
+        },
+      });
+      auditNeedsReviewOnce(txn.id, `provider reported ${input.status} for a transaction already ${txn.status} — money decision needed`, {
+        providerRef: input.providerRef, type: txn.type, amount: txn.amount,
+      });
+      return { handled: false, reason: `contradicted-${txn.status.toLowerCase()}-now-${input.status.toLowerCase()}` };
+    }
+    return { handled: true, reason: `already-${txn.status.toLowerCase()}` };
+  }
 
   // M4: verify the provider-reported amount against what we initiated. We only
   // ever credit txn.amount (so tampering the webhook amount can't over-credit),
   // but a mismatch means the provider settled a DIFFERENT amount than we asked
   // for — a reconciliation/fraud signal. Fail closed and alert; never settle it.
+  //
+  // ⚠️ AND FAILING CLOSED IS ONLY HALF OF IT. The refusal is correct; leaving the
+  // transaction where nobody can see it was not. It stays PROCESSING forever — the
+  // player has been debited by the gateway and is never credited — and the reconcile
+  // sweep's deposit arm drops a `handled: false` on the floor, so it produced no
+  // needs-review row and appeared in no queue. The SECURITY row alone is a tripwire
+  // nobody is standing next to. It is escalated once, by transaction, here.
   if (input.amount != null && Math.abs(input.amount) !== Math.abs(txn.amount)) {
     audit({ category: "SECURITY", action: "webhook.amount_mismatch", actorId: null, targetType: "Transaction", targetId: txn.id, payload: { expected: txn.amount, got: input.amount, providerRef: input.providerRef } });
+    auditNeedsReviewOnce(txn.id, "provider settled a DIFFERENT amount than we initiated — never auto-settled", {
+      providerRef: input.providerRef, expected: txn.amount, got: input.amount, type: txn.type,
+    });
     return { handled: false, reason: "amount-mismatch" };
   }
 
@@ -1205,6 +1257,15 @@ export async function reconcileStalePayments(olderThanMs = 30 * 60 * 1000): Prom
       if (v.status === "CONFIRMED") {
         const r = await settlePaymentWebhook({ providerRef: ref, status: "CONFIRMED", amount: v.amount }); // exactly-once + amount-tamper check
         if (r.handled) { depositsConfirmed++; clearNeedsReview(t.id); }
+        // ⛔ A REFUSAL IS NOT A NO-OP. `handled: false` here means Selcom says this
+        // deposit is COMPLETED and we refused to credit it — an amount mismatch, or a
+        // terminal state contradicting what we recorded. The player has paid. This arm
+        // used to do nothing at all with that: no `leftPending`, no needs-review row, so
+        // the transaction sat PROCESSING for ever, counted in no total, in front of
+        // nobody, re-alarming every sweep. `settlePaymentWebhook` writes the
+        // needs-review row itself now; this counts it so the sweep's own return value
+        // stops reporting the money as absent.
+        else leftPending++;
       } else if (v.status === "FAILED") {
         if (await settleDepositFailed(t.id, "reconcile-verified-failed")) { depositsFailed++; clearNeedsReview(t.id); }
       } else if (v.status === "UNSUPPORTED") {

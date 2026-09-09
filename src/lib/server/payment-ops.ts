@@ -91,14 +91,43 @@ declare global {
   var __50PICK_KILLSWITCH: KillMap | undefined;
   // eslint-disable-next-line no-var
   var __50PICK_KILLSWITCH_HYDRATED: boolean | undefined;
+  // eslint-disable-next-line no-var
+  var __50PICK_KILLSWITCH_HYDRATING: Promise<void> | undefined;
 }
 const kstore = globalThis.__50PICK_KILLSWITCH ?? (globalThis.__50PICK_KILLSWITCH = {});
 
+/**
+ * Hydrate the kill-switch map from `SystemConfig`, once.
+ *
+ * 🔴 THE LATCH USED TO BE SET ON THE LINE *BEFORE* THE AWAIT, AND `loadConfig` NEVER
+ * THROWS — it logs and returns `null` (see config-store.ts). So a single transient DB
+ * error at first read — a Postgres failover, pool exhaustion at boot, a Railway
+ * migration — meant `Object.assign` never ran, `kstore` stayed empty, and
+ * `isPaymentPaused()` answered **false for every rail and both flows for the entire
+ * life of that process**. The emergency STOP evaporated, and `/admin/payments` went on
+ * rendering the toggles as live. There was no retry, ever: the latch was already up.
+ *
+ * The flag is now raised only AFTER the read lands, and the in-flight promise is
+ * shared so concurrent callers wait for the same read instead of racing past it. A
+ * failed read leaves the flag DOWN, so the next money-path call retries.
+ *
+ * ⚠️ WHAT THIS DELIBERATELY DOES NOT DO IS FAIL CLOSED. Treating an unreadable map as
+ * "everything is paused" would halt all deposits and withdrawals on a DB blip — an
+ * outage triggered by the safety mechanism. Which direction an unreadable kill-switch
+ * should fail is Ali's call, not an engineering default; it is listed in
+ * `docs/MONEY-GATE-REMEDIATION.md` §4. Retrying removes the permanence, which is the
+ * part that made this a blocker.
+ */
 async function ensureKill(): Promise<void> {
   if (globalThis.__50PICK_KILLSWITCH_HYDRATED) return;
-  globalThis.__50PICK_KILLSWITCH_HYDRATED = true;
-  const stored = await loadConfig<KillMap>(KILL_KEY);
-  if (stored) Object.assign(kstore, stored);
+  if (!globalThis.__50PICK_KILLSWITCH_HYDRATING) {
+    globalThis.__50PICK_KILLSWITCH_HYDRATING = (async () => {
+      const stored = await loadConfig<KillMap>(KILL_KEY);
+      if (stored) Object.assign(kstore, stored);
+      globalThis.__50PICK_KILLSWITCH_HYDRATED = true;
+    })().finally(() => { globalThis.__50PICK_KILLSWITCH_HYDRATING = undefined; });
+  }
+  await globalThis.__50PICK_KILLSWITCH_HYDRATING;
 }
 
 export async function getKillSwitches(): Promise<KillMap> {

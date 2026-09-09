@@ -22,6 +22,9 @@
  *   §3 a chain does NOT inherit the default, so a split board is visible
  *   §4 the live admin tile derives its caption rather than stating one
  *   §5 ⚠️ POSITIVE CONTROL, same run — the §4 checker REJECTS the exact pre-fix source
+ *   §6 the caption has to FIT the tile it is rendered in — a measured character budget
+ *   §7 ⭐ the /admin/config FEE SIMULATOR, RENDERED under both models — no retired
+ *      `capped-commission` vocabulary may reach an officer on a `loser-share` platform
  *
  * ⚠️ §4 fails loudly when its anchor is gone. A guard whose anchor has gone stale is an
  * ABSENT guard, not a failing one; it must never be able to pass by finding nothing.
@@ -29,6 +32,9 @@
  * RED harness: `node scripts/fee-model-caption-red.mjs`.
  */
 import { readFileSync } from "node:fs";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { FeeSimulator } from "../src/app/admin/config/fee-simulator.tsx";
 import { poolFee, describeFeeModel, resolveFeeModel, MAX_LOSER_SHARE_RATE, FEE_CAPTION_MAX_CHARS } from "../src/lib/payout.ts";
 import { rateProfileOf, boardFeeSummary, DEFAULT_UPDOWN_CONFIG } from "../src/lib/server/updown-config.ts";
 import type { UpDownConfig } from "../src/lib/server/updown-config.ts";
@@ -284,6 +290,94 @@ console.log("\n§6 · a correct caption an operator cannot read is still a defec
   ok("6.★★ …and it still fits at the maximum rate an operator can configure",
      describeFeeModel(maxed).caption.length <= FEE_CAPTION_MAX_CHARS,
      `"${describeFeeModel(maxed).caption}"`);
+}
+
+// ── §7 · THE FEE SIMULATOR ON /admin/config — RENDERED ───────────────────────
+console.log("\n§7 · the simulator an officer reads before saving a rate");
+
+/**
+ * 🔴 THE DEFECT (2026-09-08). `fee-simulator.tsx` branched its FIRST tile grid and its
+ * closing paragraph on `isLoserShare` — and not the grid between them. Under the live
+ * model that grid rendered two `capped-commission` sentences beside correct figures:
+ *
+ *   "Fee charged · min() picked the commission"
+ *        `poolFee`'s loser-share arm returns `capped: false` ALWAYS, so the hint could
+ *        only ever choose that half of its ternary — describing a `min()` that is not
+ *        in the code path at all.
+ *   "Our share of the losers' money · never exceeds 33.3%"
+ *        quoting `feeCeilingRate`, which this model never reads. The real share is a
+ *        FLAT 13% of the losing side.
+ *
+ * ⛔ Values right, law retired — §2.1's recorded class, on the one screen whose whole
+ * job is to show an officer what a rate does before they save it.
+ *
+ * ⭐ RENDERED, NOT GREPPED, for the reason `test:admin-charts` gives: what an officer
+ * reads is the output, not the characters of the source. §7.3 is the positive control
+ * in the same run — the SAME sentences must still appear under `capped-commission`, or
+ * §7.2 would pass by rendering nothing.
+ */
+{
+  const cfgFor = (model: "loser-share" | "capped-commission") => ({
+    feeModel: model,
+    platformFeeRate: 0.03,
+    operatorFeeRate: 0.10,
+    commissionRate: 0.13,
+    feeCeilingRate: 1 / 3,
+    traTaxOnCommissionRate: 0.10,
+    gbtLevyOnCommissionRate: 0.05,
+  }) as unknown as Parameters<typeof FeeSimulator>[0]["config"];
+
+  /** The vocabulary of the RETIRED model. None of it may reach a loser-share officer. */
+  const CAPPED_ONLY = ["min() picked", "never exceeds", "capped — not charged", "capped at"];
+
+  let loser = "", capped = "";
+  try {
+    loser = renderToStaticMarkup(createElement(FeeSimulator, { config: cfgFor("loser-share") }));
+    capped = renderToStaticMarkup(createElement(FeeSimulator, { config: cfgFor("capped-commission") }));
+  } catch (err) {
+    // ⚠️ A render that throws must FAIL, never skip. A guard that cannot run is an
+    // absent guard.
+    ok("7.1 · the simulator renders — ⚠️ a red here means RE-ANCHOR, not relax", false, String((err as Error)?.message ?? err));
+  }
+  ok("7.1 · the simulator renders under both models", loser.length > 500 && capped.length > 500, `${loser.length} / ${capped.length} chars`);
+
+  for (const phrase of CAPPED_ONLY) {
+    ok(`7.2 · ★ loser-share render does NOT say "${phrase}"`, !loser.includes(phrase),
+       loser.includes(phrase) ? "present — an officer is reading a retired law" : "absent");
+  }
+  // ⭐ POSITIVE CONTROL — the same strings under the model that DOES have a ceiling.
+  ok("7.3 · ⭐ …and capped-commission still says them (so 7.2 is not vacuous)",
+     CAPPED_ONLY.some((p) => capped.includes(p)), CAPPED_ONLY.filter((p) => capped.includes(p)).join(" · "));
+
+  // ⛔ THE SPECIFIC RETIRED NUMBER. `feeCeilingRate` is ⅓ and this model never reads it.
+  ok("7.4 · ★ the retired ⅓ ceiling figure is absent from the loser-share render",
+     !loser.includes("33.3%"), "33.3% present in a loser-share render");
+  ok("7.4b · ⭐ …and present under capped-commission, where it IS the law",
+     capped.includes("33.3%"), "33.3% absent under capped-commission");
+
+  // ── The caption's percentage is the money, on THIS screen too ───────────────
+  // The simulator's own defaults are the reported poll: YES 300,000 / NO 10,500, YES wins,
+  // so the LOSING pool is 10,500 and the fee is a flat slice of it.
+  const f = poolFee(300_000, 10_500, LOSER_SHARE, "YES");
+  const quotedRate = `${Number(((f.fee / 10_500) * 100).toFixed(2))}% of the losing pool`;
+  ok("7.5 · ★★ the rate quoted beside the fee is fee ÷ losing pool, derived not stated",
+     loser.includes(quotedRate), `expected "${quotedRate}"`);
+  ok("7.6 · …and that phrase is absent under capped-commission (the branch is a branch)",
+     !capped.includes("of the losing pool"), "loser-share copy leaked into the capped render");
+
+  // ⛔ AND THE RATE MUST FOLLOW THE CONFIG, NOT THE FIXTURE. Every assertion above would
+  // still pass if the hint were the LITERAL string "13% of the losing pool" — which is
+  // precisely the defect §4 exists for, one screen along. Render a DIFFERENT rate and
+  // require the caption to move with it.
+  const OTHER = {
+    feeModel: "loser-share", platformFeeRate: 0.05, operatorFeeRate: 0.20, commissionRate: 0.13,
+    feeCeilingRate: 1 / 3, traTaxOnCommissionRate: 0.10, gbtLevyOnCommissionRate: 0.05,
+  } as unknown as Parameters<typeof FeeSimulator>[0]["config"];
+  const otherHtml = renderToStaticMarkup(createElement(FeeSimulator, { config: OTHER }));
+  const g = poolFee(300_000, 10_500, { feeModel: "loser-share", platformFeeRate: 0.05, operatorFeeRate: 0.20, feeCeilingRate: 1 / 3 }, "YES");
+  ok("7.7 · ★★ at 5%+20% the caption reads 25%, so it is DERIVED and not a literal",
+     otherHtml.includes(`${Number(((g.fee / 10_500) * 100).toFixed(2))}% of the losing pool`) && !otherHtml.includes("13% of the losing pool"),
+     `expected ${Number(((g.fee / 10_500) * 100).toFixed(2))}%`);
 }
 
 console.log(`\nfee-model-caption: ${pass} passed, ${fail} failed`);

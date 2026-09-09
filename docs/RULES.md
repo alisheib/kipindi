@@ -33,6 +33,8 @@ file is worthless the moment it describes an intention as a fact.
 | Bonus wagering: one side only | 💤 **DORMANT — the rule stands, nothing exercises it.** It was ✅ live and verified on production 2026-08-14 (the first two grants in production's history were issued, `wageredTzs` did **not** move for the hedge or for a top-up taken while the opposite leg was open, and a free exit gave the credit back). The **bonus wallet is withdrawn from the player product** (Ali, 2026-09-06) — no new grant is issued, so no new stake can be bonus-funded. ⛔ **The rule is NOT repealed and the code is NOT removed**: an existing grant still wagers one-sided, still fulfils, still expires. §2.5 |
 | Bonus-funded positions are never sellable | ✅ **live, and deliberately NOT gated by the withdrawal.** This is a refusal, not an offer — gating it would turn a laundering block into a laundering route (bonus stake → cash out → withdrawable cash). Proven with a red harness: dropping the `!bonusFunded` term makes a bonus-funded position report `sellable=true`. `npm run test:withdrawn-features` §2. §2.6 |
 | Failure messages explain themselves | ⏳ LANDING — betting + cash-out (2026-08-14); wallet, KYC, auth and the banner channel (2026-08-15). The `loss limit` family is the last still recovered from prose. §2.9 |
+| **Agent commission 10% · fee VAT-EXCLUSIVE (TZS 118,000) · SLA 5 WORKING days · 5% withholding** | ⏳ **LANDING — decided by management 2026-09-08, code shipped, and NOT verified on production.** ⛔ Three of the four do not reach production on deploy: `defineConfig` hydrates `{ ...defaults, ...restored }`, so a persisted `agent.config` row overrides the **rate**, the **VAT treatment** and the **SLA** with whatever an officer last saved. Only `agentWithholdingTaxPct` is new and takes the default either way. **Do not delete this marker until `/admin/agents` → Settings has been READ on production and shows `10` · `EXCLUSIVE` · `5` working days · `5%`.** A deploy that silently keeps the old 20% is indistinguishable from a successful one. §2.10 |
+| Money rail refused when nobody chose one | ✅ **live in code 2026-09-08** — on LIVE money an unset or unrecognised `PAYMENT_AGGREGATOR` with no officer row resolves to NO provider and every deposit/withdrawal is refused with `PROVIDER_DOWN`, instead of silently running the mock (which fabricates confirmations). A *chosen* mock still runs — that is Ali's 2026-07-24 decision and is unchanged. `npm run test:payment-control` · `npm run red:payment-control`. ⚠️ Production still needs `PAYMENT_AGGREGATOR` READ OFF THE LIVE DEPLOYMENT and confirmed `selcom` |
 
 ---
 
@@ -107,6 +109,30 @@ file is worthless the moment it describes an intention as a fact.
 > have to notice a half-migrated board was structurally blind to it. `boardFeeSummary` now
 > reads every configured chain — including STOPPED ones, which freeze their profile onto
 > the first round a restart opens — and renders `split` rather than picking one.
+
+> 🔴 **AND THE SAME CLASS WAS STILL LIVE ON `/admin/config`, ON THE ONE SCREEN THAT EXISTS TO
+> SHOW AN OFFICER WHAT A RATE DOES BEFORE THEY SAVE IT (found and fixed 2026-09-08).**
+> `fee-simulator.tsx` branched its FIRST tile grid on `isLoserShare`, and its closing paragraph
+> — and **not the grid between them**. So under the live model an officer read two
+> `capped-commission` sentences beside correct figures:
+>
+> | It said | Why it is a retired law |
+> |---|---|
+> | *"Fee charged · min() picked the commission"* | `poolFee`'s loser-share arm returns `capped: false` **always**. There is no `min()` and no ceiling in this model, so the hint could only ever choose that half of its ternary — describing a mechanism that does not run |
+> | *"Our share of the losers' money · never exceeds 33.3%"* | quoting `feeCeilingRate`, which `loser-share` never reads. The real share is a **flat 13% of the losing side**, with no ceiling at all |
+>
+> ⛔ Values right, law retired — the worse of the two lies, again, and on the screen an operator
+> consults precisely to check their arithmetic. `/admin/markets/[id]` was already branched
+> correctly; the simulator now copies its shape, and every rate it quotes is
+> `poolFee`'s own `shareOfLosers` — the CLAMPED rate the arithmetic used — never the raw
+> `platformFeeRate + operatorFeeRate`.
+>
+> ⭐ **`test:fee-model-caption` §7 now RENDERS that component under both models** rather than
+> grepping it, for the reason `test:admin-charts` gives: what an officer reads is the output,
+> not the characters of the source. §7.3 is the positive control (the same sentences must still
+> appear under `capped-commission`, or §7.2 would pass by rendering nothing), and §7.7 renders a
+> SECOND rate (5% + 20%) so a hardcoded *"13% of the losing pool"* cannot pass. RED harness
+> `npm run red:fee-model-caption` — **12/12**, three of them this defect verbatim.
 
 ### 2.2 · Taxes are only ever on OUR commission
 
@@ -297,6 +323,14 @@ Charged on the amount withdrawn; 0.5 percentage points of it is the payment gate
 configured in `market.config`, editable at `/admin/config`. Stated to players on
 `/wallet/withdraw`, where it is interpolated from live config.
 
+> ⚠️ **TWO DOC-COMMENTS QUOTED A RETIRED "1% DEFAULT" — corrected 2026-09-08.** `payout.ts`
+> (at `minWithdrawalForRate`) and `docs/SELCOM-PAYOUT-RAILS.md` both read *"it is 1.5% in
+> production today, not the 1% default"*. `DEFAULT_WITHDRAWAL_FEE_RATE` has read `0.015` since
+> 2026-08-14, so there had been no 1% default to contrast with — in the file that owns the
+> arithmetic, and in the payout runbook. **Neither states a rate now.** They point here instead:
+> the rule is in this section, the cold-start fallback is the constant, the live value is
+> `market.config`. A number written twice is a number that will disagree with itself.
+
 ### 2.8 · What a player is charged, in full
 
 | | |
@@ -431,6 +465,22 @@ the rate, the VAT treatment and the SLA with whatever an officer last saved;
 open `/admin/agents` → Settings and confirm all four. A deploy that silently keeps the old rate
 is indistinguishable from a successful one.
 
+> 🔴 **AND THE VERSION STAMP ON THE BINDING TERMS DID NOT MOVE WITH THEM (found 2026-09-08,
+> corrected the same day).** `cc946bbb` rewrote two clauses of the EN document at
+> `/legal/agent-terms` — §2 stopped stating a VAT-INCLUSIVE price and now derives the treatment,
+> and §3 gained a clause that did not previously exist: *local withholding tax is deducted from
+> your commission and only the balance reaches your wallet*. `AGENT_TERMS_VERSION` went on
+> reading `2026-09-07`. `src/lib/agent-terms-version.ts` is shared by the page that PRINTS the
+> version and by `submitForReview`, which STAMPS it on the application, precisely so the document
+> a person read and the version recorded as accepted cannot diverge — and a stale constant defeats
+> that as completely as two separate constants would. It now reads **2026-09-08**.
+>
+> ⚠️ **This leaves a production-data question that code cannot answer** — see §4 of the money-gate
+> handover in `docs/LIVE-QA-CAMPAIGN.md`: any `AgentApplication` submitted between `cc946bbb`
+> deploying and this correction carries `acceptedTermsVersion = "2026-09-07"` while the applicant
+> was actually shown the 09-08 text. Read the rows; if any exist, the acceptance record needs an
+> officer note, not a silent rewrite.
+
 ---
 
 ## §3 · THE TWO FEE MODELS, AND WHY BOTH STILL EXIST
@@ -477,7 +527,8 @@ display rate, the Up & Down round margin and tick floor, and the per-chain stake
 
 | Date | Decision | Record |
 |---|---|---|
-| 2026-09-07 | Agent commission: 20% of the NET fee, 40% hard ceiling, lifetime, uncapped, real cash (`AGENT_COMMISSION`), decided by the programme stamped at bind; TZS 100,000 VAT-inclusive fee, refundable in 7 days | §2.10 · `docs/AGENT-PROGRAMME.md` · `docs/COMPLIANCE-DECISIONS.md` § 2026-09-07 |
+| 2026-09-08 | **Management's amendment to the agent programme** — commission **20% → 10%** of the net operator fee; the registration fee becomes **VAT-EXCLUSIVE**, so an applicant owes **TZS 118,000** (100,000 + 18% VAT) and every surface reads `feeBreakdown().totalTzs`; the review promise becomes **5 WORKING days** (`workingDaysBetween`); and a **5% withholding tax** on the agent's own commission, deducted at accrual and remitted to `HOUSE:TAX` in the same balanced ledger group. The binding EN agent terms changed with it, so `AGENT_TERMS_VERSION` is **2026-09-08** | §2.10 · `docs/AGENT-PROGRAMME.md` §5/§5a · `docs/COMPLIANCE-DECISIONS.md` § 2026-09-08 · `src/lib/agent-terms-version.ts` |
+| 2026-09-07 | Agent commission: 20% of the NET fee, 40% hard ceiling, lifetime, uncapped, real cash (`AGENT_COMMISSION`), decided by the programme stamped at bind; TZS 100,000 VAT-inclusive fee, refundable in 7 days — **SUPERSEDED 2026-09-08** as to the **rate**, the **VAT treatment**, the **SLA unit** and the **withholding**. The 40% ceiling, the lifetime window, the absence of a cap, cash-not-bonus, and provenance-at-bind all STAND | §2.10 · `docs/AGENT-PROGRAMME.md` · `docs/COMPLIANCE-DECISIONS.md` § 2026-09-07 |
 | 2026-08-14 | Up & Down moves to `loser-share`; stake bounds are a rule at 1,000/1,000,000; unlimited positions; one-side bonus wagering; every failure explains itself | `docs/COMPLIANCE-DECISIONS.md` § 2026-08-14 |
 | 2026-08-14 | A human approval wins — the AI 75-confidence gate applies only with no human in the loop | `docs/COMPLIANCE-DECISIONS.md` § 2026-08-14 |
 | 2026-07-26 | Stake bounds 1,000 / 1,000,000 | `src/lib/payout.ts` |
@@ -485,6 +536,21 @@ display rate, the Up & Down round margin and tick floor, and the per-chain stake
 | 2026-07-23 | New polls freeze `loser-share` (3% + 10% of the losing pool) | `docs/COMPLIANCE-DECISIONS.md` § 2026-07-23 |
 | 2026-07-22 | 5-minute free exit, then locked; no paid window | `src/lib/payout.ts` |
 | 2026-07-14 | The 15% withholding tax is DELETED | `docs/FEE-MODEL-DECISION-2026-07-14.md` |
+
+---
+
+## §6a · THE MONEY-GATE AUDIT (2026-09-08) — where the open findings live
+
+A pre-launch money audit ran on 2026-09-08. What it fixed, what it judged not-a-defect, what is
+still open, and the four questions only Ali can answer are in
+[`MONEY-GATE-REMEDIATION.md`](MONEY-GATE-REMEDIATION.md) — the authority and handover for that
+programme.
+
+⛔ **Read its §0 before quoting any of its findings.** The verify phase died twice on a session
+limit: **59 findings are UNVERIFIED — nobody voted, nothing was decided — and six lanes never ran
+at all** (`money-out` among them, so withdrawals and payouts have had no systematic pass). An
+UNVERIFIED finding is unexamined, not disproven. A previous run of that harness bucketed no-votes
+as "refuted"; that is the failure mode the file exists to stop being repeated.
 
 ---
 

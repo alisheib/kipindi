@@ -2,14 +2,24 @@
  * Payment provider abstraction — the ADAPTER pattern (mirrors `sms.ts`).
  *
  * The active adapter is chosen at RUNTIME by the operations control-plane
- * (`payment-control.ts` → `getPaymentProvider()`): an admin toggle on
- * /admin/payments, falling back to the `PAYMENT_AGGREGATOR` env, else `mock`:
- *   "mock" (default) → `mockAdapter`  — deterministic dev/test provider.
- *   "selcom"         → `selcomAdapter` — Selcom (BoT-licensed aggregator).
- *   "azampay"        → `azampayAdapter`— AzamPay (BoT-licensed aggregator).
+ * (`payment-control.ts` → `resolvePaymentProvider()`): an admin toggle on
+ * /admin/payments, falling back to the `PAYMENT_AGGREGATOR` env:
+ *   "mock"   → `mockAdapter`   — deterministic dev/test provider.
+ *   "selcom" → `selcomAdapter` — Selcom (BoT-licensed aggregator).
+ *   "azampay"→ `azampayAdapter`— AzamPay (BoT-licensed aggregator).
  * This is how Selcom is "integrated but not used": the adapter ships, and Ali
- * flips the provider from admin when ready. ⛔ In LIVE money-mode the mock is
- * REFUSED at dispatch (it fabricates confirmations) — see `resolveActiveAdapter`.
+ * flips the provider from admin when ready.
+ *
+ * ⚠️ THIS COMMENT USED TO SAY *"In LIVE money-mode the mock is REFUSED at dispatch"*,
+ * and it had been wrong since the owner decision of 2026-07-24 removed that lock —
+ * `resolveActiveAdapter` HONOURS a chosen mock in every mode, as a deliberate,
+ * audited, loudly-bannered simulation. The file that dispatches the money described
+ * a refusal that was not there. What IS refused, since 2026-09-08, is the case where
+ * nobody chose at all: on LIVE money an unset or unrecognised `PAYMENT_AGGREGATOR`
+ * with no officer row resolves to NO rail and `resolveActiveAdapter` returns
+ * `{ ok: false }` → `PROVIDER_DOWN`, rather than quietly running the simulator
+ * against real wallets. See `payment-control.ts`.
+ *
  * The adapter's shape is fixed by what `wallet-service` needs, so wiring a real
  * provider never changes the calling code or the settlement state machine.
  *
@@ -26,7 +36,7 @@
  */
 import { audit } from "./audit";
 import { randomId } from "./crypto";
-import { getPaymentProvider, getDemoAsyncEnabled, type PaymentProviderId } from "./payment-control";
+import { getPaymentProvider, resolvePaymentProvider, getDemoAsyncEnabled, type PaymentProviderId } from "./payment-control";
 import type { PaymentMethodId } from "@/lib/payment-providers";
 import { isLiveMoneyMode } from "./runtime-mode";
 import { selcomEnv, selcomDisburseEnv, selcomDeposit, selcomCardCheckout, selcomPayout, selcomVerifyOrder, selcomVerifyPayout, selcomCashinNameLookup, selcomFloatBalance, selcomFloatBalanceDetailed, selcomProbeRails, mnoToSelcomCashin, railOf, type SelcomBilling, type SelcomEnv, type PayoutRail, type RailProbe } from "./selcom";
@@ -193,7 +203,7 @@ export async function dispatchWithdrawal(opts: { provider: PaymentProvider; amou
     //
     // Nothing has been sent to any provider at this point: this branch returns BEFORE
     // resolveActiveAdapter, and therefore before the float-PIN guard and before the
-    // LIVE-mode mock refusal. The correlation id is OUR id and is honest about that;
+    // no-rail-chosen refusal. The correlation id is OUR id and is honest about that;
     // a real providerRef is only ever minted when the gateway actually accepts the
     // payout, on approval-dispatch.
     return { ok: true, providerRef: correlationId, status: "AML_REVIEW", correlationId };
@@ -220,7 +230,26 @@ async function resolveActiveAdapter(
   flow: "deposit" | "withdraw",
   correlationId: string,
 ): Promise<{ ok: true; adapter: PaymentAdapter } | { ok: false }> {
-  const provider = await getPaymentProvider();
+  const resolution = await resolvePaymentProvider();
+  // 🔴 THE FAIL-CLOSED ARM. Real money is LIVE and nobody chose a rail — an unset or
+  // typo'd `PAYMENT_AGGREGATOR` with no officer row. Before 2026-09-08 this resolved
+  // to the MOCK and ran: a deposit "confirmed" and a real wallet was credited for
+  // money that never arrived. REFUSE. The caller maps this to `PROVIDER_DOWN`, so
+  // the player sees a failed payment and nothing is credited or debited.
+  // ⛔ Not the same as the mock being CHOSEN, below — that is Ali's decision and runs.
+  if (!resolution.ok) {
+    audit({
+      category: "COMPLIANCE",
+      action: "payments.rail_unset_refused",
+      actorId: null,
+      targetType: "PaymentControlPlane",
+      targetId: flow,
+      payload: { correlationId, reason: resolution.reason, envRaw: resolution.envRaw, note: "Refused to move money: real money is LIVE and no payment provider is chosen. Falling back to the mock would fabricate a confirmation." },
+    });
+    console.error(`[payments] REFUSED ${flow} ${correlationId}: ${resolution.reason}`);
+    return { ok: false };
+  }
+  const provider = resolution.provider;
   if (isLiveMoneyMode() && provider === "mock") {
     audit({
       category: "COMPLIANCE",

@@ -73,6 +73,8 @@ export function FeeSimulator({ config }: { config: RateConfig }) {
       operatorNet: Math.round(fee.fee) - traLevy - gbtLevy,
       oneSided: fee.smaller === 0 && fee.pool > 0,
       stakeTooBig: stake > winningPool && winningPool > 0,
+      /** The pool the loser-share fee is actually a percentage OF. */
+      losingPool: side === "YES" ? noPool : yesPool,
     };
   }, [yesPool, noPool, stake, side, config]);
 
@@ -127,9 +129,17 @@ export function FeeSimulator({ config }: { config: RateConfig }) {
               money
               hint="the fee is a % of THIS"
             />
+            {/* ⚠️ THE RATE THE ARITHMETIC USED, NOT THE RAW SUM. `poolFee` clamps
+                `platformFeeRate + operatorFeeRate` to `MAX_LOSER_SHARE_RATE`, and
+                `describeFeeModel` was fixed to clamp its caption for exactly this
+                reason. `/admin/config` already refuses a save whose two slices sum
+                above 100%, so a divergence is not reachable through the admin door
+                today — this reads `shareOfLosers` anyway, because a tile that derives
+                its number from the same call it is captioning cannot drift, and a
+                snapshot or a hand-written config row is not bound by that form. */}
             <Stat
-              label={`Loser-share rate (${fmtRate(config.platformFeeRate + config.operatorFeeRate)})`}
-              value={fmtRate(config.platformFeeRate + config.operatorFeeRate)}
+              label="Loser-share rate"
+              value={fmtRate(sim.fee.shareOfLosers)}
               tone="gold"
               hint={`Platform ${fmtRate(config.platformFeeRate)} + Operator ${fmtRate(config.operatorFeeRate)}`}
             />
@@ -154,15 +164,43 @@ export function FeeSimulator({ config }: { config: RateConfig }) {
         )}
       </div>
 
+      {/* 🔴 THE SECOND GRID WAS NOT BRANCHED, AND IT TAUGHT A RETIRED LAW (2026-09-08).
+          The grid above and the paragraph below both switch on `isLoserShare`; this one
+          did not, so under the live model an officer read two `capped-commission`
+          sentences beside correct figures:
+            · "Fee charged · min() picked the commission" — `poolFee`'s loser-share arm
+              returns `capped: false` ALWAYS (there is no min() and no ceiling in this
+              model), so the hint could only ever say that, describing a mechanism that
+              does not run;
+            · "Our share of the losers' money · never exceeds 33.3%" — quoting the legacy
+              `feeCeilingRate`, when the real share is a FLAT 13% of the losing side and
+              `feeCeilingRate` is not read by this model at all.
+          ⛔ Values right, law retired — the exact class `docs/RULES.md` §2.1 records for
+          `/admin/updown`: "a correct figure under a retired rule, which is worse than a
+          wrong one because an operator who checks the arithmetic finds it sound".
+          `/admin/markets/[id]` was already branched correctly; this copies its shape.
+          ⚠️ The rate quoted is `sim.fee.shareOfLosers` — the clamped `loserRate` that
+          `poolFee` ACTUALLY charged — never the raw `platformFeeRate + operatorFeeRate`,
+          for the same reason `describeFeeModel` clamps its caption. */}
       <div className="grid grid-cols-2 gap-3 rounded-md border border-border/60 bg-bg-overlay/40 p-3 lg:grid-cols-4">
         <Stat label="Fee charged" value={formatTzs(Math.round(sim.fee.fee))} tone="gold" money
-          hint={sim.fee.capped ? "min() picked the ceiling" : "min() picked the commission"} />
+          hint={isLoserShare
+            ? (sim.losingPool > 0 ? `${fmtRate(sim.fee.shareOfLosers)} of the losing pool` : "no losing side — nothing to charge")
+            : sim.fee.capped ? "min() picked the ceiling" : "min() picked the commission"} />
         <Stat label="Net pool to winners" value={formatTzs(Math.round(sim.fee.netPool))} money />
-        <Stat
-          label="Our share of the losers' money"
-          value={sim.fee.smaller > 0 ? `${(sim.fee.shareOfLosers * 100).toFixed(1)}%` : "—"}
-          hint={sim.fee.smaller > 0 ? `never exceeds ${fmtRate(config.feeCeilingRate)}` : "one-sided"}
-        />
+        {isLoserShare ? (
+          <Stat
+            label="Our share of the losers' money"
+            value={sim.losingPool > 0 ? fmtRate(sim.fee.shareOfLosers) : "—"}
+            hint={sim.losingPool > 0 ? "flat — this model has no ceiling" : "no losing side"}
+          />
+        ) : (
+          <Stat
+            label="Our share of the losers' money"
+            value={sim.fee.smaller > 0 ? `${(sim.fee.shareOfLosers * 100).toFixed(1)}%` : "—"}
+            hint={sim.fee.smaller > 0 ? `never exceeds ${fmtRate(config.feeCeilingRate)}` : "one-sided"}
+          />
+        )}
         <Stat
           label="We keep (after TRA + GBT)"
           value={formatTzs(sim.operatorNet)}
@@ -242,7 +280,7 @@ export function FeeSimulator({ config }: { config: RateConfig }) {
       {isLoserShare ? (
         <p className="font-mono text-body-sm leading-relaxed text-text-subtle">
           Loser-share: the fee DEPENDS on who wins. On these pools it is <span className="amount">{formatTzs(Math.round(sim.fee.fee))}</span> if {side} wins
-          {" "}(a {fmtRate(config.platformFeeRate + config.operatorFeeRate)} slice of the losing side), and
+          {" "}(a {fmtRate(sim.fee.shareOfLosers)} slice of the losing side), and
           {" "}<span className="amount">{formatTzs(Math.round(sim.feeIfOtherSideWon))}</span> if {side === "YES" ? "NO" : "YES"} wins. This is an owner-approved
           override of the outcome-neutral posture — see docs/COMPLIANCE-DECISIONS.md.
         </p>

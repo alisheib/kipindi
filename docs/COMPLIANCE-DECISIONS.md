@@ -6,6 +6,75 @@
 
 ---
 
+## 2026-09-08 · Management's amendment to the agent programme, and the money rail nobody chose
+
+### 1 · Management's amendment (their decision, recorded here because it moves four numbers)
+
+**Decision:** management, **2026-09-08**, on `docs/AGENT-PROGRAMME.md` §5/§5a — five annotated
+screenshots and a hand-drawn waterfall. It **supersedes four terms** of the 2026-09-07 entry
+below and nothing else:
+
+| Term | Was (2026-09-07) | Is (2026-09-08) | Enforced |
+|---|---|---|---|
+| Commission rate | 20% of the net operator fee | **10%** | `agent-config.ts` `defaultCommissionPct` · `test:commission-bounded` |
+| Registration fee | TZS 100,000 **VAT-inclusive** | **TZS 118,000** — 100,000 **plus** 18% VAT, `feeVatTreatment = EXCLUSIVE` | `feeBreakdown().totalTzs` · `test:agent-application-security` |
+| Review promise | 5 calendar days | **5 WORKING days** | `workingDaysBetween` in `business-days.ts` |
+| Withholding | *(did not exist)* | **5%** of the agent's gross commission → `HOUSE:TAX`, same balanced ledger group | `splitWithholding` · `test:agent-clawback` |
+
+⛔ **The 40% hard ceiling, the lifetime window, the absence of a per-recruit cap, cash-not-bonus
+(`AGENT_COMMISSION`, never `BONUS_CREDIT`) and provenance-stamped-at-bind all STAND.**
+
+🔴 **The binding EN terms changed with it, and the version stamp did not.** `cc946bbb` rewrote
+`/legal/agent-terms` §2 (the fee clause now derives the VAT treatment instead of asserting
+"VAT inclusive") and §3 (a **new** clause: withholding tax is deducted and only the balance
+reaches the agent's wallet), while `AGENT_TERMS_VERSION` went on reading `2026-09-07`. That
+constant is shared by the page that prints the version and by `submitForReview`, which stamps it
+on the application — the whole point being that the document a person read and the version
+recorded as accepted cannot diverge. Corrected to **2026-09-08**.
+
+⚠️ **Open, and it needs production data, not code:** any `AgentApplication` submitted between
+`cc946bbb` deploying and this correction carries `acceptedTermsVersion = "2026-09-07"` while the
+applicant was shown the 09-08 text. Read the rows before deciding anything; if any exist the
+acceptance record needs an officer note, never a silent rewrite. Listed for Ali in
+`docs/RULES.md` §2.10 and the money-gate handover.
+
+### 2 · A money rail nobody chose is REFUSED — and a chosen one still runs
+
+**Ruling, 2026-09-08**, made under Ali's standing delegation to decide what is more logical for
+the platform, and recorded because it sits directly beside the owner decision of 2026-07-24 and
+must not be read as reversing it.
+
+**The owner decision of 2026-07-24 stands untouched:** an officer may select any provider —
+**including the `mock`** — in **any** money mode, LIVE included. It requires a typed confirm, it
+writes a COMPLIANCE audit, it raises a persistent banner, and dispatch honours it. *"We are
+admins, we control the system."* A **deliberate simulation is a decision.**
+
+**What was not a decision, and was being honoured as one:** `envProvider()` folded three states
+into one return value — `PAYMENT_AGGREGATOR` set to `mock` (a choice), **unset** (nobody chose),
+and set to something unrecognised such as `selcomm` (a *failed* choice, i.e. a typo in a Railway
+variable). All three resolved to the `mock`. On a LIVE deployment the last two therefore
+activated an adapter whose own doc comment reads *"fabricates confirmations: deposits credit real
+wallets with no money received"* — with **no** typed confirm, **no** compliance audit and **no**
+banner, because every one of those guardrails lives on the path where an officer *picks* it. The
+boot alarm printed *"NOTICE … deliberate operator choice"* over an accident.
+
+**The rule now:** on LIVE money, with no officer row and no recognised `PAYMENT_AGGREGATOR`, the
+resolver returns **no provider**, and `payments.ts → resolveActiveAdapter` refuses the dispatch —
+every deposit and withdrawal fails with `PROVIDER_DOWN`, audited as
+`payments.rail_unset_refused`. In TEST mode nothing changes: a machine with no configuration at
+all still resolves the mock and boots.
+
+⛔ **The boot check deliberately does NOT throw.** The gate is on the money path, where it stops
+money and nothing else. A boot `throw` would take down betting, settlement and every page over a
+payment-rail misconfiguration — the C7 outage was exactly that, and a platform that cannot settle
+a market it already owes players is not the safe direction.
+
+Guards: `npm run test:payment-control` (61) · `npm run red:payment-control` (**7/7**, including
+two over-corrections — refusing a *chosen* mock, and refusing in TEST — so the fix cannot drift
+into reversing the 2026-07-24 decision or breaking every developer machine).
+
+---
+
 ## 2026-09-07 · The Agent Affiliate programme — a vetted, paid recruiter tier under the COMPLIANCE domain
 
 **Owner decision:** Ali, **2026-09-07**, closing every open question in `docs/AGENT-PROGRAMME.md`

@@ -339,9 +339,10 @@ no payout had ever reached the business layer.
 
 Fixed by checking the **net**, in `wallet-service.withdraw`, before the hold is placed:
 `PROVIDER_MIN_PAYOUT_TZS` + `minWithdrawalForRate(rate)` in `src/lib/payout.ts`. ⚠️ **Derived from
-the live `withdrawalFeeRate`, never hardcoded** — the fee is admin-tunable at `/admin/config` (1.5%
-in production today, not the 1% default), so a constant minimum would break silently the next time
-someone edits it. The withdraw form's `min` is derived from the same helper.
+the live `withdrawalFeeRate`, never hardcoded** — the fee is admin-tunable at `/admin/config`, so a
+constant minimum would break silently the next time someone edits it. ⛔ **This paragraph used to
+add *"(1.5% in production today, not the 1% default)"*, and there has been no 1% default since
+2026-08-14** — the rate is stated once, in [`RULES.md`](RULES.md) §2.7, and nowhere else. The withdraw form's `min` is derived from the same helper.
 
 ---
 

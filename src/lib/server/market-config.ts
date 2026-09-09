@@ -453,6 +453,8 @@ type PersistedMarketConfig = { global: RateConfig; perMarket: Array<[string, Par
 declare global {
   // eslint-disable-next-line no-var
   var __50PICK_MARKET_CONFIG_HYDRATED: boolean | undefined;
+  // eslint-disable-next-line no-var
+  var __50PICK_MARKET_CONFIG_HYDRATING: Promise<void> | undefined;
 }
 
 /**
@@ -479,10 +481,36 @@ export function reconcileConfigDefaults(global: RateConfig, fromVersion: number)
   return { global: g, changed };
 }
 
-/** Load persisted config into the cache once per process (before first read). */
+/**
+ * Load persisted config into the cache once per process (before first read).
+ *
+ * 🔴 THE FLAG WAS RAISED ON THE LINE *BEFORE* THE AWAIT, IN THE MODULE THAT OWNS THE
+ * FEE. `loadConfig` never throws — it logs and returns `null` — so one transient DB
+ * error at first read left this process on CODE DEFAULTS for its whole life, with no
+ * retry, and two consequences that are not cosmetic:
+ *   · a market created in that window FREEZES those defaults into its immutable
+ *     `feeSnapshot` and settles by them for ever (⛔ RULES.md §2.1: a snapshot is
+ *     never rewritten), so the poll charges a rate the operator never chose;
+ *   · `persist()` writes the WHOLE snapshot, so the next unrelated admin save
+ *     overwrites the officer's live row with those defaults.
+ * That is the trap RULES.md §2.3 already records from the other direction ("a code
+ * default is not a live setting") — here the live setting silently becomes the code
+ * default. A concurrent caller arriving during the read hit the same thing without
+ * any DB error at all: it saw the flag up and read the defaults.
+ *
+ * The flag is now raised only AFTER the read lands; the in-flight promise is shared;
+ * a failure leaves the flag DOWN so the next read retries.
+ */
 async function ensureHydrated(): Promise<void> {
   if (globalThis.__50PICK_MARKET_CONFIG_HYDRATED) return;
-  globalThis.__50PICK_MARKET_CONFIG_HYDRATED = true;
+  if (!globalThis.__50PICK_MARKET_CONFIG_HYDRATING) {
+    globalThis.__50PICK_MARKET_CONFIG_HYDRATING = hydrateNow()
+      .finally(() => { globalThis.__50PICK_MARKET_CONFIG_HYDRATING = undefined; });
+  }
+  await globalThis.__50PICK_MARKET_CONFIG_HYDRATING;
+}
+
+async function hydrateNow(): Promise<void> {
   const stored = await loadConfig<PersistedMarketConfig>(MARKET_CONFIG_KEY);
   if (stored) {
     // Merge over defaults so a newly-added field gets its default, not undefined.
@@ -495,6 +523,8 @@ async function ensureHydrated(): Promise<void> {
       persist(); // re-write with the new version + any migrated values
     }
   }
+  // ⛔ LAST, not first: only a read that actually landed may close the gate.
+  globalThis.__50PICK_MARKET_CONFIG_HYDRATED = true;
 }
 
 /** Write the whole config through to the DB (fire-and-forget; never throws). */

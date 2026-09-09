@@ -38,11 +38,36 @@ function normalizeStatus(raw: unknown): "CONFIRMED" | "FAILED" | null {
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
+/**
+ * The GENERIC lane's providers — the ones with no status endpoint, which therefore
+ * settle from the callback body.
+ *
+ * 🔴 `selcom` USED TO BE IN THIS MAP, AND THAT UNDID THE ONE RULE THIS FILE OPENS WITH.
+ * Routing is decided by the `Authorization: SELCOM …` scheme, so a caller who simply
+ * did NOT send that header — sending `X-Provider: selcom` and an HMAC over
+ * `${timestamp}.${body}` instead — never reached `handleSelcomCallback` and was settled
+ * from the body's own `status`. Every protection on the Selcom money-in path lives in
+ * that handler: the authoritative signed order-status re-query, and the re-queried
+ * amount that feeds the tamper check. The generic lane has none of them.
+ *
+ * ⛔ The exploit needs only `SELCOM_WEBHOOK_SECRET` — a value we share with the vendor
+ * and keep in a deployment variable — plus a deposit the attacker initiated themselves
+ * and never paid: POST a signed `{reference, status: "COMPLETED", amount}` and the
+ * wallet is credited up to the initiated amount. A secret is a barrier, not the
+ * authority the header comment promises.
+ *
+ * Selcom now has exactly ONE door. A callback naming it here is refused, loudly.
+ * ⚠️ This costs nothing operationally: Selcom signs with `digest` / `signed-fields`,
+ * never `X-Signature`, so a genuine Selcom callback taking this path could only ever
+ * have failed the signature check anyway — 401 then, 400 now.
+ */
 const KNOWN_PROVIDERS: Record<string, string> = {
-  selcom:  "SELCOM_WEBHOOK_SECRET",
   azampay: "AZAMPAY_WEBHOOK_SECRET",
   mixx:    "MIXX_WEBHOOK_SECRET",
 };
+
+/** Providers that must use a dedicated authoritative handler, never the generic lane. */
+const AUTHORITATIVE_ONLY = new Set(["selcom"]);
 
 export async function POST(req: Request) {
   const authHeader = req.headers.get("authorization") ?? "";
@@ -57,6 +82,22 @@ export async function POST(req: Request) {
   const provider = (req.headers.get("x-provider") ?? "").toLowerCase();
   const signature = req.headers.get("x-signature") ?? "";
   const timestamp = req.headers.get("x-timestamp") ?? undefined;
+
+  // ⛔ A provider with an authoritative handler may NOT be settled from a callback
+  // body, whichever header it arrives under. Refused before the signature is even
+  // checked, and audited as SECURITY: on a correctly-configured deployment nothing
+  // legitimate takes this path, so a row here is somebody trying the weaker door.
+  if (AUTHORITATIVE_ONLY.has(provider)) {
+    audit({
+      category: "SECURITY",
+      action: "webhook.payment.rejected",
+      actorId: null,
+      targetType: "Webhook",
+      targetId: null,
+      payload: { provider, reason: "authoritative-lane-required", note: "A callback naming this provider must arrive on its dedicated handler, which settles a deposit only from a signed order-status re-query. The generic lane settles from the request body and is never valid for it." },
+    });
+    return NextResponse.json({ ok: false, error: "authoritative-lane-required" }, { status: 400 });
+  }
 
   if (!provider || !KNOWN_PROVIDERS[provider]) {
     return NextResponse.json({ ok: false, error: "unknown-provider" }, { status: 400 });

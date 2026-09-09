@@ -27,7 +27,8 @@ import { execSync } from "node:child_process";
 const PAGE = new URL("../src/app/admin/updown/page.tsx", import.meta.url);
 const UD = new URL("../src/lib/server/updown-config.ts", import.meta.url);
 const PAY = new URL("../src/lib/payout.ts", import.meta.url);
-const originals = new Map([[PAGE, readFileSync(PAGE, "utf8")], [UD, readFileSync(UD, "utf8")], [PAY, readFileSync(PAY, "utf8")]]);
+const SIM = new URL("../src/app/admin/config/fee-simulator.tsx", import.meta.url);
+const originals = new Map([[PAGE, readFileSync(PAGE, "utf8")], [UD, readFileSync(UD, "utf8")], [PAY, readFileSync(PAY, "utf8")], [SIM, readFileSync(SIM, "utf8")]]);
 const restore = () => { for (const [f, s] of originals) writeFileSync(f, s); };
 
 const CWD = new URL("..", import.meta.url);
@@ -102,6 +103,37 @@ const MUTATIONS = [
     to: "    return { model: r.feeModel, caption: `loser-share · ${pct(loserRate)} of losers` };",
   },
   {
+    name: "simulator-fee-hint-unbranched",
+    why: "⭐ THE ACTUAL PRE-2026-09-08 STATE of /admin/config. `poolFee`'s loser-share arm returns `capped:false` ALWAYS, so the unbranched hint could only ever read \"min() picked the commission\" — a capped-commission mechanism that does not run in this model",
+    file: SIM,
+    from: `          hint={isLoserShare
+            ? (sim.losingPool > 0 ? \`\${fmtRate(sim.fee.shareOfLosers)} of the losing pool\` : "no losing side — nothing to charge")
+            : sim.fee.capped ? "min() picked the ceiling" : "min() picked the commission"} />`,
+    to: `          hint={sim.fee.capped ? "min() picked the ceiling" : "min() picked the commission"} />`,
+  },
+  {
+    name: "simulator-share-tile-unbranched",
+    why: "★ THE OTHER HALF, verbatim — \"Our share of the losers' money · never exceeds 33.3%\" quotes `feeCeilingRate`, which loser-share never reads. The real share is a FLAT 13% of the losing side",
+    file: SIM,
+    from: `        {isLoserShare ? (
+          <Stat
+            label="Our share of the losers' money"
+            value={sim.losingPool > 0 ? fmtRate(sim.fee.shareOfLosers) : "—"}
+            hint={sim.losingPool > 0 ? "flat — this model has no ceiling" : "no losing side"}
+          />
+        ) : (
+          <Stat`,
+    to: `        {false ? null : (
+          <Stat`,
+  },
+  {
+    name: "simulator-quotes-a-literal-rate",
+    why: "⚠️ THE §4 DEFECT ONE SCREEN ALONG — the caption stops deriving and states \"13% of the losing pool\". Correct on today's config and wrong the moment a rate moves; only §7.7's second fixture can see it",
+    file: SIM,
+    from: `? (sim.losingPool > 0 ? \`\${fmtRate(sim.fee.shareOfLosers)} of the losing pool\` : "no losing side — nothing to charge")`,
+    to: `? (sim.losingPool > 0 ? "13% of the losing pool" : "no losing side — nothing to charge")`,
+  },
+  {
     name: "anchor-renamed-so-the-guard-finds-nothing",
     why: "⚠️ NOT A DEFECT — the tile's label changes and the guard's anchor goes stale. It must go RED and say RE-ANCHOR, never find nothing and report clean",
     file: PAGE,
@@ -121,7 +153,13 @@ for (const m of MUTATIONS) {
   if (anchor === null) { problems.push(`${m.name} — HARNESS ERROR: anchor not found`); continue; }
 
   writeFileSync(m.file, src.replace(anchor, anchor === asCRLF ? m.to.replace(/\n/g, "\r\n") : m.to));
-  if (readFileSync(m.file, "utf8").includes(anchor)) {
+  const after = readFileSync(m.file, "utf8");
+  if (after === src) { problems.push(`${m.name} — HARNESS ERROR: file unchanged after write`); continue; }
+  // ⚠️ "the anchor is gone" is the WRONG landed-check when the replacement deliberately
+  // CONTAINS the anchor (an insertion, or a branch collapsed around its own else-arm).
+  // Demanding it there reports a perfectly-applied mutation as a HARNESS ERROR.
+  const reinserted = m.to.replace(/\r\n/g, "\n").includes(m.from.replace(/\r\n/g, "\n"));
+  if (!reinserted && after.includes(anchor)) {
     problems.push(`${m.name} — HARNESS ERROR: anchor still present after write`); continue;
   }
 
