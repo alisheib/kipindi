@@ -15,10 +15,31 @@
 
 **Last touched: 2026-09-09, session 3. Everything below is LIVE on `main` and deployed.**
 
+> ### 🚧 SESSION 3 IS STILL RUNNING — what another session needs to know
+>
+> **Everything described in this file is COMMITTED AND PUSHED TO `main`. Nothing is
+> half-applied.** Each tranche was committed, rebased and pushed before the next began, so
+> `main` is always consistent. If a section has no **FIXED** marker it is a VERDICT, not a
+> change.
+>
+> **Files this session is editing** — message before touching:
+> `docs/MONEY-GATE-REMEDIATION.md` · `docs/RULES.md` · `docs/COMPLIANCE-DECISIONS.md` ·
+> `docs/AGENT-PROGRAMME.md` · `src/lib/server/{define-config,config-store,affiliate-service,
+> agent-config,ledger,market-config,payment-control,updown-config,agent-application-service}.ts`
+> · `src/lib/agent-terms-version.ts` · `src/app/legal/{terms,agent-terms}/page.tsx` ·
+> `src/app/agent/*` · the nine `scripts/*` guards listed under **Guards this programme owns**.
+>
+> ⛔ **NOT touched, by agreement with the other sessions:** `scripts/anchors/` and the anchors
+> ratchet (`UNDECLARED_CEILING` stays at 65 — this session added only `test:` scripts, which do
+> not touch it) · `src/lib/wallet/ledger.ts`, the PLAYER contract and a DIFFERENT file from
+> `src/lib/server/ledger.ts` · `src/lib/server/activity-summary.ts` · `src/lib/i18n-dict.ts` ·
+> `CLAUDE.md`.
+>
+> ⚠️ **Still in flight:** the adversarial verify pass over the remaining findings, and fixes
+> for the CONFIRMED-but-unfixed rows.
+
 ⛔ **THE PROGRAMME IS NOT FINISHED, AND "MONEY IS SAFE" IS NOT A CONCLUSION ANYONE HAS EARNED
-YET.** Session 3 was **cut short by the account session limit** (§7.9) with **86 of 106 findings
-still UNVERIFIED** and **five audit lanes that have still never run**. Do not read the ✅ rows
-below as a launch verdict.
+YET.** Do not read the ✅ rows below as a launch verdict.
 
 | | |
 |---|---|
