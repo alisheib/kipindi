@@ -102,3 +102,36 @@ export async function saveConfig(key: string, value: unknown): Promise<void> {
     console.error(`[config] save "${key}" failed:`, (err as Error)?.message ?? err);
   }
 }
+
+/**
+ * The FIELDS THAT ACTUALLY MOVED, as `{ field: { from, to } }` — the audit payload's
+ * `changes`.
+ *
+ * 🔴 THE DEFECT THIS EXISTS FOR, AND IT COST A STATUTORY RATE. Every config audit wrote
+ * `changes: updates`, and `updates` is the WHOLE POSTED FORM: an admin form seeds its state
+ * from all of the current config and submits all of it, so a save that moved one field
+ * recorded all sixteen as "changed". On 2026-09-08T17:42:24Z an officer changed the agent
+ * programme's Lipa fee destination — and in the same save `feeVatRatePct` went **18 → 0**,
+ * taking the registration fee from TZS 118,000 to 100,000 and VAT to nothing. The audit row
+ * recorded sixteen identical-looking "changes"; `/admin/config` → History renders that blob
+ * `JSON.stringify`'d into one truncated cell. **Nothing on any screen could show which field
+ * moved.** (money-gate `LEAD-B.1a`, CONFIRMED; `MONEY-GATE-REMEDIATION.md` §7.1.)
+ *
+ * ⭐ `before` and `after` were always there and always complete, so nothing was ever LOST —
+ * the row was unreadable, not incomplete. This makes the one field a human reads say the
+ * true thing, and shortens the rendered cell from ~1,300 characters to ~30.
+ *
+ * ⛔ Comparison is by `JSON.stringify` per field, so it is exact for the scalars every config
+ * is made of and treats an unchanged nested object as unchanged. A field present in `after`
+ * and absent from `before` reads `from: undefined` — an ADDITION, which is what it is.
+ */
+export function configChanges(
+  before: Record<string, unknown>,
+  after: Record<string, unknown>,
+): Record<string, { from: unknown; to: unknown }> {
+  const out: Record<string, { from: unknown; to: unknown }> = {};
+  for (const k of new Set([...Object.keys(before), ...Object.keys(after)])) {
+    if (JSON.stringify(before[k]) !== JSON.stringify(after[k])) out[k] = { from: before[k], to: after[k] };
+  }
+  return out;
+}

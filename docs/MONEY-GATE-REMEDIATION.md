@@ -1122,3 +1122,61 @@ refuted. `LEAD-B.3`'s single returned lens said it **stands** and could not be k
 hydrated *before* the load, and it reads through `loadConfig` — the function whose own docblock
 says *"DO NOT BUILD A HYDRATION GATE ON THIS"*. ⚠️ That one is the mechanism §7.1's `agent.config`
 sits on top of, so it is the first thing the next batch should finish.
+
+### 7.6 · ✅ FIXED — the config audit's `changes` was the whole posted form, and it hid a statutory rate
+
+`src/lib/server/config-store.ts` (new `configChanges`) · `define-config.ts` · `market-config.ts` ·
+`payment-control.ts` · `updown-config.ts` (finding `LEAD-B.1a`, CONFIRMED 2/3)
+
+Every config audit wrote `changes: updates`. An admin settings form seeds its state from the
+entire current config and submits all of it, so `updates` **is the whole form** and a save that
+moved one field recorded every field as changed.
+
+⭐ **This is the finding that §7.1 caught in the act.** Batch 1's three lenses scored `LEAD-B.1a`
+at **TZS 0 and severity `low`** — "legibility, nothing is lost, `before`/`after` are complete".
+That reasoning is correct about the *record* and wrong about the *consequence*: on
+2026-09-08T17:42:24Z it is the reason nobody saw an 18% VAT rate go to zero. **A finding whose
+money impact is zero in the repo can still be the mechanism by which a real rate moves
+unnoticed.** Verified from the repo alone, it looked cosmetic; verified against production, it
+had a casualty.
+
+**Fixed:** one helper, `configChanges(before, after)`, returns `{ field: { from, to } }` for the
+fields that actually moved, and the four setters that audit a full `before`/`after` snapshot now
+call it — market config, the `defineConfig` factory (which is what `agent.config` is built on,
+so the exact path the production save took), the payments control plane and Up & Down config.
+
+⛔ **`updown.chain.updated` was deliberately left alone.** Its `changes: patch` is already a
+genuine change set — `patch` is built field by field behind `if (updates.X !== undefined)`, not
+posted wholesale — so it never had the defect. Changing it would have been a fix aimed at
+nothing.
+
+⭐ **`before` and `after` are untouched and still complete.** Nothing was ever lost; the row was
+unreadable, not incomplete. §5 of the guard exists to keep a future "tidy-up" from turning a
+legibility fix into an actual loss of record.
+
+**And it shortens the cell that `LEAD-B.1b` is about.** `/admin/config` → History renders
+`JSON.stringify(changes)` into one truncated box. On the production save that is **434
+characters down to 206**, and `feeVatRatePct` moves from character 17 of a blob whose meaning
+was "everything" to a named entry inside the first 200 characters that actually renders.
+
+**Guard `npm run test:config-audit-diff` — 26/0, all three arms proven in the same session:**
+
+| arm | result |
+|---|---|
+| **GREEN** on the fix | 26 passed, 0 failed |
+| **RED** on the pre-fix call sites (`git checkout HEAD --` the four files, helper kept so it FAILS rather than crashes) | **3 failures**, each naming the shape: *"`gbtLevyOnCommissionRate` is not a { from, to } pair — it is 0.06"* |
+| ⚠️ **POSITIVE CONTROL**, same run | §4 stayed GREEN through the red run — the checker rejects a whole-form payload, rejects the right key without both sides, and **accepts** a genuine diff |
+| ⛔ **OVER-CORRECTION** — `configChanges` mutated to always return `{}` | **11 failures**. A diff that reports nothing is not a fix |
+
+⭐ **§2 of the guard is the production save itself**, `before` and `after` copied verbatim out of
+the live `AuditLog` row: sixteen fields in, three out, `feeVatRatePct` reported `18 → 0`. The
+guard is anchored to the thing that happened, not to a synthetic fixture — so it cannot pass by
+sitting on the one shape where the two regimes agree.
+
+⚠️ **One consumer had to move with it**, and that is the shape-change working as intended:
+`scripts/proposals-state.test.mts` read `payload.changes.state === "MAINTENANCE"`. It now reads
+`.state.to`, plus a second assertion that `changes` names **only** the field that moved — the old
+shape had no `.to` at all, so the new assertion cannot pass against it.
+
+**Suites re-run, all green:** `config-persist` 24/0 · `proposals-state` 29/0 ·
+`payment-webhook` 47/0 · `audit-chain` 36/0 · `tsc --noEmit` clean.

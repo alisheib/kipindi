@@ -76,7 +76,7 @@
  * Every change is audited (WALLET + a COMPLIANCE breadcrumb for the money-rail
  * switch) with a `{ before, after, changes }` payload, visible in /admin/audit.
  */
-import { loadConfigResult, saveConfig } from "./config-store";
+import { configChanges, loadConfigResult, saveConfig } from "./config-store";
 import { audit } from "./audit";
 import { isLiveMoneyMode, moneyMode, type MoneyMode } from "./runtime-mode";
 
@@ -348,7 +348,7 @@ export async function setPaymentControls(
     actorId: officerId,
     targetType: "PaymentControlPlane",
     targetId: "global",
-    payload: { before, after, changes: updates, mode: moneyMode() },
+    payload: { before, after, changes: configChanges(before, after), mode: moneyMode() },
   });
   // The money-rail switch is compliance-relevant — a second, category-COMPLIANCE
   // breadcrumb so it also shows in the compliance audit view.

@@ -23,7 +23,7 @@
  * Persists across hot-reloads via `globalThis.__50PICK_MARKET_CONFIG`.
  */
 import { audit } from "./audit";
-import { loadConfigResult, saveConfig } from "./config-store";
+import { configChanges, loadConfigResult, saveConfig } from "./config-store";
 import {
   DEFAULT_COMMISSION_RATE,
   DEFAULT_FEE_CEILING_RATE,
@@ -822,7 +822,7 @@ export async function setGlobalConfig(updates: Partial<RateConfig>, officerId: s
     targetId: "global",
     // The audit trail records the winner-floor warning too — if an officer sets a
     // ceiling above 50%, the fact that they were told is part of the record.
-    payload: { before, after: store.global, changes: updates, warn: v.warn ?? null },
+    payload: { before, after: store.global, changes: configChanges(before, store.global), warn: v.warn ?? null },
   });
   return { ok: true, config: { ...store.global }, warn: v.warn };
 }
@@ -842,7 +842,7 @@ export async function setMarketOverride(marketId: string, updates: Partial<RateC
     actorId: officerId,
     targetType: "MarketConfig",
     targetId: marketId,
-    payload: { before, after: merged, changes: updates },
+    payload: { before, after: merged, changes: configChanges(before, merged) },
   });
   return { ok: true, config: await getEffectiveConfig(marketId) };
 }

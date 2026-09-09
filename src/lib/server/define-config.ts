@@ -15,7 +15,7 @@
  * configs (e.g. affiliate) can pass a deep-merge fn to adopt the factory too.
  */
 import { audit } from "./audit";
-import { loadConfig, saveConfig } from "./config-store";
+import { configChanges, loadConfig, saveConfig } from "./config-store";
 
 export type ConfigValidator<T> = (c: T) => { ok: true } | { ok: false; reason: string };
 
@@ -92,7 +92,7 @@ export function defineConfig<T extends object, U = Partial<T>>(opts: DefineConfi
         actorId: officerId,
         targetType: auditOpts.targetType,
         targetId: "global",
-        payload: { before, after: merged, changes: updates },
+        payload: { before, after: merged, changes: configChanges(before as Record<string, unknown>, merged as Record<string, unknown>) },
       });
     }
     return { ok: true, config: { ...merged } };

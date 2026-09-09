@@ -25,7 +25,7 @@
  */
 import { audit } from "./audit";
 import { randomId } from "./crypto";
-import { loadConfigResult, saveConfig } from "./config-store";
+import { configChanges, loadConfigResult, saveConfig } from "./config-store";
 import { isSourceTrusted, normalizeDomain } from "./source-registry";
 import { validateRateConfig } from "./market-config";
 import { PLATFORM_MIN_STAKE, PLATFORM_MAX_STAKE, resolveFeeModel, describeFeeModel, type FeeModel } from "@/lib/payout";
@@ -551,7 +551,7 @@ export async function setUpDownConfig(
     actorId: officerId,
     targetType: "UpDownConfig",
     targetId: "global",
-    payload: { before, after: cfgStore(), changes: updates, warn: warn ?? null },
+    payload: { before, after: cfgStore(), changes: configChanges(before, cfgStore()), warn: warn ?? null },
   });
   return { ok: true, config: { ...cfgStore() }, warn };
 }

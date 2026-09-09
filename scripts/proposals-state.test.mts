@@ -117,8 +117,18 @@ await (async () => {
   setProposalsConfig({ state: "MAINTENANCE" }, OFFICER);
   await auditFlush();
   const admin = getAuditPage({ category: "ADMIN", limit: 200 });
-  const entry = admin.find((e) => e.action === "proposals.config.updated" && (e.payload?.changes as { state?: string })?.state === "MAINTENANCE");
+  // ⭐ `changes` is a DIFF — `{ field: { from, to } }` — not the posted form. It read
+  // `changes: updates`, which recorded every field of the form as changed on every save and
+  // let a statutory VAT rate move invisibly on production (MONEY-GATE-REMEDIATION.md §7.1).
+  // Asserting the `to` side is what pins the new shape: the old shape had no `.to` at all.
+  const entry = admin.find((e) => e.action === "proposals.config.updated"
+    && (e.payload?.changes as { state?: { from?: string; to?: string } })?.state?.to === "MAINTENANCE");
   ok("state change is audited as proposals.config.updated", !!entry);
+  ok(
+    "…and `changes` names ONLY the field that moved, with both sides",
+    !!entry && Object.keys(entry.payload!.changes as object).length === 1
+      && (entry.payload!.changes as { state: { from: string } }).state.from !== "MAINTENANCE",
+  );
   ok("audit entry carries a before/after payload", !!entry && !!entry.payload?.before && !!entry.payload?.after);
   ok("audit actor is the officer", !!entry && entry.actorId === OFFICER);
 
