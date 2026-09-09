@@ -20,7 +20,7 @@
  *   SETTLE      resolveMarket() x2 + settleMarket() — winners paid, losers zeroed
  *   ONE-SIDED   a poll nobody opposed → everybody refunded, we earn nothing
  *   VOID        an emergency-voided poll → everybody refunded
- *   CASH OUT    withdraw()           — to mobile money, 1% fee, NO withholding tax
+ *   CASH OUT    withdraw()           — to mobile money, the 1.5% fee, NO withholding tax
  *
  * Then it RECONCILES:
  *   • every ledger group sums to zero
@@ -36,7 +36,7 @@ import {
 import { marketStore, positionStore } from "../src/lib/server/market-dal.ts";
 import { setGlobalConfig } from "../src/lib/server/market-config.ts";
 import { setRequireTwoOfficerResolution } from "../src/lib/server/resolution-policy.ts";
-import { poolFee } from "../src/lib/payout.ts";
+import { poolFee, DEFAULT_WITHDRAWAL_FEE_RATE, DEFAULT_WITHDRAWAL_GATEWAY_SHARE_RATE } from "../src/lib/payout.ts";
 
 if (!process.env.DATABASE_URL) {
   console.error("money-e2e: DATABASE_URL is required — this suite runs against a REAL Postgres.");
@@ -316,16 +316,37 @@ section("7b · SINGLE-ADMIN resolution (the default) — one officer, one action
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-section("8 · CASH OUT TO MOBILE MONEY — 1% fee, and NOTHING else");
+section("8 · CASH OUT TO MOBILE MONEY — the 1.5% fee, and NOTHING else");
 // ════════════════════════════════════════════════════════════════════════════
+// ⛔ THESE LITERALS ARE THE LAW, NOT THE CODE'S OPINION OF IT. RULES §2.7: 1.5% of the
+// amount withdrawn, of which 0.5 percentage points is the gateway's. On 100,000 that is
+// 1,500 of fee and 98,500 to the player, 500 of the fee belonging to HOUSE:AGGREGATOR.
+//
+// ⚠️ They read `1_000` / `99_000` — the 1% rate RETIRED on 2026-08-14 — until this suite
+// was first run against a real Postgres on 2026-09-09, when it went RED on correct code.
+// An assertion pinned to a superseded rate does not merely fail to catch a defect; it
+// ACCUSES THE FIX. Note the tell it left: the HOUSE:AGGREGATOR line below already said
+// 500, which is 0.5pp of 1.5% — half this section was updated in 2026-08-14 and half was
+// not, and nothing in the repo could see the contradiction because the suite had never
+// been executed. (§6.4 found the same rot in ledger.test.mts's captions.)
+//
+// ⭐ So the literals are bound to the shipped default below. If a rate legitimately moves,
+// RULES §5 step 4 requires every statement of it to move in the SAME commit — and this
+// says which one is stale instead of re-deriving the expectation from the code under test.
 let totalWithdrawnGross = 0, totalWithdrawFees = 0;
 {
+  ok(
+    "the literals below still state the shipped rate — RULES §2.7 (1.5%, 0.5pp gateway)",
+    DEFAULT_WITHDRAWAL_FEE_RATE === 0.015 && DEFAULT_WITHDRAWAL_GATEWAY_SHARE_RATE === 0.005,
+    `payout.ts ships ${DEFAULT_WITHDRAWAL_FEE_RATE} / ${DEFAULT_WITHDRAWAL_GATEWAY_SHARE_RATE} — if the RATE moved, update RULES §2.7 and these literals in the same commit`,
+  );
+
   const before = await bal("p_win1");
   const r = await withdraw("p_win1", { amount: 100_000, provider: "MPESA", msisdn: msisdns["p_win1"] });
   ok("withdrawal succeeded", r.ok, r.ok ? "" : (r as { error?: string }).error);
   if (r.ok) {
-    ok("fee is 1,000 — exactly 1%", r.data.fee === 1_000, `fee ${money(r.data.fee)}`);
-    ok("★ he receives 99,000 — NO withholding tax (the old code paid 85,000)", r.data.net === 99_000, `net ${money(r.data.net)}`);
+    ok("fee is 1,500 — exactly 1.5% (RULES §2.7)", r.data.fee === 1_500, `fee ${money(r.data.fee)}`);
+    ok("★ he receives 98,500 — NO withholding tax (the old code paid 85,000)", r.data.net === 98_500, `net ${money(r.data.net)}`);
     totalWithdrawnGross += 100_000; totalWithdrawFees += r.data.fee;
   }
   ok("the wallet is debited the full 100,000", before - (await bal("p_win1")) === 100_000);

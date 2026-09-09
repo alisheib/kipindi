@@ -933,3 +933,192 @@ players were actually shown.
 
 **Guards this session added:** `npm run test:levy-allocation` · `npm run red:levy-allocation` ·
 `npm run test:lock-tx-threading`
+
+---
+
+## §7 · SESSION 3 (2026-09-09) — `e2e:money` finally executed, and the production reads
+
+### 7.0 · What ran, and whether to believe it
+
+| | |
+|---|---|
+| `e2e:money` against a **real Postgres** | ✅ **RAN — the first time ever.** 64 passed, 0 failed |
+| The four §4.3 production reads | ✅ **DONE** — `PAYMENT_AGGREGATOR`, `payments.control`, `agent.config`, `market.config` |
+| §4.4 — the `AgentApplication` terms stamp | ✅ **ANSWERED by a production read.** No action needed |
+| The 35 HIGH findings | 🟠 **8 of 35 attempted · 5 adjudicated · 3 still UNVERIFIED** |
+| ⛔ The account session limit | 🔴 **HIT mid-batch.** 8 of 12 agents in batch 2 died |
+
+⛔ **AND THE SECOND BATCH IS THE REASON §0 EXISTS.** `agent_count` 12, **`agents_done` 4,
+`agents_error` 8** — every failure the same line: *"You've hit your session limit · resets 6pm
+(Asia/Beirut)."* The harness bucketed the three findings whose lenses died as **UNVERIFIED**,
+not refuted, exactly as it is built to. Batch 1 was clean (12/12, 0 errors) and its four
+verdicts can be read; batch 2's cannot, except for the one finding that got two votes.
+
+| batch | agents | done | errors | CONFIRMED | REFUTED | UNVERIFIED |
+|---|---|---|---|---|---|---|
+| `high 0-4` | 12 | **12** | 0 | 2 | 2 | 0 |
+| `high 4-8` | 12 | **4** | **8** | 0 | 1 | **3** |
+
+### 7.1 · 🔴 FOR ALI — production charges TZS 100,000 for an agent registration, and the law says 118,000
+
+**This is the single most consequential thing session 3 found, and it was found by reading
+production rather than the repo.**
+
+`SystemConfig["agent.config"]` on the live database carries **`feeVatRatePct: 0`**. With
+`feeVatTreatment: "EXCLUSIVE"` and `registrationFeeTzs: 100000`, `feeBreakdownFor` computes:
+
+```
+rate = 0 / 100 = 0
+vat  = Math.round(100_000 × 0) = 0
+      → { totalTzs: 100_000, vatTzs: 0, netTzs: 100_000 }
+```
+
+Every applicant-facing surface reads `feeBreakdown().totalTzs` — `/agent`, `/agent/apply`,
+`/legal/agent-terms`, `/admin/agents`, and the invitation email — so all of them now quote
+**TZS 100,000**, and a registration books **nothing** to `HOUSE:TAX`.
+
+⛔ **The law says otherwise in three places, all dated 2026-09-08:** `RULES.md` §6 ("the
+applicant owes **TZS 118,000** (100,000 + 18% VAT)"), `AGENT-PROGRAMME.md` §5a ("TZS 118,000 —
+TZS 100,000 PLUS 18% VAT … `feeVatRatePct`, 18% today"), and `COMPLIANCE-DECISIONS.md`
+§ 2026-09-08. The shipped code default is `feeVatRatePct: 18`. **The persisted row overrides it**
+— which is precisely the failure mode the §2.10 marker in `RULES.md` was written to warn about.
+
+**The evidence that it was collateral, not a decision.** The audit chain has six
+`agent.config.updated` rows. VAT moved **18 → 0** in the one stamped **2026-09-08T17:42:24Z**,
+and that same save moved `feeDestinationName` *"Digital Selcom Bank"* → *"Selcom LIPA NAMBA -
+OCEAN ENTERTAINMENT LIMITED"* and `feeDestinationAccount` *"0769777877"* → *"7006 3747"*. The
+destination change is the Lipa QR programme, live and intended. Nothing else in that save was
+touched. A VAT rate does not usually travel with a bank account.
+
+⭐ **AND NOTHING ON ANY SCREEN COULD HAVE SHOWN IT.** That save's audit `changes` field lists
+**all sixteen fields**, because `changes` is the entire posted form and not a diff — finding
+`LEAD-B.1a`. An officer reviewing that row sees sixteen "changes" and cannot tell that one of
+them was a statutory rate going to zero. **This is `LEAD-B.1a` with a production casualty, and
+it re-rates it: batch 1's three lenses scored its money impact at TZS 0 and its severity at
+`low`, reasoning from the repo alone.** They were wrong on the facts available here.
+
+**Exposure so far: TZS 0 realised.** Exactly one `AgentApplication` exists
+(`agp_2031e6c2c4fd32545a18`, APPROVED). It was submitted 2026-09-07T13:05:49Z — **before** this
+save — and paid `feeAmountTzs 118,000`; `HOUSE:AGENT_FEE` holds 100,000 and `HOUSE:TAX` holds
+18,000 over one entry. So no money has been lost yet. **The next agent to register pays 100,000
+and the state is owed 18,000 that nobody will collect.**
+
+⛔ **NOT ACTIONED HERE, DELIBERATELY. This is a rate, so `RULES.md` §5 step 1 applies: Ali
+decides, in writing.** Either production returns to `feeVatRatePct: 18` (and §5's remaining six
+steps run), or the law is amended to 0% and three documents change. Guessing which is not this
+programme's call. ⚠️ Note also that `AGENT-PROGRAMME.md` line 97 still names *"Digital Selcom
+Bank 0769777877"* as the fee destination, which production replaced on 2026-09-08 — a separate,
+smaller docs drift on the same row.
+
+### 7.2 · ✅ ANSWERED — §4.4's agent terms stamp needs no action
+
+§4.4 asked whether any `AgentApplication` carries `acceptedTermsVersion = "2026-09-07"` while
+the applicant was shown the 09-08 text. **Read on production: there is exactly one application,
+and the answer is no.**
+
+| field | value |
+|---|---|
+| `id` | `agp_2031e6c2c4fd32545a18` · `status` APPROVED · `source` SELF_SERVICE |
+| `acceptedTermsAt` | **2026-09-07T13:05:49Z** |
+| `acceptedTermsVersion` | **"2026-09-07"** |
+| `approvedRatePct` | **10.00** |
+| `feeAmountTzs` / `feeDisposition` | **118,000.00** · COLLECTED |
+
+`cc946bbb` — the commit that changed the VAT wording — was authored **2026-09-08T02:37**, nearly
+half a day *after* this applicant accepted. The text they were shown was `a783299f`'s, which
+declared `AGENT_TERMS_VERSION = "2026-09-07"`, and that is what the row records. **The
+acceptance record is accurate; no officer note and no rewrite are needed.**
+
+⭐ **And §4.4's other half also dissolves:** it asked to "re-price any agent approved at 20%".
+`approvedRatePct` is **10.00**. There is no such agent.
+
+### 7.3 · ✅ ANSWERED — the two §4.3 production reads
+
+Read off the LIVE Railway service on 2026-09-09, not off any repo file:
+
+```
+PAYMENT_AGGREGATOR   = selcom          ← §4.3's first question
+SELCOM_WEBHOOK_SECRET= (set)
+NEXT_PUBLIC_APP_URL  = https://www.50pick.tz
+NODE_ENV             = production
+TEST_FUNDING         = NOT SET
+```
+
+⛔ **`TEST_FUNDING` unset with `NODE_ENV=production` means `isLiveMoneyMode()` returns TRUE.**
+This deployment is in **LIVE money mode** — worth stating plainly, because finding `MO-4.c`
+asserts the opposite ("an env switch that is still OFF on production") and its premise is
+therefore false. That is a production read settling a HIGH finding without a verifier.
+
+`SystemConfig["payments.control"]` also carries an officer row `provider: "selcom"` (2026-07-24),
+so both the officer path and the env path resolve to the real rail. `/admin/agents` → Settings
+reads **10 · EXCLUSIVE · 5 days · 5%** — correct on all four — with the `feeVatRatePct` exception
+that is §7.1's whole subject.
+
+**`market.config` re-read, unchanged and matching the law:** loser-share, 3% + 10%, ceiling
+0.333, TRA 10%, GBT 5%, bounds 1,000 / 1,000,000, withdrawal 1.5% with a 0.5pp gateway share.
+
+⭐ **`levy-divergence` re-run: 43 of 203 — the baseline has NOT grown**, and `GBT booked ZERO on
+a market that owed it` is now **0**. TRA net +20 TZS, GBT net −7 TZS across the 43. The 138
+one-winner markets diverge 0.0%, every group of 5+ winners diverges 100% — the discriminating
+variable behaving exactly as §6.1 said it would. ⛔ Still not to be backfilled.
+
+### 7.4 · ✅ FIXED — `e2e:money` had never run, and it was asserting a rate retired in August
+
+`scripts/money-e2e.test.mts`
+
+**It ran. 61 passed, 2 failed** — and both failures were the suite, not the code:
+
+```
+✗ FAIL  fee is 1,000 — exactly 1%                          — fee 1,500
+✗ FAIL  ★ he receives 99,000 — NO withholding tax          — net 98,500
+```
+
+`withdraw()` charged **1,500 on 100,000** and paid **98,500**, which is exactly RULES §2.7 —
+1.5%, 0.5pp of it the gateway's — and exactly what production's `market.config` carries. The
+suite still asserted the **1%** rate retired on 2026-08-14. ⭐ **An assertion pinned to a
+superseded rate does not merely fail to catch a defect; it ACCUSES THE FIX.**
+
+⛔ **And the tell was sitting three lines below it, unread for a month:** the same block asserts
+`the gateway got its 0.5% (500)` — 500 is 0.5pp **of 1.5%**. Half the section was updated when
+the rate moved and half was not, and nothing in the repo could see the contradiction **because
+the suite had never been executed against a database**. This is §6.4's `ledger.test.mts` rot a
+second time, in the one suite that is the behavioural proof for four of session 2's fixes.
+
+**Fixed:** the literals now state the law (1,500 / 98,500), the section heading and the file's
+own docblock name 1.5%, and a new first assertion binds those literals to the shipped
+`DEFAULT_WITHDRAWAL_FEE_RATE` / `DEFAULT_WITHDRAWAL_GATEWAY_SHARE_RATE` so a rate that moves
+says **which statement is stale** instead of failing as opaque arithmetic.
+
+**Proof, all three arms in one run:**
+- **GREEN on correct code** — 64 passed, 0 failed, 28 ledger groups all balanced, money
+  conservation `drift 0.00`, and not one winner paid below stake.
+- **RED on a mutation** — `DEFAULT_WITHDRAWAL_FEE_RATE` set back to `0.01`: **3 failures**, and
+  the new cross-check names the cause (`payout.ts ships 0.01 / 0.005 — if the RATE moved,
+  update RULES §2.7 and these literals in the same commit`) rather than only the arithmetic.
+- **The mutation reverted** and the tree re-verified clean before commit.
+
+⚠️ **WHAT THIS RUN DOES AND DOES NOT PROVE.** It drives `deposit → buyPosition → cashOutPosition
+→ notifySelectionClosedForMarket → resolveMarket → settleMarket → withdraw` on the real Prisma
+DAL and the real advisory-lock path, so **§6.2's `withdraw()` Phase A threading is now proven
+behaviourally**, as is the settlement ledger. ⛔ **It does NOT reach `dispatchApprovedWithdrawal`
+(§6.9), `creditInternal` (§6.15) or the AML window** — the suite contains no AML, agent or
+commission path at all. Those three guards remain **structural**, and `RULES.md` now says so
+rather than implying `e2e:money` covered them.
+
+### 7.5 · The HIGH findings adjudicated so far — 5 of 35
+
+| id | bucket | votes | what settled it |
+|---|---|---|---|
+| `LEAD-A.2` | ❌ **REFUTED** 3/3 | 3 | `LEAD-A.1` from the audit-chain side, closed by §6.1. One lens re-derived the finder's own 60-winner scenario and got TRA 52 / GBT 26 where the claim predicted 60 / 0, then drove 200,000 randomised settlements with **0 levy mismatches** |
+| `LEAD-B.2b` | ❌ **REFUTED** 3/3 | 3 | The destructive half needed a container pinned de-hydrated for its life; §6.11 removed that, and `setGlobalConfig` now `await ensureHydrated()` before it persists |
+| `LEAD-C.2` | ❌ **REFUTED** 2/2 | 2 | — |
+| `LEAD-B.1a` | ✅ **CONFIRMED** 2/3 | 3 | `changes: updates` is the whole posted form; there is no diff in the tree. ⭐ **The lenses scored it TZS 0 / `low`. §7.1 shows a production casualty and that rating is too kind** |
+| `LEAD-B.1b` | ✅ **CONFIRMED** 2/3 | 3 | Measured in a browser: the payload cell is a 360px box, `scrollWidth 4100` vs `clientWidth 396`; 46 characters of `before` survive and `"after"` starts at character 463. Severity medium, money TZS 0 |
+
+🔴 **UNVERIFIED and MUST be re-run — their lenses died on the session limit, nothing was decided:
+`LEAD-B.3` (1 vote), `LEAD-C.1` (0 votes), `LEAD-C.3` (1 vote).** ⛔ Do not read these as
+refuted. `LEAD-B.3`'s single returned lens said it **stands** and could not be killed:
+`define-config.ts` was **not** one of the four hydrations `2499f324` repaired, it marks a key
+hydrated *before* the load, and it reads through `loadConfig` — the function whose own docblock
+says *"DO NOT BUILD A HYDRATION GATE ON THIS"*. ⚠️ That one is the mechanism §7.1's `agent.config`
+sits on top of, so it is the first thing the next batch should finish.
