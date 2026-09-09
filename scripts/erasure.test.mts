@@ -211,7 +211,12 @@ section("1 · CONTROL — the fixtures are really there before anything is measu
   const subs = await db.kyc.listByUser(SUBJECT);
   ok("1.2 ⛔ TWO submissions exist — the rejected one is why erasure cannot read the newest",
     subs.length === 2 && subs.every((k) => k.idNumber === NIDA), `${subs.length} submissions`);
-  const thread0 = await listComments("mkt_erase", MOD);
+  // ⚠️ `listComments` RETURNS AN ENVELOPE, NOT AN ARRAY, since PLAYER QUERY task 4.12 (`ef8b7566`)
+  // gave the thread a sort and a read bound: `{ comments, total, capped }`. This suite kept calling
+  // `.some()` on the envelope and died with "thread0.some is not a function" — a TypeError, so it
+  // was not a soft miss but a suite that could not run at all, and it sat red on main because
+  // `test:all` was never re-run after that stage. Unwrapped here rather than papered over.
+  const thread0 = (await listComments("mkt_erase", MOD)).comments;
   ok("1.3 ⭐ the thread carries BOTH frozen mask forms — the phone-tail one AND the name one",
     thread0.some((c) => c.authorName === phoneMask) && thread0.some((c) => c.authorName === nameMask),
     `masks present: ${thread0.map((c) => c.authorName).join(" | ")} (want ${phoneMask} and ${nameMask})`);
@@ -375,7 +380,7 @@ section("6 · the frozen fragments — comments, and somebody else's notificatio
   // ⛔ READ AS A MODERATOR. Erasure soft-deletes the comment, and `listComments` filters
   // `deleted` rows out for every other viewer — so a player-eye read returns an empty list
   // and every "no fragment survives" assertion below would pass on nothing at all.
-  const thread = await listComments("mkt_erase", MOD);
+  const thread = (await listComments("mkt_erase", MOD)).comments;
   ok("6.1 the comment ROWS SURVIVE — the moderation trail and every audit id naming them " +
      "still resolve",
     thread.length === 2, `${thread.length} rows (expected 2)`);
@@ -523,7 +528,7 @@ section("8 · ⭐ THE SWEEP — nothing anywhere still holds an erased identifie
     wallets: await db.wallet.listAll(),
     notificationsSubject: await db.notification.findByUser(SUBJECT, 100),
     notificationsReferrer: await db.notification.findByUser(REFERRER, 100),
-    comments: await listComments("mkt_erase", MOD),
+    comments: (await listComments("mkt_erase", MOD)).comments,
     sourceOfFunds: await db.sourceOfFunds.get(SUBJECT),
     positions: await positionStore.values(),
     pushSubs: await db.pushSub.listForUser(SUBJECT),

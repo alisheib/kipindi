@@ -243,7 +243,22 @@ console.log("\n── 4b · The BOOT path does not read a whole table ───�
 console.log("\n── 5 · The leaderboard is bounded by the board, not the platform ─");
 
 const board = read("../src/app/leaderboard/page.tsx");
-ok("it asks the DAL for a ranked, limited board", /positionStore\.leaderboard\(BOARD_SIZE\)/.test(board));
+// ⚠️ THE ANCHOR WAS `leaderboard(BOARD_SIZE)` EXACTLY, and PLAYER QUERY task 4.14 widened the call
+// to `leaderboard(BOARD_SIZE + 1, { sort, dir })` — one more row than the board so an overflow can
+// be DETECTED rather than guessed, and the ranking pushed into the store. The old regex then
+// matched nothing and this suite went red on main, unnoticed because `test:all` was not re-run.
+//
+// ⛔ IT IS NOT LOOSENED TO PASS. The property that matters is unchanged and is now asserted in two
+// halves instead of one: the bound must still be DERIVED FROM `BOARD_SIZE` (a literal would be the
+// defect this line exists to stop — a page-size that drifts from the board it names), and the
+// ORDER must be the DAL's job. A regex that merely allowed any argument would have accepted
+// `leaderboard(10_000)`, which is the unbounded read this section was written after.
+ok("it asks the DAL for a ranked, limited board — bounded BY `BOARD_SIZE`, not by a literal",
+  /positionStore\.leaderboard\(\s*BOARD_SIZE\b[^)]*\)/.test(board),
+  "the bound must be derived from BOARD_SIZE, or the board and its read can drift apart");
+ok("⭐ …and the RANK is pushed into the store, not applied to a page of rows",
+  /positionStore\.leaderboard\(\s*BOARD_SIZE\b[^)]*\{[^}]*\bsort:/.test(board),
+  "on this board the sort IS the selection — ordering after a LIMIT ranks the wrong 50 players");
 ok("⛔ it no longer loads every user", !/db\.user\.list\(\)/.test(board),
   "no `where`, no `take`, on a PUBLIC page — the trigger is somebody sharing the link");
 ok("the per-row detail fetch is bounded by the board size",

@@ -215,7 +215,13 @@ export default async function ProposalsPage({
       {/* The board's own totals — the whole table, never the filtered view. ⛔ These two numbers
           answer "how big is this board", which is a different question from "how many match", and
           the bar's `data-result-count` answers the second one. Two questions, two numbers. */}
-      <p className="font-mono text-[12px] text-text-muted">{totalProposals.toLocaleString()} {t.proposals.proposalsCount} · {totalVotes.toLocaleString()} {t.proposals.votesCount}</p>
+      {/* ⚠️ `text-body-sm`, NOT `text-[12px]`. This line is a SENTENCE a player reads — "30
+          proposals · 12 votes" — so §T4's 12.5px reading floor applies, and `text-label` (12) and
+          `text-caption` (11) sit BELOW it and do not count as a fix. It is also the last of the
+          sub-floor sentences this campaign wrote: the same rule was applied to its siblings in
+          `adc3718f` and this one was missed, which is why `test:type-scale` §3 measured 750
+          against a ratchet that commit had just lowered to 749. */}
+      <p className="font-mono text-body-sm text-text-muted">{totalProposals.toLocaleString()} {t.proposals.proposalsCount} · {totalVotes.toLocaleString()} {t.proposals.votesCount}</p>
 
       {/* ⛔ THE CONTROLS ARE WITHHELD ON AN EMPTY BOARD, and only then — §A5: seven pills all
           reading 0 above "no proposals yet" are seven controls that cannot act. Every other empty

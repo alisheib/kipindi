@@ -458,6 +458,22 @@ function ok(label: string, cond: boolean, extra?: string) {
     "src/lib/server/email.ts",             // email templates, not a rendered page
     "src/lib/server/notification-service.ts",
     "src/app/admin/affiliate/actions.ts",  // admin console, not the player product
+    // ⛔ ADDED 2026-09-09, AND THE REASON MATTERS MORE THAN THE ENTRY. `recruits.ts` is the
+    // query-href BUILDER for the agent recruit book — the live list that shares this route — so
+    // its `"/profile/invite"` is the destination of a lens, sort and pager link rendered ON that
+    // page, by a viewer already inside the gate. It is not a door into the page and cannot be
+    // reached without first passing the one that is.
+    //
+    // ⚠️ IT WENT UNCOVERED BECAUSE OF THE PLAYER QUERY CAMPAIGN'S OWN task 4.11 (`6464568f`),
+    // which gave that route a filter bar; the campaign then did not run `test:all`, so this sat
+    // red on main. Recorded rather than quietly exempted.
+    //
+    // ⛔ AND THE EXEMPTION IS NARROW ON PURPOSE — it does NOT blind §7 to the defect §7 exists
+    // for. The real player-facing entry points (the menu row and the profile surface) stay in the
+    // population and still have to sit beside the gate; sever the gate and they still fail. The
+    // question this had to answer is the one this platform keeps relearning: would the rule still
+    // catch the defect if the feature were absent? It would.
+    "src/lib/affiliate/recruits.ts",
   ]);
   const linkers = files.filter((f) => decomment(read(f)).includes('"/profile/invite"'));
   ok("§7.0 the population is non-empty (a rule over zero surfaces proves nothing)", linkers.length >= 3, `${linkers.length} linkers`);
