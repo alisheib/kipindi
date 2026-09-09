@@ -37,6 +37,7 @@
     "test:levy-allocation": "tsx scripts/levy-allocation.test.mts",
     "red:levy-allocation": "node scripts/red-levy-allocation.mjs",
     "test:lock-tx-threading": "tsx scripts/lock-tx-threading.test.mts",
+    "test:payout-callback-identity": "tsx scripts/payout-callback-identity.test.mts",
     "test:fee-model": "tsx scripts/fee-model.test.mts",
     "test:loser-share-fee": "tsx scripts/loser-share-fee.test.mts",
     "test:withdrawal": "tsx scripts/withdrawal-fee.test.mts",

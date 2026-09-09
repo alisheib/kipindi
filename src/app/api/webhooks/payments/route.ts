@@ -254,15 +254,51 @@ async function handleSelcomCallback(req: Request, body: string): Promise<NextRes
     amount = verdict.amount;
   } else {
     // Withdrawal: AUTHORITATIVE re-query on THE RAIL THIS PAYOUT ACTUALLY USED — we
-    // do not trust the callback body/signature for a payout confirmation either.
-    // (sigOk above is captured for audit only.)
+    // do not trust the callback body for a payout confirmation either.
     //
     // 🔴 The rail comes off the transaction row. Every rail's query endpoint only
     // knows its own transids, so asking wallet-cashin about a Selcom Pesa payout
     // returns a stranger's envelope, which resolves to FAILED and refunds a player
     // whose money already left. `railOf` defaults null to WALLET_CASHIN — correct for
     // every row written before rails existed.
-    const verdict = await selcomVerifyPayout(env, railOf(txn.payoutRail), transid || ref);
+    //
+    // 🔴 AND THE IDENTITY WE ASK ABOUT MUST BE THE ONE WE SETTLE (found 2026-09-09).
+    // This read `transid || ref` — and `transid` is a SECOND, INDEPENDENT field of the
+    // caller's body, while the transaction being settled was found by `ref`. So a
+    // caller could name a real payout in `order_id` and ANY other id in `transid`: we
+    // looked up the victim's row, asked Selcom about the attacker's id, and settled the
+    // victim's row with the answer. `envelopeSettlementVerdict` defaults to **FAILED**
+    // for every code that is not 000/111/927/999 — an id Selcom does not recognise is
+    // therefore a FAILED verdict — so the reply refunds a payout that is still in
+    // flight, and the money leaves twice.
+    //
+    // ⛔ Routing here needs no secret: `Authorization: SELCOM <anything>` reaches this
+    // handler, and `sigOk` was computed and never read.
+    //
+    // `providerRef` IS the id the rail knows this payout by — it is exactly what
+    // `verifyWithdrawalStatus` passes for the reconcile sweep (payments.ts), the proven
+    // path. Asking about anything else is asking about someone else's money.
+    const payoutTransid = txn.providerRef ?? ref;
+    if (transid && transid !== payoutTransid) {
+      audit({
+        category: "SECURITY",
+        action: "webhook.payout_transid_mismatch",
+        actorId: txn.userId,
+        targetType: "Transaction",
+        targetId: txn.id,
+        payload: { providerRef: payoutTransid, callbackTransid: transid, orderId: orderId || null, sigVerified: sigOk },
+      });
+    }
+    // ⛔ AND A PAYOUT SETTLES ONLY ON A SIGNATURE-VERIFIED CALLBACK — which is what this
+    // file's own header has always promised and the code did not do. Failing here is
+    // SAFE in the only direction that matters: the row stays PROCESSING and the
+    // reconcile sweep re-queries it on its own schedule, so a genuine callback we
+    // could not verify costs a delay, never a lost or doubled payout.
+    if (!sigOk) {
+      audit({ category: "SYSTEM", action: "webhook.payment.rejected", actorId: null, targetType: "Webhook", targetId: ref, payload: { provider: "selcom", type: "WITHDRAWAL", reason: "payout-signature-unverified" } });
+      return NextResponse.json({ ok: true, ignored: true, reason: "payout-signature-unverified" });
+    }
+    const verdict = await selcomVerifyPayout(env, railOf(txn.payoutRail), payoutTransid);
     status = verdict.status;
   }
 

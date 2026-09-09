@@ -456,7 +456,7 @@ MO-1.a are the two fixed above.
 | `MO-4.b` | 🔴 | settleWithdrawalFailed — the only refund path — is not atomic and its status write fails SILENTLY, so the 5-minute sweep re-refunds the same payout every cycle | `src/lib/server/wallet-service.ts` → `settleWithdrawalFailed` | likely · yes |
 | `MO-5.a` | 🔴 | Rejecting an RG-held DEPOSIT in /admin/aml moves no money at all, and three surfaces tell the officer the funds were returned | `src/app/admin/aml/actions.ts` → `rejectAmlAction` | certain · yes |
 | `MO-5.b` | 🔴 | HOUSE:RG_SUSPENSE has exactly one writer and it is always a CREDIT — no code path in the repo can ever release it, yet the player is emailed that the money "has been reversed and returned to the accou | `src/lib/server/ledger.ts` → `rgSuspenseEntries / settleDepositConfirmed (RG arm)` | certain · yes |
-| `MO-6.a` | 🔴 | A payout callback settles the transaction it CORRELATED on using the status of a DIFFERENT transid the caller chose — on an unauthenticated route | `src/app/api/webhooks/payments/route.ts` → `handleSelcomCallback` | certain · yes |
+| `MO-6.a` | 🔴 | ✅ **FIXED §6.6** — A payout callback settles the transaction it CORRELATED on using the status of a DIFFERENT transid the caller chose — on an unauthenticated route | `src/app/api/webhooks/payments/route.ts` → `handleSelcomCallback` | certain · yes |
 | `LEAD-A.2` | 🟠 | The tamper-evident audit chain records a levy figure the ledger never booked — two authoritative records of the same statutory liability, disagreeing by construction | `src/lib/server/market-service.ts` → `settleMarket — the `market.resolved` audit payload` | certain · yes |
 | `LEAD-B.1a` | 🟠 | The config audit's `changes` field is the entire posted form, not a diff — every one of the 19 fields is recorded as "changed" on every save | `src/app/admin/config/actions.ts` → `updateGlobalConfigAction → setGlobalConfig` | certain · yes |
 | `LEAD-B.1b` | 🟠 | Both surfaces that display a config change render the payload `before`-first in a one-line truncated cell, so `after` and `changes` are never on screen at all | `src/app/admin/audit/page.tsx` → `AdminAuditPage (table body) and AdminConfigPage (history tab` | certain · yes |
@@ -492,6 +492,89 @@ MO-1.a are the two fixed above.
 | `MO-8.b` | 🟠 | HOUSE:TAX is credited again by the live agent programme but is excluded from `owedToOthers`, so the solvency line reports tax owed to TRA as the owner's free cash — and both admin pages label the acco | `src/lib/house-book.ts` → `housePosition` | certain · yes |
 | `MO-9.a` | 🟠 | The withdrawal minimum has three homes; every player-facing one says 1,000 and the only enforced one is 1,016 | `src/app/wallet/withdraw/page.tsx` → `WithdrawPage / withdrawAction / withdraw()` | certain · yes |
 | `MO-9.b` | 🟠 | /wallet/withdraw renders arbitrary ?error= query text in a first-party alert box, and the ratchet that swears this channel is at zero cannot see it | `src/app/wallet/withdraw/page.tsx` → `WithdrawPage` | certain · yes |
+
+### 6.6 · FIXED — a payout callback settled the id it did NOT ask about
+
+`src/app/api/webhooks/payments/route.ts` → `handleSelcomCallback` (finding `MO-6.a`)
+
+Verified by hand, lens by lens, because the workflow verify pass died (§6.7). The mechanism is
+real and every step of it was read at `1ab89cc5`:
+
+| step | what the code did |
+|---|---|
+| routing | `if (/^SELCOM\s+/i.test(authHeader))` — **`Authorization: SELCOM <anything>` reaches the handler.** No secret is needed to get in |
+| signature | `sigOk` was computed, put in the audit payload, and **never read**. The code said so: *"(sigOk above is captured for audit only.)"* |
+| correlation | `ref = order_id \|\| transid`, and `db.txn.findByProviderRef(ref)` finds **our** transaction |
+| the authority query | `selcomVerifyPayout(env, railOf(txn.payoutRail), transid \|\| ref)` — asks the rail about **`transid`**, a *second, independent field of the caller's body* |
+| the verdict | `envelopeSettlementVerdict` returns CONFIRMED on `000`, null on `111/927/999/INPROGRESS/PENDING/AMBIGUOUS`, and **FAILED on everything else** — so an id the rail does not recognise **is** a FAILED verdict |
+| settlement | `settlePaymentWebhook({ providerRef: ref, status })` settles the row found by `ref` with the answer about `transid` |
+
+A FAILED verdict on a **PROCESSING** withdrawal runs `settleWithdrawalFailed`, refunding the
+player while the real payout is still in flight at the gateway. The money leaves twice.
+
+⚠️ **AND THE FILE'S OWN HEADER PROMISED THE MISSING CONTROL.** It has always read: *"WITHDRAWALS
+(wallet-cashin, no status endpoint) settle only on a signature-verified callback, else stay
+PROCESSING for the reconcile sweep."* That control was not there. Same class as §1.7's
+`payments.ts` header describing a refusal that had been removed.
+
+**Two corrections to the finder's framing, both in the platform's favour** — recorded because
+overstating a defect is the same failure as understating one:
+
+- ⛔ **NOT "no credential required".** The caller must supply a `ref` that matches a real
+  `providerRef`, or `findByProviderRef` returns nothing and the callback is ignored. The
+  realistic exploiter is **the account holder against their own in-flight withdrawal**, not an
+  anonymous internet caller. The finder's *"ten cycles by one player = TZS 9,850,000"* also
+  overstates: each cycle needs a fresh **PROCESSING** payout.
+- ✅ **Session 1's contradiction guard already covers the CONFIRMED case.** A FAILED verdict
+  against an already-CONFIRMED withdrawal raises `webhook.terminal_contradicted` and refuses.
+  The live window is strictly the PROCESSING one — which is, however, exactly the window in
+  which a refund double-pays.
+
+**Fixed:** the re-query is keyed on `txn.providerRef` — ⭐ **not a guess: it is the identifier
+`verifyWithdrawalStatus` in `payments.ts` already passes for the reconcile sweep**, the proven
+path — and a payout now settles only on a verified signature. Failing that check is safe in the
+only direction that matters: the row stays PROCESSING and the sweep re-queries on its own
+schedule, so an unverifiable callback costs a delay, never a lost or doubled payout. A
+`transid` that disagrees with `providerRef` raises `webhook.payout_transid_mismatch` (SECURITY).
+
+⛔ **The default-to-FAILED taxonomy is deliberately NOT changed.** It is what turns "an id I do
+not know" into "that payout failed" — but it is load-bearing for the reconcile sweep, and
+removing the caller's control over the id removes the attack without touching it. §5 of the gate
+pins it so the next reader knows it was seen and left alone, not missed.
+
+Guard `npm run test:payout-callback-identity` **14/0**, proven RED on the genuine pre-fix file
+(`git show 2499f324:…`) — 5 failures across §1 and §2. §3 cross-checks the identifier against
+the reconcile sweep, so §1 cannot quietly pin the wrong one; §4 is the positive control.
+⭐ **§4 earned its place immediately: it failed this gate's own first draft**, where `[^)]*`
+could not cross the `)` in `railOf(txn.payoutRail)` and both shapes matched nothing alike.
+`test:webhook-sec` **21/0** and `red:webhook-money` **4/4** still pass, so session 1's webhook
+guarantees are intact.
+
+### 6.7 · THE VERIFY PASS RAN AND DIED — the same way runs 1 and 2 died
+
+13 blockers × 3 adversarial lenses = 39 agents. **`agents_done` 0 · `agents_error` 39**, every
+one *"You've hit your session limit"*. Nothing was verified by the harness.
+
+⭐ **AND THE BUCKETING HELD, WHICH IS THE ONE THING THAT HAD TO.** All 13 came back
+**UNVERIFIED** with `votesReturned: 0` — not "refuted". The harness computes
+`unverified = votesReturned < 2` FIRST and buckets on it before any confirmed/refuted logic
+runs, exactly as §0 requires. The failure mode this file was written about did not repeat.
+
+⚠️ **So the count in §6.0 is unchanged and every §6.3 row still stands UNVERIFIED**, except
+`MO-6.a`, which was verified by hand above and fixed. Scripts are ready to re-run — one per
+severity, findings baked in, no arguments needed:
+
+```
+verify-blocker.js  · 13 findings ·  39 agents
+verify-high.js     · 35 findings · 105 agents
+verify-medium.js   · 42 findings · 126 agents
+verify-low.js      · 14 findings ·  42 agents
+```
+
+⛔ **Run them ONE BATCH AT A TIME and read the result between**, and check `agents_done`
+against `agent_count` before believing any of it. 39 agents was already enough to exhaust a
+session; `verify-medium` at 126 will not survive a single window. The blockers are the batch
+that matters — start there.
 
 ### 6.4 · Corrected while here — documents that contradicted the law
 
