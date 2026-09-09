@@ -5,12 +5,13 @@ where it may appear, and — the part that matters — **where it may not**.
 
 ⛔ **Read §1 before adding a caller.** The one-line version: this QR cannot credit a wallet.
 
-🛑 **Status 2026-09-09 — the QR is WITHDRAWN (`LIPA_QR_RELEASED = false`). See §3d.** It renders
-nowhere, and the agent fee runs on the normal flow: destination in text, receipt uploaded, officer
-reconciles. **Deposits and cashout were never touched.** ⭐ The reason: a Lipa payment carries no
-reference on any network, so it cannot be traced to the payer (§3c) — and payment without
-traceability is the problem. Re-enabling requires **Selcom confirming a verifiable per-order QR**
-(§6), not a preference.
+🛑 **Status 2026-09-09 — the QR is WITHDRAWN (`LIPA_QR_RELEASED = false`, §3d) and the fee
+destination is back to `Digital Selcom Bank` / `0769777877` (§3b).** The QR renders nowhere; the
+agent fee runs on the arrangement that worked before it — account as text, receipt uploaded,
+officer reconciles. **Deposits and cashout were never touched.** ⭐ The reason: a Lipa payment
+carries no reference on any network, so it cannot be traced to the payer (§3c), and payment
+without traceability is the problem. Re-enabling requires **Selcom confirming a verifiable
+per-order QR** (§6), not a preference.
 
 ---
 
@@ -85,7 +86,7 @@ unrepresentable rather than merely discouraged.
 the safe direction, but it is invisible — so `/admin/agents` → Settings → *Lipa payment* states
 in words whether the QR is live right now, and if not, which two values disagree.
 
-### 3b. ✅ Live in production since 2026-09-09 — the two values now AGREE
+### 3b. ⏮ The destination that was switched for the QR — and switched back
 
 ⭐ **The QR is rendering on `50pick.tz/agent` today.** The fee destination was switched to the
 Lipa number at `/admin/agents` → Settings, so `shouldShowLipaQr` is satisfied and the panel shows.
@@ -110,6 +111,31 @@ QR is visible, and it stays honest only because the account printed beside it is
 it encodes. Point the fee destination anywhere else and the panel vanishes on its own — which is
 correct, and which is also the moment `/admin/agents` → Settings becomes the only place that says
 so in words.
+
+⏮ **RESTORED 2026-09-09.** Management withdrew the QR and returned the fee to the arrangement
+that worked before it, so the destination went back to **Digital Selcom Bank / `0769777877`**.
+Verified on the live public page: it names that account, `7006 3747` appears nowhere, and no QR
+image renders.
+
+⭐ **It was changed through `/admin/agents` → Settings, deliberately, and NOT by a database
+write.** `AuditLog` is an HMAC hash chain with `@@unique([prevHash])` — tamper-evident and
+fork-proof. A raw `UPDATE` on `SystemConfig` would have left a money-config change with **no
+audit entry at all**, which is precisely why the 2026-09-08 save went unnoticed for a day; and
+hand-forging a chained entry risks making the whole log verify as *tampered*. The console writes
+the value **and** appends a properly chained entry through the app's own code. The resulting row:
+
+```
+2026-09-09T11:08:41Z  agent.config.updated
+   feeDestinationName:    "Selcom LIPA NAMBA - OCEAN ENTERTAINMENT LIMITED" -> "Digital Selcom Bank"
+   feeDestinationAccount: "7006 3747" -> "0769777877"
+```
+
+⛔ **And nothing else moved, which was checked rather than assumed.** The 2026-09-08 save changed
+the destination **and** the VAT rate in one write and only the destination was noticed — so this
+change re-read every other field from a fresh page load and diffed them: `feeVatTreatment`,
+`feeVatRatePct`, `registrationFeeTzs` and `lipaNumber` are byte-identical before and after.
+🎯 **One admin save can carry several fields; reading the one you care about tells you nothing
+about the others in the same write.**
 
 ### 3c. ⛔ The QR has NO payment status — a person is the integration
 

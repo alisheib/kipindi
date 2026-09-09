@@ -155,7 +155,7 @@ erasure can never reach.
 | | |
 |---|---|
 | **Amount** | ⭐ **TZS 100,000 — NO VAT** (Ali, 2026-09-09; supersedes management's 2026-09-08 VAT-exclusive 118,000, which superseded the VAT-inclusive decision of 2026-09-07). `registrationFeeTzs` holds 100,000, `feeVatTreatment` stays `EXCLUSIVE` and `feeVatRatePct` is **0**, so `feeBreakdown().totalTzs` is **100,000** and `vatTzs` is **0**. ⛔ What an applicant owes is `feeBreakdown().totalTzs` and nothing may quote the raw config field. ⛔ At a zero component **no surface may state a VAT treatment** — the binding terms and `/agent` go silent, or they render "(TZS 100,000 plus TZS 0 VAT)". ⛔ **NOT retroactive**: the one agent registered before it paid **118,000** and `HOUSE:TAX` holds that 18,000 as a genuine liability to TRA. Stated in `RULES.md` §2.10 · `COMPLIANCE-DECISIONS.md` § 2026-09-09 · `npm run test:agent-fee-copy` |
-| **Destination** | ⚠️ **THIS ROW IS STALE, AND IS A SEPARATE OPEN ITEM — NOT corrected here.** It reads "Digital Selcom Bank, account **0769777877**"; production has read `Selcom LIPA NAMBA - OCEAN ENTERTAINMENT LIMITED` / `7006 3747` since 2026-09-08T17:42:24Z. ⛔ Left uncorrected deliberately: the destination is a **settled live fact** awaiting a doc owner, while the VAT rate that moved in the SAME save was an **open compliance question**. Correcting them together would imply they were one decision. See `MONEY-GATE-REMEDIATION.md` §7.1 |
+| **Destination** | **Digital Selcom Bank, account `0769777877`** — restored 2026-09-09 by management decision, audited as `agent.config.updated`. ⚠️ It had read `Selcom LIPA NAMBA - OCEAN ENTERTAINMENT LIMITED` / `7006 3747` from 2026-09-08T17:42:24Z until then, alongside the now-withdrawn Lipa QR (`LIPA-QR.md` §3d). ⛔ This row states a LIVE `SystemConfig` value, not a code default — re-read it off production before trusting it, never off `agent-config.ts` |
 | **How** | Paid **out of band**; the applicant uploads the receipt and types the reference. ⭐ **Scannable since 2026-09-08** — see the note below |
 | **Waiver** | ⭐ An officer may waive it or record it as collected in cash — **with a typed reason, audited** (Ali, 2026-09-06) |
 | **On rejection** | **Refunded in full** — we did not provide the service |
@@ -193,12 +193,12 @@ this.** The two things that matter here:
   artwork, not assumed) — it carries no amount and no per-payment reference, and our rail
   credits a wallet solely on the `dep_…` order id we mint. On a self-service top-up it would
   take money and credit nobody, silently. `test:lipa-qr` §4.4 enforces that.
-- ⚠️ **The QR shows only while the fee destination IS the Lipa number it encodes**
-  (`shouldShowLipaQr`). The **Destination** row above still reads `0769777877` while the QR pays
-  `70063747`, so until an officer changes it at `/admin/agents` → Settings the QR stays hidden
-  and applicants see the account as text — the safe direction, and the console says so in words
-  rather than leaving it to be discovered. ⛔ Changing that row is a decision about where the
-  programme's money goes, so it is left to Ali, not made by a migration.
+- 🛑 **The Lipa QR is WITHDRAWN** (`LIPA_QR_RELEASED = false`, `LIPA-QR.md` §3d), so it renders on
+  no surface and the fee runs on the normal flow: the account as text, the receipt uploaded, an
+  officer reconciling it. ⭐ A Lipa Namba payment carries no reference on any network — on M-Pesa,
+  Mixx, Airtel and HaloPesa the payer enters only the Lipa number and the amount — so it cannot be
+  traced to the payer, and payment without traceability is why it went. The safety rule still holds
+  underneath the gate, and re-enabling needs Selcom confirming a verifiable per-order QR.
 
 ---
 
