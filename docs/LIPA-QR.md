@@ -110,6 +110,45 @@ it encodes. Point the fee destination anywhere else and the panel vanishes on it
 correct, and which is also the moment `/admin/agents` → Settings becomes the only place that says
 so in words.
 
+### 3c. ⛔ The QR has NO payment status — a person is the integration
+
+**There is no API behind this QR, and there is no status to read.** Nothing calls Selcom when
+someone scans it; nothing tells us they paid; there is no callback, no order, no reference, no
+reconciliation feed. Asked "has this applicant paid?", the system's honest answer is **it does not
+know** — because a static QR is a picture, and a Lipa payment made from it is not an order we
+created (§2).
+
+⭐ **What actually confirms an agent fee is a compliance officer reading a bank statement.**
+`reconcileFee` (`src/lib/server/agent-application-service.ts`) is the only path to
+`feeDisposition: "COLLECTED"`, and it requires a human to type what they can see:
+
+| Step | Who | What |
+|---|---|---|
+| 1 | applicant | pays — by scanning, **or** by typing the Lipa number. Identical outcome |
+| 2 | applicant | records a receipt reference; without `feeReference` reconciliation is **refused** |
+| 3 | officer | opens the bank statement, types the statement line ref, the amount they read, the masked source account |
+| 4 | system | refuses unless the attested amount **exactly equals** the fee — a short or over payment is rejected and audited as `agent.fee.amount_mismatch` |
+| 5 | system | marks `COLLECTED`, posts the balanced ledger entries, audits `agent.fee.reconciled` |
+
+🎯 **So the QR removes typing and nothing else.** It changes no part of how the money is matched.
+That is exactly why it is safe here and nowhere else: this payment was *already* human-reconciled
+before the QR existed, so the QR adds no new trust assumption. On a wallet top-up there is no
+officer and no statement line, which is why §2 forbids it there.
+
+⚠️ **And the order-based rail IS strictly more trustworthy — that instinct is correct.** A deposit
+carries a `dep_…` order id, so Selcom's callback attributes it automatically and
+`settlePaymentWebhook` settles it exactly once, advisory-locked and amount-tamper-defended, with
+**no human step**. Compared with that, a static QR is a downgrade in every respect except typing.
+
+⭐ **The improvement, when someone has the time, is to put the agent fee through Checkout as a real
+order** — the same question §6 is blocked on. It would give the fee automatic status like a deposit
+and retire steps 3–4 above. ⛔ Until that is answered, do **not** close the gap by making the static
+QR credit anything: see the C2B prohibition in §6.
+
+The on-screen copy already tells the payer the truth — *"Keep the receipt — you upload it below"*
+and *"check that your app shows the name above. If it shows anyone else, stop and tell us."*
+⛔ Never reword that into anything implying a scan is confirmed, tracked, or received.
+
 ## 4. The artwork
 
 `public/pay/selcom-lipa-qr.<hash>.svg` — a **vector** symbol carrying the payload decoded and
