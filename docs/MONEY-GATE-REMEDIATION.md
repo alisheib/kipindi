@@ -22,12 +22,12 @@ below as a launch verdict.
 
 | | |
 |---|---|
-| **Session 3 work** | ✅ **DONE and SHIPPED** — 7 defects fixed, 5 new guards, each proven RED |
+| **Session 3 work** | ✅ **DONE and SHIPPED** — 8 defects fixed, 6 new guards, each proven RED |
 | **`e2e:money` against real Postgres** | ✅ **RAN — the first time ever. 64 passed, 0 failed** (§7.4) |
 | **Production reads (§4.3)** | ✅ **DONE** — and one of them found a live rate divergence (§7.1) |
 | **§4.4 — the agent terms stamp** | ✅ **ANSWERED, no action needed** (§7.2) |
 | **Blockers** | ✅ **ALL 15 ADJUDICATED — 8 fixed · 5 refuted · 2 duplicates · 0 unverified** |
-| **The 35 HIGH findings** | 🟠 **9 adjudicated (4 refuted, 5 confirmed) · 26 untouched** — the 3 that died have been re-run |
+| **The 35 HIGH findings** | 🟠 **17 adjudicated (6 refuted, 11 confirmed) · 18 untouched** |
 | **42 MEDIUM · 14 LOW** | 🔴 **none attempted** |
 | **The five dead lanes** | 🟠 **`controls-and-guards` RUN BY HAND** (§7.12 — 10 phantom guards, 1 on money). 🔴 Still never run: `settlement-lifecycle` · `agent-commission` · `updown-money` · `docs-drift` |
 | **Ali's decisions** | 🟠 **§7.1 the agent VAT rate — ✅ DECIDED and shipped (§7.10). §4.1 kill-switch · §4.2 clawback · §4.5 rebaseline — still open** |
@@ -92,7 +92,7 @@ to the state, not as house cash.
 `test:payout-callback-identity` · `test:aml-dispatch-window` — plus session 1's
 `test:payment-control` · `red:payment-control` · `test:webhook-sec` · `red:webhook-money` ·
 `test:fee-model-caption` · `red:fee-model-caption` — plus session 3's
-`test:config-audit-diff` · `test:terms-cancellation` · `test:agent-fee-copy` · `test:agent-waterfall` · `test:guards-exist`, and **`e2e:money`, which is the only
+`test:config-audit-diff` · `test:terms-cancellation` · `test:agent-fee-copy` · `test:agent-waterfall` · `test:guards-exist` · `test:define-config-gate`, and **`e2e:money`, which is the only
 behavioural one and needs a real Postgres** (`scripts/load/README.md`).
 
 ⛔ **All of these are `test:` or `red:` scripts EXCEPT `e2e:money`, which is deliberately not in
@@ -1499,3 +1499,75 @@ this programme's to edit**.
 so the list can only shrink. A ratchet on a number can be satisfied by deleting an unrelated
 citation and can overstate the debt without ever going red; this programme has already been
 bitten by exactly that.
+
+### 7.14 · 🔴 FIXED — the hydration gate six configs hang off, and the root of two of this session's worst findings
+
+`src/lib/server/define-config.ts` (finding `LEAD-B.3`, CONFIRMED)
+
+```
+if (!hydrated.has(key)) {
+  hydrated.add(key);                      // ⛔ raised BEFORE the load
+  void loadConfig(key).then(...)          // ⛔ and loadConfig collapses FAILURE into null
+}
+```
+
+`loadConfig` returns `null` for "no row", "no database" **and "the query FAILED"** alike — and
+`config-store.ts`'s own docblock on it says, in capitals, **"DO NOT BUILD A HYDRATION GATE ON
+THIS."** So one boot-time DB blip — a container reaching Postgres before it accepts
+connections, a failover, a pool timeout — pinned that container on **code defaults for its
+entire life**. There is no reset for `__50PICK_CONFIGS_HYDRATED` anywhere in the repo; the
+verifier grepped for one and found the only four references are the declaration and the init.
+
+⛔ **THIS IS THE DEFECT `2499f324` FIXED FOR FOUR MODULES AND THIS FACTORY DID NOT GET.**
+`market-config`, `payment-control`, `payment-ops` and `updown-config` were repaired in session
+1; `define-config.ts` is not in that commit's file list. **Six configs hang off it, including
+`agent.config`.**
+
+⭐ **AND IT IS THE ROOT OF TWO OF THIS SESSION'S WORST FINDINGS.** Both §7.1 (`feeVatRatePct`
+reaching production as 0) and §7.13 (the commission ceiling clamping to a setting instead of the
+rule) turn on a **persisted row that no validator ever saw**. This is the mechanism that makes
+such a row authoritative and unrecoverable. Three separate routes led here today.
+
+**The destructive half is the one that moves money.** `set()` merges onto `get()` and writes the
+WHOLE object, and an admin settings form posts every field — so a de-hydrated container's first
+officer save would persist code defaults over every field of a good row. A live rate could be
+reset by someone who came to change something else entirely.
+
+**Fixed, in three parts:**
+1. `loadConfigResult` replaces `loadConfig`, and `hydrated.add(key)` moves to **LAST** — only a
+   read that actually answered closes the gate. `ok: true, value: null` still closes it: a fresh
+   install legitimately has no row, and gating on a VALUE would leave every caller waiting for
+   ever.
+2. `get()` **re-arms** a failed attempt instead of awaiting one, so the sync contract that ~40
+   call sites depend on is untouched, but a container is no longer pinned for its life. An
+   `inFlight` set stops a re-arm stampeding the database.
+3. `set()` **REFUSES** while de-hydrated — *"Settings have not finished loading yet"* — rather
+   than persisting defaults over the row. Refusing is the safe direction: an officer sees a
+   retry, not a save that looks successful while wiping a rate.
+
+⚠️ **AND THE FIRST CUT OF PART 3 BROKE TWO ASSERTIONS, WHICH IS THE INTERESTING PART.**
+`loadConfigResult` answers on a **microtask** while `set()` is synchronous, so a process with no
+database refused a save issued on the first tick — `proposals-state` went 26/2 immediately. The
+fix is not to weaken the gate: with **no database there is no persisted row to protect**, so
+that case settles synchronously. ⭐ That is a real distinction, not an exemption carved out to
+make a test pass, and the guard's §2 pins it.
+
+**Guard `npm run test:define-config-gate` — 18/0**, driving the REAL factory (through a
+deliberately-labelled `deps` seam, because the behaviour is asynchronous and cannot be reached
+in-memory otherwise):
+
+| arm | result |
+|---|---|
+| a read that FAILS leaves the gate down, a later `get()` **retries**, and the row lands when the store recovers | ✅ |
+| a read that ANSWERS closes it — including `value: null`, which must not spin | ✅ |
+| a de-hydrated `set()` is refused and **writes nothing**; once hydrated it succeeds and the untouched field keeps its persisted **42** | ✅ |
+| ⚠️ **POSITIVE CONTROL** — the pre-fix shape reproduced exactly: never retries, never picks the row up, **accepts the save, and writes the default over the persisted 42** | ✅ the data loss, demonstrated |
+
+⭐ **`e2e:money` re-run against a real Postgres after the change: 64 passed, 0 failed** — which
+is the arm that matters, because that is the only run where `hasDatabase()` is true and the
+asynchronous path actually executes.
+
+**Also green:** `guards-exist` 9/0 · `proposals-state` 29/0 · `config-persist` 24/0 ·
+`config-audit-diff` 26/0 · `agent-policy` 36/0 · `agent-fee-copy` 27/0 · `agent-waterfall` 41/0 ·
+`commission-bounded` 48/0 · `programme-isolation` 17/0 · `updown-config` 92/0 · `bonus` 59/0 ·
+`tsc` clean.
