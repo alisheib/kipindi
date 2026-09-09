@@ -276,6 +276,7 @@
     "qa:prod-readonly": "node scripts/prod-validate-readonly.mjs",
     "red:chain-purge": "node scripts/red-chain-purge.mjs",
     "ops:pool-orphans": "node scripts/live/ops/pool-orphans.cjs",
+    "ops:leaderboard-mix": "node scripts/live/ops/leaderboard-product-mix.cjs",
     "red:ai-vocabulary": "node scripts/red-ai-vocabulary.mjs",
     "red:money-format": "node scripts/red-money-format.mjs",
     "red:confirm-gate": "node scripts/red-confirm-gate.mjs",

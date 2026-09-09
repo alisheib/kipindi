@@ -1087,16 +1087,55 @@ on that column.**
 The aggregate reads `from "Position"` with **no product filter**, so a player's poll results and
 their Up & Down results land in a single ROI figure and a single rank.
 
-⛔ **MEASURE BEFORE DECIDING.** The 99.4% figure quoted elsewhere in the docs is measured for
-**MARKETS**, not positions — it does not answer this question. Re-derive the position ratio first:
+✅ **MEASURED 2026-09-09 on production, and it REFUTED EVERY PRIOR IN THE REPO.**
+`npm run ops:leaderboard-mix` — `scripts/live/ops/leaderboard-product-mix.cjs`, read-only, SELECT
+only, identity block printed. Re-run it before acting on these numbers; they will move.
 
-```bash
-# what share of Positions are Up & Down vs poll?
-grep -n 'from "Position"' src/app/leaderboard/page.tsx
-```
+| | measured |
+|---|---|
+| ranked positions (`status <> 'OPEN'` — the aggregate's own population) | **1,219** |
+| …of which **Up & Down** | **880 · 72.19%** |
+| …of which polls | 339 · 27.81% |
+| ranked players | 41 |
+| **players holding BOTH products** | **17 of 41 — 41%** |
+| board rows (top 50) that mix both | **17 of 41** |
+| **worst combined-vs-poll ROI gap, per player** | **145.91 percentage points** |
+| platform ROI — polls / Up & Down / combined | −5.06% / −5.04% / −5.05% |
 
-If Up & Down is a rounding error, one board is honest and cheap. If it is not, a board that ranks
-two different games on one number is the `40 live · zero cards` failure wearing a leaderboard.
+⛔ **THE THREE NUMBERS THE DOCS ALREADY CARRIED WERE ALL ABOUT THE WRONG POPULATION.** "~20×"
+(`market-dal.ts:443`, `market-service.ts:1658`), "~12:1" (the ops README) and "99.4%" (this board)
+all count **MARKET ROWS** — and an Up & Down chain emits a row every few minutes while a poll is
+created a few times a day, so of course the rounds dominate that table. None of them says how
+players actually **bet**. Measured on positions, Up & Down is not a rounding error: it is the
+**majority of the board's own population**.
+
+🎯 **AND THE PLATFORM-LEVEL ROIs ARE A TRAP.** −5.06% vs −5.04% invites the conclusion *"the two
+games perform identically, so combining them is harmless"*. That is an **aggregate hiding a
+per-player spread**: the same measurement shows a single player's ROI moving by up to **145.91
+percentage points** depending on whether their Up & Down bets are counted. A board ranks
+INDIVIDUALS, so the per-player number is the one that decides — the same lesson as the levy guard
+that stayed green on a one-winner fixture while 43 production markets diverged.
+
+▶ **RECOMMENDATION — a product lens is owed; one combined ROI is not defensible.** 41% of the
+board mixes, and mixing moves a rank by up to 146pp, so the number a player reads answers a
+question nobody asked. ⛔ NOT BUILT — Ali's instruction was *measure first, then decide*, and the
+measurement is the deliverable. The shape, when it is decided:
+- `positionStore.leaderboard()` is the **only** store function with no product parameter. Filtering
+  it needs `join "PredictionMarket" m on m.id = p."marketId" where m."productLine" = $2` in the raw
+  SQL plus the `markets.get(p.marketId)?.productLine` lookup in the memory twin — the exact
+  two-line pattern `listForUser` and `dailyTotalsByUser` already use. **No schema change, no
+  migration, no new column** (`productLine` lives on `PredictionMarket`, not on `Position`).
+- ⛔ The rank must be pushed into the store, not applied after the `LIMIT` — `test:report-parity`
+  §5 pins that, and ordering after a limit ranks the wrong 50 players.
+- ⚠️ This page has **no filter rail at all**, deliberately (`page.tsx:300-311`). A lens is the
+  first control it would ever carry, and §K 6c's eight declaration places apply.
+
+🔴 **AND THE MEASUREMENT FOUND A SECOND DEFECT THE FILING HAD MISSED.**
+`src/app/leaderboard/page.tsx:161` calls `listPositionsForUser(r.userId, 200)` **without** the third
+`productLine` argument it already accepts (`market-service.ts:1638`). So the streak, the best-win
+market and the 14-day sparkline mix products too — and unlike the ROI aggregate, that one needs **no
+DAL work at all**, just the argument. Filed here rather than fixed, because it is the same product
+decision.
 
 ### ② `/profile/activity` — two separate mismatches, same page
 
