@@ -40,7 +40,8 @@ export const dynamic = "force-dynamic";
  * the page never offers what `startApplication` is about to refuse — and never before the
  * applicant is told to send the registration fee out of band. ⛔ The fee is `feeBreakdown().
  * totalTzs`, never a literal — it was TZS 100,000 VAT-inclusive until management moved the
- * treatment on 2026-09-08 and became TZS 118,000.
+ * treatment on 2026-09-08 and became TZS 118,000. ⭐ SUPERSEDED 2026-09-09: Ali ruled the fee
+ * bears NO VAT, so it is TZS 100,000 again — read `feeBreakdown().totalTzs`, never a literal.
  */
 export default async function AgentProgrammePage({ searchParams }: { searchParams: Promise<{ refused?: string }> }) {
   const sp = await searchParams;
@@ -267,7 +268,7 @@ export default async function AgentProgrammePage({ searchParams }: { searchParam
       {/* ⭐ HOW YOU ARE PAID — the terms, then management's waterfall underneath them.
           The paragraph that used to sit here ("Commission is a share of the net operator
           fee…") was struck out in their 2026-09-08 feedback and replaced by the table: a
-          partner about to pay TZS 118,000 wants to FOLLOW the arithmetic, not be told its
+          partner about to pay the registration fee wants to FOLLOW the arithmetic, not be told its
           shape. The five bullets stay — they are the CONTRACT (window, cap, single level),
           which is a different question from where the money comes from. */}
       <section className="rounded-xl glass-panel p-4 space-y-2">

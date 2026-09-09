@@ -13,8 +13,8 @@ import { useT } from "@/lib/i18n";
  * notifications, watchlist, leaderboard, live, results, fairness, updown ×3, auth, admin) all
  * had one; this tree did not.
  *
- * ⚠️ AND THE STAKES HERE ARE PARTICULAR. The person most likely to hit this has paid
- * TZS 118,000 out of band and is waiting on a decision. Sending them to the markets board is
+ * ⚠️ AND THE STAKES HERE ARE PARTICULAR. The person most likely to hit this has paid the
+ * registration fee out of band and is waiting on a decision. Sending them to the markets board is
  * the least reassuring thing the product could do, so the back link is `/agent/status` — the
  * page that tells them where their money and their application stand.
  */

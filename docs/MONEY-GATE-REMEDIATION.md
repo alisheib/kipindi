@@ -1057,9 +1057,16 @@ and the state is owed 18,000 that nobody will collect.**
 ⛔ **NOT ACTIONED HERE, DELIBERATELY. This is a rate, so `RULES.md` §5 step 1 applies: Ali
 decides, in writing.** Either production returns to `feeVatRatePct: 18` (and §5's remaining six
 steps run), or the law is amended to 0% and three documents change. Guessing which is not this
-programme's call. ⚠️ Note also that `AGENT-PROGRAMME.md` line 97 still names *"Digital Selcom
-Bank 0769777877"* as the fee destination, which production replaced on 2026-09-08 — a separate,
-smaller docs drift on the same row.
+programme's call. ✅ **AND THE DESTINATION HALF HAS SINCE RESOLVED ITSELF.** This section originally flagged
+`AGENT-PROGRAMME.md`'s destination row as stale, because production had replaced *"Digital Selcom Bank
+0769777877"* with the Lipa Namba account on 2026-09-08. The Lipa QR was then **withdrawn** — a Lipa Namba
+payment carries no reference on any network and so cannot be traced to a payer — and the destination was
+restored through the audited admin path at **2026-09-09T11:08:41Z**. Re-read at 17:31Z: `feeDestinationName`
+*"Digital Selcom Bank"*, `feeDestinationAccount` *"0769777877"*. The doc row was right all along.
+⛔ **The flag was the defect, not the row**, and that is worth more than the correction: a note saying
+"production reads X" is true only at the instant it was read, and this one was falsified within six hours
+by another session's legitimate change. ⭐ `feeVatRatePct` is still **0** in that same re-read, so §7.10's
+ruling stands untouched.
 
 ### 7.2 · ✅ ANSWERED — §4.4's agent terms stamp needs no action
 
@@ -1307,7 +1314,7 @@ mattered less.
 | **The five dead lanes** | `settlement-lifecycle`, `agent-commission`, `updown-money`, `docs-drift`, `controls-and-guards` still have **never run**. ⭐ Note that §7.1 — the largest finding of this session — is an `agent-commission` and `docs-drift` finding that fell out of a *production read*, not a lane. That is evidence the lanes are worth running, not evidence they are covered |
 | **§6.13's `reverseStuckPayoutAction` residual** | Untouched. Still an officer override that records *"not asked (no provider reference)"*. Left because tightening a deliberate override is a policy call, exactly as §6.13 concluded — and this session had no capacity to put it to Ali properly |
 | **§6.10's `maybeReconcileLedger` 24h clock** | Untouched, and **now refuted-adjacent**: `LEAD-G.2` was REFUTED 3/3 in session 2. Session 2 already rated it low because three other runners cover the question. No action taken and none obviously needed |
-| **`AGENT-PROGRAMME.md` line 97's stale fee destination** | ⛔ **Deliberately NOT corrected.** It names the OLD destination while production carries the new one. A sibling session verified the new destination is live and correct and is putting it to Ali *separately from the VAT rate* — the two halves of that one save are a settled fact and an open compliance question respectively, and correcting them in one edit would imply they were one decision |
+| **`AGENT-PROGRAMME.md`'s fee destination row** | ✅ **RESOLVED, and NOT by me.** §7.9 recorded it as deliberately-not-corrected: it named *"Digital Selcom Bank 0769777877"* while production carried the Lipa Namba account. The Lipa QR was then WITHDRAWN (a Lipa Namba payment carries no reference on any network, so it cannot be traced to a payer) and the destination was restored through the audited admin path at 2026-09-09T11:08:41Z. Re-read at 17:31Z: the row was right all along. ⭐ **The stale-flag I wrote was the false statement, not the row** — a note saying "production reads X" is true only at the instant it was read, and this one was falsified within six hours |
 
 ### 7.10 · ✅ RESOLVED BY ALI — the fee is VAT-free, and three things had to move with it
 

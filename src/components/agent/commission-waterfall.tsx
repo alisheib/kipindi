@@ -9,7 +9,7 @@ import type { Dict } from "@/lib/i18n-dict";
  * ⭐ WHAT THIS REPLACED, AND WHY. Management's feedback on Agent v1 (2026-09-08) struck out
  * the paragraph that said "commission is a share of the net operator fee 50pick actually
  * keeps after TRA and GBT levies" and wrote, against it, "Remove this and Keep this below:"
- * followed by an eight-row table. A partner deciding whether to pay TZS 118,000 wants to
+ * followed by an eight-row table. A partner deciding whether to pay the registration fee wants to
  * FOLLOW the arithmetic, not be told its shape — so the paragraph became this.
  *
  * ⛔ NOT ONE FIGURE IN THIS FILE IS TYPED. Every row comes from `commissionWaterfall`, which
