@@ -158,8 +158,21 @@ const ALLOWED = new Set([
 // see 56 .cjs/.js files — in a RATCHET, whose entire purpose is to fire on a file
 // that does not exist yet, that is a hole even while the count happens to be right.
 const scriptFiles = walk(SCRIPTS, /\.(mts|mjs|cjs|ts|js)$/);
+// 🔴 THE SCAN NOW DECOMMENTS BEFORE IT LOOKS, AND UNTIL 2026-09-09 IT DID NOT — in the one suite
+// on the platform whose entire subject is that you must strip comments before scanning source.
+//
+// It read the RAW file, so any file whose PROSE happened to contain a `//` was counted as
+// carrying a private comment-stripper. It fired on two anchor declaration files written that day
+// whose headers explain a URL bug, and the matched text was `file:///F:/` — inside a sentence.
+// A guard that matches its own documentation: the third time this exact shape has been paid for
+// on this platform in a week (product-line, query-core §9.1c, an import guard), and the first
+// time it has been the decomment suite itself.
+//
+// ⛔ THIS IS NOT LOOSENING THE RULE — it is the rule. A private stripper is CODE; a `//` inside a
+// comment is prose, and `decomment` is exactly the shared instrument this file exists to promote.
+// Using it here makes the population mean what it says.
 const carriers = scriptFiles.map(rel).filter((f) => !ALLOWED.has(f))
-  .filter((f) => { const s = readFileSync(join(ROOT, f), "utf8"); return BLOCK_RE.test(s) || LINE_RE.test(s); });
+  .filter((f) => { const s = decomment(readFileSync(join(ROOT, f), "utf8")); return BLOCK_RE.test(s) || LINE_RE.test(s); });
 
 /**
  * ⛔ THE MIGRATION IS NOT FINISHED, AND THIS NUMBER IS THE HONEST STATE OF IT.
@@ -179,7 +192,16 @@ const carriers = scriptFiles.map(rel).filter((f) => !ALLOWED.has(f))
  * after and reading the diff. That is how the 26 were proven safe — and how
  * `market-override-scope` was caught reading 4 characters more before it shipped.
  */
-const CARRIER_CEILING = 55;
+// ⭐ 55 → 20 ON 2026-09-09, AND NOT ONE FILE WAS MIGRATED TO EARN IT. The scan above now
+// decomments before it looks, and 35 of the 55 "carriers" turned out to be files whose PROSE
+// contained a `//` — a URL in a sentence, a path in an example. The migration was always 35 files
+// further along than this number claimed, and the number was the thing that was wrong.
+//
+// ⚠️ SO A RATCHET CAN OVERSTATE ITS DEBT AS EASILY AS IT UNDERSTATES IT, and the overstatement is
+// the more comfortable failure: it reads as conservatism, it never goes red on its own, and it
+// quietly licenses 35 real regressions' worth of slack. This one sat at 55 while the tree reached
+// 20. ⛔ Re-derive a ratchet when you touch the thing it measures — do not inherit it.
+const CARRIER_CEILING = 20;
 
 check(`2.1 the private-stripper population may only shrink (${carriers.length}, ceiling ${CARRIER_CEILING})`,
   carriers.length <= CARRIER_CEILING,
