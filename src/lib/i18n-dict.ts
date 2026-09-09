@@ -1674,6 +1674,7 @@ export const dict = {
     leaderboard: {
       title: "Leaderboard",
       topPredictors: "Top predictors",
+      productAria: "Filter by product",
       topTier: "Top tier", bestRoi: "Best ROI", predictorsCount: "Predictors",
       // PLAYER QUERY task 4.8. ⛔ `rankedShown` REPLACES `predictorsCount` WHEN THE BOARD IS
       //    CAPPED: the figure is the number of rows ON the board, and calling it "Predictors" on a
@@ -3855,6 +3856,7 @@ export const dict = {
     leaderboard: {
       title: "Bingwa",
       topPredictors: "Watabiri bora",
+      productAria: "Chuja kwa bidhaa",
       topTier: "Daraja la juu", bestRoi: "ROI bora", predictorsCount: "Watabiri",
       rankedShown: "Kwenye ubao",
       boardCapped: "Inaonyesha watabiri {n} bora waliopangwa.",
@@ -5909,6 +5911,7 @@ export const dict = {
     leaderboard: {
       title: "排行榜",
       topPredictors: "顶级预测者",
+      productAria: "按产品筛选",
       topTier: "最高等级", bestRoi: "最佳ROI", predictorsCount: "预测者",
       rankedShown: "上榜人数",
       boardCapped: "显示排名前 {n} 位预测者。",

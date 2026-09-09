@@ -143,6 +143,19 @@ const SURFACES = [
     ],
   },
   /**
+   * ⛔ `/leaderboard` IS DELIBERATELY ABSENT TOO, DECLARED 2026-09-09 (PLAYER QUERY §12 ①), and
+   * the reason is a MEASURED number rather than a judgement. Its product lens is `all` / `polls` /
+   * `updown` over RANKED PLAYERS, and those are not disjoint: `ops:leaderboard-mix` counted
+   * **17 of 41 ranked players holding BOTH products** on production. So `polls ∩ updown ≠ ∅`, and
+   * `polls + updown = 58` against an `all` of 41 — a partition claim here would assert that
+   * 58 = 41.
+   *
+   * ⭐ AND THE PILL COUNTS ARE STILL CHECKED, just by the right instrument: `qa:count-truth` walks
+   * this route (declared there) and proves every pill's number is what pressing it shows, which
+   * needs no partition. ⚠️ Declaring a false partition would make this driver report a real
+   * failure about a page behaving exactly as designed — the same trap `/notifications` records
+   * immediately below.
+   *
    * ⛔ `/notifications` IS DELIBERATELY ABSENT, AND THIS NOTE IS WHY — so nobody "fixes" the
    * omission by inventing a partition that is not there. Its five lenses answer THREE
    * different questions: `unread` is a read-state, `money`/`account` are kinds, `cleared` is a

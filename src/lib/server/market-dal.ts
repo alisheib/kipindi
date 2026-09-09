@@ -423,12 +423,36 @@ export interface PositionStore {
    * they get here, and they select a LITERAL fragment from a table — no interpolation of request
    * text, at any point.
    */
-  leaderboard(limit: number, opts?: { sort: LeaderSortKey; dir: "asc" | "desc" }): Promise<Array<{
+  /**
+   * ⭐ `productLine` FILTERS BEFORE THE LIMIT, AND THAT IS THE WHOLE REASON IT LIVES HERE
+   * (2026-09-09). Narrowing the returned fifty in JS would be the defect above wearing a product
+   * name: "the Up & Down board" would mean *the Up & Down players among the fifty best COMBINED
+   * ROIs*, so a player who is excellent at Up & Down and poor at polls is not in the fifty, never
+   * appears under a lens named for exactly them, and nothing on the page says so.
+   * ⚠️ Omitted means BOTH products, which is the historical behaviour and the `all` lens.
+   * ⛔ Closed set, narrowed by `oneOf` in `lib/leaderboard/board.ts` before it reaches here.
+   */
+  leaderboard(limit: number, opts?: {
+    sort: LeaderSortKey;
+    dir: "asc" | "desc";
+    productLine?: ProductLineFilter;
+  }): Promise<Array<{
     userId: string;
     resolved: number;
     staked: number;
     paidOut: number;
   }>>;
+  /**
+   * ⭐ RANKED-PLAYER COUNTS PER PRODUCT — one grouped read, for the lens's pill counts.
+   *
+   * ⛔ §K 6c RULE 4: a pill's number must be what pressing it would actually show, or no number
+   * renders. These are counted over the SAME population the board ranks (`status <> 'OPEN'`) with
+   * the same product filter, so the count and the rows cannot disagree. ⚠️ `all` is counted
+   * DISTINCTLY and is NOT `market + updown` — 17 of 41 players hold both products, so adding the
+   * two would double-count every one of them and print a total larger than the platform has
+   * players.
+   */
+  leaderboardPlayerCounts(): Promise<{ all: number; market: number; updown: number }>;
   listForMarket(marketId: string): Promise<StoredPosition[]>;
   /**
    * Positions across a KNOWN SET of markets, in one indexed query.
@@ -668,9 +692,15 @@ const memoryPositions: PositionStore = {
   },
   async leaderboard(limit, opts) {
     // Same shape as the SQL below, so the page renders identical rows either way.
+    // ⛔ THE PRODUCT FILTER IS APPLIED HERE, BEFORE THE GROUPING AND BEFORE THE `.slice(limit)` —
+    //    same reason as the ordering: the selection is what the lens has to narrow. Filtering the
+    //    returned fifty would make "the Up & Down board" mean the Up & Down players among the
+    //    fifty best COMBINED ROIs. Same one-line shape `listForUser` already uses.
+    const pl = opts?.productLine && opts.productLine !== "ALL" ? opts.productLine : null;
     const acc = new Map<string, { resolved: number; staked: number; paidOut: number }>();
     for (const p of positions.values()) {
       if (p.status === "OPEN") continue;
+      if (pl && (markets.get(p.marketId)?.productLine ?? "MARKET") !== pl) continue;
       const e = acc.get(p.userId) ?? { resolved: 0, staked: 0, paidOut: 0 };
       e.resolved += 1;
       e.staked += p.stake;
@@ -683,6 +713,18 @@ const memoryPositions: PositionStore = {
     return Array.from(acc, ([userId, v]) => ({ userId, ...v }))
       .sort((a, b) => leaderboardCompare(opts, a, b))
       .slice(0, limit);
+  },
+  async leaderboardPlayerCounts() {
+    // ⛔ THREE DISTINCT SETS, NOT TWO PLUS A SUM. `all` is its own count because a player holding
+    //    both products belongs to both narrow sets — 17 of 41 do on production, so `market +
+    //    updown` would print a total larger than the platform has players.
+    const all = new Set<string>(), market = new Set<string>(), updown = new Set<string>();
+    for (const p of positions.values()) {
+      if (p.status === "OPEN") continue;
+      all.add(p.userId);
+      ((markets.get(p.marketId)?.productLine ?? "MARKET") === "UPDOWN" ? updown : market).add(p.userId);
+    }
+    return { all: all.size, market: market.size, updown: updown.size };
   },
   async findByIdempotencyKey(key, _tx) {
     for (const p of positions.values()) if (p.idempotencyKey === key) return p;
@@ -1170,19 +1212,28 @@ const prismaPositions: PositionStore = {
     // dividing by zero instead of excluding it.
     // ⛔ The ORDER BY moves with the sort — see the interface note: on this board the
     //    ordering chooses the rows, so a JS sort would relabel a ROI-selected fifty.
+    // ⛔ THE PRODUCT FILTER IS A JOIN IN *THIS* QUERY, NOT A FILTER ON ITS RESULT. `productLine`
+    //    lives on `PredictionMarket`, never on `Position`, so narrowing the lens needs the join —
+    //    and it has to happen before `group by`/`limit` or the lens would re-label a fifty that
+    //    was already chosen on the COMBINED ROI.
+    // ⛔ `$2` IS A BOUND PARAMETER, never interpolated. `sort`/`dir` select a literal fragment
+    //    from a table and the product is a bound value, so no request text reaches the SQL.
+    const pl = opts?.productLine && opts.productLine !== "ALL" ? opts.productLine : null;
     const rows = await pc().$queryRawUnsafe<
       Array<{ userId: string; resolved: bigint; staked: string; paidOut: string }>
     >(
-      `select "userId",
-              count(*)                                   as "resolved",
-              coalesce(sum("stake"), 0)::text            as "staked",
-              coalesce(sum("finalPayout"), 0)::text      as "paidOut"
-         from "public"."Position"
-        where "status" <> 'OPEN'
-        group by "userId"
+      `select p."userId"                                    as "userId",
+              count(*)                                      as "resolved",
+              coalesce(sum(p."stake"), 0)::text             as "staked",
+              coalesce(sum(p."finalPayout"), 0)::text       as "paidOut"
+         from "public"."Position" p
+         ${pl ? `join "public"."PredictionMarket" m on m."id" = p."marketId"` : ""}
+        where p."status" <> 'OPEN'
+          ${pl ? `and coalesce(m."productLine", 'MARKET') = $2` : ""}
+        group by p."userId"
         order by ${leaderboardOrderBy(opts)}
         limit $1`,
-      limit,
+      ...(pl ? [limit, pl] : [limit]),
     );
     return rows.map((r) => ({
       userId: r.userId,
@@ -1190,6 +1241,20 @@ const prismaPositions: PositionStore = {
       staked: Number(r.staked),
       paidOut: Number(r.paidOut),
     }));
+  },
+  async leaderboardPlayerCounts() {
+    // ⛔ THREE DISTINCT COUNTS IN ONE PASS, and `all` is counted distinctly rather than summed:
+    //    a player holding both products is in both narrow sets, so `market + updown` would exceed
+    //    the platform's player count. Measured on production: 41 all, 28 polls, 30 Up & Down.
+    const [row] = await pc().$queryRawUnsafe<Array<{ all: bigint; market: bigint; updown: bigint }>>(
+      `select count(distinct p."userId")                                                        as "all",
+              count(distinct p."userId") filter (where coalesce(m."productLine",'MARKET') <> 'UPDOWN') as "market",
+              count(distinct p."userId") filter (where coalesce(m."productLine",'MARKET') =  'UPDOWN') as "updown"
+         from "public"."Position" p
+         join "public"."PredictionMarket" m on m."id" = p."marketId"
+        where p."status" <> 'OPEN'`,
+    );
+    return { all: Number(row?.all ?? 0), market: Number(row?.market ?? 0), updown: Number(row?.updown ?? 0) };
   },
   async listForMarket(marketId) {
     const rows = await pc().position.findMany({ where: { marketId } });

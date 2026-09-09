@@ -113,6 +113,33 @@ const SURFACES = [
      bar in this list, and worth measuring precisely because it is small: a three-pill strip has
      nowhere to hide a collision. */
   { id: "/positions/performance", path: "/positions/performance", minControls: 3 },
+  /**
+   * DECLARED 2026-09-09 (PLAYER QUERY §12 ①). `/leaderboard`'s FIRST filter — a product lens, on a
+   * page whose own source used to say in writing that it must never declare a rail because a sort
+   * narrows nothing. That was true until the board's population was measured: 72.19% of ranked
+   * positions are Up & Down and 17 of 41 board rows mix both products.
+   *
+   * ⚠️ `minControls: 3` — THE THREE PRODUCT PILLS, AND THE FIRST DRAFT SAID 5.
+   *
+   * 🔴 That 5 was reasoned, not measured: it counted the sort summary and the fused direction
+   * button, which sit in a SIBLING row OUTSIDE `data-filter-rail` — deliberately, because a sort
+   * is not a filter and must stay out of the count instruments. This driver only measures
+   * `[data-filter-rail] a|button|summary`, so it correctly reported *"only 3 visible controls,
+   * floor 5 — a rail is missing"* on the very first run. ⭐ The vacuity control caught a floor
+   * written from a guess, which is exactly the job it was given.
+   *
+   * ⛔ So 3 is the whole measurable population here, and it is EXACT rather than padded — the same
+   * shape as `/positions/performance`. A three-pill strip has nowhere to hide a collision, which
+   * is what makes measuring it worthwhile.
+   *
+   * ⛔ `sticky: false` — A DECLARATION, NOT AN EXEMPTION, and the same shape as
+   * `/profile/account`'s. This rail is a plain `<nav>` above the sort row; it does not take
+   * `QUERY_BAR_CLASS` and promises no page-level offset. ⚠️ It would be wrong to claim one: the
+   * board is a paginated table whose header row is the thing worth pinning, and a sticky lens over
+   * a public 50-row board buys nothing while risking the `bar@-93` failure this driver found on
+   * `/profile/account`.
+   */
+  { id: "/leaderboard", path: "/leaderboard", minControls: 3, sticky: false },
 ];
 
 const surfaces = ONLY ? SURFACES.filter((s) => s.id === ONLY || s.path === ONLY) : SURFACES;

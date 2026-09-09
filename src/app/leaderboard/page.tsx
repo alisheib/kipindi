@@ -24,12 +24,16 @@ import { ScrollX } from "@/components/ui/scroll-x";
 import { getServerT, type Dict } from "@/lib/i18n-server";
 import { PageContainer } from "@/components/layout/page-container";
 import { QUERY_BAR_ROW2_CLASS, QuerySort } from "@/components/ui/query-bar";
+import { FilterPill } from "@/components/ui/filter-pill";
 import {
   LEADER_NATURAL_DIR,
+  LEADER_PRODUCTS,
   LEADER_SORTS,
   buildLeaderHref,
   leaderDir,
+  leaderProduct,
   parseLeaderParams,
+  type LeaderProductId,
   type LeaderSortId,
   type LeaderState,
 } from "@/lib/leaderboard/board";
@@ -142,7 +146,7 @@ async function buildLeaderboard(state: LeaderState): Promise<{ rows: Row[]; capp
    * which tells a platform with EXACTLY fifty ranked players that its board was truncated when it
    * was complete. One extra row is fetched, the extra is dropped, and its existence is the answer.
    */
-  const over = await positionStore.leaderboard(BOARD_SIZE + 1, { sort: state.sort, dir: leaderDir(state) });
+  const over = await positionStore.leaderboard(BOARD_SIZE + 1, { sort: state.sort, dir: leaderDir(state), productLine: leaderProduct(state) });
   const capped = over.length > BOARD_SIZE;
   const ranked = over.slice(0, BOARD_SIZE);
   if (ranked.length === 0) return { rows: [], capped: false };
@@ -158,7 +162,13 @@ async function buildLeaderboard(state: LeaderState): Promise<{ rows: Row[]; capp
       // B-1 — deliberate degrade: per-row detail (name/streak) failing drops
       // only that row's decoration, bounded at BOARD_SIZE; the ranking is real.
       user: await Promise.resolve(db.user.findById(r.userId)).catch(() => null),
-      positions: await Promise.resolve(listPositionsForUser(r.userId, 200)).catch(() => [] as Awaited<ReturnType<typeof listPositionsForUser>>),
+      // ⭐ THE LENS REACHES THE PER-ROW READ TOO, AND IT HAD TO. This call passed no
+      // `productLine` for its whole life — the third argument has always been available
+      // (`market-service.ts`) — so the streak, the best-win market and the 14-day sparkline
+      // aggregated BOTH products while the ROI beside them was about to be narrowed to one.
+      // ⛔ A row whose rank says "Up & Down" and whose streak counts poll wins is the same lie
+      // as a count that is not cross-filtered (§K 6c rule 4), just spread across two columns.
+      positions: await Promise.resolve(listPositionsForUser(r.userId, 200, leaderProduct(state))).catch(() => [] as Awaited<ReturnType<typeof listPositionsForUser>>),
     })),
   );
 
@@ -229,7 +239,19 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
   const { t } = await getServerT();
   const sp = await searchParams;
   const state = parseLeaderParams(sp);
-  const { rows: real, capped } = await buildLeaderboard(state);
+  /**
+   * ⛔ THE PILL COUNTS ARE READ FROM THE DAL, NEVER DERIVED FROM `rows`. §K 6c rule 4: a pill's
+   * number must be what pressing it would actually SHOW. `rows` is one lens's board capped at
+   * fifty, so counting it would print "50" on every pill regardless of the product — a number
+   * that is true about the page and false about the control. These are `count(distinct userId)`
+   * over the board's own population (`status <> 'OPEN'`) per product.
+   * ⚠️ `all` is counted DISTINCTLY and is NOT `market + updown`: 17 of 41 ranked players hold
+   * both products on production, so summing would print more players than the platform has.
+   */
+  const [{ rows: real, capped }, playerCounts] = await Promise.all([
+    buildLeaderboard(state),
+    positionStore.leaderboardPlayerCounts(),
+  ]);
   // Show REAL players from the very first one so a player can always see
   // themselves ranked. The synthetic sample board is a NON-PRODUCTION demo
   // convenience only — a licensed real-money site must never present
@@ -263,6 +285,21 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
     }
   };
   const dir = leaderDir(state);
+  /**
+   * ⛔ THE LENS LABELS ARE THE PRODUCT'S OWN WORDS, not new ones. `t.nav.upDown` is the name the
+   * platform gives that game everywhere else, so a player reading "Up & Down" on this pill and in
+   * the top bar is reading the same product. Inventing "Rounds" or "Price" here would be a second
+   * vocabulary for a thing that already has one (§L, the label law).
+   */
+  const productLabel = (p: LeaderProductId) => {
+    switch (p) {
+      // `t.common.all` is the word every other lens rail on the platform uses for its All pill —
+      // NOT `rangeAll` ("All time"), which is a WINDOW word and would promise a date range.
+      case "all": return t.common.all;
+      case "polls": return t.common.markets;
+      case "updown": return t.market.udTitle;
+    }
+  };
 
   return (
     <PageContainer tier="reading" className="space-y-6">
@@ -297,17 +334,60 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
       />
 
       {/**
-        * ⭐ THE SORT, AND NOTHING ELSE — no `data-filter-rail` and no pills, deliberately.
-        * `test:filter-language` requires a DECLARED surface to render `<FilterPill>` in its own
-        * source, and this page has no filter: a sort narrows nothing, every ranked row is still on
-        * the board. Declaring it would put an empty rail into four instruments' populations and
-        * make each of them report a pass over a control that does not exist. `/notifications`'
-        * sort is outside `qa:count-truth` for exactly this reason — a menu publishes no
-        * `data-count` to check.
+        * ⭐ THE PRODUCT LENS — this page's FIRST filter, added 2026-09-09 on a measurement.
         *
-        * ⚠️ IT IS THE SHARED CONTROL ALL THE SAME, so the sort a player learned on `/positions`
-        * behaves identically here — same fused direction button, same tri-state, same reset-to-
-        * natural on choosing a new key.
+        * ⛔ THE NOTE THAT USED TO SIT HERE SAID THIS PAGE HAS NO FILTER AND MUST NOT DECLARE A
+        * RAIL, and it was right until the board's population was measured.
+        * `npm run ops:leaderboard-mix` on production: **72.19% of ranked positions are Up & Down**,
+        * **17 of 41 ranked players hold both products**, and **17 of the 41 rows on this very
+        * board mix them**. One ROI over two different games is the §K 6c rule 4 failure with the
+        * promise moved out of a count and into a RANK.
+        *
+        * 🎯 The per-player number is what decided it: platform ROI is −5.06% for polls and −5.04%
+        * for Up & Down, near-identical — and the same query shows one player's ROI moving by
+        * **145.91 percentage points** depending on whether their Up & Down bets count. A board
+        * ranks INDIVIDUALS, so a platform mean cannot answer its question.
+        *
+        * ⛔ THE LENS IS PUSHED INTO THE STORE, exactly like the sort, and for the same reason: the
+        * aggregate's `limit` means the SELECTION is what has to narrow. Filtering the returned
+        * fifty would make "Up & Down" mean *the Up & Down players among the fifty best COMBINED
+        * ROIs* — a player excellent at one game and poor at the other never appears under the lens
+        * named for them, and nothing on the page says so.
+        *
+        * ⚠️ NOW THAT A REAL FILTER EXISTS, THIS RAIL IS DECLARED IN ALL EIGHT PLACES (§6) — and
+        * six of the eight fail SILENTLY when a route is missing, reporting a clean pass over a
+        * page they never opened.
+        */}
+      <nav className="flex flex-wrap items-center gap-1.5 -mx-1 px-1" aria-label={t.leaderboard.productAria} data-filter-rail>
+        {LEADER_PRODUCTS.map((p) => (
+          <FilterPill
+            key={p}
+            href={buildLeaderHref(state, { product: p })}
+            label={productLabel(p)}
+            count={playerCounts[p === "all" ? "all" : p === "polls" ? "market" : "updown"]}
+            on={state.product === p}
+            semantics="tab"
+            rank="primary"
+            /* ⛔ `testId` IS WHAT MAKES THE COUNT CHECKABLE, not decoration. `FilterPill` emits
+               `data-chip`/`data-count` only when it is given one, and `qa:count-truth` reads
+               `[data-filter-rail] [data-chip]` — so without it the driver found "0 distinct pill
+               destinations, floor is 3" and refused to report a vacuous pass over a rail it could
+               not see. The `product:` prefix matches the `tab:`/`side:`/`when:` convention
+               `/positions` uses. */
+            testId={`product:${p}`}
+          />
+        ))}
+      </nav>
+
+      {/**
+        * ⚠️ THE SORT IS STILL NOT A FILTER, and it keeps its own row. A sort narrows nothing —
+        * every ranked row is still on the board — so it stays outside `data-filter-rail` and out
+        * of the count instruments, which is why `hasActiveLeaderFilters` excludes `sort`/`dir` as
+        * view state while counting `product` as a filter.
+        *
+        * ⭐ IT IS THE SHARED CONTROL, so the sort a player learned on `/positions` behaves
+        * identically here — same fused direction button, same tri-state, same reset-to-natural on
+        * choosing a new key.
         */}
       <div className={QUERY_BAR_ROW2_CLASS}>
         <QuerySort

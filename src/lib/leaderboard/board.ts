@@ -44,14 +44,54 @@ import type { SortDir } from "@/lib/query/sort";
 export const LEADER_SORTS = ["roi", "net", "staked", "resolved"] as const;
 export type LeaderSortId = (typeof LEADER_SORTS)[number];
 
+/**
+ * ⭐ THE PRODUCT LENS — added 2026-09-09, and it is the one thing on this page that IS a filter.
+ *
+ * 🔴 WHY IT EXISTS, MEASURED AND NOT ASSUMED. `npm run ops:leaderboard-mix` against production:
+ * **72.19% of the board's own ranked population is Up & Down**, **17 of 41 ranked players hold
+ * BOTH products**, and **17 of the 41 rows on the board mix them**. So the single ROI this page
+ * has always printed ranks a player on two different games at once.
+ *
+ * 🎯 AND THE NUMBER THAT SETTLED IT WAS THE PER-PLAYER ONE. Platform ROI is −5.06% for polls and
+ * −5.04% for Up & Down — near-identical, which reads as proof that combining them is harmless.
+ * It is not: the same query shows a single player's ROI moving by up to **145.91 percentage
+ * points** depending on whether their Up & Down bets are counted. A board ranks INDIVIDUALS, so a
+ * platform mean cannot answer its question however true it is.
+ *
+ * ⛔ THREE PRIORS IN THIS REPO SAID THE OPPOSITE AND ALL THREE COUNTED THE WRONG POPULATION —
+ * "~20×" (`market-dal.ts`), "~12:1" (the ops README) and "99.4%" (the campaign board) are about
+ * MARKET ROWS, and an Up & Down chain emits a row every few minutes while a poll is created a few
+ * times a day. None of them says how players BET. Re-derive with `ops:leaderboard-mix`; do not
+ * inherit a ratio.
+ *
+ * ⚠️ `all` IS THE DEFAULT and stays first, so `/leaderboard` with no params renders the board a
+ * player already knows — the same argument `roi` makes above.
+ */
+export const LEADER_PRODUCTS = ["all", "polls", "updown"] as const;
+export type LeaderProductId = (typeof LEADER_PRODUCTS)[number];
+
+/**
+ * The lens id → the DAL's own product vocabulary.
+ * ⛔ A PLAIN LITERAL MAP, because this module may not import from `src/lib/server` (see the header)
+ * and `ProductLineFilter` lives there. The pair is pinned by `test:leaderboard-order` §6 against
+ * the DAL's accepted values, so the two cannot drift apart silently.
+ */
+export const LEADER_PRODUCT_FILTER: Record<LeaderProductId, "ALL" | "MARKET" | "UPDOWN"> = {
+  all: "ALL",
+  polls: "MARKET",
+  updown: "UPDOWN",
+};
+
 export const LEADER_DEFAULTS = {
   sort: "roi" as LeaderSortId,
   dir: null as SortDir | null,
+  product: "all" as LeaderProductId,
 };
 
 export type LeaderState = {
   sort: LeaderSortId;
   dir: SortDir | null;
+  product: LeaderProductId;
 };
 
 export const LEADER_DEFAULT_STATE: LeaderState = { ...LEADER_DEFAULTS };
@@ -74,7 +114,13 @@ export function parseLeaderParams(sp: Record<string, string | string[] | undefin
   return {
     sort: oneOf(LEADER_SORTS, one("sort"), LEADER_DEFAULTS.sort),
     dir: parseDir(one("dir")),
+    product: oneOf(LEADER_PRODUCTS, one("product"), LEADER_DEFAULTS.product),
   };
+}
+
+/** The product filter actually in force, as the plain value the DAL takes. */
+export function leaderProduct(state: LeaderState): "ALL" | "MARKET" | "UPDOWN" {
+  return LEADER_PRODUCT_FILTER[state.product];
 }
 
 export function buildLeaderHref(
@@ -86,11 +132,18 @@ export function buildLeaderHref(
 }
 
 /**
- * ⛔ ALWAYS `false`, AND THE FUNCTION EXISTS TO SAY SO RATHER THAN TO BE OMITTED. `hasActiveFilters`
- * is passed BOTH axes as view state, because this page has no filters at all — a sort narrows
- * nothing, every row is still on the board. `href.ts`'s own note is the rule being applied: sort is
- * excluded from "active" everywhere, which is why the bar has never given it the active treatment.
- * ⚠️ A `Clear` control here would be a button that cannot do anything.
+ * ⭐ NO LONGER ALWAYS FALSE — and the change is the whole point of the product lens.
+ *
+ * This used to be a function that existed to SAY it was always false: a sort narrows nothing, so
+ * every row stayed on the board and a `Clear` control would have been a button that could not do
+ * anything. `sort` and `dir` are still passed as view state for exactly that reason, and
+ * `href.ts`'s rule that a sort is never "active" is unchanged.
+ *
+ * ⚠️ `product` IS A REAL FILTER — it removes rows — so it is deliberately NOT in the view-state
+ * list, and this returns true on `?product=polls` or `?product=updown`. That is what lets the page
+ * treat the lens as a filter for §K 6c's purposes (a count that means something, a URL that is
+ * shareable, a rail that says which slice you are on) while still refusing to dress a sort up as
+ * one.
  */
 export function hasActiveLeaderFilters(state: LeaderState): boolean {
   return hasActiveFilters(state, LEADER_DEFAULT_STATE, ["sort", "dir"]);

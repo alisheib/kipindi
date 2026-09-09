@@ -59,6 +59,11 @@ const SURFACES = [
   { id: "/markets", path: "/markets", minPills: 8 },
   { id: "/results", path: "/results", minPills: 12 },
   { id: "/positions", path: "/positions", minPills: 10 },
+  /* DECLARED 2026-09-09 (PLAYER QUERY §12 ①). minPills: 3 — exactly the product lens, no padding.
+     ⭐ The counts here are the reason this route is worth walking: they are count(distinct userId)
+     over the board own ranked population per product, NOT a count of the rendered rows, which
+     would print 50 on every pill and be true about the page while false about the control. */
+  { id: "/leaderboard", path: "/leaderboard", minPills: 3 },
   { id: "/wallet", path: "/wallet", minPills: 12 },
   { id: "/updown/history", path: "/updown/history", minPills: 8 },
   { id: "/proposals", path: "/proposals", minPills: 14 },

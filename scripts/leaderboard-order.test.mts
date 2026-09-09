@@ -24,12 +24,13 @@
 process.env.SESSION_SECRET ??= "test-only-session-secret-32chars-min-aaaa";
 
 import {
+  marketStore,
   positionStore,
   leaderboardOrderBy,
   leaderboardCompare,
   type LeaderSortKey,
 } from "../src/lib/server/market-dal.ts";
-import { LEADER_SORTS, LEADER_NATURAL_DIR } from "../src/lib/leaderboard/board.ts";
+import { LEADER_SORTS, LEADER_NATURAL_DIR, LEADER_PRODUCTS, LEADER_PRODUCT_FILTER } from "../src/lib/leaderboard/board.ts";
 
 let pass = 0, fail = 0;
 const ok = (l: string, c: boolean, x = "") => {
@@ -189,6 +190,89 @@ console.log("\n── 4 · a zero-stake ROI ranks LAST in both directions ──
   const lossB = { userId: "d", resolved: 2, staked: 5_000, paidOut: 1_000 };
   ok("4.4 `net` treats a break-even row as a VALUE, not an absence — it beats a loss",
     leaderboardCompare({ sort: "net", dir: "desc" }, evenA, lossB) < 0);
+}
+
+/* ═══ 6 · THE PRODUCT LENS — it must narrow the SELECTION, not relabel a chosen board ═══════════
+ *
+ * ⭐ ADDED 2026-09-09 (PLAYER QUERY §12 ①), on a measurement rather than a hunch:
+ * `ops:leaderboard-mix` found 72.19% of ranked positions are Up & Down, 17 of 41 ranked players
+ * hold BOTH products, and 17 of the 41 rows on the board mix them.
+ *
+ * ⛔ THE FAILURE THIS SECTION EXISTS TO CATCH IS THE ONE §3 CATCHES FOR THE SORT, WEARING A
+ * PRODUCT NAME. Filtering the returned fifty in JS would make "Up & Down" mean *the Up & Down
+ * players among the fifty best COMBINED ROIs* — so a player who is excellent at Up & Down and
+ * poor at polls never appears under the lens named for exactly them, and nothing says so.
+ *
+ * ⭐ SO THE FIXTURE IS BUILT SO THE LENS MUST CHANGE THE WINNER, and every read below is
+ * `limit: 1`. A post-filter over a limit-1 combined read returns the combined winner or nothing;
+ * only a filter pushed into the store can return a different player.
+ *
+ *   u_poll_star   polls only, huge ratio      → wins ALL and wins POLLS
+ *   u_ud_star     Up & Down only, good ratio  → wins UPDOWN, and is NOT the combined winner
+ */
+{
+  const mkMarket = (id: string, productLine: "MARKET" | "UPDOWN") => ({
+    id, productLine,
+    status: "RESOLVED" as const,
+    titleEn: `lens ${id}`, titleSw: `lens ${id}`, category: "sports" as const,
+    sourceUrl: "https://bot.go.tz", resolutionCriterion: "seeded",
+    resolutionAt: "2026-09-02T00:00:00.000Z",
+    selectionClosedAt: "2026-09-01T00:00:00.000Z",
+    proposedBy: "test",
+  });
+  await marketStore.set(mkMarket("m_lens_poll", "MARKET") as never);
+  await marketStore.set(mkMarket("m_lens_ud", "UPDOWN") as never);
+
+  const pos = (id: string, userId: string, marketId: string, stake: number, payout: number) => ({
+    id, userId, marketId, side: "YES" as const, stake,
+    potentialPayout: payout, status: "WIN" as const, finalPayout: payout,
+    placedAt: "2026-09-01T00:00:00.000Z", settledAt: "2026-09-02T00:00:00.000Z",
+  });
+  // Poll star: +4900% — beats every other row on this board, including u_roi's +800%.
+  await positionStore.set(pos("p_lens_poll", "u_poll_star", "m_lens_poll", 1_000, 50_000) as never);
+  // Up & Down star: +1400% — better than u_roi but WORSE than the poll star, so it can only
+  // surface if the lens re-selects rather than re-labels.
+  await positionStore.set(pos("p_lens_ud", "u_ud_star", "m_lens_ud", 1_000, 15_000) as never);
+
+  const top = async (productLine?: "ALL" | "MARKET" | "UPDOWN") =>
+    (await positionStore.leaderboard(1, { sort: "roi", dir: "desc", ...(productLine ? { productLine } : {}) }))[0]?.userId;
+
+  ok("6.0 CONTROL · with no lens the combined winner is the poll star",
+    (await top()) === "u_poll_star", `got ${await top()}`);
+  ok("6.1 CONTROL · `ALL` is the same as omitting it — the default narrows nothing",
+    (await top("ALL")) === "u_poll_star", `got ${await top("ALL")}`);
+  ok("6.2 ⭐ `UPDOWN` returns the Up & Down specialist, NOT the combined winner",
+    (await top("UPDOWN")) === "u_ud_star", `got ${await top("UPDOWN")}`);
+  ok("6.3 `MARKET` returns the poll star", (await top("MARKET")) === "u_poll_star", `got ${await top("MARKET")}`);
+  // ⛔ THE ANTI-RELABEL ASSERTION. If the filter ran on the RESULT, this read would be empty:
+  //    the single best combined row is a poll row, so a post-filter for UPDOWN removes it.
+  ok("6.4 ⛔ …and the UPDOWN board is NOT EMPTY — proof the filter ran before the LIMIT",
+    (await positionStore.leaderboard(1, { sort: "roi", dir: "desc", productLine: "UPDOWN" })).length === 1);
+  // A position whose market row is missing must not vanish: the DAL coalesces to MARKET, as the
+  // schema's own default does. §3's fixture has no markets at all and relies on this.
+  ok("6.5 a position with no market row counts as a POLL, matching the schema default",
+    (await positionStore.leaderboard(50, { sort: "roi", dir: "desc", productLine: "MARKET" }))
+      .some((r) => r.userId === "u_roi"));
+
+  /**
+   * ⭐ THE COUNTS, AND `all` IS NOT A SUM. A player holding both products is in both narrow sets,
+   * so `market + updown` would exceed the platform's player count — 17 of 41 do on production.
+   */
+  const counts = await positionStore.leaderboardPlayerCounts();
+  ok("6.6 counts are over the ranked population, per product",
+    counts.all > 0 && counts.market > 0 && counts.updown === 1, JSON.stringify(counts));
+  ok("6.7 ⛔ `all` is counted DISTINCTLY, never `market + updown`",
+    counts.all <= counts.market + counts.updown, JSON.stringify(counts));
+
+  /**
+   * ⛔ THE LENS ID → DAL VOCABULARY PAIR IS PINNED HERE, because it is a hand-written map in a
+   * module that may not import from `src/lib/server`. A typo like `POLL` would typecheck against
+   * its own literal union and then silently match no rows.
+   */
+  ok("6.8 every lens id maps to a value the DAL accepts",
+    LEADER_PRODUCTS.every((p) => ["ALL", "MARKET", "UPDOWN"].includes(LEADER_PRODUCT_FILTER[p])),
+    JSON.stringify(LEADER_PRODUCT_FILTER));
+  ok("6.9 …and `all` is the one that means BOTH", LEADER_PRODUCT_FILTER.all === "ALL");
 }
 
 console.log(`\nleaderboard-order: ${pass} passed, ${fail} failed`);

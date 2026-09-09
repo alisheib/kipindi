@@ -89,6 +89,11 @@ const CSS = "src/app/globals.css";
  */
 const SURFACES = [
   "src/components/markets/discovery-bar.tsx",   // /markets — the reference
+  /* DECLARED 2026-09-09 (PLAYER QUERY §12 ①). /leaderboard gained its FIRST filter — a product
+     lens — on a measurement: 72.19% of ranked positions are Up & Down and 17 of 41 board rows mix
+     both products. ⛔ This is the ONE of the eight declaration places that fails LOUDLY, and it
+     did: §0.4 reported "undeclared: src/app/leaderboard/page.tsx" the moment the rail rendered. */
+  "src/app/leaderboard/page.tsx",               // /leaderboard — product lens (polls · Up & Down)
   /* ⚠️ RE-DECLARED 2026-09-08 (PLAYER QUERY, task 4.2). The desktop `aside` of full-width
      pills — a second layout for the same job, at board width, beside `/markets` which uses
      the bar — is retired. The hook moved with the controls into `results-bar.tsx`. */

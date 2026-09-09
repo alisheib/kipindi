@@ -45,6 +45,10 @@ const LANG = { en: "en", sw: "sw", zh: "zh" };
  */
 const SURFACES = [
   { id: "positions", path: "/positions", must: "data-filter-rail", sheet: true },
+  // DECLARED 2026-09-09 (PLAYER QUERY §12 ①) — the board, and the narrowed lens beside it, so the
+  // two are comparable in one glance. No sheet: this rail has three pills and never collapses.
+  { id: "leaderboard", path: "/leaderboard", must: "data-filter-rail" },
+  { id: "leaderboard-updown", path: "/leaderboard?product=updown", must: "data-filter-rail" },
   { id: "positions-won", path: "/positions?tab=win", must: "data-filter-rail", sheet: false },
   { id: "positions-empty", path: "/positions?q=zzzznomatch", must: "data-filter-rail", sheet: false },
   { id: "udhistory", path: "/updown/history", must: "data-filter-rail", sheet: true },
