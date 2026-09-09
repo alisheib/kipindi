@@ -81,7 +81,25 @@ export const QUERY_BAR_CLASS_PANEL =
 
 /** Row 1 — the lens strip and the result count. Row 2 — sort, then filters. */
 export const QUERY_BAR_ROW1_CLASS = "flex items-center gap-x-3 pt-2.5";
-export const QUERY_BAR_ROW2_CLASS = "flex flex-wrap items-center gap-x-2 pb-2.5 pt-1.5";
+/**
+ * 🔴 PLAYER-FILTERS 2026-09-09 · `gap-x-2` BECAME `gap-2`, BECAUSE THIS ROW WRAPS AND HAD NO
+ * ROW GAP AT ALL.
+ *
+ * ⛔ The class is `flex-wrap` and set only a COLUMN gap, so the moment the row wrapped — which it
+ * does on every surface that carries a sort control plus two or more filter groups, and in
+ * Swahili well before English — two lines of **44px tap targets met edge to edge with 0px
+ * between them**. A finger landing one pixel high on "Newest first" applies a topic instead.
+ * ⚠️ That is the reported complaint's mechanism exactly, on the SHARED bar rather than on one
+ * route: whichever surface a player happens to be on, the controls on the wrap boundary are a
+ * coin toss.
+ *
+ * ⭐ IT COSTS NOTHING WHERE IT DOES NOT WRAP. A row gap is only ever paid when a second line
+ * exists, so the desktop single-row bar is byte-identical in height to before; only the wrapped
+ * phone/Swahili case gains the 12px (`tailwind.config.ts:215`) that makes two rows two rows.
+ * ⛔ Guarded by `qa:tap-truth`'s DISJOINT/ATREST arms, which measure rendered boxes rather than
+ * class strings — the reason this survived every source-scanning gate the repo already had.
+ */
+export const QUERY_BAR_ROW2_CLASS = "flex flex-wrap items-center gap-2 pb-2.5 pt-1.5";
 
 /**
  * The LENS strip — rank-primary pills, scrolling below `lg`, wrapping above it.

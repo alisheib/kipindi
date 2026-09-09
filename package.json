@@ -728,6 +728,8 @@
     "red:route-census": "node scripts/red-route-census.mjs",
     "test:leaderboard-order": "tsx scripts/leaderboard-order.test.mts",
     "qa:player-shots": "node scripts/live/player-query-shots.mjs",
+    "qa:tap-truth": "node scripts/live/tap-truth-drive.mjs",
+    "fixture:player": "node scripts/live/up-fixture.mjs",
     "red:count-truth": "node scripts/red-count-truth.mjs"
   },
   "dependencies": {

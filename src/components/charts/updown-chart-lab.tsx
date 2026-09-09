@@ -20,6 +20,9 @@
  */
 import { useEffect, useState } from "react";
 import { TerminalChart, type TerminalRange, type TerminalStyle } from "./terminal-chart";
+/* ⛔ The SHARED axis key, not a re-typed one — `FilterGroupKey` is the product's single
+   definition of "the mono word that names an axis" (`filter-pill.tsx`). */
+import { FilterGroupKey } from "@/components/ui/filter-pill";
 
 const RANGE_KEY = "kp-updown-range";
 const STYLE_KEY = "kp-updown-style";
@@ -87,12 +90,36 @@ export function UpDownChartLab({
   return (
     <div>
       <div className="mb-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
-        <div className="pchart-ranges" role="group" aria-label={labels.railAria}>
-          {HISTORY_RANGES.map((r) => (
-            <button key={r} type="button" aria-pressed={range === r} className={"pchart-range" + (range === r ? " is-active" : "")} onClick={() => pickRange(r)}>
-              {r}
-            </button>
-          ))}
+        {/* 🔴 PLAYER-FILTERS 2026-09-09 · THIS RAIL NOW SAYS WHICH AXIS IT IS, AND THAT IS THE
+            POINT OF THE WHOLE CHANGE.
+            ⛔ THE COLLISION, IN THE PRODUCT'S OWN WORDS: the board's duration filter offers
+            `15 min` / `30 min` / `60 min`, and this rail offers `15M` / `30M` / `1H`. Same
+            numbers, different question — one chooses THE ROUND YOU BET ON, the other chooses how
+            much price history is drawn. ⚠️ And below `sm` the durations are folded into the
+            closed `FilterSheet`, so when a player switches the board to Chart the only "15"
+            ANYWHERE ON THE SCREEN is this one. Tapping it redraws a chart and leaves the round
+            alone — which is precisely *"they click a time, maybe 15mins, and it clicks something
+            else."*
+            ⭐ THE REPO HAD ALREADY WRITTEN THE FIX DOWN, one surface across. `FilterGroupKey`'s
+            own header: the key "IS LOAD-BEARING, NOT DECORATION … without a visible key the bar
+            renders two identical 'Any' pills side by side and neither says what it clears."
+            Two rails of identical numbers is the same defect, and it takes the same cure.
+            ⛔ NO NEW DICTIONARY KEY. `udRangeAria` is already this group's accessible name and
+            already exists in en/sw/zh, so the visible key and the announced one cannot drift —
+            and `test:i18n`'s parity check has nothing new to police.
+            ⚠️ `aria-hidden` because the group's `aria-label` already carries this exact string;
+            without it a screen reader announces the axis twice. */}
+        <div className="flex min-w-0 items-center gap-1.5">
+          <span aria-hidden="true">
+            <FilterGroupKey>{labels.railAria}</FilterGroupKey>
+          </span>
+          <div className="pchart-ranges" role="group" aria-label={labels.railAria}>
+            {HISTORY_RANGES.map((r) => (
+              <button key={r} type="button" aria-pressed={range === r} className={"pchart-range" + (range === r ? " is-active" : "")} onClick={() => pickRange(r)}>
+                {r}
+              </button>
+            ))}
+          </div>
         </div>
         <div className="pchart-ranges" role="group" aria-label={labels.styleAria}>
           <button type="button" aria-pressed={effectiveStyle === "line"} className={"pchart-range" + (effectiveStyle === "line" ? " is-active" : "")} onClick={() => pickStyle("line")}>

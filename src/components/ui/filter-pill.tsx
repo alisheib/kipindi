@@ -114,19 +114,45 @@ export function filterPillClass({ rank = "primary", on }: { rank?: FilterPillRan
     // selection idiom is not the audience's to vary.
     rank === "dense" ? "min-h-[32px]" : "min-h-[44px]",
     rank === "primary" ? "text-[13px] font-semibold" : "font-mono text-[11.5px] font-semibold",
-    // Selected pills carry a little more air, so the fill reads as a considered shape
-    // rather than a tight highlight. Unselected pills stay narrow and quiet.
-    // ⭐ THE DENSE RANK DOES NOT STEP ITS PADDING, and that is a real difference rather
-    // than an oversight. A player rail carries four to eight pills, so a 4px step costs a
-    // small shuffle. An admin rail carries SIXTEEN across two rows, where the same step
-    // moves every chip after the selected one and the rail visibly walks under the cursor.
-    // S-07b is that defect in its worst form: the hand-rolled chips switched to `font-bold`
-    // in a MONO face — which is wider — so selection changed the chip's own width too.
-    // Selection is stated by the fill and the outline, which cost no width at all.
-    rank === "dense" ? "px-2.5" : on ? "px-4" : "px-3",
+    /* 🔴 PLAYER-FILTERS 2026-09-09 · THE PADDING NO LONGER STEPS ON SELECTION, ON ANY RANK.
+     *
+     * ⛔ IT USED TO READ `on ? "px-4" : "px-3"`, AND THIS REPO'S SPACING SCALE MAKES THAT AN
+     * 8px WIDTH CHANGE — `tailwind.config.ts:216-217` sets `"3": "16px"` and `"4": "20px"`,
+     * so a selected pill was 8px wider than the same pill unselected. The comment that used to
+     * sit three lines below asserted the exact opposite in writing — *"the box is the same size
+     * in both states, only the ink changes"* — which is why nothing ever questioned it.
+     *
+     * 🔴 AND THE FILE ALREADY CONTAINED THE ARGUMENT AGAINST ITSELF. The `dense` rank was
+     * exempted from the step precisely because it "moves every chip after the selected one and
+     * the rail visibly walks under the cursor". Player rails were held to be safe because they
+     * "carry four to eight pills" in one row — but `/updown` runs SIX durations
+     * (`updown-durations.ts:85` = 3/5/10/15/30/60) and the phone sheet wraps them
+     * (`filter-sheet.tsx` names "the wrapped duration row in particular"), so the premise the
+     * exemption rested on was false on the very route players are complaining about.
+     *
+     * ⚠️ WHAT IT ACTUALLY COSTS A PLAYER, precisely — because the honest version is narrower
+     * than the dramatic one. The reflow happens in the SAME frame as the tap (`/updown` flips
+     * selection optimistically off `pendingHref`), so it cannot misdirect the tap that causes
+     * it. It misdirects the NEXT one: every chip between the old and new selection translates
+     * 8px, and in a wrapping row a chip can change LINE. A player correcting a choice — tap
+     * 15, then immediately tap 30 — aims at a rail that moved between the two taps.
+     *
+     * ⭐ `px-3` FOR BOTH STATES, NOT `px-4`. Levelling UP would widen every unselected pill by
+     * 8px — on a six-chip rail that is 48px of new width, which buys a wrap this rail does not
+     * currently have. Levelling DOWN changes no unselected geometry at all, so no rail can
+     * start wrapping because of this fix. The selection idiom is untouched: the fill
+     * (`.kp-fchip[data-on]`) and `border-brand-400` still say which one is chosen, and they
+     * cost no width — which is the same reasoning `dense` has always used.
+     * ⛔ Guarded by `test:filter-language` §pill-width — a chip's rendered width must be
+     * identical with and without `data-on`. Restoring the step turns that gate red. */
+    rank === "dense" ? "px-2.5" : "px-3",
     // ⭐ THE RULE. `border-transparent` — not "no border" — so selecting a pill cannot
     // reflow the row it sits in: the box is the same size in both states, only the ink
     // changes. This is why the class carries `border` unconditionally.
+    // ⚠️ THAT SENTENCE WAS TRUE OF THE BORDER AND FALSE OF THE BOX for as long as the padding
+    // stepped 16px → 20px on selection, one line above. It is now true of both, which is what
+    // makes it worth keeping. A rule stated in a comment and contradicted by the line above it
+    // is worse than no rule: it answers the question that would have found the defect.
     on
       ? "border-brand-400 text-text"
       : "border-transparent text-text-muted hover:bg-bg-overlay hover:text-text",
@@ -148,6 +174,7 @@ export function FilterPill({
   onClick,
   className,
   countClassName,
+  blocked,
 }: {
   href: string;
   label: React.ReactNode;
@@ -171,6 +198,22 @@ export function FilterPill({
   onClick?: (e: React.MouseEvent) => void;
   className?: string;
   /**
+   * ⛔ THE CONTROL IS PRESENT BUT MUST NOT BE ACTIVATED YET — and this states that to
+   * ASSISTIVE TECHNOLOGY, which is the half a CSS `pointer-events: none` cannot reach.
+   *
+   * 🔴 `/updown` blocks its duration chips while an asset switch is in flight (E-290), and
+   * did it with `.kp-fchip-waiting` alone. That stops a mouse, because the element never
+   * receives the event. It does NOT stop Enter on a focused link, and it says nothing at all to
+   * a screen reader — so a keyboard user could fire the exact backwards navigation the block
+   * exists to prevent, on a control that looked greyed and announced as ordinary.
+   *
+   * ⚠️ `aria-disabled`, NOT `inert` OR a removed `href`. The chip must stay focusable and
+   * announceable — it is a real destination a moment from now, and removing it from the tab
+   * order would move focus out from under a keyboard user mid-interaction. The caller still
+   * refuses the activation itself; this is what tells the user why.
+   */
+  blocked?: boolean;
+  /**
    * For the ONE rail that is not a row of pills: `/results`' desktop sidebar renders each pill
    * full-width, where a count hugging its label leaves the row visibly unfinished. It asks for
    * `lg:ml-auto` here rather than the pill assuming a layout it cannot see.
@@ -189,6 +232,7 @@ export function FilterPill({
       data-count={count}
       /* The selected fill + halo are painted by `.kp-fchip[data-on]`, never inline (law 82). */
       data-on={on || undefined}
+      aria-disabled={blocked || undefined}
       aria-current={semantics === "tab" ? (on ? "page" : undefined) : undefined}
       aria-pressed={semantics === "toggle" ? on : undefined}
       /* ⭐ ONE AUTHOR FOR THE GEOMETRY (DG-A-06). See `filterPillClass` above — the string it

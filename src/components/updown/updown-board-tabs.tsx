@@ -19,11 +19,22 @@
  * UD-10); only a plain left-click becomes a transition.
  */
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { FilterPill } from "@/components/ui/filter-pill";
 import { FilterSheet, FilterSheetGroup } from "@/components/markets/filter-sheet";
 
 export type BoardTab = { key: string; href: string; label: string };
+
+/**
+ * How long the optimistic/blocked window may last before the rail is handed back to the player.
+ *
+ * ⚠️ 6 SECONDS IS A CEILING, NOT A TIMING. It is not tuned to how long a board takes — a healthy
+ * transition on a bad connection is well under it, so this never fires on a working navigation.
+ * It exists solely so a transition that never ends cannot leave the duration rail dead for the
+ * rest of the page's life. Lower it and a slow-but-fine network starts un-blocking mid-flight;
+ * raise it much and a player sits in front of a dead rail long enough to leave.
+ */
+const PENDING_CEILING_MS = 6000;
 
 export function UpDownBoardTabs({
   assetTabs,
@@ -62,9 +73,19 @@ export function UpDownBoardTabs({
   const [isPending, startTransition] = useTransition();
   const [pendingHref, setPendingHref] = useState<string | null>(null);
 
-  const go = (hrefTarget: string) => (e: React.MouseEvent) => {
+  const go = (hrefTarget: string, blocked = false) => (e: React.MouseEvent) => {
     // Let the browser own anything that is not a plain left-click (new tab etc.).
     if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    /* 🔴 E-290's BLOCK WAS POINTER-ONLY, AND A KEYBOARD WALKS STRAIGHT PAST IT.
+       `.kp-fchip-waiting` is `pointer-events: none` (globals.css), which stops a MOUSE from ever
+       reaching the element — so this handler was never consulted on that path and nobody noticed
+       it was not consulting itself. But Enter on a focused `<a>` dispatches a real click event,
+       which `pointer-events` does not touch: a keyboard or screen-reader user pressed Enter on a
+       greyed duration chip and fired exactly the backwards navigation E-290 exists to prevent
+       (tap Ethereum, activate `5 min`, land back on Bitcoin — and UD-13f's `replace` left no
+       history entry to walk back out of). ⛔ The rule now lives in the handler, where BOTH input
+       paths meet, and the CSS is the visual half of it rather than the whole of it. */
+    if (blocked) { e.preventDefault(); return; }
     e.preventDefault();
     setPendingHref(hrefTarget);
     /* 🔴 UD-13f (2026-09-05) · `replace`, AND `scroll: false`, BECAUSE A FILTER IS NOT A
@@ -133,6 +154,39 @@ export function UpDownBoardTabs({
    * the board does — one round trip — and until then they say so instead of lying.
    */
   const assetSwitching = pending != null && pending.get("asset") !== activeAssetKey;
+
+  /**
+   * 🔴 THE BLOCK ABOVE HAD NO UPPER BOUND, AND THAT IS THE REPORTED DEFECT'S MOST LIKELY SHAPE.
+   *
+   * `assetSwitching` is derived from `isPending`, and `isPending` stays true for as long as the
+   * transition runs. `/updown` is `force-dynamic` and its render reads the DB and a price feed,
+   * so on a poor mobile connection — which is most of this product's traffic — that is seconds,
+   * and on a stalled or dropped RSC fetch it is **for ever**. For the whole of that window every
+   * duration chip is `pointer-events: none`.
+   *
+   * ⭐ Ali, relaying players, 2026-09-09: *"not all timings are clickable."* That is this state,
+   * described from the outside. It is intermittent because it depends on the network, it affects
+   * only the DURATION rail because only that rail is blocked, and it clears on reload — which is
+   * why it never reproduced for anyone looking for it.
+   *
+   * ⛔ SO THE OPTIMISM GETS A DEADLINE. After `PENDING_CEILING_MS` the optimistic href is
+   * dropped: `pending` becomes null, the rail falls back to the props it already has, and the
+   * chips come back to life. ⚠️ THAT IS THE HONEST STATE, not a guess — the board on screen is
+   * still the old asset's board, so the old asset's durations are exactly what is being shown.
+   * The player gets a live control back and can tap again; before this they had a dead rail and
+   * no way to know why.
+   *
+   * ⛔ THIS IS NOT THE `useEffect` UD-13d ARGUES AGAINST. That note refuses an effect that clears
+   * the optimism when the transition SUCCEEDS — correct, because it would run a render late and
+   * flash the true state through. This one never fires on a healthy transition: the ceiling is an
+   * order of magnitude longer than any successful navigation, so it is reached only when the
+   * derivation UD-13d installed has already failed to end.
+   */
+  useEffect(() => {
+    if (!isPending || pendingHref == null) return;
+    const t = setTimeout(() => setPendingHref(null), PENDING_CEILING_MS);
+    return () => clearTimeout(t);
+  }, [isPending, pendingHref]);
 
   /* ── UD-13b · WHAT THE PHONE SHOWS INSTEAD ────────────────────────────────────────────
      🔴 THE DEFECT, MEASURED ON PRODUCTION 2026-08-25 BEFORE ANY CODE MOVED. At 360 and 414
@@ -226,11 +280,12 @@ export function UpDownBoardTabs({
                   href={tItem.href}
                   label={`${tItem.d} ${minLabel}`}
                   className={assetSwitching ? "kp-fchip-waiting" : undefined}
+                  blocked={assetSwitching}
                   on={durationOn(tItem)}
                   semantics="tab"
                   replace
                   scroll={false}
-                  onClick={go(tItem.href)}
+                  onClick={go(tItem.href, assetSwitching)}
                 />
               ))}
             </FilterSheetGroup>
@@ -279,12 +334,13 @@ export function UpDownBoardTabs({
               href={tItem.href}
               label={`${tItem.d} ${minLabel}`}
                   className={assetSwitching ? "kp-fchip-waiting" : undefined}
+                  blocked={assetSwitching}
               on={durationOn(tItem)}
               semantics="tab"
               replace
               scroll={false}
               rank="secondary"
-              onClick={go(tItem.href)}
+              onClick={go(tItem.href, assetSwitching)}
             />
           ))}
         </nav>

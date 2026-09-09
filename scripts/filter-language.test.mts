@@ -466,6 +466,22 @@ ok(/border-brand-400/.test(primitiveCode),
 ok(!/\bstyle=\{/.test(primitiveCode),
   "1.7 the primitive writes no inline style — every paint value is a token through a class (law 82)");
 
+/* 🔴 §1.5's RULE, ENFORCED ON THE OTHER HALF OF THE BOX — added 2026-09-09 after the player
+   filter audit. §1.5 has always asserted `border-transparent`, and the comment above it says the
+   box "must be the same size in both states so selecting cannot reflow the rail". The BORDER
+   obeyed that. The PADDING did not: `filterPillClass` read `on ? "px-4" : "px-3"`, and this
+   repo's overridden scale (`tailwind.config.ts:216-217`) makes those 20px and 16px — so every
+   selected pill in the product was 8px wider than itself unselected, and every chip between the
+   old and the new selection translated 8px on each tap. ⚠️ The gate asserted the rule on the
+   half that was already right, which is why it stayed green for the whole of that defect's life.
+   ⛔ The assertion is on the PADDING BEING UNCONDITIONAL, not on a particular value: levelling to
+   `px-4` instead of `px-3` would be a legitimate future call, and would still pass. What must
+   never come back is a padding class chosen by `on`. */
+const padOnSelection = /\bon\s*\?[^:]*\bpx-\d/.test(primitiveCode) || /\bon\s*\?\s*"px-/.test(primitiveCode);
+ok(!padOnSelection,
+  "1.7b selection changes no PADDING — a pill's box is the same width on and off (the other half of 1.5)",
+  padOnSelection ? "filterPillClass picks a px-* class off `on` — the 8px reflow is back" : "");
+
 // ⛔ `qa:discovery-probe` matches these with a REGEX over raw SSR HTML, not a selector:
 //    /data-chip="([^"]+)"\s+data-count="(\d+)"/g. Adjacency and order are the contract.
 ok(/data-chip=\{testId\}\s*\n\s*(?:\/\*[\s\S]*?\*\/\s*\n\s*)?data-count=\{count\}/.test(primitive),

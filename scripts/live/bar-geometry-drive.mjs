@@ -77,6 +77,15 @@ mkdirSync(SHOTS, { recursive: true });
  * programme keeps finding. Re-derive by counting the VISIBLE controls at 1280.
  */
 const SURFACES = [
+  /* 🔴 ADDED 2026-09-09 — AND ITS ABSENCE IS THE WHOLE REASON THE PLAYER REPORT WAS POSSIBLE.
+     `/updown` is the route Ali's players complained about ("not all timings are clickable"), and
+     it was in the population of NEITHER this gate NOR `qa:player-filters`. Every filter gate in
+     the repo was green on the day the report came in because none of them looked at it.
+     ⚠️ `minControls: 3` because below `sm` this board folds its rails into a `FilterSheet` and
+     the bar legitimately carries only the trigger and the view switch; the CHIPS are asserted by
+     `qa:tap-truth`, which opens the sheet. A floor set for the desktop rail would fail this gate
+     on the phone for being correct. */
+  { id: "/updown", path: "/updown", minControls: 3 },
   { id: "/markets", path: "/markets", minControls: 8 },
   { id: "/results", path: "/results", minControls: 12 },
   { id: "/positions", path: "/positions", minControls: 8 },

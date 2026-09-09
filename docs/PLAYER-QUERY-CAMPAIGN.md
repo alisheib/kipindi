@@ -113,6 +113,116 @@
 >   before believing any count in this document:
 >   `grep -rn 'hidden shrink-0 items-center gap-1 lg:flex' src/`
 
+⚠️ **AND ONE THING LANDED AFTER THAT CLOSURE.** A live player report on **2026-09-09** —
+*"in up and down not all timings are clickable"* — was worked OUT OF BAND, after this campaign
+was closed and its branch deleted. It is recorded in **§TAP**, below §0. ⛔ It does not reopen
+this board: §1–§11 remain RECORD, and §TAP is its own closed lane with its own gate
+(`qa:tap-truth`).
+
+---
+
+## §TAP — "they click 15 min and it clicks something else"
+
+> 🔴 **NOT A STAGE TASK.** Ali brought a live player report on 2026-09-09:
+> *"in up and down not all timings are clickable — they click a time, maybe 15mins, and it
+> clicks something else."* This section is the record of finding it and closing it.
+
+### ⛔ Why every gate was green while players were complaining
+
+**`/updown` was in the population of NO filter gate.** Not `qa:player-filters`, not
+`qa:bar-geometry`, not `qa:count-truth`. The route the complaint names had never been measured
+by any of them — so "all gates green" was a true statement about a set that excluded the defect.
+⚠️ **This is the wrong-population error for the third time in this programme.** It is now closed
+by construction: `/updown` is the FIRST entry in both `qa:tap-truth` and `qa:bar-geometry`.
+
+And the gates that did exist could not have seen it anyway, because none of them asks the
+player's question:
+
+| gate | asks | cannot see |
+|---|---|---|
+| `test:responsive` | does the DOCUMENT overflow? | a broken bar inside a page that doesn't overflow |
+| `qa:filter-scan` | is the tap-floor CLASS in the source? | a class is not a rendered box |
+| `qa:bar-geometry` | do two BARS share pixels? | two CONTROLS sharing them; a control that is simply dead |
+| `qa:player-filters` | does the filter FILTER? | anything at all about the tap |
+
+### ⭐ `qa:tap-truth` — the gate that asks whether a tap lands where it was aimed
+
+`scripts/live/tap-truth-drive.mjs`. Per surface × width × locale × **view**, six arms:
+`PRESENT · ONSCREEN · LIVE · FLOOR · HIT · ATREST · STEAL`, plus `IDENTITY` under `--click`,
+which taps the geometric centre with `page.mouse.click(x, y)` and asserts the state that comes
+back names the control that was tapped.
+
+⛔ **IT TAPS COORDINATES, NEVER `locator.click()`.** Playwright's click routes to the element by
+handle and scrolls it into view, so it sails through an overlay a finger cannot pass — it would
+certify the exact defect under investigation.
+
+⛔ **AND IT MEASURES BOTH VIEWS.** Below `sm` a page shows a BAR with the sheet closed and a
+SHEET once opened; they hold different controls in different boxes. Measuring one and calling it
+"the surface" is the wrong-population error in miniature — `/updown`'s duration chips exist ONLY
+in the sheet view, and the first run of this driver reported *"no filter control rendered at
+all"* for `/updown` at 360 and 414 because it had never opened one.
+
+### 🔴 The instrument was wrong four times before the product was wrong once
+
+Recorded because each cost a cycle, and because a driver that fails a correct page teaches
+people to ignore it:
+
+1. **`evaluate("(el) => …")` takes a STRING as an EXPRESSION.** It returned the function object,
+   never called it, and every measurement came back `undefined`.
+2. **A closed `<details>` still lays out**, and **a glyph inside a control is not a control** —
+   19 false failures on `/markets`, both exemptions this repo had already written down.
+3. **Opening every `<details>` opened the LANGUAGE menu**, whose panel then obscured the sheet
+   trigger; the run reported "1 disclosure opened" having opened the wrong one and measured
+   nothing. ⚠️ A false PASS, which is worse than a false failure.
+4. **A modal makes everything behind it unreachable, and the markup does not say so** — with the
+   sheet open the driver measured the bar underneath it too, and reported 40+ overlaps on three
+   correct pages. Same class: **the scrim and the sheet footer are chrome, not filters.**
+
+⭐ **THE RULE THAT CAUGHT ALL FOUR: run a new instrument against `/markets` FIRST.** It is the
+reference every other rail was extracted from. It failed 19 times on draft one — and the
+instrument was the defect, exactly as this file's §4.5 note predicted it would be.
+
+⚠️ **AND ONE EXEMPTION WAS RE-LITIGATED AND RE-CLOSED.** *A control in a scrolling strip is not
+clipped.* A chip half-way out of its own strip has a box extending past the strip's clip, so its
+centre resolves to whatever is painted beside it. That is a chip you scroll to, not a dead
+filter. `SCROLLED_OUT()` now encodes the distinction, so `ATREST` fires only when something is
+**genuinely on top of** a control sitting fully inside its scroller.
+
+### The five defects, and what each one did to a player
+
+| # | file | what it did |
+|---|---|---|
+| 1 | `filter-pill.tsx` | **A selected pill was 8px wider than itself unselected** (`px-4`=20px vs `px-3`=16px on this repo's overridden scale, `tailwind.config.ts:216-217`). Every chip between the old and new selection translated 8px on every tap, on EVERY player rail. |
+| 2 | `updown/page.tsx` | **An asset chip carried no `d`**, so tapping one threw the player's round length away and the server re-picked the shortest running chain. Re-tapping the asset already in force moved a player from **15 min to 3 min**. |
+| 3 | `updown-board-tabs.tsx` | **The duration rail's block had no upper bound.** `.kp-fchip-waiting` is `pointer-events:none` for as long as `isPending` runs; on a stalled RSC fetch that is **for ever**. |
+| 4 | `updown-board-tabs.tsx` / `filter-pill.tsx` | **That block was pointer-only.** Enter on a focused link dispatches a real click, so a keyboard user fired the very backwards-navigation E-290 exists to prevent. |
+| 5 | `query-bar.tsx` | **The shared bar's wrapping row set `gap-x-2` and no row gap**, so two lines of 44px tap targets met **edge to edge, 0px apart**. Every other wrapping row in the repo already had a `gap-y-*`; this was the lone omission. |
+
+⭐ **AND A SIXTH THAT IS A DESIGN DEFECT, NOT A GEOMETRY ONE — the likeliest single cause of the
+sentence Ali was quoted.** The board's duration filter offers `15 min · 30 min · 60 min`. The
+CHART's range rail offers `15M · 30M · 1H`. **Same numbers, different question** — one chooses
+the round you bet on, the other how much history is drawn. ⚠️ Below `sm` the durations are folded
+into the closed sheet, so when a player switches the board to Chart, **the only "15" on the
+screen is the one that does not change the round.** The rail now carries a visible axis key
+(`FilterGroupKey`, the repo's own idiom, reusing the already-translated `udRangeAria` — no new
+dictionary key, nothing for `test:i18n` to police).
+
+### ⛔ What is HONESTLY known about defect 1, as opposed to what is dramatic
+
+The 8px step is real and measured. But the reflow happens in the **same frame as the tap**
+(`/updown` flips selection optimistically off `pendingHref`), so **it cannot misdirect the tap
+that causes it.** It misdirects the NEXT one — a player correcting a choice, tap 15 then
+immediately tap 30, aims at a rail that moved between the two taps. ⚠️ Recorded this way because
+an adversarial verifier caught the first write-up over-claiming, and a finding that survives
+only while nobody checks the arithmetic is not a finding.
+
+### The guard, mutation-proven
+
+`test:filter-language` §1.7b asserts the padding is **unconditional**, not that it is any
+particular value. §1.5 had always asserted `border-transparent` "so the box is the same size in
+both states" — it policed the half that was already right for the whole life of the defect.
+⭐ Proven by mutation: restoring `on ? "px-4" : "px-3"` turns §1.7b red; the fix turns it green.
+
 ### What task 4.5 found — read before 4.6
 
 ⭐ **A PAGE CAN BE MOSTLY RIGHT, AND THE CAMPAIGN'S JOB IS THEN TO CHANGE LESS, NOT MORE.**

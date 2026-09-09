@@ -125,7 +125,31 @@ export default async function UpDownPage({
           navigation in a transition and keeps the live board on screen (dimmed) while
           the filtered one streams in — no skeleton flash, no countdown restart. */}
       <UpDownBoardTabs
-        assetTabs={assets.map((a) => ({ key: a.key, href: href(a.key), label: pickLocalized(locale, a.nameEn, a.nameSw, a.nameZh) }))}
+        /* 🔴 PLAYER-FILTERS 2026-09-09 · AN ASSET CHIP NOW CARRIES THE DURATION THE PLAYER IS ON.
+           ⛔ IT USED TO BE `href(a.key)` — ASSET ONLY, NO `d`. So every asset tap threw the
+           player's chosen round length away and the server re-picked one
+           (`updown-board.ts`: `runningDurations(...)[0] ?? durations[0]`, i.e. the SHORTEST
+           running chain). Two consequences, both of which read to a player as the control doing
+           something other than what it says:
+             · tapping Gold while on Bitcoin 15 min lands on Gold 15 min only by luck — the
+               fixture's gold runs 15/30/60, so it did; BTC's shortest is 3, so coming back
+               landed on **3 min**, not the 15 the player had chosen and could still see;
+             · tapping the asset ALREADY IN FORCE — the most natural "nothing should happen" tap
+               there is — silently moved a player from 15 min to 3 min.
+           ⭐ Ali, relaying players: *"they click a time, maybe 15mins, and it clicks something
+           else."* This is one of the two mechanisms that produces exactly that sentence, and it
+           is the one that needs no race and no slow network to reproduce.
+           ⛔ THE DURATION IS CARRIED ONLY WHEN THE TARGET ASSET ACTUALLY RUNS IT. Gold does not
+           run a 3-minute chain, so `?asset=XAU&d=3` would ask for a chain that does not exist and
+           `getBoard` would fall through to a default anyway — the difference being that the URL
+           would then be a false statement about what the player asked for. Where the duration
+           does not carry, we omit it and let the server choose, which is the old behaviour kept
+           for exactly the case it was right about. */
+        assetTabs={assets.map((a) => ({
+          key: a.key,
+          href: href(a.key, activeDuration != null && a.durations.includes(activeDuration) ? activeDuration : undefined),
+          label: pickLocalized(locale, a.nameEn, a.nameSw, a.nameZh),
+        }))}
         durationTabs={activeAsset ? activeAsset.durations.map((d) => ({ d, href: href(activeAsset.key, d) })) : []}
         activeAssetKey={activeAsset?.key ?? null}
         activeDuration={activeDuration}
