@@ -13,7 +13,7 @@
 | **Branch** | ⛔ **NONE — `player-query-campaign` was merged and DELETED 2026-09-08. Work from `main`.** |
 | **Approved** | the plan in §2–§5, by Ali, 2026-09-07 |
 | **Scope** | every client-facing page. ⛔ **Admin explicitly excluded** — §11 |
-| **Merged?** | ✅ **YES — stages 1–3 and tasks 4.1–4.5 are LIVE on 50pick.tz** (`main` `4e667633`, deploy `107e28f6`, 2026-09-08 11:22 EAT). The remaining tasks are NOT built. |
+| **Merged?** | ✅ **YES — the campaign is on `main` and LIVE on 50pick.tz** (stages 1–3 + 4.1–4.5 at `main` `4e667633`, deploy `107e28f6`, 2026-09-08 11:22 EAT; §0 records the remaining stages closing after that). ⚠️ **§TAP shipped separately on 2026-09-09** and is not covered by that SHA. ⛔ **This row carried "No. Nothing is on `main`. Nothing is deployed." well past the day it stopped being true, and it also disagreed with its own §0 about how many stages had landed.** Do not read a merge state off a table — re-derive it: `git rev-list --count origin/main..HEAD` and `git log --oneline -1 origin/main`. A merge state written down once is a fact with a shelf life. |
 
 ---
 

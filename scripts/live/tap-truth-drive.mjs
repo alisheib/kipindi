@@ -393,7 +393,7 @@ function HIT_PROBE(el, opts) {
  *   · every duration chip on `/updown` at phone width exists ONLY in the sheet view.
  * ⛔ Measuring one and calling it "the surface" is the wrong-population error in miniature.
  */
-async function runView(page, base, s, view) {
+async function runView(page, base, s, view, attempt = 1) {
   /* ⭐ TWO PASSES, AND THE SPLIT IS FORCED BY THE SHEET'S OWN SCROLLER.
      PASS 1 measures every control at ONE shared scroll position, because DISJOINT compares
      boxes and boxes measured at different scroll offsets cannot be compared — a chip
@@ -439,9 +439,25 @@ async function runView(page, base, s, view) {
     /* ⚠️ NOT a failure in the CLOSED view of a phone: below `sm` every filter legitimately lives
        inside the sheet, so an empty closed bar is the design. It IS a failure anywhere else —
        a surface that renders no reachable filter at all is the thing this driver exists to catch. */
-    if (view === "closed" && base.width < 640) return;
-    record({ ...base, arm: "PRESENT", ok: false, detail: `no filter control rendered at all (view: ${view})` });
-    return;
+    if (view === "closed" && base.width < 640) return 0;
+    /* 🔴 RETRY ONCE BEFORE CALLING A SURFACE EMPTY — A FLAKY GATE IS AN IGNORED GATE.
+       This driver has twice reported "no filter control rendered at all" across a RUN of
+       consecutive surfaces, and both times the product was fine: `next dev` compiles on demand
+       and this machine degrades under sustained Playwright load, so a late surface can be asked
+       for its controls while the server is still producing them. ⚠️ A cascade of identical
+       PRESENT failures at the tail of a run is that signature, not four simultaneous defects —
+       and it is indistinguishable from a catastrophic product failure, which is the most
+       expensive kind of false finding there is. One reload settles it: a surface that is really
+       empty is empty twice. */
+    if (attempt === 1) {
+      await page.reload({ waitUntil: "domcontentloaded", timeout: 45_000 }).catch(() => {});
+      await page.waitForSelector(CONTROL_SEL, { state: "attached", timeout: 20_000 }).catch(() => {});
+      await page.waitForTimeout(1200);
+      if (view === "sheet") await openFilterDisclosure(page);
+      return runView(page, base, s, view, 2);
+    }
+    record({ ...base, arm: "PRESENT", ok: false, detail: `no filter control rendered at all (view: ${view}, 2 attempts)` });
+    return 0;
   }
   record({ ...base, arm: "PRESENT", ok: true, detail: `${seen.length} control(s) — view: ${view}` });
 
@@ -499,6 +515,7 @@ async function runView(page, base, s, view) {
   }
 
   await page.screenshot({ path: `${SHOTS}/${s.id.replace(/\W+/g, "-").replace(/^-|-$/g, "")}-${base.width}-${base.locale}-${view}.png` });
+  return seen.length;
 }
 
 async function main() {
