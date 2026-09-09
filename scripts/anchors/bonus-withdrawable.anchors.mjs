@@ -45,8 +45,15 @@ export const MUTATIONS = [
        + "refusal; without this half the rule still holds and the harness would report a miss "
        + "against a working platform.",
     file: WALLET,
-    from: "    const updated = await db.wallet.adjust(w.id, { balance: -amount, hold: amount }, { requireBalanceGte: amount });",
-    to: "    const updated = await db.wallet.adjust(w.id, { balance: -Math.min(amount, w.balance), bonusBalance: -Math.max(0, amount - w.balance), hold: amount });",
+    // ⚠️ THE TRAILING `, tx` IS LOAD-BEARING FOR THIS ANCHOR, NOT DECORATION. `81ea5b3b`
+    // threaded the lock's transaction through this call (money-gate §6.2) and this string did
+    // not follow it, so the anchor stopped resolving: the harness reported "anchor missing"
+    // — which it prints as a WARNING, not a failure — while the gate above it went on printing
+    // green. ⛔ A red proof that can no longer inject its defect is worth LESS than no red
+    // proof, because it still looks like one. Caught by a parallel session running
+    // `red:anchors` on main, not by this harness and not by the commit that broke it.
+    from: "    const updated = await db.wallet.adjust(w.id, { balance: -amount, hold: amount }, { requireBalanceGte: amount }, tx);",
+    to: "    const updated = await db.wallet.adjust(w.id, { balance: -Math.min(amount, w.balance), bonusBalance: -Math.max(0, amount - w.balance), hold: amount }, undefined, tx);",
   },
   {
     name: "fulfilment-credits-nothing",

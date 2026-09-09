@@ -21,75 +21,27 @@ import { spawnSync } from "node:child_process";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+// ⛔ IMPORTED, NOT INLINE — and `red:bonus-withdrawable` is why. On 2026-09-09 a money fix
+// threaded `tx` through the line that harness anchored; its inline string did not follow, so
+// it reported "anchor missing" (a WARNING) while the gate above it printed green. Declared
+// anchors are audited by `test:red-anchors` §3 on every run, which fails when one stops
+// resolving. `injectDefect` is the SAME resolver §3 certifies with — a second implementation
+// here could pass an anchor the harness then could not find, a guard agreeing with itself.
+// It also handles the CRLF/LF mismatch that this file previously worked around by hand.
+import { MUTATIONS as DECLARED } from "./anchors/levy-allocation.anchors.mjs";
+import { injectDefect } from "./red-anchor.mjs";
+
 const here = dirname(fileURLToPath(import.meta.url));
 const REPO = join(here, "..");
 const GATE = join(here, "levy-allocation.test.mts");
 
-const LEDGER = "src/lib/server/ledger.ts";
-const PAYOUT = "src/lib/payout.ts";
-
-/** The post-fix lines this gate exists to protect. */
-const TRA_PICK = `  const traLevyAmt = opts.traLevyAmount != null
-    ? Math.max(0, Math.round(opts.traLevyAmount))
-    : Math.round(commAmt * opts.rates.traTaxOnCommissionRate);`;
-const GBT_PICK = `  const gbtLevyAmt = opts.gbtLevyAmount != null
-    ? Math.max(0, Math.round(opts.gbtLevyAmount))
-    : Math.round(commAmt * opts.rates.gbtLevyOnCommissionRate);`;
-
-const MUTATIONS = [
-  {
-    id: 1,
-    name: "THE DEFECT, VERBATIM · ignore both pre-allocated levies and derive per winner",
-    file: LEDGER,
-    from: [TRA_PICK, GBT_PICK],
-    to: [
-      "  const traLevyAmt = Math.round(commAmt * opts.rates.traTaxOnCommissionRate);",
-      "  const gbtLevyAmt = Math.round(commAmt * opts.rates.gbtLevyOnCommissionRate);",
-    ],
-  },
-  {
-    id: 2,
-    name: "HALF FIX · honour the TRA share but still derive GBT (the levy that books zero)",
-    file: LEDGER,
-    from: [GBT_PICK],
-    to: ["  const gbtLevyAmt = Math.round(commAmt * opts.rates.gbtLevyOnCommissionRate);"],
-  },
-  {
-    id: 3,
-    name: "HALF FIX · honour the GBT share but still derive TRA",
-    file: LEDGER,
-    from: [TRA_PICK],
-    to: ["  const traLevyAmt = Math.round(commAmt * opts.rates.traTaxOnCommissionRate);"],
-  },
-  {
-    id: 4,
-    name: "OVER-CORRECTION · book a levy even when the rate is ZERO (§2.2 — levied on our fee, or not at all)",
-    file: LEDGER,
-    from: ["    if (traLevyAmt > 0) {"],
-    to: ["    if (traLevyAmt >= 0) {"],
-  },
-  {
-    id: 5,
-    name: "OVER-CORRECTION · take the levy out of the PLAYER's payout (§2.8 — never from a player)",
-    file: LEDGER,
-    from: ["  const netPayout = opts.payout;"],
-    to: ["  const netPayout = opts.payout - traLevyAmt - gbtLevyAmt;"],
-  },
-  {
-    id: 6,
-    name: "OVER-CORRECTION · round the allocated share UP, inventing a fraction of a shilling (§2.10 rounding)",
-    file: LEDGER,
-    from: ["    ? Math.max(0, Math.round(opts.gbtLevyAmount))"],
-    to: ["    ? Math.max(0, Math.ceil(opts.gbtLevyAmount + 0.4))"],
-  },
-  {
-    id: 7,
-    name: "VACUITY · make largest-remainder allocation exact-by-luck, so §3's control cannot fail",
-    file: PAYOUT,
-    from: ["  let remainder = total - allocated; // in [0, winners.length)"],
-    to: ["  let remainder = 0; // in [0, winners.length)"],
-  },
-];
+/**
+ * PRIMARY mutations are the ones applied on their own; an entry carrying `combineInto` is the
+ * second half of another and is applied WITH it, never alone. Same pairing rule
+ * `measure-red.mjs` uses, and `test:red-anchors` §3 fails when a `combineInto` names nothing.
+ */
+const PRIMARY = DECLARED.filter((m) => !m.combineInto);
+const partsOf = (m) => [m, ...DECLARED.filter((x) => x.combineInto === m.name)];
 
 function runGate(rootDir) {
   const r = spawnSync("npx", ["tsx", GATE], {
@@ -124,37 +76,44 @@ try {
   console.log("control · gate PASSES on unmutated source\n");
 
   let caught = 0;
-  for (const m of MUTATIONS) {
+  let rotted = 0;
+  for (const m of PRIMARY) {
     tmp = mkdtempSync(join(REPO, ".red-levy-"));
     cpSync(join(REPO, "src"), join(tmp, "src"), { recursive: true });
-    const target = join(tmp, m.file);
-    // ⚠️ THE SOURCE IS CRLF AND THE ANCHORS ARE LF. A multi-line needle written with `\n`
-    // matches NOTHING against a CRLF file, and this harness's own "ANCHOR MISSED" line then
-    // reports a live mutation as proving nothing — a red harness lying about its own reach.
-    // Normalise both sides before matching; the copy is a throwaway, so rewriting it as LF
-    // costs nothing and `tsx` does not care.
-    let src = readFileSync(target, "utf8").split("\r\n").join("\n");
-    let applied = true;
-    m.from.forEach((needle, i) => {
-      if (!src.includes(needle)) { applied = false; return; }
-      src = src.split(needle).join(m.to[i]);
-    });
-    if (!applied) {
-      console.log(`  ⚠️  ${m.id} · ANCHOR MISSED — the source moved; this mutation proved nothing`);
-      rmSync(tmp, { recursive: true, force: true }); tmp = undefined;
-      continue;
+
+    // ⛔ `injectDefect` THROWS on an anchor that is missing, ambiguous, or that produced an
+    // identical file — it never silently no-ops, and it resolves \n anchors inside CRLF
+    // sources so this harness no longer hand-rolls that. That is the whole difference from
+    // the `includes()` loop it replaces: a rotted anchor is an ERROR that fails the run,
+    // not a warning printed beside a green tally. `red:bonus-withdrawable` lost a mutation
+    // that way on 2026-09-09 and only a parallel session noticed.
+    let ok = true;
+    for (const part of partsOf(m)) {
+      const target = join(tmp, part.file);
+      try {
+        writeFileSync(target, injectDefect(readFileSync(target, "utf8"), part.from, part.to));
+      } catch (err) {
+        console.log(`  ⛔ ANCHOR ROTTED · ${part.name} — ${(err && err.message) || err}`);
+        console.log(`     ${part.file} moved under this anchor. This mutation proved NOTHING.`);
+        ok = false; rotted++;
+        break;
+      }
     }
-    writeFileSync(target, src);
+    if (!ok) { rmSync(tmp, { recursive: true, force: true }); tmp = undefined; continue; }
+
     const r = runGate(tmp);
     const red = r.code !== 0;
     if (red) caught++;
-    console.log(`  ${red ? "RED " : "MISS"} ${m.id} · ${m.name}`);
+    const parts = partsOf(m).length;
+    console.log(`  ${red ? "RED " : "MISS"} ${m.name}${parts > 1 ? ` (+${parts - 1} paired)` : ""}`);
     if (red) console.log(`         caught by: ${[...new Set(failedSections(r.out))].join(", ")}`);
     rmSync(tmp, { recursive: true, force: true }); tmp = undefined;
   }
 
-  console.log(`\n${caught}/${MUTATIONS.length} mutations caught`);
-  process.exit(caught === MUTATIONS.length ? 0 : 1);
+  console.log(`\n${caught}/${PRIMARY.length} mutations caught${rotted ? ` · ⛔ ${rotted} ANCHOR(S) ROTTED` : ""}`);
+  // ⛔ A ROTTED ANCHOR FAILS THE RUN. It is not a lesser outcome than a missed defect: both
+  // mean this harness did not prove what it claims, and only one of the two is visible.
+  process.exit(caught === PRIMARY.length && rotted === 0 ? 0 : 1);
 } finally {
   if (tmp) rmSync(tmp, { recursive: true, force: true });
 }
