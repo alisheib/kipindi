@@ -34,6 +34,7 @@ file is worthless the moment it describes an intention as a fact.
 | Bonus-funded positions are never sellable | ✅ **live, and deliberately NOT gated by the withdrawal.** This is a refusal, not an offer — gating it would turn a laundering block into a laundering route (bonus stake → cash out → withdrawable cash). Proven with a red harness: dropping the `!bonusFunded` term makes a bonus-funded position report `sellable=true`. `npm run test:withdrawn-features` §2. §2.6 |
 | Failure messages explain themselves | ⏳ LANDING — betting + cash-out (2026-08-14); wallet, KYC, auth and the banner channel (2026-08-15). The `loss limit` family is the last still recovered from prose. §2.9 |
 | **Agent commission 10% · fee VAT-EXCLUSIVE (TZS 118,000) · SLA 5 WORKING days · 5% withholding** | ⏳ **LANDING — decided by management 2026-09-08, code shipped, and NOT verified on production.** ⛔ Three of the four do not reach production on deploy: `defineConfig` hydrates `{ ...defaults, ...restored }`, so a persisted `agent.config` row overrides the **rate**, the **VAT treatment** and the **SLA** with whatever an officer last saved. Only `agentWithholdingTaxPct` is new and takes the default either way. **Do not delete this marker until `/admin/agents` → Settings has been READ on production and shows `10` · `EXCLUSIVE` · `5` working days · `5%`.** A deploy that silently keeps the old 20% is indistinguishable from a successful one. §2.10 |
+| **An approved payout carries no phantom gateway id** | ✅ **live in code 2026-09-09.** A withdrawal held in `AML_REVIEW` kept the `wdr_…` correlation id in `providerRef` — **our** id, which no gateway has ever seen. The moment approval flipped it to `PROCESSING` the row became sweep-eligible (the 30-minute grace is measured on `createdAt`, already spent), and the sweep could query that phantom id during the dispatch round-trip, read the default-to-FAILED verdict, and refund a payout **in flight**. Every AML payout is at or above the review threshold by construction. The claim now clears `providerRef`/`payoutRail`, routing the window into the sweep's own `!ref` safe branch. §2.7 · `npm run test:aml-dispatch-window` |
 | **A payout callback settles the id it asked about** | ✅ **live in code 2026-09-09.** `handleSelcomCallback` looked our transaction up by `order_id` but re-queried the rail about `transid` — a **second, caller-chosen field** — and `envelopeSettlementVerdict` returns **FAILED** for any code it does not recognise. So naming a real payout in one field and any unknown id in the other refunded a payout that was still in flight. Routing needs no secret and `sigOk` was computed and never read. Now keyed on the transaction's own `providerRef` — the id the reconcile sweep already uses — and a payout settles only on a verified signature. §2.7 · `npm run test:payout-callback-identity` |
 | **One levy split, one figure** | ✅ **live in code 2026-09-09.** The ledger booked TRA/GBT per winner with its own `Math.round` while `levySplit` rounded once over the whole fee — two records of one statutory liability, disagreeing on **43 of production's 203 fee-bearing settlements**, and GBT reachably **ZERO** on a market that owes it. Both now come from one allocation. §2.2 · `npm run test:levy-allocation` · `npm run red:levy-allocation` |
 | **A withdrawal's hold and its Transaction row commit together** | ✅ **live in code 2026-09-09.** `withdraw`'s Phase A ran `withLock(…, async () => {` — and the lock's transaction is **not ambient** (`prisma-dal` resolves `tx ?? pc()`), so both writes autocommitted outside it. A failure between them left the player's money in `Wallet.hold` with no txn row: invisible to the reconcile sweep, to `/admin/payments` and to the trial balance alike. §2.7 · `npm run test:lock-tx-threading`. ⚠️ **Structural guard only** — the behavioural proof needs `e2e:money` against a real Postgres |
@@ -611,9 +612,23 @@ programme.
 
 ⛔ **Read its §0 before quoting any of its findings.** The verify phase died twice on a session
 limit: **59 findings are UNVERIFIED — nobody voted, nothing was decided — and six lanes never ran
-at all** (`money-out` among them, so withdrawals and payouts have had no systematic pass). An
-UNVERIFIED finding is unexamined, not disproven. A previous run of that harness bucketed no-votes
-as "refuted"; that is the failure mode the file exists to stop being repeated.
+at all**. An UNVERIFIED finding is unexamined, not disproven. A previous run of that harness
+bucketed no-votes as "refuted"; that is the failure mode the file exists to stop being repeated.
+
+> ### ⚑ SESSION 2 (2026-09-09) — `money-out` audited, six defects fixed, programme NOT finished
+>
+> The `money-out` lane has now had its **first** pass, and six defects were fixed, shipped and
+> deployed — each verified by hand, each guarded RED. They are the six ✅ rows in the ROLL-OUT
+> table above, and they are recorded in that file's §6.
+>
+> ⛔ **DO NOT READ THAT AS A LAUNCH VERDICT.** Of 106 findings, **4 have been through an
+> adversarial verify pass** — and of those four, **one was REFUTED and three were confirmed with
+> corrections to their stated cause, severity or money figure.** 102 are still UNVERIFIED,
+> **10 of them blocker-grade**. Ali's four §4 decisions are all still open, the two production
+> reads in §4.3 have not been done, and `settlement-lifecycle`, `agent-commission`,
+> `updown-money`, `docs-drift` and `controls-and-guards` have still never had a finder lane run
+> against them at all. That file's **⚑ STATE OF THIS PROGRAMME** block is the current
+> what-is-done / what-is-open, and it is the first thing to read.
 
 ---
 

@@ -9,6 +9,64 @@
 
 ---
 
+---
+
+## ⚑ STATE OF THIS PROGRAMME — read this before anything else
+
+**Last touched: 2026-09-09, session 2. Everything below is LIVE on `main` and deployed.**
+
+⛔ **THE PROGRAMME IS NOT FINISHED, AND "MONEY IS SAFE" IS NOT A CONCLUSION ANYONE HAS EARNED
+YET.** Do not read the ✅ rows below as a launch verdict. What is done is *these six things*;
+what is open is most of the surface.
+
+| | |
+|---|---|
+| **Session 2 work** | ✅ **DONE and SHIPPED** — six defects fixed, each verified by hand, each guarded RED |
+| **`money-out` lane** | ✅ **AUDITED ONCE** (first pass ever). 18 finder lanes, 18/18 returned |
+| **Adversarial verify pass** | 🔴 **4 of 106 findings verified.** 102 remain UNVERIFIED |
+| **Blockers** | 🔴 **4 fixed · 1 refuted · 10 still UNVERIFIED** |
+| **Ali's four decisions (§4)** | 🔴 **all four still open** |
+| **Production reads (§4.3)** | 🔴 **not done** — `PAYMENT_AGGREGATOR`, `agent.config` |
+| **`e2e:money` against real Postgres** | 🔴 **never run this session** — the behavioural proof for §6.2/§6.9 |
+
+### What shipped, in order
+
+| commit | what |
+|---|---|
+| `81ea5b3b` | §6.1 the levy split · §6.2 the withdrawal hold · docs · 106 findings recorded |
+| `1ab89cc5` | the `levy-divergence` production probe the handover names |
+| `0ac97836` | §6.6 the payout callback settling an id it did not ask about |
+| `639772bf` | the refund path's atomicity (`settleWithdrawalFailed`) |
+| `5bd5f84e` | a red proof I rotted, and `red:levy-allocation` joining the anchor audit |
+| `(this)` | §6.9 the AML phantom `providerRef` · §6.8 the verify pass that survived |
+
+### Guards this programme owns
+
+`test:levy-allocation` · `red:levy-allocation` · `test:lock-tx-threading` ·
+`test:payout-callback-identity` · `test:aml-dispatch-window` — plus session 1's
+`test:payment-control` · `red:payment-control` · `test:webhook-sec` · `red:webhook-money` ·
+`test:fee-model-caption` · `red:fee-model-caption`.
+
+### ⛔ The three ways a future session gets this wrong
+
+1. **Reading UNVERIFIED as "cleared".** It means one lens looked and nobody voted. §0 exists
+   because a previous run bucketed no-votes as *refuted*. Of the 4 findings that have now been
+   through three lenses, **1 was refuted and 3 were confirmed with corrections to their stated
+   cause, severity or money figure** — so both directions of error are real and neither is rare.
+2. **Running the verify pass in one big batch.** 39 agents exhausted a session window and
+   returned nothing; **12 completed comfortably.** The batch scripts are baked four findings at
+   a time. Check `agents_done` against `agent_count` before believing any result.
+3. **Treating the fixed list as the whole money surface.** `settlement-lifecycle`,
+   `agent-commission`, `updown-money`, `docs-drift` and `controls-and-guards` have **still**
+   never had a finder lane run against them (§0). They are unaudited, not clean.
+
+### Where to start next session
+
+1. `verify-blocker-0-4.js` and `verify-blocker-4-8.js` — the 8 remaining blockers, two runs.
+2. Then `verify-high.js`, sliced four at a time.
+3. `e2e:money` against a real Postgres.
+4. Ali: the four §4 decisions and the two production reads.
+
 ## §0 · READ THIS FIRST — what "unverified" means here, and why it is not "refuted"
 
 The audit ran as a workflow: 12 read-only finder lanes, then three independent adversarial
@@ -452,10 +510,10 @@ MO-1.a are the two fixed above.
 | `MO-10.a` | 🔴 | creditInternal fabricates the new balance when the wallet UPDATE fails and returns a non-null number, so every caller records money as PAID that never moved | `src/lib/server/wallet-service.ts` → `creditInternal` | certain · needs-production-read |
 | `MO-2.a` | 🔴 | An AML-held withdrawal carries a NEVER-DISPATCHED id in `providerRef`, and approve-dispatch flips the row to PROCESSING without clearing it — the reconcile sweep then re-queries a transid Selcom never | `src/lib/server/wallet-service.ts` → `dispatchApprovedWithdrawal (claim at 733-738) + withdraw (17` | likely · needs-production-read |
 | `MO-3.a` | 🔴 | settleWithdrawalFailed refunds and flips status in TWO separate commits outside the lock transaction — the 5-minute sweep then refunds a second time | `src/lib/server/wallet-service.ts` → `settleWithdrawalFailed` | certain · yes |
-| `MO-4.a` | 🔴 | The sweep can auto-reverse an AML-approved payout by querying a providerRef that was never sent to any gateway — the payout is in flight and the player gets the money back | `src/lib/server/wallet-service.ts` → `dispatchApprovedWithdrawal + reconcileStalePayments` | likely · yes |
-| `MO-4.b` | 🔴 | settleWithdrawalFailed — the only refund path — is not atomic and its status write fails SILENTLY, so the 5-minute sweep re-refunds the same payout every cycle | `src/lib/server/wallet-service.ts` → `settleWithdrawalFailed` | likely · yes |
-| `MO-5.a` | 🔴 | Rejecting an RG-held DEPOSIT in /admin/aml moves no money at all, and three surfaces tell the officer the funds were returned | `src/app/admin/aml/actions.ts` → `rejectAmlAction` | certain · yes |
-| `MO-5.b` | 🔴 | HOUSE:RG_SUSPENSE has exactly one writer and it is always a CREDIT — no code path in the repo can ever release it, yet the player is emailed that the money "has been reversed and returned to the accou | `src/lib/server/ledger.ts` → `rgSuspenseEntries / settleDepositConfirmed (RG arm)` | certain · yes |
+| `MO-4.a` | 🔴 | ✅ **FIXED §6.9** — The sweep can auto-reverse an AML-approved payout by querying a providerRef that was never sent to any gateway — the payout is in flight and the player gets the money back | `src/lib/server/wallet-service.ts` → `dispatchApprovedWithdrawal + reconcileStalePayments` | likely · yes |
+| `MO-4.b` | 🔴 | ❌ **REFUTED §6.8 (2/3 lenses)** — settleWithdrawalFailed — the only refund path — is not atomic and its status write fails SILENTLY, so the 5-minute sweep re-refunds the same payout every cycle | `src/lib/server/wallet-service.ts` → `settleWithdrawalFailed` | likely · yes |
+| `MO-5.a` | 🔴 | ✅ CONFIRMED 3/3 §6.8 (population ZERO on production) — Rejecting an RG-held DEPOSIT in /admin/aml moves no money at all, and three surfaces tell the officer the funds were returned | `src/app/admin/aml/actions.ts` → `rejectAmlAction` | certain · yes |
+| `MO-5.b` | 🔴 | ✅ CONFIRMED 3/3 §6.8 (severity → high, TZS 0 realised) — HOUSE:RG_SUSPENSE has exactly one writer and it is always a CREDIT — no code path in the repo can ever release it, yet the player is emailed that the money "has been reversed and returned to the accou | `src/lib/server/ledger.ts` → `rgSuspenseEntries / settleDepositConfirmed (RG arm)` | certain · yes |
 | `MO-6.a` | 🔴 | ✅ **FIXED §6.6** — A payout callback settles the transaction it CORRELATED on using the status of a DIFFERENT transid the caller chose — on an unauthenticated route | `src/app/api/webhooks/payments/route.ts` → `handleSelcomCallback` | certain · yes |
 | `LEAD-A.2` | 🟠 | The tamper-evident audit chain records a levy figure the ledger never booked — two authoritative records of the same statutory liability, disagreeing by construction | `src/lib/server/market-service.ts` → `settleMarket — the `market.resolved` audit payload` | certain · yes |
 | `LEAD-B.1a` | 🟠 | The config audit's `changes` field is the entire posted form, not a diff — every one of the 19 fields is recorded as "changed" on every save | `src/app/admin/config/actions.ts` → `updateGlobalConfigAction → setGlobalConfig` | certain · yes |
@@ -575,6 +633,77 @@ verify-low.js      · 14 findings ·  42 agents
 against `agent_count` before believing any of it. 39 agents was already enough to exhaust a
 session; `verify-medium` at 126 will not survive a single window. The blockers are the batch
 that matters — start there.
+
+### 6.8 · THE VERIFY PASS, SECOND ATTEMPT — 12/12, and it changed three verdicts
+
+⭐ **THE FIX FOR THE DEATH IN §6.7 WAS BATCH SIZE, NOTHING ELSE.** 39 agents exhausted a
+session window; **12 survived comfortably** — `agent_count` 12 · `agents_done` **12** ·
+`agents_error` **0**. The batch scripts are now baked one severity-slice at a time
+(`verify-<sev>-<from>-<to>.js`, four findings each). ⛔ Do not raise it.
+
+| id | bucket | votes | what changed |
+|---|---|---|---|
+| `MO-4.a` | ✅ **CONFIRMED** | 3/3 uphold | fixed below (§6.9) |
+| `MO-5.a` | ✅ **CONFIRMED** | 3/3 uphold | real, but the population on production is **ZERO** |
+| `MO-5.b` | ✅ **CONFIRMED** | 3/3 uphold | severity **blocker → high**; realised exposure **TZS 0** |
+| `MO-4.b` | ❌ **REFUTED** | 2/3 refute | see below — the headline was wrong |
+
+**`MO-4.b` REFUTED, and this is what a verify pass is for.** The claim was an unbounded
+5-minute re-refund loop. Two lenses independently found a deployed **`wallet_hold_non_negative`
+CHECK constraint**: the second release's single UPDATE aborts, so the repeat credits **ZERO
+shillings**, not the millions claimed. ⚠️ The underlying non-atomicity is real and was fixed
+anyway in §6.2's sibling commit — but the *money* claim was false, and shipping a fix on the
+strength of that headline would have been acting on a fiction.
+
+⚠️ **Corrections the lenses made to claims they still upheld** — record these, because a
+confirmed finding with a wrong reason is how the next session mis-prioritises:
+- `MO-4.a`'s finder named the wrong cause. The tx-threading is **not** load-bearing here; the
+  dispatch is outside the lock **by design**. The cause is the unguarded window and the phantom
+  ref. The finder also overstated frequency (~1% per approval on a healthy 1–3s accept, not
+  "1 in 4"); it reaches 15–30% only when a rail hits its 45s timeout.
+- `MO-5.a`/`MO-5.b` cite RULES §2.8 and §2.9, and **neither section says what is claimed**.
+  §2.8 governs what a player is *charged*; §2.9 is the failure-*refusal* registry rule. Money
+  the platform holds and fails to return is neither. The fitting doctrine is **A-5
+  no-fabrication**, which is code-level, not a RULES.md section.
+- `MO-5.b`'s "the rail does not exist" is **false** — `dispatchWithdrawal` carries every live
+  payout. It is not *wired* to the release, which is a smaller and different statement.
+
+### 6.9 · FIXED — an AML-approved payout carried a phantom `providerRef` into the sweep's reach
+
+`src/lib/server/wallet-service.ts` → `dispatchApprovedWithdrawal` (finding `MO-4.a`, CONFIRMED 3/3)
+
+While a large withdrawal sits in `AML_REVIEW` its `providerRef` holds the `wdr_…` correlation id
+`dispatchWithdrawal` returns from its AML branch — **our** id, which no gateway has ever seen:
+that branch returns *before* `resolveActiveAdapter`, and `runPayoutLadder` mints a fresh transid
+on approval. Harmless in `AML_REVIEW`, which no sweep selects.
+
+⛔ **It stops being harmless the instant the claim flips the row to `PROCESSING`.**
+`reconcileStalePayments` selects `PROCESSING` rows filtered on **`createdAt`** — and an AML
+row's `createdAt` is hours or days old, so the entire 30-minute grace the file's own header
+calls *"deliberately patient"* is **already spent**. The row is sweep-eligible immediately,
+while the dispatch round-trip runs **outside the wallet lock by design** (never hold a lock
+across network I/O) for up to the 45s rail timeout. In that window the sweep queries the phantom
+id; `envelopeSettlementVerdict` returns FAILED for any code that is not `000/111/927/999`; and
+`settleWithdrawalFailed` refunds a payout that is **in flight**. Every AML-approved payout is at
+or above the review threshold by construction — the largest-value path on the platform.
+
+⚠️ **Nothing downstream corrects it.** After the round-trip the function writes the REAL ref onto
+the now-FAILED row, audits `withdraw.approved_dispatched`, and tells the player the money is on
+its way. The trail actively conceals the double payment.
+
+**Fixed** by clearing `providerRef` and `payoutRail` in the claim, so the row enters the window
+with no gateway id at all. ⭐ That routes it into the sweep's **own existing safe branch** —
+`if (!ref)` → `leftPending` + `auditNeedsReviewOnce("stale withdrawal has no providerRef — not
+auto-reversed")` — which moves no money and puts the row in front of an officer. No new branch
+was added. Clearing *here* rather than at `withdraw()`'s write is deliberate: the correlation id
+is honest and useful while the row is held for review, it only becomes a lie at that one line,
+and clearing there also heals rows already sitting in production carrying one.
+
+Guard `npm run test:aml-dispatch-window` **14/0**, RED on the genuine pre-fix file
+(`git show 2499f324:…`). §1 states the premise it depends on (the AML branch really does return
+a never-dispatched id) so the gate becomes visibly wrong if that changes; **§3 pins the sweep's
+`!ref` branch**, because clearing the field is only safe while that branch exists — without §3
+this would be a fix pointing at nothing, still green; §4 is the positive control.
 
 ### 6.4 · Corrected while here — documents that contradicted the law
 

@@ -730,10 +730,42 @@ export async function dispatchApprovedWithdrawal(
 
   // Claim: AML_REVIEW → PROCESSING under the wallet lock so a double-approve or a
   // concurrent reject can't both act. The hold stays exactly where withdraw() put it.
-  const claimed = await withLock(`wallet:${pre.userId}`, async () => {
+  /**
+   * 🔴 AND THE CLAIM CLEARS `providerRef`, BECAUSE THE ONE IT INHERITS IS A PHANTOM.
+   *
+   * While the payout sat in AML_REVIEW its `providerRef` held the `wdr_…` correlation id
+   * `dispatchWithdrawal` returns from its AML branch — a value that is OURS and that **no
+   * gateway has ever seen**: that branch returns before `resolveActiveAdapter`, and
+   * `runPayoutLadder` mints a FRESH transid on approval, so the stored id is never the one
+   * sent to Selcom. Harmless while the row is AML_REVIEW, which no sweep selects.
+   *
+   * ⛔ IT STOPS BEING HARMLESS ON THE LINE BELOW. The instant the status flips to PROCESSING
+   * the row becomes eligible for `reconcileStalePayments` — whose 30-minute grace is measured
+   * on `createdAt`, and an AML row's createdAt is hours or days old, so the whole grace is
+   * ALREADY SPENT. The sweep can therefore fire during the dispatch round-trip below, which
+   * happens OUTSIDE this lock by design (never hold a lock across network I/O) and can run to
+   * the 45s rail timeout. It would call `verifyWithdrawalStatus(phantomRef, null)` — and
+   * `envelopeSettlementVerdict` returns FAILED for every code that is not 000/111/927/999, so
+   * an id the rail does not recognise IS a FAILED verdict. `settleWithdrawalFailed` then
+   * refunds the player while the real payout is in flight. Every AML-approved payout is at or
+   * above the review threshold by construction, so this is the largest-value path we have.
+   *
+   * ⚠️ And nothing downstream corrects it: after the round-trip this function writes the REAL
+   * ref onto the now-FAILED row, audits `withdraw.approved_dispatched` and tells the player the
+   * money is on its way — the trail actively conceals the double payment.
+   *
+   * Clearing the field lands the sweep in its OWN existing safe branch — `if (!ref)` →
+   * `leftPending` + `auditNeedsReviewOnce("stale withdrawal has no providerRef — not
+   * auto-reversed")` — which moves no money and puts the row in front of an officer. The real
+   * ref is written below on a successful dispatch. ⭐ Clearing HERE rather than at
+   * `withdraw()`'s write is deliberate: the correlation id is honest and useful while the row
+   * is held for review, it only becomes a lie at this exact line, and clearing here also heals
+   * rows already sitting in production carrying one.
+   */
+  const claimed = await withLock(`wallet:${pre.userId}`, async (tx) => {
     const t = await db.txn.findById(txnId);
     if (!t || t.status !== "AML_REVIEW") return null;
-    await db.txn.update(txnId, { status: "PROCESSING" });
+    await db.txn.update(txnId, { status: "PROCESSING", providerRef: null, payoutRail: null }, tx);
     return t;
   });
   if (!claimed) return { ok: false, error: "Withdrawal already actioned." };
