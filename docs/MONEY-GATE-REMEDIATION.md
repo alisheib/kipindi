@@ -33,7 +33,7 @@ YET.** Do not read the ✅ rows below as a launch verdict.
 
 | | |
 |---|---|
-| **Session 3 work** | ✅ **DONE and SHIPPED** — 10 defects fixed, 7 new guards, each proven RED |
+| **Session 3 work** | ✅ **DONE and SHIPPED** — 10 defects fixed, 7 new guards, 1 new production instrument |
 | **`e2e:money` against real Postgres** | ✅ **RAN — the first time ever. 64 passed, 0 failed** (§7.4) |
 | **Production reads (§4.3)** | ✅ **DONE** — and one of them found a live rate divergence (§7.1) |
 | **§4.4 — the agent terms stamp** | ✅ **ANSWERED, no action needed** (§7.2) |
@@ -1681,3 +1681,66 @@ executed (§7.4), and a guard that did not exist (§7.11).
 knowing what is live. Three of this session's ten fixes were found by *running* something —
 `e2e:money`, a config read, a scan for guards that exist — and none of those three appears
 anywhere in the 106 findings.
+
+### 7.18 · 🔴 THE ESCROW NOBODY CHECKS — and it is hiding a realised loss and a live one
+
+`scripts/live/ops/pool-integrity.cjs` (new, `npm run ops:pool-integrity`) — from `LEAD-G.4`,
+CONFIRMED
+
+`LEAD-G.4` says two of the three terms in `trialBalance().ok` cannot fail by construction, so
+`POOL:*` and `HOUSE:*` are checked by nothing on a schedule. §7.16 named it "the one to do
+next". **It is not a theoretical detection gap.** Measured on production 2026-09-09:
+
+| | |
+|---|---|
+| per-wallet trial balance | ✅ **GREEN on all 113 wallets**, Σ drift **0** |
+| global ledger sum | ✅ **exactly 0** |
+| imbalanced groups | ✅ **0** |
+| `trialBalance().ok` | ✅ **TRUE** |
+| **pools paid out below zero** | 🔴 **8 markets, −20,007 TZS** |
+| **markets still LIVE whose declared pool exceeds the escrow held** | ⚠️ **3 markets, 164,600 TZS** |
+
+⭐ **EVERY EXISTING CHECK IS GREEN AND THE MONEY IS STILL WRONG.** That is the whole thesis of
+`ledger.ts`'s own comment — *"The books balance is not integrity"* — demonstrated on live data.
+
+#### The realised one, traced end to end
+
+`mkt_037b284976b9dd2bd9e2` — *"Will Liverpool win at Newcastle?"*, RESOLVED **NO**, settled
+2026-08-30.
+
+| | |
+|---|---|
+| positions actually taken | **3**, totalling **10,500** (YES 500 + YES 3,000 + NO 7,000) |
+| `STAKE_DEBIT` into `POOL:` | **10,500** — the ledger and the positions agree exactly |
+| the market row's own columns | `yesPool` **23,500** + `noPool` **7,000** = **30,500** |
+| what settlement distributed | **28,166** to the NO winner + **2,333** fee = **30,499** |
+| `POOL:` balance now | **−19,999** |
+
+**`yesPool` declared 23,500 against 3,500 of actual YES positions — inflated by 20,000 — and
+settlement paid the declared figure.** The winner's wallet and ledger agree, the house took its
+fee, every group sums to zero, and ~20,000 TZS left the platform that no player ever staked.
+
+⛔ **NOT ACTIONED, DELIBERATELY.** This is settled production money history. RULES forbids
+rewriting or backfilling it, and correcting a ledger by hand is precisely the kind of change
+that must be Ali's, with the evidence in front of him. **What is shipped here is the
+instrument, not a correction.**
+
+#### The live one, which has not happened yet
+
+Three markets are **still open** with a declared pool larger than the escrow the ledger holds.
+If each settles on its declared figure, the difference is paid from nowhere:
+
+| market | declared | escrow held | short by |
+|---|---|---|---|
+| `mkt_73407e3296dc0d950b2c` | 264,300 | 144,400 | **119,900** |
+| `mkt_3d9a15deb284089e8f22` | 96,280 | 52,080 | **44,200** |
+| `mkt_0d271bde3ae784abe12b` | 500 | 0 | **500** |
+
+#### ⚠️ And the number this script refuses to report
+
+A naive query says **52 markets diverge by 14,295,305 TZS**. ⛔ **That figure is false as
+exposure.** 37 of those markets have **zero positions and a zero pool balance** — seeded display
+columns where no stake ever arrived and no payout ever left. Counting them would overstate the
+real number by roughly **100×**. The script separates them into an `INERT` bucket and says so,
+because this programme has spent three sessions catching exactly that kind of inflated figure in
+other people's instruments and has no business shipping one of its own.
