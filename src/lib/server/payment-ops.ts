@@ -12,7 +12,7 @@
  */
 import { db } from "./store";
 import type { StoredTxn } from "./store";
-import { loadConfig, saveConfig } from "./config-store";
+import { loadConfigResult, saveConfig } from "./config-store";
 import { audit } from "./audit";
 import { MOBILE_MONEY_METHODS, type MobileMoneyMethodId } from "@/lib/payment-providers";
 
@@ -122,8 +122,16 @@ async function ensureKill(): Promise<void> {
   if (globalThis.__50PICK_KILLSWITCH_HYDRATED) return;
   if (!globalThis.__50PICK_KILLSWITCH_HYDRATING) {
     globalThis.__50PICK_KILLSWITCH_HYDRATING = (async () => {
-      const stored = await loadConfig<KillMap>(KILL_KEY);
-      if (stored) Object.assign(kstore, stored);
+      // ⛔ `loadConfigResult`, NOT `loadConfig`. The latter returns `null` for "no row",
+      // "no database" AND "the read FAILED" alike, so raising the flag after it closed this
+      // gate on a read that never landed — the exact permanence the docblock above claims to
+      // have removed, and had not. The flag goes up only when the store actually answered;
+      // a failure leaves it DOWN and the next money-path call retries, which is what the
+      // docblock has always said. ⚠️ `ok: true, value: null` still closes it: no row and no
+      // DB are legitimately final answers, and gating on a VALUE would hang a fresh install.
+      const res = await loadConfigResult<KillMap>(KILL_KEY);
+      if (!res.ok) return; // gate stays DOWN — the next call retries
+      if (res.value) Object.assign(kstore, res.value);
       globalThis.__50PICK_KILLSWITCH_HYDRATED = true;
     })().finally(() => { globalThis.__50PICK_KILLSWITCH_HYDRATING = undefined; });
   }

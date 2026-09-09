@@ -118,9 +118,12 @@ function content(objectionHours: number): Record<Locale, React.ReactNode> { retu
         </p>
         <p>
           Cash-out is available for a short window after placing a bet: within the first 5 minutes you may sell for
-          a full refund at no charge. After that the position is locked and rides to settlement — it cannot be sold.
-          If no bets are placed on the opposing side, there is no prize to pay from and every stake is refunded in
-          full, at no charge.
+          a full refund at no charge — <strong>provided that, at the moment you placed the bet, at least 5 minutes
+          of betting time still remained on that market</strong>. On Up &amp; Down 3-minute and 5-minute rounds that
+          condition can never be met, so <strong>cash-out is not available on those rounds at all</strong>. A
+          bonus-funded position can never be sold. After the window the position is locked and rides to settlement —
+          it cannot be sold. If no bets are placed on the opposing side, there is no prize to pay from and every
+          stake is refunded in full, at no charge.
         </p>
       </LegalSection>
 
@@ -244,9 +247,12 @@ function content(objectionHours: number): Record<Locale, React.ReactNode> { retu
         </p>
         <p>
           Kuuza dau (cash-out) kunapatikana kwa muda mfupi baada ya kuweka dau: ndani ya dakika 5 za kwanza unaweza
-          kuuza na kurudishiwa dau lako kamili bila malipo. Baada ya hapo dau linafungwa na linaenda hadi malipo —
-          haliwezi kuuzwa. Kama hakuna dau lililowekwa upande mwingine, hakuna zawadi ya kulipa na kila dau litarudishwa
-          kamili, bila gharama.
+          kuuza na kurudishiwa dau lako kamili bila malipo — <strong>ilimradi wakati ulipoweka dau, soko hilo lilikuwa
+          bado na angalau dakika 5 za muda wa kuweka dau</strong>. Katika raundi za Up &amp; Down za dakika 3 na dakika 5
+          sharti hilo haliwezi kutimia kamwe, hivyo <strong>kuuza dau hakupatikani kabisa katika raundi hizo</strong>.
+          Dau lililowekwa kwa bonasi haliwezi kuuzwa wakati wowote. Baada ya muda huo dau linafungwa na linaenda hadi
+          malipo — haliwezi kuuzwa. Kama hakuna dau lililowekwa upande mwingine, hakuna zawadi ya kulipa na kila dau
+          litarudishwa kamili, bila gharama.
         </p>
       </LegalSection>
 
@@ -356,8 +362,10 @@ function content(objectionHours: number): Record<Locale, React.ReactNode> { retu
           <strong className="text-text">投注一经关闭，资金池即告最终确定，我们会通知您：若您所选一方获胜，您将收到的确切金额。</strong>
         </p>
         <p>
-          下注后有一小段兑现（cash-out）窗口：前 5 分钟内您可全额取回本金且不收取任何费用。此后持仓将被锁定并保留至结算 —
-          无法卖出。若无人投注对方，则没有奖金可供支付，所有注金将全额退还，不收取任何费用。
+          下注后有一小段兑现（cash-out）窗口：前 5 分钟内您可全额取回本金且不收取任何费用——
+          <strong>前提是您下注时，该市场仍剩余至少 5 分钟的投注时间</strong>。在 Up &amp; Down 的 3 分钟与 5 分钟场次中，
+          该条件永远无法满足，因此<strong>这些场次完全不提供兑现</strong>。以奖金资助的持仓在任何时候均不可卖出。
+          此后持仓将被锁定并保留至结算 — 无法卖出。若无人投注对方，则没有奖金可供支付，所有注金将全额退还，不收取任何费用。
         </p>
       </LegalSection>
 

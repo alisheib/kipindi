@@ -10,18 +10,54 @@
  */
 import { hasDatabase, prisma } from "./prisma";
 
-/** Read a persisted config value by key. Returns null if no DB or not stored. */
-export async function loadConfig<T>(key: string): Promise<T | null> {
-  if (!hasDatabase()) return null;
+/**
+ * Read a persisted config value, SAYING WHETHER THE READ ACTUALLY HAPPENED.
+ *
+ * 🔴 THIS EXISTS BECAUSE `loadConfig` COLLAPSES THREE STATES INTO ONE `null`, AND A
+ * HYDRATION GATE CANNOT BE WRITTEN CORRECTLY ON TOP OF IT (found 2026-09-09).
+ * "no database", "no row yet" and "the query FAILED" all returned `null`, so every
+ * `if (stored) …; flag = true;` hydration raised its gate on a read that never landed —
+ * pinning that container on code defaults for its entire life, with no retry. Both
+ * `market-config.ts` and `payment-ops.ts` carried docblocks stating the opposite
+ * ("a failure leaves the flag DOWN so the next read retries"), and
+ * `MONEY-GATE-REMEDIATION.md` §1.2 declared that blocker closed on the strength of them.
+ *
+ * ⛔ AND MOVING THE FLAG INSIDE `if (stored)` IS NOT THE FIX. On a fresh install the row
+ * legitimately does not exist, so that shape never hydrates and every caller waits for ever.
+ * The gate needs the one distinction this adds and `loadConfig` cannot express: **did the
+ * store answer?** — not **was there anything in it?**
+ *
+ * `ok: true, value: null` — the store answered and holds nothing (fresh install, or no DB
+ * at all). Both are legitimately final, so a gate may close on them.
+ * `ok: false` — we could not ask. The caller must leave its gate DOWN and retry.
+ */
+export async function loadConfigResult<T>(
+  key: string,
+): Promise<{ ok: true; value: T | null } | { ok: false; error: string }> {
+  if (!hasDatabase()) return { ok: true, value: null };
   const client = prisma();
-  if (!client) return null;
+  if (!client) return { ok: true, value: null };
   try {
     const row = await client.systemConfig.findUnique({ where: { key } });
-    return row ? (row.value as T) : null;
+    return { ok: true, value: row ? (row.value as T) : null };
   } catch (err) {
-    console.error(`[config] load "${key}" failed:`, (err as Error)?.message ?? err);
-    return null;
+    const error = String((err as Error)?.message ?? err);
+    console.error(`[config] load "${key}" failed:`, error);
+    return { ok: false, error };
   }
+}
+
+/**
+ * Read a persisted config value by key. Returns null if no DB, not stored, OR THE READ
+ * FAILED — the three are indistinguishable here, by design and by history.
+ *
+ * ⚠️ DO NOT BUILD A HYDRATION GATE ON THIS. Use `loadConfigResult`, which says whether the
+ * store answered. Kept for the callers that only want a value and treat absence and failure
+ * alike — correct for them, never correct for a gate.
+ */
+export async function loadConfig<T>(key: string): Promise<T | null> {
+  const r = await loadConfigResult<T>(key);
+  return r.ok ? r.value : null;
 }
 
 /**

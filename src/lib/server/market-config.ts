@@ -23,7 +23,7 @@
  * Persists across hot-reloads via `globalThis.__50PICK_MARKET_CONFIG`.
  */
 import { audit } from "./audit";
-import { loadConfig, saveConfig } from "./config-store";
+import { loadConfigResult, saveConfig } from "./config-store";
 import {
   DEFAULT_COMMISSION_RATE,
   DEFAULT_FEE_CEILING_RATE,
@@ -511,7 +511,19 @@ async function ensureHydrated(): Promise<void> {
 }
 
 async function hydrateNow(): Promise<void> {
-  const stored = await loadConfig<PersistedMarketConfig>(MARKET_CONFIG_KEY);
+  // ⛔ `loadConfigResult`, NOT `loadConfig`. The latter returns `null` for "no row", "no
+  // database" AND "the read FAILED" alike, so the gate below closed on a read that never
+  // landed — pinning this container on DEFAULT_GLOBAL_CONFIG for its entire life with no
+  // retry, which is precisely what the docblock above says cannot happen any more. A market
+  // created in that window freezes those defaults into its immutable feeSnapshot (RULES
+  // §2.1), and the next unrelated admin save calls `persist()`, which writes the WHOLE
+  // snapshot — including `perMarket: []`, silently destroying every per-market override an
+  // officer had set. That half needs no rate to diverge at all.
+  // ⚠️ `ok: true, value: null` still closes the gate: a fresh install legitimately has no
+  // row, and gating on a VALUE would leave every caller waiting for ever.
+  const res = await loadConfigResult<PersistedMarketConfig>(MARKET_CONFIG_KEY);
+  if (!res.ok) return; // gate stays DOWN — the next read retries
+  const stored = res.value;
   if (stored) {
     // Merge over defaults so a newly-added field gets its default, not undefined.
     store.global = { ...DEFAULT_GLOBAL_CONFIG, ...stored.global };

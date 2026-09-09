@@ -25,7 +25,7 @@
  */
 import { audit } from "./audit";
 import { randomId } from "./crypto";
-import { loadConfig, saveConfig } from "./config-store";
+import { loadConfigResult, saveConfig } from "./config-store";
 import { isSourceTrusted, normalizeDomain } from "./source-registry";
 import { validateRateConfig } from "./market-config";
 import { PLATFORM_MIN_STAKE, PLATFORM_MAX_STAKE, resolveFeeModel, describeFeeModel, type FeeModel } from "@/lib/payout";
@@ -408,7 +408,13 @@ async function ensureHydrated(): Promise<void> {
 }
 
 async function hydrateUpDownNow(): Promise<void> {
-  const stored = await loadConfig<Partial<UpDownConfig> & { v?: number }>(UPDOWN_CONFIG_KEY);
+  // ⛔ `loadConfigResult`, NOT `loadConfig` — see config-store.ts. `null` meant "no row",
+  // "no database" and "the read FAILED" alike, so this gate closed on a read that never
+  // landed and pinned the container on DEFAULT_UPDOWN_CONFIG for its whole life, with no
+  // retry. Every Up & Down round opened in that window freezes those defaults onto itself.
+  const res = await loadConfigResult<Partial<UpDownConfig> & { v?: number }>(UPDOWN_CONFIG_KEY);
+  if (!res.ok) return; // gate stays DOWN — the next read retries
+  const stored = res.value;
   // Merge OVER the defaults, so a newly-added field gets its default rather than
   // undefined on a deployment whose persisted blob predates it.
   if (stored) {

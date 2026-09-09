@@ -21,10 +21,10 @@ what is open is most of the surface.
 
 | | |
 |---|---|
-| **Session 2 work** | ✅ **DONE and SHIPPED** — six defects fixed, each verified by hand, each guarded RED |
+| **Session 2 work** | ✅ **DONE and SHIPPED** — nine defects fixed, each verified, each guarded RED |
 | **`money-out` lane** | ✅ **AUDITED ONCE** (first pass ever). 18 finder lanes, 18/18 returned |
-| **Adversarial verify pass** | 🔴 **4 of 106 findings verified.** 102 remain UNVERIFIED |
-| **Blockers** | 🔴 **4 fixed · 1 refuted · 10 still UNVERIFIED** |
+| **Adversarial verify pass** | 🔴 **12 of 106 findings verified.** 94 remain UNVERIFIED |
+| **Blockers** | 🟠 **8 fixed/closed · 4 refuted · 1 UNVERIFIED** (`MO-10.a`) |
 | **Ali's four decisions (§4)** | 🔴 **all four still open** |
 | **Production reads (§4.3)** | 🔴 **not done** — `PAYMENT_AGGREGATOR`, `agent.config` |
 | **`e2e:money` against real Postgres** | 🔴 **never run this session** — the behavioural proof for §6.2/§6.9 |
@@ -501,14 +501,14 @@ MO-1.a are the two fixed above.
 | id | sev | the claim — UNVERIFIED unless struck through | where | finder's own confidence · reachability |
 |---|---|---|---|---|
 | `LEAD-A.1` | 🔴 | ~~TRA and GBT are booked PER WINNER with Math.round in the ledger while levySplit computes them ONCE over the whole fee — the ledger's GBT can book ZERO on a settlement that owes it, and the ledger is t~~ ✅ **FIXED §6.1** | `src/lib/server/ledger.ts` → `settlementPayoutEntries (called once per winning position fr` | certain · yes |
-| `LEAD-B.2a` | 🔴 | hydrateNow() closes the hydration gate on a read that FAILED — `loadConfig` swallows the DB error and returns null, so the commit's own claim "a failure leaves the flag DOWN so the next read retries"  | `src/lib/server/market-config.ts` → `hydrateNow / ensureHydrated` | certain · yes |
-| `LEAD-G.1` | 🔴 | The daily wallet↔ledger trial balance runs in production, finds drift, and tells nobody — its entire alarm is one audit row and one console line, and grep finds no consumer of either | `src/lib/server/lifecycle.ts` → `maybeReconcileLedger` | certain · yes |
-| `LEAD-G.2` | 🔴 | `maybeReconcileLedger` advances its 24-hour clock BEFORE running the check, so any throw from `trialBalance()` skips the platform's only money invariant for a full day, silently and with no counter an | `src/lib/server/lifecycle.ts` → `maybeReconcileLedger` | likely · yes |
-| `LEAD-G.3` | 🔴 | The nightly production trial-balance run DOES have an alarm channel beside it — and that channel is structurally deaf: `backupHealth()` never reads `sourceWarnings`, so a drifting production ledger is | `src/lib/server/backup/state.ts` → `backupHealth` | certain · yes |
-| `LEAD-H.1` | 🔴 | /legal/terms §4 promises free cancellation with ONLY the window condition, in all three languages — the runway condition that makes it unreachable on Up & Down 3- and 5-minute rounds is absent from th | `src/app/legal/terms/page.tsx` → `content(objectionHours) — LegalSection n="4" "How price-comp` | certain · yes |
+| `LEAD-B.2a` | 🔴 | ✅ **FIXED §6.11** (CONFIRMED 3/3, sev → high) — hydrateNow() closes the hydration gate on a read that FAILED — `loadConfig` swallows the DB error and returns null, so the commit's own claim "a failure leaves the flag DOWN so the next read retries"  | `src/lib/server/market-config.ts` → `hydrateNow / ensureHydrated` | certain · yes |
+| `LEAD-G.1` | 🔴 | ❌ **REFUTED §6.10 (3/3)** — The daily wallet↔ledger trial balance runs in production, finds drift, and tells nobody — its entire alarm is one audit row and one console line, and grep finds no consumer of either | `src/lib/server/lifecycle.ts` → `maybeReconcileLedger` | certain · yes |
+| `LEAD-G.2` | 🔴 | ❌ **REFUTED §6.10** — `maybeReconcileLedger` advances its 24-hour clock BEFORE running the check, so any throw from `trialBalance()` skips the platform's only money invariant for a full day, silently and with no counter an | `src/lib/server/lifecycle.ts` → `maybeReconcileLedger` | likely · yes |
+| `LEAD-G.3` | 🔴 | ❌ **REFUTED §6.10** — The nightly production trial-balance run DOES have an alarm channel beside it — and that channel is structurally deaf: `backupHealth()` never reads `sourceWarnings`, so a drifting production ledger is | `src/lib/server/backup/state.ts` → `backupHealth` | certain · yes |
+| `LEAD-H.1` | 🔴 | ✅ **FIXED §6.12** — /legal/terms §4 promises free cancellation with ONLY the window condition, in all three languages — the runway condition that makes it unreachable on Up & Down 3- and 5-minute rounds is absent from th | `src/app/legal/terms/page.tsx` → `content(objectionHours) — LegalSection n="4" "How price-comp` | certain · yes |
 | `MO-1.a` | 🔴 | ~~The withdrawal debit and its Transaction row are in SEPARATE commits — a failure between them strands the player's money in `hold` with no record, invisible to reconcile AND to the trial balance~~ ✅ **FIXED §6.2** | `src/lib/server/wallet-service.ts` → `withdraw (Phase A)` | certain · yes |
 | `MO-10.a` | 🔴 | creditInternal fabricates the new balance when the wallet UPDATE fails and returns a non-null number, so every caller records money as PAID that never moved | `src/lib/server/wallet-service.ts` → `creditInternal` | certain · needs-production-read |
-| `MO-2.a` | 🔴 | An AML-held withdrawal carries a NEVER-DISPATCHED id in `providerRef`, and approve-dispatch flips the row to PROCESSING without clearing it — the reconcile sweep then re-queries a transid Selcom never | `src/lib/server/wallet-service.ts` → `dispatchApprovedWithdrawal (claim at 733-738) + withdraw (17` | likely · needs-production-read |
+| `MO-2.a` | 🔴 | ✅ **CLOSED §6.13** — duplicate of MO-4.a, fixed by §6.9 — An AML-held withdrawal carries a NEVER-DISPATCHED id in `providerRef`, and approve-dispatch flips the row to PROCESSING without clearing it — the reconcile sweep then re-queries a transid Selcom never | `src/lib/server/wallet-service.ts` → `dispatchApprovedWithdrawal (claim at 733-738) + withdraw (17` | likely · needs-production-read |
 | `MO-3.a` | 🔴 | settleWithdrawalFailed refunds and flips status in TWO separate commits outside the lock transaction — the 5-minute sweep then refunds a second time | `src/lib/server/wallet-service.ts` → `settleWithdrawalFailed` | certain · yes |
 | `MO-4.a` | 🔴 | ✅ **FIXED §6.9** — The sweep can auto-reverse an AML-approved payout by querying a providerRef that was never sent to any gateway — the payout is in flight and the player gets the money back | `src/lib/server/wallet-service.ts` → `dispatchApprovedWithdrawal + reconcileStalePayments` | likely · yes |
 | `MO-4.b` | 🔴 | ❌ **REFUTED §6.8 (2/3 lenses)** — settleWithdrawalFailed — the only refund path — is not atomic and its status write fails SILENTLY, so the 5-minute sweep re-refunds the same payout every cycle | `src/lib/server/wallet-service.ts` → `settleWithdrawalFailed` | likely · yes |
@@ -704,6 +704,127 @@ Guard `npm run test:aml-dispatch-window` **14/0**, RED on the genuine pre-fix fi
 a never-dispatched id) so the gate becomes visibly wrong if that changes; **§3 pins the sweep's
 `!ref` branch**, because clearing the field is only safe while that branch exists — without §3
 this would be a fix pointing at nothing, still green; §4 is the positive control.
+
+### 6.10 · The second verify batch — 1 confirmed, 3 refuted, and the LEAD-G family collapses
+
+12/12 done, 0 errors again at the 12-agent size.
+
+| id | bucket | votes | outcome |
+|---|---|---|---|
+| `LEAD-B.2a` | ✅ **CONFIRMED** | 3/3 uphold | fixed below (§6.11); severity **blocker → high** |
+| `LEAD-G.1` | ❌ **REFUTED** | 3/3 refute | — |
+| `LEAD-G.2` | ❌ **REFUTED** | — | — |
+| `LEAD-G.3` | ❌ **REFUTED** | — | — |
+
+⛔ **THE WHOLE LEAD-G FAMILY — "the trial balance runs, finds drift, and tells nobody" — IS
+FALSE, AND THE REASON IS A LESSON.** The finder grepped the audit ACTION STRING
+`trial_balance_drift` rather than the FUNCTION `trialBalance`, found no consumer, and concluded
+there was none. Grepping the function returns four live call sites:
+
+- `.github/workflows/backup-nightly.yml` runs the platform's own `trialBalance()` **against the
+  production database** nightly at 03:15 EAT, in its own process, and records the verdict;
+- a second run against the restored copy;
+- **`/admin/house` and `/admin/finance` both recompute it on every page load** (`export const
+  dynamic = "force-dynamic"`) and render a **red danger card** when `!tb.ok`.
+
+The TZS 100,000 unledgered credit it cites as live evidence was **cleared on 2026-07-31** —
+`scripts/ops-clear-unledgered-credit.mjs` is the script that removed it, and `trialBalance()`
+has returned `ok:true` since. ⭐ Three findings, one grep, wrong noun. §3.3's row
+*"No production money-invariant job exists"* is **withdrawn**: the job exists, runs nightly
+against production, and is rendered live on two owner screens.
+
+⚠️ **One residual is real and is NOT the blocker that was claimed:** `maybeReconcileLedger`
+stamps its 24-hour clock *before* the work, so a throw from `trialBalance()` consumes the
+in-process slot for a day and nothing records `lastTrialBalanceOkAt`. With three other runners
+covering the same question — one of them unconditional and against production — that is **low**,
+and it is left open rather than fixed.
+
+### 6.11 · FIXED — a hydration gate that closed on a read which never happened
+
+`config-store.ts` · `payment-ops.ts` · `market-config.ts` · `updown-config.ts` · `payment-control.ts`
+
+`LEAD-B.2a`, CONFIRMED 3/3 — **and the lens found an extension worse than the finding**, which
+is recorded here because it means a shipped fix notice was wrong.
+
+`loadConfig` collapses **three** states into one `null`: "no database", "no row yet", and **"the
+query FAILED"** — its catch logs and returns null. Every hydration was
+`const stored = await loadConfig(…); if (stored) …; FLAG = true;`, so one transient DB error at
+first read raised the gate on a read that never landed and pinned that container on **code
+defaults for its entire life, with no retry**.
+
+⛔ **AND TWO DOCBLOCKS ASSERTED THE OPPOSITE, WHICH IS HOW IT SURVIVED §1.2.**
+`market-config.ts` and `payment-ops.ts` both read *"a failure leaves the flag DOWN so the next
+read retries"*, and §1.2 above declared the blocker closed on the strength of them. That
+2026-09-08 fix moved the flag after the `await` — which genuinely fixed the **concurrent
+caller** — and left the **failed read** raising it exactly as before. `payment-ops` is the worst
+of the four and was the original blocker: `kstore` stays empty, so `isPaymentPaused()` answers
+**false for every rail and both flows**, and the emergency stop evaporates. §1.2's *"Retrying
+removes the permanence, which is the part that made this a blocker"* was not true.
+
+| module | what a failed first read costs |
+|---|---|
+| `payment-ops` | the emergency kill-switch is off for the life of the process |
+| `market-config` | a market created in the window freezes `DEFAULT_GLOBAL_CONFIG` into its **immutable** feeSnapshot; and the next unrelated admin save calls `persist()`, writing `perMarket: []` — **destroying every per-market override**, which needs no rate to diverge at all |
+| `updown-config` | every round opened in the window freezes the defaults |
+| `payment-control` | the officer's chosen rail is discarded; the env fallback runs the process |
+
+⛔ **THE OBVIOUS FIX IS WRONG, AND THE GUARD PINS THAT.** Latching inside `if (stored)` never
+hydrates on a fresh install, where an absent row is legitimate, and every caller waits for ever.
+The gate needs a distinction `loadConfig` cannot express: **did the store answer?** — not **was
+there anything in it?**
+
+**Fixed** with `loadConfigResult`, which returns `{ok:true, value}` when the store answered
+(including a legitimate `null` for no-row / no-database) and `{ok:false, error}` when it could
+not be asked. All four gates latch only on `ok`. `loadConfig` remains for value-only callers,
+now built on the result form, with a docblock forbidding its use for a gate.
+
+⚠️ **Money impact today is TZS 0 on the rate half** — every fee, levy and bound in the
+2026-09-09 production read equals its code default, so a container stuck on defaults would
+currently charge the right numbers by coincidence. The kill-switch and per-market-override
+halves are unaffected by that coincidence, and the coincidence is not a control.
+
+Guard `npm run test:config-hydration-gate` **28/0**, RED on the genuine pre-fix source
+(**19 failures**). §1 pins the store's contract, §2 sweeps all four gates, §3 is the positive
+control, and **§4 is the over-correction guard** — it fails if a gate is ever keyed on the
+*value* rather than on `ok`, which is the fix that would hang every fresh install.
+`test:payment-control` **61/0** and `red:payment-control` **7/7** still pass.
+
+### 6.12 · FIXED — the binding contract promised a right the product cannot deliver
+
+`src/app/legal/terms/page.tsx` (finding `LEAD-H.1`)
+
+Verified by reading all three language blocks. §4 stated **only the WINDOW condition** —
+*"within the first 5 minutes you may sell for a full refund at no charge"* (EN), *"ndani ya
+dakika 5 za kwanza"* (SW), *"前 5 分钟内"* (ZH) — and omitted both of the other two conditions
+`cashOutValue` actually requires.
+
+RULES §2.6 is explicit that this is the defect, not an omission: the RUNWAY condition makes free
+cancellation **unreachable by construction on Up & Down 3- and 5-minute rounds** (production:
+**0 of 688 rounds ever cashed out**), and §2.6 calls overstating it *"the same failure class as
+overstating a control to the Gaming Board"*.
+
+**Fixed** in all three languages: the clause now states the runway condition, names the two
+round lengths where cash-out is **never** available, and states that a bonus-funded position can
+never be sold. ⚠️ No guard — this is prose in a page, and `test:rate-copy` scans dictionaries,
+not this file. A future session should decide whether §4's three conditions deserve a rendered
+assertion the way `test:fee-model-caption` §7 renders the simulator.
+
+### 6.13 · `MO-2.a` — closed as a duplicate, with one observation carried forward
+
+`MO-2.a` describes the same phantom-`providerRef` defect as `MO-4.a` and is closed by §6.9's fix.
+The `MO-4.a` law lens said so independently.
+
+⚠️ **It named one thing `MO-4.a` did not**, and it is worth carrying: `reverseStuckPayoutAction`
+(`payment-actions.ts`) asks the same ref in its "machine check". With `providerRef` now null
+during the dispatch window it **skips the check entirely** and records
+`"not asked (no provider reference)"`.
+
+⭐ **That is not a regression, and I checked before concluding it.** Before §6.9 the check ran on
+the phantom, returned **FAILED**, and proceeded anyway — only `CONFIRMED` refuses. So the officer
+override was equally permissive before; what changed is that the COMPLIANCE audit now records an
+honest *"not asked"* instead of a fabricated provider verdict. ⛔ **Left unfixed deliberately:**
+tightening an officer's deliberate override path is a policy call, and the docstring states that
+proceeding on a non-terminal answer *"is what this action is FOR"*. Filed for the next session.
 
 ### 6.4 · Corrected while here — documents that contradicted the law
 

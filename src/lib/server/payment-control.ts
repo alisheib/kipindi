@@ -76,7 +76,7 @@
  * Every change is audited (WALLET + a COMPLIANCE breadcrumb for the money-rail
  * switch) with a `{ before, after, changes }` payload, visible in /admin/audit.
  */
-import { loadConfig, saveConfig } from "./config-store";
+import { loadConfigResult, saveConfig } from "./config-store";
 import { audit } from "./audit";
 import { isLiveMoneyMode, moneyMode, type MoneyMode } from "./runtime-mode";
 
@@ -123,7 +123,14 @@ async function ensureHydrated(): Promise<void> {
   if (globalThis.__50PICK_PAY_CONTROL_HYDRATED) return;
   if (!globalThis.__50PICK_PAY_CONTROL_HYDRATING) {
     globalThis.__50PICK_PAY_CONTROL_HYDRATING = (async () => {
-      const stored = await loadConfig<Partial<Controls>>(KEY);
+      // ⛔ `loadConfigResult`, NOT `loadConfig` — see config-store.ts. The docblock above is
+      // right that "no row" is SAFE here, because an unset rail now REFUSES live money rather
+      // than defaulting to the mock. But a FAILED read is not "no row": it silently discards
+      // the officer's chosen provider and hands the whole process to the env fallback for its
+      // entire life. Only a read that actually answered may close this gate.
+      const res = await loadConfigResult<Partial<Controls>>(KEY);
+      if (!res.ok) return; // gate stays DOWN — the next money-path call retries
+      const stored = res.value;
       if (stored) {
         if (stored.provider === null || (typeof stored.provider === "string" && ALL_PROVIDERS.includes(stored.provider))) store.provider = stored.provider ?? null;
         if (stored.demoAsync === null || typeof stored.demoAsync === "boolean") store.demoAsync = stored.demoAsync ?? null;
