@@ -24,6 +24,12 @@
  * ⭐ "The books balance" says every entry has a counterpart. It does not say every account
  * means something. The shortfall landed in `POOL:*` and every existing check stayed green.
  *
+ * ⭐ AND DATE WHAT YOU FIND BEFORE YOU ALARM ANYONE. Measured 2026-09-09: the newest divergent
+ * market where money moved was created 2026-08-25, and **8,479 markets created and 8,494
+ * settled since 1 September show ZERO divergence**. The residue is June–August history; the
+ * mechanism is not producing more. A hit on a market created RECENTLY is a different and far
+ * more serious thing than a hit on an old one — check the dates before escalating.
+ *
  * ⚠️ READ THE BUCKETS, NOT THE HEADLINE. 37 further markets declare pools totalling ~13.8M
  * with ZERO positions and a ZERO pool balance — seeded display columns where no stake ever
  * arrived and no payout ever left. Reporting that as exposure would be a fabrication; this

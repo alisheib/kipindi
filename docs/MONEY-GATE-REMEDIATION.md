@@ -1744,3 +1744,43 @@ columns where no stake ever arrived and no payout ever left. Counting them would
 real number by roughly **100×**. The script separates them into an `INERT` bucket and says so,
 because this programme has spent three sessions catching exactly that kind of inflated figure in
 other people's instruments and has no business shipping one of its own.
+
+### 7.19 · ⭐ AND THE MECHANISM IS CLOSED — §7.18 is OLD DATA, measured
+
+§7.18 reads more alarming than the data supports, and the correction matters more than the
+finding. **The question is not whether residue exists; it is whether it can still happen.**
+Dated on production 2026-09-09:
+
+| window | markets created | markets settled | **divergent** |
+|---|---|---|---|
+| since **2026-08-01** | 39,530 | 39,465 | 12 |
+| since **2026-09-01** | 8,479 | 8,494 | **0** |
+| since **2026-09-08** | 1,665 | 1,664 | **0** |
+
+⭐ **The newest divergent market where money moved was created 2026-08-25, and the newest ledger
+entry on any divergent pool is 2026-09-02.** Since then **8,479 markets have been created and
+8,494 settled with not one divergence.** The residue is June–August; the mechanism that produced
+it is not producing any more.
+
+**The ±1 and ±2 dust rows are the same story from the other side** — every one is a market
+settled 2026-08-05 to 2026-08-10, i.e. **before** §6.1's largest-remainder levy allocation went
+live on 2026-09-09. That fix closed them, and `levy-divergence` confirms it: `GBT booked ZERO on
+a market that owed it` now reads **0**.
+
+**The three "AT RISK" markets are stale, not imminent.** All three were created 30 June – 4 July
+and none resolves for months:
+
+| market | resolves | short by |
+|---|---|---|
+| *"Will 50pick reach 10,000 registered users by 31 Dec 2026?"* | **2026-12-31** | 119,900 |
+| *"Will Trump announce his 2028 campaign by 31 Dec?"* | **2026-12-31** | 44,200 |
+| *"Will Man City win the PL 2026/27?"* | **2027-02-10** | 500 — and it has **zero positions and zero escrow**, so there is nothing to pay out |
+
+So the real forward exposure is **164,100 TZS on two long-dated markets that do not close for
+three and a half months**, now visible to `ops:pool-integrity` every time anyone runs it.
+
+⛔ **WHAT THIS DOES NOT SAY.** It does not say the pool columns can never diverge again — it says
+nothing has diverged in 8,479 markets since 1 September. Nobody has identified the June–August
+cause, and this programme did not go looking for it: the instrument was the deliverable. If a
+divergence appears on a September-or-later market, that is a live defect and the cause hunt
+starts there.
