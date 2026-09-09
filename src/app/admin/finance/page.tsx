@@ -43,7 +43,7 @@ const HOUSE_ACCOUNT_NOTE: Record<string, string> = {
   "HOUSE:AGGREGATOR": "the payment gateway's share",
   "HOUSE:TRA_LEVY": "TRA, levied on our commission",
   "HOUSE:GBT_LEVY": "GBT, levied on our commission",
-  "HOUSE:TAX": "RETIRED — historical rows only",
+  "HOUSE:TAX": "Statutory tax held — owed to the state, NOT ours",
   "HOUSE:RESERVE": "RETIRED — historical rows only",
   "SYSTEM:BONUS": "bonus issuance",
   "SYSTEM:ADJUSTMENT": "admin adjustments",

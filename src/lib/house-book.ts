@@ -79,6 +79,18 @@ export type HouseAccounts = {
    * and the account is one self-excluded deposit away from being real money.
    */
   rgSuspense: number;
+  /**
+   * 🔴 `HOUSE:TAX` — STATUTORY TAX WE HOLD AND OWE THE STATE. It is a LIABILITY, and it was
+   * missing from this type entirely, so `owedToOthers` never subtracted it and the owner's free
+   * cash was overstated by every shilling of unremitted tax. (money-gate `LEAD-F.1`/`LEAD-F.2`,
+   * CONFIRMED 3/3; `MONEY-GATE-REMEDIATION.md` §7.15.)
+   *
+   * ⛔ IT IS NOT RETIRED, WHATEVER THE OLD CAPTIONS SAID. Two live paths credit it — the VAT on
+   * an agent registration, and the 5% withheld from every agent commission accrual (§2.10).
+   * Production held **18,000 TZS over 1 entry** when it was read on 2026-09-09, which is VAT
+   * collected from the one registered agent and owed to TRA.
+   */
+  tax: number;
   /** Every `HOUSE:%` account with a balance, keyed by the raw account string. */
   all: Readonly<Record<string, number>>;
 };
@@ -94,6 +106,8 @@ export type HousePosition = {
   aggregatorPayable: number;
   /** ⭐ Held for a self-excluded player, awaiting return. Ours to hold, never ours to keep. */
   rgSuspensePayable: number;
+  /** 🔴 `HOUSE:TAX` — statutory tax held and owed to the state. A LIABILITY, not our money. */
+  taxPayable: number;
   /** Owed to players — Σ ACTIVE wallet balance + hold. */
   playerLiability: number;
   /** ⚠️ The part of that credited by an ADMIN, with no deposit behind it. */
@@ -144,11 +158,17 @@ export function housePosition(input: {
    */
   adjustmentBackedLiability: number;
 }): HousePosition {
-  const { commission, traLevy, gbtLevy, aggregator, rgSuspense, agentCommission } = input.accounts;
+  const { commission, traLevy, gbtLevy, aggregator, rgSuspense, agentCommission, tax } = input.accounts;
   const leviesPayable = traLevy + gbtLevy;
   // ⛔ `rgSuspense` BELONGS HERE. It is a player's deposit we are holding to return; leaving it
   // out reports it as free cash, which is the one thing it certainly is not.
-  const owedToOthers = leviesPayable + aggregator + rgSuspense;
+  //
+  // 🔴 AND SO DOES `tax`, WHICH WAS MISSING. `HOUSE:TAX` is statutory tax we hold and owe the
+  // state — VAT on an agent registration, and the 5% withheld from every commission accrual.
+  // Omitting it reported unremitted tax as the owner's own money, which is the precise failure
+  // the header of this function warns about: "an owner shown 100M makes decisions that
+  // insolvency is built from". Production held 18,000 of it on 2026-09-09.
+  const owedToOthers = leviesPayable + aggregator + rgSuspense + tax;
 
   // ⚠️ Clamped at zero: admin credits can exceed the wallet total (a credit later staked and
   // lost still happened), and a NEGATIVE funded liability is not a thing the owner can act on.
@@ -165,6 +185,7 @@ export function housePosition(input: {
     leviesPayable,
     aggregatorPayable: aggregator,
     rgSuspensePayable: rgSuspense,
+    taxPayable: tax,
     playerLiability: input.playerLiability,
     playerLiabilityAdjusted: adjusted,
     playerLiabilityFunded: input.playerLiability - adjusted,

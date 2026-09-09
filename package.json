@@ -149,6 +149,7 @@
     "test:agent-waterfall": "tsx scripts/agent-waterfall.test.mts",
     "test:guards-exist": "tsx scripts/guards-exist.test.mts",
     "test:define-config-gate": "tsx scripts/define-config-gate.test.mts",
+    "test:house-solvency": "tsx scripts/house-solvency.test.mts",
     "test:ai-usage": "tsx scripts/ai-usage.test.mts",
     "test:ai-budget": "tsx scripts/ai-budget-enforcement.test.mts",
     "test:ai-cycles": "tsx scripts/ai-cycles.test.mts",

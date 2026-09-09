@@ -43,7 +43,7 @@ YET.** Do not read the ✅ rows below as a launch verdict.
 
 | | |
 |---|---|
-| **Session 3 work** | ✅ **DONE and SHIPPED** — 8 defects fixed, 6 new guards, each proven RED |
+| **Session 3 work** | ✅ **DONE and SHIPPED** — 10 defects fixed, 7 new guards, each proven RED |
 | **`e2e:money` against real Postgres** | ✅ **RAN — the first time ever. 64 passed, 0 failed** (§7.4) |
 | **Production reads (§4.3)** | ✅ **DONE** — and one of them found a live rate divergence (§7.1) |
 | **§4.4 — the agent terms stamp** | ✅ **ANSWERED, no action needed** (§7.2) |
@@ -113,7 +113,7 @@ to the state, not as house cash.
 `test:payout-callback-identity` · `test:aml-dispatch-window` — plus session 1's
 `test:payment-control` · `red:payment-control` · `test:webhook-sec` · `red:webhook-money` ·
 `test:fee-model-caption` · `red:fee-model-caption` — plus session 3's
-`test:config-audit-diff` · `test:terms-cancellation` · `test:agent-fee-copy` · `test:agent-waterfall` · `test:guards-exist` · `test:define-config-gate`, and **`e2e:money`, which is the only
+`test:config-audit-diff` · `test:terms-cancellation` · `test:agent-fee-copy` · `test:agent-waterfall` · `test:guards-exist` · `test:define-config-gate` · `test:house-solvency`, and **`e2e:money`, which is the only
 behavioural one and needs a real Postgres** (`scripts/load/README.md`).
 
 ⛔ **All of these are `test:` or `red:` scripts EXCEPT `e2e:money`, which is deliberately not in
@@ -1592,3 +1592,62 @@ asynchronous path actually executes.
 `config-audit-diff` 26/0 · `agent-policy` 36/0 · `agent-fee-copy` 27/0 · `agent-waterfall` 41/0 ·
 `commission-bounded` 48/0 · `programme-isolation` 17/0 · `updown-config` 92/0 · `bonus` 59/0 ·
 `tsc` clean.
+
+### 7.15 · 🔴 FIXED — the owner's free cash counted the state's tax as his own
+
+`src/lib/house-book.ts` · `src/lib/server/house-ledger.ts` · `/admin/house` · `/admin/finance`
+(findings `LEAD-F.1` and `LEAD-F.2`, CONFIRMED 3/3 each)
+
+```
+const owedToOthers = leviesPayable + aggregator + rgSuspense;   // ← HOUSE:TAX is not here
+```
+
+**`HOUSE:TAX` was not in the `HouseAccounts` type at all**, so `readHouseAccounts` never read it
+and the solvency line never subtracted it. Unremitted statutory tax was presented to the owner
+as his own money.
+
+⭐ **The function's own header states the rule it broke:** *"A platform holding 100M of which 92M
+is player balances and 3M is unremitted levies has 5M, and an owner shown '100M' makes decisions
+that insolvency is built from. Every claim on the cash is subtracted here, explicitly."* Every
+claim except one.
+
+⛔ **And both money screens said the account was dead.** `/admin/house` and `/admin/finance` both
+captioned it *"RETIRED — historical rows only"* while **two live paths credit it**: the VAT on an
+agent registration, and the 5% withheld from every commission accrual (RULES §2.10). §6.4 already
+corrected the same false caption in `ledger.ts`'s header; these two survived it.
+
+**It is not hypothetical.** Production, read 2026-09-09: **`HOUSE:TAX` = 18,000 TZS over 1
+entry** — the VAT collected from the one registered agent, owed to TRA and unremitted. So the
+owner's free-cash line was overstated by exactly 18,000 today, and by more with every agent.
+
+**Fixed:** `tax` joins `HouseAccounts`, `readHouseAccounts` reads `HOUSE:TAX`, `owedToOthers`
+subtracts it, `taxPayable` is reported on the position, and both captions now read *"Statutory
+tax held — owed to the state, NOT ours"*.
+
+**Guard `npm run test:house-solvency` — 21/0:**
+
+| arm | result |
+|---|---|
+| tax is subtracted, and the shortfall is **exactly** the tax, counted once | ✅ |
+| ⭐ the **production** balances replayed — the pre-fix line overstates by exactly 18,000 | ✅ |
+| every other claim still moves the line **on its own** — levy, aggregator, rg-suspense and tax each tested by removal, so none is decorative | ✅ |
+| ⚠️ **POSITIVE CONTROL** — the pre-fix formula reproduced: it disagrees when tax is non-zero **and agrees at zero tax**, so the gap is the tax and nothing else | ✅ |
+
+⛔ `netRetained` is deliberately unchanged: `HOUSE:TAX` is a liability, never retained earnings.
+
+### 7.16 · WHAT IS STILL CONFIRMED AND NOT YET FIXED
+
+Verdicts, not changes. Each was CONFIRMED by ≥2 adversarial lenses, each was re-rated to
+**medium or low**, and **every one of them is TZS 0 realised on production today** — which is why
+they sit behind the eight that were fixed, not because they are not real.
+
+| id | what | why it is not fixed here |
+|---|---|---|
+| `LEAD-B.1b` | the audit payload is truncated on `/admin/audit` | largely relieved by §7.6 — the cell went from 434 characters to 206, and the moved field now renders first. What remains is a UI affordance |
+| `LEAD-C.3` | `settleMarket`'s final totals are read on the global client while the payouts are still uncommitted inside the lock, so the audit row records a pre-settlement snapshot | an internal-consistency defect in the RECORD, TZS 0 misdirected. Fixing it means threading `tx` through a read path in the settlement hot loop — worth doing deliberately, not at the end of a session |
+| `LEAD-D.a` · `LEAD-D.b` | the loser-share fee has no rule-level ceiling, and the one >50% warning reads `feeCeilingRate`, a knob loser-share never uses | both need Ali: RULES §2.1 makes the fee **his** to change, and choosing where a refusal (rather than a warning) belongs is a policy call, not an engineering one |
+| `LEAD-F.3` | TRA/GBT presented on window GGR instead of on the booked fee | a reporting-window question on `/admin/finance`; it changes no ledger row |
+| `LEAD-G.4` | `POOL:*` and `HOUSE:*` are checked by nothing on a schedule — two of the three terms in `trialBalance().ok` cannot fail by construction | ⭐ the sharpest of these. The writer refuses an imbalanced group, so those two terms are entailed; the only live invariant is the per-wallet PLAYER check. `ops:pool-orphans` exists but is **manual**. This is the one to do next |
+| `LEAD-H.2` | the in-app assistant's prompt states the wrong cash-out narrowing | player-facing copy; `test:terms-cancellation` now covers the binding document, not the chat prompt |
+| `LEAD-H.3` | `rate-copy.test.mts` PINS 13% and 1.5% as required literals, so RULES §7's "the table is EMPTY" is false | a docs/guard-inventory correction |
+| `MO-10.c` | the two-person rule on large adjustments has no lock | ⭐ **capped by deployment, not by code**: the cross-replica replay needs a second container, and `RAILWAY-LIVE.md` §13 keeps the service deliberately single-replica. The single-process TOCTOU is real and should get the `withLock` its AML twin already has |

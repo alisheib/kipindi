@@ -66,7 +66,7 @@ const ACCOUNT_NOTE: Record<string, string> = {
   "HOUSE:TRA_LEVY": "TRA, levied on our commission — held, owed",
   "HOUSE:GBT_LEVY": "GBT, levied on our commission — held, owed",
   "HOUSE:RG_SUSPENSE": "a self-excluded player's deposit — held, owed back",
-  "HOUSE:TAX": "RETIRED — historical rows only",
+  "HOUSE:TAX": "Statutory tax held — owed to the state, NOT ours",
   "HOUSE:RESERVE": "RETIRED — historical rows only",
 };
 
