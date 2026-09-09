@@ -1074,3 +1074,50 @@ truncating silently with a bare `.slice()`.** Three sharper items sit inside it:
 permission classifier refused it twice; writing it here would route around a decision that
 is **Ali's**. Recorded in `docs/AGENT-PROGRAMME.md` §5. **Nothing in this campaign depends
 on that column.**
+
+---
+## §12 — FILED FOR ALI: three product decisions, and one thing deliberately not built
+
+> ⛔ **NONE OF THESE IS A BUG, AND NONE SHOULD BE "FIXED" SILENTLY.** Each changes what a number
+> MEANS to a player, which makes it a product decision rather than a defect. They are recorded
+> here because the campaign found them and stopped, not because it ran out of time.
+
+### ① `/leaderboard` sums polls and Up & Down into ONE ROI
+
+The aggregate reads `from "Position"` with **no product filter**, so a player's poll results and
+their Up & Down results land in a single ROI figure and a single rank.
+
+⛔ **MEASURE BEFORE DECIDING.** The 99.4% figure quoted elsewhere in the docs is measured for
+**MARKETS**, not positions — it does not answer this question. Re-derive the position ratio first:
+
+```bash
+# what share of Positions are Up & Down vs poll?
+grep -n 'from "Position"' src/app/leaderboard/page.tsx
+```
+
+If Up & Down is a rounding error, one board is honest and cheap. If it is not, a board that ranks
+two different games on one number is the `40 live · zero cards` failure wearing a leaderboard.
+
+### ② `/profile/activity` — two separate mismatches, same page
+
+- Its window defaults to a **30-day narrowing**, while `src/lib/query/windows.ts` states `all` is
+  the player default. A player who has not chosen a window is being shown a filtered page that does
+  not say it is filtered.
+- Its five money tiles enumerate **6 of 12 `TxnType` values**, so the tile labelled `net` is not
+  the net of everything that moved. ⛔ This is an A-5 question, not a rounding one: a number that
+  names itself `net` and is not, is a number that lies quietly.
+
+### ③ `CASHED_OUT` is `amber`, and the vocabulary's answer is `slate`
+
+`status-tone.ts` enters `CASHED_OUT` as **amber because that is what ships**, faithfully. But §B11's
+dictionary gives amber one meaning — *"an officer must act"* — and `CASHED_OUT` is a **terminal**
+state where nobody must act. The tone is doing the opposite of its job on a settled row.
+
+### ⛔ Deliberately NOT built: a tier lens on `/leaderboard`
+
+It was designed and then refused. The board is a 50-row `.slice()`, so filtering it in JS would
+answer *"which of the top 50 by ROI are gold players"* — not *"how do gold players rank"*. Those
+are different questions and only the second is worth a control. ⭐ **A filter applied after a
+truncation is a filter over the wrong population**, which is the same disease as a count that is
+not cross-filtered (§K 6c rule 4). Building it would need the tier pushed into the store's
+`ORDER BY`/`WHERE`, the way `/leaderboard`'s sort already is.
