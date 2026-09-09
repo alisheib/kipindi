@@ -40,7 +40,25 @@ export default async function ActivityPage({ searchParams }: { searchParams: Pro
   const session = await getSession();
   if (!session) redirect("/auth/login?next=/profile/activity");
   const { period: rawPeriod } = await searchParams;
-  const period: ActivityPeriod = isPeriod(rawPeriod) ? rawPeriod : "month";
+  /**
+   * ⭐ `all` IS THE DEFAULT, AND IT USED TO BE `month` — Ali's ruling, 2026-09-09 (PLAYER QUERY §12 ②).
+   *
+   * 🔴 THE DEFAULT WAS TELLING A PLAYER THEY HAD NO HISTORY. `summary.empty` hides the whole money
+   * block, so a player whose activity is older than thirty days opened their own activity page —
+   * on the BARE URL, having chosen nothing — and read *"No activity yet"*. A true sentence about a
+   * window nobody selected, and a false statement about their account.
+   *
+   * ⛔ AND IT WAS THE ONLY NARROWING DEFAULT ON THE PLATFORM. All seven other player surfaces
+   * (`positions/portfolio.ts`, `wallet/ledger.ts`, `results/archive.ts`, `proposals/board.ts`,
+   * `updown/history-query.ts`, `account/activity.ts`, `fairness/attestations.ts`) default to
+   * `all`, and `lib/query/windows.ts` says why in writing: *"an operator opens a console to look
+   * at a period, a player opens their own history to see everything they have done. A window that
+   * defaults to narrowing would hide a player's own money behind a control they never touched."*
+   *
+   * ⚠️ The ids stay `week | month | all` — see the note below on why this page keeps its own
+   * vocabulary rather than adopting `PLAYER_PRESETS`. Only the DEFAULT moved.
+   */
+  const period: ActivityPeriod = isPeriod(rawPeriod) ? rawPeriod : "all";
 
   const [summary, rg] = await Promise.all([
     getActivitySummary(session.userId, period),
@@ -96,7 +114,11 @@ export default async function ActivityPage({ searchParams }: { searchParams: Pro
         {PERIODS.map((p) => (
           <FilterPill
             key={p}
-            href={`/profile/activity${p === "month" ? "" : `?period=${p}`}`}
+            /* ⛔ THE BARE URL IS THE UNNARROWED STATE. This omitted `?period=` for `month`, so the
+               clean, shareable, refresh-safe URL WAS the thirty-day narrowing — §K 6c rule 6 says
+               defaults are omitted from the URL, and while the default was `month` this line was
+               faithfully encoding the wrong default. It now omits `all`. */
+            href={`/profile/activity${p === "all" ? "" : `?period=${p}`}`}
             label={periodLabel[p]}
             on={p === period}
             semantics="tab"
@@ -142,6 +164,14 @@ export default async function ActivityPage({ searchParams }: { searchParams: Pro
               <Stat size="lg" labelStyle="wide" boxed="tile" money label={t.activity.withdrawals} value={formatTzs(summary.withdrawals)} icon={<I.arrowUp s={14} />} />
               <Stat size="lg" labelStyle="wide" boxed="tile" money label={t.activity.staked}      value={formatTzs(summary.staked)}      icon={<I.coins s={14} />} />
               <Stat size="lg" labelStyle="wide" boxed="tile" money label={t.activity.won}         value={formatTzs(summary.won)}         icon={<I.trophy s={14} />} labelTone="yes" />
+              {/* ⭐ REFUNDS ARE THEIR OWN TILE SINCE 2026-09-09, and they used to be inside Won.
+                  A voided market returns your stake, and counting that as WON overstated both
+                  this row and the net beside it — a player who never won anything could read a
+                  positive "Won". ⛔ It is also the campaign's own complaint: a player must be able
+                  to tell won from lost from voided-and-refunded, and folding two of those three
+                  into one number is this surface answering its own question wrongly.
+                  ⚠️ NO `labelTone` — a refund is not a win and must not borrow the yes-green. */}
+              <Stat size="lg" labelStyle="wide" boxed="tile" money label={t.activity.refunds}     value={formatTzs(summary.refunds)}     icon={<I.rotateCcw s={14} />} />
               {/* The signed net keeps its explicit "+" — <Cash> masks from the first
                   DIGIT, so the sign and the TZS prefix survive the blur exactly as they
                   did in the fork. */}
