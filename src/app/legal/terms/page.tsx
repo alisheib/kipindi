@@ -53,7 +53,13 @@ const BINDING: Record<Locale, string> = {
  * ⚠️ THE OTHER THREE "24 hours" IN THIS FILE ARE NOT THIS. §5 and its SW/ZH twins are the AML
  * review hold on large withdrawals — unrelated, unchanged, and they must stay 24.
  */
-function content(objectionHours: number): Record<Locale, React.ReactNode> { return {
+/**
+ * ⭐ EXPORTED so `scripts/terms-cancellation.test.mts` can RENDER it. §4 is binding prose that
+ * no guard could reach — `test:rate-copy` scans the i18n dictionaries and this text is JSX in a
+ * page. §6.12 had to narrow it in all three languages and nothing would have caught one being
+ * left behind. Exporting the content map is what makes it executable.
+ */
+export function content(objectionHours: number): Record<Locale, React.ReactNode> { return {
   en: (
     <>
       <LegalSection n="1" title="Operator + licence">

@@ -13,22 +13,56 @@
 
 ## ⚑ STATE OF THIS PROGRAMME — read this before anything else
 
-**Last touched: 2026-09-09, session 2. Everything below is LIVE on `main` and deployed.**
+**Last touched: 2026-09-09, session 3. Everything below is LIVE on `main` and deployed.**
 
 ⛔ **THE PROGRAMME IS NOT FINISHED, AND "MONEY IS SAFE" IS NOT A CONCLUSION ANYONE HAS EARNED
-YET.** Do not read the ✅ rows below as a launch verdict. What is done is *these six things*;
-what is open is most of the surface.
+YET.** Session 3 was **cut short by the account session limit** (§7.9) with **86 of 106 findings
+still UNVERIFIED** and **five audit lanes that have still never run**. Do not read the ✅ rows
+below as a launch verdict.
 
 | | |
 |---|---|
-| **Session 2 work** | ✅ **DONE and SHIPPED** — eleven defects fixed, each verified, each guarded RED |
-| **`money-out` lane** | ✅ **AUDITED ONCE** (first pass ever). 18 finder lanes, 18/18 returned |
-| **The 35 HIGH findings** | 🔴 **none verified** — the next batch, and the largest block left |
-| **Adversarial verify pass** | 🟠 **15 of 106 findings verified.** 91 remain UNVERIFIED |
-| **Blockers** | ✅ **ALL 13 ADJUDICATED — 8 fixed · 5 refuted · 0 unverified** |
-| **Ali's four decisions (§4)** | 🔴 **all four still open** |
-| **Production reads (§4.3)** | 🔴 **not done** — `PAYMENT_AGGREGATOR`, `agent.config` |
-| **`e2e:money` against real Postgres** | 🔴 **never run this session** — the behavioural proof for §6.2/§6.9 |
+| **Session 3 work** | ✅ **DONE and SHIPPED** — 3 defects fixed, 2 new guards, both proven RED |
+| **`e2e:money` against real Postgres** | ✅ **RAN — the first time ever. 64 passed, 0 failed** (§7.4) |
+| **Production reads (§4.3)** | ✅ **DONE** — and one of them found a live rate divergence (§7.1) |
+| **§4.4 — the agent terms stamp** | ✅ **ANSWERED, no action needed** (§7.2) |
+| **Blockers** | ✅ **ALL 15 ADJUDICATED — 8 fixed · 5 refuted · 2 duplicates · 0 unverified** |
+| **The 35 HIGH findings** | 🟠 **5 adjudicated (3 refuted, 2 confirmed) · 3 attempted-and-died · 27 untouched** |
+| **42 MEDIUM · 14 LOW** | 🔴 **none attempted** |
+| **The five dead lanes** | 🔴 **still never run** — `settlement-lifecycle` · `agent-commission` · `updown-money` · `docs-drift` · `controls-and-guards` |
+| **Ali's decisions** | 🔴 **§4.1 kill-switch · §4.2 clawback · §4.5 rebaseline — open. PLUS §7.1, new and the most urgent** |
+
+### 🔴 THE ONE THING TO PUT IN FRONT OF ALI FIRST
+
+**Production charges TZS 100,000 for an agent registration and remits no VAT, while RULES §6,
+`AGENT-PROGRAMME.md` §5a and `COMPLIANCE-DECISIONS.md` all say TZS 118,000 at 18%.**
+`agent.config.feeVatRatePct` is **0**. It moved 18 → 0 on 2026-09-08T17:42:24Z inside a save
+whose evident purpose was changing the Lipa fee destination, and no screen could show that
+because the audit's `changes` field was the whole posted form. **Exposure is TZS 0 so far** — the
+one agent who has ever registered paid 118,000, before the change. ⛔ **Not actioned: it is a
+rate, so RULES §5 step 1 applies.** Full evidence in **§7.1**.
+
+### ⛔ THE THREE WAYS SESSION 4 GETS THIS WRONG
+
+1. **Reading the 5 adjudicated HIGHs as "the HIGH block is going fine".** Of the 8 attempted,
+   **3 had their lenses die on the session limit and decided nothing.** `LEAD-B.3`, `LEAD-C.1`
+   and `LEAD-C.3` are UNVERIFIED. `LEAD-B.3`'s one surviving lens said it **stands**.
+2. **Trusting a verifier's "money impact TZS 0" over a production read.** Three lenses scored
+   `LEAD-B.1a` at TZS 0 and `low`, reasoning from the repo. It is the mechanism by which a
+   statutory VAT rate went to zero unseen (§7.1 · §7.6). ⭐ **The repo is not the platform.**
+3. **Thinking the five dead lanes are probably clean.** The biggest finding of session 3 sits
+   squarely in two of them and was found by reading production, not by any lane.
+
+### Where to start next session
+
+1. **Re-run the three that died: `LEAD-B.3`, `LEAD-C.1`, `LEAD-C.3`.** Builder and template are
+   at `scratchpad/build-slice3.cjs` + `verify-workflow3.js`; `node build-slice3.cjs high 4 8`
+   rebuilds that exact slice. ⛔ **Four findings — twelve agents — per batch, and check
+   `agents_done` against `agent_count` before believing a word of the output.**
+2. Then `high 8-12` onward, then MEDIUM, then LOW.
+3. **The five dead lanes**, starting with `agent-commission` and `docs-drift` — §7.1 is evidence
+   there is something in them.
+4. Ali: §7.1 first, then §4.1, §4.2, §4.5.
 
 ### What shipped, in order
 
@@ -39,14 +73,23 @@ what is open is most of the surface.
 | `0ac97836` | §6.6 the payout callback settling an id it did not ask about |
 | `639772bf` | the refund path's atomicity (`settleWithdrawalFailed`) |
 | `5bd5f84e` | a red proof I rotted, and `red:levy-allocation` joining the anchor audit |
-| `(this)` | §6.9 the AML phantom `providerRef` · §6.8 the verify pass that survived |
+| `46ace149` | §6.9 the AML phantom `providerRef` · §6.8 the verify pass that survived |
+| `ae4a3bbf` | **session 3** — §7.4 `e2e:money` executed at last, and the retired 1% it was asserting · the §4.3/§4.4 production reads |
+| `3ebb9c6b` | §7.6 the config audit's `changes` becomes a real diff — `LEAD-B.1a`, the defect that hid §7.1's VAT rate |
+| `(this)` | §7.7 the last retired-1% fixture · §7.8 `/legal/terms` §4 gets the guard it never had |
 
 ### Guards this programme owns
 
 `test:levy-allocation` · `red:levy-allocation` · `test:lock-tx-threading` ·
 `test:payout-callback-identity` · `test:aml-dispatch-window` — plus session 1's
 `test:payment-control` · `red:payment-control` · `test:webhook-sec` · `red:webhook-money` ·
-`test:fee-model-caption` · `red:fee-model-caption`.
+`test:fee-model-caption` · `red:fee-model-caption` — plus session 3's
+`test:config-audit-diff` · `test:terms-cancellation`, and **`e2e:money`, which is the only
+behavioural one and needs a real Postgres** (`scripts/load/README.md`).
+
+⛔ **All of these are `test:` or `red:` scripts EXCEPT `e2e:money`, which is deliberately not in
+`test:all` because `test:all` must run with no database.** A session that runs `test:all` and
+sees green has **not** run the behavioural proof.
 
 ### ⛔ The three ways a future session gets this wrong
 
@@ -1180,3 +1223,80 @@ shape had no `.to` at all, so the new assertion cannot pass against it.
 
 **Suites re-run, all green:** `config-persist` 24/0 · `proposals-state` 29/0 ·
 `payment-webhook` 47/0 · `audit-chain` 36/0 · `tsc --noEmit` clean.
+
+### 7.7 · ✅ FIXED — the last retired-1% fixture, the one §6.4 deliberately left
+
+`scripts/ledger.test.mts` — the withdrawal block
+
+§6.4 corrected this file's *captions* and left its *fixture*: `fee: 1_000, gatewayShare: 500` on
+100,000, commented `// 1%`, with assertions reading *"player RECEIVES 99,000 (only the 1% fee is
+taken)"* and *"operator keeps 500"*. The reasoning was sound — `withdrawalEntries` takes the fee
+as a **parameter**, so the rate is not what this block tests (routing and balance are) and the
+numbers were internally consistent.
+
+⭐ **§7.4 changed the calculus.** The identical shape in `money-e2e.test.mts` was not inert: it
+was an assertion, and the first time anyone executed it, it failed correct code. Leaving a
+second copy of a retired rate in prose beside money — in the file that teaches the ledger — is
+not worth the nothing it saves. Now the live shape: **1,500 fee, 500 to the gateway, 1,000 kept,
+98,500 to the player**, with the reason recorded in place.
+
+`npm run test:ledger` **89/0**.
+
+### 7.8 · ✅ CLOSED — `/legal/terms` §4 had no guard, and now it has one
+
+`scripts/terms-cancellation.test.mts` (new, `npm run test:terms-cancellation`) ·
+`src/app/legal/terms/page.tsx` (one word: `export`)
+
+§6.12 rewrote the binding cancellation clause in **all three languages**, and both `RULES.md`
+and §6.3 recorded the same warning against it: **⚠️ no guard — prose in a page, outside
+`test:rate-copy`'s reach.** `test:rate-copy` scans the i18n dictionaries; this text is JSX inside
+a page component. Nothing in the repo could have caught one language being left behind.
+
+**The guard RENDERS the document** — `renderToStaticMarkup` over the exported `content()` map,
+tags stripped, whitespace normalised — and asserts, per language, the four things RULES §2.6
+makes the right conditional on: the 5-minute **window**, the **runway**, the **rounds where the
+runway can never be met**, and **bonus-funded is never sellable**.
+
+⛔ **It also checks the runway QUALIFIES the promise** rather than merely appearing somewhere in
+the document: in EN it must follow the promise within 200 characters. A runway sentence three
+sections away would not narrow anything.
+
+**Proof, all three arms:**
+
+| arm | result |
+|---|---|
+| **GREEN** on the live document | 12 passed, 0 failed — en · sw · zh |
+| **RED** on the genuine pre-fix page (`git show a783299f:…`, with only the `export` keyword added so the failure is the PROSE and not the import) | **4 failures** — all three languages fail, each naming exactly what it lacks: *"MISSING: the RUNWAY condition · the rounds where it can NEVER be met · BONUS-funded is never sellable"*, and the runway-qualifies-promise check reports `runway@-1` |
+| ⚠️ **POSITIVE CONTROL**, same run | §2 rejects the pre-fix paragraph verbatim, names all three absences, **and still finds the one condition it DID state** — so a matcher that simply failed everything would itself fail |
+| ⛔ **OVER-CORRECTION** | §3 rejects a text carrying two of the three, and rejects `sw` with only the runway removed — one language left behind is the exact failure §6.12 could have shipped |
+
+⚠️ **THE GUARD PINS PHRASES, AND THAT IS THE DESIGN.** A guard over prose can only match words,
+so a legitimate rewrite of §4 will trip it — which is correct for a binding legal document: a
+change to a player's cancellation right should stop and be re-read, not sail through. The
+docblock says so, and says to update the anchors in the same commit and to check all three
+languages.
+
+⚠️ **One thing it does NOT do.** It renders the content map, not the route. It cannot see a
+layout, a locale-resolution bug, or the page failing to render at all — only that §4's text says
+all three things in all three languages. That is the gap it was built to close and no more.
+
+⭐ **A note on the first draft, because it is the failure this programme keeps meeting.** §1
+originally asserted `text.length > 2000` as "the document rendered". Chinese failed at 1,765
+characters on a *complete* document — the threshold measured the language, not the content. It
+is now the §4 heading per locale. An arbitrary numeric floor is not a structural check.
+
+### 7.9 · ⛔ WHAT THIS SESSION DID NOT DO, AND WHY
+
+**The account session limit was hit at 16:0x (resets 6pm Asia/Beirut)** and every verifier agent
+after that returned *"You've hit your session limit"*. That is the whole reason the HIGH block is
+5 of 35 rather than further along. It is a hard external stop, not a judgement that the rest
+mattered less.
+
+| left undone | why · what the next session must know |
+|---|---|
+| **30 of the 35 HIGH findings** | Not attempted. ⛔ `LEAD-B.3`, `LEAD-C.1`, `LEAD-C.3` were *attempted and their lenses died* — they are UNVERIFIED, and **UNVERIFIED is not refuted** |
+| **All 42 MEDIUM and 14 LOW** | Not attempted |
+| **The five dead lanes** | `settlement-lifecycle`, `agent-commission`, `updown-money`, `docs-drift`, `controls-and-guards` still have **never run**. ⭐ Note that §7.1 — the largest finding of this session — is an `agent-commission` and `docs-drift` finding that fell out of a *production read*, not a lane. That is evidence the lanes are worth running, not evidence they are covered |
+| **§6.13's `reverseStuckPayoutAction` residual** | Untouched. Still an officer override that records *"not asked (no provider reference)"*. Left because tightening a deliberate override is a policy call, exactly as §6.13 concluded — and this session had no capacity to put it to Ali properly |
+| **§6.10's `maybeReconcileLedger` 24h clock** | Untouched, and **now refuted-adjacent**: `LEAD-G.2` was REFUTED 3/3 in session 2. Session 2 already rated it low because three other runners cover the question. No action taken and none obviously needed |
+| **`AGENT-PROGRAMME.md` line 97's stale fee destination** | ⛔ **Deliberately NOT corrected.** It names the OLD destination while production carries the new one. A sibling session verified the new destination is live and correct and is putting it to Ali *separately from the VAT rate* — the two halves of that one save are a settled fact and an open compliance question respectively, and correcting them in one edit would imply they were one decision |

@@ -176,17 +176,25 @@ ok("house commission is constant", acct.commission === "HOUSE:COMMISSION");
 
 // ── Withdrawal: the fee, split with the gateway. NO withholding tax. ───────────
 {
+  // ⚠️ THIS FIXTURE WAS THE RETIRED 1% SHAPE — `fee: 1_000, gatewayShare: 500` on 100,000,
+  // captioned "1%". `withdrawalEntries` takes the fee as a PARAMETER, so the rate is not what
+  // is under test here (routing and balance are) and the numbers stayed green — but they
+  // taught a rate RULES §2.7 retired on 2026-08-14, in prose sitting beside money.
+  // Now the LIVE shape: 1.5% of 100,000 = 1,500, of which 0.5pp = 500 is the gateway's, so
+  // the operator keeps 1,000 and the player receives 98,500. (§6.4 corrected the captions in
+  // this file and left the fixture; §7.4 then found the same rot ASSERTING itself in
+  // money-e2e, where it failed correct code.)
   const entries = withdrawalEntries({
     txnId: "txn_w", userId: "usr_w", grossAmount: 100_000,
-    fee: 1_000,           // 1%
-    gatewayShare: 500,    // 0.5% → the gateway; we keep the other 500
+    fee: 1_500,           // 1.5% — RULES §2.7
+    gatewayShare: 500,    // 0.5pp of it → the gateway; we keep the other 1,000
     provider: "MPESA",
   });
   isBalanced("withdrawal with fee", entries);
   ok("withdrawal: player debited the full 100,000", entries.some(e => e.account === "PLAYER:usr_w" && e.amount === -100_000));
-  ok("withdrawal: player RECEIVES 99,000 (only the 1% fee is taken)", entries.some(e => e.account === "EXTERNAL:MPESA" && e.amount === 99_000));
+  ok("withdrawal: player RECEIVES 98,500 (only the 1.5% fee is taken)", entries.some(e => e.account === "EXTERNAL:MPESA" && e.amount === 98_500));
   ok("withdrawal: gateway gets its 500", entries.some(e => e.account === "HOUSE:AGGREGATOR" && e.amount === 500));
-  ok("withdrawal: operator keeps 500", entries.some(e => e.account === "HOUSE:COMMISSION" && e.amount === 500));
+  ok("withdrawal: operator keeps 1,000", entries.some(e => e.account === "HOUSE:COMMISSION" && e.amount === 1_000));
   // The 15% withholding tax is DELETED. It took 15,000 off this withdrawal —
   // including from a player who deposited and never bet.
   ok("withdrawal: NO withholding tax entry", !entries.some(e => e.entryType === "WITHDRAWAL_TAX" || e.account === "HOUSE:TAX"));
