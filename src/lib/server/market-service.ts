@@ -3533,6 +3533,35 @@ export async function settleMarket(
       winningPool,
       settleFee.fee,
     );
+    /**
+     * 🔴 AND THE LEVIES ARE ALLOCATED THE SAME WAY — because the medicine above was
+     * applied to the commission and NOT to the two levies computed FROM it.
+     * `settlementPayoutEntries` derived each winner's TRA and GBT independently as
+     * `Math.round(thisWinnersFeeShare * rate)`, so N independent roundings were booked
+     * against ONE `levySplit` over the whole fee, and the two disagreed by construction.
+     *
+     * GBT is 5%, so a fee share under 10 TZS rounds to ZERO. Fifteen winners at the
+     * TZS 1,000 minimum against one 1,000 losing bet is a fee of 130, every share ≤ 9,
+     * and the market books **GBT 0 against a levySplit that says 7** — a statutory levy
+     * recorded as never having arisen. Measured on production 2026-09-09 across the 203
+     * settled markets carrying a booked fee: **43 disagree**, and the discriminating
+     * variable is exactly this mechanism — 0 of 138 single-winner markets diverge, while
+     * 9 of the 9 markets with five or more winners do.
+     *
+     * ⚠️ It was invisible to every existing check. Each winner's group still sums to zero
+     * (commission +share, −tra −gbt, +tra +gbt), so `postLedgerEntries` accepts it and the
+     * trial balance ties; `ledger.test.mts` asserted only that a levy line EXISTS, on a
+     * ONE-winner fixture where the two regimes cannot disagree. The books balanced while
+     * the component did not — the same shape as the commission defect above, and the
+     * reason that one needed production to be found too.
+     *
+     * Allocating over each winner's FEE SHARE (not their stake) keeps a winner's levy
+     * proportional to the commission it is levied on, and largest-remainder makes the
+     * column sum to `settleLevies` EXACTLY. One fee, one levy split, one figure.
+     */
+    const feeShareRows = winningSidePositions.map((wp) => ({ id: wp.id, stake: feeByPos.get(wp.id) ?? 0 }));
+    const traByPos = allocateFeeShares(feeShareRows, settleFee.fee, settleLevies.traLevy);
+    const gbtByPos = allocateFeeShares(feeShareRows, settleFee.fee, settleLevies.gbtLevy);
     for (const p of myPositions) {
       const w = await db.wallet.findByUserId(p.userId);
       // ⛔ REFUSE, NEVER SKIP. This used to be `if (!w) continue;` — it stepped over
@@ -3577,12 +3606,15 @@ export async function settleMarket(
             amlReason: null,
             createdAt: settledAt, updatedAt: settledAt, completedAt: settledAt,
           }, tx);
-          // The ledger books this winner's SHARE of the poll's single fee — summing
-          // every winner's group reconstitutes the whole fee exactly.
+          // The ledger books this winner's SHARE of the poll's single fee AND of its two
+          // levies — summing every winner's group reconstitutes the fee, the TRA and the
+          // GBT exactly, so the ledger and `levySplit` state one liability, not two.
           await postLedgerEntries(`settle_${payoutTxnId}`, settlementPayoutEntries({
             groupId: `settle_${payoutTxnId}`, userId: p.userId, marketId: m.id,
             payout, stake: p.stake, fee: settleFee.fee, winningPool,
             commissionAmount: feeByPos.get(p.id) ?? 0,
+            traLevyAmount: traByPos.get(p.id) ?? 0,
+            gbtLevyAmount: gbtByPos.get(p.id) ?? 0,
             rates: { traTaxOnCommissionRate: settleCfg.traTaxOnCommissionRate, gbtLevyOnCommissionRate: settleCfg.gbtLevyOnCommissionRate },
           }), tx);
           return updated.balance;

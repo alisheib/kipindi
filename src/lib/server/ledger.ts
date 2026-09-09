@@ -19,9 +19,21 @@
  *   SYSTEM:ADJUSTMENT        — admin adjustments
  *   SYSTEM:VOID              — expired/cancelled bonus sink
  *
- *   HOUSE:TAX, HOUSE:RESERVE — RETIRED 2026-07 with taxRate/reserveRate. Never
- *                              credited again; historical entries remain, so the
- *                              accounts stay on the books and still reconcile.
+ *   HOUSE:RESERVE            — RETIRED 2026-07 with reserveRate. Never credited
+ *                              again; historical entries remain, so the account
+ *                              stays on the books and still reconciles.
+ *
+ *   HOUSE:TAX                — ⛔ NOT RETIRED, whatever the rest of this codebase says.
+ *                              The 15% WITHDRAWAL withholding was deleted 2026-07 and
+ *                              stays deleted. But the agent programme (RULES.md §2.10,
+ *                              live 2026-09-08) credits this account TWICE: 18% VAT on
+ *                              every registration fee, and the 5% withholding on every
+ *                              commission accrual. Read off production 2026-09-09:
+ *                              HOUSE:TAX = 18,000 TZS over 1 entry — the VAT on the
+ *                              first agent registration. It is money HELD AND OWED TO
+ *                              THE STATE, so any screen presenting it as retired, or any
+ *                              free-cash figure that does not subtract it, overstates
+ *                              what the owner actually has.
  */
 
 import { prisma } from "./prisma";
@@ -257,7 +269,8 @@ export function withdrawalEntries(opts: {
   txnId: string;
   userId: string;
   grossAmount: number;
-  /** Total charged to the player (1% of gross). */
+  /** Total charged to the player. ⛔ NOT A RATE — the rule is RULES.md §2.7 and the live
+   *  value is market.config; this comment read "1% of gross" while production charged 1.5%. */
   fee: number;
   /** The gateway's slice of that fee. The remainder is ours. */
   gatewayShare: number;
@@ -356,6 +369,27 @@ export function settlementPayoutEntries(opts: {
    * summed to zero (POOL −1 against COMMISSION +1 cancels).
    */
   commissionAmount?: number;
+  /**
+   * 🔴 THIS WINNER'S SHARE OF THE MARKET'S TRA / GBT LEVY, PRE-ALLOCATED by largest
+   * remainder so every winner's share sums to EXACTLY `levySplit(fee)` — the single split
+   * `settleMarket` already computes for its audit payload and for the agent-commission base.
+   *
+   * Deriving them here per-winner as `Math.round(commAmt * rate)` was the defect, and it is
+   * the SAME defect the `commissionAmount` note above records: the medicine was applied to
+   * the commission and NOT to the two levies computed from it. N independent roundings need
+   * not sum to one rounding of the whole. GBT is 5%, so a winner's fee share under 10 TZS
+   * books ZERO — fifteen winners at the TZS 1,000 minimum against one 1,000 losing bet is a
+   * fee of 130 with every share ≤ 9, and the market books GBT **0** where `levySplit` says
+   * **7**: a statutory levy recorded as never having arisen. Measured on production
+   * 2026-09-09 over the 203 settled markets carrying a booked fee, **43 diverge** — 0 of 138
+   * at one winner, 9 of 9 at five or more winners.
+   *
+   * ⛔ It survived every guard because the group SUMS TO ZERO either way (commission +share,
+   * −tra −gbt, +tra +gbt), so `postLedgerEntries` accepts it and the trial balance ties.
+   * "The books balance" is not integrity.
+   */
+  traLevyAmount?: number;
+  gbtLevyAmount?: number;
   rates: { traTaxOnCommissionRate: number; gbtLevyOnCommissionRate: number };
 }): LedgerLine[] {
   // The pre-allocated share when the caller computed one (always, from settleMarket).
@@ -364,8 +398,14 @@ export function settlementPayoutEntries(opts: {
   const commAmt = opts.commissionAmount != null
     ? Math.max(0, Math.round(opts.commissionAmount))
     : Math.max(0, Math.round(share * opts.fee));
-  const traLevyAmt = Math.round(commAmt * opts.rates.traTaxOnCommissionRate);
-  const gbtLevyAmt = Math.round(commAmt * opts.rates.gbtLevyOnCommissionRate);
+  // Pre-allocated levy shares when the caller computed them (always, from settleMarket).
+  // The derived form remains only so an older caller still books SOMETHING.
+  const traLevyAmt = opts.traLevyAmount != null
+    ? Math.max(0, Math.round(opts.traLevyAmount))
+    : Math.round(commAmt * opts.rates.traTaxOnCommissionRate);
+  const gbtLevyAmt = opts.gbtLevyAmount != null
+    ? Math.max(0, Math.round(opts.gbtLevyAmount))
+    : Math.round(commAmt * opts.rates.gbtLevyOnCommissionRate);
 
   const netPayout = opts.payout;
   // The pool gives up the player's payout plus his share of our fee. Nothing else.

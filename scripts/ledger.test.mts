@@ -71,7 +71,7 @@ ok("house commission is constant", acct.commission === "HOUSE:COMMISSION");
   ok("withdrawal: no fee entries when the rate is 0", entries.length === 2);
 }
 
-// ── Withdrawal entries (the 1% fee, split with the gateway) ─────────────────
+// ── Withdrawal entries (the fee, split with the gateway — rate in RULES.md §2.7) ──
 //
 // ⚠️ These two blocks used to assert a WITHHOLDING TAX — `taxWithheld: 500` on a
 // 10,000 withdrawal, credited to HOUSE:TAX. In production that rate was a
@@ -174,7 +174,7 @@ ok("house commission is constant", acct.commission === "HOUSE:COMMISSION");
   ok("cashout: GBT levy is charged on the early-exit fee", entries.some(e => e.entryType === "SETTLEMENT_GBT_LEVY" && e.account === "HOUSE:GBT_LEVY"));
 }
 
-// ── Withdrawal: 1% fee, split with the gateway. NO withholding tax. ─────────
+// ── Withdrawal: the fee, split with the gateway. NO withholding tax. ───────────
 {
   const entries = withdrawalEntries({
     txnId: "txn_w", userId: "usr_w", grossAmount: 100_000,

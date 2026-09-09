@@ -2473,7 +2473,7 @@ model LedgerEntry {
 enum LedgerEntryType {
   DEPOSIT // External money in → player account
   WITHDRAWAL // Player account → external money out
-  WITHDRAWAL_FEE // Withdrawal fee (1%) → payment gateway + operator
+  WITHDRAWAL_FEE // Withdrawal fee → payment gateway + operator. Rate: RULES.md §2.7
   STAKE_DEBIT // Player account → market pool (bet placed)
   PAYOUT_CREDIT // Market pool → player account (bet won)
   SETTLEMENT_COMMISSION // Market pool → operator revenue (the capped fee)

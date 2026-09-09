@@ -37,7 +37,16 @@ Their whole surface is unaudited. `money-out` is the one that matters most: with
 payouts, AML holds and the reconcile sweep have had **no** systematic pass in this programme.
 
 **Before believing any workflow result: compare `agents_done` to `agent_count` and read the
-`<failures>` block.** Run 1: 0/12 done. Run 2: 41/222 done.
+`<failures>` block.** Run 1: 0/12 done. Run 2: 41/222 done. Run 3 (session 2): **18/18 done, 0
+errors** — which is why its output could be read at all.
+
+> ✅ **`money-out` HAS NOW HAD ITS FIRST PASS — session 2, 2026-09-09. See §6.**
+> Two defects were confirmed by hand and fixed (§6.1 the levy split, §6.2 the withdrawal hold).
+>
+> ⛔ **AND THE UNVERIFIED BUCKET DID NOT SHRINK — IT GREW.** Session 2's own findings joined it,
+> because no verify pass ran on them either. A finder is one lens. The verify pass — three
+> adversarial lenses per finding, with `unverified = votesReturned < 2` computed and bucketed
+> FIRST — is still the single largest piece of unfinished work in this programme.
 
 ---
 
@@ -221,7 +230,11 @@ numbers are the finder's and predate this session's edits — re-derive them.
 ### 3.2 Money-in / transaction state machine
 
 - An AML-approved payout may re-dispatch on a **stale providerRef** → double pay. *(blocker)*
+  ⚠️ Session 2 raised this again independently as `MO-2.a` / `MO-4.a`, still UNVERIFIED. §6.3.
 - The withdrawal FAILED path may not be atomic — debit and Transaction row in separate commits. *(blocker)*
+  ⚠️ **The same class was CONFIRMED and FIXED on the REQUEST path (§6.2) — the FAILED path named
+  here is a DIFFERENT function and is still open** (`MO-3.a` / `MO-4.b`, UNVERIFIED). Do not read
+  §6.2 as closing this row.
 - Rejecting an RG-held deposit in `/admin/aml` refunds nothing while the officer is told "Funds
   returned to wallet"; the `HOUSE:RG_SUSPENSE` debt is closed with no release leg.
 - `creditInternal` may invent the new balance when the wallet write fails → "agent commission
@@ -236,9 +249,12 @@ numbers are the finder's and predate this session's edits — re-derive them.
 
 ### 3.3 Settlement, fee arithmetic and the ledger
 
-- **TRA/GBT are re-derived per winner with `Math.round` instead of the single `levySplit`, so GBT
-  can book ZERO on a market that owes it** — with a worked example inside the live stake bounds.
-  Two rounding regimes for one levy. *(the highest-value settlement lead)*
+- ~~**TRA/GBT are re-derived per winner with `Math.round` instead of the single `levySplit`, so GBT
+  can book ZERO on a market that owes it.**~~ ✅ **CONFIRMED AND FIXED — see §6.1.** Verified by
+  reading both functions, reproducing the arithmetic with the repo's own `allocateFeeShares`, and
+  measuring production: **43 of 203** fee-bearing settlements diverge. ⛔ One correction to the
+  wording above: the ZERO case is *reachable* and is driven by the new gate, but it has **not**
+  occurred on production. *(was: the highest-value settlement lead — it was.)*
 - The loser-share fee has **no rule-level ceiling**: 50%+50% is savable and takes 100% of every
   loser's stake with every guard green, because the winner-floor guardrail is structurally unable
   to object under this model and both guards are wired to the retired model's knob.
@@ -328,3 +344,186 @@ Resolve it with Ali before launch.
 `npm run test:payment-control` · `npm run red:payment-control` ·
 `npm run test:webhook-sec` · `npm run red:webhook-money` ·
 `npm run test:fee-model-caption` · `npm run red:fee-model-caption`
+
+---
+
+## §6 · SESSION 2 (2026-09-09) — the `money-out` lane, and two fixes shipped
+
+### 6.0 · What ran, and whether to believe it
+
+18 read-only finder lanes: the ten `money-out` surfaces the last run never reached (withdrawal
+request · payout dispatch · settle/fail/refund · the reconcile sweep · AML and RG holds · the
+Selcom adapter · admin payment ops and bulk retry · ledger integrity · the player withdrawal
+surface · the shared balance primitives), plus eight lanes aimed at the named leads in §3.
+
+⭐ **`agent_count` 18 · `agents_done` 18 · `agents_error` 0 · `agents_empty_result` 0.** That
+check is the first thing §0 demands, and it is the reason this run's output can be read at all.
+**No lane died.** Contrast run 1 (0/12 done) and run 2 (41/222).
+
+⛔ **AND THAT STILL DOES NOT MAKE THE FINDINGS FACTS.** No adversarial verify pass ran on them.
+They are exactly what §3 is: **leads a competent reader produced, on which nobody has voted.**
+They are recorded in full at [`money-gate-2-findings.json`](money-gate-2-findings.json) — each
+carries its verbatim code quote, a concrete scenario in shillings, its own reachability
+judgement and its own confidence. **Two** things were fixed, and only two, because those are the
+two that were re-derived by hand from the source and — for the first — measured against the
+production database. Everything else waits for a verify pass.
+
+| bucket | count |
+|---|---|
+| blocker | **15** |
+| high | 35 |
+| medium | 42 |
+| low | 14 |
+| **total — every one UNVERIFIED** | **106** |
+| claims the finders themselves CLEARED, with reasons | 171 |
+| questions only a production read can settle | 122 |
+
+### 6.1 · FIXED — the ledger and `levySplit` stated two different statutory liabilities
+
+`src/lib/server/ledger.ts` → `settlementPayoutEntries` · `src/lib/server/market-service.ts` → `settleMarket`
+
+§3.3's first lead, **confirmed** — by reading both functions, by reproducing the arithmetic with
+the repo's own `allocateFeeShares`, and then by measuring production. The full account is in
+[`RULES.md`](RULES.md) §2.2. In one line: `settleMarket` calls `levySplit` **once** over the
+whole fee, while the ledger derived each winner's TRA and GBT **independently** with its own
+`Math.round` — and N roundings do not sum to one rounding.
+
+**Measured on production 2026-09-09** (read-only, across the 203 settled markets carrying a
+booked fee): **43 diverge.** The discriminating variable is the mechanism itself — **0 of 138**
+markets with one winner, **9 of 9** with five or more. Net exposure today is small (+20 TZS TRA,
+−7 TZS GBT) because production's books are small; it scales with winner count, not with time.
+
+⛔ **One correction to the lead's wording: GBT booking ZERO has NOT yet happened on production.**
+It is reachable — fifteen bets at the TZS 1,000 minimum against one 1,000 losing bet gives every
+winner a fee share of ≤ 9, and `Math.round(9 × 0.05)` is 0 — and the gate drives exactly that
+shape. But writing that it *has* occurred would be the same overstatement this programme exists
+to stop.
+
+Guards `npm run test:levy-allocation` **26/0** · `npm run red:levy-allocation` **7/7**. Mutation
+1 is the pre-fix source verbatim; 4, 5 and 6 are over-corrections (booking a levy at a **zero**
+rate, taking the levy **out of the player's payout**, rounding a share **up**); mutation 7
+attacks the gate's own positive control, so a §3 that quietly stopped failing would itself go
+red.
+
+⚠️ **The 43 historical markets are NOT backfilled** — rewriting settled ledger rows is a larger
+act than the +20 / −7 TZS error it would correct. Recorded for Ali.
+
+### 6.2 · FIXED — a withdrawal's hold and its Transaction row committed separately
+
+`src/lib/server/wallet-service.ts` → `withdraw`, Phase A
+
+§3.2's blocker, raised there for the FAILED path and **confirmed here on the REQUEST path**.
+`locks.ts` promises *"Everything inside ONE withLock now shares ONE transaction, so a throw rolls
+back every write made under the lock"* — but the transaction is **not ambient**.
+`withAdvisoryLock` *passes* it to the callback; `prisma-dal` resolves `const db: Db = tx ?? pc()`
+and never reads the store the lock publishes. Phase A was written `async () => {`, so both
+writes autocommitted on the pooled singleton, outside the lock's transaction entirely.
+
+⛔ **The function's own in-lock comment describes the resulting state** — *"stranding funds in
+`hold` with no txn row (reconcileStalePayments scans txns, so it never finds/reverses them)"* —
+while guarding only the idempotency race, the one route to it that was foreseen. A P2024 pool
+timeout, a P2028, or a SIGTERM during a rolling deploy reaches the same state with no race at
+all. And **nothing can see it**: the sweep and `/admin/payments` both start from the transaction
+table, and `trialBalance` compares `balance + hold` against the ledger — moving money between
+those two columns changes neither side, and no ledger group is posted at request time. The books
+tie to the shilling over a player who is permanently short, up to the TZS 1,000,000 bound.
+
+Guard `npm run test:lock-tx-threading` **12/0**, proven RED on the pre-fix source with the
+positive control (§3) still green. ⚠️ **It is STRUCTURAL** — it reads source text, so it proves
+the writes are handed the client that would roll back, not that a rollback happens. §1 states the
+premise it rests on, so the gate becomes visibly wrong if the DAL ever learns to read the lock
+store. **The behavioural proof is `e2e:money` against a real Postgres, and it has NOT been run.**
+
+### 6.3 · The blockers and highs, ALL UNVERIFIED — start here
+
+⛔ **Read §0 before treating any row as fact.** `certain` below is the FINDER's confidence in its
+own reading — it is not a verdict, and no second lens has looked. The first row (LEAD-A.1) and
+MO-1.a are the two fixed above.
+
+| id | sev | the claim — UNVERIFIED unless struck through | where | finder's own confidence · reachability |
+|---|---|---|---|---|
+| `LEAD-A.1` | 🔴 | ~~TRA and GBT are booked PER WINNER with Math.round in the ledger while levySplit computes them ONCE over the whole fee — the ledger's GBT can book ZERO on a settlement that owes it, and the ledger is t~~ ✅ **FIXED §6.1** | `src/lib/server/ledger.ts` → `settlementPayoutEntries (called once per winning position fr` | certain · yes |
+| `LEAD-B.2a` | 🔴 | hydrateNow() closes the hydration gate on a read that FAILED — `loadConfig` swallows the DB error and returns null, so the commit's own claim "a failure leaves the flag DOWN so the next read retries"  | `src/lib/server/market-config.ts` → `hydrateNow / ensureHydrated` | certain · yes |
+| `LEAD-G.1` | 🔴 | The daily wallet↔ledger trial balance runs in production, finds drift, and tells nobody — its entire alarm is one audit row and one console line, and grep finds no consumer of either | `src/lib/server/lifecycle.ts` → `maybeReconcileLedger` | certain · yes |
+| `LEAD-G.2` | 🔴 | `maybeReconcileLedger` advances its 24-hour clock BEFORE running the check, so any throw from `trialBalance()` skips the platform's only money invariant for a full day, silently and with no counter an | `src/lib/server/lifecycle.ts` → `maybeReconcileLedger` | likely · yes |
+| `LEAD-G.3` | 🔴 | The nightly production trial-balance run DOES have an alarm channel beside it — and that channel is structurally deaf: `backupHealth()` never reads `sourceWarnings`, so a drifting production ledger is | `src/lib/server/backup/state.ts` → `backupHealth` | certain · yes |
+| `LEAD-H.1` | 🔴 | /legal/terms §4 promises free cancellation with ONLY the window condition, in all three languages — the runway condition that makes it unreachable on Up & Down 3- and 5-minute rounds is absent from th | `src/app/legal/terms/page.tsx` → `content(objectionHours) — LegalSection n="4" "How price-comp` | certain · yes |
+| `MO-1.a` | 🔴 | ~~The withdrawal debit and its Transaction row are in SEPARATE commits — a failure between them strands the player's money in `hold` with no record, invisible to reconcile AND to the trial balance~~ ✅ **FIXED §6.2** | `src/lib/server/wallet-service.ts` → `withdraw (Phase A)` | certain · yes |
+| `MO-10.a` | 🔴 | creditInternal fabricates the new balance when the wallet UPDATE fails and returns a non-null number, so every caller records money as PAID that never moved | `src/lib/server/wallet-service.ts` → `creditInternal` | certain · needs-production-read |
+| `MO-2.a` | 🔴 | An AML-held withdrawal carries a NEVER-DISPATCHED id in `providerRef`, and approve-dispatch flips the row to PROCESSING without clearing it — the reconcile sweep then re-queries a transid Selcom never | `src/lib/server/wallet-service.ts` → `dispatchApprovedWithdrawal (claim at 733-738) + withdraw (17` | likely · needs-production-read |
+| `MO-3.a` | 🔴 | settleWithdrawalFailed refunds and flips status in TWO separate commits outside the lock transaction — the 5-minute sweep then refunds a second time | `src/lib/server/wallet-service.ts` → `settleWithdrawalFailed` | certain · yes |
+| `MO-4.a` | 🔴 | The sweep can auto-reverse an AML-approved payout by querying a providerRef that was never sent to any gateway — the payout is in flight and the player gets the money back | `src/lib/server/wallet-service.ts` → `dispatchApprovedWithdrawal + reconcileStalePayments` | likely · yes |
+| `MO-4.b` | 🔴 | settleWithdrawalFailed — the only refund path — is not atomic and its status write fails SILENTLY, so the 5-minute sweep re-refunds the same payout every cycle | `src/lib/server/wallet-service.ts` → `settleWithdrawalFailed` | likely · yes |
+| `MO-5.a` | 🔴 | Rejecting an RG-held DEPOSIT in /admin/aml moves no money at all, and three surfaces tell the officer the funds were returned | `src/app/admin/aml/actions.ts` → `rejectAmlAction` | certain · yes |
+| `MO-5.b` | 🔴 | HOUSE:RG_SUSPENSE has exactly one writer and it is always a CREDIT — no code path in the repo can ever release it, yet the player is emailed that the money "has been reversed and returned to the accou | `src/lib/server/ledger.ts` → `rgSuspenseEntries / settleDepositConfirmed (RG arm)` | certain · yes |
+| `MO-6.a` | 🔴 | A payout callback settles the transaction it CORRELATED on using the status of a DIFFERENT transid the caller chose — on an unauthenticated route | `src/app/api/webhooks/payments/route.ts` → `handleSelcomCallback` | certain · yes |
+| `LEAD-A.2` | 🟠 | The tamper-evident audit chain records a levy figure the ledger never booked — two authoritative records of the same statutory liability, disagreeing by construction | `src/lib/server/market-service.ts` → `settleMarket — the `market.resolved` audit payload` | certain · yes |
+| `LEAD-B.1a` | 🟠 | The config audit's `changes` field is the entire posted form, not a diff — every one of the 19 fields is recorded as "changed" on every save | `src/app/admin/config/actions.ts` → `updateGlobalConfigAction → setGlobalConfig` | certain · yes |
+| `LEAD-B.1b` | 🟠 | Both surfaces that display a config change render the payload `before`-first in a one-line truncated cell, so `after` and `changes` are never on screen at all | `src/app/admin/audit/page.tsx` → `AdminAuditPage (table body) and AdminConfigPage (history tab` | certain · yes |
+| `LEAD-B.2b` | 🟠 | The config page renders an editable, unlabelled rate form from code defaults on a failed read — and saving it writes the whole snapshot back, silently deleting every per-market stake override with no  | `src/app/admin/config/page.tsx` → `AdminConfigPage` | likely · needs-production-read |
+| `LEAD-B.3` | 🟠 | defineConfig's synchronous getter has no ready-gate and its failed hydration NEVER retries — and define-config.ts was not one of the four hydrations commit 2499f324 repaired | `src/lib/server/define-config.ts` → `defineConfig (the eager-hydrate block and `get`)` | likely · yes |
+| `LEAD-C.1` | 🟠 | A config-change audit row is rendered as one JSON.stringify blob truncated to ~41 characters, so the two rates that actually price every poll are unreadable on every console surface | `src/app/admin/audit/page.tsx` → `AdminAuditPage` | certain · yes |
+| `LEAD-C.2` | 🟠 | /admin/audit — the only surface that renders any payload, and the one the regulator export names — reads the in-process ring, which starts EMPTY on every process start, while its own 'Chain integrity: | `src/app/admin/audit/page.tsx` → `AdminAuditPage` | certain · yes |
+| `LEAD-C.3` | 🟠 | settleMarket's final totals are read on the global Prisma client while every payout is still uncommitted inside the lock's transaction — the append-only chain and the officer's screen both record '0 p | `src/lib/server/market-service.ts` → `settleMarket` | certain · yes |
+| `LEAD-D.a` | 🟠 | The loser-share fee has no rule-level ceiling: /admin/config saves any platformFeeRate + operatorFeeRate up to and including 100% of the losing pool, with no refusal and no warning | `src/lib/server/market-config.ts` → `validate` | certain · yes |
+| `LEAD-D.b` | 🟠 | The one warning that encodes "the house takes more than all the winners put together" is computed on feeCeilingRate — a knob loser-share never reads — so under the live model it is silent when true an | `src/lib/server/market-config.ts` → `validate` | certain · yes |
+| `LEAD-F.1` | 🟠 | The solvency line omits HOUSE:TAX, so unremitted VAT and withholding tax are presented to the owner as his own free cash | `src/lib/house-book.ts` → `housePosition` | certain · yes |
+| `LEAD-F.2` | 🟠 | HOUSE:TAX is captioned "RETIRED — historical rows only" on both owner money screens while two live paths credit it, and no report in the repo reads the account at all | `src/app/admin/house/page.tsx` → `ACCOUNT_NOTE (and HOUSE_ACCOUNT_NOTE in src/app/admin/financ` | certain · yes |
+| `LEAD-F.3` | 🟠 | The statutory TRA/GBT figure is levied on window GGR instead of on the booked fee, so it charges the whole pool as tax in the window the bets are placed and zero in the window they settle | `src/app/admin/finance/page.tsx` → `AdminFinancePage (and buildDailyOps in src/lib/server/report` | certain · yes |
+| `LEAD-G.4` | 🟠 | Two of the three terms in `trialBalance().ok` cannot fail by construction, so the ONLY live money invariant is the per-wallet PLAYER check — escrow (`POOL:*`) and every `HOUSE:*` account are unchecked | `src/lib/server/ledger.ts` → `computeTrialBalance / reconcileLedger` | certain · yes |
+| `LEAD-H.2` | 🟠 | The live in-app assistant's system prompt states a DIFFERENT and wrong narrowing rule for cash-out — "Selling also closes the moment betting closes" instead of the runway rule — so it will tell a late | `src/app/_actions/chat.ts` → `buildSystemPrompt` | certain · needs-production-read |
+| `LEAD-H.3` | 🟠 | scripts/rate-copy.test.mts PINS 13% and 1.5% as required literals in the terms and the chat prompt — so RULES §7's "the table is EMPTY, and that is the goal state" is false: there are at least eight l | `scripts/rate-copy.test.mts` → `§3 · the two surfaces that state the rule in prose` | certain · yes |
+| `MO-10.b` | 🟠 | creditInternal is the only one of the three primitives with no atomicity — wallet, Transaction and ledger are three independent autocommits outside the lock's transaction | `src/lib/server/wallet-service.ts` → `creditInternal` | certain · needs-production-read |
+| `MO-10.c` | 🟠 | The two-person rule on large balance adjustments can be executed more than once from a single first approval — the stage-1 clearance is not propagated and the check has no lock | `src/app/admin/players/[id]/actions.ts` → `getAdjustStage1 / setAdjustStage1 / adjustBalanceAction` | likely · needs-production-read |
+| `MO-2.b` | 🟠 | The 30-minute "never terminalise a payout early" grace is measured from `createdAt`, so an AML-approved payout is inside the reversal-capable sweep from the instant it is dispatched — and is permanent | `src/lib/server/wallet-service.ts` → `reconcileStalePayments (1228) / isFastPayoutCandidate (1123-` | uncertain · needs-production-read |
+| `MO-2.c` | 🟠 | `settleWithdrawalFailed` refunds and marks FAILED as two unguarded, non-atomic pool writes whose errors are swallowed to null — then reports success and emails "Withdrawal returned" either way | `src/lib/server/wallet-service.ts` → `settleWithdrawalFailed` | certain · yes |
+| `MO-2.d` | 🟠 | The payout path never pre-persists its gateway reference — the exact hardening the DEPOSIT path carries, on the direction where the money is actually leaving | `src/lib/server/payments.ts` → `dispatchWithdrawal (177-178) vs dispatchDeposit (153-157) / ` | certain · yes |
+| `MO-3.b` | 🟠 | The refund credit's failure is swallowed and never checked — the player is emailed "Withdrawal returned" while the money stays locked in `hold` forever | `src/lib/server/wallet-service.ts` → `settleWithdrawalFailed` | certain · yes |
+| `MO-3.c` | 🟠 | rejectAmlAction has the same split commit — an officer's retry after a partial reject refunds a ≥TZS 1,000,000 payout twice, and its comment claims the opposite | `src/app/admin/aml/actions.ts` → `rejectAmlAction` | certain · yes |
+| `MO-3.e` | 🟠 | Adjacent (initiation, same root): withdraw() Phase A also splits the debit from the Transaction row, and db.txn.create throws uncaught — stranding the gross in `hold` with no txn row that any sweep ca | `src/lib/server/wallet-service.ts` → `withdraw` | certain · yes |
+| `MO-4.c` | 🟠 | The sweep's deposit safety arms are gated on isLiveMoneyMode() — an env switch that is still OFF on production — so 'we could not ask the gateway' auto-FAILS a genuinely paid deposit | `src/lib/server/wallet-service.ts` → `reconcileStalePayments` | likely · needs-production-read |
+| `MO-6.b` | 🟠 | An unparseable or field-renamed payout envelope resolves to FAILED, and FAILED is the one verdict that auto-refunds a payout that already left | `src/lib/server/selcom.ts` → `envelopeSettlementVerdict` | likely · needs-production-read |
+| `MO-6.c` | 🟠 | The generic lane can settle a SELCOM transaction from the callback body — the session-1 fix keyed on the caller's self-declared provider, and no transaction records which gateway owns it | `src/app/api/webhooks/payments/route.ts` → `POST (generic lane) / settlePaymentWebhook` | likely · needs-production-read |
+| `MO-7.a` | 🟠 | CARD has no kill-switch: MNOS is derived from MOBILE_MONEY_METHODS, so isPaymentPaused("CARD",…) can never be true on the only rail carrying chargeback risk | `src/lib/server/payment-ops.ts` → `isPaymentPaused / MNOS / setKillSwitch / toggleKillSwitchAct` | certain · needs-production-read |
+| `MO-7.b` | 🟠 | reconcileWriteOffAction stamps a per-OFFICER sentinel, not a per-transaction one — the second write-off collides on @@unique([provider, providerRef]), the DAL swallows the error, and the action still  | `src/app/admin/payments/payment-actions.ts` → `reconcileWriteOffAction` | certain · yes |
+| `MO-7.e` | 🟠 | reverseStuckPayoutAction skips the provider re-query entirely when providerRef is null, while the modal promises the provider is asked — and the guard that "proves" the re-query is a regex over the so | `src/app/admin/payments/payment-actions.ts` → `reverseStuckPayoutAction` | likely · needs-production-read |
+| `MO-7.i` | 🟠 | setKillSwitch reports the emergency STOP applied before it is durable — the persist is `void saveConfig(...)` and saveConfig never throws, so a failed write leaves the pause in one process's memory wi | `src/lib/server/payment-ops.ts` → `setKillSwitch / toggleKillSwitchAction` | certain · needs-production-read |
+| `MO-8.a` | 🟠 | repairOrphanedPositions refunds real money to a wallet with NO ledger entry at all, and leaves POOL:{marketId} holding the stake for a market that no longer exists | `src/lib/server/market-service.ts` → `repairOrphanedPositions` | certain · needs-production-read |
+| `MO-8.b` | 🟠 | HOUSE:TAX is credited again by the live agent programme but is excluded from `owedToOthers`, so the solvency line reports tax owed to TRA as the owner's free cash — and both admin pages label the acco | `src/lib/house-book.ts` → `housePosition` | certain · yes |
+| `MO-9.a` | 🟠 | The withdrawal minimum has three homes; every player-facing one says 1,000 and the only enforced one is 1,016 | `src/app/wallet/withdraw/page.tsx` → `WithdrawPage / withdrawAction / withdraw()` | certain · yes |
+| `MO-9.b` | 🟠 | /wallet/withdraw renders arbitrary ?error= query text in a first-party alert box, and the ratchet that swears this channel is at zero cannot see it | `src/app/wallet/withdraw/page.tsx` → `WithdrawPage` | certain · yes |
+
+### 6.4 · Corrected while here — documents that contradicted the law
+
+- `ledger.ts` → `withdrawalEntries`, `prisma/schema.prisma` → `WITHDRAWAL_FEE`, and two headings
+  in `scripts/ledger.test.mts` all stated the retired **1%** withdrawal fee. §2.7 has said
+  **1.5%** since 2026-08-14 and production charges it. None states a rate now — the treatment
+  §1.7 already gave the two doc-comments it found. ⚠️ The test's fixture still passes
+  `fee: 1_000, gatewayShare: 500` on 100,000, which is arithmetically the retired shape (the live
+  one is 1,500 / 500). Left as a fixture; no longer captioned as the rule.
+- `ledger.ts`'s header called `HOUSE:TAX` **"RETIRED … never credited again"**. Read off
+  production 2026-09-09: **HOUSE:TAX = 18,000 TZS over 1 entry** — the 18% VAT on the first agent
+  registration. §2.10 credits it twice over (registration VAT, and the 5% withholding on every
+  accrual). Corrected in place. ⛔ This is the premise of §3.3's HOUSE:TAX lead and it is **true**:
+  the account is live and holds money owed to the state. Whether the owner's free-cash line fails
+  to subtract it is the other half, and that half is still UNVERIFIED — see the LEAD-F rows.
+- `RULES.md` §2.3 and §2.1 both said **16** Up & Down chains. Production has **23**. Corrected,
+  and the count now carries the date it was read.
+
+### 6.5 · How to resume
+
+1. `cd` to a fresh worktree of `main`. `git status` first — sessions share this tree, and a
+   sibling worktree appeared mid-session. Never `git add -A`; stage by name.
+2. **The verify pass is the whole job.** Three independent adversarial lenses per finding, with
+   `unverified = votesReturned < 2` computed FIRST and bucketed before any confirmed/refuted
+   logic runs. Do not let a no-vote become a "refuted" — that is the mistake §0 exists to stop.
+3. Then §6.3 top-down. Two clusters are worth taking as single defects rather than as rows:
+   **MO-2.a, MO-3.a, MO-4.a and MO-4.b** describe one `settleWithdrawalFailed` / reconcile
+   atomicity defect from four angles, and the **LEAD-G** rows describe one alarm that computes a
+   real answer nightly and has nowhere to deliver it.
+4. `e2e:money` against a real Postgres — the only behavioural proof of §6.2, and it did not run
+   here. The worktree also has no `node_modules`; a junction to the main checkout's is enough.
+5. Every guard RED first, with a positive control in the same run and an over-correction mutation.
+
+**Guards this session added:** `npm run test:levy-allocation` · `npm run red:levy-allocation` ·
+`npm run test:lock-tx-threading`

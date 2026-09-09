@@ -1599,7 +1599,33 @@ export async function withdraw(userId: string, input: z.input<typeof WithdrawSch
   // ── Phase A (locked): validate balance + place the hold atomically ─────────
   // Re-read inside the lock so the balance check and the debit can't be split
   // by a concurrent withdrawal/bet/payout on the same wallet (double-spend).
-  const hold = await withLock(`wallet:${userId}`, async () => {
+  /**
+   * 🔴 THE CALLBACK TAKES `tx`, AND EVERY WRITE UNDER IT IS PASSED THAT `tx`.
+   *
+   * It used to be `async () => {`. `withLock`'s own contract (locks.ts) reads *"Everything
+   * inside ONE withLock now shares ONE transaction, so a throw rolls back every write made
+   * under the lock"* — and that was FALSE here, because it is not ambient. `withAdvisoryLock`
+   * publishes the tx on AsyncLocalStorage and passes it to the callback, but `prisma-dal`
+   * resolves its client as `const db: Db = tx ?? pc()` and never reads that store. A callback
+   * that does not NAME `tx` therefore autocommits each write on the pooled singleton, outside
+   * the advisory-lock transaction entirely.
+   *
+   * ⛔ So the hold and its Transaction row committed SEPARATELY, and the comment immediately
+   * below describes the resulting failure exactly — *"stranding funds in `hold` with no txn
+   * row (reconcileStalePayments scans txns, so it never finds/reverses them)"* — while
+   * guarding only the idempotency race, which is the one way to reach it that was foreseen.
+   * A P2024 pool timeout, a P2028, or a SIGTERM mid rolling-deploy between the two writes
+   * reaches the same state with no race at all: the player's money leaves `balance`, lands in
+   * `hold`, and NOTHING can find it. `reconcileStalePayments` starts from the txn table.
+   * `/admin/payments` counts the same table. And `trialBalance` compares
+   * `balance + hold` against the ledger — moving money between those two columns changes
+   * neither side, and no ledger group is posted at request time, so the books tie to the
+   * shilling over a player who is permanently short.
+   *
+   * `settleWithdrawalConfirmed` already threads `tx` through `withMoneyTx` for exactly this
+   * reason. This is the same shape, on the path that takes the money in the first place.
+   */
+  const hold = await withLock(`wallet:${userId}`, async (tx) => {
     // Re-check idempotency INSIDE the lock. The pre-lock check above is only a
     // fast-path; a concurrent same-key withdrawal (2G double-tap) may have created
     // the txn between that read and our acquiring the lock. Without this re-check
@@ -1627,7 +1653,7 @@ export async function withdraw(userId: string, input: z.input<typeof WithdrawSch
     // Move funds from spendable balance into `hold` while in flight — atomic and
     // overdraw-guarded (WHERE balance >= amount) so concurrent debits on the same
     // wallet can't double-spend even across instances.
-    const updated = await db.wallet.adjust(w.id, { balance: -amount, hold: amount }, { requireBalanceGte: amount });
+    const updated = await db.wallet.adjust(w.id, { balance: -amount, hold: amount }, { requireBalanceGte: amount }, tx);
     // ⭐ THE SECOND CONTROL, and it must say the SAME thing as the first. This is the atomic
     // `WHERE balance >= amount` guard catching a concurrent debit that landed between the
     // check above and this write. A player who loses that race is in exactly the situation
@@ -1656,7 +1682,7 @@ export async function withdraw(userId: string, input: z.input<typeof WithdrawSch
       updatedAt: new Date().toISOString(),
       completedAt: null,
       idempotencyKey: idempotencyKey ?? null,
-    });
+    }, tx);
     // `kycStatus` is stamped on EVERY withdrawal, verified or not. A stamp that only
     // appeared on unverified payouts would make its own absence ambiguous — indis-
     // tinguishable from an audit write that failed (see the fail-open note below).

@@ -34,6 +34,8 @@ file is worthless the moment it describes an intention as a fact.
 | Bonus-funded positions are never sellable | ✅ **live, and deliberately NOT gated by the withdrawal.** This is a refusal, not an offer — gating it would turn a laundering block into a laundering route (bonus stake → cash out → withdrawable cash). Proven with a red harness: dropping the `!bonusFunded` term makes a bonus-funded position report `sellable=true`. `npm run test:withdrawn-features` §2. §2.6 |
 | Failure messages explain themselves | ⏳ LANDING — betting + cash-out (2026-08-14); wallet, KYC, auth and the banner channel (2026-08-15). The `loss limit` family is the last still recovered from prose. §2.9 |
 | **Agent commission 10% · fee VAT-EXCLUSIVE (TZS 118,000) · SLA 5 WORKING days · 5% withholding** | ⏳ **LANDING — decided by management 2026-09-08, code shipped, and NOT verified on production.** ⛔ Three of the four do not reach production on deploy: `defineConfig` hydrates `{ ...defaults, ...restored }`, so a persisted `agent.config` row overrides the **rate**, the **VAT treatment** and the **SLA** with whatever an officer last saved. Only `agentWithholdingTaxPct` is new and takes the default either way. **Do not delete this marker until `/admin/agents` → Settings has been READ on production and shows `10` · `EXCLUSIVE` · `5` working days · `5%`.** A deploy that silently keeps the old 20% is indistinguishable from a successful one. §2.10 |
+| **One levy split, one figure** | ✅ **live in code 2026-09-09.** The ledger booked TRA/GBT per winner with its own `Math.round` while `levySplit` rounded once over the whole fee — two records of one statutory liability, disagreeing on **43 of production's 203 fee-bearing settlements**, and GBT reachably **ZERO** on a market that owes it. Both now come from one allocation. §2.2 · `npm run test:levy-allocation` · `npm run red:levy-allocation` |
+| **A withdrawal's hold and its Transaction row commit together** | ✅ **live in code 2026-09-09.** `withdraw`'s Phase A ran `withLock(…, async () => {` — and the lock's transaction is **not ambient** (`prisma-dal` resolves `tx ?? pc()`), so both writes autocommitted outside it. A failure between them left the player's money in `Wallet.hold` with no txn row: invisible to the reconcile sweep, to `/admin/payments` and to the trial balance alike. §2.7 · `npm run test:lock-tx-threading`. ⚠️ **Structural guard only** — the behavioural proof needs `e2e:money` against a real Postgres |
 | Money rail refused when nobody chose one | ✅ **live in code 2026-09-08** — on LIVE money an unset or unrecognised `PAYMENT_AGGREGATOR` with no officer row resolves to NO provider and every deposit/withdrawal is refused with `PROVIDER_DOWN`, instead of silently running the mock (which fabricates confirmations). A *chosen* mock still runs — that is Ali's 2026-07-24 decision and is unchanged. `npm run test:payment-control` · `npm run red:payment-control`. ⚠️ Production still needs `PAYMENT_AGGREGATOR` READ OFF THE LIVE DEPLOYMENT and confirmed `selcom` |
 
 ---
@@ -104,7 +106,7 @@ file is worthless the moment it describes an intention as a fact.
 > arithmetic finds it sound. Corrected 2026-08-14 (A4). Every fee caption is now derived
 > from the same resolved rates the arithmetic uses — `describeFeeModel` in `payout.ts`.
 >
-> ⛔ **And the tile read `defaultRateProfile`, which no live chain reads.** All 16
+> ⛔ **And the tile read `defaultRateProfile`, which no live chain reads.** All 23 (2026-09-09; 16 when this was written)
 > `UpDownChain` rows carry their own copy and do NOT inherit, so the one console that would
 > have to notice a half-migrated board was structurally blind to it. `boardFeeSummary` now
 > reads every configured chain — including STOPPED ones, which freeze their profile onto
@@ -141,6 +143,44 @@ are levied on the fee *we* earned. Enforced in `payout.ts` → `levySplit`; rate
 `market.config` (`traTaxOnCommissionRate`, `gbtLevyOnCommissionRate`); admin-editable at
 `/admin/config`. On a voided or one-sided market we keep nothing, so we are taxed on nothing.
 
+> 🔴 **AND THE LEDGER — THE SIDE THAT HOLDS THE MONEY — WAS BOOKING A DIFFERENT NUMBER FROM
+> `levySplit` ON 43 OF PRODUCTION'S 203 FEE-BEARING SETTLEMENTS (found and fixed 2026-09-09).**
+> `settleMarket` calls `levySplit` **once** over the whole fee, for its audit payload and for
+> the agent-commission base. `settlementPayoutEntries` then derived each winner's TRA and GBT
+> **independently**, as `Math.round(thisWinnersFeeShare × rate)`. N independent roundings need
+> not sum to one rounding of the whole, so the two records of the same statutory liability
+> disagreed by construction.
+>
+> **GBT is 5%, so a winner's fee share under 10 TZS rounds to ZERO.** Fifteen bets at the TZS
+> 1,000 minimum against one 1,000 losing bet is a fee of 130 with every share ≤ 9 — the market
+> books **GBT 0 where `levySplit` says 7**: a levy recorded as never having arisen.
+>
+> | winner groups | markets | diverge |
+> |---|---|---|
+> | 1 | 138 | **0 (0.0%)** — one winner cannot disagree with itself |
+> | 2 | 29 | 16 (55%) |
+> | 3 | 18 | 12 (67%) |
+> | 5 … 27 | 9 | **9 (100%)** |
+>
+> ⛔ **It survived every guard because the group still SUMS TO ZERO either way** (commission
+> +share, −tra −gbt, +tra +gbt). `postLedgerEntries` accepted it, the trial balance tied, and
+> `ledger.test.mts` asserted only that a levy line *exists* — on a **one-winner** fixture, the
+> single shape where the two regimes cannot differ. The books balanced while the component did
+> not. ⭐ This is the *same* defect the commission line already carried and was fixed for (7
+> production pools left NEGATIVE): the medicine was applied to the fee and **not** to the two
+> levies computed from it.
+>
+> **Fixed:** `settleMarket` allocates each levy across the winners' **fee shares** by largest
+> remainder, so the column sums to `levySplit` exactly; `settlementPayoutEntries` books what it
+> is given. One fee, one levy split, one figure. Guards `npm run test:levy-allocation` **26/0**
+> · `npm run red:levy-allocation` **7/7** — mutation 1 is the pre-fix source verbatim, three are
+> over-corrections (booking a levy at a zero rate, taking the levy out of the player's payout,
+> rounding a share up), and mutation 7 attacks the gate's own positive control.
+>
+> ⚠️ **The 43 historical markets are NOT backfilled.** Net exposure is +20 TZS of TRA and −7 TZS
+> of GBT across all of production. Rewriting settled ledger rows is a bigger act than the error;
+> it is recorded here and left for Ali.
+
 ### 2.3 · Stake bounds — TZS 1,000 to TZS 1,000,000, per bet
 
 | | |
@@ -148,7 +188,7 @@ are levied on the fee *we* earned. Enforced in `payout.ts` → `levySplit`; rate
 | **Decided** | Ali, 2026-07-26; re-affirmed and made a **rule** (not a default) 2026-08-14. |
 | **Enforced in** | `src/lib/server/market-service.ts` → `buyPosition`, against the bounds `getEffectiveConfig` + `stakeBoundsForUpDownMarket` resolve for that market. The check is on a **single bet's** amount. |
 | **The rule itself** | `PLATFORM_MIN_STAKE` / `PLATFORM_MAX_STAKE` in `src/lib/payout.ts`. The admin doors validate against these, so the platform cannot be configured out of its own rule: an operator may NARROW the window inside 1,000…1,000,000, never widen it. |
-| **Configured in** | `SystemConfig["market.config"].global.minStake/maxStake` (`/admin/config`) and `SystemConfig["updown.config"].defaultMinStake/defaultMaxStake` (`/admin/updown`). All 16 Up & Down chains carry NULL min/max and inherit; `stakeBoundsFor` additionally FLOORS any chain at the product minimum, so a legacy row below the floor can never take a sub-floor stake. |
+| **Configured in** | `SystemConfig["market.config"].global.minStake/maxStake` (`/admin/config`) and `SystemConfig["updown.config"].defaultMinStake/defaultMaxStake` (`/admin/updown`). All Up & Down chains carry NULL min/max and inherit (**23 of 23** on production, read 2026-09-09 — this line said "16" until then, and a count written twice is a count that will disagree with itself); `stakeBoundsFor` additionally FLOORS any chain at the product minimum, so a legacy row below the floor can never take a sub-floor stake. |
 | **Migration** | `reconcileConfigDefaults` (v3) and `reconcileUpDownDefaults` (v3) raise a stored 500 → 1,000 and 100,000 → 1,000,000 on first read after deploy, and leave a deliberate custom value alone. |
 | **Stated to players** | The stake panel and preset ladder derive their range from the same resolver the money path uses — one source, no display/enforcement split. |
 | **Guarded by** | `npm run test:config` · `npm run red:stake-bounds` (6 mutations, incl. the exact 2026-08-14 state) · `test:updown-engine` §8B (floor-on-read for legacy rows) |
@@ -322,6 +362,28 @@ Charged on the amount withdrawn; 0.5 percentage points of it is the payment gate
 `DEFAULT_WITHDRAWAL_FEE_RATE` / `DEFAULT_WITHDRAWAL_GATEWAY_SHARE_RATE` in `payout.ts`,
 configured in `market.config`, editable at `/admin/config`. Stated to players on
 `/wallet/withdraw`, where it is interpolated from live config.
+
+> 🔴 **AND A WITHDRAWAL'S HOLD AND ITS TRANSACTION ROW WERE COMMITTING SEPARATELY (found and
+> fixed 2026-09-09).** `withdraw`'s Phase A read `withLock(\`wallet:${userId}\`, async () => {`.
+> `locks.ts` states its own contract as *"Everything inside ONE withLock now shares ONE
+> transaction, so a throw rolls back every write made under the lock"* — but that is **not
+> ambient**: `withAdvisoryLock` *passes* the tx to the callback, while `prisma-dal` resolves its
+> client as `const db: Db = tx ?? pc()` and never reads the store the lock publishes. A callback
+> that does not NAME `tx` therefore autocommits each write on the pooled singleton.
+>
+> ⛔ **And the function's own in-lock comment describes the resulting state exactly** — *"stranding
+> funds in `hold` with no txn row (reconcileStalePayments scans txns, so it never finds/reverses
+> them)"* — while guarding only the idempotency race, the one route to it that was foreseen. A
+> P2024 pool timeout, a P2028, or a SIGTERM during a rolling deploy between the two writes reaches
+> the same state with no race at all.
+>
+> **Nothing can see it.** `reconcileStalePayments` starts from the transaction table;
+> `/admin/payments` counts the same table; and `trialBalance` compares `balance + hold` against
+> the ledger — moving money between those two columns changes **neither side**, and no ledger
+> group is posted at request time. The books tie to the shilling over a player who is permanently
+> short, up to the TZS 1,000,000 bound. Fixed by threading the lock's `tx` into both writes, the
+> shape `settleWithdrawalConfirmed` already used. `npm run test:lock-tx-threading` **12/0**, RED on
+> the pre-fix source with the positive control (§3) still green.
 
 > ⚠️ **TWO DOC-COMMENTS QUOTED A RETIRED "1% DEFAULT" — corrected 2026-09-08.** `payout.ts`
 > (at `minWithdrawalForRate`) and `docs/SELCOM-PAYOUT-RAILS.md` both read *"it is 1.5% in
