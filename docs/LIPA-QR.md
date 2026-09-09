@@ -134,12 +134,48 @@ QR at an image nobody has decoded.
 | `test:lipa-qr` §2 | the safety rule — shows on a match, hides on a mismatch, an empty account, a switched-off operator toggle, and a number that merely *contains* the Lipa number |
 | `test:lipa-qr` §3 | the config refuses a non-numeric number, a bad USSD string, an asset path outside `/pay/`, an empty pin |
 | `test:lipa-qr` §4 | **the money rule** — an allow-list of surfaces, both directions, plus an explicit "no wallet surface renders this" arm |
-| `red:lipa-qr` | **10/10 caught, 0 missed, 0 broken harness.** Plants a *valid but different* QR, a one-character payload edit, a de-hashed filename, four separate corruptions of the safety rule, the deposit-page wiring, and two validator holes — each must fail the gate **on its own named check** |
+| `red:lipa-qr` | **10/10 caught, 0 missed, 0 broken harness** (restored 2026-09-09 — see §5a; it was 9/10 from the SVG migration until then). Plants a *valid but different* QR, a one-character payload edit, a de-hashed filename, four separate corruptions of the safety rule, the deposit-page wiring, and two validator holes — each must fail the gate **on its own named check** |
 | `qa:lipa-qr` | **122 checks.** Screenshots the element as painted and **decodes that**, at 360/393/768/1280 × en/sw/zh: a rectangle, a ≥150 CSS-px floor, square, no clipping, a vector source, the printed number matching the encoded one. Then it sets the fee destination to a *different* account and asserts the QR is **gone** while the account is still shown as text — and on every pass the same selector must match **nothing** on `/wallet/deposit`. It restores the destination it found |
 
 ⚠️ `red:lipa-qr` scores a run as CAUGHT only when the gate read the **mutant** tree and failed
 on the **targeted** check. "It exited non-zero" is not evidence, and an unmatched anchor is
 reported as a broken harness rather than a pass.
+
+### 5a. 🔴 The day the red harness scored itself 10/10 while one case proved nothing
+
+**2026-09-09.** The table above said 10/10. Executed on `5bd5f84e` it reported **9/10 · 1 missed**,
+and it had been 9/10 since the artwork became a vector — the handover that claimed 10/10 was
+written from a measurement taken **before** the SVG migration and never re-run.
+
+The broken case was *"the asset filename loses its content hash"*, the mutation defending the
+cache-busting property in §4a. It renamed the asset to `selcom-lipa-qr.png` and rewrote the
+config with a regex ending `\.png`. Once the config held `.svg`, **that rewrite matched nothing**
+— so the config kept pointing at the hashed path, the renamed file was simply gone, and the gate
+failed on §1.1 *(the configured asset is on disk)* instead of the targeted §1.6.
+
+⭐ **And §1.6 passed on the mutant tree, which is the part worth remembering.** It derives the
+hash from `cfg.qrAssetPath` — the **config string**, never the file on disk. A mutation that
+strands the asset cannot make §1.6 fail no matter how wrong the filename is.
+
+Two properties of the harness are the only reason this surfaced at all, and both were deliberate:
+
+- it demands the failure be the **named** check, so this scored `WRONG CHECK` rather than a pass.
+  A harness counting a non-zero exit would have reported 10/10 forever — the file *was* failing
+  the gate, just for a reason that had nothing to do with content hashing;
+- it reports an unusable mutation as a **broken harness**, not a catch.
+
+⛔ **The fix is that the mutation now removes the hash and nothing else.** The extension is read
+from the file that is actually on disk rather than hard-coded, the asset stays findable, decodable
+and byte-identical to the pin, and §1.6 is left as the only check that *can* fail. A config
+rewrite that changes nothing now returns a broken-harness reason instead of proceeding silently —
+the text-anchor path already refused a mutation that left the file identical, and a `mutate` that
+rewrites a file owes the same proof.
+
+🎯 **The general rule this is an instance of: a mutation that breaks its subject in more than one
+way is not aimed at anything.** It will keep failing the gate, and it will stop testing what its
+name says. When a guard reads a *description* of an artefact (a path, a config string) rather than
+the artefact, a mutation must corrupt the description — corrupting the artefact leaves the guard
+untouched and the harness green for the wrong reason.
 
 ## 6. What is NOT built
 

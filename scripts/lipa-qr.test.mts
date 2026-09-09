@@ -181,6 +181,10 @@ rejects("3.3 rejects an empty merchant name", { merchantName: "   " });
 rejects("3.4 rejects a USSD code that is not one", { ussdCode: "call us" });
 rejects("3.5 rejects an asset path outside /pay/", { qrAssetPath: "/uploads/evil.png" });
 rejects("3.6 rejects an empty pinned payload", { qrPayload: "" });
+// ⛔ §4a made structural. A raster QR is unscannable at some sizes and DPRs (moiré), so a .png
+// under /pay/ — which the path rule alone would wave through — is refused by the validator and
+// not merely by the prose. The path is correct here; only the extension is wrong.
+rejects("3.8 rejects a RASTER asset, even at a valid /pay/ path", { qrAssetPath: "/pay/selcom-lipa-qr.d997c1d2.png" });
 const roundTrip = setLipaConfig({ lipaNumber: "7006 3747" } as never, "guard");
 check("3.7 a spaced Lipa number is refused rather than silently stored", !roundTrip.ok);
 setLipaConfig(before, "guard");

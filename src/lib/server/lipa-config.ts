@@ -78,10 +78,10 @@ export type LipaConfig = {
    */
   qrAssetPath: string;
   /**
-   * The exact TIPS/EMVCo payload the shipped PNG decodes to.
+   * The exact TIPS/EMVCo payload the shipped SVG decodes to.
    *
    * ⭐ PINNED, AND THE PIN IS THE POINT. `test:lipa-qr` decodes
-   * `public/pay/selcom-lipa-qr.png` and asserts it still equals this string
+   * `public/pay/selcom-lipa-qr.<hash>.svg` and asserts it still equals this string
    * byte-for-byte. A swapped, re-cropped, re-compressed or well-meaningly
    * "optimised" image fails the build instead of quietly redirecting money. An
    * assertion that the file merely EXISTS would pass in every one of those cases.
@@ -92,7 +92,8 @@ export type LipaConfig = {
 /**
  * Ocean Entertainment Limited, as extracted and verified from the Selcom poster
  * `70063747-QR-1.pdf` on 2026-09-08 (CRC-16 `50F1` valid, merchant id present,
- * point-of-initiation `11` = static, PNG round-trip decode identical).
+ * point-of-initiation `11` = static, round-trip decode identical). The artwork is a
+ * VECTOR — see `docs/LIPA-QR.md` §4a for why a raster QR is a defect on this surface.
  */
 export const DEFAULT_LIPA_CONFIG: LipaConfig = {
   enabled: true,
@@ -121,8 +122,14 @@ function validate(c: LipaConfig): { ok: true } | { ok: false; reason: string } {
     return { ok: false, reason: "The USSD code must look like *150*50# — start with *, end with #." };
   // ⛔ The asset is served from /public. A path that escapes it is either a mistake
   // or an attempt to point the QR at something we do not control.
-  if (!/^\/pay\/[A-Za-z0-9._-]+\.(png|svg)$/.test(c.qrAssetPath))
-    return { ok: false, reason: "The QR asset must be a .png or .svg under /pay/." };
+  // ⛔ AND IT MUST BE A VECTOR. `docs/LIPA-QR.md` §4a is not a style preference: a raster QR
+  // decoded at 160px, FAILED at 176 and 192, decoded at 208 and 224, failed at 240 and 256, and
+  // the pattern MOVED at another devicePixelRatio — moiré between the module grid and the device
+  // pixel grid. Some players could scan it and some could not, unpredictably, with the file on
+  // disk perfect and every unit test green. `.png` was permitted here while the prose forbade it,
+  // which left the rule enforced only by whoever had read the doc.
+  if (!/^\/pay\/[A-Za-z0-9._-]+\.svg$/.test(c.qrAssetPath))
+    return { ok: false, reason: "The QR asset must be a .svg under /pay/ — a raster QR is unscannable at some sizes (LIPA-QR.md §4a)." };
   if (!c.qrPayload.trim())
     return { ok: false, reason: "The pinned QR payload cannot be empty — it is what the guard checks the image against." };
   return { ok: true };

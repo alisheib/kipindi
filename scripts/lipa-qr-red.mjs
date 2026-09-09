@@ -76,13 +76,40 @@ const MUTATIONS = [
     name: "the asset filename loses its content hash",
     why: "the cache-first service worker then pins a REISSUED QR in every returning player's browser",
     check: "1.6 the filename's hash matches the payload",
+    // ⛔ THIS CASE WAS BROKEN BY THE SVG MIGRATION AND SCORED ITSELF 10/10 ANYWAY. It used to
+    // rename the asset to `selcom-lipa-qr.png` and rewrite the config with a regex ending
+    // `\.png`. Once the artwork became a vector the config held `.svg`, so the rewrite matched
+    // NOTHING: the config kept pointing at the hashed path, the renamed file was simply gone,
+    // and the gate failed on 1.1/1.2/1.3 while the targeted 1.6 — which reads the CONFIG STRING,
+    // never the file on disk — still passed. Recorded as `9/10 · WRONG CHECK` only because the
+    // scorer demands the NAMED check; a harness that merely counted a non-zero exit would have
+    // reported this as caught forever.
+    //
+    // ⭐ SO THE MUTATION REMOVES THE HASH AND NOTHING ELSE. The extension comes from the file
+    // that is actually there, so the asset stays findable (1.1), decodable (1.2) and byte-identical
+    // to the pin (1.3) — leaving 1.6 as the ONLY check that can fail. A mutation that strands the
+    // asset proves the gate notices a missing file, which is not what 1.6 is for.
     mutate(root) {
       const dir = join(root, "public", "pay");
       const f = readdirSync(dir).find((n) => /^selcom-lipa-qr\./.test(n));
       if (!f) return "no QR asset in the copied tree";
-      renameSync(join(dir, f), join(dir, "selcom-lipa-qr.png"));
+      // Extension taken from disk, never hard-coded — that hard-coding is what rotted last time.
+      const parts = /^selcom-lipa-qr\.[0-9a-f]{8}(\.[A-Za-z0-9]+)$/.exec(f);
+      if (!parts) return `the asset is not content-hashed to begin with (${f}) — there is no hash to remove`;
+      const ext = parts[1];
+      const dehashed = `selcom-lipa-qr${ext}`;
+      renameSync(join(dir, f), join(dir, dehashed));
       const p = join(root, "src", "lib", "server", "lipa-config.ts");
-      writeFileSync(p, readFileSync(p, "utf8").replace(/\/pay\/selcom-lipa-qr\.[0-9a-f]{8}\.png/, "/pay/selcom-lipa-qr.png"), "utf8");
+      const before = readFileSync(p, "utf8");
+      const after = before.replace(
+        new RegExp(`/pay/selcom-lipa-qr\\.[0-9a-f]{8}\\${ext}`),
+        `/pay/${dehashed}`,
+      );
+      // ⭐ The silent no-op is the whole defect above, so it is now LOUD. The text-anchor path
+      // already refuses a mutation that leaves the file identical; a `mutate` that rewrites a
+      // file owes the same proof.
+      if (after === before) return `the config still points at a hashed ${ext} path — nothing was de-hashed`;
+      writeFileSync(p, after, "utf8");
       return null;
     },
   },
@@ -143,7 +170,7 @@ const MUTATIONS = [
     why: "the QR could then be pointed at any image in the deployment, including an uploaded one",
     check: "3.5 rejects an asset path outside /pay/",
     file: "src/lib/server/lipa-config.ts",
-    from: '  if (!/^\\/pay\\/[A-Za-z0-9._-]+\\.(png|svg)$/.test(c.qrAssetPath))',
+    from: '  if (!/^\\/pay\\/[A-Za-z0-9._-]+\\.svg$/.test(c.qrAssetPath))',
     to: "  if (false)",
   },
 ];
