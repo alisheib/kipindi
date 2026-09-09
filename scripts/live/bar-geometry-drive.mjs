@@ -168,7 +168,22 @@ for (const locale of LOCALES) {
             const r = e.getBoundingClientRect();
             const cs = getComputedStyle(e);
             // EXEMPTION 1 — inside a SHUT disclosure. Its own <summary> is not inside it.
-            let n = e.parentElement, inClosed = false;
+            //
+            // 🔴 AND FOR A DAY IT WAS, WHICH BLINDED THE ASSERTION THIS DRIVER WAS BUILT FOR.
+            // The walk began at `e.parentElement`, and a <summary>'s parent IS the <details> it
+            // opens — so every summary on every bar (the sort control AND the `Filters` trigger)
+            // was exempted from all three measurements. The line above has always claimed the
+            // opposite; the code did not implement it. ⛔ The cost was exact: assertion 1 (NO
+            // OVERLAP) was structurally incapable of failing on the sort summary — the very
+            // control whose 44px collision with the direction button is the reason this driver
+            // exists — and the red mutation written to prove it kept reporting NOT CAUGHT while
+            // the mutation was working perfectly. A guard that exempts what it polices.
+            //
+            // ⚠️ The walk still starts ABOVE that one disclosure rather than skipping the rule:
+            // a sort menu nested inside a shut `Filters` sheet must stay exempt, because Chrome
+            // lays a closed <details> out and neither paints nor hit-tests it.
+            let n = e.tagName === "SUMMARY" ? (e.parentElement && e.parentElement.parentElement) : e.parentElement;
+            let inClosed = false;
             while (n) {
               if (n.tagName === "DETAILS" && !n.open) { inClosed = true; break; }
               n = n.parentElement;

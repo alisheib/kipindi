@@ -17,8 +17,12 @@
  * has fallen off the right edge, or whether the bar is still stuck to the top after a scroll.
  */
 /**
- * ⛔ THE REMOVED CASE, KEPT AS A RECORD OUTSIDE THE ARRAY so it cannot be revived by deleting a
- * marker, and so nobody re-derives it from scratch.
+ * ✅ THE DEBT BELOW IS PAID — `sort-summary-unbound` IS BACK IN THE ARRAY, UNCHANGED. It was never
+ * a bad mutation; it was a good mutation pointed at a driver that could not see its subject. The
+ * record below is kept exactly as it was written, INCLUDING its wrong conclusion, because the
+ * wrong conclusion is the lesson: it is what a measurement looks like when the instrument is the
+ * thing that is broken. ⛔ Do not delete it and do not "correct" it in place — the correction is
+ * the header above, which is dated after it.
  *
  *   name   sort-summary-unbound
  *   file   src/components/ui/query-bar.tsx
@@ -44,9 +48,50 @@
  * "Sort" key is not rendered at all and the value has the whole control to live in. The overlap
  * needed the key AND the value AND the button competing for one line.
  *
- * ⚠️ SO ASSERTION 1 (NO OVERLAP) HAS NO RED PROOF. It is not unguarded — it runs on every measured
- * box, on every surface × width × locale — but nothing has been SEEN TO FAIL on it. ⛔ A mutation
- * that reproduces an overlap on the CURRENT markup is OWED. See the campaign board's Stage 6 row.
+ * ⚠️ SO ASSERTION 1 (NO OVERLAP) HAD NO RED PROOF. It was not unguarded — it runs on every measured
+ * box, on every surface × width × locale — but nothing had been SEEN TO FAIL on it.
+ *
+ * ⭐ PAID 2026-09-09 — AND THE MUTATION WAS NEVER THE PROBLEM. THE INSTRUMENT WAS BLIND.
+ *
+ * 🔴 `qa:bar-geometry` EXEMPTED THE SORT SUMMARY FROM EVERY MEASUREMENT IT TAKES. Its EXEMPTION 1
+ * walks up from an element looking for a shut `<details>`, and the walk began at
+ * `e.parentElement` — but **a `<summary>`'s parent IS the `<details>` it opens**, so every summary
+ * on every bar (the sort control and the `Filters` trigger both) was classified as "inside a
+ * closed disclosure" and dropped before any assertion ran. The line of code directly above it had
+ * always claimed the opposite — *"Its own `<summary>` is not inside it"* — so the intent was
+ * written down and never implemented.
+ *
+ * ⛔ THE CONSEQUENCE IS THE WORST SHAPE A GUARD CAN TAKE: assertion 1 (NO OVERLAP) was
+ * structurally incapable of failing on the one control whose 44px collision with the direction
+ * button is the reason this entire driver was built. **A guard that exempts what it polices.**
+ *
+ * ⚠️ AND IT PRODUCED A FALSE RETRACTION. The 2026-09-08 note below concluded the defect "no longer
+ * reproduces" because the mutated run "measured 7 boxes and reported NO overlap" — and it was
+ * measured, not reasoned, which is normally the strongest evidence there is. It was still wrong:
+ * the summary was one of the boxes the driver refused to measure, so the count of 7 was itself the
+ * symptom. The theory built on it — that `labelClassName="hidden lg:inline"` had removed a third
+ * competing element and dissolved the defect — was plausible, self-consistent, and false.
+ *
+ * Re-measured at 360/sw on the repaired driver, with `w-full` dropped and NOTHING else changed:
+ *
+ *     clean      summary 16→154 · direction button 154→198   → abut exactly, 0 overlap
+ *     mutated    summary 16→206 · direction button 154→198   → 44px OVERLAP, as first reported
+ *
+ * ⭐ THE GENERAL LESSON, worth more than this one case: **when a red mutation stops reproducing,
+ * suspect the instrument before you retire the case.** A measurement taken through a blind
+ * instrument is not weaker evidence than a guess — it is stronger-looking evidence for a wrong
+ * conclusion, and it comes with a number attached. The question that settles it is the one this
+ * platform keeps having to relearn: *what would this check do if the defect were present?* Here,
+ * nothing — and the box count was saying so out loud.
+ *
+ * ⚠️ ONE ARM IS STILL UNPROVEN, AND IT IS NAMED HERE RATHER THAN LEFT TO BE REDISCOVERED:
+ * assertion 4's SECOND arm — "ANOTHER STICKY SURFACE IS DRAWN THROUGH THE BAR" — has no mutation.
+ * That is the arm that caught the 91px search-band collision on three routes, and it is a
+ * different code path from the "did not stick" arm that `bar-is-not-sticky` proves. The mutation
+ * it wants is a search band made `sticky top-[56px]` again on `/proposals`, `/watchlist` or
+ * `/results`, each of which carries a comment saying exactly why it is not sticky. ⛔ It is NOT
+ * covered by the case below: assertion 1 compares controls INSIDE `[data-filter-rail]`, and the
+ * search band is a sibling of the bar, so the two assertions cannot stand in for each other.
  */
 export const MUTATIONS = [
   {
@@ -119,6 +164,37 @@ export const MUTATIONS = [
     from: '        className="inline-flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-r-pill border border-border-control bg-bg-inset text-text-muted hover:text-text"',
     to: '        className="inline-flex h-[43px] w-[44px] shrink-0 items-center justify-center rounded-r-pill border border-border-control bg-bg-inset text-text-muted hover:text-text"',
     expect: "SHORT",
+    route: "/markets",
+  },
+  {
+    /**
+     * 🔴 THE 44px OVERLAP — the defect this whole driver was built after, and the last of its
+     * assertions to get a control. Measured on the live board at 360 before the repair existed:
+     *
+     *     /markets sw  summary 16→255 · direction button 154→198  → 44px OVERLAP
+     *     /markets en  summary 16→218 · direction button 166→210  → 44px OVERLAP
+     *     /markets zh  summary 16→162 · direction button 162→206  → 0  (short labels escape)
+     *
+     * The 44×44 direction button was drawn ON TOP of the sort label — "Za hivi karibuni" with an
+     * arrow through it — in two of three languages, on the platform's reference bar. ⛔ And every
+     * other gate was green: the DOCUMENT does not overflow, so `test:responsive` passed; the
+     * radius and the tap floor were untouched, so `qa:filter-scan` passed.
+     *
+     * ⛔ AND IT IS THE ORIGINAL ONE-LINE MUTATION, UNCHANGED. It never needed rewriting — see the
+     * header: it was retired on a measurement taken through a blind instrument. Re-measured on the
+     * repaired driver, with `w-full` dropped and nothing else touched:
+     *
+     *     summary 16→206 · direction button 154→198  → 44px OVERLAP
+     *
+     * ⚠️ SWAHILI AT 360, CHOSEN NOT DEFAULTED. Swahili runs 35–40% longer than English and Chinese
+     * escapes the defect entirely on label length alone; a proof run at `zh` would report NOT
+     * CAUGHT and the harness would look like the defect. `SHAPE` in `red-bar-geometry.mjs` pins it.
+     */
+    name: "sort-summary-unbound",
+    file: "src/components/ui/query-bar.tsx",
+    from: '        className="w-full min-w-0 rounded-l-pill rounded-r-none border-r-0"',
+    to: '        className="min-w-0 rounded-l-pill rounded-r-none border-r-0"',
+    expect: "OVERLAP",
     route: "/markets",
   },
 ];
