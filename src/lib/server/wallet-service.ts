@@ -798,13 +798,42 @@ export async function dispatchApprovedWithdrawal(
 export async function settleWithdrawalFailed(txnId: string, reason: string): Promise<boolean> {
   const pre = await db.txn.findById(txnId);
   if (!pre) return false;
-  const done = await withLock(`wallet:${pre.userId}`, async (): Promise<StoredTxn | null> => {
+  /**
+   * 🔴 THE REFUND AND THE STATUS FLIP ARE ONE COMMIT, OR THE SWEEP PAYS TWICE.
+   *
+   * This callback was `async ()` — naming no `tx` — and the lock's transaction is NOT
+   * ambient: `prisma-dal` resolves `const db: Db = tx ?? pc()` and never reads the store
+   * `withAdvisoryLock` publishes. So the credit and the status write autocommitted
+   * SEPARATELY, and the "Exactly-once under the wallet lock" this function's own docstring
+   * claims four lines above was not enforced by anything.
+   *
+   * ⛔ AND THE FAILURE REPEATS. The only thing between a payout and a second refund is
+   * `t.status !== "PROCESSING"`, read inside this lock. If the credit commits and the
+   * status write then fails — a P2024 pool timeout, a P2028, a SIGTERM during a rolling
+   * deploy — the money is back in the player's spendable balance and the row is STILL
+   * `PROCESSING`. `reconcileStalePayments` runs every five minutes, finds it, re-queries,
+   * reads FAILED, and calls this again. The guard passes, because nothing moved the
+   * status. It refunds again. And again, every five minutes, for as long as the write
+   * keeps failing — while the real payout may already have left the float.
+   *
+   * ⭐ `settleWithdrawalConfirmed`, two hundred lines above, has always done this
+   * correctly: `withMoneyTx(async (tx) => …)` with `tx` threaded into every write. The
+   * CONFIRMED path was atomic and the FAILED path — the one that hands money BACK — was
+   * not. Same defect as `withdraw`'s Phase A (money-gate §6.2), same fix.
+   *
+   * With one transaction the two writes commit together or not at all: a failure leaves
+   * the row PROCESSING with NO refund, and the next sweep tick retries it safely.
+   */
+  const done = await withLock(`wallet:${pre.userId}`, async (tx): Promise<StoredTxn | null> => {
+    // ⚠️ `txn.findById` takes no `tx` (the DAL only threads it where a WRITE needs it), and
+    // it does not need one: the advisory lock serialises every writer to this wallet, so
+    // this guard read sees committed state and the two writes below are what must be atomic.
     const t = await db.txn.findById(txnId);
     if (!t || t.status !== "PROCESSING") return null;
     const amt = Math.abs(t.amount);
-    const w = await db.wallet.findByUserId(t.userId);
-    if (w) await db.wallet.adjust(w.id, { balance: amt, hold: -amt });
-    await db.txn.update(txnId, { status: "FAILED", description: `Withdrawal failed: ${reason}` });
+    const w = await db.wallet.findByUserId(t.userId, tx);
+    if (w) await db.wallet.adjust(w.id, { balance: amt, hold: -amt }, undefined, tx);
+    await db.txn.update(txnId, { status: "FAILED", description: `Withdrawal failed: ${reason}` }, tx);
     return t;
   });
   if (done) {

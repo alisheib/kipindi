@@ -80,6 +80,28 @@ console.log("\n§2 · wallet-service.withdraw Phase A enrols its writes in the l
     "txn.create does not receive tx");
 }
 
+// ── §2b · settleWithdrawalFailed — the path that hands money BACK ────────────
+//
+// 🔴 THE SAME DEFECT, ON THE REFUND PATH, AND IT REPEATS. Its callback was `async ()` too,
+// so the credit and the status write autocommitted separately. The only thing between a
+// payout and a SECOND refund is `t.status !== "PROCESSING"`, read inside that lock — so a
+// credit that commits while the status write fails leaves money returned AND the row still
+// PROCESSING. `reconcileStalePayments` runs every five minutes, finds it, re-queries, reads
+// FAILED, and refunds again. And again. While the real payout may already have left.
+console.log("\n§2b · settleWithdrawalFailed commits the refund and the status flip together");
+{
+  const failed = blockAfter(wallet, "export async function settleWithdrawalFailed");
+  ok("2b.1  its lock callback NAMES the transaction",
+    /withLock\(`wallet:\$\{pre\.userId\}`,\s*async \(tx\)/.test(failed),
+    "callback is `async ()` — the refund and the status write autocommit separately");
+  ok("2b.2  the refund credit is passed the tx",
+    /db\.wallet\.adjust\(w\.id, \{ balance: amt, hold: -amt \}, undefined, tx\)/.test(failed),
+    "the credit does not receive tx");
+  ok("2b.3  the FAILED status write is passed the tx",
+    /db\.txn\.update\(txnId, \{ status: "FAILED"[^;]*\}, tx\)/.test(failed),
+    "the status write does not receive tx — this is the half that repeats");
+}
+
 // ── §3 · POSITIVE CONTROL — the scanner can still say NO ─────────────────────
 //
 // ⛔ WITHOUT THIS, §2 COULD PASS BY MATCHING NOTHING. Each assertion is re-run against the
@@ -110,6 +132,15 @@ console.log("\n§3 · POSITIVE CONTROL · the pre-fix shape must be REJECTED");
     /await withLock\(`wallet:\$\{userId\}`,\s*async \(tx\)/.test(fixed)
     && /db\.wallet\.adjust\([^;]*requireBalanceGte: amount \}, tx\)/.test(fixed)
     && /idempotencyKey: idempotencyKey \?\? null,\s*\n\s*\}, tx\);/.test(fixed));
+
+  // …and the same for §2b's three, against the refund path's real pre-fix text.
+  const preFixFailed = `const done = await withLock(\`wallet:\${pre.userId}\`, async (): Promise<StoredTxn | null> => {
+    if (w) await db.wallet.adjust(w.id, { balance: amt, hold: -amt });
+    await db.txn.update(txnId, { status: "FAILED", description: \`Withdrawal failed: \${reason}\` });`;
+  ok("3.5  pre-fix settleWithdrawalFailed is rejected by all three of §2b",
+    !/withLock\(`wallet:\$\{pre\.userId\}`,\s*async \(tx\)/.test(preFixFailed)
+    && !/db\.wallet\.adjust\(w\.id, \{ balance: amt, hold: -amt \}, undefined, tx\)/.test(preFixFailed)
+    && !/db\.txn\.update\(txnId, \{ status: "FAILED"[^;]*\}, tx\)/.test(preFixFailed));
 }
 
 // ── §4 · The reference implementation stays the reference ────────────────────
