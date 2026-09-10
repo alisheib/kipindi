@@ -1,4 +1,4 @@
-import { LegalHeader, LegalSection } from "../_components";
+import { LegalHeader, LegalSection, LEGAL_BINDING_LANGUAGE as BINDING } from "../_components";
 import { SUPPORT_EMAIL } from "@/lib/server/support-config";
 import { getServerT, type Locale } from "@/lib/i18n-server";
 import { getAgentConfig } from "@/lib/server/agent-config";
@@ -21,11 +21,6 @@ export async function generateMetadata() {
  * diverge. ⛔ Every number is read from `agent-config`; none is typed here.
  */
 const EYEBROW: Record<Locale, string> = { en: "Legal", sw: "Kisheria", zh: "法律" };
-const BINDING: Record<Locale, string> = {
-  en: "The English version of this document is the legally binding text; translations are provided for convenience.",
-  sw: "Toleo la Kiingereza la waraka huu ndilo lenye nguvu ya kisheria; tafsiri zimetolewa kwa ajili ya urahisi tu.",
-  zh: "本文件的英文版本为具有法律约束力的文本；其他语言译本仅供参考之便。",
-};
 const META: Record<Locale, string> = {
   en: `Version ${AGENT_TERMS_VERSION} · Accepted when an agent application is submitted.`,
   sw: `Toleo ${AGENT_TERMS_VERSION} · Yanakubaliwa wakati maombi ya uwakala yanapowasilishwa.`,

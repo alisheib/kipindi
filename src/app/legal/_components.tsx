@@ -10,6 +10,30 @@ import { type ReactNode } from "react";
 import { I } from "@/components/ui/glyphs";
 import { GiltCorner } from "@/components/brand";
 import { PageHeader } from "@/components/ui/page-header";
+import { type Locale } from "@/lib/i18n-server";
+
+/**
+ * WHICH LANGUAGE IS THE LEGALLY BINDING ONE — stated once, for every legal document.
+ *
+ * ⛔ THIS WAS A FIVE-FOLD COPY, BYTE-IDENTICAL, IN `terms` · `privacy` · `aml` ·
+ * `responsible-gambling` · `agent-terms`. §0a of `docs/DESIGN_AUTHORITY.md` is "one fact, one
+ * home", and this is a fact about the DOCUMENTS, not about any one of them — so the two new
+ * game-rules documents would have made it copies six and seven before anybody noticed it was
+ * one sentence at all.
+ *
+ * ⭐ It matters more than an ordinary duplicate. This sentence decides which text a Board
+ * reviewer or a court reads when the translations disagree. Five copies is five chances for one
+ * of them to be edited alone — and the drift would be invisible, because no reader ever sees two
+ * of these pages at the same moment.
+ *
+ * ⚠️ A translation here is BINDING TEXT, not copy: change it and the document's META version
+ * must bump in the same commit (`legal/terms/page.tsx:22-25` states that rule).
+ */
+export const LEGAL_BINDING_LANGUAGE: Record<Locale, string> = {
+  en: "The English version of this document is the legally binding text; translations are provided for convenience.",
+  sw: "Toleo la Kiingereza la waraka huu ndilo lenye nguvu ya kisheria; tafsiri zimetolewa kwa ajili ya urahisi tu.",
+  zh: "本文件的英文版本为具有法律约束力的文本；其他语言译本仅供参考之便。",
+};
 
 export function LegalHeader({
   title,

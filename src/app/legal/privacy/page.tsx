@@ -1,4 +1,4 @@
-import { LegalHeader, LegalSection } from "../_components";
+import { LegalHeader, LegalSection, LEGAL_BINDING_LANGUAGE as BINDING } from "../_components";
 import { SUPPORT_EMAIL } from "@/lib/server/support-config";
 import { getServerT, type Locale } from "@/lib/i18n-server";
 // ⭐ The referee clock is the service's constant — §9 states the number the purge actually runs on.
@@ -19,11 +19,6 @@ const META: Record<Locale, string> = {
   en: "Aligned with the Tanzania Personal Data Protection Act 2022 and EU GDPR principles.",
   sw: "Imeoanishwa na Tanzania Personal Data Protection Act 2022 na kanuni za EU GDPR.",
   zh: "符合 Tanzania Personal Data Protection Act 2022 及 EU GDPR 原则。",
-};
-const BINDING: Record<Locale, string> = {
-  en: "The English version of this document is the legally binding text; translations are provided for convenience.",
-  sw: "Toleo la Kiingereza la waraka huu ndilo lenye nguvu ya kisheria; tafsiri zimetolewa kwa ajili ya urahisi tu.",
-  zh: "本文件的英文版本为具有法律约束力的文本；其他语言译本仅供参考之便。",
 };
 
 const CONTENT: Record<Locale, React.ReactNode> = {

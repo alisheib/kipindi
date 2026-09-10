@@ -1,4 +1,4 @@
-import { LegalHeader, LegalSection } from "../_components";
+import { LegalHeader, LegalSection, LEGAL_BINDING_LANGUAGE as BINDING } from "../_components";
 import { SUPPORT_EMAIL, LICENCE_NUMBER } from "@/lib/server/support-config";
 import { getServerT, type Locale } from "@/lib/i18n-server";
 import { getGlobalConfig } from "@/lib/server/market-config";
@@ -28,11 +28,6 @@ const META: Record<Locale, string> = {
   en: "Version 2026-09-07 · Effective on account registration.",
   sw: "Toleo 2026-09-07 · Yanaanza kutumika unaposajili akaunti.",
   zh: "版本 2026-09-07 · 自账户注册时生效。",
-};
-const BINDING: Record<Locale, string> = {
-  en: "The English version of this document is the legally binding text; translations are provided for convenience.",
-  sw: "Toleo la Kiingereza la waraka huu ndilo lenye nguvu ya kisheria; tafsiri zimetolewa kwa ajili ya urahisi tu.",
-  zh: "本文件的英文版本为具有法律约束力的文本；其他语言译本仅供参考之便。",
 };
 
 /**
