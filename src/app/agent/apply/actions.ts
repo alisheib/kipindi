@@ -14,7 +14,7 @@ import { sniffBase64ImageMime } from "@/lib/server/image-signature";
 import { MAX_DOC_BYTES } from "@/lib/id-documents";
 import type { AgentDocType } from "@/lib/server/store";
 import {
-  startApplication, attachAgentDocument, setReferees, recordFeePayment, submitForReview, ALL_DOC_SLOTS,
+  startApplication, attachAgentDocument, setReferees, recordFeePayment, payFeeFromWallet, submitForReview, ALL_DOC_SLOTS,
   type FeeRefusal,
 } from "@/lib/server/agent-application-service";
 import { AGENT_TERMS_VERSION } from "@/lib/agent-terms-version";
@@ -85,6 +85,30 @@ export async function recordFeePaymentAction(formData: FormData): Promise<Action
   const userId = await me();
   const r = await recordFeePayment(userId, { feeReference: String(formData.get("feeReference") ?? "") });
   if (!r.ok) return { ok: false, error: r.error, refusal: r.refusal, ...(r.field ? { field: r.field } : {}) };
+  return { ok: true, data: r.data };
+}
+
+/**
+ * ⭐ PAY THE REGISTRATION FEE FROM THE WALLET — the live rail since 2026-09-10.
+ *
+ * Thin, like every action here: `payFeeFromWallet` owns the money, the locks, the two deposit
+ * preconditions and the retained refund-owed refusal. This layer carries the SHORTFALL back out,
+ * because the surface needs the number to offer a deposit for the right amount rather than
+ * sending someone to a top-up page to guess.
+ *
+ * ⛔ Takes no `FormData`. There is nothing for the applicant to type — the amount comes from
+ * `feeBreakdown()` on the server and the payer is the session. A form field for the amount is how
+ * a TZS 1,000 payment gets attested as a TZS 100,000 fee.
+ */
+export async function payFeeFromWalletAction(): Promise<ActionResult<{ status: string }> & { shortfallTzs?: number }> {
+  const userId = await me();
+  const r = await payFeeFromWallet(userId);
+  if (!r.ok) {
+    return {
+      ok: false, error: r.error, refusal: r.refusal,
+      ...(r.shortfallTzs !== undefined ? { shortfallTzs: r.shortfallTzs } : {}),
+    };
+  }
   return { ok: true, data: r.data };
 }
 

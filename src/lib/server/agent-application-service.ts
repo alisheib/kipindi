@@ -47,6 +47,9 @@ import { withLock } from "./locks";
 import { getAgentConfig, type AgentConfig, type FeeVatTreatment } from "./agent-config";
 import { ensureAffiliateAccount, isApprovedAgent, agentStandingFor, AGENT_CODE_PREFIX } from "./affiliate-service";
 import { getKycStatus, reviewKyc, validateDocImage } from "./kyc-service";
+// ⭐ The all-or-nothing fee debit (Ali, 2026-09-10). ⛔ NOT `debitInternal`, which debits
+// partially by design. ⚠️ `wallet-service` does not import this module, so no cycle.
+import { payAgentRegistrationFee } from "./wallet-service";
 import { putKycDocument, deleteKycDocument } from "./storage";
 import { isStaffRole } from "./roles";
 import { isLockedOut, selfExclusionStanding } from "./responsible-gambling";
@@ -410,14 +413,49 @@ export async function attachAgentDocument(
   });
 }
 
+/**
+ * ⭐ THE DRAFT-STATE RULE, PURE — one home, no I/O.
+ *
+ * Extracted so `payFeeFromWallet` can apply the SAME rule without a second database round trip
+ * while it is holding the wallet lock. ⚠️ The alternative was to re-state the derivation at that
+ * call site, which is a second source of truth for a status machine — exactly the thing that
+ * rots. ⛔ Any new draft-state condition belongs HERE and nowhere else.
+ */
+function deriveDraftStatus(
+  app: Pick<StoredAgentApplication, "status" | "feeReference" | "feeDisposition">,
+  allSeven: boolean,
+): StoredAgentApplication["status"] {
+  if (app.status === "ADDITIONAL_INFO_REQUIRED") return app.status;
+  /**
+   * ⛔ "THE FEE IS SETTLED", NOT "A REFERENCE WAS TYPED".
+   *
+   * 🔴 This read `!!app.feeReference || app.feeDisposition === "WAIVED"`, which was complete only
+   * while every payment happened out of band. A WALLET payment (Ali, 2026-09-10) writes **no
+   * `feeReference`** — the debit carries the payer's identity, so there is nothing to type — so a
+   * paid applicant stayed at `KYC_SUBMITTED`. And `submitForReview` is the ONLY door into
+   * `UNDER_REVIEW`: they had paid us TZS 100,000 and the form would not let them apply.
+   *
+   * ⭐ `COLLECTED` is the disposition that means "we have the money", by either rail, and it is
+   * already what `approveAgent` requires. Reading the DISPOSITION rather than the evidence of one
+   * particular rail is what makes this correct for both.
+   * `npm run test:agent-fee-wallet-path` §1.1 · `COMPLIANCE-DECISIONS.md` § 2026-09-10.
+   */
+  const feeRecorded = !!app.feeReference || app.feeDisposition === "WAIVED" || app.feeDisposition === "COLLECTED";
+  return !allSeven ? "DRAFT" : feeRecorded ? "PAYMENT_PENDING" : "KYC_SUBMITTED";
+}
+
+/** Has the applicant attached all seven required documents? One read, so a caller that already
+ *  needs it can take it BEFORE entering a lock-sensitive section. */
+async function hasAllRequiredDocs(applicationId: string): Promise<boolean> {
+  const docs = (await db.agentApplicationDoc.listByApplication(applicationId)).filter((d) => !d.purgedAt);
+  return REQUIRED_DOC_SLOTS.every((s) => docs.some((d) => d.docType === s));
+}
+
 /** DRAFT → KYC_SUBMITTED once all seven are attached; → PAYMENT_PENDING once the fee is
- *  recorded too. Never moves a row out of ADDITIONAL_INFO_REQUIRED (that needs a resubmit). */
+ *  settled too. Never moves a row out of ADDITIONAL_INFO_REQUIRED (that needs a resubmit). */
 async function recomputeDraftStatus(app: StoredAgentApplication): Promise<StoredAgentApplication["status"]> {
   if (app.status === "ADDITIONAL_INFO_REQUIRED") return app.status;
-  const docs = (await db.agentApplicationDoc.listByApplication(app.id)).filter((d) => !d.purgedAt);
-  const allSeven = REQUIRED_DOC_SLOTS.every((s) => docs.some((d) => d.docType === s));
-  const feeRecorded = !!app.feeReference || app.feeDisposition === "WAIVED";
-  const next: StoredAgentApplication["status"] = !allSeven ? "DRAFT" : feeRecorded ? "PAYMENT_PENDING" : "KYC_SUBMITTED";
+  const next = deriveDraftStatus(app, await hasAllRequiredDocs(app.id));
   if (next !== app.status) await db.agentApplication.update(app.id, { status: next });
   return next;
 }
@@ -513,7 +551,25 @@ export async function setReferees(
  * path in `apply/actions.ts` already states in its header: the UI must not substring-match
  * English prose to tell two failures apart.
  */
-export type FeeRefusal = "reference_format" | "reference_taken" | "receipt_missing" | "refund_owed" | "not_editable";
+/**
+ * ⭐ MACHINE TOKENS, NOT ENGLISH PROSE. The form renders translated copy from these; it used to
+ * substring-match the server's sentences (`/refund/i.test(r.error)`), which put raw English into
+ * a Swahili UI for every refusal that had no branch, and made rewording a sentence a silent
+ * regression. ⛔ A new refusal without a token is that defect again.
+ *
+ * The last four arrived with the WALLET rail (Ali, 2026-09-10). Paying from a wallet inherits
+ * every precondition of DEPOSITING, and two of them are not checked at the agent door:
+ *  · `kyc_required`     — deposit needs identity APPROVED. `applicantEligibility` enforces this
+ *                         for self-service but exempts an OFFICER-INVITED applicant on purpose,
+ *                         so an invitee could reach the payment step unable to fund a wallet.
+ *  · `email_unverified` — deposit needs a verified email; nothing upstream checks it.
+ *  · `insufficient_balance` — the commonest refusal of all, and the one that must carry the
+ *                         SHORTFALL so the surface can offer a deposit for the right amount.
+ *  · `wallet_unavailable` — one honest token for the rest, rather than leaking an internal code.
+ */
+export type FeeRefusal =
+  | "reference_format" | "reference_taken" | "receipt_missing" | "refund_owed" | "not_editable"
+  | "kyc_required" | "email_unverified" | "insufficient_balance" | "wallet_unavailable";
 
 export type FeeResult =
   | { ok: true; data: { status: StoredAgentApplication["status"] } }
@@ -551,6 +607,140 @@ export async function recordFeePayment(userId: string, input: { feeReference: st
     });
     audit({ category: "ADMIN", action: "agent.fee.reference_recorded", actorId: userId, targetType: "AgentApplication", targetId: app.id, payload: { feeReference: ref, clearedReconciliation: clearReconcile } });
     const status = await recomputeDraftStatus({ ...app, feeReference: ref });
+    return { ok: true as const, data: { status } };
+  });
+}
+
+/**
+ * ⭐ PAY THE REGISTRATION FEE FROM THE APPLICANT'S OWN WALLET — the live rail since 2026-09-10.
+ *
+ * Ali's ruling: the applicant deposits on the ordinary rails, then pays the fee from that
+ * balance. Reason: a Lipa/QR payment carries no reference on any network and a bank receipt is
+ * only as good as the human reading it, whereas a wallet debit carries the payer's identity by
+ * construction. `COMPLIANCE-DECISIONS.md` § 2026-09-10.
+ *
+ * ── GATE THE OFFER, NEVER THE REFUSAL — and this rail added two new gates ───────────────────
+ * ⛔ Paying from a wallet inherits EVERY PRECONDITION OF DEPOSITING, and `wallet/deposit/page.tsx`
+ * renders a gate instead of the form for two of them. Neither was checked at the agent door,
+ * because under the out-of-band rail neither could strand anybody:
+ *  · KYC APPROVED — `applicantEligibility` enforces it for self-service, but `!opts.forInvitation`
+ *    exempts an OFFICER-INVITED applicant deliberately ("decided at approval"). Under this rail
+ *    an un-KYC'd invitee cannot fund a wallet and therefore cannot pay. ⚠️ And the invitation
+ *    email hard-codes `feeWaivable: true`, so it says the fee *may* be waived while the waiver is
+ *    a separate officer action — an unwaived invitee would simply be stuck.
+ *  · A VERIFIED EMAIL — required by deposit, checked nowhere upstream.
+ *
+ * ── WHAT IS RETAINED FROM THE OLD RAIL, AND WHAT IS NOT ─────────────────────────────────────
+ * ⛔ The refund-owed refusal STAYS. It is not a receipt control — it is a money-owed control, and
+ * it is just as true when the money would leave a wallet. The receipt image, the typed reference
+ * and its uniqueness check are gone with the rail that needed them; the debit replaces all three.
+ *
+ * ── ATOMICITY, AND THE LOCK ORDER THIS ESTABLISHES ──────────────────────────────────────────
+ * ⚠️ This is a NEW lock pair. `locks.ts` documents the rule as *"lock order is globally
+ * wallet→market (never the reverse), so a longer hold cannot create a cycle"*, and nothing else
+ * pairs `agentapp:` with `wallet:`. Taking **`agentapp:` OUTER and `wallet:` INNER** gives a
+ * consistent total order `agentapp → wallet → market`. ⛔ Never invert it.
+ * ⭐ And because `withLock` publishes its transaction and the inner `withMoneyTx` JOINS it, the
+ * wallet debit, the `Transaction`, the ledger group AND the stamp below commit as ONE
+ * transaction — a throw anywhere rolls back all four.
+ *
+ * ⭐ IDEMPOTENT AT BOTH LAYERS. This returns early on an already-settled disposition, and
+ * `payAgentRegistrationFee` is itself keyed on the application id, so a double-submitted form
+ * pays once even if it races past the early return.
+ */
+export async function payFeeFromWallet(userId: string): Promise<FeeResult & { shortfallTzs?: number }> {
+  return withLock(`agentapp:${userId}`, async () => {
+    const e = await editableApplication(userId);
+    if (!e.ok) return { ok: false as const, error: e.error, code: e.code, refusal: "not_editable" as const };
+    const app = e.app;
+
+    // ⭐ ALREADY SETTLED — idempotent, and NOT an error. A second tap must not look like a
+    // failure to someone who has already paid.
+    if (app.feeDisposition === "WAIVED" || app.feeDisposition === "COLLECTED") {
+      const status = await recomputeDraftStatus(app);
+      return { ok: true as const, data: { status } };
+    }
+
+    // ⛔ RETAINED: we still hold money of theirs from a previous application.
+    const owed = await refundOwedTo(userId);
+    if (owed && owed.id !== app.id) {
+      return { ok: false as const, error: "A refund from your previous application is still being processed. Wait for it before paying again.", code: "INVALID" as const, refusal: "refund_owed" as const };
+    }
+
+    // ⛔ THE DEPOSIT PRECONDITIONS, CHECKED BEFORE ANY MONEY MOVES, in the SAME ORDER the deposit
+    // screen asks them — identity, then email — so a person cannot clear the one they were told
+    // about and then be refused for another.
+    const kyc = await getKycStatus(userId);
+    if (!kyc || kyc.status !== "APPROVED") {
+      return { ok: false as const, error: "Verify your identity before paying the registration fee.", code: "INVALID" as const, refusal: "kyc_required" as const };
+    }
+    const payer = await db.user.findById(userId);
+    if (!payer?.emailVerifiedAt) {
+      return { ok: false as const, error: "Verify your email address before paying the registration fee.", code: "INVALID" as const, refusal: "email_unverified" as const };
+    }
+
+    // ⛔ `feeBreakdown().totalTzs` IS WHAT AN APPLICANT OWES. Never `registrationFeeTzs`, never a
+    // literal — the config module's own law, and a guard exists because attesting the net against
+    // the total once failed four downstream legs as a chain.
+    const fee = feeBreakdown();
+
+    /**
+     * ⭐ EVERY READ HAPPENS BEFORE THE WALLET LOCK IS TAKEN.
+     *
+     * ⚠️ `withLock` nests by joining the parent transaction, and its own note says the inner
+     * advisory lock is then "held until the OUTER lock ends". So every round trip after the debit
+     * happens while this user's WALLET lock is held — and while it is, they cannot bet, cash out
+     * or withdraw. That is a LIVENESS cost on a money path, and no guard catches it, so the
+     * section under the lock is kept to a single write.
+     */
+    const allSeven = await hasAllRequiredDocs(app.id);
+
+    const paid = await payAgentRegistrationFee(userId, {
+      applicationId: app.id,
+      amountTzs: fee.totalTzs,
+      vatTzs: fee.vatTzs,
+      description: `Agent registration fee · ${app.id}`,
+    });
+
+    if (!paid.ok) {
+      if (paid.code === "INSUFFICIENT_FUNDS") {
+        return {
+          ok: false as const,
+          error: `You need ${formatTzs(paid.shortfall)} more in your wallet to pay the registration fee.`,
+          code: "INVALID" as const, refusal: "insufficient_balance" as const,
+          shortfallTzs: paid.shortfall,
+        };
+      }
+      return { ok: false as const, error: "That payment could not be completed. Contact support.", code: "INVALID" as const, refusal: "wallet_unavailable" as const };
+    }
+
+    /**
+     * ⭐ STAMPED IN THE SAME TRANSACTION AS THE DEBIT.
+     * `feeFundingSource: "WALLET"` is what lets `recordFeeRefund` mirror the collection instead
+     * of today's policy — refunding this to `EXTERNAL:SELCOM` would send a person's money to a
+     * bank account they never paid from. `feeAmountTzs` is stamped so the officer's panel shows
+     * WHAT WAS PAID rather than today's config figure.
+     * ⛔ No `feeReference`, no `feeAttestedTzs`, no `feeReconciledById` — nobody attested
+     * anything, and inventing an officer here would be a false audit record.
+     */
+    const now = iso();
+    const status = deriveDraftStatus({ ...app, feeDisposition: "COLLECTED" }, allSeven);
+    // ⭐ ONE WRITE, no reads — the status is folded in rather than recomputed, so the wallet lock
+    // is not held across a second query. Same rule as `recomputeDraftStatus`, so they cannot drift.
+    await db.agentApplication.update(app.id, {
+      feeAmountTzs: fee.totalTzs,
+      feeDisposition: "COLLECTED",
+      feeFundingSource: "WALLET",
+      feeReconciledAt: now,
+      ...(status !== app.status ? { status } : {}),
+    });
+
+    audit({
+      category: "COMPLIANCE", action: "agent.fee.paid_from_wallet_recorded", actorId: userId,
+      targetType: "AgentApplication", targetId: app.id,
+      payload: { amountTzs: fee.totalTzs, vatTzs: fee.vatTzs, txnId: paid.txnId, balanceAfter: paid.balanceAfter, fundingSource: "WALLET", status },
+    });
+
     return { ok: true as const, data: { status } };
   });
 }

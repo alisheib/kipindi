@@ -332,8 +332,14 @@ export const AGENT_AUDIT_ACTION: Record<string, string> = {
   "agent.deactivated": "Agent paused",
   "agent.fee.amount_mismatch": "Fee refused — amount did not match",
   "agent.fee.duplicate_reference": "Fee refused — receipt reference already in use",
-  /** ⭐ The rail since 2026-09-10: the applicant paid from their own wallet balance. */
+  /** ⭐ The rail since 2026-09-10: the applicant paid from their own wallet balance. Written by
+   *  `wallet-service` when the MONEY moves — category WALLET, target the Wallet. */
   "agent.fee.paid_from_wallet": "Fee paid from the applicant's wallet",
+  /** The same movement seen from the APPLICATION: the disposition became COLLECTED and the
+   *  funding source was stamped. ⚠️ Deliberately a second row, not a duplicate — one is the
+   *  money leaving a wallet, the other is a compliance fact about a case file, and they carry
+   *  different categories and different target types. `reconcileFee` already works this way. */
+  "agent.fee.paid_from_wallet_recorded": "Fee recorded as paid from the wallet",
   /** ⚠️ The stored funding source disagrees with what the collection's ledger group shows.
    *  The stamp wins and the refund still goes to the stamped destination — this row says the
    *  collection needs investigating, not that the refund was wrong. */

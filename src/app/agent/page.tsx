@@ -13,6 +13,7 @@ import { getServerT } from "@/lib/i18n-server";
 import { currentSession } from "@/lib/server/auth-service";
 import { getAgentConfig } from "@/lib/server/agent-config";
 import { lipaDisplay } from "@/lib/server/lipa-config";
+import { LIPA_QR_RELEASED } from "@/lib/lipa";
 import { LipaQrPanel } from "@/components/pay/lipa-qr-panel";
 import { applicantView, feeBreakdown } from "@/lib/server/agent-application-service";
 import { inviteViewerFor } from "@/lib/server/affiliate-service";
@@ -255,7 +256,13 @@ export default async function AgentProgrammePage({ searchParams }: { searchParam
         <p className="mt-2 amount text-title-lg font-bold text-gold-300">{formatTzs(fee.totalTzs)}</p>
         {vatLine ? <p className="mt-0.5 font-mono text-body-sm text-text-subtle">{vatLine}</p> : null}
         <p className="mt-3 text-body-sm leading-relaxed text-text">
-          {fillNodes(t.agent.feeBody, { amount: <span className="amount text-gold-300">{formatTzs(fee.totalTzs)}</span>, name: cfg.feeDestinationName, account: cfg.feeDestinationAccount })}
+          {/* NO DESTINATION ACCOUNT. The rail is the applicant own wallet (Ali, 2026-09-10),
+              so feeBody -- "Pay {amount} to {name}, account {account}, then upload the receipt
+              and enter its reference" -- is false in all three languages and is REPLACED rather
+              than reworded. Passing the destination into a rendered template here also published
+              it to every anonymous visitor: PSC-02 visible half, the flight-payload half being
+              the gated panel below. */}
+          {fillNodes(t.agent.feeBodyWallet, { amount: <span className="amount text-gold-300">{formatTzs(fee.totalTzs)}</span> })}
         </p>
         <p className="mt-2 text-body-sm leading-relaxed text-text-muted">{fill(t.agent.feeRefund, { days: String(cfg.refundDeadlineDays) })}</p>
       </section>
@@ -264,7 +271,27 @@ export default async function AgentProgrammePage({ searchParams }: { searchParam
           before they start that there is nothing to type. Same component and same
           safety rule as the one inside the form; it renders nothing unless the fee
           destination IS the Lipa number the QR encodes. */}
-      <LipaQrPanel lipa={lipaDisplay()} account={cfg.feeDestinationAccount} amountTzs={fee.totalTzs} />
+      {/* GATED AT THE CALL SITE, NOT INSIDE THE COMPONENT -- PSC-02.
+
+          LipaQrPanel is "use client", so Next.js serialises the props a SERVER component hands
+          it into the RSC flight payload embedded in the HTML -- WHATEVER the component returns.
+          shouldShowLipaQr returning false stops the RENDER and not the SEND, so this call
+          published the merchant name, the Lipa number, the USSD code, the asset path and the fee
+          destination account to every anonymous visitor of a publicly-readable page, for a
+          programme that was WITHDRAWN. Measured on the live page: three occurrences of the
+          account digits and one of the Lipa number.
+
+          "Renders nothing" and "sends nothing" are different claims, and only the second is
+          worth anything here -- so the gate moves OUT to the caller.
+
+          THE MACHINERY IS UNTOUCHED, deliberately. lipa.ts, lipa-config.ts and the panel are
+          exactly as they were, and LIPA_QR_RELEASED is not tidied away: 0.6 forbids re-enabling
+          the QR OR deleting its machinery, and declining to render a panel whose gate is shut is
+          neither. Flip the flag and this call site comes back on its own.
+          npm run test:agent-fee-wallet-path 4.1 holds it. */}
+      {LIPA_QR_RELEASED && (
+        <LipaQrPanel lipa={lipaDisplay()} account={cfg.feeDestinationAccount} amountTzs={fee.totalTzs} />
+      )}
 
       {/* ⭐ HOW YOU ARE PAID — the terms, then management's waterfall underneath them.
           The paragraph that used to sit here ("Commission is a share of the net operator

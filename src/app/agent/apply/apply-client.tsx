@@ -37,16 +37,19 @@ import { fill, formatTzs } from "@/lib/utils";
 import { fileToDataUrl } from "@/lib/client/kyc-image";
 import { focusFirstInvalid } from "@/lib/client/focus-first-invalid";
 import type { AgentDocType } from "@/lib/server/store";
-import { attachAgentDocumentAction, setRefereesAction, recordFeePaymentAction, submitAgentApplicationAction, type UploadFailure } from "./actions";
+import { attachAgentDocumentAction, setRefereesAction, payFeeFromWalletAction, submitAgentApplicationAction, type UploadFailure } from "./actions";
 import { fillNodes } from "@/lib/fill-nodes";
 import { LipaQrPanel } from "@/components/pay/lipa-qr-panel";
-import type { LipaDisplay } from "@/lib/lipa";
+import { LIPA_QR_RELEASED, type LipaDisplay } from "@/lib/lipa";
 
 type DocView = { docType: AgentDocType; uploadedAt: string; rejected: boolean; rejectReason: string | null; sizeBytes: number; thirdParty: boolean };
 
 type Props = {
   app: {
     id: string; status: string; source: string; feeReference: string | null; feeWaived: boolean; infoRequestNote: string | null;
+    /** The fee is SETTLED -- reads the DISPOSITION, so it is true on either rail. */
+    feePaid: boolean;
+    feePaidFromWallet: boolean;
     referees: { oneName: string; oneContact: string; twoName: string; twoContact: string; consented: boolean };
   };
   documents: DocView[];
@@ -57,12 +60,15 @@ type Props = {
   /** Selcom merchant QR, or null when it is not configured. Rendered only when it names
    *  the SAME account as `fee.destinationAccount` — see `shouldShowLipaQr`. */
   lipa: LipaDisplay | null;
+  /** The wallet rail three facts, so the step renders a GATE with the action that clears it
+   *  rather than a button the server is about to refuse. */
+  walletPay: { balanceTzs: number; kycApproved: boolean; emailVerified: boolean };
   limits: { maxMb: number; refereeHoldDays: number; reviewSlaDays: number };
 };
 
 const REQUIRED: AgentDocType[] = ["CV", "REQUEST_LETTER", "SERIKALI_LETTER", "REFEREE_ONE_LETTER", "REFEREE_ONE_ID", "REFEREE_TWO_LETTER", "REFEREE_TWO_ID"];
 
-export function ApplyClient({ app, documents, missing, kycGate, fee, lipa, limits }: Props) {
+export function ApplyClient({ app, documents, missing, kycGate, fee, lipa, walletPay, limits }: Props) {
   const { t } = useT();
   const router = useRouter();
   const { toast } = useToast();
@@ -95,11 +101,22 @@ export function ApplyClient({ app, documents, missing, kycGate, fee, lipa, limit
   const refDirty = !refSaved && (ref.oneName !== app.referees.oneName || ref.oneContact !== app.referees.oneContact || ref.twoName !== app.referees.twoName || ref.twoContact !== app.referees.twoContact || ref.consented !== app.referees.consented);
   const [refPending, startRef] = useTransition();
 
-  // Fee reference
-  const [feeRef, setFeeRef] = useState(app.feeReference ?? "");
-  const [feeSaved, setFeeSaved] = useState(!!app.feeReference);
-  const feeDirty = !app.feeWaived && !feeSaved && feeRef.trim() !== (app.feeReference ?? "");
+  /**
+   * THE FEE, ON THE WALLET RAIL (Ali, 2026-09-10).
+   *
+   * feeSettled reads the DISPOSITION, not a typed reference: a wallet payment produces no receipt
+   * and no reference, so !!app.feeReference would leave a person who has PAID looking at an
+   * unfinished step. And feeDirty is gone with the text input -- there is no unsaved keystroke to
+   * warn about when the only action is a button.
+   */
+  const [feeSettled, setFeeSettled] = useState(app.feeWaived || app.feePaid || !!app.feeReference);
+  const [balanceTzs, setBalanceTzs] = useState(walletPay.balanceTzs);
   const [feePending, startFee] = useTransition();
+  // The two doors DEPOSIT holds shut, in the SAME ORDER the server asks them -- identity, then
+  // email -- so a person cannot clear the one it names and then be refused for the other.
+  const kycBlocks = !app.feeWaived && !feeSettled && !walletPay.kycApproved;
+  const emailBlocks = !app.feeWaived && !feeSettled && walletPay.kycApproved && !walletPay.emailVerified;
+  const canAfford = balanceTzs >= fee.totalTzs;
 
   /**
    * ⭐ THE FIELD A REFUSAL POINTS AT — the applicant-side half of DG-S-05/06.
@@ -127,13 +144,19 @@ export function ApplyClient({ app, documents, missing, kycGate, fee, lipa, limit
     if (!refSaved) m.push(t.agent.missingReferees);
     // The invitee's own identity: PENDING_REVIEW is enough (decided with the application at approval).
     if (identityBlocks) m.push(t.agent.missingIdentity);
-    if (!app.feeWaived) {
-      if (!docs.FEE_RECEIPT) m.push(t.agent.missingReceipt);
-      if (!feeSaved) m.push(t.agent.missingReference);
-    }
+    /**
+     * ONE ENTRY, NOT TWO -- and dropping the other two was only safe alongside the pay button.
+     *
+     * This required a FEE RECEIPT and a typed REFERENCE. Neither exists on the wallet rail, so
+     * canSubmit could never become true and a paid applicant was stuck. But removing them WITHOUT
+     * shipping the payment control in the same change would have been worse than the bug it
+     * fixes: this list is the only thing between an unpaid applicant and submitForReview, so the
+     * two edits are ONE atomic change and must never be split.
+     */
+    if (!app.feeWaived && !feeSettled) m.push(t.agent.missingFeePayment);
     return m;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [docs, refSaved, feeSaved, app.feeWaived, missing, identityBlocks]);
+  }, [docs, refSaved, feeSettled, app.feeWaived, missing, identityBlocks]);
   const canSubmit = missingNow.length === 0 && accept && !submitPending;
 
   const steps = [t.agent.stepAbout, t.agent.stepWhere, t.agent.stepReferees, t.agent.stepPayment];
@@ -151,7 +174,7 @@ export function ApplyClient({ app, documents, missing, kycGate, fee, lipa, limit
 
   return (
     <div ref={formRef} className="space-y-5">
-      <UnsavedChangesGuard dirty={refDirty || feeDirty} title={t.agent.unsavedTitle} body={t.agent.unsavedBody} />
+      <UnsavedChangesGuard dirty={refDirty} title={t.agent.unsavedTitle} body={t.agent.unsavedBody} />
 
       {/* Title row + the persistent counter */}
       <div className="flex items-center justify-between gap-3">
@@ -283,10 +306,17 @@ export function ApplyClient({ app, documents, missing, kycGate, fee, lipa, limit
             <p className="font-mono text-micro uppercase eyebrow font-bold text-gold-300">{t.agent.payTitle}</p>
             {app.feeWaived ? (
               <p className="mt-2 text-body-sm leading-relaxed text-text">{t.agent.payWaived}</p>
+            ) : feeSettled ? (
+              <p className="mt-2 text-body-sm leading-relaxed text-text">{t.agent.payPaidFromWallet}</p>
             ) : (
               <>
                 <p className="mt-2 amount text-title-lg font-bold text-gold-300">{formatTzs(fee.totalTzs)}</p>
-                <p className="mt-2 text-body-sm leading-relaxed text-text">{fillNodes(t.agent.payInstruction, { amount: <span className="amount text-gold-300">{formatTzs(fee.totalTzs)}</span>, name: fee.destinationName, account: fee.destinationAccount })}</p>
+                {/* NO BANK INSTRUCTION. The rail is the applicant own wallet (Ali, 2026-09-10),
+                    so there is no destination account to quote and nothing to upload. */}
+                <p className="mt-2 text-body-sm leading-relaxed text-text">{fillNodes(t.agent.payFromWalletBody, { amount: <span className="amount text-gold-300">{formatTzs(fee.totalTzs)}</span> })}</p>
+                <p className="mt-3 font-mono text-body-sm text-text-subtle">
+                  {t.agent.payWalletBalance}: <span className="amount text-text">{formatTzs(balanceTzs)}</span>
+                </p>
               </>
             )}
           </div>
@@ -295,45 +325,82 @@ export function ApplyClient({ app, documents, missing, kycGate, fee, lipa, limit
               stacked read as two separate charges. Renders itself away when the fee is
               waived, when the operator has switched the QR off, or when the fee
               destination is not the Lipa number the QR encodes. */}
-          {!app.feeWaived && <LipaQrPanel lipa={lipa} account={fee.destinationAccount} amountTzs={fee.totalTzs} />}
-          {!app.feeWaived && (
+          {/* GATED AT THE CALL SITE -- PSC-02, same reasoning as /agent/page.tsx. The panel
+              returning null does not stop its props reaching the browser. The QR machinery is
+              untouched: flip LIPA_QR_RELEASED and this comes back by itself. */}
+          {!app.feeWaived && LIPA_QR_RELEASED && <LipaQrPanel lipa={lipa} account={fee.destinationAccount} amountTzs={fee.totalTzs} />}
+          {/* PAY IT FROM THE WALLET -- and GATE THE OFFER, never the refusal.
+
+              Paying from a wallet inherits every precondition of DEPOSITING, and two of them are
+              NOT enforced at the agent door: identity APPROVED (a self-service applicant always
+              has it, but an OFFICER_INVITED one is deliberately exempt) and a verified email
+              (checked nowhere upstream). Under the old out-of-band rail neither could strand
+              anybody. Under this one an un-KYC'd invitee cannot fund a wallet, cannot pay, and --
+              before this -- was told nothing.
+
+              So each door renders the GATE and the ACTION THAT CLEARS IT, in the SAME ORDER the
+              server asks them, so a person cannot fix the thing they were told about and then be
+              refused for another. That ordering rule is wallet/deposit/page.tsx, and the defect
+              it records (E-5, "contradicted twice within one screen") is the one being avoided. */}
+          {!app.feeWaived && !feeSettled && (
             <div className="rounded-xl glass-panel p-4 space-y-3">
-              <Slot docType="FEE_RECEIPT" label={docLabel.FEE_RECEIPT} doc={docs.FEE_RECEIPT} infoRequired={infoRequired} onDone={(d) => setDocs((x) => ({ ...x, FEE_RECEIPT: d }))} maxMb={limits.maxMb} />
-              {/* ⭐ The RULE the server enforces (letters, numbers and dashes; 4–64) was
-                  never communicated up front — only afterwards, as a toast. It is in the hint
-                  now, and the placeholder is a literal example. */}
-              <Field label={t.agent.payReference} hint={t.agent.payReferenceHint} error={errOf("feeReference")} dataField="feeReference">
-                <Input placeholder={t.agent.payReferenceExample} title={t.agent.payReferenceRule} mono value={feeRef}
-                  onChange={(e) => { setFeeSaved(false); setFieldErr(null); setFeeRef(e.target.value.toUpperCase()); }}
-                  maxLength={64} autoComplete="off" inputMode="text" spellCheck={false} />
-              </Field>
-              <Button type="button" variant="primary" size="md" loading={feePending} disabled={feePending || feeSaved || !docs.FEE_RECEIPT}
-                onClick={() => startFee(async () => {
-                  const fd = new FormData(); fd.set("feeReference", feeRef);
-                  let r: Awaited<ReturnType<typeof recordFeePaymentAction>>;
-                  try { r = await recordFeePaymentAction(fd); } catch { r = { ok: false, error: t.error.somethingDidntWork }; }
-                  if (!r.ok) {
-                    /**
-                     * ⭐ TRANSLATED COPY FROM A TOKEN, not from a regex over English prose.
-                     * 🔴 This read `/already in use/i.test(r.error)` and `/refund/i.test(r.error)`
-                     * and fell through to `r.error` — so every OTHER refusal on the money step
-                     * rendered raw English into a Swahili or Chinese UI, and rewording a server
-                     * sentence would have silently broken the two branches that worked.
-                     */
-                    const copy = r.refusal === "reference_taken" ? t.agent.payDuplicate
-                      : r.refusal === "refund_owed" ? t.agent.payRefundOwed
-                      : r.refusal === "receipt_missing" ? t.agent.payReceiptFirst
-                      : r.refusal === "reference_format" ? t.agent.payReferenceRule
-                      : r.error;
-                    if (r.field) { setFieldErr({ name: r.field, message: copy }); focusFirstInvalid(formRef.current, [r.field]); }
-                    toast({ title: t.toast.couldntSubmit, description: copy, variant: "danger", durationMs: 0 });
-                    return;
-                  }
-                  setFieldErr(null);
-                  setFeeSaved(true); toast({ title: t.common.save, variant: "success" }); router.refresh();
-                })}>
-                {feeSaved ? t.common.submitted : t.common.save}
-              </Button>
+              {kycBlocks ? (
+                /* returnTo brings them BACK to the wizard, and the step they land on is
+                   recomputed from what is missing -- which is this one. */
+                <KycGatePanel state={kycGate ?? "not_started"} returnTo="/agent/apply" />
+              ) : emailBlocks ? (
+                <div className="space-y-2">
+                  <p className="text-body-sm leading-relaxed text-text">{t.agent.payEmailFirst}</p>
+                  <Button type="button" variant="secondary" size="md" onClick={() => router.push("/profile" as never)}>
+                    {t.common.continue}
+                  </Button>
+                </div>
+              ) : !canAfford ? (
+                /* THE SHORTFALL IS NAMED, not left to arithmetic. The top-up link is a plain
+                   navigation: the deposit rail has NO return-URL contract (filed as PSC-01), so
+                   nothing carries them back automatically -- the hint says the application is
+                   saved, and firstMissingStep returns them here because the fee is all that is
+                   outstanding. */
+                <div className="space-y-2">
+                  <p className="text-body-sm leading-relaxed text-text">
+                    {fill(t.agent.payShortfall, { amount: formatTzs(Math.max(0, fee.totalTzs - balanceTzs)) })}
+                  </p>
+                  <p className="text-body-sm leading-relaxed text-text-muted">{t.agent.payTopUpHint}</p>
+                  <Button type="button" variant="primary" size="md" onClick={() => router.push("/wallet/deposit" as never)}>
+                    {t.agent.payTopUp}
+                  </Button>
+                </div>
+              ) : (
+                <Button type="button" variant="primary" size="md" loading={feePending} disabled={feePending}
+                  onClick={() => startFee(async () => {
+                    let r: Awaited<ReturnType<typeof payFeeFromWalletAction>>;
+                    try { r = await payFeeFromWalletAction(); } catch { r = { ok: false, error: t.error.somethingDidntWork }; }
+                    if (!r.ok) {
+                      /* TRANSLATED COPY FROM A TOKEN, not a regex over English prose -- the defect
+                         this form already shipped once (/refund/i.test(r.error)), which put raw
+                         English into a Swahili UI for every unhandled refusal. */
+                      const copy = r.refusal === "refund_owed" ? t.agent.payRefundOwed
+                        : r.refusal === "kyc_required" ? t.agent.payKycFirst
+                        : r.refusal === "email_unverified" ? t.agent.payEmailFirst
+                        : r.refusal === "insufficient_balance" ? fill(t.agent.payShortfall, { amount: formatTzs(r.shortfallTzs ?? 0) })
+                        : r.refusal === "wallet_unavailable" ? t.agent.payWalletUnavailable
+                        : r.error;
+                      // A refusal that arrived because the balance moved under them updates the
+                      // figure on screen, so the next thing they read is true.
+                      if (r.refusal === "insufficient_balance" && r.shortfallTzs !== undefined) {
+                        setBalanceTzs(Math.max(0, fee.totalTzs - r.shortfallTzs));
+                      }
+                      toast({ title: t.toast.couldntSubmit, description: copy, variant: "danger", durationMs: 0 });
+                      return;
+                    }
+                    setFieldErr(null);
+                    setFeeSettled(true); setBalanceTzs((b) => Math.max(0, b - fee.totalTzs));
+                    toast({ title: t.agent.payPaidFromWallet, variant: "success" });
+                    router.refresh();
+                  })}>
+                  {fill(t.agent.payNowFromWallet, { amount: formatTzs(fee.totalTzs) })}
+                </Button>
+              )}
             </div>
           )}
 

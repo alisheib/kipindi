@@ -7,6 +7,7 @@ import { getAgentConfig } from "@/lib/server/agent-config";
 import { lipaDisplay } from "@/lib/server/lipa-config";
 import { applicantView, feeBreakdown, AGENT_REFEREE_DOC_HOLD_DAYS } from "@/lib/server/agent-application-service";
 import { getKycStatus } from "@/lib/server/kyc-service";
+import { db } from "@/lib/server/store";
 import { kycGateState } from "@/lib/kyc-gate-state";
 import { MAX_DOC_BYTES } from "@/lib/id-documents";
 import { ApplyClient } from "./apply-client";
@@ -33,10 +34,22 @@ export default async function AgentApplyPage() {
   const { t } = await getServerT();
   const cfg = getAgentConfig();
   const fee = feeBreakdown(cfg);
-  // ⭐ An INVITED applicant verifies their own identity inside this flow (their ID + selfie); the
-  // form shows the kit gate until it is at least submitted, instead of a refusal at the end.
-  const kyc = view.app.source === "OFFICER_INVITED" ? await getKycStatus(session.userId) : null;
+  /**
+   * ⭐ KYC IS NOW READ FOR EVERY APPLICANT, NOT ONLY AN INVITEE.
+   *
+   * ⚠️ It used to be fetched only for `OFFICER_INVITED`, because only they verify inside the
+   * flow. That was complete while the fee was paid out of band. Since 2026-09-10 the fee is paid
+   * from the WALLET, and depositing requires identity APPROVED — so the payment step has to know
+   * the answer for everybody, or it offers a button that `payFeeFromWallet` is about to refuse.
+   * A self-service applicant is already approved (`applicantEligibility` gates the door), so for
+   * them this is a confirmation; for an invitee it is the gate that stops a dead end.
+   */
+  const kyc = await getKycStatus(session.userId);
   const kycGate = view.app.source === "OFFICER_INVITED" ? kycGateState(kyc?.status) : null;
+  // The two preconditions DEPOSIT imposes, which the fee now inherits. Read here so the step can
+  // render the gate AND the action that clears it, rather than refusing after a click.
+  const payer = await db.user.findById(session.userId);
+  const wallet = await db.wallet.findByUserId(session.userId);
   return (
     <PageContainer tier="form" className="space-y-5">
       <BackLink fallbackHref="/agent" label={t.agent.title} />
@@ -48,6 +61,11 @@ export default async function AgentApplyPage() {
           source: view.app.source,
           feeReference: view.app.feeReference,
           feeWaived: view.app.feeDisposition === "WAIVED",
+          // ⭐ The fee is SETTLED — by either rail. `feePaid` drives the step's done-state and the
+          // wizard's completeness list, so it reads the DISPOSITION and not the evidence of one
+          // particular rail (a wallet payment writes no receipt and no reference).
+          feePaid: view.app.feeDisposition === "COLLECTED",
+          feePaidFromWallet: view.app.feeFundingSource === "WALLET",
           infoRequestNote: view.app.infoRequestNote,
           referees: {
             oneName: view.app.refereeOneName ?? "", oneContact: view.app.refereeOneContact ?? "",
@@ -59,6 +77,15 @@ export default async function AgentApplyPage() {
         missing={view.missing}
         kycGate={kycGate}
         fee={{ totalTzs: fee.totalTzs, destinationName: cfg.feeDestinationName, destinationAccount: cfg.feeDestinationAccount }}
+        /* ⭐ THE WALLET RAIL'S THREE FACTS. Sent so the payment step can render a GATE with the
+           action that clears it, instead of a button the server is about to refuse — the
+           module's "gate the offer, never the refusal" law, and the same discipline
+           `wallet/deposit/page.tsx` applies to its own two doors. */
+        walletPay={{
+          balanceTzs: wallet?.balance ?? 0,
+          kycApproved: kyc?.status === "APPROVED",
+          emailVerified: !!payer?.emailVerifiedAt,
+        }}
         /* The merchant identity behind the QR. `lipaDisplay()` drops the pinned payload —
            that is a build-time assertion, not something a browser needs. The panel renders
            nothing unless this number IS `feeDestinationAccount` above, so the two can never
