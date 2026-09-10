@@ -268,5 +268,72 @@ console.log("\n§5 driven end to end: a funded applicant pays and becomes able t
   }
 }
 
+// ═══ §6 · NO LIVE AGENT COPY STILL DESCRIBES THE OUT-OF-BAND RAIL ════════════════════════
+/**
+ * 🔴 THIS SECTION EXISTS BECAUSE §4 MISSED A LIVE FALSEHOOD, AND SHIPPED IT.
+ *
+ * §4.3 asserts no `feeDestinationAccount` reaches a rendered template — an INTERPOLATION check.
+ * `/agent`'s numbered steps carried `how3: "Pay the registration fee to the account below and
+ * upload the receipt."`, a STATIC claim with no placeholder in it, so it was invisible to that
+ * assertion AND to the grep that found `feeBody` and `payInstruction`. It went to production
+ * and was caught only by reading the deployed page.
+ *
+ * ⚠️ Worse than merely stale: once Unit 6.1 removed the account, "the account below" pointed at
+ * nothing. Deleting one false statement made a second one incoherent.
+ *
+ * ⭐ SO THE RULE IS ABOUT THE CLAIM, NOT THE MECHANISM: no agent-facing string may tell an
+ * applicant to pay an ACCOUNT, upload a RECEIPT, or type a REFERENCE, however it is assembled.
+ *
+ * ⛔ AND IT IS SCOPED, DELIBERATELY. Three neighbours legitimately mention receipts and must not
+ * be dragged in:
+ *   · `docReceipt` / `payRefundOwed` — the legacy FEE_RECEIPT slot label and the retained
+ *     refund-owed refusal, both still true for the one historical out-of-band row;
+ *   · `t.lipa.*` — the withheld QR panel's own copy, which belongs with its machinery (§0.6
+ *     forbids deleting that machinery, and its copy is part of it);
+ *   · anything about DEPOSIT receipts, which are a different subject entirely.
+ * An unscoped guard would demand that correct strings be made false, which is worse than the
+ * defect it set out to catch.
+ */
+console.log("\n§6 no live agent copy still describes the out-of-band rail");
+{
+  const dict = readFileSync(new URL("../src/lib/i18n-dict.ts", import.meta.url), "utf8");
+
+  // The EN `agent:` block only — one locale is enough, because `test:i18n` proves parity and a
+  // claim present in EN is present in all three by construction.
+  const start = dict.indexOf("    agent: {");
+  const end = dict.indexOf("\n    },", start);
+  const block = start >= 0 && end > start ? dict.slice(start, end) : "";
+  ok("6.0 CONTROL · the EN agent dictionary block was isolated (a short slice is not a block)",
+    block.length > 2000, `len=${block.length}`);
+
+  const OUT_OF_BAND = [
+    /account below/i,
+    /upload the receipt/i,
+    /account \{account\}/i,
+    /enter its reference/i,
+    /keep the receipt/i,
+  ];
+  const offenders = block
+    .split(/\r?\n/)
+    .filter((l) => /^\s+[a-zA-Z0-9_]+:\s*"/.test(l))
+    // ⛔ The three legitimate exemptions, by KEY rather than by guessing at the prose.
+    .filter((l) => !/^\s+(docReceipt|payRefundOwed|payReceiptFirst|payDuplicate|payReference[A-Za-z]*|missingReceipt|missingReference):/.test(l))
+    .filter((l) => OUT_OF_BAND.some((re) => re.test(l)));
+
+  ok("6.1 ⛔ no agent-facing string tells an applicant to pay an ACCOUNT or upload a RECEIPT",
+    offenders.length === 0, offenders.map((l) => l.trim().slice(0, 110)).join(" | "));
+
+  // ⭐ And prove the pattern would still catch the sentence that shipped — otherwise 6.1 passing
+  // says nothing about whether the rule is the right shape.
+  const SHIPPED = '      how3: "Pay the registration fee to the account below and upload the receipt.",';
+  ok("6.2 ⭐ CONTROL · the pattern still catches the exact sentence that reached production",
+    OUT_OF_BAND.some((re) => re.test(SHIPPED)));
+
+  // ⛔ The dead template is gone, not merely unused: a false string left in the dictionary is an
+  // invitation for the next surface to reuse it.
+  ok("6.3 ⛔ the superseded `feeBody` template is removed, not left dead in the dictionary",
+    !/\n\s+feeBody:/.test(dict));
+}
+
 console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — ${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);
