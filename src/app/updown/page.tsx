@@ -90,15 +90,28 @@ export default async function UpDownPage({
 
       <div className="flex items-start justify-between gap-3">
         <PageHeader eyebrow={t.market.udStreaming} title={t.market.udTitle} subtitle={t.market.udTagline} />
-        {/* This game's own portfolio — separate from the long-form Bets page. */}
-        <Link
-          href="/updown/history"
-          className="mt-1 inline-flex shrink-0 items-center gap-1.5 rounded-pill border border-border bg-bg-elevated px-3 py-2 font-mono text-caption uppercase tracking-[0.10em] text-text-muted hover:text-text hover:border-brand-400 transition-colors"
-        >
-          <I.portfolio s={13} />
-          <span className="hidden sm:inline">{t.market.udHistoryTitle}</span>
-          <I.chevronRight s={11} />
-        </Link>
+        {/* ⭐ THE RULES DOOR — this product had none. It takes the SAME pill recipe as the
+            history link beside it rather than a second idiom, so the header stays one row of
+            equals. The label collapses to the glyph under `sm`, exactly as its neighbour does,
+            which is what keeps two pills off the title at 360. */}
+        <div className="mt-1 flex shrink-0 items-center gap-2">
+          <Link
+            href="/legal/rules/up-down"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-pill border border-border bg-bg-elevated px-3 py-2 font-mono text-caption uppercase tracking-[0.10em] text-text-muted hover:text-text hover:border-brand-400 transition-colors"
+          >
+            <I.scrollText s={13} />
+            <span className="hidden sm:inline">{t.common.readFullRules}</span>
+          </Link>
+          {/* This game's own portfolio — separate from the long-form Bets page. */}
+          <Link
+            href="/updown/history"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-pill border border-border bg-bg-elevated px-3 py-2 font-mono text-caption uppercase tracking-[0.10em] text-text-muted hover:text-text hover:border-brand-400 transition-colors"
+          >
+            <I.portfolio s={13} />
+            <span className="hidden sm:inline">{t.market.udHistoryTitle}</span>
+            <I.chevronRight s={11} />
+          </Link>
+        </div>
       </div>
 
       {/* ── Price tape — real readings only; an asset with no confirmed price

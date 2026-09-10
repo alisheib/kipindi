@@ -200,6 +200,19 @@ function HowItWorks() {
         <p className="mt-1.5 text-body-sm leading-[1.5] text-text-subtle italic">
           {t.common.howItWorksFine}
         </p>
+        {/* ⭐ THE DOOR TO THE BINDING TEXT, PUT WHERE THE QUESTION IS ACTUALLY ASKED. This popover
+            is the one place a player already stops to ask how the product works, so it is where
+            the rulebook belongs — nobody navigates to `/legal` hoping to find it.
+            ⚠️ `min-h-[--tap-min]` reads the token rather than a number: §A3 sets the floor at 40
+            and this is a real tap target inside a popup, not decoration. */}
+        <Link
+          href="/legal/rules/yes-no"
+          onClick={() => setOpen(false)}
+          className="mt-2 inline-flex min-h-[--tap-min] items-center gap-1 text-body-sm text-brand-300 underline-offset-2 hover:text-brand-200 hover:underline"
+        >
+          {t.common.readFullRules}
+          <I.chevronRight s={12} />
+        </Link>
       </Modal>
     </>
   );
