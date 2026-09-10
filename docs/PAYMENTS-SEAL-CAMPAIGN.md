@@ -165,7 +165,7 @@ BLOCKED and move on — do not guess, and do not quietly shrink the unit to some
 | 4 | 🟠 The officer's workstation after reconciliation stops being manual | ☐ 0/4 |
 | 5 | 🟠 Refunds — the mirror must still balance | ☐ 0/3 |
 | 6 | 🟠 Copy, terms and i18n — EN/SW/ZH, and a terms version bump | ☐ 0/5 |
-| 7 | 🟠 In-flight applicants must not be stranded by the deploy | ☐ 0/3 |
+| 7 | 🟠 In-flight applicants must not be stranded by the deploy | ⏳ **1/3** — 7.3 measured: **no migration needed** |
 | 8 | 🟡 Gates — the suites that hold this subsystem, on the deploy path | ☐ 0/3 |
 
 <details><summary><strong>Row ledger — tick these</strong></summary>
@@ -234,11 +234,42 @@ BLOCKED and move on — do not guess, and do not quietly shrink the unit to some
 | ☐ | **6.4** `AGENT_TERMS_VERSION` is bumped — a binding document changed | config |
 | ☐ | **6.5** every fee email says what actually happens | `email.ts` |
 
+> ⭐ **MEASURED ON PRODUCTION 2026-09-10, READ-ONLY — AND IT COLLAPSES THIS UNIT.**
+> Route: `railway run --service Postgres -- node <scratchpad script>`, session `SET … READ ONLY`
+> at the server so a stray write would be refused by Postgres and not merely by intent. ⛔ The
+> brief's `F:\kipindi-main` Railway-link claim is **STALE — F: does not exist on this machine**;
+> there is also no `.env` and no `.railway` in either checkout. The live route is `railway link
+> -p 50pick -e production` plus the Postgres service's `DATABASE_PUBLIC_URL`, which `railway run`
+> injects without ever printing it.
+>
+> **The whole `AgentApplication` table is TWO ROWS:**
+>
+> | | rows | fee disposition | feeReference | reconciled |
+> |---|---|---|---|---|
+> | `APPROVED` | **1** | `COLLECTED` | yes | yes |
+> | `DRAFT` | **1** | `NONE` | **none** | no |
+>
+> - **In-flight population = ONE**, and it is a `DRAFT` that has paid **nothing** and recorded
+>   **nothing** — no reference, no amount, no reconciliation.
+> - `PAYMENT_PENDING`: **0**. `REFUND_DUE`: **0** (overdue: 0). Orphaned references: **0**.
+> - Rows a migration could strand (a reference recorded but undecided): **0**.
+> - `FEE_RECEIPT` documents still held: **1**, unpurged — it belongs to the APPROVED agent.
+> - Accepted terms versions in use: `2026-09-07` ×1 (the APPROVED agent) and `null` ×1.
+>
+> ⭐ **SO THERE IS NO DATA MIGRATION TO WRITE.** Nobody is mid-payment on the old rail. Unit 7 is
+> not a backfill; it is a **non-regression** obligation: keep the legacy officer-attested path
+> working for the one historical `COLLECTED` row, whose fee was collected at **18% VAT and is NOT
+> retroactive** (2026-09-09). ⛔ That row must not be reclassified, rewritten or migrated — and it
+> is the concrete reason the money-in leg must be a PARAMETER, not an unconditional flip (see the
+> Unit 1 note above).
+> ⚠️ **A count is true only at the moment it was read.** Re-run the census immediately before the
+> deploy that changes the rail; an applicant can reach `PAYMENT_PENDING` at any time.
+
 | | Unit 7 · In-flight | where |
 |---|---|---|
-| ☐ | **7.1** applicants already at `PAYMENT_PENDING` by the old rail are honoured | migration |
-| ☐ | **7.2** a `feeReference` already recorded is not orphaned | data |
-| ☐ | **7.3** measured on production BEFORE the deploy: how many are mid-flight | read-only query |
+| ☐ | **7.1** applicants already at `PAYMENT_PENDING` by the old rail are honoured — ⭐ **measured: ZERO exist**, so this is a non-regression guard on the legacy path, not a backfill | no migration needed |
+| ☐ | **7.2** a `feeReference` already recorded is not orphaned — ⭐ **measured: ZERO undecided**; the only one belongs to the APPROVED agent and must be preserved untouched | data |
+| ✅ | **7.3** measured on production BEFORE the deploy: how many are mid-flight | ⭐ **DONE — 2 rows total, 1 in-flight, and it has paid nothing.** See the note above for the route and the full census |
 
 | | Unit 8 · Gates | where |
 |---|---|---|
