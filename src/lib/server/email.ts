@@ -1361,7 +1361,7 @@ export function coolOffHtml({ duration, endDate }: { duration: string; endDate: 
   return wrap(`
     ${eyebrow("Break active", "Pumzika")}
     ${heading("Break confirmed")}
-    ${subtitle(`Login and betting are paused for ${duration}. You'll be able to sign in again after ${endDate}.`)}
+    ${subtitle(`Betting and deposits are paused for ${duration}, until ${endDate}. You can still sign in and withdraw your money at any time.`)}
     ${detailRows([
       { label: "Duration", value: duration },
       { label: "Resumes", value: endDate },

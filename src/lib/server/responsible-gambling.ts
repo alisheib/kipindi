@@ -227,16 +227,44 @@ export async function setLimits(userId: string, input: SetLimitInput) {
  * Self-exclude. One-way: the player cannot reverse this themselves. Wallet is
  * frozen; session cookie is invalidated by the route handler that calls this.
  */
+/**
+ * 🔴 A BREAK IS ONE-WAY UNTIL EXPIRY — AND UNTIL 2026-09-10 THE WRITER DID NOT ENFORCE IT.
+ *
+ * Both `selfExclude` and `coolOff` wrote their end date UNCONDITIONALLY, so the SHORTER of two
+ * choices always won. Their own docblocks say "one-way until expiry", and `/legal/responsible-
+ * gambling` says it in all three locales. **A one-week cool-off was cancelled by starting a
+ * one-hour one.**
+ *
+ * ⛔ COOLING-OFF IS THE REACHABLE ONE, AND THAT IS THE POINT. `SELF_EXCLUDED` is refused at the
+ * sign-in gate, so an excluded player cannot open the form that would shorten their exclusion —
+ * it was protected by routing, not by this function. `COOLED_OFF` is deliberately ABSENT from
+ * that gate (`auth-service.ts`, and it must stay absent: a cool-off stops betting, not access to
+ * your own money), so the form stays reachable for the whole break. A person on day two of a
+ * week, feeling the pull, could open the page that helped them, pick the smallest option on it,
+ * and be betting within the hour — with the product reporting success.
+ *
+ * ⭐ Extending still works: this takes the FURTHEST date, never the newest.
+ */
+function furthest(existing: string | null | undefined, proposed: string): string {
+  if (!existing) return proposed;
+  const a = Date.parse(existing), b = Date.parse(proposed);
+  if (!Number.isFinite(a)) return proposed;
+  return a > b ? existing : proposed;
+}
+
 export async function selfExclude(userId: string, period: keyof typeof SELF_EXCLUSION_PERIODS_SEC) {
   const cur = await getRgSettings(userId);
-  const until = new Date(Date.now() + SELF_EXCLUSION_PERIODS_SEC[period] * 1000).toISOString();
+  const until = furthest(cur.selfExclusionUntil, new Date(Date.now() + SELF_EXCLUSION_PERIODS_SEC[period] * 1000).toISOString());
   // Stamp the start as well as the end — the cross-operator register has to state
   // when the exclusion began, and without this it fell back to the account's
   // registration date, which is wrong for every row.
   await db.responsible.upsert({
     ...cur,
     selfExclusionUntil: until,
-    selfExclusionStartedAt: new Date().toISOString(),
+    // ⛔ Preserved across a re-take, for the same reason as the end date: the cross-operator
+    // register states when the exclusion BEGAN, and a player extending has not begun a new one.
+    selfExclusionStartedAt: (cur as { selfExclusionStartedAt?: string | null }).selfExclusionStartedAt
+      ?? new Date().toISOString(),
   });
   // Freeze user + wallet
   await db.user.update(userId, { status: "SELF_EXCLUDED" });
@@ -270,12 +298,16 @@ export async function selfExclude(userId: string, period: keyof typeof SELF_EXCL
  */
 export async function coolOff(userId: string, period: keyof typeof COOLING_OFF_PERIODS_SEC) {
   const cur = await getRgSettings(userId);
-  const until = new Date(Date.now() + COOLING_OFF_PERIODS_SEC[period] * 1000).toISOString();
-  // Stamp the start alongside the end — see selfExclude().
+  const until = furthest(cur.coolingOffUntil, new Date(Date.now() + COOLING_OFF_PERIODS_SEC[period] * 1000).toISOString());
   await db.responsible.upsert({
     ...cur,
     coolingOffUntil: until,
-    coolingOffStartedAt: new Date().toISOString(),
+    // ⛔ THE START STAMP SURVIVES A RE-TAKE. Overwriting it destroyed the record of when the
+    // break actually BEGAN — and the sibling comment in `selfExclude` says that stamp exists
+    // precisely because the register has to state that, falling back to the registration date
+    // without it. A player extending a break has not started a new one.
+    coolingOffStartedAt: (cur as { coolingOffStartedAt?: string | null }).coolingOffStartedAt
+      ?? new Date().toISOString(),
   });
   await db.user.update(userId, { status: "COOLED_OFF" });
   audit({

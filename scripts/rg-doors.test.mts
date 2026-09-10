@@ -322,6 +322,108 @@ console.log("\n§6 · the screen shows the refusal the server computed (E-240, m
   ok("6.7 ⛔ the cooling-off banner no longer claims the player cannot sign in",
     !/coolingOffBody: "Your cooling-off period is now active\. You will not be able to sign in/.test(EN),
     "a cool-off stops betting, not access — saying otherwise scares a player off their own money");
+  // ⛔ 6.7 PINNED ONE KEY BY NAME AND THE CLAIM SIMPLY MOVED. It matched the literal
+  // `coolingOffBody: "Your cooling-off period is now active. You will not be able to sign in…"`,
+  // so it stayed GREEN while `breakDescription` — the body of the CONFIRMATION DIALOG, the last
+  // thing a player reads before deciding — said "You cannot bet, deposit, or sign in until it
+  // ends" in all three locales. A guard whose population is one string is only ever as current as
+  // the string it was written against.
+  // ⭐ So the population is now every RG copy line, and the test is the CLAIM rather than the key.
+  // ⚠️ Scoped to sign-in verbs deliberately: "cannot bet" and "cannot deposit" are TRUE of a
+  // cool-off and must keep being said.
+  {
+    // ⛔ SCOPED TO COOL-OFF / BREAK KEYS ONLY. `selfExclusionBody` and friends DO say a player
+    // cannot sign in, and that is TRUE: `SELF_EXCLUDED` is refused at the sign-in gate
+    // (auth-service.ts). `COOLED_OFF` deliberately is not. Flagging both would make this guard
+    // demand that a correct statutory string be made false.
+    const breakKeys = EN.split(/\n/).filter((l) => /^\s{6}(break|coolingOff)[A-Za-z]*:/.test(l));
+    // ⚠️ TEMPERED, because a plain prohibition pattern cannot read a negation and flagged the FIX
+    // as the defect: "you cannot bet or deposit … but you can still sign in" contains both
+    // "cannot" and "sign in". The `(?!still|bado|仍)` tempering is what separates a prohibition
+    // from a permission — the same trap that caught my own reworded chatbot prompt earlier today.
+    const BLOCKS_SIGNIN = /(?:cannot|can't|will not be able to|unable to|hutaweza|huwezi|无法)(?:(?!still|bado|仍)[^"])*?(?:sign in|log in|kuingia|登录)/i;
+    const liars = breakKeys.filter((l) => BLOCKS_SIGNIN.test(l));
+    ok("6.7b ⛔ NO break / cooling-off copy claims it blocks sign-in, in any locale",
+      liars.length === 0,
+      liars.map((l) => l.trim().slice(0, 90)).join(" | "));
+    // ⭐ CONTROL — the population must be non-empty, or this passes by scanning nothing, and the
+    // pattern must still CATCH the pre-fix sentence. Both, or 6.7b proves only that it ran.
+    ok("6.7c ⚠️ CONTROL — break/cool-off copy was actually found", breakKeys.length >= 6, `found ${breakKeys.length}`);
+    ok("6.7d ⚠️ CONTROL — the pattern still catches the pre-fix sentence",
+      BLOCKS_SIGNIN.test('breakDescription: "A short, one-way pause. You cannot bet, deposit, or sign in until it ends.",'));
+  }
+}
+
+// ── §5 · A BREAK IS ONE-WAY UNTIL EXPIRY — INCLUDING AGAINST THE PLAYER ──────
+//
+// 🔴 `coolOff()` wrote `coolingOffUntil` UNCONDITIONALLY — never `max(existing, new)`. Its own
+// docblock says *"shorter, also one-way until expiry"*, and the policy says the same in all three
+// locales. It was not true: **a one-week break was cancelled by starting a one-hour one.**
+//
+// ⛔ AND THE REACHABILITY IS THE WHOLE POINT, WHICH IS WHY THIS IS COOLING-OFF AND NOT
+// SELF-EXCLUSION. `SELF_EXCLUDED` is refused at the sign-in gate, so an excluded player cannot
+// reach the form that would shorten their exclusion — it is protected by an accident of routing.
+// `COOLED_OFF` is DELIBERATELY ABSENT from that gate (auth-service.ts:133-136, and it must stay
+// absent — a cool-off stops betting, not access to your own money), so the form stays reachable
+// for the whole break. The one a player can reach is the one that could be undone.
+//
+// ⭐ A person on day two of a week-long break, feeling the pull, could open the same form that
+// helped them and — by choosing the SMALLEST option on it — be betting again within the hour,
+// with the product reporting success. That is the failure mode the feature exists to prevent.
+{
+  const { coolOff, selfExclude } = await import("../src/lib/server/responsible-gambling.ts");
+  const hour = 60 * 60 * 1000;
+
+  await player("cool_shorten");
+  await rg("cool_shorten", {});
+  await coolOff("cool_shorten", "1w");
+  const afterWeek = await db.responsible.get("cool_shorten");
+  const weekUntil = afterWeek?.coolingOffUntil ?? "";
+  const weekStarted = (afterWeek as { coolingOffStartedAt?: string } | null)?.coolingOffStartedAt ?? "";
+  ok("§5 a 1w cool-off is stored", !!weekUntil && Date.parse(weekUntil) - Date.now() > 6 * 24 * hour, weekUntil);
+
+  // ⚠️ PIN THE START STAMP TO A KNOWN PAST VALUE FIRST, OR THE NEXT ASSERTION IS VACUOUS.
+  // Both `coolOff` calls run in the same millisecond here, so their `new Date().toISOString()`
+  // stamps are byte-identical and "the stamp did not change" would pass whether the code
+  // preserved it or overwrote it. Giving the first one a distinct value makes the difference
+  // observable. (`weekStarted` above is read only to prove the field is written at all.)
+  ok("§5 the start stamp is written at all", !!weekStarted, weekStarted);
+  const PINNED_START = "2026-09-01T00:00:00.000Z";
+  const cur = await db.responsible.get("cool_shorten");
+  await db.responsible.upsert({ ...cur, coolingOffStartedAt: PINNED_START } as never);
+
+  await coolOff("cool_shorten", "1h");
+  const afterHour = await db.responsible.get("cool_shorten");
+  ok("§5 ⛔ a SHORTER break cannot overwrite a longer one — the week survives",
+    afterHour?.coolingOffUntil === weekUntil,
+    `week=${weekUntil} now=${afterHour?.coolingOffUntil}`);
+  // ⚠️ The start stamp was overwritten too, which destroys the record of when the break BEGAN —
+  // the sibling comment in `selfExclude` says that stamp exists precisely because the register
+  // has to state when it started, and without it the row falls back to the registration date.
+  ok("§5 ⛔ …and the ORIGINAL start stamp is not destroyed",
+    (afterHour as { coolingOffStartedAt?: string } | null)?.coolingOffStartedAt === PINNED_START,
+    `was=${PINNED_START} now=${(afterHour as { coolingOffStartedAt?: string } | null)?.coolingOffStartedAt}`);
+
+  // ⭐ CONTROL — extending must still work, or the fix is just "cooling-off is broken the other
+  // way". A player choosing a LONGER break is the case the feature is for.
+  await player("cool_extend");
+  await rg("cool_extend", {});
+  await coolOff("cool_extend", "1h");
+  const short = (await db.responsible.get("cool_extend"))?.coolingOffUntil ?? "";
+  await coolOff("cool_extend", "1w");
+  const long = (await db.responsible.get("cool_extend"))?.coolingOffUntil ?? "";
+  ok("§5 ⚠️ CONTROL — a LONGER break still extends", Date.parse(long) > Date.parse(short), `${short} → ${long}`);
+
+  // Self-exclusion is unreachable today, but the writer must enforce what its docblock promises
+  // rather than relying on the sign-in gate staying as it is.
+  await player("excl_shorten");
+  await rg("excl_shorten", {});
+  await selfExclude("excl_shorten", "1m");
+  const monthUntil = (await db.responsible.get("excl_shorten"))?.selfExclusionUntil ?? "";
+  await selfExclude("excl_shorten", "24h");
+  ok("§5 ⛔ a shorter SELF-EXCLUSION cannot overwrite a longer one either",
+    (await db.responsible.get("excl_shorten"))?.selfExclusionUntil === monthUntil,
+    `month=${monthUntil} now=${(await db.responsible.get("excl_shorten"))?.selfExclusionUntil}`);
 }
 
 console.log(`\nrg-doors: ${pass} passed, ${fail} failed`);

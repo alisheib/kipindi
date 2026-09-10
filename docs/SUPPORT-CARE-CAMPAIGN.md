@@ -270,7 +270,7 @@ BLOCKED and move on — do not guess, and do not quietly shrink the unit to some
 | 4 | 🔴 What the admin screen promises, validates, and won't explain | ✅ **5/5 — LIVE** |
 | 5 | 🟠 Config frozen at module eval, and a gate on the forbidden primitive | ✅ **2/2 — and the CLASS was 4× bigger than the brief said** |
 | 6 | 🟠 Two chat SAFETY mechanisms are unreachable when signed in | ☐ 0/3 |
-| 7 | 🟠 A cooling-off break can be SHORTENED, and the copy deterring it is false | ☐ 0/3 |
+| 7 | 🟠 A cooling-off break can be SHORTENED, and the copy deterring it is false | ✅ **3/3 — LIVE** |
 | 8 | 🟠 Five suites are not on the deploy path; one asserts a retired value | ☐ 0/3 |
 | 9 | 🟠 The first-login primer blocks its own photographer | ☐ 0/3 |
 | 10 | 🟡 Routing and chrome — dialability, badges, duplicated constants | ☐ 0/7 |
@@ -325,9 +325,9 @@ BLOCKED and move on — do not guess, and do not quietly shrink the unit to some
 
 | | Unit 7 · Cooling-off | where |
 |---|---|---|
-| ☐ | **7.1** a shorter break cannot overwrite a longer one | `responsible-gambling.ts:271-280` |
-| ☐ | **7.2** the RG page renders the ACTIVE break and its end date | `profile/responsible-gambling` |
-| ☐ | **7.3** no RG string claims a sign-in block for cooling-off | `i18n-dict.ts:1899` |
+| ✅ | **7.1** a shorter break cannot overwrite a longer one — new `furthest()` takes the FURTHEST date, never the newest, in **both** `coolOff` and `selfExclude`. ⛔ Cooling-off was the exploitable one and that is the point: `SELF_EXCLUDED` is refused at the sign-in gate so that form is unreachable, while `COOLED_OFF` is deliberately absent (and must stay absent — a break stops betting, not access to your own money), so the form stays reachable for the whole break. ⭐ The start stamp now survives a re-take too: overwriting it destroyed the record of when the break BEGAN, which the register has to state | `src/lib/server/responsible-gambling.ts` |
+| ✅ | **7.2** the RG page renders the ACTIVE break and its end date — the page read neither `coolingOffUntil` nor `selfExclusionUntil`, so a player mid-break saw the form in its default state with every duration selectable. It now says a break is running, until when, and that it cannot be shortened — so nobody discovers that by trying | `src/app/profile/responsible-gambling/page.tsx` |
+| ✅ | **7.3** no RG string claims a sign-in block for cooling-off — `t.rg.breakDescription` (the CONFIRMATION DIALOG body, the last thing read before deciding) said *"You cannot bet, deposit, or sign in until it ends"* in all three locales, and `coolOffHtml` repeated it in the email. ⛔ **The existing guard 6.7 was GREEN throughout** because it pinned ONE key by name (`coolingOffBody`) and the false claim had moved to another. Widened to every break/cool-off key, tempered so it cannot flag the fix ("cannot bet … but you **can still** sign in"), scoped so it does not demand that self-exclusion's TRUE sign-in claim be made false, with two controls | `src/lib/i18n-dict.ts` · `src/lib/server/email.ts` · `scripts/rg-doors.test.mts` |
 
 | | Unit 8 · Gates | where |
 |---|---|---|

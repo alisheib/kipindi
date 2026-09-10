@@ -18,7 +18,7 @@ import { Select } from "@/components/ui/select";
 import { Input, Field as KitField } from "@/components/ui/input";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { FeedbackSettings } from "@/components/settings/feedback-settings";
-import { formatTzs, formatDateTime } from "@/lib/utils";
+import { formatTzs, formatDateTime, formatDate, fill } from "@/lib/utils";
 import { getServerT } from "@/lib/i18n-server";
 import { bannerFor } from "@/lib/failure-banner";
 import { PageContainer } from "@/components/layout/page-container";
@@ -84,6 +84,19 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
       {sp.saved && !banner && (
         <Callout tone="success" live>{t.rg.limitsSaved}</Callout>
       )}
+
+      {/* 🔴 A PLAYER MID-BREAK SAW THIS PAGE IN ITS DEFAULT STATE. Nothing here read
+          `coolingOffUntil` or `selfExclusionUntil`, so the one page that knows a break is running
+          did not say so — it just offered the form again, with every duration selectable. ⭐ That
+          is the same screen a person on day two of a week-long break opens, and until 2026-09-10
+          picking the shortest option there would silently REPLACE their week with an hour. The
+          write now takes the furthest date; this is the half that tells them, and says plainly
+          that it cannot be shortened so nobody has to discover it by trying. */}
+      {rg.selfExclusionUntil && Date.parse(rg.selfExclusionUntil) > Date.now() ? (
+        <Callout tone="warning">{fill(t.rg.exclusionActive, { date: formatDate(rg.selfExclusionUntil) })}</Callout>
+      ) : rg.coolingOffUntil && Date.parse(rg.coolingOffUntil) > Date.now() ? (
+        <Callout tone="warning">{fill(t.rg.breakActive, { date: formatDate(rg.coolingOffUntil) })}</Callout>
+      ) : null}
 
       <PageHero glow="yes">
         <PageHeader
