@@ -5973,6 +5973,45 @@ state**, 1,338,504 of players' stakes in escrow, and every ledger entry ever wri
 `OWNER DIRECTION — WILL NOT FIX` means **the defect is unchanged** and Ali accepted it.
 ⛔ **`E-45` is closed ON A CONDITION, not a date: re-open it before arming SOL/BNB/LTC/XRP.**
 
+#### ⭐ GAME RULES SHIPPED AND VISUALLY VERIFIED (2026-09-10) — `/legal/rules` + two documents
+
+Marketing's two rules PDFs are now binding pages at **`/legal/rules`**, **`/legal/rules/yes-no`**
+and **`/legal/rules/up-down`**, EN/SW/ZH, inside the existing legal shell.
+`npm run qa:rules-pages` **114/0 on production** · `npm run test:rules-copy` **71/0**.
+
+⛔ **EVERY RATE READS FROM CONFIG.** `docs/RULES.md` forbids restating one, and both PDFs
+hard-coded 13% / 87% / TZS 130,000 / TZS 65,000. The worked examples are **arithmetic** now —
+⭐ that is the half that matters, because a prose "13%" looks wrong the moment the rate moves
+while *"1,000,000 − 130,000 = 870,000"* stays internally consistent and false. `test:rules-copy`
+§1 drives the documents at **11% / 2.5% / different bounds** and demands the page show THOSE:
+asserting "13%" would have passed just as happily on a literal.
+
+🔴 **NINE THINGS THE MARKETING COPY GOT WRONG, each measured against live config, not assumed.**
+The two worst: Up/Down §6 **denied the cash-out right `/legal/terms` §4 GRANTS** (restored, with
+all three conditions, and it now names the rounds where the runway can never be met — derived
+from `ALLOWED_DURATIONS` against the live grace window); and YES/NO §3 said **players do not
+submit markets** while the footer advertises `/proposals`. That one is rewritten to be true in
+**every feature state**, so it never needs revisiting when the flag flips. Also: M-Pesa named as
+the only rail (it is Selcom, an aggregator) · the 1.5% withdrawal fee and the stake bounds both
+absent from what read as a complete fee schedule · a fabricated "± $0.02" buffer where the engine
+uses a basis-point margin frozen at open · an unconditional 24-hour payout promise · a rain
+example on a price product · no licence number · "Version 1.0" instead of a dated version.
+
+⚠️ **`test:labels` CAUGHT A DEFECT IN MY OWN COPY** — the ASCII token `YES` inside Chinese prose,
+which `side-label.ts:103-107` documents verbatim as the *"若 YES 获胜"* defect. **And the Swahili
+drift was invisible to it**: I wrote **NDIYO** where `t.common.yes` is **NDIO**. Found by reading
+the dictionary, not by the gate. Every side word in both documents, both page titles and the
+index cards now comes from `sideWordIn()`. ⛔ **No exemption was added** — the terms page's own
+entry says such counts may only fall.
+
+⭐ **THE TABLES ARE THE FIRST IN THE LEGAL SECTION, and they behave.** Measured at 360: wider
+than their container (EN 493 · **SW 506** · ZH 432 against a 326 client) and scrolling INSIDE
+their own `ScrollX` region, so the page never scrolls sideways. Swahili is the widest exactly as
+§A5 predicts, which is why headers were sized against Swahili.
+
+⚠️ **`test:spacing-scale` IS RED (561 vs ceiling 553) AND IT IS NOT THIS WORK** — proven by
+removing the new pages and re-running: identical 561. Pre-existing on `main`.
+
 ⛔ **THREE THINGS STILL NEED ALI, and none of them is a defect a session can close:**
 ① the **Selcom webhook secret** (`E-331`) — shared with the vendor, cannot be generated here;
 ② **admin TOTP** (`E-255`) — ⛔ enrol every console account BEFORE flipping `DISABLE_ADMIN_TOTP`,
