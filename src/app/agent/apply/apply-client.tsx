@@ -362,8 +362,11 @@ export function ApplyClient({ app, documents, missing, kycGate, fee, lipa, walle
                    saved, and firstMissingStep returns them here because the fee is all that is
                    outstanding. */
                 <div className="space-y-2">
+                  {/* The number keeps the money ladder even inside a sentence: mono +
+                      tabular figures, per T5/M4. A formatted amount in prose without it is a
+                      digit that jumps when the value changes -- test:type-scale holds this. */}
                   <p className="text-body-sm leading-relaxed text-text">
-                    {fill(t.agent.payShortfall, { amount: formatTzs(Math.max(0, fee.totalTzs - balanceTzs)) })}
+                    {fillNodes(t.agent.payShortfall, { amount: <span className="font-mono tabular-nums">{formatTzs(Math.max(0, fee.totalTzs - balanceTzs))}</span> })}
                   </p>
                   <p className="text-body-sm leading-relaxed text-text-muted">{t.agent.payTopUpHint}</p>
                   <Button type="button" variant="primary" size="md" onClick={() => router.push("/wallet/deposit" as never)}>
