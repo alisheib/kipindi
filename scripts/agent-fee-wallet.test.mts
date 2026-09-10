@@ -50,6 +50,7 @@
  *    applies its defect IN PLACE, and this repo has already had two concurrent runs leave a
  *    live payout gate disabled in the working tree.
  */
+import { readFileSync } from "node:fs";
 import { db } from "../src/lib/server/store.ts";
 import { mkFixtureUser } from "./lib/agent-fixtures.mts";
 import { agentRegistrationFeeEntries, computeTrialBalance, type WalletSnapshot } from "../src/lib/server/ledger.ts";
@@ -294,6 +295,107 @@ console.log("\n§3 the debit primitive — all-or-nothing, idempotent, and its o
       succeeded === 1, `succeeded=${succeeded}`);
     ok("3.12 ⛔ …and the balance never goes negative", bal !== null && bal >= 0, `balance=${bal}`);
   }
+}
+
+// ═══ §4 · THE CALL SITES — because §1 tests the CONTRACT, not who honours it ══════════════
+/**
+ * ⭐ §4 EXISTS BECAUSE §1 AND §3 WERE NOT ENOUGH, AND THE RE-BREAK DISCIPLINE PROVED IT.
+ *
+ * After the fix went green, each protection was independently re-broken to check the guard
+ * could still see it. Three mutations were caught. **TWO WERE NOT**, and both are recorded
+ * here rather than quietly patched, because a guard's blind spots are the only part of it a
+ * reader cannot infer:
+ *
+ *   ⛔ MISS 1 — `reconcileFee`'s `source: "EXTERNAL"` was changed to `"WALLET"` and the suite
+ *      stayed 34/0. §1 calls `agentRegistrationFeeEntries` DIRECTLY, so it proves the
+ *      parameter works and says nothing about whether the caller passes the right value. That
+ *      mutation is precisely the defect the parameter was introduced to prevent: it would post
+ *      a PLAYER ledger entry for a bank collection where no wallet moved, stranding the one
+ *      real production row.
+ *
+ *   ⛔ MISS 2 — `requireBalanceGte` was removed from the debit and the suite stayed 34/0. The
+ *      in-memory store serialises everything through one lock, so a read-then-write race
+ *      CANNOT be reproduced there and the application-level balance check alone satisfies
+ *      §3.11. That protection only matters against real Postgres, where two transactions
+ *      genuinely interleave.
+ *
+ * ⚠️ WHY THESE ARE SOURCE ASSERTIONS AND NOT BEHAVIOURAL ONES. `postLedgerEntries` returns
+ * early with no write when there is no database — "the in-memory store doesn't have a
+ * LedgerEntry model" — so the posted legs cannot be read back in a unit suite, and the race
+ * cannot be staged. A source assertion is the strongest thing available here, and it fails on
+ * exactly the edit that would reintroduce each defect. ⛔ It is NOT a substitute for driving
+ * this on Postgres, which is what the live drive is for.
+ */
+console.log("\n§4 the call sites pass the right source, and the conditional write is still there");
+{
+  const read = (f: string) => readFileSync(new URL(`../src/lib/server/${f}`, import.meta.url), "utf8");
+  const appSvc = read("agent-application-service.ts");
+  const walletSvc = read("wallet-service.ts");
+
+  // The two `agentRegistrationFeeEntries` call sites, isolated by their surrounding call.
+  const callsOf = (src: string) => [...src.matchAll(/agentRegistrationFeeEntries\(\{([\s\S]{0,400}?)\}\)/g)].map((m) => m[1]!);
+  const appCalls = callsOf(appSvc);
+  const walletCalls = callsOf(walletSvc);
+
+  ok("4.population · the scan finds BOTH application-service call sites (collection + refund)",
+    appCalls.length === 2, `found ${appCalls.length}`);
+  ok("4.population2 · …and the wallet rail's own call site", walletCalls.length === 1, `found ${walletCalls.length}`);
+
+  // ⛔ reconcileFee is the LEGACY bank collection: no wallet moved, so the leg must be EXTERNAL.
+  const collection = appCalls.find((c) => /Agent registration fee ·/.test(c));
+  ok("4.1 ⛔ reconcileFee (the legacy bank collection) passes source: \"EXTERNAL\"",
+    !!collection && /source:\s*"EXTERNAL"/.test(collection), collection ?? "call site not found");
+
+  // ⭐ The refund must pass a VARIABLE — mirroring what collected — never a hard-coded literal.
+  const refund = appCalls.find((c) => /refunded ·/.test(c));
+  ok("4.2 ⭐ recordFeeRefund passes a DERIVED source, not a literal — the mirror must follow the collection",
+    !!refund && /source:\s*fundingSource/.test(refund), refund ?? "call site not found");
+  ok("4.3 ⛔ …and it is derived from the STORED stamp, not inferred from the ledger",
+    /feeFundingSource\s*\?\?\s*"EXTERNAL"/.test(appSvc));
+
+  // ⭐ The wallet rail must book to the player.
+  ok("4.4 ⭐ payAgentRegistrationFee passes source: \"WALLET\"",
+    !!walletCalls[0] && /source:\s*"WALLET"/.test(walletCalls[0]), walletCalls[0] ?? "call site not found");
+
+  /**
+   * ⛔ 4.5 — THE CONDITIONAL WRITE. This is MISS 2's replacement.
+   * `requireBalanceGte` becomes `WHERE balance >= n` on the UPDATE, which is the only thing
+   * that defeats a bet settling between the balance read and the debit. Removing it is
+   * invisible to every behavioural assertion in this suite, so it is asserted at the source.
+   */
+  /**
+   * ⚠️ SLICE ON THE NEXT TOP-LEVEL DECLARATION, NOT ON A BARE `}` LINE. This file is checked
+   * out with CRLF on Windows, so `indexOf("\n}\n")` returns -1 and the slice silently becomes
+   * two characters — every assertion below then fails for a reason that has nothing to do with
+   * the code. Found exactly that way.
+   */
+  const feeStart = walletSvc.indexOf("export async function payAgentRegistrationFee");
+  const after = walletSvc.slice(feeStart);
+  const nextDecl = after.search(/\r?\n\/\*\*\r?\n \* Manual admin balance adjustment/);
+  const feeBody = nextDecl > 0 ? after.slice(0, nextDecl) : after;
+  ok("4.population3 · the scan isolated the fee function's body (a two-character slice is not a body)",
+    feeStart > 0 && feeBody.length > 1500, `start=${feeStart} len=${feeBody.length}`);
+  ok("4.5 ⛔ the debit's wallet write is guarded by requireBalanceGte — the race-proof half",
+    /requireBalanceGte:\s*want/.test(feeBody), "the conditional write is gone");
+  ok("4.6 ⛔ …and it debits the FULL amount, never min(want, balance)",
+    /balance:\s*-want\b/.test(feeBody) && !/Math\.min\(\s*want/.test(feeBody));
+  ok("4.7 ⛔ …and the movement is row-locked on the wallet", /withLock\(`wallet:\$\{userId\}`/.test(feeBody));
+  ok("4.8 ⛔ …and the ledger group is posted INSIDE the money transaction, not after it",
+    /postLedgerEntries\([\s\S]{0,300}\}\),\s*tx\)/.test(feeBody));
+
+  /**
+   * ⭐ 4.9 — and prove the DAL primitive those assertions depend on actually refuses.
+   * A conditional debit below the floor must return null, or `requireBalanceGte` is a no-op
+   * and 4.5 is asserting the presence of something that does nothing.
+   */
+  await mkFixtureUser("fee_dal");
+  await setBalance("fee_dal", FEE - 1);
+  const w = await db.wallet.findByUserId("fee_dal");
+  const refused = await db.wallet.adjust(w!.id, { balance: -FEE }, { requireBalanceGte: FEE });
+  ok("4.9 ⭐ the DAL refuses a conditional debit below the floor (so 4.5 guards something real)",
+    refused === null, `got ${JSON.stringify(refused)}`);
+  ok("4.10 …and the balance is untouched by the refused write",
+    (await balanceOf("fee_dal")) === FEE - 1);
 }
 
 console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — ${pass} passed, ${fail} failed`);
