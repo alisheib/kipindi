@@ -166,7 +166,7 @@ BLOCKED and move on — do not guess, and do not quietly shrink the unit to some
 | 5 | 🟠 Refunds — the mirror must still balance | ☐ 0/3 |
 | 6 | 🟠 Copy, terms and i18n — EN/SW/ZH, and a terms version bump | ☐ 0/5 |
 | 7 | 🟠 In-flight applicants must not be stranded by the deploy | ⏳ **1/3** — 7.3 measured: **no migration needed** |
-| 8 | 🟡 Gates — the suites that hold this subsystem, on the deploy path | ⏳ **1/3** — 8.2 sealed; ⛔ 2 mutations escaped v1, both now caught |
+| 8 | 🟡 Gates — the suites that hold this subsystem, on the deploy path | ⏳ **2/3** — 8.2 + 8.3 sealed; ⛔ 2 mutations escaped v1, both now caught |
 
 <details><summary><strong>Row ledger — tick these</strong></summary>
 
@@ -275,7 +275,7 @@ BLOCKED and move on — do not guess, and do not quietly shrink the unit to some
 |---|---|---|
 | ⏳ | **8.1** the agent suites that cover the fee are identified and extended | ✅ **`test:agent-fee-wallet` NEW** (47 assertions, in `test:all` automatically — it discovers every `test:*` key, so the board is **325** now, not 324). ✅ `test:agent-application-security` **extended**: its §8 audit scan read only `agent-application-service.ts` and the fee's audit now fires from `wallet-service.ts`, so it was measuring the wrong population — it now reads both and asserts it reaches the wallet rail. ⏳ remaining agent suites reviewed under Units 3–6 |
 | ✅ | **8.2** each new guard is proven RED before its fix | ⭐ **RED 21/11 → GREEN 34/0 → hardened to 47/0**, and then **re-broken FIVE ways**. ⛔ **TWO MUTATIONS ESCAPED THE FIRST VERSION** and are recorded in the guard's own §4 docblock rather than quietly patched: (a) `reconcileFee`'s `source` flipped to `"WALLET"` — §1 calls the entry builder DIRECTLY, so it proved the parameter works and never checked the CALLER, which is exactly the defect the parameter exists to stop; (b) `requireBalanceGte` deleted — the in-memory store serialises through one lock, so the read-then-write race cannot be staged there at all. §4 closes both. ⚠️ They are **source assertions** because `postLedgerEntries` writes nothing without a database ("the in-memory store doesn't have a LedgerEntry model"), so the posted legs cannot be read back — ⛔ not a substitute for driving it on Postgres |
-| ☐ | **8.3** `predeploy` runs them | `package.json` — ⛔ **NOT until it is green on the deploy path**, and the peer's `predeploy` change is on `origin/main` and must be rebased over first |
+| ✅ | **8.3** `predeploy` runs them | `test:agent-fee-wallet` appended to the `predeploy` chain (**96 → 97 entries**), after the peer's `test:support-contact && test:cert-c1`. ⛔ Added only AFTER it was green — an already-red suite on the deploy path blocks BOTH campaigns, the same call the peer made on `test:popup-fit`. ⚠️ No `red:` twin was added: it fails by construction, and this repo's red harness mutates the tree IN PLACE |
 
 </details>
 
