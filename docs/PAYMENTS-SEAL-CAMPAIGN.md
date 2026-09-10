@@ -405,7 +405,32 @@ not fixed inside this campaign, and the same discipline applies to the QR.
 | id | what | evidence | why it is not fixed here |
 |---|---|---|---|
 | **PSC-01** | 🟠 **The deposit rail has no return-URL contract.** Any flow that sends a user to top up cannot bring them back to where they were. | `wallet/deposit/actions.ts:145` hard-codes `/wallet?deposited=<id>&amount=<n>&status=<TxnStatus>`; the gateway path lands on `wallet/deposit/return/page.tsx` which links to `/wallet` (`:153`). `KycGatePanel returnTo=` is a KYC convention, not a deposit one. | ⛔ §5 forbids re-litigating deposit, and rerouting its success redirect would drop the `deposited=/amount=/status=` confirmation a depositor is entitled to see. ⭐ **Unit 3.2 does not need it:** `apply-client.tsx:83-90` recomputes `firstMissingStep` from docs+referees only (`FEE_RECEIPT` is not one of the seven), so it returns the Payment step by construction. |
-| **PSC-02** | 🔴 **The WITHHELD Lipa QR's merchant config is published to every anonymous visitor of `/agent`.** Nothing renders — but the data is in the page. | Read off the LIVE page 2026-09-11: `"enabled":true,"merchantName":"OCEAN ENTERTAINMENT LIMITED","lipaNumber":"70063747","ussdCode":"*150*50#","qrAssetPath":"/pay/selcom-lipa-qr.d997c1d2.svg"},"account":"0769777877","amountTzs":100000`. `LipaQrPanel` is `"use client"` and `/agent/page.tsx:267` passes it `lipa={lipaDisplay()}` from a **server** component, so Next.js serialises the props into the RSC flight payload embedded in the HTML — even though `shouldShowLipaQr` returns false and the component renders nothing. | ⛔ **NOT a hard-stop breach:** no QR renders, no `<img>` is emitted, `LIPA_QR_RELEASED` is `false` and `test:lipa-qr` is green including *"the PERFECT config still renders NOTHING"*. ⚠️ **But no guard covers this:** §4.3 is a source-level check that `qrPayload` never enters a `.tsx`, and `lipaDisplay()` (`lipa-config.ts:162-169`) deliberately omits **only** `qrPayload` — its other five fields must reach the client for the component to render at all. So a withdrawn programme's payable merchant identity, plus `enabled:true`, is public. ⛔ Fixing it means not passing the props when the gate is shut, which is a change to the QR machinery the hard stop protects — **owner's call.** |
+| **PSC-02** | 🔴 **The WITHHELD Lipa QR's merchant config is published to every anonymous visitor of `/agent`.** Nothing renders — but the data is in the page. | Read off the LIVE page 2026-09-11: `"enabled":true,"merchantName":"OCEAN ENTERTAINMENT LIMITED","lipaNumber":"70063747","ussdCode":"*150*50#","qrAssetPath":"/pay/selcom-lipa-qr.d997c1d2.svg"},"account":"0769777877","amountTzs":100000`. `LipaQrPanel` is `"use client"` and `/agent/page.tsx:267` passes it `lipa={lipaDisplay()}` from a **server** component, so Next.js serialises the props into the RSC flight payload embedded in the HTML — even though `shouldShowLipaQr` returns false and the component renders nothing. | ⛔ **NOT a hard-stop breach:** no QR renders, no `<img>` is emitted, `LIPA_QR_RELEASED` is `false` and `test:lipa-qr` is green including *"the PERFECT config still renders NOTHING"*. ⚠️ **But no guard covers this:** §4.3 is a source-level check that `qrPayload` never enters a `.tsx`, and `lipaDisplay()` (`lipa-config.ts:162-169`) deliberately omits **only** `qrPayload` — its other five fields must reach the client for the component to render at all. So a withdrawn programme's payable merchant identity, plus `enabled:true`, is public. ⛔ **AND IT IS A HARD DEPENDENCY OF UNIT 6.1, not merely a filed nicety** — see below. |
+
+### 🔴 PSC-02 IS A DEPENDENCY OF UNIT 6.1 — measured on the live page 2026-09-11
+
+Counted on `https://www.50pick.tz/agent`, signed out: **`0769777877` appears 3 times**,
+`Digital Selcom Bank` **twice**, `70063747` once, and `\"account\":\"0769777877\"` sits in the RSC
+flight payload as `LipaQrPanel`'s `account` prop.
+
+⛔ **So when Unit 6.1 removes the visible bank instruction, the removal would be COSMETIC.** The
+visible `feeBody` copy goes, and the destination account stays published to every anonymous
+visitor through the props of a component that renders nothing. **Unit 6.1 cannot be truthfully
+sealed until the props stop flowing.**
+
+⭐ **AND THE FIX DOES NOT TOUCH THE WITHHELD MACHINERY, so it is not blocked by the hard stop.**
+The change is at the CALL SITES — `/agent/page.tsx:267` and `apply-client.tsx` — to not render
+`<LipaQrPanel>` at all while the release gate is shut, using the server-importable
+`LIPA_QR_RELEASED` / `lipaQrWouldShow` rather than relying on the component to return null after
+its props have already been serialised. ⛔ `lipa.ts` and `lipa-config.ts` are NOT edited, the flag
+is NOT tidied away, and the machinery stays alive for a possible re-release — exactly what §0.6
+protects. Gating a call site is the opposite of deleting the feature.
+
+⚠️ Whoever does Unit 6.1 must therefore verify by reading the SHIPPED PAGE, not the JSX: grep the
+response for the account digits and the merchant name. A visible string removed from a template is
+not a string removed from the payload.
+
+---
 
 ⭐ **The lesson PSC-02 carries, beyond the QR:** *"renders nothing"* and *"sends nothing"* are
 different claims. A `"use client"` component reached from a server component publishes its PROPS
@@ -491,6 +516,7 @@ the 2026-09-09 ruling is not retroactive.
 | §0.4: *"`F:\kipindi-main` holds the Railway CLI link"* | ⛔ **F: does not exist on this machine.** No `.env` and no `.railway` in either checkout. Use `railway link -p 50pick -e production`, then `railway run --service Postgres -- <cmd>` for `DATABASE_PUBLIC_URL`. ⚠️ The Railway **MCP** works only if you pass `project_id` explicitly (`5e87353c-1d59-433d-a683-a32b9149f74c`); it cannot discover the link. |
 | §0.1 step 5: baseline **311/324** | ✅ Confirmed by running it. ⚠️ **Now 312/325** — `test:all` discovers every `test:*` key, so declaring one adds a suite. |
 | §0.4: split `email.ts` by line range | ⛔ **Unsatisfiable.** `REPLY_TO` is one module-scope binding used from `:364` to `:1889`, so any refactor crosses any line boundary. ⭐ **Declare ownership by UNIT (function/export), never by line range**, and a shared module-scope helper belongs to whoever owns the helper. |
+| §0.4 says nothing about the generated Prisma client | ⛔ **ADD IT: a schema change is NOT carried by `git pull`.** `node_modules/@prisma/client` is a build artifact, and neither a rebase nor `test:all` regenerates it. The peer integrated this campaign's schema commit and got `typecheck` + `test:backup` red — *"Type `'AGENT_REGISTRATION_FEE'` is not assignable to type `TxnType`"* in `prisma-dal.ts`, in files they had never touched. ⭐ **`npx prisma generate` after integrating any schema change**, then re-run. Same family as the `jsqr` `MODULE_NOT_FOUND`: read the FIRST failure's text before believing a red. ⚠️ And it is why §0.4's *"re-run `test:all` AFTER integrating"* earned its keep — a pre-integration board would have pushed a tree never typechecked against the other session's schema. |
 
 ### ⭐ Two lessons from the guard work, both earned the hard way
 - **A guard that drives a function directly can be blind to its CALL SITES.** Flipping
