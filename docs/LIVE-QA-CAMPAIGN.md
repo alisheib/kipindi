@@ -6052,8 +6052,13 @@ comment in `eyebrow-roles.mjs` that armed a latent broken `/*` in a data string 
 stale-key sites; the re-key fixed both).
 
 ⛔ **THE 13 REMAINING REDS ARE PRE-EXISTING AND NONE ARE MINE** — `house-book` and `red-anchors`
-share one rotted anchor in `src/lib/house-book.ts`; `docs` fails on a literal `npm run x` in
-`MONEY-GATE-REMEDIATION.md`. The other ten are session-91's standing list.
+share one rotted anchor in `src/lib/house-book.ts`; `docs` fails on two placeholder script names in
+`MONEY-GATE-REMEDIATION.md` (:1452, :1465) that were never real commands. The other ten are
+session-91's standing list.
+⚠️ **And naming that defect the obvious way ADDS one** — `docs-links.mjs` scans for the invocation
+pattern in prose, so a sentence quoting the bad command becomes a third violation. It did, here,
+until this line was rewritten to describe it instead of reproduce it. Same family as the
+block-comment trap in `scripts/design-gate/eyebrow-roles.mjs`.
 
 ⛔ **THREE THINGS STILL NEED ALI, and none of them is a defect a session can close:**
 ① the **Selcom webhook secret** (`E-331`) — shared with the vendor, cannot be generated here;

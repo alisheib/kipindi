@@ -737,7 +737,8 @@
     "test:rules-copy": "tsx scripts/rules-copy.test.mts",
     "qa:rules-pages": "node scripts/live/rules-pages-drive.mjs",
     "qa:wallet-empty-escape": "node scripts/live/wallet-empty-escape-drive.mjs",
-    "ops:e266-eth-zh-icon": "tsx scripts/live/ops/e266-eth-zh-icon.mts"
+    "ops:e266-eth-zh-icon": "tsx scripts/live/ops/e266-eth-zh-icon.mts",
+    "qa:support-shots": "node scripts/live/support-surface-shots.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",
