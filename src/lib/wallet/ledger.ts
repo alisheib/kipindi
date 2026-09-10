@@ -6,7 +6,7 @@
  * Tuesday pages through everything they have ever done, twelve rows at a time, with no search.
  *
  * 🔴 **FILTER THE STORED `TxnType`, NEVER THE UI TOKEN.** `wallet/page.tsx`'s `adaptTxn` folds
- * eleven stored types into eight display tokens — deliberately, because that token drives the
+ * the stored types into fewer display tokens — deliberately, because that token drives the
  * credit/debit SIGN and the receipt link. It folds `BONUS_CREDIT` and `ADJUSTMENT_CREDIT` into
  * `deposit`, and `HOUSE_FEE` and `ADJUSTMENT_DEBIT` into `withdraw`. ⛔ **A "Deposits" filter
  * built on that token would tell a player their bonus was a deposit** — a false statement about
@@ -15,7 +15,7 @@
  *     sed -n '/const typeMap/,/};/p' src/app/wallet/page.tsx
  *
  * ⭐ AND THE LENSES ARE A PARTITION OF THE STORED ENUM, NOT A SELECTION FROM IT. Every one of the
- * twelve `TxnType` values is reachable by exactly one lens, and every one of the seven
+ * `TxnType` values is reachable by exactly one lens, and every one of the seven
  * `TxnStatus` values by exactly one state. That is what `test:lifecycle-reach` asserts, and it is
  * why a new enum value fails a gate instead of quietly having no way in.
  *
@@ -57,7 +57,7 @@ export type LedgerRow = {
 /* ─────────────────────────────────── the URL contract ─────────────────────────────────── */
 
 /**
- * ⭐ THE MONEY LENSES — a PARTITION of all twelve stored types.
+ * ⭐ THE MONEY LENSES — a PARTITION of ALL stored types.
  *
  *   in         DEPOSIT                                          the player funded the wallet
  *   out        WITHDRAWAL                                       the player took money out

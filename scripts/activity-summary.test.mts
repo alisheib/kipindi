@@ -169,8 +169,14 @@ txn("act_cancel", "WITHDRAWAL", -10_000, now - 2 * HOUR);
     ["BET_REFUND", 1_000], ["BONUS_CREDIT", 1_000], ["ADJUSTMENT_CREDIT", 1_000],
     ["ADJUSTMENT_DEBIT", -1_000], ["CASHOUT", 1_000], ["HOUSE_FEE", -1_000],
     ["AGENT_COMMISSION", 1_000], ["AGENT_COMMISSION_REVERSAL", -1_000],
+    // ⭐ 2026-09-10: the agent registration fee moved onto the WALLET rail, so an applicant is
+    // now DEBITED for it and it must reach `net` like any other movement. ⛔ This fixture is a
+    // hard-coded list, so it silently covered 12 of 13 types the moment the enum grew — which
+    // is the very defect the section guards ("A player given a bonus, or charged a fee, saw it
+    // nowhere"). §C.0's count is what makes that impossible to miss.
+    ["AGENT_REGISTRATION_FEE", -1_000],
   ];
-  ok("§C.0 fixture covers all twelve stored types", ALL.length === 12, `${ALL.length}`);
+  ok("§C.0 fixture covers all thirteen stored types", ALL.length === 13, `${ALL.length}`);
   for (const [type, amount] of ALL) {
     const uid = `act_t_${type.toLowerCase()}`;
     await mkUser(uid);
@@ -183,7 +189,7 @@ txn("act_cancel", "WITHDRAWAL", -10_000, now - 2 * HOUR);
 
 // ── §D · THE PARTITION IS TOTAL — asserted against the schema, not trusted ────────────────
 // ⛔ `activity-summary.ts` derives its type list by flattening `/wallet`'s `LENS_TYPES`, on that
-//    file's written claim to be "a PARTITION of all twelve stored types". If a thirteenth type is
+//    file's written claim to be "a PARTITION of all stored types". If a further type is
 //    ever added to the enum and to no lens, that claim silently becomes false and the new type
 //    disappears from every tile and from `net` — with no error anywhere. The schema is the source
 //    of truth, so the schema is what this compares against.
@@ -205,7 +211,13 @@ txn("act_cancel", "WITHDRAWAL", -10_000, now - 2 * HOUR);
     .split("\n")
     .map((l) => l.trim())
     .filter((l) => /^[A-Z_]+$/.test(l));
-  ok("§D.0 CONTROL · the schema really lists twelve types", stored.length === 12, `${stored.length}: ${stored.join(",")}`);
+  // ⭐ 12 → 13 on 2026-09-10: `AGENT_REGISTRATION_FEE` was added deliberately, for the fee paid
+  // from an applicant's wallet. ⛔ This is NOT a ratchet being relaxed to swallow a regression —
+  // the control fired exactly as its comment above says it should, and its purpose is to force
+  // the partition below to be re-verified. It was: the new type IS in a lens (`agentfee`), and
+  // §C.0's fixture was extended to cover it, because a hard-coded fixture list had quietly
+  // dropped to 12-of-13.
+  ok("§D.0 CONTROL · the schema really lists thirteen types", stored.length === 13, `${stored.length}: ${stored.join(",")}`);
 
   const lensed = Object.values(LENS_TYPES).flat();
   const missing = stored.filter((t) => !lensed.includes(t as never));

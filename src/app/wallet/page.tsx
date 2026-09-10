@@ -37,7 +37,7 @@ export const dynamic = "force-dynamic";
 
 /**
  * 🔴 THE FOLD IS FOR DISPLAY ONLY, AND `lib/wallet/ledger.ts` FILTERS THE STORED TYPE INSTEAD.
- * Eleven stored types collapse into eight display tokens here — deliberately, because this token
+ * The stored types collapse into fewer display tokens here — deliberately, because this token
  * drives the credit/debit SIGN and the receipt link. ⛔ It is NOT a filter vocabulary:
  * `BONUS_CREDIT` and `ADJUSTMENT_CREDIT` both land on `deposit`, so a "Deposits" filter built on
  * it would tell a player their bonus was a deposit.
