@@ -6009,8 +6009,51 @@ than their container (EN 493 · **SW 506** · ZH 432 against a 326 client) and s
 their own `ScrollX` region, so the page never scrolls sideways. Swahili is the widest exactly as
 §A5 predicts, which is why headers were sized against Swahili.
 
-⚠️ **`test:spacing-scale` IS RED (561 vs ceiling 553) AND IT IS NOT THIS WORK** — proven by
-removing the new pages and re-running: identical 561. Pre-existing on `main`.
+#### ✅ `test:spacing-scale` IS GREEN — AND FOUR OF MY OWN REDS WENT WITH IT (`d1725b96`)
+
+It had been red since 2026-09-05 (**561** against a ceiling of **553**, eight usages added by
+later work) and was holding `predeploy` red. Now **478 = 478**, and `test:all` went **307 → 311
+of 324**.
+
+⭐ **Only FOUR of the eight inverted keys can move without a rendered change**, and that is why
+478 is not lower. The override is all px, the stock keys leak rem, and for those four the two
+scales land on the same pixel — proven from **compiled CSS**, with the premise checked
+(`no html font-size anywhere in src`; production reports 16px): `16→4rem→64px == 9→64px`, and
+20/80, 24/96, 32/128. ⛔ `2.5`, `3.5`, `14`, `28` have no equivalent — moving those is a real
+±2px change and none were touched. Scoped to **31 `loading.tsx` skeletons**; the same keys
+appear **35 more times** in files carrying real content and were deliberately left.
+
+⛔ **THE REMEDY IS PER-PREFIX, BECAUSE TWO GUARDS CONDEMN OPPOSITE TOKENS AND BOTH ARE RIGHT.**
+`w-16 → w-9` makes this ratchet green and produces **30** `ui-consistency`
+`numeric-size-utility` findings, which condemn keys 7–12 on `h`/`w`/`min`/`max` *precisely
+because* they read from the overridden scale. So width/height take an explicit literal
+(`w-[64px]` — the other rule's own description prescribes it) and padding/margin/gap take the
+override key.
+
+🔴 **AND THE SWEEP CORRUPTED SEVEN LINES OF COMMENT PROSE — read this before running another.**
+Comments explaining the rule became self-contradicting (*"WIDTH IS A LITERAL, not `w-[64px]`"*
+above a `w-[64px]`), deleting the one fact the ratchet derives from. ⛔ **The self-check could
+not see it:** it re-derived the diff by applying the same key map to both sides, and a uniform
+text map is exactly what walks into prose — **a green self-check is that defect's fingerprint.**
+No gate could see it either (they all decomment first), which is also why it bought the ratchet
+nothing: 90 rewritten − 7 prose = the 83 that counted. Found by an adversarial pass. Six lines
+restored byte-identical; `wallet/loading.tsx` needed a **rewrite**, because a revert would have
+restored a sentence the change made false. ⭐ `src/app/agent/loading.tsx:53` carries the same
+idiom intact and is the reference form.
+
+⚠️ **FOUR `test:all` REDS WERE MINE, from the support-config split and the pill hoist** — and
+`test:all` is the only thing that found them: `cert-c1` (imported `SUPPORT_PHONE` from the
+CLIENT half after the getters moved — died at load, and **`tsc` cannot see it because a `.mts`
+fixture's imports are outside its include**; this one was already pushed) · `chat-availability`
+(anchor required `<ChatRoot />` with no attributes — widened, not relaxed, and mutation-proven
+still to fail if the gate goes) · `decomment` (a private `stripComments`, then a **block**
+comment in `eyebrow-roles.mjs` that armed a latent broken `/*` in a data string and swallowed
+**19,621** characters, 97 → 19,718) · `eyebrow-roles` (⚠️ **already red at HEAD** on two
+stale-key sites; the re-key fixed both).
+
+⛔ **THE 13 REMAINING REDS ARE PRE-EXISTING AND NONE ARE MINE** — `house-book` and `red-anchors`
+share one rotted anchor in `src/lib/house-book.ts`; `docs` fails on a literal `npm run x` in
+`MONEY-GATE-REMEDIATION.md`. The other ten are session-91's standing list.
 
 ⛔ **THREE THINGS STILL NEED ALI, and none of them is a defect a session can close:**
 ① the **Selcom webhook secret** (`E-331`) — shared with the vendor, cannot be generated here;
