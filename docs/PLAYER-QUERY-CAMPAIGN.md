@@ -264,6 +264,36 @@ A gate tuned until the product passes is worthless, so each exemption is named a
    control it "overlaps" all eighteen chips. Bounded: scrim, header and footer only, plus
    anything larger than half the viewport.
 
+### ✅ VERIFIED ON PRODUCTION AFTER THE DEPLOY — `main` `f883a104`
+
+⛔ **The defect was captured on 50pick.tz BEFORE the deploy, so the fix has a before/after and
+not just an after.** With the board on BTC, the live page rendered:
+
+```
+BEFORE   href="/updown?asset=BTC"          ← the asset chip carried NO d
+AFTER    href="/updown?asset=BTC&d=5"      ← it carries the duration in force
+```
+
+So a player on the 5-minute board who tapped **Bitcoin** — the asset they were already on — used
+to be re-seated on BTC's shortest running chain. That is the "I clicked something and it chose
+something else" report, reproduced on the real site and then closed on it.
+
+⭐ **AND THE NEGATIVE BRANCH IS LIVE TOO, WHICH IS THE HALF THAT PROVES IT IS NOT A BLANKET RULE.**
+On the same page: `?asset=ETH&d=5` (Ethereum runs a 5-minute chain, so the choice carries) and
+`?asset=XAU` with **no `d`** (gold does not, so the URL makes no claim the board cannot honour).
+
+⭐ **`qa:tap-truth` DRIVEN AGAINST PRODUCTION, SIGNED OUT** (`--allow-prod`; every control it
+touches is a GET `<Link>`, so it moves no money and writes no row):
+
+| run on `https://50pick.tz` | result |
+|---|---|
+| `/updown` 360 · 414 · 1280 × en · sw | **10 checks, 0 failed** |
+| ⭐ `--click` at **360**, en **and** sw | **18 checks, 0 failed** — *tapping "15 min" selects 15 min; "15 dakika" selects 15 dakika*, and 3/10/30/60 · Ethereum · Gold/Dhahabu each select themselves |
+
+⚠️ Production also carries **ETH**, which the local fixture does not — the fixture runs BTC / XAU
+/ XAG. A rail's length and its chips' positions are a property of the OPERATOR'S configuration,
+so the live run is not a formality here; it is the only one measuring the real board.
+
 ### What was measured, at the end
 
 | run | result |
