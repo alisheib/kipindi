@@ -159,8 +159,8 @@ BLOCKED and move on — do not guess, and do not quietly shrink the unit to some
 | Unit | What it seals | Done |
 |---|---|---|
 | 0 | ⛔ **DECISION GATE** — the compliance position this reverses | ✅ **2/2** |
-| 1 | 🔴 The ledger shape: a wallet-funded fee must not double-count | ☐ 0/4 |
-| 2 | 🔴 The debit primitive: all-or-nothing, idempotent, its own type | ☐ 0/5 |
+| 1 | 🔴 The ledger shape: a wallet-funded fee must not double-count | ✅ **4/4** |
+| 2 | 🔴 The debit primitive: all-or-nothing, idempotent, its own type | ✅ **5/5** |
 | 3 | 🔴 The applicant's path: deposit → return → pay, with no dead end | ☐ 0/5 |
 | 4 | 🟠 The officer's workstation after reconciliation stops being manual | ☐ 0/4 |
 | 5 | 🟠 Refunds — the mirror must still balance | ☐ 0/3 |
@@ -192,18 +192,18 @@ BLOCKED and move on — do not guess, and do not quietly shrink the unit to some
 
 | | Unit 1 · Ledger shape | where |
 |---|---|---|
-| ☐ | **1.1** the money-in leg is the PLAYER account **when the fee came from a wallet** — an explicit source parameter, ⛔ not an unconditional flip (see the note above) | `ledger.ts:646-667` + both callers |
-| ☐ | **1.2** a trial balance proves the same shillings are not counted twice | new guard |
-| ☐ | **1.3** the VAT leg still only posts when the rate is non-zero | `ledger.ts` |
-| ☐ | **1.4** `test:ledger` and `test:money-invariants` stay green, proven not assumed | existing |
+| ✅ | **1.1** the money-in leg is the PLAYER account **when the fee came from a wallet** — an explicit source parameter, ⛔ not an unconditional flip (see the note above) | `ledger.ts` `source: "WALLET" \| "EXTERNAL"`, **required and not defaulted** so `tsc` names every caller. Found exactly TWO, as predicted: `reconcileFee` → `EXTERNAL`, `recordFeeRefund` → whatever collected |
+| ✅ | **1.2** a trial balance proves the same shillings are not counted twice | `test:agent-fee-wallet` §2. ⭐ **Non-vacuous by construction:** §2.4–2.6 feed `computeTrialBalance` the exact numbers a double-counting build produces and assert drift is **exactly −100,000** and `ok === false`. Those three PASSED against the unfixed tree, which is what makes §2.1 mean something |
+| ✅ | **1.3** the VAT leg still only posts when the rate is non-zero | `test:agent-fee-wallet` §1.8–1.11, both directions (18% posts `HOUSE:TAX` and nets correctly; 0% posts no leg at all) |
+| ✅ | **1.4** `test:ledger` and `test:money-invariants` stay green, proven not assumed | ✅ **RUN, not assumed:** `test:ledger` PASS · `test:money-invariants` PASS · `test:trial-balance` PASS · `test:agent-fee-copy` PASS · `test:lifecycle-reach` PASS · `test:agent-application-security` **110/0 after I fixed the regression I caused** (see 8.2) |
 
 | | Unit 2 · The debit | where |
 |---|---|---|
-| ☐ | **2.1** a `TxnType` exists for this movement | `schema.prisma:115-135` |
-| ☐ | **2.2** the debit is ALL-OR-NOTHING — ⛔ `debitInternal` debits PARTIALLY | `wallet-service.ts:2075-2157` |
-| ☐ | **2.3** it holds a row lock and is not "ambient" | `withLock` — see §3 |
-| ☐ | **2.4** double-submit cannot pay twice (idempotency key) | new |
-| ☐ | **2.5** a concurrent bet cannot race the fee below zero | new guard |
+| ✅ | **2.1** a `TxnType` exists for this movement | `AGENT_REGISTRATION_FEE`, appended LAST to match Postgres `ALTER TYPE … ADD VALUE` order, in its **own** migration file per the `20260907120000` precedent (⛔ Postgres refuses to USE a value added in the same transaction, and `migrate deploy` wraps each FILE in one) |
+| ✅ | **2.2** the debit is ALL-OR-NOTHING — ⛔ `debitInternal` debits PARTIALLY | `payAgentRegistrationFee`. ⭐ **§3.1 asserts `debitInternal` REALLY DOES debit partially** — 40,000 taken against a 100,000 demand, shortfall 60,000, success-shaped output. So if anyone "fixes" it, the reason this second primitive exists is re-examined rather than lost |
+| ✅ | **2.3** it holds a row lock and is not "ambient" | `withLock("wallet:<id>")` + nested `withMoneyTx`. ⚠️ **THE BRIEF'S REASON WAS WRONG** — see the §3 correction below. There IS an ambient store; the actionable half (pass `tx` to every DAL call) is right and is done |
+| ✅ | **2.4** double-submit cannot pay twice (idempotency key) | Keyed on the **application id** via `Transaction.providerRef`, checked under the lock before any money moves; a second call returns the FIRST payment. ⛔ Deliberately NOT relying on `postLedgerEntries` dedupe — its comment claims stable ids but it mints `le_${randomId(12)}` |
+| ✅ | **2.5** a concurrent bet cannot race the fee below zero | `requireBalanceGte` makes the write `WHERE balance >= n`, so the **conditional write** is the guard, not the read. `test:agent-fee-wallet` §3.11–3.12 fire two concurrent payments at one balance: exactly one succeeds, balance never negative |
 
 | | Unit 3 · The applicant's path | where |
 |---|---|---|

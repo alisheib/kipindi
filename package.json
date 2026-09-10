@@ -146,6 +146,7 @@
     "test:config-audit-diff": "tsx scripts/config-audit-diff.test.mts",
     "test:terms-cancellation": "tsx scripts/terms-cancellation.test.mts",
     "test:agent-fee-copy": "tsx scripts/agent-fee-copy.test.mts",
+    "test:agent-fee-wallet": "tsx scripts/agent-fee-wallet.test.mts",
     "test:agent-waterfall": "tsx scripts/agent-waterfall.test.mts",
     "test:guards-exist": "tsx scripts/guards-exist.test.mts",
     "test:define-config-gate": "tsx scripts/define-config-gate.test.mts",

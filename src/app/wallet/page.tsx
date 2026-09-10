@@ -51,6 +51,11 @@ function adaptTxn(t: StoredTxn): Transaction {
     // them they put the money in themselves. The row's own `description` names it in full;
     // this token drives the credit/debit sign and the receipt link, so it must be its own word.
     AGENT_COMMISSION: "commission", AGENT_COMMISSION_REVERSAL: "reversal",
+    // ⛔ NOT "withdraw". The applicant paid a registration fee from their balance; the money
+    // never left the platform, and calling it a withdrawal on the one surface that exists to
+    // tell them the truth about their own money would be a false statement. The sign comes
+    // from the negative `amount`, not from this token, so the row still reads as a debit.
+    AGENT_REGISTRATION_FEE: "agentfee",
   };
   // 1:1 with the stored status — no collapsing. This used to fold PROCESSING
   // into "pending" (so an in-flight gateway payment was indistinguishable from

@@ -279,7 +279,7 @@ export async function startApplication(userId: string): Promise<ServiceResult<{ 
         status: "DRAFT",
         source: "SELF_SERVICE",
         refereeOneName: null, refereeOneContact: null, refereeTwoName: null, refereeTwoContact: null, refereeConsentAt: null,
-        feeAmountTzs: null, feeAttestedTzs: null, feeReference: null, feeStatementRef: null,
+        feeAmountTzs: null, feeAttestedTzs: null, feeFundingSource: null, feeReference: null, feeStatementRef: null,
         feeReconciledAt: null, feeReconciledById: null, feeSourceAccount: null,
         feeWaivedAt: null, feeWaivedById: null, feeWaiverReason: null,
         feeDisposition: "NONE", feeRefundDueAt: null, feeRefundedAt: null, feeRefundedById: null, feeRefundReference: null, feeRefundAmountTzs: null,
@@ -746,6 +746,10 @@ export async function reconcileFee(
     await db.agentApplication.update(app.id, {
       feeAmountTzs: fee.totalTzs, feeAttestedTzs: attested, feeStatementRef: statementRef, feeSourceAccount: source || null,
       feeReconciledAt: now, feeReconciledById: officerId, feeDisposition: "COLLECTED",
+      // ⭐ STAMPED AT COLLECTION so the refund mirrors the collection rather than today's
+      // policy — the same doctrine as reversing the VAT actually booked. This path is the
+      // legacy out-of-band rail by definition: an officer read a bank receipt.
+      feeFundingSource: "EXTERNAL",
     });
     // ⛔ THIS IS THE LEGACY OUT-OF-BAND PATH — money arrived in a bank account, NOT through a
     // wallet, so there is correctly no player `Transaction` here and the money-in leg must
@@ -758,6 +762,7 @@ export async function reconcileFee(
     await postLedgerEntries(`agentfee_${app.id}`, agentRegistrationFeeEntries({
       groupRef: app.id, userId: app.userId, amount: fee.totalTzs, vatAmount: fee.vatTzs,
       description: `Agent registration fee · ${app.feeReference}`,
+      source: "EXTERNAL",
     })).catch(() => {});
     audit({ category: "COMPLIANCE", action: "agent.fee.reconciled", actorId: officerId, targetType: "AgentApplication", targetId: app.id, payload: { feeReference: app.feeReference, statementRef, amountTzs: fee.totalTzs, vatTzs: fee.vatTzs, treatment: cfg.feeVatTreatment } });
     return { ok: true as const };
@@ -832,10 +837,40 @@ export async function recordFeeRefund(officerId: string, applicationId: string, 
     // explained. Treating an unanswered read as 0 is exactly the §1.2 defect.
     const bookedVat = await ledgerGroupAccountSum(`agentfee_${app.id}`, acct.tax);
     const vatReversed = bookedVat ?? vatWithinGross(amount, cfg.feeVatRatePct);
+    /**
+     * ⭐ AND REVERSE TO WHERE THE MONEY CAME FROM, BY THE SAME DOCTRINE AS THE VAT.
+     *
+     * A fee paid from a wallet must go back to that wallet; one paid out of band must go back
+     * out of band. Getting this wrong is not cosmetic in either direction: refunding a
+     * wallet-funded fee to `EXTERNAL:SELCOM` sends a person's money to a bank account they
+     * never paid from, and refunding an out-of-band fee to `PLAYER:<id>` credits a wallet
+     * that was never debited — minting shillings and drifting the trial balance.
+     *
+     * ⛔ THE STORED STAMP IS THE SOURCE OF TRUTH, NOT AN INFERENCE. `feeFundingSource` is
+     * written at collection. `null` means the row predates the 2026-09-10 ruling, and every
+     * historical collection was out of band, so `null` reads as EXTERNAL.
+     *
+     * ⚠️ The ledger is consulted only as a CROSS-CHECK. If the collection group carries a
+     * `PLAYER:` leg the fee was wallet-funded, and that must agree with the stamp. A
+     * disagreement is a real defect somewhere upstream, so it is audited rather than
+     * silently resolved — and the STAMP still wins, because a `null` from
+     * `ledgerGroupAccountSum` means "could not ask", not "no player leg".
+     */
+    const fundingSource: "WALLET" | "EXTERNAL" = app.feeFundingSource ?? "EXTERNAL";
+    const bookedPlayerLeg = await ledgerGroupAccountSum(`agentfee_${app.id}`, acct.player(app.userId));
+    const ledgerSaysWallet = bookedPlayerLeg !== null && bookedPlayerLeg !== 0;
+    if (bookedPlayerLeg !== null && ledgerSaysWallet !== (fundingSource === "WALLET")) {
+      audit({
+        category: "COMPLIANCE", action: "agent.fee.funding_source_mismatch", actorId: officerId,
+        targetType: "AgentApplication", targetId: app.id,
+        payload: { stamped: fundingSource, ledgerPlayerLeg: bookedPlayerLeg, refundedTo: fundingSource, note: "the stamp wins; investigate the collection" },
+      });
+    }
     await postLedgerEntries(`agentfee_refund_${app.id}`, agentRegistrationFeeEntries({
       groupRef: app.id, userId: app.userId, amount: -amount,
       vatAmount: -vatReversed,
       description: `Agent registration fee refunded · ${ref}`,
+      source: fundingSource,
     })).catch(() => {});
     audit({ category: "COMPLIANCE", action: "agent.fee.refunded", actorId: officerId, targetType: "AgentApplication", targetId: app.id, payload: { amountTzs: amount, reference: ref, rejectedBy: app.reviewerId, destination: app.feeSourceAccount, vatReversedTzs: vatReversed, vatSource: bookedVat === null ? "computed-from-config" : "ledger" } });
     notifyAgentFeeRefunded(app.userId, { amountTzs: amount, reference: ref });
@@ -1187,7 +1222,7 @@ export async function issueInvitation(officerId: string, input: { email: string;
     const app = await db.agentApplication.create({
       id: `agp_${randomId(10)}`, userId: existing.id, status: "INVITED", source: "OFFICER_INVITED",
       refereeOneName: null, refereeOneContact: null, refereeTwoName: null, refereeTwoContact: null, refereeConsentAt: null,
-      feeAmountTzs: null, feeAttestedTzs: null, feeReference: null, feeStatementRef: null, feeReconciledAt: null, feeReconciledById: null, feeSourceAccount: null,
+      feeAmountTzs: null, feeAttestedTzs: null, feeFundingSource: null, feeReference: null, feeStatementRef: null, feeReconciledAt: null, feeReconciledById: null, feeSourceAccount: null,
       feeWaivedAt: null, feeWaivedById: null, feeWaiverReason: null, feeDisposition: "NONE", feeRefundDueAt: null, feeRefundedAt: null, feeRefundedById: null, feeRefundReference: null, feeRefundAmountTzs: null,
       reviewerId: null, reviewedAt: null, rejectReason: null, rejectNote: null, infoRequestNote: null, infoRequestedAt: null,
       approvedRatePct: null, agentCode: null, acceptedTermsVersion: null, acceptedTermsAt: null, submittedAt: null, expiresAt, createdAt: now, updatedAt: now,
@@ -1427,7 +1462,7 @@ export async function acceptInvitation(userId: string, token: string, otpCode: s
       const app = await db.agentApplication.create({
         id: `agp_${randomId(10)}`, userId, status: "DRAFT", source: "OFFICER_INVITED",
         refereeOneName: null, refereeOneContact: null, refereeTwoName: null, refereeTwoContact: null, refereeConsentAt: null,
-        feeAmountTzs: null, feeAttestedTzs: null, feeReference: null, feeStatementRef: null, feeReconciledAt: null, feeReconciledById: null, feeSourceAccount: null,
+        feeAmountTzs: null, feeAttestedTzs: null, feeFundingSource: null, feeReference: null, feeStatementRef: null, feeReconciledAt: null, feeReconciledById: null, feeSourceAccount: null,
         feeWaivedAt: null, feeWaivedById: null, feeWaiverReason: null, feeDisposition: "NONE", feeRefundDueAt: null, feeRefundedAt: null, feeRefundedById: null, feeRefundReference: null, feeRefundAmountTzs: null,
         reviewerId: null, reviewedAt: null, rejectReason: null, rejectNote: null, infoRequestNote: null, infoRequestedAt: null,
         approvedRatePct: null, agentCode: null, acceptedTermsVersion: null, acceptedTermsAt: null, submittedAt: null,

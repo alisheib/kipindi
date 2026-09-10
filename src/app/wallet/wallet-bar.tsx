@@ -61,6 +61,7 @@ export function lensLabel(t: Dict, lens: LedgerLens): string {
     case "bonus": return t.wallet.typeBonus;
     case "adjust": return t.wallet.typeAdjust;
     case "commission": return t.wallet.typeCommission;
+    case "agentfee": return t.wallet.typeAgentFee;
   }
 }
 

@@ -179,6 +179,7 @@ function TOKEN_LABEL(t: ReturnType<typeof useT>["t"]): Record<string, string> {
     refund: t.wallet.typeRefund,
     commission: t.wallet.typeCommission,
     reversal: t.wallet.typeReversal,
+    agentfee: t.wallet.typeAgentFee,
   };
 }
 

@@ -483,6 +483,7 @@ function toStoredAgentApplication(a: any): StoredAgentApplication {
     // this path means a correct fee attested against itself would fail reconciliation.
     feeAmountTzs: a.feeAmountTzs === null || a.feeAmountTzs === undefined ? null : num(a.feeAmountTzs),
     feeAttestedTzs: a.feeAttestedTzs === null || a.feeAttestedTzs === undefined ? null : num(a.feeAttestedTzs),
+    feeFundingSource: a.feeFundingSource ?? null,
     feeReference: a.feeReference ?? null,
     feeStatementRef: a.feeStatementRef ?? null,
     feeReconciledAt: iso(a.feeReconciledAt),
@@ -529,6 +530,7 @@ const AGENT_APPLICATION_COLUMN: Record<keyof StoredAgentApplication, "date" | "p
   refereeConsentAt: "date",
   feeAmountTzs: "plain",
   feeAttestedTzs: "plain",
+  feeFundingSource: "plain",
   feeReference: "plain",
   feeStatementRef: "plain",
   feeReconciledAt: "date",

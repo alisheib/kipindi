@@ -278,6 +278,7 @@ export function txnTypeLabel(type: StoredTxn["type"]): string {
     HOUSE_FEE: MONEY.typeHouseFee.en,
     AGENT_COMMISSION: MONEY.typeAgentCommission.en,
     AGENT_COMMISSION_REVERSAL: MONEY.typeAgentCommissionReversal.en,
+    AGENT_REGISTRATION_FEE: MONEY.typeAgentRegistrationFee.en,
   };
   return L[type] ?? humanise(type);
 }

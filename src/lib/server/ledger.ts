@@ -661,11 +661,31 @@ export function agentRegistrationFeeEntries(opts: {
   /** The VAT component of `amount`, same sign. 0 when no VAT applies. */
   vatAmount: number;
   description: string;
+  /**
+   * ⛔ WHERE THE MONEY CAME FROM. REQUIRED, and deliberately not defaulted.
+   *
+   * `"WALLET"` — the applicant paid from their own balance (the rail since 2026-09-10). The
+   * money-in leg is `PLAYER:<userId>`, matching a real `Transaction` that debited the wallet.
+   *
+   * `"EXTERNAL"` — the LEGACY out-of-band collection an officer attested from a bank receipt.
+   * No wallet moved, so the leg is `EXTERNAL:SELCOM` and there is no `Transaction`.
+   *
+   * ⛔ IT IS A PARAMETER RATHER THAN A CONSTANT BECAUSE BOTH SHAPES ARE STILL REAL, and
+   * getting it wrong is not cosmetic. `computeTrialBalance` compares `wallet.balance + hold`
+   * against the sum of that user's `PLAYER:` entries:
+   *   · a WALLET debit booked EXTERNAL drifts that user by the whole fee, forever, and
+   *     double-counts shillings that already entered as a DEPOSIT;
+   *   · an EXTERNAL collection booked to the PLAYER account posts a player-ledger entry with
+   *     no wallet movement behind it — and there is exactly one such row on production.
+   * `npm run test:agent-fee-wallet` §1 and §2 hold both directions.
+   */
+  source: "WALLET" | "EXTERNAL";
 }): LedgerLine[] {
   const net = opts.amount - opts.vatAmount;
+  // The source of the money (or its destination on a refund, since `amount` is signed).
+  const moneyIn = opts.source === "WALLET" ? acct.player(opts.userId) : acct.external("SELCOM");
   const lines: LedgerLine[] = [
-    // The applicant is the source of the money (or its destination on a refund).
-    { account: acct.external("SELCOM"), entryType: "AGENT_REGISTRATION_FEE", amount: -opts.amount, userId: opts.userId, memo: opts.description },
+    { account: moneyIn, entryType: "AGENT_REGISTRATION_FEE", amount: -opts.amount, userId: opts.userId, memo: opts.description },
     { account: acct.agentFee, entryType: "AGENT_REGISTRATION_FEE", amount: net, userId: opts.userId, memo: opts.description },
   ];
   if (opts.vatAmount !== 0) {

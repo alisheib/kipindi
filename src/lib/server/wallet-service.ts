@@ -32,7 +32,7 @@ import { paymentMethodName } from "@/lib/payment-providers";
 import { notifyDeposit, notifyWithdraw, notifyAdminsAmlReview } from "./notification-service";
 import { withLock } from "./locks";
 import { emit } from "./event-bus";
-import { postLedgerEntries, depositEntries, rgSuspenseEntries, withdrawalEntries, internalCreditEntries, adjustmentEntries, agentCommissionEntries, withMoneyTx } from "./ledger";
+import { postLedgerEntries, depositEntries, rgSuspenseEntries, withdrawalEntries, internalCreditEntries, adjustmentEntries, agentCommissionEntries, agentRegistrationFeeEntries, withMoneyTx } from "./ledger";
 import { getEffectiveConfig } from "./market-config";
 import { computeWithdrawalFee, minWithdrawalForRate, PROVIDER_MIN_PAYOUT_TZS } from "@/lib/payout";
 import { payoutDestinationFor } from "@/lib/payout-destination";
@@ -2153,6 +2153,166 @@ export async function debitInternal(
     });
     emit("wallet:balance", { userId, balance: newBalance });
     return { debited: take, shortfall: want - take, balance: newBalance, taxReversed: taxBack };
+  });
+}
+
+/**
+ * ⭐ THE AGENT REGISTRATION FEE, PAID FROM THE APPLICANT'S OWN WALLET — ALL OR NOTHING.
+ *
+ * Ali ruled on 2026-09-10 that the fee is paid from the wallet rather than out of band: the
+ * applicant deposits on the ordinary rails, then pays from that balance. Reason: a Lipa/QR
+ * payment carries no reference on any network and a bank receipt is only as good as the human
+ * reading it, whereas a wallet debit carries the payer's identity by construction.
+ * `COMPLIANCE-DECISIONS.md` § 2026-09-10 · `npm run test:agent-fee-wallet`.
+ *
+ * ⛔ WHY THIS IS NOT `debitInternal`, AND MUST NEVER BECOME IT.
+ * `debitInternal` deliberately takes `min(want, balance)` and reports a `shortfall` rather
+ * than refusing — the right behaviour for clawing commission back off a partner who has
+ * already withdrawn, where recovering part is better than recovering none. Applied to a fee
+ * it is a way to lose money: an applicant holding TZS 40,000 would "pay" a TZS 100,000 fee,
+ * receive a success, and the platform would have taken their money and owed them a service it
+ * was never paid for. **A partial payment is not a payment.** Proven in
+ * `test:agent-fee-wallet` §3.1, which asserts `debitInternal` really does behave that way — so
+ * if anyone ever "fixes" it, the justification for this second primitive is re-examined rather
+ * than quietly lost.
+ *
+ * ⛔ AND IT IS NOT `ADJUSTMENT_DEBIT`. Registration income is not an admin adjustment; the
+ * owner's book has to be able to see it, and a refund has to be able to find its mirror.
+ *
+ * ── HOW IT IS SAFE ──────────────────────────────────────────────────────────────────────────
+ * · ROW-LOCKED. Everything runs inside `withLock("wallet:<id>")`, which in this repo opens a
+ *   real transaction, takes `pg_advisory_xact_lock`, and publishes that tx so the nested
+ *   `withMoneyTx` JOINS it rather than opening a second one. So the wallet update, the
+ *   `Transaction` and the ledger group commit ATOMICALLY, and a throw rolls back all three.
+ * · ALL-OR-NOTHING TWICE OVER. The balance is checked in application code AND the write is
+ *   guarded by `requireBalanceGte`, which becomes a `WHERE balance >= n` on the UPDATE. The
+ *   second one is what actually defeats a concurrent bet: the read can be stale, the
+ *   conditional write cannot.
+ * · IDEMPOTENT. One fee per application, keyed on the application id. A second call returns
+ *   the FIRST payment's result and moves no money — a double-tapped button must not pay twice.
+ *   ⚠️ Deliberately NOT relying on `postLedgerEntries` de-duplicating: its comment claims
+ *   stable ids but it mints `le_${randomId(12)}`, so `skipDuplicates` cannot dedupe a re-post.
+ * · NEVER NEGATIVE. The first money invariant. A refusal, never an overdraft.
+ */
+export type AgentFeePaymentResult =
+  | { ok: true; debited: number; balanceAfter: number; txnId: string; alreadyPaid: boolean }
+  | { ok: false; code: "INSUFFICIENT_FUNDS"; shortfall: number; balance: number; required: number }
+  | { ok: false; code: "NO_WALLET" | "WALLET_NOT_ACTIVE" | "INVALID_AMOUNT" | "LEDGER_REFUSED"; balance: number | null };
+
+export async function payAgentRegistrationFee(
+  userId: string,
+  opts: {
+    /** The application being paid for. ⭐ THE IDEMPOTENCY KEY — one fee per application. */
+    applicationId: string;
+    /** What the applicant owes. ⛔ Always `feeBreakdown().totalTzs`, never a config field. */
+    amountTzs: number;
+    /** The VAT component of `amountTzs`. 0 under the 2026-09-09 no-VAT ruling. */
+    vatTzs: number;
+    description?: string;
+  },
+): Promise<AgentFeePaymentResult> {
+  const want = Math.round(opts.amountTzs);
+  const vat = Math.round(opts.vatTzs);
+  // ⛔ A fee of zero or less is not a payment, and a non-finite amount must never reach a
+  // balance check. Refuse before taking a lock.
+  if (!Number.isFinite(want) || want <= 0) return { ok: false, code: "INVALID_AMOUNT", balance: null };
+  if (!Number.isFinite(vat) || vat < 0 || vat > want) return { ok: false, code: "INVALID_AMOUNT", balance: null };
+
+  const description = opts.description ?? "Agent registration fee";
+  const groupRef = `agentfee_${opts.applicationId}`;
+
+  return withLock(`wallet:${userId}`, async (): Promise<AgentFeePaymentResult> => {
+    const wallet = await db.wallet.findByUserId(userId);
+    if (!wallet) return { ok: false, code: "NO_WALLET", balance: null };
+    // ⛔ A frozen or closed wallet may not SPEND. This is the opposite of `debitInternal`,
+    // where taking our own money back off a frozen wallet is correct — here the applicant is
+    // initiating a payment, and a wallet that cannot bet cannot buy a registration either.
+    if (wallet.status !== "ACTIVE") return { ok: false, code: "WALLET_NOT_ACTIVE", balance: wallet.balance };
+
+    /**
+     * ⭐ IDEMPOTENCY, BEFORE ANY MONEY MOVES. A double-submitted form, a retried action or an
+     * impatient second tap must pay ONCE. The application id is the key, so the answer does
+     * not depend on timing or on a client-supplied nonce.
+     */
+    const priorTxn = (await db.txn.findByUser(userId, 200)).find(
+      (t) => t.type === "AGENT_REGISTRATION_FEE" && t.providerRef === groupRef && t.status === "CONFIRMED",
+    );
+    if (priorTxn) {
+      // `balanceAfter` is nullable on the row; fall back to the live balance rather than
+      // reporting a null the caller would have to guess about.
+      return { ok: true, debited: Math.abs(priorTxn.amount), balanceAfter: priorTxn.balanceAfter ?? wallet.balance, txnId: priorTxn.id, alreadyPaid: true };
+    }
+
+    // ⛔ ALL OR NOTHING. Not `min(want, balance)`. A shortfall is a REFUSAL that moves nothing,
+    // and it reports the gap so the surface can offer a deposit for exactly the right amount.
+    if (wallet.balance < want) {
+      return { ok: false, code: "INSUFFICIENT_FUNDS", shortfall: want - wallet.balance, balance: wallet.balance, required: want };
+    }
+
+    const txnId = `txn_${randomId(12)}`;
+    const now = new Date().toISOString();
+    let newBalance = wallet.balance;
+
+    const committed = await withMoneyTx(async (tx) => {
+      /**
+       * ⛔ THE CONDITIONAL WRITE IS THE REAL GUARD, NOT THE READ ABOVE.
+       * `requireBalanceGte` becomes `WHERE balance >= want` on the UPDATE, so a bet that
+       * settled between the read and here makes this return null and the whole movement rolls
+       * back rather than driving the balance negative. The read is an early, friendly refusal;
+       * this is the one that cannot be raced.
+       */
+      const updated = await db.wallet.adjust(wallet.id, { balance: -want }, { requireBalanceGte: want }, tx);
+      if (!updated) return false;
+      newBalance = updated.balance;
+      await db.txn.create({
+        id: txnId,
+        walletId: wallet.id, userId,
+        type: "AGENT_REGISTRATION_FEE",
+        status: "CONFIRMED",
+        amount: -want, fee: 0, taxWithheld: 0,
+        balanceAfter: updated.balance, currency: "TZS",
+        provider: "INTERNAL",
+        // ⭐ The idempotency key, stored where a retry can find it.
+        providerRef: groupRef,
+        msisdn: null,
+        description,
+        positionId: null, amlReason: null,
+        createdAt: now, updatedAt: now, completedAt: now,
+      }, tx);
+      /**
+       * ⛔ `source: "WALLET"` — the money-in leg is `PLAYER:<userId>`, NEVER `EXTERNAL:SELCOM`.
+       * These shillings already entered the platform once as a DEPOSIT booked against
+       * `EXTERNAL:SELCOM`; booking them there again counts the same money twice and drifts
+       * this user's trial balance by the whole fee, forever. `test:agent-fee-wallet` §2.4
+       * simulates exactly that mistake and asserts the trial balance catches it.
+       *
+       * Inside `tx`, so an imbalanced group THROWS and rolls the wallet and the Transaction
+       * back with it — a ledger write can no longer be lost while the money moved.
+       */
+      await postLedgerEntries(groupRef, agentRegistrationFeeEntries({
+        groupRef: opts.applicationId, userId, amount: want, vatAmount: vat, description, source: "WALLET",
+      }), tx);
+      return true;
+    });
+
+    if (!committed) {
+      // The conditional write refused: someone spent the money between the read and the
+      // update. Re-read so the caller reports the truth rather than the stale figure.
+      const fresh = await db.wallet.findByUserId(userId);
+      const bal = fresh?.balance ?? wallet.balance;
+      return { ok: false, code: "INSUFFICIENT_FUNDS", shortfall: Math.max(0, want - bal), balance: bal, required: want };
+    }
+
+    audit({
+      category: "WALLET",
+      action: "agent.fee.paid_from_wallet",
+      actorId: userId,
+      targetType: "Wallet",
+      targetId: wallet.id,
+      payload: { userId, txnId, applicationId: opts.applicationId, amountTzs: want, vatTzs: vat, balanceAfter: newBalance, groupRef },
+    });
+    emit("wallet:balance", { userId, balance: newBalance });
+    return { ok: true, debited: want, balanceAfter: newBalance, txnId, alreadyPaid: false };
   });
 }
 

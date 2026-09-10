@@ -403,9 +403,23 @@ async function fullDraft(uid: string, feeRef: string) {
 // is invisible on a case file is worse than one spelled awkwardly, so `auditActionLabel` is
 // required to return the raw action rather than "—" or "".
 {
-  const svc = readFileSync(new URL("../src/lib/server/agent-application-service.ts", import.meta.url), "utf8");
+  /**
+   * ⛔ THE SCAN MUST FOLLOW THE ACTIONS, NOT ONE FILE.
+   *
+   * This read `agent-application-service.ts` alone. On 2026-09-10 the fee moved onto the
+   * WALLET rail, so `agent.fee.paid_from_wallet` is written from `wallet-service.ts` — where
+   * the money actually moves — and a single-file scan measured a population that no longer
+   * contains every `agent.*` audit. A true count over the wrong population is the most
+   * convincing way to pass while an officer screen shows a dotted machine name.
+   *
+   * ⚠️ `8.nophantom` reads the same set, so both halves have to see the same files or a
+   * correctly-added label looks like a phantom.
+   */
+  const SOURCES = ["agent-application-service.ts", "wallet-service.ts"] as const;
+  const svc = SOURCES.map((f) => readFileSync(new URL(`../src/lib/server/${f}`, import.meta.url), "utf8")).join("\n");
   const audited = [...new Set([...svc.matchAll(/action: "(agent\.[a-z_.]+)"/g)].map((m) => m[1]))].sort();
   ok("8.population · the scan reaches the service's audited actions (a vacuous pass is not a pass)", audited.length >= 25, String(audited.length));
+  ok("8.sources · …and it reaches the WALLET rail too, not just the application service", audited.includes("agent.fee.paid_from_wallet"), audited.join(", "));
 
   const unlabelled = audited.filter((a) => AGENT_AUDIT_ACTION[a] === undefined);
   ok("8.covered · every audited agent action has a label in the lexicon", unlabelled.length === 0, unlabelled.join(", "));

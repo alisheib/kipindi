@@ -332,6 +332,12 @@ export const AGENT_AUDIT_ACTION: Record<string, string> = {
   "agent.deactivated": "Agent paused",
   "agent.fee.amount_mismatch": "Fee refused — amount did not match",
   "agent.fee.duplicate_reference": "Fee refused — receipt reference already in use",
+  /** ⭐ The rail since 2026-09-10: the applicant paid from their own wallet balance. */
+  "agent.fee.paid_from_wallet": "Fee paid from the applicant's wallet",
+  /** ⚠️ The stored funding source disagrees with what the collection's ledger group shows.
+   *  The stamp wins and the refund still goes to the stamped destination — this row says the
+   *  collection needs investigating, not that the refund was wrong. */
+  "agent.fee.funding_source_mismatch": "Fee funding source disagrees with the ledger",
   "agent.fee.reconciled": "Fee reconciled",
   "agent.fee.reference_recorded": "Receipt reference recorded",
   "agent.fee.refunded": "Fee refunded",
@@ -387,6 +393,10 @@ export const MONEY = {
   typeAgentCommission:  { en: "Agent commission" },
   /** The clawback leg: the market that produced the commission was voided. */
   typeAgentCommissionReversal: { en: "Agent commission · reversed" },
+  /** ⭐ An applicant paying the TZS 100,000 registration fee out of their own wallet (Ali,
+   *  2026-09-10). ⛔ Not an adjustment and not a withdrawal — registration income the owner's
+   *  book must be able to see on its own line. */
+  typeAgentRegistrationFee: { en: "Agent registration fee" },
   // ── Movement status ──────────────────────────────────────────────────────
   statusPending:    { en: "Pending", sw: "Inasubiri" },
   statusProcessing: { en: "Processing" },

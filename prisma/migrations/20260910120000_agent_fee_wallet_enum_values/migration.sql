@@ -1,0 +1,28 @@
+-- AGENT FEE PAID FROM THE WALLET — step 1 of 2: ENUM VALUES ONLY.
+--
+-- ⛔ THIS FILE DOES NOTHING ELSE, AND THAT IS THE WHOLE POINT.
+-- `ALTER TYPE … ADD VALUE` is not reversible, and Postgres refuses to USE a value
+-- added in the same transaction that added it. `prisma migrate deploy` wraps each
+-- migration FILE in its own transaction, so the addition lands here and anything that
+-- references it in the file after. Mixing the two is a migration that passes review
+-- and fails on the container that runs it. Same discipline as
+-- `20260907120000_agent_programme_enum_values`.
+--
+-- `IF NOT EXISTS` is idempotent, so hand-applying this before a push (normal practice
+-- here) does not make the recorded migration fail on replay against a fresh database.
+
+-- ── TxnType ────────────────────────────────────────────────────────────────────
+-- ⭐ Ali ruled on 2026-09-10 that the TZS 100,000 agent registration fee is paid from
+-- the applicant's WALLET BALANCE rather than out of band into a bank account. That
+-- makes it a player-ledger movement, and a player-ledger movement needs a Transaction.
+--
+-- ⛔ IT MUST NOT REUSE `ADJUSTMENT_DEBIT`. The only generic debit primitive,
+-- `debitInternal`, deliberately takes `min(want, balance)` and reports a shortfall
+-- instead of refusing — correct for clawing commission back off a partner who already
+-- withdrew, and catastrophic for a fee: an applicant holding TZS 40,000 would "pay" a
+-- TZS 100,000 fee and receive a success. Its own type keeps that movement
+-- all-or-nothing, keeps registration income out of admin adjustments in the owner's
+-- book, and lets a refund find its mirror.
+--
+-- `docs/COMPLIANCE-DECISIONS.md` § 2026-09-10 · `npm run test:agent-fee-wallet`
+ALTER TYPE "TxnType" ADD VALUE IF NOT EXISTS 'AGENT_REGISTRATION_FEE';

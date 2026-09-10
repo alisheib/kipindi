@@ -33,7 +33,7 @@ import { MAX_QUERY_LEN } from "@/lib/search/query";
 export type TxnTypeValue =
   | "DEPOSIT" | "WITHDRAWAL" | "BET_PLACED" | "BET_PAYOUT" | "BET_REFUND" | "BONUS_CREDIT"
   | "ADJUSTMENT_DEBIT" | "ADJUSTMENT_CREDIT" | "CASHOUT" | "HOUSE_FEE"
-  | "AGENT_COMMISSION" | "AGENT_COMMISSION_REVERSAL";
+  | "AGENT_COMMISSION" | "AGENT_COMMISSION_REVERSAL" | "AGENT_REGISTRATION_FEE";
 
 export type TxnStatusValue =
   | "PENDING" | "PROCESSING" | "AML_REVIEW" | "CONFIRMED" | "FAILED" | "REVERSED" | "CANCELLED";
@@ -67,6 +67,13 @@ export type LedgerRow = {
  *   bonus      BONUS_CREDIT
  *   adjust     ADJUSTMENT_CREDIT · ADJUSTMENT_DEBIT · HOUSE_FEE  the house moved it
  *   commission AGENT_COMMISSION · AGENT_COMMISSION_REVERSAL
+ *   agentfee   AGENT_REGISTRATION_FEE                           they paid to apply as an agent
+ *
+ * ⛔ `AGENT_REGISTRATION_FEE` GETS ITS OWN LENS AND MUST NOT JOIN `adjust`. That lens means
+ * *"the house moved it"*, and this movement is one the APPLICANT initiated from their own
+ * balance — filing it there would tell a person the platform took their money. It is not
+ * `out` either: `out` is `WITHDRAWAL`, money leaving the platform, and this money stayed.
+ * ⚠️ Offered only to an account that has one, exactly as `commission` is.
  *
  * ⛔ THE LENSES DO NOT OVERLAP, AND THAT IS A DECISION. `lib/notification-filters.ts` records
  * what overlap costs: *"a player could not tell whether 12 meant twelve things or six things
@@ -77,7 +84,7 @@ export type LedgerRow = {
  * that offers a lens which can only ever be empty is a dead end, not a filter, and this one would
  * be permanently empty for every player who is not an agent.
  */
-export const LEDGER_LENSES = ["all", "in", "out", "bet", "payout", "refund", "bonus", "adjust", "commission"] as const;
+export const LEDGER_LENSES = ["all", "in", "out", "bet", "payout", "refund", "bonus", "adjust", "commission", "agentfee"] as const;
 export type LedgerLens = (typeof LEDGER_LENSES)[number];
 
 export const LENS_TYPES: Record<Exclude<LedgerLens, "all">, readonly TxnTypeValue[]> = {
@@ -89,6 +96,7 @@ export const LENS_TYPES: Record<Exclude<LedgerLens, "all">, readonly TxnTypeValu
   bonus: ["BONUS_CREDIT"],
   adjust: ["ADJUSTMENT_CREDIT", "ADJUSTMENT_DEBIT", "HOUSE_FEE"],
   commission: ["AGENT_COMMISSION", "AGENT_COMMISSION_REVERSAL"],
+  agentfee: ["AGENT_REGISTRATION_FEE"],
 };
 
 /**
@@ -198,8 +206,15 @@ export function clearedLedgerState(state: LedgerQueryState): LedgerQueryState {
  * history.
  */
 export function visibleLedgerLenses(rows: readonly LedgerRow[]): readonly LedgerLens[] {
-  const hasCommission = rows.some((r) => LENS_TYPES.commission.includes(r.type));
-  return hasCommission ? LEDGER_LENSES : LEDGER_LENSES.filter((l) => l !== "commission");
+  // ⚠️ BOTH agent lenses are conditional, for the same reason: each is permanently empty for
+  // every account that is not in the agent programme, and a lens that can only ever be empty
+  // is a dead end rather than a filter. An applicant who paid the fee but has earned nothing
+  // yet sees `agentfee` and NOT `commission` — which is the true state of their money.
+  const has = (lens: "commission" | "agentfee") => rows.some((r) => LENS_TYPES[lens].includes(r.type));
+  const hide = new Set<LedgerLens>();
+  if (!has("commission")) hide.add("commission");
+  if (!has("agentfee")) hide.add("agentfee");
+  return hide.size === 0 ? LEDGER_LENSES : LEDGER_LENSES.filter((l) => !hide.has(l));
 }
 
 /* ──────────────────────────────────── the predicates ──────────────────────────────────── */

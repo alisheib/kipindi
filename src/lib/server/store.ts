@@ -247,11 +247,14 @@ export type StoredInviteEntry = {
  * `AGENT_COMMISSION` is contracted income, real cash — ⛔ never `BONUS_CREDIT`.
  * `AGENT_COMMISSION_REVERSAL` is its clawback leg, kept distinct from ADJUSTMENT_DEBIT so the
  * owner's book can net commission against its own reversals.
+ * `AGENT_REGISTRATION_FEE` is an applicant paying the TZS 100,000 out of their own wallet
+ * (Ali, 2026-09-10) — ⛔ never `ADJUSTMENT_DEBIT`, which is both an admin action in the book
+ * and, through `debitInternal`, a PARTIAL debit that would let a short balance "pay" a fee.
  */
 export const TXN_TYPES = [
   "DEPOSIT", "WITHDRAWAL", "BET_PLACED", "BET_PAYOUT", "BET_REFUND", "BONUS_CREDIT",
   "ADJUSTMENT_DEBIT", "ADJUSTMENT_CREDIT", "CASHOUT", "HOUSE_FEE",
-  "AGENT_COMMISSION", "AGENT_COMMISSION_REVERSAL",
+  "AGENT_COMMISSION", "AGENT_COMMISSION_REVERSAL", "AGENT_REGISTRATION_FEE",
 ] as const;
 
 export type StoredTxn = {
@@ -547,7 +550,10 @@ export type StoredAgentApplication = {
   feeAmountTzs: number | null;
   /** What the officer actually read on the receipt. A mismatch is a hard refusal. */
   feeAttestedTzs: number | null;
-  /** Applicant-typed. ⭐ UNIQUE — one receipt, one application. */
+  /** ⭐ WHERE THE MONEY CAME FROM, stamped at collection (Ali, 2026-09-10). `null` = a row
+   *  predating the ruling, read as `EXTERNAL`. ⛔ A refund mirrors THIS, not today's policy. */
+  feeFundingSource: "WALLET" | "EXTERNAL" | null;
+  /** Applicant-typed, LEGACY rail only. ⭐ UNIQUE — one receipt, one application. */
   feeReference: string | null;
   /** The officer's own evidence: the bank statement line. */
   feeStatementRef: string | null;

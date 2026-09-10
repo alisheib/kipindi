@@ -132,6 +132,36 @@ enum TxnType {
   /// The clawback leg. Distinct from `ADJUSTMENT_DEBIT` so the owner's book can net
   /// commission against its own reversals instead of losing them into admin adjustments.
   AGENT_COMMISSION_REVERSAL
+  /// ⭐ THE APPLICANT PAYS THE REGISTRATION FEE OUT OF THEIR OWN WALLET (Ali, 2026-09-10).
+  /// ⛔ It needs its OWN type and must never reuse `ADJUSTMENT_DEBIT`: the only generic debit
+  /// primitive (`debitInternal`) deliberately takes `min(want, balance)` and reports a
+  /// shortfall, so an applicant with TZS 40,000 would "pay" a TZS 100,000 fee and be told it
+  /// worked. This movement is ALL-OR-NOTHING. A distinct type also lets the owner's book show
+  /// registration income separately from admin adjustments, and lets a refund find its mirror.
+  /// Appended at the end to match the `ALTER TYPE … ADD VALUE` migration order (Postgres
+  /// appends). `COMPLIANCE-DECISIONS.md` § 2026-09-10 · `npm run test:agent-fee-wallet`.
+  AGENT_REGISTRATION_FEE
+}
+
+/// ⭐ WHERE THE REGISTRATION FEE'S MONEY ACTUALLY CAME FROM — stamped at collection.
+///
+/// ⛔ THIS EXISTS BECAUSE A REFUND MUST MIRROR THE COLLECTION, NOT TODAY'S POLICY. The same
+/// doctrine as "a refund reverses the VAT actually BOOKED, never today's rate": an application
+/// collected out of band must be refunded out of band, and one paid from a wallet must be
+/// refunded to that wallet. Inferring it later from the ledger is possible but returns `null`
+/// for "could not ask", and guessing wrong either strands a person's money in a bank account
+/// they never paid from or credits a wallet that was never debited.
+///
+/// `null` means a row that predates 2026-09-10 — read it as `EXTERNAL`, which is what every
+/// historical collection was.
+enum AgentFeeFundingSource {
+  /// Paid out of band into the operator's bank account; an officer attested a receipt. No
+  /// wallet moved, so the ledger's money-in leg is `EXTERNAL:SELCOM` and there is no
+  /// `Transaction`. ⛔ The legacy rail — retained for the rows that used it, not offered.
+  EXTERNAL
+  /// Debited from the applicant's own wallet balance. Carries a `Transaction` and books its
+  /// money-in leg to `PLAYER:<userId>`.
+  WALLET
 }
 
 enum TxnStatus {
@@ -1077,7 +1107,13 @@ model AgentApplication {
   /// What the officer actually read on the receipt. A mismatch against `feeAmountTzs` is a
   /// hard refusal at reconcile and at approve, not a note.
   feeAttestedTzs     Decimal?            @db.Decimal(18, 2)
-  /// Applicant-typed. ⭐ UNIQUE — one receipt, one application.
+  /// ⭐ WHERE THE MONEY CAME FROM — `WALLET` since 2026-09-10, `null` on every row that
+  /// predates it and to be read as `EXTERNAL`. Stamped at COLLECTION so a refund can mirror
+  /// the collection rather than today's policy, the same doctrine as reversing the VAT
+  /// actually booked. ⛔ Never inferred at refund time.
+  feeFundingSource   AgentFeeFundingSource?
+  /// Applicant-typed, and only on the LEGACY out-of-band rail. ⭐ UNIQUE — one receipt, one
+  /// application. ⚠️ A wallet-funded fee has none: the debit carries the payer's identity.
   feeReference       String?             @unique
   /// The officer's own evidence: the bank statement line. The applicant's reference alone
   /// is a string they chose.
