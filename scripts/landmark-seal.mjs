@@ -42,6 +42,9 @@ import { CLIP_PROBE, LG_XL_BAND } from "./live/clip.mjs";
 const GATED = ["/wallet", "/profile", "/positions", "/notifications", "/profile/security",
                "/wallet/deposit", "/wallet/withdraw", "/profile/kyc", "/positions/performance"];
 const PUBLIC = ["/", "/markets", "/results", "/leaderboard", "/help", "/legal/privacy",
+  // ⭐ The rules documents join the SEAL, not just the static sweep: they are the only legal
+  // pages carrying tables, and this is the check that asserts zero h-overflow per locale.
+  "/legal/rules", "/legal/rules/yes-no", "/legal/rules/up-down",
                 "/proposals", "/live", "/updown", "/fairness"];
 /**
  * ⭐ 1024 IS IN THIS LIST BECAUSE ITS ABSENCE IS WHAT LET E-190 SHIP. The sweep ran

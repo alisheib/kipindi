@@ -51,7 +51,8 @@ const ONLY = process.env.FIT_ONLY ?? "";
 const PLAYER = [
   "/", "/markets", "/live", "/results", "/leaderboard", "/updown", "/updown/history",
   "/help", "/fairness", "/legal/terms", "/legal/privacy", "/legal/responsible-gambling",
-  "/legal/aml", "/auth/login", "/auth/register", "/auth/forgot-password", "/proposals",
+  "/legal/aml", "/legal/rules", "/legal/rules/yes-no", "/legal/rules/up-down",
+  "/auth/login", "/auth/register", "/auth/forgot-password", "/proposals",
 ];
 
 const ADMIN = [

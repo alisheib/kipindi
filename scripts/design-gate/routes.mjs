@@ -28,6 +28,7 @@ export const ADMIN_ROUTES = [
 export const PLAYER_PUBLIC = [
   "/", "/markets", "/updown", "/live", "/results", "/leaderboard", "/proposals", "/fairness", "/help",
   "/legal/terms", "/legal/privacy", "/legal/responsible-gambling", "/legal/aml", "/legal/agent-terms",
+  "/legal/rules", "/legal/rules/yes-no", "/legal/rules/up-down",
   "/agent",
   "/auth/login", "/auth/register", "/auth/forgot-password",
 ];

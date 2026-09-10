@@ -75,6 +75,7 @@ const PUBLIC_ROUTES = [
   "/", "/markets", "/markets?when=new", "/markets?when=soon", "/markets?when=week",
   "/live", "/leaderboard", "/fairness", "/proposals", "/help",
   "/legal/terms", "/legal/privacy", "/legal/aml", "/legal/responsible-gambling",
+  "/legal/rules", "/legal/rules/yes-no", "/legal/rules/up-down",
   "/auth/login", "/auth/register", "/auth/forgot-password",
 ];
 {

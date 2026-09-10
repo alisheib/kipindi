@@ -47,6 +47,7 @@ const JSON_OUT = process.env.JSON || "";
 const PLAYER = [
   "/", "/markets", "/live", "/results", "/leaderboard", "/help", "/fairness",
   "/proposals", "/updown", "/auth/login", "/auth/register", "/legal/terms",
+  "/legal/rules/yes-no", "/legal/rules/up-down",
 ];
 const ADMIN = [
   "/admin", "/admin/finance", "/admin/players", "/admin/transactions",

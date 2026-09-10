@@ -115,6 +115,9 @@ const PLAYER = [
   "/profile/kyc", "/profile/invite", "/profile/sessions",
   "/profile/source-of-funds", "/profile/responsible-gambling",
   "/fairness", "/help", "/legal/terms", "/legal/privacy", "/legal/aml",
+  // GAME RULES (2026-09-10) — three long-form documents with the first tables in the legal
+  // section; a fee table is exactly the kind of element that overflows at 360.
+  "/legal/rules", "/legal/rules/yes-no", "/legal/rules/up-down",
   "/legal/responsible-gambling",
   "/auth/login", "/auth/register", "/auth/forgot-password",
 ];

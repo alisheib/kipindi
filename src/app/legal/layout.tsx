@@ -8,6 +8,12 @@ const LEGAL_NAV: Array<{ href: string; label: Record<Locale, string> }> = [
   { href: "/legal/privacy",              label: { en: "Privacy",              sw: "Faragha",         zh: "隐私" } },
   { href: "/legal/responsible-gambling", label: { en: "Responsible Gambling", sw: "Mchezo Salama",   zh: "责任博彩" } },
   { href: "/legal/aml",                  label: { en: "AML / KYC",            sw: "Kuzuia Uoshaji",  zh: "反洗钱 / KYC" } },
+  /* ⭐ THE PARENT ONLY, AND THE CHILDREN DELIBERATELY NOT LISTED. `/legal/rules/yes-no` and
+     `/legal/rules/up-down` are reached from the index page and from the products themselves.
+     `legal-nav.tsx:47` matches with `pathname.startsWith(href)` — loose on purpose, so a
+     `#section` anchor stays current — which means this one entry stays highlighted on both
+     children. ⛔ Adding the children here would light up TWO tabs at once. */
+  { href: "/legal/rules",                label: { en: "Game Rules",           sw: "Kanuni za Michezo", zh: "游戏规则" } },
 ];
 
 const EYEBROW: Record<Locale, string> = {

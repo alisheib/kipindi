@@ -733,7 +733,8 @@
     "red:count-truth": "node scripts/red-count-truth.mjs",
     "test:support-contact": "tsx scripts/support-contact.test.mts",
     "test:webhook-secret": "tsx scripts/webhook-secret.test.mts",
-    "test:wallet-empty-escape": "tsx scripts/wallet-empty-escape.test.mts"
+    "test:wallet-empty-escape": "tsx scripts/wallet-empty-escape.test.mts",
+    "test:rules-copy": "tsx scripts/rules-copy.test.mts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",

@@ -113,7 +113,12 @@ export function PublicFooter({
               <ProposalsStateBadge state={proposalsState} comingSoonLabel={t.proposals.comingSoonTag} maintenanceLabel={t.proposals.maintenanceTag} size="xs" className="ml-1.5" />
             </FooterLink>
           )}
-          <FooterLink href="/legal/terms">{t.footer.gameRtp}</FooterLink>
+          {/* ⭐ REPOINTED 2026-09-10, AND NO NEW FOOTER KEY WAS NEEDED. This link's own label is
+              "Game RTP & rules" (`t.footer.gameRtp`) in all three languages, and it pointed at
+              `/legal/terms` — the Terms of Service, which is a different document and is already
+              linked from the Privacy column below. Now that the two products have actual rules
+              documents, the label finally reaches what it promises. */}
+          <FooterLink href="/legal/rules">{t.footer.gameRtp}</FooterLink>
           {/* ⭐ THE AGENT PROGRAMME'S ONE DOOR. Site chrome, visible signed out, a plain directory
               line — no badge, no gilt, no number, no earnings verb. ⛔ Never in the account menu:
               the footer is not the account, and an ordinary player is not solicited. */}

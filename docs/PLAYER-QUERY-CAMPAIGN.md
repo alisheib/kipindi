@@ -993,7 +993,7 @@ total written in prose.
 | Forms and flows | `/auth/login` · `/auth/register` · `/auth/otp` · `/auth/2fa` · `/auth/forgot-password` · `/auth/reset-password` · `/auth/verify-email` · `/auth/admin` · `/proposals/new` · `/wallet/deposit` · `/wallet/withdraw` · `/profile/source-of-funds` | Nothing is listed. |
 | Settings | `/profile` · `/profile/notifications` · `/profile/responsible-gambling` · `/profile/security` · `/profile/sessions` | Fixed short lists of controls, not collections. `/profile/sessions` renders exactly one device **by design** — single-session model. |
 | Public agent | `/agent` · `/agent/apply` · `/agent/status` | Static copy and a form. |
-| Legal | `/legal/terms` · `/legal/aml` · `/legal/privacy` · `/legal/responsible-gambling` · `/legal/agent-terms` | A document is read, not queried — but see the ruling below. |
+| Legal | `/legal/terms` · `/legal/aml` · `/legal/privacy` · `/legal/responsible-gambling` · `/legal/agent-terms` · `/legal/rules` · `/legal/rules/yes-no` · `/legal/rules/up-down` | A document is read, not queried — but see the ruling below. |
 | Other | `/` · `/help` · `/offline` | See the rulings below. |
 
 > 🔴 **`/auth/admin` WAS MISSING FROM THIS CENSUS UNTIL 2026-09-08, AND `test:route-census` FOUND
@@ -1021,6 +1021,21 @@ total written in prose.
   and titled**, so a player looking for the void rule scrolls blind. **A section index built
   from what already exists would be a real improvement and is not filtering.** ▶ **Ali's
   call — flagged, deliberately not scoped**, so it is a decision rather than an omission.
+- **`/legal/rules` · `/legal/rules/yes-no` · `/legal/rules/up-down`** (added 2026-09-10) — the
+  same ruling, **taken again rather than inherited**, because these are new documents and carry
+  the first tables anywhere in the legal section:
+  - **No filter, no rail.** Each is one continuous binding text; a control that hid part of a
+    rulebook would be a liability, not a convenience.
+  - ⭐ **The two fee tables are NOT a collection** — two rows each, both derived from one
+    commission rate. They are prose in tabular form. They do carry the one control §A6 requires:
+    each sits in a `ScrollX` region, keyboard-reachable, so a wide table scrolls itself instead
+    of the page at 360.
+  - ⚠️ **`/legal/rules` is the ONLY one of the three in `LEGAL_NAV`.** `legal-nav.tsx:47` matches
+    with `pathname.startsWith`, so the parent entry stays correctly highlighted on both children;
+    listing the children too would light up two tabs at once.
+  - ▶ **These inherit the section-index question above** — both are numbered, titled and long,
+    so if that improvement is ever taken for `/legal/terms` it applies here identically. Still
+    Ali's call, still deliberately not scoped.
 
 **`/` (home)** — ruled no filter. Its strips are curated, and a curated strip is an
 editorial choice, not a subset a player narrows. Every strip already links through to
