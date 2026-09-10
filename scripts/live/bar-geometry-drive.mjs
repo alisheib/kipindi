@@ -77,15 +77,20 @@ mkdirSync(SHOTS, { recursive: true });
  * programme keeps finding. Re-derive by counting the VISIBLE controls at 1280.
  */
 const SURFACES = [
-  /* 🔴 ADDED 2026-09-09 — AND ITS ABSENCE IS THE WHOLE REASON THE PLAYER REPORT WAS POSSIBLE.
-     `/updown` is the route Ali's players complained about ("not all timings are clickable"), and
-     it was in the population of NEITHER this gate NOR `qa:player-filters`. Every filter gate in
-     the repo was green on the day the report came in because none of them looked at it.
-     ⚠️ `minControls: 3` because below `sm` this board folds its rails into a `FilterSheet` and
-     the bar legitimately carries only the trigger and the view switch; the CHIPS are asserted by
-     `qa:tap-truth`, which opens the sheet. A floor set for the desktop rail would fail this gate
-     on the phone for being correct. */
-  { id: "/updown", path: "/updown", minControls: 3 },
+  /* ⛔ `/updown` IS DELIBERATELY **NOT** HERE, AND THE REASON IS A CORRECTION OF MY OWN CHANGE.
+     🔴 It was added on 2026-09-09 on the (correct) finding that the route players complained
+     about was in NO gate's population. But this gate asserts a STICKY QUERY BAR contract, and
+     `/updown` does not have one: its two rails are plain `hidden sm:flex` `<nav data-filter-rail>`
+     elements sitting in page flow, with no `.kp-discovery-bar` wrapper and no `top-[56px]`.
+     Declaring it here made the gate assert an offset the surface never promised — measured
+     immediately: *"NO [data-filter-rail]"* at 360 (the rails are `sm:`-gated, so below `sm`
+     the hook legitimately does not render) and *"THE BAR DID NOT STICK — top -308"* at 1280.
+     ⚠️ Three locales × two widths of permanent red, on a page that is behaving exactly as
+     designed. **A gate that fails a correct surface is worse than the gap it was closing**,
+     because the next person reads past it.
+     ⭐ THE POPULATION GAP IS REAL AND IS CLOSED ELSEWHERE: `/updown` is the FIRST surface in
+     `qa:tap-truth`, which asks the question that actually applies to it — does a tap land on
+     the control it was aimed at — and which opens the phone sheet its chips live in. */
   { id: "/markets", path: "/markets", minControls: 8 },
   { id: "/results", path: "/results", minControls: 12 },
   { id: "/positions", path: "/positions", minControls: 8 },

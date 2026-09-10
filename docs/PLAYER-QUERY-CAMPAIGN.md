@@ -133,7 +133,17 @@ this board: §1–§11 remain RECORD, and §TAP is its own closed lane with its 
 `qa:bar-geometry`, not `qa:count-truth`. The route the complaint names had never been measured
 by any of them — so "all gates green" was a true statement about a set that excluded the defect.
 ⚠️ **This is the wrong-population error for the third time in this programme.** It is now closed
-by construction: `/updown` is the FIRST entry in both `qa:tap-truth` and `qa:bar-geometry`.
+by construction: `/updown` is the **FIRST surface in `qa:tap-truth`**.
+
+⛔ **AND IT IS DELIBERATELY *NOT* IN `qa:bar-geometry` — a correction of this session's own first
+answer.** Adding it there was the obvious move and it was wrong: that gate asserts a **sticky
+query-bar** contract, and `/updown` has no such bar. Its rails are plain `hidden sm:flex`
+`<nav data-filter-rail>` elements in page flow. Declaring it produced, immediately and in all
+three locales, *"NO [data-filter-rail]"* at 360 (the hook is `sm:`-gated, so below `sm` it
+correctly does not render) and *"THE BAR DID NOT STICK — top -308"* at 1280. ⚠️ **A gate that
+fails a correct surface is worse than the gap it was closing**, because the next person learns
+to read past it. The population gap is real and is closed by the gate whose question actually
+applies.
 
 And the gates that did exist could not have seen it anyway, because none of them asks the
 player's question:
@@ -197,6 +207,7 @@ filter. `SCROLLED_OUT()` now encodes the distinction, so `ATREST` fires only whe
 | 3 | `updown-board-tabs.tsx` | **The duration rail's block had no upper bound.** `.kp-fchip-waiting` is `pointer-events:none` for as long as `isPending` runs; on a stalled RSC fetch that is **for ever**. |
 | 4 | `updown-board-tabs.tsx` / `filter-pill.tsx` | **That block was pointer-only.** Enter on a focused link dispatches a real click, so a keyboard user fired the very backwards-navigation E-290 exists to prevent. |
 | 5 | `query-bar.tsx` | **The shared bar's wrapping row set `gap-x-2` and no row gap**, so two lines of 44px tap targets met **edge to edge, 0px apart**. Every other wrapping row in the repo already had a `gap-y-*`; this was the lone omission. |
+| 6 | `globals.css` `.pchart-range` | **The floor is a target, and a target has two dimensions.** That rule reasoned its way to 44px with real care — about HEIGHT only. Measured: `1H` and `6H` rendered **30.1x44**, `15M`/`30M`/`12H`/`24H` **37.1x44**, at 1px from their neighbour. `min-width: 44px`, and the ≤400px group scrolls instead of shrinking its targets. Re-measured: **all seven chips 44x44, no document overflow at 360 or 414.** |
 
 ⭐ **AND A SIXTH THAT IS A DESIGN DEFECT, NOT A GEOMETRY ONE — the likeliest single cause of the
 sentence Ali was quoted.** The board's duration filter offers `15 min · 30 min · 60 min`. The
@@ -222,6 +233,58 @@ only while nobody checks the arithmetic is not a finding.
 particular value. §1.5 had always asserted `border-transparent` "so the box is the same size in
 both states" — it policed the half that was already right for the whole life of the defect.
 ⭐ Proven by mutation: restoring `on ? "px-4" : "px-3"` turns §1.7b red; the fix turns it green.
+
+### 🔴 THE INSTRUMENT WAS TESTING THE WRONG LANGUAGE, AND ONLY A SCREENSHOT SAID SO
+
+⛔ **`qa:tap-truth` set a cookie named `locale`. This product reads `kp-locale`.** So every run
+labelled `sw` rendered **English** and reported it green — for the whole session. ⚠️ Swahili is
+where a wrap defect appears FIRST (this repo measures its short labels at **1.74× p90 / 2.25×
+p95** against English), so the locale that mattered most was the one never tested, and *nothing
+in the output looked wrong*. What caught it was opening the screenshot: the header read `EN` on
+a page the log called `sw`.
+
+⭐ **`qa:bar-geometry` already had both the right cookie AND an `<html lang>` assertion.** The
+new driver now borrows both: it refuses to measure under a locale it cannot prove the page is
+in. ⛔ **A locale a driver cannot prove it set is a locale it did not test** — and re-running in
+real Swahili immediately found a control the English pass could not have.
+
+### ⚠️ Three arms were loosened, and each is a distinction, not a concession
+
+A gate tuned until the product passes is worthless, so each exemption is named and bounded:
+
+1. **SCROLLED_OUT** — a chip half-way out of its own horizontal strip resolves to whatever is
+   painted beside the strip. That is a chip you scroll to, not a dead filter. Bounded: the chip
+   must be outside its **own scroller's** box.
+2. **coveredByFixed** — the bottom nav is `position: fixed`, and every long page passes content
+   behind it while scrolling. Measured on `/positions` at 414 sw: the sort control's natural
+   position at scroll 0 is y=825 and the nav owns 836→900. The product already answers the real
+   hazard with `pb-[88px]` on `main`. Bounded: only when the page can still scroll — a control
+   genuinely trapped under it fails the scrolled `hit` too.
+3. **IS_CHROME** — the sheet's scrim is a deliberately full-viewport `<button>`; measured as a
+   control it "overlaps" all eighteen chips. Bounded: scrim, header and footer only, plus
+   anything larger than half the viewport.
+
+### What was measured, at the end
+
+| run | result |
+|---|---|
+| `qa:tap-truth` 360 **en** · 10 surfaces × 2 views | **18 checks, 0 failed** |
+| `qa:tap-truth` 360 **sw** (real Swahili) | **18 checks, 0 failed** |
+| `qa:tap-truth` 414 **en** / 414 **sw** | **18 / 18, 0 failed** |
+| `qa:tap-truth` 768 **en** | **17 checks, 0 failed** |
+| `qa:tap-truth` `/updown` 360·414·768·1280 × en·sw | **0 failed** |
+| ⭐ `--click` IDENTITY on `/updown` at **360**, en and sw | **tapping "15 min" selects 15 min** — and 5, 10, 30, 60, Gold, Silver each select themselves |
+| `qa:bar-geometry` | exit 0 · **1080 control boxes** across 12 surfaces × 3 widths × 3 locales |
+| `test:filter-language` | 208 assertions, all green (incl. new §1.7b) |
+| `test:i18n` | en=sw=zh **2368 keys** |
+| `test:updown-filter-sheet` · `test:section-rail` · `test:motion` · `qa:filter-scan` | 51 · green · 43 · exit 0 |
+| `tsc --noEmit` | clean |
+
+⚠️ **The chart rail's own fix was caught by looking, not by a gate.** Giving the chips their
+44px pushed the rail into a scroller and **hid `15M` and `30M`** behind it at 360 — a fix for one
+confusion that created another. The key now stacks above the rail on phones, which returns the
+full 320px and keeps all seven visible. ⛔ Every arm was green in both states; only the
+screenshot told them apart.
 
 ### What task 4.5 found — read before 4.6
 

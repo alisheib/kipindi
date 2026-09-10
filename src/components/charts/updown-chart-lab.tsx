@@ -109,7 +109,17 @@ export function UpDownChartLab({
             and `test:i18n`'s parity check has nothing new to police.
             ⚠️ `aria-hidden` because the group's `aria-label` already carries this exact string;
             without it a screen reader announces the axis twice. */}
-        <div className="flex min-w-0 items-center gap-1.5">
+        {/* ⚠️ THE KEY SITS ABOVE THE RAIL ON A PHONE, AND THAT IS ARITHMETIC, NOT TASTE.
+            Seven 44px chips plus their 1px gaps and the group's padding need **318px**; the
+            board's content box at 360 is **320px**. It fits — until the key is put BESIDE it,
+            which costs 74px and pushes two chips out of view behind a scroller. Measured that
+            way in a screenshot: the rail opened showing `…M · 1H · 6H · 12H · 24H · 7D` with
+            `15M` and `30M` scrolled off, i.e. the fix for one confusion had hidden two options.
+            ⛔ And this product has already written down why that is the wrong trade — a rail
+            whose options are off-screen "reads as the control having done nothing" (§3 rule 9).
+            Stacking the key returns the full 320px to the rail, so all seven stay visible AND
+            every target keeps its 44px. */}
+        <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-1.5">
           <span aria-hidden="true">
             <FilterGroupKey>{labels.railAria}</FilterGroupKey>
           </span>

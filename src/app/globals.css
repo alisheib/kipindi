@@ -2855,6 +2855,17 @@ textarea::placeholder { color: var(--text-subtle); }
      to it would mean the next button-height decision silently re-sizes a chart rail. The two
      values agreeing is a coincidence to leave alone, not a duplication to collapse. */
   min-height: 44px;
+  /* 🔴 PLAYER-FILTERS 2026-09-09 · THE FLOOR IS A TARGET, AND A TARGET HAS TWO DIMENSIONS.
+     ⛔ This rule had reasoned its way to 44px with real care — and only about HEIGHT. Measured
+     at 360 with `qa:tap-truth`'s FLOOR arm, the rendered chips were **`1H` 30.1x44, `6H`
+     30.1x44, `15M`/`30M`/`12H`/`24H` 37.1x44**: every one of them under the platform's own floor
+     on the axis nobody checked, because the padding is horizontal and 11px mono is narrow.
+     ⚠️ The rail also sits **1px** from its neighbour at this width, so the sub-floor chips are
+     the ones with the least margin for a misplaced thumb.
+     ⭐ `min-width` rather than more padding: padding would move the ACTIVE pill's fill, and this
+     rail was deliberately fitted to 360 whole — see the `max-width: 400px` block below, which
+     now pairs the same 44 with a scroller so the rail can grow without leaving the viewport. */
+  min-width: 44px;
 }
 .pchart-range.is-active { color: var(--text); background: var(--pill-active); }
 /* CHART-SPRINT-2 · the terminal's 8-pill rail (the sealed ladder + Round) must
@@ -2864,7 +2875,17 @@ textarea::placeholder { color: var(--text-subtle); }
    the Round pill sheared 8px) to prove the padding never applied. Equal
    specificity: order IS the mechanism. Hit-area pseudo untouched. */
 @media (max-width: 400px) {
-  .pchart-ranges { gap: 1px; }
+  /* ⚠️ THE GROUP SCROLLS RATHER THAN SHRINKING ITS TARGETS. Seven 44px chips plus gaps do not
+     fit 360 alongside the axis key, and the previous answer was to shrink the chips — which is
+     how they ended up 30px wide. ⛔ A scroller is the idiom this product already uses for a rail
+     that outgrows a phone (`.kp-strip-fade` on the lens strips), and `qa:tap-truth` exempts an
+     in-scroller control from ONSCREEN for exactly that reason. The bar is not hidden: it simply
+     stops being a reason to make a tap target smaller than the floor.
+     ⛔ NO MASK. `globals.css` already refuses edge-fade next to absolutely-positioned children
+     ("a mask clips an absolutely-positioned panel exactly as an overflow does"); the chart pane
+     is such a child, so this scroller takes the plain overflow and no `mask-image`. */
+  .pchart-ranges { gap: 1px; max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+  .pchart-ranges::-webkit-scrollbar { width: 0; height: 0; }
   .pchart-range { padding: 4px 8px; }
 }
 .pchart-range:not(.is-active):hover { color: var(--text); background: var(--bg-overlay); }

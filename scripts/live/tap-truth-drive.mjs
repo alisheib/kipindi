@@ -346,6 +346,23 @@ function HIT_PROBE(el, opts) {
     pointerEvents: cs.pointerEvents,
     visibility: cs.visibility,
     opacity: cs.opacity,
+    /* Is whatever covers this control a FIXED overlay on a page that can still scroll?
+       ⛔ THE BOTTOM NAV IS FIXED, AND EVERY LONG PAGE PASSES CONTENT BEHIND IT WHILE SCROLLING.
+       Measured on `/positions` at 414 in Swahili: the sort control's natural position at
+       scroll 0 is y=825, and `nav.lg:hidden.fixed` occupies 836→900, so its centre resolves to
+       a nav item. ⚠️ That is not a covered control — it is a control you have not scrolled to.
+       The product already answers the real version of this hazard with `pb-[88px]` on `main`,
+       so the END of the document clears the bar; transient mid-scroll overlap is what a fixed
+       bottom bar IS. A control genuinely trapped under it would fail the scrolled `hit` too. */
+    coveredByFixed: (() => {
+      const t = document.elementFromPoint(cx, cy);
+      const canScroll = document.documentElement.scrollHeight > window.innerHeight + 1;
+      for (let n = t; n; n = n.parentElement) {
+        if (n.nodeType !== 1) continue;
+        if (getComputedStyle(n).position === "fixed") return canScroll;
+      }
+      return false;
+    })(),
     ...(() => {
       /* Sample a 7x3 lattice inset 2px from the edges — the area a finger can plausibly land
          on while aiming at this control — and count the points that resolve to a DIFFERENT
@@ -439,7 +456,7 @@ async function runView(page, base, s, view, attempt = 1) {
     /* ⚠️ NOT a failure in the CLOSED view of a phone: below `sm` every filter legitimately lives
        inside the sheet, so an empty closed bar is the design. It IS a failure anywhere else —
        a surface that renders no reachable filter at all is the thing this driver exists to catch. */
-    if (view === "closed" && base.width < 640) return 0;
+    if (view === "closed" && base.width < 640) return [];
     /* 🔴 RETRY ONCE BEFORE CALLING A SURFACE EMPTY — A FLAKY GATE IS AN IGNORED GATE.
        This driver has twice reported "no filter control rendered at all" across a RUN of
        consecutive surfaces, and both times the product was fine: `next dev` compiles on demand
@@ -457,7 +474,7 @@ async function runView(page, base, s, view, attempt = 1) {
       return runView(page, base, s, view, 2);
     }
     record({ ...base, arm: "PRESENT", ok: false, detail: `no filter control rendered at all (view: ${view}, 2 attempts)` });
-    return 0;
+    return [];
   }
   record({ ...base, arm: "PRESENT", ok: true, detail: `${seen.length} control(s) — view: ${view}` });
 
@@ -484,7 +501,7 @@ async function runView(page, base, s, view, attempt = 1) {
     }
     if (!m.hit) {
       record({ ...base, arm: "HIT", ok: false, detail: `${who} centre (${m.x},${m.y}) hits ${m.topEl} — chain: ${m.chain}` });
-    } else if (m.hitRest === false && !m.scrolledOut) {
+    } else if (m.hitRest === false && !m.scrolledOut && !m.coveredByFixed) {
       /* Reachable, but not where the player finds it: something covers its centre at rest and
          only scrolling moves it clear. A control you must discover a scroll to use reads as a
          control that ignored you. */
@@ -515,7 +532,7 @@ async function runView(page, base, s, view, attempt = 1) {
   }
 
   await page.screenshot({ path: `${SHOTS}/${s.id.replace(/\W+/g, "-").replace(/^-|-$/g, "")}-${base.width}-${base.locale}-${view}.png` });
-  return seen.length;
+  return seen;
 }
 
 async function main() {
@@ -531,11 +548,31 @@ async function main() {
         // that would itself be a navigation this driver has to reason about.
         locale: locale === "sw" ? "sw-TZ" : "en-US",
       });
-      await ctx.addCookies([{ name: "locale", value: locale, url: BASE }]);
+      /* 🔴 `kp-locale`, NOT `locale` — AND THE `<html lang>` ASSERTION BELOW IS WHY THIS WAS
+         CAUGHT. The driver spent an entire session setting a cookie this product does not read,
+         so every run labelled `sw` was measuring ENGLISH and reporting it green. ⚠️ Swahili is
+         where a wrap defect shows FIRST — this repo measures its short labels at 1.74x p90 and
+         2.25x p95 against English — so the locale that mattered most was the one never tested,
+         and nothing in the output looked wrong. A screenshot caught it: the header read "EN"
+         on a page the log called `sw`.
+         ⛔ A LOCALE THE DRIVER CANNOT PROVE IT SET IS A LOCALE IT DID NOT TEST.
+         `qa:bar-geometry` had both the right cookie name and the `lang` check already; this
+         driver now borrows both rather than trusting a cookie to have worked. */
+      await ctx.addCookies([{ name: "kp-locale", value: locale, url: BASE }]);
       const page = await ctx.newPage();
       // The two exemption predicates, installed before any document script runs so they
       // survive every navigation in this context.
       await page.addInitScript(`window.__IS_CHROME = ${IS_CHROME.toString()}; window.__REACHABLE = ${REACHABLE.toString()}; window.__IN_SCROLLER = ${IN_SCROLLER.toString()}; window.__SCROLLED_OUT = ${SCROLLED_OUT.toString()};`);
+      /* ⛔ PIN `/updown` TO ITS CHART VIEW, OR ITS SECOND TIME RAIL IS INVISIBLE TO THIS GATE.
+         `BoardViz` opens on CUBES whenever the board has recent outcomes, and the chart's
+         range rail (`.pchart-range`) only exists in the CHART view — so whether this driver
+         measures it depends on the FIXTURE'S DATA, not on the code under test. It was measured
+         on one run and absent on the next, which is how a control comes to have no gate at all.
+         ⚠️ That rail is exactly where the reported confusion lives: it offers `15M/30M/1H`
+         beside a board whose durations are `15 min/30 min/60 min`. Pinning the view makes its
+         geometry a fact this gate always checks. (Measured before pinning: the chips rendered
+         30.1–37.1px wide against the platform's own 44px floor.) */
+      await page.addInitScript(() => { try { localStorage.setItem("kp-updown-viz", "chart"); } catch {} });
 
       // One signed-in demo session per context — the rails differ for a signed-out viewer.
       await page.goto(`${BASE}/auth/demo`, { waitUntil: "domcontentloaded" });
@@ -559,6 +596,14 @@ async function main() {
         await page.waitForSelector(CONTROL_SEL, { state: "attached", timeout: 20_000 }).catch(() => {});
         await page.waitForTimeout(900);
 
+        /* ⛔ PROVE THE LOCALE BEFORE MEASURING IN ITS NAME. See the cookie note above. */
+        const lang = await page.evaluate(() => document.documentElement.lang);
+        const wantLang = { en: "en", sw: "sw", zh: "zh" }[locale] ?? locale;
+        if (lang !== wantLang) {
+          record({ surface: s.id, width, locale, arm: "LOCALE", ok: false, detail: `asked for ${locale}, page rendered <html lang="${lang}"> — every measurement under this label would be about the wrong language` });
+          continue;
+        }
+
         const base = { surface: s.id, width, locale };
 
         /* ⭐ DISCLOSE THE FILTERS — THIS IS WHERE THE PHONE PLAYER ACTUALLY TAPS.
@@ -576,11 +621,11 @@ async function main() {
            measured nothing. ⚠️ That false pass cost a cycle. So: close everything, then open the
            ONE disclosure that actually contains filter chips. */
         /* VIEW 1 — the bar exactly as the page loads it, sheet CLOSED. What a player sees first. */
-        await runView(page, { ...base, view: "closed" }, s, "closed");
+        const seenClosed = await runView(page, { ...base, view: "closed" }, s, "closed");
 
         /* VIEW 2 — the sheet disclosed, which is where a phone's filters actually live. */
         const opened = await openFilterDisclosure(page);
-        if (opened) await runView(page, { ...base, surface: `${base.surface}[sheet]`, view: "sheet" }, s, "sheet");
+        const seenSheet = opened ? await runView(page, { ...base, surface: `${base.surface}[sheet]`, view: "sheet" }, s, "sheet") : [];
 
         // ── IDENTITY · tap the centre and check the state names the chip that was tapped ────
         if (DO_CLICK) {
@@ -589,7 +634,14 @@ async function main() {
              Filtering them out here would make the arm confirm only what already works — the
              vacuity trap, pointed at the one case that matters. Already-selected chips are
              skipped because re-tapping them asserts nothing. */
-          const tappable = seen.filter((m) => m.onscreen && m.href && !m.on);
+          /* ⭐ BOTH VIEWS' CONTROLS ARE TAPPED. On a phone the durations exist only inside the
+             sheet, so an identity arm fed the closed bar alone would prove nothing about the
+             very chips the complaint names. De-duplicated by href, because a chip that appears
+             in both views is one control. */
+          const merged = [...seenClosed, ...(seenSheet ?? [])];
+          const byHref = new Map();
+          for (const m of merged) if (m.href && !m.on && m.onscreen && !byHref.has(m.href)) byHref.set(m.href, m);
+          const tappable = [...byHref.values()];
           for (const m of tappable) {
             try {
               await page.goto(`${BASE}${s.path}`, { waitUntil: "domcontentloaded", timeout: 45_000 });
