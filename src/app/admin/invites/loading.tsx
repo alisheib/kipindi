@@ -8,7 +8,7 @@ export default function Loading() {
       <SkBody>
         <SkKpiRow count={4} />
         {/* New campaign */}
-        <SkFormCard fields={3} titleW="w-32" />
+        <SkFormCard fields={3} titleW="w-[128px]" />
         {/* Campaigns table */}
         <SkTableCard cols={7} rows={8} minWidth={720} />
       </SkBody>

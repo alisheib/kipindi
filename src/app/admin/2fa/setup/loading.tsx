@@ -7,7 +7,7 @@ export default function Loading() {
       <AdminPageHead
         title="Two-factor authentication"
         sw="Uthibitisho wa hatua mbili"
-        actions={<SkChip className="h-[30px] w-32" />}
+        actions={<SkChip className="h-[30px] w-[128px]" />}
       />
       {/* ⚠️ The cap is NOT optional here (fixed 2026-08-21). This route is in the
           admin layout's TOTP_EXEMPT set, so the layout returns a bare fragment

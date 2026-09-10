@@ -22,6 +22,7 @@
  */
 import { chromium } from "playwright";
 import { mkdirSync } from "node:fs";
+import { clippedControls } from "./clip.mjs";
 
 const BASE = process.env.BASE || "https://50pick.tz";
 const ROUTES = ["/legal/rules", "/legal/rules/yes-no", "/legal/rules/up-down"];
@@ -113,13 +114,39 @@ try {
           JSON.stringify(tables));
       }
 
-      // ── OVERFLOW at every width, with the tables present ─────────────────────────────
+      // ── REACH at every width, with the tables present ────────────────────────────────
+      // 🔴 THIS CHECK WAS VACUOUS IN THE FIRST VERSION OF THIS DRIVE, AND THE FIX IS TO ASK A
+      // DIFFERENT QUESTION. It read `documentElement.scrollWidth - clientWidth <= 0` — but
+      // `globals.css` gives `html` `overflow-x: clip`, which clips WITHOUT creating a scroll
+      // container, so the document never learns. Discriminated rather than reasoned about: a
+      // deliberately 2000px-wide block injected at a 360 viewport left that expression at 0.
+      // Twenty-seven "zero horizontal overflow" passes could not have failed.
+      // ⭐ `clip.mjs` already carries this lesson in capitals and exports the honest instrument,
+      // so this uses it rather than inventing a second idiom: the question is about the CONTROL
+      // and its ancestors, never about the document.
       for (const w of WIDTHS) {
         await page.setViewportSize({ width: w, height: 1000 });
         await page.waitForTimeout(150);
-        const over = await page.evaluate(() =>
-          document.documentElement.scrollWidth - document.documentElement.clientWidth);
-        ok(`${loc} ${route} @${w} · zero horizontal overflow`, over <= 0, `${over}px`);
+        const clipped = await clippedControls(page, "body");
+        ok(`${loc} ${route} @${w} · no control is clipped out of reach`,
+          clipped.length === 0, clipped.slice(0, 3).join(" | "));
+        // And a plain geometry read, which `overflow-x: clip` cannot mask: does any element's
+        // box exceed the viewport? A wide table may push layout without severing a control.
+        const widest = await page.evaluate((vw) => {
+          let worst = 0, tag = "";
+          for (const el of document.querySelectorAll("article *")) {
+            const r = el.getBoundingClientRect();
+            if (r.width <= 0 || r.left < -1) continue;
+            const past = Math.round(r.right - vw);
+            // ⛔ A table inside a ScrollX is EXPECTED to be wider than the viewport — that is the
+            // component doing its job. Skip anything inside a scroll region.
+            if (el.closest('[role="region"]')) continue;
+            if (past > worst) { worst = past; tag = el.tagName.toLowerCase(); }
+          }
+          return { worst, tag };
+        }, w);
+        ok(`${loc} ${route} @${w} · nothing outside a scroll region exceeds the viewport`,
+          widest.worst <= 1, `${widest.tag} extends ${widest.worst}px past ${w}`);
         if (w === 360 || w === 1280) {
           const name = `${route.replace(/\//g, "_")}_${loc}_${w}.png`;
           await page.screenshot({ path: `${SHOTS}/${name}` }).catch(() => {});

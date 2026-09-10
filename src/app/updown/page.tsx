@@ -40,6 +40,12 @@ export async function generateMetadata() {
 
 // usd() → the ONE spelling in @/lib/usd-price (session 80 — six private copies unified).
 
+/** The board header's pill recipe — ONE definition, because the two pills must match each other
+ *  and because a second copy of its `tracking-[0.10em]` is what took the arbitrary-tracking
+ *  ratchet 236 → 237. `test:type-scale` §6 caught it. */
+const HEADER_PILL =
+  "inline-flex shrink-0 items-center gap-1.5 rounded-pill border border-border bg-bg-elevated px-3 py-2 font-mono text-caption uppercase tracking-[0.10em] text-text-muted hover:text-text hover:border-brand-400 transition-colors";
+
 export default async function UpDownPage({
   searchParams,
 }: {
@@ -97,7 +103,7 @@ export default async function UpDownPage({
         <div className="mt-1 flex shrink-0 items-center gap-2">
           <Link
             href="/legal/rules/up-down"
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-pill border border-border bg-bg-elevated px-3 py-2 font-mono text-caption uppercase tracking-[0.10em] text-text-muted hover:text-text hover:border-brand-400 transition-colors"
+            className={HEADER_PILL}
           >
             <I.scrollText s={13} />
             <span className="hidden sm:inline">{t.common.readFullRules}</span>
@@ -105,7 +111,7 @@ export default async function UpDownPage({
           {/* This game's own portfolio — separate from the long-form Bets page. */}
           <Link
             href="/updown/history"
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-pill border border-border bg-bg-elevated px-3 py-2 font-mono text-caption uppercase tracking-[0.10em] text-text-muted hover:text-text hover:border-brand-400 transition-colors"
+            className={HEADER_PILL}
           >
             <I.portfolio s={13} />
             <span className="hidden sm:inline">{t.market.udHistoryTitle}</span>

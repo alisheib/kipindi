@@ -50,7 +50,7 @@ export default async function DepositLoading() {
       <div className="space-y-5" aria-hidden>
         {/* Amount field */}
         <div className="space-y-2">
-          <div className="h-3 w-20 rounded bg-bg-overlay kp-shimmer-track" />
+          <div className="h-3 w-[80px] rounded bg-bg-overlay kp-shimmer-track" />
           {/* ⚠️ TOKEN, not `h-11` — spacing is overridden (tailwind.config.ts:200-215) so `h-11`
               drew 96px. This ghost stands in for `<Input size="md">`, which reads its height
               from --h-input (44px) — so consume the SAME token and the two can never drift.
@@ -71,7 +71,7 @@ export default async function DepositLoading() {
 
         {/* Destination phone field */}
         <div className="space-y-2">
-          <div className="h-3 w-32 rounded bg-bg-overlay kp-shimmer-track" />
+          <div className="h-3 w-[128px] rounded bg-bg-overlay kp-shimmer-track" />
           {/* ⚠️ TOKEN, not `h-11` (96px on the overridden scale) — same `<Input size="md">`. */}
           <div className="h-[var(--h-input)] w-full rounded-lg border border-border bg-bg-inset kp-shimmer-track" />
         </div>

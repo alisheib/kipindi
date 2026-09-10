@@ -9,8 +9,8 @@ export default function Loading() {
         sw="Sajili ya kujizuia"
         actions={
           <>
-            <SkChip className="h-6 w-24" />
-            <SkChip className="h-6 w-24" />
+            <SkChip className="h-6 w-[96px]" />
+            <SkChip className="h-6 w-[96px]" />
           </>
         }
       />

@@ -14,7 +14,7 @@ export default function Loading() {
         {/* How it works note */}
         <SkCard lines={2} titleW="w-56" />
         {/* Grant ledger */}
-        <SkTableCard cols={7} rows={6} minWidth={760} headW="w-32" />
+        <SkTableCard cols={7} rows={6} minWidth={760} headW="w-[128px]" />
       </SkBody>
     </>
   );

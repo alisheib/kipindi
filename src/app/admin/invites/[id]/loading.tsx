@@ -10,7 +10,7 @@ export default function Loading() {
         <SkBar className="h-3 w-28" />
         <SkKpiRow count={4} />
         {/* Manage */}
-        <SkFormCard fields={3} titleW="w-24" />
+        <SkFormCard fields={3} titleW="w-[96px]" />
         {/* Contacts */}
         <SkTableCard cols={5} rows={8} minWidth={560} />
       </SkBody>

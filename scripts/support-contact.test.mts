@@ -133,16 +133,18 @@ const LOOKS_LIKE_HELPLINE = /helpline|hotline/i;
  * meant to confirm they were FIXED — because the fixes carry comments that NAME the getter
  * they removed ("an imported `SUPPORT_EMAIL()` would be…"). A guard that reads prose as code
  * accuses the fix of being the defect, and the next person to see it deletes the explanation
- * to make the suite green. Blank the comments, keep the line numbering intact so §3 can still
- * report a real line, and match only what actually executes.
+ * to make the suite green.
+ *
+ * ⭐ AND THE STRIPPER IS THE SHARED ONE, NOT A PRIVATE PAIR OF REGEXES. This file first shipped
+ * its own `stripComments` — a block-comment `.replace()` followed by a line-comment one — which
+ * is precisely the shape `scripts/lib/decomment.mts` exists to abolish, and `test:decomment`
+ * caught it as the 21st private stripper against a ceiling of 20. That helper's own docblock
+ * names both bugs mine had: a two-regex pass has an ORDER, and either order is a blindness
+ * (`E-186`), and a `/*` inside a STRING literal opens a comment that runs to EOF (`E-189`).
+ * It is a scanner that tracks literals, and every newline survives — so line numbers still
+ * point at the real line, which is all §3 needed from the private copy.
  */
-const stripComments = (s: string): string =>
-  s
-    // Block comments — `/* … */`, `/** … */` and the `{/* … */}` JSX form. Newlines are kept
-    // so a reported line number still points at the right line of the real file.
-    .replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, " "))
-    // Line comments — but never a URL's `//`, which is why `:` is excluded before it.
-    .replace(/(^|[^:])\/\/[^\n]*/g, (_m, p1: string) => p1);
+import { decomment } from "./lib/decomment.mts";
 
 const v3: string[] = [];
 const v4: string[] = [];
@@ -150,7 +152,7 @@ const v5: string[] = [];
 
 for (const f of files) {
   const raw = readFileSync(f, "utf8");
-  const src = stripComments(raw);
+  const src = decomment(raw);
   const rel = relative(ROOT, f).replace(/\\/g, "/");
 
   // ── §3 ── For every line that renders an operator getter, resolve any `t.*` label on

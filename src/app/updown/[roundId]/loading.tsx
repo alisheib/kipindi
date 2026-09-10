@@ -21,7 +21,7 @@ export default async function UpDownRoundLoading() {
     <div className="mx-auto w-full max-w-board px-3 lg:px-6 pt-[22px] pb-14" aria-busy="true">
       <div className="flex flex-col gap-[18px]">
         {/* back-link */}
-        <div className="h-4 w-24 rounded bg-bg-elevated kp-shimmer-track" aria-hidden />
+        <div className="h-4 w-[96px] rounded bg-bg-elevated kp-shimmer-track" aria-hidden />
         {/* header: title block · countdown pod */}
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex min-w-0 items-center gap-3">
@@ -30,7 +30,7 @@ export default async function UpDownRoundLoading() {
             <div className="h-[44px] w-[44px] rounded-full bg-bg-elevated kp-shimmer-track" aria-hidden />
             <div>
               <div className="h-6 w-56 rounded-md bg-bg-elevated kp-shimmer-track" aria-hidden />
-              <div className="mt-2 h-3 w-32 rounded bg-bg-elevated kp-shimmer-track" aria-hidden />
+              <div className="mt-2 h-3 w-[128px] rounded bg-bg-elevated kp-shimmer-track" aria-hidden />
             </div>
           </div>
           <div className="h-[52px] w-44 rounded-md border border-border bg-bg-elevated kp-shimmer-track" aria-hidden />

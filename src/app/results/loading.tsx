@@ -7,7 +7,7 @@ export default async function ResultsLoading() {
   return (
     <PageContainer tier="board" className="space-y-5">
       <header aria-hidden>
-        <div className="h-3 w-16 rounded bg-bg-overlay kp-shimmer-track" />
+        <div className="h-3 w-[64px] rounded bg-bg-overlay kp-shimmer-track" />
         <div className="mt-1 h-7 w-48 rounded bg-bg-overlay kp-shimmer-track" />
       </header>
 
@@ -16,7 +16,7 @@ export default async function ResultsLoading() {
         {/* ⚠️ TOKEN, not `h-9` — spacing is overridden (tailwind.config.ts:200-215) so `h-9`
             drew 64px for a search row that renders at --h-input (44px). */}
         <div className="h-[var(--h-input)] flex-1 rounded-md border border-border bg-bg-elevated kp-shimmer-track" />
-        <div className="h-[var(--h-input)] w-24 rounded-md bg-bg-overlay kp-shimmer-track" />
+        <div className="h-[var(--h-input)] w-[96px] rounded-md bg-bg-overlay kp-shimmer-track" />
       </div>
 
       {/* Card grid skeleton */}
@@ -35,7 +35,7 @@ export default async function ResultsLoading() {
               <div className="h-4 w-3/4 rounded bg-bg-overlay" />
               <div className="h-2 w-full rounded-full bg-bg-overlay mt-2" />
               <div className="flex gap-2 mt-auto">
-                <div className="h-3 w-16 rounded bg-bg-overlay" />
+                <div className="h-3 w-[64px] rounded bg-bg-overlay" />
                 {/* ⚠️ WIDTH IS A LITERAL, not `w-12` (128px on the overridden scale) for a
                     3px-tall micro label. */}
                 <div className="h-3 w-[64px] rounded bg-bg-overlay" />

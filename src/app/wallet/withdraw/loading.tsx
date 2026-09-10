@@ -37,7 +37,7 @@ export default async function WithdrawLoading() {
           subtitle={t.wallet.mobileMoney}
         />
       </PageHero>
-      <div className="grid place-items-center py-20 rounded-lg border border-border bg-bg-elevated/40">
+      <div className="grid place-items-center py-10 rounded-lg border border-border bg-bg-elevated/40">
         <BrandSpinner size={56} />
       </div>
     </PageContainer>

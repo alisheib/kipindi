@@ -28,7 +28,7 @@ export default function Loading() {
             strips of the same shape below them. */}
         <SkFormCard
           fields={3}
-          titleW="w-32"
+          titleW="w-[128px]"
           cols="grid-cols-2 lg:grid-cols-4"
           afterFields={
             <div className="space-y-3">

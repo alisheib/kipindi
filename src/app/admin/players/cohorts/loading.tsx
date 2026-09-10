@@ -8,7 +8,7 @@ export default function Loading() {
       <SkBody>
         <SkKpiRow count={4} />
         <SkCard lines={3} titleW="w-40" />
-        <SkCard lines={4} titleW="w-32" />
+        <SkCard lines={4} titleW="w-[128px]" />
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
           <SkCard lines={4} />
           <SkCard lines={4} />

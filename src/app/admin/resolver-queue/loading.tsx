@@ -16,7 +16,7 @@ export default function Loading() {
       />
       <SkBody>
         {/* Filter bar */}
-        <SkFormCard fields={3} titleW="w-24" />
+        <SkFormCard fields={3} titleW="w-[96px]" />
         {/* Market cards */}
         <div className="grid grid-cols-1 items-start gap-3 lg:grid-cols-2">
           {Array.from({ length: 4 }).map((_, i) => (

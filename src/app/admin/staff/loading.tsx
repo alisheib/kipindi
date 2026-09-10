@@ -14,11 +14,11 @@ export default function Loading() {
         {/* Headcount */}
         <SkKpiRow count={4} />
         {/* Add staff — phone · role · reason, then the submit button */}
-        <SkFormCard fields={3} cols="sm:grid-cols-3" titleW="w-24" />
+        <SkFormCard fields={3} cols="sm:grid-cols-3" titleW="w-[96px]" />
         {/* Staff table — Person · Phone · Role · Status · Last login · Manage */}
         <SkTableCard cols={6} rows={8} title={false} />
         {/* How roles work */}
-        <SkCard lines={3} titleW="w-32" />
+        <SkCard lines={3} titleW="w-[128px]" />
       </SkBody>
     </>
   );

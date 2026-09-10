@@ -29,7 +29,7 @@ export default function DepositReturnLoading() {
       <div className="rounded-card border border-border bg-bg-elevated p-5 space-y-3 kp-shimmer-track">
         {Array.from({ length: 4 }).map((_, i) => (
           <div key={i} className="flex items-center justify-between gap-4">
-            <div className="h-3 w-24 rounded bg-bg-overlay" />
+            <div className="h-3 w-[96px] rounded bg-bg-overlay" />
             <div className="h-3 w-28 rounded bg-bg-overlay" />
           </div>
         ))}

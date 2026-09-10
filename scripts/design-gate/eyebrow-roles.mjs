@@ -248,7 +248,21 @@ export const NOT_EYEBROW = new Map([
   ["app/updown/[roundId]/page.tsx :: className=\"inline-flex items-center gap-0.5 font-mono text-micro font-semibold uppercase tracking-[0.08em]\" ↵ style={{ color: \"var(--brand-300)\" }}>", "CONTROL_LABEL"],
   ["app/updown/history/page.tsx :: <span className=\"font-mono text-micro uppercase tracking-[0.10em] text-text-faint\"> ↵ {g.bets.length} {t.market.udBets}", "OTHER"],
   ["app/updown/page.tsx :: <span className=\"ml-auto inline-flex items-center gap-1.5 font-mono text-micro uppercase tracking-[0.10em] text-text-faint\"> ↵ <span className=\"live-dot\" /> {t.market.udS", "STATUS_CHIP"],
-  ["app/updown/page.tsx :: className=\"mt-1 inline-flex shrink-0 items-center gap-1.5 rounded-pill border border-border bg-bg-elevated px-3 py-2 font-mono text-caption uppercase tracking-[0.10em] te", "CONTROL_LABEL"],
+  // ⭐ ONE recipe, TWO pills. The board header carried this string twice — the history link and
+  // the new rules link — and a second copy of its `tracking-[0.10em]` took the arbitrary-tracking
+  // ratchet 236 → 237. Hoisting it to a `HEADER_PILL` const fixed that and moved the uppercase
+  // site from the call sites to the DECLARATION, which is what this entry now names. Same role:
+  // a directory pill, not a status.
+  //
+  // ⛔ AND THIS NOTE IS LINE COMMENTS ON PURPOSE — a `/* … */` here costs 19,621 characters.
+  // This file is a DATA table of class strings, and one of them contains a `/*` whose `*/` the
+  // E-186 "strip line comments first" order deletes. With no later `*/` in the file that broken
+  // opener finds no terminator and matches nothing, so the damage stayed at 97 characters. Add
+  // a block comment anywhere below it and you hand it a terminator: it swallows everything in
+  // between, this file becomes the worst-case script in the repo, and `test:decomment` §5.3
+  // fails — because a subdirectory file can never be in the top-level set `pii-in-logs` §3
+  // scans. Measured, not guessed: 97 → 19,718 the moment a block comment was added here.
+  ["app/updown/page.tsx :: \"inline-flex shrink-0 items-center gap-1.5 rounded-pill border border-border bg-bg-elevated px-3 py-2 font-mono text-caption uppercase tracking-[0.10em] text-text-muted h", "CONTROL_LABEL"],
   ["app/wallet/wallet-client.tsx :: <p className={`mt-0.5 font-mono text-micro uppercase tracking-[0.14em] font-semibold ${statusTone}`}> ↵ {statusLabel[tx.status]}", "STATUS_CHIP"],
   ["app/wallet/wallet-client.tsx :: <span className=\"font-mono text-micro uppercase tracking-[0.1em] text-gold-200/80 flex items-center gap-1.5\"> ↵ {BONUS_SOURCE_LABEL[g.source] ?? g.source}", "OTHER"],
   ["app/wallet/wallet-client.tsx :: <span className=\"ml-auto inline-flex items-center gap-1 rounded-pill px-2 py-0.5 font-mono text-micro uppercase tracking-[0.12em] font-bold bg-gold-500/15 text-gold-200\">", "STATUS_CHIP"],

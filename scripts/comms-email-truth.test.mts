@@ -29,7 +29,15 @@
  * Every negative assertion here was broken on purpose and observed to go red —
  * see the commit message.
  */
-import { HELPLINE, SUPPORT_PHONE } from "../src/lib/support-config.ts";
+/* ⚠️ TWO MODULES SINCE 2026-09-10, AND THIS IMPORT HAD TO SPLIT WITH THEM (E-226/E-328).
+   `lib/support-config.ts` is the CLIENT-SAFE half and now keeps only the PINNED statutory
+   constants — the helpline and the licence number — because a `"use client"` file may not reach
+   `defineConfig`. The operator-editable getters moved to `lib/server/support-config.ts`, where
+   they hydrate from `SystemConfig`. ⛔ This suite kept importing `SUPPORT_PHONE` from the client
+   half and died at load with "does not provide an export named 'SUPPORT_PHONE'" — a red that
+   `tsc` cannot see, because a `.mts` fixture's imports are outside the typechecker's include. */
+import { HELPLINE } from "../src/lib/support-config.ts";
+import { SUPPORT_PHONE } from "../src/lib/server/support-config.ts";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";

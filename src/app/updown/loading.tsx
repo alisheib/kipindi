@@ -22,10 +22,10 @@ export default async function UpDownLoading() {
             already fixed: the asset tabs migrated to FilterPill's deliberate `min-h-[44px]`,
             but the ghost still reproduced the old 64px that `h-9` renders on this repo's
             overridden scale (tailwind.config.ts:200-215). */}
-        {Array.from({ length: 2 }).map((_, i) => <div key={i} className="h-[44px] w-24 rounded-md bg-bg-elevated kp-shimmer-track" />)}
+        {Array.from({ length: 2 }).map((_, i) => <div key={i} className="h-[44px] w-[96px] rounded-md bg-bg-elevated kp-shimmer-track" />)}
       </div>
       <div className="mt-2 flex gap-1.5" aria-hidden>
-        {Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-7 w-16 rounded-md bg-bg-inset kp-shimmer-track" />)}
+        {Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-7 w-[64px] rounded-md bg-bg-inset kp-shimmer-track" />)}
       </div>
       {/* card grid — same shape as the live grid so nothing shifts */}
       <div className="mt-4 grid items-stretch gap-4" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))" }} aria-hidden>

@@ -8,12 +8,12 @@ export default async function MarketDetailLoading() {
   return (
     <PageContainer tier="reading" className="space-y-5">
       {/* Back link skeleton */}
-      <div className="h-3 w-16 rounded bg-bg-overlay kp-shimmer-track" aria-hidden />
+      <div className="h-3 w-[64px] rounded bg-bg-overlay kp-shimmer-track" aria-hidden />
 
       {/* Header skeleton */}
       <header className="space-y-2" aria-hidden>
         <div className="flex items-center gap-2">
-          <div className="h-5 w-16 rounded-pill bg-bg-overlay kp-shimmer-track" />
+          <div className="h-5 w-[64px] rounded-pill bg-bg-overlay kp-shimmer-track" />
           {/* ⚠️ WIDTH IS A LITERAL, not `w-12` — spacing is overridden
               (tailwind.config.ts:200-215) so `w-12` is 128px, twice any real chip. */}
           <div className="h-5 w-[64px] rounded-pill bg-bg-overlay kp-shimmer-track" />
@@ -36,7 +36,7 @@ export default async function MarketDetailLoading() {
           {Array.from({ length: 2 }).map((_, i) => (
             <div key={i} className="rounded-xl border border-border bg-bg-elevated p-4 kp-shimmer-track" style={{ height: 96 }}>
               <div className="space-y-2">
-                <div className="h-2.5 w-16 rounded bg-bg-overlay" />
+                <div className="h-2.5 w-[64px] rounded bg-bg-overlay" />
                 <div className="h-4 w-full rounded bg-bg-overlay" />
                 <div className="h-3 w-3/4 rounded bg-bg-overlay" />
               </div>
@@ -45,7 +45,7 @@ export default async function MarketDetailLoading() {
 
           {/* Chart skeleton */}
           <div className="rounded-lg border border-border bg-bg-elevated p-4 kp-shimmer-track" style={{ height: 180 }}>
-            <div className="h-3 w-24 rounded bg-bg-overlay mb-3" />
+            <div className="h-3 w-[96px] rounded bg-bg-overlay mb-3" />
             <div className="h-full w-full rounded bg-bg-overlay/10" />
           </div>
         </div>
@@ -54,13 +54,13 @@ export default async function MarketDetailLoading() {
         <div className="order-1 lg:order-2 space-y-3 lg:sticky lg:top-6" aria-hidden>
           <div className="rounded-xl border border-border bg-bg-elevated p-6 kp-shimmer-track" style={{ height: 260 }}>
             <div className="flex flex-col items-center justify-center h-full gap-3">
-              <div className="h-32 w-32 rounded-full bg-bg-overlay/20" />
-              <div className="h-4 w-20 rounded bg-bg-overlay/20" />
+              <div className="h-[128px] w-[128px] rounded-full bg-bg-overlay/20" />
+              <div className="h-4 w-[80px] rounded bg-bg-overlay/20" />
             </div>
           </div>
           <div className="rounded-xl border border-border bg-bg-elevated p-4 kp-shimmer-track" style={{ height: 96 }}>
             <div className="space-y-2">
-              <div className="h-2.5 w-16 rounded bg-bg-overlay" />
+              <div className="h-2.5 w-[64px] rounded bg-bg-overlay" />
               <div className="h-4 w-full rounded bg-bg-overlay" />
             </div>
           </div>

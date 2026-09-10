@@ -76,7 +76,7 @@ export default async function MarketsLoading() {
               <div key={i} className="kp-shimmer-track h-[44px] rounded-pill bg-bg-elevated" style={{ width: w }} />
             ))}
           </div>
-          <div className="kp-shimmer-track h-4 w-20 shrink-0 rounded bg-bg-elevated" />
+          <div className="kp-shimmer-track h-4 w-[80px] shrink-0 rounded bg-bg-elevated" />
         </div>
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 pb-2.5 pt-1.5">
           <div className="kp-shimmer-track h-[44px] w-[210px] rounded-pill bg-bg-elevated" />

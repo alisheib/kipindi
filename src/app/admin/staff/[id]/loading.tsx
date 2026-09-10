@@ -14,7 +14,7 @@ export default function Loading() {
         {/* Identity + current role */}
         <SkCard lines={2} titleW="w-44" />
         {/* Assign role */}
-        <SkFormCard fields={2} titleW="w-16" />
+        <SkFormCard fields={2} titleW="w-[64px]" />
         {/* Role history */}
         <SkTableCard cols={4} rows={4} minWidth={560} headW="w-28" />
       </SkBody>

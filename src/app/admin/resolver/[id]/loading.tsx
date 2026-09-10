@@ -7,7 +7,7 @@ export default function Loading() {
       <AdminPageHead
         title="Resolution ceremony"
         sw="Sherehe ya utatuzi"
-        actions={<SkChip className="h-7 w-20" />}
+        actions={<SkChip className="h-7 w-[80px]" />}
       />
       {/* Two-column detail — matches the page's own wrapper (no space-y). */}
       <div className="px-4 lg:px-6 py-5 animate-pulse">

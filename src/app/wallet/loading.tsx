@@ -22,12 +22,18 @@ export default async function WalletLoading() {
       <header className="flex flex-col items-start gap-3 sm:flex-row sm:items-end sm:justify-between">
         <PageHeader eyebrow={t.wallet.title} title={t.common.yourFunds} />
         <div className="flex items-center gap-2 shrink-0">
-          {/* ⚠️ HEIGHTS ARE LITERALS, not `h-10` — spacing is overridden
-              (tailwind.config.ts:200-215) so `h-10` drew an 80px pill for a `btn-md btn-pill`
-              that is 44px. (`w-24` is NOT an overridden key — Tailwind's default 96px — so the
-              widths read as written; only the heights were trapped.) */}
-          <div className="h-[44px] w-24 rounded-pill bg-bg-overlay kp-shimmer-track" />
-          <div className="h-[44px] w-24 rounded-pill bg-bg-overlay kp-shimmer-track" />
+          {/* ⚠️ BOTH AXES ARE LITERALS, and for two DIFFERENT reasons — worth keeping straight.
+              HEIGHT: not `h-10`, because spacing is overridden (tailwind.config.ts:211-224) and
+              `h-10` drew an 80px pill for a `btn-md btn-pill` that is 44px. That one was a
+              rendering bug.
+              WIDTH: `w-24` painted 96px perfectly well — 24 is NOT an overridden key, so
+              Tailwind's default applied and it read as written. It became a literal on
+              2026-09-10 anyway, because the spacing ratchet counts key 24 as INVERTED: it TIES
+              overridden key 11 at 96px, so a bigger-looking key paints no bigger a box. The
+              literal is the remedy `ui-consistency`'s `numeric-size-utility` prescribes, and it
+              is the same 96px either way. */}
+          <div className="h-[44px] w-[96px] rounded-pill bg-bg-overlay kp-shimmer-track" />
+          <div className="h-[44px] w-[96px] rounded-pill bg-bg-overlay kp-shimmer-track" />
         </div>
       </header>
 
@@ -55,13 +61,13 @@ export default async function WalletLoading() {
           style={{ height: 160, background: "linear-gradient(135deg, oklch(23% 0.075 268), oklch(16% 0.05 268))" }}
         >
           <div className="p-5 lg:p-6 space-y-4">
-            <div className="h-3 w-20 rounded bg-bg-overlay/30" />
+            <div className="h-3 w-[80px] rounded bg-bg-overlay/30" />
             {/* ⚠️ LITERAL, not `h-10` (80px on the overridden scale) — the real balance figure
                 is 38px mono (wallet-client.tsx:74), so that is what the ghost must be. */}
             <div className="h-[38px] w-40 rounded bg-bg-overlay/20" />
             <div className="grid grid-cols-2 gap-3">
-              <div className="h-16 rounded-md bg-bg-overlay/15" />
-              <div className="h-16 rounded-md bg-bg-overlay/15" />
+              <div className="h-[64px] rounded-md bg-bg-overlay/15" />
+              <div className="h-[64px] rounded-md bg-bg-overlay/15" />
             </div>
           </div>
         </div>
@@ -78,10 +84,10 @@ export default async function WalletLoading() {
             style={{ height: 160 }}
           >
             <div className="p-5 lg:p-6 space-y-4">
-              <div className="h-3 w-24 rounded bg-bg-overlay/30" />
+              <div className="h-3 w-[96px] rounded bg-bg-overlay/30" />
               {/* ⚠️ LITERAL, not `h-10` — the bonus balance is also 38px (wallet-client.tsx:162). */}
-              <div className="h-[38px] w-32 rounded bg-bg-overlay/20" />
-              <div className="h-16 rounded-md bg-bg-overlay/15" />
+              <div className="h-[38px] w-[128px] rounded bg-bg-overlay/20" />
+              <div className="h-[64px] rounded-md bg-bg-overlay/15" />
             </div>
           </div>
         )}
@@ -116,11 +122,11 @@ export default async function WalletLoading() {
           <div key={i} className="flex items-center gap-3 py-3 px-3 border-b border-border last:border-b-0 kp-shimmer-track">
             <div className="h-[34px] w-[34px] rounded-md bg-bg-overlay" />
             <div className="flex-1 space-y-1.5">
-              <div className="h-3.5 w-32 rounded bg-bg-overlay" />
-              <div className="h-2.5 w-24 rounded bg-bg-overlay" />
+              <div className="h-3.5 w-[128px] rounded bg-bg-overlay" />
+              <div className="h-2.5 w-[96px] rounded bg-bg-overlay" />
             </div>
             <div className="text-right space-y-1.5">
-              <div className="h-3.5 w-20 rounded bg-bg-overlay ml-auto" />
+              <div className="h-3.5 w-[80px] rounded bg-bg-overlay ml-auto" />
               <div className="h-2 w-14 rounded bg-bg-overlay ml-auto" />
             </div>
           </div>

@@ -13,7 +13,7 @@ export default function Loading() {
       />
       <SkBody>
         <SkKpiRow count={4} />
-        <SkFormCard fields={3} titleW="w-20" />
+        <SkFormCard fields={3} titleW="w-[80px]" />
         <SkTableCard cols={9} rows={12} minWidth={900} headW="w-28" />
       </SkBody>
     </>

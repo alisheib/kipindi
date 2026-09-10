@@ -93,8 +93,16 @@ for (const f of advertisers) console.log(`         advertiser: ${f}`);
 const layout = decomment(readFileSync(`${ROOT}/src/app/layout.tsx`, "utf8"));
 say(layout.includes(SWITCH), `2.1 the root layout still reads ${SWITCH}() — the coupling has two ends`);
 const overlays = decomment(readFileSync(`${ROOT}/src/components/layout/lazy-overlays.tsx`, "utf8"));
+/* ⚠️ THE ANCHOR ALLOWS PROPS NOW, AND IT HAD TO — it read `<ChatRoot\s*\/>`, which required the
+   element to carry NO attributes at all. `ChatRoot` took its first prop on 2026-09-10
+   (`supportEmail`, threaded from the root layout because a `"use client"` tree cannot read a
+   hydrated config), and this assertion went red over a coupling that had not changed: the widget
+   is still mounted only when the switch is on.
+   ⛔ It is widened, not relaxed. The `{chatbotEnabled && …}` shape is still required, so deleting
+   the gate — the thing this check exists for — still fails it. What is no longer required is that
+   the component never grow an attribute, which was never the rule. */
 say(
-  /\{\s*chatbotEnabled\s*&&\s*<ChatRoot\s*\/>\s*\}/.test(overlays),
+  /\{\s*chatbotEnabled\s*&&\s*<ChatRoot\b[^>]*\/>\s*\}/.test(overlays),
   `2.2 <ChatRoot /> is still mounted only when chatbotEnabled`,
 );
 

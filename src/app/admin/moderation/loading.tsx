@@ -29,8 +29,8 @@ export default function Loading() {
                   <SkBar className="h-3 w-1/3" />
                   <SkBar className="h-3 w-full" />
                 </div>
-                <SkChip className="h-7 w-16" />
-                <SkChip className="h-7 w-16" />
+                <SkChip className="h-7 w-[64px]" />
+                <SkChip className="h-7 w-[64px]" />
               </div>
             ))}
           </div>

@@ -45,13 +45,13 @@ export default async function PositionsLoading() {
       <div className="glass-panel px-5 pt-4 pb-[18px] kp-shimmer-track" aria-hidden>
         <div className="flex items-center justify-between gap-3">
           <div className="h-3 w-28 rounded bg-bg-overlay" />
-          <div className="h-2.5 w-16 rounded bg-bg-overlay" />
+          <div className="h-2.5 w-[64px] rounded bg-bg-overlay" />
         </div>
         <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="space-y-1.5">
-              <div className="h-2.5 w-16 rounded bg-bg-overlay" />
-              <div className="h-5 w-20 rounded bg-bg-overlay" />
+              <div className="h-2.5 w-[64px] rounded bg-bg-overlay" />
+              <div className="h-5 w-[80px] rounded bg-bg-overlay" />
             </div>
           ))}
         </div>
@@ -60,9 +60,9 @@ export default async function PositionsLoading() {
       {/* The YES/NO exposure bar — one line of keys over a 2.5-unit track. */}
       <div className="rounded-lg border border-border bg-bg-elevated/60 p-3 kp-shimmer-track" aria-hidden>
         <div className="mb-1.5 flex items-center justify-between gap-2">
-          <div className="h-2.5 w-20 rounded bg-bg-overlay" />
+          <div className="h-2.5 w-[80px] rounded bg-bg-overlay" />
           <div className="h-2.5 w-14 rounded bg-bg-overlay" />
-          <div className="h-2.5 w-20 rounded bg-bg-overlay" />
+          <div className="h-2.5 w-[80px] rounded bg-bg-overlay" />
         </div>
         <div className="h-2.5 w-full rounded-pill bg-bg-overlay" />
       </div>
@@ -83,7 +83,7 @@ export default async function PositionsLoading() {
               <div key={i} className="h-[44px] shrink-0 rounded-pill bg-bg-overlay" style={{ width: w }} />
             ))}
           </div>
-          <div className="h-3 w-20 shrink-0 rounded bg-bg-overlay" />
+          <div className="h-3 w-[80px] shrink-0 rounded bg-bg-overlay" />
         </div>
         <div className={QUERY_BAR_ROW2_CLASS}>
           {/* Sort + direction, fused — one control, 44px, then the Filters trigger. */}
@@ -105,12 +105,12 @@ export default async function PositionsLoading() {
                 {/* ⚠️ WIDTH IS A LITERAL, not `w-12` — 128px on the overridden scale, twice
                     any real chip. */}
                 <div className="h-5 w-[64px] rounded-pill bg-bg-overlay" />
-                <div className="h-4 w-24 rounded bg-bg-overlay" />
+                <div className="h-4 w-[96px] rounded bg-bg-overlay" />
               </div>
               <div className="h-4 w-3/4 rounded bg-bg-overlay" />
               <div className="flex gap-4">
-                <div className="h-3 w-20 rounded bg-bg-overlay" />
-                <div className="h-3 w-16 rounded bg-bg-overlay" />
+                <div className="h-3 w-[80px] rounded bg-bg-overlay" />
+                <div className="h-3 w-[64px] rounded bg-bg-overlay" />
               </div>
             </div>
           </div>

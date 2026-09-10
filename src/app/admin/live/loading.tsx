@@ -7,7 +7,7 @@ export default function Loading() {
       <AdminPageHead
         title="Live ops"
         sw="Operesheni za moja kwa moja"
-        actions={<SkChip className="h-7 w-24" />}
+        actions={<SkChip className="h-7 w-[96px]" />}
       />
       <SkBody>
         <SkKpiRow count={3} />

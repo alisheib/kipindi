@@ -11,8 +11,8 @@ export default function Loading() {
           <>
             {/* ⚠️ LITERALS, not `h-8` (48px on the overridden scale). These ghost
                 export-player-button.tsx and reset-password-button.tsx, both 40px live. */}
-            <SkChip className="h-[40px] w-20" />
-            <SkChip className="h-[40px] w-24" />
+            <SkChip className="h-[40px] w-[80px]" />
+            <SkChip className="h-[40px] w-[96px]" />
           </>
         }
       />
