@@ -4,7 +4,7 @@ import { AuthShell } from "@/components/auth/auth-shell";
 import { AuthPanel, AuthHeader } from "@/components/auth/auth-panel";
 import { LoginIdentifier } from "@/components/auth/login-identifier";
 import { SubmitButton } from "@/components/ui/submit-button";
-import { SUPPORT_EMAIL, HELPLINE, HELPLINE_TEL } from "@/lib/support-config";
+import { SUPPORT_EMAIL, HELPLINE, HELPLINE_TEL } from "@/lib/server/support-config";
 import { requestResetAction } from "./actions";
 import { getServerT } from "@/lib/i18n-server";
 

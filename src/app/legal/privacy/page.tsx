@@ -1,5 +1,5 @@
 import { LegalHeader, LegalSection } from "../_components";
-import { SUPPORT_EMAIL } from "@/lib/support-config";
+import { SUPPORT_EMAIL } from "@/lib/server/support-config";
 import { getServerT, type Locale } from "@/lib/i18n-server";
 // ⭐ The referee clock is the service's constant — §9 states the number the purge actually runs on.
 import { AGENT_REFEREE_DOC_HOLD_DAYS } from "@/lib/server/agent-application-service";

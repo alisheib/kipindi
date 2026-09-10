@@ -1,5 +1,5 @@
 import { LegalHeader, LegalSection } from "../_components";
-import { SUPPORT_EMAIL } from "@/lib/support-config";
+import { SUPPORT_EMAIL } from "@/lib/server/support-config";
 import { getServerT, type Locale } from "@/lib/i18n-server";
 
 export async function generateMetadata() {

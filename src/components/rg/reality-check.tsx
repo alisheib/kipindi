@@ -18,7 +18,7 @@ import * as React from "react";
 import Link from "next/link";
 import { Modal } from "@/components/ui/modal";
 import { I } from "@/components/ui/glyphs";
-import { SUPPORT_PHONE } from "@/lib/support-config";
+import { HELPLINE } from "@/lib/support-config";
 import { useT } from "@/lib/i18n";
 
 const DEFAULT_INTERVAL   = 30; // minutes
@@ -180,7 +180,7 @@ export function RealityCheckHost({ enabled, intervalMin = DEFAULT_INTERVAL, user
         </div>
 
         <p className="text-center font-mono text-micro uppercase eyebrow text-text-subtle pt-1">
-          {t.rg.helpline} · <span className="text-text-muted">{SUPPORT_PHONE()}</span>
+          {t.rg.helpline} · <span className="text-text-muted">{HELPLINE()}</span>
         </p>
       </div>
     </Modal>

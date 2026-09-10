@@ -22,7 +22,7 @@ import {
 } from "@/lib/id-documents";
 import { KycDocUploader, KycExtraDocUploader } from "@/components/profile/kyc-doc-uploader";
 import { RewardBurst } from "@/components/brand/reward-burst";
-import { SUPPORT_EMAIL } from "@/lib/support-config";
+import { SUPPORT_EMAIL } from "@/lib/server/support-config";
 import { getPayoutStatus, payoutsAcceptingRequests } from "@/lib/server/payout-status";
 import { getServerT, type Dict } from "@/lib/i18n-server";
 import { bannerFor } from "@/lib/failure-banner";

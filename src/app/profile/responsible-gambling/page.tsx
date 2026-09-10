@@ -13,7 +13,7 @@ import { getRgSettings, getLimitUsage } from "@/lib/server/responsible-gambling"
 import { LimitUsageMeter } from "@/components/rg/limit-usage";
 import { setLimitsAction, selfExcludeAction, coolOffAction } from "./actions";
 import { RgConfirmSubmit } from "@/components/rg/rg-confirm-submit";
-import { SUPPORT_PHONE, SUPPORT_PHONE_TEL } from "@/lib/support-config";
+import { HELPLINE, HELPLINE_TEL } from "@/lib/server/support-config";
 import { Select } from "@/components/ui/select";
 import { Input, Field as KitField } from "@/components/ui/input";
 import { SubmitButton } from "@/components/ui/submit-button";
@@ -104,7 +104,13 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
         <div className="min-w-0">
           <p className="font-display text-[14px] font-semibold text-success-fg">{t.rg.supportAvailable}</p>
           <p className="mt-1 text-body-sm text-text-muted leading-snug">
-            {t.rg.helpline} · <a href={`tel:${SUPPORT_PHONE_TEL()}`} className="font-semibold text-success-fg underline underline-offset-2">{SUPPORT_PHONE()}</a>.
+            {/* 🔴 WAS `SUPPORT_PHONE_TEL()` / `SUPPORT_PHONE()` — 50pick's OWN desk — under the
+                label `t.rg.helpline`, which reads "Tanzania Helpline" / "Msaada wa Tanzania" /
+                "坦桑尼亚热线" (E-328). On a `tel:` link, in the callout this file's own comment
+                says is "surfaced early so anyone seeking help sees it immediately". A player who
+                came here for help and tapped the number reached the operator they are trying to
+                get away from. Found by `test:support-contact` §3, not by reading the file. */}
+            {t.rg.helpline} · <a href={`tel:${HELPLINE_TEL()}`} className="font-semibold text-success-fg underline underline-offset-2">{HELPLINE()}</a>.
             {" "}{t.rg.intlSupport}{" "}<a href="https://www.begambleaware.org" target="_blank" rel="noopener noreferrer" className="text-success-fg underline underline-offset-2">begambleaware.org</a>.
           </p>
         </div>

@@ -28,7 +28,7 @@ import { isLiveMoneyMode } from "./runtime-mode";
 // `type ServiceResult` back from this module, and a type-only import is erased at
 // compile time — there is no runtime cycle.
 import { selfExclusionStanding } from "./responsible-gambling";
-import { SUPPORT_PHONE } from "@/lib/support-config";
+import { SUPPORT_PHONE } from "@/lib/server/support-config";
 
 /** Mask a phone for an audit payload — keep country code + last 2 (e.g.
  *  "+25570*****19"). The audit entry already carries actorId, so the full number

@@ -12,10 +12,19 @@
  */
 
 import { FiftyMark } from "@/components/brand";
-import { SUPPORT_EMAIL } from "@/lib/support-config";
 import { useT } from "@/lib/i18n";
 
-export function EscalateHandoff() {
+/**
+ * ⛔ `supportEmail` ARRIVES AS A PROP, read on the server in the root layout (E-226).
+ *
+ * This card lives inside ChatPanel, which is inside ChatRoot, which is `"use client"`.
+ * A client module's `defineConfig` cache is the BROWSER bundle's and no server-side
+ * hydration can ever reach it, so importing `SUPPORT_EMAIL()` here would have pinned this
+ * mailto to the code default for ever — the officer saves an address, `/help` shows it, and
+ * the one link a player reaches after the AI fails to help still points somewhere else.
+ * Same trap `app-shell.tsx` documents for `agentDoorVisible`.
+ */
+export function EscalateHandoff({ supportEmail }: { supportEmail: string }) {
   const { t } = useT();
   // Never-fabricate: no invented ticket number or ETA — there is no ticket
   // record behind them. The real escalation is the support email below (which
@@ -34,7 +43,7 @@ export function EscalateHandoff() {
           {t.chat.handoffBody}
         </div>
         <a
-          href={`mailto:${SUPPORT_EMAIL()}?subject=${encodeURIComponent(t.chat.specialistTakeOver)}`}
+          href={`mailto:${supportEmail}?subject=${encodeURIComponent(t.chat.specialistTakeOver)}`}
           className="cm-escalate"
           aria-label={t.chat.connectSupportAria}
         >

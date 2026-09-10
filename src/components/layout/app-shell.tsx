@@ -1,6 +1,7 @@
 import { Suspense, lazy } from "react";
 import { headers } from "next/headers";
 import { getAgentConfig } from "@/lib/server/agent-config";
+import { SUPPORT_EMAIL } from "@/lib/server/support-config";
 
 const LazyOfflineBanner = lazy(() =>
   import("@/components/ui/offline-banner").then((m) => ({ default: m.OfflineBanner })),
@@ -262,7 +263,10 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       <main id="main-content" className="pb-[calc(88px+env(safe-area-inset-bottom))] lg:pb-0">
         <RouteTransition>{children}</RouteTransition>
       </main>
-      <PublicFooter proposalsState={proposalsState} agentDoorVisible={agentDoorVisible} />
+      {/* `supportEmail` is resolved HERE for the third time on this line's own logic (E-226):
+          the footer is `"use client"`, so a `SUPPORT_EMAIL()` call inside it reads the browser
+          bundle's module default and can never show the address an officer saved. */}
+      <PublicFooter proposalsState={proposalsState} agentDoorVisible={agentDoorVisible} supportEmail={SUPPORT_EMAIL()} />
       {/* DG-P-11 — the rail's `More` needs the feature state for the same two reasons the bar
           and the footer already take it: DISABLED hides every proposals entry point, and the
           state flag (coming-soon / maintenance) must read the same on a phone as on a laptop. */}

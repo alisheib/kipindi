@@ -4,7 +4,7 @@ import { getSession } from "@/lib/server/session";
 import { rateCheckAsync } from "@/lib/server/rate-limit";
 import { loadConfig, saveConfig } from "@/lib/server/config-store";
 import { getGlobalConfig } from "@/lib/server/market-config";
-import { SUPPORT_EMAIL, SUPPORT_PHONE } from "@/lib/support-config";
+import { SUPPORT_EMAIL, SUPPORT_PHONE } from "@/lib/server/support-config";
 
 /**
  * 50pick AI Help — live Claude (Haiku 4.5) server action.

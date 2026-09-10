@@ -11,7 +11,7 @@ import { Select } from "@/components/ui/select";
 import { Toggle } from "@/components/ui/toggle";
 import { UnsavedChangesGuard, PendingChangesBar, useFormDirty } from "@/components/ui/unsaved-changes";
 import { verifyChainAction, updateSupportConfigAction, updatePlatformTimezoneAction, setMaintenanceModeAction, setAnnouncementAction } from "./actions";
-import type { SupportConfig } from "@/lib/support-config";
+import { HELPLINE, type SupportConfig } from "@/lib/support-config";
 
 type AnnouncementTone = "info" | "warning" | "success";
 
@@ -121,8 +121,18 @@ export function SupportConfigForm({ config }: { config: SupportConfig }) {
         <Field label="Support phone" hint="E.g. +255 22 211 5811">
           <Input name="phone" defaultValue={config.phone} />
         </Field>
-        <Field label="Helpline number" hint="Shown in every page footer">
-          <Input name="helpline" defaultValue={config.helpline} />
+        {/* 🔴 READ-ONLY, AND THE FIELD BEING UNEDITABLE IS THE FIX (E-328).
+            This box used to be an <Input name="helpline">, and what an operator typed into it
+            on 2026-08-19 and again on 2026-09-08 was `+255769777877` — 50pick's OWN desk. It
+            reached nobody only because nothing read the row at all (E-226); the moment the
+            reader existed it would have published the operator's number under "Tanzania
+            Helpline" on `/legal/responsible-gambling`, walking a player who is excluding
+            themselves straight back to us. It is shown rather than hidden because an officer
+            still needs to know which number the site publishes — they simply cannot move it.
+            ⭐ Safe to read `HELPLINE()` from this client component precisely because it is now
+            a pinned constant: browser bundle and server agree by construction. */}
+        <Field label="Problem-gambling helpline" hint="Statutory · national line · not editable">
+          <Input value={HELPLINE()} readOnly disabled />
         </Field>
       </div>
       <Button type="submit" variant="primary" loading={pending}>

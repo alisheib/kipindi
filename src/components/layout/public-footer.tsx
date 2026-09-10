@@ -11,7 +11,11 @@
 import Link from "next/link";
 import { FiftyMark } from "@/components/brand";
 import { ProposalsStateBadge } from "@/components/ui/proposals-state-badge";
-import { HELPLINE, HELPLINE_TEL, SUPPORT_EMAIL } from "@/lib/support-config";
+/* ⛔ THE CLIENT-SAFE MODULE, and it must stay that way — this file is `"use client"` (below).
+   `@/lib/server/support-config` reaches `defineConfig` → prisma, which cannot be pulled into a
+   browser bundle. Only the PINNED constants live here; the operator-editable address arrives
+   as a prop, for the reason `agentDoorVisible` already documents. */
+import { HELPLINE, HELPLINE_TEL, LICENCE_NUMBER } from "@/lib/support-config";
 import { useT } from "@/lib/i18n";
 import type { ProposalsState } from "@/lib/server/proposals-config";
 
@@ -24,12 +28,35 @@ export function PublicFooter({
    * on the server and threads the ANSWER down, exactly as `proposalsState` is threaded.
    */
   agentDoorVisible,
+  /**
+   * ⛔ A PROP FOR THE SAME REASON `agentDoorVisible` IS ONE (E-226). This footer called
+   * `SUPPORT_EMAIL()` directly, and in a browser bundle that returns the module DEFAULT — so
+   * the address in the footer of EVERY player-facing page could never be the one an officer
+   * saved, no matter how well the server hydrated it.
+   */
+  supportEmail,
 }: {
   proposalsState: ProposalsState;
   agentDoorVisible: boolean;
+  supportEmail: string;
 }) {
   const { t } = useT();
-  const license = process.env.NEXT_PUBLIC_LICENSE_REF ?? "TZ-GBT-2026-XXXX (pending)";
+  /**
+   * 🔴 WAS `process.env.NEXT_PUBLIC_LICENSE_REF ?? "TZ-GBT-2026-XXXX (pending)"`, AND BOTH
+   * HALVES OF THAT WERE WRONG ON PRODUCTION.
+   *
+   * The variable WAS set — to `TZ-GBT-2026-XXXX` — so every player page footer rendered
+   * `License: TZ-GBT-2026-XXXX`, a literal XXXX placeholder, on a live licensed platform
+   * taking real money. Measured 2026-09-10 with `curl https://50pick.tz/`. And the fallback
+   * was no safer than the value: an unset variable published `TZ-GBT-2026-XXXX (pending)`,
+   * which is a fabricated licence reference presented as this operator's own.
+   *
+   * ⭐ A LICENCE NUMBER IS NOT DEPLOYMENT CONFIG. It does not vary by environment, it is not
+   * an operator preference, and there is no correct value for it to fall back to — so it is a
+   * pinned constant beside the statutory helpline, where nothing can unset it and no default
+   * can invent one. Ali supplied the real number 2026-09-10.
+   */
+  const license = LICENCE_NUMBER();
   return (
     <footer className="mt-12 bg-bg-elevated/40">
       {/* Heraldic claret rule with gilt midpoint — regulator/footer chrome. */}
@@ -67,8 +94,8 @@ export function PublicFooter({
             </a>
           </li>
           <li>
-            <a href={`mailto:${SUPPORT_EMAIL()}`} className="text-text-muted hover:text-text transition-colors">
-              Email · {SUPPORT_EMAIL()}
+            <a href={`mailto:${supportEmail}`} className="text-text-muted hover:text-text transition-colors">
+              Email · {supportEmail}
             </a>
           </li>
           <li className="italic text-text-subtle text-body-sm">

@@ -5,6 +5,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { AppShell } from "@/components/layout/app-shell";
 import { LazyOverlays } from "@/components/layout/lazy-overlays";
 import { isChatbotEnabled } from "@/lib/server/ai-controls";
+import { SUPPORT_EMAIL } from "@/lib/server/support-config";
 import { ScrollRestore } from "@/components/ui/scroll-restore";
 import { appUrl } from "@/lib/app-url";
 import "./globals.css";
@@ -156,7 +157,14 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               dynamic() with ssr:false to defer their JS from the initial
               bundle. */}
           <Suspense fallback={null}>
-            <LazyOverlays chatbotEnabled={chatbotEnabled} />
+            {/* ⛔ `supportEmail` is READ HERE, on the server, for the same reason
+                `chatbotEnabled` is — and E-226 is why it is a prop rather than an import.
+                The chat's escalate card is inside a `"use client"` tree, and
+                `defineConfig`'s cache does not cross into the browser bundle, so a client
+                component importing `SUPPORT_EMAIL()` reads the module DEFAULT for ever and
+                an officer's saved address never reaches it. Same trap `agentDoorVisible`
+                already documents in `app-shell.tsx`. */}
+            <LazyOverlays chatbotEnabled={chatbotEnabled} supportEmail={SUPPORT_EMAIL()} />
           </Suspense>
         </ThemeProvider>
       </body>

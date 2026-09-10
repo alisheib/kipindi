@@ -2,7 +2,7 @@ import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { AuthPanel, AuthHeader } from "@/components/auth/auth-panel";
-import { SUPPORT_EMAIL, HELPLINE } from "@/lib/support-config";
+import { SUPPORT_EMAIL, HELPLINE } from "@/lib/server/support-config";
 import { verifyEmailToken } from "@/lib/server/email-verification";
 import { getServerT } from "@/lib/i18n-server";
 

@@ -33,7 +33,7 @@ import { PasswordSection } from "@/components/profile/password-section";
 import { formatDateTimeSafe, formatDateTime } from "@/lib/utils";
 import { ExportDataButton } from "./export-data-button";
 import { PrivacyRequestForm } from "./privacy-request-form";
-import { SUPPORT_EMAIL, SUPPORT_PHONE } from "@/lib/support-config";
+import { SUPPORT_EMAIL, SUPPORT_PHONE } from "@/lib/server/support-config";
 import { getServerT } from "@/lib/i18n-server";
 import { bannerFor } from "@/lib/failure-banner";
 import { PageContainer } from "@/components/layout/page-container";

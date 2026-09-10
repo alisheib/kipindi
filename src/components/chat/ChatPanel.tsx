@@ -28,12 +28,16 @@ type Props = {
   pending: boolean;
   onClose: () => void;
   onSend: (text: string) => void;
+  /** Server-read in the root layout and threaded down (E-226). ⛔ NOT imported here:
+   *  this is a client tree, and `defineConfig`'s cache never crosses into the browser
+   *  bundle, so an imported `SUPPORT_EMAIL()` would be the module default for ever. */
+  supportEmail: string;
   variant: "desktop" | "sheet";
 };
 
 // Header copy is now drawn from the i18n dict inside the component.
 
-export function ChatPanel({ lang, messages, pending, onClose, onSend, variant }: Props) {
+export function ChatPanel({ lang, messages, pending, onClose, onSend, supportEmail, variant }: Props) {
   const { t: i18n } = useT();
   const listRef = useRef<HTMLDivElement>(null);
   const composerRef = useRef<HTMLTextAreaElement>(null);
@@ -118,7 +122,7 @@ export function ChatPanel({ lang, messages, pending, onClose, onSend, variant }:
         {messages.length === 0 ? (
           <EmptyState onPick={onSend} />
         ) : (
-          messages.map((m) => <RenderMessage key={m.id} m={m} />)
+          messages.map((m) => <RenderMessage key={m.id} m={m} supportEmail={supportEmail} />)
         )}
         {pending && <TypingMessage />}
       </div>
@@ -158,7 +162,7 @@ function TimeLabel({ ts }: { ts?: number }) {
   return <span className="cm-time">{h}:{min}</span>;
 }
 
-function RenderMessage({ m }: { m: Message }) {
+function RenderMessage({ m, supportEmail }: { m: Message; supportEmail: string }) {
   if (m.role === "user") {
     return (
       <div>
@@ -171,7 +175,7 @@ function RenderMessage({ m }: { m: Message }) {
     return <RgRedirectCard lang={m.lang} />;
   }
   if (m.kind === "escalate") {
-    return <EscalateHandoff />;
+    return <EscalateHandoff supportEmail={supportEmail} />;
   }
   if (m.kind === "text_with_citations") {
     return (

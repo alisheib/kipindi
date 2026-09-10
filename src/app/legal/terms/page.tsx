@@ -1,5 +1,5 @@
 import { LegalHeader, LegalSection } from "../_components";
-import { SUPPORT_EMAIL } from "@/lib/support-config";
+import { SUPPORT_EMAIL, LICENCE_NUMBER } from "@/lib/server/support-config";
 import { getServerT, type Locale } from "@/lib/i18n-server";
 import { getGlobalConfig } from "@/lib/server/market-config";
 
@@ -65,8 +65,9 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
       <LegalSection n="1" title="Operator + licence">
         <p>
           The 50pick service is operated by 50pick Ltd, registered in the United Republic of Tanzania
-          (TIN pending), under licence from the Gaming Board of Tanzania (licence number to be confirmed
-          at launch). Players must be 18 years or older and physically present in Tanzania at the time of play.
+          (TIN pending), under licence from the Gaming Board of Tanzania, licence number{" "}
+          {LICENCE_NUMBER()}. Players must be 18 years or older and physically present in Tanzania at
+          the time of play.
         </p>
       </LegalSection>
 
@@ -194,7 +195,7 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
         <p>
           Huduma ya 50pick inaendeshwa na 50pick Ltd, iliyosajiliwa katika Jamhuri ya Muungano wa Tanzania
           (TIN inasubiriwa), chini ya leseni kutoka Bodi ya Michezo ya Kubahatisha Tanzania (Gaming Board of
-          Tanzania) (namba ya leseni itathibitishwa wakati wa uzinduzi). Wachezaji lazima wawe na umri wa miaka
+          Tanzania), namba ya leseni {LICENCE_NUMBER()}. Wachezaji lazima wawe na umri wa miaka
           18 au zaidi na wawepo Tanzania wakati wa kucheza.
         </p>
       </LegalSection>
@@ -321,7 +322,7 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
       <LegalSection n="1" title="运营方与牌照">
         <p>
           50pick 服务由在坦桑尼亚联合共和国注册的 50pick Ltd 运营（TIN 待定），并持有坦桑尼亚博彩委员会
-          （Gaming Board of Tanzania）颁发的牌照（牌照号将于上线时确认）。玩家须年满 18 周岁，且在下注时身处坦桑尼亚境内。
+          （Gaming Board of Tanzania）颁发的牌照，牌照号 {LICENCE_NUMBER()}。玩家须年满 18 周岁，且在下注时身处坦桑尼亚境内。
         </p>
       </LegalSection>
 

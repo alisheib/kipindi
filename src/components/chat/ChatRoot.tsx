@@ -72,7 +72,7 @@ function saveHistory(messages: Message[]): void {
   }
 }
 
-export function ChatRoot() {
+export function ChatRoot({ supportEmail }: { supportEmail: string }) {
   const pathname = usePathname();
   const { t, locale } = useT();
   const [open, setOpen] = useState(false);
@@ -219,6 +219,7 @@ export function ChatRoot() {
       messages={messages}
       pending={pending}
       onSend={handleSend}
+      supportEmail={supportEmail}
     />
   );
 }
@@ -232,6 +233,7 @@ function ChatRootInner({
   messages,
   pending,
   onSend,
+  supportEmail,
 }: {
   open: boolean;
   onToggle: () => void;
@@ -241,6 +243,8 @@ function ChatRootInner({
   messages: Message[];
   pending: boolean;
   onSend: (text: string) => void;
+  /** Threaded from the root layout — see the note on ChatPanel's prop (E-226). */
+  supportEmail: string;
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
   const bubbleRef = useRef<HTMLDivElement>(null);
@@ -310,6 +314,7 @@ function ChatRootInner({
             pending={pending}
             onClose={onClose}
             onSend={onSend}
+            supportEmail={supportEmail}
             variant={isMobile ? "sheet" : "desktop"}
           />
         </div>

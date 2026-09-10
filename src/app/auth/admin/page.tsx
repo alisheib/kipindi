@@ -10,7 +10,7 @@ import { db } from "@/lib/server/store";
 import { hasTotp } from "@/lib/server/totp";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { startLoginAction } from "@/app/auth/login/actions";
-import { SUPPORT_EMAIL } from "@/lib/support-config";
+import { SUPPORT_EMAIL } from "@/lib/server/support-config";
 import { isStaffRole } from "@/lib/server/roles";
 
 export const metadata = { title: "Admin sign in · Kuingia" };

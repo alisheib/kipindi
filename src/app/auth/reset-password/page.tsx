@@ -6,7 +6,7 @@ import { AuthPanel, AuthHeader } from "@/components/auth/auth-panel";
 import { PasswordInput } from "@/components/ui/password-input";
 import { FieldLegend } from "@/components/ui/field-legend";
 import { SubmitButton } from "@/components/ui/submit-button";
-import { HELPLINE, SUPPORT_EMAIL } from "@/lib/support-config";
+import { HELPLINE, SUPPORT_EMAIL } from "@/lib/server/support-config";
 import { verifySession } from "@/lib/server/crypto";
 import { db } from "@/lib/server/store";
 import { passwordFingerprint } from "@/lib/server/password-reset";
