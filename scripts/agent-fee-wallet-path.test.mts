@@ -49,6 +49,7 @@
  * Run: npm run test:agent-fee-wallet-path
  */
 import { readFileSync } from "node:fs";
+import { decomment } from "./lib/decomment.mts";
 import { db } from "../src/lib/server/store.ts";
 import { mkFixtureUser } from "./lib/agent-fixtures.mts";
 import { feeBreakdown } from "../src/lib/server/agent-application-service.ts";
@@ -205,12 +206,21 @@ console.log("\n§4 the call sites, because 'renders nothing' is not 'sends nothi
    * destination account still reach a RENDERED template? That cannot be satisfied by an import.
    */
   /**
-   * ⚠️ STRIP COMMENTS FIRST. This assertion fired on the very comment that EXPLAINS it — the
-   * docblock above the fee copy names `cfg.feeDestinationAccount` in prose to say why it was
-   * removed. A source assertion has to test CODE, not writing about the code, or documenting a
-   * fix becomes indistinguishable from not making it.
+   * ⚠️ STRIP COMMENTS FIRST, WITH THE SHARED SCANNER. This assertion fired on the very comment
+   * that EXPLAINS it — the docblock above the fee copy names the destination field in prose to
+   * say why it was removed. A source assertion has to test CODE, not writing about the code, or
+   * documenting a fix becomes indistinguishable from not making it. That is the exact reason
+   * `scripts/lib/decomment.mts` exists: *"a guard that greps raw text matches the paragraph
+   * explaining the fix instead of the fix."*
+   *
+   * ⛔ AND IT USES THE SHARED SCANNER, NOT A PRIVATE PAIR OF REGEXES. My first version was
+   * `.replace(block).replace(line)`, and `test:decomment` §2.1 caught it as a **21st** private
+   * stripper against a ceiling of **20** — a ratchet that may only SHRINK, so raising it was
+   * never an option. The shared one is better for a MEASURED reason, not a stylistic one: a pair
+   * of regexes has an ORDER, and each order is its own blindness (`E-186` — block-first lets a
+   * `/*` inside a `//` line open a block nobody wrote, and that hid 7,581 characters of `src`
+   * from five guards). `decomment` is a scanner, and it tracks string literals too.
    */
-  const codeOnly = (src: string) => src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
 
   /**
    * ⚠️ AND STATE THE RULE PER LINE, NOT BY STRIPPING A REGION.
@@ -226,7 +236,7 @@ console.log("\n§4 the call sites, because 'renders nothing' is not 'sends nothi
    * so assert exactly that, line by line. No region matching, nothing for a nested brace to
    * break.
    */
-  const accountLines = codeOnly(page).split(/\r?\n/).filter((l) => l.includes("feeDestinationAccount"));
+  const accountLines = decomment(page).split(/\r?\n/).filter((l) => l.includes("feeDestinationAccount"));
   ok("4.3a CONTROL · at least one line mentions the destination account (else 4.3 is vacuous)",
     accountLines.length >= 1, `found ${accountLines.length}`);
   ok("4.3 ⭐ /agent hands the destination account ONLY to the withheld QR panel, never to visible copy",
