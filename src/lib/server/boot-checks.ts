@@ -22,6 +22,17 @@ import { isAdminTotpEnforced } from "./admin-guard";
 /** The exact env names read by api/webhooks/payments/route.ts (KNOWN_PROVIDERS). */
 const WEBHOOK_SECRET_ENVS = ["SELCOM_WEBHOOK_SECRET", "AZAMPAY_WEBHOOK_SECRET", "MIXX_WEBHOOK_SECRET"] as const;
 
+/** Anything that will never verify a vendor signature: unset, a setup-template placeholder,
+ *  or too short to be a generated secret. Exported so `test:webhook-secret` can drive it —
+ *  a predicate buried inside a boot function is a predicate nothing ever checks. */
+export function webhookSecretUnusable(raw: string | undefined): boolean {
+  const v = (raw ?? "").trim();
+  if (!v) return true;
+  if (/^(paste|change|replace|set|your|todo|xxx+|placeholder|example|generated?[_-]?value)/i.test(v)) return true;
+  if (/^[A-Z][A-Z0-9_]{8,}$/.test(v)) return true; // SCREAMING_SNAKE — a template token, not a secret
+  return v.length < 16;
+}
+
 export async function runBootChecks(): Promise<void> {
   // Fail-open payment-mode surface (logs, never throws).
   await assertPaymentModeSane();
@@ -43,10 +54,28 @@ export async function runBootChecks(): Promise<void> {
       );
     }
 
-    const missing = WEBHOOK_SECRET_ENVS.filter((name) => !process.env[name]);
+    /**
+     * 🔴 THIS USED TO BE `!process.env[name]` — PRESENCE, NOT VALIDITY — AND PRODUCTION HAS
+     * BEEN CARRYING `SELCOM_WEBHOOK_SECRET=PASTE_ANOTHER_GENERATED_VALUE` PAST IT.
+     *
+     * The literal placeholder out of the setup template is a truthy string, so the check saw
+     * it as set and said nothing. ⭐ **A placeholder is functionally ABSENT** — the vendor signs
+     * with the real shared secret, so every HMAC comparison fails and the receiver 401s exactly
+     * as it would with no secret at all. The warning below already describes that outcome in
+     * capitals; it simply could not fire for the one case that was actually true.
+     *
+     * ⛔ The question this guard failed is the standing one: *would it still pass if the thing
+     * it checks for were absent?* It did, for 40+ days.
+     *
+     * ⚠️ Deposits are NOT affected today and that was measured, not assumed:
+     * `webhook.payment.received` last fired 2026-08-01, while `payments.fast_credit` (42) and
+     * `payments.reconcile_sweep` (2,529) are current — money credits through the reconcile
+     * path, and the webhook receiver is dormant. This is a latent door, not a live outage.
+     */
+    const missing = WEBHOOK_SECRET_ENVS.filter((name) => webhookSecretUnusable(process.env[name]));
     if (missing.length) {
       console.error(
-        `[config] WARNING: payment webhook secret(s) not set: ${missing.join(", ")}. ` +
+        `[config] WARNING: payment webhook secret(s) MISSING, PLACEHOLDER or too short: ${missing.join(", ")}. ` +
           `The webhook receiver reads these exact names (api/webhooks/payments/route.ts). ` +
           `Any provider whose secret is missing has EVERY callback rejected with 401 → deposits ` +
           `for that provider never credit. Set them in Railway before enabling the provider. ` +
