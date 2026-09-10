@@ -272,7 +272,7 @@ BLOCKED and move on — do not guess, and do not quietly shrink the unit to some
 | 6 | 🟠 Two chat SAFETY mechanisms are unreachable when signed in | ☐ 0/3 |
 | 7 | 🟠 A cooling-off break can be SHORTENED, and the copy deterring it is false | ✅ **3/3 — LIVE** |
 | 8 | 🟠 Five suites are not on the deploy path; one asserts a retired value | ☐ 0/3 |
-| 9 | 🟠 The first-login primer blocks its own photographer | ☐ 0/3 |
+| 9 | 🟠 The first-login primer blocks its own photographer | ✅ **3/3 — LIVE** |
 | 10 | 🟡 Routing and chrome — dialability, badges, duplicated constants | ☐ 0/7 |
 | 11 | 🟠 "Perfect support user management" — the DESK, which nothing here audits | ☐ 0/4 |
 
@@ -337,9 +337,9 @@ BLOCKED and move on — do not guess, and do not quietly shrink the unit to some
 
 | | Unit 9 · The primer | where |
 |---|---|---|
-| ☐ | **9.1** it can be photographed — the UA block is addressed | `onboarding/first-visit-primer.tsx:282` |
-| ☐ | **9.2** the render guard tests `SUPPRESS_ON`, not only the mount effect | `:281` vs `:322` |
-| ☐ | **9.3** a wired drive asserts a RECTANGLE at 360/393/768 × en/sw/zh | new |
+| ✅ | **9.1** it can be photographed — the UA block is addressed. ⛔ The block is KEPT rather than deleted: about ten drives assume the primer is absent, and removing it would turn a documentation problem into ten broken gates. What was missing is a way to ASK for it, so automation opts in explicitly with `?primer=1` (or a localStorage flag) and nothing that does not ask changes behaviour | `src/components/onboarding/first-visit-primer.tsx` |
+| ✅ | **9.2** the render guard tests `SUPPRESS_ON`, not only the mount effect — ⭐ **this was the real defect.** Land on `/markets`, the primer opens; tap a card and the SOFT navigation re-runs the effect, which returns early on the new path — but `open` is already true and the render guard had no opinion about `SUPPRESS_ON`, so the tour sat over the bet widget it exists to stay away from. `ChatRoot.tsx` had the right shape all along: it tests its own pattern in the effect AND the render. New **§6** in `test:stacking`, 3 mutations caught | `first-visit-primer.tsx` · `scripts/stacking-contract.test.mts` |
+| ✅ | **9.3** a wired drive asserts a RECTANGLE at 360/393/768 × en/sw/zh — `qa:support-shots` now forces the primer and measures the dialog's box, viewport overflow, off-screen top and control count at nine cells. ⚠️ Each row carries a LOCALE POSITIVE CONTROL, because the cookie is `kp-locale` and a page that silently served English would satisfy every geometry assertion in all three languages | `scripts/live/support-surface-shots.mjs` |
 
 | | Unit 10 · Routing and chrome | where |
 |---|---|---|

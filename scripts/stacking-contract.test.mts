@@ -692,5 +692,52 @@ if (stackTable) {
   }
 }
 
+// ── §6 · A SUPPRESSION IS ONLY REAL IF THE *RENDER* HONOURS IT ───────────────
+//
+// 🔴 Everything above this section is about z-order — which overlay sits on top. This one is
+// about an overlay that should not be on the screen AT ALL, and it is the same family: a modal
+// covering a control the player is trying to press.
+//
+// `first-visit-primer.tsx` keeps two path patterns. `HIDE_ON` is where it must never mount
+// (auth, admin). `SUPPRESS_ON` is the BET-INTENT moment — a deep-linked market or Up & Down
+// detail — where a first-run tour must not appear over the widget the player came to use.
+//
+// ⛔ THE DEFECT: `SUPPRESS_ON` was tested ONLY in the mount effect, and the render guard tested
+// `HIDE_ON` alone. Landing on `/markets` opens the primer; tapping a card is a SOFT navigation,
+// so the effect re-runs and returns early on the new path — but `open` is already `true` and the
+// render guard has no opinion about `SUPPRESS_ON`. The modal stays up, over the bet widget.
+// ⭐ `ChatRoot.tsx` had it right all along: it tests its own `HIDE_ON` in the effect AND in the
+// render. A guard on the effect alone cannot see state that is already true.
+{
+  const primer = src("src/components/onboarding/first-visit-primer.tsx");
+  // ⚠️ LINE-SCOPED, NOT PAREN-SCOPED. The first version of this scan was
+  // `/if \([^)]*\) return null;/` and matched NOTHING, because the guard it is looking for
+  // contains nested parentheses — `if (HIDE_ON.test(…) || SUPPRESS_ON.test(…)) return null;` —
+  // so the character class stopped at the first `)`. It reported "no guard found at all"
+  // against a file that has one. Control 6.2 below is what caught it.
+  const renderGuard = primer.match(/.*return null;.*/g) ?? [];
+  const guardsBoth = renderGuard.some((g) => /HIDE_ON/.test(g) && /SUPPRESS_ON/.test(g));
+  ok("6.1 ⛔ the primer's RENDER guard tests SUPPRESS_ON, not only HIDE_ON", guardsBoth,
+    renderGuard.join(" | ") || "no `return null` guard found at all",
+    "the mount effect cannot retract a modal that is already open — tapping a market card from /markets left the tour over the bet widget");
+  // ⚠️ CONTROLS — the population must exist, or 6.1 could pass by matching nothing, and both
+  // patterns must still be declared or the guard is asserting against names that are gone.
+  ok("6.2 ⚠️ CONTROL — a render-time `return null` guard was actually found", renderGuard.length > 0);
+  ok("6.3 ⚠️ CONTROL — both path patterns are still declared",
+    /const HIDE_ON =/.test(primer) && /const SUPPRESS_ON =/.test(primer));
+  // ⭐ And the automation block must remain OVERRIDABLE, or every design verdict on this modal
+  // goes back to being source-derived: a default-UA Chromium sees a page where it never opened.
+  // ⛔ ASSERT THE CALL SITE, NOT THE DECLARATION. The first version tested whether the string
+  // `primerForced()` appeared ANYWHERE in the file — which it does, in the function's own
+  // definition. Deleting the CALL from the UA block left this green, and a mutation caught it.
+  // The subject is the line that decides, so that is the line the scan reads.
+  const uaLine = (primer.match(/.*HeadlessChrome.*/g) ?? []).join(" · ");
+  ok("6.4 the automation block can be opted out of, so the primer can be photographed",
+    uaLine.includes("primerForced()"),
+    uaLine || "no UA block found at all",
+    "the block is kept — ~10 drives assume the primer is absent — but a driver can now ask for it");
+  ok("6.5 ⚠️ CONTROL — the UA block still exists (removing it would break ~10 drives)", uaLine.length > 0);
+}
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

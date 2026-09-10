@@ -27,6 +27,24 @@ const HIDE_ON = /^\/(auth|admin)(\/|$)/;
 // for a board-level landing instead.
 const SUPPRESS_ON = /^\/markets\/[^/]+|^\/updown\/[^/]+/;
 
+/**
+ * ⭐ THE EXPLICIT OPT-IN THAT MAKES THE PRIMER PHOTOGRAPHABLE.
+ *
+ * A driver sets `?primer=1` (or `localStorage.kp-primer-force = "1"`) and the automation block
+ * above stands down for that context only. ⛔ Deliberately NOT a UA allowlist and not an env
+ * flag: a query parameter is visible in the drive that used it, so a screenshot can always be
+ * traced back to the thing that asked for the modal.
+ */
+function primerForced(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    if (new URLSearchParams(window.location.search).get("primer") === "1") return true;
+    return window.localStorage.getItem("kp-primer-force") === "1";
+  } catch {
+    return false;
+  }
+}
+
 
 /**
  * 🔴 THE COPY USED TO LIVE HERE, IN ITS OWN `L10n` OBJECTS, AND THAT WAS TWO DEFINITIONS OF ONE
@@ -279,7 +297,15 @@ export function FirstVisitPrimer() {
     if (typeof window === "undefined") return;
     if (HIDE_ON.test(pathname ?? "/")) return;
     if (SUPPRESS_ON.test(pathname ?? "/")) return; // B-26 — not on a deep-linked detail
-    if (/HeadlessChrome|Playwright/i.test(navigator.userAgent)) return;
+    // 🔴 THE UA BLOCK MADE THIS COMPONENT UNPHOTOGRAPHABLE, AND THAT IS WHY EVERY DESIGN VERDICT
+    // ON IT IS SOURCE-DERIVED. Every browser gate on this platform launches default-UA Chromium,
+    // so each one captured a page where this modal never opened — including the support drive on
+    // 2026-09-10, which reported "first-visit primer on a never-seen browser: not shown".
+    // ⛔ The block itself is KEPT rather than deleted: roughly ten drives assume the primer is
+    // absent, and removing it would turn a documentation problem into ten broken gates. What was
+    // missing is a way to ASK for it — so automation opts in explicitly, and nothing that does
+    // not ask changes behaviour at all.
+    if (/HeadlessChrome|Playwright/i.test(navigator.userAgent) && !primerForced()) return;
     try {
       const seen = window.localStorage.getItem(STORAGE_KEY);
       if (seen === "1") return;
@@ -319,7 +345,13 @@ export function FirstVisitPrimer() {
     if (step > 0) setStep(step - 1);
   }
 
-  if (HIDE_ON.test(pathname ?? "/")) return null;
+  // 🔴 SUPPRESS_ON IS TESTED HERE TOO, AND ITS ABSENCE WAS THE REAL DEFECT. The mount effect
+  // above checks it; this guard checked only HIDE_ON. So: land on /markets, the primer opens,
+  // tap a card — the effect returns early on the new path, `open` stays TRUE, and the primer sits
+  // over the bet widget it exists to stay away from. SUPPRESS_ON is the bet-intent moment, which
+  // is the one place a modal must not be. ⭐ `ChatRoot.tsx` already tests its own HIDE_ON in both
+  // the effect AND the render, which is the shape this should have had.
+  if (HIDE_ON.test(pathname ?? "/") || SUPPRESS_ON.test(pathname ?? "/")) return null;
 
   const c = CARDS[step];
 

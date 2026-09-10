@@ -107,16 +107,68 @@ try {
       await settle(page, `${BASE}${route}`);
       for (const w of [360, 1280]) await shoot(page, label, w);
     }
-    // The primer fires for a browser that has never visited — this context is exactly that.
-    await settle(page, BASE);
-    await page.waitForTimeout(2500);
-    const primer = await page.evaluate(() => {
-      const dlg = document.querySelector('[role="dialog"], [aria-modal="true"]');
-      return dlg ? { present: true, text: (dlg.textContent || "").trim().slice(0, 220) } : { present: false };
-    });
-    note(`\n── first-visit primer on a never-seen browser: ${primer.present ? "SHOWN" : "not shown"}`);
-    if (primer.present) { note(`   «${primer.text}»`); await shoot(page, "primer", 360); await shoot(page, "primer", 1280); }
     await ctx.close();
+  }
+
+  // ── 1b · THE FIRST-VISIT PRIMER — MEASURED, NOT INFERRED ─────────────────────────────────
+  //
+  // 🔴 EVERY DESIGN VERDICT ON THIS MODAL HAS BEEN SOURCE-DERIVED, and this is why: the
+  // component returned early on `/HeadlessChrome|Playwright/i.test(navigator.userAgent)`, so
+  // every browser gate on this platform — all of them default-UA Chromium — photographed a page
+  // where it never opened. This drive reported "not shown" on 2026-09-10 and that was the whole
+  // finding. The block is still there (about ten drives assume the primer is absent); it now
+  // takes an explicit `?primer=1` opt-in, so a driver can ASK for it.
+  //
+  // ⭐ AND IT MEASURES A RECTANGLE, not just presence. A screenshot proves a surface renders; it
+  // does not prove the dialog fits, that its controls are reachable, or that Swahili — the
+  // longest of the three languages — does not push it past the viewport. 393 is in the matrix
+  // because it is the modern-phone width the 360/1280 pair skips.
+  // ⚠️ The locale cookie is `kp-locale`, NOT `locale`, and a page that silently served English
+  // would satisfy every assertion below — so each row asserts a POSITIVE CONTROL that the
+  // dialog's text actually changed language.
+  {
+    const LOCALES = [
+      { code: "en", expect: /bet|market|welcome/i },
+      { code: "sw", expect: /dau|soko|karibu/i },
+      { code: "zh", expect: /投注|市场|欢迎/ },
+    ];
+    for (const { code, expect } of LOCALES) {
+      for (const w of [360, 393, 768]) {
+        const c = await browser.newContext({ viewport: { width: w, height: 900 } });
+        await c.addCookies([{ name: "kp-locale", value: code, domain: new URL(BASE).hostname, path: "/" }]);
+        const pg = await c.newPage();
+        pg.setDefaultNavigationTimeout(60_000);
+        await settle(pg, `${BASE}/?primer=1`);
+        await pg.waitForTimeout(2200);
+        const m = await pg.evaluate(() => {
+          const dlg = document.querySelector('[role="dialog"], [aria-modal="true"]');
+          if (!dlg) return { present: false };
+          const r = dlg.getBoundingClientRect();
+          const focusable = dlg.querySelectorAll('button, a[href], input, [tabindex]:not([tabindex="-1"])');
+          return {
+            present: true,
+            x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height),
+            vw: window.innerWidth, vh: window.innerHeight,
+            overflowsX: r.right > window.innerWidth + 1 || r.left < -1,
+            offscreenY: r.top < -1,
+            controls: focusable.length,
+            text: (dlg.textContent || "").trim().slice(0, 120),
+          };
+        });
+        if (!m.present) {
+          note(`\n── primer ${code} @${w}: ⛔ NOT SHOWN (the opt-in did not reach the component)`);
+        } else {
+          note(`\n── primer ${code} @${w}: ${m.w}×${m.h} at (${m.x},${m.y}) in ${m.vw}×${m.vh}`
+            + ` · overflowsX=${m.overflowsX} offscreenY=${m.offscreenY} · ${m.controls} controls`);
+          note(`   «${m.text}»`);
+          // ⭐ The positive control: without it, a page that silently served English would pass
+          // the geometry assertions for all three locales and prove nothing about translation.
+          note(`   locale control (${code}): ${expect.test(m.text) ? "OK — text is in the expected language" : "⛔ FAILED — served the wrong language"}`);
+          await pg.screenshot({ path: `${SHOTS}/primer_${code}_${w}.png` }).catch(() => {});
+        }
+        await c.close();
+      }
+    }
   }
 
   // ── 2 · ADMIN, sequential. The support config and the care desk. ──────────────────────────
