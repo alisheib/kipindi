@@ -15,13 +15,13 @@ import { getServerT } from "@/lib/i18n-server";
 import { matchesQuery, parseQuery } from "@/lib/search";
 import { MY_TXN_SEARCH } from "@/lib/search";
 import {
+  LEDGER_DEFAULT_STATE,
   LEDGER_ROW_CAP,
   WALLET_SECTIONS,
   buildLedgerHref,
   filterLedger,
   ledgerCounts,
-  ledgerEmptyCause,
-  ledgerExits,
+  ledgerEmptyView,
   ledgerWasCapped,
   parseLedgerParams,
   visibleLedgerLenses,
@@ -173,7 +173,6 @@ export default async function WalletPage({ searchParams }: { searchParams: Promi
   const matchesText = (row: LedgerRow) =>
     matchesQuery(parsed, row as unknown as Record<string, string | null | undefined>, MY_TXN_SEARCH);
 
-  const counts = ledgerCounts(rows, state, nowMs, matchesText) as LedgerCounts;
   // ⚠️ No sort. A ledger is chronological and the store already returns it newest-first — see
   //    `wallet-bar.tsx`'s header for why this surface is the campaign's one deliberate exception.
   const matched = filterLedger(rows, state, nowMs, matchesText);
@@ -245,8 +244,63 @@ export default async function WalletPage({ searchParams }: { searchParams: Promi
       status: g.status,
     }));
 
-  const cause = ledgerEmptyCause(state, nowMs, matchesText, matched.length, rows.length);
-  const exits = cause && cause !== "no-rows" ? ledgerExits(rows, state, nowMs, matchesText) : [];
+  /**
+   * 🔴 `total` IS THE PLAYER'S WHOLE BOOK, AND PASSING `rows.length` HERE TRAPPED THEM.
+   *
+   * `emptyKind`'s contract says so in as many words — *"how many rows exist before ANY filter —
+   * the player's whole book"* (`lib/query/empty.ts:141`). But `rows` is the WINDOWED read: the
+   * date axis is applied in the DATABASE, on purpose, so that narrowing to "last 30 days"
+   * reaches past the row cap instead of filtering an already-truncated page. Correct — and it
+   * means an empty window makes `rows.length === 0`, which `emptyKind` reads as `"no-rows"`:
+   * *this account has never had any activity.*
+   *
+   * ⛔ THREE SYMPTOMS, ONE WRONG NUMBER. A player on a funded wallet who picked a day with no
+   * transactions was told **"No activity yet · Make your first deposit"**; `exits` was skipped
+   * because the cause was `no-rows`; and `wallet-client.tsx:725` renders the filter bar only
+   * when the cause is NOT `no-rows` — so the bar came off the page too. **No filter control, no
+   * exit chip, and copy denying they had ever transacted. There was no way back except editing
+   * the URL.** Reported from production by Ali on a wallet holding TZS 423,857.
+   *
+   * ⭐ THE FIX IS TO ANSWER THE QUESTION THE ARGUMENT ACTUALLY ASKS, and only when it can be
+   * wrong: `total` can only mislead when it is 0, and a windowed read is only narrower than the
+   * book when a window is set. So one extra read, in that case alone — never on a normal load.
+   * With the true total the cause becomes `window-miss`, the exits get a population to count
+   * against ("All time (57)"), and the bar comes back.
+   */
+  const windowIsNarrowed = state.when !== LEDGER_DEFAULT_STATE.when;
+  let bookRows: LedgerRow[] = rows;
+  if (rows.length === 0 && windowIsNarrowed) {
+    const allTxns = (await db.txn.findByUserWindow(session.userId, 0, nowMs + 86_400_000, LEDGER_ROW_CAP + 1)) as StoredTxn[];
+    bookRows = allTxns.map((x) => ({
+      id: x.id,
+      type: x.type,
+      status: x.status,
+      token: adaptTxn(x).type,
+      amount: x.amount,
+      description: x.description ?? "",
+      createdAtMs: Date.parse(x.createdAt) || 0,
+    }));
+  }
+
+  /**
+   * ⛔ THE BAR'S COUNTS COME FROM `bookRows` TOO, AND ON AN EMPTY WINDOW THAT IS THE DIFFERENCE
+   * BETWEEN AN EXIT AND A DEAD END.
+   *
+   * `counts.when[w]` is the number beside each date chip. Computed over the WINDOWED rows it is
+   * necessarily 0 for every window once the current one is empty — so the way out, **"All time"**,
+   * renders as **"All time (0)"** to a player with a full history. A chip that reads 0 is one
+   * nobody presses; it looks like the same emptiness, one click further on.
+   *
+   * ⚠️ This does NOT breach the invariant the `activityBar` note below states — *a count may not
+   * disagree with the list under it.* `bookRows` differs from `rows` only when `rows` is EMPTY,
+   * and then there is no list under it to disagree with: the page is showing the empty state, and
+   * the counts are pure navigation. On every non-empty load `bookRows === rows`, byte for byte.
+   */
+  const counts = ledgerCounts(bookRows, state, nowMs, matchesText) as LedgerCounts;
+
+  /* ⛔ ONE call, taking BOTH populations by name — see `ledgerEmptyView`. The previous shape
+     asked for the whole book in a comment and got the windowed read instead. */
+  const { cause, exits } = ledgerEmptyView(rows, bookRows, matched.length, state, nowMs, matchesText);
   const EXIT_LABEL: Record<string, string> = {
     state: t.wallet.exitState, when: t.wallet.exitWhen, q: t.wallet.exitSearch, type: t.wallet.exitType,
   };
@@ -285,7 +339,7 @@ export default async function WalletPage({ searchParams }: { searchParams: Promi
         activityBar={
           <WalletBar
             state={state}
-            lenses={visibleLedgerLenses(rows)}
+            lenses={visibleLedgerLenses(bookRows)}
             counts={counts}
             resultCount={matched.length}
             t={t}

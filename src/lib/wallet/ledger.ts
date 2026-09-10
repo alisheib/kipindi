@@ -294,6 +294,44 @@ export function ledgerExits(
 }
 
 /**
+ * The empty-state DECISION for the wallet ledger — cause and exits together, from the two
+ * populations the answer actually depends on.
+ *
+ * 🔴 WHY THIS EXISTS AS ONE FUNCTION WITH TWO ROW ARGUMENTS. The wallet applies its date axis
+ * in the DATABASE (so a narrow window can reach past the row cap). That makes `windowRows` a
+ * FILTERED population, and `emptyKind`'s `total` wants the player's WHOLE BOOK. `wallet/page.tsx`
+ * passed `windowRows.length` for both, so picking a day with no transactions answered
+ * `"no-rows"` — *this account has never had any activity* — on a funded wallet.
+ *
+ * ⛔ AND THE COST WAS NOT THE WRONG SENTENCE. `"no-rows"` suppresses the exits here, and
+ * `wallet-client.tsx` renders the filter bar only when the cause is NOT `"no-rows"`. So the
+ * player lost the bar AND every escape chip at once: **no control on the page could change the
+ * filter that had emptied it**, and the only way out was to edit the URL. Reported from
+ * production 2026-09-10 on a wallet holding TZS 423,857.
+ *
+ * ⭐ Taking BOTH populations as named parameters is the point — the caller can no longer pass one
+ * population twice without writing it out and seeing it. A comment asking for the whole book is
+ * what the previous shape had, and it did not survive contact.
+ */
+export function ledgerEmptyView(
+  /** What the page is rendering: the windowed read, after every other axis. */
+  windowRows: readonly LedgerRow[],
+  /** The player's whole book, BEFORE the date window. Equal to `windowRows` when no window is set. */
+  bookRows: readonly LedgerRow[],
+  shown: number,
+  state: LedgerQueryState,
+  nowMs: number,
+  matchesText: (row: LedgerRow) => boolean,
+): { cause: EmptyKind | null; exits: Relaxation<LedgerQueryState, LedgerExitId>[] } {
+  const cause = ledgerEmptyCause(state, nowMs, matchesText, shown, bookRows.length);
+  /* Relaxations count what dropping an axis would RETURN. Asked of an empty windowed page that
+     can only ever answer 0 — and an exit chip reading "All time (0)" is the same dead end in
+     different words, so it is asked of the book. */
+  const exits = cause && cause !== "no-rows" ? ledgerExits(bookRows, state, nowMs, matchesText) : [];
+  return { cause, exits };
+}
+
+/**
  * ⭐ EVERY LENS BUT `all` IS A HEALTHY EMPTY. "You have not withdrawn anything" is a fact about
  * the player, not a failure of the page — and on a money surface the difference matters more than
  * anywhere else: *"no results"* over an empty Withdrawals lens invites a player to wonder whether
