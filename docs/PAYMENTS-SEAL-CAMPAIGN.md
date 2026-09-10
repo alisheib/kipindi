@@ -161,12 +161,12 @@ BLOCKED and move on — do not guess, and do not quietly shrink the unit to some
 | 0 | ⛔ **DECISION GATE** — the compliance position this reverses | ✅ **2/2** |
 | 1 | 🔴 The ledger shape: a wallet-funded fee must not double-count | ✅ **4/4** |
 | 2 | 🔴 The debit primitive: all-or-nothing, idempotent, its own type | ✅ **5/5** |
-| 3 | 🔴 The applicant's path: deposit → return → pay, with no dead end | ☐ 0/5 |
+| 3 | 🔴 The applicant's path: deposit → return → pay, with no dead end | ✅ **5/5** |
 | 4 | 🟠 The officer's workstation after reconciliation stops being manual | ☐ 0/4 |
 | 5 | 🟠 Refunds — the mirror must still balance | ☐ 0/3 |
-| 6 | 🟠 Copy, terms and i18n — EN/SW/ZH, and a terms version bump | ☐ 0/5 |
+| 6 | 🟠 Copy, terms and i18n — EN/SW/ZH, and a terms version bump | ⏳ **2/5** — 6.1 + 6.2 |
 | 7 | 🟠 In-flight applicants must not be stranded by the deploy | ⏳ **1/3** — 7.3 measured: **no migration needed** |
-| 8 | 🟡 Gates — the suites that hold this subsystem, on the deploy path | ⏳ **2/3** — 8.2 + 8.3 sealed; ⛔ 2 mutations escaped v1, both now caught |
+| 8 | 🟡 Gates — the suites that hold this subsystem, on the deploy path | ⏳ **2/3** — 8.2 + 8.3; predeploy 97 → 98, two guards on the path |
 
 <details><summary><strong>Row ledger — tick these</strong></summary>
 
@@ -207,11 +207,11 @@ BLOCKED and move on — do not guess, and do not quietly shrink the unit to some
 
 | | Unit 3 · The applicant's path | where |
 |---|---|---|
-| ☐ | **3.1** the wizard's payment step offers "pay from wallet", not a bank instruction | `agent/apply` |
-| ☐ | **3.2** insufficient balance routes to deposit and RETURNS to the same step | new |
-| ☐ | **3.3** the receipt-image + reference gate is removed or conditioned, not left dangling | `recordFeePayment` |
-| ☐ | **3.4** `recomputeDraftStatus`'s three draft states still derive correctly | service |
-| ☐ | **3.5** no state in the wizard can trap the applicant with no way forward or back | drive |
+| ✅ | **3.1** the wizard's payment step offers "pay from wallet", not a bank instruction | `payFeeFromWalletAction` + a gated pay control. ⛔ Takes NO `FormData` — the amount comes from `feeBreakdown()` on the server and the payer is the session; a form field for the amount is how a TZS 1,000 payment gets attested as the fee |
+| ✅ | **3.2** insufficient balance routes to deposit and RETURNS to the same step | The shortfall is NAMED, not left to arithmetic, and a top-up link goes to `/wallet/deposit`. ⚠️ **Nothing carries them back** — the deposit rail has no return-URL contract (**PSC-01**) — but `firstMissingStep` recomputes from docs+referees only, so it returns them to Payment by construction. The hint says the application is saved |
+| ✅ | **3.3** the receipt-image + reference gate is removed or conditioned, not left dangling | ⛔ **REMOVED ATOMICALLY WITH THE PAY BUTTON, and it had to be.** `missingNow` is the only thing between an unpaid applicant and `submitForReview`; dropping the receipt entry alone would have let someone submit without paying. One change, never split |
+| ✅ | **3.4** `recomputeDraftStatus`'s three draft states still derive correctly | 🔴 **THE TRAP.** It read `!!feeReference \|\| WAIVED`; a wallet payment writes NO reference, so a payer stayed at `KYC_SUBMITTED` and `submitForReview` is the only door into review — **they pay TZS 100,000 and cannot apply.** Now reads the DISPOSITION (`COLLECTED`), which is already what `approveAgent` requires. ⭐ The money guard could not see it: the money moved correctly |
+| ✅ | **3.5** no state in the wizard can trap the applicant with no way forward or back | ⛔ **TWO DEAD ENDS THE BRIEF DID NOT ANTICIPATE.** Paying from a wallet inherits every precondition of DEPOSITING: (a) KYC APPROVED — enforced for self-service but `!forInvitation` **exempts an officer-invited applicant deliberately**, so an un-KYC'd invitee could not fund a wallet and was told nothing (and `agentInvitationHtml({feeWaivable:true})` is hard-coded, so the email promises a waiver that is a separate officer action); (b) a VERIFIED EMAIL — required by deposit, checked nowhere upstream. Each now renders the GATE plus the action that clears it, in the server's own order so nobody fixes one thing and is refused for another |
 
 | | Unit 4 · The officer | where |
 |---|---|---|
@@ -228,8 +228,8 @@ BLOCKED and move on — do not guess, and do not quietly shrink the unit to some
 
 | | Unit 6 · Copy and terms | where |
 |---|---|---|
-| ☐ | **6.1** the public `/agent` page describes the real rail | page + i18n |
-| ☐ | **6.2** the wizard's payment step copy is true in EN/SW/ZH | i18n-dict |
+| ✅ | **6.1** the public `/agent` page describes the real rail | `feeBodyWallet` replaces `feeBody` ("Pay {amount} to {name}, account {account}, then upload the receipt…") in all three locales — **replaced, not reworded**. ⛔ And it was a DEPENDENCY of PSC-02: deleting the visible copy alone would have been cosmetic while the gated panel still published the account |
+| ✅ | **6.2** the wizard's payment step copy is true in EN/SW/ZH | 12 new keys × EN/SW/ZH, parity green at **2382 each**. Every new refusal carries a MACHINE TOKEN, never English the form substring-matches — the defect this form already shipped once |
 | ☐ | **6.3** the binding agent terms match the new rail | `legal/agent-terms` |
 | ☐ | **6.4** `AGENT_TERMS_VERSION` is bumped — a binding document changed | config |
 | ☐ | **6.5** every fee email says what actually happens | `email.ts` |
