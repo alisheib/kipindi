@@ -5962,6 +5962,50 @@ state**, 1,338,504 of players' stakes in escrow, and every ledger entry ever wri
 
 ### 🟢 Session 91 (2026-09-08) — THREE STREAMS SHIPPED, THE BRANCH LIST EMPTIED, AND A GUARD I CLOBBERED MYSELF
 
+#### ⏭️ **RESUME AT (session 92 · SUPPORT CONTACT IS FIXED AND LIVE. The next job is the REST of the pending sweep — see the table at the end of this block.):**
+💰 **MONEY POSITION: no production money moved. One deploy. Three findings closed (E-226, E-328, E-329), two of them found while fixing the first.**
+
+**⭐ THE ONE-LINE STATE:** Ali asked for the pending state to be cleaned up — *"keep SMS and admin-2FA warnings pending, everything else mark done"* — and the sweep found that most of the pending rows are NOT done, so they were adjudicated by measurement instead of being flipped. **Two were marked done on evidence; three were fixed; the rest are listed below with a measured verdict each.**
+
+**⛔ THE TWO ALI RULED STAY PENDING, AND THEY ARE STILL PENDING ON PURPOSE:**
+`E-255` (admin TOTP) — `DISABLE_ADMIN_TOTP=true` confirmed in Railway's own variable list, `TotpSecret` holds **1 enrolled row**, so enforcement is off over an account that has already set 2FA up. ⛔ Flipping it can lock an owner out; do not flip it without enrolling every console account first.
+**SMS** — `SMS_PROVIDER=console` confirmed on Railway. ⚠️ **Its blast radius is smaller than the session-91 handoff implied and that was worth measuring: 0 `Otp` rows, 0 `sms.delivered`, 0 `sms.failed`, 0 `otp.%` audit rows. Nothing has ever tried to send.** So `successRate: 1` is the *no-traffic* branch today, not a false positive. The defect is LATENT and precise: `consoleSms.send()` RETURNS normally instead of throwing, so the first real message increments `sent++` and writes a false **`sms.delivered`** row into the HMAC audit chain, after which the gauge reads 1.0 with 100% dropped. ⭐ **It has no §6 row — it lives only in a handoff bullet, which by this campaign's own tie-break rule is *announced, not filed*.** File it before it evaporates again.
+
+#### 🔴 WHAT WAS FIXED, AND WHY THE SECOND AND THIRD FINDINGS ONLY EXIST BECAUSE OF THE FIRST
+
+**E-226** was filed as *"8 days"*; it had been wrong for **22**, and the operator had saved the form a SECOND time on **2026-09-08** — which is what noticing-and-retrying looks like from outside. Re-measured rather than inherited: saved row `msaada@50pick.tz` / `+255769777877`, `GET /help` serving `support@50pick.tz` ×6 and `+255 22 211 5811` ×4. **Zero occurrences of any saved value.**
+
+⭐ **AND THE REMEDY CARRIED THE DEFECT (E-328).** The same saved row sets `helpline` to `+255769777877` — **50pick's own desk**. Making the reader work would have published it under *"Tanzania Helpline"* on `/legal/responsible-gambling`. Session 91 had already fixed this exact harm in `email.ts` **by correcting a constant**, which did not fix the **class**: three more surfaces carried it through `SUPPORT_PHONE()` instead. ⛔ **The worst was `/profile/responsible-gambling:107` — a `tel:` link labelled "Tanzania Helpline" inside the callout that file's own comment calls *"surfaced early so anyone seeking help sees it immediately"*. A player who came there for help and tapped it phoned the operator.**
+
+**E-329** — the footer of every player-facing page rendered **`License: TZ-GBT-2026-XXXX`**, measured with `curl`. The env var was SET, to the placeholder; and its fallback would have published `TZ-GBT-2026-XXXX (pending)` — a fabricated licence reference presented as this operator's own. `/legal/terms` §1 said *"licence number to be confirmed at launch"* in all three languages, months after launch. **Ali supplied the real number 2026-09-10: `OUS00000202602`**, now a pinned constant.
+
+⭐ **THE SHAPE OF THE FIX IS THE TRANSFERABLE PART.** Split by *who owns the value*, not by module convenience: the operator's address and desk line are theirs and hydrate from `SystemConfig`; the statutory helpline and the licence number are **pinned constants with no setter, no persisted field and no admin input**. `migrate()` strips `helpline` out of the row on the way in, so the bad value cannot return even from the row that still holds it.
+
+#### ⭐ THE GUARD FOUND MORE THAN I DID, AND TWO OF ITS OWN DEFECTS ARE THE LESSON
+
+`test:support-contact` **11/0**, every check **proven RED by an isolated mutation that fails its OWN named check** (§1 hydration dead · §2 helpline persisted · §3 getter swapped on a server page · §5 bare import · §4 discriminated from §5 by import-only-vs-import-plus-call). Tree byte-identical afterwards.
+
+⛔ **§3's population is the LABEL A PLAYER READS**, resolved through `dict.en` — never an identifier name. That is why it named `profile/responsible-gambling/page.tsx:107` **before any human read that file**; a name-matching guard would have found three surfaces and missed the worst one.
+
+🔴 **AND IT SHIPPED WITH TWO DEFECTS OF ITS OWN, BOTH CAUGHT BY RUNNING IT:**
+① **§4 scanned only the first FIVE lines for `"use client"`.** `public-footer.tsx` carries an 8-line docblock above its directive — so **the one client component that renders on EVERY player-facing page was invisible to the check written to find exactly it**, and I had already mis-repointed it at the server module on the strength of a `head -3` grep. Same class as the finding itself: [[a-guard-whose-population-is-blind]].
+② **It matched comment PROSE as code**, so on the run meant to confirm the fix it accused `ChatPanel.tsx` and `public-footer.tsx` — because their new comments NAME the getter they removed. **A guard that reads prose as code accuses the fix of being the defect**, and the next person makes it green by deleting the explanation.
+
+#### ▶ THE PENDING SWEEP — ADJUDICATED BY MEASUREMENT, NOT FLIPPED
+
+| row | measured verdict 2026-09-10 |
+|---|---|
+| **E-326** | ✅ **DONE.** `4ece8f00` IS in `main`, and the step the row calls *"not optional"* checks out: the persisted `agent.config` reads `defaultCommissionPct 10 · feeVatTreatment EXCLUSIVE · reviewSlaDays 5 · maxCommissionPct 10`, and **0 agents** remain on the old 20%. |
+| **E-42** | ✅ **DONE** — 0 `AIPoll` rows in `GENERATING`. Drained. |
+| **E-266 ①②** | 🔴 **STILL TRUE AND PLAYER-VISIBLE.** `ETH/USD` has `nameZh: null` (ZH board shows "Ethereum" in Latin between 比特币 and 黄金) and `iconKey: "gold"` (ETH round cards wear the **Au** mark), and it is `enabled: true`. Two admin data fixes. ③ (chat FAB at 360) unmeasured. |
+| **E-243** | 🔴 **CODE GAP REAL, EXPOSURE 0.** `sessionTimeLimitMin` is now BOUNDED (15–480) but still written immediately in both directions — a player can still raise the limit in the moment it bites. **0 accounts have set one**, so nobody is affected yet. |
+| **E-245** | 🟡 Ali's policy call. **0 FROZEN wallets**, so exposure is 0 today. |
+| **E-239** | 🟡 3 ACTIVE `BonusGrant` of 4 total; the bonus wallet is a WITHDRAWN product and can no longer mint, so the population is frozen. |
+| the rest | ⛔ **~18 rows NOT yet adjudicated** — E-233 · E-230 · E-228 · E-177 · E-165 · E-161 · E-152 · E-147 · E-138 · E-134 · E-132 · E-128 · E-124 · E-116 · E-115 · E-114 · E-112 · E-45 · E-44 · E-41. **Start here.** |
+
+⚠️ **Also standing, from session 91 and still unfixed:** the `AffiliateAgent.tier` DROP COLUMN (release 2) is unwritten after four deploys.
+
+⛔ **Up & Down is CLEAN and the old note was stale** — 40,035 rounds, **9 unsettled, 0 overdue**. The "1,398 rounds never resolved" carried in older notes is drained; do not inherit it.
 #### ⏭️ **RESUME AT (session 91 · EVERYTHING THAT WAS UNMERGED IS NOW LIVE. `main` = `b3d0412c`.):**
 💰 **MONEY POSITION: three deploys, all SUCCESS, no production money moved by this session.**
 
