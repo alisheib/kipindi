@@ -397,9 +397,113 @@ control is that the money was already KYC'd on the way in and the payer is the a
 
 ---
 
+## §5b · 🔴 FILED FINDINGS — ids `PSC-*` (the peer holds `E-340…E-379`)
+
+⛔ **Both are PRE-EXISTING and neither was absorbed.** §5 says a deposit defect is to be FILED,
+not fixed inside this campaign, and the same discipline applies to the QR.
+
+| id | what | evidence | why it is not fixed here |
+|---|---|---|---|
+| **PSC-01** | 🟠 **The deposit rail has no return-URL contract.** Any flow that sends a user to top up cannot bring them back to where they were. | `wallet/deposit/actions.ts:145` hard-codes `/wallet?deposited=<id>&amount=<n>&status=<TxnStatus>`; the gateway path lands on `wallet/deposit/return/page.tsx` which links to `/wallet` (`:153`). `KycGatePanel returnTo=` is a KYC convention, not a deposit one. | ⛔ §5 forbids re-litigating deposit, and rerouting its success redirect would drop the `deposited=/amount=/status=` confirmation a depositor is entitled to see. ⭐ **Unit 3.2 does not need it:** `apply-client.tsx:83-90` recomputes `firstMissingStep` from docs+referees only (`FEE_RECEIPT` is not one of the seven), so it returns the Payment step by construction. |
+| **PSC-02** | 🔴 **The WITHHELD Lipa QR's merchant config is published to every anonymous visitor of `/agent`.** Nothing renders — but the data is in the page. | Read off the LIVE page 2026-09-11: `"enabled":true,"merchantName":"OCEAN ENTERTAINMENT LIMITED","lipaNumber":"70063747","ussdCode":"*150*50#","qrAssetPath":"/pay/selcom-lipa-qr.d997c1d2.svg"},"account":"0769777877","amountTzs":100000`. `LipaQrPanel` is `"use client"` and `/agent/page.tsx:267` passes it `lipa={lipaDisplay()}` from a **server** component, so Next.js serialises the props into the RSC flight payload embedded in the HTML — even though `shouldShowLipaQr` returns false and the component renders nothing. | ⛔ **NOT a hard-stop breach:** no QR renders, no `<img>` is emitted, `LIPA_QR_RELEASED` is `false` and `test:lipa-qr` is green including *"the PERFECT config still renders NOTHING"*. ⚠️ **But no guard covers this:** §4.3 is a source-level check that `qrPayload` never enters a `.tsx`, and `lipaDisplay()` (`lipa-config.ts:162-169`) deliberately omits **only** `qrPayload` — its other five fields must reach the client for the component to render at all. So a withdrawn programme's payable merchant identity, plus `enabled:true`, is public. ⛔ Fixing it means not passing the props when the gate is shut, which is a change to the QR machinery the hard stop protects — **owner's call.** |
+
+⭐ **The lesson PSC-02 carries, beyond the QR:** *"renders nothing"* and *"sends nothing"* are
+different claims. A `"use client"` component reached from a server component publishes its PROPS
+whatever it returns, so a feature gate that only stops the render still ships the data. ⚠️ Worth
+asking of every gated panel in this repo, not just this one.
+
+---
+
 ## §6 · ⏭️ RESUME AT
 
-**Session 1 · nothing is ticked. Every row in §2 is open.**
+**Session 1 · SHIPPED AND LIVE `c5dd7918` — Units 0, 1, 2, 7.3 and 8.2/8.3 sealed. Units 3, 4, 5,
+6 and 7.1/7.2 remain.**
+
+### What is live, and how it was verified
+`d9de3eaf..c5dd7918`, six commits, deployed **SUCCESS** and verified three independent ways:
+- `railway deployment list --service 50pick --json` → `status=SUCCESS`, and `railway status --json`
+  → the RUNNING deployment's `meta.commitHash` **names `c5dd7918584b`**;
+- `/api/health` `uptimeSec` reset **687 → 63**;
+- the migrations' artifacts re-read on production (enum value, enum labels, column, both
+  `_prisma_migrations` rows `finished`), and `/`, `/agent`, `/legal/agent-terms`, `/help` all 200
+  with `/wallet` correctly 307 — ⭐ a render check, because a green `next build` has taken every
+  page down in this repo before.
+
+⛔ **AND CORRECT §0.3 WHILE YOU ARE HERE — A RESET `uptimeSec` IS NOT PROOF EITHER.** With two
+sessions deploying minutes apart it cannot say *whose* container came up, and the health payload
+carries `"version":"1.0.0"` with **no commit SHA**. ⭐ **`meta.commitHash` is the only reading that
+NAMES the commit.** Also: `railway status`'s `deploymentStopped:true` / empty `instances` means
+"no instance YET", not "failed" — I read it as a failed deploy and was wrong; the authoritative
+field is `deployment list`'s `status` (mine sat at `BUILDING` → `DEPLOYING` → `SUCCESS`).
+
+### ⭐ THE MIGRATION ORDER THAT MADE THIS SAFE — do the same next time
+`package.json`'s `start` is `prisma migrate deploy && node scripts/seed-test-float.mjs &&
+next start`. ⛔ **It is an `&&` chain: a failing migration means `next start` never runs and the
+whole live platform is down.** So the two migrations were **hand-applied to production BEFORE the
+push**, with the app still up as a safety net, exactly as `20260907120000`'s own comment records as
+house practice. Pre-flight `prisma migrate status` showed **75 found, only my two pending** — no
+drift. Both are `IF NOT EXISTS`, additive, and write no data; the schema being AHEAD of the code is
+safe because the column is nullable and the enum value unused. ⛔ **Nothing was backfilled** — the
+one APPROVED row still reads `feeFundingSource: null`, because its fee was collected at 18% VAT and
+the 2026-09-09 ruling is not retroactive.
+
+### 🔴 START HERE — Unit 3, and the ONE LINE that traps a paying applicant
+1. ⛔ **`recomputeDraftStatus` (`agent-application-service.ts:409-417`) is the highest-value line
+   left in the campaign.** It reads
+   `const feeRecorded = !!app.feeReference || app.feeDisposition === "WAIVED";`
+   A wallet payment writes **no `feeReference`**, so it must become
+   `… || app.feeDisposition === "COLLECTED"`. **Without it an applicant who has PAID can never
+   reach `PAYMENT_PENDING`, and `submitForReview` is the only door into review** — they have paid
+   and cannot submit. Guard it before you fix it.
+   ⚠️ Same shape at `apply-client.tsx:131-132`: `missingNow` adds `missingReceipt` /
+   `missingReference`, so `canSubmit` never becomes true either.
+2. ⛔ **TWO DEAD ENDS THE BRIEF DID NOT ANTICIPATE.** Paying from a wallet inherits **every
+   precondition of depositing**, and `wallet/deposit/page.tsx:173-180` renders gates instead of the
+   form for two:
+   - **KYC APPROVED.** `applicantEligibility:219-223` already refuses self-service without it, so
+     a self-service applicant is fine. ⛔ **But `if (!opts.forInvitation)` exempts an
+     OFFICER-INVITED applicant deliberately** — under the old rail they paid by bank transfer, so
+     KYC was irrelevant to paying; under the wallet rail **they cannot deposit and cannot pay**,
+     and nothing tells them why. ⚠️ `agentInvitationHtml({ feeWaivable: true })` (`:1248`) is
+     hard-coded, so the email says the fee *may* be waived while the waiver is a separate officer
+     action — an unwaived, un-KYC'd invitee is trapped.
+   - **EMAIL VERIFIED.** Deposit requires it; `applicantEligibility` never checks it.
+   ⭐ The module's own law says where these must bite (`:29-33`): *"BEFORE the applicant is asked
+   to pay."* `KycGatePanel` takes a `returnTo`, so both become gates rather than dead ends.
+3. Then Unit 4 (⛔ `/admin/agents/[id]/page.tsx:210-211` renders **two em-dashes** where the
+   receipt ref and attested amount used to be — condition them on the funding source; `:65`
+   `feeShownTzs` needs the wallet path to stamp `feeAmountTzs` or the officer sees today's config
+   figure), then 5, 6, and 7.1/7.2 as **non-regression guards, not a backfill**.
+4. **Unit 6 strings are all located** — `feeBody` (i18n `2270`/`4338`/`6386`), `payInstruction`
+   (`2364`/`4430`), and the whole `payReference*` / `missingReceipt` / `missingReference` family.
+   `payWaived` and `payRefundOwed` stay true. `AGENT_TERMS_VERSION` must bump (binding text moves
+   in all three locales); ⚠️ nothing compares it to a stored value so it forces no re-acceptance,
+   and production holds one accepted version (`2026-09-07`) plus one null.
+   ⚠️ `agentFeeRefundedHtml` (`server/email.ts:1821`) tells a refunded applicant the money went to
+   a masked **bank account** — false under the wallet rail. My range is the agent bodies; the peer
+   owns `REPLY_TO` and its call sites wherever they fall.
+
+### ⚠️ Corrections to THIS BRIEF, all re-derived from source
+| the brief says | the truth |
+|---|---|
+| §2 row 0.2: *"all three"* statements | **TWELVE.** Full list in the row. |
+| §3: *"`withLock(…)` autocommits, and the DAL … never reads a store"* | ⛔ **It DOES read a store.** `locks.ts:46` holds an `AsyncLocalStorage`, `:140` publishes the tx, and `withMoneyTx` (`ledger.ts:69`) calls `currentLockTx()` and **JOINS** it. The actionable half — pass `tx` to every DAL call — is right. |
+| §0.4: *"`F:\kipindi-main` holds the Railway CLI link"* | ⛔ **F: does not exist on this machine.** No `.env` and no `.railway` in either checkout. Use `railway link -p 50pick -e production`, then `railway run --service Postgres -- <cmd>` for `DATABASE_PUBLIC_URL`. ⚠️ The Railway **MCP** works only if you pass `project_id` explicitly (`5e87353c-1d59-433d-a683-a32b9149f74c`); it cannot discover the link. |
+| §0.1 step 5: baseline **311/324** | ✅ Confirmed by running it. ⚠️ **Now 312/325** — `test:all` discovers every `test:*` key, so declaring one adds a suite. |
+| §0.4: split `email.ts` by line range | ⛔ **Unsatisfiable.** `REPLY_TO` is one module-scope binding used from `:364` to `:1889`, so any refactor crosses any line boundary. ⭐ **Declare ownership by UNIT (function/export), never by line range**, and a shared module-scope helper belongs to whoever owns the helper. |
+
+### ⭐ Two lessons from the guard work, both earned the hard way
+- **A guard that drives a function directly can be blind to its CALL SITES.** Flipping
+  `reconcileFee`'s `source` to `"WALLET"` — the exact defect the parameter exists to prevent — left
+  the suite 34/0. §4 fixes it with source assertions.
+- **A guard that runs only on the in-memory store is blind to every protection that exists for
+  real Postgres.** Deleting `requireBalanceGte` also left it 34/0, because one lock serialises
+  everything and the race cannot be staged.
+- ⚠️ **And a hard-coded population is only as current as its last editor.** One deliberate schema
+  change moved THREE counts and only one announced itself; `activity-summary` §C.0 was quietly
+  covering 12 of 13 types, so an applicant charged a fee would have seen it nowhere in their
+  activity summary. ⭐ Prefer a DISCOVERED population with a ratchet on the discovery itself —
+  a broken scan that finds zero passes beautifully.
 
 1. ⭐ **`ListAgents`, then `SendMessage` the peer** running `SUPPORT-CARE-CAMPAIGN.md` (§0.4).
    Your overlap is small but real: both campaigns touch `package.json` scripts and `docs/`. Agree
