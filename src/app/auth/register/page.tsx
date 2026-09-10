@@ -14,7 +14,6 @@ import { VerifiedAgentBadge } from "@/components/agent/verified-agent-badge";
 import { bounceIfAuthed } from "../bounce-authed";
 import { getInvitePreview } from "@/lib/server/invite-service";
 import { startRegisterAction } from "./actions";
-import { HELPLINE } from "@/lib/support-config";
 import { getServerT } from "@/lib/i18n-server";
 import { formatTzs, fill } from "@/lib/utils";
 import { appUrl } from "@/lib/app-url";

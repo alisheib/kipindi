@@ -101,6 +101,11 @@ export const Input = React.forwardRef<HTMLInputElement, Props>(function Input(
       }
     : onChange;
 
+  // A field the officer cannot edit — either flag. Both make a reader the same promise
+  // ("you may not change this"), so both must produce the same appearance.
+  const locked = !!(inputRest as { disabled?: boolean; readOnly?: boolean }).disabled
+    || !!(inputRest as { disabled?: boolean; readOnly?: boolean }).readOnly;
+
   // Render numeric fields as text so we fully control the characters; keep an
   // appropriate inputMode so phones still show the numeric keypad.
   const effectiveType = isNumeric ? "text" : type;
@@ -115,10 +120,26 @@ export const Input = React.forwardRef<HTMLInputElement, Props>(function Input(
         // cap only applies where a form column has opted in.
         "field-measure flex items-stretch rounded-lg border overflow-hidden brand-focus-within transition-all duration-150",
         heightCls[size],
-        errored ? "border-danger-500" : "border-border hover:border-border-strong",
+        errored ? "border-danger-500"
+          // 🔴 A LOCKED FIELD MUST *LOOK* LOCKED — and until 2026-09-10 this atom painted no
+          // disabled state whatsoever. The pinned statutory helpline on `/admin/system` rendered
+          // through the same <Field>/<Input> as the two editable boxes: same border, same fill,
+          // same ink (the input sets `text-text` explicitly, overriding even the UA grey), same
+          // hover. ⭐ THIS IS CAUSE **H** OF THE OWNER'S REPORT — *"some fields are not changing,
+          // maybe readonly"*. Nothing was broken; the field genuinely is read-only and the console
+          // gave the officer no way to know. A control that refuses input without SAYING it is
+          // read-only is indistinguishable, from the outside, from one that is broken.
+          // ⚠️ Border AND fill AND ink all move, deliberately: one of the three alone reads as a
+          // style accident on a dark theme, and the officer has to be able to tell at a glance.
+          : locked ? "border-border/50 cursor-not-allowed"
+          : "border-border hover:border-border-strong",
         containerClassName,
       )}
-      style={errored ? { background: "var(--danger-wash)" } : { background: "var(--bg-inset)" }}
+      style={
+        errored ? { background: "var(--danger-wash)" }
+        : locked ? { background: "var(--bg-base)", opacity: 0.72 }
+        : { background: "var(--bg-inset)" }
+      }
     >
       {prefix !== undefined && (
         <span
@@ -138,7 +159,10 @@ export const Input = React.forwardRef<HTMLInputElement, Props>(function Input(
         {...(isNumeric ? { autoComplete: inputRest.autoComplete ?? "off" } : {})}
         onChange={handleChange}
         className={cn(
-          "flex-1 min-w-0 bg-transparent px-3 text-text outline-none placeholder:text-text-subtle",
+          "flex-1 min-w-0 bg-transparent px-3 outline-none placeholder:text-text-subtle",
+          // ⛔ NOT a bare `text-text`. That explicit colour is what overrode the UA grey and made a
+          // disabled box indistinguishable from an editable one.
+          locked ? "text-text-muted cursor-not-allowed" : "text-text",
           mono && "font-mono tabular-nums",
           fontCls[size],
           className,

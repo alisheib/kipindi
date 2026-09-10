@@ -93,14 +93,35 @@ export function getSupportConfig(): SupportConfig {
   return cfg.get();
 }
 
+const clean = (patch: Partial<SupportConfig>): Partial<SupportConfig> => {
+  const out: Partial<SupportConfig> = {};
+  if (patch.email !== undefined) out.email = patch.email.trim();
+  if (patch.phone !== undefined) out.phone = patch.phone.trim();
+  if (patch.phoneTel !== undefined) out.phoneTel = patch.phoneTel.replace(/\s/g, "");
+  return out;
+};
+
 /** Officer save. Returns the factory's discriminated result — a de-hydrated process is
  *  REFUSED here rather than silently persisting defaults over the operator's row. */
 export function setSupportConfig(patch: Partial<SupportConfig>, officerId: string) {
-  const clean: Partial<SupportConfig> = {};
-  if (patch.email !== undefined) clean.email = patch.email.trim();
-  if (patch.phone !== undefined) clean.phone = patch.phone.trim();
-  if (patch.phoneTel !== undefined) clean.phoneTel = patch.phoneTel.replace(/\s/g, "");
-  return cfg.set(clean, officerId);
+  return cfg.set(clean(patch), officerId);
+}
+
+/**
+ * 🔴 THE OFFICER SAVE — and the ONLY one the admin action may call.
+ *
+ * `setSupportConfig` above returns the instant the write is dispatched, because `set()` is
+ * synchronous by contract. That is fine for a first-tick configure with no database; it is NOT
+ * fine for a human being shown a green toast. `saveConfig` never throws, so a failed upsert was
+ * indistinguishable from a successful one: the toast said saved, the page re-rendered the new
+ * value from the mutated registry, an ADMIN audit row claimed the change — and the row reverted
+ * at the next restart.
+ *
+ * This variant persists, READS THE ROW BACK, and only then caches, audits and reports success.
+ * See `define-config.ts` `setVerified` for why the read-back rather than an `await`.
+ */
+export function setSupportConfigVerified(patch: Partial<SupportConfig>, officerId: string) {
+  return cfg.setVerified(clean(patch), officerId);
 }
 
 // Convenience getters — use these in server components and server-side modules.

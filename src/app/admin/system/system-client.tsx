@@ -11,7 +11,7 @@ import { Select } from "@/components/ui/select";
 import { Toggle } from "@/components/ui/toggle";
 import { UnsavedChangesGuard, PendingChangesBar, useFormDirty } from "@/components/ui/unsaved-changes";
 import { verifyChainAction, updateSupportConfigAction, updatePlatformTimezoneAction, setMaintenanceModeAction, setAnnouncementAction } from "./actions";
-import { HELPLINE, toDialTarget, type SupportConfig } from "@/lib/support-config";
+import { HELPLINE, LICENCE_NUMBER, toDialTarget, type SupportConfig } from "@/lib/support-config";
 
 type AnnouncementTone = "info" | "warning" | "success";
 
@@ -154,8 +154,27 @@ export function SupportConfigForm({ config }: { config: SupportConfig }) {
             still needs to know which number the site publishes — they simply cannot move it.
             ⭐ Safe to read `HELPLINE()` from this client component precisely because it is now
             a pinned constant: browser bundle and server agree by construction. */}
-        <Field label="Problem-gambling helpline" hint="Statutory · national line · not editable">
+        {/* 🔴 THE HINT STATED THE FACT AND NOT THE REASON — the owner's literal ask was
+            "if anything cannot be changed, show a warning why". "not editable" answers WHETHER,
+            which an officer had already worked out by typing into it; it never answers WHY, and a
+            control that refuses without explaining reads as broken. That is how this campaign
+            started. */}
+        <Field
+          label="Problem-gambling helpline"
+          hint="Locked by design: this is Tanzania's NATIONAL helpline, not ours. Pinning it is what stops a player who is self-excluding from being routed back to us. It has no setter and no stored value, so there is nothing here that could be changed."
+        >
           <Input value={HELPLINE()} readOnly disabled />
+        </Field>
+        {/* ⭐ ROW 4.5 — `LICENCE_NUMBER()` renders in EVERY footer and had no admin field and no
+            mention anywhere in the console, so an officer could not confirm what the platform
+            publishes to a Board reviewer without reading the source. Shown with the same locked
+            treatment as the helpline, for the same reason: a licence number an operator could
+            retype through a form is not evidence of anything. */}
+        <Field
+          label="Operating licence"
+          hint="Locked by design: issued by the Gaming Board of Tanzania and published in every footer. A licence number an operator could retype is not evidence of anything, so there is no setter."
+        >
+          <Input value={LICENCE_NUMBER()} readOnly disabled mono />
         </Field>
       </div>
       <Button type="submit" variant="primary" loading={pending}>

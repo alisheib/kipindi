@@ -113,8 +113,16 @@ export default async function ForgotPasswordPage({ searchParams }: { searchParam
                   → −2 −32 (px-3) = 130 → −14 (the 14px glyph) −10 (gap-2.5) = 106.0
                 on this repo's OVERRIDDEN spacing scale (tailwind.config.ts:204-219 — 6→32,
                 4→20, 3→16, 2→12; "2.5" is NOT overridden so it stays 0.625rem = 10px).
-                `support@50pick.tz` is 17 characters of JetBrains Mono, whose advance is 0.6em:
-                17 × 0.6 × 11px = 112.2px. ⭐ AND IT WAS DRIVEN, not just derived — a static
+                ⚠️ THE STRING THIS PARAGRAPH REASONS ABOUT WAS RETIRED ON 2026-09-10. The support
+                address is now `msaada@50pick.tz`, and the arithmetic is kept rather than deleted
+                because it is what PROVES the fix below still holds — a shorter string in the same
+                box cannot re-clip. Both, on the comment's own derived model:
+                  `support@50pick.tz` 17 chars × 0.6em × 11px = 112.2px  (the clipped case)
+                  `msaada@50pick.tz`  16 chars × 0.6em × 11px = 105.6px  (what ships now)
+                so the ruling GAINS 6.6px of slack on the tightest surface in the app — one
+                character. ⛔ Do NOT subtract the DERIVED width from the harness's MEASURED box;
+                those are two instruments, and the sentence telling you to correct someone's
+                arithmetic is the wrong place to mix them. ⭐ AND IT WAS DRIVEN, not just derived — a static
                 harness over `.next`'s own compiled stylesheet and the real self-hosted JBM
                 measures the box at exactly 106px and the string at 112px, `scrollWidth >
                 clientWidth` at 640, 768, 1024 AND 1440, and NOT clipped at 390. So it read

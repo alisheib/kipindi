@@ -9,7 +9,7 @@ import { LoginIdentifier } from "@/components/auth/login-identifier";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { RateLimitBanner } from "@/components/auth/rate-limit-banner";
 import { startLoginAction } from "./actions";
-import { SUPPORT_EMAIL, HELPLINE } from "@/lib/server/support-config";
+import { SUPPORT_EMAIL } from "@/lib/server/support-config";
 import { getServerT } from "@/lib/i18n-server";
 import { bounceIfAuthed } from "../bounce-authed";
 

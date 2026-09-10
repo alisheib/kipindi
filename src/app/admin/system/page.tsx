@@ -343,10 +343,35 @@ export default async function AdminSystemPage({
           sw="Mawasiliano ya msaada"
           action={<span className="font-mono text-[10px] text-text-subtle">{getSupportConfig().email}</span>}
         >
+          {/* 🔴 THIS SENTENCE NAMED TWO DESTINATIONS IT DOES NOT REACH, AND IT IS THE MOST LIKELY
+              SOURCE OF THE REPORT THAT OPENED THIS CAMPAIGN — an officer changes a value, checks a
+              page the card promised, sees the old number, and reasonably concludes the field did
+              not save. Measured 2026-09-10, surface by surface:
+                · `register` — renders NO support contact at all. `auth/register/page.tsx:17`
+                  imports `HELPLINE` and never uses it, which is what made it look covered.
+                · `reality-check` — renders `HELPLINE()`, the PINNED statutory constant. This form
+                  cannot move it, by design (E-328), so listing it here promises the opposite of
+                  what the pinning exists to guarantee.
+              The remaining eight were verified to render a value this form DOES move. `chatbot` is
+              on the list only because Unit 5.1 unfroze it — until then it captured the getters once
+              at module import and disagreed with every other surface. */}
           <p className="text-body-sm text-text-subtle mb-3">
-            Changes here propagate to every page that shows support info: help, chatbot, login, register, legal, KYC, account, forgot-password, footer, reality-check.
+            Changes here propagate to every page that shows support info: help, chatbot, login,
+            legal, KYC, account, forgot-password and the footer.
           </p>
-          <SupportConfigForm config={getSupportConfig()} />
+          {/* 🔴 THE `key` IS THE FIX FOR "I SAVED IT AND IT DID NOT CHANGE", AND IT IS LOAD-BEARING.
+              The inputs below are UNCONTROLLED (`defaultValue`), which React reads exactly once per
+              mount. `router.refresh()` re-runs this server component and hands down fresh values,
+              but it does NOT remount the form — so the boxes kept showing whatever had been TYPED,
+              never what the database holds. ⭐ The input was a mirror of the keyboard, not of the
+              row, which is why an officer could not tell a save that landed from one that did not.
+              Keying on the stored values forces a remount whenever the ROW changes, so after a
+              refresh the form re-renders FROM the row — and after a refused save it snaps back to
+              the value that is really stored. */}
+          <SupportConfigForm
+            key={`${getSupportConfig().email}|${getSupportConfig().phone}|${getSupportConfig().phoneTel}`}
+            config={getSupportConfig()}
+          />
         </AdminCard>
         </>)}
 

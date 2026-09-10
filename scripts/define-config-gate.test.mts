@@ -162,5 +162,75 @@ console.log("\n§4 · ⚠️ POSITIVE CONTROL — the PRE-FIX shape fails every 
     (preFixSaved[0] as Cfg).rate === 10, `wrote rate=${(preFixSaved[0] as Cfg).rate}`);
 }
 
+// ── §5 · setVerified — a write that never landed must NOT report success ─────
+//
+// 🔴 THE DEFECT. `set()` does `void save(...)` then returns `{ok:true}` on the next line, and
+// `saveConfig` is documented "never throws". So a failed upsert produced a GREEN TOAST, a mutated
+// registry the page re-rendered the new value from, and an ADMIN AUDIT ROW claiming a change that
+// was not on disk — reverting at the next restart. An officer's screenshot could not tell the two
+// apart, which is why no screenshot from them was evidence about persistence.
+//
+// ⛔ AND `await save(...)` WOULD PROVE NOTHING, WHICH IS WHY THIS SECTION DRIVES A STORE THAT
+// ACCEPTS THE WRITE AND THEN DOES NOT HAVE IT. There is no rejection to await — that is
+// `saveConfig`'s contract. The only thing that separates a landed write from a lost one is
+// READING THE ROW BACK, so that is what is asserted here: not that `save` was called, but that
+// the value came back.
+console.log("\n§5 · a write that did not land is REFUSED, not toasted green");
+{
+  // A store that swallows writes exactly as a read-only replica or a timed-out pool would:
+  // `saveConfig` resolves, and the row simply is not there afterwards.
+  let swallow = false;
+  let stored: Record<string, unknown> | null = { rate: 42, name: "persisted" };
+  let writes = 0;
+  const lossyDeps = {
+    loadConfigResult: (async () => ({ ok: true as const, value: stored })) as never,
+    saveConfig: (async (_k: string, v: unknown) => {
+      writes++;
+      if (!swallow) stored = v as Record<string, unknown>;
+    }) as never,
+    hasDatabase: (() => true) as never,
+  };
+  globalThis.__50PICK_CONFIGS = new Map();
+  globalThis.__50PICK_CONFIGS_HYDRATED = new Set();
+  const audited: unknown[] = [];
+  const c = defineConfig<Cfg>({
+    key: `test.cfg.verified.${++n}`,
+    defaults: DEFAULTS,
+    deps: lossyDeps,
+    // No `audit` option: this suite asserts the ABSENCE of a row by counting writes to the store,
+    // and wiring the real audit chain into a unit suite would be the heavier, less direct proof.
+  });
+  await tick(); await tick();
+  ok("§5 hydrated from the persisted row", c.get().rate === 42, `rate=${c.get().rate}`);
+
+  // ── the happy path first, so the failure below is a CONTRAST and not the only outcome ──
+  const good = await c.setVerified({ name: "officer typed this" }, "officer_1");
+  ok("§5 ⚠️ CONTROL — a write that LANDS is accepted", good.ok === true, JSON.stringify(good));
+  ok("§5 …and the cache reflects it", c.get().name === "officer typed this", c.get().name);
+  audited.push(good);
+
+  // ── now the write is swallowed: accepted by the store, absent on read-back ──
+  swallow = true;
+  const before = { ...c.get() };
+  const writesBefore = writes;
+  const bad = await c.setVerified({ name: "this one is lost" }, "officer_1");
+
+  ok("§5 ⛔ the officer is REFUSED, not congratulated", bad.ok === false, JSON.stringify(bad));
+  ok("§5 ⛔ …the refusal says nothing was changed", !bad.ok && /did not reach|could not confirm/i.test(bad.error),
+    !bad.ok ? bad.error : "");
+  ok("§5 ⛔ …the in-memory config is UNTOUCHED, so the form cannot re-render the lost value",
+    c.get().name === before.name && c.get().rate === before.rate, JSON.stringify(c.get()));
+  ok("§5 the write really was attempted (this is not a validation short-circuit)",
+    writes === writesBefore + 1, `writes ${writesBefore} → ${writes}`);
+
+  // ⭐ THE ASSERTION THE WHOLE UNIT EXISTS FOR: `set()` — the sync path every suite and every
+  // first-tick configure still uses — reports SUCCESS for the very same swallowed write. Keeping
+  // this here makes the difference between the two paths executable rather than described, and it
+  // is also the proof that the sync path was left deliberately intact rather than forgotten.
+  const sync = c.set({ name: "sync path" }, "officer_1");
+  ok("§5 ⚠️ CONTRAST — the SYNC set() still reports ok for a write that is lost",
+    sync.ok === true, JSON.stringify(sync));
+}
+
 console.log(`\n${"═".repeat(70)}\n  DEFINE-CONFIG GATE: ${pass} passed, ${fail} failed\n${"═".repeat(70)}`);
 process.exit(fail === 0 ? 0 : 1);

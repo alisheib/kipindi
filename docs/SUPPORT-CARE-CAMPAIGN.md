@@ -266,8 +266,8 @@ BLOCKED and move on — do not guess, and do not quietly shrink the unit to some
 |---|---|---|
 | 1 | 🔴 The ruled contacts vs the six wrong values still shipping | ✅ **7/7 — LIVE** |
 | 2 | 🔴 The operator's number carries a free-helpline framing at 5 sites | ✅ **6/6 — LIVE** |
-| 3 | 🔴 A save that never lands looks exactly like one that did | ☐ 0/4 |
-| 4 | 🔴 What the admin screen promises, validates, and won't explain | 🔄 **2/5 — 4.2 + 4.3 LIVE** (4.1, 4.4, 4.5 open) |
+| 3 | 🔴 A save that never lands looks exactly like one that did | ✅ **4/4 — LIVE** |
+| 4 | 🔴 What the admin screen promises, validates, and won't explain | ✅ **5/5 — LIVE** |
 | 5 | 🟠 Config frozen at module eval, and a gate on the forbidden primitive | ✅ **2/2 — and the CLASS was 4× bigger than the brief said** |
 | 6 | 🟠 Two chat SAFETY mechanisms are unreachable when signed in | ☐ 0/3 |
 | 7 | 🟠 A cooling-off break can be SHORTENED, and the copy deterring it is false | ☐ 0/3 |
@@ -299,18 +299,18 @@ BLOCKED and move on — do not guess, and do not quietly shrink the unit to some
 
 | | Unit 3 · Saves | where |
 |---|---|---|
-| ☐ | **3.1** `save()` is awaited and its failure reaches the caller | `define-config.ts:162` |
-| ☐ | **3.2** a failed write yields a danger toast and NO audit row | `config-store.ts:88` |
-| ☐ | **3.3** the form re-renders from the row, not from the keyboard | `system-client.tsx:119,122` |
-| ☐ | **3.4** proven by forcing the write to fail, not by reading the diff | drive |
+| ✅ | **3.1** `save()` is awaited and its failure reaches the caller — via a NEW `setVerified`. ⛔ `await` alone proves nothing: `saveConfig` never throws, so the fix is **await + READ THE ROW BACK**, the shape `chain-purge.ts:putJob` already uses. ⚠️ `set()` keeps its SYNC signature and no-DB fast path — `tryHydrate` settles synchronously *because* `set()` is sync, `proposals-state` caught that once, and all 325 suites run without a DATABASE_URL | `src/lib/server/define-config.ts` |
+| ✅ | **3.2** a failed write yields a danger toast and NO audit row — the registry mutation, the audit row and `{ok:true}` ALL happen after the read-back succeeds. A `set()` that returned `{ok:false}` having already cached would satisfy a naive test and reproduce the defect | `define-config.ts` · `admin/system/actions.ts` |
+| ✅ | **3.3** the form re-renders from the row, not from the keyboard — the inputs are uncontrolled (`defaultValue`), which React reads once per mount, and `router.refresh()` never remounted them. The component is now keyed on the STORED values, so a refresh remounts it from the row and a refused save snaps back | `src/app/admin/system/page.tsx` |
+| ✅ | **3.4** proven by forcing the write to fail, not by reading the diff — new **§5** drives the real factory through the `deps` seam against a store that ACCEPTS the write and then does not have it (a read-only replica / timed-out pool). Asserts refusal, the untouched cache, and that the write was really attempted. ⭐ Plus a CONTRAST assertion that the sync `set()` still reports ok for the same lost write, so the difference between the two paths is executable rather than described. 26/0; 3 mutations all caught | `scripts/define-config-gate.test.mts` |
 
 | | Unit 4 · The admin screen | where |
 |---|---|---|
-| ☐ | **4.1** every destination named in the card copy actually renders the value | `system/page.tsx:346` |
+| ✅ | **4.1** every destination named in the card copy actually renders the value — MEASURED surface by surface. **Two were wrong**: `register` renders no support contact at all (its `HELPLINE` import was dead — now removed, along with three more in `login`, `reset-password`, `verify-email`), and `reality-check` renders the PINNED helpline this form cannot move, so naming it promised the opposite of what the pinning guarantees. The other eight verified | `src/app/admin/system/page.tsx` |
 | ✅ | **4.2** phone is validated at BOTH layers — an addressed `fieldError("support-phone", …)` in the action, and a `validate` on the config itself so the data is protected even if the form's check is removed. The action's own comment conceding *"nothing to point at for it"* is corrected in place | `src/app/admin/system/actions.ts` · `src/lib/server/support-config.ts` |
 | ✅ | **4.3** new `toDialTarget()` converts `0…` → `+255…` (the old code stripped punctuation and nothing else), the form shows a live **Dial target** preview of exactly what will be stored, and the hint no longer steers to the retired landline. ⭐ This was the PREREQUISITE of 1.5 | `src/lib/support-config.ts` · `system-client.tsx` |
-| ☐ | **4.4** a locked field LOOKS locked and states the REASON | `input.tsx` has no `disabled:` styling |
-| ☐ | **4.5** `LICENCE_NUMBER` appears read-only with the same treatment | new |
+| ✅ | **4.4** a locked field LOOKS locked and states the REASON — ⭐ **this is CAUSE H of the owner's report.** `input.tsx` painted NO disabled state at all: the pinned helpline rendered with the same border, fill, ink and hover as the two editable boxes, because the atom sets `text-text` explicitly and overrides even the UA grey. Border AND fill AND ink now all move. And the hint answers WHY, not whether — 'not editable' told an officer what they had already discovered by typing | `src/components/ui/input.tsx` · `system-client.tsx` |
+| ✅ | **4.5** `LICENCE_NUMBER` appears read-only with the same treatment — it renders in every footer and had no admin field and no mention anywhere in the console, so an officer could not confirm what the platform publishes to a Board reviewer without reading the source | `system-client.tsx` |
 
 | | Unit 5 · Frozen config | where |
 |---|---|---|

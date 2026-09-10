@@ -173,5 +173,98 @@ export function defineConfig<T extends object, U = Partial<T>>(opts: DefineConfi
     return { ok: true, config: { ...merged } };
   };
 
-  return { get, set };
+  /**
+   * 🔴 THE SAVE THAT NEVER LANDS LOOKS EXACTLY LIKE ONE THAT DID — and `set()` above cannot
+   * tell the difference, by construction.
+   *
+   * `set()` does `void save(key, merged)` and returns `{ok:true}` on the next line. `saveConfig`
+   * is documented *"never throws"* and its body catches every error into a `console.error`. So a
+   * failed upsert — pool timeout, failover, read-only replica — produces a GREEN TOAST, a mutated
+   * in-process registry so the page re-renders the new value, **and an ADMIN audit row claiming a
+   * change that is not on disk.** It reverts at the next restart, and the officer's only evidence
+   * says it worked. That is how this campaign started: an officer reporting fields that "would
+   * not change" after saving them twice.
+   *
+   * ⛔ `await`ING `save` FIXES NOTHING ON ITS OWN. There is no rejection to await — that is the
+   * documented contract. The answer is **await + READ THE ROW BACK**, which is the shape this
+   * repo already uses in `chain-purge.ts:putJob`, under a docblock that states the reason
+   * exactly: *"a failed write is indistinguishable from a successful one at the call site."*
+   *
+   * ⛔ AND `set()` KEEPS ITS SYNCHRONOUS SIGNATURE, DELIBERATELY. `tryHydrate` settles the
+   * no-database path synchronously *because* `set()` is sync — `proposals-state` caught two
+   * assertions on the first commit that changed it — and every suite in this repo runs with no
+   * `DATABASE_URL`, so that is the path they all take. Seven configs and their non-awaiting
+   * callers depend on it. So verification lives HERE, on a separate async path used only by admin
+   * actions, which are already `async` and already `await`. That is also exactly where the defect
+   * is: an officer being shown a success they did not get.
+   *
+   * ⚠️ `dbPresent()` gates the read-back for the same reason `tryHydrate` gates on it: with no
+   * database there is no row that can fail to land, and nothing to verify.
+   *
+   * ⭐ ORDER IS LOAD-BEARING. The registry mutation, the audit row and `{ok:true}` all happen
+   * AFTER the read-back succeeds — so a failed write leaves no cached value, NO AUDIT ROW, and a
+   * refusal the caller can show. A `set()` that returned `{ok:false}` having already mutated the
+   * registry would satisfy a naive test and reproduce the defect.
+   */
+  const setVerified = async (
+    updates: U,
+    officerId: string,
+  ): Promise<{ ok: true; config: T } | { ok: false; error: string }> => {
+    if (!hydrated.has(key)) {
+      tryHydrate();
+      return { ok: false, error: "Settings have not finished loading yet — refresh and try again." };
+    }
+    const before = get();
+    const merged = merge(before, updates);
+    if (validate) {
+      const v = validate(merged);
+      if (!v.ok) return { ok: false, error: v.reason };
+    }
+
+    if (dbPresent()) {
+      await save(key, merged);
+      const readBack = await load<Record<string, unknown>>(key);
+      if (!readBack.ok) {
+        return { ok: false, error: "Saved, but we could not confirm it was stored. Nothing has been changed — please try again." };
+      }
+      const restored = readBack.value
+        ? ({ ...defaults, ...(migrate ? migrate(readBack.value) : (readBack.value as Partial<T>)) } as T)
+        : null;
+      if (!restored || !sameConfig(restored, merged)) {
+        return { ok: false, error: "The change did not reach the database, so nothing has been changed. Please try again." };
+      }
+    }
+
+    registry.set(key, merged);
+    if (auditOpts) {
+      audit({
+        category: "ADMIN",
+        action: auditOpts.action,
+        actorId: officerId,
+        targetType: auditOpts.targetType,
+        targetId: "global",
+        payload: { before, after: merged, changes: configChanges(before as Record<string, unknown>, merged as Record<string, unknown>) },
+      });
+    }
+    return { ok: true, config: { ...merged } };
+  };
+
+  return { get, set, setVerified };
+}
+
+/**
+ * Compare two config objects by VALUE, independent of key order.
+ *
+ * ⚠️ Not `JSON.stringify(a) === JSON.stringify(b)`: a round-trip through Postgres `Json` does not
+ * promise key order, so a stringify comparison would report a perfectly stored row as a failed
+ * write — turning this verification into a source of false refusals on a money-adjacent console.
+ */
+function sameConfig(a: object, b: object): boolean {
+  const ka = Object.keys(a).sort(), kb = Object.keys(b).sort();
+  if (ka.length !== kb.length || ka.some((k, i) => k !== kb[i])) return false;
+  return ka.every((k) => {
+    const va = (a as Record<string, unknown>)[k], vb = (b as Record<string, unknown>)[k];
+    if (va && vb && typeof va === "object" && typeof vb === "object") return sameConfig(va, vb);
+    return va === vb;
+  });
 }

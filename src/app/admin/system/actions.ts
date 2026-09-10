@@ -8,7 +8,7 @@ import { db } from "@/lib/server/store";
 import { verifyChainFull } from "@/lib/server/audit";
 import { audit } from "@/lib/server/audit";
 import { revalidatePath } from "next/cache";
-import { setSupportConfig } from "@/lib/server/support-config";
+import { setSupportConfigVerified } from "@/lib/server/support-config";
 // ⭐ The dial-target derivation lives beside the defaults, in the client-safe half, so the admin
 // FORM can preview exactly what this action will store rather than the operator finding out from
 // a dead tel: link on the public site.
@@ -91,7 +91,13 @@ export async function updateSupportConfigAction(
     /* Persistence AND the ADMIN audit row are the factory's now — `defineConfig` merges,
        validates, caches, saves and audits in one place, and REFUSES to write from a process
        that never hydrated rather than overwriting the operator's row with code defaults. */
-    const res = setSupportConfig({ email, phone, phoneTel }, session.userId);
+    /* ⛔ THE *VERIFIED* SETTER. The plain one returns the moment the write is DISPATCHED, and
+       `saveConfig` never throws — so a pool timeout or a read-only replica produced a green
+       toast, a mutated cache the page re-rendered from, and an audit row for a change that
+       was not on disk. It reverted at the next restart, and the officer's only evidence said
+       it had worked. This one persists, reads the row back, and only then caches, audits and
+       reports success. */
+    const res = await setSupportConfigVerified({ email, phone, phoneTel }, session.userId);
     if (!res.ok) return { ok: false as const, error: res.error };
     revalidatePath("/admin/system");
     return { ok: true as const };
