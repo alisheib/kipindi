@@ -6,6 +6,120 @@
 
 ---
 
+## 2026-09-10 · The agent registration fee is paid FROM THE WALLET — and the programme stops being risk-free to the money invariants
+
+**Decision:** Ali, **2026-09-10**. *"We said we will disable QR payment for now, all payment should
+normally be working. So instead of paying on QR they should deposit into their wallet, and then
+from wallet deposit they pay."* Reconfirmed the same day when the cost below was put to him
+explicitly: **the fee is paid from the applicant's wallet balance.** The applicant deposits on the
+ordinary rails, then pays the fee from that balance.
+
+**The reason, in his terms:** a Lipa/QR payment **carries no reference on any network** — you
+cannot tell which agent paid. That is why the QR was withdrawn on 2026-09-09, and paying by bank
+transfer has the same defect one step removed: the platform learns who paid only because a human
+reads a photograph of a receipt and types a string. **A wallet debit carries the payer's identity
+by construction.** This ruling replaces reconciliation-by-human-reading-a-receipt with a movement
+that is traceable at the moment it happens.
+
+| Term | Was | Is (2026-09-10) | Enforced |
+|---|---|---|---|
+| How the fee is paid | **Out of band** — bank transfer to a Selcom account, applicant photographs the receipt and types its reference | **From the applicant's WALLET BALANCE.** They deposit on the ordinary rails, then pay from that balance | ⏳ `payFeeFromWallet` — lands with Unit 2 |
+| Who attests it | A compliance **officer**, reading a receipt and typing what it says | **Nobody.** The debit is the attestation; the officer's reconciliation step is not on this path | ⏳ Unit 4 — `reconcileFee` retained for the legacy rail only |
+| The money-in ledger leg | `EXTERNAL:SELCOM` — an external inflow | **`PLAYER:<applicantId>`** — the shillings already entered as a DEPOSIT and must not be counted twice | ⏳ `agentRegistrationFeeEntries` — lands with Unit 1 |
+| Player-ledger `Transaction` | ⛔ **Never** | ✅ **Always** — its own `TxnType`, all-or-nothing, idempotent | ⏳ `schema.prisma` `TxnType` — lands with Unit 2 |
+| Amount | TZS **100,000**, no VAT | **UNCHANGED** — the 2026-09-09 entry stands in full | ✅ `feeBreakdown().totalTzs` · `npm run test:agent-fee-copy` |
+
+⛔ **THE ⏳ ROWS ARE NOT YET ENFORCED, AND THIS ENTRY WILL NOT PRETEND THEY ARE.** This entry is
+**Unit 0** of `docs/PAYMENTS-SEAL-CAMPAIGN.md` and it ships FIRST, deliberately, so that no ledger
+code is written against three comments forbidding it. The behaviour it authorises arrives in Units
+1–8, each with a guard **proven RED before its fix**. ⭐ Until every ⏳ above reads ✅ with a real
+`npm run` script beside it, **the live rail is still the out-of-band one** — this document records
+a decision taken, not a change shipped. `PAYMENTS-SEAL-CAMPAIGN.md` §2 is the live status.
+
+### ⛔ WHAT THIS COSTS — stated plainly, because the repo said the opposite in twelve places
+
+`docs/AGENT-PROGRAMME.md:163` said the fee never enters the player ledger *"which is why the
+programme adds zero risk to the money invariants"*. **That sentence names the price of this
+ruling exactly.** Paying from a wallet balance makes the fee a player-ledger movement **by
+construction**, so:
+
+- ⛔ **The agent programme is now inside the money invariants**, not beside them. A wallet never
+  goes negative, a ledger group sums to zero, and a `Transaction` reconciles to a balance — the
+  fee is subject to all three from this date.
+- ⛔ **The fee can now race a bet.** The same balance backs both. A debit that is not
+  all-or-nothing, not locked and not idempotent would let an applicant with TZS 40,000 "pay" a
+  TZS 100,000 fee, or pay twice on a double-submit.
+- ⛔ **It can now double-count.** The shillings enter once as a DEPOSIT (`EXTERNAL:SELCOM`). If the
+  fee group also books `EXTERNAL:SELCOM`, the same money is counted twice and the trial balance is
+  wrong. The money-in leg must be the PLAYER account.
+- ⚠️ **A new coupling with the 2026-09-08 rail decision.** The fee now rides the ordinary deposit
+  rails, so on LIVE money with no officer row and no recognised `PAYMENT_AGGREGATOR`,
+  `resolveActiveAdapter` refuses the dispatch — and **agent registration now fails with it**.
+  Previously a misconfigured rail stopped deposits and withdrawals but left registration alone,
+  because registration did not touch the rail. It does now.
+
+⭐ **This is not a reason to refuse the ruling — it is the work the ruling creates.** It is
+recorded here so that a later reader who finds a player-ledger fee row does not file it as a
+defect and "fix" it back.
+
+### ⭐ THE FRAUD CONTROLS BEING RETIRED, AND WHAT REPLACES EACH
+
+The old rail's controls existed **only because the payment happened off-platform**. Deleting them
+is most of the risk in this change, so each is replaced rather than merely removed:
+
+| Retired control | What it prevented | What replaces it |
+|---|---|---|
+| The receipt image | Claiming a payment that never happened | The debit **is** the payment — there is nothing to claim |
+| The typed reference | Matching a payment to an applicant | The debit is against the applicant's own wallet; identity is structural |
+| `feeReference` UNIQUE + a SECURITY audit on collision | One receipt paying for two applications | An idempotency key on the movement; one debit per application |
+| The officer's exact-amount attestation | A TZS 1,000 receipt attested as the fee | The amount is `feeBreakdown().totalTzs`, taken by the server, never typed |
+| Refusal while a previous application is owed a refund | Paying again while we still hold your money | ⛔ **RETAINED** — it is not a receipt control, it is a money-owed control |
+
+⭐ **And the money arrives KYC'd.** An applicant cannot deposit until identity verification passes
+(2026-09-05), so a wallet-funded fee is paid with money whose source already cleared the AML gate.
+That is a **stronger** provenance control than a photographed receipt, not a weaker one.
+
+### ⛔ WHAT THIS DOES **NOT** CHANGE
+
+- ⛔ **QR / Selcom Lipa stays DISABLED.** `LIPA_QR_RELEASED` is `false` and `shouldShowLipaQr`
+  returns false first and unconditionally. The machinery stays alive and guarded for a possible
+  re-release — ⛔ do not delete it and do not "tidy" the flag away.
+- **TZS 100,000, no VAT** — the 2026-09-09 entry stands in full, including that it is **not
+  retroactive** and that the 18,000 in `HOUSE:TAX` remains a genuine liability to TRA.
+- **The waiver stands** — an officer may still waive the fee with a typed, audited reason ≥10
+  characters, and a waived fee still posts no ledger entry.
+- **Refund on rejection stands** — full refund, 7-day deadline, reversing the VAT the collection
+  **actually booked** rather than today's rate. ⭐ It now returns to the **WALLET**, which is where
+  it came from; the mirror must still balance.
+- **Single-officer approval stands.** No two-officer lock (`test:two-admin` asserts its absence).
+- ⛔ **The 2026-09-07 entry below is NOT rewritten.** Its fee row records what was decided on that
+  date and it remains the true record of it. This entry **supersedes it as to the payment rail and
+  the attestation only** — the same doctrine the 2026-09-09 entry applied to the VAT treatment. A
+  decision log that edits its own history is not a log.
+
+### What changed in code, in the same commit as this entry (RULES §5 step 4)
+
+Twelve statements asserted the reversed position. All were corrected together, **before** any
+ledger code was written, so that no reader meets a player-ledger fee row against a comment
+forbidding it:
+
+- `prisma/schema.prisma:1030-1031` — the `AgentFeeDisposition` doc comment
+- `src/lib/server/ledger.ts:630-645` — `agentRegistrationFeeEntries`' doc comment (*"IT NEVER
+  TOUCHES A PLAYER WALLET"*). ⚠️ It also still claimed the fee is *"VAT-INCLUSIVE by decision"*,
+  which the 2026-09-09 ruling superseded — corrected in passing
+- `src/lib/server/agent-application-service.ts:24-26` and `:31-32` — the module contract
+- `docs/AGENT-PROGRAMME.md:159`, `:163-165` — the **How** row and the zero-risk claim
+- `docs/RULES.md:516` — the Registration fee row
+- `docs/SESSION-PROMPT-AGENT-BUILD.md:34`, `:37` — the fee and fee-accounting rows
+- `src/app/agent/page.tsx:41`, `src/app/agent/error.tsx:17` — surface comments telling the reader
+  the applicant pays out of band
+
+⛔ **Deliberately NOT touched:** every *"settled out of band"* about **agent commission payables**
+(`affiliate-service.ts`, `RULES.md:515`, `/admin/agents`). That is a different subsystem and a
+different movement, and sweeping it into this change would silently alter how agents are paid.
+
+---
+
 ## 2026-09-09 · The agent registration fee is NOT VAT-bearing — TZS 100,000, no VAT
 
 **Decision:** Ali, **2026-09-09**, put to him by the money-gate programme with the production

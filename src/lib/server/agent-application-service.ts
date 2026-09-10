@@ -21,16 +21,22 @@
  *  ⛔ Staff are refused at the door, at submit and at approval — approving would strip their
  *    admin access. A paid staff application exits through the ordinary reject+refund path
  *    (`STAFF_CONFLICT`), never a hard INVALID with the fee stranded.
- *  ⭐ The fee NEVER enters the player ledger. It is money from a member of the public, attested
- *    by an officer reading a receipt, and it posts a `LedgerEntry` so the house book, the trial
- *    balance and the tax pack can see it. VAT is split per the config's treatment.
+ *  ⭐ THE FEE IS PAID FROM THE APPLICANT'S WALLET (Ali, 2026-09-10). They deposit on the
+ *    ordinary rails, then pay from that balance. It therefore DOES enter the player ledger:
+ *    a `Transaction` plus a `LedgerEntry` group whose money-in leg is the PLAYER account, so
+ *    the house book, the trial balance and the tax pack all see it. VAT is split per the
+ *    config's treatment (EXCLUSIVE at 0, so no `HOUSE:TAX` leg today).
+ *    ⚠️ This REVERSES the pre-2026-09-10 rule that the fee never enters the player ledger and
+ *    was attested by an officer reading a receipt. The programme is now INSIDE the money
+ *    invariants: the debit must be all-or-nothing, locked and idempotent, and it can race a
+ *    bet for the same balance. `COMPLIANCE-DECISIONS.md` § 2026-09-10.
  *  ⛔ NO NUMBER IS A LITERAL. Every amount, window and day count is read from `agent-config`.
  *
  * ── GATE THE OFFER, NEVER THE REFUSAL ───────────────────────────────────────────────────
  * Every refusal that would strand the registration fee — staff, self-excluded, terminal rejection,
  * cool-down, KYC — bites at `startApplication` and on the /agent page's CTA, BEFORE the
- * applicant is told to pay out of band. A refusal that first appears at review routes through
- * the refund path as a rejection, never a silent block.
+ * applicant is asked to pay the fee from their wallet. A refusal that first appears at review
+ * routes through the refund path as a rejection, never a silent block.
  */
 import { createHash } from "node:crypto";
 import { db, type StoredAgentApplication, type StoredAgentApplicationDocument, type StoredAgentInvitation, type AgentDocType, type AgentRejectReason, type StoredUser } from "./store";
@@ -741,7 +747,14 @@ export async function reconcileFee(
       feeAmountTzs: fee.totalTzs, feeAttestedTzs: attested, feeStatementRef: statementRef, feeSourceAccount: source || null,
       feeReconciledAt: now, feeReconciledById: officerId, feeDisposition: "COLLECTED",
     });
-    // ⛔ Never a player Transaction. A balanced LedgerEntry group against the applicant.
+    // ⛔ THIS IS THE LEGACY OUT-OF-BAND PATH — money arrived in a bank account, NOT through a
+    // wallet, so there is correctly no player `Transaction` here and the money-in leg must
+    // stay EXTERNAL. ⚠️ Since 2026-09-10 the live rail is a WALLET DEBIT, which does carry a
+    // `Transaction` and whose money-in leg is the PLAYER account. Both shapes therefore
+    // exist, and `agentRegistrationFeeEntries` takes the source EXPLICITLY: booking this
+    // legacy collection against the player would post a PLAYER ledger entry with no wallet
+    // movement behind it and silently diverge the ledger from the balance it describes.
+    // `COMPLIANCE-DECISIONS.md` § 2026-09-10.
     await postLedgerEntries(`agentfee_${app.id}`, agentRegistrationFeeEntries({
       groupRef: app.id, userId: app.userId, amount: fee.totalTzs, vatAmount: fee.vatTzs,
       description: `Agent registration fee · ${app.feeReference}`,

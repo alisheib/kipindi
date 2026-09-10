@@ -158,7 +158,7 @@ BLOCKED and move on — do not guess, and do not quietly shrink the unit to some
 
 | Unit | What it seals | Done |
 |---|---|---|
-| 0 | ⛔ **DECISION GATE** — the compliance position this reverses | ☐ 0/2 |
+| 0 | ⛔ **DECISION GATE** — the compliance position this reverses | ✅ **2/2** |
 | 1 | 🔴 The ledger shape: a wallet-funded fee must not double-count | ☐ 0/4 |
 | 2 | 🔴 The debit primitive: all-or-nothing, idempotent, its own type | ☐ 0/5 |
 | 3 | 🔴 The applicant's path: deposit → return → pay, with no dead end | ☐ 0/5 |
@@ -172,12 +172,27 @@ BLOCKED and move on — do not guess, and do not quietly shrink the unit to some
 
 | | Unit 0 · Decision gate | where |
 |---|---|---|
-| ☐ | **0.1** the owner's ruling is recorded as a COMPLIANCE DECISION with its date and reason | `docs/COMPLIANCE-DECISIONS.md` |
-| ☐ | **0.2** all three "never enters the player ledger" statements are corrected together | `schema.prisma:1030`, `agent-application-service.ts:24-26`, `AGENT-PROGRAMME.md:163` |
+| ✅ | **0.1** the owner's ruling is recorded as a COMPLIANCE DECISION with its date and reason | `docs/COMPLIANCE-DECISIONS.md` § 2026-09-10 — the ruling, the reason (traceability; QR references do not exist on the network), the price (**the programme is now inside the money invariants**), the retired fraud controls and what replaces each, and what it does NOT change |
+| ✅ | **0.2** ~~all three~~ **all TWELVE** "never enters the player ledger" statements are corrected together | ⚠️ **The brief said three; a full sweep found twelve.** Corrected: `schema.prisma:1030` · `ledger.ts:630-645` (**not in the brief** — it also still claimed the fee was "VAT-INCLUSIVE by decision", superseded 2026-09-09) · `agent-application-service.ts:24-26` **and `:31-32`** · `AGENT-PROGRAMME.md:159`, `:163-165` **and the Destination row `:158`** · `RULES.md:516` · `SESSION-PROMPT-AGENT-BUILD.md:34`, `:37` · `agent/page.tsx:41` · `agent/error.tsx:17`. ⛔ **Deliberately NOT swept:** every *"settled out of band"* about agent **commission payables** (`affiliate-service.ts`, `RULES.md:515`, `/admin/agents`) — a different subsystem and a different movement. ⛔ **`COMPLIANCE-DECISIONS.md:178` is NOT rewritten** — it is the true record of the 2026-09-07 decision; the new entry supersedes it as to the rail only, the same doctrine the 2026-09-09 entry used |
+
+> 🔴 **FOUND IN UNIT 0, AND IT CHANGES UNIT 1's DESIGN — DO NOT JUST FLIP THE LEG.**
+> `agentRegistrationFeeEntries` has **TWO callers**, and only one of them moves a wallet:
+> - the **new** wallet debit → money-in leg is correctly `acct.player(userId)`;
+> - `reconcileFee` (`agent-application-service.ts` ~`:750`) — the **LEGACY out-of-band** path,
+>   where an officer attests a bank receipt. **No wallet moves there.**
+>
+> ⛔ **Flipping the leg to `acct.player()` unconditionally would make the legacy path post a
+> PLAYER ledger entry with no wallet movement behind it** — silently diverging the player ledger
+> from the balance it is supposed to describe, on exactly the applicants Unit 7 must honour.
+> ⭐ **So the source must be an EXPLICIT PARAMETER of the function, not a constant**
+> (`"WALLET"` → `acct.player(userId)`, `"EXTERNAL"` → `acct.external("SELCOM")`). This also makes
+> Unit 7.1 buildable at all: an in-flight applicant who already paid by bank keeps the external
+> leg. ⚠️ And the refund mirror must reverse to **whichever source the collection used** — the
+> same doctrine as "reverse the VAT actually BOOKED, never today's rate".
 
 | | Unit 1 · Ledger shape | where |
 |---|---|---|
-| ☐ | **1.1** the money-in leg is the PLAYER account, not `EXTERNAL:SELCOM` | `ledger.ts:646-667` |
+| ☐ | **1.1** the money-in leg is the PLAYER account **when the fee came from a wallet** — an explicit source parameter, ⛔ not an unconditional flip (see the note above) | `ledger.ts:646-667` + both callers |
 | ☐ | **1.2** a trial balance proves the same shillings are not counted twice | new guard |
 | ☐ | **1.3** the VAT leg still only posts when the rate is non-zero | `ledger.ts` |
 | ☐ | **1.4** `test:ledger` and `test:money-invariants` stay green, proven not assumed | existing |

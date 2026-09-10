@@ -213,8 +213,11 @@ export const acct = {
    * The TZS 100,000 registration fee. ⛔ NOT gaming revenue: it buys vetting, not a bet, so
    * it is deliberately kept out of `HOUSE:COMMISSION`, out of GGR and out of the levy base.
    * It exists here because it is money taken from a member of the public and it must be
-   * visible to the house book, the trial balance and every tax figure — today it would be
-   * invisible to all three.
+   * visible to the house book, the trial balance and every tax figure.
+   *
+   * ⭐ Since 2026-09-10 it arrives by a WALLET DEBIT, not an out-of-band bank transfer, so the
+   * matching money-in leg is the PLAYER account and ⛔ never `EXTERNAL:SELCOM` — the shillings
+   * already entered as a DEPOSIT. `COMPLIANCE-DECISIONS.md` § 2026-09-10.
    */
   agentFee: "HOUSE:AGENT_FEE" as const,
 };
@@ -627,21 +630,28 @@ export function agentCommissionEntries(opts: {
 }
 
 /**
- * ⭐ THE AGENT REGISTRATION FEE — money in from a member of the public, and its refund.
+ * ⭐ THE AGENT REGISTRATION FEE — paid FROM THE APPLICANT'S WALLET, and its refund.
  *
- * ⛔ IT NEVER TOUCHES A PLAYER WALLET. The fee is paid out of band into a Selcom account and
- * attested by an officer reading a receipt; there is no `Transaction`, no wallet credit, and
- * therefore no risk to any money invariant. This pair records it against the applicant so a
- * DSAR bundle and an audit can both find it, without pretending it passed through their
- * balance.
+ * ⭐ IT MOVES A PLAYER BALANCE (Ali, 2026-09-10). The applicant deposits on the ordinary rails
+ * and then pays the fee from that balance, so the money-in leg is the PLAYER account and the
+ * movement carries a `Transaction`. ⚠️ This REVERSES the pre-2026-09-10 rule that the fee
+ * never touches a player wallet — the programme is now inside the money invariants, not
+ * beside them. Reason: a Lipa/QR payment carries no reference on any network, so it cannot be
+ * traced to a payer; a wallet debit carries the payer's identity by construction.
+ * `COMPLIANCE-DECISIONS.md` § 2026-09-10.
+ *
+ * ⛔ THE MONEY-IN LEG MUST BE `acct.player(userId)`, NEVER `acct.external("SELCOM")`.
+ * The shillings already entered the system once as a DEPOSIT, booked against `EXTERNAL:SELCOM`.
+ * Booking the fee there too counts the same money TWICE and the trial balance is wrong.
  *
  * `amount` is SIGNED: positive is the fee collected, negative is the refund on rejection.
- * The refund posts the exact mirror of the collection, so a refunded fee nets to zero.
+ * The refund posts the exact mirror of the collection, so a refunded fee nets to zero — and
+ * the mirror now returns the money to the WALLET it came from.
  *
- * ⚠️ VAT. The fee is VAT-INCLUSIVE by decision, so the gross is what the applicant paid and
- * the VAT component is split out here for the tax pack rather than added on top. When the
- * treatment is EXCLUSIVE the caller passes the VAT it computed; either way the three lines
- * sum to zero.
+ * ⚠️ VAT. `feeVatTreatment` is EXCLUSIVE at a rate of 0 (Ali, 2026-09-09), so the caller
+ * passes the VAT it computed and the `HOUSE:TAX` leg is omitted entirely at a zero component.
+ * The INCLUSIVE treatment remains in config for a future change of policy and is not in
+ * force. Either way the lines sum to zero.
  */
 export function agentRegistrationFeeEntries(opts: {
   groupRef: string;

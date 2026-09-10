@@ -14,7 +14,7 @@ import { useT } from "@/lib/i18n";
  * had one; this tree did not.
  *
  * ⚠️ AND THE STAKES HERE ARE PARTICULAR. The person most likely to hit this has paid the
- * registration fee out of band and is waiting on a decision. Sending them to the markets board is
+ * registration fee from their wallet and is waiting on a decision. Sending them to the markets board is
  * the least reassuring thing the product could do, so the back link is `/agent/status` — the
  * page that tells them where their money and their application stand.
  */

@@ -31,10 +31,10 @@ store beside the KYC one · a page nobody can reach · a guard not in `predeploy
 | Destination | **Real withdrawable cash.** No wagering requirement, ever |
 | Transaction type | **New `AGENT_COMMISSION`** — ⛔ never `BONUS_CREDIT` |
 | Levels | **Single level.** Never pays on a recruit's recruits — that is a pyramid scheme and regulated as one |
-| Registration fee | **TZS 100,000, VAT-INCLUSIVE.** Selcom acct **0769777877**, paid out of band, receipt uploaded, officer reconciles |
+| Registration fee | **TZS 100,000, NO VAT** (Ali, 2026-09-09 — the VAT-inclusive figure here is superseded). ⭐ **PAID FROM THE APPLICANT'S WALLET** (Ali, 2026-09-10): they deposit on the ordinary rails, then pay from that balance. No Selcom account, no receipt upload, no officer reconciliation |
 | Fee waiver | Allowed **with a typed reason, audited** (officer-invited agents) |
 | Fee on reject | **Refunded in full within 7 days.** Reject + refund share **one worklist** |
-| Fee accounting | ⛔ Never a player-ledger `Transaction`. ✅ **Posts a `LedgerEntry`** — it is money from the public |
+| Fee accounting | ⭐ **A player-ledger `Transaction`** (Ali, 2026-09-10) **plus** a balanced `LedgerEntry` group. ⛔ Money-in leg is the **PLAYER** account, never `EXTERNAL:SELCOM` — that would double-count the deposit |
 | Who identifies an agent | ⭐ **`approvedAt` alone.** `AffiliateAgent` rows already exist for ordinary players with `commissionPct` 5.00 / `active` true — the row proves nothing. Make `commissionPct` **nullable, no default** |
 | Attribution provenance | `recruitedProgramme` · `recruitedAt` · `recruitedByCode` on **`User`**, same write as `recruitedBy`. **NULL = PLAYER** |
 | Agent code | **`50PICK-AG-[ID]`**, minted **at approval** (framework §2 Step 3) |

@@ -1027,8 +1027,13 @@ enum AgentRejectReason {
   FRAUD
 }
 
-/// What happened to the TZS 100,000. ⛔ Never a player-ledger `Transaction` — it is money
-/// from a member of the public, so it posts a `LedgerEntry` (`AGENT_REGISTRATION_FEE`).
+/// What happened to the TZS 100,000. ⭐ PAID FROM THE APPLICANT'S WALLET (Ali, 2026-09-10) —
+/// so it IS a player-ledger `Transaction` (`AGENT_REGISTRATION_FEE`), and it posts a
+/// `LedgerEntry` group whose money-in leg is the PLAYER account, never `EXTERNAL:SELCOM`.
+/// ⛔ Booking it external would double-count shillings that already entered as a DEPOSIT.
+/// ⚠️ This REVERSES the pre-2026-09-10 rule that the fee never enters the player ledger; the
+/// programme is now inside the money invariants, not beside them.
+/// `COMPLIANCE-DECISIONS.md` § 2026-09-10.
 enum AgentFeeDisposition {
   /// No fee has been reconciled. ⭐ THE LOAD-BEARING VALUE: a rejection from here owes
   /// nothing, and a refunds queue that forgets it tells the platform to pay out money it

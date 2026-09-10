@@ -155,14 +155,21 @@ erasure can never reach.
 | | |
 |---|---|
 | **Amount** | ⭐ **TZS 100,000 — NO VAT** (Ali, 2026-09-09; supersedes management's 2026-09-08 VAT-exclusive 118,000, which superseded the VAT-inclusive decision of 2026-09-07). `registrationFeeTzs` holds 100,000, `feeVatTreatment` stays `EXCLUSIVE` and `feeVatRatePct` is **0**, so `feeBreakdown().totalTzs` is **100,000** and `vatTzs` is **0**. ⛔ What an applicant owes is `feeBreakdown().totalTzs` and nothing may quote the raw config field. ⛔ At a zero component **no surface may state a VAT treatment** — the binding terms and `/agent` go silent, or they render "(TZS 100,000 plus TZS 0 VAT)". ⛔ **NOT retroactive**: the one agent registered before it paid **118,000** and `HOUSE:TAX` holds that 18,000 as a genuine liability to TRA. Stated in `RULES.md` §2.10 · `COMPLIANCE-DECISIONS.md` § 2026-09-09 · `npm run test:agent-fee-copy` |
-| **Destination** | **Digital Selcom Bank, account 0769777877.** ✅ Re-read on production 2026-09-09T17:31Z and this row is CORRECT. ⚠️ It briefly was not: from 2026-09-08T17:42:24Z the live row read `Selcom LIPA NAMBA - OCEAN ENTERTAINMENT LIMITED` / `7006 3747` for the Lipa QR programme, and the money gate flagged this line as stale on that basis. The QR was then WITHDRAWN — a Lipa Namba payment carries no reference on any network, so it cannot be traced to a payer — and the destination was restored through the audited admin path at 2026-09-09T11:08:41Z. ⭐ The lesson is the flag, not the row: a note that says "production reads X" is only true at the moment it was read, and this one was falsified within hours. `MONEY-GATE-REMEDIATION.md` §7.1 |
-| **How** | Paid **out of band**; the applicant uploads the receipt and types the reference. ⭐ **Scannable since 2026-09-08** — see the note below |
+| **Destination** | ⚠️ **NO LONGER THE LIVE RAIL** (Ali, 2026-09-10) — the fee is paid from the wallet, so no applicant is given a destination account. `feeDestinationName` / `feeDestinationAccount` remain in config for the LEGACY out-of-band path and the withheld QR only. The rest of this row is the historical record: **Digital Selcom Bank, account 0769777877.** ✅ Re-read on production 2026-09-09T17:31Z and this row was CORRECT then. ⚠️ It briefly was not: from 2026-09-08T17:42:24Z the live row read `Selcom LIPA NAMBA - OCEAN ENTERTAINMENT LIMITED` / `7006 3747` for the Lipa QR programme, and the money gate flagged this line as stale on that basis. The QR was then WITHDRAWN — a Lipa Namba payment carries no reference on any network, so it cannot be traced to a payer — and the destination was restored through the audited admin path at 2026-09-09T11:08:41Z. ⭐ The lesson is the flag, not the row: a note that says "production reads X" is only true at the moment it was read, and this one was falsified within hours. `MONEY-GATE-REMEDIATION.md` §7.1 |
+| **How** | ⭐ **PAID FROM THE APPLICANT'S WALLET** (Ali, 2026-09-10). They deposit on the ordinary rails, then pay the fee from that balance — no receipt, no typed reference, no officer attestation. ⛔ **Reason: a Lipa/QR payment carries no reference on any network and a bank receipt is only as good as the human reading it; a wallet debit carries the payer's identity by construction.** ⚠️ Supersedes the out-of-band rail of 2026-09-07. `COMPLIANCE-DECISIONS.md` § 2026-09-10 |
 | **Waiver** | ⭐ An officer may waive it or record it as collected in cash — **with a typed reason, audited** (Ali, 2026-09-06) |
 | **On rejection** | **Refunded in full** — we did not provide the service |
 
-⛔ **The fee never enters the player ledger** — no wallet credit, no `Transaction` row. It is a
-business receipt attested by an officer, which is why the programme adds zero risk to the money
-invariants.
+⭐ **The fee ENTERS the player ledger** (Ali, 2026-09-10) — it is debited from the applicant's
+wallet, so it carries a `Transaction` and a balanced `LedgerEntry` group whose money-in leg is
+the **PLAYER** account. ⛔ **Never `EXTERNAL:SELCOM`**: those shillings already entered as a
+DEPOSIT, and booking them again would count the same money twice.
+
+⚠️ **This reverses the rule that stood until 2026-09-10, and it has a price this document used to
+state as a benefit.** The programme no longer "adds zero risk to the money invariants" — it is
+now **inside** them. A wallet never goes negative, a ledger group sums to zero, and the fee can
+race a bet for the same balance, so the debit must be **all-or-nothing, row-locked and
+idempotent**. `COMPLIANCE-DECISIONS.md` § 2026-09-10.
 
 ✅ **It posts a `LedgerEntry` (2026-09-07).** `agentRegistrationFeeEntries` books the fee to
 `HOUSE:AGENT_FEE` with its VAT split at reconciliation, so the house book, trial balance,

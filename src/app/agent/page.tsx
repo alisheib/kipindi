@@ -38,7 +38,8 @@ export const dynamic = "force-dynamic";
  *
  * The CTA is decided by the SAME eligibility the service enforces (`applicantEligibility`), so
  * the page never offers what `startApplication` is about to refuse — and never before the
- * applicant is told to send the registration fee out of band. ⛔ The fee is `feeBreakdown().
+ * applicant is asked to pay the registration fee FROM THEIR WALLET (Ali, 2026-09-10; it was
+ * paid out of band until then). ⛔ The fee is `feeBreakdown().
  * totalTzs`, never a literal — it was TZS 100,000 VAT-inclusive until management moved the
  * treatment on 2026-09-08 and became TZS 118,000. ⭐ SUPERSEDED 2026-09-09: Ali ruled the fee
  * bears NO VAT, so it is TZS 100,000 again — read `feeBreakdown().totalTzs`, never a literal.
