@@ -9,6 +9,10 @@ import { verifyChainFull } from "@/lib/server/audit";
 import { audit } from "@/lib/server/audit";
 import { revalidatePath } from "next/cache";
 import { setSupportConfig } from "@/lib/server/support-config";
+// ⭐ The dial-target derivation lives beside the defaults, in the client-safe half, so the admin
+// FORM can preview exactly what this action will store rather than the operator finding out from
+// a dead tel: link on the public site.
+import { toDialTarget } from "@/lib/support-config";
 // `PlatformConfig` is imported for the RETURN TYPES below only (DG-S-05 rule 4): naming the
 // failure side `ActionFailure` means naming the success side too, and the success side of the
 // two platform writers is whatever `setPlatformConfig` hands back — spelled out here rather
@@ -55,9 +59,26 @@ export async function updateSupportConfigAction(
      untouched; the only new thing is the address. `"support-email"` is the `data-field` on the
      <Field> wrapper in `system-client.tsx`, and the two strings must match — a typo degrades to
      today's behaviour (a toast, no focus), never to a jump at the wrong box.
-     ⚠️ ONLY this one of the two inputs is addressed: `phone` is optional here and has no
-     refusal of its own, so there is nothing to point at for it. */
+     ⚠️ ~~ONLY this one of the two inputs is addressed: `phone` is optional here and has no
+     refusal of its own, so there is nothing to point at for it.~~ **No longer true as of
+     2026-09-10** — `phone` now has two refusals of its own (blank, and undialable), both
+     addressed to `"support-phone"`. This note is corrected rather than deleted because it is
+     the concession that pointed at the defect in the first place. */
   if (!email) return fieldError("support-email", "Email is required.");
+  /* 🔴 `phone` NOW HAS A REFUSAL OF ITS OWN, AND THE COMMENT BELOW USED TO CONCEDE IT DID NOT.
+     Before 2026-09-10 this action validated the email and nothing else: clearing the phone saved
+     `""`, so `/help` rendered an empty <p> inside a live `<a href="tel:">`, and the refusal a
+     permanently self-excluded player receives read "Support: " with nothing after it. Free text
+     produced dial targets like `tel:+255222115811ext204`. ⭐ `toDialTarget` decides dialability —
+     the same function the form previews — so the console cannot save a number it could not call. */
+  if (!phone) return fieldError("support-phone", "Phone is required — it is published on /help and in the self-exclusion refusal.");
+  const phoneTel = toDialTarget(phone);
+  if (!phoneTel) {
+    /* ⚠️ THE EXAMPLES ARE SPECIMENS, NOT THE REAL DESK NUMBER. Naming the live number here would
+       plant a fourth copy of a value that has exactly one home, and it would go stale the day the
+       owner changes it — `test:support-contact` §8 caught this line doing precisely that. */
+    return fieldError("support-phone", `"${phone}" is not a dialable number. Use the local form 0712 345 678, or the international form +255 712 345 678.`);
+  }
   /* 🔴 `helpline` IS NO LONGER READ FROM THIS FORM, AND THAT IS THE FIX, NOT AN OMISSION
      (E-328). The row this action saved on 2026-08-19 and again on 2026-09-08 carried
      `helpline: "+255769777877"` — 50pick's own desk — because the field existed and somebody
@@ -67,7 +88,6 @@ export async function updateSupportConfigAction(
      pinned constant in `@/lib/support-config` with no setter and no persisted field, so there
      is no longer any input through which it could be moved. */
   try {
-    const phoneTel = phone.replace(/[\s\-()]/g, "");
     /* Persistence AND the ADMIN audit row are the factory's now — `defineConfig` merges,
        validates, caches, saves and audits in one place, and REFUSES to write from a process
        that never hydrated rather than overwriting the operator's row with code defaults. */

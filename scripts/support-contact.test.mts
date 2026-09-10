@@ -95,6 +95,33 @@ const { __defineSupportConfigForTest, HELPLINE, HELPLINE_TEL } = await import(
     !("helpline" in (got as Record<string, unknown>)) && !("helplineTel" in (got as Record<string, unknown>)),
     `config still carries ${Object.keys(got).join(",")}`,
   );
+
+  // ── §10 · THE WRITER REFUSES WHAT IT CANNOT PUBLISH ────────────────────────────────────
+  // 🔴 `SUPPORT_EMAIL()` is now the `ReplyTo` on every outbound message and the footer of all 61
+  // templates, so a bad keystroke in the admin form is a TRANSPORT failure, not a cosmetic one.
+  // These drive the REAL factory through the same seam §1 uses — a save is attempted and must
+  // come back refused, with the config unchanged.
+  // ⚠️ Each case is asserted TWICE: refused, AND the stored value untouched. A `set()` that
+  // returned `{ok:false}` after already mutating the registry would satisfy the first alone, and
+  // that is precisely the shape of defect this campaign's Unit 3 is about.
+  const before = cfg.get();
+  const refuses = (label: string, patch: Record<string, string>) => {
+    const res = cfg.set(patch as never, "officer_test");
+    ok(`§10 refuses ${label}`, res.ok === false, JSON.stringify(res));
+    const after = cfg.get();
+    ok(`§10 …and leaves the stored config untouched after ${label}`,
+       after.email === before.email && after.phone === before.phone && after.phoneTel === before.phoneTel,
+       JSON.stringify(after));
+  };
+  refuses("an address with no @", { email: "msaada", phone: before.phone, phoneTel: before.phoneTel });
+  refuses("an address with a space", { email: "msaada @50pick.tz", phone: before.phone, phoneTel: before.phoneTel });
+  refuses("a blank phone", { email: before.email, phone: "   ", phoneTel: "" });
+  refuses("an undialable phone", { email: before.email, phone: "not-a-number", phoneTel: "" });
+
+  // ⭐ THE POSITIVE CONTROL. Without it every §10 row above would still pass if `set()` refused
+  // EVERYTHING — a config that never saves is not a validated config, it is a broken one.
+  const good = cfg.set({ email: "msaada@50pick.tz", phone: "0712345678", phoneTel: "+255712345678" } as never, "officer_test");
+  ok("§10 ⚠️ CONTROL — a well-formed save is ACCEPTED", good.ok === true, JSON.stringify(good));
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -307,6 +334,117 @@ for (const f of files) {
 const uniq = (a: string[]) => [...new Set(a)].sort();
 ok("§6 no operator contact is published as a helpline or as free", uniq(v6).length === 0, uniq(v6).join(" | "));
 ok("§7 no at-risk response hands out an operator contact", uniq(v7).length === 0, uniq(v7).join(" | "));
+
+// ────────────────────────────────────────────────────────────────────────────
+// §8 — NO SUPPORT-CONTACT LITERAL OUTSIDE THE ONE FILE THAT OWNS IT
+//
+// 🔴 The campaign's own finding: fixing the persisted row fixed nothing, because the row was
+// already right. What is wrong is every place that does NOT read it. Measured 2026-09-10, the
+// tree carried THREE different support addresses as VALUES — `support@50pick.tz` in
+// `server/email.ts` (the ReplyTo on all 61 templates) and in `push-service.ts`, and a third,
+// `privacy@50pick.tz`, invented by the DSAR bundle and present in no config and no admin field.
+//
+// ⛔ AND A LITERAL IN A GUARD IS THE WORST CASE OF ALL. `pre-deploy-live-check.mjs:220` asserts
+// the live footer contains `support@50pick.tz` — and `qa:live` IS on the `predeploy` chain. The
+// footer already serves `msaada@50pick.tz`, so that gate pins a value the platform stopped
+// publishing and would go RED against the correct fix. Same class as `multi-persona-test.mjs`
+// asserting a retired `TZ-GBT`: a guard enforcing the defect.
+//
+// ⚠️ WHY THE DESK NUMBER IS BANNED ONLY IN E.164 FORM. The bare digits `0769777877` are ALSO the
+// agent programme's `feeDestinationAccount` — a Selcom mobile-money account that happens to share
+// its digits with the support line (`server/agent-config.ts`, `lipa-qr.test.mts`,
+// `live/lipa-qr-drive.mjs`). A payment destination is not a contact, and banning the bare digits
+// would accuse four correct files and collide with another campaign. `+255769777877` is only ever
+// written as a contact, so that is the form this section forbids.
+// ────────────────────────────────────────────────────────────────────────────
+const CONTACT_LITERALS: [string, RegExp][] = [
+  ["support@50pick.tz", /support@50pick\.tz/],
+  ["msaada@50pick.tz", /msaada@50pick\.tz/],
+  ["privacy@50pick.tz", /privacy@50pick\.tz/],
+  ["the retired landline", /\+255\s?22\s?211\s?5811|\+255222115811/],
+  ["the operator desk in E.164", /\+255\s?769\s?777\s?877|\+255769777877/],
+];
+
+/**
+ * The only two files that may write a support contact as a VALUE.
+ * ⭐ A comment may say anything — `decomment()` strips those before the scan — because a comment
+ * recording what the app USED to serve is history, and deleting history is how this repo's
+ * explanations rot. What may not survive is a value.
+ */
+const CONTACT_HOMES = new Set([
+  "src/lib/support-config.ts",        // THE source of truth: the defaults and the pinned constants
+  "scripts/support-contact.test.mts", // this file — a guard must name the values it asserts
+]);
+
+const v8: string[] = [];
+{
+  const scanned: string[] = [];
+  (function walk(dir: string) {
+    for (const e of readdirSync(dir)) {
+      if (e === "node_modules" || e === ".next" || e.startsWith(".shots")) continue;
+      const p = join(dir, e);
+      if (statSync(p).isDirectory()) { walk(p); continue; }
+      if (/\.(tsx|ts|mts|mjs|cjs|js)$/.test(e)) scanned.push(p);
+    }
+  })(ROOT + "/src");
+  (function walk(dir: string) {
+    for (const e of readdirSync(dir)) {
+      if (e === "node_modules" || e.startsWith(".shots")) continue;
+      const p = join(dir, e);
+      if (statSync(p).isDirectory()) { walk(p); continue; }
+      if (/\.(tsx|ts|mts|mjs|cjs|js)$/.test(e)) scanned.push(p);
+    }
+  })(ROOT + "/scripts");
+
+  for (const f of scanned) {
+    const rel = relative(ROOT, f).replace(/\\/g, "/");
+    if (CONTACT_HOMES.has(rel)) continue;
+    const src = decomment(readFileSync(f, "utf8"));
+    src.split(/\r?\n/).forEach((line, i) => {
+      for (const [name, re] of CONTACT_LITERALS) {
+        if (re.test(line)) v8.push(`${rel}:${i + 1} — ${name} written as a literal`);
+      }
+    });
+  }
+  // The scan must actually have walked something, or §8 passes by finding no files.
+  ok("§8 the literal sweep walked both trees", scanned.length > 400, `scanned ${scanned.length} files`);
+}
+ok("§8 no support contact is a literal outside support-config.ts", v8.length === 0, v8.join(" | "));
+
+// ────────────────────────────────────────────────────────────────────────────
+// §9 — THE DEFAULTS THEMSELVES, WHICH §8 DELIBERATELY CANNOT SEE
+//
+// ⛔ §8 exempts `support-config.ts`, because that file is where the values are allowed to live.
+// The consequence is a blind spot, and a mutation proved it: reverting `SUPPORT_DEFAULTS.phone`
+// to the retired landline passed every other section in this file. So the defaults need their
+// own assertions.
+//
+// ⭐ THESE ARE STRUCTURAL, NOT A COPY OF TODAY'S NUMBER — on purpose. A guard that pins the
+// literal `0769777877` would have to be edited the day the owner changes the desk line, and a
+// guard that must be edited to let a correct change through is the exact trap this campaign
+// found on the deploy path: `pre-deploy-live-check.mjs` demanding a footer address the platform
+// had already stopped publishing, and `multi-persona-test.mjs` demanding a retired licence
+// placeholder. What is invariant is the SHAPE the two fields exist to express:
+//   · `phone` is what a player READS — the LOCAL form a Tanzanian dials, so never `+`-prefixed
+//   · `phoneTel` is what a TAP dials — always E.164, and always derivable from `phone`
+//   · `email` must be sendable, because it is now the ReplyTo on every message we send
+// A ruling can move the digits; it cannot make the local form international.
+// ────────────────────────────────────────────────────────────────────────────
+{
+  // Imported HERE rather than at the top so §9 reads the real module every run — the same
+  // client-safe half the product imports, not a copy of its values transcribed into this file.
+  const { SUPPORT_DEFAULTS, toDialTarget } = await import("../src/lib/support-config.ts");
+  const d = SUPPORT_DEFAULTS;
+  ok("§9 the default email is a usable address", /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email), d.email);
+  ok("§9 the default phone is the LOCAL form a player reads", !!d.phone && !d.phone.trim().startsWith("+"), d.phone);
+  ok("§9 the default phone is dialable at all", toDialTarget(d.phone) !== "", d.phone);
+  ok("§9 the default phoneTel is E.164", /^\+\d{8,15}$/.test(d.phoneTel), d.phoneTel);
+  // The load-bearing one: the number a player READS and the number a tap DIALS must be the same
+  // number. This is what silently broke when the console derived one from the other by stripping
+  // punctuation — a local `0…` stayed local and stopped dialling from abroad.
+  ok("§9 phoneTel is exactly what phone derives to", toDialTarget(d.phone) === d.phoneTel,
+     `phone ${d.phone} → ${toDialTarget(d.phone)} vs phoneTel ${d.phoneTel}`);
+}
 
 // ── The population itself must not be empty, or §3 and §4 would pass by finding nothing.
 // This is the check that separates "no violations" from "no search". ──

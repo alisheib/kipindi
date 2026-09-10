@@ -13,7 +13,26 @@ const TO = process.argv[2] || "ali.sheib@50pick.tz";
 const G="#e8c05a",GM="#c49a2e",GD="#8a6c1a",BG="#0c0e28",C="#161845",B="#2b2e63",L="#7060d0",T="#f0eff4",TM="#c8c6d8",TS="#8b89a8",TF="#5c5a78",Y="#2db872",R="#c04848";
 const mk=`<img src="https://kipindi-production.up.railway.app/icons/mark-color-512.png" width="56" height="56" alt="50pick" style="display:block;margin:0 auto;border:0">`;
 
-const wrap=(body)=>`<!DOCTYPE html><html><head><meta charset="utf-8"></head><body style="margin:0;padding:0;background:${BG};font-family:Segoe UI,Helvetica,Arial,sans-serif"><table cellpadding="0" cellspacing="0" width="100%" style="background:${BG}"><tr><td align="center" style="padding:32px 16px"><table cellpadding="0" cellspacing="0" width="100%" style="max-width:560px"><tr><td align="center" style="padding:0 0 24px">${mk}<div style="margin-top:10px;font-size:20px;font-weight:800"><span style="color:${T}">50pick</span><span style="color:${TM};font-weight:500;font-size:14px">.tz</span></div></td></tr><tr><td><div style="height:3px;background:linear-gradient(90deg,${GM},${G},${GM});border-radius:3px 3px 0 0"></div></td></tr><tr><td style="background:${C};border:1px solid ${B};border-top:none;border-radius:0 0 12px 12px;padding:32px 28px 28px">${body}</td></tr><tr><td style="padding:28px 0 0;text-align:center"><div style="width:42px;height:2px;background:${G};border-radius:2px;margin:0 auto 16px"></div><p style="margin:0;font-family:monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:${GM}">50pick.tz <span style="color:${R}">&middot;</span> <span style="color:${TS}">Soko la Utabiri</span></p><p style="margin:12px 0 0;font-size:11px;color:${TF};line-height:1.7">18+ &middot; Licensed by Gaming Board of Tanzania<br>Helpline +255 22 211 5811 &middot; <a href="mailto:support@50pick.tz" style="color:${TS};text-decoration:none">support@50pick.tz</a></p></td></tr></table></td></tr></table></body></html>`;
+/**
+ * 🔴 THIS FOOTER USED TO HARDCODE TWO CONTACT FACTS, AND BOTH WERE WRONG.
+ *
+ * It printed `Helpline +255 22 211 5811` — the RETIRED LANDLINE, under the word "Helpline" —
+ * which is precisely the E-328 harm that `src/lib/support-config.ts` was split to make
+ * impossible, sitting in an unwired script where nobody would see it drift. It also printed
+ * `support@50pick.tz` while the live row has served `msaada@50pick.tz` since 2026-08-19.
+ *
+ * ⛔ This file is plain `.mjs` and cannot import the TypeScript source of truth, so the honest
+ * answer is not a NEWER literal — that is how it got wrong in the first place — but to state
+ * nothing it cannot source. Set `SAMPLE_SUPPORT_EMAIL` to render a contact line; leave it unset
+ * and the sample simply omits one. The statutory helpline is safe to name because it is a PINNED
+ * constant with no setter and no persisted field: it cannot drift.
+ */
+const SAMPLE_SUPPORT_EMAIL = process.env.SAMPLE_SUPPORT_EMAIL || "";
+const FOOTER_CONTACT = SAMPLE_SUPPORT_EMAIL
+  ? `<br>Helpline 0800 11 0011 &middot; <a href="mailto:${SAMPLE_SUPPORT_EMAIL}" style="color:${TS};text-decoration:none">${SAMPLE_SUPPORT_EMAIL}</a>`
+  : `<br>Helpline 0800 11 0011`;
+
+const wrap=(body)=>`<!DOCTYPE html><html><head><meta charset="utf-8"></head><body style="margin:0;padding:0;background:${BG};font-family:Segoe UI,Helvetica,Arial,sans-serif"><table cellpadding="0" cellspacing="0" width="100%" style="background:${BG}"><tr><td align="center" style="padding:32px 16px"><table cellpadding="0" cellspacing="0" width="100%" style="max-width:560px"><tr><td align="center" style="padding:0 0 24px">${mk}<div style="margin-top:10px;font-size:20px;font-weight:800"><span style="color:${T}">50pick</span><span style="color:${TM};font-weight:500;font-size:14px">.tz</span></div></td></tr><tr><td><div style="height:3px;background:linear-gradient(90deg,${GM},${G},${GM});border-radius:3px 3px 0 0"></div></td></tr><tr><td style="background:${C};border:1px solid ${B};border-top:none;border-radius:0 0 12px 12px;padding:32px 28px 28px">${body}</td></tr><tr><td style="padding:28px 0 0;text-align:center"><div style="width:42px;height:2px;background:${G};border-radius:2px;margin:0 auto 16px"></div><p style="margin:0;font-family:monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:${GM}">50pick.tz <span style="color:${R}">&middot;</span> <span style="color:${TS}">Soko la Utabiri</span></p><p style="margin:12px 0 0;font-size:11px;color:${TF};line-height:1.7">18+ &middot; Licensed by Gaming Board of Tanzania${FOOTER_CONTACT}</p></td></tr></table></td></tr></table></body></html>`;
 
 const ey=(en,sw)=>`<p style="margin:0 0 6px;font-family:monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.16em;font-weight:700;color:${GM}">${en}</p>`+(sw?`<p style="margin:0 0 2px;font-size:11px;font-style:italic;color:${TS}">${sw}</p>`:"");
 const h1=(t,c)=>`<h1 style="margin:0 0 12px;font-size:24px;font-weight:700;color:${c||T};line-height:1.15;letter-spacing:-0.02em">${t}</h1>`;

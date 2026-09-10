@@ -24,7 +24,7 @@
  * It is a pinned constant, so no persisted row and no admin form can move it.
  */
 import { defineConfig } from "./define-config";
-import { SUPPORT_CONFIG_KEY, SUPPORT_DEFAULTS, type SupportConfig } from "../support-config";
+import { SUPPORT_CONFIG_KEY, SUPPORT_DEFAULTS, toDialTarget, type SupportConfig } from "../support-config";
 
 export { HELPLINE, HELPLINE_TEL, LICENCE_NUMBER, SUPPORT_CONFIG_KEY, type SupportConfig } from "../support-config";
 
@@ -43,10 +43,49 @@ const migrate = (persisted: Record<string, unknown>): Partial<SupportConfig> => 
   return out;
 };
 
+/**
+ * ⛔ VALIDATION IS NOT OPTIONAL HERE ANY MORE, AND THE REASON IS THE `ReplyTo` HEADER.
+ *
+ * `server/email.ts` now reads `SUPPORT_EMAIL()` for the `ReplyTo` on EVERY outbound message and
+ * for the footer of all 61 templates. The moment that happened, one bad keystroke in the admin
+ * form stopped being cosmetic and became a TRANSPORT failure: an unparseable address in a
+ * `ReplyTo` header is rejected by the provider, so the password reset or withdrawal notice does
+ * not merely carry a wrong contact — it may not send at all.
+ *
+ * ⭐ `defineConfig` has supported `validate` since it shipped; support-config simply never passed
+ * one. It runs on the MERGED object inside `set()`, BEFORE the registry is mutated and before the
+ * audit row is written, so a refusal leaves no trace of a change that did not happen.
+ */
+const validate = (c: SupportConfig): { ok: true } | { ok: false; reason: string } => {
+  const email = (c.email ?? "").trim();
+  // Deliberately shape-only: a full RFC 5322 pattern rejects addresses real providers accept, and
+  // this guards a transport header, not an identity. What must not pass is whitespace, a missing
+  // @, or a bare local part — the shapes that make a header unsendable.
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return { ok: false, reason: `"${c.email}" is not a usable email address — it is the ReplyTo on every message we send.` };
+  }
+  if (!(c.phone ?? "").trim()) return { ok: false, reason: "The support phone is published on /help and in the self-exclusion refusal; it cannot be blank." };
+  if (!toDialTarget(c.phoneTel || c.phone)) {
+    return { ok: false, reason: `"${c.phone}" does not yield a dialable number, so the tel: link would be dead.` };
+  }
+  return { ok: true };
+};
+
+/**
+ * ⭐ ONE SHAPE, TWO INSTANCES — so the test seam CANNOT drift from the live config.
+ *
+ * ⛔ The seam below used to spell its own options out, and it omitted `validate`. A mutation
+ * found it: dropping `validate` from the LIVE config left `test:support-contact` fully green,
+ * because the suite was driving an instance that carried its own copy. A guard whose subject is
+ * assembled separately from the thing that ships proves something about the guard.
+ * Spreading one frozen shape into both is what makes that class of divergence unrepresentable —
+ * there is no longer a second place to forget.
+ */
+const SUPPORT_CONFIG_SHAPE = { defaults: SUPPORT_DEFAULTS, migrate, validate } as const;
+
 const cfg = defineConfig<SupportConfig>({
   key: SUPPORT_CONFIG_KEY,
-  defaults: SUPPORT_DEFAULTS,
-  migrate,
+  ...SUPPORT_CONFIG_SHAPE,
   audit: { action: "config.support_updated", targetType: "SUPPORT_CONFIG" },
 });
 
@@ -80,8 +119,11 @@ export function SUPPORT_PHONE_TEL() { return cfg.get().phoneTel; }
 export function __defineSupportConfigForTest(deps: Parameters<typeof defineConfig>[0]["deps"]) {
   return defineConfig<SupportConfig>({
     key: `${SUPPORT_CONFIG_KEY}.__test__${Math.random().toString(36).slice(2)}`,
-    defaults: SUPPORT_DEFAULTS,
-    migrate,
+    // ⛔ SPREAD, NOT RESPELLED. This seam used to list `defaults` and `migrate` by hand and
+    // omitted `validate` entirely, so the instance the suite drove would accept an unsendable
+    // address that the real one refuses. Taking the same frozen shape the live config takes means
+    // a protection added there is tested here by construction, and one removed there goes red.
+    ...SUPPORT_CONFIG_SHAPE,
     deps,
   });
 }

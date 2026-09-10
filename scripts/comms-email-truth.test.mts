@@ -293,7 +293,13 @@ ok("no template is registered twice",
 ok("every template is rendered by this suite",
   exported.every((n) => RENDERS.some((r) => r.template === n)),
   `never rendered: ${exported.filter((n) => !RENDERS.some((r) => r.template === n)).join(", ") || "-"}`);
-// 56 = the 49 certified 2026-07-31 plus the agent programme's seven (2026-09-07).
+// ⚠️ THE ARITHMETIC HERE SAID 56 WHILE THE ASSERTION SAID 61 — corrected 2026-09-10.
+// "49 certified 2026-07-31 plus the agent programme's seven (2026-09-07)" is 56, and the number
+// actually enforced one line below is 61, so the sentence explaining the count had been wrong by
+// five for as long as the count had been right. Nothing was broken; the EXPLANATION was, which is
+// the failure mode a reader trusts most. The breakdown is not restated here rather than guessed
+// at: what is true is that `exported` is DISCOVERED from the module's own exports and pinned by
+// exact equality, so adding or removing a template goes red instead of drifting.
 ok(`the inventory is 61 templates (found ${exported.length})`, exported.length === 61);
 
 // ── 2 · Every template has a real sender ───────────────────────────────────────

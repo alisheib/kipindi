@@ -11,7 +11,7 @@ import { Select } from "@/components/ui/select";
 import { Toggle } from "@/components/ui/toggle";
 import { UnsavedChangesGuard, PendingChangesBar, useFormDirty } from "@/components/ui/unsaved-changes";
 import { verifyChainAction, updateSupportConfigAction, updatePlatformTimezoneAction, setMaintenanceModeAction, setAnnouncementAction } from "./actions";
-import { HELPLINE, type SupportConfig } from "@/lib/support-config";
+import { HELPLINE, toDialTarget, type SupportConfig } from "@/lib/support-config";
 
 type AnnouncementTone = "info" | "warning" | "success";
 
@@ -77,6 +77,11 @@ export function SystemActions({ kind }: { kind: "verify-chain" }) {
 export function SupportConfigForm({ config }: { config: SupportConfig }) {
   /* ADMIN-TABS-2026-09-01 — uncontrolled inputs, so the snapshot hook owns `dirty`. */
   const cfgFormRef = useRef<HTMLFormElement>(null);
+  /* ⭐ The ONE piece of controlled state on this form, and only so the dial target can be
+     previewed as it is typed. The phone box stays uncontrolled (`defaultValue`) so the snapshot
+     hook keeps owning `dirty` — this mirrors the value rather than driving it. */
+  const [phone, setPhone] = useState(config.phone);
+  const dialPreview = toDialTarget(phone);
   const { dirty, markSaved, formProps } = useFormDirty(cfgFormRef);
   const [pending, start] = useTransition();
   const router = useRouter();
@@ -118,8 +123,26 @@ export function SupportConfigForm({ config }: { config: SupportConfig }) {
         <Field label="Support email" hint="Shown on help, login, legal, KYC pages" dataField="support-email">
           <Input name="email" defaultValue={config.email} required />
         </Field>
-        <Field label="Support phone" hint="E.g. +255 22 211 5811">
-          <Input name="phone" defaultValue={config.phone} />
+        {/* 🔴 THE HINT USED TO READ "E.g. +255 22 211 5811" — a landline that appears nowhere in
+            the live row, so the console steered every operator toward a retired number in a
+            retired format. ⭐ And `phoneTel`, the thing a TAP actually dials, had no control and
+            no preview at all: it was derived from this box by stripping spaces and brackets, which
+            never converted a local `0…` to E.164. An operator could therefore save a number that
+            reads correctly on /help and cannot be dialled from outside Tanzania, and nothing on
+            this screen would say so. The preview below is that missing feedback — it is the SAME
+            `toDialTarget` the server action stores, so what you see is what gets saved. */}
+        <Field
+          label="Support phone"
+          hint="E.g. 0712 345 678 — the local form a player reads"
+          dataField="support-phone"
+        >
+          <Input name="phone" defaultValue={config.phone} onChange={(e) => setPhone(e.currentTarget.value)} required />
+        </Field>
+        <Field
+          label="Dial target"
+          hint="Derived from the phone above · this is what a tap calls"
+        >
+          <Input value={dialPreview || "— not dialable —"} readOnly disabled />
         </Field>
         {/* 🔴 READ-ONLY, AND THE FIELD BEING UNEDITABLE IS THE FIX (E-328).
             This box used to be an <Input name="helpline">, and what an operator typed into it

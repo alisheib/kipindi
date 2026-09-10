@@ -17,6 +17,12 @@ import { db } from "./store";
 import type { StoredUser } from "./store";
 import { loadConfig, saveConfig } from "./config-store";
 import { anonymizeClosedAccount, type AnonymizeOutcome } from "./erasure";
+// 🔴 THE DSAR BUNDLE INVENTED A THIRD ADDRESS. `privacy@50pick.tz` appeared nowhere else in
+// the platform — no config, no admin field, and contradicting `/legal/privacy` §1 — on the two
+// sentences that tell a data subject HOW to exercise correction and erasure. Those are
+// statutory response paths with a 30-day clock attached (PDPA 2022 §31 / GDPR Art. 17), so an
+// address that does not resolve is a compliance failure, not a typo.
+import { SUPPORT_EMAIL } from "./support-config";
 
 const DSAR_QUEUE_KEY = "privacy.dsar_queue";
 
@@ -282,7 +288,7 @@ export async function buildDsarBundle(userId: string) {
     notificationsCount: notifications.length,
     rights: {
       access: "Granted (this document).",
-      correction: "Submit a correction request via /profile/account or by contacting privacy@50pick.tz.",
+      correction: `Submit a correction request via /profile/account or by contacting ${SUPPORT_EMAIL()}.`,
       // ⚠️ THIS SENTENCE HAS BEEN WRONG IN BOTH DIRECTIONS, WHICH IS WHY IT CARRIES A HISTORY.
       //
       //  · Before 2026-08-20 it promised "available 7 years after account closure subject to
@@ -298,7 +304,7 @@ export async function buildDsarBundle(userId: string) {
       // publishes to the Gaming Board. Whatever this says must stay true of what the routine
       // does — `test:erasure` §10 holds the period, and the two tiers are named in
       // `docs/DATA-RETENTION.md` §2.
-      erasure: "Request erasure by writing to privacy@50pick.tz, or from Account settings. "
+      erasure: `Request erasure by writing to ${SUPPORT_EMAIL()}, or from Account settings. `
         + "On a closed account we erase your contact details, password, profile, in-app "
         + "messages and the name and number on your identity record, and we replace any "
         + "name shown beside your past comments. Your financial and audit records, and the "

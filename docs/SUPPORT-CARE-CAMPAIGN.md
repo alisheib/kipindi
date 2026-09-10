@@ -254,10 +254,10 @@ BLOCKED and move on — do not guess, and do not quietly shrink the unit to some
 
 | Unit | What it seals | Done |
 |---|---|---|
-| 1 | 🔴 The ruled contacts vs the six wrong values still shipping | ☐ 0/7 |
+| 1 | 🔴 The ruled contacts vs the six wrong values still shipping | ✅ **7/7 — LIVE** |
 | 2 | 🔴 The operator's number carries a free-helpline framing at 5 sites | ✅ **6/6 — LIVE** |
 | 3 | 🔴 A save that never lands looks exactly like one that did | ☐ 0/4 |
-| 4 | 🔴 What the admin screen promises, validates, and won't explain | ☐ 0/5 |
+| 4 | 🔴 What the admin screen promises, validates, and won't explain | 🔄 **2/5 — 4.2 + 4.3 LIVE** (4.1, 4.4, 4.5 open) |
 | 5 | 🟠 Config frozen at module eval, and a gate on the forbidden primitive | 🔄 **5.1 PART-DONE (chat.ts sealed; 3 legal pages found, open) · 5.2 open** |
 | 6 | 🟠 Two chat SAFETY mechanisms are unreachable when signed in | ☐ 0/3 |
 | 7 | 🟠 A cooling-off break can be SHORTENED, and the copy deterring it is false | ☐ 0/3 |
@@ -270,13 +270,13 @@ BLOCKED and move on — do not guess, and do not quietly shrink the unit to some
 
 | | Unit 1 · Email | where |
 |---|---|---|
-| ☐ | **1.1** `SUPPORT_DEFAULTS.email` is `msaada@50pick.tz` — the default matches the ruling | `src/lib/support-config.ts:47` |
-| ☐ | **1.2** `email.ts` reads `SUPPORT_EMAIL()`; no `support@` literal survives as a VALUE | `email.ts:31,364,511` |
-| ☐ | **1.3** the DSAR bundle stops inventing a third address | `privacy.ts:285,301` |
-| ☐ | **1.4** the web-push VAPID subject stops naming a fourth | `push-service.ts:41` |
-| ☐ | **1.5** `SUPPORT_DEFAULTS.phone` is `0769777877` — not the retired landline | `src/lib/support-config.ts:48` |
-| ☐ | **1.6** `SUPPORT_DEFAULTS.phoneTel` is `+255769777877` — E.164, dials from anywhere | `src/lib/support-config.ts:49` |
-| ☐ | **1.7** a guard fails on any support contact literal outside `src/lib/support-config.ts` | new |
+| ✅ | **1.1** `SUPPORT_DEFAULTS.email` is `msaada@50pick.tz` — and the comment that coupled it to `ReplyTo` *in prose* is gone, because the coupling is now real: `REPLY_TO` is a function over `SUPPORT_EMAIL()` | `src/lib/support-config.ts` |
+| ✅ | **1.2** `server/email.ts` reads `SUPPORT_EMAIL()` at all **9** call sites; `REPLY_TO` is `() => SUPPORT_EMAIL()`. ⛔ A FUNCTION, never `const REPLY_TO = SUPPORT_EMAIL()` — that would be the Unit 5 defect inside the file that sends every email | `src/lib/server/email.ts` |
+| ✅ | **1.3** the DSAR bundle stops inventing a third address — both statutory response paths (correction, erasure) now read the row | `src/lib/server/privacy.ts` |
+| ✅ | **1.4** the web-push VAPID subject reads the row | `src/lib/server/push-service.ts` |
+| ✅ | **1.5** `SUPPORT_DEFAULTS.phone` is `0769777877` — the local form a Tanzanian dials. ⛔ Landed only AFTER 4.3, exactly as §1 required | `src/lib/support-config.ts` |
+| ✅ | **1.6** `SUPPORT_DEFAULTS.phoneTel` is `+255769777877`, and §9 asserts it is EXACTLY what `toDialTarget(phone)` yields — the two can no longer disagree silently | `src/lib/support-config.ts` |
+| ✅ | **1.7** new **§8** fails on any support-contact literal outside the source of truth, over `src/` AND `scripts/`, comments stripped by `decomment`. Proven RED on **8** sites. ⚠️ The desk number is banned only in E.164 form: the bare digits `0769777877` are ALSO the agent programme's `feeDestinationAccount`, and banning them would accuse four correct files and collide with the other campaign | `scripts/support-contact.test.mts` |
 
 | | Unit 2 · Helpline framing | where |
 |---|---|---|
@@ -297,8 +297,8 @@ BLOCKED and move on — do not guess, and do not quietly shrink the unit to some
 | | Unit 4 · The admin screen | where |
 |---|---|---|
 | ☐ | **4.1** every destination named in the card copy actually renders the value | `system/page.tsx:346` |
-| ☐ | **4.2** phone is validated; blank/undialable refused with an addressed error | `actions.ts:60` |
-| ☐ | **4.3** `phoneTel` HAS a control (it has none today) and the `tel:` target previews | `system-client.tsx:121` |
+| ✅ | **4.2** phone is validated at BOTH layers — an addressed `fieldError("support-phone", …)` in the action, and a `validate` on the config itself so the data is protected even if the form's check is removed. The action's own comment conceding *"nothing to point at for it"* is corrected in place | `src/app/admin/system/actions.ts` · `src/lib/server/support-config.ts` |
+| ✅ | **4.3** new `toDialTarget()` converts `0…` → `+255…` (the old code stripped punctuation and nothing else), the form shows a live **Dial target** preview of exactly what will be stored, and the hint no longer steers to the retired landline. ⭐ This was the PREREQUISITE of 1.5 | `src/lib/support-config.ts` · `system-client.tsx` |
 | ☐ | **4.4** a locked field LOOKS locked and states the REASON | `input.tsx` has no `disabled:` styling |
 | ☐ | **4.5** `LICENCE_NUMBER` appears read-only with the same treatment | new |
 

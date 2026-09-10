@@ -217,7 +217,18 @@ console.log("\n[E] Tester changes — demos hidden, New tab, footer email");
   // Single-language display (dual-language labels were removed): only the
   // active locale's word renders, so accept either "New" (en) or "Mpya" (sw).
   ok(`New tab present`, body.includes("New") || body.includes("Mpya"));
-  ok(`footer support email`, body.includes("support@50pick.tz"));
+  // 🔴 THIS ASSERTION USED TO PIN A LITERAL — `body.includes("support@50pick.tz")` — and it was
+  // ALREADY RED against production, because the persisted `support_config` row has served
+  // `msaada@50pick.tz` since 2026-08-19 and the footer reads that row. So a gate on the
+  // `predeploy` chain was demanding the platform keep publishing an address it had stopped
+  // publishing, and would have gone red against the correct fix rather than the defect.
+  // ⛔ Same class as `multi-persona-test.mjs` asserting a retired `TZ-GBT` licence placeholder:
+  // a guard that enforces the defect. The cure is not a NEWER literal — that just re-arms the
+  // trap for whoever changes the address next — it is to assert the INVARIANT: the footer
+  // publishes a real support mailbox on the licensed domain, and it is not the no-reply sender.
+  const footerEmail = (body.match(/[a-z0-9._%+-]+@50pick\.tz/i) || [])[0] || "";
+  ok(`footer publishes a support address on the licensed domain`, !!footerEmail, footerEmail || "no @50pick.tz address found");
+  ok(`…and it is not the no-reply sender`, !!footerEmail && !/^noreply@/i.test(footerEmail), footerEmail);
   await ctx.close();
 }
 

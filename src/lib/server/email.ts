@@ -28,7 +28,22 @@ import { AGENT_REJECT_REASON } from "@/lib/admin-status-lexicon";
 import { positionPermalinkHref } from "@/lib/position-permalink";
 
 const FROM = "noreply@50pick.tz";
-const REPLY_TO = "support@50pick.tz";
+/**
+ * 🔴 A FUNCTION, AND NEVER `const REPLY_TO = SUPPORT_EMAIL()`.
+ *
+ * This was the literal `"support@50pick.tz"`, and it is the `ReplyTo` on EVERY outbound
+ * message, the footer of all 61 templates, and the inline contact link in seven more places
+ * including both account-compromise warnings. The persisted `support_config` row has said
+ * `msaada@50pick.tz` since 2026-08-19. So the site published one inbox and every email replied
+ * to another — and a player who hit reply on "your account may be compromised" reached an
+ * address the operator may not have been reading.
+ *
+ * ⛔ A module-scope capture would be byte-for-byte the defect this campaign filed as Unit 5,
+ * shipped inside the file that sends every email: hydration is fire-and-forget, so a value read
+ * at import is `SUPPORT_DEFAULTS` frozen for the life of the process. Called per send, it is
+ * whatever the row actually holds.
+ */
+const REPLY_TO = () => SUPPORT_EMAIL();
 const COMPANY = "50pick";
 /**
  * 🔴 THE HELPLINE IS THE INDEPENDENT ONE, NOT OURS — corrected 2026-09-07.
@@ -46,10 +61,16 @@ const COMPANY = "50pick";
  * merely unguarded — it was ENFORCED, and correcting the number alone would have gone red.
  *
  * ⭐ `support-config.ts` already declares itself the single source of truth and exports a
- * synchronous, admin-overridable `HELPLINE()`. A private copy beside it could only ever
- * disagree. Import it.
+ * synchronous `HELPLINE()`. A private copy beside it could only ever disagree. Import it.
+ * ⚠️ **CORRECTED 2026-09-10: `HELPLINE()` is NOT "admin-overridable" and has not been since
+ * E-328.** It is a PINNED CONSTANT with no setter, no persisted field and no admin control — that
+ * is the entire point of the split, and a comment inviting the next reader to believe an operator
+ * can move the national problem-gambling number is the same rot this file's own history warns
+ * about. What IS operator-editable is the support email and desk phone, read through
+ * `SUPPORT_EMAIL()` / `SUPPORT_PHONE()`.
  */
 import { HELPLINE } from "@/lib/support-config";
+import { SUPPORT_EMAIL } from "@/lib/server/support-config";
 
 // ⭐ THE BASE URL HAS ONE HOME: `appUrl()` (`src/lib/app-url.ts`).
 // 🔴 This file carried a private `BASE_URL` defaulting to `kipindi-production.up.railway.app`
@@ -361,7 +382,7 @@ export async function sendEmail({ to, subject, html, tag, trackLinks = true }: S
       pm.sendEmail({
         From: FROM,
         To: to,
-        ReplyTo: REPLY_TO,
+        ReplyTo: REPLY_TO(),
         Subject: subject,
         HtmlBody: html,
         TextBody: stripHtml(html),
@@ -508,7 +529,7 @@ function wrap(body: string, opts: { accent?: "gold" | "royal" } = {}): string {
     </p>
     <p style="margin:12px 0 0;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11px;color:${TEXT_FAINT};line-height:1.7">
       18+ · Licensed by Gaming Board of Tanzania<br>
-      Helpline ${HELPLINE()} · <a href="mailto:${REPLY_TO}" style="color:${TEXT_SUBTLE};text-decoration:none">${REPLY_TO}</a>
+      Helpline ${HELPLINE()} · <a href="mailto:${REPLY_TO()}" style="color:${TEXT_SUBTLE};text-decoration:none">${REPLY_TO()}</a>
     </p>
     <p style="margin:14px 0 0;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:10px;color:${TEXT_FAINT}">
       You're receiving this because you have a 50pick account.<br>
@@ -574,7 +595,7 @@ function subtitleSw(text: string): string {
  * still escaped.
  */
 function supportLine(text: string): string {
-  return `<p style="margin:0 0 16px;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:13px;color:${TEXT_MUTED};line-height:1.55">${esc(text)} <a href="mailto:${REPLY_TO}" style="color:${BRAND_LINK};text-decoration:none">${REPLY_TO}</a></p>`;
+  return `<p style="margin:0 0 16px;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:13px;color:${TEXT_MUTED};line-height:1.55">${esc(text)} <a href="mailto:${REPLY_TO()}" style="color:${BRAND_LINK};text-decoration:none">${REPLY_TO()}</a></p>`;
 }
 
 function detailRows(rows: { label: string; value: string; tone?: "good" | "bad" }[]): string {
@@ -642,7 +663,7 @@ const fmtDateTime = (iso?: string): string => {
 
 /** Standard footer line on money/bet receipts: keep the reference for support. */
 function refNote(): string {
-  return `<p style="margin:14px 0 0;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11px;color:${TEXT_SUBTLE};line-height:1.55">Keep this reference. If anything looks wrong, reply here or email <a href="mailto:${REPLY_TO}" style="color:${BRAND_LINK};text-decoration:none">${REPLY_TO}</a> and quote it — every action on your account is logged and traceable.<br><span style="font-style:italic;color:${TEXT_FAINT}">Hifadhi kumbukumbu hii kwa ajili ya msaada.</span></p>`;
+  return `<p style="margin:14px 0 0;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11px;color:${TEXT_SUBTLE};line-height:1.55">Keep this reference. If anything looks wrong, reply here or email <a href="mailto:${REPLY_TO()}" style="color:${BRAND_LINK};text-decoration:none">${REPLY_TO()}</a> and quote it — every action on your account is logged and traceable.<br><span style="font-style:italic;color:${TEXT_FAINT}">Hifadhi kumbukumbu hii kwa ajili ya msaada.</span></p>`;
 }
 
 // ─── User email lookup helper ───────────────────────────────────────────
@@ -1704,7 +1725,7 @@ export function passwordChangedHtml({ time, method }: { time: string; method: st
       { label: "When", value: time },
       { label: "How", value: method },
     ])}
-    <p style="margin:16px 0 0;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11px;color:${TEXT_SUBTLE}">If you did NOT do this, your account may be compromised — reset your password and contact <a href="mailto:${REPLY_TO}" style="color:${BRAND_LINK};text-decoration:none">${REPLY_TO}</a> immediately.</p>
+    <p style="margin:16px 0 0;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11px;color:${TEXT_SUBTLE}">If you did NOT do this, your account may be compromised — reset your password and contact <a href="mailto:${REPLY_TO()}" style="color:${BRAND_LINK};text-decoration:none">${REPLY_TO()}</a> immediately.</p>
   `);
 }
 
@@ -1721,7 +1742,7 @@ export function emailChangedHtml({ newEmail, time }: { newEmail: string; time: s
       { label: "When", value: time },
       { label: "New address", value: newEmail },
     ])}
-    <p style="margin:16px 0 0;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11px;color:${TEXT_SUBTLE}">If you did NOT do this, your account may be compromised — contact <a href="mailto:${REPLY_TO}" style="color:${BRAND_LINK};text-decoration:none">${REPLY_TO}</a> immediately.</p>
+    <p style="margin:16px 0 0;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11px;color:${TEXT_SUBTLE}">If you did NOT do this, your account may be compromised — contact <a href="mailto:${REPLY_TO()}" style="color:${BRAND_LINK};text-decoration:none">${REPLY_TO()}</a> immediately.</p>
   `);
 }
 
@@ -1735,7 +1756,7 @@ export function accountClosedHtml({ name, time }: { name: string; time: string }
     ${detailRows([
       { label: "Closed", value: time },
     ])}
-    <p style="margin:16px 0 0;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11px;color:${TEXT_SUBTLE}">If you did NOT request this, contact <a href="mailto:${REPLY_TO}" style="color:${BRAND_LINK};text-decoration:none">${REPLY_TO}</a> immediately.</p>
+    <p style="margin:16px 0 0;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11px;color:${TEXT_SUBTLE}">If you did NOT request this, contact <a href="mailto:${REPLY_TO()}" style="color:${BRAND_LINK};text-decoration:none">${REPLY_TO()}</a> immediately.</p>
   `);
 }
 
@@ -1874,7 +1895,7 @@ export function agentDeactivatedHtml(): string {
     ${heading("Your agent account has been paused")}
     ${subtitle("A compliance officer has paused your agent account. Your code no longer recruits and no new commission accrues. Commission already paid stays in your wallet. Contact support if you believe this is a mistake.")}
     ${subtitleSw("Akaunti yako ya uwakala imesitishwa. Msimbo wako hauandikishi tena na hakuna kamisheni mpya. Kamisheni iliyokwisha lipwa inabaki kwenye pochi yako. Wasiliana na msaada.")}
-    <p style="margin:14px 0 0;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11px;color:${TEXT_SUBTLE}">Support: <a href="mailto:${REPLY_TO}" style="color:${BRAND_LINK};text-decoration:none">${REPLY_TO}</a></p>
+    <p style="margin:14px 0 0;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11px;color:${TEXT_SUBTLE}">Support: <a href="mailto:${REPLY_TO()}" style="color:${BRAND_LINK};text-decoration:none">${REPLY_TO()}</a></p>
   `);
 }
 
@@ -1886,7 +1907,7 @@ export function agentRevokedHtml({ reapplyAt }: { reapplyAt: string | null }): s
     ${heading("Your agent partnership has ended")}
     ${subtitle(`A compliance officer has ended your agent partnership. Your code no longer recruits and no new commission accrues. Commission already paid stays in your wallet.${when ? ` You may apply again from ${when}.` : ""}`)}
     ${subtitleSw(`Afisa wa uzingatiaji amekomesha ushirikiano wako wa uwakala. Msimbo wako hauandikishi tena na hakuna kamisheni mpya. Kamisheni iliyokwisha lipwa inabaki kwenye pochi yako.${when ? ` Unaweza kuomba tena kuanzia ${when}.` : ""}`)}
-    <p style="margin:14px 0 0;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11px;color:${TEXT_SUBTLE}">Support: <a href="mailto:${REPLY_TO}" style="color:${BRAND_LINK};text-decoration:none">${REPLY_TO}</a></p>
+    <p style="margin:14px 0 0;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11px;color:${TEXT_SUBTLE}">Support: <a href="mailto:${REPLY_TO()}" style="color:${BRAND_LINK};text-decoration:none">${REPLY_TO()}</a></p>
   `);
 }
 

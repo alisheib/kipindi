@@ -21,6 +21,7 @@ import webpush from "web-push";
 import { db } from "./store";
 import { audit } from "./audit";
 import { isLockedOut } from "./responsible-gambling";
+import { SUPPORT_EMAIL } from "@/lib/server/support-config";
 
 export type PushPayload = {
   title: string;
@@ -38,7 +39,11 @@ function ensureConfigured(): boolean {
   if (configured !== null) return configured;
   const pub = process.env.VAPID_PUBLIC_KEY || process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
   const priv = process.env.VAPID_PRIVATE_KEY;
-  const subject = process.env.VAPID_SUBJECT || "mailto:support@50pick.tz";
+  // ⚠️ The contact a PUSH SERVICE (Google, Mozilla, Apple) is given for abuse reports about
+  // this origin. Nobody player-facing sees it, which is exactly why it stayed wrong: it was a
+  // hardcoded `support@50pick.tz` while the operator's real inbox had been `msaada@` since
+  // 2026-08-19. Read the row like every other support contact.
+  const subject = process.env.VAPID_SUBJECT || `mailto:${SUPPORT_EMAIL()}`;
   if (!pub || !priv) {
     configured = false;
     return false;

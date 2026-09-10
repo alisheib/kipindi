@@ -41,13 +41,76 @@ export type SupportConfig = {
  *  found under this exact key, and renaming it would orphan their saves a second time. */
 export const SUPPORT_CONFIG_KEY = "support_config";
 
+/**
+ * ⛔ THESE ARE NOT COSMETIC FALLBACKS. They are what the platform PUBLISHES whenever the row is
+ * not in hand: a process between start and hydration, a de-hydrated process, a fresh database,
+ * and **a restored backup that predates the row**. Nine surfaces read `SUPPORT_PHONE()`, so in
+ * that state the app shows a support line the operator does not answer, on every one of them.
+ *
+ * 🔴 WHAT THEY USED TO BE, AND WHY IT MATTERED (owner's ruling, 2026-09-10):
+ *   email    `support@50pick.tz`   — the live row has said `msaada@50pick.tz` since 2026-08-19
+ *   phone    `+255 22 211 5811`    — ⛔ not a stale FORMAT, a DIFFERENT NUMBER: a landline that
+ *                                    appears nowhere in the live row
+ *   phoneTel `+255222115811`       — the same landline as the dial target
+ *
+ * ⭐ `phone` and `phoneTel` ARE TWO FACTS AND MUST NOT BE COLLAPSED INTO ONE. `phone` is what a
+ * player READS — the local form a Tanzanian actually dials. `phoneTel` is what a TAP dials, and
+ * stays E.164 so the same tap works from another carrier and from abroad. The console renders one
+ * control and derives the other through `toDialTarget` above.
+ *
+ * ⚠️ The comment that stood here said these "must match the email service's ReplyTo" — a coupling
+ * asserted in prose, pointing at a hardcoded literal in `server/email.ts` that did NOT match and
+ * had not for weeks. The coupling is now real instead of described: `REPLY_TO` is a function over
+ * `SUPPORT_EMAIL()`, so there is one value and nothing left to keep in step by hand.
+ */
 export const SUPPORT_DEFAULTS: SupportConfig = {
-  // Must match the email service's ReplyTo so a user who replies to a 50pick email and a
-  // user who taps "contact support" in the app reach the SAME inbox, on the licensed domain.
-  email: "support@50pick.tz",
-  phone: "+255 22 211 5811",
-  phoneTel: "+255222115811",
+  email: "msaada@50pick.tz",
+  phone: "0769777877",
+  phoneTel: "+255769777877",
 };
+
+/** Tanzania's country calling code. The one place the `+255` prefix is written. */
+const TZ_CC = "+255";
+
+/**
+ * 🔴 THE DIAL TARGET, DERIVED PROPERLY — AND THE REASON THIS FUNCTION HAD TO EXIST BEFORE THE
+ * OWNER'S RULING COULD BE OBEYED.
+ *
+ * `phone` is what a player READS and `phoneTel` is what a tap DIALS. The admin console renders
+ * ONE control and derives the other, and that derivation used to be
+ * `phone.replace(/[\s\-()]/g, "")` — it stripped spaces, dashes and brackets and NOTHING ELSE.
+ * So the owner's ruled local form `0769777877` would have been stored as the `tel:` target
+ * verbatim, producing `tel:0769777877`, which dials from a Tanzanian handset and **fails from
+ * abroad** — silently, behind a green success toast, with no field in the console that could
+ * even show you the result.
+ *
+ * ⭐ So this converts a local number to E.164 rather than merely tidying it:
+ *   `0769 777 877` → `+255769777877`      (the ruled local form — the case that was broken)
+ *   `255769777877` → `+255769777877`
+ *   `00255769777877` → `+255769777877`
+ *   `769777877`    → `+255769777877`      (9-digit national significant number)
+ *   `+255769777877` → unchanged            (already E.164)
+ *
+ * ⛔ It returns `""` for anything it cannot make dialable, and that is deliberate: an empty
+ * string is a value a caller must decide about, whereas passing the junk through produces a live
+ * `<a href="tel:">` wrapped around something no handset can call. `""` is what lets the admin
+ * action REFUSE with an addressed error instead of saving a dead button.
+ */
+export function toDialTarget(input: string): string {
+  const trimmed = (input ?? "").trim();
+  if (!trimmed) return "";
+  // Keep a leading +, drop every other non-digit (spaces, dashes, brackets, dots).
+  const plus = trimmed.startsWith("+");
+  const digits = trimmed.replace(/\D/g, "");
+  if (!digits) return "";
+  if (plus) return digits.length >= 8 ? `+${digits}` : "";
+  if (digits.startsWith("00")) { const r = digits.slice(2); return r.length >= 8 ? `+${r}` : ""; }
+  if (digits.startsWith("255")) return digits.length === 12 ? `+${digits}` : "";
+  // National formats: `0` + 9 digits, or the bare 9-digit national significant number.
+  if (digits.startsWith("0")) return digits.length === 10 ? `${TZ_CC}${digits.slice(1)}` : "";
+  if (digits.length === 9) return `${TZ_CC}${digits}`;
+  return "";
+}
 
 /**
  * The Tanzania national problem-gambling helpline. A CONSTANT — there is no setter, no
