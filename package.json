@@ -734,7 +734,10 @@
     "test:support-contact": "tsx scripts/support-contact.test.mts",
     "test:webhook-secret": "tsx scripts/webhook-secret.test.mts",
     "test:wallet-empty-escape": "tsx scripts/wallet-empty-escape.test.mts",
-    "test:rules-copy": "tsx scripts/rules-copy.test.mts"
+    "test:rules-copy": "tsx scripts/rules-copy.test.mts",
+    "qa:rules-pages": "node scripts/live/rules-pages-drive.mjs",
+    "qa:wallet-empty-escape": "node scripts/live/wallet-empty-escape-drive.mjs",
+    "ops:e266-eth-zh-icon": "tsx scripts/live/ops/e266-eth-zh-icon.mts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",
