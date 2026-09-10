@@ -21,7 +21,19 @@ const META: Record<Locale, string> = {
   zh: "符合 Tanzania Personal Data Protection Act 2022 及 EU GDPR 原则。",
 };
 
-const CONTENT: Record<Locale, React.ReactNode> = {
+/**
+ * 🔴 A FUNCTION, NOT A MODULE-SCOPE CONST — AND THE REASON IS THE SAME ONE `chat.ts` CARRIED.
+ *
+ * This was `const CONTENT: Record<Locale, React.ReactNode> = { … }`, evaluated ONCE at import,
+ * with `SUPPORT_EMAIL()` called inside it. Config hydration is fire-and-forget, so that capture
+ * was always `SUPPORT_DEFAULTS` — frozen for the life of the process — while every other reader
+ * on the platform saw the operator's real inbox. A statutory page telling a data subject where
+ * to write is the worst place on the site for a stale address.
+ *
+ * ⭐ `legal/terms/page.tsx` already had the correct shape one directory away: `export function
+ * content(...)`. This is that shape, so the address is read per request.
+ */
+function content(): Record<Locale, React.ReactNode> { return {
   en: (
     <>
       <LegalSection n="1" title="Data controller">
@@ -284,7 +296,7 @@ const CONTENT: Record<Locale, React.ReactNode> = {
       </LegalSection>
     </>
   ),
-};
+}; }
 
 export default async function PrivacyPage() {
   const { locale } = await getServerT();
@@ -297,7 +309,7 @@ export default async function PrivacyPage() {
         glyph="lock"
       />
       <p className="text-body-sm italic text-text-subtle">{BINDING[locale]}</p>
-      {CONTENT[locale]}
+      {content()[locale]}
     </>
   );
 }

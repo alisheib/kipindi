@@ -13,7 +13,7 @@
 import { audit } from "./audit";
 import { randomId } from "./crypto";
 import { prisma, hasDatabase } from "./prisma";
-import { loadConfig, saveConfig } from "./config-store";
+import { loadConfigResult, saveConfig } from "./config-store";
 import { MARKET_CATEGORIES, type MarketCategory } from "./market-service";
 
 const DISABLED_CATEGORIES_KEY = "sources.disabled_categories";
@@ -50,10 +50,15 @@ declare global {
   var __50PICK_DISABLED_CATEGORIES_HYDRATED: boolean | undefined;
 }
 async function ensureCategoriesHydrated(): Promise<void> {
+  // 🔴 LATCH LAST, AND ONLY ON A READ THAT ANSWERED. A boot blip here left `disabledCategories`
+  // empty for the life of the container — so categories an operator had switched OFF were offered
+  // again, and no error said so.
   if (globalThis.__50PICK_DISABLED_CATEGORIES_HYDRATED) return;
-  globalThis.__50PICK_DISABLED_CATEGORIES_HYDRATED = true;
-  const stored = await loadConfig<MarketCategory[]>(DISABLED_CATEGORIES_KEY);
+  const res = await loadConfigResult<MarketCategory[]>(DISABLED_CATEGORIES_KEY);
+  if (!res.ok) return;
+  const stored = res.value;
   if (stored) { disabledCategories.clear(); for (const c of stored) disabledCategories.add(c); }
+  globalThis.__50PICK_DISABLED_CATEGORIES_HYDRATED = true;
 }
 
 // ---------------------------------------------------------------------------

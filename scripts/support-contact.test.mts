@@ -446,6 +446,55 @@ ok("§8 no support contact is a literal outside support-config.ts", v8.length ==
      `phone ${d.phone} → ${toDialTarget(d.phone)} vs phoneTel ${d.phoneTel}`);
 }
 
+// ────────────────────────────────────────────────────────────────────────────
+// §11 — NO MODULE-SCOPE VALUE MAY CAPTURE A CONFIG GETTER
+//
+// 🔴 Hydration is fire-and-forget, so anything evaluated at IMPORT captures `SUPPORT_DEFAULTS`
+// and is frozen for the life of the process — while the same file's per-request reads see the
+// operator's real row. One feature disagreeing with itself.
+//
+// ⛔ THE FIRST SWEEP FOR THIS CLASS REPORTED "NOTHING ELSE" AND WAS WRONG, WHICH IS WHY THIS IS A
+// GUARD AND NOT A GREP. I looked for a getter and a `const` on the SAME LINE, found only
+// `chat.ts`, and ticked the row. Three statutory legal pages — `legal/aml`, `legal/privacy`,
+// `legal/responsible-gambling` — held the identical defect in a MULTI-LINE
+// `const CONTENT: Record<Locale, React.ReactNode> = { … }`, invisible to a line-scoped search.
+// A one-line search for a multi-line construct is the same mistake §3 made about JSX elements.
+//
+// ⚠️ A DEFERRED read is fine and must NOT be flagged: `const REPLY_TO = () => SUPPORT_EMAIL()`
+// is a function, evaluated per call. So the test is not "does a getter appear in a top-level
+// declaration" but "does it appear there with nothing to defer it".
+// ────────────────────────────────────────────────────────────────────────────
+const v11: string[] = [];
+for (const f of files) {
+  const src = decomment(readFileSync(f, "utf8"));
+  const rel = relative(ROOT, f).replace(/\\/g, "/");
+  // Top-level declarations only: `const`/`let`/`var` starting at column 0.
+  const re = /^(?:export\s+)?(?:const|let|var)\s+[A-Za-z_$][\w$]*/gm;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(src))) {
+    // Span the declaration by tracking bracket depth until it closes at depth 0.
+    let i = m.index + m[0].length, depth = 0, end = src.length;
+    for (; i < src.length; i++) {
+      const c = src[i];
+      if (c === "{" || c === "(" || c === "[") depth++;
+      else if (c === "}" || c === ")" || c === "]") depth--;
+      else if (c === ";" && depth <= 0) { end = i; break; }
+      if (depth < 0) { end = i; break; }
+    }
+    const span = src.slice(m.index, end);
+    for (const g of OPERATOR_GETTERS) {
+      const call = span.search(new RegExp(`\\b${g}\\s*\\(`));
+      if (call < 0) continue;
+      // Anything before the call that defers evaluation — an arrow or a function expression.
+      const beforeCall = span.slice(0, call);
+      if (/=>|\bfunction\b/.test(beforeCall)) continue;
+      const line = src.slice(0, m.index).split(/\r?\n/).length;
+      v11.push(`${rel}:${line} — module-scope value captures ${g}() at import`);
+    }
+  }
+}
+ok("§11 no module-scope value captures a config getter", [...new Set(v11)].length === 0, [...new Set(v11)].join(" | "));
+
 // ── The population itself must not be empty, or §3 and §4 would pass by finding nothing.
 // This is the check that separates "no violations" from "no search". ──
 const helplineSurfaces = files.filter((f) =>

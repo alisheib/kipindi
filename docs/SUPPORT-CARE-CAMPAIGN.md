@@ -77,6 +77,16 @@ fix.
 After every push:
 1. `https://www.50pick.tz/api/health` — confirm **`uptimeSec` RESET** (a low number). A healthy 200
    from the OLD container satisfies every naive check.
+   🔴 **AND A RESET `uptimeSec` IS NOT PROOF EITHER — corrected 2026-09-10, while two sessions were
+   deploying minutes apart.** The payload carries `version: "1.0.0"` and **no commit SHA**, so a low
+   uptime proves *a* deploy landed, never *whose*. The peer session read `uptimeSec: 97` and it was
+   MY container, not theirs. ⭐ **Verify by ARTIFACT: fetch something only YOUR commit can produce.**
+   For this campaign that was the published contact strings (`/help` no longer saying "Free
+   helpline", `/legal/privacy` serving `msaada@` where `privacy@50pick.tz` used to be); for a schema
+   change it is querying for the new column or enum value. ⚠️ To settle it directly:
+   `railway deployment list --json` reports `status` plus `meta.commitHash`, which is the only
+   reading that names the commit — `BUILDING` there is also how you tell a slow deploy from a
+   failed one before concluding anything from an unchanged uptime.
 2. **Re-read the actual surface you changed** and confirm the new behaviour is present.
 3. ⛔ If the deploy did not take, **stop pushing more units** and diagnose. Stacking commits on a
    failed deploy hides which one broke it.
@@ -258,7 +268,7 @@ BLOCKED and move on — do not guess, and do not quietly shrink the unit to some
 | 2 | 🔴 The operator's number carries a free-helpline framing at 5 sites | ✅ **6/6 — LIVE** |
 | 3 | 🔴 A save that never lands looks exactly like one that did | ☐ 0/4 |
 | 4 | 🔴 What the admin screen promises, validates, and won't explain | 🔄 **2/5 — 4.2 + 4.3 LIVE** (4.1, 4.4, 4.5 open) |
-| 5 | 🟠 Config frozen at module eval, and a gate on the forbidden primitive | 🔄 **5.1 PART-DONE (chat.ts sealed; 3 legal pages found, open) · 5.2 open** |
+| 5 | 🟠 Config frozen at module eval, and a gate on the forbidden primitive | ✅ **2/2 — and the CLASS was 4× bigger than the brief said** |
 | 6 | 🟠 Two chat SAFETY mechanisms are unreachable when signed in | ☐ 0/3 |
 | 7 | 🟠 A cooling-off break can be SHORTENED, and the copy deterring it is false | ☐ 0/3 |
 | 8 | 🟠 Five suites are not on the deploy path; one asserts a retired value | ☐ 0/3 |
@@ -304,8 +314,8 @@ BLOCKED and move on — do not guess, and do not quietly shrink the unit to some
 
 | | Unit 5 · Frozen config | where |
 |---|---|---|
-| 🔄 | **5.1** no module-scope value captures a `defineConfig` getter — `CAPACITY_MESSAGES` is now `capacityMessage(locale)`, so the chatbot instance is sealed. ⛔ **THE CLASS IS NOT.** My first sweep looked for a getter and a `const` on the SAME LINE and reported "nothing else", which was FALSE: three statutory legal pages hold the identical defect in a MULTI-LINE module-scope object — `legal/aml/page.tsx:22`, `legal/privacy/page.tsx:24` and `legal/responsible-gambling/page.tsx:22` each declare `const CONTENT: Record<Locale, React.ReactNode> = {` with `SUPPORT_EMAIL()` inside. ⭐ The correct shape is already beside them: `legal/terms/page.tsx:57` is `export function content(objectionHours: number)`. Sealed for `chat.ts`; the three pages and a guard over the class are the NEXT commit | `src/app/_actions/chat.ts` |
-| ☐ | **5.2** `ai-controls` uses `loadConfigResult`, flag set LAST on `ok` | `ai-controls.ts:33-35` |
+| ✅ | **5.1** no module-scope value captures a `defineConfig` getter — `chat.ts` unfrozen, AND the three statutory legal pages (`legal/aml`, `legal/privacy`, `legal/responsible-gambling`) converted from `const CONTENT = {…}` to the `function content()` shape `legal/terms` already had. ⛔ My first sweep said "nothing else" and was WRONG — it matched a getter and a `const` on the SAME LINE, which cannot see a multi-line object. New **§11** spans each top-level declaration by bracket depth and ignores anything deferred behind `=>`/`function`, so `const REPLY_TO = () => SUPPORT_EMAIL()` stays legal. Refreezing `legal/aml` goes RED | `scripts/support-contact.test.mts` |
+| ✅ | **5.2** `ai-controls` uses `loadConfigResult`, flag set LAST on `ok` — ⭐ **AND THE GUARD THAT EXISTS FOR THIS EXACT DEFECT WAS BLIND TO IT.** `test:config-hydration-gate` covered a HAND-WRITTEN list of four modules; `ai-controls` was not on it. Population is now DISCOVERED from the tree (any module that latches a `__50PICK_*_HYDRATED` flag **and** reads config-store), which found **three more** with the identical defect: `resolution-policy.ts` (the two-officer authorization switch — a COMPLIANCE control), `market-sentinel.ts` (the operator's pause on the resolution AI) and `source-registry.ts` (operator-disabled categories). All three fixed. ⚠️ `audit.ts` also latches a `_HYDRATED` flag and is deliberately EXCLUDED by rule, not by exemption: it reloads the HMAC ring from Prisma, never from SystemConfig, and its "claim first" is race protection. 46/0, was 38-over-4 | `src/lib/server/ai-controls.ts` · `resolution-policy.ts` · `market-sentinel.ts` · `source-registry.ts` · `scripts/config-hydration-gate.test.mts` |
 
 | | Unit 6 · Chat safety | where |
 |---|---|---|

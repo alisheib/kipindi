@@ -39,7 +39,7 @@ import { hostMatchesDomain } from "./updown-feed";
 import { assertAiBudget, describeAiBudgetBlock, recordAiUsage } from "./ai-usage";
 import { getAiOpsConfig } from "./ai-ops-config";
 import { getPlatformTimezone } from "./platform-config";
-import { loadConfig, saveConfig } from "./config-store";
+import { loadConfigResult, saveConfig } from "./config-store";
 import { audit } from "./audit";
 import type { StoredMarket } from "./market-service";
 
@@ -102,10 +102,16 @@ declare global {
 }
 
 async function ensurePauseHydrated(): Promise<void> {
+  // 🔴 LATCH LAST, AND ONLY ON A READ THAT ANSWERED. This gate holds the operator's PAUSE on the
+  // resolution AI. Latching before the await, through a `loadConfig` that cannot tell a failed
+  // read from an empty one, meant a boot blip resumed a sentinel an officer had deliberately
+  // stopped — and kept it resumed for the life of the container, with nothing reporting it.
   if (globalThis.__50PICK_SENTINEL_PAUSED_HYDRATED) return;
-  globalThis.__50PICK_SENTINEL_PAUSED_HYDRATED = true;
-  const stored = await loadConfig<{ paused: boolean }>(PAUSE_KEY);
+  const res = await loadConfigResult<{ paused: boolean }>(PAUSE_KEY);
+  if (!res.ok) return;
+  const stored = res.value;
   if (stored && typeof stored.paused === "boolean") globalThis.__50PICK_SENTINEL_PAUSED = stored.paused;
+  globalThis.__50PICK_SENTINEL_PAUSED_HYDRATED = true;
 }
 
 /** Has an officer paused the automatic AI resolution check? (Persisted.) */

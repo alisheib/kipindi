@@ -20,7 +20,7 @@
  * Persisted to SystemConfig ("resolution.policy"), globalThis-cached, hydrate-once,
  * audited — the house config pattern (mirrors payment-control.ts / ai-controls.ts).
  */
-import { loadConfig, saveConfig } from "./config-store";
+import { loadConfigResult, saveConfig } from "./config-store";
 import { audit } from "./audit";
 
 type ResolutionPolicy = { requireTwoOfficer: boolean };
@@ -36,10 +36,19 @@ declare global {
 const store: ResolutionPolicy = globalThis.__50PICK_RES_POLICY ?? (globalThis.__50PICK_RES_POLICY = { ...DEFAULTS });
 
 async function ensureHydrated(): Promise<void> {
+  // 🔴 THE FLAG LATCHES LAST, AND ONLY ON A READ THAT ANSWERED — and of the five modules that
+  // had this defect, THIS ONE GATES A COMPLIANCE CONTROL. `requireTwoOfficer` is the two-admin
+  // authorization switch. Latching before the await, through a `loadConfig` that reports a FAILED
+  // read as `null`, meant one transient database error at boot pinned this container on the code
+  // default for its whole life — silently deciding, for every resolution it then saw, whether a
+  // second officer was required. `ok: false` now means we could not ask: the gate stays DOWN and
+  // the next call retries.
   if (globalThis.__50PICK_RES_POLICY_HYDRATED) return;
-  globalThis.__50PICK_RES_POLICY_HYDRATED = true;
-  const stored = await loadConfig<Partial<ResolutionPolicy>>(KEY);
+  const res = await loadConfigResult<Partial<ResolutionPolicy>>(KEY);
+  if (!res.ok) return;
+  const stored = res.value;
   if (stored && typeof stored.requireTwoOfficer === "boolean") store.requireTwoOfficer = stored.requireTwoOfficer;
+  globalThis.__50PICK_RES_POLICY_HYDRATED = true;
 }
 
 /** Does market resolution require two distinct officers? Default false (single admin). */

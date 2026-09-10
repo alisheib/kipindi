@@ -32,7 +32,7 @@
  *   npx tsx scripts/config-hydration-gate.test.mts
  *   CHG_ROOT=<tree> npx tsx scripts/config-hydration-gate.test.mts
  */
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -49,13 +49,51 @@ function ok(label: string, cond: boolean, detail = "") {
 
 const store = read("src/lib/server/config-store.ts");
 
-/** Every module that latches a global "hydrated" flag from SystemConfig. */
-const GATES = [
-  { file: "src/lib/server/payment-ops.ts", flag: "__50PICK_KILLSWITCH_HYDRATED", what: "the emergency kill-switch map" },
-  { file: "src/lib/server/market-config.ts", flag: "__50PICK_MARKET_CONFIG_HYDRATED", what: "the fee rates and stake bounds" },
-  { file: "src/lib/server/updown-config.ts", flag: "__50PICK_UPDOWN_CONFIG_HYDRATED", what: "the Up & Down defaults" },
-  { file: "src/lib/server/payment-control.ts", flag: "__50PICK_PAY_CONTROL_HYDRATED", what: "the chosen money rail" },
-];
+/**
+ * Every module that latches a global "hydrated" flag from SystemConfig.
+ *
+ * ⛔ THIS LIST USED TO BE WRITTEN BY HAND, AND A FIFTH GATE WAS MISSING FROM IT.
+ * `ai-controls.ts` latches `__50PICK_AI_CONTROLS_HYDRATED` and had the pre-fix shape in full —
+ * flag set BEFORE the await, read through bare `loadConfig` — so a boot blip pinned a container
+ * on `chatbotEnabled: true` for life, and an operator who had switched the chatbot OFF would find
+ * it answering players again after a deploy. This suite exists for precisely that defect and was
+ * blind to it, because its population was four names somebody had remembered to type.
+ *
+ * ⭐ THE POPULATION IS NOW DISCOVERED FROM THE TREE. A guard that hard-codes what it covers is
+ * only ever as current as its last editor — the fix is not to add a fifth line, it is to stop
+ * maintaining the list. Anything that latches a `__50PICK_*_HYDRATED` global is now covered the
+ * moment it is written, and §2b ratchets the count so the population can never silently shrink.
+ */
+const KNOWN_WHAT: Record<string, string> = {
+  __50PICK_KILLSWITCH_HYDRATED: "the emergency kill-switch map",
+  __50PICK_MARKET_CONFIG_HYDRATED: "the fee rates and stake bounds",
+  __50PICK_UPDOWN_CONFIG_HYDRATED: "the Up & Down defaults",
+  __50PICK_PAY_CONTROL_HYDRATED: "the chosen money rail",
+  __50PICK_AI_CONTROLS_HYDRATED: "the chatbot and AI-generation switches",
+};
+
+const GATES: { file: string; flag: string; what: string }[] = [];
+{
+  const dir = join(ROOT, "src/lib/server");
+  for (const entry of readdirSync(dir)) {
+    if (!entry.endsWith(".ts")) continue;
+    const rel = `src/lib/server/${entry}`;
+    const src = read(rel);
+    // ⛔ THE SUBJECT IS A *SystemConfig* GATE, NOT ANY LATCH NAMED `_HYDRATED`. `audit.ts` also
+    // latches `__50PICK_AUDIT_HYDRATED`, and it must NOT be swept in: it reloads the audit RING
+    // from `prisma().auditLog` directly, never through config-store, and its "claim first" is
+    // deliberate — it stops concurrent first-writes double-loading the HMAC chain. Requiring a
+    // config-store read is what separates the two classes by a RULE rather than by an exemption
+    // list, which is the thing that made the old hand-written population wrong in the first place.
+    if (!/\bloadConfig(?:Result)?</.test(src)) continue;
+    for (const m of src.matchAll(/globalThis\.(__50PICK_[A-Z0-9_]*HYDRATED)\s*=\s*true\s*;/g)) {
+      const flag = m[1];
+      if (GATES.some((g) => g.file === rel && g.flag === flag)) continue;
+      GATES.push({ file: rel, flag, what: KNOWN_WHAT[flag] ?? `the config behind ${flag}` });
+    }
+  }
+  GATES.sort((a, b) => a.file.localeCompare(b.file));
+}
 
 // ── §1 · The store can say whether it answered ───────────────────────────────
 console.log("\n§1 · config-store distinguishes 'nothing stored' from 'could not ask'");
@@ -87,6 +125,22 @@ for (const g of GATES) {
   // hydration path could be added later using the shape this gate exists to forbid.
   ok(`2.${name} · no bare loadConfig< remains in this module`, !/\bloadConfig</.test(src),
     "a value-only read here is one refactor away from becoming a gate again");
+}
+
+// ── §2b · THE POPULATION IS REAL, AND MAY ONLY GROW ─────────────────────────
+//
+// ⛔ A DISCOVERED POPULATION HAS ITS OWN FAILURE MODE: if the scan breaks — a renamed directory,
+// a changed flag convention — it finds NOTHING and every §2 assertion passes vacuously. That is
+// strictly worse than the hand-written list it replaced, because it looks thorough. So the count
+// is ratcheted: five gates were discovered on 2026-09-10, and fewer than that means the SCANNER
+// is broken, not that the platform got simpler.
+console.log("\n§2b · the discovered population is real and has not shrunk");
+{
+  ok(`2b.1  at least five hydration gates discovered (found ${GATES.length})`, GATES.length >= 5,
+    GATES.map((g) => `${g.file.split("/").pop()}:${g.flag}`).join(", ") || "NONE — the scan is broken");
+  ok("2b.2  the discovery found ai-controls, which the hand-written list had missed",
+    GATES.some((g) => g.flag === "__50PICK_AI_CONTROLS_HYDRATED"),
+    GATES.map((g) => g.flag).join(", "));
 }
 
 // ── §3 · POSITIVE CONTROL — the scanner can still say NO ─────────────────────

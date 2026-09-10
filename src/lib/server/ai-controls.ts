@@ -14,7 +14,7 @@ import type { OperatorRefusal } from "../operator-refusal";
  * config ⇒ both features ON, i.e. exactly today's behaviour. When there is no
  * `ANTHROPIC_API_KEY` at all, every AI feature is inert regardless of these flags.
  */
-import { loadConfig, saveConfig } from "./config-store";
+import { loadConfigResult, saveConfig } from "./config-store";
 import { audit } from "./audit";
 
 type AiControls = { chatbotEnabled: boolean; pollGenEnabled: boolean };
@@ -29,14 +29,33 @@ declare global {
 }
 const store: AiControls = globalThis.__50PICK_AI_CONTROLS ?? (globalThis.__50PICK_AI_CONTROLS = { ...DEFAULTS });
 
+/**
+ * 🔴 THE FLAG IS SET LAST, AND ONLY ON A READ THAT ANSWERED.
+ *
+ * This used to set `__50PICK_AI_CONTROLS_HYDRATED = true` on the line BEFORE the await, and read
+ * through `loadConfig`, which collapses "there is no row" and "I could not ask" into the same
+ * `null`. Together those two facts meant a single boot blip — a pool timeout, a failover, a
+ * read-only replica for one second — closed the gate for ever on a container that had never read
+ * anything. It then served `DEFAULTS` for the life of the process: `chatbotEnabled: true`, so an
+ * operator who had switched the chatbot OFF would find it answering players again after a deploy,
+ * with nothing anywhere reporting a failure.
+ *
+ * ⭐ `loadConfigResult` is the primitive that keeps the two cases apart, and `define-config.ts`
+ * already uses it in exactly this shape — hydrate, then mark hydrated LAST, and only when the
+ * read landed. `ok: false` means we could not ask: the gate stays DOWN and the next call retries.
+ * ⚠️ `ok: true, value: null` — including the no-database case — IS a landed read. There is no row,
+ * defaults are correct, and the gate closes.
+ */
 async function ensureHydrated(): Promise<void> {
   if (globalThis.__50PICK_AI_CONTROLS_HYDRATED) return;
-  globalThis.__50PICK_AI_CONTROLS_HYDRATED = true;
-  const stored = await loadConfig<Partial<AiControls>>(KEY);
+  const res = await loadConfigResult<Partial<AiControls>>(KEY);
+  if (!res.ok) return; // could not ask — stay de-hydrated so a later call re-arms the attempt
+  const stored = res.value;
   if (stored) {
     if (typeof stored.chatbotEnabled === "boolean") store.chatbotEnabled = stored.chatbotEnabled;
     if (typeof stored.pollGenEnabled === "boolean") store.pollGenEnabled = stored.pollGenEnabled;
   }
+  globalThis.__50PICK_AI_CONTROLS_HYDRATED = true; // ⛔ LAST, and only on a read that answered
 }
 
 /** Is the help chatbot enabled? (Default true.) */
