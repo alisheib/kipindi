@@ -201,6 +201,113 @@ ok("§3 every helpline label renders the helpline", v3.length === 0, v3.join(" |
 ok("§4 no client component reads an operator-editable contact", v4.length === 0, v4.join(" | "));
 ok("§5 no client component imports the server support-config", v5.length === 0, v5.join(" | "));
 
+// ────────────────────────────────────────────────────────────────────────────
+// §6 + §7 — THE UNIT IS WHAT A PLAYER READS, AND §3's UNIT WAS THE SOURCE LINE
+//
+// 🔴 §3 says of itself: "The line is the unit because that is the unit a player reads."
+// ⭐ THAT IS FALSE, AND IT COST US THREE LIVE DEFECTS. A player reads a CARD and a
+// PARAGRAPH. §3 went green on 2026-09-10 while production served, measured:
+//     «Call us +255769777877 Free helpline · 24/7»   on /help
+// The operator's own desk line, published as the free national helpline. §3 could not see
+// any of the three sites, each for a DIFFERENT reason, and every reason is a property of
+// the unit or the vocabulary rather than of the code being checked:
+//
+//   1. `/help`'s ContactCard spans TWO lines of ONE element — `value={SUPPORT_PHONE()}`
+//      on one, `sub={t.help.freeHelpline}` on the next. A line-scoped check sees a getter
+//      with no label, then a label with no getter, and reports nothing. → §6 widens the
+//      unit to the ELEMENT.
+//   2. `/help`'s problem-gambling FAQ appends ` ${SUPPORT_PHONE()} (${t.common.free})`.
+//      Same line, so §3 resolved the label — but `t.common.free` is "free", and
+//      LOOKS_LIKE_HELPLINE is /helpline|hotline/i, which does not match it. → §6 widens the
+//      VOCABULARY: a number offered as "free" is making the same claim as one called a
+//      helpline, in every locale this platform serves.
+//   3. `chat.ts` writes `Helpline ${SUPPORT_PHONE()} (free, 24/7)` as an ENGLISH LITERAL in
+//      a prompt string. There is no `t.*` path on the line, so `resolveEn` is never called
+//      and the loop has nothing to test. → §6 reads the window's RAW text as well as its
+//      resolved labels. A claim is a claim whether it came from the dictionary or not.
+//
+// ⛔ AND §7 IS NOT A SPELLING RULE — IT IS THE ONE THAT MATTERS. `chat.ts` RULE 2 instructs
+// the model, when a player says they cannot stop or are addicted, to reply with the
+// OPERATOR'S OWN number. The statutory free line `0800 11 0011` is pinned three imports
+// away and `grep -n HELPLINE src/app/_actions/chat.ts` returns nothing. A person asking the
+// house for help getting away from the house is handed the house's phone number.
+// ⚠️ Rewording a prompt makes a model MORE LIKELY to say the right thing, never certain —
+// so §7 is a floor, not the safety mechanism. It fails if an at-risk response can name an
+// operator getter at all, which is a property of the source and therefore actually decidable.
+// ────────────────────────────────────────────────────────────────────────────
+
+/** A number offered as free/24-7, in all three locales the platform serves. */
+const FREE_FRAMING = /\b(free|toll[-\s]?free|bure|24\s*\/\s*7)\b|免费|全天候|saa\s*24/i;
+/** A number called a helpline/hotline, in all three locales. */
+const HELPLINE_WORD = /helpline|hotline|msaada wa tanzania|热线/i;
+/** The moment a player identifies themselves as at risk. */
+const AT_RISK = /problem gambling|gambling problem|chasing losses|can['’]?t stop|addicted|kucheza kupita kiasi|博彩问题/i;
+
+/**
+ * Every JSX component element's OPEN TAG, with its props — the unit a player actually meets.
+ * Depth-tracked so a nested element inside a prop (`icon={<I.phone s={15} />}`) does not end
+ * the scan early, which is exactly the shape `/help`'s ContactCard has.
+ */
+function elementWindows(src: string): { start: number; text: string }[] {
+  const out: { start: number; text: string }[] = [];
+  const re = /<([A-Z][A-Za-z0-9_]*)\b/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(src))) {
+    let i = m.index + m[0].length, depth = 0, end = -1;
+    while (i < src.length) {
+      const c = src[i];
+      if (c === "<") depth++;
+      else if (c === ">") { if (depth === 0) { end = i; break; } depth--; }
+      i++;
+    }
+    if (end > 0) out.push({ start: m.index, text: src.slice(m.index, end + 1) });
+  }
+  return out;
+}
+
+/** Resolve every `t.*` path in a window and return the English a player would read. */
+const labelsIn = (text: string): string =>
+  [...text.matchAll(/\b(t{1,2}(?:\.[A-Za-z0-9_]+)+)/g)]
+    .map((m) => resolveEn(m[1])).filter(Boolean).join(" | ");
+
+const v6: string[] = [];
+const v7: string[] = [];
+
+for (const f of files) {
+  const src = decomment(readFileSync(f, "utf8"));
+  const rel = relative(ROOT, f).replace(/\\/g, "/");
+  const lineOf = (off: number) => src.slice(0, off).split(/\r?\n/).length;
+  const callsOperator = (s: string) => OPERATOR_GETTERS.some((g) => new RegExp(`\\b${g}\\s*\\(`).test(s));
+
+  // The window is the ELEMENT where there is one, and the LINE everywhere else — so a prompt
+  // string, a plain sentence and a JSX card are each judged as the thing a player receives.
+  const windows: { start: number; text: string }[] = [
+    ...elementWindows(src).filter((w) => callsOperator(w.text)),
+  ];
+  let off = 0;
+  for (const line of src.split(/\r?\n/)) {
+    if (callsOperator(line)) windows.push({ start: off, text: line });
+    off += line.length + 1;
+  }
+
+  for (const w of windows) {
+    const readable = `${w.text} ${labelsIn(w.text)}`;
+    const claim = HELPLINE_WORD.test(readable) ? "helpline/hotline"
+      : FREE_FRAMING.test(readable) ? "free/24-7" : null;
+    if (claim) {
+      v6.push(`${rel}:${lineOf(w.start)} — an operator contact is published under a ${claim} claim`);
+    }
+    if (AT_RISK.test(readable)) {
+      v7.push(`${rel}:${lineOf(w.start)} — an AT-RISK response names an operator contact instead of HELPLINE()`);
+    }
+  }
+}
+
+// De-duplicate: an element window and its own line both legitimately match the same defect.
+const uniq = (a: string[]) => [...new Set(a)].sort();
+ok("§6 no operator contact is published as a helpline or as free", uniq(v6).length === 0, uniq(v6).join(" | "));
+ok("§7 no at-risk response hands out an operator contact", uniq(v7).length === 0, uniq(v7).join(" | "));
+
 // ── The population itself must not be empty, or §3 and §4 would pass by finding nothing.
 // This is the check that separates "no violations" from "no search". ──
 const helplineSurfaces = files.filter((f) =>

@@ -5,6 +5,10 @@ import { rateCheckAsync } from "@/lib/server/rate-limit";
 import { loadConfig, saveConfig } from "@/lib/server/config-store";
 import { getGlobalConfig } from "@/lib/server/market-config";
 import { SUPPORT_EMAIL, SUPPORT_PHONE } from "@/lib/server/support-config";
+// ⭐ The PINNED statutory helpline. Before 2026-09-10 this file did not import it at all —
+// `grep -n HELPLINE` returned nothing — while RULE 2 instructed the model to hand a
+// self-identifying problem gambler the operator's own desk number.
+import { HELPLINE } from "@/lib/support-config";
 
 /**
  * 50pick AI Help — live Claude (Haiku 4.5) server action.
@@ -74,11 +78,30 @@ const TROUBLE_MESSAGES: Record<string, string> = {
   zh: "我现在遇到了一些问题。请稍后重试，或联系客服。",
 };
 
-const CAPACITY_MESSAGES: Record<string, string> = {
-  en: `You've reached this session's question limit. For anything else, our support team is here to help — call ${SUPPORT_PHONE()} (free, 24/7) or email ${SUPPORT_EMAIL()}.`,
-  sw: `Umefikia kikomo cha maswali kwa kipindi hiki. Kwa msaada zaidi, wasiliana na timu yetu — piga ${SUPPORT_PHONE()} (bure, saa 24) au barua pepe ${SUPPORT_EMAIL()}.`,
-  zh: `您已达到本次会话的提问上限。如需更多帮助，请联系我们的支持团队 — 致电 ${SUPPORT_PHONE()}（免费，全天候）或发送邮件至 ${SUPPORT_EMAIL()}。`,
-};
+/**
+ * 🔴 A FUNCTION, NOT A CONSTANT — AND THAT IS THE WHOLE POINT (Unit 5.1).
+ *
+ * This was a module-scope `Record<string, string>` whose values called `SUPPORT_PHONE()` and
+ * `SUPPORT_EMAIL()` ONCE, at import. Hydration is fire-and-forget, so the capture was always
+ * `SUPPORT_DEFAULTS` — frozen for the life of the process — while the SAME FILE reads the same
+ * getters correctly per-request in `buildSystemPrompt`. One feature disagreed with itself: the
+ * bot quoted the operator's real desk when it answered, and a retired landline when it hit the
+ * daily cap. Called per-request, both now read whatever the row actually holds.
+ *
+ * ⛔ AND THE WORDING CHANGED IN THE SAME EDIT, DELIBERATELY. All three locales said the desk
+ * was free and always open — "(free, 24/7)" / "(bure, saa 24)" / "（免费，全天候）" — about
+ * 50pick's OWN number. Unfreezing without rewording would only have made a false claim current
+ * rather than stale. Nothing in this tree asserts the desk's tariff or its hours, so it claims
+ * neither. The free national line is `HELPLINE()`, and it is offered where it belongs: RULE 2.
+ */
+function capacityMessage(locale: string): string {
+  const messages: Record<string, string> = {
+    en: `You've reached this session's question limit. For anything else, our support team is here to help — call ${SUPPORT_PHONE()} or email ${SUPPORT_EMAIL()}.`,
+    sw: `Umefikia kikomo cha maswali kwa kipindi hiki. Kwa msaada zaidi, wasiliana na timu yetu — piga ${SUPPORT_PHONE()} au barua pepe ${SUPPORT_EMAIL()}.`,
+    zh: `您已达到本次会话的提问上限。如需更多帮助，请联系我们的支持团队 — 致电 ${SUPPORT_PHONE()} 或发送邮件至 ${SUPPORT_EMAIL()}。`,
+  };
+  return messages[locale] ?? messages.en;
+}
 
 /**
  * ⛔ `objectionHours` IS A PARAMETER, AND THE MISS IT FIXES WAS THE WORST IN THE SWEEP.
@@ -131,13 +154,15 @@ WHAT YOU KNOW:
 - Proposals: players propose markets and earn a prize if listed + resolved.
 - THERE IS NO PLAYER REFERRAL OR INVITE PROGRAMME, AND NO BONUS WALLET. Never tell a player they can invite friends to earn, refer anyone for a reward, or hold bonus/free-bet money. Referral earning belongs to vetted **Agent Affiliates** only — a separate application with documents, a registration fee and compliance approval, not something a player can switch on. If someone asks about referrals, invites, bonuses or becoming an agent, say it is not available to players and offer to connect them with the support team. Do not describe the agent application yourself.
 - Resolution: an officer seals the outcome against a public source URL (a second officer countersigns when two-admin authorization is switched on). The verdict is recorded but pays NOBODY yet: the pool stays whole for a ${objectionHours}-hour objection window, and a stakeholder who thinks the result is wrong can object in that time and freeze the payout until an officer rules.
-- 18+ only, licensed by the Gaming Board of Tanzania. Helpline ${SUPPORT_PHONE()} (free, 24/7), ${SUPPORT_EMAIL()}.
+- 18+ only, licensed by the Gaming Board of Tanzania. Our own support desk is ${SUPPORT_PHONE()}, ${SUPPORT_EMAIL()}.
+- That desk belongs to 50pick. Never describe it as free, as a national service, or as costing any particular amount — we publish no tariff for it, so any figure you give would be invented.
+- The national problem-gambling helpline is ${HELPLINE()}. It is free, it is independent of 50pick, and it is the number to give anyone who asks for help with gambling.
 
 KEY PAGES: /markets, /live, /positions, /wallet, /wallet/deposit, /wallet/withdraw, /profile, /profile/kyc, /profile/responsible-gambling, /proposals, /fairness, /help, /leaderboard.
 
 RULES:
 1. NEVER recommend which side to pick (YES or NO). You may explain HOW a market resolves, never WHICH side to choose.
-2. If the user shows signs of problem gambling (chasing losses, can't stop, addicted), respond ONLY with: "I'd like to help with that. Let me direct you to our responsible gambling tools at Profile > Responsible Gambling, or call ${SUPPORT_PHONE()}."
+2. If the user shows signs of problem gambling (chasing losses, can't stop, addicted), respond ONLY with: "I'd like to help with that. Let me direct you to our responsible gambling tools at Profile > Responsible Gambling, or call the free national helpline ${HELPLINE()}." ⛔ Never give our own support desk number in answer to this — it is the operator's line, and a person asking for help getting away from gambling must be pointed to the independent national service.
 3. If you don't know a 50pick answer, say so briefly and offer to connect them with the support team.`;
 }
 
@@ -165,7 +190,7 @@ export async function chatWithClaude(
   // Hard daily cap — once reached, return the capacity message and do NOT
   // call the API. This is the real defence against sustained token burn.
   if (!(await consumeDailyQuota(session.userId))) {
-    return { text: CAPACITY_MESSAGES[locale] ?? CAPACITY_MESSAGES.en };
+    return { text: capacityMessage(locale) };
   }
 
   try {

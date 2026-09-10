@@ -3,6 +3,9 @@ import { I } from "@/components/ui/glyphs";
 import { PageHeader } from "@/components/ui/page-header";
 import { PageHero } from "@/components/ui/page-hero";
 import { SUPPORT_EMAIL, SUPPORT_PHONE, SUPPORT_PHONE_TEL } from "@/lib/server/support-config";
+// ⭐ The statutory helpline is a PINNED CONSTANT in the client-safe half — no setter, no
+// persisted field, no admin control. It is what an at-risk question must return.
+import { HELPLINE } from "@/lib/support-config";
 import { getServerT } from "@/lib/i18n-server";
 import { getEffectiveConfig } from "@/lib/server/market-config";
 import { isChatbotEnabled } from "@/lib/server/ai-controls";
@@ -61,12 +64,20 @@ export default async function HelpPage() {
           ⚠️ The grid drops to two columns with it, or two cards stretch across
           three and the row reads as a missing tile. */}
       <section className={`grid grid-cols-1 gap-3 ${chatEnabled ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
+        {/* 🔴 THE SUB-LABEL BELOW SAID "Free helpline · 24/7", BESIDE THE OPERATOR'S OWN DESK.
+            Measured on production 2026-09-10, this card rendered
+            «Call us +255769777877 Free helpline · 24/7». The free national line is
+            `0800 11 0011`, PINNED in `support-config`; this number is 50pick's own. ⚠️ Nothing
+            in the tree asserts what this desk costs to call or when it is staffed, so the copy
+            now claims neither — a tariff we cannot source does not belong in player copy.
+            `test:support-contact` §6 fails if an operator contact is ever published under a
+            free/24-7 or helpline framing again, in any of the three locales. */}
         <ContactCard
           icon={<I.phone s={15} />}
           tone="yes"
           title={t.help.callUs}
           value={SUPPORT_PHONE()}
-          sub={t.help.freeHelpline}
+          sub={t.help.supportLine}
           href={`tel:${SUPPORT_PHONE_TEL()}`}
         />
         <ContactCard
@@ -115,7 +126,14 @@ export default async function HelpPage() {
                   {key === "faq1" && cfg.feeModel === "loser-share"
                     ? fill(t.help.faq1aLoser, { pct: pctNum((cfg.platformFeeRate ?? 0) + (cfg.operatorFeeRate ?? 0)) })
                     : fill(t.help[`${key}a` as keyof typeof t.help], { pct: pctNum(cfg.commissionRate), ceiling: fmtRate(cfg.feeCeilingRate), hours: durationHours(locale, cfg.objectionWindowHours) })}
-                  {key === "faq5" && ` ${SUPPORT_PHONE()} (${t.common.free}).`}
+                  {/* 🔴 faq5 IS "I think I have a problem with gambling. What can I do?" — and
+                      this line used to append the OPERATOR'S desk number labelled `t.common.free`
+                      ("free" / "bure" / "免费"). Two wrongs at once: the number was not the free
+                      line, and the free line is exactly what this question should return. It is
+                      now the pinned statutory helpline, which IS free — so the label is true for
+                      the first time, and a player who asks the house for help is given the
+                      independent national number rather than the house's own. */}
+                  {key === "faq5" && ` ${HELPLINE()} (${t.common.free}).`}
                 </p>
               </details>
             );

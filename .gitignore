@@ -55,6 +55,13 @@ scripts/_walkthrough/
 # `npm run qa:agent-visual` re-derives them against whatever the page actually is.
 docs/shots/
 
+# SUPPORT & CARE surface shots (npm run qa:support-shots → scripts/live/.shots/support).
+# Same rule as every other shot dir here: the DRIVE is tracked and re-derives these on demand,
+# the PNGs are not. ⚠️ Added 2026-09-10 because this one was the only shot directory NOT ignored,
+# so a drive run left `scripts/live/.shots/` sitting in `git status` — in a repo where two
+# sessions share a trunk and one has already swept another's untracked files into its own commit.
+scripts/live/.shots/
+
 # Material-system merge shots (scripts/live-material-probe.mjs, SHOT_DIR=.qa-design).
 # Evidence, not source: the probe is committed so anyone can RE-SHOOT, and the images
 # are not, because a checked-in PNG is a claim nobody can re-derive. Same rule as

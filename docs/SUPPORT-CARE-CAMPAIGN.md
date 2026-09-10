@@ -37,6 +37,12 @@ Per ledger unit, in this order, no batching:
    fixing the class — that mistake is why one of these units exists at all.
 4. **Prove the guard GREEN**, and prove it still goes red if you re-break the fix.
 5. **Run the full board:** `npm run test:all`. ⚠️ **Baseline is 311/324** and the 13 reds are named
+   ⭐ **CONFIRMED 2026-09-10 by both sessions independently — 311/324 is real, not a stale quote.**
+   ⛔ **BUT IF YOU MEASURE 310/324 WITH `test:lipa-qr` RED, THAT IS NOT A PRODUCT DEFECT.** It dies
+   with `Cannot find module 'jsqr'`. `jsqr` is declared in `package.json` and present in
+   `package-lock.json`; it was simply not installed in the checkout. One `npm install` restores
+   311/324. ⭐ This is §0.4's own hazard in its mild form — **read the FIRST failure's text before
+   believing a red.** A missing dependency and a broken product look identical in a summary line.
    in `docs/LIVE-QA-CAMPAIGN.md`. **Anything else red is yours** — do not push past it, and do not
    re-baseline a ratchet to make your own red go away.
    ⚠️ **Two caveats before you trust that number.** The denominator drifts as suites are added, so
@@ -87,8 +93,15 @@ SILENT — you find out by losing work, not by an error.**
   (replies cross mid-flight):
   > *"I am running &lt;THIS CAMPAIGN&gt;. Files I own: &lt;list&gt;. I have pushed: &lt;shas, or none&gt;.
   > `test:all` is &lt;n&gt;/324 in my tree. Tell me your file set and your last push."*
-- ⛔ **WORKTREES, NOT A SHARED DIRECTORY.** `F:\kipindi-main` holds the Railway CLI link — run
-  `railway …` from there even when working elsewhere. The second session takes its own
+- ⛔ **WORKTREES, NOT A SHARED DIRECTORY.** ~~`F:\kipindi-main` holds the Railway CLI link — run
+  `railway …` from there even when working elsewhere.~~ 🔴 **FALSE, AND CORRECTED 2026-09-10 BY BOTH
+  SESSIONS INDEPENDENTLY: there is no `F:` drive on this machine.** `ls -d /f/kipindi-main` fails and
+  only `/c` is mounted. The instruction is also UNNECESSARY: `railway status` run from
+  `C:\kipindi-main` itself already resolves project **50pick** / environment **production** /
+  service **50pick**. ⭐ For a read that needs the database, `railway run --service Postgres -- <cmd>`
+  injects `DATABASE_PUBLIC_URL` into the child process, so the credential is never typed into a
+  command line. The Railway **MCP** also works, but only when passed `project_id` explicitly — it
+  cannot discover the link by itself and answers `Unauthorized` if you let it try. The second session takes its own
   `git worktree` with its own branch and its own `.next`. `git worktree list` shows who is where.
   A shared directory has already made one session's files vanish mid-edit under the other's
   `git checkout`.
@@ -242,10 +255,10 @@ BLOCKED and move on — do not guess, and do not quietly shrink the unit to some
 | Unit | What it seals | Done |
 |---|---|---|
 | 1 | 🔴 The ruled contacts vs the six wrong values still shipping | ☐ 0/7 |
-| 2 | 🔴 The operator's number carries a free-helpline framing at 5 sites | ☐ 0/6 |
+| 2 | 🔴 The operator's number carries a free-helpline framing at 5 sites | ✅ **6/6 — LIVE** |
 | 3 | 🔴 A save that never lands looks exactly like one that did | ☐ 0/4 |
 | 4 | 🔴 What the admin screen promises, validates, and won't explain | ☐ 0/5 |
-| 5 | 🟠 Config frozen at module eval, and a gate on the forbidden primitive | ☐ 0/2 |
+| 5 | 🟠 Config frozen at module eval, and a gate on the forbidden primitive | 🔄 **5.1 PART-DONE (chat.ts sealed; 3 legal pages found, open) · 5.2 open** |
 | 6 | 🟠 Two chat SAFETY mechanisms are unreachable when signed in | ☐ 0/3 |
 | 7 | 🟠 A cooling-off break can be SHORTENED, and the copy deterring it is false | ☐ 0/3 |
 | 8 | 🟠 Five suites are not on the deploy path; one asserts a retired value | ☐ 0/3 |
@@ -267,12 +280,12 @@ BLOCKED and move on — do not guess, and do not quietly shrink the unit to some
 
 | | Unit 2 · Helpline framing | where |
 |---|---|---|
-| ☐ | **2.1** `/help`'s "Call us" card | `help/page.tsx:68-69` |
-| ☐ | **2.2** the problem-gambling FAQ | `help/page.tsx:118` |
-| ☐ | **2.3** the chatbot's RULE 2 hands out the STATUTORY line | `chat.ts:134,140` |
-| ☐ | **2.4** §3's unit is the ELEMENT / prompt STRING, not the source line | `support-contact.test.mts:158` |
-| ☐ | **2.5** `test:support-contact` AND `test:cert-c1` are on `predeploy` | `package.json` |
-| ☐ | **2.6** `CAPACITY_MESSAGES` lose *"(free, 24/7)"* / *"(bure, saa 24)"* / *"（免费，全天候）"* — land with 5.1 | `chat.ts:78-80` |
+| ✅ | **2.1** `/help`'s "Call us" card — sub-label is now `t.help.supportLine` ("Our support desk"), claiming no tariff and no national status. ⭐ The old copy was **measured on production**, not inferred: «Call us +255769777877 Free helpline · 24/7». | `help/page.tsx` |
+| ✅ | **2.2** the problem-gambling FAQ — faq5 now returns `HELPLINE()`, so the `t.common.free` label beside it is TRUE for the first time (the statutory line really is free) and an at-risk player is sent to the independent service, not the house | `help/page.tsx` |
+| ✅ | **2.3** the chatbot's RULE 2 hands out the STATUTORY line — `chat.ts` now imports `HELPLINE` (it imported nothing of the kind before) and RULE 2 names it. The fact line splits the desk from the helpline onto separate statements | `src/app/_actions/chat.ts` |
+| ✅ | **2.4** §3's unit is the ELEMENT / prompt STRING, not the source line — new **§6** (element + line windows, vocabulary widened to free/24-7/hotline in en·sw·zh, raw literals as well as resolved `t.*`) and **§7** (no at-risk response may name an operator contact). ⭐ Proven RED on all five sites, then GREEN, then **re-broken by five independent mutations and caught every time**. §3 stayed green throughout — which is the demonstration that it was blind, not that it was passing | `scripts/support-contact.test.mts` |
+| ✅ | **2.5** `test:support-contact` AND `test:cert-c1` are on `predeploy` — inserted after `test:i18n`; chain 94 → 96 entries. ⚠️ `test:cert-c1` IS `comms-email-truth` (same suite, different name) — neither brief says so | `package.json` |
+| ✅ | **2.6** `CAPACITY_MESSAGES` lose *"(free, 24/7)"* / *"(bure, saa 24)"* / *"（免费，全天候）"* — and became `capacityMessage(locale)`, a FUNCTION, so 5.1 landed with it exactly as the brief required | `src/app/_actions/chat.ts` |
 
 | | Unit 3 · Saves | where |
 |---|---|---|
@@ -291,7 +304,7 @@ BLOCKED and move on — do not guess, and do not quietly shrink the unit to some
 
 | | Unit 5 · Frozen config | where |
 |---|---|---|
-| ☐ | **5.1** no module-scope value captures a `defineConfig` getter | `chat.ts:77-81` |
+| 🔄 | **5.1** no module-scope value captures a `defineConfig` getter — `CAPACITY_MESSAGES` is now `capacityMessage(locale)`, so the chatbot instance is sealed. ⛔ **THE CLASS IS NOT.** My first sweep looked for a getter and a `const` on the SAME LINE and reported "nothing else", which was FALSE: three statutory legal pages hold the identical defect in a MULTI-LINE module-scope object — `legal/aml/page.tsx:22`, `legal/privacy/page.tsx:24` and `legal/responsible-gambling/page.tsx:22` each declare `const CONTENT: Record<Locale, React.ReactNode> = {` with `SUPPORT_EMAIL()` inside. ⭐ The correct shape is already beside them: `legal/terms/page.tsx:57` is `export function content(objectionHours: number)`. Sealed for `chat.ts`; the three pages and a guard over the class are the NEXT commit | `src/app/_actions/chat.ts` |
 | ☐ | **5.2** `ai-controls` uses `loadConfigResult`, flag set LAST on `ok` | `ai-controls.ts:33-35` |
 
 | | Unit 6 · Chat safety | where |
@@ -332,7 +345,7 @@ BLOCKED and move on — do not guess, and do not quietly shrink the unit to some
 |---|---|---|
 | ☐ | **11.1** what a SUPPORT grant can actually see and do is written down | `roles.ts:198-201,242` |
 | ☐ | **11.2** every control a SUPPORT user cannot use is disabled WITH ITS REASON, not absent | `/admin/players` |
-| ☐ | **11.3** the desk is measured signed in AS SUPPORT, not as ADMIN | `QA_SUPPORT_PASSWORD` |
+| ⛔ | **11.3** the desk is measured signed in AS SUPPORT, not as ADMIN — **BLOCKED: `QA_SUPPORT_PASSWORD` is not in `.env.qa.local`** (measured; the file holds 7 other QA secrets and not this one). UNBLOCKED BY: the owner adding that secret, or minting the `support` persona. ⚠️ An instrument already exists — `qa:read-tiers` signs in as SUPPORT — so this is a missing CREDENTIAL, not a missing driver | `.env.qa.local` |
 | ☐ | **11.4** anything the role cannot do that it plainly SHOULD is filed, not silently accepted | new |
 
 </details>
@@ -445,6 +458,16 @@ you to correct someone's arithmetic is the wrong place to mix them. ⛔ But that
 comment and correct its arithmetic in the same commit** — leaving prose that reasons about a
 retired string is how this repo's comments rot (see the standing rule in §0a).
 
+🔴 **A LIVE PRE-DEPLOY GATE PINS THE RETIRED ADDRESS, AND NOTHING IN THIS BRIEF NAMED IT —
+FOUND 2026-09-10.** `scripts/pre-deploy-live-check.mjs:220` is
+``ok(`footer support email`, body.includes("support@50pick.tz"));`` and `qa:live` **IS on the
+`predeploy` chain** (unlike `test:support-contact`, which is not). ⭐ **It is already RED against
+production today**, because the live footer serves `msaada@50pick.tz` — measured on the real site,
+not inferred. So this gate is asserting a value the platform stopped publishing, on the deploy path,
+and it must be changed to read the getter in the SAME commit as row 1.1 or the fix cannot ship.
+⛔ This is the same class as Unit 8.2 (`multi-persona-test.mjs` asserting a retired `TZ-GBT`) — a
+guard that pins the WRONG answer — and Unit 8's inventory of such gates does not list it.
+
 **Accept when:** `SUPPORT_DEFAULTS.email` is `msaada@50pick.tz`; `email.ts`, `privacy.ts` and
 `push-service.ts` carry no support-address literal as a **value**; a guard fails on any such literal
 outside `src/lib/support-config.ts` and is proven RED against today's tree first; and the DG-P-08 comment
@@ -500,9 +523,23 @@ value, and **no** audit row. After a success, changing the row out-of-band and r
 row's value. Proven by execution.
 ⛔ **DO NOT INDUCE A DATABASE FAILURE IN PRODUCTION to prove this.** The seam already exists and is
 already used: `define-config.ts:41-54` takes injectable `deps`, and `scripts/define-config-gate.test.mts:45`
-drives it that way. Make the injected `save` reject, and assert the toast, the revert and the
+drives it that way. ~~Make the injected `save` reject~~ and assert the toast, the revert and the
 absence of an audit row **in the suite** — that is a stronger proof than a live outage would be,
 and it can go red on demand for ever after.
+
+🔴 **CORRECTION, MEASURED 2026-09-10 — THE ACCEPT CRITERION ABOVE WOULD HAVE PROVEN A FICTION.**
+"Make the injected `save` reject" tests a path the real code cannot take. `saveConfig`
+(`src/lib/server/config-store.ts:88`) is documented *"No-op without a DB; **never throws**"* and its
+body catches every error into a `console.error` and returns `void`. A guard built on a rejecting
+`save` would assert behaviour against a stub that behaves unlike the function it stands in for —
+green, and meaningless.
+⭐ **AND THE REPO ALREADY SOLVED THIS, IN THE SHAPE THE FIX SHOULD COPY.** `putJob`
+(`src/lib/server/chain-purge.ts:282-292`) does `await saveConfig(...)`, then **reads the row back**
+and throws when it did not land, under a docblock that states the reason exactly: *"a failed write
+is indistinguishable from a successful one at the call site."* So Unit 3's real fix is not an
+`await` — `await` alone changes nothing, because there is nothing to await a rejection from — it is
+**await + read-back**, with the registry mutation, the audit row and the `{ok:true}` all moved
+AFTER the read-back succeeds.
 
 ### Unit 4 🔴 · What the screen promises, validates, and won't explain
 - `system/page.tsx:346` promises changes reach *"help, chatbot, login, register, legal, KYC,
@@ -623,7 +660,14 @@ list and player detail under READ_TIERS, and nothing else. There is no `/admin/s
 
 ⛔ **That may be correct, or it may be the whole gap — and this brief cannot tell you which**,
 because every surface in it was measured as ADMIN. An officer with a SUPPORT grant sees a different
-console by design, and **nobody has looked at it**. `.env.qa.local` holds `QA_SUPPORT_PASSWORD`.
+console by design. ⛔ **BUT `.env.qa.local` DOES *NOT* HOLD `QA_SUPPORT_PASSWORD` — MEASURED
+2026-09-10.** The file is 8 lines and holds exactly `QA_ADMIN_PASSWORD`, `QA_ALPHA_PASSWORD`,
+`QA_ECHO_PASSWORD`, `QA_FINANCE_PASSWORD`, `QA_GROWTH_PASSWORD`, `QA_OFFICER_PASSWORD` and
+`QA_TRADING_PASSWORD`. `scripts/live/harness.mjs:45` DOES define a `support` persona (phone
+`712000108`, secret `QA_SUPPORT_PASSWORD`) — the secret is simply absent, so `qaEnv()` throws.
+⚠️ **And "nobody has looked at it" is overstated:** `qa:read-tiers`
+(`scripts/live-read-tiers.mjs:93`) signs in AS SUPPORT against production and is a registered npm
+script. It is blocked by the same missing secret, not by the absence of an instrument.
 
 **Accept when:** the SUPPORT role's real capability is written down from a signed-in measurement,
 not from `roles.ts`; every control the role cannot use is **visibly disabled with its reason**
@@ -647,7 +691,7 @@ role plainly ought to be able to do and cannot is FILED as a finding rather than
   reading the loop. The discriminating run is stated as a repro, not performed.
 - **The reality-check popup has never been triggered.** It fires on a session-time threshold.
 - **The care desk was measured as ADMIN, not as SUPPORT** — they see different things by design.
-  `.env.qa.local` holds `QA_SUPPORT_PASSWORD`.
+  ⛔ `.env.qa.local` does **NOT** hold `QA_SUPPORT_PASSWORD` — measured 2026-09-10, see Unit 11.
 - **The chatbot was not driven**, only read. Whether Unit 6 is live or latent depends on whether
   production has `ANTHROPIC_API_KEY` set and the chatbot on — **unknowable from the tree**.
 - **Not read:** Postmark-side templates outside `email.ts`; the 61 bodies individually;
