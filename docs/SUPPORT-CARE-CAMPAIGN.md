@@ -350,7 +350,7 @@ would unblock it, do every other unit, and report it at the end. **Never idle.**
 | 7 | 🟠 A cooling-off break can be SHORTENED, and the copy deterring it is false | ✅ **3/3 — LIVE** |
 | 8 | 🟠 Five suites are not on the deploy path; one asserts a retired value | ✅ **3/3 — LIVE. ⚠️ the brief's list of six was STALE; the real defect was 5 of THIS CAMPAIGN'S OWN guards** |
 | 9 | 🟠 The first-login primer blocks its own photographer | ✅ **3/3 — LIVE** |
-| 10 | 🟡 Routing and chrome — dialability, badges, duplicated constants | 🟡 **6/8 — LIVE.** ⭐ the ledger had **7** rows and the §4 prose held an **8th finding with no row** (CHASING_LOSSES); 10.1 and 10.8 remain, both re-scoped by measurement |
+| 10 | 🟡 Routing and chrome — dialability, badges, duplicated constants | ✅ **8/8 — LIVE** (the ledger had 7 rows; the §4 prose held an 8th finding with no row, now 10.8). ⚠️ 10.8 fixes the CLAIM; its classifier stays open and is named |
 | 11 | 🟠 "Perfect support user management" — the DESK, which nothing here audits | 🟡 **3/4 — LIVE.** ⭐ 11.3 was **NOT BLOCKED** — the credential the brief called missing is present; the row is OPEN, not blocked, and needs a live drive |
 
 <details><summary><strong>Row ledger — tick these</strong></summary>
@@ -424,7 +424,7 @@ would unblock it, do every other unit, and report it at the end. **Never idle.**
 
 | | Unit 10 · Routing and chrome | where |
 |---|---|---|
-| ☐ | **10.1** the self-exclusion refusal gives a DIALABLE number — ⛔ **RE-SCOPED BY MEASUREMENT, NOT DONE.** The refusals at `auth-service.ts:169,185` are SERVER strings rendered as plain text, so an anchor cannot simply be embedded: the fix is `{phone}`/`{email}` placeholders on the four `auth.selfExclusion*` dict keys in three locales plus `fillNodes` in the login error panel. Bigger than one edit and NOT started — left sealed rather than half-applied | `auth-service.ts` · `i18n-dict.ts` · `auth/login` |
+| ✅ | **10.1** the self-exclusion refusal gives a DIALABLE number — ⛔ **AND THE ROW'S OWN PREMISE WAS WRONG.** It points at `auth-service.ts:169,185`, but those are SERVER strings that the login page **never displays**: the panel renders from `t.auth.selfExclusion*` dict keys. So "add a `tel:` at auth-service" would have edited text no player reads. ⭐ **Nor could the number be interpolated into the body:** the page's only interpolation is `.replace("{date}", …)`, a STRING replace that cannot produce an anchor — a `tel:` inside the sentence renders as escaped text. The surface gets a dedicated contact row instead, tappable, on all three exclusion states, in every locale, without touching twelve strings. ⚠️ `SUPPORT_PHONE()` is READ and `SUPPORT_PHONE_TEL()` is DIALLED — two facts, so the same row works from a Tanzanian handset and from abroad. ⭐ **This is the one moment a player is told to call and given a number to retype**, and the rendered surface named no contact at all | `auth/login/page.tsx` |
 | ✅ | **10.2** the reality-check helpline is a `tel:` — it printed the PINNED statutory number in a `<span>` inside the modal that interrupts live play, directly under a Self-exclude button. ⚠️ It imports only the pinned half (`HELPLINE`, `HELPLINE_TEL`): this is a `"use client"` module, and §4/§5 fail on a client component that reads a config GETTER, because a browser bundle's module cache can never be hydrated server-side | `reality-check.tsx` |
 | ✅ | **10.3** legal pages open the address they cite a deadline against — ⭐ **the guard found ELEVEN bare sites, not the six the brief listed**, and two of them are in `auth/forgot-password`, which the brief names as an example of a page doing it CORRECTLY. Also `auth/admin` and `profile/account`. All wrapped in the anchor shape `legal/aml` already ships | `terms` · `privacy` · `auth/*` · `profile/account` |
 | ✅ | **10.4** the footer email label is a dict key in all three locales — `Email · {supportEmail}` was a hardcoded English literal one line below the translated `t.footer.helpline`, on EVERY page. ⭐ **`test:i18n` could not see it and never could:** it walks the DICTIONARY for missing or untranslated keys, and a string that was never a key is outside its population by construction. An absent key is invisible to a parity check | `public-footer.tsx` · `i18n-dict.ts` |
@@ -829,7 +829,7 @@ role plainly ought to be able to do and cannot is FILED as a finding rather than
 
 ## §6 · ⏭️ RESUME AT
 
-**Session 3 · Units 1–9 LIVE. Unit 10 at 6/8, Unit 11 at 3/4. Open: 10.1, 10.8, 11.3.**
+**Session 3 · Units 1–11 LIVE. Open: 11.3 (a live SUPPORT drive) and 10.8’s classifier half.**
 Row **11.3** is ⛔ BLOCKED on a missing credential — see its row; do not work around it.
 
 ⛔ **THE ONE OPERATOR ACTION STILL OUTSTANDING, AND IT IS NOT CODE.** The live `support_config`

@@ -680,16 +680,42 @@ ok("§11 no module-scope value captures a config getter", [...new Set(v11)].leng
     if (EXEMPT.includes(rel)) continue;
     const body = readFileSync(f, "utf8");
     for (const [getter, scheme] of SCHEMES) {
-      // `>{GETTER()}` — the getter standing as an element's own text. The same getter
-      // inside an href reads `${GETTER()}`, preceded by `$`, so it cannot match here.
-      const re = new RegExp(`>\\{${getter}\\(\\)\\}`, "g");
+      /**
+       * `>{GETTER()}` — the getter standing as an element's own text. The same getter
+       * inside an href reads `${GETTER()}`, preceded by `$`, so it cannot match here.
+       *
+       * 🔴 THE FIRST VERSION REQUIRED THE `>` TO BE ADJACENT, AND THAT MADE IT BLIND TO
+       * MULTI-LINE JSX — including the fix I wrote for row 10.1 an hour later, where the
+       * getter sits on its own line under an icon. It would have policed the six sites I
+       * happened to write on one line and silently ignored every wrapped one.
+       * ⚠️ Widening the match alone was NOT enough and briefly made it worse: with
+       * whitespace allowed, walking back to the nearest `<` lands on a self-closing
+       * SIBLING (`<I.mail … />`) rather than the enclosing anchor, so the guard flagged
+       * correct code. Containment is now tested properly — the last `<a ` must come after
+       * the last `</a>` — which is true for both the adjacent and the wrapped shape and
+       * cannot be fooled by a sibling element.
+       */
+      const re = new RegExp(`>\\s*\\{${getter}\\(\\)\\}`, "g");
       for (const m of body.matchAll(re)) {
         rendered++;
-        const before = body.slice(Math.max(0, m.index - 400), m.index);
-        const open = before.lastIndexOf("<");
-        const tag = open === -1 ? "" : before.slice(open);
-        if (!(/^<a[\s>]/.test(tag) && tag.includes(scheme))) {
-          const line = body.slice(0, m.index).split(/\r?\n/).length;
+        const before = body.slice(0, m.index);
+        // ⚠️ `<a` MAY BE FOLLOWED BY A NEWLINE, NOT A SPACE — a multi-attribute anchor in
+        // this repo is written `<a\n  href={…}\n  className={…}\n>`. A `lastIndexOf("<a ")`
+        // misses every one of them and then reports the correctly-anchored site as bare.
+        // Third variant of the same mistake in this one section: the shape of the markup
+        // kept being narrower in my head than in the tree.
+        const lastOpen = [...before.matchAll(/<a[\s>]/g)].map((x) => x.index).pop() ?? -1;
+        const lastClose = before.lastIndexOf("</a>");
+        const insideAnchor = lastOpen !== -1 && lastOpen > lastClose;
+        // ⚠️ SLICED FROM `body`, NOT FROM `before` — and getting that wrong is what the
+        // §14.3 control caught. `before` stops just short of the matched `>`, and for the
+        // adjacent shape that `>` IS the anchor tag's own closing bracket, so searching
+        // within `before` found no `>` at all, returned an empty tag, and flagged every
+        // correctly anchored site in the tree. The control rejected the cases it was
+        // calibrated on, which is always the detector's fault and never the control's.
+        const openTag = insideAnchor ? body.slice(lastOpen, body.indexOf(">", lastOpen) + 1) : "";
+        if (!(insideAnchor && openTag.includes(scheme))) {
+          const line = before.split(/\r?\n/).length;
           bare.push(`${rel}:${line} renders ${getter}() with no ${scheme} anchor`);
         }
       }
@@ -704,15 +730,28 @@ ok("§11 no module-scope value captures a config getter", [...new Set(v11)].leng
   // Calibrated on the two real shapes in this repo, constructed here rather than trusted.
   {
     const probe = (src: string) => {
-      const m = [...src.matchAll(/>\{SUPPORT_EMAIL\(\)\}/g)][0];
+      const m = [...src.matchAll(/>\s*\{SUPPORT_EMAIL\(\)\}/g)][0];
       if (!m) return "no-match";
       const before = src.slice(0, m.index);
-      const tag = before.slice(before.lastIndexOf("<"));
-      return /^<a[\s>]/.test(tag) && tag.includes("mailto:") ? "accepted" : "flagged";
+      const lastOpen = [...before.matchAll(/<a[\s>]/g)].map((x) => x.index).pop() ?? -1;
+      const lastClose = before.lastIndexOf("</a>");
+      const inside = lastOpen !== -1 && lastOpen > lastClose;
+      const openTag = inside ? src.slice(lastOpen, src.indexOf(">", lastOpen) + 1) : "";
+      return inside && openTag.includes("mailto:") ? "accepted" : "flagged";
     };
-    ok("§14.3 ⚠️ CONTROL — the detector flags a bare span and accepts a correct anchor",
+    // ⭐ FOUR SHAPES, NOT TWO. The third and fourth exist because the detector was wrong
+    // about both of them in turn: a WRAPPED anchor (the getter on its own line) was
+    // invisible to the adjacency rule, and then a self-closing SIBLING inside a correct
+    // anchor made the widened rule flag valid code. A control that only tests the two
+    // shapes you thought of is the reason both bugs shipped.
+    ok("§14.3 ⚠️ CONTROL — the detector flags bare text, accepts an anchor, and handles wrapped JSX and sibling elements",
       probe(`<span className="font-mono">{SUPPORT_EMAIL()}</span>`) === "flagged" &&
-      probe("<a href={`mailto:${SUPPORT_EMAIL()}`} className=\"x\">{SUPPORT_EMAIL()}</a>") === "accepted");
+      probe("<a href={`mailto:${SUPPORT_EMAIL()}`} className=\"x\">{SUPPORT_EMAIL()}</a>") === "accepted" &&
+      probe("<a href={`mailto:${SUPPORT_EMAIL()}`}>\n  {SUPPORT_EMAIL()}\n</a>") === "accepted" &&
+      probe("<a href={`mailto:${SUPPORT_EMAIL()}`}>\n  <I.mail s={13} />\n  {SUPPORT_EMAIL()}\n</a>") === "accepted" &&
+      // the shape that actually shipped in auth/login — the tag itself broken over lines
+      probe("<a\n  href={`mailto:${SUPPORT_EMAIL()}`}\n  className=\"x\"\n>\n  <I.mail s={13} />\n  {SUPPORT_EMAIL()}\n</a>") === "accepted" &&
+      probe("<a href=\"/help\">x</a>\n<span>\n  {SUPPORT_EMAIL()}\n</span>") === "flagged");
   }
   ok("§14.4 ⚠️ CONTROL — the exemption list is exactly one named file that still exists",
     EXEMPT.length === 1 && files.some((f) => relative(ROOT, f).replace(/\\/g, "/") === EXEMPT[0]),

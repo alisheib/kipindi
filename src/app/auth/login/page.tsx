@@ -9,7 +9,7 @@ import { LoginIdentifier } from "@/components/auth/login-identifier";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { RateLimitBanner } from "@/components/auth/rate-limit-banner";
 import { startLoginAction } from "./actions";
-import { SUPPORT_EMAIL } from "@/lib/server/support-config";
+import { SUPPORT_EMAIL, SUPPORT_PHONE, SUPPORT_PHONE_TEL } from "@/lib/server/support-config";
 import { getServerT } from "@/lib/i18n-server";
 import { bounceIfAuthed } from "../bounce-authed";
 
@@ -81,12 +81,14 @@ export default async function LoginPage({
       title: t.auth.selfExclusionEnded,
       body: t.auth.selfExclusionEndedBody,
       cta: null,
+      contact: true,
     };
     if (sp.excluded === "permanent") return {
       tone: "danger" as const,
       title: t.auth.selfExclusionActive,
       body: t.auth.selfExclusionPermanentBody,
       cta: null,
+      contact: true,
     };
     if (sp.excluded === "serving" || sp.excluded === "1") return {
       tone: "danger" as const,
@@ -95,6 +97,7 @@ export default async function LoginPage({
         ? t.auth.selfExclusionUntilBody.replace("{date}", sp.until)
         : t.auth.selfExclusionBody,
       cta: null,
+      contact: true,
     };
     if (sp.cooled === "1") return {
       tone: "warning" as const,
@@ -200,6 +203,40 @@ export default async function LoginPage({
               <div className="text-body-sm leading-snug">
                 <p className="font-display font-semibold text-text">{errorPanel.title}</p>
                 <p className="mt-0.5 text-text-muted">{errorPanel.body}</p>
+                {/* ⭐ THE ONE MOMENT A PLAYER IS TOLD TO CALL US AND GIVEN A NUMBER TO
+                    RETYPE — Unit 10.1. A self-excluded account never reinstates itself
+                    (E-238): the player must ASK, and this panel is where they are told
+                    so. Until now it named no contact at all on the rendered surface, and
+                    the contact in `auth-service.ts`'s refusal string is plain server text
+                    that this page does not display.
+                    ⛔ THE NUMBER COULD NOT SIMPLY BE INTERPOLATED INTO THE BODY. These
+                    bodies are dict strings and the page's only interpolation is
+                    `.replace("{date}", …)`, which cannot produce an anchor — so a `tel:`
+                    inside the sentence would have rendered as escaped text. A separate
+                    action row is what the surface can actually make tappable, and it
+                    reaches all three exclusion states without touching twelve strings in
+                    three locales.
+                    ⚠️ `SUPPORT_PHONE()` is what a player READS and `SUPPORT_PHONE_TEL()`
+                    is what the tap DIALS — two facts, deliberately, so the same row works
+                    from a Tanzanian handset and from abroad. */}
+                {errorPanel.contact && (
+                  <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-text-muted">
+                    <a
+                      href={`tel:${SUPPORT_PHONE_TEL()}`}
+                      className="inline-flex items-center gap-1.5 underline underline-offset-2 hover:text-text"
+                    >
+                      <I.phone s={13} aria-hidden />
+                      {SUPPORT_PHONE()}
+                    </a>
+                    <a
+                      href={`mailto:${SUPPORT_EMAIL()}`}
+                      className="inline-flex items-center gap-1.5 underline underline-offset-2 hover:text-text break-all"
+                    >
+                      <I.mail s={13} aria-hidden />
+                      {SUPPORT_EMAIL()}
+                    </a>
+                  </p>
+                )}
                 {errorPanel.cta && (
                   <Link
                     href={errorPanel.cta.href as never}
