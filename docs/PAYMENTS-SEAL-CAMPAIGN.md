@@ -222,9 +222,9 @@ BLOCKED and move on — do not guess, and do not quietly shrink the unit to some
 
 | | Unit 5 · Refunds | where |
 |---|---|---|
-| ☐ | **5.1** rejection still flips to `REFUND_DUE` with its 7-day deadline | service |
-| ☐ | **5.2** the refund posts the exact mirror — back to the WALLET now | `recordFeeRefund` |
-| ☐ | **5.3** it reverses the VAT the collection actually booked, not today's rate | existing rule |
+| ✅ | **5.1** rejection still flips to `REFUND_DUE` with its 7-day deadline | service |
+| ✅ | **5.2** the refund posts the exact mirror — back to the WALLET now | `recordFeeRefund` |
+| ✅ | **5.3** it reverses the VAT the collection actually booked, not today's rate | existing rule |
 
 | | Unit 6 · Copy and terms | where |
 |---|---|---|
@@ -436,6 +436,27 @@ not a string removed from the payload.
 different claims. A `"use client"` component reached from a server component publishes its PROPS
 whatever it returns, so a feature gate that only stops the render still ships the data. ⚠️ Worth
 asking of every gated panel in this repo, not just this one.
+
+---
+
+## §5c · ✅ WHAT IS LIVE AS OF 2026-09-11 — verified by commit hash, not by uptime
+
+**`31883970` is RUNNING in production.** Units **0, 1, 2, 3, 5, 6.1, 6.2, 7.3, 8.2, 8.3** are
+shipped and verified. Two guards on `predeploy` (chain at 98): `test:agent-fee-wallet` **58/0**
+and `test:agent-fee-wallet-path` **34/0** — 92 assertions.
+
+⛔ **THE LAST PUSH SKIPPED THE FULL BOARD**, at Ali's explicit instruction ("push now all to live
+I have to leave"). What DID run on the integrated tree: `tsc` clean, plus `agent-fee-wallet`,
+`agent-fee-wallet-path`, `agent-application-security`, `trial-balance`, `ledger`, `i18n`, `audit`,
+`wallet`, `integrity`, `decomment`, `type-scale` — all PASS. ⚠️ **SO THE FIRST JOB OF THE NEXT
+SESSION IS `npm run test:all`.** If a 14th red appears, it is from `31883970` and it is ours.
+
+⭐ **THE ONE THING THAT WOULD HAVE COST REAL MONEY, and it was created BY this campaign:**
+`recordFeeRefund` posted the ledger mirror and touched **no wallet**. Correct while every fee
+arrived in a bank account; wrong the moment a fee could be paid from a balance — the applicant's
+`PLAYER:` account credited, their wallet unmoved, `computeTrialBalance` drifting by the whole fee
+forever, and the person we refused out of pocket while our books said we paid them. Fixed by
+`refundAgentRegistrationFeeToWallet`, the exact mirror of the debit.
 
 ---
 
