@@ -351,6 +351,30 @@ doors.**
 
 ---
 
+### 3.6 ⚠️ The two npm keys and their two scripts reached `main` in SEPARATE commits
+
+Recorded because the working state is right **by an accident of ordering**, and the next person
+to run `git revert` needs to know:
+
+| | commit | what it carries |
+|---|---|---|
+| the KEYS | `33ef87ab` (a Support & Care commit) | `ops:prelaunch-reset`, `ops:prelaunch-purge` in `package.json` |
+| the SCRIPTS | `32292aed` (this work) | `scripts/ops-prelaunch-{reset,purge-r2}.mts` |
+
+The keys were swept onto `main` by another session's commit while the scripts were still
+untracked — `package.json` publishes a **reference** and leaves its **referent** behind, and
+`test:guards-exist` went red for every clone. When the scripts were finally cherry-picked on
+top, `package.json` **dropped out of that commit** (8 files, not 9): `origin/main` already held
+the keys, so git skipped the hunk as already applied.
+
+⛔ **So neither commit contains the pair, and reverting either one alone re-breaks `main`** — in
+opposite directions. Revert `33ef87ab` and the scripts become orphans (`test:orphans`); revert
+`32292aed` and the keys dangle again (`test:guards-exist`). They are a unit in effect and not in
+history. ⭐ The general lesson, from three sessions sharing one trunk: **a correct fix has a shelf
+life — re-verify its premise at the moment you PUSH, not the moment you commit.** A fourth commit
+that removed the keys was written, measured, correct when written, and would have inverted the
+bug by the time it could ship; it was dropped minutes before landing.
+
 ## 4. What the reset does NOT do
 
 - **It does not touch dates.** Some of the kept LIVE polls have a `resolutionAt` already in
@@ -369,6 +393,57 @@ doors.**
   `.prelaunch-reset-receipt.json` plus this doc.
 
 ---
+
+## 4b. 🔴 GETTING STAFF THEIR ROLES BACK — read this BEFORE writing the keep-list
+
+Ali, 2026-09-11: *"when I share [the list] we create for them access roles as well."* The
+product does not do that the way the phrase implies, and the difference decides what belongs
+on the keep-list.
+
+⛔ **`/admin/staff` PROMOTES; it does not CREATE.** `actions.ts` says it in its own header:
+*"already have a normal 50pick account — **we never create logins here**."* There is no
+admin-side account creation anywhere in the product. A person must **register themselves** at
+`/auth/register` first; the Owner then grants the role by phone.
+
+⛔ **AND ADMIN (Owner) IS NOT GRANTABLE THAT WAY AT ALL.**
+`EDITABLE_ROLES = STAFF_ROLES.filter(r => r !== "ADMIN")` — the staff form offers the six
+non-Owner roles only, deliberately, so the Owner seat cannot be handed out through a form.
+
+### So there are exactly three routes, by role
+
+| role | how they get it after the reset |
+|---|---|
+| **ADMIN** (Owner) | **Either keep the account** through the reset, **or** their phone is in `ADMIN_BOOTSTRAP_PHONES` → they register → **first login auto-promotes them**, one-shot and audited (`user.bootstrap_promoted_on_login`). |
+| **COMPLIANCE · FINANCE · SUPPORT · MODERATOR · GROWTH · AUDITOR** | They register normally, then the **Owner** promotes them by phone at `/admin/staff` with a typed reason. Audited. |
+| **AGENT** | Not a staff role — the agent application + approval flow, priced by an officer. |
+
+### ⭐ The bootstrap net, measured on the live service 2026-09-11
+
+`ADMIN_BOOTSTRAP_PHONES` currently holds **six** numbers, all of them present ADMINs:
+
+    +255777777777  +255777777772  +255777777775
+    +255772619619  +255757619808  +255772388888
+
+**Any of those six can be deleted by the reset and still recover the Owner seat unaided** — the
+one-shot record is keyed by `user.id`, so a re-registered account gets a fresh id and the
+promotion fires again. That is a real safety net under the lockout guard.
+
+⚠️ **Three current ADMINs are NOT in that list — `+255777777771`, `+255777777776` and
+`+255700000001`** (husseinsheib / "Ali Admin"). Delete those and they cannot self-restore;
+they would need another Owner to... except ADMIN is not grantable at `/admin/staff` either. **So
+for those three the keep-list is the only route back.** Keep them, or add their phones to
+`ADMIN_BOOTSTRAP_PHONES` before running the reset.
+
+### ⭐ The recommendation
+
+**Keeping an existing staff account is strictly less work and less risk than recreating one** —
+the login, the role and the audit of how they got it all survive, and nobody has to re-register
+during a launch. Use register-then-promote only for people who are genuinely new. The reset
+strips a kept account to a login regardless, so keeping it costs nothing in data terms.
+
+⛔ **Do not provision staff by writing `User` rows directly.** `seed-staff-local.mts` does that
+for LOCAL personas and says so; on production it would mint a role with no audit row explaining
+it, on the one surface where "who granted this and why" is the whole point.
 
 ## 5. The rates that must read identically afterwards
 
