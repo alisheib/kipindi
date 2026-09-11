@@ -808,9 +808,38 @@ export async function missingForSubmit(app: StoredAgentApplication): Promise<str
     else if (d.rejected) missing.push(s);
   }
   if (!app.refereeOneName || !app.refereeTwoName || !app.refereeConsentAt) missing.push("REFEREES");
-  if (app.feeDisposition !== "WAIVED") {
-    if (!docs.some((d) => d.docType === "FEE_RECEIPT")) missing.push("FEE_RECEIPT");
-    if (!app.feeReference) missing.push("FEE_REFERENCE");
+  /**
+   * 🔴 THE FEE IS SETTLED OR IT IS NOT — it is never "missing a receipt" once it is PAID.
+   *
+   * This read `if (app.feeDisposition !== "WAIVED")` and then demanded a `FEE_RECEIPT` document
+   * and a typed `feeReference`. `payFeeFromWallet` stamps `COLLECTED` — never `WAIVED` — and
+   * deliberately writes NEITHER of those, because nobody attested anything and inventing an
+   * attestation would be a false audit record. So an applicant who had paid the full fee from
+   * their wallet balance was refused at `submitForReview` with "Your application is not
+   * complete.", naming two pieces of evidence the product had stopped collecting — the exact
+   * treatment given to somebody who had paid nothing at all. **They paid, and could not apply.**
+   *
+   * ⛔ AND THE CLIENT HAD ALREADY BEEN FIXED, WHICH IS PRECISELY WHY THIS SURVIVED.
+   * `apply-client.tsx` pushes ONE entry keyed on settlement, and its own docblock says the two
+   * edits "are ONE atomic change and must never be split". They were split — not across two
+   * commits, but across the CLIENT and the SERVER. The wizard enabled its Submit button and the
+   * server then refused it. Two lists describing one rule will always drift; there is now one
+   * rule, stated the same way on both sides.
+   *
+   * ⭐ ONE TOKEN, `FEE_PAYMENT`, matching the client's single `missingFeePayment` entry — so an
+   * applicant on the live rail is told the fee is outstanding rather than asked for a receipt
+   * they can never produce, and the officer reads "the registration fee" rather than
+   * "the fee receipt".
+   *
+   * ⛔ THE LEGACY OUT-OF-BAND RAIL IS UNCHANGED. On that rail an applicant submitted on the
+   * strength of their evidence and an officer reconciled it AFTERWARDS, while the disposition
+   * was still NONE. A recorded reference against an uploaded receipt therefore still satisfies
+   * this, exactly as it always did — that is how the one historical APPROVED agent got in, and
+   * Unit 7 is a non-regression obligation, not a backfill.
+   */
+  if (app.feeDisposition !== "WAIVED" && app.feeDisposition !== "COLLECTED") {
+    const outOfBandEvidence = docs.some((d) => d.docType === "FEE_RECEIPT") && !!app.feeReference;
+    if (!outOfBandEvidence) missing.push("FEE_PAYMENT");
   }
   // ⭐ An INVITED applicant's own identity is part of what is missing — it used to be enforced
   // only as a late refusal at submit ("Submit your identity documents first"), after the seven

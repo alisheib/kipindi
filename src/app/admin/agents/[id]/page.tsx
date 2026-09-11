@@ -108,7 +108,11 @@ export default async function AgentApplicationPage({ params }: { params: Promise
   if (!kyc) blocks.push("No identity verification on file.");
   else if (kyc.status !== "APPROVED" && !(app.source === "OFFICER_INVITED" && kyc.status === "PENDING_REVIEW")) { const kycWord = kycStatusLabel(kyc.status).toLowerCase(); blocks.push(`Identity verification is ${kycWord}.`); }
   // In words, never slot enums (labels §11): the officer reads "Referee 1 · letter", not REFEREE_ONE_LETTER.
-  const MISSING_WORD: Record<string, string> = { REFEREES: "both referees and the consent", FEE_RECEIPT: "the fee receipt", FEE_REFERENCE: "the receipt reference", IDENTITY: "the applicant's own identity verification" };
+  // ⭐ `FEE_PAYMENT` replaces the old FEE_RECEIPT / FEE_REFERENCE pair. On the live rail the fee
+  // is debited from the applicant's own wallet, so there is no receipt that can be MISSING —
+  // only a fee that is unpaid. ⚠️ `FEE_RECEIPT` is deliberately not listed: `DOC_LABEL` already
+  // names that slot and is consulted first, so an entry here was only ever dead.
+  const MISSING_WORD: Record<string, string> = { REFEREES: "both referees and the consent", FEE_PAYMENT: "the registration fee", IDENTITY: "the applicant's own identity verification" };
   const missingWords = missing.map((m) => (DOC_LABEL as Record<string, string>)[m] ?? MISSING_WORD[m] ?? m);
   if (missing.length > 0 && app.status === "UNDER_REVIEW") blocks.push(`Missing: ${missingWords.join(", ")}.`);
 
