@@ -21,6 +21,37 @@
 > closed **by owner direction with the code gap still present** and exposure measured at or near
 > zero. If exposure moves, they reopen — which is why the mechanism is kept legible in each row.
 
+## 00 · PRE-LAUNCH DATA RESET — `PRELAUNCH-RESET` · 🏁 **DONE 2026-09-11, EXECUTED ON PRODUCTION**
+
+Ali's go-live instruction, 2026-09-11. **▶ Record and runbook:
+[`PRELAUNCH-RESET.md`](PRELAUNCH-RESET.md).** Closed on the board in the same pass it was
+executed, per the ⚑ rule at the top of this file.
+
+| | |
+|---|---|
+| **Executed** | `2026-09-11T15:02:57Z`. 26/26 invariants held INSIDE the transaction before commit, and again on `--verify` against the receipt baseline |
+| **Kept** | **3 accounts, all ADMIN/ACTIVE** — `+255777777777` (Ali), `+255757619808`, `+255772619619` (Jay). Ali: *"don't keep any other than those I said"* |
+| **Result** | 114 accounts → 3 · wallets **TZS 19,871,648 → 0.00** · ledger/transactions/bets/house-pool → 0 · markets 41,615 → **185 polls** · `AuditLog` 266,290 → **0** (chain re-genesised, verified `prevHash=GENESIS` on the first new row) |
+| **Preserved** | Every rate, read back from the DB after the fact: commission `0.13` · ceiling `0.333` · operator `0.10` · platform `0.03` · TRA `0.10` · GBT `0.05` · withdrawal `0.015` · stakes `1,000–1,000,000` · `loser-share` · `starterBalanceTzs` `0`. All 17 persisted rule rows byte-identical by sha256; per-poll frozen `feeSnapshot`s intact by a second fingerprint |
+| **R2** | 114 KYC objects deleted · 42 of 44 backups purged (1,032 MB). Retained: the `04-42-18` pre-reset artifact, which `__BACKUP_LAST_RUN__` records as `verified:true` — a **restore-proven** rollback point — plus the clean post-reset backup |
+| **Owed** | ⏳ **Two SUPPORT logins** for Customer Care (Fulgence Kijuu, James Mziray — UT directory). **Blocked on their phone numbers**: `phoneE164` is the login and the only unique column on `User`. `ops:provision-staff` is built and waiting |
+| **Blocked** | Nothing else |
+
+⭐ **THE RESET OPENED A HOLE AND CLOSING IT WAS PART OF THE JOB.** `ADMIN_BOOTSTRAP_PHONES`
+listed six numbers; three accounts survived. The reset deleted the other three accounts **and**
+every `bootstrap.login_promoted:*` one-shot record, so three MSISDNs became numbers that would
+**auto-grant ADMIN to whoever registered them**. Measured, then trimmed to the three survivors
+and re-read. ⛔ **A deletion can create a privilege, not only remove one** — a standing grant
+keyed by a *string* outlives the account it was written for. Now step 3.7 of the runbook.
+
+✅ **`E-380` closed in the same pass** — `seed-test-float.mjs` came off the `start` chain. It
+topped every ACTIVE wallet to a TZS 1,000,000 floor on **every production boot**. Its two
+refusals were verified *holding* across a real post-reset deploy (wallets read back 0.00 after
+the 18:09 boot) and the reachability was removed anyway: both refusals are Railway service
+**variables**, not code.
+
+---
+
 ## 0 · MANAGEMENT SPEC — `MGMT-SPEC-2026-09-05` · 🟡 **DEPLOYS 1 AND 2 OF 3 ARE LIVE**
 
 ⭐ **Opened on Ali's instruction, 2026-09-05**, from a two-page specification management sent
