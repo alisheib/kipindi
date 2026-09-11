@@ -545,7 +545,9 @@ export async function getLimitUsage(userId: string): Promise<LimitUsage> {
  * outreach within 24h. Markers detected:
  *
  *   1. RAPID_DEPOSIT_ESCALATION  — 3+ deposits in 60 min OR 24h sum > 2× 7d-prior daily-avg
- *   2. CHASING_LOSSES            — deposit within 30 min of a losing bet, repeated 3+ times
+ *   2. CHASING_LOSSES            — deposit within 30 min of PLACING a bet, repeated 3+ times.
+ *                                  ⛔ The id says losses; the detector cannot see them. See its
+ *                                  own comment below, and ledger row 10.8 — still OPEN.
  *   3. LATE_NIGHT_PLAY           — placed 5+ bets between 00:00 and 06:00 EAT in last 7d
  *   4. LIMIT_BREACH_HISTORY      — 2+ blocked deposit attempts in last 7d (i.e. tried to exceed)
  *   5. SESSION_OVERRUN           — current session exceeds reality-check interval × 4
@@ -626,14 +628,42 @@ const DETECTORS: Detector[] = [
     return null;
   },
 
-  // 2. Chasing losses — 3+ deposits within 30 min of a losing bet in 7d
+  // 2. Top-up after betting — 3+ deposits within 30 min of PLACING a bet in 7d
+  //
+  // 🔴 THIS DETECTOR DOES NOT DETECT LOSS-CHASING, AND SAID IT DID. Found 2026-09-11.
+  // The local was called `lostBets` and its filter is `BET_PLACED && CONFIRMED` — every
+  // bet, won or lost. The officer-facing detail string read "within 30 min of a losing
+  // bet". Nothing here has ever known whether a bet lost.
+  //
+  // ⛔ AND IT CANNOT KNOW, AT THIS ANCHOR, EVEN IN PRINCIPLE. The window starts when the
+  // bet is PLACED, and a bet's outcome is not decided until its market settles — hours or
+  // days later. So the 30-minute window closes long before the loss exists.
+  //
+  // ⭐ WHICH WAY IT CUTS, AND THE FALSE NEGATIVE IS THE DANGEROUS HALF. A player who
+  // genuinely chases — who deposits right after a bet SETTLES against them — is not
+  // caught at all, because settlement is nowhere near placement. What IS caught is
+  // anybody who tops up shortly after betting, including a player who is winning. A
+  // responsible-gambling control that misses the behaviour it is named for is worse than
+  // one that is merely noisy.
+  //
+  // ⚠️ WHAT IS FIXED HERE IS THE CLAIM, NOT THE CLASSIFIER — deliberately, and the
+  // difference is recorded rather than blurred. The signal it really computes (a
+  // repeated top-up immediately after betting) is a real and useful one, so it is kept
+  // and now described truthfully to the officer who reads the flag. A real loss anchor
+  // needs the settled position, which lives outside this transaction stream, and the
+  // detector runs for EVERY user in batches — so fetching it per user turns an existing
+  // walk into a timeout. That is ledger row 10.8 and it is still OPEN.
+  //
+  // ⛔ The marker id stays `CHASING_LOSSES`: it is persisted on existing flags and on the
+  // Board-facing RG report, and renaming an enum to fix a sentence would rewrite history
+  // that officers have already acted on.
   (ctx) => {
-    const lostBets = ctx.recent7d.filter((t) => t.type === "BET_PLACED" && t.status === "CONFIRMED");
+    const betsPlaced = ctx.recent7d.filter((t) => t.type === "BET_PLACED" && t.status === "CONFIRMED");
     const recentDeposits = ctx.recent7d.filter((t) => t.type === "DEPOSIT" && t.status === "CONFIRMED");
     let chases = 0;
     for (const dep of recentDeposits) {
       const depAt = new Date(dep.createdAt).getTime();
-      const nearby = lostBets.find((b) => {
+      const nearby = betsPlaced.find((b) => {
         const bAt = new Date(b.createdAt).getTime();
         return depAt - bAt > 0 && depAt - bAt < 30 * 60_000;
       });
@@ -644,7 +674,7 @@ const DETECTORS: Detector[] = [
         ctx,
         "CHASING_LOSSES",
         "high",
-        `${chases} deposits within 30 min of a losing bet over the last 7 days`,
+        `${chases} deposits within 30 min of placing a bet over the last 7 days (outcome not known at this anchor — see ledger row 10.8)`,
       );
     }
     return null;

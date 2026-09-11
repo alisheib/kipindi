@@ -426,5 +426,69 @@ console.log("\n§6 · the screen shows the refusal the server computed (E-240, m
     `month=${monthUntil} now=${(await db.responsible.get("excl_shorten"))?.selfExclusionUntil}`);
 }
 
+// ────────────────────────────────────────────────────────────────────────────
+// §7 — a harm detector may not DESCRIBE an outcome it cannot OBSERVE  (Unit 10.8)
+// ────────────────────────────────────────────────────────────────────────────
+/**
+ * 🔴 `CHASING_LOSSES` told compliance officers it counted deposits "within 30 min of a
+ * LOSING bet". Its filter is `BET_PLACED && CONFIRMED` — every bet, won or lost — and its
+ * local was even named `lostBets`. Nothing in it has ever known whether a bet lost.
+ *
+ * ⛔ AND IT CANNOT, AT THAT ANCHOR, EVEN IN PRINCIPLE: the window opens when the bet is
+ * PLACED, and the outcome is not decided until the market SETTLES, hours or days later.
+ * ⭐ The false NEGATIVE is the dangerous half — a player who really chases, depositing
+ * right after a bet settles against them, is never caught, because settlement is nowhere
+ * near placement.
+ *
+ * ⭐ THE RULE IS THE CLASS, NOT THE INSTANCE. Fixing one sentence leaves the next
+ * detector free to make the same overreach, and there is no suite over this file at all
+ * — `grep -rln CHASING_LOSSES scripts/` returned nothing before this section existed. So:
+ * a detector that never reads an outcome-bearing signal may not use outcome vocabulary in
+ * the string an officer reads.
+ *
+ * ⚠️ The MARKER ID is exempt by rule, not by oversight. `CHASING_LOSSES` is persisted on
+ * existing flags and on the Board-facing RG report; renaming an enum to fix a sentence
+ * would rewrite history officers have already acted on. The id may lie about the past;
+ * the sentence may not lie to the reader today.
+ */
+{
+  const rgSrc = readFileSync("src/lib/server/responsible-gambling.ts", "utf8");
+  const start = rgSrc.indexOf("const DETECTORS");
+  const body = start === -1 ? "" : rgSrc.slice(start);
+  ok("7.1 ⚠️ CONTROL — the DETECTORS array was located", start !== -1);
+
+  // Population DISCOVERED: every `flag(ctx, "MARKER", severity, detail)` call in the file.
+  const calls = [...body.matchAll(/flag\(\s*ctx,\s*"([A-Z_]+)",\s*"(\w+)",\s*([\s\S]*?)\);/g)];
+  ok(`7.2 ⚠️ CONTROL — harm-marker emissions were found (${calls.length})`, calls.length >= 5, `found ${calls.length}`);
+
+  // An outcome-bearing signal: anything that could tell a win from a loss.
+  const OUTCOME_SIGNAL = /BET_PAYOUT|CASHOUT|settl|resolved|payout|won|profit/i;
+  // Outcome vocabulary in the sentence an officer reads. ⚠️ "placing a bet" and
+  // "placed" are NOT here: describing the anchor truthfully must stay legal, or the
+  // guard would demand the fix be reverted.
+  const OUTCOME_CLAIM = /\blos(e|t|ing|s)\b|\bwin(ning|s)?\b|\bwon\b/i;
+
+  const overreach: string[] = [];
+  for (const [, marker, , detail] of calls) {
+    // The detector that emits this marker = the arrow function containing the call.
+    const at = body.indexOf(`"${marker}"`);
+    const from = body.lastIndexOf("(ctx) => {", at);
+    const scope = from === -1 ? body : body.slice(from, at + 400);
+    if (OUTCOME_CLAIM.test(detail) && !OUTCOME_SIGNAL.test(scope)) {
+      overreach.push(`${marker} claims an outcome its filter cannot observe — ${detail.replace(/\s+/g, " ").slice(0, 90)}`);
+    }
+  }
+  ok("7.3 ★ no harm-marker detail claims an outcome the detector cannot observe",
+    overreach.length === 0, overreach.join(" | "));
+
+  // ⭐ CONTROL — the pattern must still catch the exact sentence this row retired, or 7.3
+  // proves only that it ran. Kept as a fixture rather than trusted.
+  ok("7.4 ⚠️ CONTROL — the detector still fires on the retired sentence",
+    OUTCOME_CLAIM.test("`${chases} deposits within 30 min of a losing bet over the last 7 days`"));
+  // ⭐ CONTROL — and it must NOT fire on the replacement, or it would demand the fix back.
+  ok("7.5 ⚠️ CONTROL — …and does NOT fire on the corrected sentence",
+    !OUTCOME_CLAIM.test("`${chases} deposits within 30 min of placing a bet over the last 7 days`"));
+}
+
 console.log(`\nrg-doors: ${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);
