@@ -958,6 +958,69 @@ the prerequisite, not a detour.
 Severity: **BLOCKER** (stops a player) · **HIGH** (money/compliance/data) · **MEDIUM** (real but
 survivable) · **LOW** (polish). Every entry needs evidence — a screenshot, a DB row, or a log line.
 
+### 🔴 E-380 · HIGH · OPEN — a money-writing seeder is on the production boot path, held off by two environment variables
+
+**Filed 2026-09-11** (session `asheib-33`, during the pre-launch reset work; the boot-path
+exposure was spotted by peer session `asheib-b6` and the "file it, don't note it" framing by
+`asheib-8c`). Ids `E-340…E-379` are held by the payments-seal peer; this claims **E-380**.
+
+`package.json`:
+
+```
+"start": "prisma migrate deploy && node scripts/seed-test-float.mjs && next start"
+```
+
+`scripts/seed-test-float.mjs` **tops every ACTIVE wallet up to a TZS 1,000,000 floor** and runs
+on **every production boot** — every deploy, every restart, every crash-loop iteration.
+
+**EVIDENCE THAT IT HAS ALREADY FIRED AGAINST PRODUCTION.** **Five** of the nine ADMIN wallets
+hold *exactly* the floor — queried as `WHERE balance = 1000000` on the live database 2026-09-11,
+so the count is measured rather than eyeballed off a rounded report:
+
+| account | balance |
+|---|---|
+| `+255777777775` | **1,000,000.00** |
+| `+255777777772` | **1,000,000.00** |
+| `+255777777771` | **1,000,000.00** |
+| `+255777777776` | **1,000,000.00** |
+| `+255700000001` | **1,000,000.00** |
+
+Exactly the constant `FLOOR = 1_000_000`, on five accounts, is not a coincidence of play.
+
+**The two gates, and why holding today is not the same as being safe.** Verified on the live
+service 2026-09-11 — both hold:
+
+| gate | order | live value |
+|---|---|---|
+| `NODE_ENV === "production"` → hard refuse | checked **first**, before the flag is read | `"production"` ✅ |
+| `TEST_FUNDING !== "true"` → skip | second | **UNSET** ✅ |
+
+⛔ **THE DEFECT IS THE SHAPE, NOT TODAY'S VALUES.** Both gates are **Railway service variables**,
+not code — and the refusal runs in a separate node process *before* `next start`, so nothing in
+Next.js supplies `NODE_ENV`; only the service config does. **An environment variable is a thing
+a person can change with no deploy, no diff and no review.** Unset `NODE_ENV` on the service and
+the hard refusal silently stops existing, leaving one variable between production and minting a
+million shillings into every active wallet — which would also unbalance the ledger, since the
+script writes `wallet.update` directly and produces no `LedgerEntry`.
+
+The script's own docblock already concedes the class: *"one mis-set Railway variable would mint
+TZS 1,000,000 into every real wallet and permanently unbalance the ledger"* — the production
+refusal was added **after go-live** for exactly that reason. This finding says the refusal is
+still the wrong *kind* of control: same fail-open shape as `isChatbotEnabled().catch(() => true)`
+fixed the same day. A money mutation should not be reachable from the boot path at all.
+
+**Suggested fix (not applied — needs Ali, and it touches the live `start` chain):** take
+`seed-test-float.mjs` **off `start`** and make it an explicit `npm run` an operator invokes, so
+production cannot reach it by booting. Failing that, gate on something that cannot be unset by
+config — refuse unless `TEST_FUNDING === "true"` **and** the database is demonstrably not the
+production one — and make the refusal the default rather than the consequence of two absences.
+
+⚠️ **Interaction with the pre-launch reset** (`docs/PRELAUNCH-RESET.md` §3.2a): the first boot
+*after* the reset is the highest-consequence moment this will ever have — it would refill
+freshly zeroed wallets on a launch state. The runbook therefore requires both variables be
+re-checked **after** that boot, not only before the reset. **This finding stays OPEN regardless:
+the reset does not change the boot path.**
+
 | # | Sev | Area | Finding | Evidence | State |
 |---|---|---|---|---|---|
 | **A-1** | HIGH | register + sign-in | **The phone field could not accept 4 of the 5 shapes a Tanzanian writes.** `PhoneInput` stripped non-digits and truncated to 9, so `0712000101` → `071200010` ("Enter a valid Tanzania mobile number", never mentioning the leading zero) and a pasted `+255712000101` → `255712000`, *a different number*. `tzPhone` had always accepted all four. Hits the **first screen** of every new player. | typed into live `/auth/register`; table below | ✅ fixed |

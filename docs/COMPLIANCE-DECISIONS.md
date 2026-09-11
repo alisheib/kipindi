@@ -6,6 +6,55 @@
 
 ---
 
+## 2026-09-11 · The audit chain is WIPED and re-genesised for launch — a deliberate override of `DATA-RETENTION.md` §3
+
+**Decision:** Ali, **2026-09-11**, as part of the pre-launch data reset: *"all users except some
+admins we currently have to keep. everything else delete literally so they can register again…
+and 0 profits and revenues, now 0 everything in accounting, but keep all rules we already set
+like rates and commissions."* Put to him explicitly that the audit log is on no deletion path by
+written doctrine, he ruled **wipe it whole.**
+
+**What this overrides.** `docs/DATA-RETENTION.md` §3 states that the audit log is deliberately on
+no deletion path, and **its reasoning is correct and is not being revised**: the chain is
+HMAC-linked with `@@unique([prevHash])`, so deleting any row breaks it, and *the break is exactly
+the signal the chain exists to produce.* There is no prune that leaves the table able to prove
+anything. §3 continues to govern every day after launch.
+
+**Why the override is the only coherent option here, rather than a relaxation of that rule.**
+The reset erases 97 players and 8 staff accounts. The 264,595 chained rows describe their test
+activity and carry payload PII *about them*. Those rows cannot be selectively cleaned — that is
+§3's own point — so the choice is binary:
+
+| | |
+|---|---|
+| Keep the chain | Carries 264k rows of test activity into real money, and retains personal data about 97 people whose accounts were just erased at their own request-equivalent. The erasure would be partial in exactly the place that claims to be tamper-evident. |
+| **Wipe and re-genesis** | The real-money chain begins **unbroken at GENESIS on day one.** No row names a user that does not exist. Nothing is retained about an erased player. |
+
+⭐ **The distinction that makes this safe to write down:** this is a **one-time act on disposable
+pre-launch test history**, not a new capability. There is no code path that can wipe the chain —
+the truncation lives in `scripts/ops-prelaunch-reset.mts`, a script run by hand, once, with an
+explicit confirm phrase. **⛔ Do NOT generalise this into a retention job, an admin button, or a
+"prune the audit log" option.** If anyone proposes one, this entry is the reason to refuse: the
+argument above depends entirely on the data being test data and the platform being pre-launch,
+and neither will ever be true again.
+
+⚠️ **The reset writes no audit row of its own**, and cannot: the table is truncated in the same
+transaction, so an in-chain record of the act would be deleted by the act. The record is
+`.prelaunch-reset-receipt.json` (kept counts, the rule fingerprint, the keep-list) plus
+`docs/PRELAUNCH-RESET.md`. That is a real gap and it is named here rather than papered over.
+
+**Also reset in the same pass, and worth recording because two of them are compliance surfaces:**
+`house.pool.state` → balance 0 with its `config` kept; `email.suppression` → `[]` (it held only
+test addresses, which would have silently blocked mail at launch); `test.overrides` → **deleted**,
+an orphan row left by the `test-overrides.ts` module that the 2026-07-17 entry below had already
+removed — `scripts/content-integrity.test.mts` now fails anything importing it, so nothing reads
+the row.
+
+**Runbook + full record:** [`docs/PRELAUNCH-RESET.md`](PRELAUNCH-RESET.md).
+**Code:** `scripts/ops-prelaunch-reset.mts` · `scripts/ops-prelaunch-purge-r2.mts`.
+
+---
+
 ## 2026-09-10 · The agent registration fee is paid FROM THE WALLET — and the programme stops being risk-free to the money invariants
 
 **Decision:** Ali, **2026-09-10**. *"We said we will disable QR payment for now, all payment should

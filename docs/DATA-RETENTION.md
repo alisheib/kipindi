@@ -212,6 +212,20 @@ The audit chain is HMAC-linked: each row's `prevHash` is the previous row's `ent
 that point, and the break is exactly the signal the chain exists to produce.** There is no
 "prune the audit log" option that leaves it still able to prove anything.
 
+> ⚠️ **ONE EXCEPTION HAS EVER BEEN AUTHORISED, and it is spent.** The **pre-launch reset of
+> 2026-09-11** truncated the whole table and re-genesised the chain, so real money began on an
+> unbroken chain rather than on 264,595 rows of test activity naming 97 erased players. Ali's
+> ruling and the full reasoning are in
+> [`COMPLIANCE-DECISIONS.md` § 2026-09-11](COMPLIANCE-DECISIONS.md); the runbook is
+> [`PRELAUNCH-RESET.md`](PRELAUNCH-RESET.md).
+>
+> ⛔ **That argument does not extend to anything after launch.** It rested on the rows being
+> disposable pre-launch test data — a condition that can never hold again. **This section
+> governs unchanged**, there is no code path that can delete a chain row, and a proposal for a
+> retention job, an admin button or a "prune the audit log" option should be refused with a
+> pointer here. The exception is recorded so nobody discovers the 2026-09-11 truncation later
+> and reads it as precedent.
+
 That is a real cost and it is growing: **144 MB / 114,480 rows, ~11,500 rows a day.** Ali's
 decision on 2026-08-20 (recorded in `COMPLIANCE-DECISIONS.md`) was to **reduce what Up & Down
 writes** rather than accept the growth or archive it — one entry per round was removed and four

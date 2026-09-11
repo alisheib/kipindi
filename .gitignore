@@ -272,3 +272,9 @@ scripts/live/ops/.cfg-snapshots/
 # and is not one). Removed in the harness `finally`; ignored so a killed run leaves nothing.
 .cn-red-tmp/
 scripts/.kyc-gate-red.lock
+
+# Pre-launch reset (2026-09-11) — carries staff phone numbers + emails; never commit PII.
+prelaunch-keep-users.json
+.prelaunch-reset-receipt.json
+.prelaunch-verified.json
+.prelaunch-quiesced.json
