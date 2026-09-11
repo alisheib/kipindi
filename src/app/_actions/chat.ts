@@ -166,11 +166,28 @@ RULES:
 3. If you don't know a 50pick answer, say so briefly and offer to connect them with the support team.`;
 }
 
+/**
+ * ⭐ `unresolved` MARKS A REPLY THE SERVER KNOWS IS NOT AN ANSWER — Unit 6.2.
+ *
+ * 🔴 THE ESCALATE CARD COULD NOT FIRE ON THE LIVE PATH AT ALL. `ChatRoot` counts
+ * consecutive replies with `unresolved === true` and offers the support handoff at
+ * two; the stub sets that flag, and the live branch built its message inline
+ * without the field. So `isUnresolved` was `false` for every live reply, the run
+ * counter reset on every turn, and the one card carrying the support address was
+ * unreachable for a signed-in player — the same shape as 6.1, in the same handler.
+ *
+ * ⛔ ONLY THE TWO OUTCOMES THE SERVER IS CERTAIN ABOUT ARE MARKED. The daily-quota
+ * message and the API-error message are non-answers by construction. The model's
+ * own replies are NOT marked: judging whether Claude answered would need a second
+ * model call, and guessing from the text is how a guard starts asserting a proxy.
+ * Under-marking costs a handoff that arrives one turn late; over-marking would
+ * interrupt a player the bot was helping.
+ */
 export async function chatWithClaude(
   history: { role: "user" | "assistant"; content: string }[],
   userText: string,
   locale: string = "en",
-): Promise<{ text: string } | null> {
+): Promise<{ text: string; unresolved?: boolean } | null> {
   if (!process.env.ANTHROPIC_API_KEY) return null;
 
   // Operator kill-switch (AI toolkit) — when the chatbot is disabled, make NO AI
@@ -190,7 +207,7 @@ export async function chatWithClaude(
   // Hard daily cap — once reached, return the capacity message and do NOT
   // call the API. This is the real defence against sustained token burn.
   if (!(await consumeDailyQuota(session.userId))) {
-    return { text: capacityMessage(locale) };
+    return { text: capacityMessage(locale), unresolved: true };
   }
 
   try {
@@ -223,13 +240,17 @@ export async function chatWithClaude(
       .filter((b) => b.type === "text")
       .map((b) => b.text as string)
       .join("\n\n");
-    return { text: text || (EMPTY_REPLY_MESSAGES[locale] ?? EMPTY_REPLY_MESSAGES.en) };
+    // An EMPTY completion is a non-answer as surely as an error is: the model
+    // produced nothing, and the fallback string says so. Marked for the same reason.
+    return text
+      ? { text }
+      : { text: EMPTY_REPLY_MESSAGES[locale] ?? EMPTY_REPLY_MESSAGES.en, unresolved: true };
   } catch (err) {
     console.error("[50pick-chat] Claude API error:", err);
     try {
       const { recordAiUsage } = await import("@/lib/server/ai-usage");
       await recordAiUsage({ feature: "chat", model: "claude-haiku-4-5-20251001", ok: false, subjectType: "chat_session", subjectId: session.userId });
     } catch { /* best-effort */ }
-    return { text: TROUBLE_MESSAGES[locale] ?? TROUBLE_MESSAGES.en };
+    return { text: TROUBLE_MESSAGES[locale] ?? TROUBLE_MESSAGES.en, unresolved: true };
   }
 }

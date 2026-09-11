@@ -37,14 +37,35 @@ Per ledger unit, in this order, no batching:
    fixing the class — that mistake is why one of these units exists at all.
 4. **Prove the guard GREEN**, and prove it still goes red if you re-break the fix.
 5. **Run the full board:** `npm run test:all`. ⚠️ **Baseline is 311/324** and the 13 reds are named
-   ⭐ **CONFIRMED 2026-09-10 by both sessions independently — 311/324 is real, not a stale quote.**
-   ⛔ **BUT IF YOU MEASURE 310/324 WITH `test:lipa-qr` RED, THAT IS NOT A PRODUCT DEFECT.** It dies
-   with `Cannot find module 'jsqr'`. `jsqr` is declared in `package.json` and present in
-   `package-lock.json`; it was simply not installed in the checkout. One `npm install` restores
-   311/324. ⭐ This is §0.4's own hazard in its mild form — **read the FIRST failure's text before
-   believing a red.** A missing dependency and a broken product look identical in a summary line.
+   🟢 **THE BASELINE IS NOW 313/326, REPLICATED 2026-09-11 BY TWO SESSIONS IN TWO SEPARATE
+   CHECKOUTS** — one long-lived (322 packages), one a fresh `git worktree` with a clean `npm ci`
+   (328 packages) — same thirteen reds, same order, same denominator. Two independently built
+   dependency trees at one commit agreeing is a replication, not a number quoted twice, and it
+   retires dependency drift as an explanation for anything. **There is no 14th red at 140fcc6a.**
+   ⛔ **THE OLD `jsqr` WARNING HERE WAS DELETED, AND WHY MATTERS MORE THAN THAT IT WAS WRONG.** It
+   said `test:lipa-qr` dies on `Cannot find module 'jsqr'` and to disregard that red. Measured
+   2026-09-11: `jsqr` is installed and **`test:lipa-qr` PASSES**. A remembered benign explanation
+   for a red is the most dangerous thing to carry into a measurement — it is the same shape as a
+   ready explanation for an absence, and it makes the next REAL failure of that suite invisible.
+   The rule that survives is the general one: **read the FIRST failure's text before believing a
+   red**, and never bring an explanation to it.
    in `docs/LIVE-QA-CAMPAIGN.md`. **Anything else red is yours** — do not push past it, and do not
    re-baseline a ratchet to make your own red go away.
+   ⚠️ **TWO SUITES ARE RED FOR REASONS THAT ARE NOT PRODUCT DEFECTS AND NOT YOURS** (filed
+   2026-09-11): `test:orphans` names **3 TRACKED** undeclared scripts committed at 140fcc6a
+   (`scripts/live/ops/levy-divergence.cjs`, `scripts/live/ops/payments-now.cjs`,
+   `scripts/ops-updown-probe-bars.mts`) plus whatever untracked leavings your checkout carries;
+   and `test:guards-exist` §3 is **NON-DETERMINISTIC in a long-lived checkout** — watched flipping
+   PASS → FAIL → PASS inside one hour on 2026-09-11. Its §3 resolves the `ops:prelaunch-purge` key,
+   whose target under `scripts/` (an `-r2` variant of the prelaunch purge) is **UNTRACKED — it has
+   never been in git history** — so it exists only as a local file, something in this tree deletes
+   and recreates it, and a FRESH CLONE would not have it at all. ⭐ The lesson is the general one
+   and it cost two wrong conclusions today: **an untracked file can make a gate green, and its
+   absence can make the same gate red, with no commit in between.** Before calling a flip yours,
+   ask whether the thing it names is even in git. ⛔ Its path is described here and not written
+   out, deliberately — `docs-links.mjs` resolves script paths found in prose, so quoting a missing
+   one ADDS a third `test:docs` failure. That is §0a's rule, and it caught this very paragraph. ⛔ Neither remedy is safe unattended: the orphan allowlist may
+   only SHRINK, and deleting an npm key is a product decision.
    ⚠️ **Two caveats before you trust that number.** The denominator drifts as suites are added, so
    compare the NAMED red list, not the count. And `test:orphans` may already be red in your
    checkout from **untracked files belonging to the other session** — ⛔ neither natural remedy is
@@ -103,12 +124,17 @@ SILENT — you find out by losing work, not by an error.**
   (replies cross mid-flight):
   > *"I am running &lt;THIS CAMPAIGN&gt;. Files I own: &lt;list&gt;. I have pushed: &lt;shas, or none&gt;.
   > `test:all` is &lt;n&gt;/324 in my tree. Tell me your file set and your last push."*
-- ⛔ **WORKTREES, NOT A SHARED DIRECTORY.** ~~`F:\kipindi-main` holds the Railway CLI link — run
-  `railway …` from there even when working elsewhere.~~ 🔴 **FALSE, AND CORRECTED 2026-09-10 BY BOTH
-  SESSIONS INDEPENDENTLY: there is no `F:` drive on this machine.** `ls -d /f/kipindi-main` fails and
-  only `/c` is mounted. The instruction is also UNNECESSARY: `railway status` run from
-  `C:\kipindi-main` itself already resolves project **50pick** / environment **production** /
-  service **50pick**. ⭐ For a read that needs the database, `railway run --service Postgres -- <cmd>`
+- ⛔ **WORKTREES, NOT A SHARED DIRECTORY.** 🔴 **THE PARAGRAPH THAT STOOD HERE WAS ITSELF FALSE,
+  AND IT IS THE BEST EXAMPLE IN THIS DOCUMENT OF THE THING THIS DOCUMENT IS ABOUT.** It said, in
+  bold, *"CORRECTED 2026-09-10 BY BOTH SESSIONS INDEPENDENTLY: there is no `F:` drive on this
+  machine — `ls -d /f/kipindi-main` fails and only `/c` is mounted"*, and directed every future
+  session to `C:\kipindi-main`. **The repository is on `F:\kipindi-main` and always was.** Two
+  sessions agreed, wrote it down as a correction, emphasised that they had reached it
+  independently — and were both wrong, inside the file that warns about guards that agree and are
+  both wrong. ⭐ Agreement is not evidence. Re-derive, then write.
+  The working directories, measured 2026-09-11: **`F:\kipindi-main`** (support & care) and
+  **`F:\kipindi-seal`** (payments seal, a `git worktree` on branch `payments-seal-s3`).
+  ⭐ For a read that needs the database, `railway run --service Postgres -- <cmd>`
   injects `DATABASE_PUBLIC_URL` into the child process, so the credential is never typed into a
   command line. The Railway **MCP** also works, but only when passed `project_id` explicitly — it
   cannot discover the link by itself and answers `Unauthorized` if you let it try. The second session takes its own
@@ -137,15 +163,50 @@ SILENT — you find out by losing work, not by an error.**
   **`docs/LIVE-QA-CAMPAIGN.md` §6 is the authority** — whichever finding has a ROW there keeps the
   id, the other moves. An id recorded only in a prompt or a code comment is *announced*, not *filed*.
 
-### 0.5 · When you are blocked, you do NOT stop
+### 0.5 · ⭐ YOU DECIDE — the owner has delegated it
 
-The owner is away; a blocked session that idles wastes the whole window.
-1. **Do every unit that is not blocked**, in ledger order.
-2. Record the blocker in §2 as a `⛔ BLOCKED` row **with the reason and what would unblock it**.
-3. Keep going. Report at the end.
+⭐ **THE OWNER'S INSTRUCTION, 2026-09-10, VERBATIM:** *"take decisions if needed, as I'll be away.
+Decisions should be as per what they think is more perfect with the overall flow of the platform."*
 
-⛔ **Do not invent an answer to an owner decision.** If a unit genuinely needs a ruling, mark it
-BLOCKED and move on — do not guess, and do not quietly shrink the unit to something you can finish.
+⛔ **So a design question is NOT a blocker any more. It is your call.** Do not park a unit waiting
+for a ruling that is not coming, and do not quietly shrink a unit to the part you can finish without
+deciding. **Decide it, record it, ship it.**
+
+#### The criterion he gave you — use it literally
+
+**"More perfect with the overall flow of the platform."** That is a coherence test, not a taste
+test, and it has a concrete meaning here:
+
+1. ⭐ **What does this codebase already do for the same class of problem?** This repo is unusually
+   consistent and unusually well-commented about WHY. Find the established pattern and follow it.
+   The nearest existing precedent beats a cleaner idea with no precedent.
+2. ⭐ **Which option leaves the platform easier to reason about in six months?** Prefer one concept
+   over two. Prefer a single source of truth over a synchronised pair. Prefer making an invariant
+   explicit over relying on a convention.
+3. ⭐ **Which option makes the next defect in this area IMPOSSIBLE rather than merely unlikely?**
+   This platform's whole standing doctrine is to seal the class, not the instance.
+4. ⚠️ **When two options are genuinely balanced, take the REVERSIBLE one.** The owner is away; a
+   choice he can undo cheaply is worth more than the marginally better choice he cannot.
+5. ⛔ **Never decide by "what is quickest to make green."** That is how this repo acquired the
+   guards that lie.
+
+#### Record every decision — this is the part that makes delegation safe
+
+For each decision you take, add a row to the **DECISION LOG** at the end of this file:
+what you decided, the alternative you rejected, the criterion above that settled it, and the
+files it touched. ⭐ **Write it so the owner can overturn it in one read.** A delegated decision
+that is not written down is indistinguishable from a defect.
+
+⚠️ **If a decision changes money semantics, a binding document, or a compliance position, say so
+explicitly in that row and flag it in your final summary.** It is still yours to take — but he must
+be able to find it without hunting.
+
+#### What is still NOT yours
+
+§0.6's hard stops are safety rails and standing owner rulings, not open questions. And if you find
+a genuine external blocker — a credential you do not have, a vendor secret, a third party who has
+to act — that is not a decision, it is a dependency: record it in §2 as a `⛔ BLOCKED` row with what
+would unblock it, do every other unit, and report it at the end. **Never idle.**
 
 ### 0.6 · The hard stops — the only things you may NOT do unattended
 
@@ -269,7 +330,7 @@ BLOCKED and move on — do not guess, and do not quietly shrink the unit to some
 | 3 | 🔴 A save that never lands looks exactly like one that did | ✅ **4/4 — LIVE** |
 | 4 | 🔴 What the admin screen promises, validates, and won't explain | ✅ **5/5 — LIVE** |
 | 5 | 🟠 Config frozen at module eval, and a gate on the forbidden primitive | ✅ **2/2 — and the CLASS was 4× bigger than the brief said** |
-| 6 | 🟠 Two chat SAFETY mechanisms are unreachable when signed in | ☐ 0/3 |
+| 6 | 🟠 Two chat SAFETY mechanisms are unreachable when signed in | ✅ **6/6 — LIVE. ⚠️ LATENT, not live-exposed: `chatbotEnabled` is OFF on production (measured, with a positive control). It FAILS OPEN, which is why it still shipped** |
 | 7 | 🟠 A cooling-off break can be SHORTENED, and the copy deterring it is false | ✅ **3/3 — LIVE** |
 | 8 | 🟠 Five suites are not on the deploy path; one asserts a retired value | ☐ 0/3 |
 | 9 | 🟠 The first-login primer blocks its own photographer | ✅ **3/3 — LIVE** |
@@ -319,9 +380,13 @@ BLOCKED and move on — do not guess, and do not quietly shrink the unit to some
 
 | | Unit 6 · Chat safety | where |
 |---|---|---|
-| ☐ | **6.1** at-risk input renders the RG card signed-in AND signed-out | `ChatRoot.tsx:147` |
-| ☐ | **6.2** the escalate path can fire on the live path | `chat.ts:149` |
-| ☐ | **6.3** `handoffBody` asserts nothing the product does not do | `i18n-dict.ts:1824` |
+| ✅ | **6.1** at-risk input renders the RG card signed-in AND signed-out — the decision is now taken **above** the backend choice, not below it. ⭐ That is the whole fix: the filter lived inside `sendMessage`, which `ChatRoot` reached only when the live call returned `null`, so **three** paths bypassed it — a signed-in player, the daily-quota reply and the API-error reply, the last two because both return TRUTHY text. Widening the branch would have left room for a fourth | `ChatRoot.tsx` · `send-message.ts` |
+| ✅ | **6.2** the escalate path can fire on the live path — `chatWithClaude` may now return `unresolved: true`, and `ChatRoot` propagates it. ⛔ Only the two replies the SERVER knows are not answers are marked (daily cap, API error, plus an empty completion); judging the model's own reply would need a second model call, and guessing from its text is how a guard starts asserting a proxy | `chat.ts` · `ChatRoot.tsx` |
+| ✅ | **6.3** `handoffBody` asserts nothing the product does not do — it promised an attached transcript, a pick-up notification and an availability window; the action is a bare `mailto:` with a `subject=` and nothing else, there is no ticket model and no notification event. Rewritten in all three locales. ⭐ §4's population is **discovered from the card** — every `t.*` key it renders — so the `6.7` failure cannot repeat: move the promise to the title and the gate follows it | `i18n-dict.ts` · `scripts/chat-safety.test.mts` |
+| ✅ | **6.4** the classifier speaks the languages the product does — there were **seven** patterns, five English and two Swahili, and **not one Chinese**, while `detectLang` has stamped `zh` since B-7. A Chinese-speaking at-risk player had no deterministic safety response *by construction*. ⚠️ zh patterns carry no `\b` — Chinese has no word boundaries, and writing them like the English ones would have added patterns that match nothing | `send-message.ts` |
+| ✅ | **6.5** 🔴 **the filter could not recognise 50pick's OWN published wording of the at-risk case.** `help.faq5q` — *"I think I have a problem with gambling. What can I do?"* — is the FAQ this platform publishes on `/help` in three languages, and none of the three matched. ⭐ The guard now reads those three strings **out of the dictionary at run time** rather than restating them, so the FAQ and the filter cannot drift apart in silence. A corpus I type is a corpus I tune until it passes | `send-message.ts` · `scripts/chat-safety.test.mts` |
+| ✅ | **6.6** 🔴 **a comment that described a fix which had not happened.** `send-message.ts`'s header says the 2026-09-07 A-5 sweep deleted the invented KYC ladder and that *"'tier 2' and that cap exist nowhere in this codebase"* — past tense. Two of the four branches were never touched: it went on telling players about a *"Tier 1"*, a *"Tier 2"* and a *"TZS 200,000/day"* cap for four more days. `grep -rn "Tier 1\|Tier 2\|TIER_"` over the KYC server code returns **nothing** — there is no tier model, no per-tier limit, no daily cap. Also fixed in the same branch family: the withdrawal line stated *"typically within 60 seconds"* having dropped the **"under TZS 1,000,000"** qualifier that `/legal/terms` and `chat.ts` both carry, turning a sourced statement into a promise the platform breaks on exactly the withdrawals that matter most | `send-message.ts` |
+| ✅ | **6.g** the guard: new `test:chat-safety` (4 sections) + `red:chat-safety`. Proven RED against the unfixed tree with **16 named failures**, then GREEN, then **9 independent mutations, 9 caught**. ⭐ Two escaped on the first run and both are recorded in the harness rather than quietly swapped: one was a real hole — `if (intercepted && false)` left the word `return` in the source, so a bare `/\breturn\b/` passed over a branch that can never be taken (textual presence standing in for reachability); the other was a **badly aimed mutation**, which added a second backend call to force an ordering change and so failed on the wrong check. A mutation that breaks the subject two ways proves nothing about either | `scripts/chat-safety.test.mts` · `scripts/chat-safety-red.mjs` |
 
 | | Unit 7 · Cooling-off | where |
 |---|---|---|
@@ -584,7 +649,23 @@ normal-rate number. Unfreezing it without rewording it just makes the false clai
 the function whose own docblock says *"DO NOT BUILD A HYDRATION GATE ON THIS"*. One boot blip pins a
 container on `chatbotEnabled: true` for life. `define-config.ts:120` is the corrected ordering.
 
-### Unit 6 🟠 · Two chat SAFETY mechanisms are unreachable when signed in
+### Unit 6 🟠 · Two chat SAFETY mechanisms are unreachable when signed in — ✅ SEALED 2026-09-11
+
+> 🔴 **THIS SECTION'S SEVERITY CLAIM WAS WRONG AND IS CORRECTED HERE RATHER THAN QUIETLY EDITED.**
+> Below, §4 asserts *"the stub path IS reachable in production: a signed-in player who types
+> quickly falls into it"*, and calls Unit 6 the most severe thing in the document. **Refuted by
+> measurement, 2026-09-11.** Both chat paths require the widget to be MOUNTED, and
+> `lazy-overlays.tsx:45` mounts it only when `chatbotEnabled`. Live probe of
+> `https://www.50pick.tz/help`: `cm-bubble` **0** — with a POSITIVE CONTROL on the same response,
+> `lazy-overlays` 1 and the primer's *"Predict events. Not chance."* 4, so the overlay tree renders
+> and the probe can see mounted overlays. The chatbot is OFF. **§5 said "unknowable from the tree"
+> and §5 was right; §4 talked itself into "live" and contradicted §5 inside one document.**
+>
+> ⭐ **IT WAS STILL WORTH SHIPPING, AND THE REASON IS THE INTERESTING PART.** `ai-controls.ts`
+> defaults `chatbotEnabled: true`, and `layout.tsx:148` is `isChatbotEnabled().catch(() => true)`
+> — it **FAILS OPEN**. One operator toggle, or one config-store read failure, arms the entire class
+> with no deploy at all; and E-123's own coupling fix means `/help` starts advertising the chat in
+> the same instant. This is arming, not exposure. Say which one you mean.
 `ChatRoot.tsx:147` calls `chatWithClaude` first and falls through to `sendMessage` on `null`.
 ⚠️ **That fallthrough has FOUR conditions and only the first is unknowable from the tree:** no
 `ANTHROPIC_API_KEY` (`chat.ts:149`), the operator kill-switch off (`:155`), no session (`:159`), or
@@ -723,9 +804,18 @@ role plainly ought to be able to do and cannot is FILED as a finding rather than
 
 ## §6 · ⏭️ RESUME AT
 
-**Session 1 · nothing is ticked. Every row in §2 is open.**
+**Session 3 · Units 1, 2, 3, 4, 5, 6, 7, 9 are LIVE. Open: 8 (gates), 10 (chrome), 11 (the desk).**
+Row **11.3** is ⛔ BLOCKED on a missing credential — see its row; do not work around it.
 
-### Your first hour, in order
+⛔ **THE ONE OPERATOR ACTION STILL OUTSTANDING, AND IT IS NOT CODE.** The live `support_config`
+row still holds `phone: "+255769777877"`. Ali's ruling is that players READ `0769777877`. The
+DEFAULT was fixed in Unit 1.5; the ROW overrides the default, so production still serves the E.164
+form — **measured 2026-09-11, four occurrences on `/help`, and the bare local form appears
+nowhere.** Completing it needs an ordinary audited save at `/admin/system`, which also drops the
+two dead `helpline*` keys the row still carries. ⛔ **Never raw SQL** — `AuditLog` is an
+append-only HMAC chain and a raw write leaves no audit.
+
+### If you are starting fresh, in order
 
 1. ⭐ **`ListAgents`, then `SendMessage` the peer session** running `PAYMENTS-SEAL-CAMPAIGN.md`.
    Exchange file sets, last pushes, and `test:all` counts (§0.4). **Do this before you edit
@@ -774,3 +864,18 @@ single commits **per rule**, never per file.
 - Update §6 to say where the NEXT session resumes, in this same format.
 - Leave `test:all` at 311/324 or better, and say the number.
 - Post a final summary: what shipped, what is BLOCKED and why, and what you did not reach.
+
+---
+
+## §7 · ⭐ DECISION LOG — what this campaign decided on the owner's behalf
+
+⛔ **Append a row for EVERY decision taken under §0.5, in the commit that acted on it.** Empty is a
+valid state; a decision missing from here is not.
+
+| # | Decision taken | Alternative rejected | Which §0.5 criterion settled it | Touches | Money / binding / compliance? |
+|---|---|---|---|---|---|
+| 1 | **Hoist the at-risk decision above the backend choice** (a new exported `atRiskReply`), rather than teaching each backend branch to run the filter | Widening `ChatRoot`'s ternary so every branch calls the filter | **3 — make the next defect impossible, not unlikely.** There were already THREE bypasses (signed-in, daily cap, API error) from one misplacement. A widened branch is correct until someone adds a fourth outcome; a decision taken above the choice cannot grow one | `ChatRoot.tsx` · `send-message.ts` | No |
+| 2 | **Mark only the two replies the SERVER knows are not answers** (`unresolved: true` on the daily-cap and API-error replies, plus an empty completion) | Classifying the model's own reply as resolved/unresolved so the handoff fires on any unhelpful answer | **5 — never decide by what is quickest to green,** and **1 — follow the nearest precedent.** Judging the model's reply needs a second model call; guessing from its text is exactly the proxy this repo keeps shipping. Under-marking costs a handoff one turn late, over-marking interrupts a player the bot is helping | `chat.ts` | No |
+| 3 | **Make the handoff copy true, rather than making the product deliver the promise** — the transcript is not attached, so the copy stops saying it is | Pre-filling the `mailto:` body with the conversation, which would have made *"you won't have to repeat anything"* honest | **4 — when balanced, take the reversible one,** plus §1's standing ruling that a ticket system is OUT OF SCOPE. Two of the three promises (pick-up notification, availability window) cannot be delivered without one, so the copy had to change regardless; attaching the transcript would have been a new feature smuggled into a truth fix. ⭐ Filed as a suggestion, not built | `i18n-dict.ts` (3 locales) | No |
+| 4 | **§4's rule is "do not raise the subject", not "do not promise it"** — no attachment/notification/availability word at all, in either direction | A tempered pattern allowing an explicit negation (*"your chat is NOT attached"*), the shape `rg-doors` 6.7b uses | **2 — leave it easier to reason about,** and the measured cost of the alternative: reading a negation across en/sw/zh is how a guard ends up flagging its own fix, which has already happened in this repo once. 4.4 proves the pattern does not fire on the replacement copy | `scripts/chat-safety.test.mts` | No |
+| 5 | **Correct §4 Unit 6's severity in place and say so out loud** rather than silently deleting the sentence | Quietly editing "live" to "latent" | **§0.5's own instruction to write decisions so they can be overturned in one read.** The brief asserted production exposure that measurement refutes; a document that overstates its severity is the same disease as a guard that overstates its coverage, and hiding the correction would teach the next session to trust §4 over §5 | `docs/SUPPORT-CARE-CAMPAIGN.md` | No — but it DOWNGRADES a stated severity, so it is flagged |

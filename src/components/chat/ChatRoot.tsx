@@ -20,7 +20,7 @@ import { usePathname } from "next/navigation";
 import { ChatBubble } from "./ChatBubble";
 import { ChatPanel } from "./ChatPanel";
 import type { Message } from "./types";
-import { buildUserMessage, sendMessage } from "@/lib/chat/send-message";
+import { atRiskReply, buildUserMessage, sendMessage } from "@/lib/chat/send-message";
 import { chatWithClaude } from "@/app/_actions/chat";
 import { useT } from "@/lib/i18n";
 
@@ -135,6 +135,36 @@ export function ChatRoot({ supportEmail }: { supportEmail: string }) {
       // Panel chrome stays EN/SW (its labels have no zh corpus — B-7 note in
       // types.ts); a zh-stamped message keeps whatever chrome was showing.
       if (user.lang === "en" || user.lang === "sw") setLang(user.lang);
+
+      /**
+       * ⭐ SAFETY IS DECIDED BEFORE A BACKEND IS CHOSEN — Unit 6.1.
+       *
+       * 🔴 IT USED TO BE DECIDED AFTER, AND THAT MADE IT UNREACHABLE FOR EXACTLY
+       * THE PLAYERS WHO HAD SIGNED IN. The at-risk filter lives in `sendMessage`,
+       * and `sendMessage` was only reached when `chatWithClaude` returned `null`.
+       * With a session, the key set and the chatbot on, the live call returns text
+       * — so a player typing "I can't stop" got the model, steered only by RULE 2
+       * of a system prompt. Sign out and the same sentence rendered the card.
+       *
+       * ⛔ AND WIDENING THE BRANCH WOULD NOT HAVE FIXED IT. `chatWithClaude` also
+       * returns TRUTHY text when the daily quota is spent and when the API errors
+       * — two more non-answers that satisfied `liveResult ? …` and skipped the
+       * filter. Three bypasses from one mistake, which is the tell that the defect
+       * was the POSITION of the check. Above the choice, no fourth backend can
+       * grow a fourth bypass.
+       *
+       * `sendMessage` keeps its own call for the same reason the sign-in gate is
+       * checked at every door: this is not the only caller it may ever have.
+       */
+      const intercepted = atRiskReply(text);
+      if (intercepted) {
+        setMessages((prev) => [...prev, intercepted]);
+        // A safety response is an ANSWER, not a failure to help — it must not
+        // count toward the escalate-to-support run.
+        unresolvedRunRef.current = 0;
+        return;
+      }
+
       setPending(true);
       try {
         // Try live Claude first (server action), fall back to stub
@@ -146,7 +176,10 @@ export function ChatRoot({ supportEmail }: { supportEmail: string }) {
           }));
         const liveResult = await chatWithClaude(historyForClaude, text, locale);
         const reply: Message = liveResult
-          ? { id: `m_${Date.now().toString(36)}`, role: "ai", kind: "text", lang: user.lang, text: liveResult.text, ts: Date.now() }
+          // ⛔ `unresolved` IS PROPAGATED, NOT DROPPED — Unit 6.2. This object used to
+          // be built without the field, so `isUnresolved` below was false for every
+          // live reply and the escalate run counter reset on every turn.
+          ? { id: `m_${Date.now().toString(36)}`, role: "ai", kind: "text", lang: user.lang, text: liveResult.text, unresolved: liveResult.unresolved, ts: Date.now() }
           : await sendMessage([...messages, user], text);
         // Per the design spec, surface the escalate-to-support card
         // after 2 consecutive unresolved AI text replies — at that

@@ -52,13 +52,37 @@ function detectLang(text: string): Lang {
   // B-7 — CJK first: a Chinese question used to be stamped "en" and keyword-missed
   // into an English "I'm not sure", which read as being ignored.
   if (/[一-鿿㐀-䶿]/.test(text)) return "zh";
-  const sw = /\b(habari|niko|vipi|chochote|amana|malipo|soko|dau|jaribu|asante|hapana|ndio|kucheza|mfumo|niulize|kusaidia|alika|pendekez|tume|kiungo)\b/i;
+  // 🔴 THE SECOND HALF OF THIS LIST WAS ADDED 2026-09-11, AND A CONTROL FOUND IT,
+  // NOT A READER. `test:chat-safety` §2.3 asserts that a phrase filed under a
+  // locale is DETECTED as that locale — so a Chinese sentence cannot be scored as
+  // covered because an English pattern happened to match it. It failed on
+  // "Nimepoteza pesa nyingi sana": unambiguous Kiswahili, stamped `en`, because
+  // not one of its words was on this list. The at-risk filter would then have
+  // answered a Swahili player in English chrome.
+  // ⚠️ Every token added is Kiswahili-distinctive. A short, ambiguous word here
+  // costs more than a missing one: a false `sw` stamp puts the panel into the
+  // wrong language for a player who wrote English.
+  const sw = /\b(habari|niko|vipi|chochote|amana|malipo|soko|dau|jaribu|asante|hapana|ndio|kucheza|mfumo|niulize|kusaidia|alika|pendekez|tume|kiungo|nadhani|nina|uraibu|siwezi|kuacha|kamari|nimepoteza|pesa|nyingi|maisha|tafadhali|kujizuia)\b/i;
   return sw.test(text) ? "sw" : "en";
 }
 
 /** At-risk language pre-filter — keyword match first; the live model
  *  will use a classifier pass. Both paths funnel into the RG card so
- *  the response is never free-text. */
+ *  the response is never free-text.
+ *
+ *  ⛔ CHINESE HAS NO WORD BOUNDARIES, so the zh patterns carry no `\b`. Writing
+ *  them like the English ones would have produced seven more patterns that match
+ *  nothing — the shape of a guard that is satisfiable without the property.
+ *  `detectLang` has stamped zh since B-7; until 2026-09-11 this filter had not a
+ *  single Chinese pattern, so a Chinese-speaking player asking for help with a
+ *  gambling problem had no deterministic safety response BY CONSTRUCTION.
+ *
+ *  ⚠️ The Swahili additions are deliberately narrow. `kamari` alone means
+ *  "gambling" and would divert every ordinary question that used the word to the
+ *  responsible-gambling card — a classifier that fires on everything is as useless
+ *  as one that fires on nothing, and `test:chat-safety` §2.4 holds that line with
+ *  an ordinary-question corpus.
+ */
 function isAtRiskLanguage(text: string): boolean {
   const t = text.toLowerCase();
   return (
@@ -68,9 +92,53 @@ function isAtRiskLanguage(text: string): boolean {
     /\bcan'?t stop\b/.test(t) ||
     /\bcontrol my bet/.test(t) ||
     /\bkucheza kunakuathiri\b/.test(t) ||
-    /\bsiwezi kuach/.test(t)
+    /\bsiwezi kuach/.test(t) ||
+    // 🔴 THE PLATFORM'S OWN WORDS, AND THEY WERE THE ONES IT COULD NOT HEAR.
+    // `help.faq5q` — "I think I have a problem with gambling. What can I do?" — is
+    // 50pick's published phrasing of this exact case, in three languages, and not
+    // one of the seven original patterns matched any of them. `test:chat-safety`
+    // §2.6 reads those three strings out of the dictionary rather than restating
+    // them here, so the FAQ and the filter can no longer drift apart in silence.
+    /\bproblem (with |wa )?(gambling|betting)\b/.test(t) ||
+    /\bshida ya kucheza\b/.test(t) ||
+    /博彩问题|赌博问题|赌钱问题/.test(t) ||
+    /\buraibu\b/.test(t) ||
+    /\bnimepoteza (pesa )?nyingi\b/.test(t) ||
+    /\bsiwezi kujizuia\b/.test(t) ||
+    /上瘾|成瘾|赌瘾/.test(t) ||
+    /停不下来|戒不掉|控制不住|无法自拔/.test(t) ||
+    /输太多|输了太多|输光/.test(t) ||
+    /追回损失|追损|翻本/.test(t)
   );
 }
+
+/**
+ * ⭐ THE ONE PLACE THE AT-RISK DECISION IS TAKEN — for every backend, before any
+ * of them is consulted.
+ *
+ * ⛔ IT EXISTS BECAUSE THE DECISION USED TO LIVE DOWNSTREAM OF THE BACKEND CHOICE.
+ * `sendMessage` ran the filter, and `ChatRoot` only reached `sendMessage` when the
+ * live model returned `null`. A signed-in player with the chatbot on therefore
+ * never met it: the raw sentence went to the model, governed by an instruction in
+ * a prompt rather than by a code path. Sign out and the same words rendered the
+ * card. The daily-quota and API-error replies bypassed it too, because both are
+ * TRUTHY non-answers — three bypasses from one mistake, which is what says the
+ * defect was the POSITION of the check and not its contents.
+ *
+ * Returning the card itself rather than a boolean is deliberate: a boolean leaves
+ * each caller to build the reply, and the second caller to do that is how a rule
+ * acquires two spellings.
+ */
+export function atRiskReply(userText: string): Message | null {
+  return isAtRiskLanguage(userText)
+    ? { id: nextId(), role: "ai", kind: "rg_redirect", lang: detectLang(userText) }
+    : null;
+}
+
+/** Exported for `test:chat-safety` §2.3, which must prove a Chinese phrase is
+ *  caught by a CHINESE pattern rather than by an English one that happens to
+ *  match. A corpus that cannot tell those apart is testing the wrong property. */
+export { detectLang };
 
 function isBettingPickQuestion(text: string): boolean {
   const t = text.toLowerCase();
@@ -201,7 +269,12 @@ function stubReply(userText: string, lang: Lang): Reply {
         "1. Winnings settle after the market resolves and the objection window closes[1]",
         "2. Once settled, winnings go directly to your **Wallet**",
         "3. To withdraw, go to **Wallet → Withdraw** and enter the amount",
-        "4. Funds go to the M-Pesa number on your account — typically within {60 seconds}[2]",
+        // ⚠️ THE QUALIFIER IS THE CLAIM. `/legal/terms` and `chat.ts` both say a
+        // withdrawal UNDER TZS 1,000,000 settles in about 60 seconds, and that at or
+        // above that line it is held for compliance review for up to 24h. Dropping
+        // "under TZS 1,000,000" turned a sourced statement into a promise the
+        // platform breaks on exactly the withdrawals that matter most.
+        "4. Funds go to the M-Pesa number on your account — under TZS 1,000,000 that is typically within {60 seconds}; TZS 1,000,000 and above is held for compliance review, up to {24 hours}[2]",
         "Daily withdrawal cap is {TZS 500,000} unless you've raised it in **Profile → Account**.",
       ],
       citations: [
@@ -216,12 +289,33 @@ function stubReply(userText: string, lang: Lang): Reply {
       role: "ai",
       kind: "text_with_citations",
       lang,
+      /**
+       * 🔴 THIS BRANCH STILL SHIPPED THE INVENTED TIERS ITS OWN DOCBLOCK SAID WERE
+       * GONE — found 2026-09-11, and that is the part worth recording.
+       *
+       * The 2026-09-07 A-5 sweep (see the header of this file) deleted the invented
+       * deposit minimum and the invented dial multiplier, and then REWROTE THE
+       * COMMENT to say *"'tier 2' and that cap exist nowhere in this codebase except
+       * those sentences"* — past tense, as though all four had been fixed. Two of
+       * them had not been touched: this branch went on telling players about a
+       * "Tier 1", a "Tier 2" and a "TZS 200,000/day" cap for four more days.
+       *
+       * ⭐ A COMMENT THAT DESCRIBES A FIX IS NOT THE FIX, and it is worse than no
+       * comment, because the next reader greps the prose and stops. `grep -rn
+       * "Tier 1|Tier 2|TIER_"` over the KYC server code returns NOTHING: there is no
+       * tier model, no per-tier limit, and no per-day cap anywhere in this platform.
+       *
+       * What is actually true is one rule, and it is the rule the live system prompt
+       * already states: nothing is unlocked incrementally — a player may look around
+       * freely and may do none of deposit, bet or withdraw until an officer approves
+       * one document plus a selfie.
+       */
       paragraphs: [
-        "Here's how KYC verification works on 50pick:",
+        "Here's how identity verification works on 50pick:",
         "1. Go to **Profile → Verify identity** to start[1]",
-        "2. **Tier 1**: Enter your NIDA number and take a phone selfie — takes about {3 minutes}",
-        "3. Tier 1 unlocks deposits, betting, and withdrawals up to {TZS 200,000}/day",
-        "4. **Tier 2**: Upload an ID document for higher limits — reviewed within {24 hours}[2]",
+        "2. Upload any ONE of four documents — NIDA, passport, driving licence or voter's card — plus a selfie",
+        "3. Until our team approves it you can register, sign in and look around, but you cannot deposit, bet or withdraw",
+        "4. Review is usually done within a day; while it is pending there is nothing else for you to do[2]",
       ],
       citations: [
         { n: 1, href: "/profile/kyc", label: "/profile/kyc" },
