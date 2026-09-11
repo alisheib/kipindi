@@ -4,6 +4,7 @@ import { AdminPageHead, AdminKpi, AdminCard, FeedRow, AdminLoadError } from "@/c
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { parseSort, applySort, SortTh } from "@/components/admin/admin-sort";
 import { AdminTableEmpty } from "@/components/admin/admin-table-empty";
+import { ControlLocked } from "@/components/admin/control-locked";
 import { AdminGauge } from "@/components/admin/admin-charts";
 import { Avatar } from "@/components/ui/avatar";
 import { Sensitive } from "@/components/ui/sensitive";
@@ -197,7 +198,7 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
               <I.chevronLeft s={13} />
               Players
             </Link>
-            {capCompliance && <ExportPlayerButton userId={id} />}
+            {capCompliance ? <ExportPlayerButton userId={id} /> : <ControlLocked what="Export player data" need="compliance" />}
           </div>
         }
       />
@@ -423,13 +424,37 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
 
         {/* §D — Account actions (live + audited). Each control shows only for the role
             that may use it; the whole card hides if the viewer can do none of them. */}
+        {/* ⛔ EVERY CONTROL IN THIS CARD USED TO VANISH FOR A ROLE THAT LACKED IT —
+            `{cap && <Control/>}`, absent with no explanation. That is the complaint this
+            whole campaign opened on, one layer up: an officer who cannot see WHY a thing
+            is missing reports the console as broken, which is exactly what happened.
+            ⭐ Row 4.4 already ruled on this shape for a locked FIELD (it must look locked
+            AND state the reason); `ControlLocked` is the console's own answer for a
+            locked CONTROL, already used by markets, proposals and objections. Reusing it
+            rather than inventing a second mechanism is the point.
+            ⚠️ The card's own condition is deliberately UNCHANGED: a role with none of the
+            three domains still sees no card at all, rather than a card of nothing but
+            locks. Locks are for what you nearly have. */}
         {(capSupport || capMoney || capCompliance) && (
           <AdminCard title="Account actions" sw="Vitendo vya akaunti">
             <div className="flex items-center gap-3 flex-wrap">
-              {capSupport && <SuspendControls userId={data.user!.id} currentStatus={data.user!.status} selfExclusion={seStanding} />}
-              {capSupport && <ResetPasswordButton userId={data.user!.id} />}
-              {capMoney && <BalanceAdjustControls userId={data.user!.id} currentBalance={wallet?.balance ?? 0} />}
-              {kyc?.status === "APPROVED" && capCompliance && <ForceReverifyControls userId={data.user!.id} />}
+              {capSupport ? <SuspendControls userId={data.user!.id} currentStatus={data.user!.status} selfExclusion={seStanding} /> : <ControlLocked what="Suspend / restore account" need="support" />}
+              {capSupport ? <ResetPasswordButton userId={data.user!.id} /> : <ControlLocked what="Reset password" need="support" />}
+              {/* 🔴 THE DESK HELD THIS CAPABILITY AND HAD NO DOOR TO IT — Unit 11.4.
+                  `setPlayerEmailAction` is on the SUPPORT domain (actions.ts:46) and
+                  /admin/roles tells the Owner that a support grant may "set emails". The
+                  only render of `<SetEmailForm>` was inside `<KycTab>`, which opens on
+                  `tab === "kyc" && canSeePII` — and `canSeePII` is `canView(role,
+                  "compliance")`, which SUPPORT does not have. So the console described a
+                  capability, granted it, validated it and audited it, and then offered no
+                  way to use it.
+                  ⭐ THE SCENARIO IS THE ORDINARY ONE: a player's email is wrong, so the
+                  password-reset link never arrives, and the desk that exists to fix that
+                  cannot. Nothing is granted here that was not already granted — this adds
+                  the door, not the permission. */}
+              {capSupport ? <SetEmailForm userId={data.user!.id} /> : <ControlLocked what="Set player email" need="support" />}
+              {capMoney ? <BalanceAdjustControls userId={data.user!.id} currentBalance={wallet?.balance ?? 0} /> : <ControlLocked what="Adjust balance" need="accounting" />}
+              {kyc?.status === "APPROVED" && (capCompliance ? <ForceReverifyControls userId={data.user!.id} /> : <ControlLocked what="Force re-verification" need="compliance" />)}
               <p className="text-caption text-text-tertiary flex items-center gap-1.5 ml-auto">
                 <I.shieldcheck s={12} />
                 Every action is audited · reason required

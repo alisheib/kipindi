@@ -387,5 +387,60 @@ __resetGrantsForTest();
      literalDomains('const g = await softRequireConsole("pii.reveal", "not signed in");').length === 0);
 }
 
+// ────────────────────────────────────────────────────────────────────────────
+// §6 — a control a role cannot use is LOCKED, not ABSENT   (SUPPORT & CARE Unit 11.2)
+// ────────────────────────────────────────────────────────────────────────────
+/**
+ * ⭐ THIS IS THE COMPLAINT THE WHOLE SUPPORT & CARE CAMPAIGN OPENED ON, one layer up
+ * from where it was first reported. An officer said *"some fields are not changing,
+ * maybe readonly"* — and the campaign's Unit 4.4 found a pinned FIELD that looked
+ * identical to an editable one and gave no reason. The same disease lives on
+ * `/admin/players/[id]`, worse: capability-gated CONTROLS did not look wrong, they were
+ * simply NOT THERE. `{capMoney && <BalanceAdjustControls/>}` renders nothing at all for
+ * a support officer, who then reports the console as broken — which is how this campaign
+ * started.
+ *
+ * ⛔ AND "ABSENT" IS NOT THE SAFE DEFAULT PEOPLE ASSUME. E-18/E-19 above establish that an
+ * offered-but-refusing control is worse than an absent one, because an ordinary click
+ * writes a SECURITY `privilege_escalation_blocked` row. `ControlLocked` is the answer to
+ * BOTH: it is not clickable, so it cannot raise a false security row, and it states the
+ * control's name and who can work it, so nobody reports a missing feature.
+ *
+ * ⚠️ SCOPED TO ACTION CONTROLS, NOT TO REDACTED DATA. A role that cannot VIEW money must
+ * not see a locked chip where the balance goes — hiding data a role may not read is
+ * correct, and demanding a lock there would make this guard argue for disclosure. The
+ * population is the `cap*` ACT flags only.
+ */
+{
+  const PLAYER_PAGE = "src/app/admin/players/[id]/page.tsx";
+  const src = readFileSync(new URL(`../${PLAYER_PAGE}`, import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1"), "utf8");
+
+  // Population DISCOVERED from the page: every `cap<Name>` flag it actually declares.
+  // A hand-typed list of three would go blind the day a fourth capability is added —
+  // the failure this campaign has met in four separate guards already.
+  const flags = [...new Set([...src.matchAll(/const (cap[A-Z]\w*)\s*=/g)].map((m) => m[1]))];
+  ok(`6 · CONTROL — the page's capability flags were discovered (${flags.join(", ")})`, flags.length >= 3, `found ${flags.length}`);
+
+  // A bare `{capX && <Component` renders NOTHING when the flag is false. That is the
+  // defect. The locked form is `capX ? <Component .../> : <ControlLocked .../>`.
+  const bare: string[] = [];
+  for (const f of flags) {
+    for (const m of src.matchAll(new RegExp(`\\{\\s*${f}\\s*&&\\s*<([A-Z]\\w*)`, "g"))) {
+      bare.push(`${f} && <${m[1]}> renders nothing for a role without it`);
+    }
+  }
+  ok("6 · ★ no capability-gated CONTROL is rendered absent — each is locked with its reason",
+     bare.length === 0, bare.join(" | "));
+
+  // ⭐ CONTROL — without this, the check passes over a page that gates nothing at all,
+  // which is the far worse defect and would read as a clean bill of health.
+  const locked = (src.match(/<ControlLocked\b/g) ?? []).length;
+  ok("6 · CONTROL — the page really does lock controls, so the check is not passing over an ungated page",
+     locked >= 3, `found ${locked} ControlLocked`);
+  // ⭐ CONTROL — the detector must still fire on the pre-fix shape, constructed here.
+  ok("6 · CONTROL — the detector still catches the bare-&& shape it was written for",
+     /\{\s*capMoney\s*&&\s*<([A-Z]\w*)/.test("{capMoney && <BalanceAdjustControls userId={x} />}"));
+}
+
 console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — ${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);

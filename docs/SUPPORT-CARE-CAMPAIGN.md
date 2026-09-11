@@ -282,11 +282,24 @@ would unblock it, do every other unit, and report it at the end. **Never idle.**
   the row STILL carries it**, present tense:
   `{email:"msaada@50pick.tz", phone:"+255769777877", helpline:"+255769777877",
   phoneTel:"+255769777877", helplineTel:"+255769777877"}`. Those two `helpline*` keys are 50pick's
-  OWN desk number, and they are inert **only** because `migrate()` in
-  `src/lib/server/support-config.ts` strips them at read time. ⭐ **The defence is a read-time
-  filter over live data, not a cleanup** — restore that row into any code path that does not run
-  `migrate()` and a self-excluding player is routed straight back to the operator. **Keep the
-  pinning; make the form say WHY; and decide explicitly whether the row itself gets cleaned.**
+  OWN desk number, and `migrate()` in `src/lib/server/support-config.ts` drops them at read time.
+  🔴 **THE SENTENCE THAT STOOD HERE WAS AN OVERSTATEMENT AND IS RETRACTED — checked across all
+  four layers 2026-09-11, by a third session that pushed back on my own framing.** It claimed that
+  restoring this row into a path that does not run `migrate()` would route a self-excluding player
+  *"straight back to the operator"*. **It would not.** The statutory helpline is a PINNED CODE
+  CONSTANT (`STATUTORY_HELPLINE`, read via `HELPLINE()` / `HELPLINE_TEL()`) with no setter and no
+  persisted field; `helpline`/`helplineTel` are **not in the `SupportConfig` type** at all; nothing
+  in `src/` reads a persisted helpline — the `t.*.helpline` hits are i18n LABEL keys whose number
+  comes from the constant; and `migrate()` is an **allowlist**, so stale keys are dropped on every
+  hydration rather than filtered case by case. That separation is exactly what E-328 closed.
+  ⭐ **THE RESIDUAL RISK IS THE ONE THE MODULE'S OWN COMMENT NAMES, and it is enough on its own:**
+  *"a later `set()` would write them out again."* Removing the keys beats relying on a read-time
+  allowlist, which is why the save is still worth doing — but it is a hygiene fix, not a routing
+  hazard, and calling it the latter would have propagated a false severity into two documents.
+  ⚠️ **ONE GENUINE OBLIGATION SURVIVES:** the pre-launch-reset rollback artifact retains this row
+  WITH both keys, so **any restore of a pre-2026-09-11 backup silently undoes the correction and
+  must be followed by re-applying it.** Recorded in the reset runbook as well as here.
+  **Keep the pinning; make the form say WHY; and decide explicitly whether the row itself gets cleaned.**
   ⭐ **The safe method already exists and is NOT raw SQL:** an ordinary save at `/admin/system`
   full-replaces the JSON value with `{email, phone, phoneTel}`, so it drops the two `helpline*`
   keys by itself — audited, chained, nothing forged. ⛔ A raw `UPDATE "SystemConfig"` leaves NO
@@ -338,7 +351,7 @@ would unblock it, do every other unit, and report it at the end. **Never idle.**
 | 8 | 🟠 Five suites are not on the deploy path; one asserts a retired value | ✅ **3/3 — LIVE. ⚠️ the brief's list of six was STALE; the real defect was 5 of THIS CAMPAIGN'S OWN guards** |
 | 9 | 🟠 The first-login primer blocks its own photographer | ✅ **3/3 — LIVE** |
 | 10 | 🟡 Routing and chrome — dialability, badges, duplicated constants | 🟡 **6/8 — LIVE.** ⭐ the ledger had **7** rows and the §4 prose held an **8th finding with no row** (CHASING_LOSSES); 10.1 and 10.8 remain, both re-scoped by measurement |
-| 11 | 🟠 "Perfect support user management" — the DESK, which nothing here audits | ☐ 0/4 |
+| 11 | 🟠 "Perfect support user management" — the DESK, which nothing here audits | 🟡 **3/4 — LIVE.** ⭐ 11.3 was **NOT BLOCKED** — the credential the brief called missing is present; the row is OPEN, not blocked, and needs a live drive |
 
 <details><summary><strong>Row ledger — tick these</strong></summary>
 
@@ -423,10 +436,10 @@ would unblock it, do every other unit, and report it at the end. **Never idle.**
 
 | | Unit 11 · The support desk | where |
 |---|---|---|
-| ☐ | **11.1** what a SUPPORT grant can actually see and do is written down | `roles.ts:198-201,242` |
-| ☐ | **11.2** every control a SUPPORT user cannot use is disabled WITH ITS REASON, not absent | `/admin/players` |
-| ⛔ | **11.3** the desk is measured signed in AS SUPPORT, not as ADMIN — **BLOCKED: `QA_SUPPORT_PASSWORD` is not in `.env.qa.local`** (measured; the file holds 7 other QA secrets and not this one). UNBLOCKED BY: the owner adding that secret, or minting the `support` persona. ⚠️ An instrument already exists — `qa:read-tiers` signs in as SUPPORT — so this is a missing CREDENTIAL, not a missing driver | `.env.qa.local` |
-| ☐ | **11.4** anything the role cannot do that it plainly SHOULD is filed, not silently accepted | new |
+| ✅ | **11.1** what a SUPPORT grant can actually see and do is written down — **in the one place the console already shows an Owner before they grant it**, rather than in a new doc nobody opens. `DOMAIN_SUMMARY.support.act` read *"suspend / restore accounts, reset passwords, and set emails"*, and *"restore accounts"* quietly contained the heaviest thing on the domain: 🔴 **`restorePlayerAction` is THE ONLY DOOR that reopens a served self-exclusion** (E-238, LCCP SR 3.5.5) and it writes a COMPLIANCE-category audit row. An Owner deciding who gets `support` could not tell that from the sentence. ⭐ A summary that is true of the routine cases and silent about the serious one is how a grant gets given casually. Reopening stays on `support` deliberately — the desk is who a player asks — and the MINIMUM period is still checked, not assumed | `src/lib/server/roles.ts` |
+| ✅ | **11.2** every control a SUPPORT user cannot use is disabled WITH ITS REASON, not absent — ⭐ **this is the campaign's founding complaint, one layer up from where it was reported.** Every control was `{cap && <Control/>}`: not there at all, no explanation. `ControlLocked` (the console's own answer, already used by markets, proposals and objections) now stands in its place. ⛔ **And "absent" is not the safe default it looks like:** E-18/E-19 establish that an offered-but-REFUSING control is worse, because an ordinary click writes a SECURITY `privilege_escalation_blocked` row — `ControlLocked` is not clickable, so it answers both. New **§6** in `test:control-gates` discovers the page's `cap*` flags from source rather than naming them, and **found two sites I had already missed** (`SuspendControls`, `ResetPasswordButton` — absent for a finance or compliance officer). ⚠️ Scoped to ACT flags only: hiding data a role may not READ is correct, and a guard demanding a lock there would be arguing for disclosure | `players/[id]/page.tsx` · `scripts/control-gates.test.mts` |
+| ☐ | **11.3** the desk is measured signed in AS SUPPORT, not as ADMIN — 🟢 **NOT BLOCKED. THE BLOCKER WAS STALE AND I INHERITED IT TWICE.** The brief said `QA_SUPPORT_PASSWORD` is absent and that the file holds 7 QA secrets; the session prompt repeated it as a standing instruction. **Measured 2026-09-11: the file holds 13 keys including `QA_SUPPORT_PASSWORD` (21 chars, non-empty) and `QA_AUDITOR_PASSWORD`**, and `scripts/live/harness.mjs:45` still expects that exact name. ⚠️ Key names and a LENGTH only were read; no value was printed anywhere. ⭐ **The lesson is the one that governed this whole session: RE-DERIVE A BLOCKER BEFORE INHERITING IT.** A recorded blocker is a measurement with a timestamp, not a fact. The row is OPEN, not blocked — it needs a live SUPPORT drive (`qa:read-tiers` is the cheapest), which was deliberately not run today because a third session has a production data reset staged | `.env.qa.local` · `harness.mjs` |
+| ✅ | **11.4** anything the role cannot do that it plainly SHOULD is filed, not silently accepted — 🔴 **the desk held a capability and had NO DOOR TO IT.** `setPlayerEmailAction` is on the SUPPORT domain, and `/admin/roles` tells the Owner a support grant may *"set emails"* — but the only render of `<SetEmailForm>` sat inside `<KycTab>`, which opens on `tab === "kyc" && canSeePII`, and `canSeePII` is `canView(role, "compliance")`, which SUPPORT does not have. The console described the capability, granted it, validated it and audited it, then offered no way to use it. ⭐ **The scenario is the ordinary one:** a player's email is wrong, so the password-reset link never arrives, and the desk that exists to fix exactly that cannot. Shipped the door, not the permission — nothing is granted here that was not already granted | `players/[id]/page.tsx` |
 
 </details>
 
@@ -816,7 +829,7 @@ role plainly ought to be able to do and cannot is FILED as a finding rather than
 
 ## §6 · ⏭️ RESUME AT
 
-**Session 3 · Units 1–9 are LIVE. Open: 10 (chrome), 11 (the desk).**
+**Session 3 · Units 1–9 LIVE. Unit 10 at 6/8, Unit 11 at 3/4. Open: 10.1, 10.8, 11.3.**
 Row **11.3** is ⛔ BLOCKED on a missing credential — see its row; do not work around it.
 
 ⛔ **THE ONE OPERATOR ACTION STILL OUTSTANDING, AND IT IS NOT CODE.** The live `support_config`

@@ -151,9 +151,22 @@ export const DOMAIN_SUMMARY: Record<AdminDomain, { view: string; act: string }> 
     view: "system health and AI usage",
     act: "change system and AI settings",
   },
+  /**
+   * ⛔ THE `act` LINE UNDERSTATED WHAT THIS GRANT HANDS OVER — corrected 2026-09-11.
+   * It read "suspend / restore accounts, reset passwords, and set emails", and "restore
+   * accounts" quietly contained the heaviest thing on the domain: `restorePlayerAction`
+   * is THE ONLY DOOR that reopens a served self-exclusion (E-238, LCCP SR 3.5.5), and it
+   * writes a COMPLIANCE-category audit row. An Owner reading /admin/roles to decide who
+   * gets `support` could not tell that from this sentence.
+   * ⭐ This string is not decoration — it is the only machine-readable description of a
+   * domain the console shows a human before they grant it. A summary that is true of the
+   * routine cases and silent about the serious one is how a grant gets given casually.
+   * ⚠️ Reopening stays on `support` deliberately (the desk is who a player asks), and an
+   * officer still cannot shorten the MINIMUM period — that is checked, not assumed.
+   */
   support: {
     view: "the player roster and basic profiles",
-    act: "suspend / restore accounts, reset passwords, and set emails",
+    act: "suspend / restore accounts (including reopening a served self-exclusion — a compliance decision), reset passwords, and set emails",
   },
 };
 
