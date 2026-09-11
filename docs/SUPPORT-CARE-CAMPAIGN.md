@@ -56,7 +56,21 @@ Per ledger unit, in this order, no batching:
    (`scripts/live/ops/levy-divergence.cjs`, `scripts/live/ops/payments-now.cjs`,
    `scripts/ops-updown-probe-bars.mts`) plus whatever untracked leavings your checkout carries;
    and `test:guards-exist` §3 was watched flipping **PASS → FAIL → PASS inside one hour** on
-   2026-09-11, resolving the `ops:prelaunch-purge` key against an untracked target under `scripts/`.
+   2026-09-11, resolving a pre-launch purge **ops** key against an untracked target under `scripts/`.
+   🔴 **AND THEN I MADE IT PERMANENT ON `main`, WHICH IS THE PART TO LEARN FROM.** A third session
+   (`asheib-33`, staging the pre-launch reset) had added two `ops:` keys to `package.json`. My
+   Unit 6 commit included `package.json` legitimately — and `--only` does not protect against
+   another session's changes INSIDE a file that is legitimately yours. ⭐ **The sweep was not the
+   damage; the ASYMMETRY was: the KEYS are tracked and their SCRIPTS are not**, so the commit
+   published a reference and left its referent behind. Every fresh clone and every `git worktree`
+   of `main` then failed `test:guards-exist` §3. The peer session found it, because a tree that is
+   not the one the files live in is the only place it can surface.
+   ⛔ **DO NOT "FIX" IT BY DELETING THE KEYS — MEASURED, AND IT MAKES THREE GATES WORSE.** Removing
+   them took `test:docs` from 2 broken to **9** (the reset runbook cites them), `test:orphans` from
+   5 undeclared to **7** (the scripts lose their declaration), and `guards-exist` still failed —
+   on §1 instead of §3, because a key cited in prose must also exist. `package.json` was restored
+   byte-identical. ⭐ **The only consistent state is keys present AND scripts tracked**, which is
+   one commit by the session that owns them.
    🟢 **CAUSE FOUND, AND IT WAS NOT A DEFECT: A THIRD SESSION WAS WORKING IN THIS CHECKOUT.**
    `asheib-33` was staging the pre-launch production reset and creating those scripts as it went,
    so the file genuinely came and went under a gate that reads the filesystem.
