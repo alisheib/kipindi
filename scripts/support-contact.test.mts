@@ -635,6 +635,138 @@ ok("§11 no module-scope value captures a config getter", [...new Set(v11)].leng
   ok("§13.3 ⚠️ CONTROL — every name asserted above is a real npm script", phantom.length === 0, phantom.join(" | "));
 }
 
+// ────────────────────────────────────────────────────────────────────────────
+// §14 — a published contact must be ACTIONABLE where it is rendered   (Unit 10.1–10.3)
+// ────────────────────────────────────────────────────────────────────────────
+/**
+ * ⭐ EVERY OTHER SECTION IN THIS FILE POLICES THE VALUE. NONE OF THEM HAS AN OPINION
+ * ABOUT THE MARKUP — and the markup is the half that was failing. `/legal/terms` and
+ * `/legal/privacy` printed the support address in a `<span>`, three times each, in three
+ * locales, while attaching a 30-day disputes deadline to it; `reality-check.tsx` printed
+ * the statutory helpline in a `<span>` inside the modal that interrupts live play,
+ * directly under a Self-exclude button. Correct value, unreachable. `legal/aml` and
+ * `legal/responsible-gambling` had the right shape all along, which is what makes this a
+ * consistency rule rather than a new convention.
+ *
+ * ⛔ THE UNIT IS THE RENDERED TEXT NODE, NOT THE FILE. A file "contains a mailto" is
+ * satisfiable by one correct anchor while five bare spans sit beside it — the footer
+ * proves that shape exists. So each place the getter is rendered AS TEXT is located, and
+ * the tag that encloses THAT occurrence is required to be an anchor with the matching
+ * scheme.
+ *
+ * ⚠️ THIS CANNOT BE VERIFIED BY FETCHING THE LIVE PAGE, and that is worth recording.
+ * Cloudflare Scrape Shield rewrites every `mailto:` on this origin into a
+ * `/cdn-cgi/l/email-protection` interstitial and replaces the visible address with the
+ * literal text "[email protected]" — measured 2026-09-11, zero real `mailto:` hrefs served
+ * on any page. So a live grep for "mailto:" reads 0 whether the source is right or wrong.
+ * The source is the only place this property is observable.
+ */
+{
+  const SCHEMES: [string, string][] = [["SUPPORT_EMAIL", "mailto:"], ["HELPLINE", "tel:"]];
+  /**
+   * ⛔ ONE EXEMPTION, NAMED, WITH AN OWNER AND AN END DATE — not a pattern.
+   * `legal/agent-terms/page.tsx` carries six bare renders across en/sw/zh and belongs to
+   * the parallel PAYMENTS SEAL session (its Unit 6.3 rewrites those same JSX bodies).
+   * Editing it from here would conflict inside a single paragraph. That session has the
+   * anchor spec and removing this entry is the last step of its unit.
+   * ⭐ 14.4 pins the exemption at exactly one file so it cannot quietly become a pattern.
+   */
+  const EXEMPT = ["src/app/legal/agent-terms/page.tsx"];
+
+  const bare: string[] = [];
+  let rendered = 0;
+  for (const f of files) {
+    const rel = relative(ROOT, f).replace(/\\/g, "/");
+    if (EXEMPT.includes(rel)) continue;
+    const body = readFileSync(f, "utf8");
+    for (const [getter, scheme] of SCHEMES) {
+      // `>{GETTER()}` — the getter standing as an element's own text. The same getter
+      // inside an href reads `${GETTER()}`, preceded by `$`, so it cannot match here.
+      const re = new RegExp(`>\\{${getter}\\(\\)\\}`, "g");
+      for (const m of body.matchAll(re)) {
+        rendered++;
+        const before = body.slice(Math.max(0, m.index - 400), m.index);
+        const open = before.lastIndexOf("<");
+        const tag = open === -1 ? "" : before.slice(open);
+        if (!(/^<a[\s>]/.test(tag) && tag.includes(scheme))) {
+          const line = body.slice(0, m.index).split(/\r?\n/).length;
+          bare.push(`${rel}:${line} renders ${getter}() with no ${scheme} anchor`);
+        }
+      }
+    }
+  }
+
+  ok("§14.1 ★ every rendered support contact sits inside an anchor with the right scheme",
+    bare.length === 0, bare.join(" | "));
+  // ⭐ CONTROL — without this, 14.1 passes over a tree that renders no contact at all.
+  ok("§14.2 ⚠️ CONTROL — contact text renders were actually found", rendered >= 8, `found ${rendered}`);
+  // ⭐ CONTROLS — the detector must reject the bare shape and accept the correct one.
+  // Calibrated on the two real shapes in this repo, constructed here rather than trusted.
+  {
+    const probe = (src: string) => {
+      const m = [...src.matchAll(/>\{SUPPORT_EMAIL\(\)\}/g)][0];
+      if (!m) return "no-match";
+      const before = src.slice(0, m.index);
+      const tag = before.slice(before.lastIndexOf("<"));
+      return /^<a[\s>]/.test(tag) && tag.includes("mailto:") ? "accepted" : "flagged";
+    };
+    ok("§14.3 ⚠️ CONTROL — the detector flags a bare span and accepts a correct anchor",
+      probe(`<span className="font-mono">{SUPPORT_EMAIL()}</span>`) === "flagged" &&
+      probe("<a href={`mailto:${SUPPORT_EMAIL()}`} className=\"x\">{SUPPORT_EMAIL()}</a>") === "accepted");
+  }
+  ok("§14.4 ⚠️ CONTROL — the exemption list is exactly one named file that still exists",
+    EXEMPT.length === 1 && files.some((f) => relative(ROOT, f).replace(/\\/g, "/") === EXEMPT[0]),
+    EXEMPT.join(" | "));
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// §15 — the last-resort error page duplicates the helpline ON PURPOSE   (Unit 10.6)
+// ────────────────────────────────────────────────────────────────────────────
+/**
+ * ⭐ THIS IS THE ONE PLACE IN THE CAMPAIGN WHERE THE ANSWER IS *NOT* "READ THE CONSTANT",
+ * and the reasoning is worth keeping because the obvious fix is the wrong one.
+ *
+ * `global-error.tsx` carries FOUR hardcoded copies of the statutory helpline — three
+ * locale strings and one `tel:` href. The tempting fix is to import `HELPLINE()`, and it
+ * is safe on the import graph: `src/lib/support-config.ts` imports NOTHING, and
+ * `HELPLINE()` returns a module-scope const with no config read, no DB, no env.
+ *
+ * ⛔ BUT THE FILE CARRIES AN EXPLICIT, REASONED RULE AGAINST IT — *"Reach for ZERO
+ * imports beyond React + next/link"*, *"this file deliberately imports nothing"*. It is
+ * the root error boundary: it renders when the root layout itself has failed, which is
+ * exactly the moment a module resolution is least trustworthy. Overriding a documented
+ * ⛔ to save a duplication is how a robustness decision gets quietly undone by someone
+ * who did not know it was one.
+ *
+ * ⭐ SO THE DUPLICATION STAYS AND THE DRIFT IS MADE IMPOSSIBLE INSTEAD. That is the same
+ * trade the pinned constants already make: a value with no setter, held in one place,
+ * and a gate that fails if a second place disagrees. What was actually wrong was never
+ * the copies — it was that nothing compared them to anything.
+ */
+{
+  const ge = readFileSync(join(SRC, "app/global-error.tsx"), "utf8");
+  const helpline = HELPLINE();
+  const helplineTel = HELPLINE_TEL();
+
+  // Population DISCOVERED: every Tanzanian-helpline-shaped run of digits in the file,
+  // spaced or unspaced. A hand-typed list of four line numbers would go blind the moment
+  // a fifth copy appeared — which is the whole failure mode this campaign keeps meeting.
+  const shaped = [...ge.matchAll(/0800[\d\s]{6,12}/g)].map((m) => m[0].trim());
+  const wrong = shaped.filter((s) => s !== helpline && s.replace(/\s/g, "") !== helplineTel.replace(/\s/g, ""));
+
+  ok("§15.1 ★ every helpline copy in the root error boundary matches the pinned constant",
+    wrong.length === 0, wrong.join(" | "));
+  // ⭐ CONTROL — 15.1 passes beautifully over a file that stopped showing the helpline at
+  // all. The error page is where a player lands when everything else is broken; it losing
+  // the statutory number silently is the outcome this control exists to make loud.
+  ok("§15.2 ⚠️ CONTROL — the error boundary still publishes the helpline, and all four copies were found",
+    shaped.length >= 4, `found ${shaped.length}`);
+  // ⭐ CONTROL — the detector must reject a drifted copy, constructed rather than trusted.
+  ok("§15.3 ⚠️ CONTROL — the detector rejects a drifted copy",
+    [...("Helpline 0800 11 9999").matchAll(/0800[\d\s]{6,12}/g)]
+      .map((m) => m[0].trim()).some((s) => s !== helpline));
+}
+
 // ── The population itself must not be empty, or §3 and §4 would pass by finding nothing.
 // This is the check that separates "no violations" from "no search". ──
 const helplineSurfaces = files.filter((f) =>

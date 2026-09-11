@@ -409,7 +409,7 @@ lastLabel={t.common.lastPage}
         </p>
         <FormColumn measure="field"><CloseAccountForm /></FormColumn>
         <p className="font-mono text-[11px] text-text-subtle">
-          {t.common.help}? {t.common.email} <span className="text-text-muted">{SUPPORT_EMAIL()}</span>{" "}
+          {t.common.help}? {t.common.email} <a href={`mailto:${SUPPORT_EMAIL()}`} className="text-text-muted underline underline-offset-2">{SUPPORT_EMAIL()}</a>{" "}
           {t.common.or} <span className="text-text-muted">{SUPPORT_PHONE()}</span>.
         </p>
         </div>

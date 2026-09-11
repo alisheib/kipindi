@@ -67,7 +67,18 @@ export function PublicFooter({
           <div className="flex items-center gap-2.5">
             <span
               aria-label={t.footer.eighteenPlus}
-              className="inline-flex items-center justify-center w-7 h-7 rounded-pill border-2 border-no-700 text-no-300 font-display font-bold text-[11px]"
+              /* ⛔ WAS A HAND-BUILT UTILITY STRING, AND IT RENDERED THE 18+ MARK AT A
+                 DIFFERENT SIZE FROM THE DESIGN SYSTEM'S OWN. `w-7 h-7` looks like 28px
+                 and is not: tailwind.config.ts:220 overrides spacing "7" to 40px, so this
+                 badge was 40×40 while `.kp-rg__18` (globals.css:4802) is 28×28 — same
+                 border, ink and type size, different diameter, both visible on `/` in one
+                 scroll.
+                 ⭐ The fix is ONE DEFINITION SITE, not two numbers kept in step. A
+                 synchronised pair is a thing to remember; a single class is a thing that
+                 cannot disagree with itself. The class is self-sufficient (display,
+                 alignment, size, border, radius, family, weight, colour) and its
+                 `flex: none` is correct inside this row's `flex items-center gap-2.5`. */
+              className="kp-rg__18"
             >
               {t.footer.eighteenPlus}
             </span>
@@ -95,7 +106,14 @@ export function PublicFooter({
           </li>
           <li>
             <a href={`mailto:${supportEmail}`} className="text-text-muted hover:text-text transition-colors">
-              Email · {supportEmail}
+              {/* ⛔ WAS A HARDCODED ENGLISH LITERAL, one line below the translated
+                  `t.footer.helpline`, rendering on EVERY page in all three locales.
+                  ⭐ `test:i18n` could not see it and never could: it walks the DICTIONARY
+                  for missing or untranslated keys, and a string that was never a key is
+                  outside its population by construction. An absent key is invisible to a
+                  parity check — which is why row 10.4 is a guard-shaped finding and not
+                  just a typo. */}
+              {t.footer.email} · {supportEmail}
             </a>
           </li>
           <li className="italic text-text-subtle text-body-sm">

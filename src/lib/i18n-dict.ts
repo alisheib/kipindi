@@ -263,7 +263,7 @@ export const dict = {
       withdrawalUnderReview: "Withdrawal under review",
       payoutInProgress: "Payout in progress",
       withdrawalOnItsWay: "Withdrawal on its way",
-      amlReviewBody: "Amounts over TZS 1,000,000 are reviewed by compliance (usually within 2 hours).",
+      amlReviewBody: "Amounts of TZS 1,000,000 or more are reviewed by compliance (usually within 2 hours).",
       payoutProcessingBody: "Your provider is processing the payout. We\u2019ll confirm the moment it settles.",
       payoutMomentsBody: "Your provider should pay out within moments.",
       depositPendingBody: "Approve the prompt on your phone. The moment your provider confirms, we add the funds and send you a notification and an email receipt \u2014 usually within a minute. You do not need to stay on this screen, and please do not pay again.",
@@ -1979,6 +1979,7 @@ export const dict = {
       exportClose: "Export / close my account",
       // === i18n coverage pass ===
       helpline: "Helpline",
+      email: "Email",
     },
     /**
      * The identity gate's panels (2026-09-05) — the copy shown INSTEAD of a stake
@@ -2742,7 +2743,7 @@ export const dict = {
       withdrawalUnderReview: "Kutoa kunakaguliwa",
       payoutInProgress: "Malipo yanaendelea",
       withdrawalOnItsWay: "Kutoa kunaendelea",
-      amlReviewBody: "Kiasi cha zaidi ya TZS 1,000,000 kinakaguliwa na ufuatiliaji (kawaida ndani ya masaa 2).",
+      amlReviewBody: "Kiasi cha TZS 1,000,000 au zaidi kinakaguliwa na ufuatiliaji (kawaida ndani ya masaa 2).",
       payoutProcessingBody: "Mtoa huduma wako anashughulikia malipo. Tutathibitisha mara itakapokamilika.",
       payoutMomentsBody: "Mtoa huduma wako atalipa hivi karibuni.",
       depositPendingBody: "Idhinisha kwenye simu yako. Mtoa huduma akithibitisha, tunaongeza pesa mara moja na kukutumia arifa na risiti kwa barua pepe \u2014 kwa kawaida ndani ya dakika moja. Huhitaji kubaki kwenye skrini hii, na tafadhali usilipe tena.",
@@ -4117,6 +4118,7 @@ export const dict = {
       exportClose: "Hamisha / funga akaunti yangu",
       // === i18n coverage pass ===
       helpline: "Simu ya msaada",
+      email: "Barua pepe",
     },
     kycGate: {
       eyebrowVerify: "Hatua moja kwanza",
@@ -4810,7 +4812,7 @@ export const dict = {
       withdrawalUnderReview: "提现审核中",
       payoutInProgress: "赔付进行中",
       withdrawalOnItsWay: "提现进行中",
-      amlReviewBody: "超过TZS 1,000,000的金额由合规部门审查（通常在2小时内）。",
+      amlReviewBody: "TZS 1,000,000 及以上的金额由合规部门审查（通常在2小时内）。",
       payoutProcessingBody: "您的服务商正在处理赔付。结算后我们会立即确认。",
       payoutMomentsBody: "您的服务商将很快赔付。",
       depositPendingBody: "在手机上确认提示。服务商确认后，我们会立即入账，并向您发送通知和电子邮件收据 — 通常在一分钟内。您无需停留在此页面，请勿重复支付。",
@@ -6178,6 +6180,7 @@ export const dict = {
       exportClose: "导出/关闭我的账户",
       // === i18n coverage pass ===
       helpline: "求助热线",
+      email: "邮箱",
     },
     kycGate: {
       eyebrowVerify: "先完成一步",

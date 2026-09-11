@@ -148,7 +148,7 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
           Bets may be voided where the underlying event is abandoned, the wrong outcome is initially settled,
           or the result is corrected by the source authority within {objectionHours} hour
           {objectionHours === 1 ? "" : "s"} of resolution, while the payout is still on hold. Disputes must be
-          raised in writing to <span className="font-mono text-text-muted">{SUPPORT_EMAIL()}</span> within
+          raised in writing to <a href={`mailto:${SUPPORT_EMAIL()}`} className="font-mono text-brand-300 underline-offset-2 hover:underline">{SUPPORT_EMAIL()}</a> within
           30 days of placement.
         </p>
       </LegalSection>
@@ -277,7 +277,7 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
           Dau zinaweza kufutwa endapo tukio husika litaachwa, matokeo yasiyo sahihi yatakuwa yamefungwa awali, au matokeo
           yatarekebishwa na mamlaka ya chanzo ndani ya saa {objectionHours} baada ya kufungwa, wakati malipo bado
           yamesimamishwa. Migogoro ni lazima iwasilishwe kwa maandishi
-          kwenda <span className="font-mono text-text-muted">{SUPPORT_EMAIL()}</span> ndani ya siku 30 tangu kuwekwa kwa dau.
+          kwenda <a href={`mailto:${SUPPORT_EMAIL()}`} className="font-mono text-brand-300 underline-offset-2 hover:underline">{SUPPORT_EMAIL()}</a> ndani ya siku 30 tangu kuwekwa kwa dau.
         </p>
       </LegalSection>
 
@@ -385,7 +385,7 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
       <LegalSection n="6" title="作废与争议">
         <p>
           在相关赛事被取消、最初结算了错误结果，或来源主管机构在结算后 {objectionHours} 小时内（赔付仍处于暂缓期间）更正结果的情况下，下注可被作废。争议须于下注后
-          30 天内以书面形式提交至 <span className="font-mono text-text-muted">{SUPPORT_EMAIL()}</span>。
+          30 天内以书面形式提交至 <a href={`mailto:${SUPPORT_EMAIL()}`} className="font-mono text-brand-300 underline-offset-2 hover:underline">{SUPPORT_EMAIL()}</a>。
         </p>
       </LegalSection>
 

@@ -130,7 +130,7 @@ export default async function AdminLoginPage({ searchParams }: { searchParams?: 
         </Link>
 
         <p className="text-center font-mono text-[11px] text-text-subtle">
-          Lost device or codes? Contact <span className="text-text-muted">{SUPPORT_EMAIL()}</span> with your AML lead in copy.
+          Lost device or codes? Contact <a href={`mailto:${SUPPORT_EMAIL()}`} className="text-text-muted underline underline-offset-2">{SUPPORT_EMAIL()}</a> with your AML lead in copy.
         </p>
       </div>
     </div>

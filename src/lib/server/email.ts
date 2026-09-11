@@ -931,8 +931,8 @@ export function withdrawalUnderReviewHtml({ amount, reference }: {
   return wrap(`
     ${eyebrow("Under review", "Inakaguliwa")}
     ${heading("Withdrawal under review")}
-    ${subtitle("Amounts over TZS 1,000,000 are reviewed by our compliance team. This usually takes a few hours (up to 24 hours), and we'll email you the moment it's sent.")}
-    ${subtitleSw("Kiasi kinachozidi TZS 1,000,000 kinakaguliwa na timu yetu ya ufuatiliaji. Kawaida huchukua saa chache (hadi saa 24), na tutakutumia barua pepe mara itakapotumwa.")}
+    ${subtitle("Amounts of TZS 1,000,000 or more are reviewed by our compliance team. This usually takes a few hours (up to 24 hours), and we'll email you the moment it's sent.")}
+    ${subtitleSw("Kiasi cha TZS 1,000,000 au zaidi kinakaguliwa na timu yetu ya ufuatiliaji. Kawaida huchukua saa chache (hadi saa 24), na tutakutumia barua pepe mara itakapotumwa.")}
     ${detailRows([
       { label: "Amount", value: formatTzs(amount) },
       { label: "50pick reference", value: reference },

@@ -39,7 +39,7 @@ function content(): Record<Locale, React.ReactNode> { return {
       <LegalSection n="1" title="Data controller">
         <p>
           50pick Ltd, Dar es Salaam, Tanzania. Contact:{" "}
-          <span className="font-mono text-text-muted">{SUPPORT_EMAIL()}</span>. Our data protection
+          <a href={`mailto:${SUPPORT_EMAIL()}`} className="font-mono text-brand-300 underline-offset-2 hover:underline">{SUPPORT_EMAIL()}</a>. Our data protection
           officer (DPO) is reachable at the same address.
         </p>
       </LegalSection>
@@ -127,7 +127,7 @@ function content(): Record<Locale, React.ReactNode> { return {
       <LegalSection n="1" title="Msimamizi wa data">
         <p>
           50pick Ltd, Dar es Salaam, Tanzania. Mawasiliano:{" "}
-          <span className="font-mono text-text-muted">{SUPPORT_EMAIL()}</span>. Afisa wetu wa ulinzi wa data
+          <a href={`mailto:${SUPPORT_EMAIL()}`} className="font-mono text-brand-300 underline-offset-2 hover:underline">{SUPPORT_EMAIL()}</a>. Afisa wetu wa ulinzi wa data
           (DPO) anapatikana kupitia anwani hiyo hiyo.
         </p>
       </LegalSection>
@@ -216,7 +216,7 @@ function content(): Record<Locale, React.ReactNode> { return {
       <LegalSection n="1" title="数据控制者">
         <p>
           50pick Ltd，坦桑尼亚达累斯萨拉姆。联系方式：{" "}
-          <span className="font-mono text-text-muted">{SUPPORT_EMAIL()}</span>。我们的数据保护官（DPO）
+          <a href={`mailto:${SUPPORT_EMAIL()}`} className="font-mono text-brand-300 underline-offset-2 hover:underline">{SUPPORT_EMAIL()}</a>。我们的数据保护官（DPO）
           可通过同一地址联系。
         </p>
       </LegalSection>

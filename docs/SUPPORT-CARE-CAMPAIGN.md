@@ -55,14 +55,17 @@ Per ledger unit, in this order, no batching:
    2026-09-11): `test:orphans` names **3 TRACKED** undeclared scripts committed at 140fcc6a
    (`scripts/live/ops/levy-divergence.cjs`, `scripts/live/ops/payments-now.cjs`,
    `scripts/ops-updown-probe-bars.mts`) plus whatever untracked leavings your checkout carries;
-   and `test:guards-exist` §3 is **NON-DETERMINISTIC in a long-lived checkout** — watched flipping
-   PASS → FAIL → PASS inside one hour on 2026-09-11. Its §3 resolves the `ops:prelaunch-purge` key,
-   whose target under `scripts/` (an `-r2` variant of the prelaunch purge) is **UNTRACKED — it has
-   never been in git history** — so it exists only as a local file, something in this tree deletes
-   and recreates it, and a FRESH CLONE would not have it at all. ⭐ The lesson is the general one
-   and it cost two wrong conclusions today: **an untracked file can make a gate green, and its
-   absence can make the same gate red, with no commit in between.** Before calling a flip yours,
-   ask whether the thing it names is even in git. ⛔ Its path is described here and not written
+   and `test:guards-exist` §3 was watched flipping **PASS → FAIL → PASS inside one hour** on
+   2026-09-11, resolving the `ops:prelaunch-purge` key against an untracked target under `scripts/`.
+   🟢 **CAUSE FOUND, AND IT WAS NOT A DEFECT: A THIRD SESSION WAS WORKING IN THIS CHECKOUT.**
+   `asheib-33` was staging the pre-launch production reset and creating those scripts as it went,
+   so the file genuinely came and went under a gate that reads the filesystem.
+   ⛔ **AND I HAD ALREADY WRITTEN A CONFIDENT WRONG EXPLANATION FOR IT** — *"an npm key dangling in
+   every fresh clone"* — true about git, false about the cause, and it would have sent the next
+   session hunting a defect that does not exist. ⭐ **A READY EXPLANATION IS THE MOST DANGEROUS
+   THING TO BRING TO A MEASUREMENT.** Before concluding anything from a gate that reads the
+   filesystem, ask who else has this directory open — `ListAgents` answers it in one call, and
+   ⚠️ **TWO SESSIONS IS NOT A MAXIMUM.** ⛔ Its path is described here and not written
    out, deliberately — `docs-links.mjs` resolves script paths found in prose, so quoting a missing
    one ADDS a third `test:docs` failure. That is §0a's rule, and it caught this very paragraph. ⛔ Neither remedy is safe unattended: the orphan allowlist may
    only SHRINK, and deleting an npm key is a product decision.
@@ -334,7 +337,7 @@ would unblock it, do every other unit, and report it at the end. **Never idle.**
 | 7 | 🟠 A cooling-off break can be SHORTENED, and the copy deterring it is false | ✅ **3/3 — LIVE** |
 | 8 | 🟠 Five suites are not on the deploy path; one asserts a retired value | ✅ **3/3 — LIVE. ⚠️ the brief's list of six was STALE; the real defect was 5 of THIS CAMPAIGN'S OWN guards** |
 | 9 | 🟠 The first-login primer blocks its own photographer | ✅ **3/3 — LIVE** |
-| 10 | 🟡 Routing and chrome — dialability, badges, duplicated constants | ☐ 0/7 |
+| 10 | 🟡 Routing and chrome — dialability, badges, duplicated constants | 🟡 **6/8 — LIVE.** ⭐ the ledger had **7** rows and the §4 prose held an **8th finding with no row** (CHASING_LOSSES); 10.1 and 10.8 remain, both re-scoped by measurement |
 | 11 | 🟠 "Perfect support user management" — the DESK, which nothing here audits | ☐ 0/4 |
 
 <details><summary><strong>Row ledger — tick these</strong></summary>
@@ -408,13 +411,15 @@ would unblock it, do every other unit, and report it at the end. **Never idle.**
 
 | | Unit 10 · Routing and chrome | where |
 |---|---|---|
-| ☐ | **10.1** the self-exclusion refusal gives a DIALABLE number | `auth-service.ts:169,185` |
-| ☐ | **10.2** the reality-check helpline is a `tel:` | `reality-check.tsx:183` |
-| ☐ | **10.3** legal pages open the address they cite a deadline against | `terms:151,280,388` |
-| ☐ | **10.4** the footer email label is a dict key in all three locales | `public-footer.tsx:98` |
-| ☐ | **10.5** both 18+ badges measure the same rectangle | `globals.css:4802` vs `w-7` |
-| ☐ | **10.6** `global-error.tsx`'s four helpline copies read the constant | `:48,60,72,300` |
-| ☐ | **10.7** the AML email states `≥`, matching the code | `email.ts:913` vs `payments.ts:197` |
+| ☐ | **10.1** the self-exclusion refusal gives a DIALABLE number — ⛔ **RE-SCOPED BY MEASUREMENT, NOT DONE.** The refusals at `auth-service.ts:169,185` are SERVER strings rendered as plain text, so an anchor cannot simply be embedded: the fix is `{phone}`/`{email}` placeholders on the four `auth.selfExclusion*` dict keys in three locales plus `fillNodes` in the login error panel. Bigger than one edit and NOT started — left sealed rather than half-applied | `auth-service.ts` · `i18n-dict.ts` · `auth/login` |
+| ✅ | **10.2** the reality-check helpline is a `tel:` — it printed the PINNED statutory number in a `<span>` inside the modal that interrupts live play, directly under a Self-exclude button. ⚠️ It imports only the pinned half (`HELPLINE`, `HELPLINE_TEL`): this is a `"use client"` module, and §4/§5 fail on a client component that reads a config GETTER, because a browser bundle's module cache can never be hydrated server-side | `reality-check.tsx` |
+| ✅ | **10.3** legal pages open the address they cite a deadline against — ⭐ **the guard found ELEVEN bare sites, not the six the brief listed**, and two of them are in `auth/forgot-password`, which the brief names as an example of a page doing it CORRECTLY. Also `auth/admin` and `profile/account`. All wrapped in the anchor shape `legal/aml` already ships | `terms` · `privacy` · `auth/*` · `profile/account` |
+| ✅ | **10.4** the footer email label is a dict key in all three locales — `Email · {supportEmail}` was a hardcoded English literal one line below the translated `t.footer.helpline`, on EVERY page. ⭐ **`test:i18n` could not see it and never could:** it walks the DICTIONARY for missing or untranslated keys, and a string that was never a key is outside its population by construction. An absent key is invisible to a parity check | `public-footer.tsx` · `i18n-dict.ts` |
+| ✅ | **10.5** both 18+ badges measure the same rectangle — MEASURED, and the brief's arithmetic was right: `tailwind.config.ts:220` overrides spacing `"7"` to **40px**, so `w-7 h-7` rendered 40×40 while `.kp-rg__18` is 28×28, same border, ink and type size, both visible on `/` in one scroll. ⭐ Fixed by adopting the design system's own class — **ONE definition site, not two numbers kept in step.** `test:design-frozen` green | `public-footer.tsx` |
+| ✅ | **10.6** `global-error.tsx`'s four helpline copies — ⛔ **AND THE OBVIOUS FIX WAS THE WRONG ONE.** Importing the constant is safe on the import graph (`support-config.ts` imports NOTHING), but the file carries an explicit reasoned rule — *"this file deliberately imports nothing"* — because it is the root error boundary, rendering when the root layout has already failed. Overriding a documented ⛔ to save a duplication is how a robustness decision gets quietly undone. ⭐ **So the copies stay and the DRIFT is made impossible instead:** new **§15** discovers every helpline-shaped literal in the file and fails if any disagrees with the pinned constant | `global-error.tsx` · `scripts/support-contact.test.mts` |
+| ✅ | **10.7** the AML copy states the comparison the code makes — `payments.ts:197` holds at `>=`, so a withdrawal of EXACTLY 1,000,000 is held while the email explaining the hold told the player their amount was not over the line. ⭐ **No compliance decision was needed: `legal/aml:46` and `terms:87` already publish "TZS 1,000,000 or more",** so the copy was corrected to the position the binding pages already state, in all three locales, across BOTH surfaces — 5 strings, not the 1 the row implies | `i18n-dict.ts` · `email.ts` |
+| ✅ | **10.g** the guard: new **§14** in `test:support-contact` — every place a contact getter is rendered AS TEXT must sit inside an anchor with the matching scheme. ⭐ **The unit is the rendered text node, not the file:** "this file contains a mailto" is satisfiable by one correct anchor beside five bare spans, which is exactly the shape the footer proves exists. Proven RED on 11 sites. ⚠️ **This property CANNOT be verified by fetching the live page** — Cloudflare Scrape Shield rewrites every `mailto:` on this origin into a `/cdn-cgi/l/email-protection` interstitial (measured: ZERO real mailto hrefs served anywhere), so a live grep reads 0 whether the source is right or wrong. ⛔ ONE exemption, named and controlled at exactly one file: `legal/agent-terms` belongs to the parallel session | `scripts/support-contact.test.mts` |
+| ☐ | **10.8** ⭐ **A ROW THAT DID NOT EXIST — the §4 prose carried an 8th finding with no ledger line.** `CHASING_LOSSES` filters `BET_PLACED && CONFIRMED` — every bet, won or lost — while its detail string says *"within 30 min of a losing bet"*. ⛔ Measurement says it cuts BOTH ways and the FALSE LOW is the worse half: a loss is not distinguishable at that point at all. NOT started — it needs the loss taken from settled positions without turning an existing per-user walk into a timeout | `responsible-gambling.ts` |
 
 | | Unit 11 · The support desk | where |
 |---|---|---|

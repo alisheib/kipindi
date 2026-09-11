@@ -18,7 +18,11 @@ import * as React from "react";
 import Link from "next/link";
 import { Modal } from "@/components/ui/modal";
 import { I } from "@/components/ui/glyphs";
-import { HELPLINE } from "@/lib/support-config";
+// ⛔ THE CLIENT-SAFE HALF ONLY. This is a `"use client"` module, so it may read the PINNED
+// constants (no setter, no hydration) but never the operator getters — `test:support-contact`
+// §4/§5 fail on a client component that reads a config getter, because a browser bundle's
+// module cache can never be hydrated server-side. `HELPLINE_TEL` is pinned beside `HELPLINE`.
+import { HELPLINE, HELPLINE_TEL } from "@/lib/support-config";
 import { useT } from "@/lib/i18n";
 
 const DEFAULT_INTERVAL   = 30; // minutes
@@ -180,7 +184,7 @@ export function RealityCheckHost({ enabled, intervalMin = DEFAULT_INTERVAL, user
         </div>
 
         <p className="text-center font-mono text-micro uppercase eyebrow text-text-subtle pt-1">
-          {t.rg.helpline} · <span className="text-text-muted">{HELPLINE()}</span>
+          {t.rg.helpline} · <a href={`tel:${HELPLINE_TEL()}`} className="text-text-muted underline underline-offset-2">{HELPLINE()}</a>
         </p>
       </div>
     </Modal>
