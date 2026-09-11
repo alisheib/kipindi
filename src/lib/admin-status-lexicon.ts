@@ -195,6 +195,59 @@ export const REVIEW = {
 } satisfies Record<string, AdminLabel>;
 
 /**
+ * The roster's DERIVED KYC stage (src/lib/kyc-stage.ts) — 2026-09-11, Ali's request:
+ * *"those who uploaded kyc can i have a unique tag for them … because it says pending
+ * kyc always how i know who uploaded and how not."*
+ *
+ * ⛔ A NEW FAMILY, NOT AN EDIT OF `REVIEW.kyc*` ABOVE. Those six are the RAW
+ * `KycStatus`, and `kycStatusLabel` lower-cases them into the running sentence
+ * "Identity verification is …" at admin/agents/[id]/page.tsx — which "Uploaded · not
+ * sent" does not fit. These seven answer a different question: has this person given
+ * us their documents, and whose move is it now.
+ *
+ * ⭐ THE FIRST WORD SAYS WHOSE MOVE IT IS, because that is the only decision an officer
+ * scanning 500 rows actually makes. Exactly ONE of the seven is ours. The two-part
+ * `X · Y` form is this family's existing idiom — `REVIEW.agentInvited` ("Invited ·
+ * awaiting acceptance"), `REVIEW.dsarPartial` ("Partly done · docs held").
+ *
+ * ⛔ "SUBMITTED" APPEARS ON EXACTLY ONE ENTRY, and it is the one where `submittedAt` is
+ * non-null by construction (kyc-service.ts:533 writes the status and the timestamp
+ * together). `uploaded` is a player who attached every required photo and never pressed
+ * the button; calling that "Submitted" would be the same lie in a new colour — and
+ * NOTHING in the suite would catch it, because `test:kyc-copy-truth` matches a
+ * deny∧money∧identity phrase pattern over dict leaves and legal paragraphs and never
+ * compares a word to a state, while `kyc-status-honesty.test.mts` is hardcoded to
+ * src/app/profile/kyc/page.tsx. `test:kyc-stage` §2a-§2d is written to close that hole.
+ *
+ * ⛔ NO ENTRY CONTAINS "verified". `idVerifiedAt` means FORMAT ACCEPTED AND UNIQUE,
+ * never "an authority confirmed this identity" (docs/IDENTITY-POLICY.md) — and
+ * `kyc-status-honesty.test.mts` exists because that exact word was once bound to that
+ * exact field, in all three languages. `approved` reuses `REVIEW.kycApproved`, which
+ * names what a human officer actually did.
+ * ⛔ NO ENTRY CONTAINS "Pending". The Account column on the SAME ROW already reads
+ * "Pending KYC" (`ACCOUNT.pendingKyc`) and both render upper-cased — "PENDING KYC"
+ * beside "PENDING REVIEW" two cells apart is the complaint relocated, not answered.
+ *
+ * EN-only, like every family on this console. ⛔ No `sw`: the provenance rule at the top
+ * of this file forbids inventing Swahili, and four of these seven have no shipped source
+ * to lift from. Glossing three of seven because a source happens to exist for those
+ * three IS the inconsistency.
+ * ⚠️ All seven read correctly in CAPS — the Chip atom upper-cases via CSS.
+ */
+export const KYC_STAGE = {
+  nothingYet:          { en: "Nothing yet" },
+  uploaded:            { en: "Uploaded · not sent" },
+  withUs:              { en: "Submitted · with us" },
+  moreNeeded:          { en: "More needed · player" },
+  rejectedAfterUpload: { en: "Rejected · after upload" },
+  rejectedNoDocs:      { en: "Rejected · nothing sent" },
+  /** A failed READ is its own labelled state, never a fabricated fact — the same line
+   *  the roster already draws for a failed wallet read. The in-file precedent for
+   *  wording an absence is `UPDOWN.readingNone`. */
+  unreadable:          { en: "Not available" },
+} satisfies Record<string, AdminLabel>;
+
+/**
  * F11 — player objections to a market verdict (StoredObjection.status + remedy).
  *
  * The Swahili here is lifted from already-shipped surfaces, per the rule at the

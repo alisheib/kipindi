@@ -136,6 +136,61 @@ export type StoredKyc = {
   updatedAt: string;
 };
 
+/**
+ * THE ROSTER'S STAGE READ — one submission per user (the NEWEST), plus a document
+ * COUNT. Consumed by `kycStage()` in `@/lib/kyc-stage` to put a derived identity
+ * word on every row of `/admin/players`.
+ *
+ * ⛔ A READ SHAPE, NEVER A WRITE SHAPE — and that is the ruling, not a convenience.
+ * Nothing upserts this, so there is no counter to keep in step, no invariant for a
+ * future session to break, and no second source of truth that can make the tag lie.
+ * `documentCount` is DERIVED on every read.
+ *
+ * ⛔ WHY NOT A DENORMALISED `KycSubmission.documentCount` COLUMN, which is the
+ * obvious design and was rejected on evidence:
+ *   1. `kyc.upsert` commits the submission and its documents in TWO separate round
+ *      trips, so a stored counter would commit BEFORE the rows it counts. Any
+ *      failure between them leaves it permanently wrong, and the drift only has to
+ *      cross ZERO to make the tag lie — in both directions.
+ *   2. THE REPO ALREADY TRIED IT. `PredictionMarket.predictorCount` is this repo's
+ *      one denormalised counter over a child table; it drifted, it outlived its
+ *      children, and `scripts/ops-backfill-predictor-count.mjs` could not repair
+ *      all of it.
+ *   3. `test:dal-parity` covers StoredAffiliateAccount / StoredUser /
+ *      StoredReferralReward / StoredAgentApplication and NOT StoredKyc — so a
+ *      counter mapped in one DAL half only would be invisible to the single guard
+ *      written to catch exactly that. It is the blind spot the 2026-09-11 P0 lived
+ *      in, on this same table.
+ * The column's day comes with the release that moves the roster's filtering,
+ * sorting and pagination into SQL — and not before `kyc.upsert` is ONE transaction
+ * and a reconciliation check is in the pipeline.
+ *
+ * ⛔ NO `documents`, NO `extraRequests`, NO `idNumber` / `dob` / `fullName`. This
+ * shape crosses a POPULATION read. `extraRequests` is a `Json?` whose entries carry
+ * a `storageKey` that is a FULL base64 data URL under inline storage — and
+ * `storage.ts` falls back to inline SILENTLY when `KYC_STORAGE=r2` is set without
+ * `R2_BUCKET`. Selecting either for every player would pull image bytes through a
+ * roster render.
+ */
+export type StoredKycStageRow = {
+  id: string;
+  userId: string;
+  status: StoredKyc["status"];
+  /**
+   * The REAL count — not a boolean, not a synthetic 1.
+   *
+   * ⛔ The derivation only ever compares it to ZERO, and `test:kyc-stage` asserts
+   * that at source level: `documents.length >= 3` was true of a NIDA and is a lie
+   * about a passport. But the INTEGER is what is carried here, so a magnitude
+   * comparison creeping into `kycStage()` goes RED in the guard instead of
+   * silently reading 1 for every uploader.
+   */
+  documentCount: number;
+  submittedAt: string | null;
+  approvedAt: string | null;
+  createdAt: string;
+};
+
 export type StoredOtp = {
   id: string;
   /** The address the code went to, when it is a phone. ⛔ Exactly one of `phoneE164` /
@@ -1022,6 +1077,51 @@ const memoryDb = {
       return n;
     },
     list: () => Array.from(store.kyc.values()),
+    /**
+     * Mirror of the Prisma DAL's `listStageFacts` — the roster's KYC stage feed.
+     * Both halves exist because every unit suite runs against this store, and a
+     * Prisma-only method compiles everywhere and throws here at runtime.
+     *
+     * ⭐ THE TIE-BREAK IS SPELLED OUT RATHER THAN REUSING `findByUserId`'s LOOP,
+     * DELIBERATELY. That loop breaks a `createdAt` tie with a strict `>`, so the
+     * FIRST-inserted row wins — a THIRD answer, different from both this and the
+     * Prisma half. Matching `(createdAt desc, id desc)` EXACTLY is what stops the
+     * roster tag from differing between the two backends, which is the defect
+     * class `prisma-dal.ts`'s `kyc.upsert` records paying for on this same table
+     * on 2026-09-11.
+     *
+     * ⭐ A USER CAN HAVE MORE THAN ONE ROW — there is no `@@unique([userId])`, and
+     * `startKyc` is a read-then-write with nothing behind it, rendered from a
+     * server component. Two tabs both read null, both mint a cuid, both insert.
+     * Race-born duplicates are milliseconds apart and can share a `createdAt`
+     * (TIMESTAMP(3)), so `id` desc is what makes the pick REPRODUCIBLE.
+     *
+     * ⚠️ No snapshot skew on this side — this store is synchronous and atomic, so
+     * the read-ordering rule the Prisma half needs is vacuous here. ⛔ Do not let a
+     * guard that only runs against this store claim to have proven it.
+     */
+    listStageFacts: (): StoredKycStageRow[] => {
+      const newest = new Map<string, StoredKyc>();
+      for (const k of store.kyc.values()) {
+        const cur = newest.get(k.userId);
+        const wins = !cur
+          || k.createdAt > cur.createdAt
+          || (k.createdAt === cur.createdAt && k.id > cur.id);
+        if (wins) newest.set(k.userId, k);
+      }
+      return Array.from(newest.values()).map((k) => ({
+        id: k.id,
+        userId: k.userId,
+        status: k.status,
+        // ⚠️ `?.length ?? 0`, never `?.length` truthiness — `[]` is falsy on
+        // `.length`, and that exact confusion IS the P0 fixed in prisma-dal's
+        // `kyc.upsert` on 2026-09-11.
+        documentCount: k.documents?.length ?? 0,
+        submittedAt: k.submittedAt ?? null,
+        approvedAt: k.approvedAt ?? null,
+        createdAt: k.createdAt,
+      }));
+    },
   },
   otp: {
     create: (o: StoredOtp) => { store.otps.set(o.id, o); return o; },

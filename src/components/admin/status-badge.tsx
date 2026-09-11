@@ -27,9 +27,12 @@
  * import (erased at build) so no server code is pulled into the bundle.
  */
 import { Chip } from "@/components/ui/chip";
-import { LIFECYCLE, REVIEW, OBJECTION, ACCOUNT, MONEY, PIPELINE, UPDOWN, AUDIT, SURVEILLANCE } from "@/lib/admin-status-lexicon";
+import { LIFECYCLE, REVIEW, OBJECTION, ACCOUNT, MONEY, PIPELINE, UPDOWN, AUDIT, SURVEILLANCE, KYC_STAGE } from "@/lib/admin-status-lexicon";
 import { STATUS_TONE, TONE_CHIP, type StatusChipVariant } from "@/lib/status-tone";
 import { refundReasonFor, type RefundReason } from "@/lib/updown-refund-reason";
+// Type-only, erased at build — `@/lib/kyc-stage` is a pure module with no "use client",
+// so this import keeps the file server-safe while client components can still reach it.
+import type { KycCell } from "@/lib/kyc-stage";
 import type { MarketStatus } from "@/lib/server/market-service";
 import type { StoredKyc, StoredTxn, ObjectionStatus } from "@/lib/server/store";
 import type { DsarStatus, DsarType } from "@/lib/server/privacy";
@@ -129,6 +132,59 @@ export function kycStatusLabel(status: KycStatus): string {
 
 export function KycStatusBadge({ status, size = "sm" }: { status: KycStatus; size?: "sm" | "md" | "lg" }) {
   return <Chip size={size} variant={kycStatusVariant(status)}>{kycStatusLabel(status)}</Chip>;
+}
+
+/* ── KYC STAGE — the roster's DERIVED identity column (2026-09-11) ────────── */
+
+/**
+ * ⛔ A DIFFERENT FUNCTION FROM `kycStatusVariant` ABOVE, WHICH IS LEFT BYTE-IDENTICAL.
+ * Every arm here resolves through `TONE_CHIP[STATUS_TONE.KYC_*]` — §B11: "a chip
+ * variant hand-typed beside a status label is a second definition of a design fact".
+ *
+ * ⛔ AND IT DELIBERATELY DOES NOT DELEGATE TO `kycStatusVariant`. That function's final
+ * arm is a bare `: "warning"` fallback — a live §B11 breach for NOT_STARTED /
+ * IN_PROGRESS / ADDITIONAL_INFO_REQUIRED. Routing new stages through it would enrol
+ * them in an undocumented fallback. The breach is named in the handover; it is not
+ * extended here and not bundled into this change.
+ *
+ * ⭐ The `Record<KycCell, …>` is the point: a new stage is a COMPILE ERROR here, not a
+ * chip that silently renders in the wrong colour. `test:kyc-stage` additionally asserts
+ * this body contains zero bare quoted variant strings.
+ */
+export function kycStageVariant(cell: KycCell): StatusChipVariant {
+  const V: Record<KycCell, StatusChipVariant> = {
+    nothing_yet:           TONE_CHIP[STATUS_TONE.KYC_NOTHING_YET.admin],
+    uploaded:              TONE_CHIP[STATUS_TONE.KYC_UPLOADED.admin],
+    with_us:               TONE_CHIP[STATUS_TONE.KYC_WITH_US.admin],
+    more_needed:           TONE_CHIP[STATUS_TONE.KYC_MORE_NEEDED.admin],
+    rejected_after_upload: TONE_CHIP[STATUS_TONE.KYC_REJECTED.admin],
+    rejected_no_docs:      TONE_CHIP[STATUS_TONE.KYC_REJECTED.admin],
+    approved:              TONE_CHIP[STATUS_TONE.KYC_APPROVED.admin],
+    unreadable:            TONE_CHIP[STATUS_TONE.KYC_UNREADABLE.admin],
+  };
+  return V[cell];
+}
+
+/** Human label for a derived KYC stage. ⭐ `Record<KycCell, …>` again — a new stage
+ *  cannot be added without giving it a word. */
+export function kycStageLabel(cell: KycCell): string {
+  const L: Record<KycCell, string> = {
+    nothing_yet:           KYC_STAGE.nothingYet.en,
+    uploaded:              KYC_STAGE.uploaded.en,
+    with_us:               KYC_STAGE.withUs.en,
+    more_needed:           KYC_STAGE.moreNeeded.en,
+    rejected_after_upload: KYC_STAGE.rejectedAfterUpload.en,
+    rejected_no_docs:      KYC_STAGE.rejectedNoDocs.en,
+    // ⛔ REUSED, not re-minted — one word, one home. An officer's APPROVED is the same
+    // word here as in the review queue, and it must stay one string.
+    approved:              REVIEW.kycApproved.en,
+    unreadable:            KYC_STAGE.unreadable.en,
+  };
+  return L[cell];
+}
+
+export function KycStageBadge({ cell, size = "sm" }: { cell: KycCell; size?: "sm" | "md" | "lg" }) {
+  return <Chip size={size} variant={kycStageVariant(cell)}>{kycStageLabel(cell)}</Chip>;
 }
 
 /* ── Player account status (players list + player detail) ────────────────── */

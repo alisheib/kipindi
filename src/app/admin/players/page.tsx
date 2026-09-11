@@ -3,7 +3,8 @@ import { AdminPageHead, AdminCard, AdminKpi, AdminLoadError } from "@/components
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { SortTh } from "@/components/admin/admin-sort";
 import { AdminTableEmpty } from "@/components/admin/admin-table-empty";
-import { AccountStatusBadge, accountStatusLabel } from "@/components/admin/status-badge";
+import { AccountStatusBadge, accountStatusLabel, KycStageBadge, kycStageLabel } from "@/components/admin/status-badge";
+import { kycStage, isKycStage, KYC_STAGES, type KycStage, type KycCell } from "@/lib/kyc-stage";
 import { Avatar } from "@/components/ui/avatar";
 import { Select } from "@/components/ui/select";
 import { Sensitive } from "@/components/ui/sensitive";
@@ -20,7 +21,7 @@ import { KpiGrid } from "@/components/admin/admin-body";
 export const metadata = { title: "Admin · Players" };
 export const dynamic = "force-dynamic";
 
-export default async function AdminPlayersPage({ searchParams }: { searchParams: Promise<{ q?: string; status?: string; sort?: string; dir?: string; page?: string }> }) {
+export default async function AdminPlayersPage({ searchParams }: { searchParams: Promise<{ q?: string; status?: string; kyc?: string; sort?: string; dir?: string; page?: string }> }) {
   const sp = await searchParams;
   // RBAC: only accounting-view roles see wallet balances (Support = roster, no money).
   const _session = await currentSession();
@@ -35,6 +36,75 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
   let all: Awaited<ReturnType<typeof db.user.list>> = [];
   let usersFailed = false;
   try { all = await db.user.list(); } catch { usersFailed = true; }
+
+  /* -- KYC STAGE - the derived identity column (2026-09-11, Ali's request) ---
+   *
+   * ⭐ THE DEFECT IT FIXES, IN HIS WORDS: "it says pending kyc always — how do I
+   * know who uploaded and how not." He is right, and the cause is structural: the
+   * Status column beside this one is `User.status`, an ACCOUNT fact, so four
+   * different people read one identical "Pending KYC" — someone with no submission
+   * at all, someone who opened KYC and uploaded nothing, someone who uploaded every
+   * photo and never pressed Confirm, and someone who submitted and is waiting on US.
+   * The third group is invisible platform-wide: `listPendingKyc` reads only
+   * PENDING_REVIEW + ADDITIONAL_INFO_REQUIRED, so nobody chases them.
+   *
+   * ⭐ ONE DERIVATION FEEDS THE ROWS, THE COUNTS AND THE FILTER. There is no SQL
+   * pre-filter and no re-derivation, so a drift between the chip, the tally and the
+   * filtered set is not merely unlikely — it is unexpressible.
+   *
+   * ⚠️ TWO FLAT READS OVER THE POPULATION, AND THEY ARE CHEAPER THAN THE READ THIS
+   * PAGE ALREADY DOES. `db.user.list()` above hydrates every User row; this is six
+   * narrow scalars per submission plus one aggregate over a narrow child table.
+   * ⛔ NOT `db.kyc.list()` — findMany with no `where`, no `orderBy` and
+   * `include: { documents: true }`: every inline base64 image, and a
+   * non-deterministic winner for any user with two submissions.
+   * ⛔ NOT `db.kyc.findByUserId(u.id)` in a loop — that is the N+1 this page spent
+   * a release removing from the wallet column.
+   */
+  let stageRows: Awaited<ReturnType<typeof db.kyc.listStageFacts>> = [];
+  let kycFailed = false;
+  try { stageRows = await db.kyc.listStageFacts(); } catch { kycFailed = true; }
+
+  // The DAL has already reduced to the NEWEST submission per user, ordered
+  // (createdAt desc, id desc) — the same row `db.kyc.findByUserId` returns, so this
+  // page and /admin/players/[id] cannot disagree about one player.
+  const stageByUser = new Map<string, KycStage>();
+  for (const r of stageRows) stageByUser.set(r.userId, kycStage(r));
+
+  /**
+   * ⛔ A MISS IS NOT AN ERROR — `kycStage(null)` is "nothing_yet". No registration
+   * path writes a KycSubmission; the row is created LAZILY on the first render of
+   * /profile/kyc, inside a `catch {}` that swallows failure.
+   *
+   * ⚠️ WHICH IS WHY THE WORD IS "Nothing yet" AND NEVER "never opened KYC". Both
+   * sign-up doors now redirect a new account straight to `/profile/kyc?welcome=new`,
+   * so a missing row today means a legacy account, an abandon between the redirect
+   * and the render, a SWALLOWED `startKyc` failure, or a non-player (a bootstrap
+   * admin is created ACTIVE and never routed to KYC). "Nothing yet" is honest for
+   * all four; "never opened" would accuse a player the platform itself failed.
+   *
+   * ⛔ A-5 — A FAILED READ IS NEVER A FACT. `kycStage()` cannot emit "unreadable" -
+   * tsc proves it, because `KycCell` carries that arm and `KycStage` does not — so
+   * the PAGE owns that state, exactly as it already does for a failed wallet read.
+   */
+  const stageOf = (userId: string): KycCell =>
+    kycFailed ? "unreadable" : (stageByUser.get(userId) ?? kycStage(null));
+
+  /**
+   * VALIDATED AGAINST THE CLOSED SET, exactly as `ACCOUNT_FILTER` is — a junk or
+   * hostile `?kyc=` must not silently filter the roster to zero rows and let an
+   * officer conclude a queue is empty.
+   * ⛔ DROPPED WHEN THE READ FAILED: filtering on an empty map would render
+   * "0 of 1,842 players", which reads as "this stage is empty" rather than "the
+   * instrument is broken".
+   * ⛔ NOTHING TO CLAMP BY ROLE. Only ADMIN / COMPLIANCE / SUPPORT reach this route,
+   * and the page already publishes the coarser "Pending KYC" fact to all three — by
+   * row, by KPI, by mix bar, and by `?status=PENDING_KYC`. Gating the refinement
+   * would blind the SUPPORT desk (whose domain OWNS this page, and who field "why
+   * can't I deposit?") while closing no leak at all. What stays privileged is the
+   * submission's CONTENTS — number, images, DOB — and that is untouched here.
+   */
+  const kycFilter: KycStage | "" = !kycFailed && isKycStage(sp.kyc) ? sp.kyc : "";
   // Shared grammar (src/lib/search). Previously a single contiguous `.includes()`,
   // so an officer typing a name AND a phone fragment — the most natural way to
   // find one player — got nothing back. `displayLabel` is computed, not a column,
@@ -42,6 +112,9 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
   const parsed = parseQuery(query, { fields: fieldNames(USER_SEARCH) });
   const filtered = all.filter((u) => {
     if (statusFilter && u.status !== statusFilter) return false;
+    // ⭐ THE SAME `stageOf` THE CHIP RENDERS — not a parallel predicate. The filtered
+    // set and the column cannot disagree because they are one function.
+    if (kycFilter && stageOf(u.id) !== kycFilter) return false;
     return matchesQuery(parsed, { ...u, displayLabel: displayLabel(u) } as unknown as Record<string, string | null | undefined>, USER_SEARCH);
   });
 
@@ -78,7 +151,35 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
   // Paginate
   const page = parsePage(sp.page, filtered.length);
   const paged = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
-  const baseHref = buildBaseHref("/admin/players", { q: sp.q, status: sp.status, sort: sp.sort, dir: sp.dir });
+  /**
+   * -- the stage tallies, from the SAME map the chips read ------------------
+   * ⛔ ITERATE `all`, NOT `stageRows`. The population is the USERS. Counting the
+   * submission rows silently drops every user who has none — legacy accounts, an
+   * abandon, a swallowed `startKyc`, a bootstrap admin — from the tallies while they
+   * still appear in the table. "Nothing yet" is the bucket this feature exists to
+   * reveal, so it is the one that must not be counted by accident.
+   * Seeded from `KYC_STAGES` so a stage with zero players reads 0, never undefined.
+   */
+  const stageCounts = Object.fromEntries(KYC_STAGES.map((s) => [s, 0])) as Record<KycStage, number>;
+  if (!kycFailed) for (const u of all) stageCounts[stageByUser.get(u.id) ?? "nothing_yet"]++;
+
+  /* !! `sp` WHOLESALE, AND IT IS A REAL DEFECT THIS CLOSES - not a style change.
+   * `buildBaseHref` is a DENY-LIST OF ONE KEY: it keeps every truthy param it is
+   * handed and drops only `pageParam`. The allow-list was the HAND-TYPED LITERAL
+   * that used to sit here — `{ q, status, sort, dir }` — so a new `kyc` param would
+   * have been dropped from every page link. Page 2 would then be
+   * `/admin/players?...&page=2` with no filter, and the filter is recomputed from
+   * the URL: an officer who filters to "Submitted — with us", pages forward and
+   * works the list would be reading the GENERAL ROSTER believing it is a review
+   * queue, while the count JUMPS UP to the unfiltered total. With only `?kyc=` set,
+   * `entries.length === 0` and page 2 is the bare path — the filter evaporates.
+   * ⛔ Do NOT "fix" this in pagination.tsx: there is no list in it to add to, and it
+   * is shared by ~25 admin and money screens. Passing `sp` is what the sibling admin
+   * pages (aml, approvals, ai-polls, config) already do, and it makes this page
+   * immune to the whole class rather than to `kyc` alone.
+   * ⚠️ Only visible above PER_PAGE rows — a 12-row result renders no pager at all,
+   * which is how a regression here would look fine in a casual check. */
+  const baseHref = buildBaseHref("/admin/players", sp);
 
   /**
    * ⚡ WALLET BALANCES ARE RESOLVED ONCE, HERE, FOR THE VISIBLE PAGE ONLY — 2026-08-21.
@@ -127,7 +228,6 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
   const counts = {
     total: all.length,
     active: statusCounts.ACTIVE ?? 0,
-    pending_kyc: statusCounts.PENDING_KYC ?? 0,
     suspended: statusCounts.SUSPENDED ?? 0,
     self_excluded: statusCounts.SELF_EXCLUDED ?? 0,
   };
@@ -143,7 +243,30 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
         <KpiGrid>
           <AdminKpi label="Total players" sw="Jumla ya wachezaji" value={usersFailed ? "" : counts.total.toLocaleString()} unavailable={usersFailed} />
           <AdminKpi label="Active" sw="Hai" value={usersFailed ? "" : counts.active.toLocaleString()} unavailable={usersFailed} tone="success" delta={`${counts.total ? Math.round((counts.active / counts.total) * 100) : 0}%`} deltaDir="up" />
-          <AdminKpi label="Pending KYC" sw="Inasubiri KYC" value={usersFailed ? "" : counts.pending_kyc.toLocaleString()} unavailable={usersFailed} delta={counts.pending_kyc > 0 ? "needs review" : "clear"} deltaDir={counts.pending_kyc > 0 ? "up" : "flat"} />
+          {/* ⭐ THE TILE NOW NAMES OUR WORK, NOT THE POPULATION'S STATE — and it is the
+              tile Ali is reading when he says "it says pending kyc always". It used to
+              count `User.status === "PENDING_KYC"` and caption it "needs review" with an
+              UP arrow, which is FALSE for everyone who has uploaded nothing, i.e. most of
+              the population. Leaving it would put two contradicting statements about one
+              population in one viewport.
+              ⭐ It carries the second number in its caption, so BOTH of his questions are
+              answered on page load with no interaction: `with_us` is the only stage where
+              the ball is in our court, and `uploaded` is the rescue list - every one of
+              them a single nudge away from our review queue, and shown on NO other screen
+              in the console.
+              ⚠️ Both numbers are POPULATION-WIDE, like "Total players" beside them, and do
+              NOT move under a filter.
+              ⛔ `deltaDir="flat"`: a caption is not a movement - on a money console an
+              upward arrow is a claim, not decoration.
+              ⛔ No `sw`: there is no shipped Swahili for these words and the lexicon
+              forbids inventing one. */}
+          <AdminKpi
+            label="KYC waiting on us"
+            value={usersFailed || kycFailed ? "" : stageCounts.with_us.toLocaleString()}
+            unavailable={usersFailed || kycFailed}
+            delta={kycFailed ? undefined : `${stageCounts.uploaded.toLocaleString()} uploaded · not sent`}
+            deltaDir="flat"
+          />
           <AdminKpi label="Blocked" sw="Zimezuiwa" value={usersFailed ? "" : blocked.toLocaleString()} unavailable={usersFailed} tone={blocked > 0 ? "danger" : undefined} delta={`${counts.suspended} susp · ${counts.self_excluded} excl`} deltaDir="flat" />
         </KpiGrid>
 
@@ -182,10 +305,35 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
                 ]}
               />
             </div>
+            {/* ⛔ INSIDE THE FORM, and that is load-bearing. The form has no `action` and
+                no `method`, so a GET submit REPLACES the whole query string with only its
+                NAMED fields - a control outside it means pressing Search silently wipes
+                the KYC filter. (The hazard is already proven on this page: the form
+                carries no hidden sort/dir, so Search resets the sort today.)
+                ⭐ The words come from the lexicon via `kycStageLabel`, never hand-typed
+                here - three renderings of one enum is the defect this page already
+                records paying for, twenty lines up.
+                ⭐ The COUNT rides on each option, so the officer sees the size of every
+                queue before choosing one. */}
+            <div className="w-full sm:w-[200px]">
+              <Select
+                name="kyc"
+                defaultValue={kycFilter}
+                size="xs"
+                placeholder="All KYC stages"
+                ariaLabel="Filter by KYC stage"
+                disabled={kycFailed}
+                disabledReason={kycFailed ? "The KYC read failed — reload to try again." : undefined}
+                options={[
+                  { value: "", label: "All KYC stages" },
+                  ...KYC_STAGES.map((s) => ({ value: s, label: `${kycStageLabel(s)} · ${stageCounts[s]}` })),
+                ]}
+              />
+            </div>
             <button type="submit" className="btn btn-primary btn-xs">
               Search
             </button>
-            {(query || statusFilter) && (
+            {(query || statusFilter || kycFilter) && (
               <a href="/admin/players" className="btn btn-ghost btn-xs">
                 Clear
               </a>
@@ -204,6 +352,12 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
                   <th className="text-left">Player</th>
                   <th className="text-left">Phone</th>
                   <th className="text-left">Status</th>
+                  {/* ⛔ THE HEADER MUST NOT BEGIN "sta". `scripts/admin-filter-drive.mjs`
+                      matches columns by a 3-char lowercased prefix, so a header like
+                      "Stage" would silently retarget the EXISTING filter gate onto these
+                      cells while still reporting green. "KYC" is what an officer calls it
+                      anyway. */}
+                  <th className="text-left">KYC</th>
                   <SortTh field="balance" label="Wallet" current={sortField} dir={sortDir} align="right" sp={sp} baseHref="/admin/players" />
                   <SortTh field="joined" label="Joined" current={sortField} dir={sortDir} sp={sp} baseHref="/admin/players" />
                   <SortTh field="login" label="Last login" current={sortField} dir={sortDir} sp={sp} baseHref="/admin/players" />
@@ -217,7 +371,7 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
                   const initials = displayInitials(u);
                   const isAutoHandle = !((u.displayName ?? "").trim().length > 0);
                   return (
-                    <tr key={u.id}>
+                    <tr key={u.id} data-row-id={u.id}>
                       <td>
                         <a href={`/admin/players/${u.id}`} className="flex items-center gap-2.5 min-w-0 hover:text-royal-300">
                           <Avatar initials={initials} size="sm" seed={u.id} />
@@ -237,7 +391,15 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
                           not a bulk read — it is N individually recorded ones. Search still
                           matches the full number. `docs/COMPLIANCE-DECISIONS.md`, 2026-09-06. */}
                       <td className="font-mono whitespace-nowrap"><Sensitive field="phone" subjectId={u.id} value={u.phoneE164} /></td>
-                      <td><AccountStatusBadge status={u.status} /></td>
+                      <td data-filter-value={u.status}><AccountStatusBadge status={u.status} /></td>
+                      {/* ⛔ A WORKFLOW WORD ONLY — no idType, no idNumber, no expiry, no
+                          date of birth, no filename, no thumbnail. Everything from the
+                          submission ITSELF stays behind the PII gate and <Sensitive> on
+                          the detail page. This cell says whose move it is, nothing more.
+                          ⛔ Ungated by role, exactly like the chip beside it - see
+                          `kycFilter` above for why gating it would blind the support desk
+                          without closing anything. */}
+                      <td data-filter-value={stageOf(u.id)}><KycStageBadge cell={stageOf(u.id)} /></td>
                       {/* `pageBalances` is empty unless the viewer passed the accounting
                           gate, so this stays exactly the old `canSeeMoney && wallet` cell:
                           a player with no wallet row, and a viewer with no money rights,
@@ -253,10 +415,10 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
                 })}
                 {filtered.length === 0 && (
                   usersFailed ? (
-                    <tr><td colSpan={7} className="p-4"><AdminLoadError what="the player list" /></td></tr>
+                    <tr><td colSpan={8} className="p-4"><AdminLoadError what="the player list" /></td></tr>
                   ) : (
                     <AdminTableEmpty
-                      colSpan={7}
+                      colSpan={8}
                       kind="admin"
                       title="No players match"
                       body="No players match the current filter — try clearing it."

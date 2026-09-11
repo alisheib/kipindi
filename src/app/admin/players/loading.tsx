@@ -28,6 +28,8 @@ export default function Loading() {
           <div className="flex flex-wrap items-center gap-2">
             <SkBar className="h-[32px] flex-1 min-w-[260px] rounded-md" />
             <SkBar className="h-[32px] w-[180px] rounded-md" />
+            {/* the KYC stage filter (2026-09-11) — sm:w-[200px] on the page */}
+            <SkBar className="h-[32px] w-[200px] rounded-md" />
             <SkBar className="h-[32px] w-[72px] rounded-md" />
           </div>
           <SkBar className="h-[15px] w-[128px] mt-2" />
@@ -37,9 +39,9 @@ export default function Loading() {
             `AdminPagination` at :260, and the ONE thing a row count cannot express:
             the page caps the scroll box, so the cap decides the height, not `rows`. */}
         <SkTableCard
-          cols={7}
+          cols={8}
           rows={20}
-          minWidth={800}
+          minWidth={900}
           title={false}
           sortable
           pager

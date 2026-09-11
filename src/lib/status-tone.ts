@@ -200,6 +200,42 @@ export const STATUS_TONE = {
    * by paperwork.
    */
   CASHED_OUT: { player: "slate" },
+  // ── KYC STAGE on the player roster (2026-09-11, Ali's request) ────────────────────────────
+  /**
+   * ⚠️ KYC-SCOPED KEYS, DELIBERATELY — and the reason is three screens up, not a preference.
+   * This dictionary is keyed by THE WORD A HUMAN READS and the namespace is FLAT, so
+   * `ADDITIONAL_INFO_REQUIRED` above is already taken: it is the AGENT programme's entry
+   * (2026-09-07) and means "the applicant must act, the officer waits" — `admin: "royal"`. KYC's
+   * answer to that same enum is AMBER (Ali's ruling, 2026-08-21, quoted at status-badge.tsx's
+   * `kycStatusVariant`). Two families, one token, two honest meanings: SCOPED rather than
+   * adjudicated, because adjudicating it would repaint the agent console to fix the player roster.
+   *
+   * ⭐ WHAT THIS SPENDS AMBER ON, AND IT IS ALI'S RULING APPLIED RATHER THAN REVERSED. Amber means
+   * "somebody must act, and it is not simply waiting". Today FOUR of the six raw KYC values wear
+   * it, which is why it says nothing — the substance of the complaint. Here it is spent on exactly
+   * TWO stages where a human must move: a player sitting on a complete upload they never sent, and
+   * an officer's outstanding request. "Nothing here yet" is slate, which is that token's own
+   * definition.
+   *
+   * ⛔ NOTHING EXISTING IS REPAINTED. `kycStatusVariant` and every chip it feeds are byte-identical
+   * after this change; these keys are read only by `kycStageVariant`.
+   * ⛔ `--yes-*`/`--no-*` are forbidden here (§B2a — the betting pair is money), and so are
+   * `gilt`/`giltStruck` (§M3 reserves struck gilt for money that was EARNED).
+   *
+   * The resulting scan is the direct answer to *"it says pending kyc always"*: a sea of SLATE (the
+   * dormant majority, growing daily), AMBER where somebody must move, ROYAL for our own queue,
+   * GREEN done, ROSE refused.
+   */
+  KYC_NOTHING_YET: { admin: "slate" },
+  KYC_UPLOADED:    { admin: "amber" },
+  /** ⭐ THE ONLY STAGE THAT IS OUR MOVE. Royal is "waiting on a queue" — ours. */
+  KYC_WITH_US:     { admin: "royal" },
+  KYC_MORE_NEEDED: { admin: "amber" },
+  KYC_REJECTED:    { admin: "rose"  },
+  KYC_APPROVED:    { admin: "green" },
+  /** The read FAILED. ⛔ Never amber: a broken instrument is not work for an officer, and
+   *  painting it as work is a false alarm. A failed read must never render as a fact. */
+  KYC_UNREADABLE:  { admin: "slate" },
 } as const satisfies Record<string, Partial<Record<StatusSurface, StatusTone>>>;
 
 /**

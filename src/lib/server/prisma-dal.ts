@@ -58,8 +58,7 @@ import type {
   StoredAgentApplicationDocument,
   StoredAgentInvitation,
   AgentApplicationStatus,
-  AgentDocType,
-} from "./store";
+  AgentDocType, StoredKycStageRow } from "./store";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -941,7 +940,16 @@ export const prismaDb = {
       const row = await pc().kycSubmission.findFirst({
         where: { userId },
         include: { documents: true },
-        orderBy: { createdAt: "desc" },
+        // ⭐ `id` desc ADDED 2026-09-11, and it is a coherence fix, not a tidy-up.
+        // `createdAt` is TIMESTAMP(3) and there is no `@@unique([userId])`, so two
+        // race-born submissions can share a millisecond — at which point this read
+        // broke the tie ARBITRARILY while `listStageFacts` below breaks it by `id`.
+        // On such a tie /admin/players and /admin/players/[id] would have shown
+        // DIFFERENT identity states for one person: exactly the class of defect the
+        // roster stage tag exists to remove. Both reads now order the same way.
+        // ⚠️ This read is on all three login paths and the money gate; making a
+        // previously-UNDEFINED order deterministic is the safe direction.
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       });
       return row ? toStoredKyc(row) : null;
     },
@@ -1140,6 +1148,85 @@ export const prismaDb = {
     list: async (): Promise<StoredKyc[]> => {
       const rows = await pc().kycSubmission.findMany({ include: { documents: true } });
       return rows.map(toStoredKyc);
+    },
+    /**
+     * THE ROSTER'S STAGE FEED — the NEWEST submission per user, scalars only, with
+     * a live document count. Two statements, no join, no `include`.
+     *
+     * ⛔ NOT `list()` ABOVE. That is `findMany({ include: { documents: true } })`
+     * with NO `where`, NO `select` and — the part that matters here — NO `orderBy`
+     * at all. Keying a Map by `userId` off it makes the winner whatever order
+     * Postgres happened to return, which is not stable between two renders of the
+     * same page. It also drags every document row, and therefore every inline
+     * base64 image, through a population read.
+     *
+     * ⛔ NO DENORMALISED `documentCount` COLUMN, AND THAT IS A RULING — the reasons
+     * are on `StoredKycStageRow` in store.ts. The short form: `kyc.upsert` commits
+     * the submission and its documents in TWO round trips, so a stored counter
+     * would commit before the rows it counts; this repo's one existing counter over
+     * a child table (`predictorCount`) drifted and could not be fully repaired; and
+     * `test:dal-parity` does not cover `StoredKyc`, so a one-half counter would be
+     * invisible to the guard written to catch exactly that. The count is derived on
+     * every read, here, where it cannot drift.
+     *
+     * ⛔ SEQUENTIAL, SUBMISSIONS FIRST — NOT `Promise.all`, AND NOT
+     * `$transaction([a, b])` (the array form is READ COMMITTED; each statement
+     * still takes its own snapshot). The two reads are not one snapshot, and the
+     * ORDER decides which way the skew can run. With the document read always the
+     * NEWER observation, a first upload landing between them reads "uploaded" —
+     * true at the later instant. Reversed, a `startKyc` reset landing between them
+     * would leave a stale id in the count map and paint "Uploaded · not sent" over
+     * an empty file: an over-claim, and the expensive direction, because an officer
+     * then stops chasing a player who has given us nothing.
+     *
+     * ⭐ A USER CAN HAVE MORE THAN ONE ROW, AND THE TIE-BREAK IS NOT DECORATION.
+     * There is no `@@unique([userId])`. `startKyc` is a read-then-write with nothing
+     * behind it, rendered from a SERVER COMPONENT, so two tabs or a double-tapped
+     * `?welcome=new` link both read null, both mint a cuid and both INSERT. Those
+     * duplicates are race-born MILLISECONDS apart and can share a `createdAt`
+     * (TIMESTAMP(3)), so `id` desc is what makes this page's pick REPRODUCIBLE
+     * between renders — and equal to `findByUserId`'s, so the roster and the player
+     * detail page cannot disagree about one person.
+     *
+     * ⚠️ `groupBy`, not a `_count` relation: the emitted SQL is
+     * `SELECT "submissionId", COUNT(*) FROM "KycDocument" GROUP BY "submissionId"`,
+     * one flat statement rather than a correlated subquery per row. It never selects
+     * `storageKey`, so image bytes are never read and TOAST is never detoasted,
+     * whatever `KYC_STORAGE` is set to.
+     */
+    listStageFacts: async (): Promise<StoredKycStageRow[]> => {
+      const subs = await pc().kycSubmission.findMany({
+        select: {
+          id: true, userId: true, status: true,
+          submittedAt: true, approvedAt: true, createdAt: true,
+        },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      });
+      // ⛔ SECOND, never in parallel — see the ordering note above.
+      const groups = await pc().kycDocument.groupBy({
+        by: ["submissionId"],
+        _count: { _all: true },
+      });
+      const docCount = new Map<string, number>();
+      for (const g of groups) docCount.set(g.submissionId, g._count._all);
+
+      const seen = new Set<string>();
+      const out: StoredKycStageRow[] = [];
+      for (const s of subs) {
+        // The `orderBy` above IS the definition of "newest" — first row per user wins.
+        if (seen.has(s.userId)) continue;
+        seen.add(s.userId);
+        out.push({
+          id: s.id,
+          userId: s.userId,
+          status: String(s.status) as StoredKyc["status"],
+          documentCount: docCount.get(s.id) ?? 0,
+          submittedAt: iso(s.submittedAt),
+          approvedAt: iso(s.approvedAt),
+          createdAt: iso(s.createdAt),
+        });
+      }
+      return out;
     },
   },
 
