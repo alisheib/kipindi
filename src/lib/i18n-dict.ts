@@ -1979,6 +1979,7 @@ export const dict = {
       exportClose: "Export / close my account",
       // === i18n coverage pass ===
       helpline: "Helpline",
+      contactUs: "Contact us",
       email: "Email",
     },
     /**
@@ -4118,6 +4119,7 @@ export const dict = {
       exportClose: "Hamisha / funga akaunti yangu",
       // === i18n coverage pass ===
       helpline: "Simu ya msaada",
+      contactUs: "Wasiliana nasi",
       email: "Barua pepe",
     },
     kycGate: {
@@ -6180,6 +6182,7 @@ export const dict = {
       exportClose: "导出/关闭我的账户",
       // === i18n coverage pass ===
       helpline: "求助热线",
+      contactUs: "联系我们",
       email: "邮箱",
     },
     kycGate: {

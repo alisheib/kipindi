@@ -35,10 +35,26 @@ export function PublicFooter({
    * saved, no matter how well the server hydrated it.
    */
   supportEmail,
+  /**
+   * ⛔ PROPS FOR THE SAME REASON `supportEmail` IS ONE (E-226) — and the reason is worth
+   * repeating rather than assumed, because it is why the footer had no phone at all.
+   * This file is `"use client"`. A `SUPPORT_PHONE()` call here reads the BROWSER bundle's
+   * module default, which no server-side hydration can ever reach, so the number in the
+   * footer of every player page could never be the one an officer saved.
+   *
+   * ⚠️ TWO VALUES, DELIBERATELY. `supportPhone` is what a player READS (`0769777877`, the
+   * local form a Tanzanian dials); `supportPhoneTel` is what a TAP dials (`+255769777877`),
+   * so the same line works from a Tanzanian handset and from abroad. Row 4.3 built that
+   * split; collapsing them here would undo it.
+   */
+  supportPhone,
+  supportPhoneTel,
 }: {
   proposalsState: ProposalsState;
   agentDoorVisible: boolean;
   supportEmail: string;
+  supportPhone: string;
+  supportPhoneTel: string;
 }) {
   const { t } = useT();
   /**
@@ -99,6 +115,23 @@ export function PublicFooter({
         <FooterCol heading={t.footer.playSafe}>
           <FooterLink href="/profile/responsible-gambling">{t.footer.setLimits}</FooterLink>
           <FooterLink href="/legal/responsible-gambling">{t.footer.takeABreak} / {t.footer.selfExclude}</FooterLink>
+          {/* ⭐ OUR OWN DESK COMES FIRST, AND IT IS LABELLED AS OURS — Ali, 2026-09-11.
+              The footer published the statutory helpline and our EMAIL, and no phone at
+              all: a player who wanted to CALL us had to find `/help` first. It is on
+              every page now.
+              ⛔ IT SITS ABOVE THE HELPLINE AND IS NAMED "Contact us", NOT "Helpline",
+              and that separation is the whole point. `HELPLINE()` is the INDEPENDENT
+              problem-gambling line — free, not ours, a pinned constant with no setter.
+              `supportPhone` is 50pick's own desk. Unit 2 exists because those two were
+              conflated: `/help` showed our number under "Free helpline · 24/7", and the
+              chatbot was instructed to hand it to a self-identifying problem gambler.
+              ⚠️ So this line carries NO tariff and NO "free" claim — we publish no tariff
+              for the desk, and any figure here would be invented (A-5). */}
+          <li>
+            <a href={`tel:${supportPhoneTel}`} className="text-text-muted hover:text-text transition-colors">
+              {t.footer.contactUs} · {supportPhone}
+            </a>
+          </li>
           <li>
             <a href={`tel:${HELPLINE_TEL()}`} className="text-text-muted hover:text-text transition-colors">
               {t.footer.helpline} · {HELPLINE()}
