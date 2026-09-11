@@ -65,12 +65,22 @@ Per ledger unit, in this order, no batching:
    published a reference and left its referent behind. Every fresh clone and every `git worktree`
    of `main` then failed `test:guards-exist` §3. The peer session found it, because a tree that is
    not the one the files live in is the only place it can surface.
-   ⛔ **DO NOT "FIX" IT BY DELETING THE KEYS — MEASURED, AND IT MAKES THREE GATES WORSE.** Removing
-   them took `test:docs` from 2 broken to **9** (the reset runbook cites them), `test:orphans` from
-   5 undeclared to **7** (the scripts lose their declaration), and `guards-exist` still failed —
-   on §1 instead of §3, because a key cited in prose must also exist. `package.json` was restored
-   byte-identical. ⭐ **The only consistent state is keys present AND scripts tracked**, which is
-   one commit by the session that owns them.
+   ⭐ **RESOLVED: the owning session tracked both scripts, so `main` now carries the KEYS and the
+   SCRIPTS together and the pair is complete.** Verified against `origin/main` directly, not
+   inferred: `git ls-tree origin/main scripts/` lists both, and `git show origin/main:package.json`
+   carries both keys. ⛔ **The only consistent state is keys present AND scripts tracked** — either
+   half alone is a red, in opposite directions.
+   🔴 **AND A KEY-REMOVAL COMMIT WAS WRITTEN, MEASURED, COMMITTED — AND THEN DROPPED UNPUSHED,
+   which is the part worth keeping.** I removed the two keys, measured the result *in this working
+   directory*, and recorded that it made three gates worse (`test:docs` 2 → 9, `test:orphans` 5 →
+   7, `guards-exist` moving from §3 to §1). ⚠️ **Every one of those numbers was false about `main`.**
+   They were artifacts of the other session's UNTRACKED runbook and UNTRACKED scripts sitting in
+   my tree; on a clone, nothing cites the keys and nothing is orphaned by them. A throwaway
+   `git worktree` of HEAD settled it in a minute — **npm script targets missing on disk: 0** — and
+   that instrument should have been the first move, not the third.
+   ⛔ Then the remedy itself expired: once the scripts were tracked, the removal became the MIRROR
+   of the bug it was written for, and it was dropped from the push stack rather than landed. **A
+   correct fix has a shelf life when three sessions share a trunk.**
    🟢 **CAUSE FOUND, AND IT WAS NOT A DEFECT: A THIRD SESSION WAS WORKING IN THIS CHECKOUT.**
    `asheib-33` was staging the pre-launch production reset and creating those scripts as it went,
    so the file genuinely came and went under a gate that reads the filesystem.
