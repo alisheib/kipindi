@@ -339,7 +339,8 @@ console.log("\n§4 the call sites pass the right source, and the conditional wri
 
   ok("4.population · the scan finds BOTH application-service call sites (collection + refund)",
     appCalls.length === 2, `found ${appCalls.length}`);
-  ok("4.population2 · …and the wallet rail's own call site", walletCalls.length === 1, `found ${walletCalls.length}`);
+  // TWO on the wallet rail since the refund primitive landed: the debit and its mirror.
+  ok("4.population2 · …and BOTH wallet-rail call sites (the debit and its refund mirror)", walletCalls.length === 2, `found ${walletCalls.length}`);
 
   // ⛔ reconcileFee is the LEGACY bank collection: no wallet moved, so the leg must be EXTERNAL.
   const collection = appCalls.find((c) => /Agent registration fee ·/.test(c));
@@ -354,8 +355,9 @@ console.log("\n§4 the call sites pass the right source, and the conditional wri
     /feeFundingSource\s*\?\?\s*"EXTERNAL"/.test(appSvc));
 
   // ⭐ The wallet rail must book to the player.
-  ok("4.4 ⭐ payAgentRegistrationFee passes source: \"WALLET\"",
-    !!walletCalls[0] && /source:\s*"WALLET"/.test(walletCalls[0]), walletCalls[0] ?? "call site not found");
+  ok("4.4 ⭐ EVERY wallet-rail call passes source: \"WALLET\" — the debit and the refund alike",
+    walletCalls.length > 0 && walletCalls.every((c) => /source:\s*"WALLET"/.test(c)),
+    walletCalls.filter((c) => !/source:\s*"WALLET"/.test(c)).join(" | ").slice(0, 160));
 
   /**
    * ⛔ 4.5 — THE CONDITIONAL WRITE. This is MISS 2's replacement.
@@ -396,6 +398,77 @@ console.log("\n§4 the call sites pass the right source, and the conditional wri
     refused === null, `got ${JSON.stringify(refused)}`);
   ok("4.10 …and the balance is untouched by the refused write",
     (await balanceOf("fee_dal")) === FEE - 1);
+}
+
+// ═══ §5 · THE REFUND MUST MOVE THE WALLET, NOT ONLY THE LEDGER ═══════════════════════════
+/**
+ * 🔴 A GAP THIS CAMPAIGN CREATED, AND THE WORST KIND: silent, and against the applicant.
+ *
+ * Once the fee can be paid from a wallet, a `COLLECTED` row can have
+ * `feeFundingSource: "WALLET"`. Reject that application and it becomes `REFUND_DUE`; an officer
+ * then calls `recordFeeRefund`, which posts the exact ledger mirror — and, before this section,
+ * touched no wallet at all. That was correct while every collection arrived in a bank account
+ * and the officer sent the money back the same way. It is wrong the moment the money came from
+ * a balance:
+ *
+ *   · the applicant's `PLAYER:` ledger account is CREDITED by the fee,
+ *   · their wallet balance does not move,
+ *   · `computeTrialBalance` compares `balance + hold` against that account, so the row drifts
+ *     by the whole fee, permanently,
+ *   · and the person we refused is simply out of pocket, with our own books saying we paid them.
+ *
+ * ⭐ SO A WALLET-FUNDED REFUND IS A MONEY MOVEMENT, not a bookkeeping entry, and it needs the
+ * same shape as the debit: wallet + `Transaction` + ONE ledger group, atomically.
+ *
+ * ⛔ AND IT CANNOT REUSE `creditInternal`. That posts its OWN `internalCreditEntries` group, so
+ * calling it beside the existing `agentRegistrationFeeEntries` mirror would credit the player
+ * ledger TWICE — the double-count defect of §2, arriving from the opposite direction.
+ *
+ * ⛔ THE LEGACY PATH MUST NOT CHANGE. An `EXTERNAL` collection is still refunded out of band by
+ * an officer: no wallet moved in, so no wallet moves out, and crediting one would MINT the fee.
+ * There is exactly one such row on production. §5.4 holds that.
+ */
+console.log("\n§5 a wallet-funded refund returns the money to the wallet, not just to the books");
+{
+  const walletSvc = readFileSync(new URL("../src/lib/server/wallet-service.ts", import.meta.url), "utf8");
+  const appSvc = readFileSync(new URL("../src/lib/server/agent-application-service.ts", import.meta.url), "utf8");
+
+  ok("5.0 ⭐ a dedicated reverse primitive exists — the mirror of the debit",
+    /export async function refundAgentRegistrationFeeToWallet/.test(walletSvc),
+    "a wallet-funded refund that only posts a ledger group leaves the applicant out of pocket");
+
+  const fnStart = walletSvc.indexOf("export async function refundAgentRegistrationFeeToWallet");
+  const after = fnStart >= 0 ? walletSvc.slice(fnStart) : "";
+  const nextDecl = after.search(/\r?\n\/\*\*\r?\n \* Manual admin balance adjustment/);
+  const body = nextDecl > 0 ? after.slice(0, nextDecl) : after;
+  ok("5.0a CONTROL · its body was isolated (a two-character slice is not a body)",
+    fnStart > 0 && body.length > 800, `start=${fnStart} len=${body.length}`);
+
+  ok("5.1 ⛔ it CREDITS the wallet", /db\.wallet\.adjust\([\s\S]{0,120}balance:\s*\+?want/.test(body) || /balance:\s*want\b/.test(body));
+  ok("5.2 ⛔ …writes a Transaction of the fee's own type", /type:\s*"AGENT_REGISTRATION_FEE"/.test(body));
+  ok("5.3 ⭐ …posts the fee mirror with source WALLET, and NOT internalCreditEntries",
+    /agentRegistrationFeeEntries\(/.test(body) && /source:\s*"WALLET"/.test(body) && !/internalCreditEntries\(/.test(body),
+    "internalCreditEntries would post a SECOND player-ledger credit — the double count, reversed");
+  ok("5.3b ⛔ …and the mirror is NEGATIVE — a refund reverses the collection", /amount:\s*-want/.test(body));
+  ok("5.4 ⛔ …row-locked and inside the money transaction, like the debit",
+    /withLock\(`wallet:\$\{userId\}`/.test(body) && /withMoneyTx\(/.test(body));
+  ok("5.5 ⭐ …idempotent, so a double-clicked refund pays once", /providerRef/.test(body));
+
+  // ── The caller must branch on the STORED funding source, never refund blindly. ──
+  const refundStart = appSvc.indexOf("export async function recordFeeRefund");
+  // Sliced to the NEXT top-level declaration rather than a byte count: the function grew when
+  // the wallet branch landed and a fixed 4,200 stopped short of it, so 5.7/5.8 measured a
+  // fragment. A magic length is a proxy for "the function".
+  const refundRest = appSvc.slice(refundStart);
+  const nextTopLevel = refundRest.indexOf("\nexport async function ", 1);
+  const refundBody = nextTopLevel > 0 ? refundRest.slice(0, nextTopLevel) : refundRest;
+  ok("5.6 CONTROL · recordFeeRefund's body was isolated", refundStart > 0 && refundBody.length > 1500);
+  ok("5.7 ⭐ recordFeeRefund returns a WALLET-funded fee to the wallet",
+    /refundAgentRegistrationFeeToWallet\(/.test(refundBody),
+    "the ledger mirror alone credits the books and not the person");
+  ok("5.8 ⛔ …and does so ONLY when the collection was wallet-funded",
+    /fundingSource\s*===\s*"WALLET"/.test(refundBody),
+    "crediting a wallet for an out-of-band collection would MINT the fee");
 }
 
 console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — ${pass} passed, ${fail} failed`);

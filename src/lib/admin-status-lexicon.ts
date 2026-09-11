@@ -340,6 +340,13 @@ export const AGENT_AUDIT_ACTION: Record<string, string> = {
    *  money leaving a wallet, the other is a compliance fact about a case file, and they carry
    *  different categories and different target types. `reconcileFee` already works this way. */
   "agent.fee.paid_from_wallet_recorded": "Fee recorded as paid from the wallet",
+  /** ⭐ The refund of a WALLET-funded fee, as MONEY — the mirror of the debit. Written by
+   *  `wallet-service` when the balance actually moves back. */
+  "agent.fee.refunded_to_wallet": "Fee refunded to the applicant's wallet",
+  /** ⛔ The refund was REFUSED and nothing was changed — the row stays `REFUND_DUE` so an
+   *  officer can retry. A `REFUNDED` row whose money never moved would drop a person we owe
+   *  off the worklist entirely, which is why this is an audited event and not a silent retry. */
+  "agent.fee.refund_failed": "Fee refund could not be paid — nothing changed",
   /** ⚠️ The stored funding source disagrees with what the collection's ledger group shows.
    *  The stamp wins and the refund still goes to the stamped destination — this row says the
    *  collection needs investigating, not that the refund was wrong. */

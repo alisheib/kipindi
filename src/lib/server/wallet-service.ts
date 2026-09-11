@@ -2317,6 +2317,111 @@ export async function payAgentRegistrationFee(
 }
 
 /**
+ * ⭐ REFUND A WALLET-FUNDED REGISTRATION FEE — the exact mirror of `payAgentRegistrationFee`.
+ *
+ * 🔴 WHY THIS HAD TO EXIST. `recordFeeRefund` posted the ledger mirror and touched no wallet,
+ * which was right while every collection arrived in a bank account and an officer sent it back
+ * the same way. The moment a fee can be paid from a BALANCE, that becomes a defect against the
+ * applicant: their `PLAYER:` ledger account is credited, their wallet is not, the trial balance
+ * drifts by the whole fee forever, and the person we refused is out of pocket while our own
+ * books say we paid them. ⛔ Money returning has to move the same thing money leaving moved.
+ *
+ * ⛔ NOT `creditInternal`. That posts its OWN `internalCreditEntries` group, so using it beside
+ * the fee mirror would credit the player ledger TWICE — the double-count of `agentfee` arriving
+ * from the opposite direction. This posts exactly ONE group: the fee's own, negated.
+ *
+ * ⛔ AND ONLY FOR A WALLET-FUNDED COLLECTION. An out-of-band fee is refunded out of band; no
+ * wallet moved in, so crediting one here would MINT the fee. `recordFeeRefund` branches on the
+ * STORED `feeFundingSource`, never on an inference.
+ *
+ * Same safety as the debit: row-locked, one transaction for wallet + `Transaction` + ledger,
+ * and idempotent on the application id so a double-clicked refund pays once.
+ */
+export type AgentFeeRefundResult =
+  | { ok: true; credited: number; balanceAfter: number; txnId: string; alreadyRefunded: boolean }
+  | { ok: false; code: "NO_WALLET" | "INVALID_AMOUNT" | "LEDGER_REFUSED"; balance: number | null };
+
+export async function refundAgentRegistrationFeeToWallet(
+  userId: string,
+  opts: {
+    /** ⭐ THE IDEMPOTENCY KEY — one refund per application, mirroring the debit. */
+    applicationId: string;
+    /** What was collected. ⛔ Proved equal to `feeAmountTzs` by the caller before we get here. */
+    amountTzs: number;
+    /**
+     * The VAT the COLLECTION actually booked — ⛔ never today's rate. `recordFeeRefund` reads it
+     * back off the collection's own ledger group, because a rate that moved between collection
+     * and refund would otherwise strand tax against money that went entirely back.
+     */
+    vatTzs: number;
+    description?: string;
+  },
+): Promise<AgentFeeRefundResult> {
+  const want = Math.round(opts.amountTzs);
+  const vat = Math.round(opts.vatTzs);
+  if (!Number.isFinite(want) || want <= 0) return { ok: false, code: "INVALID_AMOUNT", balance: null };
+  if (!Number.isFinite(vat) || vat < 0 || vat > want) return { ok: false, code: "INVALID_AMOUNT", balance: null };
+
+  const description = opts.description ?? "Agent registration fee refunded";
+  const groupRef = `agentfee_refund_${opts.applicationId}`;
+
+  return withLock(`wallet:${userId}`, async (): Promise<AgentFeeRefundResult> => {
+    const wallet = await db.wallet.findByUserId(userId);
+    if (!wallet) return { ok: false, code: "NO_WALLET", balance: null };
+    /**
+     * ⚠️ A FROZEN OR CLOSED WALLET STILL RECEIVES ITS REFUND — the opposite of the debit, and
+     * deliberately so. Spending needs an ACTIVE wallet; being given back money you are owed does
+     * not. Refusing here would let an account freeze convert a debt into a forfeiture.
+     */
+    const prior = (await db.txn.findByUser(userId, 200)).find(
+      (t) => t.type === "AGENT_REGISTRATION_FEE" && t.providerRef === groupRef && t.status === "CONFIRMED",
+    );
+    if (prior) {
+      return { ok: true, credited: Math.abs(prior.amount), balanceAfter: prior.balanceAfter ?? wallet.balance, txnId: prior.id, alreadyRefunded: true };
+    }
+
+    const txnId = `txn_${randomId(12)}`;
+    const now = new Date().toISOString();
+    let newBalance = wallet.balance;
+
+    const committed = await withMoneyTx(async (tx) => {
+      const updated = await db.wallet.adjust(wallet.id, { balance: want }, undefined, tx);
+      if (!updated) return false;
+      newBalance = updated.balance;
+      await db.txn.create({
+        id: txnId,
+        walletId: wallet.id, userId,
+        type: "AGENT_REGISTRATION_FEE",
+        status: "CONFIRMED",
+        // POSITIVE: money coming back. The debit was negative; this is its mirror.
+        amount: want, fee: 0, taxWithheld: 0,
+        balanceAfter: updated.balance, currency: "TZS",
+        provider: "INTERNAL", providerRef: groupRef, msisdn: null,
+        description,
+        positionId: null, amlReason: null,
+        createdAt: now, updatedAt: now, completedAt: now,
+      }, tx);
+      // ⭐ ONE group, negated, source WALLET — credits `PLAYER:<id>` and takes it back out of
+      // `HOUSE:AGENT_FEE`, so a refunded fee nets to zero in the owner's book.
+      await postLedgerEntries(groupRef, agentRegistrationFeeEntries({
+        groupRef: opts.applicationId, userId, amount: -want, vatAmount: -vat, description, source: "WALLET",
+      }), tx);
+      return true;
+    });
+
+    if (!committed) return { ok: false, code: "LEDGER_REFUSED", balance: wallet.balance };
+
+    audit({
+      category: "WALLET", action: "agent.fee.refunded_to_wallet", actorId: null,
+      targetType: "Wallet", targetId: wallet.id,
+      payload: { userId, txnId, applicationId: opts.applicationId, amountTzs: want, vatTzs: vat, balanceAfter: newBalance, groupRef },
+    });
+    emit("wallet:balance", { userId, balance: newBalance });
+    return { ok: true, credited: want, balanceAfter: newBalance, txnId, alreadyRefunded: false };
+  });
+}
+
+/**
  * Manual admin balance adjustment (audit §9.3 #4) — an officer credits or debits
  * a player's real balance with a mandatory reason (disputes, goodwill, clawback,
  * correction). `amountTzs` is SIGNED: positive = credit, negative = debit.

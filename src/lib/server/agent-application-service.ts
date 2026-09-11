@@ -49,7 +49,7 @@ import { ensureAffiliateAccount, isApprovedAgent, agentStandingFor, AGENT_CODE_P
 import { getKycStatus, reviewKyc, validateDocImage } from "./kyc-service";
 // ⭐ The all-or-nothing fee debit (Ali, 2026-09-10). ⛔ NOT `debitInternal`, which debits
 // partially by design. ⚠️ `wallet-service` does not import this module, so no cycle.
-import { payAgentRegistrationFee } from "./wallet-service";
+import { payAgentRegistrationFee, refundAgentRegistrationFeeToWallet } from "./wallet-service";
 import { putKycDocument, deleteKycDocument } from "./storage";
 import { isStaffRole } from "./roles";
 import { isLockedOut, selfExclusionStanding } from "./responsible-gambling";
@@ -1003,7 +1003,15 @@ export async function recordFeeRefund(officerId: string, applicationId: string, 
     }
     const now = iso();
     const cfg = getAgentConfig();
-    await db.agentApplication.update(app.id, { feeDisposition: "REFUNDED", feeRefundedAt: now, feeRefundedById: officerId, feeRefundReference: ref, feeRefundAmountTzs: amount });
+    /**
+     * ⛔ THE ROW IS MARKED REFUNDED **AFTER** THE MONEY MOVES, NOT BEFORE.
+     *
+     * This update used to run first. On the wallet rail that ordering is a trap: if the credit
+     * then failed, the application would read `REFUNDED` with nothing paid — and the refunds
+     * worklist keys on the disposition, so it would FORGET a person we still owe. A
+     * `REFUND_DUE` row an officer can retry is strictly better than a `REFUNDED` one that lied.
+     * The write now happens below, once the money is actually back.
+     */
     // ⭐ THE VAT INSIDE THE GROSS THAT WAS ACTUALLY COLLECTED — not today's expected split.
     // `amount` is already proved equal to `app.feeAmountTzs` above, so this reverses exactly
     // what `reconcileFee` posted and `HOUSE:TAX` nets to zero on a refunded application.
@@ -1056,12 +1064,48 @@ export async function recordFeeRefund(officerId: string, applicationId: string, 
         payload: { stamped: fundingSource, ledgerPlayerLeg: bookedPlayerLeg, refundedTo: fundingSource, note: "the stamp wins; investigate the collection" },
       });
     }
-    await postLedgerEntries(`agentfee_refund_${app.id}`, agentRegistrationFeeEntries({
-      groupRef: app.id, userId: app.userId, amount: -amount,
-      vatAmount: -vatReversed,
-      description: `Agent registration fee refunded · ${ref}`,
-      source: fundingSource,
-    })).catch(() => {});
+    /**
+     * ⭐ A WALLET-FUNDED FEE GOES BACK TO THE WALLET — as MONEY, not as a book entry.
+     *
+     * 🔴 This posted the ledger mirror and nothing else, which was complete while every
+     * collection arrived in a bank account and an officer wired it back. Once the fee can be
+     * paid from a balance that becomes a defect against the applicant: their `PLAYER:` account
+     * is credited, their wallet is not, `computeTrialBalance` drifts by the whole fee forever,
+     * and the person we refused is out of pocket while our books say we paid them.
+     *
+     * ⛔ THE LEGACY PATH IS UNCHANGED, and that is not an oversight. An `EXTERNAL` collection
+     * moved no wallet in, so crediting one here would MINT the fee. The branch is on the STORED
+     * `feeFundingSource` — never on an inference — and `null` reads as EXTERNAL, which is what
+     * every row predating 2026-09-10 was. Production holds exactly one such row.
+     */
+    if (fundingSource === "WALLET") {
+      const credited = await refundAgentRegistrationFeeToWallet(app.userId, {
+        applicationId: app.id,
+        amountTzs: amount,
+        // ⛔ The VAT the COLLECTION booked, read back above — never today's rate.
+        vatTzs: vatReversed,
+        description: `Agent registration fee refunded · ${ref}`,
+      });
+      if (!credited.ok) {
+        // ⛔ REFUSE THE WHOLE REFUND rather than marking it done. A `REFUNDED` row whose money
+        // never moved is worse than a `REFUND_DUE` one an officer can retry: the worklist would
+        // forget a person we still owe.
+        audit({ category: "COMPLIANCE", action: "agent.fee.refund_failed", actorId: officerId, targetType: "AgentApplication", targetId: app.id, payload: { code: credited.code, amountTzs: amount } });
+        return { ok: false as const, error: "The refund could not be paid into the applicant's wallet. Nothing was changed — try again or escalate.", code: "INVALID" as const };
+      }
+    } else {
+      // The out-of-band mirror: an officer has sent the money back by the rail it came in on,
+      // and this records it. No wallet moved, so none moves here.
+      await postLedgerEntries(`agentfee_refund_${app.id}`, agentRegistrationFeeEntries({
+        groupRef: app.id, userId: app.userId, amount: -amount,
+        vatAmount: -vatReversed,
+        description: `Agent registration fee refunded · ${ref}`,
+        source: fundingSource,
+      })).catch(() => {});
+    }
+
+    // ⭐ NOW the row is refunded — after the money, never before it.
+    await db.agentApplication.update(app.id, { feeDisposition: "REFUNDED", feeRefundedAt: now, feeRefundedById: officerId, feeRefundReference: ref, feeRefundAmountTzs: amount });
     audit({ category: "COMPLIANCE", action: "agent.fee.refunded", actorId: officerId, targetType: "AgentApplication", targetId: app.id, payload: { amountTzs: amount, reference: ref, rejectedBy: app.reviewerId, destination: app.feeSourceAccount, vatReversedTzs: vatReversed, vatSource: bookedVat === null ? "computed-from-config" : "ledger" } });
     notifyAgentFeeRefunded(app.userId, { amountTzs: amount, reference: ref });
     sendEmailToUser(app.userId, (email) => ({ to: email, subject: `Your agent registration fee has been refunded · ${formatTzs(amount)}`, html: agentFeeRefundedHtml({ amountTzs: amount, reference: ref, destinationMasked: app.feeSourceAccount }), tag: "agent-fee-refunded" })).catch(() => {});
