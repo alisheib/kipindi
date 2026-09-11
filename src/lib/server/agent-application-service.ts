@@ -1137,7 +1137,17 @@ export async function recordFeeRefund(officerId: string, applicationId: string, 
     await db.agentApplication.update(app.id, { feeDisposition: "REFUNDED", feeRefundedAt: now, feeRefundedById: officerId, feeRefundReference: ref, feeRefundAmountTzs: amount });
     audit({ category: "COMPLIANCE", action: "agent.fee.refunded", actorId: officerId, targetType: "AgentApplication", targetId: app.id, payload: { amountTzs: amount, reference: ref, rejectedBy: app.reviewerId, destination: app.feeSourceAccount, vatReversedTzs: vatReversed, vatSource: bookedVat === null ? "computed-from-config" : "ledger" } });
     notifyAgentFeeRefunded(app.userId, { amountTzs: amount, reference: ref });
-    sendEmailToUser(app.userId, (email) => ({ to: email, subject: `Your agent registration fee has been refunded · ${formatTzs(amount)}`, html: agentFeeRefundedHtml({ amountTzs: amount, reference: ref, destinationMasked: app.feeSourceAccount }), tag: "agent-fee-refunded" })).catch(() => {});
+    /**
+     * ⭐ THE "To" ROW NAMES THE RAIL THAT ACTUALLY RECEIVED IT.
+     * This passed `app.feeSourceAccount` unconditionally — a column a wallet payment never
+     * writes — so `agentFeeRefundedHtml` dropped the row entirely (it renders only when the
+     * value is truthy) and a refunded applicant was told an amount and a reference and NOTHING
+     * about where their money went. On the one mail whose whole subject is the return of a
+     * person's money, that is the field that matters most.
+     * ⛔ EXTERNAL still names the masked bank account, because that is where it really went.
+     */
+    const refundDestination = fundingSource === "WALLET" ? "Your 50pick wallet" : app.feeSourceAccount;
+    sendEmailToUser(app.userId, (email) => ({ to: email, subject: `Your agent registration fee has been refunded · ${formatTzs(amount)}`, html: agentFeeRefundedHtml({ amountTzs: amount, reference: ref, destinationMasked: refundDestination }), tag: "agent-fee-refunded" })).catch(() => {});
     return { ok: true as const };
   });
 }

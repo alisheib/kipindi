@@ -35,5 +35,28 @@
  *
  * ⚠️ Nothing compares this to a stored value, so moving it forces NO re-acceptance. The one
  * existing row keeps `2026-09-07`, which is the correct record of what that person was shown.
+ *
+ * 🔴 **BUMPED 2026-09-11 — AND THIS TIME A CONTROL MAKES IT IMPOSSIBLE TO FORGET.** §2's fee
+ * clause told every applicant, in all three locales, to *"pay the registration fee of TZS
+ * 100,000 to Digital Selcom Bank, account 0769777877, uploading the receipt"* — measured on the
+ * DEPLOYED page, not read from a brief. Under the wallet rail that is false, and false in the
+ * most expensive place available: a person following the binding document wires 100,000 real
+ * shillings to a bank account, and the wizard has no receipt upload left to record it with.
+ *
+ * ⭐ **THE INSTRUCTION ABOVE — "⛔ Bump it whenever the BINDING English text changes" — WAS
+ * ALREADY IN THIS FILE ON 2026-09-08, AND THE BUMP WAS MISSED ANYWAY.** A note to a future
+ * reader is not a control. `AGENT_TERMS_TEXT_SHA` now pins a hash of the binding bodies: the
+ * text cannot move without the hash moving, and the hash cannot be updated without the editor
+ * being in THIS file, with the version in front of them. `npm run test:agent-terms-binding` §3.
  */
-export const AGENT_TERMS_VERSION = "2026-09-09";
+export const AGENT_TERMS_VERSION = "2026-09-11";
+
+/**
+ * The first 12 hex of `sha256` over the whitespace-normalised binding bodies of
+ * `/legal/agent-terms` — all three locales, extracted by `test:agent-terms-binding` §3.
+ *
+ * ⛔ **IT MOVES ONLY TOGETHER WITH `AGENT_TERMS_VERSION` ABOVE.** If §3.1 fails, do NOT paste
+ * the new hash and move on: a failure means the binding text changed, which is exactly the
+ * event the version exists to record. Change both, in one commit, or neither.
+ */
+export const AGENT_TERMS_TEXT_SHA = "3f81d40610a0";

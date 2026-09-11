@@ -86,7 +86,7 @@ export default async function AgentTermsPage() {
           <p>An agent <strong>never holds players' money</strong>. Agents do not take deposits, do not pay out winnings and do not top up accounts. Players deposit and withdraw themselves, exactly as every other player does.</p>
         </LegalSection>
         <LegalSection n="2" title="Applying">
-          <p>To apply you must hold a 50pick account whose identity has been verified, and you must not be a member of 50pick staff. You submit seven documents — a CV, a formal request letter, a Serikali ya Mtaa letter, and letters and national-ID copies from two referees — and pay the registration fee of <strong>{feeStr}</strong> {vatClause.en} to {cfg.feeDestinationName}, account {cfg.feeDestinationAccount}, uploading the receipt. A compliance officer reviews the application and approves or declines it; the decision is the officer's alone.</p>
+          <p>To apply you must hold a 50pick account whose identity has been verified, and you must not be a member of 50pick staff. You submit seven documents — a CV, a formal request letter, a Serikali ya Mtaa letter, and letters and national-ID copies from two referees — and pay the registration fee of <strong>{feeStr}</strong> {vatClause.en} from your 50pick wallet. Deposit the usual way first if your balance is short — there is no receipt to upload and no reference to type. A compliance officer reviews the application and approves or declines it; the decision is the officer's alone.</p>
           <p>If your application is not approved and the fee was received, it is <strong>refunded in full within {refundDays} days</strong> to the account it was paid from. Unless the decision is final, you may apply again after {cooldown} days.</p>
         </LegalSection>
         <LegalSection n="3" title="Commission">
@@ -103,10 +103,10 @@ export default async function AgentTermsPage() {
           <p>If your account is closed, suspended or self-excluded, your code stops recruiting and no new commission accrues. Commission accrued while you are on a responsible-gambling break is recorded and settled to you outside the wallet.</p>
         </LegalSection>
         <LegalSection n="6" title="Your referees' information">
-          <p>You confirm that each referee knows you have named them and has agreed to 50pick holding a copy of their national ID for this application. Referee ID copies are held for <strong>{refereeDays} days</strong> after the decision and then destroyed; they are destroyed immediately if the application is not approved. A referee who wishes their copy destroyed sooner may write to {SUPPORT_EMAIL()}.</p>
+          <p>You confirm that each referee knows you have named them and has agreed to 50pick holding a copy of their national ID for this application. Referee ID copies are held for <strong>{refereeDays} days</strong> after the decision and then destroyed; they are destroyed immediately if the application is not approved. A referee who wishes their copy destroyed sooner may write to <a href={`mailto:${SUPPORT_EMAIL()}`} className="underline hover:text-text">{SUPPORT_EMAIL()}</a>.</p>
         </LegalSection>
         <LegalSection n="7" title="General">
-          <p>These terms sit alongside the 50pick Terms of Service, which continue to apply to your account. 50pick may change these terms; a change that reduces what you earn takes effect only for commission accrued after you are notified. Questions: {SUPPORT_EMAIL()}.</p>
+          <p>These terms sit alongside the 50pick Terms of Service, which continue to apply to your account. 50pick may change these terms; a change that reduces what you earn takes effect only for commission accrued after you are notified. Questions: <a href={`mailto:${SUPPORT_EMAIL()}`} className="underline hover:text-text">{SUPPORT_EMAIL()}</a>.</p>
         </LegalSection>
       </>
     ),
@@ -117,7 +117,7 @@ export default async function AgentTermsPage() {
           <p>Wakala <strong>hashiki kamwe pesa za wachezaji</strong>. Mawakala hawapokei amana, hawalipi ushindi wala hawajazi akaunti. Wachezaji huweka na kutoa pesa wenyewe, kama kila mchezaji mwingine.</p>
         </LegalSection>
         <LegalSection n="2" title="Kuomba">
-          <p>Ili kuomba lazima uwe na akaunti ya 50pick ambayo utambulisho wake umethibitishwa, na usiwe mfanyakazi wa 50pick. Unawasilisha nyaraka saba — CV, barua rasmi ya maombi, barua ya Serikali ya Mtaa, na barua na nakala za vitambulisho vya taifa vya wadhamini wawili — na kulipa ada ya usajili ya <strong>{feeStr}</strong> {vatClause.sw} kwa {cfg.feeDestinationName}, akaunti {cfg.feeDestinationAccount}, ukipakia risiti. Afisa wa uzingatiaji hukagua maombi na kuidhinisha au kukataa; uamuzi ni wa afisa peke yake.</p>
+          <p>Ili kuomba lazima uwe na akaunti ya 50pick ambayo utambulisho wake umethibitishwa, na usiwe mfanyakazi wa 50pick. Unawasilisha nyaraka saba — CV, barua rasmi ya maombi, barua ya Serikali ya Mtaa, na barua na nakala za vitambulisho vya taifa vya wadhamini wawili — na kulipa ada ya usajili ya <strong>{feeStr}</strong> {vatClause.sw} kutoka pochi yako ya 50pick. Weka amana kwa njia ya kawaida kwanza kama salio lako hakitoshi — hakuna risiti ya kupakia wala kumbukumbu ya kuandika. Afisa wa uzingatiaji hukagua maombi na kuidhinisha au kukataa; uamuzi ni wa afisa peke yake.</p>
           <p>Kama maombi yako hayajaidhinishwa na ada ilipokelewa, <strong>hurejeshwa kamili ndani ya siku {refundDays}</strong> kwenye akaunti iliyolipa. Isipokuwa uamuzi ni wa mwisho, unaweza kuomba tena baada ya siku {cooldown}.</p>
         </LegalSection>
         <LegalSection n="3" title="Kamisheni">
@@ -134,10 +134,10 @@ export default async function AgentTermsPage() {
           <p>Kama akaunti yako imefungwa, imesimamishwa au umejizuia mwenyewe, msimbo wako unaacha kuandikisha na hakuna kamisheni mpya. Kamisheni iliyokusanywa ukiwa kwenye mapumziko ya uchezaji wa kuwajibika hurekodiwa na kulipwa kwako nje ya pochi.</p>
         </LegalSection>
         <LegalSection n="6" title="Taarifa za wadhamini wako">
-          <p>Unathibitisha kwamba kila mdhamini anajua umemtaja na amekubali 50pick kuhifadhi nakala ya kitambulisho chake cha taifa kwa maombi haya. Nakala za vitambulisho vya wadhamini huhifadhiwa kwa <strong>siku {refereeDays}</strong> baada ya uamuzi kisha huharibiwa; huharibiwa mara moja kama maombi hayajaidhinishwa. Mdhamini anayetaka nakala yake iharibiwe mapema anaweza kuandika kwa {SUPPORT_EMAIL()}.</p>
+          <p>Unathibitisha kwamba kila mdhamini anajua umemtaja na amekubali 50pick kuhifadhi nakala ya kitambulisho chake cha taifa kwa maombi haya. Nakala za vitambulisho vya wadhamini huhifadhiwa kwa <strong>siku {refereeDays}</strong> baada ya uamuzi kisha huharibiwa; huharibiwa mara moja kama maombi hayajaidhinishwa. Mdhamini anayetaka nakala yake iharibiwe mapema anaweza kuandika kwa <a href={`mailto:${SUPPORT_EMAIL()}`} className="underline hover:text-text">{SUPPORT_EMAIL()}</a>.</p>
         </LegalSection>
         <LegalSection n="7" title="Jumla">
-          <p>Masharti haya yanaenda sambamba na Masharti ya Huduma ya 50pick, ambayo yanaendelea kutumika kwenye akaunti yako. 50pick inaweza kubadilisha masharti haya; mabadiliko yanayopunguza unachopata yanaanza kutumika tu kwa kamisheni iliyokusanywa baada ya kujulishwa. Maswali: {SUPPORT_EMAIL()}.</p>
+          <p>Masharti haya yanaenda sambamba na Masharti ya Huduma ya 50pick, ambayo yanaendelea kutumika kwenye akaunti yako. 50pick inaweza kubadilisha masharti haya; mabadiliko yanayopunguza unachopata yanaanza kutumika tu kwa kamisheni iliyokusanywa baada ya kujulishwa. Maswali: <a href={`mailto:${SUPPORT_EMAIL()}`} className="underline hover:text-text">{SUPPORT_EMAIL()}</a>.</p>
         </LegalSection>
       </>
     ),
@@ -148,7 +148,7 @@ export default async function AgentTermsPage() {
           <p>代理<strong>绝不持有玩家资金</strong>。代理不接受存款、不支付奖金、不为账户充值。玩家自行存取款，与其他所有玩家完全相同。</p>
         </LegalSection>
         <LegalSection n="2" title="申请">
-          <p>申请须持有已完成身份验证的 50pick 账户，且不得为 50pick 员工。您需提交七份文件——简历、正式申请信、Serikali ya Mtaa 信函，以及两位推荐人的信函和身份证副本——并向 {cfg.feeDestinationName}（账户 {cfg.feeDestinationAccount}）支付 <strong>{feeStr}</strong>{vatClause.zh}的注册费并上传收据。合规官审核申请后批准或拒绝；决定权仅属于该合规官。</p>
+          <p>申请须持有已完成身份验证的 50pick 账户，且不得为 50pick 员工。您需提交七份文件——简历、正式申请信、Serikali ya Mtaa 信函，以及两位推荐人的信函和身份证副本——并从您的 50pick 钱包支付 <strong>{feeStr}</strong>{vatClause.zh}的注册费。余额不足时请先按常规方式充值 — 无需上传收据，也无需填写参考号。合规官审核申请后批准或拒绝；决定权仅属于该合规官。</p>
           <p>若申请未获批准且费用已收到，将在 <strong>{refundDays} 天内全额退还</strong>至原付款账户。除非决定为最终决定，您可在 {cooldown} 天后再次申请。</p>
         </LegalSection>
         <LegalSection n="3" title="佣金">
@@ -165,10 +165,10 @@ export default async function AgentTermsPage() {
           <p>若您的账户被关闭、暂停或自我排除，您的代理码将停止招募，也不再累积新佣金。在负责任博彩休息期间累积的佣金将被记录，并在钱包之外向您结算。</p>
         </LegalSection>
         <LegalSection n="6" title="您推荐人的信息">
-          <p>您确认每位推荐人均知晓您提名了他们，并同意 50pick 为本次申请保留其身份证副本。推荐人身份证副本在决定后保留 <strong>{refereeDays} 天</strong>后销毁；若申请未获批准则立即销毁。希望提前销毁副本的推荐人可致函 {SUPPORT_EMAIL()}。</p>
+          <p>您确认每位推荐人均知晓您提名了他们，并同意 50pick 为本次申请保留其身份证副本。推荐人身份证副本在决定后保留 <strong>{refereeDays} 天</strong>后销毁；若申请未获批准则立即销毁。希望提前销毁副本的推荐人可致函 <a href={`mailto:${SUPPORT_EMAIL()}`} className="underline hover:text-text">{SUPPORT_EMAIL()}</a>。</p>
         </LegalSection>
         <LegalSection n="7" title="一般条款">
-          <p>本条款与 50pick 服务条款并行适用，后者继续适用于您的账户。50pick 可修改本条款；减少您收益的修改仅对通知您之后累积的佣金生效。如有疑问：{SUPPORT_EMAIL()}。</p>
+          <p>本条款与 50pick 服务条款并行适用，后者继续适用于您的账户。50pick 可修改本条款；减少您收益的修改仅对通知您之后累积的佣金生效。如有疑问：<a href={`mailto:${SUPPORT_EMAIL()}`} className="underline hover:text-text">{SUPPORT_EMAIL()}</a>。</p>
         </LegalSection>
       </>
     ),

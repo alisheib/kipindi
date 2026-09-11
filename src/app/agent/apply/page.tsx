@@ -5,6 +5,7 @@ import { getServerT } from "@/lib/i18n-server";
 import { currentSession } from "@/lib/server/auth-service";
 import { getAgentConfig } from "@/lib/server/agent-config";
 import { lipaDisplay } from "@/lib/server/lipa-config";
+import { LIPA_QR_RELEASED } from "@/lib/lipa";
 import { applicantView, feeBreakdown, AGENT_REFEREE_DOC_HOLD_DAYS } from "@/lib/server/agent-application-service";
 import { getKycStatus } from "@/lib/server/kyc-service";
 import { db } from "@/lib/server/store";
@@ -76,7 +77,17 @@ export default async function AgentApplyPage() {
         documents={view.documents}
         missing={view.missing}
         kycGate={kycGate}
-        fee={{ totalTzs: fee.totalTzs, destinationName: cfg.feeDestinationName, destinationAccount: cfg.feeDestinationAccount }}
+        /* 🔴 THE DESTINATION CROSSES THE BOUNDARY ONLY WHILE THE QR IS RELEASED.
+           `ApplyClient` is "use client", so every prop a SERVER component hands it is
+           serialised into the RSC flight payload embedded in the HTML — whatever the component
+           renders. The panel's gate at `apply-client.tsx` stops the RENDER and not the SEND, so
+           this line published a WITHDRAWN programme's payable bank account to every applicant
+           who opened the wizard. Exactly PSC-02, one surface along: "renders nothing" and
+           "sends nothing" are different claims.
+           ⛔ `destinationName` is gone entirely — nothing consumed it; it was pure payload.
+           ⛔ The machinery is untouched and the flag is not tidied away (§0.6): flip
+           LIPA_QR_RELEASED and both the prop and the panel come back on their own. */
+        fee={{ totalTzs: fee.totalTzs, destinationAccount: LIPA_QR_RELEASED ? cfg.feeDestinationAccount : "" }}
         /* ⭐ THE WALLET RAIL'S THREE FACTS. Sent so the payment step can render a GATE with the
            action that clears it, instead of a button the server is about to refuse — the
            module's "gate the offer, never the refusal" law, and the same discipline
@@ -89,8 +100,12 @@ export default async function AgentApplyPage() {
         /* The merchant identity behind the QR. `lipaDisplay()` drops the pinned payload —
            that is a build-time assertion, not something a browser needs. The panel renders
            nothing unless this number IS `feeDestinationAccount` above, so the two can never
-           name different destinations. */
-        lipa={lipaDisplay()}
+           name different destinations.
+           ⛔ AND IT IS GATED FOR THE SAME REASON AS `fee.destinationAccount` ABOVE: dropping
+           `qrPayload` kept the PINNED payload out of the browser, but the other five fields —
+           merchant name, Lipa number, USSD code, asset path, `enabled: true` — still crossed
+           into the flight payload of a withdrawn programme. `null` while the gate is shut. */
+        lipa={LIPA_QR_RELEASED ? lipaDisplay() : null}
         limits={{ maxMb: Math.round(MAX_DOC_BYTES / (1024 * 1024)), refereeHoldDays: AGENT_REFEREE_DOC_HOLD_DAYS, reviewSlaDays: cfg.reviewSlaDays }}
       />
     </PageContainer>

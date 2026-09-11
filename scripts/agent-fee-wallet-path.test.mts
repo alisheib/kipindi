@@ -439,6 +439,78 @@ console.log("\n§8 ⛔ an UNPAID applicant is still refused, and the legacy rail
     collected.filter((m) => /^FEE/.test(m)).length === 0, JSON.stringify(collected));
 }
 
+// ═══ §9 · THE FEE EMAILS SAY WHAT ACTUALLY HAPPENS ═══════════════════════════════════════
+/**
+ * UNIT 6.5. Three of them were false or silent after the rail changed, and each in a different
+ * way — which is why a single "does it mention a bank?" scan would not have found them all.
+ *
+ *   · `agentApplicationSubmittedAdminHtml` told OFFICERS the applicant had submitted "the seven
+ *     documents and their fee reference". A wallet payment writes no reference, so the mail
+ *     that opens a compliance review named evidence the product had stopped collecting.
+ *   · `agentFeeRefundedHtml` renders its `To` row ONLY when `destinationMasked` is truthy, and
+ *     the caller passed `app.feeSourceAccount` — a column a wallet payment never writes. So the
+ *     row vanished and a refunded applicant was told an amount and a reference and NOTHING
+ *     about where their money had gone. ⭐ Not a false sentence: an ABSENT one. A vocabulary
+ *     scan cannot see a missing row, which is why 9.3 asserts the row is PRESENT.
+ *   · `agentInvitationHtml` quoted a price and never said how it is paid. An officer-invited
+ *     applicant never sees the public `/agent` page, so nothing told them the fee comes out of
+ *     their own wallet.
+ *
+ * ⭐ THE POPULATION IS DISCOVERED, from `comms-registry`'s `EMAIL_TEMPLATES`, filtered to the
+ * agent service — not a list typed here. `comms-email-truth` already ratchets that registry
+ * against the module's real exports ("the inventory is 61 templates"), so a template that is
+ * added and forgotten cannot slip past this section either.
+ */
+console.log("\n§9 every agent fee email describes the wallet rail");
+{
+  const reg = await import("../src/lib/server/comms-registry.ts");
+  const E = await import("../src/lib/server/email.ts") as unknown as Record<string, unknown>;
+  const specs = (reg.EMAIL_TEMPLATES as ReadonlyArray<{ template: string; trigger: string }>)
+    .filter((s) => s.trigger.includes("agent-application-service"));
+
+  ok("9.0 ⛔ RATCHET · the registry really yielded the agent templates (a broken filter finds none)",
+    specs.length >= 8, `found ${specs.length}`);
+  ok("9.0b CONTROL · …including the three this section is ABOUT",
+    ["agentFeeRefundedHtml", "agentApplicationSubmittedAdminHtml", "agentInvitationHtml"]
+      .every((n) => specs.some((s) => s.template === n)),
+    specs.map((s) => s.template).join(", "));
+
+  const refunded = (E.agentFeeRefundedHtml as (a: { amountTzs: number; reference: string; destinationMasked: string | null }) => string);
+  const submitted = (E.agentApplicationSubmittedAdminHtml as (a: { reference: string; applicantLabel: string; submittedAt: string; reviewUrl: string }) => string);
+  const invite = (E.agentInvitationHtml as (a: { link: string; expiresAt: string; feeWaivable: boolean; feeTzs: number }) => string);
+
+  const adminBody = submitted({ reference: "agp_x", applicantLabel: "A B", submittedAt: "2026-09-11T09:00:00.000Z", reviewUrl: "https://x/y" });
+  ok("9.1 🔴 the officer's alert no longer promises a fee REFERENCE that no longer exists",
+    !/fee reference/i.test(adminBody), "still says 'fee reference'");
+  ok("9.1b CONTROL · …and it still says the fee was dealt with at all",
+    /registration fee/i.test(adminBody), adminBody.slice(0, 0));
+
+  // ⭐ THE ABSENT ROW. Rendered with the value the WALLET path now supplies.
+  const walletRefund = refunded({ amountTzs: 100_000, reference: "RF-1", destinationMasked: "Your 50pick wallet" });
+  ok("9.2 ⭐ a wallet refund NAMES the wallet as the destination",
+    /50pick wallet/i.test(walletRefund), "the refund mail does not say where the money went");
+  ok("9.3 ⛔ …and the `To` row is PRESENT — the defect was an ABSENT row, not a wrong sentence",
+    /To/.test(walletRefund) && /50pick wallet/i.test(walletRefund));
+
+  // ⛔ CONTROL: the legacy rail must still render its masked bank account.
+  const bankRefund = refunded({ amountTzs: 118_000, reference: "RF-2", destinationMasked: "****4412" });
+  ok("9.4 ⛔ CONTROL · an out-of-band refund still names the masked account it really went to",
+    bankRefund.includes("****4412"), "the legacy refund lost its destination");
+
+  // ⚠️ AND THE SHAPE THAT SHIPPED: null destination → the row disappears entirely.
+  const silent = refunded({ amountTzs: 100_000, reference: "RF-3", destinationMasked: null });
+  ok("9.5 ⭐ CONTROL · with a null destination the row really does VANISH — this is what was live",
+    !/50pick wallet/i.test(silent) && !silent.includes("****4412"),
+    "the null case did not reproduce, so 9.3 proves nothing");
+
+  const inviteBody = invite({ link: "https://x/i", expiresAt: "2026-09-12T09:00:00.000Z", feeWaivable: true, feeTzs: 100_000 });
+  ok("9.6 ⭐ the invitation says HOW the fee is paid, not just how much",
+    /wallet/i.test(inviteBody), "an invitee is quoted a price with no rail");
+  ok("9.7 ⛔ …and no agent fee mail instructs anybody to pay a bank account or upload a receipt",
+    ![adminBody, walletRefund, inviteBody].some((b) => /upload the receipt|bank account|account number|deposit slip/i.test(b)),
+    "an out-of-band instruction survives in an agent fee mail");
+}
+
 // ═══ §6 · NO LIVE AGENT COPY STILL DESCRIBES THE OUT-OF-BAND RAIL ════════════════════════
 /**
  * 🔴 THIS SECTION EXISTS BECAUSE §4 MISSED A LIVE FALSEHOOD, AND SHIPPED IT.

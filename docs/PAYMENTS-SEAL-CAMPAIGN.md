@@ -199,7 +199,7 @@ would unblock it, do every other unit, and report it at the end. **Never idle.**
 | 3 | 🔴 The applicant's path: deposit → return → pay, with no dead end | ✅ **5/5** |
 | 4 | 🟠 The officer's workstation after reconciliation stops being manual | ✅ **4/4** |
 | 5 | 🟠 Refunds — the mirror must still balance | ☐ 0/3 |
-| 6 | 🟠 Copy, terms and i18n — EN/SW/ZH, and a terms version bump | ⏳ **2/5** — 6.1 + 6.2 |
+| 6 | 🟠 Copy, terms and i18n — EN/SW/ZH, and a terms version bump | ✅ **5/5** |
 | 7 | 🟠 In-flight applicants must not be stranded by the deploy | ⏳ **1/3** — 7.3 measured: **no migration needed** |
 | 8 | 🟡 Gates — the suites that hold this subsystem, on the deploy path | ⏳ **2/3** — 8.2 + 8.3; predeploy 97 → 98, two guards on the path |
 
@@ -265,9 +265,9 @@ would unblock it, do every other unit, and report it at the end. **Never idle.**
 |---|---|---|
 | ✅ | **6.1** the public `/agent` page describes the real rail | `feeBodyWallet` replaces `feeBody` ("Pay {amount} to {name}, account {account}, then upload the receipt…") in all three locales — **replaced, not reworded**. ⛔ And it was a DEPENDENCY of PSC-02: deleting the visible copy alone would have been cosmetic while the gated panel still published the account |
 | ✅ | **6.2** the wizard's payment step copy is true in EN/SW/ZH | 12 new keys × EN/SW/ZH, parity green at **2382 each**. Every new refusal carries a MACHINE TOKEN, never English the form substring-matches — the defect this form already shipped once |
-| ☐ | **6.3** the binding agent terms match the new rail | `legal/agent-terms` |
-| ☐ | **6.4** `AGENT_TERMS_VERSION` is bumped — a binding document changed | config |
-| ☐ | **6.5** every fee email says what actually happens | `email.ts` |
+| ✅ | **6.3** the binding agent terms match the new rail | 🔴 **IT WAS LIVE AND FALSE IN ALL THREE LOCALES** — *"pay the registration fee of TZS 100,000 to Digital Selcom Bank, account 0769777877, uploading the receipt"*, measured on the deployed page. A person following the BINDING document wires 100,000 real shillings to a bank account, and the wizard has no receipt upload left to record it with. Replaced (en:89 · sw:120 · zh:151) with the wizard's own shipped vocabulary rather than a second one. ⭐ **The refund clause is UNTOUCHED** — *"to the account it was paid from"* is rail-AGNOSTIC and already true on both; correct copy left alone matters as much as false copy removed. Also anchored the SIX bare `SUPPORT_EMAIL()` renders (2 per locale, not the 4 a live count suggests) to the peer's spec |
+| ✅ | **6.4** `AGENT_TERMS_VERSION` is bumped — a binding document changed | **2026-09-09 → 2026-09-11**, and ⭐ **a CONTROL now makes the next miss impossible.** The instruction *"⛔ Bump it whenever the BINDING English text changes"* was already in that file on 2026-09-08 and the bump was missed anyway — **a note to a future reader is not a guard.** `AGENT_TERMS_TEXT_SHA` pins `sha256` over the whitespace-normalised bodies of all three locales; the text cannot move without the hash moving, and the hash cannot move without the editor being in that file with the version in front of them. Proven by mutation: reversing *"an agent never holds players' money"* → red. ⚠️ Still nothing compares it to a stored value, so it forces no re-acceptance — that remains true and is a separate question |
+| ✅ | **6.5** every fee email says what actually happens | **THREE were wrong, each in a DIFFERENT way** — which is why one vocabulary scan would not have found them all. (a) `agentApplicationSubmittedAdminHtml` told OFFICERS the applicant submitted *"the seven documents and their fee reference"* — evidence the product stopped collecting, in the mail that opens a review. (b) 🔴 `agentFeeRefundedHtml`'s `To` row renders only when `destinationMasked` is truthy and the caller passed `feeSourceAccount`, which a wallet payment never writes — so on the one mail about the return of a person's money, **the destination row VANISHED**. ⭐ Not a false sentence, an ABSENT one: a vocabulary scan cannot see a missing row, so §9.3 asserts PRESENCE and §9.5 reproduces the null case. (c) `agentInvitationHtml` quoted a price and never said how it is paid, to the one applicant class that never sees `/agent`. `test:agent-fee-wallet-path` §9, population DISCOVERED from `comms-registry` |
 
 > ⭐ **MEASURED ON PRODUCTION 2026-09-10, READ-ONLY — AND IT COLLAPSES THIS UNIT.**
 > Route: `railway run --service Postgres -- node <scratchpad script>`, session `SET … READ ONLY`
@@ -471,6 +471,51 @@ not a string removed from the payload.
 different claims. A `"use client"` component reached from a server component publishes its PROPS
 whatever it returns, so a feature gate that only stops the render still ships the data. ⚠️ Worth
 asking of every gated panel in this repo, not just this one.
+
+---
+
+## §5e · 🟠 PSC-02 HAD A THIRD SURFACE, AND A HAND-CHOSEN POPULATION IS WHY
+
+⛔ **PSC-02 WAS REAL AND ITS FIX WAS REAL — ON ONE PAGE.** Verified independently 2026-09-11: the
+live `/agent` payload has **ZERO** occurrences of `0769777877`, `70063747`, `OCEAN ENTERTAINMENT`,
+`lipaNumber`, `merchantName` or `qrAssetPath`. Sealed. ⭐ **And the absence is trustworthy because
+the same probe found the digits somewhere else on the same origin minutes later** — `/legal/agent-terms`
+served `0769777877` in plain text. An absence is only evidence when you can show the probe finding
+the thing elsewhere; that positive control arrived by luck here, and should be built deliberately.
+
+The destination was still published on **two** further surfaces:
+
+| surface | how | who saw it |
+|---|---|---|
+| `/legal/agent-terms` | rendered TEXT, all three locales | every anonymous visitor |
+| `/agent/apply` | **RSC flight payload** — `fee={{ destinationName, destinationAccount }}` and `lipa={lipaDisplay()}` handed from a server component to `"use client"` `ApplyClient` | every applicant who opened the wizard |
+
+⭐ **THE SECOND ONE IS PSC-02 EXACTLY, ONE SURFACE ALONG.** The panel's own gate
+(`LIPA_QR_RELEASED && <LipaQrPanel …>`) stops the RENDER and not the SEND. ⛔ **`destinationName`
+was consumed by nothing at all** — pure payload. Both props are now gated at the SERVER
+component, matching `/agent/page.tsx`'s precedent; `lipa.ts`, `lipa-config.ts` and the panel are
+untouched and the flag is not tidied away, so flipping `LIPA_QR_RELEASED` restores both.
+
+### ⭐ Why two green guards missed all of it — the lesson, not the instance
+
+- `agent-fee-wallet-path` **§4.3** reads `src/app/agent/page.tsx` and only that file.
+- Its **§6** reads the EN `agent:` block of `i18n-dict.ts`. The terms copy is inline JSX and has
+  never been in the dictionary.
+
+Neither guard is wrong. Both assert a **PROXY** — *"this file"*, *"this dictionary block"* — for
+the property *"everywhere this claim can be made"*, and the proxy drifted the moment a second
+surface made the same claim. **34/0 green, with a false binding statement in production.**
+
+⛔ So `test:agent-terms-binding` §1 walks a **DISCOVERED** population — every `.tsx` under
+`src/app` — and ratchets the walk itself (`≥ 140` applicant-facing pages survive the one
+exemption). **It found `/agent/apply` on its first run.** I did not; I had read the terms page and
+stopped there.
+
+⚠️ **AND THE EXEMPTION NEARLY SWALLOWED IT.** `/admin/agents` legitimately renders the destination
+— an operator must be able to read and edit that setting — so the console is exempt by path. My
+first ratchet demanded half the tree survive and went **red at 154 of 323**, because the staff
+console is genuinely more than half of `src/app`. ⭐ **A threshold set by intuition accuses correct
+code on its first run;** it is now pinned just under the measured figure.
 
 ---
 
@@ -682,4 +727,6 @@ valid state; a decision missing from here is not.
 | # | Decision taken | Alternative rejected | Which §0.5 criterion settled it | Touches | Money / binding / compliance? |
 |---|---|---|---|---|---|
 | **1** | **Work from a dedicated `git worktree`** (`F:\kipindi-seal`, branch `payments-seal-s3`) instead of sharing `F:\kipindi-main` with the peer session. | Continuing in the shared checkout and serialising every board by message. | §0.4's own ⛔ *"WORKTREES, NOT A SHARED DIRECTORY"*, and criterion 3 — it makes the whole collision CLASS impossible rather than merely unlikely. We had already lost a stash race and run two overlapping boards within 15 minutes. | working tree only; no product code | no |
+| **3** | **Pin a CONTENT HASH of the binding terms beside `AGENT_TERMS_VERSION`**, so the text cannot change without the version being looked at. | Leaving the existing "⛔ bump it when the text changes" comment as the only control. | Criterion 3 — that comment was already in the file on 2026-09-08 and the bump was missed anyway, so the instance was fixed and the CLASS was not. This makes the next miss impossible rather than unlikely. | `src/lib/agent-terms-version.ts`, `scripts/agent-terms-binding.test.mts` | ⚠️ **BINDING** — it versions the document an agent is held to. It forces no re-acceptance (nothing compares it to a stored value) and the one existing row keeps `2026-09-07`, which is the correct record of what that person was shown |
+| **4** | **Gate the Lipa props at the SERVER component in `/agent/apply`, and delete `destinationName` outright.** | Leaving them, since the panel's own `LIPA_QR_RELEASED &&` already stops the render. | Criterion 3, and PSC-02's own recorded lesson: "renders nothing" and "sends nothing" are different claims. `destinationName` was consumed by nothing, so there was no case for keeping it. | `src/app/agent/apply/page.tsx`, `apply-client.tsx` | no money; ⛔ the withheld QR MACHINERY is untouched and the flag is not tidied away — §0.6 forbids deleting it, and gating a call site is the opposite of deleting a feature |
 | **2** | **`missingForSubmit` emits ONE settlement token `FEE_PAYMENT`**, replacing the `FEE_RECEIPT` + `FEE_REFERENCE` pair, and exempts `COLLECTED` alongside `WAIVED`. | The smaller edit: keep both tokens and merely add `&& !== "COLLECTED"`. | Criteria 1 and 2 — the CLIENT already states this rule as a single settlement-keyed entry (`missingFeePayment`), so one concept matching the existing precedent beats two lists that have now demonstrably drifted apart. | `agent-application-service.ts` `missingForSubmit`; `admin/agents/[id]/page.tsx` `MISSING_WORD` | ⚠️ **YES — it unblocks a paying applicant who could not apply.** No money moves differently; the fee is still required, and §8 proves an unpaid applicant is still refused |

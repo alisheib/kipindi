@@ -1837,7 +1837,11 @@ export function agentApplicationSubmittedAdminHtml({ reference, applicantLabel, 
   return wrap(`
     ${eyebrow("Agent programme · awaiting approval")}
     ${heading("New agent application to review")}
-    ${subtitle("An applicant has submitted the seven documents and their fee reference, and is waiting on a compliance decision.")}
+    ${/* 🔴 "and their fee reference" — FALSE since 2026-09-10. The fee is debited from the
+          applicant's own wallet and writes no reference at all, so this told an officer to
+          expect a piece of evidence the product had stopped collecting, in the very mail that
+          opens their review. */ ""}
+    ${subtitle("An applicant has submitted the seven documents and settled the registration fee, and is waiting on a compliance decision.")}
     ${detailRows([
       { label: "Reference", value: reference },
       { label: "Applicant", value: applicantLabel },
@@ -1858,7 +1862,13 @@ export function agentInvitationHtml({ link, expiresAt, feeWaivable, feeTzs }: { 
     ${subtitleSw("Afisa wa 50pick amekualika kujiunga na mpango wa mawakala. Fungua kiungo, thibitisha msimbo tutakaokutumia kwa barua pepe, kisha kamilisha maombi yako.")}
     ${detailRows([
       { label: "Expires", value: fmtDateTime(expiresAt) },
-      { label: "Registration fee", value: feeWaivable ? `${formatTzs(feeTzs)} · may be waived by the inviting officer` : formatTzs(feeTzs) },
+      /* ⭐ SAY HOW IT IS PAID. The invitee was quoted a price and told nothing about the rail,
+         so an officer-invited applicant reached the wizard with no idea the fee comes out of
+         their own wallet balance — and, unlike a self-service applicant, they were never shown
+         the public /agent page that explains it. ⚠️ "may be waived" is kept and is accurate as
+         a POSSIBILITY, but it is the officer's discretion and not a promise; the wallet
+         sentence is what makes the mail actionable when no waiver comes. */
+      { label: "Registration fee", value: `${formatTzs(feeTzs)}, paid from your 50pick wallet${feeWaivable ? " · may be waived by the inviting officer" : ""}` },
     ])}
     ${ctaButton(link, "Open your invitation · Fungua")}
   `);

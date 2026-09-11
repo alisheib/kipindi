@@ -56,7 +56,10 @@ type Props = {
   missing: string[];
   /** Only for an OFFICER_INVITED applicant: their own identity gate, null once submitted/approved. */
   kycGate: KycGateState | null;
-  fee: { totalTzs: number; destinationName: string; destinationAccount: string };
+  /** ⛔ `destinationName` was removed 2026-09-11 — nothing consumed it, so it was pure payload
+   *  crossing the server→client boundary. `destinationAccount` now arrives EMPTY while the QR
+   *  is withheld: the SERVER gates it, because a gate that only stops the render still sends. */
+  fee: { totalTzs: number; destinationAccount: string };
   /** Selcom merchant QR, or null when it is not configured. Rendered only when it names
    *  the SAME account as `fee.destinationAccount` — see `shouldShowLipaQr`. */
   lipa: LipaDisplay | null;
