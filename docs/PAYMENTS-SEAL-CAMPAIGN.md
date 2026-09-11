@@ -197,7 +197,7 @@ would unblock it, do every other unit, and report it at the end. **Never idle.**
 | 1 | 🔴 The ledger shape: a wallet-funded fee must not double-count | ✅ **4/4** |
 | 2 | 🔴 The debit primitive: all-or-nothing, idempotent, its own type | ✅ **5/5** |
 | 3 | 🔴 The applicant's path: deposit → return → pay, with no dead end | ✅ **5/5** |
-| 4 | 🟠 The officer's workstation after reconciliation stops being manual | ☐ 0/4 |
+| 4 | 🟠 The officer's workstation after reconciliation stops being manual | ✅ **4/4** |
 | 5 | 🟠 Refunds — the mirror must still balance | ☐ 0/3 |
 | 6 | 🟠 Copy, terms and i18n — EN/SW/ZH, and a terms version bump | ⏳ **2/5** — 6.1 + 6.2 |
 | 7 | 🟠 In-flight applicants must not be stranded by the deploy | ⏳ **1/3** — 7.3 measured: **no migration needed** |
@@ -250,10 +250,10 @@ would unblock it, do every other unit, and report it at the end. **Never idle.**
 
 | | Unit 4 · The officer | where |
 |---|---|---|
-| ☐ | **4.1** a wallet-paid fee needs no manual attestation, and the UI says so | `/admin/agents/[id]` |
-| ☐ | **4.2** the gold fee panel renders the new shape without empty slots | admin |
-| ☐ | **4.3** `approveAgent`'s COLLECTED-or-WAIVED precondition still holds | service |
-| ☐ | **4.4** waiver still works and still needs its audited reason | service |
+| ✅ | **4.1** a wallet-paid fee needs no manual attestation, and the UI says so | 🔴 **THE UI SAID NOTHING AT ALL.** `decision-rail.tsx:211` rendered `whyNoReconcile` behind `&& disposition === "NONE"`, so on a COLLECTED fee the sentence was computed and thrown away. ⚠️ And it was wrong twice over: `COLLECTED ? "Reconciled."` names an officer act that never happened on the wallet rail, and the fallback — *"The applicant has not recorded a receipt reference."* — is the WITHDRAWN rail's instruction, shown to an officer looking at somebody who has simply not paid. Now truthful for all FIVE dispositions (⛔ `REFUND_DUE`/`REFUNDED` must never read "has not paid" — they exist *because* it was) and the gate that hid it is gone. `test:agent-fee-officer-panel` §4b + §4c |
+| ✅ | **4.2** the gold fee panel renders the new shape without empty slots | ⛔ **THE BRIEF SAID TWO EM-DASHES. IT WAS THREE, PLUS A FOURTH SLOT THAT LIED.** `Receipt ref`, `Attested` and `Statement line` all rendered `—` for a wallet-funded fee, and `Reconciled` printed a REAL timestamp because `payFeeFromWallet` sets `feeReconciledAt`. ⚠️ An em-dash is not neutral in this grid — every other one means *"not done yet"*, the thing the officer's job is to chase. A fifth, `To`, showed `—` on every wallet refund. ⭐ **`feeReconciledAt` is NOT cleared:** `reconcileFee` refuses while it is set, and that refusal is what stops an officer collecting a SECOND time from someone who already paid. The fix is the LABEL, never the field. Grid now decided by the rail in `[id]/fee-evidence.ts` |
+| ✅ | **4.3** `approveAgent`'s COLLECTED-or-WAIVED precondition still holds | ✅ **VERIFIED, unchanged** — `if (app.feeDisposition !== "COLLECTED" && !== "WAIVED") refuse("fee_unresolved")` admits a wallet-funded COLLECTED row by construction. ⚠️ Its refusal COPY said *"Reconcile the fee, or waive it"*, telling an officer to do something the live rail offers no control for; the rail's own sentence now carries the truth instead |
+| ✅ | **4.4** waiver still works and still needs its audited reason | ✅ **VERIFIED, unchanged and untouched** — `waiveFee` still demands ≥10 characters, writes `feeWaiverReason` and audits `agent.fee.waived` through the ordinary path. ⛔ It still refuses a fee already `COLLECTED` (*"Reject and refund instead"*), which is what stops a waiver being used to paper over a wallet payment. `test:agent-fee-officer-panel` 4b.9 holds the copy |
 
 | | Unit 5 · Refunds | where |
 |---|---|---|

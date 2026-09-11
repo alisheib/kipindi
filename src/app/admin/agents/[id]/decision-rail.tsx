@@ -208,7 +208,13 @@ export function DecisionRail({ state }: { state: RailState }) {
               </Field>
               <Button variant="gold" size="md" disabled={!mayAct || pending} loading={pending} onClick={() => run("Reconciling fee…", () => reconcileFeeAction(fd({ attestedTzs: attested, statementRef, sourceAccount })), "Fee reconciled and booked to the ledger.")}>Reconcile fee</Button>
             </>
-          ) : state.fee.whyNoReconcile && state.fee.disposition === "NONE" ? (
+          ) : /* 🔴 THIS CARRIED `&& state.fee.disposition === "NONE"`, so the officer was told why
+                 they cannot reconcile ONLY while the fee was still unpaid. On a COLLECTED fee —
+                 which is exactly Unit 4.1, "a wallet-paid fee needs no manual attestation, and
+                 the UI says so" — the sentence was computed and then thrown away, and the rail
+                 said nothing at all. `whyNoReconcile` is now truthful for EVERY disposition
+                 (see ./fee-evidence), so the condition that hid it has gone with it. */
+            state.fee.whyNoReconcile ? (
             <p className="text-body-sm text-text-muted">{state.fee.whyNoReconcile}</p>
           ) : null}
           {state.fee.canWaive && (

@@ -22,6 +22,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { getAuditForTargetDurable } from "@/lib/server/audit";
 import type { Route } from "next";
 import { DocGrid, type DocTile } from "./doc-grid";
+import { feeEvidence, feeRefundDestination, whyNoReconcile } from "./fee-evidence";
 import { DecisionRail, type RailState } from "./decision-rail";
 import type { AgentDocType } from "@/lib/server/store";
 
@@ -63,6 +64,8 @@ export default async function AgentApplicationPage({ params }: { params: Promise
   // ⭐ Once a fee is stamped (reconciled, refund owed, refunded) the panel shows THAT figure — the
   // config fee can change after the money moved, and the record must not follow it.
   const feeShownTzs = app.feeAmountTzs != null && app.feeDisposition !== "NONE" ? app.feeAmountTzs : fee.totalTzs;
+  // ⭐ The evidence grid, decided by the rail that actually collected — see `./fee-evidence`.
+  const evidence = feeEvidence(app);
   const label = displayLabel({ id: app.userId, displayName: applicant?.displayName ?? null });
   /**
    * ⭐ ONE BATCHED LOOKUP FOR EVERY ACTOR IN THE HISTORY, so a forty-row case file is one
@@ -128,7 +131,11 @@ export default async function AgentApplicationPage({ params }: { params: Promise
       canReconcile: ["PAYMENT_PENDING", "UNDER_REVIEW", "ADDITIONAL_INFO_REQUIRED"].includes(app.status) && app.feeDisposition === "NONE" && !!app.feeReference && session?.userId !== app.userId,
       canWaive: !["APPROVED", "REJECTED", "DECLINED", "EXPIRED", "REVOKED"].includes(app.status) && app.feeDisposition === "NONE" && session?.userId !== app.userId,
       canRefund: app.feeDisposition === "REFUND_DUE" && session?.userId !== app.userId,
-      whyNoReconcile: app.feeDisposition === "WAIVED" ? "Waived." : app.feeDisposition === "COLLECTED" ? "Reconciled." : !app.feeReference ? "The applicant has not recorded a receipt reference." : null,
+      // 🔴 This read `COLLECTED ? "Reconciled."` — false for a wallet payment, which no officer
+      // touched — and otherwise "The applicant has not recorded a receipt reference.", the
+      // WITHDRAWN bank rail's instruction, shown to an officer looking at somebody who has
+      // simply not paid yet. Both now come from `./fee-evidence`, per rail.
+      whyNoReconcile: whyNoReconcile(app),
     },
     defaultRatePct: cfg.defaultCommissionPct, maxRatePct: cfg.maxCommissionPct,
     docSlots: ALL_DOC_SLOTS.map((s) => ({ value: s, label: DOC_LABEL[s] })),
@@ -211,10 +218,24 @@ export default async function AgentApplicationPage({ params }: { params: Promise
                 </Chip>
               </div>
               <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-body-sm md:grid-cols-4">
-                <div><dt className="font-mono text-micro uppercase eyebrow text-text-faint">Receipt ref</dt><dd className="font-mono text-text">{app.feeReference ?? "—"}</dd></div>
-                <div><dt className="font-mono text-micro uppercase eyebrow text-text-faint">Attested</dt><dd className="font-mono tabular-nums text-text">{app.feeAttestedTzs !== null ? formatTzs(app.feeAttestedTzs) : "—"}</dd></div>
-                <div><dt className="font-mono text-micro uppercase eyebrow text-text-faint">Statement line</dt><dd className="font-mono text-text">{app.feeStatementRef ?? "—"}</dd></div>
-                <div><dt className="font-mono text-micro uppercase eyebrow text-text-faint">Reconciled</dt><dd className="font-mono text-text">{app.feeReconciledAt ? formatDateTime(app.feeReconciledAt) : "—"}</dd></div>
+                {/* ⭐ THE GRID IS DECIDED BY THE RAIL THAT COLLECTED, in `./fee-evidence`.
+                    It used to be four hard-coded bank-reconciliation slots, so a wallet-funded
+                    fee — which writes no reference, no attested amount and no statement line —
+                    showed the officer THREE EM-DASHES against money that had been paid in full,
+                    and a fourth slot labelled "Reconciled" over a timestamp no officer produced.
+                    ⛔ One home for these labels: `test:agent-fee-officer-panel` §5.4 fails if any
+                    of them is written here again, because two renderings of one rule drift. */}
+                {evidence.rows.map((r) => (
+                  <div key={r.label}>
+                    <dt className="font-mono text-micro uppercase eyebrow text-text-faint">{r.label}</dt>
+                    <dd className="font-mono text-text">{r.value}</dd>
+                  </div>
+                ))}
+                {evidence.note && (
+                  <div className="col-span-2 md:col-span-4">
+                    <p className="text-body-sm text-text-subtle">{evidence.note}</p>
+                  </div>
+                )}
                 {/* ⚠️ THE SEPARATOR IS CONDITIONAL ON WHAT PRECEDES IT. This read
                     `{ts ? fmt(ts) : ""} · {reason}` and rendered a dangling " · reason" whenever
                     the timestamp was null — a leading punctuation mark with nothing before it,
@@ -232,7 +253,10 @@ export default async function AgentApplicationPage({ params }: { params: Promise
                   <>
                     <div><dt className="font-mono text-micro uppercase eyebrow text-text-faint">Refund due by</dt><dd className="font-mono text-text">{app.feeRefundDueAt ? formatDateTime(app.feeRefundDueAt) : "—"}</dd></div>
                     <div><dt className="font-mono text-micro uppercase eyebrow text-text-faint">Refunded</dt><dd className="font-mono text-text">{app.feeRefundedAt ? `${formatDateTime(app.feeRefundedAt)} · ${app.feeRefundReference ?? ""}` : "—"}</dd></div>
-                    <div><dt className="font-mono text-micro uppercase eyebrow text-text-faint">To</dt><dd className="font-mono text-text">{app.feeSourceAccount ?? "—"}</dd></div>
+                    {/* 🔴 This read `feeSourceAccount` unconditionally, which a wallet payment
+                        never writes — so the one row whose job is to say where a person's money
+                        is going showed an em-dash on every wallet-funded refund. */}
+                    <div><dt className="font-mono text-micro uppercase eyebrow text-text-faint">To</dt><dd className="font-mono text-text">{feeRefundDestination(app)}</dd></div>
                   </>
                 )}
               </dl>
