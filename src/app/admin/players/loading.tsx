@@ -29,7 +29,7 @@ export default function Loading() {
             <SkBar className="h-[32px] flex-1 min-w-[260px] rounded-md" />
             <SkBar className="h-[32px] w-[180px] rounded-md" />
             {/* the KYC stage filter (2026-09-11) — sm:w-[200px] on the page */}
-            <SkBar className="h-[32px] w-[200px] rounded-md" />
+            <SkBar className="h-[32px] w-[260px] rounded-md" />
             <SkBar className="h-[32px] w-[72px] rounded-md" />
           </div>
           <SkBar className="h-[15px] w-[128px] mt-2" />

@@ -315,7 +315,15 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
                 records paying for, twenty lines up.
                 ⭐ The COUNT rides on each option, so the officer sees the size of every
                 queue before choosing one. */}
-            <div className="w-full sm:w-[200px]">
+            {/* ⚠️ 260px, MEASURED NOT GUESSED. At 200px the trigger wrapped to two lines
+                ("Uploaded · not sent ·" / "1"), which made this control taller than the
+                Search button beside it and broke the filter row's alignment — caught on a
+                screenshot, not by any assertion. The longest option is "Rejected · after
+                upload · 99"; 23 characters already wrapped at 200px, so it needs ~235px.
+                ⛔ The fix is NOT `truncate` on the trigger: ui-consistency rules that an
+                error and DG-A-05 calls it illegal — a filter whose selected value you
+                cannot read is worse than a wide control. */}
+            <div className="w-full sm:w-[260px]">
               <Select
                 name="kyc"
                 defaultValue={kycFilter}
@@ -399,7 +407,7 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
                           ⛔ Ungated by role, exactly like the chip beside it - see
                           `kycFilter` above for why gating it would blind the support desk
                           without closing anything. */}
-                      <td data-filter-value={stageOf(u.id)}><KycStageBadge cell={stageOf(u.id)} /></td>
+                      <td data-kyc-stage={stageOf(u.id)}><KycStageBadge cell={stageOf(u.id)} /></td>
                       {/* `pageBalances` is empty unless the viewer passed the accounting
                           gate, so this stays exactly the old `canSeeMoney && wallet` cell:
                           a player with no wallet row, and a viewer with no money rights,
