@@ -976,16 +976,45 @@ export const prismaDb = {
         include: { documents: true },
       });
       // Sync documents: delete existing, re-create from StoredKyc.
-      // `?.` is deliberate: a KYC submission arriving without a documents array
-      // (an older/partial record, or a caller that omitted it) must degrade to
-      // "no documents to sync", not throw out of the KYC write path.
-      if (k.documents?.length) {
-        const docsData = toKycDocumentRows(k.id, k.documents);
+      //
+      // 🔴 THIS IS THREE CASES, NOT TWO — AND THE MISSING ONE WAS A LIVE DEFECT
+      // (fixed 2026-09-11). The guard used to read `if (k.documents?.length)`:
+      //
+      //   undefined  → a caller that omitted the array (an older/partial record).
+      //                Touch nothing. This is what the `?.` was always FOR, and it
+      //                is still honoured — the degrade-don't-throw contract stands.
+      //   []         → an EXPLICIT RESET. ⛔ THIS BRANCH DID NOT EXIST. `[]` is
+      //                falsy on `.length`, so the delete never ran.
+      //   [..> 0]    → replace.
+      //
+      // ⛔ WHY THE MISSING BRANCH MATTERED. `startKyc` (kyc-service.ts:107-137)
+      // restarts a REJECTED / NOT_STARTED submission by rebuilding it with
+      // `documents: []` — and it REUSES THE EXISTING ROW ID (`existing?.id ?? …`),
+      // so the previous attempt's `KycDocument` rows stayed attached in Postgres.
+      // The in-memory half replaces the object wholesale
+      // (`store.ts` — `upsert: (k) => { store.kyc.set(k.id, k); … }`) and DID clear
+      // them. So the two DAL halves disagreed about what a restart destroys, EVERY
+      // unit suite ran on the half that was right, and production ran the half that
+      // was wrong — which is why nothing ever went red.
+      //
+      // ⛔ IT WAS NOT COSMETIC. `submitForReview`'s `missingSlots` check
+      // (kyc-service.ts:507-510) reads `k.documents`, so once the player re-entered
+      // their identity the OLD, already-refused images satisfied the required slots
+      // and the submission passed straight back to an officer as complete.
+      // Reachable entirely from shipped code: APPROVED → `forceReverifyKyc` (:672)
+      // → officer REJECT (:838) → the player taps "start again", which `startKyc`
+      // permits because the status is REJECTED (:104).
+      //
+      // ⚠️ Erasure is unaffected: erasure.ts:303 calls `db.kyc.deleteDocuments`
+      // explicitly before its own upsert, and this delete is idempotent over that.
+      if (k.documents !== undefined) {
         // Atomic delete + re-create so a mid-sync failure can't leave the
         // submission with zero documents (the in-memory store is atomic here).
         await pc().$transaction([
           pc().kycDocument.deleteMany({ where: { submissionId: k.id } }),
-          pc().kycDocument.createMany({ data: docsData }),
+          ...(k.documents.length
+            ? [pc().kycDocument.createMany({ data: toKycDocumentRows(k.id, k.documents) })]
+            : []),
         ]);
       }
       // Re-fetch with documents
