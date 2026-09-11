@@ -127,12 +127,19 @@ try {
   // would satisfy every assertion below — so each row asserts a POSITIVE CONTROL that the
   // dialog's text actually changed language.
   {
-    const LOCALES = [
-      { code: "en", expect: /bet|market|welcome/i },
-      { code: "sw", expect: /dau|soko|karibu/i },
-      { code: "zh", expect: /投注|市场|欢迎/ },
-    ];
-    for (const { code, expect } of LOCALES) {
+    // ⛔ THE LOCALE CONTROL IS A DIFFERENCE TEST, NOT A WORD LIST — and the first version was a
+    // word list, which failed all nine cells INCLUDING English against a page that was rendering
+    // perfectly. I had guessed "bet / market / welcome"; the primer actually opens "Predict
+    // events. Not chance." So the control asserted a PROXY (these particular words appear) for
+    // the property (the cookie changed the language), and the proxy was falsifiable without the
+    // property being false. That is the same class as every other guard failure in this campaign,
+    // committed while writing the control that exists to prevent it.
+    // ⭐ Comparing the three locales' text to EACH OTHER cannot be wrong about the copy: if
+    // `kp-locale` were ignored, all three would be byte-identical. It needs no knowledge of what
+    // the primer says, so it cannot rot when the copy is rewritten.
+    const seenText = new Map();
+    const LOCALES = [{ code: "en" }, { code: "sw" }, { code: "zh" }];
+    for (const { code } of LOCALES) {
       for (const w of [360, 393, 768]) {
         const c = await browser.newContext({ viewport: { width: w, height: 900 } });
         await c.addCookies([{ name: "kp-locale", value: code, domain: new URL(BASE).hostname, path: "/" }]);
@@ -141,8 +148,13 @@ try {
         await settle(pg, `${BASE}/?primer=1`);
         await pg.waitForTimeout(2200);
         const m = await pg.evaluate(() => {
-          const dlg = document.querySelector('[role="dialog"], [aria-modal="true"]');
-          if (!dlg) return { present: false };
+          const root = document.querySelector('[role="dialog"], [aria-modal="true"]');
+          if (!root) return { present: false };
+          // ⛔ MEASURE THE PANEL, NOT THE ROOT. `modal.tsx` puts `role="dialog"` on a
+          // `fixed inset-0` element — the full-viewport layer that holds the scrim — so measuring
+          // it reports the VIEWPORT back to you (360×900 at 0,0 in 360×900) and every overflow
+          // assertion is vacuously false. `.mat-modal` is the actual panel.
+          const dlg = root.querySelector(".mat-modal") ?? root;
           const r = dlg.getBoundingClientRect();
           const focusable = dlg.querySelectorAll('button, a[href], input, [tabindex]:not([tabindex="-1"])');
           return {
@@ -161,14 +173,23 @@ try {
           note(`\n── primer ${code} @${w}: ${m.w}×${m.h} at (${m.x},${m.y}) in ${m.vw}×${m.vh}`
             + ` · overflowsX=${m.overflowsX} offscreenY=${m.offscreenY} · ${m.controls} controls`);
           note(`   «${m.text}»`);
-          // ⭐ The positive control: without it, a page that silently served English would pass
-          // the geometry assertions for all three locales and prove nothing about translation.
-          note(`   locale control (${code}): ${expect.test(m.text) ? "OK — text is in the expected language" : "⛔ FAILED — served the wrong language"}`);
+          if (w === 360) seenText.set(code, m.text);
           await pg.screenshot({ path: `${SHOTS}/primer_${code}_${w}.png` }).catch(() => {});
         }
         await c.close();
       }
     }
+    // ⭐ THE CONTROL. Three locales must render three DIFFERENT strings. If `kp-locale` were
+    // ignored — the trap that had a previous session testing English for a whole run — they
+    // would be identical, and every geometry number above would be a measurement of the same
+    // page three times.
+    const codes = [...seenText.keys()];
+    const pairs = codes.flatMap((a, i) => codes.slice(i + 1).map((b) => [a, b]));
+    const same = pairs.filter(([a, b]) => seenText.get(a) === seenText.get(b));
+    note(`\n── primer locale control: ${codes.length} locales captured`
+      + (codes.length < 3 ? " ⛔ EXPECTED 3 — the matrix did not complete" : "")
+      + (same.length ? ` · ⛔ IDENTICAL TEXT: ${same.map((p) => p.join("≡")).join(", ")} — kp-locale was ignored`
+                     : " · OK — all three render different text"));
   }
 
   // ── 2 · ADMIN, sequential. The support config and the care desk. ──────────────────────────
