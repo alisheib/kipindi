@@ -19,6 +19,27 @@ four rulings. §3 is the order of operations. §4 is what the reset deliberately
 | **Kept** | 3 accounts, all ADMIN/ACTIVE: `+255777777777` (Ali) · `+255757619808` · `+255772619619` (Jay). Ali, 2026-09-11: *"don't keep any other than those I said."* |
 | **Outstanding** | ⏳ **Two SUPPORT logins for Customer Care** — Fulgence Kijuu and James Mziray (UT directory). **Blocked on their phone numbers**; see §4b and `ops:provision-staff`. |
 
+### 🔴 The reset OPENED a hole, and closing it is part of the reset
+
+⛔ **`ADMIN_BOOTSTRAP_PHONES` listed six numbers; only three accounts survived.** The reset
+deleted the other three accounts **and** deleted every `bootstrap.login_promoted:*` one-shot
+record — so `+255777777772`, `+255777777775` and `+255772388888` became numbers that would
+**auto-grant ADMIN to whoever registered them**, on first login, with the one-shot guard reset.
+Measured and confirmed after the run, not theorised.
+
+**Trimmed to the three surviving admins** (`+255777777777`, `+255757619808`, `+255772619619`)
+and re-read to verify. ⭐ **The general lesson: a deletion can create a privilege, not only
+remove one.** `ADMIN_BOOTSTRAP_PHONES` is a *standing grant keyed by a string*, and the string
+outlives the account. Any future reset must re-check it in the same breath — it is now step 3.7.
+
+### ✅ E-380 closed in the same pass — the boot-path seeder
+
+`seed-test-float.mjs` is **off the `start` chain**, now `prisma migrate deploy && next start`,
+reachable only as `npm run ops:seed-test-float`. Verified first that the gates DID hold across a
+real post-reset deploy (wallets read back 0.00 after the 18:09 boot), then removed the reachability
+anyway: *"guarded by two env vars" describes a configuration; "not reachable from the boot path"
+describes a design.*
+
 ### What actually happened
 
 | | before → after |

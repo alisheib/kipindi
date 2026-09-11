@@ -958,7 +958,20 @@ the prerequisite, not a detour.
 Severity: **BLOCKER** (stops a player) · **HIGH** (money/compliance/data) · **MEDIUM** (real but
 survivable) · **LOW** (polish). Every entry needs evidence — a screenshot, a DB row, or a log line.
 
-### 🔴 E-380 · HIGH · OPEN — a money-writing seeder is on the production boot path, held off by two environment variables
+### ✅ E-380 · HIGH · FIXED 2026-09-11 — a money-writing seeder was on the production boot path, held off by two environment variables
+
+> **FIX SHIPPED THE SAME DAY.** `seed-test-float.mjs` came **off the `start` chain**, which is now
+> `prisma migrate deploy && next start`. It is reachable only as a deliberate
+> `npm run ops:seed-test-float`. The two refusals (`NODE_ENV === "production"` first, then
+> `TEST_FUNDING !== "true"`) are **kept as defence in depth** and are no longer the only thing
+> standing there. The script's own header now carries a ⛔ DO NOT PUT IT BACK note with the
+> reasoning, so the next person to "simplify" the start command meets the argument first.
+>
+> ⭐ **The evidence that the gates alone were not enough is in the finding below**, and it is
+> worth keeping even though the finding is closed: the gates DID hold — verified holding on the
+> first boot after the pre-launch reset, with wallets read back at 0.00 afterwards — and five
+> admin wallets still sat at exactly the floor, proving it had fired before. *"Guarded by two
+> env vars" describes a configuration; "not reachable from the boot path" describes a design.*
 
 **Filed 2026-09-11** (session `asheib-33`, during the pre-launch reset work; the boot-path
 exposure was spotted by peer session `asheib-b6` and the "file it, don't note it" framing by

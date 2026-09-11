@@ -1,15 +1,28 @@
 /**
- * One-shot pre-launch testing float, run from the `start` command (inside the
- * Railway container, where DATABASE_URL is reachable) so EXISTING accounts are
- * funded without each having to log in.
+ * One-shot pre-launch testing float. Run DELIBERATELY via `npm run ops:seed-test-float`.
+ *
+ * 🔴 IT CAME OFF THE `start` COMMAND ON 2026-09-11 (E-380) — DO NOT PUT IT BACK.
+ * It used to run on every production boot: every deploy, every restart, every crash-loop
+ * iteration. The two refusals below did hold, and were verified holding on the first boot
+ * after the pre-launch reset — but **both are Railway SERVICE VARIABLES, not code.** An env
+ * var can be changed with no deploy, no diff and no review, and the refusal runs in a
+ * separate node process before `next start`, so nothing in Next.js supplies `NODE_ENV` —
+ * only the service config does. Five admin wallets sat at exactly the floor below, so this
+ * had already fired against production at least once.
+ * ⭐ "Guarded by two env vars" describes a CONFIGURATION; "not reachable from the boot path"
+ * describes a DESIGN. A script that can mint money into every wallet has no business being
+ * one mis-set variable away from running itself on a platform holding real player balances.
+ * The refusals stay as defence in depth; they are no longer the only thing standing there.
  *
  * When TEST_FUNDING="true": top every ACTIVE wallet UP to a TZS 1,000,000 floor.
  * Idempotent (only raises balances below the floor, never reduces), skips
  * frozen/closed wallets, and is a no-op when TEST_FUNDING isn't set or there's
  * no DATABASE_URL. NEVER exits non-zero — it must not block `next start`.
  *
- * Turn off before real-money launch: unset TEST_FUNDING (the DB is also
- * formatted at go-live, so no float carries over).
+ * ⚠️ The line above about being "run from the `start` command" was true until 2026-09-11 and
+ * is not any more — see the note at the top. It is kept here because the sentence explains
+ * WHY the script was written the way it is (no login required, runs where DATABASE_URL is
+ * reachable), which is still the reason it exists at all.
  *
  * ⛔ POST-GO-LIVE (2026-07-18): the platform now holds REAL player money, so
  * TEST_FUNDING alone is no longer an acceptable last line of defence — one
