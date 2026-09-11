@@ -874,8 +874,13 @@ reads, the E.164 form a tap dials from anywhere.
 ⚠️ **The save also full-replaces the JSON with `{email, phone, phoneTel}`, which DROPS the two
 dead `helpline*` keys** the row still carried. That is the permanent fix for the residual risk the
 module's own comment names — *"a later `set()` would write them out again"* — rather than relying
-on `migrate()`'s read-time allowlist for ever. ⛔ **Not directly observed**, because `migrate()`
-strips those keys before anything renders them; confirm with a row read if it matters.
+on `migrate()`'s read-time allowlist for ever.
+✅ **CONFIRMED BY A DIRECT ROW READ, not inferred** (no rendered surface could show it, because
+`migrate()` strips those keys before anything renders them):
+`{"email":"msaada@50pick.tz","phone":"0769777877","phoneTel":"+255769777877"}` — **`helpline` and
+`helplineTel` BOTH ABSENT**, `updatedAt` 2026-09-11T06:58:20.936Z, with the matching
+`config.support_updated` audit row written 52ms later. ⭐ The hazard that needed a read-time filter
+is now simply not in the data.
 ⚠️ **AND THE AUDIT ROW MAY NOT SURVIVE.** A pre-launch reset staged by a parallel session wipes
 `AuditLog` to GENESIS. The VALUE is on its keep list and survives; the chained record of who
 changed it does not. **The reset receipt must note this** — a value that changed with no surviving
