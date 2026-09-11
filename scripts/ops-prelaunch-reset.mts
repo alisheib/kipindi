@@ -544,6 +544,10 @@ async function execute(keep: { ids: string[]; rows: any[] }, unknownConfig: stri
 
   const before = await snapshot();
   const base = await baseline(keep.ids);
+  // Copied out BEFORE the transaction, so a rollback cannot lose it and so the rows are the
+  // ones that actually existed at decision time.
+  const provenance = await preserveProvenance(keep.ids);
+  console.log(`Preserved ${provenance.length} audit row(s) explaining the surviving state into the receipt.`);
   console.log(
     `Baseline: ${base.marketPolls} MARKET polls · ${base.ruleKeys.length} rule rows ` +
       `(${base.rulesHash.slice(0, 12)}…) · feeSnapshots ${base.feeSnapshotHash.slice(0, 12)}…`
@@ -728,7 +732,27 @@ async function execute(keep: { ids: string[]; rows: any[] }, unknownConfig: stri
     if (before[k] !== after[k]) console.log(`  ${k.padEnd(22)} ${String(fmt(before[k])).padStart(10)} → ${fmt(after[k])}`);
   writeFileSync(
     ".prelaunch-reset-receipt.json",
-    JSON.stringify({ at: new Date().toISOString(), keptUsers: keep.rows, baseline: base, before, after }, null, 2)
+    JSON.stringify(
+      {
+        at: new Date().toISOString(),
+        keptUsers: keep.rows,
+        baseline: base,
+        before,
+        after,
+        // ⚠️ Evidence for a human, NOT a chain. See preserveProvenance().
+        provenanceNote:
+          "Audit rows copied out of the HMAC chain immediately before it was re-genesised. " +
+          "They explain how the SURVIVING state came to be — every config/rule change, staff " +
+          "role grant, bootstrap promotion and agent approval, plus anything the kept accounts " +
+          "did. This JSON is NOT tamper-evident and must never be restored into AuditLog: " +
+          "doing so would fabricate a chain. It exists so that a value which changed shortly " +
+          "before the reset (e.g. support_config's phone, corrected 2026-09-11 06:58) is not " +
+          "left looking like an unexplained mutation.",
+        provenance,
+      },
+      null,
+      2
+    )
   );
   console.log("\nReceipt: .prelaunch-reset-receipt.json");
   console.log("Next:  --verify   then the post-reset backup, then --purge-backups");
@@ -791,6 +815,41 @@ async function baseline(keepIds: string[]): Promise<Baseline> {
     )
   ).map((r) => ({ userId: r.userId, code: r.code, commissionPct: r.pct, approvedAt: r.approved }));
   return { marketPolls, rulesHash, feeSnapshotHash, ruleKeys: rows.map((r) => r.key), agentRules };
+}
+
+/**
+ * ⭐ THE AUDIT ROWS THAT EXPLAIN WHAT SURVIVES — copied into the receipt before the chain is
+ * wiped, because they are the only record of HOW the surviving state came to be.
+ *
+ * 🔴 THE PROBLEM THIS SOLVES, named by peer session `asheib-31` on the day: the support phone
+ * was corrected through the audited form at 06:58, and `--execute` deletes the audit row that
+ * records who corrected it — while the corrected VALUE survives on the keep list. **A value
+ * that moved with no surviving audit row is exactly the shape that reads as tampering to
+ * whoever audits later.** The same applies to every kept rule and to how each kept admin got
+ * their role: `config.*` changes, staff role grants, bootstrap promotions, agent approvals.
+ *
+ * ⛔ THIS IS NOT A CHAIN AND MUST NEVER BE PRESENTED AS ONE. These rows are copied out of the
+ * HMAC chain into a plain JSON file; the file is not tamper-evident and nothing verifies it.
+ * It is EVIDENCE FOR A HUMAN READING THE RECEIPT — "here is what the chain said before it was
+ * re-genesised" — and it is deliberately kept next to the counts it explains rather than
+ * offered as a substitute for the chain. Restoring it into `AuditLog` would fabricate a chain.
+ */
+async function preserveProvenance(keepIds: string[]) {
+  const rows = await q(
+    `SELECT "createdAt", category, action, "actorId", "targetType", "targetId", payload
+       FROM "AuditLog"
+      WHERE action LIKE 'config.%'
+         OR action LIKE 'staff.%'
+         OR action LIKE '%role%'
+         OR action LIKE '%bootstrap%'
+         OR action LIKE 'updown.asset.%'
+         OR action LIKE 'agent.approve%'
+         OR "actorId" = ANY($1::text[])
+      ORDER BY "createdAt" DESC
+      LIMIT 2000`,
+    [keepIds]
+  );
+  return rows;
 }
 
 async function assertions(keepIds: string[], base: Baseline) {
@@ -883,11 +942,24 @@ async function assertions(keepIds: string[], base: Baseline) {
   );
   c.push({ name: "agent earnings zeroed", ok: agentEarnings === 0, got: `worst ${agentEarnings}` });
 
-  const missing = [...CONFIG_KEEP].filter((k) => !RULES_VOLATILE.has(k) && !now.ruleKeys.includes(k));
+  // ⛔ "ABSENT" AND "LOST" ARE NOT THE SAME THING, and the first version of this printed them
+  // identically. It passed — correctly, since it compares the before/after COUNT — while its
+  // message read `absent: bonus.config, lipa.config, proposals.config`, which looks exactly
+  // like three rules the reset destroyed. They were never in the database at all: those three
+  // fall back to code defaults and have no persisted row, so they were absent BEFORE the reset
+  // too. A green tick beside the word "absent" is how a reader stops trusting the green ticks.
+  const lost = base.ruleKeys.filter((k) => !now.ruleKeys.includes(k));
+  const neverStored = [...CONFIG_KEEP].filter(
+    (k) => !RULES_VOLATILE.has(k) && !base.ruleKeys.includes(k)
+  );
   c.push({
     name: "no rule row went missing",
-    ok: now.ruleKeys.length === base.ruleKeys.length,
-    got: missing.length ? `absent: ${missing.join(", ")}` : `${now.ruleKeys.length} present`,
+    ok: lost.length === 0 && now.ruleKeys.length === base.ruleKeys.length,
+    got:
+      (lost.length ? `LOST: ${lost.join(", ")}` : `all ${now.ruleKeys.length} persisted rule rows intact`) +
+      (neverStored.length
+        ? ` · ${neverStored.length} never stored (code defaults, absent before the reset too): ${neverStored.join(", ")}`
+        : ""),
   });
 
   const leaked = await g(

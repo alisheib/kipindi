@@ -698,6 +698,7 @@
     "ops:support-phone-save": "node scripts/live/ops/support-phone-save.mjs",
     "ops:prelaunch-reset": "tsx scripts/ops-prelaunch-reset.mts",
     "ops:prelaunch-purge": "tsx scripts/ops-prelaunch-purge-r2.mts",
+    "ops:provision-staff": "tsx scripts/ops-provision-staff.mts",
     "test:reset-identifier": "tsx scripts/reset-identifier.test.mts",
     "red:reset-identifier": "node scripts/reset-identifier-red.mjs",
     "qa:reset-identifier": "node scripts/reset-identifier-shots.mjs",

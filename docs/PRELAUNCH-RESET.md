@@ -15,9 +15,52 @@ four rulings. §3 is the order of operations. §4 is what the reset deliberately
 
 | | |
 |---|---|
-| **Blocked on** | Ali's keep-list. Fill `prelaunch-keep-users.json` (see §3.1) and nothing else is outstanding. |
-| **Scripts** | `scripts/ops-prelaunch-reset.mts` · `scripts/ops-prelaunch-purge-r2.mts` — both written, both dry-run clean against production 2026-09-11. |
-| **Nothing has been written.** | Every run so far was `--plan`. The database is untouched. |
+| **STATE** | 🏁 **DONE — executed and verified on production `2026-09-11T15:02:57Z`.** 26/26 invariants held inside the transaction before commit, and again on `--verify` afterwards. |
+| **Kept** | 3 accounts, all ADMIN/ACTIVE: `+255777777777` (Ali) · `+255757619808` · `+255772619619` (Jay). Ali, 2026-09-11: *"don't keep any other than those I said."* |
+| **Outstanding** | ⏳ **Two SUPPORT logins for Customer Care** — Fulgence Kijuu and James Mziray (UT directory). **Blocked on their phone numbers**; see §4b and `ops:provision-staff`. |
+
+### What actually happened
+
+| | before → after |
+|---|---|
+| `User` · `Wallet` | 114 → **3** |
+| money in all wallets | TZS 19,871,648 → **0.00** |
+| `Transaction` · `LedgerEntry` | 3,074 → 0 · 8,529 → 0 |
+| `Position` · `HousePoolLedger` | 1,380 → 0 · 199 → 0 |
+| `PredictionMarket` | 41,615 → **185** (every UPDOWN row gone) |
+| `MarketSnapshot` · `UpDownRound` · `UpDownObservation` | 43,090 → 0 · 41,391 → 0 · 34,785 → 0 |
+| `AuditLog` | 266,290 → **0** (chain re-genesises on the next write) |
+| `AiUsageEvent` · `Notification` · `KycSubmission` | 4,456 → 0 · 4,958 → 0 · 90 → 0 |
+| `SystemConfig` | 31 → **23** |
+
+**Rates read straight from the database afterwards, unchanged:** commission `0.13` · ceiling
+`0.333` · operator `0.10` · platform `0.03` · TRA `0.10` · GBT `0.05` · withdrawal `0.015` ·
+stakes `1,000–1,000,000` · `loser-share` · `starterBalanceTzs` `0`.
+
+**R2:** 114 KYC objects deleted (every `KycDocument` row was gone first, so none was referenced).
+42 of 44 backup objects purged, 1,032.5 MB. **Kept:** the `04-42-18` pre-reset artifact — which
+`__BACKUP_LAST_RUN__` records as `"verified": true`, so the retained rollback point is a
+*restore-proven* one — plus the clean post-reset backup (`15-04-36`, 1.57 MB, 1,388 rows,
+0 wallets money, 0 ledger, 0 audit).
+
+**Chains:** the 9 paused by `--quiesce` were restarted by `--resume`; the 14 already STOPPED were
+left alone. `sentinel.paused` restored to `false`.
+
+### ⭐ What the rehearsal actually caught
+
+The SQL and the deletion order were right first time. What `--rehearse` caught was **an
+assertion that lied**: `no rule row went missing` printed a green tick beside the words
+`absent: bonus.config, lipa.config, proposals.config`. It *passed* correctly — it compares the
+before/after count — but its message read like three rules the reset had destroyed. Those three
+have no persisted row at all and fall back to code defaults; they were absent *before* the reset
+too. ⛔ **A green tick next to the word "absent" is how a reader stops trusting the green ticks.**
+Fixed to distinguish LOST from NEVER-STORED *before* `--execute` ran, so the receipt carries the
+honest wording.
+
+⚠️ **The pre-reset backup was NOT restore-verified on this machine** — `db:verify-backup` needs a
+scratch Postgres cluster and there is neither a local instance nor Docker here. It is sealed and
+its sha256 is recorded. The mitigation is that the *retained* R2 rollback point is the 04:42
+artifact, which the nightly watchdog **did** restore-verify.
 
 ---
 
