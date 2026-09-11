@@ -1,5 +1,38 @@
 # Agent fee & payments — seal the rail, and its planner
 
+> # 🏁 CLOSED 2026-09-11 — ALL NINE UNITS (0–8) SEALED AND LIVE
+>
+> **Running in production: `5a90420d`**, verified by `meta.commitHash` — not by uptime, which
+> cannot say *whose* container came up. Four pushes: `163529e9` → `da9714f6` → `d6e9aa56` →
+> `5a90420d`. Board **316/330**. Five guards on `predeploy`, **231 assertions**.
+>
+> **The agent registration fee is paid from the wallet end to end, and a wallet-funded refund
+> returns the money to the wallet.** ⛔ QR / Selcom Lipa stays DISABLED with its machinery
+> intact — `LIPA_QR_RELEASED` is not tidied away, and call sites are GATED, never deleted.
+>
+> ### 🔴 The defect no row had predicted, and it was LIVE
+> `missingForSubmit` demanded `FEE_RECEIPT` + `FEE_REFERENCE` unless the fee was `WAIVED`. A
+> wallet payment stamps `COLLECTED` and writes neither — so **a person who had paid TZS 100,000
+> was refused at `submitForReview`, identically to one who had paid nothing.** The CLIENT half
+> had been corrected and the SERVER half never was. **§5d** has why five green guards missed it.
+>
+> ### ⛔ Three reds deliberately NOT cleared — read before assuming a clean board
+> | suite | why it is not this campaign's |
+> |---|---|
+> | `test:read-tiers` | baseline red naming `admin/agents/page.tsx`; belongs to read-tiers/RBAC, not the fee rail |
+> | `test:failure-reasons` | `apply-client.tsx:290`, dated by `git log -S` to `a783299f` — predates this campaign |
+> | `test:guards-exist` | the PEER session's `33ef87ab` — two npm keys whose scripts are untracked. ⭐ **Keys are tracked, scripts are not**, so committing `package.json` publishes a REFERENCE and leaves its REFERENT behind |
+>
+> ### ⚠️ One dependency still open
+> A **production data reset is STAGED but NOT executed** (`asheib-33`, `docs/PRELAUNCH-RESET.md`).
+> It KEEPS the one APPROVED agent row and DELETES the DRAFT with its owner. ⛔ **Afterwards the
+> historical fee is not reconstructible from the ledger** — assert against the APPLICATION ROW,
+> never the ledger.
+>
+> ⭐ **The three lessons worth carrying are in §6 — and so are the four times a guard of mine
+> accused CORRECT code, deliberately.** An accusation that has to be waved away is how the next
+> real one gets waved away too.
+
 > 🟢 **THIS FILE IS BOTH THE BRIEF AND THE PROGRESS LEDGER.** §2 is the planner: it answers
 > *"where did we reach?"* on any machine, in any session. ⛔ **Tick your row in the SAME commit
 > that ships the work.** A tracker that lags is worse than none, because the next session trusts it.
@@ -198,7 +231,7 @@ would unblock it, do every other unit, and report it at the end. **Never idle.**
 | 2 | 🔴 The debit primitive: all-or-nothing, idempotent, its own type | ✅ **5/5** |
 | 3 | 🔴 The applicant's path: deposit → return → pay, with no dead end | ✅ **5/5** |
 | 4 | 🟠 The officer's workstation after reconciliation stops being manual | ✅ **4/4** |
-| 5 | 🟠 Refunds — the mirror must still balance | ☐ 0/3 |
+| 5 | 🟠 Refunds — the mirror must still balance | ✅ **3/3** — ⚠️ this row read `☐ 0/3` while all three of its detail rows were ticked and §5c recorded it LIVE at `31883970`. A summary that lags its own detail is the tracker defect this file's header warns about |
 | 6 | 🟠 Copy, terms and i18n — EN/SW/ZH, and a terms version bump | ✅ **5/5** |
 | 7 | 🟠 In-flight applicants must not be stranded by the deploy | ✅ **3/3** — ⛔ no migration: measured, nobody is mid-flight on the old rail |
 | 8 | 🟡 Gates — the suites that hold this subsystem, on the deploy path | ✅ **3/3** — FIVE guards on predeploy, 231 assertions |
