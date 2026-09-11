@@ -92,7 +92,30 @@ export function LanguageMenu() {
         style={{ minWidth: 44 }}
       >
         <span className="font-mono text-[12px] font-bold tracking-[0.08em]">{CODES[locale]}</span>
-        <I.chevronDown s={12} aria-hidden className="kp-menu-caret opacity-70" />
+        {/* 🔴 THE CARET YIELDS BELOW `sm`, AND IT IS THIS CONTROL KEEPING ITS OWN PROMISE.
+            This file calls itself a **44×44** control in three places — the header above, the
+            §2 note, and *"one 44px trigger costs a third"*. It is not one. `minWidth: 44` is a
+            FLOOR, and the caret overflows it: measured on production at 320 signed in, the
+            trigger renders **58px**. ⛔ A stated size that the control does not hold is the
+            same class of defect as a class name that is not a behaviour — the number was
+            written down and then never measured again.
+
+            ⭐ AND IT IS THE 14px THAT PUT THE ACCOUNT MENU OFF-SCREEN. At 320 the right cluster
+            needs 273px into 254px of room; the avatar's right edge landed at **339 in a 320
+            viewport**, with `document.scrollWidth === clientWidth`, so no gesture reached it.
+            ⚠️ Every other control in that cluster is protected by a written rule and had
+            already yielded what it can — the Deposit CTA is gone below `sm`, the balance pill
+            is already at `px-1.5`, and the eye is already `w-[32px]`. This was the one measure
+            still spending pixels on decoration.
+
+            ⭐ WHY THE CARET IS THE HONEST THING TO DROP: it is an affordance the rest of the
+            control already carries. The trigger is bordered (the UTILITY tier's own signal that
+            it is interactive), it is a `<details>`, and it reads `EN`. Nothing becomes
+            unreachable — where the avatar menu, the bell and the language CHOICE itself all
+            would if they yielded instead.
+            ⛔ NOT A NEW BREAKPOINT — `sm` is the boundary `.kp-auth-cta` and the balance pill
+            are already judged against, and this file documents exactly five rungs. */}
+        <I.chevronDown s={12} aria-hidden className="kp-menu-caret hidden opacity-70 sm:inline" />
       </summary>
 
       <div

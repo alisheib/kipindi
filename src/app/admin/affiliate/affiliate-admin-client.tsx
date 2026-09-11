@@ -2,7 +2,8 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { I } from "@/components/ui/glyphs";
+import { I, plateGlyph } from "@/components/ui/glyphs";
+import { IconPlate } from "@/components/ui/icon-plate";
 import { Button } from "@/components/ui/button";
 import { Toggle } from "@/components/ui/toggle";
 import { Input } from "@/components/ui/input";
@@ -84,18 +85,20 @@ function RewardCard({
         className="flex items-center gap-3 px-4 py-3.5"
         style={{ borderBottom: on ? "1px solid var(--border)" : "none", background: active ? "var(--bg-overlay)" : "transparent" }}
       >
-        <span
-          /* ⚠️ LITERALS, not `h-9 w-9` — spacing is overridden (tailwind.config.ts:200-215) so
-             `h-9` was 64px. The sibling `rounded-[9px]` is a quarter of 36px: the author was
-             already thinking in 36px and only the size was a scale token. */
-          className="grid h-[36px] w-[36px] shrink-0 place-items-center rounded-[9px]"
-          style={{
-            background: active ? "color-mix(in oklab, var(--royal-500) 18%, transparent)" : "var(--bg-overlay)",
-            color: active ? "var(--royal-300)" : "var(--text-muted)",
-          }}
+        {/* ⭐ THE KIT ATOM, NOT A NINTH RETYPING. `IconPlate` was built in stage 9 to end this
+            exact micro-pattern, and its own note lists THIS FILE among the eight it consolidated
+            — but the migration never reached the six sites that actually carried a wrong radius;
+            only the two already on `rounded-control` moved. ⚠️ So the radius goes 9px → `--r-md`
+            (12px), which is a RENDERED change of 3px on a 36px box and is the point: B10.2 says
+            each family has ONE radius, and "a quarter of the size" is the reasoning that produced
+            four. The glyph stays the caller's, derived by `plateGlyph`. */}
+        <IconPlate
+          size={36}
+          bg={active ? "color-mix(in oklab, var(--royal-500) 18%, transparent)" : "var(--bg-overlay)"}
+          fg={active ? "var(--royal-300)" : "var(--text-muted)"}
         >
-          <Icon s={19} />
-        </span>
+          <Icon s={plateGlyph(36)} />
+        </IconPlate>
         <div className="flex-1 min-w-0">
           <div className="text-[14.5px] font-bold">
             {title} <span className="font-normal italic text-text-subtle text-[12px]">· {sw}</span>
@@ -155,17 +158,13 @@ export function AffiliateAdminClient({ config }: { config: AffiliateConfig }) {
           background: on ? "var(--bg-elevated)" : "color-mix(in oklab, var(--warning-500) 8%, var(--bg-elevated))",
         }}
       >
-        <span
-          /* ⚠️ LITERALS, not `h-11 w-11` (96px on the overridden scale) — `rounded-[11px]` is a
-             quarter of 44px, so 44 is the size this tile was written for. */
-          className="grid h-[44px] w-[44px] shrink-0 place-items-center rounded-[11px]"
-          style={{
-            background: on ? "color-mix(in oklab, var(--royal-500) 18%, transparent)" : "color-mix(in oklab, var(--warning-500) 20%, transparent)",
-            color: on ? "var(--royal-300)" : "var(--warning-fg)",
-          }}
+        <IconPlate
+          size={44}
+          bg={on ? "color-mix(in oklab, var(--royal-500) 18%, transparent)" : "color-mix(in oklab, var(--warning-500) 20%, transparent)"}
+          fg={on ? "var(--royal-300)" : "var(--warning-fg)"}
         >
-          {on ? <I.megaphone s={23} /> : <I.pause s={23} />}
-        </span>
+          {on ? <I.megaphone s={plateGlyph(44)} /> : <I.pause s={plateGlyph(44)} />}
+        </IconPlate>
         <div className="flex-1 min-w-0">
           <div className="text-[15px] font-bold">
             Program master switch · <span className="font-normal italic text-text-subtle text-body-sm">Swichi kuu</span>

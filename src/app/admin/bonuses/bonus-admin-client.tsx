@@ -2,7 +2,8 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { I } from "@/components/ui/glyphs";
+import { I, plateGlyph } from "@/components/ui/glyphs";
+import { IconPlate } from "@/components/ui/icon-plate";
 import { Button } from "@/components/ui/button";
 import { Toggle } from "@/components/ui/toggle";
 import { Input } from "@/components/ui/input";
@@ -79,18 +80,15 @@ function RouteCard({
       className="flex items-center gap-3 rounded-lg border bg-bg-elevated px-4 py-3.5"
       style={{ borderColor: on ? "color-mix(in oklab, var(--royal-500) 30%, var(--border))" : "var(--border)" }}
     >
-      <span
-        /* ⚠️ LITERALS, not `h-9 w-9` (64px on the overridden scale — tailwind.config.ts:200-215).
-           `rounded-[9px]` is a quarter of 36px: the intended size was already in the line.
-           Verbatim twin of affiliate-admin-client.tsx — keep the two in step. */
-        className="grid h-[36px] w-[36px] shrink-0 place-items-center rounded-[9px]"
-        style={{
-          background: on ? "color-mix(in oklab, var(--royal-500) 18%, transparent)" : "var(--bg-overlay)",
-          color: on ? "var(--royal-300)" : "var(--text-muted)",
-        }}
+      {/* ⭐ Verbatim twin of `affiliate-admin-client.tsx` — keep the two in step. Both are now the
+          kit atom rather than a retyped plate; see the note at that file's 36px site. */}
+      <IconPlate
+        size={36}
+        bg={on ? "color-mix(in oklab, var(--royal-500) 18%, transparent)" : "var(--bg-overlay)"}
+        fg={on ? "var(--royal-300)" : "var(--text-muted)"}
       >
-        <Icon s={19} />
-      </span>
+        <Icon s={plateGlyph(36)} />
+      </IconPlate>
       <div className="flex-1 min-w-0">
         <div className="text-[14px] font-bold">
           {title} <span className="font-normal italic text-text-subtle text-[12px]">· {sw}</span>
@@ -143,17 +141,13 @@ export function BonusAdminClient({ config, productWithdrawn = false }: { config:
           background: on ? "var(--bg-elevated)" : "color-mix(in oklab, var(--warning-500) 8%, var(--bg-elevated))",
         }}
       >
-        <span
-          /* ⚠️ LITERALS, not `h-11 w-11` (96px on the overridden scale) — `rounded-[11px]` is a
-             quarter of 44px. Twin of affiliate-admin-client.tsx. */
-          className="grid h-[44px] w-[44px] shrink-0 place-items-center rounded-[11px]"
-          style={{
-            background: on ? "color-mix(in oklab, var(--royal-500) 18%, transparent)" : "color-mix(in oklab, var(--warning-500) 20%, transparent)",
-            color: on ? "var(--royal-300)" : "var(--warning-fg)",
-          }}
+        <IconPlate
+          size={44}
+          bg={on ? "color-mix(in oklab, var(--royal-500) 18%, transparent)" : "color-mix(in oklab, var(--warning-500) 20%, transparent)"}
+          fg={on ? "var(--royal-300)" : "var(--warning-fg)"}
         >
-          {on ? <I.gift s={23} /> : <I.pause s={23} />}
-        </span>
+          {on ? <I.gift s={plateGlyph(44)} /> : <I.pause s={plateGlyph(44)} />}
+        </IconPlate>
         <div className="flex-1 min-w-0">
           <div className="text-[15px] font-bold">
             Bonus program · <span className="font-normal italic text-text-subtle text-[12.5px]">Mpango wa bonasi</span>

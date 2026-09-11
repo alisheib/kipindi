@@ -4,6 +4,19 @@ import { cn } from "@/lib/utils";
 /**
  * IconPlate — the rounded square a glyph sits on.
  *
+ * 🔴 CORRECTION (2026-09-11) — READ THIS BEFORE THE NOTE BELOW, WHICH WAS WRONG FOR THREE WEEKS.
+ * The stage-9 note said this atom consolidated eight retyped plates. **It did not.** Measured on
+ * 2026-09-11: six of the eight were still hand-rolled, carrying the very radii listed below, and
+ * the only two that HAD moved were the 56px pair already using `rounded-control` — i.e. the
+ * migration moved exactly the sites that needed no moving, and then reported success.
+ * ⛔ A consolidation that lands only on the already-compliant members leaves the defect it was
+ * built for completely intact. There was also a NINTH site the list never knew about
+ * (`profile/invite`, `rounded-[7px]`), found by searching for the PATTERN — which is the only
+ * way a hand-written list of eight could ever have been checked.
+ * ⭐ All nine are migrated now, and `test:icon-sizes` §3 fails on any re-typing, so this note can
+ * no longer be the only thing standing between the kit and a tenth one. The list below is kept
+ * verbatim because it is the RECORD of what the radii were.
+ *
  * ⭐ CONSOLIDATION NOTE (stage 9, 2026-08-21). This micro-pattern was retyped in
  * eight places, always the same four lines (`grid h-[N] w-[N] shrink-0
  * place-items-center rounded-[…]` + an inline background/colour pair) and never

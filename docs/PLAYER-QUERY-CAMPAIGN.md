@@ -1,6 +1,10 @@
 # PLAYER QUERY CAMPAIGN — find anything, on every client-facing page
 
-> ⭐ **THE TRACKER AND THE PLAN OF RECORD. Start at §0, work from §1.**
+> # 🏁 CLOSED — stages 1–6 DONE and LIVE. Nothing here is work.
+> ⛔ **DO NOT "start at §0 and work from §1"** — that instruction stood at the top of this file
+> for three days after the campaign closed at line 23 of its own §0. Read it as a RECORD.
+>
+> ⭐ **THE TRACKER AND THE PLAN OF RECORD — now spent.**
 > A RECORD and a WORK ORDER — **not** design law. The law is
 > [`DESIGN_AUTHORITY.md`](DESIGN_AUTHORITY.md); one rulebook, no second one (§0a).
 > ⛔ No design token value is restated here. Where a number matters, this file gives the

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
+import { IconPlate } from "@/components/ui/icon-plate";
 import { Checkbox } from "@/components/ui/checkbox";
 import { FiftyMark } from "@/components/brand";
 import { AuthShell } from "@/components/auth/auth-shell";
@@ -152,12 +153,9 @@ export default async function RegisterPage({
               }}
             >
               <div className="flex items-center gap-3 p-3.5">
-                {/* ⚠️ LITERALS, not `h-10 w-10` — spacing is overridden (tailwind.config.ts:200-215)
-                    so `h-10` was 80px, while the sibling `rounded-[11px]` was already written for
-                    a 40px tile. Size and radius now agree. */}
-                <span className="grid h-[40px] w-[40px] shrink-0 place-items-center rounded-[11px] bg-gold-500/15 text-gold-300">
+                <IconPlate size={40} className="bg-gold-500/15 text-gold-300">
                   <I.gift s={20} />
-                </span>
+                </IconPlate>
                 <div className="min-w-0 flex-1">
                   <p className="text-[14px] font-bold text-text">{t.auth.claimBonus} {formatTzs(invite.bonusAmountTzs)}</p>
                   <p className="mt-1 text-body-sm font-semibold text-gold-300">{t.auth.bonusWalletHint}</p>

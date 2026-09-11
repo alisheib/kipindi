@@ -23,6 +23,50 @@ import type { SVGProps } from "react";
    get for free by deleting something is better than one you have to write. */
 type GlyphProps = { s?: number } & Omit<SVGProps<SVGSVGElement>, "ref">;
 
+/* ⭐ DG-A-19, THE OTHER HALF — THE SIZE SPREAD, AND WHY IT SURVIVED A CONSOLIDATION.
+   The prop half above closed. The size half did not: admin carries SIXTEEN distinct glyph
+   sizes (10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,28) across ~326 call sites, and the
+   per-context constants DG-A-19 specifies existed NOWHERE in `src/`.
+
+   ⛔ THE FINDING SAT IN NO STEP ROW OF THE DESIGN GATE'S WORK ORDER, so the gate closed
+   45/45 without it. A score computed over a hand-chosen population cannot see what was
+   never added to the population — the gate was not wrong, it was simply never asked.
+
+   ⭐ WHERE THE DRIFT ACTUALLY COMES FROM, measured rather than assumed: `IconPlate` says in
+   as many words that *"the glyph inside is the caller's — it is NOT scaled here."* That is a
+   deliberate choice for a plate whose contents vary, but it means every plate caller picks a
+   glyph size by hand, and at 40px they picked 17, 20 and 21. `plateGlyph` closes that: the
+   glyph is DERIVED from the plate edge, so the pair can no longer disagree.
+
+   ⚠️ THESE VALUES ARE TODAY'S PIXELS, NOT A NEW SCALE. 36→19, 44→23 and 48→24 are what the
+   call sites already render, so adopting them is zero-visual BY CONSTRUCTION. Only 40 moves
+   anything, because 40 is where the call sites contradicted each other; 20 is the value four
+   of the six already used. ⛔ Do not "tidy" these into a ratio — a ratio is what produced the
+   four arbitrary plate radii B10.2 had to overrule. */
+export const GLYPH = {
+  /** Inside a line of text, on the text's own baseline. */
+  inline: 12,
+  /** The lead glyph of a table/list ROW. */
+  row: 16,
+  /** The lead glyph of a CARD or section head. */
+  card: 18,
+} as const;
+
+/* ⛔ THERE IS DELIBERATELY NO `notice` OR `empty` HERE, AND THE REASON IS THE POINT.
+   The first draft of this block had both. Then the call sites were read instead of imagined:
+   dialog notices render at 20 (`emergency-void-control`, `void-round-control`) AND at 24
+   (`kyc-doc-viewer`); empty states at 20 (`admin/page`) AND at 28 (`kyc-doc-viewer`). Naming a
+   constant `notice: 24` would not have RECORDED that context — it would have INVENTED one, and
+   then moved four working screens to satisfy it. ⭐ A constant must describe what is there; the
+   moment it describes what you wish were there, every site it "fixes" is a change you cannot
+   justify from a measurement. Those contexts get constants when someone has actually ruled on
+   them — until then the ratchet below stops them SPREADING, which is the part that was urgent. */
+
+/** The glyph that sits centred on an `IconPlate` of the given edge, derived — never hand-picked. */
+export function plateGlyph(plateEdge: 36 | 40 | 44 | 48): number {
+  return { 36: 19, 40: 20, 44: 23, 48: 24 }[plateEdge];
+}
+
 const G = ({ children, s, ...p }: GlyphProps & { children: React.ReactNode }) => (
   <svg viewBox="0 0 24 24" width={s ?? 24} height={s ?? 24} fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden {...p}>{children}</svg>
 );

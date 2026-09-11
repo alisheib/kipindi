@@ -139,16 +139,25 @@ const FROZEN_RATCHET = new Map<string, number>([
   // gold costume — the gradient, the gilt border, the jackpot glow and the bloom. The
   // panel picks the `.mat-raised` rung now and holds no design value of its own.
   ["src/components/ui/page-hero.tsx", 5],
-  ["src/app/profile/invite/page.tsx", 2],                    // −1, 2026-09-07: the share card reads --royal-950 like its agent sibling
+  // ⭐ FIVE FILES LEFT THIS LIST TOGETHER on 2026-09-11, and one number fell — all from ONE
+  // change: the nine hand-rolled icon plates were migrated to the `IconPlate` atom. Their
+  // budgeted literals WERE the plate — an arbitrary `rounded-[7/9/10/11px]` plus an inline
+  // background/colour pair, retyped per site. ⛔ `IconPlate` was built in stage 9 to end
+  // exactly that and its own note CLAIMED it had, but six of the eight it lists were still
+  // hand-rolled three weeks later; the only two that had moved were the two already on
+  // `rounded-control`. A consolidation that lands only on the already-compliant members
+  // leaves the defect intact and reports success. `test:icon-sizes` §3 now fails on any
+  // re-typing, so this list cannot silently refill.
+  //   auth/register · ui/propose-promo · admin/proposals · admin/affiliate · admin/bonuses
+  //   → clean.  profile/invite 2 → 1 (its plate is gone; the --royal-950 share card remains).
+  ["src/app/profile/invite/page.tsx", 1],                    // −1, 2026-09-07: the share card reads --royal-950 like its agent sibling
   ["src/app/profile/page.tsx", 3],
   ["src/app/markets/[id]/page.tsx", 2],
   ["src/app/wallet/loading.tsx", 1],
   ["src/components/ui/nav-progress.tsx", 2],
   ["src/components/ui/toggle.tsx", 2],
-  ["src/app/auth/register/page.tsx", 1],
   ["src/components/ui/checkbox.tsx", 1],
   ["src/components/ui/empty-state.tsx", 1],
-  ["src/components/ui/propose-promo.tsx", 1],
   // `tabs.tsx` LEFT THIS LIST on 2026-08-31 (DG-S-02, DESIGN-GATE-2026-08-28 step 5, 43 files /
   // 160 → 159 values). Its one budgeted literal was the `segmented` variant's inline
   // `oklch(40% 0.08 264 / 0.55)` — the FOURTH home of `--pill-active`, and a different chroma,
@@ -199,7 +208,6 @@ const FROZEN_RATCHET = new Map<string, number>([
   // their sites went (the ratchet shrinking as designed).
   ["src/app/admin/live/page.tsx", 1],
   ["src/app/admin/payments/control-plane.tsx", 1],
-  ["src/app/admin/proposals/admin-proposals-client.tsx", 1], // rounded-[10px]
   ["src/app/results/page.tsx", 1],
   ["src/components/admin/admin-charts.tsx", 1],
   ["src/components/markets/bet-confirm-modal.tsx", 1],
@@ -225,8 +233,6 @@ const FROZEN_RATCHET = new Map<string, number>([
   // the entry"). A zero would be a permanent placeholder for a defect that no longer exists.
 
   // ── Admin surfaces (deferred: player-facing work ships first) ─────────────
-  ["src/app/admin/affiliate/affiliate-admin-client.tsx", 2],
-  ["src/app/admin/bonuses/bonus-admin-client.tsx", 2],
   // ⭐ `admin-sidebar-nav.tsx` LEFT THIS LIST on 2026-08-29 (DG-A-18), 2 → 0. Its two entries were
   // the active-row fill and the badge pip. The fill was `oklch(40% 0.12 268 / 0.5)` typed inline —
   // and it had already DIVERGED from `--pill-active` (`oklch(40% 0.12 262 / 0.35)`), the token

@@ -1,5 +1,11 @@
 # Support & Customer Care — the campaign, and its planner
 
+> # 🏁 CLOSED 2026-09-11 — Units 1–11 LIVE. Two rows stay open BY DESIGN.
+> ⭐ **`11.3`** (the desk measured signed in AS SUPPORT, not as ADMIN) and **`10.8`** (the
+> classifier row that existed only in §4 prose, never in the ledger) are deliberate remainders,
+> not unfinished work. ⛔ **`11.3`'s blocker was STALE AND WAS INHERITED TWICE** — re-derive it
+> before believing it a third time.
+>
 > 🟢 **THIS FILE IS BOTH THE BRIEF AND THE PROGRESS LEDGER.** §2 is the planner: it answers
 > *"where did we reach?"* on any machine, in any session. ⛔ **Tick your row in the SAME commit
 > that ships the work.** A tracker that lags is worse than none, because the next session trusts it.

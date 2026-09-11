@@ -149,7 +149,16 @@ export function TopAppBar({ user, proposalsState, inviteVisible = false }: { use
           back to the `gap-2` this row already uses below `sm` returns 24px of it. ⚠️ The nav
           keeps its own `ml-2.5`, so the logo never touches the first link. Both values are the
           two the row already carries; no new step enters the scale. */}
-      <div className="mx-auto max-w-board flex items-center h-full gap-2 px-3 sm:gap-4 sm:px-5 lg:gap-2 xl:gap-4">
+      {/* ⚠️ `px-2` BELOW `sm`, NOT `px-3` — the last 8px, and the only one left that costs no
+          control. At 320 signed in the right cluster needed 273px into 254px of room. The caret
+          yield (14px, `language-menu.tsx`) and the avatar's duplicate gap (4px,
+          `avatar-menu.tsx`) together return 18 — one short of merely fitting, and nine short of
+          the slack THIS FILE set as the standard at 360: *"8px leaves 9px, which is the
+          difference between 'fits' and 'fits reliably'."*
+          ⭐ The bar is its own surface, not page content, so its gutter is allowed to differ
+          from the page's at the one width where the row is full. ⛔ Below `sm` only — from `sm`
+          up there is 16px of measured slack and `px-5` stands. */}
+      <div className="mx-auto max-w-board flex items-center h-full gap-2 px-2 sm:gap-4 sm:px-5 lg:gap-2 xl:gap-4">
         {/* Brand lockup — kit COMPONENTS §14: "inside a `min-height: 44px` link".
             ⚠️ It was 136×33, i.e. UNDER the 44px floor on the control that takes a reader back to
             the board from anywhere in the product. Pre-existing rather than introduced here, and

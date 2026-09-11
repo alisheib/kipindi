@@ -6,7 +6,8 @@ import { useState, useMemo, useEffect, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { Route } from "next";
 import { Tabs } from "@/components/ui/tabs";
-import { I } from "@/components/ui/glyphs";
+import { I, plateGlyph } from "@/components/ui/glyphs";
+import { IconPlate } from "@/components/ui/icon-plate";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Chip } from "@/components/ui/chip";
@@ -683,9 +684,14 @@ export function AdminProposalsClient({ config, queue, canSaveConfig, canApprove,
             {/* ⚠️ LITERALS, not `h-10 w-10` — spacing is overridden (tailwind.config.ts:204-219)
                 so `h-10` was 80px, while the sibling `rounded-[10px]` was already written for a
                 40px tile. Size and radius now agree. */}
-            <span className="grid h-[40px] w-[40px] shrink-0 place-items-center rounded-[10px]" style={{ background: "color-mix(in oklab, var(--bg-base) 45%, transparent)", color: meta.fg, border: `1px solid ${meta.selBorder}` }}>
-              <HeaderIcon s={21} />
-            </span>
+            <IconPlate
+              size={40}
+              bg="color-mix(in oklab, var(--bg-base) 45%, transparent)"
+              fg={meta.fg}
+              border={`1px solid ${meta.selBorder}`}
+            >
+              <HeaderIcon s={plateGlyph(40)} />
+            </IconPlate>
             <div className="min-w-0">
               <div className="text-[15px] font-bold">Proposals feature · state</div>
               <div className="mt-0.5 text-body-sm text-text-muted">Controls what players see and can do — applies immediately on Save.</div>

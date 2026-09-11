@@ -114,8 +114,16 @@ export function AvatarMenu({
       .filter((h) => pathname === h || pathname.startsWith(h + "/"))
       .sort((a, b) => b.length - a.length)[0] ?? null;
 
+  /* ⚠️ `ml-1` IS A SECOND GAP STACKED ON THE CLUSTER'S OWN, and below `sm` it is 4px the bar
+     does not have. The parent in `top-app-bar.tsx` is `flex items-center gap-1 sm:gap-2`, so
+     every other neighbour in that row is separated by ONE measure and the avatar by two —
+     4+4 below `sm`, where the cluster overflowed the viewport by 19px. From `sm` up the
+     intent is real (the avatar is the row's terminal control and reads better set apart) and
+     there is 16px of slack to pay for it, so it is kept there and only there.
+     ⛔ Two definitions of one gap is the duplication §0a forbids; this makes the cluster's
+     `gap` the single answer at the width where the answer actually mattered. */
   return (
-    <div ref={ref} className="relative ml-1">
+    <div ref={ref} className="relative sm:ml-1">
       <button
         type="button"
         aria-label={t.common.accountMenu}

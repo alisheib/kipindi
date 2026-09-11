@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { I } from "@/components/ui/glyphs";
+import { IconPlate } from "@/components/ui/icon-plate";
 import { BackLink } from "@/components/ui/back-link";
 import { currentSession } from "@/lib/server/auth-service";
 import { db } from "@/lib/server/store";
@@ -228,12 +229,17 @@ export default async function InvitePage({
                 const PIcon = PROMISE_ICON[p.icon];
                 return (
                   <div key={i} className="flex items-start gap-2.5">
-                    <span
-                      className="grid h-[26px] w-[26px] shrink-0 place-items-center rounded-[7px] text-gold-300"
-                      style={{ background: "color-mix(in oklab, var(--gold-500) 16%, transparent)" }}
+                    {/* ⚠️ A NINTH PLATE THE STAGE-9 CONSOLIDATION NOTE NEVER LISTED — `rounded-[7px]`,
+                        a fifth arbitrary radius on top of the four that note enumerates. Found by
+                        searching for the PATTERN rather than by reading the note's own list, which
+                        is the only way a list-of-eight could ever have been checked. */}
+                    <IconPlate
+                      size={26}
+                      className="text-gold-300"
+                      bg="color-mix(in oklab, var(--gold-500) 16%, transparent)"
                     >
                       <PIcon s={14} />
-                    </span>
+                    </IconPlate>
                     <div className="min-w-0 flex-1">
                       <p className="text-[13px] font-medium leading-snug">{locale === "sw" ? p.sw : p.en}</p>
                     </div>

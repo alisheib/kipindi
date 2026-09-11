@@ -4,6 +4,23 @@
 > If a document is not listed below, it is not a live task, whatever its own header says.
 > ⛔ Do not start something that is not on this board. Ask Ali which item to proceed with.
 
+> ### ⚑ RECONCILED 2026-09-11 — **ten rows on this board were already dead**
+>
+> Each row below was re-checked against the register (`LIVE-QA-CAMPAIGN.md` §6) and against the
+> code, not against its own header. **Ten were stale and are now struck**: `E-226`, `E-239`,
+> `E-228`, `E-243`, `E-245`, `E-194`, `E-196`, `E-195`, `E-313`, and the Maswali ⏸ whose gate
+> (§1, the Design Gate) had closed 2026-08-31 in this same file.
+>
+> ⛔ **The lesson, because it will recur: THE BOARD ROTS FASTER THAN THE REGISTER.** A session
+> ticks its finding row and ships; nothing makes it walk back up to the board. `E-226` sat here
+> as *"⛔ the worst of these… unbuilt"* for a day after it was fixed, and the cert line would
+> have fired a **false alarm on ~2026-09-15** for a job a GitHub workflow already owns.
+> ⭐ **Closing a finding is not done until this file says so in the SAME commit.**
+>
+> ⚠️ **Struck ≠ deleted, and FIXED ≠ WILL NOT FIX.** `E-243`, `E-245`, `E-239` and `E-228` were
+> closed **by owner direction with the code gap still present** and exposure measured at or near
+> zero. If exposure moves, they reopen — which is why the mechanism is kept legible in each row.
+
 ## 0 · MANAGEMENT SPEC — `MGMT-SPEC-2026-09-05` · 🟡 **DEPLOYS 1 AND 2 OF 3 ARE LIVE**
 
 ⭐ **Opened on Ali's instruction, 2026-09-05**, from a two-page specification management sent
@@ -17,7 +34,7 @@ objection window cut from **24 hours to 1**.
 | **Deploy 1** | ✅ **LIVE** — the seal-time notice (`E-295`) and the officer hold (`E-296`), plus `E-297`–`E-299`. The two controls that had to exist BEFORE the window could shorten |
 | **Deploy 2** | ✅ **LIVE — the window is 1 hour on production.** Flipped through the audited `/admin/config` action; `market-config-diff.cjs` snapshots either side prove exactly one field moved (24 → 1). Verified in all three locales on `/fairness` and `/legal/terms` §6, whose version bumped to 2026-09-05. ⚠️ Markets sealed BEFORE the flip keep their 24-hour deadline — five were read from the database and each still carries 24.0 h |
 | **Deploy 3** | ✅ **DELIVERED 2026-09-06 (session 88) AS A BOARD LENS, NOT A POSITIONS TAB.** Ali corrected the scope: the player who loses sight of a closed poll is the one with **no** position, so `/positions` can never help them. Shipped as the sixth `STATUS_IDS` entry on `/markets`, with the second job from the same door (full phone numbers in admin behind an audited eye). Findings `E-303`…`E-313`; door [SESSION-PROMPT-PROGRESS-AND-PHONE.md](SESSION-PROMPT-PROGRESS-AND-PHONE.md) |
-| **Owed** | ① A post-flip long-form seal has not happened yet, so the 1-hour stamp is proven by `test:settlement-gate` §7 (which derives the stamp from config rather than asserting a literal) and **has not yet been observed on a live row**. Say so; do not claim it. ② `E-313` — the READ-TIERS drift ratchet does not sweep `src/lib/server/**.ts`. ③ The `getBoard` widening is **unexercised on production** while state C is empty (B2 was 0 at the 2026-09-06 census); proven locally and by mutation only |
+| **Owed** | ① A post-flip long-form seal has not happened yet, so the 1-hour stamp is proven by `test:settlement-gate` §7 (which derives the stamp from config rather than asserting a literal) and **has not yet been observed on a live row**. Say so; do not claim it. ② ~~`E-313`~~ ✅ **CLOSED 2026-09-06 (session 88) — by refusing to widen a blind detector.** The ratchet's scope is a deliberate boundary, not a gap; widening it would have bought coverage with a detector that could not be trusted. ③ The `getBoard` widening is **unexercised on production** while state C is empty (B2 was 0 at the 2026-09-06 census); proven locally and by mutation only |
 | **Blocked** | Nothing |
 
 ⚠️ **Why the window moved SECOND and not first.** Shortening it before Deploy 1 would have left
@@ -67,32 +84,43 @@ request, so the ceremony's "delete it" step was deliberately NOT run. ⛔ Do not
 Every line below was re-verified in code on 2026-08-29, not taken from a document's own header.
 **Do not start any of it without asking Ali** — but do not let it disappear either.
 
-### 🔴 Waiting on Ali — two rulings, both unanswered
+### ⚪ Waiting on Ali — ✅ **BOTH RULED 2026-09-10. NOTHING IS WAITING HERE.**
+
+⛔ **Both were closed WILL NOT FIX, which is NOT the same as fixed.** The code gap in each is
+real and still present; the owner ruled that the measured exposure does not justify the change.
+If exposure moves, these reopen — so the mechanism stays written down rather than deleted.
+
 | | |
 |---|---|
-| **`E-243`** | Should a session-limit **increase** (and a `dailyLossLimit` increase) defer 24 h the way the deposit caps do? No `pendingSession*` / `pendingLoss*` columns exist in `schema.prisma`, so today an increase takes effect at once |
-| **`E-245`** | Can a **self-excluded** player reach their own balance? Three defensible answers and no ruling. ⚠️ A self-exclusion is a MINIMUM and never self-reinstates — that part is already decided |
+| ~~**`E-243`**~~ | ⚪ **CLOSED 2026-09-10 BY OWNER DIRECTION — WILL NOT FIX.** Should a session-limit **increase** (and a `dailyLossLimit` increase) defer 24 h the way the deposit caps do? No `pendingSession*` / `pendingLoss*` columns exist in `schema.prisma`, so an increase still takes effect at once. `sessionTimeLimitMin` is now BOUNDED (15–480); exposure measured at **0** |
+| ~~**`E-245`**~~ | ⚪ **CLOSED 2026-09-10 BY OWNER DIRECTION — WILL NOT FIX.** Can a **self-excluded** player reach their own balance? Exposure measured at the moment of closing: **0 FROZEN wallets**. ⚠️ A self-exclusion is a MINIMUM and never self-reinstates — that part was already decided and is unaffected |
 
 ### 🟠 Open engineering, owned by a parked programme
 | | Item |
 |---|---|
-| **`E-226`** | ⛔ **The worst of these: `support-config.ts` has a WRITER and NO READER.** `/help` and ~20 other surfaces — **including four statutory pages** — have shown the wrong support contact **on production since 2026-08-19**. Unbuilt. Lives in [`SESSION-PROMPT-BONUS-AND-CARE-DESK.md`](SESSION-PROMPT-BONUS-AND-CARE-DESK.md) Unit B1 and [`SESSION-PROMPT-JAY-COMMENTS.md`](SESSION-PROMPT-JAY-COMMENTS.md) |
-| **`E-239`** | The bonus **zombie re-lock** inside Unit A's own shipped fix: re-locking a grant whose `remainingTzs` is already 0 restores the full wagering requirement |
-| **`E-228`** | XRP 30m/60m refunding on `source-failed`. Explicitly LOW priority while no real player has bet those pairs |
+| ~~**`E-226`**~~ | ✅ **FIXED 2026-09-10 (session 92) — ported to `defineConfig`, measured before and after rather than assumed.** It had been wrong for 22 days. The writer now has ~20 readers importing from `src/lib/server/support-config.ts`, the **four statutory pages included**. ⭐ **Fixing it exposed `E-328`** — the persisted row held 50pick's OWN number, so "make the reader work" would have published the operator's desk under the label *"Tanzania Helpline"*. The statutory helpline is therefore a **PINNED CONSTANT** in `src/lib/support-config.ts` with no setter and no persisted field; `test:support-contact` guards it |
+| ~~**`E-239`**~~ | ⚪ **CLOSED 2026-09-10 BY OWNER DIRECTION.** The bonus **zombie re-lock** is real — re-locking a grant whose `remainingTzs` is already 0 restores the full wagering requirement — but the population is FROZEN and measured: 3 ACTIVE `BonusGrant` of 4 total, and the bonus wallet is a **WITHDRAWN product that can no longer mint** |
+| ~~**`E-228`**~~ | ⚪ **CLOSED 2026-09-10 BY OWNER DIRECTION** — XRP 30m/60m refunding on `source-failed`. Mechanism recorded off the code; **left unrepaired by decision**, not by oversight |
 | ~~`purgeChainHistory`~~ | ✅ **CLOSED 2026-08-31.** Declared in `control-gates.ts`, and `purge-actions.ts` now READS it instead of restating `"compliance"` as a literal at six call sites; `control-gates.test.mts` gained the SITES entry and the role column, so §3 enforces it (**262/0**). ⚠️ The old note — *"it only drives button visibility"* — was true and beside the point: the boundary was never wrong, the domain simply had **no single home**, and §4 could not notice because `/admin/retention`'s own route domain already equals the literal. ⭐ With this closed, `SESSION-PROMPT-SCAN-FIXES.md` met its own stated deletion condition and is **deleted** — scan #1 has no open lines left. |
 | **i18n bundle split** | `src/lib/i18n-dict.ts` is **355,955 B and GREW** since the design-perfection campaign deferred the first-load split |
-| **Unit D / F / G** | Two guide frames + the `--allow-paused` flag (never built) · the first Cloudflare-path **certificate renewal, due from ~2026-09-15** (expires 2026-10-15) · the dated Postgres **volume** re-read |
-| **320px account menu** | The right cluster wants 275px in 238px; every candidate for yielding is protected by a written rule. **Ali's design call** — measured in the session-75 handoff |
+| **Unit D / F / G** | Two guide frames + the `--allow-paused` flag (never built) · the dated Postgres **volume** re-read. ⛔ **The certificate line is GONE from this row** — see below |
+| ~~cert renewal ~2026-09-15~~ | ✅ **CLOSED — a RUNNER owns it, not a diary entry.** `E-195` was SUPERSEDED 2026-08-27 by `E-227`, which is FIXED and PROVEN RED: `qa:cert-expiry` 5/5 against production, `red:cert-expiry` 3/3, and `.github/workflows/cert-expiry.yml` runs twice daily. ⭐ **Do not re-add a manual "check from 2026-09-15" chore** — a date in a document cannot go red, and this one would have fired as a false alarm four days after the board was reviewed |
+| **320px account menu** | 🔴 **RE-MEASURED ON PRODUCTION 2026-09-11 AND IT IS WORSE THAN "A TIGHT FIT" — THE ACCOUNT MENU IS OFF-SCREEN AND UNREACHABLE.** Signed in at 320px: the right cluster (`div.shrink-0 flex items-center gap-1`) renders **273px wide at left=66, right=339** in a 320px viewport. The avatar button sits at **left=299 → right=339 — 19px past the edge.** ⛔ **AND `document.scrollWidth === clientWidth === 320`, so the page does NOT scroll horizontally: there is no gesture that reaches it.** Contents, in order: the language control (EN/English/Kiswahili/中文), the balance capsule (`TZS 423,857`), the avatar. Confirmed by `qa:fit` on **17 routes** (`/markets`, `/live`, `/results`, `/leaderboard`, `/updown`, `/help`, `/fairness`, every `/legal/*`, `/proposals`) — one signature, every one of them. ⭐ **This is the same CLASS as `E-190`, which was fixed**: E-190 severed the menu at 1024–1090, this severs it at 320. The board's old figures ("275px in 238px") were RIGHT and were still live. ✅ **FIXED 2026-09-11 — cluster 273 → 255px, avatar right edge 339 → 313 in a 320 viewport, 7px clear.** ⭐ **AND NOTHING PROTECTED YIELDED.** The 14px came from `LanguageMenu` keeping its OWN promise: that file calls itself a **44×44** control in three places and rendered **58** — `minWidth: 44` is a floor the caret overflowed. The caret hides below `sm` (the control is bordered, is a `<details>` and reads `EN`, so the affordance survives), the avatar's duplicate `ml-1` becomes `sm:ml-1`, and the bar's gutter is `px-2` below `sm`. ⚠️ **Verified by SIMULATING the three edits on the live page and re-measuring** — not by arithmetic |
 
 ⚠️ **`test:orphans` is blind outside its own scope:** it scans `scripts/` **top level only**, no
 recursion, while printing *"every file in `scripts/` must be run, or declared unrun"*. Ten code
 files under `scripts/` subdirectories are named by no npm script and referenced by nothing.
 
-## 2 · MASWALI MILLIONEA — the third product · `MASWALI-BUILD` · ⏸ **AFTER the Design Gate**
+## 2 · MASWALI MILLIONEA — the third product · `MASWALI-BUILD` · ▶ **UNBLOCKED — awaiting Ali's go**
 
-⛔ **Ali's order, 2026-08-29: the Design Gate runs FIRST and to completion — "when it is done
-forever and tested, we do this Maswali."** Everything below is ready and waiting; do not start it
-while §1 is open.
+✅ **THE GATE THIS WAITED ON IS MET.** Ali's order, 2026-08-29, was: the Design Gate runs FIRST
+and to completion — *"when it is done forever and tested, we do this Maswali."* §1 above closed
+**2026-08-31, all 45 systems ☑**. The ⏸ this section carried was therefore contradicting §1 of
+its own file; it is lifted.
+
+⛔ **Unblocked is not started.** Nothing here begins without Ali saying so — the standing board
+rule at the top of this file still applies. What changed is only that the *Design Gate* no longer
+holds it.
 
 **Door: [`SESSION-PROMPT-MASWALI-BUILD.md`](SESSION-PROMPT-MASWALI-BUILD.md)** — nine chunks S0–S8
 with acceptance lines, the gates, the traps, the tracker, and an index of every file.
@@ -107,10 +135,46 @@ with acceptance lines, the gates, the traps, the tracker, and an index of every 
 
 ---
 
-### ⚠️ Two gaps in the Design Gate's own work order, found 2026-08-29
-**`DG-A-19`** (icon sizes 10–23, two prop spellings) **appears in no step row** — the four steps
-cover DG-A-01…18 and 20…23 only. **`DG-A-04` appears in two** (step 1 and step 3). Neither is
-resolved in the document; decide when you reach them rather than discovering it mid-step.
+### ✅ Two gaps in the Design Gate's own work order — `DG-A-19` RESOLVED 2026-09-11
+**`DG-A-19`** (icon sizes 10–23, two prop spellings) **appeared in no step row** — the four steps
+cover DG-A-01…18 and 20…23 only — **so the gate closed 45/45 without it.** ⛔ **A score computed
+over a hand-chosen population cannot see what was never added to the population.** The gate was
+not wrong; it was never asked. Re-measured and closed as follows:
+
+| | |
+|---|---|
+| **The PROP half** | ✅ **Was already fixed, and well.** `size` was deleted from `GlyphProps` (`glyphs.tsx`), so reintroducing it is a **compile error** — a guard earned by deleting something rather than by writing one. ⚠️ The surviving `size=` hits are `Spinner` / `BrandSpinner` / `CategoryIcon`, different components with their own API, **not** glyph drift |
+| **The SIZE half** | 🔴 **Was never done.** 19 distinct sizes across 219 files / 749 sites, and the per-context constants DG-A-19 specifies **existed nowhere in `src/`** |
+| **Root cause** | ⭐ `IconPlate` says in as many words that *"the glyph inside is the caller's — it is **NOT** scaled here."* So every plate caller hand-picks, and at a 40px plate they picked **17, 20 and 21** |
+| **Shipped** | `GLYPH` (inline 12 · row 16 · card 18) and `plateGlyph(edge)` in `glyphs.tsx`; **7 plate glyphs snapped**, 5 of them zero-visual by construction. `test:icon-sizes` freezes the set — on `predeploy`, both halves proven red (`red:icon-sizes`, `red:icon-sizes-slack`) |
+| **Deferred** | The full collapse to three constants (~326 admin sites) — **Ali's call, deliberately NOT taken before launch.** The ratchet stops the spread GROWING, which was the urgent half |
+
+✅ **`DG-A-04` — RESOLVED 2026-09-11, AND IT WAS NEVER A DUPLICATION.** "Appears in two step rows"
+read as a work-order bug; it is not. The finding has a **kit half** (step 1) and a **per-page
+convergence half** (step 3), and `DESIGN-GATE-ADMIN-2026-08-28.md` assigns them in as many words
+— *"(c)/(d) … are cosmetic convergence, not a height defect. **Step 3.**"* Both halves are now
+closed: **(a)** `Select size="xs"` truly 32, fixed by `af4de432` the same day the report was
+written — the audit drive simply ran before that deploy landed; **(b)** `Input size="sm"` off the
+36px non-rung onto `--h-control-sm` (40), Ali's ruling, 2026-08-29; **(c)/(d)** re-measured today,
+**the three hand-rolled `h-[32px]` search inputs no longer exist** — every surviving `h-[32px]` in
+admin is a `loading.tsx` skeleton or a 32×32 avatar pill, neither of which is a filter-row control.
+
+### ✅ AND THE PLATE CONSOLIDATION IT SITS ON WAS INCOMPLETE — found AND FIXED 2026-09-11
+`IconPlate`'s own note enumerates **eight** retyped plates it consolidated in stage 9. **Six are
+still there, untouched**, carrying the arbitrary radii B10.2 forbids: `affiliate:91` (9px) ·
+`affiliate:161` (11px) · `bonuses:86` (9px) · `bonuses:149` (11px) · `proposals:686` (10px) ·
+`auth/register:158` (11px) · `ui/propose-promo:38` (11px) — plus a **ninth the note never listed**,
+`profile/invite:232` (7px). ⭐ **Only the two sites that were ALREADY `rounded-control` got
+migrated** — the consolidation moved exactly the plates that needed no moving, and then its own
+note reported success. ⛔ **A consolidation that lands only on the already-compliant members
+leaves the defect it was built for completely intact.**
+
+✅ **ALL NINE MIGRATED 2026-09-11.** `IconPlate` adoption **4 → 11 files**; zero hand-rolled plates
+remain (the only surviving match is the atom's own prose). The radii converge 7/9/10/11 → `--r-md`
+(12px), which **is** a rendered change of 1–5px on nine small boxes and is the point B10.2 makes.
+The stage-9 note has been **corrected in place** rather than deleted — it claimed a migration it
+had not done, and that claim is now the first thing a reader meets. `test:icon-sizes` §3 fails on
+any re-typing, so the note is no longer the only thing standing between the kit and a tenth plate.
 
 ---
 
@@ -133,10 +197,13 @@ resolved in the document; decide when you reach them rather than discovering it 
 >
 > ## Open, and each needs Ali rather than a session
 >
-> - 🟡 **`E-194`** — a **"3-minute" round is reachable for 89 of its 180 advertised seconds** (measured over 5,479 rounds). A naming decision; ⛔ the obvious remedy voided 175 rounds once (E-83).
-> - 🟡 **`E-196`** — three costed options in its register row.
-> - 💵 **The USD→TZS rate and its date** in *Admin → AI usage → Cycle settings* (owed since session 59; every shilling figure renders `—` until then, deliberately).
-> - ⏰ **`E-195`** — ⛔ **check from ~2026-09-15.** `www` behind Cloudflare at `Full (strict)` renews its origin certificate through a path that has never carried one; it **expires 2026-10-15**, and under `strict` that is the whole site, on a date, with no deploy to blame.
+> ⚠️ **THREE OF THESE FOUR CLOSED ON 2026-08-24/27 AND THIS LIST DID NOT NOTICE.** Struck below
+> rather than deleted, because the reason each closed is the useful part.
+>
+> - ~~🟡 **`E-194`**~~ — ✅ **CLOSED 2026-08-24 (session 60), NO CHANGE to naming, ruled on Ali's delegation.** A **"3-minute" round is reachable for 89 of its 180 advertised seconds** (measured over 5,479 rounds) — ⛔ and the obvious remedy voided 175 rounds once (E-83), which is why the naming stands.
+> - ~~🟡 **`E-196`**~~ — ✅ **FIXED 2026-08-24 (session 60) on the third attempt**; the two failed attempts are recorded in its register row.
+> - 💵 **The USD→TZS rate and its date** in *Admin → AI usage → Cycle settings* — **STILL OWED**, since session 59. Every shilling figure renders `—` until then, deliberately. ⭐ This is the one line in this block that is still live.
+> - ~~⏰ **`E-195`**~~ — ✅ **SUPERSEDED 2026-08-27 by `E-227`, which is FIXED and PROVEN RED.** The origin-certificate expiry is now watched by `.github/workflows/cert-expiry.yml` twice daily, not by a date written in a document.
 >
 > ⛔ **SUPERSEDED DIRECTIVE — DO NOT FOLLOW. THE BOARD AT THE TOP OF THIS FILE IS THE ENTRY POINT.** `CLOSE-THE-BOARD` was superseded by `FINISH-THE-BOARD` (2026-08-25) and the campaign has moved on four sessions since. Kept as the record of what this block said. Original text: **NEXT SESSION STARTS AT [`SESSION-PROMPT-CLOSE-THE-BOARD.md`](SESSION-PROMPT-CLOSE-THE-BOARD.md)** — the six open items, ordered money-first, each with its measurement and its guard. Then Unit D (#6) in [`SESSION-PROMPT-JAY-COMMENTS.md`](SESSION-PROMPT-JAY-COMMENTS.md) §1** — its ledger is backfilled and honest now (**A · B · C ✅**), so tick your row in the commit that ships it.
 

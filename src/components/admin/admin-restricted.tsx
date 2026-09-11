@@ -11,7 +11,7 @@
  * fetching any of the restricted data.
  */
 import { AdminPageHead, AdminCard } from "@/components/admin/admin-shell";
-import { I } from "@/components/ui/glyphs";
+import { I, plateGlyph } from "@/components/ui/glyphs";
 
 export function AdminRestricted({
   title,
@@ -33,7 +33,7 @@ export function AdminRestricted({
                 (tailwind.config.ts:200-215) and that pair is 80×80px beside 13.5px body
                 copy. 40px = --tap-min, the kit's glyph-tile size. */}
             <span className="inline-flex h-[40px] w-[40px] shrink-0 items-center justify-center rounded-md bg-no-500/10 text-no-300">
-              <I.lock s={17} />
+              <I.lock s={plateGlyph(40)} />
             </span>
             <div>
               <p className="text-[13.5px] font-semibold text-text">Your role cannot view this page.</p>

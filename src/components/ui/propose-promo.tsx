@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
+import { IconPlate } from "@/components/ui/icon-plate";
 import { ProposalsStateBadge } from "@/components/ui/proposals-state-badge";
 import { getServerT } from "@/lib/i18n-server";
 import { getProposalsConfig, isProposalsActive } from "@/lib/server/proposals-config";
@@ -34,12 +35,13 @@ export async function ProposePromo({ href }: { href: string }) {
         background: "color-mix(in oklab, var(--gold-500) 6%, var(--bg-elevated))",
       }}
     >
-      <span
-        className="grid h-[42px] w-[42px] shrink-0 place-items-center rounded-[11px] text-gold-fg"
-        style={{ background: "linear-gradient(180deg, var(--gold-400), var(--gold-600))" }}
+      <IconPlate
+        size={42}
+        className="text-gold-fg"
+        bg="linear-gradient(180deg, var(--gold-400), var(--gold-600))"
       >
         <I.trophy s={22} />
-      </span>
+      </IconPlate>
       <div className="min-w-0 flex-1">
         <p className="flex flex-wrap items-center gap-2 font-display text-[14.5px] font-bold text-text">
           {t.market.proposeAndGetPaid}
