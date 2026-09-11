@@ -60,6 +60,47 @@ export function RouteError({
     console.warn(`[50pick${logTag ? `/${logTag}` : ""}] error boundary fired`, { digest: error.digest });
   }, [error, logTag]);
 
+  /**
+   * 🔴 RECOVER FROM A DEPLOY, ONCE, SILENTLY — added 2026-09-12 after a LIVE defect.
+   *
+   * ⛔ THE DEFECT. Every `next build` mints new Server Action ids. A player holding an
+   * already-open page still has the PREVIOUS build's ids, so their first click after a
+   * deploy posts an id this server has never heard of; Next throws `Failed to find
+   * Server Action …`, nothing catches it, and THIS component is what they get —
+   * *"Your funds are safe"* on the deposit page, mid money-in. Their page is not
+   * broken; it is merely old, and a reload fixes it completely. Making a human read an
+   * error and decide to retry, on the money path, for something the browser can repair
+   * itself, is the actual bug.
+   *
+   * ⭐ WHY THE DEPLOYMENT ID IS THE GUARD AND A BOOLEAN IS NOT. The rule is "recover at
+   * most once PER BUILD, per tab, per path". Keyed on the build, a genuinely broken page
+   * reloads exactly once and then shows this surface for good — no loop — while a tab
+   * that goes stale again at the NEXT deploy is still allowed its one recovery. A plain
+   * "already tried" flag would spend the only recovery forever on the first error the
+   * tab ever saw. `globalThis.NEXT_DEPLOYMENT_ID` is published by Next because
+   * `deploymentId` is set in next.config.ts; with no id (a laptop build) the two sides
+   * of the comparison are both `""` and this correctly does nothing at all.
+   *
+   * ⛔ NO `reset()` HERE. `reset()` re-renders the same stale bundle and would fail
+   * identically; only a full document load fetches the new one.
+   * ⛔ AND NEVER A RETRY OF THE ACTION. This reloads the PAGE — a GET. The failed
+   * action is not replayed, so a deposit cannot be double-submitted by recovering.
+   * ⚠️ `sessionStorage` is per-tab and can throw in a private window; the whole thing
+   * is wrapped so the error surface can never itself error.
+   */
+  useEffect(() => {
+    try {
+      const build = String((globalThis as { NEXT_DEPLOYMENT_ID?: string }).NEXT_DEPLOYMENT_ID ?? "");
+      if (!build) return; // no deployment identity (local build) — nothing to compare
+      const key = `kp:recovered:${window.location.pathname}`;
+      if (window.sessionStorage.getItem(key) === build) return; // already recovered on THIS build
+      window.sessionStorage.setItem(key, build);
+      window.location.reload();
+    } catch {
+      /* storage blocked — show the error surface rather than risk a reload loop */
+    }
+  }, []);
+
   const backs = Array.isArray(back) ? back : back ? [back] : [];
 
   return (
