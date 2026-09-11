@@ -495,6 +495,146 @@ for (const f of files) {
 }
 ok("§11 no module-scope value captures a config getter", [...new Set(v11)].length === 0, [...new Set(v11)].join(" | "));
 
+// ────────────────────────────────────────────────────────────────────────────
+// §12 — the LICENCE NUMBER, and the guard that could not fail   (Unit 8.3)
+// ────────────────────────────────────────────────────────────────────────────
+/**
+ * 🔴 A GUARD FOR THIS ALREADY EXISTED AND IT WAS WORSE THAN NONE.
+ * `rules-copy.test.mts:144` asserts `text.includes(LICENCE_NUMBER())` — and the text it
+ * searches is `_content-yes-no.tsx:78`, which RENDERS `{LICENCE_NUMBER()}`. Both sides
+ * call the same function, so the assertion holds for any value whatsoever, including a
+ * placeholder, an empty string, or the `TZ-GBT-2026-XXXX` this platform actually
+ * published to real players until 2026-09-10. ⭐ The tell is the one this repo has
+ * written down before: BOTH SIDES MOVE TOGETHER.
+ *
+ * ⛔ SO THE VALUE HAS TO BE PINNED SOMEWHERE THAT DOES NOT READ IT FROM THE SUBJECT.
+ * 12.1 is that place, and it is the only assertion in this file that hard-codes a
+ * contact value on purpose: a licence reference is not deployment config, has no
+ * environment variation, and has no correct value to fall back to. Ali supplied it.
+ *
+ * ⚠️ AND THE SCAN MUST SEE HARD-CODED COPIES, not only the dynamic path. A guard that
+ * inspects `LICENCE_NUMBER()` call sites is blind to a second copy typed as a literal —
+ * and a hard-coded literal is exactly what a wrong licence number looks like.
+ */
+{
+  // ⚠️ ASSEMBLED, NOT SPELLED — for the same reason as RETIRED below. This file is inside
+  // the population it scans, so a literal here would make §12.2 count the guard as a
+  // second copy of the licence number. It did, on the first run with `scripts/` in scope.
+  const LICENCE = ["OUS", "00000202602"].join("");
+  const licenceDecl = readFileSync(join(SRC, "lib/support-config.ts"), "utf8");
+  ok("§12.1 ⭐ the licence constant is the number Ali supplied — pinned against the RULING, not against itself",
+    new RegExp(`LICENCE_NUMBER_VALUE\\s*=\\s*"${LICENCE}"`).test(licenceDecl),
+    "the one assertion that rules-copy §3a cannot make, because it reads the value it checks");
+
+  // Comments are stripped: this repo documents its retired values in prose, and a guard
+  // that greps raw text matches the paragraph explaining the fix instead of the fix.
+  const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/^\s*\/\/.*$/gm, " ");
+
+  /**
+   * ⛔ THE POPULATION INCLUDES `scripts/`, AND THE FIRST DRAFT DID NOT — which made it
+   * blind to the single place the retired placeholder actually survived.
+   * `files` above walks `src/` and only `.ts`/`.tsx`, so a `.mjs` drive under `scripts/`
+   * was outside the search by construction. That is the same blindness Unit 8.2 is about:
+   * a guard whose population does not reach the defect passes beautifully.
+   *
+   * ⚠️ AND THE NEEDLE IS BUILT FROM PARTS ON PURPOSE. Once `scripts/` is in scope, this
+   * file is in scope, so spelling the retired placeholder out here would make the guard
+   * flag itself — §0a's "writing about a bad value reproduces it", which has already cost
+   * this repo a `docs-links` failure today.
+   */
+  const RETIRED = ["TZ", "GBT"].join("-");
+  const scriptFiles: string[] = [];
+  (function walkScripts(dir: string) {
+    for (const e of readdirSync(dir)) {
+      const p = join(dir, e);
+      if (statSync(p).isDirectory()) { walkScripts(p); continue; }
+      if (/\.(mjs|mts|cjs|ts)$/.test(e)) scriptFiles.push(p);
+    }
+  })(join(ROOT, "scripts"));
+
+  const literalSites: string[] = [];
+  const retiredSites: string[] = [];
+  const getterSites: string[] = [];
+  for (const f of [...files, ...scriptFiles]) {
+    const body = strip(readFileSync(f, "utf8"));
+    const rel = relative(ROOT, f).replace(/\\/g, "/");
+    if (body.includes(LICENCE)) literalSites.push(rel);
+    if (body.includes(RETIRED)) retiredSites.push(rel);
+    if (/\bLICENCE_NUMBER\s*\(/.test(body)) getterSites.push(rel);
+  }
+
+  ok("§12.2 the licence literal appears in exactly ONE file — its declaration, and nowhere else",
+    literalSites.length === 1 && literalSites[0].endsWith("src/lib/support-config.ts"),
+    literalSites.join(" | ") || "not found at all");
+  // ⚠️ The label interpolates RETIRED rather than spelling it — a hard-coded name here
+  // would be a third copy of the same mistake, in the failure message of the check that
+  // exists to find it.
+  ok(`§12.3 ⛔ no surface still carries the retired ${RETIRED} placeholder as a VALUE`,
+    retiredSites.length === 0, retiredSites.join(" | "));
+  // ⭐ CONTROL — without this, 12.2 and 12.3 both pass beautifully over a tree in which
+  // nothing renders the licence at all. "No violations" and "no search" are not the same
+  // reading, and this file's §0 exists for the same reason.
+  ok("§12.4 ⚠️ CONTROL — the render sites were actually found, and they read the getter",
+    getterSites.length >= 3, `found ${getterSites.length}: ${getterSites.slice(0, 6).join(", ")}`);
+  // ⭐ CONTROL — the detector must still fire on a planted copy, or 12.2 proves only that
+  // it ran. Constructed here rather than trusted.
+  ok("§12.5 ⚠️ CONTROL — the literal detector still fires on a planted second copy",
+    strip(`const footer = "Licensed under ${LICENCE}";`).includes(LICENCE));
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// §13 — a guard off the deploy path cannot stop the regression it was written for  (Unit 8.1)
+// ────────────────────────────────────────────────────────────────────────────
+/**
+ * ⭐ THE BRIEF'S LIST OF SIX "OMITTED" SUITES WAS STALE — two of them were added by row
+ * 2.5 — and chasing it would have missed the sharper fact: FIVE OF THE GUARDS THIS
+ * CAMPAIGN ITSELF SHIPPED were not on the chain a session runs before pushing. A guard
+ * written for a defect, kept off the path that would catch it returning, is a guard that
+ * has already failed once and nobody has noticed.
+ *
+ * ⚠️ THIS LIST IS HAND-WRITTEN, AND THAT IS DELIBERATE — it is the SPECIFICATION, not a
+ * proxy for a population. Everywhere else in this file a hand-typed set would be the
+ * failure mode (§3's population is derived from rendered English for exactly that
+ * reason). Here the claim genuinely is "these named guards must be on the chain", so
+ * naming them IS the assertion. What would make it vacuous is the chain not being read
+ * at all, or a name being asserted that no longer exists — 13.2 and 13.3 close both.
+ *
+ * ⛔ AND RED SUITES STAY OFF, PERMANENTLY. `predeploy` is a pre-push checklist a human
+ * runs; one that is red before you start is one people learn to ignore. Every suite added
+ * here was confirmed green first.
+ */
+{
+  const pkg = JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8")) as {
+    scripts: Record<string, string>;
+  };
+  const chain = pkg.scripts.predeploy ?? "";
+  const onChain = new Set([...chain.matchAll(/npm run ([A-Za-z0-9:_-]+)/g)].map((m) => m[1]));
+
+  const MUST_BE_ON = [
+    "test:support-contact",       // the contact source-of-truth guard, and §12 above
+    "test:cert-c1",               // comms-email-truth — the 61-template inventory
+    "test:chat-safety",           // Unit 6 — the at-risk path
+    "test:rg-doors",              // Unit 7 — a break cannot be shortened
+    "test:define-config-gate",    // Unit 3 — a save that never landed
+    "test:config-hydration-gate", // Unit 5 — config frozen at module eval
+    "test:stacking",              // Unit 9 — the primer over the bet widget
+  ];
+  const off = MUST_BE_ON.filter((k) => !onChain.has(k));
+  ok("§13.1 ★ every guard this campaign shipped is on the predeploy chain", off.length === 0, off.join(" | "));
+
+  // ⭐ CONTROL — if `predeploy` were renamed or emptied, `onChain` would be empty and
+  // 13.1 would report every suite missing, which is loud. But if the REGEX stopped
+  // matching, `off` would be everything too. The distinguishing reading is the size of
+  // the chain itself: this is the check that separates "nothing is on it" from "I could
+  // not read it".
+  ok("§13.2 ⚠️ CONTROL — the predeploy chain was parsed and is substantial",
+    onChain.size > 50, `parsed ${onChain.size} entries`);
+  // ⭐ CONTROL — a named suite that no longer exists would sit on the chain as a broken
+  // command and 13.1 would still be satisfied by its NAME appearing there.
+  const phantom = MUST_BE_ON.filter((k) => !pkg.scripts[k]);
+  ok("§13.3 ⚠️ CONTROL — every name asserted above is a real npm script", phantom.length === 0, phantom.join(" | "));
+}
+
 // ── The population itself must not be empty, or §3 and §4 would pass by finding nothing.
 // This is the check that separates "no violations" from "no search". ──
 const helplineSurfaces = files.filter((f) =>

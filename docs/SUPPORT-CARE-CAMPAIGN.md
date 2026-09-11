@@ -332,7 +332,7 @@ would unblock it, do every other unit, and report it at the end. **Never idle.**
 | 5 | 🟠 Config frozen at module eval, and a gate on the forbidden primitive | ✅ **2/2 — and the CLASS was 4× bigger than the brief said** |
 | 6 | 🟠 Two chat SAFETY mechanisms are unreachable when signed in | ✅ **6/6 — LIVE. ⚠️ LATENT, not live-exposed: `chatbotEnabled` is OFF on production (measured, with a positive control). It FAILS OPEN, which is why it still shipped** |
 | 7 | 🟠 A cooling-off break can be SHORTENED, and the copy deterring it is false | ✅ **3/3 — LIVE** |
-| 8 | 🟠 Five suites are not on the deploy path; one asserts a retired value | ☐ 0/3 |
+| 8 | 🟠 Five suites are not on the deploy path; one asserts a retired value | ✅ **3/3 — LIVE. ⚠️ the brief's list of six was STALE; the real defect was 5 of THIS CAMPAIGN'S OWN guards** |
 | 9 | 🟠 The first-login primer blocks its own photographer | ✅ **3/3 — LIVE** |
 | 10 | 🟡 Routing and chrome — dialability, badges, duplicated constants | ☐ 0/7 |
 | 11 | 🟠 "Perfect support user management" — the DESK, which nothing here audits | ☐ 0/4 |
@@ -396,9 +396,9 @@ would unblock it, do every other unit, and report it at the end. **Never idle.**
 
 | | Unit 8 · Gates | where |
 |---|---|---|
-| ☐ | **8.1** the five omitted suites are on `predeploy`, and it passes | `package.json` |
-| ☐ | **8.2** `multi-persona-test.mjs` asserts `LICENCE_NUMBER()` or is deleted | `:261` |
-| ☐ | **8.3** a guard fails if the rendered footer licence ≠ the constant | new |
+| ✅ | **8.1** ⛔ **the brief's list of six was STALE — two were added by row 2.5 — and chasing it would have missed the sharper fact.** Measured: **five of the guards THIS CAMPAIGN ITSELF SHIPPED** were off the chain a session runs before pushing — `test:chat-safety`, `test:rg-doors`, `test:define-config-gate`, `test:config-hydration-gate`, `test:stacking`. All five confirmed GREEN first, then chained after `test:cert-c1`; 98 → 103 entries. ⭐ **A guard written for a defect and kept off the path that would catch its return has already failed once and nobody noticed.** ⛔ The 13 baseline reds stay OFF, permanently: `predeploy` is a checklist a human runs, and one that is red before you start is one people learn to ignore. New **§13** holds the line, with a control that separates *"nothing is on the chain"* from *"I could not read the chain"* | `package.json` · `scripts/support-contact.test.mts` |
+| ✅ | **8.2** `multi-persona-test.mjs` **DELETED**, with its `orphan-allowlist.json` entry. It asserted the **retired** `TZ-GBT` placeholder on the public footer — red against correct code, green while the placeholder was live — and it was wired to **no npm key at all**, so neither result was ever observed. ⭐ It was also explicitly ALLOWLISTED, so `test:orphans` was silenced about it: a dead file carrying a permission slip. A Sprint-20 manager-demo walk-through of five personas; recoverable from history if it is ever wanted | deleted · `scripts/orphan-allowlist.json` |
+| ✅ | **8.3** 🔴 **a guard for this already existed and was WORSE than none.** `rules-copy.test.mts:144` asserts `text.includes(LICENCE_NUMBER())` against copy that RENDERS `{LICENCE_NUMBER()}` — **both sides move together**, so it holds for any value at all, including the `TZ-GBT-2026-XXXX` this platform really did publish to players until 2026-09-10. New **§12** pins the value against **Ali's ruling** instead of against itself, bans a second hard-coded copy, and bans the retired placeholder as a VALUE. ⚠️ Its first draft scanned `src/` only — blind to the one `.mjs` under `scripts/` where the placeholder actually survived — and once widened it flagged **itself**, so both needles are assembled from parts rather than spelled. Proven red on two constructed mutations; the widened scan is what made 8.2 go red | `scripts/support-contact.test.mts` |
 
 | | Unit 9 · The primer | where |
 |---|---|---|
@@ -697,10 +697,17 @@ likely to deter someone from taking a break is the wrong one.
 ⛔ **The first two are the ones this campaign disturbs.** `comms-email-truth.test.mts` alone holds
 the 61-template inventory (`:297`), the per-template helpline assertion (`:362`) and the
 `HELPLINE() !== SUPPORT_PHONE()` guard (`:497-499`) — every one of which Units 1 and 2 move. A gate
-that is not on the deploy path cannot stop the regression it was written for. `scripts/multi-persona-test.mjs:261` asserts the footer
-contains `TZ-GBT` — ⭐ **the placeholder retired on 2026-09-10**, so it is red against correct code
-and was **green while the placeholder was live**. It is wired to no npm script, so neither result is
-ever seen. The licence number has no guard at all.
+that is not on the deploy path cannot stop the regression it was written for. The Sprint-20
+five-persona demo drive under `scripts/` asserted at its line 261 that the footer contains the
+retired `TZ-GBT` placeholder — ⭐ **retired 2026-09-10**, so it was red against correct code and
+**green while the placeholder was live**. It was wired to no npm script, so neither result was ever
+seen. ✅ **DELETED 2026-09-11** (row 8.2) — and its name is described rather than written as a path
+here, because `docs-links.mjs` resolves script paths in prose and citing a deleted one adds a third
+`test:docs` failure. That happened twice while writing this section.
+⛔ **AND THE CLAIM THAT "the licence number has no guard at all" WAS WRONG IN THE DIRECTION THAT
+MATTERS.** One existed — `rules-copy.test.mts:144` — and it could not fail, because it compared the
+rendered copy against the same getter the copy renders. A guard that cannot fail is worse than an
+absent one: it occupies the slot. See row 8.3.
 
 ### Unit 9 🟠 · The primer blocks its own photographer
 `onboarding/first-visit-primer.tsx:282` — `if (/HeadlessChrome|Playwright/i.test(navigator.userAgent)) return;`
@@ -804,7 +811,7 @@ role plainly ought to be able to do and cannot is FILED as a finding rather than
 
 ## §6 · ⏭️ RESUME AT
 
-**Session 3 · Units 1, 2, 3, 4, 5, 6, 7, 9 are LIVE. Open: 8 (gates), 10 (chrome), 11 (the desk).**
+**Session 3 · Units 1–9 are LIVE. Open: 10 (chrome), 11 (the desk).**
 Row **11.3** is ⛔ BLOCKED on a missing credential — see its row; do not work around it.
 
 ⛔ **THE ONE OPERATOR ACTION STILL OUTSTANDING, AND IT IS NOT CODE.** The live `support_config`
@@ -878,4 +885,6 @@ valid state; a decision missing from here is not.
 | 2 | **Mark only the two replies the SERVER knows are not answers** (`unresolved: true` on the daily-cap and API-error replies, plus an empty completion) | Classifying the model's own reply as resolved/unresolved so the handoff fires on any unhelpful answer | **5 — never decide by what is quickest to green,** and **1 — follow the nearest precedent.** Judging the model's reply needs a second model call; guessing from its text is exactly the proxy this repo keeps shipping. Under-marking costs a handoff one turn late, over-marking interrupts a player the bot is helping | `chat.ts` | No |
 | 3 | **Make the handoff copy true, rather than making the product deliver the promise** — the transcript is not attached, so the copy stops saying it is | Pre-filling the `mailto:` body with the conversation, which would have made *"you won't have to repeat anything"* honest | **4 — when balanced, take the reversible one,** plus §1's standing ruling that a ticket system is OUT OF SCOPE. Two of the three promises (pick-up notification, availability window) cannot be delivered without one, so the copy had to change regardless; attaching the transcript would have been a new feature smuggled into a truth fix. ⭐ Filed as a suggestion, not built | `i18n-dict.ts` (3 locales) | No |
 | 4 | **§4's rule is "do not raise the subject", not "do not promise it"** — no attachment/notification/availability word at all, in either direction | A tempered pattern allowing an explicit negation (*"your chat is NOT attached"*), the shape `rg-doors` 6.7b uses | **2 — leave it easier to reason about,** and the measured cost of the alternative: reading a negation across en/sw/zh is how a guard ends up flagging its own fix, which has already happened in this repo once. 4.4 proves the pattern does not fire on the replacement copy | `scripts/chat-safety.test.mts` | No |
+| 6 | **Leave all 13 baseline-red suites OFF `predeploy`, permanently, and stop calling them "omitted"** | Adding them and accepting a red chain, or adding them behind a skip flag | **2 — leave the platform easier to reason about.** `predeploy` is a pre-push checklist a human runs; one that is red before you start is one people learn to ignore, which converts a real gate into noise. A suite being valuable and a suite belonging on a blocking chain are different questions | `package.json` | No |
+| 7 | **DELETE `multi-persona-test.mjs` rather than repair its retired assertion** | Fixing `:261` to read `LICENCE_NUMBER()` and leaving the file in place | **1 — follow the precedent** (this repo deletes what goes stale rather than keeping a second source of truth) and **3 — seal the class.** Repairing an assertion inside a file wired to no npm key is decoration: neither its red nor its green is observable. Deletion is recoverable from git history, so the reversibility test in criterion 4 is satisfied | `scripts/` · `orphan-allowlist.json` | No |
 | 5 | **Correct §4 Unit 6's severity in place and say so out loud** rather than silently deleting the sentence | Quietly editing "live" to "latent" | **§0.5's own instruction to write decisions so they can be overturned in one read.** The brief asserted production exposure that measurement refutes; a document that overstates its severity is the same disease as a guard that overstates its coverage, and hiding the correction would teach the next session to trust §4 over §5 | `docs/SUPPORT-CARE-CAMPAIGN.md` | No — but it DOWNGRADES a stated severity, so it is flagged |

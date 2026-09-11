@@ -163,7 +163,6 @@
     "migrate-snapshot-to-tables.ts",
     "mobile-audit.mjs",
     "money-flow-e2e.mjs",
-    "multi-persona-test.mjs",
     "multi-viewport-audit.mjs",
     "needle-visual.mjs",
     "new-surfaces-audit.mjs",
