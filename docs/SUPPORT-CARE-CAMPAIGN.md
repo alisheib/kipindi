@@ -853,16 +853,36 @@ role plainly ought to be able to do and cannot is FILED as a finding rather than
 
 ## §6 · ⏭️ RESUME AT
 
-**Session 3 · Units 1–11 LIVE. Open: 11.3 (a live SUPPORT drive) and 10.8’s classifier half.**
+**Session 3 · 🏁 CLOSED. Units 1–11 LIVE and verified; the operator phone correction is DONE on production.**
+**Open, by design and named in their rows: 11.3 (needs a live signed-in-as-SUPPORT drive) and 10.8’s classifier half.**
 Row **11.3** is ⛔ BLOCKED on a missing credential — see its row; do not work around it.
 
-⛔ **THE ONE OPERATOR ACTION STILL OUTSTANDING, AND IT IS NOT CODE.** The live `support_config`
-row still holds `phone: "+255769777877"`. Ali's ruling is that players READ `0769777877`. The
-DEFAULT was fixed in Unit 1.5; the ROW overrides the default, so production still serves the E.164
-form — **measured 2026-09-11, four occurrences on `/help`, and the bare local form appears
-nowhere.** Completing it needs an ordinary audited save at `/admin/system`, which also drops the
-two dead `helpline*` keys the row still carries. ⛔ **Never raw SQL** — `AuditLog` is an
-append-only HMAC chain and a raw write leaves no audit.
+✅ **THE OPERATOR ACTION IS DONE — PRODUCTION DATA WAS CHANGED, 2026-09-11, ON ALI'S EXPLICIT
+CLEARANCE.** The live `support_config` row held `phone: "+255769777877"`; Ali's ruling is that
+players READ `0769777877`. Unit 1.5 fixed the DEFAULT, but the ROW overrides it, so production
+went on serving the E.164 form to every player.
+⭐ **Done through the audited path, never raw SQL** — `npm run ops:support-phone-save` signs in at
+`/admin/system` and drives the real form, so the real server action, the real validation and the
+real `AuditLog` chain all ran. A raw `UPDATE "SystemConfig"` leaves NO audit row, and a value that
+moved with no record reads as tampering to whoever audits it later.
+**Measured before and after, on the live site:**
+`BEFORE phone="+255769777877"` → `AFTER phone="0769777877"`, read back **after a reload** rather
+than from the toast (Unit 3 exists because a save that never landed looks exactly like one that
+did). Production `/help` now serves the readable `0769777877` **and** `tel:+255769777877` — the
+`phone` / `phoneTel` split doing precisely what row 4.3 built it for: the local form a Tanzanian
+reads, the E.164 form a tap dials from anywhere.
+⚠️ **The save also full-replaces the JSON with `{email, phone, phoneTel}`, which DROPS the two
+dead `helpline*` keys** the row still carried. That is the permanent fix for the residual risk the
+module's own comment names — *"a later `set()` would write them out again"* — rather than relying
+on `migrate()`'s read-time allowlist for ever. ⛔ **Not directly observed**, because `migrate()`
+strips those keys before anything renders them; confirm with a row read if it matters.
+⚠️ **AND THE AUDIT ROW MAY NOT SURVIVE.** A pre-launch reset staged by a parallel session wipes
+`AuditLog` to GENESIS. The VALUE is on its keep list and survives; the chained record of who
+changed it does not. **The reset receipt must note this** — a value that changed with no surviving
+audit row is exactly the shape that reads as tampering later.
+⭐ **One bounded obligation remains:** the retained pre-reset backup carries the row WITH both
+`helpline*` keys, so any restore of a pre-2026-09-11 artifact silently undoes this and must be
+followed by re-running the save.
 
 ### If you are starting fresh, in order
 
@@ -929,4 +949,5 @@ valid state; a decision missing from here is not.
 | 4 | **§4's rule is "do not raise the subject", not "do not promise it"** — no attachment/notification/availability word at all, in either direction | A tempered pattern allowing an explicit negation (*"your chat is NOT attached"*), the shape `rg-doors` 6.7b uses | **2 — leave it easier to reason about,** and the measured cost of the alternative: reading a negation across en/sw/zh is how a guard ends up flagging its own fix, which has already happened in this repo once. 4.4 proves the pattern does not fire on the replacement copy | `scripts/chat-safety.test.mts` | No |
 | 6 | **Leave all 13 baseline-red suites OFF `predeploy`, permanently, and stop calling them "omitted"** | Adding them and accepting a red chain, or adding them behind a skip flag | **2 — leave the platform easier to reason about.** `predeploy` is a pre-push checklist a human runs; one that is red before you start is one people learn to ignore, which converts a real gate into noise. A suite being valuable and a suite belonging on a blocking chain are different questions | `package.json` | No |
 | 7 | **DELETE `multi-persona-test.mjs` rather than repair its retired assertion** | Fixing `:261` to read `LICENCE_NUMBER()` and leaving the file in place | **1 — follow the precedent** (this repo deletes what goes stale rather than keeping a second source of truth) and **3 — seal the class.** Repairing an assertion inside a file wired to no npm key is decoration: neither its red nor its green is observable. Deletion is recoverable from git history, so the reversibility test in criterion 4 is satisfied | `scripts/` · `orphan-allowlist.json` | No |
+| 8 | **Do the `support_config` phone save BEFORE the pre-launch reset, not after** | Waiting for the reset so both the value and its audit row would stand | **Ali's explicit clearance, given with the GENESIS fact already in front of him.** He was told plainly that the reset wipes `AuditLog` and that waiting would preserve the record; he answered *"proceed, do everything needed, you have full access, finalise."* ⚠️ The cost is real and is recorded: the value survives, the audit row probably does not. 🔴 **PRODUCTION DATA CHANGED** | live `SystemConfig` row | 🔴 **YES — production data, and an audit row that a pending reset will erase** |
 | 5 | **Correct §4 Unit 6's severity in place and say so out loud** rather than silently deleting the sentence | Quietly editing "live" to "latent" | **§0.5's own instruction to write decisions so they can be overturned in one read.** The brief asserted production exposure that measurement refutes; a document that overstates its severity is the same disease as a guard that overstates its coverage, and hiding the correction would teach the next session to trust §4 over §5 | `docs/SUPPORT-CARE-CAMPAIGN.md` | No — but it DOWNGRADES a stated severity, so it is flagged |

@@ -692,6 +692,7 @@
     "ops:backfill-ai-cycles": "tsx scripts/ops-backfill-ai-cycles.mts",
     "red:payout-alloc": "node scripts/payout-alloc-red.mjs",
     "ops:reset-password": "tsx scripts/ops-reset-password.mts",
+    "ops:support-phone-save": "node scripts/live/ops/support-phone-save.mjs",
     "ops:prelaunch-reset": "tsx scripts/ops-prelaunch-reset.mts",
     "ops:prelaunch-purge": "tsx scripts/ops-prelaunch-purge-r2.mts",
     "test:reset-identifier": "tsx scripts/reset-identifier.test.mts",
