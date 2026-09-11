@@ -50,9 +50,18 @@
  */
 import { readFileSync } from "node:fs";
 import { decomment } from "./lib/decomment.mts";
+// ⛔ FIXTURES MUST BE VERIFIED PLAYERS. §7 drives a real payment, and paying from a wallet
+// inherits every precondition of DEPOSITING — including an APPROVED identity. An unverified
+// fixture would be refused by the KYC gate, and §7 would then be measuring the gate rather
+// than the fee.
+import "./lib/verified-fixtures.mts";
 import { db } from "../src/lib/server/store.ts";
 import { mkFixtureUser } from "./lib/agent-fixtures.mts";
-import { feeBreakdown } from "../src/lib/server/agent-application-service.ts";
+import {
+  feeBreakdown, missingForSubmit, startApplication, attachAgentDocument, setReferees,
+  submitForReview, REQUIRED_DOC_SLOTS,
+} from "../src/lib/server/agent-application-service.ts";
+import { AGENT_TERMS_VERSION } from "../src/lib/agent-terms-version.ts";
 import { getAgentConfig } from "../src/lib/server/agent-config.ts";
 
 let pass = 0, fail = 0;
@@ -64,6 +73,8 @@ const ok = (label: string, cond: boolean, extra?: string) => {
 const FEE = feeBreakdown(getAgentConfig()).totalTzs;
 const SRC = (f: string) => readFileSync(new URL(`../src/lib/server/${f}`, import.meta.url), "utf8");
 const APP = (f: string) => readFileSync(new URL(`../src/app/${f}`, import.meta.url), "utf8");
+/** A real 1×1 PNG — `attachAgentDocument` sniffs BYTES, not the data-URL label. */
+const PNG = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
 
 console.log(`\nAGENT FEE · THE APPLICANT'S PATH — fee = ${FEE} TZS\n`);
 
@@ -266,6 +277,166 @@ console.log("\n§5 driven end to end: a funded applicant pays and becomes able t
     const w = await db.wallet.findByUserId("path_broke");
     ok("5.4 ⛔ …and nothing was debited", (w?.balance ?? -1) === 0, `balance=${w?.balance}`);
   }
+}
+
+// ═══ §7 · 🔴 THE PAYER CAN ACTUALLY SUBMIT ═══════════════════════════════════════════════
+/**
+ * 🔴 THIS SECTION EXISTS BECAUSE §5 PROMISED THIS AND NEVER RAN IT, AND A PAID APPLICANT
+ * SHIPPED TO PRODUCTION UNABLE TO APPLY.
+ *
+ * §5's own header reads "driven end to end: a funded applicant pays and becomes able to
+ * submit". Read its branches: `5.1 a funded, KYC'd applicant pays and the status ADVANCES`
+ * and `5.3 paying twice does not charge twice` exist ONLY inside
+ * `if (typeof payFeeFromWallet !== "function")` — the branch taken when the function is
+ * ABSENT. Once the function shipped, the else-branch ran instead, and it drives an UNFUNDED
+ * applicant and asserts a refusal. So from the moment the feature existed, the only thing
+ * §5 ever tested was the unhappy path, under a heading that claimed the opposite.
+ *
+ * ⭐ THE DEFECT IT LET THROUGH. `missingForSubmit` gates `submitForReview`, and it read:
+ *     if (app.feeDisposition !== "WAIVED") {
+ *       if (!docs.some(d => d.docType === "FEE_RECEIPT")) missing.push("FEE_RECEIPT");
+ *       if (!app.feeReference) missing.push("FEE_REFERENCE");
+ *     }
+ * A wallet payment sets `COLLECTED`, never `WAIVED`, and writes NEITHER a receipt document
+ * nor a reference — deliberately, because nobody attested anything. So a person who had paid
+ * TZS 100,000 from their balance was told "Your application is not complete." and named two
+ * pieces of evidence the product had stopped collecting. **Identical treatment to somebody
+ * who had paid nothing at all.**
+ *
+ * ⛔ AND THE CLIENT HAD ALREADY BEEN FIXED, WHICH IS WHY IT LOOKED DONE. `apply-client.tsx`
+ * pushes ONE entry keyed on settlement, and its docblock says the two edits "are ONE atomic
+ * change and must never be split". They were split — across the client and the server. The
+ * wizard therefore ENABLED its Submit button and the server refused it.
+ *
+ * ⚠️ WHY NO EXISTING GUARD SAW IT. `test:agent-application-security` drives a submit to
+ * green — over the LEGACY rail, uploading a FEE_RECEIPT and typing a reference. It proves
+ * the bank rail submits. Nothing proved the WALLET rail submits, so the suite was green
+ * about a rail the product no longer offers.
+ *
+ * ⭐ So this section drives the REAL thing: seven documents, referees, a funded wallet, a
+ * payment through the service, and then `submitForReview` — the door the applicant actually
+ * has to walk through.
+ */
+console.log("\n§7 🔴 a wallet-paid applicant can SUBMIT — the door, not the payment");
+{
+  const mod: Record<string, unknown> = await import("../src/lib/server/agent-application-service.ts");
+  const payFeeFromWallet = mod.payFeeFromWallet as ((userId: string) => Promise<{ ok: boolean; error?: string }>) | undefined;
+
+  if (typeof payFeeFromWallet !== "function") {
+    ok("7.1 ⛔ payFeeFromWallet exists", false, "absent — every assertion below would be vacuous");
+  } else {
+    const UID = "path_submit";
+    await mkFixtureUser(UID);
+    /**
+     * ⭐ A VERIFIED EMAIL, BECAUSE PAYING INHERITS EVERY PRECONDITION OF DEPOSITING.
+     * The first run of this section was refused with `email_unverified` — which is the
+     * product being RIGHT, and the fixture being an applicant who could not exist. Left
+     * unfixtured it would have masked 7.7/7.8 behind an unrelated refusal, and a section
+     * that fails for the wrong reason is as costly as one that passes for the wrong reason.
+     */
+    await db.user.update(UID, { emailVerifiedAt: new Date().toISOString() });
+    const wallet = await db.wallet.findByUserId(UID);
+    await db.wallet.update(wallet!.id, { balance: FEE * 2 });
+
+    const started = await startApplication(UID);
+    ok("7.0 CONTROL · the applicant has a draft (without one, every later step is vacuous)",
+      started.ok === true, JSON.stringify(started));
+
+    for (const slot of REQUIRED_DOC_SLOTS) {
+      await attachAgentDocument(UID, slot, PNG);
+    }
+    await setReferees(UID, {
+      oneName: "Amina J", oneContact: "+255711000001",
+      twoName: "Baraka K", twoContact: "+255711000002", consent: true,
+    });
+
+    // ⭐ THE CONTROL THAT MAKES 7.3 MEAN SOMETHING. Before paying, the ONLY thing outstanding
+    // must be the fee. If anything else were missing, 7.3 could fail for a reason that has
+    // nothing to do with the rail and the section would be measuring its own fixture.
+    const beforePay = await missingForSubmit((await db.agentApplication.findActiveByUser(UID))!);
+    const nonFeeBefore = beforePay.filter((m) => !/^FEE_/.test(m));
+    ok("7.1 CONTROL · documents and referees are complete — only the fee is outstanding",
+      nonFeeBefore.length === 0, `still missing: ${nonFeeBefore.join(", ")}`);
+    ok("7.2 CONTROL · …and the fee IS outstanding before payment (else 7.3 proves nothing)",
+      beforePay.some((m) => /^FEE/.test(m)), JSON.stringify(beforePay));
+
+    const paid = await payFeeFromWallet(UID);
+    ok("7.3 ⭐ a funded, verified applicant's payment is ACCEPTED",
+      paid.ok === true, JSON.stringify(paid));
+
+    const after = (await db.agentApplication.findActiveByUser(UID))!;
+    ok("7.4 ⛔ the fee is stamped COLLECTED, not WAIVED",
+      after.feeDisposition === "COLLECTED", `disposition=${after.feeDisposition}`);
+    ok("7.5 ⛔ …and the wallet really was debited",
+      (await db.wallet.findByUserId(UID))?.balance === FEE, `balance=${(await db.wallet.findByUserId(UID))?.balance}`);
+    ok("7.6 ⛔ …and NO receipt document and NO reference were invented",
+      !after.feeReference, `feeReference=${after.feeReference}`);
+
+    // 🔴 THE ASSERTION THAT WAS RED. A settled fee must leave nothing outstanding.
+    const stillMissing = await missingForSubmit(after);
+    ok("7.7 🔴 a PAID applicant is missing NOTHING — the fee is settled, so no evidence is owed",
+      stillMissing.length === 0,
+      `server still demands: ${stillMissing.join(", ")}`);
+
+    // ⭐ AND THE DOOR ITSELF, not merely the function behind it. A guard that drives
+    // `missingForSubmit` alone is blind to its call site — the same blindness that left
+    // `reconcileFee`'s flipped source at 34/0.
+    const sub = await submitForReview(UID, { acceptedTermsVersion: AGENT_TERMS_VERSION });
+    ok("7.8 🔴 …and `submitForReview` LETS THEM IN — they paid; they must be able to apply",
+      sub.ok === true, JSON.stringify(sub));
+    ok("7.9 ⛔ …and the application really reached review",
+      (await db.agentApplication.findActiveByUser(UID))!.status === "UNDER_REVIEW",
+      (await db.agentApplication.findActiveByUser(UID))!.status);
+  }
+}
+
+// ═══ §8 · THE LEGACY RAIL STILL SUBMITS ══════════════════════════════════════════════════
+/**
+ * ⛔ UNIT 7's NON-REGRESSION OBLIGATION, asserted rather than assumed. The fix to §7 must not
+ * be "stop requiring fee evidence" — an application with NOTHING settled and no evidence must
+ * still be refused, or the door is simply open. And an out-of-band applicant who typed a
+ * reference and uploaded a receipt must still get through, because that is how the one
+ * historical APPROVED agent got in.
+ *
+ * ⭐ THIS IS THE HALF THAT STOPS THE OBVIOUS WRONG FIX. Deleting the two pushes outright would
+ * make §7 green instantly and let an applicant who has paid NOTHING submit — turning a
+ * blocked-payer defect into a free-agent defect, which is strictly worse.
+ */
+console.log("\n§8 ⛔ an UNPAID applicant is still refused, and the legacy rail still works");
+{
+  const UID = "path_unpaid";
+  await mkFixtureUser(UID);
+  await startApplication(UID);
+  for (const slot of REQUIRED_DOC_SLOTS) await attachAgentDocument(UID, slot, PNG);
+  await setReferees(UID, {
+    oneName: "Amina J", oneContact: "+255711000001",
+    twoName: "Baraka K", twoContact: "+255711000002", consent: true,
+  });
+
+  const app = (await db.agentApplication.findActiveByUser(UID))!;
+  const missing = await missingForSubmit(app);
+  ok("8.1 ⛔ an applicant who has paid NOTHING is still missing the fee",
+    missing.length > 0, `missing=${JSON.stringify(missing)}`);
+
+  const sub = await submitForReview(UID, { acceptedTermsVersion: AGENT_TERMS_VERSION });
+  ok("8.2 ⛔ …and the door is CLOSED to them — this is not a free pass",
+    sub.ok === false, JSON.stringify(sub));
+
+  // The legacy rail: an out-of-band applicant records a reference against an uploaded receipt.
+  // ⭐ Asserted through `missingForSubmit` on a constructed row rather than by re-driving the
+  // withdrawn wizard, because the wizard no longer offers it — the RULE must still honour it.
+  const legacy = await missingForSubmit({ ...app, feeReference: "RCPT-LEGACY-1" } as never);
+  const legacyFee = legacy.filter((m) => /^FEE/.test(m));
+  ok("8.3 ⛔ a legacy row with a reference but no receipt image is still incomplete",
+    legacyFee.length > 0, `fee slots=${JSON.stringify(legacyFee)}`);
+
+  const waived = await missingForSubmit({ ...app, feeDisposition: "WAIVED" } as never);
+  ok("8.4 ⛔ CONTROL · a WAIVED fee owes nothing — the exemption that always worked still does",
+    waived.filter((m) => /^FEE/.test(m)).length === 0, JSON.stringify(waived));
+
+  const collected = await missingForSubmit({ ...app, feeDisposition: "COLLECTED" } as never);
+  ok("8.5 ⭐ …and a COLLECTED fee owes nothing either — the differential that names the defect",
+    collected.filter((m) => /^FEE/.test(m)).length === 0, JSON.stringify(collected));
 }
 
 // ═══ §6 · NO LIVE AGENT COPY STILL DESCRIBES THE OUT-OF-BAND RAIL ════════════════════════

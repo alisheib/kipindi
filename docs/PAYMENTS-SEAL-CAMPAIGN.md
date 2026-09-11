@@ -108,15 +108,50 @@ SILENT — you find out by losing work, not by an error.**
   **`docs/LIVE-QA-CAMPAIGN.md` §6 is the authority** — whichever finding has a ROW there keeps the
   id, the other moves. An id recorded only in a prompt or a code comment is *announced*, not *filed*.
 
-### 0.5 · When you are blocked, you do NOT stop
+### 0.5 · ⭐ YOU DECIDE — the owner has delegated it
 
-The owner is away; a blocked session that idles wastes the whole window.
-1. **Do every unit that is not blocked**, in ledger order.
-2. Record the blocker in §2 as a `⛔ BLOCKED` row **with the reason and what would unblock it**.
-3. Keep going. Report at the end.
+⭐ **THE OWNER'S INSTRUCTION, 2026-09-10, VERBATIM:** *"take decisions if needed, as I'll be away.
+Decisions should be as per what they think is more perfect with the overall flow of the platform."*
 
-⛔ **Do not invent an answer to an owner decision.** If a unit genuinely needs a ruling, mark it
-BLOCKED and move on — do not guess, and do not quietly shrink the unit to something you can finish.
+⛔ **So a design question is NOT a blocker any more. It is your call.** Do not park a unit waiting
+for a ruling that is not coming, and do not quietly shrink a unit to the part you can finish without
+deciding. **Decide it, record it, ship it.**
+
+#### The criterion he gave you — use it literally
+
+**"More perfect with the overall flow of the platform."** That is a coherence test, not a taste
+test, and it has a concrete meaning here:
+
+1. ⭐ **What does this codebase already do for the same class of problem?** This repo is unusually
+   consistent and unusually well-commented about WHY. Find the established pattern and follow it.
+   The nearest existing precedent beats a cleaner idea with no precedent.
+2. ⭐ **Which option leaves the platform easier to reason about in six months?** Prefer one concept
+   over two. Prefer a single source of truth over a synchronised pair. Prefer making an invariant
+   explicit over relying on a convention.
+3. ⭐ **Which option makes the next defect in this area IMPOSSIBLE rather than merely unlikely?**
+   This platform's whole standing doctrine is to seal the class, not the instance.
+4. ⚠️ **When two options are genuinely balanced, take the REVERSIBLE one.** The owner is away; a
+   choice he can undo cheaply is worth more than the marginally better choice he cannot.
+5. ⛔ **Never decide by "what is quickest to make green."** That is how this repo acquired the
+   guards that lie.
+
+#### Record every decision — this is the part that makes delegation safe
+
+For each decision you take, add a row to the **DECISION LOG** at the end of this file:
+what you decided, the alternative you rejected, the criterion above that settled it, and the
+files it touched. ⭐ **Write it so the owner can overturn it in one read.** A delegated decision
+that is not written down is indistinguishable from a defect.
+
+⚠️ **If a decision changes money semantics, a binding document, or a compliance position, say so
+explicitly in that row and flag it in your final summary.** It is still yours to take — but he must
+be able to find it without hunting.
+
+#### What is still NOT yours
+
+§0.6's hard stops are safety rails and standing owner rulings, not open questions. And if you find
+a genuine external blocker — a credential you do not have, a vendor secret, a third party who has
+to act — that is not a decision, it is a dependency: record it in §2 as a `⛔ BLOCKED` row with what
+would unblock it, do every other unit, and report it at the end. **Never idle.**
 
 ### 0.6 · The hard stops — the only things you may NOT do unattended
 
@@ -209,7 +244,7 @@ BLOCKED and move on — do not guess, and do not quietly shrink the unit to some
 |---|---|---|
 | ✅ | **3.1** the wizard's payment step offers "pay from wallet", not a bank instruction | `payFeeFromWalletAction` + a gated pay control. ⛔ Takes NO `FormData` — the amount comes from `feeBreakdown()` on the server and the payer is the session; a form field for the amount is how a TZS 1,000 payment gets attested as the fee |
 | ✅ | **3.2** insufficient balance routes to deposit and RETURNS to the same step | The shortfall is NAMED, not left to arithmetic, and a top-up link goes to `/wallet/deposit`. ⚠️ **Nothing carries them back** — the deposit rail has no return-URL contract (**PSC-01**) — but `firstMissingStep` recomputes from docs+referees only, so it returns them to Payment by construction. The hint says the application is saved |
-| ✅ | **3.3** the receipt-image + reference gate is removed or conditioned, not left dangling | ⛔ **REMOVED ATOMICALLY WITH THE PAY BUTTON, and it had to be.** `missingNow` is the only thing between an unpaid applicant and `submitForReview`; dropping the receipt entry alone would have let someone submit without paying. One change, never split |
+| ✅ | **3.3** the receipt-image + reference gate is removed or conditioned, not left dangling | 🔴 **ONLY THE CLIENT HALF WAS TRUE, AND THE OTHER HALF WAS LIVE UNTIL 2026-09-11 — see §5d.** `apply-client.tsx`'s `missingNow` was fixed; the SERVER's `missingForSubmit` went on demanding `FEE_RECEIPT` + `FEE_REFERENCE` for anything not `WAIVED`, and a wallet payment stamps `COLLECTED`. ⛔ **A paying applicant could not submit.** Now ONE settlement-keyed token, `FEE_PAYMENT`, on both sides. The original note said the two edits were *"one change, never split"* — ⭐ and they were split, not across two commits but across the CLIENT and the SERVER |
 | ✅ | **3.4** `recomputeDraftStatus`'s three draft states still derive correctly | 🔴 **THE TRAP.** It read `!!feeReference \|\| WAIVED`; a wallet payment writes NO reference, so a payer stayed at `KYC_SUBMITTED` and `submitForReview` is the only door into review — **they pay TZS 100,000 and cannot apply.** Now reads the DISPOSITION (`COLLECTED`), which is already what `approveAgent` requires. ⭐ The money guard could not see it: the money moved correctly |
 | ✅ | **3.5** no state in the wizard can trap the applicant with no way forward or back | ⛔ **TWO DEAD ENDS THE BRIEF DID NOT ANTICIPATE.** Paying from a wallet inherits every precondition of DEPOSITING: (a) KYC APPROVED — enforced for self-service but `!forInvitation` **exempts an officer-invited applicant deliberately**, so an un-KYC'd invitee could not fund a wallet and was told nothing (and `agentInvitationHtml({feeWaivable:true})` is hard-coded, so the email promises a waiver that is a separate officer action); (b) a VERIFIED EMAIL — required by deposit, checked nowhere upstream. Each now renders the GATE plus the action that clears it, in the server's own order so nobody fixes one thing and is refused for another |
 
@@ -439,6 +474,72 @@ asking of every gated panel in this repo, not just this one.
 
 ---
 
+## §5d · 🔴 THE PAYER COULD NOT APPLY — found 2026-09-11, and why five green guards missed it
+
+⛔ **`missingForSubmit` refused every wallet-funded applicant, and it was LIVE at `31883970`.**
+
+```
+feeDisposition=COLLECTED (wallet-paid) → missing: [... ,"FEE_RECEIPT","FEE_REFERENCE"]
+feeDisposition=WAIVED    (officer)     → missing: [...]
+feeDisposition=NONE      (unpaid)      → missing: [... ,"FEE_RECEIPT","FEE_REFERENCE"]
+```
+
+**A person who had paid TZS 100,000 from their wallet was treated identically to one who had
+paid nothing.** `submitForReview` answered *"Your application is not complete."* and named two
+pieces of evidence the product had stopped collecting. This is the SAME trap row 3.4 records as
+closed — *"they pay TZS 100,000 and cannot apply"* — living one layer further down, in the
+function `submitForReview` actually consults.
+
+### ⭐ Why nothing caught it — five separate blindnesses, each instructive
+
+1. **The fix was split across the CLIENT and the SERVER.** `apply-client.tsx` was corrected and
+   its docblock even says the edits *"are ONE atomic change and must never be split"*. Two lists
+   describing one rule drifted. ⭐ **The wizard ENABLED its Submit button and the server refused
+   it** — the worst possible shape, because the applicant is told they are ready and then told
+   they are not.
+2. 🔴 **The guard that promised this ran only its dead branch.** `agent-fee-wallet-path` §5 is
+   headed *"driven end to end: a funded applicant pays and becomes able to submit"*. Its
+   assertions `5.1 a funded, KYC'd applicant pays and the status ADVANCES` and `5.3 paying twice
+   does not charge twice` sit INSIDE `if (typeof payFeeFromWallet !== "function")` — the ABSENT
+   branch. From the moment the feature shipped, the else-branch ran instead and drove an
+   **unfunded** applicant. ⭐ **A guard whose happy path lives in its own absence-handler tests
+   nothing once the feature exists**, and reads as thorough forever.
+3. **`test:agent-application-security` (110/0) proves a submit works — over the LEGACY rail.** It
+   uploads a `FEE_RECEIPT` and types a reference. Green about a rail the product no longer offers.
+4. **The money guards were all correct.** The debit, the ledger legs, the trial balance, the
+   refund mirror — every one of them green, because **the money moved perfectly.** Only the
+   *door afterwards* was shut. ⭐ Same shape as 3.4: *the money guard could not see it.*
+5. **`recomputeDraftStatus` was fixed and `missingForSubmit` was not** — two functions encoding
+   the same "is the fee settled?" question, and only one was moved to read the disposition.
+
+### The fix, and the two mutations that prove it
+
+`missingForSubmit` now exempts `COLLECTED` as well as `WAIVED`, and pushes ONE token
+`FEE_PAYMENT` — mirroring the client's single `missingFeePayment` entry. ⛔ **The legacy rail is
+untouched:** a recorded reference against an uploaded receipt still satisfies it with the
+disposition still `NONE`, which is how the one historical APPROVED agent got in.
+
+`agent-fee-wallet-path` **34 → 49**, with a new §7 that drives seven documents, referees, a
+funded wallet, a real payment and then `submitForReview`, and a new §8 that holds the other side.
+⭐ **Both mutations caught, by DIFFERENT assertions** — which is the point:
+
+| mutation | caught by | what it would have shipped |
+|---|---|---|
+| drop the `COLLECTED` exemption | §7.7, §7.8, §7.9, §8.5 | the defect itself — a payer blocked |
+| delete the fee gate entirely | §7.2, §8.1, §8.2, §8.3 | **an UNPAID applicant submitting, `ok:true`** — a free agent |
+
+⚠️ **The second mutation is the one that matters.** Deleting the two pushes outright makes §7 go
+green instantly and turns a blocked-payer defect into a free-agent defect, which is strictly
+worse. A guard that only tested the first direction would have applauded it.
+
+⭐ **The lesson, in the campaign's own terms:** the assertion *"a funded applicant becomes able to
+submit"* was a HEADING, not a test. Ask of every guard not only *"would this still pass if the
+feature were absent?"* but also **"which branch of this guard actually executes today?"** — a
+section whose real assertions live in the not-yet-built branch is worse than no section, because
+the ledger row beside it says ✅.
+
+---
+
 ## §5c · ✅ WHAT IS LIVE AS OF 2026-09-11 — verified by commit hash, not by uptime
 
 **`31883970` is RUNNING in production.** Units **0, 1, 2, 3, 5, 6.1, 6.2, 7.3, 8.2, 8.3** are
@@ -570,3 +671,15 @@ standing question of every one of those: *would this still pass if the feature w
 - Tick every row you sealed, in the commit that sealed it.
 - Update §6 for the next session in this same format.
 - Post a final summary: what shipped, what is BLOCKED and why, what you did not reach.
+
+---
+
+## §7 · ⭐ DECISION LOG — what this campaign decided on the owner's behalf
+
+⛔ **Append a row for EVERY decision taken under §0.5, in the commit that acted on it.** Empty is a
+valid state; a decision missing from here is not.
+
+| # | Decision taken | Alternative rejected | Which §0.5 criterion settled it | Touches | Money / binding / compliance? |
+|---|---|---|---|---|---|
+| **1** | **Work from a dedicated `git worktree`** (`F:\kipindi-seal`, branch `payments-seal-s3`) instead of sharing `F:\kipindi-main` with the peer session. | Continuing in the shared checkout and serialising every board by message. | §0.4's own ⛔ *"WORKTREES, NOT A SHARED DIRECTORY"*, and criterion 3 — it makes the whole collision CLASS impossible rather than merely unlikely. We had already lost a stash race and run two overlapping boards within 15 minutes. | working tree only; no product code | no |
+| **2** | **`missingForSubmit` emits ONE settlement token `FEE_PAYMENT`**, replacing the `FEE_RECEIPT` + `FEE_REFERENCE` pair, and exempts `COLLECTED` alongside `WAIVED`. | The smaller edit: keep both tokens and merely add `&& !== "COLLECTED"`. | Criteria 1 and 2 — the CLIENT already states this rule as a single settlement-keyed entry (`missingFeePayment`), so one concept matching the existing precedent beats two lists that have now demonstrably drifted apart. | `agent-application-service.ts` `missingForSubmit`; `admin/agents/[id]/page.tsx` `MISSING_WORD` | ⚠️ **YES — it unblocks a paying applicant who could not apply.** No money moves differently; the fee is still required, and §8 proves an unpaid applicant is still refused |
