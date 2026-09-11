@@ -9271,6 +9271,33 @@ Guards: `test:updown-feed` **21 → 33** · `test:control-gates` **101 → 209**
 `test:updown-heal` **97 → 115**. Every one proven red against the real defect.
 Live suites: E-27 **25/25**, E-23 **24/24**, E-29 **9/9**.
 
+---
+
+### 🟢 2026-09-11 — the Roster's KYC stage (Ali's request). Authority: [`docs/ROSTER-KYC-STAGE.md`](ROSTER-KYC-STAGE.md)
+
+> ⛔ **Read that file, not this entry.** This is a pointer so a later session finds it; the
+> feature's rulings, its open items and its reproduction steps live there.
+
+`/admin/players` rendered `User.status`, so four different people read one identical
+**"Pending KYC"** — no submission at all, opened-and-uploaded-nothing, **uploaded everything
+and never pressed Confirm**, and **submitted and waiting on us**. The third was invisible
+platform-wide (`listPendingKyc` reads only `PENDING_REVIEW` + `ADDITIONAL_INFO_REQUIRED`), so
+nobody chased them. A derived seven-stage column + filter now answers it, and the first word
+says whose move it is.
+
+| | Shipped |
+|---|---|
+| `5f6ac265` + `f4aed238` | 🔴 **P0, found while mapping** — `kyc.upsert` guarded its document delete with `if (k.documents?.length)`, so a KYC restart (`documents: []`, same row id) left the previous attempt's images attached **in Postgres** while the in-memory half cleared them. Every unit suite ran on the half that was right. `submitForReview`'s `missingSlots` then passed on the **already-refused images**. Proven on real Postgres and RED-tested both ways |
+| `5136df55` | The stage derivation, words, tones, chip, both DAL halves, the column, the filter, the tallies — and the corrected KPI tile, whose "needs review" caption was false for most of the population. **Zero migrations, deliberately.** Also fixes a pagination filter-drop (`buildBaseHref` is a deny-list of one, so `?kyc=` would have evaporated on page 2 while the count jumped to the unfiltered total) |
+| `6138ab57` | `qa:kyc-roster` — 21 assertions against a **real render**, plus the stage fixture that drives the REAL writers |
+
+Guards: **`test:kyc-stage` 48 assertions, into `predeploy`**, RED-tested with six mutations ·
+`qa:kyc-roster` **21/21** on real Postgres 18.3, partition **40 of 40** disjoint + covering ·
+`test:kyc-restart-docs` **6/6**, refuses to skip.
+⚠️ `qa:kyc-roster` and `test:kyc-restart-docs` **cannot** join `predeploy` (localhost
+Playwright / needs a database) — saying so matters more than a green predeploy that proves
+less than it appears to.
+
 ⛔ **STOPPED HERE BECAUSE THE NEXT STEP IS ALI'S, NOT A SESSION'S.** See §6m: the
 intersection of "can act on `accounting`" and "can view a `trading` page" is **`{ADMIN}`**,
 so **nobody but the Owner can flip `feedProvider`**. Widening it would destroy the first
