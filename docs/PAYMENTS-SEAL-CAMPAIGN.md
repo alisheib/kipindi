@@ -200,8 +200,8 @@ would unblock it, do every other unit, and report it at the end. **Never idle.**
 | 4 | 🟠 The officer's workstation after reconciliation stops being manual | ✅ **4/4** |
 | 5 | 🟠 Refunds — the mirror must still balance | ☐ 0/3 |
 | 6 | 🟠 Copy, terms and i18n — EN/SW/ZH, and a terms version bump | ✅ **5/5** |
-| 7 | 🟠 In-flight applicants must not be stranded by the deploy | ⏳ **1/3** — 7.3 measured: **no migration needed** |
-| 8 | 🟡 Gates — the suites that hold this subsystem, on the deploy path | ⏳ **2/3** — 8.2 + 8.3; predeploy 97 → 98, two guards on the path |
+| 7 | 🟠 In-flight applicants must not be stranded by the deploy | ✅ **3/3** — ⛔ no migration: measured, nobody is mid-flight on the old rail |
+| 8 | 🟡 Gates — the suites that hold this subsystem, on the deploy path | ✅ **3/3** — FIVE guards on predeploy, 231 assertions |
 
 <details><summary><strong>Row ledger — tick these</strong></summary>
 
@@ -302,13 +302,13 @@ would unblock it, do every other unit, and report it at the end. **Never idle.**
 
 | | Unit 7 · In-flight | where |
 |---|---|---|
-| ☐ | **7.1** applicants already at `PAYMENT_PENDING` by the old rail are honoured — ⭐ **measured: ZERO exist**, so this is a non-regression guard on the legacy path, not a backfill | no migration needed |
-| ☐ | **7.2** a `feeReference` already recorded is not orphaned — ⭐ **measured: ZERO undecided**; the only one belongs to the APPROVED agent and must be preserved untouched | data |
+| ✅ | **7.1** applicants already at `PAYMENT_PENDING` by the old rail are honoured — ⭐ **measured: ZERO exist**, so this is a non-regression guard on the legacy path, not a backfill | **`test:agent-fee-legacy-rail` NEW, 27 assertions, on predeploy.** ⛔ No migration written and none needed. 🔴 **The money defect it exists to prevent:** if `recordFeeRefund`'s branch ever collapses to *"always the wallet"* — the tempting simplification once the wallet is the only live rail — refunding the one historical bank-collected fee would **credit a wallet that was never debited**, which is not a wrong destination but MINTING shillings. §2.5 asserts an EXTERNAL refund has NO `PLAYER:` leg at all. Proven by mutation (`source === "WALLET"` → `true`): caught by 1.5 and 2.4 here **and** independently by `test:agent-fee-wallet`. ⚠️ §1/§2 drive the BUILDER and are blind to callers by construction, so §3 asserts the call sites at source and says plainly that it is the weaker evidence |
+| ✅ | **7.2** a `feeReference` already recorded is not orphaned — ⭐ **measured: ZERO undecided**; the only one belongs to the APPROVED agent and must be preserved untouched | §5 asserts the READ path still SHOWS it — reference, statement line and attested amount all rendered to the officer. ⭐ **A reference that survives in the database but vanishes from the screen is orphaned in every way that matters to the person using it**, and Unit 4 rewrote exactly that panel. §4 then pins the rule that makes the historical row safe: **`null` reads as EXTERNAL**, and it is written in TWO places (`recordFeeRefund`'s `?? "EXTERNAL"` and `fee-evidence.ts`'s `fundingSourceOf`), so §4.2 asserts the two AGREE on every input — the same two-encodings-of-one-rule shape that caused §5d |
 | ✅ | **7.3** measured on production BEFORE the deploy: how many are mid-flight | ⭐ **DONE — 2 rows total, 1 in-flight, and it has paid nothing.** See the note above for the route and the full census |
 
 | | Unit 8 · Gates | where |
 |---|---|---|
-| ⏳ | **8.1** the agent suites that cover the fee are identified and extended | ✅ **`test:agent-fee-wallet` NEW** (47 assertions, in `test:all` automatically — it discovers every `test:*` key, so the board is **325** now, not 324). ✅ `test:agent-application-security` **extended**: its §8 audit scan read only `agent-application-service.ts` and the fee's audit now fires from `wallet-service.ts`, so it was measuring the wrong population — it now reads both and asserts it reaches the wallet rail. ⏳ remaining agent suites reviewed under Units 3–6 |
+| ✅ | **8.1** the agent suites that cover the fee are identified and extended | **FIVE guards now hold this subsystem, all on `predeploy`:** `agent-fee-wallet` **58** · `agent-fee-wallet-path` **59** (was 34 — new §7 drives a real payment through to `submitForReview`, §8 holds the other side, §9 renders the fee emails) · `agent-fee-officer-panel` **43** NEW · `agent-terms-binding` **20** NEW · `agent-fee-legacy-rail` **27** NEW. **231 assertions.** ⭐ Every one of the three new suites found something its author had not gone looking for: the terms guard found /agent/apply (§5e), the panel guard found a fourth slot that lied, the legacy guard found my own sign assumptions were wrong |
 | ✅ | **8.2** each new guard is proven RED before its fix | ⭐ **RED 21/11 → GREEN 34/0 → hardened to 47/0**, and then **re-broken FIVE ways**. ⛔ **TWO MUTATIONS ESCAPED THE FIRST VERSION** and are recorded in the guard's own §4 docblock rather than quietly patched: (a) `reconcileFee`'s `source` flipped to `"WALLET"` — §1 calls the entry builder DIRECTLY, so it proved the parameter works and never checked the CALLER, which is exactly the defect the parameter exists to stop; (b) `requireBalanceGte` deleted — the in-memory store serialises through one lock, so the read-then-write race cannot be staged there at all. §4 closes both. ⚠️ They are **source assertions** because `postLedgerEntries` writes nothing without a database ("the in-memory store doesn't have a LedgerEntry model"), so the posted legs cannot be read back — ⛔ not a substitute for driving it on Postgres |
 | ✅ | **8.3** `predeploy` runs them | `test:agent-fee-wallet` appended to the `predeploy` chain (**96 → 97 entries**), after the peer's `test:support-contact && test:cert-c1`. ⛔ Added only AFTER it was green — an already-red suite on the deploy path blocks BOTH campaigns, the same call the peer made on `test:popup-fit`. ⚠️ No `red:` twin was added: it fails by construction, and this repo's red harness mutates the tree IN PLACE |
 
@@ -608,8 +608,56 @@ forever, and the person we refused out of pocket while our books said we paid th
 
 ## §6 · ⏭️ RESUME AT
 
+> ## 🏁 SESSION 3 · **ALL NINE UNITS SEALED (0–8).** The §2 ledger above is complete.
+>
+> Shipped live: **`163529e9`** (the submit gate — a paying applicant could not apply), then
+> Units **4**, **6.3/6.4/6.5** and **7.1/7.2**. Five guards, **231 assertions**, all on `predeploy`.
+>
+> ### ⛔ WHAT THE NEXT SESSION MUST NOT ASSUME
+> - **`test:guards-exist` is RED on `main` and it is NOT from this campaign.** `33ef87ab`
+>   (SUPPORT & CARE Unit 6) committed two npm keys — `ops:prelaunch-reset`, `ops:prelaunch-purge`
+>   — whose target scripts exist only as UNTRACKED files in `F:\kipindi-main`. Every clone gets a
+>   red board. ⭐ The lesson is the ASYMMETRY, not the sweep: **keys are tracked and scripts are
+>   not**, so committing `package.json` publishes a REFERENCE and leaves its REFERENT behind.
+> - **`test:read-tiers` is a baseline red that NAMES this campaign's area**
+>   (`admin/agents/page.tsx`, `identity.contact`, ratchet ceiling 0). ⛔ Deliberately NOT touched:
+>   it belongs to read-tiers/RBAC, and burying a compliance-surface change inside a payments
+>   commit puts it where no reviewer would look.
+> - **`test:failure-reasons` 10.1/10.2** names `agent/apply/apply-client.tsx:290` — a raw server
+>   string in a player toast. Dated by `git log -S` to `a783299f`, the ORIGINAL agent-programme
+>   commit, so it predates this campaign. Two of that file's three toasts already route through
+>   `failureCopy`; `:290` is the odd one out. Small, real, deliberately left un-bundled.
+> - ⚠️ **A production data reset is STAGED but NOT executed** (`asheib-33`,
+>   `docs/PRELAUNCH-RESET.md`). It KEEPS the one APPROVED agent row and DELETES the DRAFT with
+>   its owner. ⛔ **Afterwards the historical fee is not reconstructible from the ledger** — the
+>   `AGENT_REGISTRATION_FEE` entries go with it. Assert against the APPLICATION ROW, never the
+>   ledger. The agent's RATE survives; the EARNINGS reset to zero.
+>
+> ### ⭐ THE THREE THINGS WORTH CARRYING OUT OF THIS SESSION
+> 1. **Ask which BRANCH of a guard executes today.** `agent-fee-wallet-path` §5 was headed *"a
+>    funded applicant pays and becomes able to submit"* — and both happy-path assertions sat
+>    inside `if (typeof payFeeFromWallet !== "function")`, the ABSENT branch. From the moment the
+>    feature shipped, the only thing that section ever tested was the unhappy path. That is how a
+>    paying applicant reached production unable to apply.
+> 2. **A hand-chosen population is the commonest way a TRUE guard goes blind.** Two green guards
+>    policed "no destination account in applicant copy"; one's population was a filename, the
+>    other's a dictionary block — and the account was live on THREE surfaces. The DISCOVERED walk
+>    found the third on its first run. ⭐ *I would not have found it by reading.*
+> 3. **A note to a future reader is not a control.** `agent-terms-version.ts` already said
+>    *"⛔ Bump it whenever the BINDING text changes"*, and the bump was missed anyway. It now
+>    carries a content hash, so the text cannot move without the version being looked at.
+>
+> ### ⚠️ AND FOUR TIMES A GUARD OF MINE ACCUSED CORRECT CODE FIRST
+> A `>LABEL<` detector that matched the identifier `feeAttestedTzs`; a ratchet demanding half the
+> tree survive an exemption when the staff console is legitimately more than half of `src/app`; a
+> ZH vocabulary ban that matched its own replacement copy, because a true sentence must name what
+> it negates; and ledger sign assertions written from intuition rather than measurement.
+> ⭐ **An accusation that has to be waved away is how the next real one gets waved away too.**
+
+---
+
 **Session 1 · SHIPPED AND LIVE `c5dd7918` — Units 0, 1, 2, 7.3 and 8.2/8.3 sealed. Units 3, 4, 5,
-6 and 7.1/7.2 remain.**
+6 and 7.1/7.2 remain.** *(historical — superseded by the block above)*
 
 ### What is live, and how it was verified
 `d9de3eaf..c5dd7918`, six commits, deployed **SUCCESS** and verified three independent ways:

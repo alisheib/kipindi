@@ -30,6 +30,9 @@ import crypto from "node:crypto";
 import { createRequire } from "node:module";
 import { DEFAULT_LIPA_CONFIG } from "../src/lib/server/lipa-config.ts";
 import { LIPA_QR_RELEASED, formatLipaNumber, lipaQrIsSafeFor, lipaQrWouldShow, normalizeLipaNumber, shouldShowLipaQr } from "../src/lib/lipa.ts";
+// ⛔ The SHARED comment scanner — see §4.3. A private stripper would trip `test:decomment`'s
+// ratchet on exactly the grounds that make the shared one correct.
+import { decomment } from "./lib/decomment.mts";
 
 const require = createRequire(import.meta.url);
 const sharp = require("sharp");
@@ -266,8 +269,31 @@ check("4.2 every allow-listed surface still renders it", missing.length === 0, m
 
 // The pinned payload is a build-time assertion. If it reaches a component it has
 // reached the browser, and `lipaDisplay()`'s deliberate omission has been undone.
-const payloadLeaks = srcFiles.filter((f) => /\.tsx$/.test(f) && /qrPayload/.test(fs.readFileSync(f, "utf8"))).map(rel);
+/**
+ * ⚠️ STRIP COMMENTS FIRST, WITH THE SHARED SCANNER.
+ *
+ * 🔴 THIS FIRED ON A DOCBLOCK, 2026-09-11. `/agent/apply/page.tsx` gained a comment explaining
+ * why the Lipa props are now gated at the SERVER component — and that explanation necessarily
+ * NAMES the field it is about. The check read raw bytes, found the identifier in prose, and
+ * reported a payload leak on the very file that had just been made safer.
+ *
+ * ⛔ A SOURCE ASSERTION HAS TO TEST CODE, NOT WRITING ABOUT CODE, or documenting a fix becomes
+ * indistinguishable from not making it — and an accusation that must be waved away is how the
+ * next real one gets waved away too. `scripts/lib/decomment.mts` exists for exactly this:
+ * *"a guard that greps raw text matches the paragraph explaining the fix instead of the fix."*
+ * ⭐ The SHARED scanner, never a private pair of regexes: `test:decomment` ratchets those,
+ * because a regex pair has an ORDER and each order is its own blindness.
+ */
+const payloadLeaks = srcFiles
+  .filter((f) => /\.tsx$/.test(f) && /qrPayload/.test(decomment(fs.readFileSync(f, "utf8"))))
+  .map(rel);
 check("4.3 the pinned payload never reaches a component", payloadLeaks.length === 0, payloadLeaks.join(", "));
+// ⭐ CONTROL · it must still catch a REAL interpolation, or decommenting has hollowed it out.
+check("4.3b CONTROL · a real interpolation is still caught after decommenting",
+  /qrPayload/.test(decomment("export const X = () => <p>{cfg.qrPayload}</p>;")));
+// ⭐ …and the shape that caused the false positive must NOT be caught.
+check("4.3c CONTROL · …while a docblock merely NAMING the field is not",
+  !/qrPayload/.test(decomment("/* dropping `qrPayload` kept it out of the browser */\nexport const Y = 1;")));
 
 // ⛔ The deposit page is the specific surface this rule exists to protect. Named
 // explicitly so the guard says WHY if someone ever wires it up.
