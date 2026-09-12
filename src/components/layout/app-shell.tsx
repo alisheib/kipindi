@@ -32,7 +32,7 @@ import { AuthFlash } from "./auth-flash";
 import { NavProgress } from "@/components/ui/nav-progress";
 import { RouteTransition } from "@/components/ui/route-transition";
 import { getSession, wasSessionRevokedThisRequest } from "@/lib/server/session";
-import { SessionRevokedRedirect } from "./session-revoked-redirect";
+import { redirect } from "next/navigation";
 import { db } from "@/lib/server/store";
 import { guestUser } from "@/lib/ui-stubs";
 import { getTickerFeed } from "@/lib/server/ticker-feed";
@@ -65,12 +65,47 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   const session = await getSession();
-  // B-13 — the revoked device gets its explanation. getSession() found the
-  // cookie displaced by a newer login but could not set the flash (render
-  // context); route to login with ?revoked=1 instead of silently rendering a
-  // signed-out shell. /auth/* is excluded so the login page itself renders.
+  // B-13 — the revoked device gets its explanation. getSession() found the cookie displaced in
+  // the registry (or with no row at all) but could not set the flash, because cookie mutation
+  // throws in a render. Send it to the login page with `?revoked=1` instead of silently
+  // rendering a signed-out shell. /auth/* is excluded so the login page itself renders — ⛔ that
+  // exclusion is load-bearing: without it this redirects /auth/login to itself.
+  //
+  // 🔴 E-381 · `redirect()`, NOT A CLIENT SHIM — AND THE DIFFERENCE WAS A TOTAL LOCKOUT.
+  // This used to `return <SessionRevokedRedirect next={…} />`, a "use client" component that
+  // called `router.replace()` from a useEffect. Two things made that catastrophic, and the
+  // second is the one that is easy to miss:
+  //   ① The branch returns INSTEAD OF `{children}`, and AppShell is the root layout's only
+  //      consumer of `children` (`app/layout.tsx:154`). So the rendered tree had no children
+  //      slot at all.
+  //   ② `router.replace` is a SOFT navigation, and **a shared root layout is not re-executed
+  //      on one** — Next prunes the matching root segment from the flight response
+  //      (`walk-tree-with-flight-router-state.js`: `renderComponentsOnThisLevel` is false when
+  //      the segment matches). So the login page's RSC payload came back **200** and mounted
+  //      NOWHERE. The player sat on the bare `<body>` — navy, and literally nothing else — with
+  //      zero console errors, zero page errors and nothing in the logs.
+  // Measured 2026-09-12 on /wallet, /positions, /markets and the fully public /legal/rules:
+  // `innerText.length === 0` every time, while the SAME url hard-loaded rendered 1029 chars.
+  // Production had been recording it: 220 revocations against 30 logins across 7 accounts, with
+  // one device writing 9 audit rows in 31 seconds because the cookie is never cleared.
+  //
+  // ⭐ A `redirect()` from a Server Component is a REAL 307 on a document request, so the login
+  // page arrives on a fresh render with its own layout — no client component, no blank frame,
+  // and it works with JavaScript disabled, which the shim never did. `admin/layout.tsx:59` has
+  // done exactly this, in this same Next version, in production, all along.
+  // ⚠️ On a `router.refresh()` or a Server Action the tree re-renders FROM the root, so this
+  // branch does run there and `redirect()` degrades to a client router navigation — which still
+  // lands correctly, because a children slot exists in that render.
+  // ⛔ `as never` is required by `typedRoutes: true` (next.config.ts) — same cast, same reason,
+  // as `admin/layout.tsx:59`. It silences the only compile-time check on this string, so
+  // `test:revoked-deadend` asserts the literal `revoked=1` that `auth/login/page.tsx:42` reads.
+  // ⛔ DO NOT reintroduce a client redirect here, and do not assert this from the URL: the URL
+  // was correct (`/auth/login?revoked=1&next=…`) for the whole life of the bug. That is exactly
+  // how it shipped green. See `docs/SESSION-REVOKED-DEADEND.md`.
   if (!session && wasSessionRevokedThisRequest() && !pathname.startsWith("/auth")) {
-    return <SessionRevokedRedirect next={h.get("x-href") ?? pathname} />;
+    const raw = h.get("x-href") ?? pathname;
+    const safe = /^\/(?![/\\])/.test(raw) && !raw.startsWith("/auth/") ? raw : "";
+    redirect(`/auth/login?revoked=1${safe ? `&next=${encodeURIComponent(safe)}` : ""}` as never);
   }
   let topUser: {
     initials: string;

@@ -93,6 +93,40 @@ for (const target of ["/wallet", "/positions", "/markets", "/legal/rules"]) {
   ok(`${target} · no page errors`, errs.length === 0, errs.join(" | "));
 }
 
+// ── ⭐ THE CASE THE OLD CLIENT SHIM COULD NEVER PASS: JavaScript DISABLED.
+// The fix is a server `redirect()`, i.e. a real 307 the browser follows with no script at all.
+// A `router.replace`/`window.location.replace` shim needs JS to run and would leave a blank
+// navy page here for ever. This assertion is what pins the fix to the SERVER, so nobody can
+// quietly reintroduce a client redirect and still see green.
+{
+  const NJ = await browser.newContext({ javaScriptEnabled: false });
+  const nj = await NJ.newPage();
+  // Reuse device A's displaced cookies in a JS-free context.
+  await NJ.addCookies((await A.cookies()).filter((c) => c.name === "kp_session"));
+  await nj.goto(BASE + "/wallet", { waitUntil: "domcontentloaded" });
+  await wait(2500);
+  const r = await nj.evaluate(() => ({
+    path: location.pathname,
+    search: location.search,
+    textLen: document.body.innerText.trim().length,
+    hasPassword: !!document.querySelector('input[type="password"]'),
+  })).catch(async () => ({
+    path: new URL(nj.url()).pathname,
+    search: new URL(nj.url()).search,
+    textLen: (await nj.innerText("body").catch(() => "")).trim().length,
+    hasPassword: (await nj.locator('input[type="password"]').count()) > 0,
+  }));
+  ok("JS DISABLED · the redirect still happens (it is a server 307, not a script)",
+    r.path === "/auth/login", `(path=${r.path})`);
+  ok("JS DISABLED · and the login page renders, with a password field",
+    r.textLen > 100 && r.hasPassword, `(text=${r.textLen} password=${r.hasPassword})`);
+  // The literal `revoked=1` is the only thing auth/login/page.tsx:42 reads, and the redirect
+  // target is cast `as never` for typedRoutes — so nothing else type-checks this string.
+  ok("JS DISABLED · the revoked=1 flag auth/login reads is present",
+    r.search.includes("revoked=1"), `(search=${r.search})`);
+  await NJ.close();
+}
+
 await browser.close();
 
 console.log(`\n[revoked-deadend] ${pass} passed, ${failures.length} failed`);
