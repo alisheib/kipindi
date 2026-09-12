@@ -102,9 +102,38 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
   // ⛔ DO NOT reintroduce a client redirect here, and do not assert this from the URL: the URL
   // was correct (`/auth/login?revoked=1&next=…`) for the whole life of the bug. That is exactly
   // how it shipped green. See `docs/SESSION-REVOKED-DEADEND.md`.
-  if (!session && wasSessionRevokedThisRequest() && !pathname.startsWith("/auth")) {
+  // ⛔ `pathname` MUST BE NON-EMPTY, and that token is a loop guard, not a tidiness check.
+  // `src/proxy.ts:214` is the only writer of `x-pathname`. If it is ever absent — a proxy bundle
+  // that failed to build or deploy, or a route that slips the matcher — `pathname` is `""`, and
+  // `"".startsWith("/auth")` is FALSE. So the login page itself would enter this branch and
+  // redirect to itself: an infinite loop on every route, including the only page that could get
+  // the player out. Requiring the header to be present fails CLOSED instead, to a normal
+  // signed-out shell. (The `/admin` early return above has the same dependency and the same
+  // failure mode; it is recorded in `docs/SESSION-REVOKED-DEADEND.md` §6.)
+  if (!session && wasSessionRevokedThisRequest() && pathname && !pathname.startsWith("/auth")) {
     const raw = h.get("x-href") ?? pathname;
     const safe = /^\/(?![/\\])/.test(raw) && !raw.startsWith("/auth/") ? raw : "";
+    // 🔴 THIS FIXES THE DOCUMENT PATH ONLY, AND THE OTHER PATH IS STILL BROKEN. READ §6 ITEM 1
+    // OF `docs/SESSION-REVOKED-DEADEND.md` BEFORE YOU BELIEVE THIS BRANCH IS DONE.
+    // On a document request `redirect()` is a real 307 — the reported journey, and the best
+    // possible outcome: no client code, no blank frame, works with JavaScript off.
+    // ⛔ BUT the root layout is ALSO re-rendered on a `router.refresh()`, and `RefreshPoller`
+    // calls exactly that on an interval with NO session gate on /markets (30s), a market page
+    // (15s), /live (15s), /positions (20s), /updown (20s), /leaderboard (30s), /results (60s) —
+    // and `50pick:refresh` is dispatched right after a bet, a cash-out and an Up & Down tap. On
+    // that flight request `redirect()` degrades to a CLIENT navigation, which cannot escape a
+    // root-layout decision, because a shared root layout is pruned from the flight response and
+    // the tree it lands in has no `children` slot.
+    // ⛔ MEASURED 2026-09-12: a displaced device sitting on /markets touching NOTHING was bounced
+    // at **t+28s** to this url with `innerText.length === 0`, still blank 6s later. So the blank
+    // page is STILL REACHABLE mid-visit, including immediately after a money action. The judge
+    // panel's claim that a refresh "still lands correctly" is false — measured, not argued.
+    // ⚠️ AN ATTEMPTED FIX WAS REVERTED, DELIBERATELY: returning a hard-navigating client escape
+    // for flight requests (detected via the `rsc` / `next-router-state-tree` headers) produced a
+    // RETRY STORM — the same `_rsc` request repeating ~18 times, 200 each, still blank. Not
+    // understood, so not shipped. ⛔ Do not re-attempt it without driving
+    // `scripts/revoked-midvisit-repro.mjs` first; a loop here is worse than the bug.
+    // ⭐ The real fix is to stop deciding this in the ROOT LAYOUT at all (§6 item 1).
     redirect(`/auth/login?revoked=1${safe ? `&next=${encodeURIComponent(safe)}` : ""}` as never);
   }
   let topUser: {

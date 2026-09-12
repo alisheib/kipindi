@@ -179,10 +179,35 @@ bug: **8 failures, exit 1**, every failure reading `text=0 path=/auth/login`. `t
 the fix but were added after that mutation run, so they are not themselves mutation-proven — see §6
 item 0.
 
-### What is still NOT fixed by this
-`kp_session` is still never cleared, so a displaced device re-enters this branch on every request
-until it signs in again, and each of those requests still writes an audit row. And because the root
-layout is pruned on every soft navigation, the check **cannot fire mid-visit at all** — see §6.
+### 🔴 WHAT IS STILL NOT FIXED — THE BLANK PAGE IS STILL REACHABLE
+
+⛔ **Only the DOCUMENT path is fixed. Do not read this file as "E-381 is closed".** An earlier
+draft of this section said the check "cannot fire mid-visit at all". **That was wrong, and it was
+the same mistake twice** — the first two fixes each asserted in their own docstring that the branch
+could only fire on a hard load.
+
+`router.refresh()` marks the root segment `refetch`, which **is** the branch that re-renders the
+root layout. And `src/components/ui/refresh-poller.tsx` calls exactly that on an interval, mounted
+with **no session gate**, on `/markets` (30s), a market page (15s), `/live` (15s), `/positions`
+(20s), `/updown` (20s), `/leaderboard` (30s) and `/results` (60s) — plus the `50pick:refresh` event
+dispatched right after **placing a bet**, **cashing out** and an **Up & Down tap**. On that flight
+request `redirect()` degrades to a client navigation, which cannot escape a root-layout decision,
+so the player goes blank.
+
+**Measured 2026-09-12** (`npm run repro:revoked-midvisit`): displaced device, soft-navigated to
+`/markets` with the real nav `<Link>`, then touching nothing → bounced at **t+28s** to
+`/auth/login?revoked=1&next=%2Fmarkets` with **`innerText.length === 0`**, still 0 six seconds
+later. A player can therefore be blanked **immediately after a money action**, at the moment they
+most need to see whether their money moved.
+
+⚠️ **An attempted fix was reverted, deliberately.** Returning a hard-navigating client escape for
+flight requests (detected via the `rsc` / `next-router-state-tree` request headers) produced a
+**retry storm** — the identical `_rsc` request repeating ~18 times, HTTP 200 each, page still
+blank. The cause was not understood, so it was not shipped: a loop on the auth path of a live money
+platform is worse than the bug. ⛔ Do not re-attempt it without driving the repro first.
+
+⚠️ Also still true: `kp_session` is never cleared, so a displaced device re-enters this branch on
+every request until it signs in again, and each of those requests writes another audit row.
 
 ---
 
@@ -198,7 +223,19 @@ rather than as a follow-up.
    disabled in this working tree while reporting "0 files left dirty", and a parallel session has
    switched this checkout's branch mid-edit.
 
-1. 🔴 **P0 · `/api/events` turns a one-second database blip into a permanent sign-out.** A Route
+1. 🔴 **P0 · THE BLANK PAGE IS STILL LIVE ON THE MID-VISIT PATH — take the decision out of the
+   root layout.** Measured, reproducible in one command (`npm run repro:revoked-midvisit`), and
+   the full evidence is in §5. `RefreshPoller`'s `router.refresh()` re-renders the root layout, so
+   the branch fires mid-visit and `redirect()` degrades to a client navigation that lands blank —
+   including right after a bet or a cash-out. ⭐ **The only durable answer is that the root layout
+   must stop deciding this**, because a decision made there can only be escaped by a document
+   navigation. Two shapes worth costing: (a) render the explanation IN PLACE as a server-rendered
+   panel and never navigate (its CTA must be a plain `<a>`, **never `<Link>`**); or (b) move the
+   decision to the proxy, which ⚠️ per the audit *is* on the Node runtime in this build and so
+   *can* read the registry — but ⛔ read the two MUST-NOTs below before going near it.
+   ⛔ Do not simply re-attempt the flight-request escape: it retry-stormed. See §5.
+
+2. 🔴 **P0 · `/api/events` turns a one-second database blip into a permanent sign-out.** A Route
    Handler runs in a mutable-cookie phase, so the `jar.delete(COOKIE_NAME)` at `session.ts:144`
    that *silently throws* during a render **succeeds** there, and the `Set-Cookie` rides out on the
    401. ⚠️ The audit's own correctness judge then found the limit of this: `app-shell.tsx` gates the

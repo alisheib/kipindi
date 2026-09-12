@@ -255,6 +255,7 @@
     "test:kyc-stage": "tsx scripts/kyc-stage.test.mts",
     "test:deploy-skew": "tsx scripts/deploy-skew.test.mts",
     "test:revoked-deadend": "node scripts/revoked-deadend.test.mjs",
+    "repro:revoked-midvisit": "node scripts/revoked-midvisit-repro.mjs",
     "test:kyc-restart-docs": "tsx scripts/db-scratch.mts --run npx tsx scripts/kyc-restart-clears-documents.test.mts",
     "test:kyc-copy-truth": "tsx scripts/kyc-copy-truth.test.mts",
     "red:kyc-gate": "node scripts/kyc-gate-red.mjs",
