@@ -82,10 +82,10 @@ ok("2.2 ⛔ navigator.standalone is checked too — it is the ONLY signal on iOS
 ok("2.3 …and the answer gates the render, not merely the effect",
    /const eligible = !installed && visible && !isCommitSurface\(pathname\);/.test(inv)
    && /if \(!holdsSlot\) return null;/.test(inv), "");
-ok("2.3b ⭐ ONE floating invitation at a time — this card claims the slot at priority 1 and wins",
-   /useInvitationSlot\("install", 1, eligible\)/.test(inv)
+ok("2.3b ⭐ this card owns the BOTTOM zone; the channels panel owns top-right, so neither can block the other",
+   /useInvitationSlot\("install", "bottom", 1, eligible\)/.test(inv)
    && /data-invitation="install"/.test(inv),
-   "install is a utility for the player; the channels panel is a thing we want, so it yields");
+   "a single global slot with a fixed priority meant the loser NEVER showed — measured on production");
 ok("2.4 ⭐ it is RE-CHECKED on visibilitychange — a viewer can install from the browser menu without this document unmounting",
    /addEventListener\("visibilitychange", onVisible\)/.test(inv), "");
 ok("2.5 the appinstalled event writes a PERMANENT stop",

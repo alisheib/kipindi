@@ -211,8 +211,14 @@ const Ibase = {
   /* Link2 — referral link */
   link: (p: GlyphProps) => <G {...p}><path d="M9 17H7.4a5 5 0 0 1 0-10H9" /><path d="M15 7h1.6a5 5 0 0 1 0 10H15" /><path d="M8 12h8" /></G>,
 
-  /* WhatsApp share — profile · invite (replaces today's MessageCircle) */
-  messageWhatsapp: (p: GlyphProps) => <G {...p}><path d="M4 12a8 8 0 1 1 3.3 6.45L4 19.5l1.1-3.2A7.9 7.9 0 0 1 4 12z" /><path d="M9.4 9c-.2 0-.5.1-.6.4-.3.5-.6 1.1-.5 1.8.2 1.6 1.3 3 2.8 3.8.7.4 1.4.5 2 .4.4 0 .9-.4 1-.8.1-.3 0-.5-.2-.7l-1-.7c-.2-.1-.4-.1-.6.1l-.4.4c-.7-.4-1.3-1-1.6-1.7l.4-.4c.2-.2.2-.4.1-.6l-.6-1c-.1-.2-.3-.3-.5-.3z" /></G>,
+  /* ⛔ `messageWhatsapp` WAS HERE AND IS DELETED (2026-09-12). It was a hand-drawn approximation
+     of the WhatsApp mark, and the product now ships the real one — `WhatsAppMark` in
+     `src/components/ui/social-marks.tsx`, in the vendor's own `#25D366`. Ali: *"we now have a
+     real icon; everywhere we used to have WhatsApp logos and icons, replace with the new one."*
+     ⭐ It is DELETED rather than left orphaned because a second drawing of the same mark is a
+     second definition site, and the one nobody is watching is the one a future call site picks.
+     Its three consumers — the market share sheet, the position share button and the invite
+     screen — all import the real mark now. */
 
 // ───────────────────────────── A2 · admin ─────────────────────────────
 

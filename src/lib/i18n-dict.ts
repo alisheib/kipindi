@@ -2012,11 +2012,15 @@ export const dict = {
      * would silently drag the verb into the footer the next time somebody edited it.
      * ⚠️ Each `aria*` MUST contain its visible label verbatim — WCAG 2.5.3 Label in Name, so a
      * speech-input user saying what they can see actually activates the link.
-     * ⛔ "Daily updates and polls" is the ONLY claim made here, because it is the only one the
-     * channel actually delivers. Do not add results, offers, bonuses or news.
+     * ⛔ THE HEADING MAKES NO CLAIM ABOUT CONTENT, ON PURPOSE. It read "Daily updates and
+     * polls" first — true of the WhatsApp channel, which is where that fact came from, and
+     * NOT established for Instagram or TikTok, which sat under the same heading. A sentence
+     * that is true of one of three things is false as a heading over all three (G8).
+     * "Follow 50pick" is the standard label for this module, promises nothing, and cannot
+     * go stale when a channel changes what it posts. ⛔ Do not add results, offers or bonuses.
      */
     channels: {
-      title: "Daily updates and polls",
+      title: "Follow 50pick",
       joinInstagram: "Join us on Instagram",
       joinTiktok: "Join us on TikTok",
       joinWhatsapp: "Join our WhatsApp channel",
@@ -4171,7 +4175,7 @@ export const dict = {
       ariaWhatsappChannel: "Chaneli ya WhatsApp ya 50pick · hufunguka katika kichupo kipya",
     },
     channels: {
-      title: "Taarifa za kila siku na kura",
+      title: "Fuata 50pick",
       joinInstagram: "Jiunge nasi kwenye Instagram",
       joinTiktok: "Jiunge nasi kwenye TikTok",
       joinWhatsapp: "Jiunge na chaneli yetu ya WhatsApp",
@@ -6249,7 +6253,7 @@ export const dict = {
       ariaWhatsappChannel: "50pick 的 WhatsApp 频道 · 在新标签页中打开",
     },
     channels: {
-      title: "每日更新与投票",
+      title: "关注 50pick",
       joinInstagram: "在 Instagram 关注我们",
       joinTiktok: "在 TikTok 关注我们",
       joinWhatsapp: "加入我们的 WhatsApp 频道",

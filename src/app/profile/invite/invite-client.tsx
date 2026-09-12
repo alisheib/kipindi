@@ -2,6 +2,7 @@
 
 import { useState, useRef, useLayoutEffect } from "react";
 import { I } from "@/components/ui/glyphs";
+import { WhatsAppMark } from "@/components/ui/social-marks";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { useT } from "@/lib/i18n";
@@ -138,7 +139,7 @@ export function ReferralShare({ link, shareText }: { link: string; shareText: st
           the full width on the phone's second row for balance. */}
       <div className="mt-2.5 grid grid-cols-2 sm:grid-cols-3 gap-2">
         <a href={waHref} target="_blank" rel="noopener noreferrer" className="block min-w-0">
-          <Button variant="ghost" size="md" fullWidth leading={<I.messageWhatsapp s={14} />} className="text-[12px]">
+          <Button variant="ghost" size="md" fullWidth leading={<WhatsAppMark s={14} />} className="text-[12px]">
             WhatsApp
           </Button>
         </a>

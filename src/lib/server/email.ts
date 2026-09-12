@@ -474,25 +474,45 @@ const MARK_IMG = `<img src="${appUrl()}/icons/mark-color-512.png" width="56" hei
  *  approved, …); everything else (security, process, loss, refunds, admin) uses
  *  royal — the same gold-discipline law the rest of the app follows. */
 /**
- * `noPromo` — this message must carry NO promotional element, so the footer's social row
- * is withheld from it.
+ * `promo` — this message MAY carry the footer's social row. Everything else may not.
  *
- * 🔴 THE POPULATION IS NOT "RG PAGES", IT IS "MESSAGES ABOUT HARM, A LOSS, OR A LOCKOUT",
- * and it is wider than it first looks. `/legal/responsible-gambling` §4 publishes a binding
- * promise — "no marketing to self-excluded players or players under 25 in vulnerability
- * segments" — and a follow-us link at the foot of a *you lost* email is precisely the thing
- * that promise is about. E-328 is the standing lesson here: the failure mode on this
- * platform has never been a missing disclosure, it has been the RIGHT content published in
- * the WRONG frame, and it took a human reading the rendered message to see it.
+ * 🔴 THE DEFAULT WAS THE OTHER WAY ROUND FOR HALF A DAY, AND IT WAS WRONG. The first version
+ * was `noPromo`, an opt-OUT with five hand-listed templates. An adversarial audit measured what
+ * that actually left: **sixteen harm-shaped templates still carried a "Join us on Instagram"
+ * line**, including `accountClosedHtml` — sent to somebody who has just closed their account —
+ * plus `kycRejectedHtml`, `amlRejectRefundHtml`, `depositFailedHtml`, `agentRevokedHtml` and
+ * `marketCancelledRefundHtml`. Nothing was broken; the list was simply incomplete, and a
+ * hand-listed exception set is always incomplete the day someone adds the 62nd template.
  *
- * ⭐ Named for the RULE, not the mechanism. A flag called `rg` would have invited the next
- * template to ask "but is this an RG email?" — which `lossNotificationHtml` is not, and
- * which it must still suppress. `noPromo` answers the question that actually decides it.
+ * ⭐ SO IT IS OPT-IN NOW, AND THE NEW TEMPLATE IS SILENT BY DEFAULT. `/legal/responsible-
+ * gambling` §4 publishes "no marketing to self-excluded players", and E-328 is the standing
+ * lesson: the failure on this platform has never been a missing disclosure, it has been the
+ * right content in the wrong frame. Default-deny is the only shape where forgetting is safe.
  *
- * Enforced, not remembered: `npm run test:social-links` §4 renders each of these templates
- * and fails if a social URL appears in the output.
+ * ⛔ THE SEVEN THAT OPT IN, and why each is a message nobody is hurting when they read it:
+ *   `welcomeHtml` · `inviteHtml` · `kycApprovedHtml` · `kycSubmittedHtml`
+ *   `proposalApprovedHtml` · `proposalListedHtml` · `agentApprovedHtml`
+ * ⛔ Money moments are deliberately NOT on it — not a deposit receipt, not a withdrawal, not a
+ * bet receipt, and not a WIN. "You won, now follow us" is the same defect as putting the row on
+ * the win celebration, which `docs/COMPLIANCE-DECISIONS.md` already refuses.
+ *
+ * Enforced, not remembered: `npm run test:social-links` §4 DISCOVERS every `*Html` export and
+ * fails on any that is neither silent nor on the written allow-list.
+ *
+ * ⛔ THE ROW IS TEXT, NOT ICONS. Gmail and Outlook block remote images by default — the rule
+ * `docs/EMAIL-SIGNATURES.md` already teaches — so a logo here would simply be absent for most
+ * readers, and an absent logo beside a present one reads as a broken email rather than a quiet
+ * one. Words survive image-blocking, and a plain-text client too.
+ * ⭐ It sits LAST, below "Manage preferences": the same ranking the in-app footer uses — nothing
+ * promotional above an unsubscribe or a regulator disclosure.
+ *
+ * ⚠️ AND THIS EXPLANATION LIVES HERE, NOT IN AN HTML COMMENT INSIDE THE TEMPLATE. It was written
+ * as `<!-- … -->` first, which SHIPS TO THE RECIPIENT — and because it carried ⛔ and ⭐, the
+ * emoji were in the delivered bytes of six emails. `test:cert-c1` caught it ("no emoji in the
+ * copy") and it only fired on the promo templates, because the comment sat inside the conditional.
+ * An HTML comment is not a code comment: it is content.
  */
-function wrap(body: string, opts: { accent?: "gold" | "royal"; noPromo?: boolean } = {}): string {
+function wrap(body: string, opts: { accent?: "gold" | "royal"; promo?: boolean } = {}): string {
   const gold = opts.accent === "gold";
   const topBar = gold
     ? `linear-gradient(90deg,${GILT_MID},${GILT},${GILT_MID})`
@@ -571,14 +591,7 @@ function wrap(body: string, opts: { accent?: "gold" | "royal"; noPromo?: boolean
       You're receiving this because you have a 50pick account.<br>
       <a href="${appUrl()}/profile/account" style="color:${TEXT_SUBTLE};text-decoration:underline">Manage preferences</a>
     </p>
-    ${opts.noPromo ? "" : `
-    <!-- ⛔ TEXT, NOT ICONS, AND THAT IS NOT A SHORTCUT. Gmail and Outlook block remote
-         images by default — the rule docs/EMAIL-SIGNATURES.md already teaches — so a
-         logo here would simply be absent for most readers, and an absent logo beside a
-         present one reads as a broken email rather than a quiet one. Words survive
-         image-blocking, and they survive a plain-text client too.
-         ⭐ LAST, BELOW "Manage preferences": the same ranking the in-app footer uses —
-         nothing promotional sits above an unsubscribe or a regulator disclosure. -->
+    ${!opts.promo ? "" : `
     <p style="margin:12px 0 0;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:10px;color:${TEXT_FAINT}">
       ${SOCIAL.map((s) => `<a href="${s.url}" style="color:${TEXT_SUBTLE};text-decoration:none">${SOCIAL_EMAIL_LABEL[s.labelKey]}</a>`).join(` <span style="color:${TEXT_FAINT}">&middot;</span> `)}
     </p>`}
@@ -748,7 +761,13 @@ export async function sendEmailToUser(
 /** Card chrome with the GOLD accent — for earned-money / earned-status /
  *  money-in emails ONLY (deposit, win, bonus, referral, KYC-approved, invite).
  *  Every other email uses plain `wrap` (royal). */
-const wrapGold = (body: string) => wrap(body, { accent: "gold" });
+/* ⚠️ IT FORWARDS `opts` NOW. It used to take only `body`, so the three gold templates on the
+   promo allow-list (`inviteHtml`, `kycApprovedHtml`, `agentApprovedHtml`) could not opt in —
+   `tsc` caught it as "Expected 1 arguments, but got 2", which is the good outcome: a silent
+   drop would have left three allow-listed emails quietly without the row and the guard
+   reporting them as stale. */
+const wrapGold = (body: string, opts: { promo?: boolean } = {}) =>
+  wrap(body, { ...opts, accent: "gold" });
 
 // ─── Email templates ────────────────────────────────────────────────────
 
@@ -774,7 +793,7 @@ export function welcomeHtml({ name }: { name: string }): string {
     ${subtitle("Your account is ready. Browse markets, place your first prediction, and join the community.")}
     ${subtitleSw("Akaunti yako iko tayari. Tazama masoko na uweke utabiri wako wa kwanza.")}
     ${ctaButton("/markets", "Browse markets · Tazama masoko")}
-  `);
+  `, { promo: true });
 }
 
 /**
@@ -931,7 +950,7 @@ export function depositReversedHtml({ amount, method, reference, gatewayRef }: {
     ${subtitle("Your exclusion stays in place — this is the protection working as intended. If a refund has not reached you within 5 working days, quote the references above and we'll trace it.")}
     ${subtitleSw("Kujifungia kwako kunaendelea — hii ni ulinzi ukifanya kazi ipasavyo. Kama marejesho hayajakufikia ndani ya siku 5 za kazi, tutumie kumbukumbu zilizo hapo juu.")}
     ${refNote()}
-  `, { noPromo: true });
+  `);
 }
 
 /** Normalise a stored msisdn to display form "+2557XXXXXXXX". */
@@ -1095,7 +1114,7 @@ export function updownDigestHtml({ dayLabel, rounds, wins, losses, refunds, wonP
     ${losses > 0 ? subtitle("Most people play for fun. If it stops feeling fun, take a break.") : ""}
     ${refNote()}
     ${ctaButton("/updown/history", "See every round · Ona raundi zote")}
-  `, { noPromo: true });
+  `);
 }
 
 export function lossNotificationHtml({ reference, stake, marketTitle, settledAt }: {
@@ -1114,7 +1133,7 @@ export function lossNotificationHtml({ reference, stake, marketTitle, settledAt 
     ${subtitleSw("Kama haifurahishi tena, pumzika.")}
     ${refNote()}
     ${ctaButton("/profile/responsible-gambling", "Set limits · Weka mipaka")}
-  `, { noPromo: true });
+  `);
 }
 
 /**
@@ -1204,7 +1223,7 @@ export function inviteHtml({ campaignName, bonusAmountTzs, code, message }: {
       { label: "Campaign", value: campaignName },
     ])}
     ${ctaButton(`/auth/register?invite=${encodeURIComponent(code)}`, "Claim your bonus · Pata bonasi", "gold")}
-  `);
+  `, { promo: true });
 }
 
 export function passwordResetHtml({ resetLink }: { resetLink: string }): string {
@@ -1231,7 +1250,7 @@ export function kycApprovedHtml({ name, reference }: { name: string; reference?:
     ${subtitleSw("Utambulisho wako umethibitishwa, na kitambulisho hiki sasa kimeunganishwa na akaunti yako.")}
     ${reference ? detailRows([{ label: "Reference", value: reference }]) : ""}
     ${ctaButton("/markets", "Browse markets · Tazama masoko")}
-  `);
+  `, { promo: true });
 }
 
 export function kycRejectedHtml({ reason, reference }: { reason: string; reference?: string }): string {
@@ -1270,7 +1289,7 @@ export function kycSubmittedHtml({ name, reference, submittedAt, docTypes, viewU
     <p style="margin:14px 0 0;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11px;color:${TEXT_SUBTLE};line-height:1.55">Need to change a document? Reply to this email and we'll reopen your submission. Your documents are locked while under review.<br><span style="font-style:italic;color:${TEXT_FAINT}">Unahitaji kubadilisha nyaraka? Jibu barua pepe hii.</span></p>
     ${refNote()}
     ${ctaButton(viewUrl ?? "/profile/kyc", "View your submission · Tazama")}
-  `);
+  `, { promo: true });
 }
 
 /**
@@ -1401,7 +1420,7 @@ export function selfExclusionHtml({ period, endDate }: { period: string; endDate
       { label: "Unlocks", value: endDate },
     ])}
     ${subtitle(`Need help? Contact the Tanzania Gambling Helpline: ${HELPLINE()}`)}
-  `, { noPromo: true });
+  `);
 }
 
 export function coolOffHtml({ duration, endDate }: { duration: string; endDate: string }): string {
@@ -1413,7 +1432,7 @@ export function coolOffHtml({ duration, endDate }: { duration: string; endDate: 
       { label: "Duration", value: duration },
       { label: "Resumes", value: endDate },
     ])}
-  `, { noPromo: true });
+  `);
 }
 
 export function amlRejectRefundHtml({ amount, reason, reference, gatewayRef, railLabel }: {
@@ -1575,7 +1594,7 @@ export function proposalApprovedHtml({ titleEn, amountTzs, wagerRequiredTzs, que
     ${subtitle(`"${titleEn}" was approved by the 50pick team. Thanks for helping shape the markets.`)}
     ${subtitleSw("Pendekezo lako limekubaliwa na timu ya 50pick. Asante.")}
     ${ctaButton("/proposals?f=mine", "View your proposals · Tazama")}
-  `);
+  `, { promo: true });
 }
 
 /** Player: proposal is now a live market. */
@@ -1586,7 +1605,7 @@ export function proposalListedHtml({ titleEn, marketId }: { titleEn: string; mar
     ${subtitle(`"${titleEn}" is open for predictions. Share it and watch the pool build.`)}
     ${subtitleSw("Soko lako sasa liko wazi kwa utabiri. Lishiriki.")}
     ${ctaButton(`/markets/${marketId}`, "View market · Tazama soko")}
-  `);
+  `, { promo: true });
 }
 
 /** Player: changes requested before the proposal can be approved. */
@@ -1826,7 +1845,7 @@ export function agentApprovedHtml({ agentCode, commissionPct, windowMonths = 0 }
     ])}
     <p style="margin:14px 0 0;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11px;color:${TEXT_SUBTLE};line-height:1.55">You have been signed out so your new access takes effect — sign in again to see your agent dashboard.</p>
     ${ctaButton("/profile/invite", "Open your agent dashboard · Fungua", "gold")}
-  `);
+  `, { promo: true });
 }
 
 /** Rejection — states the refund and its window when a fee was taken. Royal. */

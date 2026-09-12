@@ -137,38 +137,62 @@ section("§3 · NEW TAB, SAFELY");
 }
 
 // ──────────────────────────────────────── §4 NOT ON A NO-PROMO MESSAGE
-section("§4 · NOT ON A MESSAGE ABOUT HARM, A LOSS OR A LOCKOUT");
+section("§4 · THE EMAIL ROW IS OPT-IN, AND THE POPULATION IS DISCOVERED");
 {
-  const NO_PROMO: [string, string][] = [
-    ["selfExclusionHtml", E.selfExclusionHtml({ period: "6 months", endDate: "12 Mar 2027" })],
-    ["coolOffHtml", E.coolOffHtml({ duration: "7 days", endDate: "19 Sep 2026" })],
-    ["depositReversedHtml", E.depositReversedHtml({ amount: 50_000, method: "M-Pesa", reference: "txn_a1", gatewayRef: "dep_b2" })],
-    ["lossNotificationHtml", E.lossNotificationHtml({ reference: "bet_a1", stake: 10_000, marketTitle: "Simba to win" })],
-    ["updownDigestHtml", E.updownDigestHtml({
-      dayLabel: "Thu 11 Sep", rounds: 4, wins: 1, losses: 3, refunds: 0,
-      wonPayout: 8_000, lostStake: 30_000, refundedStake: 0, staked: 40_000, returned: 8_000, net: -32_000,
-    })],
-  ];
+  /**
+   * 🔴 THIS SECTION USED TO HAND-LIST FIVE TEMPLATES, AND AN AUDIT MEASURED WHAT THAT MISSED:
+   * SIXTEEN harm-shaped templates still carried a "Join us on Instagram" line, `accountClosedHtml`
+   * among them — sent to somebody who has just closed their account. Nothing was broken; the list
+   * was simply incomplete, which a hand-listed exception set always is by the time somebody adds
+   * the next template.
+   * ⭐ So the population is DISCOVERED from the source now, and the polarity is inverted: a
+   * template is silent unless it opts in with `{ promo: true }`. A template written tomorrow lands
+   * in the silent bucket by doing nothing at all, and that is the only arrangement in which
+   * forgetting is the safe outcome.
+   * ⚠️ Read as SOURCE, not rendered. Rendering all 61 would need a fixture per template, and a
+   * fixture map is just another hand-list that falls behind. The flag on the `wrap()` call is
+   * what actually decides, so the flag is what is read — with two RENDERED controls below so the
+   * section can still catch the renderer lying.
+   */
+  const emailSrc = readFileSync("src/lib/server/email.ts", "utf8");
+  const names = [...emailSrc.matchAll(/export function (\w+Html)\b/g)].map((m) => ({ name: m[1], at: m.index ?? 0 }));
+  check("the template sweep found the corpus (vacuity floor)", names.length >= 50, `found ${names.length}`);
 
-  // ⭐ THE POSITIVE CONTROL, AND IT IS NOT OPTIONAL. Without it every assertion below
-  // passes the day the social row silently stops rendering in email at all — the check
-  // would be measuring an absence it caused. A normal email MUST carry the links.
-  const promoAllowed = E.depositConfirmedHtml({
-    amount: 50_000, method: "M-Pesa", reference: "txn_a1", gatewayRef: "dep_b2", balance: 150_000,
-  });
+  /** The only messages a follow-us line may ride on — each a moment nobody is hurt by. */
+  const PROMO_ALLOWED = new Set([
+    "welcomeHtml",           // the single best place in the whole product
+    "inviteHtml",            // an invitation is already an invitation
+    "kycApprovedHtml",       // verified — the good-news end of onboarding
+    "kycSubmittedHtml",      // a neutral acknowledgement, nothing at stake
+    "proposalApprovedHtml",  // good news
+    "proposalListedHtml",    // good news
+    "agentApprovedHtml",     // good news
+  ]);
+
+  const optedIn = [];
+  for (let i = 0; i < names.length; i++) {
+    const body = emailSrc.slice(names[i].at, names[i + 1]?.at ?? emailSrc.length);
+    if (/\{\s*promo:\s*true\s*\}/.test(body)) optedIn.push(names[i].name);
+  }
+  if (RED_PROMO) optedIn.push("accountClosedHtml");
+
+  const unlisted = optedIn.filter((n) => !PROMO_ALLOWED.has(n));
+  check("no template carries the row without being on the written allow-list", unlisted.length === 0, unlisted.join(", "));
+
+  const stale = [...PROMO_ALLOWED].filter((n) => !optedIn.includes(n));
+  check("…and every allow-listed template still exists and still opts in", stale.length === 0, `stale: ${stale.join(", ")}`);
+
+  /* ⭐ POSITIVE CONTROL, RENDERED. Without it everything above passes the day the row stops
+     rendering in email at all — the check would be measuring an absence it caused itself. */
+  const allowed = E.welcomeHtml({ name: "Asha" });
   for (const s of SOCIAL) {
-    check(
-      `positive control · a normal email carries ${s.labelKey}`,
-      promoAllowed.includes(s.url),
-      "the renderer cannot see the links, so every check below is vacuous",
-    );
+    check(`positive control · an allow-listed email really carries ${s.labelKey}`, allowed.includes(s.url),
+          "the renderer cannot see the links, so every check above is vacuous");
   }
-
-  for (const [name, html0] of NO_PROMO) {
-    const html = RED_PROMO ? `${html0}<a href="${SOCIAL[0].url}">x</a>` : html0;
-    const found = SOCIAL.filter((s) => html.includes(s.url)).map((s) => s.labelKey);
-    check(`${name} carries no social link`, found.length === 0, `found ${found.join(", ")}`);
-  }
+  /* …and the negative control, also rendered: the worst message in the corpus must be silent. */
+  const closed = E.accountClosedHtml({ name: "Asha", time: "12 Sep 2026" });
+  const leaked = SOCIAL.filter((s) => closed.includes(s.url)).map((s) => s.labelKey);
+  check("negative control · the account-closure email is silent", leaked.length === 0, leaked.join(", "));
 }
 
 // ───────────────────────────────────────────────────────── §5 KEYED COPY

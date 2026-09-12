@@ -110,7 +110,13 @@ log("\n── 1 · URL contract ────────────────
   // defect this module was created to remove (the page previously had FOUR href builders).
   const axes: Array<[Partial<DiscoveryState>, string]> = [
     [{ status: "all" }, "status=all"],
-    [{ sort: "pool" }, "sort=pool"],
+    /* ⚠️ `closing`, NOT `pool`. This row exists to prove a NON-DEFAULT value reaches the URL, and
+       on 2026-09-12 the board's default sort became `pool` (Ali: lead with the biggest pools), so
+       `pool` is now correctly OMITTED by `toParams` and this row was asserting the opposite of
+       the contract. `closing` is the non-default sort now. The complementary half — that the
+       DEFAULT is omitted — is the "clean board has a clean URL" assertion above, which would have
+       gone red had the omission logic broken instead. */
+    [{ sort: "closing" }, "sort=closing"],
     [{ dir: "asc" }, "dir=asc"],
     [{ odds: "cont" }, "odds=cont"],
     [{ pool: "10k" }, "pool=10k"],
@@ -318,6 +324,26 @@ log("\n── 4 · sorting ─────────────────�
     && SORT_NATURAL_DIR.move === "desc" && SORT_NATURAL_DIR.new === "desc");
   ok("a null direction resolves to the sort's natural one",
     effectiveDir({ sort: "pool", dir: null }) === "desc" && effectiveDir({ sort: "pool", dir: "asc" }) === "asc");
+
+  /**
+   * ⭐ THE BOARD'S OWN DEFAULT, ASSERTED THROUGH `DEFAULT_STATE` RATHER THAN A LITERAL.
+   * Ali, 2026-09-12: *"let it be the default, that way users always see on top the biggest ones
+   * with money."* This is the assertion that makes that a contract instead of a constant — it
+   * passes `DEFAULT_STATE` itself, so changing `DEFAULTS.sort` back without a decision goes red.
+   * ⛔ A live board could not prove it today: the local in-memory board has ZERO markets, and a
+   * "is it descending?" check over an empty list is vacuously true — which is precisely how a
+   * default gets certified by measuring nothing.
+   */
+  {
+    const shuffled = [
+      row({ id: "small", pool: 5_000 }),
+      row({ id: "huge", pool: 900_000 }),
+      row({ id: "mid", pool: 120_000 }),
+    ];
+    const order = sortRows(shuffled, DEFAULT_STATE).map((r) => r.id);
+    ok("⭐ the DEFAULT board leads with the biggest pool", order.join(",") === "huge,mid,small", order.join(","));
+    ok("…and the default needs no explicit direction to do it", DEFAULT_STATE.dir === null);
+  }
 
   ok("closing soonest orders by the deadline the CARD shows",
     sortRows([row({ id: "late", bettableUntilMs: NOW + 50 * H }), row({ id: "soon", bettableUntilMs: NOW + H })],

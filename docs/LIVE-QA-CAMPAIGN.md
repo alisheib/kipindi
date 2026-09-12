@@ -6120,6 +6120,77 @@ is red in every run is not strict, it is broken.
 `PARALLEL-SESSION-COORDINATION.md` denylist. Five added lines in `scripts`; rebased onto
 `origin/main` immediately before the push, and it auto-merged with session 92's work.
 
+#### ➕ FOURTH PUSH — THE PANEL MOVED, AN AUDIT FOUND 28 REAL THINGS, AND THE BOARD NOW OPENS ON MONEY
+
+🔴 **THE PANEL NEVER RENDERED, AND ALI FOUND IT IN MINUTES.** *"where is the social banner? i
+logged in but seeing nothing."* Reproduced on production in one run: `invitations: ["install"]`,
+`panelInDom: false`, **every single visit**. One global invitation slot with a fixed priority —
+install 1, channels 2 — and identical gates on both (2nd visit, 45s), so install won every time
+and the loser was invisible **forever**. ⭐ **A fixed priority is only safe between things that
+genuinely cannot coexist**; the fix was not a cleverer tie-break but noticing they need not tie.
+The slot is **per-zone** now: install owns `bottom`, the panel owns `top-right`.
+
+🔴 **AND A SECOND BUG UNDER IT: the once-per-visit flag was burned when the panel LOST.**
+`K_SESSION` was written inside the timer, before the slot or the render guard had spoken — so a
+visit was spent with nothing shown, and the panel could not return later in that session even
+once the way was clear. It is written on the `holds` transition now. *A "we showed it" flag
+written before showing it is a lie the next visit believes.*
+
+⭐ **TOP-RIGHT, AND THE OFFSET IS MEASURED, NOT CHOSEN.** Ali picked the corner; it is also the
+only free one (install owns the bottom, the chat bubble bottom-right, the tab bar the bottom edge).
+The vertical offset is read from `#main-content`'s document offset — i.e. below the header **and**
+below whatever conditional bars are above it — and capped at 180px. ⛔ A hardcoded 72px would have
+sat on the **KYC-verify banner**, the bar that gates depositing.
+
+⭐ **EVERY OLD WHATSAPP ICON IS NOW THE REAL MARK.** Ali: *"we now have a real icon; everywhere we
+used to have WhatsApp logos and icons, replace with the new one."* Three call sites — the market
+share sheet, the position share button, the invite screen — plus the hand-drawn `messageWhatsapp`
+glyph **deleted** rather than orphaned. ⛔ The share sheet's tile also stopped painting WhatsApp
+`bg-yes-500/15 text-yes-300`: that is the BETTING pair, and green means *won* here (§B2a).
+
+⭐ **THE BOARD OPENS ON THE BIGGEST POOLS.** Ali: *"let it be the default, that way users always
+see on top the biggest ones with money."* `DEFAULTS.sort` `closing` → `pool`. ⛔ No `dir` is set —
+`SORT_NATURAL_DIR.pool` is already `desc`, and a second place deciding the same thing would drift
+*and* put `dir` in every URL. `closing` is one tap away and old `?sort=closing` links still work.
+
+#### 🔬 A 57-AGENT ADVERSARIAL AUDIT — 52 raised, **28 confirmed, 24 refuted**, 0 critical
+
+The three highest were all real, and **three of them were holes in the guards I had just written**:
+
+| What | Why it mattered |
+|---|---|
+| `2.6 the RG gate is honoured` | Satisfied by the prop name in the component's own SIGNATURE. Deleting all three behavioural uses left it green — and nothing else would catch that: `lint` here is `tsc --noEmit`, with no `noUnusedLocals` and **no ESLint config at all**. Now three assertions, one per place it must bite. |
+| `2.1 the money-commit gate is applied` | Satisfied by the **import line**. `code()` strips comments, not imports. Now pins the CALL, with its own control. |
+| `3.1 the shell derives promoSuppressed` | An **inverted** comparison would also satisfy it — it would have suppressed exactly the players who are NOT on a break. Now reads the operator. |
+| `5.5 no negative margins` | Only scanned double-quoted classNames; the one element that actually floats uses a **template literal**, so it was outside the population entirely. |
+| `qa:social-panel` seeded `install-done=1` | Made "exactly ONE floating invitation" true **by construction** — the drive was certifying an invariant it had made unfalsifiable. |
+| 3 frequency assertions waited **8s** for a **45s** panel | Structurally incapable of going red. |
+
+🔴 **AND ONE REAL PRODUCT DEFECT THE AUDIT FOUND THAT NOBODY HAD LOOKED FOR: sixteen harm-shaped
+emails carried "Join us on Instagram", `accountClosedHtml` among them** — sent to somebody who has
+just closed their account — plus `kycRejectedHtml`, `amlRejectRefundHtml`, `depositFailedHtml`,
+`agentRevokedHtml`, `marketCancelledRefundHtml`. Nothing was broken; the hand-listed five-item
+exception set was simply incomplete, as such a list always is by the 62nd template. ⭐ **The flag
+is inverted: `promo` is opt-IN and only seven templates take it.** §4 of the guard now DISCOVERS
+every `*Html` export from source and fails on any that is neither silent nor written down, with a
+rendered positive control (welcome carries it) and a rendered negative one (account-closure does
+not).
+
+⚠️ **AND AN HTML COMMENT SHIPPED EMOJI INTO SIX EMAILS.** The explanation for the email row was
+written as `<!-- ⛔ … ⭐ … -->` **inside the template**, so it was in the delivered bytes.
+`test:cert-c1` caught it ("no emoji in the copy") and it fired only on promo templates because the
+comment sat inside the conditional. ⭐ **An HTML comment is not a code comment: it is content.**
+
+✅ **MEASURED:** `qa:social-panel` **65/0** with the competitor left ELIGIBLE (top=72, right gap
+16/32, zero fixed-element overlaps, every row and the X hit-tested, the frequency contract driven
+across reloads and sessions) · `test:social-panel` 52/0 with **8/8** red controls · `test:cert-c1`
+**1093/0** · `qa:footer-reachable` 114/0 · `test:social-links` 18/0 · `test:discovery-contract`,
+`test:board-discovery`, `test:query-core` green.
+
+⚠️ **STILL OPEN, AND UNCHANGED:** the TikTok handle has never been opened in a browser. TikTok
+answers HTTP 200 with a byte-identical page for a real handle and an invented one, so no terminal
+can settle it. Instagram and the WhatsApp channel are both verified by `og:title`.
+
 #### ➕ SECOND PUSH — THE WHATSAPP CHANNEL, AND A DATA-RIGHTS LINK NOBODY COULD TAP
 
 The WhatsApp channel (`https://www.whatsapp.com/channel/0029Vb8At5uCxoAtENkyS71Q`) joins the row,

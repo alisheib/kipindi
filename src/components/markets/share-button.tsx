@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Modal } from "@/components/ui/modal";
 import { I } from "@/components/ui/glyphs";
+import { WhatsAppMark } from "@/components/ui/social-marks";
 import { useToast } from "@/components/ui/toast";
 import { useT } from "@/lib/i18n";
 
@@ -140,8 +141,13 @@ export function ShareButton({
                 onClick={() => setOpen(false)}
                 className="w-full flex items-center gap-3 px-3 py-3 rounded-md hover:bg-bg-overlay text-left transition-colors"
               >
-                <span className="inline-flex h-[36px] w-[36px] items-center justify-center rounded-md bg-yes-500/15 text-yes-300">
-                  <WhatsAppMark />
+                {/* ⭐ THE REAL MARK, AND THE YES-GREEN PLATE IS GONE WITH IT. This tile used to
+                    hand-draw a WhatsApp glyph and paint it `bg-yes-500/15 text-yes-300` — the
+                    BETTING pair, which §B2a forbids for a non-money meaning, and green means
+                    *won* on this platform. The vendor's own `#25D366` lives in the mark now, so
+                    the plate has nothing left to tint. */}
+                <span className="inline-flex h-[36px] w-[36px] items-center justify-center rounded-md bg-bg-overlay">
+                  <WhatsAppMark s={18} />
                 </span>
                 <span>
                   <span className="block text-[14px] font-semibold text-text">WhatsApp</span>
@@ -178,14 +184,6 @@ export function ShareButton({
   );
 }
 
-function WhatsAppMark() {
-  return (
-    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M21 12a9 9 0 1 1-3.6-7.2L21 4l-1.8 3.6A9 9 0 0 1 21 12Z" />
-      <path d="M9 9c0 4 2 6 6 6 1 0 1.5-.5 1.5-1.5 0-.5-.3-.8-1-.8l-1 .2c-1.5-.4-2.4-1.3-2.8-2.8l.2-1c0-.7-.3-1-.8-1C9.5 8 9 8.5 9 9.5Z" />
-    </svg>
-  );
-}
 
 function LinkMark() {
   return (

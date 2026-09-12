@@ -13,11 +13,15 @@
  *  1. POPULATION — the panel, the shell that mounts it, the install card it shares a slot with,
  *     the slot module, and every `.tsx` under `src/` for §6. Read, never assumed.
  *  2. HEAD COUNT OUTSIDE THE FLOOR — zero.
- *  3. THE CONTROLS — five, each injecting a synthetic violation into the SOURCE STRING the
- *     section reads, so a section cannot pass by reading nothing:
- *        npm run red:social-panel   (runs all five in one pass and expects exactly 5 failures)
- *     ⚠️ It exits 2, not 1, if it sees FEWER than five — a control that stops firing is a
- *     section that stopped checking, and that must not look like a pass or like a normal red.
+ *  3. THE CONTROLS — SEVEN mutations, each injected into the SOURCE STRING a section reads,
+ *     so no section can pass by reading nothing:
+ *        npm run red:social-panel   (expects exactly EIGHT failures — seven mutations, and the
+ *        slot mutation legitimately trips both §4.1 and §4.7, which check different things)
+ *     ⚠️ It exits 2, not 1, on FEWER than eight — a control that stops firing is a section that
+ *     stopped checking, and that must never look like a pass or like an ordinary red.
+ *     ⭐ Three of these controls exist because an adversarial audit found the checks they target
+ *     were satisfiable WITHOUT the behaviour: §2.1 by the import line, §2.6 by the prop name in
+ *     the component's own signature, and §3.1 by an inverted comparison.
  *
  * ⚠️ WHAT THIS CANNOT SEE. It is a SOURCE check. It cannot tell you the panel actually renders,
  * where it lands, or whether it overlaps the tab bar — `npm run qa:social-panel` drives that in
@@ -52,12 +56,15 @@ let shell = read(SHELL);
 let install = read(INSTALL);
 const slot = read(SLOT);
 
-// The five controls mutate what the sections READ, so nothing can pass vacuously.
+// Seven mutations, EIGHT expected failures — the slot one trips §4.1 and §4.7 by design.
+// They mutate what the sections READ, so nothing can pass vacuously.
 if (PROVE_RED) {
   panel = panel.replace("const MIN_DWELL_MS = 45_000;", "const MIN_DWELL_MS = 1_000;");
   panel = panel.replace("^\\/(legal|profile)\\/responsible-gambling(\\/|$)", "^\\/nowhere");
-  panel = panel.replace('useInvitationSlot("channels", 2, eligible)', "false");
+  panel = panel.replace('useInvitationSlot("channels", "top-right", 1, eligible)', "false");
   install = install.replace('data-invitation="install"', "");
+  panel = panel.replace(" || isCommitSurface(path)", "");
+  panel = panel.replace("const eligible = open && !promoSuppressed", "const eligible = open");
 }
 
 console.log("\nSOCIAL PANEL — the interstitial the compliance override paid for\n");
@@ -86,7 +93,12 @@ section("§1 · non-disturbing, stated as numbers");
 section("§2 · where it must never appear");
 {
   const c = code(panel);
-  ok("2.1 the money-commit gate is applied", /isCommitSurface/.test(c));
+  /* ⛔ THE CALL, NOT THE IDENTIFIER. This read `/isCommitSurface/` and was satisfied by the
+     IMPORT LINE alone — `code()` strips comments, not imports — so deleting the predicate from
+     `suppressedRoute` left it green with zero call sites remaining. An audit reproduced it by
+     mutation. Pin the invocation. */
+  ok("2.1 the money-commit gate is CALLED, not merely imported",
+     /isCommitSurface\(path\)/.test(c), "the import line alone used to satisfy this");
   ok("2.2 auth and admin are suppressed", /\^\\\/\(auth\|admin\)/.test(c));
   ok("2.3 ⛔ BOTH responsible-gambling routes are suppressed",
      /\(legal\|profile\)\\\/responsible-gambling/.test(c),
@@ -96,14 +108,28 @@ section("§2 · where it must never appear");
      "first-visit-primer shipped this exact bug: the effect returned early on the new path, `open` stayed true, and the card sat over the bet widget");
   ok("2.5 it never covers a real dialog",
      /\[role="dialog"\]\[aria-modal="true"\]/.test(c));
-  ok("2.6 the RG gate is honoured", /promoSuppressed/.test(c));
+  /* 🔴 THE WHOLE COMPLIANCE OVERRIDE RESTS ON THIS, AND IT USED TO BE AN IDENTIFIER TEST.
+     `promoSuppressed` appears twice in the component's own signature, so deleting all three
+     BEHAVIOURAL uses left the check green — and nothing else would have caught it: this repo's
+     `lint` is `tsc --noEmit`, with neither `noUnusedLocals` nor `noUnusedParameters` set, and
+     there is no ESLint config at all. Three assertions now, one per place it must bite. */
+  ok("2.6a the RG flag is a term of `eligible`", /const eligible = open && !promoSuppressed/.test(c));
+  ok("2.6b …the effect returns early for a suppressed player", /if \(promoSuppressed\) return;/.test(c));
+  ok("2.6c …and the RENDER refuses too, not just the effect",
+     /if \(promoSuppressed \|\| suppressedRoute\(pathname\)\) return null;/.test(c),
+     "a suppressed player must never see it even if state says open");
 }
 
 // ───────────────────────────────────────────── §3 THE RG GATE IS REAL
 section("§3 · the responsible-gambling gate actually exists");
 {
   const s = code(shell);
-  ok("3.1 the shell derives promoSuppressed", /promoSuppressed\s*=/.test(s));
+  /* ⚠️ WAS `/promoSuppressed\s*=/`, which an INVERTED derivation would also satisfy. Read the
+     operator: a break that is still running means the timestamp is in the FUTURE. */
+  ok("3.1 the derivation is `until(...) > now`, not its inverse",
+     /until\(rg\?\.selfExclusionUntil\) > now/.test(s)
+     && /until\(rg\?\.coolingOffUntil\) > now/.test(s),
+     "an inverted comparison would suppress exactly the players who are NOT on a break");
   ok("3.2 ⛔ from the RG row ALREADY fetched — no sixth round trip on every page",
      /rg\?\.selfExclusionUntil/.test(s) && /rg\?\.coolingOffUntil/.test(s)
      && !/isLockedOut\(/.test(s),
@@ -116,13 +142,19 @@ section("§3 · the responsible-gambling gate actually exists");
 // ────────────────────────────────────────── §4 ONE INVITATION AT A TIME
 section("§4 · one floating invitation, ever");
 {
-  ok("4.1 the panel claims the slot at priority 2", /useInvitationSlot\("channels", 2, eligible\)/.test(code(panel)));
-  ok("4.2 the install card claims it at priority 1 and therefore wins",
-     /useInvitationSlot\("install", 1, eligible\)/.test(code(install)));
+  ok("4.1 the panel claims the TOP-RIGHT zone", /useInvitationSlot\("channels", "top-right", 1, eligible\)/.test(code(panel)));
+  ok("4.2 the install card claims the BOTTOM zone — a DIFFERENT one, which is the whole fix",
+     /useInvitationSlot\("install", "bottom", 1, eligible\)/.test(code(install)),
+     "one global slot with a fixed priority guaranteed the loser never showed; measured on production as invitations:[install] on every visit");
   ok("4.3 both are labelled for measurement", /data-invitation="channels"/.test(panel) && /data-invitation="install"/.test(install));
-  ok("4.4 lower priority wins, and the holder is a stable value",
-     /c\.priority < best\.priority/.test(slot) && /return best \? best\.id : null;/.test(slot));
-  ok("4.5 nothing holds the slot during SSR", /function serverHolder/.test(slot));
+  ok("4.4 within a zone the lower priority wins, and the snapshot is a stable string",
+     /c\.priority < cur\.priority/.test(slot) && /\.sort\(\)\.join\("\|"\)/.test(slot),
+     "useSyncExternalStore loops forever if getSnapshot is not referentially stable");
+  ok("4.5 nothing holds a zone during SSR", /function serverHolders/.test(slot));
+  ok("4.7 ⭐ the two cards are in DIFFERENT zones, so they can never compete",
+     /useInvitationSlot\("channels", "top-right"/.test(code(panel))
+     && /useInvitationSlot\("install", "bottom"/.test(code(install)),
+     "this is the invariant that makes the panel reachable at all");
   ok("4.6 the shell mounts the panel", /<LazyChannelsPanel promoSuppressed=\{promoSuppressed\} \/>/.test(shell));
 }
 
@@ -135,14 +167,38 @@ section("§5 · non-blocking, dismissible, named");
      /e\.key === "Escape"\) dismiss\(\)/.test(code(panel)),
      "a quieter close the frequency rules cannot see is a second definition of dismissal");
   ok("5.4 the dismiss control meets the 44px tap floor", /h-\[44px\] w-\[44px\]/.test(panel));
-  ok("5.5 ⛔ no negative margins — that is how a control leaves its box", !/className="[^"]*\s-m[trblxy]?-/.test(panel));
+  /* ⚠️ THIS ONLY SCANNED DOUBLE-QUOTED classNames, and the one element that actually floats —
+     the container — uses a TEMPLATE LITERAL, so it was outside the population entirely. It also
+     missed a leading `-mt-2` (no preceding space) and a variant-prefixed `lg:-mt-2`. Both
+     className forms, token-boundary matched. */
+  {
+    const values = [...panel.matchAll(/className=(?:"([^"]*)"|\{`([^`]*)`\})/g)].map((m) => m[1] ?? m[2] ?? "");
+    const offenders = values.filter((v) => /(^|[\s:])-m[trblxyse]?-/.test(v));
+    ok("5.5 ⛔ no negative margins in EITHER className form — that is how a control leaves its box",
+       offenders.length === 0, offenders.join(" | "));
+    ok("5.5b the className sweep actually found the container (vacuity floor)",
+       values.some((v) => v.includes("mat-float")), `scanned ${values.length} className values`);
+  }
   ok("5.6 ⛔ no truncate or line clamp — the box grows, the words stay whole",
      !/\btruncate\b|line-clamp|whitespace-nowrap/.test(code(panel)));
   ok("5.7 every localStorage touch is wrapped and fails closed",
      (code(panel).match(/try \{/g) ?? []).length >= 2 && /catch \{/.test(code(panel)));
-  ok("5.8 the offset is a class, not an inline style — an inline `bottom` cannot be responsive",
-     !/style=\{\{[^}]*\bbottom:/.test(panel) && /lg:bottom-6/.test(panel));
-  ok("5.9 it takes a kit rung rather than composing a shadow",
+  /* ⚠️ REWRITTEN 2026-09-12 WHEN THE PANEL MOVED TO THE TOP-RIGHT, AND IT IS STRICTER, NOT
+     LOOSER. It used to require `lg:bottom-6`; a top-anchored card has no bottom rung. What it
+     asserts now is the thing that actually matters — the vertical offset is MEASURED from the
+     real bottom of the header-and-banner stack, and it is capped. A hardcoded `top` here would
+     have put a marketing card over the KYC-verify banner. */
+  ok("5.8 no inline `bottom` — that is what made the install card's offset un-overridable",
+     !/style=\{\{[^}]*\bbottom:/.test(panel));
+  ok("5.9 ⛔ the top offset is MEASURED off `#main-content`, never a hardcoded number",
+     /getElementById\("main-content"\)/.test(code(panel))
+     && /style=\{\{ top: `\$\{topPx\}px`/.test(panel),
+     "a fixed 72px would sit on the KYC-verify banner — the bar that gates depositing");
+  ok("5.10 …and it is capped, because those bars scroll away and the panel does not",
+     /TOP_CAP/.test(code(panel)) && /Math\.min\(/.test(code(panel)));
+  ok("5.11 the mark grows from the corner it is anchored to",
+     /transformOrigin: "top right"/.test(panel));
+  ok("5.12 it takes a kit rung rather than composing a shadow",
      /mat-float/.test(panel) && /data-rung="float"/.test(panel) && !/shadow-lg|glass-panel/.test(panel));
 }
 
@@ -214,14 +270,19 @@ section("§7 · the copy exists in all three locales");
   }
   ok("7.8 ⛔ the WhatsApp row still says \"channel\" — a bare WhatsApp promises an inbox nobody staffs",
      /joinWhatsapp: "Join our WhatsApp channel"/.test(dict));
-  ok("7.9 ⛔ the only claim made is the one the channel delivers",
-     /title: "Daily updates and polls"/.test(dict)
-     && !/channels:[\s\S]{0,400}(results|bonus|offers|news)/i.test(dict));
+  /* ⛔ THE HEADING PROMISES NOTHING, AND THAT IS THE POINT (G8 — no surface states anything
+     false). It read "Daily updates and polls" first, which is true of the WhatsApp channel and
+     was never established for Instagram or TikTok — and a sentence true of one of three things
+     is false as a heading over all three. "Follow 50pick" is the standard label for this module,
+     makes no content claim, and cannot go stale when a channel changes what it posts. */
+  ok("7.9 ⛔ the heading claims nothing about content that could become false",
+     /title: "Follow 50pick"/.test(dict)
+     && !/channels:[\s\S]{0,400}(results|bonus|offers|news|daily)/i.test(dict));
 }
 
 console.log(`\n${fails.length === 0 ? "ALL PASS" : `${fails.length} FAILED`} — ${pass} passed, ${fails.length} failed\n`);
 if (PROVE_RED) {
-  const expected = 5;
+  const expected = 8;
   console.log(`--prove-red: expected ${expected} failure(s), saw ${fails.length}\n`);
   process.exit(fails.length >= expected ? 1 : 2);
 }

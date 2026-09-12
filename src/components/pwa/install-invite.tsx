@@ -197,7 +197,7 @@ export function InstallInvite() {
      This card is priority 1 and wins: it is a utility that makes the product better for the
      player, and the channels panel is a thing we want. */
   const eligible = !installed && visible && !isCommitSurface(pathname);
-  const holdsSlot = useInvitationSlot("install", 1, eligible);
+  const holdsSlot = useInvitationSlot("install", "bottom", 1, eligible);
   if (!holdsSlot) return null;
 
   return (

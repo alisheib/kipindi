@@ -113,13 +113,49 @@ const PANEL_COPY: Record<
   whatsappChannel: { label: "joinWhatsapp", aria: "ariaJoinWhatsapp" },
 };
 
+/**
+ * How far below the top of the viewport the panel sits.
+ *
+ * ⛔ MEASURED, NOT A CONSTANT, BECAUSE OF WHAT LIVES ABOVE `<main>`. The 56px sticky header is
+ * only the floor: `app-shell.tsx` also renders the announcement bar, the KYC-verify bar, the
+ * email-verify bar, the away-summary bar and the live ticker between the header and `<main>`,
+ * and each is conditional. A fixed 72px offset would have covered the **KYC banner** — the bar
+ * that tells a player to verify their identity before they can deposit — with a marketing card,
+ * on a licensed platform. `#main-content`'s offset from the document top IS the bottom of that
+ * whole stack, whatever it happens to contain today.
+ * ⚠️ Capped, because those bars scroll away while the panel does not: without a cap a page with
+ * four bars would park the panel a third of the way down the screen for the whole session.
+ */
+const TOP_FALLBACK = 72;
+const TOP_CAP = 180;
+
+function measureTop(): number {
+  try {
+    const main = document.getElementById("main-content");
+    if (!main) return TOP_FALLBACK;
+    // `offsetTop` is measured from the document, so it is scroll-independent — which is what a
+    // `position: fixed` offset needs. It equals header + every conditional bar above main.
+    const below = main.offsetTop + 12;
+    return Math.min(Math.max(below, TOP_FALLBACK), TOP_CAP);
+  } catch {
+    return TOP_FALLBACK;
+  }
+}
+
 export function ChannelsPanel({ promoSuppressed }: { promoSuppressed: boolean }) {
   const { t } = useT();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const [topPx, setTopPx] = useState(TOP_FALLBACK);
 
   const eligible = open && !promoSuppressed && !suppressedRoute(pathname);
-  const holds = useInvitationSlot("channels", 2, eligible);
+  /* ⭐ ZONE "top-right", AND THE ZONE IS THE FIX. The first version put this and the install card
+     in ONE global slot with install at priority 1 — which guarantees this panel never shows,
+     because both become eligible on the same visit at the same second and install wins every
+     time. Measured on production: `invitations: ["install"]` on every visit. They occupy
+     different corners now, so they never compete; the slot only stops a future third card from
+     landing on either. */
+  const holds = useInvitationSlot("channels", "top-right", 1, eligible);
   const { present, exiting } = useExitPhase(holds, "--t-flick");
 
   useEffect(() => {
@@ -144,12 +180,24 @@ export function ChannelsPanel({ promoSuppressed }: { promoSuppressed: boolean })
          reality check is a surface a player must read. If one is up when the timer fires we skip
          this visit entirely and do NOT set the session flag, so the next visit still gets a turn. */
       if (document.querySelector('[role="dialog"][aria-modal="true"]')) return;
-      write(K_SESSION, "1", true);
+      setTopPx(measureTop());
       setOpen(true);
     }, MIN_DWELL_MS);
     return () => window.clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [promoSuppressed]);
+
+  /**
+   * 🔴 THE SESSION IS MARKED WHEN THE PANEL ACTUALLY RENDERS — NOT WHEN THE TIMER FIRES.
+   * It used to be written inside the timer, before the route guard and the slot had had their
+   * say. Measured on production: the flag read `"1"` on a visit where the panel never appeared
+   * at all, so that visit was spent for nothing and the panel could not come back later in the
+   * session even once the way was clear. ⭐ A "we showed it" flag written before showing it is
+   * a lie the next visit believes.
+   */
+  useEffect(() => {
+    if (holds) write(K_SESSION, "1", true);
+  }, [holds]);
 
   const dismiss = useCallback(() => {
     write(K_DISMISS_AT, String(Date.now()));
@@ -185,34 +233,27 @@ export function ChannelsPanel({ promoSuppressed }: { promoSuppressed: boolean })
       data-invitation="channels"
       data-rung="float"
       data-testid="channels-panel"
-      /* ⛔ THE OFFSET IS A CLASS, NOT AN INLINE STYLE, AND THAT IS THE WHOLE POINT.
-         Below `lg` it clears the 88px tab bar by 8px; at `lg` and up `lg:bottom-6` (32px) takes
-         over, where the bar is `lg:hidden` and 96px reads as floating mid-screen. Ali reported
-         exactly that on the install card, which set `bottom` INLINE and therefore could not be
-         overridden by a `lg:` variant at all: an inline style beats every class, so a responsive
-         offset has to be a class on both rungs. 32px matches `lg:left-6`, a square corner inset.
+      /* ⭐ TOP-RIGHT, AND THE CORNER IS A FIX RATHER THAN A PREFERENCE. Ali asked for it after
+         the panel failed to appear at all, and it is also the only genuinely free corner: the
+         install card owns the bottom (moved LEFT the same day), the chat bubble owns
+         bottom-right, and the tab bar owns the bottom edge on phones. Moving this one to the top
+         ENDS the competition instead of arbitrating it — which is what the single global slot
+         was doing wrong.
+         ⚠️ Toasts also land top-right, but at `z-1800` against this card's `z-40`, so a toast
+         paints OVER it for its few seconds. That precedence is correct: a toast answers
+         something the player just did; this card answers nothing.
+         ⛔ `top` is an INLINE style here because it is MEASURED, not chosen — see `measureTop`.
+         It is the one value on this element that cannot be a class, there is no responsive
+         `top`, and so nothing can shadow it. Every static value stays a class.
 
-         🔴 148, NOT 96, AND THE 52 IN THE MIDDLE IS THE CHAT BUBBLE. The install card's 96 clears
-         only the tab bar. On a phone this panel is full-bleed, so it also reaches the chat FAB —
-         `position: fixed`, `right: 16`, `bottom: 80`, 52×52, `z-60`. Measured at 390×844: the
-         bubble sat ON the WhatsApp row. 80 + 52 + 16 = 148 clears it. ⛔ Do not "restore
-         symmetry" with the install card: that card is 380px wide and right-anchored, so it does
-         not reach across to the bubble the way a full-bleed card does.
-         ⚠️ The bubble is absent in production today (chat is off), which is exactly why this is
-         a fixed offset rather than a conditional one — a layout that is only correct while a
-         feature is disabled is a bug waiting for the flag.
-
-         🔴 DO NOT ABBREVIATE THE ARBITRARY CLASS IN A COMMENT. This comment originally spelled it
-         out with the inner argument elided, and TAILWIND SCANS COMMENTS — it compiled that
-         abbreviation into a real rule whose value held the literal dots, which is invalid CSS.
-         One bad declaration failed the whole stylesheet parse and every route served 500.
-         ⭐ A comment is not inert in a file the class scanner reads. Describe the class in prose,
-         or the scanner will take you at your word.
-         ⚠️ The underscore in the real class below is Tailwind's space escape; without the spaces
-         `calc` is invalid CSS and fails silently. */
-      className={`fixed left-3 right-3 bottom-[calc(148px_+_env(safe-area-inset-bottom))] lg:bottom-6 z-40 lg:right-auto lg:left-6 lg:max-w-[400px] overflow-hidden rounded-xl mat-float px-3 pb-3 ${exiting ? "m-float-out" : "m-float-in"}`}
-      /* The float atoms set `transform-origin: top left`; this card grows from the other corner. */
-      style={{ transformOrigin: "bottom left" }}
+         🔴 DO NOT WRITE AN ARBITRARY-VALUE CLASS INSIDE A COMMENT. An earlier version of this
+         block named one with its inner argument elided, and TAILWIND SCANS COMMENTS — it
+         compiled that prose into a real rule whose value held literal dots, which is invalid
+         CSS, and one bad declaration failed the whole stylesheet parse so every route served
+         500. A comment is not inert in a file the class scanner reads. */
+      className={`fixed left-3 right-3 z-40 lg:left-auto lg:right-6 lg:max-w-[400px] overflow-hidden rounded-xl mat-float px-3 pb-3 ${exiting ? "m-float-out" : "m-float-in"}`}
+      /* `.m-float-in` sets `transform-origin: top left`; this card grows from the top RIGHT. */
+      style={{ top: `${topPx}px`, transformOrigin: "top right" }}
     >
       {/* The heraldic hairline the footer wears. Its own `margin-block: 16px` IS this panel's
           top padding — which is why the container carries no `pt-*`. */}

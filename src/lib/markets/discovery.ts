@@ -149,7 +149,26 @@ export type { SortDir };
  */
 export const DEFAULTS = {
   status: "open" as StatusId,
-  sort: "closing" as SortId,
+  /**
+   * ⭐ THE BOARD OPENS ON THE BIGGEST POOLS — Ali, 2026-09-12: *"in the filters where we have
+   * biggest pool, let it always view this filter first, let it be the default, that way users
+   * always see on top the biggest ones with money."*
+   *
+   * It was `closing`, which answers "what is about to end" — a good question for somebody
+   * already playing, and the wrong first impression for somebody arriving: a board led by a
+   * market with TZS 0 in it looks like a board with nothing happening. `pool` leads with the
+   * markets other people have actually backed, which is both the honest signal of activity and
+   * the one a new visitor can act on.
+   *
+   * ⛔ NO DIRECTION IS SET HERE, DELIBERATELY. `dir: null` means "the sort's natural direction",
+   * and `SORT_NATURAL_DIR.pool` is already `desc` — biggest first. Writing `dir: "desc"` would
+   * be a SECOND place that decides the same thing, and the two would drift; it would also make
+   * `dir` appear in every URL, since `toParams` omits only values equal to these defaults.
+   *
+   * ⚠️ `closing` is not lost — it is still one tap away in the sort control, and any existing
+   * link carrying `?sort=closing` still resolves to it.
+   */
+  sort: "pool" as SortId,
   /** absent = the sort's natural direction (`SORT_NATURAL_DIR`). Tri-state by design. */
   dir: null as SortDir | null,
   odds: "any" as OddsId,

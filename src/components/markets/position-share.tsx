@@ -15,6 +15,7 @@
  */
 import { useState, useTransition } from "react";
 import { I } from "@/components/ui/glyphs";
+import { WhatsAppMark } from "@/components/ui/social-marks";
 import { useToast } from "@/components/ui/toast";
 import { useT } from "@/lib/i18n";
 import { sideWord } from "@/lib/side-label";
@@ -125,7 +126,7 @@ export function PositionShare({
         className,
       )}
     >
-      <I.messageWhatsapp s={14} />
+      <WhatsAppMark s={14} />
       {label}
     </button>
   );

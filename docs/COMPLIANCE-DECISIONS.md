@@ -24,8 +24,34 @@ worth less than no log. Two of that entry's stated conditions no longer hold:
 | "no interstitial prompt" | ⛔ **NO LONGER TRUE.** A dismissible panel appears over the page. |
 | "no 'join us'" | ⛔ **NO LONGER TRUE.** Every row reads "Join us on …". |
 | no follower count, no badge, no gilt, no reward | ✅ still true |
-| never above a regulator disclosure | ✅ still true — the panel is chrome, not in the footer |
-| the five no-promo emails | ✅ unchanged |
+| never above a regulator disclosure | ✅ true, and MEASURED rather than argued — see below |
+| the five no-promo emails | ⭐ **REPLACED BY SOMETHING STRICTER** — see below |
+
+**⚠️ "Never above a regulator disclosure" was first defended with a DOM-order argument — "the
+panel is chrome, not in the footer" — and an audit was right to reject that: a `position: fixed`
+card paints over whatever is beneath it regardless of where it sits in the document.** The claim
+is now true by geometry and measured by `qa:social-panel`, which enumerates every fixed element
+on the page and fails on any intersection: **zero overlaps at 360, 393, 768, 1024 and 1280.** The
+panel is anchored **top-right**, and its vertical offset is not a constant — it is measured from
+the bottom of `<main>`, i.e. below the header *and* below whatever conditional bars are above it.
+That is what stops it covering the **KYC-verify banner**, the bar that gates depositing. A
+hardcoded 72px would have sat on it.
+
+**⭐ AND THE EMAIL RULE IS NOW DEFAULT-DENY, WHICH THE FIVE-ITEM LIST WAS NOT.** The same audit
+measured what the opt-out list actually left behind: **sixteen harm-shaped templates still carried
+a "Join us on Instagram" line**, `accountClosedHtml` among them — sent to somebody who has just
+closed their account — plus `kycRejectedHtml`, `amlRejectRefundHtml`, `depositFailedHtml`,
+`agentRevokedHtml` and `marketCancelledRefundHtml`. Nothing was broken; the list was simply
+incomplete, which a hand-listed exception set always is by the time somebody writes the 62nd
+template. The flag is inverted: **no email carries the row unless it opts in**, and only seven do
+— `welcomeHtml`, `inviteHtml`, `kycApprovedHtml`, `kycSubmittedHtml`, `proposalApprovedHtml`,
+`proposalListedHtml`, `agentApprovedHtml`. ⛔ Money moments are deliberately absent: not a
+deposit receipt, not a withdrawal, not a bet receipt, and **not a win**.
+
+**⚠️ The heading makes no claim about content.** It read *"Daily updates and polls"* first — true
+of the WhatsApp channel, which is where that fact came from, and never established for Instagram
+or TikTok, which sat under the same heading. A sentence true of one of three things is false as a
+heading over all three. It reads **"Follow 50pick"**.
 
 ### What the override bought, and it had to be built
 

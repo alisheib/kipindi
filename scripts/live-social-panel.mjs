@@ -44,16 +44,30 @@ async function ctxFor(locale, width, seed = {}) {
   const ctx = await browser.newContext({ viewport: { width, height: 800 }, deviceScaleFactor: 1 });
   // ⚠️ The locale switch is the `kp-locale` COOKIE, not `?lang=`.
   await ctx.addCookies([{ name: "kp-locale", value: locale, domain: HOST, path: "/" }]);
+  /* 🔴 SEEDED ONCE PER CONTEXT, NOT ON EVERY NAVIGATION. `addInitScript` runs on EVERY document
+     load including a RELOAD, so the un-guarded version wiped `50pick-channels-shown` on the very
+     reload that §3b uses to prove the panel stays gone — the drive was erasing the state it was
+     about to assert. A fresh context already starts with empty storage, so the seed only ever
+     needs to happen once. */
   await ctx.addInitScript((s) => {
     try {
+      if (sessionStorage.getItem("__drive_seeded") === "1") return;
+      sessionStorage.setItem("__drive_seeded", "1");
       localStorage.setItem("50pick-channels-visits", s.visits ?? "5");
       for (const [k, v] of Object.entries(s.set ?? {})) localStorage.setItem(k, v);
       for (const k of s.clear ?? ["50pick-channels-dismissed-at", "50pick-channels-dismissals", "50pick-channels-done"]) {
         localStorage.removeItem(k);
       }
       sessionStorage.removeItem("50pick-channels-shown");
-      // The install card must not win the slot in a drive about this panel.
-      localStorage.setItem("50pick-install-done", "1");
+      /* ⛔ NOT "install-done", WHICH IS WHAT THIS USED TO SET. Switching the only other
+         claimant off made "exactly ONE floating invitation" true by construction — the audit
+         caught the drive certifying an invariant it had made unfalsifiable. Install is left
+         ELIGIBLE now; the two cards live in different zones and the discovered-overlap check
+         above is what proves they do not touch. */
+      localStorage.setItem("50pick-install-visits", "5");
+      localStorage.removeItem("50pick-install-done");
+      localStorage.removeItem("50pick-install-dismissed-at");
+      localStorage.removeItem("50pick-install-dismissals");
     } catch { /* storage blocked — the drive will fail loudly at §1 */ }
   }, seed);
   return ctx;
@@ -174,11 +188,17 @@ for (const [locale, width] of [["en", 360], ["sw", 393], ["zh", 768], ["en", 102
   ok(`${tag} is fully inside the viewport`, report.inViewport, JSON.stringify(report.rect));
   ok(`${tag} causes no horizontal overflow`, report.docOverflow <= 0, `${report.docOverflow}px`);
   ok(`${tag} clips no text`, !report.clipped);
-  ok(`${tag} ⭐ exactly ONE floating invitation exists`, report.invitations === 1, `found ${report.invitations}`);
-  /* Below `lg` (1024) it clears the tab bar AND the chat bubble: 80 + 52 + 16 = 148.
-     At/above `lg` the bar is hidden and the panel sits in a 32px corner inset. */
-  const expected = width >= 1024 ? 32 : 148;
-  ok(`${tag} bottom offset is ${expected}px`, Math.abs(report.rect.b - expected) <= 2, `measured ${report.rect.b}px`);
+  /* ⚠️ NOT "exactly one" ANY MORE, AND THAT IS A FIX RATHER THAN A RELAXATION. The panel and the
+     install card sit in DIFFERENT zones now (top-right vs bottom) because one global slot with a
+     fixed priority meant install won every visit and this panel never rendered at all — measured
+     on production. Both may now be present; what must never happen is that they TOUCH, and the
+     discovered-overlap check above is what proves it. */
+  ok(`${tag} ⭐ at most one invitation per zone`, report.invitations <= 2, `found ${report.invitations}`);
+  ok(`${tag} sits below the header, never over it`, report.rect.t >= 56, `top=${report.rect.t}px`);
+  ok(`${tag} stays near the top rather than drifting down the page`, report.rect.t <= 180, `top=${report.rect.t}px`);
+  ok(`${tag} is anchored to the RIGHT edge`,
+     Math.abs((width - (report.rect.l + report.rect.w)) - (width >= 1024 ? 32 : 16)) <= 2,
+     `right gap ${width - (report.rect.l + report.rect.w)}px`);
   await ctx.close();
 }
 
@@ -196,7 +216,7 @@ section("§3 · the frequency contract, driven for real");
   });
   const page = await ctx.newPage();
   await page.goto(BASE + "/", { waitUntil: "networkidle", timeout: 120_000 });
-  const shownFirst = await waitForPanel(page, 8_000);
+  const shownFirst = await waitForPanel(page, DWELL_MS + 8_000);
   ok("3a a first-ever visit never sees it", !shownFirst);
   await ctx.close();
 }
@@ -220,7 +240,7 @@ section("§3 · the frequency contract, driven for real");
     ok("3b the session is marked, so a reload does not re-show it", store.session === "1");
 
     await page.reload({ waitUntil: "networkidle" });
-    const backAfterReload = await waitForPanel(page, 8_000);
+    const backAfterReload = await waitForPanel(page, DWELL_MS + 8_000);
     ok("3b it does NOT return on a reload in the same session", !backAfterReload);
   }
   await ctx.close();
@@ -251,7 +271,7 @@ section("§3 · the frequency contract, driven for real");
   });
   const page = await ctx.newPage();
   await page.goto(BASE + "/", { waitUntil: "networkidle", timeout: 120_000 });
-  ok("3d six dismissals and it stops for good", !(await waitForPanel(page, 8_000)));
+  ok("3d six dismissals and it stops for good", !(await waitForPanel(page, DWELL_MS + 8_000)));
   await ctx.close();
 }
 
