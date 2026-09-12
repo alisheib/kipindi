@@ -2005,6 +2005,26 @@ export const dict = {
       ariaWhatsappChannel: "The 50pick WhatsApp channel · opens in a new tab",
     },
     /**
+     * The channels panel — `src/components/social/channels-panel.tsx`.
+     * ⛔ SEPARATE KEYS FROM `footer.*`, NOT A REUSE. The footer says "Instagram" because it is a
+     * directory line; this panel says "Join us on Instagram" because Ali asked for the verb and
+     * signed the compliance override that permits it. One string cannot be both, and sharing one
+     * would silently drag the verb into the footer the next time somebody edited it.
+     * ⚠️ Each `aria*` MUST contain its visible label verbatim — WCAG 2.5.3 Label in Name, so a
+     * speech-input user saying what they can see actually activates the link.
+     * ⛔ "Daily updates and polls" is the ONLY claim made here, because it is the only one the
+     * channel actually delivers. Do not add results, offers, bonuses or news.
+     */
+    channels: {
+      title: "Daily updates and polls",
+      joinInstagram: "Join us on Instagram",
+      joinTiktok: "Join us on TikTok",
+      joinWhatsapp: "Join our WhatsApp channel",
+      ariaJoinInstagram: "Join us on Instagram · opens in a new tab",
+      ariaJoinTiktok: "Join us on TikTok · opens in a new tab",
+      ariaJoinWhatsapp: "Join our WhatsApp channel · opens in a new tab",
+    },
+    /**
      * The identity gate's panels (2026-09-05) — the copy shown INSTEAD of a stake
      * control, a deposit form or a withdrawal form while an account is unverified.
      *
@@ -4150,6 +4170,15 @@ export const dict = {
       ariaTiktok: "50pick kwenye TikTok · hufunguka katika kichupo kipya",
       ariaWhatsappChannel: "Chaneli ya WhatsApp ya 50pick · hufunguka katika kichupo kipya",
     },
+    channels: {
+      title: "Taarifa za kila siku na kura",
+      joinInstagram: "Jiunge nasi kwenye Instagram",
+      joinTiktok: "Jiunge nasi kwenye TikTok",
+      joinWhatsapp: "Jiunge na chaneli yetu ya WhatsApp",
+      ariaJoinInstagram: "Jiunge nasi kwenye Instagram · hufunguka katika kichupo kipya",
+      ariaJoinTiktok: "Jiunge nasi kwenye TikTok · hufunguka katika kichupo kipya",
+      ariaJoinWhatsapp: "Jiunge na chaneli yetu ya WhatsApp · hufunguka katika kichupo kipya",
+    },
     kycGate: {
       eyebrowVerify: "Hatua moja kwanza",
       eyebrowPending: "Iko kwa timu yetu",
@@ -6218,6 +6247,15 @@ export const dict = {
       ariaInstagram: "50pick 的 Instagram · 在新标签页中打开",
       ariaTiktok: "50pick 的 TikTok · 在新标签页中打开",
       ariaWhatsappChannel: "50pick 的 WhatsApp 频道 · 在新标签页中打开",
+    },
+    channels: {
+      title: "每日更新与投票",
+      joinInstagram: "在 Instagram 关注我们",
+      joinTiktok: "在 TikTok 关注我们",
+      joinWhatsapp: "加入我们的 WhatsApp 频道",
+      ariaJoinInstagram: "在 Instagram 关注我们 · 在新标签页中打开",
+      ariaJoinTiktok: "在 TikTok 关注我们 · 在新标签页中打开",
+      ariaJoinWhatsapp: "加入我们的 WhatsApp 频道 · 在新标签页中打开",
     },
     kycGate: {
       eyebrowVerify: "先完成一步",

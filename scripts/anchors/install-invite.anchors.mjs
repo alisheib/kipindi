@@ -48,8 +48,13 @@ export const MUTATIONS = [
        + "Up & Down round. ⛔ This repo has ALREADY shipped a WhatsApp FAB on top of a CTA and only "
        + "LOOKING found it, which is why this is a guard and not a code comment.",
     file: INV,
-    from: `  if (installed || !visible || isCommitSurface(pathname)) return null;`,
-    to: `  if (installed || !visible) return null;`,
+    /* ⚠️ RE-ANCHORED 2026-09-12. The render guard became an `eligible` expression when the
+       invitation slot landed, and this mutation silently stopped injecting — `red:install-invite`
+       reported "anchor unresolvable" and 8/9, which is a defect class that was no longer proven
+       catchable. ⭐ A mutation whose anchor has rotted is worse than a missing mutation: the
+       suite still prints a number, and the number looks like coverage. */
+    from: `  const eligible = !installed && visible && !isCommitSurface(pathname);`,
+    to: `  const eligible = !installed && visible;`,
     check: "5.1 the money-commit gate is applied at RENDER, so a soft navigation removes it",
   },
   {

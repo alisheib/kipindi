@@ -6161,11 +6161,77 @@ which is the shape a finger actually meets. Separately, a contrast probe over "e
 non-background pixel" duly reported **1.00:1** on an anti-aliasing fringe pixel one unit of red
 away from the surface. ⭐ Both are the same error: a true measurement over the wrong population.
 
-⚠️ **OPEN, REPORTED BY ALI 2026-09-12:** the install card *"comes a bit high on laptops"*. Its
-anchor is `bottom: calc(96px + env(safe-area-inset-bottom))` at **every** width — the 96 exists to
-clear the 88px tab bar, which is `lg:hidden`. Its own comment says *"hidden from `lg` up, where
-24px is enough"* and the code never did it. ⚠️ `install-invite.test.mts` §5 pins that literal
-string, so the guard has to move with the fix. Belongs with the channels-panel work.
+#### ➕ THIRD PUSH — THE "JOIN US" PANEL, THE FIRST RG FACT EVER SENT TO A BROWSER, AND THE INSTALL CARD MOVED
+
+🔴 **A CHANNELS PANEL NOW APPEARS OVER THE PAGE, AND IT OVERRIDES THE 2026-09-12 RULING.** That
+entry holds the footer row lawful *because* it is a directory line, and lists **"no interstitial
+prompt"** among the conditions it keeps. This panel is an interstitial prompt and every row reads
+**"Join us on …"**. Ali was shown that in writing and overrode it; the override is its own dated
+entry in `docs/COMPLIANCE-DECISIONS.md` (third, 2026-09-12) and **both entries stand** — a
+compliance log that rewrites its own past is worth less than none.
+
+⭐ **THE OVERRIDE PAID FOR A CAPABILITY THAT DID NOT EXIST.** `promoSuppressed` is the **first
+responsible-gambling fact this platform has ever sent to a browser**. Before it, no RG state
+reached the client by any route — not a prop, not the session cookie, not a context, not an API —
+so `/legal/responsible-gambling` §4's *"no marketing to self-excluded players"* was unenforceable
+on any rendered page. It is derived from the RG row `app-shell.tsx` **already fetches** (no sixth
+round trip), it is a single boolean (a browser does not learn *which* break, or until when), and
+it **defaults false** because `feature-state.ts` LAW 1 permits gating an offer and forbids gating
+a refusal — a failed read must not silently become a lockout.
+
+⛔ **AND THREE OF §4's FOUR BULLETS STILL CANNOT BE HONOURED**, which the compliance entry states
+rather than implies: there is **no late-night window in code** (the only 00:00–06:00 EAT band is a
+retrospective harm *detector*, run when an officer opens a page), no age computation from
+`User.dob`, and no "vulnerability segment" concept at all.
+
+**Restraints:** 2nd visit · 45s dwell · once per visit · permanent stop the moment they tap a
+channel · 3 X's → weekly · 6 → never · never on a commit surface, `/auth`, `/admin` or **either**
+responsible-gambling route · never over an open dialog · and `useInvitationSlot` guarantees **at
+most one floating invitation in the DOM, ever** (install wins — a utility for the player outranks
+a thing we want).
+
+✅ **THE INSTALL CARD'S LAPTOP POSITION IS FIXED, AND IT MOVED CORNERS.** Ali: *"comes a bit high
+on laptops, i feel its close to middle of screen."* Measured: `bottom` was `96px` at **every**
+width — the 96 clears the 88px tab bar, which is `lg:hidden` — so on 1280×700 the card's **top**
+sat 233px up, a third of the screen. Now **32px (4.6% of viewport)**. ⭐ It moved to the
+**bottom-LEFT** to get there: the chat bubble owns the bottom-right (`right:16`, `bottom:16`
+desktop / `80` mobile, 52×52, `z-60`), and a right-anchored card at 32px lands on it — dodging it
+on the right would have cost 84px and left the card high again. Both invitations now share one
+corner, which is free because the slot means they can never co-exist. Phones use **148px**
+(80 + 52 + 16) so the full-bleed card clears the bubble too.
+
+⛔ **THE GUARD HAD PINNED THE DEFECT FOR THREE WEEKS.** `install-invite.test.mts` §5.4 asserted
+the literal inline `bottom: "calc(96px + env(...))"` — it asserted the VALUE somebody wrote, not
+the BEHAVIOUR the file's own comment promised (*"hidden from `lg` up, where 24px is enough"*).
+New §5.5 bans the inline form outright: **an inline style beats every class, so a `lg:` variant
+could never have corrected it.** That is what kept the rung unreachable.
+
+🔴 **THREE OF MY OWN MEASUREMENTS WERE VACUOUS, AND EACH WAS CAUGHT BY A CONTROL, NOT BY READING.**
+  1. `qa:social-panel` listed the chat FAB by `[data-testid="chat-fab"], [aria-label*="chat" i]`.
+     **It carries neither.** The lookup returned null, the loop skipped it, and the drive printed
+     *"overlaps nothing"* over a screenshot that plainly showed the bubble on the WhatsApp row.
+     It now **discovers every `position: fixed` box** — nothing to misname.
+  2. `qa:footer-reachable` reported **102/102 with `--prove-red` applied**. Its
+     `window.scrollTo(0, document.body.scrollHeight)` silently did nothing, every footer link was
+     then below the fold, and the loop counts off-screen links as passes. ⭐ **"Not applicable" is
+     the most dangerous verdict a guard can reach silently.** Two vacuity floors added: the scroll
+     is asserted, and ≥4 links must actually be on screen. Red is 5 again, green is 114/0.
+  3. `red:install-invite` fell to **8/9** — my edit moved the render guard and one mutation's
+     anchor rotted. A mutation whose anchor no longer resolves still prints a number, and the
+     number looks like coverage. Re-anchored, 9/9.
+
+⚠️ **AND ONE SELF-INFLICTED OUTAGE, LOCAL ONLY, WORTH THE ENTRY.** A comment in the panel referred
+to the arbitrary Tailwind class with its inner argument elided. **Tailwind scans comments.** It
+compiled that prose into a real rule containing literal dots — invalid CSS — and **one bad
+declaration failed the whole stylesheet parse, so every route served 500.** `test:social-panel`
+§6 now fails on any arbitrary-value class anywhere in `src/` containing an elision. A comment is
+not inert in a file the class scanner reads.
+
+**Gates:** `test:social-panel` 45/0 (5/5 red controls) · `qa:social-panel` **57/0** across 5
+viewport×locale cells · `qa:footer-reachable` 114/0 · `test:install-invite` 44/0 · `red:install-invite`
+9/9 · plus i18n, labels, stacking, bridge, dead-css, design-frozen, icon-sizes, tap-target,
+ui-consistency, tokens, motion-ladder, reduce-motion, keyframes, social-links, contrast, measure.
+`tsc` clean from a cleared `.next`; `next build` clean.
 
 ---
 

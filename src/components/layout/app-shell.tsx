@@ -21,6 +21,9 @@ const LazyEventStream = lazy(() =>
 const LazyInstallInvite = lazy(() =>
   import("@/components/pwa/install-invite").then((m) => ({ default: m.InstallInvite })),
 );
+const LazyChannelsPanel = lazy(() =>
+  import("@/components/social/channels-panel").then((m) => ({ default: m.ChannelsPanel })),
+);
 const LazyWinCelebration = lazy(() =>
   import("@/components/markets/win-celebration").then((m) => ({ default: m.WinCelebrationHost })),
 );
@@ -147,6 +150,12 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
     isAdmin?: boolean;
   } = { initials: guestUser.initials, name: guestUser.name, phone: guestUser.phone, isAuthed: false, balance: null };
   let realityCheckMin = 30;
+  /**
+   * True = this player is on a self-imposed break, so nothing promotional may be shown to them.
+   * ⛔ Defaults FALSE, including for a signed-out visitor and for a failed RG read — it gates an
+   * OFFER, never a refusal (`feature-state.ts` LAW 1), so failing open is the correct direction.
+   */
+  let promoSuppressed = false;
   /** Non-null = signed in with an UNCONFIRMED address → show the standing bar. */
   let emailVerifyState: { email: string | null } | null = null;
   /** Non-null = signed in and NOT yet verified → show the standing identity bar. */
@@ -199,6 +208,31 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       isAdmin: hasRole(u?.role, ADMIN_CONSOLE_ROLES),
     };
     realityCheckMin = rg?.realityCheckIntervalMin || 30;
+    /**
+     * 🔴 THE FIRST RG FACT THIS PLATFORM HAS EVER SENT TO A BROWSER, and it exists because a
+     * promotional surface now renders on the page. `/legal/responsible-gambling` §4 publishes
+     * "no marketing to self-excluded players", and until this line NO responsible-gambling
+     * state reached the client by ANY route — not a prop, not the session cookie, not a
+     * context, not an API. Nothing on a page could have honoured that promise.
+     *
+     * ⭐ DERIVED FROM THE ROW ALREADY IN HAND, NOT A SECOND QUERY. `isLockedOut()` would be the
+     * canonical predicate, but calling it here is a sixth round trip on EVERY page render —
+     * the exact latency tax the batch note above forbids. `rg` is already fulfilled; the two
+     * timestamps on it answer the question.
+     *
+     * ⚠️ IT IS A SINGLE BOOLEAN, ON PURPOSE. A client does not get to know WHICH break a player
+     * is on, or until when — that is their business, and a reason code in a browser bundle is a
+     * disclosure with no consumer. The server knows; the page only learns "do not solicit".
+     *
+     * ⛔ AND IT GATES AN OFFER, NEVER A REFUSAL (`feature-state.ts` LAW 1). Nothing that FORBIDS
+     * anything may ever read this flag: it fails OPEN by construction — a failed `getRgSettings`
+     * leaves `rg` null and `promoSuppressed` false — because a read failure must not silently
+     * become a lockout. If you ever need it to fail closed, you need a different value.
+     */
+    const now = Date.now();
+    const until = (iso: string | null | undefined) => (iso ? Date.parse(iso) : 0);
+    promoSuppressed =
+      until(rg?.selfExclusionUntil) > now || until(rg?.coolingOffUntil) > now;
     // Email confirmation gates depositing, so an unconfirmed address is a live
     // limitation on the account and belongs on every page — not only on the
     // deposit form the player may not reach for days. `u` is null only if the
@@ -374,6 +408,16 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
           It is deliberately the LAST child: it is fixed-positioned, so its place in the stacking
           order is the thing that keeps it off the bottom nav and the Needle. */}
       <Suspense fallback={null}><LazyInstallInvite /></Suspense>
+      {/* THE CHANNELS PANEL, and like the install invitation it is NOT session-gated — a visitor
+          who has not signed up is exactly who benefits from finding the channels. Its own rules
+          do the gating (a second visit, 45 seconds in, once per visit, never on a money-commit
+          surface or either responsible-gambling route, three X's and it backs off, six and it
+          stops), and `useInvitationSlot` guarantees it and the install card can never both be on
+          screen — install wins, because a utility for the player outranks a thing we want.
+          🔴 `promoSuppressed` is the RG gate: a player on a self-imposed break is never solicited.
+          See `docs/COMPLIANCE-DECISIONS.md` (2026-09-12, second entry) for the override that
+          permits an interstitial at all. */}
+      <Suspense fallback={null}><LazyChannelsPanel promoSuppressed={promoSuppressed} /></Suspense>
     </div>
   );
 }

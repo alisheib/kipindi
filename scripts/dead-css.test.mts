@@ -274,7 +274,14 @@ const BASELINE = new Set<string>([
   "g-swap", "g-swap-out", "m-ambient", "m-aura", "m-draw", "m-live-pip", "m-urgent",
     // `mat-raised` LEFT THIS LIST on 2026-08-21 — `ui/cashback-promo.tsx` and the wallet
   // bonus card both pick that rung now (D5), so it has real consumers and check 1.2 said so.
-  "mark-breathe", "mark-flip", "mark-pending", "mat-float", "mat-inset",
+  // ⭐ `mat-float` LEFT THIS LIST on 2026-09-12 and the list may only shrink. The channels panel
+  // (`components/social/channels-panel.tsx`) is the rung-2 surface the kit always had a recipe
+  // for and no consumer of. Its body was read before reviving it, as this guard's own message
+  // demands: `background: var(--wash-float); border: 1px solid var(--border-strong); box-shadow:
+  // var(--mat-tint, …), var(--elev-float)` — the current family recipe, not a superseded one,
+  // and the sibling rungs it sits between are all live. ⚠️ It carries its OWN border, which is
+  // why the panel adds no `border-*` class: two rings read as one muddy 2px edge (§M2).
+  "mark-breathe", "mark-flip", "mark-pending", "mat-inset",
   "skeleton", "stagger-item",
 ]);
 

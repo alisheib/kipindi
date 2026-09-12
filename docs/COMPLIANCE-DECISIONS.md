@@ -6,6 +6,71 @@
 
 ---
 
+## 2026-09-12 (third) · 🔴 AN INTERSTITIAL CHANNELS PANEL — this OVERRIDES the two entries below
+
+**Decision:** Ali, **2026-09-12**, having been shown in writing that the entry below rules the
+footer row lawful *because* it is a directory line and explicitly lists **"no interstitial
+prompt"** among the conditions it keeps, chose to override it: *"i'll show the invitation icons
+… with an x, icons clickable … make it show up in front of them so they have to click x to hide
+it"*, and on the wording, *"icons and join … icons and join … like this."*
+
+**⛔ THIS IS AN OVERRIDE, NOT AN EXTENSION, AND BOTH ENTRIES STAND.** The entries below are not
+edited and not deleted. They remain the correct account of what was decided then, and this entry
+is the correct account of what changed. A compliance log that quietly rewrites its own past is
+worth less than no log. Two of that entry's stated conditions no longer hold:
+
+| Condition in the 2026-09-12 entry | Status now |
+|---|---|
+| "no interstitial prompt" | ⛔ **NO LONGER TRUE.** A dismissible panel appears over the page. |
+| "no 'join us'" | ⛔ **NO LONGER TRUE.** Every row reads "Join us on …". |
+| no follower count, no badge, no gilt, no reward | ✅ still true |
+| never above a regulator disclosure | ✅ still true — the panel is chrome, not in the footer |
+| the five no-promo emails | ✅ unchanged |
+
+### What the override bought, and it had to be built
+
+**🔴 The platform could not honour "no marketing to self-excluded players" at all before this
+change.** `/legal/responsible-gambling` §4 publishes that commitment, and **no responsible-gambling
+state reached the browser by any route** — not a prop, not the session cookie (`SessionData` has
+no RG field), not a context, not an API (there is no RG endpoint). `app-shell.tsx` loaded the RG
+row on every page and kept one integer from it. Nothing rendered on a page could have obeyed that
+sentence, and nothing did.
+
+`promoSuppressed` is now derived from that same already-fetched row and threaded to the panel as
+a prop. It is a **single boolean** on purpose: a browser does not learn *which* break a player is
+on or until when. It **defaults false** and fails open, because `feature-state.ts` LAW 1 permits
+gating an *offer* and forbids gating a refusal — a failed RG read must never silently become a
+lockout.
+
+Enforced by `npm run test:social-panel` §3 and by `qa:social-panel`, not by memory.
+
+### ⚠️ What still cannot be honoured, stated rather than implied
+
+Three of §4's four bullets remain unenforceable, and this panel is the first surface where two of
+them bite:
+
+- **"no sign-up nudges in the late-night window"** — *there is no late-night window in code.* The
+  only 00:00–06:00 EAT band on this platform is a **retrospective harm detector** in
+  `responsible-gambling.ts`, computed only when an officer opens the compliance page. Honouring
+  this bullet would mean *creating* the window, not reusing one. It was not created here.
+- **"players under 25"** — `User.dob` exists; nothing computes an age band.
+- **"in vulnerability segments"** — no such concept exists in the code at all.
+
+And the gap the entry below already named applies with more force here: **a self-excluded player
+can browse signed out**, where no server check can see them, and **50pick cannot enforce
+self-exclusion on a follower list.** A footer line is passive; a panel that converts a player into
+a follower actively moves them onto a channel no RG control can ever remove them from.
+
+### The restraints the override does keep
+
+Never on a first visit · never in the first 45 seconds · once per visit · never over a money
+commit control, an auth page, an admin page, **or either responsible-gambling route** · never over
+an open dialog · a permanent stop the moment they tap a channel · three X's and it backs off to
+weekly · six and it stops for good · and **never two floating invitations at once** — the install
+card outranks it, because a utility for the player beats a thing we want.
+
+---
+
 ## 2026-09-12 (second) · The WhatsApp CHANNEL joins the row — and why that word is doing the work
 
 **Decision:** Ali, **2026-09-12**, supplied `https://www.whatsapp.com/channel/0029Vb8At5uCxoAtENkyS71Q`.

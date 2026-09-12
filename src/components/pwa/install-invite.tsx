@@ -56,6 +56,7 @@ import { usePathname } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
 import { useT } from "@/lib/i18n";
 import { isCommitSurface } from "@/lib/surfaces";
+import { useInvitationSlot } from "@/lib/invitation-slot";
 import { Button } from "@/components/ui/button";
 
 const MIN_VISITS = 2;
@@ -188,9 +189,16 @@ export function InstallInvite() {
     setVisible(false);
   }, [deferred]);
 
-  // ⛔ THE MONEY-SURFACE GATE IS EVALUATED AT RENDER, on every route change, so a soft navigation
-  // onto a bet card removes the card rather than leaving it over the gold control.
-  if (installed || !visible || isCommitSurface(pathname)) return null;
+  /* ⛔ THE MONEY-SURFACE GATE IS EVALUATED AT RENDER, on every route change, so a soft navigation
+     onto a bet card removes the card rather than leaving it over the gold control.
+     ⭐ AND THE SLOT CLAIM RIDES THE SAME EXPRESSION, deliberately. `useInvitationSlot` breaks a
+     tie between floating invitations; it does not decide eligibility. Claiming while ineligible
+     would silence the channels panel for nothing, so the claim is the render condition itself.
+     This card is priority 1 and wins: it is a utility that makes the product better for the
+     player, and the channels panel is a thing we want. */
+  const eligible = !installed && visible && !isCommitSurface(pathname);
+  const holdsSlot = useInvitationSlot("install", 1, eligible);
+  if (!holdsSlot) return null;
 
   return (
     <div
@@ -198,10 +206,29 @@ export function InstallInvite() {
       aria-modal="false"
       aria-labelledby="install-invite-title"
       data-testid="install-invite"
-      className="fixed left-3 right-3 z-40 lg:left-auto lg:right-6 lg:max-w-[380px] rounded-xl glass-panel border border-border p-3.5 shadow-lg"
-      /* ⛔ ABOVE THE BOTTOM NAV, NEVER ON IT. The nav owns 88px + the safe area on phones and is
-         hidden from `lg` up, where 24px is enough. */
-      style={{ bottom: "calc(96px + env(safe-area-inset-bottom))" }}
+      data-invitation="install"
+      /* 🔴 IT SAT TOO HIGH ON LAPTOPS, AND THE FIX MOVED IT TO THE OTHER CORNER. Ali, 2026-09-12:
+         *"the install popup on laptops comes a bit high, i feel its close to middle of screen."*
+         He was right and the number says why: the offset was `96px` at EVERY width, but 96 exists
+         to clear the 88px tab bar, which is `lg:hidden`. On a 1280×700 laptop the card's TOP then
+         sat 233px up — a third of the screen. It is 32px off the bottom now.
+
+         ⭐ AND IT MOVED LEFT, WHICH IS WHAT MAKES 32 POSSIBLE. The chat bubble owns the
+         bottom-RIGHT corner (`fixed`, `right: 16`, `bottom: 16` desktop / `80` mobile, 52×52,
+         `z-60`), so a right-anchored card at 32 lands on it — measured, not assumed. Dodging it
+         on the right would mean 84px, which barely fixes the complaint. The bottom-LEFT corner is
+         empty. ⛔ And it costs nothing to share it with the channels panel, because
+         `useInvitationSlot` guarantees only ONE invitation is ever on screen: one slot, one
+         place. Two cards that can never co-exist should not occupy two different corners.
+
+         ⚠️ 148 on phones, not 96: full-bleed there, so the card reaches the bubble whichever side
+         it is anchored to. 80 + 52 + 16 = 148.
+         ⚠️ `_` is Tailwind's space escape — the same `calc` without spaces is invalid CSS and
+         fails silently. `lg:bottom-6` is 32px on this repo's OVERRIDDEN spacing scale, matching
+         `lg:left-6` so the card sits in a square corner inset.
+         ⛔ An inline `bottom` beats every class, so this must stay a class or the `lg:` rung is
+         unreachable — which is exactly how the 96 survived three weeks under a green guard. */
+      className="fixed left-3 right-3 bottom-[calc(148px_+_env(safe-area-inset-bottom))] lg:bottom-6 z-40 lg:right-auto lg:left-6 lg:max-w-[380px] rounded-xl glass-panel border border-border p-3.5 shadow-lg"
     >
       <div className="flex items-start gap-3">
         <span className="shrink-0 mt-0.5 text-gold-300" aria-hidden><I.download s={18} /></span>

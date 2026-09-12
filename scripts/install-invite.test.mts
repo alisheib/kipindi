@@ -74,8 +74,18 @@ ok("2.1 the standalone display-mode is checked (Chrome / Edge / Android / deskto
    /matchMedia\?\.\("\(display-mode: standalone\)"\)/.test(inv), "");
 ok("2.2 ⛔ navigator.standalone is checked too — it is the ONLY signal on iOS",
    /navigator as Navigator & \{ standalone\?: boolean \}\)\.standalone === true/.test(inv), "");
+/* ⚠️ REWORDED 2026-09-12, NOT WEAKENED. The render guard used to be one literal line and this
+   check pinned it verbatim. It is now an `eligible` expression feeding `useInvitationSlot`,
+   because a second floating invitation exists and the two must never stack. The CONTRACT is
+   unchanged and is still asserted in full: all three answers gate the RENDER, not merely the
+   effect — plus the slot, which can also withhold it. */
 ok("2.3 …and the answer gates the render, not merely the effect",
-   /if \(installed \|\| !visible \|\| isCommitSurface\(pathname\)\) return null;/.test(inv), "");
+   /const eligible = !installed && visible && !isCommitSurface\(pathname\);/.test(inv)
+   && /if \(!holdsSlot\) return null;/.test(inv), "");
+ok("2.3b ⭐ ONE floating invitation at a time — this card claims the slot at priority 1 and wins",
+   /useInvitationSlot\("install", 1, eligible\)/.test(inv)
+   && /data-invitation="install"/.test(inv),
+   "install is a utility for the player; the channels panel is a thing we want, so it yields");
 ok("2.4 ⭐ it is RE-CHECKED on visibilitychange — a viewer can install from the browser menu without this document unmounting",
    /addEventListener\("visibilitychange", onVisible\)/.test(inv), "");
 ok("2.5 the appinstalled event writes a PERMANENT stop",
@@ -118,9 +128,26 @@ ok("5.2 ⭐ ONE definition of a money surface — the Needle imports it rather t
    "two definitions of \"money surface\" is the drift this repo has filed four times");
 ok("5.3 the commit gate covers the poll bet card AND the Up & Down round card",
    /\/\^\\\/markets\\\/\[\^\/\]\+\//.test(surf) && /\/\^\\\/updown\\\/\[\^\/\]\+\//.test(surf), surf.match(/COMMIT_ROUTE[\s\S]{0,320}/)?.[0] ?? "");
-ok("5.4 …and it clears the bottom nav rather than sitting on it",
-   /bottom: "calc\(96px \+ env\(safe-area-inset-bottom\)\)"/.test(inv),
-   "the nav owns 88px + the safe area");
+/* 🔴 THIS CHECK PINNED THE DEFECT FOR THREE WEEKS. It asserted an INLINE
+   `bottom: "calc(96px + env(safe-area-inset-bottom))"` — and 96px is the clearance for a tab bar
+   that is `lg:hidden`, so above `lg` the card floated a third of the way up a short laptop
+   viewport. Ali reported it 2026-09-12: *"comes a bit high, i feel its close to middle of
+   screen."* The file's own comment had said "hidden from `lg` up, where 24px is enough" the whole
+   time; the code never did it, and this gate was green over the gap because it asserted the
+   VALUE somebody wrote rather than the BEHAVIOUR the comment promised.
+   ⭐ 5.5 is the half that actually prevents a recurrence: an inline `bottom` beats every class,
+   so a `lg:` variant could not correct it even if someone added one. Banning the inline form is
+   what makes the responsive rung reachable at all. */
+ok("5.4 …and it clears the tab bar AND the chat bubble on phones, and sits in the corner above `lg`",
+   /bottom-\[calc\(148px_\+_env\(safe-area-inset-bottom\)\)\]/.test(inv)
+   && /lg:bottom-6/.test(inv),
+   "below `lg` it must clear the 88px nav AND the 52px bubble parked at bottom:80 — 80+52+16=148");
+ok("5.6 ⭐ it is anchored bottom-LEFT above `lg`, the corner the chat bubble does not own",
+   /lg:right-auto/.test(inv) && /lg:left-6/.test(inv),
+   "a right-anchored card at 32px lands on the bubble; dodging it there would cost 84px and leave the card high again");
+ok("5.5 ⛔ the offset is a CLASS, never an inline style — an inline `bottom` cannot be responsive",
+   !/style=\{\{[^}]*\bbottom:/.test(inv),
+   "an inline style beats every class, so a `lg:` variant could never override it");
 
 // ── §6 · ALI'S CROSS-CUTTING RULE, ON THIS CARD ─────────────────────────────────────────────
 console.log("\n§6 · no text may leave its box, no matter how many lines it needs");

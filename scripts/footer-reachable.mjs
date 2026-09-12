@@ -71,8 +71,26 @@ for (const [locale, width] of CELLS) {
     await page.addStyleTag({ content: "footer { padding-bottom: 0 !important; }" });
   }
 
-  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  /**
+   * 🔴 THE SCROLL IS ASSERTED, NOT ASSUMED — AND THIS GUARD ONCE REPORTED 102/102 BECAUSE IT
+   * WAS NOT. `window.scrollTo(0, document.body.scrollHeight)` silently did nothing on one run;
+   * every footer link was then far below the fold, the loop below counted each one as
+   * "off-screen, not this guard's subject", and the drive printed a clean pass over a page it
+   * had never scrolled. The `--prove-red` control went GREEN, which is the only reason it was
+   * caught. ⭐ "Not applicable" is the most dangerous verdict a guard can reach silently.
+   */
+  await page.evaluate(() => {
+    const el = document.scrollingElement || document.documentElement;
+    el.scrollTop = el.scrollHeight;
+    window.scrollTo(0, el.scrollHeight);
+  });
   await page.waitForTimeout(600);
+  const atEnd = await page.evaluate(() => {
+    const el = document.scrollingElement || document.documentElement;
+    return Math.ceil(el.scrollTop + window.innerHeight) >= el.scrollHeight - 2;
+  });
+  ok(`${locale}@${width} · the page actually scrolled to the bottom (vacuity floor)`, atEnd,
+     "every occlusion check below is vacuous otherwise");
 
   const results = await page.evaluate(() => {
     /**
@@ -112,13 +130,21 @@ for (const [locale, width] of CELLS) {
     });
   });
 
+  let probed = 0;
   for (const r of results) {
     totalProbes++;
     // A link scrolled out of the viewport is not this guard's subject — it is reachable by
     // scrolling. The defect is a link that IS on screen and still cannot be hit.
     if (!r.onScreen) { pass++; continue; }
+    probed++;
     ok(`${locale}@${width} · "${r.text}" is tappable`, r.reachable, r.blocker ? `covered by ${r.blocker}` : "");
   }
+  /* ⛔ SECOND VACUITY FLOOR, and it is the one that would have caught the silent-scroll bug even
+     if the first were removed. At the bottom of the page a real footer puts SEVERAL links in the
+     viewport; if almost none are on screen, the drive is measuring a page it never reached and
+     "all reachable" means nothing. */
+  ok(`${locale}@${width} · enough footer links were actually on screen to mean something`,
+     probed >= 4, `only ${probed} of ${results.length} were in the viewport`);
 
   await ctx.close();
 }
