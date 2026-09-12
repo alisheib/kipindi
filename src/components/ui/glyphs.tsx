@@ -377,6 +377,13 @@ const Iplus = {
   attest: (p: GlyphProps) => <G {...p}><path d="M4.5 8.5 9 4l4 4-4.5 4.5z"/><path d="M11 10.5l8 8"/><path d="M13.5 21h6.5" strokeWidth="1.7"/></G>,
   reconcile: (p: GlyphProps) => <G {...p}><path d="M12 4v16M8.5 20h7"/><path d="M5.5 8h13"/><path d="M5.5 8l-2 4a2.4 2.4 0 0 0 4 0zM18.5 8l-2 4a2.4 2.4 0 0 0 4 0z" strokeWidth="1.6"/></G>,
 
+  /* ⛔ NO SOCIAL GLYPHS HERE, DELIBERATELY. Instagram and TikTok are drawn in their own
+     colours from `src/components/ui/social-marks.tsx`. They cannot live in this family:
+     `G` hard-codes `fill="none" stroke="currentColor" strokeWidth="1.9"`, which is the
+     contract that makes 178 glyphs agree, and a gradient-bearing multi-fill vendor logo
+     cannot satisfy it. A house-line interpretation WAS drawn and measured first — at the
+     16px ship size its TikTok note read as a generic music note, so it was cut. */
+
   // ── Categories (reference) ──
   catSports: (p: GlyphProps) => <G {...p}><circle cx="12" cy="12" r="8.6"/><path d="M12 8.8L15.04 11.01L13.88 14.59L10.12 14.59L8.96 11.01Z"/><path d="M12 8.8V3.4M15.04 11.01L20.18 9.34M13.88 14.59L17.06 18.96M10.12 14.59L6.94 18.96M8.96 11.01L3.82 9.34"/></G>,
   catMacro: (p: GlyphProps) => <G {...p}><path d="M3.5 20.5h17"/><path d="M4.5 16.5l4.5-5 3 2.7 6.5-7.7"/><path d="M15.3 6h3.5v3.5"/></G>,

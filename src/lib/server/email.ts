@@ -71,6 +71,20 @@ const COMPANY = "50pick";
  */
 import { HELPLINE } from "@/lib/support-config";
 import { SUPPORT_EMAIL } from "@/lib/server/support-config";
+import { SOCIAL } from "@/lib/social";
+
+/**
+ * The social labels as they appear in email. ⛔ NOT from `i18n-dict.ts`, and that is not an
+ * oversight: this shell is not translated through the dictionary at all — it writes English
+ * with a Swahili line beside it (`subtitleSw`), because §11 of the agent programme rules
+ * emails EN + SW and no Chinese. These two are company names and read identically in every
+ * language, which is the same reason `footer.instagram` / `footer.tiktok` are the only two
+ * footer keys on the `IDENTICAL_OK` list in `scripts/i18n-parity.test.mts`.
+ */
+const SOCIAL_EMAIL_LABEL: Record<(typeof SOCIAL)[number]["labelKey"], string> = {
+  instagram: "Instagram",
+  tiktok: "TikTok",
+};
 
 // ⭐ THE BASE URL HAS ONE HOME: `appUrl()` (`src/lib/app-url.ts`).
 // 🔴 This file carried a private `BASE_URL` defaulting to `kipindi-production.up.railway.app`
@@ -456,7 +470,26 @@ const MARK_IMG = `<img src="${appUrl()}/icons/mark-color-512.png" width="56" hei
  *  earned-money / earned-status / money-in emails** (deposit, win, bonus, KYC-
  *  approved, …); everything else (security, process, loss, refunds, admin) uses
  *  royal — the same gold-discipline law the rest of the app follows. */
-function wrap(body: string, opts: { accent?: "gold" | "royal" } = {}): string {
+/**
+ * `noPromo` — this message must carry NO promotional element, so the footer's social row
+ * is withheld from it.
+ *
+ * 🔴 THE POPULATION IS NOT "RG PAGES", IT IS "MESSAGES ABOUT HARM, A LOSS, OR A LOCKOUT",
+ * and it is wider than it first looks. `/legal/responsible-gambling` §4 publishes a binding
+ * promise — "no marketing to self-excluded players or players under 25 in vulnerability
+ * segments" — and a follow-us link at the foot of a *you lost* email is precisely the thing
+ * that promise is about. E-328 is the standing lesson here: the failure mode on this
+ * platform has never been a missing disclosure, it has been the RIGHT content published in
+ * the WRONG frame, and it took a human reading the rendered message to see it.
+ *
+ * ⭐ Named for the RULE, not the mechanism. A flag called `rg` would have invited the next
+ * template to ask "but is this an RG email?" — which `lossNotificationHtml` is not, and
+ * which it must still suppress. `noPromo` answers the question that actually decides it.
+ *
+ * Enforced, not remembered: `npm run test:social-links` §4 renders each of these templates
+ * and fails if a social URL appears in the output.
+ */
+function wrap(body: string, opts: { accent?: "gold" | "royal"; noPromo?: boolean } = {}): string {
   const gold = opts.accent === "gold";
   const topBar = gold
     ? `linear-gradient(90deg,${GILT_MID},${GILT},${GILT_MID})`
@@ -535,6 +568,17 @@ function wrap(body: string, opts: { accent?: "gold" | "royal" } = {}): string {
       You're receiving this because you have a 50pick account.<br>
       <a href="${appUrl()}/profile/account" style="color:${TEXT_SUBTLE};text-decoration:underline">Manage preferences</a>
     </p>
+    ${opts.noPromo ? "" : `
+    <!-- ⛔ TEXT, NOT ICONS, AND THAT IS NOT A SHORTCUT. Gmail and Outlook block remote
+         images by default — the rule docs/EMAIL-SIGNATURES.md already teaches — so a
+         logo here would simply be absent for most readers, and an absent logo beside a
+         present one reads as a broken email rather than a quiet one. Words survive
+         image-blocking, and they survive a plain-text client too.
+         ⭐ LAST, BELOW "Manage preferences": the same ranking the in-app footer uses —
+         nothing promotional sits above an unsubscribe or a regulator disclosure. -->
+    <p style="margin:12px 0 0;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:10px;color:${TEXT_FAINT}">
+      ${SOCIAL.map((s) => `<a href="${s.url}" style="color:${TEXT_SUBTLE};text-decoration:none">${SOCIAL_EMAIL_LABEL[s.labelKey]}</a>`).join(` <span style="color:${TEXT_FAINT}">&middot;</span> `)}
+    </p>`}
   </td></tr>
 
 </table>
@@ -884,7 +928,7 @@ export function depositReversedHtml({ amount, method, reference, gatewayRef }: {
     ${subtitle("Your exclusion stays in place — this is the protection working as intended. If a refund has not reached you within 5 working days, quote the references above and we'll trace it.")}
     ${subtitleSw("Kujifungia kwako kunaendelea — hii ni ulinzi ukifanya kazi ipasavyo. Kama marejesho hayajakufikia ndani ya siku 5 za kazi, tutumie kumbukumbu zilizo hapo juu.")}
     ${refNote()}
-  `);
+  `, { noPromo: true });
 }
 
 /** Normalise a stored msisdn to display form "+2557XXXXXXXX". */
@@ -1048,7 +1092,7 @@ export function updownDigestHtml({ dayLabel, rounds, wins, losses, refunds, wonP
     ${losses > 0 ? subtitle("Most people play for fun. If it stops feeling fun, take a break.") : ""}
     ${refNote()}
     ${ctaButton("/updown/history", "See every round · Ona raundi zote")}
-  `);
+  `, { noPromo: true });
 }
 
 export function lossNotificationHtml({ reference, stake, marketTitle, settledAt }: {
@@ -1067,7 +1111,7 @@ export function lossNotificationHtml({ reference, stake, marketTitle, settledAt 
     ${subtitleSw("Kama haifurahishi tena, pumzika.")}
     ${refNote()}
     ${ctaButton("/profile/responsible-gambling", "Set limits · Weka mipaka")}
-  `);
+  `, { noPromo: true });
 }
 
 /**
@@ -1354,7 +1398,7 @@ export function selfExclusionHtml({ period, endDate }: { period: string; endDate
       { label: "Unlocks", value: endDate },
     ])}
     ${subtitle(`Need help? Contact the Tanzania Gambling Helpline: ${HELPLINE()}`)}
-  `);
+  `, { noPromo: true });
 }
 
 export function coolOffHtml({ duration, endDate }: { duration: string; endDate: string }): string {
@@ -1366,7 +1410,7 @@ export function coolOffHtml({ duration, endDate }: { duration: string; endDate: 
       { label: "Duration", value: duration },
       { label: "Resumes", value: endDate },
     ])}
-  `);
+  `, { noPromo: true });
 }
 
 export function amlRejectRefundHtml({ amount, reason, reference, gatewayRef, railLabel }: {

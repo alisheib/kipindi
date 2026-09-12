@@ -6,6 +6,51 @@
 
 ---
 
+## 2026-09-12 · Instagram and TikTok in the player footer — a directory line, and where it must never appear
+
+**Decision:** Ali, **2026-09-12**, supplied the two accounts and chose the treatment from a
+rendered comparison of four: *"i want b its so nice"* — the official marks in the vendors' own
+colours. 50pick now links to `@50pick.tz` on Instagram and `@50pick` on TikTok from the identity
+column of the global player footer, and from the transactional email footer.
+
+**The RG question, asked before it was built.** `/legal/responsible-gambling` §4 publishes a
+binding operator commitment: *"No marketing to self-excluded players or players under 25 in
+vulnerability segments."* The footer renders on every player-facing page, including pages a
+`COOLED_OFF` player reaches while signed in (`SELF_EXCLUDED` is refused at login; cooling-off is
+not — see `RG-AUDIT-2026-08-27.md` Q2). So the question is whether a follow link is *marketing*.
+
+**Ruling: a static platform directory line in site chrome is not a marketing communication; an
+offer or a nudge would be.** The shape is not a new one — it is the shape `public-footer.tsx`
+already gives the agent door: *"a plain directory line — no badge, no gilt, no number, no
+earnings verb."* Accordingly the social row carries **no follower count, no badge, no gilt, no
+"join us", no reward, and no interstitial prompt**, and it sits **last in the column, below the
+18+ badge, the Gaming Board sentence, the licence number and the copyright** — nothing was
+inserted above a regulator disclosure, and that ordering is part of the ruling, not styling.
+
+**⛔ Where it must never appear, and this half is enforced, not remembered.** `noPromo` on the
+email shell withholds the row from five templates: `selfExclusionHtml`, `coolOffHtml`,
+`depositReversedHtml`, `lossNotificationHtml` and `updownDigestHtml`. The population is *messages
+about harm, a loss, or a lockout* — deliberately wider than "RG emails", because
+`lossNotificationHtml` is not an RG email and must still suppress. `npm run test:social-links` §4
+renders each one and fails on a social URL, and carries a positive control so it cannot pass by
+the links silently vanishing from email altogether. The same reasoning keeps the row off the win
+celebration, the bet receipt and the deposit-success screen.
+
+**🔴 The gap, named rather than papered over.** 50pick **cannot enforce self-exclusion on a
+follower list.** A self-excluded player who already follows the account keeps seeing its posts,
+and no control on this platform reaches that. This is stated here for the same reason
+`RG-AUDIT-2026-08-27.md` states that no real SMS has ever left the platform: an RG design that
+quietly assumes a reach it does not have is fiction. If 50pick ever runs paid social, the
+exclusion-list question has to be answered there, not here.
+
+**⚠️ Two hygiene facts worth keeping.** The URLs as supplied carried per-share session tokens
+(`?_t=…`, `?stkn=…`) minted by the owner's own phone; they are stripped, and §2 of the guard
+fails on any query string so the paste cannot recur. And **the TikTok handle could not be
+verified from a terminal** — TikTok answers HTTP 200 with a byte-identical challenge page for a
+real handle and for an invented one, so a browser check is the only proof.
+
+---
+
 ## 2026-09-11 · The audit chain is WIPED and re-genesised for launch — a deliberate override of `DATA-RETENTION.md` §3
 
 **Decision:** Ali, **2026-09-11**, as part of the pre-launch data reset: *"all users except some

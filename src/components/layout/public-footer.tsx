@@ -16,6 +16,12 @@ import { ProposalsStateBadge } from "@/components/ui/proposals-state-badge";
    browser bundle. Only the PINNED constants live here; the operator-editable address arrives
    as a prop, for the reason `agentDoorVisible` already documents. */
 import { HELPLINE, HELPLINE_TEL, LICENCE_NUMBER } from "@/lib/support-config";
+/* ⭐ IMPORTED DIRECTLY, AND THAT IS THE POINT OF PINNING IT. Every other operator-facing
+   value in this file is a prop because a `defineConfig` read in a `"use client"` bundle
+   returns the module default (E-226). `SOCIAL` has no persisted row to disagree with, so
+   the browser and the server agree by construction and there is nothing to thread. */
+import { SOCIAL } from "@/lib/social";
+import { SOCIAL_MARK } from "@/components/ui/social-marks";
 import { useT } from "@/lib/i18n";
 import type { ProposalsState } from "@/lib/server/proposals-config";
 
@@ -110,6 +116,28 @@ export function PublicFooter({
           <p className="font-mono text-[11px] text-text-subtle">
             © {new Date().getFullYear()} 50pick · Tanzania
           </p>
+          {/* ⭐ LAST IN THE IDENTITY COLUMN, AND THE ORDER IS THE RULING. Nothing is
+              inserted above the 18+ badge, the Gaming Board sentence, the licence number
+              or the copyright — a social link ranks BELOW every regulator disclosure on
+              the page, and it sits in the brand column rather than taking a fifth one,
+              so the `md:grid-cols-4` chrome is unchanged on every player page.
+              ⛔ A PLAIN DIRECTORY LINE — no badge, no gilt, no follower count, no verb.
+              The same shape, and the same reason, as the agent door below: `/legal/
+              responsible-gambling` §4 publishes "no marketing to self-excluded players",
+              and a static platform name in site chrome is a directory entry, not a
+              marketing communication. An offer or a nudge would be one. Recorded in
+              `docs/COMPLIANCE-DECISIONS.md`; enforced by `npm run test:social-links`. */}
+          <ul className="flex items-center gap-4">
+            {SOCIAL.map((s) => (
+              <SocialLink
+                key={s.labelKey}
+                href={s.url}
+                markKey={s.labelKey}
+                label={t.footer[s.labelKey]}
+                ariaLabel={t.footer.followOn.replace("{platform}", t.footer[s.labelKey])}
+              />
+            ))}
+          </ul>
         </div>
 
         <FooterCol heading={t.footer.playSafe}>
@@ -200,6 +228,53 @@ function FooterCol({
       </p>
       <ul className="space-y-1.5">{children}</ul>
     </div>
+  );
+}
+
+/**
+ * A social account, as a directory line. Same ink and same hover-underline recipe as
+ * `FooterLink` below — this is the kit's external-link variant of it, not a new look.
+ *
+ * ⭐ THE SIZING, DERIVED RATHER THAN PICKED. The mark is 16 — `GLYPH.row`, the named
+ * constant for a row's lead glyph, already the 2nd-commonest size on the player surface,
+ * and already inside the frozen set in `scripts/icon-size-ratchet.test.mts`, so it adds no
+ * twentieth value to a spread the ratchet exists to shrink. Not 14 (`GLYPH.inline`, for a
+ * glyph inside a line of text), not 18 (`GLYPH.card`, a section head), not 20 (the
+ * bottom-rail pip, which reads as primary navigation — this is not that).
+ *
+ * The row is `min-h-[44px]`: the preferred WCAG 2.5.5 target and Ali's 2026-08-14 ruling,
+ * so `test:tap-target` passes with no exemption argued. That puts the mark at 36% of its
+ * target against the rail pip's 45% — deliberately quieter, because this is chrome.
+ * ⛔ Never `h-9 w-9` here: this repo OVERRIDES Tailwind's spacing scale and `9` is 64px.
+ *
+ * ⚠️ THE MARK DOES NOT DIM WITH ITS LABEL, AND THAT IS THE COST OF THE OWNER'S CHOICE.
+ * Instagram's gradient and TikTok's three inks are the vendors' own and are not ours to
+ * re-hue, so they cannot ride `currentColor` the way every other footer icon does — the
+ * word brightens on hover and the logo beside it holds. Measured against the alternative
+ * on a real render 2026-09-12 and accepted: a one-ink version of the same geometry dimmed
+ * correctly but gave up the instant recognition that is the whole reason the row exists.
+ *
+ * ⛔ NO HOVER ANIMATION ON THE MARK (§M5 — "icons respond, they do not perform"). The only
+ * motion is the colour crossfade the global `:where(a)` rule already applies to the label
+ * at `--t-quick` / `linear`, and the focus ring is the platform catch-all.
+ */
+function SocialLink({
+  href, markKey, label, ariaLabel,
+}: { href: string; markKey: keyof typeof SOCIAL_MARK; label: string; ariaLabel: string }) {
+  const Mark = SOCIAL_MARK[markKey];
+  return (
+    <li>
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label={ariaLabel}
+        className="text-text-muted hover:text-text transition-colors inline-flex items-center gap-1.5 min-h-[44px] group"
+      >
+        <Mark s={16} />
+        <span className="border-b border-transparent group-hover:border-text-subtle transition-colors">{label}</span>
+      </a>
+    </li>
   );
 }
 

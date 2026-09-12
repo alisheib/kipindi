@@ -1981,6 +1981,18 @@ export const dict = {
       helpline: "Helpline",
       contactUs: "Contact us",
       email: "Email",
+      /* ⭐ THE PLATFORM NAMES ARE KEYS AND NOT LITERALS, DELIBERATELY. They are proper
+         nouns, identical in all three locales, and `IDENTICAL_OK` in the parity guard
+         says so with a reason. Keeping them as literals in `src/lib/social.ts` would
+         have been simpler and wrong: this footer already shipped a hardcoded English
+         string one line below a translated one, on every page in all three locales, and
+         `test:i18n` could not see it because it walks the DICTIONARY — an absent key is
+         outside a parity check's population by construction. Being keys puts them in. */
+      instagram: "Instagram",
+      tiktok: "TikTok",
+      /* The accessible name for both social links. One interpolated key rather than two
+         written-out labels, so `{platform}` rides the guard's placeholder-parity check. */
+      followOn: "50pick on {platform} · opens in a new tab",
     },
     /**
      * The identity gate's panels (2026-09-05) — the copy shown INSTEAD of a stake
@@ -4121,6 +4133,9 @@ export const dict = {
       helpline: "Simu ya msaada",
       contactUs: "Wasiliana nasi",
       email: "Barua pepe",
+      instagram: "Instagram",
+      tiktok: "TikTok",
+      followOn: "50pick kwenye {platform} · hufunguka katika kichupo kipya",
     },
     kycGate: {
       eyebrowVerify: "Hatua moja kwanza",
@@ -6184,6 +6199,9 @@ export const dict = {
       helpline: "求助热线",
       contactUs: "联系我们",
       email: "邮箱",
+      instagram: "Instagram",
+      tiktok: "TikTok",
+      followOn: "50pick 的{platform} · 在新标签页中打开",
     },
     kycGate: {
       eyebrowVerify: "先完成一步",

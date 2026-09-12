@@ -128,6 +128,18 @@ const FROZEN_RATCHET = new Map<string, number>([
   // carrying a `${…}` binding — `fill="oklch(50% 0.14 152)"` beside a computed SVG path —
   // and every previous rule skipped a line the moment it saw a binding anywhere on it.
   ["src/components/brand.tsx", 15],                          // non-TippingBar marks
+  // ⭐ 8 — AND THEY ARE NOT OURS TO TOKENISE. Five Instagram gradient stops and three
+  // TikTok fills. This is `brand.tsx`'s exception ("brand identity ≠ theme tokens"), only
+  // less arguable: these are two other companies' registered marks and we are not free to
+  // re-hue them, so there is no token these values could ever move into — a
+  // `--social-instagram-3` would be a theme variable that must never vary, which is the
+  // opposite of what the token system is for. ⛔ The budget is 8 and it is EXACT: a ninth
+  // literal here means someone hand-typed a colour that is not in either logo.
+  // ⚠️ A monochrome `currentColor` version of the same geometry was built and measured
+  // first and would have needed no exemption at all. The owner chose the coloured marks
+  // from a real render on 2026-09-12, on recognisability — so this entry is the written
+  // price of that decision, not an oversight.
+  ["src/components/ui/social-marks.tsx", 8],
   ["src/app/wallet/wallet-client.tsx", 4],
   // ⭐ `price-chart.tsx` LEFT THIS LIST on 2026-08-21 and the list may only shrink. It held
   // 11 exemptions, ALL of them inside the dead `PriceChart` component — which was unmounted,

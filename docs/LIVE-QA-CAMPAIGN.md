@@ -6040,6 +6040,86 @@ state**, 1,338,504 of players' stakes in escrow, and every ledger entry ever wri
 > landing one atom per commit. Read the block directly below this note before touching
 > `src/app/globals.css`, `src/app/motion.css`, or anything under `src/components/ui/`.
 
+### 🟢 Session 93 (2026-09-12) — 50pick HAS SOCIAL ACCOUNTS, AND THE PRODUCT NOW SAYS SO
+
+#### ⏭️ **RESUME AT (session 94 · ⛔ THE REAL WORK IS SESSION 92'S, IMMEDIATELY BELOW — its three P0s are OPEN and `docs/SESSION-REVOKED-DEADEND.md` §6 is the authority for them. This session ran in parallel and touched none of it.):**
+💰 **MONEY POSITION: no production money moved.** No money surface, service or config was touched.
+
+⚠️ **READ THE BLOCK BELOW THIS ONE BEFORE ACTING.** Session 92 shipped the `E-381` hotfix and
+left three P0s owed; this entry sits above it only because it landed later, not because it
+supersedes it. ⛔ Do not read "the board is clear" anywhere in this file as current — session 92
+re-opened it.
+
+⭐ **WHAT SHIPPED HERE.** Instagram (`@50pick.tz`) and TikTok (`@50pick`) now appear as a
+labelled pair at the foot of the footer's identity column — on every player-facing page — and as
+text links in the transactional email footer. Before this, a grep of all of `src/` and all of
+`docs/` returned **zero** hits for `instagram`, `tiktok` or "follow us"; the accounts existed and
+the product had never mentioned them.
+
+| Fact | Where it lives |
+|---|---|
+| The two accounts (one home, canonical URLs) | `src/lib/social.ts` |
+| The marks, in the vendors' own colours | `src/components/ui/social-marks.tsx` |
+| The row | `src/components/layout/public-footer.tsx` → `SocialLink` |
+| The email row + its suppression flag | `src/lib/server/email.ts` → `wrap(..., { noPromo })` |
+| The ruling | `docs/COMPLIANCE-DECISIONS.md`, 2026-09-12 |
+| The gate | `npm run test:social-links` (+ four `red:social-*` controls) |
+
+🔴 **THE URLS AS SUPPLIED CARRIED THE OWNER'S OWN SHARE TOKENS.** `?_t=ZS-99fQfSAFFrR` and
+`?stkn=MXJyam1vdDN1bzl4Yg==` are minted by the phone that tapped "share" — session-scoped, not
+properties of the accounts. Pasted in as given they would have published a personal token in the
+page source of every player-facing page. Stripped; **§2 of the guard now fails on any `?` in a
+social URL**, so the paste cannot recur.
+
+🔴 **OPEN — THE TIKTOK HANDLE IS UNVERIFIED FROM A TERMINAL, AND CANNOT BE VERIFIED FROM ONE.**
+`https://www.tiktok.com/@50pick` answers **HTTP 200 with a byte-identical 1,462-byte challenge
+page** for the real handle and for `@zzz-definitely-not-a-real-handle-99871`, measured as a
+control. ⛔ **A 200 from TikTok is not evidence.** Instagram *is* confirmed (`@50pick.tz`, live,
+bio already pointing back at 50pick.tz). Precedent for why this matters: `License:
+TZ-GBT-2026-XXXX` was live for months (`E-329`) — **a social link that 404s is the same defect
+class.** Someone must open it in a logged-out browser.
+
+⚠️ **THE OWNER CHOSE THE COLOURED MARKS OVER A MONOCHROME VERSION, FROM A RENDER.** Four
+treatments were built and rendered on the real footer surface first. The house-line
+interpretation was cut on a measurement, not taste: **at the 16px ship size its TikTok note read
+as a generic music note.** A hover-only colour treatment was cut because there is no hover on a
+phone. The cost of the coloured marks is written down in two places — an 8-literal exemption in
+`scripts/design-frozen.test.mts`, and the fact that the marks do not dim with their label on
+hover (`SocialLink`'s docblock says so).
+
+🔬 **A 5-LENS PANEL PREFERRED THE MONOCHROME VERSION 4–1, AND ITS BINDING OBJECTION DID NOT
+SURVIVE MEASUREMENT.** The a11y lens costed a **1.13:1** contrast on a white camera outline
+knocked out of the Instagram gradient — true of the **filled-tile** form of the mark, which is
+what the owner's PNG was and is **not** what shipped. The build uses the gradient-filled
+**outline**. Probed on real screenshot pixels: **0 near-white px**, Instagram worst ink
+**3.47:1**, TikTok **4.34:1**, against a 3.0 non-text floor. ⭐ The panel's own prediction for
+the outline form was 3.48:1 — the render agreed to within 0.01.
+⚠️ It also refuted two objections *I* had made: §B4's aqua cap is **not** crossed (cyan is
+**0.028%** coverage against an 8% cap, 285× under) and §B4's claret-adjacency clause does not
+name TikTok red. But it found a real thing with **no rule behind it**: `#FE2C55` against the
+derived NO-500 `#E6424C` is **1.09:1** — perceptually the same red as "you lost". It is in the
+identity column, far from any money surface, and it is on the record here rather than fixed.
+
+⛔ **WHERE IT DELIBERATELY IS NOT**, each with a reason on the record: the bottom rail (locked to
+5 slots, and a social link is not navigation); the account menu (*"the footer is not the
+account"*); the win celebration, bet receipt and deposit-success screens (money moments —
+*"you won, now follow us"* is harm-adjacent marketing); the five no-promo emails; `/help`'s
+channel cards (it would imply DM support nobody staffs); and `twitter:site` metadata (there is
+no X account, and it would inherit into five per-page blocks pointing at nothing).
+
+✅ **DRIVEN, NOT ASSERTED.** 4 widths × 3 locales = 12 cells against a real render: zero
+horizontal overflow, every link 44px tall, every mark exactly 16×16, `html lang` tracking the
+`kp-locale` cookie in all three. ⭐ The four `red:social-*` controls were each proven RED for
+its own reason **before** the green run — and the first pass of §3 was red in all four, which is
+how a regex that captured the signature and none of the function body got caught. A guard that
+is red in every run is not strict, it is broken.
+
+⚠️ **`package.json` WAS EDITED** to register the gate and its four controls — it is on the
+`PARALLEL-SESSION-COORDINATION.md` denylist. Five added lines in `scripts`; rebased onto
+`origin/main` immediately before the push, and it auto-merged with session 92's work.
+
+---
+
 ### 🟢 Session 92 (2026-09-12) — THE BLANK BLUE PAGE: A DISPLACED SESSION WAS LOCKED OUT OF THE ENTIRE PLATFORM
 
 #### ⏭️ **RESUME AT (session 93 · `E-381` HOTFIX IS LIVE AND GUARDED, BUT ONLY THE BLEEDING IS STOPPED. THE STRUCTURAL FIX IS OWED — read `docs/SESSION-REVOKED-DEADEND.md` §6 FIRST, it is the authority for everything `?revoked=1`.):**

@@ -76,6 +76,15 @@ const IDENTICAL_OK = new Set<string>([
   // inconsistency, not the fix.
   "market.pool10k",               // "TZS 10k+" — currency threshold
   "market.pool50k",               // "TZS 50k+" — currency threshold
+  // ⭐ THE TWO SOCIAL PLATFORMS ARE COMPANIES' OWN NAMES, on the same reasoning as NIDA
+  // above. "Instagram" and "TikTok" are written that way in Swahili and in Chinese —
+  // TikTok's own Chinese-market product is a different app under a different name
+  // (抖音), so translating the label here would send a zh player somewhere we do not
+  // have an account. What proves this is a decision and not an omission is the key
+  // beside them: `footer.followOn`, the accessible name that WRAPS these two, IS
+  // translated in all three locales.
+  "footer.instagram",             // Instagram — the company's own name
+  "footer.tiktok",                // TikTok — the company's own name
 ]);
 
 const en = flatten(dict.en);
