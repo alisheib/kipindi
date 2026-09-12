@@ -6042,7 +6042,7 @@ state**, 1,338,504 of players' stakes in escrow, and every ledger entry ever wri
 
 ### 🟢 Session 93 (2026-09-12) — 50pick HAS SOCIAL ACCOUNTS, AND THE PRODUCT NOW SAYS SO
 
-#### ⏭️ **RESUME AT (session 94 · ⛔ THE REAL WORK IS SESSION 92'S, IMMEDIATELY BELOW — its three P0s are OPEN and `docs/SESSION-REVOKED-DEADEND.md` §6 is the authority for them. This session ran in parallel and touched none of it.):**
+#### ⏭️ **RESUME AT (session 94 · ⛔ THE REAL WORK IS SESSION 92'S, IMMEDIATELY BELOW — its P0s are OPEN and `docs/SESSION-REVOKED-DEADEND.md` §6 is the authority for them. This session ran in parallel and touched none of it. ⚠️ **This line originally said "three P0s"; session 92 then measured a FOURTH and it is now §6 item 1 — the blank page is still live on the mid-visit path. Start with `npm run repro:revoked-midvisit`, which fails on purpose.**):**
 💰 **MONEY POSITION: no production money moved.** No money surface, service or config was touched.
 
 ⚠️ **READ THE BLOCK BELOW THIS ONE BEFORE ACTING.** Session 92 shipped the `E-381` hotfix and
