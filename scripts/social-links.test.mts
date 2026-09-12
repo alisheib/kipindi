@@ -57,7 +57,7 @@ const section = (s: string) => console.log(`\n── ${s} ${"─".repeat(Math.ma
 
 /** The one file allowed to spell a social URL. */
 const HOME = "src/lib/social.ts";
-const SOCIAL_HOST = /(?:instagram|tiktok)\.com/;
+const SOCIAL_HOST = /(?:instagram|tiktok|whatsapp)\.com/;
 
 function walk(dir: string, out: string[] = []): string[] {
   for (const e of readdirSync(dir)) {

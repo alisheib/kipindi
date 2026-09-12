@@ -84,6 +84,9 @@ import { SOCIAL } from "@/lib/social";
 const SOCIAL_EMAIL_LABEL: Record<(typeof SOCIAL)[number]["labelKey"], string> = {
   instagram: "Instagram",
   tiktok: "TikTok",
+  // ⛔ "channel", for the same reason the footer says it: this line sits directly below a
+  // support address, and a bare "WhatsApp" beside one promises an inbox nobody staffs.
+  whatsappChannel: "WhatsApp channel",
 };
 
 // ⭐ THE BASE URL HAS ONE HOME: `appUrl()` (`src/lib/app-url.ts`).

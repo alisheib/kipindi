@@ -79,8 +79,25 @@ export function PublicFooter({
    * can invent one. Ali supplied the real number 2026-09-10.
    */
   const license = LICENCE_NUMBER();
+  /**
+   * 🔴 THE BOTTOM RAIL WAS EATING THE LAST ROW OF THIS FOOTER, AND HAD BEEN ALL ALONG.
+   * `app-shell.tsx` clears the fixed 88px `BottomNav` with
+   * `pb-[calc(88px+env(safe-area-inset-bottom))] lg:pb-0` — but that padding is on `<main>`,
+   * and this footer is main's SIBLING, not its child. So below `lg` the document ended flush
+   * against a fixed bar and whatever landed last was un-tappable.
+   *
+   * ⛔ MEASURED 2026-09-12 with `elementFromPoint` at each link's own centre, scrolled to
+   * `document.body.scrollHeight`: at 360 the LAST footer link — `Export / close my account`,
+   * the data-subject-rights door — returned the nav element instead of itself, in EN and SW.
+   * That is a GDPR/PDPA control a phone user could not reach, and it was live.
+   *
+   * ⚠️ A SCREENSHOT CANNOT SEE THIS. A `position: fixed` bar paints over the link and the
+   * image looks identical whether the link is reachable or buried; only a hit test at real
+   * coordinates tells the two apart. Guard: `npm run qa:footer-reachable`.
+   * ⭐ The clearance is COPIED from `app-shell.tsx`, not re-derived — one bar, one number.
+   */
   return (
-    <footer className="mt-12 bg-bg-elevated/40">
+    <footer className="mt-12 bg-bg-elevated/40 pb-[calc(88px+env(safe-area-inset-bottom))] lg:pb-0">
       {/* Heraldic claret rule with gilt midpoint — regulator/footer chrome. */}
       <div aria-hidden className="claret-rule mx-auto max-w-board" />
       <div className="mx-auto max-w-board px-3 lg:px-6 pt-2 pb-7 grid grid-cols-1 md:grid-cols-4 gap-6 text-[12px]">
@@ -127,14 +144,19 @@ export function PublicFooter({
               and a static platform name in site chrome is a directory entry, not a
               marketing communication. An offer or a nudge would be one. Recorded in
               `docs/COMPLIANCE-DECISIONS.md`; enforced by `npm run test:social-links`. */}
-          <ul className="flex items-center gap-4">
+          {/* ⚠️ `flex-wrap` IS LOAD-BEARING, NOT DEFENSIVE. Two items fitted 360 with room;
+              three do not reliably — "Chaneli ya WhatsApp" is the long one, and Swahili runs
+              ~35-40% longer than English by §A5, which is the rule that predicts exactly this.
+              Without wrapping the third link is pushed off the left edge of a 360 phone, which
+              is the failure `qa:landmark-seal` measures and a desktop eyeball never sees. */}
+          <ul className="flex flex-wrap items-center gap-x-4 gap-y-1">
             {SOCIAL.map((s) => (
               <SocialLink
                 key={s.labelKey}
                 href={s.url}
                 markKey={s.labelKey}
                 label={t.footer[s.labelKey]}
-                ariaLabel={t.footer.followOn.replace("{platform}", t.footer[s.labelKey])}
+                ariaLabel={t.footer[s.ariaKey]}
               />
             ))}
           </ul>

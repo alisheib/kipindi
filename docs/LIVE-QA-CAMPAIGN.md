@@ -6046,8 +6046,10 @@ state**, 1,338,504 of players' stakes in escrow, and every ledger entry ever wri
 💰 **MONEY POSITION: no production money moved.** No money surface, service or config was touched.
 
 ⚠️ **READ THE BLOCK BELOW THIS ONE BEFORE ACTING.** Session 92 shipped the `E-381` hotfix and
-left three P0s owed; this entry sits above it only because it landed later, not because it
-supersedes it. ⛔ Do not read "the board is clear" anywhere in this file as current — session 92
+left **four** P0s owed — this sentence said "three" and session 92 corrected it in the heading
+above; it is corrected here too, because a stale number two lines under its own correction is
+exactly the thing somebody reads. This entry sits above session 92 only because it landed later,
+not because it supersedes it. ⛔ Do not read "the board is clear" anywhere in this file as current — session 92
 re-opened it.
 
 ⭐ **WHAT SHIPPED HERE.** Instagram (`@50pick.tz`) and TikTok (`@50pick`) now appear as a
@@ -6117,6 +6119,53 @@ is red in every run is not strict, it is broken.
 ⚠️ **`package.json` WAS EDITED** to register the gate and its four controls — it is on the
 `PARALLEL-SESSION-COORDINATION.md` denylist. Five added lines in `scripts`; rebased onto
 `origin/main` immediately before the push, and it auto-merged with session 92's work.
+
+#### ➕ SECOND PUSH — THE WHATSAPP CHANNEL, AND A DATA-RIGHTS LINK NOBODY COULD TAP
+
+The WhatsApp channel (`https://www.whatsapp.com/channel/0029Vb8At5uCxoAtENkyS71Q`) joins the row,
+in the footer and in email. ✅ **Verified, unlike TikTok:** its `og:title` reads `50pick`, while an
+invented channel id returns the generic `WhatsApp Channel` — that control is what makes the check
+mean anything.
+
+⭐ **IT IS LABELLED "WhatsApp channel", NOT "WhatsApp", AND THAT IS THE WHOLE POINT.** One column
+of this footer publishes our desk number and `msaada@50pick.tz`. A bare WhatsApp mark beside them
+reads as **support on WhatsApp** — an inbox nobody staffs — which is E-328's defect exactly: the
+right contact under a framing that promises something else. Naming the product names the
+behaviour, because a Channel is one-way broadcast. ⛔ And it is not "Join our channel": the
+2026-09-12 ruling holds this row lawful *as a directory line*, and a verb would spend that.
+
+🔴 **AND THE FIX THAT MATTERS MORE THAN THE FEATURE — `Export / close my account` WAS UNREACHABLE
+ON A PHONE, AND HAD BEEN ALL ALONG.** `app-shell.tsx` clears the fixed 88px `BottomNav` with
+`pb-[calc(88px+env(safe-area-inset-bottom))] lg:pb-0`, but that padding sits on `<main>` and the
+footer is main's **sibling**. So below `lg` the document ended flush against a fixed bar and the
+last row of the footer was painted over.
+
+Measured with `elementFromPoint` at each link's own centre, scrolled to `document.body.scrollHeight`:
+at 360 the last footer link returned the **nav element instead of itself, in EN, SW and ZH**. That
+link is the data-subject-rights door. **A GDPR/PDPA control a phone user could not reach, live.**
+The footer now carries the same clearance as `<main>`.
+
+⛔ **NO EXISTING GATE COULD HAVE SEEN IT, AND THAT IS THE TRANSFERABLE PART.** `test:tap-target`
+reads the height a control *declares* — this one declared a perfectly good 44px; being covered is
+not a property of the element. The overflow sweeps measure `scrollWidth > clientWidth` — nothing
+overflowed. **And a screenshot is blind here**: a `position: fixed` bar paints over the link and
+the image is identical whether it is reachable or buried. New gate: **`npm run qa:footer-reachable`**
+(102 probes across 6 cells), with `red:footer-reachable` re-zeroing the padding to reproduce the
+pre-fix state — it flags exactly the 5 real occlusions, 3 of them pre-existing.
+
+⚠️ **A FIRST DRAFT OF THAT PROBE MEASURED THE WRONG THING TWICE, AND BOTH ARE WORTH KNOWING.**
+It took the bounding-box centre, which on a *wrapped* inline link falls in the gap between line
+boxes — `elementFromPoint` correctly returns the parent `<li>`, and three Swahili contact links
+were reported "covered" when they were fine. `getClientRects()` gives one rect **per line box**,
+which is the shape a finger actually meets. Separately, a contrast probe over "every
+non-background pixel" duly reported **1.00:1** on an anti-aliasing fringe pixel one unit of red
+away from the surface. ⭐ Both are the same error: a true measurement over the wrong population.
+
+⚠️ **OPEN, REPORTED BY ALI 2026-09-12:** the install card *"comes a bit high on laptops"*. Its
+anchor is `bottom: calc(96px + env(safe-area-inset-bottom))` at **every** width — the 96 exists to
+clear the 88px tab bar, which is `lg:hidden`. Its own comment says *"hidden from `lg` up, where
+24px is enough"* and the code never did it. ⚠️ `install-invite.test.mts` §5 pins that literal
+string, so the guard has to move with the fix. Belongs with the channels-panel work.
 
 ---
 

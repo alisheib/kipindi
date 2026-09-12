@@ -761,6 +761,8 @@
     "red:social-token": "tsx scripts/social-links.test.mts --prove-red-token",
     "red:social-rel": "tsx scripts/social-links.test.mts --prove-red-rel",
     "red:social-promo": "tsx scripts/social-links.test.mts --prove-red-promo",
+    "qa:footer-reachable": "node scripts/footer-reachable.mjs",
+    "red:footer-reachable": "node scripts/footer-reachable.mjs --prove-red",
     "test:webhook-secret": "tsx scripts/webhook-secret.test.mts",
     "test:wallet-empty-escape": "tsx scripts/wallet-empty-escape.test.mts",
     "test:rules-copy": "tsx scripts/rules-copy.test.mts",

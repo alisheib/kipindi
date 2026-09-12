@@ -40,12 +40,50 @@ export type SocialAccount = {
    * `dict.<locale>.footer` key that renders the visible label, and the `SOCIAL_MARK` key
    * that selects the logo in `src/components/ui/social-marks.tsx`.
    */
-  readonly labelKey: "instagram" | "tiktok";
-  /** Canonical profile URL. ⛔ No query string — see the docblock. */
+  readonly labelKey: "instagram" | "tiktok" | "whatsappChannel";
+  /**
+   * The `dict.<locale>.footer` key for the accessible name.
+   *
+   * ⭐ ONE KEY PER ACCOUNT RATHER THAN ONE TEMPLATE WITH A `{platform}` HOLE. The template
+   * version read "50pick on Instagram" and "50pick on TikTok" perfectly and then produced
+   * "50pick on WhatsApp channel", which is not English. A third member that will not fit the
+   * template is the template telling you it was a coincidence, not a pattern.
+   * ⚠️ Each one must still CONTAIN its visible label verbatim — WCAG 2.5.3 Label in Name,
+   * so that a speech-input user saying what they can see actually activates the link.
+   */
+  readonly ariaKey: "ariaInstagram" | "ariaTiktok" | "ariaWhatsappChannel";
+  /** Canonical URL. ⛔ No query string — see the docblock. */
   readonly url: string;
 };
 
 export const SOCIAL: readonly SocialAccount[] = [
-  { labelKey: "instagram", url: "https://www.instagram.com/50pick.tz/" },
-  { labelKey: "tiktok", url: "https://www.tiktok.com/@50pick" },
+  {
+    labelKey: "instagram",
+    ariaKey: "ariaInstagram",
+    url: "https://www.instagram.com/50pick.tz/",
+  },
+  {
+    labelKey: "tiktok",
+    ariaKey: "ariaTiktok",
+    url: "https://www.tiktok.com/@50pick",
+  },
+  /**
+   * ⭐ THE CHANNEL IS LAST, AND IT IS LABELLED "channel" FOR A REASON THAT IS NOT STYLE.
+   * One column away this footer publishes "Contact us · <desk number>" and an email address.
+   * A bare WhatsApp mark beside them reads as SUPPORT ON WHATSAPP — an inbox nobody staffs —
+   * and that is E-328 exactly: the right contact under a framing that promises something
+   * else. The word "channel" is the whole fix; WhatsApp Channels are one-way broadcast and
+   * naming the product names the behaviour.
+   * ⛔ AND IT IS NOT "Join our channel". `docs/COMPLIANCE-DECISIONS.md` (2026-09-12) rules
+   * this row lawful *because* it is a directory line and not an offer — "join" is a verb
+   * soliciting an action, and it would make that entry false on a page a cooling-off player
+   * can still reach.
+   * ✅ Verified 2026-09-12: `og:title` is "50pick"; an invented channel id returns the
+   * generic "WhatsApp Channel", which is the control that makes the check mean something.
+   */
+  {
+    labelKey: "whatsappChannel",
+    ariaKey: "ariaWhatsappChannel",
+    url: "https://www.whatsapp.com/channel/0029Vb8At5uCxoAtENkyS71Q",
+  },
 ] as const;

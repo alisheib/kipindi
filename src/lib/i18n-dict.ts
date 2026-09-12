@@ -1990,9 +1990,19 @@ export const dict = {
          outside a parity check's population by construction. Being keys puts them in. */
       instagram: "Instagram",
       tiktok: "TikTok",
-      /* The accessible name for both social links. One interpolated key rather than two
-         written-out labels, so `{platform}` rides the guard's placeholder-parity check. */
-      followOn: "50pick on {platform} · opens in a new tab",
+      /* ⭐ "channel", NOT bare "WhatsApp" — and translated, unlike its two neighbours,
+         because "channel" is a word and not part of the trademark. One column over this
+         footer publishes our desk number and our email; a lone WhatsApp mark beside them
+         reads as SUPPORT ON WHATSAPP, an inbox nobody staffs. Naming the product names the
+         behaviour: a Channel is one-way broadcast.
+         ⛔ NOT "Join our channel". The ruling that makes this whole row lawful turns on it
+         being a directory line rather than an offer — a verb would spend that. */
+      whatsappChannel: "WhatsApp channel",
+      /* The accessible names. ⚠️ Each MUST contain its visible label verbatim (WCAG 2.5.3
+         Label in Name), so a speech-input user saying what they see activates the link. */
+      ariaInstagram: "50pick on Instagram · opens in a new tab",
+      ariaTiktok: "50pick on TikTok · opens in a new tab",
+      ariaWhatsappChannel: "The 50pick WhatsApp channel · opens in a new tab",
     },
     /**
      * The identity gate's panels (2026-09-05) — the copy shown INSTEAD of a stake
@@ -4135,7 +4145,10 @@ export const dict = {
       email: "Barua pepe",
       instagram: "Instagram",
       tiktok: "TikTok",
-      followOn: "50pick kwenye {platform} · hufunguka katika kichupo kipya",
+      whatsappChannel: "Chaneli ya WhatsApp",
+      ariaInstagram: "50pick kwenye Instagram · hufunguka katika kichupo kipya",
+      ariaTiktok: "50pick kwenye TikTok · hufunguka katika kichupo kipya",
+      ariaWhatsappChannel: "Chaneli ya WhatsApp ya 50pick · hufunguka katika kichupo kipya",
     },
     kycGate: {
       eyebrowVerify: "Hatua moja kwanza",
@@ -6201,7 +6214,10 @@ export const dict = {
       email: "邮箱",
       instagram: "Instagram",
       tiktok: "TikTok",
-      followOn: "50pick 的{platform} · 在新标签页中打开",
+      whatsappChannel: "WhatsApp 频道",
+      ariaInstagram: "50pick 的 Instagram · 在新标签页中打开",
+      ariaTiktok: "50pick 的 TikTok · 在新标签页中打开",
+      ariaWhatsappChannel: "50pick 的 WhatsApp 频道 · 在新标签页中打开",
     },
     kycGate: {
       eyebrowVerify: "先完成一步",

@@ -19,6 +19,14 @@
  * ⚠️ THE COLOURS ARE THE VENDORS', COPIED, NOT CHOSEN — do not "improve" them:
  *   Instagram  radial gradient #FDF497 → #FD5949 → #D6249F → #285AEB
  *   TikTok     cyan #25F4EE · red #FE2C55 · body #FFFFFF
+ *   WhatsApp   bubble #25D366 · handset #FFFFFF
+ *
+ * ⚠️ AND WHATSAPP'S GREEN IS NOT THE BETTING GREEN, WHICH IS WHY IT IS SPELLED HERE AND NOT
+ * TAKEN FROM A TOKEN. `#25D366` is WhatsApp's; YES-emerald `#00A24F` means *won* on this
+ * platform. §B2a forbids reaching for the betting pair to express a non-money state, and
+ * `share-button.tsx` already breaks that by painting its WhatsApp tile `bg-yes-500/15
+ * text-yes-300`. ⛔ Do not "tidy" this mark onto the YES token — that would be adopting the
+ * existing bug, not fixing it. The vendor hex is the correct answer on both counts.
  *
  * ⭐ TIKTOK'S BODY IS WHITE, AND THAT IS THE CORRECT VARIANT, NOT A CHOICE. TikTok publishes
  * two: a black-body note for light grounds and a white-body note for dark ones. 50pick has
@@ -52,6 +60,14 @@ const TT_NOTE_ID = "kp-tt-note";
 /** The official Instagram glyph outline — rounded frame, lens, and the top-right dot. */
 const INSTAGRAM_D =
   "M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z";
+
+/** The official WhatsApp mark: the speech bubble with its bottom-left tail… */
+const WHATSAPP_BUBBLE_D =
+  "M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.46 1.32 4.96L2 22l5.25-1.38a9.9 9.9 0 0 0 4.79 1.22h.01c5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2z";
+
+/** …and the handset knocked out of it. */
+const WHATSAPP_HANDSET_D =
+  "M9.1 7.2c-.2-.45-.4-.46-.6-.47h-.5c-.17 0-.45.07-.69.32-.24.25-.9.88-.9 2.15s.92 2.49 1.05 2.66c.13.17 1.79 2.86 4.4 3.9 2.17.86 2.61.69 3.08.65.47-.04 1.52-.62 1.73-1.22.21-.6.21-1.11.15-1.22-.06-.11-.24-.17-.5-.3-.26-.13-1.52-.75-1.76-.84-.24-.09-.41-.13-.58.13-.17.26-.67.84-.82 1.01-.15.17-.3.19-.56.06-.26-.13-1.09-.4-2.08-1.28-.77-.69-1.29-1.53-1.44-1.79-.15-.26-.02-.4.11-.53.12-.12.26-.3.39-.46.13-.15.17-.26.26-.43.09-.17.04-.32-.02-.45-.06-.13-.57-1.4-.8-1.91z";
 
 /** The official TikTok note. */
 const TIKTOK_D =
@@ -91,8 +107,18 @@ export function TikTokMark({ s = 16, className }: MarkProps) {
   );
 }
 
+export function WhatsAppMark({ s = 16, className }: MarkProps) {
+  return (
+    <svg viewBox="0 0 24 24" width={s} height={s} className={className} aria-hidden>
+      <path fill="#25D366" d={WHATSAPP_BUBBLE_D} />
+      <path fill="#FFFFFF" d={WHATSAPP_HANDSET_D} />
+    </svg>
+  );
+}
+
 /** Keyed by `SocialAccount.labelKey` in `src/lib/social.ts` — one key, one mark, one label. */
 export const SOCIAL_MARK = {
   instagram: InstagramMark,
   tiktok: TikTokMark,
+  whatsappChannel: WhatsAppMark,
 } as const;

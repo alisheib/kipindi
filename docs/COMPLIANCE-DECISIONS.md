@@ -6,6 +6,42 @@
 
 ---
 
+## 2026-09-12 (second) · The WhatsApp CHANNEL joins the row — and why that word is doing the work
+
+**Decision:** Ali, **2026-09-12**, supplied `https://www.whatsapp.com/channel/0029Vb8At5uCxoAtENkyS71Q`.
+It joins Instagram and TikTok in the footer identity column and in the transactional email footer,
+under the ruling immediately below this entry, which is **unchanged** — it is still a directory
+line, still carries no badge, no count, no gilt and no verb, and still sits below every regulator
+disclosure.
+
+**⛔ THE LABEL IS "WhatsApp channel" AND MUST STAY THAT WAY.** One column of the same footer
+publishes `Contact us · <desk number>` and `Email · msaada@50pick.tz`. A bare WhatsApp mark
+beside those reads as **support on WhatsApp**, an inbox 50pick does not staff. That is E-328's
+defect in a new place: not a missing disclosure, but the right contact under a framing that
+promises something else. WhatsApp Channels are one-way broadcast, so naming the product names the
+behaviour. ⛔ It is also **not** "Join our channel" — "join" is a verb soliciting an action, and
+the ruling below holds this row lawful precisely because it solicits nothing.
+
+**✅ Verified, and by a control rather than a status code.** The channel's `og:title` is `50pick`;
+an invented channel id returns the generic `WhatsApp Channel`. That difference is the evidence.
+(Contrast TikTok, still unverified from a terminal — it returns HTTP 200 and a byte-identical
+challenge page for a real handle and an invented one.)
+
+**⚠️ A colour note, so nobody "tidies" it later.** WhatsApp's `#25D366` is spelled as a literal in
+`src/components/ui/social-marks.tsx`, not taken from a token. It is the vendor's green;
+YES-emerald `#00A24F` means *won* on this platform, and §B2a forbids reaching for the betting pair
+for a non-money meaning. `share-button.tsx` already paints its WhatsApp tile with `yes-*` — that
+is the bug, not the precedent.
+
+**🔴 Found while shipping this, and materially more serious than the feature: the data-rights link
+was unreachable on a phone.** `Export / close my account` — the GDPR/PDPA export-and-erasure door
+— sat underneath the fixed bottom navigation at 360px, in all three locales, and returned the nav
+element to a tap. The footer is a sibling of `<main>` and only `<main>` carried the bar's
+clearance. It was live. Fixed, and gated by `npm run qa:footer-reachable`, which hit-tests with
+`elementFromPoint` because a screenshot cannot tell a covered link from a reachable one.
+
+---
+
 ## 2026-09-12 · Instagram and TikTok in the player footer — a directory line, and where it must never appear
 
 **Decision:** Ali, **2026-09-12**, supplied the two accounts and chose the treatment from a
