@@ -8,6 +8,8 @@ Contents: A1–A24 (flows, data, money seam, engine) · C1–C3, C8–C15 (rules
 
 All code paths are under `C:\kipindi-main\`. Every `path:line` below was checked against the working tree (HEAD `ac411357`, which includes the local KYC work).
 
+> ⚠️ **Line anchors in this file are as of 2026-09-13.** Since then the KYC-at-withdrawal release reached `origin/main`, and its audit fixes moved code in `kyc-service`, `auth-service`, `wallet-service`, `wallet-freeze`, `user-service` and `notification-service`; `TERMS_VERSION` moved to `src/lib/terms-version.ts`. Any "local only" KYC commit or `origin/main` SHA quoted below is history. Re-derive every `path:line` against the merged code before relying on it (PROGRESS.md RESUME AT).
+
 Numbering follows the slots in the sequencing notes where they name the content: A1, A2, A3, A7, A8, A9, A11, A12, A15, A18, A19, A20, A21, A22, A23. The remaining numbers are assigned here. Slot A6 (data-rights export, D10) is outside §1–§4 and is not written.
 
 ## 0. Dropped gaps
@@ -1819,7 +1821,17 @@ NO-GO before R4: nothing merges. NO-GO after R4: go to S3.
 
 ---
 
-- `agents-client.tsx:31-43`), so a quick double tap sends two requests.
+# House bots: earlier amendments C4–C7, R1–R4, P1 and sequencing notes
+
+> **Restored 2026-09-13 by build session `ali-e4`.** This section's heading (added here for navigation) and C4's title, merge list and first three evidence bullets were lost when the planning agent's reply hit its output limit. The C4 text below is restored verbatim from that agent's transcript (planning workflow `wf_62c09369-f5e`). Nothing else in this section changed.
+
+**C4 · MAJOR · Entering the holder's password cannot burn or lock his sign-in.** Merged: HB-ACC-19, HB-ACC-20, CA-09, CA-19, CA-26, CA-36, CA-37.
+
+*Evidence*
+- 5 failures lock the account for 30 minutes, and the counter is shared with sign-in (`auth-service.ts:963-988`).
+- Sign-in verifies against the row read before the lock (`:967`); that pattern must not be copied.
+- PasswordInput sets no `autoComplete` (`password-input.tsx:100-103`), and the admin sign-in page is on the same site, so the browser can autofill the owner's own password.
+- Buttons are only disabled after a re-render (`agents-client.tsx:31-43`), so a quick double tap sends two requests.
 - Rate buckets are per container (`rate-limit.ts:28-33`).
 
 *§6 password check, add step 3.5:*
