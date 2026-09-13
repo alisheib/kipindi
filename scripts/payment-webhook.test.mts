@@ -9,9 +9,17 @@
  *   - a PENDING withdrawal holds funds; webhook CONFIRMED releases, FAILED reverses
  *   - reconcileStalePayments sweeps stuck PROCESSING rows to a terminal state
  *   - the synchronous (mock-CONFIRMED) path still credits immediately (regression)
+ *   - NO withdrawal is held for a two-officer AML review (owner ruling 2026-09-13): TZS 1,000,000
+ *     and 1,500,000 are sent at once, the TZS 5,000,000 per-withdrawal cap is the only ceiling, and
+ *     a row held BEFORE the ruling (seeded, because withdraw() can no longer write one) is still
+ *     paid out by the officer path, or kept under review when the rail refuses it
  */
 import { db } from "../src/lib/server/store.ts";
 import { deposit, withdraw, settlePaymentWebhook, reconcileStalePayments, dispatchApprovedWithdrawal } from "../src/lib/server/wallet-service.ts";
+import { WITHDRAWAL_AML_HOLD } from "../src/lib/server/payments.ts";
+import { WITHDRAW_MAX_TZS } from "../src/lib/server/validators.ts";
+import { getEffectiveConfig } from "../src/lib/server/market-config.ts";
+import { computeWithdrawalFee } from "../src/lib/payout.ts";
 
 import "./lib/verified-fixtures.mts";
 let pass = 0, fail = 0;
@@ -52,7 +60,7 @@ const now = new Date().toISOString();
  */
 const localDigits = new Map<string, string>();
 let phoneSeq = 0;
-async function makePlayer(id: string, opts: { balance?: number; kyc?: "APPROVED" } = {}) {
+async function makePlayer(id: string, opts: { balance?: number; hold?: number; kyc?: "APPROVED" } = {}) {
   const local = `7${String(++phoneSeq).padStart(8, "0")}`;
   localDigits.set(id, local);
   await db.user.create({
@@ -62,10 +70,38 @@ async function makePlayer(id: string, opts: { balance?: number; kyc?: "APPROVED"
     marketingOptIn: false, twoFactorEnabled: false, avatarDataUrl: null, email: `${id}@t.tz`, emailVerifiedAt: now,
     createdAt: now, updatedAt: now, lastLoginAt: now, closedAt: null,
   } as never);
-  await db.wallet.create({ id: `wlt_${id}`, userId: id, balance: opts.balance ?? 0, pending: 0, hold: 0, currency: "TZS", status: "ACTIVE", createdAt: now, updatedAt: now });
+  await db.wallet.create({ id: `wlt_${id}`, userId: id, balance: opts.balance ?? 0, pending: 0, hold: opts.hold ?? 0, currency: "TZS", status: "ACTIVE", createdAt: now, updatedAt: now });
   if (opts.kyc) {
     await db.kyc.upsert({ id: `kyc_${id}`, userId: id, status: opts.kyc, rejectReason: null, rejectNote: null, idType: "NIDA", idNumber: "19900101456712341234", idExpiry: null, idVerifiedAt: now, fullName: "Test Player", dob: "1990-01-01", documents: [], reviewerId: null, reviewedAt: null, submittedAt: now, approvedAt: opts.kyc === "APPROVED" ? now : null, createdAt: now, updatedAt: now } as never);
   }
+}
+
+/**
+ * ⭐ A LEGACY AML_REVIEW ROW, written the way `withdraw()` wrote one while the hold was on.
+ *
+ * 2026-09-13: `withdraw()` can no longer produce this state (`WITHDRAWAL_AML_HOLD = false`), yet a
+ * row held BEFORE the ruling must still be payable (an officer approves → dispatchApprovedWithdrawal)
+ * and must keep its hold when the rail refuses. So the state is SEEDED, field for field: the gross
+ * moved from balance into hold; a WITHDRAWAL row in AML_REVIEW carrying the fee; the registered
+ * number in E.164 (what WithdrawSchema stores); `providerRef` = our own `wdr_` correlation id (the
+ * phantom the hold branch returned, never a gateway ref); and the hold branch's amlReason.
+ * createdAt is backdated because a held row has sat in the queue.
+ */
+async function seedLegacyAmlHold(id: string, startBalance: number, gross: number) {
+  await makePlayer(id, { balance: startBalance - gross, hold: gross, kyc: "APPROVED" });
+  const w = await db.wallet.findByUserId(id);
+  const fee = computeWithdrawalFee(gross, (await getEffectiveConfig()).withdrawalFeeRate);
+  const txnId = `txn_legacy_${id}`;
+  const phantomRef = `wdr_legacy${String(phoneSeq).padStart(4, "0")}`;
+  const heldAt = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+  await db.txn.create({
+    id: txnId, walletId: w!.id, userId: id, type: "WITHDRAWAL", status: "AML_REVIEW",
+    amount: -gross, fee, taxWithheld: 0, balanceAfter: startBalance - gross, currency: "TZS",
+    provider: "MPESA", providerRef: phantomRef, msisdn: `+255${localDigits.get(id)}`,
+    description: "Legacy AML-held withdrawal (seeded)", positionId: null, amlReason: "Threshold ≥ TZS 1,000,000",
+    createdAt: heldAt, updatedAt: heldAt, completedAt: null, idempotencyKey: null,
+  } as never);
+  return { txnId, phantomRef };
 }
 const ref = async (txnId: string) => (await db.txn.findById(txnId))?.providerRef ?? "";
 const bal = async (uid: string) => (await db.wallet.findByUserId(uid))?.balance ?? -1;
@@ -142,31 +178,68 @@ ok("recon credited nothing", await bal("usr_rec") === 0);
 
 delete process.env.PAYMENTS_DEMO_ASYNC;
 
-// ── AML: the ≥1,000,000 hold is on GROSS, not net (regression) ──────────────
-// A gross 1,000,000 withdrawal nets 990,000 after the 1% fee. Evaluating AML on
-// net let it slip the mandatory second-officer hold. Must be AML_REVIEW on gross.
+// ── AML: NO WITHDRAWAL IS HELD FOR REVIEW (owner ruling 2026-09-13) ───────────
+// ⛔ INVERTED, NOT DELETED. Until 2026-09-13 this block proved a gross ≥ TZS 1,000,000 withdrawal
+// was HELD in AML_REVIEW for a two-officer review (on the gross, so a 985,000 net could not slip
+// it). The owner removed that hold: any amount up to the TZS 5,000,000 cap is sent at once. Do not
+// restore the old assertion from history. Putting the hold back is a new ruling, and the switch
+// check below goes red the day `WITHDRAWAL_AML_HOLD` is flipped without one.
+ok("WITHDRAWAL_AML_HOLD is false: owner ruling 2026-09-13, no withdrawal is held for a two-officer review (turning it back on needs a new ruling and a rewrite of this block)",
+  WITHDRAWAL_AML_HOLD === false);
 await makePlayer("usr_aml", { balance: 2_000_000, kyc: "APPROVED" });
 const amlWd = await withdraw("usr_aml", { provider: "MPESA", amount: 1_000_000, msisdn: localDigits.get("usr_aml")! });
 const amlWdTxn = amlWd.ok ? amlWd.data!.txnId : "";
-ok("gross-1M withdrawal → AML_REVIEW (net 990k must NOT slip the hold)", amlWd.ok === true && amlWd.data!.status === "AML_REVIEW");
-ok("AML-held funds stay in hold, not disbursed", await hold("usr_aml") === 1_000_000 && await bal("usr_aml") === 1_000_000);
+ok("gross-1M withdrawal is NOT held: sent at once (sync mock → CONFIRMED, never AML_REVIEW)",
+  amlWd.ok === true && amlWd.data!.status !== "AML_REVIEW" && amlWd.data!.status === "CONFIRMED");
+ok("…its stored row is CONFIRMED and carries no AML reason",
+  await st(amlWdTxn) === "CONFIRMED" && (await db.txn.findById(amlWdTxn))?.amlReason === null);
+ok("…the full gross left the balance and nothing is parked in hold",
+  await hold("usr_aml") === 0 && await bal("usr_aml") === 1_000_000);
+ok("…and the withdrawal fee is still charged on it (fee > 0, fee + net = gross)",
+  amlWd.ok === true && amlWd.data!.fee > 0 && amlWd.data!.fee + amlWd.data!.net === 1_000_000);
+ok("a withdrawal that was never held cannot be pushed through the officer release path",
+  (await dispatchApprovedWithdrawal(amlWdTxn)).ok === false);
 await makePlayer("usr_aml2", { balance: 600_000, kyc: "APPROVED" });
 const belowWd = await withdraw("usr_aml2", { provider: "MPESA", amount: 500_000, msisdn: localDigits.get("usr_aml2")! });
 ok("below-threshold withdrawal is not AML-held", belowWd.ok === true && belowWd.data!.status !== "AML_REVIEW");
 
-// ── AML APPROVE → DISPATCH: the payout half of the review flow ──────────────
-// A large withdrawal held in AML_REVIEW must be able to PAY OUT once approved.
-// dispatchApprovedWithdrawal bypasses the AML hold (review already happened),
-// dispatches to the gateway, keeps the hold until the provider confirms, and
-// settles exactly-once. Previously approval was hard-blocked → large payouts
-// dead-ended at "return only". Here the provider is the sync mock → settles now.
+// ── THE CAP IS THE CEILING: exactly TZS 5,000,000 is sent, 5,000,001 is refused ──
+// With no hold, WITHDRAW_MAX_TZS (validators.ts) is the only limit on the size of one withdrawal,
+// and every player-facing statement of the 2026-09-13 ruling names it. Each case gets its OWN
+// 6,000,000 wallet, so the refusal can only be the cap and never a short balance.
+ok("the per-withdrawal cap is still TZS 5,000,000", WITHDRAW_MAX_TZS === 5_000_000);
+await makePlayer("usr_cap", { balance: 6_000_000, kyc: "APPROVED" });
+const capWd = await withdraw("usr_cap", { provider: "MPESA", amount: WITHDRAW_MAX_TZS, msisdn: localDigits.get("usr_cap")! });
+ok("exactly the cap (TZS 5,000,000) is accepted and sent at once (CONFIRMED, not held)",
+  capWd.ok === true && capWd.data!.status === "CONFIRMED");
+ok("…balance down by 5,000,000 and the hold released",
+  await bal("usr_cap") === 1_000_000 && await hold("usr_cap") === 0);
+await makePlayer("usr_cap_over", { balance: 6_000_000, kyc: "APPROVED" });
+const overWd = await withdraw("usr_cap_over", { provider: "MPESA", amount: WITHDRAW_MAX_TZS + 1, msisdn: localDigits.get("usr_cap_over")! });
+ok("TZS 5,000,001 is refused, and the refusal is the cap",
+  overWd.ok === false && /cap is TZS 5,000,000/.test(overWd.error));
+ok("…nothing moved: balance 6,000,000, hold 0, no withdrawal row written",
+  await bal("usr_cap_over") === 6_000_000 && await hold("usr_cap_over") === 0 && (await db.txn.findByUser("usr_cap_over")).length === 0);
+
+// ── LEGACY AML_REVIEW ROW: APPROVE → DISPATCH still pays it out ───────────────
+// withdraw() no longer creates AML_REVIEW rows (2026-09-13), but a row held BEFORE the ruling must
+// still PAY OUT once an officer approves it, so it is seeded (seedLegacyAmlHold).
+// dispatchApprovedWithdrawal skips the hold (review already happened), dispatches to the gateway,
+// keeps the hold until the provider confirms, and settles exactly-once. Previously approval was
+// hard-blocked → large payouts dead-ended at "return only". Here the provider is the sync mock →
+// settles now.
 {
-  const d = await dispatchApprovedWithdrawal(amlWdTxn);
+  const legacy = await seedLegacyAmlHold("usr_aml_legacy", 2_000_000, 1_000_000);
+  ok("seeded legacy row is AML_REVIEW with the gross in hold (the state withdraw() used to write)",
+    await st(legacy.txnId) === "AML_REVIEW" && await hold("usr_aml_legacy") === 1_000_000 && await bal("usr_aml_legacy") === 1_000_000);
+  const d = await dispatchApprovedWithdrawal(legacy.txnId);
   ok("approved dispatch (sync mock) → CONFIRMED", d.ok === true && d.status === "CONFIRMED");
-  ok("approved payout releases the hold (money left the platform)", await hold("usr_aml") === 0 && await bal("usr_aml") === 1_000_000);
-  ok("approved withdrawal txn CONFIRMED", await st(amlWdTxn) === "CONFIRMED");
+  ok("approved payout releases the hold (money left the platform)", await hold("usr_aml_legacy") === 0 && await bal("usr_aml_legacy") === 1_000_000);
+  ok("approved withdrawal txn CONFIRMED", await st(legacy.txnId) === "CONFIRMED");
+  ok("…and the phantom wdr_ id was replaced by the gateway's own reference",
+    !!await ref(legacy.txnId) && await ref(legacy.txnId) !== legacy.phantomRef);
   // Idempotent: a settled payout is no longer AML_REVIEW, so re-dispatch is refused.
-  const again = await dispatchApprovedWithdrawal(amlWdTxn);
+  const again = await dispatchApprovedWithdrawal(legacy.txnId);
   ok("re-dispatch of a settled payout is refused (exactly-once)", again.ok === false);
 }
 
@@ -212,31 +285,47 @@ const sweep2 = await reconcileStalePayments(-1);
 ok("confirmed payout releases the hold via re-query", await st(selWdTxn) === "CONFIRMED" && await hold("usr_sel") === 0);
 ok("reconcile counted a withdrawal confirmed", sweep2.withdrawalsConfirmed >= 1);
 
-// ── AML APPROVE → DISPATCH on the real Selcom adapter (stubbed gateway) ──────
-// Approving a reviewed ≥1M payout must DISPATCH it (PROCESSING + real ref, hold
-// kept) — never mark it sent without the gateway — then settle via re-query.
+// ── SELCOM: a TZS 1,500,000 withdrawal is DISPATCHED at once (owner ruling 2026-09-13) ──
+// Until 2026-09-13 this proved a ≥1M Selcom payout stopped at AML_REVIEW. Inverted: it goes
+// straight to the gateway (PROCESSING, with the gateway's ref and rail persisted and the hold kept)
+// and settles from the walletcashin/query re-query exactly like any other payout, never
+// blind-confirmed.
 await makePlayer("usr_selaml", { balance: 3_000_000, kyc: "APPROVED" });
+cashinQueryStatus = "111"; // gateway accepts; the payout is still pending
 const selAml = await withdraw("usr_selaml", { provider: "MPESA", amount: 1_500_000, msisdn: localDigits.get("usr_selaml")! });
 const selAmlTxn = selAml.ok ? selAml.data!.txnId : "";
-ok("selcom ≥1M withdrawal → AML_REVIEW held", selAml.ok === true && selAml.data!.status === "AML_REVIEW" && await hold("usr_selaml") === 1_500_000);
-cashinQueryStatus = "111"; // gateway accepts but is still pending after dispatch
-const disp = await dispatchApprovedWithdrawal(selAmlTxn);
-ok("approved selcom payout → PROCESSING (dispatched, not blind-confirmed)", disp.ok === true && disp.status === "PROCESSING" && await st(selAmlTxn) === "PROCESSING");
-ok("approved selcom payout kept the hold + got a REAL provider ref", await hold("usr_selaml") === 1_500_000 && !!await ref(selAmlTxn));
+ok("selcom 1.5M withdrawal → PROCESSING at once, NOT AML_REVIEW",
+  selAml.ok === true && selAml.data!.status === "PROCESSING" && await st(selAmlTxn) === "PROCESSING");
+ok("…hold kept until the gateway confirms, with the gateway ref + rail persisted",
+  await hold("usr_selaml") === 1_500_000 && await bal("usr_selaml") === 1_500_000 && !!await ref(selAmlTxn) && !!(await db.txn.findById(selAmlTxn))?.payoutRail);
 cashinQueryStatus = "000"; // gateway now confirms the payout
 await reconcileStalePayments(-1);
-ok("approved selcom payout settles via re-query (hold released)", await st(selAmlTxn) === "CONFIRMED" && await hold("usr_selaml") === 0);
+ok("…and settles via re-query as an ordinary payout (hold released)",
+  await st(selAmlTxn) === "CONFIRMED" && await hold("usr_selaml") === 0 && await bal("usr_selaml") === 1_500_000);
 
-// Provider refusal (float PIN not yet set) must NOT auto-refund a just-approved
-// payout — it reverts to AML_REVIEW (hold intact) for the officer to retry/reject.
-await makePlayer("usr_selaml2", { balance: 3_000_000, kyc: "APPROVED" });
-const selAml2 = await withdraw("usr_selaml2", { provider: "MPESA", amount: 1_200_000, msisdn: localDigits.get("usr_selaml2")! });
-const selAml2Txn = selAml2.ok ? selAml2.data!.txnId : "";
+// ── LEGACY AML APPROVE → DISPATCH on the real Selcom adapter (stubbed gateway) ──
+// A row held BEFORE 2026-09-13 (seeded: withdraw() cannot write one now). Approving it must
+// DISPATCH it (PROCESSING + real ref, hold kept), never mark it sent without the gateway, then
+// settle via re-query.
+const selLegacy = await seedLegacyAmlHold("usr_selaml_legacy", 3_000_000, 1_500_000);
+cashinQueryStatus = "111"; // gateway accepts but is still pending after dispatch
+const disp = await dispatchApprovedWithdrawal(selLegacy.txnId);
+ok("approved selcom payout → PROCESSING (dispatched, not blind-confirmed)", disp.ok === true && disp.status === "PROCESSING" && await st(selLegacy.txnId) === "PROCESSING");
+ok("approved selcom payout kept the hold + got a REAL provider ref",
+  await hold("usr_selaml_legacy") === 1_500_000 && !!await ref(selLegacy.txnId) && await ref(selLegacy.txnId) !== selLegacy.phantomRef);
+cashinQueryStatus = "000"; // gateway now confirms the payout
+await reconcileStalePayments(-1);
+ok("approved selcom payout settles via re-query (hold released)", await st(selLegacy.txnId) === "CONFIRMED" && await hold("usr_selaml_legacy") === 0);
+
+// Provider refusal (float PIN not yet set) must NOT auto-refund a just-approved legacy payout. It
+// reverts to AML_REVIEW (hold intact) for the officer to retry or reject. This protects
+// wallet-service's revert, which still runs for every row held before 2026-09-13.
+const selAml2 = await seedLegacyAmlHold("usr_selaml2", 3_000_000, 1_200_000);
 const savedPin = process.env.PAYMENT_VENDOR_PIN;
 delete process.env.PAYMENT_VENDOR_PIN; // simulate the float PIN not yet configured
-const failDisp = await dispatchApprovedWithdrawal(selAml2Txn);
+const failDisp = await dispatchApprovedWithdrawal(selAml2.txnId);
 ok("approved payout with no float PIN is refused (provider down)", failDisp.ok === false);
-ok("refused payout reverts to AML_REVIEW, hold intact (no auto-refund)", await st(selAml2Txn) === "AML_REVIEW" && await hold("usr_selaml2") === 1_200_000);
+ok("refused payout reverts to AML_REVIEW, hold intact (no auto-refund)", await st(selAml2.txnId) === "AML_REVIEW" && await hold("usr_selaml2") === 1_200_000);
 process.env.PAYMENT_VENDOR_PIN = savedPin;
 
 // Deposit: credits ONLY from the signed order-status re-query.

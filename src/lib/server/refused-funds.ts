@@ -13,7 +13,10 @@
  *   2. a mandatory typed justification, and the deciding officer is never the player;
  *   3. REAL money actions — a return goes through the ordinary payout rail (`withdraw()` with the
  *      narrowly-typed `refusedFundsReturn` option: the same exactly-once transaction, the same
- *      reconcile sweep, the same TZS 1,000,000 two-officer AML hold, registered number only, no fee);
+ *      reconcile sweep, the same per-withdrawal cap, registered number only, no fee). ⛔ A return is
+ *      NOT held for a two-officer AML review any more: that hold was switched off for every
+ *      withdrawal, returns included, by the owner ruling of 2026-09-13 (`WITHDRAWAL_AML_HOLD` in
+ *      payments.ts);
  *      a forfeiture is a confirmed debit posted atomically with its ledger group;
  *   4. the player is told the decision and the refusal reason (Terms §3a promises exactly that);
  *   5. ONE report an inspector can be handed (`refusedFundsReport`).

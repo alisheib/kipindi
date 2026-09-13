@@ -38,6 +38,12 @@ const TITLE: Record<Locale, string> = {
  * depositing or playing beside identity: `test:kyc-copy-truth` reads every legal file — its deny and
  * Gaming-Board rules take a paragraph as the unit, and its entrance rule a sentence with its neighbours —
  * so a true claim is kept in its own paragraph rather than one sentence away from another.
+ *
+ * ⛔ 2026-09-13 (evening): withdrawals are no longer held for officer review; the per-withdrawal maximum
+ * is TZS 5,000,000. Owner ruling (Ali), player-favourable, so it ships under the SAME version date with no
+ * §10 notice. §3 lost its two-officer clause and §5 now states the cap, in all three languages.
+ * `WITHDRAWAL_AML_HOLD` is false in payments.ts and the cap is WITHDRAW_MAX_TZS in validators.ts — if that
+ * cap ever moves, §5 moves with it. Do not restore the hold sentence.
  */
 const META: Record<Locale, string> = {
   en: "Version 2026-09-13 · Effective on account registration.",
@@ -59,9 +65,6 @@ const META: Record<Locale, string> = {
  * hour two could not be honoured, and a public promise the code refuses is worse than a shorter
  * one it keeps. Ali ruled ④ (2026-09-05) to narrow it to the window actually in force, and the
  * META version below is bumped in the same change because the binding English text moved.
- *
- * ⚠️ THE OTHER THREE "24 hours" IN THIS FILE ARE NOT THIS. §5 and its SW/ZH twins are the AML
- * review hold on large withdrawals — unrelated, unchanged, and they must stay 24.
  */
 /**
  * ⭐ EXPORTED so `scripts/terms-cancellation.test.mts` can RENDER it. §4 is binding prose that
@@ -103,8 +106,7 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
         </p>
         <p>
           We may request additional documents (proof of address, source-of-funds declaration) if
-          your activity triggers anti-money-laundering thresholds, and withdrawals of TZS 1,000,000
-          or more are held for review by two compliance officers.
+          your activity triggers anti-money-laundering thresholds.
         </p>
       </LegalSection>
 
@@ -173,8 +175,7 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
       <LegalSection n="5" title="Settlement and payout">
         <p>
           Payouts are credited to your wallet immediately on market settlement. Withdrawals are paid to the
-          mobile-money number registered on your account. Withdrawals of TZS 1,000,000 or more are held for
-          review by two compliance officers before release.
+          mobile-money number registered on your account, up to TZS 5,000,000 per withdrawal.
         </p>
         <p>
           <strong className="text-text">A withdrawal is charged a 1.5% fee, and nothing else. No tax is withheld
@@ -259,8 +260,7 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
         </p>
         <p>
           Tunaweza kuomba nyaraka za ziada (uthibitisho wa anwani, tamko la chanzo cha fedha) iwapo
-          shughuli zako zitavuka viwango vya kuzuia uoshaji wa fedha, na kutoa TZS 1,000,000 au
-          zaidi kunashikiliwa kwa ukaguzi wa maafisa wawili.
+          shughuli zako zitavuka viwango vya kuzuia uoshaji wa fedha.
         </p>
       </LegalSection>
 
@@ -330,8 +330,7 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
       <LegalSection n="5" title="Ufungaji na malipo">
         <p>
           Malipo huingizwa kwenye pochi yako mara moja soko linapofungwa. Utoaji wa fedha hulipwa kwenye nambari ya
-          pesa ya simu iliyosajiliwa kwenye akaunti yako. Utoaji wa TZS 1,000,000 au zaidi hushikiliwa kwa ukaguzi wa
-          maafisa wawili wa uzingatiaji kabla ya kutolewa.
+          pesa ya simu iliyosajiliwa kwenye akaunti yako, hadi TZS 5,000,000 kwa kila utoaji.
         </p>
         <p>
           <strong className="text-text">Utoaji wa fedha hutozwa ada ya 1.5%, na si kitu kingine. Hakuna kodi inayokatwa
@@ -407,8 +406,7 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
           已完成一次验证的账户，即使我们此后要求重新验证，仍保留提取其账户内资金的权利。
         </p>
         <p>
-          如果您的活动触发反洗钱阈值，我们可能会要求提供额外文件（地址证明、资金来源声明）；
-          TZS 1,000,000 及以上的提现须经两名合规专员审核。
+          如果您的活动触发反洗钱阈值，我们可能会要求提供额外文件（地址证明、资金来源声明）。
         </p>
       </LegalSection>
 
@@ -455,7 +453,7 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
 
       <LegalSection n="5" title="结算与派彩">
         <p>
-          市场结算后，派彩立即记入您的钱包。提现款项将支付至您账户注册的移动支付号码。TZS 1,000,000 及以上的提现须经两名合规专员审核后方可发放。
+          市场结算后，派彩立即记入您的钱包。提现款项将支付至您账户注册的移动支付号码，每笔最高 TZS 5,000,000。
         </p>
         <p>
           <strong className="text-text">提现收取 1.5% 手续费，除此之外别无其他。我们不会从您的资金中预扣任何税款。</strong>

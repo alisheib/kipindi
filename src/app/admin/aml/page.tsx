@@ -12,6 +12,7 @@ import { ScrollX } from "@/components/ui/scroll-x";
 import { AmlActionRow } from "./aml-actions-client";
 import { detectSuspiciousBets } from "@/lib/server/analytics";
 import { TWO_PERSON_THRESHOLD_TZS } from "./constants";
+import { WITHDRAW_MAX_TZS } from "@/lib/server/validators";
 import { listFirstSignatures } from "./stage1-store";
 import { AdminBody } from "@/components/admin/admin-body";
 import { KpiGrid } from "@/components/admin/admin-body";
@@ -67,7 +68,12 @@ export default async function AdminAmlPage({
   // Summary metrics for the KPI band — gives this high-stakes queue the same
   // at-a-glance hierarchy its compliance-queue peers (privacy/self-exclusions/
   // approvals/retention) already lead with, instead of diving straight to a table.
-  const largeCount = inReviewAll.filter((t) => Math.abs(t.amount) >= TWO_PERSON_THRESHOLD_TZS).length;
+  // ⚠️ 2026-09-13 — no withdrawal is held for review any more (payments.ts WITHDRAWAL_AML_HOLD = false, owner
+  // ruling). The two-officer rule in approveAmlAction still binds a withdrawal held BEFORE that date, so this
+  // counts those LEGACY holds only. A deposit owed back is never two-officer (the action refuses a deposit
+  // before that rule), so counting it here — as the old amount-only filter did — overstated the two-officer load.
+  const legacyTwoOfficer = (t: StoredTxn) => t.type === "WITHDRAWAL" && Math.abs(t.amount) >= TWO_PERSON_THRESHOLD_TZS;
+  const largeCount = inReviewAll.filter(legacyTwoOfficer).length;
   const awaitingSecond = inReviewAll.filter((t) => stage1.has(t.id)).length;
 
   /* ⭐ ONE NAME PER DESTINATION (§L1). Sidebar "AML queue", tab title "Admin · AML queue",
@@ -85,8 +91,8 @@ export default async function AdminAmlPage({
       <AdminBody>
         <KpiGrid>
           <AdminKpi label="Pending review" sw="Inasubiri" value={amlFailed ? "" : inReviewAll.length.toLocaleString()} unavailable={amlFailed} pulse={!amlFailed && inReviewAll.length > 0} delta="EDD queue" spark={false} />
-          <AdminKpi label="≥ TZS 1M · 2-officer" sw="Zaidi ya 1M" value={amlFailed ? "" : largeCount.toLocaleString()} unavailable={amlFailed} delta="two-person gate" spark={false} />
-          <AdminKpi label={CEREMONY.awaitingSecondSignature.en} sw={CEREMONY.awaitingSecondSignature.sw} value={amlFailed ? "" : awaitingSecond.toLocaleString()} unavailable={amlFailed} delta="stage 1 recorded" spark={false} />
+          <AdminKpi label="Legacy holds · 2-officer" sw="Zilizozuiliwa awali" value={amlFailed ? "" : largeCount.toLocaleString()} unavailable={amlFailed} delta={`≥ ${formatTzs(TWO_PERSON_THRESHOLD_TZS)} · held before 2026-09-13`} spark={false} />
+          <AdminKpi label={CEREMONY.awaitingSecondSignature.en} sw={CEREMONY.awaitingSecondSignature.sw} value={amlFailed ? "" : awaitingSecond.toLocaleString()} unavailable={amlFailed} delta="legacy hold · stage 1 recorded" spark={false} />
           <AdminKpi label="Suspicious-bet flags" sw="Bendera za shaka" value={flagsFailed ? "" : flagsAll.length.toLocaleString()} unavailable={flagsFailed} tone={!flagsFailed && flagsAll.length > 0 ? "danger" : undefined} delta="stake spike / velocity" spark={false} />
         </KpiGrid>
         <AdminCard padding="p-0">
@@ -109,7 +115,7 @@ export default async function AdminAmlPage({
               </thead>
               <tbody className="text-text-secondary">
                 {inReview.map((t) => {
-                  const requiresTwo = Math.abs(t.amount) >= TWO_PERSON_THRESHOLD_TZS;
+                  const requiresTwo = legacyTwoOfficer(t);
                   const sig = stage1.get(t.id);
                   return (
                     <tr key={t.id}>
@@ -124,7 +130,7 @@ export default async function AdminAmlPage({
                         {formatTzs(Math.abs(t.amount))}
                         {requiresTwo && (
                           <Chip size="sm" variant="warning" className="ml-2">
-                            <I.users s={10} /> 2-officer
+                            <I.users s={10} /> Legacy · 2-officer
                           </Chip>
                         )}
                         {sig && (
@@ -136,7 +142,7 @@ export default async function AdminAmlPage({
                       <td>{t.provider ?? "—"}</td>
                       <td>{t.amlReason ?? "—"}</td>
                       <td>
-                        <AmlActionRow txnId={t.id} amount={Math.abs(t.amount)} />
+                        <AmlActionRow txnId={t.id} amount={Math.abs(t.amount)} isWithdrawal={t.type === "WITHDRAWAL"} legacyTwoOfficer={requiresTwo} />
                       </td>
                     </tr>
                   );
@@ -152,12 +158,21 @@ export default async function AdminAmlPage({
           )}
         </AdminCard>
 
-        <AdminCard className="border-warning-border bg-warning-bg">
+        {/* ⚠️ 2026-09-13 — this card WAS a warning headed "Two-person approval" saying every amount of TZS 1M or
+            more needs two officers. Since the owner's ruling of that date no withdrawal is held for review at all
+            (payments.ts WITHDRAWAL_AML_HOLD), so the card says what the queue still holds. ⛔ Do not restore the
+            old claim: the two-officer rule binds only a row held before that date. ⛔ And do not say Reject
+            "returns" a deposit: rejectAmlAction moves wallet money for a WITHDRAWAL only, so a deposit owed back
+            leaves the queue with its money still owed. Each sentence sits on ONE source line — a JSX text run
+            that spans lines after an inline element loses its space (the /legal/terms defect). */}
+        <AdminCard>
           <div className="flex items-start gap-3">
-            <I.warning s={18} />
-            <div className="text-caption text-text-secondary">
-              <p className="text-text font-bold">Two-person approval</p>
-              <p>Approve / reject for amounts ≥ TZS 1M requires two <em>different</em> officers: a first officer records stage&nbsp;1, then a second officer counter-signs to release the funds (the same officer cannot do both, and no officer can review their own transaction). Stage&nbsp;1 is stored durably (it survives restarts) and both clicks are recorded in the <code>COMPLIANCE</code> audit category with each reviewer&apos;s user-id and reason.</p>
+            <I.info s={18} className="shrink-0" />
+            <div className="text-caption text-text-secondary space-y-1">
+              <p className="text-text font-bold">No withdrawal is held for review since 2026-09-13</p>
+              <p>Owner ruling: any withdrawal up to the {formatTzs(WITHDRAW_MAX_TZS)} per-withdrawal cap is sent once identity is approved, and no officer reviews it first. Rows here were held before that date, or are deposits owed back to excluded players.</p>
+              <p>Approve dispatches a held withdrawal; Reject returns it to the player&apos;s wallet. A held withdrawal of {formatTzs(TWO_PERSON_THRESHOLD_TZS)} or more still needs two different officers: the first records stage&nbsp;1, a second releases it.</p>
+              <p>A deposit owed back cannot be approved, and Reject only closes its row: it sends no money, so the return is still owed. No self-review; each decision and its reason are recorded in the audit log.</p>
             </div>
           </div>
         </AdminCard>

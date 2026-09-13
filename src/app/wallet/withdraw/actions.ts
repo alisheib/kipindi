@@ -77,10 +77,13 @@ export async function withdrawAction(formData: FormData) {
   // verification is gated on the licensed SMS provider, so no unenforced OTP is
   // collected in the meantime.
   // ⚠️ WHAT PROTECTS A PAYOUT WHILE THE OTP WAITS — read this before deciding it can keep waiting.
-  // Identity gates withdrawal (an approval at least once — 2026-09-13, `kyc-gate.ts`), the payout
-  // goes only to the registered number (E-215), payouts of TZS 1,000,000 or more are held for two
-  // officers, and the payee-name lookup above shows who is being paid. Between 2026-08-20 and
-  // 2026-09-05 identity was NOT among these; the dates are in docs/COMPLIANCE-DECISIONS.md.
+  // Since 2026-09-13 the protections are three: identity approval (at least once — `kyc-gate.ts`),
+  // the binding of the payout to the registered number (E-215), and the per-withdrawal cap
+  // (`WITHDRAW_MAX_TZS`, TZS 5,000,000, checked below). The payee-name lookup above shows who is
+  // being paid. ⛔ No officer reviews a withdrawal before it is sent: the TZS 1,000,000 two-officer
+  // hold that used to be listed here was switched off by the owner ruling of 2026-09-13
+  // (`WITHDRAWAL_AML_HOLD` in payments.ts) — do not count it as a protection. Between 2026-08-20
+  // and 2026-09-05 identity was NOT among these; the dates are in docs/COMPLIANCE-DECISIONS.md.
   const provider = String(formData.get("provider") ?? "") as WithdrawInput["provider"];
   const msisdn = formData.get("msisdn") ? String(formData.get("msisdn")) : undefined;
 

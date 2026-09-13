@@ -46,7 +46,7 @@ Updated 2026-05-17 (Sprint 59.6 — flow-architecture pass).
 > could play — the owner ruled that identity is required before **withdrawal only**.
 > ⛔ **Do not "restore" any earlier behaviour by reading an older document.** The authority is
 > [`COMPLIANCE-DECISIONS.md`](COMPLIANCE-DECISIONS.md), which carries all three entries in order.
-| Withdraw ≥ TZS 1,000,000 | Held for **two-officer** AML review before any gateway adapter is touched. ⚠️ Unaffected by the row above: it comes from the AML/FIU regime, a different authority, and `payments.ts` contains no identity reference | `src/lib/server/payments.ts:176` (`dispatchWithdrawal`) |
+| Withdraw up to TZS 5,000,000 | Sent to the gateway **at once — no officer review** since 2026-09-13 (owner ruling, `COMPLIANCE-DECISIONS.md` 2026-09-13 third; `WITHDRAWAL_AML_HOLD = false`). Above TZS 5,000,000 is refused by the per-withdrawal cap. ⚠️ Until that ruling a withdrawal of TZS 1,000,000 or more was held for a two-officer AML review; `/admin/aml` still releases or rejects any row held before it, and deposits owed back to excluded players | `src/lib/server/payments.ts` (`dispatchWithdrawal`, `WITHDRAWAL_AML_HOLD`) · `src/lib/server/validators.ts` (`WITHDRAW_MAX_TZS`) |
 | Deposit during self-exclusion / cooling-off | Blocked, error names the lockout type + expiry, audit `deposit.lockout_blocked` | `src/lib/server/wallet-service.ts:34-37` |
 | Bet during self-exclusion / cooling-off | Same — `isLockedOut()` check before `buyPosition()` | `src/lib/server/market-service.ts:182-183` |
 | Auth attempt during self-exclusion | `requestLoginOtp()` returns "Your account is in self-exclusion." | `src/lib/server/auth-service.ts:84-86` |

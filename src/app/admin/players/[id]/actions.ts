@@ -348,11 +348,14 @@ export async function adjustBalanceAction(formData: FormData) {
 // ─── Force re-verify KYC (audit §9.3 #4) ────────────────────────────────────
 // Moves an APPROVED player to ADDITIONAL_INFO_REQUIRED → reopens the resubmit flow.
 // Audited in kyc-service.
-// 🔴 IT DOES NOT RE-LOCK WITHDRAWALS ANY MORE — that is what this comment claimed until
+// 🔴 IT DOES NOT RE-LOCK WITHDRAWALS — that is what this comment claimed until
 // 2026-08-20, and it was the whole reason an officer reached for this control. The
-// withdrawal identity gate is gone (Board comment #1, 2026-08-19). To stop money
-// leaving, freeze the wallet, pause payouts, or rely on the AML ≥ TZS 1,000,000
-// two-officer hold. See docs/BOARD-DISCLOSURE-B-E.md §6.1.
+// withdrawal gate asks whether the account was EVER approved (`kyc-gate.ts`, 2026-09-13),
+// and re-verifying never clears that. To stop money leaving, the stops are: freeze the
+// wallet, or pause payouts. ⛔ Do NOT rely on an AML hold — the TZS 1,000,000 two-officer
+// hold this comment used to name was switched off by the owner ruling of 2026-09-13
+// (`WITHDRAWAL_AML_HOLD` in payments.ts); a large withdrawal is sent without review.
+// See docs/BOARD-DISCLOSURE-B-E.md §6.1.
 export async function forceReverifyKycAction(formData: FormData) {
   const officerId = await requireAdmin("forceReverifyKycAction");
   const userId = String(formData.get("userId") ?? "");

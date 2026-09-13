@@ -660,9 +660,10 @@ export async function listPendingKyc() {
  * re-verify control offers the first of them in the same place:
  *   · freeze the wallet — `freezeWalletByOfficer` (`wallet-freeze.ts`), which stops
  *     deposits, bets and withdrawals alike, with a written reason;
- *   · pause payouts — platform-wide, enforced in the withdraw route;
- *   · the AML hold — gross ≥ TZS 1,000,000 goes to two-officer review, and it never
- *     read identity status, so it is unaffected by any of this.
+ *   · pause payouts — platform-wide, enforced in the withdraw route.
+ * ⛔ THERE IS NO THIRD STOP. This list used to end with "the AML hold — gross ≥ TZS 1,000,000
+ *   goes to two-officer review". The owner ruling of 2026-09-13 switched that hold off
+ *   (`WITHDRAWAL_AML_HOLD` in payments.ts), so a large withdrawal is sent without review.
  * ⚠️ The officer's own screen must say the same thing — see `force-reverify-controls.tsx`.
  */
 export async function forceReverifyKyc(officerId: string, userId: string, reason: string): Promise<ServiceResult> {

@@ -31,6 +31,12 @@ const TITLE: Record<Locale, string> = {
  *     always said an officer assesses it.
  *   · "Behavioural anomalies are detected (rapid deposit-then-withdraw, multiple MSISDN sources,
  *     structuring)" — no detector for any of the three exists. Deleted, not softened.
+ *
+ * ⛔ 2026-09-13 (evening), SAME VERSION DATE — player-favourable, owner ruling (Ali): withdrawals are no
+ * longer held for officer review. §1 lost "even once identity is verified, withdrawals of TZS 1,000,000 or
+ * more are held for two-officer review" and §2 lost its withdrawal item, in all three languages.
+ * `WITHDRAWAL_AML_HOLD` is false in payments.ts, so nothing reviews a withdrawal before it is sent; do not
+ * restore either sentence. The §2 DEPOSIT source-of-funds item is unchanged — that refusal is still real.
  */
 const META: Record<Locale, string> = {
   en: "Version 2026-09-13 · Aligned with Tanzania AML Act (Cap 423) and the FATF Recommendations.",
@@ -61,8 +67,7 @@ function content(): Record<Locale, React.ReactNode> { return {
           that document&apos;s format rule, enforce that the document is unique to a single account,
           and our compliance team reviews the photographic evidence together with a selfie. We
           capture: full name, date of birth, region, the document type and number, and
-          photographic evidence. Even once identity is verified, withdrawals of TZS 1,000,000 or
-          more are held for two-officer review.
+          photographic evidence.
         </p>
         <p>
           Where we refuse an identity because the holder is under 18, because of a sanctions
@@ -76,7 +81,6 @@ function content(): Record<Locale, React.ReactNode> { return {
         <p>Enhanced due diligence applies in these cases:</p>
         <ul className="list-disc pl-5 space-y-1">
           <li>A single deposit of <strong className="text-text">TZS 1,000,000</strong> or more, or deposits of TZS 5,000,000 or more within 30 days — the deposit is refused until our compliance team has accepted a source-of-funds declaration</li>
-          <li>A withdrawal of <strong className="text-text">TZS 1,000,000</strong> or more — it is held for review until two compliance officers have reviewed it</li>
           <li>A compliance officer records a politically exposed person (PEP) or sanctions concern during an identity review or an enhanced due diligence review</li>
         </ul>
         <p>
@@ -144,8 +148,6 @@ function content(): Record<Locale, React.ReactNode> { return {
           kwa kanuni ya nyaraka hiyo, tunahakikisha nyaraka inatumika kwenye akaunti moja pekee,
           na timu yetu ya uzingatiaji hukagua ushahidi wa picha pamoja na selfie. Tunakusanya:
           jina kamili, tarehe ya kuzaliwa, mkoa, aina na namba ya nyaraka, na ushahidi wa picha.
-          Hata utambulisho ukishathibitishwa, kutoa TZS 1,000,000 au zaidi kunashikiliwa kwa
-          ukaguzi wa maafisa wawili.
         </p>
         <p>
           Tukikataa utambulisho kwa sababu mwenye akaunti yuko chini ya miaka 18, kwa sababu ya
@@ -160,7 +162,6 @@ function content(): Record<Locale, React.ReactNode> { return {
         <p>Uchunguzi ulioimarishwa hutumika katika hali hizi:</p>
         <ul className="list-disc pl-5 space-y-1">
           <li>Kuweka <strong className="text-text">TZS 1,000,000</strong> au zaidi kwa muamala mmoja, au TZS 5,000,000 au zaidi ndani ya siku 30 — muamala huo haupokelewi hadi timu yetu ya uzingatiaji ikubali tamko la chanzo cha fedha</li>
-          <li>Kutoa <strong className="text-text">TZS 1,000,000</strong> au zaidi — hushikiliwa kwa ukaguzi hadi maafisa wawili wa uzingatiaji wakague</li>
           <li>Afisa wa uzingatiaji anaporekodi wasiwasi wa Mtu Anayejulikana Kisiasa (PEP) au wa vikwazo wakati wa ukaguzi wa utambulisho au wa uchunguzi ulioimarishwa</li>
         </ul>
         <p>
@@ -224,7 +225,7 @@ function content(): Record<Locale, React.ReactNode> { return {
       <LegalSection n="1" title="客户尽职调查（CDD）">
         <p>
           我们会在每位账户持有人首次提现之前验证其身份。账户持有人可使用四种证件之一进行验证——
-          20 位国民身份证（NIDA）号码、护照、驾驶证或选民证。我们按该证件的格式规则核对号码，确保一份证件仅绑定一个账户，并由我们的合规团队审核照片证据及自拍照。我们采集：全名、出生日期、地区、证件类型与号码以及照片证据。即使身份已验证，TZS 1,000,000 及以上的提现仍须经两名合规专员审核。
+          20 位国民身份证（NIDA）号码、护照、驾驶证或选民证。我们按该证件的格式规则核对号码，确保一份证件仅绑定一个账户，并由我们的合规团队审核照片证据及自拍照。我们采集：全名、出生日期、地区、证件类型与号码以及照片证据。
         </p>
         <p>
           若因持有人未满 18 周岁、存在制裁疑虑或证件已被其他账户使用而拒绝其身份，该账户将被冻结，其余额由合规专员逐案决定并记录理由，详见服务条款第 3a 条。
@@ -235,7 +236,6 @@ function content(): Record<Locale, React.ReactNode> { return {
         <p>以下情况适用强化尽职调查：</p>
         <ul className="list-disc pl-5 space-y-1">
           <li>单笔存款达 <strong className="text-text">TZS 1,000,000</strong> 或以上，或 30 天内累计存款达 TZS 5,000,000 或以上——在合规团队接受资金来源声明之前，该笔存款不予受理</li>
-          <li>单笔提现达 <strong className="text-text">TZS 1,000,000</strong> 或以上——在两名合规专员审核之前，将被暂扣待审，不予放行</li>
           <li>合规专员在身份审核或强化尽职调查中记录了政治公众人物（PEP）或制裁疑虑</li>
         </ul>
         <p>

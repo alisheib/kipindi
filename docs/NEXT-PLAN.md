@@ -600,7 +600,9 @@ any re-typing, so the note is no longer the only thing standing between the kit 
 >   things rest on a DB read nobody has taken: the payout completes · `withdraw.initiated` carries
 >   `kycStatus` · `withdraw.unverified_payer` lands with a matching `txnId`. 🔑 A zero-money variant
 >   exists — a gross ≥ TZS 1,000,000 request returns at the AML hold before any gateway adapter is
->   touched, so both audit rows exist while nothing leaves the platform.
+>   touched, so both audit rows exist while nothing leaves the platform. ⛔ **2026-09-13: no longer
+>   true — withdrawals are no longer held for review (COMPLIANCE-DECISIONS 2026-09-13 third). A ≥ TZS
+>   1,000,000 request now really leaves; this is NOT a zero-money variant any more.**
 > - ⏳ **`faq3a` tells players a withdrawal needs "an OTP code", in all three languages.** No OTP is
 >   collected. Found while removing the identity gate, deliberately NOT folded into that commit.
 >

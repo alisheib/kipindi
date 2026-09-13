@@ -1,7 +1,12 @@
 /**
+ * 🔴 DISABLED 2026-09-13 — IT EXITS BEFORE DOING ANYTHING. Everything below is kept as history.
+ * Its safety was the TZS 1,000,000 AML hold, and the owner removed that hold (no withdrawal is held
+ * for review; docs/COMPLIANCE-DECISIONS.md 2026-09-13). Run today, step 2 would PAY OUT about
+ * TZS 1,000,000 of real money, and "NOTHING EVER LEAVES THE PLATFORM" below is now false.
+ *
  * E-177 — NOBODY HAS EVER WATCHED AN UNVERIFIED PLAYER BE PAID. This is that drive.
  *
- *   npm run qa:e177
+ *   npm run qa:e177   (disabled, see above)
  *
  * ⛔ THIS MOVES REAL MONEY ON PRODUCTION. Ali confirmed it 2026-08-26. Read before running.
  *
@@ -29,7 +34,18 @@
 import { readFileSync, existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { createRequire } from "node:module";
-import { BASE, browser, loginOnce } from "./live/harness.mjs";
+
+// ⛔ DISABLED 2026-09-13. This is the FIRST executable statement: before the harness is loaded, before
+// any login, any database connection and any balance adjustment. The drive's whole safety was the TZS
+// 1,000,000 AML hold ("nothing ever leaves the platform"). The owner removed that hold on 2026-09-13,
+// so the TZS 1,000,000 withdrawal below would now be SENT from production to a real handset.
+// There is deliberately no override flag. Re-enabling means rewriting the drive so its safety no longer
+// rests on a hold that does not exist, then deleting these lines.
+// ⚠️ The harness import below is DYNAMIC on purpose: static imports are hoisted and would run before this.
+console.error("qa:e177 (scripts/live-e177-unverified-payer.mjs) is disabled 2026-09-13: this drive relied on the TZS 1,000,000 AML hold, which the owner removed; running it would send real money.");
+process.exit(1);
+
+const { BASE, browser, loginOnce } = await import("./live/harness.mjs");
 
 const require = createRequire(import.meta.url);
 const REPO = process.env.KP_REPO ?? "F:/kipindi-main";

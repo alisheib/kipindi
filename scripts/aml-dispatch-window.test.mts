@@ -26,6 +26,13 @@
  * providerRef the sweep takes `if (!ref)` → `leftPending` + a needs-review row, moving no
  * money. §3 pins that branch, so this gate fails if the thing it relies on is ever removed.
  *
+ * 🟡 2026-09-13 · THE HOLD IS SWITCHED OFF, AND THIS GATE STAYS. The owner ruled that no withdrawal
+ * is held for review (`WITHDRAWAL_AML_HOLD = false`, payments.ts), so a NEW withdrawal never reaches
+ * the AML branch. The branch text is unchanged and §1 reads that TEXT; it does not claim the branch
+ * still fires. What is still real is every row held before the ruling: it carries the phantom `wdr_…`
+ * id, an officer can still approve it, and §2/§3 are what stop that approval refunding a payout in
+ * flight. ⛔ Do not retire this gate on the strength of the switch alone.
+ *
  *   npx tsx scripts/aml-dispatch-window.test.mts
  *   AMLW_ROOT=<tree> npx tsx scripts/aml-dispatch-window.test.mts
  */

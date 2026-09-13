@@ -106,7 +106,8 @@ Three things — **none of them "write the payout code"** — blocked real money
 3. **Payouts ≥ 1,000,000 TZS are hard-blocked.** `approveAmlAction` deliberately refuses
    ([`aml/actions.ts:136`](../src/app/admin/aml/actions.ts#L136)) because the old code marked a
    payout "sent" *without* dispatching to the gateway — destroyed money. So 1M–5M withdrawals
-   cannot complete at all today.
+   cannot complete at all today. ⚠️ 2026-09-13: no longer true — withdrawals are no longer held for
+   review (COMPLIANCE-DECISIONS 2026-09-13 third); 1M–5M now dispatches at once.
 
 > Terminology: "cashout"/"sell" elsewhere in the repo (`sell-button.tsx`, `cashoutEntries`) =
 > exiting a bet position early (internal balance only). That is a **different feature**. This
@@ -122,7 +123,7 @@ Three things — **none of them "write the payout code"** — blocked real money
 | 2 | Per-MNO utilitycode vs universal `CASHIN` | Keep the confirmed codes (`VMCASHIN`/`AMCASHIN`/`TPCASHIN`); route the two **unverified** ones (HaloPesa, TTCL) through universal **`CASHIN`** (Selcom MNP auto-route) until Selcom confirms `HPCASHIN`/`TTCASHIN`. |
 | 3 | Payee name confirmation | **Add** `walletcashin/namelookup` → show the registered payee name in the confirm modal before dispatch. |
 | 4 | Float balance visibility | **Add** `vendor/balance` read to `/admin/payments`. A dry float = every payout FAILS silently. |
-| 5 | AML ≥ 1M payouts | **Implement** approve → dispatch → PROCESSING → settle. Unblocks 1M–5M and removes the destroyed-money risk. |
+| 5 | AML ≥ 1M payouts | **Implement** approve → dispatch → PROCESSING → settle. Unblocks 1M–5M and removes the destroyed-money risk. ⚠️ 2026-09-13: withdrawals are no longer held for review (COMPLIANCE-DECISIONS 2026-09-13 third) — this path now only releases a row held before that change. |
 | 6 | `BANK_TRANSFER` (offered in the withdraw UI, unwired → `PROVIDER_DOWN`) | **Remove** from the withdraw list for launch (mobile-money only). Selcom **enabled Qwiksend** (bank payout) on our account too (email 2026-07-27) — wire it as a fast-follow (`/v1/qwiksend/process` + bank-shortcode list + `qwiksend/lookup` name check + bank/account UI). No longer Selcom-blocked; implementation work only. |
 
 ---
@@ -155,6 +156,8 @@ is a fact to be measured, not inherited from an email**: `scripts/selcom-probe.m
 > - **Phase 2 — DONE + tested:** AML approve now DISPATCHES (`dispatchApprovedWithdrawal`): AML_REVIEW →
 >   PROCESSING → gateway → exactly-once settle; two-officer gate kept; Approve button re-enabled; provider
 >   refusal reverts to review (no auto-refund). `test:payments` 47/0. The old "approval destroys money" block is gone.
+>   ⚠️ 2026-09-13: withdrawals are no longer held for review (COMPLIANCE-DECISIONS 2026-09-13 third) — no new
+>   withdrawal reaches `AML_REVIEW`; this path stays only for a row held before that change.
 > - **Phase 3 — DONE:** withdrawal money-grade UX + notifications. Confirm modal shows the destination phone
 >   **and the registered payee name** (best-effort `walletcashin/namelookup`, never blocks a payout);
 >   `BANK_TRANSFER` removed (mobile-money only); msisdn required consistently client+server; the "payout sent"
@@ -208,6 +211,11 @@ comment prescribes ([`aml/actions.ts:157`](../src/app/admin/aml/actions.ts#L157)
 3. Let `settleWithdrawalConfirmed`/`settleWithdrawalFailed` ([`wallet-service.ts:506`](../src/lib/server/wallet-service.ts#L506)) own the terminal state via webhook + reconcile (hold-release + ledger + notification, atomic).
 4. A DEPOSIT held in AML → correct action is a **refund**, not approve.
 
+> ⚠️ **2026-09-13: no new withdrawal takes this path.** `dispatchWithdrawal` no longer short-circuits to
+> `AML_REVIEW` (`WITHDRAWAL_AML_HOLD = false`; COMPLIANCE-DECISIONS 2026-09-13 third — withdrawals are no
+> longer held for a two-officer review), so 1M–5M does **not** route through review any more: it goes to
+> the gateway at once. The approve → dispatch path above stays only for a row held before that change.
+
 Note: `dispatchWithdrawal` short-circuits to `AML_REVIEW` *before* the adapter
 ([`payments.ts:143`](../src/lib/server/payments.ts#L143)); the approve path must bypass that branch
 (dispatch the already-reviewed payout directly). Reconcile the cap mismatch (schema 5M vs AML hold
@@ -230,7 +238,7 @@ case to `scripts/payment-webhook.test.mts`.
 2. `npm run e2e:money` — ledger drift must be `0.00`.
 3. Real: one **small** payout (~1,000 TZS) to a controlled MPESA number with provider=`selcom` → confirm it
    lands, txn → CONFIRMED via `walletcashin/query`, hold released, reconciliation drift = TZS 0.
-4. One **≥ 1M** withdrawal → AML queue → two-officer approve → confirm it **dispatches** and settles (not the old "marked sent, no money").
+4. ⚠️ **Changed 2026-09-13 — there is no AML queue for withdrawals any more** (`WITHDRAWAL_AML_HOLD = false`; COMPLIANCE-DECISIONS 2026-09-13 third). ~~One ≥ 1M withdrawal → AML queue → two-officer approve → confirm it dispatches.~~ Check instead: a withdrawal **up to TZS 5,000,000** goes to the gateway at once (no `AML_REVIEW` row, nothing appears on `/admin/aml`) and settles as in step 3; one **above TZS 5,000,000** is refused before any money moves. ⛔ **A live test withdrawal now really leaves** — nothing parks it for an officer — so test only an amount you are willing to send, from an account registered to a number you control (payouts go only to the registered number).
 5. Confirm the reconcile sweep (`reconcileStalePayments`) resolves a stalled PROCESSING payout via signed re-query and never blind-reverses an AMBIGUOUS one.
 6. `/admin/payments`: Test Selcom OK; float balance visible; per-MNO kill-switch pauses withdrawals.
 

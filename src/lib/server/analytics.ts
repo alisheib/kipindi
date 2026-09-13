@@ -320,7 +320,8 @@ export async function operatorMarginPct(period: Window = "28d") {
 }
 
 // 🔴 `amlThresholdBreaches()` DELETED 2026-09-07 — zero callers, and it inlined a THIRD copy
-// of the 1,000,000 TZS AML threshold (see `AML_REVIEW_THRESHOLD_TZS` in payments.ts).
+// of the 1,000,000 TZS AML threshold (see `AML_REVIEW_THRESHOLD_TZS` in payments.ts — a reporting
+// line only since the owner ruling of 2026-09-13 switched the withdrawal hold it triggered off).
 /**
  * Time-bucketed series for charting. Returns evenly-spaced buckets covering
  * the period. Each bucket has the net flow (deposits + bets stake) − (payouts +

@@ -8,7 +8,10 @@
  *    deposits and bets needed it after they stopped. A header that drifts is worse than
  *    no header: it is read as authority. The rule lives in `kyc-gate.ts`; this is a
  *    pointer, not a copy.
- *  - AML threshold (TZS 1M) holds withdrawal in `AML_REVIEW`
+ *  - No withdrawal is held for AML review: the TZS 1M two-officer hold was switched off
+ *    by the owner ruling of 2026-09-13 (`WITHDRAWAL_AML_HOLD`, payments.ts). A single
+ *    withdrawal is capped at `WITHDRAW_MAX_TZS`. `AML_REVIEW` stays in use for rows held
+ *    before then and for deposits owed back to excluded players (`rg_refund_due_*`).
  *  - Daily/weekly/monthly deposit limits enforced (Responsible Gambling)
  *  - A withdrawal is charged ONE fee: `withdrawalFeeRate` (1.5% live), part of which
  *    (`withdrawalGatewayShareRate`) is the payment gateway's. There is NO
@@ -625,8 +628,10 @@ async function settleWithdrawalConfirmed(txnId: string): Promise<boolean> {
 /**
  * Player-facing "withdrawal sent" receipt (in-app + email). Shared by the normal
  * settle path AND the AML-approval release path (admin/aml/actions.ts), so a
- * large (≥ TZS 1M) two-officer-approved withdrawal gets the same confirmation as
+ * withdrawal an officer releases from AML_REVIEW gets the same confirmation as
  * an ordinary one — previously the AML approve path released the funds silently.
+ * ⚠️ Since the owner ruling of 2026-09-13 (`WITHDRAWAL_AML_HOLD` off in payments.ts) only a
+ * row held BEFORE that date can reach the release path; a new ≥ TZS 1M withdrawal is not held.
  */
 export function notifyWithdrawalSent(txn: { id: string; userId: string; amount: number; fee: number; provider: string | null; msisdn?: string | null; providerRef?: string | null; payoutRail?: string | null }): void {
   const gross = Math.abs(txn.amount);
@@ -656,6 +661,10 @@ export function notifyWithdrawalSent(txn: { id: string; userId: string; amount: 
 /**
  * Dispatch a withdrawal that has PASSED AML review (officer-approved) to the payment
  * gateway. Called ONLY from admin/aml/actions.ts, AFTER the two-officer approval gate.
+ *
+ * ⚠️ SINCE THE OWNER RULING OF 2026-09-13 NO NEW WITHDRAWAL ENTERS AML_REVIEW (`WITHDRAWAL_AML_HOLD`
+ * is off in payments.ts). This path is KEPT so a row held before then can still be paid; do not
+ * read the history below as a description of what happens to a large withdrawal today.
  *
  * This is the missing half of the large-payout flow. Previously a ≥ TZS 1M withdrawal
  * entered AML_REVIEW and could only be *rejected* (refunded) — approving it would have
@@ -1490,7 +1499,9 @@ export async function withdraw(
    *     in which the refused player could bet), though never CLOSED;
    *   · the withdrawal fee is 0 — it is money we decided to give back, not a withdrawal they chose.
    * Everything else holds: destination binding to the registered number, the rail minimum, the
-   * exactly-once transaction and reconcile path, and the TZS 1,000,000 two-officer AML hold.
+   * per-withdrawal cap (`WITHDRAW_MAX_TZS`, via WithdrawSchema), and the exactly-once transaction
+   * and reconcile path. ⛔ NOT a two-officer AML hold: this list named one until the owner ruling
+   * of 2026-09-13 switched it off for every withdrawal (`WITHDRAWAL_AML_HOLD`, payments.ts).
    */
   opts?: { refusedFundsReturn?: { decisionId: string } },
 ): Promise<ServiceResult<{ txnId: string; status: StoredTxn["status"]; fee: number; net: number }>> {
@@ -1605,8 +1616,7 @@ export async function withdraw(
   // ⚠️ THE STAMP SURVIVES THE GATE. `kycStatus` rides on `withdraw.initiated` for EVERY payout: a
   // stamp that only appeared while it could be non-APPROVED would make its own absence ambiguous.
   //
-  // ⚠️ WHAT ELSE REMAINS: the AML ≥ TZS 1,000,000 two-officer hold (`payments.ts`, which
-  // contains no identity reference at all), the wallet freeze below, the per-provider
+  // ⚠️ WHAT ELSE REMAINS: the per-withdrawal cap (`WITHDRAW_MAX_TZS`), the wallet freeze below, the per-provider
   // kill-switch, the gateway floor, and the payout pause — the last of which lives in the
   // ROUTE (`wallet/withdraw/actions.ts`), not here. There is still no `user.status` check
   // and no self-exclusion check on the withdraw path; that predates this change and is
@@ -1860,7 +1870,8 @@ export async function withdraw(
 
   // ── Provider dispatch (UNLOCKED): never hold a wallet lock across network I/O.
   // `amount: net` is what the gateway disburses; `grossAmount: amount` is the full
-  // withdrawal value the AML ≥1M second-officer hold is evaluated against.
+  // withdrawal value the AML ≥1M hold WOULD be evaluated against. The hold is switched off by
+  // the owner ruling of 2026-09-13 (`WITHDRAWAL_AML_HOLD`), so no withdrawal is held here.
   const result = await dispatchWithdrawal({ provider: parse.data.provider, amount: net, grossAmount: amount, msisdn: parse.data.msisdn, userId });
 
   // ── Phase B (locked): settle by applying DELTAS to a fresh wallet read ──────
@@ -1911,6 +1922,7 @@ export async function withdraw(
 
   if (result.status === "AML_REVIEW") {
     // Funds stay in `hold` pending manual review — no settle delta yet.
+    // ⚠️ Unreachable while `WITHDRAWAL_AML_HOLD` is off (owner ruling 2026-09-13); kept so the switch stays one line.
     await db.txn.update(txnId, { status: "AML_REVIEW", amlReason: "Threshold ≥ TZS 1,000,000" });
     audit({ category: "COMPLIANCE", action: "withdraw.aml_held", actorId: userId, targetType: "Transaction", targetId: txnId, payload: { amount } });
     notifyWithdraw(userId, { status: "AML_REVIEW", amount, net, provider: providerLabel });
@@ -2474,9 +2486,10 @@ export async function refundAgentRegistrationFeeToWallet(
  * adjustment raises a WATCHED `COMPLIANCE` audit — an officer moving money by
  * hand must always be traceable. Bounded by a per-adjustment cap.
  *
- * NOTE (hardening): like AML withdrawals ≥1M, large adjustments should ideally
- * require a second officer (maker-checker). v1 is single-officer + audit + cap;
- * two-officer is a documented follow-up.
+ * NOTE (hardening): the maker-checker for large adjustments lives in the ACTION, not here —
+ * `adjustBalanceAction` needs a second, different officer at or above
+ * `TWO_PERSON_THRESHOLD_TZS`. This note used to compare it to "AML withdrawals ≥1M"; there is
+ * no such withdrawal review since the owner ruling of 2026-09-13 (`WITHDRAWAL_AML_HOLD` off).
  */
 /**
  * ⭐ FORFEIT A REFUSED PLAYER'S BALANCE — S1, owner ruling 2026-09-13 (docs/COMPLIANCE-DECISIONS.md).

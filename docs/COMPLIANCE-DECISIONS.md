@@ -6,6 +6,53 @@
 
 ---
 
+## 2026-09-13 (third) · Withdrawals are no longer held for a two-officer review — any amount up to the per-withdrawal cap pays out at once
+
+**Owner ruling (Ali, 2026-09-13, the evening the identity release went live).** Put to him with the consequence
+stated — *"big payouts leave with no second person checking them, and the Board letter currently lists this check as
+one of our controls"* — against two alternatives (also remove the per-withdrawal maximum; or keep the rules and only
+reword), he chose: **remove the review, keep the maximum.** It replaces the withdrawal hold described as a control in
+earlier entries — including the G-15 rule (*"the existing WITHDRAWAL hold is the control"*), whose duty to state the
+hold on the jackpot notification no longer applies — and in the first 2026-09-13 entry below and the Board letter
+draft. Those entries are not edited; this one is the record of the change.
+
+**What changes.** Until today every withdrawal whose gross amount was TZS 1,000,000 or more was held (`AML_REVIEW`)
+and sent only after two different compliance officers approved it (`/admin/aml`). From this ruling **no new
+withdrawal is held.** ⭐ **One switch, not a deletion:** `WITHDRAWAL_AML_HOLD = false` in `src/lib/server/payments.ts`
+gates the hold branch of `dispatchWithdrawal`. Player withdrawals and refused-funds returns use that same dispatch,
+so both pay out at once. `AML_REVIEW_THRESHOLD_TZS` stays as the reporting line (the FIU suspicious-activity report
+still flags settled transactions of TZS 1,000,000 or more; the identity queue still orders by it).
+
+**What does NOT change.**
+- **Identity before withdrawal** — `assertIdentityForPayout`, an identity approved by a person.
+- **The per-withdrawal cap** — TZS 5,000,000 (`WITHDRAW_MAX_TZS`); a larger amount is refused.
+- **Payout destination binding** — a payout goes only to the number registered on the account.
+- **Source of Funds on deposits** — a single deposit of TZS 1,000,000 or more, or TZS 5,000,000 within 30 days,
+  still needs an accepted declaration first.
+- **The stops an officer still has** — the wallet freeze and the payout pause switch.
+- **The record** — every withdrawal still writes `withdraw.initiated` with the account's identity status.
+- **Rows already held** would still be released or rejected by officers on `/admin/aml` (two officers for a large
+  one), and `AML_REVIEW` stays in use for deposits owed back to excluded players. **Measured on production before the
+  change: 0 withdrawals in `AML_REVIEW`; the largest withdrawal ever made was TZS 5,000.**
+
+**⚠️ What the operator accepts, in plain words.**
+- A player whose identity is approved can take up to TZS 5,000,000 out in one withdrawal, as often as their balance
+  allows, with no second person looking at it first. The only human checks on money leaving are the identity review
+  and the Source-of-Funds declaration on the way in.
+- **The payout float:** one withdrawal can now draw up to TZS 5,000,000 from the Selcom float the moment it is
+  requested, and the low-float warning is set at TZS 1,000,000. Keep the float funded above the largest payout expected.
+- **A refused player holding more than TZS 5,000,000** cannot be returned the whole balance in one decision: the return
+  is a withdrawal and the cap applies. No such account exists; a split return has no ruling yet.
+- The AML policy, the Terms (§3, §5 — amended the same day inside version 2026-09-13, a player-favourable change) and the
+  draft Board letter described the two-officer review as a control; all are corrected in the same release.
+
+**Code:** `src/lib/server/payments.ts` (`WITHDRAWAL_AML_HOLD`) · player copy `src/lib/i18n-dict.ts` (withdraw hint and
+secured note, Help FAQ) · `src/app/legal/terms/page.tsx` §3/§5 · `src/app/legal/aml/page.tsx` §1/§2 · the game rules ·
+the chatbot prompts · `/admin/aml` and `/admin/approvals` notices.
+**Tests:** `test:payments` inverted — a gross TZS 1,000,000 withdrawal is not held, the cap is enforced at the service,
+the switch is asserted off, and a seeded pre-ruling `AML_REVIEW` row is still released and reverted correctly; the
+production drive `qa:e177`, whose safety rested on the hold, is disabled.
+
 ## 2026-09-13 · Identity verification moves to WITHDRAWAL ONLY — depositing and playing open at the door
 
 **Ruling:** the owner (Ali), **2026-09-13**. Players complained, in volume, about having to

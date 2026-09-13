@@ -74,7 +74,9 @@ export function attentionOf(t: StoredTxn, nowMs: number = Date.now()): Attention
   if (isGateway && t.status === "CONFIRMED" && !t.providerRef) {
     return { level: "warn", code: "unreconciled", label: "No gateway reference", sw: "Hakuna kumbukumbu ya lango" };
   }
-  // A payout awaiting a second officer (POCA/AML ≥ 1,000,000 TZS).
+  // A row held in AML_REVIEW, awaiting an officer. Since the owner ruling of 2026-09-13 switched
+  // the withdrawal hold off (`WITHDRAWAL_AML_HOLD`, payments.ts), no new withdrawal lands here: only
+  // one held before then, or a deposit owed back to an excluded player (`rg_refund_due_*`).
   if (t.status === "AML_REVIEW") {
     return { level: "warn", code: "aml", label: "Awaiting AML review", sw: "Inasubiri ukaguzi wa AML" };
   }

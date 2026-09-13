@@ -5,6 +5,9 @@ import { rateCheckAsync } from "@/lib/server/rate-limit";
 import { loadConfig, saveConfig } from "@/lib/server/config-store";
 import { getGlobalConfig } from "@/lib/server/market-config";
 import { SUPPORT_EMAIL, SUPPORT_PHONE } from "@/lib/server/support-config";
+// The per-withdrawal cap the withdraw form enforces — read, never restated (2026-09-13).
+import { WITHDRAW_MAX_TZS } from "@/lib/server/validators";
+import { formatTzs } from "@/lib/utils";
 // ⭐ The PINNED statutory helpline. Before 2026-09-10 this file did not import it at all —
 // `grep -n HELPLINE` returned nothing — while RULE 2 instructed the model to hand a
 // self-identifying problem gambler the operator's own desk number.
@@ -115,6 +118,12 @@ function capacityMessage(locale: string): string {
  * ⚠️ The same line also claimed "two-officer sign-off". Single-admin resolution has been the
  * recorded default since 2026-07-24 (COMPLIANCE-DECISIONS), so that half was already false and
  * is corrected here rather than carried forward with a new number attached to it.
+ *
+ * ⛔ THE WITHDRAWAL LINE (owner ruling 2026-09-13). It said "under TZS 1M settles in ~60s; TZS
+ * 1,000,000 and above is held for review by two compliance officers (up to 24h)". The hold is
+ * switched off (`WITHDRAWAL_AML_HOLD` in payments.ts): no officer reviews a withdrawal before it
+ * is sent, up to `WITHDRAW_MAX_TZS` per withdrawal. The "~60s" was a speed promise nothing
+ * measures, so it is gone too, and the model is told not to invent one. Do not restore either.
  */
 function buildSystemPrompt(locale: string, objectionHours: number) {
   const langLine = locale === "zh"
@@ -148,7 +157,7 @@ WHAT YOU KNOW:
 - Deposits via M-Pesa, Airtel Money, HaloPesa, Mixx by Yas or card. Min TZS 500, max TZS 2,000,000.
 - IDENTITY VERIFICATION IS ASKED BEFORE A PLAYER'S FIRST WITHDRAWAL, AND BEFORE NOTHING ELSE (changed 2026-09-13). Once a player has confirmed their email address they can add money and play straight away. Before they cash out for the first time, they verify their identity: any ONE of four documents (NIDA, passport, driving licence, voter's card) plus a selfie, at /profile/kyc. One document may only ever be used on one account. Our team usually reviews documents within 24 hours; while it is pending the player has nothing to do but wait, and you must say so plainly. If someone asks how to cash out and has not verified, tell them this step. Do not bring identity up when a player asks about depositing or playing. Never tell a player that verification is needed to add money or to bet — it is not.
 - If a player is ALREADY VERIFIED and we later ask them to re-verify (an expired document, a name mismatch), they can still WITHDRAW money they already hold. Never tell a re-verifying player their money is frozen. If a player says their account or wallet has been frozen or their verification refused, do not speculate about why or what happens to their balance — tell them our support team will explain, and offer to connect them.
-- Withdrawal mechanics, once verified: under TZS 1M settles in ~60s; TZS 1,000,000 and above is held for review by two compliance officers (up to 24h). Payouts go only to the mobile number registered on the account. A withdrawal is charged a 1.5% fee — and NOTHING else. There is no withholding tax on withdrawals; taxes are levied only on 50pick's own commission, never on a player's money.
+- Withdrawal mechanics, once verified: a withdrawal of any amount up to ${formatTzs(WITHDRAW_MAX_TZS)} PER WITHDRAWAL is sent to the mobile number registered on the account. Payouts go only to that number. No officer reviews a withdrawal before it is sent, whatever its size — never tell a player that a large withdrawal is held, reviewed by compliance officers, or slower than a small one. Never promise how long a payout takes to arrive (no seconds, minutes or hours); if one has not arrived, say the receipt in their wallet shows its exact state and offer to connect them with support. A withdrawal is charged a 1.5% fee — and NOTHING else. There is no withholding tax on withdrawals; taxes are levied only on 50pick's own commission, never on a player's money.
 - Early cash-out (sell position): FREE for 5 minutes after placing the bet (full refund). After that the position LOCKS and rides to settlement — there is no paid exit window and no fee, because there is nothing to sell. Selling also closes the moment betting closes.
 - Responsible gambling: deposit/loss/session limits, reality checks, breaks, self-exclusion.
 - Proposals: players propose markets and earn a prize if listed + resolved.

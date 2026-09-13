@@ -1,14 +1,11 @@
 import { AdminPageHead } from "@/components/admin/admin-shell";
-import { SkBody, SkKpiRow, SkTableCard, SkCard, SkChip } from "@/components/admin/admin-skeletons";
+import { SkBody, SkKpiRow, SkTableCard, SkCard } from "@/components/admin/admin-skeletons";
 
 export default function Loading() {
   return (
     <>
-      <AdminPageHead
-        title="Two-person approvals"
-        sw="Idhini ya watu wawili"
-        actions={<SkChip className="h-7 w-40" />}
-      />
+      {/* 2026-09-13: renamed with the page ("Two-person approvals" → "Approvals"); its "Co-sign required" chip is gone, so is this placeholder. */}
+      <AdminPageHead title="Approvals" sw="Idhini" />
       <SkBody>
         <SkKpiRow count={4} />
         {/* KYC queue — sortable and paged; money-weighted by default for a money viewer (2026-09-13) */}

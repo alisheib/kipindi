@@ -50,6 +50,10 @@ The owner was told each of these plainly before ruling, and they are recorded un
    come first, now comes at withdrawal.
 3. **Sanctions and PEP screening happens at withdrawal.** The only screening is the officer's
    assessment at identity review. No deposit and no bet is screened.
+4. **A large withdrawal is not reviewed by a person before it is sent.** Once identity is approved, a
+   withdrawal of any amount up to TZS 5,000,000 is paid out at once; the two-officer review of withdrawals of
+   TZS 1,000,000 or more was removed by the owner on 2026-09-13. The human checks on money leaving are the
+   identity review and, on the way in, the Source-of-Funds declaration.
 
 ## 3 · The controls that still apply before a withdrawal can happen
 
@@ -60,7 +64,9 @@ The owner was told each of these plainly before ruling, and they are recorded un
 - **An account that has been approved once keeps the right to withdraw what it holds**, even if
   compliance later asks it to verify again. A re-verification does not trap money earned under an
   identity the operator accepted. An officer who needs to stop money moving freezes the wallet.
-- **The AML two-officer hold** on any withdrawal of TZS 1,000,000 or more.
+- **A per-withdrawal cap** of TZS 5,000,000; a larger amount is refused. ⚠️ Since the owner's ruling of the
+  same day, no officer reviews a withdrawal before it is sent — the earlier two-officer review of withdrawals of
+  TZS 1,000,000 or more was removed (§2, item 4).
 - **Payout destination binding:** a payout goes only to the number registered on the account.
 - **The Source-of-Funds gate** on deposits: a single deposit of TZS 1,000,000 or more, or TZS
   5,000,000 within 30 days, requires an accepted declaration first. For an account that has not
@@ -82,8 +88,8 @@ answer is published in **Terms §3a** in English, Swahili and Chinese, from the 
   recorded outcomes: return the deposits, return the whole balance, hold pending an appeal, or
   forfeit. Every decision carries a written justification, is recorded in the tamper-evident
   compliance log under its own action, and is written to the player with the reason.
-- **Returns** go through the ordinary payout rail, to the registered number only, and remain
-  subject to the two-officer hold. No fee is charged on a return.
+- **Returns** go through the ordinary payout rail, to the registered number only, within the
+  TZS 5,000,000 per-withdrawal cap. No fee is charged on a return.
 - **Every such decision appears in a single report** — who decided, when, the amounts and the
   reason — alongside every finally-refused account still holding money with no decision yet.
 

@@ -166,7 +166,10 @@ export const dict = {
       viewLiveMarket: "View the live market",
       backToProposals: "Back to proposals",
       resolves: "resolves",
-      pendingHoldHint: "Pending withdrawals or AML review",
+      // 2026-09-13 · was "Pending withdrawals or AML review". The On-hold figure is money reserved for a withdrawal
+      // not yet completed (moved out of the balance at request, released on confirm or refund), and no withdrawal
+      // is held for review any more (owner ruling; payments.ts WITHDRAWAL_AML_HOLD = false).
+      pendingHoldHint: "Withdrawals on their way",
       playMoreToUnlock: "Play more to turn this into withdrawable cash.",
       queued: "Queued",
       queuedHint: "Activates when your current bonus completes.",
@@ -264,7 +267,7 @@ export const dict = {
       withdrawalUnderReview: "Withdrawal under review",
       payoutInProgress: "Payout in progress",
       withdrawalOnItsWay: "Withdrawal on its way",
-      amlReviewBody: "Amounts of TZS 1,000,000 or more are reviewed by compliance (usually within 2 hours).",
+      amlReviewBody: "This withdrawal is being checked by our compliance team.",
       payoutProcessingBody: "Your provider is processing the payout. We\u2019ll confirm the moment it settles.",
       payoutMomentsBody: "Your provider should pay out within moments.",
       depositPendingBody: "Approve the prompt on your phone. The moment your provider confirms, we add the funds and send you a notification and an email receipt \u2014 usually within a minute. You do not need to stay on this screen, and please do not pay again.",
@@ -583,7 +586,7 @@ export const dict = {
       howStep2H: "Every result has a named source",
       howStep2B: "Every market settles against a named public source: the meteorological agency, the league table, the Bank of Tanzania mid-rate. An officer signs it off — two, when two-officer authorization is enabled.",
       howStep3H: "Winners split the pool",
-      // 2026-09-13 · no speed promise and no single brand: a withdrawal can be held for review, and several networks pay out.
+      // 2026-09-13 · no speed promise and no single brand: a payout lands when the mobile-money network confirms it, and several networks pay out.
       howStep3B: "The pool is shared between everyone who was right, minus a commission taken only from the losing side. Winnings land in your 50pick balance, ready to withdraw to mobile money.",
 
       /* ── §1c THE GRID'S LENS ───────────────────────────────────────────────────────────
@@ -1112,7 +1115,8 @@ export const dict = {
       destination: "Destination",
       amount: "Amount",
       // 2026-09-13: no-break spaces keep each "TZS" on the same line as its amount (see depositAmountHint).
-      amountHint: "Min TZS\u00a01,000 · Max TZS\u00a05,000,000 per withdrawal. Amounts ≥ TZS\u00a01,000,000 are held for AML review before release.",
+      // 2026-09-13 · the "≥ TZS 1,000,000 held for AML review" sentence is removed: the owner ended that hold. The cap stays.
+      amountHint: "Min TZS\u00a01,000 · Max TZS\u00a05,000,000 per withdrawal.",
       destinationPhone: "Destination phone",
       // 🔴 `E-215` · the withdrawal destination is STATED, not typed. ⛔ These three keys
       // exist so the screen can say WHY the number is fixed. A `disabled` input says "you may
@@ -1140,7 +1144,10 @@ export const dict = {
       // to open "Withdrawals are released only after our
       // compliance team has reviewed your ID documents" — false since 2026-08-20.
       // 2026-09-13 · the "SMS step-up … once the SMS provider is live" sentence is removed: no SMS provider exists.
-      securedBody: "Amounts of TZS 1,000,000 and above are held for review by two compliance officers before release. Identity documents are reviewed by our compliance team when you submit them.",
+      // 2026-09-13 · the opening "TZS 1,000,000 and above are held for review by two compliance officers" is removed: the
+      // owner ended that hold and no officer reviews a withdrawal before it is sent. ⚠️ Keep the identity sentence:
+      // kyc-at-withdrawal §B8 uses this line as its control.
+      securedBody: "Identity documents are reviewed by our compliance team when you submit them. A withdrawal goes only to the number registered on your account.",
       securedDepositBody: "Your deposit is credited to your wallet only after the mobile-money network confirms the payment.",
       taxNotice: "Withdrawal fee",
       taxBody: "A {pct}% fee applies to withdrawals, and nothing else. There is no tax withheld from your money — taxes are paid out of 50pick's own commission, never from your balance.",
@@ -1953,14 +1960,17 @@ export const dict = {
       faq2q: "Will my odds change after I place?",
       faq2a: "Your stake and the pool composition at the moment of placement are locked in, but the implied probability you see on the dial is live and moves with every new bet. The bet-confirm popup holds the quote for 10 seconds so you can confirm at the rate you saw. The fee rates a poll is settled at are frozen when the poll is created — changing them later never affects a bet already placed.",
       faq3q: "How do I withdraw winnings?",
-      faq3a: "Open Wallet → Withdraw and choose the amount. The money goes to the mobile-money number registered on your account. Before your first withdrawal we verify your identity once. Amounts of TZS 1,000,000 or more are reviewed by our compliance team before they are released.",
+      // 2026-09-13 · "Amounts of TZS 1,000,000 or more are reviewed … before they are released" is removed: the owner
+      // ended that hold. The per-withdrawal cap is stated instead (WITHDRAW_MAX_TZS, validators.ts).
+      faq3a: "Open Wallet → Withdraw and choose an amount, up to TZS\u00a05,000,000 per withdrawal. The money goes to the mobile-money number registered on your account. Before your first withdrawal we verify your identity once.",
       faq4q: "Why do I have to verify my identity?",
       // \u26d4 THE GAMING ACT CLAIM IS GONE AND MUST NOT COME BACK. This answer asserted that
       // the Tanzania Gaming Act REQUIRES identity verification before any withdrawal \u2014 a
-      // legal claim the Board's own instruction contradicts (comment #1, 2026-08-19). The
-      // AML half is kept because it is true and comes from a different authority: the
-      // \u2265 TZS 1,000,000 two-officer hold is untouched by that instruction.
-      faq4a: "So we know who we are paying. We verify your identity once, before your first withdrawal, with any one of four documents — National ID (NIDA), passport, driving licence or voter’s card — and our compliance team reviews it, usually within a day; one document can only be used on one account. If we later ask you to re-verify, you can still withdraw money you already hold. Separately, under anti-money-laundering rules, withdrawals of TZS 1,000,000 or more are held for review by two compliance officers.",
+      // legal claim the Board's own instruction contradicts (comment #1, 2026-08-19).
+      // \u26d4 The AML sentence kept after it ("withdrawals of TZS 1,000,000 or more are held for review by two
+      // compliance officers") was REMOVED 2026-09-13: the owner ended that hold (payments.ts
+      // WITHDRAWAL_AML_HOLD = false). No officer reviews a withdrawal before it is sent \u2014 do not restore it.
+      faq4a: "So we know who we are paying. We verify your identity once, before your first withdrawal, with any one of four documents — National ID (NIDA), passport, driving licence or voter’s card — and our compliance team reviews it, usually within a day; one document can only be used on one account. If we later ask you to re-verify, you can still withdraw money you already hold.",
       faq5q: "I think I have a problem with gambling. What can I do?",
       faq5a: "Open Profile \u2192 Responsible gambling. You can set deposit and time limits, take a break, or self-exclude.",
       faq6q: "Can I cash out before resolution?",
@@ -2733,7 +2743,7 @@ export const dict = {
       viewLiveMarket: "Tazama soko hai",
       backToProposals: "Rudi kwenye mapendekezo",
       resolves: "inatatuliwa",
-      pendingHoldHint: "Kutoa kunasubiri au ukaguzi wa AML",
+      pendingHoldHint: "Kutoa kunaendelea",
       playMoreToUnlock: "Cheza zaidi ili kuibadilisha kuwa pesa unayoweza kutoa.",
       queued: "Inasubiri",
       queuedHint: "Itaamilishwa bonasi yako ya sasa itakapokamilika.",
@@ -2824,7 +2834,7 @@ export const dict = {
       withdrawalUnderReview: "Kutoa kunakaguliwa",
       payoutInProgress: "Malipo yanaendelea",
       withdrawalOnItsWay: "Kutoa kunaendelea",
-      amlReviewBody: "Kiasi cha TZS 1,000,000 au zaidi kinakaguliwa na ufuatiliaji (kawaida ndani ya masaa 2).",
+      amlReviewBody: "Utoaji huu unakaguliwa na timu yetu ya uzingatiaji.",
       payoutProcessingBody: "Mtoa huduma wako anashughulikia malipo. Tutathibitisha mara itakapokamilika.",
       payoutMomentsBody: "Mtoa huduma wako atalipa hivi karibuni.",
       depositPendingBody: "Idhinisha kwenye simu yako. Mtoa huduma akithibitisha, tunaongeza pesa mara moja na kukutumia arifa na risiti kwa barua pepe \u2014 kwa kawaida ndani ya dakika moja. Huhitaji kubaki kwenye skrini hii, na tafadhali usilipe tena.",
@@ -3468,7 +3478,7 @@ export const dict = {
       // Deleted 2026-08-20 with the EN keys above — see the note there.
       destination: "Mahali",
       amount: "Kiasi",
-      amountHint: "Chini TZS\u00a01,000 · Juu TZS\u00a05,000,000 kwa kila kutoa. Kiasi cha TZS\u00a01,000,000+ kinashikiliwa kwa ukaguzi wa AML kabla ya kutolewa.",
+      amountHint: "Chini TZS\u00a01,000 · Juu TZS\u00a05,000,000 kwa kila kutoa.",
       depositBounds: "Weka kiasi kati ya TZS {min} na TZS {max}.",
       billingIncomplete: "Jaza kila sehemu ya taarifa za malipo ili kulipa kwa kadi.",
       emailForCard: "Weka na uthibitishe barua pepe yako kabla ya kulipa kwa kadi.",
@@ -3482,7 +3492,7 @@ export const dict = {
       useMyNumber: "Tumia namba yangu iliyosajiliwa",
       payeeMsisdnRequired: "Weka namba ya simu ya pesa mtandaoni yenye tarakimu 9 itakayopokea pesa.",
       securedByKyc: "Imelindwa na KYC & AML",
-      securedBody: "Kiasi cha TZS 1,000,000 na zaidi kinashikiliwa kwa ukaguzi wa maafisa wawili wa uzingatiaji kabla ya kutolewa. Nyaraka za utambulisho zinakaguliwa na timu yetu ya uzingatiaji unapoziwasilisha.",
+      securedBody: "Nyaraka za utambulisho zinakaguliwa na timu yetu ya uzingatiaji unapoziwasilisha. Pesa unazotoa hutumwa tu kwenye namba iliyosajiliwa kwenye akaunti yako.",
       securedDepositBody: "Amana yako huingizwa kwenye pochi yako tu baada ya mtandao wa pesa za simu kuthibitisha malipo.",
       taxNotice: "Ada ya kutoa pesa",
       taxBody: "Ada ya {pct}% inatumika unapotoa pesa, na si kitu kingine. Hakuna kodi inayokatwa kwenye pesa zako — kodi hulipwa kutoka kamisheni ya 50pick, si kutoka salio lako.",
@@ -4171,9 +4181,9 @@ export const dict = {
       faq2q: "Bei zinabadilika baada ya kuweka dau?",
       faq2a: "Dau lako na muundo wa bwawa wakati wa kuweka vinahifadhiwa, lakini uwezekano unaoonekana kwenye kipimo ni hai na unabadilika kwa kila dau jipya. Kidirisha cha kuthibitisha kinashikilia bei kwa sekunde 10 ili uthibitishe kwa kiwango ulichokiona. Viwango vya ada vya kura vinagandishwa wakati kura inatengenezwa — kuvibadilisha baadaye hakuathiri dau lililokwisha wekwa.",
       faq3q: "Nitatoa pesa zangu vipi?",
-      faq3a: "Fungua Pochi → Toa na uchague kiasi. Pesa hutumwa kwenye nambari ya pesa ya simu iliyosajiliwa kwenye akaunti yako. Kabla ya kutoa pesa kwa mara ya kwanza tunathibitisha utambulisho wako mara moja. Kiasi cha TZS 1,000,000 au zaidi hukaguliwa na timu yetu ya uzingatiaji kabla ya kutolewa.",
+      faq3a: "Fungua Pochi → Toa na uchague kiasi, hadi TZS\u00a05,000,000 kwa kila kutoa. Pesa hutumwa kwenye nambari ya pesa ya simu iliyosajiliwa kwenye akaunti yako. Kabla ya kutoa pesa kwa mara ya kwanza tunathibitisha utambulisho wako mara moja.",
       faq4q: "Kwa nini nathibitisha kitambulisho?",
-      faq4a: "Ili tujue tunamlipa nani. Tunathibitisha utambulisho wako mara moja, kabla ya kutoa pesa kwa mara ya kwanza, kwa kutumia mojawapo ya nyaraka nne — Kitambulisho cha Taifa (NIDA), pasipoti, leseni ya udereva au kadi ya mpiga kura — na timu yetu ya uzingatiaji inakagua, kwa kawaida ndani ya siku moja; kitambulisho kimoja kinaweza kutumika kwenye akaunti moja tu. Tukikuomba kuthibitisha upya baadaye, bado unaweza kutoa pesa ulizonazo. Kwa mujibu wa sheria za kuzuia utakatishaji wa fedha, kutoa TZS 1,000,000 au zaidi kunashikiliwa kwa ukaguzi wa maafisa wawili wa uzingatiaji.",
+      faq4a: "Ili tujue tunamlipa nani. Tunathibitisha utambulisho wako mara moja, kabla ya kutoa pesa kwa mara ya kwanza, kwa kutumia mojawapo ya nyaraka nne — Kitambulisho cha Taifa (NIDA), pasipoti, leseni ya udereva au kadi ya mpiga kura — na timu yetu ya uzingatiaji inakagua, kwa kawaida ndani ya siku moja; kitambulisho kimoja kinaweza kutumika kwenye akaunti moja tu. Tukikuomba kuthibitisha upya baadaye, bado unaweza kutoa pesa ulizonazo.",
       faq5q: "Nina shida ya kucheza kupita kiasi. Nifanye nini?",
       faq5a: "Fungua Wasifu \u2192 Vikomo. Unaweza kuweka mipaka ya amana na muda, kupumzika, au kujizuia.",
       faq6q: "Nitatoa dau mapema?",
@@ -4829,7 +4839,7 @@ export const dict = {
       viewLiveMarket: "查看直播市场",
       backToProposals: "返回提议",
       resolves: "结算于",
-      pendingHoldHint: "待处理的提现或反洗钱审查",
+      pendingHoldHint: "处理中的提现",
       playMoreToUnlock: "继续游戏将奖金转为可提现资金。",
       queued: "排队中",
       queuedHint: "当前奖金完成后将自动激活。",
@@ -4920,7 +4930,7 @@ export const dict = {
       withdrawalUnderReview: "提现审核中",
       payoutInProgress: "赔付进行中",
       withdrawalOnItsWay: "提现进行中",
-      amlReviewBody: "TZS 1,000,000 及以上的金额由合规部门审查（通常在2小时内）。",
+      amlReviewBody: "这笔提现正在由我们的合规团队审核。",
       payoutProcessingBody: "您的服务商正在处理赔付。结算后我们会立即确认。",
       payoutMomentsBody: "您的服务商将很快赔付。",
       depositPendingBody: "在手机上确认提示。服务商确认后，我们会立即入账，并向您发送通知和电子邮件收据——通常在一分钟内。您无需停留在此页面，请勿重复支付。",
@@ -5565,7 +5575,7 @@ export const dict = {
       // Deleted 2026-08-20 with the EN keys above — see the note there.
       destination: "目的地",
       amount: "金额",
-      amountHint: "最低 TZS\u00a01,000 · 最高 TZS\u00a05,000,000。TZS\u00a01,000,000及以上的金额须经反洗钱审核后方可释放。",
+      amountHint: "每笔提现最低 TZS\u00a01,000 · 最高 TZS\u00a05,000,000。",
       depositBounds: "请输入 TZS {min} 至 TZS {max} 之间的金额。",
       billingIncomplete: "请填写所有账单信息以使用银行卡支付。",
       emailForCard: "使用银行卡支付前，请添加并确认您的电子邮箱。",
@@ -5579,7 +5589,7 @@ export const dict = {
       useMyNumber: "使用我的注册号码",
       payeeMsisdnRequired: "请输入将收到这笔款项的9位移动支付手机号。",
       securedByKyc: "受KYC和AML保护",
-      securedBody: "TZS 1,000,000 及以上的金额须经两名合规专员审核后方可释放。您提交的身份证件将由我们的合规团队核验。",
+      securedBody: "您提交的身份证件将由我们的合规团队核验。提现款项只会汇入您账户注册的号码。",
       securedDepositBody: "只有在移动支付网络确认付款后，存款才会记入您的钱包。",
       taxNotice: "提现手续费",
       taxBody: "提现收取 {pct}% 手续费，除此之外别无其他。我们不会从您的资金中预扣税款——税款由 50pick 从自己的佣金中缴纳，绝不动用您的余额。",
@@ -6259,9 +6269,9 @@ export const dict = {
       faq2q: "\u4e0b\u6ce8\u540e\u8d54\u7387\u4f1a\u53d8\u5417\uff1f",
       faq2a: "您的投注额与下注时的奖池构成会被锁定，但转盘上显示的隐含概率是实时的，会随每笔新投注变动。确认弹窗会将报价保持 10 秒，让您按看到的价格确认。每轮投注的费率在创建时即已冻结——之后调整费率绝不影响已下的注。",
       faq3q: "\u5982\u4f55\u63d0\u73b0\u5956\u91d1\uff1f",
-      faq3a: "打开钱包 → 提现，选择金额。款项将转入您账户注册的移动支付号码。首次提现前，我们会对您的身份进行一次核验。TZS 1,000,000 及以上的金额须经我们的合规团队审核后方可发放。",
+      faq3a: "打开钱包 → 提现，选择金额，每笔最高 TZS\u00a05,000,000。款项将转入您账户注册的移动支付号码。首次提现前，我们会对您的身份进行一次核验。",
       faq4q: "\u4e3a\u4ec0\u4e48\u9700\u8981\u9a8c\u8bc1\u8eab\u4efd\uff1f",
-      faq4a: "为了确认我们向谁付款。在您首次提现之前，我们会验证一次您的身份，可使用四种证件之一——国民身份证（NIDA）、护照、驾驶证或选民证——由我们的合规团队审核，通常在一天之内；一份证件只能用于一个账户。若我们日后请您重新验证，您仍可提取已持有的资金。另外，根据反洗钱规定，TZS 1,000,000 及以上的提现将由两名合规专员审核。",
+      faq4a: "为了确认我们向谁付款。在您首次提现之前，我们会验证一次您的身份，可使用四种证件之一——国民身份证（NIDA）、护照、驾驶证或选民证——由我们的合规团队审核，通常在一天之内；一份证件只能用于一个账户。若我们日后请您重新验证，您仍可提取已持有的资金。",
       faq5q: "\u6211\u89c9\u5f97\u6211\u6709\u535a\u5f69\u95ee\u9898\u3002\u600e\u4e48\u529e\uff1f",
       faq5a: "\u6253\u5f00\u4e2a\u4eba\u8d44\u6599 \u2192 \u8d1f\u8d23\u4efb\u535a\u5f69\u3002\u60a8\u53ef\u4ee5\u8bbe\u7f6e\u5145\u503c\u548c\u65f6\u95f4\u9650\u989d\u3001\u4f11\u606f\u6216\u81ea\u6211\u6392\u9664\u3002",
       faq6q: "\u53ef\u4ee5\u5728\u7ed3\u7b97\u524d\u5151\u73b0\u5417\uff1f",

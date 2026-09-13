@@ -107,7 +107,6 @@ export const NOT_EYEBROW = new Map([
   ["app/admin/ai-usage/page.tsx :: action={<span className=\"font-mono text-micro tracking-[0.10em] uppercase text-text-tertiary\">${cyc.config.sizeUsd.toLocaleString()} per cycle · rates {cyc.priceRev}</spa", "OTHER"],
   ["app/admin/ai-usage/page.tsx :: action={<span className=\"font-mono text-micro tracking-[0.10em] uppercase text-text-tertiary\">Anthropic Cost API · USD</span>} ↵ >", "OTHER"],
   ["app/admin/approvals/page.tsx :: action={<a href=\"/admin/aml\" className=\"font-mono text-micro tracking-[0.10em] uppercase text-royal-300\">go to AML →</a>} ↵ >", "CONTROL_LABEL"],
-  ["app/admin/approvals/page.tsx :: className=\"font-mono text-micro tracking-[0.10em] uppercase px-2.5 h-7 inline-flex items-center gap-1.5 rounded-md border\" ↵ style={{ borderColor: \"var(--aqua-400)\", back", "STATUS_CHIP"],
   ["app/admin/audit/page.tsx :: <span className=\"ml-auto font-mono text-micro tracking-[0.14em] uppercase text-text-subtle\"> ↵ {allFiltered.length.toLocaleString()} entries", "OTHER"],
   ["app/admin/bonuses/bonus-admin-client.tsx :: className=\"shrink-0 inline-flex h-[40px] items-center gap-1.5 rounded-md border border-border bg-bg-elevated px-3 font-mono text-caption font-bold uppercase tracking-[0.0", "CONTROL_LABEL"],
   ["app/admin/candidates/page.tsx :: <span className=\"font-mono text-micro uppercase tracking-[0.14em] text-text-subtle\">{CATEGORY_LABEL[c.category] ?? c.category}</span> ↵ <span className=\"font-mono text-[1", "OTHER"],

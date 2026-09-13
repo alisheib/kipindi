@@ -181,6 +181,7 @@ report. **Any claim that the findings below were disproven is false.** They are 
 `settlement-lifecycle`, `agent-commission`, `updown-money`, `docs-drift`, `controls-and-guards`.
 Their whole surface is unaudited. `money-out` is the one that matters most: withdrawals,
 payouts, AML holds and the reconcile sweep have had **no** systematic pass in this programme.
+(⚠️ 2026-09-13: withdrawals are no longer held for review — COMPLIANCE-DECISIONS 2026-09-13 third.)
 
 **Before believing any workflow result: compare `agents_done` to `agent_count` and read the
 `<failures>` block.** Run 1: 0/12 done. Run 2: 41/222 done. Run 3 (session 2): **18/18 done, 0
@@ -764,6 +765,10 @@ While a large withdrawal sits in `AML_REVIEW` its `providerRef` holds the `wdr_�
 `dispatchWithdrawal` returns from its AML branch — **our** id, which no gateway has ever seen:
 that branch returns *before* `resolveActiveAdapter`, and `runPayoutLadder` mints a fresh transid
 on approval. Harmless in `AML_REVIEW`, which no sweep selects.
+
+> ⚠️ 2026-09-13: no longer true for new withdrawals — withdrawals are no longer held for review
+> (COMPLIANCE-DECISIONS 2026-09-13 third), so no new withdrawal enters `AML_REVIEW`. The fix below
+> still guards a row held before that change when an officer releases it on `/admin/aml`.
 
 ⛔ **It stops being harmless the instant the claim flips the row to `PROCESSING`.**
 `reconcileStalePayments` selects `PROCESSING` rows filtered on **`createdAt`** — and an AML

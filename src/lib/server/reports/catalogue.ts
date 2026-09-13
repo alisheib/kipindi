@@ -19,7 +19,8 @@ import {
 import { currentPackPeriod, packPeriodLabel, packPeriodBounds } from "../report-pack";
 // The single definition of a Tanzanian day. Never re-derive one locally.
 import { startOfEatDay, eatDateLabel } from "../report-money";
-// The SAR must report the same threshold the live AML hold enforces.
+// The SAR reports at the large-payout line. Until 2026-09-13 the withdrawal AML hold used the same
+// constant; the owner ruling switched the hold off (`WITHDRAWAL_AML_HOLD`), the line stays.
 import { AML_REVIEW_THRESHOLD_TZS } from "../payments";
 import { getGlobalConfig } from "../market-config";
 import type { Report, Row, SignatureRow, SummaryItem } from "./types";
@@ -214,9 +215,12 @@ export async function buildGbtMonthly(generatorId: string, packPeriod: string = 
 // ─────────────────────────────────────────────────────────────────────
 
 export async function buildFiuSar(generatorId: string, packPeriod: string = currentPackPeriod()): Promise<Report> {
-  // Use the SAME threshold the live AML hold uses (payments.AML_REVIEW_THRESHOLD_TZS).
-  // A SAR that reports a different threshold from the control that generated the holds
-  // is internally inconsistent, and the two would silently drift apart on any change.
+  // Use the SAME line as payments.AML_REVIEW_THRESHOLD_TZS, so a report and any hold on that
+  // line can never drift apart.
+  // ⚠️ SINCE 2026-09-13 THE HOLD IS OFF (owner ruling, `WITHDRAWAL_AML_HOLD` in payments.ts). This
+  // report still flags every settled deposit or withdrawal of 1,000,000+ as a threshold breach;
+  // `heldForAml` below stops firing for new withdrawals (it still fires for a row held before the
+  // ruling, and for a deposit owed back to an excluded player).
   const cutoff = AML_REVIEW_THRESHOLD_TZS;
 
   // A SAR must cover a stated reporting period. This was previously
@@ -247,7 +251,8 @@ export async function buildFiuSar(generatorId: string, packPeriod: string = curr
     const at = new Date(t.createdAt).getTime();
     if (at < bounds.start || at >= bounds.end) continue;
 
-    // An explicit AML hold is reportable whatever its type — an officer put it there.
+    // An explicit AML hold is reportable whatever its type. Since 2026-09-13 only a legacy
+    // withdrawal or a deposit owed back to an excluded player sits in AML_REVIEW.
     const heldForAml = t.status === "AML_REVIEW";
     // A threshold breach only counts when real cash crossed the perimeter.
     const thresholdBreach =
@@ -312,7 +317,8 @@ export async function buildFiuSar(generatorId: string, packPeriod: string = curr
     ],
     notes: [
       "Per FATF Recommendation 20 and the Anti-Money Laundering Act, 2006.",
-      `Threshold: ${formatTzs(cutoff)}, the same value the platform's live AML hold applies.`,
+      // 2026-09-13 · this line goes to the regulator: there is no live withdrawal hold any more (owner ruling).
+      `Threshold: ${formatTzs(cutoff)}, the platform's large-transaction reporting line (no withdrawal has been held for review at it since 2026-09-13).`,
       "Scope: confirmed deposits and withdrawals at or above the threshold, plus any " +
         "transaction placed under AML review, within the period above.",
       // Softened from "Each row is hash-chained to an audit entry — verify in /admin/audit".

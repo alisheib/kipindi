@@ -71,6 +71,8 @@ never to refuse a real balance. It is a second lock, not the operative one.
 ## 5 · What is unchanged
 
 - **The AML ≥ TZS 1,000,000 two-officer hold.** It never read identity status and is untouched.
+  ⚠️ 2026-09-13: no longer true — withdrawals are no longer held for review (COMPLIANCE-DECISIONS
+  2026-09-13 third).
 - **Payout destination binding** (comment #8): payouts go only to the account's registered handset.
 - **The identity system itself:** any one of NIDA, passport, driving licence or voter's card, plus a
   selfie; one document may only ever be used on one account; there is no authority check for any of

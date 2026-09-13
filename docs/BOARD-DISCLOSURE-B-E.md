@@ -66,7 +66,7 @@ a **person**:
 
 | Control | Where it actually runs | Unaffected by #1? |
 |---|---|---|
-| **AML hold, gross ≥ TZS 1,000,000, two different officers** | `payments.ts:176` in `dispatchWithdrawal`, before any gateway adapter is touched; evaluated on the **gross** value | ✅ Yes — and note `src/lib/server/payments.ts` contains **no reference to KYC at all**, so this control never read identity status and cannot be weakened by removing the gate |
+| **AML hold, gross ≥ TZS 1,000,000, two different officers** | `payments.ts:176` in `dispatchWithdrawal`, before any gateway adapter is touched; evaluated on the **gross** value | ✅ Yes — and note `src/lib/server/payments.ts` contains **no reference to KYC at all**, so this control never read identity status and cannot be weakened by removing the gate. ⚠️ 2026-09-13: no longer true — withdrawals are no longer held for review (COMPLIANCE-DECISIONS 2026-09-13 third) |
 | **Wallet freeze** (`wallet.status !== "ACTIVE"`) | inside the wallet lock in `wallet-service.withdraw()` | ✅ Yes |
 | **Balance, and the atomic balance re-check** | inside the same lock | ✅ Yes |
 | **Payout pause** (operator shuts payouts) | the **route action**, `wallet/withdraw/actions.ts:60` | ✅ Yes — but see §6, it is not in the service |
@@ -82,7 +82,8 @@ a **person**:
 1. **`forceReverifyKyc` stops being a money control.** Its entire stated purpose is to *"re-lock
    withdrawals"*, and after #1 it re-locks nothing in the money path. What a compliance officer has
    instead is: **wallet freeze**, **payout pause**, and the **AML ≥ TZS 1,000,000 two-officer
-   hold**. Four surfaces that currently claim otherwise are being corrected in the same change.
+   hold** (⚠️ 2026-09-13: no longer true — withdrawals are no longer held for review,
+   COMPLIANCE-DECISIONS 2026-09-13 third). Four surfaces that currently claim otherwise are being corrected in the same change.
 
 2. **`withdraw()` contains no `user.status` check and no self-exclusion check.** Once the identity
    gate is removed, **`wallet.status !== "ACTIVE"` is the only account-level control inside the
@@ -109,7 +110,9 @@ a **person**:
   review and the audit trail all stand. #1 removes a **gate on a payout**, not identity checking.
 - **The AML/FIU controls.** The thresholds and the two-officer review come from a **different
   authority**. A Gaming Board instruction about identity-on-withdrawal does not repeal them, and
-  they have not been touched.
+  they have not been touched. ⚠️ 2026-09-13: no longer true of the two-officer review — withdrawals
+  are no longer held for review (COMPLIANCE-DECISIONS 2026-09-13 third), by the owner's ruling. The
+  Source-of-Funds deposit thresholds stand.
 - **The human review queue** for every account that does verify.
 
 ## 8 · The attribution, corrected
@@ -138,6 +141,9 @@ Nothing compared the two.
 
 > **So below TZS 1,000,000 — beneath the AML two-officer threshold — there was no identity**
 > **control AND no destination control on money leaving the platform.**
+>
+> ⚠️ 2026-09-13: the two-officer threshold named here no longer exists — withdrawals are no longer
+> held for review (COMPLIANCE-DECISIONS 2026-09-13 third).
 
 ⛔ **Each half was individually authorised. The combination was not, and it was never put to
 anyone as a combination.** Comment #1 was considered against the controls §5 lists; the
@@ -212,7 +218,8 @@ Binding the destination narrows the gap in §9.1; it does not close it. **Below 
 there is still no identity control on money leaving the platform** — what has changed is that
 the money can now only reach the number the account was opened with. An account opened under a
 false identity is still paid; it is simply paid to itself. **That remains the Board’s decision to
-revisit, not ours to reverse.**
+revisit, not ours to reverse.** ⚠️ 2026-09-13: the TZS 1,000,000 line no longer bounds anything on a
+withdrawal — withdrawals are no longer held for review (COMPLIANCE-DECISIONS 2026-09-13 third).
 
 ---
 ---

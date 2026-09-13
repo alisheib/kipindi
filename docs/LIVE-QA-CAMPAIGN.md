@@ -6045,6 +6045,36 @@ state**, 1,338,504 of players' stakes in escrow, and every ledger entry ever wri
 #### ⏭️ **RESUME AT (session 95 · ⛔ READ `docs/SESSION-PROMPT-KYC-AT-WITHDRAWAL.md` §Status FIRST — it is the brief of record and its rows name every guard run. Session 92's P0s (E-381) in `docs/SESSION-REVOKED-DEADEND.md` §6 were NOT touched by this session and remain the open platform work):**
 💰 **MONEY POSITION:** no production money moved by this session. **`1699c17a` LIVE 2026-09-13 20:12:00** (served `dpl=1699c17af8df5cf7b1f457bef1f1a5e67eee2415`, ~2.5 min after the push). Migration `20260913120000_kyc_at_withdrawal` applied to production **20:08:42, before the push**, by `prisma migrate deploy` — read-only pre-flight: 0 conflicts under the new document-number predicate (both indexes), **11** `PENDING_KYC` (one more than the morning), 0 frozen wallets; after, and again after the deploy: **0 `PENDING_KYC`, all 22 users ACTIVE**, `Wallet.freezeReasons` present, both unique indexes keep a number reserved on UNDERAGE / SANCTIONED / DUPLICATE_IDENTITY, 12 IN_PROGRESS / 9 APPROVED submissions.
 
+⭐ **ADDENDUM, THE SAME EVENING — WITHDRAWALS ARE NO LONGER HELD FOR A TWO-OFFICER REVIEW** (commit `KYC AT WITHDRAWAL (6/n)`, owner ruling of
+record `docs/COMPLIANCE-DECISIONS.md` 2026-09-13 third). Ali chose it from three options put with their consequences
+(remove the review · remove the review and the maximum · keep both and only reword): **remove the review, keep the
+TZS 5,000,000 per-withdrawal maximum.** Production held **0** withdrawals in `AML_REVIEW` at the time (the largest
+withdrawal ever made was TZS 5,000), so nothing was stranded.
+- **Mechanism — one switch, not a deletion:** `WITHDRAWAL_AML_HOLD = false` in `src/lib/server/payments.ts` gates the
+  hold branch of `dispatchWithdrawal`, which player withdrawals and refused-funds returns share. `/admin/aml`,
+  `dispatchApprovedWithdrawal`, the two-officer rule for any row already held, and `AML_REVIEW` itself stay: deposits
+  owed back to excluded players still use them.
+- **Corrected in the same release:** withdraw hint and secured note, Help FAQ 3 and 4, the legacy review popup, the "on
+  hold" hint (en/sw/zh) · Terms §3 and §5 (amended inside v2026-09-13, player-favourable) · AML policy §1 and §2 · both
+  game-rules pages · the live chatbot prompt and its offline fallback (which also stated a **daily withdrawal cap of
+  TZS 500,000 that exists nowhere in the code** — removed) · `/admin/aml` and `/admin/approvals` (dated notice; the
+  withdrawal-only "Co-sign required" chip removed) · the FIU report's threshold line, which goes to the regulator ·
+  the draft Board letter (§2 item 4 names the accepted consequence), FLOWS, runbooks and checklists; past records got
+  dated "no longer true" notes, not rewrites.
+- **Tests:** `test:payments` inverted and extended — a gross TZS 1,000,000 withdrawal is sent at once, exactly
+  5,000,000 is accepted and 5,000,001 refused with nothing moved, the switch is asserted off, and seeded pre-ruling
+  `AML_REVIEW` rows still release, dispatch and revert correctly (60/0, mutation-proven by its author).
+- 🔴 **`qa:e177` is DISABLED** (`scripts/live-e177-unverified-payer.mjs` exits before any network call): it was a
+  production real-money drive whose safety rested on the hold stopping its TZS 1,000,000 withdrawal. Do not re-enable
+  it without redesigning it — it would now send the money.
+- ⚠️ **Stated consequences, not bugs:** a single payout can draw up to TZS 5,000,000 from the Selcom float at once
+  (the low-float warning is at 1,000,000 — keep the float funded); a refused player holding more than 5,000,000 cannot
+  be returned the whole balance in one decision (no split-return ruling). The `package.json` `qa:e177` entry was left
+  (the script refuses to run).
+- **Audit prompt for a fresh session:** `docs/SESSION-PROMPT-KYC-AUDIT.md` — validates the whole identity-at-withdrawal
+  release and this change, and tells that session how to coordinate with another session pushing to `main` at the same
+  time.
+
 ⭐ **WHAT SHIPPED.** Owner ruling (Ali, 2026-09-13, with the Gaming Board's permission): identity verification is
 required **before withdrawal only**. Ladder: register → confirm email → deposit and play → verify identity → withdraw.
 Ruling of record: `docs/COMPLIANCE-DECISIONS.md` 2026-09-13 (the ruling · *how a player is told — quietly*) and the

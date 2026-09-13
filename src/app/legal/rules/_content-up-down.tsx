@@ -16,8 +16,10 @@
  *     semantics wearing Up & Down's name, and it blurs two products that settle differently.
  *  §9 Disputes *"within 48 hours"* — the platform's objection window is configured and shorter.
  *     Both windows are now named as the different things they are.
- *  §3 *"in all cases within 24 hours"* — an unconditional promise the platform does not make;
- *     large withdrawals route to two-officer review by design.
+ *  §3 *"in all cases within 24 hours"* — an unconditional promise the platform does not make.
+ *     2026-09-13: §3 also used to say withdrawals of TZS 1,000,000 or more are held for two-officer
+ *     review. The owner ended that hold that day (WITHDRAWAL_AML_HOLD = false in payments.ts): no officer
+ *     reviews a withdrawal before it is sent. Do not restore the sentence.
  *  Durations, the withdrawal fee, stake bounds and the licence number all read from source.
  */
 import type { Locale } from "@/lib/i18n-server";
@@ -117,9 +119,7 @@ export function upDownContent(r: RulesRates): Record<Locale, React.ReactNode> {
             <strong className="text-text">Payouts</strong> are credited to your wallet once the round is settled and
             signed off, normally within seconds. Withdrawing from your wallet carries a fee of{" "}
             <span className="font-mono tabular-nums text-text">{r.withdrawalFeePct}%</span>, charged on withdrawals only —
-            never on a stake, a win or a refund. Withdrawals at or above{" "}
-            <span className="font-mono tabular-nums text-text">{tzs(1_000_000)}</span> are held for review by two
-            compliance officers before release, so those take longer by design.
+            never on a stake, a win or a refund.
           </p>
         </LegalSection>
 
@@ -303,9 +303,7 @@ export function upDownContent(r: RulesRates): Record<Locale, React.ReactNode> {
             <strong className="text-text">Malipo</strong> huingizwa kwenye pochi yako baada ya raundi kutatuliwa na
             kuidhinishwa, kwa kawaida ndani ya sekunde. Kutoa pesa kuna ada ya{" "}
             <span className="font-mono tabular-nums text-text">{r.withdrawalFeePct}%</span>, inayotozwa wakati wa kutoa
-            pesa pekee. Utoaji wa{" "}
-            <span className="font-mono tabular-nums text-text">{tzs(1_000_000)}</span> au zaidi hukaguliwa na maafisa
-            wawili kabla ya kuachiliwa, hivyo huchukua muda mrefu zaidi kwa makusudi.
+            pesa pekee.
           </p>
         </LegalSection>
 
@@ -475,9 +473,7 @@ export function upDownContent(r: RulesRates): Record<Locale, React.ReactNode> {
           <p>
             回合结算并签核后，<strong className="text-text">奖金</strong>将计入您的钱包，通常在数秒内完成。从钱包提现收取{" "}
             <span className="font-mono tabular-nums text-text">{r.withdrawalFeePct}%</span>{" "}
-            手续费，仅在提现时收取。金额达到或超过{" "}
-            <span className="font-mono tabular-nums text-text">{tzs(1_000_000)}</span>{" "}
-            的提现，须经两位合规专员审核后放行，因此按设计会更慢。
+            手续费，仅在提现时收取。
           </p>
         </LegalSection>
 

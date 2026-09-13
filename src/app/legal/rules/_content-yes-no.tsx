@@ -22,6 +22,9 @@
  *     withdrawal (2026-09-13; before depositing, betting and withdrawing from 2026-09-05 to
  *     2026-09-13). Understating a mandatory requirement is the wrong direction.
  *  §1 The licence number was absent. It reads from the pinned constant.
+ *  §6 2026-09-13: the payout item used to add that withdrawals of TZS 1,000,000 or more are held for
+ *     two-officer review. The owner ended that hold that day (WITHDRAWAL_AML_HOLD = false in
+ *     payments.ts): no officer reviews a withdrawal before it is sent. Do not restore the sentence.
  */
 import type { Locale } from "@/lib/i18n-server";
 import { LegalSection } from "../_components";
@@ -191,9 +194,7 @@ export function yesNoContent(r: RulesRates): Record<Locale, React.ReactNode> {
               permanent, tamper-evident record.
             </li>
             <li>
-              Payouts are credited to your wallet once the result is settled. Withdrawals at or above{" "}
-              <span className="font-mono tabular-nums text-text">{tzs(1_000_000)}</span> are held for review by two
-              compliance officers before they are released.
+              Payouts are credited to your wallet once the result is settled.
             </li>
           </ul>
         </LegalSection>
@@ -366,9 +367,7 @@ export function yesNoContent(r: RulesRates): Record<Locale, React.ReactNode> {
               ya kudumu inayoonyesha mabadiliko yoyote.
             </li>
             <li>
-              Malipo huingizwa kwenye pochi yako baada ya matokeo kutatuliwa. Utoaji wa{" "}
-              <span className="font-mono tabular-nums text-text">{tzs(1_000_000)}</span> au zaidi hukaguliwa na maafisa
-              wawili wa uzingatiaji kabla ya kuachiliwa.
+              Malipo huingizwa kwenye pochi yako baada ya matokeo kutatuliwa.
             </li>
           </ul>
         </LegalSection>
@@ -512,9 +511,7 @@ export function yesNoContent(r: RulesRates): Record<Locale, React.ReactNode> {
             </li>
             <li>每次结算都写入<strong className="text-text">仅可追加的审计链</strong>，形成永久且可察觉篡改的记录。</li>
             <li>
-              结算完成后奖金将计入您的钱包。金额达到或超过{" "}
-              <span className="font-mono tabular-nums text-text">{tzs(1_000_000)}</span>{" "}
-              的提现，须经两位合规专员审核后放行。
+              结算完成后奖金将计入您的钱包。
             </li>
           </ul>
         </LegalSection>

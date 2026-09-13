@@ -1,8 +1,9 @@
 import Link from "next/link";
 import type { Route } from "next";
 import { AdminPageHead, AdminCard, AdminKpi, FeedRow, AdminLoadError } from "@/components/admin/admin-shell";
-import { CEREMONY } from "@/lib/admin-status-lexicon";
 import { txnTypeLabel } from "@/components/admin/status-badge";
+import { TWO_PERSON_THRESHOLD_TZS } from "../aml/constants";
+import { WITHDRAW_MAX_TZS } from "@/lib/server/validators";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { parseSort, applySort, SortTh } from "@/components/admin/admin-sort";
 import { Chip } from "@/components/ui/chip";
@@ -31,7 +32,7 @@ import { formatDateTime, formatTzs, formatTzsCompact } from "@/lib/utils";
 import { AdminBody } from "@/components/admin/admin-body";
 import { KpiGrid } from "@/components/admin/admin-body";
 
-export const metadata = { title: "Admin · Two-person approvals" };
+export const metadata = { title: "Admin · Approvals" };
 export const dynamic = "force-dynamic";
 
 type KycField = "priority" | "waited" | "user" | "name" | "docs" | "held";
@@ -157,18 +158,10 @@ export default async function AdminApprovalsPage({
 
   return (
     <>
-      <AdminPageHead
-        title="Two-person approvals"
-        sw="Idhini ya watu wawili"
-        actions={
-          <span
-            className="font-mono text-micro tracking-[0.10em] uppercase px-2.5 h-7 inline-flex items-center gap-1.5 rounded-md border"
-            style={{ borderColor: "var(--aqua-400)", background: "color-mix(in oklab, var(--aqua-400) 12%, transparent)", color: "var(--aqua-400)" }}
-          >
-            <I.shieldcheck s={12} /> {CEREMONY.coSignRequired.en}
-          </span>
-        }
-      />
+      {/* ⚠️ 2026-09-13 — WAS "Two-person approvals" with a "Co-sign required" chip. The only co-sign on this page
+          was the AML withdrawal hold (KYC and source-of-funds decisions are single-officer), and since the owner's
+          ruling of that date no withdrawal is held for review. The nav already names this destination "Approvals". */}
+      <AdminPageHead title="Approvals" sw="Idhini" />
 
       <AdminBody>
         <KpiGrid>
@@ -290,7 +283,7 @@ export default async function AdminApprovalsPage({
 
         {/* AML queue */}
         <AdminCard
-          title="AML queue · awaiting first signature"
+          title="AML queue · held before 2026-09-13 or refunds due"
           sw="Foleni ya AML"
           action={<a href="/admin/aml" className="font-mono text-micro tracking-[0.10em] uppercase text-royal-300">go to AML →</a>}
         >
@@ -299,7 +292,7 @@ export default async function AdminApprovalsPage({
           ) : amlAll.length === 0 ? (
             <div className="flex items-center gap-3 py-4">
               <I.shieldcheck s={18} className="shrink-0" />
-              <p className="text-caption text-text-secondary">Queue empty. New AML triggers appear here for first review.</p>
+              <p className="text-caption text-text-secondary">Queue empty. No withdrawal is held for review since 2026-09-13; a deposit owed back to an excluded player still appears here.</p>
             </div>
           ) : (
             <>
@@ -407,23 +400,22 @@ export default async function AdminApprovalsPage({
           </div>
         </AdminCard>
 
-        <AdminCard className="border-warning-border bg-warning-bg">
+        {/* ⚠️ 2026-09-13 — WAS a warning card headed "Two-person rule": "AML-held withdrawals (≥ TZS 1M) require two
+            different officers". Since the owner's ruling of that date no withdrawal is held for review, so the card
+            says what the AML queue still holds — the same notice as /admin/aml. ⛔ Do not restore the old claim. */}
+        <AdminCard>
           <div className="flex items-start gap-3">
             {/* shrink-0 (2026-09-13): beside the long paragraph the flex row squeezed this 18px glyph to a dot. */}
-            <I.warning s={18} className="shrink-0" />
+            <I.info s={18} className="shrink-0" />
             <div className="text-caption text-text-secondary space-y-1">
-              <p className="text-text font-bold">Two-person rule</p>
-              {/* An explicit space after the em and the code (2026-09-13). A JSX text run that spans source lines
-                  AND holds an entity is compiled WITHOUT its leading space: the dev chunk had the children
-                  "officers: a first…" and "audit category…", which rendered "differentofficers" and
-                  "COMPLIANCEaudit". A single-line run, or one with no entity, keeps it. */}
-              <p>
-                AML-held withdrawals (≥ TZS 1M) require two <em>different</em>{" "}officers: a first officer records
-                stage&nbsp;1 with a reason; a second, different officer counter-signs to release. No officer can
-                approve their own transaction. Stage&nbsp;1 is stored durably (it survives restarts) and both
-                clicks are recorded in the <code>COMPLIANCE</code>{" "}audit category with each reviewer&apos;s
-                user-id and reason.
-              </p>
+              <p className="text-text font-bold">No withdrawal is held for review since 2026-09-13</p>
+              {/* ONE SOURCE LINE PER SENTENCE (2026-09-13). A JSX text run that spans source lines AND holds an entity
+                  is compiled WITHOUT its leading space after an inline element: the old card rendered
+                  "differentofficers" and "COMPLIANCEaudit" until an explicit space was added. A single-line run
+                  keeps its spaces; if a sentence here ever wraps in source again, put the explicit space back. */}
+              <p>Owner ruling: any withdrawal up to the {formatTzs(WITHDRAW_MAX_TZS)} per-withdrawal cap is sent once identity is approved, and no officer reviews it first. Rows in the AML queue were held before that date, or are deposits owed back to excluded players.</p>
+              <p>On /admin/aml, Approve dispatches a held withdrawal; Reject returns it to the player&apos;s wallet. A held withdrawal of {formatTzs(TWO_PERSON_THRESHOLD_TZS)} or more still needs two different officers: the first records stage&nbsp;1, a second releases it.</p>
+              <p>A deposit owed back cannot be approved, and Reject only closes its row: it sends no money, so the return is still owed. No self-review; each decision and its reason are recorded in the audit log.</p>
             </div>
           </div>
         </AdminCard>
