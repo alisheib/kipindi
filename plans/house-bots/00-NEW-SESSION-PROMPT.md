@@ -2,61 +2,65 @@
 
 ---
 
-You are building **"House Bots"** for 50pick, a LIVE real-money platform (repo `github.com/alisheib/kipindi`; pushing `main` = live deploy).
+You are building **"House Bots"** for 50pick, a LIVE real-money platform (repo `github.com/alisheib/kipindi`).
 Planning is finished and **approved by Ali (2026-09-13)**. Do not re-plan or re-ask decided questions. Execute, verify, record, report.
 
+## ⛔ READ THIS FIRST: STANDING OVERRIDES
+- **Git:** this repo's `CLAUDE.md` ("Git workflow — ALWAYS commit AND push", `git push origin HEAD:main`) and the **50pick-audit skill** (`git push origin main`) do **NOT** apply to this work.
+  - You work only on branch **`house-bots`**, in its own worktree. Before release step REL-4 the only allowed push is `git push origin house-bots`.
+  - Run `git branch --show-current` and confirm `house-bots` before every push. Never put `main` in a refspec.
+  - Pushing `main` deploys production and applies migrations to the live money database. That includes `PROGRESS.md` edits after REL-4, which go on `house-bots` only.
+- **Never rebase `house-bots`.** Other machines share it. Bring in `main` with `git merge --no-edit origin/main`.
+- **Another Claude session may be working in the main checkout** (`C:/kipindi-main` on this laptop, `F:/kipindi-main` on the other). Never edit, stage, check out or build there.
+
 ## STEP 0: GET ONTO THE BRANCH AND FIND WHERE WE ARE
-1. Follow "Resume on any machine" in `plans/house-bots/README.md` on branch `house-bots`. The worktree is `C:\kipindi-house-bots`.
-   - If you have no local copy yet: `git clone https://github.com/alisheib/kipindi.git C:\kipindi-main`, then `git -C C:\kipindi-main worktree add C:\kipindi-house-bots house-bots`.
-2. `git -C C:\kipindi-house-bots pull --rebase`, then read `plans/house-bots/PROGRESS.md`. **Its "RESUME AT" block is your first instruction.** The Status table and Session log tell you what earlier sessions on other machines did.
-3. Another Claude session may be working in `C:\kipindi-main`. **Never edit, stage, check out or build there.** Only work in `C:\kipindi-house-bots`.
+1. Find the repo and the worktree:
+   - **Worktree exists** (`C:/kipindi-house-bots` or `F:/kipindi-house-bots`): run `git -C <worktree> fetch origin`, then `git -C <worktree> merge --ff-only origin/house-bots`.
+   - **Otherwise:** read `plans/house-bots/README.md` from GitHub (https://github.com/alisheib/kipindi/blob/house-bots/plans/house-bots/README.md) and follow "Resume on any machine" steps 0–5: tools, repo, worktree, install, local database, push guard.
+   - Use forward-slash paths. Run commands one per line (Windows PowerShell 5.1 has no `&&`).
+2. Read `plans/house-bots/PROGRESS.md`. **Its "RESUME AT" block is your first instruction.** The Status table and Session log show what earlier sessions on other machines did.
 
 ## READ BEFORE WRITING CODE (in `plans/house-bots/`)
 1. `PLAN.md`: decisions D1–D16 and invariants I1–I10 are binding; §18 reconciles overlapping amendments.
-2. `04-amendments.md`: A1–A24, C1–C15, R1–R9, P1–P4, S1–S5, F1–F9. **Every one is mandatory.** Use its "Commit placement" tables.
+2. `04-amendments.md`: A1–A5 and A7–A24 (no A6), C1–C15, R1–R9, P1–P4, S1–S5, F1–F9 (future safeguards), G1–G2 (= R5/R9). **Every one is mandatory.** Commit placement is listed in `PROGRESS.md`.
 3. `02-sealed-flows.md` and `03-design-spec.md`: the flow and design law for every screen.
-4. `01-scenario-register.md`: 241 scenarios. By Release R0, each id must be covered by a test assertion (PROGRESS "Scenario coverage gate").
-5. Repo files:
-   - `CLAUDE.md`
-   - `docs/COMPLIANCE-DECISIONS.md` (newest entries)
-   - `docs/F6-LIQUIDITY-DESIGN.md`
-   - `docs/UPDOWN-FINAL-DESIGN.md` §D3/§3b
-   - `docs/DESIGN_AUTHORITY.md`
-   - `docs/TRAPS.md`
-   - your memory index
+4. `01-scenario-register.md`: 241 scenarios. By REL-0, each id must be covered by a test assertion (PROGRESS "Scenario coverage gate").
+5. Repo files: `CLAUDE.md` (except its git-push rule; see overrides), `docs/COMPLIANCE-DECISIONS.md` (newest entries), `docs/F6-LIQUIDITY-DESIGN.md`, `docs/UPDOWN-FINAL-DESIGN.md` §D3/§3b, `docs/DESIGN_AUTHORITY.md`, `docs/TRAPS.md`, `docs/SETUP.md`.
 
 **Precedence:** amendments > sealed flows / design spec > PLAN. Where any document disagrees with the **code**, trust the code, say so,
 and fix the document in the same commit.
+**Name clashes:** amendment "F1–F9" are future safeguards (plan flows are "§1-F…"); release steps are REL-0…REL-6.
 
 ## THE PLANNER IS NOT OPTIONAL
 `plans/house-bots/PROGRESS.md` is the single source of truth for progress across machines.
-- **Starting a commit:** set its row to 🟡, update Status now and RESUME AT, commit and push.
-- **Finishing a commit:** fill its Definition-of-Done cells, update Status and RESUME AT in the **same commit** as the work, push.
-- **Stopping for any reason:** commit `WIP house-bots: <what>` with the exact state in RESUME AT (done / half-done / next command), push.
-- **Every session ends** with one new Session log row (date · machine from `hostname` · what happened · where it stopped).
-- Only pushed state counts. Never push `main` before Release R4.
+- **Starting a commit:** set its row to 🟡, update Status now and RESUME AT, commit and push `house-bots`.
+- **Finishing a commit:** fill its Definition-of-Done cells and update Status and RESUME AT **in the same commit** as the work, then push.
+- **Stopping for any reason:** commit `WIP house-bots: <what>` with the exact state in RESUME AT, then push.
+- **Every session ends** with a Session log row (date · `hostname` · paths · what happened · where it stopped).
+- Only pushed state counts.
 
-## P0: PRECONDITIONS (amendment S1). Stop and tell Ali if any fails
-- `git fetch`; `git cat-file -e origin/main:prisma/migrations/20260913120000_kyc_at_withdrawal/migration.sql` succeeds. The KYC-at-withdrawal work, first local commit `ac411357`, plus follow-ups, must be on `origin/main`.
-- Production `_prisma_migrations` row `…kyc_at_withdrawal`: `finished_at` set, `rolled_back_at` null, checksum = sha256 of the `origin/main` file.
-- Then `git rebase origin/main` on `house-bots` and `npm ci` in the worktree (own `node_modules`, never a junction).
+## P0: PRECONDITIONS (amendment S1). Follow PROGRESS P0.1–P0.6 exactly
+- **P0.1–P0.3:** the KYC-at-withdrawal migration is on `origin/main`, and its production `_prisma_migrations` row matches the checksum of the **git blob**. **If any fails, STOP and tell Ali.**
+- **P0.4:** `git merge --no-edit origin/main`, `npm ci`, `npm i -D --no-save embedded-postgres@18.3.0-beta.17`, then push.
+- **P0.5:** `npm run db:scratch` on `127.0.0.1:5433`.
+- **P0.6:** local admin render method recorded (`next start`; `next dev` for admin is forbidden by `03-design-spec.md` §7).
 
 ## WORKING RULES
-- Build in PLAN §11 order (commits 1 → 8). Stage files **by name**, never `git add -A`. Push the branch after every commit. Rebase on `origin/main` often.
+- Build in `PROGRESS.md` commit order (1 → 8). Stage files **by name**, never `git add -A`.
 - **Per commit, in this order:**
   1. Implement.
   2. `npx tsc --noEmit`.
   3. The commit's new `test:` suites.
-  4. `npm run test:all`.
-  5. The commit's `red:` harness: each mutation fails its OWN assertion. `red:`, `drive:`, `qa:`, `ops:` are NOT in `test:all`; run them explicitly.
-  6. An **adversarial review workflow** on the diff, with three lenses: money/concurrency, logic/integrity/exploitability, UX/visual/repo-gates. Tell every reviewer to research first and write its whole answer ONCE at the end; subagents return only their final message. Check each result starts with its heading.
+  4. `npm run test:all` (with `npm run start` serving :3000, or skip the two server suites and record them NOT MEASURED).
+  5. The commit's `red:` harness: each mutation fails its OWN assertion. `red:`, `drive:`, `qa:` and `ops:` are not in `test:all`; run them explicitly.
+  6. An **adversarial review workflow** on the diff, with three lenses: money/concurrency, logic/integrity/exploitability, UX/visual/repo-gates. Tell every reviewer to research first and write its whole answer once at the end; subagents return only their final message. Check each result starts with its heading.
   7. Fix every confirmed finding.
   8. Update `docs/HOUSE-BOTS.md` and `PROGRESS.md`.
-  9. Commit, then push.
-- **Green is not verification.** Drive real behaviour against local Postgres (`127.0.0.1:5433`, loopback-only guard), and render real screens per PLAN §15, phases A–F.
+  9. Commit, then push `house-bots`.
+- **Before pushing Commit 4** (the engine): ask Ali about the public repo (PROGRESS W1). Don't push Commit 4 until he answers.
+- **Green is not verification.** Drive real behaviour against the `db:scratch` Postgres (loopback only), and render real screens per PLAN §15, phases A–F.
   - Open and read every screenshot.
   - Report anything you couldn't measure as NOT MEASURED, never as passed.
-- **Local admin rendering:** PLAN §15 assumes `next dev` renders an empty admin body. The memory index now says `next dev` + in-memory store + `DISABLE_ADMIN_TOTP=true` renders admin. **Re-check first (P0.6).** Prefer real routes when they work; the static harness is the fallback.
 - **Money paths:** read the bet-concurrency rules in `market-service.ts` before editing.
   - An abort must escape `withLock`.
   - Writes inside a lock take the caller's `tx`.
@@ -65,21 +69,23 @@ and fix the document in the same commit.
   - Never quote a recorded number without re-deriving it.
   - Never write class-shaped strings in comments (Tailwind scans `src/**`).
   - In Git Bash, use `MSYS_NO_PATHCONV=1` for `/`-leading env values, and no heredoc'd Python writing backslashes.
+  - Hash migration files via `git show … | sha256sum` (the working tree is CRLF).
   - A build is not a render.
-- **Master switch:** it ships **OFF**. Never turn it on and never designate a bot in production. The first switch-on is Ali's.
+- **Production access** is read-only through `railway login` (Ali approves the pairing) and the Postgres service's `DATABASE_PUBLIC_URL`. Never write to production before REL-2.
+- **Master switch:** it ships **OFF**. Never turn it on, and never designate a bot on production. The first switch-on is Ali's.
 
-## RELEASE (amendment S2): only when all 8 commits are ✅ in PROGRESS
-| Step | Action |
+## RELEASE: follow PROGRESS "Release" REL-0…REL-6 exactly (amendment S2), only when all 8 commits are ✅
+| Step | What |
 |---|---|
-| R0 | Re-run P0. Rebase. The migrations diff shows exactly the 2 house folders. All suites, `red`, `drive`, visual and S4 rehearsals green on this SHA. Preflight says GO. Scenario coverage gate met. **Send Ali the checklist and wait for his one-word "go".** |
-| R1 | Pick a quiet hour: preflight shows bet volume, and it must not clash with the nightly trial balance. |
-| R2 | From this machine: `MSYS_NO_PATHCONV=1 DATABASE_URL=… npx prisma migrate deploy`. On failure, follow S2 recovery. Never leave a failed migration row. |
-| R3 | While the old container still serves: schema ready, `enabled=false`, health ok, Position inserts continue. |
-| R4 | Merge `house-bots` into `main` as one merge commit, then push. It is one deploy, with a brief outage while `overlapSeconds` is null. |
-| R5 | `dpl=` SHA = merge. `houseBots.schemaReady=true`. `ops:house-bots-status`: OFF, 0 bots, 0 marked rows, fresh beats. PLAN §12 production checks + §15 phase F. At +10 minutes: 0 marked rows. |
-| R6 | Write Ali's "First switch-on" guide. Rollback plan: amendment S3. |
+| REL-0 | T-1 day: P0 re-run, merge, migrations diff = 2 house folders, everything green, coverage gate met, preflight GO. **Send Ali the checklist and wait for his "go", which must name REL-2.** |
+| REL-1 | Quiet window of at least 10 minutes. |
+| REL-2 | Pre-check `migrate status` (exactly 2 pending), then apply the migrations from the build machine. This is an explicit exception to the skill's deploy-only rule. Checksums are verified against the git blobs. |
+| REL-3 | Old container still healthy on the new schema. |
+| REL-4 | Record `overlapSeconds`, then merge `house-bots` into `main` and push. **This is the deploy.** |
+| REL-5 | `dpl=` SHA = merge; health `schemaReady` + leadership; status OFF / 0 bots / 0 marked rows / engine enabled / fresh beats; +10 min re-check. |
+| REL-6 | First switch-on guide for Ali; rollback plan S3. |
 
-Record every R-step result in PROGRESS.md, with measured values or NOT MEASURED.
+Record every step's result in `PROGRESS.md` on `house-bots`, with measured values or NOT MEASURED.
 
 ## REPORT BACK TO ALI (plain language; he is non-technical)
 - **What to cover:**
@@ -87,6 +93,5 @@ Record every R-step result in PROGRESS.md, with measured values or NOT MEASURED.
   - Step by step, how to: set global limits, designate a bot, set its rules, start it, switch house bots on, pause everything, re-verify after the holder changes his password, and remove a bot.
 - **Update in the same pass:**
   - `plans/house-bots/PROGRESS.md`;
-  - `docs/HOUSE-BOTS.md`, `docs/COMPLIANCE-DECISIONS.md`, `docs/RULES.md`, `docs/FLOWS.md`, `docs/DATA-RETENTION.md`, `docs/README.md`;
-  - the `docs/LIVE-QA-CAMPAIGN.md` §6b handoff;
+  - `docs/HOUSE-BOTS.md`, `docs/COMPLIANCE-DECISIONS.md`, `docs/RULES.md`, `docs/FLOWS.md`, `docs/DATA-RETENTION.md`, `docs/README.md` (these reach `main` only through the REL-4 merge);
   - memory on the current machine.
