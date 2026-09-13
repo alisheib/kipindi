@@ -6058,6 +6058,21 @@ ACTIVE with 0 freeze reasons, 0 negative; 20 players + 3 staff, 0 `PENDING_KYC`;
 0 withdrawals or deposits in flight, 0 `AML_REVIEW`; 0 bonus grants; 0 never-approved players holding cash. Migration
 `20260913120000_kyc_at_withdrawal` finished 17:08:52 UTC, not rolled back, checksum = the LF sha256 of the file on `main`.
 
+✅ **P0 LIVE:** `c6ab54c8` pushed 21:27:12 UTC and **served at 21:30:01 UTC** (`?dpl=`); production `/legal/terms` 200 in
+en/sw/zh with "Version 2026-09-13" and 0 fused words; `/auth/register`, `/auth/login`, `/help`, `/markets` 200; database
+healthy; the signed-out drive `scripts/live/kyc-at-withdrawal-prod.mjs` **49 passed, 0 failed**. Local: `tsc` · `next build` ·
+a `next start` render of 8 routes (`NEXT_PHASE` exemption, below) · the KYC battery listed in the commit message.
+
+⏳ **P1 BATCH — UNCOMMITTED ON THE AUDIT MACHINE while this line stands.** A six-group implementation workflow (legal text,
+dictionary + chat copy, admin console, player UI, guards, comms copy) plus the money services by hand: `refused-funds.ts`
+(cap before forfeit, blocking holds, earlier forfeits, the report's `money` flag + payout status now + case state, the
+failed-return letter, the Swahili reason), `wallet-service.ts` (a return pays only through the identity hold; a failed
+`rfd:` return tells the player the truth), `wallet-freeze.ts` (`staleIdentityHold` / `liftStaleIdentityHold`),
+`kyc-service.ts` (re-open refused while money is in flight + evidence pointers; non-final decisions lift a stale hold),
+`user-service.ts` (closure refused on a held, funded wallet), guard `scripts/refused-funds-p1.test.mts`. ⛔ If this session
+dies before the batch is pushed, NOTHING of it exists on `origin/main` — start the batch again from the queued list below;
+do not look for it on another machine.
+
 **Shipped as `AUDIT 95 (1/n)` — the four P0s** (register rows in §6):
 - **E-382** — the accepted-Terms stamp lagged the published Terms (players since `1699c17a` recorded against 2026-09-09).
 - **E-383** — a finally refused player could undo their own refusal by POST; an approved identity could be rewritten; and the
