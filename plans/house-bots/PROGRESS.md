@@ -48,10 +48,10 @@ Run in **Git Bash** from the worktree.
 1. **Expected checksum:** `git show origin/main:prisma/migrations/20260913120000_kyc_at_withdrawal/migration.sql | sha256sum`. Hash the **git blob**, never the checked-out file (core.autocrlf adds CRLF) and never through a PowerShell pipe.
 2. **Connect:** `railway login` (Ali approves the pairing), then `railway link` to 50pick/production. Use the Postgres service's `DATABASE_PUBLIC_URL`.
 3. **Query, read-only:** `select migration_name, checksum, finished_at, rolled_back_at from _prisma_migrations where migration_name like '%kyc_at_withdrawal'`.
-   - **GO** only if the checksum equals step 1, `finished_at` is set and `rolled_back_at` is null.
+   - **GO** only if the checksum equals step 1's LF hash **or** its CRLF variant (`git show origin/main:prisma/migrations/20260913120000_kyc_at_withdrawal/migration.sql | sed 's/$/\r/' | sha256sum`; Prisma stores the hash of the bytes on the machine that applied it), `finished_at` is set and `rolled_back_at` is null. Record which variant matched.
 
 **P0.6: local admin render**
-1. `npm run build`, then `npm run start` with the `db:scratch` database, a seeded owner and `DISABLE_ADMIN_TOTP=true`.
+1. `npm run build`, then `DATABASE_URL=<the URL npm run db:scratch prints> DISABLE_ADMIN_TOTP=true npm run start` (the start script runs `prisma migrate deploy` first and needs `DATABASE_URL`), with a seeded owner.
 2. Open `/admin` and read the screenshot.
 3. Record "phase D = next start: WORKS / NOT MEASURED". `next dev` for admin stays forbidden (`03-design-spec.md` §7) unless an amendment changes it.
 
@@ -63,7 +63,7 @@ Run in **Git Bash** from the worktree.
 - **impl:** implemented.
 - **tsc:** `npx tsc --noEmit` clean.
 - **suites:** the commit's new `test:` suites pass.
-- **all:** `npm run test:all` green, with `npm run start` serving `:3000`.
+- **all:** `npm run test:all` green, with a server on `:3000` (`npm run build`, then `DATABASE_URL=<db:scratch URL> npm run start`).
   - Without a server, skip the two server suites (see `scripts/test-all.mjs` header for the exact `--skip` names) and record them NOT MEASURED.
 - **red:** its `red:` harness passes, with each mutation failing its own assertion.
 - **drive:** real behaviour driven or rendered as the commit requires, with screenshots opened and read.
@@ -170,6 +170,8 @@ least one house-bot test assertion name or comment, or be listed here with a rea
 ---
 
 ## Release (amendment S2 steps R0–R6, called REL-0…REL-6 here): only after all 8 commits are ✅
+
+Run every Release command in **Git Bash**. S2 R0's "Rebase on origin/main" is superseded: **merge** `origin/main` (the branch is shared across machines). Any "rebase" instruction anywhere in these documents is superseded the same way.
 | Step | What | Status |
 |---|---|---|
 | REL-0 | **(T-1 day)** P0 re-run · merge `origin/main` · `git diff origin/main...house-bots --stat -- prisma/migrations` shows exactly the 2 house folders · `test:all`, every `red:house-bot-*`, `drive:house-bots-local`, `qa:house-bots-visual` and the S4 rehearsals green on this SHA · coverage gate met · `ops:preflight-house-bot-migrations` GO · **checklist sent to Ali, and his "go" received, explicitly naming REL-2** | ⬜ |
@@ -182,18 +184,25 @@ least one house-bot test assertion name or comment, or be listed here with a rea
 | — | Ali switches house bots ON (his action, not a session's) | ⬜ |
 
 **REL-2: migrations applied to production from the build machine**
-1. **Pre-check:** `npx prisma migrate status` against production shows exactly the 2 house migrations pending.
+1. **Pre-check:** `MSYS_NO_PATHCONV=1 DATABASE_URL=<Postgres DATABASE_PUBLIC_URL> npx prisma migrate status` shows exactly the 2 house migrations pending.
 2. **Apply:** `MSYS_NO_PATHCONV=1 DATABASE_URL=<Postgres DATABASE_PUBLIC_URL> npx prisma migrate deploy`.
-3. **Verify:** both rows finished, and each row's checksum equals `git show HEAD:<migration file> | sha256sum`.
+3. **Verify:** both rows finished, and each row's checksum equals `git show HEAD:<migration file> | sha256sum` or its CRLF variant (`… | sed 's/$/\r/' | sha256sum`), whichever matches the bytes on this machine (`git ls-files --eol <file>`); record which. A checksum mismatch alone is NOT a failed apply; never `migrate resolve --rolled-back` a finished row.
 4. **On failure:** follow the S2 recovery (preflight `--post`, then `migrate resolve --rolled-back`). Never leave a failed row.
 5. ⚠️ **This is an explicit exception** to the 50pick-audit skill's "migrations reach production only through the deploy". It is needed because the start script applies DDL while the old container still serves. It must be named in Ali's REL-0 "go" and recorded in the COMPLIANCE entry.
 
 **REL-4: merge and deploy**
 1. Read the live service config and record `overlapSeconds`. An outage is expected only if it is null; the switch stays OFF regardless.
-2. Merge `house-bots` into `main` as one merge commit, then push. **This is the deploy.**
+2. Merge and push from a **temporary release worktree**. Never use the main checkout another session may be in; the house-bots worktree's pre-push guard stays armed.
+   1. `git -C <repo> fetch origin`
+   2. `git -C <repo> worktree add --detach <repo>-rel4 origin/main`
+   3. `git -C <repo>-rel4 merge --no-ff --no-edit origin/house-bots`
+   4. `git -C <repo>-rel4 push origin HEAD:main`: the one sanctioned `main` refspec in this whole programme. **This is the deploy.**
+   5. `git -C <repo> worktree remove <repo>-rel4`
+
+   If step 3 conflicts, stop, remove the release worktree and re-run REL-0; never resolve a conflict at the deploy gate.
 
 **REL-5: post-deploy checks, within 10 minutes**
-- `curl -s -D - -o /dev/null https://50pick.tz/ | grep -io 'dpl=[0-9a-f]*' | head -1` equals `git rev-parse origin/main`.
+- `curl -s -D - -o /dev/null https://50pick.tz/ | grep -io 'dpl=[0-9a-f]*' | head -1 | cut -d= -f2` equals `git rev-parse origin/main`.
 - `/api/health` shows `houseBots.schemaReady=true` and `leadership.lifecycle.isMe=true`.
 - After the 90 s boot grace, `ops:house-bots-status` shows: OFF, 0 bots, 0 marked rows, engine enabled, beats fresh.
 - PLAN §12 production checks and §15 phase F pass.
@@ -215,7 +224,7 @@ least one house-bot test assertion name or comment, or be listed here with a rea
 ## 📓 Session log (append-only, newest first)
 | Date | Machine | Paths | Session | What happened | Where it stopped |
 |---|---|---|---|---|---|
-| 2026-09-13 | Ali-Blade15 | `C:/kipindi-main`, `C:/kipindi-house-bots` | Planner | Moved the plan into git on branch `house-bots` with this tracker, README and prompt. A fresh-machine simulation and a mechanics check found 26 issues (push-to-main override, rebase on a shared branch, Windows path/shell syntax, local Postgres recipe, checksum on CRLF, missing A23/G1/G2 placement, post-REL-4 recording, release criteria). All fixed. | Build not started; P0 blocked on the KYC push |
+| 2026-09-13 | Ali-Blade15 | `C:/kipindi-main`, `C:/kipindi-house-bots` | Planner | Moved the plan into git on branch `house-bots` with this tracker, README and prompt. A fresh-machine simulation and a mechanics check found 26 issues (push-to-main override, rebase on a shared branch, Windows path/shell syntax, local Postgres recipe, checksum on CRLF, missing A23/G1/G2 placement, post-REL-4 recording, release criteria). All fixed. An independent re-check confirmed 26/26 and found 7 follow-ups, also fixed (REL-4 release worktree, merge-not-rebase everywhere, LF/CRLF checksums, server DATABASE_URL, sync fallback, dpl compare, migrate-status target). | Build not started; P0 blocked on the KYC push |
 | 2026-09-13 | Ali-Blade15 | — | Planning | Code map (8 agents) → 3 slice designs → 3 adversarial reviews (50 findings) → 2 plan critics (35) → scenario register (241) → sealed flows + design spec → verified amendments. Ali approved the plan; decisions D1–D16. | Plan approved |
 
 ## Rules for updating this file

@@ -488,7 +488,7 @@ hold, paid, failed; AML rejected in `admin/aml/actions.ts`; officer adjustment. 
 ## 11. Build order
 **Setup and working rules**
 - Worktree: follow `plans/house-bots/README.md` → "Resume on any machine" (branch `house-bots` already exists on origin; the old `-b house-bots origin/main` form is superseded by S1). Never rebase the branch; merge `origin/main` into it. Stage by name only.
-- Push the **branch** after every commit. Rebase on `origin/main` often; conflicts are expected in nav, admin-shell and docs.
+- Push the **branch** after every commit. Merge `origin/main` in often (never rebase: the branch is shared across machines); conflicts are expected in nav, admin-shell and docs.
 - **Before each push:** `test:all` green, then an **adversarial review workflow** (money / logic / UX lenses) on the commit's diff, with findings fixed first.
 
 **Commits**

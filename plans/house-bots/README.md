@@ -25,6 +25,8 @@ From a phone or any browser: https://github.com/alisheib/kipindi/blob/house-bots
 disagrees with the code, trust the code and fix the doc in the same commit.
 **Name clashes:** "F1–F9" in amendments are *future safeguards*; plan flows are cited as "§1-F1…F11". Release steps are
 "REL-0…REL-6", not to be confused with amendments R1–R9 or preconditions P0.x.
+**Never rebase:** any "rebase" instruction in these documents (e.g. S2 R0, the scenario register) is superseded by merging
+`origin/main`, because the branch is shared across machines.
 
 ## Resume on any machine
 Use **forward slashes** in paths (they work in Git Bash, PowerShell and cmd). Run each command on its own line; Windows
@@ -45,12 +47,12 @@ PowerShell 5.1 cannot parse `&&`.
   1. `git -C <repo> worktree prune`
   2. `git -C <repo> worktree add <worktree> house-bots`
 
-  Git creates the local branch tracking `origin/house-bots`. Never use `-b house-bots`; the branch already exists on origin.
+  Git creates the local branch tracking `origin/house-bots`. Never use `-b house-bots`; the branch already exists on origin. Then run the "Folder exists" steps below, in case a stale local `house-bots` branch was reused.
 - **Folder exists:**
   1. `git -C <worktree> fetch origin`
   2. `git -C <worktree> merge --ff-only origin/house-bots`
 
-  If `--ff-only` refuses because both machines have commits, use `git -C <worktree> merge --no-edit origin/house-bots`. **Never rebase this branch.**
+  If `--ff-only` refuses because both machines have commits, use `git -C <worktree> merge --no-edit origin/house-bots`. **Never rebase this branch.** If `package-lock.json` changed, redo step 3.
 
 **3. Install**
 1. `cd <worktree>`
@@ -81,7 +83,7 @@ This affects only this worktree. The main checkout keeps its normal behaviour.
 ## ⛔ Standing overrides for anyone working in the House Bots worktree
 - **CLAUDE.md** ("Git workflow — ALWAYS commit AND push", `git push origin HEAD:main`) and the **50pick-audit skill** (`git push origin main`) do **NOT** apply here.
   - Before REL-4 the only allowed push is `git push origin house-bots`.
-  - Run `git branch --show-current` and confirm `house-bots` before every push. Never put `main` in a refspec.
+  - Run `git branch --show-current` and confirm `house-bots` before every push. Never put `main` in a refspec, **except the single push in PROGRESS REL-4 step 2**, made from a temporary release worktree.
 - **Pushing `main` is a live deploy** (any push, even docs-only), and the start script applies database migrations. That includes `PROGRESS.md` edits after REL-4: record them on `house-bots` only.
 - **Never build, stage or check out in a checkout another session is using.**
 - **Pushing `house-bots` is safe:** CI runs only on `main` and PRs, and Railway deploys `main`.
