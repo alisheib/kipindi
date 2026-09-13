@@ -269,6 +269,12 @@ Read-only, against the production database, before any code changed:
 
 - The **10 in-progress players gain depositing and playing** the moment this deploys. Nobody
   previously refused gains anything, because nobody has been refused.
+- **Applied to production 2026-09-13 20:08 (Dar es Salaam), before the push of `1699c17a`**, with
+  `prisma migrate deploy`. Re-measured read-only immediately before: 0 conflicts under the new
+  document-number predicate (both indexes), **11** `PENDING_KYC` accounts (one more than the morning's
+  10 — a player registered in between), 0 frozen wallets. After: 0 `PENDING_KYC`, `Wallet.freezeReasons`
+  present, both unique indexes keep a number reserved on UNDERAGE / SANCTIONED / DUPLICATE_IDENTITY.
+  No money moved.
 - `User.status = "PENDING_KYC"` was set at registration and **gated nothing** — sign-in refuses only
   suspended, closed and self-excluded accounts. After this change it would have labelled every
   ordinary, happily-playing customer as pending something and told the officer that the whole
