@@ -46,8 +46,9 @@ export const MUTATIONS = [
        + "restored to its 2026-09-05 wording. It is a REQUIREMENT, so rule 1 (a denial rule) is blind to it "
        + "by design — only rule 2 can see it, and it is the binding English text.",
     file: TERMS,
-    from: `Identity verification is <strong>required</strong> before your first withdrawal. You`,
-    to: `Identity verification is <strong>required</strong> before you can deposit, place a bet or withdraw. You`,
+    // 2026-09-13 · the {" "} is the explicit space the build otherwise dropped ("requiredbefore", live).
+    from: `Identity verification is <strong>required</strong>{" "}before your first withdrawal. You`,
+    to: `Identity verification is <strong>required</strong>{" "}before you can deposit, place a bet or withdraw. You`,
     check: `§2 ${TERMS} · en · rule 2`,
   },
   {

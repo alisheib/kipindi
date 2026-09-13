@@ -241,8 +241,9 @@ export const CASES = [
     expect: "no placeholder on the identity number field",
     edits: [{
       file: PAGE,
-      from: `              inputMode={spec.inputMode}\n              defaultValue={(sp as Record<string, string | undefined>).idNumber ?? ""}`,
-      to: `              inputMode={spec.inputMode}\n              placeholder="19950101123456789012"\n              defaultValue={(sp as Record<string, string | undefined>).idNumber ?? ""}`,
+      // 2026-09-13 · two more spaces: the steps now sit inside the refused-final branch on /profile/kyc.
+      from: `                inputMode={spec.inputMode}\n                defaultValue={(sp as Record<string, string | undefined>).idNumber ?? ""}`,
+      to: `                inputMode={spec.inputMode}\n                placeholder="19950101123456789012"\n                defaultValue={(sp as Record<string, string | undefined>).idNumber ?? ""}`,
     }],
   },
   {
