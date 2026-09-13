@@ -140,9 +140,11 @@ population is the right one. A guard that is green because it inspects nothing i
 - ⛔ Never re-mint `QA_ADMIN_PASSWORD`; never run `ADMIN_DRIVE=1` (it revokes the owner's session); never register a
   production account with the owner's email.
 - Stage files by name only (never `git add -A`); `house-flow-final.png` is not ours; never skip hooks.
-- A binding legal text changes only with a version bump and a dated compliance entry.
-
-- Commit in small, self-contained pieces, each pushed only after the battery passes on a tree that matches `origin/main`, so a parallel session can integrate your work without inheriting a half-finished change.
+- A binding legal text changes only with a dated compliance entry, and with a version bump unless it is a
+  player-favourable amendment on the day that version was published (as the 2026-09-13 withdrawal-review removal was,
+  inside v2026-09-13 — that is not a finding).
+- Commit in small, self-contained pieces, each pushed only after the battery passes on a tree that matches `origin/main`,
+  so a parallel session can integrate your work without inheriting a half-finished change.
 
 ## 6 · Already known and deliberately OPEN — do not re-report as new; DO report if you find it worse than described
 Read the OPEN list in §6b Session 94. Highlights: the Board letter is an unsent DRAFT; the Terms TIN is pending; sw uses
