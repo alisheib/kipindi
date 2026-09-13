@@ -6070,8 +6070,11 @@ failed-return letter, the Swahili reason), `wallet-service.ts` (a return pays on
 `rfd:` return tells the player the truth), `wallet-freeze.ts` (`staleIdentityHold` / `liftStaleIdentityHold`),
 `kyc-service.ts` (re-open refused while money is in flight + evidence pointers; non-final decisions lift a stale hold),
 `user-service.ts` (closure refused on a held, funded wallet), guard `scripts/refused-funds-p1.test.mts`. ⛔ If this session
-dies before the batch is pushed, NOTHING of it exists on `origin/main` — start the batch again from the queued list below;
-do not look for it on another machine.
+dies before the batch is pushed, NOTHING of it exists on `origin/main`. 💾 A **backup snapshot** of the working tree is on the
+side branch **`audit-95-p1-wip`** (NOT deployed — Railway builds `main` only; refreshed as the batch moves, a single commit on
+top of `0b42e02f`). To continue on another machine WITHOUT switching branches: `git fetch origin audit-95-p1-wip` then
+`git diff 0b42e02f FETCH_HEAD | git apply` in a clean `main` checkout, re-run the battery, commit by name. The snapshot is
+unverified work in progress — the guard files in it may be mid-edit.
 
 **Shipped as `AUDIT 95 (1/n)` — the four P0s** (register rows in §6):
 - **E-382** — the accepted-Terms stamp lagged the published Terms (players since `1699c17a` recorded against 2026-09-09).
