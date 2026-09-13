@@ -13,19 +13,26 @@
 | | |
 |---|---|
 | **Overall** | 🟡 **PLANNED · build not started** |
-| **Current step** | P0: preconditions |
-| **Blocked on** | The KYC-at-withdrawal work is not on `origin/main`. On 2026-09-13 its migration `20260913120000_kyc_at_withdrawal` existed only in an unpushed local commit ("KYC AT WITHDRAWAL (1/n)") on Ali-Blade15. It must be on `origin/main` and applied in production first (amendment S1). |
+| **Current step** | P0.4: merge `origin/main` + install (P0.1–P0.3 ✅ 2026-09-13) |
+| **Blocked on** | ⛔ **HOLD: KYC audit in flight.** The KYC-at-withdrawal release ("KYC AT WITHDRAWAL (1/n)"…"(7/n)") **is on `origin/main`**, and its migration **is applied in production** (verified 2026-09-13). But session **`ali-f6`** is auditing that release and has confirmed P0/P1 defects. Fixes will be pushed to `main` over the following hours, touching `kyc-service`, `refused-funds`, `wallet-service`, `auth-service`, `wallet-freeze`, `notification-service`, `email`, `nida`, `i18n-dict`, `src/app/legal/*`, `COMPLIANCE-DECISIONS.md` and LIVE-QA §6b. ali-f6 plans no new migration and will message first if that changes. **Wait for ali-f6's session block at the top of `docs/LIVE-QA-CAMPAIGN.md` §6b before P0.4, and for its "ALL-CLEAR heavy window" message before any `npm ci`, build, test run or Playwright (this laptop bluescreens under concurrent heavy Node).** |
 | **Production** | Nothing deployed. The feature does not exist in production. |
 | **Master switch** | n/a (ships OFF at release; Ali turns it on himself) |
-| **Last updated** | 2026-09-13 · Ali-Blade15 · planning session (planner verified by a fresh-machine simulation) |
+| **Last updated** | 2026-09-13 21:02 UTC · Ali-Blade15 · build session `ali-e4` (P0.2 and P0.3 verified; holding before P0.4) |
 
 ## ▶ RESUME AT (overwrite this block every time you stop)
 1. Get onto the branch on whatever machine you are on: `README.md` → "Resume on any machine" (steps 0–5).
-2. Run **P0.1–P0.3**. If any fails, **STOP**: tell Ali the build is waiting for the KYC session to push its migration and apply it in production. Do not start Commit 1.
-3. When P0.1–P0.3 pass:
-   - **P0.4:** merge `origin/main` into `house-bots` + `npm ci`.
+2. **Coordinate first** (prompt "COORDINATE WITH OTHER CLAUDE SESSIONS FIRST"): message `ali-f6` and any other live 50pick session. **Do not run `npm ci`, `next build`, Playwright or `test:all` without messaging ali-f6 first.** ali-f6 uses port 3009 and has heavy windows (as it reported at ~21:00 UTC 2026-09-13: tsc + next build + suites for its first P0 ship, then Playwright captures, the full predeploy battery and its red harnesses, which rewrite files only in `C:/kipindi-main`); it will message at each window end.
+3. **P0.2 and P0.3 are ✅** (2026-09-13, build session `ali-e4`; details in the P0 table). Nothing else to check before the hold lifts.
+4. **⛔ HOLD before P0.4.** Wait until BOTH:
+   - (a) ali-f6's KYC audit fixes are on `origin/main` and its session block is at the top of `docs/LIVE-QA-CAMPAIGN.md` §6b; and
+   - (b) ali-f6 has sent "ALL-CLEAR heavy window".
+
+   Ask ali-f6 if unsure. Then:
+   - **Before merging:** `git fetch origin`, re-run the P0.1 `git cat-file -e` check, and confirm `git diff --stat HEAD origin/main -- prisma/migrations` shows no migration newer than `20260913120000_kyc_at_withdrawal` (ali-f6 planned none; a new one moves the A23 timestamp floor).
+   - **P0.4:** merge `origin/main` into `house-bots` + `npm ci` (after telling ali-f6).
    - **P0.5 and P0.6.**
    - Start **Commit 1**: set its row to 🟡 and push that change first.
+5. **Open doc defect:** in `04-amendments.md`, amendment **C4** (password attempts) has lost its heading and opening evidence; the text at about line 1822 starts mid-sentence, with "`agents-client.tsx:31-43`), so a quick double tap sends two requests.". The planning session was asked for the original on 2026-09-13. Restore it, or reconstruct it and mark it reconstructed, before Commit 3 (which builds C4's service side).
 
 ## Legend
 ⬜ not started · 🟡 in progress · ✅ done (date · machine · commit subject) · ⛔ blocked (reason) · ⏭️ skipped by Ali's ruling · — not applicable
@@ -37,10 +44,10 @@ Run in **Git Bash** from the worktree.
 
 | # | Check | Status |
 |---|---|---|
-| P0.1 | `git fetch origin`, then `git cat-file -e origin/main:prisma/migrations/20260913120000_kyc_at_withdrawal/migration.sql` succeeds | ⬜ |
-| P0.2 | `git log origin/main --oneline --grep "KYC AT WITHDRAWAL"` lists the series, and the topmost RESUME AT in `docs/LIVE-QA-CAMPAIGN.md` §6b on `origin/main` says the KYC-at-withdrawal work is pushed and its migration applied in production | ⬜ |
-| P0.3 | See the three steps below | ⬜ |
-| P0.4 | **Merge, never rebase:** `git merge --no-edit origin/main` on `house-bots`, then `npm ci` + `npm i -D --no-save embedded-postgres@18.3.0-beta.17`, then push `house-bots` | ⬜ |
+| P0.1 | `git fetch origin`, then `git cat-file -e origin/main:prisma/migrations/20260913120000_kyc_at_withdrawal/migration.sql` succeeds | ✅ 2026-09-13 · Ali-Blade15 (planning session) |
+| P0.2 | `git log origin/main --oneline --grep "KYC AT WITHDRAWAL"` lists the series, and the topmost RESUME AT in `docs/LIVE-QA-CAMPAIGN.md` §6b on `origin/main` says the KYC-at-withdrawal work is pushed and its migration applied in production | ✅ 2026-09-13 · Ali-Blade15 · build session `ali-e4`: the grep lists all seven, "KYC AT WITHDRAWAL (1/n) · the gate, S1, the freeze model, legal and copy" through "(7/n) · the audit prompt states the legal-version rule precisely". The topmost §6b RESUME AT on origin/main (session 95) states the release is LIVE and that `20260913120000_kyc_at_withdrawal` was applied to production at 20:08:42 EAT, before the push. ⚠️ ali-f6's audit block is still to come; that is the P0.4 hold, not a P0.2 failure |
+| P0.3 | See the three steps below | ✅ 2026-09-13 · **LF variant matched.** Step 1 re-derived by `ali-e4` from `git show origin/main:…/migration.sql`: LF `3f03069239a84c0cefdc1da2cd07a1e18136c358936e9d55747964483f38e5f2`, CRLF `bf82c95d71016be99f66bcfe29adc0512be9e3f3383a2d4200ceebb76534e765`. Steps 2–3 were done by session `ali-f6` in a read-only transaction: checksum `3f030692…f5f2` (= LF), `finished_at` 2026-09-13 17:08:52 UTC, `rolled_back_at` NULL, applied_steps_count 1. On Ali's ruling this session did not query production itself |
+| P0.4 | **Merge, never rebase:** `git merge --no-edit origin/main` on `house-bots`, then `npm ci` + `npm i -D --no-save embedded-postgres@18.3.0-beta.17`, then push `house-bots` | ⛔ HOLD until ali-f6's KYC audit fixes land on origin/main (its session block on top of §6b) AND ali-f6 sends "ALL-CLEAR heavy window"; tell ali-f6 again before `npm ci` |
 | P0.5 | `npm run db:scratch` starts PostgreSQL on `127.0.0.1:5433` (loopback only) | ⬜ |
 | P0.6 | Local admin render method, recorded: ______ | ⬜ |
 
@@ -224,6 +231,8 @@ Run every Release command in **Git Bash**. S2 R0's "Rebase on origin/main" is su
 ## 📓 Session log (append-only, newest first)
 | Date | Machine | Paths | Session | What happened | Where it stopped |
 |---|---|---|---|---|---|
+| 2026-09-13 (~21:05 UTC) | Ali-Blade15 | `C:/kipindi-house-bots`, hooks `C:/kipindi-house-bots-hooks` | Build (`ali-e4`) | Coordinated with `ali-f6` (KYC audit: port 3009, heavy windows, no new migration planned) and messaged the planning session. **P0.2 ✅. P0.3 ✅ on the LF variant:** hashes re-derived here; the production row was read by ali-f6 in a read-only transaction; Ali ruled that is enough. On Ali's ruling, committed the planning session's uncommitted hold notice together with these results. **Installed the README step 5 push guard** (Ali approved): `extensions.worktreeConfig=true` on the shared repo; `core.hooksPath` set only in this worktree's `config.worktree` (the main checkout still has none; its `.git/hooks` held only samples); the hook refused a simulated push to `main` and passed `house-bots` (tested by feeding it stdin, never by a real push). Read the prompt, README, PLAN, `02`, `03` and `04` in full (not yet `01`). Found amendment C4's heading and opening text missing (RESUME AT step 5). No npm, build, test or server run; nothing touched production or files in `C:/kipindi-main`. | ⛔ Holding before P0.4 for ali-f6's §6b block and its "ALL-CLEAR heavy window" |
+| 2026-09-13 | Ali-Blade15 | `C:/kipindi-house-bots` | Planning (ali-4c) | Session `ali-f6` reported that KYC-at-withdrawal is on origin/main and applied in production, and that its audit has P0/P1 fixes coming. Verified P0.1 and the commit series; recorded the blob hash for P0.3. Added the coordination section and the atomic-permission rule to the prompt. Relayed everything to the new session `ali-e4`. | P0 partly done; ⛔ hold before P0.4 for ali-f6's fixes |
 | 2026-09-13 | Ali-Blade15 | `C:/kipindi-main`, `C:/kipindi-house-bots` | Planner | Moved the plan into git on branch `house-bots` with this tracker, README and prompt. A fresh-machine simulation and a mechanics check found 26 issues (push-to-main override, rebase on a shared branch, Windows path/shell syntax, local Postgres recipe, checksum on CRLF, missing A23/G1/G2 placement, post-REL-4 recording, release criteria). All fixed. An independent re-check confirmed 26/26 and found 7 follow-ups, also fixed (REL-4 release worktree, merge-not-rebase everywhere, LF/CRLF checksums, server DATABASE_URL, sync fallback, dpl compare, migrate-status target). | Build not started; P0 blocked on the KYC push |
 | 2026-09-13 | Ali-Blade15 | — | Planning | Code map (8 agents) → 3 slice designs → 3 adversarial reviews (50 findings) → 2 plan critics (35) → scenario register (241) → sealed flows + design spec → verified amendments. Ali approved the plan; decisions D1–D16. | Plan approved |
 
