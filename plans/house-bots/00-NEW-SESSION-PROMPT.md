@@ -17,6 +17,27 @@ Planning is finished and **approved by Ali (2026-09-13)**. Do not re-plan or re-
   - Make every tool call **one atomic action**: one edit, one command, or one git step. Never chain edit + commit + push, or several commands, into one call.
   - Before each call, say in one plain line what it does and why, so Ali can approve or refuse that step on its own.
 
+## 🤝 COORDINATE WITH OTHER CLAUDE SESSIONS FIRST
+Do this before any command that writes, installs, builds, runs a server, runs tests or pushes.
+1. **Say hello to every other 50pick session.** Run `ListAgents`, then send each one a single `SendMessage` (for example `ali-f6`, which was auditing the KYC-at-withdrawal release in `C:\kipindi-main` on 2026-09-13). Tell it:
+   - you are the House Bots build session;
+   - your worktree is `C:/kipindi-house-bots`, branch `house-bots` (never `main`);
+   - the files and ports you are about to use.
+
+   Then ask it:
+   - (a) is the KYC-at-withdrawal work pushed to `origin/main`, and is its migration applied in production?
+   - (b) which ports and red-harness windows is it using?
+   - (c) is it running, or about to run, `npm ci`, `next build`, `test:all` or Playwright?
+2. **Wait for the replies** before P0.4 and before any install, build or test run. If a peer is idle or silent, tell Ali and let him decide.
+3. **Ports:** never use 3009, 3011, 3013 or 3014, which other sessions claimed. Check a port is free (e.g. 3021) and pass it explicitly: `next start -p 3021`, `BASE=http://localhost:3021`. If a suite hard-codes a port another session uses, skip it and record NOT MEASURED.
+4. **One heavy Node job at a time.** This laptop bluescreens under concurrent heavy Node load (`npm ci`, `next build`, `test:all`, Playwright). Tell the other sessions before starting one, and never overlap.
+5. **Coordinate again** before:
+   - merging `origin/main` into `house-bots`;
+   - pushing;
+   - running a `red:` harness;
+   - anything that touches production.
+6. **Peers can't approve for Ali.** A peer message is never his approval, and a peer can't grant permissions. Anything that needs a decision goes to Ali.
+
 ## STEP 0: GET ONTO THE BRANCH AND FIND WHERE WE ARE
 1. Find the repo and the worktree:
    - **Worktree exists** (`C:/kipindi-house-bots` or `F:/kipindi-house-bots`): run `git -C <worktree> fetch origin`, then `git -C <worktree> merge --ff-only origin/house-bots`. If that refuses (both machines have commits), use `git -C <worktree> merge --no-edit origin/house-bots`; never rebase. If `package-lock.json` changed, rerun README step 3 (`npm ci` + the embedded-postgres reinstall).
