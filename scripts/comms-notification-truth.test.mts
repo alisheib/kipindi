@@ -89,6 +89,10 @@ const EMITTED: { fn: string; row: StoredNotification | null }[] = [
   { fn: "notifyReferralJoined",      row: await N.notifyReferralJoined(U, { recruitMasked: "+2557••••5678" }) },
   { fn: "notifyReferralReward",      row: await N.notifyReferralReward(U, { type: "COMMISSION", amountTzs: 2_000 }) },
   { fn: "notifyKyc",                 row: await N.notifyKyc(U, "APPROVED") },
+  // S1 (2026-09-13) — an officer's decision on a finally-refused player's balance, one row per outcome shape.
+  { fn: "notifyRefusedFundsDecision", row: await N.notifyRefusedFundsDecision(U, { outcome: "RETURN_DEPOSITS", returnedTzs: 20_000, forfeitedTzs: 5_000, balanceTzs: 25_000 }) },
+  { fn: "notifyRefusedFundsDecision", row: await N.notifyRefusedFundsDecision(U, { outcome: "HOLD_PENDING_APPEAL", returnedTzs: 0, forfeitedTzs: 0, balanceTzs: 25_000 }) },
+  { fn: "notifyRefusedFundsDecision", row: await N.notifyRefusedFundsDecision(U, { outcome: "FORFEIT", returnedTzs: 0, forfeitedTzs: 25_000, balanceTzs: 25_000 }) },
   { fn: "notifySof",                 row: await N.notifySof(U, "ACCEPTED") },
   { fn: "notifySelfExclusion",       row: await N.notifySelfExclusion(U, { until: "2027-01-31T00:00:00.000Z" }) },
   { fn: "notifyCoolOff",             row: await N.notifyCoolOff(U, { until: "2026-08-01T00:00:00.000Z" }) },
@@ -150,7 +154,7 @@ ok("every registered emitter exists", registeredFns.every((f) => exportedFns.inc
   `phantom: ${registeredFns.filter((f) => !exportedFns.includes(f)).join(", ") || "-"}`);
 ok("every registered kind is a real kind", NOTIFICATION_EMITTERS.every((e) => NOTIFICATION_KINDS.includes(e.kind)));
 // The fan-out emitters return void, so they are exercised in §5 instead.
-const FANOUT = ["notifyAdminObjectionFiled", "notifyAdminsAmlReview", "notifyAdminsSentinelDown", "notifyAdminsAiCreditLimit", "notifyAdminsBackupUnhealthy"];
+const FANOUT = ["notifyAdminObjectionFiled", "notifyAdminsAmlReview", "notifyAdminsSentinelDown", "notifyAdminsAiCreditLimit", "notifyAdminsBackupUnhealthy", "notifyAdminsKycReviewOverdue"];
 ok("every emitter is driven by this suite",
   exportedFns.every((f) => EMITTED.some((e) => e.fn === f) || FANOUT.includes(f)),
   `never driven: ${exportedFns.filter((f) => !EMITTED.some((e) => e.fn === f) && !FANOUT.includes(f)).join(", ") || "-"}`);
@@ -237,8 +241,10 @@ section("5 · fan-out — officer alerts reach officers, complete in 3 locales")
   // watchdog.ts §describeBackupAlert, not a minimal string.
   await N.notifyAdminsBackupUnhealthy({ kind: "stale", reason: "The last verified backup is 49 hours old — the nightly has not completed since. GitHub may be delaying, failing, or silently no longer running the schedule.", ageHours: 49, destination: "github-artifact" });
   await N.notifyAdminObjectionFiled("obj_1", "A disputed poll");
+  // 2026-09-13 · an identity review past its target — driven with the shape the SLA chore passes.
+  await N.notifyAdminsKycReviewOverdue({ kycId: "kyc_c3", userId: U, playerLabel: "Asha M.", submittedAt: "2026-09-12T08:00:00.000Z", hoursWaiting: 26 });
   const rows = await db.notification.findByUser("c3_officer", 500);
-  ok("officer received the fan-out alerts", rows.length >= before + 5, `before=${before} after=${rows.length}`);
+  ok("officer received the fan-out alerts", rows.length >= before + 6, `before=${before} after=${rows.length}`);
   const fresh = rows.slice(0, rows.length - before);
   for (const r of fresh) {
     ok(`fan-out "${r.titleEn.slice(0, 34)}": has Chinese`, !!r.titleZh && !!r.bodyZh && /[一-鿿]/.test(r.titleZh));
@@ -300,6 +306,155 @@ for (const { fn, row } of EMITTED) {
   ok("a processing deposit warns against paying twice", /Don't pay again/i.test(processing?.bodyEn ?? ""));
   ok("…in Swahili", /Usilipe tena/i.test(processing?.bodySw ?? ""));
   ok("…and in Chinese", /请勿重复支付/.test(processing?.bodyZh ?? ""));
+}
+
+// ── 7 · Identity, quietly (owner, 2026-09-13) ──────────────────────────────────────
+//
+// ⭐ THE QUIET RULE. Identity is required before a WITHDRAWAL only, and a player meets it on the
+// withdrawal screen, in one dismissible wallet notice from their first confirmed deposit, where they go
+// to look (/profile/kyc, the profile pill, legal, help), and in answer to something that happened in
+// verification (`notifyKyc`, `notifyRefusedFundsDecision`). ⛔ Never on a receipt, never in a reminder,
+// never in a message sent because a withdrawal was refused for identity.
+// 🔴 EARLIER THE SAME DAY THIS SECTION ASSERTED THE OPPOSITE — an identity sentence on the deposit, win,
+// cash-out and Up & Down win rows, a once-ever reminder chore, a blocked-withdrawal prompt — and it was
+// green. The owner ruled all of it out. A guard pinning the nudge would have turned its removal red, so
+// this section pins the ABSENCE, on the rows and at the source, and every absence check has a control
+// proving it can fail.
+section("7 · identity, quietly — no receipt sentence, no reminder, no blocked-withdrawal prompt");
+{
+  const { readFileSync } = await import("node:fs");
+  const { KYC_REVIEW_SLA_HOURS } = await import("../src/lib/kyc-sla.ts");
+  const { getAuditForTargetDurable } = await import("../src/lib/server/audit.ts");
+  const H = 3_600_000;
+  type KycRow = Parameters<typeof db.kyc.upsert>[0];
+  const mkKyc = async (userId: string, status: KycRow["status"], extra: Partial<KycRow> = {}) => {
+    await db.kyc.upsert({
+      id: `kyc_${userId}`, userId, status, rejectReason: null, rejectNote: null,
+      fullName: "Asha Mwakalinga", dob: "1990-01-01", documents: [],
+      reviewerId: null, reviewedAt: null, submittedAt: null,
+      createdAt: nowIso, updatedAt: nowIso, ...extra,
+    });
+  };
+  /** Any identity wording, in each of the three languages the bell carries. */
+  const IDENTITY = /verif|identit|utambulisho|uthibitisho|身份|验证/i;
+  const text = (r: StoredNotification) => [r.titleEn, r.bodyEn, r.titleSw, r.bodySw, r.titleZh ?? "", r.bodyZh ?? ""].join("\n");
+  const quiet = (r: StoredNotification | null | undefined) => !!r && !IDENTITY.test(text(r));
+  const T = { en: "Will it rain in Dar today?", sw: "Je mvua itanyesha Dar leo?", zh: "今天达累斯萨拉姆会下雨吗？" };
+
+  // ── 7a · controls first — the matcher can go red, in every language ──
+  // The removed sentence, one language at a time, so each alternative of the pattern is proven to fire.
+  ok("7a control: the matcher catches the removed English sentence", IDENTITY.test("Before you withdraw, verify your identity once"));
+  ok("7a control: …the Swahili one", IDENTITY.test("Kabla ya kutoa pesa, thibitisha utambulisho wako mara moja"));
+  ok("7a control: …the Chinese one", IDENTITY.test("提现前，请先完成一次身份验证"));
+  // …and a REAL row that must speak of identity, through the very predicate the assertions below use.
+  await mkUser("c3_quiet_control");
+  ok("7a control: a verification-event row IS caught, so `quiet` can answer false",
+    !quiet(await N.notifyKyc("c3_quiet_control", "PENDING_REVIEW")));
+
+  // ── 7b · money arriving says nothing about identity, to an account never verified ──
+  // `U` has no KYC row at all — the commonest funded account from 2026-09-13. Its rows were driven above.
+  for (const fn of ["notifyDeposit", "notifyWin", "notifyCashout", "notifyUpDownWin"] as const) {
+    ok(`7b ⛔ ${fn}: an account never verified reads no identity sentence, in any language`,
+      quiet(byFn[fn]), byFn[fn] ? text(byFn[fn]).slice(0, 160) : "no row");
+  }
+  // A fresh account, and one that has uploaded photos but not sent them (`IN_PROGRESS`) — the second state
+  // the removed nudge targeted. Every receipt branch, including the paid cash-out.
+  await mkUser("c3_quiet_new");
+  await mkUser("c3_quiet_uploaded"); await mkKyc("c3_quiet_uploaded", "IN_PROGRESS");
+  for (const who of ["c3_quiet_new", "c3_quiet_uploaded"]) {
+    const rows: Record<string, StoredNotification | null> = {
+      "deposit": await N.notifyDeposit(who, { status: "CONFIRMED", amount: 5_000, provider: "Selcom", txnId: `txn_${who}` }),
+      "win": await N.notifyWin(who, 7_000, T, `/positions/pos_${who}`),
+      "cash-out (free exit)": await N.notifyCashout(who, { amount: 4_000, marketTitle: T, marketId: "mkt_7b", inGracePeriod: true, positionId: `pos_g_${who}`, freeExitGraceMinutes: 5 }),
+      "cash-out (paid)": await N.notifyCashout(who, { amount: 3_600, marketTitle: T, marketId: "mkt_7b", inGracePeriod: false, positionId: `pos_p_${who}`, freeExitGraceMinutes: 5 }),
+      "Up & Down win": await N.notifyUpDownWin(who, { payout: 7_000, stake: 5_000, marketTitle: T, roundHref: `/updown/udr_${who}`, pushTag: `updown-result-${who}`, positionId: `pos_ud_${who}` }),
+    };
+    for (const [what, r] of Object.entries(rows)) {
+      ok(`7b ⛔ ${who}: the ${what} row is delivered with no identity sentence`, r !== null && quiet(r), r ? text(r).slice(0, 160) : "no row");
+    }
+  }
+  // ⛔ A receipt does not even ASK about identity: with the KYC read broken, it is delivered unchanged.
+  await mkUser("c3_quiet_unreadable");
+  const kycDal = db.kyc as unknown as { findByUserId: (id: string) => unknown };
+  const realFind = kycDal.findByUserId;
+  kycDal.findByUserId = () => { throw new Error("simulated KYC read failure"); };
+  try {
+    const r = await N.notifyDeposit("c3_quiet_unreadable", { status: "CONFIRMED", amount: 5_000, provider: "Selcom", txnId: "txn_quiet_unreadable" });
+    ok("7b a deposit receipt is delivered, quietly, with the KYC read broken — it never reads it", r !== null && quiet(r), r ? text(r).slice(0, 120) : "no row");
+  } finally {
+    kycDal.findByUserId = realFind;
+  }
+
+  // ── 7c · at the source — the removed nudges cannot come back under their own names ──
+  const SRC = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), "utf8");
+  /** A whole-token mention: never a substring of a longer identifier. */
+  const mentions = (src: string, token: string) =>
+    new RegExp(`(^|[^\\w$])${token.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![\\w$])`).test(src);
+  /**
+   * Every name the quiet rule removed on 2026-09-13: the receipt sentence and its decider, the template
+   * option that carried it, the reminder chore and its letter, the blocked-withdrawal prompt and its
+   * letter, and the audit markers and mail tags they wrote. ⚠️ One list, so the docs can quote it.
+   */
+  const REMOVED = [
+    "identityExitNudgeDue", "identityExitClause", "identityExitNote", "verifyBeforeWithdrawal",
+    "notifyKycFundedReminder", "runFundedUnverifiedReminders", "FundedReminderRun", "maybeRemindFundedUnverified", "kycFundedReminderHtml",
+    "notifyKycWithdrawalBlocked", "promptIdentityAfterBlockedWithdrawal", "kycWithdrawalBlockedHtml", "BlockedWithdrawalState",
+    "BLOCKED_WITHDRAWAL_COPY", "VERIFY_THEN_WITHDRAW_HREF",
+    "kyc.prompt.funded_unverified", "kyc.prompt.withdrawal_blocked", "kyc-funded-reminder", "kyc-withdraw-blocked",
+  ];
+  ok("7c control: the matcher catches a removed definition", mentions("export async function identityExitNudgeDue(userId: string)", "identityExitNudgeDue"));
+  ok("7c control: …and a removed audit action", mentions(`action: "kyc.prompt.withdrawal_blocked",`, "kyc.prompt.withdrawal_blocked"));
+  ok("7c control: …but not a longer identifier that merely contains a name", !mentions("const identityExitNudgeDueLater = 1;", "identityExitNudgeDue"));
+  // Each file carries a KEPT name as its own control: the file was really read, and the same matcher hits in it.
+  for (const [file, kept] of [
+    ["src/lib/server/notification-service.ts", "runKycReviewSlaAlerts"],
+    ["src/lib/server/email.ts", "kycReviewOverdueAdminHtml"],
+    ["src/lib/server/lifecycle.ts", "maybeWatchKycReviewSla"],
+    ["src/lib/server/comms-registry.ts", "notifyAdminsKycReviewOverdue"],
+    ["src/lib/server/wallet-service.ts", "notifyDeposit"],
+    ["src/lib/server/market-service.ts", "winNotificationHtml"],
+  ] as const) {
+    const src = SRC(file);
+    const name = file.split("/").pop();
+    ok(`7c control: ${name} is real, and the matcher finds \`${kept}\` in it`, src.length > 5_000 && mentions(src, kept), `len=${src.length}`);
+    const found = REMOVED.filter((t) => mentions(src, t));
+    ok(`7c ⛔ ${name} defines and references none of the removed identity nudges`, found.length === 0, found.join(", "));
+  }
+  // The module surface too — read from the live exports, not the text.
+  for (const gone of ["identityExitNudgeDue", "notifyKycFundedReminder", "runFundedUnverifiedReminders", "notifyKycWithdrawalBlocked", "promptIdentityAfterBlockedWithdrawal"]) {
+    ok(`7c ⛔ notification-service no longer exports \`${gone}\``, !(gone in N));
+  }
+  ok("7c control: …while it still exports the officer's review-target chore and alert",
+    "runKycReviewSlaAlerts" in N && "notifyAdminsKycReviewOverdue" in N);
+
+  // ⛔ A withdrawal refused for identity sends the player NOTHING. The screen they are on already says it
+  // (the payout identity panel); a bell row or an email on top of it is the nudge the rule removed.
+  const CALL = /\b(?:notify\w*|sendEmail\w*|prompt\w*)\s*\(/;
+  ok("7c control: the call matcher catches the removed hook", CALL.test("if (!operatorInitiated) void promptIdentityAfterBlockedWithdrawal(userId).catch(() => {});"));
+  const WS = SRC("src/lib/server/wallet-service.ts").replace(/\r\n/g, "\n");
+  const blockedAt = WS.indexOf('action: "withdraw.kyc_blocked"');
+  const branch = blockedAt > 0 ? WS.slice(blockedAt, WS.indexOf("return { ok: false, error: `Identity not verified", blockedAt) + 1) : "";
+  ok("7c control: the kyc_blocked branch is where this suite expects it, and still records the attempt",
+    blockedAt > 0 && branch.length > 200 && branch.length < 6_000 && /operatorInitiated/.test(branch), `len=${branch.length}`);
+  ok("7c ⛔ the kyc_blocked branch notifies, mails and prompts nobody", !CALL.test(branch), branch.match(CALL)?.[0] ?? "");
+
+  // ── 7d · the review target — one OFFICER alert per breach (kept: not a player message) ──
+  await mkUser("c3_sla_old"); await mkKyc("c3_sla_old", "PENDING_REVIEW", { submittedAt: new Date(Date.now() - (KYC_REVIEW_SLA_HOURS + 2) * H).toISOString() });
+  await mkUser("c3_sla_new"); await mkKyc("c3_sla_new", "PENDING_REVIEW", { submittedAt: new Date(Date.now() - 1 * H).toISOString() });
+  const overdue = async (uid: string) =>
+    (await db.notification.findByUser("c3_officer", 500)).filter((n) => n.titleEn.startsWith("KYC review overdue") && n.href === `/admin/kyc/${uid}`);
+  const s1 = await N.runKycReviewSlaAlerts();
+  ok("7d a submission past the review target alerts the officers", (await overdue("c3_sla_old")).length === 1 && s1.alerted >= 1, JSON.stringify(s1));
+  ok("7d ⛔ a submission inside the target does not", (await overdue("c3_sla_new")).length === 0);
+  const s2 = await N.runKycReviewSlaAlerts();
+  ok("7d ⛔ ONCE PER BREACH — the next tick raises nothing new", (await overdue("c3_sla_old")).length === 1 && s2.alerted === 0 && s2.alreadyAlerted >= 1, JSON.stringify(s2));
+  // A resubmission that breaches again is a NEW breach: the dedupe key is the submission AND its submittedAt.
+  await mkKyc("c3_sla_old", "PENDING_REVIEW", { submittedAt: new Date(Date.now() - (KYC_REVIEW_SLA_HOURS + 1) * H).toISOString() });
+  const s3 = await N.runKycReviewSlaAlerts();
+  ok("7d a resubmission that breaches again alerts again", s3.alerted >= 1 && (await overdue("c3_sla_old")).length === 2, JSON.stringify(s3));
+  const marks = await getAuditForTargetDurable("Kyc", "kyc_c3_sla_old", { limit: 20 });
+  ok("7d each breach is ONE COMPLIANCE fact on the submission itself",
+    marks.entries.filter((e) => e.action === "kyc.review_sla_breached" && e.category === "COMPLIANCE").length === 2);
 }
 
 console.log(`\ncert-c3 (notification truth): ${pass} passed, ${fail} failed`);

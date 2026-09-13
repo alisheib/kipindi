@@ -199,5 +199,73 @@ const readsFrom = (body: string, key: string, row: string) =>
   }
 }
 
+/* ═══ §5 · Wallet.freezeReasons and the stage feed's rejectReason (2026-09-13) ═══════════ */
+/**
+ * ⭐ WHY THESE TWO. The KYC-at-withdrawal change added two fields whose silent loss in the Prisma
+ * mapper would be a compliance defect no memory-backed suite can see — the memory store keeps the
+ * whole object, so `test:wallet-freeze` and `test:refused-funds` go green either way:
+ *   · `Wallet.freezeReasons` — dropped by `toStoredWallet`, a wallet held for an officer's freeze AND a
+ *     final identity refusal reads back as `[]`; `currentFreezeReasons` then reads the FROZEN wallet as a
+ *     legacy self-exclusion, and reopening a served exclusion would lift every hold at once.
+ *   · `StoredKycStageRow.rejectReason` — both producers of the stage feed must carry it, or the
+ *     refused-balances report and the roster cannot tell a FINAL refusal from a recoverable one.
+ */
+{
+  const schemaSrc = readFileSync(join(ROOT, "prisma/schema.prisma"), "utf8");
+  const wKeys = storedKeys("StoredWallet");
+  const wRead = region(dalSrc, "function toStoredWallet(");
+  const wCreate = delegateMethod("wallet", "create");
+  const wUpdate = delegateMethod("wallet", "update");
+  ok("5.0 · the parser sees StoredWallet's fields, freezeReasons among them",
+    wKeys.length >= 10 && wKeys.includes("freezeReasons"), `saw ${wKeys.length}: ${wKeys.join(",")}`);
+  ok("5.0b · toStoredWallet and the wallet delegate's create/update resolve",
+    wRead.length > 100 && wCreate.length > 100 && wUpdate.length > 50, `read ${wRead.length} · create ${wCreate.length} · update ${wUpdate.length}`);
+  // `currency` is the literal "TZS" by design (one currency), never a column read.
+  for (const k of wKeys.filter((x) => x !== "currency")) {
+    ok(`5.read · toStoredWallet maps "${k}" from the row`, readsFrom(wRead, k, "w"));
+  }
+  // `updatedAt` is Prisma's. Everything else is written at create, explicitly.
+  for (const k of wKeys.filter((x) => x !== "updatedAt")) {
+    ok(`5.create · wallet.create writes "${k}"`, writesKey(wCreate, k));
+  }
+  ok(`5.defect · "freezeReasons" is read from the row AND written at create from the input`,
+    readsFrom(wRead, "freezeReasons", "w") && writesKey(wCreate, "freezeReasons") && /\bw\.freezeReasons\b/.test(wCreate));
+  // ⛔ `update` must carry NO allow-list — the freeze service writes `{ status, freezeReasons }` through it,
+  // and a hand-written allow-list is exactly the 2026-09-07 affiliate no-op (§1).
+  ok("5.update · wallet.update passes the patch through (…rest into data), with no hand-written allow-list",
+    /\.\.\.rest\b/.test(wUpdate) && /data:\s*rest\b/.test(wUpdate) && !/if \(patch\.\w+ !== undefined\)/.test(wUpdate));
+  const modelAt = schemaSrc.indexOf("model Wallet {");
+  const model = modelAt < 0 ? "" : schemaSrc.slice(modelAt, schemaSrc.indexOf("\n}", modelAt));
+  ok("5.schema · the Wallet model declares the column", /^\s*freezeReasons\s+String\[\]/m.test(model), `model ${model.length} chars`);
+  // ⛔ CONTROLS — each check above can fail.
+  ok("5.c1 · CONTROL · `freezeReasons: [],` does NOT count as reading freezeReasons from the row",
+    !readsFrom("    status: w.status,\n    freezeReasons: [],", "freezeReasons", "w"));
+  ok("5.c2 · CONTROL · a create body without the key is reported missing",
+    !writesKey("          status: w.status,\n          createdAt: new Date(w.createdAt),", "freezeReasons"));
+  ok("5.c3 · CONTROL · an update carrying an allow-list is caught",
+    /if \(patch\.\w+ !== undefined\)/.test("if (patch.status !== undefined) data.status = patch.status;"));
+}
+{
+  const sKeys = storedKeys("StoredKycStageRow");
+  const prismaFacts = region(dalSrc, "listStageFacts: async (");
+  const memoryFacts = region(storeSrc, "listStageFacts: (");
+  ok("5.1 · the parser sees StoredKycStageRow's fields, rejectReason among them",
+    sKeys.length >= 8 && sKeys.includes("rejectReason"), `saw ${sKeys.length}: ${sKeys.join(",")}`);
+  ok("5.1b · both producers of the stage feed resolve", prismaFacts.length > 200 && memoryFacts.length > 200,
+    `prisma ${prismaFacts.length} · memory ${memoryFacts.length}`);
+  // `documentCount` is DERIVED on both sides (a groupBy count / `documents.length`), never a column read.
+  for (const k of sKeys.filter((x) => x !== "documentCount")) {
+    ok(`5.stage.prisma · listStageFacts (Prisma) carries "${k}" from the row`, readsFrom(prismaFacts, k, "s"));
+    ok(`5.stage.memory · listStageFacts (memory) carries "${k}" from the row`, readsFrom(memoryFacts, k, "k"));
+  }
+  // A key mapped from the row but not SELECTED reads `undefined` → null on Postgres, and only there.
+  const SELECTS_REJECT = /select:\s*\{[^}]*\brejectReason:\s*true/;
+  ok("5.stage.select · the Prisma producer SELECTS rejectReason", SELECTS_REJECT.test(prismaFacts));
+  ok("5.stage.c1 · CONTROL · `rejectReason: null,` in a producer does NOT count as carrying it",
+    !readsFrom("        approvedAt: iso(s.approvedAt),\n        rejectReason: null,", "rejectReason", "s"));
+  ok("5.stage.c2 · CONTROL · a select without rejectReason is caught",
+    !SELECTS_REJECT.test("select: {\n  id: true, userId: true, status: true,\n},"));
+}
+
 console.log(`\ndal-parity: ${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);

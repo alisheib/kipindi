@@ -8,8 +8,8 @@
  * and why, and that a written justification is required. Discretion over WHICH outcome; never over
  * whether it is recorded (`refused-funds-outcomes.ts`).
  *
- * ⛔ THE SERVER IS THE LAW. `decideRefusedFundsAction` re-reads the position under a per-player lock
- * and refuses anything this form offers that has become stale. Every figure shown here comes from
+ * ⛔ THE SERVER IS THE LAW. `decideRefusedFundsAction` re-reads the position fresh and refuses anything
+ * this form offers that has become stale — a moved balance is refused by the forfeit's compare-and-swap. Every figure shown here comes from
  * `refusedFundsPosition`, the same function the action decides on — so the preview and the decision
  * cannot tell two stories.
  */
@@ -18,6 +18,7 @@ import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/toast";
 import { Select } from "@/components/ui/select";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Button } from "@/components/ui/button";
 import { I } from "@/components/ui/glyphs";
 import { runAdminAction } from "@/lib/client/run-admin-action";
 import { focusFirstInvalid } from "@/lib/client/focus-first-invalid";
@@ -102,7 +103,7 @@ export function RefusedFundsPanel({
 
   return (
     <div ref={formRef} className="space-y-3" data-refused-funds-panel="1">
-      <dl className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-[12.5px]">
+      <dl className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-body-sm">
         <Money label="Balance held" value={formatTzs(balance)} strong />
         <Money label="In flight" value={formatTzs(hold)} />
         <Money label="Deposited (confirmed)" value={formatTzs(confirmedDeposits)} />
@@ -124,7 +125,7 @@ export function RefusedFundsPanel({
       </div>
 
       {outcome && (
-        <div className="rounded-md border border-border bg-bg-inset px-3 py-2.5 text-body-sm">
+        <div className="rounded-md border border-border bg-bg-inset px-3 py-2 text-body-sm">
           <p className="text-text-muted">{REFUSED_FUNDS_OUTCOME_COPY[outcome].does}</p>
           {chosen && !chosen.allowed ? (
             <p className="mt-1.5 flex items-start gap-1.5 text-no-300"><I.alertCircle s={13} className="mt-0.5 shrink-0" />{chosen.why}</p>
@@ -157,18 +158,18 @@ export function RefusedFundsPanel({
           rows={3}
           maxLength={REFUSED_FUNDS_JUSTIFICATION_MAX}
           placeholder="Why this outcome, for this player…"
-          className="mt-1 w-full rounded-md border border-border bg-bg-overlay px-2.5 py-2 text-[13px] text-text outline-none admin-focus transition-colors"
+          className="mt-1 w-full rounded-md border border-border bg-bg-overlay px-2 py-2 text-body-sm text-text outline-none admin-focus transition-colors"
         />
-        <span className={`font-mono text-[10px] ${justified ? "text-text-subtle" : "text-warning-fg"}`}>
+        <span className={`font-mono text-body-sm tabular-nums ${justified ? "text-text-subtle" : "text-warning-fg"}`}>
           {justification.trim().length} / {REFUSED_FUNDS_JUSTIFICATION_MIN} minimum
         </span>
       </label>
 
       <ConfirmDialog
         trigger={
-          <button type="button" disabled={!ready || pending} className="btn btn-claret btn-lg w-full disabled:opacity-40">
-            <I.shieldcheck s={14} /> Record decision
-          </button>
+          <Button variant="claret" size="lg" fullWidth disabled={!ready || pending} leading={<I.shieldcheck s={14} />}>
+            Record decision
+          </Button>
         }
         title="Record this balance decision?"
         body={<>{outcome ? <strong>{REFUSED_FUNDS_OUTCOME_COPY[outcome].label}.</strong> : null} {summary} This is written to the compliance log under its own action, the player is told, and it cannot be undone from this screen.</>}

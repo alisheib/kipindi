@@ -11,7 +11,7 @@ import { formatDate } from "@/lib/utils";
 import { displayLabel, displayInitials } from "@/lib/display-label";
 import { STAFF_ROLES, ROLE_LABEL, roleLabel, isAdmin, type Role } from "@/lib/server/roles";
 import { staffRoleInfos } from "@/lib/server/rbac";
-import { accountStatusLabel } from "@/components/admin/status-badge";
+import { accountStatusLabel, playerStatusVariant } from "@/components/admin/status-badge";
 import { AddStaffForm } from "./staff-forms";
 import { AdminBody } from "@/components/admin/admin-body";
 import { KpiGrid } from "@/components/admin/admin-body";
@@ -91,7 +91,7 @@ export default async function AdminStaffPage() {
                       </td>
                       <td className="font-mono whitespace-nowrap"><Sensitive field="phone" subjectId={u.id} value={u.phoneE164} /></td>
                       <td><Chip size="sm" variant={roleChipVariant(u.role)}>{roleLabel(u.role)}</Chip></td>
-                      <td><Chip size="sm" variant={u.status === "ACTIVE" ? "success" : "neutral"}>{accountStatusLabel(u.status)}</Chip></td>
+                      <td><Chip size="sm" variant={playerStatusVariant(u.status)}>{accountStatusLabel(u.status)}</Chip></td>
                       <td className="font-mono whitespace-nowrap">{u.lastLoginAt ? formatDate(u.lastLoginAt) : "—"}</td>
                       <td>
                         <a href={`/admin/staff/${u.id}`} className="row-link text-royal-300 hover:underline font-mono text-micro">manage →</a>

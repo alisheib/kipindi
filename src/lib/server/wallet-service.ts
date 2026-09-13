@@ -1501,8 +1501,14 @@ export async function withdraw(
   if (refundReturn && !operatorInitiated) {
     return { ok: false, error: "A refused-funds return must be initiated by an officer.", code: "INVALID" };
   }
-  const rl = await rateCheckAsync(userId, "wallet.withdraw");
-  if (!rl.allowed) return { ok: false, error: "Too many withdrawal attempts.", code: "RATE_LIMITED", retryAfterSec: rl.retryAfterSec };
+  // ⛔ A REFUSED-FUNDS RETURN IS NOT CHARGED TO THE PLAYER'S ATTEMPT BUCKET (found in review, 2026-09-13). It is an
+  // officer's decision about someone else's account, reached only after `decideRefusedFunds` has forfeited the
+  // remainder — a refused player who had hammered the withdraw button would otherwise make the officer's return
+  // fail AFTER that forfeit committed. Officer actions carry their own limits upstream.
+  if (!refundReturn) {
+    const rl = await rateCheckAsync(userId, "wallet.withdraw");
+    if (!rl.allowed) return { ok: false, error: "Too many withdrawal attempts.", code: "RATE_LIMITED", retryAfterSec: rl.retryAfterSec };
+  }
 
   // Idempotency: if this key was already used, return the existing txn result.
   // Read the fee off the STORED ROW rather than recomputing it — recomputing
@@ -2496,6 +2502,15 @@ export async function forfeitRefusedBalance(opts: {
   amountTzs: number;
   decisionRef: string;
   note: string;
+  /**
+   * The balance the officer's decision was computed on. ⛔ COMPARE-AND-SWAP, not "balance ≥ amount":
+   * `decideRefusedFunds` is deliberately NOT wrapped in a lock (a nested lock joins the outer transaction
+   * and would hold it open across the gateway call), so two officers can decide the same case at once.
+   * With only a ≥ guard both forfeits pass — 10,000 held, RETURN_DEPOSITS forfeits 4,000 twice, both
+   * returns then fail — and the player loses 8,000 that was owed back. Refusing when the balance moved
+   * since the figure was read makes the second decision a clean no-op.
+   */
+  expectBalanceTzs: number;
 }): Promise<{ ok: true; txnId: string; balanceAfter: number } | { ok: false; error: string }> {
   const amount = Math.round(opts.amountTzs);
   if (!Number.isFinite(amount) || amount <= 0) return { ok: false, error: "There is nothing to forfeit." };
@@ -2503,6 +2518,15 @@ export async function forfeitRefusedBalance(opts: {
     const wallet = await db.wallet.findByUserId(opts.userId);
     if (!wallet) return { ok: false as const, error: "Wallet not found." };
     if (wallet.status === "CLOSED") return { ok: false as const, error: "The wallet is closed." };
+    // ⛔ The refusal must still be FINAL when the money moves — an officer may have re-opened it a moment ago.
+    // Mirrors the refused-funds return check in `withdraw()` (found in review, 2026-09-13).
+    const refusal = await db.kyc.findByUserId(opts.userId);
+    if (!(refusal?.status === "REJECTED" && isFinalRefusal(refusal.rejectReason))) {
+      return { ok: false as const, error: "This verification is no longer finally refused, so nothing was forfeited." };
+    }
+    if (wallet.balance !== opts.expectBalanceTzs) {
+      return { ok: false as const, error: "The balance changed while this decision was being taken, so nothing was forfeited. Open the case again and decide on the current figure." };
+    }
     const txnId = `txn_${randomId(12)}`;
     const now = new Date().toISOString();
     let newBalance = wallet.balance;

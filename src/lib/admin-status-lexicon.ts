@@ -156,6 +156,10 @@ export const REVIEW = {
   kycPendingReview:   { en: "Pending review" },
   kycApproved:        { en: "Approved" },
   kycRejected:        { en: "Rejected" },
+  /** ⭐ 2026-09-13 — a REJECTED row on a FINAL code (`isFinalRefusal`, src/lib/kyc-refusal.ts). "Rejected" alone
+   *  read as retryable, while a final refusal freezes the wallet and the player cannot resubmit. The word is
+   *  /admin/kyc/refused's own ("Finally refused accounts"). Chosen by `kycStatusLabel(status, rejectReason)`. */
+  kycRefusedFinal:    { en: "Finally refused" },
   kycAdditionalInfo:  { en: "More information needed" },
   // DSAR / privacy request status
   dsarPending:        { en: "Pending" },
@@ -202,21 +206,27 @@ export const REVIEW = {
  * ⛔ A NEW FAMILY, NOT AN EDIT OF `REVIEW.kyc*` ABOVE. Those six are the RAW
  * `KycStatus`, and `kycStatusLabel` lower-cases them into the running sentence
  * "Identity verification is …" at admin/agents/[id]/page.tsx — which "Uploaded · not
- * sent" does not fit. These seven answer a different question: has this person given
+ * sent" does not fit. These eight answer a different question: has this person given
  * us their documents, and whose move is it now.
  *
  * ⭐ THE FIRST WORD SAYS WHOSE MOVE IT IS, because that is the only decision an officer
- * scanning 500 rows actually makes. Exactly ONE of the seven is ours. The two-part
+ * scanning 500 rows actually makes. Exactly ONE of the eight is ours. The two-part
  * `X · Y` form is this family's existing idiom — `REVIEW.agentInvited` ("Invited ·
  * awaiting acceptance"), `REVIEW.dsarPartial` ("Partly done · docs held").
+ *
+ * ⭐ THE EIGHTH (2026-09-13) IS "Funded · nothing sent" — the money dimension of
+ * src/lib/kyc-stage.ts. From that date identity is asked before a withdrawal and before
+ * nothing else, so a player can hold real money with no file at all, and that person was
+ * reading "Nothing yet" beside the dormant majority. ⛔ "Funded", never "Unverified": the
+ * first reads a balance, the second reads like an officer's finding about a person.
  *
  * ⛔ "SUBMITTED" APPEARS ON EXACTLY ONE ENTRY, and it is the one where `submittedAt` is
  * non-null by construction (kyc-service.ts:533 writes the status and the timestamp
  * together). `uploaded` is a player who attached every required photo and never pressed
  * the button; calling that "Submitted" would be the same lie in a new colour — and
- * NOTHING in the suite would catch it, because `test:kyc-copy-truth` matches a
- * deny∧money∧identity phrase pattern over dict leaves and legal paragraphs and never
- * compares a word to a state, while `kyc-status-honesty.test.mts` is hardcoded to
+ * NOTHING in the suite would catch it, because `test:kyc-copy-truth` matches three phrase
+ * rules (deny∧money∧identity, identity bound to the entrance, a Gaming Board attribution)
+ * over dict leaves and legal paragraphs and never compares a word to a state, while `kyc-status-honesty.test.mts` is hardcoded to
  * src/app/profile/kyc/page.tsx. `test:kyc-stage` §2a-§2d is written to close that hole.
  *
  * ⛔ NO ENTRY CONTAINS "verified". `idVerifiedAt` means FORMAT ACCEPTED AND UNIQUE,
@@ -224,27 +234,64 @@ export const REVIEW = {
  * `kyc-status-honesty.test.mts` exists because that exact word was once bound to that
  * exact field, in all three languages. `approved` reuses `REVIEW.kycApproved`, which
  * names what a human officer actually did.
- * ⛔ NO ENTRY CONTAINS "Pending". The Account column on the SAME ROW already reads
- * "Pending KYC" (`ACCOUNT.pendingKyc`) and both render upper-cased — "PENDING KYC"
- * beside "PENDING REVIEW" two cells apart is the complaint relocated, not answered.
+ * ⛔ NO ENTRY CONTAINS "Pending". Until 2026-09-13 the Account column on the SAME ROW
+ * read "Pending KYC" and both render upper-cased — "PENDING KYC" beside "PENDING REVIEW"
+ * two cells apart was the complaint relocated, not answered. From 2026-09-13 that column
+ * presents a `PENDING_KYC` straggler as Active (status-badge.tsx `presentedAccountStatus`),
+ * and the ban STAYS for a stronger reason: under the new ladder nothing is pending on an
+ * unverified account — depositing and playing are open — so "Pending" would now be false
+ * on its own terms, not merely confusing.
  *
  * EN-only, like every family on this console. ⛔ No `sw`: the provenance rule at the top
- * of this file forbids inventing Swahili, and four of these seven have no shipped source
- * to lift from. Glossing three of seven because a source happens to exist for those
+ * of this file forbids inventing Swahili, and five of these eight have no shipped source
+ * to lift from. Glossing three of eight because a source happens to exist for those
  * three IS the inconsistency.
- * ⚠️ All seven read correctly in CAPS — the Chip atom upper-cases via CSS.
+ * ⚠️ All eight read correctly in CAPS — the Chip atom upper-cases via CSS.
+ * ⚠️ NON-BREAKING SPACES AROUND EACH MIDDLE DOT (2026-09-13). A narrow roster column wrapped
+ * "Rejected · after upload" AT the dot, leaving it orphaned at the start or end of a line. The
+ * two-part words still wrapped between the words after the dot, never around the dot itself.
+ * ⛔ AND, FROM A LATER RE-INSPECTION THE SAME DAY, BETWEEN EVERY WORD. At 1280 the roster chip still
+ * split inside its capsule ("REJECTED · AFTER" / "UPLOAD"). The Chip atom sets its white-space to
+ * normal INLINE (its G-7 fix), so a nowrap class on the table cell cannot reach the label; the phrase
+ * itself has to be unbreakable. Every entry below is one unbreakable phrase, and the roster table
+ * scrolls sideways (ScrollX) rather than splitting a status in two.
  */
 export const KYC_STAGE = {
-  nothingYet:          { en: "Nothing yet" },
-  uploaded:            { en: "Uploaded · not sent" },
-  withUs:              { en: "Submitted · with us" },
-  moreNeeded:          { en: "More needed · player" },
-  rejectedAfterUpload: { en: "Rejected · after upload" },
-  rejectedNoDocs:      { en: "Rejected · nothing sent" },
+  nothingYet:          { en: "Nothing\u00a0yet" },
+  /** ⭐ 2026-09-13 — nothing sent AND holding money (`walletHeldTzs > 0`, never approved).
+   *  ⛔ Only ever rendered to a viewer with money rights: "holding money" is a standing-
+   *  balance fact, and SUPPORT reads `money.figures` masked. To that viewer the same person
+   *  reads "Nothing yet", which claims only what it always claimed — nothing sent. */
+  fundedNothingYet:    { en: "Funded\u00a0·\u00a0nothing\u00a0sent" },
+  uploaded:            { en: "Uploaded\u00a0·\u00a0not\u00a0sent" },
+  withUs:              { en: "Submitted\u00a0·\u00a0with\u00a0us" },
+  moreNeeded:          { en: "More\u00a0needed\u00a0·\u00a0player" },
+  rejectedAfterUpload: { en: "Rejected\u00a0·\u00a0after\u00a0upload" },
+  rejectedNoDocs:      { en: "Rejected\u00a0·\u00a0nothing\u00a0sent" },
   /** A failed READ is its own labelled state, never a fabricated fact — the same line
    *  the roster already draws for a failed wallet read. The in-file precedent for
    *  wording an absence is `UPDOWN.readingNone`. */
-  unreadable:          { en: "Not available" },
+  unreadable:          { en: "Not\u00a0available" },
+} satisfies Record<string, AdminLabel>;
+
+/**
+ * The roster's MONEY axis — `?funded=` (src/lib/kyc-stage.ts `FUNDED_AXIS`), 2026-09-13.
+ *
+ * ⭐ A SECOND AXIS, NOT MORE STAGE WORDS. "Holding money" is independent of where the identity
+ * file stands, and the combination is the question an officer now asks: `?kyc=with_us&funded=held`
+ * is "submitted, and money is waiting on our review", which no single stage word can say.
+ *
+ * ⛔ ONLY RENDERED TO A VIEWER WITH MONEY RIGHTS (`canView(role, "accounting")`). Whether an
+ * account holds money is a standing-balance fact, and SUPPORT reads `money.figures` masked —
+ * movements yes, totals no (roles.ts DEFAULT_READ_GRANTS).
+ * ⛔ EN-only, no `sw` — the provenance rule at the top of this file; no shipped source exists.
+ */
+export const FUNDED = {
+  held:       { en: "Holding money" },
+  none:       { en: "No money held" },
+  /** The wallet read FAILED. ⛔ Never "No money held": that is a claim about the account, and
+   *  a broken read is a fact about our database. */
+  unreadable: { en: "Not available" },
 } satisfies Record<string, AdminLabel>;
 
 /**
@@ -284,13 +331,21 @@ export const OBJECTION = {
  *
  * SW provenance: "Hai" is the Active KPI on this very page (and /admin/markets),
  * "Kujitenga" is the dict's `selfExclusion`, "Imefungwa" its `accountClosed`,
- * "Pumzika kidogo" its `coolingOff`, "Imesitishwa" its `errSuspended`. PENDING_KYC
- * has no shipped Swahili and is therefore EN-only rather than translated here —
- * fabricating one would break the rule at the top of this file.
+ * "Pumzika kidogo" its `coolingOff`, "Imesitishwa" its `errSuspended`.
+ *
+ * ⛔ `pendingKyc` ("Pending KYC") WAS HERE AND IS GONE — 2026-09-13, deliberately, not tidied.
+ * `User.status = "PENDING_KYC"` was written at registration and GATED NOTHING (sign-in refuses only
+ * suspended, closed and self-excluded accounts). Once identity moved to withdrawal only, the word
+ * labelled every ordinary, happily-playing customer as pending something, and the roster told an
+ * officer the whole population "needs review". New accounts are created ACTIVE and the migration
+ * `20260913120000_kyc_at_withdrawal` normalises the existing rows. A straggler that reaches a screen
+ * anyway (a row written by a container still on the old code mid-deploy) is PRESENTED as `active`
+ * — see `presentedAccountStatus` in src/components/admin/status-badge.tsx, which keeps the lookup
+ * total over the enum. ⛔ Do not restore the word: it would be a false statement about the account,
+ * and the enum member stays only because removing one is a migration.
  */
 export const ACCOUNT = {
   active:       { en: "Active",        sw: "Hai" },
-  pendingKyc:   { en: "Pending KYC" },
   suspended:    { en: "Suspended",     sw: "Imesitishwa" },
   selfExcluded: { en: "Self-excluded", sw: "Kujitenga" },
   cooledOff:    { en: "Cooled off",    sw: "Pumzika kidogo" },

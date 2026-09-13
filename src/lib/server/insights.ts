@@ -18,6 +18,7 @@
  * `platform-stats.ts` uses. One scan serves the whole dashboard.
  */
 import { db } from "./store";
+import { approvedEver } from "../kyc-approval";
 import { marketStore } from "./market-dal";
 import type { MarketCategory } from "./market-service";
 
@@ -124,16 +125,25 @@ export async function getInsights(force = false): Promise<Insights> {
     money.set(t.userId, e);
   }
 
-  // ── KYC (one scan, not the N+1 the existing kycFunnel does) ───────────────
-  const kycRows = await safe(() => db.kyc.list(), [] as Awaited<ReturnType<typeof db.kyc.list>>);
+  // ── Identity (one scan, not the N+1 the existing kycFunnel does) ──────────
+  // ⛔ `listStageFacts`, NOT `db.kyc.list()` (2026-09-13). `list()` joins every document image through a
+  // population read, and it keeps superseded rows. The stage feed is the newest submission per user, scalars
+  // only — the same row the withdrawal gate reads.
+  // ⭐ `approvedEver`, NOT `status === "APPROVED"`. From 2026-09-13 identity is asked before a withdrawal and
+  // nothing else, so the one identity fact with money meaning is the withdrawal gate's own predicate: a
+  // once-approved player re-verifying can still withdraw, and counting them out would call them unverified.
+  const kycRows = await safe(() => db.kyc.listStageFacts(), [] as Awaited<ReturnType<typeof db.kyc.listStageFacts>>);
   const kycApproved = new Set(
-    kycRows.filter((k) => k.status === "APPROVED" && playerIds.has(k.userId)).map((k) => k.userId),
+    kycRows.filter((k) => approvedEver(k) && playerIds.has(k.userId)).map((k) => k.userId),
   );
 
   // ── Funnel — 4 REAL stages. "Visit" is deliberately absent (not instrumented).
+  // ⚠️ THE KEY ORDER IS NOT THE PLAYER'S LADDER ANY MORE (2026-09-13): a player now deposits and bets BEFORE
+  // verifying, so "kyc" normally trails the two stages after it. The four are independent counts and the page
+  // says so (`stagesAreNested` in funnel-share.ts); `test:insights` pins this key order.
   const funnel: FunnelStep[] = [
     { key: "register", label: "Registered", sw: "Wamejisajili", value: players.length },
-    { key: "kyc", label: "KYC approved", sw: "KYC imeidhinishwa", value: kycApproved.size },
+    { key: "kyc", label: "Identity verified", sw: "Utambulisho umethibitishwa", value: kycApproved.size },
     { key: "deposit", label: "Deposited", sw: "Wameweka fedha", value: firstDeposit.size },
     { key: "bet", label: "Placed a bet", sw: "Wameweka dau", value: firstBet.size },
   ];

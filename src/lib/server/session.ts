@@ -32,6 +32,13 @@ export type SessionData = {
   sessionId: string;
   phoneE164: string;
   role: "PLAYER" | "AGENT" | "MODERATOR" | "ADMIN" | "COMPLIANCE" | "SUPPORT" | "FINANCE" | "GROWTH" | "AUDITOR";
+  /**
+   * ⛔ A PHOTOGRAPH, NOT A FACT — NEVER DECIDE ANYTHING ON IT. Stamped into the signed cookie when
+   * the session is created (and audited on `session.created` below), so it can be days old: a player
+   * an officer approved a minute ago is not reflected here. The withdrawal gate — since 2026-09-13
+   * the only identity question on any money path — re-reads the DATABASE (`kyc-gate.ts`), and so
+   * must anything else that needs a player's identity standing.
+   */
   kycStatus: "NOT_STARTED" | "IN_PROGRESS" | "PENDING_REVIEW" | "APPROVED" | "REJECTED" | "ADDITIONAL_INFO_REQUIRED";
   iat: number;       // issued at (ms epoch)
   exp: number;       // absolute expiry (ms epoch) — hard cap, not extended on activity

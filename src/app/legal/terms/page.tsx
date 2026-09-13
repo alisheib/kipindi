@@ -35,8 +35,9 @@ const TITLE: Record<Locale, string> = {
  * that could not be defended.
  * ⛔ The 2026-09-07 entry's reasoning ("nothing the platform does changed") is NOT available here.
  * ⭐ §3 and §3a are written as SEPARATE paragraphs, each stating what IS required and none naming
- * depositing or playing beside identity: `test:kyc-copy-truth` §2 reads the legal pages paragraph by
- * paragraph, so a true claim split across two sentences of one paragraph would still read as one claim.
+ * depositing or playing beside identity: `test:kyc-copy-truth` reads every legal file — its deny and
+ * Gaming-Board rules take a paragraph as the unit, and its entrance rule a sentence with its neighbours —
+ * so a true claim is kept in its own paragraph rather than one sentence away from another.
  */
 const META: Record<Locale, string> = {
   en: "Version 2026-09-13 · Effective on account registration.",
@@ -91,7 +92,7 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
 
       <LegalSection n="3" title="Identity verification (KYC)">
         <p>
-          Identity verification is <strong>required</strong> before your first withdrawal. You
+          Identity verification is <strong>required</strong>{" "}before your first withdrawal. You
           verify once, with any one of four documents — a National ID (NIDA) number, a passport, a
           driving licence or a voter&apos;s card — with photographic evidence reviewed by our
           compliance team. One document may only be used on one account.
@@ -131,13 +132,13 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
 
       <LegalSection n="4" title="How price-competition markets work">
         <p>
-          50pick operates a <strong className="text-text">whole-pool Price Competition</strong> market model.
+          50pick operates a <strong className="text-text">whole-pool Price Competition</strong>{" "}market model.
           All stakes — YES and NO — are pooled. We deduct our commission, and the remaining net pool is
           distributed to the winning side, pro-rata to each correct stake&apos;s share of the winning
           side&apos;s pool.
         </p>
         <p>
-          <strong className="text-text">Our commission is 13% of the losing side.</strong> The winning side&apos;s
+          <strong className="text-text">Our commission is 13% of the losing side.</strong>{" "}The winning side&apos;s
           stakes are returned in full and are never touched; our commission comes only out of the money staked on
           the outcome that did not happen. It follows that{" "}
           <strong className="text-text">a winning bet is never paid less than it staked</strong>.
@@ -148,7 +149,7 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
         </p>
         <p>
           The rates that apply to a market are <strong className="text-text">fixed when that market is
-          created</strong> and cannot be changed afterwards. A later change to our rates affects future markets
+          created</strong>{" "}and cannot be changed afterwards. A later change to our rates affects future markets
           only; it can never re-price a bet you have already placed. The exact commission taken from a settled
           pool is shown, in shillings, on that market&apos;s resolution panel.
         </p>
@@ -171,9 +172,9 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
 
       <LegalSection n="5" title="Settlement and payout">
         <p>
-          Payouts are credited to your wallet immediately on market settlement. Withdrawals to mobile money or
-          bank complete within 60 seconds for amounts under TZS 1,000,000; larger amounts may be held for AML
-          review for up to 24 hours.
+          Payouts are credited to your wallet immediately on market settlement. Withdrawals are paid to the
+          mobile-money number registered on your account. Withdrawals of TZS 1,000,000 or more are held for
+          review by two compliance officers before release.
         </p>
         <p>
           <strong className="text-text">A withdrawal is charged a 1.5% fee, and nothing else. No tax is withheld
@@ -218,7 +219,7 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
 
       <LegalSection n="10" title="Changes">
         <p>
-          We will notify you in writing (in-app + SMS) at least 14 days before any material change to these
+          We will notify you in writing in the app at least 14 days before any material change to these
           Terms. Continued use after the change constitutes acceptance.
         </p>
       </LegalSection>
@@ -328,9 +329,9 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
 
       <LegalSection n="5" title="Ufungaji na malipo">
         <p>
-          Malipo huingizwa kwenye pochi yako mara moja soko linapofungwa. Utoaji wa fedha kwenda kwenye pesa za simu au
-          benki hukamilika ndani ya sekunde 60 kwa kiasi chini ya TZS 1,000,000; kiasi kikubwa zaidi kinaweza kushikiliwa
-          kwa ukaguzi wa AML kwa hadi saa 24.
+          Malipo huingizwa kwenye pochi yako mara moja soko linapofungwa. Utoaji wa fedha hulipwa kwenye nambari ya
+          pesa ya simu iliyosajiliwa kwenye akaunti yako. Utoaji wa TZS 1,000,000 au zaidi hushikiliwa kwa ukaguzi wa
+          maafisa wawili wa uzingatiaji kabla ya kutolewa.
         </p>
         <p>
           <strong className="text-text">Utoaji wa fedha hutozwa ada ya 1.5%, na si kitu kingine. Hakuna kodi inayokatwa
@@ -374,7 +375,7 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
 
       <LegalSection n="10" title="Mabadiliko">
         <p>
-          Tutakuarifu kwa maandishi (ndani ya programu + SMS) angalau siku 14 kabla ya mabadiliko yoyote muhimu ya Masharti
+          Tutakuarifu kwa maandishi ndani ya programu angalau siku 14 kabla ya mabadiliko yoyote muhimu ya Masharti
           haya. Kuendelea kutumia huduma baada ya mabadiliko ni kukubali.
         </p>
       </LegalSection>
@@ -384,8 +385,7 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
     <>
       <LegalSection n="1" title="运营方与牌照">
         <p>
-          50pick 服务由在坦桑尼亚联合共和国注册的 50pick Ltd 运营（TIN 待定），并持有坦桑尼亚博彩委员会
-          （Gaming Board of Tanzania）颁发的牌照，牌照号 {LICENCE_NUMBER()}。玩家须年满 18 周岁，且在下注时身处坦桑尼亚境内。
+          50pick 服务由在坦桑尼亚联合共和国注册的 50pick Ltd 运营（TIN 待定），并持有坦桑尼亚博彩委员会（Gaming Board of Tanzania）颁发的牌照，牌照号 {LICENCE_NUMBER()}。玩家须年满 18 周岁，且在下注时身处坦桑尼亚境内。
         </p>
       </LegalSection>
 
@@ -401,8 +401,7 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
       <LegalSection n="3" title="身份验证（KYC）">
         <p>
           首次提现之前，<strong>必须</strong>完成身份验证。您只需验证一次，可使用四种证件之一——
-          国民身份证（NIDA）号码、护照、驾驶证或选民证——并提交由我们的合规团队审核的照片证据。
-          一份证件仅可用于一个账户。
+          国民身份证（NIDA）号码、护照、驾驶证或选民证——并提交由我们的合规团队审核的照片证据。一份证件仅可用于一个账户。
         </p>
         <p>
           已完成一次验证的账户，即使我们此后要求重新验证，仍保留提取其账户内资金的权利。
@@ -415,16 +414,14 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
 
       <LegalSection n="3a" title="如果我们无法验证您的身份">
         <p>
-          如果我们无法验证您的身份，我们不会从您的账户中汇出任何资金。我们会告知您原因。若原因属于
-          您可以纠正的情况——照片不清晰、证件已过期或信息不符——您可以重新提交。
+          如果我们无法验证您的身份，我们不会从您的账户中汇出任何资金。我们会告知您原因。若原因属于您可以纠正的情况——照片不清晰、证件已过期或信息不符——您可以重新提交。
         </p>
         <p>
           若我们永久拒绝某一账户——因为持有人未满 18 周岁、存在制裁疑虑，或该身份已被其他账户使用——
           自那一刻起，该账户不得再转入或转出任何资金，且该证件仍与其绑定。
         </p>
         <p>
-          随后我们会逐案决定余额的处理方式，并以书面形式告知您决定及理由。决定可能是退还您转入的资金、
-          退还全部余额、在您申诉期间暂扣余额，或不予退还。
+          随后我们会逐案决定余额的处理方式，并以书面形式告知您决定及理由。决定可能是退还您转入的资金、退还全部余额、在您申诉期间暂扣余额，或不予退还。
         </p>
         <p>
           我们退还的任何资金，只会汇入您账户登记的移动支付号码。
@@ -433,9 +430,7 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
 
       <LegalSection n="4" title="价格竞争市场的运作方式">
         <p>
-          50pick 采用 <strong className="text-text">全资金池价格竞争（whole-pool Price Competition）</strong> 市场模型。
-          所有注金——YES 与 NO——汇入同一资金池。我们扣除佣金后，剩余的净资金池按各正确注金在获胜方资金池中所占份额，
-          按比例分配给获胜方。
+          50pick 采用 <strong className="text-text">全资金池价格竞争（whole-pool Price Competition）</strong> 市场模型。所有注金——YES 与 NO——汇入同一资金池。我们扣除佣金后，剩余的净资金池按各正确注金在获胜方资金池中所占份额，按比例分配给获胜方。
         </p>
         <p>
           <strong className="text-text">我们的佣金为失败一方的 13%。</strong>
@@ -446,26 +441,21 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
           若所有投注都在同一方，则不存在失败一方，我们不收取任何费用，所有注金全额退还。市场被作废时同理。
         </p>
         <p>
-          适用于某个市场的费率<strong className="text-text">在该市场创建时即已固定</strong>，此后不可更改。我们日后调整费率
-          仅影响未来的市场；绝不会重新计价您已下的注。已结算奖池实际收取的佣金，会以先令金额显示在该市场的结算面板上。
+          适用于某个市场的费率<strong className="text-text">在该市场创建时即已固定</strong>，此后不可更改。我们日后调整费率仅影响未来的市场；绝不会重新计价您已下的注。已结算奖池实际收取的佣金，会以先令金额显示在该市场的结算面板上。
         </p>
         <p>
-          转盘上显示的概率是由当前资金池构成所<em>隐含</em>的，并随每一笔新下注而更新——它们并非保证的赔率。在投注开放期间，
-          由于资金池仍在变动，您的最终赔付尚未确定。
+          转盘上显示的概率是由当前资金池构成所<em>隐含</em>的，并随每一笔新下注而更新——它们并非保证的赔率。在投注开放期间，由于资金池仍在变动，您的最终赔付尚未确定。
           <strong className="text-text">投注一经关闭，资金池即告最终确定，我们会通知您：若您所选一方获胜，您将收到的确切金额。</strong>
         </p>
         <p>
           下注后有一小段兑现（cash-out）窗口：前 5 分钟内您可全额取回本金且不收取任何费用——
-          <strong>前提是您下注时，该市场仍剩余至少 5 分钟的投注时间</strong>。在 Up &amp; Down 的 3 分钟与 5 分钟场次中，
-          该条件永远无法满足，因此<strong>这些场次完全不提供兑现</strong>。以奖金资助的持仓在任何时候均不可卖出。
-          此后持仓将被锁定并保留至结算 — 无法卖出。若无人投注对方，则没有奖金可供支付，所有注金将全额退还，不收取任何费用。
+          <strong>前提是您下注时，该市场仍剩余至少 5 分钟的投注时间</strong>。在 Up &amp; Down 的 3 分钟与 5 分钟场次中，该条件永远无法满足，因此<strong>这些场次完全不提供兑现</strong>。以奖金资助的持仓在任何时候均不可卖出。此后持仓将被锁定并保留至结算 — 无法卖出。若无人投注对方，则没有奖金可供支付，所有注金将全额退还，不收取任何费用。
         </p>
       </LegalSection>
 
       <LegalSection n="5" title="结算与派彩">
         <p>
-          市场结算后，派彩立即记入您的钱包。提现至移动货币或银行账户，金额低于 TZS 1,000,000 的将在 60 秒内完成；金额较大者
-          可能因 AML 审查而被暂扣最长 24 小时。
+          市场结算后，派彩立即记入您的钱包。提现款项将支付至您账户注册的移动支付号码。TZS 1,000,000 及以上的提现须经两名合规专员审核后方可发放。
         </p>
         <p>
           <strong className="text-text">提现收取 1.5% 手续费，除此之外别无其他。我们不会从您的资金中预扣任何税款。</strong>
@@ -484,8 +474,7 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
         <p>
           您可以在
           <a href="/profile/responsible-gambling" className="text-gold-300 hover:text-gold-200 underline-offset-2 hover:underline ml-1">责任博彩</a>
-          中设置存款限额、暂停游戏或自我排除。
-          另请参阅专门的<a href="/legal/responsible-gambling" className="text-gold-300 hover:text-gold-200 underline-offset-2 hover:underline">责任博彩政策</a>。
+          中设置存款限额、暂停游戏或自我排除。另请参阅专门的<a href="/legal/responsible-gambling" className="text-gold-300 hover:text-gold-200 underline-offset-2 hover:underline">责任博彩政策</a>。
         </p>
       </LegalSection>
 
@@ -497,14 +486,13 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
 
       <LegalSection n="9" title="责任">
         <p>
-          在法律允许的最大范围内，我方责任以发生任何争议事件时您钱包中持有的余额为限。对于因操纵比赛或第三方欺诈造成的损失，
-          我方不承担责任，此类情形按 Match Integrity Annex (B) 处理。
+          在法律允许的最大范围内，我方责任以发生任何争议事件时您钱包中持有的余额为限。对于因操纵比赛或第三方欺诈造成的损失，我方不承担责任，此类情形按 Match Integrity Annex (B) 处理。
         </p>
       </LegalSection>
 
       <LegalSection n="10" title="变更">
         <p>
-          在对本条款作出任何重大变更前，我们将至少提前 14 天以书面形式（应用内 + 短信）通知您。变更后继续使用即视为接受。
+          在对本条款作出任何重大变更前，我们将至少提前 14 天在应用内以书面形式通知您。变更后继续使用即视为接受。
         </p>
       </LegalSection>
     </>

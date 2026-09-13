@@ -96,16 +96,16 @@ This file is the brief as handed to the implementing session, kept as the repo's
 |---|---|---|
 | 1 | Measure production | ☑ |
 | 2 | Compliance entry + nickname entry + Board letters | ☑ |
-| 3 | The gate (§1) and its four call sites (§2) | ☐ |
-| 4 | Bonus hold removed (§3) | ☐ |
-| 5 | Audit record + instruction strings (§4) | ☐ |
-| 6 | `User.status` semantics | ☐ |
-| 7 | Wallet freeze reasons + officer freeze/unfreeze | ☐ |
-| 8 | S1 refused-funds decision + report + S16 + S2 | ☐ |
-| 9 | Copy — dictionary en/sw/zh + legal (Terms §3/§3a, AML) + versions | ☐ |
-| 10 | Guards — rewritten, inverted, extended, each RED-proven | ☐ |
-| 11 | Player surfaces (§10, §11c, §12) | ☐ |
-| 12 | Admin surfaces (§7, §11a) | ☐ |
+| 3 | The gate (§1) and its four call sites (§2) | ☑ `kyc-gate.ts` (`assertIdentityForPayout` + `readIdentityStanding`), `kyc-approval.ts` |
+| 4 | Bonus hold removed (§3) | ☑ 0 grants on production, so deleted outright — no drain |
+| 5 | Audit record + instruction strings (§4) | ☑ fields on `deposit.initiated` / `market.position.opened`; both `instruction:` strings cite 2026-09-13 |
+| 6 | `User.status` semantics | ☑ created `ACTIVE`; migration normalises the 10 `PENDING_KYC` rows |
+| 7 | Wallet freeze reasons + officer freeze/unfreeze | ☑ `Wallet.freezeReasons`, `wallet-freeze.ts`, `/admin/players/[id]` controls |
+| 8 | S1 refused-funds decision + report + S16 + S2 | ☑ `refused-funds.ts`, `/admin/kyc/refused`, final-code predicate on both indexes, restart refused, officer reopen. ⚠️ The workstation rail could not choose a final code at all before this — added. 🔴 **Three money defects in my own first draft, found on re-read and fixed before any commit reached production:** ① `decideRefusedFunds` was wrapped in `withLock`, and a nested lock JOINS the outer transaction — the forfeit and the payout hold would have committed only at return, with the gateway call inside one open transaction, so a late throw could roll back the record of a payout that had left → the outer lock is removed; ② without it, two officers deciding one case at once could forfeit it TWICE (the forfeit guard was `balance ≥ amount`) → `forfeitRefusedBalance` is now a compare-and-swap on the balance the decision was computed on; ③ a throw from `withdraw()` after the forfeit committed skipped the decision's audit row → caught and recorded as `payoutError` |
+| 9 | Copy — dictionary en/sw/zh + legal (Terms §3/§3a, AML) + versions | ☑ Terms v2026-09-13 (§2, §3, new §3a), AML v2026-09-13 (§1, §2 — three false claims removed — §4), rules v2026-09-13, privacy §3 (Gaming Act attribution removed), dictionary swept in three locales |
+| 10 | Guards — rewritten, inverted, extended, each RED-proven | ☑ `test:kyc-gate` 96/0 (`red:kyc-gate` 10/10 on a tree copy; re-run after commit) · `test:kyc-copy-truth` 318/0, three rules over the dictionary and ALL 14 legal files — ③ of the brief is resolved, the old walker read four of eight — (`red:kyc-copy-truth` 4/4) · NEW `test:kyc-at-withdrawal` 86/0 (the ladder end to end + the quiet-rule population guard) · NEW `test:refused-funds` 63/0 (`red:refused-funds` 5/5) · NEW `test:refused-funds-race` 16/0 · NEW `test:wallet-freeze` 39/0 · `test:kyc` family 53/42/78/44 after a real bug it found (`recordFinalRefusal` threw on the in-memory store) · `deposit-gate-return` 74/0 · `kyc-approved-copy` 72/0 (rewritten) · `kyc-cert-d1` 104/0 · `dal-parity` 285/0 · `control-gates` 282/0 · `cert-c1` 1145/0 · `cert-c3` 1447/0 · `test:red-anchors` back to the production baseline (the 11 failures it already had) |
+| 11 | Player surfaces (§10, §11c, §12) — AND the quiet rule | ☑ Identity is asked in exactly two places: the withdraw panel and ONE dismissible first-deposit notice (cookie, server-rendered). The app-wide bar, the /profile amber box and every receipt/reminder/blocked-withdrawal nudge are DELETED (owner instruction, later 2026-09-13). The install popup is WITHDRAWN (`feature-state.ts`). Checked by eye on local screenshots: two defects found and fixed (Chinese legal text broken by JSX line joins; "Your move" on a final refusal) |
+| 12 | Admin surfaces (§7, §11a) | ☑ `/admin/kyc` (with us · with the player · funded, nothing submitted), `/admin/approvals` Funded tile + money-weighted order, `/admin/kyc/[id]` Money at stake, `/admin/players` 8th stage + `?funded=`, `/admin/finance` Held for unverified, officer freeze/unfreeze, `/admin/kyc/refused` |
 | 13 | Verify — suites incl. non-predeploy, browser drive | ☐ |
 | 14 | Migration applied, pushed, verified on production | ☐ |
 | 15 | `LIVE-QA-CAMPAIGN.md` §6b handoff | ☐ |

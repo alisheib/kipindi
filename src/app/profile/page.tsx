@@ -17,6 +17,7 @@ import { getServerT } from "@/lib/i18n-server";
 import { formatTzs } from "@/lib/utils";
 import { PageContainer } from "@/components/layout/page-container";
 import { inviteIsLiveFor } from "@/lib/feature-state";
+import { isFinalRefusal } from "@/lib/kyc-refusal";
 
 export async function generateMetadata() {
   const { t } = await getServerT();
@@ -32,8 +33,15 @@ function maskPhone(phoneE164: string): string {
   return `${phoneE164.slice(0, 4)}*****${phoneE164.slice(-2)}`;
 }
 
+/**
+ * Each language in its OWN name — the same endonyms the header's language menu lists, never translated.
+ * ⚠️ Not imported from `language-menu.tsx`: that file is "use client", and a value this server page
+ * reads from it would be a client reference (the 2026-09-13 site-wide outage, `kyc-gate-state.ts`).
+ */
+const LANGUAGE_NAME = { en: "English", sw: "Kiswahili", zh: "中文" } as const;
+
 export default async function ProfilePage() {
-  const { t } = await getServerT();
+  const { t, locale } = await getServerT();
   const session = await currentSession();
   if (!session) redirect("/auth/login?next=/profile");
 
@@ -65,15 +73,39 @@ export default async function ProfilePage() {
   // REJECTED declaration (they may not know they need to act).
   const sofNeedsBanner = sof && (sof.reviewStatus === "PENDING" || sof.reviewStatus === "REJECTED");
 
+  /**
+   * THE KYC STATUS PILL — from 2026-09-13 the ONLY identity statement on this page.
+   *
+   * ⛔ THE AMBER "VERIFY YOUR IDENTITY" BANNER THAT STOOD UNDER THE HERO IS DELETED, with its three-step
+   * teaser (Ali's quiet rule, 2026-09-13: identity is put in front of a player on the withdraw screen
+   * and in one dismissible notice after a first deposit, and is otherwise only STATED, in the places
+   * they go to look). This page is one of those places, so the standing stays — as a pill that states
+   * it and, until the account is verified, links to /profile/kyc for the detail.
+   *
+   * ⛔ `IN_PROGRESS` IS NOT "IN REVIEW" (fixed 2026-09-13). It was, and the banner beside it said
+   * "continue verification", which hid the contradiction. With the banner gone the pill alone would
+   * tell somebody whose photos were never sent that our team has them. Nothing is with us until
+   * `PENDING_REVIEW`; before that the pill reads "Verify ID".
+   * ⚠️ Not started is an ordinary condition, not a warning — neutral, like the withdraw panel's own
+   * not-started tone. Amber is kept for "more information needed", which really is their move.
+   */
   const kycLevel = kyc?.status ?? "NOT_STARTED";
   const kycPill =
     kycLevel === "APPROVED"
-      ? { tone: "yes", label: t.profile.idVerified, glyph: I.shieldcheck }
-      : kycLevel === "PENDING_REVIEW" || kycLevel === "IN_PROGRESS"
+      // ⛔ App-state tones (success/danger), never the betting YES/NO inks — §B2a (review, 2026-09-13).
+      ? { tone: "success", label: t.profile.idVerified, glyph: I.shieldcheck }
+      : kycLevel === "PENDING_REVIEW"
         ? { tone: "info", label: t.profile.inReview, glyph: I.clock }
-        : kycLevel === "REJECTED"
-          ? { tone: "no", label: t.profile.rejected, glyph: I.alertCircle }
-          : { tone: "warning", label: t.common.verifyId, glyph: I.shieldQuestion };
+        : kycLevel === "ADDITIONAL_INFO_REQUIRED"
+          ? { tone: "warning", label: t.profile.kycMoreInfo, glyph: I.upload }
+          : kycLevel === "REJECTED"
+            ? { tone: "danger", label: t.profile.rejected, glyph: I.alertCircle }
+            : { tone: "neutral", label: t.common.verifyId, glyph: I.shieldQuestion };
+  const kycPillNode = (
+    <Pill tone={kycPill.tone as "success" | "danger" | "info" | "warning" | "neutral"}>
+      <kycPill.glyph s={10} className="inline -mt-px" /> {kycPill.label}
+    </Pill>
+  );
 
   return (
     <PageContainer tier="reading" className="space-y-6">
@@ -145,13 +177,18 @@ export default async function ProfilePage() {
               ) : (
                 <Pill tone="neutral">{t.profile.playerRole}</Pill>
               )}
-              <Pill tone={kycPill.tone as "yes" | "no" | "info" | "warning"}>
-                <kycPill.glyph s={10} className="inline -mt-px" /> {kycPill.label}
-              </Pill>
-              <Pill tone="neutral">{user.locale === "SW" ? "Kiswahili" : "English"}</Pill>
+              {/* Until verified the pill is also the quiet way in — a plain link, the shape the
+                  unconfirmed-email pill beside it already has. Verified, it only states. */}
+              {kycLevel === "APPROVED"
+                ? kycPillNode
+                : <Link href="/profile/kyc" data-testid="profile-kyc-pill" className="no-underline">{kycPillNode}</Link>}
+              {/* 2026-09-13 — the language this page is IN (the kp-locale cookie, what the header menu shows), in its
+                  own name. It read the stored `user.locale` with no ZH case, and the language menu never writes that
+                  column, so a zh page said "English". */}
+              <Pill tone="neutral">{LANGUAGE_NAME[locale]}</Pill>
               {user.email && (
                 user.emailVerifiedAt
-                  ? <Pill tone="yes"><I.check s={10} className="inline -mt-px" /> {t.profile.emailConfirmed}</Pill>
+                  ? <Pill tone="success"><I.check s={10} className="inline -mt-px" /> {t.profile.emailConfirmed}</Pill>
                   : <Link href="/profile/account" className="no-underline"><Pill tone="warning"><I.mail s={10} className="inline -mt-px" /> {t.profile.emailUnconfirmed}</Pill></Link>
               )}
             </div>
@@ -159,7 +196,14 @@ export default async function ProfilePage() {
         </div>
 
         {/* Stat strip — wallet + open positions */}
-        <div className="relative z-10 grid grid-cols-3 border-t border-border divide-x divide-border">
+        {/* 📐 2026-09-13 — THREE ACROSS DOES NOT FIT A PHONE. At 360px a third of the strip leaves
+            ~68px of content, and "TZS 1,000,000" in the 18px mono face needs ~140px: the balance
+            wrapped "TZS / 100,000" and the sw "Imekamilika" label was clipped at the hero edge.
+            Shrinking the figure to fit a third would take it to ~9px. So below sm the balance takes
+            its own row and the two counts share the second; from sm up it is three across again.
+            The value never wraps (TZS stays with its figure); a label may wrap, never clip. The
+            dividers are explicit borders because a sibling divider cannot follow a wrapped row. */}
+        <div className="relative z-10 grid grid-cols-2 sm:grid-cols-3 border-t border-border">
           {/* ⭐ STAGE 9b — the kit <Stat>, and the face is the fix, not a side effect.
               This strip's local fork set its values in SORA. §T5 has no exception for
               a stat tile ("every numeral is JetBrains Mono with tabular-nums") and §M4
@@ -182,6 +226,8 @@ export default async function ProfilePage() {
             label={t.profile.balance}
             value={wallet ? formatTzs(wallet.balance) : "—"}
             icon={<I.wallet s={14} />}
+            className="col-span-2 min-w-0 whitespace-nowrap border-b border-border sm:col-span-1 sm:border-b-0"
+            labelClassName="min-w-0 whitespace-normal break-words"
           />
           <Stat
             size="xl"
@@ -191,6 +237,8 @@ export default async function ProfilePage() {
             label={t.profile.openCount}
             value={String(positions.filter((p) => p.status === "OPEN").length)}
             icon={<I.sparkle s={14} className="text-yes-300" />}
+            className="min-w-0 whitespace-nowrap border-border sm:border-l"
+            labelClassName="min-w-0 whitespace-normal break-words"
           />
           <Stat
             size="xl"
@@ -200,38 +248,11 @@ export default async function ProfilePage() {
             label={t.profile.settledCount}
             value={String(positions.filter((p) => p.status !== "OPEN").length)}
             icon={<I.check s={14} />}
+            className="min-w-0 whitespace-nowrap border-l border-border"
+            labelClassName="min-w-0 whitespace-normal break-words"
           />
         </div>
       </section>
-
-      {/* ── KYC banner if not approved */}
-      {kycLevel !== "APPROVED" && (
-        <section className="rounded-xl border border-warning-border bg-warning-bg p-5">
-          <div className="flex items-start gap-3">
-            <I.shieldcheck s={20} />
-            <div className="min-w-0">
-              <p className="font-display text-[15px] font-semibold text-text leading-tight">
-                {t.profile.verifyIdentity}
-              </p>
-              <p className="mt-1 text-[13px] text-text-muted leading-snug">
-                {t.profile.verifyBody}
-              </p>
-              <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-3">
-                {/* ⛔ NOT "NIDA". From 2026-08-20 a player proves identity with any
-                    ONE of four documents, and this teaser sits BEFORE the choice is
-                    made — naming one of the four here would tell somebody holding a
-                    passport that they cannot start. */}
-                <Step n={1} title={t.profile.identityDocument} detail={t.profile.chooseIdTypeBody} done />
-                <Step n={2} title={t.profile.phoneSms}  detail={t.profile.phoneSms}           done />
-                <Step n={3} title={t.profile.selfieDocs} detail={t.profile.selfieDocs} active />
-              </div>
-              <Link href="/profile/kyc" className="btn btn-primary btn-md btn-pill mt-4 inline-flex">
-                {t.profile.continueVerification}
-              </Link>
-            </div>
-          </div>
-        </section>
-      )}
 
       {/* ── SoF banner when declaration is pending or rejected */}
       {sofNeedsBanner && (
@@ -292,7 +313,14 @@ export default async function ProfilePage() {
           <SettingRow icon={I.bellRing}        title={t.push.pageTitle}              subtitle={t.push.settingSub}                 href="/profile/notifications" />
           <SettingRow icon={I.settings}        title={t.profile.responsibleGambling} subtitle={t.profile.responsibleGamblingSub}              href="/profile/responsible-gambling" />
           <SettingRow icon={I.keyRound}        title={t.security.title}              subtitle={t.security.settingSub}             href="/profile/security" />
-          <SettingRow icon={I.shieldcheck}     title={t.common.verifyId}             subtitle={t.profile.verifyIdSub}            href="/profile/kyc" />
+          {/* 2026-09-13 — an APPROVED identity is not offered "Verify ID" again: the row asked a verified
+              player to do something already done. Same predicate as the pill above.
+              2026-09-13 — nor is a FINAL refusal (under 18, sanctions, identity used elsewhere): `startKyc`
+              refuses a restart, so "ID document · selfie · review" offered a journey the server refuses.
+              The red pill above still links to /profile/kyc, which explains the refusal. */}
+          {kycLevel !== "APPROVED" && !(kycLevel === "REJECTED" && isFinalRefusal(kyc?.rejectReason)) && (
+            <SettingRow icon={I.shieldcheck}   title={t.common.verifyId}             subtitle={t.profile.verifyIdSub}            href="/profile/kyc" />
+          )}
           <SettingRow icon={I.fileSignature}   title={t.profile.sourceOfFunds}       subtitle={t.profile.sourceOfFundsSub}                      href="/profile/source-of-funds" />
           <SettingRow icon={I.device}          title={t.profile.activeSessions}      subtitle={t.profile.activeSessionsSub}        href="/profile/sessions" />
           <SettingRow icon={I.heartPulse}      title={t.profile.helpSupport}         subtitle={t.profile.helpSupportSub}               href="/help" />
@@ -329,33 +357,13 @@ export default async function ProfilePage() {
  * rendered change is the value FACE — Sora → JetBrains Mono — which is §T5, and the
  * balance additionally gains the <Cash> privacy mask it never had. */
 
-function Pill({ tone, children }: { tone: "yes" | "no" | "info" | "warning" | "neutral"; children: React.ReactNode }) {
+/* ⛔ APP-STATE TONES ONLY (2026-09-13): `success`/`danger`, never the betting `yes`/`no` inks — §B2a. The union
+   has no yes/no member, so this page cannot paint an identity or email state in a stake's colour again. */
+function Pill({ tone, children }: { tone: "success" | "danger" | "info" | "warning" | "neutral"; children: React.ReactNode }) {
   return (
     <Chip variant={tone} size="md">
       {children}
     </Chip>
-  );
-}
-
-function Step({ n, title, detail, active, done }: { n: number; title: string; detail: string; active?: boolean; done?: boolean }) {
-  const cls =
-    done   ? "border-yes-700 bg-yes-500/10"
-    : active ? "border-brand-600 bg-brand-500/10"
-    :          "border-border bg-bg-overlay";
-  const numCls =
-    done   ? "bg-yes-500 text-yes-950"
-    : active ? "bg-brand-500 text-white"
-    :          "bg-bg-overlay text-text-subtle border border-border";
-  return (
-    <div className={`rounded-md border p-3 ${cls}`}>
-      <div className="flex items-center gap-2">
-        <span className={`h-5 w-5 inline-flex items-center justify-center rounded-pill font-mono text-[10px] font-bold ${numCls}`}>
-          {done ? <I.check s={11} /> : n}
-        </span>
-        <span className="font-display text-[12px] font-semibold text-text">{title}</span>
-      </div>
-      <p className="mt-1 text-body-sm text-text-muted">{detail}</p>
-    </div>
   );
 }
 

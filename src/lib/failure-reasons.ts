@@ -159,11 +159,14 @@ export type FailureReason =
   // code: an identity stamp on every withdrawal's audit entry, and a COMPLIANCE fact
   // when the payer was unverified.
   //
-  // NOW: on 2026-09-05 the owner ruled that a player may not deposit, bet OR withdraw
-  // until we approve their identity (`docs/COMPLIANCE-DECISIONS.md`; re-disclosed to the
-  // Board). Two thirds of that is new policy the Board never spoke to — deposits and
-  // staking. One third, withdrawal, is a deliberate reversal, taken as a control
-  // STRICTER than instructed and disclosed as such.
+  // THEN AGAIN: on 2026-09-05 the owner ruled that a player may not deposit, bet OR withdraw
+  // until we approve their identity, and these four reasons were born for all three paths.
+  //
+  // NOW (2026-09-13): identity is required before WITHDRAWAL only — the Gaming Board permitted
+  // 50pick to finalise identity at withdrawal (`docs/COMPLIANCE-DECISIONS.md` 2026-09-13). The
+  // deposit and bet gates are DELETED, so the four are emitted by `withdraw()` alone, through
+  // `assertIdentityForPayout` (`src/lib/server/kyc-gate.ts`), which asks whether the account was
+  // EVER approved — so an account under re-verification is not refused.
   //
   // ⛔ THE OLD NAME STAYS DEAD ANYWAY. A retired token carries its retirement note into
   // every future reader's head; reviving it for a differently-scoped gate would make
@@ -331,20 +334,28 @@ export const REASONS: Record<FailureReason, ReasonSpec> = {
   // it fell to `default:` and printed the SERVER'S OWN ENGLISH SENTENCE to a SW/ZH player.
   email_unverified:     { severity: "warning", channel: "inline", key: "errEmailUnverified" },
 
-  // ── THE IDENTITY GATE ON THE MONEY PATH (2026-09-05) ──────────────────────────────
-  // Emitted by `deposit()`, `buyPositionInner()` and `withdraw()` through
-  // `assertKycForMoney` (`src/lib/server/kyc-gate.ts`), which carries the whole rationale.
+  // ── THE IDENTITY GATE ON MONEY LEAVING (born 2026-09-05 · withdrawal only since 2026-09-13) ──
+  // Emitted by `withdraw()` ALONE, through `assertIdentityForPayout` (`src/lib/server/kyc-gate.ts`),
+  // which carries the whole rationale. From 2026-09-05 to 2026-09-13 `deposit()` and
+  // `buyPositionInner()` emitted them too; those gates are DELETED, not disabled.
   //
-  // ⛔ `channel: "modal"` FOR ALL FOUR, and it is a deliberate cost. A betting refusal is
+  // ⚠️ WHERE A PLAYER MEETS THEM NOW. `/wallet/withdraw` renders `KycGatePanel` INSTEAD of the form
+  // for an account never approved (`kycGateState`), so these four come back only when the server
+  // refuses a request the page did offer (a stale page, a hand-built request). The one reader of
+  // `channel` in src/ is the Up & Down bet surface (`updown-bet-errors.ts`), which can no longer
+  // receive any of the four — so the `modal` below describes intent, not a rendered modal.
+  //
+  // ⛔ `channel: "modal"` FOR ALL FOUR (2026-09-05 reasoning, kept). A betting refusal is
   // normally a sticky toast; these seize the screen because they are hard blocks the player
   // cannot clear in the moment, and because the fix lives on ANOTHER PAGE. A toast that
   // scrolls away is how a player learns nothing and taps again. Same reasoning the registry
   // already applies to `wallet_frozen` and `account_blocked`.
   //
-  // 🔴 A `modal` REASON MUST ALSO GET A ROW IN `MODAL_TITLE_BY_REASON`
-  // (`src/components/updown/updown-bet-errors.ts`) OR IT INHERITS THE FALLBACK HEADING
-  // "Betting unavailable" — which, over a body reading "verify your identity to play", is
-  // the exact loss-cap defect that map was written to fix. Four reasons, four title rows.
+  // 🔴 A `modal` REASON THAT CAN REACH A BET SURFACE MUST ALSO GET A ROW IN `MODAL_TITLE_BY_REASON`
+  // (`src/components/updown/updown-bet-errors.ts`) OR IT INHERITS THE FALLBACK HEADING — the exact
+  // loss-cap defect that map was written to fix. The four identity title rows it held from
+  // 2026-09-05 were DELETED 2026-09-13 with the bet gate: no stake can carry a `kyc_*` reason now.
+  // ⛔ If one ever can again, that is a bet gate coming back — stop and read `kyc-gate.ts` first.
   //
   // ⚠️ ALL FOUR ARE `error`, AND MY FIRST PASS GOT THIS WRONG — §6.2 caught it.
   // "Warning" reads like the right word for something the player can go and fix, and three
@@ -360,6 +371,7 @@ export const REASONS: Record<FailureReason, ReasonSpec> = {
   // separately, by reason, in `MODAL_TONE_BY_REASON` (`updown-bet-errors.ts`), for exactly
   // the argument `MODAL_TITLE_BY_REASON` already makes one screen over: severity answers
   // *how loud*, which is a real and separate question from *whose decision was this*.
+  // ⚠️ That map's identity rows went with the bet gate on 2026-09-13 and it is empty; the rule stays.
   kyc_not_verified:     { severity: "error",   channel: "modal",  key: "errKycNotVerified" },
   kyc_pending_review:   { severity: "error",   channel: "modal",  key: "errKycPendingReview" },
   kyc_more_info:        { severity: "error",   channel: "modal",  key: "errKycMoreInfo" },

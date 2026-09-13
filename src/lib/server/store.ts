@@ -126,12 +126,14 @@ export type StoredKyc = {
   reviewerId: string | null;
   reviewedAt: string | null;
   submittedAt: string | null;
-  /** 🔴 First-ever approval — set once, NEVER cleared. Withdrawal asks THIS
-   *  (`assertKycForMoney(userId, "WITHDRAW")`); deposit and betting ask
-   *  `status`. The split is what stops `forceReverifyKyc` freezing money a
-   *  player earned under an identity we already accepted — see the column note
-   *  in `prisma/schema.prisma`. Optional so rows written before 2026-09-05
-   *  still load. */
+  /** 🔴 First-ever approval — set once, NEVER cleared. The withdrawal gate asks THIS
+   *  (`assertIdentityForPayout` → `approvedEver` in `src/lib/kyc-approval.ts`, whose other
+   *  arm is `status === "APPROVED"`). Since 2026-09-13 that is the ONLY identity question on
+   *  any money path: deposit and betting ask none (from 2026-09-05 to 2026-09-13 they asked
+   *  `status`, through the deleted `assertKycForMoney`). Never clearing it is what stops
+   *  `forceReverifyKyc` freezing money a player earned under an identity we already
+   *  accepted — see the column note in `prisma/schema.prisma`. Optional so rows written
+   *  before 2026-09-05 still load. */
   approvedAt?: string | null;
   createdAt: string;
   updatedAt: string;
@@ -987,9 +989,14 @@ const memoryDb = {
      * ⛔ IT EXISTS BECAUSE THE POLICY CHANGED THE POPULATION, NOT BECAUSE THE OLD CODE WAS
      * SLOPPY. `listPendingKyc` used to call `db.kyc.list()` — `findMany` with NO `where`
      * and NO `select`, documents joined — and filter in JavaScript. Fine while KYC was
-     * optional and production held 56 rows. From 2026-09-05 every registered player has a
-     * submission, so that is a full-table scan with a join on every `/admin/approvals`
-     * render, growing with sign-ups, on the screen that is now the only route to revenue.
+     * optional and production held 56 rows. From 2026-09-05 every registered player was sent to
+     * verification first and had a submission, so that became a full-table scan with a join on
+     * every `/admin/approvals` render, growing with sign-ups.
+     * ⚠️ SUPERSEDED REASON, SAME ANSWER (2026-09-13). Identity is asked before WITHDRAWAL only, so a
+     * new account has no row until the player opens /profile/kyc, and "the only route to revenue"
+     * no longer describes this screen. The filter stays: the table only grows, and the queue is now
+     * a MONEY queue — a player in it may be waiting to take out their own balance
+     * (docs/COMPLIANCE-DECISIONS.md 2026-09-13, S14).
      */
     listByStatus: (statuses: StoredKyc["status"][]) => {
       const want = new Set(statuses);

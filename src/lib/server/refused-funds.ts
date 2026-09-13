@@ -30,9 +30,9 @@
  */
 import { db, type StoredTxn } from "./store";
 import { audit, getAuditByActionsDurable, type AuditEntry } from "./audit";
-import { withLock } from "./locks";
 import { withdraw, forfeitRefusedBalance } from "./wallet-service";
 import { getPayoutStatus, payoutsAcceptingRequests } from "./payout-status";
+import { isPaymentPaused } from "./payment-ops";
 import { addWalletFreeze } from "./wallet-freeze";
 import { randomId } from "./crypto";
 import { notifyRefusedFundsDecision } from "./notification-service";
@@ -213,7 +213,20 @@ export type RefusedFundsDecision =
  *   4. then the return payout is dispatched through `withdraw()`;
  *   5. then the decision is written, AWAITED, under its own audit action, whatever step 4 returned;
  *   6. then — only if everything was carried out — the player is told.
- * Serialised per player, so two officers cannot decide the same balance at once.
+ *
+ * 🔴 DELIBERATELY NOT WRAPPED IN A LOCK — and the first draft was, which would have been a money defect.
+ * `withLock` JOINS a nested lock onto the OUTER transaction (`locks.ts`): wrapping this function in
+ * `withLock("refused-funds:…")` would have made `forfeitRefusedBalance`'s money transaction and
+ * `withdraw()`'s hold and PROCESSING row commit only when THIS function returned — with the gateway
+ * dispatch in between, inside one open database transaction against a 30-second timeout. A throw after
+ * the dispatch would have rolled back the record of a payout that had already left. That is the
+ * stranded-money shape `withdraw()`'s own header documents, reintroduced by a "safety" lock.
+ * ⭐ Two officers deciding at once are made safe by the WALLET's own atomic guards instead: the
+ * forfeiture is a COMPARE-AND-SWAP under the wallet lock — it refuses unless the balance still equals
+ * the `pos.balance` this decision was computed on (an overdraw guard alone let the same case forfeit
+ * twice) — and the return is `withdraw()` with `requireBalanceGte` and a per-decision idempotency key.
+ * The loser of such a race is refused, or records a payout that did not start — never a second movement
+ * of the same shillings.
  */
 export async function decideRefusedFunds(input: {
   officerId: string;
@@ -238,8 +251,14 @@ export async function decideRefusedFunds(input: {
   if (RETURNS_MONEY.has(outcome) && !isReturnProvider(provider)) {
     return { ok: false, error: "Choose the mobile-money network the money should be returned on." };
   }
+  // ⛔ A PAUSED NETWORK IS REFUSED BEFORE ANYTHING MOVES (found in review, 2026-09-13). `withdraw()` checks the
+  // per-network kill-switch only AFTER step 3's forfeit has committed, so a return on a paused network forfeited
+  // the remainder and then failed — money moved on a decision that could not be carried out.
+  if (RETURNS_MONEY.has(outcome) && (await isPaymentPaused(provider as string, "withdrawals"))) {
+    return { ok: false, error: "Withdrawals on that network are paused right now, so nothing was decided. Choose another network, or decide once it is back." };
+  }
 
-  return withLock(`refused-funds:${userId}`, async (): Promise<RefusedFundsDecision> => {
+  {
     // ── 1 · fresh preconditions ───────────────────────────────────────────────
     const pos = await refusedFundsPosition(userId);
     if (!pos.eligible) return { ok: false, error: pos.whyNot ?? "This account has no balance decision to take." };
@@ -260,7 +279,9 @@ export async function decideRefusedFunds(input: {
 
     // ── 3 · forfeiture first, atomically ────────────────────────────────────────
     if (avail.forfeitTzs > 0) {
-      const f = await forfeitRefusedBalance({ userId, officerId, amountTzs: avail.forfeitTzs, decisionRef: decisionId, note: justification });
+      // expectBalanceTzs: the forfeit refuses if the balance moved since `pos` was read — the only thing
+      // that stops two officers deciding the same case at once from forfeiting it twice.
+      const f = await forfeitRefusedBalance({ userId, officerId, amountTzs: avail.forfeitTzs, decisionRef: decisionId, note: justification, expectBalanceTzs: pos.balance });
       if (!f.ok) return { ok: false, error: f.error };
       forfeitedTzs = avail.forfeitTzs;
       forfeitTxnId = f.txnId;
@@ -272,19 +293,25 @@ export async function decideRefusedFunds(input: {
     let payoutError: string | null = null;
     let returnedTzs = 0;
     if (RETURNS_MONEY.has(outcome) && avail.returnTzs > 0) {
-      const r = await withdraw(
-        userId,
-        { provider: provider as ReturnProvider, amount: avail.returnTzs, msisdn: normalizeTzLocalDigits(user.phoneE164) },
-        `rfd:${decisionId}`,
-        officerId,
-        { refusedFundsReturn: { decisionId } },
-      );
-      if (r.ok && r.data) {
-        payoutTxnId = r.data.txnId;
-        payoutStatus = r.data.status;
-        returnedTzs = avail.returnTzs;
-      } else {
-        payoutError = r.ok ? "The payout returned no transaction." : r.error;
+      // ⛔ A THROW HERE MUST NOT ESCAPE. The forfeit above has already COMMITTED; an exception that
+      // skipped step 5 would leave money forfeited with no decision row, invisible to the report.
+      try {
+        const r = await withdraw(
+          userId,
+          { provider: provider as ReturnProvider, amount: avail.returnTzs, msisdn: normalizeTzLocalDigits(user.phoneE164) },
+          `rfd:${decisionId}`,
+          officerId,
+          { refusedFundsReturn: { decisionId } },
+        );
+        if (r.ok && r.data) {
+          payoutTxnId = r.data.txnId;
+          payoutStatus = r.data.status;
+          returnedTzs = avail.returnTzs;
+        } else {
+          payoutError = r.ok ? "The payout returned no transaction." : r.error;
+        }
+      } catch (err) {
+        payoutError = `The payout failed: ${err instanceof Error ? err.message : String(err)}`.slice(0, 300);
       }
     }
 
@@ -330,7 +357,7 @@ export async function decideRefusedFunds(input: {
     }
 
     return { ok: true, decisionId, outcome, returnedTzs, forfeitedTzs, payoutTxnId, payoutStatus, payoutError };
-  });
+  }
 }
 
 // ── THE REPORT AN INSPECTOR CAN BE HANDED ───────────────────────────────────────
@@ -360,7 +387,7 @@ export type RefusedAccountRow = {
   hold: number;
   walletStatus: "ACTIVE" | "FROZEN" | "CLOSED" | null;
   lastDecision: RefusedFundsDecisionRow | null;
-  /** Money is held and no decision has closed the case (none taken, or the last one was a hold). */
+  /** A withdrawable balance is still in the wallet — no decision taken yet, a hold, or a return whose payout failed. */
   open: boolean;
 };
 
@@ -419,7 +446,6 @@ export async function refusedFundsReport(): Promise<{
       .map((f) => {
         const w = walletByUser.get(f.userId);
         const last = lastByUser.get(f.userId) ?? null;
-        const held = (w?.balance ?? 0) + (w?.hold ?? 0);
         return {
           userId: f.userId,
           kycId: f.id,
@@ -428,7 +454,12 @@ export async function refusedFundsReport(): Promise<{
           hold: w?.hold ?? 0,
           walletStatus: w?.status ?? null,
           lastDecision: last,
-          open: held > 0 && (!last || last.outcome === "HOLD_PENDING_APPEAL"),
+          // ⛔ OPEN IS WHERE THE MONEY IS, NOT WHAT THE LAST DECISION WAS CALLED (found in review, 2026-09-13).
+          // It used to close a case once any non-hold decision was recorded — so a return whose payout failed
+          // AFTER its forfeit committed read "closed" while the money sat in the frozen wallet, and dropped off
+          // the badge and the KPI. A withdrawable balance still in the wallet is an undecided case, whatever
+          // was recorded; money in flight (`hold`) is on its way out and is not.
+          open: (w?.balance ?? 0) > 0,
         };
       })
       .sort((a, b) => Number(b.open) - Number(a.open) || (b.balance + b.hold) - (a.balance + a.hold));

@@ -159,6 +159,10 @@ const RENDERS: Rendered[] = [
   { template: "kycMoreInfoHtml",
     benign:  E.kycMoreInfoHtml({ reason: "Please add the back of your ID", reference: "kyc_a1" }),
     hostile: E.kycMoreInfoHtml({ reason: HOSTILE, reference: HOSTILE }) },
+  // S1 (2026-09-13) — the officer's decision on a finally-refused player's balance.
+  { template: "refusedFundsDecisionHtml",
+    benign:  E.refusedFundsDecisionHtml({ outcome: "RETURN_DEPOSITS", returnedTzs: 20_000, forfeitedTzs: 5_000, balanceTzs: 25_000, reason: "You must be 18 or older to use 50pick.", reference: "rfd_a1b2c3d4e5" }),
+    hostile: E.refusedFundsDecisionHtml({ outcome: "FORFEIT", returnedTzs: 0, forfeitedTzs: 25_000, balanceTzs: 25_000, reason: HOSTILE, reference: HOSTILE }) },
   // ── Agent affiliate programme ─────────────────────────────────────────────
   { template: "agentApprovedHtml",
     benign:  E.agentApprovedHtml({ agentCode: "50PICK-AG-ABC234", commissionPct: 20, windowMonths: 0 }),
@@ -273,6 +277,12 @@ const RENDERS: Rendered[] = [
   { template: "backupUnhealthyAdminHtml",
     benign:  E.backupUnhealthyAdminHtml({ kind: "stale", reason: "The last verified backup is 49 hours old — the nightly has not completed since. GitHub may be delaying, failing, or silently no longer running the schedule.", ageHours: 49, destination: "github-artifact" }),
     hostile: E.backupUnhealthyAdminHtml({ kind: HOSTILE, reason: HOSTILE, ageHours: null, destination: HOSTILE }) },
+  // 2026-09-13 · an identity review past its target. The player's LABEL is the one caller string an
+  // officer's alert carries (a display name is player-controlled), so the hostile render puts the payload
+  // there and in every other free-text position.
+  { template: "kycReviewOverdueAdminHtml",
+    benign:  E.kycReviewOverdueAdminHtml({ reference: "kyc_a1", playerLabel: "Asha M.", submittedAt: "2026-09-12T08:00:00.000Z", hoursWaiting: 26, reviewUrl: "https://www.50pick.tz/admin/kyc/u1" }),
+    hostile: E.kycReviewOverdueAdminHtml({ reference: HOSTILE, playerLabel: HOSTILE, submittedAt: HOSTILE, hoursWaiting: 0, reviewUrl: "https://www.50pick.tz/admin/kyc/u1" }) },
 ];
 
 // ── 1 · The registry is the inventory, and it matches reality ───────────────────
@@ -300,7 +310,13 @@ ok("every template is rendered by this suite",
 // the failure mode a reader trusts most. The breakdown is not restated here rather than guessed
 // at: what is true is that `exported` is DISCOVERED from the module's own exports and pinned by
 // exact equality, so adding or removing a template goes red instead of drifting.
-ok(`the inventory is 61 templates (found ${exported.length})`, exported.length === 61);
+// ⚠️ 61 → 63 on 2026-09-13, and the pin had ALREADY drifted before that: HEAD at `ac411357` exported 62
+// (`refusedFundsDecisionHtml`, S1) against a pinned 61, so this line was red on arrival. The one added
+// since is `kycReviewOverdueAdminHtml`, an officer alert. Two player letters written earlier the same day
+// (a funded-unverified reminder and a blocked-withdrawal letter) were removed by the owner's quiet rule
+// before they shipped, so they are not in the count. Measured after that removal with
+// `grep -c "^export function [a-zA-Z]*Html" src/lib/server/email.ts` = 63, not added up.
+ok(`the inventory is 63 templates (found ${exported.length})`, exported.length === 63);
 
 // ── 2 · Every template has a real sender ───────────────────────────────────────
 section("2 · wiring — a template with no sender is a template nobody gets");
@@ -477,6 +493,55 @@ ok("bet-placed email (no paid tail) says selling closes at the window",
 const betPaid = plain(E.betPlacedHtml({ reference: "pos_a2", side: "YES", stake: 10_000, marketTitle: SAFE, resolutionDate: "01 Aug 2026", cashOutFeeRate: 0.07, freeExitGraceMinutes: 3, paidExitWindowMinutes: 30 }));
 ok("bet-placed email (paid tail) quotes THAT poll's fee, not a constant",
   betPaid.includes("3-min free exit") && betPaid.includes("7%") && !betPaid.includes("10%"));
+
+// ── 5b · Identity, quietly (owner, 2026-09-13) ─────────────────────────────────
+//
+// ⭐ THE QUIET RULE. A player email about identity answers something that happened in verification —
+// submitted, more needed, approved, refused, the decision on a refused balance. ⛔ A receipt says nothing
+// about it, and no letter prompts it. 🔴 Earlier the same day this section asserted the opposite: an
+// identity sentence on these three receipts, a funded-unverified reminder letter and a blocked-withdrawal
+// letter. The owner ruled all three out, so it now pins the ABSENCE, with controls proving the check can fail.
+section("5b · identity, quietly — receipts say nothing about it; verification letters say the true thing");
+{
+  /** Any identity wording. Player email is EN + SW; the ZH alternatives keep this the one pattern `test:cert-c3` §7 uses. */
+  const IDENTITY = /verif|identit|utambulisho|uthibitisho|身份|验证/i;
+  /** Words that name the ENTRANCE. The copy rule: an identity letter never names these beside identity. */
+  const ENTRANCE = /\b(deposit|add money|bet|play|stake|predict)/i;
+  const around = (s: string) => { const i = s.search(IDENTITY); return i < 0 ? "" : `…${s.slice(Math.max(0, i - 60), i + 80)}…`; };
+
+  // Controls first: the pattern fires on the removed sentence in both languages, and on a real identity
+  // letter read exactly the way the receipts below are read.
+  ok("5b control: the matcher catches the removed English sentence", IDENTITY.test("Before you withdraw, verify your identity once"));
+  ok("5b control: …and the Swahili one", IDENTITY.test("Kabla ya kutoa pesa, thibitisha utambulisho wako mara moja"));
+  ok("5b control: …and a real identity letter, as plain text", IDENTITY.test(plain(byName.kycApprovedHtml)));
+  ok("5b control: the link check can fail — a verification letter links into /profile/kyc", byName.kycMoreInfoHtml.includes("/profile/kyc"));
+
+  // ⛔ The three receipts that briefly carried an identity sentence, on every branch that renders differently.
+  for (const [name, html] of [
+    ["depositConfirmedHtml", byName.depositConfirmedHtml],
+    ["winNotificationHtml", byName.winNotificationHtml],
+    ["cashOutReceiptHtml (paid exit)", byName.cashOutReceiptHtml],
+    ["cashOutReceiptHtml (free exit)", E.cashOutReceiptHtml({ reference: "pos_a1", value: 10_000, stake: 10_000, marketTitle: SAFE, soldAt: "2026-07-31T09:00:00.000Z", gracePeriod: true })],
+  ] as const) {
+    const text = plain(html);
+    ok(`5b ⛔ ${name}: no identity sentence`, text.length > 40 && !IDENTITY.test(text), around(text));
+    ok(`5b ⛔ ${name}: no link into verification`, !html.includes("/profile/kyc"));
+  }
+
+  // S1 — a FINAL refusal cannot be restarted by the player, so its letter must not say it can.
+  const finalHtml = E.kycRejectedHtml({ reason: "We could not accept this document.", reference: "kyc_a1", finalRefusal: true });
+  ok("5b ⛔ a FINAL refusal does not invite a resubmission it cannot accept",
+    !/Resubmit|Wasilisha tena/.test(plain(finalHtml)) && !finalHtml.includes("/profile/kyc"), plain(finalHtml).slice(0, 160));
+  ok("5b …it names support as the door", finalHtml.includes("/help"));
+  ok("5b …while a recoverable refusal still offers the resubmission",
+    E.kycRejectedHtml({ reason: "The photograph was blurred", reference: "kyc_a1" }).includes("/profile/kyc"));
+
+  // Approval answers the withdrawal question from 2026-09-13 — and promises no speed.
+  const approved = plain(E.kycApprovedHtml({ name: "Asha", reference: "kyc_a1" }));
+  ok("5b the approval email says verification covers withdrawals", /covers your withdrawals/.test(approved), approved.slice(0, 160));
+  ok("5b ⛔ …and promises no speed", !/instant|immediately|right away|within \d+ (minutes|hours)/i.test(approved));
+  ok("5b ⛔ …and never names adding money or playing beside identity", !ENTRANCE.test(approved), approved.slice(0, 160));
+}
 
 // ── 6 · Send-path contract ─────────────────────────────────────────────────────
 section("6 · sendEmail contract — a non-delivery must never read as a delivery");

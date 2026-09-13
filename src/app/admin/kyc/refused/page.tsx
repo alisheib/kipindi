@@ -4,6 +4,7 @@ import { AdminPageHead, AdminCard, AdminKpi, AdminLoadError } from "@/components
 import { KpiGrid } from "@/components/admin/admin-body";
 import { AdminBody } from "@/components/admin/admin-body";
 import { AdminTableEmpty } from "@/components/admin/admin-table-empty";
+import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { Chip } from "@/components/ui/chip";
 import { I } from "@/components/ui/glyphs";
@@ -28,9 +29,23 @@ export const dynamic = "force-dynamic";
  * all-clear on the one page built to prove there is none.
  * ⚠️ English-only by design, like the rest of the staff console.
  */
-export default async function RefusedFundsReportPage() {
+export default async function RefusedFundsReportPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ apage?: string; dpage?: string }>;
+}) {
+  const sp = await searchParams;
   let report: Awaited<ReturnType<typeof refusedFundsReport>> | null = null;
   try { report = await refusedFundsReport(); } catch { report = null; }
+
+  // Each grid pages on its own param, so turning one never moves the other. The KPIs above are
+  // computed from the WHOLE set, never the visible page.
+  const aPage = parsePage(sp.apage, report?.accounts.length ?? 0);
+  const accountsPage = report?.accounts.slice((aPage - 1) * PER_PAGE, aPage * PER_PAGE) ?? [];
+  const aBase = buildBaseHref("/admin/kyc/refused", sp, "apage");
+  const dPage = parsePage(sp.dpage, report?.decisions.length ?? 0);
+  const decisionsPage = report?.decisions.slice((dPage - 1) * PER_PAGE, dPage * PER_PAGE) ?? [];
+  const dBase = buildBaseHref("/admin/kyc/refused", sp, "dpage");
 
   const open = report?.accounts.filter((a) => a.open) ?? [];
   const heldOpen = open.reduce((s, a) => s + a.balance + a.hold, 0);
@@ -65,7 +80,7 @@ export default async function RefusedFundsReportPage() {
           <>
             <KpiGrid>
               <AdminKpi label="Open cases" sw="Kesi zilizo wazi" value={report.accountsFailed ? "" : String(open.length)} unavailable={report.accountsFailed} delta={report.accountsFailed ? "account read failed" : `${formatTzs(heldOpen)} held`} />
-              <AdminKpi label="Decisions recorded" sw="Maamuzi" value={String(report.decisionsTotal)} delta={REFUSED_FUNDS_OUTCOMES.map((o) => `${REFUSED_FUNDS_OUTCOME_COPY[o].label.split(" ")[0]} ${byOutcome[o]}`).join(" · ")} />
+              <AdminKpi label="Decisions recorded" sw="Maamuzi" value={String(report.decisionsTotal)} delta={`${byOutcome.HOLD_PENDING_APPEAL} on hold`} />
               <AdminKpi label="Returned to players" sw="Zilizorudishwa" value={formatTzs(returned)} delta={report.decisionsTruncated ? "listed decisions only" : "all decisions"} />
               <AdminKpi label="Forfeited" sw="Hazikurudishwa" value={formatTzs(forfeited)} delta={report.decisionsTruncated ? "listed decisions only" : "all decisions"} />
             </KpiGrid>
@@ -88,7 +103,7 @@ export default async function RefusedFundsReportPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {report.accounts.map((a) => (
+                      {accountsPage.map((a) => (
                         <tr key={a.userId} className="border-b border-border-subtle/50 last:border-b-0" data-refused-account={a.open ? "open" : "closed"}>
                           <td className="py-2 pr-3 font-mono">{a.userId.slice(0, 14)}…</td>
                           <td className="py-2 pr-3"><Chip size="sm" variant="danger">{a.rejectCode}</Chip></td>
@@ -112,6 +127,7 @@ export default async function RefusedFundsReportPage() {
                   </table>
                 </ScrollX>
               )}
+              {!report.accountsFailed && <AdminPagination total={report.accounts.length} page={aPage} baseHref={aBase} param="apage" />}
             </AdminCard>
 
             <AdminCard title="Every balance decision" sw="Kila uamuzi">
@@ -134,7 +150,7 @@ export default async function RefusedFundsReportPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {report.decisions.map((d, i) => (
+                    {decisionsPage.map((d, i) => (
                       <tr key={d.decisionId ?? `${d.at}-${i}`} className="border-b border-border-subtle/50 last:border-b-0 align-top">
                         <td className="py-2 pr-3 font-mono whitespace-nowrap">{formatDateTime(d.at)}</td>
                         <td className="py-2 pr-3 font-mono">{d.userId ? <Link href={`/admin/kyc/${d.userId}` as Route} className="hover:underline">{d.userId.slice(0, 12)}…</Link> : "—"}</td>
@@ -143,7 +159,7 @@ export default async function RefusedFundsReportPage() {
                         <td className="py-2 pr-3 text-right font-mono tabular-nums">{d.balanceBefore === null ? "—" : formatTzs(d.balanceBefore)}</td>
                         <td className="py-2 pr-3 text-right font-mono tabular-nums">{formatTzs(d.returnedTzs)}</td>
                         <td className="py-2 pr-3 text-right font-mono tabular-nums">{formatTzs(d.forfeitedTzs)}</td>
-                        <td className="py-2 pr-3 font-mono text-micro">
+                        <td className="py-2 pr-3 font-mono text-body-sm">
                           {d.payoutError ? <span className="text-no-300">did not start: {d.payoutError}</span> : d.payoutTxnId ? `${d.payoutStatus ?? ""} · ${d.payoutTxnId}` : "—"}
                         </td>
                         <td className="py-2 pl-3 text-body-sm text-text-muted max-w-[42ch]">{d.justification || "—"}</td>
@@ -155,6 +171,7 @@ export default async function RefusedFundsReportPage() {
                   </tbody>
                 </table>
               </ScrollX>
+              <AdminPagination total={report.decisions.length} page={dPage} baseHref={dBase} param="dpage" />
             </AdminCard>
           </>
         )}

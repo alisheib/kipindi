@@ -70,9 +70,13 @@ export function BadgeShelf({
   items: Array<{ achievement: AchievementId; state: BadgeState; progress?: { value: number; max: number; tier?: string }; title: string }>;
   className?: string;
 }) {
+  // 2026-09-13 · auto-FIT, not auto-fill: auto-fill kept empty tracks, so five badges sat in the
+  // left 60% of the card at 1280 with 400px of nothing beside them. auto-fit collapses the empty
+  // tracks and the five spread across the card. The coin stays 64px (badge-md), so a wider column
+  // widens only the caption's room. A phone fills every track either way, so it is unchanged.
   return (
     <div className={cn("grid gap-5", className)}
-         style={{ gridTemplateColumns: "repeat(auto-fill, minmax(96px, 1fr))" }}>
+         style={{ gridTemplateColumns: "repeat(auto-fit, minmax(96px, 1fr))" }}>
       {items.map((it) => (
         <figure key={it.achievement} className="flex flex-col items-center gap-2 text-center">
           <Badge achievement={it.achievement} state={it.state} progress={it.progress} size="md" title={it.title} />

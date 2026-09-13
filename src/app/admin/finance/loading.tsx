@@ -6,9 +6,12 @@ export default function Loading() {
     <>
       <AdminPageHead title="Finance" sw="Fedha" actions={<SkChip />} />
       <SkBody>
-        {/* KPI 8-up (two rows of four) */}
-        <SkKpiRow count={4} />
-        <SkKpiRow count={4} />
+        {/* KPI 9-up since 2026-09-13 — THREE rows of three, on the page's own `cols="3"`
+            ladder: money moving · what we earned · what we owe. The ninth tile, "Held for
+            unverified", sits beside "Wallet liability" in the third row. */}
+        <SkKpiRow count={3} cols="grid-cols-2 lg:grid-cols-3" />
+        <SkKpiRow count={3} cols="grid-cols-2 lg:grid-cols-3" />
+        <SkKpiRow count={3} cols="grid-cols-2 lg:grid-cols-3" />
         {/* House accounts */}
         <SkCard lines={3} titleW="w-40" />
         {/* Ledger trial balance */}

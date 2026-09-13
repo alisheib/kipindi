@@ -26,6 +26,7 @@
 import { db } from "./store";
 import { audit } from "./audit";
 import { withLock } from "./locks";
+import { isFinalRefusal } from "@/lib/kyc-refusal";
 import {
   currentFreezeReasons,
   statusForFreezeReasons,
@@ -138,6 +139,16 @@ export async function unfreezeWalletByOfficer(officerId: string, userId: string,
   if (!w) return { ok: false, error: "Wallet not found.", code: "NOT_FOUND" };
   const reasons = currentFreezeReasons(w);
   if (!reasons.includes("OFFICER")) {
+    // ⭐ A STALE IDENTITY HOLD IS LIFTABLE HERE (found in review, 2026-09-13). An IDENTITY_REFUSED hold whose final
+    // refusal is no longer on record — a re-open whose wallet update failed — would otherwise freeze the wallet for
+    // good: the identity case has nothing left to re-open. It is lifted ONLY when the newest submission is not a
+    // final refusal, so a standing refusal still cannot be undone from this control.
+    if (reasons.includes("IDENTITY_REFUSED")) {
+      const k = await db.kyc.findByUserId(userId);
+      if (!(k?.status === "REJECTED" && isFinalRefusal(k.rejectReason))) {
+        return removeWalletFreeze(userId, "IDENTITY_REFUSED", { actorId: officerId, note: `stale identity hold · ${g.clean}` });
+      }
+    }
     const others = reasons.map((r) => FREEZE_REASON_LABEL[r]).join(", ");
     return {
       ok: false,

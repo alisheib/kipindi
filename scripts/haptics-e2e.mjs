@@ -19,9 +19,16 @@ await fetch(`${BASE}/api/dev-test/reset-rate-limits`, { method: "POST" }).catch(
 // register
 await p.goto(`${BASE}/auth/register`, { waitUntil: "domcontentloaded" }); await p.waitForTimeout(400);
 await p.locator("#phone").click(); await p.locator("#phone").pressSequentially(PH, { delay: 8 });
-await p.fill('input[name="dob"]', "1990-01-01"); await p.fill('input[name="password"]', PW); await p.fill('input[name="passwordConfirm"]', PW);
+// ⚠️ Email is REQUIRED at sign-up and the date of birth is THREE boxes (day `#dob`, Month, Year) —
+// without them the form's own `required` fields stop it submitting. Same sequence as `kyc-gate-e2e.mjs` ①.
+await p.fill("#email", `haptics.${PH}@50pick.test`);
+await p.locator("#dob").fill("01"); await p.locator('input[aria-label="Month"]').fill("01"); await p.locator('input[aria-label="Year"]').fill("1990");
+await p.fill('input[name="password"]', PW); await p.fill('input[name="passwordConfirm"]', PW);
 await p.check('input[name="acceptAge"]', { force: true }); await p.check('input[name="acceptTerms"]', { force: true });
-await p.locator('form button[type="submit"]').click(); await p.waitForURL("**/profile/kyc**", { timeout: 20000 }).catch(()=>{});
+// ⭐ 2026-09-13: a new account lands on /wallet/deposit — identity is asked before a withdrawal only, so
+// sign-up no longer ends on /profile/kyc. The rest of this file needs a signed-in session, so say so.
+await p.locator('form button[type="submit"]').click(); await p.waitForURL((u) => u.pathname === "/wallet/deposit", { timeout: 20000 }).catch(()=>{});
+ok("registration signs in and lands on /wallet/deposit (not the identity form)", new URL(p.url()).pathname === "/wallet/deposit", p.url());
 
 // ---- vibrate support present in chromium ----
 ok("navigator.vibrate present (supported() true)", await p.evaluate(() => typeof navigator.vibrate === "function"));

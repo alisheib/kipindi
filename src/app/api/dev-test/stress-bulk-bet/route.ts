@@ -82,59 +82,30 @@ async function ensureStressUsers(prefix: string, count: number, fundEach: number
       const w = await db.wallet.findByUserId(user.id);
       if (w) await db.wallet.update(w.id, { balance: w.balance + fundEach });
     }
-    await ensureStressKyc(user.id, user.displayName ?? `stress-${safePrefix}-${i}`);
     userIds.push(user.id);
   }
   return userIds;
 }
 
 /**
- * 🔴 EVERY BET THIS HARNESS PLACED WAS REJECTED, AND IT REPORTED `poolMath: "PASS"` ANYWAY.
+ * ⛔ `ensureStressKyc` WAS DELETED 2026-09-13 — AND THE LESSON IT CAME WITH STAYS, AT `poolMath`.
  *
  * Measured 2026-09-07 on a fresh dev store: `{"accepted":0,"rejected":8,"poolMath":"PASS",
- * "topErrors":[{"msg":"Identity not verified (NOT_STARTED)."}]}`. The pool invariant it exists to
- * prove — yesPool delta ≡ Σ accepted YES stake — is 0 ≡ 0 when nothing is accepted, so the check
- * passes hardest exactly when the harness has done nothing at all. ⛔ That is a vacuous control
- * (SKILL §5b rule 8: a check written against an unreachable branch proves nothing), and it had
- * been true since KYC became a money gate on 2026-09-05: these synthetic users were minted with
- * no KYC row, so `buyPosition` refused every one of them.
+ * "topErrors":[{"msg":"Identity not verified (NOT_STARTED)."}]}`. The pool invariant this route
+ * exists to prove — yesPool delta ≡ Σ accepted YES stake — is 0 ≡ 0 when nothing is accepted, so
+ * the check passed hardest exactly when the harness had done nothing at all (SKILL §5b rule 8: a
+ * check written against an unreachable branch proves nothing). From 2026-09-05 to 2026-09-13
+ * `buyPosition` refused any account without an approved identity, so a helper here wrote a real
+ * APPROVED row for every synthetic user.
  *
- * ⚠️ THE GATE IS NOT THE BUG AND IS NOT WEAKENED. `buyPosition` is right to refuse an unverified
- * identity — that is the control Ali shipped, and it reads the DATABASE rather than a session
- * stamp, which is why a fixture cannot pretend its way past it. So the fixture writes a real
- * APPROVED row, exactly as `/auth/demo`'s own `ensureDemoKyc` does and for the same stated
- * reason: *"the fixture writes a real APPROVED row, and the session stamp is no longer the only
- * thing claiming approval."*
+ * From 2026-09-13 a stake asks no identity question at all (`kyc-gate.ts` — identity is required
+ * before WITHDRAWAL only), and this route never withdraws, so that row answered a question nothing
+ * asks. ⛔ Do not restore it "to be safe": a fixture that pre-approves every bettor would HIDE a bet
+ * gate coming back, which is the exact regression that ruling forbids. If stakes are ever refused for
+ * identity again, `topErrors` names it and the VACUOUS floor below says so when every bet fails.
  *
  * ⛔ Dev-only. This route is 404 in production and double-gated at the edge by `proxy.ts`.
  */
-async function ensureStressKyc(userId: string, fullName: string) {
-  const existing = await db.kyc.findByUserId(userId);
-  if (existing?.status === "APPROVED") return;
-  const now = new Date().toISOString();
-  await db.kyc.upsert({
-    id: existing?.id ?? `kyc_${randomId(10)}`,
-    userId,
-    status: "APPROVED",
-    rejectReason: null,
-    rejectNote: null,
-    idType: "NIDA",
-    idNumber: "19900101700000000000",
-    idExpiry: null,
-    idVerifiedAt: now,
-    fullName,
-    dob: "1990-01-01",
-    documents: [],
-    reviewerId: null,
-    reviewedAt: now,
-    submittedAt: now,
-    // The withdraw gate asks for THIS, not `status` — carried so a synthetic bettor is a
-    // complete fixture rather than one that passes the bet gate and fails the payout gate.
-    approvedAt: existing?.approvedAt ?? now,
-    createdAt: existing?.createdAt ?? now,
-    updatedAt: now,
-  });
-}
 
 export async function POST(req: Request) {
   if (process.env.NODE_ENV === "production") {

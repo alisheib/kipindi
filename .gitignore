@@ -272,6 +272,11 @@ scripts/live/ops/.cfg-snapshots/
 # and is not one). Removed in the harness `finally`; ignored so a killed run leaves nothing.
 .cn-red-tmp/
 scripts/.kyc-gate-red.lock
+# 2026-09-13 — the KYC-at-withdrawal red harnesses: their locks, and red:refused-funds' private tree copy
+# (root-anchored). A run killed mid-flight must not leave these as untracked files a later commit sweeps up.
+scripts/.kyc-copy-truth-red.lock
+scripts/.refused-funds-race-red.lock
+/.red-refused-funds-*/
 
 # Pre-launch reset (2026-09-11) — carries staff phone numbers + emails; never commit PII.
 prelaunch-keep-users.json

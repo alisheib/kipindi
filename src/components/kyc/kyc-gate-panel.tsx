@@ -12,17 +12,21 @@
  *
  * ⭐ `purpose` IS REQUIRED, SO EVERY CALLER CHOOSES. The same state reads differently in the two
  * places. On the withdrawal screen it addresses somebody whose money is on the other side of it, so it
- * says, in order: here is the one thing to do · your balance is safe and stays yours · how long we take
- * — and it must not read as a refusal or an outage. On the agent application "One step first" is
- * simply true.
+ * stays short and calm: "Before you withdraw", the one thing to do, and — while the next move is still
+ * theirs — how long our review takes, as a quiet caption. It must not read as a refusal or an outage.
+ * On the agent application "One step first" is simply true.
+ *
+ * ⛔ NO "YOUR BALANCE IS SAFE" LINE (removed 2026-09-13, with `kycGate.payoutSafe`). Ali's quiet rule of
+ * that day: say nicely "verify before you withdraw", and never explain things in annoying ways. A
+ * reassurance nobody asked for is an explanation, and it raises the very worry it answers.
  *
  * ⛔ THE FORM IT REPLACES IS NOT RENDERED AT ALL — not disabled. A disabled payout form on a money screen
  * reads as an outage and still invites the tap. The server enforces the rule either way.
  *
  * ⭐ SIX STATES (`kyc-gate-state.ts`). One — `pending_review` — asks the player to do NOTHING, because
  * we are the ones who are late; rendering it in the "action needed" skin tells a player who did
- * everything right that they failed. And `refused_final` offers no retry and no reassurance about the
- * balance — both would be false — only the route to support.
+ * everything right that they failed. And `refused_final` offers no retry — the server refuses one — only
+ * the route to support; its body says our team will explain what happens to the balance.
  *
  * ⚠️ NOT AN ALERT. `role="status"`: an unverified account is an ordinary condition, not an emergency.
  */
@@ -32,6 +36,7 @@ import { useT } from "@/lib/i18n";
 import { fill } from "@/lib/utils";
 import type { KycGateState } from "@/lib/kyc-gate-state";
 import { KYC_REVIEW_SLA_HOURS } from "@/lib/kyc-sla";
+import { durationHours } from "@/lib/duration-phrase";
 
 const TONE = {
   /** Nothing has gone wrong; there is simply a step to take. Brand blue, not red. */
@@ -40,8 +45,10 @@ const TONE = {
   waiting: { ring: "border-royal-600/60", ink: "text-royal-300", wash: "bg-royal-500/10" },
   /** Their move, and a specific one. Amber says "your turn" without claiming a fault. */
   action:  { ring: "border-gold-700",     ink: "text-gold-300",  wash: "bg-gold-500/10" },
-  /** A decision went against them. Honest in red — the CTA names the next step. */
-  refused: { ring: "border-no-700",       ink: "text-no-300",    wash: "bg-no-500/[0.08]" },
+  /** A decision went against them. Honest in red — the CTA names the next step.
+   *  ⛔ The APP-STATE danger family (the kit Callout's danger tone, verbatim), never the betting NO
+   *  red — DESIGN_AUTHORITY §B2a keeps that ink for the NO side of a stake (2026-09-13). */
+  refused: { ring: "border-danger-500/50", ink: "text-danger-fg", wash: "bg-danger-500/10" },
 } as const;
 
 const BY_STATE: Record<KycGateState, {
@@ -70,7 +77,7 @@ export function KycGatePanel({
   purpose: "payout" | "agent";
   returnTo?: string;
 }) {
-  const { t } = useT();
+  const { t, locale } = useT();
   const spec = BY_STATE[state];
   const tone = TONE[spec.tone];
   const Glyph = I[spec.glyph];
@@ -82,13 +89,14 @@ export function KycGatePanel({
     pending_review: { eyebrow: t.kycGate.eyebrowPending, title: t.kycGate.titlePending,  body: t.kycGate.bodyPending,      cta: "" },
     more_info:      { eyebrow: t.kycGate.eyebrowAction,  title: t.kycGate.titleMoreInfo, body: t.kycGate.bodyMoreInfo,     cta: t.kycGate.ctaUpload },
     rejected:       { eyebrow: t.kycGate.eyebrowAction,  title: t.kycGate.titleRejected, body: t.kycGate.bodyRejected,     cta: t.kycGate.ctaRetry },
-    refused_final:  { eyebrow: t.kycGate.eyebrowAction,  title: t.kycGate.titleRejected, body: t.kycGate.bodyRefusedFinal, cta: t.kycGate.ctaSupport },
+    // ⛔ NOT "Your move" (2026-09-13, found on a screenshot): a FINAL refusal cannot be restarted by the player,
+    // so its label names the subject and calls for nothing — the only step is support, and the CTA says so.
+    refused_final:  { eyebrow: t.kycGate.eyebrowIdentity, title: t.kycGate.titleRejected, body: t.kycGate.bodyRefusedFinal, cta: t.kycGate.ctaSupport },
   }[state];
 
-  // ⭐ ON THE WITHDRAWAL SCREEN THE MONEY IS NAMED. "Your balance is safe" is true for every state but a
-  // final refusal, whose balance an officer is deciding — so it is withheld there, not softened. The wait
-  // is a number (`KYC_REVIEW_SLA_HOURS`, the officer's own clock) wherever the player still has to act.
-  const showSafe = payout && state !== "refused_final";
+  // ⭐ THE WAIT IS A NUMBER (`KYC_REVIEW_SLA_HOURS`, the officer's own clock), shown on the withdrawal
+  // screen only while the next move is still the player's. ONE quiet caption under the body — not a
+  // list, not a glyph row — because it is a single fact and must not compete with the button.
   const showWait = payout && (state === "not_started" || state === "uploaded");
 
   // ⛔ Only a same-site absolute path may round-trip, and it is re-checked HERE as well as on the KYC
@@ -116,22 +124,11 @@ export function KycGatePanel({
       </span>
       <p className={`mt-3 font-mono text-micro uppercase eyebrow font-bold ${tone.ink}`}>{copy.eyebrow}</p>
       <h3 className="mt-1.5 font-display text-[18px] font-bold text-text leading-tight">{copy.title}</h3>
-      <p className="mt-1.5 text-body-sm text-text-muted leading-snug max-w-[42ch] mx-auto">{copy.body}</p>
-      {(showSafe || showWait) && (
-        <ul className="mt-3 inline-flex flex-col items-start gap-1 text-left text-body-sm text-text-muted">
-          {showSafe && (
-            <li className="flex items-start gap-1.5" data-kyc-payout-line="safe">
-              <I.lock s={13} className="mt-0.5 shrink-0 text-text-subtle" />
-              <span>{t.kycGate.payoutSafe}</span>
-            </li>
-          )}
-          {showWait && (
-            <li className="flex items-start gap-1.5" data-kyc-payout-line="wait">
-              <I.clock s={13} className="mt-0.5 shrink-0 text-text-subtle" />
-              <span>{fill(t.kycGate.payoutWait, { hours: String(KYC_REVIEW_SLA_HOURS) })}</span>
-            </li>
-          )}
-        </ul>
+      <p className="mt-1.5 text-body-sm text-text-muted leading-snug max-w-[42ch] mx-auto text-balance">{copy.body}</p>
+      {showWait && (
+        <p data-kyc-payout-line="wait" className="mt-2 text-body-sm text-text-subtle leading-snug max-w-[42ch] mx-auto text-balance">
+          {fill(t.kycGate.payoutWait, { hours: durationHours(locale, KYC_REVIEW_SLA_HOURS) })}
+        </p>
       )}
       {spec.cta && (
         <div>

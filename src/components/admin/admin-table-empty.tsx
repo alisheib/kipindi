@@ -29,7 +29,14 @@ export function AdminTableEmpty({
   return (
     <tr>
       <td colSpan={colSpan} className={className}>
-        <EmptyState kind={kind} title={title} body={body} action={action} />
+        {/* ⭐ PINNED TO THE VISIBLE STRIP (2026-09-13). The cell spans the whole table, and these tables carry a
+            720–980px minimum inside a sideways scroller — so at 390 the message centred across the full width,
+            off-screen to the right. Below lg (no sidebar) the wrapper is capped at the scroller's visible width
+            (the viewport less body 20 + border 1 + card 20 + cell 20 per side = 122px) and sticks to its left
+            edge while the table scrolls. From lg up it is the full cell, so the desktop render is unchanged. */}
+        <div className="sticky left-0 max-w-[calc(100vw-122px)] lg:max-w-none">
+          <EmptyState kind={kind} title={title} body={body} action={action} />
+        </div>
       </td>
     </tr>
   );

@@ -110,16 +110,67 @@ ok("validate: reports the SNIFFED mime, not the declared one",
   valid.ok && valid.mimeType === "image/jpeg");
 
 // ─── 2. NIDA reject paths (each a distinct user; NIDA tail drives the mock) ───
-await mkPlayer("usr_nida_san");
+// ⭐ SANCTIONED IS A FINAL CODE FROM 2026-09-13 (`src/lib/kyc-refusal.ts`; docs/COMPLIANCE-DECISIONS.md,
+// S1): the wallet is frozen BEFORE the refusal is written, the player cannot restart it, and the notice
+// sends them to support rather than back to the form. So this player now has a WALLET — a refusal can
+// land on an account holding money — and the mismatch player below is the RECOVERABLE control.
+// ⚠️ THE STEP IS CAUGHT AND COUNTED, NOT ALLOWED TO END THE RUN. On 2026-09-13 it threw from
+// `recordFinalRefusal` (`kyc-service.ts`: `.catch` chained straight onto `db.wallet.findByUserId`, which
+// the in-memory store returns synchronously), and every section below went unreported.
+async function mkWallet(uid: string) {
+  await db.wallet.create({
+    id: `wal_${uid}`, userId: uid, balance: 40_000, pending: 0, hold: 0, bonusBalance: 0, freezeReasons: [],
+    currency: "TZS", status: "ACTIVE", createdAt: now, updatedAt: now,
+  } as never);
+}
+const freezeReasonsOf = (w: unknown): string[] => ((w as { freezeReasons?: string[] } | null)?.freezeReasons ?? []);
+await mkPlayer("usr_nida_san", "san@example.com");
+await mkWallet("usr_nida_san");
 await startKyc("usr_nida_san");
-let r = await submitIdentityStep("usr_nida_san", { idType: "NIDA", idNumber: "19900101456712340000", fullName: "Sani Test", dob: "1990-01-01" });
+clearLogs();
+let r = { ok: false, error: "not run", code: "INVALID" } as Awaited<ReturnType<typeof submitIdentityStep>>;
+let sanThrew: unknown = null;
+try {
+  r = await submitIdentityStep("usr_nida_san", { idType: "NIDA", idNumber: "19900101456712340000", fullName: "Sani Test", dob: "1990-01-01" });
+} catch (e) { sanThrew = e; }
+await flush();
+ok("NIDA sanctioned · the step completes without throwing", !sanThrew, sanThrew ? String(sanThrew) : "");
 ok("NIDA sanctioned -> verified:false", r.ok && (r as { data?: { verified: boolean } }).data?.verified === false);
-ok("NIDA sanctioned -> kyc REJECTED", (await getKycStatus("usr_nida_san"))?.status === "REJECTED");
+{
+  const k = await getKycStatus("usr_nida_san");
+  ok("NIDA sanctioned -> kyc REJECTED on the FINAL code SANCTIONED",
+    k?.status === "REJECTED" && k?.rejectReason === "SANCTIONED", `${k?.status}/${k?.rejectReason}`);
+  const w = await db.wallet.findByUserId("usr_nida_san");
+  ok("🔴 NIDA sanctioned -> the wallet is FROZEN, held for IDENTITY_REFUSED, and no money moved",
+    w?.status === "FROZEN" && freezeReasonsOf(w).includes("IDENTITY_REFUSED") && w?.balance === 40_000,
+    `${w?.status} [${freezeReasonsOf(w)}] balance=${w?.balance}`);
+  const restart = await startKyc("usr_nida_san");
+  ok("⛔ NIDA sanctioned -> the player cannot restart it (kyc_refused_final)",
+    !restart.ok && (restart as { reason?: string }).reason === "kyc_refused_final", JSON.stringify(restart));
+  const note = (await listForUser("usr_nida_san", 20)).find((n) => n.kind === "KYC");
+  ok("NIDA sanctioned -> the bell says REFUSED and links to help, not back to the form",
+    note?.titleEn === "Identity verification refused" && note?.href === "/help",
+    JSON.stringify(note ? { title: note.titleEn, href: note.href } : null));
+  const mails = sentTo("san@example.com");
+  ok("NIDA sanctioned -> the email is the refusal, with no resubmit button",
+    mails.some((m) => m.subject === "Identity verification refused")
+      && mails.every((m) => ((m as { html?: string }).html ?? "").length > 50 && !/Resubmit/.test((m as { html?: string }).html ?? "")),
+    JSON.stringify(mails.map((m) => m.subject)));
+}
 
 await mkPlayer("usr_nida_mis");
+await mkWallet("usr_nida_mis");
 await startKyc("usr_nida_mis");
 r = await submitIdentityStep("usr_nida_mis", { idType: "NIDA", idNumber: "19900101456712349999", fullName: "Miss Match", dob: "1990-01-01" });
 ok("NIDA mismatch -> verified:false", r.ok && (r as { data?: { verified: boolean } }).data?.verified === false);
+{
+  const k = await getKycStatus("usr_nida_mis");
+  const w = await db.wallet.findByUserId("usr_nida_mis");
+  ok("⭐ CONTROL · NIDA mismatch is RECOVERABLE — DETAILS_MISMATCH, wallet ACTIVE with no hold",
+    k?.status === "REJECTED" && k?.rejectReason === "DETAILS_MISMATCH" && w?.status === "ACTIVE" && freezeReasonsOf(w).length === 0,
+    `${k?.status}/${k?.rejectReason} wallet=${w?.status} [${freezeReasonsOf(w)}]`);
+  ok("⭐ CONTROL · …and the player may restart it themselves", (await startKyc("usr_nida_mis")).ok);
+}
 
 // Underage + bad format are caught by zod BEFORE the NIDA call.
 await mkPlayer("usr_nida_under");
@@ -230,12 +281,18 @@ ok("re-upload allowed after REJECTED", r.ok);
 r = await submitForReview("usr_loop01");
 ok("resubmit after reject -> PENDING_REVIEW", r.ok && (await getKycStatus("usr_loop01"))?.status === "PENDING_REVIEW");
 
-// 5h. Approve → APPROVED, name backfilled, account unlocked, email
+// 5h. Approve → APPROVED, legacy status normalised, email — and the display name LEFT ALONE.
+// 🔴 INVERTED 2026-09-13: this asserted "displayName = legal name". The owner reversed that rule
+// (docs/COMPLIANCE-DECISIONS.md 2026-09-13): approval now happens when a player cashes out, often after
+// weeks under a handle, and must not publish their legal name. `mkPlayer` gives no display name, so
+// "left alone" means it is still `null` — with the legal name still recorded on the submission.
 clearLogs();
 r = await reviewKyc({ officerId: OFFICER, userId: "usr_loop01", decision: "APPROVE" }); await flush();
 ok("approve ok -> APPROVED", r.ok && (await getKycStatus("usr_loop01"))?.status === "APPROVED");
-ok("approve: displayName = legal name", (await db.user.findById("usr_loop01"))?.displayName === "Asha Mwamba Juma");
-ok("approve: account ACTIVE", (await db.user.findById("usr_loop01"))?.status === "ACTIVE");
+ok("⛔ approve: the display name is NOT set from the legal name",
+  (await db.user.findById("usr_loop01"))?.displayName === null, String((await db.user.findById("usr_loop01"))?.displayName));
+ok("…while the legal name stays recorded on the submission", (await getKycStatus("usr_loop01"))?.fullName === "Asha Mwamba Juma");
+ok("approve: account ACTIVE (a PENDING_KYC straggler is normalised)", (await db.user.findById("usr_loop01"))?.status === "ACTIVE");
 ok("approve: email with reference", sentTo("loop@example.com").some((m) => m.subject.includes("fully verified")));
 
 // 5i. Decisions are final once APPROVED

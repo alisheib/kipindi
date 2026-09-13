@@ -26,6 +26,9 @@ import { formatTzs, formatDateShort } from "@/lib/utils";
 import { AGENT_REJECT_REASON } from "@/lib/admin-status-lexicon";
 // E-101 · an email that quotes a Reference must link to THAT reference, not to a list.
 import { positionPermalinkHref } from "@/lib/position-permalink";
+// 2026-09-13 · the identity review wait is ONE number, quoted wherever it is stated (here, the
+// officer's overdue-review alert).
+import { KYC_REVIEW_SLA_HOURS } from "@/lib/kyc-sla";
 
 const FROM = "noreply@50pick.tz";
 /**
@@ -1241,26 +1244,42 @@ export function kycApprovedHtml({ name, reference }: { name: string; reference?:
   return wrapGold(`
     ${eyebrow("Identity verified", "Utambulisho umethibitishwa", true)}
     ${heading(`You're fully verified, ${name}`)}
-    ${/* ⛔ THIS MAY NOT PROMISE A MONEY CONSEQUENCE. It read "you can now deposit, place
-          bets, and withdraw" — wrong on all three. Depositing turns on a confirmed email
-          address, betting was never gated on identity, and withdrawal stopped being gated on
-          it on 2026-08-20 (Board comment #1, 2026-08-19). An email is the one surface a
-          player keeps, so a false promise here outlives the page that made it. */""}
-    ${subtitle("Your identity is confirmed, and this document is now linked to your account.")}
-    ${subtitleSw("Utambulisho wako umethibitishwa, na kitambulisho hiki sasa kimeunganishwa na akaunti yako.")}
+    ${/* ⭐ REWRITTEN 2026-09-13 — APPROVAL NOW ANSWERS THE ONE IDENTITY QUESTION THERE IS, SO THE EMAIL
+          MAY SAY SO. This used to forbid naming any money consequence, and it was right to: it once
+          read "you can now deposit, place bets, and withdraw", wrong on all three, and from
+          2026-08-20 withdrawal was not gated on identity at all. Under the owner's 2026-09-13 ruling
+          identity is asked before a WITHDRAWAL and nothing else, and approval is what answers it —
+          for good, because the gate asks whether the account was EVER approved (`kyc-approval.ts`).
+          ⛔ It still promises no SPEED and no availability: a payout pause, a wallet freeze and the
+          AML hold are separate controls this sentence says nothing about. "Covers your withdrawals"
+          is the whole claim. ⛔ And it never names depositing or playing beside identity.
+          ⭐ The button goes to the WALLET, not the board: somebody verified at cash-out time came
+          here for their money, and an approval email that points them back into play is the wrong
+          door on a money moment. */""}
+    ${subtitle("Your identity is confirmed, and it covers your withdrawals from now on. This document is now linked to your account.")}
+    ${subtitleSw("Utambulisho wako umethibitishwa, na uthibitisho huu unatumika kwa kila utoaji wa pesa kuanzia sasa. Kitambulisho hiki sasa kimeunganishwa na akaunti yako.")}
     ${reference ? detailRows([{ label: "Reference", value: reference }]) : ""}
-    ${ctaButton("/markets", "Browse markets · Tazama masoko")}
+    ${ctaButton("/wallet", "Go to your wallet · Nenda kwenye pochi")}
   `, { promo: true });
 }
 
-export function kycRejectedHtml({ reason, reference }: { reason: string; reference?: string }): string {
+/**
+ * ⭐ `finalRefusal` (2026-09-13, S1). A FINAL refusal (`UNDERAGE`, `SANCTIONED`, `DUPLICATE_IDENTITY`)
+ * cannot be restarted by the player — `startKyc` refuses it — and its wallet is frozen while an officer
+ * decides the balance. "Resubmit" and a button into `/profile/kyc` are both false on it, so that branch
+ * names the one door that exists: support. Opt-in; without the flag this renders exactly as before.
+ */
+export function kycRejectedHtml({ reason, reference, finalRefusal = false }: { reason: string; reference?: string; finalRefusal?: boolean }): string {
   return wrap(`
     ${eyebrow("Identity check", "Ukaguzi wa utambulisho")}
-    ${heading("Identity check needs attention")}
+    ${heading(finalRefusal ? "Identity verification refused" : "Identity check needs attention")}
     ${subtitle(reason)}
-    ${subtitleSw("Tafadhali angalia tena nyaraka zako na uwasilishe upya.")}
+    ${finalRefusal ? subtitle("This verification can't be restarted from your account. Contact support and our team will explain what happens to your balance.") : ""}
+    ${subtitleSw(finalRefusal
+      ? "Uthibitisho huu ulikataliwa na hauwezi kuanzishwa upya kutoka kwenye akaunti yako. Wasiliana na huduma kwa wateja na timu yetu itakueleza kitakachofanyika kwa salio lako."
+      : "Tafadhali angalia tena nyaraka zako na uwasilishe upya.")}
     ${reference ? detailRows([{ label: "Reference", value: reference }]) : ""}
-    ${ctaButton("/profile/kyc", "Resubmit · Wasilisha tena")}
+    ${finalRefusal ? ctaButton("/help", "Contact support · Wasiliana nasi") : ctaButton("/profile/kyc", "Resubmit · Wasilisha tena")}
   `);
 }
 
@@ -1302,8 +1321,8 @@ export function refusedFundsDecisionHtml({ outcome, returnedTzs, forfeitedTzs, b
   return wrap(`
     ${eyebrow("Identity check · your balance", "Ukaguzi wa utambulisho · salio lako")}
     ${heading(headEn)}
-    ${subtitle(`We could not verify your identity: ${reason} Your account stays closed. This is our decision about the money it holds.`)}
-    ${subtitleSw(`Hatukuweza kuthibitisha utambulisho wako, kwa hivyo akaunti yako inabaki imefungwa. ${bodySw}`)}
+    ${subtitle(`We could not verify your identity: ${reason} This is our decision about the money in your account.`)}
+    ${subtitleSw(`Hatukuweza kuthibitisha utambulisho wako. ${bodySw}`)}
     ${detailRows(rows)}
     ${ctaButton("/help", "Contact support · Wasiliana nasi")}
   `);
@@ -1323,8 +1342,8 @@ export function kycSubmittedHtml({ name, reference, submittedAt, docTypes, viewU
   return wrap(`
     ${eyebrow("Documents received · Nyaraka zimepokelewa")}
     ${heading("We're reviewing your documents")}
-    ${subtitle(`Thanks${name ? `, ${name}` : ""}. Your ID documents are in and our team is verifying them. You'll get an email the moment it's decided — usually within a few hours during business hours.`)}
-    ${subtitleSw("Asante. Nyaraka zako zimepokelewa na timu yetu inazithibitisha. Utapata barua pepe mara tu uamuzi utakapotolewa.")}
+    ${subtitle(`Thanks${name ? `, ${name}` : ""}. Your ID documents are in and our team is verifying them. You'll get an email the moment it's decided — usually within ${KYC_REVIEW_SLA_HOURS} hours.`)}
+    ${subtitleSw(`Asante. Nyaraka zako zimepokelewa na timu yetu inazithibitisha. Utapata barua pepe mara tu uamuzi utakapotolewa — kwa kawaida ndani ya saa ${KYC_REVIEW_SLA_HOURS}.`)}
     ${detailRows([
       { label: "Reference", value: reference },
       { label: "Submitted", value: fmtDateTime(submittedAt) },
@@ -2094,5 +2113,39 @@ export function amlReviewAdminHtml({ amount, kind, reference }: { amount: number
       { label: "Reference", value: reference },
     ])}
     ${ctaButton("/admin/aml", "Open AML queue")}
+  `);
+}
+
+/* ══ THE IDENTITY REVIEW TARGET — one OFFICER alert (owner ruling 2026-09-13) ══════
+ * From 2026-09-13 identity is asked before a WITHDRAWAL and before nothing else, so the review queue
+ * stands between a player and their own money, and the officers are told when it runs late.
+ * ⛔ NO PLAYER LETTER PROMPTING VERIFICATION BELONGS IN THIS FILE (owner, 2026-09-13, the quiet rule). A
+ * player email about identity answers something that happened in verification — the KYC letters above
+ * and `refusedFundsDecisionHtml` — and a receipt says nothing about it. `test:cert-c1` §5b holds it. */
+
+/**
+ * Officer alert: an identity review has waited past `KYC_REVIEW_SLA_HOURS` (2026-09-13).
+ *
+ * From 2026-09-13 the review queue stands between a player and a withdrawal, so a backlog is no longer
+ * untidy — it can be a player kept from their own money. The player is quoted the target on the
+ * withdrawal screen; this is how the officers learn it was missed. One per breached submission: the sender
+ * dedupes on the submission AND its `submittedAt`, so a resubmission that breaches again alerts again.
+ * Carries no document, no identity number and no date of birth — the rule `kycSubmittedAdminHtml` keeps.
+ */
+export function kycReviewOverdueAdminHtml({ reference, playerLabel, submittedAt, hoursWaiting, reviewUrl }: {
+  reference: string; playerLabel: string; submittedAt: string; hoursWaiting: number; reviewUrl: string;
+}): string {
+  return wrap(`
+    ${eyebrow("KYC · review overdue")}
+    ${heading(`Identity review past the ${KYC_REVIEW_SLA_HOURS}-hour target`)}
+    ${subtitle(`This submission has waited ${hoursWaiting} hours for a decision. Identity is what stands between a player and a withdrawal, so a late review can be a player kept from their own money.`)}
+    ${detailRows([
+      { label: "Reference", value: reference },
+      { label: "Player", value: playerLabel },
+      { label: "Submitted", value: fmtDateTime(submittedAt) },
+      { label: "Waiting", value: `${hoursWaiting} hours` },
+      { label: "Review target", value: `${KYC_REVIEW_SLA_HOURS} hours` },
+    ])}
+    ${ctaButton(reviewUrl, "Open the case")}
   `);
 }

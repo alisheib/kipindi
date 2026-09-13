@@ -32,7 +32,7 @@ UPDATE "Wallet"
 -- the number held; a recoverable refusal (BLURRY_DOC, EXPIRED_ID, DETAILS_MISMATCH, OTHER)
 -- still frees it. The fast-path reads in `prisma-dal.ts` and `store.ts` ask the same question.
 -- ⚠️ Not CONCURRENTLY: `migrate deploy` wraps this file in a transaction, and neither
--- CREATE nor DROP INDEX CONCURRENTLY can run in one. The table held 18 rows on the day.
+-- CREATE nor DROP INDEX CONCURRENTLY can run in one. The table held 20 rows on the day.
 DROP INDEX IF EXISTS "KycSubmission_idType_idNumber_active_key";
 CREATE UNIQUE INDEX IF NOT EXISTS "KycSubmission_idType_idNumber_active_key"
     ON "KycSubmission" ("idType", "idNumber")

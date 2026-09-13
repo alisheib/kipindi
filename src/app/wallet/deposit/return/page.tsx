@@ -37,6 +37,10 @@ import { formatTzs, formatDateTime } from "@/lib/utils";
 import { settleDepositFromReturn } from "@/lib/server/wallet-service";
 import { RefreshPoller } from "@/components/ui/refresh-poller";
 import { PageContainer } from "@/components/layout/page-container";
+import { KycFirstDepositNotice } from "@/components/wallet/kyc-first-deposit-notice";
+import { cookies } from "next/headers";
+import { firstDepositNoticeDue } from "@/lib/server/kyc-notice";
+import { KYC_NOTICE_COOKIE, KYC_NOTICE_DISMISSED } from "@/lib/kyc-notice";
 
 // Localised tab title (POLISH-BACKLOG §1.7) — was the hard-coded English
 // "Deposit result", which a Swahili player saw in their browser tab and history.
@@ -59,6 +63,14 @@ export default async function DepositReturnPage({
   // The ONLY thing we take from the URL: which order to ask Selcom about.
   const orderId = (sp.order_id ?? "").trim().slice(0, 64);
   const outcome = await settleDepositFromReturn(session.userId, orderId);
+
+  // ⭐ THE FIRST-DEPOSIT IDENTITY NOTICE, IN THE CONFIRMED STATE ONLY (2026-09-13). The ONE rule
+  // (`firstDepositNoticeDue`, shared with /wallet): not dismissed in this browser · nothing submitted yet
+  // · at least one CONFIRMED deposit. The deposit half is asked of the store rather than inferred from
+  // PAID, so the two surfaces cannot disagree about who is due. Never throws; a failed read → not shown.
+  const kycFirstDepositNotice = outcome.state === "PAID" && await firstDepositNoticeDue(session.userId, {
+    dismissed: (await cookies()).get(KYC_NOTICE_COOKIE)?.value === KYC_NOTICE_DISMISSED,
+  });
 
   const tone =
     outcome.state === "PAID" ? "gold" :
@@ -115,6 +127,9 @@ export default async function DepositReturnPage({
           {t.wallet.returnPendingWarnBody}
         </Callout>
       )}
+
+      {/* Under the success message, on a confirmed deposit only — decided above, from the store. */}
+      {kycFirstDepositNotice && <KycFirstDepositNotice />}
 
       {outcome.txn && (
         <dl className="rounded-xl glass-panel divide-y divide-border" data-testid="deposit-return-details">

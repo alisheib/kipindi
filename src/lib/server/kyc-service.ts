@@ -174,11 +174,13 @@ export async function submitIdentityStep(userId: string, input: z.input<typeof K
     if (!freeze.ok) return { ok: false, error: freeze.error, code: "INVALID" };
     await db.kyc.upsert({ ...k, status: "REJECTED", rejectReason: "UNDERAGE", rejectNote: null, updatedAt: new Date().toISOString() });
     await recordFinalRefusal(userId, k.id, "UNDERAGE", null);
-    notifyKyc(userId, "REJECTED").catch(() => {});
+    // ⛔ `finalRefusal`: the ordinary REJECTED notice says "Please re-submit", which is false on a final
+    // code — the player cannot restart and the wallet is frozen while an officer decides the balance.
+    notifyKyc(userId, "REJECTED", { finalRefusal: true }).catch(() => {});
     sendEmailToUser(userId, (email) => ({
       to: email,
-      subject: "Identity check needs attention",
-      html: kycRejectedHtml({ reason: REJECT_EMAIL_TEXT.UNDERAGE }),
+      subject: "Identity verification refused",
+      html: kycRejectedHtml({ reason: REJECT_EMAIL_TEXT.UNDERAGE, finalRefusal: true }),
       tag: "kyc-rejected",
     }));
     return { ok: true, data: { verified: false, reason: "UNDERAGE" } };
@@ -293,12 +295,13 @@ export async function submitIdentityStep(userId: string, input: z.input<typeof K
       await db.kyc.upsert({ ...k, status: "REJECTED", rejectReason: enumMember, rejectNote, updatedAt: new Date().toISOString() });
       audit({ category: "KYC", action: "kyc.nida.rejected", actorId: userId, targetType: "Kyc", targetId: k.id, payload: { reason: result.reason } });
       await recordFinalRefusal(userId, k.id, enumMember, null);
-      // In-app + email notice (best-effort).
-      notifyKyc(userId, "REJECTED").catch(() => {});
+      // In-app + email notice (best-effort). ⛔ A final code must not be told to re-submit.
+      const nidaFinal = isFinalRefusal(enumMember);
+      notifyKyc(userId, "REJECTED", { finalRefusal: nidaFinal }).catch(() => {});
       sendEmailToUser(userId, (email) => ({
         to: email,
-        subject: "Identity check needs attention",
-        html: kycRejectedHtml({ reason: NIDA_TEXT[result.reason] }),
+        subject: nidaFinal ? "Identity verification refused" : "Identity check needs attention",
+        html: kycRejectedHtml({ reason: NIDA_TEXT[result.reason], finalRefusal: nidaFinal }),
         tag: "kyc-rejected",
       }));
       return { ok: true, data: { verified: false, reason: result.reason } };
@@ -599,9 +602,13 @@ export async function getKycStatus(userId: string) {
 export async function listPendingKyc() {
   // ⛔ FILTERED IN THE DATABASE SINCE 2026-09-05. This read `db.kyc.list()` — every row,
   // documents joined — and filtered here. Correct while KYC was optional and production
-  // held 56 submissions; from the day identity gates all three money actions, every
-  // registered player has one, and this became a full-table scan on the screen that is now
-  // the only route to a player spending anything.
+  // held 56 submissions. It changed when identity gated depositing, playing AND withdrawing
+  // (2026-09-05), which sent every new account to verification first and gave each a row.
+  // ⚠️ THAT REASON IS SUPERSEDED; THE ANSWER STANDS (2026-09-13). Identity is now asked before
+  // WITHDRAWAL only (`kyc-gate.ts`), so a new account has no submission until the player opens
+  // /profile/kyc. The filter stays: the table only grows, and this queue is now a MONEY queue —
+  // a player in it may be waiting on us to take out their own balance (docs/COMPLIANCE-DECISIONS.md
+  // 2026-09-13, S14) — so its render must not degrade with the history behind it.
   // ⚠️ The sort stays: `listByStatus` orders by `submittedAt` in SQL, and re-sorting here
   // costs nothing on a page-sized list while keeping FIFO true if a backend ever forgets.
   return (await db.kyc.listByStatus(["PENDING_REVIEW", "ADDITIONAL_INFO_REQUIRED"]))
@@ -777,7 +784,10 @@ async function freezeForFinalRefusal(userId: string, kycId: string, rejectCode: 
 /** Step two, AFTER the refusal is written: the awaited COMPLIANCE fact an inspector reads. */
 async function recordFinalRefusal(userId: string, kycId: string, rejectCode: string, actorId: string | null): Promise<void> {
   if (!isFinalRefusal(rejectCode)) return;
-  const w = await db.wallet.findByUserId(userId).catch(() => null);
+  // ⛔ `Promise.resolve().then(…)`, NOT `db.wallet.findByUserId(userId).catch(…)`: the in-memory store
+  // returns a plain value, so a chained `.catch` threw on every final refusal in every unit suite — after the
+  // freeze and the REJECTED write, before this fact, the notice and the email (found by `test:kyc`, 2026-09-13).
+  const w = await Promise.resolve().then(() => db.wallet.findByUserId(userId)).catch(() => null);
   await audit({
     category: "COMPLIANCE",
     action: "kyc.refused_final",
@@ -844,9 +854,17 @@ export async function reopenFinalRefusal(officerId: string, userId: string, reas
         reason: clean,
         walletStatusAfter: unfrozen.ok ? unfrozen.status : null,
         walletHoldsAfter: unfrozen.ok ? unfrozen.reasons : null,
+        walletHoldError: !unfrozen.ok && unfrozen.code !== "NOT_FOUND" ? unfrozen.error : null,
       },
     });
     notifyKyc(userId, "ADDITIONAL_INFO").catch(() => {});
+    // ⛔ THE ORDER STAYS (reset, then lift) AND A FAILED LIFT IS SAID, NEVER REPORTED AS SUCCESS (review, 2026-09-13).
+    // Lifting first would, on a failed reset, leave a FINAL refusal standing on a live wallet — an underage or
+    // sanctioned person able to transact. So the reset goes first; if the lift then fails the officer is told,
+    // and `unfreezeWalletByOfficer` can lift an identity hold whose final refusal is no longer on record.
+    if (!unfrozen.ok && unfrozen.code !== "NOT_FOUND") {
+      return { ok: false as const, error: `The refusal was re-opened, but the wallet hold could not be lifted (${unfrozen.error}). Use Unfreeze on the player's page to lift it.`, code: "INVALID" as const };
+    }
     return { ok: true as const };
   });
 }
@@ -982,13 +1000,15 @@ export async function reviewKyc(opts: {
     await db.kyc.upsert({ ...k, status: "REJECTED", rejectReason: rejectCode, rejectNote: officerNote, reviewerId: officerId, reviewedAt: now, updatedAt: now });
     audit({ category: "KYC", action: "kyc.rejected", actorId: officerId, targetType: "User", targetId: userId, payload: { kycId: k.id, reason: officerNote, rejectCode } });
     await recordFinalRefusal(userId, k.id, rejectCode, officerId);
-    notifyKyc(userId, "REJECTED").catch(() => {});
+    // ⛔ A final code must not be told to re-submit — see the UNDERAGE branch of submitIdentityStep.
+    const reviewFinal = isFinalRefusal(rejectCode);
+    notifyKyc(userId, "REJECTED", { finalRefusal: reviewFinal }).catch(() => {});
     sendEmailToUser(userId, (email) => ({
       to: email,
-      subject: "Identity check needs attention",
+      subject: reviewFinal ? "Identity verification refused" : "Identity check needs attention",
       // The email has no dictionary, so it falls back to an English rendering of
       // the category rather than going out with a blank reason line.
-      html: kycRejectedHtml({ reason: officerNote ?? REJECT_EMAIL_TEXT[rejectCode], reference: k.id }),
+      html: kycRejectedHtml({ reason: officerNote ?? REJECT_EMAIL_TEXT[rejectCode], reference: k.id, finalRefusal: reviewFinal }),
       tag: "kyc-rejected",
     }));
     return { ok: true as const };

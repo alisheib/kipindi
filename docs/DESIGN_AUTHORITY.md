@@ -469,7 +469,9 @@ named `home/trust-band.tsx` or `updown/[roundId]/page.tsx`, which held the same 
   correction #3 running backwards on the surface it was written to protect.
   `markets/position-card.tsx:68` paints **OPEN as `info`**, not the royal the table gives it.
   `profile/account/page.tsx:70-73` paints **PENDING_KYC amber** (the console was corrected off
-  amber for exactly this word), a **CLOSED account rose** where the exception above says slate,
+  amber for exactly this word — ⚠️ from 2026-09-13 that status gates nothing, new accounts are
+  created ACTIVE and the migration normalised the rest, so the page now gives a straggler
+  ACTIVE's tone and it inherits the ACTIVE drift named below), a **CLOSED account rose** where the exception above says slate,
   and **ACTIVE in the betting-YES token** (§B2a). ⛔ None of these three belongs in
   `STATUS_TONE_EXCEPTIONS` — writing a drift down as a decision would repeal the ruling by
   paperwork.

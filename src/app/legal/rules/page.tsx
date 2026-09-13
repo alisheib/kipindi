@@ -69,7 +69,9 @@ const CARDS = (l: Locale): { yesNo: [string, string]; upDown: [string, string]; 
       };
     case "zh":
       return {
-        yesNo: [`${yes}/${no} 市场`, `以 ${yes} 或 ${no} 回答一个现实世界的问题。`],
+        /* 2026-09-13: no Latin-style spaces around the CJK side words (是/否) — they broke the
+           line and left "题。" alone on the card. */
+        yesNo: [`${yes}/${no}市场`, `以${yes}或${no}回答一个现实世界的问题。`],
         upDown: [`${up}${down}`, "预测所追踪的数值最终是更高还是更低。"],
         common: "两种产品的共同之处",
       };
@@ -200,9 +202,10 @@ function RuleCard({
       <span className={`inline-flex h-[40px] w-[40px] items-center justify-center rounded-md shrink-0 ${tint}`}>
         {icon}
       </span>
+      {/* 2026-09-13: balanced so a zh card line never ends on a stranded character. */}
       <div className="flex-1 min-w-0">
-        <p className="font-display text-body-sm font-semibold text-text">{title}</p>
-        <p className="mt-0.5 text-body-sm text-text-subtle">{sub}</p>
+        <p className="font-display text-body-sm font-semibold text-text text-balance">{title}</p>
+        <p className="mt-0.5 text-body-sm text-text-subtle text-balance">{sub}</p>
       </div>
       <I.chevronRight s={14} className="shrink-0 text-text-subtle" />
     </Link>

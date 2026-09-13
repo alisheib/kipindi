@@ -28,13 +28,16 @@ export default function Loading() {
           <div className="flex flex-wrap items-center gap-2">
             <SkBar className="h-[32px] flex-1 min-w-[260px] rounded-md" />
             <SkBar className="h-[32px] w-[180px] rounded-md" />
-            {/* the KYC stage filter (2026-09-11) — sm:w-[200px] on the page */}
+            {/* the KYC stage filter (2026-09-11) — 260px wide on the page.
+                ⛔ The MONEY filter (2026-09-13) is NOT ghosted: it renders only for a viewer
+                with money rights, which a loader cannot know, and a control that flashes and
+                vanishes for SUPPORT is the ghost this file's header already removed once. */}
             <SkBar className="h-[32px] w-[260px] rounded-md" />
             <SkBar className="h-[32px] w-[72px] rounded-md" />
           </div>
           <SkBar className="h-[15px] w-[128px] mt-2" />
         </div>
-        {/* Players table — page:198, an UNTITLED `padding="p-0"` card. Seven columns
+        {/* Players table — an UNTITLED `padding="p-0"` card. EIGHT columns
             (three of them `SortTh`, page:206-208), `PER_PAGE` = 20 rows, its own
             `AdminPagination` at :260, and the ONE thing a row count cannot express:
             the page caps the scroll box, so the cap decides the height, not `rows`. */}

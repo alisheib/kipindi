@@ -42,7 +42,7 @@ import { getTickerFeed } from "@/lib/server/ticker-feed";
 import { RealityCheckHost } from "@/components/rg/reality-check";
 import { getRgSettings } from "@/lib/server/responsible-gambling";
 import { hasRole, ADMIN_CONSOLE_ROLES, type Role } from "@/lib/server/roles";
-import { inviteIsLiveFor, NO_VIEWER, type InviteViewer } from "@/lib/feature-state";
+import { inviteIsLiveFor, installInviteIsLive, NO_VIEWER, type InviteViewer } from "@/lib/feature-state";
 import { agentStandingFor } from "@/lib/server/affiliate-service";
 import { displayLabel, displayInitials } from "@/lib/display-label";
 import { getServerT } from "@/lib/i18n-server";
@@ -50,9 +50,6 @@ import { getPlatformConfig, maintenanceMessage } from "@/lib/server/platform-con
 import { getProposalsConfig } from "@/lib/server/proposals-config";
 import { AnnouncementBanner } from "./announcement-banner";
 import { EmailVerifyBanner } from "./email-verify-banner";
-import { KycVerifyBanner } from "./kyc-verify-banner";
-import { kycGateState } from "@/lib/kyc-gate-state";
-import { getKycStatus } from "@/lib/server/kyc-service";
 import { AwaySummaryBar } from "./away-summary-bar";
 import { Needle } from "./needle";
 import { HeaderScrollCast } from "./scroll-cast";
@@ -156,30 +153,35 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
    * OFFER, never a refusal (`feature-state.ts` LAW 1), so failing open is the correct direction.
    */
   let promoSuppressed = false;
+  /**
+   * ⛔ THE INSTALL INVITATION IS WITHDRAWN (2026-09-13) — Ali: "keep only the socials popup … hide the
+   * install for now, later we activate". Resolved HERE, on the server, from the one feature table; the
+   * client component never reads product state. See `installInviteIsLive` in `feature-state.ts`.
+   */
+  const installInviteLive = installInviteIsLive();
   /** Non-null = signed in with an UNCONFIRMED address → show the standing bar. */
   let emailVerifyState: { email: string | null } | null = null;
-  /** Non-null = signed in, never approved, AND holding a withdrawable balance → show the identity bar. */
-  let kycVerifyState: { state: NonNullable<ReturnType<typeof kycGateState>> } | null = null;
   /** The viewer's role, hoisted out of the session block for the feature-state read below.
    *  ⚠️ Stays null when the user fetch FAILED — which resolves every role-gated feature to
    *  hidden, the only safe direction for a failed read. */
   /** Who is asking about Invite — standing, not role. See `feature-state.ts` → `InviteViewer`. */
   let inviteViewer: InviteViewer = NO_VIEWER;
   if (session) {
-    // Batch all three queries in parallel — eliminates the sequential
+    // Batch the four queries in parallel — eliminates the sequential
     // waterfall. Promise.allSettled so one failing query can't crash
     // the entire shell (graceful degradation: show what we have).
-    // ⛔ THE KYC READ JOINS THE EXISTING BATCH — it is NOT awaited separately. This
-    // component renders on EVERY page; a fourth sequential round trip here is a latency
-    // tax on the whole platform, which is the same rule the ticker note below states.
-    const [uResult, walletResult, rgResult, kycResult, affResult] = await Promise.allSettled([
+    // ⛔ ANY READ THIS SHELL NEEDS JOINS THE BATCH — it is never awaited separately. This
+    // component renders on EVERY page; one more sequential round trip here is a latency tax
+    // on the whole platform, which is the same rule the ticker note below states.
+    // ⭐ THE KYC READ LEFT THIS BATCH ON 2026-09-13, with the app-wide identity bar that was its
+    // only consumer (see the note at the email bar below) — one fewer query on every page render.
+    const [uResult, walletResult, rgResult, affResult] = await Promise.allSettled([
       db.user.findById(session.userId),
       db.wallet.findByUserId(session.userId),
       getRgSettings(session.userId),
-      getKycStatus(session.userId),
       // ⭐ The affiliate row rides in the same batch — invite visibility is decided by the
       // agent's STANDING (approved + active + account status), never by the role alone, and
-      // a fifth sequential round trip on every page is the latency tax the note above forbids.
+      // a separate sequential round trip on every page is the latency tax the note above forbids.
       db.affiliate.findByUserId(session.userId),
     ]);
     const u = uResult.status === "fulfilled" ? uResult.value : null;
@@ -188,7 +190,6 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
     inviteViewer = u ? { role: u.role, agentInGoodStanding: agentStandingFor(u, aff).ok } : NO_VIEWER;
     const wallet = walletResult.status === "fulfilled" ? walletResult.value : null;
     const rg = rgResult.status === "fulfilled" ? rgResult.value : null;
-    const kyc = kycResult.status === "fulfilled" ? kycResult.value : null;
     const userRef = u ?? { id: session.userId, displayName: null };
     const display = displayLabel(userRef);
     const initials = displayInitials(userRef);
@@ -216,7 +217,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
      * context, not an API. Nothing on a page could have honoured that promise.
      *
      * ⭐ DERIVED FROM THE ROW ALREADY IN HAND, NOT A SECOND QUERY. `isLockedOut()` would be the
-     * canonical predicate, but calling it here is a sixth round trip on EVERY page render —
+     * canonical predicate, but calling it here is one more round trip on EVERY page render —
      * the exact latency tax the batch note above forbids. `rg` is already fulfilled; the two
      * timestamps on it answer the question.
      *
@@ -241,28 +242,6 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
     emailVerifyState = u
       ? (u.emailVerifiedAt ? null : { email: u.email ?? null })
       : null;
-
-    // ⭐ THE IDENTITY BAR — FOR A PLAYER WHO HOLDS MONEY THEY COULD NOT YET TAKE OUT (2026-09-13).
-    // Identity is asked before a WITHDRAWAL and before nothing else, so the one moment it costs a
-    // player is the moment they reach for their money — the worst possible moment to meet a document
-    // upload with a human review behind it. The bar raises that step early, while there is no hurry.
-    //
-    // ⛔ THE PREDICATE IS THE WHOLE DESIGN: NEVER APPROVED **AND** HOLDS A WITHDRAWABLE BALANCE. From
-    // 2026-09-05 it showed to every signed-in unapproved player; under the new ladder that is a
-    // permanent identity nag aimed at people who have deposited nothing — exactly the friction the
-    // ruling removed. It clears itself when they are approved OR when the balance reaches zero.
-    // ⭐ THE WALLET READ IS FREE — it is already in the batch above for the top-bar balance.
-    // ⚠️ `balance` only: bonus money is not withdrawable, and `hold` is a payout already in flight.
-    //
-    // ⚠️ SILENT ON A FAILED READ OF EITHER, exactly like the email bar above. A failed KYC read must
-    // not accuse a verified player; a failed wallet read must not raise a bar about money we could not
-    // confirm exists. ⛔ `kycResult` FULFILLED WITH `null` IS NOT A FAILURE — it is a real account
-    // with no submission yet, distinguished by the settled STATUS, never by the value being null.
-    const heldBalance = walletResult.status === "fulfilled" ? (wallet?.balance ?? 0) : 0;
-    const gate = kycResult.status === "fulfilled" && walletResult.status === "fulfilled" && heldBalance > 0
-      ? kycGateState(kyc)
-      : null;
-    kycVerifyState = gate ? { state: gate } : null;
   }
 
   // The live ticker's REAL settlements. Batched with the config read rather than awaited at its
@@ -337,13 +316,18 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       <Suspense fallback={null}><NavProgress /></Suspense>
       <TopAppBar user={topUser} proposalsState={proposalsState} inviteVisible={inviteVisible} />
       <AnnouncementBanner maintenance={maintBanner} announcement={announcement} />
-      {/* ⭐ EMAIL ABOVE IDENTITY (2026-09-13), for the reason this note has always given: when
-          two bars are up, the one that costs the player more reads first. From 2026-09-05 that
-          was identity (it gated depositing, playing and withdrawing). From 2026-09-13 it is the
-          email: an unconfirmed address blocks the NEXT thing the player wants — adding money —
-          while identity blocks only cashing out. The rule is unchanged; only its answer moved. */}
+      {/* ⭐ THE EMAIL BAR STANDS ALONE (2026-09-13). There is no app-wide identity bar any more, and
+          so no ordering question between two bars. Identity is asked before a WITHDRAWAL and
+          nothing else, and Ali's ruling of the same day is that it is raised QUIETLY: on the withdraw
+          screen itself (`KycGatePanel`), in one dismissible notice under the balance from the first
+          confirmed deposit (`kyc-first-deposit-notice.tsx`), and wherever the player goes to look
+          (/profile, /profile/kyc). A bar on every page was the opposite of that.
+          ⛔ Do not reintroduce an identity bar here, or a KYC read in the batch above to feed one.
+          The email bar stays app-wide because an unconfirmed address blocks the NEXT thing the
+          player wants to do — adding money — wherever they are when they decide to. The one exception
+          (2026-09-13) is /wallet/deposit itself, where the page's own email gate says it with its own
+          resend action; the bar hides there so the player is not told twice (email-verify-banner.tsx). */}
       {emailVerifyState && <EmailVerifyBanner email={emailVerifyState.email} />}
-      {kycVerifyState && <KycVerifyBanner state={kycVerifyState.state} />}
       {/* ⭐ BELOW THE EMAIL GATE, ON PURPOSE. That bar names a COMPLIANCE condition blocking
           the player's first deposit; this one is a courtesy summary of results they already
           hold. If both are up, the one that costs them something must read first.
@@ -362,7 +346,12 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
           `LiveTicker` returns null on an empty list, so the strip stops existing rather than
           inventing a line to fill itself. */}
       <LiveTicker events={tickerEvents} />
-      <main id="main-content" className="pb-[calc(88px+env(safe-area-inset-bottom))] lg:pb-0">
+      {/* ⭐ NO BOTTOM PADDING ON <main> (2026-09-13). It used to clear the fixed rail here AND
+          `PublicFooter` clears it too — but the footer below is rendered unconditionally, so the
+          document never ends at main, and the two stacked into ~250px of blank above the footer
+          on phones and tablets. The clearance lives ONLY on the footer now (`qa:footer-reachable`).
+          ⛔ If the footer is ever made conditional, main needs the clearance back for those routes. */}
+      <main id="main-content">
         <RouteTransition>{children}</RouteTransition>
       </main>
       {/* `supportEmail` is resolved HERE for the third time on this line's own logic (E-226):
@@ -410,14 +399,17 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
           days, three refusals and it stops asking) and it renders NOTHING when the app is already
           installed. See install-invite.tsx for the numbers and why each is what it is.
           It is deliberately the LAST child: it is fixed-positioned, so its place in the stacking
-          order is the thing that keeps it off the bottom nav and the Needle. */}
-      <Suspense fallback={null}><LazyInstallInvite /></Suspense>
+          order is the thing that keeps it off the bottom nav and the Needle.
+          ⛔ WITHDRAWN 2026-09-13 — mounted only while `installInviteLive` (feature-state.ts) is true.
+          The mount stays, so re-enabling is one word rather than a rebuild. */}
+      {installInviteLive && <Suspense fallback={null}><LazyInstallInvite /></Suspense>}
       {/* THE CHANNELS PANEL, and like the install invitation it is NOT session-gated — a visitor
           who has not signed up is exactly who benefits from finding the channels. Its own rules
           do the gating (a second visit, 45 seconds in, once per visit, never on a money-commit
           surface or either responsible-gambling route, three X's and it backs off, six and it
-          stops), and `useInvitationSlot` guarantees it and the install card can never both be on
-          screen — install wins, because a utility for the player outranks a thing we want.
+          stops). It and the install card own different corners (`invitation-slot.ts` zones), so they
+          never compete — and while the install invitation is withdrawn (2026-09-13) this panel is the
+          only invitation a visitor can see.
           🔴 `promoSuppressed` is the RG gate: a player on a self-imposed break is never solicited.
           See `docs/COMPLIANCE-DECISIONS.md` (2026-09-12, second entry) for the override that
           permits an interstitial at all. */}

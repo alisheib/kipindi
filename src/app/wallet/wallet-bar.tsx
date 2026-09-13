@@ -30,6 +30,7 @@ import {
   QueryStrip,
 } from "@/components/ui/query-bar";
 import type { Dict } from "@/lib/i18n-dict";
+import { cn } from "@/lib/utils";
 import {
   LEDGER_STATES,
   LEDGER_WHEN_IDS,
@@ -120,8 +121,14 @@ export function WalletBar({
 
   return (
     <div data-filter-rail className={QUERY_BAR_CLASS}>
-      <div className={QUERY_BAR_ROW1_CLASS}>
-        <QueryStrip ariaLabel={t.wallet.filterAria}>
+      {/* 2026-09-13 · Below lg the count takes its OWN line, right-aligned under the strip.
+          At 360 the nine money lenses scroll, and the clipped pill's cut edge sat against the
+          count: "Money out" cut to "Mor" read as "Mor 1 transaction". The strip goes full width
+          (its scroll and fade untouched) so the row wraps and the count drops below it.
+          lg is the strip's own scroll-to-wrap switch, so from lg up the row is the original
+          single line, sized exactly as before (flex-1 restores the strip's basis). */}
+      <div className={cn(QUERY_BAR_ROW1_CLASS, "flex-wrap justify-end gap-y-1 lg:flex-nowrap")}>
+        <QueryStrip ariaLabel={t.wallet.filterAria} className="basis-full lg:flex-1">
           {lenses.map((l) => (
             <Chip
               key={l}

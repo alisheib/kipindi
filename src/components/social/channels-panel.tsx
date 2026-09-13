@@ -45,7 +45,7 @@
  */
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
 import { SOCIAL } from "@/lib/social";
@@ -54,6 +54,7 @@ import { isCommitSurface } from "@/lib/surfaces";
 import { useInvitationSlot } from "@/lib/invitation-slot";
 import { useExitPhase } from "@/components/ui/modal";
 import { useT } from "@/lib/i18n";
+import { isModalDialogOpen } from "@/lib/modal-open";
 
 const MIN_VISITS = 2;
 const MIN_DWELL_MS = 45_000;
@@ -75,7 +76,11 @@ const K_SESSION = "50pick-channels-shown";
  * a bet card left the panel sitting over the bet widget it exists to stay away from. The effect
  * returns early on the new path; `visible` stays true; only a render guard can catch it.
  */
-const HIDE_ON = /^\/(auth|admin)(\/|$)|^\/(legal|profile)\/responsible-gambling(\/|$)/;
+// ⛔ 2026-09-13 · NOT ON THE /markets LIST. That page is the densest control surface in the product —
+// search, tabs, sort, chip rows, pagination — and a fixed card top-right covered one of them at every
+// scroll position (the visual pass confirmed it at 360 and 1280, before and after the pinned-bar offset).
+// The panel still appears on every other eligible page.
+const HIDE_ON = /^\/(auth|admin)(\/|$)|^\/(legal|profile)\/responsible-gambling(\/|$)|^\/markets\/?$/;
 
 function suppressedRoute(path: string | null): boolean {
   return HIDE_ON.test(path ?? "/") || isCommitSurface(path);
@@ -117,26 +122,63 @@ const PANEL_COPY: Record<
  * How far below the top of the viewport the panel sits.
  *
  * ⛔ MEASURED, NOT A CONSTANT, BECAUSE OF WHAT LIVES ABOVE `<main>`. The 56px sticky header is
- * only the floor: `app-shell.tsx` also renders the announcement bar, the KYC-verify bar, the
- * email-verify bar, the away-summary bar and the live ticker between the header and `<main>`,
- * and each is conditional. A fixed 72px offset would have covered the **KYC banner** — the bar
- * that tells a player to verify their identity before they can deposit — with a marketing card,
- * on a licensed platform. `#main-content`'s offset from the document top IS the bottom of that
+ * only the floor: `app-shell.tsx` also renders the announcement bar, the email-verify bar, the
+ * away-summary bar and the live ticker between the header and `<main>`, and each is conditional.
+ * A fixed 72px offset would have covered a compliance bar — the email-verify bar, which stands
+ * between a player and their first deposit — with a marketing card, on a licensed platform.
+ * (A KYC-verify bar was listed here too until 2026-09-13, when the owner's quiet rule deleted it.) `#main-content`'s offset from the document top IS the bottom of that
  * whole stack, whatever it happens to contain today.
  * ⚠️ Capped, because those bars scroll away while the panel does not: without a cap a page with
  * four bars would park the panel a third of the way down the screen for the whole session.
  */
 const TOP_FALLBACK = 72;
 const TOP_CAP = 180;
+/** A sticky box that pins deeper than this is not pinned under the header. */
+const PIN_BAND = 120;
 
-function measureTop(): number {
+/**
+ * ⛔ 2026-09-13 — AND BELOW ANY STICKY BAR PINNED UNDER THE HEADER, WHICH IS NOT CAPPED.
+ * Measuring `<main>` alone put this card ON TOP of the /markets search-and-filter bar: that bar
+ * lives INSIDE `<main>` and pins under the header as the page scrolls, so on a phone the panel
+ * hid it at every scroll position until the X. The cap above exists because the bars above
+ * `<main>` scroll AWAY; a pinned bar never does, so capping its clearance would cover it again.
+ * ⭐ GENERIC, NOT A NAMED SELECTOR: every list page wears the same pinned query bar, and a named
+ * population silently empties the day a class is renamed. The PINNED geometry (sticky offset +
+ * height) is scroll-independent, like `offsetTop` above. Counted only if it pins within
+ * PIN_BAND, is no taller than half the screen (taller is a side column, not a bar) and reaches
+ * under the panel horizontally.
+ * ⚠️ Stated limit: at the very top of a page, before the bar pins, it sits lower than where it
+ * pins, so its lower edge can meet this card until the player scrolls it into place. Following
+ * it would mean moving the card from a scroll handler, which lags the compositor by a frame — a
+ * jitter, on the card whose whole brief is "not disturbing".
+ */
+function pinnedBarBottom(panel: HTMLElement | null): number {
+  const vw = window.innerWidth;
+  // The panel's left edge, or where it will be: full-bleed below lg, a right-hand card from lg.
+  const left = panel ? panel.getBoundingClientRect().left : vw >= 1024 ? vw - 432 : 0;
+  let bottom = 0;
+  for (const el of document.querySelectorAll<HTMLElement>('[class*="sticky"], [style*="sticky"]')) {
+    const cs = getComputedStyle(el);
+    if (cs.position !== "sticky" || cs.visibility === "hidden") continue;
+    const pin = parseFloat(cs.top);
+    if (!Number.isFinite(pin) || pin > PIN_BAND) continue;
+    const r = el.getBoundingClientRect();
+    if (r.height <= 0 || r.height > window.innerHeight / 2 || r.right <= left) continue;
+    bottom = Math.max(bottom, pin + r.height);
+  }
+  return bottom;
+}
+
+function measureTop(panel: HTMLElement | null = null): number {
   try {
     const main = document.getElementById("main-content");
     if (!main) return TOP_FALLBACK;
     // `offsetTop` is measured from the document, so it is scroll-independent — which is what a
     // `position: fixed` offset needs. It equals header + every conditional bar above main.
     const below = main.offsetTop + 12;
-    return Math.min(Math.max(below, TOP_FALLBACK), TOP_CAP);
+    const stack = Math.min(Math.max(below, TOP_FALLBACK), TOP_CAP);
+    const bar = pinnedBarBottom(panel);
+    return bar > 0 ? Math.max(stack, bar + 12) : stack;
   } catch {
     return TOP_FALLBACK;
   }
@@ -147,6 +189,7 @@ export function ChannelsPanel({ promoSuppressed }: { promoSuppressed: boolean })
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [topPx, setTopPx] = useState(TOP_FALLBACK);
+  const panelRef = useRef<HTMLDivElement>(null);
 
   const eligible = open && !promoSuppressed && !suppressedRoute(pathname);
   /* ⭐ ZONE "top-right", AND THE ZONE IS THE FIX. The first version put this and the install card
@@ -179,7 +222,9 @@ export function ChannelsPanel({ promoSuppressed }: { promoSuppressed: boolean })
       /* ⛔ NEVER OVER A REAL DIALOG. `reality-check.tsx` defers on exactly this query, and a
          reality check is a surface a player must read. If one is up when the timer fires we skip
          this visit entirely and do NOT set the session flag, so the next visit still gets a turn. */
-      if (document.querySelector('[role="dialog"][aria-modal="true"]')) return;
+      // ⛔ A VISIBLE modal only (2026-09-13): the markets filter sheet keeps a CLOSED dialog in the DOM, and the
+      // bare selector matched it on every visit — so this panel never once appeared on /markets.
+      if (isModalDialogOpen()) return;
       setTopPx(measureTop());
       setOpen(true);
     }, MIN_DWELL_MS);
@@ -198,6 +243,37 @@ export function ChannelsPanel({ promoSuppressed }: { promoSuppressed: boolean })
   useEffect(() => {
     if (holds) write(K_SESSION, "1", true);
   }, [holds]);
+
+  /* ⭐ 2026-09-13 — RE-MEASURED WHILE ON SCREEN, BECAUSE IT OUTLIVES THE PAGE IT OPENED ON. It
+     stays until the X across soft navigations, so a card measured on the landing page kept that
+     offset on /markets and sat on its pinned bar. Re-measured on a route change, when `<main>`
+     changes size (streamed content, a bar mounting) and when the viewport WIDTH changes. Not on
+     a height-only resize: a phone's URL bar fires those mid-scroll and changes no bar's height.
+     ⛔ Never on scroll: the measurement is scroll-independent by construction. */
+  useEffect(() => {
+    if (!present) return;
+    let frame = 0;
+    let lastWidth = window.innerWidth;
+    const remeasure = () => {
+      window.cancelAnimationFrame(frame);
+      frame = window.requestAnimationFrame(() => setTopPx(measureTop(panelRef.current)));
+    };
+    const onResize = () => {
+      if (window.innerWidth === lastWidth) return;
+      lastWidth = window.innerWidth;
+      remeasure();
+    };
+    remeasure();
+    window.addEventListener("resize", onResize);
+    const main = document.getElementById("main-content");
+    const observer = main && typeof ResizeObserver !== "undefined" ? new ResizeObserver(remeasure) : null;
+    if (main && observer) observer.observe(main);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener("resize", onResize);
+      observer?.disconnect();
+    };
+  }, [present, pathname]);
 
   const dismiss = useCallback(() => {
     write(K_DISMISS_AT, String(Date.now()));
@@ -227,12 +303,14 @@ export function ChannelsPanel({ promoSuppressed }: { promoSuppressed: boolean })
 
   return (
     <div
+      ref={panelRef}
       role="dialog"
       aria-modal="false"
       aria-labelledby="channels-panel-title"
       data-invitation="channels"
       data-rung="float"
       data-testid="channels-panel"
+      data-needle-keepout=""
       /* ⭐ TOP-RIGHT, AND THE CORNER IS A FIX RATHER THAN A PREFERENCE. Ali asked for it after
          the panel failed to appear at all, and it is also the only genuinely free corner: the
          install card owns the bottom (moved LEFT the same day), the chat bubble owns

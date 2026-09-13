@@ -20,8 +20,8 @@ const TITLE: Record<Locale, string> = {
  *
  * ⛔ HOW §1 IS WORDED, AND WHY. It states what IS required ("before their first withdrawal") and never
  * what is not. That is `IDENTITY-POLICY.md`'s copy rule, and it is also what lets `test:kyc-copy-truth`
- * tell a true paragraph from a false one mechanically in three languages. "Account holder", not
- * "player": the guard's English money-verb pattern reads "play" inside "player".
+ * tell a true paragraph from a false one mechanically in three languages. It says "account holder",
+ * the word this policy uses for the person identity is verified for.
  *
  * 🔴 §2 WAS FALSE IN THREE PLACES, found while re-versioning (2026-09-13):
  *   · "EDD is triggered automatically" — the deposit thresholds are real, but the mechanism is a
@@ -76,7 +76,7 @@ function content(): Record<Locale, React.ReactNode> { return {
         <p>Enhanced due diligence applies in these cases:</p>
         <ul className="list-disc pl-5 space-y-1">
           <li>A single deposit of <strong className="text-text">TZS 1,000,000</strong> or more, or deposits of TZS 5,000,000 or more within 30 days — the deposit is refused until our compliance team has accepted a source-of-funds declaration</li>
-          <li>A withdrawal of <strong className="text-text">TZS 1,000,000</strong> or more — it is placed in <span className="font-mono text-warning-fg mx-1">AML_REVIEW</span> status until two compliance officers have reviewed it</li>
+          <li>A withdrawal of <strong className="text-text">TZS 1,000,000</strong> or more — it is held for review until two compliance officers have reviewed it</li>
           <li>A compliance officer records a politically exposed person (PEP) or sanctions concern during an identity review or an enhanced due diligence review</li>
         </ul>
         <p>
@@ -160,7 +160,7 @@ function content(): Record<Locale, React.ReactNode> { return {
         <p>Uchunguzi ulioimarishwa hutumika katika hali hizi:</p>
         <ul className="list-disc pl-5 space-y-1">
           <li>Kuweka <strong className="text-text">TZS 1,000,000</strong> au zaidi kwa muamala mmoja, au TZS 5,000,000 au zaidi ndani ya siku 30 — muamala huo haupokelewi hadi timu yetu ya uzingatiaji ikubali tamko la chanzo cha fedha</li>
-          <li>Kutoa <strong className="text-text">TZS 1,000,000</strong> au zaidi — huwekwa katika hadhi ya <span className="font-mono text-warning-fg mx-1">AML_REVIEW</span> hadi maafisa wawili wa uzingatiaji wakague</li>
+          <li>Kutoa <strong className="text-text">TZS 1,000,000</strong> au zaidi — hushikiliwa kwa ukaguzi hadi maafisa wawili wa uzingatiaji wakague</li>
           <li>Afisa wa uzingatiaji anaporekodi wasiwasi wa Mtu Anayejulikana Kisiasa (PEP) au wa vikwazo wakati wa ukaguzi wa utambulisho au wa uchunguzi ulioimarishwa</li>
         </ul>
         <p>
@@ -224,14 +224,10 @@ function content(): Record<Locale, React.ReactNode> { return {
       <LegalSection n="1" title="客户尽职调查（CDD）">
         <p>
           我们会在每位账户持有人首次提现之前验证其身份。账户持有人可使用四种证件之一进行验证——
-          20 位国民身份证（NIDA）号码、护照、驾驶证或选民证。我们按该证件的格式规则核对号码，确保
-          一份证件仅绑定一个账户，并由我们的合规团队审核照片证据及自拍照。我们采集：全名、出生日期、
-          地区、证件类型与号码以及照片证据。即使身份已验证，TZS 1,000,000 及以上的提现仍须经两名
-          合规专员审核。
+          20 位国民身份证（NIDA）号码、护照、驾驶证或选民证。我们按该证件的格式规则核对号码，确保一份证件仅绑定一个账户，并由我们的合规团队审核照片证据及自拍照。我们采集：全名、出生日期、地区、证件类型与号码以及照片证据。即使身份已验证，TZS 1,000,000 及以上的提现仍须经两名合规专员审核。
         </p>
         <p>
-          若因持有人未满 18 周岁、存在制裁疑虑或证件已被其他账户使用而拒绝其身份，该账户将被冻结，
-          其余额由合规专员逐案决定并记录理由，详见服务条款第 3a 条。
+          若因持有人未满 18 周岁、存在制裁疑虑或证件已被其他账户使用而拒绝其身份，该账户将被冻结，其余额由合规专员逐案决定并记录理由，详见服务条款第 3a 条。
         </p>
       </LegalSection>
 
@@ -239,7 +235,7 @@ function content(): Record<Locale, React.ReactNode> { return {
         <p>以下情况适用强化尽职调查：</p>
         <ul className="list-disc pl-5 space-y-1">
           <li>单笔存款达 <strong className="text-text">TZS 1,000,000</strong> 或以上，或 30 天内累计存款达 TZS 5,000,000 或以上——在合规团队接受资金来源声明之前，该笔存款不予受理</li>
-          <li>单笔提现达 <strong className="text-text">TZS 1,000,000</strong> 或以上——在两名合规专员审核之前，将被置于 <span className="font-mono text-warning-fg mx-1">AML_REVIEW</span> 状态</li>
+          <li>单笔提现达 <strong className="text-text">TZS 1,000,000</strong> 或以上——在两名合规专员审核之前，将被暂扣待审，不予放行</li>
           <li>合规专员在身份审核或强化尽职调查中记录了政治公众人物（PEP）或制裁疑虑</li>
         </ul>
         <p>
@@ -249,18 +245,14 @@ function content(): Record<Locale, React.ReactNode> { return {
 
       <LegalSection n="3" title="可疑活动报告（SAR）">
         <p>
-          指定的 AML 官员将在 1 个工作日内审查被标记的活动。无论客户关系如何，SAR 均会在识别后 7 天内提交至坦桑尼亚
-          金融情报局（FIU）。我们不会向玩家透露已就其提交 SAR 的情况。
+          指定的 AML 官员将在 1 个工作日内审查被标记的活动。无论客户关系如何，SAR 均会在识别后 7 天内提交至坦桑尼亚金融情报局（FIU）。我们不会向玩家透露已就其提交 SAR 的情况。
         </p>
       </LegalSection>
 
       <LegalSection n="4" title="制裁与政治公众人物（PEP）">
         <p>
           我们<strong>不</strong>运行对照 UN、OFAC、EU 或 UK HMT 制裁名单的自动筛查系统。制裁与 PEP
-          风险由合规专员在每次身份审核及每次强化尽职调查（EDD）中，依据第 1 条采集的姓名、出生日期
-          及证件信息，作为核查清单项目进行人工评估。若专员记录了疑虑，该账户可被暂停——暂停后无法
-          充值、投注或提现——并在法律要求时向金融情报单位（FIU）提交可疑活动报告。本政策仅陈述我们
-          实际执行的筛查；在引入任何自动名单筛查之前，本政策将先行更新版本。
+          风险由合规专员在每次身份审核及每次强化尽职调查（EDD）中，依据第 1 条采集的姓名、出生日期及证件信息，作为核查清单项目进行人工评估。若专员记录了疑虑，该账户可被暂停——暂停后无法充值、投注或提现——并在法律要求时向金融情报单位（FIU）提交可疑活动报告。本政策仅陈述我们实际执行的筛查；在引入任何自动名单筛查之前，本政策将先行更新版本。
         </p>
         <p>
           由于身份验证在账户首次提现之前进行，身份审核中的该项评估亦在此时进行。

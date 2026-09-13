@@ -27,8 +27,9 @@ export function HowItWorks({ t }: { t: Dict }) {
           <span className="kp-hero__tick" aria-hidden />
           {t.home.howEyebrow}
         </p>
-        {/* The modal's own heading and lede, from the modal's own keys. */}
-        <h2 className="kp-shead__h">{t.primer.card1Title}</h2>
+        {/* The modal's own heading and lede, from the modal's own keys.
+            `text-balance` (2026-09-13): at 360 the zh heading left a lone glyph on line two. */}
+        <h2 className="kp-shead__h text-balance">{t.primer.card1Title}</h2>
         <p className="kp-lede">{t.primer.card1Body}</p>
 
         <div className="kp-steps">

@@ -66,8 +66,10 @@ export function AmountField({
         className="[&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
       />
 
+      {/* 2026-09-13 · six columns at sm, not five: both callers pass six amounts, so five left a
+          lone chip on a second row. The widest label ("500K") is ~56px in an ~86px cell at 640. */}
       {chips.length > 0 && (
-        <div className="mt-2 grid grid-cols-3 sm:grid-cols-5 gap-1.5">
+        <div className="mt-2 grid grid-cols-3 sm:grid-cols-6 gap-1.5">
           {chips.map((v) => {
             const active = num === v;
             return (

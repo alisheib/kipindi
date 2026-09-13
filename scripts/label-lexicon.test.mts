@@ -975,10 +975,9 @@ check("§5j private-map matcher ACCEPTS a tone ternary (a colour is not a word)"
    * translating it would break the match the document exists to make. One file, three lines
    * (en · sw · zh), and the list may only shrink.
    */
-  const LITERAL_ARM_OK = new Map<string, string>([
-    ["src/app/legal/aml/page.tsx",
-     "the AML policy quotes the system's own withdrawal status so a regulator can match policy to console"],
-  ]);
+  // 2026-09-13: EMPTY. The AML policy was the one exemption — it quoted the raw AML_REVIEW status — and it
+  // now says "held for review" in words in all three languages, so the list shrank to nothing.
+  const LITERAL_ARM_OK = new Map<string, string>([]);
 
   const armHits: string[] = [];
   let armExempt = 0;

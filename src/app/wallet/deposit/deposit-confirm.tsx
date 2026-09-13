@@ -96,7 +96,7 @@ export function DepositConfirm() {
     const amount = parseInt(String(fd.get("amount") ?? "0"), 10) || 0;
     const provider = String(fd.get("provider") ?? "");
     const msisdn = String(fd.get("msisdn") ?? "").trim();
-    setSummary({ amount, provider: providerLabel(provider), msisdn });
+    setSummary({ amount, provider: provider === "CARD" ? t.wallet.methodCard : providerLabel(provider), msisdn });
   };
 
   const submitForm = () => {

@@ -105,17 +105,14 @@ export type UdBetFailure =
       /**
        * 🔴 THE MODAL'S TONE, AND IT USED TO BE HARD-WIRED TO `danger`.
        *
-       * That was true while every `modal`-channel reason in the registry was severity
-       * `error`. The 2026-09-05 identity gate broke that assumption on purpose:
-       * `kyc_pending_review` is severity **`info`** — the player has done everything
-       * asked of them and is waiting on OUR review queue. Rendering that in the red
-       * `danger` crest, with the ✗ glyph and `role="alertdialog"`, tells a player who did
-       * nothing wrong that something failed. It is our delay, and it must not be coloured
-       * as their fault.
-       *
-       * ⛔ Derive it from the registry `severity`, never from `kind`. `OperationVariant`
-       * and `Severity` share three members by construction; the mapping is the whole of
-       * `SEVERITY_VARIANT` below.
+       * ⭐ IT IS CHOSEN BY REASON (`MODAL_TONE_BY_REASON`), NEVER BY SEVERITY. From 2026-09-05
+       * the identity gate put `kyc_pending_review` — registry severity `error`, because the
+       * player cannot lift it — on this bet modal, where a red `danger` crest with an ✗ and
+       * `role="alertdialog"` would have told a player waiting on OUR review queue that they
+       * had failed. Severity answers how loud; it cannot answer whose decision it was.
+       * ⚠️ Since 2026-09-13 a stake asks no identity question, so no `kyc_*` reason reaches
+       * this modal and the tone map is empty. The per-reason rule stays for the next reason
+       * that is ordinary progress rather than a fault. Unclassified reasons keep `danger`.
        */
       variant: "danger" | "warning" | "info";
     };
@@ -166,9 +163,9 @@ export function udBetErrorCopy(
       // ⛔ THE HEADING COMES FROM THE REASON, NOT THE SEVERITY — `MODAL_TITLE_BY_REASON`
       // above records what titling by severity did to the loss cap.
       const titleKey = (f.reason && MODAL_TITLE_BY_REASON[f.reason]) ?? "udErrSuspendedTitle";
-      // ⛔ THE TONE IS CHOSEN BY REASON TOO. See the `variant` note on UdBetFailure:
-      // hard-wiring `danger` here painted `kyc_pending_review` — our own review queue —
-      // as the player's failure. Unclassified reasons keep `danger`.
+      // ⛔ THE TONE IS CHOSEN BY REASON TOO. See the `variant` note on UdBetFailure: from
+      // 2026-09-05 to 2026-09-13 hard-wiring `danger` here would have painted our own review
+      // queue as the player's failure. Unclassified reasons keep `danger`.
       const tone = (f.reason && MODAL_TONE_BY_REASON[f.reason]) ?? "danger";
       return { kind: "blocked", title: m[titleKey], body: f.body, variant: tone };
     }

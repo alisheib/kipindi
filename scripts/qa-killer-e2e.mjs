@@ -43,7 +43,12 @@ async function reg(ctx, tail, pwd) {
   const p = await ctx.newPage();
   await p.goto(`${BASE}/auth/register`, { waitUntil: "networkidle" });
   await p.fill("#phone", tail);
-  await p.fill('input[name="dob"]', "1990-01-15");
+  // ⚠️ EMAIL IS REQUIRED AT SIGN-UP and the date of birth is THREE boxes — day (`#dob`), Month, Year.
+  // Without both the form's own `required` fields stop it submitting. Same sequence as `kyc-gate-e2e.mjs` ①.
+  await p.fill("#email", `killer.${tail}@50pick.test`);
+  await p.locator("#dob").fill("15");
+  await p.locator('input[aria-label="Month"]').fill("01");
+  await p.locator('input[aria-label="Year"]').fill("1990");
   await p.fill('input[name="password"]', pwd);
   await p.fill('input[name="passwordConfirm"]', pwd);
   await p.check('input[name="acceptAge"]', { force: true });
@@ -94,14 +99,19 @@ try {
     const longPwd = "A1!".repeat(400); // 1200 chars
     await p.fill('input[name="password"]', longPwd);
     await p.fill('input[name="passwordConfirm"]', longPwd);
-    await p.fill('input[name="dob"]', "1990-01-15");
+    // ⚠️ The email is REQUIRED and the date of birth is three boxes (day `#dob`, Month, Year) — without
+    // them the browser stops the submit and A.3 measures a form that never posted.
+    await p.fill("#email", `killer.a.${Date.now()}@50pick.test`);
+    await p.locator("#dob").fill("15");
+    await p.locator('input[aria-label="Month"]').fill("01");
+    await p.locator('input[aria-label="Year"]').fill("1990");
     await p.check('input[name="acceptAge"]', { force: true });
     await p.check('input[name="acceptTerms"]', { force: true });
     await p.click('button[type="submit"]');
     await p.waitForTimeout(900);
-    // Either accepted (and now on /profile/kyc) or rejected with sane error.
-    // A 500 / crash would be the real bug.
-    const status = p.url().includes("/profile/kyc") || p.url().includes("/auth/register");
+    // Either accepted — and since 2026-09-13 a new account lands on /wallet/deposit, no longer on
+    // /profile/kyc — or refused back to the form with a sane error. A 500 / crash would be the real bug.
+    const status = new URL(p.url()).pathname === "/wallet/deposit" || p.url().includes("/auth/register");
     log("A.3 1200-char password doesn't crash the server",
         status, `final url=${p.url()}`);
     await p.close();
@@ -424,15 +434,20 @@ try {
       // bail this iteration.
       if (!p.url().includes("/auth/register")) { await p.close(); continue; }
       await p.fill("#phone", t);
-      await p.fill('input[name="dob"]', "1990-01-15");
+      // ⚠️ Email is required and the date of birth is three boxes (day `#dob`, Month, Year) — without
+      // them nothing posts and the rate limiter under test is never reached.
+      await p.fill("#email", `rate.${t}@50pick.test`);
+      await p.locator("#dob").fill("15");
+      await p.locator('input[aria-label="Month"]').fill("01");
+      await p.locator('input[aria-label="Year"]').fill("1990");
       await p.fill('input[name="password"]', "Rate!2026");
       await p.fill('input[name="passwordConfirm"]', "Rate!2026");
       await p.check('input[name="acceptAge"]', { force: true });
       await p.check('input[name="acceptTerms"]', { force: true });
       await p.click('button[type="submit"]');
       await p.waitForTimeout(300);
-      // After submit, either lands on /profile/kyc (success) or back on
-      // /auth/register with ?error=rate_limited.
+      // After submit, either lands on /wallet/deposit (success — no longer /profile/kyc since
+      // 2026-09-13) or back on /auth/register with ?error=rate_limited.
       const url = p.url();
       if (url.includes("rate_limited") || url.includes("error=rate")) blocked++;
       await p.close();

@@ -4,10 +4,11 @@
  * The deposit email gate — shown INSTEAD of the deposit form until the player's
  * address is confirmed.
  *
- * The trust ladder is: browse free → VERIFY IDENTITY → deposit, play, withdraw
- * (2026-09-05). Confirming an email is a SECOND, independent requirement for depositing
- * only — it is not a rung, and neither step blocks the other from being completed.
- * This is the middle rung. `wallet-service.deposit()` enforces it server-side;
+ * The ladder is: register → CONFIRM EMAIL → deposit and play → verify identity → withdraw
+ * (owner ruling, 2026-09-13). This gate is the email rung, and since that date it is the only
+ * requirement of its kind in front of the deposit form — from 2026-09-05 to 2026-09-13 an
+ * approved identity stood beside it, and that gate is deleted (`kyc-gate.ts`).
+ * `wallet-service.deposit()` enforces it server-side;
  * this component exists so the player meets the gate *before* filling in a form
  * they'd only be rejected on, and so the thing that unblocks them (resend the
  * link, or fix a wrong address) is one tap away rather than buried in profile.
@@ -87,11 +88,16 @@ export function EmailVerifyGate({ email }: { email: string | null }) {
         </p>
       )}
 
+      {/* 2026-09-13: ONE size and ONE shape for the pair. The primary was the kit's default md
+          (44px, rounded) beside a hand-composed lg pill (48px), so the two sat mismatched side by
+          side. Both are now lg on the kit radius. The second stays a Link, because it navigates —
+          so it wears the exact classes the kit Button composes. */}
       <div className="flex flex-col sm:flex-row gap-2.5">
         {email && (
           <Button
             type="button"
             variant="primary"
+            size="lg"
             onClick={resend}
             loading={pending}
             fullWidth
@@ -102,7 +108,7 @@ export function EmailVerifyGate({ email }: { email: string | null }) {
         )}
         <Link
           href="/profile/account"
-          className="btn btn-ghost btn-lg btn-pill w-full inline-flex items-center justify-center gap-1.5"
+          className="btn btn-ghost btn-lg w-full"
         >
           <I.user s={14} />
           {email ? t.wallet.verifyChangeEmailCta : t.wallet.verifyAddEmailCta}

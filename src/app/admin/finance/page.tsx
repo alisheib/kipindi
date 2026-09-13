@@ -9,6 +9,7 @@ import {
   netGamingRevenue,
   operatorMarginPct,
   walletLiabilityTotal,
+  unverifiedLiability,
   providerSummary,
   topNgrContributors,
   activePlayers,
@@ -75,6 +76,26 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
   const ngr = await netGamingRevenue(period).catch(() => null);
   const margin = await operatorMarginPct(period).catch(() => null);
   const liability = await walletLiabilityTotal().catch(() => null);
+  /**
+   * ⭐ HELD FOR UNVERIFIED (2026-09-13) — what we owe accounts whose identity was never approved.
+   * From that date identity is asked before a withdrawal and nothing else, so any account can hold
+   * money we hold no identity for, and "how much?" is the regulator's first question about the
+   * ruling. `unverifiedLiability()` is on the SAME basis as the tile beside it (ACTIVE wallets,
+   * balance + hold), so it is a subset of "Wallet liability" and reconciles against it.
+   * ⛔ A failed read is `unavailable`, never TZS 0 — that would be a false compliance all-clear.
+   * `unverifiedLiability` never throws by construction; the `.catch` is for the unforeseen.
+   * ⚠️ Frozen and closed never-approved balances are OUTSIDE that basis (a final identity refusal
+   * freezes the wallet), so they ride the caption rather than vanishing from the page.
+   */
+  const unverified = await unverifiedLiability().catch(() => null);
+  const held = unverified && unverified.ok ? unverified : null;
+  const heldCaption = held
+    ? [
+        adminCount(held.accounts, "account"),
+        held.frozen.accounts > 0 ? `+${formatTzsCompact(held.frozen.tzs)} frozen` : null,
+        held.closed.accounts > 0 ? `+${formatTzsCompact(held.closed.tzs)} closed` : null,
+      ].filter(Boolean).join(" · ")
+    : undefined;
   // B-1: list/series reads fail to null (rendered as AdminLoadError), never to
   // [] — a failed read shown as "no provider activity" fabricates an all-clear.
   const provs = await providerSummary(period).catch(() => null);
@@ -149,18 +170,26 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
       />
 
       <AdminBody>
-        {/* KPI 8-up */}
-        <KpiGrid>
+        {/* KPI 9-up — THREE ROWS OF THREE since 2026-09-13, each one question an owner asks:
+            what moved · what we earned · what we owe. ⭐ The regroup exists so "Held for
+            unverified" sits BESIDE "Wallet liability", the figure it is a subset of: the two
+            are read against each other, and a ninth tile wrapping alone onto a row of its own
+            would have put them on different lines. The tiles themselves are unchanged. */}
+        <KpiGrid cols="3">
           {/* ⭐ ONE COUNT-LINE RECIPE — `adminCount` (src/lib/utils.ts). It carries the same
               fixed en-US grouping the note beside the trial-balance counts below already
               rules for, AND the singular, which every count line on this page was missing:
               a window holding one deposit read "1 txns". */}
           <AdminKpi label="Deposits in"     sw="Amana"             value={dep ? formatTzsCompact(dep.amount) : ""} unavailable={dep === null} delta={dep ? adminCount(dep.count, "txn") : undefined} />
           <AdminKpi label="Withdrawals out" sw="Utoaji"            value={wd ? formatTzsCompact(wd.amount) : ""}  unavailable={wd === null}  delta={wd ? adminCount(wd.count, "txn") : undefined} />
+          <AdminKpi label="Active players"   sw="Wachezaji"     value={activePeriod === null ? "" : formatNumber(activePeriod)} unavailable={activePeriod === null} delta={range.label} series={spark(trends.active)} />
+        </KpiGrid>
+        <KpiGrid cols="3">
           <AdminKpi label="GGR"             sw="Mapato ya jumla"    value={ggr === null ? "" : formatTzsCompact(ggr)}        unavailable={ggr === null} delta={range.label} series={spark(trends.ggr)} />
           <AdminKpi label="NGR"             sw="Mapato halisi"      value={ngr === null ? "" : formatTzsCompact(ngr)}        unavailable={ngr === null} delta="net of bonus + fees" series={spark(trends.ngr)} />
+          <AdminKpi label="Operator margin"  sw="Faida"         value={margin === null ? "" : `${margin.toFixed(1)}%`} unavailable={margin === null} delta={feeModelLabel} deltaDir="flat" />
         </KpiGrid>
-        <KpiGrid>
+        <KpiGrid cols="3">
           <AdminKpi
             label="Statutory levies"
             sw="Kodi za kisheria"
@@ -168,9 +197,20 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
             delta={taxAccrued === null ? "rates unavailable" : "TRA + GBT on commission"}
             deltaDir="flat"
           />
-          <AdminKpi label="Operator margin"  sw="Faida"         value={margin === null ? "" : `${margin.toFixed(1)}%`} unavailable={margin === null} delta={feeModelLabel} deltaDir="flat" />
           <AdminKpi label="Wallet liability" sw="Madeni"        value={liability === null ? "" : formatTzsCompact(liability)} unavailable={liability === null} delta="real-time" />
-          <AdminKpi label="Active players"   sw="Wachezaji"     value={activePeriod === null ? "" : formatNumber(activePeriod)} unavailable={activePeriod === null} delta={range.label} series={spark(trends.active)} />
+          {/* ⭐ HELD FOR UNVERIFIED (2026-09-13) — the part of the tile beside it owed to accounts
+              never identity-approved; same basis (ACTIVE wallets, balance + hold). The caption
+              is the account count, plus any frozen or closed never-approved money that the
+              basis leaves out (a final identity refusal freezes the wallet).
+              ⛔ `unavailable` on a failed read — never TZS 0. ⛔ No `sw`: there is no shipped
+              Swahili for this label and the lexicon forbids inventing one. */}
+          <AdminKpi
+            label="Held for unverified"
+            value={held === null ? "" : formatTzsCompact(held.tzs)}
+            unavailable={held === null}
+            delta={heldCaption}
+            deltaDir="flat"
+          />
         </KpiGrid>
 
 

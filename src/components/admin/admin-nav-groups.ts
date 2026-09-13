@@ -40,9 +40,22 @@ const CRUMB_LABELS: Record<string, string> = {
 export function crumbsFromPath(path: string): string[] {
   const parts = path.replace(/^\/admin\/?/, "").split("/").filter(Boolean);
   if (parts.length === 0) return ["Admin", "Overview"];
-  // Title-case + drop dynamic segments like ids
+  // Title-case the words; an id segment is kept exactly as it is in the URL (see `looksLikeId`).
   return ["Admin", ...parts.map((p) =>
-    CRUMB_LABELS[p] ?? p.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()))];
+    CRUMB_LABELS[p] ?? (looksLikeId(p) ? p : p.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())))];
+}
+
+/**
+ * A segment that is a record ID, not a word (2026-09-13). Title-casing turned the player id in
+ * /admin/players/usr_6e24… into "Usr_6e24…", a different string from the id printed on the page
+ * beneath it, so an officer could not read it back or paste it into a search. Prefixed ids (usr, mkt,
+ * udr, txn, kyc + underscore), any digit-bearing token with an underscore, and a long digit-bearing
+ * token (a cuid) are left verbatim. A plain word segment ("self-exclusions", "cohorts") has no digit.
+ */
+function looksLikeId(p: string): boolean {
+  if (/^(usr|mkt|udr|txn|kyc)_/i.test(p)) return true;
+  if (!/\d/.test(p)) return false;
+  return p.includes("_") || /^[a-z0-9]{20,}$/i.test(p);
 }
 
 /** A nav item carries the RBAC `domain` it belongs to (drives visibility). Two
@@ -136,6 +149,11 @@ export const NAV_GROUPS: ReadonlyArray<NavGroup> = [
       // partner is the one who must see every switch that controls agent money.
       { href: "/admin/agents", label: "Agents", key: "agents", domain: "compliance" },
       { href: "/admin/compliance",      label: "Compliance",     key: "compliance", domain: "compliance" },
+      /* ⭐ THE KYC QUEUE — its own entry, high in the group (2026-09-13). From that date identity is asked
+       * before a withdrawal and nothing else, so a file waiting on us can be a player waiting on their own
+       * money (COMPLIANCE-DECISIONS 2026-09-13, S14). Until then /admin/kyc had no index and the review lived
+       * only as one card inside "Approvals", a page framed around the AML co-sign ceremony. */
+      { href: "/admin/kyc",             label: "KYC queue",      key: "kyc", domain: "compliance" },
       // F11 — an OPEN objection freezes a market's settlement, so this queue holds
       // real money hostage until an officer clears it. It sits high on purpose.
       { href: "/admin/objections",      label: "Objections",     key: "objections", domain: "compliance" },
@@ -197,8 +215,10 @@ export function filterNavGroups(
  *
  * Entries whose key differs from their path are deliberate aliases — a page that
  * belongs under another nav item rather than owning one of its own:
- *   /admin/kyc      → approvals   (KYC review is part of the approvals queue)
  *   /admin/resolver → resolver    (the per-market detail page under the queue)
+ * ⚠️ `/admin/kyc → approvals` WAS AN ALIAS HERE UNTIL 2026-09-13, when /admin/kyc gained a real index and
+ * its own "KYC queue" item — a KYC review now stands between a player and their withdrawal, and it is no
+ * longer one approval flavour among several. Do not restore the alias.
  */
 const ROUTE_KEYS: ReadonlyArray<readonly [prefix: string, key: string]> = [
   ["/admin/live", "live"],
@@ -237,7 +257,9 @@ const ROUTE_KEYS: ReadonlyArray<readonly [prefix: string, key: string]> = [
   ["/admin/staff", "staff"],
   ["/admin/roles", "roles"],
   ["/admin/ai-usage", "ai-usage"],
-  ["/admin/kyc", "approvals"],
+  // ⭐ 2026-09-13 — no longer the "approvals" alias: /admin/kyc has its own index and nav item, and this
+  // prefix also highlights it for /admin/kyc/[id] and /admin/kyc/refused.
+  ["/admin/kyc", "kyc"],
   ["/admin/settlement", "settlement"],
   ["/admin/objections", "objections"],
   ["/admin/approvals", "approvals"],

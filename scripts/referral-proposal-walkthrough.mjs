@@ -5,11 +5,15 @@
  *
  *   1. A registers, opens Invite & Earn, we read A's referral link
  *   2. B registers THROUGH A's link (referral ribbon shows)
- *   3. B deposits → FIRST_DEPOSIT bonus fires (A + B each +2,000)
+ *   3. B confirms the email, then deposits → FIRST_DEPOSIT bonus fires (A + B each +2,000)
  *   4. A's Invite page now shows recruit #1 + earnings
  *   5. B proposes two polls (one to approve, one to decline)
  *   6. Admin approves poll #1 (→ live market) and declines poll #2
  *   7. Board reflects LISTED + DECLINED
+ *
+ * ⭐ THE LADDER (2026-09-13, docs/COMPLIANCE-DECISIONS.md): register → confirm email → deposit and play →
+ * verify identity → withdraw. A new account lands on /wallet/deposit, and nothing on this walk asks for
+ * identity — nobody here withdraws.
  *
  *   BASE=http://localhost:3000 node scripts/referral-proposal-walkthrough.mjs
  */
@@ -39,7 +43,12 @@ async function register(page, phone, ref) {
   await page.waitForTimeout(400);
   await page.locator("#phone").click();
   await page.locator("#phone").pressSequentially(phone, { delay: 8 });
-  await page.fill('input[name="dob"]', "1990-01-01");
+  // ⚠️ EMAIL IS REQUIRED AT SIGN-UP and the date of birth is THREE boxes — day (`#dob`), Month, Year.
+  // Without both the form's own `required` fields stop it submitting. Same sequence as `kyc-gate-e2e.mjs` ①.
+  await page.fill("#email", `walk.${phone}@50pick.test`);
+  await page.locator("#dob").fill("01");
+  await page.locator('input[aria-label="Month"]').fill("01");
+  await page.locator('input[aria-label="Year"]').fill("1990");
   await page.fill('input[name="password"]', PW);
   await page.fill('input[name="passwordConfirm"]', PW);
   await page.check('input[name="acceptAge"]', { force: true });
@@ -48,7 +57,9 @@ async function register(page, phone, ref) {
 }
 async function submitRegister(page) {
   await page.locator('form button[type="submit"]').click();
-  await page.waitForURL("**/profile/kyc**", { timeout: 20000 }).catch(() => {});
+  // ⭐ 2026-09-13: a new account lands on /wallet/deposit (its safe `next`, else there) — identity is
+  // asked before a withdrawal only, so sign-up no longer ends on /profile/kyc.
+  await page.waitForURL((u) => !u.pathname.startsWith("/auth/register"), { timeout: 20000 }).catch(() => {});
   await page.waitForTimeout(600);
 }
 
@@ -69,7 +80,7 @@ try {
   log("A registers (referrer)");
   await register(A, A_PHONE);
   await submitRegister(A);
-  check("A landed on KYC after register", A.url().includes("/profile/kyc"), A.url());
+  check("A landed on /wallet/deposit after register — not on identity", new URL(A.url()).pathname === "/wallet/deposit", A.url());
 
   // ── 2. A opens Invite & Earn, read the referral link ────────────────────
   log("A opens Invite & Earn");
@@ -89,19 +100,35 @@ try {
   check("Register page shows referral ribbon (invited / bonus)", /invited|referr|bonus|TZS\s*2,000/i.test(bBody), "ribbon copy present");
   await shot(B, "B-register-with-referral-ribbon");
   await submitRegister(B);
-  check("B landed on KYC after register", B.url().includes("/profile/kyc"), B.url());
+  check("B landed on /wallet/deposit after register — not on identity", new URL(B.url()).pathname === "/wallet/deposit", B.url());
 
-  // ── 4. B deposits → FIRST_DEPOSIT bonus fires ───────────────────────────
-  log("B deposits (fires the referral bonus)");
+  // ── 4. B confirms the email, then deposits → FIRST_DEPOSIT bonus fires ─
+  // ⭐ THE 2026-09-13 LADDER: register → confirm email → deposit. Registration confirms no address, so
+  // the deposit screen shows the email door until the link is followed (the dev-only
+  // `/api/dev/verify-link` returns the exact URL the email carries). No identity step stands on this path.
+  log("B confirms the email, then deposits (fires the referral bonus)");
+  const vl = await B.request.get(`${BASE}/api/dev/verify-link`).then((r) => r.json()).catch(() => null);
+  check("B's email confirmation link is issued", !!vl?.url, JSON.stringify(vl)?.slice(0, 80));
+  if (vl?.url) {
+    // ⚠️ Only the path and its signed token matter — the link can carry the production origin.
+    const u = new URL(vl.url, BASE);
+    await B.goto(`${BASE}${u.pathname}${u.search}`, { waitUntil: "domcontentloaded" });
+    await B.waitForTimeout(600);
+  }
   await B.goto(`${BASE}/wallet/deposit`, { waitUntil: "domcontentloaded" });
   await B.waitForTimeout(400);
-  await B.locator('input[placeholder="10,000"]').click();
-  await B.locator('input[placeholder="10,000"]').pressSequentially("50000", { delay: 10 });
+  check("B's deposit screen shows the form and asks no identity question",
+    await B.locator("#provider-MPESA").count() > 0 && await B.locator('[data-testid="kyc-gate-panel"]').count() === 0);
+  await B.locator("#provider-MPESA").check({ force: true }).catch(() => {});
+  await B.locator("#amount").click();
+  await B.locator("#amount").pressSequentially("50000", { delay: 10 });
   await shot(B, "B-deposit-form");
-  await B.locator('form button[type="submit"]').click();
-  await B.waitForURL("**/wallet**", { timeout: 20000 }).catch(() => {});
+  // ⛔ The deposit commits through a ConfirmDialog: "Confirm deposit" opens it, "Deposit" inside commits.
+  await B.locator("form button.btn-gold", { hasText: /confirm deposit/i }).first().click();
+  await B.locator('[role="alertdialog"] button, [role="dialog"] button').filter({ hasText: /^\s*Deposit\s*$/ }).first().click({ timeout: 10000 });
+  await B.waitForURL((u) => u.pathname === "/wallet", { timeout: 20000 }).catch(() => {});
   await B.waitForTimeout(800);
-  check("B deposit completed (on /wallet)", B.url().includes("/wallet"), B.url());
+  check("B deposit completed (on /wallet)", new URL(B.url()).pathname === "/wallet", B.url());
 
   // ── 5. A's Invite page now shows the recruit + earnings ─────────────────
   log("A re-checks Invite & Earn (recruit + earnings)");

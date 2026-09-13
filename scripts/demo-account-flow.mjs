@@ -2,7 +2,7 @@
  * Demo dry-run — account-creation + login flow as a real player.
  *
  *   Walks every visible/invisible thing the manager will touch:
- *     register success → toast → wallet shows TZS 10,000
+ *     register success → lands on /wallet/deposit?welcome=new → wallet shows TZS 10,000
  *     register fail (mismatched password)
  *     register fail (under 18 DOB)
  *     register fail (common password)
@@ -29,7 +29,14 @@ async function reset() { await fetch(`${BASE}/api/dev-test/reset-rate-limits`, {
 
 async function fillRegister(p, opts) {
   await p.fill('#phone', opts.tail);
-  await p.fill('input[name="dob"]', opts.dob ?? "1990-01-15");
+  // ⚠️ EMAIL IS REQUIRED AT SIGN-UP and the date of birth is THREE boxes — day (`#dob`), Month, Year.
+  // This helper filled neither, so the server refused every sign-up here even with native validation
+  // switched off below. Same sequence as `kyc-gate-e2e.mjs` ①.
+  await p.fill('#email', opts.email ?? `demo.${opts.tail}@50pick.test`);
+  const [dobY, dobM, dobD] = (opts.dob ?? "1990-01-15").split("-");
+  await p.locator('#dob').fill(dobD);
+  await p.locator('input[aria-label="Month"]').fill(dobM);
+  await p.locator('input[aria-label="Year"]').fill(dobY);
   await p.evaluate(() => {
     document.querySelectorAll('input[name="password"], input[name="passwordConfirm"]').forEach(el => {
       el.removeAttribute("minlength"); el.removeAttribute("pattern");
@@ -61,15 +68,25 @@ let me;
   me.e164 = "+255" + me.tail;
   const p = await ctx.newPage();
   await p.goto(`${BASE}/auth/register`, { waitUntil: "networkidle" });
+  // ⚠️ RECORD EVERY URL THE TAB LANDS ON. `AuthFlash` greets the new account and then strips
+  // `welcome=new` with router.replace, so the settled URL cannot say where registration sent them.
+  const seen = [];
+  const onNav = (f) => { if (f === p.mainFrame()) seen.push(f.url()); };
+  p.on("framenavigated", onNav);
   await fillRegister(p, { tail: me.tail, password: me.password });
-  log("1.1 register success → /profile/kyc?welcome=new", /profile\/kyc/.test(p.url()) && /welcome=new/.test(p.url()), p.url());
+  p.off("framenavigated", onNav);
+  const landing = seen.map((u) => new URL(u)).find((u) => !u.pathname.startsWith("/auth/register"));
+  // ⭐ 2026-09-13: a new account lands on /wallet/deposit (its safe `next`, else there) — identity is
+  // asked before a withdrawal only, so sign-up no longer ends on /profile/kyc.
+  log("1.1 register success → /wallet/deposit (not the identity form)",
+      landing?.pathname === "/wallet/deposit", landing?.href ?? p.url());
   // 1.2 — toast is wired via AuthFlash + ?welcome=new query param.
-  // The query reaching /profile/kyc is the load-bearing signal; the
+  // The query reaching the landing is the load-bearing signal; the
   // toast itself has been visually verified in manual + screenshot
   // tests but doesn't reliably render before Playwright moves on in
   // headless mode (Suspense + portal timing).
   log("1.2 welcome=new query reaches landing (toast wired)",
-      /welcome=new/.test(p.url()), p.url());
+      landing?.searchParams.get("welcome") === "new", landing?.href ?? p.url());
   // Wallet starter balance
   await p.goto(`${BASE}/wallet`, { waitUntil: "networkidle" });
   const balanceText = await p.locator('[data-testid="wallet-balance"]').innerText().catch(() => "");

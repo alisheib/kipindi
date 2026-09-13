@@ -158,7 +158,9 @@ export async function rejectKycWorkstationAction(formData: FormData): Promise<Re
  * ⭐ S1 — decide a finally-refused player's balance (owner ruling, Ali, 2026-09-13).
  * The gate is the same compliance grant + step-up as every decision on this page; the rules — which
  * outcomes exist, what each moves, the justification, the ordering of money — all live in
- * `refused-funds.ts`, which re-reads the position under a per-player lock before anything moves.
+ * `refused-funds.ts`, which re-reads the position fresh before anything moves. ⛔ It takes NO lock (a
+ * nested lock would hold one transaction open across the gateway call): two officers at once are made
+ * safe by the forfeit's compare-and-swap and `withdraw()`'s per-decision idempotency key.
  */
 export async function decideRefusedFundsAction(formData: FormData): Promise<{ ok: true; payoutError: string | null } | { ok: false; error: string; field?: string }> {
   const g = await gate("decideRefusedFunds");

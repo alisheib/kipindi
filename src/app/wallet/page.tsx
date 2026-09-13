@@ -28,6 +28,9 @@ import {
   type LedgerRow,
 } from "@/lib/wallet/ledger";
 import { PLAYER_PER_PAGE } from "@/components/ui/pagination";
+import { cookies } from "next/headers";
+import { firstDepositNoticeDue } from "@/lib/server/kyc-notice";
+import { KYC_NOTICE_COOKIE, KYC_NOTICE_DISMISSED } from "@/lib/kyc-notice";
 
 export async function generateMetadata() {
   const { t } = await getServerT();
@@ -226,6 +229,12 @@ export default async function WalletPage({ searchParams }: { searchParams: Promi
    *
    * Every grant is now passed and the page offers `?grants=all`; the default still leads with the
    * live ones, because that is what a player asks first.
+   *
+   * ⚠️ `PENDING_KYC` IS HISTORIC ONLY (2026-09-13). The identity hold on bonus grants is DELETED with
+   * `releaseKycHeldGrants`: nothing can mint such a grant (`bonus-service.ts`), and production held no
+   * grants of any status at cut-over. It stays in `LIVE_GRANT` so an old row, if one ever surfaced,
+   * still renders rather than vanishing — but ⛔ its label ("waiting on your ID check") would then
+   * describe a release that no longer exists, so such a row needs an officer, not a wait.
    */
   const showAllGrants = (Array.isArray(sp.grants) ? sp.grants[0] : sp.grants) === "all";
   const LIVE_GRANT = new Set(["ACTIVE", "QUEUED", "PENDING_KYC"]);
@@ -306,6 +315,31 @@ export default async function WalletPage({ searchParams }: { searchParams: Promi
   /* ⛔ ONE call, taking BOTH populations by name — see `ledgerEmptyView`. The previous shape
      asked for the whole book in a comment and got the windowed read instead. */
   const { cause, exits } = ledgerEmptyView(rows, bookRows, matched.length, state, nowMs, matchesText);
+
+  /**
+   * ⭐ THE FIRST-DEPOSIT IDENTITY NOTICE — decided HERE, drawn by `kyc-first-deposit-notice.tsx`
+   * (Ali, 2026-09-13: identity is raised quietly — on the withdraw screen, and in this one
+   * dismissible line — never as a standing bar).
+   *
+   * Due when this browser has not dismissed it (the `kp-kyc-notice` cookie), the account has submitted
+   * NOTHING yet (`not_started` / `uploaded`; every later state has its own event notice, and the
+   * withdraw screen's panel) AND holds at least one CONFIRMED deposit. ⭐ ONE RULE, in
+   * `src/lib/server/kyc-notice.ts` → `firstDepositNoticeDue`, shared with the deposit return page.
+   *
+   * ⭐ THE DEPOSIT FACT IS FREE ON A NORMAL LOAD. With no date window and no row cap biting, the read
+   * above IS the whole book, so the question is asked of rows already in hand — and an account with no
+   * confirmed deposit in it costs no read at all. Only a narrowed or capped view pays for one aggregate,
+   * and only after the identity read says the notice could be due.
+   *
+   * ⛔ SILENT ON ANY FAILURE, which is the opposite of the B-1 rule above and deliberately so. B-1
+   * governs MONEY FIGURES, which must never render as zero on a failed read. This is a courtesy about
+   * identity, and a failed read must never put an identity prompt in front of anybody: not shown.
+   */
+  const bookIsWhole = !windowIsNarrowed && !capped;
+  const kycFirstDepositNotice = await firstDepositNoticeDue(session.userId, {
+    dismissed: (await cookies()).get(KYC_NOTICE_COOKIE)?.value === KYC_NOTICE_DISMISSED,
+    depositInHand: bookIsWhole ? rawTxns.some((x) => x.type === "DEPOSIT" && x.status === "CONFIRMED") : null,
+  });
   const EXIT_LABEL: Record<string, string> = {
     state: t.wallet.exitState, when: t.wallet.exitWhen, q: t.wallet.exitSearch, type: t.wallet.exitType,
   };
@@ -387,6 +421,7 @@ export default async function WalletPage({ searchParams }: { searchParams: Promi
           withdrawMin: WITHDRAW_MIN_TZS, withdrawMax: WITHDRAW_MAX_TZS,
         }}
         isAuthed={true}
+        kycFirstDepositNotice={kycFirstDepositNotice}
       />
     </>
   );

@@ -117,7 +117,8 @@ export function AvatarUploader({
   };
 
   return (
-    <div className="relative inline-block">
+    /* inline-flex, so the wrapper is exactly the avatar's box and the % anchors below land on it. */
+    <div className="relative inline-flex">
       {/* Hero placement → identity arrival (spec §8, .crest-arrive). The ring here is
           chrome, not an honours ring, so it does not take the ring reveal. */}
       <Avatar
@@ -138,29 +139,35 @@ export function AvatarUploader({
         onChange={(e) => onFile(e.target.files?.[0] ?? null)}
       />
 
-      {/* Camera button */}
+      {/* Camera button. 📐 2026-09-13 — its CENTRE sits on the rim at 45° (85.36% = 50% + 50%·cos45°,
+          then translated back by half), so the badge rides the edge instead of covering the second
+          initial, as the old corner placement did. The BUTTON stays a 40px hit area (--tap-min);
+          only the painted disc inside it is 32px. */}
       <button
         type="button"
         onClick={() => inputRef.current?.click()}
         disabled={pending}
         aria-label={t.common.changeProfilePhoto}
-        /* ⛔ LITERAL, NOT `h-8 w-8` — the spacing scale is overridden
-           (tailwind.config.ts:200-215) and that pair is 48×48px, 8px larger than the
-           clear badge pinned to the same avatar. 40px = --tap-min; both badges match. */
-        className="absolute -bottom-1 -right-1 inline-flex h-[40px] w-[40px] items-center justify-center rounded-pill border border-border bg-bg-elevated text-text-muted hover:text-text hover:border-gold-500 transition-colors disabled:opacity-50 shadow-e2"
+        /* ⛔ LITERALS, NOT the numeric keys — the spacing scale is overridden
+           (tailwind.config.ts:200-215), so the numeric pair renders ~double. Both badges match. */
+        className="group absolute left-[85.36%] top-[85.36%] inline-flex h-[40px] w-[40px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-pill disabled:opacity-50"
       >
-        {pending ? <Spinner size={13} /> : <I.camera s={13} />}
+        <span className="inline-flex h-[32px] w-[32px] items-center justify-center rounded-pill border border-border bg-bg-elevated text-text-muted shadow-e2 transition-colors group-hover:border-gold-500 group-hover:text-text">
+          {pending ? <Spinner size={13} /> : <I.camera s={13} />}
+        </span>
       </button>
 
-      {/* Clear button — only when an avatar exists */}
+      {/* Clear button — only when an avatar exists. Same geometry as the camera, on the top-right rim. */}
       {preview && !pending && (
         <button
           type="button"
           onClick={clear}
           aria-label={t.common.removeProfilePhoto}
-          className="absolute -top-1 -right-1 inline-flex h-7 w-7 items-center justify-center rounded-pill border border-border bg-bg-elevated text-text-subtle hover:text-no-300 hover:border-no-700 transition-colors shadow-e2"
+          className="group absolute left-[85.36%] top-[14.64%] inline-flex h-[40px] w-[40px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-pill"
         >
-          <I.trash s={11} />
+          <span className="inline-flex h-[32px] w-[32px] items-center justify-center rounded-pill border border-border bg-bg-elevated text-text-subtle shadow-e2 transition-colors group-hover:border-no-700 group-hover:text-no-300">
+            <I.trash s={11} />
+          </span>
         </button>
       )}
     </div>

@@ -107,9 +107,14 @@ export default async function InsightsPage() {
                     independent counts as a sequence and concludes the platform is leaking
                     players between stages that nobody has to pass through. */}
                 <strong className="text-text-muted">These stages are independent counts, not a sequence.</strong>{" "}
-                A player can deposit before KYC clears, and a bonus or an operator adjustment can put
-                someone into a market having never deposited — so a later stage can legitimately be
-                larger than the one above it.
+                {/* ⛔ 2026-09-13 — this sentence used to say a player "can deposit before KYC clears", as an
+                    exception. From that date identity is asked before a withdrawal and at no earlier step,
+                    so depositing and betting before verifying is the ordinary ladder, and "Identity
+                    verified" normally trails the two rows below it. */}
+                Identity is verified before a first withdrawal and at no earlier step, so most players
+                deposit and bet before they verify; and a bonus or an operator adjustment can put someone
+                into a market having never deposited — so a later stage can legitimately be larger than
+                the one above it.
               </>
             )}{" "}
             A “visits” stage is deliberately absent: the platform has no web-analytics instrumentation, so any

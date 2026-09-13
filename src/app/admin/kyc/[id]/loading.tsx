@@ -12,10 +12,11 @@ export default function Loading() {
       {/* Two-column detail — matches the page's own wrapper (no space-y). */}
       <div className="px-4 lg:px-6 py-5 animate-pulse">
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,380px)] items-start">
-          {/* Document viewer + applicant (left) */}
+          {/* Document viewer + applicant + money at stake (left) — the third card arrived 2026-09-13. */}
           <div className="space-y-4">
             <SkCard lines={6} />
             <SkCard lines={5} />
+            <SkCard lines={8} />
           </div>
           {/* Risk score + decision (right) */}
           <div className="space-y-4">

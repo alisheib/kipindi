@@ -3,7 +3,7 @@
  *
  * ⭐ WHY IT IS ITS OWN FILE. Two sides answer this question: the withdrawal gate
  * (`src/lib/server/kyc-gate.ts`), which decides, and the screens (`/wallet/withdraw`, the
- * standing identity bar, the admin roster), which draw what the player may do. Until
+ * first-deposit notice via `kycGateState`, the admin roster), which draw what the player may do. Until
  * 2026-09-13 each side wrote its own expression, and they disagreed:
  *
  *     page:    everApproved = !!k?.approvedAt

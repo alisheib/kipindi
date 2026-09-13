@@ -34,7 +34,7 @@ export default async function WithdrawLoading() {
           icon={<I.arrowUpFromLine s={14} className="text-gold-300" />}
           eyebrow={t.wallet.withdrawTitle}
           title={t.wallet.moveFundsOut}
-          subtitle={t.wallet.mobileMoney}
+          subtitle={t.wallet.mobileMoneyOnly}
         />
       </PageHero>
       <div className="grid place-items-center py-10 rounded-lg border border-border bg-bg-elevated/40">

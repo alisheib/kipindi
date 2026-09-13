@@ -13,15 +13,18 @@
  *      that operators and players can refer to in chat / disputes
  *      without exposing the real name or the masked phone.
  *
- * On KYC approval the NIDA-verified legal name IS promoted into
- * displayName (see `kyc-service.reviewKyc` — Ali's 2026-06-14 decision),
- * so the INTERNAL, compliance-gated console can identify a verified player.
- * This is safe because every PUBLIC surface masks the name independently —
- * the leaderboard shows the first word only and comments mask + freeze the
- * name at write time, so the full surname never leaks to other players.
- * The admin players list + drill-in (both COMPLIANCE_ROLES-gated) therefore
- * show the legal name by design; the more-sensitive self-exclusion roster
- * and on-behalf DSAR list mask it via `maskName()`.
+ * ⛔ APPROVAL NO LONGER WRITES displayName (Ali, 2026-09-13 — reverses his 2026-06-14
+ * decision; docs/COMPLIANCE-DECISIONS.md "2026-09-13 (second)"). From 2026-06-14 the
+ * verified legal name was promoted into displayName on KYC approval, even over a chosen
+ * handle, so the compliance console could identify a verified player. Under the 2026-09-13
+ * ladder approval comes at cash-out, after a player may have spent weeks under a handle, so
+ * the overwrite would unmask them at that moment. So a chosen name stays the label; the
+ * legal name is RECORDED on the KYC submission and shown to the officer there, and is not
+ * promoted into this label. ⛔ Do not restore the overwrite from old comment history.
+ *
+ * Public surfaces still mask names independently — the leaderboard shows the first word
+ * only and comments mask + freeze the name at write time — and the more-sensitive
+ * self-exclusion roster and on-behalf DSAR list mask via `maskName()`.
  *
  * Initials follow the same rule. "Player #A3F2K8" → "A3" so the
  * Avatar component shows something stable rather than "?".

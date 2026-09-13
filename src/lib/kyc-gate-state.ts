@@ -4,8 +4,9 @@
  *
  * 🔴 IT LIVED IN `kyc-gate-panel.tsx` FOR ONE COMMIT AND THAT WAS A SITE-WIDE OUTAGE.
  * That file is `"use client"`, so exporting a plain function from it makes the function a
- * client reference. Every caller here is a SERVER component — `AppShell`, the withdraw page,
- * the agent application — and calling it from the server throws:
+ * client reference. Every caller is a SERVER component — then `AppShell`, the withdraw page and
+ * the agent application; from 2026-09-13 the withdraw page, the agent application, `/wallet` and
+ * the card-deposit return page — and calling it from the server throws:
  *
  *     Attempted to call kycGateState() from the server but kycGateState is on the client.
  *
@@ -13,6 +14,8 @@
  * money screens. ⚠️ AND NEITHER `tsc` NOR `next build` SAW IT: the boundary is a runtime
  * contract, and both were clean. It surfaced the first time a browser actually loaded a
  * page — `qa:kyc-gate`, on the run that was meant to check button sizes.
+ * (`AppShell` stopped calling this on 2026-09-13, when the app-wide identity bar it fed was
+ * deleted. The lesson is unchanged for every server caller that remains.)
  *
  * ⛔ Do not move this back beside the component "to keep them together". The component may
  * import from here; nothing server-side may import from the component.
@@ -26,6 +29,9 @@
  *     different buttons. Decided by `documentCount > 0` ALONE, the rule `kyc-stage.ts` already
  *     uses for the admin roster — never by a "file ever arrived" flag, which reads a restarted
  *     once-approved player as "uploaded".
+ *     ⭐ These two — `not_started` and `uploaded`, "nothing submitted yet" — are exactly the states
+ *     for which the first-deposit notice (`kyc-first-deposit-notice.tsx`) is due, once the account
+ *     holds a confirmed deposit. Every later state has its own event notice.
  *   · `refused_final` — split out of `rejected`. A FINAL refusal (`kyc-refusal.ts`) cannot be
  *     restarted by the player, and its wallet is frozen while an officer decides the balance — so
  *     "try again" and "your balance is safe" would both be false on it.

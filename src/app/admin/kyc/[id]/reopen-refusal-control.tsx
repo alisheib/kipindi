@@ -71,7 +71,7 @@ export function ReopenRefusalControl({ userId }: { userId: string }) {
         initialFocus={reasonRef}
       >
         <p className="font-mono text-micro uppercase eyebrow font-bold text-text mb-1">KYC · Re-open refusal</p>
-        <h3 className="font-display text-[18px] font-bold text-text leading-tight">Re-open this final refusal?</h3>
+        <h3 className="font-display text-title-sm font-bold text-text leading-tight">Re-open this final refusal?</h3>
         <p className="mt-1 text-body-sm text-text-subtle">
           Use this only when the final refusal was wrong. The verification restarts, the identity-refusal freeze is lifted (<strong>any other hold on the wallet stays</strong>), and the player is told they may verify again. A balance decision already carried out is not undone. Audit-logged.
         </p>
@@ -84,11 +84,11 @@ export function ReopenRefusalControl({ userId }: { userId: string }) {
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             placeholder="Why was the final refusal wrong?"
-            className="mt-1 w-full rounded-md border border-border bg-bg-overlay px-2.5 py-2 text-[13px] text-text outline-none admin-focus transition-colors"
+            className="mt-1 w-full rounded-md border border-border bg-bg-overlay px-2 py-2 text-body-sm text-text outline-none admin-focus transition-colors"
             rows={3}
             maxLength={500}
           />
-          <span className="font-mono text-[10px] text-text-subtle">{reason.trim().length} / {MIN} minimum</span>
+          <span className="font-mono text-body-sm tabular-nums text-text-subtle">{reason.trim().length} / {MIN} minimum</span>
         </label>
         <div className="mt-4 flex flex-col gap-2">
           <Button type="button" variant="primary" size="lg" fullWidth loading={pending} disabled={reason.trim().length < MIN} onClick={submit}>

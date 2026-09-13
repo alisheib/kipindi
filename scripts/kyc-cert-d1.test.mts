@@ -410,6 +410,93 @@ ok("🔴 the fast-path duplicate read matches on (type, number)",
     "An INSERT naming a dropped column throws before the race it is setting up begins.");
 }
 
+// ── 3c · 🔴 A FINAL refusal keeps the number held — one question, asked in five places ─────────────
+section("3c · the final-refusal predicate (2026-09-13): migration, list and both fast paths agree");
+{
+  /**
+   * ⭐ WHY (owner ruling, Ali, 2026-09-13 — docs/COMPLIANCE-DECISIONS.md, S16). Both one-document-one-
+   * account indexes were partial on `status <> 'REJECTED'`, and §3 above still asserts that of the
+   * migrations that created them — correctly: applied history records what was true. From 2026-09-13
+   * money is played before identity is checked, so a refusal on a FINAL code (`UNDERAGE`, `SANCTIONED`,
+   * `DUPLICATE_IDENTITY`) must keep the number held, or a refused minor's document walks to an adult's
+   * second account. `20260913120000_kyc_at_withdrawal` re-creates BOTH indexes with that predicate.
+   *
+   * ⛔ FIVE PLACES MUST ASK ONE QUESTION: the two index predicates, `FINAL_REFUSAL_CODES`, and the
+   * fast-path reads in `prisma-dal.ts` and `store.ts`. If any two disagree, a race resolves differently
+   * from a sequential duplicate — the defect §3 exists for — so the IN list is compared with the
+   * TypeScript list itself, never with a copy written here.
+   */
+  const AT_WITHDRAWAL = "prisma/migrations/20260913120000_kyc_at_withdrawal/migration.sql";
+  let atw = "";
+  try { atw = read(AT_WITHDRAWAL); } catch { /* reported below */ }
+  ok("🔴 the kyc-at-withdrawal migration exists", atw.length > 0, `Missing ${AT_WITHDRAWAL}.`);
+  // ⚠️ `--` to end of line, anywhere — §3b's RED case proved the line-initial form insufficient.
+  const atwCode = atw.replace(/--.*$/gm, "");
+  ok("control · stripping the comments left the statements and removed the prose",
+    /CREATE UNIQUE INDEX/.test(atwCode) && !/laundering shape/.test(atwCode),
+    "If this fires, every assertion below is reading prose or nothing.");
+
+  const { FINAL_REFUSAL_CODES, holdsDocumentNumber } = await import("../src/lib/kyc-refusal.ts");
+  const finalList = [...FINAL_REFUSAL_CODES].sort().join(",");
+  const inListOf = (stmt: string) => (stmt.match(/"rejectReason"\s+IN\s*\(([^)]*)\)/)?.[1] ?? "")
+    .split(",").map((s) => s.trim().replace(/^'|'$/g, "")).filter(Boolean).sort().join(",");
+  ok("control · the IN-list reader tells a short list from the real one",
+    finalList.split(",").length === 3 && inListOf(`"rejectReason" IN ('UNDERAGE', 'SANCTIONED')`) !== finalList);
+
+  for (const [name, cols] of [
+    ["KycSubmission_idType_idNumber_active_key", /ON\s+"KycSubmission"\s*\(\s*"idType"\s*,\s*"idNumber"\s*\)/],
+    ["KycSubmission_idFingerprint_active_key", /ON\s+"KycSubmission"\s*\(\s*"idFingerprint"\s*\)/],
+  ] as const) {
+    const iDrop = atwCode.indexOf(`DROP INDEX IF EXISTS "${name}"`);
+    const iCreate = atwCode.indexOf(`CREATE UNIQUE INDEX IF NOT EXISTS "${name}"`);
+    const stmt = iCreate < 0 ? "" : atwCode.slice(iCreate, atwCode.indexOf(";", iCreate) + 1);
+    ok(`${name} · dropped, then re-created — in that order`, iDrop >= 0 && iCreate > iDrop, `drop@${iDrop} create@${iCreate}`);
+    ok(`${name} · on the same column(s) as before`, cols.test(stmt), stmt.slice(0, 160));
+    ok(`${name} · still partial on a non-null key`, /WHERE\s+"(idNumber|idFingerprint)"\s+IS NOT NULL/.test(stmt));
+    ok(`🔴 ${name} · holds the number while not refused, OR refused on a FINAL code`,
+      /\(\s*status\s*<>\s*'REJECTED'\s+OR\s+"rejectReason"\s+IN\s*\(/.test(stmt),
+      "Without the OR, a final refusal releases the document — the S16 laundering shape.");
+    ok(`🔴 ${name} · its IN list is EXACTLY FINAL_REFUSAL_CODES`, inListOf(stmt) === finalList,
+      `index: ${inListOf(stmt) || "(none)"} · kyc-refusal.ts: ${finalList}`);
+  }
+  ok("🔴 no CONCURRENTLY — migrate deploy wraps the file in a transaction", !/CONCURRENTLY/i.test(atwCode));
+  const atwDdl = atwCode.split("\n").filter((l) => /^\s*(DROP|ALTER|CREATE)\b/i.test(l));
+  ok("control · the DDL lines were actually located", atwDdl.length >= 5, `found ${atwDdl.length}`);
+  ok("🔴 every DDL statement is re-runnable — it is applied by hand before the push",
+    atwDdl.every((l) => /IF (NOT )?EXISTS/i.test(l)),
+    `not re-runnable: ${atwDdl.filter((l) => !/IF (NOT )?EXISTS/i.test(l)).join(" | ")}`);
+
+  // ── the fast paths — sliced to the method, so a match elsewhere in a 2,000-line store cannot hold them up ──
+  const methodBody = (src: string, head: string) => {
+    const i = src.indexOf(head);
+    return i < 0 ? "" : src.slice(i, src.indexOf("\n    },", i));
+  };
+  const dal = stripComments(read("src/lib/server/prisma-dal.ts"));
+  const mem = stripComments(read("src/lib/server/store.ts"));
+  ok("prisma-dal takes the codes from kyc-refusal.ts, never from a copy",
+    /import\s*\{[^}]*\bFINAL_REFUSAL_CODES\b[^}]*\}\s*from\s*"@\/lib\/kyc-refusal"/.test(dal));
+  ok("store.ts takes the predicate from kyc-refusal.ts",
+    /import\s*\{[^}]*\bholdsDocumentNumber\b[^}]*\}\s*from\s*"@\/lib\/kyc-refusal"/.test(mem));
+  for (const fn of ["findActiveByIdNumber", "findActiveByFingerprint"]) {
+    const p = methodBody(dal, `${fn}: async (`);
+    ok(`🔴 prisma-dal ${fn} asks the index's question`,
+      /OR:\s*\[\s*\{\s*status:\s*\{\s*not:\s*"REJECTED"\s*\}\s*\}\s*,\s*\{\s*rejectReason:\s*\{\s*in:\s*\[\s*\.\.\.FINAL_REFUSAL_CODES\s*\]\s*\}\s*\}\s*\]/.test(p),
+      p ? p.replace(/\s+/g, " ").slice(0, 220) : "method not found");
+    const m = methodBody(mem, `${fn}: (`);
+    ok(`🔴 store.ts ${fn} asks the same question`,
+      /if\s*\(\s*!holdsDocumentNumber\(k\)\s*\)\s*continue;/.test(m) && !/"REJECTED"/.test(m),
+      m ? m.replace(/\s+/g, " ").slice(0, 220) : "method not found");
+  }
+  // ⭐ AND THE PREDICATE ITSELF, over every refusal code the enum has.
+  for (const code of ["UNDERAGE", "SANCTIONED", "DUPLICATE_IDENTITY", "BLURRY_DOC", "DETAILS_MISMATCH", "EXPIRED_ID", "OTHER"]) {
+    const expected = (FINAL_REFUSAL_CODES as readonly string[]).includes(code);
+    ok(`holdsDocumentNumber(REJECTED · ${code}) is ${expected}`, holdsDocumentNumber({ status: "REJECTED", rejectReason: code }) === expected);
+  }
+  ok("holdsDocumentNumber holds for every status that is not a refusal, and a code-less refusal frees",
+    ["IN_PROGRESS", "PENDING_REVIEW", "ADDITIONAL_INFO_REQUIRED", "APPROVED"].every((s) => holdsDocumentNumber({ status: s, rejectReason: null }))
+    && holdsDocumentNumber({ status: "REJECTED", rejectReason: null }) === false);
+}
+
 // ── 4 · 🔴 A rejected player is told they were rejected ───────────────────────────────────────
 section("4 · rejection is visible, and the record survives being looked at");
 

@@ -2,7 +2,8 @@ import { AdminPageHead, AdminCard, AdminKpi, AdminFunnel, AdminLoadError } from 
 import { AdminBarList, AdminMeter, AdminAreaChart } from "@/components/admin/admin-charts";
 import { db } from "@/lib/server/store";
 import { kycFunnel, userStatusCounts } from "@/lib/server/analytics";
-import { Chip } from "@/components/ui/chip";
+import { AccountStatusBadge, presentedAccountStatus } from "@/components/admin/status-badge";
+import { approvedEver } from "@/lib/kyc-approval";
 import { AdminBody } from "@/components/admin/admin-body";
 import { KpiGrid } from "@/components/admin/admin-body";
 
@@ -63,10 +64,52 @@ export default async function AdminCohortsPage() {
   const regions = bucketByRegion(allUsers);
   const ageBuckets = bucketByAge(allUsers);
   let statusFailed = false;
-  const status = await userStatusCounts().catch(() => { statusFailed = true; return {} as Record<string, number>; });
+  const rawStatus = await userStatusCounts().catch(() => { statusFailed = true; return {} as Record<string, number>; });
+  /**
+   * ⛔ `PENDING_KYC` IS FOLDED INTO ACTIVE, HERE AND ONLY FOR PRESENTATION — 2026-09-13.
+   * It was written at registration, gated nothing, and from 2026-09-13 new accounts are created
+   * ACTIVE and the migration normalises the rest. A straggler still counted apart would put a
+   * "pending" population on a cohort screen that no longer exists as a state. The fold is
+   * `presentedAccountStatus` — the SAME function the chip and the roster filter use — so this
+   * card, the roster and the player detail cannot disagree about what an account is.
+   * `userStatusCounts()` keeps returning the stored column untouched: the data layer does not
+   * relabel data, the screen does.
+   */
+  const status: Record<string, number> = {};
+  for (const [s, c] of Object.entries(rawStatus)) {
+    const k = presentedAccountStatus(s);
+    status[k] = (status[k] ?? 0) + c;
+  }
   const total = Object.values(status).reduce((s, c) => s + c, 0);
   let kycFailed = false;
   const kyc = await kycFunnel().catch(() => { kycFailed = true; return { registered: 0, started: 0, pending: 0, approved: 0 }; });
+
+  /**
+   * ⭐ "KYC APPROVED" — THE TILE THAT REPLACED "Pending KYC · needs follow-up" (2026-09-13).
+   *
+   * The old tile counted `User.status === "PENDING_KYC"` and captioned it "needs follow-up". Both
+   * halves became false together: the status gated nothing, and under the 2026-09-13 ladder an
+   * unverified player is not behind on anything — depositing and playing are open, and identity is
+   * asked at withdrawal. So the tile now states something TRUE and useful to a growth reader: how
+   * many accounts have been approved at least once.
+   * ⛔ `approvedEver` — the withdrawal gate's own predicate (src/lib/kyc-approval.ts), over the newest
+   * submission per user (`listStageFacts`, ordered exactly as `db.kyc.findByUserId`). The health
+   * meter below reads the SAME count, so one label never carries two numbers on this page.
+   * ⚠️ It is NOT the funnel's "APPROVED" step, which is `kycFunnel()`'s CURRENT status: a once-
+   * approved player under re-verification is in this count and not in that step. Different words,
+   * different questions.
+   * ⛔ NO MONEY ON THIS PAGE. /admin/players/cohorts is the `growth` domain and GROWTH reads
+   * `money.figures` as none (roles.ts), so "Held for unverified" belongs on /admin/finance, not here.
+   * ⛔ `listStageFacts`, never `db.kyc.list()` — that joins every base64 document image.
+   */
+  let factsFailed = false;
+  let stageFacts: Awaited<ReturnType<typeof db.kyc.listStageFacts>> = [];
+  try { stageFacts = await db.kyc.listStageFacts(); } catch { factsFailed = true; }
+  const approvedUserIds = new Set<string>();
+  for (const f of stageFacts) if (approvedEver(f)) approvedUserIds.add(f.userId);
+  const approvedCount = allUsers.reduce((n, u) => n + (approvedUserIds.has(u.id) ? 1 : 0), 0);
+  const approvedUnavailable = usersFailed || factsFailed;
+  const approvedPct = allUsers.length === 0 ? 0 : Math.round((approvedCount / allUsers.length) * 100);
 
   return (
     <>
@@ -77,18 +120,28 @@ export default async function AdminCohortsPage() {
         <KpiGrid>
           <AdminKpi label="Total players" sw="Wachezaji"      value={statusFailed ? "" : total.toLocaleString()} unavailable={statusFailed} series={usersFailed ? undefined : cumulativeSeries(months)} />
           <AdminKpi label="Active"        sw="Hai"             value={statusFailed ? "" : (status.ACTIVE ?? 0).toLocaleString()} unavailable={statusFailed} deltaDir="up" delta={`${total === 0 ? 0 : Math.round(((status.ACTIVE ?? 0) / total) * 100)}%`} />
-          <AdminKpi label="Pending KYC"   sw="Inasubiri"       value={statusFailed ? "" : (status.PENDING_KYC ?? 0).toLocaleString()} unavailable={statusFailed} delta="needs follow-up" />
+          {/* ⛔ No `sw`: there is no shipped Swahili for this label and the lexicon forbids
+              inventing one. ⛔ `deltaDir="flat"`: a share is context, not a movement. */}
+          <AdminKpi
+            label="KYC approved"
+            value={approvedUnavailable ? "" : approvedCount.toLocaleString()}
+            unavailable={approvedUnavailable}
+            delta={approvedUnavailable ? undefined : `${approvedPct}% · ever approved`}
+            deltaDir="flat"
+          />
           <AdminKpi label="Self-excluded" sw="Wamejizuia"      value={statusFailed ? "" : (status.SELF_EXCLUDED ?? 0).toLocaleString()} unavailable={statusFailed} delta="active roster" />
         </KpiGrid>
 
         {/* Cohort health meters (A8) — value-vs-cap gauges, brand fill. */}
         <AdminCard title="Cohort health" sw="Afya ya kundi">
-          {statusFailed || kycFailed ? (
+          {statusFailed || approvedUnavailable ? (
             <AdminLoadError what="cohort-health figures" />
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
               <AdminMeter label="Active rate" value={status.ACTIVE ?? 0} cap={total} thresholdPct={0} format={(n) => n.toLocaleString()} />
-              <AdminMeter label="KYC approved" value={kyc.approved} cap={Math.max(kyc.registered, 1)} thresholdPct={0} format={(n) => n.toLocaleString()} />
+              {/* ⭐ The SAME approved-ever count as the KPI above (2026-09-13) — it used to read the
+                  funnel's current-status count under the identical label. */}
+              <AdminMeter label="KYC approved" value={approvedCount} cap={Math.max(allUsers.length, 1)} thresholdPct={0} format={(n) => n.toLocaleString()} />
             </div>
           )}
         </AdminCard>
@@ -118,8 +171,13 @@ export default async function AdminCohortsPage() {
             ) : total === 0 ? (
               <p className="text-caption text-text-tertiary py-3 text-center">No status data.</p>
             ) : (
+              /* ⛔ THE LEXICON'S CHIP, NOT A LOCAL ONE (2026-09-13). This card printed the RAW
+                 column (`PENDING_KYC`, `SELF_EXCLUDED`) inside a chip whose variant came from a
+                 file-local ternary that painted PENDING_KYC amber — a hand-typed variant beside a
+                 status label, and a database token read by a person. `AccountStatusBadge` is the
+                 roster's own chip: the lexicon's words and the dictionary's tones. */
               <AdminBarList
-                rows={Object.entries(status).map(([s, c]) => ({ label: <Chip size="sm" variant={statusVariant(s)}>{s}</Chip>, value: c }))}
+                rows={Object.entries(status).map(([s, c]) => ({ label: <AccountStatusBadge status={s} />, value: c }))}
               />
             )}
           </AdminCard>
@@ -165,12 +223,4 @@ export default async function AdminCohortsPage() {
       </AdminBody>
     </>
   );
-}
-
-function statusVariant(s: string): "success" | "warning" | "danger" | "neutral" | "info" {
-  if (s === "ACTIVE") return "success";
-  if (s === "PENDING_KYC") return "warning";
-  if (s === "SUSPENDED" || s === "SELF_EXCLUDED") return "danger";
-  if (s === "COOLED_OFF") return "warning";
-  return "neutral";
 }

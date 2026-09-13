@@ -86,7 +86,11 @@ export function NoticeBar({
         {Glyph
           ? <Glyph s={15} className="shrink-0" aria-hidden />
           : <span className="shrink-0 inline-block h-2 w-2 rounded-full" style={{ background: t.accent }} aria-hidden />}
-        <p className="min-w-0 flex-1 text-body-sm leading-snug font-medium">{children}</p>
+        {/* 2026-09-13: a 14rem BASIS, not a zero one. With a zero basis the row could never wrap:
+            the text shrank to fit the action beside it and ran to five lines at 360 in Swahili.
+            Now the action drops under the text on a phone. On desktop the basis always fits, so
+            the text still grows into the same space it had before. */}
+        <p className="min-w-0 grow basis-[14rem] text-body-sm leading-snug font-medium">{children}</p>
         {action}
         {onDismiss && (
           <button

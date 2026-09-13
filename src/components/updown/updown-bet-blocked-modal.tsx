@@ -14,12 +14,14 @@
  * hook's `blocked` state, so all three surfaces present one identical refusal.
  *
  * 🔴 THE VARIANT IS NO LONGER HARD-WIRED TO `danger`, AND THAT WAS A REAL DEFECT WAITING
- * ON A REASON TO EXIST. It was written when every `modal`-channel reason in the registry
- * carried severity `error`. The 2026-09-05 identity gate added `kyc_pending_review` at
- * severity **`info`** — a player who has submitted everything and is waiting on OUR
- * review queue. In the `danger` skin that arrives as a red crest, an ✗ glyph and
- * `role="alertdialog"`: an emergency, about nothing they did. The tone now travels with
- * the refusal from the registry (`updown-bet-errors.ts` → `SEVERITY_VARIANT`).
+ * ON A REASON TO EXIST. The reason was the 2026-09-05 identity gate on staking: its
+ * `kyc_pending_review` refusal meant a player who had submitted everything and was waiting
+ * on OUR review queue, and in the `danger` skin that arrives as a red crest, an ✗ glyph and
+ * `role="alertdialog"` — an emergency, about nothing they did. The tone now travels with the
+ * refusal, chosen BY REASON in `MODAL_TONE_BY_REASON` (`updown-bet-errors.ts`), not by severity.
+ * ⚠️ 2026-09-13: a stake asks no identity question any more (`kyc-gate.ts` — identity is required
+ * before withdrawal only), so that map is empty and every refusal reaching this modal is `danger`
+ * today. The prop stays for the next refusal that is ordinary progress rather than a fault.
  * ⛔ Never `success` — gold is earned money, and a refusal is not.
  */
 import { OperationResultModal } from "@/components/markets/operation-result-modal";

@@ -318,40 +318,39 @@ console.log("\n=== G · PRIVILEGE ESCALATION ===");
 }
 
 // =========================================================
-// H · KYC GATE on withdrawal
+// H · IDENTITY IS ASKED AT THE WITHDRAWAL — AND ONLY THERE
 // =========================================================
-console.log("\n=== H · WITHDRAW IS OPEN TO AN UNVERIFIED PLAYER ===");
-// 🔴 INVERTED 2026-08-20. This asserted "unverified user sees KYC gate copy" by matching
-// /verify|kyc|nida/i over the whole page body. Identity verification stopped being a
-// precondition of withdrawal (Board comment #1, relayed by the owner 2026-08-19) — and the
-// page still carries the words "Secured by KYC & AML", so the OLD assertion would have gone
-// on reporting a gate that no longer exists, indefinitely, with nothing failing.
-// ⛔ A word is not a control. What is measured now is the CONTROL: is the form usable.
+console.log("\n=== H · WITHDRAWAL ASKS FOR IDENTITY; NOTHING ELSE DOES ===");
+// 🔴 RE-INVERTED 2026-09-13. From 2026-08-20 this asserted the withdraw form was OPEN to an
+// unverified player (identity had stopped gating withdrawal, Board comment #1). 2026-09-05 put
+// identity back on deposit, play and withdrawal; the 2026-09-13 ruling (docs/COMPLIANCE-DECISIONS.md)
+// keeps it on WITHDRAWAL ONLY, and Ali's quiet rule of the same day deleted the app-wide identity bar.
+// ⛔ A word is still not a control — the page says "Secured by KYC & AML" whichever way the rule
+// points — so what is measured is the CONTROL: the payout panel stands where the form was, and
+// nothing stands in front of the deposit screen.
 {
   await p.goto(`${BASE}/wallet/withdraw`, { waitUntil: "networkidle" });
   const text = (await p.locator("body").textContent()) ?? "";
-  // Payouts being SHUT also disables this form, for a completely different reason. Read that
-  // first, or a paused payout rail reads as an identity gate — they are indistinguishable
-  // from the outside, and conflating them is how "the game is closed" became "the game is
-  // broken" five times in this campaign.
-  const payoutsShut = await p.locator("text=/payouts|malipo|提现/i").first().isVisible().catch(() => false)
-    && await p.locator("fieldset[disabled]").first().isVisible().catch(() => false);
-  const fieldsetDisabled = (await p.locator("fieldset[disabled]").count()) > 0;
-  // The instruction that would come back if someone re-added the gate — an actionable
-  // "verify before you can withdraw", not the mere word KYC.
-  const tellsThemToVerifyFirst =
-    /verify\s+your\s+(identity|ID)[^.]{0,40}(to|before)\s+withdraw/i.test(text) ||
-    /thibitisha[^.]{0,40}(kabla|ili)\s+ku(toa|toa pesa)/i.test(text) ||
-    /(提现|提款)[^。]{0,20}(需|须)[^。]{0,10}验证/.test(text);
-  log("H1 the withdraw form is NOT closed to an unverified player",
-    !fieldsetDisabled || payoutsShut,
-    fieldsetDisabled ? (payoutsShut ? "disabled by the PAYOUT PAUSE, not identity — environment, not a defect" : "🔴 form disabled with payouts open") : "form open");
-  log("H2 …and the page does not instruct them to verify before withdrawing",
-    !tellsThemToVerifyFirst, `len=${text.length}`);
-  // ⭐ CONTROL · both checks above are absences. If the page failed to render at all they
-  // would pass over an empty body, which is precisely the vacuous shape being replaced.
-  log("H3 control · the withdraw page actually rendered",
-    text.length > 400 && (await p.locator("form").count()) > 0, `len=${text.length}`);
+  const panel = p.locator('[data-testid="kyc-gate-panel"][data-kyc-purpose="payout"]');
+  const panelState = await panel.first().getAttribute("data-kyc-state").catch(() => null);
+  log("H1 an account never approved meets the payout identity panel on /wallet/withdraw",
+    (await panel.count()) === 1 && panelState === "not_started", `state=${panelState}`);
+  // ⛔ ABSENT, NOT DISABLED. A paused payout rail only DIMS the form; an unverified account never
+  // gets the form at all, so the two can no longer be mistaken for each other here.
+  log("H2 …and the withdrawal form is ABSENT, not disabled",
+    (await p.locator('form input[name="amount"]').count()) === 0);
+  // ⭐ CONTROL · the absence above would pass over a page that never rendered.
+  log("H3 control · the withdraw page actually rendered", text.length > 400, `len=${text.length}`);
+  const barOnWithdraw = await p.locator('[data-testid="kyc-verify-banner"]').count();
+
+  await p.goto(`${BASE}/wallet/deposit`, { waitUntil: "networkidle" });
+  log("H4 ⛔ /wallet/deposit shows NO identity panel — its one door is the email",
+    (await p.locator('[data-testid="kyc-gate-panel"]').count()) === 0);
+  log("H5 control · …the email door or the deposit form is what renders there",
+    (await p.locator('[data-testid="email-verify-gate"], #provider-MPESA').count()) > 0);
+  const barOnDeposit = await p.locator('[data-testid="kyc-verify-banner"]').count();
+  log("H6 ⛔ no app-wide identity bar (deleted 2026-09-13) on either screen",
+    barOnWithdraw === 0 && barOnDeposit === 0, `withdraw=${barOnWithdraw} deposit=${barOnDeposit}`);
 }
 
 // =========================================================
@@ -410,14 +409,15 @@ console.log("\n=== K · WALLET / TRANSACTION ===");
 {
   const balBefore = await readWallet(p);
   // K1 — try negative withdraw, oversize withdraw, and stake injection.
-  // Withdraw is KYC-gated; fresh user without KYC won't see the form.
+  // ⭐ Withdrawal is identity-gated (2026-09-13 ruling, and H above proves it): an account never
+  // approved gets the payout panel and NO form, so these forged posts usually have nothing to aim at.
   // Pass the test as long as the balance never moves.
   await p.goto(`${BASE}/wallet/withdraw`, { waitUntil: "domcontentloaded" }).catch(() => {});
   await p.waitForTimeout(800);
   const tries = await p.evaluate(async () => {
     try {
       const form = document.querySelector("form[action]");
-      if (!form) return ["no-form-as-expected (KYC gate)"];
+      if (!form) return ["no-form-as-expected (identity panel)"];
       const action = form.getAttribute("action");
       const out = [];
       for (const amount of [-10000, 0, 1e15, "abc", "1.5e10"]) {
@@ -439,7 +439,7 @@ console.log("\n=== K · WALLET / TRANSACTION ===");
     }
   });
   const balAfter = await readWallet(p);
-  log("K1 invalid withdraw payloads do not debit (KYC-gated)", balBefore === balAfter, `tries=${tries.join(",")} bal=${balBefore}→${balAfter}`);
+  log("K1 invalid withdraw payloads do not debit (identity-gated)", balBefore === balAfter, `tries=${tries.join(",")} bal=${balBefore}→${balAfter}`);
 }
 
 // =========================================================

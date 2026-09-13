@@ -3,8 +3,14 @@ import { AdminPageHead, AdminCard, AdminKpi, AdminLoadError } from "@/components
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { SortTh } from "@/components/admin/admin-sort";
 import { AdminTableEmpty } from "@/components/admin/admin-table-empty";
-import { AccountStatusBadge, accountStatusLabel, KycStageBadge, kycStageLabel } from "@/components/admin/status-badge";
-import { kycStage, isKycStage, KYC_STAGES, type KycStage, type KycCell } from "@/lib/kyc-stage";
+import { AccountStatusBadge, accountStatusLabel, presentedAccountStatus, KycStageBadge, kycStageLabel, kycStageVariant, fundedAxisLabel } from "@/components/admin/status-badge";
+import {
+  kycStage, isKycStage, KYC_STAGES, MONEY_NOT_APPLIED, MONEY_ONLY_STAGES, MONEY_SPLIT_STAGES,
+  stageTurnsOnMoney, walletHeldTzs, FUNDED_AXIS, isFundedAxis, fundedAxisOf, isFinalRefusalCell,
+  type KycStage, type KycCell, type KycMoney, type FundedAxis,
+} from "@/lib/kyc-stage";
+import { REVIEW } from "@/lib/admin-status-lexicon";
+import { Chip } from "@/components/ui/chip";
 import { Avatar } from "@/components/ui/avatar";
 import { Select } from "@/components/ui/select";
 import { Sensitive } from "@/components/ui/sensitive";
@@ -21,14 +27,21 @@ import { KpiGrid } from "@/components/admin/admin-body";
 export const metadata = { title: "Admin · Players" };
 export const dynamic = "force-dynamic";
 
-export default async function AdminPlayersPage({ searchParams }: { searchParams: Promise<{ q?: string; status?: string; kyc?: string; sort?: string; dir?: string; page?: string }> }) {
+export default async function AdminPlayersPage({ searchParams }: { searchParams: Promise<{ q?: string; status?: string; kyc?: string; funded?: string; sort?: string; dir?: string; page?: string }> }) {
   const sp = await searchParams;
   // RBAC: only accounting-view roles see wallet balances (Support = roster, no money).
   const _session = await currentSession();
   const canSeeMoney = _session ? await canView(_session.role, "accounting") : false;
   const query = (sp.q ?? "").trim().toLowerCase();
-  const statusFilter = sp.status ?? "";
-  const sortField = (["joined", "login", "balance"] as const).includes(sp.sort as never) ? sp.sort! : "joined";
+  /**
+   * ⛔ VALIDATED AGAINST THE CLOSED SET — 2026-09-13, like `?kyc=` and `?funded=` below. It used to
+   * be matched raw, which was harmless while every stored status was also a filter option. From
+   * 2026-09-13 `PENDING_KYC` is not an option (see ACCOUNT_FILTER), and a legacy
+   * `?status=PENDING_KYC` link would have rendered "No players match" — which reads as a finding
+   * about the population. It now falls back to "All statuses", and the Select says so.
+   */
+  const statusFilter: (typeof ACCOUNT_FILTER)[number] | "" =
+    (ACCOUNT_FILTER as readonly string[]).includes(sp.status ?? "") ? (sp.status as (typeof ACCOUNT_FILTER)[number]) : "";
   const sortDir = sp.dir === "asc" ? "asc" : "desc";
 
   // A-5: distinguish a failed population read from a genuinely empty player base,
@@ -47,14 +60,18 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
    * photo and never pressed Confirm, and someone who submitted and is waiting on US.
    * The third group is invisible platform-wide: `listPendingKyc` reads only
    * PENDING_REVIEW + ADDITIONAL_INFO_REQUIRED, so nobody chases them.
+   * (From 2026-09-13 that Status column never says "Pending KYC" at all — see
+   * ACCOUNT_FILTER at the foot of this file.)
    *
    * ⭐ ONE DERIVATION FEEDS THE ROWS, THE COUNTS AND THE FILTER. There is no SQL
    * pre-filter and no re-derivation, so a drift between the chip, the tally and the
-   * filtered set is not merely unlikely — it is unexpressible.
+   * filtered set is not merely unlikely — it is unexpressible. From 2026-09-13 that
+   * derivation also reads MONEY (`kycStage(facts, money)`), so "Funded · nothing
+   * sent" joins the column, the tallies and the filter through the same function.
    *
-   * ⚠️ TWO FLAT READS OVER THE POPULATION, AND THEY ARE CHEAPER THAN THE READ THIS
-   * PAGE ALREADY DOES. `db.user.list()` above hydrates every User row; this is six
-   * narrow scalars per submission plus one aggregate over a narrow child table.
+   * ⚠️ FLAT READS OVER THE POPULATION. `db.user.list()` above hydrates every User row;
+   * this is six narrow scalars per submission plus one aggregate over a narrow child
+   * table, and the wallet read below is one narrow row per account.
    * ⛔ NOT `db.kyc.list()` — findMany with no `where`, no `orderBy` and
    * `include: { documents: true }`: every inline base64 image, and a
    * non-deterministic winner for any user with two submissions.
@@ -65,30 +82,98 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
   let kycFailed = false;
   try { stageRows = await db.kyc.listStageFacts(); } catch { kycFailed = true; }
 
+  /**
+   * ⚡ WALLETS: ONE POPULATION READ, ASKED FOR ONLY BY A VIEWER ALLOWED THE ANSWER — 2026-09-13.
+   *
+   * Until 2026-09-13 this page read at most twenty wallets by point query, for the visible rows,
+   * and this comment argued AGAINST `listAll()` because it trades twenty indexed reads for the
+   * whole wallet table. That trade is now forced, and it is the right one: the funded stage and
+   * the `?funded=` axis must know every player's money BEFORE filtering and paging, or the tally,
+   * the filter and the chip would each see a different population — the drift `kyc-stage.ts`
+   * exists to make unexpressible. It is the same shape as `listStageFacts` above: one flat read
+   * per population. The balance sort and the visible rows reuse this snapshot, so every money
+   * figure on the page comes from one read.
+   *
+   * 🔴 THE RBAC GATE IS STILL ASKED BEFORE THE QUERY. Privileged data that is never fetched cannot
+   * leak: a SUPPORT viewer's render reads no wallet at all.
+   * 🔴 AND IT CLOSES A LEAK THAT WAS LIVE: the balance SORT used to load every wallet for ANY
+   * viewer, so a SUPPORT officer could order the roster by standing balance and read the ranking
+   * off a column of "—". Without money rights `?sort=balance` now falls back to "joined".
+   * ⛔ A FAILED READ IS NOT "EVERYONE HOLDS NOTHING". `walletsFailed` renders "Not available" down
+   * the money column, withholds `?funded=`, and marks "unreadable" exactly the KYC cells whose word
+   * money decides (`stageTurnsOnMoney`) — no more, no fewer.
+   */
+  let wallets: Awaited<ReturnType<typeof db.wallet.listAll>> = [];
+  let walletsFailed = false;
+  if (canSeeMoney) {
+    try { wallets = await db.wallet.listAll(); } catch { walletsFailed = true; }
+  }
+  const walletByUser = new Map(wallets.map((w) => [w.userId, w] as const));
+  /** Money is APPLIED only for a viewer with money rights whose read succeeded. */
+  const moneyKnown = canSeeMoney && !walletsFailed;
+  /** A money-rights viewer whose wallet read failed: the money-split stages are undecidable. */
+  const moneyStagesUnknown = canSeeMoney && walletsFailed;
+  /** `balance + hold` — the liability basis, from the one shared definition. */
+  const heldOf = (userId: string): number => walletHeldTzs(walletByUser.get(userId));
+  /** ⛔ `MONEY_NOT_APPLIED` is not zero — see `KycMoney`. Never `{ heldTzs: 0 }` for an unread account. */
+  const moneyOf = (userId: string): KycMoney => (moneyKnown ? { heldTzs: heldOf(userId) } : MONEY_NOT_APPLIED);
+
   // The DAL has already reduced to the NEWEST submission per user, ordered
   // (createdAt desc, id desc) — the same row `db.kyc.findByUserId` returns, so this
-  // page and /admin/players/[id] cannot disagree about one player.
+  // page and /admin/players/[id] cannot disagree about one player. First row wins.
+  const factsByUser = new Map<string, (typeof stageRows)[number]>();
+  for (const r of stageRows) if (!factsByUser.has(r.userId)) factsByUser.set(r.userId, r);
+  // ⭐ Iterates the USERS, not the submission rows: a funded player with no row at all is the
+  // population the money dimension exists to reveal, and a loop over rows would never meet them.
   const stageByUser = new Map<string, KycStage>();
-  for (const r of stageRows) stageByUser.set(r.userId, kycStage(r));
+  for (const u of all) stageByUser.set(u.id, kycStage(factsByUser.get(u.id) ?? null, moneyOf(u.id)));
 
   /**
-   * ⛔ A MISS IS NOT AN ERROR — `kycStage(null)` is "nothing_yet". No registration
+   * ⛔ A MISS IS NOT AN ERROR — a user with no submission row has sent nothing, and
+   * `kycStage(null, money)` decides which of its two words they get. No registration
    * path writes a KycSubmission; the row is created LAZILY on the first render of
    * /profile/kyc, inside a `catch {}` that swallows failure.
    *
-   * ⚠️ WHICH IS WHY THE WORD IS "Nothing yet" AND NEVER "never opened KYC". Both
-   * sign-up doors now redirect a new account straight to `/profile/kyc?welcome=new`,
-   * so a missing row today means a legacy account, an abandon between the redirect
-   * and the render, a SWALLOWED `startKyc` failure, or a non-player (a bootstrap
-   * admin is created ACTIVE and never routed to KYC). "Nothing yet" is honest for
-   * all four; "never opened" would accuse a player the platform itself failed.
+   * ⚠️ WHICH IS WHY THE WORD IS "Nothing yet" AND NEVER "never opened KYC". From
+   * 2026-09-05 to 2026-09-13 both sign-up doors redirected a new account straight to
+   * /profile/kyc — this comment said so, and the ruling of 2026-09-13 ended it. A new
+   * player now lands on their safe `next`, else on the deposit page with `welcome=new`
+   * (auth/register/actions.ts, auth/login/actions.ts), because identity is asked before a
+   * withdrawal and before nothing else. So a missing row is now the NORMAL state of a
+   * brand-new player who deposits and plays — besides an abandon, a SWALLOWED `startKyc`
+   * failure, or a non-player (a bootstrap admin is created ACTIVE and never routed to KYC).
+   * "Nothing yet" is honest for all of them; "never opened" would accuse a player of
+   * skipping a step the platform no longer asks of them.
    *
    * ⛔ A-5 — A FAILED READ IS NEVER A FACT. `kycStage()` cannot emit "unreadable" -
    * tsc proves it, because `KycCell` carries that arm and `KycStage` does not — so
-   * the PAGE owns that state, exactly as it already does for a failed wallet read.
+   * the PAGE owns that state: the whole column on a failed KYC read, and exactly the
+   * money-decided cells on a failed wallet read.
    */
-  const stageOf = (userId: string): KycCell =>
-    kycFailed ? "unreadable" : (stageByUser.get(userId) ?? kycStage(null));
+  const stageOf = (userId: string): KycCell => {
+    if (kycFailed) return "unreadable";
+    const facts = factsByUser.get(userId) ?? null;
+    if (moneyStagesUnknown && stageTurnsOnMoney(facts)) return "unreadable";
+    return stageByUser.get(userId) ?? kycStage(facts, moneyOf(userId));
+  };
+
+  /**
+   * THE STAGES THIS VIEWER MAY BE OFFERED.
+   * ⛔ ROLE CLAMP — THE FILE STAGES ARE UNGATED, THE MONEY SPLIT IS NOT (2026-09-13). Only ADMIN /
+   * COMPLIANCE / SUPPORT reach this route. Gating the FILE stages would blind the SUPPORT desk
+   * (whose domain owns this page, and who field "why can't I withdraw?") while closing no leak;
+   * what stays privileged there is the submission's CONTENTS — number, images, DOB — untouched
+   * here. But "Funded · nothing sent" is a standing-balance fact, and SUPPORT reads
+   * `money.figures` masked (roles.ts: movements yes, totals no). So a money-only stage is offered
+   * only when money is known, and to SUPPORT the same person reads "Nothing yet" — which claims
+   * only what it always claimed, that nothing was sent.
+   * ⛔ After a failed wallet read, BOTH money-split stages are withheld: their sizes are unknown,
+   * and a count that is right only by accident is a fabricated one.
+   */
+  const offeredStages: readonly KycStage[] = KYC_STAGES.filter((s) =>
+    (MONEY_ONLY_STAGES as readonly KycStage[]).includes(s) ? moneyKnown
+    : (MONEY_SPLIT_STAGES as readonly KycStage[]).includes(s) ? !moneyStagesUnknown
+    : true);
 
   /**
    * VALIDATED AGAINST THE CLOSED SET, exactly as `ACCOUNT_FILTER` is — a junk or
@@ -96,47 +181,41 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
    * officer conclude a queue is empty.
    * ⛔ DROPPED WHEN THE READ FAILED: filtering on an empty map would render
    * "0 of 1,842 players", which reads as "this stage is empty" rather than "the
-   * instrument is broken".
-   * ⛔ NOTHING TO CLAMP BY ROLE. Only ADMIN / COMPLIANCE / SUPPORT reach this route,
-   * and the page already publishes the coarser "Pending KYC" fact to all three — by
-   * row, by KPI, by mix bar, and by `?status=PENDING_KYC`. Gating the refinement
-   * would blind the SUPPORT desk (whose domain OWNS this page, and who field "why
-   * can't I deposit?") while closing no leak at all. What stays privileged is the
-   * submission's CONTENTS — number, images, DOB — and that is untouched here.
+   * instrument is broken". The same holds for a stage this viewer is not offered.
    */
-  const kycFilter: KycStage | "" = !kycFailed && isKycStage(sp.kyc) ? sp.kyc : "";
+  const kycFilter: KycStage | "" = !kycFailed && isKycStage(sp.kyc) && offeredStages.includes(sp.kyc) ? sp.kyc : "";
+  /**
+   * `?funded=held|none` — the MONEY axis (2026-09-13), validated against `FUNDED_AXIS` the same way.
+   * ⛔ Honoured only when money is known: without money rights it would be a balance question
+   * answered to a viewer who may not ask it, and after a failed read "none" would be a false claim
+   * about every player.
+   */
+  const fundedFilter: FundedAxis | "" = moneyKnown && isFundedAxis(sp.funded) ? sp.funded : "";
+
   // Shared grammar (src/lib/search). Previously a single contiguous `.includes()`,
   // so an officer typing a name AND a phone fragment — the most natural way to
   // find one player — got nothing back. `displayLabel` is computed, not a column,
   // so it is supplied on the record here (see USER_SEARCH.handle).
   const parsed = parseQuery(query, { fields: fieldNames(USER_SEARCH) });
   const filtered = all.filter((u) => {
-    if (statusFilter && u.status !== statusFilter) return false;
+    // ⛔ The PRESENTED status — the word the chip in this row shows — so `?status=ACTIVE` returns a
+    // `PENDING_KYC` straggler that reads "Active", instead of hiding a row the officer can see.
+    if (statusFilter && presentedAccountStatus(u.status) !== statusFilter) return false;
     // ⭐ THE SAME `stageOf` THE CHIP RENDERS — not a parallel predicate. The filtered
     // set and the column cannot disagree because they are one function.
     if (kycFilter && stageOf(u.id) !== kycFilter) return false;
+    // ⭐ The same `heldOf` the money cell and the funded tally read.
+    if (fundedFilter && fundedAxisOf(heldOf(u.id)) !== fundedFilter) return false;
     return matchesQuery(parsed, { ...u, displayLabel: displayLabel(u) } as unknown as Record<string, string | null | undefined>, USER_SEARCH);
   });
 
-  // Sort
-  // `sortBalances` deliberately OUTLIVES the branch below: when the balance sort runs it
-  // has already loaded every wallet, and the table further down used to go and fetch the
-  // twenty it needs all over again. See the balance resolution after pagination.
-  let sortBalances: Map<string, number> | null = null;
+  // Sort. ⛔ "balance" only for a viewer who can see balances and whose read succeeded — see the
+  // wallet read above for the leak this closes.
+  const sortRequested = (["joined", "login", "balance"] as const).includes(sp.sort as never) ? sp.sort! : "joined";
+  const sortField = sortRequested === "balance" && !moneyKnown ? "joined" : sortRequested;
   if (sortField === "balance") {
-    // Batch-load all wallets in one query instead of N+1 per-user lookups.
-    let allWallets: Awaited<ReturnType<typeof db.wallet.listAll>> = [];
-    let walletsOk = true;
-    try { allWallets = await db.wallet.listAll(); } catch { walletsOk = false; }
-    const balanceMap = new Map<string, number>();
-    for (const w of allWallets) balanceMap.set(w.userId, w.balance);
-    // Only publish the map for REUSE if the read actually succeeded. On failure the map is
-    // empty, and treating "empty" as "everyone has no wallet" would silently print "—" down
-    // the whole money column — a failed read rendering as a fact, which is the A-5 defect.
-    // The per-row path below is left to try again instead.
-    if (walletsOk) sortBalances = balanceMap;
     filtered.sort((a, b) => {
-      const cmp = (balanceMap.get(a.id) ?? 0) - (balanceMap.get(b.id) ?? 0);
+      const cmp = (walletByUser.get(a.id)?.balance ?? 0) - (walletByUser.get(b.id)?.balance ?? 0);
       return sortDir === "asc" ? cmp : -cmp;
     });
   } else {
@@ -152,16 +231,21 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
   const page = parsePage(sp.page, filtered.length);
   const paged = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
   /**
-   * -- the stage tallies, from the SAME map the chips read ------------------
+   * -- the stage tallies, from the SAME `stageOf` the chips read ---------------
    * ⛔ ITERATE `all`, NOT `stageRows`. The population is the USERS. Counting the
-   * submission rows silently drops every user who has none — legacy accounts, an
-   * abandon, a swallowed `startKyc`, a bootstrap admin — from the tallies while they
-   * still appear in the table. "Nothing yet" is the bucket this feature exists to
-   * reveal, so it is the one that must not be counted by accident.
+   * submission rows silently drops every user who has none — from 2026-09-13 the
+   * ordinary new player — from the tallies while they still appear in the table.
+   * "Nothing yet" and "Funded · nothing sent" are the buckets that must not be
+   * counted by accident.
+   * ⛔ An "unreadable" cell is counted nowhere: a failed read is not a population.
    * Seeded from `KYC_STAGES` so a stage with zero players reads 0, never undefined.
    */
   const stageCounts = Object.fromEntries(KYC_STAGES.map((s) => [s, 0])) as Record<KycStage, number>;
-  if (!kycFailed) for (const u of all) stageCounts[stageByUser.get(u.id) ?? "nothing_yet"]++;
+  const countStage = (c: KycCell) => { if (c !== "unreadable") stageCounts[c]++; };
+  if (!kycFailed) for (const u of all) countStage(stageOf(u.id));
+  /** The `?funded=` tallies — only when money is known, from the same `heldOf`. */
+  const fundedCounts: Record<FundedAxis, number> = { held: 0, none: 0 };
+  if (moneyKnown) for (const u of all) fundedCounts[fundedAxisOf(heldOf(u.id))]++;
 
   /* !! `sp` WHOLESALE, AND IT IS A REAL DEFECT THIS CLOSES - not a style change.
    * `buildBaseHref` is a DENY-LIST OF ONE KEY: it keeps every truthy param it is
@@ -173,6 +257,8 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
    * works the list would be reading the GENERAL ROSTER believing it is a review
    * queue, while the count JUMPS UP to the unfiltered total. With only `?kyc=` set,
    * `entries.length === 0` and page 2 is the bare path — the filter evaporates.
+   * ⭐ `?funded=` (2026-09-13) rides every page link for exactly this reason, with no
+   * change here — which is the point of passing `sp`.
    * ⛔ Do NOT "fix" this in pagination.tsx: there is no list in it to add to, and it
    * is shared by ~25 admin and money screens. Passing `sp` is what the sibling admin
    * pages (aml, approvals, ai-polls, config) already do, and it makes this page
@@ -181,50 +267,15 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
    * which is how a regression here would look fine in a casual check. */
   const baseHref = buildBaseHref("/admin/players", sp);
 
-  /**
-   * ⚡ WALLET BALANCES ARE RESOLVED ONCE, HERE, FOR THE VISIBLE PAGE ONLY — 2026-08-21.
-   *
-   * The table body used to be `await Promise.all(paged.map(async (u) => { const wallet =
-   * await db.wallet.findByUserId(u.id); … }))` — a query per rendered row, inside JSX.
-   * Two things were wrong with that, and both are removed without changing a single
-   * rendered character:
-   *
-   *  1. 🔴 IT RAN FOR VIEWERS WHO ARE NOT ALLOWED TO SEE THE ANSWER. The cell is
-   *     `canSeeMoney && wallet ? … : "—"`, so for a SUPPORT officer — whose whole point
-   *     is roster-without-money (RBAC, above) — the page fired twenty wallet reads per
-   *     load and threw every one of them away. The gate is now asked BEFORE the query,
-   *     not after it, which is also the right shape for a money read on a licensed
-   *     platform: privileged data that is never fetched cannot leak.
-   *
-   *  2. IT RE-FETCHED WHAT THE BALANCE SORT HAD JUST LOADED. Sorting by Wallet pulls
-   *     every wallet into `sortBalances`; the rows then queried twenty of them again,
-   *     one at a time. Reusing the map also makes the column self-consistent — the
-   *     figure a row shows is now from the same snapshot the ordering was computed from,
-   *     where before the two could be read milliseconds apart and disagree.
-   *
-   * When neither shortcut applies the point queries still run, in parallel, for the
-   * ≤20 visible rows — deliberately NOT `listAll()`, which would trade twenty indexed
-   * reads for the entire wallet table and get worse with every player who signs up.
-   * (`Promise.resolve` per the §9 gotcha: the dev in-memory store returns these values
-   * synchronously while tsc only ever sees Prisma's async types.)
-   */
-  const pageBalances = new Map<string, number>();
-  if (canSeeMoney) {
-    if (sortBalances) {
-      for (const u of paged) {
-        const b = sortBalances.get(u.id);
-        if (b !== undefined) pageBalances.set(u.id, b);
-      }
-    } else {
-      const wallets = await Promise.all(paged.map((u) => Promise.resolve(db.wallet.findByUserId(u.id))));
-      for (const w of wallets) if (w) pageBalances.set(w.userId, w.balance);
-    }
-  }
-
   // One pass over the population → the status→count map that feeds both the KPI
   // band and the status-mix bar (was seven separate .filter() passes).
+  // ⛔ PRESENTED statuses (2026-09-13): a `PENDING_KYC` straggler counts as Active, which is the
+  // word its chip shows — see `presentedAccountStatus`.
   const statusCounts: Record<string, number> = {};
-  for (const u of all) statusCounts[u.status] = (statusCounts[u.status] ?? 0) + 1;
+  for (const u of all) {
+    const s = presentedAccountStatus(u.status);
+    statusCounts[s] = (statusCounts[s] ?? 0) + 1;
+  }
   const counts = {
     total: all.length,
     active: statusCounts.ACTIVE ?? 0,
@@ -247,15 +298,14 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
               tile Ali is reading when he says "it says pending kyc always". It used to
               count `User.status === "PENDING_KYC"` and caption it "needs review" with an
               UP arrow, which is FALSE for everyone who has uploaded nothing, i.e. most of
-              the population. Leaving it would put two contradicting statements about one
-              population in one viewport.
+              the population. From 2026-09-13 that status is not even presented as a word.
               ⭐ It carries the second number in its caption, so BOTH of his questions are
               answered on page load with no interaction: `with_us` is the only stage where
               the ball is in our court, and `uploaded` is the rescue list - every one of
               them a single nudge away from our review queue, and shown on NO other screen
               in the console.
               ⚠️ Both numbers are POPULATION-WIDE, like "Total players" beside them, and do
-              NOT move under a filter.
+              NOT move under a filter. Neither reads money, so neither differs by role.
               ⛔ `deltaDir="flat"`: a caption is not a movement - on a money console an
               upward arrow is a claim, not decoration.
               ⛔ No `sw`: there is no shipped Swahili for these words and the lexicon
@@ -271,7 +321,7 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
         </KpiGrid>
 
         {/* Population status mix — one at-a-glance segmented bar (green Active /
-            amber pending / rose blocked / grey closed). Complements the numeric
+            amber cooling / rose blocked / grey closed). Complements the numeric
             band; the detailed per-status breakdown lives on Cohorts. */}
         <StatusMix counts={statusCounts} />
 
@@ -290,7 +340,7 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
               />
             </div>
             <div className="w-full sm:w-[180px]">
-              {/* The six words come from the lexicon, not from here: this list and the
+              {/* The words come from the lexicon, not from here: this list and the
                   population-mix legend below had each hand-typed them, and the chip in
                   the table beside them printed the raw column instead — three
                   renderings of one enum, which is the §L2 defect exactly. */}
@@ -314,12 +364,14 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
                 here - three renderings of one enum is the defect this page already
                 records paying for, twenty lines up.
                 ⭐ The COUNT rides on each option, so the officer sees the size of every
-                queue before choosing one. */}
+                queue before choosing one. ⛔ Only OFFERED stages are listed - see
+                `offeredStages` for why a money stage is not offered to every viewer. */}
             {/* ⚠️ 260px, MEASURED NOT GUESSED. At 200px the trigger wrapped to two lines
                 ("Uploaded · not sent ·" / "1"), which made this control taller than the
                 Search button beside it and broke the filter row's alignment — caught on a
                 screenshot, not by any assertion. The longest option is "Rejected · after
                 upload · 99"; 23 characters already wrapped at 200px, so it needs ~235px.
+                "Funded · nothing sent · 99" (2026-09-13) is shorter than that longest one.
                 ⛔ The fix is NOT `truncate` on the trigger: ui-consistency rules that an
                 error and DG-A-05 calls it illegal — a filter whose selected value you
                 cannot read is worse than a wide control. */}
@@ -334,14 +386,36 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
                 disabledReason={kycFailed ? "The KYC read failed — reload to try again." : undefined}
                 options={[
                   { value: "", label: "All KYC stages" },
-                  ...KYC_STAGES.map((s) => ({ value: s, label: `${kycStageLabel(s)} · ${stageCounts[s]}` })),
+                  ...offeredStages.map((s) => ({ value: s, label: `${kycStageLabel(s)} · ${stageCounts[s]}` })),
                 ]}
               />
             </div>
+            {/* ⭐ THE MONEY AXIS (2026-09-13) — INSIDE THE FORM for the same reason as the KYC
+                Select above, and rendered ONLY for a viewer with money rights: the control
+                itself would tell SUPPORT which players hold money. Disabled, with its reason,
+                when the wallet read failed — never silently empty. The option counts are
+                population-wide, like the stage counts. */}
+            {canSeeMoney && (
+              <div className="w-full sm:w-[180px]">
+                <Select
+                  name="funded"
+                  defaultValue={fundedFilter}
+                  size="xs"
+                  placeholder="All balances"
+                  ariaLabel="Filter by money held"
+                  disabled={walletsFailed}
+                  disabledReason={walletsFailed ? "The wallet read failed — reload to try again." : undefined}
+                  options={[
+                    { value: "", label: "All balances" },
+                    ...FUNDED_AXIS.map((f) => ({ value: f, label: `${fundedAxisLabel(f)} · ${fundedCounts[f]}` })),
+                  ]}
+                />
+              </div>
+            )}
             <button type="submit" className="btn btn-primary btn-xs">
               Search
             </button>
-            {(query || statusFilter || kycFilter) && (
+            {(query || statusFilter || kycFilter || fundedFilter) && (
               <a href="/admin/players" className="btn btn-ghost btn-xs">
                 Clear
               </a>
@@ -366,7 +440,12 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
                       cells while still reporting green. "KYC" is what an officer calls it
                       anyway. */}
                   <th className="text-left">KYC</th>
-                  <SortTh field="balance" label="Wallet" current={sortField} dir={sortDir} align="right" sp={sp} baseHref="/admin/players" />
+                  {/* ⛔ SORTABLE ONLY WITH MONEY RIGHTS (2026-09-13) — a sort by a figure the viewer
+                      cannot see still reveals its ranking. Same header word either way, so the
+                      column never moves and the colSpan below stays eight. */}
+                  {moneyKnown
+                    ? <SortTh field="balance" label="Wallet" current={sortField} dir={sortDir} align="right" sp={sp} baseHref="/admin/players" />
+                    : <th className="text-right">Wallet</th>}
                   <SortTh field="joined" label="Joined" current={sortField} dir={sortDir} sp={sp} baseHref="/admin/players" />
                   <SortTh field="login" label="Last login" current={sortField} dir={sortDir} sp={sp} baseHref="/admin/players" />
                   <th className="text-left">Drill-down</th>
@@ -374,7 +453,7 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
               </thead>
               <tbody className="text-text-secondary">
                 {paged.map((u) => {
-                  const balance = pageBalances.get(u.id);
+                  const wallet = moneyKnown ? walletByUser.get(u.id) : undefined;
                   const label = displayLabel(u);
                   const initials = displayInitials(u);
                   const isAutoHandle = !((u.displayName ?? "").trim().length > 0);
@@ -399,20 +478,48 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
                           not a bulk read — it is N individually recorded ones. Search still
                           matches the full number. `docs/COMPLIANCE-DECISIONS.md`, 2026-09-06. */}
                       <td className="font-mono whitespace-nowrap"><Sensitive field="phone" subjectId={u.id} value={u.phoneE164} /></td>
-                      <td data-filter-value={u.status}><AccountStatusBadge status={u.status} /></td>
+                      {/* ⛔ The PRESENTED status in the attribute too (2026-09-13), so the filter
+                          gate that reads it and the chip beside it name the same word. */}
+                      <td data-filter-value={presentedAccountStatus(u.status)}><AccountStatusBadge status={u.status} /></td>
                       {/* ⛔ A WORKFLOW WORD ONLY — no idType, no idNumber, no expiry, no
                           date of birth, no filename, no thumbnail. Everything from the
                           submission ITSELF stays behind the PII gate and <Sensitive> on
                           the detail page. This cell says whose move it is, nothing more.
-                          ⛔ Ungated by role, exactly like the chip beside it - see
-                          `kycFilter` above for why gating it would blind the support desk
-                          without closing anything. */}
-                      <td data-kyc-stage={stageOf(u.id)}><KycStageBadge cell={stageOf(u.id)} /></td>
-                      {/* `pageBalances` is empty unless the viewer passed the accounting
-                          gate, so this stays exactly the old `canSeeMoney && wallet` cell:
-                          a player with no wallet row, and a viewer with no money rights,
-                          both read "—". */}
-                      <td className="font-mono tabular text-right whitespace-nowrap">{balance !== undefined ? formatTzs(balance) : "—"}</td>
+                          ⛔ The FILE stages are ungated by role, exactly like the chip beside
+                          it; the MONEY split is not — see `offeredStages` above. */}
+                      {/* ⭐ A FINAL refusal reads "Finally refused" (2026-09-13) — the word /admin/kyc/refused and
+                          `kycStatusLabel` use for the same row — never the retryable-sounding "Rejected · after
+                          upload". Same stage (`data-kyc-stage`, filter, tally), same tone via `kycStageVariant`;
+                          only the WORD changes. See `isFinalRefusalCell` for why it is not a ninth stage. */}
+                      <td data-kyc-stage={stageOf(u.id)} data-kyc-refusal={isFinalRefusalCell(stageOf(u.id), factsByUser.get(u.id)?.rejectReason) ? "final" : undefined}>
+                        {isFinalRefusalCell(stageOf(u.id), factsByUser.get(u.id)?.rejectReason)
+                          ? <Chip size="sm" variant={kycStageVariant(stageOf(u.id))}><span className="whitespace-nowrap">{REVIEW.kycRefusedFinal.en}</span></Chip>
+                          : <KycStageBadge cell={stageOf(u.id)} />}
+                      </td>
+                      {/* THE MONEY COLUMN — money-rights viewers only, from the one snapshot.
+                          · no money rights           → "—", exactly as before, and nothing was read
+                          · the wallet read failed    → "Not available", never a fabricated TZS 0
+                          · no wallet row             → "—"
+                          · otherwise the balance, and — when non-zero — the in-flight hold beneath
+                            it, because the funded axis counts `balance + hold` and a row reading
+                            TZS 0 under "Holding money" would look like a contradiction.
+                          `data-funded` carries the axis value for the live driver. */}
+                      <td
+                        className="font-mono tabular text-right whitespace-nowrap"
+                        data-funded={moneyKnown ? fundedAxisOf(heldOf(u.id)) : undefined}
+                      >
+                        {!canSeeMoney ? "—"
+                          : walletsFailed ? <span className="text-text-tertiary">{fundedAxisLabel("unreadable")}</span>
+                          : wallet ? (
+                            <>
+                              {formatTzs(wallet.balance)}
+                              {(wallet.hold ?? 0) > 0 && (
+                                <span className="block text-micro text-text-tertiary"><span className="font-mono tabular-nums">+{formatTzs(wallet.hold ?? 0)}</span> in flight</span>
+                              )}
+                            </>
+                          )
+                          : "—"}
+                      </td>
                       <td className="font-mono whitespace-nowrap">{formatDate(u.createdAt)}</td>
                       <td className="font-mono whitespace-nowrap">{u.lastLoginAt ? formatDate(u.lastLoginAt) : "—"}</td>
                       <td>
@@ -451,11 +558,10 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
 }
 
 /* Population status mix — a single segmented bar + legend, reusing the console's
-   semantic status colours (green Active · amber pending/cooling · rose blocked ·
-   grey closed). Zero-count statuses are dropped so the bar and legend stay clean. */
+   semantic status colours (green Active · amber cooling · rose blocked · grey
+   closed). Zero-count statuses are dropped so the bar and legend stay clean. */
 const MIX_ORDER: ReadonlyArray<{ key: string; label: string; color: string }> = [
   { key: "ACTIVE",        color: "var(--yes-500)" },
-  { key: "PENDING_KYC",   color: "var(--warning-500)" },
   { key: "COOLED_OFF",    color: "var(--warning-500)" },
   { key: "SUSPENDED",     color: "var(--no-500)" },
   { key: "SELF_EXCLUDED", color: "var(--no-500)" },
@@ -463,8 +569,13 @@ const MIX_ORDER: ReadonlyArray<{ key: string; label: string; color: string }> = 
 ].map((m) => ({ ...m, label: accountStatusLabel(m.key) }));
 
 /* The status filter's closed set, in the order an officer scans it. Same source as
-   the legend above and the chip in the table — the words are the lexicon's. */
-const ACCOUNT_FILTER = ["ACTIVE", "PENDING_KYC", "SUSPENDED", "SELF_EXCLUDED", "COOLED_OFF", "CLOSED"] as const;
+   the legend above and the chip in the table — the words are the lexicon's.
+   ⛔ `PENDING_KYC` IS NOT IN IT, AND NOT IN THE LEGEND ABOVE — 2026-09-13. It gated nothing,
+   new accounts are created ACTIVE, and the migration normalises the rest; a straggler is
+   PRESENTED as Active (`presentedAccountStatus`) and counted, filtered and painted as Active.
+   Offering it would promise a population that the platform no longer has a meaning for, and it
+   is the word that told an officer the whole roster "needs review". */
+const ACCOUNT_FILTER = ["ACTIVE", "SUSPENDED", "SELF_EXCLUDED", "COOLED_OFF", "CLOSED"] as const;
 
 function StatusMix({ counts }: { counts: Record<string, number> }) {
   const segs = MIX_ORDER.map((m) => ({ ...m, value: counts[m.key] ?? 0 })).filter((m) => m.value > 0);

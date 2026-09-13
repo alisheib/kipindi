@@ -130,6 +130,69 @@ ok("own NIDA re-submit ok", r.ok && (r as { data?: { verified: boolean } }).data
     "matching a number without its type refuses a real citizen for a coincidence — and a type-blind read would refuse here");
 }
 
+// ─── 2e. 🔴 A FINAL REFUSAL KEEPS THE DOCUMENT HELD — and cannot be restarted (2026-09-13) ───
+// ⭐ 2b and the passport block above prove a REJECTED submission frees its document, deliberately: a
+// real citizen must not be locked out by a bad photo (docs/IDENTITY-POLICY.md). From 2026-09-13 money is
+// played before identity is checked, and that freedom became a laundering shape — a minor refused
+// UNDERAGE while holding a balance, the document released, an adult accomplice presenting it on a second
+// account to withdraw (S16, docs/COMPLIANCE-DECISIONS.md 2026-09-13). So a refusal on a FINAL code
+// (`UNDERAGE`, `SANCTIONED`, `DUPLICATE_IDENTITY`) keeps the number held, and the player cannot restart it
+// themselves — a restart nulls the number, which would release it by the back door.
+// ⛔ Both halves run on the SAME document: the final codes must hold it and a recoverable code must free
+// it, so neither can pass because the other is broken. The refusals are written straight onto the row, as
+// 2b does, because the uniqueness rule is under test here, not the officer's decision path
+// (`test:kyc` covers that, including the wallet freeze).
+{
+  const { holdsDocumentNumber, FINAL_REFUSAL_CODES } = await import("../src/lib/kyc-refusal.ts");
+  const DOC = "19900101456712345672";
+  await mkUser("usr_f_a", "+255710000231");
+  await startKyc("usr_f_a");
+  const ra = await submitIdentityStep("usr_f_a", { idType: "NIDA", idNumber: DOC, fullName: "Final Alpha", dob: "1990-01-01" });
+  ok("2e fixture · A holds the document", ra.ok && (ra as { data?: { verified: boolean } }).data?.verified === true);
+
+  let phone = 232;
+  for (const code of FINAL_REFUSAL_CODES) {
+    const held = await getKycStatus("usr_f_a");
+    await db.kyc.upsert({ ...held!, status: "REJECTED", rejectReason: code, updatedAt: now });
+    // A FRESH second account per code: `kyc.submit` is rate-limited per user, and a verdict that depends
+    // on an unrelated control is not a verdict (kyc-flow-stress learned that on the age gate).
+    const b = `usr_f_b_${code.toLowerCase()}`;
+    await mkUser(b, `+255710000${phone++}`);
+    await startKyc(b);
+    const rb = await submitIdentityStep(b, { idType: "NIDA", idNumber: DOC, fullName: "Final Beta", dob: "1990-01-01" });
+    ok(`2e · 🔴 A refused ${code} — the document stays HELD: a second account is refused id_taken`,
+      !rb.ok && (rb as { reason?: string }).reason === "id_taken",
+      rb.ok ? "VERIFIED — a finally refused document was handed to another account" : String((rb as { reason?: string }).reason));
+    ok(`2e · …and that second account did not verify (${code})`, !(await getKycStatus(b))?.idVerifiedAt);
+
+    const restart = await startKyc("usr_f_a");
+    ok(`2e · ⛔ A cannot restart a ${code} refusal — kyc_refused_final`,
+      !restart.ok && (restart as { reason?: string }).reason === "kyc_refused_final",
+      restart.ok ? "RESTARTED" : String((restart as { reason?: string }).reason));
+    const kept = await getKycStatus("usr_f_a");
+    ok(`2e · …and the refused restart left the number on the row, still held (${code})`,
+      kept?.status === "REJECTED" && kept?.rejectReason === code && kept?.idNumber === DOC);
+  }
+
+  // ⭐ THE CONTROL — the same document, a RECOVERABLE code, a fresh account: freed, exactly as 2b says.
+  const soft = await getKycStatus("usr_f_a");
+  await db.kyc.upsert({ ...soft!, status: "REJECTED", rejectReason: "BLURRY_DOC", updatedAt: now });
+  await mkUser("usr_f_b_recoverable", `+255710000${phone++}`);
+  await startKyc("usr_f_b_recoverable");
+  const rr = await submitIdentityStep("usr_f_b_recoverable", { idType: "NIDA", idNumber: DOC, fullName: "Final Beta", dob: "1990-01-01" });
+  ok("2e · CONTROL — refused BLURRY_DOC (recoverable), the SAME document is freed for another account",
+    rr.ok && (rr as { data?: { verified: boolean } }).data?.verified === true, JSON.stringify(rr).slice(0, 120));
+  ok("2e · CONTROL — …and A may restart a recoverable refusal themselves", (await startKyc("usr_f_a")).ok);
+
+  // ⭐ AND THE PREDICATE ITSELF, over every refusal code — the one both stores and both indexes ask.
+  for (const code of ["UNDERAGE", "SANCTIONED", "DUPLICATE_IDENTITY", "BLURRY_DOC", "DETAILS_MISMATCH", "EXPIRED_ID", "OTHER", null] as const) {
+    const expected = (FINAL_REFUSAL_CODES as readonly string[]).includes(code ?? "");
+    ok(`2e · holdsDocumentNumber(REJECTED · ${code}) is ${expected}`, holdsDocumentNumber({ status: "REJECTED", rejectReason: code }) === expected);
+  }
+  ok("2e · holdsDocumentNumber holds for every submission that is not refused",
+    ["IN_PROGRESS", "PENDING_REVIEW", "ADDITIONAL_INFO_REQUIRED", "APPROVED"].every((s) => holdsDocumentNumber({ status: s, rejectReason: null })));
+}
+
 // ─── 3. PHONE uniqueness (the lookup the registration guard relies on) ───
 // requestRegisterOtp() blocks a duplicate via `db.user.findByPhone(phone)` →
 // ALREADY_EXISTS (auth-service.ts:108-112), and Postgres enforces @unique on

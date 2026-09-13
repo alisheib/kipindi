@@ -225,15 +225,14 @@ function stubReply(userText: string, lang: Lang): Reply {
       paragraphs: [
         "To deposit money on 50pick:",
         "1. Open your **Wallet** and tap **Deposit**[1]",
-        "2. Choose your payment method — M-Pesa, Airtel Money, or HaloPesa",
+        "2. Choose your payment method — M-Pesa, Airtel Money, HaloPesa, Mixx by Yas or card",
         `3. Enter the amount — from {${formatTzs(DEPOSIT_MIN_TZS)}} to {${formatTzs(DEPOSIT_MAX_TZS)}}`,
         "4. Confirm the payment on your phone",
-        "If a deposit does not arrive, your money is safe — the receipt in your wallet shows its exact state, and support can trace it[2]. Deposits need a confirmed email; withdrawals need verified identity[3].",
+        "If a deposit does not arrive, your money is safe — the receipt in your wallet shows its exact state, and support can trace it[2]. Deposits need a confirmed email.",
       ],
       citations: [
         { n: 1, href: "/wallet/deposit", label: "/wallet/deposit" },
         { n: 2, href: "/help#deposit-failed", label: "/help#deposit-failed" },
-        { n: 3, href: "/profile/kyc", label: "/profile/kyc" },
       ],
     };
   }
@@ -317,11 +316,10 @@ function stubReply(userText: string, lang: Lang): Reply {
         "1. Go to **Profile → Verify identity** to start[1]",
         "2. Upload any ONE of four documents — NIDA, passport, driving licence or voter's card — plus a selfie",
         "3. You verify once, before your first withdrawal",
-        "4. Review is usually done within a day; while it is pending there is nothing else for you to do, and your balance stays safe[2]",
+        "4. Our team usually reviews documents within 24 hours; while it is pending there is nothing else for you to do",
       ],
       citations: [
         { n: 1, href: "/profile/kyc", label: "/profile/kyc" },
-        { n: 2, href: "/legal/aml", label: "/legal/aml" },
       ],
     };
   }

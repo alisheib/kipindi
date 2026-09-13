@@ -1052,8 +1052,10 @@ export const prismaDb = {
      *
      * ⛔ This is the FAST PATH. The enforcement is the partial unique index
      * "KycSubmission_idType_idNumber_active_key"; the two must ask the same
-     * question — the same pair, the same `status <> REJECTED` exclusion — or a
-     * race resolves differently from a sequential duplicate.
+     * question — the same pair, the same exclusion — or a race resolves differently
+     * from a sequential duplicate. ⚠️ Since migration 20260913120000 that exclusion is
+     * `status <> REJECTED OR rejectReason IN FINAL_REFUSAL_CODES`: a FINAL refusal keeps
+     * the document number held (`test:kyc-cert-d1` §3c pins both halves).
      */
     findActiveByIdNumber: async (
       idType: string,
@@ -1081,8 +1083,8 @@ export const prismaDb = {
      * Indexed by `@@index([idFingerprint])`, and the same tiny `select` as the tuple read
      * so it never hydrates a document (audit H5). ⛔ FAST PATH ONLY: the enforcement is
      * "KycSubmission_idFingerprint_active_key", and the two must ask the same question —
-     * the same `status <> REJECTED` exclusion — or a race resolves differently from a
-     * sequential duplicate.
+     * the same exclusion, since 20260913120000 `status <> REJECTED OR rejectReason IN
+     * FINAL_REFUSAL_CODES` — or a race resolves differently from a sequential duplicate.
      */
     findActiveByFingerprint: async (
       fingerprint: string,
@@ -1134,9 +1136,11 @@ export const prismaDb = {
      * ⛔ `list()` below is the unfiltered one and stays for the admin exports that genuinely
      * want everything. `listPendingKyc` used to call it and filter in JavaScript, which was
      * fine while KYC was optional and this table held 56 rows. From 2026-09-05 every
-     * registered player has a submission, so that call became a full-table scan with a
-     * documents join on every `/admin/approvals` render — growing with sign-ups, on the
-     * screen that is now the only route to a player spending anything.
+     * registered player had a submission, so that call became a full-table scan with a
+     * documents join on every `/admin/approvals` render. ⚠️ Superseded 2026-09-13: a row now
+     * exists only once a player opens `/profile/kyc` (identity is asked before withdrawal
+     * only), but the filter STAYS — this queue is now a money queue, the officer standing
+     * between players and balances they already hold (COMPLIANCE-DECISIONS 2026-09-13, S14).
      * ⚠️ `documents` is still joined: the queue shows a per-submission document COUNT.
      * Production runs `KYC_STORAGE=r2`, so a row carries a short `r2:<key>` reference and
      * not image bytes — but if inline storage is ever reinstated this join is where audit
@@ -1188,7 +1192,7 @@ export const prismaDb = {
      * ⭐ A USER CAN HAVE MORE THAN ONE ROW, AND THE TIE-BREAK IS NOT DECORATION.
      * There is no `@@unique([userId])`. `startKyc` is a read-then-write with nothing
      * behind it, rendered from a SERVER COMPONENT, so two tabs or a double-tapped
-     * `?welcome=new` link both read null, both mint a cuid and both INSERT. Those
+     * link to `/profile/kyc` both read null, both mint a cuid and both INSERT. Those
      * duplicates are race-born MILLISECONDS apart and can share a `createdAt`
      * (TIMESTAMP(3)), so `id` desc is what makes this page's pick REPRODUCIBLE
      * between renders — and equal to `findByUserId`'s, so the roster and the player

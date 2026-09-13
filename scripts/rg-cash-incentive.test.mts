@@ -17,9 +17,11 @@
  * §2 and §3 while the product was broken. The control is what makes the refusals mean
  * something: this harness can observe a credit, so a missing credit is a decision.
  */
-// ⚠️ Fixtures must be VERIFIED players — an unverified account cannot hold an ACTIVE grant, so
-// §5's and §6's controls would read 0 for the identity gate rather than for the RG gate.
-import "./lib/verified-fixtures.mts";
+// ⭐ NO `verified-fixtures` IMPORT, DELIBERATELY (2026-09-13). It was here because an unverified account
+// could not hold an ACTIVE grant (the PENDING_KYC hold, 2026-09-05 to 2026-09-13), so §5's and §6's
+// controls would have read 0 for the identity gate rather than for the RG gate. That hold is deleted with
+// the deposit and bet gates, and nothing here withdraws — so the controls now run on never-verified
+// accounts, and an identity condition returning to a grant would turn them red.
 import { db, type StoredWallet, type StoredResponsibleGambling } from "../src/lib/server/store.ts";
 import { creditInternal } from "../src/lib/server/wallet-service.ts";
 import { setBonusConfig } from "../src/lib/server/bonus-config.ts";

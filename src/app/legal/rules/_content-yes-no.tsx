@@ -18,8 +18,9 @@
  *     networks. Naming one network as exclusive is wrong AND excludes players who are not on it.
  *  §4 The withdrawal fee was absent while the fee schedule read complete. Now stated.
  *  §2 Stake bounds were absent. Now stated, from config.
- *  §2 KYC was *"may request … at any time"*; Terms §3 makes it REQUIRED before depositing,
- *     betting or withdrawing. Understating a mandatory requirement is the wrong direction.
+ *  §2 KYC was *"may request … at any time"*; Terms §3 makes it REQUIRED before the first
+ *     withdrawal (2026-09-13; before depositing, betting and withdrawing from 2026-09-05 to
+ *     2026-09-13). Understating a mandatory requirement is the wrong direction.
  *  §1 The licence number was absent. It reads from the pinned constant.
  */
 import type { Locale } from "@/lib/i18n-server";

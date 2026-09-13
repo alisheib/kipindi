@@ -158,7 +158,12 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
           <FieldLegend as="legend" className="mb-2">
             {t.wallet.choosePaymentMethod}
           </FieldLegend>
-          <ProviderRadioGrid providers={PROVIDERS} defaultProvider={prevProvider} unavailableLabel={t.common.temporarilyUnavailable} />
+          {/* Brand names stay literal; "Card" is a word, so it comes from the dictionary (id unchanged). */}
+          <ProviderRadioGrid
+            providers={PROVIDERS.map((p) => (p.id === "CARD" ? { ...p, name: t.wallet.methodCard } : p))}
+            defaultProvider={prevProvider}
+            unavailableLabel={t.common.temporarilyUnavailable}
+          />
         </fieldset>
 
         <DepositAmount max={maxAmount} quickAmounts={quickAmounts} adminTest={adminTest} defaultValue={prevAmount} />
@@ -231,7 +236,7 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
           <I.shieldcheck s={18} />
         </span>
         <p className="text-body-sm text-text-subtle leading-relaxed">
-          {t.wallet.securedBody}
+          {t.wallet.securedDepositBody}
         </p>
       </div>
     </PageContainer>

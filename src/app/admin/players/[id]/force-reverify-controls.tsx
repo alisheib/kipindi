@@ -120,7 +120,7 @@ export function ForceReverifyControls({ userId, walletFrozen = false }: { userId
             The wallet is already frozen, so no money can move while they re-verify.
           </p>
         ) : (
-          <div className="mt-3 rounded-md border border-border bg-bg-inset px-3 py-2.5">
+          <div className="mt-3 rounded-md border border-border bg-bg-inset px-3 py-2">
             <Checkbox
               checked={alsoFreeze}
               onChange={(v) => { if (!pending) setAlsoFreeze(v); }}

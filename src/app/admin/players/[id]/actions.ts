@@ -54,7 +54,6 @@ const ACTION_DOMAIN: Record<string, AdminDomain> = {
   // Compliance decisions, never support: a freeze stops a player's money in both directions.
   freezeWalletAction: "compliance",
   unfreezeWalletAction: "compliance",
-  reopenFinalRefusalAction: "compliance",
 };
 
 async function requireAdmin(action: string): Promise<string> {
@@ -503,22 +502,7 @@ export async function unfreezeWalletAction(formData: FormData) {
   }
 }
 
-/** Re-open a FINAL identity refusal that was wrong — the only door back after one (S2). */
-export async function reopenFinalRefusalAction(formData: FormData) {
-  const officerId = await requireAdmin("reopenFinalRefusalAction");
-  const userId = String(formData.get("userId") ?? "");
-  const reason = String(formData.get("reason") ?? "").trim().slice(0, 500);
-  if (!userId) return { ok: false as const, error: "Missing user id." };
-  try {
-    const { reopenFinalRefusal, REOPEN_FINAL_REFUSAL_REASON_MIN } = await import("@/lib/server/kyc-service");
-    if (reason.length < REOPEN_FINAL_REFUSAL_REASON_MIN) return fieldError("reason", `A reason of at least ${REOPEN_FINAL_REFUSAL_REASON_MIN} characters is required.`);
-    const r = await reopenFinalRefusal(officerId, userId, reason);
-    if (!r.ok) return { ok: false as const, error: r.error };
-    revalidatePath(`/admin/players/${userId}`);
-    revalidatePath(`/admin/kyc/${userId}`);
-    revalidatePath("/admin/kyc");
-    return { ok: true as const };
-  } catch (err) {
-    return { ok: false as const, error: safeError(err, "Re-open failed") };
-  }
-}
+/* ⛔ NO "re-open a final refusal" action here (removed 2026-09-13): the one door back after a FINAL
+   identity refusal is `reopenFinalRefusalWorkstationAction` on /admin/kyc/[id], where the officer sees the
+   case. A second copy on this page had no caller (`test:orphan-actions`), and an uncalled server action is
+   still a reachable endpoint. */

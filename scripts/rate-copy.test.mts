@@ -189,7 +189,6 @@ console.log("\n§2 · the scanner catches what F2 actually fixed");
      * one of them — then be widened by the next session until it caught nothing. Each of these
      * is a REAL string from the product, and none is a restatement of the objection window.
      */
-    ["amlHold", "Amounts ≥ TZS 1,000,000 may require AML review (up to 24 hours)."],
     ["emailExpiry", "Check your inbox and click the link. The link expires in 24 hours."],
     ["rgLimits", "Decreases take effect immediately. Increases deferred 24 hours."],
     ["rangePicker", "Last 24 hours"],

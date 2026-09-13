@@ -146,7 +146,7 @@ export function upDownContent(r: RulesRates): Record<Locale, React.ReactNode> {
             <li><strong className="text-text">Named public source.</strong> Every round settles against a source named before betting opens, and pinned to that round at open.</li>
             <li><strong className="text-text">Officer sign-off.</strong> A settlement officer records the evidence justifying the verdict; where two-officer authorisation is enabled, a second officer countersigns. Evidence is written to an append-only audit chain.</li>
             <li>
-              <strong className="text-text">No-change protection.</strong> A closing value that lands inside the round&apos;s
+              <strong className="text-text">No-change protection.</strong>{" "}A closing value that lands inside the round&apos;s
               frozen margin — neither above the upper target nor below the lower one — is treated as no change, and the
               round is void with every stake refunded in full.
             </li>
@@ -232,7 +232,7 @@ export function upDownContent(r: RulesRates): Record<Locale, React.ReactNode> {
             </li>
             <li><strong className="text-text">Amendments.</strong> Material changes are announced before taking effect and never apply retroactively to rounds already locked.</li>
             <li>
-              <strong className="text-text">Responsible play.</strong> Up &amp; Down is entertainment, not an income
+              <strong className="text-text">Responsible play.</strong>{" "}Up &amp; Down is entertainment, not an income
               source, and its short rounds make it easy to play for longer than intended. Deposit limits, time limits,
               cooling-off and self-exclusion are on your profile; the national problem-gambling helpline is in the
               footer of every page. If play stops being fun, stop. 18+.
@@ -415,7 +415,7 @@ export function upDownContent(r: RulesRates): Record<Locale, React.ReactNode> {
             </li>
             <li><strong className="text-text">Marekebisho.</strong> Mabadiliko makubwa hutangazwa kabla ya kuanza kutumika na hayarudi nyuma kwa raundi zilizokwisha fungwa.</li>
             <li>
-              <strong className="text-text">Mchezo salama.</strong> Juu &amp; Chini ni burudani, si chanzo cha mapato, na
+              <strong className="text-text">Mchezo salama.</strong>{" "}Juu &amp; Chini ni burudani, si chanzo cha mapato, na
               raundi zake fupi hurahisisha kucheza muda mrefu kuliko ulivyokusudia. Vikomo vya amana, vikomo vya muda,
               mapumziko na kujitenga vipo kwenye wasifu wako; simu ya msaada ya kitaifa ipo chini ya kila ukurasa.
               Mchezo ukiacha kuwa wa kufurahisha, acha. Miaka 18+.

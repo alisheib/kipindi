@@ -1287,7 +1287,7 @@ export function ThresholdsForm({
         <strong>The margin</strong>{" "}is the ± band around each round&rsquo;s opening price. UP wins if the price
         reaches <em>open + margin</em>, DOWN if it reaches <em>open − margin</em>; a smaller move voids the round and
         refunds every stake in full. ⚠️ The box above is the <strong>fallback only</strong>: every duration this
-        platform actually runs is priced by the measured ladder — <strong>0.02%</strong> at 5 min,
+        platform actually runs is priced by the measured ladder — <strong>0.02%</strong> at 5 min,{" "}
         <strong>0.03%</strong> at 15, <strong>0.05%</strong> at 30 — and the fallback applies solely to a window
         longer than the ladder&rsquo;s top rung. Measured on real provider data, 0.5% voids 96&ndash;100% of rounds at
         every duration offered here; it is roughly right for a <em>one-day</em> round, because the typical move grows

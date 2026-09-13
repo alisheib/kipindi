@@ -13,6 +13,7 @@ import { Cash } from "@/components/ui/cash";
 import { Stat } from "@/components/ui/stat";
 import { CashbackPromo } from "@/components/ui/cashback-promo";
 import { PaymentLogo } from "@/components/wallet/payment-logo";
+import { KycFirstDepositNotice } from "@/components/wallet/kyc-first-deposit-notice";
 import { formatDateTimeSafe, formatTzs, formatNumber, cn } from "@/lib/utils";
 // E-101 · one rule for "where does this ticket live", shared with the round page and the emails.
 import { positionPermalinkHref } from "@/lib/position-permalink";
@@ -211,7 +212,9 @@ function grantStatusWord(t: ReturnType<typeof useT>["t"], status: string | undef
   }
 }
 
-/** A grant whose money is still in play. The others are history, and history is read, not summed. */
+/** A grant whose money is still in play. The others are history, and history is read, not summed.
+ *  ⚠️ `PENDING_KYC` is historic only since 2026-09-13: the identity hold on grants was deleted and
+ *  nothing mints one (`bonus-service.ts`). It stays listed so an old row renders rather than vanishing. */
 const GRANT_IS_LIVE = (s: string | undefined) => s === "ACTIVE" || s === "QUEUED" || s === "PENDING_KYC";
 
 /** How many grants are listed before the overflow line. */
@@ -428,6 +431,12 @@ function TxnRow({ tx }: { tx: Transaction }) {
   const { t } = useT();
   const [expanded, setExpanded] = useState(false);
   const isCredit = tx.amount > 0;
+  // 2026-09-13 · SIGN AND COLOUR FOLLOW WHAT THE MONEY DID, not the amount's sign alone: a FAILED
+  // deposit read as a green "+TZS 100,000". Green + "+" is a SETTLED credit only; a row that moved
+  // nothing (failed/reversed/cancelled) is muted and unsigned; an in-flight credit keeps its "+"
+  // (direction) but not the green (it has not landed). Display only — no amount or total changes.
+  const settledCredit = isCredit && tx.status === "confirmed";
+  const movedNothing = tx.status === "failed" || tx.status === "reversed" || tx.status === "cancelled";
   // Tone AND label for every state the money can actually be in. The label was
   // previously the raw enum printed lowercase (`{tx.status}`) — the one place on
   // this screen that never got translated, so SW and ZH players read "pending".
@@ -445,8 +454,11 @@ function TxnRow({ tx }: { tx: Transaction }) {
     reversed: t.wallet.txnStatusReversed,
     cancelled: t.wallet.txnStatusCancelled,
   };
+  // A pending DEBIT keeps its rose plate: a withdrawal on hold has already left Available.
   const arrowBg =
-    isCredit ? "bg-yes-500/10 text-yes-300" : "bg-no-500/10 text-no-300";
+    settledCredit ? "bg-yes-500/10 text-yes-300"
+    : isCredit || movedNothing ? "bg-bg-overlay text-text-subtle"
+    : "bg-no-500/10 text-no-300";
   return (
     /* The row's machine-readable identity — see `position-card.tsx` for the contract and why a
        driver must not parse the visible status word on a trilingual product. */
@@ -497,8 +509,8 @@ function TxnRow({ tx }: { tx: Transaction }) {
           </p>
         </div>
         <div className="text-right shrink-0">
-          <p className={`font-mono text-[14px] font-bold tabular-nums ${isCredit ? "text-yes-300" : "text-text"}`}>
-            <Cash>{`${isCredit ? "+" : ""}${formatTzs(Math.abs(tx.amount))}`}</Cash>
+          <p className={`font-mono text-[14px] font-bold tabular-nums ${settledCredit ? "text-yes-300" : movedNothing ? "text-text-muted" : "text-text"}`}>
+            <Cash>{`${isCredit && !movedNothing ? "+" : ""}${formatTzs(Math.abs(tx.amount))}`}</Cash>
           </p>
           <p className={`mt-0.5 font-mono text-micro uppercase tracking-[0.14em] font-semibold ${statusTone}`}>
             {statusLabel[tx.status]}
@@ -600,6 +612,7 @@ export function WalletPageClient({
   cashbackMode = "REQUEST",
   limits,
   isAuthed,
+  kycFirstDepositNotice = false,
 }: {
   balance: number; pending: number; hold: number; currency: string;
   /** One PAGE of rows — the server filtered, counted and paged them. */
@@ -637,6 +650,9 @@ export function WalletPageClient({
    *  single source of truth) so the Limits tab never drifts from enforcement. */
   limits: { depositMin: number; depositMax: number; withdrawMin: number; withdrawMax: number };
   isAuthed: boolean;
+  /** Whether the first-deposit identity notice is DUE — decided on the server (`wallet/page.tsx`).
+   *  The notice itself only remembers a dismissal; it never re-derives who should see it. */
+  kycFirstDepositNotice?: boolean;
 }) {
   const { t } = useT();
   /** ⛔ THE GRID AND THE CARD MUST AGREE — see `bonusCardHasContent`. Derived once, here, and
@@ -705,6 +721,13 @@ export function WalletPageClient({
       {bonusWagerRemaining > 0 && (
         <p className="sr-only">{t.common.bonus}: {formatTzs(bonusWagerRemaining)}</p>
       )}
+
+      {/* ⭐ THE ONE QUIET IDENTITY LINE ON THIS PAGE (2026-09-13) — under the balance, never above the
+          title and never inside the history. The server decided it is due — including this browser's
+          dismissal cookie — so the notice is in the first HTML or not rendered at all. ⚠️ The one time it
+          can arrive on a page already open is the refresh that confirms the FIRST deposit — the moment it is
+          for — and it sits below the balance cards so even then the money figure does not move. */}
+      {kycFirstDepositNotice && <KycFirstDepositNotice />}
 
       {cashbackPercent > 0 && <CashbackPromo percent={cashbackPercent} mode={cashbackMode} />}
 

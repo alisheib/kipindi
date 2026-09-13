@@ -19,10 +19,11 @@
  * the whole point — a true measurement over the wrong population is the most convincing way
  * to be wrong.
  */
-// ⚠️ Fixtures must be VERIFIED players: since 2026-09-05 an unverified account cannot deposit,
-// bet or hold an ACTIVE bonus grant, so §5e's control would read bonus=0 for the identity gate
-// rather than for anything this suite measures.
-import "./lib/verified-fixtures.mts";
+// ⭐ NO `verified-fixtures` IMPORT, DELIBERATELY (2026-09-13). It was here because from 2026-09-05 an
+// unverified account could not deposit, bet or hold an ACTIVE bonus grant, so §5e's control would have
+// read bonus=0 for the identity gate. Identity is now asked before a withdrawal and before nothing
+// else, and nothing in this suite withdraws — so its fixtures are the accounts most real players are:
+// never verified. If an identity condition ever creeps back onto a grant, §5e's control goes red here.
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 // ⛔ ONE HOME FOR COMMENT-STRIPPING — `test:decomment` §2.1 exists because two suites shipped

@@ -16,15 +16,19 @@
  *    ⭐ This is the highest-value assertion in the campaign: the money guard cannot see it,
  *    because the money moved correctly.
  *
- * ⛔ 2. AN OFFICER-INVITED APPLICANT CANNOT DEPOSIT. Paying from a wallet inherits every
- *    precondition of DEPOSITING, and deposit requires KYC APPROVED. `applicantEligibility`
- *    enforces that for self-service — but `if (!opts.forInvitation)` exempts an invitee
- *    deliberately, because their identity is "decided at approval". Under the old rail that was
- *    harmless: they paid by bank transfer. Under this one they cannot fund a wallet, cannot pay,
- *    and are told nothing. ⚠️ And `agentInvitationHtml({ feeWaivable: true })` is hard-coded, so
- *    the invitation says the fee *may* be waived while the waiver is a separate officer action.
+ * ⛔ 2. AN OFFICER-INVITED APPLICANT CANNOT PAY FROM THE WALLET. Paying the fee from a wallet
+ *    requires identity APPROVED. ⚠️ Until 2026-09-13 that was inherited from DEPOSITING; since the
+ *    owner's 2026-09-13 ruling a deposit asks no identity question (`kyc-gate.ts`), and the
+ *    requirement is the AGENT PROGRAMME'S OWN, kept by that ruling (`payFeeFromWallet`; §2.6b pins
+ *    the difference). `applicantEligibility` enforces it for self-service — but
+ *    `if (!opts.forInvitation)` exempts an invitee deliberately, because their identity is "decided
+ *    at approval". Under the old rail that was harmless: they paid by bank transfer. Under this one
+ *    an invitee can fund a wallet and still cannot pay with it, and was told nothing. ⚠️ And
+ *    `agentInvitationHtml({ feeWaivable: true })` is hard-coded, so the invitation says the fee
+ *    *may* be waived while the waiver is a separate officer action.
  *
- * ⛔ 3. AN UNVERIFIED EMAIL. Deposit requires it; `applicantEligibility` never checks it.
+ * ⛔ 3. AN UNVERIFIED EMAIL. Paying requires it, exactly as depositing does; `applicantEligibility`
+ *    never checks it.
  *
  * ── WHERE THE REFUSAL MUST BITE, AND WHY ────────────────────────────────────────────────────
  * The module's own law (`agent-application-service.ts` header): *"Every refusal that would strand
@@ -50,10 +54,10 @@
  */
 import { readFileSync } from "node:fs";
 import { decomment } from "./lib/decomment.mts";
-// ⛔ FIXTURES MUST BE VERIFIED PLAYERS. §7 drives a real payment, and paying from a wallet
-// inherits every precondition of DEPOSITING — including an APPROVED identity. An unverified
-// fixture would be refused by the KYC gate, and §7 would then be measuring the gate rather
-// than the fee.
+// ⛔ FIXTURES MUST BE VERIFIED PLAYERS. §7 drives a real payment, and paying the fee from a wallet
+// requires an APPROVED identity — the agent programme's own requirement (§2.6 / §2.6b), not one
+// inherited from depositing, which asks no identity question since 2026-09-13. An unverified fixture
+// would be refused `kyc_required`, and §7 would then be measuring that door rather than the fee.
 import "./lib/verified-fixtures.mts";
 import { db } from "../src/lib/server/store.ts";
 import { mkFixtureUser } from "./lib/agent-fixtures.mts";
@@ -119,7 +123,7 @@ console.log("§1 a wallet-paid applicant can reach PAYMENT_PENDING, and therefor
 }
 
 // ═══ §2 · THE TWO DEAD ENDS — GATED AT THE OFFER, NOT DISCOVERED AT THE TILL ══════════════
-console.log("\n§2 the preconditions deposit imposes are surfaced BEFORE the applicant is asked to pay");
+console.log("\n§2 the preconditions the fee payment imposes are surfaced BEFORE the applicant is asked to pay");
 {
   const svc = SRC("agent-application-service.ts");
 
@@ -146,6 +150,19 @@ console.log("\n§2 the preconditions deposit imposes are surfaced BEFORE the app
     `len=${payBody.length}`);
   ok("2.6 ⛔ it refuses on KYC before moving any money", /kyc_required/.test(payBody));
   ok("2.7 ⛔ …and on an unverified email", /email_unverified/.test(payBody));
+  // ⭐ 2.6b · THE IDENTITY REFUSAL IS THE AGENT PROGRAMME'S OWN, NOT INHERITED FROM DEPOSITING (2026-09-13).
+  // Until the owner's 2026-09-13 ruling `kyc_required` here mirrored a deposit gate. That gate is deleted
+  // (`kyc-gate.ts`), and this one was deliberately KEPT — agents handle other people's money. Pinned both
+  // ways, so an "align with deposit" edit cannot quietly drop it, and a restored deposit gate cannot hide
+  // behind it.
+  {
+    const wallet = decomment(SRC("wallet-service.ts"));
+    const depFn = wallet.slice(wallet.indexOf("export async function deposit("), wallet.indexOf("async function settleDepositConfirmed("));
+    ok("2.6b ⛔ deposit() asks no identity question — the fee's identity refusal is not an inherited one",
+      depFn.length > 2_000 && !/assertIdentityForPayout\s*\(|reason:\s*"kyc_|\bdb\.kyc\b/.test(depFn), `len=${depFn.length}`);
+    ok("2.6c ⭐ …while payFeeFromWallet asks it itself — the CURRENT status, before any money moves",
+      /kyc\.status\s*!==\s*"APPROVED"[\s\S]{0,240}refusal:\s*"kyc_required"/.test(decomment(payBody)));
+  }
   ok("2.8 ⛔ …and it still refuses while a previous refund is owed", /refund_owed/.test(payBody));
   ok("2.9 ⭐ the amount comes from feeBreakdown, never a config field or a literal",
     /feeBreakdown\(/.test(payBody) && !/100_000|100000/.test(payBody));
@@ -328,7 +345,8 @@ console.log("\n§7 🔴 a wallet-paid applicant can SUBMIT — the door, not the
     const UID = "path_submit";
     await mkFixtureUser(UID);
     /**
-     * ⭐ A VERIFIED EMAIL, BECAUSE PAYING INHERITS EVERY PRECONDITION OF DEPOSITING.
+     * ⭐ A VERIFIED EMAIL, BECAUSE PAYING THE FEE ASKS FOR ONE — as depositing does. (It also asks for
+     * an approved identity, which depositing no longer does since 2026-09-13; `verified-fixtures` supplies it.)
      * The first run of this section was refused with `email_unverified` — which is the
      * product being RIGHT, and the fixture being an applicant who could not exist. Left
      * unfixtured it would have masked 7.7/7.8 behind an unrelated refusal, and a section

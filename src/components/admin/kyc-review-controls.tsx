@@ -3,10 +3,14 @@
 /**
  * Compliance-officer KYC decision controls. Shown on the player detail page
  * only when a submission is awaiting review. Three outcomes:
- *   • Approve     — one tap (with confirm); unlocks the account if KYC-gated.
+ *   • Approve     — one tap (with confirm); opens the withdrawal gate and nothing
+ *                    else (2026-09-13 — it used to say "unlocks the account if KYC-gated").
  *   • Request info — ask for more / clearer docs; keeps the submission open so
  *                    the player can update and resubmit (ADDITIONAL_INFO).
- *   • Reject       — final; requires a written reason the player receives.
+ *   • Reject       — requires a written reason the player receives. ⚠️ NOT FINAL from
+ *                    here: `rejectKycAction` passes no code, so it lands as `OTHER`, a
+ *                    RECOVERABLE refusal the player may resubmit after. The three FINAL codes
+ *                    (which freeze the wallet — `kyc-refusal.ts`) are chosen at the workstation.
  *
  * Mobile-first: officers review on phones "on the run", so every control is a
  * full-width, ≥44px tap target that stacks on narrow screens and only goes
@@ -207,7 +211,11 @@ export function KycReviewControls({ userId, status, makerCheckerRequired }: { us
           <ConfirmDialog
             tone="warning"
             title="Approve verification · Idhinisha"
-            body="Approve this identity verification? The player will be notified and (if gated by KYC) unlocked."
+            /* ⛔ THIS SENTENCE SAID "and (if gated by KYC) unlocked" UNTIL 2026-09-13, which was never
+               precise and is now false: approval unlocks no account. Since the 2026-09-13 ruling it
+               opens the withdrawal gate and nothing else (`kyc-gate.ts`) — the same one-clause truth
+               the workstation's approve dialog states (`admin/kyc/[id]/kyc-decision-rail.tsx`). */
+            body="Approve this identity verification? The player will be notified. It opens the withdrawal gate, and nothing else — this player may already hold money they are waiting to take out."
             confirmLabel="Yes, approve"
             onConfirm={approve}
             trigger={

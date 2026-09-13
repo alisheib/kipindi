@@ -254,7 +254,7 @@ export function KycDecisionRail({
               />
             </div>
             {pickedFinal && (
-              <p data-final-refusal-warning="1" className="rounded-md border border-border bg-bg-inset px-2.5 py-2 text-body-sm text-text">
+              <p data-final-refusal-warning="1" className="rounded-md border border-border bg-bg-inset px-2 py-2 text-body-sm text-text">
                 <strong>A final refusal.</strong> It freezes the wallet (no deposits, bets or withdrawals), keeps this document reserved, and the player cannot restart verification themselves. You then decide what happens to any balance, with a written reason.
               </p>
             )}

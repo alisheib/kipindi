@@ -597,8 +597,11 @@ Already shipped (was on this list before):
   **Never use the native browser `confirm()`** — always portal a kit-
   styled modal. The toast at the corner is a *secondary* signal only.
 - **Bootstrap admin** registers / logs in → redirected to `/admin`,
-  not `/profile/kyc`. Player → `/profile/kyc?welcome=new` which now
-  shows a prominent "Skip for now · Browse markets" CTA.
+  not `/profile/kyc`. Player → the safe `?next=` or `/wallet/deposit?welcome=new`.
+  ⚠️ Corrected 2026-09-13: this said new players land on `/profile/kyc?welcome=new`. That was
+  true from 2026-09-05 to 2026-09-13, while identity gated depositing and play; identity is now
+  asked before withdrawal only (`docs/COMPLIANCE-DECISIONS.md` 2026-09-13), and the welcome block
+  on `/profile/kyc` is deleted.
 - **Profile page** displays a yellow `ADMIN` (or `COMPLIANCE` /
   `MODERATOR`) pill so the operator can see at a glance that
   `ADMIN_BOOTSTRAP_PHONES` wired up.

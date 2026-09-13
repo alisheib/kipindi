@@ -25,7 +25,10 @@ import { chatWithClaude } from "@/app/_actions/chat";
 import { useT } from "@/lib/i18n";
 
 const HIDE_ON = /^\/(auth|admin)(\/|$)/;
-const MOBILE_BREAKPOINT = 768;
+/* 2026-09-13 — 1024, the bottom rail's own `lg:hidden` edge. At 768 a tablet (768–1023) showed the
+   rail but parked a "desktop" bubble at bottom:16, straight on top of the rail's More tab. Below
+   1024 the chat now behaves as on a phone: bubble lifted above the rail, sheet + scrim. */
+const MOBILE_BREAKPOINT = 1024;
 
 /** Conversation history lives in sessionStorage so closing + reopening
  *  the bubble within one browser session preserves what the player
@@ -78,7 +81,10 @@ export function ChatRoot({ supportEmail }: { supportEmail: string }) {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [pending, setPending] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
+  // null until the viewport is measured on the client (2026-09-13): the server cannot know the
+  // width, and rendering the desktop offset first put the bubble ON the bottom rail at phone and
+  // tablet widths for as long as hydration took — visible on the heavier market pages.
+  const [isMobile, setIsMobile] = useState<boolean | null>(null);
   const [lang, setLang] = useState<"en" | "sw">("en");
 
   // Hydrate from sessionStorage on mount so a returning player sees
@@ -237,6 +243,8 @@ export function ChatRoot({ supportEmail }: { supportEmail: string }) {
   }, [pathname]);
 
   if (pathname && HIDE_ON.test(pathname)) return null;
+  // Not drawn until the viewport is known, so it never flashes at the desktop offset over the rail.
+  if (isMobile === null) return null;
 
   // Desktop card click-outside: capture clicks on the backdrop area
   // (we don't render an explicit scrim on desktop, so we attach a
@@ -299,7 +307,8 @@ function ChatRootInner({
     <>
       {/* Bubble — always rendered when ChatRoot mounts. Positioning
           via fixed coordinates: 16 px from edges, 80 px from bottom
-          on mobile (clears the 64 px bottom-nav + 16 px gap). */}
+          whenever the bottom rail shows, i.e. below 1024 (clears the
+          64 px rail + 16 px gap). */}
       <div
         ref={bubbleRef}
         style={{
@@ -332,6 +341,10 @@ function ChatRootInner({
                   position: "fixed",
                   inset: "40px 0 0 0",
                   zIndex: 80,
+                  // Tablets (sheet mode up to 1024 since 2026-09-13) get a centred 640px sheet
+                  // rather than a full-width one; a phone is narrower than the cap, so unchanged.
+                  maxWidth: 640,
+                  marginInline: "auto",
                 }
               : {
                   position: "fixed",

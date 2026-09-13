@@ -41,6 +41,29 @@ decided then. These are the conditions it states that **no longer hold**:
 area has now been inverted three times: 2026-08-20 (identity off withdrawal), 2026-09-05
 (identity before everything), 2026-09-13 (identity before withdrawal only).
 
+### How a player is told — quietly (owner instruction, 2026-09-13, later the same day)
+
+> *"we don't have to over-tell the user to verify before he withdraws … when he goes to withdraw
+> say verify before you withdraw, and maybe on first deposit a small notice … nothing in the wrong
+> place, and everything functional without ever explaining things in annoying ways."* — Ali
+
+A first design moved the identity step upstream with four prompts — a sentence on deposit, win
+and cash-out receipts, a reminder email 72 hours after a deposit, and an email after a blocked
+withdrawal — plus a bar on every page for an unverified account holding money. **None of it
+shipped.** What ships:
+
+- the **withdraw page** shows the identity panel instead of the form;
+- **one** small, dismissible notice on the wallet after the account's first confirmed deposit;
+- the places a player goes to look: `/profile/kyc`, the status pill on `/profile`, the legal
+  pages, help;
+- notices that answer an event: submitted, more information requested, approved, refused, and a
+  decision on a refused player's balance.
+
+⚠️ **What this costs, stated plainly:** with fewer prompts, more players will meet the identity
+step for the first time when they try to withdraw, and will wait for our review at that moment.
+Terms §3 and the withdraw panel both state the step and the usual review time.
+⛔ Do not re-add receipt sentences, reminders or a site-wide bar without a new instruction.
+
 ### The seven rulings — each was put to Ali WITH its consequence, and he ruled
 
 | # | Question | Ali's ruling | The consequence he accepted, in plain words |
@@ -262,7 +285,10 @@ The letter that describes the position from today is `BOARD-DISCLOSURE-KYC-AT-WI
 `src/lib/kyc-approval.ts` (one predicate for the page and the server) ·
 `wallet-service.deposit()/withdraw()` · `market-service.buyPositionInner()` ·
 `bonus-service.creditBonus()` · `kyc-service.reviewKyc()/startKyc()` ·
-`src/lib/server/refused-funds.ts` (S1) · `src/lib/server/wallet-freeze.ts` ·
+`src/lib/server/refused-funds.ts` (S1) · `/admin/kyc/refused` (the report) ·
+`src/lib/server/wallet-freeze.ts` · `src/lib/server/kyc-notice.ts` +
+`src/components/wallet/kyc-first-deposit-notice.tsx` (the one first-deposit notice) ·
+`src/components/kyc/kyc-gate-panel.tsx` (the withdraw screen) ·
 `prisma/migrations/20260913120000_kyc_at_withdrawal`.
 **Tests:** see `SESSION-PROMPT-KYC-AT-WITHDRAWAL.md` §Status — every suite named there was run
 explicitly, including the ones `predeploy` does not run.
@@ -288,6 +314,14 @@ and not reversible by them.
 **recorded** on the submission and shown to the officer; it is **not displayed** to other players.
 The approval email still greets the player by their first name — that is a private message to
 the person named.
+
+**The accounts the old rule already renamed — measured on production 2026-09-13, not assumed.**
+Every approved account (7 players, 1 staff) shows its verified legal name as its display name,
+because the 2026-06-14 rule wrote it on approval. Their earlier handles were never recorded (the
+`kyc.approved` audit carried only `nameBackfilled: true`), so there is nothing to restore them to.
+⛔ They are **not** reverted in bulk: blanking eight people's public names without asking would be a
+change of its own, and some chose to verify under their own name. Each can set a handle at any time
+on `/profile`, and this ruling only guarantees approval never takes that choice away again.
 
 ⛔ **Do not restore the overwrite by reading the comment history of `kyc-service.ts`.**
 
@@ -323,6 +357,20 @@ panel is anchored **top-right**, and its vertical offset is not a constant — i
 the bottom of `<main>`, i.e. below the header *and* below whatever conditional bars are above it.
 That is what stops it covering the **KYC-verify banner**, the bar that gates depositing. A
 hardcoded 72px would have sat on it.
+
+> **2026-09-13 note — two facts in the paragraph above changed, and this entry is not rewritten.**
+> (1) The KYC-verify banner no longer exists: identity is asked before withdrawal only, and the
+> owner's quiet rule deleted the app-wide bar (see the 2026-09-13 entry above). The bars the offset
+> still protects are the email-verify, announcement, away-summary and ticker bars.
+> (2) The offset now ALSO clears any sticky bar pinned under the header (`pinnedBarBottom` in
+> `channels-panel.tsx`). Measuring `<main>` alone put the card on top of `/markets`' search-and-filter
+> bar, which lives inside `<main>` and pins as the page scrolls — on a phone, at every scroll position
+> until the X. ⛔ And the panel is **no longer shown on the `/markets` list at all**: the re-inspection
+> the same day found that even below the pinned bar it covered the tabs and sort row as the page
+> loads, the chip row at 1280 and the pagination at the bottom — the densest control page has no free
+> corner. It still appears on every other eligible page, and the Needle now keeps out of its way. The same day's visual pass also found that the panel had never appeared on `/markets`
+> at all: a closed filter-sheet dialog kept in the DOM matched the "a modal is open" check
+> (`src/lib/modal-open.ts` now asks for a visible one).
 
 **⭐ AND THE EMAIL RULE IS NOW DEFAULT-DENY, WHICH THE FIVE-ITEM LIST WAS NOT.** The same audit
 measured what the opt-out list actually left behind: **sixteen harm-shaped templates still carried

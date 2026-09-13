@@ -23,6 +23,22 @@ the operator's compliance team must approve it.
 | Deposits and bets | Nothing further. Self-set limits and the Source-of-Funds thresholds still apply |
 | **Withdrawal** | **Identity approved by a compliance officer** — one of NIDA, passport, driving licence or voter's card, plus a selfie, reviewed by a person |
 
+### How a player learns of the requirement
+
+The requirement is published in **Terms §3 and §3a**, the AML policy and the help pages, in English,
+Swahili and Chinese. Inside the product it is stated in two places, and deliberately nowhere else:
+
+- **On the withdrawal screen**, before the withdrawal form, under the heading *"Before you
+  withdraw"*: a one-time check with an identity document and a selfie. Until identity is approved,
+  that screen shows the identity step instead of the form.
+- **Once, after the first deposit**, a small notice on the wallet that the player can dismiss:
+  *"Verify your identity anytime before your first withdrawal."*
+
+The player's own identity page shows where their verification stands. There are no repeated
+reminders, banners or emails asking a player to verify before they want to withdraw; this is the
+owner's instruction. The cost is stated in the ruling of record: more players meet the identity step
+for the first time when they ask to withdraw, and wait for review then. The review target is 24 hours.
+
 ## 2 · What the operator has accepted by adopting this position
 
 The owner was told each of these plainly before ruling, and they are recorded under his name:

@@ -430,9 +430,11 @@ export default async function MarketDetail({
         <div className="mb-3 flex flex-wrap items-center gap-2">
           <Chip variant="cat" size="lg">{marketCategoryLabel(t, m.category)}</Chip>
           {/* C1a hero state — LIVE only while actually accepting predictions
-              (open/closing); waiting & resolved carry their own state chips. */}
+              (open/closing); waiting & resolved carry their own state chips.
+              2026-09-13 — `market.statusLive`, the key the market cards use: zh `common.live`
+              is 直播 ("broadcast") while the card the player tapped said 实时. */}
           {(heroState === "open" || heroState === "closing") && m.status === "LIVE" && (
-            <Chip variant="live" size="lg" dot>{t.common.live}</Chip>
+            <Chip variant="live" size="lg" dot>{t.market.statusLive}</Chip>
           )}
           {heroState === "closing" && (
             <span className="closing-pill inline-flex items-center gap-1.5 rounded-full border h-[26px] px-2.5 font-mono text-caption font-bold uppercase tracking-[0.10em] tabular-nums">
@@ -477,8 +479,9 @@ export default async function MarketDetail({
             KEPT and lands on `text-display-3` (36): the desktop emphasis is a deliberate part
             of this page's composition, and 36 is the next rung above 28. ⛔ NOT
             `text-title-md md:text-title-lg` (22/28) — that demotes the market question below
-            every other page title, which is the opposite of what this page is for. */}
-        <h1 className="font-display text-title-lg md:text-display-3 font-bold leading-tight tracking-[-0.02em] text-text">{pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh)}</h1>
+            every other page title, which is the opposite of what this page is for.
+            2026-09-13 — balanced wrapping: sw titles left one word alone on line two. */}
+        <h1 className="font-display text-title-lg md:text-display-3 font-bold leading-tight tracking-[-0.02em] text-text text-balance">{pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh)}</h1>
       </header>
 
       {/* ── Main two-column layout ──
@@ -520,8 +523,10 @@ export default async function MarketDetail({
             </p>
           )}
 
-          {/* 2. KPI strip — volume, participation, timing at a glance */}
-          <div className="grid grid-cols-3 gap-3">
+          {/* 2. KPI strip — volume, participation, timing at a glance.
+              2026-09-13 — two columns on a phone with the date tile spanning both: three across
+              at 360 wrapped every label one word per line. `sm` and up is unchanged. */}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             {/* "TZS 0" is factually true, but on a fresh market it reads as
                 failure rather than as an opening. Same words the card uses, so
                 the two surfaces say the same thing about the same state. */}
@@ -532,7 +537,7 @@ export default async function MarketDetail({
                 note on the function below. */}
             <Stat size="xl" labelStyle="widest" boxed="card" label={t.market.volume}     value={freshMarket ? t.market.noPoolYet : formatTzsCompact(m.yesPool + m.noPool)} icon={<I.chart s={14} />} />
             <Stat size="xl" labelStyle="widest" boxed="card" label={t.market.predictors} value={String(m.predictorCount)}     icon={<I.users s={14} />} />
-            <KPI label={t.market.resolves}   value={fmtTime(m.resolutionAt)} mono />
+            <KPI label={t.market.resolves}   value={fmtTime(m.resolutionAt)} mono className="col-span-2 sm:col-span-1" />
           </div>
 
           {/* 2b. Resolution panel — outcome, attestation, pool + fee (resolved only) */}
@@ -741,8 +746,11 @@ export default async function MarketDetail({
             Reproduced on production at 1040–1200px wide: the band just above the `lg`
             breakpoint where row 1 is still short enough for the panel to be pinned
             while row 2 has already scrolled into it.
-            Stays well under the nav (z-40) and the Needle (z-45). */}
-        <aside className="order-1 lg:order-2 lg:col-start-2 lg:row-start-1 space-y-3 lg:sticky lg:top-6 lg:z-10">
+            Stays well under the nav (z-40) and the Needle (z-45).
+            2026-09-13 — offset 72px = the 56px sticky header (an inline height in top-app-bar.tsx;
+            no token exists) + 16px air. The old spacing key resolved to 32px on this scale, so
+            the stuck card slid under the header. loading.tsx mirrors it. */}
+        <aside className="order-1 lg:order-2 lg:col-start-2 lg:row-start-1 space-y-3 lg:sticky lg:top-[72px] lg:z-10">
           {!isResolved && m.status === "LIVE" && !closedByTime && !selectionClosed ? (
             session ? (
               <>
@@ -989,9 +997,9 @@ function similarTimeLeft(iso: string, t: Awaited<ReturnType<typeof getServerT>>[
  *   (b) an owner decision to accept 13.5/bold — at which point this function goes.
  * Either way it is a change to a file this pass does not own.
  */
-function KPI({ label, value, icon, mono }: { label: string; value: string; icon?: React.ReactNode; mono?: boolean }) {
+function KPI({ label, value, icon, mono, className }: { label: string; value: string; icon?: React.ReactNode; mono?: boolean; className?: string }) {
   return (
-    <div className="rounded-md border border-border bg-bg-elevated p-3">
+    <div className={`rounded-md border border-border bg-bg-elevated p-3 ${className ?? ""}`}>
       <div className="flex items-center gap-1.5 text-text-subtle">
         {icon}
         <p className="font-mono text-micro uppercase eyebrow font-semibold">{label}</p>

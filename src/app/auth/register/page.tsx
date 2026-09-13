@@ -55,8 +55,15 @@ export default async function RegisterPage({
   // empty string here), never shortened to something that might match somebody else.
   const refCode = normalizeReferralCode(sp.ref) ?? "";
   // Carry the post-auth destination (e.g. the market the player tapped YES on)
-  // through registration so they land back on it — new players are PENDING_KYC
-  // but can still bet with the starter balance, so we honor their intent.
+  // through registration so they land back on it, and honour their intent.
+  // ⭐ 2026-09-13: a new account is created ACTIVE and identity is asked before a withdrawal
+  // and nothing else, so the market they came from is somewhere they can act once their email
+  // is confirmed and money is in. The action honours a safe `next`, else sends them to add money
+  // (`auth/register/actions.ts`).
+  // ⚠️ This note used to say "new players are PENDING_KYC but can still bet with the starter
+  // balance" — false twice: the starter balance is clamped to 0 on live money
+  // (`clampStarterBalanceForLiveMoney`), and from 2026-09-05 to 2026-09-13 an unverified
+  // account could not bet at all.
   const nextRaw = (sp.next ?? "").trim();
   const nextOk = /^\/(?![/\\])/.test(nextRaw) ? nextRaw : "";
   // B-1 — no swallow: the hidden ref/invite form inputs render only when these
@@ -266,7 +273,10 @@ export default async function RegisterPage({
 
             <PasswordPair />
 
-            <fieldset className="space-y-2.5 pt-1">
+            {/* 2026-09-13: a COLUMN, not vertical margins. Each Checkbox label is inline-flex, so
+                in Chinese two short consents fit and sat side by side on one line. `items-start`
+                keeps each tap area on its own words rather than the full row width. */}
+            <fieldset className="flex flex-col items-start gap-[10px] pt-1">
               <Checkbox
                 name="acceptAge"
                 required

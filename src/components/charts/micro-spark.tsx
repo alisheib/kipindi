@@ -23,6 +23,7 @@
  * client components (market card, wallet) alike.
  */
 import { smoothPath, linePath, closeArea, seriesToXY } from "./chart-core";
+import { cn } from "@/lib/utils";
 
 export function MicroSpark({
   data,
@@ -64,9 +65,16 @@ export function MicroSpark({
   const pts = seriesToXY(data, { x0: padX, x1: width - padX, y0: padY, y1: height - padY });
   const line = smooth ? smoothPath(pts) : linePath(pts);
   const [lastX, lastY] = pts[pts.length - 1];
-  return (
+  // 2026-09-13 · A STRETCHED PIP IS HTML, NOT SVG. `stretch` scales the viewBox on X only, so an
+  // svg circle drew as a flattened oval on the wallet at 1280 (about 14 by 5 px). The line may
+  // stretch; the dot must stay round. So the stretched pip is a dot laid over the svg at the same
+  // point: x as a percentage of the width, y in px (the height is never scaled). An unstretched
+  // spark scales uniformly and keeps its circle. The wrapper takes `className` so the caller's
+  // sizing and the dot's percentage refer to the same box.
+  const htmlPip = pip && stretch;
+  const svg = (
     <svg
-      className={className}
+      className={htmlPip ? "block w-full" : className}
       width={stretch ? "100%" : width}
       height={height}
       viewBox={`0 0 ${width} ${height}`}
@@ -87,7 +95,27 @@ export function MicroSpark({
         strokeLinejoin="round"
         vectorEffect="non-scaling-stroke"
       />
-      {pip && <circle cx={lastX} cy={lastY} r="2.4" fill="var(--aqua-400)" vectorEffect="non-scaling-stroke" />}
+      {pip && !stretch && <circle cx={lastX} cy={lastY} r="2.4" fill="var(--aqua-400)" />}
     </svg>
+  );
+  if (!htmlPip) return svg;
+  return (
+    <span className={cn("relative block", className)} aria-hidden>
+      {svg}
+      {/* Same colour and size as the circle it replaces: r 2.4 at the unscaled 1:1 height. */}
+      <span
+        className="rounded-full"
+        style={{
+          position: "absolute",
+          left: `${(lastX / width) * 100}%`,
+          top: lastY,
+          width: 4.8,
+          height: 4.8,
+          background: "var(--aqua-400)",
+          transform: "translate(-50%, -50%)",
+          pointerEvents: "none",
+        }}
+      />
+    </span>
   );
 }

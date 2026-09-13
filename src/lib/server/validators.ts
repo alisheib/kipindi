@@ -102,8 +102,10 @@ export const withdrawAmount = z
 
 /** A real, deliverable email address. REQUIRED at sign-up: it is where deposit
  *  receipts and the verification link go, and a verified address is what unlocks
- *  the first deposit — one of TWO independent requirements there, the other being an
- *  approved identity (`kyc-gate.ts`, 2026-09-05).
+ *  the first deposit. ⚠️ From 2026-09-05 to 2026-09-13 an approved identity was a second
+ *  requirement there; that gate is DELETED (`kyc-gate.ts` — identity is asked before
+ *  withdrawal only, owner ruling 2026-09-13). So a confirmed address is now the only thing
+ *  between a stranger and a funded account, and the only verified contact channel we hold.
  *  Normalised to lower-case here so uniqueness and lookups can never drift on case. */
 export const emailAddress = z
   .string()

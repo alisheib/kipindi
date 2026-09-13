@@ -126,13 +126,19 @@ export const MUTATIONS = [
     check: "7.2 · ★ …and it is the BONUS one, because the locked bonus is exactly what closes the gap",
   },
   {
-    name: "identity-gate-restored",
-    why: "⚠️ Board comment #1 silently reverts — withdrawal is KYC-gated again. Every money rule "
-       + "in the suite would still pass; only §6 can see it.",
+    // 🔴 INVERTED 2026-09-13 — it was `identity-gate-restored`, and it had rotted twice over. It ADDED
+    // an identity check to withdrawal back when Board comment #1 had removed it; its `from` stopped
+    // resolving when the wallet-frozen line gained the refused-funds exception (S1), and its `check`
+    // named a §6.2 label that has not existed since 2026-09-05 — so the harness could only ever report
+    // it as a HARNESS ERROR. Under the owner's 2026-09-13 ruling the gate STANDS at withdrawal (and
+    // nowhere else), so the defect worth injecting is its removal.
+    name: "identity-gate-removed",
+    why: "⚠️ the withdrawal identity gate stops refusing, so an account nobody ever verified is paid. "
+       + "Every bonus rule in the suite still passes, because every other fixture is verified; only "
+       + "§6.2 can see it.",
     file: WALLET,
-    from: `    if (w.status !== "ACTIVE") return { ok: false as const, error: "Wallet frozen.", code: "SUSPENDED" as const };`,
-    to: `    if ((w.status !== "ACTIVE")) return { ok: false as const, error: "Wallet frozen.", code: "SUSPENDED" as const };\n`
-      + `    if (kycStatus !== "APPROVED") return { ok: false as const, error: "Verify your identity first.", code: "INVALID" as const };`,
-    check: "6.2 · ★★ …and an account with no identity record at all is still paid",
+    from: `  } else if (!withdrawGate.eligible) {`,
+    to: `  } else if (false && !withdrawGate.eligible) {`,
+    check: "6.2 · ★★ CONTROL — an account with no identity is refused, and refused ON IDENTITY",
   },
 ];

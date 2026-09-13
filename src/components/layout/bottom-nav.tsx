@@ -27,8 +27,9 @@ import type { ProposalsState } from "@/lib/server/proposals-config";
  * It was a floating inset capsule on a 78% `--bg-elevated` mix with a 16px backdrop blur — the
  * same see-through problem as the header, on the highest chrome on a phone. The kit specifies
  * `--panel`, a 1px `--border` top, `--shadow-overlay-up` and safe-area padding: an opaque bar
- * anchored to the bottom edge. `app-shell`'s `<main>` already reserves
- * `pb-[calc(88px+env(safe-area-inset-bottom))]` for it.
+ * anchored to the bottom edge. `public-footer.tsx` — the last thing in the document on every
+ * shell page — reserves `pb-[calc(88px+env(safe-area-inset-bottom))]` for it (2026-09-13: moved off
+ * `<main>`, where a second copy stacked into ~250px of blank above the footer).
  *
  * ⭐ AND IT NO LONGER COLLIDES WITH THE NEEDLE. The fidget's badge overlapped the rail's FIRST
  * SLOT at 360 in the batch-2 baseline frames, and its `#hit` area is `pointer-events: auto` — so a
@@ -67,7 +68,7 @@ export function BottomNav({ isAuthed = false, proposalsState, inviteVisible = fa
      ⛔ NOT fixed by deleting /proposals from the top bar to make the two agree: that hides a
      live destination to buy a symmetry.
      ⛔ NOT fixed by a fifth rail SLOT either — the rail is five by design and the grid below
-     is `repeat(5, 1fr)`. It goes behind `More`, where its three siblings already live. */
+     is five equal tracks. It goes behind `More`, where its three siblings already live. */
   const proposalsRow: { href: string; label: string; proposalsBadge?: ProposalsState }[] =
     proposalsState !== "DISABLED"
       ? [{ href: "/proposals", label: t.common.propose, proposalsBadge: proposalsState }]
@@ -119,7 +120,11 @@ export function BottomNav({ isAuthed = false, proposalsState, inviteVisible = fa
          vendored do-not-edit physics touched. */
       data-needle-keepout=""
     >
-      <ul className="grid items-stretch" style={{ gridTemplateColumns: "repeat(5, 1fr)" }}>
+      {/* 2026-09-13 — `minmax(0, 1fr)`, not `1fr`: a bare `1fr` track has an `auto` minimum, so a
+          long Swahili label ("Juu na Chini", "Mubashara") widened its slot into its neighbour instead
+          of ellipsising. `min-w-0` on the link is the other half — a flex item's minimum is
+          otherwise its own nowrap label. */}
+      <ul className="grid items-stretch" style={{ gridTemplateColumns: "repeat(5, minmax(0, 1fr))" }}>
         {items.map((it) => {
           const on = isActive(it.href);
           const Ico = I[it.glyph];
@@ -129,7 +134,7 @@ export function BottomNav({ isAuthed = false, proposalsState, inviteVisible = fa
                 href={it.href as never}
                 aria-label={it.label}
                 aria-current={on ? "page" : undefined}
-                className="kp-rail__item"
+                className="kp-rail__item min-w-0"
                 data-on={on ? "1" : undefined}
               >
                 {/* The 44×26 pip carries the active state — `--pill-active`, the same fill the
