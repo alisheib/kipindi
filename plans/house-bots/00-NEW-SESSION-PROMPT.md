@@ -12,6 +12,10 @@ Planning is finished and **approved by Ali (2026-09-13)**. Do not re-plan or re-
   - Pushing `main` deploys production and applies migrations to the live money database. That includes `PROGRESS.md` edits after REL-4, which go on `house-bots` only.
 - **Never rebase `house-bots`.** Other machines share it. Bring in `main` with `git merge --no-edit origin/main`.
 - **Another Claude session may be working in the main checkout** (`C:/kipindi-main` on this laptop, `F:/kipindi-main` on the other). Never edit, stage, check out or build there.
+- **Permissions: Ali approves every action manually.**
+  - Work in Claude Code's normal ask-before-acting mode, never auto or bypass.
+  - Make every tool call **one atomic action**: one edit, one command, or one git step. Never chain edit + commit + push, or several commands, into one call.
+  - Before each call, say in one plain line what it does and why, so Ali can approve or refuse that step on its own.
 
 ## STEP 0: GET ONTO THE BRANCH AND FIND WHERE WE ARE
 1. Find the repo and the worktree:
