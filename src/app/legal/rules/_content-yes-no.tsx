@@ -87,9 +87,10 @@ export function yesNoContent(r: RulesRates): Record<Locale, React.ReactNode> {
             <li>Players must be <strong className="text-text">18 years or older</strong> and resident in Tanzania.</li>
             <li>One account per person. Multiple accounts, shared accounts and account sales are prohibited and may lead to forfeiture of winnings.</li>
             <li>
-              <strong className="text-text">Identity verification (KYC) is required</strong> before you can deposit, place a
-              bet or withdraw — not merely on request. You verify once, and an account verified once keeps the right
-              to withdraw the money it holds even if we later ask it to verify again.
+              <strong className="text-text">Identity verification (KYC) is required</strong> before your first withdrawal.
+              You verify once, and an account verified once keeps the right to withdraw the money it holds even if we
+              later ask it to verify again. If we cannot verify you, section 3a of the Terms of Service sets out what
+              happens.
             </li>
             <li>
               Deposits and withdrawals move through the mobile-money channels published on the deposit and
@@ -262,9 +263,10 @@ export function yesNoContent(r: RulesRates): Record<Locale, React.ReactNode> {
             <li>Wachezaji lazima wawe na <strong className="text-text">umri wa miaka 18 au zaidi</strong> na wakazi wa Tanzania.</li>
             <li>Akaunti moja kwa kila mtu. Akaunti nyingi, za kushirikiana au kuuzwa ni marufuku na zinaweza kusababisha kupoteza ushindi.</li>
             <li>
-              <strong className="text-text">Uthibitisho wa utambulisho (KYC) unahitajika</strong> kabla ya kuweka pesa,
-              kuweka dau au kutoa pesa — si tu unapoombwa. Unathibitisha mara moja, na akaunti iliyokwisha thibitishwa
-              inabaki na haki ya kutoa pesa ilizonazo hata tukiomba uthibitisho tena baadaye.
+              <strong className="text-text">Uthibitisho wa utambulisho (KYC) unahitajika</strong> kabla ya kutoa pesa kwa
+              mara ya kwanza. Unathibitisha mara moja, na akaunti iliyokwisha thibitishwa inabaki na haki ya kutoa pesa
+              ilizonazo hata tukiomba uthibitisho tena baadaye. Tusipoweza kukuthibitisha, kifungu cha 3a cha Masharti ya
+              Huduma kinaeleza kitakachofanyika.
             </li>
             <li>
               Kuweka na kutoa pesa hufanyika kupitia njia za pesa za simu zilizoorodheshwa kwenye kurasa za malipo,
@@ -433,7 +435,7 @@ export function yesNoContent(r: RulesRates): Record<Locale, React.ReactNode> {
             <li>玩家须<strong className="text-text">年满 18 周岁</strong>并居住于坦桑尼亚。</li>
             <li>每人限一个账户。多开账户、共用账户及账户买卖均被禁止，并可能导致奖金被没收。</li>
             <li>
-              <strong className="text-text">身份验证（KYC）为必办事项</strong>，须在充值、下注或提现之前完成，而非仅在被要求时办理。您只需验证一次；已验证的账户即使日后再次被要求验证，仍保留提取账户内资金的权利。
+              <strong className="text-text">身份验证（KYC）为必办事项</strong>，须在首次提现之前完成。您只需验证一次；已验证的账户即使日后再次被要求验证，仍保留提取账户内资金的权利。若我们无法验证您的身份，服务条款第 3a 条说明了后续处理。
             </li>
             <li>充值与提现通过充值/提现页面公布的移动支付渠道进行，资金进出您账户上登记的钱包。我们绝不索取银行卡信息。</li>
             <li>

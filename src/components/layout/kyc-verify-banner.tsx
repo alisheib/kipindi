@@ -1,27 +1,28 @@
 "use client";
 
 /**
- * The standing identity bar — app-wide, for every signed-in player who is not yet verified.
+ * The standing identity bar — app-wide, for a signed-in player who holds money they could not yet
+ * withdraw.
  *
- * Why it exists: from 2026-09-05 identity gates depositing, playing AND withdrawing, so an
- * unverified account is the largest live limitation the platform has. Until this bar
- * existed the only places that said so were the money screens themselves — a player who
- * signed up, browsed for a week and never opened /wallet would first discover it at the
- * instant they tried to stake. That is the worst possible moment to introduce a step with
- * a human review queue behind it.
+ * ⭐ WHY IT EXISTS, AND WHO SEES IT (2026-09-13). Identity is now asked before WITHDRAWAL and before
+ * nothing else, so an unverified account can deposit and play freely. The one moment the step costs a
+ * player is the moment they reach for their money — the worst possible moment to meet a document
+ * upload with a human review behind it. This bar puts that step in front of them earlier, while there
+ * is no hurry. `AppShell` shows it only when the account was never approved AND holds a withdrawable
+ * balance: a player who has deposited nothing has nothing to cash out, and a permanent identity nag
+ * aimed at them would be exactly the friction the 2026-09-13 ruling removed.
  *
- * ⛔ NOT DISMISSIBLE, and collapsible only. This is not an announcement; it is a live
- * limitation on the account, and it disappears by being RESOLVED. A dismiss button would
- * let a player permanently hide the reason their first deposit is going to be refused.
- * Collapsed is a smaller statement of the same standing condition, not a dismissal — the
- * rule `EmailVerifyBanner` already established, and the same `localStorage` key shape:
- * a display preference, per browser, never account state. Clearing storage shows the full
- * bar again, which is the safe direction to fail in.
+ * ⛔ NOT DISMISSIBLE, and collapsible only. It disappears by being RESOLVED — by verifying, or by the
+ * balance reaching zero. Collapsed is a smaller statement of the same standing condition, not a
+ * dismissal — the rule `EmailVerifyBanner` already established, and the same `localStorage` key shape:
+ * a display preference, per browser, never account state.
  *
- * ⛔ `role="status"` / `aria-live="polite"`, never `alert`. Three of the four states are
- * ordinary progress, and one of them — PENDING_REVIEW — is US being slow, not the player.
- * An assertive live region announcing our own queue on every navigation would be noise
- * about nothing they can act on.
+ * ⛔ `role="status"` / `aria-live="polite"`, never `alert`. Most of these states are ordinary progress,
+ * and one — PENDING_REVIEW — is US being slow, not the player.
+ *
+ * ⛔ NO ROSE OR DANGER TONE TO ESCALATE. `AnnouncementBanner` (claret) renders directly above the bars in
+ * `AppShell`; a rose bar under a claret bar breaks §B4 on a stack that only appears during an incident,
+ * so no ordinary screenshot would catch it. Escalation lives in the words and the glyph.
  */
 import { useEffect, useState } from "react";
 import { NoticeBar, NoticeBarAction } from "@/components/ui/notice-bar";
@@ -47,17 +48,19 @@ export function KycVerifyBanner({ state }: { state: KycGateState }) {
     });
   };
 
-  // ⚠️ `info` FOR THE PENDING STATE, AND IT IS THE WHOLE REASON THIS TAKES A `state` RATHER
-  // THAN A BOOLEAN. A player whose documents are with our reviewers has done everything
-  // asked of them; an amber "action needed" bar on every page would be a standing accusation
-  // about our own queue.
+  // ⚠️ `info` FOR THE PENDING STATE, AND IT IS THE WHOLE REASON THIS TAKES A `state` RATHER THAN A
+  // BOOLEAN. A player whose documents are with our reviewers has done everything asked of them; an
+  // amber "action needed" bar on every page would be a standing accusation about our own queue.
   const tone = state === "pending_review" ? "info" : "warning";
 
   const copy = {
-    not_started:    { full: t.kycGate.barNotStarted,  short: t.kycGate.barShortNotStarted,  cta: t.kycGate.ctaStart },
-    pending_review: { full: t.kycGate.barPending,     short: t.kycGate.barShortPending,     cta: "" },
-    more_info:      { full: t.kycGate.barMoreInfo,    short: t.kycGate.barShortMoreInfo,    cta: t.kycGate.ctaUpload },
-    rejected:       { full: t.kycGate.barRejected,    short: t.kycGate.barShortRejected,    cta: t.kycGate.ctaRetry },
+    not_started:    { full: t.kycGate.barNotStarted,  short: t.kycGate.barShortNotStarted,  cta: t.kycGate.ctaStart,   href: "/profile/kyc" },
+    uploaded:       { full: t.kycGate.barUploaded,    short: t.kycGate.barShortUploaded,    cta: t.kycGate.ctaFinish,  href: "/profile/kyc" },
+    pending_review: { full: t.kycGate.barPending,     short: t.kycGate.barShortPending,     cta: "",                   href: "" },
+    more_info:      { full: t.kycGate.barMoreInfo,    short: t.kycGate.barShortMoreInfo,    cta: t.kycGate.ctaUpload,  href: "/profile/kyc" },
+    rejected:       { full: t.kycGate.barRejected,    short: t.kycGate.barShortRejected,    cta: t.kycGate.ctaRetry,   href: "/profile/kyc" },
+    // ⛔ A FINAL refusal cannot be restarted by the player, so the action is support, never "try again".
+    refused_final:  { full: t.kycGate.barRefusedFinal, short: t.kycGate.barShortRefusedFinal, cta: t.kycGate.ctaSupport, href: "/help" },
   }[state];
 
   return (
@@ -67,12 +70,11 @@ export function KycVerifyBanner({ state }: { state: KycGateState }) {
       testId="kyc-verify-banner"
       /* ⛔ NO `onDismiss` — that prop is what makes a bar hideable, and this one must not
          be. ⛔ NO ACTION ON `pending_review` either: /profile/kyc shows a "we're reviewing"
-         panel with nothing to act on, so a button there leads nowhere. The bar states the
-         condition and stops, which is the honest shape of "we owe you something".
+         panel with nothing to act on, so a button there leads nowhere.
          ⚠️ `tone` is passed to the action too — the kit requires the two to match, and its
          default is `warning`, which would be wrong inside the info-toned pending bar. */
       action={copy.cta ? (
-        <NoticeBarAction glyph="shieldcheck" href="/profile/kyc" tone={tone}>
+        <NoticeBarAction glyph={state === "refused_final" ? "mail" : "shieldcheck"} href={copy.href} tone={tone}>
           {copy.cta}
         </NoticeBarAction>
       ) : undefined}

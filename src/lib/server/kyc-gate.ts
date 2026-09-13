@@ -1,92 +1,95 @@
 /**
- * THE IDENTITY GATE ON THE MONEY PATH — one question, one answer, one place.
+ * THE IDENTITY GATE ON MONEY LEAVING — one question, one answer, one place.
  *
- * ⭐ THE RULE (owner ruling, Ali, 2026-09-05 — docs/COMPLIANCE-DECISIONS.md):
- * a player may not DEPOSIT, BET or WITHDRAW until we have approved their identity.
- * They may register, sign in and walk around the platform; nothing else moves.
- * The ladder is now: **register free → verify identity → everything**.
+ * ⭐ THE RULE (owner ruling, Ali, 2026-09-13 — docs/COMPLIANCE-DECISIONS.md):
+ * identity is required before money is WITHDRAWN, and before nothing else.
+ * The ladder is: **register → confirm email → deposit and play → verify identity → withdraw**.
  *
- * ⛔ THIS REVERSES A RECORDED REGULATOR INSTRUCTION, AND ONLY IN ONE THIRD OF ITS
- * SURFACE. Board comment #1 (2026-08-19, docs/BOARD-DISCLOSURE-B-E.md §1) removed
- * identity as a precondition of WITHDRAWAL. It said nothing about money coming in or
- * about staking — §9.4 of that same letter records deposits being left unbound for an
- * unrelated reason. So:
- *   · DEPOSIT and BET gates are new policy, and contradict nothing;
- *   · the WITHDRAW gate is a deliberate, disclosed reversal, taken by the owner as a
- *     control STRICTER than the Board required. It is recorded in
- *     docs/COMPLIANCE-DECISIONS.md and re-disclosed to the Board.
- * ⛔ Do not "restore" the old behaviour by reading the older document. Read the dates.
+ * ⛔ READ THE DATES BEFORE CHANGING ANYTHING HERE. This area has been inverted three times:
+ *   · 2026-08-20 — identity stopped being a precondition of withdrawal, and a RECORD replaced it;
+ *   · 2026-09-05 — identity was required before depositing, betting AND withdrawing;
+ *   · 2026-09-13 — identity is required before withdrawing only (this file).
+ * The 2026-09-05 entry, its Board letter (`BOARD-DISCLOSURE-KYC-FIRST.md`, never sent) and every
+ * comment written between those dates describe a gate that no longer exists. ⛔ Do not add a
+ * deposit or bet question back by reading them — and do not add one "for safety" either: a gate
+ * that asks nothing the product needs answered only strands the people it catches.
  *
- * ── THE TWO QUESTIONS, AND WHY THEY ARE NOT THE SAME QUESTION ──────────────────────
+ * ── WHY THIS FILE EXPORTS ONE GATE AND NO ACTION PARAMETER ───────────────────────────────────
  *
- * DEPOSIT and BET ask `status === "APPROVED"` — CURRENT standing, because both add NEW
- * exposure and we are entitled to stop that the moment a doubt appears.
+ * It used to export `assertKycForMoney(userId, action: "DEPOSIT" | "BET" | "WITHDRAW")`. The
+ * 2026-09-13 change could have made DEPOSIT and BET simply answer `eligible: true` — every call
+ * site would still compile, every call site would still read like enforcement, and the next
+ * session would inherit a gate that does nothing while looking like it does. ⛔ That is the most
+ * dangerous shape a money gate can take. So the union is DELETED rather than narrowed (a
+ * one-member union declares a choice that does not exist, and leaves `"DEPOSIT"` one literal away
+ * from returning), and the function is RENAMED, so any caller still trying to gate a deposit or a
+ * stake is a compile error, not a silent pass.
  *
- * WITHDRAW asks `approvedAt != null` — HAS THIS ACCOUNT EVER SATISFIED US?
+ * ── TWO EXPORTS, OPPOSITE FAILURE DIRECTIONS ─────────────────────────────────────────────────
  *
- * 🔴 That asymmetry is the whole of the money-safety story here. `forceReverifyKyc`
- * moves an APPROVED player to ADDITIONAL_INFO_REQUIRED, and that player HOLDS REAL
- * MONEY earned under an identity we accepted. Asking current status would freeze it —
- * precisely the harm docs/BOARD-DISCLOSURE-B-E.md §6 named when it recorded that
- * force-reverify had STOPPED being a money control. The same asymmetry covers the real
- * race: a deposit authorised while approved whose Selcom callback lands after a
- * rejection. An officer who genuinely needs to stop money leaving still has the three
- * money controls — freeze the wallet, pause payouts, the AML ≥ 1M two-officer hold.
+ * `assertIdentityForPayout` DECIDES, and a failed read REFUSES: "we could not check" is not "you
+ * are verified". `withdraw()` surfaces a thrown read as a system failure, not an identity refusal.
  *
- * ── WHAT THIS FILE MUST NEVER DO ───────────────────────────────────────────────────
+ * `readIdentityStanding` RECORDS, and a failed read NEVER refuses and NEVER throws. It stamps the
+ * account's standing onto the audit rows of deposits and bets — money the player has already
+ * decided to send, or a stake already committed — so it must not be able to stop either. A read
+ * that fails is recorded as `"UNREADABLE"`, as itself: collapsing it into `"NOT_STARTED"` would
+ * turn a fact about our database into a claim about the player.
  *
- * ⛔ NEVER READ `session.kycStatus`. It is stamped into the signed cookie at login
- * (`session.ts:35`) and is, deliberately, read by NOTHING that decides anything. A
- * cookie is a 7-day-old photograph: gate on it and a player approved at 10:00 stays
- * locked out until they sign out, while a player rejected at 10:00 keeps spending until
- * Friday. `withdraw()` has always re-read the row for its compliance stamp
- * (`wallet-service.ts`) — this is that same discipline, made the rule.
+ * ── WHAT THIS FILE MUST NEVER DO ─────────────────────────────────────────────────────────────
  *
- * ⛔ NEVER CALL THIS ON A CREDIT PATH. `settleDepositConfirmed`, the Selcom webhook,
- * the return leg, the fast-credit lane, the reconcile sweep, market settlement,
- * cash-out and every refund are OUT OF SCOPE and must stay that way. Those complete a
- * deposit the player has already paid for, or return money that is already theirs.
- * Refusing there takes a player's money and gives them nothing, which is the one
- * outcome no compliance argument can justify.
+ * ⛔ NEVER READ `session.kycStatus`. It is stamped into the signed cookie at login and is read by
+ * nothing that decides anything: a cookie is a 7-day-old photograph. A player approved at 10:00
+ * must be payable at 10:01.
  *
- * ⛔ NEVER GATE AHEAD OF A RESPONSIBLE-GAMBLING CONTROL. A self-excluded player who is
- * also unverified must be told about the self-exclusion — it is their own protective
- * choice and it carries an end date. Both call sites place this gate AFTER the RG
- * lockout for that reason; `test:deposit-gate` §C pins the ordering.
+ * ⛔ NEVER CALL THE GATE ON A CREDIT PATH. Settlement, cash-out, refunds and every
+ * deposit-completion path (webhook, return leg, fast-credit lane, reconcile sweep) complete a
+ * deposit already paid for or return money that is already the player's.
+ *
+ * ⛔ NEVER GATE AHEAD OF A RESPONSIBLE-GAMBLING CONTROL. A self-excluded player must be told about
+ * their own break, which carries a date they are entitled to — never sent on an identity errand.
+ *
+ * ⚠️ AND THIS IS NO LONGER THE ONLY WAY A WITHDRAWAL IS STOPPED FOR AN IDENTITY REASON. A FINAL
+ * refusal (`UNDERAGE`, `SANCTIONED`, `DUPLICATE_IDENTITY`) freezes the wallet in the same step
+ * (`wallet-freeze.ts`), and what then happens to the balance is an officer's recorded decision
+ * (`refused-funds.ts`). This gate answers "has this account ever been approved?" and nothing else.
  */
 import { db } from "./store";
 import type { FailureReason } from "@/lib/failure-reasons";
-
-/** The three money actions identity gates. Credits and exits are deliberately absent. */
-export type MoneyAction = "DEPOSIT" | "BET" | "WITHDRAW";
+import { approvedEver } from "@/lib/kyc-approval";
 
 export type KycGateStatus = NonNullable<Awaited<ReturnType<typeof db.kyc.findByUserId>>>["status"];
 
-export type MoneyEligibility =
-  | { eligible: true }
-  | { eligible: false; kycStatus: KycGateStatus; reason: FailureReason };
+/**
+ * The gate's answer, carrying the facts the withdrawal's audit rows need.
+ *
+ * ⭐ ONE READ, NOT TWO. `withdraw()` used to call the gate AND read the KYC row a second time to
+ * build its compliance stamp — two reads separated by an `await`, which can disagree if an officer
+ * decides in between, so the audit could narrate a status that did not make the decision. The
+ * facts now come back from the read that decided.
+ */
+export type PayoutIdentity =
+  | { eligible: true; kycStatus: KycGateStatus; firstApprovedAt: string | null }
+  | { eligible: false; kycStatus: KycGateStatus; firstApprovedAt: null; reason: FailureReason };
 
 /**
  * Why a refusal happened, as a machine token — never as prose.
  *
- * ⭐ FOUR REASONS, NOT ONE, because "you cannot deposit" is four different sentences
- * with four different next actions: start the form / wait for us / upload what the
- * officer asked for / read why you were turned down. docs/RULES.md §2.3 requires a
- * refusal to name what the player must do, and one token cannot.
+ * ⭐ FOUR REASONS, NOT ONE, because "you cannot withdraw yet" is four different sentences with four
+ * different next actions: start the form / wait for us / upload what the officer asked for / read
+ * why you were turned down. docs/RULES.md §2.3 requires a refusal to name what the player must do.
  *
- * ⛔ `kyc_required` IS NOT ONE OF THEM, AND MUST NOT BE. That exact name was retired
- * on 2026-08-20 with a reason tied to Board comment #1 (`failure-reasons.ts`), and
- * re-using a retired token for a differently-scoped gate is how the next reader
- * inherits the wrong history.
+ * ⛔ `kyc_required` IS NOT ONE OF THEM, AND MUST NOT BE. That name was retired on 2026-08-20 with
+ * a reason tied to Board comment #1 (`failure-reasons.ts`); reviving a retired token for a
+ * differently-scoped gate is how the next reader inherits the wrong history.
  *
- * ⛔ EACH LITERAL SITS IN A REAL `reason:` POSITION, AND THAT IS NOT COSMETIC. This map IS
- * the emitter — the money paths return `reason: gate.reason`, one level of indirection
- * away — and `test:failure-reasons` §9d proves a registry row is reachable by finding the
- * token in a `reason:` property somewhere under `src/`. Written as a bare
- * `Record<Status, FailureReason>` the tokens sit in VALUE positions, §9d reports all four
- * rows as copy no player can ever see, and the honest answer is not to widen the guard —
- * it is that the seam should say `reason:` where it means "this is the reason". The guard
- * was right; the first draft of this file was not.
+ * ⛔ EACH LITERAL SITS IN A REAL `reason:` POSITION. This map IS the emitter — `withdraw()` returns
+ * `reason: gate.reason`, one level of indirection away — and `test:failure-reasons` §9d proves a
+ * registry row is reachable by finding the token in a `reason:` property under `src/`.
+ *
+ * ⚠️ TOTAL OVER `KycStatus`, INCLUDING `APPROVED`. That row is not reached in practice (an
+ * approved row is eligible above), and it is kept so a new `KycStatus` member becomes a TYPE error
+ * here rather than a silent pass at a money gate.
  */
 const REFUSAL_BY_STATUS: Record<KycGateStatus, { reason: FailureReason }> = {
   NOT_STARTED: { reason: "kyc_not_verified" },
@@ -94,50 +97,53 @@ const REFUSAL_BY_STATUS: Record<KycGateStatus, { reason: FailureReason }> = {
   PENDING_REVIEW: { reason: "kyc_pending_review" },
   ADDITIONAL_INFO_REQUIRED: { reason: "kyc_more_info" },
   REJECTED: { reason: "kyc_rejected" },
-  // ⚠️ NOT DEAD, AND THE FIRST DRAFT SAID IT WAS. An APPROVED row with no `approvedAt`
-  // stamp used to land here on the WITHDRAW arm and produce *"Identity not verified
-  // (APPROVED)"* — a refusal whose own text contradicted itself. That case is now handled
-  // above (approved-now counts as well as approved-ever), so this row should not be reached
-  // in practice; it is kept because the record must stay TOTAL — a new `KycStatus` member
-  // then becomes a TYPE error here rather than a silent pass at a money gate.
   APPROVED: { reason: "kyc_not_verified" },
 };
 
 /**
- * May this account move money in this direction?
+ * May this account send money OUT?
  *
- * ⚠️ A MISSING KYC ROW IS "NOT_STARTED", NOT "FINE". A brand-new player has no
- * `KycSubmission` until `/profile/kyc` creates one, and defaulting a missing row to
- * eligible would mean the gate is open for exactly the population it exists to stop.
+ * ⚠️ A MISSING KYC ROW IS "NOT_STARTED", NOT "FINE". A player has no `KycSubmission` until
+ * `/profile/kyc` creates one, and from 2026-09-13 most funded players will be in exactly that
+ * state when they first reach for their money.
  *
- * ⚠️ AND A FAILED READ REFUSES. Every other read in this codebase degrades toward
- * showing the player more; this one degrades toward moving no money. `findByUserId`
- * throwing is a database problem, and "we could not check" is not "you are verified".
- * The caller surfaces it as a system failure, not as an identity refusal.
+ * ⛔ THE QUESTION IS `approvedEver` — the one predicate the withdraw page also asks
+ * (`src/lib/kyc-approval.ts`, which carries the asymmetry's full rationale). Writing the
+ * expression out here again is how the page and the server disagreed until 2026-09-13.
  */
-export async function assertKycForMoney(userId: string, action: MoneyAction): Promise<MoneyEligibility> {
+export async function assertIdentityForPayout(userId: string): Promise<PayoutIdentity> {
   const k = await db.kyc.findByUserId(userId);
   const kycStatus: KycGateStatus = k?.status ?? "NOT_STARTED";
-
-  if (action === "WITHDRAW") {
-    // ⛔ `approvedAt` FIRST — see the header. This is the branch that decides whether a
-    // re-verified player can reach money they already earned.
-    if (k?.approvedAt) return { eligible: true };
-    // ⚠️ …AND `status === "APPROVED"` AS WELL, which is not redundant and is not a
-    // loophole. It answers "approved right now" for a row where the stamp is missing —
-    // a submission written before 2026-09-05 whose backfill did not run, or one created
-    // outside `reviewKyc`. Refusing there would trap a VERIFIED player's money on the
-    // strength of a bookkeeping gap, which is the one outcome this whole design exists to
-    // prevent. It cannot let an unapproved account through: both halves demand approval,
-    // one now and one ever.
-    // 🔴 FOUND BY A TEST FIXTURE, NOT BY REVIEW: a suite whose row said APPROVED with no
-    // stamp was refused with *"Identity not verified (APPROVED)"* — a sentence that is
-    // its own bug report, and the reason the note below on `REFUSAL_BY_STATUS.APPROVED`
-    // no longer claims that branch is unreachable.
-    if (kycStatus === "APPROVED") return { eligible: true };
-    return { eligible: false, kycStatus, reason: REFUSAL_BY_STATUS[kycStatus].reason };
+  if (!approvedEver(k)) {
+    return { eligible: false, kycStatus, firstApprovedAt: null, reason: REFUSAL_BY_STATUS[kycStatus].reason };
   }
+  return { eligible: true, kycStatus, firstApprovedAt: k?.approvedAt ?? null };
+}
 
-  if (kycStatus === "APPROVED") return { eligible: true };
-  return { eligible: false, kycStatus, reason: REFUSAL_BY_STATUS[kycStatus].reason };
+/** An account's identity standing as a RECORD — `"UNREADABLE"` when we could not read it. */
+export type IdentityStanding = {
+  kycStatus: KycGateStatus | "UNREADABLE";
+  /** `null` exactly when the read failed. Never `false` on a failure: that would be a claim. */
+  everApproved: boolean | null;
+};
+
+/**
+ * The identity stamp for a deposit's or a bet's EXISTING audit row.
+ *
+ * ⛔ NEVER THROWS AND NEVER REFUSES — see the header. It is called on the success path, after the
+ * money decision is already made, and nothing it returns may be used to decide one.
+ *
+ * ⛔ AND IT IS A FIELD, NEVER A ROW. Every `audit()` append takes a database-global advisory lock
+ * and inserts under a unique `prevHash`: the platform's whole audit log is one serialised writer.
+ * A second row per bet would double the load on that single point on the hottest path in the repo.
+ * The record is per-event where events are rare and per-field where they are not, because the
+ * audit chain is a single global writer. `test:kyc-gate` counts the rows one bet writes.
+ */
+export async function readIdentityStanding(userId: string): Promise<IdentityStanding> {
+  try {
+    const k = await db.kyc.findByUserId(userId);
+    return { kycStatus: k?.status ?? "NOT_STARTED", everApproved: approvedEver(k) };
+  } catch {
+    return { kycStatus: "UNREADABLE", everApproved: null };
+  }
 }

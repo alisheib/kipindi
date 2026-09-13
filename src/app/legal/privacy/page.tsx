@@ -57,7 +57,7 @@ function content(): Record<Locale, React.ReactNode> { return {
       <LegalSection n="3" title="Lawful basis">
         <ul className="list-disc pl-5 space-y-1">
           <li><strong className="text-text">Performance of contract</strong>: account, wallet, bet placement, settlement</li>
-          <li><strong className="text-text">Legal obligation</strong>: KYC under the Gaming Act, AML/CFT under POCA, tax under the Income Tax Act</li>
+          <li><strong className="text-text">Legal obligation</strong>: identity verification (KYC) and AML/CFT under the Anti-Money Laundering Act and POCA, tax under the Income Tax Act</li>
           <li><strong className="text-text">Legitimate interest</strong>: fraud prevention, market-integrity monitoring, security alerting</li>
           <li><strong className="text-text">Consent</strong>: marketing communications (revocable any time)</li>
         </ul>
@@ -145,7 +145,7 @@ function content(): Record<Locale, React.ReactNode> { return {
       <LegalSection n="3" title="Msingi wa kisheria">
         <ul className="list-disc pl-5 space-y-1">
           <li><strong className="text-text">Utekelezaji wa mkataba</strong>: akaunti, pochi, uwekaji wa dau, ufungaji</li>
-          <li><strong className="text-text">Wajibu wa kisheria</strong>: KYC chini ya Gaming Act, AML/CFT chini ya POCA, kodi chini ya Income Tax Act</li>
+          <li><strong className="text-text">Wajibu wa kisheria</strong>: uthibitisho wa utambulisho (KYC) na AML/CFT chini ya Anti-Money Laundering Act na POCA, kodi chini ya Income Tax Act</li>
           <li><strong className="text-text">Maslahi halali</strong>: kuzuia udanganyifu, ufuatiliaji wa uadilifu wa soko, tahadhari za usalama</li>
           <li><strong className="text-text">Ridhaa</strong>: mawasiliano ya matangazo (yanaweza kufutwa wakati wowote)</li>
         </ul>
@@ -234,7 +234,7 @@ function content(): Record<Locale, React.ReactNode> { return {
       <LegalSection n="3" title="法律依据">
         <ul className="list-disc pl-5 space-y-1">
           <li><strong className="text-text">合同履行</strong>：账户、钱包、下注、结算</li>
-          <li><strong className="text-text">法律义务</strong>：依据 Gaming Act 的 KYC、依据 POCA 的 AML/CFT、依据 Income Tax Act 的税务</li>
+          <li><strong className="text-text">法律义务</strong>：依据 Anti-Money Laundering Act 与 POCA 的身份验证（KYC）及 AML/CFT、依据 Income Tax Act 的税务</li>
           <li><strong className="text-text">合法利益</strong>：欺诈防范、市场完整性监控、安全告警</li>
           <li><strong className="text-text">同意</strong>：营销通讯（可随时撤回）</li>
         </ul>

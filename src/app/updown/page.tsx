@@ -18,8 +18,6 @@ import { RefreshPoller } from "@/components/ui/refresh-poller";
 import { I } from "@/components/ui/glyphs";
 import { getBoard } from "@/lib/server/updown-board";
 import { currentSession } from "@/lib/server/auth-service";
-import { kycGateState } from "@/lib/kyc-gate-state";
-import { getKycStatus } from "@/lib/server/kyc-service";
 import { getServerT } from "@/lib/i18n-server";
 import { pickLocalized } from "@/lib/localized";
 import { UpDownCard } from "@/components/updown/updown-card";
@@ -79,14 +77,9 @@ export default async function UpDownPage({
   const { assets, activeAsset, activeDuration, rounds, recent, chainPaused, stakeBounds, walletBalance } = board;
   const href = (assetKey: string, d?: number) => `/updown?asset=${assetKey}${d ? `&d=${d}` : ""}`;
   const isAuthed = !!session;
-  // Identity gate for the board: quick-bet is off until approved, and the buttons then
-  // route to the round detail where the panel explains why. ⛔ A failed read blocks
-  // quick-bet rather than arming it — one extra tap, versus a stake the server refuses.
-  let kycBlocked = false;
-  if (session) {
-    try { kycBlocked = kycGateState((await getKycStatus(session.userId))?.status) !== null; }
-    catch { kycBlocked = true; }
-  }
+  // ⛔ NO IDENTITY READ ON THE BOARD SINCE 2026-09-13 — a stake asks no identity question
+  // (`kyc-gate.ts`), so quick-bet is armed for every signed-in player. The `kycBlocked` read and prop
+  // that switched it off from 2026-09-05 are deleted; do not restore them.
 
 
   return (
@@ -313,7 +306,6 @@ export default async function UpDownPage({
                 sourceQuotedAt={activeAsset!.sourceQuotedAt}
                 marketId={r.marketId}
                 isAuthed={isAuthed}
-                kycBlocked={kycBlocked}
                 minStake={stakeBounds.min}
                 maxStake={stakeBounds.max}
                 walletBalance={walletBalance}

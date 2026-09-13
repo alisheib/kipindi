@@ -12,8 +12,9 @@
  *  2) Phone verified (already done at signup)
  *  3) Documents: the slots THAT TYPE requires, plus a selfie, through the storage seam
  *  4) Submitted → PENDING_REVIEW (compliance reviewer assigns + decides)
- *  5) APPROVED unlocks DEPOSITS, BETTING and WITHDRAWALS (owner ruling 2026-09-05 —
- *     see `kyc-gate.ts`); REJECTED returns a reason code
+ *  5) APPROVED opens WITHDRAWAL — the only money action identity decides since the owner
+ *     ruling of 2026-09-13 (see `kyc-gate.ts`). REJECTED returns a reason code; a FINAL code
+ *     (`kyc-refusal.ts`) also freezes the wallet and keeps the document number reserved
  *
  * Compliance:
  *  - Every step audited (KYC category) with correlation IDs.
@@ -50,8 +51,9 @@ import { sendEmail, sendEmailToUser, kycRejectedHtml, kycApprovedHtml, kycSubmit
 import { resolvePhoneEmail } from "./email-map";
 import { setUserEmail } from "./email-verification";
 import { withLock } from "./locks";
-import { releaseKycHeldGrants } from "./bonus-service";
 import { displayLabel } from "@/lib/display-label";
+import { isFinalRefusal } from "@/lib/kyc-refusal";
+import { addWalletFreeze, removeWalletFreeze } from "./wallet-freeze";
 
 // ⭐ THE BASE URL HAS ONE HOME: `appUrl()` (`src/lib/app-url.ts`).
 // 🔴 This file carried a private `BASE_URL` defaulting to `kipindi-production.up.railway.app`
@@ -104,37 +106,26 @@ export async function startKyc(userId: string): Promise<ServiceResult<{ kycId: s
   if (existing && existing.status !== "NOT_STARTED" && existing.status !== "REJECTED") {
     return { ok: true, data: { kycId: existing.id } };
   }
-  const k = await db.kyc.upsert({
-    id: existing?.id ?? `kyc_${randomId(10)}`,
-    userId,
-    status: "IN_PROGRESS",
-    rejectReason: null,
-    rejectNote: null,
-    // ⛔ THE WHOLE IDENTITY TUPLE CLEARS TOGETHER. Leaving `idType` behind while
-    // nulling `idNumber` would let a restarted submission carry the previous
-    // document's type into the next one's validation — and leaving `idNumber`
-    // behind would hold a number hostage under the partial unique index for a
-    // submission that no longer claims it.
-    idType: null,
-    idNumber: null,
-    idExpiry: null,
-    idVerifiedAt: null,
-    fullName: null,
-    dob: null,
-    documents: [],
-    reviewerId: null,
-    reviewedAt: null,
-    submittedAt: null,
-    // 🔴 THE ONE FIELD THIS RESET MUST *NOT* CLEAR, and the only rebuild-from-scratch
-    // upsert in the file — every other one spreads `...k` and carries it for free.
-    // Reachable: APPROVED → forceReverify → REJECTED → the player taps "start again".
-    // That player HOLDS MONEY earned under an identity we accepted; nulling their
-    // first-approval date locks them out of it, and no suite would go red. Approval is
-    // a fact about the past, not a state — see the column note in prisma/schema.prisma.
-    approvedAt: existing?.approvedAt ?? null,
-    createdAt: existing?.createdAt ?? new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  });
+  // ⛔ A FINAL REFUSAL IS NOT RESTARTED BY THE PLAYER (2026-09-13 — docs/COMPLIANCE-DECISIONS.md, S1).
+  // Two reasons, both of which only exist because money is now played before identity is checked:
+  //   · S2 — the loop was unbounded. A player refused at cash-out could restart and resubmit forever
+  //     while their balance sat frozen and the officer's queue took the load.
+  //   · S16 — the reset below nulls `idNumber`, which would RELEASE a number the final refusal keeps
+  //     reserved, handing the document to the next account that presents it.
+  // The door back is an officer: `reopenFinalRefusal`, with a written reason, when a final call was
+  // wrong. A RECOVERABLE refusal restarts exactly as before.
+  if (existing?.status === "REJECTED" && isFinalRefusal(existing.rejectReason)) {
+    audit({ category: "COMPLIANCE", action: "kyc.restart_refused_final", actorId: userId, targetType: "Kyc", targetId: existing.id, payload: { rejectReason: existing.rejectReason } });
+    return {
+      ok: false,
+      error: "This verification was refused and cannot be restarted. Contact support.",
+      code: "INVALID",
+      reason: "kyc_refused_final",
+    };
+  }
+  // ⛔ ONE RESET SHAPE, shared with the officer's re-opening of a final refusal — the tuple clears
+  // together and `approvedAt` survives. `restartedSubmission` carries both rules and their reasons.
+  const k = await db.kyc.upsert(restartedSubmission(existing, userId));
   audit({ category: "KYC", action: "kyc.started", actorId: userId, targetType: "Kyc", targetId: k.id });
   return { ok: true, data: { kycId: k.id } };
 }
@@ -178,7 +169,11 @@ export async function submitIdentityStep(userId: string, input: z.input<typeof K
   const declaredAge = ageOn(parse.data.dob, new Date());
   if (!Number.isFinite(declaredAge) || declaredAge < MIN_AGE_YEARS) {
     audit({ category: "COMPLIANCE", action: "kyc.identity.underage_attempt", actorId: userId, targetType: "User", targetId: userId, payload: { idType } });
+    // ⭐ UNDERAGE IS A FINAL CODE (2026-09-13): the wallet is frozen before the refusal is written.
+    const freeze = await freezeForFinalRefusal(userId, k.id, "UNDERAGE", null);
+    if (!freeze.ok) return { ok: false, error: freeze.error, code: "INVALID" };
     await db.kyc.upsert({ ...k, status: "REJECTED", rejectReason: "UNDERAGE", rejectNote: null, updatedAt: new Date().toISOString() });
+    await recordFinalRefusal(userId, k.id, "UNDERAGE", null);
     notifyKyc(userId, "REJECTED").catch(() => {});
     sendEmailToUser(userId, (email) => ({
       to: email,
@@ -292,8 +287,12 @@ export async function submitIdentityStep(userId: string, input: z.input<typeof K
       // (§6 E-6). Keep it only for OTHER, which shows no category at all. The
       // EMAIL still carries it: email templates have no dictionary.
       const rejectNote = enumMember === "OTHER" ? NIDA_TEXT[result.reason] : null;
+      // ⭐ UNDERAGE and SANCTIONED are FINAL codes (2026-09-13): freeze before the refusal is written.
+      const freeze = await freezeForFinalRefusal(userId, k.id, enumMember, null);
+      if (!freeze.ok) return { ok: false, error: freeze.error, code: "INVALID" };
       await db.kyc.upsert({ ...k, status: "REJECTED", rejectReason: enumMember, rejectNote, updatedAt: new Date().toISOString() });
       audit({ category: "KYC", action: "kyc.nida.rejected", actorId: userId, targetType: "Kyc", targetId: k.id, payload: { reason: result.reason } });
+      await recordFinalRefusal(userId, k.id, enumMember, null);
       // In-app + email notice (best-effort).
       notifyKyc(userId, "REJECTED").catch(() => {});
       sendEmailToUser(userId, (email) => ({
@@ -619,10 +618,14 @@ export async function listPendingKyc() {
  *  - Idempotent + race-safe: serialized per-user under a lock, and only a
  *    PENDING_REVIEW / ADDITIONAL_INFO submission can be decided, so a
  *    double-click or two officers can't double-approve or double-email.
- *  - APPROVE unlocks the account ONLY when it's gated purely by KYC
- *    (PENDING_KYC / IN_PROGRESS). It never overrides a SUSPENDED / CLOSED /
+ *  - APPROVE opens the withdrawal gate and nothing else (since 2026-09-13 depositing
+ *    and playing ask no identity question). It never overrides a SUSPENDED / CLOSED /
  *    SELF_EXCLUDED / COOLED_OFF status — those outrank a KYC pass.
- *  - REJECT leaves the user able to resubmit; it does not change account status.
+ *  - REJECT with a RECOVERABLE code leaves the player able to resubmit and changes
+ *    nothing about their account. REJECT with a FINAL code (`UNDERAGE`, `SANCTIONED`,
+ *    `DUPLICATE_IDENTITY`) freezes the wallet in the same step and keeps the document
+ *    number reserved; what happens to the balance is an officer's recorded decision
+ *    (`refused-funds.ts`). docs/COMPLIANCE-DECISIONS.md 2026-09-13, S1.
  *  - Player is always notified (in-app + best-effort email). Both clicks audited.
  */
 /**
@@ -632,27 +635,28 @@ export async function listPendingKyc() {
  * upload + resubmit flow so the player can re-verify. Login is left alone.
  * COMPLIANCE-audited; an officer cannot force-reverify themselves.
  *
- * 🔴 WHAT THIS BUTTON DOES CHANGED TWICE, AND THE OFFICER MUST BE TOLD THE CURRENT
- * ANSWER. Until 2026-08-20 it "re-locked withdrawals". From 2026-08-20 it stopped being a
- * money control at all (Board comment #1). From 2026-09-05 it is a money control again —
- * but a PARTIAL one, and the partiality is deliberate:
+ * 🔴 WHAT THIS BUTTON DOES HAS CHANGED THREE TIMES, AND THE OFFICER MUST BE TOLD THE
+ * CURRENT ANSWER. Until 2026-08-20 it "re-locked withdrawals". From 2026-08-20 it stopped
+ * being a money control (Board comment #1). From 2026-09-05 it locked deposits and bets.
+ * **From 2026-09-13 it is not a money control at all, again:**
  *
- *   · DEPOSITS  → LOCKED immediately. The gate asks current status.
- *   · BETTING   → LOCKED immediately. Same.
- *   · WITHDRAWAL → **STILL OPEN.** The gate asks `approvedAt` — "was this account ever
- *     approved?" — so a player re-verifying keeps access to money they already earned
- *     under an identity we accepted. Trapping it is the harm
- *     `docs/BOARD-DISCLOSURE-B-E.md` §6 recorded when it noted this button had stopped
- *     being a money control.
+ *   · DEPOSITS   → unaffected. Depositing asks no identity question.
+ *   · BETTING    → unaffected. Same.
+ *   · WITHDRAWAL → **STILL OPEN.** The gate asks whether the account was EVER approved, and
+ *     this never clears `approvedAt` — so a player re-verifying keeps access to money they
+ *     already earned under an identity we accepted.
  *
- * ⛔ SO AN OFFICER WHO NEEDS TO STOP MONEY *LEAVING* STILL MUST USE A MONEY CONTROL.
- * There are three, and they are the whole list:
- *   · freeze the wallet — `wallet.status !== "ACTIVE"`, the only account-level control
- *     inside `wallet-service.withdraw()` that stops an already-approved payer;
+ * It means exactly "we are re-checking you", and nothing else. That is the owner's ruling
+ * (2026-09-13, ruling 6), recorded as a lever lost in docs/COMPLIANCE-DECISIONS.md.
+ *
+ * ⛔ SO AN OFFICER WHO NEEDS TO STOP MONEY MOVING MUST USE A MONEY CONTROL, and the
+ * re-verify control offers the first of them in the same place:
+ *   · freeze the wallet — `freezeWalletByOfficer` (`wallet-freeze.ts`), which stops
+ *     deposits, bets and withdrawals alike, with a written reason;
  *   · pause payouts — platform-wide, enforced in the withdraw route;
  *   · the AML hold — gross ≥ TZS 1,000,000 goes to two-officer review, and it never
  *     read identity status, so it is unaffected by any of this.
- * ⚠️ The player's own screen must say the same thing — see `force-reverify-controls.tsx`.
+ * ⚠️ The officer's own screen must say the same thing — see `force-reverify-controls.tsx`.
  */
 export async function forceReverifyKyc(officerId: string, userId: string, reason: string): Promise<ServiceResult> {
   if (!userId) return { ok: false, error: "Missing user.", code: "INVALID" };
@@ -702,6 +706,150 @@ const REJECT_EMAIL_TEXT: Record<string, string> = {
   SANCTIONED: "We're unable to verify this identity.",
   OTHER: "Please check your documents and submit again.",
 };
+
+/**
+ * The submission as it looks after a restart — ONE shape for the player's own restart
+ * (`startKyc`) and the officer's re-opening of a final refusal (`reopenFinalRefusal`).
+ *
+ * ⛔ THE WHOLE IDENTITY TUPLE CLEARS TOGETHER. Leaving `idType` behind while nulling `idNumber`
+ * would let a restarted submission carry the previous document's type into the next one's
+ * validation — and leaving `idNumber` behind would hold a number hostage under the partial unique
+ * index for a submission that no longer claims it. (`idFingerprint` is not named, so the DAL writes
+ * it as null, which releases the erasure-proof twin of the same number.)
+ *
+ * 🔴 THE ONE FIELD THIS RESET MUST *NOT* CLEAR is `approvedAt`. Reachable: APPROVED → forceReverify
+ * → REJECTED → restart. That player HOLDS MONEY earned under an identity we accepted; nulling their
+ * first-approval date locks them out of it, and no suite would go red. Approval is a fact about the
+ * past, not a state — see the column note in prisma/schema.prisma.
+ */
+function restartedSubmission(existing: Awaited<ReturnType<typeof db.kyc.findByUserId>>, userId: string, reviewer?: { officerId: string; at: string }) {
+  const now = new Date().toISOString();
+  return {
+    id: existing?.id ?? `kyc_${randomId(10)}`,
+    userId,
+    status: "IN_PROGRESS" as const,
+    rejectReason: null,
+    rejectNote: null,
+    idType: null,
+    idNumber: null,
+    idExpiry: null,
+    idVerifiedAt: null,
+    fullName: null,
+    dob: null,
+    documents: [],
+    reviewerId: reviewer?.officerId ?? null,
+    reviewedAt: reviewer?.at ?? null,
+    submittedAt: null,
+    approvedAt: existing?.approvedAt ?? null,
+    createdAt: existing?.createdAt ?? now,
+    updatedAt: now,
+  };
+}
+
+/**
+ * ⭐ WHAT A FINAL REFUSAL DOES TO THE ACCOUNT — step one, taken BEFORE the refusal is written
+ * (owner ruling, Ali, 2026-09-13 — docs/COMPLIANCE-DECISIONS.md, S1 and S15).
+ *
+ * From 2026-09-13 a player deposits and plays before anyone checks who they are, so a refusal can
+ * land on an account holding real money. On a FINAL code (`UNDERAGE`, `SANCTIONED`,
+ * `DUPLICATE_IDENTITY`) the wallet is frozen — no further deposits, bets or withdrawals — because
+ * "we have refused you, please keep paying" is the one outcome no compliance argument survives.
+ * What then happens to the balance is an officer's recorded decision (`refused-funds.ts`).
+ *
+ * ⛔ ORDER: FREEZE FIRST, THEN WRITE THE REFUSAL. If the freeze fails, nothing is written and the
+ * officer's click fails loudly, so a retry does both. The other order leaves a refusal on record
+ * with no freeze behind it — and the retry is refused, because a decided submission cannot be
+ * decided again, so the freeze would never happen. A freeze with no refusal (the write fails
+ * after) is the safe residue: the officer retries, the freeze is idempotent, the refusal lands.
+ *
+ * ⚠️ A RECOVERABLE code does nothing here. The player may simply submit again.
+ */
+async function freezeForFinalRefusal(userId: string, kycId: string, rejectCode: string, actorId: string | null): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!isFinalRefusal(rejectCode)) return { ok: true };
+  const frozen = await addWalletFreeze(userId, "IDENTITY_REFUSED", { actorId, note: `identity refused · ${rejectCode}`, ref: { kycId, rejectCode } });
+  // A player with no wallet row has nothing to freeze and nothing to protect — not a failure.
+  if (!frozen.ok && frozen.code !== "NOT_FOUND") {
+    return { ok: false, error: `The wallet could not be frozen, so the refusal was not recorded. Try again. (${frozen.error})` };
+  }
+  return { ok: true };
+}
+
+/** Step two, AFTER the refusal is written: the awaited COMPLIANCE fact an inspector reads. */
+async function recordFinalRefusal(userId: string, kycId: string, rejectCode: string, actorId: string | null): Promise<void> {
+  if (!isFinalRefusal(rejectCode)) return;
+  const w = await db.wallet.findByUserId(userId).catch(() => null);
+  await audit({
+    category: "COMPLIANCE",
+    action: "kyc.refused_final",
+    actorId,
+    targetType: "User",
+    targetId: userId,
+    payload: {
+      kycId,
+      rejectCode,
+      walletStatus: w?.status ?? null,
+      // What is at stake the moment we refuse — the number the officer's balance decision starts from.
+      balance: w?.balance ?? null,
+      hold: w?.hold ?? null,
+      bonusBalance: w?.bonusBalance ?? null,
+      instruction: "Owner ruling 2026-09-13 · a final identity refusal freezes the wallet; an officer decides the balance case by case with a recorded reason",
+    },
+  });
+}
+
+/** The officer's written reason for re-opening a final refusal — the same floor as a balance decision. */
+export const REOPEN_FINAL_REFUSAL_REASON_MIN = 20;
+
+/**
+ * An officer re-opens a FINAL refusal that was wrong — the only door back after one.
+ *
+ * ⭐ WHAT IT DOES, together: the submission restarts exactly as a player's own restart would (the
+ * document number is released, `approvedAt` survives), the identity-refusal hold on the wallet is
+ * lifted (other holds — self-exclusion, an officer's own freeze — stay), and a COMPLIANCE fact is
+ * written with the officer's reason. The player is told they may verify again.
+ *
+ * ⛔ IT CANNOT RE-OPEN A RECOVERABLE REFUSAL (the player does that themselves) and an officer
+ * cannot re-open their own. It does not undo a balance decision already carried out: money returned
+ * or forfeited stays returned or forfeited, and the report keeps both facts side by side.
+ */
+export async function reopenFinalRefusal(officerId: string, userId: string, reason: string): Promise<ServiceResult> {
+  if (!userId) return { ok: false, error: "Missing player.", code: "INVALID" };
+  if (officerId === userId) {
+    audit({ category: "SECURITY", action: "kyc.reopen.self_blocked", actorId: officerId, targetType: "User", targetId: userId });
+    return { ok: false, error: "You cannot re-open your own identity verification.", code: "INVALID" };
+  }
+  const clean = (reason ?? "").trim().slice(0, 500);
+  if (clean.length < REOPEN_FINAL_REFUSAL_REASON_MIN) {
+    return { ok: false, error: `A reason of at least ${REOPEN_FINAL_REFUSAL_REASON_MIN} characters is required to re-open a final refusal.`, code: "INVALID" };
+  }
+  return withLock(`kyc:${userId}`, async () => {
+    const k = await db.kyc.findByUserId(userId);
+    if (!k) return { ok: false as const, error: "No verification for this player.", code: "NOT_FOUND" as const };
+    if (k.status !== "REJECTED" || !isFinalRefusal(k.rejectReason)) {
+      return { ok: false as const, error: `Only a FINAL refusal can be re-opened here (this verification is ${k.status}${k.rejectReason ? ` · ${k.rejectReason}` : ""}).`, code: "INVALID" as const };
+    }
+    const now = new Date().toISOString();
+    const priorRejectReason = k.rejectReason;
+    await db.kyc.upsert({ ...restartedSubmission(k, userId, { officerId, at: now }) });
+    const unfrozen = await removeWalletFreeze(userId, "IDENTITY_REFUSED", { actorId: officerId, note: clean, ref: { kycId: k.id, priorRejectReason } });
+    await audit({
+      category: "COMPLIANCE",
+      action: "kyc.refusal_reopened",
+      actorId: officerId,
+      targetType: "User",
+      targetId: userId,
+      payload: {
+        kycId: k.id,
+        priorRejectReason,
+        reason: clean,
+        walletStatusAfter: unfrozen.ok ? unfrozen.status : null,
+        walletHoldsAfter: unfrozen.ok ? unfrozen.reasons : null,
+      },
+    });
+    notifyKyc(userId, "ADDITIONAL_INFO").catch(() => {});
+    return { ok: true as const };
+  });
+}
 
 export async function reviewKyc(opts: {
   officerId: string;
@@ -760,29 +908,21 @@ export async function reviewKyc(opts: {
       // re-verified player was already trusted once.
       await db.kyc.upsert({ ...k, status: "APPROVED", reviewerId: officerId, reviewedAt: now, approvedAt: k.approvedAt ?? now, rejectReason: null, rejectNote: null, updatedAt: now });
       const u = await db.user.findById(userId);
-      // Build a single user patch: unlock the account if it's gated purely by
-      // KYC, and surface the NIDA-verified legal name as the display name.
-      const patch: Partial<StoredUser> = {};
-      if (u && u.status === "PENDING_KYC") patch.status = "ACTIVE";
-      // Decision (Ali, 2026-06-14): ALWAYS set displayName from the verified
-      // legal name on approve, even over a chosen handle. Public surfaces stay
-      // safe automatically — leaderboard shows first word only, comments mask +
-      // freeze the name at write time — so the full surname never leaks.
-      if (k.fullName?.trim()) patch.displayName = k.fullName.trim();
-      if (Object.keys(patch).length) await db.user.update(userId, patch);
-      audit({ category: "KYC", action: "kyc.approved", actorId: officerId, targetType: "User", targetId: userId, payload: { kycId: k.id, priorStatus: u?.status ?? null, nameBackfilled: !!k.fullName?.trim() } });
-      // ⭐ THE MONEY THAT WAS WAITING FOR THIS. Referral and invite bonuses fire during
-      // registration, before anyone has looked at the player, and were held rather than
-      // cancelled so the incentive survives and verifying is worth doing
-      // (`bonus-service.creditBonus`). Released HERE so it lands in the same moment as
-      // the congratulations, not on some later sweep.
-      // ⚠️ AWAITED, unlike the notifications below. This moves money and adjusts
-      // `bonusBalance`; a fire-and-forget release could lose to the redirect that follows
-      // an officer's click, and the player would open a wallet that is still empty.
-      // ⛔ Never fatal: the approval itself has already been written, and refusing to
-      // approve someone because a promotional credit failed would be the wrong trade.
-      try { await releaseKycHeldGrants(userId); }
-      catch (err) { audit({ category: "WALLET", action: "bonus.release_failed", actorId: officerId, targetType: "User", targetId: userId, payload: { error: String(err) } }); }
+      // ⚠️ LEGACY NORMALISATION ONLY. `User.status = "PENDING_KYC"` was written at registration until
+      // 2026-09-13 and gated nothing; new accounts are created ACTIVE and the existing rows were
+      // normalised in `20260913120000_kyc_at_withdrawal`. This keeps a straggler — a row written by a
+      // container still running the old code during that deploy — from wearing a pending label
+      // after its identity is approved. It never overrides SUSPENDED / CLOSED / SELF_EXCLUDED /
+      // COOLED_OFF: those outrank an identity approval.
+      if (u && u.status === "PENDING_KYC") await db.user.update(userId, { status: "ACTIVE" });
+      // ⛔ APPROVAL DOES NOT TOUCH THE DISPLAY NAME (owner ruling, Ali, 2026-09-13 — reverses the
+      // 2026-06-14 ruling that set it to the legal name "even over a chosen handle"). Approval used to
+      // happen before anyone had played; from 2026-09-13 a player may spend weeks on the leaderboard
+      // under a handle and be verified at the moment they cash out, and overwriting it then would
+      // publish their legal name unannounced. The legal name is RECORDED on this submission and shown
+      // to the officer; it is not displayed. docs/COMPLIANCE-DECISIONS.md, 2026-09-13 (second).
+      // ⛔ Do not restore the overwrite from this file's history.
+      audit({ category: "KYC", action: "kyc.approved", actorId: officerId, targetType: "User", targetId: userId, payload: { kycId: k.id, priorStatus: u?.status ?? null, nameBackfilled: false } });
       notifyKyc(userId, "APPROVED").catch(() => {});
       const greetName = firstName(k.fullName) ?? displayLabel(u ?? { id: userId, displayName: null });
       sendEmailToUser(userId, (email) => ({
@@ -835,8 +975,13 @@ export async function reviewKyc(opts: {
     // whatever language it was written — which is why nothing English is put
     // here on behalf of the officer (§6 E-6).
     const officerNote = (opts.note?.trim() || reason) || null;
+    // ⭐ A FINAL CODE FREEZES THE WALLET FIRST (2026-09-13, S1/S15) — see `freezeForFinalRefusal`
+    // for why the freeze precedes the write. A recoverable code passes straight through.
+    const freeze = await freezeForFinalRefusal(userId, k.id, rejectCode, officerId);
+    if (!freeze.ok) return { ok: false as const, error: freeze.error, code: "INVALID" as const };
     await db.kyc.upsert({ ...k, status: "REJECTED", rejectReason: rejectCode, rejectNote: officerNote, reviewerId: officerId, reviewedAt: now, updatedAt: now });
     audit({ category: "KYC", action: "kyc.rejected", actorId: officerId, targetType: "User", targetId: userId, payload: { kycId: k.id, reason: officerNote, rejectCode } });
+    await recordFinalRefusal(userId, k.id, rejectCode, officerId);
     notifyKyc(userId, "REJECTED").catch(() => {});
     sendEmailToUser(userId, (email) => ({
       to: email,

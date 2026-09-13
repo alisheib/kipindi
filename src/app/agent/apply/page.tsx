@@ -40,13 +40,17 @@ export default async function AgentApplyPage() {
    *
    * ⚠️ It used to be fetched only for `OFFICER_INVITED`, because only they verify inside the
    * flow. That was complete while the fee was paid out of band. Since 2026-09-10 the fee is paid
-   * from the WALLET, and depositing requires identity APPROVED — so the payment step has to know
-   * the answer for everybody, or it offers a button that `payFeeFromWallet` is about to refuse.
+   * from the WALLET, and `payFeeFromWallet` requires an approved identity — so the payment step has
+   * to know the answer for everybody, or it offers a button the service is about to refuse.
+   * ⛔ THE REASON IS THE AGENT PROGRAMME'S OWN RULE, NOT THE DEPOSIT GATE. This note used to say
+   * "depositing requires identity APPROVED"; from 2026-09-13 depositing asks no identity question,
+   * and the agent programme deliberately keeps its identity requirement — agents handle other
+   * people's money (docs/COMPLIANCE-DECISIONS.md 2026-09-13). Nobody "finishes the job" here.
    * A self-service applicant is already approved (`applicantEligibility` gates the door), so for
    * them this is a confirmation; for an invitee it is the gate that stops a dead end.
    */
   const kyc = await getKycStatus(session.userId);
-  const kycGate = view.app.source === "OFFICER_INVITED" ? kycGateState(kyc?.status) : null;
+  const kycGate = view.app.source === "OFFICER_INVITED" ? kycGateState(kyc) : null;
   // The two preconditions DEPOSIT imposes, which the fee now inherits. Read here so the step can
   // render the gate AND the action that clears it, rather than refusing after a click.
   const payer = await db.user.findById(session.userId);

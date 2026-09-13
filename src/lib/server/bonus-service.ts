@@ -48,7 +48,6 @@ import { notifyBonusCredited, notifyBonusFulfilled, notifyBonusExpired } from ".
 import { sendEmailToUser, bonusCreditedHtml, bonusFulfilledHtml } from "./email";
 import { postLedgerEntries, bonusGrantEntries, bonusCreditEntries, bonusExpireEntries, bonusRelockEntries } from "./ledger";
 import { isLockedOut } from "./responsible-gambling";
-import { assertKycForMoney } from "./kyc-gate";
 import { formatTzs } from "@/lib/utils";
 
 const BONUS_SOURCE_EMAIL_LABEL: Record<string, string> = {
@@ -190,23 +189,15 @@ export async function creditBonus(userId: string, input: CreditBonusInput): Prom
     const activeGrants = (await db.bonusGrant.listByUser(userId)).filter((g) => g.status === "ACTIVE");
     const shouldQueue = cfg.sequentialBonuses && activeGrants.length > 0;
 
-    // ── IDENTITY HOLD (owner ruling, Ali, 2026-09-05) ─────────────────────────
-    // 🔴 THIS IS THE PATH THAT MADE "no money until we validate" FALSE, and it is not
-    // deposits. `invite-service.bindRegistration` and `affiliate-service.payBonus` both
-    // fire from `registerWithPassword` itself, and bonus money is STAKEABLE — so a
-    // referred player could sign up and bet having verified nothing at all.
-    //
-    // ⛔ HELD, NOT REFUSED. Cancelling would destroy the incentive that acquired the
-    // player; arriving ON APPROVAL makes verifying worth doing. `releaseKycHeldGrants`
-    // is called from `reviewKyc`'s APPROVE branch.
-    //
-    // ⚠️ THE HOLD OUTRANKS THE QUEUE. A grant that is both held and queued is HELD: the
-    // queue is about ordering between bonuses, this is about whether the player may hold
-    // one at all. Releasing re-asks the queue question, so nothing is lost by ordering
-    // them this way.
-    const kycGate = await assertKycForMoney(userId, "BET");
-    const shouldHoldForKyc = !kycGate.eligible;
-    const status: StoredBonusGrant["status"] = shouldHoldForKyc ? "PENDING_KYC" : shouldQueue ? "QUEUED" : "ACTIVE";
+    // ⛔ NO IDENTITY HOLD (owner ruling, Ali, 2026-09-13). From 2026-09-05 to 2026-09-13 a grant to
+    // an account without an approved identity landed in `PENDING_KYC` and was released on approval,
+    // because the bet gate made unverified play impossible and a stakeable bonus was the one way
+    // round it. Identity is now asked before WITHDRAWAL only, so that premise describes the product
+    // and the hold is deleted with the gate it mirrored. Production held 0 grants of any status at
+    // cut-over, so nothing needed draining. ⚠️ `PENDING_KYC` stays in the enum — removing a member
+    // is a migration, and historical grants must still render. Bonus winnings stay
+    // non-withdrawable until wagered, and withdrawal still asks for identity.
+    const status: StoredBonusGrant["status"] = shouldQueue ? "QUEUED" : "ACTIVE";
     const landsInWallet = status === "ACTIVE";
 
     const grant: StoredBonusGrant = {
@@ -221,16 +212,6 @@ export async function creditBonus(userId: string, input: CreditBonusInput): Prom
       source: input.source,
       sourceRef: input.sourceRef ?? null,
       status,
-      // ⛔ A HELD GRANT'S CLOCK MUST NOT RUN, because the delay is OURS — a player who
-      // submits on Monday and is approved on Wednesday must not lose two days of a
-      // seven-day bonus to our review queue.
-      // ⭐ The date is STORED NORMALLY and SHIFTED FORWARD at release by exactly how long
-      // the hold lasted (`releaseKycHeldGrants`). Storing `null` instead would have meant
-      // reconstructing the window from config at release and silently discarding any
-      // per-grant `expiryDays` override; shifting preserves the exact window this grant
-      // was created with, and needs no extra column to do it.
-      // ⚠️ Load-bearing counterpart: `expireActiveGrants` SKIPS `PENDING_KYC`, so this
-      // date cannot fire while the grant is still held.
       expiresAt,
       fulfilledAt: null,
       note: input.note ?? null,
@@ -248,8 +229,8 @@ export async function creditBonus(userId: string, input: CreditBonusInput): Prom
       }
       return { ok: false, error: "Could not create bonus grant.", code: "INVALID" };
     }
-    // Only add to bonusBalance when ACTIVE — QUEUED and PENDING_KYC grants don't touch
-    // the wallet until they activate. This keeps the invariant:
+    // Only add to bonusBalance when ACTIVE — QUEUED grants don't touch the wallet until
+    // they activate. This keeps the invariant:
     // bonusBalance == Σ ACTIVE remainingTzs.
     if (landsInWallet) {
       await db.wallet.adjust(wallet.id, { bonusBalance: amount });
@@ -257,8 +238,8 @@ export async function creditBonus(userId: string, input: CreditBonusInput): Prom
       postLedgerEntries(`bonus_${grant.id}`, bonusGrantEntries({ groupId: `bonus_${grant.id}`, userId, amount })).catch(() => {});
     }
     audit({
-      category: shouldHoldForKyc ? "COMPLIANCE" : "WALLET",
-      action: shouldHoldForKyc ? "bonus.held.kyc" : shouldQueue ? "bonus.queued" : "bonus.credited",
+      category: "WALLET",
+      action: shouldQueue ? "bonus.queued" : "bonus.credited",
       actorId: userId,
       targetType: "BonusGrant",
       targetId: grant.id,
@@ -266,7 +247,6 @@ export async function creditBonus(userId: string, input: CreditBonusInput): Prom
         amountTzs: amount, source: input.source, sourceRef: input.sourceRef ?? null,
         wagerMultiplier: multiplier, wagerRequiredTzs: grant.wagerRequiredTzs, expiresAt,
         queued: shouldQueue,
-        ...(shouldHoldForKyc ? { kycStatus: kycGate.eligible ? null : kycGate.kycStatus } : {}),
       },
     });
     return { ok: true, grant, deduped: false };
@@ -274,15 +254,7 @@ export async function creditBonus(userId: string, input: CreditBonusInput): Prom
 
   if (result.ok && !result.deduped && input.notifyPlayer !== false) {
     const g = result.grant;
-    // ⛔ A HELD GRANT NOTIFIES NOTHING HERE, and that is deliberate rather than an
-    // omission. "Bonus added" would be false — nothing is spendable — and "bonus waiting
-    // until you verify" said at REGISTRATION, seconds after the welcome screen already
-    // asked them to verify, is a second nag for the same step. The player learns about it
-    // when it becomes real: `releaseKycHeldGrants` sends the credit notice on approval,
-    // in the same moment as the congratulations.
-    if (g.status === "PENDING_KYC") {
-      // nothing — see above
-    } else if (g.status === "QUEUED") {
+    if (g.status === "QUEUED") {
       // Notify player their bonus is queued (sequential mode §6)
       notifyBonusCredited(userId, { amountTzs: g.amountTzs, wagerRequiredTzs: g.wagerRequiredTzs, queued: true }).catch(() => {});
     } else {
@@ -299,78 +271,9 @@ export async function creditBonus(userId: string, input: CreditBonusInput): Prom
   return result;
 }
 
-/**
- * Release every bonus held pending identity approval. Called from `reviewKyc`'s APPROVE
- * branch, so the money arrives in the same moment as the congratulations.
- *
- * ⛔ IT RE-ASKS THE QUEUE QUESTION RATHER THAN ASSUMING ACTIVE. A player can hold several
- * held grants (a referral and an invite bonus, say); under sequential mode only the first
- * may activate and the rest go to QUEUED, exactly as if they had been credited normally.
- * Skipping that would put two grants in `bonusBalance` at once and break the invariant
- * `bonusBalance == Σ ACTIVE remainingTzs`.
- *
- * ⛔ THE EXPIRY IS SHIFTED, NOT RECOMPUTED. A grant held for two days gets its original
- * window back, starting now — the delay was ours. Recomputing from config would silently
- * discard a per-grant `expiryDays` override.
- *
- * ⚠️ Idempotent and lock-serialised: a double approval (two officers, one double-click)
- * finds no PENDING_KYC grants the second time and does nothing.
- */
-export async function releaseKycHeldGrants(userId: string): Promise<{ released: number; activatedTzs: number }> {
-  return withLock(`wallet:${userId}`, async () => {
-    const all = await db.bonusGrant.listByUser(userId);
-    const held = all
-      .filter((g) => g.status === "PENDING_KYC")
-      .sort((a, b) => a.createdAt.localeCompare(b.createdAt)); // oldest first, like the queue
-    if (held.length === 0) return { released: 0, activatedTzs: 0 };
-
-    const wallet = await db.wallet.findByUserId(userId);
-    if (!wallet || wallet.status !== "ACTIVE") return { released: 0, activatedTzs: 0 };
-
-    const cfg = getBonusConfig();
-    let anyActive = all.some((g) => g.status === "ACTIVE");
-    const now = Date.now();
-    let released = 0, activatedTzs = 0;
-
-    for (const g of held) {
-      const goesActive = !(cfg.sequentialBonuses && anyActive);
-      // The hold's duration, added to whatever window this grant was created with.
-      const heldMs = Math.max(0, now - Date.parse(g.createdAt));
-      const expiresAt = g.expiresAt ? new Date(Date.parse(g.expiresAt) + heldMs).toISOString() : null;
-
-      await db.bonusGrant.update(g.id, { status: goesActive ? "ACTIVE" : "QUEUED", expiresAt });
-      released++;
-
-      if (goesActive) {
-        anyActive = true;
-        activatedTzs += g.remainingTzs;
-        await db.wallet.adjust(wallet.id, { bonusBalance: g.remainingTzs });
-        postLedgerEntries(`bonus_${g.id}`, bonusGrantEntries({ groupId: `bonus_${g.id}`, userId, amount: g.remainingTzs })).catch(() => {});
-      }
-      audit({
-        category: "WALLET",
-        action: "bonus.released.kyc",
-        actorId: userId,
-        targetType: "BonusGrant",
-        targetId: g.id,
-        payload: { amountTzs: g.amountTzs, source: g.source, activated: goesActive, heldMs, expiresAt },
-      });
-      // The notice that was deliberately NOT sent at credit time (see `creditBonus`).
-      if (goesActive) {
-        notifyBonusCredited(userId, { amountTzs: g.amountTzs, wagerRequiredTzs: g.wagerRequiredTzs }).catch(() => {});
-        sendEmailToUser(userId, (email) => ({
-          to: email,
-          subject: `Bonus added · ${formatTzs(g.amountTzs)}`,
-          html: bonusCreditedHtml({ amountTzs: g.amountTzs, wagerRequiredTzs: g.wagerRequiredTzs, sourceLabel: BONUS_SOURCE_EMAIL_LABEL[g.source] }),
-          tag: "bonus",
-        })).catch(() => {});
-      } else {
-        notifyBonusCredited(userId, { amountTzs: g.amountTzs, wagerRequiredTzs: g.wagerRequiredTzs, queued: true }).catch(() => {});
-      }
-    }
-    return { released, activatedTzs };
-  });
-}
+// ⛔ `releaseKycHeldGrants` WAS DELETED 2026-09-13 with the identity hold it released. Production held
+// 0 bonus grants of any status at cut-over (measured, not assumed), so there was nothing to drain
+// through it. Do not restore it: nothing can mint a `PENDING_KYC` grant any more.
 
 export type WageringResult = { fulfilled: StoredBonusGrant[]; creditedToRealTzs: number };
 
@@ -893,12 +796,11 @@ export async function expireActiveGrants(): Promise<{ expired: number; removedTz
   for (const g of due) {
     const outcome = await withLock(`wallet:${g.userId}`, async (): Promise<{ removed: number; amountTzs: number } | null> => {
       const fresh = await db.bonusGrant.findById(g.id);
-      // ⛔ `PENDING_KYC` IS ABSENT FROM THIS LIST ON PURPOSE, and it is the load-bearing
-      // half of "a held grant's clock does not run". A held grant still CARRIES its
-      // original `expiresAt` (see `creditBonus` — the date is shifted forward at release
-      // rather than nulled), so if expiry were allowed to see it, a bonus could expire
-      // while the player was waiting on OUR review queue and the release would find
-      // nothing left to give them.
+      // ⚠️ `PENDING_KYC` is absent from this list. From 2026-09-05 to 2026-09-13 that was
+      // load-bearing (a grant held for our identity review must not expire while it waited);
+      // since the hold was deleted nothing can create such a grant, and production held none at
+      // cut-over. Left excluded rather than added: a historical row, if one ever surfaced, carries
+      // no `bonusBalance` to remove, and expiring it would narrate a removal that never happened.
       if (!fresh || (fresh.status !== "ACTIVE" && fresh.status !== "QUEUED")) return null;
       const rem = fresh.remainingTzs;
       // Only deduct from bonusBalance if the grant was ACTIVE (QUEUED grants haven't touched bonusBalance).

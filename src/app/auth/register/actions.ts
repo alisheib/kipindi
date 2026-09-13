@@ -54,21 +54,24 @@ export async function startRegisterAction(formData: FormData) {
   if (result.data?.role && result.data.role !== "PLAYER" && result.data.role !== "AGENT") {
     redirect("/admin");
   }
-  // 🔴 EVERY NEW PLAYER GOES TO VERIFICATION FIRST — 2026-09-05.
+  // ⭐ A NEW PLAYER GOES WHERE THEY WERE GOING, OR TO ADD MONEY — 2026-09-13.
   //
-  // This used to honour `safeNext` and drop the player straight back on the market they
-  // came from, because *"a new player is PENDING_KYC but can already bet with the starter
-  // balance (KYC only gates withdrawal)"*. All three clauses of that sentence are now
-  // false: the starter balance is 0 in live mode, KYC gates depositing and staking, and
-  // the market they wanted would greet them with a gate panel where the dial should be.
-  // Honouring their intent would mean routing them to a wall.
+  // ⛔ NOT TO VERIFICATION. From 2026-09-05 to 2026-09-13 every new player was sent to
+  // `/profile/kyc?welcome=new`, because identity then gated depositing and staking and the market
+  // they wanted would have greeted them with a wall. That was the old ladder made literal — the
+  // ID-upload form as the first screen of a brand-new account — and it is precisely the friction the
+  // 2026-09-13 ruling removed: identity is now asked before a WITHDRAWAL and before nothing else.
   //
-  // ⚠️ THEIR INTENT IS NOT DISCARDED, IT IS DEFERRED. `?next=` rides along, and
-  // /profile/kyc offers it as the Continue CTA the moment they are approved — so the
-  // market they wanted is where verification DELIVERS them, rather than where it
-  // strands them.
-  const next = safeNext ? `&next=${encodeURIComponent(safeNext)}` : "";
-  redirect(`/profile/kyc?welcome=new${next}` as never);
+  // ⭐ SO THEIR INTENT IS HONOURED AGAIN. With a safe `next`, they land on the market they came from;
+  // without one, on `/wallet/deposit`, whose only remaining errand is confirming the email we just
+  // sent. `welcome=new` rides along either way so `AuthFlash` greets them wherever they land.
+  if (safeNext) {
+    const [path, query = ""] = safeNext.split("?");
+    const qs = new URLSearchParams(query);
+    qs.set("welcome", "new");
+    redirect(`${path}?${qs.toString()}` as never);
+  }
+  redirect("/wallet/deposit?welcome=new" as never);
 }
 
 /** Legacy OTP-driven registration — re-enable once SMS provider goes live. */

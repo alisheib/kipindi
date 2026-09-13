@@ -83,24 +83,22 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
   // B-1: a swallowed wallet read made the form silently unusable (max = 0). A failed
   // read throws to the wallet error boundary instead of fabricating that state.
   //
-  // ⛔ THE KYC READ IS BACK ON THIS PAGE — 2026-09-05, AND READ THE DATES BEFORE CHANGING IT.
-  // It was deleted on 2026-08-20 because identity had stopped being a precondition of
-  // withdrawal (Board comment #1, relayed by the owner 2026-08-19) and a page-level read
-  // with nothing to decide is how a gate gets re-added by accident. The owner has since
-  // ruled that identity precedes deposit, play AND withdrawal — a control stricter than the
-  // Board required, disclosed rather than slipped in. So the read has something to decide
-  // again. `wallet-service.withdraw()` is still the enforcement; this is presentation.
+  // ⭐ THE ONE MONEY SCREEN WHERE IDENTITY DECIDES ANYTHING — read the dates before changing it.
+  // 2026-08-20: identity stopped gating withdrawal (Board comment #1) and this read was deleted.
+  // 2026-09-05: identity gated deposit, play AND withdrawal, and it came back. 2026-09-13: identity
+  // gates WITHDRAWAL ONLY, so this is now the only money screen where it decides what is rendered.
+  // `wallet-service.withdraw()` is the enforcement; this is presentation.
   //
-  // 🔴 IT ASKS `approvedAt`, NOT THE CURRENT STATUS, and the page must agree with the
-  // service or it will show a gate to a player the server would happily pay — or, worse,
-  // show a working form to one it will refuse. A re-verifying player HOLDS MONEY earned
+  // 🔴 ONE PREDICATE WITH THE SERVER, AND UNTIL 2026-09-13 THERE WERE TWO. The page asked
+  // `!!k?.approvedAt` while the gate also accepted `status === "APPROVED"`, so an APPROVED row with
+  // no stamp was paid by the server and walled off here — a "verify your identity" panel shown to a
+  // verified player holding money. `kycGateState` returns null exactly when `approvedEver` is true,
+  // the gate's own question (`src/lib/kyc-approval.ts`). A re-verifying player HOLDS MONEY earned
   // under an identity we accepted, and their withdrawal stays open.
-  let everApproved = false;
+  // ⚠️ A failed read leaves the panel showing — the safe direction on a money screen.
   let withdrawGateState: ReturnType<typeof kycGateState> = "not_started";
   try {
-    const k = await getKycStatus(session.userId);
-    everApproved = !!k?.approvedAt;
-    withdrawGateState = kycGateState(k?.status) ?? "not_started";
+    withdrawGateState = kycGateState(await getKycStatus(session.userId));
   } catch { /* graceful — the gate stays shut, which is the safe direction */ }
 
   const wallet = await db.wallet.findByUserId(session.userId);
@@ -159,9 +157,9 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
         </div>
       )}
 
-      {/* "We cannot pay you right now" is the first thing this page says, and after
-          2026-08-20 it is also the ONLY precondition it states — the verify-your-ID
-          panel this used to be ranked against is gone. */}
+      {/* "We cannot pay you right now" is the first thing this page says — a rail outage is
+          everyone's condition, and it outranks the identity panel below, which is this
+          player's own step. */}
       <PayoutStatusNotice
         status={payouts.status}
         note={payouts.note}
@@ -175,15 +173,27 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
         }}
       />
 
-      {/* 🔴 THE VERIFY-FIRST PANEL IS BACK — it stood here until 2026-08-20, was deleted
-          on the Board's instruction, and returns on the owner's ruling of 2026-09-05.
-          ⛔ The form is NOT RENDERED at all for an unverified account — not disabled. A
-          disabled payout form on a money screen reads as an outage and still invites the
-          tap; `wallet-service.withdraw()` would refuse it anyway.
-          ⚠️ The condition is `everApproved`, NOT the current status: a player under
+      {/* ⭐ THE IDENTITY PANEL — AND FROM 2026-09-13 IT IS THE COMMON PATH, NOT THE RARE ONE.
+          Depositing and playing ask no identity question, so most players first meet this panel
+          here, with money on the other side of it. `purpose="payout"` makes it say, in order:
+          the one thing to do · your balance is safe and stays yours · how long we take.
+          ⛔ The form is NOT RENDERED at all for an unverified account — not disabled. A disabled
+          payout form on a money screen reads as an outage and still invites the tap;
+          `wallet-service.withdraw()` would refuse it anyway.
+          ⛔ And the request is NOT queued pending verification: a queued payout either reserves the
+          balance (trapping it worse) or does not (and fails at release), and this repo already
+          refuses rather than queues on the payout pause (`actions.ts`).
+          ⭐ THE INTENT IS KEPT: an amount the player arrived with rides the return path as
+          `?amount=`, so verification delivers them back to the form with it filled in. Amount
+          ONLY — the destination comes from the session and nothing else (E-215, above).
+          ⚠️ The condition is approved-EVER, not the current status: a player under
           re-verification keeps access to money they already earned. */}
-      {!everApproved ? (
-        <KycGatePanel state={withdrawGateState} returnTo="/wallet/withdraw" />
+      {withdrawGateState ? (
+        <KycGatePanel
+          state={withdrawGateState}
+          purpose="payout"
+          returnTo={/^\d{1,9}$/.test(prevAmount) ? `/wallet/withdraw?amount=${prevAmount}` : "/wallet/withdraw"}
+        />
       ) : (
       <form
         action={withdrawAction}

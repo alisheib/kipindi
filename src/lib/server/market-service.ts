@@ -25,7 +25,7 @@ import { emit } from "./event-bus";
 import { spendBonusLocked, recordWageringLocked, reverseWagering, reverseWageringLocked, refundBonusToActive, refundBonusLocked, expireActiveGrants, type BonusAllocation } from "./bonus-service";
 import { notifyBonusFulfilled } from "./notification-service";
 import { isLockedOut, checkLossLimit, checkSessionTimeLimit } from "./responsible-gambling";
-import { assertKycForMoney } from "./kyc-gate";
+import { readIdentityStanding } from "./kyc-gate";
 import { rateCheck } from "./rate-limit";
 // The storage half of the criterion-translation rule. ⛔ Defence in depth: even a
 // caller that skipped the action's validation cannot write the English into a
@@ -1076,38 +1076,14 @@ async function buyPositionInner(userId: string, opts: BuyOpts): Promise<BuyResul
     return { ok: false, error: blockedMsg, code: "SUSPENDED", reason: "account_blocked" as const };
   }
 
-  // ── IDENTITY GATE (owner ruling, Ali, 2026-09-05) ──────────────────────────────────
-  // A player may not stake until we have approved their identity. Until this shipped,
-  // `PENDING_KYC` could bet freely and `auth/register/actions.ts` said so in as many
-  // words — *"a new player is PENDING_KYC but can already bet"*. Whole rationale, and
-  // why withdrawal asks a different question, in `src/lib/server/kyc-gate.ts`.
-  //
-  // ⛔ IT SITS *BELOW* THE RG AND ACCOUNT-STATUS BLOCKS AND *ABOVE* THE MARKET READ, and
-  // both halves are deliberate:
-  //   · below, so a self-excluded or cooled-off player is told about THEIR OWN break —
-  //     which carries an end date they are entitled to — rather than being sent off on
-  //     an identity errand. A protective control outranks a trust-ladder one, always.
-  //   · above, so a refused stake never loads a market, never touches `stakeBoundsFor`,
-  //     never reaches the wallet, and cannot consume an admission slot's work.
-  //
-  // ⭐ ONE GATE COVERS BOTH PRODUCTS. Up & Down stakes come through the SAME
-  // `buyPositionAction` → `buyPosition` (`use-quick-bet.ts`), and `updown-service.ts`
-  // never debits a wallet on its own. There is no second stake path to forget.
-  const kycGate = await assertKycForMoney(userId, "BET");
-  if (!kycGate.eligible) {
-    audit({
-      category: "COMPLIANCE",
-      action: "bet.kyc_blocked",
-      actorId: userId,
-      targetType: "User",
-      targetId: userId,
-      payload: { kycStatus: kycGate.kycStatus, reason: kycGate.reason, marketId: opts.marketId },
-    });
-    // The English is audit prose. The `reason` is what the player's screen reads — and on
-    // this path it reaches a MODAL, whose heading and tone both key off it
-    // (`updown-bet-errors.ts`). ⛔ Never render this sentence raw.
-    return { ok: false, error: `Identity not verified (${kycGate.kycStatus}).`, code: "INVALID", reason: kycGate.reason };
-  }
+  // ── NO IDENTITY QUESTION ON A STAKE (owner ruling, Ali, 2026-09-13) ─────────────────
+  // ⛔ A GATE STOOD HERE FROM 2026-09-05 TO 2026-09-13 AND IS DELETED, NOT DISABLED. Identity is
+  // now asked before money is WITHDRAWN and before nothing else (`kyc-gate.ts`, and
+  // docs/COMPLIANCE-DECISIONS.md 2026-09-13). Do not restore it by reading the older entry.
+  // ⭐ What replaced it is a RECORD: the account's identity standing rides on the
+  // `market.position.opened` row this function already writes for every bet — a field, never a
+  // second row (see the COMMITTED block below, and `readIdentityStanding`'s header for why).
+  // ⚠️ One deletion covers both products: Up & Down stakes come through this same function.
 
   const market = await marketStore.get(opts.marketId);
   if (!market) return { ok: false, error: "Market not found.", code: "NOT_FOUND" };
@@ -1529,13 +1505,20 @@ async function buyPositionInner(userId: string, opts: BuyOpts): Promise<BuyResul
     if (c.usedTx && c.bonusPart > 0) {
       audit({ category: "WALLET", action: "bonus.spent", actorId: userId, targetType: "Wallet", targetId: c.walletId, payload: { spent: c.bonusPart, allocations: c.bonusAllocations } });
     }
+    // ⭐ THE RECORD THAT REPLACED THE BET GATE (2026-09-13) — two FIELDS on the row every bet already
+    // writes, never a row of its own. The audit chain is one database-global serialised writer, so a
+    // second append per bet would halve its headroom on the hottest path in the repo; the record is
+    // per-event where events are rare and per-field where they are not. Read HERE, on the committed
+    // path, rather than where the gate stood: the same one read per successful bet, and none at all
+    // for a refused one. `readIdentityStanding` never throws — a failed read is stamped "UNREADABLE".
+    const standing = await readIdentityStanding(userId);
     audit({
       category: "BET",
       action: "market.position.opened",
       actorId: userId,
       targetType: "Position",
       targetId: c.positionId,
-      payload: { marketId: market.id, side: opts.side, stake: opts.stake, payoutIfWin: c.payoutIfWin },
+      payload: { marketId: market.id, side: opts.side, stake: opts.stake, payoutIfWin: c.payoutIfWin, kycStatus: standing.kycStatus, everApproved: standing.everApproved },
     });
     // Inbox receipt — kit-faithful, opens to the market detail. The cash-out terms
     // it quotes come from THIS POLL'S frozen rates, not a hardcoded "5 min / 9%".

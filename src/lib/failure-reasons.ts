@@ -178,6 +178,10 @@ export type FailureReason =
   | "kyc_more_info"
   /** Turned down. `humanizeRejectReason` renders the categorised reason on /profile/kyc. */
   | "kyc_rejected"
+  /** Turned down on a FINAL code (`UNDERAGE`, `SANCTIONED`, `DUPLICATE_IDENTITY`) — the player cannot
+   *  restart verification themselves; the door back is an officer (2026-09-13, `kyc-refusal.ts`).
+   *  ⚠️ Emitted by `startKyc`, so the sentence must send them to SUPPORT, never to "try again". */
+  | "kyc_refused_final"
   // ⛔ RENAMED 2026-08-20, and the rename is the point. `nida_taken` /
   // `nida_not_verified` were named for the only document the product accepted.
   // From 2026-08-20 a player proves identity with any ONE of four, so leaving
@@ -360,6 +364,11 @@ export const REASONS: Record<FailureReason, ReasonSpec> = {
   kyc_pending_review:   { severity: "error",   channel: "modal",  key: "errKycPendingReview" },
   kyc_more_info:        { severity: "error",   channel: "modal",  key: "errKycMoreInfo" },
   kyc_rejected:         { severity: "error",   channel: "modal",  key: "errKycRejected" },
+  // ⭐ INLINE, NOT MODAL, AND ERROR, NOT WARNING (2026-09-13). It is emitted by `startKyc` when a
+  // player asks to restart a FINAL refusal, and `/profile/kyc` does not offer that restart at all —
+  // the page renders the refused state with the route to support. So this only surfaces on a
+  // hand-built request, inline on that page. It is a hard block the player cannot lift themselves.
+  kyc_refused_final:    { severity: "error",   channel: "inline", key: "errKycRefusedFinal" },
 
   name_invalid:         { severity: "warning", channel: "inline", key: "errNameInvalid" },
   avatar_type:          { severity: "warning", channel: "inline", key: "errAvatarType" },

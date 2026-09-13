@@ -610,6 +610,62 @@ export async function getAuditForTargetDurable(
 }
 
 /**
+ * ⭐ EVERY EVENT OF THE NAMED ACTIONS, NEWEST FIRST — the durable read a REPORT is built from.
+ *
+ * Added 2026-09-13 for the refused-funds report (`refused-funds.ts`): *every* decision an officer
+ * took about a refused player's balance, handed to an inspector as one list. A report that claims
+ * completeness must never come from the ring — it is per-container and empties on every deploy (the
+ * rule `getAuditPageDurable` above records against the ISO 27001 export).
+ *
+ * ⭐ PASS THE CATEGORY. `AuditLog` has no index on `action`, but it has `@@index([category, createdAt])`,
+ * so naming the category turns a scan of the whole chain into a range scan of one category — and the
+ * actions a compliance report reads are COMPLIANCE-category by design.
+ *
+ * ⚠️ `truncated` IS RETURNED AND CALLERS MUST RENDER IT, for the reason the two twins below give.
+ */
+export async function getAuditByActionsDurable(
+  actions: readonly string[],
+  opts: { category?: AuditCategory; limit?: number } = {},
+): Promise<{ entries: AuditEntry[]; total: number; truncated: boolean }> {
+  const limit = opts.limit ?? 500;
+  const wanted = new Set(actions);
+  const db = prisma();
+  if (!db) {
+    const all = [...ring]
+      .filter((e) => wanted.has(e.action) && (!opts.category || e.category === opts.category))
+      .reverse();
+    return { entries: all.slice(0, limit), total: all.length, truncated: all.length > limit };
+  }
+  const where = { action: { in: [...wanted] }, ...(opts.category ? { category: opts.category } : {}) };
+  const total = await db.auditLog.count({ where });
+  const rows = await db.auditLog.findMany({
+    where,
+    orderBy: { createdAt: "desc" },
+    take: limit,
+    select: {
+      id: true, category: true, action: true, actorId: true, targetType: true,
+      targetId: true, payload: true, ip: true, userAgent: true, createdAt: true,
+      prevHash: true, entryHash: true,
+    },
+  });
+  const entries: AuditEntry[] = rows.map((r) => ({
+    id: r.id,
+    category: r.category as AuditCategory,
+    action: r.action,
+    actorId: r.actorId,
+    targetType: r.targetType,
+    targetId: r.targetId,
+    payload: (r.payload ?? undefined) as Record<string, unknown> | undefined,
+    ip: r.ip,
+    userAgent: r.userAgent,
+    createdAt: r.createdAt.toISOString(),
+    prevHash: r.prevHash,
+    entryHash: r.entryHash,
+  }));
+  return { entries, total, truncated: total > entries.length };
+}
+
+/**
  * ⭐ EVERY AUDITED EVENT AN ACTOR PERFORMED, NEWEST FIRST — the durable twin of
  * `getAuditForActor`, and what the player's own activity feed reads.
  *

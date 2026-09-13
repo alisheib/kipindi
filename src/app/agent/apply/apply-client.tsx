@@ -219,7 +219,7 @@ export function ApplyClient({ app, documents, missing, kycGate, fee, lipa, walle
           </div>
           <p className="text-body-sm leading-relaxed text-text-muted">{t.agent.docPhotoHint}</p>
           <p className="text-body-sm leading-relaxed text-text-muted">{app.source === "OFFICER_INVITED" ? t.agent.inviteKycNote : t.agent.docIdNote}</p>
-          {identityBlocks && kycGate && <KycGatePanel state={kycGate} returnTo="/agent/apply" />}
+          {identityBlocks && kycGate && <KycGatePanel state={kycGate} purpose="agent" returnTo="/agent/apply" />}
         </section>
       )}
 
@@ -350,7 +350,7 @@ export function ApplyClient({ app, documents, missing, kycGate, fee, lipa, walle
               {kycBlocks ? (
                 /* returnTo brings them BACK to the wizard, and the step they land on is
                    recomputed from what is missing -- which is this one. */
-                <KycGatePanel state={kycGate ?? "not_started"} returnTo="/agent/apply" />
+                <KycGatePanel state={kycGate ?? "not_started"} purpose="agent" returnTo="/agent/apply" />
               ) : emailBlocks ? (
                 <div className="space-y-2">
                   <p className="text-body-sm leading-relaxed text-text">{t.agent.payEmailFirst}</p>

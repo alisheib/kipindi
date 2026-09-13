@@ -1,11 +1,11 @@
 /**
- * `KycStatus` → the identity gate's own vocabulary. Pure, and deliberately NOT in a
+ * A KYC submission → the identity panel's own vocabulary. Pure, and deliberately NOT in a
  * `"use client"` file.
  *
  * 🔴 IT LIVED IN `kyc-gate-panel.tsx` FOR ONE COMMIT AND THAT WAS A SITE-WIDE OUTAGE.
  * That file is `"use client"`, so exporting a plain function from it makes the function a
- * client reference. Every caller here is a SERVER component — `AppShell`, the deposit and
- * withdraw pages, the market and Up & Down pages — and calling it from the server throws:
+ * client reference. Every caller here is a SERVER component — `AppShell`, the withdraw page,
+ * the agent application — and calling it from the server throws:
  *
  *     Attempted to call kycGateState() from the server but kycGateState is on the client.
  *
@@ -16,26 +16,55 @@
  *
  * ⛔ Do not move this back beside the component "to keep them together". The component may
  * import from here; nothing server-side may import from the component.
+ *
+ * ── WHAT CHANGED 2026-09-13 ─────────────────────────────────────────────────────────────
+ *
+ * ⭐ IT TAKES THE ROW'S FACTS, NOT A BARE STATUS, and has SIX states where it had four:
+ *   · `uploaded` — split out of `not_started`. "You attached photos and stopped" and "you have
+ *     never opened this" were one state while the panel meant "you cannot"; from 2026-09-13 it
+ *     addresses somebody reaching for their money, and the two need different sentences and
+ *     different buttons. Decided by `documentCount > 0` ALONE, the rule `kyc-stage.ts` already
+ *     uses for the admin roster — never by a "file ever arrived" flag, which reads a restarted
+ *     once-approved player as "uploaded".
+ *   · `refused_final` — split out of `rejected`. A FINAL refusal (`kyc-refusal.ts`) cannot be
+ *     restarted by the player, and its wallet is frozen while an officer decides the balance — so
+ *     "try again" and "your balance is safe" would both be false on it.
  */
+import { approvedEver } from "./kyc-approval";
+import { isFinalRefusal } from "./kyc-refusal";
 
-/** Which of the four identity states the player is in, in the panel's own vocabulary. */
-export type KycGateState = "not_started" | "pending_review" | "more_info" | "rejected";
+/** Which identity state the player is in, in the panel's own vocabulary. */
+export type KycGateState = "not_started" | "uploaded" | "pending_review" | "more_info" | "rejected" | "refused_final";
+
+/** The facts the derivation reads. Every KYC shape on the server has them. */
+export type KycGateFacts = {
+  status?: string | null;
+  approvedAt?: string | null;
+  rejectReason?: string | null;
+  /** Either the real document count, or the documents themselves. */
+  documentCount?: number;
+  documents?: readonly unknown[] | null;
+} | null | undefined;
 
 /**
- * Map the server's `KycStatus` onto the panel's vocabulary.
+ * Map a submission onto the panel's vocabulary.
  *
- * ⛔ `APPROVED` RETURNS `null`, AND CALLERS MUST BRANCH ON THAT rather than defaulting to a
- * panel. An approved player seeing any gate at all is the worst failure this has — it
- * withholds a control they are entitled to, on a money screen.
- * ⚠️ A MISSING ROW IS `not_started`, matching `assertKycForMoney`. If these two ever
- * disagree, the screen and the server tell different stories about the same account.
+ * ⛔ AN ACCOUNT APPROVED AT LEAST ONCE RETURNS `null`, AND CALLERS MUST BRANCH ON THAT rather than
+ * defaulting to a panel. It asks `approvedEver` — the withdrawal gate's own question — so a player
+ * under re-verification, who may still withdraw, is never shown a wall on the withdraw screen.
+ * An approved player seeing any gate at all is the worst failure this has: it withholds a control
+ * they are entitled to, on a money screen.
+ * ⚠️ A MISSING ROW IS `not_started`, matching `assertIdentityForPayout`. If these two ever disagree,
+ * the screen and the server tell different stories about the same account.
  */
-export function kycGateState(status: string | null | undefined): KycGateState | null {
-  switch (status) {
-    case "APPROVED": return null;
+export function kycGateState(facts: KycGateFacts): KycGateState | null {
+  if (approvedEver(facts)) return null;
+  const documentCount = facts?.documentCount ?? facts?.documents?.length ?? 0;
+  switch (facts?.status) {
     case "PENDING_REVIEW": return "pending_review";
     case "ADDITIONAL_INFO_REQUIRED": return "more_info";
-    case "REJECTED": return "rejected";
-    default: return "not_started"; // NOT_STARTED, IN_PROGRESS, and no row at all
+    case "REJECTED": return isFinalRefusal(facts.rejectReason) ? "refused_final" : "rejected";
+    case "IN_PROGRESS": return documentCount > 0 ? "uploaded" : "not_started";
+    default: return "not_started"; // NOT_STARTED, and no row at all
   }
 }

@@ -20,8 +20,6 @@ import { cn, formatNumber, formatTzs } from "@/lib/utils";
 import { useT } from "@/lib/i18n";
 import { useUpDownQuickBet, usePlacePulse } from "./use-quick-bet";
 import { UpDownStakeControls } from "./updown-stake-controls";
-import { KycGatePanel } from "@/components/kyc/kyc-gate-panel";
-import type { KycGateState } from "@/lib/kyc-gate-state";
 import { UpDownBetBlockedModal } from "./updown-bet-blocked-modal";
 import { stakeChipLabel } from "./stake-math";
 import { I } from "@/components/ui/glyphs";
@@ -36,18 +34,6 @@ import type { UpDownReceiptInfo } from "@/lib/updown-receipt";
 export function RoundStakePanel(props: {
   marketId: string;
   isAuthed: boolean;
-  /**
-   * The identity gate (2026-09-05). `null` = verified, or signed out (the sign-in branch
-   * below owns that case and is checked first).
-   *
-   * ⛔ SITS BESIDE `isAuthed` RATHER THAN FOLDING INTO IT, because the two refusals have
-   * different remedies: a guest signs in, an unverified player verifies. Collapsing them
-   * would send a signed-in player to a sign-in button — the dead end this panel already
-   * refuses to be for the round it is standing on.
-   */
-  kycGate?: KycGateState | null;
-  /** Plain (unencoded) path to come back to after verifying — e.g. `/updown/rnd_123`. */
-  returnTo?: string;
   minStake: number;
   maxStake: number;
   myUpStake: number;
@@ -92,17 +78,9 @@ export function RoundStakePanel(props: {
     );
   }
 
-  // Signed in but not verified — the stake control is REPLACED, not disabled, for the
-  // same reason the sign-in branch above replaces it: a control that cannot be used is
-  // worth less than the one action that unblocks it. `buyPosition` refuses either way.
-  // ⛔ AFTER the `isAuthed` check: a guest has no KYC state worth naming, and telling
-  // them to verify before they even have an account is a step out of order.
-  // ⚠️ `returnTo` is passed as its own prop, NOT scraped out of `signInHref`. That href
-  // already carries an ENCODED `?next=`, so reusing it would hand KycGatePanel a string it
-  // encodes a second time and the player returns to a 404.
-  if (props.kycGate) {
-    return <KycGatePanel state={props.kycGate} returnTo={props.returnTo} compact />;
-  }
+  // ⛔ NO IDENTITY BRANCH HERE SINCE 2026-09-13. From 2026-09-05 a signed-in, unverified player saw an
+  // identity panel in place of this stake control; a stake now asks no identity question
+  // (`kyc-gate.ts`), so the branch — and its `kycGate`/`returnTo` props — are deleted.
 
   // No side chosen (direct nav) → the safe two-way control, so betting is never blocked.
   if (!lockedSide) {

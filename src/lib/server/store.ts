@@ -16,6 +16,7 @@ import {
   type NotificationFilter, type NotificationSort,
 } from "@/lib/notification-filters";
 import { parseQuery, matchesQuery, fieldNames, NOTIFICATION_SEARCH } from "@/lib/search";
+import { holdsDocumentNumber } from "@/lib/kyc-refusal";
 
 export type StoredUser = {
   id: string;
@@ -188,6 +189,9 @@ export type StoredKycStageRow = {
   documentCount: number;
   submittedAt: string | null;
   approvedAt: string | null;
+  /** The refusal code on a REJECTED row, else null. Carried (2026-09-13) so a roster or report can
+   *  tell a FINAL refusal from a recoverable one without a second read per player (`kyc-refusal.ts`). */
+  rejectReason: string | null;
   createdAt: string;
 };
 
@@ -224,6 +228,12 @@ export type StoredWallet = {
   bonusBalance?: number;
   currency: "TZS";
   status: "ACTIVE" | "FROZEN" | "CLOSED";
+  /** WHY the wallet is frozen — one entry per independent hold (2026-09-13). `status` is FROZEN
+   *  exactly when this is non-empty; every lifter removes only its own reason. Optional so rows and
+   *  snapshots written before the column existed still load (`currentFreezeReasons` reads a
+   *  reason-less FROZEN wallet as self-exclusion, the only writer there was). Written ONLY by
+   *  `src/lib/server/wallet-freeze.ts`. */
+  freezeReasons?: string[];
   createdAt: string;
   updatedAt: string;
 };
@@ -1016,7 +1026,9 @@ const memoryDb = {
         if ((k.idNumber ?? "").trim() !== norm) continue;
         if ((k.idType ?? "") !== idType) continue;
         if (excludeUserId && k.userId === excludeUserId) continue;
-        if (k.status === "REJECTED") continue;
+        // The partial unique index's own question (2026-09-13): a refusal frees the number,
+        // EXCEPT a FINAL refusal, which keeps it reserved (`kyc-refusal.ts`).
+        if (!holdsDocumentNumber(k)) continue;
         return { userId: k.userId, status: k.status };
       }
       return null;
@@ -1043,7 +1055,9 @@ const memoryDb = {
       for (const k of store.kyc.values()) {
         if ((k.idFingerprint ?? "") !== fp) continue;
         if (excludeUserId && k.userId === excludeUserId) continue;
-        if (k.status === "REJECTED") continue;
+        // The partial unique index's own question (2026-09-13): a refusal frees the number,
+        // EXCEPT a FINAL refusal, which keeps it reserved (`kyc-refusal.ts`).
+        if (!holdsDocumentNumber(k)) continue;
         return { userId: k.userId, status: k.status };
       }
       return null;
@@ -1119,6 +1133,7 @@ const memoryDb = {
         documentCount: k.documents?.length ?? 0,
         submittedAt: k.submittedAt ?? null,
         approvedAt: k.approvedAt ?? null,
+        rejectReason: k.rejectReason ?? null,
         createdAt: k.createdAt,
       }));
     },

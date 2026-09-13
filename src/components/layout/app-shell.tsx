@@ -158,7 +158,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
   let promoSuppressed = false;
   /** Non-null = signed in with an UNCONFIRMED address → show the standing bar. */
   let emailVerifyState: { email: string | null } | null = null;
-  /** Non-null = signed in and NOT yet verified → show the standing identity bar. */
+  /** Non-null = signed in, never approved, AND holding a withdrawable balance → show the identity bar. */
   let kycVerifyState: { state: NonNullable<ReturnType<typeof kycGateState>> } | null = null;
   /** The viewer's role, hoisted out of the session block for the feature-state read below.
    *  ⚠️ Stays null when the user fetch FAILED — which resolves every role-gated feature to
@@ -242,23 +242,27 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       ? (u.emailVerifiedAt ? null : { email: u.email ?? null })
       : null;
 
-    // ⭐ THE SAME ARGUMENT, ONE RUNG UP. Identity now gates depositing, playing AND
-    // withdrawing, so an unverified account is the LARGEST live limitation there is — and
-    // until this bar existed the only places that said so were the money screens
-    // themselves. A player who signs up, browses for a week and never opens /wallet
-    // would first learn at the moment they tried to stake: the worst possible moment to
-    // introduce a step with a review queue behind it.
+    // ⭐ THE IDENTITY BAR — FOR A PLAYER WHO HOLDS MONEY THEY COULD NOT YET TAKE OUT (2026-09-13).
+    // Identity is asked before a WITHDRAWAL and before nothing else, so the one moment it costs a
+    // player is the moment they reach for their money — the worst possible moment to meet a document
+    // upload with a human review behind it. The bar raises that step early, while there is no hurry.
     //
-    // ⚠️ SILENT ON A FAILED READ, exactly like the email bar above. `kycResult` rejecting
-    // is a database problem, and accusing a verified player of being unverified — on every
-    // page — is worse than showing nothing. The money paths still refuse safely; they fail
-    // toward refusing, this fails toward quiet.
-    // ⛔ `kycResult` FULFILLED WITH `null` IS NOT A FAILURE — it is a real account with no
-    // submission yet, which is precisely the population this bar is for. The two cases are
-    // distinguished by the settled STATUS, never by the value being null.
-    kycVerifyState = kycResult.status === "fulfilled"
-      ? (kycGateState(kyc?.status) ? { state: kycGateState(kyc?.status)! } : null)
+    // ⛔ THE PREDICATE IS THE WHOLE DESIGN: NEVER APPROVED **AND** HOLDS A WITHDRAWABLE BALANCE. From
+    // 2026-09-05 it showed to every signed-in unapproved player; under the new ladder that is a
+    // permanent identity nag aimed at people who have deposited nothing — exactly the friction the
+    // ruling removed. It clears itself when they are approved OR when the balance reaches zero.
+    // ⭐ THE WALLET READ IS FREE — it is already in the batch above for the top-bar balance.
+    // ⚠️ `balance` only: bonus money is not withdrawable, and `hold` is a payout already in flight.
+    //
+    // ⚠️ SILENT ON A FAILED READ OF EITHER, exactly like the email bar above. A failed KYC read must
+    // not accuse a verified player; a failed wallet read must not raise a bar about money we could not
+    // confirm exists. ⛔ `kycResult` FULFILLED WITH `null` IS NOT A FAILURE — it is a real account
+    // with no submission yet, distinguished by the settled STATUS, never by the value being null.
+    const heldBalance = walletResult.status === "fulfilled" ? (wallet?.balance ?? 0) : 0;
+    const gate = kycResult.status === "fulfilled" && walletResult.status === "fulfilled" && heldBalance > 0
+      ? kycGateState(kyc)
       : null;
+    kycVerifyState = gate ? { state: gate } : null;
   }
 
   // The live ticker's REAL settlements. Batched with the config read rather than awaited at its
@@ -333,13 +337,13 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       <Suspense fallback={null}><NavProgress /></Suspense>
       <TopAppBar user={topUser} proposalsState={proposalsState} inviteVisible={inviteVisible} />
       <AnnouncementBanner maintenance={maintBanner} announcement={announcement} />
-      {/* ⭐ IDENTITY ABOVE EMAIL, for the reason the note below the email bar already
-          gives: when two bars are up, the one that costs the player more must read first.
-          Since 2026-09-05 identity gates depositing, playing AND withdrawing, while an
-          unconfirmed address gates depositing alone — so identity is now the larger of the
-          two, and it takes the top slot the email bar used to hold. */}
-      {kycVerifyState && <KycVerifyBanner state={kycVerifyState.state} />}
+      {/* ⭐ EMAIL ABOVE IDENTITY (2026-09-13), for the reason this note has always given: when
+          two bars are up, the one that costs the player more reads first. From 2026-09-05 that
+          was identity (it gated depositing, playing and withdrawing). From 2026-09-13 it is the
+          email: an unconfirmed address blocks the NEXT thing the player wants — adding money —
+          while identity blocks only cashing out. The rule is unchanged; only its answer moved. */}
       {emailVerifyState && <EmailVerifyBanner email={emailVerifyState.email} />}
+      {kycVerifyState && <KycVerifyBanner state={kycVerifyState.state} />}
       {/* ⭐ BELOW THE EMAIL GATE, ON PURPOSE. That bar names a COMPLIANCE condition blocking
           the player's first deposit; this one is a courtesy summary of results they already
           hold. If both are up, the one that costs them something must read first.

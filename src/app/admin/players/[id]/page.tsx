@@ -28,6 +28,8 @@ import { SetEmailForm } from "./set-email-form";
 import { ResetPasswordButton } from "./reset-password-button";
 import { BalanceAdjustControls } from "./balance-adjust-controls";
 import { ForceReverifyControls } from "./force-reverify-controls";
+import { WalletFreezeControls } from "./wallet-freeze-controls";
+import { currentFreezeReasons, FREEZE_REASON_LABEL } from "@/lib/wallet-freeze-reasons";
 import { ExportPlayerButton } from "./export-player-button";
 import { AdminBody } from "@/components/admin/admin-body";
 import { KpiGrid } from "@/components/admin/admin-body";
@@ -454,7 +456,12 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
                   the door, not the permission. */}
               {capSupport ? <SetEmailForm userId={data.user!.id} /> : <ControlLocked what="Set player email" need="support" />}
               {capMoney ? <BalanceAdjustControls userId={data.user!.id} currentBalance={wallet?.balance ?? 0} /> : <ControlLocked what="Adjust balance" need="accounting" />}
-              {kyc?.status === "APPROVED" && (capCompliance ? <ForceReverifyControls userId={data.user!.id} /> : <ControlLocked what="Force re-verification" need="compliance" />)}
+              {kyc?.status === "APPROVED" && (capCompliance ? <ForceReverifyControls userId={data.user!.id} walletFrozen={wallet?.status === "FROZEN"} /> : <ControlLocked what="Force re-verification" need="compliance" />)}
+              {/* ⭐ THE OFFICER'S FREEZE (2026-09-13, ruling 6) — the lever that stops money now that
+                  re-verification does not. It names every standing hold, not only its own. */}
+              {wallet && (capCompliance
+                ? <WalletFreezeControls userId={data.user!.id} status={wallet.status} holds={currentFreezeReasons(wallet).map((r) => ({ reason: r, label: FREEZE_REASON_LABEL[r] }))} />
+                : <ControlLocked what="Freeze / unfreeze wallet" need="compliance" />)}
               <p className="text-caption text-text-tertiary flex items-center gap-1.5 ml-auto">
                 <I.shieldcheck s={12} />
                 Every action is audited · reason required

@@ -105,6 +105,8 @@ export const EMAIL_TEMPLATES: readonly EmailSpec[] = [
   { template: "kycSubmittedHtml",          trigger: "src/lib/server/kyc-service.ts",       audience: "player",  chrome: "royal", money: false },
   { template: "kycApprovedHtml",           trigger: "src/lib/server/kyc-service.ts",       audience: "player",  chrome: "gold",  money: false },
   { template: "kycRejectedHtml",           trigger: "src/lib/server/kyc-service.ts",       audience: "player",  chrome: "royal", money: false },
+  // 2026-09-13 · S1 — the written decision about a finally-refused player's balance (Terms §3a).
+  { template: "refusedFundsDecisionHtml",  trigger: "src/lib/server/refused-funds.ts",     audience: "player",  chrome: "royal", money: true },
   { template: "kycMoreInfoHtml",           trigger: "src/lib/server/kyc-service.ts",       audience: "player",  chrome: "royal", money: false },
   // ── Agent affiliate programme ─────────────────────────────────────────────
   { template: "agentApprovedHtml",              trigger: "src/lib/server/agent-application-service.ts", audience: "player",  chrome: "gold",  money: true },
@@ -255,6 +257,9 @@ export const NOTIFICATION_EMITTERS: readonly EmitterSpec[] = [
   { fn: "notifyReferralJoined",        kind: "AFFILIATE",         audience: "player" },
   { fn: "notifyReferralReward",        kind: "AFFILIATE",         audience: "player" },
   { fn: "notifyKyc",                   kind: "KYC",               audience: "player" },
+  // 2026-09-13 · S1 — the decision about a finally-refused player's balance. A money kind: every
+  // outcome states a figure (held, returned or not returned).
+  { fn: "notifyRefusedFundsDecision",  kind: "WITHDRAW",          audience: "player" },
   { fn: "notifySof",                   kind: "KYC",               audience: "player" },
   { fn: "notifySelfExclusion",         kind: "RG",                audience: "player" },
   { fn: "notifyCoolOff",               kind: "RG",                audience: "player" },

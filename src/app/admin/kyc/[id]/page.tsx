@@ -14,6 +14,17 @@ import { KycDocViewer } from "./kyc-doc-viewer";
 import { Sensitive } from "@/components/ui/sensitive";
 import { maskDob } from "@/lib/server/sensitive-fields";
 import { KycDecisionRail } from "./kyc-decision-rail";
+import { RefusedFundsPanel } from "./refused-funds-panel";
+import { ReopenRefusalControl } from "./reopen-refusal-control";
+import { isFinalRefusal } from "@/lib/kyc-refusal";
+import { refusedFundsPosition, toDecisionRow } from "@/lib/server/refused-funds";
+import { getAuditForTargetDurable } from "@/lib/server/audit";
+import { REFUSED_FUNDS_ACTION, REFUSED_FUNDS_OUTCOME_COPY } from "@/lib/refused-funds-outcomes";
+import { FREEZE_REASON_LABEL, isWalletFreezeReason } from "@/lib/wallet-freeze-reasons";
+import { formatTzs } from "@/lib/utils";
+
+/** The four balance-decision audit actions — a prior decision on this case is any of them. */
+const REFUSED_ACTIONS: ReadonlySet<string> = new Set(Object.values(REFUSED_FUNDS_ACTION));
 import {
   ID_DOC_SPECS,
   ALL_DOC_SLOTS,
@@ -77,6 +88,17 @@ export default async function KycWorkstationPage({ params }: { params: Promise<{
   const recommendation = await getApprovalRecommendation(id);
   const sof = await Promise.resolve(db.sourceOfFunds.get(id)).catch(() => null);
 
+  // ⭐ S1 (2026-09-13) — a FINAL refusal leaves a balance an officer must decide. Everything the panel
+  // shows comes from `refusedFundsPosition`, the same read the action decides on, so the preview and
+  // the decision cannot disagree. Prior decisions come from the DURABLE log, never the ring.
+  const finalRefused = kyc.status === "REJECTED" && isFinalRefusal(kyc.rejectReason);
+  const refused = finalRefused ? await refusedFundsPosition(id).catch(() => null) : null;
+  const priorDecisions = finalRefused
+    ? await getAuditForTargetDurable("User", id, { limit: 200 })
+        .then((r) => ({ rows: r.entries.filter((e) => REFUSED_ACTIONS.has(e.action)).map(toDecisionRow), truncated: r.truncated }))
+        .catch(() => null)
+    : null;
+
   // Queue context — position among pending submissions.
   const pending = await listPendingKyc().catch(() => []);
   const queuePos = pending.findIndex((k) => k.userId === id);
@@ -137,7 +159,12 @@ export default async function KycWorkstationPage({ params }: { params: Promise<{
     // says so in the officer's own words, so the weight of the decision sits
     // visibly on the DOCUMENT IMAGE, which is where it has always actually been.
     { label: idType ? `${ID_TYPE_LABEL[idType]} number` : "Identity number", state: (kyc.idNumber ? "pass" : "pending") as "pass" | "fail" | "pending", detail: kyc.idNumber ? formatDetail : "not recorded" },
-    { label: "18 or older", state: (age18 === null ? "pending" : age18 ? "pass" : "fail") as "pass" | "fail" | "pending", detail: kyc.dob ? `DOB ${maskDob(kyc.dob)} — declared, and gated for every document type` : "no DOB" },
+    // ⭐ THE PLATFORM'S ONLY AGE CHECK AGAINST A DOCUMENT, FROM 2026-09-13. Until then this review came
+    // before any money; now a player deposits and plays on the date of birth they TYPED, and this row is
+    // the first and last time a human compares age to a document. The detail says so, because "declared,
+    // and gated" read as though something upstream had already verified it — nothing had.
+    // A document that shows the player is under 18 is refused FINAL · Under 18, which freezes the wallet.
+    { label: "18 or older", state: (age18 === null ? "pending" : age18 ? "pass" : "fail") as "pass" | "fail" | "pending", detail: kyc.dob ? `DOB ${maskDob(kyc.dob)} — typed by the player; check it against the document` : "no DOB" },
     ...(idType === "NIDA"
       ? [{ label: "NIDA date of birth agrees", state: (dobAgrees === null ? "pending" : dobAgrees ? "pass" : "fail") as "pass" | "fail" | "pending", detail: dobAgrees === null ? "not derivable" : `number says ${maskDob(String(nidaDob))}, account says ${maskDob(String(statedDob))}` }]
       : []),
@@ -273,7 +300,7 @@ export default async function KycWorkstationPage({ params }: { params: Promise<{
                   <I.shieldcheck s={18} className={kyc.status === "APPROVED" ? "text-yes-300 mt-0.5 shrink-0" : "text-no-300 mt-0.5 shrink-0"} />
                   <div>
                     <p className={`font-display text-[15px] font-bold ${kyc.status === "APPROVED" ? "text-yes-300" : "text-no-300"}`}>
-                      {kyc.status === "APPROVED" ? "Identity approved" : "Submission rejected"}
+                      {kyc.status === "APPROVED" ? "Identity approved" : finalRefused ? `Refused · FINAL · ${kyc.rejectReason}` : "Submission rejected"}
                     </p>
                     <p className="mt-0.5 text-body-sm text-text-muted">
                       {kyc.reviewerId ? `by ${kyc.reviewerId.slice(0, 14)}…` : ""}{kyc.reviewedAt ? ` · ${formatDateTime(kyc.reviewedAt)}` : ""}
@@ -292,6 +319,64 @@ export default async function KycWorkstationPage({ params }: { params: Promise<{
                 />
               )}
             </AdminCard>
+
+            {/* ⭐ S1 — A FINAL REFUSAL LEAVES A BALANCE TO DECIDE (owner ruling, 2026-09-13). The wallet was
+                frozen by the refusal; this card is where an officer chooses one of the four recorded outcomes,
+                reads what each would move in shillings before pressing anything, and sees every decision
+                already taken on this case. ⛔ A failed read says so — it is never drawn as a zero balance. */}
+            {finalRefused && (
+              <AdminCard title="Refused · the balance" sw="Salio la aliyekataliwa">
+                {!refused ? (
+                  <p className="text-body-sm text-warning-fg">This player&apos;s balance position could not be read. It is NOT zero — reload before deciding.</p>
+                ) : (
+                  <div className="space-y-4" data-refused-case="1">
+                    {refused.walletHolds.length > 0 && (
+                      <p className="text-body-sm text-text-muted">
+                        Wallet <strong className="text-text">{refused.walletStatus}</strong> · held for: {refused.walletHolds.map((h) => (isWalletFreezeReason(h) ? FREEZE_REASON_LABEL[h] : h)).join(", ")}
+                      </p>
+                    )}
+                    {refused.eligible ? (
+                      <RefusedFundsPanel
+                        userId={id}
+                        balance={refused.balance}
+                        hold={refused.hold}
+                        confirmedDeposits={refused.confirmedDeposits}
+                        paidOut={refused.paidOut}
+                        defaultProvider={refused.lastDepositProvider}
+                        outcomes={refused.outcomes}
+                      />
+                    ) : (
+                      <p className="text-body-sm text-text-muted">{refused.whyNot}</p>
+                    )}
+                    <div>
+                      <p className="font-mono text-micro uppercase eyebrow text-text-subtle mb-1.5">Decisions on this case</p>
+                      {!priorDecisions ? (
+                        <p className="text-body-sm text-warning-fg">The decision history could not be read. Do not assume there is none.</p>
+                      ) : priorDecisions.rows.length === 0 ? (
+                        <p className="text-body-sm text-text-tertiary">None yet.</p>
+                      ) : (
+                        <ul className="space-y-2" data-prior-decisions={priorDecisions.rows.length}>
+                          {priorDecisions.rows.map((d, i) => (
+                            <li key={d.decisionId ?? `${d.at}-${i}`} className="rounded-md border border-border-subtle px-2.5 py-2 text-body-sm">
+                              <p className="text-text"><strong>{d.outcome ? REFUSED_FUNDS_OUTCOME_COPY[d.outcome].label : "Decision"}</strong> · <span className="font-mono">{formatDateTime(d.at)}</span></p>
+                              <p className="font-mono tabular-nums text-text-muted">returned {formatTzs(d.returnedTzs)} · forfeited {formatTzs(d.forfeitedTzs)}{d.payoutError ? " · the payout did not start" : ""}</p>
+                              {d.justification && <p className="mt-0.5 italic text-text-muted">“{d.justification}”</p>}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      {priorDecisions?.truncated && <p className="mt-1 text-body-sm text-warning-fg">Older audit entries on this account are not shown here — the full list is in the refused-funds report.</p>}
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap border-t border-border-subtle pt-3">
+                      <ReopenRefusalControl userId={id} />
+                      <Link href={"/admin/kyc/refused" as Route} className="btn btn-ghost btn-sm inline-flex items-center gap-1.5">
+                        All refused balances <I.chevronRight s={12} />
+                      </Link>
+                    </div>
+                  </div>
+                )}
+              </AdminCard>
+            )}
           </div>
         </div>
       </div>

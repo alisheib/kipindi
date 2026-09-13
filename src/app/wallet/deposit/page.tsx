@@ -22,9 +22,6 @@ import { IdempotencyKeyField } from "@/components/wallet/idempotency-key-field";
 import { ProviderRadioGrid } from "@/components/wallet/provider-radio-grid";
 import { CardBillingFields } from "@/components/wallet/card-billing-fields";
 import { EmailVerifyGate } from "@/components/wallet/email-verify-gate";
-import { KycGatePanel } from "@/components/kyc/kyc-gate-panel";
-import { kycGateState } from "@/lib/kyc-gate-state";
-import { getKycStatus } from "@/lib/server/kyc-service";
 import { getPayoutStatus } from "@/lib/server/payout-status";
 import { PayoutStatusNotice } from "@/components/wallet/payout-status-notice";
 import { PageContainer } from "@/components/layout/page-container";
@@ -82,20 +79,12 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
   // The deposit gates. Read here purely to choose what to RENDER; wallet-service
   // re-checks BOTH on submit, so this is presentation, never the enforcement.
   //
-  // ⭐ TWO INDEPENDENT DOORS, NOT A SEQUENCE (Ali, 2026-09-05: *"keep both… he can
-  // confirm email before or after, order doesn't matter"*). A player waiting on our
-  // review queue can clear their inbox meanwhile, so the screen shows BOTH as a
-  // checklist and neither hides the other. The SERVER still has to pick one token when
-  // both are outstanding — it picks identity, the larger step — but the player has
-  // already seen both here, so a refusal is never a surprise.
+  // ⭐ ONE DOOR ON THIS SCREEN SINCE 2026-09-13: a confirmed email. Identity is asked before a
+  // WITHDRAWAL and before nothing else (`kyc-gate.ts`), so this page reads no KYC row at all — from
+  // 2026-09-05 to 2026-09-13 it rendered an identity panel in front of the form, and that read and
+  // that panel are deleted, not hidden. ⛔ Do not restore either: the server asks no identity question
+  // on a deposit, so a panel here would be a wall the platform does not have.
   const emailVerified = !!user?.emailVerifiedAt;
-  // B-1 style degrade: a failed KYC read must not fabricate "verified" on a money
-  // screen. `null` from a throw is treated as "no submission", which is the refusing
-  // side — the safe direction for a gate.
-  let kycRow: Awaited<ReturnType<typeof getKycStatus>> | null = null;
-  try { kycRow = await getKycStatus(session.userId); } catch { /* graceful — gate stays shut */ }
-  const kycState = kycGateState(kycRow?.status);
-  const kycEligible = kycState === null;
   const adminTest = !!user && ADMIN_TEST_ROLES.has(user.role) && process.env.NODE_ENV !== "production" && process.env.ADMIN_TEST_DEPOSITS !== "false";
   const maxAmount = adminTest ? 1_000_000_000 : DEPOSIT_MAX_TZS;
   const quickAmounts = adminTest ? [100_000, 1_000_000, 5_000_000, 20_000_000, 100_000_000] : QUICK_AMOUNTS;
@@ -151,32 +140,16 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
 
       {showCashback && <CashbackPromo percent={bonusCfg.cashbackPercentage} mode={bonusCfg.cashbackMode} compact cta={false} />}
 
-      {/* ── THE UNLOCK CHECKLIST ──────────────────────────────────────────────
-          The ladder is now: register free → VERIFY IDENTITY → deposit, play, withdraw
-          (owner ruling 2026-09-05). It reads "browse free → verify email to deposit →
-          KYC to withdraw" nowhere any more; that was the 2026-08-20 shape and both of
-          its rungs have moved.
-
-          We render the gates INSTEAD of the form rather than letting a player fill
-          everything in and be rejected on submit — the server enforces it either way,
-          but being told up front, with the action that fixes it, is the difference
-          between a gate and a dead end.
-
-          ⛔ IDENTITY FIRST, MATCHING THE SERVER. `wallet-service.deposit()` asks
-          RG → identity → email, and a screen that asked them in a different order would
-          let a player fix the thing it named and then be refused for another — the
-          "contradicted twice within one screen" defect E-5 records.
-          ⚠️ But BOTH are shown whenever either is outstanding: the two doors are
-          independent, and a player waiting on our review queue should be able to see —
-          and clear — their email step in the meantime. */}
-      {!kycEligible ? (
-        <div className="space-y-4">
-          <KycGatePanel state={kycState} returnTo="/wallet/deposit" />
-          {/* The second item on the checklist. Shown even while identity is the blocking
-              door, because they can act on it now and save themselves a second trip. */}
-          {!emailVerified && <EmailVerifyGate email={user?.email ?? null} />}
-        </div>
-      ) : !emailVerified ? (
+      {/* ── THE ONE DOOR ────────────────────────────────────────────────────────
+          The ladder is: register → confirm email → deposit and play → verify identity →
+          withdraw (owner ruling 2026-09-13). On THIS screen that leaves one gate, the confirmed
+          email, rendered INSTEAD of the form rather than letting a player fill everything in and
+          be refused on submit — the server enforces it either way (`wallet-service.deposit()`
+          asks RG lockout → email → caps + SOF), but being told up front, with the action that
+          fixes it, is the difference between a gate and a dead end.
+          ⛔ The identity panel that stood here from 2026-09-05 to 2026-09-13 is deleted with the
+          deposit gate it mirrored. Do not restore it by reading the older ruling. */}
+      {!emailVerified ? (
         <EmailVerifyGate email={user?.email ?? null} />
       ) : (
       <form action={depositAction} className="group/deposit rounded-xl glass-panel p-5 lg:p-6 space-y-5">

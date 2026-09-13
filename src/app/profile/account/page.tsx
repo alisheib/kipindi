@@ -165,9 +165,12 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
     : cause === "window-miss" ? t.market.filterMissBody
     : t.profile.tryDifferentFilter;
 
+  // ⛔ `PENDING_KYC` READS AS ACTIVE, NOT AS A WARNING (2026-09-13). It gated nothing, new accounts are
+  // created ACTIVE and existing rows were normalised; a straggler row must not show a player an amber
+  // "something is wrong with your account" chip on their own page for an identity step that only
+  // matters when they cash out.
   const statusTone =
-    user?.status === "ACTIVE" ? "yes"
-    : user?.status === "PENDING_KYC" ? "warning"
+    user?.status === "ACTIVE" || user?.status === "PENDING_KYC" ? "yes"
     : "no";
 
   return (

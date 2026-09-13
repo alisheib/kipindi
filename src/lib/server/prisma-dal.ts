@@ -34,6 +34,7 @@ import {
   type NotificationFilter, type NotificationSort,
 } from "@/lib/notification-filters";
 import { parseQuery, queryToWhere, fieldNames, NOTIFICATION_SEARCH } from "@/lib/search";
+import { FINAL_REFUSAL_CODES } from "@/lib/kyc-refusal";
 import type {
   StoredUser,
   StoredKyc,
@@ -277,6 +278,7 @@ function toStoredWallet(w: any): StoredWallet {
     bonusBalance: num(w.bonusBalance),
     currency: "TZS",
     status: w.status,
+    freezeReasons: Array.isArray(w.freezeReasons) ? [...w.freezeReasons] : [],
     createdAt: iso(w.createdAt)!,
     updatedAt: iso(w.updatedAt)!,
   };
@@ -1064,7 +1066,9 @@ export const prismaDb = {
         where: {
           idType: idType as "NIDA" | "PASSPORT" | "DRIVER_LICENSE" | "VOTER_CARD",
           idNumber: norm,
-          status: { not: "REJECTED" },
+          // ⛔ EXACTLY the partial unique index's predicate (`20260913120000_kyc_at_withdrawal`):
+          // not refused, OR refused on a FINAL code — which keeps the number reserved (S16).
+          OR: [{ status: { not: "REJECTED" } }, { rejectReason: { in: [...FINAL_REFUSAL_CODES] } }],
           ...(excludeUserId ? { userId: { not: excludeUserId } } : {}),
         },
         select: { userId: true, status: true },
@@ -1089,7 +1093,9 @@ export const prismaDb = {
       const row = await pc().kycSubmission.findFirst({
         where: {
           idFingerprint: fp,
-          status: { not: "REJECTED" },
+          // ⛔ EXACTLY the partial unique index's predicate (`20260913120000_kyc_at_withdrawal`):
+          // not refused, OR refused on a FINAL code — which keeps the number reserved (S16).
+          OR: [{ status: { not: "REJECTED" } }, { rejectReason: { in: [...FINAL_REFUSAL_CODES] } }],
           ...(excludeUserId ? { userId: { not: excludeUserId } } : {}),
         },
         select: { userId: true, status: true },
@@ -1199,6 +1205,7 @@ export const prismaDb = {
         select: {
           id: true, userId: true, status: true,
           submittedAt: true, approvedAt: true, createdAt: true,
+          rejectReason: true,
         },
         orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       });
@@ -1223,6 +1230,7 @@ export const prismaDb = {
           documentCount: docCount.get(s.id) ?? 0,
           submittedAt: iso(s.submittedAt),
           approvedAt: iso(s.approvedAt),
+          rejectReason: s.rejectReason ? String(s.rejectReason) : null,
           createdAt: iso(s.createdAt),
         });
       }
@@ -1366,6 +1374,7 @@ export const prismaDb = {
           bonusBalance: w.bonusBalance ?? 0,
           currency: w.currency,
           status: w.status,
+          freezeReasons: w.freezeReasons ?? [],
           createdAt: new Date(w.createdAt),
         },
       });

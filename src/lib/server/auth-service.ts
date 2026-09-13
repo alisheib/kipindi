@@ -431,7 +431,8 @@ export async function verifyOtpAndAuth(input: z.input<typeof OtpVerifySchema>): 
       failedLoginCount: 0,
       lockedUntil: null,
       role: "PLAYER",
-      status: "PENDING_KYC",
+      // ACTIVE, not PENDING_KYC (2026-09-13) — see the password path below for why.
+      status: "ACTIVE",
       locale: "SW",
       displayName: null,
       dob: reg.dob,
@@ -642,7 +643,11 @@ export async function registerWithPassword(input: PasswordRegisterInput): Promis
     failedLoginCount: 0,
     lockedUntil: null,
     role: isBootstrapAdmin ? "ADMIN" : "PLAYER",
-    status: isBootstrapAdmin ? "ACTIVE" : "PENDING_KYC",
+    // ⭐ ACTIVE FOR EVERYONE (2026-09-13). New players were created `PENDING_KYC` until then — a status
+    // that gated NOTHING (sign-in refuses only suspended, closed and self-excluded accounts) and, from the
+    // day identity moved to withdrawal, labelled every ordinary playing customer as pending something.
+    // Identity lives on the KYC row and is asked by the withdrawal gate alone (`kyc-gate.ts`).
+    status: "ACTIVE",
     locale: "SW",
     displayName: null,
     dob: baseParse.data.dob,

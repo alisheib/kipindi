@@ -177,10 +177,12 @@ export function upDownContent(r: RulesRates): Record<Locale, React.ReactNode> {
 
         <LegalSection n="7" title="Stakes, cash-out and wallets">
           <p>
-            Players must be <strong className="text-text">18 or older</strong>, resident in Tanzania, and verified —
-            identity verification is required before you can deposit, bet or withdraw. Deposits and withdrawals move
-            through the mobile-money channels published on the deposit and withdrawal screens, to the wallet registered
-            on your account. We never ask for card details.
+            Players must be <strong className="text-text">18 or older</strong> and resident in Tanzania. Deposits and
+            withdrawals move through the mobile-money channels published on the deposit and withdrawal screens, to the
+            wallet registered on your account. We never ask for card details.
+          </p>
+          <p>
+            Identity verification is required before your first withdrawal.
           </p>
           <p>
             <strong className="text-text">Cash-out.</strong> Within the first{" "}
@@ -360,10 +362,12 @@ export function upDownContent(r: RulesRates): Record<Locale, React.ReactNode> {
 
         <LegalSection n="7" title="Dau, kuuza mapema na pochi">
           <p>
-            Wachezaji lazima wawe na <strong className="text-text">umri wa miaka 18 au zaidi</strong>, wakazi wa
-            Tanzania, na waliothibitishwa — uthibitisho wa utambulisho unahitajika kabla ya kuweka pesa, kuweka dau au
-            kutoa pesa. Kuweka na kutoa pesa hufanyika kupitia njia za pesa za simu zilizoorodheshwa kwenye kurasa za
+            Wachezaji lazima wawe na <strong className="text-text">umri wa miaka 18 au zaidi</strong> na wakazi wa
+            Tanzania. Kuweka na kutoa pesa hufanyika kupitia njia za pesa za simu zilizoorodheshwa kwenye kurasa za
             malipo. Hatuombi kamwe taarifa za kadi.
+          </p>
+          <p>
+            Uthibitisho wa utambulisho unahitajika kabla ya kutoa pesa kwa mara ya kwanza.
           </p>
           <p>
             <strong className="text-text">Kuuza dau mapema.</strong> Ndani ya dakika{" "}
@@ -527,7 +531,10 @@ export function upDownContent(r: RulesRates): Record<Locale, React.ReactNode> {
 
         <LegalSection n="7" title="下注、提前卖出与钱包">
           <p>
-            玩家须<strong className="text-text">年满 18 周岁</strong>、居住于坦桑尼亚并完成验证——在充值、下注或提现之前须完成身份验证。充值与提现通过充值/提现页面公布的移动支付渠道进行。我们绝不索取银行卡信息。
+            玩家须<strong className="text-text">年满 18 周岁</strong>并居住于坦桑尼亚。充值与提现通过充值/提现页面公布的移动支付渠道进行。我们绝不索取银行卡信息。
+          </p>
+          <p>
+            首次提现之前须完成身份验证。
           </p>
           <p>
             <strong className="text-text">提前卖出。</strong>下注后的前{" "}

@@ -13,6 +13,7 @@ import { Input, Field as KitField } from "@/components/ui/input";
 import { FilterPill, FilterGroupKey } from "@/components/ui/filter-pill";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { submitIdentityAction, submitKycForReviewAction, restartKycAction } from "./actions";
+import { isFinalRefusal } from "@/lib/kyc-refusal";
 import {
   ID_DOC_TYPES,
   ID_DOC_SPECS,
@@ -66,7 +67,6 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
 
   const sp = (await searchParams) ?? {};
   const banner = bannerFor(sp.reason, t.error as unknown as Record<string, string>);
-  const isWelcome = sp.welcome === "new";
   // Safe internal return target (IA review R6) — a gated action (e.g. Withdraw)
   // sends `?next=/wallet/withdraw`; on approval we offer a "Continue" CTA back
   // to it. Reject anything that isn't a same-site absolute path (no open redirect).
@@ -160,32 +160,12 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
         </div>
       )}
 
-      {isWelcome && !submitted && !idDone && (
-        <section className="rounded-xl border border-gold-700 bg-gold-500/10 p-4 lg:p-5 flex flex-col sm:flex-row sm:items-center gap-3">
-          <div className="flex-1">
-            <p className="font-display text-[14px] font-bold text-gold-300">
-              {t.auth.welcomeTo50pick}
-            </p>
-            <p className="mt-1 text-body-sm text-text-muted leading-snug">
-              {t.profile.kycWelcomeCan + " "}<span className="font-bold text-text">{t.profile.kycWelcomeBrowse}</span>.
-              {t.profile.kycWelcomeLater}
-            </p>
-          </div>
-          {/* 🔴 THIS WAS THE PRIMARY BUTTON AND IT SAID "SKIP FOR NOW", pointing at
-              /markets — correct while a PENDING_KYC player could stake, and actively
-              misleading from 2026-09-05, when it became a gold call-to-action inviting a
-              player to a board where every stake control is a gate panel.
-              ⛔ It is now GHOST, not primary: the primary action on this screen is the
-              form below it. Looking around is still offered — browsing is genuinely free
-              — but it is no longer dressed as the thing to do next. */}
-          <Link
-            href="/markets"
-            className="btn btn-ghost btn-lg btn-pill whitespace-nowrap"
-          >
-            {t.profile.kycSkipForNow}
-          </Link>
-        </section>
-      )}
+      {/* ⛔ THE "WELCOME, NEW PLAYER" BLOCK THAT STOOD HERE IS DELETED (2026-09-13), with its four
+          dictionary keys. From 2026-09-05 every new account was redirected to this page, so it greeted
+          them and explained that verifying opened adding money and playing. From 2026-09-13 a new
+          account lands where it was going, or on adding money (`auth/register/actions.ts`), and
+          reaches this page only by choosing to verify — so the block had no audience, and its
+          sentence was false. */}
 
       <PageHero glow="info">
         <PageHeader
@@ -215,11 +195,21 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
                 {t.profile.kycResubmitOrEmail}{" "}
                 <a href={`mailto:${SUPPORT_EMAIL()}?subject=KYC%20review`} className="text-brand-300 underline-offset-2 hover:underline">{SUPPORT_EMAIL()}</a>.
               </p>
-              {/* Restarting CLEARS the submission, so it must be a deliberate tap,
-                  never a page load — see the read-before-start note above. */}
-              <form action={restartKycAction} className="mt-3">
-                <SubmitButton label={t.error.tryAgain} pendingLabel={t.common.loading} />
-              </form>
+              {/* ⭐ A FINAL refusal (under 18, sanctions, identity used on another account) is NOT
+                  restarted by the player (2026-09-13 — `startKyc` refuses it, `kyc-refusal.ts`): the
+                  wallet is frozen and an officer decides the balance. So this page offers the route to
+                  support and says why, instead of a "try again" the server would refuse.
+                  A recoverable refusal keeps the restart. Restarting CLEARS the submission, so it must
+                  be a deliberate tap, never a page load — see the read-before-start note above. */}
+              {isFinalRefusal(kyc?.rejectReason ? String(kyc.rejectReason) : null) ? (
+                <p data-kyc-refused-final="1" className="mt-3 text-body-sm text-text">
+                  {t.error.errKycRefusedFinal}
+                </p>
+              ) : (
+                <form action={restartKycAction} className="mt-3">
+                  <SubmitButton label={t.error.tryAgain} pendingLabel={t.common.loading} />
+                </form>
+              )}
             </div>
           </div>
         </section>

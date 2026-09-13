@@ -24,10 +24,24 @@ const TITLE: Record<Locale, string> = {
  * BINDING English text — a player protection got shorter — so it cannot ride in on a version
  * that still claims 2026-04-01. `COMPLIANCE-DECISIONS.md` carries the reasoning.
  */
+/**
+ * ⛔ BUMPED 2026-09-13 (owner ruling, Ali — docs/COMPLIANCE-DECISIONS.md 2026-09-13). §3 moved from
+ * "before you can deposit, place a bet or withdraw" to "before your first withdrawal", §2 stopped naming
+ * NIDA as the only document, and §3a is NEW: what happens if we cannot verify you.
+ * ⚠️ NO 14-DAY §10 NOTICE, ON THE OWNER'S RULING — the change is favourable to players at the door. It is
+ * NOT favourable at the exit, for a player the old gate would have stopped before they paid in, and the
+ * compliance entry says so in its own words. §3a is the answer to that, and ⛔ it ships in the SAME
+ * release as the gate removal: the waiver without §3a live is the one ordering mistake in this change
+ * that could not be defended.
+ * ⛔ The 2026-09-07 entry's reasoning ("nothing the platform does changed") is NOT available here.
+ * ⭐ §3 and §3a are written as SEPARATE paragraphs, each stating what IS required and none naming
+ * depositing or playing beside identity: `test:kyc-copy-truth` §2 reads the legal pages paragraph by
+ * paragraph, so a true claim split across two sentences of one paragraph would still read as one claim.
+ */
 const META: Record<Locale, string> = {
-  en: "Version 2026-09-07 · Effective on account registration.",
-  sw: "Toleo 2026-09-07 · Yanaanza kutumika unaposajili akaunti.",
-  zh: "版本 2026-09-07 · 自账户注册时生效。",
+  en: "Version 2026-09-13 · Effective on account registration.",
+  sw: "Toleo 2026-09-13 · Yanaanza kutumika unaposajili akaunti.",
+  zh: "版本 2026-09-13 · 自账户注册时生效。",
 };
 
 /**
@@ -68,7 +82,7 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
 
       <LegalSection n="2" title="Account eligibility">
         <ul className="list-disc pl-5 space-y-1">
-          <li>Tanzanian resident with a valid NIDA national identification number</li>
+          <li>Tanzanian resident holding a valid identity document — a National ID (NIDA), a passport, a driving licence or a voter&apos;s card</li>
           <li>Aged 18 or older at the time of registration</li>
           <li>One account per natural person; duplicate accounts will be closed and balances forfeited per AML rules</li>
           <li>You must keep your registered phone number, email, and address up to date</li>
@@ -77,15 +91,41 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
 
       <LegalSection n="3" title="Identity verification (KYC)">
         <p>
-          Identity verification is <strong>required</strong> before you can deposit, place a
-          bet or withdraw. You verify once, with any one of four documents — a National ID (NIDA)
-          number, a passport, a driving licence or a voter&apos;s card — with photographic
-          evidence reviewed by our compliance team. One document may only be used on one
-          account. An account that has been verified once keeps the right to withdraw the money
-          it holds even if we later ask it to verify again. We may request additional documents
-          (proof of address, source-of-funds declaration) if your activity triggers
-          anti-money-laundering thresholds, and withdrawals of TZS 1,000,000 or more are held
-          for review by two compliance officers.
+          Identity verification is <strong>required</strong> before your first withdrawal. You
+          verify once, with any one of four documents — a National ID (NIDA) number, a passport, a
+          driving licence or a voter&apos;s card — with photographic evidence reviewed by our
+          compliance team. One document may only be used on one account.
+        </p>
+        <p>
+          An account that has been verified once keeps the right to withdraw the money it holds
+          even if we later ask it to verify again.
+        </p>
+        <p>
+          We may request additional documents (proof of address, source-of-funds declaration) if
+          your activity triggers anti-money-laundering thresholds, and withdrawals of TZS 1,000,000
+          or more are held for review by two compliance officers.
+        </p>
+      </LegalSection>
+
+      <LegalSection n="3a" title="If we cannot verify you">
+        <p>
+          If we cannot verify your identity, we will not send money out of your account. We will
+          tell you why. Where the reason is one you can fix — an unclear photo, an expired document
+          or details that do not match — you may submit again.
+        </p>
+        <p>
+          Where we refuse an account permanently — because the holder is under 18, because of a
+          sanctions concern, or because the identity is already used on another account — no money
+          can be paid into or out of the account from that moment, and the document stays linked to
+          it.
+        </p>
+        <p>
+          We will then decide what happens to the balance case by case, and write to you with our
+          decision and the reason. The decision may be to return the money you paid in, to return
+          the whole balance, to hold the balance while you appeal, or to keep it.
+        </p>
+        <p>
+          Any money we return is sent only to the mobile-money number registered on your account.
         </p>
       </LegalSection>
 
@@ -197,7 +237,7 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
 
       <LegalSection n="2" title="Sifa za kustahili kufungua akaunti">
         <ul className="list-disc pl-5 space-y-1">
-          <li>Mkazi wa Tanzania mwenye namba halali ya kitambulisho cha taifa cha NIDA</li>
+          <li>Mkazi wa Tanzania mwenye hati halali ya utambulisho — Kitambulisho cha Taifa (NIDA), pasipoti, leseni ya udereva au kadi ya mpiga kura</li>
           <li>Mwenye umri wa miaka 18 au zaidi wakati wa kusajili</li>
           <li>Akaunti moja kwa kila mtu; akaunti za nakala zitafungwa na salio kupotea kwa mujibu wa kanuni za AML</li>
           <li>Ni lazima usasishe namba yako ya simu, barua pepe, na anwani uliyosajili</li>
@@ -206,15 +246,43 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
 
       <LegalSection n="3" title="Uthibitisho wa utambulisho (KYC)">
         <p>
-          Uthibitisho wa utambulisho <strong>unahitajika</strong> kabla ya kuweka fedha, kuweka
-          dau au kutoa fedha. Unathibitisha mara moja, kwa kutumia mojawapo ya nyaraka nne —
-          namba ya NIDA, pasipoti, leseni ya udereva au kadi ya mpiga kura — pamoja na ushahidi
-          wa picha unaokaguliwa na timu yetu ya uzingatiaji. Nyaraka moja inaweza kutumika
-          kwenye akaunti moja pekee. Akaunti iliyothibitishwa mara moja inabaki na haki ya kutoa
-          fedha ilizonazo hata tukiomba baadaye ithibitishwe upya. Tunaweza kuomba nyaraka za
-          ziada (uthibitisho wa anwani, tamko la chanzo cha fedha) iwapo shughuli zako zitavuka
-          viwango vya kuzuia uoshaji wa fedha, na kutoa TZS 1,000,000 au zaidi kunashikiliwa kwa
-          ukaguzi wa maafisa wawili.
+          Uthibitisho wa utambulisho <strong>unahitajika</strong> kabla ya kutoa fedha kwa mara ya
+          kwanza. Unathibitisha mara moja, kwa kutumia mojawapo ya nyaraka nne — namba ya NIDA,
+          pasipoti, leseni ya udereva au kadi ya mpiga kura — pamoja na ushahidi wa picha
+          unaokaguliwa na timu yetu ya uzingatiaji. Nyaraka moja inaweza kutumika kwenye akaunti
+          moja pekee.
+        </p>
+        <p>
+          Akaunti iliyothibitishwa mara moja inabaki na haki ya kutoa fedha ilizonazo hata tukiomba
+          baadaye ithibitishwe upya.
+        </p>
+        <p>
+          Tunaweza kuomba nyaraka za ziada (uthibitisho wa anwani, tamko la chanzo cha fedha) iwapo
+          shughuli zako zitavuka viwango vya kuzuia uoshaji wa fedha, na kutoa TZS 1,000,000 au
+          zaidi kunashikiliwa kwa ukaguzi wa maafisa wawili.
+        </p>
+      </LegalSection>
+
+      <LegalSection n="3a" title="Tusipoweza kukuthibitisha">
+        <p>
+          Tusipoweza kuthibitisha utambulisho wako, hatutatuma pesa kutoka kwenye akaunti yako.
+          Tutakueleza sababu. Pale sababu ni jambo unaloweza kurekebisha — picha isiyo wazi, nyaraka
+          iliyoisha muda wake au taarifa zisizolingana — unaweza kuwasilisha tena.
+        </p>
+        <p>
+          Tukikataa akaunti kabisa — kwa sababu mwenye akaunti yuko chini ya miaka 18, kwa sababu ya
+          wasiwasi wa vikwazo, au kwa sababu utambulisho huo tayari unatumika kwenye akaunti nyingine
+          — hakuna pesa inayoweza kuingizwa wala kutolewa kwenye akaunti hiyo tangu wakati huo, na
+          nyaraka inabaki imeunganishwa nayo.
+        </p>
+        <p>
+          Kisha tutaamua kitakachofanyika kwa salio, kesi kwa kesi, na tutakuandikia uamuzi wetu
+          pamoja na sababu. Uamuzi unaweza kuwa kurudisha pesa ulizoingiza, kurudisha salio lote,
+          kushikilia salio wakati unakata rufaa, au kulibakisha.
+        </p>
+        <p>
+          Pesa yoyote tunayorudisha hutumwa tu kwa namba ya pesa ya simu iliyosajiliwa kwenye akaunti
+          yako.
         </p>
       </LegalSection>
 
@@ -323,7 +391,7 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
 
       <LegalSection n="2" title="账户资格">
         <ul className="list-disc pl-5 space-y-1">
-          <li>持有有效 NIDA 国民身份号码的坦桑尼亚居民</li>
+          <li>持有有效身份证件的坦桑尼亚居民——国民身份证（NIDA）、护照、驾驶证或选民证</li>
           <li>注册时年满 18 周岁</li>
           <li>每位自然人仅限一个账户；重复账户将被关闭，余额按 AML 规定予以没收</li>
           <li>您必须及时更新所登记的电话号码、电子邮箱和地址</li>
@@ -332,11 +400,34 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
 
       <LegalSection n="3" title="身份验证（KYC）">
         <p>
-          在充值、投注或提现之前，<strong>必须</strong>先完成身份验证。您只需验证一次，可使用四种
-          证件之一——国民身份证（NIDA）号码、护照、驾驶证或选民证——并提交由我们的合规团队审核的
-          照片证据。一份证件仅可用于一个账户。已完成一次验证的账户，即使我们此后要求重新验证，仍
-          保留提取其账户内资金的权利。如果您的活动触发反洗钱阈值，我们可能会要求提供额外文件
-          （地址证明、资金来源声明）；TZS 1,000,000 及以上的提现须经两名合规专员审核。
+          首次提现之前，<strong>必须</strong>完成身份验证。您只需验证一次，可使用四种证件之一——
+          国民身份证（NIDA）号码、护照、驾驶证或选民证——并提交由我们的合规团队审核的照片证据。
+          一份证件仅可用于一个账户。
+        </p>
+        <p>
+          已完成一次验证的账户，即使我们此后要求重新验证，仍保留提取其账户内资金的权利。
+        </p>
+        <p>
+          如果您的活动触发反洗钱阈值，我们可能会要求提供额外文件（地址证明、资金来源声明）；
+          TZS 1,000,000 及以上的提现须经两名合规专员审核。
+        </p>
+      </LegalSection>
+
+      <LegalSection n="3a" title="如果我们无法验证您的身份">
+        <p>
+          如果我们无法验证您的身份，我们不会从您的账户中汇出任何资金。我们会告知您原因。若原因属于
+          您可以纠正的情况——照片不清晰、证件已过期或信息不符——您可以重新提交。
+        </p>
+        <p>
+          若我们永久拒绝某一账户——因为持有人未满 18 周岁、存在制裁疑虑，或该身份已被其他账户使用——
+          自那一刻起，该账户不得再转入或转出任何资金，且该证件仍与其绑定。
+        </p>
+        <p>
+          随后我们会逐案决定余额的处理方式，并以书面形式告知您决定及理由。决定可能是退还您转入的资金、
+          退还全部余额、在您申诉期间暂扣余额，或不予退还。
+        </p>
+        <p>
+          我们退还的任何资金，只会汇入您账户登记的移动支付号码。
         </p>
       </LegalSection>
 

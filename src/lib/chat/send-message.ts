@@ -306,16 +306,18 @@ function stubReply(userText: string, lang: Lang): Reply {
        * tier model, no per-tier limit, and no per-day cap anywhere in this platform.
        *
        * What is actually true is one rule, and it is the rule the live system prompt
-       * already states: nothing is unlocked incrementally — a player may look around
-       * freely and may do none of deposit, bet or withdraw until an officer approves
-       * one document plus a selfie.
+       * already states: identity is verified once, before a player's first WITHDRAWAL,
+       * and nothing else waits on it (owner ruling 2026-09-13). ⛔ This answer said "you
+       * cannot deposit, bet or withdraw until approved" from 2026-09-05 to 2026-09-13 —
+       * a stub answer is served verbatim, so a superseded rule in it is a false statement
+       * to every player who asks, in the one channel built to help them.
        */
       paragraphs: [
         "Here's how identity verification works on 50pick:",
         "1. Go to **Profile → Verify identity** to start[1]",
         "2. Upload any ONE of four documents — NIDA, passport, driving licence or voter's card — plus a selfie",
-        "3. Until our team approves it you can register, sign in and look around, but you cannot deposit, bet or withdraw",
-        "4. Review is usually done within a day; while it is pending there is nothing else for you to do[2]",
+        "3. You verify once, before your first withdrawal",
+        "4. Review is usually done within a day; while it is pending there is nothing else for you to do, and your balance stays safe[2]",
       ],
       citations: [
         { n: 1, href: "/profile/kyc", label: "/profile/kyc" },

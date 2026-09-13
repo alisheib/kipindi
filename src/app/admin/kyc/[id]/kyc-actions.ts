@@ -49,6 +49,14 @@ const REJECT_REASONS: Record<string, { text: string; code: RejectCode }> = {
   expired: { text: "", code: "EXPIRED_ID" },
   suspected_fraud: { text: "The submission could not be verified.", code: "OTHER" },
   other: { text: "", code: "OTHER" },
+  // ⭐ THE THREE FINAL CODES (2026-09-13). Until then the workstation could not produce any of them,
+  // so an officer holding a sixteen-year-old's document could only refuse it as "other" — recoverable,
+  // wallet untouched, document released. `reviewKyc` freezes the wallet and keeps the number reserved
+  // for exactly these members (`src/lib/kyc-refusal.ts`). Each is a translated category on the
+  // player's screen, so no English sentence is prepended (§6 E-6) — and SANCTIONED says nothing about a list.
+  underage: { text: "", code: "UNDERAGE" },
+  sanctioned: { text: "", code: "SANCTIONED" },
+  duplicate_identity: { text: "", code: "DUPLICATE_IDENTITY" },
 };
 
 // ⛔ ONE GATE, NOT A COPY — see the note in `payment-actions.ts` and finding A2.
@@ -143,6 +151,52 @@ export async function rejectKycWorkstationAction(formData: FormData): Promise<Re
   const r = await reviewKyc({ officerId: g.userId, userId, decision: "REJECT", reason, rejectCode: picked.code });
   if (!r.ok) return { ok: false, error: r.error ?? "Could not reject." };
   revalidatePath(`/admin/kyc/${userId}`);
+  return { ok: true };
+}
+
+/**
+ * ⭐ S1 — decide a finally-refused player's balance (owner ruling, Ali, 2026-09-13).
+ * The gate is the same compliance grant + step-up as every decision on this page; the rules — which
+ * outcomes exist, what each moves, the justification, the ordering of money — all live in
+ * `refused-funds.ts`, which re-reads the position under a per-player lock before anything moves.
+ */
+export async function decideRefusedFundsAction(formData: FormData): Promise<{ ok: true; payoutError: string | null } | { ok: false; error: string; field?: string }> {
+  const g = await gate("decideRefusedFunds");
+  if ("error" in g) return { ok: false, error: g.error };
+  const userId = String(formData.get("userId") ?? "");
+  const outcome = String(formData.get("outcome") ?? "");
+  const justification = String(formData.get("justification") ?? "");
+  const provider = String(formData.get("provider") ?? "") || null;
+  if (!userId) return { ok: false, error: "Missing player." };
+  const { decideRefusedFunds } = await import("@/lib/server/refused-funds");
+  const { REFUSED_FUNDS_JUSTIFICATION_MIN, isRefusedFundsOutcome, RETURNS_MONEY } = await import("@/lib/refused-funds-outcomes");
+  if (!isRefusedFundsOutcome(outcome)) return fieldError("outcome", "Choose an outcome.");
+  if (justification.trim().length < REFUSED_FUNDS_JUSTIFICATION_MIN) return fieldError("justification", `Write a justification of at least ${REFUSED_FUNDS_JUSTIFICATION_MIN} characters.`);
+  if (RETURNS_MONEY.has(outcome) && !provider) return fieldError("provider", "Choose the network to return the money on.");
+  const r = await decideRefusedFunds({ officerId: g.userId, userId, outcome, justification, provider });
+  if (!r.ok) return { ok: false, error: r.error };
+  revalidatePath(`/admin/kyc/${userId}`);
+  revalidatePath("/admin/kyc");
+  revalidatePath("/admin/kyc/refused");
+  revalidatePath(`/admin/players/${userId}`);
+  return { ok: true, payoutError: r.payoutError };
+}
+
+/** Re-open a FINAL refusal that was wrong — the only door back after one (S2). */
+export async function reopenFinalRefusalWorkstationAction(formData: FormData): Promise<Result> {
+  const g = await gate("reopenFinalRefusal");
+  if ("error" in g) return { ok: false, error: g.error };
+  const userId = String(formData.get("userId") ?? "");
+  const reason = String(formData.get("reason") ?? "");
+  if (!userId) return { ok: false, error: "Missing player." };
+  const { reopenFinalRefusal, REOPEN_FINAL_REFUSAL_REASON_MIN } = await import("@/lib/server/kyc-service");
+  if (reason.trim().length < REOPEN_FINAL_REFUSAL_REASON_MIN) return fieldError("reason", `A reason of at least ${REOPEN_FINAL_REFUSAL_REASON_MIN} characters is required.`);
+  const r = await reopenFinalRefusal(g.userId, userId, reason);
+  if (!r.ok) return { ok: false, error: r.error ?? "Could not re-open." };
+  revalidatePath(`/admin/kyc/${userId}`);
+  revalidatePath("/admin/kyc");
+  revalidatePath("/admin/kyc/refused");
+  revalidatePath(`/admin/players/${userId}`);
   return { ok: true };
 }
 

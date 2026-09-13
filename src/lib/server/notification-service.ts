@@ -1392,6 +1392,65 @@ export function notifyKyc(userId: string, status: "APPROVED" | "REJECTED" | "PEN
   });
 }
 
+/**
+ * ⭐ S1 — WHAT WE DECIDED ABOUT A REFUSED PLAYER'S BALANCE (owner ruling, Ali, 2026-09-13).
+ *
+ * Terms §3a promises that where we refuse an account permanently we decide what happens to the
+ * balance case by case and write to the player with the decision. This is the in-app half; the
+ * email (`refusedFundsDecisionHtml`) carries the reason.
+ *
+ * ⛔ IT STATES A FIGURE ON EVERY OUTCOME — it is a money notice (`WITHDRAW` kind), and a money kind
+ * that names no amount is how a player is told something happened to their money without being told
+ * what. ⛔ AND IT NEVER CARRIES THE OFFICER'S WRITTEN JUSTIFICATION, which is internal and may name
+ * things a player must not be told (a sanctions concern says nothing about a list — the E-1 rule).
+ * Sent only when the decision was carried out in full; a return whose payout did not start is the
+ * officer's to finish first.
+ */
+export function notifyRefusedFundsDecision(
+  userId: string,
+  d: { outcome: "RETURN_DEPOSITS" | "RETURN_BALANCE" | "HOLD_PENDING_APPEAL" | "FORFEIT"; returnedTzs: number; forfeitedTzs: number; balanceTzs: number },
+) {
+  const tzs = (n: number) => formatTzs(n);
+  if (d.outcome === "HOLD_PENDING_APPEAL") {
+    return notify({
+      userId,
+      kind: "WITHDRAW",
+      titleEn: "Your balance is held",
+      titleSw: "Salio lako limeshikiliwa",
+      titleZh: "您的余额已被暂扣",
+      bodyEn: `We could not verify your identity. Your balance of ${tzs(d.balanceTzs)} stays held while we review your case, and we will write to you with our decision.`,
+      bodySw: `Hatukuweza kuthibitisha utambulisho wako. Salio lako la ${tzs(d.balanceTzs)} linabaki limeshikiliwa tunapokagua suala lako, na tutakuandikia uamuzi wetu.`,
+      bodyZh: `我们无法核实您的身份。在审核您的案件期间，您的余额 ${tzs(d.balanceTzs)} 将继续暂扣，我们会以书面形式告知您决定。`,
+      href: "/wallet",
+    });
+  }
+  if (d.outcome === "FORFEIT") {
+    return notify({
+      userId,
+      kind: "WITHDRAW",
+      titleEn: "Decision on your balance",
+      titleSw: "Uamuzi kuhusu salio lako",
+      titleZh: "关于您余额的决定",
+      bodyEn: `We could not verify your identity, and your balance of ${tzs(d.forfeitedTzs)} will not be returned. The email we sent explains why.`,
+      bodySw: `Hatukuweza kuthibitisha utambulisho wako, na salio lako la ${tzs(d.forfeitedTzs)} halitarudishwa. Barua pepe tuliyokutumia inaeleza sababu.`,
+      bodyZh: `我们无法核实您的身份，您的余额 ${tzs(d.forfeitedTzs)} 将不予退还。我们发送给您的邮件说明了原因。`,
+      href: "/wallet",
+    });
+  }
+  const kept = d.forfeitedTzs > 0;
+  return notify({
+    userId,
+    kind: "WITHDRAW",
+    titleEn: "We're returning your money",
+    titleSw: "Tunarudisha pesa zako",
+    titleZh: "我们正在退还您的资金",
+    bodyEn: `We could not verify your identity, so your account stays closed. ${tzs(d.returnedTzs)} is being sent to your registered number.${kept ? ` ${tzs(d.forfeitedTzs)} will not be returned.` : ""}`,
+    bodySw: `Hatukuweza kuthibitisha utambulisho wako, kwa hivyo akaunti yako inabaki imefungwa. ${tzs(d.returnedTzs)} zinatumwa kwa namba yako iliyosajiliwa.${kept ? ` ${tzs(d.forfeitedTzs)} hazitarudishwa.` : ""}`,
+    bodyZh: `我们无法核实您的身份，因此您的账户将保持关闭。${tzs(d.returnedTzs)} 正在汇入您的注册号码。${kept ? `另有 ${tzs(d.forfeitedTzs)} 不予退还。` : ""}`,
+    href: "/wallet",
+  });
+}
+
 /** Security alert: the account password just changed. Pairs with the email
  *  alert; the in-app copy guarantees email-less (pre-KYC) users still see it. */
 export function notifyPasswordChanged(userId: string) {

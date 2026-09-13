@@ -1265,6 +1265,51 @@ export function kycRejectedHtml({ reason, reference }: { reason: string; referen
 }
 
 /**
+ * ⭐ S1 — THE WRITTEN DECISION ABOUT A REFUSED PLAYER'S BALANCE (owner ruling, Ali, 2026-09-13).
+ *
+ * Terms §3a: *"where we refuse an account permanently, we will decide what happens to the balance case
+ * by case and write to you with the decision and the reason."* This is that letter. The REASON a
+ * player is given is the refusal category (`reason`, already player-safe — a sanctions refusal says
+ * nothing about a list); ⛔ the officer's internal justification is never put here.
+ * Royal chrome: it is money leaving the player's control, never earned money.
+ */
+export function refusedFundsDecisionHtml({ outcome, returnedTzs, forfeitedTzs, balanceTzs, reason, reference }: {
+  outcome: "RETURN_DEPOSITS" | "RETURN_BALANCE" | "HOLD_PENDING_APPEAL" | "FORFEIT";
+  returnedTzs: number;
+  forfeitedTzs: number;
+  balanceTzs: number;
+  reason: string;
+  reference: string;
+}): string {
+  const rows: Array<{ label: string; value: string }> = [];
+  let headEn: string;
+  let bodySw: string;
+  if (outcome === "HOLD_PENDING_APPEAL") {
+    headEn = "Your balance is held while we review your case";
+    rows.push({ label: "Balance held", value: formatTzs(balanceTzs) });
+    bodySw = `Salio lako la ${formatTzs(balanceTzs)} limeshikiliwa tunapokagua suala lako. Tutakuandikia uamuzi wetu.`;
+  } else if (outcome === "FORFEIT") {
+    headEn = "Your balance will not be returned";
+    rows.push({ label: "Not returned", value: formatTzs(forfeitedTzs) });
+    bodySw = `Salio lako la ${formatTzs(forfeitedTzs)} halitarudishwa.`;
+  } else {
+    headEn = "We are returning your money";
+    rows.push({ label: "Being returned", value: formatTzs(returnedTzs) });
+    if (forfeitedTzs > 0) rows.push({ label: "Not returned", value: formatTzs(forfeitedTzs) });
+    bodySw = `${formatTzs(returnedTzs)} zinatumwa kwa namba yako iliyosajiliwa.${forfeitedTzs > 0 ? ` ${formatTzs(forfeitedTzs)} hazitarudishwa.` : ""}`;
+  }
+  rows.push({ label: "Reference", value: reference });
+  return wrap(`
+    ${eyebrow("Identity check · your balance", "Ukaguzi wa utambulisho · salio lako")}
+    ${heading(headEn)}
+    ${subtitle(`We could not verify your identity: ${reason} Your account stays closed. This is our decision about the money it holds.`)}
+    ${subtitleSw(`Hatukuweza kuthibitisha utambulisho wako, kwa hivyo akaunti yako inabaki imefungwa. ${bodySw}`)}
+    ${detailRows(rows)}
+    ${ctaButton("/help", "Contact support · Wasiliana nasi")}
+  `);
+}
+
+/**
  * Sent to the player the moment their KYC enters PENDING_REVIEW. Confirms the
  * documents landed, carries the reference, and sets expectations on timing.
  * Honest about the locked-during-review behaviour (Decision #1: reply-to-reopen).

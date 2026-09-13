@@ -13,10 +13,29 @@ const TITLE: Record<Locale, string> = {
   sw: "Sera ya Kuzuia Uoshaji wa Fedha na KYC",
   zh: "反洗钱与 KYC 政策",
 };
+/**
+ * ⛔ BUMPED 2026-09-13 (owner ruling, Ali — docs/COMPLIANCE-DECISIONS.md). Identity is verified before
+ * an account's first WITHDRAWAL and before nothing else, so §1 moved; §2 stopped describing controls by
+ * a mechanism the code does not have; §4 now says when the officer's screening happens.
+ *
+ * ⛔ HOW §1 IS WORDED, AND WHY. It states what IS required ("before their first withdrawal") and never
+ * what is not. That is `IDENTITY-POLICY.md`'s copy rule, and it is also what lets `test:kyc-copy-truth`
+ * tell a true paragraph from a false one mechanically in three languages. "Account holder", not
+ * "player": the guard's English money-verb pattern reads "play" inside "player".
+ *
+ * 🔴 §2 WAS FALSE IN THREE PLACES, found while re-versioning (2026-09-13):
+ *   · "EDD is triggered automatically" — the deposit thresholds are real, but the mechanism is a
+ *     REFUSAL: `wallet-service.deposit()` refuses a deposit of TZS 1,000,000 or more, or one taking the
+ *     rolling 30-day total to TZS 5,000,000, until a source-of-funds declaration is accepted.
+ *   · "The player profile flags as a PEP or is on a sanctions list" — nothing flags a profile; §4 has
+ *     always said an officer assesses it.
+ *   · "Behavioural anomalies are detected (rapid deposit-then-withdraw, multiple MSISDN sources,
+ *     structuring)" — no detector for any of the three exists. Deleted, not softened.
+ */
 const META: Record<Locale, string> = {
-  en: "Version 2026-09-07 · Aligned with Tanzania AML Act (Cap 423) and the FATF Recommendations.",
-  sw: "Toleo 2026-09-07 · Imeoanishwa na Tanzania AML Act (Cap 423) na Mapendekezo ya FATF.",
-  zh: "版本 2026-09-07 · 符合 Tanzania AML Act (Cap 423) 及 FATF 建议。",
+  en: "Version 2026-09-13 · Aligned with Tanzania AML Act (Cap 423) and the FATF Recommendations.",
+  sw: "Toleo 2026-09-13 · Imeoanishwa na Tanzania AML Act (Cap 423) na Mapendekezo ya FATF.",
+  zh: "版本 2026-09-13 · 符合 Tanzania AML Act (Cap 423) 及 FATF 建议。",
 };
 
 /**
@@ -36,29 +55,34 @@ function content(): Record<Locale, React.ReactNode> { return {
     <>
       <LegalSection n="1" title="Customer due diligence (CDD)">
         <p>
-          Identity verification is <strong>required</strong> of every player before they
-          deposit, bet or withdraw. A player verifies with any one of four documents — a
-          20-digit National ID (NIDA) number, a passport, a driving licence or a voter&apos;s
-          card. We check the number against that document&apos;s format rule, enforce that the
-          document is unique to a single account, and our compliance team reviews the
-          photographic evidence together with a selfie. We capture: full name, date of birth,
-          region, the document type and number, and photographic evidence. Even once identity
-          is verified, withdrawals of TZS 1,000,000 or more are held for two-officer review.
+          We verify the identity of every account holder before their first withdrawal. An
+          account holder verifies with any one of four documents — a 20-digit National ID (NIDA)
+          number, a passport, a driving licence or a voter&apos;s card. We check the number against
+          that document&apos;s format rule, enforce that the document is unique to a single account,
+          and our compliance team reviews the photographic evidence together with a selfie. We
+          capture: full name, date of birth, region, the document type and number, and
+          photographic evidence. Even once identity is verified, withdrawals of TZS 1,000,000 or
+          more are held for two-officer review.
+        </p>
+        <p>
+          Where we refuse an identity because the holder is under 18, because of a sanctions
+          concern, or because the document is already used on another account, the account is
+          frozen and a compliance officer decides what happens to its balance, case by case and
+          with a recorded reason, as set out in section 3a of our Terms of Service.
         </p>
       </LegalSection>
 
       <LegalSection n="2" title="Enhanced due diligence (EDD)">
-        <p>EDD is triggered automatically when:</p>
+        <p>Enhanced due diligence applies in these cases:</p>
         <ul className="list-disc pl-5 space-y-1">
-          <li>A single transaction exceeds <strong className="text-text">TZS 1,000,000</strong> (deposit or withdrawal)</li>
-          <li>Cumulative deposits in 30 days exceed TZS 5,000,000</li>
-          <li>The player profile flags as a Politically Exposed Person (PEP) or is on a sanctions list</li>
-          <li>Behavioural anomalies are detected (rapid deposit-then-withdraw, multiple MSISDN sources, structuring)</li>
+          <li>A single deposit of <strong className="text-text">TZS 1,000,000</strong> or more, or deposits of TZS 5,000,000 or more within 30 days — the deposit is refused until our compliance team has accepted a source-of-funds declaration</li>
+          <li>A withdrawal of <strong className="text-text">TZS 1,000,000</strong> or more — it is placed in <span className="font-mono text-warning-fg mx-1">AML_REVIEW</span> status until two compliance officers have reviewed it</li>
+          <li>A compliance officer records a politically exposed person (PEP) or sanctions concern during an identity review or an enhanced due diligence review</li>
         </ul>
         <p>
-          EDD requires a source-of-funds declaration and may require supporting documentation
-          (bank statement, salary slip, business registration). Withdrawals are placed in
-          <span className="font-mono text-warning-fg mx-1">AML_REVIEW</span> status until cleared.
+          A source-of-funds declaration may require supporting documentation (bank statement,
+          salary slip, business registration). Where an account&apos;s identity has not yet been
+          verified, the officer reviewing its declaration is shown that it is unverified.
         </p>
       </LegalSection>
 
@@ -81,6 +105,10 @@ function content(): Record<Locale, React.ReactNode> { return {
           Intelligence Unit where the law requires it. This policy states only the screening we
           actually perform; it will be re-versioned before any automated list screening is
           introduced.
+        </p>
+        <p>
+          Because identity is verified before an account&apos;s first withdrawal, the identity-review
+          assessment takes place at that point.
         </p>
       </LegalSection>
 
@@ -110,29 +138,35 @@ function content(): Record<Locale, React.ReactNode> { return {
     <>
       <LegalSection n="1" title="Uchunguzi wa kina wa mteja (CDD)">
         <p>
-          Uthibitisho wa utambulisho <strong>unahitajika</strong> kwa kila mchezaji kabla ya
-          kuweka fedha, kuweka dau au kutoa fedha. Mchezaji anathibitisha kwa kutumia mojawapo
-          ya nyaraka nne — namba ya NIDA yenye tarakimu 20, pasipoti, leseni ya udereva au kadi
-          ya mpiga kura. Tunakagua namba kwa kanuni ya nyaraka hiyo, tunahakikisha nyaraka
-          inatumika kwenye akaunti moja pekee, na timu yetu ya uzingatiaji hukagua ushahidi wa
-          picha pamoja na selfie. Tunakusanya: jina kamili, tarehe ya kuzaliwa, mkoa, aina na
-          namba ya nyaraka, na ushahidi wa picha. Hata utambulisho ukishathibitishwa, kutoa
-          TZS 1,000,000 au zaidi kunashikiliwa kwa ukaguzi wa maafisa wawili.
+          Tunathibitisha utambulisho wa kila mwenye akaunti kabla ya kutoa fedha kwa mara ya
+          kwanza. Mwenye akaunti anathibitisha kwa kutumia mojawapo ya nyaraka nne — namba ya NIDA
+          yenye tarakimu 20, pasipoti, leseni ya udereva au kadi ya mpiga kura. Tunakagua namba
+          kwa kanuni ya nyaraka hiyo, tunahakikisha nyaraka inatumika kwenye akaunti moja pekee,
+          na timu yetu ya uzingatiaji hukagua ushahidi wa picha pamoja na selfie. Tunakusanya:
+          jina kamili, tarehe ya kuzaliwa, mkoa, aina na namba ya nyaraka, na ushahidi wa picha.
+          Hata utambulisho ukishathibitishwa, kutoa TZS 1,000,000 au zaidi kunashikiliwa kwa
+          ukaguzi wa maafisa wawili.
+        </p>
+        <p>
+          Tukikataa utambulisho kwa sababu mwenye akaunti yuko chini ya miaka 18, kwa sababu ya
+          wasiwasi wa vikwazo, au kwa sababu nyaraka tayari inatumika kwenye akaunti nyingine,
+          akaunti hufungiwa na afisa wa uzingatiaji huamua kitakachofanyika kwa salio lake, kesi
+          kwa kesi na kwa sababu iliyorekodiwa, kama ilivyoelezwa katika kifungu cha 3a cha
+          Masharti ya Huduma.
         </p>
       </LegalSection>
 
       <LegalSection n="2" title="Uchunguzi ulioimarishwa (EDD)">
-        <p>EDD huanzishwa kiotomatiki pale:</p>
+        <p>Uchunguzi ulioimarishwa hutumika katika hali hizi:</p>
         <ul className="list-disc pl-5 space-y-1">
-          <li>Muamala mmoja unapozidi <strong className="text-text">TZS 1,000,000</strong> (kuweka au kutoa fedha)</li>
-          <li>Jumla ya fedha zilizowekwa ndani ya siku 30 zinapozidi TZS 5,000,000</li>
-          <li>Wasifu wa mchezaji unapoonyesha kuwa ni Mtu Anayejulikana Kisiasa (PEP) au yumo kwenye orodha ya vikwazo</li>
-          <li>Tabia zisizo za kawaida zinapogundulika (kuweka-kisha-kutoa kwa haraka, vyanzo vingi vya MSISDN, kugawa miamala kwa makusudi/structuring)</li>
+          <li>Kuweka <strong className="text-text">TZS 1,000,000</strong> au zaidi kwa muamala mmoja, au TZS 5,000,000 au zaidi ndani ya siku 30 — muamala huo haupokelewi hadi timu yetu ya uzingatiaji ikubali tamko la chanzo cha fedha</li>
+          <li>Kutoa <strong className="text-text">TZS 1,000,000</strong> au zaidi — huwekwa katika hadhi ya <span className="font-mono text-warning-fg mx-1">AML_REVIEW</span> hadi maafisa wawili wa uzingatiaji wakague</li>
+          <li>Afisa wa uzingatiaji anaporekodi wasiwasi wa Mtu Anayejulikana Kisiasa (PEP) au wa vikwazo wakati wa ukaguzi wa utambulisho au wa uchunguzi ulioimarishwa</li>
         </ul>
         <p>
-          EDD inahitaji tamko la chanzo cha fedha na inaweza kuhitaji nyaraka za uthibitisho
-          (taarifa ya benki, slipu ya mshahara, usajili wa biashara). Utoaji wa fedha huwekwa katika hadhi ya
-          <span className="font-mono text-warning-fg mx-1">AML_REVIEW</span> hadi utakapoidhinishwa.
+          Tamko la chanzo cha fedha linaweza kuhitaji nyaraka za uthibitisho (taarifa ya benki,
+          slipu ya mshahara, usajili wa biashara). Pale utambulisho wa akaunti bado
+          haujathibitishwa, afisa anayekagua tamko lake huonyeshwa hivyo.
         </p>
       </LegalSection>
 
@@ -155,6 +189,10 @@ function content(): Record<Locale, React.ReactNode> { return {
           kutiliwa shaka huwasilishwa kwa Kitengo cha Intelijensia ya Fedha (FIU) pale sheria
           inapohitaji. Sera hii inataja tu uchunguzi tunaoufanya kweli; itatolewa toleo jipya
           kabla ya uchunguzi wowote wa kiotomatiki wa orodha kuanzishwa.
+        </p>
+        <p>
+          Kwa kuwa utambulisho unathibitishwa kabla ya kutoa fedha kwa mara ya kwanza, tathmini ya
+          ukaguzi wa utambulisho hufanyika wakati huo.
         </p>
       </LegalSection>
 
@@ -185,25 +223,27 @@ function content(): Record<Locale, React.ReactNode> { return {
     <>
       <LegalSection n="1" title="客户尽职调查（CDD）">
         <p>
-          每位玩家在充值、投注或提现之前均<strong>必须</strong>完成身份验证。玩家可使用四种证件
-          之一进行验证——20 位国民身份证（NIDA）号码、护照、驾驶证或选民证。我们按该证件的格式
-          规则核对号码，确保一份证件仅绑定一个账户，并由我们的合规团队审核照片证据及自拍照。
-          我们采集：全名、出生日期、地区、证件类型与号码以及照片证据。
-          即使身份已验证，TZS 1,000,000 及以上的提现仍须经两名合规专员审核。
+          我们会在每位账户持有人首次提现之前验证其身份。账户持有人可使用四种证件之一进行验证——
+          20 位国民身份证（NIDA）号码、护照、驾驶证或选民证。我们按该证件的格式规则核对号码，确保
+          一份证件仅绑定一个账户，并由我们的合规团队审核照片证据及自拍照。我们采集：全名、出生日期、
+          地区、证件类型与号码以及照片证据。即使身份已验证，TZS 1,000,000 及以上的提现仍须经两名
+          合规专员审核。
+        </p>
+        <p>
+          若因持有人未满 18 周岁、存在制裁疑虑或证件已被其他账户使用而拒绝其身份，该账户将被冻结，
+          其余额由合规专员逐案决定并记录理由，详见服务条款第 3a 条。
         </p>
       </LegalSection>
 
       <LegalSection n="2" title="强化尽职调查（EDD）">
-        <p>在以下情况下将自动触发 EDD：</p>
+        <p>以下情况适用强化尽职调查：</p>
         <ul className="list-disc pl-5 space-y-1">
-          <li>单笔交易超过 <strong className="text-text">TZS 1,000,000</strong>（存款或提现）</li>
-          <li>30 天内累计存款超过 TZS 5,000,000</li>
-          <li>玩家资料被标记为政治公众人物（PEP）或列于制裁名单</li>
-          <li>检测到行为异常（快速存入后即提现、多个 MSISDN 来源、拆分交易/structuring）</li>
+          <li>单笔存款达 <strong className="text-text">TZS 1,000,000</strong> 或以上，或 30 天内累计存款达 TZS 5,000,000 或以上——在合规团队接受资金来源声明之前，该笔存款不予受理</li>
+          <li>单笔提现达 <strong className="text-text">TZS 1,000,000</strong> 或以上——在两名合规专员审核之前，将被置于 <span className="font-mono text-warning-fg mx-1">AML_REVIEW</span> 状态</li>
+          <li>合规专员在身份审核或强化尽职调查中记录了政治公众人物（PEP）或制裁疑虑</li>
         </ul>
         <p>
-          EDD 需要提供资金来源声明，并可能需要佐证文件（银行对账单、工资单、营业执照）。在通过审核之前，提现将被置于
-          <span className="font-mono text-warning-fg mx-1">AML_REVIEW</span> 状态。
+          资金来源声明可能需要佐证文件（银行对账单、工资单、营业执照）。若账户身份尚未验证，审核其声明的专员会看到这一情况。
         </p>
       </LegalSection>
 
@@ -221,6 +261,9 @@ function content(): Record<Locale, React.ReactNode> { return {
           及证件信息，作为核查清单项目进行人工评估。若专员记录了疑虑，该账户可被暂停——暂停后无法
           充值、投注或提现——并在法律要求时向金融情报单位（FIU）提交可疑活动报告。本政策仅陈述我们
           实际执行的筛查；在引入任何自动名单筛查之前，本政策将先行更新版本。
+        </p>
+        <p>
+          由于身份验证在账户首次提现之前进行，身份审核中的该项评估亦在此时进行。
         </p>
       </LegalSection>
 

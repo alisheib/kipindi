@@ -228,6 +228,17 @@ export async function verifyLoginOtpAction(formData: FormData) {
   // gets clear confirmation that the auth completed.
   // Honor a safe ?next= (same rules as the password path) so a gated OTP login
   // lands back where the player intended, not always home.
-  if (result.data?.isNew) redirect(`/profile/kyc?welcome=new${safeNext ? `&next=${encodeURIComponent(safeNext)}` : ""}`);
+  // ⭐ A NEW ACCOUNT (one-time-code path) lands where it was going, or on adding money — never on the
+  // ID-upload form. Identity is asked before a withdrawal only (2026-09-13); `register/actions.ts`
+  // carries the same rule and its reasoning.
+  if (result.data?.isNew) {
+    if (safeNext) {
+      const [path, query = ""] = safeNext.split("?");
+      const qs = new URLSearchParams(query);
+      qs.set("welcome", "new");
+      redirect(`${path}?${qs.toString()}` as never);
+    }
+    redirect("/wallet/deposit?welcome=new" as never);
+  }
   redirect((safeNext || "/?welcome=back") as never);
 }

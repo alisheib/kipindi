@@ -35,12 +35,24 @@ type AutoCheck = { label: string; state: TriState; detail: string };
    action also imports, so the collected keys and the required keys cannot drift. */
 const JUDGMENT_CHECKS = KYC_ATTESTATIONS;
 
+/**
+ * ⭐ THE THREE FINAL CODES ARE CHOOSABLE HERE (2026-09-13), and until then none of them was.
+ * This list offered only recoverable categories plus "suspected fraud" → OTHER, so an officer
+ * looking at a sixteen-year-old's passport had no way to refuse the account AS UNDERAGE. That was
+ * tolerable while the identity review came before any money; from 2026-09-13 it comes at cash-out,
+ * this checklist's "18 or older" row is the platform's only age check against a document, and a
+ * final refusal is what freezes the wallet and opens the balance decision (`refused-funds.ts`).
+ * `final: true` must agree with `src/lib/kyc-refusal.ts` — the server decides by the code, not by this flag.
+ */
 const REJECT_OPTIONS = [
-  { value: "document_unreadable", label: "Document unreadable" },
-  { value: "mismatch", label: "Details mismatch" },
-  { value: "expired", label: "Document expired" },
-  { value: "suspected_fraud", label: "Suspected fraud" },
-  { value: "other", label: "Other (note required)" },
+  { value: "document_unreadable", label: "Document unreadable", final: false },
+  { value: "mismatch", label: "Details mismatch", final: false },
+  { value: "expired", label: "Document expired", final: false },
+  { value: "suspected_fraud", label: "Suspected fraud", final: false },
+  { value: "other", label: "Other (note required)", final: false },
+  { value: "underage", label: "FINAL · Under 18", final: true },
+  { value: "sanctioned", label: "FINAL · Sanctions / PEP concern", final: true },
+  { value: "duplicate_identity", label: "FINAL · Identity used on another account", final: true },
 ];
 
 function TriIcon({ state }: { state: TriState }) {
@@ -100,6 +112,7 @@ export function KycDecisionRail({
   const cycle = (k: string) => setJudg((p) => ({ ...p, [k]: p[k] === "pending" ? "pass" : p[k] === "pass" ? "fail" : "pending" }));
   const allJudged = JUDGMENT_CHECKS.every((c) => judg[c.key] === "pass");
   const anyAutoFail = autoChecks.some((c) => c.state === "fail");
+  const pickedFinal = REJECT_OPTIONS.find((o) => o.value === reasonCode)?.final === true;
 
   const run = (fn: (fd: FormData) => Promise<{ ok: boolean; error?: string; field?: string }>, okTitle: string, extra?: Record<string, string>, okVariant: "success" | "warning" = "success") => {
     startTransition(async () => {
@@ -190,39 +203,24 @@ export function KycDecisionRail({
                 /* btn-lg (--h-control-lg, 48px) rather than btn-md: these three controls
                    decide a person's identity and open the withdrawal gate, and officers
                    review on a phone, so they get the top rung of the ladder.
-                   ⚠️ CORRECTED — this note used to read "btn-lg (46px), not btn-md (38px)"
-                   and argue that btn-md sat under the 44px WCAG 2.5.5 floor. All three
-                   numbers are stale: globals.css now ships 40 / 44 / 48 for
-                   --h-control-sm / -md / -lg, so btn-md IS at the floor and the "raising
-                   the token belongs to L6" caveat is discharged. The CHOICE stands on
-                   consequence, not on a floor violation. ⛔ Values live in globals.css —
-                   do not restate them here again. */
+                   ⛔ Values live in globals.css — do not restate them here. */
                 className="btn btn-primary btn-lg w-full disabled:opacity-40"
               >
                 <I.shieldcheck s={14} /> {makerCheckerRequired ? "Approve (second officer)" : "Approve identity"}
               </button>
             }
             title="Approve identity · Idhinisha kitambulisho"
-            /* E-9 (officer-facing twin of E-5). Measured at the ENFORCEMENT layer, not
-               the UI. This sentence has been wrong twice, in opposite directions:
-                 · It first read "unlocks full real-money deposits, play and withdrawals"
-                   — wrong on two of three. Deposits are gated on a confirmed email
-                   address (`deposit()` in wallet-service), and play is not gated on
-                   identity at all (`market-service.ts` contains no KYC reference).
-                 · It then read "opens the withdrawal gate", which was true until
-                   2026-08-20 and is now false: identity verification stopped being a
-                   precondition of withdrawal on the Gaming Board's instruction (comment
-                   #1, relayed by the owner 2026-08-19), and `withdraw()` no longer
-                   refuses on identity. An officer reading "this opens the withdrawal
-                   gate" would believe they were granting a permission that is already
-                   universal — and, worse, would believe withholding approval withholds
-                   it. `kyc-approved-copy.test.mts` REQUIRED the old sentence; that
-                   assertion is inverted rather than relaxed, because a green suite
-                   holding a false statement in front of the accountable officer at the
-                   moment of decision is exactly what this suite exists to prevent.
-               ⛔ Do not re-add a money consequence here. What approval does is record an
-               identity and bind a document. docs/BOARD-DISCLOSURE-B-E.md §3-§4. */
-            body={<>This records the player&apos;s identity as <strong>verified</strong> and binds this document to this account, so no other account can claim it. It is audit-logged. It does <strong>not</strong> open any money gate: withdrawals no longer depend on identity verification, deposits are gated on a confirmed email address, and play is not gated on identity. Confirm the checklist reflects the documents you actually reviewed.</>}
+            /* E-9 (officer-facing twin of E-5), measured at the ENFORCEMENT layer. This sentence
+               has now been wrong three times, and the third was held in place by a green guard:
+                 · first "unlocks full real-money deposits, play and withdrawals";
+                 · then "opens the withdrawal gate" — false from 2026-08-20 to 2026-09-05;
+                 · then, from 2026-09-05, "does NOT open any money gate: withdrawals no longer depend
+                   on identity verification…" — FALSE IN ALL THREE CLAUSES while the 2026-09-05 gate
+                   stood, and `kyc-approved-copy.test.mts` asserted it stayed that way.
+               ⭐ FROM 2026-09-13 THE TRUE SENTENCE IS ONE CLAUSE: approval opens the withdrawal gate,
+               and nothing else (`kyc-gate.ts` — the only identity question on any money path).
+               ⛔ Fix this sentence and its guard in the same commit, every time. */
+            body={<>This records the player&apos;s identity as <strong>verified</strong> and binds this document to this account, so no other account can claim it. It is audit-logged. <strong>It opens the withdrawal gate, and nothing else</strong> — depositing needs a confirmed email address and playing needs no identity, so this player may already hold money they are waiting to take out. Confirm the checklist reflects the documents you actually reviewed.</>}
             confirmLabel="Yes, approve identity"
             tone="brand"
             /* E-4: the attestations travel WITH the decision. They used to arm this
@@ -255,9 +253,14 @@ export function KycDecisionRail({
                 options={REJECT_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
               />
             </div>
-            <textarea data-field="note" value={note} onChange={(e) => setNote(e.target.value)} rows={2} placeholder="Note to the player (required for “Other”)…" className="w-full rounded-md border border-border bg-bg-overlay px-2.5 py-1.5 text-[12px] text-text admin-focus resize-y placeholder:text-text-subtle" />
+            {pickedFinal && (
+              <p data-final-refusal-warning="1" className="rounded-md border border-border bg-bg-inset px-2.5 py-2 text-body-sm text-text">
+                <strong>A final refusal.</strong> It freezes the wallet (no deposits, bets or withdrawals), keeps this document reserved, and the player cannot restart verification themselves. You then decide what happens to any balance, with a written reason.
+              </p>
+            )}
+            <textarea data-field="note" value={note} onChange={(e) => setNote(e.target.value)} rows={2} placeholder={pickedFinal ? "Optional note — the player reads it; never name a list or an internal check…" : "Note to the player (required for “Other”)…"} className="w-full rounded-md border border-border bg-bg-overlay px-2.5 py-1.5 text-[12px] text-text admin-focus resize-y placeholder:text-text-subtle" />
             <div className="grid grid-cols-2 gap-2">
-              <button type="button" disabled={!reasonCode} onClick={() => run(rejectKycWorkstationAction, "Submission rejected", { reasonCode, note })} className="btn btn-claret btn-md w-full disabled:opacity-40">Confirm reject</button>
+              <button type="button" disabled={!reasonCode} onClick={() => run(rejectKycWorkstationAction, pickedFinal ? "Refused · wallet frozen" : "Submission rejected", { reasonCode, note }, pickedFinal ? "warning" : "success")} className="btn btn-claret btn-md w-full disabled:opacity-40">{pickedFinal ? "Confirm final refusal" : "Confirm reject"}</button>
               <button type="button" onClick={() => { setRejectOpen(false); setReasonCode(""); }} className="btn btn-ghost btn-md w-full">Cancel</button>
             </div>
           </div>
