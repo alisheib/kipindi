@@ -2,6 +2,7 @@ import { LegalHeader, LegalSection, LEGAL_BINDING_LANGUAGE as BINDING } from "..
 import { SUPPORT_EMAIL, LICENCE_NUMBER } from "@/lib/server/support-config";
 import { getServerT, type Locale } from "@/lib/i18n-server";
 import { getGlobalConfig } from "@/lib/server/market-config";
+import { TERMS_VERSION } from "@/lib/terms-version";
 
 // The void ground in §6 tracks a LIVE setting, so this page cannot be statically baked — it
 // would freeze a legal promise at whatever the window was on the day of the last build.
@@ -45,10 +46,13 @@ const TITLE: Record<Locale, string> = {
  * `WITHDRAWAL_AML_HOLD` is false in payments.ts and the cap is WITHDRAW_MAX_TZS in validators.ts — if that
  * cap ever moves, §5 moves with it. Do not restore the hold sentence.
  */
+// ⭐ The version is `TERMS_VERSION`, the SAME constant registration stamps on the account
+// (`src/lib/terms-version.ts`, `test:terms-binding`) — so what a player read and what was recorded
+// as accepted cannot diverge again. Two literals did, twice (2026-09-09 and 2026-09-13).
 const META: Record<Locale, string> = {
-  en: "Version 2026-09-13 · Effective on account registration.",
-  sw: "Toleo 2026-09-13 · Yanaanza kutumika unaposajili akaunti.",
-  zh: "版本 2026-09-13 · 自账户注册时生效。",
+  en: `Version ${TERMS_VERSION} · Effective on account registration.`,
+  sw: `Toleo ${TERMS_VERSION} · Yanaanza kutumika unaposajili akaunti.`,
+  zh: `版本 ${TERMS_VERSION} · 自账户注册时生效。`,
 };
 
 /**

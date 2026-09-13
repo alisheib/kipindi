@@ -9,6 +9,7 @@
  *  - Stake range hard-bound to GBT-approved limits
  */
 import { z } from "zod";
+import { isOfAge } from "@/lib/id-documents";
 
 // Tanzania mobile number — accepts every common shape the user might type:
 //   712 345 678   (just the 9 digits, with optional spaces) — most common,
@@ -61,10 +62,10 @@ export const dateOfBirth = z
   .refine((v) => {
     const dob = new Date(v);
     if (isNaN(dob.getTime())) return false;
-    const now = Date.now();
-    if (dob.getTime() > now) return false;
-    const age = (now - dob.getTime()) / (365.25 * 24 * 3600 * 1000);
-    return age >= 18;
+    if (dob.getTime() > Date.now()) return false;
+    // ⛔ ONE AGE GATE — whole calendar years on the Tanzanian date (`isOfAge`). This was `/ 365.25 days`, which
+    // disagreed with the KYC service's own lock for ~12 hours around many birthdays (id-documents.ts).
+    return isOfAge(v, new Date());
   }, "You must be 18 or older to register");
 
 export const fullName = z.string().trim().min(2).max(120);

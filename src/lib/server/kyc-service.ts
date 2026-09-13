@@ -36,7 +36,7 @@ import {
   ALL_DOC_SLOTS,
   MAX_DOC_BYTES,
   MIN_AGE_YEARS,
-  ageOn,
+  ageOnPlatformDate,
   isExpired,
   missingSlots,
   validateIdNumber,
@@ -131,6 +131,73 @@ export async function startKyc(userId: string): Promise<ServiceResult<{ kycId: s
 }
 
 /**
+ * ⛔ THE PLAYER'S OWN WRITES STOP AT THE DOORS AN OFFICER'S DECISION CLOSED (found 2026-09-13, audit session 95).
+ *
+ * `startKyc` refused to restart a FINAL refusal, and the verification page hid its step forms — but the three
+ * step functions below asked only "does a row exist?". A server action is a reachable endpoint whether or not a
+ * page renders its form, so one POST from a finally refused player could:
+ *   · `submitForReview` — move REJECTED/UNDERAGE back to PENDING_REVIEW, dropping the case off the refused-funds
+ *     report and out of `refusedFundsPosition`, and ping every officer;
+ *   · `submitIdentityStep` — replace the reserved document number (S16 undone: the index releases the old one),
+ *     or, through the NIDA mock's mismatch path, overwrite UNDERAGE with a RECOVERABLE code, after which
+ *     `startKyc` restarts and an officer's Unfreeze treats the identity hold as stale;
+ *   · `attachDocument` — replace the images the refusal was decided on.
+ * And on an APPROVED or PENDING_REVIEW row `submitIdentityStep` rewrote the identity tuple with no review at all:
+ * the approval stayed, the number an officer approved was released for another account, and the account kept
+ * its withdrawal right on an identity nobody had seen.
+ *
+ * So: a FINAL refusal is closed to every player write (the door back is `reopenFinalRefusal`, an officer's act),
+ * and the identity tuple is locked while a submission is with an officer or approved — the same principle
+ * `attachDocument` already applied to documents. A RECOVERABLE refusal stays open exactly as before: the page
+ * lets that player re-upload and resubmit, and the refusal already freed the number.
+ */
+type PlayerStep = "identity" | "documents" | "submit";
+type KycRow = NonNullable<Awaited<ReturnType<typeof db.kyc.findByUserId>>>;
+
+function closedToPlayer(k: { id: string; userId: string; status: string; rejectReason?: string | null; approvedAt?: string | null; idVerifiedAt?: string | null }, step: PlayerStep): ServiceResult<never> | null {
+  if (k.status === "REJECTED" && isFinalRefusal(k.rejectReason)) {
+    audit({ category: "COMPLIANCE", action: "kyc.player_write_refused_final", actorId: k.userId, targetType: "Kyc", targetId: k.id, payload: { step, rejectReason: k.rejectReason } });
+    return { ok: false, error: "This verification was refused and cannot be changed. Contact support.", code: "INVALID", reason: "kyc_refused_final" };
+  }
+  // ⭐ AND AN ACCOUNT APPROVED ONCE CANNOT OVERWRITE A STANDING IDENTITY (P0 adversarial review, 2026-09-13).
+  // `forceReverifyKyc` moves APPROVED → ADDITIONAL_INFO_REQUIRED and keeps `approvedAt` (so withdrawals stay open,
+  // by design) and `idVerifiedAt`. Without this term one POST replaced the approved number with a new document —
+  // freeing it for another account — on exactly the account an officer had flagged. The page never offers it (the
+  // identity form renders only while `idVerifiedAt` is empty); a document that genuinely must change goes through
+  // an officer's recoverable refusal and a restart, which clears the tuple first.
+  if (step === "identity" && (k.status === "PENDING_REVIEW" || k.status === "APPROVED" || (!!k.approvedAt && !!k.idVerifiedAt))) {
+    audit({ category: "SECURITY", action: "kyc.identity_locked_blocked", actorId: k.userId, targetType: "Kyc", targetId: k.id, payload: { status: k.status, approvedOnce: !!k.approvedAt } });
+    return { ok: false, error: "Your identity details are locked while your submission is with our team or approved.", code: "INVALID", reason: "docs_locked" };
+  }
+  return null;
+}
+
+/**
+ * ⛔ THE CHECK AND THE WRITE READ THE SAME ROW (P0 adversarial review, 2026-09-13).
+ *
+ * `closedToPlayer` above ran on the copy each step read at its start — and each step then awaited something slow
+ * (an R2 upload, the NIDA check's fixed latency, an email write) and wrote `{ ...thatCopy, … }` back. `kyc.upsert`
+ * replaces the whole row, status and refusal code included, with no version check. So an officer's FINAL refusal
+ * that landed during the await was silently REVERTED by the player's write: the case left REJECTED, fell off the
+ * refused-funds report, and the officer's Unfreeze then read the identity hold as stale.
+ *
+ * So every player write happens here: under `kyc:<userId>` — the lock `reviewKyc`, `forceReverifyKyc` and
+ * `reopenFinalRefusal` already hold while they decide — re-reading the row, re-asking `closedToPlayer` on THAT copy,
+ * and building the write from it. The slow work stays outside, before the lock.
+ */
+async function underSubmissionLock<T>(userId: string, stale: KycRow, step: PlayerStep, write: (fresh: KycRow) => Promise<ServiceResult<T>>): Promise<ServiceResult<T>> {
+  return withLock(`kyc:${userId}`, async (): Promise<ServiceResult<T>> => {
+    const fresh = await db.kyc.findByUserId(userId);
+    if (!fresh || fresh.id !== stale.id) {
+      return { ok: false, error: "Your verification changed while this was being saved. Reload the page and try again.", code: "INVALID" };
+    }
+    const closed = closedToPlayer(fresh, step);
+    if (closed) return closed;
+    return write(fresh);
+  });
+}
+
+/**
  * STEP 1 — the identity step, for ANY ONE of the four documents.
  *
  * Order matters and every step is here for a reason it has already been bitten by:
@@ -157,6 +224,9 @@ export async function submitIdentityStep(userId: string, input: z.input<typeof K
 
   const k = await db.kyc.findByUserId(userId);
   if (!k) return { ok: false, error: "Start KYC first.", code: "NOT_FOUND" };
+  // ⛔ Before anything else touches the row — see `closedToPlayer`.
+  const closed = closedToPlayer(k, "identity");
+  if (closed) return closed;
 
   const idType = parse.data.idType as IdDocType;
   const spec = ID_DOC_SPECS[idType];
@@ -166,14 +236,21 @@ export async function submitIdentityStep(userId: string, input: z.input<typeof K
   // lock rather than the first — and it is here, above the per-type branch, so it
   // can never become a property of one document. A caller that reaches the service
   // without the schema (a script, a future API) still meets the gate.
-  const declaredAge = ageOn(parse.data.dob, new Date());
+  // ⛔ The one age gate — whole calendar years on the Tanzanian date, the SAME question `validators.dateOfBirth`
+  // asks, so this really is the second lock its comment says it is (id-documents.ts `isOfAge`).
+  const declaredAge = ageOnPlatformDate(parse.data.dob, new Date());
   if (!Number.isFinite(declaredAge) || declaredAge < MIN_AGE_YEARS) {
     audit({ category: "COMPLIANCE", action: "kyc.identity.underage_attempt", actorId: userId, targetType: "User", targetId: userId, payload: { idType } });
-    // ⭐ UNDERAGE IS A FINAL CODE (2026-09-13): the wallet is frozen before the refusal is written.
-    const freeze = await freezeForFinalRefusal(userId, k.id, "UNDERAGE", null);
-    if (!freeze.ok) return { ok: false, error: freeze.error, code: "INVALID" };
-    await db.kyc.upsert({ ...k, status: "REJECTED", rejectReason: "UNDERAGE", rejectNote: null, updatedAt: new Date().toISOString() });
-    await recordFinalRefusal(userId, k.id, "UNDERAGE", null);
+    // ⭐ UNDERAGE IS A FINAL CODE (2026-09-13): the wallet is frozen before the refusal is written — under the
+    // submission lock, on the row as it stands now.
+    const refused = await underSubmissionLock<never>(userId, k, "identity", async (fresh) => {
+      const freeze = await freezeForFinalRefusal(userId, fresh.id, "UNDERAGE", null);
+      if (!freeze.ok) return { ok: false, error: freeze.error, code: "INVALID" };
+      await db.kyc.upsert({ ...fresh, status: "REJECTED", rejectReason: "UNDERAGE", rejectNote: null, updatedAt: new Date().toISOString() });
+      await recordFinalRefusal(userId, fresh.id, "UNDERAGE", null);
+      return { ok: true };
+    });
+    if (!refused.ok) return refused;
     // ⛔ `finalRefusal`: the ordinary REJECTED notice says "Please re-submit", which is false on a final
     // code — the player cannot restart and the wallet is frozen while an officer decides the balance.
     notifyKyc(userId, "REJECTED", { finalRefusal: true }).catch(() => {});
@@ -289,12 +366,17 @@ export async function submitIdentityStep(userId: string, input: z.input<typeof K
       // (§6 E-6). Keep it only for OTHER, which shows no category at all. The
       // EMAIL still carries it: email templates have no dictionary.
       const rejectNote = enumMember === "OTHER" ? NIDA_TEXT[result.reason] : null;
-      // ⭐ UNDERAGE and SANCTIONED are FINAL codes (2026-09-13): freeze before the refusal is written.
-      const freeze = await freezeForFinalRefusal(userId, k.id, enumMember, null);
-      if (!freeze.ok) return { ok: false, error: freeze.error, code: "INVALID" };
-      await db.kyc.upsert({ ...k, status: "REJECTED", rejectReason: enumMember, rejectNote, updatedAt: new Date().toISOString() });
-      audit({ category: "KYC", action: "kyc.nida.rejected", actorId: userId, targetType: "Kyc", targetId: k.id, payload: { reason: result.reason } });
-      await recordFinalRefusal(userId, k.id, enumMember, null);
+      // ⭐ UNDERAGE and SANCTIONED are FINAL codes (2026-09-13): freeze before the refusal is written — under the
+      // submission lock, on the row as it stands after the NIDA check's latency, never on the copy read before it.
+      const nidaRefused = await underSubmissionLock<never>(userId, k, "identity", async (fresh) => {
+        const freeze = await freezeForFinalRefusal(userId, fresh.id, enumMember, null);
+        if (!freeze.ok) return { ok: false, error: freeze.error, code: "INVALID" };
+        await db.kyc.upsert({ ...fresh, status: "REJECTED", rejectReason: enumMember, rejectNote, updatedAt: new Date().toISOString() });
+        audit({ category: "KYC", action: "kyc.nida.rejected", actorId: userId, targetType: "Kyc", targetId: fresh.id, payload: { reason: result.reason } });
+        await recordFinalRefusal(userId, fresh.id, enumMember, null);
+        return { ok: true };
+      });
+      if (!nidaRefused.ok) return nidaRefused;
       // In-app + email notice (best-effort). ⛔ A final code must not be told to re-submit.
       const nidaFinal = isFinalRefusal(enumMember);
       notifyKyc(userId, "REJECTED", { finalRefusal: nidaFinal }).catch(() => {});
@@ -309,43 +391,49 @@ export async function submitIdentityStep(userId: string, input: z.input<typeof K
   }
 
   const now = new Date().toISOString();
-  try {
-    await db.kyc.upsert({
-      ...k,
-      idType,
-      idNumber,
-      idExpiry,
-      idVerifiedAt: now,
-      // 🔴 WRITTEN FOR EVERY SUBMISSION, not only for the ones that will one day be
-      // erased — and that is the whole point. The fingerprint only collides if BOTH rows
-      // carry one: the erased row (which gets it at erasure time, computed from the raw
-      // number it is destroying) and the row of whoever presents that document next.
-      // Write it only at erasure and the second account sails through with a NULL
-      // fingerprint and nothing to collide with. See prisma/schema.prisma on the column.
-      idFingerprint: fingerprint,
-      // ⚠️ THE DEPRECATED MIRROR IS GONE (2026-08-20, contract step). This upsert
-      // used to also write `nidaNumber` / `nidaVerifiedAt` for a NIDA so a rolling
-      // deploy's previous container could keep serving KYC reads. That mirror had
-      // exactly one release to live and this is the release it dies in — the fields
-      // leave the schema HERE, the columns leave the database in the migration that
-      // follows. ⛔ Do not re-add either: two homes for one fact diverge, and the
-      // stale one is always the one somebody reads.
-      fullName: parse.data.fullName,
-      dob: parse.data.dob,
-      updatedAt: now,
-    });
-  } catch (err) {
-    // The check above is the FAST PATH; the partial unique index
-    // "KycSubmission_idType_idNumber_active_key" is the ENFORCEMENT. Two users
-    // submitting the same document in the same instant both clear the read
-    // (proven by scripts/load/s14-kyc-nida-race.mts) — the loser lands here.
-    // Present it as the same refusal a sequential duplicate gets, so a race is
-    // indistinguishable from an ordinary duplicate to the player, and audited the
-    // same way for AML.
-    if (!isIdUniqueViolation(err)) throw err;
-    audit({ category: "SECURITY", action: "kyc.id.duplicate_blocked", actorId: userId, targetType: "User", targetId: userId, payload: { idType, viaConstraint: true } });
-    return { ok: false, error: "This identity document is already linked to another account. If this is a mistake, contact support.", code: "INVALID", reason: "id_taken" };
-  }
+  // ⛔ UNDER THE SUBMISSION LOCK, FROM THE ROW AS IT STANDS NOW — the NIDA check above sleeps and the email write
+  // above awaits, and an officer's final refusal landing in that gap must never be overwritten by `{ ...k }`.
+  const written = await underSubmissionLock<never>(userId, k, "identity", async (fresh) => {
+    try {
+      await db.kyc.upsert({
+        ...fresh,
+        idType,
+        idNumber,
+        idExpiry,
+        idVerifiedAt: now,
+        // 🔴 WRITTEN FOR EVERY SUBMISSION, not only for the ones that will one day be
+        // erased — and that is the whole point. The fingerprint only collides if BOTH rows
+        // carry one: the erased row (which gets it at erasure time, computed from the raw
+        // number it is destroying) and the row of whoever presents that document next.
+        // Write it only at erasure and the second account sails through with a NULL
+        // fingerprint and nothing to collide with. See prisma/schema.prisma on the column.
+        idFingerprint: fingerprint,
+        // ⚠️ THE DEPRECATED MIRROR IS GONE (2026-08-20, contract step). This upsert
+        // used to also write `nidaNumber` / `nidaVerifiedAt` for a NIDA so a rolling
+        // deploy's previous container could keep serving KYC reads. That mirror had
+        // exactly one release to live and this is the release it dies in — the fields
+        // leave the schema HERE, the columns leave the database in the migration that
+        // follows. ⛔ Do not re-add either: two homes for one fact diverge, and the
+        // stale one is always the one somebody reads.
+        fullName: parse.data.fullName,
+        dob: parse.data.dob,
+        updatedAt: now,
+      });
+    } catch (err) {
+      // The check above is the FAST PATH; the partial unique index
+      // "KycSubmission_idType_idNumber_active_key" is the ENFORCEMENT. Two users
+      // submitting the same document in the same instant both clear the read
+      // (proven by scripts/load/s14-kyc-nida-race.mts) — the loser lands here.
+      // Present it as the same refusal a sequential duplicate gets, so a race is
+      // indistinguishable from an ordinary duplicate to the player, and audited the
+      // same way for AML.
+      if (!isIdUniqueViolation(err)) throw err;
+      audit({ category: "SECURITY", action: "kyc.id.duplicate_blocked", actorId: userId, targetType: "User", targetId: userId, payload: { idType, viaConstraint: true } });
+      return { ok: false, error: "This identity document is already linked to another account. If this is a mistake, contact support.", code: "INVALID", reason: "id_taken" };
+    }
+    return { ok: true };
+  });
+  if (!written.ok) return written;
   // `idVerifiedAt` means "format accepted + unique", never "authority confirmed"
   // (docs/IDENTITY-POLICY.md). The payload used to carry a fabricated matchScore
   // of 0.97 straight into the audit chain; record the real basis, and record WHICH
@@ -456,6 +544,9 @@ export async function attachDocument(userId: string, docType: KycDocSlot, storag
   if (!valid.ok) return { ok: false, error: valid.error, code: "INVALID", reason: valid.reason };
   const k = await db.kyc.findByUserId(userId);
   if (!k) return { ok: false, error: "Start KYC first.", code: "NOT_FOUND" };
+  // ⛔ The images a FINAL refusal was decided on are evidence — see `closedToPlayer`.
+  const closed = closedToPlayer(k, "documents");
+  if (closed) return closed;
   // Re-uploading a document while it's already under review or approved would
   // change the evidence behind an officer's pending/made decision — block it.
   if (k.status === "PENDING_REVIEW" || k.status === "APPROVED") {
@@ -467,8 +558,18 @@ export async function attachDocument(userId: string, docType: KycDocSlot, storag
   // Carry the VERIFIED mime + size forward: once this is an `r2:<key>` the bytes
   // can no longer be measured from the stored value, and guessing produced
   // "0 bytes, application/octet-stream" for every R2 document.
-  const docs = [...k.documents.filter((d: { docType: string }) => d.docType !== docType), { docType, storageKey: storedKey, uploadedAt: new Date().toISOString(), mimeType: valid.mimeType, sizeBytes: valid.bytes }];
-  await db.kyc.upsert({ ...k, documents: docs, updatedAt: new Date().toISOString() });
+  // ⛔ The upload above may take seconds against R2. The write happens under the submission lock, on the row as it
+  // stands NOW — the lock re-asks `closedToPlayer`, and the review lock is re-asked here — so a refusal or a
+  // submission that landed during the upload is never reverted by this player's stale copy.
+  const saved = await underSubmissionLock<never>(userId, k, "documents", async (fresh) => {
+    if (fresh.status === "PENDING_REVIEW" || fresh.status === "APPROVED") {
+      return { ok: false, error: "Documents are locked while your submission is under review.", code: "INVALID", reason: "docs_locked" };
+    }
+    const docs = [...fresh.documents.filter((d: { docType: string }) => d.docType !== docType), { docType, storageKey: storedKey, uploadedAt: new Date().toISOString(), mimeType: valid.mimeType, sizeBytes: valid.bytes }];
+    await db.kyc.upsert({ ...fresh, documents: docs, updatedAt: new Date().toISOString() });
+    return { ok: true };
+  });
+  if (!saved.ok) return saved;
   // Note: never log the image bytes themselves in the audit payload.
   audit({ category: "KYC", action: "kyc.document.uploaded", actorId: userId, targetType: "Kyc", targetId: k.id, payload: { docType, bytes: valid.bytes } });
   return { ok: true };
@@ -484,6 +585,9 @@ export async function attachExtraDocument(userId: string, requestId: string, sto
   if (!valid.ok) return { ok: false, error: valid.error, code: "INVALID", reason: valid.reason };
   const k = await db.kyc.findByUserId(userId);
   if (!k) return { ok: false, error: "Start KYC first.", code: "NOT_FOUND" };
+  // ⛔ A FINAL refusal is closed to this write as well — see `closedToPlayer`.
+  const closed = closedToPlayer(k, "documents");
+  if (closed) return closed;
   if (k.status !== "ADDITIONAL_INFO_REQUIRED") {
     return { ok: false, error: "No extra documents are being requested right now.", code: "INVALID", reason: "no_extra_request" };
   }
@@ -492,8 +596,18 @@ export async function attachExtraDocument(userId: string, requestId: string, sto
   if (!target) return { ok: false, error: "Unknown document request.", code: "NOT_FOUND" };
   const now = new Date().toISOString();
   const storedKey = await putKycDocument(storageKey, `${userId}/extra_${requestId}`);
-  const next = requests.map((r: KycExtraRequest) => (r.id === requestId ? { ...r, storageKey: storedKey, uploadedAt: now } : r));
-  await db.kyc.upsert({ ...k, extraRequests: next, updatedAt: now });
+  // ⛔ Written under the submission lock from the row as it stands after the upload — never `{ ...k }`.
+  const saved = await underSubmissionLock<never>(userId, k, "documents", async (fresh) => {
+    if (fresh.status !== "ADDITIONAL_INFO_REQUIRED") {
+      return { ok: false, error: "No extra documents are being requested right now.", code: "INVALID", reason: "no_extra_request" };
+    }
+    const freshRequests: KycExtraRequest[] = fresh.extraRequests ?? [];
+    if (!freshRequests.some((r: KycExtraRequest) => r.id === requestId)) return { ok: false, error: "Unknown document request.", code: "NOT_FOUND" };
+    const next = freshRequests.map((r: KycExtraRequest) => (r.id === requestId ? { ...r, storageKey: storedKey, uploadedAt: now } : r));
+    await db.kyc.upsert({ ...fresh, extraRequests: next, updatedAt: now });
+    return { ok: true };
+  });
+  if (!saved.ok) return saved;
   audit({ category: "KYC", action: "kyc.extra_document.uploaded", actorId: userId, targetType: "Kyc", targetId: k.id, payload: { requestId, bytes: valid.bytes } });
   return { ok: true };
 }
@@ -501,6 +615,9 @@ export async function attachExtraDocument(userId: string, requestId: string, sto
 export async function submitForReview(userId: string): Promise<ServiceResult> {
   const k = await db.kyc.findByUserId(userId);
   if (!k) return { ok: false, error: "Start KYC first.", code: "NOT_FOUND" };
+  // ⛔ A FINAL refusal never goes back to the queue on the player's say-so — see `closedToPlayer`.
+  const closed = closedToPlayer(k, "submit");
+  if (closed) return closed;
   if (!k.idVerifiedAt || !k.idType) return { ok: false, error: "Identity document not yet accepted.", code: "INVALID", reason: "id_not_verified" };
   // 🔴 THE REQUIRED SLOTS ARE THE ONES *THIS DOCUMENT* NEEDS — never a count.
   // `documents.length >= 3` was true of a NIDA and is a lie about a passport, and a
@@ -532,7 +649,21 @@ export async function submitForReview(userId: string): Promise<ServiceResult> {
   }
 
   const now = new Date().toISOString();
-  await db.kyc.upsert({ ...k, status: "PENDING_REVIEW", submittedAt: now, updatedAt: now });
+  // ⛔ THE TRANSITION IS A COMPARE-AND-SWAP UNDER THE SUBMISSION LOCK. Every check above ran on the row read at the
+  // top; the write happens only if the row is still exactly that row — so an officer's refusal, or a concurrent
+  // submit, landing in between is never overwritten, and a double click emails nobody twice.
+  let transitioned = false;
+  const moved = await underSubmissionLock<never>(userId, k, "submit", async (fresh) => {
+    if (fresh.status === "PENDING_REVIEW" || fresh.status === "APPROVED") return { ok: true };
+    if (fresh.status !== k.status || fresh.updatedAt !== k.updatedAt) {
+      return { ok: false, error: "Your verification changed while it was being sent. Reload the page and try again.", code: "INVALID" };
+    }
+    await db.kyc.upsert({ ...fresh, status: "PENDING_REVIEW", submittedAt: now, updatedAt: now });
+    transitioned = true;
+    return { ok: true };
+  });
+  if (!moved.ok) return moved;
+  if (!transitioned) return { ok: true };
   audit({ category: "KYC", action: "kyc.submitted", actorId: userId, targetType: "Kyc", targetId: k.id });
   notifyKyc(userId, "PENDING_REVIEW").catch(() => {}); // in-app "submitted, under review" notice
 

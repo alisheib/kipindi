@@ -21,6 +21,7 @@ import { isFinalRefusal } from "@/lib/kyc-refusal";
 import { approvedEver } from "@/lib/kyc-approval";
 import { walletHeldTzs } from "@/lib/kyc-stage";
 import { KYC_REVIEW_SLA_HOURS } from "@/lib/kyc-sla";
+import { isOfAge } from "@/lib/id-documents";
 import { refusedFundsPosition, toDecisionRow } from "@/lib/server/refused-funds";
 import { getAuditForTargetDurable } from "@/lib/server/audit";
 import { REFUSED_FUNDS_ACTION, REFUSED_FUNDS_OUTCOME_COPY } from "@/lib/refused-funds-outcomes";
@@ -144,7 +145,8 @@ export default async function KycWorkstationPage({ params }: { params: Promise<{
 
   // Auto-derived checklist (real signals only).
   const present = new Set(kyc.documents.map((d) => d.docType));
-  const age18 = kyc.dob ? (Date.now() - Date.parse(kyc.dob)) / (365.25 * 24 * 3600_000) >= 18 : null;
+  // ⛔ The one age gate (`isOfAge`, whole years on the Tanzanian date) — the same answer registration gave.
+  const age18 = kyc.dob ? isOfAge(kyc.dob, new Date()) : null;
   const required = spec?.requiredSlots ?? [];
   const allDocs = required.length > 0 && required.every((t) => present.has(t));
 

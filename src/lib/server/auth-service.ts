@@ -29,6 +29,7 @@ import { isLiveMoneyMode } from "./runtime-mode";
 // compile time — there is no runtime cycle.
 import { selfExclusionStanding } from "./responsible-gambling";
 import { SUPPORT_PHONE } from "@/lib/server/support-config";
+import { TERMS_VERSION } from "@/lib/terms-version";
 
 /** Mask a phone for an audit payload — keep country code + last 2 (e.g.
  *  "+25570*****19"). The audit entry already carries actorId, so the full number
@@ -50,26 +51,18 @@ function adminBootstrapPhones(): Set<string> {
 
 const OTP_TTL_MS = 5 * 60 * 1000;
 /**
- * The version stamped on `User.acceptedTermsVersion` at registration — i.e. WHICH TEXT of
- * `/legal/terms` that person actually agreed to.
+ * The version stamped on `User.acceptedTermsVersion` at registration — WHICH TEXT of `/legal/terms`
+ * that person agreed to — is `TERMS_VERSION`, imported above from `src/lib/terms-version.ts`, the
+ * module the Terms page prints from.
  *
- * ⛔ MOVE THIS WHENEVER THE BINDING TEXT MOVES, IN THE SAME COMMIT. `RULES.md` §2.10 records
- * the identical defect on the agent side: `cc946bbb` rewrote two clauses of
- * `/legal/agent-terms` and `AGENT_TERMS_VERSION` went on reading the old date, so the document
- * a person read and the version recorded as accepted diverged — and the rows already written
- * could not afterwards be told apart.
- *
- * 2026-04-01 → 2026-09-09: §4's cash-out clause was rewritten in EN, SW and ZH to state the
- * RUNWAY condition, to name the Up & Down 3- and 5-minute rounds where cash-out is never
- * available, and to state that a bonus-funded position can never be sold (money-gate §6.12).
- * That narrows a right the previous text promised flatly, so it is a material change and the
- * stamp must move with it.
+ * 🔴 IT USED TO BE A LITERAL HERE, and it drifted from the page twice: 2026-09-09 moved this stamp and
+ * not the page; 2026-09-13 moved the page (§2, §3, the new §3a, §5) and not this stamp, so players who
+ * registered after `1699c17a` deployed were recorded as accepting 2026-09-09. The history and the
+ * hash pin that stops a third drift live in `terms-version.ts`; `test:terms-binding` enforces both.
  *
  * ⚠️ Nothing compares this to a stored value, so moving it does NOT force anyone to re-accept.
- * Existing rows keep `2026-04-01`, which is the correct record of what those players were
- * actually shown.
+ * Existing rows keep the version they were stamped with.
  */
-const TERMS_VERSION = "2026-09-09";
 
 /**
  * Best-effort request metadata for audit entries (IP + user agent).

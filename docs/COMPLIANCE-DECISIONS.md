@@ -6,6 +6,51 @@
 
 ---
 
+## 2026-09-13 (fourth) · The accepted-Terms record lagged the published Terms — corrected forward, and the rows already written are identified, not rewritten
+
+**Found by the audit of the identity-at-withdrawal release (session 95), not an owner ruling — recorded here because it
+changes how an existing compliance record must be read.**
+
+**What was wrong.** `User.acceptedTermsVersion` is the record of WHICH text of `/legal/terms` a player agreed to at
+registration. It was a string literal in `auth-service.ts`, and the page printed its own literal. They drifted twice:
+- `46ace149` (2026-09-09) rewrote §4 and moved the stamp to `2026-09-09`; the page went on printing `2026-09-07`.
+- The identity-at-withdrawal release moved the page to `Version 2026-09-13` (§2, §3, the new §3a, and that evening §3
+  and §5) and left the stamp at `2026-09-09`. So **every player who registered after `1699c17a` went live
+  (2026-09-13 17:12 UTC) was shown Terms v2026-09-13 — including §3a, the clause the whole ruling above rests on — and
+  recorded as accepting 2026-09-09.** Measured on production read-only at 19:30 UTC: **1** such account (created 19:14
+  UTC); every other player's stamp matches what they were shown.
+
+**What changes.** One module, `src/lib/terms-version.ts` (`TERMS_VERSION = "2026-09-13"`), printed by the page and
+stamped by both registration paths, with a hash of the binding bodies pinned beside it so the text cannot move without
+the editor facing the version. `npm run test:terms-binding` (in `predeploy`) fails on a literal date in the page, a
+local copy of the constant, a literal stamp, or a text change without a hash change — each proven by a planted control.
+
+**What deliberately does NOT change.**
+- ⛔ **No row is rewritten.** No hand-applied SQL on production, and a rewritten acceptance record is worse than a
+  known-imprecise one. The affected rows are exactly: `acceptedTermsVersion = '2026-09-09'` **and** `acceptedTermsAt` at
+  or after **2026-09-13 17:12 UTC** and before the deploy of this fix (stated in the session 95 block of
+  `LIVE-QA-CAMPAIGN.md` §6b). For those accounts the text actually shown was v2026-09-13.
+- Nothing re-asks existing players to accept; the version is a record, not a gate (unchanged since 2026-04-01).
+
+**In the same release, and recorded in `LIVE-QA-CAMPAIGN.md` §6b rather than here because they enforce rulings already
+made:** a FINAL refusal is now closed to the player's own KYC writes on the server (the page had only hidden the forms,
+so one POST could re-queue a refused case, release its reserved number or replace its evidence — S2 and S16 above), an
+approved, in-review or approved-once-and-re-verifying identity can no longer be rewritten by the player, every player
+KYC write re-reads the row under the lock an officer's decision holds (so a refusal landing during an upload is never
+reverted), and the NIDA mock's two QA hooks (a number ending `0000` fabricated a SANCTIONS match — since 2026-09-13 a
+final refusal that freezes the wallet) no longer answer in production.
+
+**⚠️ One change to a compliance control rides with it — the AGE GATE is one predicate now.** Registration measured age
+as `(now − date of birth) / 365.25 days`; the KYC service, the NIDA check and the officer's workstation each used a
+different rule. For about half of all birth dates the two disagreed for up to twelve hours around the 18th birthday,
+and the KYC service's own lock — seeing "17" where registration had seen "18" — issued an **automatic FINAL UNDERAGE
+refusal** (wallet frozen, no officer) to a player already 18 in Dar es Salaam. From this release every gate asks
+`isOfAge` (`src/lib/id-documents.ts`): **whole calendar years on the Africa/Dar_es_Salaam date**. Registration is
+therefore stricter by up to one day for a player registering on the eve of their 18th birthday, and never looser —
+a person under 18 by the Tanzanian calendar is refused everywhere, and a person 18 by it is refused nowhere.
+
+---
+
 ## 2026-09-13 (third) · Withdrawals are no longer held for a two-officer review — any amount up to the per-withdrawal cap pays out at once
 
 **Owner ruling (Ali, 2026-09-13, the evening the identity release went live).** Put to him with the consequence

@@ -9,6 +9,7 @@
  */
 import { audit } from "./audit";
 import { randomId } from "./crypto";
+import { isOfAge } from "@/lib/id-documents";
 
 /**
  * Is a real National Identification Authority endpoint wired up?
@@ -33,6 +34,23 @@ export type NidaResult =
   | { ok: true; verified: false; reason: "MISMATCH" | "EXPIRED" | "NOT_FOUND" | "UNDERAGE" | "SANCTIONED"; correlationId: string }
   | { ok: false; error: string; correlationId: string };
 
+/**
+ * May the two QA hooks below answer? — ⛔ NEVER IN PRODUCTION (found 2026-09-13, audit session 95).
+ *
+ * The mock fabricates a SANCTIONS match for any 20-digit number ending `0000`, and a details MISMATCH for one
+ * ending `9999`. They exist so the local suites (`kyc-flow-stress`, `kyc-step-guards` §1.3 and §5.6) and the `next dev`
+ * browser drive `qa:cert-d2` (`kyc-admin-mobile-e2e.mjs`, a `…9999` NIDA) can reach those branches.
+ * Nothing stopped them answering a real citizen: `NIDA_API_URL` is unset in production, so this mock IS the
+ * production path. Until 2026-09-13 the sanctions hook produced a restartable refusal; from that day SANCTIONED is
+ * a FINAL code, so a real player whose National ID happened to end `0000` would have had their wallet frozen, a
+ * `nida.sanctioned_match` and a `kyc.refused_final` written to the tamper-evident compliance chain for a match that
+ * never happened, and no way back but an officer. The mismatch hook meant a real `…9999` NIDA could never verify.
+ * The declared-age check below is real logic, not a hook, and is untouched.
+ */
+export function nidaQaHooksEnabled(env: { NODE_ENV?: string } = process.env): boolean {
+  return env.NODE_ENV !== "production";
+}
+
 export async function verifyNida(opts: { nida: string; fullName: string; dob: string; userId: string }): Promise<NidaResult> {
   const correlationId = `nida_${randomId(10)}`;
   audit({
@@ -56,18 +74,18 @@ export async function verifyNida(opts: { nida: string; fullName: string; dob: st
     audit({ category: "KYC", action: "nida.verify.invalid_format", actorId: opts.userId, targetType: "User", targetId: opts.userId, payload: { correlationId } });
     return { ok: true, verified: false, reason: "NOT_FOUND", correlationId };
   }
-  // Test sanction path: NIDA ending 0000 -> sanctioned (for QA)
-  if (opts.nida.endsWith("0000")) {
+  // Test sanction path: NIDA ending 0000 -> sanctioned (for QA). ⛔ Never in production — see `nidaQaHooksEnabled`.
+  if (nidaQaHooksEnabled() && opts.nida.endsWith("0000")) {
     audit({ category: "COMPLIANCE", action: "nida.sanctioned_match", actorId: opts.userId, targetType: "User", targetId: opts.userId, payload: { correlationId } });
     return { ok: true, verified: false, reason: "SANCTIONED", correlationId };
   }
-  // Test mismatch path: NIDA ending 9999 -> mismatch
-  if (opts.nida.endsWith("9999")) {
+  // Test mismatch path: NIDA ending 9999 -> mismatch. ⛔ Never in production.
+  if (nidaQaHooksEnabled() && opts.nida.endsWith("9999")) {
     return { ok: true, verified: false, reason: "MISMATCH", correlationId };
   }
   // Underage from DOB
-  const age = (Date.now() - new Date(opts.dob).getTime()) / (365.25 * 24 * 3600 * 1000);
-  if (age < 18) {
+  // ⛔ The one age gate (`isOfAge`, Tanzanian calendar date) — never `/ 365.25 days` (id-documents.ts).
+  if (!isOfAge(opts.dob, new Date())) {
     audit({ category: "COMPLIANCE", action: "nida.underage_attempt", actorId: opts.userId, targetType: "User", targetId: opts.userId, payload: { correlationId } });
     return { ok: true, verified: false, reason: "UNDERAGE", correlationId };
   }

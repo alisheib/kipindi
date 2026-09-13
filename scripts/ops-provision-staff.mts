@@ -162,8 +162,8 @@ for (const r of ready) {
     // level down: a stamped `acceptedTermsVersion` is INDISTINGUISHABLE at every read site
     // from someone who clicked it, and the honest flag sat in an audit payload nobody joins
     // to the user row. Null is the true statement, and it is the one the product can act on.
-    // (`TERMS_VERSION` is module-private to auth-service.ts and deliberately not exported,
-    // which is the codebase saying the same thing.)
+    // (`TERMS_VERSION` lives in `src/lib/terms-version.ts` since 2026-09-13 so the Terms page
+    // and registration read one value — importing it HERE would be exactly the defect above.)
     acceptedTermsVersion: null,
     acceptedTermsAt: null,
     marketingOptIn: false,
