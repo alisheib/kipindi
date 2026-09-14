@@ -1550,10 +1550,10 @@ async function buyPositionGuarded(userId: string, opts: BuyOpts, ctx: BetContext
           await postLedgerEntries(`stake_${betTxnId}`, stakeEntries({ txnId: betTxnId, userId, marketId: opts.marketId, realPart, bonusPart }), tx);
         });
       };
+      // ── H4 · house bots: `house:control` is the INNERMOST lock and wraps the money writes, so an OFF
+      // written before this point binds, and the memory mutex is held too (PLAN H4, 04 A9). ───────────
+      // SEAM:H4
       if (ctx.kind === "house") {
-        // ── H4 · house bots: `house:control` is the INNERMOST lock and wraps the money writes, so an OFF
-        // written before this point binds, and the memory mutex is held too (PLAN H4, 04 A9). ─────────
-        // SEAM:H4
         const refused = await withLock(HOUSE_CONTROL_LOCK, async (controlTx): Promise<HouseRefusal | null> => {
           const h4 = await houseH4({ tx: controlTx, ctx, intent: houseIntent!, side: opts.side, stake: opts.stake, pool: housePool });
           if (h4.refusal) return h4.refusal;
@@ -4508,7 +4508,7 @@ export async function emergencyVoidMarket(opts: { marketId: string; officerId: s
 
   // After the market lock: reverse turnover + return bonus principal to bonus
   // (never to real — forfeit if no active grant). See resolveMarket for rationale.
-  // SEAM:reverseWagering (04 A17) — a house stake recorded no turnover, so its refund removes none from
+  // SEAM:reverseWageringEmergency (04 A17) — a house stake recorded no turnover, so its refund removes none from
   // the holder's personal bonus requirement.
   for (const r of pendingWagerReversals) if (r.houseBotId == null) await reverseWagering(r.userId, r.stake);
   for (const r of pendingBonusRefunds) {
