@@ -15,7 +15,8 @@
  * unverified". §8-§10 prove the rules that keep those honest: money moves ONE arm and no
  * other, "verified" is the withdrawal gate's own predicate, the liability figure is on the
  * wallet-liability basis, a failed read is never zero, and `PENDING_KYC` no longer reads as a
- * state.
+ * state. §11 (2026-09-14) proves every count of files "with us" is one rule; §12 that the
+ * liability tile names its basis and the frozen and closed money that basis leaves out.
  *
  * ⛔ NO DATABASE, BY DESIGN. `scripts/dal-parity.test.mts` states the rule this file
  * obeys: *"a guard that talks to Postgres SKIPS when `DATABASE_URL` is absent — which is
@@ -44,6 +45,8 @@ import {
   type KycStage, type KycStatusToken, type KycStageFacts, type KycMoney,
 } from "../src/lib/kyc-stage.ts";
 import { approvedEver } from "../src/lib/kyc-approval.ts";
+import { tallyWalletLiability, walletLiabilityCaption } from "../src/lib/wallet-liability.ts";
+import { formatTzsCompact } from "../src/lib/utils.ts";
 import {
   kycStageLabel, kycStageVariant, fundedAxisLabel,
   accountStatusLabel, playerStatusVariant, presentedAccountStatus,
@@ -439,8 +442,11 @@ ok("§9f a genuine zero is representable as a number (the FAILED read is a diffe
   empty.accounts === 0 && empty.tzs === 0 && empty.basisTotalTzs === 0 && empty.frozen.tzs === 0 && empty.closed.tzs === 0);
 
 const analyticsCode = code(analyticsSrc);
-ok("§9g `walletLiabilityTotal` sums through the ONE shared `walletHeldTzs`, ACTIVE only",
-  /if \(w\.status === "ACTIVE"\) total \+= walletHeldTzs\(w\)/.test(analyticsCode));
+// ⚠️ 2026-09-14 (E-400 ⑦e): the ACTIVE sum moved into `tallyWalletLiability` (one read, the frozen and closed money
+// reported beside it). Its arithmetic is proven by EXECUTION in §12a against the oracle above; this pins the wiring.
+ok("§9g `walletLiabilityTotal` is the ACTIVE figure of the one tally, over one wallet read",
+  /export async function walletLiabilityTotal\(\) \{\s*return \(await walletLiabilityByStatus\(\)\)\.activeTzs;\s*\}/.test(analyticsCode)
+  && /return tallyWalletLiability\(await db\.wallet\.listAll\(\)\);/.test(analyticsCode));
 ok("§9h 🔴 `unverifiedLiability` returns a FAILED arm on a failed read, and tallies through the pure function",
   /if \(!read\.ok\) return \{ ok: false, failed: read\.failed \};/.test(analyticsCode)
   && /tallyHeldForUnverified\(read\.facts, read\.wallets\)/.test(analyticsCode));
@@ -588,6 +594,62 @@ ok("§11k control · an Approvals badge adding every listPendingKyc row is repor
   "", shellDefects(plantedBadge).join("; "));
 ok("§11l control · a workstation filter that is not the rule is reported", workstationDefects(plantedStation).length > 0,
   "", workstationDefects(plantedStation).join("; "));
+
+/* ════════════════════════════════════════════════════════════════════════════
+ * §12 · "WALLET LIABILITY" SAYS ITS BASIS (2026-09-14, register E-400 ⑦e).
+ *
+ * The tile counts ACTIVE wallets (the basis §9 pins, and the one "Held for unverified" is a subset of) and said
+ * only "real-time", so a frozen, undecided balance left the headline with nothing on the tile to say so. The
+ * basis stays; the caption now names it and the frozen and closed money it leaves out, from the same read.
+ * ══════════════════════════════════════════════════════════════════════════ */
+console.log("\n§12 · the liability tile names its basis and what the basis leaves out");
+const LIAB = tallyWalletLiability(WALLETS);
+ok("§12a 🔴 the headline is the §9 oracle's ACTIVE arithmetic, unchanged", LIAB.activeTzs === liabilityOracle,
+  "", `${LIAB.activeTzs} vs ${liabilityOracle}`);
+ok("§12b …and it is the very figure 'Held for unverified' reconciles against", LIAB.activeTzs === T.basisTotalTzs,
+  "", `${LIAB.activeTzs} vs ${T.basisTotalTzs}`);
+const FACTS_HELD = [...FACTS, { userId: "u_appr_frozen", status: "APPROVED", approvedAt: "2026-09-02T00:00:00.000Z" }];
+const WALLETS_HELD = [
+  ...WALLETS,
+  { userId: "u_appr_frozen", status: "FROZEN" as const, balance: 900, hold: 100 }, // an officer's hold on an APPROVED player
+  { userId: "u_frozen_empty", status: "FROZEN" as const, balance: 0, hold: 0 },    // frozen, holds nothing
+];
+const LH = tallyWalletLiability(WALLETS_HELD);
+const UH = tallyHeldForUnverified(FACTS_HELD, WALLETS_HELD);
+ok("§12c 🔴 an APPROVED player's frozen balance is counted beside the headline — 'Held for unverified' never could",
+  LH.frozen.accounts === 2 && LH.frozen.tzs === 5000 && UH.frozen.accounts === 1 && UH.frozen.tzs === 4000,
+  "", JSON.stringify({ liability: LH.frozen, unverified: UH.frozen }));
+ok("§12d a frozen wallet holding nothing is not counted, closed money is, and the headline did not move",
+  LH.activeTzs === LIAB.activeTzs && LH.closed.accounts === 1 && LH.closed.tzs === 70);
+const capLeft = walletLiabilityCaption(LH);
+const capNone = walletLiabilityCaption(tallyWalletLiability(WALLETS.filter((w) => w.status === "ACTIVE")));
+ok("§12e the caption names its basis and each amount the basis leaves out",
+  capLeft === `active wallets only · +${formatTzsCompact(5000)} frozen · +${formatTzsCompact(70)} closed`, "", capLeft);
+ok("§12f with nothing frozen or closed it SAYS so — never an empty caption, never 'real-time'",
+  capNone === "active wallets · nothing frozen or closed", "", capNone);
+
+function financeTileDefects(src: string): string[] {
+  const c = code(src);
+  const d: string[] = [];
+  const tile = c.match(/<AdminKpi\s+label="Wallet liability"[\s\S]*?\/>/)?.[0] ?? "";
+  if (!tile) d.push("no Wallet liability tile");
+  if (tile && !/value=\{liability === null \? "" : formatTzsCompact\(liability\.activeTzs\)\}/.test(tile)) d.push("the headline is not the active figure of the one read");
+  if (tile && !/delta=\{liability === null \? undefined : walletLiabilityCaption\(liability\)\}/.test(tile)) d.push("the caption is not the basis caption");
+  if (tile && !/unavailable=\{liability === null\}/.test(tile)) d.push("a failed read is not unavailable");
+  if (/real-time/.test(tile)) d.push("the tile says only 'real-time'");
+  if (!/const liability = await walletLiabilityByStatus\(\)\.catch\(\(\) => null\);/.test(c)) d.push("the tile does not read walletLiabilityByStatus once");
+  if (/walletLiabilityTotal\(/.test(c)) d.push("a second, separate liability read is back");
+  return d;
+}
+ok("§12g /admin/finance: one snapshot, the active figure, and a caption that says the basis",
+  financeTileDefects(financeSrc).length === 0, financeTileDefects(financeSrc).join("; "));
+const plantedRealtime = financeSrc.replace("delta={liability === null ? undefined : walletLiabilityCaption(liability)}", 'delta="real-time"');
+const plantedTwoReads = financeSrc.replace("const liability = await walletLiabilityByStatus().catch(() => null);", "const liability = await walletLiabilityTotal().catch(() => null);");
+ok("§12h control · each planted copy differs from the real file", plantedRealtime !== financeSrc && plantedTwoReads !== financeSrc);
+ok("§12i control · the old 'real-time' caption is reported", financeTileDefects(plantedRealtime).length > 0,
+  "", financeTileDefects(plantedRealtime).join("; "));
+ok("§12j control · a separate total read is reported", financeTileDefects(plantedTwoReads).length > 0,
+  "", financeTileDefects(plantedTwoReads).join("; "));
 
 console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — ${pass} passed, ${fail} failed`);
 if (pass + fail < 90) { console.error(`!! only ${pass + fail} assertions ran — the parsers have stopped finding things. Treating as failure.`); process.exit(3); }

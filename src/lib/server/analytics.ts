@@ -10,7 +10,8 @@
  */
 import { db } from "./store";
 import type { StoredTxn, StoredUser } from "./store";
-import { walletHeldTzs, tallyHeldForUnverified, type UnverifiedHeld } from "../kyc-stage";
+import { tallyHeldForUnverified, type UnverifiedHeld } from "../kyc-stage";
+import { tallyWalletLiability, type WalletLiability } from "../wallet-liability";
 import { readKycMoneySnapshot } from "./kyc-money";
 import { moneyForWindow } from "./report-money";
 import { listMarkets, ratesFor } from "./market-service";
@@ -186,13 +187,17 @@ export async function activePlayers(period: Window = "today") {
  *  discharge a debt; the two differ by exactly the frozen and closed balances.
  *  ⭐ The per-wallet sum is `walletHeldTzs` (src/lib/kyc-stage.ts) since 2026-09-13 — the SAME
  *  arithmetic as before, now shared with `unverifiedLiability()` below, so the two tiles on the
- *  finance page are on one basis by construction rather than by two copies agreeing. */
+ *  finance page are on one basis by construction rather than by two copies agreeing.
+ *  ⭐ 2026-09-14 (E-400 ⑦e): the sum is `tallyWalletLiability` (src/lib/wallet-liability.ts), which reads the
+ *  same snapshot once and also reports the frozen and closed money this basis leaves out, for the tile's caption. */
 export async function walletLiabilityTotal() {
-  let total = 0;
-  for (const w of await db.wallet.listAll()) {
-    if (w.status === "ACTIVE") total += walletHeldTzs(w);
-  }
-  return total;
+  return (await walletLiabilityByStatus()).activeTzs;
+}
+
+/** The ACTIVE-basis liability AND what that basis leaves out (frozen, closed), from ONE wallet read — so the
+ *  finance tile's caption can never describe a different snapshot from the figure above it. */
+export async function walletLiabilityByStatus(): Promise<WalletLiability> {
+  return tallyWalletLiability(await db.wallet.listAll());
 }
 
 /** A failed read is its OWN arm — never `{ ok: true, tzs: 0 }`. */

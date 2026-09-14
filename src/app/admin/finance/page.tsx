@@ -8,7 +8,7 @@ import {
   grossGamingRevenue,
   netGamingRevenue,
   operatorMarginPct,
-  walletLiabilityTotal,
+  walletLiabilityByStatus,
   unverifiedLiability,
   providerSummary,
   topNgrContributors,
@@ -23,6 +23,7 @@ import { dailyKpiSeries } from "@/lib/server/report-money";
 import { resolveRange } from "@/lib/server/date-range";
 import { DateTimeRangeFilter } from "@/components/ui/datetime-range-filter";
 import { formatTzs, formatTzsCompact, formatNumber, adminCount } from "@/lib/utils";
+import { walletLiabilityCaption } from "@/lib/wallet-liability";
 import { txnProviderLabel } from "@/components/admin/status-badge";
 import { eatDayKey } from "@/lib/eat-day";
 import { ScrollX } from "@/components/ui/scroll-x";
@@ -75,7 +76,14 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
   const ggr = await grossGamingRevenue(period).catch(() => null);
   const ngr = await netGamingRevenue(period).catch(() => null);
   const margin = await operatorMarginPct(period).catch(() => null);
-  const liability = await walletLiabilityTotal().catch(() => null);
+  /**
+   * ⭐ THE TILE SAYS ITS BASIS (2026-09-14, register E-400 ⑦e). "Wallet liability" counts ACTIVE wallets — the
+   * basis "Held for unverified" is a subset of — and its caption said only "real-time", so a frozen, still
+   * undecided balance (a final identity refusal, an officer's hold, a self-exclusion) vanished from the headline
+   * with nothing to say so. `walletLiabilityByStatus` reads ONE snapshot: the headline, plus the frozen and closed
+   * money the basis leaves out, which the caption names. ⛔ The headline's basis is unchanged (test:kyc-stage §9, §12).
+   */
+  const liability = await walletLiabilityByStatus().catch(() => null);
   /**
    * ⭐ HELD FOR UNVERIFIED (2026-09-13) — what we owe accounts whose identity was never approved.
    * From that date identity is asked before a withdrawal and nothing else, so any account can hold
@@ -213,7 +221,13 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
               deltaDir="flat"
             />
           </div>
-          <AdminKpi label="Wallet liability" sw="Madeni"        value={liability === null ? "" : formatTzsCompact(liability)} unavailable={liability === null} delta="real-time" />
+          <AdminKpi
+            label="Wallet liability"
+            sw="Madeni"
+            value={liability === null ? "" : formatTzsCompact(liability.activeTzs)}
+            unavailable={liability === null}
+            delta={liability === null ? undefined : walletLiabilityCaption(liability)}
+          />
           {/* ⭐ HELD FOR UNVERIFIED (2026-09-13) — the part of the tile beside it owed to accounts
               never identity-approved; same basis (ACTIVE wallets, balance + hold). The caption
               is the account count, plus any frozen or closed never-approved money that the
