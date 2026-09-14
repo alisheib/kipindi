@@ -59,8 +59,10 @@ export const MUTATIONS = [
     name: "🔴 the notice reaches players who never staked on the market",
     file: MKT,
     expect: "15: a bystander who never staked is not told",
-    from: `  const open = (await listPositionsForMarket(marketId)).filter((p) => p.status === "OPEN");`,
-    to: `  const open = (await db.user.list()).map((u) => ({ userId: u.id, status: "OPEN" as const }));`,
+    // Re-anchored 2026-09-14 (house bots commit 2, review UX-1): the positions are now read once into
+    // `everyPosition` (the verdict notice's houseOnly needs every status); the defect is unchanged.
+    from: `  const open = everyPosition.filter((p) => p.status === "OPEN");`,
+    to: `  const open = (await db.user.list()).map((u) => ({ userId: u.id, status: "OPEN" as const, houseBotId: null }));`,
   },
   {
     /* ⚠️ RE-AIMED, AND THE FIRST VERSION IS WORTH RECORDING. It mutated the OUTCOME guard
