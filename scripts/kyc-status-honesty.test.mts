@@ -19,9 +19,9 @@
  * badge was a false status claim on the one surface that must never overstate —
  * and it was false in all three languages.
  *
- * The same string is legitimate twice on the same page: the stepper node and the
- * approval reward-burst, both gated on `kyc?.status === "APPROVED"`. This test
- * pins the distinction rather than banning the string.
+ * The same string is legitimate on the approval reward-burst, gated on
+ * `kyc?.status === "APPROVED"` (since 2026-09-14 the stepper's last node reads its own
+ * `profile.stepVerified`). This test pins the distinction rather than banning the string.
  */
 import { readFileSync } from "node:fs";
 import { dict } from "../src/lib/i18n-dict.ts";
@@ -63,7 +63,7 @@ if (start !== -1) {
 // Each usage must sit downstream of an `APPROVED` guard, either the stepper's
 // `done:` binding or the reward-burst's explicit status check.
 const usages = [...SRC.matchAll(/t\.profile\.idVerified/g)].map((m) => m.index ?? 0);
-ok("idVerified is still used (stepper + approval burst)", usages.length >= 1, `${usages.length} usage(s)`);
+ok("idVerified is still used (the approval burst)", usages.length >= 1, `${usages.length} usage(s)`);
 for (const at of usages) {
   const context = SRC.slice(Math.max(0, at - 400), at + 120);
   ok(

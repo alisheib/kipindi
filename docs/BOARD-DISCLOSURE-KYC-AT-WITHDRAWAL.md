@@ -89,7 +89,12 @@ answer is published in **Terms §3a** in English, Swahili and Chinese, from the 
   forfeit. Every decision carries a written justification, is recorded in the tamper-evident
   compliance log under its own action, and is written to the player with the reason.
 - **Returns** go through the ordinary payout rail, to the registered number only, within the
-  TZS 5,000,000 per-withdrawal cap. No fee is charged on a return.
+  TZS 5,000,000 per-withdrawal cap. No fee is charged on a return. A return larger than the cap is not
+  offered — the officer holds the balance instead, because no split return has been decided — and no money
+  outcome is available while any other hold stands on the wallet (an officer's own freeze, or a
+  self-exclusion), until that hold is lifted on its own recorded control.
+- **A return counts as made only once the payout confirms.** If a return fails, the money stays in the frozen
+  account, the player is told the return did not go through, and the case returns to the officer.
 - **Every such decision appears in a single report** — who decided, when, the amounts and the
   reason — alongside every finally-refused account still holding money with no decision yet.
 

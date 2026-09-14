@@ -23,7 +23,11 @@
  *        4 the removed nudges (receipt sentence, reminder chore, blocked-withdrawal prompt) are defined nowhere
  *        5 the notice's dictionary keys are read by the notice alone
  *        6 a never-approved player's deposit, win, cash-out and refused withdrawal add ZERO identity-worded rows/emails
- *        7 who the notice is shown to — the one server predicate, every identity state, a failed read
+ *        7 who the notice is shown to — the one server predicate, every identity state, a failed read, and the
+ *          dismissal bound to the PLAYER, not the browser (2026-09-14)
+ *        8 the deposit screen says nothing about identity
+ *        9 a FINAL refusal outranks an earlier approval in `kycGateState` (2026-09-14)
+ *       10 a wallet that is not ACTIVE is never given the withdraw form — the panel's `frozen` variant (2026-09-14)
  *
  * ⛔ EVERY §B CHECK HAS A CONTROL THAT PROVES IT CAN FAIL: a population that is printed and must be non-empty, a
  * matcher shown to fire on the shape it forbids, or an instrument shown to move on the positive case.
@@ -42,7 +46,9 @@ import { deposit, withdraw } from "../src/lib/server/wallet-service.ts";
 import { createMarket, buyPosition, resolveMarket, settleMarket, cashOutPosition } from "../src/lib/server/market-service.ts";
 import { startKyc, submitIdentityStep, attachDocument, submitForReview, reviewKyc, forceReverifyKyc } from "../src/lib/server/kyc-service.ts";
 import { notifyKyc } from "../src/lib/server/notification-service.ts";
-import { firstDepositNoticeDue } from "../src/lib/server/kyc-notice.ts";
+import { firstDepositNoticeDue, kycNoticeDismissValue } from "../src/lib/server/kyc-notice.ts";
+import { kycGateState } from "../src/lib/kyc-gate-state.ts";
+import { kycNoticeStateDue } from "../src/lib/kyc-notice.ts";
 import { getAuditPage, getAuditForTarget, auditFlush } from "../src/lib/server/audit.ts";
 import { emailOutbox } from "../src/lib/server/email.ts";
 import { decomment } from "./lib/decomment.mts";
@@ -226,6 +232,29 @@ section("§B2 · the first-deposit notice appears only on /wallet and the deposi
   const rederives = (s: string) => /\b(kycGateState|kycNoticeStateDue)\s*\(/.test(s);
   ok("B2.5 ⛔ neither page re-derives who is due", !rederives(code.get("src/app/wallet/page.tsx")!) && !rederives(code.get("src/app/wallet/deposit/return/page.tsx")!));
   ok("B2.6 control · a page that re-derives it is caught", rederives("const due = kycNoticeStateDue(kycGateState(k));"));
+
+  // 🔴 THE DISMISSAL IS BOUND TO THE PLAYER (2026-09-14, audit session 95, U2). A bare `dismissed` was read
+  // with no user binding, so on a shared phone one player's X hid the notice from the next.
+  const WALLET = code.get("src/app/wallet/page.tsx") ?? "", RETURN = code.get("src/app/wallet/deposit/return/page.tsx") ?? "";
+  const handsRawCookie = (s: string) => /firstDepositNoticeDue\(\s*session\.userId,\s*\{\s*dismissCookie:\s*\(await cookies\(\)\)\.get\(KYC_NOTICE_COOKIE\)\?\.value\b/.test(s);
+  ok("B2.7 both pages hand the RAW cookie to the one predicate — neither decides whose dismissal it is",
+    handsRawCookie(WALLET) && (!existsSync(join(ROOT, "src/app/wallet/deposit/return/page.tsx")) || handsRawCookie(RETURN)));
+  ok("B2.7c control · the matcher rejects the old unbound comparison",
+    !handsRawCookie("firstDepositNoticeDue(session.userId, { dismissed: (await cookies()).get(KYC_NOTICE_COOKIE)?.value === KYC_NOTICE_DISMISSED })"));
+  ok("B2.8 ★ the return page hands its notice the per-player value",
+    !existsSync(join(ROOT, "src/app/wallet/deposit/return/page.tsx"))
+      || /kycFirstDepositNotice\s*&&\s*<KycFirstDepositNotice\s+dismissValue=\{kycNoticeDismissValue\(session\.userId\)\}/.test(RETURN));
+  ok("B2.9 ★ /wallet scopes the per-player value around the client tree that mounts the notice",
+    /<KycNoticeDismissScope\s+value=\{kycFirstDepositNotice\s*\?\s*kycNoticeDismissValue\(session\.userId\)\s*:\s*null\}\s*>\s*<WalletPageClient\b/.test(WALLET), "");
+  const NOTICE = code.get("src/components/wallet/kyc-first-deposit-notice.tsx") ?? "";
+  const writes = [...NOTICE.matchAll(/\$\{KYC_NOTICE_COOKIE\}=\$\{(\w+)\}/g)].map((m) => m[1]);
+  ok("B2.10 the notice writes exactly one value — the one it was handed — and never without it",
+    J(writes) === J(["value"]) && /const value = dismissValue \?\? scoped;/.test(NOTICE) && /if \(value\)\s*\{/.test(NOTICE), J(writes));
+  const legacy = files.filter((f) => /\bKYC_NOTICE_DISMISSED\b|["'`]dismissed["'`]/.test(code.get(f)!));
+  ok("B2.11 ⛔ nothing under src/ compares to or writes the unbound legacy value", legacy.length === 0, legacy.join(", "));
+  ok("B2.11c control · the matcher catches the old constant and the old literal",
+    /\bKYC_NOTICE_DISMISSED\b|["'`]dismissed["'`]/.test(`dismissed: cookie === KYC_NOTICE_DISMISSED`)
+      && /\bKYC_NOTICE_DISMISSED\b|["'`]dismissed["'`]/.test(`export const X = "dismissed";`));
 }
 
 section("§B3 · no app-wide identity bar");
@@ -391,6 +420,8 @@ section("§B7 · who sees the first-deposit notice — the one server predicate,
     ["more_info", { status: "ADDITIONAL_INFO_REQUIRED", documents: 3 }, ["CONFIRMED"], false],
     ["rejected", { status: "REJECTED", rejectReason: "BLURRY_DOC", documents: 3 }, ["CONFIRMED"], false],
     ["refused_final", { status: "REJECTED", rejectReason: "UNDERAGE", documents: 3 }, ["CONFIRMED"], false],
+    // 2026-09-14 · a final refusal now outranks an earlier approval in `kycGateState` — still not due.
+    ["refused_final_after_approval", { status: "REJECTED", rejectReason: "DUPLICATE_IDENTITY", approvedAt: "2026-01-01T00:00:00.000Z", documents: 3 }, ["CONFIRMED"], false],
     ["approved", { status: "APPROVED", approvedAt: now(), documents: 3 }, ["CONFIRMED"], false],
     ["reverifying_after_approval", { status: "ADDITIONAL_INFO_REQUIRED", approvedAt: "2026-01-01T00:00:00.000Z", documents: 3 }, ["CONFIRMED"], false],
   ];
@@ -398,16 +429,27 @@ section("§B7 · who sees the first-deposit notice — the one server predicate,
   for (const [tag, kyc, deposits, want] of CASES) {
     const id = await fixture(tag, kyc, deposits);
     ids.set(tag, id);
-    const due = await firstDepositNoticeDue(id, { dismissed: false });
+    const due = await firstDepositNoticeDue(id, { dismissCookie: null });
     ok(`B7.${tag} → ${want ? "SHOWN" : "hidden"}`, due === want, `got ${due}`);
   }
   ok("B7.c control · the cases include both answers, so neither can be a constant", CASES.some((c) => c[3]) && CASES.some((c) => !c[3]));
 
+  // 🔴 THE DISMISSAL IS PER PLAYER (2026-09-14, audit session 95, U2): the cookie counts only when it holds
+  // the value for THIS player, so on a shared phone one player's X cannot hide the notice from the next.
   const due = ids.get("no_row_funded")!;
-  ok("B7.dismissed · a browser that dismissed it never sees it again", (await firstDepositNoticeDue(due, { dismissed: true })) === false);
+  const other = ids.get("started_no_docs_funded")!;
+  const mine = kycNoticeDismissValue(due), theirs = kycNoticeDismissValue(other);
+  ok("B7.value · ★ two players get two different dismiss values, each stable and in the documented shape",
+    mine !== theirs && mine === kycNoticeDismissValue(due) && /^d:[0-9a-f]{16}$/.test(mine) && /^d:[0-9a-f]{16}$/.test(theirs), `${mine} · ${theirs}`);
+  ok("B7.dismissed · this player's own dismissal hides it", (await firstDepositNoticeDue(due, { dismissCookie: mine })) === false);
+  ok("B7.shared-phone · ⛔ ANOTHER player's dismissal in the same browser does not hide it",
+    (await firstDepositNoticeDue(due, { dismissCookie: theirs })) === true);
+  ok("B7.legacy · ⛔ the old unbound `dismissed` is NOT a dismissal (that browser sees it once more)",
+    (await firstDepositNoticeDue(due, { dismissCookie: "dismissed" })) === true);
+  ok("B7.empty · control · an empty cookie is not a dismissal either", (await firstDepositNoticeDue(due, { dismissCookie: "" })) === true);
   ok("B7.in-hand · the caller's own rows answer the deposit question both ways",
-    (await firstDepositNoticeDue(ids.get("uploaded_no_deposit")!, { dismissed: false, depositInHand: true })) === true
-      && (await firstDepositNoticeDue(due, { dismissed: false, depositInHand: false })) === false);
+    (await firstDepositNoticeDue(ids.get("uploaded_no_deposit")!, { dismissCookie: null, depositInHand: true })) === true
+      && (await firstDepositNoticeDue(due, { dismissCookie: null, depositInHand: false })) === false);
 
   const realFind = db.kyc.findByUserId;
   (db.kyc as { findByUserId: unknown }).findByUserId = async (userId: string) => {
@@ -417,7 +459,7 @@ section("§B7 · who sees the first-deposit notice — the one server predicate,
   let probe = "", failedKyc: boolean | null = null;
   try {
     probe = await Promise.resolve(db.kyc.findByUserId(due)).then(() => "read", (e: Error) => e.message);
-    failedKyc = await firstDepositNoticeDue(due, { dismissed: false });
+    failedKyc = await firstDepositNoticeDue(due, { dismissCookie: null });
   } finally {
     (db.kyc as { findByUserId: unknown }).findByUserId = realFind;
   }
@@ -431,12 +473,12 @@ section("§B7 · who sees the first-deposit notice — the one server predicate,
   };
   let failedSum: boolean | null = null;
   try {
-    failedSum = await firstDepositNoticeDue(due, { dismissed: false });
+    failedSum = await firstDepositNoticeDue(due, { dismissCookie: null });
   } finally {
     (db.txn as { sumDepositsSince: unknown }).sumDepositsSince = realSum;
   }
   ok("B7.failed-deposit-read · ⛔ a failed deposit read shows nothing", failedSum === false, String(failedSum));
-  ok("B7.failed-read control · with the reads restored the same account is shown again", (await firstDepositNoticeDue(due, { dismissed: false })) === true);
+  ok("B7.failed-read control · with the reads restored the same account is shown again", (await firstDepositNoticeDue(due, { dismissCookie: null })) === true);
 }
 
 section("B8 · ⛔ THE DEPOSIT SCREEN SAYS NOTHING ABOUT IDENTITY — the quiet rule, on the page it is easiest to break");
@@ -471,6 +513,99 @@ section("B8 · ⛔ THE DEPOSIT SCREEN SAYS NOTHING ABOUT IDENTITY — the quiet 
     ok(`B8.${loc} control · the matcher fires on the withdraw page's line that used to be shown here`, valueOf(loc, "wallet.securedBody").some((s) => IDENTITY[loc].test(s)));
   }
   ok("B8.wiring · the deposit footer reads its own line", /t\.wallet\.securedDepositBody/.test(read("src/app/wallet/deposit/page.tsx")));
+}
+
+section("§B9 · a FINAL refusal outranks an earlier approval — the precedence `kycGateState` answers with");
+{
+  // 🔴 2026-09-14 (audit session 95, U1). The approved-ever check ran first, so an account approved once and then
+  // refused on a FINAL code answered null — and /wallet/withdraw drew the payout form over the wallet the refusal froze.
+  const APPROVED_ONCE = "2026-09-01T00:00:00Z";
+  const s = kycGateState({ status: "REJECTED", rejectReason: "SANCTIONED", approvedAt: APPROVED_ONCE });
+  ok("B9.1 ★ approved once, then refused SANCTIONED → refused_final, not null", s === "refused_final", String(s));
+  for (const reason of ["UNDERAGE", "DUPLICATE_IDENTITY"]) {
+    const x = kycGateState({ status: "REJECTED", rejectReason: reason, approvedAt: APPROVED_ONCE });
+    ok(`B9.2 …and the same for ${reason}`, x === "refused_final", String(x));
+  }
+  const recoverable = kycGateState({ status: "REJECTED", rejectReason: "BLURRY_DOC", approvedAt: APPROVED_ONCE });
+  const reverifying = kycGateState({ status: "ADDITIONAL_INFO_REQUIRED", approvedAt: APPROVED_ONCE });
+  const approved = kycGateState({ status: "APPROVED", approvedAt: APPROVED_ONCE });
+  ok("B9.3 control · approved once, refused on a RECOVERABLE code → null: the form stays", recoverable === null, String(recoverable));
+  ok("B9.4 control · approved once, re-verifying → null: money already earned stays reachable", reverifying === null, String(reverifying));
+  ok("B9.5 control · APPROVED → null, and a never-approved final refusal → refused_final",
+    approved === null && kycGateState({ status: "REJECTED", rejectReason: "SANCTIONED" }) === "refused_final", String(approved));
+  ok("B9.6 the first-deposit notice is still not due for a final refusal after approval", kycNoticeStateDue(s) === false);
+  ok("B9.6c control · …while it IS due for an account that has sent nothing", kycNoticeStateDue(kycGateState(null)) === true);
+}
+
+section("§B10 · a wallet that is not ACTIVE is never given the withdraw form");
+{
+  // 🔴 2026-09-14 (audit session 95, U1). An approved-once account whose wallet was FROZEN (an officer hold, a
+  // self-exclusion, a final refusal after re-verification) was shown the full form and refused only at confirm.
+  // The shape pinned: `{P ? <KycGatePanel state={P} …/> : <form action={withdrawAction}>}`, ONE form bound to the
+  // action, and P becomes "frozen" from the wallet row's status — directly, or through one named local.
+  const esc = (id: string) => id.replace(/\$/g, "\\$");
+  const declOf = (src: string, name: string) => new RegExp(`(?:const|let)\\s+${esc(name)}\\b[^=;]*=\\s*([^;]+);`).exec(src)?.[1] ?? null;
+  const readsWalletStatus = (s: string) => /\bwallet\??\.status\s*!==\s*"ACTIVE"/.test(s);
+  const flat = (s: string) => s.replace(/\s+/g, " ").trim();
+  const formHeldBack = (src: string): { ok: boolean; why: string; init: string } => {
+    const forms = [...src.matchAll(/<form\b[^>]*?\baction=\{withdrawAction\}/g)].length;
+    if (forms !== 1) return { ok: false, why: `${forms} form(s) bound to withdrawAction`, init: "" };
+    const m = /\{\s*(\w+)\s*\?\s*\(?\s*<KycGatePanel\b[^>]*?\bstate=\{\s*(\w+)\s*\}[\s\S]*?\/>\s*\)?\s*:\s*\(?\s*<form\b[^>]*?\baction=\{withdrawAction\}/.exec(src);
+    if (!m) return { ok: false, why: "the form is not the other branch of the panel's conditional", init: "" };
+    const [, cond, state] = m;
+    if (cond !== state) return { ok: false, why: `the branch tests ${cond} but the panel draws ${state}`, init: "" };
+    const init = declOf(src, cond);
+    if (!init) return { ok: false, why: `no declaration for ${cond}`, init: "" };
+    if (!/"frozen"/.test(init)) return { ok: false, why: `${cond} never becomes "frozen": ${flat(init)}`, init };
+    const via = [...init.matchAll(/[A-Za-z_$][\w$]*/g)].map((x) => x[0]).filter((id) => readsWalletStatus(declOf(src, id) ?? ""));
+    if (!readsWalletStatus(init) && via.length === 0) return { ok: false, why: `${cond} does not read the wallet's status: ${flat(init)}`, init };
+    return { ok: true, why: `${cond} = ${flat(init)}${via.length ? ` · ${via[0]} = ${flat(declOf(src, via[0])!)}` : ""}`, init };
+  };
+
+  const PAGE = code.get("src/app/wallet/withdraw/page.tsx") ?? "";
+  const real = formHeldBack(PAGE);
+  console.log(`     withdraw page: ${real.why}`);
+  ok("B10.0 control · the withdraw page was read and still holds the form and the panel",
+    PAGE.length > 3_000 && /<form\b/.test(PAGE) && /<KycGatePanel\b/.test(PAGE));
+  ok("B10.1 ★ the form bound to withdrawAction is not rendered when the wallet is not ACTIVE", real.ok, real.why);
+  ok("B10.2 …and a FINAL refusal keeps its own panel: `frozen` is not chosen over refused_final",
+    /withdrawGateState\s*!==\s*"refused_final"/.test(real.init), flat(real.init));
+
+  // ⛔ PLANTED CONTROLS — the matcher must go red on each shape it forbids, and green on a correct one.
+  const SHIPPED = `
+    let withdrawGateState: ReturnType<typeof kycGateState> = "not_started";
+    const wallet = await db.wallet.findByUserId(session.userId);
+    return (<>{withdrawGateState ? (
+      <KycGatePanel state={withdrawGateState} purpose="payout" returnTo="/wallet/withdraw" />
+    ) : (
+    <form action={withdrawAction}><input name="amount" /></form>
+    )}</>);`;
+  const IGNORES_WALLET = `
+    const withdrawPanel = withdrawGateState ?? "frozen";
+    return (<>{withdrawPanel ? (<KycGatePanel state={withdrawPanel} purpose="payout" />) : (<form action={withdrawAction}></form>)}</>);`;
+  const GOOD = `
+    const wallet = await db.wallet.findByUserId(id);
+    const held = !!wallet && wallet.status !== "ACTIVE";
+    const panel = held ? "frozen" : gate;
+    return (<>{panel ? (<KycGatePanel state={panel} purpose="payout" />) : (<form action={withdrawAction}></form>)}</>);`;
+  const shipped = formHeldBack(SHIPPED), ignores = formHeldBack(IGNORES_WALLET), second = formHeldBack(`${GOOD}\n<form action={withdrawAction}></form>`), good = formHeldBack(GOOD);
+  ok("B10.c1 control · the page as shipped before the fix (form over any wallet) is caught", !shipped.ok, shipped.why);
+  ok("B10.c2 control · a `frozen` that never reads the wallet's status is caught", !ignores.ok, ignores.why);
+  ok("B10.c3 control · a second, unguarded form bound to withdrawAction is caught", !second.ok, second.why);
+  ok("B10.c4 control · a correct planted page passes, so the matcher is not constant", good.ok, good.why);
+
+  const PANEL = code.get("src/components/kyc/kyc-gate-panel.tsx") ?? "";
+  ok("B10.3 the panel's frozen variant: support is its only step, and it reads its own four words",
+    /frozen:\s*\{\s*tone:\s*"held",\s*glyph:\s*"\w+",\s*cta:\s*"support"\s*\}/.test(PANEL)
+      && ["frozenEyebrow", "frozenTitle", "frozenBody", "frozenCta"].every((k) => new RegExp(`\\bt\\.kycGate\\.${k}\\b`).test(PANEL))
+      && /spec\.cta === "support" \? "\/help"/.test(PANEL));
+  const { dict } = await import("../src/lib/i18n-dict.ts");
+  const kg = (loc: "en" | "sw" | "zh", k: string) => (dict[loc] as unknown as { kycGate?: Record<string, unknown> }).kycGate?.[k];
+  for (const k of ["frozenEyebrow", "frozenTitle", "frozenBody", "frozenCta"]) {
+    const [en, sw, zh] = (["en", "sw", "zh"] as const).map((loc) => kg(loc, k));
+    ok(`B10.4 kycGate.${k} is written in en, sw and zh — never English inside sw or zh`,
+      [en, sw, zh].every((v) => typeof v === "string" && v.trim().length > 0) && sw !== en && zh !== en, J([en, sw, zh]));
+  }
 }
 
 console.log(`\nkyc-at-withdrawal: ${pass} passed, ${fail} failed`);

@@ -46,11 +46,9 @@ import { MAX_QUERY_LEN } from "@/lib/search/query";
 /**
  * One row of the player's own audit trail.
  *
- * ⚠️ `category` AND `action` ARE STORED TOKENS, and both are already on screen — the table's
- * Category column prints `e.category` and its Action column prints `e.action`. That is a §L2
- * divergence this task did NOT introduce and does not fix (the brief is counts, window, sort and
- * search), but it is why the search grammar below matches on those tokens: the search must find
- * what the page RENDERS, and what it renders is the token.
+ * ⚠️ `category` is the STORED TOKEN (the Category column prints `auditCategoryLabel` of it). Since
+ * 2026-09-14 `/profile/account` puts the TRANSLATED action label into `action` (`auditActionLabel`), so
+ * the Action column and the search both read words a player can see, never `session.created`.
  */
 export type ActivityRow = {
   id: string;

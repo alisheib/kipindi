@@ -526,7 +526,9 @@ export default async function MarketDetail({
           {/* 2. KPI strip — volume, participation, timing at a glance.
               2026-09-13 — two columns on a phone with the date tile spanning both: three across
               at 360 wrapped every label one word per line. `sm` and up is unchanged. */}
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          {/* 2026-09-14 — at lg the first tile is wider: "Hakuna bwawa bado" left "bado" alone on line two
+              at 1280, in equal thirds of the narrower left column. */}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,0.75fr)_minmax(0,1fr)]">
             {/* "TZS 0" is factually true, but on a fresh market it reads as
                 failure rather than as an opening. Same words the card uses, so
                 the two surfaces say the same thing about the same state. */}
@@ -739,18 +741,20 @@ export default async function MarketDetail({
         {/* ══ RIGHT ASIDE — betting widget ══
             order-1 on mobile (above-the-fold, first thing seen),
             order-2 + sticky on desktop (stays in view while scrolling) */}
-        {/* z-10: this panel STICKS while the similar-markets rail (row 2 of the SAME
-            column) scrolls up past it. With z-index:auto the rail's cards — later in
-            the DOM, and each its own stacking context via `.mcardp:hover{transform}`
-            — painted OVER the stuck panel and clipped the Sign up / Sign in buttons.
-            Reproduced on production at 1040–1200px wide: the band just above the `lg`
-            breakpoint where row 1 is still short enough for the panel to be pinned
-            while row 2 has already scrolled into it.
-            Stays well under the nav (z-40) and the Needle (z-45).
+        {/* ⭐ THE PANEL STICKS ONLY WITHIN ROW 1 (2026-09-14). A sticky box is held inside its
+            PARENT's box, not its grid cell. While this aside was itself the grid item its parent
+            was the whole grid, so on scroll the pinned panel rode down into row 2 and sat on the
+            full-width Similar markets cards (the third card's chips hidden at 1280). The wrapper
+            below is now the grid item and stretches to row 1's height, so the sticky aside
+            inside it stops at the end of row 1 and never enters the row below.
+            z-10 predates that: it stopped related cards, which then sat in this same column,
+            from painting over the stuck panel. Nothing reaches the panel now; it stays as a
+            cheap guard, well under the nav (z-40) and the Needle (z-45).
             2026-09-13 — offset 72px = the 56px sticky header (an inline height in top-app-bar.tsx;
             no token exists) + 16px air. The old spacing key resolved to 32px on this scale, so
             the stuck card slid under the header. loading.tsx mirrors it. */}
-        <aside className="order-1 lg:order-2 lg:col-start-2 lg:row-start-1 space-y-3 lg:sticky lg:top-[72px] lg:z-10">
+        <div className="order-1 lg:order-2 lg:col-start-2 lg:row-start-1 lg:self-stretch">
+        <aside className="space-y-3 lg:sticky lg:top-[72px] lg:z-10">
           {!isResolved && m.status === "LIVE" && !closedByTime && !selectionClosed ? (
             session ? (
               <>
@@ -877,6 +881,7 @@ export default async function MarketDetail({
             </div>
           )}
         </aside>
+        </div>
         {/* ══ RELATED MARKETS — FULL WIDTH, BELOW BOTH COLUMNS ══
             🔴 THIS MOVED BACK ON 2026-08-25, AND THE REASON IS THAT ITS OWN PREMISE HAD
             STOPPED BEING TRUE. It sat in the right column, under the sticky bet widget,

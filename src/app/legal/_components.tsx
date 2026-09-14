@@ -104,11 +104,13 @@ export function LegalSection({
 }) {
   return (
     <section className="space-y-2 pt-2">
-      <h2 className="font-display text-[17px] font-semibold text-text leading-tight">
+      <h2 className="font-display text-[17px] font-semibold text-text leading-tight text-balance">
         <span className="font-mono text-[12px] text-text-subtle mr-2 tabular-nums">{n}.</span>
         {title}
       </h2>
-      <div className="text-[13.5px] text-text-muted leading-relaxed space-y-2.5">
+      {/* 2026-09-14: text-pretty, inherited by every paragraph and list item, so a zh paragraph does not end
+          on one stranded character. Not text-balance: these are long paragraphs. */}
+      <div className="text-[13.5px] text-text-muted leading-relaxed space-y-2.5 text-pretty">
         {children}
       </div>
     </section>

@@ -279,7 +279,7 @@ export async function buildFiuSar(generatorId: string, packPeriod: string = curr
   rows.sort((a, b) => b.amount - a.amount);
   return {
     title: "Financial Intelligence Unit · Suspicious-Activity Report",
-    subtitle: `Transactions over the ${formatTzs(cutoff)} threshold, or paused for AML review`,
+    subtitle: `Transactions at or above the ${formatTzs(cutoff)} threshold, or paused for AML review`,
     // Landscape: the line-items carry two ~18-char IDs (player + transaction) plus
     // a datetime — they wrap mid-token in portrait.
     orientation: "landscape",

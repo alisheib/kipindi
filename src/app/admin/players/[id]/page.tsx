@@ -31,6 +31,7 @@ import { ResetPasswordButton } from "./reset-password-button";
 import { BalanceAdjustControls } from "./balance-adjust-controls";
 import { ForceReverifyControls } from "./force-reverify-controls";
 import { WalletFreezeControls } from "./wallet-freeze-controls";
+import { staleIdentityHold } from "@/lib/server/wallet-freeze";
 import { currentFreezeReasons, FREEZE_REASON_LABEL } from "@/lib/wallet-freeze-reasons";
 import { ExportPlayerButton } from "./export-player-button";
 import { AdminBody } from "@/components/admin/admin-body";
@@ -105,6 +106,13 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
   const canSeeMoney = vRole ? await canView(vRole, "accounting") : false;
   let wallet: Awaited<ReturnType<typeof db.wallet.findByUserId>> = null;
   try { wallet = await db.wallet.findByUserId(id); } catch { /* graceful */ }
+  // ⭐ A STALE IDENTITY HOLD HAS A DOOR (audit session 95, 2026-09-14). An identity-refusal hold with no final refusal
+  // behind it (a re-open whose hold-lift failed) had no control anywhere: the identity case has nothing left to
+  // re-open. Asked only for a viewer who can work the freeze; a failed read simply does not offer the lift.
+  let staleHold = false;
+  if (wallet && capCompliance) {
+    try { staleHold = await staleIdentityHold(id); } catch { /* graceful — the lift is not offered */ }
+  }
   let kyc: Awaited<ReturnType<typeof db.kyc.findByUserId>> = null;
   try { kyc = await db.kyc.findByUserId(id); } catch { /* graceful */ }
   let rg: Awaited<ReturnType<typeof db.responsible.get>> = null;
@@ -150,7 +158,10 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
 
   // Risk score — simple proxy: deposit cycling rate, AML hits, late-night sessions, declined cards
   const riskScore = computeRiskScore(txns.length, lifetimeWithdrawals, kyc?.status === "APPROVED");
-  const riskBand = riskScore >= 70 ? "high" : riskScore >= 40 ? "medium" : "low";
+  // 2026-09-14 (visual pass 2) — a finally refused or frozen account is not "low · review monthly", whatever its
+  // activity proxy says: the gauge read "low" beside a Frozen chip. The number stays; the band and caption follow.
+  const accountStopped = (kyc?.status === "REJECTED" && isFinalRefusal(kyc.rejectReason ? String(kyc.rejectReason) : null)) || wallet?.status === "FROZEN";
+  const riskBand = accountStopped ? "high" : riskScore >= 70 ? "high" : riskScore >= 40 ? "medium" : "low";
 
   // Maker-checker parity (audit 2026-07-21): a HIGH-RISK KYC approval must go
   // through the workstation's recommend→seal two-officer flow. Compute the same
@@ -266,7 +277,7 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
               </div>
             </div>
             <div className="ml-auto flex flex-col items-center gap-1.5">
-              <p className="font-mono text-micro uppercase eyebrow text-text-tertiary">Risk score</p>
+              <p className="font-mono text-micro uppercase eyebrow text-text-tertiary">Activity risk</p>
               {/* Radial gauge (AdminGauge) — arc + number coloured by band with the
                   SAME tokens the rest of the console uses for risk. NOT ConfidenceDial:
                   that is a YES/NO tipping dial and would misread as a bet split.
@@ -290,9 +301,10 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
                        on exactly one of its three stops. §K rule 7d names the same breach in
                        this page's tab rail; it is the same defect, twice, on one screen. */
                     colorVar={riskBand === "high" ? "var(--danger-500)" : riskBand === "medium" ? "var(--warning-500)" : "var(--success-500)"}
-                    ariaLabel={`Risk score ${riskScore} of 100 — ${riskBand} risk`}
+                    ariaLabel={`Activity risk ${riskScore} of 100 — ${riskBand} risk`}
                   />
-                  <p className="font-mono text-micro text-text-tertiary tracking-wider">{riskBand} · review monthly</p>
+                  {/* No code schedules a monthly review, so the caption no longer promises one. */}
+                  <p className="font-mono text-micro text-text-tertiary tracking-wider">{accountStopped ? "account stopped" : riskBand}</p>
                 </>
               )}
             </div>
@@ -303,7 +315,7 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
             SUPPORT agent running the desk never sees a player's financials. */}
         {canSeeMoney && (
         <KpiGrid>
-          <AdminKpi label="Lifetime deposit"    sw="Jumla ya amana"        value={txnsFailed ? "" : formatTzsCompact(lifetimeDeposits)} unavailable={txnsFailed} delta={wallet ? `wallet ${formatTzs(wallet.balance)}` : "—"} />
+          <AdminKpi label="Lifetime deposit"    sw="Jumla ya amana"        value={txnsFailed ? "" : formatTzsCompact(lifetimeDeposits)} unavailable={txnsFailed} delta={wallet ? `wallet ${formatTzs(wallet.balance)}` : undefined} />
           <AdminKpi label="Lifetime withdrawal" sw="Jumla ya utoaji"       value={txnsFailed ? "" : formatTzsCompact(lifetimeWithdrawals)} unavailable={txnsFailed} delta={`${txns.filter((t) => t.type === "WITHDRAWAL").length} txns`} />
           <AdminKpi label="NGR contribution"    sw="Mchango wa mapato"     value={txnsFailed ? "" : formatTzsCompact(ngr)} unavailable={txnsFailed} delta={`${txns.filter((t) => t.type === "BET_PLACED").length} positions`} />
           <AdminKpi label="Last position"      sw="Nafasi ya mwisho"      value={txnsFailed ? "" : (() => { const lb = txns.filter((t) => t.type === "BET_PLACED").sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0]; return lb ? formatDateShort(lb.createdAt) : "never"; })()} unavailable={txnsFailed} delta={`${txns.filter((t) => t.type === "BET_PLACED").length} positions`} />
@@ -461,11 +473,13 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
                   the door, not the permission. */}
               {capSupport ? <SetEmailForm userId={data.user!.id} /> : <ControlLocked what="Set player email" need="support" />}
               {capMoney ? <BalanceAdjustControls userId={data.user!.id} currentBalance={wallet?.balance ?? 0} /> : <ControlLocked what="Adjust balance" need="accounting" />}
-              {kyc?.status === "APPROVED" && (capCompliance ? <ForceReverifyControls userId={data.user!.id} walletFrozen={wallet?.status === "FROZEN"} /> : <ControlLocked what="Force re-verification" need="compliance" />)}
+              {/* ⭐ `canAct={capCompliance}` (audit session 95, 2026-09-14): both controls act on the COMPLIANCE domain
+                  while this route is support, so the shell's route answer showed a compliance officer read-only. */}
+              {kyc?.status === "APPROVED" && (capCompliance ? <ForceReverifyControls userId={data.user!.id} walletFrozen={wallet?.status === "FROZEN"} canAct={capCompliance} /> : <ControlLocked what="Force re-verification" need="compliance" />)}
               {/* ⭐ THE OFFICER'S FREEZE (2026-09-13, ruling 6) — the lever that stops money now that
                   re-verification does not. It names every standing hold, not only its own. */}
               {wallet && (capCompliance
-                ? <WalletFreezeControls userId={data.user!.id} status={wallet.status} holds={currentFreezeReasons(wallet).map((r) => ({ reason: r, label: FREEZE_REASON_LABEL[r] }))} />
+                ? <WalletFreezeControls userId={data.user!.id} status={wallet.status} holds={currentFreezeReasons(wallet).map((r) => ({ reason: r, label: FREEZE_REASON_LABEL[r] }))} canAct={capCompliance} staleIdentityHold={staleHold} />
                 : <ControlLocked what="Freeze / unfreeze wallet" need="compliance" />)}
               <p className="text-caption text-text-tertiary flex items-center gap-1.5 ml-auto">
                 <I.shieldcheck s={12} />
@@ -509,10 +523,10 @@ function KycTab({ kyc, userEmail, userId, makerCheckerRequired, canActSupport, c
           player cannot resubmit, and the balance is an officer's recorded decision on the KYC case page, which
           holds the refused-funds panel. */}
       {kyc.status === "REJECTED" && (
-        <div className="rounded-lg border border-no-700/60 bg-no-500/[0.08] px-4 py-3 flex items-start gap-3">
-          <I.xCircle s={16} className="text-no-300 shrink-0 mt-0.5" />
+        <div className="rounded-lg border border-danger-border bg-danger-wash px-4 py-3 flex items-start gap-3">
+          <I.xCircle s={16} className="text-danger-fg shrink-0 mt-0.5" />
           <div>
-            <p className="font-display font-semibold text-no-300 text-[13px]">{isFinalRefusal(kyc.rejectReason) ? "Identity finally refused" : "Verification rejected"}</p>
+            <p className="font-display font-semibold text-danger-fg text-[13px]">{isFinalRefusal(kyc.rejectReason) ? "Identity finally refused" : "Verification rejected"}</p>
             {kyc.rejectReason && <p className="mt-0.5 text-caption text-text-muted">&ldquo;{kyc.rejectReason}&rdquo;</p>}
             {isFinalRefusal(kyc.rejectReason) && (
               <p className="mt-1 text-body-sm text-text-muted">
@@ -524,9 +538,9 @@ function KycTab({ kyc, userEmail, userId, makerCheckerRequired, canActSupport, c
         </div>
       )}
       {kyc.status === "APPROVED" && (
-        <div className="rounded-lg border border-yes-700/60 bg-yes-500/[0.08] px-4 py-3 flex items-center gap-3">
-          <I.shieldcheck s={16} className="text-yes-400 shrink-0" />
-          <p className="font-display font-semibold text-yes-300 text-[13px]">Identity verified · Utambulisho umethibitishwa</p>
+        <div className="rounded-lg border border-success-border bg-success-bg px-4 py-3 flex items-center gap-3">
+          <I.shieldcheck s={16} className="text-success-fg shrink-0" />
+          <p className="font-display font-semibold text-success-fg text-[13px]">Identity verified · Utambulisho umethibitishwa</p>
         </div>
       )}
       {/* Email status — critical for KYC notifications. Warn if missing. */}
@@ -568,7 +582,7 @@ function KycTab({ kyc, userEmail, userId, makerCheckerRequired, canActSupport, c
         <Item label="Documents" value={kyc.documents.length > 0 ? kyc.documents.map((d: { docType: string }) => d.docType).join(", ") : "none"} />
         <Item label="Submitted" value={formatDateTimeSafe(kyc.submittedAt)} />
         {decided && <Item label="Reviewed by" value={<span className="font-mono">{kyc.reviewerId ? `${kyc.reviewerId.slice(0, 14)}…` : "—"}{kyc.reviewedAt ? ` · ${formatDateTime(kyc.reviewedAt)}` : ""}</span>} />}
-        {kyc.status === "REJECTED" && kyc.rejectReason && <Item label="Reject reason" value={<span className="text-no-300">{kyc.rejectReason}</span>} />}
+        {kyc.status === "REJECTED" && kyc.rejectReason && <Item label="Reject reason" value={<span className="text-danger-fg">{kyc.rejectReason}</span>} />}
       </dl>
 
       {/* Document previews — fetched per-image through the admin-gated route

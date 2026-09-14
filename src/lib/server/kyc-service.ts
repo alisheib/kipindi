@@ -53,7 +53,7 @@ import { setUserEmail } from "./email-verification";
 import { withLock } from "./locks";
 import { displayLabel } from "@/lib/display-label";
 import { isFinalRefusal } from "@/lib/kyc-refusal";
-import { addWalletFreeze, removeWalletFreeze } from "./wallet-freeze";
+import { addWalletFreeze, removeWalletFreeze, staleIdentityHold } from "./wallet-freeze";
 
 // ⭐ THE BASE URL HAS ONE HOME: `appUrl()` (`src/lib/app-url.ts`).
 // 🔴 This file carried a private `BASE_URL` defaulting to `kipindi-production.up.railway.app`
@@ -148,8 +148,9 @@ export async function startKyc(userId: string): Promise<ServiceResult<{ kycId: s
  *
  * So: a FINAL refusal is closed to every player write (the door back is `reopenFinalRefusal`, an officer's act),
  * and the identity tuple is locked while a submission is with an officer or approved — the same principle
- * `attachDocument` already applied to documents. A RECOVERABLE refusal stays open exactly as before: the page
- * lets that player re-upload and resubmit, and the refusal already freed the number.
+ * `attachDocument` already applied to documents. A RECOVERABLE refusal stays open exactly as before on the server,
+ * and the refusal already freed the number; since 2026-09-14 `/profile/kyc` offers that player ONE path, the
+ * restart ("Try again"), because a mismatch or an expired document can only be corrected from a fresh start.
  */
 type PlayerStep = "identity" | "documents" | "submit";
 type KycRow = NonNullable<Awaited<ReturnType<typeof db.kyc.findByUserId>>>;
@@ -257,7 +258,7 @@ export async function submitIdentityStep(userId: string, input: z.input<typeof K
     sendEmailToUser(userId, (email) => ({
       to: email,
       subject: "Identity verification refused",
-      html: kycRejectedHtml({ reason: REJECT_EMAIL_TEXT.UNDERAGE, finalRefusal: true }),
+      html: kycRejectedHtml({ reason: REJECT_EMAIL_TEXT.UNDERAGE, reasonSw: REJECT_EMAIL_TEXT_SW.UNDERAGE, finalRefusal: true }),
       tag: "kyc-rejected",
     }));
     return { ok: true, data: { verified: false, reason: "UNDERAGE" } };
@@ -383,7 +384,7 @@ export async function submitIdentityStep(userId: string, input: z.input<typeof K
       sendEmailToUser(userId, (email) => ({
         to: email,
         subject: nidaFinal ? "Identity verification refused" : "Identity check needs attention",
-        html: kycRejectedHtml({ reason: NIDA_TEXT[result.reason], finalRefusal: nidaFinal }),
+        html: kycRejectedHtml({ reason: NIDA_TEXT[result.reason], reasonSw: nidaFinal ? REJECT_EMAIL_TEXT_SW[enumMember] : undefined, finalRefusal: nidaFinal }),
         tag: "kyc-rejected",
       }));
       return { ok: true, data: { verified: false, reason: result.reason } };
@@ -845,6 +846,16 @@ const REJECT_EMAIL_TEXT: Record<string, string> = {
   SANCTIONED: "We're unable to verify this identity.",
   OTHER: "Please check your documents and submit again.",
 };
+/**
+ * ⭐ The FINAL refusal reason in Swahili, for the email's Swahili half (audit session 95, 2026-09-13) — it used to say only
+ * that the verification was refused, while Terms §3a promises the player the reason in every language. Final codes only:
+ * `kycRejectedHtml` renders `reasonSw` on the final-refusal branch.
+ */
+const REJECT_EMAIL_TEXT_SW: Record<string, string> = {
+  UNDERAGE: "Lazima uwe na umri wa miaka 18 au zaidi kutumia 50pick.",
+  DUPLICATE_IDENTITY: "Utambulisho huu tayari umesajiliwa kwenye akaunti nyingine.",
+  SANCTIONED: "Hatuwezi kuthibitisha utambulisho huu.",
+};
 
 /**
  * The submission as it looks after a restart — ONE shape for the player's own restart
@@ -913,6 +924,19 @@ async function freezeForFinalRefusal(userId: string, kycId: string, rejectCode: 
   return { ok: true };
 }
 
+/**
+ * ⭐ AFTER A NON-FINAL DECISION, AN IDENTITY HOLD WITH NO FINAL REFUSAL BEHIND IT IS LIFTED (audit session 95, 2026-09-13).
+ * `freezeForFinalRefusal` writes the hold BEFORE the refusal, so a refusal write that failed — or an officer who then
+ * approved or asked for more information instead — left an IDENTITY_REFUSED hold standing on a wallet whose verification
+ * says something else. Called inside `reviewKyc`'s identity lock, after the decision is written; it lifts only that
+ * reason (an officer's own hold or a self-exclusion stays) and a failed lift never fails the officer's decision.
+ */
+async function liftStaleIdentityHoldAfterDecision(userId: string, officerId: string, kycId: string, decision: "APPROVE" | "REQUEST_INFO" | "REJECT"): Promise<void> {
+  if (!(await staleIdentityHold(userId))) return;
+  const lifted = await removeWalletFreeze(userId, "IDENTITY_REFUSED", { actorId: officerId, note: `stale identity hold lifted on ${decision}`, ref: { kycId, decision } });
+  if (!lifted.ok && lifted.code !== "NOT_FOUND") console.warn(`[kyc] stale identity hold could not be lifted for ${userId.slice(0, 14)}…: ${lifted.error}`);
+}
+
 /** Step two, AFTER the refusal is written: the awaited COMPLIANCE fact an inspector reads. */
 async function recordFinalRefusal(userId: string, kycId: string, rejectCode: string, actorId: string | null): Promise<void> {
   if (!isFinalRefusal(rejectCode)) return;
@@ -970,8 +994,33 @@ export async function reopenFinalRefusal(officerId: string, userId: string, reas
     if (k.status !== "REJECTED" || !isFinalRefusal(k.rejectReason)) {
       return { ok: false as const, error: `Only a FINAL refusal can be re-opened here (this verification is ${k.status}${k.rejectReason ? ` · ${k.rejectReason}` : ""}).`, code: "INVALID" as const };
     }
+    // ⛔ NOT WHILE MONEY IS STILL LEAVING (audit session 95, 2026-09-13). A refused-funds return in flight holds its
+    // amount; re-opening now lifts the identity hold, and if that payout then fails its reversal lands in an ACTIVE
+    // wallet while the decision row still says "returned" and the case has already left the refused report.
+    const inFlight = await db.wallet.findByUserId(userId);
+    if (inFlight && inFlight.hold > 0) {
+      return { ok: false as const, error: `A payout of ${inFlight.hold.toLocaleString("en")} TZS is still in flight on this account. Wait for it to settle, then re-open.`, code: "INVALID" as const };
+    }
     const now = new Date().toISOString();
     const priorRejectReason = k.rejectReason;
+    // ⭐ THE REFUSAL'S EVIDENCE IS RECORDED BEFORE THE RESET CLEARS IT (audit session 95, 2026-09-13). The reset nulls the
+    // identity tuple and empties the document list, so a re-opened SANCTIONED or UNDERAGE refusal used to leave nothing
+    // an inspector could reopen. The pointers go into the tamper-evident chain: the document storage keys (R2 objects are
+    // not deleted by a reset), the document type, the fingerprint (a keyed hash, never the number) and who decided when.
+    // ⛔ An INLINE image (`data:` URL, local/dev storage only) is NOT copied into the audit payload — it is the image itself.
+    const evidence = {
+      idType: k.idType ?? null,
+      idFingerprint: (k as { idFingerprint?: string | null }).idFingerprint ?? null,
+      reviewerId: k.reviewerId ?? null,
+      reviewedAt: k.reviewedAt ?? null,
+      submittedAt: k.submittedAt ?? null,
+      documents: (k.documents ?? []).map((d: { docType: string; storageKey?: string | null; uploadedAt?: string | null }) => ({
+        docType: d.docType,
+        uploadedAt: d.uploadedAt ?? null,
+        storageKey: typeof d.storageKey === "string" && !d.storageKey.startsWith("data:") ? d.storageKey : null,
+        inline: typeof d.storageKey === "string" && d.storageKey.startsWith("data:"),
+      })),
+    };
     await db.kyc.upsert({ ...restartedSubmission(k, userId, { officerId, at: now }) });
     const unfrozen = await removeWalletFreeze(userId, "IDENTITY_REFUSED", { actorId: officerId, note: clean, ref: { kycId: k.id, priorRejectReason } });
     await audit({
@@ -983,6 +1032,7 @@ export async function reopenFinalRefusal(officerId: string, userId: string, reas
       payload: {
         kycId: k.id,
         priorRejectReason,
+        evidence,
         reason: clean,
         walletStatusAfter: unfrozen.ok ? unfrozen.status : null,
         walletHoldsAfter: unfrozen.ok ? unfrozen.reasons : null,
@@ -1057,6 +1107,9 @@ export async function reviewKyc(opts: {
       // turn it into a duplicate of `reviewedAt` and quietly lose the fact that a
       // re-verified player was already trusted once.
       await db.kyc.upsert({ ...k, status: "APPROVED", reviewerId: officerId, reviewedAt: now, approvedAt: k.approvedAt ?? now, rejectReason: null, rejectNote: null, updatedAt: now });
+      // ⭐ An approval leaves no final refusal on record, so an identity hold still on the wallet is STALE (its refusal
+      // write failed, or a re-open's lift failed) — lift it here, or the approved player's withdrawal says "frozen".
+      await liftStaleIdentityHoldAfterDecision(userId, officerId, k.id, "APPROVE");
       const u = await db.user.findById(userId);
       // ⚠️ LEGACY NORMALISATION ONLY. `User.status = "PENDING_KYC"` was written at registration until
       // 2026-09-13 and gated nothing; new accounts are created ACTIVE and the existing rows were
@@ -1101,6 +1154,7 @@ export async function reviewKyc(opts: {
         uploadedAt: null as string | null,
       }));
       await db.kyc.upsert({ ...k, status: "ADDITIONAL_INFO_REQUIRED", rejectReason: null, rejectNote: reason, extraRequests, reviewerId: officerId, reviewedAt: now, updatedAt: now });
+      await liftStaleIdentityHoldAfterDecision(userId, officerId, k.id, "REQUEST_INFO");
       audit({ category: "KYC", action: "kyc.more_info_requested", actorId: officerId, targetType: "User", targetId: userId, payload: { kycId: k.id, note: reason, extraDocs: descriptions.length } });
       notifyKyc(userId, "ADDITIONAL_INFO").catch(() => {});
       sendEmailToUser(userId, (email) => ({
@@ -1130,6 +1184,9 @@ export async function reviewKyc(opts: {
     const freeze = await freezeForFinalRefusal(userId, k.id, rejectCode, officerId);
     if (!freeze.ok) return { ok: false as const, error: freeze.error, code: "INVALID" as const };
     await db.kyc.upsert({ ...k, status: "REJECTED", rejectReason: rejectCode, rejectNote: officerNote, reviewerId: officerId, reviewedAt: now, updatedAt: now });
+    // A RECOVERABLE refusal leaves no final refusal on record: an identity hold still standing is stale. A final code
+    // just wrote its own hold (above) and keeps it.
+    if (!isFinalRefusal(rejectCode)) await liftStaleIdentityHoldAfterDecision(userId, officerId, k.id, "REJECT");
     audit({ category: "KYC", action: "kyc.rejected", actorId: officerId, targetType: "User", targetId: userId, payload: { kycId: k.id, reason: officerNote, rejectCode } });
     await recordFinalRefusal(userId, k.id, rejectCode, officerId);
     // ⛔ A final code must not be told to re-submit — see the UNDERAGE branch of submitIdentityStep.
@@ -1140,7 +1197,7 @@ export async function reviewKyc(opts: {
       subject: reviewFinal ? "Identity verification refused" : "Identity check needs attention",
       // The email has no dictionary, so it falls back to an English rendering of
       // the category rather than going out with a blank reason line.
-      html: kycRejectedHtml({ reason: officerNote ?? REJECT_EMAIL_TEXT[rejectCode], reference: k.id, finalRefusal: reviewFinal }),
+      html: kycRejectedHtml({ reason: officerNote ?? REJECT_EMAIL_TEXT[rejectCode], reasonSw: reviewFinal ? REJECT_EMAIL_TEXT_SW[rejectCode] : undefined, reference: k.id, finalRefusal: reviewFinal }),
       tag: "kyc-rejected",
     }));
     return { ok: true as const };

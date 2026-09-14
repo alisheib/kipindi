@@ -55,7 +55,7 @@ export function PageHeader({
         {title}
       </h1>
       {subtitle != null && (
-        <p className="mt-1 text-[13px] italic text-text-subtle">{subtitle}</p>
+        <p className="mt-1 text-[13px] italic text-text-subtle text-balance">{subtitle}</p>
       )}
     </div>
   );

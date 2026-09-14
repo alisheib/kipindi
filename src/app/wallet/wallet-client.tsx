@@ -38,8 +38,8 @@ function BalanceSpark({ series, label }: { series: number[]; label: string }) {
 }
 
 function BalanceCard({
-  balance, pending, hold, currency,
-}: { balance: number; pending: number; hold: number; currency: string }) {
+  balance, pending, hold, currency, held = false,
+}: { balance: number; pending: number; hold: number; currency: string; held?: boolean }) {
   const { t } = useT();
   return (
     <section className="relative overflow-hidden rounded-xl"
@@ -73,7 +73,8 @@ function BalanceCard({
       <div className="relative z-10 p-5 lg:p-6">
         <div className="flex items-center gap-1.5 text-gold-300">
           <I.wallet s={13} />
-          <p className="font-mono text-micro uppercase eyebrow font-bold">{t.common.available2}</p>
+          {/* A held wallet can neither spend nor withdraw, so its money is never called "Available". */}
+          <p className="font-mono text-micro uppercase eyebrow font-bold">{held ? t.common.balanceFrozen : t.common.available2}</p>
         </div>
         {/* ⛔ §M4 — MONEY IS MONO, TABULAR AND NEVER LETTER-SPACED. This figure carried
             `tracking-[-0.02em]`: negative tracking on a 38px grouped TZS numeral pulls the
@@ -86,7 +87,7 @@ function BalanceCard({
         >
           <Cash>{formatTzs(balance)}</Cash>
         </p>
-        {balance === 0 && pending === 0 && hold === 0 && (
+        {balance === 0 && pending === 0 && hold === 0 && !held && (
           <Link
             href="/wallet/deposit"
             className="mt-3 inline-flex items-center gap-1.5 font-mono text-caption uppercase tracking-[0.14em] text-gold-300 hover:text-gold-200 transition-colors"
@@ -440,11 +441,13 @@ function TxnRow({ tx }: { tx: Transaction }) {
   // Tone AND label for every state the money can actually be in. The label was
   // previously the raw enum printed lowercase (`{tx.status}`) — the one place on
   // this screen that never got translated, so SW and ZH players read "pending".
+  // 2026-09-14 · The status WORD is app state, not the side of a stake, so it wears the app-state
+  // success and danger tokens — never the betting YES green or NO rose (§B2a). The amount keeps its own rule above.
   const statusTone =
-    tx.status === "confirmed" ? "text-yes-300"
+    tx.status === "confirmed" ? "text-success-fg"
     : tx.status === "pending" || tx.status === "processing" ? "text-warning-fg"
     : tx.status === "review"  ? "text-info-fg"
-    : "text-no-300";
+    : "text-danger-fg";
   const statusLabel: Record<Transaction["status"], string> = {
     pending: t.wallet.txnStatusPending,
     processing: t.wallet.txnStatusProcessing,
@@ -599,7 +602,7 @@ const METHODS: Method[] = [
 ];
 
 export function WalletPageClient({
-  balance, pending, hold, currency,
+  balance, pending, hold, currency, walletHeld = false,
   transactions,
   resultCount, page, totalPages, pagerBaseHref,
   section, sectionHrefs, activityBar,
@@ -615,6 +618,8 @@ export function WalletPageClient({
   kycFirstDepositNotice = false,
 }: {
   balance: number; pending: number; hold: number; currency: string;
+  /** The wallet is not ACTIVE (an officer's freeze, a final refusal) — decided on the server from the wallet row. */
+  walletHeld?: boolean;
   /** One PAGE of rows — the server filtered, counted and paged them. */
   transactions: Transaction[];
   /** The SAME variable the bar published as `data-result-count`. Never recomputed. */
@@ -693,10 +698,14 @@ export function WalletPageClient({
                 earned. This one and the empty-state one become `btn-primary`; the
                 header's gilt is untouched. The action is identical — only its claim on
                 the eye changes. */}
+            {/* 2026-09-14 — a held wallet cannot take a deposit (/wallet/deposit says "Deposits paused"), so it is not
+                invited to make one; Withdraw stays, because its screen explains the freeze. */}
+            {!walletHeld && (
             <Link href="/wallet/deposit" className="btn btn-primary btn-md btn-pill inline-flex">
               <I.arrowDown s={14} />
               {t.common.deposit}
             </Link>
+            )}
             <Link href="/wallet/withdraw" className="btn btn-ghost btn-md btn-pill inline-flex">
               <I.arrowUp s={14} />
               {t.common.withdraw}
@@ -715,7 +724,7 @@ export function WalletPageClient({
           one child) and nothing is orphaned. A lonely card in a multi-column grid is its own
           defect class, and `qa:withdrawal-visual` now measures it by name. */}
       <div className={cn("grid grid-cols-1 gap-4 items-stretch", bonusCardVisible && "lg:grid-cols-2")}>
-        <BalanceCard balance={balance} pending={pending} hold={hold} currency={currency} />
+        <BalanceCard balance={balance} pending={pending} hold={hold} currency={currency} held={walletHeld} />
         <BonusWalletCard bonusBalance={bonusBalance} activeCount={bonusActiveCount} grants={bonusGrants} currency={currency} featureLive={bonusFeatureLive} showAllGrants={showAllGrants} grantsToggleHref={grantsToggleHref} />
       </div>
       {bonusWagerRemaining > 0 && (
@@ -762,7 +771,7 @@ export function WalletPageClient({
 
           {transactions.length > 0 ? (
             <section className="space-y-3">
-              <BalanceSpark series={balanceSeries} label={`${t.common.available2} · ${t.common.days30}`} />
+              <BalanceSpark series={balanceSeries} label={`${walletHeld ? t.profile.balance : t.common.available2} · ${t.common.days30}`} />
               <div className="rounded-xl glass-panel overflow-hidden">
                 {transactions.map((tx) => <TxnRow key={tx.id} tx={tx} />)}
                 <Pagination

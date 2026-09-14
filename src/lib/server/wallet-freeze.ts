@@ -96,6 +96,42 @@ export function removeWalletFreeze(userId: string, reason: WalletFreezeReason, m
   return applyFreeze(userId, reason, false, meta);
 }
 
+/**
+ * Is this wallet held for IDENTITY_REFUSED with NO final refusal behind it? (audit session 95, 2026-09-13)
+ *
+ * The hold is written BEFORE the refusal (`kyc-service.freezeForFinalRefusal`), so a refusal write that failed, a
+ * re-open whose hold-lift failed, or an officer who then decided differently can leave it standing with nothing to
+ * re-open. The case page and the player page ask this to OFFER the lift; `liftStaleIdentityHold` asks it again
+ * under the identity lock before lifting.
+ */
+export async function staleIdentityHold(userId: string): Promise<boolean> {
+  const w = await db.wallet.findByUserId(userId);
+  if (!w || !currentFreezeReasons(w).includes("IDENTITY_REFUSED")) return false;
+  const k = await db.kyc.findByUserId(userId);
+  return !(k?.status === "REJECTED" && isFinalRefusal(k.rejectReason));
+}
+
+/**
+ * An officer lifts a STALE identity hold — and only a stale one, whatever else the wallet is held for.
+ *
+ * ⛔ UNDER `kyc:<userId>`, the lock every identity decision holds, so a final refusal landing in the same instant is
+ * never undone by a stale read. ⭐ It lifts ONLY `IDENTITY_REFUSED`: an officer's own hold or a self-exclusion
+ * stays, and the wallet is ACTIVE again only when none remain (`statusForFreezeReasons`).
+ */
+export async function liftStaleIdentityHold(officerId: string, userId: string, reason: string): Promise<FreezeOutcome> {
+  const g = officerGuard(officerId, userId, reason);
+  if (!g.ok) {
+    if (officerId === userId) audit({ category: "SECURITY", action: "wallet.freeze.self_blocked", actorId: officerId, targetType: "User", targetId: userId });
+    return { ok: false, error: g.error, code: "INVALID" };
+  }
+  return withLock(`kyc:${userId}`, async (): Promise<FreezeOutcome> => {
+    if (!(await staleIdentityHold(userId))) {
+      return { ok: false, code: "INVALID", error: "There is no stale identity hold to lift: either a final refusal still stands (re-open it on the identity case) or the wallet is not held for identity." };
+    }
+    return removeWalletFreeze(userId, "IDENTITY_REFUSED", { actorId: officerId, note: `stale identity hold · ${g.clean}` });
+  });
+}
+
 /** The officer's written reason must be at least this long — the same floor as force-reverify. */
 export const OFFICER_FREEZE_REASON_MIN = 5;
 
@@ -142,12 +178,9 @@ export async function unfreezeWalletByOfficer(officerId: string, userId: string,
     // ⭐ A STALE IDENTITY HOLD IS LIFTABLE HERE (found in review, 2026-09-13). An IDENTITY_REFUSED hold whose final
     // refusal is no longer on record — a re-open whose wallet update failed — would otherwise freeze the wallet for
     // good: the identity case has nothing left to re-open. It is lifted ONLY when the newest submission is not a
-    // final refusal, so a standing refusal still cannot be undone from this control.
-    if (reasons.includes("IDENTITY_REFUSED")) {
-      const k = await db.kyc.findByUserId(userId);
-      if (!(k?.status === "REJECTED" && isFinalRefusal(k.rejectReason))) {
-        return removeWalletFreeze(userId, "IDENTITY_REFUSED", { actorId: officerId, note: `stale identity hold · ${g.clean}` });
-      }
+    // final refusal (`liftStaleIdentityHold`, under the identity lock), so a standing refusal cannot be undone here.
+    if (reasons.includes("IDENTITY_REFUSED") && (await staleIdentityHold(userId))) {
+      return liftStaleIdentityHold(officerId, userId, reason);
     }
     const others = reasons.map((r) => FREEZE_REASON_LABEL[r]).join(", ");
     return {

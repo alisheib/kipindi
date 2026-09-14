@@ -437,8 +437,8 @@ const playerJsx = files.filter(
 const SIDE_ARM_OK = new Map<string, { n: number; why: string }>([
   ["src/app/api/og/market/[id]/route.tsx",
    { n: 2, why: "the OG social card is English BY CONSTRUCTION — it renders beside `m.titleEn` for a link preview that has no reader locale (both poles, YES and NO)" }],
-  ["src/app/legal/terms/page.tsx",
-   { n: 1, why: "FILED, NOT EXEMPTED — the Chinese terms read '所有注金——YES 与 NO——汇入同一资金池', the ASCII enum inside Chinese legal prose. Changing the wording of a licensed operator's terms is Ali's call, not a session's (PLAYER-VISUAL-10 §b3 rules legal/compliance out of scope). Raised in the record; the count may only fall." }],
+  // 2026-09-14 — the Chinese Terms entry is gone: §4 now reads “是”与“否” (Terms v2026-09-14, same-day amendment,
+  // COMPLIANCE-DECISIONS.md), so the file has no ASCII side enum left to exempt.
 ]);
 check("§3b the scanner reached the player render tree", playerJsx.length > 300, `${playerJsx.length} files`);
 const sideArmHits: string[] = [];

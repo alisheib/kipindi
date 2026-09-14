@@ -274,7 +274,7 @@ export function UpDownStakeControls({
           register as the empty-side note: a fact about the wallet, not an alarm); else the
           prompt + the amount. */}
       {bet.insufficient && !bet.locallyLocked ? (
-        <p className={cn("mt-1.5 flex items-start gap-1 leading-[1.45] text-text-faint", compact ? "text-[10px]" : "text-body-sm")}>
+        <p className={cn("mt-1.5 flex items-start gap-1 leading-[1.45] text-text-faint break-keep [overflow-wrap:anywhere]", compact ? "text-[10px]" : "text-body-sm")}>
           <I.info s={compact ? 10 : 11} className="mt-[2px] shrink-0" />
           <span>
             {t.market.udInsufficientBalance}{" "}
@@ -311,7 +311,7 @@ export function UpDownStakeControls({
           register the `factual` toast variant was added for. Not gold (gold is earned money on
           this platform), not an alarm (a refund is not a failure). */}
       {emptyCopy && (
-        <p className={cn("mt-1.5 flex items-start gap-1 leading-[1.45] text-text-faint", compact ? "text-[10px]" : "text-body-sm")}>
+        <p className={cn("mt-1.5 flex items-start gap-1 leading-[1.45] text-text-faint break-keep [overflow-wrap:anywhere]", compact ? "text-[10px]" : "text-body-sm")}>
           <I.info s={compact ? 10 : 11} className="mt-[2px] shrink-0" />
           <span>{emptyCopy}</span>
         </p>
@@ -321,7 +321,7 @@ export function UpDownStakeControls({
           nothing saying what the figure was. Now that the number moves with every later bet
           (G3), the sentence that says so has to travel with it. */}
       {(multUp != null || multDown != null) && (
-        <p className={cn("mt-1 leading-[1.45] text-text-faint", compact ? "text-[10px]" : "text-body-sm")}>{t.market.udEstimateNote}</p>
+        <p className={cn("mt-1 leading-[1.45] text-text-faint break-keep [overflow-wrap:anywhere]", compact ? "text-[10px]" : "text-body-sm")}>{t.market.udEstimateNote}</p>
       )}
 
       {/* Screen-reader confirmation. ⛔ NOT a replacement for the toast — both, always: a

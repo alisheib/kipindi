@@ -139,6 +139,8 @@ const EXEMPT: Record<string, string> = {
   "app/admin/payments/stuck-payout-controls.tsx": "① fields open inside <Modal>",
   "app/admin/players/[id]/balance-adjust-controls.tsx": "① fields open inside <Modal>",
   "app/admin/players/[id]/force-reverify-controls.tsx": "① fields open inside <Modal>",
+  "app/admin/players/[id]/wallet-freeze-controls.tsx": "① fields open inside <Modal> (the reason for a freeze, an unfreeze or a stale identity-hold lift)",
+  "app/admin/kyc/[id]/reopen-refusal-control.tsx": "① fields open inside <Modal> (the reason for re-opening a final refusal)",
   "app/admin/players/[id]/suspend-controls.tsx": "① fields open inside <Modal>",
   "app/admin/updown/rounds/void-round-control.tsx": "① fields open inside <Modal>",
   "app/admin/privacy/dsar-controls.tsx": "① the ERASURE/CORRECTION radio is in a <ConfirmDialog> body",

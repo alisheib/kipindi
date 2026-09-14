@@ -65,7 +65,8 @@ export type EmailSpec = {
 };
 
 /**
- * All 49 transactional templates.
+ * Every transactional template. The count is not restated here: `test:cert-c1` §1 measures it from
+ * `email.ts`'s own exports and pins it. (This line said "All 49" while the inventory was 63.)
  *
  * `chrome` is asserted against the actual `wrap` / `wrapGold` call in the
  * builder — the gold-discipline law (gold ONLY on earned money / earned status)
@@ -107,6 +108,10 @@ export const EMAIL_TEMPLATES: readonly EmailSpec[] = [
   { template: "kycRejectedHtml",           trigger: "src/lib/server/kyc-service.ts",       audience: "player",  chrome: "royal", money: false },
   // 2026-09-13 · S1 — the written decision about a finally-refused player's balance (Terms §3a).
   { template: "refusedFundsDecisionHtml",  trigger: "src/lib/server/refused-funds.ts",     audience: "player",  chrome: "royal", money: true },
+  // 2026-09-14 · …and the follow-up when that decision's RETURN payout failed and the amount came back into the
+  // frozen wallet. Sent from the payout-failure path, where the failure is learned. It carries no identity
+  // sentence: it answers a payout that failed, not a verification event (the quiet rule below).
+  { template: "refusedFundsReturnFailedHtml", trigger: "src/lib/server/wallet-service.ts", audience: "player",  chrome: "royal", money: true },
   { template: "kycMoreInfoHtml",           trigger: "src/lib/server/kyc-service.ts",       audience: "player",  chrome: "royal", money: false },
   // ⛔ NO "VERIFY BEFORE YOU WITHDRAW" LETTER BELONGS IN THIS LIST (owner, 2026-09-13, the quiet rule).
   // A player learns identity comes before a withdrawal on the withdrawal screen and in one dismissible
@@ -269,6 +274,9 @@ export const NOTIFICATION_EMITTERS: readonly EmitterSpec[] = [
   // 2026-09-13 · S1 — the decision about a finally-refused player's balance. A money kind: every
   // outcome states a figure (held, returned or not returned).
   { fn: "notifyRefusedFundsDecision",  kind: "WITHDRAW",          audience: "player" },
+  // 2026-09-14 · …and when that decision's return payout failed: the figure is back in the frozen wallet. A money
+  // kind like its parent. It carries no identity sentence (the quiet rule above).
+  { fn: "notifyRefusedFundsReturnFailed", kind: "WITHDRAW",       audience: "player" },
   { fn: "notifySof",                   kind: "KYC",               audience: "player" },
   { fn: "notifySelfExclusion",         kind: "RG",                audience: "player" },
   { fn: "notifyCoolOff",               kind: "RG",                audience: "player" },

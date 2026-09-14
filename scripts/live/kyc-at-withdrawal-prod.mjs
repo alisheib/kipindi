@@ -10,8 +10,9 @@
  * amber banner on /profile, no "your balance is safe" line.
  *
  * WHAT IT MEASURES, and in what order:
- *   P · the published documents, signed OUT, in en/sw/zh: Terms v2026-09-13 with §3 "before your first
- *       withdrawal" and the NEW §3a; AML v2026-09-13 without the three false §2 claims; the rules summary.
+ *   P · the published documents, signed OUT, in en/sw/zh: Terms v2026-09-14 (v2026-09-13 plus the audit's §2/§3a
+ *       amendment) with §3 "before your first withdrawal" and §3a; AML v2026-09-14 without the three false §2
+ *       claims; the rules summary.
  *   R · a new account registered through the REAL form lands on /wallet/deposit (or its safe next),
  *       NOT on /profile/kyc, and is greeted with the email errand.        [REGISTER=1 only]
  *   A · as that account (never approved, NO deposit yet): the deposit screen shows no identity panel;
@@ -75,9 +76,13 @@ try {
   const DOC = {
     // `old` is the SUPERSEDED wording, copied from c63a4668 (the last commit before the ruling) — never
     // invented, because an absence check against a string that never existed passes for nothing.
-    en: { terms: ["version 2026-09-13", "before your first withdrawal", "if we cannot verify you", "any money we return is sent only to the mobile-money number"], aml: ["version 2026-09-13", "before their first withdrawal"], rules: ["verified before your first withdrawal"], old: ["required before you can deposit, place a", "required of every player before they", "behavioural anomalies are detected"] },
-    sw: { terms: ["toleo 2026-09-13", "kabla ya kutoa fedha kwa mara ya kwanza", "tusipoweza kukuthibitisha"], aml: ["toleo 2026-09-13", "kabla ya kutoa fedha kwa mara ya kwanza"], rules: ["kabla ya kutoa pesa kwa mara ya kwanza"], old: ["unahitajika kabla ya kuweka fedha, kuweka", "unahitajika kwa kila mchezaji kabla ya"] },
-    zh: { terms: ["版本 2026-09-13", "首次提现之前", "如果我们无法验证您的身份"], aml: ["版本 2026-09-13", "首次提现之前"], rules: ["首次提现前完成验证"], old: ["在充值、投注或提现之前", "检测到行为异常"] },
+    // ⚠️ Terms moved to v2026-09-14 (audit session 95): §2 no longer promises automatic closure and forfeiture, and §3a
+    // names what a refusal stops instead of "no money in or out". The two superseded English sentences below existed on
+    // c6ab54c8 (served 2026-09-13) — copied, not invented. The AML policy moved to v2026-09-14 the same day: its Swahili and
+    // Chinese FIU names changed under a version dated 2026-09-13 (COMPLIANCE-DECISIONS.md 2026-09-14, second).
+    en: { terms: ["version 2026-09-14", "before your first withdrawal", "if we cannot verify you", "any money we return is sent only to the mobile-money number"], aml: ["version 2026-09-14", "before their first withdrawal"], rules: ["verified before your first withdrawal"], old: ["required before you can deposit, place a", "required of every player before they", "behavioural anomalies are detected", "duplicate accounts will be closed and balances forfeited", "no money can be paid into or out of the account"] },
+    sw: { terms: ["toleo 2026-09-14", "kabla ya kutoa fedha kwa mara ya kwanza", "tusipoweza kukuthibitisha"], aml: ["toleo 2026-09-14", "kabla ya kutoa fedha kwa mara ya kwanza"], rules: ["kabla ya kutoa pesa kwa mara ya kwanza"], old: ["unahitajika kabla ya kuweka fedha, kuweka", "unahitajika kwa kila mchezaji kabla ya"] },
+    zh: { terms: ["版本 2026-09-14", "首次提现之前", "如果我们无法验证您的身份"], aml: ["版本 2026-09-14", "首次提现之前"], rules: ["首次提现前完成验证"], old: ["在充值、投注或提现之前", "检测到行为异常"] },
   };
   for (const loc of LOCALES) {
     const ctx = await ctxFor(loc, 390);

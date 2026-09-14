@@ -73,7 +73,9 @@ const PAGES: { name: string; html: string }[] = [
   // 2026-09-13 · the officer's written decision on a finally-refused player's balance (S1), on two
   // outcomes, and the officer's overdue-review alert.
   { name: "refusedFundsDecisionHtml", html: E.refusedFundsDecisionHtml({ outcome: "RETURN_DEPOSITS", returnedTzs: 20_000, forfeitedTzs: 5_000, balanceTzs: 25_000, reason: "You must be 18 or older to use 50pick.", reference: "rfd_a1b2c3d4e5" }) },
-  { name: "refusedFundsDecisionHtml.hold", html: E.refusedFundsDecisionHtml({ outcome: "HOLD_PENDING_APPEAL", returnedTzs: 0, forfeitedTzs: 0, balanceTzs: 25_000, reason: "This identity is already registered to another account.", reference: "rfd_f6g7h8i9j0" }) },
+  { name: "refusedFundsDecisionHtml.hold", html: E.refusedFundsDecisionHtml({ outcome: "HOLD_PENDING_APPEAL", returnedTzs: 0, forfeitedTzs: 0, balanceTzs: 25_000, reason: "This identity is already registered to another account.", reasonSw: "Utambulisho huu tayari umesajiliwa kwenye akaunti nyingine.", reference: "rfd_f6g7h8i9j0" }) },
+  // 2026-09-14 · the follow-up when a decided return's payout failed — with a forfeited part, the longest shape.
+  { name: "refusedFundsReturnFailedHtml", html: E.refusedFundsReturnFailedHtml({ amountTzs: 20_000, forfeitedTzs: 5_000, reference: "rfd_a1b2c3d4e5" }) },
   { name: "kycReviewOverdueAdminHtml", html: E.kycReviewOverdueAdminHtml({ reference: "kyc_41ab77cd", playerLabel: "Asha Mwakalinga", submittedAt: "2026-09-12T08:00:00.000Z", hoursWaiting: 26, reviewUrl: "https://www.50pick.tz/admin/kyc/u1" }) },
   { name: "kycSubmittedAdminHtml", html: E.kycSubmittedAdminHtml({ reference: "kyc_41ab77cd", phoneMasked: "+2557••••5678", name: "Asha Mwakalinga", nidaMasked: "•••• 1234", submittedAt: "2026-07-31T09:00:00.000Z", reviewUrl: "/admin/players/u1?tab=kyc" }) },
   { name: "sofSubmittedHtml", html: E.sofSubmittedHtml() },

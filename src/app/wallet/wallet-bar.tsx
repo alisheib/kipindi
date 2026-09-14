@@ -169,6 +169,9 @@ export function WalletBar({
         </FilterSheet>
 
         {/* DESKTOP — the same two axes along the bar. */}
+        {/* 2026-09-14 — each divider wraps WITH its group, so it always starts one: in Swahili at 1280 the time group
+            wrapped to a third row and left its divider stranded at the end of the status row (visual pass 2). */}
+        <div className="hidden min-w-0 items-center gap-2 lg:flex">
         <QueryGroupDivider />
         <nav aria-label={t.wallet.stateKey} className={QUERY_GROUP_CLASS}>
           <FilterGroupKey>{t.wallet.stateKey}</FilterGroupKey>
@@ -177,7 +180,9 @@ export function WalletBar({
               on={state.state === s} testId={`state:${s}`} />
           ))}
         </nav>
+        </div>
 
+        <div className="hidden min-w-0 items-center gap-2 lg:flex">
         <QueryGroupDivider />
         <nav aria-label={t.common.when} className={QUERY_GROUP_CLASS}>
           <FilterGroupKey>{t.common.when}</FilterGroupKey>
@@ -186,6 +191,7 @@ export function WalletBar({
               on={state.when === w} testId={`when:${w}`} />
           ))}
         </nav>
+        </div>
 
         <span className="hidden lg:contents">{clear}</span>
       </div>

@@ -246,7 +246,7 @@ export default async function LandingPage() {
                 <p className="kp-trust__b" style={{ maxWidth: "52ch" }}>{t.market.udTagline}</p>
                 <p className="kp-topic__m" style={{ paddingLeft: 0, marginTop: "var(--sp-2)" }}>
                   {updownLiveCount > 0
-                    ? <span className="kp-topic__live">{updownLiveCount} {t.home.updownRoundsLive}</span>
+                    ? <span className="kp-topic__live">{fill(t.home.updownRoundsLive, { n: updownLiveCount })}</span>
                     : t.home.updownStartsSoon}
                 </p>
               </div>

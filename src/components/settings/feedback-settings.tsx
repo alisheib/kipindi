@@ -65,26 +65,34 @@ export function FeedbackSettings() {
           on={reduceMotion}
           onToggle={toggleMotion}
         />
-        <div className="flex items-center gap-3 py-3.5">
+        {/* 🔴 THE BUTTON STACKS UNDER THE TEXT BELOW `sm` (2026-09-14). Beside a Toggle the text
+            column keeps its width; beside the wide "Manage the Needle" button it was squeezed to
+            about 60px at 360, one word per line, and the button painted over "choose". From `sm`
+            up the row is the one-line layout it always was. */}
+        <div className="flex items-start gap-3 py-3.5 sm:items-center">
           {/* ⛔ LITERALS, NOT `h-9 w-9` — the spacing scale is overridden
               (tailwind.config.ts:200-215) and that pair is 64×64px, taller on its own than
               the py-3.5 row it sits in. 40px = --tap-min, the kit's glyph-tile size. */}
           <span className="grid h-[40px] w-[40px] shrink-0 place-items-center rounded-md" style={{ background: "color-mix(in oklab, var(--brand-500) 12%, transparent)" }}>
             <NeedleGlyph />
           </span>
-          <div className="min-w-0 flex-1">
-            <p className="font-display text-[13.5px] font-semibold text-text leading-tight">
-              {locale === "sw" ? "Sindano (kichezeo)" : locale === "zh" ? "指针玩具" : "The Needle"}
-            </p>
-            <p className="mt-0.5 text-body-sm text-text-muted leading-snug">
-              {locale === "sw"
-                ? "Onyesha/ficha na chagua jinsi inavyocheza (zungusha au dunda)."
-                : locale === "zh"
-                  ? "显示/隐藏并选择玩法（旋转或弹开）。"
-                  : "Show or hide it, and choose how it plays (spin or bounce)."}
-            </p>
+          <div className="min-w-0 flex-1 sm:flex sm:items-center sm:gap-3">
+            <div className="min-w-0 flex-1">
+              <p className="font-display text-[13.5px] font-semibold text-text leading-tight">
+                {locale === "sw" ? "Sindano (kichezeo)" : locale === "zh" ? "指针玩具" : "The Needle"}
+              </p>
+              <p className="mt-0.5 text-body-sm text-text-muted leading-snug text-pretty">
+                {locale === "sw"
+                  ? "Onyesha/ficha na chagua jinsi inavyocheza (zungusha au dunda)."
+                  : locale === "zh"
+                    ? "显示/隐藏并选择玩法（旋转或弹开）。"
+                    : "Show or hide it, and choose how it plays (spin or bounce)."}
+              </p>
+            </div>
+            <div className="mt-2 sm:mt-0 sm:shrink-0">
+              <NeedleControlsDrawer variant="settings" />
+            </div>
           </div>
-          <NeedleControlsDrawer variant="settings" />
         </div>
       </div>
     </section>

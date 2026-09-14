@@ -26,12 +26,12 @@
  * player calls it and what `/wallet` is called in the nav; `KYC` is *"Verification"* because §L3
  * forbids an acronym the screen never explains. ⛔ Do not "correct" these back towards the enum.
  *
- * ⚠️ THE `action` COLUMN IS STILL A RAW TOKEN (`user.login`, `kyc.approved`) and is deliberately
- * NOT translated here: there are hundreds of distinct values, they are the audit chain's own
- * vocabulary, and inventing copy for each is a lexicon-sized task rather than a label map. It is
- * recorded rather than hidden — see the note in `src/lib/search/fields.ts`'s
- * `ACCOUNT_ACTIVITY_SEARCH`, which is why that search matches the token: it matches what is on
- * screen, and what is on screen is still English.
+ * ⭐ THE `action` COLUMN IS NO LONGER A RAW TOKEN (2026-09-14) — see `auditActionLabel` below. It
+ * printed `session.created` / `kyc.started` to Swahili and Chinese readers. The audit chain has
+ * many distinct actions, so only the ones a player's own feed commonly holds get their own words;
+ * every other action falls back to the translated CATEGORY, never to the token. The page puts the
+ * LABEL into the row it searches and sorts, so `ACCOUNT_ACTIVITY_SEARCH`'s `action` field matches
+ * the words on screen.
  *
  * The type import is type-only, so nothing server-side is pulled into a client bundle by it.
  */
@@ -57,5 +57,29 @@ export function auditCategoryLabel(t: Dict, c: string): string {
      * untoned-chip failure `status-tone.ts` warns about, one column over.
      */
     default: return c;
+  }
+}
+
+/**
+ * The words for one audit ACTION in the player's own activity table.
+ *
+ * ⛔ THE FALLBACK IS THE TRANSLATED CATEGORY, NEVER THE TOKEN. An unmapped action still says what
+ * kind of event it was ("Sign-in", "Money") in the reader's language. To give an action its own
+ * words, add the key to `profile` in en, sw and zh first, then an arm here.
+ *
+ * ⚠️ AN ARM ONLY WHERE THE LABEL IS EXACTLY TRUE. `session.expired`, `session.idle_timeout` and
+ * `session.revoked_no_active_record` end a sign-in without the player signing out, so they take
+ * the fallback rather than "Signed out". A `switch`, not an object lookup, so an action named
+ * like an `Object.prototype` member cannot resolve to something that is not a label.
+ */
+export function auditActionLabel(t: Dict, action: string, category: string): string {
+  switch (action) {
+    case "user.login":
+    case "user.login.password":
+    case "session.created": return t.profile.auditActSignedIn;
+    case "session.destroyed": return t.profile.auditActSignedOut;
+    case "session.revoked_by_newer_login": return t.profile.auditActSignedOutNewer;
+    case "kyc.started": return t.profile.auditActVerificationStarted;
+    default: return auditCategoryLabel(t, category);
   }
 }

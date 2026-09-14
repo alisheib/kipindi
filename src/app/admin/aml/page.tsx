@@ -169,8 +169,8 @@ export default async function AdminAmlPage({
           <div className="flex items-start gap-3">
             <I.info s={18} className="shrink-0" />
             <div className="text-caption text-text-secondary space-y-1">
-              <p className="text-text font-bold">No withdrawal is held for review since 2026-09-13</p>
-              <p>Owner ruling: any withdrawal up to the {formatTzs(WITHDRAW_MAX_TZS)} per-withdrawal cap is sent once identity is approved, and no officer reviews it first. Rows here were held before that date, or are deposits owed back to excluded players.</p>
+              <p className="text-text font-bold">No withdrawal is held for review since <span className="whitespace-nowrap">2026-09-13</span></p>
+              <p>Owner ruling: any withdrawal up to the <span className="whitespace-nowrap">{formatTzs(WITHDRAW_MAX_TZS)}</span> per-withdrawal cap is sent once identity is approved, and no officer reviews it first. Rows here were held before that date, or are deposits owed back to excluded players.</p>
               <p>Approve dispatches a held withdrawal; Reject returns it to the player&apos;s wallet. A held withdrawal of {formatTzs(TWO_PERSON_THRESHOLD_TZS)} or more still needs two different officers: the first records stage&nbsp;1, a second releases it.</p>
               <p>A deposit owed back cannot be approved, and Reject only closes its row: it sends no money, so the return is still owed. No self-review; each decision and its reason are recorded in the audit log.</p>
             </div>
@@ -178,13 +178,17 @@ export default async function AdminAmlPage({
         </AdminCard>
 
         <AdminCard padding="p-0">
-          <div className="px-4 py-3 border-b border-border-subtle flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <I.activity s={16} />
+          {/* Stacks below the small breakpoint (2026-09-14). As one unwrapping row at 390 it hyphen-broke the heading over
+              four lines, squeezed the icon to a speck and folded the flag count onto two lines. On a phone the criteria
+              drop under the heading and the count takes its own line; from 640px up it is the same single row as before.
+              The chip's nowrap goes through `style` because Chip sets white-space inline (G-7). */}
+          <div className="px-4 py-3 border-b border-border-subtle flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+              <I.activity s={16} className="shrink-0" />
               <p className="font-bold text-text">Suspicious-bet detector · Tabia za shaka</p>
-              <span className="text-caption text-text-tertiary">stake spike ≥ 10× user 30-day median; or velocity ≥ 100/24h</span>
+              <span className="basis-full text-caption text-text-tertiary sm:basis-auto">stake spike ≥ 10× user 30-day median; or velocity ≥ 100/24h</span>
             </div>
-            <Chip size="md" variant={!flagsFailed && flagsAll.length > 0 ? "warning" : "neutral"}>{flagsFailed ? "n/a" : adminCount(flagsAll.length, "flag")}</Chip>
+            <Chip size="md" className="shrink-0 self-start sm:self-auto" style={{ whiteSpace: "nowrap" }} variant={!flagsFailed && flagsAll.length > 0 ? "warning" : "neutral"}>{flagsFailed ? "n/a" : adminCount(flagsAll.length, "flag")}</Chip>
           </div>
           {flagsFailed ? (
             <div className="p-4"><AdminLoadError what="suspicious-bet flags" /></div>

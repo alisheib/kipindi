@@ -35,6 +35,12 @@ type WalletStatus = "ACTIVE" | "FROZEN" | "CLOSED";
  * written by a container still running the old code during the deploy reading the same way.
  */
 export function currentFreezeReasons(w: { status: WalletStatus; freezeReasons?: readonly string[] | null }): WalletFreezeReason[] {
+  // ⛔ AN ACTIVE WALLET HOLDS NOTHING (audit session 95, 2026-09-13). A container still running the pre-2026-09-13
+  // code during the deploy could set a wallet ACTIVE without touching the new column (the old "reopen a served
+  // self-exclusion" wrote `status: "ACTIVE"` only), leaving ACTIVE + ["SELF_EXCLUSION"]. Read as a standing hold,
+  // that stale reason survived the next officer freeze and made the wallet impossible to unfreeze. The status is
+  // the truth a money path refuses on; an ACTIVE wallet's leftover reasons are history, not holds.
+  if (w.status === "ACTIVE") return [];
   const known = (w.freezeReasons ?? []).filter(isWalletFreezeReason);
   if (w.status === "FROZEN" && known.length === 0) return ["SELF_EXCLUSION"];
   return Array.from(new Set(known));

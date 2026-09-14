@@ -37,7 +37,9 @@ const SUBTITLE: Record<Locale, string> = {
 const META: Record<Locale, string> = {
   en: "Version 2026-09-13 · Issued by 50pick Management.",
   sw: "Toleo 2026-09-13 · Imetolewa na Uongozi wa 50pick.",
-  zh: "版本 2026-09-13 · 由 50pick 管理层发布。",
+  // 2026-09-14: 由 and 50pick are joined by a NO-BREAK SPACE (the \u00a0 escape), so the balanced line cannot end on
+  // the preposition.
+  zh: "版本 2026-09-13 · 由\u00a050pick 管理层发布。",
 };
 
 const INTRO: Record<Locale, string> = {
@@ -64,7 +66,8 @@ const CARDS = (l: Locale): { yesNo: [string, string]; upDown: [string, string]; 
     case "sw":
       return {
         yesNo: [`Masoko ya ${yes}/${no}`, `Jibu swali la tukio halisi kwa ${yes} au ${no}.`],
-        upDown: [`${up} & ${down}`, "Tabiri kama thamani inayofuatiliwa itamalizia juu au chini."],
+        /* 2026-09-14: "na", not "&" — the Swahili name every screen uses is "Juu na Chini". */
+        upDown: [`${up} na ${down}`, "Tabiri kama thamani inayofuatiliwa itamalizia juu au chini."],
         common: "Yanayoshirikiwa na michezo yote miwili",
       };
     case "zh":

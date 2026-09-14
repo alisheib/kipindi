@@ -22,6 +22,7 @@ import { IdempotencyKeyField } from "@/components/wallet/idempotency-key-field";
 import { ProviderRadioGrid } from "@/components/wallet/provider-radio-grid";
 import { CardBillingFields } from "@/components/wallet/card-billing-fields";
 import { EmailVerifyGate } from "@/components/wallet/email-verify-gate";
+import { Callout } from "@/components/ui/callout";
 import { getPayoutStatus } from "@/lib/server/payout-status";
 import { PayoutStatusNotice } from "@/components/wallet/payout-status-notice";
 import { PageContainer } from "@/components/layout/page-container";
@@ -85,6 +86,16 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
   // that panel are deleted, not hidden. ⛔ Do not restore either: the server asks no identity question
   // on a deposit, so a panel here would be a wall the platform does not have.
   const emailVerified = !!user?.emailVerifiedAt;
+  // 🔴 A WALLET THAT IS NOT ACTIVE GETS NO FORM (2026-09-14) — the rule `/wallet/withdraw` already applies. A freeze
+  // (an officer's hold, a final refusal) stops deposits too, and `wallet-service.deposit()` refuses on the wallet
+  // status before it asks about the email, so this page says so INSTEAD of the email door and the form. It is a
+  // money control, not an identity status: the notice names the freeze and the way to support, and nothing else.
+  // ⚠️ A failed read keeps today's form — the server still refuses a held wallet on submit.
+  let walletHeld = false;
+  try {
+    const w = await db.wallet.findByUserId(session.userId);
+    walletHeld = !!w && w.status !== "ACTIVE";
+  } catch { /* graceful — the server is the enforcement */ }
   const adminTest = !!user && ADMIN_TEST_ROLES.has(user.role) && process.env.NODE_ENV !== "production" && process.env.ADMIN_TEST_DEPOSITS !== "false";
   const maxAmount = adminTest ? 1_000_000_000 : DEPOSIT_MAX_TZS;
   const quickAmounts = adminTest ? [100_000, 1_000_000, 5_000_000, 20_000_000, 100_000_000] : QUICK_AMOUNTS;
@@ -113,7 +124,7 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
       </PageHero>
 
       {errorMsg && (
-        <div role="alert" className="flex items-start gap-2.5 rounded-xl border border-no-700/60 bg-no-500/[0.10] px-4 py-3">
+        <div role="alert" className="flex items-start gap-2.5 rounded-xl border border-danger-border bg-danger-bg px-4 py-3">
           <I.alertCircle s={16} />
           <div className="text-body-sm leading-snug">
             <p className="font-display font-semibold text-text">{t.wallet.depositFailed}</p>
@@ -149,7 +160,29 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
           fixes it, is the difference between a gate and a dead end.
           ⛔ The identity panel that stood here from 2026-09-05 to 2026-09-13 is deleted with the
           deposit gate it mirrored. Do not restore it by reading the older ruling. */}
-      {!emailVerified ? (
+      {/* 🔴 A HELD WALLET OUTRANKS THE EMAIL DOOR (2026-09-14): confirming an address would open nothing.
+          ⛔ Not `KycGatePanel` — the deposit screen draws no identity panel (`test:kyc-at-withdrawal` B1.1). */}
+      {walletHeld ? (
+        <div data-testid="deposit-paused">
+          <Callout
+            tone="warning"
+            layout="stack"
+            glyph="lock"
+            role="status"
+            titleAs="h2"
+            title={t.wallet.depositPausedTitle}
+            action={
+              // The same door as the withdraw panel's frozen state (`kyc-gate-panel.tsx`: support → /help).
+              <Link href="/help" className="btn btn-primary btn-md btn-pill inline-flex items-center gap-1.5">
+                <I.mail s={14} />
+                {t.kycGate.frozenCta}
+              </Link>
+            }
+          >
+            <p className="text-balance break-keep [overflow-wrap:anywhere]">{t.wallet.depositPausedBody}</p>
+          </Callout>
+        </div>
+      ) : !emailVerified ? (
         <EmailVerifyGate email={user?.email ?? null} />
       ) : (
       <form action={depositAction} className="group/deposit rounded-xl glass-panel p-5 lg:p-6 space-y-5">
@@ -188,7 +221,7 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
             mono
             defaultValue={prevMsisdn}
           />
-          <p className="mt-1.5 text-body-sm text-text-subtle">{t.wallet.mobileMoneyNumberHint}</p>
+          <p className="mt-1.5 text-body-sm text-text-subtle text-balance">{t.wallet.mobileMoneyNumberHint}</p>
           {/* 🔴 `E-215`'s OTHER HALF. Withdrawal states its destination and refuses any
               other; deposit OFFERS one, because money arriving from a friend's handset is
               ordinary and blocking it would break real top-ups. The prefill alone was not
@@ -224,6 +257,9 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
 
       {/* Trust strip — the regulator seal is a licensed asset (⊘ pending, Ali);
           this slot is a deliberately-labeled placeholder, never a fabricated mark. */}
+      {/* 2026-09-14 — how a deposit is credited means nothing to a wallet that cannot take one: pass 2 of the visual
+          audit found it under the "Deposits paused" notice. */}
+      {!walletHeld && (
       <div className="flex items-center gap-3 rounded-xl border border-border bg-bg-elevated/60 px-4 py-3">
         <span
           aria-hidden
@@ -239,6 +275,7 @@ export default async function DepositPage({ searchParams }: { searchParams: Prom
           {t.wallet.securedDepositBody}
         </p>
       </div>
+      )}
     </PageContainer>
   );
 }

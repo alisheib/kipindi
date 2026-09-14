@@ -75,7 +75,7 @@ export function EmptyState({
       <div className="mx-auto mb-4 inline-flex items-center justify-center text-text-faint" aria-hidden>
         {illustration ?? <DefaultIllustration kind={kind} />}
       </div>
-      <p className="font-display text-[15.5px] font-semibold text-text">{title}</p>
+      <p className="font-display text-[15.5px] font-semibold text-text text-balance">{title}</p>
       {body && <p className="mt-2 text-body-sm leading-relaxed text-text-subtle">{body}</p>}
       {action && <div className="mt-4">{action}</div>}
     </div>

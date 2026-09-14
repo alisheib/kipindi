@@ -288,7 +288,13 @@ export function QuerySort({
            then does the value span's `min-w-0 truncate` have a box to truncate inside.
            ⚠️ Applied HERE rather than in `menu-shell.tsx`, so the desktop topic menu and
            `/updown`'s call sites keep the intrinsic width they want. */
-        rootClassName="min-w-0 shrink"
+        /* 🔴 BELOW `lg` THE SUMMARY'S PADDING AND GAP TIGHTEN TO 8px (2026-09-14), set from the
+           root as a direct-child rule so the summary's own class line stays exactly as it is
+           (`red:bar-geometry` mutates that line and its anchor must keep resolving). Inside the
+           /profile/account panel in Swahili at 360 the value had about 28px and read "W…" for
+           "Wakati"; this gives it about 20px more. From `lg` the root restores MenuShell's own
+           16px padding and 12px gap, so desktop is unchanged. */
+        rootClassName="min-w-0 shrink [&>summary]:gap-1.5 [&>summary]:px-1.5 lg:[&>summary]:gap-2 lg:[&>summary]:px-3"
         label={label}
         value={value}
         ariaLabel={ariaLabel}

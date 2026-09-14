@@ -101,8 +101,8 @@ export function yesNoContent(r: RulesRates): Record<Locale, React.ReactNode> {
               withdrawal screens, to the wallet registered on your account. We never ask for card details.
             </li>
             <li>
-              Stakes are bounded: minimum <span className="font-mono tabular-nums text-text">{tzs(r.minStake)}</span>,
-              maximum <span className="font-mono tabular-nums text-text">{tzs(r.maxStake)}</span> per position.
+              Stakes are bounded: minimum <span className="font-mono tabular-nums text-text whitespace-nowrap">{tzs(r.minStake)}</span>,
+              maximum <span className="font-mono tabular-nums text-text whitespace-nowrap">{tzs(r.maxStake)}</span> per position.
             </li>
           </ul>
         </LegalSection>
@@ -163,8 +163,8 @@ export function yesNoContent(r: RulesRates): Record<Locale, React.ReactNode> {
 
         <LegalSection n="5" title="Worked example">
           <p>
-            A market with a {w.en.yes} pool of <span className="font-mono tabular-nums text-text">{tzs(EXAMPLE_WIN_POOL)}</span>{" "}
-            and a {w.en.no} pool of <span className="font-mono tabular-nums text-text">{tzs(EXAMPLE_LOSE_POOL)}</span>:
+            A market with a {w.en.yes} pool of <span className="font-mono tabular-nums text-text whitespace-nowrap">{tzs(EXAMPLE_WIN_POOL)}</span>{" "}
+            and a {w.en.no} pool of <span className="font-mono tabular-nums text-text whitespace-nowrap">{tzs(EXAMPLE_LOSE_POOL)}</span>:
           </p>
           <RulesTable
             label={`Worked example — ${w.en.yes}/${w.en.no} settlement`}
@@ -276,8 +276,8 @@ export function yesNoContent(r: RulesRates): Record<Locale, React.ReactNode> {
             </li>
             <li>
               Dau lina mipaka: kiwango cha chini{" "}
-              <span className="font-mono tabular-nums text-text">{tzs(r.minStake)}</span>, cha juu{" "}
-              <span className="font-mono tabular-nums text-text">{tzs(r.maxStake)}</span> kwa kila nafasi.
+              <span className="font-mono tabular-nums text-text whitespace-nowrap">{tzs(r.minStake)}</span>, cha juu{" "}
+              <span className="font-mono tabular-nums text-text whitespace-nowrap">{tzs(r.maxStake)}</span> kwa kila nafasi.
             </li>
           </ul>
         </LegalSection>
@@ -336,8 +336,8 @@ export function yesNoContent(r: RulesRates): Record<Locale, React.ReactNode> {
         <LegalSection n="5" title="Mfano wa hesabu">
           <p>
             Soko lenye bwawa la {w.sw.yes} la{" "}
-            <span className="font-mono tabular-nums text-text">{tzs(EXAMPLE_WIN_POOL)}</span> na bwawa la {w.sw.no} la{" "}
-            <span className="font-mono tabular-nums text-text">{tzs(EXAMPLE_LOSE_POOL)}</span>:
+            <span className="font-mono tabular-nums text-text whitespace-nowrap">{tzs(EXAMPLE_WIN_POOL)}</span> na bwawa la {w.sw.no} la{" "}
+            <span className="font-mono tabular-nums text-text whitespace-nowrap">{tzs(EXAMPLE_LOSE_POOL)}</span>:
           </p>
           <RulesTable
             label={`Mfano wa hesabu — ${w.sw.yes}/${w.sw.no}`}
@@ -420,13 +420,13 @@ export function yesNoContent(r: RulesRates): Record<Locale, React.ReactNode> {
       <>
         <LegalSection n="1" title="关于 50pick 及本规则的适用范围">
           <p>
-            50pick.tz 是一个预测市场平台，玩家以简单的 <strong className="text-text">{w.zh.yes}</strong>或{" "}
+            50pick.tz 是一个预测市场平台，玩家以简单的<strong className="text-text">{w.zh.yes}</strong>或
             <strong className="text-text">{w.zh.no}</strong>回答现实世界的问题，并以坦桑尼亚先令表达自己的判断。结果依据具名、可公开核实的官方来源结算，绝不依赖随机运气。
           </p>
           <p>
             本服务由在坦桑尼亚联合共和国注册的 50pick Ltd 运营，并持有坦桑尼亚博彩委员会颁发的牌照，牌照号{" "}
             <span className="font-mono tabular-nums text-text">{LICENCE_NUMBER()}</span>。本规则适用于平台上每一个
-            {w.zh.yes}/{w.zh.no} 市场，构成 50pick 管理层与每位玩家之间具有约束力的协议。
+            {w.zh.yes}/{w.zh.no}市场，构成 50pick 管理层与每位玩家之间具有约束力的协议。
           </p>
         </LegalSection>
 
@@ -440,13 +440,13 @@ export function yesNoContent(r: RulesRates): Record<Locale, React.ReactNode> {
             <li>充值与提现通过充值/提现页面公布的移动支付渠道进行，资金进出您账户上登记的钱包。我们绝不索取银行卡信息。</li>
             <li>
               下注设有上下限：最低{" "}
-              <span className="font-mono tabular-nums text-text">{tzs(r.minStake)}</span>，最高{" "}
-              <span className="font-mono tabular-nums text-text">{tzs(r.maxStake)}</span>。
+              <span className="font-mono tabular-nums text-text whitespace-nowrap">{tzs(r.minStake)}</span>，最高{" "}
+              <span className="font-mono tabular-nums text-text whitespace-nowrap">{tzs(r.maxStake)}</span>。
             </li>
           </ul>
         </LegalSection>
 
-        <LegalSection n="3" title="市场与问题 —— 所有权">
+        <LegalSection n="3" title="市场与问题——所有权">
           <ul className="list-disc pl-5 space-y-1">
             <li>
               <strong className="text-text">平台上的每一个市场均由 50pick 管理层创建、拥有并上架</strong>，由其决定上架内容、截止时间与结算方式。
@@ -454,7 +454,7 @@ export function yesNoContent(r: RulesRates): Record<Locale, React.ReactNode> {
             <li>
               当平台邀请玩家<em>提议</em>问题时，提议只是建议而非市场。只有经管理层上架后才成为市场，且管理层对其保留与其他市场完全相同的所有权与结算权。提议功能在某一时点是否开放，以平台显示为准。
             </li>
-            <li>每个市场为一个问题，仅有两个答案：{w.zh.yes} 或 {w.zh.no}。</li>
+            <li>每个市场为一个问题，仅有两个答案：{w.zh.yes}或{w.zh.no}。</li>
             <li>每个市场都载明<strong className="text-text">具名的公开来源</strong>与明确的截止时间，两者均在您下注前展示。</li>
             <li>信心指示器显示资金分布，仅供参考，不构成建议。</li>
           </ul>
@@ -488,15 +488,15 @@ export function yesNoContent(r: RulesRates): Record<Locale, React.ReactNode> {
 
         <LegalSection n="5" title="计算示例">
           <p>
-            某市场 {w.zh.yes} 池为 <span className="font-mono tabular-nums text-text">{tzs(EXAMPLE_WIN_POOL)}</span>，{w.zh.no} 池为{" "}
-            <span className="font-mono tabular-nums text-text">{tzs(EXAMPLE_LOSE_POOL)}</span>：
+            某市场的“{w.zh.yes}”池为 <span className="font-mono tabular-nums text-text whitespace-nowrap">{tzs(EXAMPLE_WIN_POOL)}</span>，“{w.zh.no}”池为{" "}
+            <span className="font-mono tabular-nums text-text whitespace-nowrap">{tzs(EXAMPLE_LOSE_POOL)}</span>：
           </p>
           <RulesTable
-            label={`计算示例 —— ${w.zh.yes}/${w.zh.no} 结算`}
+            label={`计算示例——${w.zh.yes}/${w.zh.no}结算`}
             head={["结果", "失败方奖池", `佣金（${r.commissionPct}%）`, "获胜方分得"]}
             rows={[
-              [`${w.zh.no} 获胜`, tzs(a.losingPool), tzs(a.fee), tzs(a.net)],
-              [`${w.zh.yes} 获胜`, tzs(b.losingPool), tzs(b.fee), tzs(b.net)],
+              [`${w.zh.no}方获胜`, tzs(a.losingPool), tzs(a.fee), tzs(a.net)],
+              [`${w.zh.yes}方获胜`, tzs(b.losingPool), tzs(b.fee), tzs(b.net)],
             ]}
           />
           <p>净奖金按比例分配：持有获胜池十分之一的玩家，获得净奖金的十分之一，另加本金退回。</p>

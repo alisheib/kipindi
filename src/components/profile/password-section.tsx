@@ -60,7 +60,7 @@ export function PasswordSection({ hasPassword }: { hasPassword: boolean }) {
           <I.keyRound s={14} className="text-text-subtle shrink-0" />
           <div className="min-w-0">
             <p className="font-mono text-micro uppercase eyebrow text-text-muted">{t.common.passwordLabel}</p>
-            <p className="text-[13px] text-text-muted">
+            <p className="text-[13px] text-text-muted text-balance break-keep [overflow-wrap:anywhere]">
               {hasPassword ? t.common.passwordSetHint : t.common.passwordNotSetHint}
             </p>
           </div>

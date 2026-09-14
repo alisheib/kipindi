@@ -185,6 +185,10 @@ export type FailureReason =
    *  restart verification themselves; the door back is an officer (2026-09-13, `kyc-refusal.ts`).
    *  ⚠️ Emitted by `startKyc`, so the sentence must send them to SUPPORT, never to "try again". */
   | "kyc_refused_final"
+  /** Account closure refused while a final identity refusal or an officer hold stands on a wallet that still holds
+   *  money — closing would turn the frozen wallet CLOSED and leave the officer's balance decision impossible
+   *  (audit session 95, 2026-09-13, `user-service.closeAccount`). Sends the player to support. */
+  | "account_close_held"
   // ⛔ RENAMED 2026-08-20, and the rename is the point. `nida_taken` /
   // `nida_not_verified` were named for the only document the product accepted.
   // From 2026-08-20 a player proves identity with any ONE of four, so leaving
@@ -381,6 +385,9 @@ export const REASONS: Record<FailureReason, ReasonSpec> = {
   // the page renders the refused state with the route to support. So this only surfaces on a
   // hand-built request, inline on that page. It is a hard block the player cannot lift themselves.
   kyc_refused_final:    { severity: "error",   channel: "inline", key: "errKycRefusedFinal" },
+  // Closure refused on a wallet held for a final identity refusal or an officer — inline beside the close form,
+  // sending the player to support (audit session 95, 2026-09-13).
+  account_close_held:   { severity: "error",   channel: "inline", key: "errAccountCloseHeld" },
 
   name_invalid:         { severity: "warning", channel: "inline", key: "errNameInvalid" },
   avatar_type:          { severity: "warning", channel: "inline", key: "errAvatarType" },

@@ -23,12 +23,12 @@
  *   §1 every never-approved state: the stake and deposit controls render with no panel; the withdraw
  *      screen shows the payout panel in THAT state and NO form; no bar anywhere; /profile keeps the pill
  *   §2 the first-deposit notice: absent before a confirmed deposit, present after one while nothing is
- *      sent, absent once documents are with us or approved; dismissed, gone after reload in THIS browser
+ *      sent, absent once documents are with us or approved; dismissed, gone after reload for THIS player (the cookie is bound to the player since 2026-09-14)
  *   §3 THE POSITIVE CONTROL: an approved account sees every form, no panel, no notice
  *   §4 the copy in en/sw/zh: "Before you withdraw", no "balance is safe" line, the notice's sentence
  *
  * Fixtures come from `/auth/demo?kyc=…&deposit=0|1` (dev-only route, 404 in production): a real
- * KycSubmission row, and ONE confirmed deposit row added (`1`) or failed (`0`).
+ * KycSubmission row, and ONE confirmed deposit row added (`1`) or failed (`0`, which also empties the wallet to TZS 0).
  * ⚠️ THE DEMO ACCOUNT IS SHARED and every sign-in re-applies its state, so this drive opens one browser
  * at a time and closes it before the next fixture — two interleaved fixtures would each rewrite the
  * other's row.
@@ -177,9 +177,11 @@ const NEVER_APPROVED = [
   ["none",          "not_started",    "verify id",               true,  "/profile/kyc"],
   ["uploaded",      "uploaded",       "verify id",               true,  "/profile/kyc"],
   ["pending",       "pending_review", "in review",               false, null],
-  ["more_info",     "more_info",      "more information needed", false, "/profile/kyc"],
+  // 2026-09-14 — the pill has its own short labels: "More info needed", and "Refused" for a FINAL refusal (it read
+  // "Rejected", the same word as a refusal the player can retry).
+  ["more_info",     "more_info",      "more info needed",        false, "/profile/kyc"],
   ["rejected",      "rejected",       "rejected",                false, "/profile/kyc"],
-  ["refused_final", "refused_final",  "rejected",                false, "/help"],
+  ["refused_final", "refused_final",  "refused",                 false, "/help"],
 ];
 
 for (const [param, expectState, pillWords, showsWait, ctaPath] of NEVER_APPROVED) {
@@ -208,8 +210,15 @@ for (const [param, expectState, pillWords, showsWait, ctaPath] of NEVER_APPROVED
   }
 
   // ⭐ THE DEPOSIT SCREEN'S ONE DOOR IS THE EMAIL, and the demo address is confirmed — so, the form.
+  // 🔴 EXCEPT A FROZEN WALLET (2026-09-14): a final refusal freezes it (IDENTITY_REFUSED), and a wallet that is not
+  // ACTIVE gets the paused notice instead of a form the server would refuse.
   await go(page, `${BASE}/wallet/deposit`);
-  ok(`${L}.deposit · ★ the deposit form renders`, await page.locator(sel.depositForm).count() > 0);
+  if (param === "refused_final") {
+    ok(`${L}.deposit · ★ a frozen wallet gets the paused notice, not the form`, await page.locator('[data-testid="deposit-paused"]').count() === 1);
+    ok(`${L}.deposit · ⛔ …and NO deposit form`, await page.locator(sel.depositForm).count() === 0);
+  } else {
+    ok(`${L}.deposit · ★ the deposit form renders`, await page.locator(sel.depositForm).count() > 0);
+  }
   ok(`${L}.deposit · ⛔ …with NO identity panel`, await page.locator(sel.gate).count() === 0);
   await noBar(page, `${L}.deposit`);
 
@@ -336,7 +345,7 @@ for (const [label, kyc, deposit, due] of [
   await page.close();
 }
 
-// ⭐ DISMISSED ONCE, REMEMBERED PER BROWSER — and only per browser.
+// ⭐ DISMISSED ONCE, REMEMBERED FOR THAT PLAYER IN THIS BROWSER (the cookie value is bound to the player since 2026-09-14).
 {
   const page = await walletAs("none", 1);
   const x = page.locator(sel.noticeDismiss);
@@ -350,7 +359,9 @@ for (const [label, kyc, deposit, due] of [
     await page.waitForFunction((s) => !document.querySelector(s), sel.notice, { timeout: 5_000 }).catch(() => {});
     ok("2.dismiss · ★ pressing the X removes it in place", await page.locator(sel.notice).count() === 0);
     const cookie = (await page.context().cookies()).find((c) => c.name === NOTICE_COOKIE);
-    ok("2.dismiss · …and this browser remembers it", cookie?.value === "dismissed", JSON.stringify(cookie ?? null));
+    // ⚠️ 2026-09-14 (audit session 95): the dismissal is bound to the PLAYER (`d:` + 16 hex of a per-user hash), so a
+    // shared phone no longer hides the notice from the next player — the old unbound "dismissed" is not accepted.
+    ok("2.dismiss · …and this player's dismissal is remembered in this browser", /^d:[0-9a-f]{16}$/.test(cookie?.value ?? ""), JSON.stringify(cookie ?? null));
     await page.reload({ waitUntil: "domcontentloaded", timeout: 120_000 });
     await page.waitForFunction(() => document.body && document.body.innerText.trim().length > 40, null, { timeout: 60_000 });
     ok("2.dismiss · control · /wallet rendered again after the reload", await page.locator(sel.walletBalance).count() > 0);

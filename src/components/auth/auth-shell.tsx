@@ -36,7 +36,7 @@ export async function AuthShell({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="relative max-w-sm">
-            <p className="font-display text-[30px] font-bold leading-[1.15] tracking-[-0.02em] text-text">
+            <p className="font-display text-[30px] font-bold leading-[1.15] tracking-[-0.02em] text-text text-balance">
               {t.auth.railTagline}
             </p>
             <div className="mt-7 rounded-xl border border-border/60 bg-bg-elevated/40 p-4 backdrop-blur-sm">
@@ -60,7 +60,9 @@ export async function AuthShell({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="relative font-mono text-micro uppercase tracking-[0.16em] text-text-subtle">
-            {t.auth.licensedByGbt} <a href={`tel:${HELPLINE_TEL()}`} className="whitespace-nowrap underline-offset-2 hover:underline">{HELPLINE()}</a> · EN · SW · 中文
+            {t.auth.licensedByGbt} <a href={`tel:${HELPLINE_TEL()}`} className="whitespace-nowrap underline-offset-2 hover:underline">{HELPLINE()}</a>
+            {/* 2026-09-14 — the language list is its own unbreakable line: inline it split as "EN ·" / "SW · 中文" (en) and left 中文 alone (sw). */}
+            <span className="mt-1 block whitespace-nowrap">EN · SW · 中文</span>
           </div>
         </aside>
 

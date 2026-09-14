@@ -215,7 +215,9 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
   const sortField = sortRequested === "balance" && !moneyKnown ? "joined" : sortRequested;
   if (sortField === "balance") {
     filtered.sort((a, b) => {
-      const cmp = (walletByUser.get(a.id)?.balance ?? 0) - (walletByUser.get(b.id)?.balance ?? 0);
+      // ⭐ `heldOf` — balance + hold, the SAME basis the funded filter and the money cell read (audit session 95,
+      // 2026-09-14). Sorting on the balance alone ranked a player with money in flight below one holding less.
+      const cmp = heldOf(a.id) - heldOf(b.id);
       return sortDir === "asc" ? cmp : -cmp;
     });
   } else {
@@ -442,13 +444,14 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
                   <th className="text-left">KYC</th>
                   {/* ⛔ SORTABLE ONLY WITH MONEY RIGHTS (2026-09-13) — a sort by a figure the viewer
                       cannot see still reveals its ranking. Same header word either way, so the
-                      column never moves and the colSpan below stays eight. */}
+                      column never moves and the colSpan below stays seven. */}
                   {moneyKnown
                     ? <SortTh field="balance" label="Wallet" current={sortField} dir={sortDir} align="right" sp={sp} baseHref="/admin/players" />
                     : <th className="text-right">Wallet</th>}
                   <SortTh field="joined" label="Joined" current={sortField} dir={sortDir} sp={sp} baseHref="/admin/players" />
                   <SortTh field="login" label="Last login" current={sortField} dir={sortDir} sp={sp} baseHref="/admin/players" />
-                  <th className="text-left">Drill-down</th>
+                  {/* ⛔ NO "Drill-down" COLUMN (2026-09-14). It repeated the Player cell's own link to the same page,
+                      and at 1280 it was the column that ran past the card's edge. */}
                 </tr>
               </thead>
               <tbody className="text-text-secondary">
@@ -460,11 +463,13 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
                   return (
                     <tr key={u.id} data-row-id={u.id}>
                       <td>
-                        <a href={`/admin/players/${u.id}`} className="flex items-center gap-2.5 min-w-0 hover:text-royal-300">
+                        {/* A width cap (2026-09-14): in an auto-width table nothing capped this column, so the truncation
+                            below never engaged and a long name widened the roster past its card at 1280. */}
+                        <a href={`/admin/players/${u.id}`} className="flex items-center gap-2.5 min-w-0 max-w-[12rem] hover:text-royal-300">
                           <Avatar initials={initials} size="sm" seed={u.id} />
                           <div className="min-w-0">
                             <p className={`text-body-sm font-medium text-text truncate ${isAutoHandle ? "font-mono" : ""}`}>{label}</p>
-                            <p className="text-micro font-mono text-text-tertiary truncate">{u.id}</p>
+                            <p className="text-micro font-mono text-text-tertiary truncate" title={u.id}>{u.id}</p>
                           </div>
                         </a>
                       </td>
@@ -522,18 +527,15 @@ export default async function AdminPlayersPage({ searchParams }: { searchParams:
                       </td>
                       <td className="font-mono whitespace-nowrap">{formatDate(u.createdAt)}</td>
                       <td className="font-mono whitespace-nowrap">{u.lastLoginAt ? formatDate(u.lastLoginAt) : "—"}</td>
-                      <td>
-                        <a href={`/admin/players/${u.id}`} className="row-link text-royal-300 hover:underline font-mono text-micro">profile →</a>
-                      </td>
                     </tr>
                   );
                 })}
                 {filtered.length === 0 && (
                   usersFailed ? (
-                    <tr><td colSpan={8} className="p-4"><AdminLoadError what="the player list" /></td></tr>
+                    <tr><td colSpan={7} className="p-4"><AdminLoadError what="the player list" /></td></tr>
                   ) : (
                     <AdminTableEmpty
-                      colSpan={8}
+                      colSpan={7}
                       kind="admin"
                       title="No players match"
                       body="No players match the current filter — try clearing it."

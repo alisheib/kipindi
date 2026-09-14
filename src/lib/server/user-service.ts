@@ -19,6 +19,7 @@ import { sendEmailToUser, accountClosedHtml } from "./email";
 import { notify } from "./notification-service";
 import { displayLabel } from "@/lib/display-label";
 import type { ServiceResult } from "./auth-service";
+import { currentFreezeReasons } from "@/lib/wallet-freeze-reasons";
 
 export type UserDataExport = {
   generatedAt: string;
@@ -85,6 +86,19 @@ export async function closeAccount(userId: string, reason?: string): Promise<Ser
   const user = await db.user.findById(userId);
   if (!user) return { ok: false, error: "User not found.", code: "NOT_FOUND" };
   if (user.status === "CLOSED") return { ok: true, data: { closedAt: user.closedAt ?? user.updatedAt } };
+
+  // ⛔ NOT WHILE AN IDENTITY REFUSAL OR AN OFFICER HOLD STANDS ON MONEY (audit session 95, 2026-09-13). A final
+  // refusal freezes the wallet and hands the balance to an officer's recorded decision (refused-funds.ts); closing
+  // would set the wallet CLOSED, which every outcome refuses, and strand the case on the report for good. A plain
+  // self-exclusion hold does not block closure — that is the player's own choice about their own account.
+  const heldWallet = await db.wallet.findByUserId(userId);
+  if (heldWallet) {
+    const holds = currentFreezeReasons(heldWallet);
+    if ((holds.includes("IDENTITY_REFUSED") || holds.includes("OFFICER")) && heldWallet.balance + heldWallet.hold > 0) {
+      audit({ category: "COMPLIANCE", action: "account.close_blocked_hold", actorId: userId, targetType: "User", targetId: userId, payload: { holds, balance: heldWallet.balance, hold: heldWallet.hold } });
+      return { ok: false, error: "Your account can't be closed while our compliance team is reviewing it. Contact support.", code: "INVALID", reason: "account_close_held" };
+    }
+  }
 
   const closedAt = new Date().toISOString();
   await db.user.update(userId, {

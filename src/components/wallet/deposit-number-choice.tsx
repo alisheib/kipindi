@@ -68,7 +68,7 @@ export function DepositNumberChoice({
       type="button"
       variant="ghost"
       size="sm"
-      className="mt-1.5 -ml-1"
+      className="mt-2"
       onClick={() => setOther((v) => !v)}
     >
       {other ? copy.useMine : copy.useAnother}

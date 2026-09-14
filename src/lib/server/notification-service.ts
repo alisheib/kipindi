@@ -576,7 +576,7 @@ export function notifyWatchedClosingSoon(userId: string, opts: { marketTitle: Lo
     kind: "WATCHLIST",
     titleEn: "A market you follow closes soon",
     titleSw: "Soko unalofuatilia linafunga karibuni",
-    titleZh: "你关注的市场即将关闭",
+    titleZh: "您关注的市场即将关闭",
     bodyEn: `${opts.marketTitle.en.slice(0, 70)} · selections close in about ${opts.minutes} minutes.`,
     bodySw: `${opts.marketTitle.sw.slice(0, 50)} · uchaguzi unafunga baada ya takriban dakika ${opts.minutes}.`,
     bodyZh: `${opts.marketTitle.zh.slice(0, 50)} · 选择将在约 ${opts.minutes} 分钟后关闭。`,
@@ -600,7 +600,7 @@ export function notifyWatchedSettled(userId: string, opts: { marketTitle: Locali
     kind: "WATCHLIST",
     titleEn: "A market you follow has settled",
     titleSw: "Soko unalofuatilia limetatuliwa",
-    titleZh: "你关注的市场已结算",
+    titleZh: "您关注的市场已结算",
     bodyEn: `${opts.marketTitle.en.slice(0, 70)} · resolved ${outcomeWordIn("en", opts.outcome, "MARKET")}.`,
     bodySw: `${opts.marketTitle.sw.slice(0, 50)} · matokeo: ${outcomeWordIn("sw", opts.outcome, "MARKET")}.`,
     bodyZh: `${opts.marketTitle.zh.slice(0, 50)} · 结果：${outcomeWordIn("zh", opts.outcome, "MARKET")}。`,
@@ -1460,9 +1460,11 @@ export function notifyRefusedFundsDecision(
       titleEn: "Your balance is held",
       titleSw: "Salio lako limeshikiliwa",
       titleZh: "您的余额已被暂扣",
-      bodyEn: `We could not verify your identity. Your balance of ${tzs(d.balanceTzs)} stays held while we review your case, and we will write to you with our decision.`,
-      bodySw: `Hatukuweza kuthibitisha utambulisho wako. Salio lako la ${tzs(d.balanceTzs)} linabaki limeshikiliwa tunapokagua suala lako, na tutakuandikia uamuzi wetu.`,
-      bodyZh: `我们无法核实您的身份。在审核您的案件期间，您的余额 ${tzs(d.balanceTzs)} 将继续暂扣，我们会以书面形式告知您决定。`,
+      // ⭐ 2026-09-14 — a hold PENDING APPEAL that never said how to appeal left the player no door to the
+      // appeal it is pending. The sentence is the one the decision email carries, in all three languages.
+      bodyEn: `We could not verify your identity. Your balance of ${tzs(d.balanceTzs)} stays held while we review your case, and we will write to you with our decision. If you believe our refusal is wrong, contact support to appeal.`,
+      bodySw: `Hatukuweza kuthibitisha utambulisho wako. Salio lako la ${tzs(d.balanceTzs)} linabaki limeshikiliwa tunapokagua suala lako, na tutakuandikia uamuzi wetu. Ikiwa unaamini kukataliwa huku si sahihi, wasiliana na huduma kwa wateja ili kukata rufaa.`,
+      bodyZh: `我们无法核实您的身份。在审核您的案件期间，您的余额 ${tzs(d.balanceTzs)} 将继续暂扣，我们会以书面形式告知您决定。如果您认为这一拒绝有误，请联系客服提出申诉。`,
       href: "/wallet",
     });
   }
@@ -1491,6 +1493,35 @@ export function notifyRefusedFundsDecision(
     bodyEn: `We could not verify your identity. ${tzs(d.returnedTzs)} is being sent to your registered number.${kept ? ` ${tzs(d.forfeitedTzs)} will not be returned.` : ""}`,
     bodySw: `Hatukuweza kuthibitisha utambulisho wako. ${tzs(d.returnedTzs)} zinatumwa kwa namba yako iliyosajiliwa.${kept ? ` ${tzs(d.forfeitedTzs)} hazitarudishwa.` : ""}`,
     bodyZh: `我们无法核实您的身份。${tzs(d.returnedTzs)} 正在汇入您的注册号码。${kept ? `另有 ${tzs(d.forfeitedTzs)} 不予退还。` : ""}`,
+    href: "/wallet",
+  });
+}
+
+/**
+ * ⭐ A REFUSED-FUNDS RETURN THAT DID NOT GO THROUGH (2026-09-14).
+ *
+ * `notifyRefusedFundsDecision` tells the player "we're returning your money" once the payout has started.
+ * When that payout then fails, the amount comes back into the wallet, which stays frozen — and until this
+ * emitter the player heard nothing more, holding a notice that said money was on its way.
+ * ⛔ It states only what is true when it is sent: the figure is back in the account, the account stays frozen,
+ * and our team decides the next step. No retry and no date are promised, because none is scheduled.
+ * ⛔ No identity sentence (the quiet rule): it answers a payout that failed, not a verification event.
+ * A money kind (`WITHDRAW`), so it names the figure; `forfeitedTzs` repeats the part of the decision that
+ * stands whatever happened to the payout.
+ */
+export function notifyRefusedFundsReturnFailed(userId: string, d: { amountTzs: number; forfeitedTzs: number }) {
+  const tzs = (n: number) => formatTzs(n);
+  const kept = d.forfeitedTzs > 0;
+  return notify({
+    userId,
+    kind: "WITHDRAW",
+    titleEn: "Your return did not go through",
+    titleSw: "Urejeshaji wa pesa zako haukufanikiwa",
+    titleZh: "您的资金退还未能完成",
+    bodyEn: `The return of ${tzs(d.amountTzs)} to your registered number did not go through. The money is in your account, which stays frozen; our team will decide the next step and write to you.${kept ? ` ${tzs(d.forfeitedTzs)} will not be returned.` : ""}`,
+    bodySw: `Urejeshaji wa ${tzs(d.amountTzs)} kwa namba yako iliyosajiliwa haukufanikiwa. Pesa ziko kwenye akaunti yako, ambayo inabaki imegandishwa; timu yetu itaamua hatua inayofuata na kukuandikia.${kept ? ` ${tzs(d.forfeitedTzs)} hazitarudishwa.` : ""}`,
+    // ⭐ "in your account", never "back": on a payout that never started the money did not leave (P1 review, 2026-09-14).
+    bodyZh: `向您注册号码退还 ${tzs(d.amountTzs)} 的操作未能成功。这笔资金在您的账户中，账户仍处于冻结状态；我们的团队将决定下一步，并以书面形式通知您。${kept ? `另有 ${tzs(d.forfeitedTzs)} 不予退还。` : ""}`,
     href: "/wallet",
   });
 }

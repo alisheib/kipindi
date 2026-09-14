@@ -61,7 +61,9 @@ const page = decomment(readFileSync(join(ROOT, "src/app/markets/[id]/page.tsx"),
   // If the left column still spanned both rows there would be nowhere for a full-width
   // row 2 to go, and the grid would silently overlap.
   ok("2: ⛔ the left column no longer spans both rows", !/lg:row-span-2/.test(page));
-  ok("2: the bet widget still sticks in row 1", /lg:col-start-2 lg:row-start-1[^"]*lg:sticky/.test(page));
+  // 2026-09-14 — the sticky panel sits INSIDE a row-1 wrapper, so it can never slide down over row 2 (it covered the
+  // third "Similar markets" card at 1280).
+  ok("2: the bet widget sticks ONLY within row 1", /lg:col-start-2 lg:row-start-1 lg:self-stretch">\s*<aside className="[^"]*lg:sticky/.test(page));
 }
 
 // ── 3 · The cards get the shared grid, not a forced single column ───────────

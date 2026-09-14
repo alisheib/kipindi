@@ -48,9 +48,9 @@ const SUBTITLE: Record<Locale, string> = {
  * makes bumping it in the same commit a rule rather than a habit.
  */
 const META: Record<Locale, string> = {
-  en: "Version 2026-09-10 · Effective on entering a market.",
-  sw: "Toleo 2026-09-10 · Yanaanza kutumika unapoingia sokoni.",
-  zh: "版本 2026-09-10 · 自进入市场时生效。",
+  en: "Version 2026-09-13 · Effective on entering a market.",
+  sw: "Toleo 2026-09-13 · Yanaanza kutumika unapoingia sokoni.",
+  zh: "版本 2026-09-13 · 自进入市场时生效。",
 };
 
 export default async function YesNoRulesPage() {

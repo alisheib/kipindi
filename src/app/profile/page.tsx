@@ -97,10 +97,12 @@ export default async function ProfilePage() {
       : kycLevel === "PENDING_REVIEW"
         ? { tone: "info", label: t.profile.inReview, glyph: I.clock }
         : kycLevel === "ADDITIONAL_INFO_REQUIRED"
-          ? { tone: "warning", label: t.profile.kycMoreInfo, glyph: I.upload }
+          // 2026-09-14 — the pill takes its own short label: the full heading wrapped to two lines beside the avatar at 360.
+          ? { tone: "warning", label: t.profile.kycMoreInfoPill, glyph: I.upload }
           : kycLevel === "REJECTED"
-            ? { tone: "danger", label: t.profile.rejected, glyph: I.alertCircle }
-            : { tone: "neutral", label: t.common.verifyId, glyph: I.shieldQuestion };
+            // 2026-09-14 — a FINAL refusal reads "Refused", never the retryable "Rejected" (the roster's own ruling, kyc-stage.ts).
+            ? { tone: "danger", label: isFinalRefusal(kyc?.rejectReason) ? t.profile.refusedFinal : t.profile.rejected, glyph: I.alertCircle }
+            : { tone: "neutral", label: t.profile.kycPillStart, glyph: I.shieldQuestion };
   const kycPillNode = (
     <Pill tone={kycPill.tone as "success" | "danger" | "info" | "warning" | "neutral"}>
       <kycPill.glyph s={10} className="inline -mt-px" /> {kycPill.label}

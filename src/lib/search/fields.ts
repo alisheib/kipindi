@@ -345,10 +345,10 @@ export const AGENT_ROSTER_SEARCH: EntitySchema = {
  * (`getAuditForActor`) rather than a table this process can put a `where` on — `market-dal` never
  * sees this query. `matchesQuery` only.
  *
- * ⚠️ THIS IS THE ONE PLAYER SCHEMA WHOSE SEARCHABLE FIELDS ARE STORED TOKENS, and it is deliberate
- * rather than an oversight of §L3. Every other player surface searches WORDS — a market title, a
- * notification body — because those are what the page renders. This table renders `e.category` and
- * `e.action` verbatim in its Category and Action columns, so the token IS the visible word here.
+ * ⭐ 2026-09-14 — `action` NOW MATCHES THE WORDS THE TABLE PRINTS. The page puts
+ * `auditActionLabel(t, e.action, e.category)` into the row ("Signed in", or the translated category for an
+ * action with no label of its own), because the raw token (`session.revoked_by_newer_login`) was printed to
+ * sw and zh players. `category` still holds the stored token; the lens strip is what selects a category.
  * ⛔ A search that matched something the reader cannot see would be the opposite failure:
  * `NOTIFICATION_SEARCH`'s note refuses `event` for exactly that reason — *"it is not rendered
  * anywhere a player can see"* — and the same test admits these two.

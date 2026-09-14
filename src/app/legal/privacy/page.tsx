@@ -15,10 +15,12 @@ const TITLE: Record<Locale, string> = {
   sw: "Sera ya Faragha",
   zh: "隐私政策",
 };
+// The notice carries a version like the other /legal documents (since 2026-09-14): move the date in the SAME
+// commit as any change to its English text, with a dated COMPLIANCE-DECISIONS.md entry.
 const META: Record<Locale, string> = {
-  en: "Aligned with the Tanzania Personal Data Protection Act 2022 and EU GDPR principles.",
-  sw: "Imeoanishwa na Tanzania Personal Data Protection Act 2022 na kanuni za EU GDPR.",
-  zh: "符合 Tanzania Personal Data Protection Act 2022 及 EU GDPR 原则。",
+  en: "Version 2026-09-14 · Aligned with the Tanzania Personal Data Protection Act 2022 and EU GDPR principles.",
+  sw: "Toleo 2026-09-14 · Imeoanishwa na Tanzania Personal Data Protection Act 2022 na kanuni za EU GDPR.",
+  zh: "版本 2026-09-14 · 符合 Tanzania Personal Data Protection Act 2022 及 EU GDPR 原则。",
 };
 
 /**
@@ -46,8 +48,8 @@ function content(): Record<Locale, React.ReactNode> { return {
 
       <LegalSection n="2" title="What we collect">
         <ul className="list-disc pl-5 space-y-1">
-          <li><strong className="text-text">Identity</strong>: full name, date of birth, NIDA number, photographic ID</li>
-          <li><strong className="text-text">Contact</strong>: phone number (E.164), region</li>
+          <li><strong className="text-text">Identity</strong>: full name and date of birth; the type and number of one of four documents — a National ID (NIDA), a passport, a driving licence or a voter&apos;s card — and its expiry date where the document has one; photographs of that document; and a selfie</li>
+          <li><strong className="text-text">Contact</strong>: phone number (E.164), email address, region</li>
           <li><strong className="text-text">Financial</strong>: deposit and withdrawal records, mobile-money MSISDN, prediction activity</li>
           <li><strong className="text-text">Technical</strong>: IP address and browser user-agent string, recorded on sign-in and security events; session issue and expiry times</li>
           <li><strong className="text-text">Behavioural</strong>: deposit and loss limit changes, self-exclusion and cooling-off periods</li>
@@ -69,7 +71,7 @@ function content(): Record<Locale, React.ReactNode> { return {
           <li>Mobile-money aggregator (Selcom or Azampay) for payment routing</li>
           <li>Source registry partners for resolution data</li>
           <li>Gaming Board of Tanzania, Tanzania Revenue Authority, FIU when legally compelled</li>
-          <li>Cloud infrastructure (encrypted at rest, TZ region preferred; failover in EU AWS Frankfurt)</li>
+          <li>Cloud hosting providers: Railway, in the United States (region us-west2), which runs the app, holds its databases and keeps backups of them; and Cloudflare R2, in Western Europe, which stores identity documents, selfies and encrypted database backups; and GitHub Actions, in the United States, which creates the nightly database backup and test-restores it before it is encrypted and stored</li>
         </ul>
         <p className="text-text">We never sell personal data.</p>
       </LegalSection>
@@ -134,8 +136,8 @@ function content(): Record<Locale, React.ReactNode> { return {
 
       <LegalSection n="2" title="Tunachokusanya">
         <ul className="list-disc pl-5 space-y-1">
-          <li><strong className="text-text">Utambulisho</strong>: jina kamili, tarehe ya kuzaliwa, namba ya NIDA, kitambulisho chenye picha</li>
-          <li><strong className="text-text">Mawasiliano</strong>: namba ya simu (E.164), mkoa</li>
+          <li><strong className="text-text">Utambulisho</strong>: jina kamili na tarehe ya kuzaliwa; aina na namba ya mojawapo ya nyaraka nne — Kitambulisho cha Taifa (NIDA), pasipoti, leseni ya udereva au kadi ya mpiga kura — pamoja na tarehe ya kuisha muda wake pale nyaraka inapokuwa nayo; picha za nyaraka hiyo; na selfie</li>
+          <li><strong className="text-text">Mawasiliano</strong>: namba ya simu (E.164), anwani ya barua pepe, mkoa</li>
           <li><strong className="text-text">Fedha</strong>: kumbukumbu za kuweka na kutoa fedha, MSISDN ya pesa za simu, shughuli za utabiri</li>
           <li><strong className="text-text">Kiufundi</strong>: anwani ya IP na maandishi ya user-agent ya kivinjari, huhifadhiwa unapoingia na kwenye matukio ya usalama; muda wa kuanza na wa kuisha wa kipindi</li>
           <li><strong className="text-text">Kitabia</strong>: mabadiliko ya mipaka ya kuweka fedha na hasara, vipindi vya kujiondoa na kupumzika</li>
@@ -144,7 +146,7 @@ function content(): Record<Locale, React.ReactNode> { return {
 
       <LegalSection n="3" title="Msingi wa kisheria">
         <ul className="list-disc pl-5 space-y-1">
-          <li><strong className="text-text">Utekelezaji wa mkataba</strong>: akaunti, pochi, uwekaji wa dau, ufungaji</li>
+          <li><strong className="text-text">Utekelezaji wa mkataba</strong>: akaunti, pochi, uwekaji wa dau, utatuzi wa masoko</li>
           <li><strong className="text-text">Wajibu wa kisheria</strong>: uthibitisho wa utambulisho (KYC) na AML/CFT chini ya Anti-Money Laundering Act na POCA, kodi chini ya Income Tax Act</li>
           <li><strong className="text-text">Maslahi halali</strong>: kuzuia udanganyifu, ufuatiliaji wa uadilifu wa soko, tahadhari za usalama</li>
           <li><strong className="text-text">Ridhaa</strong>: mawasiliano ya matangazo (yanaweza kufutwa wakati wowote)</li>
@@ -155,9 +157,9 @@ function content(): Record<Locale, React.ReactNode> { return {
         <p>Tunashiriki data na:</p>
         <ul className="list-disc pl-5 space-y-1">
           <li>Mkusanyaji wa pesa za simu (Selcom au Azampay) kwa ajili ya uelekezaji wa malipo</li>
-          <li>Washirika wa rejista za chanzo kwa ajili ya data ya ufungaji</li>
+          <li>Washirika wa rejista za chanzo kwa ajili ya data ya utatuzi wa masoko</li>
           <li>Bodi ya Michezo ya Kubahatisha Tanzania, Mamlaka ya Mapato Tanzania (Tanzania Revenue Authority), FIU pale tunapolazimishwa kisheria</li>
-          <li>Miundombinu ya wingu (imefichwa ikiwa imehifadhiwa, kanda ya TZ inapendelewa; mbadala katika EU AWS Frankfurt)</li>
+          <li>Watoa huduma za wingu: Railway, nchini Marekani (kanda us-west2), inayoendesha programu, kuhifadhi hifadhidata zake na nakala rudufu zake; na Cloudflare R2, barani Ulaya Magharibi, inayohifadhi nyaraka za utambulisho, selfie na nakala rudufu za hifadhidata zilizosimbwa; na GitHub Actions, nchini Marekani, inayotengeneza nakala rudufu ya kila usiku ya hifadhidata na kuijaribu kabla ya kusimbwa na kuhifadhiwa</li>
         </ul>
         <p className="text-text">Kamwe hatuuzi data binafsi.</p>
       </LegalSection>
@@ -222,8 +224,8 @@ function content(): Record<Locale, React.ReactNode> { return {
 
       <LegalSection n="2" title="我们收集的信息">
         <ul className="list-disc pl-5 space-y-1">
-          <li><strong className="text-text">身份</strong>：全名、出生日期、NIDA 号码、带照片的身份证件</li>
-          <li><strong className="text-text">联系方式</strong>：电话号码（E.164）、地区</li>
+          <li><strong className="text-text">身份</strong>：全名与出生日期；所提交证件的类型与号码（国民身份证（NIDA）、护照、驾驶证或选民证四者之一），以及证件载明的有效期（如有）；该证件的照片；以及一张自拍照</li>
+          <li><strong className="text-text">联系方式</strong>：电话号码（E.164）、电子邮箱地址、地区</li>
           <li><strong className="text-text">财务</strong>：存款与提现记录、移动货币 MSISDN、预测活动</li>
           <li><strong className="text-text">技术</strong>：IP 地址与浏览器 user-agent 字符串（在登录及安全事件时记录）；会话签发与到期时间</li>
           <li><strong className="text-text">行为</strong>：存款与亏损限额变更、自我排除与冷静期</li>
@@ -245,7 +247,7 @@ function content(): Record<Locale, React.ReactNode> { return {
           <li>移动货币聚合方（Selcom 或 Azampay），用于支付路由</li>
           <li>来源登记合作方，用于结算数据</li>
           <li>在依法被强制要求时，向坦桑尼亚博彩委员会、Tanzania Revenue Authority、FIU 提供</li>
-          <li>云基础设施（静态加密，优先 TZ 区域；故障转移至 EU AWS Frankfurt）</li>
+          <li>云托管服务商：Railway（美国，us-west2 区域），运行本应用、存放其数据库并保存数据库备份；Cloudflare R2（西欧），存放身份证件、自拍照及加密的数据库备份；以及 GitHub Actions（美国），负责生成每晚的数据库备份，并在加密存储前进行恢复验证</li>
         </ul>
         <p className="text-text">我们绝不出售个人数据。</p>
       </LegalSection>

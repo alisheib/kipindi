@@ -93,6 +93,9 @@ const EMITTED: { fn: string; row: StoredNotification | null }[] = [
   { fn: "notifyRefusedFundsDecision", row: await N.notifyRefusedFundsDecision(U, { outcome: "RETURN_DEPOSITS", returnedTzs: 20_000, forfeitedTzs: 5_000, balanceTzs: 25_000 }) },
   { fn: "notifyRefusedFundsDecision", row: await N.notifyRefusedFundsDecision(U, { outcome: "HOLD_PENDING_APPEAL", returnedTzs: 0, forfeitedTzs: 0, balanceTzs: 25_000 }) },
   { fn: "notifyRefusedFundsDecision", row: await N.notifyRefusedFundsDecision(U, { outcome: "FORFEIT", returnedTzs: 0, forfeitedTzs: 25_000, balanceTzs: 25_000 }) },
+  // 2026-09-14 — the follow-up when a decided return's payout failed: with a forfeited part, and without one.
+  { fn: "notifyRefusedFundsReturnFailed", row: await N.notifyRefusedFundsReturnFailed(U, { amountTzs: 20_000, forfeitedTzs: 5_000 }) },
+  { fn: "notifyRefusedFundsReturnFailed", row: await N.notifyRefusedFundsReturnFailed(U, { amountTzs: 25_000, forfeitedTzs: 0 }) },
   { fn: "notifySof",                 row: await N.notifySof(U, "ACCEPTED") },
   { fn: "notifySelfExclusion",       row: await N.notifySelfExclusion(U, { until: "2027-01-31T00:00:00.000Z" }) },
   { fn: "notifyCoolOff",             row: await N.notifyCoolOff(U, { until: "2026-08-01T00:00:00.000Z" }) },
@@ -306,6 +309,24 @@ for (const { fn, row } of EMITTED) {
   ok("a processing deposit warns against paying twice", /Don't pay again/i.test(processing?.bodyEn ?? ""));
   ok("…in Swahili", /Usilipe tena/i.test(processing?.bodySw ?? ""));
   ok("…and in Chinese", /请勿重复支付/.test(processing?.bodyZh ?? ""));
+}
+
+// Refused funds (2026-09-14). A balance held PENDING APPEAL must say how to appeal; a return whose payout
+// failed must say where the money is now — and neither may drift into an identity prompt.
+{
+  const held = EMITTED.find((e) => e.fn === "notifyRefusedFundsDecision" && e.row?.titleEn === "Your balance is held")?.row ?? null;
+  ok("a held balance tells the player how to appeal, in every language",
+    !!held && /contact support to appeal/.test(held.bodyEn) && /kukata rufaa/.test(held.bodySw) && /申诉/.test(held.bodyZh ?? ""),
+    held?.bodyEn ?? "no row");
+  const failed = EMITTED.filter((e) => e.fn === "notifyRefusedFundsReturnFailed").map((e) => e.row);
+  ok("a failed return says the money is back and the account stays frozen, in every language",
+    failed.length === 2 && failed.every((r) => !!r && /is in your account/.test(r.bodyEn) && /stays frozen/.test(r.bodyEn) && /imegandishwa/.test(r.bodySw) && /冻结/.test(r.bodyZh ?? "")),
+    failed.map((r) => r?.bodyEn ?? "no row").join(" | "));
+  ok("…names the part that will not be returned only when there is one",
+    /5,000 will not be returned/.test(failed[0]?.bodyEn ?? "") && !/will not be returned/.test(failed[1]?.bodyEn ?? ""),
+    failed.map((r) => r?.bodyEn ?? "no row").join(" | "));
+  ok("⛔ …and carries no identity sentence, in any language (the quiet rule)",
+    failed.every((r) => !!r && !/verif|identit|utambulisho|uthibitisho|身份|验证/i.test([r.titleEn, r.bodyEn, r.titleSw, r.bodySw, r.titleZh ?? "", r.bodyZh ?? ""].join("\n"))));
 }
 
 // ── 7 · Identity, quietly (owner, 2026-09-13) ──────────────────────────────────────

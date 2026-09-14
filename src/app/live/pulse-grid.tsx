@@ -4,7 +4,7 @@ import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { BrandSpinner, TippingBar } from "@/components/brand";
 import { I, categoryGlyph } from "@/components/ui/glyphs";
-import { pickLocalized } from "@/lib/localized";
+import { marketCategoryLabel, pickLocalized } from "@/lib/localized";
 import { useT } from "@/lib/i18n";
 import { SearchBox } from "@/components/ui/search-box";
 import { fieldNames, MARKET_SEARCH } from "@/lib/search";
@@ -173,7 +173,8 @@ function PulseCard({ market, index }: { market: Market; index: number }) {
               <I.trendingUp s={11} /> {t.market.udTitle}
             </span>
           ) : (
-            <><Cat s={13} />{market.category}</>
+            // The translated category, never the stored id (that printed CRYPTO / SPORTS on sw and zh pages).
+            <><Cat s={13} />{marketCategoryLabel(t, market.category)}</>
           )}
         </span>
         <span className={`inline-flex items-center gap-1 font-mono text-[10px] tabular-nums ${market.selectionClosed ? "text-gold-300" : "text-text-subtle"}`}>
@@ -181,7 +182,8 @@ function PulseCard({ market, index }: { market: Market; index: number }) {
           {market.timeLeft}
         </span>
       </div>
-      <h3 className="min-h-[2.6em] font-display text-[13.5px] font-semibold leading-snug text-text line-clamp-2 group-hover:text-aqua-200">
+      {/* text-balance: "by month-end?" broke at its hyphen and left "end?" alone on line two (visual pass 2). */}
+      <h3 className="min-h-[2.6em] font-display text-[13.5px] font-semibold leading-snug text-text line-clamp-2 text-balance group-hover:text-aqua-200">
         {title}
       </h3>
       {/* 🔴 PV-06, second pass · 2026-09-03. This bar carried NO `empty` prop, so the kit's

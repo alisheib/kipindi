@@ -100,6 +100,10 @@ for (const loc of LOCALES) {
   const paused = (dict[loc].profile as Record<string, string>).kycApprovedPayoutsPaused;
   ok(`${loc}: the paused burst names withdrawals too`, WITHDRAW_WORDS[loc].test(paused), paused);
   ok(`${loc}: ⛔ …and does not name depositing or playing either`, !MONEY_IN_OR_PLAY[loc].test(paused), paused);
+  // 2026-09-14 — the third body: an approved identity over a HELD wallet (officer hold, self-exclusion).
+  const held = (dict[loc].profile as Record<string, string>).kycApprovedWalletHeld;
+  ok(`${loc}: the held-wallet burst names withdrawals too`, typeof held === "string" && WITHDRAW_WORDS[loc].test(held), held);
+  ok(`${loc}: ⛔ …and the held-wallet burst does not name depositing or playing`, typeof held === "string" && !MONEY_IN_OR_PLAY[loc].test(held), held);
 }
 // ⭐ CONTROL · the money-in checker must SEE the wording it forbids, in each language — otherwise the
 // negatives above pass because the pattern is blind, which is exactly how EN passed on 2026-09-05.
@@ -161,6 +165,14 @@ ok("the page imports the payout gate",
 ok("…and calls it", /payoutsAcceptingRequests\(\(await getPayoutStatus\(\)\)\.status\)/.test(KYC_PAGE));
 ok("the burst picks its body from that gate",
   /payoutsAccepting \? t\.profile\.kycApprovedBody : t\.profile\.kycApprovedPayoutsPaused/.test(KYC_PAGE));
+// 2026-09-14 — A HELD WALLET refuses a withdrawal whatever the identity says (officer hold, self-exclusion), so the
+// approved card must not promise one. It reads the wallet exactly as /wallet/withdraw does, and the held sentence
+// wins over both payout sentences.
+ok("🔴 a held wallet never gets the withdrawal promise — the page reads the wallet's own status",
+  /walletHeld = !!wallet && wallet\.status !== "ACTIVE"/.test(KYC_PAGE)
+  && /walletHeld \? t\.profile\.kycApprovedWalletHeld : payoutsAccepting \? t\.profile\.kycApprovedBody : t\.profile\.kycApprovedPayoutsPaused/.test(KYC_PAGE));
+ok("…and a failed wallet read keeps today's copy, not a claimed hold",
+  /let walletHeld = false;/.test(KYC_PAGE));
 // An unreachable DB is not evidence that payouts are down — claiming a pause we cannot substantiate
 // is the same class of defect, pointing the other way.
 ok("an unreadable gate defaults to accepting, not to a claimed pause",

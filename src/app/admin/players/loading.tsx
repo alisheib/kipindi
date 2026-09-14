@@ -37,12 +37,13 @@ export default function Loading() {
           </div>
           <SkBar className="h-[15px] w-[128px] mt-2" />
         </div>
-        {/* Players table — an UNTITLED `padding="p-0"` card. EIGHT columns
+        {/* Players table — an UNTITLED `padding="p-0"` card. SEVEN columns since
+            2026-09-14, when the duplicate "Drill-down" column left the page
             (three of them `SortTh`, page:206-208), `PER_PAGE` = 20 rows, its own
             `AdminPagination` at :260, and the ONE thing a row count cannot express:
             the page caps the scroll box, so the cap decides the height, not `rows`. */}
         <SkTableCard
-          cols={8}
+          cols={7}
           rows={20}
           minWidth={900}
           title={false}

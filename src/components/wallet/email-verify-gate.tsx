@@ -64,7 +64,7 @@ export function EmailVerifyGate({ email }: { email: string | null }) {
           <I.mail s={18} />
         </span>
         <div className="min-w-0">
-          <h2 className="font-display font-bold text-[15px] text-text">{t.wallet.verifyGateTitle}</h2>
+          <h2 className="font-display font-bold text-[15px] text-text text-balance">{t.wallet.verifyGateTitle}</h2>
           <p className="mt-1 text-body-sm leading-relaxed text-text-muted">{t.wallet.verifyGateBody}</p>
         </div>
       </div>
@@ -82,7 +82,7 @@ export function EmailVerifyGate({ email }: { email: string | null }) {
       {result && (
         <p
           role="status"
-          className={`text-[12.5px] font-medium ${result.tone === "ok" ? "text-yes-300" : "text-no-300"}`}
+          className={`text-[12.5px] font-medium ${result.tone === "ok" ? "text-success-fg" : "text-danger-fg"}`}
         >
           {result.message}
         </p>

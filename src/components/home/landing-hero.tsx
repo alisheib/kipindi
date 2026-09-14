@@ -193,7 +193,7 @@ export function LandingHero({ figures, t, locale, isAuthed, nowMs, cards }: Prop
         {/* ── the foot: the lede, two CTAs, and one real card ──────────────────────── */}
         <div className="kp-hero__foot">
           <div>
-            <p className="kp-hero__lede">{t.home.heroBody}</p>
+            <p className="kp-hero__lede break-keep [overflow-wrap:anywhere]">{t.home.heroBody}</p>
             {/* TWO CTAs, not three — `Sign in` lives in the header at every width. */}
             <div className="kp-hero__ctas">
               {isAuthed ? (

@@ -37,11 +37,16 @@ const TITLE: Record<Locale, string> = {
  * more are held for two-officer review" and §2 lost its withdrawal item, in all three languages.
  * `WITHDRAWAL_AML_HOLD` is false in payments.ts, so nothing reviews a withdrawal before it is sent; do not
  * restore either sentence. The §2 DEPOSIT source-of-funds item is unchanged — that refusal is still real.
+ *
+ * ⛔ BUMPED 2026-09-14 (docs/COMPLIANCE-DECISIONS.md 2026-09-14, second). The Swahili and Chinese texts changed
+ * after 2026-09-13 was published: each had used two names for the Financial Intelligence Unit and now uses one,
+ * and zh §1 lost a stray space after its dash. The English words did not change, but a text that moved must not
+ * go on printing the date of a text it no longer is.
  */
 const META: Record<Locale, string> = {
-  en: "Version 2026-09-13 · Aligned with Tanzania AML Act (Cap 423) and the FATF Recommendations.",
-  sw: "Toleo 2026-09-13 · Imeoanishwa na Tanzania AML Act (Cap 423) na Mapendekezo ya FATF.",
-  zh: "版本 2026-09-13 · 符合 Tanzania AML Act (Cap 423) 及 FATF 建议。",
+  en: "Version 2026-09-14 · Aligned with Tanzania AML Act (Cap 423) and the FATF Recommendations.",
+  sw: "Toleo 2026-09-14 · Imeoanishwa na Tanzania AML Act (Cap 423) na Mapendekezo ya FATF.",
+  zh: "版本 2026-09-14 · 符合 Tanzania AML Act (Cap 423) 及 FATF 建议。",
 };
 
 /**
@@ -174,7 +179,7 @@ function content(): Record<Locale, React.ReactNode> { return {
       <LegalSection n="3" title="Kuripoti shughuli za kutiliwa shaka (SAR)">
         <p>
           Maafisa maalum wa AML hukagua shughuli zilizotiliwa shaka ndani ya siku 1 ya kazi. SAR huwasilishwa kwa
-          Kitengo cha Ujasusi wa Kifedha (FIU) cha Tanzania ndani ya siku 7 tangu kubainika, bila kujali uhusiano
+          Kitengo cha Intelijensia ya Fedha (FIU) cha Tanzania ndani ya siku 7 tangu kubainika, bila kujali uhusiano
           na mteja. Hatumtaarifu mchezaji kuwa SAR imewasilishwa.
         </p>
       </LegalSection>
@@ -224,8 +229,7 @@ function content(): Record<Locale, React.ReactNode> { return {
     <>
       <LegalSection n="1" title="客户尽职调查（CDD）">
         <p>
-          我们会在每位账户持有人首次提现之前验证其身份。账户持有人可使用四种证件之一进行验证——
-          20 位国民身份证（NIDA）号码、护照、驾驶证或选民证。我们按该证件的格式规则核对号码，确保一份证件仅绑定一个账户，并由我们的合规团队审核照片证据及自拍照。我们采集：全名、出生日期、地区、证件类型与号码以及照片证据。
+          我们会在每位账户持有人首次提现之前验证其身份。账户持有人可使用四种证件之一进行验证——20 位国民身份证（NIDA）号码、护照、驾驶证或选民证。我们按该证件的格式规则核对号码，确保一份证件仅绑定一个账户，并由我们的合规团队审核照片证据及自拍照。我们采集：全名、出生日期、地区、证件类型与号码以及照片证据。
         </p>
         <p>
           若因持有人未满 18 周岁、存在制裁疑虑或证件已被其他账户使用而拒绝其身份，该账户将被冻结，其余额由合规专员逐案决定并记录理由，详见服务条款第 3a 条。
@@ -245,7 +249,7 @@ function content(): Record<Locale, React.ReactNode> { return {
 
       <LegalSection n="3" title="可疑活动报告（SAR）">
         <p>
-          指定的 AML 官员将在 1 个工作日内审查被标记的活动。无论客户关系如何，SAR 均会在识别后 7 天内提交至坦桑尼亚金融情报局（FIU）。我们不会向玩家透露已就其提交 SAR 的情况。
+          指定的 AML 官员将在 1 个工作日内审查被标记的活动。无论客户关系如何，SAR 均会在识别后 7 天内提交至坦桑尼亚金融情报单位（FIU）。我们不会向玩家透露已就其提交 SAR 的情况。
         </p>
       </LegalSection>
 

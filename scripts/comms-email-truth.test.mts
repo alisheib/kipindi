@@ -20,7 +20,7 @@
  *
  * Neither is findable by reading the code — both were found by rendering the
  * template and looking at the bytes. So that is what this file does: it renders
- * ALL 49, twice (benign input and hostile input), and reads the output.
+ * EVERY template, twice (benign input and hostile input), and reads the output.
  *
  * ⛔ NO FIXTURE IS CAST. Every builder below is invoked with literal arguments
  * that TypeScript checks against the real parameter type. An `as never` fixture
@@ -71,7 +71,7 @@ const SAFE = "Manchester United to win the derby";
 type Rendered = { template: string; benign: string; hostile: string };
 
 /**
- * All 49, built from their real types.
+ * Every template, built from their real types.
  *
  * `benign` proves the template reads correctly; `hostile` proves every
  * caller-supplied string reaches the page escaped. Where a builder takes several
@@ -155,14 +155,19 @@ const RENDERS: Rendered[] = [
     hostile: E.kycApprovedHtml({ name: HOSTILE, reference: HOSTILE }) },
   { template: "kycRejectedHtml",
     benign:  E.kycRejectedHtml({ reason: "The ID photograph was too blurred to read", reference: "kyc_a1" }),
-    hostile: E.kycRejectedHtml({ reason: HOSTILE, reference: HOSTILE }) },
+    // The hostile render takes the FINAL branch, the only one that prints `reasonSw` (2026-09-14).
+    hostile: E.kycRejectedHtml({ reason: HOSTILE, reasonSw: HOSTILE, reference: HOSTILE, finalRefusal: true }) },
   { template: "kycMoreInfoHtml",
     benign:  E.kycMoreInfoHtml({ reason: "Please add the back of your ID", reference: "kyc_a1" }),
     hostile: E.kycMoreInfoHtml({ reason: HOSTILE, reference: HOSTILE }) },
   // S1 (2026-09-13) — the officer's decision on a finally-refused player's balance.
   { template: "refusedFundsDecisionHtml",
     benign:  E.refusedFundsDecisionHtml({ outcome: "RETURN_DEPOSITS", returnedTzs: 20_000, forfeitedTzs: 5_000, balanceTzs: 25_000, reason: "You must be 18 or older to use 50pick.", reference: "rfd_a1b2c3d4e5" }),
-    hostile: E.refusedFundsDecisionHtml({ outcome: "FORFEIT", returnedTzs: 0, forfeitedTzs: 25_000, balanceTzs: 25_000, reason: HOSTILE, reference: HOSTILE }) },
+    hostile: E.refusedFundsDecisionHtml({ outcome: "FORFEIT", returnedTzs: 0, forfeitedTzs: 25_000, balanceTzs: 25_000, reason: HOSTILE, reasonSw: HOSTILE, reference: HOSTILE }) },
+  // 2026-09-14 — the follow-up when a decided return's payout failed and the amount came back to the frozen wallet.
+  { template: "refusedFundsReturnFailedHtml",
+    benign:  E.refusedFundsReturnFailedHtml({ amountTzs: 20_000, forfeitedTzs: 5_000, reference: "rfd_a1b2c3d4e5" }),
+    hostile: E.refusedFundsReturnFailedHtml({ amountTzs: 1, forfeitedTzs: 0, reference: HOSTILE }) },
   // ── Agent affiliate programme ─────────────────────────────────────────────
   { template: "agentApprovedHtml",
     benign:  E.agentApprovedHtml({ agentCode: "50PICK-AG-ABC234", commissionPct: 20, windowMonths: 0 }),
@@ -316,7 +321,9 @@ ok("every template is rendered by this suite",
 // (a funded-unverified reminder and a blocked-withdrawal letter) were removed by the owner's quiet rule
 // before they shipped, so they are not in the count. Measured after that removal with
 // `grep -c "^export function [a-zA-Z]*Html" src/lib/server/email.ts` = 63, not added up.
-ok(`the inventory is 63 templates (found ${exported.length})`, exported.length === 63);
+// ⚠️ 63 → 64 on 2026-09-14: `refusedFundsReturnFailedHtml`, the player letter when a refused-funds RETURN's
+// payout failed and the amount came back into the frozen wallet. Measured the same way after the edit = 64.
+ok(`the inventory is 64 templates (found ${exported.length})`, exported.length === 64);
 
 // ── 2 · Every template has a real sender ───────────────────────────────────────
 section("2 · wiring — a template with no sender is a template nobody gets");
@@ -541,6 +548,49 @@ section("5b · identity, quietly — receipts say nothing about it; verification
   ok("5b the approval email says verification covers withdrawals", /covers your withdrawals/.test(approved), approved.slice(0, 160));
   ok("5b ⛔ …and promises no speed", !/instant|immediately|right away|within \d+ (minutes|hours)/i.test(approved));
   ok("5b ⛔ …and never names adding money or playing beside identity", !ENTRANCE.test(approved), approved.slice(0, 160));
+}
+
+// ── 5c · Four corrections of 2026-09-14, each held on the rendered bytes ───────
+section("5c · refused funds, source of funds, the break — the letter says what is true");
+{
+  const QUIET = /verif|identit|utambulisho|uthibitisho/i;
+
+  // A return whose payout failed: where the money is, that the account stays frozen, the kept part — and nothing about identity.
+  const failedReturn = plain(byName.refusedFundsReturnFailedHtml);
+  ok("5c the failed-return letter names the amount that came back", failedReturn.includes("20,000"), failedReturn.slice(0, 200));
+  ok("5c …says it is back in the account, which stays frozen, in both languages",
+    /is in your account, which stays frozen/.test(failedReturn) && /imegandishwa/.test(failedReturn), failedReturn.slice(0, 260));
+  ok("5c …names the part that will not be returned", /5,000 will not be returned/.test(failedReturn) && /hazitarudishwa/.test(failedReturn));
+  ok("5c …and says nothing about a kept part when nothing was kept",
+    !/will not be returned|hazitarudishwa|Not returned/.test(plain(E.refusedFundsReturnFailedHtml({ amountTzs: 20_000, forfeitedTzs: 0, reference: "rfd_x" }))));
+  ok("5c control · the quiet matcher fires on the decision letter, which does name identity", QUIET.test(plain(byName.refusedFundsDecisionHtml)));
+  ok("5c ⛔ …and finds no identity sentence in the failed-return letter", !QUIET.test(failedReturn), failedReturn.slice(0, 200));
+  ok("5c ⛔ …which promises no retry and no date", !/retry|try again|within \d+ (minutes|hours|days)/i.test(failedReturn));
+
+  // A hold pending appeal says how to appeal; the Swahili line carries the reason when it is given.
+  const hold = plain(E.refusedFundsDecisionHtml({ outcome: "HOLD_PENDING_APPEAL", returnedTzs: 0, forfeitedTzs: 0, balanceTzs: 25_000, reason: "This identity is already registered to another account.", reasonSw: "Utambulisho huu tayari umesajiliwa kwenye akaunti nyingine.", reference: "rfd_h1" }));
+  ok("5c a hold pending appeal says how to appeal, in English", /If you believe our refusal is wrong, contact support to appeal\./.test(hold), hold.slice(0, 260));
+  ok("5c …and in Swahili", /wasiliana na huduma kwa wateja ili kukata rufaa/.test(hold), hold.slice(0, 400));
+  ok("5c ⛔ an outcome that is not a hold carries no appeal sentence", !/to appeal|kukata rufaa/.test(plain(byName.refusedFundsDecisionHtml)));
+  ok("5c the Swahili line carries the reason when it is given",
+    hold.includes("Hatukuweza kuthibitisha utambulisho wako: Utambulisho huu tayari umesajiliwa kwenye akaunti nyingine."), hold.slice(0, 400));
+  ok("5c control · …and keeps the general sentence without it", plain(byName.refusedFundsDecisionHtml).includes("Hatukuweza kuthibitisha utambulisho wako. "));
+  const finalSw = plain(E.kycRejectedHtml({ reason: "You must be 18 or older to use 50pick.", reasonSw: "Lazima uwe na umri wa miaka 18 au zaidi ili kutumia 50pick.", reference: "kyc_a1", finalRefusal: true }));
+  ok("5c a final refusal carries the reason in Swahili when it is given",
+    finalSw.includes("Lazima uwe na umri wa miaka 18 au zaidi ili kutumia 50pick. Uthibitisho huu ulikataliwa"), finalSw.slice(0, 400));
+  ok("5c ⛔ …a recoverable refusal does not print it in front of its own instruction",
+    !plain(E.kycRejectedHtml({ reason: "The photograph was blurred", reasonSw: "Picha haikuwa wazi.", reference: "kyc_a1" })).includes("Picha haikuwa wazi."));
+
+  // Source of funds, accepted: no limit it does not raise.
+  const sof = plain(byName.sofDecisionHtml);
+  ok("5c ⛔ an accepted source of funds promises no raised limit", !/limit|vikomo/i.test(sof), sof.slice(0, 200));
+  ok("5c …it says the deposits waiting on a declaration can go through", /Deposits that needed a declaration can now go through/.test(sof), sof.slice(0, 200));
+
+  // The break: what it does not block, and nothing more.
+  const cool = plain(byName.coolOffHtml);
+  ok("5c ⛔ the break email does not promise a withdrawal at any time", !/at any time|withdraw your money/i.test(cool), cool.slice(0, 200));
+  ok("5c …it says the break does not block sign-in or withdrawals", /Your break does not block sign-in or withdrawals\./.test(cool), cool.slice(0, 200));
+  ok("5c ⛔ …and carries no identity sentence (the quiet rule)", !QUIET.test(cool), cool.slice(0, 200));
 }
 
 // ── 6 · Send-path contract ─────────────────────────────────────────────────────

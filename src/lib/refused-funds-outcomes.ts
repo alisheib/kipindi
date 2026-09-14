@@ -58,6 +58,13 @@ export const REFUSED_FUNDS_JUSTIFICATION_MIN = 20;
 export const REFUSED_FUNDS_JUSTIFICATION_MAX = 1000;
 
 /**
+ * The description written on a refused-funds FORFEIT transaction — one constant, because `refusedFundsPosition` finds
+ * earlier forfeits by it when it computes "return the deposits" (audit session 95, 2026-09-13). A reworded writer with
+ * a hand-typed reader would silently count a forfeited deposit as returnable again.
+ */
+export const REFUSED_FUNDS_FORFEIT_DESCRIPTION = "Balance forfeited · identity refused";
+
+/**
  * The mobile-money networks a return can be sent on — the payout rail's own list
  * (`WithdrawSchema.provider`). ⛔ The officer CHOOSES it: the live rail needs a per-network utility
  * code, so sending on the wrong network misroutes the payout, and there is no number-prefix table

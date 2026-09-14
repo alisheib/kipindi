@@ -140,6 +140,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
     initials: string;
     name: string;
     phone: string;
+    walletHeld?: boolean;
     isAuthed: boolean;
     avatarSrc?: string | null;
     seed?: string;
@@ -204,6 +205,8 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       avatarSrc: u?.avatarDataUrl ?? null,
       seed: session.userId,
       balance: wallet?.balance ?? null,
+      // A held wallet (officer hold, final refusal) gets no money-in CTA: /wallet/deposit would refuse it.
+      walletHeld: !!wallet && wallet.status !== "ACTIVE",
       // Staff-tier users get an admin-console jump in the avatar menu.
       // hasRole is null-safe, so a failed user fetch simply hides it.
       isAdmin: hasRole(u?.role, ADMIN_CONSOLE_ROLES),
@@ -294,7 +297,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
   const agentDoorVisible = getAgentConfig().enabled || inviteViewer.agentInGoodStanding;
 
   return (
-    <div className="min-h-screen bg-bg-base text-text">
+    <div className="min-h-screen flex flex-col bg-bg-base text-text">
       {/* Skip-to-content — WCAG 2.4.1. Visually hidden until focused,
           then overlays the top-left so keyboard/screen-reader users can
           bypass the nav on every page load. */}
@@ -350,8 +353,11 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
           `PublicFooter` clears it too — but the footer below is rendered unconditionally, so the
           document never ends at main, and the two stacked into ~250px of blank above the footer
           on phones and tablets. The clearance lives ONLY on the footer now (`qa:footer-reachable`).
-          ⛔ If the footer is ever made conditional, main needs the clearance back for those routes. */}
-      <main id="main-content">
+          ⛔ If the footer is ever made conditional, main needs the clearance back for those routes.
+          ⭐ 2026-09-14 — main GROWS (the shell is a flex column), so on a page shorter than the window
+          the footer sits at the window's bottom edge instead of leaving a bare darker band under it
+          (/wallet/deposit/return at 1280). Same pattern as admin/layout.tsx. */}
+      <main id="main-content" className="flex-1">
         <RouteTransition>{children}</RouteTransition>
       </main>
       {/* `supportEmail` is resolved HERE for the third time on this line's own logic (E-226):

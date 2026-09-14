@@ -4,6 +4,7 @@ import { AdminPageHead, AdminCard, AdminKpi, FeedRow, AdminLoadError } from "@/c
 import { txnTypeLabel } from "@/components/admin/status-badge";
 import { TWO_PERSON_THRESHOLD_TZS } from "../aml/constants";
 import { WITHDRAW_MAX_TZS } from "@/lib/server/validators";
+import { SOF_SINGLE_TXN_TZS, SOF_ROLLING_30D_TZS } from "@/lib/server/wallet-service";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { parseSort, applySort, SortTh } from "@/components/admin/admin-sort";
 import { Chip } from "@/components/ui/chip";
@@ -255,21 +256,24 @@ export default async function AdminApprovalsPage({
                     <tr key={k.id} className="border-b border-border-subtle/50 last:border-b-0" data-kyc-approvals-row={k.userId}>
                       <td className="py-2 pr-3">
                         <div className="flex flex-wrap gap-1">
-                          {attempts && <Chip size="sm" variant="danger">{attempts.count > 1 ? `Cash-out refused ×${attempts.count}` : "Cash-out refused"}</Chip>}
-                          {moneyKnown && <Chip size="sm" variant={bucket >= 2 ? "warning" : "neutral"}>{KYC_HELD_BUCKET_LABEL[bucket]}</Chip>}
+                          {/* nowrap through `style` (2026-09-14): Chip sets white-space inline (G-7), so a class cannot reach
+                              it, and the auto-width column folded "More info asked" and "Holds nothing" onto two lines. */}
+                          {attempts && <Chip size="sm" variant="danger" style={{ whiteSpace: "nowrap" }}>{attempts.count > 1 ? `Cash-out refused ×${attempts.count}` : "Cash-out refused"}</Chip>}
+                          {moneyKnown && <Chip size="sm" variant={bucket >= 2 ? "warning" : "neutral"} style={{ whiteSpace: "nowrap" }}>{KYC_HELD_BUCKET_LABEL[bucket]}</Chip>}
                           {/* The PLAYER's move: `listPendingKyc` still holds it, so it is said rather than hidden. */}
-                          {moreAsked && <Chip size="sm" variant="neutral">More info asked</Chip>}
+                          {moreAsked && <Chip size="sm" variant="neutral" style={{ whiteSpace: "nowrap" }}>More info asked</Chip>}
                           {!moneyKnown && !attempts && !moreAsked && <span className="text-text-tertiary">—</span>}
                         </div>
                       </td>
                       <td className="py-2 pr-3 font-mono whitespace-nowrap">
-                        {formatDateTime(waitingSince(k))} <span className="text-text-tertiary">· {kycWaitedLabel(now - Date.parse(waitingSince(k)))}</span>
+                        {formatDateTime(waitingSince(k))}
+                  <span className="block text-text-tertiary">{kycWaitedLabel(now - Date.parse(waitingSince(k)))}</span>
                       </td>
                       <td className="py-2 pr-3"><a href={`/admin/players/${k.userId}?tab=kyc`} className="font-mono text-royal-300 hover:underline">{k.userId.slice(0, 14)}…</a></td>
                       <td className="py-2 pr-3 font-medium text-text">{k.fullName ?? "—"}</td>
                       <td className="py-2 pr-3 font-mono tabular">{slots ? `${k.documents.length}/${slots}` : k.documents.length}</td>
                       {moneyKnown && <td className="py-2 pr-3 font-mono tabular-nums text-right text-text">{formatTzs(heldOf(k))}</td>}
-                      <td className="py-2 pl-3 text-right"><a href={`/admin/kyc/${k.userId}`} className="row-link font-mono text-micro text-royal-300 hover:underline">workstation →</a></td>
+                      <td className="py-2 pl-3 text-right"><a href={`/admin/kyc/${k.userId}`} className="row-link whitespace-nowrap font-mono text-micro text-royal-300 hover:underline">workstation →</a></td>
                     </tr>
                     );
                   })}
@@ -332,7 +336,10 @@ export default async function AdminApprovalsPage({
           ) : sofAll.length === 0 ? (
             <div className="flex items-center gap-3 py-4">
               <I.shieldcheck s={18} className="shrink-0" />
-              <p className="text-caption text-text-secondary">No SOF declarations pending. Players auto-trigger this when cumulative deposits exceed TZS 5M / 30 days.</p>
+              {/* ⛔ THE THRESHOLDS ARE THE DEPOSIT CHECK'S OWN CONSTANTS (2026-09-14). This said "cumulative deposits exceed
+                  TZS 5M / 30 days": it left out the single-deposit trigger and said "exceed" where the check is >=, so an
+                  officer could not explain a declaration filed after one TZS 1,000,000 deposit. One source line, so no space is lost. */}
+              <p className="text-caption text-text-secondary">No source-of-funds declarations pending. A single deposit of <span className="whitespace-nowrap">{formatTzs(SOF_SINGLE_TXN_TZS)}</span> or more, or one that brings a player&apos;s 30-day deposits to <span className="whitespace-nowrap">{formatTzs(SOF_ROLLING_30D_TZS)}</span> or more, is blocked until their declaration is accepted.</p>
             </div>
           ) : (
             <>
@@ -408,12 +415,12 @@ export default async function AdminApprovalsPage({
             {/* shrink-0 (2026-09-13): beside the long paragraph the flex row squeezed this 18px glyph to a dot. */}
             <I.info s={18} className="shrink-0" />
             <div className="text-caption text-text-secondary space-y-1">
-              <p className="text-text font-bold">No withdrawal is held for review since 2026-09-13</p>
+              <p className="text-text font-bold">No withdrawal is held for review since <span className="whitespace-nowrap">2026-09-13</span></p>
               {/* ONE SOURCE LINE PER SENTENCE (2026-09-13). A JSX text run that spans source lines AND holds an entity
                   is compiled WITHOUT its leading space after an inline element: the old card rendered
                   "differentofficers" and "COMPLIANCEaudit" until an explicit space was added. A single-line run
                   keeps its spaces; if a sentence here ever wraps in source again, put the explicit space back. */}
-              <p>Owner ruling: any withdrawal up to the {formatTzs(WITHDRAW_MAX_TZS)} per-withdrawal cap is sent once identity is approved, and no officer reviews it first. Rows in the AML queue were held before that date, or are deposits owed back to excluded players.</p>
+              <p>Owner ruling: any withdrawal up to the <span className="whitespace-nowrap">{formatTzs(WITHDRAW_MAX_TZS)}</span> per-withdrawal cap is sent once identity is approved, and no officer reviews it first. Rows in the AML queue were held before that date, or are deposits owed back to excluded players.</p>
               <p>On /admin/aml, Approve dispatches a held withdrawal; Reject returns it to the player&apos;s wallet. A held withdrawal of {formatTzs(TWO_PERSON_THRESHOLD_TZS)} or more still needs two different officers: the first records stage&nbsp;1, a second releases it.</p>
               <p>A deposit owed back cannot be approved, and Reject only closes its row: it sends no money, so the return is still owed. No self-review; each decision and its reason are recorded in the audit log.</p>
             </div>

@@ -74,7 +74,7 @@ export default async function HelpPage() {
             free/24-7 or helpline framing again, in any of the three locales. */}
         <ContactCard
           icon={<I.phone s={15} />}
-          tone="yes"
+          tone="success"
           title={t.help.callUs}
           value={SUPPORT_PHONE()}
           sub={t.help.supportLine}
@@ -100,7 +100,7 @@ export default async function HelpPage() {
       </section>
 
       <section className="rounded-xl glass-panel p-5 lg:p-6 space-y-2">
-        <h2 className="font-display text-[15px] font-semibold text-text">
+        <h2 className="font-display text-[15px] font-semibold text-text text-balance">
           {t.help.faqTitle}
         </h2>
         <div>
@@ -144,7 +144,7 @@ export default async function HelpPage() {
       <section className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <QuickLinkCard
           icon={<I.shieldcheck s={15} />}
-          tone="yes"
+          tone="success"
           title={t.help.responsibleGambling}
           sub={t.help.limitsBreakExclude}
           href="/profile/responsible-gambling"
@@ -176,14 +176,14 @@ function ContactCard({
   icon, tone, title, value, sub, href,
 }: {
   icon: React.ReactNode;
-  tone: "yes" | "info" | "aqua";
+  tone: "success" | "info" | "aqua";
   title: string;
   value: string;
   sub: string;
   href?: string;
 }) {
   const tintCls =
-    tone === "yes"   ? "border-yes-700 bg-yes-500/10 text-yes-300"
+    tone === "success" ? "border-success-border bg-success-bg text-success-fg"
     : tone === "info"  ? "border-info-border bg-info-bg text-info-fg"
     :                    "border-aqua-500/50 bg-aqua-500/10 text-aqua-300";
   const card = (
@@ -210,11 +210,11 @@ function QuickLinkCard({
   title: string;
   sub: string;
   href: string;
-  tone: "yes" | "info" | "aqua";
+  tone: "success" | "info" | "aqua";
 }) {
   // C2i — tone-coded quick links (never gold; help isn't earned money).
   const tint =
-    tone === "yes"  ? "bg-yes-500/10 text-yes-300"
+    tone === "success" ? "bg-success-bg text-success-fg"
     : tone === "info" ? "bg-info-bg text-info-fg"
     :                   "bg-aqua-500/10 text-aqua-300";
   return (
@@ -228,8 +228,16 @@ function QuickLinkCard({
         {icon}
       </span>
       <div className="flex-1 min-w-0">
-        <p className="font-display text-[13px] font-semibold text-text truncate">{title}</p>
-        <p className="mt-0.5 text-body-sm text-text-subtle">{sub}</p>
+        {/* 2026-09-14 — the title wraps instead of truncating ("Responsible gamb…" at 768), and both
+            lines balance so a zh subtitle never leaves one glyph alone. */}
+        <p className="font-display text-[13px] font-semibold text-text break-words text-balance">{title}</p>
+        {/* Each item is unbreakable with its dot in front, so a wrap never starts or ends on a bare "·", and zh
+            never splits a term (break-keep) — 3-up cards at 768 did both (visual pass 2). */}
+        <p className="mt-0.5 text-body-sm text-text-subtle text-balance break-keep">
+          {sub.split(" · ").map((part, i) => (
+            <span key={i}>{i > 0 && " "}<span className="whitespace-nowrap">{i > 0 && "· "}{part}</span></span>
+          ))}
+        </p>
       </div>
     </Link>
   );

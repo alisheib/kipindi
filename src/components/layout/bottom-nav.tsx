@@ -44,7 +44,10 @@ export function BottomNav({ isAuthed = false, proposalsState, inviteVisible = fa
    *  depend on having an account. What changes is what `More` carries. */
   const items = [
     { href: "/markets", glyph: "markets" as const,    label: t.common.markets },
-    { href: "/updown",  glyph: "trendingUp" as const, label: t.market.udTitle, accent: true },
+    /* 2026-09-14 — the rail has its own short label (`nav.updown`): the product title "Juu na Chini"
+       cannot fit a fifth of a 360 phone and read "Juu na Ch…" on every Swahili page. The accessible
+       name stays the VISIBLE label (WCAG 2.5.3 label-in-name: a voice user says what they see). */
+    { href: "/updown",  glyph: "trendingUp" as const, label: t.nav.updown, accent: true },
     { href: "/live",    glyph: "bolt" as const,       label: t.nav.live },
     { href: "/results", glyph: "resolved" as const,   label: t.common.results },
   ];
