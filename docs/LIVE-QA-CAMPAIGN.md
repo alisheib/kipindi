@@ -6064,7 +6064,7 @@ state**, 1,338,504 of players' stakes in escrow, and every ledger entry ever wri
 
 #### ⏭️ **RESUME AT (session 96):** the audit is closed and live. Before touching identity, refused funds, the legal pages,
 the Up & Down countdown or the Needle, read the ⚪ open tail in register **E-400**. House Bots (`ali-e4`, branch
-`house-bots`) was told ALL-CLEAR at ⏳ PENDING — the red harnesses run after the docs commit that carries this block; check `plans/house-bots/PROGRESS.md` before heavy Node on this machine.
+`house-bots`) was told ALL-CLEAR once the red harnesses finished (2026-09-14, after 02:55 UTC); check `plans/house-bots/PROGRESS.md` before heavy Node on this machine.
 
 💰 **MONEY POSITION:** no production money moved by this session. Read-only on production 2026-09-14 02:41:45 UTC (every
 query in its own `READ ONLY` transaction, rolled back): 24 wallets, all ACTIVE with 0 freeze reasons, 0 negative, 0
@@ -6112,7 +6112,10 @@ Frankfurt; `/`, `/markets`, `/updown`, `/help`, `/auth/login`, `/auth/register`,
 baselines this batch does not touch (`failure-reasons` 10.1/10.2 `agent/apply` toast · `read-tiers` 7.1
 `admin/agents` contact · `red-anchors` 1644/11) · `qa:live` 314/0 · `test:terms-binding` 17/0 (`777f9e348125`) ·
 `test:wallet-status-writers` 51/0 (36 sites) · `test:kyc-copy-truth` 425/0 · `test:kyc-at-withdrawal` 126/0.
-Red harnesses, one at a time on the clean tree: ⏳ PENDING — they run next, strictly one at a time on the committed tree; results land in the follow-up docs commit.
+Red harnesses, strictly one at a time on the committed tree `623f41b7` (02:46–02:55 UTC), 0 files left dirty:
+`red:kyc-gate` 10 caught / 0 missed · `red:refused-funds-race` 3 / 0 · `red:refused-funds` 5 / 0 · `red:kyc-copy-truth`
+7 / 0 · `red:bonus-withdrawable` 9 / 9 caught · `red:install-invite` every declared defect caught. The guards added this
+session carry their RED proof as planted controls inside each test (no separate `red:` script).
 
 ⚠️ **Traps paid for this session:**
 ① `next dev` here was poisoned once by a Turbopack PostCSS worker failing to spawn (`0xc0000142` under commit charge); a
