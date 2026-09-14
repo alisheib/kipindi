@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { cookies } from "next/headers";
 import { I } from "@/components/ui/glyphs";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { AuthPanel, AuthHeader } from "@/components/auth/auth-panel";
@@ -12,6 +11,8 @@ import { startLoginAction } from "./actions";
 import { SUPPORT_EMAIL, SUPPORT_PHONE, SUPPORT_PHONE_TEL } from "@/lib/server/support-config";
 import { getServerT } from "@/lib/i18n-server";
 import { bounceIfAuthed } from "../bounce-authed";
+import { sessionEndedThisRequest } from "@/lib/server/session";
+import { cookies } from "next/headers";
 
 export async function generateMetadata() {
   const { t } = await getServerT();
@@ -21,7 +22,7 @@ export async function generateMetadata() {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ phone?: string; identifier?: string; error?: string; retry?: string; next?: string; closed?: string; excluded?: string; until?: string; cooled?: string; reset?: string; revoked?: string }>;
+  searchParams: Promise<{ phone?: string; identifier?: string; error?: string; retry?: string; next?: string; closed?: string; excluded?: string; until?: string; cooled?: string; reset?: string; revoked?: string; ended?: string }>;
 }) {
   // ⛔ THE BOUNCE RUNS HERE, IN THE PAGE, AND IT MOVED OUT OF `auth/layout.tsx` BECAUSE A
   // LAYOUT IS NOT RE-EXECUTED ON A CLIENT-SIDE SOFT NAVIGATION. The layout compared the
@@ -33,13 +34,25 @@ export default async function LoginPage({
   await bounceIfAuthed();
   const { t } = await getServerT();
   const sp = await searchParams;
-  // Detect session-revoked flash (another device signed in). B-13: `?revoked=1`
-  // is the reliable path (set by the revoked-device redirect — a render context
-  // can never write the flash cookie); the cookie is kept for actions/handlers
-  // that CAN set it. Never mutate cookies here — a delete during render throws,
-  // and the flash self-expires in 30s anyway.
-  const jar = await cookies();
-  const wasRevoked = sp.revoked === "1" || jar.get("kp_revoked")?.value === "1";
+  // 🔴 E-381 · WHY THE LAST SESSION ENDED, AND ONLY WHAT IS TRUE OF IT.
+  //  · `?revoked=1` — `/auth/session-ended` found a NEWER session in the registry: the one cause
+  //    "signed in on another device" is true for.
+  //  · `?ended=session` — no registry row (a sign-out elsewhere, a role change, maintenance …) on
+  //    an account with nothing more specific to say; `?ended=idle` — 24 h idle or the 7-day cap.
+  //    (Closed, suspended and self-excluded accounts arrive on their own existing params.)
+  //  · The request signal — a device whose dead cookie is still set and that hard-loads this page
+  //    directly: `bounceIfAuthed()` above ran `getSession()` in this same request.
+  // ⛔ The `kp_revoked` note (30 s, readable by any page) used to be checked BEFORE the sign-in errors,
+  // so a genuinely wrong password was answered with "signed in on another device". It is now the last
+  // fallback, with generic wording, and every sign-in error outranks every panel here (see the switch).
+  const endedNow = sessionEndedThisRequest();
+  const endedPanel: "device" | "session" | "idle" | null =
+    sp.revoked === "1" || endedNow === "displaced" ? "device"
+    : sp.ended === "idle" || endedNow === "idle" || endedNow === "expired" ? "idle"
+    : sp.ended === "session" || endedNow === "no_record" ? "session"
+    // The 30 s note `/auth/session-ended` sets, if the query was lost. Generic wording — it knows no cause.
+    : (await cookies()).get("kp_revoked")?.value === "1" ? "session"
+    : null;
   // Re-fill whatever the player typed. `?identifier=` is what the action now
   // round-trips; `?phone=` is still honoured so older links (and the sign-up
   // page's "already have an account?" hand-off) keep working.
@@ -105,12 +118,6 @@ export default async function LoginPage({
       body: t.auth.coolingOffBody,
       cta: null,
     };
-    if (wasRevoked) return {
-      tone: "warning" as const,
-      title: t.auth.signedOut,
-      body: t.auth.signedOutBody,
-      cta: null,
-    };
     switch (sp.error) {
       case "no_account":
         return {
@@ -166,8 +173,18 @@ export default async function LoginPage({
           cta: { href: `/auth/forgot-password`, label: t.common.resetPassword },
         };
       default:
-        return null;
+        break;
     }
+    // E-381 — after every sign-in error, so a wrong password is never answered with a sign-out story.
+    if (endedPanel) return {
+      tone: "warning" as const,
+      title: endedPanel === "idle" ? t.auth.sessionExpired : t.auth.signedOut,
+      body: endedPanel === "device" ? t.auth.signedOutBody
+        : endedPanel === "idle" ? t.auth.sessionIdleBody
+        : t.auth.sessionEndedBody,
+      cta: null,
+    };
+    return null;
   })();
 
   return (

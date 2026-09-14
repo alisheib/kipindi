@@ -239,7 +239,8 @@ ok("§4a the cookies the code writes are exactly the pinned set", JSON.stringify
   census.join(" "));
 const sessionSrc = code(read("src/lib/server/session.ts"));
 const ttlDays = Number(sessionSrc.match(/const SESSION_TTL_MS = (\d+) \* 24 \* 60 \* 60 \* 1000;/)?.[1]);
-const revokedSecs = Number(sessionSrc.match(/jar\.set\("kp_revoked", "1", \{[\s\S]{0,120}?maxAge: (\d+),/)?.[1]);
+// E-381 (2026-09-14): the sign-out note is written by `/auth/session-ended`, the one place a dead session cookie is cleared.
+const revokedSecs = Number(code(read("src/app/auth/session-ended/route.ts")).match(/res\.cookies\.set\("kp_revoked", "1", \{[\s\S]{0,120}?maxAge: (\d+),/)?.[1]);
 ok("§4b the session cap and the sign-out note's lifetime were read from the code", ttlDays > 0 && revokedSecs > 0, "", `${ttlDays} days · ${revokedSecs} s`);
 /** What §7 must say about each cookie, per locale. */
 const COOKIE_WORDS: Record<string, Record<Loc, string[]>> = {

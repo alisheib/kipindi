@@ -495,6 +495,10 @@ export const dict = {
       coolingOffBody: "Your cooling-off break has started. You can still sign in to see your balance and withdraw — betting is what stops, and it starts again by itself when the break ends.",
       signedOut: "Signed out",
       signedOutBody: "Your account was signed in on another device. Only one session is allowed at a time for your security.",
+      // E-381 — the causes "signed in on another device" is NOT true for. `sessionEndedBody` covers a missing registry row
+      // (a sign-out elsewhere, a role change, maintenance …); `sessionIdleBody` the 24 h idle limit and the 7-day cap.
+      sessionEndedBody: "Your session on this device has ended. Sign in again to continue.",
+      sessionIdleBody: "For your security, a sign-in ends after 24 hours without activity, and after 7 days at most. Sign in again to continue.",
       // B-13 — the previously dead-end auth states.
       sessionExpired: "Session expired",
       sessionExpiredBody: "That step took too long, so we signed you out for safety. Sign in again to continue where you left off.",
@@ -3089,6 +3093,8 @@ export const dict = {
       coolingOffBody: "Mapumziko yako yameanza. Bado unaweza kuingia kuona salio lako na kutoa pesa — kinachositishwa ni kuweka dau, na kitaanza chenyewe mapumziko yatakapoisha.",
       signedOut: "Umetolewa",
       signedOutBody: "Akaunti yako imeingia kwenye kifaa kingine. Kwa usalama, kikao kimoja tu kinaruhusiwa.",
+      sessionEndedBody: "Kikao chako kwenye kifaa hiki kimeisha. Ingia tena ili kuendelea.",
+      sessionIdleBody: "Kwa usalama wako, kuingia huisha baada ya saa 24 bila shughuli, na hakudumu zaidi ya siku 7. Ingia tena ili kuendelea.",
       sessionExpired: "Kipindi kimeisha",
       sessionExpiredBody: "Hatua hiyo ilichukua muda mrefu, kwa hivyo tumekutoa kwa usalama. Ingia tena ili kuendelea pale ulipoachia.",
       accountLocked: "Akaunti imefungwa kwa muda",
@@ -5209,6 +5215,8 @@ export const dict = {
       coolingOffBody: "您的冷静期已开始。您仍然可以登录查看余额和提现——暂停的是投注，冷静期结束后会自动恢复。",
       signedOut: "已退出",
       signedOutBody: "您的账户已在另一台设备上登录。为安全起见，同时只允许一个会话。",
+      sessionEndedBody: "您在此设备上的会话已结束。请重新登录以继续。",
+      sessionIdleBody: "为保障您的安全，登录状态在24小时无操作后结束，最长保持7天。请重新登录以继续。",
       sessionExpired: "会话已过期",
       sessionExpiredBody: "该步骤耗时过长，为安全起见我们已将您退出。请重新登录以继续。",
       accountLocked: "账户已临时锁定",

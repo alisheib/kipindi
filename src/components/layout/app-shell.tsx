@@ -34,7 +34,8 @@ import { PublicFooter } from "./public-footer";
 import { AuthFlash } from "./auth-flash";
 import { NavProgress } from "@/components/ui/nav-progress";
 import { RouteTransition } from "@/components/ui/route-transition";
-import { getSession, wasSessionRevokedThisRequest } from "@/lib/server/session";
+import { getSession, sessionEndedThisRequest, type SessionEndReason } from "@/lib/server/session";
+import { NoticeBar, NoticeBarAction } from "@/components/ui/notice-bar";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/server/store";
 import { guestUser } from "@/lib/ui-stubs";
@@ -65,76 +66,52 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   const session = await getSession();
-  // B-13 — the revoked device gets its explanation. getSession() found the cookie displaced in
-  // the registry (or with no row at all) but could not set the flash, because cookie mutation
-  // throws in a render. Send it to the login page with `?revoked=1` instead of silently
-  // rendering a signed-out shell. /auth/* is excluded so the login page itself renders — ⛔ that
-  // exclusion is load-bearing: without it this redirects /auth/login to itself.
+  // ── 🔴 E-381 · A SESSION THAT HAS ENDED — HOW THE ROOT LAYOUT MAY ANSWER IT, AND HOW IT MAY NOT.
   //
-  // 🔴 E-381 · `redirect()`, NOT A CLIENT SHIM — AND THE DIFFERENCE WAS A TOTAL LOCKOUT.
-  // This used to `return <SessionRevokedRedirect next={…} />`, a "use client" component that
-  // called `router.replace()` from a useEffect. Two things made that catastrophic, and the
-  // second is the one that is easy to miss:
-  //   ① The branch returns INSTEAD OF `{children}`, and AppShell is the root layout's only
-  //      consumer of `children` (`app/layout.tsx:154`). So the rendered tree had no children
-  //      slot at all.
-  //   ② `router.replace` is a SOFT navigation, and **a shared root layout is not re-executed
-  //      on one** — Next prunes the matching root segment from the flight response
-  //      (`walk-tree-with-flight-router-state.js`: `renderComponentsOnThisLevel` is false when
-  //      the segment matches). So the login page's RSC payload came back **200** and mounted
-  //      NOWHERE. The player sat on the bare `<body>` — navy, and literally nothing else — with
-  //      zero console errors, zero page errors and nothing in the logs.
-  // Measured 2026-09-12 on /wallet, /positions, /markets and the fully public /legal/rules:
-  // `innerText.length === 0` every time, while the SAME url hard-loaded rendered 1029 chars.
-  // Production had been recording it: 220 revocations against 30 logins across 7 accounts, with
-  // one device writing 9 audit rows in 31 seconds because the cookie is never cleared.
+  // THE LAW: this component is rendered by the ROOT layout, and a decision made in the root layout
+  // can only be escaped by a DOCUMENT navigation. On a client navigation Next prunes the shared
+  // root segment from the flight response, so whatever this component rendered last stays on screen.
   //
-  // ⭐ A `redirect()` from a Server Component is a REAL 307 on a document request, so the login
-  // page arrives on a fresh render with its own layout — no client component, no blank frame,
-  // and it works with JavaScript disabled, which the shim never did. `admin/layout.tsx:59` has
-  // done exactly this, in this same Next version, in production, all along.
-  // ⚠️ On a `router.refresh()` or a Server Action the tree re-renders FROM the root, so this
-  // branch does run there and `redirect()` degrades to a client router navigation — which still
-  // lands correctly, because a children slot exists in that render.
-  // ⛔ `as never` is required by `typedRoutes: true` (next.config.ts) — same cast, same reason,
-  // as `admin/layout.tsx:59`. It silences the only compile-time check on this string, so
-  // `test:revoked-deadend` asserts the literal `revoked=1` that `auth/login/page.tsx:42` reads.
-  // ⛔ DO NOT reintroduce a client redirect here, and do not assert this from the URL: the URL
-  // was correct (`/auth/login?revoked=1&next=…`) for the whole life of the bug. That is exactly
-  // how it shipped green. See `docs/SESSION-REVOKED-DEADEND.md`.
-  // ⛔ `pathname` MUST BE NON-EMPTY, and that token is a loop guard, not a tidiness check.
-  // `src/proxy.ts:214` is the only writer of `x-pathname`. If it is ever absent — a proxy bundle
-  // that failed to build or deploy, or a route that slips the matcher — `pathname` is `""`, and
-  // `"".startsWith("/auth")` is FALSE. So the login page itself would enter this branch and
-  // redirect to itself: an infinite loop on every route, including the only page that could get
-  // the player out. Requiring the header to be present fails CLOSED instead, to a normal
-  // signed-out shell. (The `/admin` early return above has the same dependency and the same
-  // failure mode; it is recorded in `docs/SESSION-REVOKED-DEADEND.md` §6.)
-  if (!session && wasSessionRevokedThisRequest() && pathname && !pathname.startsWith("/auth")) {
+  // WHAT WENT WRONG, TWICE. ① It returned a client redirect shim INSTEAD of `{children}`: the tree
+  // kept a shell with no children slot and the login page mounted nowhere — a blank navy body on
+  // every route, public ones included (2026-09-12). ② It then called `redirect()` here. On a
+  // DOCUMENT request that is a real 307 and works (even with JavaScript off). But this component
+  // ALSO renders on every `router.refresh()` — `RefreshPoller` on /markets, a market, /live,
+  // /positions, /updown, /leaderboard and /results, and `50pick:refresh` right after a bet, a
+  // cash-out and an Up & Down tap — and on that FLIGHT request the redirect is caught by the
+  // redirect boundary ABOVE the root layout, which renders nothing while it navigates. Measured:
+  // a displaced player sitting still on /markets went blank at t+28 s and stayed blank.
+  //
+  // ⭐ SO THE ANSWER DEPENDS ON THE REQUEST, AND ONLY ONE OF THE TWO NAVIGATES:
+  //  · DOCUMENT (`x-kp-document: 1`, set by `src/proxy.ts`, because Next strips `rsc` before
+  //    `headers()`): a real 307 to `/auth/session-ended`, which clears the dead cookie (a render
+  //    cannot) and lands on the login page saying the TRUE reason.
+  //  · ANYTHING ELSE (a refresh, a Server Action, a prefetch, or a missing header): NO NAVIGATION.
+  //    The page renders with `{children}` exactly as for a signed-out visitor, and a notice under
+  //    the bar says the session ended, with a plain `<a>` (a document navigation — ⛔ never
+  //    `<Link>`) to the same handler. Nothing here can leave the tree without a children slot.
+  //    ⛔ Do NOT add an automatic client escape for this branch: one was tried on 2026-09-12 and
+  //    retry-stormed (the same `_rsc` request ~18 times, still blank).
+  //
+  // ⛔ /auth/* IS EXCLUDED FROM BOTH, and that is load-bearing: the login page is where the redirect
+  // lands, and the OTP and 2FA steps are a sign-in in progress that a reload must not throw away.
+  // A dead cookie on those pages is harmless — the login page states the reason from the same
+  // request signal, and a successful sign-in replaces the cookie.
+  // ⛔ `pathname` MUST BE NON-EMPTY — a loop guard, not tidiness. `src/proxy.ts` is the only writer
+  // of `x-pathname`; if it is ever absent, `"".startsWith("/auth")` is false and the login page
+  // itself would enter this branch. Requiring the header fails CLOSED, to a signed-out shell.
+  // ⛔ Assert this on the RENDERED PAGE, never the URL — the URL was right for the whole life of the
+  // bug. `test:revoked-deadend` does, including a mid-visit refresh and a JavaScript-off load.
+  // See `docs/SESSION-REVOKED-DEADEND.md`.
+  const endedReason: SessionEndReason | null = session ? null : sessionEndedThisRequest();
+  let endedNotice: { reason: SessionEndReason; href: string } | null = null;
+  if (endedReason && pathname && !pathname.startsWith("/auth")) {
     const raw = h.get("x-href") ?? pathname;
-    const safe = /^\/(?![/\\])/.test(raw) && !raw.startsWith("/auth/") ? raw : "";
-    // 🔴 THIS FIXES THE DOCUMENT PATH ONLY, AND THE OTHER PATH IS STILL BROKEN. READ §6 ITEM 1
-    // OF `docs/SESSION-REVOKED-DEADEND.md` BEFORE YOU BELIEVE THIS BRANCH IS DONE.
-    // On a document request `redirect()` is a real 307 — the reported journey, and the best
-    // possible outcome: no client code, no blank frame, works with JavaScript off.
-    // ⛔ BUT the root layout is ALSO re-rendered on a `router.refresh()`, and `RefreshPoller`
-    // calls exactly that on an interval with NO session gate on /markets (30s), a market page
-    // (15s), /live (15s), /positions (20s), /updown (20s), /leaderboard (30s), /results (60s) —
-    // and `50pick:refresh` is dispatched right after a bet, a cash-out and an Up & Down tap. On
-    // that flight request `redirect()` degrades to a CLIENT navigation, which cannot escape a
-    // root-layout decision, because a shared root layout is pruned from the flight response and
-    // the tree it lands in has no `children` slot.
-    // ⛔ MEASURED 2026-09-12: a displaced device sitting on /markets touching NOTHING was bounced
-    // at **t+28s** to this url with `innerText.length === 0`, still blank 6s later. So the blank
-    // page is STILL REACHABLE mid-visit, including immediately after a money action. The judge
-    // panel's claim that a refresh "still lands correctly" is false — measured, not argued.
-    // ⚠️ AN ATTEMPTED FIX WAS REVERTED, DELIBERATELY: returning a hard-navigating client escape
-    // for flight requests (detected via the `rsc` / `next-router-state-tree` headers) produced a
-    // RETRY STORM — the same `_rsc` request repeating ~18 times, 200 each, still blank. Not
-    // understood, so not shipped. ⛔ Do not re-attempt it without driving
-    // `scripts/revoked-midvisit-repro.mjs` first; a loop here is worse than the bug.
-    // ⭐ The real fix is to stop deciding this in the ROOT LAYOUT at all (§6 item 1).
-    redirect(`/auth/login?revoked=1${safe ? `&next=${encodeURIComponent(safe)}` : ""}` as never);
+    const safe = /^\/(?![/\\])/.test(raw) && !raw.startsWith("/auth") ? raw : "";
+    const href = `/auth/session-ended${safe ? `?next=${encodeURIComponent(safe)}` : ""}`;
+    // ⛔ `as never` is required by `typedRoutes: true` (next.config.ts), as in `admin/layout.tsx`.
+    if (h.get("x-kp-document") === "1") redirect(href as never);
+    endedNotice = { reason: endedReason, href };
   }
   let topUser: {
     initials: string;
@@ -319,6 +296,23 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
       <Suspense fallback={null}><NavProgress /></Suspense>
       <TopAppBar user={topUser} proposalsState={proposalsState} inviteVisible={inviteVisible} />
       <AnnouncementBanner maintenance={maintBanner} announcement={announcement} />
+      {/* 🔴 E-381 · the in-place answer to a session that ended during a refresh — see the note at
+          `endedReason`. Server-rendered, and its only action is a plain `<a>`. */}
+      {endedNotice && (
+        <NoticeBar
+          tone="warning"
+          glyph="alertCircle"
+          testId="session-ended-notice"
+          action={<NoticeBarAction href={endedNotice.href} tone="warning">{t.common.signIn}</NoticeBarAction>}
+        >
+          <span className="font-semibold">{t.auth.signedOut}.</span>{" "}
+          {endedNotice.reason === "displaced"
+            ? t.auth.signedOutBody
+            : endedNotice.reason === "no_record"
+              ? t.auth.sessionEndedBody
+              : t.auth.sessionIdleBody}
+        </NoticeBar>
+      )}
       {/* ⭐ THE EMAIL BAR STANDS ALONE (2026-09-13). There is no app-wide identity bar any more, and
           so no ordering question between two bars. Identity is asked before a WITHDRAWAL and
           nothing else, and Ali's ruling of the same day is that it is raised QUIETLY: on the withdraw
