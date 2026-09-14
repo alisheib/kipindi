@@ -6,6 +6,156 @@
 
 ---
 
+## 2026-09-14 (fourth) · House bots — accounts 50pick operates may stake to add liquidity (reverses F6 "do not build")
+
+**Status when written:** decided, and being built on branch `house-bots` (build commit 1 of 8). Nothing is live until the release merge, and the master switch ships **OFF**: Ali alone switches house bots on. The design authority is [`HOUSE-BOTS.md`](HOUSE-BOTS.md). The plan of record is `plans/house-bots/` on that branch, where `04-amendments.md` outranks `02-sealed-flows.md` and `03-design-spec.md`, which outrank `PLAN.md`.
+
+### Owner ruling (Ali, 2026-09-13)
+
+| # | Ruling |
+|---|---|
+| D1 | Build everything. A global **master switch ships OFF** on production, and Ali alone turns it on. |
+| D2/D7 | Amend the published Rules and Terms (en/sw/zh): a carve-out from the prohibited-conduct list for accounts 50pick operates, plus one disclosure line. **Effective on deploy, with no 14-day notice** (owner ruling; 50pick reports to GBT). |
+| D3 | The bot account belongs to a real person. **They may use it and withdraw normally.** The console reads the **live wallet balance** (no shadow balance). |
+| D3b | **No payment feature.** The holder tops up through the normal deposit flow and is reimbursed out of band. While their bot is **ACTIVE**, every deposit or withdrawal on the account alerts admins. While inactive, nothing is watched. |
+| D4 | A **roster** of bots, each with its own rules. One master switch plus global limits. |
+| D5 | Consent = the owner types the account's **password** (only). |
+| D6 | Publicly the bot is **exactly like a player**: counts, avatars and the leaderboard. Admin analytics still separate house from players. Statutory figures include everything. |
+| D8 | **Live activity feed**, plus per-bet bell alerts **capped per hour** (then an hourly summary). Money events and auto-pauses always go to bell + email. |
+| D9 | Everything else was decided by Claude, following platform precedent (cited inline). |
+
+### Decisions added by Claude under D9 (2026-09-13)
+
+| # | Decision | Precedent / reason |
+|---|---|---|
+| D10 | Password change → the console asks for the new password (PLAN §14). No platform-wide sign-out in this build | smallest change that meets the ask; E-381 risk |
+| D11 | Any RG pause voids consent: fresh password + Start after it clears | RG outranks every other door |
+| D12 | Holder bets on a market against their own bot → one admin alert per market (AlertOnce); their player path is never refused | I1 |
+| D13 | Lowering a global cap is allowed, with a consequence preview; raising a bot cap above a set global cap is refused | risk-reducing edits never blocked |
+| D14 | House-liquidity regulator report + CSV ship in v1 | Ali reports everything to GBT |
+| D15 | Build starts only when the other session's KYC-at-withdrawal work is on `origin/main` | hooks touch the same wallet-freeze and RG code |
+| D16 | Master switch tone brand; holder-password field `new-password` + ignore attributes | PLAN §15 X5; password-manager trap |
+
+### Decisions added by Claude under D9, at Ali's request (2026-09-14)
+
+On 2026-09-14 Ali asked for two features, **Enter now** and **targeted polls with exact entry timing**, and asked Claude to decide the details from the app's logic and architecture. The full specification is `plans/house-bots/04-amendments.md` N1–N2.
+
+**D17 · Enter now (a manual one-shot stake on a poll)**
+- An owner (any ADMIN passing `requireHouseOwner`) may press **Enter now** on an ACTIVE bot to place one house stake on a chosen LIVE **poll**, now, apart from the automatic modes. Enter now on Up & Down is not built (W9).
+- **The server computes the side and the amount** from public pool data. Nobody types either.
+  - The side is the thinner side, measured against locked money of eligible player accounts only, with a 7 s safety margin after each free exit closes.
+  - On an empty poll, the side is the poll's single drawn side, shared with the automated OPENER.
+  - The amount is the bot's saved Enter now stake, cut to fit.
+- Every house gate applies, plus the information blackout, the staff-chosen caps (per bot and for all bots) and the counterparty share limit.
+- One press places at most one stake. Every press, placed or refused, is kept as a record.
+- **Supersedes** F6 §3.3 and §4 R5 ("never discretionary") as to the market and the moment only, never the side or the amount.
+
+**D18 · Targeted polls and exact entry timing**
+- A bot may hold **targets**: explicit LIVE polls chosen in the MarketPicker (polls only, W13).
+- For each target it reacts, as a COUNTER, to real players' stakes placed after the target is armed.
+- Each target has its own whole-second delay of 5–600 s (fixed or a range), counted from the stake or from the moment the player's free exit closes.
+- It **never lands before the player's free exit closes plus 7 s**: `dueAt = max(requested, exit close + LOCK_MARGIN_MS)`.
+- Exact timing on Up & Down is the existing chain-scoped COUNTER delay with min = max (5–600 s).
+- Cancelling a queued staff-chosen stake, or removing a target that has a queued reaction, is a **veto**. It needs a reason and writes a COMPLIANCE row, and that poll can never be targeted again by any bot.
+- When the holder's consent is voided, every active target of that bot ends.
+- Targeted reactions count toward the staff-chosen caps and alert every admin, exactly like Enter now.
+- Early entry before the player's free exit closes is not built. Asking for it needs a new amendment and a COMPLIANCE ruling that amends A15.
+
+### What changes
+- An owner designates an existing PLAYER account by typing its password. The password is verified like a sign-in but never creates a session (D5).
+- A server engine stakes from that account on polls and Up & Down: COUNTER after a player's bet, FILL before cutoff, OPENER on an empty market. Staff may also use Enter now and targets (D17, D18).
+- Every cap is enforced inside the bet's own locks. Every house position and ledger row carries an immutable `houseBotId` marker.
+- The holder keeps the account and withdraws normally (D3). House stakes are cash only, are never cashed out, and earn no wagering progress, commission or reward.
+- The master switch ships OFF (D1).
+
+### Supersedes
+
+| What | Where | As to |
+|---|---|---|
+| "Do not build" house-backed liquidity | `docs/F6-LIQUIDITY-DESIGN.md` §4 | the recommendation |
+| "Never discretionary" | F6 §3.3 and §4 R5 | the market and the moment only (D17); never the side or the amount |
+| The mandatory conditions | F6 §5 conditions 1–4 and 6 | condition 1 (written GBT approval) is waived by owner ruling D1, not satisfied; condition 4 is replaced by display-only resolution (I10); condition 5 is built; condition 6 is replaced by one rulebook and Terms disclosure line (D2, D6) |
+| Seed at lock, never at open; house kept out of player metrics | `docs/UPDOWN-FINAL-DESIGN.md` D3 | the mechanism: an automated OPENER may stake at open, and house positions appear publicly like a player's (D6) |
+| Seed returned at stake, takes no profit | UPDOWN G2 | a house stake shares in winnings like any later stake |
+| Caps as "the only control" | UPDOWN G4 | caps work alongside the penalty box, the closeness rule, the exit-window hold and a settled-loss master stop |
+| Bots prohibited | the published rulebooks' prohibited-conduct lists | a carve-out for accounts 50pick operates (D2/D7; the text lands in build commit 6) |
+| 14-day notice | Terms §10 | this change only (below) |
+| "Awaiting Ali's decision" | `docs/feature-backlog.md`, F6 | decided: build as house bots |
+
+### Do not restore
+- No human-typed side.
+- No human-typed amount.
+- No sizing against cancellable money: only locked money of eligible accounts counts, 7 s after its free exit closes.
+
+### What deliberately does NOT change
+- The fee stays a function of the pools and the outcome, never of who bet.
+- Statutory figures include house rows (D6).
+- No officer-conflict block on resolve, void, reopen or objection rulings for a market the house holds (I10; the 2026-07-24 guardrail). House exposure is displayed instead.
+- No early entry before a player's free exit closes.
+- No Enter now on Up & Down.
+- No SMS for house-only notices.
+- No prize, cashback, tournament or rank reward on house stakes (R4).
+
+### The closeness rule, and why
+- **Up & Down closeness rule, all modes, at decision and at fire:** `|livePrice − openPrice| ≤ closenessPct × (upTarget − openPrice)` (default 25%). A missing price → skip `UD_NO_PRICE`.
+  - It is symmetric by design: the bot enters only while the round is still a coin flip. Momentum bettors can't farm it, and the house never cherry-picks the side that is already winning.
+
+### Terms §10 notice
+Terms §10 (v2026-09-14, in all three languages) promises written notice in the app at least 14 days before a material change. This change is material and changes what the platform does, so neither the 2026-09-07 correction reasoning nor the 2026-09-13 "favourable to players" reasoning applies. The notice is waived on Ali's ruling alone (D2/D7), effective on deploy. Nothing is broadcast: the platform has no trilingual in-app notice channel (the `/admin/system` banner is one untranslated, dismissible string), and SMS cannot deliver in production either (`smsConfigured()` is false), so no other channel could stand in. ⚠️ Open defect, not fixed in this build: §10's in-app notice promise cannot be kept for any future change until a localised in-app notice exists — owner to decide. Existing players keep `acceptedTermsVersion`; no re-acceptance.
+
+### Migration exception
+The two house migrations are applied to production from the build machine with `prisma migrate deploy` before the release merge (release step REL-2). This is an explicit exception to the 50pick-audit skill's "migrations reach production only through the deploy". It is needed because the start script applies DDL while the old container still serves. Ali's release "go" must name it.
+
+### Not in this build
+- A password change or reset does not sign out the holder's other sessions (risk 7 below; owner default W5).
+
+### Owner defaults (Ali may override; the build uses the default until then)
+
+| # | Question | Default being built |
+|---|---|---|
+| W2 | What a *trigger* player sees in their data export (R5) | excluded days + countered count only |
+| W3 | Terms §10's written in-app notice can't be kept today (P2) | waived on Ali's ruling; defect recorded |
+| W4 | Retention of skipped/expired intents (A20) | kept 7 years (proposal on file: 90 days) |
+| W5 | Platform-wide sign-out on password change (A1) | not in this build (separate hardening) |
+| W7 | Reason on staff-chosen actions | a reason (5–300) is required on every Enter now press, target add/update/remove and staff cancel |
+| W8 | Schedule, pool band and closing-soon skip | Enter now ignores the schedule, pool band and closing-soon skip; targets obey the schedule and ignore the pool band and closing-soon skip |
+| W9 | Products for Enter now | Enter now: polls only (Up & Down not built) |
+| W10 | Who may press, and who is told | any ADMIN may press, and every staff-chosen PLACED stake alerts every admin (bell + email, uncapped) |
+| W11 | Information blackout scope | a LIVE poll is closed to Enter now and targets while any of `sentinelOutcome`, `sentinelConfidence`, `sentinelDetermined`, `sentinelClosedAt`, `resolvedOutcome`, `resolutionStage1By` is recorded, while `resolveClaimedAt` is younger than `RESOLVE_CLAIM_TTL_MS`, or once `reopenedAt` is set |
+| W12 | Late-entry tolerance (`staleAt`) | 15 s Enter now, 60 s targets |
+| W13 | Products for targets | targets are polls only |
+| W14 | Target defaults; early entry | target defaults reactTo FIRST and timingFrom STAKE, early entry not built |
+| W15 | Counterparty share limit | counterparty share limit 50% |
+| W16 | Staff-edge alert | staff-edge alert at 15 points or TZS 100,000 |
+
+### Accepted risks
+1. **Licence class and levies.** House stakes are taxed within the fee, and the pool becomes a "book" (F6 §3). Ali reports to GBT.
+2. **Consent is knowledge, not proof.** Password-only (D5). Officer resets are blocked, but resets before the 2026-09-11 audit genesis are invisible.
+3. **Exploitation is bounded, not eliminated.** Alt accounts farming counters are capped per account, and G4 still applies. Caps, penalty box, closeness rule and exit-window hold are the controls.
+4. **The holder sees house positions live** (they could front-run with an alt account). House stakes also count against their own RG loss limit, which auto-pauses the bot.
+5. **Throughput.** Bot bets serialise on `house:control` (ms-long), and the holder shares the `bet.place` rate bucket (min gap ≥ 20s).
+6. **Delivery.** Merge conflicts with the parallel session are likely. `overlapSeconds` in production is unverified; the design is correct either way. sw/zh legal text needs native review. The leaderboard shows the holder's display name.
+7. A password change or reset does not sign out the holder's other sessions (owner ruling 2026-09-13). Recommended hardening, as a separate platform commit: revoke at the three writers, re-mint the session of the device that made the change, and add login copy `kp_revoked=pw`. House consent is unaffected either way, because consent is the fingerprint, never a session. (also recorded as hardening H1, C9)
+
+Risks 8–12 (release and verification) are appended to this entry in build commit 8.
+
+13. **Selection edge, bounded not eliminated.** Staff choose the poll and the moment, and can decline after seeing the computed side. They can also see what players cannot: positions with owner names and phones on the admin market page, AML views, and AI poll data (reasoning, confidence, reviewer). The side can't be typed, but it can be matched by waiting until the thinner side is the side they favour. Bounds: the blackout (AI result check recorded, or market reopened), the formula side and amount, staff-chosen caps inside the locks, the counterparty share limit and pro-rata counterparty caps, a durable record of every press (placed or refused), previews per officer, the vetoes register, and the monthly staff-edge scorecard with its alert (W16).
+14. New with D17: a person chooses the moment of an opener stake and of any stake; opening empty markets is already superseded (UPDOWN D3, automated OPENER).
+15. **Void after a staff-chosen stake.** A single admin can still void or reopen a market holding one (no officer lock: I10 and the 2026-07-24 guardrail). Mitigation is display, the R9 `houseStake.staffChosen` payload, the `staff-stake-voided` alert and an R1 row only.
+16. **Amounts are deterministic,** so a repeated Enter now stake is recognisable (D6 fingerprint). With no jitter, an amount can't be re-rolled either.
+17. **A fixed target delay makes reactions predictable.** The field hint recommends a range.
+18. **Consumed trigger.** A target removed or ended after a trigger was decided consumes that trigger. No other bot may react to it (one COUNTER row per trigger).
+19. **Counterparty concentration.** A staff-chosen stake can still be matched mostly against a few players' money. It is bounded by the share limit (refused when one account holds more than 50% of the locked opposite money, W15). It is also bounded by pro-rata counterparty caps: the stake counts toward the per-player daily counter limits of every account holding at least 25%.
+20. **An officer may decide a market holding a stake they chose** (resolve, void, reopen or an objection ruling). There is no refusal (2026-07-24 guardrail, I10). The mitigations are display, audit and alert only: the viewer sees "of which chosen by you", the decision audit records `requestedBy`, and `staff-stake-self-decided` alerts every admin.
+
+### Accountability
+- Ali alone switches house bots ON.
+- Every owner action writes an audit row in its `HOUSE_AUDIT` category: COMPLIANCE for designation, the switch, limits, rules, Enter now, targets and vetoes.
+- The house-liquidity regulator report and CSV (R1) list house stakes, the Enter now register, targets and vetoes.
+- The Board disclosure draft is tracked by `boardDisclosureSections`.
+
+---
+
 ## 2026-09-14 (third) · The Responsible Gambling Policy gets a version, and §3 names only the signs the code computes
 
 **Found by the public-page audit (session 95), not an owner ruling — recorded because a published policy changed.**

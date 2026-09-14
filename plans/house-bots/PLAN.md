@@ -16,10 +16,10 @@ How this plan was produced: an 8-agent code map, 3 slice designs, 3 adversarial 
 ## Decisions (Ali, 2026-09-13)
 | # | Ruling |
 |---|---|
-| D1 | Build everything. A global **master switch ships OFF** on production, and Ali turns it on himself. |
+| D1 | Build everything. A global **master switch ships OFF** on production, and Ali alone turns it on. |
 | D2/D7 | Amend the published Rules and Terms (en/sw/zh): a carve-out from the prohibited-conduct list for accounts 50pick operates, plus one disclosure line. **Effective on deploy, with no 14-day notice** (owner ruling; 50pick reports to GBT). |
-| D3 | The bot account belongs to a real person. **He may use it and withdraw normally.** The console reads the **live wallet balance** (no shadow balance). |
-| D3b | **No payment feature.** He tops up through the normal deposit flow and is reimbursed out of band. While his bot is **ACTIVE**, every deposit or withdrawal on the account alerts admins. While inactive, nothing is watched. |
+| D3 | The bot account belongs to a real person. **They may use it and withdraw normally.** The console reads the **live wallet balance** (no shadow balance). |
+| D3b | **No payment feature.** The holder tops up through the normal deposit flow and is reimbursed out of band. While their bot is **ACTIVE**, every deposit or withdrawal on the account alerts admins. While inactive, nothing is watched. |
 | D4 | A **roster** of bots, each with its own rules. One master switch plus global limits. |
 | D5 | Consent = the owner types the account's **password** (only). |
 | D6 | Publicly the bot is **exactly like a player**: counts, avatars and the leaderboard. Admin analytics still separate house from players. Statutory figures include everything. |
@@ -673,7 +673,7 @@ inside `withLock("login:<id>")`, and then dropped.
 |---|---|---|
 | D10 | Password change → the console asks for the new password (§14). No platform-wide sign-out in this build | smallest change that meets the ask; E-381 risk |
 | D11 | Any RG pause voids consent: fresh password + Start after it clears | RG outranks every other door (`wallet-service.ts:135-138`) |
-| D12 | Holder bets on a market against his own bot → one admin alert per market (AlertOnce); his player path is never refused | I1 |
+| D12 | Holder bets on a market against their own bot → one admin alert per market (AlertOnce); their player path is never refused | I1 |
 | D13 | Lowering a global cap is allowed, with a consequence preview; raising a bot cap above a set global cap is refused | risk-reducing edits never blocked |
 | D14 | House-liquidity regulator report + CSV ship in v1 | Ali reports everything to GBT |
 | D15 | Build starts only when the other session's KYC-at-withdrawal work is on `origin/main` | hooks touch the same wallet-freeze and RG code |
@@ -820,6 +820,7 @@ the resolution below is final.
 | Dialogs and refresh (03 S4 "RefreshPoller is disabled while any dialog is open") | Superseded by C11 plus N1 §8. Any open house-bot dialog counts as dirty in HouseBotFormContext, so C11 shows its change Callout instead of dispatching `50pick:refresh`, and runs exactly one refresh when the dialog closes. |
 | A19 audits outside locks | **Target actions:** take `wallet:<botUser>` then `house:targets` (bets never take it), commit, then run the awaited COMPLIANCE audit and roster alert. They never take `house:control`.<br>**Source scan:** "no `audit(` inside a `withLock` callback" extends to `src/app/admin/house-bots/**` and `src/lib/server/house-bot/**`. |
 | A23 schema gate | `houseBotSchemaReady()` and the preflight check 8 house tables (7th `HouseBotTarget`, 8th `HouseBotPress`), plus the new columns. |
+| P2 Terms §10 notice text (Terms v2026-09-14) | P2 quotes §10 as promising "in-app + SMS" notice. Since Terms v2026-09-14 (the KYC audit's P1, all three languages), §10 promises written notice **in the app** only. The COMPLIANCE House bots entry therefore names the in-app promise, and still cites `smsConfigured()` because no SMS channel could stand in. The open defect is now the missing localised in-app notice channel. |
 | `uniqueViolation` reading (04 N1 §2: "the constraint named in its message") | **Refuted by code.** Probed 2026-09-14 on the scratch Postgres 18.3 with `@prisma/client` 6.19.3: a raw-SQL unique violation arrives as P2010 with `meta.code` "23505", and its `meta.message` is only Postgres's DETAIL, `Key (cols)=(vals) already exists.`, with no index name. This holds for `$queryRawUnsafe`, `$executeRawUnsafe` and interactive transactions; a 23514 CHECK violation does name its constraint. So the house DAL resolves the index inside its two raw-SQL doors, from the table the statement writes and the DETAIL's key columns (an intent `anchorKey` starting "manual:" is `hbi_manual_anchor_uq`, otherwise `hbi_counter_anchor_uq`), and re-raises the memory twin's named shape. Anything it cannot resolve to exactly one house index is rethrown untouched. Callers still read only `uniqueViolation(err)`. |
 | C14 test row "paid exit 60 → never for polls" (Commit 1 critic, CC-16a) | **Refuted by code** (`MIN_SELECTION_WINDOW_MINUTES = 120`, `ai-poll-config.ts:41`). "Never" = no feasible stake instant on the shortest lifetime of the class. So a 120-min paid exit makes polls "never" and a 60-min one does not. |
 | C2 emoji label test vs C2 charset (Commit 1 critic, CC-16b) | C2's test row "a 32-emoji label is valid, 33 is invalid" contradicts C2's own allowed characters (`\p{L}\p{M}\p{N}`, space and `- _ . # '`): an emoji is none of those, so it gets the charset error. **The charset wins.** The 32/33 length test uses the astral letter 𠀀 (U+20000), one code point in two UTF-16 units. Emoji stay valid in notes and reasons, which have no charset. |
