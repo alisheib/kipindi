@@ -80,6 +80,8 @@ signal is honest. ⛔ This must precede D3, because it changes how much house fl
 
 ### D3 · The house seeds the thin side — sized *after* D1 and D2
 
+> ⛔ **Superseded as to mechanism (house bots, owner decision 2026-09-13).** The house stakes through designated accounts ([`HOUSE-BOTS.md`](HOUSE-BOTS.md)): an automated OPENER may stake at open, house positions appear in public player metrics and leaderboards like any player's (D6), and house P&L stays separable through the `houseBotId` marker. Per-round and per-day exposure caps remain mandatory.
+
 Ali's decision of 2026-08-04, still unbuilt, and still the only thing that touches the remaining
 refunds. Unchanged in substance:
 
@@ -186,6 +188,8 @@ build as D1's advisory, one column wider.
 
 ### G2 · D2 and D3 fight each other, and the loser is the player's trust
 
+> ⛔ **Superseded (house bots, 2026-09-13).** A house stake shares in winnings like any later stake, and winnings stay in the bot account. The multiplier moves with it exactly as G3 already requires the copy to own; the rulebook discloses that 50pick may add liquidity.
+
 If the house seeds the thin side (D3) and that seed **shares in the winnings**, then the pool-implied
 multiplier a player saw while betting (D2) is **higher than what they are actually paid** — the house
 diluted it after the fact. ⛔ **That is a false money statement on the exact surface D2 exists to make
@@ -207,6 +211,8 @@ estimate with arithmetic. D2 is an honest *estimate* upgrade, never a promise �
 lock behaviour is what makes that safe.
 
 ### G4 · The adversarial case D3 creates
+
+> ⛔ **Superseded as to "the only control" (house bots, 2026-09-13).** Caps are enforced inside the bet's own locks, alongside the penalty box, the closeness rule, the exit-window hold and a settled-loss master stop ([`HOUSE-BOTS.md`](HOUSE-BOTS.md) §5).
 
 Once the house reliably seeds the thin side, **a player who always takes the fat side is playing
 the house at roughly even odds, minus fee**. That is not a bug — it is what a market maker is —

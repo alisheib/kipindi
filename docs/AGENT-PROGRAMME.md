@@ -223,6 +223,8 @@ time against `stake × rate` and it was fixed as a defect: a share of turnover c
 revenue that turnover produced. ▶ *"Volume turnover"* is honoured as a **display** — the sub-ledger
 shows turnover and revenue, and pays on revenue.
 
+⛔ **No commission, first-bet or turnover reward accrues on house-marked stakes or settlements (`houseBotId`); the holder's own bets accrue normally.** ⏳ lands in build commit 2.
+
 **Rate:** ⭐ **one rate per agent** (Ali — the framework specifies no tiers, so there are none).
 ⛔ The `tier` column is **dropped**, not left dead — **in two releases, not one** (expand →
 contract on Railway, `docs/…expand-contract`): release 1 (2026-09-07) removed `tier` from

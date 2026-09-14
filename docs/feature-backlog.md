@@ -194,7 +194,8 @@ the WHY, the kit pieces to reuse, the infra that already exists, and acceptance 
 
 ### P2 — structural & owner tooling (bigger, higher-care)
 
-#### F6 · Seeded / guaranteed liquidity on new markets  ⭐ (structural)  📋 DESIGN DELIVERED 2026-07-13 — **AWAITING ALI'S DECISION**
+#### F6 · Seeded / guaranteed liquidity on new markets  ⭐ (structural)  📋 DESIGN DELIVERED 2026-07-13 — ⛔ **DECIDED 2026-09-13: BUILD AS HOUSE BOTS**
+- ⛔ **SUPERSEDED 2026-09-13 — Ali decided to build it as house bots** (D1). The recommendation below is kept as the record. Authority: `docs/HOUSE-BOTS.md`; ruling of record: the House bots entry in `docs/COMPLIANCE-DECISIONS.md`.
 - **See `docs/F6-LIQUIDITY-DESIGN.md`. No code written** (as this backlog required).
 - **Recommendation: DO NOT build house-backed liquidity.** It destroys outcome-neutrality
   (the defining property of pari-mutuel), and it contradicts a rule we already enforce —

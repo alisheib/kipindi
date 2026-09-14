@@ -43,6 +43,7 @@ file is worthless the moment it describes an intention as a fact.
 | **A config change records WHICH field moved** | ✅ **live in code 2026-09-09.** Every config audit wrote `changes: updates`, and an admin settings form posts the WHOLE config — so a save that moved one field recorded all of them as changed, and `/admin/config` → History renders that blob into one truncated cell. That is how `agent.config.feeVatRatePct` went **18 → 0** unseen inside the Lipa destination save (see the agent row above). `changes` is now a real diff, `{ field: { from, to } }`, across market config, the `defineConfig` factory, payments control and Up & Down. ⭐ `before`/`after` are untouched and still complete — nothing was ever lost, the row was unreadable. §2.10 · `npm run test:config-audit-diff` |
 | **A withdrawal's hold and its Transaction row commit together** | ✅ **live in code 2026-09-09.** `withdraw`'s Phase A ran `withLock(…, async () => {` — and the lock's transaction is **not ambient** (`prisma-dal` resolves `tx ?? pc()`), so both writes autocommitted outside it. A failure between them left the player's money in `Wallet.hold` with no txn row: invisible to the reconcile sweep, to `/admin/payments` and to the trial balance alike. §2.7 · `npm run test:lock-tx-threading`. ✅ **The behavioural proof now exists** — `npm run e2e:money` ran against a real Postgres for the first time on 2026-09-09 (session 3): **64 passed, 0 failed**, all 28 ledger groups balanced, money conservation exact to 0.00 across deposit → bet → cash-out → settle → withdraw. ⚠️ It drives `withdraw()` Phase A only; it does **not** reach the AML dispatch window or `creditInternal`, whose guards stay structural |
 | Money rail refused when nobody chose one | ✅ **live in code 2026-09-08** — on LIVE money an unset or unrecognised `PAYMENT_AGGREGATOR` with no officer row resolves to NO provider and every deposit/withdrawal is refused with `PROVIDER_DOWN`, instead of silently running the mock (which fabricates confirmations). A *chosen* mock still runs — that is Ali's 2026-07-24 decision and is unchanged. `npm run test:payment-control` · `npm run red:payment-control`. ✅ **READ OFF THE LIVE SERVICE 2026-09-09** (`railway variables -s 50pick`): `PAYMENT_AGGREGATOR=selcom`, `SELCOM_WEBHOOK_SECRET` set, and `SystemConfig["payments.control"]` carries an officer row `provider: "selcom"` — so both the env and the officer path resolve to the real rail, and neither is the mock. ⛔ **`TEST_FUNDING` is UNSET with `NODE_ENV=production`, so `isLiveMoneyMode()` is TRUE**: this deployment is in LIVE money mode |
+| **House liquidity stakes** (§2.11) | ⏳ LANDING — decided 2026-09-13 (COMPLIANCE-DECISIONS, House bots entry); built on branch `house-bots`; nothing is live until the release merge, and the master switch ships OFF |
 
 ---
 
@@ -59,6 +60,7 @@ file is worthless the moment it describes an intention as a fact.
 | Free cancellation | 5 minutes, full refund, then locked — **but only if the bet had 5 minutes of betting time still ahead of it when it was placed**, so it is **unreachable on Up & Down 3- and 5-minute rounds** (§2.6) | Long-form: yes · Up & Down: **10 minutes and longer only** |
 | Withdrawal fee | 1.5% of the amount withdrawn (0.5% of it is the gateway's) | Platform |
 | Failure messages | State the reason and the next step; severity must match — a fixable problem is a **warning**, not a red error | Whole player UI |
+| House liquidity stakes | Accounts 50pick operates may stake; same fee, bounds and cut-offs; no cash-out, wagering, commission or objection standing | Both |
 
 ### Accepted consequences — recorded, and not to be re-opened
 
@@ -256,6 +258,8 @@ changes are inseparable.
 > of that very test asserted the same thing and went RED. On a lopsided market a small hedge
 > on the thin side can pay many times both stakes.
 
+House liquidity stakes are the exception: a house bot holds one side per market and never trades against another bot (§2.11, ⏳ landing).
+
 ### 2.5 · Bonus wagering — only one side counts
 
 > ✅ **LIVE, VERIFIED ON PRODUCTION 2026-08-14 — the grants now exist.** This rule had no live
@@ -318,6 +322,8 @@ confirming, and may proceed** — it is a warning, not a refusal (see §2.9).
 | **Guarded by** | `npm run test:bonus-one-side` (22 checks) · `npm run red:bonus-one-side` (6/6, incl. both pre-fix sources verbatim AND three over-corrections) |
 | **Audited** | `bonus.wagering_skipped_opposite_side` on the suppressed stake · `bonus.wagering_reversed` on the cancellation |
 
+House liquidity stakes are cash only and never advance or reverse wagering (§2.11, ⏳ landing).
+
 ### 2.6 · Free cancellation — 5 minutes, and the two conditions this section used to omit
 
 Full refund inside 5 minutes of placing the bet; after that the position locks and rides to
@@ -361,6 +367,8 @@ product where it cannot be exercised.** Overstating what a player gets is the sa
 as overstating a control to the Gaming Board, which `BOARD-DISCLOSURE-B-E.md` exists to prevent.
 ⛔ Anyone quoting the 5-minute cancellation to a player, an auditor or the Board must say which
 product and which round length.
+
+House liquidity stakes can never be cancelled or cashed out, and a house counter lands only after the player's own free exit has closed (§2.11, ⏳ landing).
 
 ### 2.7 · Withdrawal fee — 1.5%
 
@@ -549,6 +557,17 @@ is indistinguishable from a successful one.
 > was actually shown the 09-08 text. Read the rows; if any exist, the acceptance record needs an
 > officer note, not a silent rewrite.
 
+No commission, first-bet or turnover reward accrues on house-marked stakes (§2.11, ⏳ landing).
+
+### 2.11 · House liquidity stakes
+
+> ⏳ **LANDING.** Decided 2026-09-13; built on branch `house-bots`; nothing is live until the release merge, and the master switch ships OFF. The design authority is [`HOUSE-BOTS.md`](HOUSE-BOTS.md). Final text in build commit 8.
+
+- **Decided:** the House bots entry in `docs/COMPLIANCE-DECISIONS.md` (owner rulings D1–D18).
+- **Enforced:** ⏳ build commit 2 — the house gates H0–H4 in the bet path ([`FLOWS.md`](FLOWS.md) §9), and the sanctioned player-path changes (d)–(g): a house position has no cash-out value and refuses a cash-out, gives no objection standing, and skips wagering reversal and referral accrual at settlement.
+- **Configured:** ⏳ build commit 7 — `/admin/house-bots`, owner only.
+- **Stated:** ⏳ build commit 6 — the rulebook §8 carve-out, the §3/§4 disclosure line, Terms §4 and privacy §3.
+
 ---
 
 ## §3 · THE TWO FEE MODELS, AND WHY BOTH STILL EXIST
@@ -595,6 +614,7 @@ display rate, the Up & Down round margin and tick floor, and the per-chain stake
 
 | Date | Decision | Record |
 |---|---|---|
+| 2026-09-13 | ⭐ **House liquidity stakes** — accounts 50pick operates may stake on polls and Up & Down through the ordinary bet path; same fee, bounds and cut-offs; no cash-out, wagering, commission or objection standing. Master switch ships OFF. ⏳ Landing (§2.11) | §2.11 · `docs/COMPLIANCE-DECISIONS.md` House bots entry · `docs/HOUSE-BOTS.md` |
 | 2026-09-10 | ⭐ **The agent registration fee is paid FROM THE WALLET.** The applicant deposits on the ordinary rails, then pays the fee from that balance — no receipt, no typed reference, no officer attestation. **Reason:** a Lipa/QR payment carries no reference on any network and a bank receipt is only as good as the human reading it; a wallet debit carries the payer's identity by construction. ⛔ **The price, stated:** the fee becomes a player-ledger movement, so the programme is now **INSIDE the money invariants** and no longer "adds zero risk" to them — the debit must be all-or-nothing, row-locked and idempotent, and it can race a bet for the same balance. ⛔ The money-in leg is the **PLAYER** account, never `EXTERNAL:SELCOM`, or the deposit is counted twice. Supersedes the **payment rail and the attestation** of 2026-09-07 and **nothing else** — the TZS 100,000 / no-VAT ruling of 2026-09-09, the waiver, the 7-day refund and single-officer approval all STAND. ⛔ QR / Selcom Lipa stays **DISABLED** | §2.10 · `docs/COMPLIANCE-DECISIONS.md` § 2026-09-10 · `docs/PAYMENTS-SEAL-CAMPAIGN.md` §2 (live status — the behaviour lands in Units 1–8, this row records the DECISION) |
 | 2026-09-09 | **The agent registration fee is NOT VAT-bearing.** `feeVatRatePct` **18 → 0**, so an applicant owes the published **TZS 100,000** and a registration books **nothing** to `HOUSE:TAX`. ⛔ The decision RATIFIES production: the rate had already read 0 on the live database since 2026-09-08T17:42:24Z, where it travelled unannounced inside the save that changed the Lipa fee destination, and the money gate found it on a production read. Supersedes the VAT term of the row below and **nothing else** — 10% commission, 5% withholding, the 5-working-day SLA and the 40% ceiling all STAND. ⛔ NOT retroactive: the one agent registered before it paid 118,000 and `HOUSE:TAX` holds that 18,000 as a genuine liability to TRA | §2.10 · `docs/COMPLIANCE-DECISIONS.md` § 2026-09-09 · `npm run test:agent-fee-copy` |
 | 2026-09-08 | **Management's amendment to the agent programme** — commission **20% → 10%** of the net operator fee; the registration fee becomes **VAT-EXCLUSIVE**, so an applicant owes **TZS 118,000** (100,000 + 18% VAT) and every surface reads `feeBreakdown().totalTzs`; the review promise becomes **5 WORKING days** (`workingDaysBetween`); and a **5% withholding tax** on the agent's own commission, deducted at accrual and remitted to `HOUSE:TAX` in the same balanced ledger group. The binding EN agent terms changed with it, so `AGENT_TERMS_VERSION` is **2026-09-08** | §2.10 · `docs/AGENT-PROGRAMME.md` §5/§5a · `docs/COMPLIANCE-DECISIONS.md` § 2026-09-08 · `src/lib/agent-terms-version.ts` |

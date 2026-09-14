@@ -17,14 +17,20 @@
 
 | Class | Period | Measured from | Legal basis | Enforcement | Where |
 |---|---|---|---|---|---|
-| Transactions (deposit / withdrawal / bet / payout) | **7 years** | Transaction date | POCA Cap 423 §16; TRA Income Tax Act §80 | **Never deleted** — by design | `Transaction`, `LedgerEntry` |
+| Transactions (deposit / withdrawal / bet / payout) | **7 years** | Transaction date | POCA Cap 423 §16; TRA Income Tax Act §80 | **Never deleted** — by design | `Transaction` (including `houseBotId` markers), `LedgerEntry` |
 | Double-entry ledger | **7 years** | Entry date | POCA Cap 423 §16 | **Never deleted** — trial-balanced nightly | `LedgerEntry` |
-| Positions / bet history | **7 years** | Settlement date | POCA Cap 423 §16 | **Never deleted** | `Position` |
+| Positions / bet history | **7 years** | Settlement date | POCA Cap 423 §16 | **Never deleted** | `Position` (including `houseBotId` markers) |
 | Audit log (HMAC-chained) | **7 years** | Event date | ISO 27001 A.12.4; GLI-19 §11 | **Cannot be deleted** — see §3 | `AuditLog` |
 | Identity documents + KYC decisions | **7 years** | Account closure | POCA Cap 423 §16; FATF R.11 | **Never deleted** by any automated path. ⭐ Officer-initiated erasure destroys the **images** once the 7 years have run (`KYC_DOCUMENT_HOLD_YEARS`); the **number and name** are pseudonymised immediately — see §2b | `KycSubmission`, `KycDocument`, R2 `50pick-kyc` |
 | Agent application — the decision record | **7 years** | Decision | POCA Cap 423 §16 (a vetted business partner is a CDD subject) | **Never deleted.** Referee names/contacts and officer free text are pseudonymised immediately on erasure (§2b) | `AgentApplication` |
 | Agent application — the APPLICANT's own documents (CV, letters, fee receipt) | **7 years** if approved (CDD) · **90 days** if refused/lapsed | Decision | POCA Cap 423 §16 (approved) · PDPA 2022 §15 (refused — no relationship to justify longer) | ✅ **Code** — `retention.purge.daily` destroys the bytes on the clock (`AGENT_APPROVED_DOC_HOLD_YEARS` / `AGENT_REJECTED_DOC_HOLD_DAYS`); erasure destroys them under the same 7-year gate as KYC images. Rows stay as tombstones (`purgedAt`) | `AgentApplicationDocument`, R2 `50pick-kyc` (prefix `kyc/agentapp/`) |
 | 🔴 Referee national-ID scans — **third-party data** | **90 days** | Decision (⛔ never `User.closedAt` — a referee has no account) | PDPA 2022 §15 — the referee is not our customer; lawful basis is the applicant's attestation of consent, recorded at submission | ✅ **Code** — `retention.purge.daily` (`AGENT_REFEREE_DOC_HOLD_DAYS`); destroyed **immediately** on rejection. ⭐ A referee has no login to invoke erasure: the DSAR route is the DPO contact on `/legal/privacy`, and an officer may destroy a named application's referee scans on request | `AgentApplicationDocument` (`thirdParty = true`) |
+| House-bot designation and consent record | **7 years** | Removal | POCA Cap 423 §16 (the record behind marked positions) | **Never deleted.** Label, note and free-text reasons are pseudonymised on erasure (§2b) ⏳ lands in build commit 3 | `HouseBot`, `HouseBotEvent` |
+| House-bot decisions (each stake, each trigger not countered, penalty-box entries) | **7 years** | Decision | POCA Cap 423 §16; GBT evidence | **Never deleted**; id handles only, never names | `HouseBotIntent`, `HouseBotEvent` |
+| House-bot targets (decision record) | **7 years** | Decision | POCA Cap 423 §16 (decision record) | **Never deleted** | `HouseBotTarget` |
+| House-bot presses (officer decision record) | **7 years** | Press | POCA Cap 423 §16; GBT evidence | **Never deleted**; officer data, never in the holder's export; reason pseudonymised on erasure (§2b) ⏳ lands in build commit 3 | `HouseBotPress` |
+| House-bot alert throttles | **30 days** | Creation | Operational only | 📋 Policy — ⏳ lands in build commit 4 as `retention.purge.daily` (`HOUSEBOT_ALERT_ONCE_RETENTION_DAYS`) | `HouseBotAlertOnce` |
+| House-bot runtime counters | ⛔ **N/A** — fixed rows overwritten in place; per-instance engine rows (`engine:*`, `beat:poller:*`) deleted after 24 h | — | — | ⏳ lands in build commit 4 (planner `pruneInstanceRows`) | `HouseBotRuntime` |
 | In-app notifications | **180 days** | Creation | Operational only | ✅ **Code** — `retention.purge.daily` | `Notification` |
 | OTP code hashes | **30 days** | Issue | Operational only | ✅ **Code** — `retention.purge.daily` | `Otp` |
 | Up & Down price observations | Indefinite | — | Fairness evidence (GLI-19) | **Never deleted** — write-once per `(asset, boundary)` | `UpDownObservation` |
@@ -90,9 +96,9 @@ months and break on the day somebody "tightened" it.
 
 | | When | What |
 |---|---|---|
-| ① Immediate | on fulfilment | **`User`** — email, verified-at, password hash + salt, display name, dob, region, avatar, last-login → NULL; `phoneE164` → `erased:<userId>` tombstone; `marketingOptIn` → false. **`KycSubmission`, every submission and not just the newest** — number → its keyed HMAC, full name → `Erased <fp12>`, dob → NULL, officer request descriptions → `[erased]`. **`Comment`** — author mask overwritten, body redacted, row soft-deleted. **`Notification`** — the account's own deleted, *and the frozen mask redacted out of other people's rows*. **Gone** — `Otp`, `PushSubscription`, `Watchlist`, `TotpSecret`, `TotpBackupCode`, `ActiveSession`. |
+| ① Immediate | on fulfilment | **`User`** — email, verified-at, password hash + salt, display name, dob, region, avatar, last-login → NULL; `phoneE164` → `erased:<userId>` tombstone; `marketingOptIn` → false. **`KycSubmission`, every submission and not just the newest** — number → its keyed HMAC, full name → `Erased <fp12>`, dob → NULL, officer request descriptions → `[erased]`. **`Comment`** — author mask overwritten, body redacted, row soft-deleted. **`Notification`** — the account's own deleted, *and the frozen mask redacted out of other people's rows*. **Gone** — `Otp`, `PushSubscription`, `Watchlist`, `TotpSecret`, `TotpBackupCode`, `ActiveSession`. **`HouseBot`** — label → `Erased <botId tail>` with `labelKey` recomputed from it; note, `removedReason`, `HouseBotEvent.reason` and `HouseBotPress.reason` → `[erased]`; the quoted label is redacted in admin HOUSE_BOT notifications. ⏳ lands in build commit 3 |
 | ② Held 7 years from closure | `KYC_DOCUMENT_HOLD_YEARS` | Identity **images** and officer-requested extra documents — the R2 objects *and* the rows — plus the source-of-funds declaration. |
-| ⛔ Never | — | `Wallet`, `Transaction`, `LedgerEntry`, `Position`, `AuditLog`. The module names what it writes and cannot reach these; `test:erasure` §11.12 asserts it mentions none of them. |
+| ⛔ Never | — | `Wallet`, `Transaction`, `LedgerEntry`, `Position`, `AuditLog`; `HouseBotIntent`, `HouseBotTarget` and the `houseBotId` markers (⏳ lands in build commit 3). The module names what it writes and cannot reach these; `test:erasure` §11.12 asserts it mentions none of them. |
 
 ### ⚠️ One departure from the letter of answer 3, flagged rather than decided quietly
 
@@ -257,11 +263,11 @@ justification for relaxing a money gate that could be erased is not a justificat
 Leader-leased by the surrounding pass and **fails closed**, so two containers cannot double-run
 it. Its own `.catch` means a failed purge can never take the market lifecycle down.
 
-It touches exactly **three** classes and **cannot reach a fourth** — it names them. Money,
+It touches exactly the classes it names — notifications, OTP code hashes, AI poll payloads and agent documents (house alert throttles join in build commit 4) — and **cannot reach another**. Money,
 identity and audit records are outside its reach by construction, and `test:retention` proves it
 by seeding a 400-day-old confirmed deposit and asserting it survives.
 
-⛔ **Two of the three delete rows; the third does not.** The AI-poll pass (added 2026-08-21,
+⛔ **Not every pass deletes rows.** The AI-poll pass (added 2026-08-21,
 audit F-09) blanks `rawResponse` and `generation` on rows older than 30 days and leaves every
 row and every decision field in place. The result object and the audit payload report it
 separately — `aiPollRawResponsesBlanked`, `aiPollGenerationsBlanked` — because *"we deleted 494
@@ -336,7 +342,7 @@ the exception: archiving can be undone, this cannot.
 | `UpDownRound` | **DELETED** | the price story. No money meaning — the money lives on the market. |
 | `Comment`, `Watchlist`, `MarketSnapshot` | **DELETED** | player-facing chaff, no statutory role |
 | `PredictionMarket` | **REDACTED, never deleted** | titles + criterion blanked to a named sentinel; `purgedAt` / `purgedBy` / `purgeReason` stamped. Pools, `feeSnapshot`, `resolvedOutcome` and `settledAt` are **kept** |
-| `Position`, `Transaction`, `LedgerEntry`, `HousePoolLedger`, `AuditLog`, `UpDownObservation` | **NEVER TOUCHED** | the statutory record, and the shared price readings |
+| `Position`, `Transaction`, `LedgerEntry`, `HousePoolLedger`, `AuditLog`, `UpDownObservation`, `HouseBot`, `HouseBotEvent`, `HouseBotIntent`, `HouseBotTarget`, `HouseBotPress` | **NEVER TOUCHED** | the statutory record, and the shared price readings |
 
 ### 7.2 Why redact rather than delete — proven on production, 2026-08-28
 

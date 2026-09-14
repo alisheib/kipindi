@@ -68,7 +68,7 @@
    - **How to build:** N1–N2 add no commit and no third migration. Build them inside commits 1–8 per the "N1/N2" bullets under Scope per commit.
    - The P0.4 hold (step 4) has since been lifted.
 7. **Next, in order (2026-09-14, `ali-e4`; one heavy job at a time on Ali-Blade15):**
-   1. The Commit 1 file-writing workflow finishes: review its output, then commit it as `WIP house-bots:` commits and push.
+   1. ✅ 2026-09-14: build workflow `wf_579b088e-e06` (8 agents) wrote the Commit 1 files: schema, the two migrations, `src/lib/house-bot/*`, `house-bot-dal.ts` and `house-bot/book.ts` with their store edits, the rules, migrations and dal-parity suites with red wiring and `package.json` keys, and the docs of record (the COMPLIANCE entry is held). Its static cross-file audit found 10 minor issues, all fixed. The files are committed as `WIP house-bots: C1 …` commits. **Nothing has been compiled or run yet.**
    2. Merge `origin/main` into `house-bots` (merge only; it brings P1 and the §6b docs; expected overlaps are `package.json` and `docs/FLOWS.md`), then push.
    3. `npx prisma generate`, `npm run typecheck`, then `test:house-bot-rules`, `test:dal-parity`, `test:house-bot-migrations`, `red:dal-parity`, `test:red-anchors` and `test:guards-exist`, one at a time. Fix what fails.
    4. P0.6: record the local admin render method.

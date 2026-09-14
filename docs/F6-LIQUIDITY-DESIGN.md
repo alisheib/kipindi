@@ -1,5 +1,10 @@
 # F6 · Seeded / guaranteed liquidity — compliance & risk design
 
+> ⛔ **SUPERSEDED — house-backed liquidity is being built as "house bots" (owner decision D1, 2026-09-13).**
+> The recommendation below ("do NOT build") no longer governs, and neither do the §5 conditions. The ruling of record is
+> the House bots entry in [`COMPLIANCE-DECISIONS.md`](COMPLIANCE-DECISIONS.md); the design authority is
+> [`HOUSE-BOTS.md`](HOUSE-BOTS.md). This file is kept unchanged as the record of the risks that design answers.
+
 > ⚠️ **FEE ARITHMETIC IN THIS FILE IS THE RETIRED MODEL.** It reasons in
 > `min(commissionRate × pool, feeCeilingRate × smaller side)`, which since 2026-08-14 describes
 > only rounds frozen before the cutover. The platform charges **13% of the LOSING side** on both
@@ -243,6 +248,8 @@ problem is a *demand* problem, and house money is a poor substitute for demand.
 ---
 
 ## 5 · If Ali decides to build it anyway — the mandatory conditions
+
+> ⛔ Superseded 2026-09-13 by owner ruling D1: conditions 1–4 are not preconditions of this build (condition 1, written GBT approval, is waived by that ruling, not satisfied; condition 4 is replaced by I10 display-only resolution). Condition 5 is built (per-bot and global caps, kill switch). Condition 6 is replaced by one rulebook and Terms disclosure line (D2, D6). See [`HOUSE-BOTS.md`](HOUSE-BOTS.md).
 
 I would not ship this without **all** of these:
 
