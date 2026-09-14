@@ -36,6 +36,7 @@ import { stakeBoundsForUpDownMarket } from "./updown-config";
 import { localizedText } from "@/lib/localized";
 import { payoutFor, settledPayoutFor, allocateWinnerPayouts, allocateFeeShares, winnersForAllocation, poolFee, levySplit, leanFor, resolveFeeModel, THIN_SMALLER_SIDE_SHARE, type FeeSnapshot } from "@/lib/payout";
 import type { FailureReason } from "@/lib/failure-reasons";
+import { exitWindowFacts } from "@/lib/exit-window";
 import { getRequireTwoOfficerResolution } from "./resolution-policy";
 import { isMaintenanceMode, maintenanceMessage } from "./platform-config";
 import { recordSnapshot } from "./market-history";
@@ -2623,6 +2624,32 @@ export async function repairOrphanedPositions(): Promise<{ repaired: number; ref
   return { repaired, refundedTzs };
 }
 
+/** When selling shuts: at SELECTION close, never at resolutionAt (see the lockout note in
+ *  cashOutPosition). No gap set → betting closes at resolutionAt. */
+function exitClosesAtMs(market: Pick<StoredMarket, "resolutionAt" | "selectionClosedAt">): number {
+  return market.selectionClosedAt ? Date.parse(market.selectionClosedAt) : Date.parse(market.resolutionAt);
+}
+
+/**
+ * The instant this stake stops being cancellable (house bots, sanctioned change (k), 04 A14):
+ * `placedAt + grace + paid` when the bet had a runway, else `placedAt` — the same window
+ * `cashOutValue` offers, from the poll's frozen rates. Read by the house engine and by the
+ * locked-pool query; it never changes what a player is offered.
+ */
+export function exitWindowClosesAt(
+  position: Pick<StoredPosition, "placedAt">,
+  market: Pick<StoredMarket, "resolutionAt" | "selectionClosedAt" | "feeSnapshot">,
+): string {
+  const cfg = ratesFor(market);
+  const { exitCloseAtMs } = exitWindowFacts({
+    placedAtMs: Date.parse(position.placedAt),
+    closesAtMs: exitClosesAtMs(market),
+    freeExitGraceMinutes: cfg.freeExitGraceMinutes,
+    paidExitWindowMinutes: cfg.paidExitWindowMinutes,
+  });
+  return new Date(exitCloseAtMs).toISOString();
+}
+
 /**
  * Early cash-out value of an OPEN position, and WHETHER it can be sold at all.
  *
@@ -2677,20 +2704,23 @@ export async function cashOutValue(
   // The poll's OWN rates, not live config — a mid-poll retune must not change the
   // exit terms a player was promised when he bet.
   const cfg = ratesFor(market);
-  const graceMs = Math.max(0, cfg.freeExitGraceMinutes) * 60_000;
-  const windowMs = graceMs + Math.max(0, cfg.paidExitWindowMinutes) * 60_000;
 
   const placedAt = position.placedAt ? Date.parse(position.placedAt) : Date.now();
   const sinceBet = Date.now() - placedAt;
-  // Selling shuts when SELECTIONS shut, never at resolutionAt (see the lockout
-  // note in cashOutPosition). No gap set → betting closes at resolutionAt.
-  const closesAt = market.selectionClosedAt ? Date.parse(market.selectionClosedAt) : Date.parse(market.resolutionAt);
 
   // RUNWAY: how much betting time this bet had when it was placed. A bet placed
   // with less than the free window left never gets a cash-out — it is a
   // last-moment position and it rides to settlement. This is what makes an
   // ending-soon / no-gap poll un-gameable at the wire.
-  const hadRunway = graceMs > 0 && closesAt - placedAt >= graceMs;
+  // ⭐ The formula lives in `exit-window.ts` (house bots, sanctioned change (k)) so the house engine
+  // and the locked-pool query read the SAME window this function offers; `test:house-bot-seam` pins
+  // this function's output to the golden grid captured before the extraction.
+  const { graceMs, windowMs, hadRunway } = exitWindowFacts({
+    placedAtMs: placedAt,
+    closesAtMs: exitClosesAtMs(market),
+    freeExitGraceMinutes: cfg.freeExitGraceMinutes,
+    paidExitWindowMinutes: cfg.paidExitWindowMinutes,
+  });
 
   const withinWindow = sinceBet < windowMs;
   const inGracePeriod = hadRunway && withinWindow && sinceBet < graceMs;
