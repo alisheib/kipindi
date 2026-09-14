@@ -1947,7 +1947,7 @@ export const dict = {
       saveLimits: "Save limits",
       playerProtection: "Player protection",
       pageDescription: "Set deposit and time limits, take a break, or self-exclude.",
-      limitsDescription: "Decreases take effect immediately. Increases deferred 24 hours. Leave blank to remove.",
+      limitsDescription: "Setting or lowering a deposit limit takes effect immediately; raising or removing one takes effect after 24 hours. Leave a field blank to remove that limit.",
       // Read-only usage meters (value-vs-cap) shown beneath the limits you set.
       usageTitle: "Your usage",
       usageIntro: "How close you are to the limits you've set — the same figures the platform checks before a deposit or bet.",
@@ -1963,6 +1963,8 @@ export const dict = {
       dur1hour: "1 hour", dur24h: "24 hours", dur1week: "1 week",
       dur1month: "1 month", dur6months: "6 months",
       pendingIncrease: "Pending increase to",
+      // E-408 — a pending REMOVAL of a deposit limit (it waits 24 hours, like an increase).
+      pendingRemoval: "Pending removal",
       effective: "Effective", coolingPeriodNote: "(24h cooling period).",
       dailyDeposit: "Daily deposit (TZS)", weeklyDeposit: "Weekly deposit (TZS)",
       monthlyDeposit: "Monthly deposit (TZS)", dailyLoss: "Daily loss (TZS)",
@@ -4207,7 +4209,7 @@ export const dict = {
       saveLimits: "Hifadhi mipaka",
       playerProtection: "Ulinzi wa mchezaji",
       pageDescription: "Weka mipaka ya amana na muda, pumzika au jizuie.",
-      limitsDescription: "Kupunguza kunaanza mara moja. Kuongeza kunaahirishwa masaa 24. Acha tupu kuondoa.",
+      limitsDescription: "Kuweka au kupunguza mpaka wa kuweka fedha huanza mara moja; kuuongeza au kuuondoa huanza baada ya saa 24. Acha sehemu tupu kuondoa mpaka huo.",
       // Read-only usage meters — see the EN block.
       usageTitle: "Matumizi yako",
       usageIntro: "Umefika wapi kwenye mipaka uliyoiweka — takwimu zilezile ambazo mfumo huangalia kabla ya amana au dau.",
@@ -4223,6 +4225,7 @@ export const dict = {
       dur1hour: "Saa 1", dur24h: "Saa 24", dur1week: "Wiki 1",
       dur1month: "Mwezi 1", dur6months: "Miezi 6",
       pendingIncrease: "Ongezeko linalosubiri hadi",
+      pendingRemoval: "Kuondolewa kunakosubiri",
       effective: "Linaanza", coolingPeriodNote: "(kipindi cha kupoa cha saa 24).",
       dailyDeposit: "Amana ya kila siku (TZS)", weeklyDeposit: "Amana ya kila wiki (TZS)",
       monthlyDeposit: "Amana ya kila mwezi (TZS)", dailyLoss: "Hasara ya kila siku (TZS)",
@@ -6321,7 +6324,7 @@ export const dict = {
       saveLimits: "保存限额",
       playerProtection: "玩家保护",
       pageDescription: "设置充值和时间限额、休息或自我排除。",
-      limitsDescription: "降低立即生效。提高延迟24小时。留空则移除。",
+      limitsDescription: "设置或下调充值限额立即生效；上调或取消须24小时后生效。留空即取消该限额。",
       // Read-only usage meters — see the EN block.
       usageTitle: "您的使用情况",
       usageIntro: "您距离所设限额还有多少——与平台在充值或下注前核对的数字相同。",
@@ -6337,6 +6340,7 @@ export const dict = {
       dur1hour: "1 小时", dur24h: "24 小时", dur1week: "1 周",
       dur1month: "1 个月", dur6months: "6 个月",
       pendingIncrease: "待生效的提升至",
+      pendingRemoval: "待生效的取消",
       effective: "生效", coolingPeriodNote: "（24 小时冷静期）。",
       dailyDeposit: "每日充值（TZS）", weeklyDeposit: "每周充值（TZS）",
       monthlyDeposit: "每月充值（TZS）", dailyLoss: "每日亏损（TZS）",

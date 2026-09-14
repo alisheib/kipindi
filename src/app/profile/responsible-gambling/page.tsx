@@ -53,7 +53,15 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
   // no cool-off" to a player who may have set all three. Throw to
   // profile/error.tsx instead.
   const rg = await getRgSettings(session.userId);
-  const hasPendingIncrease = (rg.pendingIncreaseTo !== null && rg.pendingIncreaseEffectiveAt !== null) || (rg.pendingWeeklyIncreaseTo !== null && rg.pendingWeeklyIncreaseEffectiveAt !== null) || (rg.pendingMonthlyIncreaseTo !== null && rg.pendingMonthlyIncreaseEffectiveAt !== null);
+  // 🔴 E-408 · ONE LINE PER PENDING DEPOSIT LIMIT, keyed on its effective time. This printed the DAILY pending value
+  // whatever was pending, so a weekly-only increase rendered `formatTzs(null)`; and a pending REMOVAL (`to` null,
+  // time set — `depositLimitChange`) must say "removal", not an amount.
+  const pendingChanges = ([
+    [t.rg.dailyDeposit, rg.pendingIncreaseTo, rg.pendingIncreaseEffectiveAt],
+    [t.rg.weeklyDeposit, rg.pendingWeeklyIncreaseTo, rg.pendingWeeklyIncreaseEffectiveAt],
+    [t.rg.monthlyDeposit, rg.pendingMonthlyIncreaseTo, rg.pendingMonthlyIncreaseEffectiveAt],
+  ] as const).filter(([, , at]) => !!at).map(([label, to, at]) => ({ label, to, at: at! }));
+  const hasPendingIncrease = pendingChanges.length > 0;
 
   // Read-only usage snapshot for the limit meters below. Every figure is the
   // SAME quantity the deposit/loss gates enforce (getLimitUsage). null on a
@@ -143,20 +151,19 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
         {hasPendingIncrease && (
           <div className="flex items-start gap-2.5 rounded-md border border-warning-border bg-warning-bg p-3 text-[12px]">
             <I.warning s={14} />
-            <div>
-              <p className="font-display font-semibold text-text">
-                {t.rg.pendingIncrease}{" "}{await formatTzs(rg.pendingIncreaseTo!)}
-              </p>
-              {/* ⚠️ THIS DATE MUST BE ZONED. It is the end of the statutory cooling-off
-                  window on a deposit-limit increase — the moment the player is allowed to
-                  stake more. This page renders on the server, so a bare
-                  `toLocaleString("en-GB")` prints Railway's UTC clock, three hours behind
-                  EAT: the player is told the new limit lands at 22:00 when it lands at
-                  01:00 the next day. On an RG control that is a compliance defect, not a
-                  cosmetic one. `formatDateTime` stamps the platform timezone. */}
-              <p className="text-text-muted">
-                {t.rg.effective}{" "}{formatDateTime(rg.pendingIncreaseEffectiveAt!)}{" "}{t.rg.coolingPeriodNote}
-              </p>
+            <div className="space-y-1.5">
+              {await Promise.all(pendingChanges.map(async (c) => (
+                <div key={c.label}>
+                  <p className="font-display font-semibold text-text">
+                    {c.label} · {c.to === null ? t.rg.pendingRemoval : <>{t.rg.pendingIncrease}{" "}{await formatTzs(c.to)}</>}
+                  </p>
+                  {/* ⚠️ THIS DATE MUST BE ZONED — the end of the statutory cooling-off window. `formatDateTime`
+                      stamps the platform timezone; a bare toLocaleString on the server prints UTC, three hours early. */}
+                  <p className="text-text-muted">
+                    {t.rg.effective}{" "}{formatDateTime(c.at)}{" "}{t.rg.coolingPeriodNote}
+                  </p>
+                </div>
+              )))}
             </div>
           </div>
         )}

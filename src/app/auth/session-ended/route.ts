@@ -91,7 +91,9 @@ export async function GET(req: NextRequest) {
   // The short "you were signed out" note Privacy §7 describes — a fallback for the login page if
   // the query above is lost. ⛔ It ranks BELOW every sign-in error there (E-381 §6 item 7), and its
   // lifetime is read from THIS line by `test:privacy-notice`: change it and §7 changes too.
-  if (token) {
+  // ⚠️ Only when a session really ENDED: a forged or garbage cookie is cleared, but it was never a sign-in, so
+  // telling that browser "you were signed out" would be false (measured on production 2026-09-14).
+  if (token && reason) {
     res.cookies.set("kp_revoked", "1", {
       httpOnly: false,
       path: "/",

@@ -86,23 +86,25 @@ export async function getRgSettings(userId: string) {
 /**
  * Apply any pending increases whose effective time has passed.
  * Covers daily, weekly, and monthly deposit limits (LCCP SR 3.4.3).
+ * ⚠️ A pending change is keyed on its EFFECTIVE TIME, not its value: since 2026-09-14 a pending
+ * REMOVAL is `pending…To = null` with the time set (see `depositLimitChange`).
  */
 async function effectivize(r: StoredResponsibleGambling) {
   let changed = false;
   const now = Date.now();
-  if (r.pendingIncreaseTo !== null && r.pendingIncreaseEffectiveAt && now >= new Date(r.pendingIncreaseEffectiveAt).getTime()) {
+  if (r.pendingIncreaseEffectiveAt && now >= new Date(r.pendingIncreaseEffectiveAt).getTime()) {
     r.dailyDepositLimit = r.pendingIncreaseTo;
     r.pendingIncreaseTo = null;
     r.pendingIncreaseEffectiveAt = null;
     changed = true;
   }
-  if (r.pendingWeeklyIncreaseTo !== null && r.pendingWeeklyIncreaseEffectiveAt && now >= new Date(r.pendingWeeklyIncreaseEffectiveAt).getTime()) {
+  if (r.pendingWeeklyIncreaseEffectiveAt && now >= new Date(r.pendingWeeklyIncreaseEffectiveAt).getTime()) {
     r.weeklyDepositLimit = r.pendingWeeklyIncreaseTo;
     r.pendingWeeklyIncreaseTo = null;
     r.pendingWeeklyIncreaseEffectiveAt = null;
     changed = true;
   }
-  if (r.pendingMonthlyIncreaseTo !== null && r.pendingMonthlyIncreaseEffectiveAt && now >= new Date(r.pendingMonthlyIncreaseEffectiveAt).getTime()) {
+  if (r.pendingMonthlyIncreaseEffectiveAt && now >= new Date(r.pendingMonthlyIncreaseEffectiveAt).getTime()) {
     r.monthlyDepositLimit = r.pendingMonthlyIncreaseTo;
     r.pendingMonthlyIncreaseTo = null;
     r.pendingMonthlyIncreaseEffectiveAt = null;
@@ -124,8 +126,39 @@ export type SetLimitInput = {
 };
 
 /**
- * Apply a limit change. Decreases take effect immediately; increases for the daily
- * deposit limit are deferred 24 hours per LCCP SR Code 3.4.3.
+ * 🔴 THE ONE RULE FOR A DEPOSIT LIMIT CHANGE (2026-09-14, register E-408): TIGHTER applies now,
+ * LOOSER waits 24 hours (LCCP SR 3.4.3), and a save that changes nothing changes nothing.
+ *
+ * "No limit" is the loosest limit there is. The old test was `newVal !== null && (oldVal === null ||
+ * newVal > oldVal)`, and both ends of it were wrong on a live responsible-gambling control:
+ *  · REMOVING a limit (value → null) was not an "increase", so it applied INSTANTLY — clearing the
+ *    field and saving skipped the 24-hour wait the policy promises on every increase;
+ *  · SETTING a first limit (null → value) WAS an "increase", so a player trying to rein themselves
+ *    in waited 24 hours for protection they asked for;
+ *  · re-saving the current value (the form sends every field back) cleared a pending increase
+ *    without a word.
+ * ⚠️ A pending REMOVAL is stored as `to = null` with `at` set — no schema change. Every reader of the
+ * pending fields keys on the time.
+ */
+export function depositLimitChange(
+  current: number | null,
+  pending: { to: number | null; at: string | null },
+  requested: number | null,
+  nowMs: number,
+): { limit: number | null; to: number | null; at: string | null; deferred: boolean } {
+  const keep = { limit: current, to: pending.to, at: pending.at, deferred: false };
+  if (requested === current) return keep;
+  const tighter = current === null ? requested !== null : requested !== null && requested < current;
+  if (tighter) return { limit: requested, to: null, at: null, deferred: false };
+  // Looser. Asking again for the change already waiting does not restart its clock.
+  if (pending.at && pending.to === requested) return keep;
+  return { limit: current, to: requested, at: new Date(nowMs + LIMIT_INCREASE_DEFERRAL_SEC * 1000).toISOString(), deferred: true };
+}
+
+/**
+ * Apply a limit change. Deposit limits follow `depositLimitChange` (tighter now, looser after 24h).
+ * ⚠️ The daily loss limit and the session time limit apply at once in either direction; the
+ * published RG policy promises the 24-hour wait for deposit limits only.
  */
 export async function setLimits(userId: string, input: SetLimitInput) {
   const cur = await getRgSettings(userId);
@@ -140,51 +173,22 @@ export async function setLimits(userId: string, input: SetLimitInput) {
 
   const next: StoredResponsibleGambling = { ...cur };
   let deferredIncrease = false;
+  const nowMs = Date.now();
 
-  // Daily deposit limit: increases deferred 24h, decreases immediate
   if ("dailyDepositLimit" in input) {
-    const newVal = input.dailyDepositLimit ?? null;
-    const oldVal = cur.dailyDepositLimit;
-    const isIncrease = newVal !== null && (oldVal === null || newVal > oldVal);
-    if (isIncrease) {
-      next.pendingIncreaseTo = newVal;
-      next.pendingIncreaseEffectiveAt = new Date(Date.now() + LIMIT_INCREASE_DEFERRAL_SEC * 1000).toISOString();
-      deferredIncrease = true;
-    } else {
-      next.dailyDepositLimit = newVal;
-      next.pendingIncreaseTo = null;
-      next.pendingIncreaseEffectiveAt = null;
-    }
+    const c = depositLimitChange(cur.dailyDepositLimit, { to: cur.pendingIncreaseTo, at: cur.pendingIncreaseEffectiveAt }, input.dailyDepositLimit ?? null, nowMs);
+    next.dailyDepositLimit = c.limit; next.pendingIncreaseTo = c.to; next.pendingIncreaseEffectiveAt = c.at;
+    deferredIncrease ||= c.deferred;
   }
-  // Weekly deposit limit: same 24h deferral for increases (LCCP SR 3.4.3)
   if ("weeklyDepositLimit" in input) {
-    const newVal = input.weeklyDepositLimit ?? null;
-    const oldVal = cur.weeklyDepositLimit;
-    const isIncrease = newVal !== null && (oldVal === null || newVal > oldVal);
-    if (isIncrease) {
-      next.pendingWeeklyIncreaseTo = newVal;
-      next.pendingWeeklyIncreaseEffectiveAt = new Date(Date.now() + LIMIT_INCREASE_DEFERRAL_SEC * 1000).toISOString();
-      deferredIncrease = true;
-    } else {
-      next.weeklyDepositLimit = newVal;
-      next.pendingWeeklyIncreaseTo = null;
-      next.pendingWeeklyIncreaseEffectiveAt = null;
-    }
+    const c = depositLimitChange(cur.weeklyDepositLimit, { to: cur.pendingWeeklyIncreaseTo, at: cur.pendingWeeklyIncreaseEffectiveAt }, input.weeklyDepositLimit ?? null, nowMs);
+    next.weeklyDepositLimit = c.limit; next.pendingWeeklyIncreaseTo = c.to; next.pendingWeeklyIncreaseEffectiveAt = c.at;
+    deferredIncrease ||= c.deferred;
   }
-  // Monthly deposit limit: same 24h deferral for increases (LCCP SR 3.4.3)
   if ("monthlyDepositLimit" in input) {
-    const newVal = input.monthlyDepositLimit ?? null;
-    const oldVal = cur.monthlyDepositLimit;
-    const isIncrease = newVal !== null && (oldVal === null || newVal > oldVal);
-    if (isIncrease) {
-      next.pendingMonthlyIncreaseTo = newVal;
-      next.pendingMonthlyIncreaseEffectiveAt = new Date(Date.now() + LIMIT_INCREASE_DEFERRAL_SEC * 1000).toISOString();
-      deferredIncrease = true;
-    } else {
-      next.monthlyDepositLimit = newVal;
-      next.pendingMonthlyIncreaseTo = null;
-      next.pendingMonthlyIncreaseEffectiveAt = null;
-    }
+    const c = depositLimitChange(cur.monthlyDepositLimit, { to: cur.pendingMonthlyIncreaseTo, at: cur.pendingMonthlyIncreaseEffectiveAt }, input.monthlyDepositLimit ?? null, nowMs);
+    next.monthlyDepositLimit = c.limit; next.pendingMonthlyIncreaseTo = c.to; next.pendingMonthlyIncreaseEffectiveAt = c.at;
+    deferredIncrease ||= c.deferred;
   }
   if ("dailyLossLimit" in input)       next.dailyLossLimit = input.dailyLossLimit ?? null;
   // 🔴 BOUNDED — AND IT WAS NOT, UNTIL THIS FIELD STARTED TO BITE (E-235).
@@ -219,7 +223,7 @@ export async function setLimits(userId: string, input: SetLimitInput) {
     actorId: userId,
     targetType: "ResponsibleGambling",
     targetId: userId,
-    payload: { input, deferredIncrease, effectiveAt: next.pendingIncreaseEffectiveAt },
+    payload: { input, deferredIncrease, effectiveAt: next.pendingIncreaseEffectiveAt, weeklyEffectiveAt: next.pendingWeeklyIncreaseEffectiveAt, monthlyEffectiveAt: next.pendingMonthlyIncreaseEffectiveAt },
   });
   return { ok: true, data: next };
 }

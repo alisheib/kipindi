@@ -679,13 +679,16 @@ function LimitsTab({ rg }: { rg: Awaited<ReturnType<typeof db.responsible.get>> 
       <Item label="Daily loss limit"      value={rg.dailyLossLimit      !== null ? formatTzs(rg.dailyLossLimit)      : "no limit"} />
       <Item label="Session time limit"    value={rg.sessionTimeLimitMin !== null ? `${rg.sessionTimeLimitMin} min`   : "no limit"} />
       <Item label="Reality check interval" value={`${rg.realityCheckIntervalMin} min`} />
-      {rg.pendingIncreaseTo !== null && (
-        <Item label="Pending limit increase" value={
-          <span className="text-warning font-medium">
-            {formatTzs(rg.pendingIncreaseTo)} effective {formatDateTimeSafe(rg.pendingIncreaseEffectiveAt)}
-          </span>
-        } />
-      )}
+      {/* E-408 — each pending deposit-limit change, keyed on its effective time; `to` null is a pending REMOVAL. */}
+      {([["Daily", rg.pendingIncreaseTo, rg.pendingIncreaseEffectiveAt], ["Weekly", rg.pendingWeeklyIncreaseTo, rg.pendingWeeklyIncreaseEffectiveAt], ["Monthly", rg.pendingMonthlyIncreaseTo, rg.pendingMonthlyIncreaseEffectiveAt]] as const)
+        .filter(([, , at]) => !!at)
+        .map(([period, to, at]) => (
+          <Item key={period} label={`Pending ${period.toLowerCase()} deposit limit`} value={
+            <span className="text-warning font-medium">
+              {to === null ? "removal" : formatTzs(to)} effective {formatDateTimeSafe(at)}
+            </span>
+          } />
+        ))}
     </dl>
   );
 }
@@ -701,7 +704,7 @@ function ExclusionTab({ rg }: { rg: Awaited<ReturnType<typeof db.responsible.get
             <p className="font-bold text-text">Self-exclusion active</p>
             {/* An exclusion expiry is the one date an officer must never read three hours
                 early: it decides whether a player may be let back in. Zoned, always. */}
-            <p>Until {formatDateTime(rg.selfExclusionUntil)}. One-way until expiry — only the player can re-enable after the period ends.</p>
+            <p>Until {formatDateTime(rg.selfExclusionUntil)}. It cannot be shortened, and it does not reopen by itself: once the period has ended, an officer may reopen it at the player&apos;s request, with a recorded reason. A permanent exclusion cannot be reopened.</p>
           </div>
         </div>
       ) : <p className="text-caption text-text-tertiary">No self-exclusion active.</p>}

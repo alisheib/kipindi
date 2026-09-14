@@ -17,11 +17,13 @@ const TITLE: Record<Locale, string> = {
  * ⛔ DATED FROM 2026-09-14, like every other document under `/legal` — this was the one policy with no version at
  * all, so a reader could not tell which revision bound them. Move the date in the same commit as any change to the
  * binding English text (docs/COMPLIANCE-DECISIONS.md 2026-09-14, third).
+ * ⭐ 2026-09-14.2 — §2 checked against the code (COMPLIANCE-DECISIONS 2026-09-14, fifth). A second version on
+ * one date takes a `.2` suffix, as Privacy does.
  */
 const META: Record<Locale, string> = {
-  en: "Version 2026-09-14 · Aligned with the UK Gambling Commission LCCP and CEN Workshop Agreement 16221.",
-  sw: "Toleo 2026-09-14 · Imeoanishwa na UK Gambling Commission LCCP na CEN Workshop Agreement 16221.",
-  zh: "版本 2026-09-14 · 符合 UK Gambling Commission LCCP 及 CEN Workshop Agreement 16221。",
+  en: "Version 2026-09-14.2 · Aligned with the UK Gambling Commission LCCP and CEN Workshop Agreement 16221.",
+  sw: "Toleo 2026-09-14.2 · Imeoanishwa na UK Gambling Commission LCCP na CEN Workshop Agreement 16221.",
+  zh: "版本 2026-09-14.2 · 符合 UK Gambling Commission LCCP 及 CEN Workshop Agreement 16221。",
 };
 
 /**
@@ -48,12 +50,12 @@ function content(): Record<Locale, React.ReactNode> { return {
 
       <LegalSection n="2" title="Tools we provide">
         <ul className="list-disc pl-5 space-y-1">
-          <li><strong className="text-text">Deposit limits</strong> — daily, weekly, monthly. Decreases take effect immediately. Increases to any of them are deferred 24 hours.</li>
+          <li><strong className="text-text">Deposit limits</strong> — daily, weekly, monthly. Setting or lowering a limit takes effect immediately. Raising or removing one takes effect after 24 hours.</li>
           <li><strong className="text-text">Loss limit</strong> — daily.</li>
-          <li><strong className="text-text">Session time limit</strong> — automatic logout after the chosen duration.</li>
-          <li><strong className="text-text">Reality check</strong> — a banner every 30 minutes (configurable 5–120 min) showing time on platform, net win/loss for the session, and a clear path to break or self-exclude.</li>
+          <li><strong className="text-text">Session time limit</strong> — once your play session reaches the time you chose <span className="whitespace-nowrap">(15–480 minutes)</span>, new bets are refused. You stay signed in, and you can still deposit and withdraw.</li>
+          <li><strong className="text-text">Reality check</strong> — a reminder every 30 minutes (configurable 5–120 min) showing how long you have been playing, with a clear path to set limits, take a break or self-exclude.</li>
           <li><strong className="text-text">Take a break</strong> (cooling-off): 1 hour, 24 hours, or 1 week. One-way until expiry.</li>
-          <li><strong className="text-text">Self-exclusion</strong>: 24h, 1 week, 1 month, 6 months, or permanent. One-way; permanent requires documented review to reopen.</li>
+          <li><strong className="text-text">Self-exclusion</strong>: 24h, 1 week, 1 month, 6 months, or permanent. It cannot be shortened or cancelled, and the account does not reopen by itself: once the period has ended you must ask us to reopen it. A permanent self-exclusion cannot be reopened.</li>
         </ul>
         <p>
           All controls are accessible from your{" "}
@@ -103,12 +105,12 @@ function content(): Record<Locale, React.ReactNode> { return {
 
       <LegalSection n="2" title="Zana tunazotoa">
         <ul className="list-disc pl-5 space-y-1">
-          <li><strong className="text-text">Mipaka ya kuweka fedha</strong> — ya kila siku, kila wiki, kila mwezi. Upunguzaji huanza kutumika mara moja. Ongezeko la mpaka wowote kati ya hii huahirishwa kwa saa&nbsp;24.</li>
+          <li><strong className="text-text">Mipaka ya kuweka fedha</strong> — ya kila siku, kila wiki, kila mwezi. Kuweka au kupunguza mpaka huanza kutumika mara moja. Kuongeza au kuondoa mpaka huanza kutumika baada ya saa&nbsp;24.</li>
           <li><strong className="text-text">Mpaka wa hasara</strong> — wa kila siku.</li>
-          <li><strong className="text-text">Mpaka wa muda wa kipindi</strong> — kutoka nje kiotomatiki baada ya muda uliochaguliwa.</li>
-          <li><strong className="text-text">Ukaguzi wa uhalisia (reality check)</strong> — bango kila baada ya dakika&nbsp;30 (linaweza kupangwa dakika&nbsp;5–120) linaloonyesha muda kwenye jukwaa, faida/hasara halisi ya kipindi, na njia wazi ya kupumzika au kujizuia.</li>
+          <li><strong className="text-text">Mpaka wa muda wa kipindi</strong> — kipindi chako cha kucheza kikifikia muda uliouchagua <span className="whitespace-nowrap">(dakika&nbsp;15–480)</span>, dau mpya hukataliwa. Unabaki umeingia, na bado unaweza kuweka na kutoa fedha.</li>
+          <li><strong className="text-text">Ukaguzi wa uhalisia (reality check)</strong> — ukumbusho kila baada ya dakika&nbsp;30 (unaweza kupangwa dakika&nbsp;5–120) unaoonyesha muda uliocheza, pamoja na njia wazi ya kuweka mipaka, kupumzika au kujizuia.</li>
           <li><strong className="text-text">Chukua mapumziko</strong> (cooling-off): saa&nbsp;1, saa&nbsp;24, au wiki&nbsp;1. Ni ya njia moja hadi muda utakapoisha.</li>
-          <li><strong className="text-text">Kujizuia mwenyewe</strong>: saa&nbsp;24, wiki&nbsp;1, mwezi&nbsp;1, miezi&nbsp;6, au ya kudumu. Ni ya njia moja; ya kudumu inahitaji ukaguzi ulioandikwa ili kufunguliwa upya.</li>
+          <li><strong className="text-text">Kujizuia mwenyewe</strong>: saa&nbsp;24, wiki&nbsp;1, mwezi&nbsp;1, miezi&nbsp;6, au ya kudumu. Hakuwezi kufupishwa wala kufutwa, na akaunti haifunguki yenyewe: kipindi kikiisha, lazima utuombe tuifungue. Kujizuia kwa kudumu hakuwezi kufunguliwa.</li>
         </ul>
         <p>
           Vidhibiti vyote vinapatikana kutoka kwenye{" "}
@@ -156,12 +158,12 @@ function content(): Record<Locale, React.ReactNode> { return {
 
       <LegalSection n="2" title="我们提供的工具">
         <ul className="list-disc pl-5 space-y-1">
-          <li><strong className="text-text">充值限额</strong>：每日、每周、每月。下调立即生效。任一限额的上调均延迟 24 小时生效。</li>
+          <li><strong className="text-text">充值限额</strong>：每日、每周、每月。设置或下调限额立即生效；上调或取消限额 24 小时后生效。</li>
           <li><strong className="text-text">亏损限额</strong>：每日。</li>
-          <li><strong className="text-text">会话时长限制</strong>：达到所选时长后自动登出。</li>
-          <li><strong className="text-text">现实核查（reality check）</strong>：每 30 分钟（可在 5–120 分钟之间设置）弹出横幅，显示在平台的停留时间、本会话的净盈亏，以及暂停或自我排除的清晰入口。</li>
+          <li><strong className="text-text">会话时长限制</strong>：本次游戏会话达到您所选的时长<span className="whitespace-nowrap">（15–480 分钟）</span>后，将拒绝新的投注。您仍保持登录，仍可充值和提现。</li>
+          <li><strong className="text-text">现实核查（reality check）</strong>：每 30 分钟（可在 5–120 分钟之间设置）弹出提醒，显示您已游戏的时长，并提供设置限额、暂停或自我排除的清晰入口。</li>
           <li><strong className="text-text">暂停一下</strong>（冷静期）：1 小时、24 小时或 1 周。到期前不可撤销。</li>
-          <li><strong className="text-text">自我排除</strong>：24 小时、1 周、1 个月、6 个月或永久。不可撤销；永久排除需经书面审查方可重新开通。</li>
+          <li><strong className="text-text">自我排除</strong>：24 小时、1 周、1 个月、6 个月或永久。不可缩短或撤销，账户也不会自动恢复：期满后须向我们申请重新开通。永久自我排除不可重新开通。</li>
         </ul>
         <p>
           所有控制项均可在您的{" "}

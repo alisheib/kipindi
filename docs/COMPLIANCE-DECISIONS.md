@@ -6,6 +6,53 @@
 
 ---
 
+## 2026-09-14 (fifth) · RG Policy v2026-09-14.2 — §2 checked against the code; removing a deposit limit now waits 24 hours
+
+**Found by checking §2 against the code (session 97), which the (third) entry below recorded as not yet done — not an
+owner ruling; recorded because a published policy changed and a control's behaviour changed.** Register **E-408**.
+
+**One control was wrong, not just its description.** §2 promised *"Increases to any of them are deferred 24 hours"*.
+`setLimits` treated only `newVal !== null && (oldVal === null || newVal > oldVal)` as an increase, so:
+
+| Change | Before | Now |
+|---|---|---|
+| Remove a deposit limit (clear the field) | applied **instantly** — the 24-hour wait could be skipped with one save | waits 24 hours; the gate keeps enforcing the old limit meanwhile |
+| Set a first deposit limit | deferred 24 hours (a player reining themselves in waited a day) | applies immediately |
+| Re-save the current value (the form sends every field back) | silently cancelled a pending increase | changes nothing |
+| Lower an existing limit / raise one | immediate / deferred 24 hours | unchanged |
+
+One rule now, `depositLimitChange` in `src/lib/server/responsible-gambling.ts`: tighter applies now, looser (including
+removal) waits 24 hours. A pending removal is stored as `pending…To = null` with its effective time set, so there is **no
+schema change**; every reader keys on the time (the player's notice, the staff player page, the RG analytics count, the
+RG report). The player's pending notice also printed the DAILY pending value whatever was pending; it now lists each.
+Guard: `test:rg-limit-change` 13/0, in `predeploy`; 11 failures on the pre-fix tree.
+
+**§2 wording, en/sw/zh, now only what runs:**
+- Deposit limits: *"Setting or lowering a limit takes effect immediately. Raising or removing one takes effect after 24 hours."*
+- Session time limit said *"automatic logout"*. Nothing logs a player out: at the limit **new bets are refused**; the
+  player stays signed in and can deposit and withdraw (E-235, `market-service.ts`). Now says so, with the 15–480 minute range.
+- Reality check said *"a banner … showing … net win/loss for the session"*. It is a dialog that shows **how long you have
+  been playing** and links to limits, a break and self-exclusion; it computes no money figure. Now says so.
+- Self-exclusion said *"permanent requires documented review to reopen"*. A permanent exclusion **cannot** be reopened
+  (`admin/players/[id]/actions.ts`); a timed one does not reopen by itself, and after the period an officer reopens it on
+  request with a recorded reason. Now says so. The staff player page's *"only the player can re-enable"* is corrected too.
+- The settings screen's line (`rg.limitsDescription`, three locales) says the same rule.
+
+**Version.** The header reads **Version 2026-09-14.2** (Toleo / 版本): the second version on one date takes a `.2`
+suffix, as Privacy does.
+
+**Recorded, not changed here:**
+- **The session time limit's clock restarts on a new sign-in** (`createSession` stamps `playStartedAt: now`), so signing
+  out and in resets it. Fixing it needs the play-session start held server-side per player, not in the cookie. The policy
+  does not describe the restart; it must not be published as a feature.
+- **The daily loss limit and the session limit loosen instantly** (raise or remove). The policy promises the 24-hour wait
+  for deposit limits only, which is what it now says. Deferring them needs pending fields for each (a migration).
+
+**⛔ Do not restore** "automatic logout", a net win/loss figure in the reality check, or "documented review" for a
+permanent exclusion until the control exists.
+
+---
+
 ## 2026-09-14 (fourth) · Privacy v2026-09-14.2 — §4 names every service the code sends personal data to; §7 and §8 say only what runs
 
 **Found by the audit's recorded open tail (register E-400 ④), checked against the code, the live site and the providers'
