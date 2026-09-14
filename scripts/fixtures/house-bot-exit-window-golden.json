@@ -1,0 +1,5374 @@
+{
+ "capturedFrom": "cashOutValue before the A14 extraction",
+ "count": 417,
+ "rows": [
+  {
+   "id": "g0-p0-r0-b0-s-1000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g0-p0-r0-b0-s-1000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g0-p0-r0-b0-s0-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g0-p0-r0-b0-s0-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g0-p0-r0-b0-s-1-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g0-p0-r0-b0-s-1-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g0-p0-r0-b0-s1-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g0-p0-r0-b0-s1-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g0-p0-r0-b0-s3600000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g0-p0-r0-b0-s3600000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g0-p0-r0-b500-s-1000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g0-p0-r0-b500-s-1000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g0-p0-r0-b500-s0-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g0-p0-r0-b500-s0-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g0-p0-r0-b500-s-1-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g0-p0-r0-b500-s-1-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g0-p0-r0-b500-s1-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g0-p0-r0-b500-s1-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g0-p0-r0-b500-s3600000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g0-p0-r0-b500-s3600000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g0-p0-r3600000-b0-s-1000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g0-p0-r3600000-b0-s-1000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g0-p0-r3600000-b0-s0-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g0-p0-r3600000-b0-s0-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g0-p0-r3600000-b0-s-1-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g0-p0-r3600000-b0-s-1-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g0-p0-r3600000-b0-s1-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g0-p0-r3600000-b0-s1-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g0-p0-r3600000-b0-s3600000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g0-p0-r3600000-b0-s3600000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g0-p0-r3600000-b500-s-1000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g0-p0-r3600000-b500-s-1000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g0-p0-r3600000-b500-s0-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g0-p0-r3600000-b500-s0-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g0-p0-r3600000-b500-s-1-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g0-p0-r3600000-b500-s-1-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g0-p0-r3600000-b500-s1-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g0-p0-r3600000-b500-s1-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g0-p0-r3600000-b500-s3600000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g0-p0-r3600000-b500-s3600000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g0-p2-r0-b0-s-1000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g0-p2-r0-b0-s-1000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g0-p2-r0-b0-s0-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g0-p2-r0-b0-s0-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g0-p2-r0-b0-s-1-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g0-p2-r0-b0-s-1-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g0-p2-r0-b0-s119999-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g0-p2-r0-b0-s119999-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g0-p2-r0-b0-s120000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g0-p2-r0-b0-s120000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g0-p2-r0-b0-s120001-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g0-p2-r0-b0-s120001-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g0-p2-r0-b0-s3720000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g0-p2-r0-b0-s3720000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g0-p2-r0-b500-s-1000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g0-p2-r0-b500-s-1000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g0-p2-r0-b500-s0-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g0-p2-r0-b500-s0-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g0-p2-r0-b500-s-1-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g0-p2-r0-b500-s-1-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g0-p2-r0-b500-s119999-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g0-p2-r0-b500-s119999-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g0-p2-r0-b500-s120000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g0-p2-r0-b500-s120000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g0-p2-r0-b500-s120001-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g0-p2-r0-b500-s120001-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g0-p2-r0-b500-s3720000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g0-p2-r0-b500-s3720000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g0-p2-r3600000-b0-s-1000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g0-p2-r3600000-b0-s-1000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g0-p2-r3600000-b0-s0-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g0-p2-r3600000-b0-s0-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g0-p2-r3600000-b0-s-1-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g0-p2-r3600000-b0-s-1-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g0-p2-r3600000-b0-s119999-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g0-p2-r3600000-b0-s119999-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g0-p2-r3600000-b0-s120000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g0-p2-r3600000-b0-s120000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g0-p2-r3600000-b0-s120001-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g0-p2-r3600000-b0-s120001-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g0-p2-r3600000-b0-s3720000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g0-p2-r3600000-b0-s3720000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g0-p2-r3600000-b500-s-1000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g0-p2-r3600000-b500-s-1000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g0-p2-r3600000-b500-s0-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g0-p2-r3600000-b500-s0-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g0-p2-r3600000-b500-s-1-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g0-p2-r3600000-b500-s-1-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g0-p2-r3600000-b500-s119999-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g0-p2-r3600000-b500-s119999-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g0-p2-r3600000-b500-s120000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g0-p2-r3600000-b500-s120000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g0-p2-r3600000-b500-s120001-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g0-p2-r3600000-b500-s120001-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g0-p2-r3600000-b500-s3720000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g0-p2-r3600000-b500-s3720000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g0-p10-r0-b0-s-1000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g0-p10-r0-b0-s-1000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g0-p10-r0-b0-s0-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g0-p10-r0-b0-s0-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g0-p10-r0-b0-s-1-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g0-p10-r0-b0-s-1-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g0-p10-r0-b0-s599999-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g0-p10-r0-b0-s599999-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g0-p10-r0-b0-s600000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g0-p10-r0-b0-s600000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g0-p10-r0-b0-s600001-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g0-p10-r0-b0-s600001-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g0-p10-r0-b0-s4200000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g0-p10-r0-b0-s4200000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g0-p10-r0-b500-s-1000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g0-p10-r0-b500-s-1000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g0-p10-r0-b500-s0-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g0-p10-r0-b500-s0-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g0-p10-r0-b500-s-1-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g0-p10-r0-b500-s-1-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g0-p10-r0-b500-s599999-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g0-p10-r0-b500-s599999-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g0-p10-r0-b500-s600000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g0-p10-r0-b500-s600000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g0-p10-r0-b500-s600001-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g0-p10-r0-b500-s600001-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g0-p10-r0-b500-s4200000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g0-p10-r0-b500-s4200000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g0-p10-r3600000-b0-s-1000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g0-p10-r3600000-b0-s-1000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g0-p10-r3600000-b0-s0-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g0-p10-r3600000-b0-s0-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g0-p10-r3600000-b0-s-1-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g0-p10-r3600000-b0-s-1-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g0-p10-r3600000-b0-s599999-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g0-p10-r3600000-b0-s599999-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g0-p10-r3600000-b0-s600000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g0-p10-r3600000-b0-s600000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g0-p10-r3600000-b0-s600001-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g0-p10-r3600000-b0-s600001-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g0-p10-r3600000-b0-s4200000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g0-p10-r3600000-b0-s4200000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g0-p10-r3600000-b500-s-1000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g0-p10-r3600000-b500-s-1000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g0-p10-r3600000-b500-s0-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g0-p10-r3600000-b500-s0-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g0-p10-r3600000-b500-s-1-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g0-p10-r3600000-b500-s-1-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g0-p10-r3600000-b500-s599999-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g0-p10-r3600000-b500-s599999-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g0-p10-r3600000-b500-s600000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g0-p10-r3600000-b500-s600000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g0-p10-r3600000-b500-s600001-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g0-p10-r3600000-b500-s600001-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g0-p10-r3600000-b500-s4200000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g0-p10-r3600000-b500-s4200000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p0-r299999-b0-s-1000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g5-p0-r299999-b0-s-1000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g5-p0-r299999-b0-s0-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g5-p0-r299999-b0-s0-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g5-p0-r299999-b0-s299999-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g5-p0-r299999-b0-s299999-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g5-p0-r299999-b0-s300000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g5-p0-r299999-b0-s300000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g5-p0-r299999-b0-s300001-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g5-p0-r299999-b0-s300001-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g5-p0-r299999-b0-s3900000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g5-p0-r299999-b0-s3900000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g5-p0-r299999-b500-s-1000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p0-r299999-b500-s-1000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p0-r299999-b500-s0-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p0-r299999-b500-s0-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p0-r299999-b500-s299999-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p0-r299999-b500-s299999-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p0-r299999-b500-s300000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p0-r299999-b500-s300000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p0-r299999-b500-s300001-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p0-r299999-b500-s300001-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p0-r299999-b500-s3900000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p0-r299999-b500-s3900000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p0-r300000-b0-s-1000-sel",
+   "out": {
+    "value": 10000,
+    "ratio": 1,
+    "gross": 10000,
+    "fee": 0,
+    "feeRate": 0,
+    "inGracePeriod": true,
+    "sellable": true
+   }
+  },
+  {
+   "id": "g5-p0-r300000-b0-s-1000-res",
+   "out": {
+    "value": 10000,
+    "ratio": 1,
+    "gross": 10000,
+    "fee": 0,
+    "feeRate": 0,
+    "inGracePeriod": true,
+    "sellable": true
+   }
+  },
+  {
+   "id": "g5-p0-r300000-b0-s0-sel",
+   "out": {
+    "value": 10000,
+    "ratio": 1,
+    "gross": 10000,
+    "fee": 0,
+    "feeRate": 0,
+    "inGracePeriod": true,
+    "sellable": true
+   }
+  },
+  {
+   "id": "g5-p0-r300000-b0-s0-res",
+   "out": {
+    "value": 10000,
+    "ratio": 1,
+    "gross": 10000,
+    "fee": 0,
+    "feeRate": 0,
+    "inGracePeriod": true,
+    "sellable": true
+   }
+  },
+  {
+   "id": "g5-p0-r300000-b0-s299999-sel",
+   "out": {
+    "value": 10000,
+    "ratio": 1,
+    "gross": 10000,
+    "fee": 0,
+    "feeRate": 0,
+    "inGracePeriod": true,
+    "sellable": true
+   }
+  },
+  {
+   "id": "g5-p0-r300000-b0-s299999-res",
+   "out": {
+    "value": 10000,
+    "ratio": 1,
+    "gross": 10000,
+    "fee": 0,
+    "feeRate": 0,
+    "inGracePeriod": true,
+    "sellable": true
+   }
+  },
+  {
+   "id": "g5-p0-r300000-b0-s300000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "WINDOW_PASSED"
+   }
+  },
+  {
+   "id": "g5-p0-r300000-b0-s300000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "WINDOW_PASSED"
+   }
+  },
+  {
+   "id": "g5-p0-r300000-b0-s300001-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "WINDOW_PASSED"
+   }
+  },
+  {
+   "id": "g5-p0-r300000-b0-s300001-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "WINDOW_PASSED"
+   }
+  },
+  {
+   "id": "g5-p0-r300000-b0-s3900000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "WINDOW_PASSED"
+   }
+  },
+  {
+   "id": "g5-p0-r300000-b0-s3900000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "WINDOW_PASSED"
+   }
+  },
+  {
+   "id": "g5-p0-r300000-b500-s-1000-sel",
+   "out": {
+    "value": 10000,
+    "ratio": 1,
+    "gross": 10000,
+    "fee": 0,
+    "feeRate": 0,
+    "inGracePeriod": true,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p0-r300000-b500-s-1000-res",
+   "out": {
+    "value": 10000,
+    "ratio": 1,
+    "gross": 10000,
+    "fee": 0,
+    "feeRate": 0,
+    "inGracePeriod": true,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p0-r300000-b500-s0-sel",
+   "out": {
+    "value": 10000,
+    "ratio": 1,
+    "gross": 10000,
+    "fee": 0,
+    "feeRate": 0,
+    "inGracePeriod": true,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p0-r300000-b500-s0-res",
+   "out": {
+    "value": 10000,
+    "ratio": 1,
+    "gross": 10000,
+    "fee": 0,
+    "feeRate": 0,
+    "inGracePeriod": true,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p0-r300000-b500-s299999-sel",
+   "out": {
+    "value": 10000,
+    "ratio": 1,
+    "gross": 10000,
+    "fee": 0,
+    "feeRate": 0,
+    "inGracePeriod": true,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p0-r300000-b500-s299999-res",
+   "out": {
+    "value": 10000,
+    "ratio": 1,
+    "gross": 10000,
+    "fee": 0,
+    "feeRate": 0,
+    "inGracePeriod": true,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p0-r300000-b500-s300000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p0-r300000-b500-s300000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p0-r300000-b500-s300001-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p0-r300000-b500-s300001-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p0-r300000-b500-s3900000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p0-r300000-b500-s3900000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p0-r3900000-b0-s-1000-sel",
+   "out": {
+    "value": 10000,
+    "ratio": 1,
+    "gross": 10000,
+    "fee": 0,
+    "feeRate": 0,
+    "inGracePeriod": true,
+    "sellable": true
+   }
+  },
+  {
+   "id": "g5-p0-r3900000-b0-s-1000-res",
+   "out": {
+    "value": 10000,
+    "ratio": 1,
+    "gross": 10000,
+    "fee": 0,
+    "feeRate": 0,
+    "inGracePeriod": true,
+    "sellable": true
+   }
+  },
+  {
+   "id": "g5-p0-r3900000-b0-s0-sel",
+   "out": {
+    "value": 10000,
+    "ratio": 1,
+    "gross": 10000,
+    "fee": 0,
+    "feeRate": 0,
+    "inGracePeriod": true,
+    "sellable": true
+   }
+  },
+  {
+   "id": "g5-p0-r3900000-b0-s0-res",
+   "out": {
+    "value": 10000,
+    "ratio": 1,
+    "gross": 10000,
+    "fee": 0,
+    "feeRate": 0,
+    "inGracePeriod": true,
+    "sellable": true
+   }
+  },
+  {
+   "id": "g5-p0-r3900000-b0-s299999-sel",
+   "out": {
+    "value": 10000,
+    "ratio": 1,
+    "gross": 10000,
+    "fee": 0,
+    "feeRate": 0,
+    "inGracePeriod": true,
+    "sellable": true
+   }
+  },
+  {
+   "id": "g5-p0-r3900000-b0-s299999-res",
+   "out": {
+    "value": 10000,
+    "ratio": 1,
+    "gross": 10000,
+    "fee": 0,
+    "feeRate": 0,
+    "inGracePeriod": true,
+    "sellable": true
+   }
+  },
+  {
+   "id": "g5-p0-r3900000-b0-s300000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "WINDOW_PASSED"
+   }
+  },
+  {
+   "id": "g5-p0-r3900000-b0-s300000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "WINDOW_PASSED"
+   }
+  },
+  {
+   "id": "g5-p0-r3900000-b0-s300001-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "WINDOW_PASSED"
+   }
+  },
+  {
+   "id": "g5-p0-r3900000-b0-s300001-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "WINDOW_PASSED"
+   }
+  },
+  {
+   "id": "g5-p0-r3900000-b0-s3900000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "WINDOW_PASSED"
+   }
+  },
+  {
+   "id": "g5-p0-r3900000-b0-s3900000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "WINDOW_PASSED"
+   }
+  },
+  {
+   "id": "g5-p0-r3900000-b500-s-1000-sel",
+   "out": {
+    "value": 10000,
+    "ratio": 1,
+    "gross": 10000,
+    "fee": 0,
+    "feeRate": 0,
+    "inGracePeriod": true,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p0-r3900000-b500-s-1000-res",
+   "out": {
+    "value": 10000,
+    "ratio": 1,
+    "gross": 10000,
+    "fee": 0,
+    "feeRate": 0,
+    "inGracePeriod": true,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p0-r3900000-b500-s0-sel",
+   "out": {
+    "value": 10000,
+    "ratio": 1,
+    "gross": 10000,
+    "fee": 0,
+    "feeRate": 0,
+    "inGracePeriod": true,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p0-r3900000-b500-s0-res",
+   "out": {
+    "value": 10000,
+    "ratio": 1,
+    "gross": 10000,
+    "fee": 0,
+    "feeRate": 0,
+    "inGracePeriod": true,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p0-r3900000-b500-s299999-sel",
+   "out": {
+    "value": 10000,
+    "ratio": 1,
+    "gross": 10000,
+    "fee": 0,
+    "feeRate": 0,
+    "inGracePeriod": true,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p0-r3900000-b500-s299999-res",
+   "out": {
+    "value": 10000,
+    "ratio": 1,
+    "gross": 10000,
+    "fee": 0,
+    "feeRate": 0,
+    "inGracePeriod": true,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p0-r3900000-b500-s300000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p0-r3900000-b500-s300000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p0-r3900000-b500-s300001-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p0-r3900000-b500-s300001-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p0-r3900000-b500-s3900000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p0-r3900000-b500-s3900000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p2-r299999-b0-s-1000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g5-p2-r299999-b0-s-1000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g5-p2-r299999-b0-s0-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g5-p2-r299999-b0-s0-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g5-p2-r299999-b0-s299999-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g5-p2-r299999-b0-s299999-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g5-p2-r299999-b0-s300000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g5-p2-r299999-b0-s300000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g5-p2-r299999-b0-s419999-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g5-p2-r299999-b0-s419999-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g5-p2-r299999-b0-s420000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g5-p2-r299999-b0-s420000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g5-p2-r299999-b0-s420001-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g5-p2-r299999-b0-s420001-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g5-p2-r299999-b0-s4020000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g5-p2-r299999-b0-s4020000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g5-p2-r299999-b500-s-1000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p2-r299999-b500-s-1000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p2-r299999-b500-s0-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p2-r299999-b500-s0-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p2-r299999-b500-s299999-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p2-r299999-b500-s299999-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p2-r299999-b500-s300000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p2-r299999-b500-s300000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p2-r299999-b500-s419999-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p2-r299999-b500-s419999-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p2-r299999-b500-s420000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p2-r299999-b500-s420000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p2-r299999-b500-s420001-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p2-r299999-b500-s420001-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p2-r299999-b500-s4020000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p2-r299999-b500-s4020000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p2-r300000-b0-s-1000-sel",
+   "out": {
+    "value": 10000,
+    "ratio": 1,
+    "gross": 10000,
+    "fee": 0,
+    "feeRate": 0,
+    "inGracePeriod": true,
+    "sellable": true
+   }
+  },
+  {
+   "id": "g5-p2-r300000-b0-s-1000-res",
+   "out": {
+    "value": 10000,
+    "ratio": 1,
+    "gross": 10000,
+    "fee": 0,
+    "feeRate": 0,
+    "inGracePeriod": true,
+    "sellable": true
+   }
+  },
+  {
+   "id": "g5-p2-r300000-b0-s0-sel",
+   "out": {
+    "value": 10000,
+    "ratio": 1,
+    "gross": 10000,
+    "fee": 0,
+    "feeRate": 0,
+    "inGracePeriod": true,
+    "sellable": true
+   }
+  },
+  {
+   "id": "g5-p2-r300000-b0-s0-res",
+   "out": {
+    "value": 10000,
+    "ratio": 1,
+    "gross": 10000,
+    "fee": 0,
+    "feeRate": 0,
+    "inGracePeriod": true,
+    "sellable": true
+   }
+  },
+  {
+   "id": "g5-p2-r300000-b0-s299999-sel",
+   "out": {
+    "value": 10000,
+    "ratio": 1,
+    "gross": 10000,
+    "fee": 0,
+    "feeRate": 0,
+    "inGracePeriod": true,
+    "sellable": true
+   }
+  },
+  {
+   "id": "g5-p2-r300000-b0-s299999-res",
+   "out": {
+    "value": 10000,
+    "ratio": 1,
+    "gross": 10000,
+    "fee": 0,
+    "feeRate": 0,
+    "inGracePeriod": true,
+    "sellable": true
+   }
+  },
+  {
+   "id": "g5-p2-r300000-b0-s300000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": true
+   }
+  },
+  {
+   "id": "g5-p2-r300000-b0-s300000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": true
+   }
+  },
+  {
+   "id": "g5-p2-r300000-b0-s419999-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": true
+   }
+  },
+  {
+   "id": "g5-p2-r300000-b0-s419999-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": true
+   }
+  },
+  {
+   "id": "g5-p2-r300000-b0-s420000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "WINDOW_PASSED"
+   }
+  },
+  {
+   "id": "g5-p2-r300000-b0-s420000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "WINDOW_PASSED"
+   }
+  },
+  {
+   "id": "g5-p2-r300000-b0-s420001-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "WINDOW_PASSED"
+   }
+  },
+  {
+   "id": "g5-p2-r300000-b0-s420001-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "WINDOW_PASSED"
+   }
+  },
+  {
+   "id": "g5-p2-r300000-b0-s4020000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "WINDOW_PASSED"
+   }
+  },
+  {
+   "id": "g5-p2-r300000-b0-s4020000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "WINDOW_PASSED"
+   }
+  },
+  {
+   "id": "g5-p2-r300000-b500-s-1000-sel",
+   "out": {
+    "value": 10000,
+    "ratio": 1,
+    "gross": 10000,
+    "fee": 0,
+    "feeRate": 0,
+    "inGracePeriod": true,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p2-r300000-b500-s-1000-res",
+   "out": {
+    "value": 10000,
+    "ratio": 1,
+    "gross": 10000,
+    "fee": 0,
+    "feeRate": 0,
+    "inGracePeriod": true,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p2-r300000-b500-s0-sel",
+   "out": {
+    "value": 10000,
+    "ratio": 1,
+    "gross": 10000,
+    "fee": 0,
+    "feeRate": 0,
+    "inGracePeriod": true,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p2-r300000-b500-s0-res",
+   "out": {
+    "value": 10000,
+    "ratio": 1,
+    "gross": 10000,
+    "fee": 0,
+    "feeRate": 0,
+    "inGracePeriod": true,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p2-r300000-b500-s299999-sel",
+   "out": {
+    "value": 10000,
+    "ratio": 1,
+    "gross": 10000,
+    "fee": 0,
+    "feeRate": 0,
+    "inGracePeriod": true,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p2-r300000-b500-s299999-res",
+   "out": {
+    "value": 10000,
+    "ratio": 1,
+    "gross": 10000,
+    "fee": 0,
+    "feeRate": 0,
+    "inGracePeriod": true,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p2-r300000-b500-s300000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p2-r300000-b500-s300000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p2-r300000-b500-s419999-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p2-r300000-b500-s419999-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p2-r300000-b500-s420000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p2-r300000-b500-s420000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p2-r300000-b500-s420001-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p2-r300000-b500-s420001-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p2-r300000-b500-s4020000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p2-r300000-b500-s4020000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p2-r3900000-b0-s-1000-sel",
+   "out": {
+    "value": 10000,
+    "ratio": 1,
+    "gross": 10000,
+    "fee": 0,
+    "feeRate": 0,
+    "inGracePeriod": true,
+    "sellable": true
+   }
+  },
+  {
+   "id": "g5-p2-r3900000-b0-s-1000-res",
+   "out": {
+    "value": 10000,
+    "ratio": 1,
+    "gross": 10000,
+    "fee": 0,
+    "feeRate": 0,
+    "inGracePeriod": true,
+    "sellable": true
+   }
+  },
+  {
+   "id": "g5-p2-r3900000-b0-s0-sel",
+   "out": {
+    "value": 10000,
+    "ratio": 1,
+    "gross": 10000,
+    "fee": 0,
+    "feeRate": 0,
+    "inGracePeriod": true,
+    "sellable": true
+   }
+  },
+  {
+   "id": "g5-p2-r3900000-b0-s0-res",
+   "out": {
+    "value": 10000,
+    "ratio": 1,
+    "gross": 10000,
+    "fee": 0,
+    "feeRate": 0,
+    "inGracePeriod": true,
+    "sellable": true
+   }
+  },
+  {
+   "id": "g5-p2-r3900000-b0-s299999-sel",
+   "out": {
+    "value": 10000,
+    "ratio": 1,
+    "gross": 10000,
+    "fee": 0,
+    "feeRate": 0,
+    "inGracePeriod": true,
+    "sellable": true
+   }
+  },
+  {
+   "id": "g5-p2-r3900000-b0-s299999-res",
+   "out": {
+    "value": 10000,
+    "ratio": 1,
+    "gross": 10000,
+    "fee": 0,
+    "feeRate": 0,
+    "inGracePeriod": true,
+    "sellable": true
+   }
+  },
+  {
+   "id": "g5-p2-r3900000-b0-s300000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": true
+   }
+  },
+  {
+   "id": "g5-p2-r3900000-b0-s300000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": true
+   }
+  },
+  {
+   "id": "g5-p2-r3900000-b0-s419999-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": true
+   }
+  },
+  {
+   "id": "g5-p2-r3900000-b0-s419999-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": true
+   }
+  },
+  {
+   "id": "g5-p2-r3900000-b0-s420000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "WINDOW_PASSED"
+   }
+  },
+  {
+   "id": "g5-p2-r3900000-b0-s420000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "WINDOW_PASSED"
+   }
+  },
+  {
+   "id": "g5-p2-r3900000-b0-s420001-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "WINDOW_PASSED"
+   }
+  },
+  {
+   "id": "g5-p2-r3900000-b0-s420001-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "WINDOW_PASSED"
+   }
+  },
+  {
+   "id": "g5-p2-r3900000-b0-s4020000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "WINDOW_PASSED"
+   }
+  },
+  {
+   "id": "g5-p2-r3900000-b0-s4020000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "WINDOW_PASSED"
+   }
+  },
+  {
+   "id": "g5-p2-r3900000-b500-s-1000-sel",
+   "out": {
+    "value": 10000,
+    "ratio": 1,
+    "gross": 10000,
+    "fee": 0,
+    "feeRate": 0,
+    "inGracePeriod": true,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p2-r3900000-b500-s-1000-res",
+   "out": {
+    "value": 10000,
+    "ratio": 1,
+    "gross": 10000,
+    "fee": 0,
+    "feeRate": 0,
+    "inGracePeriod": true,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p2-r3900000-b500-s0-sel",
+   "out": {
+    "value": 10000,
+    "ratio": 1,
+    "gross": 10000,
+    "fee": 0,
+    "feeRate": 0,
+    "inGracePeriod": true,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p2-r3900000-b500-s0-res",
+   "out": {
+    "value": 10000,
+    "ratio": 1,
+    "gross": 10000,
+    "fee": 0,
+    "feeRate": 0,
+    "inGracePeriod": true,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p2-r3900000-b500-s299999-sel",
+   "out": {
+    "value": 10000,
+    "ratio": 1,
+    "gross": 10000,
+    "fee": 0,
+    "feeRate": 0,
+    "inGracePeriod": true,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p2-r3900000-b500-s299999-res",
+   "out": {
+    "value": 10000,
+    "ratio": 1,
+    "gross": 10000,
+    "fee": 0,
+    "feeRate": 0,
+    "inGracePeriod": true,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p2-r3900000-b500-s300000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p2-r3900000-b500-s300000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p2-r3900000-b500-s419999-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p2-r3900000-b500-s419999-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p2-r3900000-b500-s420000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p2-r3900000-b500-s420000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p2-r3900000-b500-s420001-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p2-r3900000-b500-s420001-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p2-r3900000-b500-s4020000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p2-r3900000-b500-s4020000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p10-r299999-b0-s-1000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g5-p10-r299999-b0-s-1000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g5-p10-r299999-b0-s0-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g5-p10-r299999-b0-s0-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g5-p10-r299999-b0-s299999-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g5-p10-r299999-b0-s299999-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g5-p10-r299999-b0-s300000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g5-p10-r299999-b0-s300000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g5-p10-r299999-b0-s899999-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g5-p10-r299999-b0-s899999-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g5-p10-r299999-b0-s900000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g5-p10-r299999-b0-s900000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g5-p10-r299999-b0-s900001-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g5-p10-r299999-b0-s900001-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g5-p10-r299999-b0-s4500000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g5-p10-r299999-b0-s4500000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "TOO_SHORT"
+   }
+  },
+  {
+   "id": "g5-p10-r299999-b500-s-1000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p10-r299999-b500-s-1000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p10-r299999-b500-s0-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p10-r299999-b500-s0-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p10-r299999-b500-s299999-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p10-r299999-b500-s299999-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p10-r299999-b500-s300000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p10-r299999-b500-s300000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p10-r299999-b500-s899999-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p10-r299999-b500-s899999-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p10-r299999-b500-s900000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p10-r299999-b500-s900000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p10-r299999-b500-s900001-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p10-r299999-b500-s900001-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p10-r299999-b500-s4500000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p10-r299999-b500-s4500000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p10-r300000-b0-s-1000-sel",
+   "out": {
+    "value": 10000,
+    "ratio": 1,
+    "gross": 10000,
+    "fee": 0,
+    "feeRate": 0,
+    "inGracePeriod": true,
+    "sellable": true
+   }
+  },
+  {
+   "id": "g5-p10-r300000-b0-s-1000-res",
+   "out": {
+    "value": 10000,
+    "ratio": 1,
+    "gross": 10000,
+    "fee": 0,
+    "feeRate": 0,
+    "inGracePeriod": true,
+    "sellable": true
+   }
+  },
+  {
+   "id": "g5-p10-r300000-b0-s0-sel",
+   "out": {
+    "value": 10000,
+    "ratio": 1,
+    "gross": 10000,
+    "fee": 0,
+    "feeRate": 0,
+    "inGracePeriod": true,
+    "sellable": true
+   }
+  },
+  {
+   "id": "g5-p10-r300000-b0-s0-res",
+   "out": {
+    "value": 10000,
+    "ratio": 1,
+    "gross": 10000,
+    "fee": 0,
+    "feeRate": 0,
+    "inGracePeriod": true,
+    "sellable": true
+   }
+  },
+  {
+   "id": "g5-p10-r300000-b0-s299999-sel",
+   "out": {
+    "value": 10000,
+    "ratio": 1,
+    "gross": 10000,
+    "fee": 0,
+    "feeRate": 0,
+    "inGracePeriod": true,
+    "sellable": true
+   }
+  },
+  {
+   "id": "g5-p10-r300000-b0-s299999-res",
+   "out": {
+    "value": 10000,
+    "ratio": 1,
+    "gross": 10000,
+    "fee": 0,
+    "feeRate": 0,
+    "inGracePeriod": true,
+    "sellable": true
+   }
+  },
+  {
+   "id": "g5-p10-r300000-b0-s300000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": true
+   }
+  },
+  {
+   "id": "g5-p10-r300000-b0-s300000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": true
+   }
+  },
+  {
+   "id": "g5-p10-r300000-b0-s899999-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": true
+   }
+  },
+  {
+   "id": "g5-p10-r300000-b0-s899999-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": true
+   }
+  },
+  {
+   "id": "g5-p10-r300000-b0-s900000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "WINDOW_PASSED"
+   }
+  },
+  {
+   "id": "g5-p10-r300000-b0-s900000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "WINDOW_PASSED"
+   }
+  },
+  {
+   "id": "g5-p10-r300000-b0-s900001-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "WINDOW_PASSED"
+   }
+  },
+  {
+   "id": "g5-p10-r300000-b0-s900001-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "WINDOW_PASSED"
+   }
+  },
+  {
+   "id": "g5-p10-r300000-b0-s4500000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "WINDOW_PASSED"
+   }
+  },
+  {
+   "id": "g5-p10-r300000-b0-s4500000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "WINDOW_PASSED"
+   }
+  },
+  {
+   "id": "g5-p10-r300000-b500-s-1000-sel",
+   "out": {
+    "value": 10000,
+    "ratio": 1,
+    "gross": 10000,
+    "fee": 0,
+    "feeRate": 0,
+    "inGracePeriod": true,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p10-r300000-b500-s-1000-res",
+   "out": {
+    "value": 10000,
+    "ratio": 1,
+    "gross": 10000,
+    "fee": 0,
+    "feeRate": 0,
+    "inGracePeriod": true,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p10-r300000-b500-s0-sel",
+   "out": {
+    "value": 10000,
+    "ratio": 1,
+    "gross": 10000,
+    "fee": 0,
+    "feeRate": 0,
+    "inGracePeriod": true,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p10-r300000-b500-s0-res",
+   "out": {
+    "value": 10000,
+    "ratio": 1,
+    "gross": 10000,
+    "fee": 0,
+    "feeRate": 0,
+    "inGracePeriod": true,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p10-r300000-b500-s299999-sel",
+   "out": {
+    "value": 10000,
+    "ratio": 1,
+    "gross": 10000,
+    "fee": 0,
+    "feeRate": 0,
+    "inGracePeriod": true,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p10-r300000-b500-s299999-res",
+   "out": {
+    "value": 10000,
+    "ratio": 1,
+    "gross": 10000,
+    "fee": 0,
+    "feeRate": 0,
+    "inGracePeriod": true,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p10-r300000-b500-s300000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p10-r300000-b500-s300000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p10-r300000-b500-s899999-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p10-r300000-b500-s899999-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p10-r300000-b500-s900000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p10-r300000-b500-s900000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p10-r300000-b500-s900001-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p10-r300000-b500-s900001-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p10-r300000-b500-s4500000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p10-r300000-b500-s4500000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p10-r3900000-b0-s-1000-sel",
+   "out": {
+    "value": 10000,
+    "ratio": 1,
+    "gross": 10000,
+    "fee": 0,
+    "feeRate": 0,
+    "inGracePeriod": true,
+    "sellable": true
+   }
+  },
+  {
+   "id": "g5-p10-r3900000-b0-s-1000-res",
+   "out": {
+    "value": 10000,
+    "ratio": 1,
+    "gross": 10000,
+    "fee": 0,
+    "feeRate": 0,
+    "inGracePeriod": true,
+    "sellable": true
+   }
+  },
+  {
+   "id": "g5-p10-r3900000-b0-s0-sel",
+   "out": {
+    "value": 10000,
+    "ratio": 1,
+    "gross": 10000,
+    "fee": 0,
+    "feeRate": 0,
+    "inGracePeriod": true,
+    "sellable": true
+   }
+  },
+  {
+   "id": "g5-p10-r3900000-b0-s0-res",
+   "out": {
+    "value": 10000,
+    "ratio": 1,
+    "gross": 10000,
+    "fee": 0,
+    "feeRate": 0,
+    "inGracePeriod": true,
+    "sellable": true
+   }
+  },
+  {
+   "id": "g5-p10-r3900000-b0-s299999-sel",
+   "out": {
+    "value": 10000,
+    "ratio": 1,
+    "gross": 10000,
+    "fee": 0,
+    "feeRate": 0,
+    "inGracePeriod": true,
+    "sellable": true
+   }
+  },
+  {
+   "id": "g5-p10-r3900000-b0-s299999-res",
+   "out": {
+    "value": 10000,
+    "ratio": 1,
+    "gross": 10000,
+    "fee": 0,
+    "feeRate": 0,
+    "inGracePeriod": true,
+    "sellable": true
+   }
+  },
+  {
+   "id": "g5-p10-r3900000-b0-s300000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": true
+   }
+  },
+  {
+   "id": "g5-p10-r3900000-b0-s300000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": true
+   }
+  },
+  {
+   "id": "g5-p10-r3900000-b0-s899999-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": true
+   }
+  },
+  {
+   "id": "g5-p10-r3900000-b0-s899999-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": true
+   }
+  },
+  {
+   "id": "g5-p10-r3900000-b0-s900000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "WINDOW_PASSED"
+   }
+  },
+  {
+   "id": "g5-p10-r3900000-b0-s900000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "WINDOW_PASSED"
+   }
+  },
+  {
+   "id": "g5-p10-r3900000-b0-s900001-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "WINDOW_PASSED"
+   }
+  },
+  {
+   "id": "g5-p10-r3900000-b0-s900001-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "WINDOW_PASSED"
+   }
+  },
+  {
+   "id": "g5-p10-r3900000-b0-s4500000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "WINDOW_PASSED"
+   }
+  },
+  {
+   "id": "g5-p10-r3900000-b0-s4500000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "WINDOW_PASSED"
+   }
+  },
+  {
+   "id": "g5-p10-r3900000-b500-s-1000-sel",
+   "out": {
+    "value": 10000,
+    "ratio": 1,
+    "gross": 10000,
+    "fee": 0,
+    "feeRate": 0,
+    "inGracePeriod": true,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p10-r3900000-b500-s-1000-res",
+   "out": {
+    "value": 10000,
+    "ratio": 1,
+    "gross": 10000,
+    "fee": 0,
+    "feeRate": 0,
+    "inGracePeriod": true,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p10-r3900000-b500-s0-sel",
+   "out": {
+    "value": 10000,
+    "ratio": 1,
+    "gross": 10000,
+    "fee": 0,
+    "feeRate": 0,
+    "inGracePeriod": true,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p10-r3900000-b500-s0-res",
+   "out": {
+    "value": 10000,
+    "ratio": 1,
+    "gross": 10000,
+    "fee": 0,
+    "feeRate": 0,
+    "inGracePeriod": true,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p10-r3900000-b500-s299999-sel",
+   "out": {
+    "value": 10000,
+    "ratio": 1,
+    "gross": 10000,
+    "fee": 0,
+    "feeRate": 0,
+    "inGracePeriod": true,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p10-r3900000-b500-s299999-res",
+   "out": {
+    "value": 10000,
+    "ratio": 1,
+    "gross": 10000,
+    "fee": 0,
+    "feeRate": 0,
+    "inGracePeriod": true,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p10-r3900000-b500-s300000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p10-r3900000-b500-s300000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p10-r3900000-b500-s899999-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p10-r3900000-b500-s899999-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p10-r3900000-b500-s900000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p10-r3900000-b500-s900000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p10-r3900000-b500-s900001-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p10-r3900000-b500-s900001-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p10-r3900000-b500-s4500000-sel",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "g5-p10-r3900000-b500-s4500000-res",
+   "out": {
+    "value": 9100,
+    "ratio": 0.91,
+    "gross": 10000,
+    "fee": 900,
+    "feeRate": 0.09,
+    "inGracePeriod": false,
+    "sellable": false,
+    "reason": "BONUS_FUNDED"
+   }
+  },
+  {
+   "id": "empty-placedAt",
+   "out": {
+    "value": 10000,
+    "ratio": 1,
+    "gross": 10000,
+    "fee": 0,
+    "feeRate": 0,
+    "inGracePeriod": true,
+    "sellable": true
+   }
+  }
+ ]
+}
