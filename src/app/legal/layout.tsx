@@ -6,7 +6,7 @@ import { LegalNav } from "./legal-nav";
 const LEGAL_NAV: Array<{ href: string; label: Record<Locale, string> }> = [
   { href: "/legal/terms",                label: { en: "Terms",                sw: "Masharti",        zh: "服务条款" } },
   { href: "/legal/privacy",              label: { en: "Privacy",              sw: "Faragha",         zh: "隐私" } },
-  { href: "/legal/responsible-gambling", label: { en: "Responsible Gambling", sw: "Mchezo Salama",   zh: "责任博彩" } },
+  { href: "/legal/responsible-gambling", label: { en: "Responsible Gambling", sw: "Mchezo Salama",   zh: "负责任博彩" } },
   { href: "/legal/aml",                  label: { en: "AML / KYC",            sw: "Kuzuia Uoshaji",  zh: "反洗钱 / KYC" } },
   /* ⭐ THE PARENT ONLY, AND THE CHILDREN DELIBERATELY NOT LISTED. `/legal/rules/yes-no` and
      `/legal/rules/up-down` are reached from the index page and from the products themselves.

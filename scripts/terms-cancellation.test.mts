@@ -65,7 +65,8 @@ const CONDITIONS: Record<Locale, { label: string; anyOf: string[] }[]> = {
   zh: [
     { label: "the 5-minute WINDOW", anyOf: ["前 5 分钟内"] },
     { label: "the RUNWAY condition", anyOf: ["仍剩余至少 5 分钟的投注时间"] },
-    { label: "the rounds where it can NEVER be met", anyOf: ["这些场次完全不提供兑现"] },
+    // 2026-09-14 — the zh Terms name Up & Down rounds 回合 (涨跌), as every other screen does; 场次 was the English-era word.
+    { label: "the rounds where it can NEVER be met", anyOf: ["这些回合完全不提供兑现"] },
     { label: "BONUS-funded is never sellable", anyOf: ["奖金资助的持仓在任何时候均不可卖出"] },
   ],
 };

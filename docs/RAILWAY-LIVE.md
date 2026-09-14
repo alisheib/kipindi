@@ -228,7 +228,9 @@ on purpose** (a hard limit would stop production services at the cap). Re-derive
 Server p50 **31 ms** / p95 136 ms · 0×5xx in 500 requests · TTFB from this operator's
 machine **~330–490 ms, flat across routes** (re-confirmed 2026-09-04) — the signature of
 distance (origin us-west2), not slow code. The Amsterdam move (`europe-west4`) is parked in
-phase 2; ⚠️ moving a service WITH a volume migrates the volume and causes downtime — the
+phase 2; ⛔ moving any service region or storage provider must update the `/legal/privacy` §4 cloud-hosting
+line (en/sw/zh) in the same release, with a dated `COMPLIANCE-DECISIONS.md` entry (2026-09-14 amendment);
+⚠️ moving a service WITH a volume migrates the volume and causes downtime — the
 app, Postgres and Redis must move together in a maintenance window, maintenance mode ON
 (withdrawals stay open by design).
 

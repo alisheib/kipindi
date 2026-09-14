@@ -6,6 +6,158 @@
 
 ---
 
+## 2026-09-14 (third) · The Responsible Gambling Policy gets a version, and §3 names only the signs the code computes
+
+**Found by the public-page audit (session 95), not an owner ruling — recorded because a published policy changed.**
+
+**No version.** `/legal/responsible-gambling` was the only policy under `/legal` with no dated version, so a reader
+could not tell which revision bound them. Its header now reads **Version 2026-09-14** in the same form as the others
+(Toleo / 版本 in sw and zh).
+
+**§3 "Markers of harm" claimed controls the platform does not run.** Checked against `detectHarmMarkers` in
+`src/lib/server/responsible-gambling.ts` and its one caller:
+
+| §3 said | What the code does |
+|---|---|
+| "chasing losses (multiple deposits within a losing session)" | The `CHASING_LOSSES` detector counts deposits made within 30 minutes of **placing** a bet. It cannot see a loss (its own comment; ledger row 10.8, still open). |
+| "declined card cycling" | No detector counts declined card attempts. Card deposits exist (Selcom checkout), but nothing watches their declines. |
+| "breaching previous self-imposed limits" | Detector 4 (`LIMIT_BREACH_HISTORY`) is a comment only and never raises a flag. |
+| "unusual transaction patterns" | No detector. |
+| "late-night extended play" | `LATE_NIGHT_PLAY` counts bets placed 00:00–06:00 EAT. It measures bets, not time spent. |
+| "Any single marker triggers an in-app prompt; multiple markers trigger a contact from our Player Safety team within 24 hours" | `detectHarmMarkers` has one caller, `detectHarmMarkersForAllUsers`, used only by the staff console `/admin/compliance`. No player prompt, no outreach job, no 24-hour clock. `SESSION_OVERRUN` is also unreachable there: no session start is passed (the 2026-08-20 entry recorded this). |
+
+**§3 now says,** in all three languages, only what runs: several deposits within an hour or a day's deposits far above
+the account's recent daily average; repeated deposits shortly after placing a bet; repeated betting late at night
+(00:00–06:00 EAT); an account showing one of these is listed for the compliance team; and the §2 tools are the player's
+to use at any time. It promises no prompt and no contact.
+
+**⛔ Do not restore** a card marker, a limit-breach marker, "unusual transaction patterns", an in-app prompt or a timed
+contact until the control exists: build it first, then write it here and re-version the policy.
+
+**Riding in the same version, translation only:** the Chinese title, nav label and settings link now say 负责任博彩, the
+name the dictionary and the register page already use (was 责任博彩).
+
+**Not checked in this pass, and not claimed:** §2's tool descriptions (the reality-check contents, the session time
+limit, the deposit-limit timings) and §4's operator commitments. They were outside this finding and still need their own
+check against the code.
+
+---
+
+## 2026-09-14 (second) · Up & Down rules v2026-09-14 — no objection window; AML policy v2026-09-14
+
+**Found by the public-page audit (session 95), not an owner ruling.**
+
+**Up & Down rules §9 promised a money hold the platform does not run.** It said the *objection window* is
+`{objectionHours}` hour(s) from resolution, "while the payout is still on hold", during which a result can be corrected
+or a round voided. The number was the YES/NO markets' configured window. Up & Down has none: `closeRound`
+(`src/lib/server/updown-service.ts`) stamps `objectionsClosedAt` to the moment of resolution and calls `settleMarket`
+in the same call. An objection filed afterwards is refused as out of window (`objections-service.ts`). That is the
+2026-07-24 entry's ruling 2 ("Settlement is IMMEDIATE — the objection window does not apply"), and the same document's
+§3 already said payouts land "normally within seconds".
+§9 now says, in en/sw/zh, that there is no objection window and a round settles and pays out as soon as its result is
+recorded. The right to raise a dispute with support about a settled round is unchanged. The binding English moved, so the
+version moved: **v2026-09-13 → v2026-09-14**. Nothing is taken from a player: the hold never existed.
+**Same version, translation and typography only:** the Swahili game name is **Juu na Chini** (was "Juu & Chini") in the
+title, §1 and §9, as on every screen; the rules hub card uses the same name. zh spacing around dashes and bold words.
+
+**AML policy v2026-09-13 → v2026-09-14.** The first 2026-09-14 entry below records that the Swahili and Chinese texts
+each moved to a single name for the Financial Intelligence Unit while the page still printed 2026-09-13. The English did
+not change, but a published text that moved after its date must carry a new date. zh §1 also lost a stray space after a
+dash. `scripts/live/kyc-at-withdrawal-prod.mjs` now expects 2026-09-14 on `/legal/aml`.
+
+**Game Rules layout, not text.** Below 640px each rules table is a stack of cards, so the worked example's "Shared by
+winners" column is no longer hidden off-screen. The Up & Down refund table's sentences now wrap instead of being cut at
+the card edge, and Chinese first-column labels no longer break after every character. The YES/NO rules (still
+v2026-09-13) changed in typography only: zh spacing around 是/否 and dashes, and TZS amounts kept on one line.
+
+---
+
+## 2026-09-14 · Terms v2026-09-14 — §2 and §3a now state what the platform actually does, in the player's favour
+
+**Found by the audit of the identity-at-withdrawal release (session 95) — not an owner ruling; recorded because a binding
+text changed.** Two sentences of Terms v2026-09-13 (the version the 2026-09-13 ruling published) promised things the code
+does not do, and both errors cut against the player:
+
+| Clause | v2026-09-13 said | What the code does | v2026-09-14 says |
+|---|---|---|---|
+| §2 | "duplicate accounts will be closed and balances forfeited per AML rules" | Nothing closes an account or forfeits a balance by itself. A `DUPLICATE_IDENTITY` refusal freezes the wallet and an officer decides the balance from four outcomes, including returning all of it (`refused-funds.ts`, the S1 ruling above). | "where we refuse an identity because it is already used on another account, section 3a applies" |
+| §3a | after a final refusal "no money can be paid into or out of the account" | The freeze stops deposits, bets and withdrawals. Settlements, void refunds and cash-outs of bets already placed still credit the frozen wallet (`market-service.ts`), and an officer's return pays out of it. | "no deposits, bets or withdrawals can be made on the account from that moment… Bets already placed still settle, and any payout or refund they produce is credited to the account" |
+
+**Why no §10 notice.** Neither change takes anything from a player: §2 withdraws an automatic forfeiture the platform never
+applied, and §3a states a right to settlement the platform always honoured. The same reasoning as ruling 4 of the 2026-09-13
+entry applies, without its counter-case — no player is worse off under v2026-09-14 than under v2026-09-13.
+
+**Riding in the same version, markup and translation only:** the §7 link's missing space ("inResponsible", en and sw) and a
+one-sided margin in zh; the Swahili §5/§6 body wording, which translated *settlement* and *resolution* as *closing*, aligned
+with the unchanged English.
+
+**Mechanics.** `TERMS_VERSION = "2026-09-14"` and `TERMS_TEXT_SHA` moved together in `src/lib/terms-version.ts`
+(`test:terms-binding`), so a player registering after the deploy is stamped with the text they were shown. Players stamped
+`2026-09-13` were shown v2026-09-13 until then.
+
+**Other legal documents corrected in the same release, none of them a binding-text change:**
+- `rules/yes-no` and `rules/up-down` printed **Version 2026-09-10** although their text changed on 2026-09-13 (identity at the
+  first withdrawal, the withdrawal-hold sentences removed, the live loser-share rate). The label now reads 2026-09-13, the date
+  the text actually moved — a correction of the label, not of the text.
+- **Privacy notice** (it had no version line; from this release it carries **Version 2026-09-14** in the same form as the
+  other `/legal` documents — see the amendment below): the identity line listed "NIDA number, photographic ID" — it
+  now names the one-of-four documents, the expiry where the document has one, the photographs and the selfie; the contact line
+  now includes the email address registration collects; two Swahili lines said *ufungaji* (closing) for market settlement.
+- **AML policy** (stays v2026-09-13, English unchanged): Swahili and Chinese used two names each for the Financial Intelligence
+  Unit; one name per locale now.
+
+### Amendment, 2026-09-14 (same day, before either version was deployed) — Terms §9 and Privacy §4
+
+**Found by the public-page audit (session 95).** Terms v2026-09-14 and Privacy v2026-09-14 are amended in place: neither
+version had reached production, so no player was shown or stamped with the text being replaced.
+
+- **Terms §9 (binding English, en/sw/zh):** *"which are handled per the Match Integrity Annex (B)"* is removed. No such
+  annex exists — there is no route for it under `/legal` and no document in `docs/` — so the clause referred players to
+  a text they could not read. The limitation of liability itself is unchanged, and nothing is taken from a player.
+  `TERMS_TEXT_SHA` moves with it (`test:terms-binding`); `TERMS_VERSION` stays 2026-09-14.
+- **Privacy §4, the cloud-hosting line (en/sw/zh)** said *"encrypted at rest, TZ region preferred; failover in EU AWS
+  Frankfurt"*. None of that is on record. It now names only what the repository's own records show:
+  - **Railway, United States, region us-west2.** It runs the app and holds the databases.
+    `docs/RAILWAY-LIVE.md` §2, measured 2026-09-04, has all three services in us-west2. §9 of that file lists the
+    Amsterdam move as parked. §4 and §10 record Railway volume backups of the Postgres and Redis volumes.
+  - **Cloudflare R2, Western Europe.** It stores the identity documents and selfies: bucket `50pick-kyc`, WEUR,
+    `KYC_STORAGE=r2` (`docs/LIVE-HOSTING-STATUS.md`, R2 section; `docs/RAILWAY-LIVE.md` §7). It also stores the sealed
+    nightly database backups: bucket `50pick-backups`, WEUR (`docs/BACKUP-RUNBOOK.md`, 2026-07-31).
+  - **GitHub Actions, United States.** The nightly backup workflow (`.github/workflows/backup-nightly.yml`, `runs-on:
+    ubuntu-latest`) dumps the production database and test-restores it into a throwaway Postgres on the runner before the
+    sealed copy goes to R2 (`docs/BACKUP-RUNBOOK.md`) — so the whole personal-data set passes through it every night.
+    Added after the same-day review.
+  - **What is deliberately not stated.** There is no Tanzania region, no AWS, and no failover (`numReplicas` is 1).
+    "Encrypted at rest" is dropped from this line, because no record in the repository establishes it for the Railway
+    volumes. The sealed R2 backups are the encryption the records do show.
+  - **⚠️ When the hosting moves** (the parked europe-west4 move, or any new region or provider), this bullet must change
+    in the same release.
+- **Terms §6 (binding English, en/sw/zh), found by the same-day review:** the void clause's objection hold ("while the
+  payout is still on hold") now says it applies to markets only — an Up & Down round pays as soon as its result is
+  recorded, with no hold (Up & Down rules v2026-09-14 §9, `closeRound`). Two binding documents had disagreed about
+  Up & Down; the Terms now point at the rules. Nothing is taken from a player. `TERMS_TEXT_SHA` moves again.
+- **Typography and translation only, no change of terms:**
+  - zh Terms §4: 永不被动 becomes 分文不动 ("never touched"), and YES/NO becomes 是/否.
+  - zh Terms §7: the policy is named 负责任博彩.
+  - sw and zh Terms §4 name the game as every other screen does ("Juu na Chini", 涨跌 / 回合), not in English.
+  - en Terms §6: an explicit space where the rendered page read "1 hourof resolution" (a JSX line join), found by the
+    second visual pass on the served HTML.
+  - zh Responsible Gambling Policy §2: the four tool names are followed by the full-width colon, as the other two are.
+- **Terms §5 (binding English, en/sw/zh), found by visual pass 2b:** "credited immediately on market settlement" now says
+  that, for a market, settlement comes when its objection window closes. The Swahili had read "the moment the market is
+  resolved", which contradicted §6's hold. A clarification in the player's favour; `TERMS_TEXT_SHA` moves.
+- **Responsible Gambling Policy §2 (en/sw/zh):** increases to ANY deposit limit are deferred 24 hours (the daily, weekly
+  and monthly limits all go through `LIMIT_INCREASE_DEFERRAL_SEC` in `responsible-gambling.ts`); the policy had said
+  only the daily limit. The code is the protection; the policy now describes it whole.
+- **zh wording across the RG policy, Terms §7 and the limits screens:** money in is 充值, never 存款 (a bank savings
+  deposit), matching the deposit flow.
+  - zh: stray spaces after dashes are removed in Terms §3/§3a/§4 and AML §1.
+  - Terms §5: the TZS 5,000,000 cap is kept on one line in all three languages.
+  - Every legal section body uses `text-pretty`.
+  - The rules hub's zh version line keeps 由 with 50pick.
+
+---
+
 ## 2026-09-13 (fourth) · The accepted-Terms record lagged the published Terms — corrected forward, and the rows already written are identified, not rewritten
 
 **Found by the audit of the identity-at-withdrawal release (session 95), not an owner ruling — recorded here because it

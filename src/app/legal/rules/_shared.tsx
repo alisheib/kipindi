@@ -19,6 +19,7 @@
  * under WCAG 2.1.1. §A6 requires zero horizontal overflow at 360. These are the first tables in
  * `/legal`, so the shape is set here once rather than per document.
  */
+import { Fragment } from "react";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { formatTzs, pctNum } from "@/lib/utils";
 import { poolFee, resolveFeeModel } from "@/lib/payout";
@@ -89,41 +90,74 @@ export function workedRow(losingPool: number, rate: number) {
  *
  * ⚠️ `.admin-tbl thead` is `white-space: nowrap` and Swahili runs ~35-40% longer than English
  * (§A5), so header wording is a WIDTH decision at 360, not a copy decision. Keep headers short.
+ *
+ * 🔴 2026-09-14 (public audit, en/sw/zh): short headers were NOT enough. At 360 the four-column
+ * worked example hid its last column, "Shared by winners", the one number the example exists to
+ * show, inside a scroll box with no cue on a phone. So below `sm` (640px) every row is a stacked
+ * card with every column visible, and the table is kept from `sm` up.
+ * ⛔ `prose` is for a table whose later columns are SENTENCES (the Up & Down refund cases). Those
+ * cells used to take the figure styling, and `.admin-tbl td.tabular-nums` is nowrap (globals.css),
+ * so each sentence stayed on one line and was cut at the card edge even at 1280. Figures keep it.
+ * ⭐ The first column never breaks inside a word: a Chinese label broke after every character
+ * (否/获/胜) once the figures squeezed it. Latin labels still wrap at their spaces.
  */
 export function RulesTable({
   label,
   head,
   rows,
+  prose = false,
 }: {
   label: string;
   head: readonly string[];
   rows: readonly (readonly string[])[];
+  /** The columns after the first are sentences, not figures: they wrap and read in the body face. */
+  prose?: boolean;
 }) {
   return (
-    <ScrollX label={label} className="glass-panel">
-      <table className="admin-tbl">
-        <thead className="border-b border-border bg-bg-overlay">
-          <tr className="font-mono text-micro uppercase eyebrow text-text-subtle">
-            {head.map((h) => (
-              <th key={h} className="text-left p-3">{h}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r) => (
-            <tr key={r[0]}>
-              {r.map((cell, i) => (
-                // ⭐ §T5 — the figures are DATA inside prose, so they take the mono ladder with
-                // `tabular-nums`; the first column is a label and stays in the reading face.
-                <td key={i} className={i === 0 ? "p-3 text-text" : "p-3 font-mono tabular-nums text-text-muted"}>
-                  {cell}
-                </td>
+    <>
+      {/* Phone: one card per row. The label heads the card; each later column is a term and its value. */}
+      <ul aria-label={label} className="sm:hidden space-y-[8px]">
+        {rows.map((r) => (
+          <li key={r[0]} className="glass-panel rounded-md px-[16px] py-[12px]">
+            <p className="text-text font-medium break-keep">{r[0]}</p>
+            <dl className={prose ? "mt-[4px]" : "mt-[8px] grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-[16px] gap-y-[6px]"}>
+              {r.slice(1).map((cell, i) => (
+                <Fragment key={i}>
+                  <dt className={prose ? "sr-only" : "font-mono text-caption uppercase eyebrow text-text-subtle"}>{head[i + 1]}</dt>
+                  <dd className={prose ? "text-text-muted" : "font-mono tabular-nums text-text-muted text-right whitespace-nowrap"}>{cell}</dd>
+                </Fragment>
               ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </ScrollX>
+            </dl>
+          </li>
+        ))}
+      </ul>
+      <div className="hidden sm:block">
+        <ScrollX label={label} className="glass-panel">
+          <table className="admin-tbl">
+            <thead className="border-b border-border bg-bg-overlay">
+              <tr className="font-mono text-micro uppercase eyebrow text-text-subtle">
+                {head.map((h) => (
+                  <th key={h} className="text-left p-3">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r[0]}>
+                  {r.map((cell, i) => (
+                    // ⭐ §T5 — the figures are DATA inside prose, so they take the mono ladder with
+                    // `tabular-nums`; the first column is a label and stays in the reading face.
+                    <td key={i} className={i === 0 ? "p-3 text-text break-keep" : prose ? "p-3 text-text-muted" : "p-3 font-mono tabular-nums text-text-muted"}>
+                      {cell}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </ScrollX>
+      </div>
+    </>
   );
 }
 

@@ -14,8 +14,12 @@
  *     binding document is worse than a general description, because a player can check it.
  *  §2 The worked question was *"Will it rain…"* with *"Up = Yes it rains"* — that is YES/NO
  *     semantics wearing Up & Down's name, and it blurs two products that settle differently.
- *  §9 Disputes *"within 48 hours"* — the platform's objection window is configured and shorter.
- *     Both windows are now named as the different things they are.
+ *  §9 Disputes *"within 48 hours"* — replaced by the right to raise a dispute with support.
+ *     🔴 2026-09-14: §9 then quoted the YES/NO markets' configured objection window (`r.objectionHours`)
+ *     as a period "while the payout is still on hold". Up & Down has NO objection window: `closeRound`
+ *     stamps `objectionsClosedAt` to now and calls `settleMarket` in the same call (updown-service.ts,
+ *     owner decision 2026-07-24), and §3 of this document already said payouts land within seconds.
+ *     ⛔ Never quote `r.objectionHours` in this document. Version bumped to 2026-09-14.
  *  §3 *"in all cases within 24 hours"* — an unconditional promise the platform does not make.
  *     2026-09-13: §3 also used to say withdrawals of TZS 1,000,000 or more are held for two-officer
  *     review. The owner ended that hold that day (WITHDRAWAL_AML_HOLD = false in payments.ts): no officer
@@ -111,8 +115,8 @@ export function upDownContent(r: RulesRates): Record<Locale, React.ReactNode> {
           </p>
           <p>
             <strong className="text-text">Stakes are bounded:</strong> minimum{" "}
-            <span className="font-mono tabular-nums text-text">{tzs(r.minStake)}</span>, maximum{" "}
-            <span className="font-mono tabular-nums text-text">{tzs(r.maxStake)}</span> per position. Winnings are
+            <span className="font-mono tabular-nums text-text whitespace-nowrap">{tzs(r.minStake)}</span>, maximum{" "}
+            <span className="font-mono tabular-nums text-text whitespace-nowrap">{tzs(r.maxStake)}</span> per position. Winnings are
             rounded to the nearest shilling.
           </p>
           <p>
@@ -125,8 +129,8 @@ export function upDownContent(r: RulesRates): Record<Locale, React.ReactNode> {
 
         <LegalSection n="4" title="Worked example">
           <p>
-            A round with an Up pool of <span className="font-mono tabular-nums text-text">{tzs(EXAMPLE_WIN_POOL)}</span>{" "}
-            and a Down pool of <span className="font-mono tabular-nums text-text">{tzs(EXAMPLE_LOSE_POOL)}</span>:
+            A round with an Up pool of <span className="font-mono tabular-nums text-text whitespace-nowrap">{tzs(EXAMPLE_WIN_POOL)}</span>{" "}
+            and a Down pool of <span className="font-mono tabular-nums text-text whitespace-nowrap">{tzs(EXAMPLE_LOSE_POOL)}</span>:
           </p>
           <RulesTable
             label="Worked example — Up and Down settlement"
@@ -159,6 +163,7 @@ export function upDownContent(r: RulesRates): Record<Locale, React.ReactNode> {
           <p>Each of the following results in a full refund of every stake in the affected round:</p>
           <RulesTable
             label="Refund and void cases"
+            prose
             head={["Case", "Treatment"]}
             rows={[
               ["One-sided round", "Only one side holds any stake at lock — no pool forms, every stake refunded"],
@@ -221,14 +226,10 @@ export function upDownContent(r: RulesRates): Record<Locale, React.ReactNode> {
         <LegalSection n="9" title="Disputes, amendments and responsible play">
           <ul className="list-disc pl-5 space-y-1">
             <li>
-              <strong className="text-text">Two different windows, and they are not the same thing.</strong> The{" "}
-              <em>objection window</em> is{" "}
-              <span className="font-mono tabular-nums text-text">{r.objectionHours}</span> hour
-              {r.objectionHours === 1 ? "" : "s"} from resolution: within it, while the payout is still on hold, a
-              result can still be corrected or a round voided. Once a round has settled and the money has moved, that
-              is no longer possible. Separately, you may <em>raise a dispute</em> with support about a settled round;
-              it is reviewed against the recorded evidence and the audit chain, and the outcome is given to you in
-              writing.
+              <strong className="text-text">No objection window.</strong>{" "}An Up &amp; Down round settles and pays out
+              as soon as its result is recorded; there is no period in which the payout is held back. You may still{" "}
+              <em>raise a dispute</em> with support about a settled round; it is reviewed against the recorded evidence
+              and the audit chain, and the outcome is given to you in writing.
             </li>
             <li><strong className="text-text">Amendments.</strong> Material changes are announced before taking effect and never apply retroactively to rounds already locked.</li>
             <li>
@@ -247,7 +248,7 @@ export function upDownContent(r: RulesRates): Record<Locale, React.ReactNode> {
       <>
         <LegalSection n="1" title="Utangulizi na upeo">
           <p>
-            Juu &amp; Chini ni mtindo wa utabiri wa muda mfupi: unatabiri kama thamani halisi inayopimika itamalizia{" "}
+            Juu na Chini ni mtindo wa utabiri wa muda mfupi: unatabiri kama thamani halisi inayopimika itamalizia{" "}
             <strong className="text-text">Juu</strong> (zaidi) au <strong className="text-text">Chini</strong> (pungufu)
             ikilinganishwa na rejea yake ya kufungua saa ya raundi inapoisha. Ni mchezo wa utabiri na msimamo — si
             kubashiri michezo wala si mchezo wa kasino.
@@ -295,8 +296,8 @@ export function upDownContent(r: RulesRates): Record<Locale, React.ReactNode> {
           </p>
           <p>
             <strong className="text-text">Dau lina mipaka:</strong> kiwango cha chini{" "}
-            <span className="font-mono tabular-nums text-text">{tzs(r.minStake)}</span>, cha juu{" "}
-            <span className="font-mono tabular-nums text-text">{tzs(r.maxStake)}</span>. Ushindi hukadiriwa hadi
+            <span className="font-mono tabular-nums text-text whitespace-nowrap">{tzs(r.minStake)}</span>, cha juu{" "}
+            <span className="font-mono tabular-nums text-text whitespace-nowrap">{tzs(r.maxStake)}</span>. Ushindi hukadiriwa hadi
             shilingi ya karibu.
           </p>
           <p>
@@ -310,8 +311,8 @@ export function upDownContent(r: RulesRates): Record<Locale, React.ReactNode> {
         <LegalSection n="4" title="Mfano wa hesabu">
           <p>
             Raundi yenye bwawa la Juu la{" "}
-            <span className="font-mono tabular-nums text-text">{tzs(EXAMPLE_WIN_POOL)}</span> na bwawa la Chini la{" "}
-            <span className="font-mono tabular-nums text-text">{tzs(EXAMPLE_LOSE_POOL)}</span>:
+            <span className="font-mono tabular-nums text-text whitespace-nowrap">{tzs(EXAMPLE_WIN_POOL)}</span> na bwawa la Chini la{" "}
+            <span className="font-mono tabular-nums text-text whitespace-nowrap">{tzs(EXAMPLE_LOSE_POOL)}</span>:
           </p>
           <RulesTable
             label="Mfano wa hesabu — Juu na Chini"
@@ -342,6 +343,7 @@ export function upDownContent(r: RulesRates): Record<Locale, React.ReactNode> {
           <p>Kila mojawapo ya haya husababisha marejesho kamili ya kila dau kwenye raundi husika:</p>
           <RulesTable
             label="Sababu za marejesho na kubatilisha"
+            prose
             head={["Sababu", "Utaratibu"]}
             rows={[
               ["Raundi ya upande mmoja", "Upande mmoja tu una dau wakati wa kufunga — hakuna bwawa, kila dau hurudishwa"],
@@ -404,16 +406,14 @@ export function upDownContent(r: RulesRates): Record<Locale, React.ReactNode> {
         <LegalSection n="9" title="Malalamiko, marekebisho na mchezo salama">
           <ul className="list-disc pl-5 space-y-1">
             <li>
-              <strong className="text-text">Madirisha mawili tofauti, si kitu kimoja.</strong>{" "}
-              <em>Dirisha la pingamizi</em> ni saa{" "}
-              <span className="font-mono tabular-nums text-text">{r.objectionHours}</span> baada ya utatuzi: ndani yake,
-              wakati malipo bado yamesitishwa, matokeo yanaweza kurekebishwa au raundi kubatilishwa. Raundi ikishatatuliwa
-              na pesa kuhama, hilo haliwezekani tena. Kando na hilo, unaweza <em>kuwasilisha malalamiko</em> kwa msaada
-              kuhusu raundi iliyotatuliwa; hukaguliwa dhidi ya ushahidi na mnyororo wa ukaguzi, na jibu hutolewa kwa maandishi.
+              <strong className="text-text">Hakuna dirisha la pingamizi.</strong>{" "}Raundi ya Juu na Chini hutatuliwa na
+              kulipwa mara tu matokeo yake yanaporekodiwa; hakuna muda ambao malipo husubirishwa. Bado unaweza{" "}
+              <em>kuwasilisha malalamiko</em> kwa msaada kuhusu raundi iliyotatuliwa; hukaguliwa dhidi ya ushahidi na
+              mnyororo wa ukaguzi, na jibu hutolewa kwa maandishi.
             </li>
             <li><strong className="text-text">Marekebisho.</strong> Mabadiliko makubwa hutangazwa kabla ya kuanza kutumika na hayarudi nyuma kwa raundi zilizokwisha fungwa.</li>
             <li>
-              <strong className="text-text">Mchezo salama.</strong>{" "}Juu &amp; Chini ni burudani, si chanzo cha mapato, na
+              <strong className="text-text">Mchezo salama.</strong>{" "}Juu na Chini ni burudani, si chanzo cha mapato, na
               raundi zake fupi hurahisisha kucheza muda mrefu kuliko ulivyokusudia. Vikomo vya amana, vikomo vya muda,
               mapumziko na kujitenga vipo kwenye wasifu wako; simu ya msaada ya kitaifa ipo chini ya kila ukurasa.
               Mchezo ukiacha kuwa wa kufurahisha, acha. Miaka 18+.
@@ -428,13 +428,13 @@ export function upDownContent(r: RulesRates): Record<Locale, React.ReactNode> {
       <>
         <LegalSection n="1" title="导言与适用范围">
           <p>
-            涨跌（Up &amp; Down）是一种短周期预测玩法：您预测某个可衡量的现实世界数值，在回合计时结束时相对其开盘参考值是{" "}
+            涨跌（Up &amp; Down）是一种短周期预测玩法：您预测某个可衡量的现实世界数值，在回合计时结束时相对其开盘参考值是
             <strong className="text-text">涨</strong>（更高）还是<strong className="text-text">跌</strong>（更低）。这是一种基于预测与判断的玩法，既非体育博彩，也非赌场产品。
           </p>
           <p>
             本服务由 50pick Ltd 运营，持有坦桑尼亚博彩委员会颁发的牌照，牌照号{" "}
             <span className="font-mono tabular-nums text-text">{LICENCE_NUMBER()}</span>。所有问题、标的、参考值与回合排期均由
-            50pick 管理层独家创建与管理。回合设有多种时长——{" "}
+            50pick 管理层独家创建与管理。回合设有多种时长——
             <span className="font-mono tabular-nums text-text">{durations}</span> 分钟——覆盖平台所列的各项标的。
           </p>
           <p>本规则可随时更新；以回合锁定时此处公布的版本为准，且变更绝不追溯适用于已锁定的回合。</p>
@@ -467,8 +467,8 @@ export function upDownContent(r: RulesRates): Record<Locale, React.ReactNode> {
           </p>
           <p>
             <strong className="text-text">下注设有上下限：</strong>最低{" "}
-            <span className="font-mono tabular-nums text-text">{tzs(r.minStake)}</span>，最高{" "}
-            <span className="font-mono tabular-nums text-text">{tzs(r.maxStake)}</span>。奖金四舍五入至最接近的先令。
+            <span className="font-mono tabular-nums text-text whitespace-nowrap">{tzs(r.minStake)}</span>，最高{" "}
+            <span className="font-mono tabular-nums text-text whitespace-nowrap">{tzs(r.maxStake)}</span>。奖金四舍五入至最接近的先令。
           </p>
           <p>
             回合结算并签核后，<strong className="text-text">奖金</strong>将计入您的钱包，通常在数秒内完成。从钱包提现收取{" "}
@@ -479,11 +479,11 @@ export function upDownContent(r: RulesRates): Record<Locale, React.ReactNode> {
 
         <LegalSection n="4" title="计算示例">
           <p>
-            某回合涨池为 <span className="font-mono tabular-nums text-text">{tzs(EXAMPLE_WIN_POOL)}</span>，跌池为{" "}
-            <span className="font-mono tabular-nums text-text">{tzs(EXAMPLE_LOSE_POOL)}</span>：
+            某回合涨池为 <span className="font-mono tabular-nums text-text whitespace-nowrap">{tzs(EXAMPLE_WIN_POOL)}</span>，跌池为{" "}
+            <span className="font-mono tabular-nums text-text whitespace-nowrap">{tzs(EXAMPLE_LOSE_POOL)}</span>：
           </p>
           <RulesTable
-            label="计算示例 —— 涨跌结算"
+            label="计算示例——涨跌结算"
             head={["结果", "失败方奖池", `佣金（${r.commissionPct}%）`, "获胜方分得"]}
             rows={[
               [`${d.zh.down}方获胜`, tzs(a.losingPool), tzs(a.fee), tzs(a.net)],
@@ -509,6 +509,7 @@ export function upDownContent(r: RulesRates): Record<Locale, React.ReactNode> {
           <p>以下情形均导致该回合全部下注全额退还：</p>
           <RulesTable
             label="退款与作废情形"
+            prose
             head={["情形", "处理方式"]}
             rows={[
               ["单边回合", "锁定时仅一方持有下注——不形成奖池，全部退还"],
@@ -560,10 +561,7 @@ export function upDownContent(r: RulesRates): Record<Locale, React.ReactNode> {
         <LegalSection n="9" title="争议、修订与理性游戏">
           <ul className="list-disc pl-5 space-y-1">
             <li>
-              <strong className="text-text">两个不同的窗口，并非同一回事。</strong>
-              <em>异议窗口</em>为结算后{" "}
-              <span className="font-mono tabular-nums text-text">{r.objectionHours}</span>{" "}
-              小时：在此期间且赔付仍处于暂缓时，结果仍可更正、回合仍可作废。一旦回合完成结算且资金已发放，即不再可能。另外，您可就已结算的回合向客服<em>提出争议</em>；我们将对照所记录的证据与审计链进行复核，并以书面形式告知结果。
+              <strong className="text-text">没有异议窗口。</strong>涨跌回合在结果记录后立即结算并发放赔付，不设暂缓期。您仍可就已结算的回合向客服<em>提出争议</em>；我们将对照所记录的证据与审计链进行复核，并以书面形式告知结果。
             </li>
             <li><strong className="text-text">修订。</strong>重大变更在生效前公告，且绝不追溯适用于已锁定的回合。</li>
             <li>

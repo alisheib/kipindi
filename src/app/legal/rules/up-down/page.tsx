@@ -15,7 +15,7 @@ export async function generateMetadata() {
 const EYEBROW: Record<Locale, string> = { en: "Game Rules", sw: "Kanuni za Michezo", zh: "游戏规则" };
 const TITLE: Record<Locale, string> = {
   en: "Up & Down Rules",
-  sw: "Kanuni za Juu & Chini",
+  sw: "Kanuni za Juu na Chini",
   zh: "涨跌规则",
 };
 const SUBTITLE: Record<Locale, string> = {
@@ -23,10 +23,17 @@ const SUBTITLE: Record<Locale, string> = {
   sw: "Juu au chini, saa inapoisha.",
   zh: "计时结束时，更高还是更低。",
 };
+/**
+ * ⛔ BUMPED 2026-09-14 (docs/COMPLIANCE-DECISIONS.md 2026-09-14, second). §9 told players an Up & Down round has an
+ * objection window of the YES/NO markets' configured hours "while the payout is still on hold". It has none:
+ * `closeRound` stamps `objectionsClosedAt` to now and settles in the same call (updown-service.ts, owner decision
+ * 2026-07-24). The binding English moved, so the date moved with it. Same version: the Swahili game name reads
+ * "Juu na Chini", as every screen says.
+ */
 const META: Record<Locale, string> = {
-  en: "Version 2026-09-10 · Effective on entering a round.",
-  sw: "Toleo 2026-09-10 · Zinaanza kutumika unapoingia raundi.",
-  zh: "版本 2026-09-10 · 自进入回合时生效。",
+  en: "Version 2026-09-14 · Effective on entering a round.",
+  sw: "Toleo 2026-09-14 · Zinaanza kutumika unapoingia raundi.",
+  zh: "版本 2026-09-14 · 自进入回合时生效。",
 };
 
 export default async function UpDownRulesPage() {

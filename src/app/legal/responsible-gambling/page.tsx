@@ -11,12 +11,17 @@ const EYEBROW: Record<Locale, string> = { en: "Legal", sw: "Kisheria", zh: "法�
 const TITLE: Record<Locale, string> = {
   en: "Responsible Gambling Policy",
   sw: "Sera ya Mchezo Salama",
-  zh: "责任博彩政策",
+  zh: "负责任博彩政策",
 };
+/**
+ * ⛔ DATED FROM 2026-09-14, like every other document under `/legal` — this was the one policy with no version at
+ * all, so a reader could not tell which revision bound them. Move the date in the same commit as any change to the
+ * binding English text (docs/COMPLIANCE-DECISIONS.md 2026-09-14, third).
+ */
 const META: Record<Locale, string> = {
-  en: "Aligned with the UK Gambling Commission LCCP and CEN Workshop Agreement 16221.",
-  sw: "Imeoanishwa na UK Gambling Commission LCCP na CEN Workshop Agreement 16221.",
-  zh: "符合 UK Gambling Commission LCCP 及 CEN Workshop Agreement 16221。",
+  en: "Version 2026-09-14 · Aligned with the UK Gambling Commission LCCP and CEN Workshop Agreement 16221.",
+  sw: "Toleo 2026-09-14 · Imeoanishwa na UK Gambling Commission LCCP na CEN Workshop Agreement 16221.",
+  zh: "版本 2026-09-14 · 符合 UK Gambling Commission LCCP 及 CEN Workshop Agreement 16221。",
 };
 
 /**
@@ -43,7 +48,7 @@ function content(): Record<Locale, React.ReactNode> { return {
 
       <LegalSection n="2" title="Tools we provide">
         <ul className="list-disc pl-5 space-y-1">
-          <li><strong className="text-text">Deposit limits</strong> — daily, weekly, monthly. Decreases take effect immediately. Increases to the daily limit are deferred 24 hours.</li>
+          <li><strong className="text-text">Deposit limits</strong> — daily, weekly, monthly. Decreases take effect immediately. Increases to any of them are deferred 24 hours.</li>
           <li><strong className="text-text">Loss limit</strong> — daily.</li>
           <li><strong className="text-text">Session time limit</strong> — automatic logout after the chosen duration.</li>
           <li><strong className="text-text">Reality check</strong> — a banner every 30 minutes (configurable 5–120 min) showing time on platform, net win/loss for the session, and a clear path to break or self-exclude.</li>
@@ -60,10 +65,12 @@ function content(): Record<Locale, React.ReactNode> { return {
 
       <LegalSection n="3" title="Markers of harm">
         <p>
-          We monitor for: rapid deposit escalation, chasing losses (multiple deposits within a losing
-          session), late-night extended play (00:00–06:00 EAT), declined card cycling, breaching
-          previous self-imposed limits, and unusual transaction patterns. Any single marker triggers
-          an in-app prompt; multiple markers trigger a contact from our Player Safety team within 24 hours.
+          Our systems look for three signs of harm in how an account is used: several deposits within
+          an hour, or a day&apos;s deposits far above the account&apos;s recent daily average; repeated
+          deposits made shortly after placing a bet; and repeated betting late at night (00:00–06:00
+          EAT). An account showing one of these signs is listed for our compliance team. The limits,
+          breaks and self-exclusion in section 2 are yours to use at any time, whether or not a sign has
+          been seen.
         </p>
       </LegalSection>
 
@@ -78,7 +85,7 @@ function content(): Record<Locale, React.ReactNode> { return {
 
       <LegalSection n="5" title="Get help">
         <ul className="list-disc pl-5 space-y-1">
-          <li><strong className="text-text">Tanzania</strong>: National Helpline <a href={`tel:${HELPLINE_TEL()}`} className="font-mono text-brand-300 underline-offset-2 hover:underline">{HELPLINE()}</a> (free)</li>
+          <li><strong className="text-text">Tanzania</strong>: National Helpline <a href={`tel:${HELPLINE_TEL()}`} className="whitespace-nowrap font-mono text-brand-300 underline-offset-2 hover:underline">{HELPLINE()}</a> (free)</li>
           <li><strong className="text-text">International</strong>: <a href="https://www.begambleaware.org" target="_blank" rel="noopener noreferrer" className="font-mono text-brand-300 underline-offset-2 hover:underline">begambleaware.org</a>, <a href="https://www.gamcare.org.uk" target="_blank" rel="noopener noreferrer" className="font-mono text-brand-300 underline-offset-2 hover:underline">gamcare.org.uk</a></li>
           <li><strong className="text-text">Email us</strong>: <a href={`mailto:${SUPPORT_EMAIL()}`} className="font-mono text-brand-300 underline-offset-2 hover:underline">{SUPPORT_EMAIL()}</a></li>
         </ul>
@@ -96,12 +103,12 @@ function content(): Record<Locale, React.ReactNode> { return {
 
       <LegalSection n="2" title="Zana tunazotoa">
         <ul className="list-disc pl-5 space-y-1">
-          <li><strong className="text-text">Mipaka ya kuweka fedha</strong> — ya kila siku, kila wiki, kila mwezi. Upunguzaji huanza kutumika mara moja. Ongezeko la mpaka wa kila siku huahirishwa kwa saa 24.</li>
+          <li><strong className="text-text">Mipaka ya kuweka fedha</strong> — ya kila siku, kila wiki, kila mwezi. Upunguzaji huanza kutumika mara moja. Ongezeko la mpaka wowote kati ya hii huahirishwa kwa saa&nbsp;24.</li>
           <li><strong className="text-text">Mpaka wa hasara</strong> — wa kila siku.</li>
           <li><strong className="text-text">Mpaka wa muda wa kipindi</strong> — kutoka nje kiotomatiki baada ya muda uliochaguliwa.</li>
-          <li><strong className="text-text">Ukaguzi wa uhalisia (reality check)</strong> — bango kila baada ya dakika 30 (linaweza kupangwa dakika 5–120) linaloonyesha muda kwenye jukwaa, faida/hasara halisi ya kipindi, na njia wazi ya kupumzika au kujizuia.</li>
-          <li><strong className="text-text">Chukua mapumziko</strong> (cooling-off): saa 1, saa 24, au wiki 1. Ni ya njia moja hadi muda utakapoisha.</li>
-          <li><strong className="text-text">Kujizuia mwenyewe</strong>: saa 24, wiki 1, mwezi 1, miezi 6, au ya kudumu. Ni ya njia moja; ya kudumu inahitaji ukaguzi ulioandikwa ili kufunguliwa upya.</li>
+          <li><strong className="text-text">Ukaguzi wa uhalisia (reality check)</strong> — bango kila baada ya dakika&nbsp;30 (linaweza kupangwa dakika&nbsp;5–120) linaloonyesha muda kwenye jukwaa, faida/hasara halisi ya kipindi, na njia wazi ya kupumzika au kujizuia.</li>
+          <li><strong className="text-text">Chukua mapumziko</strong> (cooling-off): saa&nbsp;1, saa&nbsp;24, au wiki&nbsp;1. Ni ya njia moja hadi muda utakapoisha.</li>
+          <li><strong className="text-text">Kujizuia mwenyewe</strong>: saa&nbsp;24, wiki&nbsp;1, mwezi&nbsp;1, miezi&nbsp;6, au ya kudumu. Ni ya njia moja; ya kudumu inahitaji ukaguzi ulioandikwa ili kufunguliwa upya.</li>
         </ul>
         <p>
           Vidhibiti vyote vinapatikana kutoka kwenye{" "}
@@ -113,10 +120,11 @@ function content(): Record<Locale, React.ReactNode> { return {
 
       <LegalSection n="3" title="Viashiria vya madhara">
         <p>
-          Tunafuatilia: kupanda kwa kasi kwa fedha zinazowekwa, kufukuzia hasara (kuweka fedha mara nyingi ndani ya kipindi
-          cha kupoteza), kucheza muda mrefu usiku wa manane (00:00–06:00 EAT), kujaribu kadi zilizokataliwa mara kwa mara,
-          kuvunja mipaka uliyojiwekea awali, na mwenendo usio wa kawaida wa miamala. Kiashiria chochote kimoja husababisha
-          ujumbe ndani ya programu; viashiria vingi husababisha mawasiliano kutoka timu yetu ya Usalama wa Mchezaji ndani ya saa 24.
+          Mifumo yetu hutafuta dalili tatu za madhara katika jinsi akaunti inavyotumika: kuweka fedha mara kadhaa ndani ya
+          saa moja, au fedha zilizowekwa kwa siku moja kuzidi sana wastani wa kila siku wa hivi karibuni wa akaunti; kuweka
+          fedha mara kwa mara muda mfupi baada ya kuweka dau; na kuweka dau mara kwa mara usiku wa manane (00:00–06:00 EAT).
+          Akaunti inayoonyesha mojawapo ya dalili hizi huorodheshwa kwa timu yetu ya uzingatiaji. Mipaka, mapumziko na
+          kujizuia vilivyo katika sehemu ya 2 ni vyako kutumia wakati wowote, iwe dalili imeonekana au la.
         </p>
       </LegalSection>
 
@@ -131,7 +139,7 @@ function content(): Record<Locale, React.ReactNode> { return {
 
       <LegalSection n="5" title="Pata msaada">
         <ul className="list-disc pl-5 space-y-1">
-          <li><strong className="text-text">Tanzania</strong>: Namba ya Msaada ya Taifa <a href={`tel:${HELPLINE_TEL()}`} className="font-mono text-brand-300 underline-offset-2 hover:underline">{HELPLINE()}</a> (bure)</li>
+          <li><strong className="text-text">Tanzania</strong>: Namba ya Msaada ya Taifa <a href={`tel:${HELPLINE_TEL()}`} className="whitespace-nowrap font-mono text-brand-300 underline-offset-2 hover:underline">{HELPLINE()}</a> (bure)</li>
           <li><strong className="text-text">Kimataifa</strong>: <a href="https://www.begambleaware.org" target="_blank" rel="noopener noreferrer" className="font-mono text-brand-300 underline-offset-2 hover:underline">begambleaware.org</a>, <a href="https://www.gamcare.org.uk" target="_blank" rel="noopener noreferrer" className="font-mono text-brand-300 underline-offset-2 hover:underline">gamcare.org.uk</a></li>
           <li><strong className="text-text">Tutumie barua pepe</strong>: <a href={`mailto:${SUPPORT_EMAIL()}`} className="font-mono text-brand-300 underline-offset-2 hover:underline">{SUPPORT_EMAIL()}</a></li>
         </ul>
@@ -148,31 +156,31 @@ function content(): Record<Locale, React.ReactNode> { return {
 
       <LegalSection n="2" title="我们提供的工具">
         <ul className="list-disc pl-5 space-y-1">
-          <li><strong className="text-text">存款限额</strong> — 每日、每周、每月。下调立即生效。每日限额的上调延迟 24 小时生效。</li>
-          <li><strong className="text-text">亏损限额</strong> — 每日。</li>
-          <li><strong className="text-text">会话时长限制</strong> — 达到所选时长后自动登出。</li>
-          <li><strong className="text-text">现实核查（reality check）</strong> — 每 30 分钟（可在 5–120 分钟之间设置）弹出横幅，显示在平台的停留时间、本会话的净盈亏，以及暂停或自我排除的清晰入口。</li>
+          <li><strong className="text-text">充值限额</strong>：每日、每周、每月。下调立即生效。任一限额的上调均延迟 24 小时生效。</li>
+          <li><strong className="text-text">亏损限额</strong>：每日。</li>
+          <li><strong className="text-text">会话时长限制</strong>：达到所选时长后自动登出。</li>
+          <li><strong className="text-text">现实核查（reality check）</strong>：每 30 分钟（可在 5–120 分钟之间设置）弹出横幅，显示在平台的停留时间、本会话的净盈亏，以及暂停或自我排除的清晰入口。</li>
           <li><strong className="text-text">暂停一下</strong>（冷静期）：1 小时、24 小时或 1 周。到期前不可撤销。</li>
           <li><strong className="text-text">自我排除</strong>：24 小时、1 周、1 个月、6 个月或永久。不可撤销；永久排除需经书面审查方可重新开通。</li>
         </ul>
         <p>
           所有控制项均可在您的{" "}
           <a href="/profile/responsible-gambling" className="text-gold-300 hover:text-gold-200 underline-offset-2 hover:underline">
-            责任博彩设置
+            负责任博彩设置
           </a>中访问。
         </p>
       </LegalSection>
 
       <LegalSection n="3" title="伤害的标志">
         <p>
-          我们监测：存款额快速攀升、追损（在亏损会话中多次存款）、深夜长时间游戏（00:00–06:00 EAT）、被拒卡片反复尝试、突破先前自设限额，以及异常交易模式。任一单项标志将触发应用内提示；多项标志将触发我们的玩家安全团队在 24 小时内主动联系。
+          我们的系统会留意账户使用中的三种伤害迹象：一小时内多次充值，或单日充值额远高于该账户近期的日均水平；下注后不久反复充值；以及在深夜（00:00–06:00 EAT）反复下注。出现其中任一迹象的账户，会列示给我们的合规团队。无论是否出现迹象，您随时都可以使用第 2 节中的限额、暂停和自我排除工具。
         </p>
       </LegalSection>
 
       <LegalSection n="4" title="运营方责任">
         <ul className="list-disc pl-5 space-y-1">
           <li>不向已自我排除的玩家，或处于脆弱群体细分中、年龄低于 25 岁的玩家进行营销</li>
-          <li>不提供与提高存款挂钩的奖金优惠</li>
+          <li>不提供与提高充值挂钩的奖金优惠</li>
           <li>不在深夜时段进行注册诱导</li>
           <li>在每个页面的页脚显示免费求助热线</li>
         </ul>
@@ -180,7 +188,7 @@ function content(): Record<Locale, React.ReactNode> { return {
 
       <LegalSection n="5" title="获取帮助">
         <ul className="list-disc pl-5 space-y-1">
-          <li><strong className="text-text">坦桑尼亚</strong>：全国求助热线 <a href={`tel:${HELPLINE_TEL()}`} className="font-mono text-brand-300 underline-offset-2 hover:underline">{HELPLINE()}</a>（免费）</li>
+          <li><strong className="text-text">坦桑尼亚</strong>：全国求助热线 <a href={`tel:${HELPLINE_TEL()}`} className="whitespace-nowrap font-mono text-brand-300 underline-offset-2 hover:underline">{HELPLINE()}</a>（免费）</li>
           <li><strong className="text-text">国际</strong>：<a href="https://www.begambleaware.org" target="_blank" rel="noopener noreferrer" className="font-mono text-brand-300 underline-offset-2 hover:underline">begambleaware.org</a>、<a href="https://www.gamcare.org.uk" target="_blank" rel="noopener noreferrer" className="font-mono text-brand-300 underline-offset-2 hover:underline">gamcare.org.uk</a></li>
           <li><strong className="text-text">发送邮件给我们</strong>：<a href={`mailto:${SUPPORT_EMAIL()}`} className="font-mono text-brand-300 underline-offset-2 hover:underline">{SUPPORT_EMAIL()}</a></li>
         </ul>

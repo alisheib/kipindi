@@ -45,6 +45,21 @@ const TITLE: Record<Locale, string> = {
  * §10 notice. §3 lost its two-officer clause and §5 now states the cap, in all three languages.
  * `WITHDRAWAL_AML_HOLD` is false in payments.ts and the cap is WITHDRAW_MAX_TZS in validators.ts — if that
  * cap ever moves, §5 moves with it. Do not restore the hold sentence.
+ *
+ * ⛔ BUMPED 2026-09-14 (audit of the identity-at-withdrawal release; player-favourable). §2 no longer says a duplicate
+ * account is closed and its balance forfeited — a refusal for an identity already used on another account goes to
+ * §3a, where an officer decides the balance. §3a no longer says no money can be paid into or out of a refused
+ * account: settlements, void refunds and cash-outs still credit a frozen wallet (market-service.ts) and an officer's
+ * return pays out of it, so it names what stops (deposits, bets, withdrawals) and says bets already placed still
+ * settle. Do not restore either sentence. Same version: the §7 link space (en, sw) and the Swahili §5/§6 settlement
+ * and resolution wording, translation only.
+ *
+ * ⛔ AMENDED 2026-09-14, SAME VERSION, before v2026-09-14 was deployed (COMPLIANCE-DECISIONS.md 2026-09-14,
+ * amendment). §9 no longer says match-fixing and fraud losses "are handled per the Match Integrity Annex (B)": no
+ * such annex has ever been published, so the clause pointed players at a text they could not read. Do not restore
+ * it unless the annex is published under /legal first. Translation and typography only: zh §4 永不被动 is now
+ * 分文不动 and YES/NO is now 是/否, zh §7 says 负责任博彩, zh §3/§3a/§4 lost stray spaces after their dashes, and
+ * the §5 cap stays on one line in every language.
  */
 // ⭐ The version is `TERMS_VERSION`, the SAME constant registration stamps on the account
 // (`src/lib/terms-version.ts`, `test:terms-binding`) — so what a player read and what was recorded
@@ -92,7 +107,7 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
         <ul className="list-disc pl-5 space-y-1">
           <li>Tanzanian resident holding a valid identity document — a National ID (NIDA), a passport, a driving licence or a voter&apos;s card</li>
           <li>Aged 18 or older at the time of registration</li>
-          <li>One account per natural person; duplicate accounts will be closed and balances forfeited per AML rules</li>
+          <li>One account per natural person; where we refuse an identity because it is already used on another account, section 3a applies</li>
           <li>You must keep your registered phone number, email, and address up to date</li>
         </ul>
       </LegalSection>
@@ -122,9 +137,10 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
         </p>
         <p>
           Where we refuse an account permanently — because the holder is under 18, because of a
-          sanctions concern, or because the identity is already used on another account — no money
-          can be paid into or out of the account from that moment, and the document stays linked to
-          it.
+          sanctions concern, or because the identity is already used on another account — no
+          deposits, bets or withdrawals can be made on the account from that moment, and the document
+          stays linked to it. Bets already placed still settle, and any payout or refund they produce
+          is credited to the account.
         </p>
         <p>
           We will then decide what happens to the balance case by case, and write to you with our
@@ -178,8 +194,8 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
 
       <LegalSection n="5" title="Settlement and payout">
         <p>
-          Payouts are credited to your wallet immediately on market settlement. Withdrawals are paid to the
-          mobile-money number registered on your account, up to TZS 5,000,000 per withdrawal.
+          Payouts are credited to your wallet immediately on market settlement (for a market, when its objection window closes). Withdrawals are paid to the
+          mobile-money number registered on your account, up to <span className="whitespace-nowrap">TZS 5,000,000</span> per withdrawal.
         </p>
         <p>
           <strong className="text-text">A withdrawal is charged a 1.5% fee, and nothing else. No tax is withheld
@@ -193,7 +209,8 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
         <p>
           Bets may be voided where the underlying event is abandoned, the wrong outcome is initially settled,
           or the result is corrected by the source authority within {objectionHours} hour
-          {objectionHours === 1 ? "" : "s"} of resolution, while the payout is still on hold. Disputes must be
+          {objectionHours === 1 ? "" : "s"}{" "}of resolution, while the payout is still on hold (markets only: an Up &amp; Down round
+          pays as soon as its result is recorded, with no hold — see the Up &amp; Down rules, §9). Disputes must be
           raised in writing to <a href={`mailto:${SUPPORT_EMAIL()}`} className="font-mono text-brand-300 underline-offset-2 hover:underline">{SUPPORT_EMAIL()}</a> within
           30 days of placement.
         </p>
@@ -201,8 +218,8 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
 
       <LegalSection n="7" title="Responsible gambling">
         <p>
-          You can set deposit limits, take a break, or self-exclude in
-          <a href="/profile/responsible-gambling" className="text-gold-300 hover:text-gold-200 underline-offset-2 hover:underline ml-1">Responsible Gambling</a>.
+          You can set deposit limits, take a break, or self-exclude in{" "}
+          <a href="/profile/responsible-gambling" className="text-gold-300 hover:text-gold-200 underline-offset-2 hover:underline">Responsible Gambling</a>.
           See the dedicated <a href="/legal/responsible-gambling" className="text-gold-300 hover:text-gold-200 underline-offset-2 hover:underline">Responsible Gambling Policy</a>.
         </p>
       </LegalSection>
@@ -218,7 +235,7 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
         <p>
           To the maximum extent permitted by law, our liability is limited to the balance held in your wallet
           at the time of any disputed event. We are not liable for losses arising from match fixing or third-party
-          fraud, which are handled per the Match Integrity Annex (B).
+          fraud.
         </p>
       </LegalSection>
 
@@ -245,7 +262,7 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
         <ul className="list-disc pl-5 space-y-1">
           <li>Mkazi wa Tanzania mwenye hati halali ya utambulisho — Kitambulisho cha Taifa (NIDA), pasipoti, leseni ya udereva au kadi ya mpiga kura</li>
           <li>Mwenye umri wa miaka 18 au zaidi wakati wa kusajili</li>
-          <li>Akaunti moja kwa kila mtu; akaunti za nakala zitafungwa na salio kupotea kwa mujibu wa kanuni za AML</li>
+          <li>Akaunti moja kwa kila mtu; tukikataa utambulisho kwa sababu tayari unatumika kwenye akaunti nyingine, kifungu cha 3a kinatumika</li>
           <li>Ni lazima usasishe namba yako ya simu, barua pepe, na anwani uliyosajili</li>
         </ul>
       </LegalSection>
@@ -277,8 +294,9 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
         <p>
           Tukikataa akaunti kabisa — kwa sababu mwenye akaunti yuko chini ya miaka 18, kwa sababu ya
           wasiwasi wa vikwazo, au kwa sababu utambulisho huo tayari unatumika kwenye akaunti nyingine
-          — hakuna pesa inayoweza kuingizwa wala kutolewa kwenye akaunti hiyo tangu wakati huo, na
-          nyaraka inabaki imeunganishwa nayo.
+          — tangu wakati huo kuweka fedha, kuweka dau na kutoa fedha kwenye akaunti hiyo kunazuiwa, na
+          nyaraka inabaki imeunganishwa nayo. Dau zilizokwisha kuwekwa bado hutatuliwa, na malipo au
+          marejesho yoyote yanayotokana nazo huingizwa kwenye akaunti hiyo.
         </p>
         <p>
           Kisha tutaamua kitakachofanyika kwa salio, kesi kwa kesi, na tutakuandikia uamuzi wetu
@@ -323,7 +341,7 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
         <p>
           Kuuza dau (cash-out) kunapatikana kwa muda mfupi baada ya kuweka dau: ndani ya dakika 5 za kwanza unaweza
           kuuza na kurudishiwa dau lako kamili bila malipo — <strong>ilimradi wakati ulipoweka dau, soko hilo lilikuwa
-          bado na angalau dakika 5 za muda wa kuweka dau</strong>. Katika raundi za Up &amp; Down za dakika 3 na dakika 5
+          bado na angalau dakika 5 za muda wa kuweka dau</strong>. Katika raundi za Juu na Chini za dakika 3 na dakika 5
           sharti hilo haliwezi kutimia kamwe, hivyo <strong>kuuza dau hakupatikani kabisa katika raundi hizo</strong>.
           Dau lililowekwa kwa bonasi haliwezi kuuzwa wakati wowote. Baada ya muda huo dau linafungwa na linaenda hadi
           malipo — haliwezi kuuzwa. Kama hakuna dau lililowekwa upande mwingine, hakuna zawadi ya kulipa na kila dau
@@ -333,8 +351,8 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
 
       <LegalSection n="5" title="Ufungaji na malipo">
         <p>
-          Malipo huingizwa kwenye pochi yako mara moja soko linapofungwa. Utoaji wa fedha hulipwa kwenye nambari ya
-          pesa ya simu iliyosajiliwa kwenye akaunti yako, hadi TZS 5,000,000 kwa kila utoaji.
+          Malipo huingizwa kwenye pochi yako mara moja soko linapolipwa (kwa soko, dirisha la pingamizi linapofungwa). Utoaji wa fedha hulipwa kwenye nambari ya
+          pesa ya simu iliyosajiliwa kwenye akaunti yako, hadi <span className="whitespace-nowrap">TZS 5,000,000</span> kwa kila utoaji.
         </p>
         <p>
           <strong className="text-text">Utoaji wa fedha hutozwa ada ya 1.5%, na si kitu kingine. Hakuna kodi inayokatwa
@@ -346,17 +364,18 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
 
       <LegalSection n="6" title="Kufuta dau na migogoro">
         <p>
-          Dau zinaweza kufutwa endapo tukio husika litaachwa, matokeo yasiyo sahihi yatakuwa yamefungwa awali, au matokeo
-          yatarekebishwa na mamlaka ya chanzo ndani ya saa {objectionHours} baada ya kufungwa, wakati malipo bado
-          yamesimamishwa. Migogoro ni lazima iwasilishwe kwa maandishi
+          Dau zinaweza kufutwa endapo tukio husika litaachwa, matokeo yasiyo sahihi yatakuwa yametatuliwa awali, au matokeo
+          yatarekebishwa na mamlaka ya chanzo ndani ya saa {objectionHours} baada ya utatuzi, wakati malipo bado
+          yamesimamishwa (masoko pekee: raundi ya Juu na Chini hulipwa mara tu matokeo yake yanaporekodiwa, bila
+          kusimamishwa — tazama Kanuni za Juu na Chini, §9). Migogoro ni lazima iwasilishwe kwa maandishi
           kwenda <a href={`mailto:${SUPPORT_EMAIL()}`} className="font-mono text-brand-300 underline-offset-2 hover:underline">{SUPPORT_EMAIL()}</a> ndani ya siku 30 tangu kuwekwa kwa dau.
         </p>
       </LegalSection>
 
       <LegalSection n="7" title="Mchezo salama wa kubahatisha">
         <p>
-          Unaweza kuweka mipaka ya kuweka fedha, kuchukua mapumziko, au kujizuia mwenyewe katika
-          <a href="/profile/responsible-gambling" className="text-gold-300 hover:text-gold-200 underline-offset-2 hover:underline ml-1">Mchezo Salama</a>.
+          Unaweza kuweka mipaka ya kuweka fedha, kuchukua mapumziko, au kujizuia mwenyewe katika{" "}
+          <a href="/profile/responsible-gambling" className="text-gold-300 hover:text-gold-200 underline-offset-2 hover:underline">Mchezo Salama</a>.
           Angalia <a href="/legal/responsible-gambling" className="text-gold-300 hover:text-gold-200 underline-offset-2 hover:underline">Sera ya Mchezo Salama</a> maalum.
         </p>
       </LegalSection>
@@ -372,7 +391,7 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
         <p>
           Kwa kiwango cha juu kinachoruhusiwa na sheria, dhima yetu inakomea kwenye salio lililopo kwenye pochi yako
           wakati wa tukio lolote lenye mgogoro. Hatuwajibiki kwa hasara zinazotokana na uchakachuaji wa mechi au udanganyifu
-          wa watu wengine, ambao hushughulikiwa kwa mujibu wa Match Integrity Annex (B).
+          wa watu wengine.
         </p>
       </LegalSection>
 
@@ -396,15 +415,14 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
         <ul className="list-disc pl-5 space-y-1">
           <li>持有有效身份证件的坦桑尼亚居民——国民身份证（NIDA）、护照、驾驶证或选民证</li>
           <li>注册时年满 18 周岁</li>
-          <li>每位自然人仅限一个账户；重复账户将被关闭，余额按 AML 规定予以没收</li>
+          <li>每位自然人仅限一个账户；若我们因某一身份已被其他账户使用而拒绝该身份，适用第 3a 条</li>
           <li>您必须及时更新所登记的电话号码、电子邮箱和地址</li>
         </ul>
       </LegalSection>
 
       <LegalSection n="3" title="身份验证（KYC）">
         <p>
-          首次提现之前，<strong>必须</strong>完成身份验证。您只需验证一次，可使用四种证件之一——
-          国民身份证（NIDA）号码、护照、驾驶证或选民证——并提交由我们的合规团队审核的照片证据。一份证件仅可用于一个账户。
+          首次提现之前，<strong>必须</strong>完成身份验证。您只需验证一次，可使用四种证件之一——国民身份证（NIDA）号码、护照、驾驶证或选民证——并提交由我们的合规团队审核的照片证据。一份证件仅可用于一个账户。
         </p>
         <p>
           已完成一次验证的账户，即使我们此后要求重新验证，仍保留提取其账户内资金的权利。
@@ -419,8 +437,7 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
           如果我们无法验证您的身份，我们不会从您的账户中汇出任何资金。我们会告知您原因。若原因属于您可以纠正的情况——照片不清晰、证件已过期或信息不符——您可以重新提交。
         </p>
         <p>
-          若我们永久拒绝某一账户——因为持有人未满 18 周岁、存在制裁疑虑，或该身份已被其他账户使用——
-          自那一刻起，该账户不得再转入或转出任何资金，且该证件仍与其绑定。
+          若我们永久拒绝某一账户——因为持有人未满 18 周岁、存在制裁疑虑，或该身份已被其他账户使用——自那一刻起，该账户不能再充值、投注或提现，且该证件仍与其绑定。已下的注单仍会照常结算，由此产生的任何派彩或退款均记入该账户。
         </p>
         <p>
           随后我们会逐案决定余额的处理方式，并以书面形式告知您决定及理由。决定可能是退还您转入的资金、退还全部余额、在您申诉期间暂扣余额，或不予退还。
@@ -432,11 +449,11 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
 
       <LegalSection n="4" title="价格竞争市场的运作方式">
         <p>
-          50pick 采用 <strong className="text-text">全资金池价格竞争（whole-pool Price Competition）</strong> 市场模型。所有注金——YES 与 NO——汇入同一资金池。我们扣除佣金后，剩余的净资金池按各正确注金在获胜方资金池中所占份额，按比例分配给获胜方。
+          50pick 采用<strong className="text-text">全资金池价格竞争（whole-pool Price Competition）</strong>市场模型。所有注金——“是”与“否”——汇入同一资金池。我们扣除佣金后，剩余的净资金池按各正确注金在获胜方资金池中所占份额，按比例分配给获胜方。
         </p>
         <p>
           <strong className="text-text">我们的佣金为失败一方的 13%。</strong>
-          获胜一方的本金全额退回，永不被动；我们的佣金仅从未发生结果一方的投注中扣取。因此
+          获胜一方的本金全额退回，分文不动；我们的佣金仅从未发生结果一方的投注中扣取。因此
           <strong className="text-text">获胜的投注绝不会拿到低于本金的金额</strong>。
         </p>
         <p>
@@ -451,13 +468,13 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
         </p>
         <p>
           下注后有一小段兑现（cash-out）窗口：前 5 分钟内您可全额取回本金且不收取任何费用——
-          <strong>前提是您下注时，该市场仍剩余至少 5 分钟的投注时间</strong>。在 Up &amp; Down 的 3 分钟与 5 分钟场次中，该条件永远无法满足，因此<strong>这些场次完全不提供兑现</strong>。以奖金资助的持仓在任何时候均不可卖出。此后持仓将被锁定并保留至结算 — 无法卖出。若无人投注对方，则没有奖金可供支付，所有注金将全额退还，不收取任何费用。
+          <strong>前提是您下注时，该市场仍剩余至少 5 分钟的投注时间</strong>。在涨跌的 3 分钟与 5 分钟回合中，该条件永远无法满足，因此<strong>这些回合完全不提供兑现</strong>。以奖金资助的持仓在任何时候均不可卖出。此后持仓将被锁定并保留至结算——无法卖出。若无人投注对方，则没有奖金可供支付，所有注金将全额退还，不收取任何费用。
         </p>
       </LegalSection>
 
       <LegalSection n="5" title="结算与派彩">
         <p>
-          市场结算后，派彩立即记入您的钱包。提现款项将支付至您账户注册的移动支付号码，每笔最高 TZS 5,000,000。
+          市场结算后（对市场而言，即异议窗口关闭时），派彩立即记入您的钱包。提现款项将支付至您账户注册的移动支付号码，每笔<span className="whitespace-nowrap">最高 TZS 5,000,000。</span>
         </p>
         <p>
           <strong className="text-text">提现收取 1.5% 手续费，除此之外别无其他。我们不会从您的资金中预扣任何税款。</strong>
@@ -467,16 +484,16 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
 
       <LegalSection n="6" title="作废与争议">
         <p>
-          在相关赛事被取消、最初结算了错误结果，或来源主管机构在结算后 {objectionHours} 小时内（赔付仍处于暂缓期间）更正结果的情况下，下注可被作废。争议须于下注后
+          在相关赛事被取消、最初结算了错误结果，或来源主管机构在结算后 {objectionHours} 小时内（赔付仍处于暂缓期间；仅适用于市场，涨跌回合在结果记录后立即赔付、不设暂缓——见涨跌规则第 9 条）更正结果的情况下，下注可被作废。争议须于下注后
           30 天内以书面形式提交至 <a href={`mailto:${SUPPORT_EMAIL()}`} className="font-mono text-brand-300 underline-offset-2 hover:underline">{SUPPORT_EMAIL()}</a>。
         </p>
       </LegalSection>
 
-      <LegalSection n="7" title="责任博彩">
+      <LegalSection n="7" title="负责任博彩">
         <p>
           您可以在
-          <a href="/profile/responsible-gambling" className="text-gold-300 hover:text-gold-200 underline-offset-2 hover:underline ml-1">责任博彩</a>
-          中设置存款限额、暂停游戏或自我排除。另请参阅专门的<a href="/legal/responsible-gambling" className="text-gold-300 hover:text-gold-200 underline-offset-2 hover:underline">责任博彩政策</a>。
+          <a href="/profile/responsible-gambling" className="text-gold-300 hover:text-gold-200 underline-offset-2 hover:underline">负责任博彩</a>
+          中设置充值限额、暂停游戏或自我排除。另请参阅专门的<a href="/legal/responsible-gambling" className="text-gold-300 hover:text-gold-200 underline-offset-2 hover:underline">负责任博彩政策</a>。
         </p>
       </LegalSection>
 
@@ -488,7 +505,7 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
 
       <LegalSection n="9" title="责任">
         <p>
-          在法律允许的最大范围内，我方责任以发生任何争议事件时您钱包中持有的余额为限。对于因操纵比赛或第三方欺诈造成的损失，我方不承担责任，此类情形按 Match Integrity Annex (B) 处理。
+          在法律允许的最大范围内，我方责任以发生任何争议事件时您钱包中持有的余额为限。对于因操纵比赛或第三方欺诈造成的损失，我方不承担责任。
         </p>
       </LegalSection>
 
