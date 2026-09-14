@@ -7,7 +7,7 @@
  *
  * ── ⭐ WHAT THIS FLEET HAS TO PROVE ──────────────────────────────────────────────────────────────────
  *
- * `test:kyc-copy-truth` holds three rules over two populations (the dictionary, and every file under
+ * `test:kyc-copy-truth` holds four rules over its populations (the dictionary, every file under
  * `src/app/legal/`). A copy guard is ALL negative assertions — "no string says X" — and a negative
  * assertion passes for free the day its population goes empty or its pattern goes blind. So each case
  * below plants one false sentence in REAL product copy, in a place the guard claims to read, and must be
@@ -18,7 +18,11 @@
  *   2. rule 2 — the 2026-09-05 sentence, verbatim, back in the BINDING English terms §3;
  *   3. rule 2 in the dictionary — the quiet first-deposit notice made to say identity opens the door;
  *   4. rule 3 — the Gaming Board given as the reason for identity, the attribution deleted twice before
- *      (withdraw `verifyFirstBody`, deleted 2026-08-20, and help `faq4a` — both tombstones are in i18n-dict.ts).
+ *      (withdraw `verifyFirstBody`, deleted 2026-08-20, and help `faq4a` — both tombstones are in i18n-dict.ts);
+ *   5–7. rule 4 (2026-09-14) — the retired withdrawal hold ("held for compliance review, up to 24 hours") back
+ *      in the wallet's pending hint, once per locale, each caught on `§6 dict · <locale> · rule 4`. The hint is
+ *      NOT one of rule 4's proven surfaces (`common.withdrawalUnderReview` / `common.amlReviewBody`), so these
+ *      also prove the surface allow-list excuses by key and never by wording.
  *
  * ⚠️ `to` STRINGS STAY VALID SOURCE. A syntax error in the dictionary would crash the suite on import,
  * and a crash prints no FAIL line — the harness would call that red on the wrong assertion.
@@ -71,5 +75,40 @@ export const MUTATIONS = [
     from: `We verify the identity of every account holder before their first withdrawal.`,
     to: `We verify the identity of every account holder before their first withdrawal, as the Gaming Board of Tanzania requires.`,
     check: `§2 ${AML} · en · rule 3`,
+  },
+  // ── rule 4 (2026-09-14) — the retired withdrawal hold, back in the one wallet line every player reads ──
+  {
+    name: "withdrawal-hold-restored-en",
+    why: "The owner ended the withdrawal hold on 2026-09-13 (WITHDRAWAL_AML_HOLD = false). The wallet's pending "
+       + "hint made to describe it again — a withdrawal held for compliance review for up to 24 hours. Rules 1-3 "
+       + "pass it (it names no identity); only rule 4 can see it. It lands in `common.pendingHoldHint` — a sibling of "
+       + "both surface keys in the same namespace — and surfaces excuse by exact key, so the allow-list must not "
+       + "excuse it either.",
+    file: DICT,
+    from: `pendingHoldHint: "Withdrawals on their way",`,
+    to: `pendingHoldHint: "Withdrawals on their way — amounts of TZS 1,000,000 or more are held for compliance review for up to 24 hours",`,
+    check: "§6 dict · en · rule 4",
+  },
+  {
+    name: "withdrawal-hold-restored-sw",
+    why: "The same claim in natural Swahili — a passive of kagua (\"is reviewed\") beside kutoa and \"hadi saa 24\". "
+       + "Swahili is where a claim like this survives an English-only review; the case proves the Swahili pattern, "
+       + "not the English one, is what catches it.",
+    file: DICT,
+    from: `pendingHoldHint: "Kutoa kunaendelea",`,
+    to: `pendingHoldHint: "Kutoa kunaendelea — kiasi cha TZS 1,000,000 au zaidi kinakaguliwa na timu ya uzingatiaji hadi saa 24 kabla ya kulipwa",`,
+    check: "§6 dict · sw · rule 4",
+  },
+  {
+    name: "withdrawal-hold-restored-zh",
+    why: "The same claim in Simplified Chinese — 合规团队审核 and 最长需要 24 小时 in the clause that names 提现. "
+       + "The live hint opens with 尚未 (\"not yet\"), a NEGATION inside the planted unit: a check that looked for a "
+       + "denial anywhere in the string would excuse the claim. Chinese has no word boundaries, so rule 4 reads a "
+       + "clause and a 10-character window before the claim, and this case proves that window does not reach it. "
+       + "(2026-09-14: the anchor followed the hint's rewording from 处理中的提现 to 尚未到账的提现.)",
+    file: DICT,
+    from: `pendingHoldHint: "尚未到账的提现",`,
+    to: `pendingHoldHint: "尚未到账的提现 — 100 万先令及以上的提现须经合规团队审核，最长需要 24 小时",`,
+    check: "§6 dict · zh · rule 4",
   },
 ];

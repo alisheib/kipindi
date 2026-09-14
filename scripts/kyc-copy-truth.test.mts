@@ -18,11 +18,28 @@
  * Identity is now asked before WITHDRAWAL and nothing else (docs/COMPLIANCE-DECISIONS.md, top 2026-09-13
  * entries; copy rule in docs/IDENTITY-POLICY.md). The sentence this file used to hold up as CORRECTED —
  * "Identity verification is required before you can deposit, place a bet or withdraw" — is now the false
- * one, and a denial rule cannot see it: it denies nothing. Three rules, each its own assertion:
+ * one, and a denial rule cannot see it: it denies nothing. Four rules, each its own assertion:
  *
  *   rule 1 · §1 · money moves WITHOUT identity      deny ∧ money ∧ identity in one unit      (2026-09-05)
  *   rule 2 · §3 · identity bound to the ENTRANCE    identity ∧ entrance ∧ requirement        (2026-09-13)
  *   rule 3 · §4 · the gaming regulator as its REASON identity ∧ Gaming Board / Act / GBT     (2026-09-13)
+ *   rule 4 · §6 · a NEW withdrawal held or reviewed withdrawal ∧ hold / review / 24h claim   (2026-09-14)
+ *
+ * ── ⛔ RULE 4, AND THE FOUR POPULATIONS IT ADDED (audit session 95, 2026-09-14) ────────────────────────
+ *
+ * The owner ended the withdrawal hold on 2026-09-13 (`WITHDRAWAL_AML_HOLD = false`, payments.ts): no withdrawal
+ * waits for an officer, whatever its size (docs/COMPLIANCE-DECISIONS.md, the third 2026-09-13 entry). The copy
+ * describing the hold did not end with it, and none of it lived only in the dictionary: the chat stub said
+ * "held for compliance review, up to 24 hours", the help answer and the rules pages said it in their own words.
+ * So rule 4 reads the dictionary and the legal pages like the others, AND every literal of email.ts outside the
+ * templates comms-registry.ts marks `audience: "officer"`, every literal of notification-service.ts outside the
+ * `notifyAdmin*` emitters (each proven to address officers), and every line of the live chat prompt
+ * (_actions/chat.ts) and of the offline answers (lib/chat/send-message.ts). Rules 1–3 do not read those four.
+ * ⛔ Its allow-list is by SURFACE, not by text — email withdrawalUnderReviewHtml, the notifyWithdraw AML_REVIEW
+ * branch, dictionary common.withdrawalUnderReview and common.amlReviewBody — and each entry is PROVEN, every run
+ * (P1–P4, §6), reachable only for a withdrawal already held (status AML_REVIEW) while the hold switch is off.
+ * A failed proof excuses nothing. Each rule-4 locale is shown planted sentences it must reject and true ones it
+ * must accept (§6), and `red:kyc-copy-truth` plants the claim in the dictionary once per locale.
  *
  * ── ⛔ THE POPULATION, AND WHAT THE LAST ONE MISSED ──────────────────────────────────────────────────
  *
@@ -71,12 +88,13 @@ const clip = (s: string, n = 90) => (s.length > n ? `${s.slice(0, n)}…` : s);
 
 type Loc = "en" | "sw" | "zh";
 const LOCALES: readonly Loc[] = ["en", "sw", "zh"];
-type Rule = 1 | 2 | 3;
-const RULES: readonly Rule[] = [1, 2, 3];
+type Rule = 1 | 2 | 3 | 4;
+const RULES: readonly Rule[] = [1, 2, 3, 4];
 const RULE_NAME: Record<Rule, string> = {
   1: "no unit claims money moves without identity",
   2: "no unit binds identity to the entrance",
   3: "no unit gives the gaming regulator as the reason for identity",
+  4: "no unit claims a new withdrawal is held or reviewed before it pays",
 };
 
 // ═══ §0 · THE THREE RULES ═══════════════════════════════════════════════════════════════════════════
@@ -180,12 +198,128 @@ const R3_BODY = /Gaming\s+(?:Board|Act|Control)|\bGBT\b|Bodi\s+ya\s+Michezo|Sher
 const R3_IDENTITY = /\b(?:[Ii]dentit(?:y|ies)|[Vv]erif\w*|KYC|IDs?|NIDA|[Uu]tambulisho|[KkVv]itambulisho|[Uu]thibitisho|(?:[Kk]u)?[Tt]hibitisha\w*)\b|身份|验证|认证|实名/;
 const rule3 = (t: string) => R3_BODY.test(t) && R3_IDENTITY.test(t);
 
-function hitsOf(loc: Loc, text: string): { rule: Rule; why: string }[] {
+/**
+ * RULE 4 — a NEW withdrawal held, reviewed by officers / compliance / AML, or up to 24 hours before it pays.
+ *
+ * 🔴 WHY (audit session 95, 2026-09-14). The owner switched the withdrawal hold off on 2026-09-13
+ * (`WITHDRAWAL_AML_HOLD = false`, payments.ts). The chat stub still said "held for compliance review, up to 24
+ * hours", the help answer and both rules documents said it in their own words, and rules 1–3 are blind to all of
+ * it: none of those sentences names identity.
+ *
+ * ⛔ THE UNIT IS A SENTENCE (en, sw) OR A CLAUSE (zh), AND IT NEEDS THREE THINGS:
+ *   · a SUBJECT — a withdrawal word, or the retired threshold amount (TZS 1,000,000) in a scope that does not
+ *     name a deposit or a bet: the email said "Amounts of TZS 1,000,000 or more are reviewed by our compliance
+ *     team" without the word withdrawal, and the source-of-funds rule for DEPOSITS of that size is true;
+ *   · a CLAIM — held for review, under / awaiting review or approval, reviewed or checked by compliance / AML /
+ *     officers, "compliance review", or up to 24 hours / within a day;
+ *   · and the claim is NOT excused. Two excuses, both measured, never a word list of true sentences:
+ *       ① NEGATED — a denial between the last stopper ("but", ";", "lakini", "但是"…) and the claim, within
+ *         80 characters (en, sw) or 10 characters (zh). "No officer reviews a withdrawal before it is sent" is
+ *         the TRUE sentence and must pass; "There is no fee, but large withdrawals are held for review" must not;
+ *       ② ABOUT IDENTITY — an identity word NEARER the claim than any subject. "our compliance team reviews it,
+ *         usually within a day" in help.faq4a is the identity review, which is true and stays; "even once identity
+ *         is verified, withdrawals of TZS 1,000,000 or more are held for two-officer review" (the retired /legal/aml
+ *         §1) has its subject nearer, and is caught.
+ * ⚠️ THE LIMITS THAT BUYS, stated: a claim in a sentence that names neither a withdrawal nor the threshold is not
+ * seen ("Compliance review takes up to 24h." as a notification body under a withdrawal title); a denial inside the
+ * window that negates something else excuses a real claim. Chinese is read by clause because 经过审核的业务合作伙伴
+ * ("vetted partners") and 可提现的现金 sit in one sentence of the agent page and mean nothing together.
+ */
+type R4Spec = {
+  scopes: (t: string) => string[];
+  subject: RegExp; amount: RegExp; notWithdrawal: RegExp;
+  claims: RegExp[]; deny: RegExp; stop: RegExp; identity: RegExp; window: number;
+};
+const R4_AMOUNT_DIGITS = String.raw`\b1[,.\s]?000[,.\s]?000\b(?![,.]?\d)`;
+const R4: Record<Loc, R4Spec> = {
+  en: {
+    scopes: sentencesOf,
+    subject: /\b(?:withdraw(?:s|n|al|als|ing)?|cash(?:ing)?[- ]?outs?)\b/gi,
+    amount: new RegExp(`${R4_AMOUNT_DIGITS}|\\b(?:1|one)\\s+million\\b`, "gi"),
+    notWithdrawal: /\b(?:deposit(?:s|ed|ing)?|add(?:s|ed|ing)?\s+money|top(?:s|ped|ping)?[- ]?ups?|stakes?|bets?)\b/i,
+    claims: [
+      /\b(?:held|on\s+hold|kept|paused|queued|parked)\b[^.;:!?]{0,40}?\b(?:review|compliance|AML|anti-money|officers?|approv|sign[- ]?off|check|24\s*(?:h|hrs?|hours?)\b)/gi,
+      /\b(?:under|pending|awaiting|await|for|needs?|requires?|subject\s+to)\s+(?:(?:an?|the|our|manual|compliance|AML|two-officer|second-officer|a\s+second|officers?(?:'s|’s)?)\s+)*(?:review|approval|sign[- ]?off)\b/gi,
+      /\b(?:review(?:s|ed|ing)?|check(?:s|ed|ing)?|approv(?:e|es|ed|ing)|vet(?:s|ted|ting)?|sign(?:s|ed)?[- ]off)\b[^.;:!?]{0,30}?\b(?:compliance|AML|anti-money|officers?)\b/gi,
+      /\b(?:compliance|AML|anti-money[- ]laundering|officers?(?:'s|’s)?)\s+(?:team\s+)?(?:reviews?|checks?|approv\w*|sign[- ]?off|hold)\b/gi,
+      /\b(?:up\s+to|within|takes?|taking|about|around|under|less\s+than)\s+(?:a\s+)?24\s*(?:h|hrs?|hours?)\b|\b24[- ]?(?:h|hours?)\s+(?:review|hold|delay|wait)\b|\b(?:up\s+to|within)\s+(?:a|one)\s+(?:working\s+|business\s+)?day\b/gi,
+    ],
+    deny: /\b(?:no|not|never|nothing|none|nobody|neither|nor|without|cannot)\b|n['’]t\b/i,
+    stop: /[;:]|\b(?:but|however|although|though|yet|except|unless|whereas|instead)\b/gi,
+    identity: /\b(?:identit(?:y|ies)|KYC|IDs?|NIDA|passports?|selfies?|documents?|licen[cs]es?|voter['’]s\s+cards?)\b/gi,
+    window: 80,
+  },
+  sw: {
+    scopes: sentencesOf,
+    subject: /\b(?:kutoa|kutolewa|kuitoa|utoaji|unazotoa|ulizotoa|zilizotolewa|inatolewa|zinazotolewa)\b/gi,
+    amount: new RegExp(`${R4_AMOUNT_DIGITS}|\\bmilioni\\s+(?:moja|1)\\b`, "gi"),
+    notWithdrawal: /\b(?:kuweka|amana|kuongeza\s+pesa|dau)\b/i,
+    claims: [
+      /\b\w*(?:kaguliwa|kaguzwa)\b/gi,
+      /\bukaguzi\b/gi,
+      /\b\w*(?:shikiliwa|zuiliwa)\b[^.;:!?]{0,40}?(?:kagu|uzingatiaji|ufuatiliaji|afisa|maafisa|AML|idhini|saa\s+24)/gi,
+      /\b(?:uzingatiaji|ufuatiliaji|afisa|maafisa|AML)\b[^.;:!?]{0,30}?\b\w*kagu\w*/gi,
+      /\b(?:idhini|kuidhinishwa|iidhinishwe)\b[^.;:!?]{0,30}?\b(?:afisa|maafisa|uzingatiaji)\b/gi,
+      /\b(?:hadi|ndani\s+ya|mpaka|takriban|kwa)\s+(?:saa|masaa)\s+(?:24|ishirini\s+na\s+nne)\b|\b(?:hadi|ndani\s+ya)\s+siku\s+(?:moja|1)\b/gi,
+    ],
+    // ⚠️ Negative verb prefixes are listed, not left to `ha…`: `hadi` ("up to") is the word the claim itself uses.
+    deny: /\b(?:hakuna|hamna|hapana|sio|siyo|si|bila|kamwe|wala|ha(?:ku|ja|ta|tu|wa|m|i|zi|u)[a-z]{2,})\b/i,
+    stop: /[;:]|\b(?:lakini|ila|isipokuwa|ingawa)\b/gi,
+    identity: /\b(?:utambulisho|kitambulisho|vitambulisho|nyaraka|hati|KYC|NIDA|pasipoti|selfie|leseni|kadi\s+ya\s+mpiga\s+kura)\b/gi,
+    window: 80,
+  },
+  zh: {
+    // Full-width punctuation and dashes only — an ASCII comma is inside "TZS 1,000,000".
+    scopes: (t) => t.split(/[，。；：！？\n]|——|—/).map((s) => s.trim()).filter(Boolean),
+    subject: /提现|提款|取款|出款/g,
+    amount: /100\s*万|一百万|\b1[,，]?000[,，]?000\b/g,
+    notWithdrawal: /充值|存款|入金|投注|下注/,
+    claims: [
+      /审核|审查|复核|人工核查|扣留|暂扣|待审|须经[^，。；：！？]{0,10}(?:批准|审批|同意|签字)/g,
+      /合规(?:团队|专员|部门|官员|人员)?(?:审|核|检|批)|反洗钱(?:审|核|检)/g,
+      /最长(?:需要?|可能需要)?\s*24\s*(?:个)?小时|24\s*(?:个)?小时(?:之)?内|一(?:个工作)?天(?:之)?内/g,
+    ],
+    deny: /不|无|没|未|非|勿|别|免/,
+    stop: /但是?|然而|不过|除非/g,
+    identity: /身份|证件|实名|KYC|NIDA|护照|自拍|驾驶证|选民证/g,
+    window: 10,
+  },
+};
+type Span = { s: number; e: number };
+const spansOf = (re: RegExp, t: string): Span[] => [...t.matchAll(re)].map((m) => ({ s: m.index ?? 0, e: (m.index ?? 0) + m[0].length }));
+/** Distance from the nearest span to [s, e) — 0 when they touch or overlap; Infinity when there is none. */
+const gapTo = (xs: readonly Span[], s: number, e: number) =>
+  xs.reduce((best, x) => Math.min(best, x.e <= s ? s - x.e : x.s >= e ? x.s - e : 0), Infinity);
+/** The offending scope with its claim marked, or null. */
+function rule4(loc: Loc, text: string): string | null {
+  const r = R4[loc];
+  for (const scope of r.scopes(text)) {
+    const subjects = spansOf(r.subject, scope);
+    if (!r.notWithdrawal.test(scope)) subjects.push(...spansOf(r.amount, scope));
+    if (subjects.length === 0) continue;
+    const ids = spansOf(r.identity, scope);
+    for (const re of r.claims) {
+      for (const m of scope.matchAll(re)) {
+        const s = m.index ?? 0, e = s + m[0].length;
+        let from = Math.max(0, s - r.window);
+        for (const st of scope.slice(0, s).matchAll(r.stop)) from = Math.max(from, (st.index ?? 0) + st[0].length);
+        if (r.deny.test(scope.slice(from, s))) continue;                          // ① negated
+        if (ids.length > 0 && gapTo(ids, s, e) < gapTo(subjects, s, e)) continue; // ② about identity
+        return `${scope.slice(0, s)}⟦${m[0]}⟧${scope.slice(e)}`;
+      }
+    }
+  }
+  return null;
+}
+
+function hitsOf(loc: Loc, text: string, rules: readonly Rule[] = RULES): { rule: Rule; why: string }[] {
   const out: { rule: Rule; why: string }[] = [];
-  if (rule1(loc, text)) out.push({ rule: 1, why: text });
-  const s = rule2(loc, text);
+  if (rules.includes(1) && rule1(loc, text)) out.push({ rule: 1, why: text });
+  const s = rules.includes(2) ? rule2(loc, text) : null;
   if (s) out.push({ rule: 2, why: s });
-  if (rule3(text)) out.push({ rule: 3, why: text });
+  if (rules.includes(3) && rule3(text)) out.push({ rule: 3, why: text });
+  const s4 = rules.includes(4) ? rule4(loc, text) : null;
+  if (s4) out.push({ rule: 4, why: s4 });
   return out;
 }
 
@@ -215,19 +349,183 @@ const used = new Set<Allow>();
 const shaOf = (t: string) => createHash("sha256").update(t).digest("hex").slice(0, 16);
 
 type Unit = { key: string; text: string };
-function scan(where: string, locs: readonly Loc[], units: readonly Unit[]): Record<Rule, string[]> {
-  const found: Record<Rule, string[]> = { 1: [], 2: [], 3: [] };
+function scan(where: string, locs: readonly Loc[], units: readonly Unit[], rules: readonly Rule[] = RULES): Record<Rule, string[]> {
+  const found: Record<Rule, string[]> = { 1: [], 2: [], 3: [], 4: [] };
   for (const u of units) {
     for (const loc of locs) {
-      for (const h of hitsOf(loc, u.text)) {
+      for (const h of hitsOf(loc, u.text, rules)) {
         const a = ALLOW.find((x) => x.where === where && x.rule === h.rule && x.sha === shaOf(u.text));
         if (a) { used.add(a); continue; }
+        // Rule 4's allow-list is by SURFACE and holds only while its proofs hold — see below.
+        const surface = h.rule === 4 ? surfaceFor(where, u.key) : null;
+        if (surface) { R4_EXCUSED.set(surface.id, (R4_EXCUSED.get(surface.id) ?? 0) + 1); continue; }
         const line = `${u.key}: "${clip(h.why, 160)}" [sha ${shaOf(u.text)}]`;
         if (!found[h.rule].includes(line)) found[h.rule].push(line);
       }
     }
   }
   return found;
+}
+
+// ── RULE 4's SURFACE ALLOW-LIST — by surface, never by wording, and PROVEN on every run ─────────────────────
+/**
+ * ⛔ Four surfaces still describe the retired hold, and each is TRUE where it can render: for a withdrawal put in
+ * AML_REVIEW before the owner switched the hold off (production held 0 at the time; the officer path that releases
+ * such a row stays). A surface is excused only while its proofs hold, read from source on this run:
+ *   P1 · payments.ts — `WITHDRAWAL_AML_HOLD = false`, and every `status: "AML_REVIEW"` it returns sits inside
+ *        `if (WITHDRAWAL_AML_HOLD && …)`: no NEW withdrawal is put in review;
+ *   P2 · wallet-service.ts — every `if (result.status === "AML_REVIEW")` reads a `result` from dispatchWithdrawal,
+ *        and across src/ every call of `withdrawalUnderReviewHtml(` and of `notifyWithdraw(… "AML_REVIEW" …)` sits
+ *        inside such a block;
+ *   P3 · notification-service.ts — notifyWithdraw has exactly ONE `if (opts.status === "AML_REVIEW")` branch, and
+ *        only literals inside that branch are the surface;
+ *   P4 · the dictionary keys `common.withdrawalUnderReview` / `common.amlReviewBody` are read by ONE file,
+ *        wallet-result-modal.tsx, and only behind `amlHeld = isWithdraw && status === "AML_REVIEW"`.
+ * A failed proof leaves its surface's hits standing as violations AND prints its own FAIL in §6.
+ */
+const readSrc = (rel: string) => decomment(readFileSync(join(ROOT, rel), "utf8"));
+function walkSrc(dir: string, out: string[] = []): string[] {
+  for (const f of readdirSync(dir).sort()) {
+    const p = join(dir, f);
+    if (statSync(p).isDirectory()) walkSrc(p, out);
+    else if (/\.tsx?$/.test(f)) out.push(p);
+  }
+  return out;
+}
+/** Index of the bracket closing the `{` or `(` at `open`, string and template literals skipped; -1 when unbalanced. */
+function closeOfBracket(src: string, open: number): number {
+  const want = src[open] === "{" ? "}" : src[open] === "(" ? ")" : "";
+  if (!want) return -1;
+  let depth = 0;
+  for (let i = open; i < src.length; i++) {
+    const c = src[i];
+    if (c === '"' || c === "'" || c === "`") { const j = endLiteral(src, i); if (j >= 0) { i = j; continue; } }
+    if (c === src[open]) depth++;
+    else if (c === want && --depth === 0) return i;
+  }
+  return -1;
+}
+/** The `{…}` body that opens after each match of `head`, as a span from the match to its closing brace. */
+function blocksAfter(src: string, head: RegExp): Span[] {
+  const out: Span[] = [];
+  for (const m of src.matchAll(head)) {
+    const at = m.index ?? 0;
+    const open = src.indexOf("{", at + m[0].length);
+    const close = open < 0 ? -1 : closeOfBracket(src, open);
+    if (close > 0) out.push({ s: at, e: close });
+  }
+  return out;
+}
+const insideAny = (i: number, blocks: readonly Span[]) => blocks.some((b) => i > b.s && i < b.e);
+type Proof = { ok: boolean; why: string };
+
+function provePayments(pay: string): Proof {
+  const off = /\bexport\s+const\s+WITHDRAWAL_AML_HOLD\s*=\s*false\s*;/.test(pay);
+  const guards = blocksAfter(pay, /\bif\s*\(\s*WITHDRAWAL_AML_HOLD\s*&&/g);
+  const returns = [...pay.matchAll(/\bstatus\s*:\s*["'`]AML_REVIEW["'`]\s*[,}]/g)].map((m) => m.index ?? 0);
+  const loose = returns.filter((i) => !insideAny(i, guards));
+  if (!off) return { ok: false, why: "WITHDRAWAL_AML_HOLD is not `false` — a new withdrawal can be held again" };
+  if (returns.length === 0) return { ok: false, why: "no `status: \"AML_REVIEW\"` return found — the proof is not reading the dispatcher" };
+  if (loose.length > 0) return { ok: false, why: `${loose.length} AML_REVIEW return(s) outside \`if (WITHDRAWAL_AML_HOLD && …)\`` };
+  return { ok: true, why: `switch false · ${returns.length} AML_REVIEW return(s), all behind it` };
+}
+
+type SrcFile = { rel: string; d: string };
+const isDefinition = (d: string, i: number) => /function\s+$/.test(d.slice(Math.max(0, i - 12), i));
+function proveTriggers(files: readonly SrcFile[]): Proof {
+  const ws = files.find((f) => f.rel === "src/lib/server/wallet-service.ts");
+  if (!ws) return { ok: false, why: "wallet-service.ts was not read" };
+  const held = blocksAfter(ws.d, /\bif\s*\(\s*result\.status\s*===\s*["'`]AML_REVIEW["'`]\s*\)/g);
+  if (held.length === 0) return { ok: false, why: "no `if (result.status === \"AML_REVIEW\")` block in wallet-service.ts" };
+  const unsourced = held.filter((b) => {
+    const decl = ws.d.lastIndexOf("const result =", b.s);
+    return decl < 0 || !/^const result =\s*await\s+dispatchWithdrawal\s*\(/.test(ws.d.slice(decl, decl + 80));
+  });
+  if (unsourced.length > 0) return { ok: false, why: `${unsourced.length} held block(s) whose result is not read from dispatchWithdrawal` };
+  const stray: string[] = [];
+  let emailCalls = 0, notifyCalls = 0;
+  for (const f of files) {
+    for (const m of f.d.matchAll(/\bwithdrawalUnderReviewHtml\s*\(/g)) {
+      const i = m.index ?? 0;
+      if (isDefinition(f.d, i)) continue;
+      emailCalls++;
+      if (f !== ws || !insideAny(i, held)) stray.push(`${f.rel}: withdrawalUnderReviewHtml( outside a held-withdrawal block`);
+    }
+    for (const m of f.d.matchAll(/\bnotifyWithdraw\s*\(/g)) {
+      const i = m.index ?? 0;
+      if (isDefinition(f.d, i)) continue;
+      const open = i + m[0].length - 1;
+      const close = closeOfBracket(f.d, open);
+      const args = close < 0 ? f.d.slice(open) : f.d.slice(open, close);
+      // A computed status (`status: t.status as "AML_REVIEW"`) may reach the held branch from anywhere — unprovable.
+      if (!/\bstatus\s*:\s*(["'`])[A-Z_]+\1/.test(args)) {
+        stray.push(`${f.rel}:${f.d.slice(0, i).split("\n").length}: notifyWithdraw( with a computed or missing status`);
+        continue;
+      }
+      if (!/AML_REVIEW/.test(args)) continue;
+      notifyCalls++;
+      if (f !== ws || !insideAny(i, held)) stray.push(`${f.rel}: notifyWithdraw(… "AML_REVIEW" …) outside a held-withdrawal block`);
+    }
+  }
+  if (emailCalls === 0 || notifyCalls === 0) return { ok: false, why: `found ${emailCalls} email and ${notifyCalls} notification call(s) — the proof is not reading the trigger` };
+  if (stray.length > 0) return { ok: false, why: stray.join(" | ") };
+  return { ok: true, why: `${held.length} held block(s) · ${emailCalls} email call(s) · ${notifyCalls} notification call(s), every one inside` };
+}
+
+function proveNotificationBranch(ns: string): Proof & { branch: Span | null } {
+  const start = ns.search(/\bexport\s+function\s+notifyWithdraw\s*\(/);
+  if (start < 0) return { ok: false, why: "notifyWithdraw not found", branch: null };
+  const next = ns.slice(start + 10).search(/\n(?:export\s|async\s|function\s)/);
+  const end = next < 0 ? ns.length : start + 10 + next;
+  const branches = blocksAfter(ns.slice(start, end), /\bif\s*\(\s*opts\.status\s*===\s*["'`]AML_REVIEW["'`]\s*\)/g)
+    .map((b) => ({ s: b.s + start, e: b.e + start }));
+  if (branches.length !== 1) return { ok: false, why: `${branches.length} AML_REVIEW branch(es) in notifyWithdraw — expected exactly 1`, branch: null };
+  return { ok: true, why: "one AML_REVIEW branch in notifyWithdraw", branch: branches[0] };
+}
+
+const MODAL = "src/app/wallet/wallet-result-modal.tsx";
+function proveDictKeys(files: readonly SrcFile[]): Proof {
+  const readers = files.filter((f) => f.rel !== "src/lib/i18n-dict.ts" && /\b(?:withdrawalUnderReview|amlReviewBody)\b/.test(f.d)).map((f) => f.rel);
+  const modal = files.find((f) => f.rel === MODAL);
+  if (!modal) return { ok: false, why: `${MODAL} was not read` };
+  if (readers.length !== 1 || readers[0] !== MODAL) return { ok: false, why: `the keys are read by: ${readers.join(", ") || "nobody"}` };
+  if (!/\bconst\s+amlHeld\s*=\s*isWithdraw\s*&&\s*status\s*===\s*["'`]AML_REVIEW["'`]/.test(modal.d)) {
+    return { ok: false, why: "`amlHeld` is no longer `isWithdraw && status === \"AML_REVIEW\"`" };
+  }
+  for (const key of ["withdrawalUnderReview", "amlReviewBody"]) {
+    const all = [...modal.d.matchAll(new RegExp(`\\b${key}\\b`, "g"))].length;
+    const guarded = [...modal.d.matchAll(new RegExp(`\\bamlHeld\\s*\\?\\s*t\\.common\\.${key}\\b`, "g"))].length;
+    if (all === 0 || all !== guarded) return { ok: false, why: `common.${key}: ${all} reference(s), ${guarded} behind \`amlHeld ?\`` };
+  }
+  return { ok: true, why: `read only by ${MODAL}, only behind amlHeld` };
+}
+
+/** Every src/ file that names a rule-4 surface — decommented once, shared by P2 and P4. */
+const R4_FILES: readonly SrcFile[] = walkSrc(join(ROOT, "src"))
+  .map((abs) => ({ rel: relative(ROOT, abs).split("\\").join("/"), raw: readFileSync(abs, "utf8") }))
+  .filter((f) => /withdrawalUnderReview|notifyWithdraw|amlReviewBody/.test(f.raw))
+  .map((f) => ({ rel: f.rel, d: decomment(f.raw) }));
+const NOTIFY_SRC = readSrc("src/lib/server/notification-service.ts");
+const P1 = provePayments(readSrc("src/lib/server/payments.ts"));
+const P2 = proveTriggers(R4_FILES);
+const P3 = proveNotificationBranch(NOTIFY_SRC);
+const P4 = proveDictKeys(R4_FILES);
+
+type R4Surface = { id: string; why: string; where: (w: string) => boolean; key: (k: string) => boolean; proven: boolean; proofs: string };
+const R4_SURFACES: readonly R4Surface[] = [
+  { id: "dictionary common.withdrawalUnderReview", why: "the wallet result modal's title for a withdrawal already in AML_REVIEW",
+    where: (w) => w.startsWith("dict · "), key: (k) => k === "common.withdrawalUnderReview", proven: P1.ok && P2.ok && P4.ok, proofs: "P1 P2 P4" },
+  { id: "dictionary common.amlReviewBody", why: "the same modal's body, same gate",
+    where: (w) => w.startsWith("dict · "), key: (k) => k === "common.amlReviewBody", proven: P1.ok && P2.ok && P4.ok, proofs: "P1 P2 P4" },
+  { id: "email withdrawalUnderReviewHtml", why: "the email sent only from the held-withdrawal block",
+    where: (w) => w === "email.ts", key: (k) => k.startsWith("withdrawalUnderReviewHtml@"), proven: P1.ok && P2.ok, proofs: "P1 P2" },
+  { id: "notifyWithdraw AML_REVIEW branch", why: "the bell entry sent only from the held-withdrawal block",
+    where: (w) => w === "notification-service.ts", key: (k) => k.startsWith("notifyWithdraw#AML_REVIEW@"), proven: P1.ok && P2.ok && P3.ok, proofs: "P1 P2 P3" },
+];
+const R4_SURFACE_SIZE = 4;
+const R4_EXCUSED = new Map<string, number>();
+function surfaceFor(where: string, key: string, list: readonly R4Surface[] = R4_SURFACES): R4Surface | null {
+  return list.find((s) => s.proven && s.where(where) && s.key(key)) ?? null;
 }
 
 // ═══ §1 · RULE 1 — money moves without identity, and THE DICTIONARY ═════════════════════════════════════
@@ -652,6 +950,225 @@ ok(`§5 the allow-set holds exactly ${ALLOW_SIZE} entr${ALLOW_SIZE === 1 ? "y" :
 for (const a of ALLOW) {
   ok(`§5 allow · ${a.where} · rule ${a.rule} · still matches a live unit — ${a.why}`, used.has(a),
     used.has(a) ? "" : `"${a.excerpt}" matched nothing — the string changed or went; delete the allowance`);
+}
+
+// ═══ §6 · RULE 4 — a NEW withdrawal held, reviewed, or 24 hours before it pays ═════════════════════════
+//
+// ⭐ 2026-09-14 (audit session 95). The dictionary was read in §1 and is asserted here; the legal pages are asserted
+// in §2 under rule 4, file × locale; and four populations rules 1–3 never read are built and asserted below.
+console.log("\n§6 · rule 4 — a new withdrawal held or reviewed before it pays");
+
+/** Line number of an offset, by binary search over line starts. */
+function lineIndex(src: string): (i: number) => number {
+  const starts = [0];
+  for (let i = 0; i < src.length; i++) if (src[i] === "\n") starts.push(i + 1);
+  return (i) => { let lo = 0, hi = starts.length - 1; while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (starts[mid] <= i) lo = mid; else hi = mid - 1; } return lo + 1; };
+}
+type Decl = { name: string | null; start: number; end: number };
+/** Top-level declarations of decommented source — each starts at column 0 in this codebase. */
+function declsIn(d: string): Decl[] {
+  const starts = [0];
+  for (const m of d.matchAll(/\n(?=[A-Za-z_$@])/g)) starts.push((m.index ?? 0) + 1);
+  return starts.map((s, i) => {
+    const end = i + 1 < starts.length ? starts[i + 1] : d.length;
+    const head = d.slice(s, Math.min(end, s + 300));
+    const m = head.match(/^(?:export\s+)?(?:default\s+)?(?:async\s+)?function\s*\*?\s*([\w$]+)/) ?? head.match(/^(?:export\s+)?(?:const|let|var)\s+([\w$]+)/);
+    return { name: m ? m[1] : null, start: s, end };
+  });
+}
+const declAt = (decls: readonly Decl[], i: number) => decls.find((x) => i >= x.start && i < x.end)?.name ?? null;
+/**
+ * Every string and template literal in decommented source, with its offset. A template's static text is ONE literal
+ * (each `${…}` read as a space) and the literals INSIDE its interpolations are read on their own — an email template
+ * is one template literal whose copy sits in `${subtitle("…")}`, which a flat literal regex deletes with the `${}`.
+ */
+function literalsIn(src: string, base = 0, out: { text: string; at: number }[] = []): { text: string; at: number }[] {
+  for (let i = 0; i < src.length; i++) {
+    const c = src[i];
+    if (c !== '"' && c !== "'" && c !== "`") continue;
+    const j = endLiteral(src, i);
+    if (j < 0) continue;
+    if (c !== "`") { out.push({ text: unquote(src.slice(i, j + 1)), at: base + i }); i = j; continue; }
+    let stat = "";
+    for (let k = i + 1; k < j; k++) {
+      if (src[k] === "\\") { stat += src.slice(k, k + 2); k++; continue; }
+      if (src[k] === "$" && src[k + 1] === "{") {
+        const close = closeOfBracket(src, k + 1);
+        if (close < 0 || close >= j) { stat += src.slice(k, j); break; }
+        literalsIn(src.slice(k + 2, close), base + k + 2, out);
+        stat += " ";
+        k = close;
+        continue;
+      }
+      stat += src[k];
+    }
+    out.push({ text: unquote(`\`${stat}\``), at: base + i });
+    i = j;
+  }
+  return out;
+}
+const proseOf = (t: string) => decodeEntities(t.replace(/<[^>]*>/g, " ")).replace(/\s+/g, " ").trim();
+const hasLetters = (t: string) => /\p{L}/u.test(t);
+
+// ── §6.0 · the proofs behind the surface allow-list, and the same proofs failing on planted source ──────────────
+ok("§6 proof P1 · payments.ts · no NEW withdrawal is put in AML_REVIEW", P1.ok, P1.why);
+ok("§6 proof P2 · the held-withdrawal email and bell entry are sent only from wallet-service's held block", P2.ok, P2.why);
+ok("§6 proof P3 · notifyWithdraw has exactly one AML_REVIEW branch", P3.ok, P3.why);
+ok("§6 proof P4 · common.withdrawalUnderReview / common.amlReviewBody render only for a withdrawal in AML_REVIEW", P4.ok, P4.why);
+ok("§6 proof · the src/ files naming a surface were read", R4_FILES.length >= 5, `${R4_FILES.length}: ${R4_FILES.map((f) => f.rel).join(", ")}`);
+{
+  const pay = readSrc("src/lib/server/payments.ts");
+  ok("§6 proof control · P1 FAILS with the hold switched back on", P1.ok && !provePayments(pay.replace(/(WITHDRAWAL_AML_HOLD\s*=\s*)false/, "$1true")).ok);
+  ok("§6 proof control · P1 FAILS with an AML_REVIEW return outside the switch",
+    P1.ok && !provePayments(`${pay}\nexport function plantedHold() {\n  return { ok: true, status: "AML_REVIEW", correlationId: "x" };\n}\n`).ok);
+  const strayNotify: SrcFile = { rel: "src/lib/server/planted.ts", d: `export async function planted(userId: string) {\n  notifyWithdraw(userId, { status: "AML_REVIEW", amount: 1, provider: "M-Pesa" });\n}\n` };
+  ok("§6 proof control · P2 FAILS when another file sends the held-withdrawal bell entry", P2.ok && !proveTriggers([...R4_FILES, strayNotify]).ok);
+  const computedNotify: SrcFile = { rel: "src/lib/server/planted.ts", d: `export async function planted(u: string, s: "AML_REVIEW" | "FAILED") {\n  notifyWithdraw(u, { status: s, amount: 1, provider: "x" });\n}\n` };
+  ok("§6 proof control · P2 FAILS when a notifyWithdraw call passes a computed status", P2.ok && !proveTriggers([...R4_FILES, computedNotify]).ok);
+  const strayMail = R4_FILES.map((f) => (f.rel === "src/lib/server/wallet-service.ts"
+    ? { rel: f.rel, d: `${f.d}\nexport function plantedMail(amount: number) {\n  return withdrawalUnderReviewHtml({ amount, reference: "x" });\n}\n` } : f));
+  ok("§6 proof control · P2 FAILS when the held-withdrawal email is sent outside the held block", P2.ok && !proveTriggers(strayMail).ok);
+  ok("§6 proof control · P3 FAILS when notifyWithdraw grows a second AML_REVIEW branch",
+    P3.ok && !proveNotificationBranch(NOTIFY_SRC.replace(/if\s*\(\s*opts\.status\s*===\s*"AML_REVIEW"\s*\)\s*\{/, (m) => `if (opts.status === "AML_REVIEW") { return null; }\n  ${m}`)).ok);
+  const otherStatus = R4_FILES.map((f) => (f.rel === MODAL ? { rel: f.rel, d: f.d.replace(/status\s*===\s*"AML_REVIEW"/, 'status === "PROCESSING"') } : f));
+  ok("§6 proof control · P4 FAILS when the modal shows the held copy for another status", P4.ok && !proveDictKeys(otherStatus).ok);
+  ok("§6 proof control · P4 FAILS when a second file reads the held copy",
+    P4.ok && !proveDictKeys([...R4_FILES, { rel: "src/app/wallet/page.tsx", d: "const x = t.common.amlReviewBody;" }]).ok);
+  ok(`§6 the surface allow-list holds exactly ${R4_SURFACE_SIZE} surfaces`, R4_SURFACES.length === R4_SURFACE_SIZE,
+    `${R4_SURFACES.length} — a surface is added with its proof and this number in the same edit, never alone`);
+  ok("§6 control · an UNPROVEN surface excuses nothing",
+    surfaceFor("dict · en", "common.withdrawalUnderReview", R4_SURFACES.map((s) => ({ ...s, proven: false }))) === null);
+  ok("§6 control · a surface excuses by exact key, never by wording",
+    surfaceFor("dict · en", "common.pendingHoldHint") === null && surfaceFor("dict · en", "common.withdrawalUnderReviewX") === null
+    && surfaceFor("email.ts", "withdrawalSentHtml@980") === null && surfaceFor("notification-service.ts", "notifyWithdraw@810") === null);
+}
+
+// ── §6.1 · the dictionary (read in §1) ─────────────────────────────────────────────────────────────────────────
+for (const loc of LOCALES) {
+  ok(`§6 dict · ${loc} · rule 4 — ${RULE_NAME[4]}`, dictFound[loc][4].length === 0, dictFound[loc][4].join(" | "));
+}
+console.log("     the legal pages are read under rule 4 in §2, file by file and locale by locale");
+
+// ── §6.2 · the four populations rules 1–3 do not read ──────────────────────────────────────────────────────────
+{
+  // email.ts — every literal outside the templates the registry marks as officer mail.
+  const registry = readSrc("src/lib/server/comms-registry.ts");
+  const audienceOf = new Map([...registry.matchAll(/template:\s*"(\w+)"[^}\n]*?audience:\s*"(player|officer)"/g)].map((m) => [m[1], m[2]] as const));
+  const officerTemplates = [...audienceOf].filter(([, a]) => a === "officer").map(([t]) => t);
+  const emailSrc = readSrc("src/lib/server/email.ts");
+  const emailDecls = declsIn(emailSrc);
+  const emailLine = lineIndex(emailSrc);
+  ok("§6 email.ts · the officer templates excepted are named by the registry, and each is a real template",
+    officerTemplates.length >= 5 && officerTemplates.every((t) => emailDecls.some((x) => x.name === t)), officerTemplates.join(", "));
+  ok("§6 email.ts · withdrawalUnderReviewHtml is registered as PLAYER mail — read, and excused only by proof",
+    audienceOf.get("withdrawalUnderReviewHtml") === "player");
+  const emailUnits: Unit[] = [];
+  for (const l of literalsIn(emailSrc)) {
+    const fn = declAt(emailDecls, l.at);
+    if (fn && officerTemplates.includes(fn)) continue;
+    const text = proseOf(l.text);
+    if (hasLetters(text)) emailUnits.push({ key: `${fn ?? "top"}@${emailLine(l.at)}`, text });
+  }
+
+  // notification-service.ts — every literal outside the notifyAdmin* emitters, each proven to address officers.
+  const OFFICER_EMITTER = /^notifyAdmins?[A-Z]\w*$/;
+  const notifyDecls = declsIn(NOTIFY_SRC);
+  const notifyLine = lineIndex(NOTIFY_SRC);
+  const officerEmitters = notifyDecls.filter((x) => x.name && OFFICER_EMITTER.test(x.name));
+  const notProven = officerEmitters.filter((x) => !/\badminUserId\b|\blistByRoles\s*\(/.test(NOTIFY_SRC.slice(x.start, x.end))).map((x) => x.name);
+  ok("§6 notification-service.ts · every officer emitter excepted provably addresses officers (adminUserId or listByRoles)",
+    officerEmitters.length >= 5 && notProven.length === 0, `${officerEmitters.length} excepted${notProven.length ? ` · NOT proven: ${notProven.join(", ")}` : ""}`);
+  const notifyUnits: Unit[] = [];
+  for (const l of literalsIn(NOTIFY_SRC)) {
+    const fn = declAt(notifyDecls, l.at);
+    if (fn && OFFICER_EMITTER.test(fn)) continue;
+    const text = proseOf(l.text);
+    if (!hasLetters(text)) continue;
+    const branch = fn === "notifyWithdraw" && P3.branch && insideAny(l.at, [P3.branch]) ? "#AML_REVIEW" : "";
+    notifyUnits.push({ key: `${fn ?? "top"}${branch}@${notifyLine(l.at)}`, text });
+  }
+
+  // The chat assistant — one unit per LINE: the live prompt is one template literal of bullet lines.
+  const linesOf = (rel: string): Unit[] => {
+    const d = readSrc(rel);
+    const line = lineIndex(d);
+    const name = rel.split("/").pop();
+    const units: Unit[] = [];
+    for (const l of literalsIn(d)) {
+      l.text.split("\n").forEach((part, k) => {
+        const text = part.replace(/\s+/g, " ").trim();
+        if (hasLetters(text)) units.push({ key: `${name}@${line(l.at) + k}`, text });
+      });
+    }
+    return units;
+  };
+
+  // ⛔ FLOORS measured 2026-09-14 from source lines (410 title/body props · 450 email helper literals · a 42-line prompt ·
+  // 41 answer lines), set below them so a copy edit does not trip them and far above zero so a blind reader cannot pass.
+  const populations: { where: string; units: Unit[]; floor: number; must: string; has: (u: Unit) => boolean }[] = [
+    { where: "email.ts", units: emailUnits, floor: 300, must: "the held-withdrawal template is in the population", has: (u) => u.key.startsWith("withdrawalUnderReviewHtml@") },
+    { where: "notification-service.ts", units: notifyUnits, floor: 300, must: "notifyWithdraw's AML_REVIEW branch is in the population", has: (u) => u.key.startsWith("notifyWithdraw#AML_REVIEW@") },
+    { where: "_actions/chat.ts", units: linesOf("src/app/_actions/chat.ts"), floor: 35, must: "the live prompt's withdrawal line is in the population", has: (u) => u.text.includes("No officer reviews a withdrawal before it is sent") },
+    { where: "chat/send-message.ts", units: linesOf("src/lib/chat/send-message.ts"), floor: 25, must: "the offline answer's withdrawal line is in the population", has: (u) => u.text.includes("no withdrawal waits for an officer's review") },
+  ];
+  for (const p of populations) {
+    console.log(`     ${p.where} · ${p.units.length} unit(s)`);
+    ok(`§6 ${p.where} · the population is read`, p.units.length >= p.floor, `${p.units.length} units (floor ${p.floor})`);
+    ok(`§6 ${p.where} · ${p.must}`, p.units.some(p.has));
+    const found = scan(p.where, LOCALES, p.units, [4]);
+    ok(`§6 ${p.where} · rule 4 — ${RULE_NAME[4]}`, found[4].length === 0, found[4].join(" | "));
+  }
+}
+
+// ── §6.3 · every surface is proven AND still matches live copy — an allowance outliving its copy is a hole ───────
+for (const s of R4_SURFACES) {
+  const n = R4_EXCUSED.get(s.id) ?? 0;
+  ok(`§6 surface · ${s.id} · proven (${s.proofs}) and still excusing live copy — ${s.why}`, s.proven && n > 0,
+    !s.proven ? "a proof failed, so its copy is reported above as a violation" : n > 0 ? `${n} excused hit(s)` : "matched nothing — the copy changed or went; delete the surface");
+}
+
+// ── §6.4 · CONTROLS — each locale rejects the planted claim and accepts the true sentences, in the same run ──────
+{
+  const rejected: [Loc, string][] = [
+    ["en", "Withdrawals of TZS 1,000,000 or more are held for review by two compliance officers."],
+    // ⭐ identity NEARBY does not excuse it: the retired /legal/aml §1, verbatim.
+    ["en", "Even once identity is verified, withdrawals of TZS 1,000,000 or more are held for two-officer review."],
+    // ⭐ no withdrawal word — the threshold is the subject (the email's own sentence).
+    ["en", "Amounts of TZS 1,000,000 or more are reviewed by our compliance team."],
+    // ⭐ a denial before the stopper does not reach the claim.
+    ["en", "There is no fee, but a large withdrawal can take up to 24 hours."],
+    ["sw", "Kiasi cha TZS 1,000,000 au zaidi kinakaguliwa na timu yetu ya uzingatiaji hadi saa 24."],
+    ["sw", "Kutoa pesa kwa kiasi kikubwa kunashikiliwa kwa ukaguzi wa maafisa wawili."],
+    ["zh", "100 万先令及以上的提现须经两名合规专员审核，最长需要 24 小时。"],
+    ["zh", "大额提现会被暂扣，由合规团队人工审核。"],
+  ];
+  for (const [loc, t] of rejected) ok(`§6 control.${loc} · rule 4 REJECTS "${clip(t, 48)}"`, rule4(loc, t) !== null);
+
+  const accepted: [Loc, string][] = [
+    // The live chat prompt's line, verbatim — the claim appears only under "No" and "never".
+    ["en", "No officer reviews a withdrawal before it is sent, whatever its size — never tell a player that a large withdrawal is held, reviewed by compliance officers, or slower than a small one."],
+    ["en", "You verify your identity once, before your first withdrawal. After that, no withdrawal waits for an officer's review, whatever its size."],
+    // help.faq4a, verbatim — the compliance review and "within a day" are the IDENTITY review.
+    ["en", "We verify your identity once, before your first withdrawal, with any one of four documents — National ID (NIDA), passport, driving licence or voter’s card — and our compliance team reviews it, usually within a day; one document can only be used on one account."],
+    // The threshold in a DEPOSIT sentence is the source-of-funds rule, which is true.
+    ["en", "Deposits of TZS 1,000,000 or more need a source-of-funds declaration first."],
+    ["en", "Winnings are paid after the 24-hour objection window closes, and you can withdraw them at once."],
+    ["sw", "Thibitisha utambulisho wako — ukaguzi ule ule unaofanywa kabla ya kutoa pesa kwa mara ya kwanza."],
+    ["sw", "Hakuna afisa anayekagua utoaji kabla haujatumwa, hata kiwe kikubwa kiasi gani."],
+    ["zh", "验证您的身份——与首次提现前的身份审核相同。"],
+    ["zh", "无论金额大小，提现在发出前都不会经过人工审核。"],
+    // The agent page, verbatim — 审核 and 提现 in one sentence, in different clauses.
+    ["zh", "50pick 认证代理是经过审核的业务合作伙伴，负责推荐新玩家，并从 50pick 在其投注中保留的净手续费中获得佣金——以可提现的现金支付，只要他们持续投注。"],
+  ];
+  for (const [loc, t] of accepted) {
+    const hit = rule4(loc, t);
+    ok(`§6 control.${loc} · rule 4 accepts "${clip(t, 48)}"`, hit === null, hit ?? "");
+  }
+  // Through the whole pipeline: a planted dictionary unit under a key that is no surface is REPORTED, not excused.
+  const plantedHint = "尚未到账的提现 — 100 万先令及以上的提现须经合规团队审核，最长需要 24 小时";
+  // The hint's REAL key — `common.pendingHoldHint`, a sibling of both surface keys in the same namespace.
+  const planted = scan("dict · zh", ["zh"], [{ key: "common.pendingHoldHint", text: plantedHint }], [4]);
+  ok("§6 control · the planted zh hint is reported through scan — 尚未 opens the unit and does not excuse the claim", planted[4].length === 1, planted[4].join(" | "));
 }
 
 console.log(`\nkyc-copy-truth: ${pass} passed, ${fail} failed`);

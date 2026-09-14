@@ -74,40 +74,97 @@ console.log("\n[A] Public route health (render + no console/page/5xx errors + no
 const PUBLIC_ROUTES = [
   "/", "/markets", "/markets?when=new", "/markets?when=soon", "/markets?when=week",
   "/live", "/leaderboard", "/fairness", "/proposals", "/help",
-  "/legal/terms", "/legal/privacy", "/legal/aml", "/legal/responsible-gambling",
+  "/legal/terms", "/legal/privacy", "/legal/aml", "/legal/responsible-gambling", "/legal/agent-terms",
   "/legal/rules", "/legal/rules/yes-no", "/legal/rules/up-down",
   "/auth/login", "/auth/register", "/auth/forgot-password",
 ];
 {
-  const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
-  const page = await ctx.newPage();
   /* 🔴 2026-09-13 · WORDS RUN TOGETHER IN THE RENDERED PAGE, LIVE ON PRODUCTION AND IN NO SUITE.
      https://50pick.tz/legal/terms served "Identity verification is <strong>required</strong>before…":
      the source had the space, and the build dropped it where a bold phrase is followed by text that
      continues onto the next source line. Only the RENDERED markup tells the truth, so it is asserted here,
      on every public route. The fix at a site is an explicit {" "} after the closing tag. */
-  const FUSED = /<\/(strong|em|b|i|code|a)>[A-Za-z]/g;
-  ok("control · the fused-word matcher catches the shipped defect", "is <strong>required</strong>before".match(FUSED)?.length === 1);
-  ok("control · …and accepts the explicit-space form React renders", !FUSED.test("is <strong>required</strong> <!-- -->before"));
-  FUSED.lastIndex = 0;
-  for (const route of PUBLIC_ROUTES) {
-    const errs = attach(page);
-    let status = 0;
-    page.once("response", (r) => { if (r.url() === BASE + route || r.url() === BASE + route + "/") status = r.status(); });
-    await page.goto(BASE + route, { waitUntil: "domcontentloaded" });
-    await page.waitForTimeout(400);
-    const overlay = await hasErrorOverlay(page);
-    const text = (await page.locator("body").innerText().catch(() => "")).trim();
-    ok(`${route} renders content`, text.length > 40, `(len=${text.length})`);
-    ok(`${route} no error overlay`, !overlay);
-    ok(`${route} no console/page errors`, errs.length === 0, errs.slice(0, 2).join(" | "));
-    const bodyHtml = await page.locator("body").innerHTML().catch(() => "");
-    const fused = bodyHtml.match(FUSED) ?? [];
-    ok(`${route} no words run together after an inline tag`, fused.length === 0,
-       fused.length ? bodyHtml.match(/.{0,30}<\/(?:strong|em|b|i|code|a)>[A-Za-z]{1,15}/g)?.slice(0, 3).join(" | ") ?? "" : "");
-    page.removeAllListeners("console"); page.removeAllListeners("pageerror"); page.removeAllListeners("response");
+  /* ⭐ 2026-09-14 (audit session 95) — THE ASSERTION COULD PASS WITHOUT LOOKING, THREE WAYS:
+     · /legal/agent-terms was not in the route list, so the binding document an agent signs was never read;
+     · every route was read in English only. The Swahili and Chinese halves of the legal pages are separate JSX,
+       so a second pass reads the SAME routes with the kp-locale=sw cookie — and FAILS unless the page really
+       rendered <html lang="sw">, or that pass would be the English pass run twice;
+     · a page whose HTML could not be read (the `.catch(() => "")`) or read empty counted as "no words run
+       together". It now FAILS: an unread page is not a clean page.
+     `</span>` is read too, but NOT in the global tag set: a span is also how CSS spaces things (the legal section
+     number `<span class="mr-2">3.</span>Identity`, an icon span in a flex button), and those are not fused words.
+     A `</span>` counts only inside running text — a <p> or an <li> — and only when the span's own text ends in a
+     non-space character.
+     ⛔ The population is ratcheted below (routes × passes, every page read), and the controls run the SAME
+     verdict the routes are judged by. */
+  const FUSED_TAGS = "strong|em|b|i|code|a";
+  const spanFusedIn = (html) => {
+    const out = [];
+    for (const b of html.matchAll(/<(p|li)\b[^>]*>([\s\S]*?)<\/\1>/g)) {
+      for (const m of b[2].matchAll(/(\S)<\/span>([A-Za-zÀ-ɏ]{2,})/g)) if (m[1] !== ">") out.push(m[0]);
+    }
+    return out;
+  };
+  /* 2026-09-14 — AND TWO TEXT NODES FUSED AT AN EXPRESSION. React marks the seam between adjacent text nodes with
+     `<!-- -->`; a letter on both sides of that seam is two words with no space ("hour<!-- -->of resolution" on the
+     Terms §6 after a JSX line join — no closing tag involved, so the tag pass could not see it). */
+  const nodeFusedIn = (html) => html.match(/[A-Za-z]{2}<!-- -->[a-z]{2,}/g) ?? [];
+  const fusedIn = (html) => [...(html.match(new RegExp(`</(?:${FUSED_TAGS})>[A-Za-z]`, "g")) ?? []), ...spanFusedIn(html), ...nodeFusedIn(html)];
+  /** One rendered page's verdict. Unreadable or empty HTML is a failure, never a pass. */
+  const fusedVerdict = (html) => {
+    if (typeof html !== "string" || html.trim().length === 0) return { ok: false, why: "the page HTML could not be read, or was empty — nothing was checked" };
+    const hits = fusedIn(html);
+    if (hits.length === 0) return { ok: true, why: "" };
+    return { ok: false, why: [...(html.match(new RegExp(`.{0,30}</(?:${FUSED_TAGS})>[A-Za-z]{1,15}`, "g")) ?? []), ...spanFusedIn(html)].slice(0, 3).join(" | ") };
+  };
+  /** The gauntlet's ✓/✗ line, plus a `FAIL <label>` line on failure, so this section reads like every other guard. */
+  const guard = (label, cond, extra = "") => { ok(label, cond, extra); if (!cond) console.log(`FAIL ${label}${extra ? ` — ${extra}` : ""}`); };
+  guard("control · the fused-word matcher catches the shipped defect", fusedIn("is <strong>required</strong>before").length === 1);
+  guard("control · …and accepts the explicit-space form React renders", fusedIn("is <strong>required</strong> <!-- -->before").length === 0);
+  guard("control · …and catches a fused </span> (2026-09-14)", !fusedVerdict("<p><span>Kutoa</span>kunaendelea</p>").ok);
+  guard("control · …and two text nodes fused at an expression seam (\"hour<!-- -->of\")", !fusedVerdict("<p>within 1<!-- --> hour<!-- -->of resolution</p>").ok
+    && fusedVerdict("<p>within 1<!-- --> hour<!-- --> of resolution, 3<!-- -->.<!-- -->5 TZS<!-- -->5</p>").ok);
+  guard("control · …but not a span CSS spaces: the legal section number, an icon span, a span whose text ends in a space",
+    fusedVerdict(`<h2><span class="font-mono mr-2">3<!-- -->.</span>Identity verification</h2>`).ok
+    && fusedVerdict(`<button><span aria-hidden="true">📱</span>Phone</button>`).ok
+    && fusedVerdict(`<p><span class="x">Volume </span>TZS 5,000</p>`).ok
+    && fusedVerdict(`<li><span><svg></svg></span>Withdraw</li>`).ok);
+  guard("control · ⛔ an EMPTY or unreadable page FAILS the verdict", !fusedVerdict("").ok && !fusedVerdict("  \n ").ok && !fusedVerdict(undefined).ok);
+  guard("control · …and a clean page passes the same verdict", fusedVerdict("<p>is <strong>required</strong> before</p>").ok);
+
+  const PASSES = [{ locale: "en", tag: "" }, { locale: "sw", tag: "[sw] " }];
+  let pagesRead = 0;
+  for (const pass of PASSES) {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    if (pass.locale !== "en") await ctx.addCookies([{ name: "kp-locale", value: pass.locale, url: BASE }]);
+    const page = await ctx.newPage();
+    for (const route of PUBLIC_ROUTES) {
+      const errs = attach(page);
+      let status = 0;
+      page.once("response", (r) => { if (r.url() === BASE + route || r.url() === BASE + route + "/") status = r.status(); });
+      await page.goto(BASE + route, { waitUntil: "domcontentloaded" });
+      await page.waitForTimeout(400);
+      const overlay = await hasErrorOverlay(page);
+      const text = (await page.locator("body").innerText().catch(() => "")).trim();
+      ok(`${pass.tag}${route} renders content`, text.length > 40, `(len=${text.length})`);
+      ok(`${pass.tag}${route} no error overlay`, !overlay);
+      ok(`${pass.tag}${route} no console/page errors`, errs.length === 0, errs.slice(0, 2).join(" | "));
+      if (pass.locale !== "en") {
+        const lang = await page.evaluate(() => document.documentElement.lang).catch(() => "");
+        guard(`${pass.tag}${route} rendered in ${pass.locale} (html lang)`, lang === pass.locale, `lang="${lang}"`);
+      }
+      const bodyHtml = await page.locator("body").innerHTML().catch(() => "");
+      if (typeof bodyHtml === "string" && bodyHtml.trim().length > 0) pagesRead++;
+      const verdict = fusedVerdict(bodyHtml);
+      guard(`${pass.tag}${route} no words run together after an inline tag`, verdict.ok, verdict.why);
+      page.removeAllListeners("console"); page.removeAllListeners("pageerror"); page.removeAllListeners("response");
+    }
+    await ctx.close();
   }
-  await ctx.close();
+  const expectedPages = PUBLIC_ROUTES.length * PASSES.length;
+  guard("⛔ RATCHET · the fused-word check read every public route in every pass",
+    pagesRead === expectedPages && PUBLIC_ROUTES.length >= 21 && PUBLIC_ROUTES.includes("/legal/agent-terms"),
+    `${pagesRead} of ${expectedPages} pages read (${PUBLIC_ROUTES.length} routes × ${PASSES.length} locales)`);
 }
 
 // ── B. Date field cruelty (/auth/register DOB) ──────────────────────
