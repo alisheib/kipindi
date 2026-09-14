@@ -14,7 +14,7 @@
  *   · §8  a refusal on a FINAL code (`UNDERAGE`, `SANCTIONED`, `DUPLICATE_IDENTITY`) freezes the wallet
  *         (`IDENTITY_REFUSED`) before the refusal is written, and §9 the player cannot restart it; a
  *         RECOVERABLE refusal does neither. The same checks run on both halves, so neither is vacuous.
- *         `test:kyc-security` §2e proves the final refusal also keeps the document number held.
+ *         `scripts/kyc-security.test.mts` §2e (run by `test:kyc`) proves the final refusal also keeps the document number held.
  */
 import { reviewKyc, listPendingKyc, startKyc } from "../src/lib/server/kyc-service.ts";
 import { db } from "../src/lib/server/store.ts";

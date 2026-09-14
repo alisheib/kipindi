@@ -348,8 +348,8 @@ export function kycStage(facts: KycStageFacts | null, money: KycMoney): KycStage
       // with `if (k.documents?.length)`, so a restart left the previous attempt's
       // images attached in Postgres while the in-memory half cleared them. The
       // tag would have read "Uploaded · not sent" for a player who had uploaded
-      // nothing. The two halves now agree; `test:kyc-stage-service` is the
-      // regression guard and it must pass on BOTH backends.
+      // nothing. The two halves now agree; `test:kyc-restart-docs` (a real Postgres) is the
+      // regression guard, and `test:kyc-stage` pins the tag on the in-memory half.
       return documentCount > 0 ? "uploaded" : nothingSent(facts, money);
 
     default: {
