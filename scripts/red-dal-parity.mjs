@@ -5,7 +5,8 @@
  * rather than on some incidental collapse, and prove the gate is green again afterwards.
  *
  * ⭐ THE GATE IS SOURCE-LEVEL, SO THE MUTATION IS TOO. `test:dal-parity` reads `src/` through
- * `KP_SRC`; this harness copies `src/lib/server/{store,prisma-dal}.ts` into a scratch tree,
+ * `KP_SRC`; this harness copies every file the gate reads (`FILES` below: the two DALs, and since
+ * house bots the house DAL, its book, `market-dal.ts` and `market-service.ts`) into a scratch tree,
  * mutates the copy, and points the gate at it. The working tree is never written — there is
  * nothing to restore and nothing to leave dirty.
  *
@@ -22,7 +23,13 @@ import { injectDefect } from "./red-anchor.mjs";
 import { MUTATIONS } from "./anchors/dal-parity.anchors.mjs";
 
 const GATE = "scripts/dal-parity.test.mts";
-const FILES = ["src/lib/server/store.ts", "src/lib/server/prisma-dal.ts", "scripts/lib/decomment.mts"];
+// ⛔ EVERY FILE THE GATE READS THROUGH KP_SRC. A file missing here makes every mutation run crash
+// on a missing file and report WRONG REASON — the house cases (build commit 1) read the four below.
+const FILES = [
+  "src/lib/server/store.ts", "src/lib/server/prisma-dal.ts", "scripts/lib/decomment.mts",
+  "src/lib/server/house-bot-dal.ts", "src/lib/server/house-bot/book.ts",
+  "src/lib/server/market-dal.ts", "src/lib/server/market-service.ts",
+];
 
 const runGate = (srcDir) => {
   try {

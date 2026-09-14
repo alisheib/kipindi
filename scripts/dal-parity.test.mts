@@ -20,10 +20,17 @@
  * ⛔ EVERY REFUSAL HAS A CONTROL. §0 plants a key that MUST be reported missing, so a parser
  * that finds nothing to check — the population trap — goes red rather than green.
  *
+ * ⭐ HOUSE BOTS (build commit 1, §6–§12). The eight house tables are raw SQL over typed column maps,
+ * so the same no-op has a new home: a Stored key the READ mapper drops, a BIGINT mapped as `int`, a
+ * store method only one backend implements. §6 holds all three against schema.prisma and the two
+ * house migrations; §7–§10 hold the columns the house adds to User, Transaction, Position and
+ * PredictionMarket, including the two markers that must never be rewritten; §11 the schema; §12 that
+ * the house DAL never touches a wallet. How the twins BEHAVE is `test:house-bot-migrations`.
+ *
  * KP_SRC points the gate at a copied tree — `red:dal-parity`'s mechanism.
  * Run: npm run test:dal-parity
  */
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { decomment } from "./lib/decomment.mts";
@@ -36,18 +43,26 @@ const ok = (l: string, c: boolean, x = "") => { c ? pass++ : fail++; console.log
 
 const storeSrc = decomment(readFileSync(join(SRC, "lib/server/store.ts"), "utf8"));
 const dalSrc = decomment(readFileSync(join(SRC, "lib/server/prisma-dal.ts"), "utf8"));
+// House bots (build commit 1): the house DAL and its book, and the two files that carry the Position
+// and PredictionMarket fields. The schema and the migrations are read from ROOT — they are not source
+// a red harness mutates.
+const houseDalSrc = decomment(readFileSync(join(SRC, "lib/server/house-bot-dal.ts"), "utf8"));
+const bookSrc = decomment(readFileSync(join(SRC, "lib/server/house-bot/book.ts"), "utf8"));
+const marketDalSrc = decomment(readFileSync(join(SRC, "lib/server/market-dal.ts"), "utf8"));
+const marketSvcSrc = decomment(readFileSync(join(SRC, "lib/server/market-service.ts"), "utf8"));
+const prismaSchemaSrc = readFileSync(join(ROOT, "prisma/schema.prisma"), "utf8");
 
 /** Top-level keys of `export type <Name> = { … };` — the Stored shape's field list. */
-function storedKeys(typeName: string): string[] {
-  const start = storeSrc.indexOf(`export type ${typeName} = {`);
+function storedKeys(typeName: string, src = storeSrc): string[] {
+  const start = src.indexOf(`export type ${typeName} = {`);
   if (start < 0) return [];
   // Walk to the matching close brace at depth 0.
-  let depth = 0, i = storeSrc.indexOf("{", start), end = -1;
-  for (; i < storeSrc.length; i++) {
-    if (storeSrc[i] === "{") depth++;
-    else if (storeSrc[i] === "}") { depth--; if (depth === 0) { end = i; break; } }
+  let depth = 0, i = src.indexOf("{", start), end = -1;
+  for (; i < src.length; i++) {
+    if (src[i] === "{") depth++;
+    else if (src[i] === "}") { depth--; if (depth === 0) { end = i; break; } }
   }
-  const body = storeSrc.slice(storeSrc.indexOf("{", start) + 1, end);
+  const body = src.slice(src.indexOf("{", start) + 1, end);
   const keys: string[] = [];
   let d = 0;
   for (const line of body.split("\n")) {
@@ -92,6 +107,51 @@ const writesKey = (body: string, key: string) => new RegExp(`^\\s*${key}\\s*:`, 
  *  mutation `approvedAt: null` keeps the name and drops the column. */
 const readsFrom = (body: string, key: string, row: string) =>
   writesKey(body, key) && new RegExp(`\\b${row}\\.${key}\\b`).test(body);
+
+/** The method names of `export interface <Name> { … }` — members declared at two-space indent. */
+function interfaceMethods(src: string, name: string): string[] {
+  const body = region(src, `export interface ${name} {`);
+  return [...body.matchAll(/^ {2}(\w+)\(/gm)].map((m) => m[1]);
+}
+/** The method names of `const <constName>: … = { async m(…) {…}, … }` — a store implementation. */
+function objectMethods(src: string, constName: string): string[] {
+  return [...region(src, `const ${constName}:`).matchAll(/^ {2}async (\w+)\(/gm)].map((m) => m[1]);
+}
+/** One method's text inside a store object: from `async <name>(` to the next method. */
+function objectMethod(obj: string, name: string): string {
+  const at = obj.indexOf(`async ${name}(`);
+  if (at < 0) return "";
+  const next = obj.slice(at + 1).search(/\n {2}async \w+\(/);
+  return next < 0 ? obj.slice(at) : obj.slice(at, at + 1 + next);
+}
+/** The `kind` a column map gives a key: `key: { col: "key", kind: "…" }`. */
+const kindOf = (map: string, key: string): string | null =>
+  new RegExp(`^\\s*${key}:\\s*\\{\\s*col:\\s*"${key}",\\s*kind:\\s*"(\\w+)"\\s*\\}`, "m").exec(map)?.[1] ?? null;
+/** The text of `model <Name> {` in schema.prisma, up to its closing brace. */
+function schemaModel(schema: string, name: string): string {
+  const at = schema.indexOf(`model ${name} {`);
+  return at < 0 ? "" : schema.slice(at, schema.indexOf("\n}", at));
+}
+/** A model's scalar fields as the house column-map kinds. Relation fields (a model type) are skipped. */
+const PRISMA_KIND: Record<string, string> = {
+  String: "text", Int: "int", BigInt: "bigint", Boolean: "bool", DateTime: "ts", Json: "json", "String[]": "textArray",
+};
+function schemaScalars(model: string): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const line of model.split("\n").slice(1)) {
+    const m = /^\s*([A-Za-z_]\w*)\s+([A-Za-z]+(?:\[\])?)\??(?:\s|$)/.exec(line);
+    if (m && m[2] in PRISMA_KIND) out.set(m[1], PRISMA_KIND[m[2]]);
+  }
+  return out;
+}
+const sameSet = (a: readonly string[], b: readonly string[]) => {
+  const x = [...new Set(a)].sort(), y = [...new Set(b)].sort();
+  return x.length === y.length && x.every((v, i) => v === y[i]);
+};
+const setDiff = (want: readonly string[], got: readonly string[]) => {
+  const missing = want.filter((v) => !got.includes(v)), extra = got.filter((v) => !want.includes(v));
+  return [missing.length ? `missing ${missing.join(", ")}` : "", extra.length ? `extra ${extra.join(", ")}` : ""].filter(Boolean).join(" · ");
+};
 
 /* ═══ §0 · THE CONTROL — a planted key MUST be reported missing ═══════════════════════ */
 {
@@ -265,6 +325,277 @@ const readsFrom = (body: string, key: string, row: string) =>
     !readsFrom("        approvedAt: iso(s.approvedAt),\n        rejectReason: null,", "rejectReason", "s"));
   ok("5.stage.c2 · CONTROL · a select without rejectReason is caught",
     !SELECTS_REJECT.test("select: {\n  id: true, userId: true, status: true,\n},"));
+}
+
+/* ═══ §6 · the eight house tables (house bots, build commit 1) ═══════════════════════════ */
+/**
+ * ⭐ THE SAME DEFECT, A NEW SHAPE. Every house statement is raw SQL built from a typed column map, read
+ * back through one mapper per table. A key missing from the READ mapper reads `undefined` on Postgres
+ * and nothing else; a BIGINT column mapped as `int` hands back a JS bigint that throws the first time
+ * an audit payload is serialised — again on Postgres only, because memory holds numbers. `tsc` sees
+ * neither. So each Stored key must be read from the row, named in the map with the kind its
+ * schema.prisma type implies, and every store method must exist in BOTH implementations.
+ *
+ * ⚠️ BIGINT IS DERIVED FROM THE SCHEMA, NEVER FROM A NAME SUFFIX: `gCounterPerPlayerTzsPerDay` is BIGINT
+ * and does not end in "Tzs", which is exactly how a suffix rule would miss it.
+ *
+ * Behavioural parity — the same case list on Postgres and memory — is `test:house-bot-migrations`.
+ */
+const HOUSE_PAIRS = [
+  { type: "StoredHouseBot", mapper: "toHouseBot", map: "HOUSE_BOT_COLUMNS", iface: "HouseBotStore", memory: "memoryHouseBots", prisma: "prismaHouseBots", exported: "houseBotStore", model: "HouseBot" },
+  { type: "StoredHouseBotControl", mapper: "toHouseBotControl", map: "HOUSE_BOT_CONTROL_COLUMNS", iface: "HouseBotControlStore", memory: "memoryHouseBotControl", prisma: "prismaHouseBotControl", exported: "houseBotControlStore", model: "HouseBotControl" },
+  { type: "StoredHouseBotRuntime", mapper: "toHouseBotRuntime", map: "HOUSE_BOT_RUNTIME_COLUMNS", iface: "HouseBotRuntimeStore", memory: "memoryHouseBotRuntime", prisma: "prismaHouseBotRuntime", exported: "houseBotRuntimeStore", model: "HouseBotRuntime" },
+  { type: "StoredHouseBotAlertOnce", mapper: "toHouseBotAlertOnce", map: "HOUSE_BOT_ALERT_ONCE_COLUMNS", iface: "HouseBotAlertOnceStore", memory: "memoryHouseBotAlertOnce", prisma: "prismaHouseBotAlertOnce", exported: "houseBotAlertOnceStore", model: "HouseBotAlertOnce" },
+  { type: "StoredHouseBotEvent", mapper: "toHouseBotEvent", map: "HOUSE_BOT_EVENT_COLUMNS", iface: "HouseBotEventStore", memory: "memoryHouseBotEvents", prisma: "prismaHouseBotEvents", exported: "houseBotEventStore", model: "HouseBotEvent" },
+  { type: "StoredHouseBotIntent", mapper: "toHouseBotIntent", map: "HOUSE_BOT_INTENT_COLUMNS", iface: "HouseBotIntentStore", memory: "memoryHouseBotIntents", prisma: "prismaHouseBotIntents", exported: "houseBotIntentStore", model: "HouseBotIntent" },
+  { type: "StoredHouseBotTarget", mapper: "toHouseBotTarget", map: "HOUSE_BOT_TARGET_COLUMNS", iface: "HouseBotTargetStore", memory: "memoryHouseBotTargets", prisma: "prismaHouseBotTargets", exported: "targetStore", model: "HouseBotTarget" },
+  { type: "StoredHouseBotPress", mapper: "toHouseBotPress", map: "HOUSE_BOT_PRESS_COLUMNS", iface: "HouseBotPressStore", memory: "memoryHouseBotPresses", prisma: "prismaHouseBotPresses", exported: "pressStore", model: "HouseBotPress" },
+] as const;
+/** Time columns whose names do not end in "At". */
+const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil", "auditClaimUntil", "effectiveFrom", "scopeFrom", "transientSince", "sweepPlacedAt", "rulesFutureSince"]);
+{
+  const bigints = new Set<string>();
+  for (const p of HOUSE_PAIRS) {
+    const keys = storedKeys(p.type, houseDalSrc);
+    const read = region(houseDalSrc, `function ${p.mapper}(`);
+    const map = region(houseDalSrc, `const ${p.map}:`);
+    const scalars = schemaScalars(schemaModel(prismaSchemaSrc, p.model));
+    ok(`6.0 · the parser sees ${p.type}'s fields`, keys.length >= (p.type === "StoredHouseBotIntent" ? 30 : 2), `saw ${keys.length}`);
+    ok(`6.0b · ${p.mapper}, ${p.map} and model ${p.model} resolve`, read.length > 50 && map.length > 50 && scalars.size >= 2,
+      `mapper ${read.length} · map ${map.length} · schema fields ${scalars.size}`);
+    for (const k of keys) {
+      ok(`6.read · ${p.mapper} maps "${k}"`, readsFrom(read, k, "r"));
+      ok(`6.map · ${p.map} names "${k}"`, writesKey(map, k));
+      ok(`6.schema · model ${p.model} declares "${k}" with the kind ${p.map} gives it`, scalars.get(k) === kindOf(map, k),
+        `schema ${scalars.get(k) ?? "missing"} · map ${kindOf(map, k) ?? "missing"}`);
+      if (/At$/.test(k) || HOUSE_TS_KEYS.has(k)) ok(`6.ts · "${k}" is kind "ts" in ${p.map}`, kindOf(map, k) === "ts");
+    }
+    const unmapped = [...scalars.keys()].filter((c) => !keys.includes(c));
+    ok(`6.schema · model ${p.model} has no column ${p.type} lacks`, unmapped.length === 0, unmapped.join(", "));
+    for (const [c, kind] of scalars) {
+      if (kind !== "bigint") continue;
+      bigints.add(`${p.model}.${c}`);
+      ok(`6.bigint · ${p.model}.${c} is BigInt: kind "bigint" in ${p.map}, read through a number conversion`,
+        kindOf(map, c) === "bigint" && new RegExp(`^\\s*${c}:\\s*(big|Number)\\(r\\.${c}\\)`, "m").test(read));
+    }
+    const methods = interfaceMethods(houseDalSrc, p.iface);
+    const mem = objectMethods(houseDalSrc, p.memory);
+    const pri = objectMethods(houseDalSrc, p.prisma);
+    ok(`6.twin.0 · the parser sees ${p.iface} and both implementations`, methods.length >= 3 && mem.length >= 3 && pri.length >= 3,
+      `interface ${methods.length} · memory ${mem.length} · prisma ${pri.length}`);
+    for (const m of methods) {
+      ok(`6.twin · ${p.iface}.${m} exists in ${p.memory}`, mem.includes(m));
+      ok(`6.twin · ${p.iface}.${m} exists in ${p.prisma}`, pri.includes(m));
+    }
+    ok(`6.wire · ${p.exported} is ${p.prisma} with a database and ${p.memory} without`,
+      new RegExp(`export const ${p.exported}: ${p.iface} = usePrisma \\? ${p.prisma} : ${p.memory};`).test(houseDalSrc));
+  }
+  {
+    const methods = interfaceMethods(houseDalSrc, "HouseBookStore");
+    const mem = objectMethods(houseDalSrc, "memoryHouseBook");
+    const pri = objectMethods(houseDalSrc, "prismaHouseBook");
+    ok("6.twin.0 · the parser sees HouseBookStore and both implementations", methods.length >= 2 && mem.length >= 2 && pri.length >= 2);
+    for (const m of methods) {
+      ok(`6.twin · HouseBookStore.${m} exists in memoryHouseBook`, mem.includes(m));
+      ok(`6.twin · HouseBookStore.${m} exists in prismaHouseBook`, pri.includes(m));
+    }
+    ok("6.wire · houseBookStore is prismaHouseBook with a database and memoryHouseBook without",
+      /export const houseBookStore: HouseBookStore = usePrisma \? prismaHouseBook : memoryHouseBook;/.test(houseDalSrc));
+  }
+
+  // The fields whose loss is a named defect, by name, so the FAIL line reads as itself.
+  const DEFECTS: Record<string, readonly string[]> = {
+    StoredHouseBotIntent: ["staleAt", "transientAttempts", "targetId", "requestedById", "entryCondition", "alertedAt"],
+    StoredHouseBot: ["labelKey", "consentVoidAt", "pausedFromStatus", "removedCause", "credentialChangedAt", "credentialChangedVia", "createdAt", "updatedAt"],
+    StoredHouseBotControl: ["boardDisclosureSections", "gCounterPerPlayerTzsPerDay", "createdAt", "updatedAt"],
+    StoredHouseBotRuntime: ["engineEnabled", "scopeFrom", "sweepPlacedAt"],
+    StoredHouseBotTarget: ["effectiveFrom", "updatedById", "removedById"],
+    StoredHouseBotPress: ["code", "intentId", "auditClaimUntil"],
+  };
+  for (const p of HOUSE_PAIRS) {
+    const keys = storedKeys(p.type, houseDalSrc);
+    const read = region(houseDalSrc, `function ${p.mapper}(`);
+    const map = region(houseDalSrc, `const ${p.map}:`);
+    for (const k of DEFECTS[p.type] ?? []) {
+      ok(`6.defect · "${k}" is declared, read and mapped on ${p.type}`, keys.includes(k) && readsFrom(read, k, "r") && writesKey(map, k));
+    }
+  }
+
+  // The sealed store API (N1 §2, N2 §2): later commits and their suites call these names.
+  const SEALED: Record<string, readonly string[]> = {
+    HouseBotTargetStore: ["insert", "casUpdate", "remove", "endActive", "listForBot", "activeForMarket", "everStopped", "countActive", "endAllForBot"],
+    HouseBotIntentStore: ["insertTargetedIfActive", "insertIgnoringConflict", "claimBatch", "claimById", "requeueTransient", "markPlaced", "expireStale", "cancelLive"],
+    HouseBotPressStore: ["insertChecking", "refuse", "queue", "doneEnterNow", "doneInTx", "interruptStale", "claimAuditLease", "listAuditRepair"],
+    HouseBotEventStore: ["drawOpenerSide", "findOpenerDraw"],
+  };
+  for (const [iface, names] of Object.entries(SEALED)) {
+    const methods = interfaceMethods(houseDalSrc, iface);
+    for (const n of names) ok(`6.sealed · ${iface} declares "${n}"`, methods.includes(n));
+  }
+  // The sealed predicates that are easy to widen by accident, on BOTH stores.
+  const priPress = region(houseDalSrc, "const prismaHouseBotPresses:");
+  const memPress = region(houseDalSrc, "const memoryHouseBotPresses:");
+  const both = (name: string, pri: RegExp, mem: RegExp) => pri.test(objectMethod(priPress, name)) && mem.test(objectMethod(memPress, name));
+  ok("6.sealed.sql · doneEnterNow completes only a QUEUED press, found by its intent, on both stores",
+    both("doneEnterNow", /"intentId" = [\s\S]*"state" = 'QUEUED'/, /p\.intentId === intentId && p\.state === "QUEUED"/));
+  ok("6.sealed.sql · doneInTx completes only a CHECKING press, on both stores",
+    both("doneInTx", /"state" = 'CHECKING'/, /cur\.state !== "CHECKING"/));
+  ok("6.sealed.sql · interruptStale refuses CHECKING presses after PRESS_INTERRUPTED_AFTER_MS as PRESS_REFUSAL_INTERRUPTED, on both stores",
+    both("interruptStale", /"state" = 'CHECKING'[\s\S]*PRESS_INTERRUPTED_AFTER_MS/, /PRESS_INTERRUPTED_AFTER_MS/)
+      && both("interruptStale", /PRESS_REFUSAL_INTERRUPTED/, /PRESS_REFUSAL_INTERRUPTED/));
+  ok("6.sealed.sql · listAuditRepair measures age from updatedAt, on both stores",
+    both("listAuditRepair", /"updatedAt" < now\(\)/, /p\.updatedAt/) && !/"createdAt" < now\(\)/.test(objectMethod(priPress, "listAuditRepair")));
+  ok("6.sealed.sql · insertTargetedIfActive holds the target FOR SHARE before inserting",
+    /FOR SHARE[\s\S]*ON CONFLICT DO NOTHING/.test(objectMethod(region(houseDalSrc, "const prismaHouseBotIntents:"), "insertTargetedIfActive")));
+  {
+    const insert = objectMethod(region(houseDalSrc, "const prismaHouseBotTargets:"), "insert");
+    ok("6.sealed.sql · targetStore.insert stamps createdAt and effectiveFrom from one database now(), by hand",
+      /now\(\), now\(\) \+ \(/.test(insert) && /TARGET_ARMING_SEC/.test(insert) && !/insertSql\(/.test(insert));
+  }
+
+  // Every name the migrations fix, mirrored for the memory twin — no database needed to compare.
+  const migDir = join(ROOT, "prisma/migrations");
+  const houseSql = readdirSync(migDir).filter((f) => /^\d{14}_house_bot_(tables|markers)$/.test(f)).sort()
+    .map((f) => readFileSync(join(migDir, f, "migration.sql"), "utf8").replace(/--.*$/gm, "")).join("\n");
+  const listAt = houseDalSrc.indexOf("export const HOUSE_UNIQUE_INDEXES = [");
+  const exportedUniques = listAt < 0 ? [] : [...houseDalSrc.slice(listAt, houseDalSrc.indexOf("] as const;", listAt)).matchAll(/"(\w+)"/g)].map((m) => m[1]);
+  const memUniques = [...region(houseDalSrc, "const MEM_UNIQUES:").matchAll(/name:\s*"(\w+)"/g)].map((m) => m[1]);
+  const memChecks = [...region(houseDalSrc, "const MEM_CHECKS:").matchAll(/name:\s*"(\w+)"/g)].map((m) => m[1]);
+  const sqlUniques = [...houseSql.matchAll(/CREATE\s+UNIQUE\s+INDEX\s+IF\s+NOT\s+EXISTS\s+"(\w+)"/g)].map((m) => m[1]);
+  const sqlChecks = [...houseSql.matchAll(/CONSTRAINT\s+"(\w+)"\s+CHECK/g)].map((m) => m[1]);
+  ok("6.names.0 · the parser sees the unique list, both mirrors and both migrations",
+    exportedUniques.length >= 11 && memUniques.length >= 11 && memChecks.length >= 80 && sqlUniques.length >= 11 && sqlChecks.length >= 80,
+    `exported ${exportedUniques.length} · MEM_UNIQUES ${memUniques.length} · MEM_CHECKS ${memChecks.length} · sql uniques ${sqlUniques.length} · sql checks ${sqlChecks.length}`);
+  ok("6.names · every HOUSE_UNIQUE_INDEXES name appears in MEM_UNIQUES, and nothing else does",
+    sameSet(exportedUniques, memUniques), setDiff(exportedUniques, memUniques));
+  ok("6.names · HOUSE_UNIQUE_INDEXES is exactly the migrations' unique indexes, in creation order",
+    exportedUniques.join(",") === sqlUniques.join(","), setDiff(sqlUniques, exportedUniques) || "same names, different order");
+  ok("6.names · MEM_CHECKS mirrors exactly the migrations' named CHECKs", sameSet(memChecks, sqlChecks), setDiff(sqlChecks, memChecks));
+
+  // ⛔ CONTROLS — each check above can fail.
+  ok("6.c1 · CONTROL · `staleAt: null,` does NOT count as reading staleAt", !readsFrom("    dueAt: iso(r.dueAt),\n    staleAt: null,", "staleAt", "r"));
+  const plantedStore = "const memoryPlanted: PlantedStore = {\n  async get(id) {\n    return null;\n  },\n};";
+  ok("6.c2 · CONTROL · a memory object missing a method is reported",
+    objectMethods(plantedStore, "memoryPlanted").includes("get") && !objectMethods(plantedStore, "memoryPlanted").includes("claimBatch"));
+  ok("6.c3 · CONTROL · a planted kind \"int\" for gCounterPerPlayerTzsPerDay is caught",
+    kindOf(`  gCounterPerPlayerTzsPerDay: { col: "gCounterPerPlayerTzsPerDay", kind: "int" },`, "gCounterPerPlayerTzsPerDay") !== "bigint");
+  ok("6.c4 · CONTROL · the BigInt set comes from the real schema and holds the key no suffix rule finds",
+    bigints.has("HouseBotControl.gCounterPerPlayerTzsPerDay") && bigints.has("HouseBotIntent.stakeTzs") && bigints.size >= 16, `${bigints.size}: ${[...bigints].join(", ")}`);
+  ok("6.c5 · CONTROL · a model without a BigInt yields none", ![...schemaScalars("model X {\n  a Int\n  b String?\n}").values()].includes("bigint"));
+  ok("6.c6 · CONTROL · interfaceMethods reads top-level members only",
+    sameSet(interfaceMethods("export interface P {\n  get(a: { x(): void }): void;\n  put(\n    b: { y(): void },\n  ): void;\n}", "P"), ["get", "put"]));
+  ok("6.c7 · CONTROL · objectMethod stops at the next method",
+    objectMethod("const o: O = {\n  async a() {\n    return 1;\n  },\n  async b() {\n    return 2;\n  },\n};", "a").includes("return 1")
+      && !objectMethod("const o: O = {\n  async a() {\n    return 1;\n  },\n  async b() {\n    return 2;\n  },\n};", "a").includes("return 2"));
+}
+
+/* ═══ §7 · User password history (house bots, 04 A4) ═════════════════════════════════════ */
+{
+  const uKeys = storedKeys("StoredUser");
+  const read = region(dalSrc, "function toStoredUser(");
+  const create = delegateMethod("user", "create");
+  const update = delegateMethod("user", "update");
+  for (const k of ["passwordSetAt", "passwordSetVia", "emailSetByOfficerAt"]) {
+    ok(`7.type · StoredUser declares "${k}"`, uKeys.includes(k));
+    ok(`7.read · toStoredUser maps "${k}"`, readsFrom(read, k, "u"));
+    ok(`7.create · user.create writes "${k}"`, writesKey(create, k));
+  }
+  // The same trap as §2's `recruitedAt`: an ISO string reaching a DateTime column throws on Postgres only.
+  for (const k of ["passwordSetAt", "emailSetByOfficerAt"]) {
+    ok(`7.update · "${k}" is in user.update's date-field list`, new RegExp(`dateFields = \\[[^\\]]*"${k}"`).test(update));
+  }
+  ok("7.c1 · CONTROL · `passwordSetAt: null,` does NOT count as reading", !readsFrom("    recruitedAt: iso(u.recruitedAt),\n    passwordSetAt: null,", "passwordSetAt", "u"));
+  ok("7.c2 · CONTROL · a date list without the key is caught", !/dateFields = \[[^\]]*"passwordSetAt"/.test(`const dateFields = ["emailSetByOfficerAt", "lockedUntil"] as const;`));
+}
+
+/* ═══ §8 · the Transaction house marker is create-only (PLAN §2 I8) ══════════════════════ */
+{
+  const read = region(dalSrc, "function toStoredTxn(");
+  const create = delegateMethod("txn", "create");
+  const update = delegateMethod("txn", "update");
+  const memUpdate = region(storeSrc, "update: (id: string, patch: Partial<StoredTxn>)");
+  ok("8.0 · toStoredTxn, txn.create, txn.update and the memory update resolve",
+    read.length > 100 && create.length > 100 && update.length > 50 && memUpdate.length > 50,
+    `read ${read.length} · create ${create.length} · update ${update.length} · memory ${memUpdate.length}`);
+  ok('8.type · StoredTxn declares "houseBotId"', storedKeys("StoredTxn").includes("houseBotId"));
+  ok('8.read · toStoredTxn maps "houseBotId" from the row', readsFrom(read, "houseBotId", "t"));
+  ok('8.create · txn.create writes "houseBotId"', writesKey(create, "houseBotId") && /\bt\.houseBotId\b/.test(create));
+  const SKIPS = /k === "houseBotId"/;
+  ok('8.immutable · txn.update skips "houseBotId"', SKIPS.test(update));
+  ok("8.memory · the memory txn.update drops houseBotId from the patch",
+    /houseBotId:\s*_\w*/.test(memUpdate) && /\.\.\.rest\b/.test(memUpdate) && !/\.\.\.patch\b/.test(memUpdate));
+  ok("8.c1 · CONTROL · an update body without the skip is caught", !SKIPS.test(`if (k === "createdAt" || k === "updatedAt") continue;`));
+  ok("8.c2 · CONTROL · a memory update spreading the whole patch is caught", /\.\.\.patch\b/.test("const next = { ...t, ...patch, updatedAt: now };"));
+}
+
+/* ═══ §9 · the Position house marker is create-only (PLAN §2 I8) ═════════════════════════ */
+{
+  const posKeys = storedKeys("StoredPosition", marketSvcSrc);
+  const read = region(marketDalSrc, "function toStoredPosition(");
+  const setBody = region(region(marketDalSrc, "const prismaPositions"), "async set(p, tx) {");
+  const createAt = setBody.indexOf("create: {");
+  const updateAt = setBody.indexOf("update: {");
+  const createArm = createAt >= 0 && updateAt > createAt ? setBody.slice(createAt, updateAt) : "";
+  const updateArm = region(setBody, "update: {");
+  const memSet = region(region(marketDalSrc, "const memoryPositions"), "async set(p, _tx) {");
+  ok("9.0 · both positions.set bodies and both upsert arms resolve", createArm.length > 100 && updateArm.length > 100 && memSet.length > 20,
+    `create ${createArm.length} · update ${updateArm.length} · memory ${memSet.length}`);
+  ok('9.type · StoredPosition declares "houseBotId"', posKeys.includes("houseBotId"));
+  ok('9.read · toStoredPosition maps "houseBotId"', readsFrom(read, "houseBotId", "r"));
+  ok("9.create · positions.set create arm writes houseBotId", writesKey(createArm, "houseBotId") && /\bp\.houseBotId\b/.test(createArm));
+  ok("9.immutable · positions.set update arm does NOT write houseBotId", !mentions(updateArm, "houseBotId"));
+  ok("9.memory · memory positions.set preserves an existing marker", /prev\.houseBotId/.test(memSet));
+  ok("9.c1 · CONTROL · an update arm carrying houseBotId is caught", mentions("update: {\n  status: p.status,\n  houseBotId: p.houseBotId ?? null,\n}", "houseBotId"));
+  ok("9.c2 · CONTROL · a create arm without it is caught", !writesKey("create: {\n  id: p.id,\n  status: p.status,\n}", "houseBotId"));
+}
+
+/* ═══ §10 · the market reopen stamp (house bots, N1 §2) ══════════════════════════════════ */
+{
+  const mKeys = storedKeys("StoredMarket", marketSvcSrc);
+  const read = region(marketDalSrc, "function toStoredMarket(");
+  const setBody = region(region(marketDalSrc, "const prismaMarkets"), "async set(m, tx) {");
+  const stampable = region(marketDalSrc, "const STAMPABLE:");
+  const armCount = (body: string, k: string) => (body.match(new RegExp(`^\\s*${k}\\s*:`, "gm")) ?? []).length;
+  ok("10.0 · toStoredMarket, marketStore.set and STAMPABLE resolve", read.length > 100 && setBody.length > 500 && stampable.length > 100);
+  for (const k of ["reopenedAt", "reopenCount"]) {
+    ok(`10.type · StoredMarket declares "${k}"`, mKeys.includes(k));
+    ok(`10.read · toStoredMarket maps "${k}"`, readsFrom(read, k, "r"));
+    // ⚠️ BOTH arms of the upsert: written in `create` only, the stamp is lost the first time anything
+    // writes an existing poll — which is every write after the reopen that set it.
+    ok(`10.both · marketStore.set writes "${k}" in BOTH upsert arms`, armCount(setBody, k) === 2, `${armCount(setBody, k)} arm(s)`);
+    ok(`10.notStamp · "${k}" is not in STAMPABLE`, !writesKey(stampable, k));
+  }
+  ok("10.c1 · CONTROL · a set body writing the key in one arm only is caught",
+    armCount("create: {\n  reopenedAt: x,\n},\nupdate: {\n  status: s,\n}", "reopenedAt") !== 2);
+}
+
+/* ═══ §11 · schema.prisma (house bots) ═══════════════════════════════════════════════════ */
+{
+  const models = HOUSE_PAIRS.map((p) => [p.model, schemaModel(prismaSchemaSrc, p.model)] as const);
+  ok("11.models · all 8 house models exist", models.every(([, body]) => body.length > 0), models.filter(([, b]) => !b).map(([m]) => m).join(", "));
+  const has = (model: string, re: RegExp) => re.test(schemaModel(prismaSchemaSrc, model));
+  ok("11.user · User declares passwordSetAt DateTime? @db.Timestamptz(3)", has("User", /^\s*passwordSetAt\s+DateTime\?\s+@db\.Timestamptz\(3\)/m));
+  ok("11.user · User declares passwordSetVia String?", has("User", /^\s*passwordSetVia\s+String\?\s*$/m));
+  ok("11.user · User declares emailSetByOfficerAt DateTime? @db.Timestamptz(3)", has("User", /^\s*emailSetByOfficerAt\s+DateTime\?\s+@db\.Timestamptz\(3\)/m));
+  for (const m of ["Position", "Transaction"]) {
+    ok(`11.marker · ${m} declares houseBotId String? with no @default`, has(m, /^\s*houseBotId\s+String\?\s*$/m));
+  }
+  ok("11.market · PredictionMarket declares reopenedAt DateTime? @db.Timestamptz(3) and reopenCount Int?",
+    has("PredictionMarket", /^\s*reopenedAt\s+DateTime\?\s+@db\.Timestamptz\(3\)/m) && has("PredictionMarket", /^\s*reopenCount\s+Int\?\s*$/m));
+  const nakedTime = (body: string) => body.split("\n").filter((l) => /^\s*\w+\s+DateTime\??(\s|$)/.test(l) && !/@db\.Timestamptz\(3\)/.test(l));
+  const naked = models.flatMap(([m, body]) => nakedTime(body).map((l) => `${m}.${l.trim().split(/\s+/)[0]}`));
+  ok("11.ts · every DateTime in the 8 house models carries @db.Timestamptz(3) (04 A4)", naked.length === 0, naked.join(", "));
+  ok("11.c1 · CONTROL · a DateTime without the attribute is caught", nakedTime("model X {\n  at DateTime @default(now())\n}").length === 1);
+}
+
+/* ═══ §12 · the house DAL never touches a wallet (P1 compatibility) ══════════════════════ */
+{
+  const WALLET = /\bdb\.wallet\b|"Wallet"/;
+  ok("12.0 · the house DAL and the book resolve", houseDalSrc.length > 1000 && bookSrc.length > 500);
+  ok("12.wallet · house-bot-dal.ts and house-bot/book.ts never reference db.wallet or the Wallet table",
+    !WALLET.test(houseDalSrc) && !WALLET.test(bookSrc), (houseDalSrc.match(WALLET) ?? bookSrc.match(WALLET) ?? [""])[0]);
+  ok("12.c1 · CONTROL · a planted wallet write is caught",
+    WALLET.test(`await db.wallet.update(id, { status: "FROZEN" });`) && WALLET.test(`UPDATE "Wallet" SET "status" = 'FROZEN'`));
 }
 
 console.log(`\ndal-parity: ${pass} passed, ${fail} failed`);

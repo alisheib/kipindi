@@ -3,8 +3,9 @@
  * shapes, on the file where it lived. DATA, so `test:red-anchors` can audit that every `from`
  * still resolves exactly once without running the harness.
  *
- * ⛔ A red anchor quotes SOURCE. Editing any of these lines in `prisma-dal.ts` must be paired
- * with re-anchoring here, or the harness reports ANCHOR FAIL — loudly, by design.
+ * ⛔ A red anchor quotes SOURCE. Editing any of these lines in `prisma-dal.ts`, `market-dal.ts`
+ * or `house-bot-dal.ts` must be paired with re-anchoring here, or the harness reports ANCHOR FAIL
+ * — loudly, by design.
  */
 export const MUTATIONS = [
   {
@@ -57,5 +58,50 @@ export const MUTATIONS = [
           rateApplied: r.rateApplied,`,
     to: `          rateApplied: r.rateApplied,`,
     expect: `3.create · referralReward.create writes "programme"`,
+  },
+  // ── House bots (build commit 1) ──────────────────────────────────────────────────────────
+  {
+    // ⭐ The ledger marker read as NULL: the house book reads returned money only from marked rows,
+    // so every payout on a house stake would vanish from its loss figures — on Postgres only.
+    // ⚠️ Two lines, because `houseBotId: t.houseBotId ?? null,` also sits in txn.create.
+    name: "prisma-dal.ts — toStoredTxn stops reading the house marker",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `    pendingNotifiedAt: iso(t.pendingNotifiedAt),
+    houseBotId: t.houseBotId ?? null,`,
+    to: `    pendingNotifiedAt: iso(t.pendingNotifiedAt),
+    houseBotId: null,`,
+    expect: `8.read · toStoredTxn maps "houseBotId" from the row`,
+  },
+  {
+    // The marker becomes rewritable: settlement and cash-out write positions from copies, and a copy
+    // read before the column existed would un-mark house money.
+    name: "market-dal.ts — the positions.set update arm writes houseBotId",
+    file: "src/lib/server/market-dal.ts",
+    from: `        idempotencyKey: p.idempotencyKey ?? null,
+      },
+    });`,
+    to: `        idempotencyKey: p.idempotencyKey ?? null,
+        houseBotId: p.houseBotId ?? null,
+      },
+    });`,
+    expect: `9.immutable · positions.set update arm does NOT write houseBotId`,
+  },
+  {
+    // The password-history time leaves the date list → an ISO string reaches a DateTime column →
+    // Postgres throws on every password write, memory suites green.
+    name: "prisma-dal.ts — passwordSetAt leaves user.update's date list",
+    file: "src/lib/server/prisma-dal.ts",
+    from: `const dateFields = ["passwordSetAt", "emailSetByOfficerAt",`,
+    to: `const dateFields = ["emailSetByOfficerAt",`,
+    expect: `7.update · "passwordSetAt" is in user.update's date-field list`,
+  },
+  {
+    // The intent's staleness instant read as nothing: the claim filter and the seam's re-read would
+    // see no deadline at all.
+    name: "house-bot-dal.ts — toHouseBotIntent stops reading staleAt",
+    file: "src/lib/server/house-bot-dal.ts",
+    from: `    staleAt: iso(r.staleAt),`,
+    to: `    staleAt: null,`,
+    expect: `6.read · toHouseBotIntent maps "staleAt"`,
   },
 ];
