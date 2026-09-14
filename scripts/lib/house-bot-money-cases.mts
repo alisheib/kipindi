@@ -207,10 +207,76 @@ section("§4 · mode conditions read locked money (H3, 04 A15, N1 §4.1)");
   const i4 = await w.intent(b3, m3.id, { kind: "OPENER", side: "NO", stakeTzs: 1_000 });
   const r4 = await w.place(b3, i4);
   ok("4.4 · OPENER on an empty poll places", r4.ok === true, show(r4));
-  const b4 = await w.bot();
-  const i5 = await w.intent(b4, m3.id, { kind: "MANUAL", entryCondition: "OPENER", side: "YES", stakeTzs: 1_000 });
-  const r5 = await w.place(b4, i5);
-  ok("4.5 · a second OPENER once a pool is non-zero → refused (other bot or condition gone)", r5.ok === false && (r5.reason === "house_condition_gone" || r5.reason === "house_market_conflict"), show(r5));
+  // LIE-02: ONE bot and a player's stake, so nothing but the condition can refuse — the exact reason and condition.
+  for (const [label, o] of [
+    ["OPENER", { kind: "OPENER" }],
+    ["Enter now OPENER", { kind: "MANUAL", entryCondition: "OPENER" }],
+  ] as const) {
+    const m = await w.poll({ graceMin: 0 });
+    const pl = await w.user({ balance: 100_000 });
+    const pb = await w.svc.buyPosition(pl, { marketId: m.id, side: "NO", stake: 1_000, idempotencyKey: crypto.randomUUID() });
+    const bo = await w.bot();
+    const ro = await w.place(bo, await w.intent(bo, m.id, { ...o, side: "YES", stakeTzs: 1_000 }));
+    ok(`4.5 · ${label} on a poll holding a player's stake → house_condition_gone{OPENER}`,
+      pb.ok === true && ro.ok === false && ro.reason === "house_condition_gone" && ro.detail?.condition === "OPENER" && (await w.positionsOf(m.id)).length === 1, show(ro));
+  }
+  {
+    const m = await w.poll({ graceMin: 0 });
+    const bo = await w.bot();
+    const ro = await w.place(bo, await w.intent(bo, m.id, { kind: "MANUAL", entryCondition: "OPENER", side: "YES", stakeTzs: 1_000 }));
+    ok("4.5c · CONTROL · the same Enter now OPENER on an empty poll places", ro.ok === true, show(ro));
+  }
+
+  // The trigger of a COUNTER must still be OPEN when the bet lands (house_trigger_gone).
+  {
+    const m = await w.poll({ graceMin: 5 });
+    const pl = await w.user({ balance: 100_000 });
+    const t = await w.svc.buyPosition(pl, { marketId: m.id, side: "NO", stake: 10_000, idempotencyKey: crypto.randomUUID() });
+    const sold = t.ok ? await w.svc.cashOutPosition(pl, t.data.positionId) : t;
+    const bo = await w.bot();
+    const r = await w.place(bo, await w.intent(bo, m.id, { kind: "COUNTER", triggerPositionId: t.data?.positionId, triggerUserId: pl, side: "YES", stakeTzs: 2_000 }));
+    ok("4.6 · a COUNTER whose trigger was sold back → house_trigger_gone, nothing placed",
+      sold.ok === true && r.ok === false && r.reason === "house_trigger_gone" && (await w.positionsOf(m.id)).every((p: Any) => p.houseBotId == null), `sold ${show(sold)} · ${show(r)}`);
+    const m2 = await w.poll({ graceMin: 5 });
+    const t2 = await w.svc.buyPosition(pl, { marketId: m2.id, side: "NO", stake: 10_000, idempotencyKey: crypto.randomUUID() });
+    const b2 = await w.bot();
+    const r2 = await w.place(b2, await w.intent(b2, m2.id, { kind: "COUNTER", triggerPositionId: t2.data?.positionId, triggerUserId: pl, side: "YES", stakeTzs: 2_000 }));
+    ok("4.6c · CONTROL · the same trigger still OPEN (inside its window) passes the trigger check and stops at the condition",
+      r2.ok === false && r2.reason === "house_condition_gone" && r2.detail?.condition === "COUNTER", show(r2));
+  }
+
+  // The trigger account on BOTH sides is not countered (TRIGGER_BOTH_SIDES).
+  {
+    const m = await w.poll({ graceMin: 0 });
+    const pl = await w.user({ balance: 1_000_000 });
+    const no = await w.svc.buyPosition(pl, { marketId: m.id, side: "NO", stake: 10_000, idempotencyKey: crypto.randomUUID() });
+    await w.backdate(no.data.positionId, 10_000);
+    const b1 = await w.bot();
+    const r1 = await w.place(b1, await w.intent(b1, m.id, { kind: "COUNTER", triggerPositionId: no.data.positionId, triggerUserId: pl, side: "YES", stakeTzs: 2_000 }));
+    ok("4.7c · CONTROL · a one-sided trigger account is countered", r1.ok === true, show(r1));
+    const m2 = await w.poll({ graceMin: 0 });
+    const no2 = await w.svc.buyPosition(pl, { marketId: m2.id, side: "NO", stake: 10_000, idempotencyKey: crypto.randomUUID() });
+    const yes2 = await w.svc.buyPosition(pl, { marketId: m2.id, side: "YES", stake: 1_000, idempotencyKey: crypto.randomUUID() });
+    await w.backdate(no2.data.positionId, 10_000);
+    const b2 = await w.bot();
+    const r2 = await w.place(b2, await w.intent(b2, m2.id, { kind: "COUNTER", triggerPositionId: no2.data.positionId, triggerUserId: pl, side: "YES", stakeTzs: 2_000 }));
+    ok("4.7 · the trigger account also holds the house's side → house_market_conflict{TRIGGER_BOTH_SIDES}",
+      yes2.ok === true && r2.ok === false && r2.reason === "house_market_conflict" && r2.detail?.conflict === "TRIGGER_BOTH_SIDES", show(r2));
+  }
+
+  // A bot never holds both sides of one market (OPPOSITE_SIDE).
+  {
+    const { market } = await pollWithLockedNo(20_000);
+    const bo = await w.bot();
+    const r1 = await w.place(bo, await w.intent(bo, market.id, { kind: "MANUAL", entryCondition: "THIN", side: "YES", stakeTzs: 1_000 }));
+    ok("4.8 · fixture · the bot holds YES", r1.ok === true, show(r1));
+    const rOpp = await w.place(bo, await w.intent(bo, market.id, { kind: "MANUAL", entryCondition: "THIN", side: "NO", stakeTzs: 1_000 }));
+    ok("4.8a · the same bot then NO on that market → house_market_conflict{OPPOSITE_SIDE}",
+      rOpp.ok === false && rOpp.reason === "house_market_conflict" && rOpp.detail?.conflict === "OPPOSITE_SIDE", show(rOpp));
+    await w.dal.houseBotIntentStore.cancelLive({ houseBotId: bo.botId }, "CASE_DONE");
+    const rSame = await w.place(bo, await w.intent(bo, market.id, { kind: "MANUAL", entryCondition: "THIN", side: "YES", stakeTzs: 1_000 }));
+    ok("4.8c · CONTROL · the same bot again on YES places", rSame.ok === true, show(rSame));
+  }
 }
 
 // ═══ §5 · settlement pays and refunds marked rows with the marker ══════════════════════════
@@ -336,6 +402,62 @@ section("§8 · the liquidity label on outcome notices");
     `${houseNotice[0]?.bodyEn} | ${personal[0]?.bodyEn}`);
   const otherClosed = await rows(other, "SELECTION_CLOSED");
   ok("8.6 · CONTROL · a player with no house stake gets exactly one unlabelled notice", otherClosed.length === 1 && !otherClosed[0].bodyEn.includes(LABEL));
+  // UX-2: a lock screen truncates the body, so the house notice names itself in the TITLE, in all three languages.
+  ok("8.7 · the labelled selection-closed notice carries the label in its title (en/sw/zh); the personal one does not",
+    !!houseNotice[0] && houseNotice[0].titleEn.startsWith("50pick liquidity stake · ") && houseNotice[0].titleSw.startsWith("Dau la ukwasi la 50pick · ")
+      && houseNotice[0].titleZh.startsWith("50pick 流动性投注 · ") && !!personal[0] && !personal[0].titleEn.includes(LABEL),
+    `${houseNotice[0]?.titleEn} | ${personal[0]?.titleEn}`);
+
+  // UX-1: the verdict notice. A holder whose every stake here is a liquidity stake is not invited to object
+  // (objecting would refuse HOUSE_STAKE_ONLY); a mixed holder and a player keep the invitation.
+  const OBJECT = { en: "object before then", sw: "pinga kabla ya muda huo", zh: "提出异议" };
+  const invites = (n: Any) => n.bodyEn.includes(OBJECT.en) && n.bodySw.includes(OBJECT.sw) && n.bodyZh.includes(OBJECT.zh);
+  const invitesNone = (n: Any) => !n.bodyEn.includes(OBJECT.en) && !n.bodySw.includes(OBJECT.sw) && !n.bodyZh.includes(OBJECT.zh);
+  const v1 = await pollWithLockedNo(10_000);
+  const hOnly = await w.bot();
+  const rv1 = await w.place(hOnly, await w.intent(hOnly, v1.market.id, { kind: "FILL", side: "YES", stakeTzs: 2_000 }));
+  const v2 = await pollWithLockedNo(10_000);
+  const hMixed = await w.bot();
+  const rv2 = await w.place(hMixed, await w.intent(hMixed, v2.market.id, { kind: "FILL", side: "YES", stakeTzs: 2_000 }));
+  const ownV = await w.svc.buyPosition(hMixed.userId, { marketId: v2.market.id, side: "YES", stake: 1_000, idempotencyKey: crypto.randomUUID() });
+  await w.svc.resolveMarket({ marketId: v1.market.id, outcome: "NO", officerId: OFFICER });
+  await w.svc.resolveMarket({ marketId: v2.market.id, outcome: "NO", officerId: OFFICER });
+  await sleep(500);
+  const verdictOf = async (userId: string, marketId: string) => (await rows(userId, "VERDICT")).find((n) => n.href?.includes(marketId));
+  const vHouse = await verdictOf(hOnly.userId, v1.market.id), vMixed = await verdictOf(hMixed.userId, v2.market.id), vPlayer = await verdictOf(v1.player, v1.market.id);
+  ok("8.8 · fixture · a house-only holder, a mixed holder and a player each got a verdict notice",
+    rv1.ok === true && rv2.ok === true && ownV.ok === true && !!vHouse && !!vMixed && !!vPlayer, `${show(rv1)} · ${show(rv2)} · ${show(ownV)} · ${!!vHouse}/${!!vMixed}/${!!vPlayer}`);
+  ok("8.9 · the house-only holder's verdict notice has the label and NO objection invitation in any language",
+    !!vHouse && invitesNone(vHouse) && vHouse.bodyEn.includes(LABEL), vHouse?.bodyEn ?? "no row");
+  ok("8.10 · the mixed holder keeps the invitation (and the label) in all three languages", !!vMixed && invites(vMixed) && vMixed.bodyEn.includes(LABEL), vMixed?.bodyEn ?? "no row");
+  ok("8.11 · CONTROL · the player keeps the invitation and has no label", !!vPlayer && invites(vPlayer) && !vPlayer.bodyEn.includes(LABEL), vPlayer?.bodyEn ?? "no row");
+}
+
+// ═══ §10 · orphan repair refunds a house stake with the marker (MC-3) — memory only ═══════════════
+if (!w.onPostgres) {
+  section("§10 · memory: orphan repair carries the marker");
+  const { eatDayKey } = await import("../../src/lib/house-bot/clock.ts");
+  const { houseDayBook } = await import("../../src/lib/server/house-bot/book.ts");
+  const { market } = await pollWithLockedNo(10_000);
+  const b = await w.bot();
+  const r = await w.place(b, await w.intent(b, market.id, { kind: "FILL", side: "YES", stakeTzs: 3_000 }));
+  const p = await w.mdal.positionStore.get(r.data.positionId);
+  const before = await houseDayBook(eatDayKey(Date.now()), b.botId);
+  await w.mdal.positionStore.set({ ...p, marketId: `mkt_gone_${process.pid}` });
+  const rep = await w.svc.repairOrphanedPositions();
+  const refund = (await w.txnsFor(p.id)).find((t: Any) => t.type === "BET_REFUND");
+  const after = await houseDayBook(eatDayKey(Date.now()), b.botId);
+  ok("10.1 · the orphaned house stake is refunded once, and its refund carries the house marker",
+    rep.repaired >= 1 && !!refund && refund.houseBotId === b.botId && refund.amount === 3_000, `${JSON.stringify(rep)} · ${refund ? `${refund.amount} marker ${refund.houseBotId}` : "no refund"}`);
+  ok("10.2 · the bot's book counts the refund as returned", after.returnedTzs - before.returnedTzs === 3_000, `before ${before.returnedTzs} · after ${after.returnedTzs}`);
+  const { market: m2, player } = await pollWithLockedNo(10_000);
+  const pp = (await w.positionsOf(m2.id)).find((x: Any) => x.userId === player);
+  await w.mdal.positionStore.set({ ...pp, marketId: `mkt_gone2_${process.pid}` });
+  await w.svc.repairOrphanedPositions();
+  const pRefund = (await w.txnsFor(pp.id)).find((t: Any) => t.type === "BET_REFUND");
+  ok("10.c1 · CONTROL · a player's orphan refund carries no marker", !!pRefund && pRefund.houseBotId == null, pRefund ? String(pRefund.houseBotId) : "no refund");
+} else {
+  console.log(`[${STORE}] §10 · orphan repair: NOT RUN on Postgres — Position.marketId has a foreign key, so an orphan cannot exist there.`);
 }
 
 // ═══ §9 · lockedForHouse on the A14 grid — on BOTH stores (the SQL on Postgres, the twin in memory) ═══

@@ -403,6 +403,17 @@ section("§6 · sanctioned changes");
     ok("6.m3 · CONTROL · a player's own open stake on this market gives the chip (other markets ignored)", playerSide === "NO", String(playerSide));
   }
 
+  // (h) UX-2: the house selection-closed notice rides its OWN push tag, so it can never replace the holder's
+  // personal notice on the lock screen (the title label is proven behaviourally in money 8.7).
+  {
+    const notif = decomment(read("src/lib/server/notification-service.ts"));
+    const sc = fnBody(notif, "export function notifySelectionClosed(");
+    const tagged = /opts\.houseStake\s*\?\s*\{\s*pushTag:\s*`selection-closed-house:\$\{opts\.marketId\}`\s*\}\s*:\s*undefined/;
+    ok("6.h1 · notifySelectionClosed passes pushTag selection-closed-house:<marketId> exactly when houseStake", tagged.test(sc), `${sc.length} chars read`);
+    ok("6.h1c · CONTROL · a notice with no house condition on the tag is not matched",
+      !tagged.test("}, { pushTag: `selection-closed-house:${opts.marketId}` });") && sc.length > 1_000);
+  }
+
   // A17 and H9: no wagering reversal and no recruiter reward on a marked position.
   {
     const svc = decomment(SVC_SRC);
