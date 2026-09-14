@@ -27,13 +27,12 @@
    - **Never overlap `npm ci`, `next build`, `test:all` or Playwright with another session on the same laptop.**
 3. **P0.2 and P0.3 are ✅** (2026-09-13, build session `ali-e4`; details in the P0 table). Nothing else to check before the hold lifts.
 4. **⛔ HOLD before P0.4.** Wait until BOTH:
-   - (a) **Any machine, checkable in git:** the KYC audit's fixes are on `origin/main`, and the topmost RESUME AT in `git show origin/main:docs/LIVE-QA-CAMPAIGN.md` §6b is the audit session's own block (newer than "session 95"), saying its work is done. ali-f6's first fix ("P0", no migration) was pushed at 21:27 UTC 2026-09-13; its P1 batch was still in flight. **Last check, 2026-09-14 00:53 UTC:**
-     - `origin/main` was at "AUDIT 95 (3/n) · docs: the uncommitted P1 batch has a backup snapshot on audit-95-p1-wip, and §6b says how to continue it on another machine".
-     - The topmost §6b block was still "session 96". Its P0 fixes are LIVE. Its **P1 batch is uncommitted on the audit machine**, with a backup snapshot on the side branch `audit-95-p1-wip` (not deployed); §6b says how to continue it elsewhere.
-     - P1 touches `refused-funds`, `wallet-service`, `wallet-freeze`, `kyc-service`, `user-service` (closure) and COMPLIANCE-DECISIONS, which include House Bots hook points.
-     - No migration newer than `20260913120000_kyc_at_withdrawal` had landed.
-     - ali-f6 was still live. Build session ali-e4 asked it for a P1 ETA and proposed a merge-only of `origin/main` into `house-bots` (no `npm ci`, build or tests before its ALL-CLEAR; our COMPLIANCE entry held until P1 lands). No answer yet.
-     - **So the hold stands.**
+   - (a) **Any machine, checkable in git:** the KYC audit's fixes are on `origin/main`, and the topmost RESUME AT in `git show origin/main:docs/LIVE-QA-CAMPAIGN.md` §6b is the audit session's own block (newer than "session 95"), saying its work is done. ali-f6's first fix ("P0", no migration) was pushed at 21:27 UTC 2026-09-13; its P1 batch was still in flight. **Last check, 2026-09-14 02:41 UTC:**
+     - **P1 is pushed.** `origin/main` is at "AUDIT 95 (9/n) · the release's claims get gates…", six commits after "(3/n)" and 128 files; ali-f6 told ali-e4. It added no migration: none is newer than `20260913120000_kyc_at_withdrawal`.
+     - **Still pending on the audit side:** a docs-only §6b handover commit, then Railway deploy verification, production read-only checks and its red harnesses. **"ALL-CLEAR heavy window" has not been sent.**
+     - **Merge plan (agreed with ali-f6):** merge `origin/main` into `house-bots` once, after the Commit 1 edit-only files are committed and after the §6b docs commit lands. Files P1 shares with Commit 1: `package.json` and `docs/FLOWS.md` only.
+     - **P1 brings:** predeploy guards `test:wallet-status-writers` (pinned at 36 wallet write sites; `db.wallet` members fixed), `test:kyc-gate-state-table` and `test:refused-funds-p1`; new 2026-09-14 COMPLIANCE entries (the House bots entry goes after them); Terms and Privacy v2026-09-14 (re-derive before Commit 6); a wide `i18n-dict.ts` change.
+     - **So:** the merge may run once both conditions above hold; `npm ci`, builds, tests and Playwright stay held until ALL-CLEAR.
    - (b) **Same laptop only:** no other session on this machine is inside a heavy Node window (on Ali-Blade15: wait for ali-f6's "ALL-CLEAR heavy window"). On a different PC this condition does not apply, but coordinate with that PC's own sessions.
 
    If unsure, ask the audit session (if it is live on your machine) or Ali. Then:
@@ -45,7 +44,7 @@
      - Write Commit 1 (Prisma schema, the two house migrations, DAL and memory twins, pure modules) as pushed `WIP house-bots:` commits.
      - Hold the COMPLIANCE-DECISIONS entry until P1 lands. P1 adds several 2026-09-14 entries at the top of that file.
    - **New guards arriving with P1** (ali-f6, 2026-09-14). Plan for them:
-     - **`test:wallet-status-writers`** (in `predeploy`) is a census of EVERY wallet write in `src/`, pinned at exactly 35 sites.
+     - **`test:wallet-status-writers`** (in `predeploy`) is a census of EVERY wallet write in `src/`, pinned at exactly 36 sites (35 until P1's dev-only `/auth/demo` balance reset added one; ali-f6, 2026-09-14).
        - Only `applyFreeze` (`wallet-freeze.ts`), `closeAccount` (`user-service.ts`) and the two registration creates in `auth-service.ts` may write `Wallet.status` or `freezeReasons`.
        - `db.wallet`'s members in `store.ts` and `prisma-dal.ts` are pinned to exactly `adjust/create/findByUserId/listAll/update`, and `adjust` may not assign status.
        - Any house-bot wallet write or new wallet DAL member must move `SITE_COUNT` (and the member list) in the same commit, after reading the population the guard prints.
