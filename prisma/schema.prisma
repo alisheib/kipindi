@@ -844,6 +844,16 @@ model ResponsibleGambling {
   pendingWeeklyIncreaseEffectiveAt  DateTime?
   pendingMonthlyIncreaseTo          Decimal?  @db.Decimal(18, 2)
   pendingMonthlyIncreaseEffectiveAt DateTime?
+  /// E-408 (2026-09-14) — a LOOSER daily loss limit or session time limit waits 24 hours, like a deposit limit.
+  /// `…To = null` with the time set is a pending REMOVAL; readers key on the time.
+  pendingLossLimitTo                Decimal?  @db.Decimal(18, 2)
+  pendingLossLimitEffectiveAt       DateTime?
+  pendingSessionLimitTo             Int?
+  pendingSessionLimitEffectiveAt    DateTime?
+  /// E-408 (2026-09-14) — the play-session clock held per PLAYER, so signing out and in cannot restart the
+  /// session time limit. Written at each bet attempt (throttled); see `checkSessionTimeLimit`.
+  playStartedAt                     DateTime?
+  playLastSeenAt                    DateTime?
   updatedAt                         DateTime  @updatedAt
   createdAt                         DateTime  @default(now())
 }

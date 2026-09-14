@@ -57,10 +57,13 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
   // whatever was pending, so a weekly-only increase rendered `formatTzs(null)`; and a pending REMOVAL (`to` null,
   // time set — `depositLimitChange`) must say "removal", not an amount.
   const pendingChanges = ([
-    [t.rg.dailyDeposit, rg.pendingIncreaseTo, rg.pendingIncreaseEffectiveAt],
-    [t.rg.weeklyDeposit, rg.pendingWeeklyIncreaseTo, rg.pendingWeeklyIncreaseEffectiveAt],
-    [t.rg.monthlyDeposit, rg.pendingMonthlyIncreaseTo, rg.pendingMonthlyIncreaseEffectiveAt],
-  ] as const).filter(([, , at]) => !!at).map(([label, to, at]) => ({ label, to, at: at! }));
+    [t.rg.dailyDeposit, rg.pendingIncreaseTo, rg.pendingIncreaseEffectiveAt, "tzs"],
+    [t.rg.weeklyDeposit, rg.pendingWeeklyIncreaseTo, rg.pendingWeeklyIncreaseEffectiveAt, "tzs"],
+    [t.rg.monthlyDeposit, rg.pendingMonthlyIncreaseTo, rg.pendingMonthlyIncreaseEffectiveAt, "tzs"],
+    // E-408 remainder — the loss and session limits wait too.
+    [t.rg.dailyLoss, rg.pendingLossLimitTo ?? null, rg.pendingLossLimitEffectiveAt ?? null, "tzs"],
+    [t.rg.sessionTime, rg.pendingSessionLimitTo ?? null, rg.pendingSessionLimitEffectiveAt ?? null, "min"],
+  ] as const).filter(([, , at]) => !!at).map(([label, to, at, unit]) => ({ label, to, at: at!, unit }));
   const hasPendingIncrease = pendingChanges.length > 0;
 
   // Read-only usage snapshot for the limit meters below. Every figure is the
@@ -155,7 +158,7 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
               {await Promise.all(pendingChanges.map(async (c) => (
                 <div key={c.label}>
                   <p className="font-display font-semibold text-text">
-                    {c.label} · {c.to === null ? t.rg.pendingRemoval : <>{t.rg.pendingIncrease}{" "}{await formatTzs(c.to)}</>}
+                    {c.label} · {c.to === null ? t.rg.pendingRemoval : <>{t.rg.pendingIncrease}{" "}{c.unit === "min" ? c.to : await formatTzs(c.to)}</>}
                   </p>
                   {/* ⚠️ THIS DATE MUST BE ZONED — the end of the statutory cooling-off window. `formatDateTime`
                       stamps the platform timezone; a bare toLocaleString on the server prints UTC, three hours early. */}

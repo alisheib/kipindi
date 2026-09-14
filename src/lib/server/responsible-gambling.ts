@@ -17,6 +17,7 @@
  *  - Self-exclusion is one-way until expiry; the player CANNOT cancel it themselves
  *  - All state changes audited (COMPLIANCE category)
  */
+import { PLAY_SESSION_GAP_MS } from "@/lib/play-session";
 import type { Prisma } from "@prisma/client";
 import { audit } from "./audit";
 import { db } from "./store";
@@ -77,6 +78,12 @@ export async function getRgSettings(userId: string) {
     pendingWeeklyIncreaseTo: null,
     pendingWeeklyIncreaseEffectiveAt: null,
     pendingMonthlyIncreaseTo: null,
+    pendingLossLimitTo: null,
+    pendingLossLimitEffectiveAt: null,
+    pendingSessionLimitTo: null,
+    pendingSessionLimitEffectiveAt: null,
+    playStartedAt: null,
+    playLastSeenAt: null,
     pendingMonthlyIncreaseEffectiveAt: null,
   };
   await db.responsible.upsert(fresh);
@@ -102,6 +109,18 @@ async function effectivize(r: StoredResponsibleGambling) {
     r.weeklyDepositLimit = r.pendingWeeklyIncreaseTo;
     r.pendingWeeklyIncreaseTo = null;
     r.pendingWeeklyIncreaseEffectiveAt = null;
+    changed = true;
+  }
+  if (r.pendingLossLimitEffectiveAt && now >= new Date(r.pendingLossLimitEffectiveAt).getTime()) {
+    r.dailyLossLimit = r.pendingLossLimitTo ?? null;
+    r.pendingLossLimitTo = null;
+    r.pendingLossLimitEffectiveAt = null;
+    changed = true;
+  }
+  if (r.pendingSessionLimitEffectiveAt && now >= new Date(r.pendingSessionLimitEffectiveAt).getTime()) {
+    r.sessionTimeLimitMin = r.pendingSessionLimitTo ?? null;
+    r.pendingSessionLimitTo = null;
+    r.pendingSessionLimitEffectiveAt = null;
     changed = true;
   }
   if (r.pendingMonthlyIncreaseEffectiveAt && now >= new Date(r.pendingMonthlyIncreaseEffectiveAt).getTime()) {
@@ -155,10 +174,13 @@ export function depositLimitChange(
   return { limit: current, to: requested, at: new Date(nowMs + LIMIT_INCREASE_DEFERRAL_SEC * 1000).toISOString(), deferred: true };
 }
 
+/** The same rule for every limit — a loss or a session limit is loosened exactly like a deposit limit (E-408, 2026-09-14). */
+export const limitChange = depositLimitChange;
+
 /**
- * Apply a limit change. Deposit limits follow `depositLimitChange` (tighter now, looser after 24h).
- * ⚠️ The daily loss limit and the session time limit apply at once in either direction; the
- * published RG policy promises the 24-hour wait for deposit limits only.
+ * Apply a limit change. EVERY limit follows `limitChange`: tighter now, looser (raise or remove) after 24 hours.
+ * ⭐ 2026-09-14 (E-408 remainder): the daily loss limit and the session time limit used to loosen at once; they now
+ * wait like the deposit limits, in the two `pending…` column pairs added by migration 20260914120000.
  */
 export async function setLimits(userId: string, input: SetLimitInput) {
   const cur = await getRgSettings(userId);
@@ -190,7 +212,11 @@ export async function setLimits(userId: string, input: SetLimitInput) {
     next.monthlyDepositLimit = c.limit; next.pendingMonthlyIncreaseTo = c.to; next.pendingMonthlyIncreaseEffectiveAt = c.at;
     deferredIncrease ||= c.deferred;
   }
-  if ("dailyLossLimit" in input)       next.dailyLossLimit = input.dailyLossLimit ?? null;
+  if ("dailyLossLimit" in input) {
+    const c = limitChange(cur.dailyLossLimit, { to: cur.pendingLossLimitTo ?? null, at: cur.pendingLossLimitEffectiveAt ?? null }, input.dailyLossLimit ?? null, nowMs);
+    next.dailyLossLimit = c.limit; next.pendingLossLimitTo = c.to; next.pendingLossLimitEffectiveAt = c.at;
+    deferredIncrease ||= c.deferred;
+  }
   // 🔴 BOUNDED — AND IT WAS NOT, UNTIL THIS FIELD STARTED TO BITE (E-235).
   //
   // `validators.ts:219` has declared `sessionMin: z.number().int().min(15).max(480)` since
@@ -210,7 +236,10 @@ export async function setLimits(userId: string, input: SetLimitInput) {
   // control they had just switched off.
   if ("sessionTimeLimitMin" in input) {
     const v = input.sessionTimeLimitMin ?? null;
-    next.sessionTimeLimitMin = v === null || v <= 0 ? null : Math.max(15, Math.min(480, v));
+    const requested = v === null || v <= 0 ? null : Math.max(15, Math.min(480, v));
+    const c = limitChange(cur.sessionTimeLimitMin, { to: cur.pendingSessionLimitTo ?? null, at: cur.pendingSessionLimitEffectiveAt ?? null }, requested, nowMs);
+    next.sessionTimeLimitMin = c.limit; next.pendingSessionLimitTo = c.to; next.pendingSessionLimitEffectiveAt = c.at;
+    deferredIncrease ||= c.deferred;
   }
   if ("realityCheckIntervalMin" in input && input.realityCheckIntervalMin !== undefined) {
     next.realityCheckIntervalMin = Math.max(5, Math.min(120, input.realityCheckIntervalMin));
@@ -430,12 +459,27 @@ export async function selfExclusionStanding(userId: string): Promise<SelfExclusi
 export async function checkSessionTimeLimit(
   userId: string,
   playStartedAt: number | null | undefined,
+  now: number = Date.now(),
 ): Promise<{ exceeded: boolean; limitMin: number; playedMin: number } | null> {
   if (!playStartedAt) return null;
   const r = await getRgSettings(userId);
   const limitMin = r.sessionTimeLimitMin;
   if (limitMin === null || limitMin === undefined || limitMin <= 0) return null;
-  const playedMin = Math.floor((Date.now() - playStartedAt) / 60_000);
+  // 🔴 E-408 remainder (2026-09-14) · THE CLOCK SURVIVES A NEW SIGN-IN. The cookie's `playStartedAt` is restamped by
+  // `createSession`, so signing out and in — or clearing cookies — restarted the limit, straight after a refusal. The
+  // sitting is now also held per PLAYER (`playStartedAt` / `playLastSeenAt` on this row, written at each bet attempt):
+  // if the last attempt was inside the play-session gap, the EARLIER of the two starts is the one measured. A real
+  // break (no attempt for PLAY_SESSION_GAP_MIN) still starts a new sitting, exactly as the cookie's rule does.
+  const seen = r.playLastSeenAt ? Date.parse(r.playLastSeenAt) : NaN;
+  const held = r.playStartedAt ? Date.parse(r.playStartedAt) : NaN;
+  const sameSitting = Number.isFinite(seen) && now - seen <= PLAY_SESSION_GAP_MS && Number.isFinite(held);
+  const start = sameSitting ? Math.min(held, playStartedAt) : playStartedAt;
+  // Recorded on every attempt — a refused one included, or the refusal itself would end the sitting — throttled to one
+  // write a minute. ⛔ Best-effort: a failed write must not turn into a refused bet.
+  if (!sameSitting || start !== held || now - seen > 60_000) {
+    await Promise.resolve(db.responsible.touchPlayClock(userId, new Date(start).toISOString(), new Date(now).toISOString())).catch(() => {});
+  }
+  const playedMin = Math.floor((now - start) / 60_000);
   return { exceeded: playedMin >= limitMin, limitMin, playedMin };
 }
 

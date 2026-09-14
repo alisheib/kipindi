@@ -680,12 +680,12 @@ function LimitsTab({ rg }: { rg: Awaited<ReturnType<typeof db.responsible.get>> 
       <Item label="Session time limit"    value={rg.sessionTimeLimitMin !== null ? `${rg.sessionTimeLimitMin} min`   : "no limit"} />
       <Item label="Reality check interval" value={`${rg.realityCheckIntervalMin} min`} />
       {/* E-408 — each pending deposit-limit change, keyed on its effective time; `to` null is a pending REMOVAL. */}
-      {([["Daily", rg.pendingIncreaseTo, rg.pendingIncreaseEffectiveAt], ["Weekly", rg.pendingWeeklyIncreaseTo, rg.pendingWeeklyIncreaseEffectiveAt], ["Monthly", rg.pendingMonthlyIncreaseTo, rg.pendingMonthlyIncreaseEffectiveAt]] as const)
+      {([["daily deposit limit", rg.pendingIncreaseTo, rg.pendingIncreaseEffectiveAt, "tzs"], ["weekly deposit limit", rg.pendingWeeklyIncreaseTo, rg.pendingWeeklyIncreaseEffectiveAt, "tzs"], ["monthly deposit limit", rg.pendingMonthlyIncreaseTo, rg.pendingMonthlyIncreaseEffectiveAt, "tzs"], ["daily loss limit", rg.pendingLossLimitTo ?? null, rg.pendingLossLimitEffectiveAt ?? null, "tzs"], ["session time limit", rg.pendingSessionLimitTo ?? null, rg.pendingSessionLimitEffectiveAt ?? null, "min"]] as const)
         .filter(([, , at]) => !!at)
-        .map(([period, to, at]) => (
-          <Item key={period} label={`Pending ${period.toLowerCase()} deposit limit`} value={
+        .map(([what, to, at, unit]) => (
+          <Item key={what} label={`Pending ${what}`} value={
             <span className="text-warning font-medium">
-              {to === null ? "removal" : formatTzs(to)} effective {formatDateTimeSafe(at)}
+              {to === null ? "removal" : unit === "min" ? `${to} min` : formatTzs(to)} effective {formatDateTimeSafe(at)}
             </span>
           } />
         ))}

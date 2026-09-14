@@ -272,7 +272,7 @@ export async function rgRosterCounts() {
     }
     if (coAt > now) cooledOff++;
     // E-408 — keyed on the effective time: a pending REMOVAL carries `to = null`.
-    if (r.pendingIncreaseEffectiveAt || r.pendingWeeklyIncreaseEffectiveAt || r.pendingMonthlyIncreaseEffectiveAt) pendingLimitIncrease++;
+    if (r.pendingIncreaseEffectiveAt || r.pendingWeeklyIncreaseEffectiveAt || r.pendingMonthlyIncreaseEffectiveAt || r.pendingLossLimitEffectiveAt || r.pendingSessionLimitEffectiveAt) pendingLimitIncrease++;
   }
   return { selfExcluded, cooledOff, expiringThisWeek, pendingLimitIncrease };
 }

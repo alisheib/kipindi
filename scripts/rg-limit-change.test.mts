@@ -14,7 +14,7 @@
  *   npx tsx scripts/rg-limit-change.test.mts
  */
 delete process.env.DATABASE_URL;
-const { setLimits, getRgSettings, checkDepositLimit, LIMIT_INCREASE_DEFERRAL_SEC } = await import("../src/lib/server/responsible-gambling.ts");
+const { setLimits, getRgSettings, checkDepositLimit, checkSessionTimeLimit, LIMIT_INCREASE_DEFERRAL_SEC } = await import("../src/lib/server/responsible-gambling.ts");
 const { db } = await import("../src/lib/server/store.ts");
 
 let pass = 0;
@@ -32,6 +32,8 @@ async function elapse(userId: string) {
     pendingIncreaseEffectiveAt: r.pendingIncreaseEffectiveAt ? past : null,
     pendingWeeklyIncreaseEffectiveAt: r.pendingWeeklyIncreaseEffectiveAt ? past : null,
     pendingMonthlyIncreaseEffectiveAt: r.pendingMonthlyIncreaseEffectiveAt ? past : null,
+    pendingLossLimitEffectiveAt: r.pendingLossLimitEffectiveAt ? past : null,
+    pendingSessionLimitEffectiveAt: r.pendingSessionLimitEffectiveAt ? past : null,
   });
 }
 
@@ -88,6 +90,46 @@ async function elapse(userId: string) {
   await setLimits(u, { dailyDepositLimit: 30_000 });
   const r = await getRgSettings(u);
   ok("④ lowering an existing daily limit applies immediately", r.dailyDepositLimit === 30_000 && r.pendingIncreaseEffectiveAt === null);
+}
+
+// ⑤ E-408 remainder · the DAILY LOSS limit and the SESSION TIME limit follow the same rule (they loosened at once).
+{
+  const u = "rg_loss";
+  await setLimits(u, { dailyLossLimit: 20_000 });
+  ok("⑤ a first loss limit applies now", (await getRgSettings(u)).dailyLossLimit === 20_000);
+  await setLimits(u, { dailyLossLimit: null });
+  const r = await getRgSettings(u);
+  ok("⑤ removing the loss limit waits 24 hours", r.dailyLossLimit === 20_000 && r.pendingLossLimitTo === null && !!r.pendingLossLimitEffectiveAt, JSON.stringify(r));
+  await setLimits(u, { dailyLossLimit: 50_000 });
+  ok("⑤ raising the loss limit waits too", (await getRgSettings(u)).dailyLossLimit === 20_000 && (await getRgSettings(u)).pendingLossLimitTo === 50_000);
+  await elapse(u);
+  ok("⑤ after 24 hours the raise applies", (await getRgSettings(u)).dailyLossLimit === 50_000);
+}
+{
+  const u = "rg_session";
+  await setLimits(u, { sessionTimeLimitMin: 60 });
+  ok("⑤ a first session limit applies now", (await getRgSettings(u)).sessionTimeLimitMin === 60);
+  await setLimits(u, { sessionTimeLimitMin: 240 });
+  const r = await getRgSettings(u);
+  ok("⑤ raising the session limit waits 24 hours", r.sessionTimeLimitMin === 60 && r.pendingSessionLimitTo === 240 && !!r.pendingSessionLimitEffectiveAt);
+  await setLimits(u, { sessionTimeLimitMin: 30 });
+  ok("⑤ lowering it applies now and supersedes the pending raise", (await getRgSettings(u)).sessionTimeLimitMin === 30 && !(await getRgSettings(u)).pendingSessionLimitEffectiveAt);
+}
+
+// ⑥ E-408 remainder · SIGNING OUT AND IN DOES NOT RESTART THE SESSION LIMIT. The cookie's clock is restamped by a new
+// sign-in; the per-player clock is not, while the last attempt is inside the play-session gap.
+{
+  const u = "rg_clock";
+  const MIN = 60_000;
+  const t0 = Date.now();
+  await setLimits(u, { sessionTimeLimitMin: 30 });
+  const first = await checkSessionTimeLimit(u, t0 - 35 * MIN, t0);         // 35 minutes into a sitting
+  ok("⑥ 35 minutes into a 30-minute limit is refused", first?.exceeded === true, JSON.stringify(first));
+  const relog = await checkSessionTimeLimit(u, t0 + 1 * MIN, t0 + 2 * MIN); // signed out and in: the cookie says "1 minute ago"
+  ok("⑥ …and a fresh sign-in a minute later is STILL refused (the clock held per player)", relog?.exceeded === true && (relog?.playedMin ?? 0) >= 36, JSON.stringify(relog));
+  const back = await checkSessionTimeLimit(u, t0 + 40 * MIN, t0 + 41 * MIN); // 39 minutes after the last attempt: a real break
+  ok("⑥ after a break longer than the play-session gap, a new sitting starts", back?.exceeded === false && (back?.playedMin ?? 99) <= 1, JSON.stringify(back));
+  ok("⑥ a player with no session limit is not measured (and no clock is written)", (await checkSessionTimeLimit("rg_nolimit", t0 - 500 * MIN, t0)) === null && !(await db.responsible.get("rg_nolimit"))?.playStartedAt);
 }
 
 console.log(`\n${fails.length === 0 ? "ALL PASS" : "FAILED"} — ${pass} passed, ${fails.length} failed`);

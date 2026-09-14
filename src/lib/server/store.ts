@@ -395,6 +395,15 @@ export type StoredResponsibleGambling = {
   pendingWeeklyIncreaseEffectiveAt: string | null;
   pendingMonthlyIncreaseTo: number | null;
   pendingMonthlyIncreaseEffectiveAt: string | null;
+  /** E-408 · a looser loss / session limit waits 24 h. `…To` null with the time set = a pending REMOVAL. Optional:
+   *  rows and fixtures written before 2026-09-14 do not carry them. */
+  pendingLossLimitTo?: number | null;
+  pendingLossLimitEffectiveAt?: string | null;
+  pendingSessionLimitTo?: number | null;
+  pendingSessionLimitEffectiveAt?: string | null;
+  /** E-408 · the play-session clock per PLAYER (start of the sitting, last bet attempt) — see `checkSessionTimeLimit`. */
+  playStartedAt?: string | null;
+  playLastSeenAt?: string | null;
 };
 
 export type StoredNotification = {
@@ -1449,6 +1458,11 @@ const memoryDb = {
     get: (userId: string) => store.responsible.get(userId) ?? null,
     listAll: () => Array.from(store.responsible.values()),
     upsert: (r: StoredResponsibleGambling) => { store.responsible.set(r.userId, r); return r; },
+    /** E-408 · write ONLY the play clock, so it cannot clobber a limit saved in between. No row → nothing (no limit to measure). */
+    touchPlayClock: (userId: string, startedAtIso: string, lastSeenIso: string): void => {
+      const cur = store.responsible.get(userId);
+      if (cur) store.responsible.set(userId, { ...cur, playStartedAt: startedAtIso, playLastSeenAt: lastSeenIso });
+    },
   },
   notification: {
     create: (n: StoredNotification) => { store.notifications.set(n.id, n); return n; },

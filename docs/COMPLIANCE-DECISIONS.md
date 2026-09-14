@@ -6,6 +6,31 @@
 
 ---
 
+## 2026-09-14 (eighth) · RG Policy v2026-09-14.3 — every limit waits 24 hours to loosen, and a new sign-in no longer restarts the session limit
+
+**Session 97, register E-411 — closes the two items the (fifth) entry recorded as open. Not an owner ruling; recorded
+because two controls changed and the policy with them.**
+
+| Control | Before | Now |
+|---|---|---|
+| Daily loss limit — raise or remove | applied **at once** | waits 24 hours; setting or lowering applies at once (`limitChange`, the deposit-limit rule) |
+| Session time limit — raise or remove | applied **at once** | the same |
+| Session time limit — sign out and back in | **restarted the clock**: `createSession` restamps the cookie's `playStartedAt` | the sitting is also held per player (`ResponsibleGambling.playStartedAt` / `playLastSeenAt`, written at every bet attempt, a refused one included, at most once a minute); while the last attempt is inside the play-session gap (30 min) the earlier start is measured |
+
+**Schema, expand-only:** migration `20260914120000_rg_pending_limits_play_clock` adds six nullable columns
+(`pendingLossLimitTo/EffectiveAt`, `pendingSessionLimitTo/EffectiveAt`, `playStartedAt`, `playLastSeenAt`); every
+statement is `ADD COLUMN IF NOT EXISTS`. A pending removal is `…To = null` with its time set, as for deposit limits; the
+player's notice, the staff player page, the RG analytics count and the RG report key on the time.
+
+**Policy §2 (en/sw/zh), Version 2026-09-14.3:** the 24-hour rule is stated once for every limit, and the session limit
+line adds *"Signing out and back in does not restart it."* The settings line says "a limit", not "a deposit limit".
+
+**Guard:** `test:rg-limit-change` 24/0 — the loss and session limits (first applies now, removal and raise wait, a lower
+value supersedes a pending raise) and the play clock (35 minutes into a 30-minute limit refused; a sign-in a minute later
+still refused; after a 39-minute break a new sitting; no clock for a player without a limit).
+
+---
+
 ## 2026-09-14 (seventh) · Agent Terms v2026-09-14 — one Chinese dash, punctuation only
 
 **Session 97, register E-400 ③ — not an owner ruling; recorded because the binding text's hash moved.** The Chinese

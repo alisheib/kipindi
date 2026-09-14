@@ -1950,7 +1950,7 @@ export const dict = {
       saveLimits: "Save limits",
       playerProtection: "Player protection",
       pageDescription: "Set deposit and time limits, take a break, or self-exclude.",
-      limitsDescription: "Setting or lowering a deposit limit takes effect immediately; raising or removing one takes effect after 24 hours. Leave a field blank to remove that limit.",
+      limitsDescription: "Setting or lowering a limit takes effect immediately; raising or removing one takes effect after 24 hours. Leave a field blank to remove that limit.",
       // Read-only usage meters (value-vs-cap) shown beneath the limits you set.
       usageTitle: "Your usage",
       usageIntro: "How close you are to the limits you've set — the same figures the platform checks before a deposit or bet.",
@@ -4214,7 +4214,7 @@ export const dict = {
       saveLimits: "Hifadhi mipaka",
       playerProtection: "Ulinzi wa mchezaji",
       pageDescription: "Weka mipaka ya amana na muda, pumzika au jizuie.",
-      limitsDescription: "Kuweka au kupunguza mpaka wa kuweka fedha huanza mara moja; kuuongeza au kuuondoa huanza baada ya saa 24. Acha sehemu tupu kuondoa mpaka huo.",
+      limitsDescription: "Kuweka au kupunguza mpaka huanza mara moja; kuuongeza au kuuondoa huanza baada ya saa 24. Acha sehemu tupu kuondoa mpaka huo.",
       // Read-only usage meters — see the EN block.
       usageTitle: "Matumizi yako",
       usageIntro: "Umefika wapi kwenye mipaka uliyoiweka — takwimu zilezile ambazo mfumo huangalia kabla ya amana au dau.",
@@ -6331,7 +6331,7 @@ export const dict = {
       saveLimits: "保存限额",
       playerProtection: "玩家保护",
       pageDescription: "设置充值和时间限额、休息或自我排除。",
-      limitsDescription: "设置或下调充值限额立即生效；上调或取消须24小时后生效。留空即取消该限额。",
+      limitsDescription: "设置或下调限额立即生效；上调或取消须24小时后生效。留空即取消该限额。",
       // Read-only usage meters — see the EN block.
       usageTitle: "您的使用情况",
       usageIntro: "您距离所设限额还有多少——与平台在充值或下注前核对的数字相同。",
