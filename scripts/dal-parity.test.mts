@@ -402,6 +402,26 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
     ok("6.wire · houseBookStore is prismaHouseBook with a database and memoryHouseBook without",
       /export const houseBookStore: HouseBookStore = usePrisma \? prismaHouseBook : memoryHouseBook;/.test(houseDalSrc));
   }
+  {
+    // The money seam's reads (build commit 2): every member in both implementations, wired the same way.
+    const methods = interfaceMethods(houseDalSrc, "HouseSeamStore");
+    const mem = objectMethods(houseDalSrc, "memoryHouseSeam");
+    const pri = objectMethods(houseDalSrc, "prismaHouseSeam");
+    ok("6.twin.0 · the parser sees HouseSeamStore and both implementations", methods.length >= 9 && mem.length >= 9 && pri.length >= 9,
+      `interface ${methods.length} · memory ${mem.length} · prisma ${pri.length}`);
+    for (const m of methods) {
+      ok(`6.twin · HouseSeamStore.${m} exists in memoryHouseSeam`, mem.includes(m));
+      ok(`6.twin · HouseSeamStore.${m} exists in prismaHouseSeam`, pri.includes(m));
+    }
+    ok("6.wire · houseSeamStore is prismaHouseSeam with a database and memoryHouseSeam without",
+      /export const houseSeamStore: HouseSeamStore = usePrisma \? prismaHouseSeam : memoryHouseSeam;/.test(houseDalSrc));
+    // ⛔ 04 A9: the seam's reads are plain SELECTs — no row lock a player's bet could queue behind.
+    const priSeam = region(houseDalSrc, "const prismaHouseSeam:");
+    ok("6.seam.sql · prismaHouseSeam takes no row lock (no FOR UPDATE / FOR SHARE)", priSeam.length > 500 && !/FOR\s+(UPDATE|SHARE|NO KEY UPDATE)/i.test(priSeam), `region ${priSeam.length} chars`);
+    ok("6.seam.sql · intentFreshness reads staleAt on clock_timestamp(), never now() (N1 §3)",
+      /"staleAt" > clock_timestamp\(\)/.test(objectMethod(priSeam, "intentFreshness")));
+    ok("6.seam.c1 · CONTROL · a planted FOR UPDATE is caught", /FOR\s+(UPDATE|SHARE|NO KEY UPDATE)/i.test(`SELECT 1 FROM "Position" FOR UPDATE`));
+  }
 
   // The fields whose loss is a named defect, by name, so the FAIL line reads as itself.
   const DEFECTS: Record<string, readonly string[]> = {
