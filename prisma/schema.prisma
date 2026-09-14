@@ -272,6 +272,17 @@ model User {
   // RBAC audit trail for staff role changes (nullable — only staff ever get set).
   roleChangedAt        DateTime?
   roleChangedBy        String?
+  /// House bots (04 A4): when the password hash was last written — in the SAME update as the hash
+  /// (registration create; password-reset.ts reset link, officer temp, settings). ⚠️ TIMESTAMPTZ(3),
+  /// unlike this model's other times. NULL on legacy rows: the password-context check falls back to
+  /// the awaited audit read, and a failed read BLOCKS.
+  passwordSetAt        DateTime?  @db.Timestamptz(3)
+  /// How the hash was last set: REGISTRATION · SELF_CHANGE · RESET_LINK · OFFICER_TEMP · REHASH.
+  /// SQL-only CHECK "User_passwordSetVia_check" (migration 20260914120100_house_bot_markers).
+  passwordSetVia       String?
+  /// When an OFFICER last set this account's email (04 A4). A RESET_LINK password within the 30 days
+  /// after it blocks designate and re-verify.
+  emailSetByOfficerAt  DateTime?  @db.Timestamptz(3)
 
   wallet                  Wallet?
   kycSubmissions          KycSubmission[]
@@ -316,6 +327,8 @@ model User {
   bonusGrants             BonusGrant[]
   inviteCampaigns         InviteCampaign[]
   agentApplications       AgentApplication[]
+  /// Every house-bot designation of this account, REMOVED ones included (04 A20: kept 7 years).
+  houseBots               HouseBot[]
 
   @@index([role, status])
   @@index([createdAt])
@@ -637,6 +650,12 @@ model Transaction {
   // Kept as a plain string (no DB-level FK) so the append-only ledger is never
   // blocked by cascade or missing-row errors.
   positionId        String?
+  /// ⭐ HOUSE MARKER (PLAN §2 Markers, I8). The HouseBot whose stake this ledger row belongs to,
+  /// copied from the Position on every create that carries a positionId (04 R3). NULL for every
+  /// player row. Soft reference, no FK. ⛔ Written in CREATE only — every update path skips it.
+  /// SQL-only partial index "Transaction_createdAt_marked_idx" (createdAt) WHERE houseBotId IS NOT NULL
+  /// (migration 20260914120100_house_bot_markers).
+  houseBotId        String?
   amlReviewedById   String?
   amlReviewedAt     DateTime?
   amlReason         String?
@@ -1707,6 +1726,13 @@ model PredictionMarket {
    * may be re-claimed (crash recovery). See resolveDueMarket in market-service.ts.
    */
   resolveClaimedAt          DateTime?
+  /// When an officer last REOPENED this market (N1 §2). Written only by adminReopenMarket, in the
+  /// same store write as the reopen (sanctioned change r). The house engine reads it for
+  /// MARKET_REOPENED and the information blackout. NULL = never reopened; never cleared.
+  /// ⚠️ TIMESTAMPTZ(3), unlike this model's other times (migration 20260914120100_house_bot_markers).
+  reopenedAt                DateTime?              @db.Timestamptz(3)
+  /// How many times it was reopened (N1 §2). NULL = never; never cleared.
+  reopenCount               Int?
   /**
    * Which PRODUCT this row belongs to. `"MARKET"` = a long-form 50pick poll (the
    * original product, and every row that existed before this column). `"UPDOWN"` =
@@ -1793,9 +1819,367 @@ model Position {
   // Client-generated UUID — prevents double-submit on 2G (same key = same intent).
   // Nullable: positions created by internal flows (settlement adjustments) don't carry one.
   idempotencyKey  String?          @unique
+  /// ⭐ HOUSE MARKER (PLAN §2 Markers, I8; 04 S3). The HouseBot that placed this stake; NULL for every
+  /// player bet. Soft reference, no FK. ⛔ Written in CREATE only; every update skips it (the one
+  /// sanctioned exception is the commit-7 remark script, NULL → id only).
+  /// SQL-only partial indexes (migration 20260914120100_house_bot_markers), each WHERE houseBotId IS NOT NULL:
+  ///   "Position_houseBotId_placedAt_marked_idx" (houseBotId, placedAt) — per-bot rolling windows
+  ///   "Position_marketId_marked_idx" (marketId)                        — house money per market
+  ///   "Position_houseBotId_open_idx" (houseBotId) AND status='OPEN'    — open exposure (04 A24)
+  houseBotId      String?
 
   @@index([userId, marketId])
   @@index([marketId, status])
+  /// The house sweep's keyset (placedAt, id) — PLAN §2 Markers.
+  @@index([placedAt, id])
+}
+
+// ============================================================================
+// HOUSE BOTS — liquidity stakes from designated player accounts (docs/HOUSE-BOTS.md)
+// ============================================================================
+//
+// ⛔ ALL HOUSE DDL LIVES IN TWO HAND-WRITTEN, RE-RUNNABLE MIGRATIONS:
+//   20260914120000_house_bot_tables   — these 8 tables, their CHECKs, indexes and seed rows
+//   20260914120100_house_bot_markers  — the columns on User, Position, Transaction, PredictionMarket
+// Every CHECK and every PARTIAL index is SQL-only (the Prisma DSL has neither); each model names its
+// partial indexes below. Do not "tidy" them away as drift: the partial uniques ARE the exactly-once
+// guarantees, and the house DAL maps their names.
+// ⛔ INDEX NAMES ARE FIXED. The names N1 §2 and N2 §2 seal (hbp_*, hbi_*, hbe_*, hbt_*) are carried
+// with map:, so the database name never depends on field order; every other index keeps Prisma's
+// default name, which the migration spells out.
+// Statuses, causes and kinds are TEXT + CHECK, never Postgres enums (PLAN §2). Every time column is
+// TIMESTAMPTZ(3) (04 A4). TZS caps are BigInt, seconds and counts Int, NULL = not set (04 C1).
+// Ids are minted in code with a prefix (hb_, hbi_, hbe_, hbt_, hbp_), so no @default on @id.
+// Raw-SQL writes must set "updatedAt" = now() themselves: @updatedAt fires only through the client.
+// BigInt columns come back as JS bigint; the DAL converts with Number() (every value ≤ 1e9).
+// ⛔ The two foreign keys (HouseBot.userId, HouseBotTarget.houseBotId) are ON DELETE RESTRICT: house
+// rows are kept 7 years (04 A20), so they block deleting the account or the bot by design.
+
+/// One row per DESIGNATION; designating the same account again creates a new row (PLAN §2).
+/// SQL-only: "HouseBot_userId_live_key" UNIQUE (userId) WHERE status <> 'REMOVED';
+///           "HouseBot_labelKey_live_key" UNIQUE (labelKey) WHERE status <> 'REMOVED' (04 C2).
+model HouseBot {
+  id                     String    @id
+  userId                 String
+  user                   User      @relation(fields: [userId], references: [id], onDelete: Restrict)
+  /// 2–32 code points, normalised (04 C2). Erasure rewrites it to "Erased <id tail>" (04 A5).
+  label                  String
+  /// NFKC(normaliseLabel(label)).toLowerCase() — the case-insensitive live-uniqueness key (04 C2).
+  labelKey               String
+  note                   String?
+  /// ACTIVE · PAUSED · AUTO_PAUSED · REMOVED
+  status                 String
+  /// History only; live gating recomputes holderCauses() (04 A3). Closed list in pause-reasons.ts.
+  pauseReason            String?
+  /// Cause detail: {method, changedAt, detectedBy, officerReset} · {until} · {reasons} · {to} · {field},
+  /// plus causes: string list — a display snapshot, never read for gating (04 A2, A3).
+  pauseDetail            Json?
+  /// ACTIVE or PAUSED: the status before the latest auto-pause (02 §2.2; 04 A2).
+  pausedFromStatus       String?
+  passwordFingerprint    String
+  verifiedAt             DateTime  @db.Timestamptz(3)
+  verifiedById           String
+  /// A password change seen while the bot was not ACTIVE (02 §2.2). Cleared by re-verify.
+  credentialChangedAt    DateTime? @db.Timestamptz(3)
+  /// SELF_CHANGE · RESET_LINK · OFFICER_TEMP · UNKNOWN (a legacy account whose passwordSetVia is NULL)
+  credentialChangedVia   String?
+  /// Consent void (04 A3, C8): consentValid = fingerprint matches AND (consentVoidAt IS NULL OR verifiedAt > consentVoidAt).
+  consentVoidAt          DateTime? @db.Timestamptz(3)
+  /// SELF_EXCLUDED · COOLING_OFF · IDENTITY_REFUSED · HOLDER_ERASURE_REQUEST · HOLDER_WITHDREW
+  consentVoidCause       String?
+  designatedAt           DateTime  @db.Timestamptz(3)
+  designatedById         String
+  removedAt              DateTime? @db.Timestamptz(3)
+  /// NULL = system_house_bot.
+  removedById            String?
+  /// MANUAL · ACCOUNT_CLOSED (04 A5) · SUNSET (04 F2). Coded; never pseudonymised.
+  removedCause           String?
+  /// Officer free text; erasure rewrites it to "[erased]" (04 A5).
+  removedReason          String?
+  /// Behaviour rules JSON, schemaVersion inside (04 A4, C14, F4; N1 §2 folds enterNow and targeting into v1).
+  rules                  Json
+  /// CAS counter; engine writes never bump it (PLAN §6).
+  rulesVersion           Int       @default(1)
+  stakeMinTzs            BigInt?
+  stakeMaxTzs            BigInt?
+  capPerMarketTzs        BigInt?
+  capDailyStakeTzs       BigInt?
+  capDailyLossTzs        BigInt?
+  capOpenExposureTzs     BigInt?
+  balanceFloorTzs        BigInt?
+  freqMinGapSec          Int?
+  freqMaxPerHour         Int?
+  freqMaxPerDay          Int?
+  freqMaxPerMarket       Int?
+  /// Staff-chosen caps (N1 §2): count PLACED MANUAL or targeted rows in the EAT day. NULL = Enter now and targets cannot bet.
+  capStaffChosenPerDay   Int?
+  capStaffChosenDailyTzs BigInt?
+  /// How many targets this bot may have ACTIVE (N2 §2). NULL = no target can be added for it.
+  targetsMaxActive       Int?
+  createdAt              DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt              DateTime  @default(now()) @updatedAt @db.Timestamptz(3)
+
+  targets HouseBotTarget[]
+
+  /// Every designation of one account, REMOVED included (DSAR, history).
+  @@index([userId])
+  @@index([status])
+}
+
+/// The single control row, id 'global' — seeded disabled by the tables migration (PLAN §2).
+model HouseBotControl {
+  id                               String    @id
+  enabled                          Boolean   @default(false)
+  switchedAt                       DateTime? @db.Timestamptz(3)
+  switchedById                     String?
+  switchedReason                   String?
+  /// MANUAL · GLOBAL_LOSS_STOP · ENGINE_FAULT · ENGINE_ERRORS · SUNSET (04 F2)
+  offCause                         String?
+  /// CAS counter for the limits form.
+  limitsVersion                    Int       @default(1)
+  /// Limits schema version, separate from the CAS counter (04 A4, F4).
+  limitsSchemaVersion              Int       @default(1)
+  gCapDailyStakeTzs                BigInt?
+  gCapDailyLossTzs                 BigInt?
+  gCapOpenExposureTzs              BigInt?
+  gCapPerMarketTzs                 BigInt?
+  gMaxBetsPerMinute                Int?
+  /// 04 A24.
+  gMaxBetsPerDay                   Int?
+  gCounterPerPlayerPerDay          Int?
+  gCounterPerPlayerTzsPerDay       BigInt?
+  maxDesignatedBots                Int       @default(5)
+  bellAlertsPerHour                Int       @default(20)
+  holderNoticesPerHour             Int       @default(6)
+  /// N1 §2. NULL on the first three = Enter now and targets refuse; NULL share = Enter now refuses; NULL edge = alert off.
+  gCapStaffChosenPerDay            Int?
+  gCapStaffChosenDailyTzs          BigInt?
+  gTargetsMaxActive                Int?
+  gStaffChosenMaxCounterpartyShare Int?
+  gStaffEdgeWinRatePts             Int?
+  gStaffEdgeNetTzs                 BigInt?
+  /// Board disclosure (04 P1).
+  boardDisclosureSentAt            DateTime? @db.Timestamptz(3)
+  /// Sections recorded as sent, written by "Record disclosure sent" (N1 §2: text[] NULL, no default).
+  /// NULL = nothing recorded; readers treat NULL as an empty list.
+  boardDisclosureSections          String[]
+  createdAt                        DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt                        DateTime  @default(now()) @updatedAt @db.Timestamptz(3)
+}
+
+/// Hot counters and engine health, kept off the control row (PLAN §2; 04 A10, A11, A16, A24, F4, F5).
+/// Keys: 'global' (seeded) · 'bot:<botId>' (inserted by Designate) · 'engine:<INSTANCE_ID>' ·
+/// 'beat:poller:<INSTANCE_ID>' · 'beat:planner'. Written with INSERT … ON CONFLICT ("key") DO UPDATE, on DB now().
+/// The per-instance rows (engine:*, beat:poller:*) are deleted by the planner after 1 day, because
+/// INSTANCE_ID is new on every boot.
+model HouseBotRuntime {
+  key                String    @id
+  /// Live throttle (global: admin bell rows; bot:<id>: holder notices).
+  hourKey            String?
+  countInHour        Int       @default(0)
+  rateLimitedHourKey String?
+  rateLimitedCount   Int       @default(0)
+  /// Sweep watermark (global). Seeded to the migration's now() (04 A11).
+  sweepPlacedAt      DateTime? @db.Timestamptz(3)
+  sweepPositionId    String?
+  /// global: switch-on time; bot:<id>: Start time (04 A11). NULL = never in scope.
+  scopeFrom          DateTime? @db.Timestamptz(3)
+  /// global: non-transient engine error streak (04 A10).
+  errorStreak        Int       @default(0)
+  /// global: first transient failure of the current run; NULL after an ok (04 A10).
+  transientSince     DateTime? @db.Timestamptz(3)
+  /// global: hash of live stake bounds and the bet.place rule (04 F5).
+  boundsHash         String?
+  /// global: hash of the live exit config (04 A16).
+  exitConfigHash     String?
+  /// global (limits) / bot:<id> (rules): first time a schema from a newer build was seen (04 F4).
+  rulesFutureSince   DateTime? @db.Timestamptz(3)
+  /// engine:<INSTANCE_ID>: HOUSE_BOT_ENGINE on this instance, and its boot time (04 A23, A24).
+  engineEnabled      Boolean?
+  bootAt             DateTime? @db.Timestamptz(3)
+  /// beat:poller:<INSTANCE_ID> (written only after a claim succeeds) and beat:planner (04 A24).
+  beatAt             DateTime? @db.Timestamptz(3)
+  pollerErrorAt      DateTime? @db.Timestamptz(3)
+  pollerErrorCode    String?
+  pollerErrorStreak  Int       @default(0)
+  /// beat:poller:<INSTANCE_ID>: clock_timestamp() − Date.now() in ms (04 A24).
+  skewMs             Int?
+  updatedAt          DateTime  @default(now()) @updatedAt @db.Timestamptz(3)
+}
+
+/// Replica-safe once-only claims: INSERT … ON CONFLICT DO NOTHING RETURNING; send only when a row
+/// returns (PLAN §2). Day, hour, month and minute suffixes are computed inside the INSERT from DB
+/// now() in Africa/Dar_es_Salaam (04 A24). Kept 30 days, purged nightly in batches of 5,000 (04 A20, P3).
+model HouseBotAlertOnce {
+  key       String   @id
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([createdAt])
+}
+
+/// Append-only history (PLAN §2). Kept 7 years, never deleted (04 A20). Officer reasons live in
+/// `reason`, never in `payload` (N1 §2); erasure rewrites `reason` to "[erased]".
+/// SQL-only: "hbe_opener_draw_uq" UNIQUE (marketId) WHERE kind = 'OPENER_SIDE_DRAWN' (N1 §2).
+model HouseBotEvent {
+  id         String   @id
+  houseBotId String?
+  userId     String?
+  marketId   String?
+  /// Closed list of 30 kinds, CHECK "HouseBotEvent_kind_check" (constants.ts EVENT_KINDS mirrors it).
+  kind       String
+  fromStatus String?
+  toStatus   String?
+  reason     String?
+  /// NULL = system_house_bot.
+  actorId    String?
+  payload    Json?
+  /// The AuditLog row this event is linked to (04 A19).
+  auditId    String?
+  createdAt  DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([houseBotId, createdAt])
+  /// DSAR and R5: PENALTY_BOXED and holder events by user.
+  @@index([userId, kind, createdAt])
+  /// R1 register reads by kind and month.
+  @@index([kind, createdAt])
+}
+
+/// The durable decision, written BEFORE the bet; idempotencyKey = 'hb:' || id (PLAN §2, I4).
+/// Kept 7 years (04 A20). marketId, triggerPositionId, targetId: soft references (04 A16).
+/// SQL-only unique (N1 §2): "hbi_counter_anchor_uq", "hbi_fill_opener_anchor_uq",
+///   "hbi_manual_anchor_uq", "hbi_manual_live_market_uq".
+/// SQL-only partial: "HouseBotIntent_finishedAt_unalerted_idx" (04 A8), "hbi_target_status_idx" (N2 §2),
+///   "hbi_staff_bot_finished_idx", "hbi_staff_finished_idx" (N1 §2).
+model HouseBotIntent {
+  id                String    @id
+  houseBotId        String
+  botUserId         String
+  /// COUNTER · FILL · OPENER · MANUAL
+  kind              String
+  /// COUNTER → trigger position id · FILL/OPENER → marketId · MANUAL → 'manual:<requestedById>:<submitId>'
+  anchorKey         String
+  marketId          String
+  /// MARKET · UPDOWN (raw column value)
+  productLine       String
+  triggerPositionId String?
+  triggerUserId     String?
+  /// COUNTER only: the HouseBotTarget this reaction belongs to (N2 §2).
+  targetId          String?
+  /// MANUAL only: the officer who pressed Enter now.
+  requestedById     String?
+  /// OPENER · THIN (MANUAL only)
+  entryCondition    String?
+  /// YES · NO
+  side              String
+  stakeTzs          BigInt
+  dueAt             DateTime  @db.Timestamptz(3)
+  deadlineAt        DateTime  @db.Timestamptz(3)
+  /// Enforced in the seam on DB time (N1 §2): automatic dueAt + 30 s Up & Down / + 600 s polls,
+  /// targeted dueAt + 60 s, MANUAL dueAt + 15 s.
+  staleAt           DateTime  @db.Timestamptz(3)
+  /// PENDING · CLAIMED · PLACED · SKIPPED · EXPIRED · FAILED · CANCELLED
+  status            String
+  reasonCode        String?
+  /// playerHandle ids only, never names (04 A5).
+  why               String?
+  decision          Json
+  /// Non-transient outcomes only (N1 §2).
+  attempts          Int       @default(0)
+  transientAttempts Int       @default(0)
+  nextAttemptAt     DateTime? @db.Timestamptz(3)
+  claimedBy         String?
+  claimedUntil      DateTime? @db.Timestamptz(3)
+  positionId        String?   @unique
+  idempotencyKey    String    @unique
+  finishedAt        DateTime? @db.Timestamptz(3)
+  /// Alert outbox (04 A8).
+  alertedAt         DateTime? @db.Timestamptz(3)
+  createdAt         DateTime  @default(now()) @db.Timestamptz(3)
+
+  @@index([status, dueAt])
+  @@index([houseBotId, createdAt])
+  @@index([triggerUserId, createdAt])
+  @@index([marketId, status])
+  /// 04 A20.
+  @@index([status, finishedAt])
+  /// Expiry (N1 §2).
+  @@index([status, staleAt], map: "hbi_status_stale_idx")
+}
+
+/// A poll an officer pointed one bot at (N2 §2). Kept 7 years, never deleted.
+/// SQL-only: "hbt_active_market_uq" UNIQUE (marketId) WHERE status = 'ACTIVE' — one targeting bot per poll.
+model HouseBotTarget {
+  id            String    @id
+  houseBotId    String
+  houseBot      HouseBot  @relation(fields: [houseBotId], references: [id], onDelete: Restrict)
+  /// Soft reference (A16 purge and orphan repair).
+  marketId      String
+  /// Always MARKET (polls only).
+  productLine   String
+  /// ACTIVE · ENDED · REMOVED
+  status        String
+  /// 5–600, and delayMinSec <= delayMaxSec.
+  delayMinSec   Int
+  delayMaxSec   Int
+  /// STAKE · EXIT_CLOSE
+  timingFrom    String
+  /// FIRST · EVERY
+  reactTo       String
+  /// Written from DB now() in the insert (N2 §2).
+  createdAt     DateTime  @default(now()) @db.Timestamptz(3)
+  /// createdAt + TARGET_ARMING_SEC, written in the same insert.
+  effectiveFrom DateTime  @db.Timestamptz(3)
+  createdById   String
+  updatedAt     DateTime  @default(now()) @updatedAt @db.Timestamptz(3)
+  /// Set to createdById on insert (N2 §2: NOT NULL).
+  updatedById   String
+  /// CAS counter.
+  version       Int       @default(1)
+  endedAt       DateTime? @db.Timestamptz(3)
+  /// DONE · MARKET_CLOSED · CUTOFF_PASSED · MARKET_REOPENED · MARKET_GONE · OUT_OF_SCOPE ·
+  /// INFO_BLACKOUT · BOT_REMOVED · SUNSET · VETOED · CONSENT_VOID
+  endCause      String?
+  removedAt     DateTime? @db.Timestamptz(3)
+  removedById   String?
+  /// {titleEn, category, cutoff, rawYes, rawNo} at add.
+  snapshot      Json
+
+  /// The never-retarget lookup (N2 §2).
+  @@index([marketId], map: "hbt_market_idx")
+  @@index([houseBotId, status], map: "hbt_bot_status_idx")
+  @@index([houseBotId, createdAt], map: "hbt_bot_created_idx")
+}
+
+/// One row per officer press for Enter now, targets and staff cancels (N1 §2 press flow).
+/// Kept 7 years, never deleted; never in the holder's DSAR. houseBotId is a soft reference with no
+/// FK, so a press naming a missing bot is still recorded, then refused.
+/// SQL-only CHECKs: a REFUSED row always has a code and no other row does; only an ENTER_NOW press
+/// is ever QUEUED, and then it names its intentId.
+model HouseBotPress {
+  id              String    @id
+  actorId         String
+  /// crypto.randomUUID() minted by the client.
+  submitId        String
+  /// ENTER_NOW · TARGET_ADD · TARGET_UPDATE · TARGET_REMOVE · STAFF_CANCEL
+  purpose         String
+  houseBotId      String
+  marketId        String?
+  targetId        String?
+  intentId        String?
+  /// CHECKING · REFUSED · QUEUED · DONE
+  state           String
+  /// The refusal code; set exactly when state is REFUSED.
+  code            String?
+  /// Officer free text; erasure rewrites it to "[erased]".
+  reason          String?
+  auditId         String?
+  auditClaimUntil DateTime? @db.Timestamptz(3)
+  createdAt       DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime  @default(now()) @updatedAt @db.Timestamptz(3)
+
+  @@unique([actorId, submitId], map: "hbp_actor_submit_uq")
+  @@index([houseBotId, createdAt], map: "hbp_bot_created_idx")
+  @@index([state, createdAt], map: "hbp_state_created_idx")
 }
 
 // ============================================================================
