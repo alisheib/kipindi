@@ -48,8 +48,13 @@
  * reader is not a control. `AGENT_TERMS_TEXT_SHA` now pins a hash of the binding bodies: the
  * text cannot move without the hash moving, and the hash cannot be updated without the editor
  * being in THIS file, with the version in front of them. `npm run test:agent-terms-binding` §3.
+ *
+ * 🔴 **BUMPED 2026-09-14 — punctuation only, and bumped anyway.** The Chinese fee clause joined two sentences with an
+ * ASCII-spaced hyphen dash (" — "); it now uses the Chinese dash (——) with no spaces. No word changed in any language,
+ * but the binding bodies hash all three locales, and the rule is that the text does not move without the version.
+ * `COMPLIANCE-DECISIONS.md` § 2026-09-14 (seventh). Register E-400 ③.
  */
-export const AGENT_TERMS_VERSION = "2026-09-11";
+export const AGENT_TERMS_VERSION = "2026-09-14";
 
 /**
  * The first 12 hex of `sha256` over the whitespace-normalised binding bodies of
@@ -59,4 +64,4 @@ export const AGENT_TERMS_VERSION = "2026-09-11";
  * the new hash and move on: a failure means the binding text changed, which is exactly the
  * event the version exists to record. Change both, in one commit, or neither.
  */
-export const AGENT_TERMS_TEXT_SHA = "3f81d40610a0";
+export const AGENT_TERMS_TEXT_SHA = "ca98ae5123dc";

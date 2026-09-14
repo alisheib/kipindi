@@ -64,7 +64,7 @@ type EmailState = "verified" | "unverified" | "none";
  * ⭐ 2026-09-13 — `uploaded` (a document attached through the real writer, never sent) and
  * `refused_final` (UNDERAGE, wallet frozen `IDENTITY_REFUSED`, exactly as a final refusal leaves it)
  * complete the six states of the withdraw panel. `&deposit=1` adds ONE confirmed deposit row and
- * `&deposit=0` fails it AND empties the wallet (TZS 0, since 2026-09-14) — that row is what the first-deposit
+ * `&deposit=0` leaves exactly ONE FAILED attempt (created or flipped) AND empties the wallet (TZS 0, since 2026-09-14) — that row is what the first-deposit
  * identity notice on /wallet asks about.
  * ⛔ `none` writes NO ROW, because that is what a real new account looks like; a row that
  * merely SAYS NOT_STARTED would exercise a state the product never produces at sign-up.
@@ -166,14 +166,17 @@ async function ensureDemoWallet(userId: string, kycState: KycState, deposit: boo
   const id = "txn_demo_first_deposit";
   const now = new Date().toISOString();
   const existing = await db.txn.findById(id);
-  if (deposit && !existing) {
+  // ⭐ E-400 ⑧ (2026-09-14) · ONE STATE PER URL, WHATEVER RAN BEFORE. `deposit=0` used to write no row on a fresh store but
+  // turn an earlier `deposit=1` row FAILED, so the same URL showed two different histories (the store has no txn delete).
+  // It now always ends with exactly one FAILED attempt: created if absent, flipped if present.
+  if (!existing) {
     await db.txn.create({
-      id, walletId: w.id, userId, type: "DEPOSIT", status: "CONFIRMED",
-      amount: DEMO_STARTING_BALANCE, fee: 0, taxWithheld: 0, balanceAfter: DEMO_STARTING_BALANCE, currency: "TZS",
+      id, walletId: w.id, userId, type: "DEPOSIT", status: deposit ? "CONFIRMED" : "FAILED",
+      amount: DEMO_STARTING_BALANCE, fee: 0, taxWithheld: 0, balanceAfter: deposit ? DEMO_STARTING_BALANCE : 0, currency: "TZS",
       provider: "MPESA", providerRef: "demo_first_deposit", msisdn: null, description: "Demo fixture deposit",
-      positionId: null, amlReason: null, createdAt: now, updatedAt: now, completedAt: now,
+      positionId: null, amlReason: null, createdAt: now, updatedAt: now, completedAt: deposit ? now : null,
     } as StoredTxn);
-  } else if (existing) {
+  } else {
     await db.txn.update(id, { status: deposit ? "CONFIRMED" : "FAILED", updatedAt: now });
   }
 }

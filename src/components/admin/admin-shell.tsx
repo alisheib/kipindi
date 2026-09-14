@@ -658,7 +658,9 @@ export function FeedRow({
   }[variant];
   return (
     <div className="flex items-center gap-2.5 py-2 border-b border-dashed border-border-subtle text-caption last:border-b-0 hover:bg-bg-overlay/30 transition-colors rounded-sm -mx-1 px-1">
-      <span className="font-mono text-micro text-text-tertiary w-[60px] shrink-0 tabular-nums">{ts}</span>
+      {/* E-400 ⑦g — `min-w`, not `w`, and one line: /admin/approvals passes a full date ("14 Sep 2026, 10:32"), which wrapped
+          to three lines inside a fixed 60px column. The column now grows to its timestamp; a clock ("10:32:05") still fits 60. */}
+      <span className="font-mono text-micro text-text-tertiary min-w-[60px] shrink-0 whitespace-nowrap tabular-nums">{ts}</span>
       <span
         className={[
           "font-mono text-micro px-1.5 py-0.5 rounded-sm tracking-[0.10em] shrink-0",

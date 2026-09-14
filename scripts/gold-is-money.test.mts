@@ -32,6 +32,15 @@ const IDENTITY_SURFACES = [
 /** The tokens the money surfaces own. Matching `--gold-N` covers the aliases' targets too. */
 const MONEY_INK = /var\(\s*--(gilt|gilt-metal|gilt-ink|gilt-strong|gilt-reeding|gold-(300|400|500))\s*\)/g;
 
+/**
+ * 🔴 THE SAME TOKENS AS TAILWIND CLASSES (2026-09-14, session 97). `MONEY_INK` matches `var(--gold-300)` and nothing
+ * else, so `className="text-gold-300"` on an identity surface — the way this codebase writes colour 244 times — passed
+ * untouched. Found while asking why the suite was green over /live's gold "selection closed" time. (That one is not a
+ * Q5 breach: Q5 polices IDENTITY surfaces, and flat `--gold-300` is also the warning ink — `--warning-fg` IS `--gilt`,
+ * DESIGN_AUTHORITY F3 — which the market page uses for the same state three times.) The class form is policed now.
+ */
+const MONEY_CLASS = /\b(?:text|bg|border|ring|fill|stroke|from|via|to|shadow|outline|decoration|accent|caret|divide|placeholder)-(?:gold(?:-(?:300|400|500))?|gilt(?:-strong)?)(?![\w-])/g;
+
 /** CSS rules that paint a RANK badge — same law, other side of the wire. */
 const TIER_RULES = [".tier-bronze", ".tier-silver", ".tier-gold", ".tier-diamond", ".tier-sovereign"];
 
@@ -56,6 +65,15 @@ for (const f of IDENTITY_SURFACES) {
   ok(`1.control · ${f} is still real code after stripping`, code.length > 500 && /export/.test(code), `${code.length} chars`);
   const hits = [...code.matchAll(MONEY_INK)].map((m) => m[0]);
   ok(`1 · ${f} uses no money-ink token`, hits.length === 0, hits.join(", "));
+  const classHits = [...code.matchAll(MONEY_CLASS)].map((m) => m[0]);
+  ok(`1b · ${f} uses no money-ink Tailwind class`, classHits.length === 0, classHits.join(", "));
+}
+// ⭐ CONTROLS for 1b — the class form of the defect, planted, must be caught; neighbouring non-money classes must not be.
+{
+  const hit = (src: string) => [...strip(src).matchAll(MONEY_CLASS)].map((m) => m[0]);
+  ok("1b.control · a planted `text-gold-300` is caught", hit('<span className="font-mono text-gold-300">x</span>').length === 1);
+  ok("1b.control · `border-gilt` and `bg-gold/15` are caught", hit('<i className="border-gilt bg-gold/15" />').length === 2);
+  ok("1b.control · `text-goldenrod`-like and `gold-600` tokens are not money ink", hit('<i className="text-golden bg-gold-600" />').length === 0);
 }
 
 console.log("\n── 2 · the rank ladder is metallic, not monetary ────────────────");

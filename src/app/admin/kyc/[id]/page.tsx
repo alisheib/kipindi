@@ -371,7 +371,7 @@ export default async function KycWorkstationPage({ params }: { params: Promise<{
                   label="Deposited · confirmed"
                   value={
                     <span className="font-mono tabular-nums">
-                      {canSeeMoney ? `${formatTzs(moneyFacts.depositedTzs)} · ` : ""}
+                      {canSeeMoney ? <><span className="whitespace-nowrap">{formatTzs(moneyFacts.depositedTzs)}</span>{" · "}</> : ""}
                       {adminCount(moneyFacts.depositCount, "deposit")}
                     </span>
                   }
@@ -380,9 +380,9 @@ export default async function KycWorkstationPage({ params }: { params: Promise<{
                   label="Withdrawn · confirmed"
                   value={
                     <span className="font-mono tabular-nums">
-                      {canSeeMoney ? `${formatTzs(moneyFacts.withdrawnTzs)} · ` : ""}
+                      {canSeeMoney ? <><span className="whitespace-nowrap">{formatTzs(moneyFacts.withdrawnTzs)}</span>{" · "}</> : ""}
                       {adminCount(moneyFacts.withdrawalCount, "withdrawal")}
-                      {canSeeMoney && moneyFacts.inFlightTzs > 0 ? ` · ${formatTzs(moneyFacts.inFlightTzs)} in flight` : ""}
+                      {canSeeMoney && moneyFacts.inFlightTzs > 0 ? <>{" · "}<span className="whitespace-nowrap">{formatTzs(moneyFacts.inFlightTzs)}</span> in flight</> : ""}
                     </span>
                   }
                 />
@@ -391,7 +391,7 @@ export default async function KycWorkstationPage({ params }: { params: Promise<{
                   value={
                     <span className="font-mono tabular-nums">
                       {adminCount(moneyFacts.betCount, "bet")}
-                      {canSeeMoney ? ` · ${formatTzs(moneyFacts.stakedTzs)} staked` : ""}
+                      {canSeeMoney ? <>{" · "}<span className="whitespace-nowrap">{formatTzs(moneyFacts.stakedTzs)}</span> staked</> : ""}
                     </span>
                   }
                 />

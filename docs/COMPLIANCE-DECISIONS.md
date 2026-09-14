@@ -6,6 +6,18 @@
 
 ---
 
+## 2026-09-14 (seventh) · Agent Terms v2026-09-14 — one Chinese dash, punctuation only
+
+**Session 97, register E-400 ③ — not an owner ruling; recorded because the binding text's hash moved.** The Chinese
+fee clause of `/legal/agent-terms` joined two sentences with an ASCII-spaced dash (`充值 — 无需上传收据`); it now reads
+`充值——无需上传收据`, the Chinese dash with no spaces, as everywhere else in the zh documents. **No word changed in any
+language**, and the English binding text is untouched. The version still moves (`AGENT_TERMS_VERSION` 2026-09-11 →
+**2026-09-14**, with `AGENT_TERMS_TEXT_SHA`), because the binding bodies are hashed across all three locales and a text
+that moves without its version is the defect `test:agent-terms-binding` §3 exists to stop. Moving the version forces no
+re-acceptance: nothing compares an application's stamp to it (the 2026-09-11 entry's note stands).
+
+---
+
 ## 2026-09-14 (sixth) · Privacy v2026-09-14.3 — §2–§6 checked against the code; marketing consent becomes withdrawable, and its 2-year lapse is enforced
 
 **Found by checking the lines session 96 left unverified (§4 aggregator and source registry, §5 periods, §6) against the

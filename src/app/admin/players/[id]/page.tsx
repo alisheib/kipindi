@@ -315,7 +315,7 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
             SUPPORT agent running the desk never sees a player's financials. */}
         {canSeeMoney && (
         <KpiGrid>
-          <AdminKpi label="Lifetime deposit"    sw="Jumla ya amana"        value={txnsFailed ? "" : formatTzsCompact(lifetimeDeposits)} unavailable={txnsFailed} delta={wallet ? `wallet ${formatTzs(wallet.balance)}` : undefined} />
+          <AdminKpi label="Lifetime deposit"    sw="Jumla ya amana"        value={txnsFailed ? "" : formatTzsCompact(lifetimeDeposits)} unavailable={txnsFailed} delta={wallet ? `wallet ${formatTzs(wallet.balance).replace(" ", "\u00a0")}` : undefined} />
           <AdminKpi label="Lifetime withdrawal" sw="Jumla ya utoaji"       value={txnsFailed ? "" : formatTzsCompact(lifetimeWithdrawals)} unavailable={txnsFailed} delta={`${txns.filter((t) => t.type === "WITHDRAWAL").length} txns`} />
           <AdminKpi label="NGR contribution"    sw="Mchango wa mapato"     value={txnsFailed ? "" : formatTzsCompact(ngr)} unavailable={txnsFailed} delta={`${txns.filter((t) => t.type === "BET_PLACED").length} positions`} />
           <AdminKpi label="Last position"      sw="Nafasi ya mwisho"      value={txnsFailed ? "" : (() => { const lb = txns.filter((t) => t.type === "BET_PLACED").sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0]; return lb ? formatDateShort(lb.createdAt) : "never"; })()} unavailable={txnsFailed} delta={`${txns.filter((t) => t.type === "BET_PLACED").length} positions`} />
