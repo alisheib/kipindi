@@ -20,7 +20,7 @@ import { RefusedFundsPanel } from "./refused-funds-panel";
 import { ReopenRefusalControl } from "./reopen-refusal-control";
 import { isFinalRefusal, type FinalRefusalCode } from "@/lib/kyc-refusal";
 import { approvedEver } from "@/lib/kyc-approval";
-import { walletHeldTzs } from "@/lib/kyc-stage";
+import { walletHeldTzs, isFileWithUs } from "@/lib/kyc-stage";
 import { KYC_REVIEW_SLA_HOURS } from "@/lib/kyc-sla";
 import { isOfAge } from "@/lib/id-documents";
 import { refusedFundsPosition, toDecisionRow, withPayoutNow } from "@/lib/server/refused-funds";
@@ -145,9 +145,9 @@ export default async function KycWorkstationPage({ params }: { params: Promise<{
 
   // Queue context — position among the files WITH US. ⛔ `listPendingKyc` also returns ADDITIONAL_INFO_REQUIRED files,
   // which are the PLAYER's move (see the /admin/kyc header). Counting them printed "#1 of 2" beside a queue page saying
-  // "1 with us", and "oldest" could be a file the player was holding (2026-09-14). PENDING_REVIEW is exactly the
-  // `with_us` arm of `kycStage` (src/lib/kyc-stage.ts), so this is the queue page's own rule.
-  const pending = (await listPendingKyc().catch((): Awaited<ReturnType<typeof listPendingKyc>> => [])).filter((k) => k.status === "PENDING_REVIEW");
+  // "1 with us", and "oldest" could be a file the player was holding (2026-09-14). `isFileWithUs` is the `with_us` arm
+  // of `kycStage` (src/lib/kyc-stage.ts) — the rule /admin/kyc, /admin/approvals and the sidebar badges share.
+  const pending = (await listPendingKyc().catch((): Awaited<ReturnType<typeof listPendingKyc>> => [])).filter(isFileWithUs);
   const queuePos = pending.findIndex((k) => k.userId === id);
   const oldest = pending[0]?.submittedAt ?? null;
 

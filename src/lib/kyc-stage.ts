@@ -361,6 +361,41 @@ export function kycStage(facts: KycStageFacts | null, money: KycMoney): KycStage
   }
 }
 
+/* ── Whose move is a file in the officer queue? (2026-09-14) ───────────────── */
+
+/**
+ * The stage of one FULL submission row. The queue readers (`listPendingKyc`: /admin/approvals, the sidebar
+ * badges, the workstation) hold `StoredKyc` rows with documents joined, not the narrow stage feed, so this
+ * builds the four facts from the row and asks `kycStage` — never a hand-written status test beside it.
+ * ⭐ `MONEY_NOT_APPLIED`, as /admin/kyc does for its file tables: money splits only "nothing sent", and no row
+ * `listPendingKyc` returns is on that arm, so the word is the same for every viewer.
+ */
+export function kycStageOfFile(row: {
+  status: KycStatusToken;
+  documents: ReadonlyArray<unknown>;
+  submittedAt: string | null;
+  approvedAt?: string | null;
+}): KycStage {
+  return kycStage(
+    { status: row.status, documentCount: row.documents.length, submittedAt: row.submittedAt, approvedAt: row.approvedAt ?? null },
+    MONEY_NOT_APPLIED,
+  );
+}
+
+/**
+ * IS THIS FILE WAITING ON AN OFFICER? — the `with_us` arm, and the ONE rule every "waiting on us" count uses.
+ *
+ * 🔴 WHY IT EXISTS (audit session 95, register E-400 ⑦d). `listPendingKyc` returns PENDING_REVIEW AND
+ * ADDITIONAL_INFO_REQUIRED, and an ADDITIONAL_INFO_REQUIRED file is the PLAYER's move (`attachExtraDocument`
+ * never changes status; the player's resubmit returns it to us). /admin/approvals counted both as "KYC pending"
+ * (4) while /admin/kyc said "2 with us", and its Approvals sidebar badge added the same two files that no
+ * officer could clear. The workstation's "#1 of 2" had the same defect (E-399) and was fixed with its own
+ * status test; all three now ask this.
+ */
+export function isFileWithUs(row: Parameters<typeof kycStageOfFile>[0]): boolean {
+  return kycStageOfFile(row) === "with_us";
+}
+
 /* ── What money can and cannot move — for the PAGE's failed-read and RBAC states ── */
 
 /** Stages that exist ONLY when money is applied. ⛔ Never offer one as a filter to a

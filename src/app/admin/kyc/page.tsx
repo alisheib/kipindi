@@ -45,8 +45,9 @@ export const dynamic = "force-dynamic";
  *   · WITH US          — `with_us` (a submitted, complete file), with its age against KYC_REVIEW_SLA_HOURS.
  *   · WITH THE PLAYER  — `uploaded` (photos in, never sent) and `more_needed` (we asked for more). ⚠️ An
  *     ADDITIONAL_INFO_REQUIRED file is the PLAYER's move: `attachExtraDocument` never changes status and the
- *     player's resubmit is what returns it to us. `listPendingKyc` still counts it (so the sidebar badge
- *     does), but a table titled "with us" must not.
+ *     player's resubmit is what returns it to us. `listPendingKyc` still returns it, so every reader of that list
+ *     that counts work "with us" — /admin/approvals, the sidebar badges, the workstation's queue position — filters
+ *     through `isFileWithUs` (src/lib/kyc-stage.ts), this table's own arm.
  *   · FUNDED, NOTHING SUBMITTED — `funded_nothing_yet`, sorted by what the account holds. Money rights only.
  *
  * ⛔ NEVER `db.kyc.list()` — it joins every document image. `listStageFacts` is the narrow feed (newest
