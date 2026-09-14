@@ -229,6 +229,22 @@ section("§5 · settlement carries the marker (PLAN §3 propagation, 04 A17)");
   const payout = (await w.txnsFor(pos.id)).find((t: Any) => t.type === "BET_PAYOUT");
   ok("5.2 · the house position WON and its BET_PAYOUT carries the marker", pos.status === "WIN" && payout?.houseBotId === b.botId, `${pos.status} · ${payout?.houseBotId}`);
   ok("5.3 · …and the position marker survived settlement's full-row write", pos.houseBotId === b.botId);
+  {
+    // Levy identity (PLAN §9): statutory figures include the house stake, so on a market holding one,
+    // stakes − payouts − refunds is still exactly the pool fee the frozen rates compute.
+    const { poolFee } = await import("../../src/lib/payout.ts");
+    const settled = await w.svc.getMarket(market.id);
+    const fee = poolFee(5_000, 10_000, w.svc.ratesFor(settled), "YES").fee;
+    ok("5.3b · levy identity with a house stake in the pool: 15,000 staked − payout = the pool fee", payout && 15_000 - payout.amount === fee, `payout ${payout?.amount} · fee ${fee}`);
+    if (w.onPostgres) {
+      const sums: Any[] = await w.prisma()!.$queryRawUnsafe(
+        `SELECT coalesce(sum("amount") FILTER (WHERE "account" = $1), 0)::text AS "pool",`
+        + ` coalesce(sum("amount") FILTER (WHERE "account" IN ('HOUSE:COMMISSION', 'HOUSE:TRA_LEVY', 'HOUSE:GBT_LEVY')), 0)::text AS "fee"`
+        + ` FROM "LedgerEntry" WHERE "marketId" = $2`, `POOL:${market.id}`, market.id);
+      ok("5.3c · Postgres ledger: the market's pool account nets to 0 and commission + levies book exactly the fee",
+        Number(sums[0].pool) === 0 && Number(sums[0].fee) === fee, `pool ${sums[0].pool} · fee booked ${sums[0].fee} · fee ${fee}`);
+    }
+  }
 
   // VOID.
   const m2 = await pollWithLockedNo(10_000);
@@ -322,9 +338,44 @@ section("§8 · the liquidity label on outcome notices");
   ok("8.6 · CONTROL · a player with no house stake gets exactly one unlabelled notice", otherClosed.length === 1 && !otherClosed[0].bodyEn.includes(LABEL));
 }
 
-// ═══ §7 · Postgres only: the ledger ties, and lockedForHouse's SQL is the JS exit window ═════
+// ═══ §9 · lockedForHouse on the A14 grid — on BOTH stores (the SQL on Postgres, the twin in memory) ═══
+section("§9 · lockedForHouse = the JS exit window + LOCK_MARGIN_MS, on the A14 grid");
+{
+  const { lockedForHouse, lockedPoolInputs } = await import("../../src/lib/server/house-bot/pools.ts");
+  const { exitWindowFacts } = await import("../../src/lib/exit-window.ts");
+  const { LOCK_MARGIN_MS } = await import("../../src/lib/house-bot/constants.ts");
+  const market = await w.poll({ graceMin: 0 });
+  const player = await w.user({ balance: 1_000_000 });
+  const bet = await w.svc.buyPosition(player, { marketId: market.id, side: "YES", stake: 1_000, idempotencyKey: crypto.randomUUID() });
+  const pos = await w.mdal.positionStore.get(bet.data.positionId);
+  const placedMs = Date.parse(pos.placedAt);
+  const diffs: string[] = [];
+  let probes = 0;
+  for (const c of EXIT_WINDOW_GRID) {
+    if (c.emptyPlacedAt) continue;
+    const closesAt = new Date(placedMs + c.runwayMs).toISOString();
+    const graceMs = c.graceMin * 60_000, paidMs = c.paidMin * 60_000;
+    const js = exitWindowFacts({ placedAtMs: placedMs, closesAtMs: placedMs + c.runwayMs, freeExitGraceMinutes: c.graceMin, paidExitWindowMinutes: c.paidMin });
+    for (const deltaMs of [-1, 0, 1]) {
+      const asOf = new Date(js.exitCloseAtMs + LOCK_MARGIN_MS + deltaMs).toISOString();
+      const pool = await lockedForHouse(market.id, { graceMs, paidMs, closesAt, asOf });
+      probes++;
+      const expectLocked = deltaMs >= 0 ? 1_000 : 0;
+      const expectA15 = js.exitCloseAtMs <= Date.parse(asOf) ? 1_000 : 0;
+      if (pool.YES.locked !== expectLocked || pool.YES.lockedA15 !== expectA15 || pool.YES.nonHouse !== 1_000) {
+        diffs.push(`${c.id} δ${deltaMs}: locked ${pool.YES.locked}/${expectLocked} A15 ${pool.YES.lockedA15}/${expectA15}`);
+      }
+    }
+    void exitGridCase;
+  }
+  ok(`9.1 · locked and lockedA15 = JS exitWindowFacts (+ LOCK_MARGIN_MS for locked) on the A14 grid, ±1 ms (${probes} probes)`, diffs.length === 0 && probes > 300, diffs.slice(0, 3).join(" | "));
+  const inputs = lockedPoolInputs(market);
+  ok("9.2 · lockedPoolInputs reads the market's frozen rates (grace 0 here)", inputs.graceMs === 0 && inputs.paidMs === 0, JSON.stringify(inputs));
+}
+
+// ═══ §7 · Postgres only: the ledger ties, and lockedForHouse's plan at scale ═════════════════════
 if (w.onPostgres) {
-  section("§7 · Postgres: trial balance and the lockedForHouse SQL");
+  section("§7 · Postgres: trial balance and the lockedForHouse plan");
   const { trialBalance } = await import("../../src/lib/server/ledger.ts");
   const tb: Any = await trialBalance();
   // The one expected difference is the §3 fixture's seeded bonus (no grant behind it); every other wallet ties.
@@ -335,36 +386,33 @@ if (w.onPostgres) {
     `${unexpected.length} unexpected of ${tb.checkedWallets} · ${JSON.stringify(unexpected[0] ?? null)}`);
   ok("7.1c · CONTROL · the seeded bonus wallet IS reported as drifting, so the check can see a drift", (tb.drift as Any[]).some((d) => w.seededBonus.has(d.userId)));
 
-  // The A14 grid, through the SQL: for each row, one OPEN stake by an eligible player; `asOf` pins the clock.
-  const { lockedForHouse, lockedPoolInputs } = await import("../../src/lib/server/house-bot/pools.ts");
-  const { exitWindowFacts } = await import("../../src/lib/exit-window.ts");
-  const { LOCK_MARGIN_MS } = await import("../../src/lib/house-bot/constants.ts");
-  const market = await w.poll({ graceMin: 0 });
-  const player = await w.user({ balance: 1_000_000 });
-  const bet = await w.svc.buyPosition(player, { marketId: market.id, side: "YES", stake: 1_000, idempotencyKey: crypto.randomUUID() });
-  const pos = await w.mdal.positionStore.get(bet.data.positionId);
-  const placedMs = Date.parse(pos.placedAt);
-  const diffs: string[] = [];
-  let rows = 0;
-  for (const c of EXIT_WINDOW_GRID) {
-    if (c.emptyPlacedAt) continue;
-    const g = exitGridCase(c);
-    const closesAt = new Date(placedMs + c.runwayMs).toISOString();
-    const graceMs = c.graceMin * 60_000, paidMs = c.paidMin * 60_000;
-    const js = exitWindowFacts({ placedAtMs: placedMs, closesAtMs: placedMs + c.runwayMs, freeExitGraceMinutes: c.graceMin, paidExitWindowMinutes: c.paidMin });
-    for (const deltaMs of [-1, 0, 1]) {
-      // asOf = exit close + margin + delta: locked iff delta ≥ 0.
-      const asOf = new Date(js.exitCloseAtMs + LOCK_MARGIN_MS + deltaMs).toISOString();
-      const pool = await lockedForHouse(market.id, { graceMs, paidMs, closesAt, asOf });
-      const expectLocked = deltaMs >= 0 ? 1_000 : 0;
-      rows++;
-      if (pool.YES.locked !== expectLocked) diffs.push(`${c.id} δ${deltaMs}: locked ${pool.YES.locked} ≠ ${expectLocked}`);
-    }
-    void g;
+  // N1 §4.1 EXPLAIN pin: 20,000 OPEN positions on one poll among 200,000 → the one statement reads Position
+  // through (marketId, status), never a sequential scan. Rows are inserted by SQL (a fixture of volume).
+  {
+    const { houseSeamStore } = w.dal;
+    const hot = await w.poll({ graceMin: 0 });
+    const cold = await Promise.all(Array.from({ length: 9 }, () => w.poll({ graceMin: 0 })));
+    const who = await w.user({ balance: 0 });
+    const pc = w.prisma()!;
+    const fill = (marketId: string, n: number) => pc.$executeRawUnsafe(
+      `INSERT INTO "Position" ("id", "userId", "marketId", "side", "stake", "bonusStakeTzs", "potentialPayout", "status", "placedAt")`
+      + ` SELECT 'pos_explain_' || $1 || '_' || g, $2, $1, (CASE WHEN g % 2 = 0 THEN 'YES' ELSE 'NO' END)::"MarketSide", 1000, 0, 2000, 'OPEN'::"PositionStatus",`
+      + ` (clock_timestamp() AT TIME ZONE 'UTC') - (g * interval '1 second') FROM generate_series(1, $3::int) g`, marketId, who, n);
+    await fill(hot.id, 20_000);
+    for (const m of cold) await fill(m.id, 20_000);
+    await pc.$executeRawUnsafe(`ANALYZE "Position"`);
+    let captured: { text: string; values: unknown[] } | null = null;
+    const spy = { $queryRawUnsafe: async (text: string, ...values: unknown[]) => { captured = { text, values }; return []; }, $executeRawUnsafe: async () => 0 };
+    await houseSeamStore.lockedPool({ marketId: hot.id, graceMs: 0, paidMs: 0, closesAt: hot.resolutionAt, asOf: null }, spy);
+    const plan: Any[] = captured ? await pc.$queryRawUnsafe(`EXPLAIN ${(captured as Any).text}`, ...(captured as Any).values) : [];
+    const text = plan.map((r) => Object.values(r)[0]).join("\n");
+    ok("7.4 · EXPLAIN at 20,000 OPEN positions on the poll (200,000 total): no sequential scan on Position",
+      text.length > 0 && !/Seq Scan on "Position"/.test(text), text.split("\n").filter((l) => /Position/.test(l)).join(" | ").slice(0, 400));
+    ok("7.5 · …and Position is read through its (marketId, status) index", /Position_marketId_status_idx/.test(text), text.split("\n").filter((l) => /Index|Bitmap/.test(l)).join(" | ").slice(0, 400));
+    const pool = await w.dal.houseSeamStore.lockedPool({ marketId: hot.id, graceMs: 0, paidMs: 0, closesAt: hot.resolutionAt });
+    ok("7.6 · CONTROL · the same statement returns the 20,000 stakes (10,000 a side, all locked)", pool.YES.locked === 10_000_000 && pool.NO.locked === 10_000_000,
+      `${pool.YES.locked} / ${pool.NO.locked}`);
   }
-  ok(`7.2 · SQL locked = JS exitWindowFacts + LOCK_MARGIN_MS on the A14 grid, ±1 ms (${rows} probes)`, diffs.length === 0 && rows > 300, diffs.slice(0, 3).join(" | "));
-  const inputs = lockedPoolInputs(market);
-  ok("7.3 · lockedPoolInputs reads the market's frozen rates (grace 0 here)", inputs.graceMs === 0 && inputs.paidMs === 0, JSON.stringify(inputs));
 }
 
 console.log(`\n@@SUMMARY ${JSON.stringify({ pass, fail, store: STORE })}`);

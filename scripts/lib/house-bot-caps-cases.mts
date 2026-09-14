@@ -294,6 +294,17 @@ section("§3 · global caps");
     const r = await w.place(b, x.i);
     ok("3.10 · staff-chosen TZS of every bot + this > gCapStaffChosenDailyTzs → GLOBAL_STAFF_CHOSEN_DAILY_STAKE", capOf(r) === "GLOBAL_STAFF_CHOSEN_DAILY_STAKE", show(r));
   }
+  {
+    // MON-14: clearing a staff-chosen limit while bots run is allowed, and the next staff-chosen stake refuses in the lock.
+    await w.limits({ gCapStaffChosenPerDay: null });
+    const b = await w.bot();
+    const x = await manualOpener(b);
+    const r = await w.place(b, x.i);
+    const y = await opener(b);
+    const ry = await w.place(b, y.i);
+    ok("3.11 · gCapStaffChosenPerDay cleared (NULL) → GLOBAL_STAFF_CHOSEN_PER_DAY, while an automated OPENER still places",
+      capOf(r) === "GLOBAL_STAFF_CHOSEN_PER_DAY" && ry.ok === true, `${show(r)} · ${show(ry)}`);
+  }
   await w.limits();
 }
 
