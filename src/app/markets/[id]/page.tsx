@@ -222,6 +222,7 @@ export default async function MarketDetail({
       objectionState = elig.eligible
         ? { state: "ELIGIBLE" }
         : elig.why === "NO_POSITION" ? { state: "NO_POSITION" }
+        : elig.why === "HOUSE_STAKE_ONLY" ? { state: "HOUSE_STAKE_ONLY" }
         : elig.why === "WINDOW_CLOSED" ? { state: "WINDOW_CLOSED" }
         : elig.why === "ALREADY_SETTLED" ? { state: "ALREADY_SETTLED" }
         : { state: "SIGNED_OUT" };

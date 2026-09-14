@@ -13,6 +13,7 @@ import { CONTROL_DOMAIN } from "@/lib/server/control-gates";
 import { requireAdminTotp } from "@/lib/server/admin-guard";
 // ⛔ The SAME rule the wizard applies client-side — imported, never re-implemented.
 import { criterionTranslationIssue } from "@/lib/localized";
+import { isHouseIntentKey } from "@/lib/house-bot/constants";
 
 /**
  * F3 — toggle the watchlist star on a market. Returns the NEW state so the
@@ -81,6 +82,12 @@ export async function buyPositionAction(formData: FormData) {
   const stake = parseInt(String(formData.get("stake") ?? "0"), 10);
   if (!marketId || !Number.isFinite(stake) || stake <= 0) return { ok: false as const, error: "Invalid bet parameters." };
   const idempotencyKey = formData.get("idempotencyKey") ? String(formData.get("idempotencyKey")) : undefined;
+  // ⛔ SANCTIONED CHANGE (c) (house bots, PLAN §3): the `hb:` prefix belongs to house intents alone. A
+  // player request carrying it is refused before the bet path sees it, so no player can collide with,
+  // replay or pre-empt a house stake's key.
+  if (idempotencyKey !== undefined && isHouseIntentKey(idempotencyKey)) {
+    return { ok: false as const, error: "This request id is reserved.", code: "INVALID" as const, reason: "idempotency_key_conflict" as const };
+  }
   // E-235 — the play clock rides on the signed session, so the limit cannot be reset by
   // clearing site data. `buyPosition` treats an absent value as "no opinion".
   const r = await buyPosition(session.userId, { marketId, side, stake, idempotencyKey, playStartedAt: session.playStartedAt });
@@ -335,7 +342,9 @@ export async function postCommentAction(formData: FormData) {
   const marketId = String(formData.get("marketId") ?? "");
   const body = String(formData.get("body") ?? "");
   // Surface which side they hold as a small trust badge on the comment.
-  const open = (await listPositionsForUser(session.userId)).filter((p) => p.marketId === marketId && p.status === "OPEN");
+  // ⛔ SANCTIONED CHANGE (m) (house bots, 04 A18): a liquidity stake never gives the commenter a side —
+  // it is 50pick's stake, and a public chip would reveal it. Only the player's own OPEN stakes count.
+  const open = (await listPositionsForUser(session.userId)).filter((p) => p.marketId === marketId && p.status === "OPEN" && p.houseBotId == null);
   const side: CommentSide = open.length ? (open[open.length - 1].side as "YES" | "NO") : null;
   const r = await addComment(session.userId, marketId, body, side);
   if (r.ok) revalidatePath(`/markets/${marketId}`);

@@ -96,7 +96,7 @@ export async function listObjections(filter?: { status?: StoredObjection["status
 export async function objectionEligibility(
   userId: string,
   marketId: string,
-): Promise<{ eligible: true; closesAt: string | null } | { eligible: false; why: "NOT_ADJUDICATED" | "ALREADY_SETTLED" | "WINDOW_CLOSED" | "NO_POSITION" | "ALREADY_OBJECTED" | "ALREADY_DECIDED" }> {
+): Promise<{ eligible: true; closesAt: string | null } | { eligible: false; why: "NOT_ADJUDICATED" | "ALREADY_SETTLED" | "WINDOW_CLOSED" | "NO_POSITION" | "HOUSE_STAKE_ONLY" | "ALREADY_OBJECTED" | "ALREADY_DECIDED" }> {
   const m = await getMarket(marketId);
   if (!m || (m.status !== "RESOLVED" && m.status !== "VOIDED")) return { eligible: false, why: "NOT_ADJUDICATED" };
   // The money is gone — an objection here could not change it, so we do not
@@ -105,8 +105,13 @@ export async function objectionEligibility(
   if (m.objectionsClosedAt && Date.now() > Date.parse(m.objectionsClosedAt)) {
     return { eligible: false, why: "WINDOW_CLOSED" };
   }
-  const holdsPosition = (await listPositionsForMarket(marketId)).some((p) => p.userId === userId);
-  if (!holdsPosition) return { eligible: false, why: "NO_POSITION" };
+  const minePositions = (await listPositionsForMarket(marketId)).filter((p) => p.userId === userId);
+  if (minePositions.length === 0) return { eligible: false, why: "NO_POSITION" };
+  // ⛔ SANCTIONED CHANGE (f)/(n) (house bots, PLAN §3, 04 A18): standing to object comes from the
+  // player's OWN money. A liquidity stake 50pick placed from their account gives none — otherwise the
+  // holder could freeze a market's payout on the strength of a stake they did not choose. Own plus house
+  // positions stay eligible; a player with no marker is untouched.
+  if (minePositions.every((p) => p.houseBotId != null)) return { eligible: false, why: "HOUSE_STAKE_ONLY" };
 
   // ONE objection per player per market — for the life of the market, not merely
   // one at a time.
@@ -151,6 +156,7 @@ export async function fileObjection(
         ALREADY_SETTLED: "This market has already paid out — contact support.",
         WINDOW_CLOSED: "The objection window for this market has closed.",
         NO_POSITION: "Only a player who staked on this market can object to its result.",
+        HOUSE_STAKE_ONLY: "A 50pick liquidity stake doesn't give standing to object — only your own stakes do.",
         ALREADY_OBJECTED: "You already have an objection open on this market.",
         ALREADY_DECIDED: "Your objection on this market has already been reviewed. Contact support if you still disagree.",
       };

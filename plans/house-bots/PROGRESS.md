@@ -38,7 +38,7 @@
       - ✅ `npx tsc --noEmit` 0 errors at this checkpoint. `test:house-bot-seam` 8/0.
       - **Decision recorded (code over plan):** `market-service.ts` keeps its private `RESOLVE_CLAIM_TTL_MS` copy. Deleting it (N1 §4.1) would break `test:bulk-resolve` 7.6 and its red mutation, and create a `market-service ↔ bulk-resolve-eligibility` value cycle; 7.6 already pins the two equal. `blackout.ts` imports the exported constant. PLAN §18 row to add at close.
    3. **Next, in order (half-done items first):**
-      1. (n) objections: `objectionEligibility` returns `HOUSE_STAKE_ONLY` when every position of the user on the market is house-marked (add copy at `objections-service.ts` `NO_POSITION` map ~:153, `markets/[id]/page.tsx:224`, `resolution-panel.tsx:95/288`). (m) comment side chip in `markets/actions.ts` `postCommentAction` ignores marked positions. (c) `buyPositionAction` refuses `hb:` keys with `idempotency_key_conflict`.
+      1. ✅ (n)/(f) `objectionEligibility` → `HOUSE_STAKE_ONLY` when every position of the user on the market is marked (service copy, market page state, `resolution-panel.tsx` line, `market.objHouseStakeOnly` en/sw/zh). (m) `postCommentAction` side chip ignores marked positions. (c) `buyPositionAction` refuses `hb:` keys with `idempotency_key_conflict`. tsc 0.
       2. (h) A17 liquidity label line on per-bettor outcome notices (notification-service emitters listed in A17) — scope check against commit 5's holder chip first.
       3. `scripts/anchors/house-bot-seam.anchors.mjs` (H2_ORDER + every `SEAM:` site) and the F3 `ctx.kind` source pin; `BET_PATH_REASONS` + `GATE_PARITY`.
       4. dal-parity §6: register `HouseSeamStore` twins; DAL cases for the seam store (run by `test:house-bot-migrations`).
