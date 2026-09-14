@@ -252,6 +252,12 @@ be mistaken for one:
 - **Success and danger are the state of the INTERFACE** — saved, healthy, failed, refused.
   They are app states, they have their own semantic tokens, and they are not money.
 
+⛔ **Nor to express time or liveness** (2026-09-14, register E-405/E-406). A countdown's last seconds and a
+"live" word or count are app state too: on 2026-09-14 the Up & Down digits turned `--no-300` in their final 30 s
+(beside the round's Down side, where rose reads as "price going down"), and home cards painted time-left and live counts
+in `--yes-*`. Urgency is carried by motion (`ud-count-pulse`) and the player's LIVE signal by the broadcast red of §B11;
+the text keeps its neutral ink. `test:betting-ink` pins the sites.
+
 ⛔ Never reach for the betting pair to express an app state: a surface that says *saved* in
 the YES ink has spent the money vocabulary on chrome, and the next player to see that green
 has one less reason to read it as their side. ⛔ And never re-hue a state token toward the

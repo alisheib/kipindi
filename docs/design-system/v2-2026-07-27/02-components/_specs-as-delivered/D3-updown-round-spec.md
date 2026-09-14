@@ -21,6 +21,7 @@ Order per §5.4: visual → redlines → contract → notes.
   - label mono 8.5px/600 ls 0.12em uppercase `--text-faint` — "CLOSES IN" / "ROUND SETTLED"
   - digits mono **28px**/700 tabular, ls 0.05em, lh 1 — same 28px display size as D1, `--text` open / `--text-subtle` settled
   - final 30 s: `--no-300` + `ud-count-pulse` 1s infinite (D1's keyframe, reduced-motion gated)
+    ⚠️ SUPERSEDED 2026-09-14 (register E-406, DESIGN_AUTHORITY §B2a): the final-30 s digits keep their running ink (`--text`) and `ud-count-pulse` alone carries the urgency — rose digits beside an Up/Down round read as "price going down". This frozen redline is kept as delivered.
 - header wraps at 360: title block then countdown pod, both full width
 
 ### Layout grid
