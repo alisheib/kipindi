@@ -1456,6 +1456,11 @@ section("§11 · constants");
   ok("11.9 · an audit payload carrying a label is refused", !isAllowedHouseAuditPayload({ label: "Bot A" }));
   ok("11.10 · a nested change {field, before: \"a\"} is refused", !isAllowedHouseAuditPayload({ changes: [{ field: "x", before: "a" }] }));
   ok("11.11 · a forbidden key at depth is refused", !isAllowedHouseAuditPayload({ counts: { name: "x" } }));
+  ok("11.11b · a payload nested deeper than 8 levels is refused, whatever it holds (fail closed)",
+    !isAllowedHouseAuditPayload({ counts: { a: { b: { c: { d: { e: { f: { g: { h: { label: "x" } } } } } } } } } }));
+  ok("11.11c · CONTROL · a shallow nested count is allowed", isAllowedHouseAuditPayload({ counts: { a: { b: 1 } } }));
+  ok("11.11d · CONTROL · a real cancel payload is allowed",
+    isAllowedHouseAuditPayload({ botId: "hb_1", cancelled: [{ intentId: "hbi_1", side: "YES", stakeTzs: 1000 }] }));
   ok("11.12 · numeric and enum changes are allowed",
     isAllowedHouseAuditPayload({ botId: "hb_1", changes: [{ field: "stakeMaxTzs", before: 1_000, after: null }, { field: "timingFrom", before: "STAKE", after: "EXIT_CLOSE" }] }));
 
@@ -1507,7 +1512,7 @@ section("§11 · constants");
       {
         daily: { prefix: "bot:hb_1:CAP_BALANCE_FLOOR", unit: "day" },
         db: { prefix: "engine:db", unit: "hour" },
-        edge: { prefix: "staff-edge:usr_1", unit: "month" },
+        edge: { prefix: "staff-edge:usr_1", unit: "previousMonth" },
         preview: { prefix: "preview:usr_1:hb_1:mkt_1", unit: "minute" },
       },
     ) && ALERT_KEY.poison("hbi_1") === "poison:hbi_1");
@@ -1583,15 +1588,21 @@ section("§13 · clock");
   {
     const at = Date.UTC(2026, 8, 30, 20, 59, 59, 999);
     ok("13.5 · each unit's key builder is the one the memory store uses",
-      same([...EAT_KEY_UNITS], ["day", "hour", "month", "minute"]) &&
+      same([...EAT_KEY_UNITS], ["day", "hour", "month", "previousMonth", "minute"]) &&
         eatKeyFor("day", at) === eatDayKey(at) && eatKeyFor("hour", at) === eatHourKey(at) &&
         eatKeyFor("month", at) === eatMonthKey(at) && eatKeyFor("minute", at) === eatMinuteKey(at));
+    ok("13.5b · the previous-month key is the EAT month just ended, across a month and a year turn",
+      eatKeyFor("previousMonth", Date.UTC(2026, 8, 30, 21)) === "2026-09" &&
+        eatKeyFor("previousMonth", Date.UTC(2026, 9, 1, 20, 59, 59, 999)) === "2026-09" &&
+        eatKeyFor("previousMonth", Date.UTC(2026, 8, 30, 20, 59, 59, 999)) === "2026-08" &&
+        eatKeyFor("previousMonth", Date.UTC(2026, 11, 31, 21)) === "2026-12");
   }
   ok("13.6 · the SQL fragments compute every suffix from DB now() in Africa/Dar_es_Salaam",
     EAT_SQL_TIMEZONE === "Africa/Dar_es_Salaam" &&
       EAT_SQL.dayKey === `to_char(now() AT TIME ZONE 'Africa/Dar_es_Salaam', 'YYYY-MM-DD')` &&
       EAT_SQL.hourKey === `to_char(now() AT TIME ZONE 'Africa/Dar_es_Salaam', 'YYYY-MM-DD"T"HH24')` &&
       EAT_SQL.monthKey === `to_char(now() AT TIME ZONE 'Africa/Dar_es_Salaam', 'YYYY-MM')` &&
+      EAT_SQL.previousMonthKey === `to_char((now() AT TIME ZONE 'Africa/Dar_es_Salaam') - interval '1 month', 'YYYY-MM')` &&
       EAT_SQL.minuteKey === `to_char(now() AT TIME ZONE 'Africa/Dar_es_Salaam', 'YYYY-MM-DD"T"HH24:MI')` &&
       EAT_KEY_UNITS.every((u) => EAT_SQL_BY_UNIT[u] === (EAT_SQL as Record<string, string>)[`${u}Key`]));
   ok("13.7 · a duration after a stake: 20 → 0:20, 307 → 5:07, 3907 → 1:05:07",
@@ -1649,13 +1660,20 @@ section("§14 · F1 typecheck");
   ok("14.0 · the TypeScript compiler is installed", existsSync(tsc), tsc);
   const BAD_DIAGNOSTIC = /(^|[\\/])bad\.ts\(\d+,\d+\): error TS\d+/;
   const GOOD_DIAGNOSTIC = /(^|[\\/])good\.ts\(\d+,\d+\): error TS\d+/;
+  // ⭐ bad.ts is built from the REAL declaration. A fixture that declares its own object stays green
+  // when the `satisfies` clause is deleted from constants.ts, so it would prove nothing about it.
+  const DECL_RE = /export const HOUSE_PRODUCT_POLICY = \{[\s\S]*?\} as const satisfies Record<ProductLine, HouseProductPolicy>;/;
+  const decl = readFileSync(join(ROOT, "src/lib/house-bot/constants.ts"), "utf8").match(DECL_RE)?.[0] ?? "";
+  ok("14.0b · constants.ts declares HOUSE_PRODUCT_POLICY with its satisfies clause", decl.length > 0);
+  ok("14.0c · CONTROL · the declaration with the satisfies clause removed is not matched",
+    !DECL_RE.test(`export const HOUSE_PRODUCT_POLICY = {\n  MARKET: "polls",\n  UPDOWN: "updown",\n} as const;\n`));
   const dir = mkdtempSync(join(tmpdir(), "house-bot-typecheck-"));
   try {
     writeFileSync(join(dir, "bad.ts"), [
       `import type { ProductLine } from "@/lib/server/market-service";`,
       `import type { HouseProductPolicy } from "@/lib/house-bot/constants";`,
-      `// A product line with no policy row. This must not compile.`,
-      `export const WIDENED = { MARKET: "polls", UPDOWN: "updown" } as const satisfies Record<ProductLine | "JACKPOT", HouseProductPolicy>;`,
+      `// The real declaration, widened by a product line with no policy row. This must not compile.`,
+      decl.replace("Record<ProductLine, HouseProductPolicy>", `Record<ProductLine | "JACKPOT", HouseProductPolicy>`),
       ``,
     ].join("\n"));
     writeFileSync(join(dir, "good.ts"), [

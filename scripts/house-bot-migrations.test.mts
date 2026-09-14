@@ -6,11 +6,12 @@
  * SQL the Prisma DSL cannot express: partial unique indexes, named CHECKs, a seed that must survive a
  * replay, a lock timeout that must hold for a whole file. None of it exists in the in-memory store,
  * where every other suite runs. A green memory suite says nothing about any of it, so this suite
- * refuses to skip: with no database it prints NOT MEASURED and exits 3.
+ * refuses to skip: with no database URL it prints NOT MEASURED and exits 3 (under `npm run`,
+ * db-scratch exits 2 first when the binaries are missing).
  *
  * ⛔ THE MIGRATION LAW IT HOLDS (04 S1, A23; the sealed N1 §2 / N2 §2 names):
- *   §A  source shape, no database — the two folders sort after the KYC migration and nothing else
- *       does; each file starts with SET LOCAL lock_timeout; nothing CONCURRENT, dropped, renamed or
+ *   §A  source shape, no database — the two folders sort after the KYC migration, tables before
+ *       markers, with no other migration between them; each file starts with SET LOCAL lock_timeout; nothing CONCURRENT, dropped, renamed or
  *       made NOT NULL; every CREATE and ADD COLUMN re-runnable; the seven new columns on existing
  *       tables carry no DEFAULT and no NOT NULL; every fixed name is in the files; the KYC migration
  *       is byte-for-byte the file production applied (its recorded LF sha256, no git call).
@@ -19,7 +20,9 @@
  *       every column, index and CHECK equals what the DAL names; every value list equals its
  *       constant; every CHECK refuses its bad row and accepts its boundary.
  *   §b  blocked apply (S1 b) — with a Position row locked, the markers file fails with 55P03 inside
- *       3.5 s and a concurrent Position INSERT commits within 1 s of that failure.
+ *       3.5 s and a concurrent Position INSERT commits within 1 s of that failure; and (b.6) a bet
+ *       that reads and then writes Position while the file runs meets no deadlock (40P01): its
+ *       INSERT succeeds, and the apply succeeds or fails fast with 55P03.
  *   §d  DAL behaviour — `scripts/lib/house-bot-dal-cases.mts` runs once on Postgres and once on the
  *       memory twin; every outcome must equal the expected one on both, and the runs must be identical.
  *
@@ -28,8 +31,8 @@
  *     runs the money end-to-end suite — too heavy for every `test:all`. It is
  *     `npm run verify:house-bot-migrations-old-build`, run at the commit-1 gate and at release.
  *   · `houseBotSchemaReady()` lands in build commit 4, with its not-ready cases.
- *   · CI's in-memory job has no Postgres, so this exits there without measuring, as the KYC restart
- *     guard (`test:kyc-restart-docs`) does. Recorded as NOT MEASURED in CI, never as green.
+ *   · CI's in-memory job has no embedded Postgres, so db-scratch exits 2 and test:all records this
+ *     key as FAIL, as it does test:kyc-restart-docs. It is never green there.
  *
  * ⛔ A DISPOSABLE LOOPBACK CLUSTER ONLY. This suite drops and creates databases. It refuses any host
  * that is not 127.0.0.1, localhost or ::1 — stricter than a hosted-name deny list, which a new
@@ -221,8 +224,10 @@ await step("§A", async () => {
   ok("A.1c · the KYC migration is on disk", folders.includes(KYC_FOLDER));
   ok("A.1d · both sort after the KYC migration, tables before markers",
     tablesFolder > KYC_FOLDER && markersFolder > KYC_FOLDER && tablesFolder < markersFolder, `${tablesFolder} · ${markersFolder}`);
-  const after = folders.filter((f) => f > KYC_FOLDER);
-  ok("A.1e · nothing else sorts after the KYC migration", after.length === 2 && after[0] === tablesFolder && after[1] === markersFolder, after.join(", "));
+  // ⛔ Only the gap between the two house folders stays true for ever. "The house folders are the
+  // newest" is a release-time fact (REL-0's migrations diff, the commit-8 preflight), never a test key.
+  const between = folders.filter((f) => f > tablesFolder && f < markersFolder);
+  ok("A.1e · no other migration sorts between the two house migrations", between.length === 0, between.join(", "));
   if (!tablesFolder || !markersFolder) return;
 
   const rawTables = readFileSync(join(MIG_DIR, tablesFolder, "migration.sql"), "utf8");
@@ -781,11 +786,11 @@ await step("§b", async () => {
     ok("b.3 · the concurrent Position INSERT commits", err3 === null, err3?.message ?? "");
     ok("b.4 · …within 1 s of the failure: the apply never stalls the write queue", err3 === null && tCommit - tFail <= 1_000, `${tCommit - tFail} ms`);
 
-    // ⭐ One transaction: the keyset index the file built BEFORE it blocked must be gone as well.
+    // ⭐ One transaction: nothing the file did before or at the block may survive it.
     const left = (await c2.query(`SELECT
       (SELECT count(*)::int FROM pg_indexes WHERE indexname = 'Position_placedAt_id_idx') AS "idx",
       (SELECT count(*)::int FROM information_schema.columns WHERE table_name = 'Position' AND column_name = 'houseBotId') AS "col"`)).rows[0];
-    ok("b.5 · the failed apply left nothing behind (the index built before the block rolled back with it)", left.idx === 0 && left.col === 0, JSON.stringify(left));
+    ok("b.5 · the failed apply left nothing behind (no index, no column)", left.idx === 0 && left.col === 0, JSON.stringify(left));
 
     // ⛔ CONTROL: the failure above came from the held lock, not from the file.
     let ctl: Any = null;
@@ -793,6 +798,27 @@ await step("§b", async () => {
     ok("b.c1 · CONTROL · with no lock held the same apply succeeds", ctl === null, ctl?.message ?? "");
     const col = (await c2.query(`SELECT count(*)::int AS "n" FROM information_schema.columns WHERE table_name = 'Position' AND column_name = 'houseBotId'`)).rows[0].n;
     ok("b.c2 · CONTROL · …and the marker column exists afterwards", col === 1, `${col}`);
+
+    // ⭐ b.6 · a bet that READS Position and then WRITES it, while the file runs. The file re-runs, and
+    // ALTER TABLE and CREATE INDEX IF NOT EXISTS still take their table locks on a replay, so this
+    // exercises the same lock order as the first apply. A SHARE taken on Position before its ACCESS
+    // EXCLUSIVE would deadlock with this bet (40P01); the column first lets the bet's INSERT through.
+    await c1.query("BEGIN");
+    await c1.query(`SELECT "id" FROM "Position" WHERE "id" = 'pos_hb_block'`);
+    let applied6 = false, err6a: Any = null, err6b: Any = null;
+    const guard6 = cancelLater(pid2);
+    const p6 = c2.query(fileMarkers).then(() => { applied6 = true; }, (e) => { err6a = e; });
+    await sleep(500);
+    await c1.query(`INSERT INTO "Position" ("id", "userId", "marketId", "side", "stake", "potentialPayout")
+      VALUES ('pos_hb_block3', 'usr_hb_block', 'mkt_hb_block', 'NO', 500, 950)`).catch((e) => { err6b = e; });
+    await c1.query(err6b ? "ROLLBACK" : "COMMIT");
+    await p6;
+    clearTimeout(guard6);
+    ok("b.6 · a bet reading then writing Position while the file runs: no deadlock (40P01) on either side",
+      err6a?.code !== "40P01" && err6b?.code !== "40P01", `apply ${err6a?.code ?? "ok"} · bet ${err6b?.code ?? "ok"}`);
+    ok("b.6a · …the bet's INSERT succeeds", err6b === null, err6b?.message ?? "");
+    ok("b.6b · …and the apply either succeeds or fails fast with 55P03", applied6 || err6a?.code === "55P03",
+      applied6 ? "applied" : `${err6a?.code} ${err6a?.message ?? ""}`);
   } finally {
     for (const c of [c1, c2, c3]) await c.end().catch(() => {});
   }

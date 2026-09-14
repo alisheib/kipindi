@@ -691,10 +691,11 @@ export const ALERT_KEY = {
   staffStakeSelfDecided: (marketId: string, action: StaffSelfDecidedAction) =>
     `staff-stake-self-decided:${marketId}:${action}`,
   /**
-   * The monthly staff-edge alert. The pass runs only on the first EAT day of a month, for the month
-   * just ended, so the month in the key is the month it ran in — one alert per officer per run.
+   * The monthly staff-edge alert. The pass runs only on the first EAT day of a month and judges the
+   * month just ended; the key carries that judged month (N1 §4.5, TGT-39: an October run writes
+   * 2026-09).
    */
-  staffEdge: (officerId: string) => suffixed(`staff-edge:${officerId}`, "month"),
+  staffEdge: (officerId: string) => suffixed(`staff-edge:${officerId}`, "previousMonth"),
   /** `ENTER_NOW_PREVIEWED` at most once per officer, bot and poll per EAT minute (N1 §6). */
   preview: (actorId: string, botId: string, marketId: string) =>
     suffixed(`preview:${actorId}:${botId}:${marketId}`, "minute"),
@@ -820,7 +821,8 @@ export const HOUSE_REASON_HINT = "Kept permanently in the audit log — don't wr
 const ENUM_CHANGE_FIELDS: readonly string[] = ["timingFrom", "reactTo"];
 
 function hasForbiddenKey(v: unknown, depth: number): boolean {
-  if (depth > 8 || v === null || typeof v !== "object") return false;
+  if (v === null || typeof v !== "object") return false;
+  if (depth > 8) return true; // fail closed: too deep to prove clean is refused (R7)
   if (Array.isArray(v)) return v.some((item) => hasForbiddenKey(item, depth + 1));
   return Object.entries(v as Record<string, unknown>).some(
     ([k, inner]) => (HOUSE_AUDIT_FORBIDDEN_KEYS as readonly string[]).includes(k) || hasForbiddenKey(inner, depth + 1),
@@ -838,7 +840,7 @@ function isChangeValue(field: string, v: unknown): boolean {
  * Is this payload allowed on a house audit row?
  *
  * - every top-level key is in `HOUSE_AUDIT_PAYLOAD_KEYS`;
- * - no forbidden key appears at any depth;
+ * - no forbidden key appears at any depth, and a payload nested deeper than 8 levels is refused;
  * - `changes`, when present, is an array of `{field, before, after}` whose values are numbers or
  *   null — except `timingFrom` and `reactTo`, which carry their enum strings.
  */

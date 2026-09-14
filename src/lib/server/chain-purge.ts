@@ -10,7 +10,7 @@
  * DELETE   · UpDownRound (the price story), Comment, Watchlist, MarketSnapshot
  * REDACT   · PredictionMarket survives as a stamped tombstone — titles and resolution
  *            criterion blanked, pools / feeSnapshot / resolvedOutcome / settledAt KEPT
- * NEVER    · Position, Transaction, LedgerEntry, HousePoolLedger, AuditLog, UpDownObservation, HouseBot, HouseBotEvent, HouseBotIntent, HouseBotTarget, HouseBotPress
+ * NEVER    · Position, Transaction, LedgerEntry, HousePoolLedger, AuditLog, UpDownObservation, HouseBot, HouseBotControl, HouseBotRuntime, HouseBotAlertOnce, HouseBotEvent, HouseBotIntent, HouseBotTarget, HouseBotPress
  *
  * This is not a new idea; it is the idiom this platform already uses wherever it must remove
  * data without losing provability. The retention engine BLANKS AIPoll payload columns rather

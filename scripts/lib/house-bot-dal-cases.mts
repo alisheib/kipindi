@@ -240,6 +240,7 @@ function buildExpected(): Record<string, string> {
     "c18.c a day-suffixed claim is one row per EAT day": "true:false:true:true",
     "c18.d purge in batches": "2,2,1,0",
     "c18.e the purge keeps fresh claims": "false",
+    "c18.f a previous-month claim is one row per judged month": "true:false:true:true:true",
     // c19 · erasure
     "c19.a erasure refuses while a bot is live": "false:house_bot_live:hb_c19",
     "c19.b after removal every label and officer reason is rewritten": "true:1:1:1",
@@ -253,6 +254,7 @@ function buildExpected(): Record<string, string> {
     // c21 · markers are create-only
     "c21.a a patch cannot un-mark a ledger row": "hb_1:x",
     "c21.b a full-row position write cannot un-mark a stake": "hb_1:CASHED_OUT",
+    "c21.c a full-row position write cannot mark an unmarked stake": "null:OPEN",
     // c22 · the reopen stamp
     "c22.a both reopen fields survive a full-row write": "2026-09-14T10:00:00.000Z:1",
     "c22.b a market never reopened reads null": "null:null",
@@ -332,6 +334,7 @@ async function runCases(): Promise<void> {
   const book: Any = await import("../../src/lib/server/house-bot/book.ts");
   const { labelKey }: Any = await import("../../src/lib/house-bot/rules.ts");
   const { manualAnchorKey }: Any = await import("../../src/lib/house-bot/constants.ts");
+  const { eatPreviousMonthKey }: Any = await import("../../src/lib/house-bot/clock.ts");
   const { prisma }: Any = await import("../../src/lib/server/prisma.ts");
   const onPostgres = !!process.env.DATABASE_URL && process.env.USE_PRISMA_DAL !== "false";
 
@@ -887,6 +890,14 @@ async function runCases(): Promise<void> {
       return n.join(",");
     });
     await rec("c18.e the purge keeps fresh claims", () => alertOnce.claim("case:c18"));
+    await rec("c18.f a previous-month claim is one row per judged month", async () => {
+      const a = await alertOnce.claimWithEatSuffix("case:c18:prev", "previousMonth");
+      const b = await alertOnce.claimWithEatSuffix("case:c18:prev", "previousMonth");
+      // ⭐ The last field ties the store's key to the JS twin: on Postgres it proves the SQL fragment
+      // computes the month just ended, not merely a YYYY-MM.
+      const judged = `case:c18:prev:${eatPreviousMonthKey(Date.now())}`;
+      return `${a.claimed}:${b.claimed}:${a.key === b.key}:${/^case:c18:prev:\d{4}-\d{2}$/.test(a.key)}:${a.key === judged}`;
+    });
   });
 
   // ── c19 · erasure (04 A5, R6) ────────────────────────────────────────────────────────────
@@ -951,6 +962,13 @@ async function runCases(): Promise<void> {
       await positionStore.set(p);
       await positionStore.set({ ...p, houseBotId: null, status: "CASHED_OUT" });
       const back = await positionStore.get("pos_c21");
+      return `${back?.houseBotId}:${back?.status}`;
+    });
+    await rec("c21.c a full-row position write cannot mark an unmarked stake", async () => {
+      const p = position("pos_c21c", "2026-01-05T10:00:00.000Z", 1000, "OPEN", null);
+      await positionStore.set(p);
+      await positionStore.set({ ...p, houseBotId: "hb_1" });
+      const back = await positionStore.get("pos_c21c");
       return `${back?.houseBotId}:${back?.status}`;
     });
   });

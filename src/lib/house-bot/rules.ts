@@ -1116,9 +1116,10 @@ export const TEXT_MAX_CHARS = 300;
 export const REASON_MIN_CHARS = 5;
 
 /**
- * Letters, marks, digits, space and `- _ . # '`, tested on the normalised label. Controls,
- * zero-width characters and bidi overrides are not letters, so they fail — a label that reads "Bot A"
- * and sorts as something else is refused. Emoji fail too; they stay valid in notes and reasons.
+ * Letters, marks, digits, space and `- _ . # '`, tested on the normalised label (C2). Controls, the
+ * C2 zero-width characters (U+200B–200D, U+2060, U+FEFF) and bidi controls are not letters, marks or
+ * digits, so they fail. Emoji fail too; they stay valid in notes and reasons. Uniqueness is NFKC +
+ * lowercase only: cross-script look-alikes (Cyrillic А) are not detected.
  */
 export const LABEL_CHARSET = /^[\p{L}\p{M}\p{N} _.#'-]+$/u;
 

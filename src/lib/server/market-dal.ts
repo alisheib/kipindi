@@ -671,10 +671,11 @@ const memoryMarkets: MarketStore = {
 const memoryPositions: PositionStore = {
   async get(id) { return positions.get(id) ?? null; },
   async set(p, _tx) {
-    // ⛔ The house marker survives a full-row write, exactly as the Prisma update arm never
-    // writes it: an existing marker is kept, and NULL → id stays possible (the remark path).
+    // ⛔ The house marker is create-only, exactly as the Prisma update arm: once a row exists, a
+    // full-row write never changes its marker, in either direction. The commit-7 remark uses its
+    // own statement, never set.
     const prev = positions.get(p.id);
-    positions.set(p.id, prev ? { ...p, houseBotId: prev.houseBotId ?? p.houseBotId ?? null } : p);
+    positions.set(p.id, prev ? { ...p, houseBotId: prev.houseBotId ?? null } : p);
   },
   async values() { return Array.from(positions.values()); },
   async attribution() {

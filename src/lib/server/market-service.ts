@@ -325,8 +325,9 @@ export type StoredPosition = {
    * every player bet. Optional so rows read before the column existed read as unmarked.
    *
    * ⛔ CREATE-ONLY. `positionStore.set`'s update arm never writes it and the memory store keeps
-   * an existing marker, so a stale copy of a position can never un-mark house money. The one
-   * sanctioned rewrite (NULL → id only) is the remark script in build commit 7.
+   * an existing marker, so a stale copy of a position can never un-mark house money. The
+   * remark script in build commit 7 fixes Transaction markers from their position, through its own
+   * statement, never through positionStore.set.
    */
   houseBotId?: string | null;
 };

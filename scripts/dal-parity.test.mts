@@ -544,9 +544,13 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
   ok('9.read · toStoredPosition maps "houseBotId"', readsFrom(read, "houseBotId", "r"));
   ok("9.create · positions.set create arm writes houseBotId", writesKey(createArm, "houseBotId") && /\bp\.houseBotId\b/.test(createArm));
   ok("9.immutable · positions.set update arm does NOT write houseBotId", !mentions(updateArm, "houseBotId"));
-  ok("9.memory · memory positions.set preserves an existing marker", /prev\.houseBotId/.test(memSet));
+  // ⛔ Create-only in BOTH directions: keep the stored marker, never take the incoming one.
+  const keepsStoredMarkerOnly = (body: string) => /prev\.houseBotId/.test(body) && !/\bp\.houseBotId\b/.test(body);
+  ok("9.memory · memory positions.set keeps the stored marker and never takes the incoming one", keepsStoredMarkerOnly(memSet));
   ok("9.c1 · CONTROL · an update arm carrying houseBotId is caught", mentions("update: {\n  status: p.status,\n  houseBotId: p.houseBotId ?? null,\n}", "houseBotId"));
   ok("9.c2 · CONTROL · a create arm without it is caught", !writesKey("create: {\n  id: p.id,\n  status: p.status,\n}", "houseBotId"));
+  ok("9.c3 · CONTROL · a memory set that lets NULL become an id is caught",
+    !keepsStoredMarkerOnly("positions.set(p.id, prev ? { ...p, houseBotId: prev.houseBotId ?? p.houseBotId ?? null } : p);"));
 }
 
 /* ═══ §10 · the market reopen stamp (house bots, N1 §2) ══════════════════════════════════ */

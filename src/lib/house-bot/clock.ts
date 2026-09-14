@@ -51,11 +51,14 @@ export const EAT_SQL = {
   dayKey: `to_char(now() AT TIME ZONE 'Africa/Dar_es_Salaam', 'YYYY-MM-DD')`,
   hourKey: `to_char(now() AT TIME ZONE 'Africa/Dar_es_Salaam', 'YYYY-MM-DD"T"HH24')`,
   monthKey: `to_char(now() AT TIME ZONE 'Africa/Dar_es_Salaam', 'YYYY-MM')`,
+  // The EAT month just ended. Subtracting a month from the 29th–31st clamps to the previous
+  // month's last day, so the result is always the previous month.
+  previousMonthKey: `to_char((now() AT TIME ZONE 'Africa/Dar_es_Salaam') - interval '1 month', 'YYYY-MM')`,
   minuteKey: `to_char(now() AT TIME ZONE 'Africa/Dar_es_Salaam', 'YYYY-MM-DD"T"HH24:MI')`,
 } as const;
 
 /** The units an EAT-suffixed AlertOnce key can carry (`ALERT_KEY` in `constants.ts`). */
-export const EAT_KEY_UNITS = ["day", "hour", "month", "minute"] as const;
+export const EAT_KEY_UNITS = ["day", "hour", "month", "previousMonth", "minute"] as const;
 export type EatKeyUnit = (typeof EAT_KEY_UNITS)[number];
 
 /** Unit → SQL fragment, for a claim that is handed `{prefix, unit}` rather than a fragment. */
@@ -63,6 +66,7 @@ export const EAT_SQL_BY_UNIT: Record<EatKeyUnit, string> = {
   day: EAT_SQL.dayKey,
   hour: EAT_SQL.hourKey,
   month: EAT_SQL.monthKey,
+  previousMonth: EAT_SQL.previousMonthKey,
   minute: EAT_SQL.minuteKey,
 };
 
@@ -84,6 +88,15 @@ export function eatMonthKey(atMs: number): string {
   return eatIso(atMs).slice(0, 7);
 }
 
+/**
+ * The EAT month just ended (`YYYY-MM`) at an instant: 00:00 EAT on 1 Oct 2026 is "2026-09", and
+ * 00:00 EAT on 1 Jan 2027 is "2026-12". One millisecond before the instant's own EAT month began.
+ */
+export function eatPreviousMonthKey(atMs: number): string {
+  const [y, m] = eatMonthKey(atMs).split("-").map(Number);
+  return eatMonthKey(Date.UTC(y, m - 1, 1) - EAT_OFFSET_MS - 1);
+}
+
 /** The EAT minute (`YYYY-MM-DDTHH:MM`) an instant falls in — the Enter now preview throttle (N1 §6). */
 export function eatMinuteKey(atMs: number): string {
   return eatIso(atMs).slice(0, 16);
@@ -98,6 +111,8 @@ export function eatKeyFor(unit: EatKeyUnit, atMs: number): string {
       return eatHourKey(atMs);
     case "month":
       return eatMonthKey(atMs);
+    case "previousMonth":
+      return eatPreviousMonthKey(atMs);
     case "minute":
       return eatMinuteKey(atMs);
   }

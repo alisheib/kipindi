@@ -13,11 +13,11 @@
 | | |
 |---|---|
 | **Overall** | 🟡 **PLANNED · build not started** |
-| **Current step** | P0 ✅ (P0.1–P0.6). **Commit 1 🟡:** written, merged with `origin/main` (latest merge `dd16a420`) and pushed. On 2026-09-14, before the review: typecheck 0 errors, `npm run build` ✅, `test:house-bot-rules` 486/0, `test:dal-parity` 1206/0, `test:house-bot-migrations` 674/0 on Postgres 18.3, `red:dal-parity` 9/9, and the COMPLIANCE entry written. **The 3-lens review ran and confirmed 10 findings: 9 fixes plus a comment cleanup, each with its exact fix, in `C1-REVIEW.md`.** **Next:** apply them, re-run the suites, then `test:all` (RESUME AT step 7). |
+| **Current step** | P0 ✅ (P0.1–P0.6). **Commit 1 🟡:** written, merged with `origin/main` (latest merge `dd16a420`) and pushed. The 3-lens review confirmed 10 findings. **All 10 are applied (2026-09-14, OMEGA-COMPILE01)**, and `C1-REVIEW.md` is deleted; RESUME AT step 7.8.1 records what each fix was. After the fixes: typecheck 0 errors, `test:house-bot-rules` 492/0, `test:dal-parity` 1207/0, `test:house-bot-migrations` 679/0 on Postgres 18.3 (F1's new b.6 was red with 40P01 on the old lock order before the reorder), `red:dal-parity` 9/9. **Next:** `test:all` and the rest of RESUME AT step 7.8. |
 | **Blocked on** | Nothing. The KYC audit hold lifted on 2026-09-14 (RESUME AT step 4). On Ali-Blade15, heavy Node goes through the shared lock (RESUME AT step 2). |
 | **Production** | Nothing deployed. The feature does not exist in production. |
 | **Master switch** | n/a (ships OFF at release; Ali alone turns it on) |
-| **Last updated** | 2026-09-14 (~08:50 EAT) · Ali-Blade15 · build session `ali-e4` (review done, fixes listed in `C1-REVIEW.md`; the work moves to another PC) |
+| **Last updated** | 2026-09-14 (~17:05 EAT) · OMEGA-COMPILE01 · `F:/kipindi-house-bots` (the C1 review fixes applied and the Commit 1 suites re-run) |
 
 ## ▶ RESUME AT (overwrite this block every time you stop)
 1. Get onto the branch on whatever machine you are on: `README.md` → "Resume on any machine" (steps 0–5).
@@ -74,16 +74,26 @@
    4. ✅ 2026-09-14: P0.6 recorded. Phase D = `next start` WORKS (see the P0 table).
    5. ✅ 2026-09-14: the COMPLIANCE-DECISIONS House bots entry is written (`07a71e8a`).
    6. ✅ 2026-09-14: merged `origin/main` "AUDIT 95 (13/n)" into `house-bots` at `dd16a420` and pushed. It carries ali-f6's `test:guards-exist` and `test:docs` fixes: 5 files, comments and docs only, no migration.
-   7. ✅ 2026-09-14: the 3-lens adversarial review of Commit 1 ran (workflow `wf_b826fc45-41d`, read-only). It raised 14 findings: 10 confirmed, 4 refuted. **Every confirmed finding, with its exact fix and the order to apply them, is in `plans/house-bots/C1-REVIEW.md`.**
+   7. ✅ 2026-09-14: the 3-lens adversarial review of Commit 1 ran (workflow `wf_b826fc45-41d`, read-only). It raised 14 findings: 10 confirmed, 4 refuted. The confirmed ones were written with exact fixes to `plans/house-bots/C1-REVIEW.md`, applied in sub-step 8.1, and the file was deleted then (`git log --all -- plans/house-bots/C1-REVIEW.md` recovers it). **Refuted, no change, but binding later:** L1-03 (the target veto reads a stale CTE snapshot) is refuted only because sealed N2 §6 step 2 makes every veto caller run `getForUpdate(targetId, tx)` first in the same transaction, so **Commit 7's `cancelHouseBotIntentAction` and `removeHouseBotTargetAction` must keep that order.** L2-02 (cross-script look-alike labels) is a property of sealed C2, so only the comment changed. L3-04 (COMPLIANCE "condition 5 is built") copies PLAN §18 row CC-33. L3-05 (RULES §1 row without a LANDING marker): the markers sit at the §2 entries, and §2.11 is marked.
    8. **Next:**
-      1. Apply `C1-REVIEW.md` F1–F9 and the cleanup, in its order. F1 needs `test:house-bot-migrations` red first, then green.
-      2. Re-run the typecheck, `test:house-bot-rules`, `test:dal-parity`, `test:house-bot-migrations` and `red:dal-parity`.
+      1. ✅ 2026-09-14 · OMEGA-COMPILE01: applied `C1-REVIEW.md` F1–F9 and the cleanup, in its order. The file is deleted in the same commit, so this is the record (review workflow `wf_b826fc45-41d`):
+         - **F1 (lock order, markers migration):** the Position column now comes before `Position_placedAt_id_idx` and the marker indexes, so no table goes from SHARE to ACCESS EXCLUSIVE. The header states the rule and the residual (a transaction already holding a later table's lock can still meet 40P01; the apply then rolls back whole and R2 retries). New §b case **b.6**: a bet reads Position, the file starts, and the bet then inserts. **Proven by mutation:** with b.6 added and the old order still in place, the run was 675/2, and b.6/b.6a failed with `40P01` (the bet was chosen as the victim). After the reorder: 679/0, with b.6 "apply ok · bet ok". b.5's wording and `HOUSE-BOTS.md` §2 index row updated.
+         - **F2 (memory marker twin):** `memoryPositions.set` keeps `prev.houseBotId` only, never the incoming marker. New §d case c21.c (NULL stays NULL on both stores); dal-parity 9.memory now rejects any `p.houseBotId` in the body, with CONTROL 9.c3 on the old line; the `market-service.ts` comment and `HOUSE-BOTS.md` I8 row corrected.
+         - **F3:** A.1e is now "no other migration sorts between the two house migrations" (a permanent truth); "house folders are the newest" stays a REL-0 check.
+         - **F4 (staff-edge key month):** new EAT unit `previousMonth` (`EAT_SQL.previousMonthKey`, `eatPreviousMonthKey`, `eatKeyFor`); `ALERT_KEY.staffEdge` uses it (TGT-39: an October run writes `2026-09`). Tests 11.26, 13.5, new 13.5b (month and year turn), 13.6; new §d case c18.f, which also requires the stored key to equal the JS `eatPreviousMonthKey(now)`, so on Postgres it proves the SQL fragment picks the month just ended (stronger than the review's shape-only check). `HOUSE-BOTS.md` §9.3 row and unit list updated.
+         - **F5:** `hasForbiddenKey` fails closed deeper than 8 levels; tests 11.11b–d.
+         - **F6:** `HouseBotControl`, `HouseBotRuntime` and `HouseBotAlertOnce` added to the chain-purge NEVER list (`chain-purge.ts`, DATA-RETENTION §7.1); `HOUSE-BOTS.md` says it is the chain purge only. Re-checked first: no suite pins that line.
+         - **F7:** §14's `bad.ts` is built from the real `HOUSE_PRODUCT_POLICY` declaration; new 14.0b (found) and CONTROL 14.0c.
+         - **F8 (docs):** CI records `test:house-bot-migrations` as FAIL, not NOT MEASURED. Verified at source before writing: `db-scratch.mts` exits 2 when `embedded-postgres` is missing, and `test-all.mjs` counts any non-zero status as FAIL. Not checked against a CI run.
+         - **F9 (docs):** the I4 row credits §d with behavioural unique parity and dal-parity with source-level name lists.
+         - **Cleanup:** the `LABEL_CHARSET` comment no longer claims look-alike labels are refused.
+      2. ✅ 2026-09-14 · OMEGA-COMPILE01, after the fixes: typecheck ✅ (0 errors); `test:house-bot-rules` ✅ 492/0 (486 + 6 new); `test:dal-parity` ✅ 1207/0 (+ 9.c3); `test:house-bot-migrations` ✅ 679/0 on the scratch Postgres 18.3 (+ b.6, b.6a, b.6b, c18.f, c21.c); `red:dal-parity` ✅ 9/9 caught, tree untouched, green after.
       3. Run `node scripts/test-all.mjs --skip responsive,motion`, CI's exact invocation (`.github/workflows/ci.yml`).
       4. Record `test:responsive` NOT MEASURED with the reason: it signs in through `/auth/demo` and `/api/dev-test/seed-admin`, which return 404 under `next start`, and the in-memory store refuses production mode.
       5. Run `test:motion` on its own with `BASE=http://127.0.0.1:<free port>` against a `next start` server set up as in P0.6; it needs only `/`. Never use ports 3009, 3011, 3013 or 3014.
       6. Run `verify:house-bot-migrations-old-build`.
       7. Re-render `/admin` once as in P0.6, because the migration order changed.
-      8. Fill in Commit 1's row, delete `C1-REVIEW.md` in the commit that fixes its last finding, and mark Commit 1 ✅.
+      8. Fill in Commit 1's row and mark Commit 1 ✅. (`C1-REVIEW.md` was already deleted with the fixes, sub-step 1.)
 
 ## Legend
 ⬜ not started · 🟡 in progress · ✅ done (date · machine · commit subject) · ⛔ blocked (reason) · ⏭️ skipped by Ali's ruling · — not applicable
