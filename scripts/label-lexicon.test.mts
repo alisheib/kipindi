@@ -601,7 +601,9 @@ check("§5j private-map matcher ACCEPTS a tone ternary (a colour is not a word)"
     (notif.match(/marketTitle: LocalizedText/g) ?? []).length >= 5,
     "");
   check("§7c `notifyWin`'s label is localized too — it was the one that took a pre-built string",
-    /export function notifyWin\(userId: string, amount: number, label: LocalizedText, href: string\)/.test(notif),
+    // 2026-09-14: the one optional trailing argument is the house-bots liquidity label (04 A17 (h)); the
+    // label itself must still be a LocalizedText.
+    /export function notifyWin\(userId: string, amount: number, label: LocalizedText, href: string(, house\?: \{ houseStake\?: boolean \})?\)/.test(notif),
     "");
   // ⛔ AND THE CALLERS ACTUALLY PASS ALL THREE. A signature widened while every caller still
   // hands it `localizedText(m.titleEn)` would type-check perfectly and change nothing.

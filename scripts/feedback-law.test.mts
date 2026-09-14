@@ -335,6 +335,11 @@ console.log("\n§6 · The receipt's 'way out' row is COMPUTED per bet, never a c
 // ───────────────────────────────────────────────────────────────────────────────
 const RULE = read("src/lib/updown-receipt.ts");
 const SERVICE = read("src/lib/server/market-service.ts");
+// ⭐ The runway formula moved to `src/lib/exit-window.ts` on 2026-09-14 (house bots, sanctioned change (k),
+// 04 A14) so the house engine reads the same window. `cashOutValue` still owns the gate and calls it; the
+// client mirror was re-derived against the moved expression then (unchanged: grace > 0, measured to the
+// lock instant, `>=` the grace).
+const EXIT_WINDOW = read("src/lib/exit-window.ts");
 
 ok("6.1 · the modal asks the shared rule", /freeExitMinutesFor\(info, placed\)/.test(RECEIPT));
 ok("6.2 · …and offers BOTH answers, because the row has two truthful ones",
@@ -354,10 +359,12 @@ ok("6.5 · …and every one carries the {mins} placeholder the code substitutes"
 // a restatement with nothing binding it is the two-definitions defect this repo keeps paying
 // for. If the server's runway test is reworded, this goes red and the client must follow.
 ok("6.6 · the SERVER still gates free exit on runway, in the form the client mirrors",
-  /const hadRunway = graceMs > 0 && closesAt - placedAt >= graceMs;/.test(SERVICE),
+  /const hadRunway = graceMs > 0 && input\.closesAtMs - input\.placedAtMs >= graceMs;/.test(EXIT_WINDOW)
+    && /const \{ graceMs, windowMs, hadRunway \} = exitWindowFacts\(\{/.test(SERVICE),
   "cashOutValue's runway test changed — src/lib/updown-receipt.ts must be re-derived, not patched");
 ok("6.7 · …measured to the LOCK instant, not the round's close",
-  /const closesAt = market\.selectionClosedAt \? Date\.parse\(market\.selectionClosedAt\) : Date\.parse\(market\.resolutionAt\);/.test(SERVICE));
+  /return market\.selectionClosedAt \? Date\.parse\(market\.selectionClosedAt\) : Date\.parse\(market\.resolutionAt\);/.test(SERVICE)
+    && /closesAtMs: exitClosesAtMs\(market\),/.test(SERVICE));
 ok("6.8 · …and the client measures to the same instant",
   /Date\.parse\(info\.selectionClosedAt \?\? info\.closesAt\)/.test(RULE));
 ok("6.9 · the SERVER still refuses a bonus-funded exit outright",

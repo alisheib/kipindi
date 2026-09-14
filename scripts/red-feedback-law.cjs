@@ -157,9 +157,10 @@ const MUTATIONS = [
   },
   {
     name: "⭐ the SERVER's runway rule is reworded and the client silently keeps the old one",
-    file: SERVICE,
-    find: `  const hadRunway = graceMs > 0 && closesAt - placedAt >= graceMs;`,
-    with: `  const hadRunway = graceMs > 0 && (closesAt - placedAt) > graceMs;`,
+    // Re-anchored 2026-09-14: the formula now lives in exit-window.ts (house bots, sanctioned change (k)).
+    file: "src/lib/exit-window.ts",
+    find: `  const hadRunway = graceMs > 0 && input.closesAtMs - input.placedAtMs >= graceMs;`,
+    with: `  const hadRunway = graceMs > 0 && (input.closesAtMs - input.placedAtMs) > graceMs;`,
   },
   {
     name: "the server stops refusing a bonus-funded exit; the receipt still promises one",
