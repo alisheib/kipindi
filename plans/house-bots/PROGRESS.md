@@ -13,7 +13,7 @@
 | | |
 |---|---|
 | **Overall** | 🟡 **PLANNED · build not started** |
-| **Current step** | P0.4 half done: `origin/main` merged into `house-bots` 2026-09-14 (merge-only, agreed with ali-f6). `npm ci`, tests, P0.5 and P0.6 wait for the KYC audit's P1 push + ALL-CLEAR (RESUME AT step 4). N1–N2 (Enter now; targeted polls and exact timing) are written into the plan (2026-09-14). Next: Commit 1 as edit-only pushed WIP commits. |
+| **Current step** | P0.4 half done: `origin/main` merged into `house-bots` 2026-09-14 (merge-only, agreed with ali-f6). `npm ci`, tests, P0.5 and P0.6 wait for the KYC audit's P1 push + ALL-CLEAR (RESUME AT step 4). N1–N2 (Enter now; targeted polls and exact timing) are written into the plan (2026-09-14). **Commit 1 🟡 edit-only:** schema, the two migrations, pure modules, DAL, suites and docs are being written as `WIP house-bots:` commits; nothing is compiled or tested until the hold lifts. The COMPLIANCE entry stays held until P1 lands. |
 | **Blocked on** | ⛔ **HOLD: KYC audit in flight.** The KYC-at-withdrawal release ("KYC AT WITHDRAWAL (1/n)"…"(7/n)") **is on `origin/main`**, and its migration **is applied in production** (verified 2026-09-13). But session **`ali-f6`** is auditing that release and has confirmed P0/P1 defects. Fixes will be pushed to `main` over the following hours, touching `kyc-service`, `refused-funds`, `wallet-service`, `auth-service`, `wallet-freeze`, `notification-service`, `email`, `nida`, `i18n-dict`, `src/app/legal/*`, `COMPLIANCE-DECISIONS.md` and LIVE-QA §6b. ali-f6 plans no new migration and will message first if that changes. **Wait until the KYC audit session's own block tops `docs/LIVE-QA-CAMPAIGN.md` §6b on `origin/main` before P0.4 (checkable from any machine; see RESUME AT step 4). On Ali-Blade15 only, also wait for ali-f6's "ALL-CLEAR heavy window" message before any `npm ci`, build, test run or Playwright (that laptop bluescreens under concurrent heavy Node).** |
 | **Production** | Nothing deployed. The feature does not exist in production. |
 | **Master switch** | n/a (ships OFF at release; Ali turns it on himself) |
@@ -115,7 +115,7 @@ Run in **Git Bash** from the worktree.
 
 | # | Commit | Status | impl | tsc | suites | all | red | drive | review | docs | push |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| 1 | Docs of record · schema · migrations · DAL · pure modules | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | — | ⬜ | ⬜ | ⬜ | ⬜ |
+| 1 | Docs of record · schema · migrations · DAL · pure modules | 🟡 edit-only (hold) | 🟡 | ⛔ hold | ⛔ hold | ⛔ hold | — | ⛔ hold | ⬜ | 🟡 | ⬜ |
 | 2 | Money seam (`placeHouseBet`, gates, markers, exclusions) | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 | 3 | Designation · eligibility · password verification (services) | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | — | ⬜ | ⬜ | ⬜ | ⬜ |
 | 4 | Engine · notifications · holder hooks · money hooks · schema gate | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
