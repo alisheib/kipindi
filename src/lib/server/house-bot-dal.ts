@@ -854,9 +854,14 @@ const CHECK_NAME_SET: ReadonlySet<string> = new Set(HOUSE_CHECK_NAMES);
 /**
  * Which house unique index an error violated (MON-12) — or null.
  *
- * Postgres 23505 reaches us as Prisma P2010 (`meta.code` "23505", the constraint named in
- * `meta.message`) for raw SQL, or as P2002 whose `meta.target` MAY be the index name. When
- * `meta.target` is a field list, no name is found and this returns null.
+ * ⚠️ Prisma does NOT name the index for raw SQL. Probed on the scratch Postgres 18.3 with
+ * @prisma/client 6.19.3 (2026-09-14): a unique violation arrives as P2010 with `meta.code` "23505"
+ * and `meta.message` holding only Postgres's DETAIL, `Key ("marketId")=(m1) already exists.` — in
+ * `$queryRawUnsafe`, `$executeRawUnsafe` and interactive transactions alike (a 23514 CHECK
+ * violation does carry its name). So every house statement runs through `sql()` / `exec()`, which
+ * resolve the index from the table written and the DETAIL's key columns (`uniqueFromDetail`) and
+ * re-raise the memory twin's shape, naming it. This reader then finds the name in that message.
+ * A P2002 whose `meta.target` is a field list names nothing and returns null.
  *
  * ⛔ NULL MEANS RETHROW. A caller that swallows an unrecognised violation turns a real defect
  * into a silent no-op on a money path.
@@ -876,6 +881,56 @@ export function checkViolation(err: unknown): string | null {
   const isCheck = e.code === "23514" || e.meta?.code === "23514";
   if (!isCheck) return null;
   return namedIn(e, CHECK_NAME_SET);
+}
+
+/**
+ * Each house unique index by the table it lives on and the key columns Postgres's DETAIL lists
+ * (in index order). Two indexes share `("anchorKey")` on intents; the key's value tells them apart,
+ * because a MANUAL anchor always starts "manual:" (`HouseBotIntent_manual_anchor_check`) and a
+ * COUNTER anchor is a position id.
+ */
+const UNIQUE_BY_KEY: Readonly<Partial<Record<HouseTable, readonly { cols: string; name: HouseUniqueIndex; value?: (v: string) => boolean }[]>>> = {
+  HouseBot: [
+    { cols: "userId", name: "HouseBot_userId_live_key" },
+    { cols: "labelKey", name: "HouseBot_labelKey_live_key" },
+  ],
+  HouseBotIntent: [
+    { cols: "anchorKey", name: "hbi_manual_anchor_uq", value: (v) => v.startsWith("manual:") },
+    { cols: "anchorKey", name: "hbi_counter_anchor_uq", value: (v) => !v.startsWith("manual:") },
+    { cols: "kind,anchorKey", name: "hbi_fill_opener_anchor_uq" },
+    { cols: "marketId", name: "hbi_manual_live_market_uq" },
+    { cols: "positionId", name: "HouseBotIntent_positionId_key" },
+    { cols: "idempotencyKey", name: "HouseBotIntent_idempotencyKey_key" },
+  ],
+  HouseBotEvent: [{ cols: "marketId", name: "hbe_opener_draw_uq" }],
+  HouseBotTarget: [{ cols: "marketId", name: "hbt_active_market_uq" }],
+  HouseBotPress: [{ cols: "actorId,submitId", name: "hbp_actor_submit_uq" }],
+};
+
+/**
+ * The house unique index a 23505 DETAIL (`Key ("actorId", "submitId")=(…) already exists.`) names
+ * through its key columns, for a statement whose text writes one or more house tables. ⛔ Exactly
+ * one match or null: an unresolvable violation is rethrown as it came, never guessed.
+ */
+function uniqueFromDetail(sqlText: string, detail: string | undefined): HouseUniqueIndex | null {
+  const m = /Key \(([^)]*)\)=\(([\s\S]*)\) already exists/.exec(detail ?? "");
+  if (!m) return null;
+  const cols = m[1].split(",").map((c) => c.trim().replace(/^"|"$/g, "")).join(",");
+  const tables = new Set(
+    (sqlText.match(/\b(?:INSERT\s+INTO|UPDATE)\s+"HouseBot\w*"/gi) ?? []).map((s) => s.slice(s.indexOf('"') + 1, -1) as HouseTable),
+  );
+  const hits = [...tables].flatMap((t) => (UNIQUE_BY_KEY[t] ?? []).filter((u) => u.cols === cols && (!u.value || u.value(m[2]))));
+  return hits.length === 1 ? hits[0].name : null;
+}
+
+/** A raw-SQL error as the house callers read it: a 23505 Prisma left unnamed is re-raised naming its
+ *  index (the original kept as `cause`); every other error passes through untouched. */
+function withUniqueName(e: unknown, sqlText: string): unknown {
+  if (!e || typeof e !== "object") return e;
+  const x = e as DbError;
+  if (x.meta?.code !== "23505" || uniqueViolation(x)) return e;
+  const name = uniqueFromDetail(sqlText, x.meta?.message);
+  return name ? Object.assign(houseUniqueError(name), { cause: e }) : e;
 }
 
 /** The error Prisma raises for a raw-SQL unique violation, raised by the memory twin. */
@@ -2455,11 +2510,21 @@ const memoryHouseBook: HouseBookStore = {
 /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
 type RawRow = any;
 
+// ⭐ The only two doors to Postgres in this file, so a unique violation always leaves named
+// (`withUniqueName`; Prisma's raw 23505 message carries no index name).
 async function sql(tx: HouseTx | undefined, text: string, values: readonly unknown[]): Promise<RawRow[]> {
-  return q(tx).$queryRawUnsafe<RawRow[]>(text, ...values);
+  try {
+    return await q(tx).$queryRawUnsafe<RawRow[]>(text, ...values);
+  } catch (e) {
+    throw withUniqueName(e, text);
+  }
 }
 async function exec(tx: HouseTx | undefined, text: string, values: readonly unknown[]): Promise<number> {
-  return q(tx).$executeRawUnsafe(text, ...values);
+  try {
+    return await q(tx).$executeRawUnsafe(text, ...values);
+  } catch (e) {
+    throw withUniqueName(e, text);
+  }
 }
 
 /** One keyset page, newest first by `("createdAt", "id")` (C7). */
