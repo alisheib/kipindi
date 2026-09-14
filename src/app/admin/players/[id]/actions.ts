@@ -54,6 +54,7 @@ const ACTION_DOMAIN: Record<string, AdminDomain> = {
   // Compliance decisions, never support: a freeze stops a player's money in both directions.
   freezeWalletAction: "compliance",
   unfreezeWalletAction: "compliance",
+  liftStaleIdentityHoldAction: "compliance",
 };
 
 async function requireAdmin(action: string): Promise<string> {
@@ -502,6 +503,29 @@ export async function unfreezeWalletAction(formData: FormData) {
     return { ok: true as const, status: r.status };
   } catch (err) {
     return { ok: false as const, error: safeError(err, "Unfreeze failed") };
+  }
+}
+
+/**
+ * Lift a STALE identity hold — an IDENTITY_REFUSED hold with no final refusal behind it (audit session 95,
+ * 2026-09-13). Until this action the service could lift one only when no officer hold stood beside it, and no
+ * screen offered it at all, so a failed re-open left the player's wallet frozen for good. Compliance domain, like
+ * the freeze itself; the service re-checks staleness under the identity lock.
+ */
+export async function liftStaleIdentityHoldAction(formData: FormData) {
+  const officerId = await requireAdmin("liftStaleIdentityHoldAction");
+  const userId = String(formData.get("userId") ?? "");
+  const reason = String(formData.get("reason") ?? "").trim().slice(0, 300);
+  if (!userId) return { ok: false as const, error: "Missing user id." };
+  if (reason.length < 5) return fieldError("reason", "Reason is required (≥ 5 chars).");
+  try {
+    const { liftStaleIdentityHold } = await import("@/lib/server/wallet-freeze");
+    const r = await liftStaleIdentityHold(officerId, userId, reason);
+    if (!r.ok) return { ok: false as const, error: r.error };
+    revalidatePath(`/admin/players/${userId}`);
+    return { ok: true as const, status: r.status };
+  } catch (err) {
+    return { ok: false as const, error: safeError(err, "Lifting the identity hold failed") };
   }
 }
 

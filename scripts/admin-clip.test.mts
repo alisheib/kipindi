@@ -123,26 +123,34 @@ ${crumbsSrc}`.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
    * accusing correct code, and the "fix" would be to re-flatten the array. So: span from
    * the `className` back-reference to the end of its expression, and test the lot.
    */
-  const offenders: string[] = [];
-  for (const m of src.matchAll(/whitespace-nowrap/g)) {
-    const at = m.index ?? 0;
-    const start = src.lastIndexOf("className", at);
-    if (start < 0) continue;
-    // The expression ends at `.join(` for an array form, else at the closing quote.
-    const joinAt = src.indexOf(".join(", at);
-    const quoteAt = src.indexOf('"', at);
-    const end = joinAt > 0 && joinAt - at < 400 ? joinAt : quoteAt > 0 ? quoteAt : at + 200;
-    const cls = src.slice(start, end);
-    // Safe if it can shrink+ellipsis, or is explicitly pinned as non-shrinking chrome
-    // (a shrink-0 pill is a deliberate fixed-size element, not a clipping hazard).
-    if (/min-w-0/.test(cls) || /truncate/.test(cls) || /shrink-0/.test(cls) || /flex-none/.test(cls)) continue;
-    offenders.push(cls.replace(/\s+/g, " ").slice(0, 90));
-  }
+  const scan = (text: string): string[] => {
+    const offenders: string[] = [];
+    for (const m of text.matchAll(/whitespace-nowrap/g)) {
+      const at = m.index ?? 0;
+      const start = text.lastIndexOf("className", at);
+      if (start < 0) continue;
+      // The expression ends at `.join(` for an array form, else at the closing quote.
+      const joinAt = text.indexOf(".join(", at);
+      const quoteAt = text.indexOf('"', at);
+      const end = joinAt > 0 && joinAt - at < 400 ? joinAt : quoteAt > 0 ? quoteAt : at + 200;
+      const cls = text.slice(start, end);
+      // Safe if it can shrink+ellipsis, or is explicitly pinned as non-shrinking chrome
+      // (a shrink-0 pill is a deliberate fixed-size element, not a clipping hazard).
+      if (/min-w-0/.test(cls) || /truncate/.test(cls) || /shrink-0/.test(cls) || /flex-none/.test(cls)) continue;
+      offenders.push(cls.replace(/\s+/g, " ").slice(0, 90));
+    }
+    return offenders;
+  };
+  const offenders = scan(src);
   ok("3.1 · every nowrap class in admin-shell can shrink, truncate, or is pinned",
      offenders.length === 0, offenders.join(" | "));
-  ok("3.2 · the scan is not vacuous",
-     (src.match(/whitespace-nowrap/g) ?? []).length > 0,
-     `${(src.match(/whitespace-nowrap/g) ?? []).length} nowrap classes scanned`);
+  /* 2026-09-14 — the shell's LAST nowrap class went (the KPI caption now wraps at every width, visual pass 1 admin#8),
+     so "the real population is not empty" can no longer hold. The check that it is not vacuous is now a CONTROL:
+     the same scanner must catch a planted offender and pass a planted safe class. */
+  ok("3.2 · CONTROL · the scanner flags a planted nowrap that cannot shrink, and passes one that can",
+     scan(`<span className="whitespace-nowrap font-mono">x</span>`).length === 1
+     && scan(`<span className="min-w-0 whitespace-nowrap text-ellipsis">x</span>`).length === 0,
+     `${(src.match(/whitespace-nowrap/g) ?? []).length} nowrap class(es) in the shell today`);
 }
 
 const line = "─".repeat(66);

@@ -81,12 +81,17 @@ export async function ConfidentialBand({ session }: { session: AdminSession }) {
 // Prisma) and the fix in dev. `listPendingKyc` is a real `async function`, so it always
 // returns a Promise and needs no wrapper — the two that DO are wrapped, not all three,
 // because wrapping something that never needed it teaches the next reader the wrong rule.
-export const getSidebarBadges = reactCache(async () => {
+//
+// 🔴 `canSeeMoney` (audit session 95, 2026-09-14). The refused-balance count is MONEY-DERIVED — a case waits on an
+// officer because money still sits in the wallet — and it ran the same wallet reads for every viewer, so the badge
+// told a role without money rights how many refused accounts still hold a balance. Both callers pass the viewer's
+// answer (view on accounting); `reactCache` memoises per argument, so it is still one run per request.
+export const getSidebarBadges = reactCache(async (canSeeMoney: boolean) => {
   const [aml, sof, pendingKyc, refused] = await Promise.all([
     Promise.resolve(db.txn.listByStatus("AML_REVIEW")).then((r) => r.length).catch(() => 0),
     Promise.resolve(db.sourceOfFunds.listPending()).then((r) => r.length).catch(() => 0),
     import("@/lib/server/kyc-service").then(({ listPendingKyc }) => listPendingKyc()).catch(() => []),
-    openRefusedFundsCases().catch(() => 0),
+    openRefusedFundsCases(canSeeMoney).catch(() => 0),
   ]);
   const kyc = pendingKyc.length;
   // Approvals badge: the work /admin/approvals itself lists — its KYC queue (files with us, and files we
@@ -112,7 +117,8 @@ export const getSidebarBadges = reactCache(async () => {
  * Finally-refused accounts whose balance still waits on an officer — the "open" cases of
  * `/admin/kyc/refused` (2026-09-13, S1).
  *
- * ⭐ ONE DEFINITION OF "OPEN": the count is `refusedFundsReport()`'s own `accounts[].open`, never a second
+ * ⭐ ONE DEFINITION OF "OPEN": the count is `refusedFundsReport()`'s own `accounts[].state` (undecided, or a return
+ * whose payout failed), never a second
  * predicate written here. ⚡ BUT THAT REPORT IS HEAVY (every submission, every wallet, and a durable audit
  * read) and this runs on EVERY admin render, so it is reached only through two cheap NECESSARY conditions:
  * a newest submission REJECTED on a FINAL code exists, and one such account holds money. An open case implies
@@ -123,22 +129,27 @@ export const getSidebarBadges = reactCache(async () => {
  * user: the very rows `refusedFundsReport` filters, so this precondition and the report cannot disagree about
  * who stands refused.
  * ⛔ Throws on any failed read; the caller turns that into "no badge", like every badge in this function.
+ * 🔴 A VIEWER WITHOUT MONEY RIGHTS GETS NO COUNT AND NO READ (audit session 95, 2026-09-14). Whether a case is open
+ * is a fact about a balance, and deciding one now needs money rights too (`decideRefusedFundsAction`), so for that
+ * viewer the badge would count work they may neither see nor clear. Nothing is read — privileged data never fetched
+ * cannot leak — and /admin/kyc says "not in your role" on the same tile.
  */
-async function openRefusedFundsCases(): Promise<number> {
+async function openRefusedFundsCases(canSeeMoney: boolean): Promise<number> {
+  if (!canSeeMoney) return 0;
   const [{ isFinalRefusal }, { walletHeldTzs }] = await Promise.all([import("@/lib/kyc-refusal"), import("@/lib/kyc-stage")]);
   const facts = await (async () => db.kyc.listStageFacts())();
   const finalUsers = facts.filter((f) => f.status === "REJECTED" && isFinalRefusal(f.rejectReason)).map((f) => f.userId);
   if (finalUsers.length === 0) return 0;
   const held = await Promise.all(finalUsers.map((u) => Promise.resolve(db.wallet.findByUserId(u)).then((w) => walletHeldTzs(w))));
   if (!held.some((h) => h > 0)) return 0;
-  const { refusedFundsReport } = await import("@/lib/server/refused-funds");
-  const report = await refusedFundsReport();
+  const { refusedFundsReport, awaitsOfficer } = await import("@/lib/server/refused-funds");
+  const report = await refusedFundsReport({ money: true });
   if (report.accountsFailed) throw new Error("refused accounts could not be read");
-  return report.accounts.filter((a) => a.open).length;
+  return report.accounts.filter(awaitsOfficer).length;
 }
 
 export async function AdminSidebar({ activeKey, viewDomains, isOwner }: { activeKey: string; viewDomains: AdminDomain[]; isOwner: boolean }) {
-  const badges = await getSidebarBadges();
+  const badges = await getSidebarBadges(isOwner || viewDomains.includes("accounting"));
   // RBAC nav gate — show only the groups/items whose domain the viewer may see.
   const groups = filterNavGroups(viewDomains, isOwner);
   return (
@@ -161,7 +172,7 @@ export async function AdminSidebar({ activeKey, viewDomains, isOwner }: { active
 }
 
 export async function AdminTopBar({ crumbs, session, activeKey, viewDomains, isOwner }: { crumbs: string[]; session: AdminSession; activeKey: string; viewDomains: AdminDomain[]; isOwner: boolean }) {
-  const badges = await getSidebarBadges();
+  const badges = await getSidebarBadges(isOwner || viewDomains.includes("accounting"));
   const groups = filterNavGroups(viewDomains, isOwner);
   return (
     <div className="relative z-40 border-b border-border"
@@ -518,13 +529,15 @@ export function AdminKpi({
               title={delta}
               className={[
                 "font-mono text-micro px-2 py-0.5 rounded-sm ml-auto",
-                // At the narrowest width the delta WRAPS rather than truncating: the grid
-                // is 2-up at 360 and a tile is ~145px, which is too little for several
-                // honest labels ("0 generations" was ellipsised by the truncate-only fix,
-                // having previously just fitted). Wrapping costs a line of height that the
-                // grid row equalises anyway, and loses nothing. Above `sm` there is room,
-                // so it stays on one line.
-                "whitespace-normal sm:whitespace-nowrap",
+                // The delta WRAPS at every width rather than truncating. At 360 the grid is
+                // 2-up and a tile is ~145px, too little for several honest labels ("0
+                // generations" was ellipsised by the truncate-only fix). ⛔ It used to stay on
+                // one line from 640px up, on the claim that there was room. There was not: in a
+                // 4-up band at 1280 a tile is ~237px, and /admin/aml's legacy-hold caption was
+                // cut mid-word, hiding the date that tells a legacy hold from a new withdrawal
+                // (2026-09-14). Wrapping costs a line of height that the grid row equalises
+                // anyway, and loses nothing.
+                "whitespace-normal",
                 // The backstop for the one-line case, and the reason `min-w-0` is here:
                 // a flex item defaults to `min-width:auto` and will not shrink below its
                 // content, so without it neither the wrap nor the ellipsis can engage.

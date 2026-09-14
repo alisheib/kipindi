@@ -50,7 +50,10 @@ export function SetEmailForm({ userId }: { userId: string }) {
   };
 
   return (
-    <div className="flex items-center gap-2 mt-2">
+    <div className="flex items-center gap-2 mt-2 min-w-0 max-w-full">
+      {/* min-w-0 + max-w-full (2026-09-14): this row is an item in the Account actions card's wrapping flex row. At 390 the
+          16px phone input font made its min-content ~20px wider than the card, so "Set email" met the card border. Now the
+          row takes its own line at the card's width and the input absorbs the difference. */}
       <input
         data-field="email"
         type="email"
@@ -79,7 +82,7 @@ export function SetEmailForm({ userId }: { userId: string }) {
             disabled={pending || !email.trim()}
             /* ⚠️ LITERAL, not `h-8` (48px on the overridden scale) — 40px, matching the
                email field beside it. */
-            className="h-[40px] px-3 rounded-md border border-warning-fg/40 bg-warning/10 font-mono text-[11px] font-bold text-warning-fg hover:bg-warning/20 disabled:opacity-40 transition-colors"
+            className="shrink-0 whitespace-nowrap h-[40px] px-3 rounded-md border border-warning-fg/40 bg-warning/10 font-mono text-[11px] font-bold text-warning-fg hover:bg-warning/20 disabled:opacity-40 transition-colors"
           >
             {pending ? "Saving…" : "Set email"}
           </button>

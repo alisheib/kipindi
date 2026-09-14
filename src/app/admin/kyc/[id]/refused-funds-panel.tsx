@@ -18,6 +18,7 @@ import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/toast";
 import { Select } from "@/components/ui/select";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { UnsavedChangesGuard } from "@/components/ui/unsaved-changes";
 import { Button } from "@/components/ui/button";
 import { I } from "@/components/ui/glyphs";
 import { runAdminAction } from "@/lib/client/run-admin-action";
@@ -128,7 +129,7 @@ export function RefusedFundsPanel({
         <div className="rounded-md border border-border bg-bg-inset px-3 py-2 text-body-sm">
           <p className="text-text-muted">{REFUSED_FUNDS_OUTCOME_COPY[outcome].does}</p>
           {chosen && !chosen.allowed ? (
-            <p className="mt-1.5 flex items-start gap-1.5 text-no-300"><I.alertCircle s={13} className="mt-0.5 shrink-0" />{chosen.why}</p>
+            <p className="mt-1.5 flex items-start gap-1.5 text-danger-fg"><I.alertCircle s={13} className="mt-0.5 shrink-0" />{chosen.why}</p>
           ) : (
             <p className="mt-1.5 font-mono tabular-nums text-text" data-outcome-summary="1">{summary}</p>
           )}
@@ -148,6 +149,12 @@ export function RefusedFundsPanel({
         </div>
       )}
 
+      {/* The justification is typed on the page itself, not in a dialog — so leaving mid-decision asks first
+          (`test:unsaved-changes`, audit session 95). */}
+      <UnsavedChangesGuard
+        dirty={outcome !== "" || justification.trim().length > 0}
+        body="A balance decision has been started but not recorded. Leaving now discards the outcome and the justification you wrote."
+      />
       <label className="block">
         <span className="font-mono text-micro uppercase eyebrow font-bold text-text-subtle">Justification · required</span>
         <span className="block text-body-sm text-text-subtle">Recorded in the compliance log and shown in the refused-funds report. Never sent to the player.</span>

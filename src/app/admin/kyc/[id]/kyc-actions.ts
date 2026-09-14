@@ -14,6 +14,8 @@ import { db } from "@/lib/server/store";
 import { audit } from "@/lib/server/audit";
 import { twoOfficerGate } from "@/lib/server/two-officer";
 import { softRequireStaff } from "@/lib/server/rbac-guard";
+import { canView } from "@/lib/server/rbac";
+import type { Role } from "@/lib/server/roles";
 import { fieldError } from "@/lib/server/field-error";
 import { reviewKyc } from "@/lib/server/kyc-service";
 import { kycRiskScore, getApprovalRecommendation, KYC_MAKER_CHECKER_THRESHOLD } from "@/lib/server/kyc-risk";
@@ -166,6 +168,16 @@ export async function decideRefusedFundsAction(formData: FormData): Promise<{ ok
   const g = await gate("decideRefusedFunds");
   if ("error" in g) return { ok: false, error: g.error };
   const userId = String(formData.get("userId") ?? "");
+  // ⛔ A ROLE THAT MAY NOT SEE A BALANCE MAY NOT MOVE ONE (audit session 95, 2026-09-14). The compliance grant alone
+  // let a role without money rights return or forfeit a balance its own case page does not show it. Money rights are
+  // the question every money surface asks before it renders a shilling (view on the accounting domain), asked again
+  // here because the page is manners and this action is the law. A refused attempt is a SECURITY row, like every
+  // bypass this file records.
+  const officer = await db.user.findById(g.userId);
+  if (!officer || !(await canView(officer.role as Role, "accounting"))) {
+    audit({ category: "SECURITY", action: "kyc.refused_funds.money_rights_blocked", actorId: g.userId, targetType: "User", targetId: userId, payload: { role: officer?.role ?? null, domain: "accounting", action: "decideRefusedFunds" } });
+    return { ok: false, error: "Deciding a refused player's balance needs money rights as well as compliance. Your role cannot see balances, so it cannot move one — ask an officer whose role can." };
+  }
   const outcome = String(formData.get("outcome") ?? "");
   const justification = String(formData.get("justification") ?? "");
   const provider = String(formData.get("provider") ?? "") || null;

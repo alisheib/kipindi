@@ -8,9 +8,43 @@ import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/component
 import { ScrollX } from "@/components/ui/scroll-x";
 import { Chip } from "@/components/ui/chip";
 import { I } from "@/components/ui/glyphs";
-import { refusedFundsReport } from "@/lib/server/refused-funds";
+import { refusedFundsReport, awaitsOfficer, type RefusedAccountRow } from "@/lib/server/refused-funds";
 import { REFUSED_FUNDS_OUTCOME_COPY, REFUSED_FUNDS_OUTCOMES } from "@/lib/refused-funds-outcomes";
-import { formatTzs, formatDateTime } from "@/lib/utils";
+import { currentSession } from "@/lib/server/auth-service";
+import { canView } from "@/lib/server/rbac";
+import { txnStatusLabel } from "@/components/admin/status-badge";
+import type { StoredTxn } from "@/lib/server/store";
+import { isFinalRefusal, type FinalRefusalCode } from "@/lib/kyc-refusal";
+import { formatTzs, formatTzsCompact, formatDateTime } from "@/lib/utils";
+
+/** Officer-facing names for the three final codes (audit session 95, 2026-09-14) — the chip printed the raw enum.
+ *  ⚠️ Twin of the map on /admin/kyc/[id]: a page file cannot export one. Typed on the code list, so a fourth final
+ *  code fails the build here rather than printing a token. */
+const FINAL_CODE_LABEL: Record<FinalRefusalCode, string> = {
+  UNDERAGE: "Under 18",
+  SANCTIONED: "Sanctions concern",
+  DUPLICATE_IDENTITY: "Identity used on another account",
+};
+function codeLabel(code: string): string {
+  return isFinalRefusal(code) ? FINAL_CODE_LABEL[code] : code || "—";
+}
+
+type CaseState = NonNullable<RefusedAccountRow["state"]>;
+/** Where each case's money stands NOW — the report's state word (C-8), never "open" or "closed". */
+const STATE_LABEL: Record<CaseState, string> = {
+  undecided: "Undecided",
+  on_hold: "On hold (appeal)",
+  return_in_flight: "Return in flight",
+  return_failed: "Return failed",
+  settled: "Settled",
+};
+const STATE_VARIANT: Record<CaseState, "warning" | "neutral" | "info" | "danger" | "success"> = {
+  undecided: "warning",
+  on_hold: "neutral",
+  return_in_flight: "info",
+  return_failed: "danger",
+  settled: "success",
+};
 
 export const metadata = { title: "Admin · Refused players' balances" };
 export const dynamic = "force-dynamic";
@@ -35,8 +69,13 @@ export default async function RefusedFundsReportPage({
   searchParams: Promise<{ apage?: string; dpage?: string }>;
 }) {
   const sp = await searchParams;
+  // 🔴 ASKED BEFORE ANY WALLET IS READ (audit session 95, 2026-09-14) — the same money gate as /admin/kyc and the case
+  // page. This report rendered every refused player's balance to any role the compliance route admits; without money
+  // rights the service reads no wallet, and every figure below reads "not in your role".
+  const session = await currentSession();
+  const canSeeMoney = session ? await canView(session.role, "accounting") : false;
   let report: Awaited<ReturnType<typeof refusedFundsReport>> | null = null;
-  try { report = await refusedFundsReport(); } catch { report = null; }
+  try { report = await refusedFundsReport({ money: canSeeMoney }); } catch { report = null; }
 
   // Each grid pages on its own param, so turning one never moves the other. The KPIs above are
   // computed from the WHOLE set, never the visible page.
@@ -47,10 +86,16 @@ export default async function RefusedFundsReportPage({
   const decisionsPage = report?.decisions.slice((dPage - 1) * PER_PAGE, dPage * PER_PAGE) ?? [];
   const dBase = buildBaseHref("/admin/kyc/refused", sp, "dpage");
 
-  const open = report?.accounts.filter((a) => a.open) ?? [];
-  const heldOpen = open.reduce((s, a) => s + a.balance + a.hold, 0);
-  const returned = report?.decisions.reduce((s, d) => s + d.returnedTzs, 0) ?? 0;
+  // ⭐ WHAT WAITS ON AN OFFICER IS A STATE, NOT "OPEN" (audit session 95, C-8): undecided, or a return whose payout
+  // failed with the money back in the frozen wallet. On hold, in flight and settled wait on nobody here.
+  const awaiting = report?.accounts.filter(awaitsOfficer) ?? [];
+  const heldAwaiting = awaiting.reduce((s, a) => s + (a.balance ?? 0) + (a.hold ?? 0), 0);
+  // ⛔ "RETURNED" IS MONEY THAT ARRIVED — a CONFIRMED payout. A return still processing rides beside it, and a failed
+  // one is not counted; the recorded intent (`returnedTzs`) used to be summed as though it had landed.
+  const returnedSettled = report?.decisions.reduce((s, d) => s + d.returnSettledTzs, 0) ?? 0;
+  const returnInFlight = report?.decisions.reduce((s, d) => s + d.returnInFlightTzs, 0) ?? 0;
   const forfeited = report?.decisions.reduce((s, d) => s + d.forfeitedTzs, 0) ?? 0;
+  const notInRole = <span className="text-text-tertiary">not in your role</span>;
   const byOutcome = Object.fromEntries(REFUSED_FUNDS_OUTCOMES.map((o) => [o, report?.decisions.filter((d) => d.outcome === o).length ?? 0]));
 
   return (
@@ -79,10 +124,22 @@ export default async function RefusedFundsReportPage({
         ) : (
           <>
             <KpiGrid>
-              <AdminKpi label="Open cases" sw="Kesi zilizo wazi" value={report.accountsFailed ? "" : String(open.length)} unavailable={report.accountsFailed} delta={report.accountsFailed ? "account read failed" : `${formatTzs(heldOpen)} held`} />
+              <AdminKpi
+                label="Awaiting a decision"
+                sw="Zinasubiri uamuzi"
+                value={!canSeeMoney ? "—" : report.accountsFailed ? "" : String(awaiting.length)}
+                unavailable={canSeeMoney && report.accountsFailed}
+                tone={canSeeMoney && !report.accountsFailed && awaiting.length > 0 ? "danger" : undefined}
+                delta={!canSeeMoney ? "not in your role" : report.accountsFailed ? "account read failed" : `${formatTzsCompact(heldAwaiting)} held`}
+              />
               <AdminKpi label="Decisions recorded" sw="Maamuzi" value={String(report.decisionsTotal)} delta={`${byOutcome.HOLD_PENDING_APPEAL} on hold`} />
-              <AdminKpi label="Returned to players" sw="Zilizorudishwa" value={formatTzs(returned)} delta={report.decisionsTruncated ? "listed decisions only" : "all decisions"} />
-              <AdminKpi label="Forfeited" sw="Hazikurudishwa" value={formatTzs(forfeited)} delta={report.decisionsTruncated ? "listed decisions only" : "all decisions"} />
+              <AdminKpi
+                label="Returned to players"
+                sw="Zilizorudishwa"
+                value={canSeeMoney ? formatTzs(returnedSettled) : "—"}
+                delta={!canSeeMoney ? "not in your role" : `${formatTzsCompact(returnInFlight)} in flight${report.decisionsTruncated ? " · listed only" : ""}`}
+              />
+              <AdminKpi label="Forfeited" sw="Hazikurudishwa" value={canSeeMoney ? formatTzs(forfeited) : "—"} delta={!canSeeMoney ? "not in your role" : report.decisionsTruncated ? "listed decisions only" : "all decisions"} />
             </KpiGrid>
 
             <AdminCard title="Finally refused accounts" sw="Akaunti zilizokataliwa kabisa">
@@ -98,30 +155,34 @@ export default async function RefusedFundsReportPage({
                         <th className="py-2 pr-3 text-left">Wallet</th>
                         <th className="py-2 pr-3 text-right">Balance</th>
                         <th className="py-2 pr-3 text-right">In flight</th>
+                        <th className="py-2 pr-3 text-left">State</th>
                         <th className="py-2 pr-3 text-left">Last decision</th>
                         <th className="py-2 pl-3 text-left">Case</th>
                       </tr>
                     </thead>
                     <tbody>
                       {accountsPage.map((a) => (
-                        <tr key={a.userId} className="border-b border-border-subtle/50 last:border-b-0" data-refused-account={a.open ? "open" : "closed"}>
+                        <tr key={a.userId} className="border-b border-border-subtle/50 last:border-b-0" data-refused-account={a.state ?? "money-not-shown"}>
                           <td className="py-2 pr-3 font-mono">{a.userId.slice(0, 14)}…</td>
-                          <td className="py-2 pr-3"><Chip size="sm" variant="danger">{a.rejectCode}</Chip></td>
+                          <td className="py-2 pr-3"><Chip size="sm" variant="danger" style={{ whiteSpace: "nowrap" }}>{codeLabel(a.rejectCode)}</Chip></td>
                           <td className="py-2 pr-3 font-mono text-micro uppercase tracking-wider">{a.walletStatus ?? "—"}</td>
-                          <td className="py-2 pr-3 text-right font-mono tabular-nums text-text">{formatTzs(a.balance)}</td>
-                          <td className="py-2 pr-3 text-right font-mono tabular-nums">{formatTzs(a.hold)}</td>
+                          <td className="py-2 pr-3 text-right font-mono tabular-nums text-text">{canSeeMoney && a.balance !== null ? formatTzs(a.balance) : notInRole}</td>
+                          <td className="py-2 pr-3 text-right font-mono tabular-nums">{canSeeMoney && a.hold !== null ? formatTzs(a.hold) : notInRole}</td>
+                          <td className="py-2 pr-3">
+                            {a.state ? <Chip size="sm" variant={STATE_VARIANT[a.state]} style={{ whiteSpace: "nowrap" }}>{STATE_LABEL[a.state]}</Chip> : canSeeMoney ? "—" : notInRole}
+                          </td>
                           <td className="py-2 pr-3">
                             {a.lastDecision?.outcome ? `${REFUSED_FUNDS_OUTCOME_COPY[a.lastDecision.outcome].label} · ${formatDateTime(a.lastDecision.at)}` : <span className="text-warning-fg">none yet</span>}
                           </td>
                           <td className="py-2 pl-3">
                             <Link href={`/admin/kyc/${a.userId}` as Route} className="inline-flex items-center gap-1 text-brand-300 hover:underline">
-                              {a.open ? "Decide" : "Open"} <I.chevronRight s={12} />
+                              Case <I.chevronRight s={12} />
                             </Link>
                           </td>
                         </tr>
                       ))}
                       {report.accounts.length === 0 && (
-                        <AdminTableEmpty colSpan={7} kind="admin" title="No finally refused accounts" body="No player's identity has been refused on a final code." />
+                        <AdminTableEmpty colSpan={8} kind="admin" title="No finally refused accounts" body="No player's identity has been refused on a final code." />
                       )}
                     </tbody>
                   </table>
@@ -143,7 +204,7 @@ export default async function RefusedFundsReportPage({
                       <th className="py-2 pr-3 text-left">Officer</th>
                       <th className="py-2 pr-3 text-left">Outcome</th>
                       <th className="py-2 pr-3 text-right">Balance before</th>
-                      <th className="py-2 pr-3 text-right">Returned</th>
+                      <th className="py-2 pr-3 text-right">Return recorded</th>
                       <th className="py-2 pr-3 text-right">Forfeited</th>
                       <th className="py-2 pr-3 text-left">Payout</th>
                       <th className="py-2 pl-3 text-left">Justification</th>
@@ -156,11 +217,27 @@ export default async function RefusedFundsReportPage({
                         <td className="py-2 pr-3 font-mono">{d.userId ? <Link href={`/admin/kyc/${d.userId}` as Route} className="hover:underline">{d.userId.slice(0, 12)}…</Link> : "—"}</td>
                         <td className="py-2 pr-3 font-mono">{d.officerId ? `${d.officerId.slice(0, 12)}…` : "—"}</td>
                         <td className="py-2 pr-3">{d.outcome ? REFUSED_FUNDS_OUTCOME_COPY[d.outcome].label : "—"}</td>
-                        <td className="py-2 pr-3 text-right font-mono tabular-nums">{d.balanceBefore === null ? "—" : formatTzs(d.balanceBefore)}</td>
-                        <td className="py-2 pr-3 text-right font-mono tabular-nums">{formatTzs(d.returnedTzs)}</td>
-                        <td className="py-2 pr-3 text-right font-mono tabular-nums">{formatTzs(d.forfeitedTzs)}</td>
+                        <td className="py-2 pr-3 text-right font-mono tabular-nums">{!canSeeMoney ? notInRole : d.balanceBefore === null ? "—" : formatTzs(d.balanceBefore)}</td>
+                        <td className="py-2 pr-3 text-right font-mono tabular-nums">{canSeeMoney ? formatTzs(d.returnedTzs) : notInRole}</td>
+                        <td className="py-2 pr-3 text-right font-mono tabular-nums">{canSeeMoney ? formatTzs(d.forfeitedTzs) : notInRole}</td>
                         <td className="py-2 pr-3 font-mono text-body-sm">
-                          {d.payoutError ? <span className="text-no-300">did not start: {d.payoutError}</span> : d.payoutTxnId ? `${d.payoutStatus ?? ""} · ${d.payoutTxnId}` : "—"}
+                          {/* ⭐ THE PAYOUT'S STATUS NOW, not the word it carried at decision time (C-8): a return recorded as
+                              processing that later failed kept reading as sent. ⛔ An error's detail can quote shillings, so
+                              it is shown only to a money viewer. */}
+                          {d.payoutError ? (
+                            <span className="text-danger-fg">did not start{canSeeMoney ? `: ${d.payoutError}` : ""}</span>
+                          ) : d.payoutTxnId ? (
+                            <>
+                              {d.payoutTxnStatusNow ? (
+                                <span className={d.payoutTxnStatusNow === "FAILED" ? "text-danger-fg" : "text-text"}>{txnStatusLabel(d.payoutTxnStatusNow as StoredTxn["status"])}</span>
+                              ) : (
+                                <span className="text-warning-fg">status not read</span>
+                              )}
+                              {` · ${d.payoutTxnId}`}
+                            </>
+                          ) : (
+                            "—"
+                          )}
                         </td>
                         <td className="py-2 pl-3 text-body-sm text-text-muted max-w-[42ch]">{d.justification || "—"}</td>
                       </tr>

@@ -146,6 +146,11 @@ export default async function AdminHousePage({ searchParams }: { searchParams: P
   const unattributed = await readUnattributedFees(start, end).catch(() => null);
   const feeBySource = await readFeeBySource(start, end).catch(() => null);
   const tb = await trialBalance().catch(() => null);
+  /** ⛔ A VERDICT NEEDS A POPULATION (2026-09-14) — the same guard as /admin/finance. `trialBalance()` answers
+   *  `ok: true` over ZERO wallets when there is no database, and an empty database reads the same, so
+   *  "reconciles" was printed for a check that looked at nothing. A report that found drift is measured
+   *  whatever it counted. */
+  const tbMeasured = tb !== null && (tb.checkedWallets > 0 || !tb.ok);
 
   /* ⭐ EVERY INPUT OR NOTHING. `housePosition` is an identity between four reads; computing it
    * with a missing one would print a confident figure built on an invented zero. A-5. */
@@ -513,11 +518,13 @@ export default async function AdminHousePage({ searchParams }: { searchParams: P
 
           <AdminCard title="Do the books prove themselves?" sw="Je, daftari linajithibitisha?"
             action={
-              <span className={["font-mono text-body-sm", tb === null ? "text-text-tertiary" : tb.ok ? "text-success" : "text-danger-fg"].join(" ")}>
-                {tb === null ? "unavailable" : tb.ok ? "reconciles" : "drift detected"}
+              <span className={["font-mono text-body-sm", tb === null || !tbMeasured ? "text-text-tertiary" : tb.ok ? "text-success" : "text-danger-fg"].join(" ")}>
+                {tb === null ? "unavailable" : !tbMeasured ? "not measured" : tb.ok ? "reconciles" : "drift detected"}
               </span>
             }>
-            {tb === null ? <AdminLoadError what="the trial balance" /> : (
+            {tb === null ? <AdminLoadError what="the trial balance" /> : !tbMeasured ? (
+              <p className="text-body-sm text-text-secondary">No wallets were checked against the ledger, so no verdict is shown.</p>
+            ) : (
               <p className="text-body-sm text-text-secondary">
                 {formatNumber(tb.checkedWallets)} wallets checked against the ledger;{" "}
                 {tb.driftingWallets === 0 ? "every one reconciles" : `${adminCount(tb.driftingWallets, "wallet")} drift`}.

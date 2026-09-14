@@ -9,6 +9,8 @@
  */
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import type { Route } from "next";
 import { I } from "@/components/ui/glyphs";
 import { useDeferredToast } from "@/components/ui/toast";
 import { Select } from "@/components/ui/select";
@@ -55,10 +57,12 @@ const REJECT_OPTIONS = [
   { value: "duplicate_identity", label: "FINAL · Identity used on another account", final: true },
 ];
 
+/* shrink-0 on all three (2026-09-14): in a flex row beside a long detail string the browser squeezed the
+   15px icon to a 2px speck, so an officer could not read the verdict. */
 function TriIcon({ state }: { state: TriState }) {
-  if (state === "pass") return <I.checkCircle s={15} className="text-yes-300" />;
-  if (state === "fail") return <I.x s={15} className="text-no-300" />;
-  return <span className="inline-block h-3 w-3 rounded-full border border-text-subtle" />;
+  if (state === "pass") return <I.checkCircle s={15} className="shrink-0 text-success-fg" />;
+  if (state === "fail") return <I.x s={15} className="shrink-0 text-danger-fg" />;
+  return <span className="inline-block h-3 w-3 shrink-0 rounded-full border border-text-subtle" />;
 }
 
 export function KycDecisionRail({
@@ -153,11 +157,14 @@ export function KycDecisionRail({
       {/* Checklist */}
       <div className="space-y-1.5">
         <p className="font-mono text-micro uppercase eyebrow text-text-subtle">Verification checklist · Orodha</p>
+        {/* Top-aligned, label on one line, detail wrapping in its own right-aligned column (2026-09-14). Centred and
+            unpinned, a long detail squeezed the label into a narrow column and moved each row's detail to a different
+            start. The 2px offsets line the icon and the smaller detail type up with the label's first line. */}
         {autoChecks.map((c) => (
-          <div key={c.label} className="flex items-center gap-2.5 text-[12.5px]">
-            <TriIcon state={c.state} />
-            <span className="text-text">{c.label}</span>
-            <span className="ml-auto font-mono text-[10.5px] text-text-tertiary">{c.detail}</span>
+          <div key={c.label} className="flex items-start gap-2.5 text-[12.5px]">
+            <span className="mt-[2px] flex shrink-0"><TriIcon state={c.state} /></span>
+            <span className="shrink-0 whitespace-nowrap text-text">{c.label}</span>
+            <span className="ml-auto mt-[2px] min-w-0 break-words text-right font-mono text-[10.5px] text-text-tertiary">{c.detail}</span>
           </div>
         ))}
         <div className="my-1 border-t border-dashed border-border-subtle" />
@@ -258,6 +265,15 @@ export function KycDecisionRail({
                 <strong>A final refusal.</strong> It freezes the wallet (no deposits, bets or withdrawals), keeps this document reserved, and the player cannot restart verification themselves. You then decide what happens to any balance, with a written reason.
               </p>
             )}
+            {/* ⭐ A RECOVERABLE REFUSAL SAYS WHAT IT DOES NOT DO (audit session 95, 2026-09-14). Only a final code
+                freezes the wallet; an officer choosing "Suspected fraud" expecting it to stop the money had no
+                sentence telling them otherwise, and the lever that does stop it lives on the player's page. */}
+            {reasonCode && !pickedFinal && (
+              <p data-recoverable-refusal-note="1" className="rounded-md border border-border bg-bg-inset px-2 py-2 text-body-sm text-text">
+                <strong>Recoverable:</strong> the wallet is not frozen and the document number is released. To stop money moving, freeze the wallet on the{" "}
+                <Link href={`/admin/players/${userId}` as Route} className="text-brand-300 hover:underline">player&apos;s page</Link>.
+              </p>
+            )}
             <textarea data-field="note" value={note} onChange={(e) => setNote(e.target.value)} rows={2} placeholder={pickedFinal ? "Optional note — the player reads it; never name a list or an internal check…" : "Note to the player (required for “Other”)…"} className="w-full rounded-md border border-border bg-bg-overlay px-2.5 py-1.5 text-[12px] text-text admin-focus resize-y placeholder:text-text-subtle" />
             <div className="grid grid-cols-2 gap-2">
               <button type="button" disabled={!reasonCode} onClick={() => run(rejectKycWorkstationAction, pickedFinal ? "Refused · wallet frozen" : "Submission rejected", { reasonCode, note }, pickedFinal ? "warning" : "success")} className="btn btn-claret btn-md w-full disabled:opacity-40">{pickedFinal ? "Confirm final refusal" : "Confirm reject"}</button>
@@ -268,7 +284,7 @@ export function KycDecisionRail({
       </div>
 
       {anyAutoFail && (
-        <p className="font-mono text-[10.5px] text-no-300">A required check failed — reject or request more info rather than approve.</p>
+        <p className="font-mono text-[10.5px] text-danger-fg">A required check failed — reject or request more info rather than approve.</p>
       )}
 
       {/**

@@ -130,6 +130,11 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
   // Wallet↔ledger trial balance (audit C3) — proves the books match the money.
   // Read-only; guarded so a slow/failed scan never takes the finance page down.
   const tb = await trialBalance().catch(() => null);
+  /** ⛔ A VERDICT NEEDS A POPULATION (2026-09-14). `trialBalance()` answers `ok: true` over ZERO wallets when
+   *  there is no database, and an empty database reads the same, so a green "✓ reconciles" was printed for
+   *  a check that looked at nothing while Wallet liability above read TZS 1.0M. Nothing checked is "not
+   *  measured", never an all-clear. A report that found drift is measured whatever it counted. */
+  const tbMeasured = tb !== null && (tb.checkedWallets > 0 || !tb.ok);
   // Per-poll settlement commission WITH the fee model each poll used — so an
   // accountant can reconcile which model applied to which poll over the period.
   const pollFees = await settlementFeesByPoll(period).catch(() => null);
@@ -174,7 +179,12 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
             what moved · what we earned · what we owe. ⭐ The regroup exists so "Held for
             unverified" sits BESIDE "Wallet liability", the figure it is a subset of: the two
             are read against each other, and a ninth tile wrapping alone onto a row of its own
-            would have put them on different lines. The tiles themselves are unchanged. */}
+            would have put them on different lines. The tiles themselves are unchanged.
+            ⚠️ BELOW `lg` EACH BAND IS TWO COLUMNS, so three tiles are 2 + 1 (2026-09-14). The odd tile
+            spans both columns through its wrapper: the LAST tile of the first two bands, and the FIRST
+            of the third, which is what keeps "Held for unverified" beside "Wallet liability" on a
+            phone instead of leaving three half-empty rows. The wrapper is a grid, so the tile still
+            fills the row's height. */}
         <KpiGrid cols="3">
           {/* ⭐ ONE COUNT-LINE RECIPE — `adminCount` (src/lib/utils.ts). It carries the same
               fixed en-US grouping the note beside the trial-balance counts below already
@@ -182,21 +192,27 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
               a window holding one deposit read "1 txns". */}
           <AdminKpi label="Deposits in"     sw="Amana"             value={dep ? formatTzsCompact(dep.amount) : ""} unavailable={dep === null} delta={dep ? adminCount(dep.count, "txn") : undefined} />
           <AdminKpi label="Withdrawals out" sw="Utoaji"            value={wd ? formatTzsCompact(wd.amount) : ""}  unavailable={wd === null}  delta={wd ? adminCount(wd.count, "txn") : undefined} />
-          <AdminKpi label="Active players"   sw="Wachezaji"     value={activePeriod === null ? "" : formatNumber(activePeriod)} unavailable={activePeriod === null} delta={range.label} series={spark(trends.active)} />
+          <div className="col-span-2 grid lg:col-span-1">
+            <AdminKpi label="Active players"   sw="Wachezaji"     value={activePeriod === null ? "" : formatNumber(activePeriod)} unavailable={activePeriod === null} delta={range.label} series={spark(trends.active)} />
+          </div>
         </KpiGrid>
         <KpiGrid cols="3">
           <AdminKpi label="GGR"             sw="Mapato ya jumla"    value={ggr === null ? "" : formatTzsCompact(ggr)}        unavailable={ggr === null} delta={range.label} series={spark(trends.ggr)} />
           <AdminKpi label="NGR"             sw="Mapato halisi"      value={ngr === null ? "" : formatTzsCompact(ngr)}        unavailable={ngr === null} delta="net of bonus + fees" series={spark(trends.ngr)} />
-          <AdminKpi label="Operator margin"  sw="Faida"         value={margin === null ? "" : `${margin.toFixed(1)}%`} unavailable={margin === null} delta={feeModelLabel} deltaDir="flat" />
+          <div className="col-span-2 grid lg:col-span-1">
+            <AdminKpi label="Operator margin"  sw="Faida"         value={margin === null ? "" : `${margin.toFixed(1)}%`} unavailable={margin === null} delta={feeModelLabel} deltaDir="flat" />
+          </div>
         </KpiGrid>
         <KpiGrid cols="3">
-          <AdminKpi
-            label="Statutory levies"
-            sw="Kodi za kisheria"
-            value={taxAccrued === null ? "—" : formatTzsCompact(taxAccrued)}
-            delta={taxAccrued === null ? "rates unavailable" : "TRA + GBT on commission"}
-            deltaDir="flat"
-          />
+          <div className="col-span-2 grid lg:col-span-1">
+            <AdminKpi
+              label="Statutory levies"
+              sw="Kodi za kisheria"
+              value={taxAccrued === null ? "—" : formatTzsCompact(taxAccrued)}
+              delta={taxAccrued === null ? "rates unavailable" : "TRA + GBT on commission"}
+              deltaDir="flat"
+            />
+          </div>
           <AdminKpi label="Wallet liability" sw="Madeni"        value={liability === null ? "" : formatTzsCompact(liability)} unavailable={liability === null} delta="real-time" />
           {/* ⭐ HELD FOR UNVERIFIED (2026-09-13) — the part of the tile beside it owed to accounts
               never identity-approved; same basis (ACTIVE wallets, balance + hold). The caption
@@ -388,8 +404,8 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
             sw="Ulinganifu wa daftari"
             className={tb.ok ? undefined : "border-danger-border bg-danger-bg"}
             action={
-              <span className={["font-mono text-micro tracking-[0.10em] uppercase", tb.ok ? "text-success" : "text-danger-fg"].join(" ")}>
-                {tb.ok ? "✓ reconciles" : "✗ drift detected"}
+              <span className={["font-mono text-micro tracking-[0.10em] uppercase", !tbMeasured ? "text-text-tertiary" : tb.ok ? "text-success" : "text-danger-fg"].join(" ")}>
+                {!tbMeasured ? "not measured" : tb.ok ? "✓ reconciles" : "✗ drift detected"}
               </span>
             }
           >
@@ -409,23 +425,23 @@ export default async function AdminFinancePage({ searchParams }: { searchParams:
                 label="Drifting wallets"
                 sw="Pochi zenye tofauti"
                 value={formatNumber(tb.driftingWallets)}
-                delta={tb.driftingWallets === 0 ? "all reconcile" : `${formatTzs(tb.totalAbsDrift)} total`}
-                deltaDir={tb.driftingWallets === 0 ? "up" : "down"}
+                delta={!tbMeasured ? "no wallets checked" : tb.driftingWallets === 0 ? "all reconcile" : `${formatTzs(tb.totalAbsDrift)} total`}
+                deltaDir={!tbMeasured ? "flat" : tb.driftingWallets === 0 ? "up" : "down"}
                 pulse={tb.driftingWallets > 0}
               />
               <AdminKpi
                 label="Global conservation"
                 sw="Uhifadhi wa jumla"
-                value={tb.globalBalanced ? "Σ = 0" : `Σ = ${formatTzs(tb.globalSum)}`}
-                delta={tb.globalBalanced ? "balanced" : "NOT balanced"}
-                deltaDir={tb.globalBalanced ? "up" : "down"}
+                value={!tbMeasured ? "—" : tb.globalBalanced ? "Σ = 0" : `Σ = ${formatTzs(tb.globalSum)}`}
+                delta={!tbMeasured ? "not measured" : tb.globalBalanced ? "balanced" : "NOT balanced"}
+                deltaDir={!tbMeasured ? "flat" : tb.globalBalanced ? "up" : "down"}
                 pulse={!tb.globalBalanced}
               />
               <AdminKpi
                 label="Imbalanced groups"
                 sw="Makundi yasiyolingana"
                 value={formatNumber(tb.imbalancedGroups.length)}
-                deltaDir={tb.imbalancedGroups.length === 0 ? "up" : "down"}
+                deltaDir={!tbMeasured ? "flat" : tb.imbalancedGroups.length === 0 ? "up" : "down"}
                 pulse={tb.imbalancedGroups.length > 0}
               />
             </KpiGrid>

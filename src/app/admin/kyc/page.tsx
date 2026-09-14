@@ -13,7 +13,7 @@ import type { StoredKycStageRow } from "@/lib/server/store";
 import { currentSession } from "@/lib/server/auth-service";
 import { canView } from "@/lib/server/rbac";
 import { kycMoneyRows } from "@/lib/server/kyc-money";
-import { refusedFundsReport } from "@/lib/server/refused-funds";
+import { refusedFundsReport, awaitsOfficer } from "@/lib/server/refused-funds";
 import {
   readKycQueueIdentity,
   kycWaitedLabel,
@@ -111,7 +111,9 @@ export default async function KycQueuePage({
   const [identity, blocked, refused] = await Promise.all([
     readKycQueueIdentity(canSeeMoney),
     readBlockedCashOuts().catch(() => null),
-    refusedFundsReport().catch(() => null),
+    // ⛔ MONEY-DERIVED, SO MONEY-GATED (audit session 95, 2026-09-14): "undecided" is where the money stands, so a
+    // viewer without money rights reads no report at all — the tile says "not in your role".
+    canSeeMoney ? refusedFundsReport({ money: true }).catch(() => null) : null,
   ]);
 
   const { facts, wallets, walletsFailed } = identity;
@@ -203,8 +205,12 @@ export default async function KycQueuePage({
 
   // ── KPIs ───────────────────────────────────────────────────────────────────
   const week = blocked ? tallyBlockedCashOuts(blocked, now - 7 * 24 * H) : null;
-  const openRefused = refused && !refused.accountsFailed ? refused.accounts.filter((a) => a.open) : null;
-  const openRefusedHeld = (openRefused ?? []).reduce((s, a) => s + a.balance + a.hold, 0);
+  // ⭐ THE REPORT'S OWN STATE WORD (audit session 95): a case waits on an officer while it is undecided, or while a
+  // return's payout failed and the money is still in the frozen wallet. On hold, in flight and settled do not.
+  const openRefused = canSeeMoney && refused && !refused.accountsFailed
+    ? refused.accounts.filter(awaitsOfficer)
+    : null;
+  const openRefusedHeld = (openRefused ?? []).reduce((s, a) => s + (a.balance ?? 0) + (a.hold ?? 0), 0);
 
   const attemptsCell = (r: { attempts: number | null; lastAttemptAt: string | null }) =>
     r.attempts === null ? (
@@ -282,12 +288,12 @@ export default async function KycQueuePage({
             delta={!canSeeMoney ? "not in your role" : factsFailed || walletsFailed ? undefined : `${formatTzsCompact(fundedHeld)} held`}
           />
           <AdminKpi
-            label="Refused · undecided"
-            sw="Waliokataliwa · salio"
-            value={openRefused ? String(openRefused.length) : ""}
-            unavailable={!openRefused}
+            label="Refused · awaiting a decision"
+            sw="Waliokataliwa · wanasubiri uamuzi"
+            value={!canSeeMoney ? "—" : openRefused ? String(openRefused.length) : ""}
+            unavailable={canSeeMoney && !openRefused}
             tone={openRefused && openRefused.length > 0 ? "danger" : undefined}
-            delta={openRefused ? (canSeeMoney ? `${formatTzsCompact(openRefusedHeld)} held` : "an officer decides each") : undefined}
+            delta={!canSeeMoney ? "not in your role" : openRefused ? `${formatTzsCompact(openRefusedHeld)} held` : undefined}
           />
         </KpiGrid>
 
@@ -368,8 +374,10 @@ export default async function KycQueuePage({
                           {moneyKnown && (
                             <td className="py-2 pr-3">
                               <div className="flex flex-wrap gap-1">
-                                {(r.attempts ?? 0) > 0 && <Chip size="sm" variant="danger">Cash-out refused</Chip>}
-                                <Chip size="sm" variant={bucket >= 2 ? "warning" : "neutral"}>{KYC_HELD_BUCKET_LABEL[bucket]}</Chip>
+                                {/* nowrap through `style` (2026-09-14): Chip sets white-space inline (G-7), so a class
+                                    cannot reach it, and the auto-width column folded "Holds nothing" onto two lines. */}
+                                {(r.attempts ?? 0) > 0 && <Chip size="sm" variant="danger" style={{ whiteSpace: "nowrap" }}>Cash-out refused</Chip>}
+                                <Chip size="sm" variant={bucket >= 2 ? "warning" : "neutral"} style={{ whiteSpace: "nowrap" }}>{KYC_HELD_BUCKET_LABEL[bucket]}</Chip>
                               </div>
                             </td>
                           )}
@@ -378,9 +386,9 @@ export default async function KycQueuePage({
                             {age === null ? (
                               "—"
                             ) : age > slaMs ? (
-                              <Chip size="sm" variant="danger">{`past · waited ${kycWaitedLabel(age)}`}</Chip>
+                              <Chip size="sm" variant="danger" style={{ whiteSpace: "nowrap" }}>{`past · waited ${kycWaitedLabel(age)}`}</Chip>
                             ) : (
-                              <Chip size="sm" variant={slaMs - age < 2 * H ? "warning" : "neutral"}>{`${kycWaitedLabel(slaMs - age)} left`}</Chip>
+                              <Chip size="sm" variant={slaMs - age < 2 * H ? "warning" : "neutral"} style={{ whiteSpace: "nowrap" }}>{`${kycWaitedLabel(slaMs - age)} left`}</Chip>
                             )}
                           </td>
                           <td className="py-2 pr-3">
@@ -389,7 +397,7 @@ export default async function KycQueuePage({
                           {moneyKnown && <td className="py-2 pr-3 text-right font-mono tabular-nums text-text">{formatTzs(r.heldTzs ?? 0)}</td>}
                           <td className="py-2 pr-3 text-right font-mono tabular-nums">{attemptsCell(r)}</td>
                           <td className="py-2 pl-3 text-right">
-                            <Link href={`/admin/kyc/${r.userId}` as Route} className="row-link font-mono text-micro text-royal-300 hover:underline">workstation →</Link>
+                            <Link href={`/admin/kyc/${r.userId}` as Route} className="row-link whitespace-nowrap font-mono text-micro text-royal-300 hover:underline">workstation →</Link>
                           </td>
                         </tr>
                       );
@@ -437,7 +445,7 @@ export default async function KycQueuePage({
                           {/* A file we asked more of is a CASE — its workstation holds the request. Photos never
                               sent are not a case yet: the workstation's decision rail would refuse them. */}
                           {r.stage === "more_needed" ? (
-                            <Link href={`/admin/kyc/${r.userId}` as Route} className="row-link font-mono text-micro text-royal-300 hover:underline">workstation →</Link>
+                            <Link href={`/admin/kyc/${r.userId}` as Route} className="row-link whitespace-nowrap font-mono text-micro text-royal-300 hover:underline">workstation →</Link>
                           ) : (
                             <Link href={`/admin/players/${r.userId}?tab=kyc` as Route} className="row-link font-mono text-micro text-royal-300 hover:underline">player →</Link>
                           )}

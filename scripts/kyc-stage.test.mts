@@ -281,7 +281,7 @@ ok("§6d the table declares the KYC column", /<th className="text-left">KYC<\/th
 // which matches columns by a 3-char lowercased prefix, onto the wrong cells.
 ok("§6e the new header does not begin 'sta'", !/<th[^>]*>Sta[a-z]*<\/th>/.test(pageSrc.replace(/<th className="text-left">Status<\/th>/, "")));
 const spans = pageSrc.match(/colSpan=\{(\d+)\}/g) ?? [];
-ok("§6f every colSpan matches the eight-column table", spans.length > 0 && spans.every((s) => s === "colSpan={8}"), "", spans.join(","));
+ok("§6f every colSpan matches the seven-column table (the duplicate Drill-down column went 2026-09-14)", spans.length > 0 && spans.every((s) => s === "colSpan={7}"), "", spans.join(","));
 ok("§6g the stage filter is validated against the closed set", /isKycStage\(sp\.kyc\)/.test(pageSrc));
 ok("§6h a failed KYC read drops the filter rather than showing an empty population",
   /!kycFailed\s*&&\s*isKycStage\(sp\.kyc\)/.test(pageSrc));

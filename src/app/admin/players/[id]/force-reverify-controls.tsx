@@ -32,11 +32,16 @@ import { runAdminAction } from "@/lib/client/run-admin-action";
 import { focusFirstInvalid } from "@/lib/client/focus-first-invalid";
 import { useMayAct, ActReadOnly } from "@/components/admin/act-gate";
 
-export function ForceReverifyControls({ userId, walletFrozen = false }: { userId: string; walletFrozen?: boolean }) {
+export function ForceReverifyControls({ userId, walletFrozen = false, canAct }: { userId: string; walletFrozen?: boolean; canAct?: boolean }) {
   // A1 — this control only ACTS, so a role holding VIEW without ACT is shown why rather
   // than being offered a button the server will refuse (and logged as a privilege
   // escalation for pressing it). See docs/ADMIN-CONSOLE-FINDINGS.md.
-  const mayAct = useMayAct();
+  // ⭐ `canAct` WINS WHEN THE PAGE PASSES IT (audit session 95, 2026-09-14). The hook answers for the ROUTE's
+  // domain — /admin/players is support — while this action demands compliance, so a COMPLIANCE officer (support:
+  // view, no act) was shown read-only on a control their role owns. The page passes its compliance answer; the
+  // hook call stays, because every admin control must consult the gate.
+  const routeMayAct = useMayAct();
+  const mayAct = canAct ?? routeMayAct;
 
   const [pending, start] = useTransition();
   const [open, setOpen] = useState(false);
