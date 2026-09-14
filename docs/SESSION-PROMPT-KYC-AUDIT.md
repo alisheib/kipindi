@@ -106,7 +106,7 @@ population is the right one. A guard that is green because it inspects nothing i
   the next source line; the source and a TypeScript compile both looked fine, and "requiredbefore" was live. Check with
   `curl -s https://50pick.tz/legal/terms | grep -oE '</(strong|em|b|i|code|a)>[A-Za-z]'`. `qa:live` [A] now asserts it
   for public routes only — the staff console has ~25 unconfirmed runs of the same shape.
-- `npm run -s <missing-script>` exits 1 with an EMPTY log — resolve script names from `package.json` before calling
+- `npm run` with `-s` and a missing script name exits 1 with an EMPTY log — resolve script names from `package.json` before calling
   anything a failure.
 - A CLOSED dialog kept in the DOM matched `[role=dialog][aria-modal=true]`; use `src/lib/modal-open.ts`.
 - `capture @market` picks the first market, which changes after a re-seed — delete stale tiles before inspecting.
@@ -122,7 +122,8 @@ population is the right one. A guard that is green because it inspects nothing i
 - Dev server (in-memory store, admin renders): `SESSION_SECRET=<32+ chars> OTP_PEPPER=<16+ chars>
   DISABLE_ADMIN_TOTP=true npx next dev -p 3009` with no `DATABASE_URL`. Seed: `POST /api/dev-test/seed-markets`,
   `POST /api/dev-test/updown-seed`. Player states: `/auth/demo?kyc=none|uploaded|pending|more_info|rejected|refused_final|approved&deposit=0|1`
-  (+ `&email=unverified`). Admin: `POST /api/dev-test/seed-admin`.
+  (+ `&email=unverified`; + `&hold=officer` for an officer's freeze). `deposit=0` fails the demo deposit row AND empties
+  the wallet to TZS 0 (since 2026-09-14). Admin: `POST /api/dev-test/seed-admin`.
 - Capture VIEWPORT TILES, never full-page screenshots (full-page fakes overlays). Hide the Next dev badge.
 - Suites the release relies on (not all are in `predeploy` — run them explicitly): `test:kyc-gate`,
   `test:kyc-at-withdrawal`, `test:kyc-copy-truth`, `test:kyc-stage`, `test:refused-funds`, `test:refused-funds-race`,
