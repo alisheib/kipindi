@@ -34,13 +34,13 @@
 import { prisma, hasDatabase } from "./prisma";
 import type { Prisma, PrismaClient } from "@prisma/client";
 import { randomId } from "./crypto";
-import { positionStore } from "./market-dal";
+import { marketStore, positionStore } from "./market-dal";
 import { db } from "./store";
 import {
   HOUSE_ID_PREFIX, houseIntentKey, SUBMIT_ID_RE, RUNTIME_KEY, HOUSE_CONTROL_ID, TARGET_ARMING_SEC,
   PRESS_AUDIT_LEASE_MS, PRESS_AUDIT_REPAIR_AFTER_MS, PRESS_INTERRUPTED_AFTER_MS, PRESS_REFUSAL_INTERRUPTED,
   HOUSEBOT_ALERT_ONCE_RETENTION_DAYS, HOUSEBOT_ALERT_ONCE_PURGE_BATCH,
-  CLAIM_TTL_SEC, PLANNER_STALE_EXPIRY_GRACE_SEC, ALERT_REPAIR_AFTER_MS, MAX_NON_TRANSIENT_ATTEMPTS,
+  CLAIM_TTL_SEC, PLANNER_STALE_EXPIRY_GRACE_SEC, LOCK_MARGIN_MS, ALERT_REPAIR_AFTER_MS, MAX_NON_TRANSIENT_ATTEMPTS,
   BOT_STATUSES, PAUSED_FROM_STATUSES, OFF_CAUSES, PASSWORD_SET_VIA, INTENT_KINDS, INTENT_STATUSES,
   LIVE_INTENT_STATUSES, INTENT_SIDES, ENTRY_CONDITIONS, TARGET_STATUSES, TARGET_END_CAUSES, TIMING_FROM,
   REACT_TO, PRESS_PURPOSES, PRESS_STATES, EVENT_KINDS,
@@ -1555,6 +1555,99 @@ export interface HouseBookStore {
   openExposure(houseBotId: string | null, tx?: HouseTx): Promise<Array<{ houseBotId: string; openStakeTzs: number }>>;
 }
 
+/** One bot's marked stakes, for the H2 rate and per-market caps (04 A24: rolling windows). */
+export type HouseBotUsage = {
+  /** The newest marked position of this bot, any market (MIN_GAP). */
+  lastPlacedAt: string | null;
+  /** Marked positions of this bot placed in the last 3,600 s / 86,400 s (PER_HOUR, PER_DAY). */
+  placedLastHour: number;
+  placedLastDay: number;
+  /** This bot's marked positions on this market, any status (PER_MARKET_COUNT), and their stake (PER_MARKET). */
+  countOnMarket: number;
+  stakeOnMarket: number;
+};
+
+/** Every bot's marked stakes on one market (H3). */
+export type HouseMarketUsage = {
+  /** Another bot holds an OPEN marked position here (OTHER_BOT, PLAN I3). */
+  otherBotOpen: boolean;
+  /** All bots' OPEN marked stake here (GLOBAL_PER_MARKET). */
+  houseOpenStakeTzs: number;
+};
+
+/** Every bot's marked positions in rolling windows (H4 GLOBAL_BETS_PER_MINUTE / _PER_DAY). */
+export type HouseGlobalUsage = { betsLastMinute: number; betsLastDay: number };
+
+/** What house stakes have been set against one player today (H4 COUNTERPARTY_COUNT / _TZS). */
+export type CounterpartyToday = { userId: string; count: number; tzs: number };
+
+/** One side of `lockedForHouse` (N1 §4.1). Ids appear only in `accounts`. */
+export type LockedPoolSide = {
+  /** The market row's raw pool on this side, house money included. */
+  raw: number;
+  /** Every OPEN unmarked stake. */
+  nonHouse: number;
+  /** Eligible stakes whose exit closed at least LOCK_MARGIN_MS ago. */
+  locked: number;
+  /** Eligible stakes not yet past the margin. */
+  unlocked: number;
+  /** Earliest `exitCloseAt + LOCK_MARGIN_MS` among eligible unlocked stakes. */
+  earliestLockAt: string | null;
+  /** OPEN unmarked stakes of ineligible accounts. */
+  excluded: number;
+  /** Every OPEN unmarked stake whose exit has closed — no filter, no margin (A15, untargeted COUNTER only). */
+  lockedA15: number;
+  /** The top eligible account plus every eligible account holding ≥ 25% of `locked`, largest first. */
+  accounts: Array<{ userId: string; lockedTzs: number }>;
+};
+export type LockedPool = { YES: LockedPoolSide; NO: LockedPoolSide };
+
+/** The columns the information blackout reads (N1 §3) — and nothing else. */
+export type HouseBlackoutRow = {
+  status: string;
+  sentinelOutcome: string | null;
+  sentinelConfidence: number | null;
+  sentinelDetermined: boolean | null;
+  sentinelClosedAt: string | null;
+  resolvedOutcome: string | null;
+  resolutionStage1By: string | null;
+  resolveClaimedAt: string | null;
+  reopenedAt: string | null;
+};
+
+/**
+ * ⭐ THE MONEY SEAM'S READS (build commit 2). Every cap the seam enforces inside the bet's locks reads
+ * here, on the lock's transaction, so the two stores give the same answer to the same question.
+ * ⛔ PLAIN SELECTs ONLY (04 A9): no FOR UPDATE and no write, so a house bet never holds a row lock a
+ * player's bet could queue behind. The single write-shaped member is `revertPlacedInMemory`, which
+ * exists only because the memory store has no rollback.
+ */
+export interface HouseSeamStore {
+  botUsage(input: { houseBotId: string; marketId: string }, tx?: HouseTx): Promise<HouseBotUsage>;
+  marketUsage(input: { houseBotId: string; marketId: string }, tx?: HouseTx): Promise<HouseMarketUsage>;
+  globalUsage(tx?: HouseTx): Promise<HouseGlobalUsage>;
+  /** PLACED COUNTER rows keyed on each player, plus PLACED MANUAL rows attributing a share to them,
+   *  finished in the current EAT day (from DB `now()`). A player with none is returned with zeros. */
+  counterpartyToday(userIds: readonly string[], tx?: HouseTx): Promise<CounterpartyToday[]>;
+  /**
+   * `lockedForHouse` (N1 §4.1) — ONE statement. `graceMs`/`paidMs`/`closesAt` come from the market's frozen
+   * rates in JS, so the SQL never re-implements the fee-snapshot fallback. `asOf` replaces the clock term
+   * (only the targeted COUNTER's decision-time cut passes it); otherwise the DATABASE clock, never `now()`.
+   */
+  lockedPool(input: { marketId: string; graceMs: number; paidMs: number; closesAt: string; asOf?: string | null }, tx?: HouseTx): Promise<LockedPool>;
+  blackoutRow(marketId: string, tx?: HouseTx): Promise<HouseBlackoutRow | null>;
+  /** The RAW product line — `market-dal` coerces anything but UPDOWN to MARKET, which A12 must not trust. */
+  rawProductLine(marketId: string, tx?: HouseTx): Promise<string | null>;
+  /** N1 §3: status, and whether `staleAt` is still ahead of the database clock (`clock_timestamp()`). */
+  intentFreshness(id: string, tx?: HouseTx): Promise<{ status: IntentStatus; fresh: boolean } | null>;
+  /**
+   * ⛔ MEMORY ONLY. The memory store cannot roll back, so a NO_FUNDS abort after `markPlaced` puts the
+   * intent back to CLAIMED with no position (PLAN H4). On Postgres the transaction rollback does it, and
+   * calling this throws.
+   */
+  revertPlacedInMemory(id: string, positionId: string): Promise<boolean>;
+}
+
 // ---------------------------------------------------------------------------
 // Shared helpers for both stores
 // ---------------------------------------------------------------------------
@@ -2503,6 +2596,140 @@ const memoryHouseBook: HouseBookStore = {
   },
 };
 
+const HOUR_MS = 60 * 60 * 1000;
+function emptyPoolSide(raw: number): LockedPoolSide {
+  return { raw, nonHouse: 0, locked: 0, unlocked: 0, earliestLockAt: null, excluded: 0, lockedA15: 0, accounts: [] };
+}
+
+/** The ≥ 25% list plus the top account, largest first, ties by id (N1 §4.1: at most 4 rows). */
+function pickAccounts(rows: Array<{ userId: string; lockedTzs: number }>, locked: number): Array<{ userId: string; lockedTzs: number }> {
+  const sorted = rows.filter((r) => r.lockedTzs > 0).sort((a, b) => b.lockedTzs - a.lockedTzs || (a.userId < b.userId ? -1 : 1));
+  return sorted.filter((r, i) => i === 0 || r.lockedTzs * 4 >= locked).slice(0, 4);
+}
+
+/**
+ * ⚠️ MEMORY ONLY — whole-map scans, exactly like `memoryHouseBook`. Under Prisma each member is one
+ * statement over the marker and `(marketId, status)` indexes.
+ */
+const memoryHouseSeam: HouseSeamStore = {
+  async botUsage({ houseBotId, marketId }) {
+    const now = Date.now();
+    let lastPlacedAt: string | null = null;
+    let placedLastHour = 0, placedLastDay = 0, countOnMarket = 0, stakeOnMarket = 0;
+    for (const p of await positionStore.values()) {
+      if (p.houseBotId !== houseBotId) continue;
+      const at = ms(p.placedAt);
+      if (lastPlacedAt == null || at > ms(lastPlacedAt)) lastPlacedAt = p.placedAt;
+      if (at > now - HOUR_MS) placedLastHour++;
+      if (at > now - DAY_MS) placedLastDay++;
+      if (p.marketId === marketId) { countOnMarket++; stakeOnMarket += p.stake; }
+    }
+    return { lastPlacedAt: lastPlacedAt == null ? null : new Date(ms(lastPlacedAt)).toISOString(), placedLastHour, placedLastDay, countOnMarket, stakeOnMarket };
+  },
+  async marketUsage({ houseBotId, marketId }) {
+    let otherBotOpen = false, houseOpenStakeTzs = 0;
+    for (const p of await positionStore.listForMarket(marketId)) {
+      if (p.houseBotId == null || p.status !== "OPEN") continue;
+      houseOpenStakeTzs += p.stake;
+      if (p.houseBotId !== houseBotId) otherBotOpen = true;
+    }
+    return { otherBotOpen, houseOpenStakeTzs };
+  },
+  async globalUsage() {
+    const now = Date.now();
+    let betsLastMinute = 0, betsLastDay = 0;
+    for (const p of await positionStore.values()) {
+      if (p.houseBotId == null) continue;
+      const at = ms(p.placedAt);
+      if (at > now - 60_000) betsLastMinute++;
+      if (at > now - DAY_MS) betsLastDay++;
+    }
+    return { betsLastMinute, betsLastDay };
+  },
+  async counterpartyToday(userIds) {
+    const w = eatDayWindow(eatDayKey(Date.now()));
+    if (!w) throw new Error("house-bot-dal: could not compute the current EAT day");
+    const acc = new Map<string, CounterpartyToday>(userIds.map((u) => [u, { userId: u, count: 0, tzs: 0 }]));
+    for (const i of memIntents.values()) {
+      if (i.status !== "PLACED" || i.finishedAt == null || ms(i.finishedAt) < w.fromMs || ms(i.finishedAt) >= w.toMs) continue;
+      if (i.kind === "COUNTER" && i.triggerUserId != null && acc.has(i.triggerUserId)) {
+        const e = acc.get(i.triggerUserId)!;
+        e.count += 1; e.tzs += i.stakeTzs;
+      } else if (i.kind === "MANUAL" && Array.isArray(i.decision.counterparties)) {
+        for (const c of i.decision.counterparties as Array<{ userId?: unknown; attributedTzs?: unknown }>) {
+          const e = typeof c.userId === "string" ? acc.get(c.userId) : undefined;
+          if (!e) continue;
+          e.count += 1; e.tzs += Number(c.attributedTzs ?? 0);
+        }
+      }
+    }
+    return userIds.map((u) => acc.get(u)!);
+  },
+  async lockedPool({ marketId, graceMs, paidMs, closesAt, asOf }) {
+    const m = await marketStore.get(marketId);
+    const out: LockedPool = { YES: emptyPoolSide(m?.yesPool ?? 0), NO: emptyPoolSide(m?.noPool ?? 0) };
+    const clockMs = asOf ? ms(asOf) : Date.now();
+    const closesMs = ms(closesAt);
+    const liveHolders = new Set([...memBots.values()].filter((b) => b.status !== "REMOVED").map((b) => b.userId));
+    const today = eatDayKey(Date.now());
+    const perAccount: Record<"YES" | "NO", Map<string, number>> = { YES: new Map(), NO: new Map() };
+    for (const p of await positionStore.listForMarket(marketId)) {
+      if (p.status !== "OPEN" || p.houseBotId != null) continue;
+      const s = out[p.side];
+      const placedMs = ms(p.placedAt);
+      const exitMs = graceMs > 0 && closesMs - placedMs >= graceMs ? placedMs + graceMs + paidMs : placedMs;
+      s.nonHouse += p.stake;
+      if (exitMs <= clockMs) s.lockedA15 += p.stake;
+      const u = await db.user.findById(p.userId);
+      const eligible = !!u && u.role === "PLAYER" && !liveHolders.has(u.id)
+        && !memAlertOnce.has(`penalty:${u.id}:${today}`)
+        && !(u.recruitedBy != null && liveHolders.has(u.recruitedBy));
+      if (!eligible) { s.excluded += p.stake; continue; }
+      if (exitMs <= clockMs - LOCK_MARGIN_MS) {
+        s.locked += p.stake;
+        perAccount[p.side].set(p.userId, (perAccount[p.side].get(p.userId) ?? 0) + p.stake);
+      } else {
+        s.unlocked += p.stake;
+        const lockAt = new Date(exitMs + LOCK_MARGIN_MS).toISOString();
+        if (s.earliestLockAt == null || lockAt < s.earliestLockAt) s.earliestLockAt = lockAt;
+      }
+    }
+    for (const side of ["YES", "NO"] as const) {
+      out[side].accounts = pickAccounts([...perAccount[side]].map(([userId, lockedTzs]) => ({ userId, lockedTzs })), out[side].locked);
+    }
+    return out;
+  },
+  async blackoutRow(marketId) {
+    const m = await marketStore.get(marketId);
+    if (!m) return null;
+    return {
+      status: m.status,
+      sentinelOutcome: m.sentinelOutcome ?? null,
+      sentinelConfidence: m.sentinelConfidence ?? null,
+      sentinelDetermined: m.sentinelDetermined ?? null,
+      sentinelClosedAt: m.sentinelClosedAt ?? null,
+      resolvedOutcome: m.resolvedOutcome ?? null,
+      resolutionStage1By: m.resolutionStage1By ?? null,
+      resolveClaimedAt: m.resolveClaimedAt ?? null,
+      reopenedAt: m.reopenedAt ?? null,
+    };
+  },
+  async rawProductLine(marketId) {
+    const m = await marketStore.get(marketId);
+    return m ? (m.productLine as string) : null;
+  },
+  async intentFreshness(id) {
+    const i = memIntents.get(id);
+    return i ? { status: i.status, fresh: ms(i.staleAt) > Date.now() } : null;
+  },
+  async revertPlacedInMemory(id, positionId) {
+    const i = memIntents.get(id);
+    if (!i || i.status !== "PLACED" || i.positionId !== positionId) return false;
+    memWrite("HouseBotIntent", { ...i, status: "CLAIMED", positionId: null, finishedAt: null }, "update");
+    return true;
+  },
+};
+
 // ---------------------------------------------------------------------------
 // Prisma implementations
 // ---------------------------------------------------------------------------
@@ -3412,6 +3639,139 @@ const prismaHouseBook: HouseBookStore = {
   },
 };
 
+/** The database clock as a naive-UTC timestamp, comparable with Position times (PLAN §2). */
+const DB_CLOCK_UTC_SQL = `(clock_timestamp() AT TIME ZONE 'UTC')`;
+
+/**
+ * The money seam's reads. Plain SELECTs on the caller's transaction (04 A9). Position times are naive
+ * UTC; the rolling windows compare them with the database clock, never the container's.
+ */
+const prismaHouseSeam: HouseSeamStore = {
+  async botUsage({ houseBotId, marketId }, tx) {
+    const rows = await sql(tx, `SELECT max("placedAt") AS "last",`
+      + ` count(*) FILTER (WHERE "placedAt" > ${DB_CLOCK_UTC_SQL} - interval '1 hour')::int AS "hour",`
+      + ` count(*) FILTER (WHERE "placedAt" > ${DB_CLOCK_UTC_SQL} - interval '1 day')::int AS "day",`
+      + ` count(*) FILTER (WHERE "marketId" = $2::text)::int AS "onMarket",`
+      + ` coalesce(sum("stake") FILTER (WHERE "marketId" = $2::text), 0)::text AS "stakeOnMarket"`
+      + ` FROM "Position" WHERE "houseBotId" = $1::text`, [houseBotId, marketId]);
+    const r = rows[0];
+    return {
+      lastPlacedAt: r.last == null ? null : iso(r.last),
+      placedLastHour: Number(r.hour), placedLastDay: Number(r.day),
+      countOnMarket: Number(r.onMarket), stakeOnMarket: Number(r.stakeOnMarket),
+    };
+  },
+  async marketUsage({ houseBotId, marketId }, tx) {
+    const rows = await sql(tx, `SELECT coalesce(bool_or("houseBotId" <> $2::text), false) AS "other",`
+      + ` coalesce(sum("stake"), 0)::text AS "open"`
+      + ` FROM "Position" WHERE "marketId" = $1::text AND "status"::text = 'OPEN' AND "houseBotId" IS NOT NULL`, [marketId, houseBotId]);
+    return { otherBotOpen: rows[0].other === true, houseOpenStakeTzs: Number(rows[0].open) };
+  },
+  async globalUsage(tx) {
+    const rows = await sql(tx, `SELECT count(*) FILTER (WHERE "placedAt" > ${DB_CLOCK_UTC_SQL} - interval '1 minute')::int AS "minute",`
+      + ` count(*)::int AS "day"`
+      + ` FROM "Position" WHERE "houseBotId" IS NOT NULL AND "placedAt" > ${DB_CLOCK_UTC_SQL} - interval '1 day'`, []);
+    return { betsLastMinute: Number(rows[0].minute), betsLastDay: Number(rows[0].day) };
+  },
+  async counterpartyToday(userIds, tx) {
+    if (userIds.length === 0) return [];
+    const rows = await sql(tx, `WITH ids AS (SELECT unnest($1::text[]) AS "userId"),`
+      + ` today AS (SELECT "kind", "triggerUserId", "stakeTzs", "decision" FROM "HouseBotIntent"`
+      + ` WHERE "status" = 'PLACED' AND "finishedAt" >= ${EAT_TODAY_FROM_SQL} AND "finishedAt" < ${EAT_TODAY_TO_SQL}`
+      + ` AND "kind" IN ('COUNTER', 'MANUAL')),`
+      + ` counters AS (SELECT "triggerUserId" AS "userId", count(*)::int AS "n", sum("stakeTzs")::bigint AS "tzs" FROM today`
+      + ` WHERE "kind" = 'COUNTER' AND "triggerUserId" = ANY($1::text[]) GROUP BY "triggerUserId"),`
+      + ` manual AS (SELECT c->>'userId' AS "userId", count(*)::int AS "n", sum((c->>'attributedTzs')::bigint)::bigint AS "tzs"`
+      + ` FROM today, jsonb_array_elements(coalesce(today."decision"->'counterparties', '[]'::jsonb)) AS c`
+      + ` WHERE today."kind" = 'MANUAL' AND c->>'userId' = ANY($1::text[]) GROUP BY c->>'userId')`
+      + ` SELECT ids."userId" AS "userId", (coalesce(counters."n", 0) + coalesce(manual."n", 0))::int AS "count",`
+      + ` (coalesce(counters."tzs", 0) + coalesce(manual."tzs", 0))::text AS "tzs"`
+      + ` FROM ids LEFT JOIN counters ON counters."userId" = ids."userId" LEFT JOIN manual ON manual."userId" = ids."userId"`,
+      [[...userIds]]);
+    const byId = new Map(rows.map((r) => [String(r.userId), { userId: String(r.userId), count: Number(r.count), tzs: Number(r.tzs) }]));
+    return userIds.map((u) => byId.get(u) ?? { userId: u, count: 0, tzs: 0 });
+  },
+  async lockedPool({ marketId, graceMs, paidMs, closesAt, asOf }, tx) {
+    // ⭐ ONE STATEMENT (N1 §4.1): per-account sums in a subquery, per-side totals outside, the raw pools
+    // read in the same snapshot. `exitAt` mirrors `exitWindowFacts` term for term (A14); the SQL/JS
+    // parity case runs this against the golden grid.
+    const text = `WITH clock AS (SELECT coalesce($5::timestamp, ${DB_CLOCK_UTC_SQL}) AS "t"),`
+      + ` live AS (SELECT DISTINCT "userId" FROM "HouseBot" WHERE "status" <> 'REMOVED'),`
+      + ` pos AS (SELECT p."userId", p."side"::text AS "side", p."stake",`
+      + ` CASE WHEN $2::bigint > 0 AND ($4::timestamp - p."placedAt") >= ($2::bigint * interval '1 millisecond')`
+      + ` THEN p."placedAt" + (($2::bigint + $3::bigint) * interval '1 millisecond') ELSE p."placedAt" END AS "exitAt",`
+      + ` (u."role"::text = 'PLAYER'`
+      + ` AND NOT EXISTS (SELECT 1 FROM live WHERE live."userId" = u."id")`
+      + ` AND NOT EXISTS (SELECT 1 FROM "HouseBotAlertOnce" a WHERE a."key" = 'penalty:' || u."id" || ':' || ${EAT_SQL.dayKey})`
+      + ` AND (u."recruitedBy" IS NULL OR NOT EXISTS (SELECT 1 FROM live WHERE live."userId" = u."recruitedBy"))) AS "eligible"`
+      + ` FROM "Position" p JOIN "User" u ON u."id" = p."userId"`
+      + ` WHERE p."marketId" = $1::text AND p."status"::text = 'OPEN' AND p."houseBotId" IS NULL),`
+      + ` marked AS (SELECT pos.*, (pos."exitAt" <= clock."t" - ($6::int * interval '1 millisecond')) AS "isLocked",`
+      + ` (pos."exitAt" <= clock."t") AS "isLockedA15" FROM pos, clock),`
+      + ` sides AS (SELECT "side", coalesce(sum("stake"), 0)::text AS "nonHouse",`
+      + ` coalesce(sum("stake") FILTER (WHERE "eligible" AND "isLocked"), 0)::text AS "locked",`
+      + ` coalesce(sum("stake") FILTER (WHERE "eligible" AND NOT "isLocked"), 0)::text AS "unlocked",`
+      + ` min("exitAt") FILTER (WHERE "eligible" AND NOT "isLocked") AS "earliestExit",`
+      + ` coalesce(sum("stake") FILTER (WHERE NOT "eligible"), 0)::text AS "excluded",`
+      + ` coalesce(sum("stake") FILTER (WHERE "isLockedA15"), 0)::text AS "lockedA15"`
+      + ` FROM marked GROUP BY "side"),`
+      + ` accts AS (SELECT "side", "userId", sum("stake")::text AS "lockedTzs",`
+      + ` row_number() OVER (PARTITION BY "side" ORDER BY sum("stake") DESC, "userId") AS "rank"`
+      + ` FROM marked WHERE "eligible" AND "isLocked" GROUP BY "side", "userId")`
+      + ` SELECT 'side' AS "row", s."side", s."nonHouse", s."locked", s."unlocked", s."earliestExit", s."excluded", s."lockedA15",`
+      + ` NULL::text AS "userId", NULL::text AS "lockedTzs", m."yesPool"::text AS "yesPool", m."noPool"::text AS "noPool"`
+      + ` FROM (SELECT "yesPool", "noPool" FROM "PredictionMarket" WHERE "id" = $1::text) m LEFT JOIN sides s ON true`
+      + ` UNION ALL SELECT 'acct', a."side", NULL, NULL, NULL, NULL, NULL, NULL, a."userId", a."lockedTzs", NULL, NULL`
+      + ` FROM accts a WHERE a."rank" <= 5`;
+    const rows = await sql(tx, text, [marketId, wholeArg("graceMs", graceMs), wholeArg("paidMs", paidMs), closesAt, asOf ?? null, LOCK_MARGIN_MS]);
+    const market = rows.find((r) => r.row === "side");
+    const out: LockedPool = { YES: emptyPoolSide(Number(market?.yesPool ?? 0)), NO: emptyPoolSide(Number(market?.noPool ?? 0)) };
+    const accounts: Record<"YES" | "NO", Array<{ userId: string; lockedTzs: number }>> = { YES: [], NO: [] };
+    for (const r of rows) {
+      if (r.side !== "YES" && r.side !== "NO") continue;
+      if (r.row === "side") {
+        const s = out[r.side as "YES" | "NO"];
+        s.nonHouse = Number(r.nonHouse); s.locked = Number(r.locked); s.unlocked = Number(r.unlocked);
+        s.excluded = Number(r.excluded); s.lockedA15 = Number(r.lockedA15);
+        s.earliestLockAt = r.earliestExit == null ? null : new Date(ms(iso(r.earliestExit)) + LOCK_MARGIN_MS).toISOString();
+      } else {
+        accounts[r.side as "YES" | "NO"].push({ userId: String(r.userId), lockedTzs: Number(r.lockedTzs) });
+      }
+    }
+    for (const side of ["YES", "NO"] as const) out[side].accounts = pickAccounts(accounts[side], out[side].locked);
+    return out;
+  },
+  async blackoutRow(marketId, tx) {
+    const rows = await sql(tx, `SELECT "status"::text AS "status", "sentinelOutcome"::text AS "sentinelOutcome", "sentinelConfidence",`
+      + ` "sentinelDetermined", "sentinelClosedAt", "resolvedOutcome"::text AS "resolvedOutcome", "resolutionStage1By",`
+      + ` "resolveClaimedAt", "reopenedAt" FROM "PredictionMarket" WHERE "id" = $1::text`, [marketId]);
+    const r = rows[0];
+    if (!r) return null;
+    return {
+      status: String(r.status),
+      sentinelOutcome: r.sentinelOutcome ?? null,
+      sentinelConfidence: r.sentinelConfidence == null ? null : Number(r.sentinelConfidence),
+      sentinelDetermined: r.sentinelDetermined ?? null,
+      sentinelClosedAt: iso(r.sentinelClosedAt),
+      resolvedOutcome: r.resolvedOutcome ?? null,
+      resolutionStage1By: r.resolutionStage1By ?? null,
+      resolveClaimedAt: iso(r.resolveClaimedAt),
+      reopenedAt: iso(r.reopenedAt),
+    };
+  },
+  async rawProductLine(marketId, tx) {
+    const rows = await sql(tx, `SELECT "productLine"::text AS "productLine" FROM "PredictionMarket" WHERE "id" = $1::text`, [marketId]);
+    return rows[0] ? String(rows[0].productLine) : null;
+  },
+  async intentFreshness(id, tx) {
+    const rows = await sql(tx, `SELECT "status", ("staleAt" > clock_timestamp()) AS "fresh" FROM "HouseBotIntent" WHERE "id" = $1::text`, [id]);
+    return rows[0] ? { status: rows[0].status as IntentStatus, fresh: rows[0].fresh === true } : null;
+  },
+  async revertPlacedInMemory() {
+    throw new Error("house-bot-dal: revertPlacedInMemory is memory-only — Postgres rolls the transaction back");
+  },
+};
+
 // ---------------------------------------------------------------------------
 // Exports — Prisma whenever a database is configured (always in production)
 // ---------------------------------------------------------------------------
@@ -3429,6 +3789,7 @@ export const targetStore: HouseBotTargetStore = usePrisma ? prismaHouseBotTarget
 /** The sealed name (N1 §2). */
 export const pressStore: HouseBotPressStore = usePrisma ? prismaHouseBotPresses : memoryHouseBotPresses;
 export const houseBookStore: HouseBookStore = usePrisma ? prismaHouseBook : memoryHouseBook;
+export const houseSeamStore: HouseSeamStore = usePrisma ? prismaHouseSeam : memoryHouseSeam;
 
 /**
  * Run several house writes as one transaction outside any lock — Enter now's queue step (N1 §4.3

@@ -164,12 +164,16 @@ export class AdmissionBusy extends Error {
  * Throws AdmissionBusy when the platform cannot take the work within budget —
  * the ONLY failure this adds, and the caller maps it to a retryable BUSY the
  * player sees as "we're holding your place", never a raw database error.
+ *
+ * `opts.maxWaitMs` narrows the wait for ONE caller and can never widen it: house bots pass 0 (04 A24),
+ * so a house stake is shed rather than queued behind players when the platform is saturated.
  */
-export async function withAdmission<T>(fn: () => Promise<T>): Promise<T> {
+export async function withAdmission<T>(fn: () => Promise<T>, opts?: { maxWaitMs?: number }): Promise<T> {
   // Invariant 2 — a nested acquire would wait on a slot its own caller holds.
   if (reentrancy.getStore()) return fn();
 
-  const { maxInFlight, maxQueue, maxWaitMs } = limits;
+  const { maxInFlight, maxQueue } = limits;
+  const maxWaitMs = Math.min(limits.maxWaitMs, Math.max(0, opts?.maxWaitMs ?? limits.maxWaitMs));
   const startedAt = Date.now();
 
   if (st.inFlight < maxInFlight) {

@@ -187,7 +187,7 @@ export default async function PositionsPage({ searchParams }: { searchParams: Pr
     }
     try {
       const co = await cashOutValue(
-        { side: p.side, stake: p.stake, placedAt: p.placedAt, bonusStakeTzs: p.bonusStakeTzs },
+        { side: p.side, stake: p.stake, placedAt: p.placedAt, bonusStakeTzs: p.bonusStakeTzs, houseBotId: p.houseBotId },
         { id: m.id, yesPool: m.yesPool, noPool: m.noPool, resolutionAt: m.resolutionAt, selectionClosedAt: m.selectionClosedAt, feeSnapshot: m.feeSnapshot },
       );
       const sellable = m.status === "LIVE" && co.sellable;

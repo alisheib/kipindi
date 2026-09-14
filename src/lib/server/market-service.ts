@@ -37,6 +37,12 @@ import { localizedText } from "@/lib/localized";
 import { payoutFor, settledPayoutFor, allocateWinnerPayouts, allocateFeeShares, winnersForAllocation, poolFee, levySplit, leanFor, resolveFeeModel, THIN_SMALLER_SIDE_SHARE, type FeeSnapshot } from "@/lib/payout";
 import type { FailureReason } from "@/lib/failure-reasons";
 import { exitWindowFacts } from "@/lib/exit-window";
+// House bots (build commit 2): the H0–H4 gates the bet path calls for a house stake, and the house
+// stores it writes through. ⛔ Nothing here runs for a player's bet — every call sits behind an
+// anchored `ctx.kind === "house"` site (`scripts/anchors/house-bot-seam.anchors.mjs`).
+import { houseH0, houseH1, houseH2, houseH3, houseH4, type Counterparty, type HouseBetContext, type HouseRefusal } from "./house-bot/seam";
+import { houseBotIntentStore, houseSeamStore, type LockedPool, type StoredHouseBotIntent } from "./house-bot-dal";
+import { HOUSE_CONTROL_LOCK, HOUSE_BET_LOCK_TIMEOUT } from "@/lib/house-bot/constants";
 import { getRequireTwoOfficerResolution } from "./resolution-policy";
 import { isMaintenanceMode, maintenanceMessage } from "./platform-config";
 import { recordSnapshot } from "./market-history";
@@ -854,13 +860,46 @@ export function ratesFor(m: Pick<StoredMarket, "feeSnapshot">): FeeSnapshot {
   return snapshotOrLegacy(m.feeSnapshot);
 }
 
+/**
+ * The stake bounds a bet on this market must fall within — the ONE resolver (house bots, sanctioned
+ * change (p), 04 A7; extracted from `buyPositionInner` with identical output).
+ *
+ * The platform config gives the global window (plus any per-market override); for an Up & Down
+ * market the AUTHORITATIVE bounds live on its chain (set at /admin/updown, floored to the product
+ * minimum) and are exactly what the card displays. Enforce THOSE — via the same `stakeBoundsFor`
+ * resolver the board reads — so the money path can never accept a stake the card would refuse: one
+ * source, no display/enforcement split, no tampering gap. The house engine clamps through this too,
+ * so a decided stake and the refusal it would meet read the same numbers.
+ */
+export async function stakeBoundsForMarket(market: Pick<StoredMarket, "id" | "productLine">): Promise<{ min: number; max: number }> {
+  const stakeCfg = await getEffectiveConfig(market.id);
+  let min = stakeCfg.minStake;
+  let max = stakeCfg.maxStake;
+  if (market.productLine === "UPDOWN") {
+    const b = await stakeBoundsForUpDownMarket(market.id);
+    if (b) { min = b.min; max = b.max; }
+  }
+  return { min, max };
+}
+
 /** Internal control-flow signal for buyPosition's money transaction: thrown
  *  inside `withMoneyTx` so Prisma rolls back EVERY write of the bet (real debit,
  *  bonus spend, pool increment, position, txn, ledger), then mapped to a clean
  *  player-facing rejection. Never escapes buyPosition. */
 class BetAbort extends Error {
-  constructor(readonly reason: "NO_FUNDS") { super(`bet aborted: ${reason}`); }
+  /** `HOUSE_SUPERSEDED`: `markPlaced` found no CLAIMED row (house bots, PLAN H4) — the intent was
+   *  cancelled or placed elsewhere, so the house stake's writes must roll back unseen. */
+  constructor(readonly reason: "NO_FUNDS" | "HOUSE_SUPERSEDED") { super(`bet aborted: ${reason}`); }
 }
+
+/**
+ * WHO IS BETTING (house bots, 04 A7). A player's bet carries its session clock; a house stake carries its
+ * bot and its durable intent. ⛔ Every gate that reads context must handle BOTH kinds — the house branch
+ * sites are anchored in `scripts/anchors/house-bot-seam.anchors.mjs`, and a `ctx.kind` comparison anywhere
+ * else in the bet path fails `test:house-bot-seam` (04 F3). A new gate evaluates the holder's account for a
+ * house stake exactly as for a player; it never skips on house context.
+ */
+export type BetContext = { kind: "player"; playStartedAt?: number } | HouseBetContext;
 
 type BuyOpts = {
   marketId: string;
@@ -889,6 +928,9 @@ type BuyResult = ServiceResult<{
   payoutIfWin: number;
   placedAt: string;
   bonusStakeTzs: number;
+  /** Sanctioned change (j): set on BOTH replay paths, so a caller can tell a repeat from a new bet
+   *  (the house engine alerts only on a fresh placement). Absent on a new bet. */
+  replayed?: true;
 }>;
 
 /**
@@ -910,7 +952,7 @@ export async function buyPosition(userId: string, opts: BuyOpts): Promise<BuyRes
     // an aborted one is 25P02). Gated on the caller's idempotency key: without
     // one, a retry would be a double bet, so we make exactly one attempt.
     return await withAdmission(() =>
-      withTransientRetry(() => buyPositionInner(userId, opts), !!opts.idempotencyKey),
+      withTransientRetry(() => buyPositionGuarded(userId, opts, { kind: "player", playStartedAt: opts.playStartedAt }), !!opts.idempotencyKey),
     );
   } catch (err) {
     if (err instanceof AdmissionBusy) {
@@ -925,7 +967,58 @@ export async function buyPosition(userId: string, opts: BuyOpts): Promise<BuyRes
   }
 }
 
-async function buyPositionInner(userId: string, opts: BuyOpts): Promise<BuyResult> {
+/**
+ * ⭐ THE HOUSE STAKE — a bet from a designated account, through the player's own bet path (PLAN §3).
+ *
+ * ⛔ ONLY `house-bot/fire.ts` MAY IMPORT THIS (PLAN I1, source pin). It adds refusals and markers to
+ * `buyPositionGuarded`; it never removes a gate. The key is always `houseIntentKey(intentId)`, and the
+ * intent row must already exist and match these figures (H0).
+ *
+ * Differences from `buyPosition`, each anchored: admission never queues (`maxWaitMs: 0`, 04 A24 — a
+ * saturated platform sheds the house first); a Postgres `lock_timeout` on the market and control locks
+ * surfaces as BUSY (04 A9), never as a failure.
+ */
+export async function placeHouseBet(
+  botUserId: string,
+  opts: { marketId: string; side: Side; stake: number; idempotencyKey: string },
+  house: { botId: string; intentId: string },
+): Promise<BuyResult> {
+  try {
+    return await withAdmission(() =>
+      withTransientRetry(() => buyPositionGuarded(botUserId, opts, { kind: "house", botId: house.botId, intentId: house.intentId }), true),
+    { maxWaitMs: 0 });
+  } catch (err) {
+    if (err instanceof AdmissionBusy || isLockTimeout(err)) {
+      return { ok: false, error: "House stake busy — nothing moved.", code: "BUSY", reason: "system_busy", retryAfterSec: 1 };
+    }
+    throw err;
+  }
+}
+
+/** Postgres 55P03 `lock_not_available` — the house branch's `lock_timeout` expiring (04 A9). */
+function isLockTimeout(err: unknown): boolean {
+  const e = err as { code?: unknown; meta?: { code?: unknown }; message?: unknown } | null;
+  return !!e && (e.code === "55P03" || e.meta?.code === "55P03" || (typeof e.message === "string" && e.message.includes("55P03")));
+}
+
+async function buyPositionGuarded(userId: string, opts: BuyOpts, ctx: BetContext): Promise<BuyResult> {
+  // ── H0 · house bots: the key, the replay and the intent row, before any other gate (N1 §3) ──
+  // SEAM:H0
+  let houseIntent: StoredHouseBotIntent | null = null;
+  if (ctx.kind === "house") {
+    const h0 = await houseH0(userId, opts, ctx);
+    if (h0.kind === "refuse") return h0.refusal;
+    if (h0.kind === "replay") {
+      const w = await db.wallet.findByUserId(userId);
+      const p = h0.position;
+      return { ok: true, data: { positionId: p.id, balance: w?.balance ?? 0, payoutIfWin: p.potentialPayout, placedAt: p.placedAt, bonusStakeTzs: p.bonusStakeTzs ?? 0, replayed: true } };
+    }
+    houseIntent = h0.intent;
+    // SEAM:H1
+    const h1 = await houseH1(userId, ctx);
+    if (h1) return h1;
+  }
+
   // SYNCHRONOUS rateCheck, NOT rateCheckAsync — deliberate, and load-bearing.
   // We are already inside an admission slot here (withAdmission →
   // withTransientRetry → this), so awaiting a Redis round trip would hold one of
@@ -993,7 +1086,10 @@ async function buyPositionInner(userId: string, opts: BuyOpts): Promise<BuyResul
   // stronger and more urgent statement, and a player in one of those must be told THAT, not
   // that their session ran long. Reordering these would bury a compliance block behind a
   // self-imposed one.
-  const sessionLimit = await checkSessionTimeLimit(userId, opts.playStartedAt);
+  // ⭐ HOUSE BOTS (04 A7, HOUSE-BOTS.md ruling): a house stake neither advances nor is refused by the
+  // holder's session clock — it is not the holder playing. H0 refuses a house call carrying one.
+  // SEAM:session
+  const sessionLimit = ctx.kind === "player" ? await checkSessionTimeLimit(userId, ctx.playStartedAt) : null;
   if (sessionLimit?.exceeded) {
     audit({
       category: "COMPLIANCE",
@@ -1114,18 +1210,8 @@ async function buyPositionInner(userId: string, opts: BuyOpts): Promise<BuyResul
   if (isSelectionClosed(market)) return { ok: false, error: "Selections are closed — waiting for results. · Uchaguzi umefungwa — tunasubiri matokeo.", code: "SELECTION_CLOSED" };
   if (Date.parse(market.resolutionAt) <= Date.now()) return { ok: false, error: "Market has closed.", code: "INVALID" };
 
-  // Stake bounds. The platform config gives the global window (plus any per-market override);
-  // for an Up & Down market the AUTHORITATIVE bounds live on its chain (set at /admin/updown,
-  // floored to the product minimum) and are exactly what the card displays. Enforce THOSE — via
-  // the same `stakeBoundsFor` resolver the board reads — so the money path can never accept a
-  // stake the card would refuse: one source, no display/enforcement split, no tampering gap.
-  const stakeCfg = await getEffectiveConfig(opts.marketId);
-  let minStake = stakeCfg.minStake;
-  let maxStake = stakeCfg.maxStake;
-  if (market.productLine === "UPDOWN") {
-    const b = await stakeBoundsForUpDownMarket(opts.marketId);
-    if (b) { minStake = b.min; maxStake = b.max; }
-  }
+  // Stake bounds — one resolver, `stakeBoundsForMarket` (house bots, sanctioned change (p)).
+  const { min: minStake, max: maxStake } = await stakeBoundsForMarket(market);
   if (!Number.isInteger(opts.stake) || opts.stake < minStake || opts.stake > maxStake) {
     // C2 · the SERVER already named both bounds in this sentence and NEITHER player
     // surface showed it: polls fell through errorCopy's INVALID phrase tests (which have
@@ -1160,6 +1246,16 @@ async function buyPositionInner(userId: string, opts: BuyOpts): Promise<BuyResul
     if (opts.idempotencyKey) {
       const existing = await positionStore.findByIdempotencyKey(opts.idempotencyKey, lockTx);
       if (existing) {
+        // 🔴 SANCTIONED CHANGE (b) (house bots, PLAN §3) · THE KEY-ONLY LOOKUP RETURNED ANOTHER ACCOUNT'S
+        // BET. A key reused by a different user replayed that user's position — its id, stake and payout —
+        // as this caller's receipt. The key is a per-bet nonce, not a shared secret: a mismatch is refused,
+        // and nothing is placed. A house stake also refuses a key its own bot did not place.
+        // SEAM:replay
+        if (existing.userId !== userId || (ctx.kind === "house" ? existing.houseBotId !== ctx.botId : existing.houseBotId != null)) {
+          return ctx.kind === "house"
+            ? { ok: false as const, error: "House key mismatch.", code: "INVALID" as const, reason: "house_key_mismatch" as const }
+            : { ok: false as const, error: "This request id belongs to another bet.", code: "INVALID" as const, reason: "idempotency_key_conflict" as const };
+        }
         const w = await db.wallet.findByUserId(userId, lockTx);
         // ⛔ The REPLAY reports the ORIGINAL bet's facts, not this attempt's. A retry on the
         // same idempotency key is the same bet, so its receipt must state the runway the
@@ -1173,6 +1269,7 @@ async function buyPositionInner(userId: string, opts: BuyOpts): Promise<BuyResul
             payoutIfWin: existing.potentialPayout,
             placedAt: existing.placedAt,
             bonusStakeTzs: existing.bonusStakeTzs ?? 0,
+            replayed: true as const,
           },
         };
       }
@@ -1233,15 +1330,26 @@ async function buyPositionInner(userId: string, opts: BuyOpts): Promise<BuyResul
       return { ok: false as const, error: lossCheck.reason ?? "Daily loss limit reached.", code: "INVALID" as const, reason: "loss_limit_daily" as const };
     }
 
+    // ── H2 · house bots: consent and RG, conflicts, money, staff and rate caps (N1 §3) ──────────
+    // Plain SELECTs on this lock's transaction; the declared order lives in `house-bot/seam.ts`.
+    // SEAM:H2
+    if (ctx.kind === "house") {
+      const h2 = await houseH2({ tx: lockTx, userId, ctx, intent: houseIntent!, marketId: opts.marketId, side: opts.side, stake: opts.stake, walletBalance: wallet.balance, mine });
+      if (h2) return h2;
+    }
+
     // Real-first funding: spend the player's own (withdrawable) balance first,
     // then top up the remainder from the bonus wallet. Both debits run inside
     // THIS wallet lock so the affordability check and the two debits can't be
     // split by a concurrent bet/withdraw (no double-spend). The affordability
     // PRE-CHECK runs here on the locked read; the actual debits run inside the
     // single money transaction below, still guard-protected (belt-and-suspenders).
+    // ⭐ A HOUSE STAKE IS CASH ONLY BY CONSTRUCTION (04 A7, PLAN I7): the whole stake is real money and
+    // the bonus part is zero before any check runs — H2 has already refused a balance below the stake.
+    // SEAM:cash
     const realAvail = wallet.balance;
     const bonusAvail = wallet.bonusBalance ?? 0;
-    const realPart = Math.min(opts.stake, realAvail);
+    const realPart = ctx.kind === "house" ? opts.stake : Math.min(opts.stake, realAvail);
     const bonusPart = opts.stake - realPart;
     if (bonusPart > bonusAvail) {
       return {
@@ -1272,6 +1380,9 @@ async function buyPositionInner(userId: string, opts: BuyOpts): Promise<BuyResul
       placedAt,
       settledAt: null,
       idempotencyKey: opts.idempotencyKey ?? null,
+      // H5 · the immutable house marker (PLAN I8). Spread, so a player's position object is unchanged.
+      // SEAM:marker
+      ...(ctx.kind === "house" ? { houseBotId: ctx.botId } : {}),
     };
 
     // Pool mutation must be serialized PER-MARKET, not per-wallet: two
@@ -1302,18 +1413,43 @@ async function buyPositionInner(userId: string, opts: BuyOpts): Promise<BuyResul
     let newBalance = realAvail;
     let bonusAllocations: BonusAllocation[] = [];
     let usedTx = false;
-    const outcome = await withLock(`market:${opts.marketId}`, async (lockTx): Promise<"OK" | "CLOSED"> => {
+    // ⭐ HOUSE BOTS (04 A9): a house stake bounds its wait on the market and control locks. `SET LOCAL`
+    // lasts until this transaction ends; a 55P03 escapes the locks, rolls the bet back and reaches the
+    // engine as BUSY. The player path takes no timeout and is unchanged.
+    // SEAM:lockTimeout
+    if (ctx.kind === "house" && lockTx) await lockTx.$executeRawUnsafe(`SET LOCAL lock_timeout = '${HOUSE_BET_LOCK_TIMEOUT}'`);
+    const outcome = await withLock(`market:${opts.marketId}`, async (lockTx): Promise<"OK" | "CLOSED" | HouseRefusal> => {
       const fresh = await marketStore.get(opts.marketId, lockTx);
       if (!fresh || fresh.status !== "LIVE" || isSelectionClosed(fresh) || Date.parse(fresh.resolutionAt) <= Date.now()) {
         return "CLOSED";
       }
-      {
+      // ── H3 · house bots: product and round lock, blackout, other bot, the mode condition (N1 §3) ──
+      // SEAM:H3
+      let housePool: LockedPool | null = null;
+      if (ctx.kind === "house") {
+        const h3 = await houseH3({ tx: lockTx, ctx, intent: houseIntent!, fresh, side: opts.side, stake: opts.stake });
+        if (h3.refusal) return h3.refusal;
+        housePool = h3.pool;
+      }
+      const writeMoney = async (counterparties: Counterparty[] | null) => {
         await withMoneyTx(async (tx) => {
           usedTx = tx !== null;
+          // H4 · `markPlaced` is the FIRST money statement of a house stake (PLAN H4). No CLAIMED row → the
+          // intent was cancelled or placed elsewhere → abort before any money moves.
+          // SEAM:markPlaced
+          if (ctx.kind === "house") {
+            const placed = await houseBotIntentStore.markPlaced(ctx.intentId, positionId, tx, counterparties ? { counterparties } : undefined);
+            if (!placed) throw new BetAbort("HOUSE_SUPERSEDED");
+          }
           if (realPart > 0) {
             // Atomic, overdraw-guarded debit (WHERE balance >= realPart).
             const debited = await db.wallet.adjust(wallet.id, { balance: -realPart }, { requireBalanceGte: realPart }, tx);
-            if (!debited) throw new BetAbort("NO_FUNDS");
+            if (!debited) {
+              // In memory there is no rollback: put the intent back to CLAIMED before aborting (PLAN H4).
+              // SEAM:revertNoFunds
+              if (!tx && ctx.kind === "house") await houseSeamStore.revertPlacedInMemory(ctx.intentId, positionId);
+              throw new BetAbort("NO_FUNDS");
+            }
             newBalance = debited.balance;
           }
           if (bonusPart > 0) {
@@ -1331,6 +1467,8 @@ async function buyPositionInner(userId: string, opts: BuyOpts): Promise<BuyResul
               if (!tx) {
                 if (realPart > 0) await db.wallet.adjust(wallet.id, { balance: realPart });
                 if (spend.allocations.length > 0) await refundBonusLocked(userId, spend.allocations);
+                // SEAM:revertNoFundsBonus — unreachable for a house stake (bonus part 0), kept for the rule.
+                if (ctx.kind === "house") await houseSeamStore.revertPlacedInMemory(ctx.intentId, positionId);
               }
               throw new BetAbort("NO_FUNDS");
             }
@@ -1402,12 +1540,29 @@ async function buyPositionInner(userId: string, opts: BuyOpts): Promise<BuyResul
             positionId: positionId,
             amlReason: null,
             createdAt: placedAt, updatedAt: placedAt, completedAt: placedAt,
+            // H5 · the marker on the stake's transaction too (PLAN I8).
+            // SEAM:txnMarker
+            ...(ctx.kind === "house" ? { houseBotId: ctx.botId } : {}),
           }, tx);
           // Dual-write: stake to the double-entry ledger, IN the transaction —
           // a ledger failure now rejects the whole bet (rollback) instead of
           // silently dropping the ledger row (was fire-and-forget .catch()).
           await postLedgerEntries(`stake_${betTxnId}`, stakeEntries({ txnId: betTxnId, userId, marketId: opts.marketId, realPart, bonusPart }), tx);
         });
+      };
+      if (ctx.kind === "house") {
+        // ── H4 · house bots: `house:control` is the INNERMOST lock and wraps the money writes, so an OFF
+        // written before this point binds, and the memory mutex is held too (PLAN H4, 04 A9). ─────────
+        // SEAM:H4
+        const refused = await withLock(HOUSE_CONTROL_LOCK, async (controlTx): Promise<HouseRefusal | null> => {
+          const h4 = await houseH4({ tx: controlTx, ctx, intent: houseIntent!, side: opts.side, stake: opts.stake, pool: housePool });
+          if (h4.refusal) return h4.refusal;
+          await writeMoney(h4.counterparties);
+          return null;
+        });
+        if (refused) return refused;
+      } else {
+        await writeMoney(null);
       }
       // NOT committed yet — withMoneyTx now JOINS the lock's transaction, which
       // only commits when the outermost withLock returns. Snapshotting or
@@ -1435,6 +1590,8 @@ async function buyPositionInner(userId: string, opts: BuyOpts): Promise<BuyResul
       });
       return { ok: false as const, error: "Selections closed while placing your bet. · Uchaguzi umefungwa.", code: "SELECTION_CLOSED" as const, reason: "selection_closed" as const };
     }
+    // A house gate refused inside the market or control lock — before any money write (H3/H4).
+    if (typeof outcome === "object") return outcome;
     // The bet's audit trail, inbox receipt and email all moved BELOW the lock.
     // They are fire-and-forget and need no lock, but the market advisory lock is
     // now held until the outer transaction ends (it rides the same tx), so any
@@ -1473,7 +1630,9 @@ async function buyPositionInner(userId: string, opts: BuyOpts): Promise<BuyResul
       // lockTx: this runs after the wallet debit inside the SAME transaction, so
       // its wallet/grant UPDATEs must ride that transaction — on a separate
       // connection they would block on our own uncommitted wallet row (P2028).
-      const wr = opposite ? { fulfilled: [], creditedToRealTzs: 0 } : await recordWageringLocked(userId, opts.stake, lockTx);
+      // H6 · a house stake accrues NO wagering toward the holder's bonus (PLAN I7) — the turnover is not theirs.
+      // SEAM:wagering
+      const wr = opposite || ctx.kind === "house" ? { fulfilled: [], creditedToRealTzs: 0 } : await recordWageringLocked(userId, opts.stake, lockTx);
       wageringFulfilled = wr.fulfilled;
       if (opposite) {
         audit({
@@ -1502,6 +1661,8 @@ async function buyPositionInner(userId: string, opts: BuyOpts): Promise<BuyResul
     // the same clean rejection the player always saw. (In-memory there is no
     // rollback, so spendBonusLocked's hand-compensation above still applies.)
     if (err instanceof BetAbort) {
+      // SEAM:superseded — the intent was cancelled or placed elsewhere; the rollback discarded every write.
+      if (err.reason === "HOUSE_SUPERSEDED") return { ok: false, error: "House intent superseded.", code: "INVALID", reason: "house_intent_superseded" };
       return { ok: false, error: "Not enough balance.", code: "INVALID", reason: "balance_insufficient" };
     }
     throw err;
@@ -1541,7 +1702,12 @@ async function buyPositionInner(userId: string, opts: BuyOpts): Promise<BuyResul
       actorId: userId,
       targetType: "Position",
       targetId: c.positionId,
-      payload: { marketId: market.id, side: opts.side, stake: opts.stake, payoutIfWin: c.payoutIfWin, kycStatus: standing.kycStatus, everApproved: standing.everApproved },
+      payload: {
+        marketId: market.id, side: opts.side, stake: opts.stake, payoutIfWin: c.payoutIfWin, kycStatus: standing.kycStatus, everApproved: standing.everApproved,
+        // H7 · a house stake names its bot and intent on the SAME row — never a second audit row (PLAN §3).
+        // SEAM:audit
+        ...(ctx.kind === "house" ? { houseBotId: ctx.botId, intentId: ctx.intentId } : {}),
+      },
     });
     // Inbox receipt — kit-faithful, opens to the market detail. The cash-out terms
     // it quotes come from THIS POLL'S frozen rates, not a hardcoded "5 min / 9%".
@@ -1549,7 +1715,12 @@ async function buyPositionInner(userId: string, opts: BuyOpts): Promise<BuyResul
     // Up & Down: no per-round receipt. The card already shows the stake, and forty
     // inbox entries an hour is noise, not information. Money records are unaffected —
     // the txn, ledger and audit rows above are already written.
-    if (!perEventNotificationsSuppressed(market)) {
+    // H8 · no bet receipt, push or email for a house stake: the engine sends the holder its own capped
+    // liquidity notices (PLAN §7), and a receipt per stake would flood the holder's inbox.
+    // SEAM:receipts
+    if (ctx.kind === "house") {
+      // nothing here — see the note above
+    } else if (!perEventNotificationsSuppressed(market)) {
     notifyBetPlaced(userId, {
       side: opts.side,
       stake: opts.stake,
@@ -1633,7 +1804,10 @@ async function buyPositionInner(userId: string, opts: BuyOpts): Promise<BuyResul
       // depends on the final pools. Accruing it here meant paying a referrer a
       // share of 31,050 on a poll where we earned 3,500 — and paying out at all on
       // a one-sided poll, where we earn nothing.
-      await onRecruitBet(userId, { stake: opts.stake });
+      // H9 · a house stake earns the recruiter nothing (PLAN I7, 04 A17): the marker travels with the
+      // call and `onRecruitBet` refuses it, so no caller can forget.
+      // SEAM:recruit
+      await onRecruitBet(userId, { stake: opts.stake, houseBotId: ctx.kind === "house" ? ctx.botId : null });
     } catch (err) {
       audit({ category: "SYSTEM", action: "affiliate.accrual_error", actorId: userId, targetType: "Position", targetId: result.data!.positionId, payload: { error: String(err) } });
     }
@@ -2579,7 +2753,8 @@ export async function repairOrphanedPositions(): Promise<{ repaired: number; ref
     const realRefund = p.stake - bonusPart;
     // Reverse this bet's turnover (it never settled) and return the bonus portion
     // to the bonus wallet — never to real (no active grant → bonus is forfeit).
-    await reverseWagering(p.userId, p.stake);
+    // SEAM:reverseWageringOrphan (04 A17) — never for a house-marked position.
+    if (p.houseBotId == null) await reverseWagering(p.userId, p.stake);
     touchedWallets.add(p.userId);
     if (bonusPart > 0) {
       const { refundedToBonus } = await refundBonusToActive(p.userId, bonusPart);
@@ -2605,6 +2780,8 @@ export async function repairOrphanedPositions(): Promise<{ repaired: number; ref
       provider: "INTERNAL", providerRef: null, msisdn: null,
       description: `Refund · orphaned position (market record missing)`,
       positionId: p.id,
+      // SEAM:markerOrphan — the house marker travels to every txn of a marked position (PLAN §3 propagation).
+      ...(p.houseBotId ? { houseBotId: p.houseBotId } : {}),
       amlReason: null,
       createdAt: p.settledAt, updatedAt: p.settledAt, completedAt: p.settledAt,
     });
@@ -2698,9 +2875,9 @@ export function exitWindowClosesAt(
  * a too-short runway) and the UI must show "rides to settlement", not a sell price.
  */
 export async function cashOutValue(
-  position: Pick<StoredPosition, "side" | "stake" | "placedAt" | "bonusStakeTzs">,
+  position: Pick<StoredPosition, "side" | "stake" | "placedAt" | "bonusStakeTzs" | "houseBotId">,
   market: Pick<StoredMarket, "id" | "yesPool" | "noPool" | "resolutionAt" | "selectionClosedAt" | "feeSnapshot">,
-): Promise<{ value: number; ratio: number; gross: number; fee: number; feeRate: number; inGracePeriod: boolean; sellable: boolean; reason?: "WINDOW_PASSED" | "TOO_SHORT" | "BONUS_FUNDED" }> {
+): Promise<{ value: number; ratio: number; gross: number; fee: number; feeRate: number; inGracePeriod: boolean; sellable: boolean; reason?: "WINDOW_PASSED" | "TOO_SHORT" | "BONUS_FUNDED" | "HOUSE_POSITION" }> {
   // The poll's OWN rates, not live config — a mid-poll retune must not change the
   // exit terms a player was promised when he bet.
   const cfg = ratesFor(market);
@@ -2735,8 +2912,13 @@ export async function cashOutValue(
   // ⛔ The docstring above already stated the contract — "the UI must show 'rides to
   // settlement', not a sell price". Keep the two in one place, here.
   const bonusFunded = (position.bonusStakeTzs ?? 0) > 0;
+  // ⭐ SANCTIONED CHANGE (d) (house bots, PLAN §3): a liquidity stake is never sellable — the house can
+  // never exit (FS-28), so the offer and `cashOutPosition`'s refusal (e) read the same fact. A player's
+  // position carries no marker and gets exactly the output the golden grid pins.
+  // SEAM:cashOutValue
+  const housePosition = position.houseBotId != null;
 
-  const sellable = hadRunway && withinWindow && !bonusFunded; // LIVE / open / selection-open live in cashOutPosition
+  const sellable = hadRunway && withinWindow && !bonusFunded && !housePosition; // LIVE / open / selection-open live in cashOutPosition
 
   const feeRate = inGracePeriod ? 0 : Math.min(0.30, Math.max(0, cfg.cashOutFeeRate));
   const gross = Math.max(0, Math.round(position.stake)); // the player's money in the pool
@@ -2747,6 +2929,7 @@ export async function cashOutValue(
   // no runway would otherwise be explained as "closing too soon" — true, but not why.
   const reason = sellable
     ? undefined
+    : housePosition ? "HOUSE_POSITION" as const
     : bonusFunded ? "BONUS_FUNDED" as const
     : !hadRunway ? "TOO_SHORT" as const
     : "WINDOW_PASSED" as const;
@@ -2792,6 +2975,14 @@ export async function cashOutPosition(
     if (!p) return { ok: false as const, error: "Position not found.", code: "NOT_FOUND" as const, reason: "not_your_position" as const };
     if (p.userId !== userId) return { ok: false as const, error: "Not your position.", code: "INVALID" as const, reason: "not_your_position" as const };
     if (p.status !== "OPEN") return { ok: false as const, error: "Position is no longer open.", code: "INVALID" as const, reason: "position_not_open" as const };
+
+    // ⛔ SANCTIONED CHANGE (e) (house bots, PLAN §3, I7): a liquidity stake has no early exit. The holder
+    // may sell their own bets; a house stake placed from their account rides to settlement, and its
+    // payout lands in the same wallet. Read under both locks, from the marker, never from bot status.
+    // SEAM:cashOutPosition
+    if (p.houseBotId != null) {
+      return { ok: false as const, error: "Liquidity stakes can't be sold early.", code: "INVALID" as const, reason: "house_position_no_exit" as const };
+    }
 
     // Bonus-funded bets cannot be cashed out — cash-out pays into the REAL
     // wallet, which would convert non-withdrawable bonus into withdrawable cash
@@ -2962,6 +3153,8 @@ export async function cashOutPosition(
       provider: "INTERNAL", providerRef: null, msisdn: null,
       description: `Cashed out · "${m.titleEn.slice(0, 60)}"`,
       positionId: p.id,
+      // SEAM:markerCashout — unreachable for a house position after (e), kept so the rule has no exception.
+      ...(p.houseBotId ? { houseBotId: p.houseBotId } : {}),
       amlReason: null,
       createdAt: now, updatedAt: now, completedAt: now,
     });
@@ -3179,12 +3372,13 @@ export async function settleMarket(
   // holding the market lock would invert buyPosition's wallet→market order and
   // could deadlock. Collected inside the lock, applied after it releases.
   const pendingBonusRefunds: Array<{ userId: string; amount: number }> = [];
-  const pendingWagerReversals: Array<{ userId: string; stake: number }> = [];
+  // `houseBotId`: a house-marked refund reverses NO wagering (04 A17) — the stake never accrued any.
+  const pendingWagerReversals: Array<{ userId: string; stake: number; houseBotId: string | null }> = [];
   // Referral commission — a share of the fee we ACTUALLY KEPT. Applied after
   // the market lock releases, because it takes the REFERRER's wallet lock.
   // `positionId` travels with it: it is the idempotency key's second half, so a resumed
   // settlement cannot pay the same position twice.
-  const pendingReferralAccruals: Array<{ userId: string; operatorNetFee: number; positionId: string }> = [];
+  const pendingReferralAccruals: Array<{ userId: string; operatorNetFee: number; positionId: string; houseBotId: string | null }> = [];
   // The verdict this settlement executed, captured for the post-lock clawback hook — `opts`
   // is rebound inside the lock closure and is not visible after it.
   let settledOutcome: Side | "VOID" | null = null;
@@ -3368,6 +3562,8 @@ export async function settleMarket(
             provider: "INTERNAL", providerRef: null, msisdn: null,
             description: `One-sided refund · "${m.titleEn.slice(0, 60)}"`,
             positionId: p.id,
+            // SEAM:markerOneSided
+            ...(p.houseBotId ? { houseBotId: p.houseBotId } : {}),
             amlReason: null,
             createdAt: settledAt, updatedAt: settledAt, completedAt: settledAt,
           }, tx);
@@ -3377,7 +3573,7 @@ export async function settleMarket(
           await postLedgerEntries(`refund_${oneSidedTxnId}`, refundEntries({ txnId: oneSidedTxnId, userId: p.userId, marketId: m.id, realPart, bonusPart }), tx);
         }
       });
-      pendingWagerReversals.push({ userId: p.userId, stake: p.stake });
+      pendingWagerReversals.push({ userId: p.userId, stake: p.stake, houseBotId: p.houseBotId ?? null });
       if (bonusPart > 0) pendingBonusRefunds.push({ userId: p.userId, amount: bonusPart });
       // E-43. The refund half of the SAME 2026-07-24 decision that already
       // suppresses wins and losses for Up & Down. Leaving it ungated made the
@@ -3497,6 +3693,8 @@ export async function settleMarket(
             provider: "INTERNAL", providerRef: null, msisdn: null,
             description: `${refundDescription ?? "Refund"} · "${m.titleEn.slice(0, 60)}"${refundDescription ? "" : " voided"}`,
             positionId: p.id,
+            // SEAM:markerVoid
+            ...(p.houseBotId ? { houseBotId: p.houseBotId } : {}),
             amlReason: null,
             createdAt: settledAt, updatedAt: settledAt, completedAt: settledAt,
           }, tx);
@@ -3506,7 +3704,7 @@ export async function settleMarket(
           await postLedgerEntries(`refund_${refundTxnId}`, refundEntries({ txnId: refundTxnId, userId: p.userId, marketId: m.id, realPart, bonusPart }), tx);
         }
       });
-      pendingWagerReversals.push({ userId: p.userId, stake: p.stake });
+      pendingWagerReversals.push({ userId: p.userId, stake: p.stake, houseBotId: p.houseBotId ?? null });
       if (bonusPart > 0) pendingBonusRefunds.push({ userId: p.userId, amount: bonusPart });
       // E-43 — see the one-sided branch above. Same decision, same predicate.
       // E-57 / 2026-08-22 — and the same announcement, for the same reason: every terminal
@@ -3638,6 +3836,8 @@ export async function settleMarket(
             // Up and Down. Same stored-token cause as the stake row above.
             description: `${outcomeWordIn("en", opts.outcome, m.productLine === "UPDOWN" ? "UPDOWN" : "MARKET")} won · "${m.titleEn.slice(0, 60)}"`,
             positionId: p.id,
+            // SEAM:markerWin
+            ...(p.houseBotId ? { houseBotId: p.houseBotId } : {}),
             amlReason: null,
             createdAt: settledAt, updatedAt: settledAt, completedAt: settledAt,
           }, tx);
@@ -3753,7 +3953,7 @@ export async function settleMarket(
       // shares out money that already belongs to TRA and GBT. See the note at `settleLevies`.
       if (settleFee.pool > 0 && settleLevies.operatorNet > 0) {
         const attributableNetFee = (p.stake / settleFee.pool) * settleLevies.operatorNet;
-        pendingReferralAccruals.push({ userId: p.userId, operatorNetFee: attributableNetFee, positionId: p.id });
+        pendingReferralAccruals.push({ userId: p.userId, operatorNetFee: attributableNetFee, positionId: p.id, houseBotId: p.houseBotId ?? null });
       }
     }
   }
@@ -3847,7 +4047,9 @@ export async function settleMarket(
   // is never forfeited (audit C2) — the money the ledger already recorded as a
   // BONUS_REFUND (refundEntries, above) now always lands in the wallet too, so
   // ledger and wallet cannot diverge on a void.
-  for (const r of pendingWagerReversals) await reverseWagering(r.userId, r.stake);
+  // SEAM:reverseWagering (04 A17) — a house stake recorded no turnover, so its refund removes none from
+  // the holder's personal bonus requirement.
+  for (const r of pendingWagerReversals) if (r.houseBotId == null) await reverseWagering(r.userId, r.stake);
   for (const r of pendingBonusRefunds) {
     if (r.amount <= 0) continue;
     const { refundedToBonus } = await refundBonusToActive(r.userId, r.amount);
@@ -3880,7 +4082,7 @@ export async function settleMarket(
   let accrualsErrored = 0;
   for (const r of pendingReferralAccruals) {
     try {
-      await onRecruitSettlement(r.userId, { operatorNetFee: r.operatorNetFee, marketId, positionId: r.positionId });
+      await onRecruitSettlement(r.userId, { operatorNetFee: r.operatorNetFee, marketId, positionId: r.positionId, houseBotId: r.houseBotId });
       accrualsCredited++;
     } catch (err) {
       accrualsErrored++;
@@ -4074,6 +4276,12 @@ export async function adminReopenMarket(marketId: string, officerId: string): Pr
     m.selectionClosedNotifiedAt = null;
     m.closingSoonNotifiedAt = null;
     m.resolveClaimedAt = null;
+    // ⭐ HOUSE BOTS, SANCTIONED CHANGE (r) (04 N1 §2). The clears above wipe every trace that a result
+    // check ran, yet staff may already have seen it. These two are the durable marker — never cleared —
+    // that closes the market to staff-chosen house stakes for good (the information blackout).
+    // Same instant as `updatedAt`, same full-row write; nothing else about a reopen changes.
+    m.reopenedAt = m.updatedAt;
+    m.reopenCount = (m.reopenCount ?? 0) + 1;
     await marketStore.set(m);
 
     audit({
@@ -4140,7 +4348,8 @@ export async function emergencyVoidMarket(opts: { marketId: string; officerId: s
   // role gate + 2FA above still stand.
 
   const pendingBonusRefunds: Array<{ userId: string; amount: number }> = [];
-  const pendingWagerReversals: Array<{ userId: string; stake: number }> = [];
+  // `houseBotId`: a house-marked refund reverses NO wagering (04 A17) — the stake never accrued any.
+  const pendingWagerReversals: Array<{ userId: string; stake: number; houseBotId: string | null }> = [];
   const result = await withLock(`market:${opts.marketId}`, async (lockTx) => {
     const m = await marketStore.get(opts.marketId);
     if (!m) return { ok: false as const, error: "Market not found.", code: "NOT_FOUND" as const };
@@ -4206,6 +4415,8 @@ export async function emergencyVoidMarket(opts: { marketId: string; officerId: s
             provider: "INTERNAL", providerRef: null, msisdn: null,
             description: `Emergency refund · "${m.titleEn.slice(0, 60)}" cancelled`,
             positionId: p.id,
+            // SEAM:markerEmergency
+            ...(p.houseBotId ? { houseBotId: p.houseBotId } : {}),
             amlReason: null,
             createdAt: now, updatedAt: now, completedAt: now,
           }, tx);
@@ -4215,7 +4426,7 @@ export async function emergencyVoidMarket(opts: { marketId: string; officerId: s
           await postLedgerEntries(`refund_${emergTxnId}`, refundEntries({ txnId: emergTxnId, userId: p.userId, marketId: m.id, realPart, bonusPart }), tx);
         }
       });
-      pendingWagerReversals.push({ userId: p.userId, stake: p.stake });
+      pendingWagerReversals.push({ userId: p.userId, stake: p.stake, houseBotId: p.houseBotId ?? null });
       if (bonusPart > 0) pendingBonusRefunds.push({ userId: p.userId, amount: bonusPart });
       // Player notice — BOTH channels, and both carry the admin's reason so the
       // player knows WHY their market was pulled and that they were made whole.
@@ -4297,7 +4508,9 @@ export async function emergencyVoidMarket(opts: { marketId: string; officerId: s
 
   // After the market lock: reverse turnover + return bonus principal to bonus
   // (never to real — forfeit if no active grant). See resolveMarket for rationale.
-  for (const r of pendingWagerReversals) await reverseWagering(r.userId, r.stake);
+  // SEAM:reverseWagering (04 A17) — a house stake recorded no turnover, so its refund removes none from
+  // the holder's personal bonus requirement.
+  for (const r of pendingWagerReversals) if (r.houseBotId == null) await reverseWagering(r.userId, r.stake);
   for (const r of pendingBonusRefunds) {
     if (r.amount <= 0) continue;
     const { refundedToBonus } = await refundBonusToActive(r.userId, r.amount);

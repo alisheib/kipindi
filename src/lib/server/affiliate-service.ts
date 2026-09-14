@@ -1109,7 +1109,13 @@ async function payPrize(opts: { referrerUserId: string; recruitUserId: string; m
  * The PRIZE stays here, because it is a milestone on the ACT of betting ("your
  * recruit placed their first bet"), not a share of revenue. That is correct.
  */
-export async function onRecruitBet(recruitUserId: string, opts: { stake: number }): Promise<void> {
+export async function onRecruitBet(recruitUserId: string, opts: {
+  stake: number;
+  /** ⛔ Required (house bots, 04 A17): a liquidity stake placed by 50pick from a designated account is
+   *  not the recruit's play, so it earns the recruiter no prize. Every caller must state the marker. */
+  houseBotId: string | null;
+}): Promise<void> {
+  if (opts.houseBotId != null) return;
   const resolved = await accrualContextFor(recruitUserId);
   if (!resolved.ok) {
     // ⭐ Silence used to be the only signal here. Every refusal is now a row, so "why did
@@ -1204,8 +1210,11 @@ export async function onRecruitSettlement(
      *  a replay was a double-pay. */
     marketId: string;
     positionId: string;
+    /** ⛔ Required (house bots, 04 A17): commission never accrues on a house-marked position. */
+    houseBotId: string | null;
   },
 ): Promise<void> {
+  if (opts.houseBotId != null) return;
   const resolved = await accrualContextFor(recruitUserId);
   if (!resolved.ok) {
     if (resolved.refusal !== "no_referrer") {
