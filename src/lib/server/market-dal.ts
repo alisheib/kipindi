@@ -153,6 +153,10 @@ function toStoredMarket(r: any): StoredMarket {
     sentinelDetermined: r.sentinelDetermined ?? null,
     resolutionMode: (r.resolutionMode as StoredMarket["resolutionMode"]) ?? null,
     resolveClaimedAt: iso(r.resolveClaimedAt) ?? null,
+    // House bots (N1 §2): the reopen stamp. Never cleared — a reopened market stays blacked out
+    // for house stakes even after its Sentinel fields are wiped.
+    reopenedAt: iso(r.reopenedAt) ?? null,
+    reopenCount: r.reopenCount ?? null,
     // Coerced, not trusted: a row read before the column existed (or through an old
     // client) has no value, and every such row is a long-form poll.
     productLine: r.productLine === "UPDOWN" ? "UPDOWN" : "MARKET",
@@ -177,6 +181,7 @@ function toStoredPosition(r: any): StoredPosition {
     placedAt: iso(r.placedAt)!,
     settledAt: iso(r.settledAt),
     idempotencyKey: r.idempotencyKey ?? null,
+    houseBotId: r.houseBotId ?? null,
   };
 }
 
@@ -665,7 +670,12 @@ const memoryMarkets: MarketStore = {
 
 const memoryPositions: PositionStore = {
   async get(id) { return positions.get(id) ?? null; },
-  async set(p, _tx) { positions.set(p.id, p); },
+  async set(p, _tx) {
+    // ⛔ The house marker survives a full-row write, exactly as the Prisma update arm never
+    // writes it: an existing marker is kept, and NULL → id stays possible (the remark path).
+    const prev = positions.get(p.id);
+    positions.set(p.id, prev ? { ...p, houseBotId: prev.houseBotId ?? p.houseBotId ?? null } : p);
+  },
   async values() { return Array.from(positions.values()); },
   async attribution() {
     return Array.from(positions.values()).map((p) => ({ id: p.id, marketId: p.marketId }));
@@ -955,6 +965,10 @@ const prismaMarkets: MarketStore = {
         sentinelDetermined: m.sentinelDetermined ?? null,
         resolutionMode: m.resolutionMode ?? null,
         resolveClaimedAt: m.resolveClaimedAt ? new Date(m.resolveClaimedAt) : null,
+        // House bots (N1 §2): in BOTH arms — see the warning above. Not stampable: the one
+        // writer is adminReopenMarket's full-row set (build commit 2).
+        reopenedAt: m.reopenedAt ? new Date(m.reopenedAt) : null,
+        reopenCount: m.reopenCount ?? null,
         productLine: m.productLine ?? "MARKET",
         proposedBy: m.proposedBy,
         createdAt: new Date(m.createdAt),
@@ -994,6 +1008,8 @@ const prismaMarkets: MarketStore = {
         sentinelDetermined: m.sentinelDetermined ?? null,
         resolutionMode: m.resolutionMode ?? null,
         resolveClaimedAt: m.resolveClaimedAt ? new Date(m.resolveClaimedAt) : null,
+        reopenedAt: m.reopenedAt ? new Date(m.reopenedAt) : null,
+        reopenCount: m.reopenCount ?? null,
         // `productLine` is deliberately ABSENT from the update block: a row's product
         // is fixed at creation. Allowing an update would let a stale in-memory copy
         // silently reclassify a settled Up & Down round as a long-form poll, moving
@@ -1155,11 +1171,17 @@ const prismaPositions: PositionStore = {
         placedAt: new Date(p.placedAt),
         settledAt: p.settledAt ? new Date(p.settledAt) : null,
         idempotencyKey: p.idempotencyKey ?? null,
+        houseBotId: p.houseBotId ?? null,
       },
       // Mirror the full mutable field set so this DAL matches the in-memory
       // store's full-replace semantics (positions.set(p.id, p)). Previously only
       // status/finalPayout/settledAt were written, so a future mutation of any
       // other field would persist in tests but silently no-op in production.
+      //
+      // ⛔ THE HOUSE MARKER IS ABSENT FROM THIS ARM, ON PURPOSE (house bots, PLAN §2 I8). It is
+      // create-only: settlement and cash-out rewrite positions from copies, and a copy read
+      // before the column existed would otherwise un-mark house money. The one sanctioned
+      // rewrite is the remark script in build commit 7, through its own statement.
       update: {
         userId: p.userId, marketId: p.marketId,
         side: p.side, stake: p.stake, bonusStakeTzs: p.bonusStakeTzs ?? 0,

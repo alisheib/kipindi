@@ -283,6 +283,18 @@ export type StoredMarket = {
    *  trigger's AI check, so N instances never double-spend the AI call. See
    *  resolveDueMarket. Null = unclaimed; a claim older than the TTL is stale. */
   resolveClaimedAt?: string | null;
+  /**
+   * ⭐ REOPEN STAMP (house bots, N1 §2; INT-01). When an officer last reopened this CLOSED market,
+   * and how many times. Reopening wipes the Sentinel fields and the resolve claim, so without
+   * this nothing on the row would show that a result check ever happened — and a house stake
+   * could be placed on a market whose outcome staff may already have seen.
+   *
+   * ⛔ NEVER CLEARED. Written by `adminReopenMarket` in build commit 2 (sanctioned change r),
+   * through the full-row `marketStore.set`, which maps both fields in BOTH upsert arms.
+   * Optional so rows read before the columns existed read as never reopened.
+   */
+  reopenedAt?: string | null;
+  reopenCount?: number | null;
   /** Which product this row belongs to — see `ProductLine`. Absent on rows read
    *  before the column existed; the DAL coerces those to `"MARKET"`, which is what
    *  every historical row is. */
@@ -308,6 +320,15 @@ export type StoredPosition = {
   settledAt: string | null;
   /** Client-generated UUID — prevents double-submit on 2G. Null for internal positions. */
   idempotencyKey?: string | null;
+  /**
+   * ⭐ THE HOUSE MARKER (house bots, PLAN §2 I8). The house bot that placed this stake; NULL for
+   * every player bet. Optional so rows read before the column existed read as unmarked.
+   *
+   * ⛔ CREATE-ONLY. `positionStore.set`'s update arm never writes it and the memory store keeps
+   * an existing marker, so a stale copy of a position can never un-mark house money. The one
+   * sanctioned rewrite (NULL → id only) is the remark script in build commit 7.
+   */
+  houseBotId?: string | null;
 };
 
 

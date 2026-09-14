@@ -129,6 +129,11 @@ function toStoredUser(u: any): StoredUser {
     recruitedProgramme: u.recruitedProgramme ?? null,
     recruitedAt: iso(u.recruitedAt),
     recruitedByCode: u.recruitedByCode ?? null,
+    // ⭐ PASSWORD HISTORY (house bots, 04 A4). ⛔ The same four-place rule as the provenance
+    // stamp above: here, `create`, `update`'s date list and `StoredUser`.
+    passwordSetAt: iso(u.passwordSetAt),
+    passwordSetVia: u.passwordSetVia ?? null,
+    emailSetByOfficerAt: iso(u.emailSetByOfficerAt),
   };
 }
 
@@ -332,6 +337,7 @@ function toStoredTxn(t: any): StoredTxn {
     completedAt: iso(t.completedAt),
     idempotencyKey: t.idempotencyKey ?? null,
     pendingNotifiedAt: iso(t.pendingNotifiedAt),
+    houseBotId: t.houseBotId ?? null,
   };
 }
 
@@ -851,6 +857,9 @@ export const prismaDb = {
           recruitedProgramme: u.recruitedProgramme ?? null,
           recruitedAt: u.recruitedAt ? new Date(u.recruitedAt) : null,
           recruitedByCode: u.recruitedByCode ?? null,
+          passwordSetAt: u.passwordSetAt ? new Date(u.passwordSetAt) : null,
+          passwordSetVia: u.passwordSetVia ?? null,
+          emailSetByOfficerAt: u.emailSetByOfficerAt ? new Date(u.emailSetByOfficerAt) : null,
         },
       });
       return toStoredUser(row);
@@ -866,7 +875,9 @@ export const prismaDb = {
       // would reach a Prisma DateTime column and throw at runtime on Postgres only — with
       // every memory-backed suite green. The bind writes it in the same update as
       // `recruitedBy`, so it is on the hot path for every recruited registration.
-      const dateFields = ["lockedUntil", "dob", "acceptedTermsAt", "lastLoginAt", "closedAt", "emailVerifiedAt", "recruitedAt"] as const;
+      // House bots (04 A4): the two password-history times are PREPENDED, so the list's tail
+      // stays the text `red:dal-parity` anchors on.
+      const dateFields = ["passwordSetAt", "emailSetByOfficerAt", "lockedUntil", "dob", "acceptedTermsAt", "lastLoginAt", "closedAt", "emailVerifiedAt", "recruitedAt"] as const;
       for (const [k, v] of Object.entries(patch)) {
         if (k === "updatedAt") continue; // Prisma handles @updatedAt
         if (dateFields.includes(k as (typeof dateFields)[number])) {
@@ -1457,6 +1468,8 @@ export const prismaDb = {
           createdAt: new Date(t.createdAt),
           completedAt: t.completedAt ? new Date(t.completedAt) : null,
           idempotencyKey: t.idempotencyKey ?? null,
+          // The house marker, written here and nowhere else (`update` skips it).
+          houseBotId: t.houseBotId ?? null,
         },
       });
       return toStoredTxn(row);
@@ -1499,7 +1512,9 @@ export const prismaDb = {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const data: Record<string, any> = {};
         for (const [k, v] of Object.entries(patch)) {
-          if (k === "createdAt" || k === "updatedAt") continue;
+          // ⛔ `houseBotId` is create-only (house bots, PLAN §2 I8): a patch can never re-mark or
+          // un-mark a ledger row. The memory twin drops the key the same way.
+          if (k === "createdAt" || k === "updatedAt" || k === "houseBotId") continue;
           if (k === "completedAt" || k === "pendingNotifiedAt") {
             data[k] = v ? new Date(v as string) : null;
           } else {

@@ -79,6 +79,24 @@ export type StoredUser = {
   recruitedAt?: string | null;
   /** The literal code redeemed at bind. History only — ⛔ never read for pricing. */
   recruitedByCode?: string | null;
+  /**
+   * ⭐ DURABLE PASSWORD HISTORY (house bots, 04 A4). When the password was last set, and by which
+   * path — written in the SAME update as the hash. A house bot's consent is tied to the password
+   * its holder gave, so a change must be attributable after the fact.
+   *
+   * NULL on every account created before the column existed. ⛔ NULL is "not recorded", never
+   * "never changed": the house-bot check then falls back to the audit trail, and a failed read
+   * blocks rather than passes.
+   *
+   * ⚠️ The writers land in build commit 3. Like `recruitedAt`, these must be mapped in all four
+   * places in `prisma-dal.ts` or Postgres silently reads NULL while memory suites stay green.
+   */
+  passwordSetAt?: string | null;
+  /** Mirrors `User_passwordSetVia_check` (the house markers migration). */
+  passwordSetVia?: "REGISTRATION" | "SELF_CHANGE" | "RESET_LINK" | "OFFICER_TEMP" | "REHASH" | null;
+  /** When an officer last set this account's email (04 A4): an officer-set address is not
+   *  proof the holder controls it, so a house bot's notices treat it with care for 30 days. */
+  emailSetByOfficerAt?: string | null;
 };
 
 export type KycExtraRequest = { id: string; description: string; requestedAt: string; storageKey: string | null; uploadedAt: string | null };
@@ -373,6 +391,15 @@ export type StoredTxn = {
   /** Set once we've emailed the player that this deposit is taking a while.
    *  Exactly-once guard for the reconcile sweep's "still pending" mail. */
   pendingNotifiedAt?: string | null;
+  /**
+   * ⭐ THE HOUSE MARKER (house bots, PLAN §2 I8; 04 R3). The house bot whose stake this ledger row
+   * belongs to; NULL for every player row. The house book reads returned money ONLY from marked
+   * rows, so an unmarked payout on a house stake would vanish from its loss figures.
+   *
+   * ⛔ CREATE-ONLY. Both `txn.update` implementations drop it from the patch, so no later write
+   * can move money between the house book and a player's.
+   */
+  houseBotId?: string | null;
 };
 
 export type StoredResponsibleGambling = {
@@ -1292,7 +1319,10 @@ const memoryDb = {
     update: (id: string, patch: Partial<StoredTxn>) => {
       const t = store.txns.get(id);
       if (!t) return null;
-      const next = { ...t, ...patch, updatedAt: new Date().toISOString() };
+      // ⛔ The house marker is create-only — the Prisma twin skips the key the same way, so a
+      // patch carrying `houseBotId` can never re-mark or un-mark a ledger row in either store.
+      const { houseBotId: _marker, ...rest } = patch;
+      const next = { ...t, ...rest, updatedAt: new Date().toISOString() };
       store.txns.set(id, next);
       return next;
     },
