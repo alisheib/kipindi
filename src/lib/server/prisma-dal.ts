@@ -1066,7 +1066,7 @@ export const prismaDb = {
      * question — the same pair, the same exclusion — or a race resolves differently
      * from a sequential duplicate. ⚠️ Since migration 20260913120000 that exclusion is
      * `status <> REJECTED OR rejectReason IN FINAL_REFUSAL_CODES`: a FINAL refusal keeps
-     * the document number held (`test:kyc-cert-d1` §3c pins both halves).
+     * the document number held (`test:cert-d1` §3c pins both halves).
      */
     findActiveByIdNumber: async (
       idType: string,

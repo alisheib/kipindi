@@ -6127,7 +6127,7 @@ and two comments before it was caught. ⑤ **A line-ending normalisation can fli
 `git ls-files --eol` shows the working-tree state (`i18n-dict.ts` is LF here). ⑥ **`text-balance` on Chinese text moves a
 stranded character into the MIDDLE of a word**; pair it with word joiners or zh keep-all. ⑦ **A text node that follows a
 JSX expression and spans lines can lose its leading space** ("hour{…} of" rendered "hourof"); the tag-based fused
-check could not see it, and `qa:live` now fails the `<!-- -->` seam. ⑧ **`npm run -s` with a wrong script name exits 1
+check could not see it, and `qa:live` now fails the `<!-- -->` seam. ⑧ **a wrong script name, run silently with the `-s` flag, exits 1
 with an EMPTY log** (`test:kyc-status-honesty` is `test:kyc-honesty`; `test:label-lexicon` is `test:labels`).
 ⑨ **Git Bash rewrites "/"-leading env values** (`PAGES=/wallet`); the capture harness takes them without the slash.
 

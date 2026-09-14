@@ -324,7 +324,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
       )}
 
       {/* 2026-09-13 — A FINAL REFUSAL HAS NO STEPS LEFT. The rail and both step forms stay off the page, because
-          `startKyc` refuses a restart and the upload would be refused. ⚠️ `test:kyc-status-honesty` finds step 2 by
+          `startKyc` refuses a restart and the upload would be refused. ⚠️ `test:kyc-honesty` finds step 2 by
           its exact opening condition, so the gate is this wrapper, not an extra term inside that condition.
           2026-09-14 — AND A RECOVERABLE REFUSAL HAS NO STEPS UNTIL THE PLAYER TAPS "TRY AGAIN". The card offered the
           restart while step 2 stood live below it, holding the refused photos: attaching new ones and then tapping
