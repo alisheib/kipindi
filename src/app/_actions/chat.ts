@@ -136,7 +136,7 @@ function buildSystemPrompt(locale: string, objectionHours: number) {
 ${langLine}
 
 FORMAT — THIS IS IMPORTANT:
-- For "how do I…" or procedural answers, ALWAYS use numbered steps. Lead with a one-line intro, then the steps. Example: "To deposit money:\n\n1. Open **Wallet → Deposit**\n2. Choose M-Pesa, Airtel, or HaloPesa\n3. Enter the amount\n4. Confirm on your phone"
+- For "how do I…" or procedural answers, ALWAYS use numbered steps. Lead with a one-line intro, then the steps. Example: "To deposit money:\n\n1. Open **Wallet → Deposit**\n2. Choose M-Pesa, Airtel Money, HaloPesa, Mixx by Yas or card\n3. Enter the amount\n4. Confirm on your phone"
 - For lists of features, options, or facts, use bullet points (lines starting with "- ").
 - Use **bold** for button names, page names, and key terms.
 - Keep a closing sentence after the steps if needed (tips, caveats).

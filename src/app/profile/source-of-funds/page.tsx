@@ -56,8 +56,8 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
   const prevEmp = sp.emp ?? existing?.declaredEmployer ?? "";
   const prevOther = sp.other ?? existing?.declaredOther ?? "";
   const statusTone =
-    existing?.reviewStatus === "ACCEPTED" ? "yes"
-    : existing?.reviewStatus === "REJECTED" ? "no"
+    existing?.reviewStatus === "ACCEPTED" ? "success"
+    : existing?.reviewStatus === "REJECTED" ? "danger"
     : "warning";
   // Humanize the raw enums before showing them to the player.
   const STATUS_LABEL: Record<string, string> = { PENDING: t.common.underReview, ACCEPTED: t.common.accepted, REJECTED: t.profile.rejected };
@@ -70,12 +70,12 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
       <BackLink fallbackHref="/profile" label={t.common.profile} />
 
       {banner && (
-        <div role="alert" className="rounded-xl border border-no-700 bg-no-500/10 px-4 py-3 text-[13px] text-no-300">
+        <div role="alert" className="rounded-xl border border-danger-border bg-danger-bg px-4 py-3 text-[13px] text-danger-fg">
           {banner.body}
         </div>
       )}
       {sp.saved && !banner && (
-        <div role="status" className="rounded-xl border border-yes-700 bg-yes-500/10 px-4 py-3 text-[13px] text-yes-300">
+        <div role="status" className="rounded-xl border border-success-border bg-success-bg px-4 py-3 text-[13px] text-success-fg">
           {t.profile.declarationSaved}
         </div>
       )}
@@ -93,11 +93,11 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
       </PageHero>
 
       {existing?.reviewStatus === "REJECTED" && (
-        <section role="alert" className="rounded-xl border border-no-700 bg-no-500/[0.08] p-4">
+        <section role="alert" className="rounded-xl border border-danger-border bg-danger-bg p-4">
           <div className="flex items-start gap-2.5">
             <I.alertCircle s={18} />
             <div className="min-w-0">
-              <p className="font-display text-[14px] font-bold text-no-300">{t.profile.sofResubmit}</p>
+              <p className="font-display text-[14px] font-bold text-danger-fg">{t.profile.sofResubmit}</p>
               <p className="mt-1 text-body-sm text-text-muted leading-snug">
                 {t.profile.sofResubmitBody}
               </p>
@@ -107,9 +107,9 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
       )}
 
       {existing && existing.reviewStatus !== "REJECTED" && (
-        <section className="rounded-xl border border-yes-700/60 bg-yes-500/[0.06] p-4 space-y-1.5">
+        <section className="rounded-xl border border-success-border bg-success-bg p-4 space-y-1.5">
           <div className="flex items-center gap-2">
-            <Pill tone={statusTone as "yes" | "no" | "warning"}>{statusLabel}</Pill>
+            <Pill tone={statusTone as "success" | "danger" | "warning"}>{statusLabel}</Pill>
             <p className="font-mono text-[11px] text-text-subtle tabular-nums">
               {t.common.submitted} {formatDate(existing.submittedAt)}
             </p>
@@ -206,7 +206,10 @@ export default async function SourceOfFundsPage({ searchParams }: { searchParams
             <FieldLegend as="legend" className="mb-2">
               {t.profile.annualIncome}
             </FieldLegend>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {/* ⛔ TWO COLUMNS AT EVERY WIDTH (2026-09-14). Four columns in this form-width card left
+                each band about 100px, so "TZS 50M – 200M" broke after the dash in every locale and
+                Swahili split "TZS" from its figure on three of the four bands. */}
+            <div className="grid grid-cols-2 gap-2">
               {/* §A3 — same sr-only-radio blind spot as the source tiles above; the
                   focus ring has to land on the visible tile, as a real `outline`. */}
               {BANDS.map((b, i) => (
@@ -302,7 +305,6 @@ function Field({
 }
 
 // Thin adapter to the canonical <Chip> so status pills match the rest of the app.
-function Pill({ tone, children }: { tone: "yes" | "no" | "warning"; children: React.ReactNode }) {
-  const variant = tone === "yes" ? "success" : tone === "no" ? "danger" : "warning";
-  return <Chip variant={variant} size="md">{children}</Chip>;
+function Pill({ tone, children }: { tone: "success" | "danger" | "warning"; children: React.ReactNode }) {
+  return <Chip variant={tone} size="md">{children}</Chip>;
 }

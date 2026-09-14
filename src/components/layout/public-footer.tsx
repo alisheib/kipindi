@@ -126,7 +126,8 @@ export function PublicFooter({
             <FiftyMark size={20} />
             <span className="font-display font-bold text-[14px] text-text">50pick</span>
           </div>
-          <p className="text-text-muted leading-relaxed text-body-sm">
+          {/* zh keeps its words whole (break-keep); the zh string carries zero-width break hints between its words. */}
+          <p className="text-text-muted leading-relaxed text-body-sm text-balance break-keep">
             {t.footer.licensedByGbt}
           </p>
           <p className="font-mono text-[11px] text-text-subtle tabular-nums">
@@ -181,12 +182,14 @@ export function PublicFooter({
               for the desk, and any figure here would be invented (A-5). */}
           <li>
             <a href={`tel:${supportPhoneTel}`} className="text-text-muted hover:text-text transition-colors">
-              {t.footer.contactUs} · {supportPhone}
+              {/* 2026-09-14 — the value never splits (at 768 the sw column broke "0800 11" / "0011"), and the separator
+                  stays with its LABEL, so a wrapped row reads "Simu ya msaada ·" / "0800 11 0011" (visual pass 2b). */}
+              <span className="whitespace-nowrap">{t.footer.contactUs} ·</span>{" "}<span className="whitespace-nowrap">{supportPhone}</span>
             </a>
           </li>
           <li>
             <a href={`tel:${HELPLINE_TEL()}`} className="text-text-muted hover:text-text transition-colors">
-              {t.footer.helpline} · {HELPLINE()}
+              <span className="whitespace-nowrap">{t.footer.helpline} ·</span>{" "}<span className="whitespace-nowrap">{HELPLINE()}</span>
             </a>
           </li>
           <li>
@@ -198,10 +201,10 @@ export function PublicFooter({
                   outside its population by construction. An absent key is invisible to a
                   parity check — which is why row 10.4 is a guard-shaped finding and not
                   just a typo. */}
-              {t.footer.email} · {supportEmail}
+              <span className="whitespace-nowrap">{t.footer.email} ·</span>{" "}<span className="whitespace-nowrap">{supportEmail}</span>
             </a>
           </li>
-          <li className="italic text-text-subtle text-body-sm">
+          <li className="italic text-text-subtle text-body-sm text-balance break-keep">
             {t.footer.stopGambling}
           </li>
         </FooterCol>

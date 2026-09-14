@@ -46,8 +46,10 @@ export const dynamic = "force-dynamic";
 // C1d provably-fair chain — a horizontal 5-node process diagram in the glyph
 // idiom. Gilt lands only on the attestation seal (the sanctioned earned/verified
 // exception); the other nodes are royal. Static (no motion → reduced-motion safe).
-// Wrapped in overflow-x-auto so the long trilingual labels scroll within the
-// panel on narrow screens instead of forcing page h-overflow.
+// 2026-09-14 — below the sm breakpoint the five steps STACK (each circle beside its label,
+// joined by a short vertical rule), so a phone shows every step whole: the fixed-width row
+// cut the third step to "OF" at 360 with no sign it scrolled. From sm up it is the row.
+// The overflow-x-auto wrapper stays only as a safety net.
 function FairnessChain({ steps }: { steps: { glyph: keyof typeof I; label: string; gilt?: boolean }[] }) {
   return (
     <div
@@ -56,7 +58,7 @@ function FairnessChain({ steps }: { steps: { glyph: keyof typeof I; label: strin
       role="region"
       aria-label="Provably-fair steps"
     >
-      <ol className="flex items-start min-w-[540px]">
+      <ol className="flex flex-col sm:flex-row sm:items-start sm:min-w-[540px]">
         {steps.map((s, i) => {
           const Glyph = I[s.glyph];
           const circleCls = s.gilt
@@ -64,18 +66,19 @@ function FairnessChain({ steps }: { steps: { glyph: keyof typeof I; label: strin
             : "border border-brand-600 bg-brand-500/10 text-brand-300";
           return (
             <li key={i} className="contents">
-              <div className="flex w-[104px] shrink-0 flex-col items-center text-center">
+              <div className="flex items-center gap-3 text-left sm:w-[104px] sm:shrink-0 sm:flex-col sm:gap-0 sm:text-center">
                 {/* ⚠️ LITERALS, not `h-11 w-11` — spacing is overridden (tailwind.config.ts:200-215),
                     so `h-11` was 96px inside this w-[104px] column: 4px of gutter each side. */}
-                <span className={`inline-flex h-[44px] w-[44px] items-center justify-center rounded-full ${circleCls}`}>
+                <span className={`inline-flex h-[44px] w-[44px] shrink-0 items-center justify-center rounded-full ${circleCls}`}>
                   <Glyph s={19} />
                 </span>
-                <span className={`mt-2 font-mono text-micro font-semibold uppercase leading-tight eyebrow ${s.gilt ? "text-gold-300" : "text-text-muted"}`}>
+                {/* text-balance: "OFFICER SIGN-OFF" broke at its hyphen, leaving "OFF" alone in the 104px column. */}
+                <span className={`sm:mt-2 text-balance font-mono text-micro font-semibold uppercase leading-tight eyebrow ${s.gilt ? "text-gold-300" : "text-text-muted"}`}>
                   {s.label}
                 </span>
               </div>
               {i < steps.length - 1 && (
-                <div aria-hidden className="mt-[21px] h-[2px] flex-1 min-w-[16px] rounded-full bg-border" />
+                <div aria-hidden className="ml-[21px] h-[12px] w-[2px] rounded-full bg-border sm:ml-0 sm:mt-[21px] sm:h-[2px] sm:w-auto sm:flex-1 sm:min-w-[16px]" />
               )}
             </li>
           );

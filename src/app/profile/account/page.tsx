@@ -12,7 +12,7 @@ import { Pagination, PLAYER_PER_PAGE, parsePage } from "@/components/ui/paginati
 import { SearchBox } from "@/components/ui/search-box";
 import { parseQuery, matchesQuery, fieldNames, ACCOUNT_ACTIVITY_SEARCH } from "@/lib/search";
 import { AccountActivityBar, type ActivityCounts } from "./account-bar";
-import { auditCategoryLabel } from "@/lib/account/category-label";
+import { auditCategoryLabel, auditActionLabel } from "@/lib/account/category-label";
 import {
   activityCounts,
   activityEmptyCause,
@@ -109,7 +109,9 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
   const rows: ActivityRow[] = allActivity.map((e) => ({
     id: e.id,
     category: e.category,
-    action: e.action,
+    // ⭐ THE LABEL, NOT THE STORED TOKEN (2026-09-14). The Action cell prints this value, and the
+    //    search and the action sort read it, so all three use the words the player sees.
+    action: auditActionLabel(t, e.action, e.category),
     createdAtMs: Date.parse(e.createdAt) || 0,
   }));
 
@@ -169,9 +171,23 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
   // created ACTIVE and existing rows were normalised; a straggler row must not show a player an amber
   // "something is wrong with your account" chip on their own page for an identity step that only
   // matters when they cash out.
-  const statusTone =
-    user?.status === "ACTIVE" || user?.status === "PENDING_KYC" ? "yes"
-    : "no";
+  // ⛔ A WORD AND AN APP-STATE TONE, NEVER THE ENUM (2026-09-14). The chip printed the raw `ACTIVE`
+  // in all three languages, in the betting YES green, through a cast that hid the variant. The
+  // tones match the console's `playerStatusVariant`. SUSPENDED, SELF_EXCLUDED and CLOSED accounts
+  // cannot sign in, so those arms only serve a session that outlived the change; SELF_EXCLUDED has
+  // no player-facing word, so it shows a dash rather than the token.
+  const presentedStatus = user?.status === "PENDING_KYC" ? "ACTIVE" : user?.status;
+  const statusLabel =
+    presentedStatus === "ACTIVE" ? t.profile.accountStatusActive
+    : presentedStatus === "COOLED_OFF" ? t.auth.coolingOff
+    : presentedStatus === "SUSPENDED" ? t.profile.accountStatusSuspended
+    : presentedStatus === "CLOSED" ? t.profile.accountStatusClosed
+    : "—";
+  const statusVariant: "success" | "warning" | "danger" | "neutral" =
+    presentedStatus === "ACTIVE" ? "success"
+    : presentedStatus === "COOLED_OFF" ? "warning"
+    : presentedStatus === "SUSPENDED" || presentedStatus === "SELF_EXCLUDED" ? "danger"
+    : "neutral";
 
   return (
     <PageContainer tier="reading" className="space-y-5">
@@ -195,7 +211,7 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
       <section className="rounded-xl glass-panel p-5 space-y-3">
         <h2 className="font-display text-[15px] font-semibold text-text">{t.common.profile}</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          <Item label={t.profile.setYourName} value={user?.displayName ?? "—"} />
+          <Item label={t.common.yourName} value={user?.displayName ?? "—"} />
           <Item
             label={t.auth.phone}
             value={user?.phoneE164
@@ -206,8 +222,8 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
           <Item
             label={t.common.status}
             value={
-              <Chip variant={statusTone as "yes" | "no" | "warning"}>
-                {user?.status ?? "—"}
+              <Chip variant={statusVariant}>
+                {statusLabel}
               </Chip>
             }
           />
@@ -306,8 +322,8 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
             <thead>
               <tr className="border-b border-border bg-bg-overlay/50 font-mono text-micro uppercase eyebrow text-text-subtle">
                 <th className="text-left px-3 py-2 font-semibold">{t.common.when}</th>
-                <th className="text-left px-3 py-2 font-semibold">{t.common.category}</th>
-                <th className="text-left px-3 py-2 font-semibold">{t.common.action}</th>
+                <th className="hidden sm:table-cell text-left px-3 py-2 font-semibold">{t.common.category}</th>
+                <th className="hidden sm:table-cell text-left px-3 py-2 font-semibold">{t.common.action}</th>
               </tr>
             </thead>
             <tbody>
@@ -324,13 +340,27 @@ export default async function AccountPage({ searchParams }: { searchParams?: Pro
                 <tr key={e.id} data-row-id={e.id} className="border-b border-border last:border-b-0 transition-colors">
                   <td className="px-3 py-2 font-mono tabular-nums whitespace-nowrap text-text-muted">
                     {formatDateTime(new Date(e.createdAtMs).toISOString())}
+                    {/* 🔴 BELOW `sm` A ROW IS TWO LINES, NOT THREE COLUMNS (2026-09-14). At 360 the date
+                        took about 200 of 278px: the Action column sat off-screen with no scroll cue,
+                        and Chinese categories broke one character per line. Category and action move
+                        under the date; `whitespace-normal` because this cell never wraps. The action
+                        is left out when it only repeats the category (the label's fallback). */}
+                    <div className="mt-0.5 whitespace-normal font-sans text-text-subtle sm:hidden">
+                      {auditCategoryLabel(t, e.category)}
+                      {e.action !== auditCategoryLabel(t, e.category) && (
+                        <>
+                          {" · "}
+                          <span className="font-display font-semibold text-text">{e.action}</span>
+                        </>
+                      )}
+                    </div>
                   </td>
                   {/* ⛔ THE LEXICON, NEVER THE TOKEN — this cell printed the raw enum in all three
                       languages until task 4.6. The pill and the cell resolve through the SAME
                       function, so a filter and the rows it filters to cannot use two words for one
                       category. ⚠️ `font-mono` goes with it: these are words now, not identifiers. */}
-                  <td className="px-3 py-2 text-text-subtle">{auditCategoryLabel(t, e.category)}</td>
-                  <td className="px-3 py-2 font-display font-semibold text-text">{e.action}</td>
+                  <td className="hidden sm:table-cell px-3 py-2 text-text-subtle">{auditCategoryLabel(t, e.category)}</td>
+                  <td className="hidden sm:table-cell px-3 py-2 font-display font-semibold text-text">{e.action}</td>
                 </tr>
               ))}
               {activity.length === 0 && (
@@ -367,7 +397,7 @@ lastLabel={t.common.lastPage}
             {t.footer.exportClose.split("/")[0].trim() /* "Export" */}
           </h2>
         </div>
-        <p className="text-body-sm text-text-muted leading-snug">
+        <p className="text-body-sm text-text-muted leading-snug text-pretty break-keep [overflow-wrap:anywhere]">
           {t.profile.exportDescription}
         </p>
         <div className="pt-1">
@@ -383,11 +413,11 @@ lastLabel={t.common.lastPage}
       <section className="rounded-xl glass-panel p-5 space-y-2.5">
         <div className="flex items-center gap-2">
           <I.shield s={15} />
-          <h2 className="font-display text-[15px] font-semibold text-text">
+          <h2 className="min-w-0 font-display text-[15px] font-semibold text-text text-balance">
             {t.profile.privacyRequestTitle}
           </h2>
         </div>
-        <p className="text-body-sm text-text-muted leading-snug">
+        <p className="text-body-sm text-text-muted leading-snug text-pretty break-keep [overflow-wrap:anywhere]">
           {t.profile.privacyRequestBody}
         </p>
         <FormColumn measure="field"><PrivacyRequestForm /></FormColumn>
@@ -398,12 +428,15 @@ lastLabel={t.common.lastPage}
       <section className="relative isolate overflow-hidden rounded-xl border border-danger-border bg-danger-500/[0.06] p-5">
         <BrandTopo opacity={0.08} />
         <div className="relative z-10 space-y-3">
-        <div className="flex items-center gap-2">
+        {/* ⛔ THE ROW WRAPS AND THE CHIP DOES NOT SHRINK (2026-09-14). In Swahili at 360 the heading
+            and "NJIA MOJA" did not fit on one line, so both shrank: the chip broke inside its own
+            pill and "yangu" dropped to a line alone. Now the chip moves to its own line instead. */}
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
           <I.alertOctagon s={15} className="text-danger-fg" />
           <h2 className="font-display text-[15px] font-semibold text-text">
             {t.profile.closeAccount}
           </h2>
-          <Chip variant="danger" className="ml-auto">
+          <Chip variant="danger" className="ml-auto shrink-0">
             {t.common.oneWay}
           </Chip>
         </div>

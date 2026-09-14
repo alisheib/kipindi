@@ -44,7 +44,7 @@ import { mmss, useHoldAnchor, useTickSeconds } from "./round-countdown";
 // See `use-shared-second.ts` — a board of eight cards used to arm 32 unaligned intervals and
 // re-create every card once a second to re-derive a handful of booleans.
 import { secondsUntil, useServerNowGated } from "@/lib/use-shared-second";
-import { SOURCE_CLASS_KEY } from "@/lib/updown-source-label";
+import { SOURCE_CLASS_KEY, fmtEAT } from "@/lib/updown-source-label";
 import { roundPhase, resultClock, handoverClock, type HandoverClock } from "@/lib/updown-card-phase";
 import type { RoundSuccessor } from "@/lib/server/updown-board";
 // ⛔ ONE RULE FOR "why did this stake come back", shared with the round page, the settlement
@@ -224,12 +224,6 @@ function formatClock(ms: number): string {
     CLOCK_FORMAT = new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit" });
   }
   return CLOCK_FORMAT.format(new Date(ms));
-}
-
-function hhmmss(iso: string | null): string | null {
-  if (!iso) return null;
-  const d = new Date(iso);
-  return Number.isFinite(d.getTime()) ? d.toISOString().slice(11, 19) : null;
 }
 
 /**
@@ -637,7 +631,7 @@ export function UpDownCard(props: UpDownCardProps) {
    * The prices move when the poller brings a new quote (~20s); the player count and the
    * quoted-at stamp move less often than that. They were all being re-derived on every render,
    * and this card rendered every second. One `useMemo` per group is one dependency compare in
-   * place of five `Intl` calls, a `Date` parse and a `toISOString`.
+   * place of five `Intl` calls, a `Date` parse and the quote stamp's EAT formatting.
    * ⛔ SAME OUTPUT, SAME RULES. `livePrice == null` is still an em-dash and "awaiting price"
    * (A-5); nothing here invents a figure for a value the source has not given us.
    */
@@ -654,7 +648,10 @@ export function UpDownCard(props: UpDownCardProps) {
     move: movePct == null ? null : `${movePct > 0 ? "+" : movePct < 0 ? "−" : ""}${Math.abs(movePct).toFixed(2)}%`,
   }), [livePrice, openPrice, closePrice, upTarget, downTarget, decimals, movePct]);
   const playersText = useMemo(() => formatCount(players), [players]);
-  const quoted = useMemo(() => hhmmss(sourceQuotedAt), [sourceQuotedAt]);
+  /* 2026-09-14 — East Africa Time with the zone stated, the same `fmtEAT` the round page and the
+     chart use. A private UTC helper printed "quoted 22:54:00" for a 01:54 EAT quote, so a live
+     round read as three hours stale to a player in Tanzania. */
+  const quoted = useMemo(() => fmtEAT(sourceQuotedAt), [sourceQuotedAt]);
 
   // ── Quick-bet ──────────────────────────────────────────────────────────────
   // One-tap bet that keeps the card in place (see useUpDownQuickBet — the SHARED
@@ -1105,7 +1102,7 @@ export function UpDownCard(props: UpDownCardProps) {
               <Chip variant={TONE_CHIP[STATUS_TONE.VOID.player]}>{t.market.statusVoid}</Chip>
             )}
             {refundCopyText && (
-              <p className="mt-2 text-body-sm leading-[1.5] text-text-muted">{refundCopyText}</p>
+              <p className="mt-2 text-body-sm leading-[1.5] text-text-muted text-balance">{refundCopyText}</p>
             )}
           </div>
         ) : state === "resolved" ? (

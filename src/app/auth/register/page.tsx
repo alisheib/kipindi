@@ -292,12 +292,12 @@ export default async function RegisterPage({
                 label={<span className="text-[13px] text-text-muted">{t.auth.optionalUpdates}</span>}
               />
               {/* The binding documents must be reachable at the consent point. */}
-              <p className="pt-0.5 text-body-sm text-text-subtle">
-                <Link href={"/legal/terms" as never} className="text-brand-300 underline-offset-2 hover:underline">{t.footer.terms}</Link>
-                {" · "}
-                <Link href={"/legal/privacy" as never} className="text-brand-300 underline-offset-2 hover:underline">{t.footer.privacy}</Link>
-                {" · "}
-                <Link href={"/legal/responsible-gambling" as never} className="text-brand-300 underline-offset-2 hover:underline">{t.common.responsibleGambling}</Link>
+              {/* No separator dots in the flow: on a phone the row wraps, and a dot ends up stranded at a line start
+                  or end either way (visual passes 2 and 2b). The gap separates the three links instead. */}
+              <p className="flex flex-wrap gap-x-4 gap-y-1 pt-0.5 text-body-sm text-text-subtle">
+                <Link href={"/legal/terms" as never} className="whitespace-nowrap text-brand-300 underline-offset-2 hover:underline">{t.footer.terms}</Link>
+                <Link href={"/legal/privacy" as never} className="whitespace-nowrap text-brand-300 underline-offset-2 hover:underline">{t.footer.privacy}</Link>
+                <Link href={"/legal/responsible-gambling" as never} className="whitespace-nowrap text-brand-300 underline-offset-2 hover:underline">{t.common.responsibleGambling}</Link>
               </p>
             </fieldset>
 

@@ -42,7 +42,7 @@ export function OutcomeCubes({
 }) {
   if (outcomes.length === 0) return null;
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
       <span className="flex gap-1">
         {outcomes.map((o, i) => (
           <span
@@ -55,7 +55,7 @@ export function OutcomeCubes({
           </span>
         ))}
       </span>
-      <span className="font-mono text-[9px] text-text-faint">{labels.oldestNewest}</span>
+      <span className="whitespace-nowrap font-mono text-[9px] text-text-faint">{labels.oldestNewest}</span>
     </div>
   );
 }

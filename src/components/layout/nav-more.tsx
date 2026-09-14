@@ -73,7 +73,8 @@ export function NavMore({
           <span className="kp-rail__pip">
             <I.menu s={20} />
           </span>
-          <span className="kp-rail__label">{label}</span>
+          {/* Capitalised by class, like the bar trigger below: `common.more` stays lowercase for its mid-sentence use. */}
+          <span className="kp-rail__label capitalize">{label}</span>
           {/* ⭐ DG-P-11 (2026-08-30) — THE ONLY CURRENT-LOCATION SIGNAL FOR ~10 ROUTES, AND IT WAS
               SILENT. This trigger paints `data-on` when any destination behind it is the current
               page, and that paint had NO ARIA VOICE — the two "More" triggers were the last 2 of

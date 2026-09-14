@@ -168,7 +168,10 @@ export default async function ResponsibleGamblingPage({ searchParams }: { search
           <Field name="sessionTimeLimitMin"      label={t.rg.sessionTime}   defaultValue={rg.sessionTimeLimitMin}      placeholder={t.rg.egMinutes} />
           <Field name="realityCheckIntervalMin"  label={t.rg.realityCheck}  defaultValue={rg.realityCheckIntervalMin}  placeholder="30" min={5} max={120} step={5} />
           <div className="sm:col-span-2 pt-2">
-            <SubmitButton label={`${t.common.save} ${t.rg.setLimits.toLowerCase()}`} pendingLabel={`${t.common.loading}`} size="md" />
+            {/* ⛔ ONE KEY, NEVER TWO GLUED TOGETHER. `common.save` + `rg.setLimits` read
+                "Save set limits" / "Hifadhi weka mipaka" / "保存 设置限额" (a doubled verb, and an
+                ASCII space between two Chinese phrases). */}
+            <SubmitButton label={t.rg.saveLimits} pendingLabel={t.common.loading} size="md" />
           </div>
         </form>
 

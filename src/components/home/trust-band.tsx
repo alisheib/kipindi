@@ -79,7 +79,7 @@ export function TrustBand({
               {/* `text-balance` (2026-09-13): at 1280 and 768 the zh bodies left one glyph alone on
                   the last line. Balance, not pretty, because Firefox and older Safari ignore pretty. */}
               <h3 className="kp-trust__h text-balance">{c.h}</h3>
-              <p className="kp-trust__b text-balance">{c.b}</p>
+              <p className="kp-trust__b text-balance break-keep [overflow-wrap:anywhere]">{c.b}</p>
               {c.marks && (
                 /* All four rails (2026-09-13). The cell says "mobile money in and out", and one
                    M-Pesa mark was left over from the old M-Pesa-only copy. The list and its order

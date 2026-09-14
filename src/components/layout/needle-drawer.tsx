@@ -189,7 +189,7 @@ export function NeedleControlsDrawer({ variant = "menu-row" }: { variant?: "menu
                   {t(
                     "An optional fidget on the edge. It never affects your account.",
                     "Kichezeo cha hiari kwenye ukingo. Hakiathiri akaunti yako.",
-                    "屏幕边缘的可选小玩具，绝不影响你的账户。",
+                    "屏幕边缘的可选小玩具，绝不影响您的账户。",
                   )}
                 </p>
               </div>

@@ -200,8 +200,8 @@ function stubReply(userText: string, lang: Lang): Reply {
       lang,
       text:
         lang === "sw"
-          ? "Naweza kueleza jinsi soko linavyotatuliwa — chanzo, muda wa mwisho, saini za maafisa wawili — lakini siwezi kukuambia upande gani uchague. Hiyo ni uamuzi wako tu."
-          : "I can explain how a market resolves — the source we watch, the cut-off time, the two-officer sign-off — but I can't tell you which side to pick. That's a call only you should make.",
+          ? "Naweza kueleza jinsi soko linavyotatuliwa — chanzo, muda wa mwisho, afisa anayesaini matokeo — lakini siwezi kukuambia upande gani uchague. Hiyo ni uamuzi wako tu."
+          : "I can explain how a market resolves — the source we watch, the cut-off time, the officer who signs it off — but I can't tell you which side to pick. That's a call only you should make.",
     };
   }
 
