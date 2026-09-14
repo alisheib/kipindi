@@ -135,9 +135,20 @@ export const MUTATIONS = [
     // player's deposit awaiting return; leaving it out of the solvency line calls it free cash.
     name: "house-book.ts — leave RG suspense out of what is owed (a held deposit reported as free cash)",
     file: "src/lib/house-book.ts",
-    from: `  const owedToOthers = leviesPayable + aggregator + rgSuspense;`,
-    to: `  const owedToOthers = leviesPayable + aggregator;`,
+    // Re-pointed 2026-09-14: `+ tax` joined this line on 2026-09-09 (781f397e, MONEY GATE 3), which left the anchor
+    // matching nothing. The mutation is unchanged: leave RG suspense out, keep tax.
+    from: `  const owedToOthers = leviesPayable + aggregator + rgSuspense + tax;`,
+    to: `  const owedToOthers = leviesPayable + aggregator + tax;`,
     expect: "3c.1",
+  },
+  {
+    // ⭐ MONEY GATE 3's own fix, put back (2026-09-14): statutory tax held drops out of what is owed, so tax owed to
+    // the state reads as the owner's free cash. Nothing proved §3d could fail until this mutation existed.
+    name: "house-book.ts — leave statutory tax out of what is owed (tax held reported as free cash)",
+    file: "src/lib/house-book.ts",
+    from: `  const owedToOthers = leviesPayable + aggregator + rgSuspense + tax;`,
+    to: `  const owedToOthers = leviesPayable + aggregator + rgSuspense;`,
+    expect: "3d.1",
   },
   {
     // Deducted, but unnamed — so the owner sees free cash fall and has nothing to act on, and

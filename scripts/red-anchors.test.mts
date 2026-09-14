@@ -62,14 +62,18 @@ const ok = (name: string, cond: boolean, detail = "") => {
 // A list of harnesses written beside the harnesses is `RULES.md` §7's "a number written twice"
 // applied to file paths, and §3.9 records it going stale silently.
 const harnesses = Object.keys(pkg.scripts).filter((k) => k.startsWith("red:") && k !== "red:all");
+/** The script a `red:*` command runs, whether through `node` or `tsx`. */
+const scriptOf = (cmd: string): string | undefined => /(?:node|tsx)\s+(scripts\/[\w./-]+)/.exec(cmd)?.[1];
 
 console.log(`\nred-anchors — ${harnesses.length} declared red:* harness(es)\n`);
 console.log("§1 · every red:* names a script that exists");
 {
   ok("1.0 · fixture · the fleet was enumerated from package.json", harnesses.length > 20, `${harnesses.length} harnesses`);
   for (const key of harnesses) {
-    const m = /node\s+(scripts\/[\w.-]+)/.exec(pkg.scripts[key]);
-    const rel = m?.[1];
+    // ⚠️ `tsx` TOO (2026-09-14). Seven harnesses are a test run with a `--prove-red*` flag
+    // (`tsx scripts/social-links.test.mts --prove-red-home`); a parser that knew only `node`
+    // reported all seven as "cannot parse" — standing failures about the parser, not the fleet.
+    const rel = scriptOf(pkg.scripts[key]);
     ok(`1.${key} · runs a script that exists`, !!rel && existsSync(`${ROOT}/${rel}`), rel ?? `cannot parse: ${pkg.scripts[key]}`);
   }
 }
@@ -234,11 +238,39 @@ console.log("\n§4 · the ratchet — harnesses still outside the anchor audit")
    */
   const UNDECLARED_CEILING = 65;
   const declaredNames = new Set(declFiles.map((f) => f.replace(/\.anchors\.mjs$/, "")));
+  /**
+   * ⭐ IN-PROCESS RED PROOFS ARE OUTSIDE THIS POPULATION (2026-09-14), AND THE CEILING DID NOT MOVE.
+   *
+   * §4 counts harnesses whose DISK anchors nobody audits — a harness that rewrites a file by matching a
+   * string, where the string can rot. Eight harnesses added 2026-09-11/12 are a different kind: a test
+   * run with a `--prove-red*` flag that plants its defect IN MEMORY (a frozen set, a copied string, a
+   * page's CSS in the browser) and counts its own expected failures. They write nothing, so there is no
+   * disk anchor to declare, and counting them pushed this number 74 against a ceiling of 65 — a red that
+   * could only have been "fixed" by the one edit this file forbids.
+   * ⛔ THE CLASS IS STRICT, SO IT CANNOT BECOME A LOOPHOLE: the command must carry `--prove-red`, AND the
+   * script it runs must contain no file-writing call anywhere (comments included — conservative). A
+   * flag-mode harness that starts writing files falls straight back into the count. §4.3 plants both.
+   * The ninth excess closed by DECLARING: `red:chat-safety`'s mutations moved to `anchors/chat-safety.anchors.mjs`.
+   */
+  const WRITES = /\b(?:writeFileSync|writeFile|appendFileSync|rmSync|unlinkSync|renameSync|copyFileSync|cpSync)\s*\(/;
+  const isInProcess = (cmd: string, scriptSource: string | null) =>
+    /--prove-red/.test(cmd) && scriptSource !== null && !WRITES.test(scriptSource);
+  const sourceOf = (cmd: string) => {
+    const rel = scriptOf(cmd);
+    return rel && existsSync(`${ROOT}/${rel}`) ? readFileSync(`${ROOT}/${rel}`, "utf8") : null;
+  };
+  const inProcess = harnesses.filter((key) => isInProcess(pkg.scripts[key], sourceOf(pkg.scripts[key])));
   // A harness "declares" when a declaration file exists whose name appears in its command.
   const undeclared = harnesses.filter((key) => {
     const cmd = pkg.scripts[key];
-    return ![...declaredNames].some((n) => cmd.includes(n));
+    return !inProcess.includes(key) && ![...declaredNames].some((n) => cmd.includes(n));
   });
+  ok("4.3 · control · a --prove-red run whose script writes files is NOT in-process, and neither is an unflagged one",
+     isInProcess("tsx scripts/x.test.mts --prove-red", "const planted = new Set([41]);")
+     && !isInProcess("tsx scripts/x.test.mts --prove-red", "writeFileSync(target, mutated);")
+     && !isInProcess("node scripts/x-red.mjs", "const planted = 1;")
+     && !isInProcess("tsx scripts/x.test.mts --prove-red", null));
+  console.log(`     in-process red proofs, outside the anchor audit by construction (${inProcess.length}): ${inProcess.join(", ")}`);
   ok(`4.1 · ★ ${undeclared.length} harness(es) do not declare their anchors (ceiling ${UNDECLARED_CEILING})`,
      undeclared.length <= UNDECLARED_CEILING, `${undeclared.length} vs ${UNDECLARED_CEILING}`);
   ok("4.2 · ⛔ …and if that count drops, LOWER THE CEILING in the same commit",
