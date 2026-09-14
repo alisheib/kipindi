@@ -339,6 +339,9 @@ section("§6 · sanctioned changes");
     const reversals = [...svc.matchAll(/reverseWagering\(/g)].length;
     const guarded = [...svc.matchAll(/if \((?:r|p)\.houseBotId == null\) await reverseWagering\(/g)].length;
     ok("6.g · every reverseWagering call in market-service.ts is guarded by the marker", reversals >= 3 && reversals === guarded, `${guarded} of ${reversals}`);
+    const guardedFn = decomment(fnBody(SVC_SRC, "async function buyPositionInner("));
+    ok("6.g1 · a house stake records no wagering: the only recordWageringLocked call is skipped for house context (H6)",
+      [...guardedFn.matchAll(/recordWageringLocked\(/g)].length === 1 && /const wr = opposite \|\| ctx\.kind === "house" \? \{ fulfilled: \[\], creditedToRealTzs: 0 \} : await recordWageringLocked\(/.test(guardedFn));
     const aff = decomment(read("src/lib/server/affiliate-service.ts"));
     ok("6.g2 · onRecruitBet and onRecruitSettlement return first on a marked position", /onRecruitBet\([^)]*\)[\s\S]{0,400}?\{\s*if \(opts\.houseBotId != null\) return;/.test(aff)
       && /onRecruitSettlement\([\s\S]{0,600}?\): Promise<void> \{\s*if \(opts\.houseBotId != null\) return;/.test(aff));

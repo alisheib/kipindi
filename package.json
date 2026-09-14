@@ -58,6 +58,7 @@
     "red:dal-parity": "node scripts/red-dal-parity.mjs",
     "test:house-bot-rules": "tsx scripts/house-bot-rules.test.mts",
     "test:house-bot-seam": "tsx scripts/house-bot-seam.test.mts",
+    "red:house-bot-money": "node scripts/red-house-bot-money.mjs",
     "test:agent-policy": "tsx scripts/agent-policy.test.mts",
     "test:programme-isolation": "tsx scripts/programme-isolation.test.mts",
     "test:attribution-provenance": "tsx scripts/attribution-provenance.test.mts",

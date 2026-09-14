@@ -166,6 +166,20 @@ section("§1 · per-bot caps (H2 group 3, 4, 5)");
     const r2 = await w.place(b, r2i);
     ok("1.20 · a second reaction of the same FIRST target → TARGET_ONCE", capOf(r2) === "TARGET_ONCE", show(r2));
   }
+  {
+    // One family (INT-05, N2 §3): Enter now and targeted reactions count against the same staff-chosen cap.
+    const b = await w.bot({ caps: { capStaffChosenPerDay: 2 } });
+    const x = await manualOpener(b);
+    const rx = await w.place(b, x.i);
+    const market = await w.poll({ graceMin: 0 });
+    const t1 = await lockedNo(market.id, 10_000);
+    const t2 = await lockedNo(market.id, 10_000);
+    const targetId = `hbt_family_${process.pid}`;
+    const ry = await w.place(b, await w.intent(b, market.id, { kind: "COUNTER", triggerPositionId: t1.id, triggerUserId: t1.userId, targetId, decision: { reactTo: "EVERY" }, side: "YES", stakeTzs: 1_000 }));
+    const rz = await w.place(b, await w.intent(b, market.id, { kind: "COUNTER", triggerPositionId: t2.id, triggerUserId: t2.userId, targetId, decision: { reactTo: "EVERY" }, side: "YES", stakeTzs: 1_000 }));
+    ok("1.21 · one Enter now + one targeted reaction placed, then a targeted reaction at capStaffChosenPerDay 2 → STAFF_CHOSEN_PER_DAY (one family)",
+      rx.ok === true && ry.ok === true && capOf(rz) === "STAFF_CHOSEN_PER_DAY", `${show(rx)} · ${show(ry)} · ${show(rz)}`);
+  }
 }
 
 // ═══ §2 · the declared H2 order (N1 §3, MON-09): two checks at once, the earlier wins ═══════════
@@ -329,6 +343,20 @@ section("§4 · bursts stop exactly at the cap");
       && (await Promise.all(shots.map((s) => houseCount(s.market.id)))).every((n) => n === 0), rs.map(show).join(" · "));
     await w.switchOn();
   }
+  {
+    // A9 step 1 + H4: OFF written while a bet is past H1 and waiting on house:control binds at the re-read.
+    const b = await w.bot();
+    const { market, i } = await opener(b);
+    const hold = withLock(w.constants.HOUSE_CONTROL_LOCK, () => sleep(1_000));
+    await sleep(100);
+    const bet = w.place(b, i);
+    await sleep(300);
+    await w.switchOff();
+    await hold;
+    const r = await bet;
+    ok("4.6 · a bet already past H1, waiting on house:control, meets an OFF written meanwhile → house_disabled at H4", r.ok === false && r.reason === "house_disabled" && (await houseCount(market.id)) === 0, show(r));
+    await w.switchOn();
+  }
 }
 
 // ═══ §5 · the in-lock re-reads: staleAt, blackout, concentration, product and round ═════════════
@@ -402,6 +430,32 @@ section("§5 · in-lock re-reads");
       cps.length === 1 && cps[0].userId === big.userId && cps[0].attributedTzs === 4_000 && cps[0].sharePct === 80, JSON.stringify(cps));
     ok("5.11 · …and the 20% holder is not attributed", !cps.some((c) => c.userId === small.userId));
     await w.limits();
+  }
+  {
+    // N1 §3: Enter now THIN sizes against LOCKED money only — a stake still inside its margin counts 0.
+    const market = await w.poll({ graceMin: 0 });
+    const p = await w.user({ balance: 1_000_000 });
+    await w.svc.buyPosition(p, { marketId: market.id, side: "NO", stake: 10_000, idempotencyKey: crypto.randomUUID() });
+    const b = await w.bot();
+    const r = await w.place(b, await w.intent(b, market.id, { kind: "MANUAL", entryCondition: "THIN", side: "YES", stakeTzs: 2_000 }));
+    ok("5.17 · Enter now THIN against NO money placed under 7 s ago → house_condition_gone{THIN}", r.ok === false && r.reason === "house_condition_gone" && r.detail?.condition === "THIN", show(r));
+  }
+  {
+    // The condition comes from the CLAIMED ROW, never from the market's state: a THIN press on a poll that
+    // is empty is refused, never quietly placed as an opener.
+    const b = await w.bot();
+    const market = await w.poll({ graceMin: 0 });
+    const r = await w.place(b, await w.intent(b, market.id, { kind: "MANUAL", entryCondition: "THIN", side: "YES", stakeTzs: 1_000 }));
+    ok("5.18 · an Enter now THIN row on an empty poll → house_condition_gone{THIN} (never re-chosen as OPENER)", r.ok === false && r.reason === "house_condition_gone" && r.detail?.condition === "THIN", show(r));
+  }
+  {
+    // N2 §3: a TARGETED counter sizes against locked money; its own unlocked trigger does not count.
+    const market = await w.poll({ graceMin: 0 });
+    const p = await w.user({ balance: 1_000_000 });
+    const t = await w.svc.buyPosition(p, { marketId: market.id, side: "NO", stake: 10_000, idempotencyKey: crypto.randomUUID() });
+    const b = await w.bot();
+    const r = await w.place(b, await w.intent(b, market.id, { kind: "COUNTER", triggerPositionId: t.data.positionId, triggerUserId: p, targetId: `hbt_unlocked_${process.pid}`, decision: { reactTo: "EVERY" }, side: "YES", stakeTzs: 2_000 }));
+    ok("5.19 · a targeted COUNTER whose trigger is still inside its margin → house_condition_gone{COUNTER}", r.ok === false && r.reason === "house_condition_gone" && r.detail?.condition === "COUNTER", show(r));
   }
   {
     const b = await w.bot();

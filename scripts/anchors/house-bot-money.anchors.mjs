@@ -1,0 +1,197 @@
+/**
+ * Anchors for `red:house-bot-money` — each puts back one money defect the seam exists to prevent, on the
+ * file where it would live. DATA, so `test:red-anchors` can audit that every `from` still resolves exactly
+ * once without running the harness.
+ *
+ * `suite` names what the harness runs for a mutation: `money-mem` / `caps-mem` (the case file on the
+ * memory store — fast), `money-pg` / `caps-pg` (the full suite on a scratch Postgres — slow, used only for
+ * what memory cannot show: SQL and lock timeouts), `seam` (`test:house-bot-seam`). `expect` is the text of
+ * the assertion that must turn red — any other red is WRONG-ASSERTION.
+ *
+ * ⛔ A red anchor quotes SOURCE. Editing one of these lines must be paired with re-anchoring here.
+ */
+const SVC = "src/lib/server/market-service.ts";
+const SEAM = "src/lib/server/house-bot/seam.ts";
+const DAL = "src/lib/server/house-bot-dal.ts";
+
+export const MUTATIONS = [
+  // ── N1 (04 N1 Tests, red:house-bot-money) ─────────────────────────────────────────────────────────
+  {
+    name: "N1-1 · Enter now THIN sizes against the raw opposite pool instead of lockedForHouse",
+    file: SEAM,
+    from: `      const lockedOpp = pool![opposite(side)].locked;`,
+    to: `      const lockedOpp = rawPool(opposite(side));`,
+    expect: "5.17 · Enter now THIN against NO money placed under 7 s ago",
+    suite: "caps-mem",
+  },
+  {
+    name: "N1-2 · the entry condition is re-chosen from the market's state instead of read from the claimed row",
+    file: SEAM,
+    from: `    if (intent.entryCondition === "OPENER") {`,
+    to: `    if (fresh.yesPool === 0 && fresh.noPool === 0) {`,
+    expect: "5.18 · an Enter now THIN row on an empty poll",
+    suite: "caps-mem",
+  },
+  {
+    name: "N1-3 / N2-M2 · the staff-chosen count covers MANUAL rows only (memory twin)",
+    file: DAL,
+    from: `const isStaffChosen = (i: Pick<StoredHouseBotIntent, "kind" | "targetId">): boolean => i.kind === "MANUAL" || i.targetId != null;`,
+    to: `const isStaffChosen = (i: Pick<StoredHouseBotIntent, "kind" | "targetId">): boolean => i.kind === "MANUAL";`,
+    expect: "1.21 · one Enter now + one targeted reaction placed",
+    suite: "caps-mem",
+  },
+  {
+    name: "N1-3b · the H2 staff-chosen gate forgets targeted reactions",
+    file: SEAM,
+    from: `  if (intent.kind === "MANUAL" || intent.targetId != null) {\n    const staff = await houseBotIntentStore.staffChosenPlacedToday({ houseBotId: ctx.botId }, tx);`,
+    to: `  if (intent.kind === "MANUAL") {\n    const staff = await houseBotIntentStore.staffChosenPlacedToday({ houseBotId: ctx.botId }, tx);`,
+    expect: "1.21 · one Enter now + one targeted reaction placed",
+    suite: "caps-mem",
+  },
+  {
+    name: "N1-4 · H0 treats a non-CLAIMED intent as a key mismatch",
+    file: SEAM,
+    from: `  const intent = await houseBotIntentStore.get(ctx.intentId);\n  if (!intent ||`,
+    to: `  const loaded = await houseBotIntentStore.get(ctx.intentId);\n  const intent = loaded && loaded.status === "CLAIMED" ? loaded : null;\n  if (!intent ||`,
+    expect: "2.1 · a cancelled intent reaches markPlaced and ends house_intent_superseded",
+    suite: "money-mem",
+  },
+  {
+    name: "N1-5 · the seam's staleAt re-read is removed",
+    file: SEAM,
+    from: `  if (freshness && freshness.status === "CLAIMED" && !freshness.fresh) {`,
+    to: `  if (false) {`,
+    expect: "2.4 · a CLAIMED intent past staleAt ends house_intent_stale",
+    suite: "money-mem",
+  },
+  {
+    name: "N1-6 · lockedForHouse stops excluding non-PLAYER accounts (memory twin)",
+    file: DAL,
+    from: `      const eligible = !!u && u.role === "PLAYER" && !liveHolders.has(u.id)`,
+    to: `      const eligible = !!u && !liveHolders.has(u.id)`,
+    expect: "4.3 · locked NO money held only by an AGENT counts 0",
+    suite: "money-mem",
+  },
+  {
+    name: "N1-6pg · lockedForHouse's SQL stops excluding non-PLAYER accounts",
+    file: DAL,
+    from: "      + ` (u.\"role\"::text = 'PLAYER'`",
+    to: "      + ` (true`",
+    expect: "4.3 · locked NO money held only by an AGENT counts 0",
+    suite: "money-pg",
+  },
+  {
+    name: "N1-7 · LOCK_MARGIN_MS = 0",
+    file: "src/lib/house-bot/constants.ts",
+    from: `export const LOCK_MARGIN_MS = MAX_TOLERATED_SKEW_MS + CLAIM_SKEW_GUARD_MS;`,
+    to: `export const LOCK_MARGIN_MS = 0;`,
+    expect: "4.1 · NO money placed under LOCK_MARGIN_MS ago does not count",
+    suite: "money-mem",
+  },
+  {
+    name: "N1-8 · a rate cap (MIN_GAP) is checked before the staff-chosen caps",
+    file: SEAM,
+    from: `  // H2_ORDER:staff\n`,
+    to: `  if (bot.freqMinGapSec == null || (usage.lastPlacedAt != null && Date.now() - Date.parse(usage.lastPlacedAt) < bot.freqMinGapSec * 1000)) return capReached("MIN_GAP");\n  // H2_ORDER:staff\n`,
+    expect: "2.3 · STAFF_CHOSEN_PER_DAY + MIN_GAP → STAFF_CHOSEN_PER_DAY",
+    suite: "caps-mem",
+  },
+  // ── N2 ────────────────────────────────────────────────────────────────────────────────────────────
+  {
+    name: "N2-M1 · TARGET_ONCE removed from H2",
+    file: SEAM,
+    from: `    if (intent.targetId != null && intent.decision.reactTo === "FIRST"`,
+    to: `    if (false && intent.targetId != null && intent.decision.reactTo === "FIRST"`,
+    expect: "1.20 · a second reaction of the same FIRST target → TARGET_ONCE",
+    suite: "caps-mem",
+  },
+  {
+    name: "N2-M3 · a targeted COUNTER sizes against the raw opposite pool",
+    file: SEAM,
+    from: `    const against = intent.targetId != null ? pool![opposite(side)].locked : pool![opposite(side)].lockedA15;`,
+    to: `    const against = intent.targetId != null ? rawPool(opposite(side)) : pool![opposite(side)].lockedA15;`,
+    expect: "5.19 · a targeted COUNTER whose trigger is still inside its margin",
+    suite: "caps-mem",
+  },
+  // ── PLAN §3 core ──────────────────────────────────────────────────────────────────────────────────
+  {
+    name: "H4 · markPlaced finding no CLAIMED row no longer aborts the money writes",
+    file: SVC,
+    from: `            if (!placed) throw new BetAbort("HOUSE_SUPERSEDED");`,
+    to: `            void placed;`,
+    expect: "2.1 · a cancelled intent reaches markPlaced and ends house_intent_superseded",
+    suite: "money-mem",
+  },
+  {
+    name: "H4 · the control row is not re-read inside house:control",
+    file: SEAM,
+    from: `  if (!control.enabled) return refuse({ ok: false, error: "House bots are off.", code: "SUSPENDED", reason: "house_disabled" });`,
+    to: `  void control.enabled;`,
+    expect: "4.6 · a bet already past H1, waiting on house:control, meets an OFF written meanwhile",
+    suite: "caps-mem",
+  },
+  {
+    name: "H5 · the position loses its house marker",
+    file: SVC,
+    from: `      // SEAM:marker\n      ...(ctx.kind === "house" ? { houseBotId: ctx.botId } : {}),`,
+    to: `      // SEAM:marker\n      ...(ctx.kind === "house" ? {} : {}),`,
+    expect: "1.2 · the position carries the house marker",
+    suite: "money-mem",
+  },
+  {
+    name: "H5 · the BET_PLACED transaction loses its house marker",
+    file: SVC,
+    from: `            // SEAM:txnMarker\n            ...(ctx.kind === "house" ? { houseBotId: ctx.botId } : {}),`,
+    to: `            // SEAM:txnMarker\n            ...(ctx.kind === "house" ? {} : {}),`,
+    expect: "1.4 · the BET_PLACED transaction carries the same marker",
+    suite: "money-mem",
+  },
+  {
+    name: "(e) · cashOutPosition lets the holder sell a liquidity stake",
+    file: SVC,
+    from: `    if (p.houseBotId != null) {\n      return { ok: false as const, error: "Liquidity stakes can't be sold early."`,
+    to: `    if (false) {\n      return { ok: false as const, error: "Liquidity stakes can't be sold early."`,
+    expect: "1.12 · cashOutPosition refuses house_position_no_exit",
+    suite: "money-mem",
+  },
+  {
+    name: "(b) · the replay goes back to returning another account's bet",
+    file: SVC,
+    from: `        if (existing.userId !== userId || (ctx.kind === "house" ? existing.houseBotId !== ctx.botId : existing.houseBotId != null)) {`,
+    to: `        if (false) {`,
+    expect: "6.1 · player C reusing player A's key → idempotency_key_conflict",
+    suite: "money-mem",
+  },
+  {
+    name: "(j) · the in-lock replay stops saying replayed",
+    file: SVC,
+    from: `            replayed: true as const,`,
+    to: ``,
+    expect: "6.3 · CONTROL · A's own retry still replays, now marked replayed: true (j)",
+    suite: "money-mem",
+  },
+  {
+    name: "I3 · a second bot may join a market another bot holds",
+    file: SEAM,
+    from: `  if (market.otherBotOpen) return refuse(conflict("OTHER_BOT"));`,
+    to: `  void market.otherBotOpen;`,
+    expect: "3.8 · bot B on the same market → house_market_conflict{OTHER_BOT}",
+    suite: "money-mem",
+  },
+  {
+    name: "N1 §3 · the blackout ignores a reopened market",
+    file: "src/lib/server/house-bot/blackout.ts",
+    from: `  return { blocked: stamped || freshClaim || row.reopenedAt != null };`,
+    to: `  return { blocked: stamped || freshClaim };`,
+    expect: "5.3 · a poll closed on a result and reopened by an officer",
+    suite: "caps-mem",
+  },
+  {
+    name: "A9 · the house bet's lock_timeout is removed",
+    file: SVC,
+    from: "    if (ctx.kind === \"house\" && lockTx) await lockTx.$executeRawUnsafe(`SET LOCAL lock_timeout = '${HOUSE_BET_LOCK_TIMEOUT}'`);",
+    to: "    void HOUSE_BET_LOCK_TIMEOUT;",
+    expect: "6.1 · house:control held → the house bet returns BUSY after the 2 s lock_timeout",
+    suite: "caps-pg",
+  },
+];
