@@ -155,13 +155,30 @@ export async function loadWorld() {
     }
   }
 
+  /**
+   * Age every house position placed in the last minute by 61 s, so a suite that places more than
+   * `gMaxBetsPerMinute` (≤ 20 by CHECK) house bets a minute can test other caps. A fixture of time; the
+   * per-minute cap itself is tested before anything calls this.
+   */
+  async function ageHouseMinute(): Promise<void> {
+    if (onPostgres) {
+      await prisma()!.$executeRawUnsafe(`UPDATE "Position" SET "placedAt" = "placedAt" - interval '61 seconds'`
+        + ` WHERE "houseBotId" IS NOT NULL AND "placedAt" > (clock_timestamp() AT TIME ZONE 'UTC') - interval '61 seconds'`);
+    } else {
+      const cutoff = Date.now() - 61_000;
+      for (const p of await mdal.positionStore.values()) {
+        if (p.houseBotId != null && Date.parse(p.placedAt) > cutoff) p.placedAt = new Date(Date.parse(p.placedAt) - 61_000).toISOString();
+      }
+    }
+  }
+
   const bal = async (userId: string) => (await db.wallet.findByUserId(userId)) as Any;
   const positionsOf = async (marketId: string) => (await svc.listPositionsForMarket(marketId)) as Any[];
   const txnsFor = async (positionId: string) => ((await db.txn.listAll()) as Any[]).filter((t) => t.positionId === positionId);
 
   return {
     svc, db, mdal, dal, constants, prisma, onPostgres, uid, iso,
-    user, setUserFields, poll, limits, switchOn, switchOff, bot, setCaps, intent, place, backdate, bal, positionsOf, txnsFor, seededBonus,
+    user, setUserFields, poll, limits, switchOn, switchOff, bot, setCaps, intent, place, backdate, ageHouseMinute, bal, positionsOf, txnsFor, seededBonus,
     OPEN_CAPS, OPEN_LIMITS,
   };
 }

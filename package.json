@@ -273,6 +273,7 @@
     "test:kyc-restart-docs": "tsx scripts/db-scratch.mts --run npx tsx scripts/kyc-restart-clears-documents.test.mts",
     "test:house-bot-migrations": "tsx scripts/db-scratch.mts --run npx tsx scripts/house-bot-migrations.test.mts",
     "test:house-bot-money": "tsx scripts/db-scratch.mts --run npx tsx scripts/house-bot-money.test.mts",
+    "test:house-bot-caps": "tsx scripts/db-scratch.mts --run npx tsx scripts/house-bot-caps.test.mts",
     "verify:house-bot-migrations-old-build": "tsx scripts/db-scratch.mts --run npx tsx scripts/house-bot-migrations-old-build.mts",
     "test:kyc-copy-truth": "tsx scripts/kyc-copy-truth.test.mts",
     "red:kyc-copy-truth": "node scripts/kyc-copy-truth-red.mjs",
