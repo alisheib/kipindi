@@ -2028,6 +2028,7 @@ export async function notifySelectionClosedForMarket(marketId: string): Promise<
         houseStake: true,
       }).catch(() => {});
     }
+    // SEAM:labelSelectionClosedPersonal — the personal notice counts only the holder's own stakes.
     const mine = all.filter((p) => p.houseBotId == null);
     if (mine.length === 0) continue;
     const ifYes = mine.filter((p) => p.side === "YES").reduce((s, p) => s + (payoutByPosition.get(p.id) ?? 0), 0);
@@ -2948,6 +2949,7 @@ export async function cashOutValue(
   const ratio = gross > 0 ? value / gross : 0;
   // Bonus first: it is the most specific cause, and a bonus-funded bet placed with
   // no runway would otherwise be explained as "closing too soon" — true, but not why.
+  // SEAM:cashOutReason
   const reason = sellable
     ? undefined
     : housePosition ? "HOUSE_POSITION" as const

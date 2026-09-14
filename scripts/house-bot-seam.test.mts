@@ -113,6 +113,14 @@ function fnBody(src: string, signature: string): string {
   const next = src.slice(at + signature.length).search(/\n(export )?(async )?function |\nexport (const|type|class) |\n\/\*\*\n/);
   return next < 0 ? src.slice(at) : src.slice(at, at + signature.length + next);
 }
+/**
+ * A `// TAG:<name>` marker FINDER, built from a string. It reads the markers the seam writes; it strips
+ * nothing, so it is not a private comment-stripper (every stripping here goes through `decomment`), and
+ * a regex literal would only be counted as one by `test:decomment`'s shape scan.
+ */
+function markerRe(tag: string, name: string, flags = ""): RegExp {
+  return new RegExp(`${"/".repeat(2)} ${tag}:(${name})`, flags);
+}
 const anchors = await import("./anchors/house-bot-seam.anchors.mjs") as {
   SEAM_SITES: string[]; H2_ORDER: string[]; H2_CAP_SEQUENCE: string[]; MUTATIONS: Array<{ expect: string; suite: string }>;
 };
@@ -211,23 +219,63 @@ await w.switchOn();
 /* ═══ §4 · SEAM sites — no house branch outside an anchored site (04 F3) ════════════════════════ */
 section("§4 · SEAM sites");
 {
-  const lines = SVC_SRC.split("\n");
-  const markerAt = (idx: number) => {
-    for (let k = idx; k >= Math.max(0, idx - 8); k--) if (/\/\/ SEAM:[A-Za-z0-9]+/.test(lines[k])) return true;
-    return false;
+  // A marker authorises only the first SITE_WINDOW code lines under it (comment-only lines skipped), and a
+  // branch is read on decommented code, so a commented-out branch is not one and a comment cannot hide one.
+  const SITE_WINDOW = 3;
+  const MARKER = markerRe("SEAM", "[A-Za-z0-9]+");
+  const HOUSE_TOKEN = String.raw`(?:\bctx\.kind\b|\bhouse(?:Intent|Pool|Position)\b|(?:\b\w+\.)?\bhouseBotId\b|["']house["'])`;
+  const BRANCH = new RegExp([
+    String.raw`\bctx\.kind\b`,
+    String.raw`\{[^}]*\bkind\b[^}]*\}\s*=\s*ctx\b`,
+    String.raw`${HOUSE_TOKEN}\s*(?:[!=]==?|\?(?![.?:])|&&|\|\|)`,
+    String.raw`(?:[!=]==?|&&|\|\||!|\?\?)\s*\(?\s*${HOUSE_TOKEN}`,
+    String.raw`\b(?:if|while|switch)\s*\(\s*!?\s*${HOUSE_TOKEN}`,
+  ].join("|"));
+  /** Data carried along is not a branch: a notice's `houseStake:` value and `houseBotId: … ?? null`. */
+  const carried = (l: string) => l.replace(/\bhouseStake:\s*[^,})]+/g, "").replace(/\bhouseBotId:\s*[\w.]+\s*\?\?\s*null/g, "");
+  const unanchored = (raw: string): number[] => {
+    const rawLines = raw.split("\n"), code = decomment(raw).split("\n");
+    const covered = new Set<number>();
+    rawLines.forEach((l, n) => {
+      if (!MARKER.test(l)) return;
+      for (let k = n + 1, seen = 0; k < rawLines.length && seen < SITE_WINDOW; k++) {
+        if (code[k].trim() === "") continue;
+        covered.add(k); seen++;
+      }
+    });
+    return code.flatMap((l, n) => (BRANCH.test(carried(l)) && !covered.has(n) ? [n + 1] : []));
   };
-  const unanchored = (src: string[]) => src.map((l, n) => ({ l, n })).filter(({ l }) => /\bctx\.kind\s*[!=]==/.test(l.replace(/\/\/.*$/, "")))
-    .filter(({ n }) => { for (let k = n; k >= Math.max(0, n - 8); k--) if (/\/\/ SEAM:[A-Za-z0-9]+/.test(src[k])) return false; return true; })
-    .map(({ n }) => n + 1);
-  const bad = unanchored(lines);
-  ok("4.0 · the reader sees the house comparisons", lines.filter((l) => /\bctx\.kind\s*===/.test(l)).length >= 15);
+  const bad = unanchored(SVC_SRC);
+  const code = decomment(SVC_SRC).split("\n");
+  ok("4.0 · the reader sees the house branches", code.filter((l) => BRANCH.test(carried(l))).length >= 30,
+    `${code.filter((l) => BRANCH.test(carried(l))).length} branch lines`);
   ok("4.1 · every ctx.kind comparison in market-service.ts sits under a SEAM: marker", bad.length === 0, `unanchored at line(s) ${bad.join(", ")}`);
-  void markerAt;
-  const markers = [...SVC_SRC.matchAll(/\/\/ SEAM:([A-Za-z0-9]+)/g)].map((m) => m[1]);
+  const markers = [...SVC_SRC.matchAll(new RegExp(MARKER.source, "g"))].map((m) => m[1]);
   ok("4.2 · the SEAM markers are exactly SEAM_SITES, each once", markers.slice().sort().join() === anchors.SEAM_SITES.slice().sort().join()
     && new Set(markers).size === markers.length, `markers ${markers.length} · declared ${anchors.SEAM_SITES.length}`);
-  const planted = ["  const x = 1;", "  if (ctx.kind === \"house\") skipGate();"];
-  ok("4.c1 · CONTROL · a planted unmarked house branch is reported", unanchored(planted).length === 1);
+  const idle = SVC_SRC.split("\n").flatMap((l, n, all) => {
+    const m = MARKER.exec(l);
+    if (!m) return [];
+    const window = decomment(all.slice(n + 1, n + 1 + 12).join("\n")).split("\n").filter((x) => x.trim() !== "").slice(0, SITE_WINDOW).join("\n");
+    return /house|\bctx\.kind\b/i.test(window) ? [] : [m[1]];
+  });
+  ok("4.2b · every SEAM marker's window touches house state (no marker parked where it covers nothing)", idle.length === 0, idle.join(", "));
+  const plant = (lines: string[]) => unanchored(lines.join("\n")).length;
+  ok("4.c1 · CONTROL · a planted unmarked `ctx.kind === \"house\"` branch is reported", plant(["  const x = 1;", "  if (ctx.kind === \"house\") skipGate();"]) === 1);
+  ok("4.c2 · CONTROL · literal-first, destructured, switch and intent-keyed skips are each reported",
+    plant(["  if (\"house\" === ctx.kind) skipGate();"]) === 1 && plant(["  const { kind } = ctx;"]) === 1
+    && plant(["  switch (ctx.kind) {"]) === 1 && plant(["  if (!houseIntent && await isMaintenanceMode()) {"]) === 1
+    && plant(["  if (p.houseBotId != null) return;"]) === 1 && plant(["  const k = housePosition ? 1 : 2;"]) === 1);
+  ok("4.c3 · CONTROL · a branch on the 4th code line under a marker is reported; on the 3rd it is not", (() => {
+    const lines = SVC_SRC.split("\n");
+    const at = lines.findIndex((l) => l.includes("// SEAM:lockTimeout"));
+    const nth = (n: number) => { let k = at, seen = 0; while (seen < n) { k++; if (decomment(lines[k]).trim() !== "") seen++; } return k; };
+    const plantAfter = (k: number) => [...lines.slice(0, k + 1), "      if (ctx.kind === \"player\" && (!fresh || fresh.status !== \"OPEN\")) return \"CLOSED\";", ...lines.slice(k + 1)].join("\n");
+    const fourth = unanchored(plantAfter(nth(3))).length, third = unanchored(plantAfter(nth(2))).length;
+    return at > 0 && fourth === bad.length + 1 && third === bad.length;
+  })());
+  ok("4.c4 · CONTROL · a commented-out branch and carried data are not branches",
+    plant(["  // if (ctx.kind === \"house\") skipGate();", "  notifyWin(u, { houseStake: p.houseBotId != null });", "  push({ houseBotId: p.houseBotId ?? null });"]) === 0);
   const importers = (await import("node:child_process")).spawnSync("git", ["grep", "-l", "placeHouseBet", "--", "src"], { cwd: root, encoding: "utf8" }).stdout
     .split(/\r?\n/).filter(Boolean).filter((f) => f !== "src/lib/server/market-service.ts");
   const offenders = importers.filter((f) => /import[^;]*\bplaceHouseBet\b/.test(read(f)) && !f.endsWith("src/lib/server/house-bot/fire.ts"));
@@ -238,7 +286,7 @@ section("§4 · SEAM sites");
 section("§5 · house gates");
 {
   const h2 = fnBody(SEAM_SRC, "export async function houseH2(");
-  const order = [...h2.matchAll(/\/\/ H2_ORDER:([a-z-]+)/g)].map((m) => m[1]);
+  const order = [...h2.matchAll(markerRe("H2_ORDER", "[a-z-]+", "g"))].map((m) => m[1]);
   ok("5.1 · houseH2's group markers are exactly H2_ORDER, in order", order.join() === anchors.H2_ORDER.join(), order.join(" → "));
   const caps = [...decomment(h2).matchAll(/capReached\("([A-Z_]+)"/g)].map((m) => m[1]);
   ok("5.2 · houseH2's cap literals appear in H2_CAP_SEQUENCE order", caps.join() === anchors.H2_CAP_SEQUENCE.join(), caps.join(", "));
@@ -309,18 +357,32 @@ section("§6 · sanctioned changes");
     const player = await w.user({ balance: 100_000 });
     await w.svc.buyPosition(player, { marketId: market.id, side: "NO", stake: 5_000, idempotencyKey: crypto.randomUUID() });
     const houseOnly = await w.bot();
-    const mixed = await w.bot();
     const i1 = await w.intent(houseOnly, market.id, { kind: "MANUAL", entryCondition: "THIN", side: "YES", stakeTzs: 1_000 });
     await w.backdate((await w.positionsOf(market.id)).find((p: Any) => p.userId === player).id, 10_000);
     await w.limits({ gStaffChosenMaxCounterpartyShare: 100 });
     const placed: Any = await w.place(houseOnly, i1);
-    await w.svc.buyPosition(mixed.userId, { marketId: market.id, side: "YES", stake: 1_000, idempotencyKey: crypto.randomUUID() });
     await w.svc.resolveMarket({ marketId: market.id, outcome: "NO", officerId: OFFICER });
     const eHouse: Any = await objectionEligibility(houseOnly.userId, market.id);
     const ePlayer: Any = await objectionEligibility(player, market.id);
     ok("6.n · fixture · a house-only holder and a player on a resolved market", placed.ok === true, JSON.stringify(placed));
     ok("6.n1 · a holder whose only stakes are liquidity stakes → HOUSE_STAKE_ONLY", eHouse.eligible === false && eHouse.why === "HOUSE_STAKE_ONLY", JSON.stringify(eHouse));
     ok("6.n2 · CONTROL · a player with their own stake is eligible (unchanged)", ePlayer.eligible === true, JSON.stringify(ePlayer));
+
+    // LIE-05: a mixed holder — a liquidity stake FIRST, then their own bet — keeps their standing (every, not some).
+    const m2 = await w.poll({ graceMin: 0 });
+    const p2 = await w.user({ balance: 100_000 });
+    const r2 = await w.svc.buyPosition(p2, { marketId: m2.id, side: "NO", stake: 5_000, idempotencyKey: crypto.randomUUID() });
+    if (r2.ok) await w.backdate(r2.data.positionId, 10_000);
+    const mixed = await w.bot();
+    const i2 = await w.intent(mixed, m2.id, { kind: "MANUAL", entryCondition: "THIN", side: "YES", stakeTzs: 1_000 });
+    const placed2: Any = await w.place(mixed, i2);
+    const own: Any = await w.svc.buyPosition(mixed.userId, { marketId: m2.id, side: "YES", stake: 1_000, idempotencyKey: crypto.randomUUID() });
+    await w.svc.resolveMarket({ marketId: m2.id, outcome: "NO", officerId: OFFICER });
+    const mine2 = (await w.positionsOf(m2.id)).filter((p: Any) => p.userId === mixed.userId);
+    const eMixed: Any = await objectionEligibility(mixed.userId, m2.id);
+    ok("6.n3 · fixture · the mixed holder has one house-marked and one own position",
+      placed2.ok === true && own.ok === true && mine2.length === 2 && mine2.filter((p: Any) => p.houseBotId != null).length === 1, `${placed2.reason ?? "ok"} · ${own.reason ?? "ok"} · ${mine2.length}`);
+    ok("6.n4 · a holder with a liquidity stake AND their own stake is eligible", eMixed.eligible === true, JSON.stringify(eMixed));
   }
 
   // (c) and (m): the player action refuses reserved keys and never chips a liquidity stake.
@@ -330,7 +392,15 @@ section("§6 · sanctioned changes");
     ok("6.c · buyPositionAction refuses a reserved hb: key before calling buyPosition",
       /isHouseIntentKey\(idempotencyKey\)[\s\S]*idempotency_key_conflict[\s\S]*buyPosition\(/.test(buy));
     const comment = fnBody(actions, "export async function postCommentAction(");
-    ok("6.m · the comment side chip reads only positions with no house marker", /houseBotId == null/.test(comment));
+    ok("6.m · postCommentAction takes its side chip from commentSideFor", /commentSideFor\(\s*await listPositionsForUser\(/.test(comment));
+    const { commentSideFor } = await import("../src/lib/comment-side.ts");
+    const mk = "m1";
+    const houseOnlySide = commentSideFor([{ marketId: mk, status: "OPEN", side: "YES", houseBotId: "hb1" }], mk);
+    const mixedSide = commentSideFor([{ marketId: mk, status: "OPEN", side: "NO", houseBotId: null }, { marketId: mk, status: "OPEN", side: "YES", houseBotId: "hb1" }], mk);
+    const playerSide = commentSideFor([{ marketId: mk, status: "OPEN", side: "NO" }, { marketId: "m2", status: "OPEN", side: "YES" }], mk);
+    ok("6.m1 · a liquidity stake never gives its holder a side chip", houseOnlySide === null, String(houseOnlySide));
+    ok("6.m2 · a mixed holder's chip is their OWN side, not the house stake's", mixedSide === "NO", String(mixedSide));
+    ok("6.m3 · CONTROL · a player's own open stake on this market gives the chip (other markets ignored)", playerSide === "NO", String(playerSide));
   }
 
   // A17 and H9: no wagering reversal and no recruiter reward on a marked position.
