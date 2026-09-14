@@ -78,6 +78,9 @@ export function KycDocUploader({
   return (
     // 2026-09-13 — the slot FILLS its grid cell (the cell stretches to the row), so a label that wraps to
     // two lines in one slot no longer leaves its neighbours shorter: one row, one card height.
+    // 2026-09-14 — and its content is TOP-aligned (a flex column): a button centres by default, so a one-line
+    // label sat ~9px lower than its two-line neighbours in sw. Done state is the app-state success family
+    // (§B2a), never the betting YES ink.
     <div className="relative h-full">
       <input
         ref={inputRef}
@@ -95,10 +98,10 @@ export function KycDocUploader({
         disabled={working || locked}
         aria-busy={working ? "true" : "false"}
         aria-label={done ? t.profile.docAttachedReplace.replace("{label}", label) : t.profile.docAttach.replace("{label}", label)}
-        className={`h-full w-full overflow-hidden rounded-md border-2 border-dashed p-[14px] text-center transition-colors ${
+        className={`flex h-full w-full flex-col items-center justify-start overflow-hidden rounded-md border-2 border-dashed p-[14px] text-center transition-colors ${
           locked ? "border-border bg-bg-overlay/30 cursor-not-allowed opacity-70"
           : working ? "border-gold-700 bg-gold-500/[0.06] cursor-wait"
-          : done ? "border-yes-700 bg-yes-500/[0.07] cursor-pointer hover:border-yes-500"
+          : done ? "border-success-border bg-success-500/[0.07] cursor-pointer hover:border-success-500"
           : "border-border bg-bg-overlay/40 hover:border-brand-400 hover:bg-gold-500/[0.06] cursor-pointer"
         }`}
       >
@@ -111,7 +114,7 @@ export function KycDocUploader({
           // (tailwind.config.ts:200-215), so that pair renders 48×48px. 40px is the
           // kit's badge disc (= --tap-min) around a 14px glyph.
           <span className={`mx-auto mb-1.5 h-[40px] w-[40px] inline-flex items-center justify-center rounded-full ${
-            done ? "bg-yes-500 text-yes-950" : "bg-bg-overlay text-text-subtle border border-border"
+            done ? "border border-success-border bg-success-bg text-success-fg" : "bg-bg-overlay text-text-subtle border border-border"
           }`}>
             {/* C1b — per-slot silhouette line-art: ID card for NIDA front/back,
                 person for the selfie slot. */}
@@ -122,9 +125,13 @@ export function KycDocUploader({
         <span className="block font-display text-[12px] font-semibold text-text">{label}</span>
         {/* Spinner sits NEXT TO the status text so a slow resize/upload always
             shows live motion — the static "Uploading…" alone felt stuck. */}
-        <span className="mt-0.5 flex items-center justify-center gap-1.5 font-mono text-[10.5px] text-text-subtle">
+        {/* 2026-09-14 — the caption breaks only at its " · ", each half kept whole: in three side-by-side cards
+            "Attached · tap to replace" left "replace" alone on a second line (visual pass 2). */}
+        <span className="mt-0.5 flex flex-wrap items-center justify-center gap-x-1.5 font-mono text-[10.5px] text-text-subtle">
           {working && <Spinner size={11} />}
-          <span>{locked ? t.profile.docLocked : pending ? t.common.uploading : busy ? t.common.preparing : done ? t.profile.docTapReplace : t.profile.docTapAttach}</span>
+          {(locked ? t.profile.docLocked : pending ? t.common.uploading : busy ? t.common.preparing : done ? t.profile.docTapReplace : t.profile.docTapAttach)
+            .split(" · ")
+            .map((part, i) => <span key={i} className="whitespace-nowrap">{i > 0 ? "· " : ""}{part}</span>)}
         </span>
       </button>
     </div>
@@ -199,7 +206,7 @@ export function KycExtraDocUploader({
             (tailwind.config.ts:200-215): those render 64×64 and 128×128. 40px badge disc,
             48px ID thumbnail, against a two-line 12.5px/10.5px text block. */}
         <span className={`shrink-0 h-[40px] w-[40px] inline-flex items-center justify-center rounded-pill ${
-          done ? "bg-yes-500 text-yes-950" : "bg-bg-overlay text-text-subtle border border-border"
+          done ? "border border-success-border bg-success-bg text-success-fg" : "bg-bg-overlay text-text-subtle border border-border"
         }`}>
           {working ? <Spinner size={14} /> : done ? <I.check s={14} className="g-settle" /> : <I.plus s={14} />}
         </span>

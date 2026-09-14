@@ -39,8 +39,8 @@ import { RefreshPoller } from "@/components/ui/refresh-poller";
 import { PageContainer } from "@/components/layout/page-container";
 import { KycFirstDepositNotice } from "@/components/wallet/kyc-first-deposit-notice";
 import { cookies } from "next/headers";
-import { firstDepositNoticeDue } from "@/lib/server/kyc-notice";
-import { KYC_NOTICE_COOKIE, KYC_NOTICE_DISMISSED } from "@/lib/kyc-notice";
+import { firstDepositNoticeDue, kycNoticeDismissValue } from "@/lib/server/kyc-notice";
+import { KYC_NOTICE_COOKIE } from "@/lib/kyc-notice";
 
 // Localised tab title (POLISH-BACKLOG §1.7) — was the hard-coded English
 // "Deposit result", which a Swahili player saw in their browser tab and history.
@@ -65,11 +65,13 @@ export default async function DepositReturnPage({
   const outcome = await settleDepositFromReturn(session.userId, orderId);
 
   // ⭐ THE FIRST-DEPOSIT IDENTITY NOTICE, IN THE CONFIRMED STATE ONLY (2026-09-13). The ONE rule
-  // (`firstDepositNoticeDue`, shared with /wallet): not dismissed in this browser · nothing submitted yet
-  // · at least one CONFIRMED deposit. The deposit half is asked of the store rather than inferred from
-  // PAID, so the two surfaces cannot disagree about who is due. Never throws; a failed read → not shown.
+  // (`firstDepositNoticeDue`, shared with /wallet): not dismissed by THIS player in this browser · nothing
+  // submitted yet · at least one CONFIRMED deposit. The deposit half is asked of the store rather than
+  // inferred from PAID, so the two surfaces cannot disagree about who is due. Never throws; a failed read →
+  // not shown. 🔴 The RAW cookie goes to the predicate and the per-player value to the notice (2026-09-14):
+  // a bare "dismissed" once let one player's X hide it from the next player on a shared phone.
   const kycFirstDepositNotice = outcome.state === "PAID" && await firstDepositNoticeDue(session.userId, {
-    dismissed: (await cookies()).get(KYC_NOTICE_COOKIE)?.value === KYC_NOTICE_DISMISSED,
+    dismissCookie: (await cookies()).get(KYC_NOTICE_COOKIE)?.value,
   });
 
   const tone =
@@ -129,7 +131,7 @@ export default async function DepositReturnPage({
       )}
 
       {/* Under the success message, on a confirmed deposit only — decided above, from the store. */}
-      {kycFirstDepositNotice && <KycFirstDepositNotice />}
+      {kycFirstDepositNotice && <KycFirstDepositNotice dismissValue={kycNoticeDismissValue(session.userId)} />}
 
       {outcome.txn && (
         <dl className="rounded-xl glass-panel divide-y divide-border" data-testid="deposit-return-details">

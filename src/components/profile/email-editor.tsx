@@ -147,7 +147,7 @@ export function EmailEditor({ currentEmail, verified }: { currentEmail: string |
           </button>
           {currentEmail && (
             verified ? (
-              <span className="inline-flex items-center gap-1 rounded-pill border border-yes-700 bg-yes-500/10 px-2 py-0.5 font-mono text-micro font-bold uppercase tracking-[0.1em] text-yes-300">
+              <span className="inline-flex items-center gap-1 rounded-pill border border-success-border bg-success-bg px-2 py-0.5 font-mono text-micro font-bold uppercase tracking-[0.1em] text-success-fg">
                 <I.check s={10} /> {t.common.confirmed}
               </span>
             ) : (

@@ -28,7 +28,7 @@ import { ProviderRadioGrid } from "@/components/wallet/provider-radio-grid";
 import { getPayoutStatus, payoutsAcceptingRequests } from "@/lib/server/payout-status";
 import { PayoutStatusNotice } from "@/components/wallet/payout-status-notice";
 import { KycGatePanel } from "@/components/kyc/kyc-gate-panel";
-import { kycGateState } from "@/lib/kyc-gate-state";
+import { kycGateState, type KycPanelState } from "@/lib/kyc-gate-state";
 import { getKycStatus } from "@/lib/server/kyc-service";
 import { PageContainer } from "@/components/layout/page-container";
 
@@ -103,6 +103,19 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
 
   const wallet = await db.wallet.findByUserId(session.userId);
 
+  // 🔴 A WALLET THAT IS NOT ACTIVE GETS NO FORM (2026-09-14, audit session 95, U1). An account approved
+  // once answered `null` above, so the full payout form was drawn over a FROZEN wallet — an officer's
+  // hold, a self-exclusion, a final refusal after re-verification — and the player learned only at
+  // confirm, when `wallet-service.withdraw()` refused inside its lock. The freeze is a money control,
+  // not an identity status, so it is asked here, from the wallet row, and it outranks every identity
+  // panel except `refused_final`, whose own panel already says what is happening and what to do
+  // (a never-approved player with a held wallet is not sent to verify: verifying would open nothing).
+  // ⚠️ `withdraw()` is still the enforcement; this only stops the page offering what it will refuse.
+  // A missing wallet row is not "frozen" — it keeps today's form, which the server refuses.
+  const walletHeld = !!wallet && wallet.status !== "ACTIVE";
+  const withdrawPanel: KycPanelState | null =
+    walletHeld && withdrawGateState !== "refused_final" ? "frozen" : withdrawGateState;
+
   // Can we actually pay a withdrawal right now? Since 2026-07-29 the honest answer has been no,
   // and until this landed the form said nothing at all. `unavailable` disables the form — taking
   // a request we cannot fulfil is worse than refusing it, because it looks like progress.
@@ -113,7 +126,7 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
   // ⛔ PAYOUT CAPACITY IS THE ONLY THING THAT *DISABLES* THIS FORM — and since 2026-09-05
   // (unchanged by the 2026-09-13 ruling, which left identity on this screen alone) identity
   // decides whether the form is RENDERED AT ALL, which is a different question with a
-  // different answer.
+  // different answer. From 2026-09-14 a wallet that is not ACTIVE decides it too (`withdrawPanel`).
   //
   // ⭐ THE DISTINCTION IS DELIBERATE, NOT A LEFTOVER. A paused payout rail is temporary and
   // outside the player's control, so the form stays on screen, dimmed, with the notice
@@ -138,7 +151,7 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
             subtitle={t.wallet.mobileMoneyOnly}
           />
           <div className="sm:text-right shrink-0">
-            <p className="font-mono text-micro uppercase eyebrow text-text-subtle">{t.wallet.available}</p>
+            <p className="font-mono text-micro uppercase eyebrow text-text-subtle">{walletHeld ? t.common.balanceFrozen : t.wallet.available}</p>
             <Cash className="font-display font-bold text-[22px] tabular-nums text-text leading-none block">
               {formatTzs(wallet?.balance ?? 0)}
             </Cash>
@@ -191,10 +204,13 @@ export default async function WithdrawPage({ searchParams }: { searchParams: Pro
           `?amount=`, so verification delivers them back to the form with it filled in. Amount
           ONLY — the destination comes from the session and nothing else (E-215, above).
           ⚠️ The condition is approved-EVER, not the current status: a player under
-          re-verification keeps access to money they already earned. */}
-      {withdrawGateState ? (
+          re-verification keeps access to money they already earned.
+          🔴 AND A HELD WALLET IS NEVER GIVEN THE FORM (2026-09-14): `withdrawPanel` is `frozen` when the
+          wallet is not ACTIVE, so the panel's frozen variant (`kycGate.frozen*`) stands where the form would
+          have been, with support as its only step, instead of a refusal at confirm. */}
+      {withdrawPanel ? (
         <KycGatePanel
-          state={withdrawGateState}
+          state={withdrawPanel}
           purpose="payout"
           returnTo={/^\d{1,9}$/.test(prevAmount) ? `/wallet/withdraw?amount=${prevAmount}` : "/wallet/withdraw"}
         />
@@ -281,7 +297,7 @@ function NoticeRow({ icon, title, body }: { icon: React.ReactNode; title: string
       <span className="mt-0.5 shrink-0">{icon}</span>
       <div>
         <p className="font-display font-semibold text-text">{title}</p>
-        <p className="mt-0.5 text-text-muted">{body}</p>
+        <p className="mt-0.5 text-text-muted text-balance">{body}</p>
       </div>
     </div>
   );

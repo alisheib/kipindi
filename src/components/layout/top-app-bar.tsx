@@ -79,6 +79,8 @@ export type TopAppBarUser = {
   balance?: number | null;
   /** Staff-tier session — surfaces the admin-console jump in the avatar menu. */
   isAdmin?: boolean;
+  /** The wallet is not ACTIVE (an officer hold, a final refusal): no money-in CTA, because /wallet/deposit refuses it. */
+  walletHeld?: boolean;
 };
 
 export function TopAppBar({ user, proposalsState, inviteVisible = false }: { user: TopAppBarUser; proposalsState: ProposalsState; inviteVisible?: boolean }) {
@@ -253,7 +255,7 @@ export function TopAppBar({ user, proposalsState, inviteVisible = false }: { use
               attempt put the classes on the <Link> and the CTA still rendered at 360, 33px
               past the viewport edge. The span is not a `.btn`, so the utility applies to it.
               ⚠️ This is the idiom this file already uses for the same reason. */}
-          {user.isAuthed && !pathname.startsWith("/wallet/deposit") && (
+          {user.isAuthed && !user.walletHeld && !pathname.startsWith("/wallet/deposit") && (
             // ⭐ THE MONEY-IN CTA, ON STRUCK GILT — M3, 2026-08-07 (ATOM D-2).
             //
             // ⚠️ THIS DELIBERATELY REVERSES AN EARLIER DECISION, AND THE EARLIER ONE IS

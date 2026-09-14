@@ -23,10 +23,20 @@
  * ⛔ THE FORM IT REPLACES IS NOT RENDERED AT ALL — not disabled. A disabled payout form on a money screen
  * reads as an outage and still invites the tap. The server enforces the rule either way.
  *
- * ⭐ SIX STATES (`kyc-gate-state.ts`). One — `pending_review` — asks the player to do NOTHING, because
+ * ⭐ SIX IDENTITY STATES (`kyc-gate-state.ts`), plus `frozen` below. One — `pending_review` — asks the player to do NOTHING, because
  * we are the ones who are late; rendering it in the "action needed" skin tells a player who did
  * everything right that they failed. And `refused_final` offers no retry — the server refuses one — only
  * the route to support; its body says our team will explain what happens to the balance.
+ *
+ * ⭐ AND ONE STATE THAT IS NOT ABOUT IDENTITY AT ALL — `frozen` (2026-09-14, audit session 95, U1). The
+ * withdraw page used to draw the full payout form over a wallet that was not ACTIVE — an officer hold,
+ * a self-exclusion — whenever the account had been approved once, and the player learned only at confirm.
+ * The page now chooses `frozen` there (unless the identity state is already `refused_final`, which says
+ * more), and this panel stands where the form was. It says what is true — withdrawals are held on this
+ * account — and offers the one step that exists, support. ⛔ Its copy (`kycGate.frozen*`) must not ask
+ * for verification: verifying would open nothing, and the quiet rule keeps identity out of places it
+ * does not decide. Its tone is the kit Callout's warning tokens — app-state ink, which resolves to gilt — because a
+ * hold is not a decision against the player; never the betting pair.
  *
  * ⚠️ NOT AN ALERT. `role="status"`: an unverified account is an ordinary condition, not an emergency.
  */
@@ -34,7 +44,7 @@ import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
 import { useT } from "@/lib/i18n";
 import { fill } from "@/lib/utils";
-import type { KycGateState } from "@/lib/kyc-gate-state";
+import type { KycPanelState } from "@/lib/kyc-gate-state";
 import { KYC_REVIEW_SLA_HOURS } from "@/lib/kyc-sla";
 import { durationHours } from "@/lib/duration-phrase";
 
@@ -49,9 +59,12 @@ const TONE = {
    *  ⛔ The APP-STATE danger family (the kit Callout's danger tone, verbatim), never the betting NO
    *  red — DESIGN_AUTHORITY §B2a keeps that ink for the NO side of a stake (2026-09-13). */
   refused: { ring: "border-danger-500/50", ink: "text-danger-fg", wash: "bg-danger-500/10" },
+  /** Money is held on this account (2026-09-14). The kit Callout's warning tone, verbatim — amber
+   *  app-state ink, the same family the page's own hold line uses; never the betting pair. */
+  held:    { ring: "border-warning-border", ink: "text-warning-fg", wash: "bg-warning-bg" },
 } as const;
 
-const BY_STATE: Record<KycGateState, {
+const BY_STATE: Record<KycPanelState, {
   tone: keyof typeof TONE;
   glyph: keyof typeof I;
   /** Where the CTA goes, or `null` for none. ⛔ `null` for PENDING_REVIEW — opening the form shows a
@@ -64,6 +77,8 @@ const BY_STATE: Record<KycGateState, {
   more_info:      { tone: "action",  glyph: "upload",      cta: "verify" },
   rejected:       { tone: "refused", glyph: "alertCircle", cta: "verify" },
   refused_final:  { tone: "refused", glyph: "alertCircle", cta: "support" },
+  /** A wallet hold, not an identity state: support is the only step there is. */
+  frozen:         { tone: "held",    glyph: "lock",        cta: "support" },
 };
 
 export function KycGatePanel({
@@ -72,7 +87,8 @@ export function KycGatePanel({
   /** Where to come back to once they are verified — round-tripped as `?next=`. */
   returnTo,
 }: {
-  state: KycGateState;
+  /** An identity state from `kycGateState`, or `frozen` — chosen by the withdraw page from the wallet. */
+  state: KycPanelState;
   /** `payout` on the withdrawal form; `agent` on the agent application. */
   purpose: "payout" | "agent";
   returnTo?: string;
@@ -86,12 +102,14 @@ export function KycGatePanel({
   const copy = {
     not_started:    { eyebrow: payout ? t.kycGate.eyebrowPayout : t.kycGate.eyebrowVerify, title: t.kycGate.titleNotStarted, body: t.kycGate.bodyNotStarted,  cta: t.kycGate.ctaStart },
     uploaded:       { eyebrow: payout ? t.kycGate.eyebrowPayout : t.kycGate.eyebrowAction, title: t.kycGate.titleUploaded,   body: t.kycGate.bodyUploaded,    cta: t.kycGate.ctaFinish },
-    pending_review: { eyebrow: t.kycGate.eyebrowPending, title: t.kycGate.titlePending,  body: t.kycGate.bodyPending,      cta: "" },
+    pending_review: { eyebrow: t.kycGate.eyebrowPending, title: t.kycGate.titlePending,  body: fill(t.kycGate.bodyPending, { hours: durationHours(locale, KYC_REVIEW_SLA_HOURS) }), cta: "" },
     more_info:      { eyebrow: t.kycGate.eyebrowAction,  title: t.kycGate.titleMoreInfo, body: t.kycGate.bodyMoreInfo,     cta: t.kycGate.ctaUpload },
     rejected:       { eyebrow: t.kycGate.eyebrowAction,  title: t.kycGate.titleRejected, body: t.kycGate.bodyRejected,     cta: t.kycGate.ctaRetry },
     // ⛔ NOT "Your move" (2026-09-13, found on a screenshot): a FINAL refusal cannot be restarted by the player,
     // so its label names the subject and calls for nothing — the only step is support, and the CTA says so.
     refused_final:  { eyebrow: t.kycGate.eyebrowIdentity, title: t.kycGate.titleRejected, body: t.kycGate.bodyRefusedFinal, cta: t.kycGate.ctaSupport },
+    // A wallet hold (2026-09-14): its own words, which ask for nothing but the route to support.
+    frozen:         { eyebrow: t.kycGate.frozenEyebrow,   title: t.kycGate.frozenTitle,   body: t.kycGate.frozenBody,       cta: t.kycGate.frozenCta },
   }[state];
 
   // ⭐ THE WAIT IS A NUMBER (`KYC_REVIEW_SLA_HOURS`, the officer's own clock), shown on the withdrawal
@@ -123,10 +141,13 @@ export function KycGatePanel({
         <Glyph s={18} />
       </span>
       <p className={`mt-3 font-mono text-micro uppercase eyebrow font-bold ${tone.ink}`}>{copy.eyebrow}</p>
-      <h3 className="mt-1.5 font-display text-[18px] font-bold text-text leading-tight">{copy.title}</h3>
-      <p className="mt-1.5 text-body-sm text-text-muted leading-snug max-w-[42ch] mx-auto text-balance">{copy.body}</p>
+      {/* 2026-09-14 — the title is balanced like the lines under it: "We're checking your / documents" left one word
+          alone at 360. In zh the body and caption break only at punctuation (keep-all), because a balanced 42ch
+          measure split a two-character word across the break; overflow-wrap still lets an over-long run wrap. */}
+      <h3 className="mt-1.5 font-display text-[18px] font-bold text-text leading-tight text-balance">{copy.title}</h3>
+      <p className={`mt-1.5 text-body-sm text-text-muted leading-snug max-w-[42ch] mx-auto text-balance ${locale === "zh" ? "break-keep [overflow-wrap:anywhere]" : ""}`}>{copy.body}</p>
       {showWait && (
-        <p data-kyc-payout-line="wait" className="mt-2 text-body-sm text-text-subtle leading-snug max-w-[42ch] mx-auto text-balance">
+        <p data-kyc-payout-line="wait" className={`mt-2 text-body-sm text-text-subtle leading-snug max-w-[42ch] mx-auto text-balance ${locale === "zh" ? "break-keep [overflow-wrap:anywhere]" : ""}`}>
           {fill(t.kycGate.payoutWait, { hours: durationHours(locale, KYC_REVIEW_SLA_HOURS) })}
         </p>
       )}

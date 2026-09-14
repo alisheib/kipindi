@@ -17,6 +17,7 @@ import { MY_TXN_SEARCH } from "@/lib/search";
 import {
   LEDGER_DEFAULT_STATE,
   LEDGER_ROW_CAP,
+  STATE_STATUSES,
   WALLET_SECTIONS,
   buildLedgerHref,
   filterLedger,
@@ -29,8 +30,9 @@ import {
 } from "@/lib/wallet/ledger";
 import { PLAYER_PER_PAGE } from "@/components/ui/pagination";
 import { cookies } from "next/headers";
-import { firstDepositNoticeDue } from "@/lib/server/kyc-notice";
-import { KYC_NOTICE_COOKIE, KYC_NOTICE_DISMISSED } from "@/lib/kyc-notice";
+import { firstDepositNoticeDue, kycNoticeDismissValue } from "@/lib/server/kyc-notice";
+import { KYC_NOTICE_COOKIE } from "@/lib/kyc-notice";
+import { KycNoticeDismissScope } from "@/components/wallet/kyc-first-deposit-notice";
 
 export async function generateMetadata() {
   const { t } = await getServerT();
@@ -321,7 +323,9 @@ export default async function WalletPage({ searchParams }: { searchParams: Promi
    * (Ali, 2026-09-13: identity is raised quietly — on the withdraw screen, and in this one
    * dismissible line — never as a standing bar).
    *
-   * Due when this browser has not dismissed it (the `kp-kyc-notice` cookie), the account has submitted
+   * Due when THIS PLAYER has not dismissed it in this browser (the `kp-kyc-notice` cookie, bound to the
+   * player since 2026-09-14 — the raw value goes to the predicate, which alone decides whose it is, and
+   * the per-player value reaches the notice through `KycNoticeDismissScope` below), the account has submitted
    * NOTHING yet (`not_started` / `uploaded`; every later state has its own event notice, and the
    * withdraw screen's panel) AND holds at least one CONFIRMED deposit. ⭐ ONE RULE, in
    * `src/lib/server/kyc-notice.ts` → `firstDepositNoticeDue`, shared with the deposit return page.
@@ -337,7 +341,7 @@ export default async function WalletPage({ searchParams }: { searchParams: Promi
    */
   const bookIsWhole = !windowIsNarrowed && !capped;
   const kycFirstDepositNotice = await firstDepositNoticeDue(session.userId, {
-    dismissed: (await cookies()).get(KYC_NOTICE_COOKIE)?.value === KYC_NOTICE_DISMISSED,
+    dismissCookie: (await cookies()).get(KYC_NOTICE_COOKIE)?.value,
     depositInHand: bookIsWhole ? rawTxns.some((x) => x.type === "DEPOSIT" && x.status === "CONFIRMED") : null,
   });
   const EXIT_LABEL: Record<string, string> = {
@@ -360,11 +364,17 @@ export default async function WalletPage({ searchParams }: { searchParams: Promi
           amount={String(Math.abs(resultOwned.amount))}
         />
       )}
+      {/* ⭐ The first-deposit notice is mounted inside the client tree, which receives only the due flag;
+          the per-player dismiss value it writes reaches it through this scope (2026-09-14). */}
+      <KycNoticeDismissScope value={kycFirstDepositNotice ? kycNoticeDismissValue(session.userId) : null}>
       <WalletPageClient
         balance={balance}
         pending={pending}
         hold={hold}
         currency={currency}
+        /* A held wallet (officer freeze, final refusal) cannot spend, bet or withdraw, so its balance is not
+           labelled "Available" — the same `status !== "ACTIVE"` rule the withdraw and deposit screens read. */
+        walletHeld={!!w && w.status !== "ACTIVE"}
         transactions={pagedTxns}
         resultCount={matched.length}
         page={safePage}
@@ -406,7 +416,9 @@ export default async function WalletPage({ searchParams }: { searchParams: Promi
         }))}
         capped={capped}
         rowCap={LEDGER_ROW_CAP}
-        balanceSeries={balance30d(rows.map((r) => ({ createdAt: new Date(r.createdAtMs).toISOString(), amount: r.amount })), balance)}
+        /* ⛔ Only money that MOVED bends the 30-day line. A FAILED or CANCELLED row keeps its amount but moved
+           nothing (`STATE_STATUSES.failed`), so counting it drew a jump — or a negative past — that never happened. */
+        balanceSeries={balance30d(rows.filter((r) => !STATE_STATUSES.failed.includes(r.status)).map((r) => ({ createdAt: new Date(r.createdAtMs).toISOString(), amount: r.amount })), balance)}
         bonusBalance={bonus.bonusBalance}
         bonusActiveCount={bonus.activeCount}
         bonusWagerRemaining={bonus.activeWagerRemainingTzs}
@@ -423,6 +435,7 @@ export default async function WalletPage({ searchParams }: { searchParams: Promi
         isAuthed={true}
         kycFirstDepositNotice={kycFirstDepositNotice}
       />
+      </KycNoticeDismissScope>
     </>
   );
 }

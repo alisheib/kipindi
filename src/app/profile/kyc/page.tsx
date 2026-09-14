@@ -33,9 +33,11 @@ import { PageContainer } from "@/components/layout/page-container";
 
 // Localised tab title (POLISH-BACKLOG §1.7) — was the hard-coded English
 // "Verify identity", which a Swahili player saw in their browser tab and history.
+// 2026-09-14 — a neutral noun, true in every state: the command "Verify your identity" sat in the tab of a
+// verified player and of a final refusal that cannot be restarted.
 export async function generateMetadata() {
   const { t } = await getServerT();
-  return { title: t.profile.verifyIdentity };
+  return { title: t.profile.kycIdentityVerification };
 }
 
 export default async function KycPage({ searchParams }: { searchParams?: Promise<{ welcome?: string; reason?: string; id?: string; idType?: string; idNumber?: string; idExpiry?: string; submitted?: string; fullName?: string; dob?: string; email?: string; next?: string }> }) {
@@ -137,17 +139,29 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
     payoutsAccepting = payoutsAcceptingRequests((await getPayoutStatus()).status);
   } catch { /* B-1 — deliberate degrade, see rationale above */ }
 
+  // ⭐ 2026-09-14 — AND THE THIRD GATE IS THIS PLAYER'S OWN WALLET. A wallet that is not ACTIVE (an officer hold, a
+  // self-exclusion) refuses a withdrawal whatever the identity says, and /wallet/withdraw draws its `frozen` panel
+  // there. The approved card told that player "it covers your withdrawals from now on" with a link to the refusal.
+  // Read exactly as the withdraw page reads it; a missing row is not "held", and a failed read keeps today's copy.
+  let walletHeld = false;
+  if (kyc?.status === "APPROVED") {
+    try {
+      const wallet = await db.wallet.findByUserId(session.userId);
+      walletHeld = !!wallet && wallet.status !== "ACTIVE";
+    } catch { /* B-1 — deliberate degrade: an unreadable wallet is not evidence of a hold */ }
+  }
+
   return (
     <PageContainer tier="form" className="space-y-5">
       <BackLink fallbackHref="/profile" label={t.common.profile} />
 
       {banner && (
-        <div role="alert" className="rounded-xl border border-no-700 bg-no-500/10 px-4 py-3 text-[13px] text-no-300">
+        <div role="alert" className="rounded-xl border border-danger-border bg-danger-bg px-4 py-3 text-[13px] text-danger-fg">
           {banner.body}
         </div>
       )}
       {sp.id === "accepted" && !banner && (
-        <div role="status" className="rounded-xl border border-yes-700 bg-yes-500/10 px-4 py-3 text-[13px] text-yes-300">
+        <div role="status" className="rounded-xl border border-success-border bg-success-bg px-4 py-3 text-[13px] text-success-fg">
           {t.profile.kycIdAccepted}
         </div>
       )}
@@ -168,7 +182,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
         </div>
       )}
       {sp.submitted && !banner && (
-        <div role="status" className="rounded-xl border border-yes-700 bg-yes-500/10 px-4 py-3 text-[13px] text-yes-300">
+        <div role="status" className="rounded-xl border border-success-border bg-success-bg px-4 py-3 text-[13px] text-success-fg">
           {t.profile.kycSubmitted}
         </div>
       )}
@@ -185,20 +199,26 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
           tone="info"
           icon={<I.shieldcheck s={14} />}
           eyebrow={t.profile.kycIdentityVerification}
-          title={t.profile.verifyIdentity}
+          title={kyc?.status === "APPROVED" ? t.profile.verifyTitleApproved : finalRefusal ? t.kycGate.titleRejected : t.profile.verifyIdentity}
         />
-        {/* 2026-09-13 — balanced: the zh more-info sentence left "方。" alone on its last line at 360. */}
-        <p className="mt-2 text-[13px] text-text-muted leading-snug max-w-prose text-balance">
-          {kyc?.status === "PENDING_REVIEW"
-            ? t.profile.verifyBodyReviewing
-            : needsInfo
-              ? t.profile.verifyBodyMoreInfo
-              // 2026-09-13 — a final refusal was told "Verify before your first withdrawal" under a
-              // refusal it cannot undo. It reads the withdraw panel's own title for that state.
-              : finalRefusal
-                ? t.kycGate.titleRejected
-                : t.profile.verifyBody}
-        </p>
+        {/* 2026-09-13 — balanced: the zh more-info sentence left "方。" alone on its last line at 360.
+            2026-09-14 — THE HERO SPEAKS FOR THE STATE. An approved player read "Verify your identity" above an
+            all-done rail. A final refusal was told to verify under a refusal it cannot undo: it now takes the
+            withdraw panel's own title for that state and NO body, because the refused card below explains it and
+            no sentence may say it twice. Every review time is the one figure, KYC_REVIEW_SLA_HOURS. */}
+        {!finalRefusal && (
+          <p className={`mt-2 text-[13px] text-text-muted leading-snug max-w-prose text-balance ${locale === "zh" ? "break-keep [overflow-wrap:anywhere]" : ""}`}>
+            {kyc?.status === "APPROVED"
+              ? t.profile.verifyBodyApproved
+              : kyc?.status === "PENDING_REVIEW"
+                ? t.profile.verifyBodyReviewing
+                : needsInfo
+                  ? t.profile.verifyBodyMoreInfo
+                  : rejected
+                    ? t.profile.verifyBodyRejected.replace("{hours}", durationHours(locale, KYC_REVIEW_SLA_HOURS))
+                    : t.profile.verifyBody.replace("{hours}", durationHours(locale, KYC_REVIEW_SLA_HOURS))}
+          </p>
+        )}
       </PageHero>
 
       {rejected && (
@@ -212,8 +232,10 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
               <I.alertCircle s={18} />
             </span>
             <div className="min-w-0">
-              <p className="font-display text-[14px] font-bold text-danger-fg">{t.profile.rejected}</p>
-              <p className="mt-1 text-body-sm text-text-muted leading-snug">
+              {/* 2026-09-14 — a FINAL refusal is "Refused", the word its own body uses; "Rejected" reads as retryable. */}
+              <p className="font-display text-[14px] font-bold text-danger-fg">{finalRefusal ? t.profile.refusedFinal : t.profile.rejected}</p>
+              {/* zh breaks at punctuation only (kyc-gate-panel's rule): a quoted button name was split after its first character. */}
+              <p className={`mt-1 text-body-sm text-text-muted leading-snug ${locale === "zh" ? "break-keep [overflow-wrap:anywhere]" : ""}`}>
                 {/* 2026-09-13 — zh stops are full-width: "原因：…。" read "原因: ….", ASCII set in a Chinese
                     sentence. The stop after the address stays OUTSIDE the link, so it is never part of it. */}
                 {rejectLabel ? <>{t.profile.kycRejectReason}{locale === "zh" ? "：" : ": "}<span className="font-semibold text-text">{rejectLabel}</span>{locale === "zh" ? "。" : ". "}</> : null}
@@ -268,10 +290,14 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
             </span>
             <div className="min-w-0">
               <p className="font-display text-[14px] font-bold text-gold-300">{t.profile.kycMoreInfo}</p>
-              {/* zh sets sentences with no joining space; a space there reads as a typo. */}
+              {/* zh sets sentences with no joining space; a space there reads as a typo.
+                  2026-09-14 — and in zh each sentence is ONE unit (inline-block), so the line breaks at the full stop
+                  and never inside a word: balanced at 1280 it split a two-character word across the break. A sentence
+                  longer than its line still wraps inside itself. en and sw are unchanged. */}
               <p className="mt-1 text-body-sm text-text-muted leading-snug text-balance">
-                {kyc?.rejectNote ? <span className="font-semibold text-text">{kyc.rejectNote}</span> : t.profile.kycMoreInfoBody1}
-                {locale === "zh" ? "" : " "}{t.profile.kycMoreInfoBody2}
+                <span className={locale === "zh" ? "inline-block" : undefined}>{kyc?.rejectNote ? <span className="font-semibold text-text">{kyc.rejectNote}</span> : t.profile.kycMoreInfoBody1}</span>
+                {locale === "zh" ? "" : " "}
+                <span className={locale === "zh" ? "inline-block" : undefined}>{t.profile.kycMoreInfoBody2}</span>
               </p>
             </div>
           </div>
@@ -298,22 +324,33 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
       )}
 
       {/* 2026-09-13 — A FINAL REFUSAL HAS NO STEPS LEFT. The rail and both step forms stay off the page, because
-          `startKyc` refuses a restart and the upload would be refused. ⚠️ `test:kyc-honesty` finds step 2 by its
-          exact opening condition, so the gate is this wrapper, not an extra term inside that condition. */}
-      {!finalRefusal && (
+          `startKyc` refuses a restart and the upload would be refused. ⚠️ `test:kyc-status-honesty` finds step 2 by
+          its exact opening condition, so the gate is this wrapper, not an extra term inside that condition.
+          2026-09-14 — AND A RECOVERABLE REFUSAL HAS NO STEPS UNTIL THE PLAYER TAPS "TRY AGAIN". The card offered the
+          restart while step 2 stood live below it, holding the refused photos: attaching new ones and then tapping
+          Try again (as the card says) wiped them, and a mismatch or an expired document could not be fixed there at
+          all, because the identity form only returns after the reset. `startKyc` restarts a recoverable row to
+          IN_PROGRESS, which brings the rail and step 1 back. One path, the one that fixes every recoverable code. */}
+      {!rejected && (
         <>
-        {/* C1b — 4-node verification rail (ID → selfie → review → verified) with a
-            gilt fill up to the current node; done nodes go green (page convention),
-            the live node carries the gilt ring. */}
+        {/* C1b — 4-node verification rail (ID → documents → review → verified) with a
+            gilt fill up to the current node; done nodes read the app-state success tone
+            (§B2a, never the betting YES ink), the live node carries the gilt ring. */}
         <ProgressRail
           nodes={[
             // ⛔ The first node is named after the document the player actually chose.
             // It said "NIDA" unconditionally, which on a passport journey labelled the
             // step after a document the player never touched.
-            { label: idLabel,              glyph: "idCard",      done: idDone || docsHandedIn },
-            { label: t.profile.selfie,     glyph: "user",        done: allAttached || docsHandedIn },
-            { label: t.profile.review,     glyph: "shieldcheck", done: kyc?.status === "APPROVED" },
-            { label: t.profile.idVerified, glyph: "check",       done: kyc?.status === "APPROVED" },
+            // 2026-09-14 — the second node is the WHOLE upload step ("Documents", the step-2 card's camera): it is
+            // done only when every slot is attached, and it read "Selfie", one slot of three. The last node has a
+            // short rail label, because "ID verified" wrapped to two lines at 360 in English.
+            { label: idLabel,                glyph: "idCard",      done: idDone || docsHandedIn },
+            // More information asked for puts the CURRENT ring back on the upload step: it is the player's move, and a gold
+            // REVIEW ring read as "our team is reviewing" under a callout asking for a new photo (visual pass 2).
+            { label: t.profile.documents,    glyph: "camera",      done: !needsInfo && (allAttached || docsHandedIn) },
+            { label: t.profile.review,       glyph: "shieldcheck", done: kyc?.status === "APPROVED" },
+            // Not a tick until it is done: with the tinted success discs, an undone "check" read as finished (pass 2).
+            { label: t.profile.stepVerified, glyph: "star",        done: kyc?.status === "APPROVED" },
           ]}
           tightLabels={locale === "sw"}
         />
@@ -391,7 +428,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
                   whenever the server refused the number — "invalid" is never an
                   acceptable answer on an identity field (§F4). */}
               {sp.reason === "id_number_format" && (
-                <p role="alert" className="-mt-2 text-body-sm leading-snug text-no-300">
+                <p role="alert" className="-mt-2 text-body-sm leading-snug text-danger-fg">
                   {(t.profile as unknown as Record<string, string>)[spec.ruleKey]}
                 </p>
               )}
@@ -439,12 +476,13 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
                   <>
                     <input type="hidden" name="dob" value={user.dob.slice(0, 10)} />
                     <div className="flex items-center gap-2 rounded-xl border border-border bg-bg-elevated px-3.5 py-2.5">
-                      <I.check s={14} className="text-yes-300 shrink-0" />
+                      <I.check s={14} className="text-success-fg shrink-0" />
                       <span className="text-[13px] text-text">{formatDob(user.dob.slice(0, 10), locale)}</span>
                       <span className="ml-auto text-[10.5px] text-text-subtle">{t.profile.fromSignUp}</span>
                     </div>
+                    {/* 2026-09-14 — no ASCII space after the zh full stop before the link: it doubled the gap. */}
                     <p className="mt-1.5 text-body-sm text-text-subtle">
-                      {t.profile.dobFromSignUp}{" "}
+                      {t.profile.dobFromSignUp}{locale === "zh" ? "" : " "}
                       <a href={`mailto:${SUPPORT_EMAIL()}`} className="text-brand-300 underline-offset-2 hover:underline hover:text-brand-200">{t.error.contactSupport}</a>
                     </p>
                   </>
@@ -487,16 +525,20 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
                   <p className="mt-1.5 text-body-sm text-text-subtle">{t.profile.dobFromSignUp}</p>
                 </div>
               ) : (
+                // 2026-09-14 — an address ON FILE BUT NOT CONFIRMED is filled in and named as unconfirmed, not asked
+                // for again: the empty box read "Required" beside a banner saying we had sent a link to it. It stays
+                // editable (it may be a typo); the same address submitted is a no-op in `setUserEmail`, so the link
+                // already sent stays valid.
                 <Field
                   id="email"
                   label={t.common.email}
-                  hint={t.profile.emailHint}
+                  hint={hasEmail ? t.profile.emailOnFileUnconfirmed : t.profile.emailHint}
                   type="email"
                   required
                   maxLength={254}
                   inputMode="text"
                   placeholder="you@example.com"
-                  defaultValue={(sp as Record<string, string | undefined>).email ?? ""}
+                  defaultValue={(sp as Record<string, string | undefined>).email ?? user?.email ?? ""}
                 />
               )}
               <SubmitButton label={`${t.profile.continueVerification}`} pendingLabel={t.common.loading} />
@@ -525,9 +567,10 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
                   that must never overstate. docs/IDENTITY-POLICY.md, the owner
                   decision: `idVerifiedAt` means "format accepted", there is no
                   authority check, and "if any surface contradicts it, that surface
-                  is wrong". Same string is still correct in the stepper above,
-                  where it is gated on `kyc?.status === "APPROVED"`. */}
-              <span className="inline-flex items-center gap-1 rounded-pill border border-yes-700 bg-yes-500/10 px-2.5 py-0.5 font-mono text-micro font-bold uppercase tracking-[0.1em] text-yes-300">
+                  is wrong". The same string is still correct on the approval card
+                  below, where it is gated on `kyc?.status === "APPROVED"`.
+                  2026-09-14 — the chip is app-state success, never the betting YES ink (§B2a). */}
+              <span className="inline-flex items-center gap-1 rounded-pill border border-success-border bg-success-bg px-2.5 py-0.5 font-mono text-micro font-bold uppercase tracking-[0.1em] text-success-fg">
                 <I.check s={11} />
                 {t.profile.idSaved}
               </span>
@@ -594,9 +637,18 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
         // Earned-peak crest (remade 2026-08-08 — no rays, M3) — KYC verified is an earned-status peak, so gold is legitimate here.
         <section className="rounded-xl border border-gold-700/60 bg-bg-elevated p-5 lg:p-6 text-center">
           <RewardBurst glyph="shieldcheck" caption={t.profile.idVerified} />
-          <p className="mt-3 text-[13px] text-text-muted leading-snug max-w-[400px] mx-auto">
-            {payoutsAccepting ? t.profile.kycApprovedBody : t.profile.kycApprovedPayoutsPaused}
+          {/* 2026-09-14 — balanced (en left "on." alone at 768/1280), and a held wallet is told the truth first. */}
+          <p className="mt-3 text-[13px] text-text-muted leading-snug max-w-[400px] mx-auto text-balance">
+            {walletHeld ? t.profile.kycApprovedWalletHeld : payoutsAccepting ? t.profile.kycApprovedBody : t.profile.kycApprovedPayoutsPaused}
           </p>
+          {/* The held wording tells the player to contact support — so the card carries that door, the same one the
+              withdraw panel's frozen state and the deposit notice use (support → /help). */}
+          {walletHeld && (
+            <Link href="/help" className="btn btn-ghost btn-md btn-pill mt-4 inline-flex items-center gap-1.5">
+              <I.mail s={14} />
+              {t.kycGate.frozenCta}
+            </Link>
+          )}
           {/* Return to the gated action the user came from (IA review R6). */}
           {nextHref && (
             <Link href={nextHref as never} className="btn btn-primary btn-md mt-4 inline-flex">
@@ -617,7 +669,10 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
         </section>
       )}
 
-      <div className="flex items-center justify-between pt-1">
+      {/* 2026-09-14 — below md the right-hand link stays out of the chat bubble's column (52px bubble + 16px inset,
+          fixed at the bottom-right): on a first view at 360 it sat under the bubble in every locale. From md up the
+          640px form column ends before the bubble, so the inset only pulled the link away from the card's edge. */}
+      <div className="flex items-center justify-between pt-1 pr-[68px] md:pr-0">
         <Link
           href="/profile"
           className="font-mono text-label uppercase tracking-[0.14em] text-text-subtle hover:text-text"
@@ -635,11 +690,12 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
   );
 }
 
-// C1b verification rail — 4 nodes (ID → selfie → review → verified) on a single
+// C1b verification rail — 4 nodes (ID → documents → review → verified) on a single
 // connected track. The gilt "fill" runs the connectors up to the current node
-// (first not-yet-done step); done nodes read green (the page's done colour), the
-// current node carries the gilt ring, future nodes are muted line-art. Purely
-// presentational — reflects server-derived `done` flags, no motion.
+// (first not-yet-done step); done nodes read the app-state success tone — the Chip
+// success recipe, 2026-09-14, never the betting YES ink (§B2a) — the current node
+// carries the gilt ring, future nodes are muted line-art. Purely presentational —
+// reflects server-derived `done` flags, no motion.
 //
 // ⚠️ 2026-09-13 — EQUAL FLEXIBLE COLUMNS, CONNECTORS DRAWN BETWEEN CENTRES. The columns were a
 // fixed 64px with the connectors as flex siblings, so a long Swahili label ("IMETHIBITISHWA",
@@ -659,7 +715,7 @@ function ProgressRail({ nodes, tightLabels = false }: { nodes: { label: string; 
         const isActive = i === activeIndex && !node.done;
         const Glyph = I[node.glyph];
         const circleCls = node.done
-          ? "bg-yes-500 text-yes-950 border-transparent"
+          ? "border border-success-border bg-success-bg text-success-fg"
           : isActive
             ? "border-2 border-gold-500 bg-gold-500/10 text-gold-300"
             : "border border-border bg-bg-overlay text-text-subtle";

@@ -279,7 +279,7 @@ try {
     if (p && !p.checked) p.click();
   });
   await dpage.waitForTimeout(400);
-  await dpage.getByRole("button", { name: /confirm deposit|thibitisha amana|确认存款/i })
+  await dpage.getByRole("button", { name: /confirm deposit|thibitisha amana|确认存款|确认充值/i })
     .first().click().catch(() => {});
   await dpage.waitForTimeout(1_200);
   await dpage.getByRole("button", { name: /^deposit$|^weka$|^存款$/i }).first().click().catch(() => {});

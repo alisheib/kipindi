@@ -97,7 +97,9 @@ export function AmountField({
         </div>
       )}
 
-      {hint && <p className="mt-2 text-body-sm text-text-subtle">{hint}</p>}
+      {/* break-keep: Chinese breaks only at spaces and punctuation (text-balance alone split 最高 and 需先); it changes
+          nothing for Latin text, and overflow-wrap still wraps an over-long run. */}
+      {hint && <p className="mt-2 text-body-sm text-text-subtle text-balance break-keep [overflow-wrap:anywhere]">{hint}</p>}
     </div>
   );
 }

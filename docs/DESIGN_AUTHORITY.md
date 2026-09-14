@@ -478,8 +478,9 @@ named `home/trust-band.tsx` or `updown/[roundId]/page.tsx`, which held the same 
 
 ⚠️ **And a status pill is not always a chip.** `wallet/receipt/[id]/page.tsx` holds a file-local
 constant *named* `STATUS_TONE`, shadowing this module's export, hand-typing seven payment tones
-as Tailwind classes on a hand-rolled pill; `wallet/wallet-client.tsx` paints QUEUED amber;
-`profile/email-editor.tsx` and `profile/kyc/page.tsx` dress app states in the betting-YES pair.
+as Tailwind classes on a hand-rolled pill; `wallet/wallet-client.tsx` paints QUEUED amber.
+*(`profile/email-editor.tsx` and `profile/kyc/page.tsx` dressed app states in the betting-YES pair until
+2026-09-14 — both moved to the success/danger tokens in the KYC audit, session 95.)*
 A census that only greps `chip-*` cannot see any of them.
 
 **Re-derived at 2026-08-30, comment-stripped over all 487 `.tsx` + 320 `.ts` files under

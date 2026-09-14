@@ -120,14 +120,14 @@ export function EmailVerifyBanner({ email }: { email: string | null }) {
         type="button"
         onClick={toggle}
         aria-expanded={!collapsed}
-        className="text-left underline-offset-2 hover:underline"
+        className="text-left text-balance underline-offset-2 hover:underline"
       >
         {collapsed
           ? (email ? t.wallet.verifyBannerShort : t.wallet.verifyBannerNoEmailShort)
           : (email ? t.wallet.verifyBannerText : t.wallet.verifyBannerNoEmail)}
       </button>
       {result && (
-        <span className={`ml-2 font-semibold ${result.tone === "ok" ? "text-yes-300" : "text-no-300"}`}>
+        <span className={`ml-2 font-semibold ${result.tone === "ok" ? "text-success-fg" : "text-danger-fg"}`}>
           {result.message}
         </span>
       )}
