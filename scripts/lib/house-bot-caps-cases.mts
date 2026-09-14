@@ -518,6 +518,57 @@ section("§5 · in-lock re-reads");
     ok("5.13 · an Up & Down market with no round row → house_round_locked (the lock time cannot be proven)", r.ok === false && r.reason === "house_round_locked", show(r));
   }
   {
+    // LIE-03: a REAL round (asset → chain → confirmed observation → openRound), so the round-lock formula
+    // (opensAt + durationMinutes, capped at the market's close) is what decides — not a missing row.
+    const cfg: Any = await import("../../src/lib/server/updown-config.ts");
+    const uds: Any = await import("../../src/lib/server/updown-service.ts");
+    const udd: Any = await import("../../src/lib/server/updown-dal.ts");
+    const { seedDefaultSources, addSource } = await import("../../src/lib/server/source-registry.ts");
+    await seedDefaultSources();
+    await addSource({ domain: "api.twelvedata.com", label: "Twelve Data", category: "crypto", rationale: "test fixture (mirrors production)", addedBy: "system" });
+    const a = await cfg.createAsset({
+      key: `B${process.pid}`, symbol: "BTC/USD", nameEn: "Bitcoin", nameSw: "Bitcoin", iconKey: "crypto",
+      priceSourceUrl: "https://api.twelvedata.com/quote", category: "crypto", decimals: 2, minMoveTicks: 2,
+    }, OFFICER);
+    if (a.ok) await cfg.setAssetEnabled(a.data.id, true, OFFICER);
+    const c = a.ok ? await cfg.createChain({ assetId: a.data.id, durationMinutes: 5 }, OFFICER) : a;
+    if (c.ok) await cfg.setChainState(c.data.id, "RUNNING", OFFICER);
+    const chain = c.ok ? await udd.chainStore.get(c.data.id) : null;
+    const anchorMs = cfg.cleanGridAnchor(Date.now() + 60_000);
+    const openRoundAt = async (k: number) => {
+      const boundary = new Date(anchorMs + k * 5 * 60_000).toISOString();
+      const o = await udd.observationStore.ensure(a.data.id, boundary);
+      await udd.observationStore.confirm(o.id, {
+        price: 60_000, sourceUrl: "https://api.twelvedata.com/quote", sourceQuotedAt: boundary,
+        evidence: "BTC quoted 60000", confidence: 96, model: "test-stub", rawHash: `h${k}_${process.pid}`,
+      });
+      return uds.openRound(chain, boundary, o.id, 60_000);
+    };
+    const r1 = chain ? await openRoundAt(0) : { ok: false, error: `fixture: ${a.error ?? c.error}` };
+    const r2 = chain ? await openRoundAt(1) : r1;
+    ok("5.13a · fixture · two real Up & Down rounds open on a running chain", r1.ok === true && r2.ok === true, `${r1.ok ? "ok" : r1.error} · ${r2.ok ? "ok" : r2.error}`);
+    if (r1.ok && r2.ok) {
+      // Round 1's betting window is moved into the past: opensAt goes back until opensAt + durationMinutes is a
+      // minute ago. `opensAt` is write-once in the round store, so the fixture shifts the stored value relative
+      // to itself: interval arithmetic on Postgres (no Date crosses the naive-timestamp boundary), the memory
+      // map directly. The market row — its close, its selection close — is untouched.
+      const before = Date.parse((await udd.roundStore.get(r1.data.id)).opensAt);
+      const shiftMs = Math.ceil((before + 5 * 60_000 - Date.now() + 60_000) / 1_000) * 1_000;
+      if (w.onPostgres) await w.prisma()!.$executeRawUnsafe(`UPDATE "UpDownRound" SET "opensAt" = "opensAt" - ($1::int * interval '1 millisecond') WHERE "id" = $2`, shiftMs, r1.data.id);
+      else { const mem = (globalThis as Any).__50PICK_UD_ROUNDS as Map<string, Any>; mem.set(r1.data.id, { ...mem.get(r1.data.id), opensAt: new Date(before - shiftMs).toISOString() }); }
+      const after = Date.parse((await udd.roundStore.get(r1.data.id)).opensAt);
+      ok("5.13a2 · fixture · round 1's betting window (opensAt + 5 min) now ended about a minute ago",
+        before - after === shiftMs && after + 5 * 60_000 < Date.now() - 50_000, `shift ${shiftMs} ms · window ended ${Date.now() - (after + 5 * 60_000)} ms ago`);
+      const bl = await w.bot();
+      const rl = await w.place(bl, await w.intent(bl, r1.data.marketId, { kind: "OPENER", productLine: "UPDOWN", side: "YES", stakeTzs: 1_000 }));
+      ok("5.13b · a real round whose opensAt + durationMinutes has passed → house_round_locked, nothing placed",
+        rl.ok === false && rl.reason === "house_round_locked" && (await houseCount(r1.data.marketId)) === 0, show(rl));
+      const bo = await w.bot();
+      const ro = await w.place(bo, await w.intent(bo, r2.data.marketId, { kind: "OPENER", productLine: "UPDOWN", side: "YES", stakeTzs: 1_000 }));
+      ok("5.13c · CONTROL · the same OPENER on a round still inside its window places", ro.ok === true, show(ro));
+    }
+  }
+  {
     // PLAN H4: a NO_FUNDS abort after markPlaced leaves the intent CLAIMED with no position, on BOTH stores.
     const b = await w.bot();
     const { market, i } = await opener(b);
