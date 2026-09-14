@@ -64,12 +64,12 @@ import type { Role } from "@/lib/server/roles";
  *
  * ⚠️ The CONCEPT still exists where it is genuinely implemented — the Proposals feature-state
  * machine (`proposals-config.ts`, `propose-promo.tsx`, `coming-soon-banner.tsx`) renders a real
- * gilt badge for it. This module governs two features, both WITHDRAWN, and neither is promised.
+ * gilt badge for it. This module governs three features, all WITHDRAWN today, and none is promised.
  */
 export type FeatureState = "ACTIVE" | "WITHDRAWN";
 
 /** The features this table governs. */
-export type FeatureName = "invite" | "bonus";
+export type FeatureName = "invite" | "bonus" | "install";
 
 /**
  * ⛔ THE SWITCHES. Changing one word here changes the whole product surface.
@@ -79,10 +79,16 @@ export type FeatureName = "invite" | "bonus";
  * commercial relationship they were vetted, charged and approved for.
  *
  * `bonus` — WITHDRAWN for everyone. No role opens it.
+ *
+ * `install` — the home-screen install invitation, WITHDRAWN 2026-09-13 (Ali: *"keep only the
+ * socials popup … the install, hide it for now, later we activate — it's disturbing users"*).
+ * Nothing about it is deleted: the component, its copy, its eligibility rules and its guards all
+ * stay, and the shell mounts it behind `installInviteIsLive()`. ACTIVE here brings it back.
  */
 const PRODUCT_STATE: Record<FeatureName, FeatureState> = {
   invite: "WITHDRAWN",
   bonus: "WITHDRAWN",
+  install: "WITHDRAWN",
 };
 
 /**
@@ -167,4 +173,15 @@ export function bonusStateFor(_role?: Role | null | undefined): FeatureState {
  */
 export function bonusIsLiveFor(role?: Role | null | undefined): boolean {
   return bonusStateFor(role) === "ACTIVE";
+}
+
+/**
+ * True when the home-screen install invitation (`src/components/pwa/install-invite.tsx`) may be
+ * mounted. WITHDRAWN since 2026-09-13 — see `install` in the table above. No role exception: when
+ * live it is offered to visitors and players alike, and its own rules still decide the moment.
+ * ⭐ Re-enable with `install: "ACTIVE"` above, or `FEATURE_INSTALL=ACTIVE` on the server.
+ * ⛔ Resolved in the SHELL (a server component) and never read by the client component itself.
+ */
+export function installInviteIsLive(): boolean {
+  return resolvedState("install") === "ACTIVE";
 }

@@ -1,5 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import type { Route } from "next";
+import { isFinalRefusal } from "@/lib/kyc-refusal";
 import { AdminPageHead, AdminKpi, AdminCard, FeedRow, AdminLoadError } from "@/components/admin/admin-shell";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { parseSort, applySort, SortTh } from "@/components/admin/admin-sort";
@@ -18,7 +20,7 @@ import { currentSession } from "@/lib/server/auth-service";
 import { canAct, canView } from "@/lib/server/rbac";
 import { exportUserData } from "@/lib/server/user-service";
 import { I } from "@/components/ui/glyphs";
-import { formatTzs, formatTzsCompact, formatDateTime, formatDateTimeSafe, formatDateShort } from "@/lib/utils";
+import { formatTzs, formatTzsCompact, formatDate, formatDateTime, formatDateTimeSafe, formatDateShort } from "@/lib/utils";
 import { displayLabel, displayInitials } from "@/lib/display-label";
 import { KycStatusBadge, kycStatusLabel, kycStatusVariant, AccountStatusBadge, txnTypeLabel, txnStatusLabel, txnProviderLabel } from "@/components/admin/status-badge";
 import { KycReviewControls } from "@/components/admin/kyc-review-controls";
@@ -28,6 +30,8 @@ import { SetEmailForm } from "./set-email-form";
 import { ResetPasswordButton } from "./reset-password-button";
 import { BalanceAdjustControls } from "./balance-adjust-controls";
 import { ForceReverifyControls } from "./force-reverify-controls";
+import { WalletFreezeControls } from "./wallet-freeze-controls";
+import { currentFreezeReasons, FREEZE_REASON_LABEL } from "@/lib/wallet-freeze-reasons";
 import { ExportPlayerButton } from "./export-player-button";
 import { AdminBody } from "@/components/admin/admin-body";
 import { KpiGrid } from "@/components/admin/admin-body";
@@ -211,7 +215,9 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
             <div className="flex-1 min-w-[260px]">
               <h2 className={`font-display font-bold text-title-md text-text leading-none ${isAutoHandle ? "font-mono" : ""}`}>{headerLabel}</h2>
               <p data-identity-line="1" className="font-mono text-caption text-text-tertiary mt-1">
-                {id.slice(0, 14)}… · <Sensitive field="phone" subjectId={id} value={user.phoneE164} /> · {user.region ? <Sensitive field="region" subjectId={id} value={user.region} /> : "—"} · joined {user.createdAt.split("T")[0]}
+                {/* "joined" was the raw ISO date cut at the "T" — UTC, and in database spelling beside formatted
+                    dates. `formatDate` (2026-09-13) gives "13 Sep 2026" in the platform zone, like the rest of the page. */}
+                {id.slice(0, 14)}… · <Sensitive field="phone" subjectId={id} value={user.phoneE164} /> · {user.region ? <Sensitive field="region" subjectId={id} value={user.region} /> : "—"} · joined {formatDate(user.createdAt)}
               </p>
               {user.email && (
                 <p data-identity-line="2" className="font-mono text-caption text-text-tertiary mt-0.5 flex items-center gap-1">
@@ -226,7 +232,8 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
                   <a href={`/admin/players/${id}?tab=kyc`} className="inline-block hover:opacity-80 transition-opacity">
                     <Chip size="sm" variant={kycStatusVariant(kyc.status)}>
                       {kyc.status === "APPROVED" ? <I.shieldcheck s={10} className="inline -mt-0.5 mr-0.5" /> : <I.shieldAlert s={10} className="inline -mt-0.5 mr-0.5" />}
-                      KYC · {kycStatusLabel(kyc.status)}
+                      {/* rejectReason (2026-09-13): a FINAL refusal reads "Finally refused", never the retryable "Rejected". */}
+                      KYC · {kycStatusLabel(kyc.status, kyc.rejectReason)}
                     </Chip>
                   </a>
                 )}
@@ -454,7 +461,12 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
                   the door, not the permission. */}
               {capSupport ? <SetEmailForm userId={data.user!.id} /> : <ControlLocked what="Set player email" need="support" />}
               {capMoney ? <BalanceAdjustControls userId={data.user!.id} currentBalance={wallet?.balance ?? 0} /> : <ControlLocked what="Adjust balance" need="accounting" />}
-              {kyc?.status === "APPROVED" && (capCompliance ? <ForceReverifyControls userId={data.user!.id} /> : <ControlLocked what="Force re-verification" need="compliance" />)}
+              {kyc?.status === "APPROVED" && (capCompliance ? <ForceReverifyControls userId={data.user!.id} walletFrozen={wallet?.status === "FROZEN"} /> : <ControlLocked what="Force re-verification" need="compliance" />)}
+              {/* ⭐ THE OFFICER'S FREEZE (2026-09-13, ruling 6) — the lever that stops money now that
+                  re-verification does not. It names every standing hold, not only its own. */}
+              {wallet && (capCompliance
+                ? <WalletFreezeControls userId={data.user!.id} status={wallet.status} holds={currentFreezeReasons(wallet).map((r) => ({ reason: r, label: FREEZE_REASON_LABEL[r] }))} />
+                : <ControlLocked what="Freeze / unfreeze wallet" need="compliance" />)}
               <p className="text-caption text-text-tertiary flex items-center gap-1.5 ml-auto">
                 <I.shieldcheck s={12} />
                 Every action is audited · reason required
@@ -493,12 +505,21 @@ function KycTab({ kyc, userEmail, userId, makerCheckerRequired, canActSupport, c
           </div>
         </div>
       )}
+      {/* ⭐ A FINAL refusal says so (2026-09-13). "Verification rejected" read as retryable; a final code means the
+          player cannot resubmit, and the balance is an officer's recorded decision on the KYC case page, which
+          holds the refused-funds panel. */}
       {kyc.status === "REJECTED" && (
         <div className="rounded-lg border border-no-700/60 bg-no-500/[0.08] px-4 py-3 flex items-start gap-3">
           <I.xCircle s={16} className="text-no-300 shrink-0 mt-0.5" />
           <div>
-            <p className="font-display font-semibold text-no-300 text-[13px]">Verification rejected</p>
+            <p className="font-display font-semibold text-no-300 text-[13px]">{isFinalRefusal(kyc.rejectReason) ? "Identity finally refused" : "Verification rejected"}</p>
             {kyc.rejectReason && <p className="mt-0.5 text-caption text-text-muted">&ldquo;{kyc.rejectReason}&rdquo;</p>}
+            {isFinalRefusal(kyc.rejectReason) && (
+              <p className="mt-1 text-body-sm text-text-muted">
+                Final: the player cannot resubmit. The balance is decided on the{" "}
+                <Link href={`/admin/kyc/${userId}` as Route} className="text-brand-300 hover:underline">KYC case page</Link>.
+              </p>
+            )}
           </div>
         </div>
       )}
@@ -525,7 +546,7 @@ function KycTab({ kyc, userEmail, userId, makerCheckerRequired, canActSupport, c
       </div>
 
       <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-caption">
-        <Item label="Status" value={<KycStatusBadge status={kyc.status} />} />
+        <Item label="Status" value={<KycStatusBadge status={kyc.status} rejectReason={kyc.rejectReason} />} />
         {/* ⛔ WHICH DOCUMENT, THEN THE NUMBER. From 2026-08-20 a player proves
             identity with any ONE of four documents, so a masked tail alone no longer
             says what was submitted — and this panel is a support agent’s only view

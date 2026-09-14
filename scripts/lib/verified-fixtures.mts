@@ -1,28 +1,33 @@
 /**
  * TEST FIXTURES ARE VERIFIED PLAYERS — importing this module makes them so.
  *
- * ── WHY THIS EXISTS ────────────────────────────────────────────────────────────────────
- * From 2026-09-05 a player may not deposit, bet or withdraw until an officer has approved
- * their identity (`src/lib/server/kyc-gate.ts`). Nearly every suite in `scripts/` builds
- * its players with a local `fundedUser()`-style helper written years before that rule, so
- * every one of them created an UNVERIFIED account and then asserted things about money.
- * 59 suites went red at once, and not one of the failures was about the thing the suite
- * tests: they were all the identity gate, correctly refusing fixtures that represent
- * players who could never exist in the product.
+ * ── WHY THIS EXISTS, AND WHY IT IS NARROWER THAN IT WAS ─────────────────────────────────
+ * From 2026-09-13 identity is asked before money is WITHDRAWN and before nothing else
+ * (`assertIdentityForPayout`, `src/lib/server/kyc-gate.ts`; docs/COMPLIANCE-DECISIONS.md
+ * 2026-09-13). A suite that pays a fixture out would otherwise measure the identity gate
+ * instead of its own rule, so this import keeps it honest about WHY its payouts succeed.
+ *
+ * ⚠️ IT WAS WRITTEN FOR A WIDER GATE, AND THAT REASON IS NOW FALSE. From 2026-09-05 to
+ * 2026-09-13 a player could not deposit, bet or withdraw until an officer approved them; 59
+ * suites went red at once on fixtures the product could not produce, and this module was the
+ * fix. The deposit and bet gates are DELETED, so for a suite that only deposits, bets or
+ * credits a bonus this import is now inert — harmless, and no longer a reason. ⛔ Do not cite
+ * it as "deposit requires identity" or "a bet requires identity": both are false from 2026-09-13.
  *
  * ⛔ WHAT THIS IS NOT. It is NOT a bypass, and there is a bright line here worth stating.
  * It writes a real APPROVED `KycSubmission` row through the ordinary store, so the gate
  * runs in full and finds a verified player — exactly as if each fixture had been written
  * that way by hand. It touches no product code, it is opt-in per suite by an import that
  * is visible at the top of the file, and it cannot be reached from a running platform.
- * ⛔ Nothing here may ever weaken `assertKycForMoney`, add a NODE_ENV branch to it, or
+ * ⛔ Nothing here may ever weaken `assertIdentityForPayout`, add a NODE_ENV branch to it, or
  * teach it about tests. A gate that knows it is being tested cannot fail.
  *
- * ⛔ AND THE SUITES THAT TEST THE GATE ITSELF MUST NOT IMPORT THIS. `kyc-gate.test.mts`,
+ * ⛔ AND THE SUITES THAT TEST THE LADDER ITSELF MUST NOT IMPORT THIS. `kyc-gate.test.mts`,
  * `deposit-gate-return.test.mts` and `failure-reasons.test.mts` build their own fixtures
- * deliberately — including UNVERIFIED ones — because refusal is the thing they measure.
- * Importing this there would make them assert a rule against a population that cannot
- * break it, which is the "a gate that chooses its own population cannot fail" defect.
+ * deliberately — including UNVERIFIED ones — because what an unverified account may and may
+ * not do is the thing they measure. Importing this there would make them assert a rule against
+ * a population that cannot break it, which is the "a gate that chooses its own population
+ * cannot fail" defect.
  *
  * ── HOW ────────────────────────────────────────────────────────────────────────────────
  * It wraps `db.user.create` once, at import time, so a suite needs a single line and no
@@ -36,13 +41,15 @@ type UserLike = { id: string; role?: string };
 /**
  * Approve one account explicitly — for the staff accounts the automatic wrap skips.
  *
- * ⚠️ IT EXISTS BECAUSE ONE SUITE HAS AN OFFICER WHO MUST BE ABLE TO BET.
- * `officer-conflict` proves an officer cannot resolve a market they staked on, so its
- * ADMIN fixture has to place a real bet — and from 2026-09-05 an account with no approved
- * identity cannot. Widening the automatic wrap to cover staff would have fixed it too, and
- * more quietly: staff accounts appear in KYC queues and self-review checks across other
- * suites, and giving all of them submissions changes populations nobody asked to change.
- * One named call in the one suite that needs it is the smaller blast radius.
+ * ⚠️ IT WAS WRITTEN FOR AN OFFICER WHO HAD TO BET. `officer-conflict` proves an officer
+ * cannot resolve a market they staked on, so its ADMIN fixture places a real bet — and from
+ * 2026-09-05 to 2026-09-13 an account with no approved identity could not. Since 2026-09-13 a
+ * stake asks no identity question, so for a BET this call is now inert; it still matters for a
+ * staff fixture that is PAID OUT, and two suites call it (`officer-conflict`, `two-admin-policy`).
+ * Widening the automatic wrap to cover staff would have been quieter and worse: staff accounts
+ * appear in KYC queues and self-review checks across other suites, and giving all of them
+ * submissions changes populations nobody asked to change. One named call per suite that needs
+ * it is the smaller blast radius.
  */
 export async function approveFixtureIdentity(userId: string): Promise<void> {
   const now = new Date().toISOString();
@@ -82,6 +89,8 @@ if (!g[MARK]) {
     // them, their bonus grants landed `PENDING_KYC`, and three suites failed with
     // "referrer rewarded … bonus=0". Including the CONTROL that exists to prove an eligible
     // referrer IS paid — which is exactly the control earning its place.
+    // ⚠️ That `PENDING_KYC` grant hold was deleted on 2026-09-13 with the deposit and bet gates. An
+    // AGENT stays in the wrap for the gate that remains: a paid-out AGENT must clear identity too.
     if ((u.role ?? "PLAYER") === "PLAYER" || u.role === "AGENT") {
       const now = new Date().toISOString();
       // ⛔ A UNIQUE `idNumber` PER FIXTURE. One document, one account is enforced by a
@@ -112,8 +121,8 @@ if (!g[MARK]) {
         reviewerId: null,
         reviewedAt: now,
         submittedAt: now,
-        // The column the WITHDRAW arm of the gate reads. A fixture approved without it is
-        // a player who can bet and cannot be paid — a state the product never produces.
+        // The first-approval stamp — the half of `approvedEver` the withdrawal gate is built around.
+        // The product writes it with every first approval, so an APPROVED fixture carries it too.
         approvedAt: now,
         createdAt: now,
         updatedAt: now,

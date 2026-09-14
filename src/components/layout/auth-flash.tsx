@@ -1,9 +1,10 @@
 "use client";
 
 /**
- * AuthFlash — fires a kit-styled success toast on /?welcome=back or
- * /profile/kyc?welcome=new, then strips the param so a hard-refresh
- * doesn't re-fire. Mounted once on each landing target.
+ * AuthFlash — fires a kit-styled success toast on ?welcome=back or ?welcome=new wherever
+ * the request lands, then strips the param so a hard-refresh doesn't re-fire. Mounted ONCE,
+ * app-wide, in AppShell. ⚠️ Since 2026-09-13 a new account lands on its safe `next` or on
+ * `/wallet/deposit` — not on `/profile/kyc`, where the old ladder sent it.
  */
 import { useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";

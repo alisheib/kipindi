@@ -70,10 +70,14 @@ const ok = (label: string, cond: boolean, extra = "") => {
 // ── 4 · The three routes that were broken by the drift ──────────────────────
 // Regression pins. Each of these highlighted NOTHING in the sidebar before the fix.
 {
+  // ⚠️ /admin/kyc MOVED OFF THE "approvals" ALIAS, 2026-09-13. It gained a real index page and its own nav
+  // item ("KYC queue", key "kyc"), so every KYC route now highlights that item. The pin's purpose is
+  // unchanged — each route must resolve to a key a nav item OWNS, never to nothing.
   const cases: Array<[string, string]> = [
     ["/admin/payments", "payments"],
-    ["/admin/kyc", "approvals"],
-    ["/admin/kyc/usr_123", "approvals"],
+    ["/admin/kyc", "kyc"],
+    ["/admin/kyc/usr_123", "kyc"],
+    ["/admin/kyc/refused", "kyc"],
     ["/admin/resolver/mkt_abc", "resolver"],
     ["/admin/resolver-queue", "resolver"],
   ];
@@ -125,7 +129,10 @@ const ok = (label: string, cond: boolean, extra = "") => {
     "/admin/agents/[id]": "the agent workstation — from the queue, refunds, invitations and roster tables on /admin/agents",
     "/admin/ai-polls/[id]": "poll detail — from the /admin/ai-polls list",
     "/admin/invites/[id]": "invite detail — from the /admin/invites list",
-    "/admin/kyc/[id]": "the KYC workstation — from /admin/approvals (there is no /admin/kyc list page)",
+    // ⚠️ 2026-09-13 — this reason used to add "(there is no /admin/kyc list page)". There is one now, with
+    // its own nav item, so that clause became false and is removed.
+    "/admin/kyc/[id]": "the KYC workstation — from the queues on /admin/kyc and /admin/approvals, and from /admin/kyc/refused",
+    "/admin/kyc/refused": "the refused-balances report — the 'Refused balances' action on /admin/kyc, and 'All refused balances' on each refused case at /admin/kyc/[id]",
     "/admin/markets/[id]": "market detail — from the /admin/markets list",
     "/admin/house/[marketId]": "per-game book — from the BY GAME table on /admin/house",
     "/admin/players/[id]": "player detail — from the /admin/players list",

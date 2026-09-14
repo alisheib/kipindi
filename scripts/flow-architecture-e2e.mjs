@@ -6,7 +6,8 @@
  *   1. Unauth user → protected route → /auth/login?next=…
  *   2. Authed user → /auth/login or /auth/register → bounced (no dead-end)
  *   3. Player → /admin/* → bounced (no privilege leak)
- *   4. Withdraw without KYC → blocked at server, useful error
+ *   4. Withdraw without identity verification → the payout panel stands where the form was, and the
+ *      deposit screen asks nothing about identity (2026-09-13 ruling)
  *   5. Deposit ≥ TZS 1M without SOF → SOF-gate block
  *   6. Self-excluded player → bet placement blocked
  *   7. Unknown route /banana → branded /not-found page
@@ -31,7 +32,12 @@ async function reg(ctx, tail, pwd) {
   const p = await ctx.newPage();
   await p.goto(`${BASE}/auth/register`, { waitUntil: "networkidle" });
   await p.fill("#phone", tail);
-  await p.fill('input[name="dob"]', "1990-01-15");
+  // ⚠️ EMAIL IS REQUIRED AT SIGN-UP and the date of birth is THREE boxes — day (`#dob`), Month, Year.
+  // Without both the form's own `required` fields stop it submitting. Same sequence as `kyc-gate-e2e.mjs` ①.
+  await p.fill("#email", `flow.${tail}@50pick.test`);
+  await p.locator("#dob").fill("15");
+  await p.locator('input[aria-label="Month"]').fill("01");
+  await p.locator('input[aria-label="Year"]').fill("1990");
   await p.fill('input[name="password"]', pwd);
   await p.fill('input[name="passwordConfirm"]', pwd);
   await p.check('input[name="acceptAge"]', { force: true });
@@ -98,10 +104,12 @@ try {
   log("3b /admin layout TOTP guard present",
       true, "see src/app/admin/layout.tsx:74-79 (hasTotp gate)");
 
-  // === 4 · Withdraw without KYC blocked ===
-  console.log("\n=== 4 · WITHDRAW REQUIRES KYC ===");
+  // === 4 · Withdrawal asks for identity — and the deposit screen does not ===
+  console.log("\n=== 4 · WITHDRAWAL REQUIRES IDENTITY — AND ONLY WITHDRAWAL ===");
   {
-    const pwd = "Wd!2026";
+    // ⚠️ A password the sign-up policy accepts. The short one this section used would be refused at
+    // registration, and every check below would then measure a signed-out bounce.
+    const pwd = "Wd!Flow2026x";
     const tail = phoneTail(2);
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
     await reg(ctx, tail, pwd);
@@ -115,13 +123,33 @@ try {
     await p.goto(`${BASE}/wallet/withdraw`, { waitUntil: "networkidle" });
     await p.waitForTimeout(600);
     const body = (await p.locator("body").textContent()) ?? "";
-    // 🔴 INVERTED 2026-08-20. This asserted the page "signals KYC requirement" via
-    // /KYC|verify/i — which the page still satisfies through "Secured by KYC & AML" long
-    // after the requirement itself was removed (Board comment #1, 2026-08-19). It measured a
-    // vocabulary, not a requirement, so it could never have detected the change.
-    log("4a /wallet/withdraw renders the form, not an identity requirement",
-        (await p.locator("form").count()) > 0
-        && !/verify\s+your\s+(identity|ID)[^.]{0,40}(to|before)\s+withdraw/i.test(body));
+    // 🔴 RE-INVERTED 2026-09-13. From 2026-08-20 this asserted the form rendered for an unverified
+    // player (identity had stopped gating withdrawal, Board comment #1). 2026-09-05 put identity back
+    // on deposit, play AND withdrawal; the 2026-09-13 ruling (docs/COMPLIANCE-DECISIONS.md) keeps it on
+    // WITHDRAWAL ONLY. ⛔ A word is still not a control — the page says "Secured by KYC & AML" whichever
+    // way the rule points — so what is measured is the CONTROL: the payout panel where the form was.
+    const panel = p.locator('[data-testid="kyc-gate-panel"][data-kyc-purpose="payout"]');
+    const panelState = await panel.first().getAttribute("data-kyc-state").catch(() => null);
+    log("4a /wallet/withdraw shows the payout identity panel to an account never approved",
+        (await panel.count()) === 1, `state=${panelState}`);
+    log("4b …in the not-started state", panelState === "not_started", `state=${panelState}`);
+    log("4c ⛔ …and the withdrawal form is ABSENT, not disabled",
+        (await p.locator('form input[name="amount"]').count()) === 0);
+    // ⭐ CONTROL · the absences above would pass over a page that never rendered.
+    log("4d control · the withdraw page actually rendered", body.length > 400, `len=${body.length}`);
+    const barOnWithdraw = await p.locator('[data-testid="kyc-verify-banner"]').count();
+
+    await p.goto(`${BASE}/wallet/deposit`, { waitUntil: "networkidle" });
+    await p.waitForTimeout(600);
+    // ⭐ The deposit screen's one door is the EMAIL (registration confirms no address) — never identity.
+    log("4e ⛔ /wallet/deposit shows NO identity panel",
+        (await p.locator('[data-testid="kyc-gate-panel"]').count()) === 0);
+    log("4f control · …the email door or the deposit form renders there instead",
+        (await p.locator('[data-testid="email-verify-gate"], #provider-MPESA').count()) > 0);
+    // ⛔ The app-wide identity bar was DELETED 2026-09-13 (Ali's quiet rule).
+    const barOnDeposit = await p.locator('[data-testid="kyc-verify-banner"]').count();
+    log("4g ⛔ no app-wide identity bar on either screen", barOnWithdraw === 0 && barOnDeposit === 0,
+        `withdraw=${barOnWithdraw} deposit=${barOnDeposit}`);
     await p.close();
     await ctx.close();
   }

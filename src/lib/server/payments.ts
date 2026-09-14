@@ -24,15 +24,18 @@
  * provider never changes the calling code or the settlement state machine.
  *
  * Provider-agnostic concerns (a correlation id, the `*.dispatch` audit, and the
- * AML ≥ 1,000,000 TZS review hold — never disburse a large payout without a
- * second-officer review) live in the WRAPPER below so every adapter inherits
- * them identically. Adapters only do the raw "call the gateway, return the
- * outcome" work.
+ * switch for the AML ≥ 1,000,000 TZS review hold) live in the WRAPPER below so
+ * every adapter inherits them identically. Adapters only do the raw "call the
+ * gateway, return the outcome" work.
+ * ⛔ THE HOLD IS OFF (owner ruling 2026-09-13, `WITHDRAWAL_AML_HOLD` below): no
+ * officer reviews a payout before it is sent. This header used to say "never
+ * disburse a large payout without a second-officer review" — do not restore it.
  *
  * Compliance:
  *  - Provider correlation IDs persisted on `Transaction.providerRef` for
  *    chargeback / dispute / regulator inspection.
- *  - All requests audited (WALLET category); AML holds audited (COMPLIANCE).
+ *  - All requests audited (WALLET category); an AML hold, if the switch is ever
+ *    turned back on, is audited (COMPLIANCE). None is placed while it is off.
  */
 import { audit } from "./audit";
 import { randomId } from "./crypto";
@@ -133,9 +136,22 @@ export type CardCheckoutContext = {
   cancelUrl: string;
 };
 
-/** Never auto-disburse a payout at/above this without a review hold. Kept equal
- *  to the AML-hold trigger in wallet-service so nothing slips through single-officer. */
+/** The large-payout line. Until 2026-09-13 a withdrawal at/above it was held for a two-officer
+ *  review; it is kept as the REPORTING line (reports/catalogue.ts, analytics) and as the trigger the
+ *  hold would use if it were ever switched back on. */
 export const AML_REVIEW_THRESHOLD_TZS = 1_000_000;
+
+/**
+ * ⛔ OWNER RULING 2026-09-13 (docs/COMPLIANCE-DECISIONS.md, 2026-09-13 third): NO withdrawal is held
+ * for a two-officer review. Any amount up to the per-withdrawal cap (WITHDRAW_MAX_TZS, validators.ts)
+ * is dispatched at once. Put to the owner with the consequence stated (large payouts leave with no
+ * second person checking them) and he chose it.
+ * ⚠️ ONE SWITCH, NOT A DELETION. The officer release and reject path (admin/aml,
+ * dispatchApprovedWithdrawal) stays, so a withdrawal held before this shipped can still be paid or
+ * returned (production held 0 at the time), and AML_REVIEW stays in use for deposits owed back to
+ * excluded players (wallet-service).
+ */
+export const WITHDRAWAL_AML_HOLD = false;
 
 export type PaymentAdapter = {
   name: string;
@@ -168,12 +184,13 @@ export async function dispatchDeposit(opts: { provider: PaymentProvider; amount:
   return routed.adapter.deposit({ ...opts, correlationId });
 }
 
-/** Initiate a withdrawal disbursement through the active gateway. Payouts whose
- *  GROSS value ≥ AML_REVIEW_THRESHOLD_TZS are held for review and NOT sent to the
- *  gateway. `amount` is what the gateway actually disburses (net of the fee);
+/** Initiate a withdrawal disbursement through the active gateway. While WITHDRAWAL_AML_HOLD is on
+ *  (it is OFF since 2026-09-13), payouts whose GROSS value ≥ AML_REVIEW_THRESHOLD_TZS are held for
+ *  review and NOT sent to the gateway. `amount` is what the gateway actually disburses (net of the fee);
  *  `grossAmount` (defaults to `amount`) is the full withdrawal value the AML gate
- *  is evaluated against — evaluating on `net` would let a gross withdrawal just
- *  over the threshold slip past the mandatory second-officer review. */
+ *  would be evaluated against — evaluating on `net` would let a gross withdrawal just
+ *  over the threshold slip past the second-officer review, were the hold switched on.
+ *  While it is off, no officer reviews a withdrawal before it is sent (owner ruling 2026-09-13). */
 export async function dispatchWithdrawal(opts: { provider: PaymentProvider; amount: number; grossAmount?: number; msisdn?: string; userId: string; reviewed?: boolean; payeeName?: string }): Promise<LadderResult> {
   const correlationId = `wdr_${randomId(10)}`;
   const amlBasis = opts.grossAmount ?? opts.amount;
@@ -185,16 +202,18 @@ export async function dispatchWithdrawal(opts: { provider: PaymentProvider; amou
     targetId: opts.userId,
     payload: { correlationId, provider: opts.provider, amount: opts.amount, grossAmount: amlBasis, msisdn: opts.msisdn ? mask(opts.msisdn) : null, reviewed: !!opts.reviewed },
   });
-  // Compliance FIRST, before any adapter is touched — a large payout is held for
-  // a second-officer AML review; we never dispatch it to the gateway on the spot.
+  // Compliance FIRST, before any adapter is touched — WHEN WITHDRAWAL_AML_HOLD IS ON, a large
+  // payout is held for a second-officer AML review instead of going to the gateway.
   // Evaluated on the GROSS withdrawal value, not the net-of-fee disbursement.
+  // ⛔ The switch is OFF since the owner ruling of 2026-09-13: this branch does not run, and
+  // every withdrawal up to WITHDRAW_MAX_TZS goes straight to the gateway. Kept, not deleted.
   //
   // EXCEPTION: `reviewed` — this payout has ALREADY passed the two-officer AML
-  // review and is being dispatched by the officer-approved path
+  // review (a row held before 2026-09-13) and is being dispatched by the officer-approved path
   // (dispatchApprovedWithdrawal → admin/aml/actions.ts). Re-holding it here would
   // dead-end it back into the same queue it just cleared, so we go straight to the
   // gateway. `reviewed` is only ever set by that server-side path, never by a player.
-  if (!opts.reviewed && amlBasis >= AML_REVIEW_THRESHOLD_TZS) {
+  if (WITHDRAWAL_AML_HOLD && !opts.reviewed && amlBasis >= AML_REVIEW_THRESHOLD_TZS) {
     audit({ category: "COMPLIANCE", action: "withdraw.aml_review_triggered", actorId: opts.userId, targetType: "User", targetId: opts.userId, payload: { correlationId, amount: opts.amount, grossAmount: amlBasis, threshold: AML_REVIEW_THRESHOLD_TZS } });
     // The reference here used to be FABRICATED (`${provider}-${randomId(6)}`), which
     // was indistinguishable from a real gateway reference to everything downstream —
@@ -294,7 +313,8 @@ const mockAdapter: PaymentAdapter = {
   },
   async withdraw({ provider, correlationId }) {
     await new Promise((r) => setTimeout(r, 1_500));
-    // (AML ≥ 1M is handled by the wrapper before we get here.)
+    // (The AML ≥ 1M hold would be applied by the wrapper before we get here; it is switched off
+    // since the owner ruling of 2026-09-13 — `WITHDRAWAL_AML_HOLD`.)
     if (await getDemoAsyncEnabled()) return { ok: true, providerRef: `${provider}-${randomId(6).toUpperCase()}`, status: "PENDING", correlationId };
     return { ok: true, providerRef: `${provider}-${randomId(6).toUpperCase()}`, status: "CONFIRMED", correlationId };
   },

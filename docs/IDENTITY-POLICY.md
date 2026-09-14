@@ -9,6 +9,28 @@ statement. If any surface, doc or comment contradicts it, that surface is wrong.
 > future session reaches for when it wants to know what happens to a *passport*, and
 > finds nothing.
 
+## ⭐ When identity is asked — before WITHDRAWAL only (owner ruling, 2026-09-13)
+
+A player registers, confirms their email, deposits and plays **without** verifying their identity.
+Identity is verified once, **before the first withdrawal**, and before nothing else. The ruling, its
+accepted consequences (declared age only until withdrawal; sanctions/PEP screening happens at the
+review, after the money) and the date history are in
+[`COMPLIANCE-DECISIONS.md`](COMPLIANCE-DECISIONS.md), 2026-09-13. The seam is
+`src/lib/server/kyc-gate.ts`; the one predicate the page and the server share is
+`approvedEver` in `src/lib/kyc-approval.ts`.
+
+⛔ **Read the dates before "restoring" anything.** 2026-08-20: identity stopped gating withdrawal.
+2026-09-05: identity gated deposit, play and withdrawal. 2026-09-13: withdrawal only.
+
+**Final and recoverable refusals (2026-09-13).** Because money is now played before identity is
+checked, a refusal can land on an account holding a balance, and the reason code decides what
+follows (`src/lib/kyc-refusal.ts`):
+
+| Code | Kind | What follows |
+|---|---|---|
+| `BLURRY_DOC` · `EXPIRED_ID` · `DETAILS_MISMATCH` · `OTHER` | recoverable | The player may submit again; the document number is freed. |
+| `UNDERAGE` · `SANCTIONED` · `DUPLICATE_IDENTITY` | **final** | The wallet is frozen first; the document number stays **reserved**; the player cannot restart; an officer decides the balance (`refused-funds.ts`) and may re-open a wrong refusal. |
+
 ## The policy
 
 > We care that an identity document's number is **the right shape for that document**
@@ -49,10 +71,10 @@ document list — which is exactly what this policy forbids.
 | Control | Where | Status |
 |---|---|---|
 | Format check, per document | `validateIdNumber` in [`src/lib/id-documents.ts`](../src/lib/id-documents.ts) — ONE catalogue, one entry per type | ✅ enforced |
-| **Uniqueness — one document, one account** | `db.kyc.findActiveByIdNumber(type, number, userId)` is the fast path; the **partial unique index** is the enforcement. A REJECTED submission frees the number | ✅ enforced, audited as `kyc.id.duplicate_blocked` |
-| Age ≥ 18 | `validators.dateOfBirth` at parse time **and** `kyc-service` above the per-document branch — both on the DECLARED date of birth | ✅ enforced for **all four**; see the note below |
+| **Uniqueness — one document, one account** | `db.kyc.findActiveByIdNumber(type, number, userId)` is the fast path; the **partial unique index** is the enforcement. A **recoverable** refusal frees the number; a **final** refusal (`UNDERAGE`, `SANCTIONED`, `DUPLICATE_IDENTITY`) keeps it reserved — both indexes and both fast paths ask the same question (2026-09-13, `20260913120000_kyc_at_withdrawal`) | ✅ enforced, audited as `kyc.id.duplicate_blocked` |
+| Age ≥ 18 | `validators.dateOfBirth` at parse time **and** `kyc-service` above the per-document branch — both on the DECLARED date of birth, and both through ONE predicate, `isOfAge` (`src/lib/id-documents.ts`): **whole calendar years on the Africa/Dar_es_Salaam date** (2026-09-13, audit session 95 — the schema used 365.25-day years and the service calendar years on UTC, and their ~12-hour disagreement let the service issue an automatic FINAL UNDERAGE refusal to a player already 18; `nida.ts` and `/admin/kyc/[id]` ask the same predicate). ⚠️ **From 2026-09-13 the declared date is the only age control before a player's first withdrawal** (Ali's ruling, consequence recorded in `COMPLIANCE-DECISIONS.md`): a player plays on the date they typed, and the officer's "18 or older" checklist row at review is the first comparison against a document | ✅ enforced for **all four** (declared); see the note below |
 | Expiry | captured and refused at submit **and** re-checked at submit-for-review, for the two documents that carry one | ✅ enforced |
-| Authority check (NIDA API, or any other) | `src/lib/server/nida.ts` | ❌ **deliberately absent.** That file is a deterministic mock; no request has ever reached the National Identification Authority, and there is no equivalent endpoint for a passport, a licence or a voter's card. `idVerifiedAt` therefore means "format accepted", NOT "government confirmed". |
+| Authority check (NIDA API, or any other) | `src/lib/server/nida.ts` | ❌ **deliberately absent.** That file is a deterministic mock; no request has ever reached the National Identification Authority, and there is no equivalent endpoint for a passport, a licence or a voter's card. `idVerifiedAt` therefore means "format accepted", NOT "government confirmed". ⛔ Its two QA hooks (`…0000` → SANCTIONED, `…9999` → MISMATCH) answer only when `NODE_ENV !== "production"` (`nidaQaHooksEnabled`, 2026-09-13 audit session 95) — before that they answered production players, and SANCTIONED is a FINAL code. |
 | Document review by a human | `/admin/kyc/[id]` | ✅ this is the real identity control |
 
 ### ⚠️ The age gate belongs to the PLAYER, not to the NIDA number
@@ -112,6 +134,22 @@ CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS "KycSubmission_idType_idNumber_ac
     ON "KycSubmission" ("idType", "idNumber")
     WHERE "idNumber" IS NOT NULL AND status <> 'REJECTED';
 ```
+
+🔴 **AND FROM 2026-09-13 A FINAL REFUSAL KEEPS THE NUMBER.** A refusal freeing the number was
+correct while an unapproved account could hold no money. With play before verification it became a
+laundering shape: a minor refused `UNDERAGE` with a balance, their document released, an adult
+accomplice presenting it on a second account to withdraw. `20260913120000_kyc_at_withdrawal`
+re-creates BOTH partial unique indexes (the tuple above and `KycSubmission_idFingerprint_active_key`)
+under the same names with this predicate, and `findActiveByIdNumber` / `findActiveByFingerprint`
+in both stores ask the same question through `holdsDocumentNumber` (`src/lib/kyc-refusal.ts`):
+
+```sql
+WHERE "idNumber" IS NOT NULL
+  AND (status <> 'REJECTED' OR "rejectReason" IN ('UNDERAGE', 'SANCTIONED', 'DUPLICATE_IDENTITY'))
+```
+
+⚠️ A restart would null the number and release it anyway — which is why `startKyc` refuses to
+restart a final refusal. Only an officer's `reopenFinalRefusal` resets it, with a written reason.
 
 ⚠️ **The table is `KycSubmission`.** An earlier revision of this document said `"Kyc"`,
 which is the *app-layer* name (`db.kyc.*`); no table called `Kyc` has ever existed, so
@@ -239,6 +277,15 @@ surfaces state them plainly; player surfaces say nothing about them either way.*
   refusal copy all resolve from the document the player actually picked — a passport
   journey that says "NIDA" anywhere is telling somebody the wrong thing about their
   own application.
+- ⭐ **And from 2026-09-13, attach verification FORWARD to the exit, never BACKWARD to the
+  entrance, and never name both in one sentence.** *"Verify your identity before you cash out"*
+  — not *"you don't need to verify to deposit"* (advertises the absence) and not *"verification is
+  what opens adding money and playing"* (false since 2026-09-13). On a legal page keep the two in
+  separate `<p>`/`<li>`, not merely separate sentences. `test:kyc-copy-truth` reads the whole
+  dictionary and every file under `src/app/legal/` in English, Swahili and Chinese with three rules:
+  no denial of identity beside money and identity (paragraph), no identity bound to the entrance
+  (a sentence and its neighbours), and never an identity word paired with the Gaming Board or Gaming
+  Act as its reason (paragraph; AML attributions are true and stay). `red:kyc-copy-truth` proves each.
 - **Admin surfaces state the truth plainly**, because an officer is making a money
   decision on it. Fixed 2026-07-19: the KYC review checklist read
   **"NIDA verified — government match"** whenever `nidaVerifiedAt` was set. That told

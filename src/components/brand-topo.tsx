@@ -10,10 +10,15 @@ export function BrandTopo({ id = "topo", opacity = 0.09 }: { id?: string; opacit
     <svg width="100%" height="100%" className="absolute inset-0 pointer-events-none" style={{ opacity }} aria-hidden>
       <defs>
         <pattern id={pid} x="0" y="0" width="240" height="180" patternUnits="userSpaceOnUse">
+          {/* 2026-09-13: EVERY CONTOUR RUNS 0 → 240 AND ENDS AT THE HEIGHT IT STARTED, with the
+              same slope, so each tile meets its neighbour. Three of the four used to run past the
+              240 tile or start before it, so the lines jumped at every tile edge (visible seams
+              on the auth pages at 1280). The four baselines, amplitudes and stroke are unchanged;
+              the wavelengths now all repeat with the tile. */}
           <path d="M 0 90 Q 60 60 120 90 T 240 90"  fill="none" stroke="oklch(96% 0.005 240)" strokeWidth="0.6" />
-          <path d="M 0 60 Q 80 30 160 60 T 320 60"  fill="none" stroke="oklch(96% 0.005 240)" strokeWidth="0.6" />
-          <path d="M 0 120 Q 40 100 100 120 T 220 120 T 340 120" fill="none" stroke="oklch(96% 0.005 240)" strokeWidth="0.6" />
-          <path d="M -40 150 Q 60 130 140 150 T 280 150" fill="none" stroke="oklch(96% 0.005 240)" strokeWidth="0.6" />
+          <path d="M 0 60 Q 60 30 120 60 T 240 60"  fill="none" stroke="oklch(96% 0.005 240)" strokeWidth="0.6" />
+          <path d="M 0 120 Q 60 100 120 120 T 240 120" fill="none" stroke="oklch(96% 0.005 240)" strokeWidth="0.6" />
+          <path d="M 0 150 Q 60 130 120 150 T 240 150" fill="none" stroke="oklch(96% 0.005 240)" strokeWidth="0.6" />
         </pattern>
       </defs>
       <rect width="100%" height="100%" fill={`url(#${pid})`} />

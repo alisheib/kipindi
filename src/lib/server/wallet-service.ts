@@ -2,12 +2,16 @@
  * Wallet service — deposits, withdrawals, balance management.
  * Compliance:
  *  - All money movements posted via Transaction rows (immutable history)
- *  - Deposits, bets AND withdrawals all require an approved identity (2026-09-05).
- *    ⚠️ This line said "Withdrawals require KYC APPROVED" throughout the period when
- *    they did NOT — it outlived the 2026-08-20 removal by a fortnight and was true again
- *    before anyone corrected it. A header that drifts is worse than no header: it is
- *    read as authority. The rule lives in `kyc-gate.ts`; this is a pointer, not a copy.
- *  - AML threshold (TZS 1M) holds withdrawal in `AML_REVIEW`
+ *  - Withdrawals require an identity approved at least once (2026-09-13); deposits ask
+ *    for a confirmed email and no identity at all. ⚠️ This line has been wrong twice —
+ *    it said withdrawals needed KYC through the fortnight they did not, then said
+ *    deposits and bets needed it after they stopped. A header that drifts is worse than
+ *    no header: it is read as authority. The rule lives in `kyc-gate.ts`; this is a
+ *    pointer, not a copy.
+ *  - No withdrawal is held for AML review: the TZS 1M two-officer hold was switched off
+ *    by the owner ruling of 2026-09-13 (`WITHDRAWAL_AML_HOLD`, payments.ts). A single
+ *    withdrawal is capped at `WITHDRAW_MAX_TZS`. `AML_REVIEW` stays in use for rows held
+ *    before then and for deposits owed back to excluded players (`rg_refund_due_*`).
  *  - Daily/weekly/monthly deposit limits enforced (Responsible Gambling)
  *  - A withdrawal is charged ONE fee: `withdrawalFeeRate` (1.5% live), part of which
  *    (`withdrawalGatewayShareRate`) is the payment gateway's. There is NO
@@ -26,7 +30,8 @@ import { isMaintenanceMode, maintenanceMessage } from "./platform-config";
 import { rateCheckAsync } from "./rate-limit";
 import { DepositSchema, AdminDepositSchema, WithdrawSchema } from "./validators";
 import { checkDepositLimit, isLockedOut } from "./responsible-gambling";
-import { assertKycForMoney } from "./kyc-gate";
+import { assertIdentityForPayout, readIdentityStanding } from "./kyc-gate";
+import { isFinalRefusal } from "@/lib/kyc-refusal";
 import type { FailureReason, FailureDetail } from "@/lib/failure-reasons";
 import { paymentMethodName } from "@/lib/payment-providers";
 import { notifyDeposit, notifyWithdraw, notifyAdminsAmlReview } from "./notification-service";
@@ -112,9 +117,15 @@ export async function deposit(
   if (!wallet) return { ok: false, error: "Wallet not found.", code: "NOT_FOUND" };
   if (wallet.status !== "ACTIVE") return { ok: false, error: "Wallet frozen.", code: "SUSPENDED" };
 
-  // ══ THE THREE DOORS ON THE MONEY-IN PATH, IN THE ORDER THEY MUST BE ASKED ══════
+  // ══ THE DOORS ON THE MONEY-IN PATH, IN THE ORDER THEY MUST BE ASKED ════════════
   //
-  //     RG lockout  →  identity  →  email  →  (lock) caps + SOF
+  //     RG lockout  →  email  →  (lock) caps + SOF
+  //
+  // ⛔ THERE IS NO IDENTITY DOOR, AND THERE WAS ONE FROM 2026-09-05 TO 2026-09-13. It stood
+  // between the lockout and the email gate and was deleted — not disabled — when the owner
+  // ruled that identity is required before WITHDRAWAL only (`kyc-gate.ts`;
+  // docs/COMPLIANCE-DECISIONS.md 2026-09-13). Do not restore it by reading the older entry.
+  // What replaced it is a RECORD: `kycStatus` on this deposit's `deposit.initiated` row below.
   //
   // 🔴 THE ORDER IS THE INTERFACE, AND IT WAS WRONG BEFORE 2026-09-05. The email gate
   // used to stand HERE, above the lockout — and its own comment claimed it was placed
@@ -153,45 +164,19 @@ export async function deposit(
     return { ok: false, error: `You are in a self-exclusion period until ${until}.`, code: "SUSPENDED", reason: "self_excluded", detail: { until } };
   }
 
-  // ── 2 · IDENTITY GATE (owner ruling, Ali, 2026-09-05) ───────────────────────
-  // The ladder is now: register free → VERIFY IDENTITY → deposit, play, withdraw.
-  // Whole rationale — including why this contradicts no Board instruction, and why
-  // withdrawal asks a different question — in `src/lib/server/kyc-gate.ts`.
-  //
-  // ⛔ ABOVE THE EMAIL GATE ON PURPOSE. Both must be satisfied to deposit, but this is
-  // the larger step and the one an OFFICER must act on, and the KYC flow collects and
-  // prompts for the email along the way. Leading with the smaller errand would tell a
-  // brand-new player to fix their inbox, then — once they had — reveal a second door
-  // with a queue behind it. The deposit screen shows BOTH as a checklist so neither is
-  // a surprise; this order only decides which token a refused submit carries.
-  //
-  // ⚠️ Admins are NOT exempt, for the same reason the email gate does not exempt them:
-  // the off-production bypass above relaxes caps and SOF for test funding, and an
-  // exemption on an identity control is exactly how a gate rots.
-  const kycGate = await assertKycForMoney(userId, "DEPOSIT");
-  if (!kycGate.eligible) {
-    audit({
-      category: "COMPLIANCE",
-      action: "deposit.kyc_blocked",
-      actorId: userId, targetType: "User", targetId: userId,
-      payload: { kycStatus: kycGate.kycStatus, reason: kycGate.reason },
-    });
-    // `code: "INVALID"` — API and audit truth, as everywhere else in this file. The
-    // `reason` is what the player's screen reads; the English below is audit prose and
-    // must never be rendered raw (`error-copy.ts` §7).
-    return { ok: false, error: `Identity not verified (${kycGate.kycStatus}).`, code: "INVALID", reason: kycGate.reason };
-  }
-
-  // ── 3 · EMAIL-VERIFICATION GATE ─────────────────────────────────────────────
+  // ── 2 · EMAIL-VERIFICATION GATE ─────────────────────────────────────────────
   // Why deposit and not sign-up: blocking sign-up costs conversion for no safety
   // gain, whereas the first deposit is the first moment a real inbox actually
   // matters — that address is where the receipt goes, and it is the evidence we
   // rely on in a chargeback or a regulator dispute.
   //
-  // ⭐ IT SURVIVES THE IDENTITY GATE RATHER THAN BEING FOLDED INTO IT (Ali, 2026-09-05:
-  // *"keep both… he can confirm email before or after, order doesn't matter"*). The two
-  // run INDEPENDENTLY: a player waiting on our review queue can clear their inbox in the
-  // meantime, and neither step blocks the other from being completed.
+  // 🔴 FROM 2026-09-13 THIS IS THE FRONT DOOR, AND IT IS LOAD-BEARING IN A WAY IT NEVER WAS.
+  // With identity gone from the money-in path it is the only thing between a stranger and a
+  // funded account, and a confirmed address is the only verified contact channel the platform
+  // holds: the one-time-code registration path creates `email: null`, and phone is no fallback
+  // (the default SMS provider reports success while delivering nothing). ⛔ Any change that
+  // relaxes this gate re-opens a funded, uncontactable account — docs/COMPLIANCE-DECISIONS.md
+  // 2026-09-13 records it among the controls that deliberately did NOT change.
   //
   // Placed BEFORE the reserving lock: a blocked deposit must not create a PROCESSING
   // row, consume a deposit cap, or reach the gateway. `depositor` is already loaded above.
@@ -320,7 +305,13 @@ export async function deposit(
     const w = await db.wallet.findByUserId(userId);
     return { ok: true, data: { txnId, status: txn.status, balance: w?.balance ?? 0 } };
   }
-  audit({ category: "WALLET", action: "deposit.initiated", actorId: userId, targetType: "Transaction", targetId: txnId, payload: { provider: parse.data.provider, amount: parse.data.amount } });
+  // ⭐ THE RECORD THAT REPLACED THE DEPOSIT GATE (2026-09-13): the account's identity standing, as
+  // two fields on the row every deposit already writes. Stamped on EVERY deposit, verified or not —
+  // a stamp that appeared only on unverified deposits would make its own absence ambiguous (the
+  // 2026-08-20 precedent). `readIdentityStanding` never throws and never refuses: this money is
+  // already on its way, and a failed read is recorded as "UNREADABLE", never as "NOT_STARTED".
+  const standing = await readIdentityStanding(userId);
+  audit({ category: "WALLET", action: "deposit.initiated", actorId: userId, targetType: "Transaction", targetId: txnId, payload: { provider: parse.data.provider, amount: parse.data.amount, kycStatus: standing.kycStatus, everApproved: standing.everApproved } });
 
   // Mint the correlation id and PERSIST it BEFORE dispatching.
   //
@@ -637,8 +628,10 @@ async function settleWithdrawalConfirmed(txnId: string): Promise<boolean> {
 /**
  * Player-facing "withdrawal sent" receipt (in-app + email). Shared by the normal
  * settle path AND the AML-approval release path (admin/aml/actions.ts), so a
- * large (≥ TZS 1M) two-officer-approved withdrawal gets the same confirmation as
+ * withdrawal an officer releases from AML_REVIEW gets the same confirmation as
  * an ordinary one — previously the AML approve path released the funds silently.
+ * ⚠️ Since the owner ruling of 2026-09-13 (`WITHDRAWAL_AML_HOLD` off in payments.ts) only a
+ * row held BEFORE that date can reach the release path; a new ≥ TZS 1M withdrawal is not held.
  */
 export function notifyWithdrawalSent(txn: { id: string; userId: string; amount: number; fee: number; provider: string | null; msisdn?: string | null; providerRef?: string | null; payoutRail?: string | null }): void {
   const gross = Math.abs(txn.amount);
@@ -668,6 +661,10 @@ export function notifyWithdrawalSent(txn: { id: string; userId: string; amount: 
 /**
  * Dispatch a withdrawal that has PASSED AML review (officer-approved) to the payment
  * gateway. Called ONLY from admin/aml/actions.ts, AFTER the two-officer approval gate.
+ *
+ * ⚠️ SINCE THE OWNER RULING OF 2026-09-13 NO NEW WITHDRAWAL ENTERS AML_REVIEW (`WITHDRAWAL_AML_HOLD`
+ * is off in payments.ts). This path is KEPT so a row held before then can still be paid; do not
+ * read the history below as a description of what happens to a large withdrawal today.
  *
  * This is the missing half of the large-payout flow. Previously a ≥ TZS 1M withdrawal
  * entered AML_REVIEW and could only be *rejected* (refunded) — approving it would have
@@ -1487,11 +1484,42 @@ function shortOfFunds(w: { balance: number; bonusBalance?: number | null }, amou
  *  record would name the PLAYER as the actor on an operator-initiated payout. Defaults
  *  to `userId` — a player withdrawing for themselves. The account holder is never lost:
  *  it is the txn's `userId` and is carried as `onBehalfOf` in both audit payloads. */
-export async function withdraw(userId: string, input: z.input<typeof WithdrawSchema>, idempotencyKey?: string, actorId?: string): Promise<ServiceResult<{ txnId: string; status: StoredTxn["status"]; fee: number; net: number }>> {
+export async function withdraw(
+  userId: string,
+  input: z.input<typeof WithdrawSchema>,
+  idempotencyKey?: string,
+  actorId?: string,
+  /**
+   * ⭐ S1 — AN OFFICER RETURNING A REFUSED PLAYER'S MONEY (2026-09-13). Set ONLY by
+   * `refused-funds.ts` after an officer chose a return outcome with a written justification.
+   * It changes exactly three things, each asserted below rather than assumed:
+   *   · the identity gate is replaced by a STRICTER check — the verification must be REJECTED on a
+   *     FINAL code (a return exists because we refused them; any other state is refused outright);
+   *   · the wallet may be FROZEN (a final refusal froze it — unfreezing to pay would open a window
+   *     in which the refused player could bet), though never CLOSED;
+   *   · the withdrawal fee is 0 — it is money we decided to give back, not a withdrawal they chose.
+   * Everything else holds: destination binding to the registered number, the rail minimum, the
+   * per-withdrawal cap (`WITHDRAW_MAX_TZS`, via WithdrawSchema), and the exactly-once transaction
+   * and reconcile path. ⛔ NOT a two-officer AML hold: this list named one until the owner ruling
+   * of 2026-09-13 switched it off for every withdrawal (`WITHDRAWAL_AML_HOLD`, payments.ts).
+   */
+  opts?: { refusedFundsReturn?: { decisionId: string } },
+): Promise<ServiceResult<{ txnId: string; status: StoredTxn["status"]; fee: number; net: number }>> {
   const actor = actorId ?? userId;
   const operatorInitiated = !!actorId && actorId !== userId;
-  const rl = await rateCheckAsync(userId, "wallet.withdraw");
-  if (!rl.allowed) return { ok: false, error: "Too many withdrawal attempts.", code: "RATE_LIMITED", retryAfterSec: rl.retryAfterSec };
+  const refundReturn = opts?.refusedFundsReturn ?? null;
+  // A return is by definition an officer acting on someone else's account.
+  if (refundReturn && !operatorInitiated) {
+    return { ok: false, error: "A refused-funds return must be initiated by an officer.", code: "INVALID" };
+  }
+  // ⛔ A REFUSED-FUNDS RETURN IS NOT CHARGED TO THE PLAYER'S ATTEMPT BUCKET (found in review, 2026-09-13). It is an
+  // officer's decision about someone else's account, reached only after `decideRefusedFunds` has forfeited the
+  // remainder — a refused player who had hammered the withdraw button would otherwise make the officer's return
+  // fail AFTER that forfeit committed. Officer actions carry their own limits upstream.
+  if (!refundReturn) {
+    const rl = await rateCheckAsync(userId, "wallet.withdraw");
+    if (!rl.allowed) return { ok: false, error: "Too many withdrawal attempts.", code: "RATE_LIMITED", retryAfterSec: rl.retryAfterSec };
+  }
 
   // Idempotency: if this key was already used, return the existing txn result.
   // Read the fee off the STORED ROW rather than recomputing it — recomputing
@@ -1565,43 +1593,51 @@ export async function withdraw(userId: string, input: z.input<typeof WithdrawSch
     };
   }
 
-  // ══ IDENTITY IS ENFORCED HERE AGAIN — 2026-09-05, AND IT IS A DISCLOSED REVERSAL ══
+  // ══ THE IDENTITY GATE — THE ONLY ONE ON ANY MONEY PATH SINCE 2026-09-13 ══════════
   //
-  // ⛔ READ THE DATES BEFORE YOU CHANGE THIS. From 2026-08-20 this was a RECORD and not
-  // a refusal: identity verification stopped being a precondition of withdrawal on the
-  // Gaming Board's instruction (comment #1, relayed by the owner 2026-08-19;
-  // `docs/BOARD-DISCLOSURE-B-E.md` §1). On 2026-09-05 the owner ruled that a player may
-  // not deposit, bet OR withdraw until we approve their identity — a control STRICTER
-  // than the Board required, taken deliberately and re-disclosed to them rather than
-  // slipped in. `docs/COMPLIANCE-DECISIONS.md` carries both entries, in order.
-  // ⛔ Do not "restore" either behaviour from the older document. Read the dates.
+  // ⛔ READ THE DATES BEFORE YOU CHANGE THIS. 2026-08-20: identity stopped being a precondition
+  // of withdrawal on the Gaming Board's instruction and a RECORD replaced it. 2026-09-05: the
+  // owner required identity before depositing, betting AND withdrawing. 2026-09-13: the owner,
+  // with the Board's permission, requires it before WITHDRAWING only — so this is now the one
+  // place on the money path where identity is asked. `docs/COMPLIANCE-DECISIONS.md` carries all
+  // three entries, in order. ⛔ Do not "restore" any of them from an older document.
   //
-  // 🔴 IT ASKS `approvedAt`, NOT `status`, AND THAT IS THE WHOLE MONEY-SAFETY STORY.
-  // `forceReverifyKyc` moves an APPROVED player to ADDITIONAL_INFO_REQUIRED, and that
-  // player HOLDS REAL MONEY earned under an identity we accepted. Asking current status
-  // here would freeze it — precisely the harm `BOARD-DISCLOSURE-B-E.md` §6 recorded when
-  // it noted that force-reverify had STOPPED being a money control. Deposits and bets ask
-  // current status, because those add NEW exposure; taking out what you already have is a
-  // different question. Same reason a deposit authorised while approved still credits
-  // when its Selcom callback lands after a rejection. Full rationale: `kyc-gate.ts`.
+  // 🔴 IT ASKS WHETHER THE ACCOUNT WAS *EVER* APPROVED, NOT ITS CURRENT STATUS, AND THAT IS THE
+  // WHOLE MONEY-SAFETY STORY. `forceReverifyKyc` moves an APPROVED player to
+  // ADDITIONAL_INFO_REQUIRED, and that player HOLDS REAL MONEY earned under an identity we
+  // accepted; asking current status would freeze it. An officer who must stop money leaving
+  // freezes the wallet (`wallet.status !== "ACTIVE"` below). Rationale: `src/lib/kyc-approval.ts`.
   //
-  // ⚠️ THE STAMP SURVIVES THE GATE, and deleting it would be the easy mistake now that a
-  // refusal exists. `kycStatus` still rides on `withdraw.initiated` for EVERY payout: the
-  // regulator's question is "which payouts went to unverified accounts?", and after this
-  // change the honest answer is "none, and here is the field that proves it". A stamp that
-  // only appeared while it could be non-APPROVED would make its own absence ambiguous.
+  // ⭐ ONE READ. This used to read the KYC row here for its audit stamp AND call the gate, which
+  // read it again — two reads an `await` apart, which could disagree if an officer decided in
+  // between, so the audit could narrate a status that did not make the decision. The gate now
+  // returns the facts it decided on, and every stamp below is derived from them.
   //
-  // ⚠️ WHAT ELSE REMAINS: the AML ≥ TZS 1,000,000 two-officer hold (`payments.ts`, which
-  // contains no identity reference at all), the wallet freeze below, the per-provider
+  // ⚠️ THE STAMP SURVIVES THE GATE. `kycStatus` rides on `withdraw.initiated` for EVERY payout: a
+  // stamp that only appeared while it could be non-APPROVED would make its own absence ambiguous.
+  //
+  // ⚠️ WHAT ELSE REMAINS: the per-withdrawal cap (`WITHDRAW_MAX_TZS`), the wallet freeze below, the per-provider
   // kill-switch, the gateway floor, and the payout pause — the last of which lives in the
   // ROUTE (`wallet/withdraw/actions.ts`), not here. There is still no `user.status` check
   // and no self-exclusion check on the withdraw path; that predates this change and is
   // unaffected by it.
-  const kyc = await db.kyc.findByUserId(userId);
-  const kycStatus = kyc?.status ?? "NOT_STARTED";
-
-  const withdrawGate = await assertKycForMoney(userId, "WITHDRAW");
-  if (!withdrawGate.eligible) {
+  const withdrawGate = await assertIdentityForPayout(userId);
+  const kycStatus = withdrawGate.kycStatus;
+  if (refundReturn) {
+    // ⛔ A RETURN REPLACES THE GATE WITH A *STRICTER* QUESTION, NEVER A LOOSER ONE. It exists only
+    // because we FINALLY refused this person, so the verification must say exactly that at the moment
+    // the money leaves — re-read here, not trusted from the decision taken a moment earlier, because an
+    // officer may have re-opened the refusal in between. Anything else is refused before a shilling moves.
+    const refused = await db.kyc.findByUserId(userId);
+    if (!(refused?.status === "REJECTED" && isFinalRefusal(refused.rejectReason))) {
+      audit({
+        category: "COMPLIANCE", action: "withdraw.refused_funds_return_refused", actorId: actor,
+        targetType: "User", targetId: userId,
+        payload: { decisionId: refundReturn.decisionId, kycStatus: refused?.status ?? "NOT_STARTED", rejectReason: refused?.rejectReason ?? null, amount: parse.data.amount },
+      });
+      return { ok: false, error: "A refused-funds return is only possible while the verification stands finally refused.", code: "INVALID" };
+    }
+  } else if (!withdrawGate.eligible) {
     // ⛔ REFUSED BEFORE THE HOLD, for the same reason the destination check is. Everything
     // below this line moves money; refusing after it would leave a player debited for a
     // payout that was never allowed to leave. Nothing has moved when this returns.
@@ -1618,9 +1654,12 @@ export async function withdraw(userId: string, input: z.input<typeof WithdrawSch
         onBehalfOf: userId,
         operatorInitiated,
         amount: parse.data.amount,
-        // The authority of record, in the row itself — the same discipline the
-        // `withdraw.unverified_payer` fact used, pointed at the decision that replaced it.
-        instruction: "Owner ruling 2026-09-05 · identity precedes deposit, play and withdrawal",
+        // The authority of record, in the row itself. 🔴 This string used to cite the 2026-09-05
+        // ruling ("identity precedes deposit, play and withdrawal"), and these rows are
+        // HMAC-chained, append-only and kept seven years — an auditor reading a refusal from after
+        // 2026-09-13 would have been handed a reason that no longer governs. It names the ruling
+        // that does, and a guard pins it to the newest identity entry in COMPLIANCE-DECISIONS.md.
+        instruction: "Owner ruling 2026-09-13 · identity is required before withdrawal only",
       },
     });
     return { ok: false, error: `Identity not verified (${withdrawGate.kycStatus}).`, code: "INVALID", reason: withdrawGate.reason };
@@ -1630,7 +1669,9 @@ export async function withdraw(userId: string, input: z.input<typeof WithdrawSch
   // The withdrawal fee — the ONLY thing a player is charged here. Admin-tunable,
   // never hardcoded.
   const wcfg = await getEffectiveConfig();
-  const fee = computeWithdrawalFee(amount, wcfg.withdrawalFeeRate);
+  // ⭐ A REFUSED-FUNDS RETURN CARRIES NO FEE (S1, 2026-09-13): it is money we decided to give back,
+  // not a withdrawal the player chose, and charging for it would quietly keep part of it.
+  const fee = refundReturn ? 0 : computeWithdrawalFee(amount, wcfg.withdrawalFeeRate);
   const gatewayShare = Math.min(fee, Math.max(0, Math.round(amount * Math.max(0, wcfg.withdrawalGatewayShareRate))));
   const net = amount - fee;
   // 🔴 THE GATEWAY FLOOR IS ON THE NET, SO THE CHECK IS ON THE NET (found live 2026-07-31).
@@ -1700,7 +1741,10 @@ export async function withdraw(userId: string, input: z.input<typeof WithdrawSch
     }
     const w = await db.wallet.findByUserId(userId);
     if (!w) return { ok: false as const, error: "Wallet not found.", code: "NOT_FOUND" as const };
-    if (w.status !== "ACTIVE") return { ok: false as const, error: "Wallet frozen.", code: "SUSPENDED" as const };
+    // ⭐ A REFUSED-FUNDS RETURN MAY PAY OUT OF A FROZEN WALLET — and only a return, and never a CLOSED
+    // one (S1, 2026-09-13). The final refusal froze this wallet; unfreezing it to pay would open a
+    // window in which the refused player could bet. Every other withdrawal still stops here.
+    if (w.status !== "ACTIVE" && !(refundReturn && w.status === "FROZEN")) return { ok: false as const, error: "Wallet frozen.", code: "SUSPENDED" as const };
     // 🔴 `E-223` · THIS REFUSAL USED TO SAY NOTHING. It returned `INVALID` with no `reason`,
     // so `errorCopy` fell through to the generic `errInvalid` — *"That didn't go through.
     // Check the details and try again."* — on the most common refusal of the money-out
@@ -1763,13 +1807,13 @@ export async function withdraw(userId: string, input: z.input<typeof WithdrawSch
   // ── THE COMPLIANCE RECORD BESIDE THE GATE ──────────────────────────────────
   //
   // ⭐ THIS USED TO BE THE RECORD THAT *REPLACED* THE GATE, AND IT DID NOT BECOME DEAD
-  // CODE WHEN THE GATE CAME BACK — IT BECAME NARROWER AND MORE INTERESTING. From
-  // 2026-09-05 an account with no approval at all is refused above, before any money
-  // moves. So the only way to reach this line with a non-APPROVED status is the one
-  // population the gate deliberately lets through: a player who WAS approved
-  // (`approvedAt` is set) and is CURRENTLY under re-verification — `forceReverifyKyc`
-  // moved them to ADDITIONAL_INFO_REQUIRED, or a later review rejected them, while they
-  // still hold money earned under the identity we accepted.
+  // CODE WHEN THE GATE CAME BACK — IT BECAME NARROWER AND MORE INTERESTING. An account
+  // with no approval at all is refused above, before any money moves. So the only way to
+  // reach this line with a non-APPROVED status is the one population the gate
+  // deliberately lets through: a player who WAS approved (`approvedAt` is set) and is
+  // CURRENTLY under re-verification — `forceReverifyKyc` moved them to
+  // ADDITIONAL_INFO_REQUIRED, or a later review rejected them, while they still hold money
+  // earned under the identity we accepted.
   //
   // ⛔ THAT IS EXACTLY THE POPULATION A REGULATOR ASKS ABOUT, so the fact is worth more
   // now than when it covered everybody. Deleting it as "unreachable" would be wrong
@@ -1798,28 +1842,36 @@ export async function withdraw(userId: string, input: z.input<typeof WithdrawSch
       targetId: txnId,
       payload: {
         kycStatus,
-        // ⭐ ALWAYS TRUE ON THIS PATH SINCE 2026-09-05, AND STAMPED ANYWAY. It is what
-        // separates "we paid someone we never checked" from "we paid someone we checked
-        // once and are re-checking" — and an auditor must not have to infer which of
-        // those they are reading from the absence of a field.
-        everApproved: true,
-        firstApprovedAt: kyc?.approvedAt ?? null,
+        // ⭐ DERIVED FROM THE GATE THAT DECIDED, NOT HARD-CODED. It is what separates "we paid
+        // someone we never checked" from "we paid someone we checked once and are re-checking" —
+        // and an auditor must not have to infer which of those they are reading from the absence
+        // of a field. It was a literal `true` beside a comment asserting it always would be; it is
+        // now the gate's own verdict, so the day that stops being true the row says so.
+        everApproved: withdrawGate.eligible,
+        firstApprovedAt: withdrawGate.firstApprovedAt,
         onBehalfOf: userId,
         operatorInitiated,
         amount,
         net,
         provider: parse.data.provider,
-        // The authority of record, in the row itself. An auditor reading this event
-        // should not have to be handed a separate document to learn why this payout was
-        // ALLOWED while the identity was in doubt.
-        instruction: "Owner ruling 2026-09-05 · withdrawal asks whether the account was EVER approved, so re-verification never traps money already earned",
+        // The authority of record, in the row itself. An auditor reading this event should not
+        // have to be handed a separate document to learn why this payout was ALLOWED while the
+        // identity was in doubt. 🔴 It cited 2026-09-05 until the 2026-09-13 ruling superseded it —
+        // in a row that is HMAC-chained and kept seven years. The asymmetry it names is unchanged.
+        // ⭐ A REFUSED-FUNDS RETURN (S1) IS THE ONE PAYOUT HERE TO AN ACCOUNT NEVER APPROVED — and it says
+        // so, with the decision that authorised it, rather than borrowing the re-verification rationale.
+        refusedFundsReturn: refundReturn?.decisionId ?? null,
+        instruction: refundReturn
+          ? "Owner ruling 2026-09-13 · an officer returned a finally-refused player's money after a recorded decision (S1)"
+          : "Owner ruling 2026-09-13 · identity is required before withdrawal only, and withdrawal asks whether the account was EVER approved, so re-verification never traps money already earned",
       },
     });
   }
 
   // ── Provider dispatch (UNLOCKED): never hold a wallet lock across network I/O.
   // `amount: net` is what the gateway disburses; `grossAmount: amount` is the full
-  // withdrawal value the AML ≥1M second-officer hold is evaluated against.
+  // withdrawal value the AML ≥1M hold WOULD be evaluated against. The hold is switched off by
+  // the owner ruling of 2026-09-13 (`WITHDRAWAL_AML_HOLD`), so no withdrawal is held here.
   const result = await dispatchWithdrawal({ provider: parse.data.provider, amount: net, grossAmount: amount, msisdn: parse.data.msisdn, userId });
 
   // ── Phase B (locked): settle by applying DELTAS to a fresh wallet read ──────
@@ -1870,6 +1922,7 @@ export async function withdraw(userId: string, input: z.input<typeof WithdrawSch
 
   if (result.status === "AML_REVIEW") {
     // Funds stay in `hold` pending manual review — no settle delta yet.
+    // ⚠️ Unreachable while `WITHDRAWAL_AML_HOLD` is off (owner ruling 2026-09-13); kept so the switch stays one line.
     await db.txn.update(txnId, { status: "AML_REVIEW", amlReason: "Threshold ≥ TZS 1,000,000" });
     audit({ category: "COMPLIANCE", action: "withdraw.aml_held", actorId: userId, targetType: "Transaction", targetId: txnId, payload: { amount } });
     notifyWithdraw(userId, { status: "AML_REVIEW", amount, net, provider: providerLabel });
@@ -2433,10 +2486,90 @@ export async function refundAgentRegistrationFeeToWallet(
  * adjustment raises a WATCHED `COMPLIANCE` audit — an officer moving money by
  * hand must always be traceable. Bounded by a per-adjustment cap.
  *
- * NOTE (hardening): like AML withdrawals ≥1M, large adjustments should ideally
- * require a second officer (maker-checker). v1 is single-officer + audit + cap;
- * two-officer is a documented follow-up.
+ * NOTE (hardening): the maker-checker for large adjustments lives in the ACTION, not here —
+ * `adjustBalanceAction` needs a second, different officer at or above
+ * `TWO_PERSON_THRESHOLD_TZS`. This note used to compare it to "AML withdrawals ≥1M"; there is
+ * no such withdrawal review since the owner ruling of 2026-09-13 (`WITHDRAWAL_AML_HOLD` off).
  */
+/**
+ * ⭐ FORFEIT A REFUSED PLAYER'S BALANCE — S1, owner ruling 2026-09-13 (docs/COMPLIANCE-DECISIONS.md).
+ *
+ * Called ONLY by `refused-funds.ts`, which owns the decision: that the refusal is FINAL, that the
+ * account was never approved, that an officer chose this outcome and wrote down why. This function
+ * owns only the money: a confirmed debit of exactly `amountTzs`, posted atomically with its ledger
+ * group, so the trial balance ties to the shilling.
+ *
+ * ⛔ WHY NOT `adminAdjustBalance`. It refuses a wallet that is not ACTIVE — and a finally-refused
+ * player's wallet is FROZEN by construction, because the refusal froze it. Unfreezing to adjust and
+ * re-freezing would open a window in which the refused player could bet; this debits the frozen
+ * wallet directly, under the same lock every other money path takes.
+ * ⛔ AND IT NEVER TOUCHES `bonusBalance` or `hold`: a hold is money already in flight, and the caller
+ * refuses to decide while one exists.
+ * ⚠️ Overdraw-guarded: if the balance moved between the officer's read and this write (a settlement
+ * credited, say), the guarded debit simply fails and nothing is forfeited — the officer decides again
+ * on the new figure rather than having a stale one applied.
+ */
+export async function forfeitRefusedBalance(opts: {
+  userId: string;
+  officerId: string;
+  amountTzs: number;
+  decisionRef: string;
+  note: string;
+  /**
+   * The balance the officer's decision was computed on. ⛔ COMPARE-AND-SWAP, not "balance ≥ amount":
+   * `decideRefusedFunds` is deliberately NOT wrapped in a lock (a nested lock joins the outer transaction
+   * and would hold it open across the gateway call), so two officers can decide the same case at once.
+   * With only a ≥ guard both forfeits pass — 10,000 held, RETURN_DEPOSITS forfeits 4,000 twice, both
+   * returns then fail — and the player loses 8,000 that was owed back. Refusing when the balance moved
+   * since the figure was read makes the second decision a clean no-op.
+   */
+  expectBalanceTzs: number;
+}): Promise<{ ok: true; txnId: string; balanceAfter: number } | { ok: false; error: string }> {
+  const amount = Math.round(opts.amountTzs);
+  if (!Number.isFinite(amount) || amount <= 0) return { ok: false, error: "There is nothing to forfeit." };
+  return withLock(`wallet:${opts.userId}`, async () => {
+    const wallet = await db.wallet.findByUserId(opts.userId);
+    if (!wallet) return { ok: false as const, error: "Wallet not found." };
+    if (wallet.status === "CLOSED") return { ok: false as const, error: "The wallet is closed." };
+    // ⛔ The refusal must still be FINAL when the money moves — an officer may have re-opened it a moment ago.
+    // Mirrors the refused-funds return check in `withdraw()` (found in review, 2026-09-13).
+    const refusal = await db.kyc.findByUserId(opts.userId);
+    if (!(refusal?.status === "REJECTED" && isFinalRefusal(refusal.rejectReason))) {
+      return { ok: false as const, error: "This verification is no longer finally refused, so nothing was forfeited." };
+    }
+    if (wallet.balance !== opts.expectBalanceTzs) {
+      return { ok: false as const, error: "The balance changed while this decision was being taken, so nothing was forfeited. Open the case again and decide on the current figure." };
+    }
+    const txnId = `txn_${randomId(12)}`;
+    const now = new Date().toISOString();
+    let newBalance = wallet.balance;
+    const committed = await withMoneyTx(async (tx) => {
+      const updated = await db.wallet.adjust(wallet.id, { balance: -amount }, { requireBalanceGte: amount }, tx);
+      if (!updated) return false;
+      newBalance = updated.balance;
+      await db.txn.create({
+        id: txnId,
+        walletId: wallet.id, userId: opts.userId,
+        type: "ADJUSTMENT_DEBIT",
+        status: "CONFIRMED",
+        amount: -amount, fee: 0, taxWithheld: 0,
+        balanceAfter: updated.balance, currency: "TZS",
+        provider: "INTERNAL", providerRef: null, msisdn: null,
+        description: "Balance forfeited · identity refused",
+        positionId: null, amlReason: opts.note.slice(0, 300),
+        createdAt: now, updatedAt: now, completedAt: now,
+      }, tx);
+      await postLedgerEntries(`forfeit_${txnId}`, adjustmentEntries({ txnId, userId: opts.userId, amount: -amount, description: `Forfeited (identity refused) · ${opts.decisionRef}` }), tx);
+      return true;
+    });
+    if (!committed) {
+      return { ok: false as const, error: "The balance changed while this decision was being taken, so nothing was forfeited. Open the case again and decide on the current figure." };
+    }
+    emit("wallet:balance", { userId: opts.userId, balance: newBalance });
+    return { ok: true as const, txnId, balanceAfter: newBalance };
+  });
+}
+
 const ADJUSTMENT_CAP_TZS = 50_000_000;
 export async function adminAdjustBalance(
   userId: string,

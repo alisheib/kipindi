@@ -81,6 +81,15 @@ const PUBLIC_ROUTES = [
 {
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
   const page = await ctx.newPage();
+  /* 🔴 2026-09-13 · WORDS RUN TOGETHER IN THE RENDERED PAGE, LIVE ON PRODUCTION AND IN NO SUITE.
+     https://50pick.tz/legal/terms served "Identity verification is <strong>required</strong>before…":
+     the source had the space, and the build dropped it where a bold phrase is followed by text that
+     continues onto the next source line. Only the RENDERED markup tells the truth, so it is asserted here,
+     on every public route. The fix at a site is an explicit {" "} after the closing tag. */
+  const FUSED = /<\/(strong|em|b|i|code|a)>[A-Za-z]/g;
+  ok("control · the fused-word matcher catches the shipped defect", "is <strong>required</strong>before".match(FUSED)?.length === 1);
+  ok("control · …and accepts the explicit-space form React renders", !FUSED.test("is <strong>required</strong> <!-- -->before"));
+  FUSED.lastIndex = 0;
   for (const route of PUBLIC_ROUTES) {
     const errs = attach(page);
     let status = 0;
@@ -92,6 +101,10 @@ const PUBLIC_ROUTES = [
     ok(`${route} renders content`, text.length > 40, `(len=${text.length})`);
     ok(`${route} no error overlay`, !overlay);
     ok(`${route} no console/page errors`, errs.length === 0, errs.slice(0, 2).join(" | "));
+    const bodyHtml = await page.locator("body").innerHTML().catch(() => "");
+    const fused = bodyHtml.match(FUSED) ?? [];
+    ok(`${route} no words run together after an inline tag`, fused.length === 0,
+       fused.length ? bodyHtml.match(/.{0,30}<\/(?:strong|em|b|i|code|a)>[A-Za-z]{1,15}/g)?.slice(0, 3).join(" | ") ?? "" : "");
     page.removeAllListeners("console"); page.removeAllListeners("pageerror"); page.removeAllListeners("response");
   }
   await ctx.close();

@@ -100,7 +100,10 @@ const rowCount = await page.locator("[data-row-id]").count();
 const chipCount = await page.locator("td[data-kyc-stage]").count();
 check("§1b every visible row carries a KYC chip", chipCount === rowCount, `${chipCount} chips for ${rowCount} rows`);
 
-/* ── §2 · all seven stages are reachable and the words are distinct ──────── */
+/* ── §2 · all eight stages are reachable and the words are distinct ──────── */
+// ⚠️ Eight since 2026-09-13: "Funded · nothing sent" is offered only to a viewer with money rights,
+// and this driver signs in as the seeded local ADMIN, who has them. The seed's `usr_stage_funded`
+// (no submission row, TZS 25,000 held) is the row §2·funded_nothing_yet finds.
 const seenWords = new Map();
 for (const stage of KYC_STAGES) {
   await page.goto(`${BASE}/admin/players?kyc=${stage}`, { waitUntil: "networkidle" });

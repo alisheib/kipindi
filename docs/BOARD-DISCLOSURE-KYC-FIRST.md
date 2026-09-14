@@ -1,6 +1,14 @@
 # Disclosure to the Gaming Board — the operator is re-imposing an identity precondition on withdrawal
 
-> **Status:** DRAFT FOR ALI, written 2026-09-05, **before** the change reaches players.
+> ⛔ **STATUS: DRAFT — NEVER SENT. SUPERSEDED 2026-09-13 BEFORE IT WAS SENT.**
+> §§1–4 below describe a gate that **no longer exists**: from 2026-09-13 identity is required
+> only before **withdrawal**, and depositing and playing ask nothing
+> ([`COMPLIANCE-DECISIONS.md`](COMPLIANCE-DECISIONS.md), 2026-09-13). ⛔ **Do not send this
+> letter, and do not restore the deposit or bet gate by reading it.** It is kept as the record of
+> what was decided on 2026-09-05. The letter for the current position is
+> [`BOARD-DISCLOSURE-KYC-AT-WITHDRAWAL.md`](BOARD-DISCLOSURE-KYC-AT-WITHDRAWAL.md).
+>
+> **Original status line:** DRAFT FOR ALI, written 2026-09-05, **before** the change reaches players.
 > **Companion to:** [`BOARD-DISCLOSURE-B-E.md`](BOARD-DISCLOSURE-B-E.md) (2026-08-20), which
 > disclosed the removal this letter partially reverses. Read the two together and in order.
 > **Owner ruling of record:** [`COMPLIANCE-DECISIONS.md`](COMPLIANCE-DECISIONS.md), 2026-09-05.
@@ -63,6 +71,8 @@ never to refuse a real balance. It is a second lock, not the operative one.
 ## 5 · What is unchanged
 
 - **The AML ≥ TZS 1,000,000 two-officer hold.** It never read identity status and is untouched.
+  ⚠️ 2026-09-13: no longer true — withdrawals are no longer held for review (COMPLIANCE-DECISIONS
+  2026-09-13 third).
 - **Payout destination binding** (comment #8): payouts go only to the account's registered handset.
 - **The identity system itself:** any one of NIDA, passport, driving licence or voter's card, plus a
   selfie; one document may only ever be used on one account; there is no authority check for any of

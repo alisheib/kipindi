@@ -20,18 +20,18 @@ const WITHDRAW_PROVIDERS = new Set(["MPESA", "AIRTEL_MONEY", "HALO_PESA", "MIXX"
  * paying before "Send funds". Auth-gated and rate-limited. Returns { name: null } on
  * any miss; the modal then shows the number alone and the payout is NEVER blocked on this.
  *
- * ⛔ THE KYC GATE CAME OUT OF HERE ON PURPOSE, AND LEAVING IT WOULD HAVE BEEN THE WORSE
- * BUG. This is the one control that catches a MISTYPED payout destination — it shows the
- * player whose account they are about to pay. It used to refuse anyone not APPROVED,
- * with the comment "only players who can withdraw". After Board comment #1 the players
- * who can withdraw include everyone, so that refusal would have switched the
- * mistyped-destination check off for precisely the population the instruction opens up
- * — silently, because this action fails by returning { name: null } and the modal simply
- * says less. Nothing would have gone red. See docs/BOARD-DISCLOSURE-B-E.md.
+ * ⛔ THERE IS NO IDENTITY GATE HERE, AND ADDING ONE WOULD BE THE WORSE BUG. This is the one control
+ * that catches a MISTYPED payout destination — it shows the player whose account they are about to
+ * pay. It used to refuse anyone not APPROVED ("only players who can withdraw"). Removed on
+ * 2026-08-20, when identity stopped gating withdrawal, because keeping it would have silently switched
+ * the mistyped-destination check off for the population that instruction opened up — this action
+ * fails by returning { name: null } and the modal simply says less.
+ * ⚠️ From 2026-09-05 (and still from 2026-09-13) identity gates withdrawal again, so the withdraw
+ * form only renders for an account approved at least once, and `withdraw()` refuses anyone else. A
+ * gate here would therefore add nothing but a second, drift-prone copy of that question. Leave it out.
  *
- * ⚠️ The rate limit is therefore now the ONLY control against using this to enumerate
- * subscriber names (`wallet.payee_lookup`). It was always the real one — an APPROVED
- * account could enumerate just as well — but it no longer has identity in front of it.
+ * ⚠️ The rate limit is the control against using this to enumerate subscriber names
+ * (`wallet.payee_lookup`). It always was — an APPROVED account could enumerate just as well.
  */
 export async function lookupWithdrawPayeeAction(input: { provider: string; msisdn: string }): Promise<{ name: string | null }> {
   const session = await currentSession();
@@ -76,12 +76,14 @@ export async function withdrawAction(formData: FormData) {
   // Pass the chosen destination through (don't coerce to MPESA). Step-up SMS
   // verification is gated on the licensed SMS provider, so no unenforced OTP is
   // collected in the meantime.
-  // 🔴 THE JUSTIFICATION FOR THAT WAIT GOT WEAKER ON 2026-08-20 — read this before
-  // deciding the OTP can keep waiting. This comment used to read "the withdrawal is
-  // protected by KYC + AML in the meantime". Identity verification is no longer a
-  // precondition of withdrawal (Board comment #1), so what actually protects a payout
-  // destination now is the AML ≥ TZS 1,000,000 two-officer hold and the best-effort
-  // payee-name lookup above — nothing else. docs/BOARD-DISCLOSURE-B-E.md §5.
+  // ⚠️ WHAT PROTECTS A PAYOUT WHILE THE OTP WAITS — read this before deciding it can keep waiting.
+  // Since 2026-09-13 the protections are three: identity approval (at least once — `kyc-gate.ts`),
+  // the binding of the payout to the registered number (E-215), and the per-withdrawal cap
+  // (`WITHDRAW_MAX_TZS`, TZS 5,000,000, checked below). The payee-name lookup above shows who is
+  // being paid. ⛔ No officer reviews a withdrawal before it is sent: the TZS 1,000,000 two-officer
+  // hold that used to be listed here was switched off by the owner ruling of 2026-09-13
+  // (`WITHDRAWAL_AML_HOLD` in payments.ts) — do not count it as a protection. Between 2026-08-20
+  // and 2026-09-05 identity was NOT among these; the dates are in docs/COMPLIANCE-DECISIONS.md.
   const provider = String(formData.get("provider") ?? "") as WithdrawInput["provider"];
   const msisdn = formData.get("msisdn") ? String(formData.get("msisdn")) : undefined;
 

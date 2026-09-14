@@ -9,7 +9,10 @@
 ## What's already done (do NOT rebuild)
 - **Adapter seam** — `src/lib/server/payments.ts` is now the env-switched adapter
   pattern (mirrors `sms.ts`). `dispatchDeposit`/`dispatchWithdrawal` (the wrapper)
-  own the correlation id, the `*.dispatch` audit, and the **AML ≥ 1M review hold**.
+  own the correlation id and the `*.dispatch` audit. ⚠️ **2026-09-13: the AML ≥ 1M review hold is
+  OFF** (`WITHDRAWAL_AML_HOLD = false`; `COMPLIANCE-DECISIONS.md` § 2026-09-13 (third) · Withdrawals
+  are no longer held for a two-officer review) — any withdrawal up to the TZS 5,000,000 cap is
+  dispatched at once.
   `pickAdapter()` selects `mock` (default) / `selcom` / `azampay` on
   `PAYMENT_AGGREGATOR` OR the runtime control-plane override (`/admin/payments`).
   **`selcomAdapter` is WIRED** (real deposit/withdraw); only `azampayAdapter` still
@@ -58,8 +61,8 @@ async deposit({ provider, amount, msisdn, userId, correlationId }): Promise<Depo
 }
 ```
 `withdraw()` is the same against the disbursement/payout endpoint, returning a
-`WithdrawResult` (`PENDING`). **The wrapper already blocked ≥ 1M**, so withdraw
-bodies never see an AML amount.
+`WithdrawResult` (`PENDING`). ⚠️ **2026-09-13: the wrapper no longer holds ≥ 1M** — withdraw
+bodies now see every amount up to the TZS 5,000,000 cap (anything above it is refused before dispatch).
 
 ### 2a — Token cache (both providers use OAuth-ish bearer tokens)
 Add a module-level `{ token, exp }` cache; fetch a new token when expired.
@@ -101,7 +104,9 @@ callback `provider` back. `INTERNAL` never touches the gateway.
 - [ ] On the local disposable PG: `npm run e2e:money` (conservation drift 0.00).
 - [ ] **Staging round-trip against the aggregator sandbox:** a real deposit push
       → webhook → wallet credited exactly once; a small withdrawal → payout →
-      webhook confirms; a ≥1M withdrawal → AML_REVIEW hold (no disbursement).
+      webhook confirms; a withdrawal up to 5,000,000 dispatches at once, and one above 5,000,000
+      is refused. ⚠️ 2026-09-13: there is no ≥1M AML_REVIEW hold any more — a large test
+      withdrawal is NOT parked; against a live rail it really leaves.
 - [ ] Reconcile: `/admin/payments` drift = TZS 0.
 
 ## Step 6 — Merge + go live

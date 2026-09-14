@@ -76,7 +76,9 @@ export function KycDocUploader({
   const showThumb = preview;
 
   return (
-    <div className="relative">
+    // 2026-09-13 — the slot FILLS its grid cell (the cell stretches to the row), so a label that wraps to
+    // two lines in one slot no longer leaves its neighbours shorter: one row, one card height.
+    <div className="relative h-full">
       <input
         ref={inputRef}
         type="file"
@@ -93,7 +95,7 @@ export function KycDocUploader({
         disabled={working || locked}
         aria-busy={working ? "true" : "false"}
         aria-label={done ? t.profile.docAttachedReplace.replace("{label}", label) : t.profile.docAttach.replace("{label}", label)}
-        className={`w-full overflow-hidden rounded-md border-2 border-dashed p-3.5 text-center transition-colors ${
+        className={`h-full w-full overflow-hidden rounded-md border-2 border-dashed p-[14px] text-center transition-colors ${
           locked ? "border-border bg-bg-overlay/30 cursor-not-allowed opacity-70"
           : working ? "border-gold-700 bg-gold-500/[0.06] cursor-wait"
           : done ? "border-yes-700 bg-yes-500/[0.07] cursor-pointer hover:border-yes-500"

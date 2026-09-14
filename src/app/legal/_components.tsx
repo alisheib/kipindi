@@ -84,7 +84,8 @@ export function LegalHeader({
         <div className="min-w-0 space-y-1">
           <PageHeader eyebrow={eyebrow} title={title} subtitle={subtitle} />
           {meta && (
-            <p className="font-mono text-[11px] tabular-nums text-text-subtle">{meta}</p>
+            // 2026-09-13: balanced so the zh line does not strand "布。" on its own row.
+            <p className="font-mono text-[11px] tabular-nums text-text-subtle text-balance">{meta}</p>
           )}
         </div>
       </div>

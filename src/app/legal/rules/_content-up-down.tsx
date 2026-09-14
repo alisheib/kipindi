@@ -16,8 +16,10 @@
  *     semantics wearing Up & Down's name, and it blurs two products that settle differently.
  *  §9 Disputes *"within 48 hours"* — the platform's objection window is configured and shorter.
  *     Both windows are now named as the different things they are.
- *  §3 *"in all cases within 24 hours"* — an unconditional promise the platform does not make;
- *     large withdrawals route to two-officer review by design.
+ *  §3 *"in all cases within 24 hours"* — an unconditional promise the platform does not make.
+ *     2026-09-13: §3 also used to say withdrawals of TZS 1,000,000 or more are held for two-officer
+ *     review. The owner ended that hold that day (WITHDRAWAL_AML_HOLD = false in payments.ts): no officer
+ *     reviews a withdrawal before it is sent. Do not restore the sentence.
  *  Durations, the withdrawal fee, stake bounds and the licence number all read from source.
  */
 import type { Locale } from "@/lib/i18n-server";
@@ -117,9 +119,7 @@ export function upDownContent(r: RulesRates): Record<Locale, React.ReactNode> {
             <strong className="text-text">Payouts</strong> are credited to your wallet once the round is settled and
             signed off, normally within seconds. Withdrawing from your wallet carries a fee of{" "}
             <span className="font-mono tabular-nums text-text">{r.withdrawalFeePct}%</span>, charged on withdrawals only —
-            never on a stake, a win or a refund. Withdrawals at or above{" "}
-            <span className="font-mono tabular-nums text-text">{tzs(1_000_000)}</span> are held for review by two
-            compliance officers before release, so those take longer by design.
+            never on a stake, a win or a refund.
           </p>
         </LegalSection>
 
@@ -146,7 +146,7 @@ export function upDownContent(r: RulesRates): Record<Locale, React.ReactNode> {
             <li><strong className="text-text">Named public source.</strong> Every round settles against a source named before betting opens, and pinned to that round at open.</li>
             <li><strong className="text-text">Officer sign-off.</strong> A settlement officer records the evidence justifying the verdict; where two-officer authorisation is enabled, a second officer countersigns. Evidence is written to an append-only audit chain.</li>
             <li>
-              <strong className="text-text">No-change protection.</strong> A closing value that lands inside the round&apos;s
+              <strong className="text-text">No-change protection.</strong>{" "}A closing value that lands inside the round&apos;s
               frozen margin — neither above the upper target nor below the lower one — is treated as no change, and the
               round is void with every stake refunded in full.
             </li>
@@ -177,10 +177,12 @@ export function upDownContent(r: RulesRates): Record<Locale, React.ReactNode> {
 
         <LegalSection n="7" title="Stakes, cash-out and wallets">
           <p>
-            Players must be <strong className="text-text">18 or older</strong>, resident in Tanzania, and verified —
-            identity verification is required before you can deposit, bet or withdraw. Deposits and withdrawals move
-            through the mobile-money channels published on the deposit and withdrawal screens, to the wallet registered
-            on your account. We never ask for card details.
+            Players must be <strong className="text-text">18 or older</strong> and resident in Tanzania. Deposits and
+            withdrawals move through the mobile-money channels published on the deposit and withdrawal screens, to the
+            wallet registered on your account. We never ask for card details.
+          </p>
+          <p>
+            Identity verification is required before your first withdrawal.
           </p>
           <p>
             <strong className="text-text">Cash-out.</strong> Within the first{" "}
@@ -230,7 +232,7 @@ export function upDownContent(r: RulesRates): Record<Locale, React.ReactNode> {
             </li>
             <li><strong className="text-text">Amendments.</strong> Material changes are announced before taking effect and never apply retroactively to rounds already locked.</li>
             <li>
-              <strong className="text-text">Responsible play.</strong> Up &amp; Down is entertainment, not an income
+              <strong className="text-text">Responsible play.</strong>{" "}Up &amp; Down is entertainment, not an income
               source, and its short rounds make it easy to play for longer than intended. Deposit limits, time limits,
               cooling-off and self-exclusion are on your profile; the national problem-gambling helpline is in the
               footer of every page. If play stops being fun, stop. 18+.
@@ -301,9 +303,7 @@ export function upDownContent(r: RulesRates): Record<Locale, React.ReactNode> {
             <strong className="text-text">Malipo</strong> huingizwa kwenye pochi yako baada ya raundi kutatuliwa na
             kuidhinishwa, kwa kawaida ndani ya sekunde. Kutoa pesa kuna ada ya{" "}
             <span className="font-mono tabular-nums text-text">{r.withdrawalFeePct}%</span>, inayotozwa wakati wa kutoa
-            pesa pekee. Utoaji wa{" "}
-            <span className="font-mono tabular-nums text-text">{tzs(1_000_000)}</span> au zaidi hukaguliwa na maafisa
-            wawili kabla ya kuachiliwa, hivyo huchukua muda mrefu zaidi kwa makusudi.
+            pesa pekee.
           </p>
         </LegalSection>
 
@@ -360,10 +360,12 @@ export function upDownContent(r: RulesRates): Record<Locale, React.ReactNode> {
 
         <LegalSection n="7" title="Dau, kuuza mapema na pochi">
           <p>
-            Wachezaji lazima wawe na <strong className="text-text">umri wa miaka 18 au zaidi</strong>, wakazi wa
-            Tanzania, na waliothibitishwa — uthibitisho wa utambulisho unahitajika kabla ya kuweka pesa, kuweka dau au
-            kutoa pesa. Kuweka na kutoa pesa hufanyika kupitia njia za pesa za simu zilizoorodheshwa kwenye kurasa za
+            Wachezaji lazima wawe na <strong className="text-text">umri wa miaka 18 au zaidi</strong> na wakazi wa
+            Tanzania. Kuweka na kutoa pesa hufanyika kupitia njia za pesa za simu zilizoorodheshwa kwenye kurasa za
             malipo. Hatuombi kamwe taarifa za kadi.
+          </p>
+          <p>
+            Uthibitisho wa utambulisho unahitajika kabla ya kutoa pesa kwa mara ya kwanza.
           </p>
           <p>
             <strong className="text-text">Kuuza dau mapema.</strong> Ndani ya dakika{" "}
@@ -411,7 +413,7 @@ export function upDownContent(r: RulesRates): Record<Locale, React.ReactNode> {
             </li>
             <li><strong className="text-text">Marekebisho.</strong> Mabadiliko makubwa hutangazwa kabla ya kuanza kutumika na hayarudi nyuma kwa raundi zilizokwisha fungwa.</li>
             <li>
-              <strong className="text-text">Mchezo salama.</strong> Juu &amp; Chini ni burudani, si chanzo cha mapato, na
+              <strong className="text-text">Mchezo salama.</strong>{" "}Juu &amp; Chini ni burudani, si chanzo cha mapato, na
               raundi zake fupi hurahisisha kucheza muda mrefu kuliko ulivyokusudia. Vikomo vya amana, vikomo vya muda,
               mapumziko na kujitenga vipo kwenye wasifu wako; simu ya msaada ya kitaifa ipo chini ya kila ukurasa.
               Mchezo ukiacha kuwa wa kufurahisha, acha. Miaka 18+.
@@ -471,9 +473,7 @@ export function upDownContent(r: RulesRates): Record<Locale, React.ReactNode> {
           <p>
             回合结算并签核后，<strong className="text-text">奖金</strong>将计入您的钱包，通常在数秒内完成。从钱包提现收取{" "}
             <span className="font-mono tabular-nums text-text">{r.withdrawalFeePct}%</span>{" "}
-            手续费，仅在提现时收取。金额达到或超过{" "}
-            <span className="font-mono tabular-nums text-text">{tzs(1_000_000)}</span>{" "}
-            的提现，须经两位合规专员审核后放行，因此按设计会更慢。
+            手续费，仅在提现时收取。
           </p>
         </LegalSection>
 
@@ -527,7 +527,10 @@ export function upDownContent(r: RulesRates): Record<Locale, React.ReactNode> {
 
         <LegalSection n="7" title="下注、提前卖出与钱包">
           <p>
-            玩家须<strong className="text-text">年满 18 周岁</strong>、居住于坦桑尼亚并完成验证——在充值、下注或提现之前须完成身份验证。充值与提现通过充值/提现页面公布的移动支付渠道进行。我们绝不索取银行卡信息。
+            玩家须<strong className="text-text">年满 18 周岁</strong>并居住于坦桑尼亚。充值与提现通过充值/提现页面公布的移动支付渠道进行。我们绝不索取银行卡信息。
+          </p>
+          <p>
+            首次提现之前须完成身份验证。
           </p>
           <p>
             <strong className="text-text">提前卖出。</strong>下注后的前{" "}

@@ -4,9 +4,10 @@
  * Persistent "confirm your email" bar — app-wide, for every signed-in player
  * whose address is still unconfirmed.
  *
- * Why it exists: confirming your email is what unlocks depositing (browse free →
- * a second requirement for depositing, alongside identity), but until now the ONLY place that
- * said so was the deposit page itself. A player who signed up, browsed markets
+ * Why it exists: confirming your email is what unlocks depositing — the ladder is register →
+ * confirm email → deposit and play → verify identity → withdraw (2026-09-13; from 2026-09-05 to
+ * 2026-09-13 identity was a second requirement for depositing, and that gate is deleted) — but
+ * until now the ONLY place that said so was the deposit page itself. A player who signed up, browsed markets
  * and never opened /wallet/deposit had no signal at all that their account was
  * in a limited state, and no idea a confirmation mail was waiting in their
  * inbox. They discovered it at the exact moment they wanted to put money in —
@@ -34,6 +35,7 @@
  * fail in.
  */
 import { useEffect, useState, useTransition } from "react";
+import { usePathname } from "next/navigation";
 import { NoticeBar, NoticeBarAction } from "@/components/ui/notice-bar";
 import { useT } from "@/lib/i18n";
 import { resendEmailVerificationAction } from "@/app/profile/actions";
@@ -61,6 +63,14 @@ export function EmailVerifyBanner({ email }: { email: string | null }) {
     });
   };
 
+  // 2026-09-13 · NOT ON /wallet/deposit, the one screen that already says it. That page renders
+  // EmailVerifyGate in place of the form for exactly this condition (same user row, same
+  // emailVerifiedAt), with its own resend and change-address actions, so the bar stacked the same
+  // prompt twice, one above the other. Everywhere else the bar stays: it is still the only signal
+  // on every other page. Exact match only, so /wallet/deposit/return keeps the bar.
+  const pathname = usePathname();
+  const gateOnThisPage = pathname === "/wallet/deposit";
+
   function resend() {
     setResult(null);
     startTransition(async () => {
@@ -80,6 +90,8 @@ export function EmailVerifyBanner({ email }: { email: string | null }) {
       }
     });
   }
+
+  if (gateOnThisPage) return null;
 
   return (
     <NoticeBar

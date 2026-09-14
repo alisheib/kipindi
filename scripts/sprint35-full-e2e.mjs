@@ -58,17 +58,32 @@ const p = await ctx.newPage();
 
 await p.goto(`${BASE}/auth/register`, { waitUntil: "networkidle" });
 await p.fill('#phone', phoneTail);
-await p.fill('input[name="dob"]', "1990-01-15");
+// ⚠️ EMAIL IS REQUIRED AT SIGN-UP and the date of birth is THREE boxes — day (`#dob`), Month, Year.
+// Without both the form's own `required` fields stop it submitting. Same sequence as `kyc-gate-e2e.mjs` ①.
+await p.fill('#email', `sprint35.${phoneTail}@50pick.test`);
+await p.locator('#dob').fill("15");
+await p.locator('input[aria-label="Month"]').fill("01");
+await p.locator('input[aria-label="Year"]').fill("1990");
 await p.fill('input[name="password"]', "TestPass123!");
 await p.fill('input[name="passwordConfirm"]', "TestPass123!");
 await p.check('input[name="acceptAge"]', { force: true });
 await p.check('input[name="acceptTerms"]', { force: true });
+// ⚠️ RECORD EVERY URL THE TAB LANDS ON — `AuthFlash` greets the new account and then strips `welcome`
+// with router.replace, so the settled URL cannot say where registration sent them.
+const seen = [];
+const onNav = (f) => { if (f === p.mainFrame()) seen.push(f.url()); };
+p.on("framenavigated", onNav);
 await Promise.all([
   p.waitForURL(u => !/\/auth\/register/.test(u.toString()), { timeout: 15_000 }).catch(() => null),
   p.click('button[type="submit"]'),
 ]);
+p.off("framenavigated", onNav);
+const landing = seen.map((u) => new URL(u)).find((u) => !u.pathname.startsWith("/auth/register"));
 log("1a register form posts → out of /auth/register", !/\/auth\/register/.test(p.url()), p.url());
-log("1b session created (no OTP step)", /\/profile\/kyc|\/$|welcome=/.test(p.url()), p.url());
+// ⭐ 2026-09-13: a new account lands on /wallet/deposit with `welcome=new` — identity is asked before a
+// withdrawal only, so sign-up no longer ends on /profile/kyc (and this check no longer accepts it).
+log("1b session created → lands on /wallet/deposit?welcome=new (not the identity form)",
+  landing?.pathname === "/wallet/deposit" && landing.searchParams.get("welcome") === "new", landing?.href ?? p.url());
 // 1c is a no-op for password flow; keep numbering stable for downstream code.
 log("1c registration complete", !/\/auth\//.test(p.url()) || /welcome=/.test(p.url()), p.url());
 

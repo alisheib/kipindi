@@ -143,6 +143,8 @@ export default async function ForgotPasswordPage({ searchParams }: { searchParam
                 640px, which is the only width where the address was legible. And the Swahili
                 render improves twice over: `saa 2 asubuhi – saa 2 usiku` (~135px) stopped
                 wrapping to two lines in the card beside it. */}
+            {/* 2026-09-13: the whole card is the link. The value inside it was a second link, which
+                is invalid HTML (a link inside a link) and threw a hydration error on every visit. */}
             <div className="grid grid-cols-1 gap-2">
               <a
                 href={`tel:${HELPLINE_TEL()}`}
@@ -150,7 +152,7 @@ export default async function ForgotPasswordPage({ searchParams }: { searchParam
               >
                 <I.phone s={14} className="text-gold-300 shrink-0" />
                 <div className="min-w-0">
-                  <p className="font-mono text-[11px] font-bold text-text"><a href={`tel:${HELPLINE_TEL()}`} className="underline underline-offset-2">{HELPLINE()}</a></p>
+                  <p className="font-mono text-[11px] font-bold text-text"><span className="underline underline-offset-2">{HELPLINE()}</span></p>
                   <p className="text-[10px] text-text-subtle">{t.common.businessHours}</p>
                 </div>
               </a>
@@ -167,7 +169,7 @@ export default async function ForgotPasswordPage({ searchParams }: { searchParam
                       an ellipsis here does not shorten the address, it states a different one.
                       `break-all` is the only break that acts on an unbroken token (the 2026-07-29
                       ruling above; E-100 at wallet-client.tsx:425-431, Ali on a real phone). */}
-                  <p className="font-mono text-[11px] font-bold text-text break-all"><a href={`mailto:${SUPPORT_EMAIL()}`} className="underline underline-offset-2">{SUPPORT_EMAIL()}</a></p>
+                  <p className="font-mono text-[11px] font-bold text-text break-all"><span className="underline underline-offset-2">{SUPPORT_EMAIL()}</span></p>
                   <p className="text-[10px] text-text-subtle">{t.common.oneBusinessDay}</p>
                 </div>
               </a>

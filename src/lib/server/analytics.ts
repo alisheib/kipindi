@@ -10,6 +10,8 @@
  */
 import { db } from "./store";
 import type { StoredTxn, StoredUser } from "./store";
+import { walletHeldTzs, tallyHeldForUnverified, type UnverifiedHeld } from "../kyc-stage";
+import { readKycMoneySnapshot } from "./kyc-money";
 import { moneyForWindow } from "./report-money";
 import { listMarkets, ratesFor } from "./market-service";
 import { poolFee, levySplit, type FeeModel } from "../payout";
@@ -177,13 +179,53 @@ export async function activePlayers(period: Window = "today") {
  *  and AML-held withdrawals). Held funds are still the operator's liability until
  *  they actually leave the platform, so excluding them understated the regulator-
  *  facing "wallet liability" figure. Bonus balances are non-withdrawable and so
- *  are tracked separately, not here. Single-pass over wallets. */
+ *  are tracked separately, not here. Single-pass over wallets.
+ *
+ *  ⚠️ ACTIVE WALLETS ONLY — the activity figure /admin/finance shows. `readPlayerLiability`
+ *  (house-ledger.ts) is the SOLVENCY line and counts every wallet, because a freeze does not
+ *  discharge a debt; the two differ by exactly the frozen and closed balances.
+ *  ⭐ The per-wallet sum is `walletHeldTzs` (src/lib/kyc-stage.ts) since 2026-09-13 — the SAME
+ *  arithmetic as before, now shared with `unverifiedLiability()` below, so the two tiles on the
+ *  finance page are on one basis by construction rather than by two copies agreeing. */
 export async function walletLiabilityTotal() {
   let total = 0;
   for (const w of await db.wallet.listAll()) {
-    if (w.status === "ACTIVE") total += w.balance + (w.hold ?? 0);
+    if (w.status === "ACTIVE") total += walletHeldTzs(w);
   }
   return total;
+}
+
+/** A failed read is its OWN arm — never `{ ok: true, tzs: 0 }`. */
+export type UnverifiedLiability =
+  | ({ ok: true } & UnverifiedHeld)
+  | { ok: false; failed: "kyc" | "wallets" };
+
+/**
+ * ⭐ HELD FOR UNVERIFIED — what we owe accounts whose identity has NEVER been approved (2026-09-13).
+ *
+ * WHY IT EXISTS. From 2026-09-13 identity is asked before a withdrawal and before nothing else
+ * (docs/COMPLIANCE-DECISIONS.md), so any account can hold real money we hold no identity for. The
+ * regulator's first question about that ruling is "how much?", and until this function the console
+ * could not answer it in any form.
+ *
+ * ⛔ THE SAME BASIS AS `walletLiabilityTotal()` — ACTIVE wallets, `balance + hold`, via the one shared
+ * `walletHeldTzs` — so the figure is a SUBSET of "Wallet liability" and reconciles against it.
+ * `basisTotalTzs` is that liability recomputed from the same snapshot, which makes
+ * `tzs <= basisTotalTzs` checkable. Frozen and closed never-approved balances are returned BESIDE
+ * it (`frozen`, `closed`), not folded in: a final identity refusal freezes the wallet, so that is
+ * exactly the S1 money the ACTIVE basis leaves out, and it must not vanish from the page.
+ * ⛔ "Never approved" is `approvedEver` — the withdrawal gate's predicate, over the newest submission
+ * per user, which is the row the gate reads.
+ * ⛔ `listStageFacts` + `wallet.listAll` only — never `db.kyc.list()` (base64 document images).
+ * ⛔ NEVER THROWS, and a failed read is `{ ok: false }`: "TZS 0 held for unverified accounts" after
+ * a database blip would be a false compliance all-clear.
+ * ⚠️ Includes staff wallets, as `walletLiabilityTotal` does. The withdrawal gate asks staff the same
+ * question, so an unapproved staff balance is genuinely unverified money.
+ */
+export async function unverifiedLiability(): Promise<UnverifiedLiability> {
+  const read = await readKycMoneySnapshot();
+  if (!read.ok) return { ok: false, failed: read.failed };
+  return { ok: true, ...tallyHeldForUnverified(read.facts, read.wallets) };
 }
 
 /**
@@ -278,7 +320,8 @@ export async function operatorMarginPct(period: Window = "28d") {
 }
 
 // 🔴 `amlThresholdBreaches()` DELETED 2026-09-07 — zero callers, and it inlined a THIRD copy
-// of the 1,000,000 TZS AML threshold (see `AML_REVIEW_THRESHOLD_TZS` in payments.ts).
+// of the 1,000,000 TZS AML threshold (see `AML_REVIEW_THRESHOLD_TZS` in payments.ts — a reporting
+// line only since the owner ruling of 2026-09-13 switched the withdrawal hold it triggered off).
 /**
  * Time-bucketed series for charting. Returns evenly-spaced buckets covering
  * the period. Each bucket has the net flow (deposits + bets stake) − (payouts +

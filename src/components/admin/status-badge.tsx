@@ -27,14 +27,15 @@
  * import (erased at build) so no server code is pulled into the bundle.
  */
 import { Chip } from "@/components/ui/chip";
-import { LIFECYCLE, REVIEW, OBJECTION, ACCOUNT, MONEY, PIPELINE, UPDOWN, AUDIT, SURVEILLANCE, KYC_STAGE } from "@/lib/admin-status-lexicon";
+import { LIFECYCLE, REVIEW, OBJECTION, ACCOUNT, MONEY, PIPELINE, UPDOWN, AUDIT, SURVEILLANCE, KYC_STAGE, FUNDED } from "@/lib/admin-status-lexicon";
+import { isFinalRefusal } from "@/lib/kyc-refusal";
 import { STATUS_TONE, TONE_CHIP, type StatusChipVariant } from "@/lib/status-tone";
 import { refundReasonFor, type RefundReason } from "@/lib/updown-refund-reason";
 // Type-only, erased at build — `@/lib/kyc-stage` is a pure module with no "use client",
 // so this import keeps the file server-safe while client components can still reach it.
-import type { KycCell } from "@/lib/kyc-stage";
+import type { KycCell, FundedAxis } from "@/lib/kyc-stage";
 import type { MarketStatus } from "@/lib/server/market-service";
-import type { StoredKyc, StoredTxn, ObjectionStatus } from "@/lib/server/store";
+import type { StoredKyc, StoredTxn, ObjectionStatus, StoredUser } from "@/lib/server/store";
 import type { DsarStatus, DsarType } from "@/lib/server/privacy";
 import type { CandidateState } from "@/lib/server/market-candidate";
 import type { AIPollState } from "@/lib/server/ai-poll-generation";
@@ -117,8 +118,15 @@ export function kycStatusVariant(status: KycStatus): StatusChipVariant {
     : "warning";
 }
 
-/** Human label for a KYC status (replaces the raw screaming enum). */
-export function kycStatusLabel(status: KycStatus): string {
+/**
+ * Human label for a KYC status (replaces the raw screaming enum).
+ * ⭐ `rejectReason` (2026-09-13): a REJECTED row on a FINAL code reads "Finally refused", never the
+ * retryable-sounding "Rejected" — the refusal froze the wallet and the player cannot resubmit
+ * (src/lib/kyc-refusal.ts). Optional, so a caller holding only the status keeps its word; the chip
+ * colour is REJECTED's either way.
+ */
+export function kycStatusLabel(status: KycStatus, rejectReason?: string | null): string {
+  if (status === "REJECTED" && isFinalRefusal(rejectReason)) return REVIEW.kycRefusedFinal.en;
   const L: Record<KycStatus, string> = {
     NOT_STARTED: REVIEW.kycNotStarted.en,
     IN_PROGRESS: REVIEW.kycInProgress.en,
@@ -130,8 +138,8 @@ export function kycStatusLabel(status: KycStatus): string {
   return L[status] ?? status;
 }
 
-export function KycStatusBadge({ status, size = "sm" }: { status: KycStatus; size?: "sm" | "md" | "lg" }) {
-  return <Chip size={size} variant={kycStatusVariant(status)}>{kycStatusLabel(status)}</Chip>;
+export function KycStatusBadge({ status, rejectReason, size = "sm" }: { status: KycStatus; rejectReason?: string | null; size?: "sm" | "md" | "lg" }) {
+  return <Chip size={size} variant={kycStatusVariant(status)}>{kycStatusLabel(status, rejectReason)}</Chip>;
 }
 
 /* ── KYC STAGE — the roster's DERIVED identity column (2026-09-11) ────────── */
@@ -154,6 +162,8 @@ export function KycStatusBadge({ status, size = "sm" }: { status: KycStatus; siz
 export function kycStageVariant(cell: KycCell): StatusChipVariant {
   const V: Record<KycCell, StatusChipVariant> = {
     nothing_yet:           TONE_CHIP[STATUS_TONE.KYC_NOTHING_YET.admin],
+    // ⭐ 2026-09-13 — slate, and why amber was refused is written at the dictionary entry.
+    funded_nothing_yet:    TONE_CHIP[STATUS_TONE.KYC_FUNDED_NOTHING_YET.admin],
     uploaded:              TONE_CHIP[STATUS_TONE.KYC_UPLOADED.admin],
     with_us:               TONE_CHIP[STATUS_TONE.KYC_WITH_US.admin],
     more_needed:           TONE_CHIP[STATUS_TONE.KYC_MORE_NEEDED.admin],
@@ -170,6 +180,7 @@ export function kycStageVariant(cell: KycCell): StatusChipVariant {
 export function kycStageLabel(cell: KycCell): string {
   const L: Record<KycCell, string> = {
     nothing_yet:           KYC_STAGE.nothingYet.en,
+    funded_nothing_yet:    KYC_STAGE.fundedNothingYet.en,
     uploaded:              KYC_STAGE.uploaded.en,
     with_us:               KYC_STAGE.withUs.en,
     more_needed:           KYC_STAGE.moreNeeded.en,
@@ -187,15 +198,48 @@ export function KycStageBadge({ cell, size = "sm" }: { cell: KycCell; size?: "sm
   return <Chip size={size} variant={kycStageVariant(cell)}>{kycStageLabel(cell)}</Chip>;
 }
 
+/** The roster's `?funded=` axis in words (2026-09-13). ⭐ `Record<FundedAxis | "unreadable", …>`,
+ *  so a new arm cannot ship wordless. ⛔ Money-rights viewers only — see `FUNDED` in the lexicon. */
+export function fundedAxisLabel(cell: FundedAxis | "unreadable"): string {
+  const L: Record<FundedAxis | "unreadable", string> = {
+    held:       FUNDED.held.en,
+    none:       FUNDED.none.en,
+    unreadable: FUNDED.unreadable.en,
+  };
+  return L[cell];
+}
+
 /* ── Player account status (players list + player detail) ────────────────── */
+
+/**
+ * ⛔ `PENDING_KYC` IS PRESENTED AS `ACTIVE` — 2026-09-13. ONE function, so the chip, its word, the
+ * roster's status filter, its population-mix bar and the cohorts breakdown all fold it the same way.
+ *
+ * WHY. `User.status = "PENDING_KYC"` was written at registration and GATED NOTHING — sign-in refuses
+ * only suspended, closed and self-excluded accounts, and the agent programme accepted it as active.
+ * From 2026-09-13 identity is asked before a withdrawal and before nothing else, so the word labelled
+ * every ordinary, happily-playing customer as pending something and told an officer that the whole
+ * roster needed review (docs/COMPLIANCE-DECISIONS.md, 2026-09-13, "Cut-over"). New accounts are
+ * created ACTIVE and migration `20260913120000_kyc_at_withdrawal` normalises the existing rows. A
+ * straggler that still reaches a screen — a row written mid-deploy by a container on the old code —
+ * is an account nothing restricts, and it reads as exactly that.
+ * ⛔ PRESENTATION ONLY. It changes no stored value and must never be used to DECIDE anything: the
+ * identity question is `approvedEver` (src/lib/kyc-approval.ts), never an account status.
+ */
+export function presentedAccountStatus(status: string): string {
+  return status === "PENDING_KYC" ? "ACTIVE" : status;
+}
 
 /** Canonical variant per player account status, shared by `players/page` and
  *  `players/[id]`. The two call sites still render their own label (the detail page
  *  prefixes a ● dot), so only the variant map is shared.
  *
- *  🔴 `PENDING_KYC` WAS AMBER AND IS NOW ROYAL (D4, Ali's ruling 2026-08-21) — the
- *  console painted a PENDING word amber while every player surface painted it royal,
- *  and amber made a perfectly ordinary un-verified account look like a problem.
+ *  ⛔ `PENDING_KYC` NOW READS AS ACTIVE — GREEN (2026-09-13, `presentedAccountStatus` above).
+ *  This comment used to record that it had moved from amber to royal (D4, Ali's ruling
+ *  2026-08-21) because amber made an ordinary un-verified account look like a problem. The
+ *  2026-09-13 ruling finished that thought: an un-verified account is not pending anything.
+ *  ⭐ ACTIVE resolves through the dictionary (`STATUS_TONE.ACTIVE.admin`) — the same green the bare
+ *  `"success"` here used to type by hand.
  *
  *  ⛔ `CLOSED` STAYS SLATE and is NOT swept into "CLOSED is royal": that clause is
  *  about the market lifecycle stage. A closed ACCOUNT is terminal and inert, and royal
@@ -203,10 +247,10 @@ export function KycStageBadge({ cell, size = "sm" }: { cell: KycCell; size?: "sm
  *  `COOLED_OFF` keeps amber: a cooling-off period is a restriction an officer must
  *  honour, not a queue position. */
 export function playerStatusVariant(status: string): StatusChipVariant {
-  return status === "ACTIVE" ? "success"
-    : status === "PENDING_KYC" ? TONE_CHIP[STATUS_TONE.PENDING.admin]
-    : status === "COOLED_OFF" ? "warning"
-    : status === "SUSPENDED" || status === "SELF_EXCLUDED" ? "danger"
+  const s = presentedAccountStatus(status);
+  return s === "ACTIVE" ? TONE_CHIP[STATUS_TONE.ACTIVE.admin]
+    : s === "COOLED_OFF" ? "warning"
+    : s === "SUSPENDED" || s === "SELF_EXCLUDED" ? "danger"
     : "neutral";
 }
 
@@ -282,15 +326,20 @@ export function ObjectionStatusBadge({ status, size = "sm" }: { status: Objectio
  *  point is that an unmapped value must still not reach an officer as a raw token
  *  — so the fallback de-underscores and title-cases rather than passing it through. */
 export function accountStatusLabel(status: string): string {
-  const L: Record<string, string> = {
+  // ⭐ `Record<StoredUser["status"], …>` (2026-09-13) — TOTAL over the stored enum, so a new arm is a
+  // compile error here rather than a humanised database token on a screen. The function still
+  // accepts `string` for the widened projections named above.
+  const L: Record<StoredUser["status"], string> = {
     ACTIVE: ACCOUNT.active.en,
-    PENDING_KYC: ACCOUNT.pendingKyc.en,
+    // ⛔ NOT "Pending KYC" (2026-09-13) — a straggler reads as the account nothing restricts. The
+    // word is deliberately the SAME constant, not a copy; see `presentedAccountStatus`.
+    PENDING_KYC: ACCOUNT.active.en,
     SUSPENDED: ACCOUNT.suspended.en,
     SELF_EXCLUDED: ACCOUNT.selfExcluded.en,
     COOLED_OFF: ACCOUNT.cooledOff.en,
     CLOSED: ACCOUNT.closed.en,
   };
-  return L[status] ?? humanise(status);
+  return (L as Record<string, string>)[status] ?? humanise(status);
 }
 
 /** Last-resort de-enum for a value no map knows: `SELF_EXCLUDED` → `Self excluded`.

@@ -34,8 +34,13 @@ export function ProviderRadioGrid({
   unavailableLabel: string;
 }) {
   const firstSelectable = providers.findIndex((p) => !p.unavailable);
+  // 2026-09-13 · COLUMNS FOLLOW THE COUNT. Withdraw passes four rails and drew 3 + 1 (Mixx by Yas
+  // alone on a second row) at 768 and 1280. Four is 2 by 2 on a phone and four across from md;
+  // not from sm, because at 640 a quarter of the form leaves "Airtel Money" too little room.
+  // Deposit passes five (the four plus Card) and keeps the 2 then 3 grid it has always had.
+  const cols = providers.length === 4 ? "grid-cols-2 md:grid-cols-4" : "grid-cols-2 sm:grid-cols-3";
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+    <div className={`grid ${cols} gap-2`}>
       {providers.map((p, i) => {
         const checked = defaultProvider ? p.id === defaultProvider : i === firstSelectable;
         // §A3 — the real control is `sr-only`, and `sr-only` clips to a 1×1 box, so the

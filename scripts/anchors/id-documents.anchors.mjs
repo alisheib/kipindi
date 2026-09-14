@@ -202,8 +202,10 @@ export const CASES = [
     expect: "PASSPORT · an under-18 applicant is refused",
     edits: [
       {
+        // ⚠️ 2026-09-13 (audit session 95): the schema's gate became `isOfAge` — the one calendar-year age predicate
+        // on the Tanzanian date — replacing `(now − dob) / 365.25 days … return age >= 18`. Same mutation, new anchor.
         file: VAL,
-        from: `    return age >= 18;`,
+        from: `    return isOfAge(v, new Date());`,
         to: `    return true;`,
       },
       {
@@ -241,8 +243,9 @@ export const CASES = [
     expect: "no placeholder on the identity number field",
     edits: [{
       file: PAGE,
-      from: `              inputMode={spec.inputMode}\n              defaultValue={(sp as Record<string, string | undefined>).idNumber ?? ""}`,
-      to: `              inputMode={spec.inputMode}\n              placeholder="19950101123456789012"\n              defaultValue={(sp as Record<string, string | undefined>).idNumber ?? ""}`,
+      // 2026-09-13 · two more spaces: the steps now sit inside the refused-final branch on /profile/kyc.
+      from: `                inputMode={spec.inputMode}\n                defaultValue={(sp as Record<string, string | undefined>).idNumber ?? ""}`,
+      to: `                inputMode={spec.inputMode}\n                placeholder="19950101123456789012"\n                defaultValue={(sp as Record<string, string | undefined>).idNumber ?? ""}`,
     }],
   },
   {

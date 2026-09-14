@@ -45,6 +45,7 @@ import { join, dirname } from "node:path";
 import { CONTROL_DOMAIN, canUseControl, type ControlId } from "../src/lib/server/control-gates.ts";
 import { __resetGrantsForTest } from "../src/lib/server/rbac.ts";
 import { ADMIN_DOMAINS, domainForPath, type Role } from "../src/lib/server/roles.ts";
+import { decomment } from "./lib/decomment.mts";
 
 const ROOT = process.cwd();
 let pass = 0, fail = 0;
@@ -316,10 +317,11 @@ __resetGrantsForTest();
     const out = [
       ...[...src.matchAll(/canAct\([^,]+,\s*"([a-z]+)"\)/g)].map((m) => m[1]),
       ...[...src.matchAll(/requireStaff\(\s*"([a-z]+)"/g)].map((m) => m[1]),
+      ...[...src.matchAll(/softRequireStaff\(\s*"([a-z]+)"/g)].map((m) => m[1]),
     ];
     // …and the alias form: any single-string-argument call whose argument IS a domain
     // name, in a file that gates at all. `ensure("accounting")` is the case that mattered.
-    if (/requireStaff|canAct/.test(src)) {
+    if (/requireStaff|RequireStaff|canAct/.test(src)) {
       out.push(...[...src.matchAll(/\b[A-Za-z_$][\w$]*\(\s*"([a-z]+)"\s*[),]/g)].map((m) => m[1]));
     }
     return out.filter((d) => DOMAIN_SET.has(d));
@@ -327,6 +329,7 @@ __resetGrantsForTest();
 
   const offenders: string[] = [];
   let scanned = 0;
+  const scannedFiles: string[] = [];
   for (const file of [...walk("src/app"), ...walk("src/lib/server")]) {
     if (EXEMPT.has(file)) continue;
     // An HTTP handler has no rendered control to hide, so "declare it so the page can
@@ -346,11 +349,18 @@ __resetGrantsForTest();
     // the loop below; what this buys is that the day one of them DOES hard-code a domain, §5 is
     // watching. A guard blind to the newest way of spelling the thing it polices is how E-28
     // came back the first time.
-    const enforces = /privilege_escalation_blocked|requireStaff\(|softRequireConsole\(/.test(src);
+    // ⚠️ `softRequireStaff` ADDED 2026-09-13 — the FOURTH enforcing idiom, and this filter was blind to it
+    // for the same reason it was blind to `requireStaff` in E-28: the regex is case-sensitive, so
+    // `softRequireStaff(` never contains `requireStaff(`. Measured the day it was found: six admin action
+    // files gate this way (agents, kyc/[id], payments, privacy, reports/pack, settlement) — including the
+    // S1 refused-balance decision — and none of them had ever been scanned. All six agreed with their
+    // route on that date; what this buys is that the next one that does not is seen.
+    const enforces = /privilege_escalation_blocked|requireStaff\(|softRequireStaff\(|softRequireConsole\(/.test(src);
     if (!enforces) continue;
     const literals = literalDomains(src);
     if (literals.length === 0) continue; // fully CONTROL_DOMAIN-driven, or a tier
     scanned++;
+    scannedFiles.push(file);
     const route = routeOf(file);
     for (const lit of new Set(literals)) {
       // PER-CONTROL, not per-file: a file may legitimately declare one control and still
@@ -369,6 +379,10 @@ __resetGrantsForTest();
   ok("5 · no admin action gates on a domain its own page cannot see",
      offenders.length === 0, offenders.join(" | "));
   ok("5 · the detector actually scanned files (not vacuous)", scanned > 0, `${scanned} literal-gated files`);
+  // ⭐ The S1 refused-balance decision and the final-refusal re-open gate through `softRequireStaff`; the
+  // population must include that file, or the idiom fix above is a sentence, not a scan.
+  ok("5 · the scan now includes the KYC workstation's softRequireStaff actions (2026-09-13)",
+     scannedFiles.includes("src/app/admin/kyc/[id]/kyc-actions.ts"), scannedFiles.join(", "));
 
   // ⛔ The detector must SEE the modern idiom. Without this, a future refactor that
   // renames the guard silently restores E-28 and every check above passes vacuously.
@@ -376,6 +390,8 @@ __resetGrantsForTest();
      literalDomains('const s = await requireStaff("accounting");').includes("accounting"));
   ok("5 · the detector recognises a local alias — ensure(\"domain\")",
      literalDomains('async function ensure(d){return requireStaff(d)}\nconst x = ensure("accounting");').includes("accounting"));
+  ok("5 · the detector recognises softRequireStaff(\"domain\", action, refusal) (2026-09-13)",
+     literalDomains('const g = await softRequireStaff("compliance", action, "Forbidden.");').includes("compliance"));
   ok("5 · the detector recognises the legacy canAct(role, \"domain\")",
      literalDomains('if (!canAct(role, "compliance")) throw 0;').includes("compliance"));
   ok("5 · a file that gates only through CONTROL_DOMAIN yields no literal",
@@ -440,6 +456,89 @@ __resetGrantsForTest();
   // ⭐ CONTROL — the detector must still fire on the pre-fix shape, constructed here.
   ok("6 · CONTROL — the detector still catches the bare-&& shape it was written for",
      /\{\s*capMoney\s*&&\s*<([A-Z]\w*)/.test("{capMoney && <BalanceAdjustControls userId={x} />}"));
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// §7 — the player workstation's OWN gating idiom: ACTION_DOMAIN × cap flags  (2026-09-13)
+// ────────────────────────────────────────────────────────────────────────────
+/**
+ * ⛔ §5 CANNOT SEE THIS FILE, AND THE NEWEST MONEY-STOPPING CONTROLS LIVE IN IT. `players/[id]/actions.ts`
+ * gates every action through `requireStaff(ACTION_DOMAIN[action] ?? "compliance", action)`: the domains are
+ * VALUES in a map, never a string argument, so §5's literal scan finds nothing and moves on. The page — a
+ * `support` route — asks `canAct` per capability (§6). Agreement between the two is therefore two literals
+ * in two files, which is the E-18 shape; and on 2026-09-13 three compliance controls joined that page's
+ * action file: the officer's wallet freeze, its lift, and the re-open of a final identity refusal.
+ *
+ * So the pair is held to one answer here: every export names its domain in the map, the map names only
+ * real exports, each export looks up its OWN row, and every control the page renders behind
+ * `capX ? <Control` imports only actions whose domain is capX's. ⭐ The population is discovered from the
+ * page and printed, never listed.
+ */
+{
+  const ACTIONS = "src/app/admin/players/[id]/actions.ts";
+  const PAGE = "src/app/admin/players/[id]/page.tsx";
+  const CAP_DOMAIN: Record<string, string> = { capSupport: "support", capMoney: "accounting", capCompliance: "compliance" };
+  const actSrc = decomment(read(ACTIONS));
+  const pageSrc = decomment(read(PAGE));
+
+  const mapAt = actSrc.indexOf("const ACTION_DOMAIN");
+  const mapBody = mapAt < 0 ? "" : actSrc.slice(actSrc.indexOf("= {", mapAt), actSrc.indexOf("};", mapAt));
+  const map = new Map([...mapBody.matchAll(/^\s*(\w+Action)\s*:\s*"([a-z]+)"/gm)].map((m) => [m[1], m[2]] as [string, string]));
+  const exported = [...actSrc.matchAll(/^export async function (\w+Action)\s*\(/gm)].map((m) => m[1]);
+  ok(`7 · CONTROL — the map and the exports were discovered (${map.size} mapped · ${exported.length} exported)`,
+     map.size >= 10 && exported.length >= 10);
+
+  const unmapped = exported.filter((n) => !map.has(n));
+  ok("7 · every exported action names its domain in ACTION_DOMAIN — the fallback is a net, not a declaration",
+     unmapped.length === 0, unmapped.join(", "));
+  const stale = [...map.keys()].filter((n) => !exported.includes(n));
+  ok("7 · every ACTION_DOMAIN row is a real exported action — a stale row reads as a gate", stale.length === 0, stale.join(", "));
+  const badDomain = [...map.entries()].filter(([, d]) => !(ADMIN_DOMAINS as readonly string[]).includes(d));
+  ok("7 · every mapped domain is a real AdminDomain", badDomain.length === 0, badDomain.map(([n, d]) => `${n}:${d}`).join(", "));
+  ok("7 · requireAdmin enforces the map", /requireStaff\(\s*ACTION_DOMAIN\[action\]/.test(actSrc));
+  const notSelfNamed = exported.filter((n) => {
+    const at = actSrc.indexOf(`export async function ${n}(`);
+    const next = actSrc.indexOf("\nexport ", at + 10);
+    return !actSrc.slice(at, next < 0 ? undefined : next).includes(`requireAdmin("${n}")`);
+  });
+  ok("7 · every export gates through requireAdmin under its OWN name, so the lookup is its own row",
+     notSelfNamed.length === 0, notSelfNamed.join(", "));
+  for (const n of ["freezeWalletAction", "unfreezeWalletAction"]) {
+    ok(`7 · ${n} demands compliance (2026-09-13 — a freeze stops money in both directions)`, map.get(n) === "compliance", String(map.get(n)));
+  }
+  // ⚠️ `reopenFinalRefusalAction` has NO caller (test:orphan-actions, 2026-09-13): the door the product wires is
+  // `reopenFinalRefusalWorkstationAction` on /admin/kyc/[id]. Held only while it is exported, so deleting the
+  // orphan — the single-source fix — does not turn this section red.
+  if (exported.includes("reopenFinalRefusalAction")) {
+    ok("7 · reopenFinalRefusalAction (while it exists) demands compliance", map.get("reopenFinalRefusalAction") === "compliance", String(map.get("reopenFinalRefusalAction")));
+  }
+
+  type Pair = { flag: string; comp: string; actions: string[] };
+  const mismatchesFor = (pairs: Pair[], m: Map<string, string>) =>
+    pairs.flatMap((p) => p.actions
+      .filter((a) => m.get(a) !== CAP_DOMAIN[p.flag])
+      .map((a) => `<${p.comp}> behind ${p.flag} (${CAP_DOMAIN[p.flag] ?? "unknown flag"}) calls ${a} (${m.get(a) ?? "unmapped"})`));
+  const pairs: Pair[] = [];
+  for (const mm of pageSrc.matchAll(/\b(cap[A-Z]\w*)\s*\?\s*<([A-Z]\w*)/g)) {
+    const [, flag, comp] = mm;
+    const imp = new RegExp(`import\\s*\\{[^}]*\\b${comp}\\b[^}]*\\}\\s*from\\s*"\\./([\\w-]+)"`).exec(pageSrc);
+    if (!imp) continue; // a shared component, not this workstation's own control — §6 owns those
+    const compPath = `src/app/admin/players/[id]/${imp[1]}.tsx`;
+    const compSrc = existsSync(join(ROOT, compPath)) ? decomment(read(compPath)) : "";
+    const actImp = /import\s*\{([^}]*)\}\s*from\s*"\.\/actions"/.exec(compSrc);
+    pairs.push({ flag, comp, actions: actImp ? actImp[1].split(",").map((s) => s.trim()).filter((s) => /Action$/.test(s)) : [] });
+  }
+  console.log(`     pairs: ${pairs.map((p) => `${p.flag}→<${p.comp}>[${p.actions.join(",")}]`).join(" · ")}`);
+  ok("7 · CONTROL — the page's capability-gated controls were discovered", pairs.length >= 5, `${pairs.length} pairs`);
+  ok("7 · CONTROL — the wallet freeze controls are among them, carrying both actions",
+     pairs.some((p) => p.comp === "WalletFreezeControls" && p.flag === "capCompliance"
+       && p.actions.includes("freezeWalletAction") && p.actions.includes("unfreezeWalletAction")));
+  const mismatches = mismatchesFor(pairs, map);
+  ok("7 · ★ every capability-gated control calls only actions demanding the capability the page checked",
+     mismatches.length === 0, mismatches.join(" | "));
+  ok("7 · CONTROL — a planted disagreement is reported",
+     mismatchesFor([{ flag: "capCompliance", comp: "BalanceAdjustControls", actions: ["adjustBalanceAction"] }],
+       new Map([["adjustBalanceAction", "accounting"]])).length === 1);
 }
 
 console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — ${pass} passed, ${fail} failed`);

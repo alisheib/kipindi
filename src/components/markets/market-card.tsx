@@ -393,8 +393,10 @@ export function MarketCard({
 
       {/* Trader row — rendered on every card (min-height fixed) so the grid stays
           even. A fresh market invites the first prediction instead of showing 0,
-          which reads as failure rather than opportunity. */}
-      <div className="mcardp-traders">
+          which reads as failure rather than opportunity.
+          2026-09-13 — on a fresh card the invitation is centred to match the centred
+          empty-pool caption right above it; the two stacked lines had split alignment. */}
+      <div className={fresh ? "mcardp-traders justify-center" : "mcardp-traders"}>
         {fresh ? (
           <span className="t-txt mcardp-befirst">{t.market.beFirst}</span>
         ) : (

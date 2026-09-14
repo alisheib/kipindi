@@ -28,7 +28,7 @@ import { isStaffRole } from "@/lib/server/roles";
 import { getServerT } from "@/lib/i18n-server";
 // ⛔ ONE RULE FOR "why did this stake come back", shared with the card — five copies would be
 // five chances to disagree about someone money.
-import { refundReasonFor, REFUND_REASON_KEY } from "@/lib/updown-refund-reason";
+import { refundReasonFor, REFUND_REASON_KEY, viewerRefundCopy } from "@/lib/updown-refund-reason";
 import { pickLocalized } from "@/lib/localized";
 // ⛔ ONE lexicon for side words across both products — never a local ternary (test:labels §4).
 import { outcomeWord } from "@/lib/side-label";
@@ -38,8 +38,6 @@ import { TippingBar } from "@/components/brand";
 import { RoundCountdownPod } from "@/components/updown/round-countdown";
 import { PriceHero } from "@/components/updown/price-hero";
 import { RoundActionPanel } from "@/components/updown/round-action-panel";
-import { kycGateState } from "@/lib/kyc-gate-state";
-import { getKycStatus } from "@/lib/server/kyc-service";
 import { AssetMark } from "@/components/updown/updown-card";
 import { SOURCE_CLASS_KEY, fmtEAT } from "@/lib/updown-source-label";
 // E-101 · one rule for "where does this ticket live", shared with the wallet and the emails.
@@ -108,15 +106,8 @@ export default async function UpDownRoundPage({
   const detail = await getRoundDetail(roundId, session?.userId);
   if (!detail) notFound();
 
-  // The identity gate, for RENDERING the stake panel only — `buyPosition` re-checks on
-  // submit. `null` = verified. A guest never reaches it: `isAuthed` is checked first.
-  // ⛔ A failed read leaves the gate SHOWING, matching the market detail page: on a stake
-  // surface, a control the server will refuse is worse than a step the player may not need.
-  let playGate: ReturnType<typeof kycGateState> = session ? "not_started" : null;
-  if (session) {
-    try { playGate = kycGateState((await getKycStatus(session.userId))?.status); }
-    catch { /* graceful — the gate shows */ }
-  }
+  // ⛔ NO IDENTITY READ FOR THE STAKE PANEL SINCE 2026-09-13 — a stake asks no identity question
+  // (`kyc-gate.ts`). The play gate that replaced this round's stake control from 2026-09-05 is deleted.
 
   /**
    * ⭐ E-166 · THE ROUND THE PLAYER WAS HANDED OVER FROM, for the compact result strip.
@@ -201,11 +192,15 @@ export default async function UpDownRoundPage({
   // ⭐ E-65 · WHY THIS VIEWER GOT THEIR STAKE BACK, from the rule the card shares. Fires on a
   // VOIDED round AND on a DECIDED one that refunded this player for want of a counterparty —
   // two opposite events that used to print the same sentence.
+  const myRefundedStake = myPosition && myPosition.payout != null && myPosition.payout === myPosition.stake ? myPosition.stake : 0;
   const refundReason = refundReasonFor({
     outcome: round.state === "void" ? "VOID" : (round.outcome ?? null),
     voidReason: round.voidReason,
-    refundedStake: myPosition && myPosition.payout != null && myPosition.payout === myPosition.stake ? myPosition.stake : 0,
+    refundedStake: myRefundedStake,
   });
+  // ⛔ 2026-09-13 · WHAT THIS VIEWER MAY BE TOLD. `refundReason` answers for the ROUND; a viewer who had
+  // nothing returned (never bet, or cashed out) is told why it voided and never "your stake is back".
+  const refundCopy = viewerRefundCopy(refundReason, myRefundedStake);
   const result = myPosition?.result ?? null;
   /**
    * ⭐ E-87 · THE CHIP HAD THREE STATES AND THE WORLD HAS FOUR — and this is E-65's own defect,
@@ -563,11 +558,6 @@ export default async function UpDownRoundPage({
                 stakePanel={{
                   marketId: round.marketId,
                   isAuthed: !!session,
-                  kycGate: playGate,
-                  // ⚠️ PLAIN PATH, not the encoded one `signInHref` carries below. The panel
-                  // does its own `encodeURIComponent`; handing it a pre-encoded string sends
-                  // the player back to a double-escaped 404.
-                  returnTo: `/updown/${roundId}${lockedSide ? `?side=${lockedSide}` : ""}`,
                   minStake,
                   maxStake,
                   myUpStake: round.myUpStake,
@@ -665,9 +655,15 @@ export default async function UpDownRoundPage({
                     down. ⚠️ The guard asserted the branch EXISTED; it did not assert it was
                     REACHABLE, and those are different claims. */}
                 {refundReason && (
-                  <p className="mt-3 m-0 text-body-sm leading-[1.55] text-text-muted">
-                    {(t.market as Record<string, string>)[REFUND_REASON_KEY[refundReason]]}
-                  </p>
+                  refundCopy?.claimsRefund ? (
+                    <p className="mt-3 m-0 text-body-sm leading-[1.55] text-text-muted">
+                      {(t.market as Record<string, string>)[REFUND_REASON_KEY[refundReason]]}
+                    </p>
+                  ) : refundCopy ? (
+                    <p className="mt-3 m-0 text-body-sm leading-[1.55] text-text-muted">
+                      {(t.market as Record<string, string>)[refundCopy.key]}
+                    </p>
+                  ) : null
                 )}
                 {/* 🔴 E-101 · THIS BUTTON WAS A DEAD END BY CONSTRUCTION. It read "Open in
                     positions" and pointed at `/positions`, which is
@@ -697,10 +693,16 @@ export default async function UpDownRoundPage({
                     "refunded" is not a §B11 word. `variant="neutral"` is `.chip`'s own base
                     byte-for-byte, so this says out loud what the bare class was saying by
                     default. */}
-                <Chip variant="neutral">{t.market.udRefundTitle}</Chip>
-                <p className="mt-2 text-body-sm leading-[1.55] text-text-muted">
-                  {(t.market as Record<string, string>)[REFUND_REASON_KEY[refundReason]]}
-                </p>
+                {/* 2026-09-13 · "Stake returned" only to a viewer whose stake came back; everyone else sees the
+                    Void label and why the round voided, never a claim about money they did not have. */}
+                {refundCopy?.claimsRefund
+                  ? <Chip variant="neutral">{t.market.udRefundTitle}</Chip>
+                  : <Chip variant={TONE_CHIP[STATUS_TONE.VOID.player]}>{t.market.statusVoid}</Chip>}
+                {refundCopy && (
+                  <p className="mt-2 text-body-sm leading-[1.55] text-text-muted">
+                    {(t.market as Record<string, string>)[refundCopy.key]}
+                  </p>
+                )}
               </section>
             ) : null}
           </div>

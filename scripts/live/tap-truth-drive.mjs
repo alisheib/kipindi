@@ -351,8 +351,8 @@ function HIT_PROBE(el, opts) {
        Measured on `/positions` at 414 in Swahili: the sort control's natural position at
        scroll 0 is y=825, and `nav.lg:hidden.fixed` occupies 836→900, so its centre resolves to
        a nav item. ⚠️ That is not a covered control — it is a control you have not scrolled to.
-       The product already answers the real version of this hazard with `pb-[88px]` on `main`,
-       so the END of the document clears the bar; transient mid-scroll overlap is what a fixed
+       The product already answers the real version of this hazard with the footer's bottom
+       clearance (on `main` until 2026-09-13), so the END of the document clears the bar; transient mid-scroll overlap is what a fixed
        bottom bar IS. A control genuinely trapped under it would fail the scrolled `hit` too. */
     coveredByFixed: (() => {
       const t = document.elementFromPoint(cx, cy);

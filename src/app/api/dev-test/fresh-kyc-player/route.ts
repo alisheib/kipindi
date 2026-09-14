@@ -27,9 +27,13 @@ export async function POST(req: Request) {
   const id = `usr_${randomId(12)}`;
   // Unique phone per call so each run is isolated.
   const phone = `+25573${String((parseInt(id.slice(-7), 36) % 9_000_000) + 1_000_000)}`;
+  // ⭐ ACTIVE, MATCHING REGISTRATION (2026-09-13). New accounts were created `PENDING_KYC` until then —
+  // a status that gated nothing — and are created ACTIVE now (`auth-service.ts`), with the release
+  // migration normalising the old rows. A fixture that still minted `PENDING_KYC` would drive an
+  // account the product no longer produces, and paint every E2E player "pending" on the roster.
   const u: StoredUser = {
     id, phoneE164: phone, passwordHash: null, passwordSalt: null, failedLoginCount: 0, lockedUntil: null,
-    role: "PLAYER", status: "PENDING_KYC", locale: "EN", displayName: null, dob: "1990-01-01", region: "TZ",
+    role: "PLAYER", status: "ACTIVE", locale: "EN", displayName: null, dob: "1990-01-01", region: "TZ",
     acceptedTermsVersion: "v1", acceptedTermsAt: now, marketingOptIn: false, twoFactorEnabled: false, avatarDataUrl: null,
     email: null, emailVerifiedAt: null, createdAt: now, updatedAt: now, lastLoginAt: now, closedAt: null,
   };

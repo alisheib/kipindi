@@ -24,9 +24,12 @@ export async function POST(req: Request) {
   const now = new Date().toISOString();
   const id = `usr_${randomId(12)}`;
   const phone = `+25571${String(Math.floor(parseInt(id.slice(-7), 36) % 9_000_000) + 1_000_000)}`;
+  // ⭐ ACTIVE, MATCHING REGISTRATION (2026-09-13). New accounts were created `PENDING_KYC` until then —
+  // a status that gated nothing — and are created ACTIVE now (`auth-service.ts`). A submission awaiting
+  // review is a fact of the KYC ROW, never of `User.status`; approval no longer needs to lift anything.
   const u: StoredUser = {
     id, phoneE164: phone, passwordHash: null, passwordSalt: null, failedLoginCount: 0, lockedUntil: null,
-    role: "PLAYER", status: "PENDING_KYC", locale: "EN", displayName: null, dob: "1990-01-01", region: "TZ",
+    role: "PLAYER", status: "ACTIVE", locale: "EN", displayName: null, dob: "1990-01-01", region: "TZ",
     acceptedTermsVersion: "v1", acceptedTermsAt: now, marketingOptIn: false, twoFactorEnabled: false, avatarDataUrl: null,
     email: null, emailVerifiedAt: null, createdAt: now, updatedAt: now, lastLoginAt: now, closedAt: null,
   };

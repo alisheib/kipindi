@@ -11,7 +11,9 @@
  *   • expire stale bonus grants;
  *   • send the Up & Down daily digest (~15-min cadence, idempotent per player-day);
  *   • reconcile stuck payments + notify still-pending deposits (~5-min);
- *   • run the nightly wallet↔ledger trial balance (daily).
+ *   • run the nightly wallet↔ledger trial balance (daily);
+ *   • watch the identity review target (2026-09-13): ONE officer alert per identity review past
+ *     `KYC_REVIEW_SLA_HOURS` (~15-min).
  * A separate, faster timer fast-credits in-flight deposits every 15s.
  *
  * Started once from instrumentation.register() on the Node runtime.
@@ -334,6 +336,41 @@ async function maybeSendUpDownDigest(): Promise<void> {
   }
 }
 
+// ── The identity review target — the chore the 2026-09-13 ruling added ──────
+//
+// Owner ruling 2026-09-13 (docs/COMPLIANCE-DECISIONS.md): identity is asked before a WITHDRAWAL and
+// before nothing else, so the review queue now stands between a player and their own money. The
+// player is quoted `KYC_REVIEW_SLA_HOURS` on the withdrawal screen; a target the officers are never
+// told they missed is a number, not a queue. One OFFICER alert per submission waiting past it,
+// deduped per (submission, submittedAt): once per breach.
+//
+// ⛔ NO PLAYER REMINDER CHORE BELONGS HERE (owner, 2026-09-13, the quiet rule). A player learns that
+// identity comes before a withdrawal on the withdrawal screen and in one dismissible wallet notice,
+// never from a scheduled prompt or email. `test:cert-c3` §7 fails if this file grows one back.
+//
+// ⛔ IT RUNS LAST IN THE PASS, WITH ITS OWN CATCH. It sends mail and reads a row or two per breached
+// submission; nothing money-bearing — payment reconcile, the trial balance — may wait behind it.
+// Leader-leased like everything here, so exactly one container speaks. Elapsed-time cadence, the
+// discipline every other chore in this file follows.
+const KYC_SLA_WATCH_EVERY_MS = 15 * 60 * 1000;
+const KYC_SLA_WATCH_BOOT_GRACE_MS = 5 * 60 * 1000; // let boot settle, as retention and the watchdog do
+let lastKycSlaWatchAt = 0;
+
+async function maybeWatchKycReviewSla(): Promise<void> {
+  const now = Date.now();
+  if (now - tickerStartedAt < KYC_SLA_WATCH_BOOT_GRACE_MS) return;
+  if (now - lastKycSlaWatchAt < KYC_SLA_WATCH_EVERY_MS) return;
+  lastKycSlaWatchAt = now;
+  const { runKycReviewSlaAlerts } = await import("./notification-service");
+  const r = await runKycReviewSlaAlerts({ nowMs: now });
+  if (r.breached > 0) {
+    console.log(
+      `[lifecycle] identity review target — ${r.breached} of ${r.pending} pending past ${r.slaHours}h, ` +
+        `${r.alerted} newly alerted, ${r.alreadyAlerted} already alerted`,
+    );
+  }
+}
+
 /** Run one lifecycle pass. Each chore is self-contained and best-effort; one
  *  failing must never stop the others or throw out of the tick.
  *
@@ -448,6 +485,9 @@ export async function runLifecyclePass(): Promise<void> {
     // After retention, same contract: a watchdog that fails must never take the
     // lifecycle down — it exists to talk about failures, not to cause one.
     await maybeRunBackupWatchdog().catch((e) => console.error("[lifecycle] backup watchdog:", e));
+    // The identity review target (2026-09-13) — LAST, with its own catch. See the block above
+    // `runLifecyclePass`: it sends mail, and nothing that moves or books money waits behind it.
+    await maybeWatchKycReviewSla().catch((e) => console.error("[lifecycle] identity review target:", e));
   } finally {
     // A completed pass ends the overrun: clear the consecutive count and re-arm the
     // alert so the NEXT episode is reported too. `skippedTotal` is lifetime and is

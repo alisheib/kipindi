@@ -5,7 +5,8 @@
  * predictable 100,000 TZS, issues a session cookie, then redirects to
  * "/". Lets the existing 22 stress / a11y / multi-viewport / smoke
  * scripts under scripts/* drive an authed flow without doing the full
- * register → KYC → deposit dance every time.
+ * register → confirm email → deposit dance every time (identity is asked
+ * before withdrawal only since 2026-09-13 — see `kycState` below).
  *
  * Returns 404 in production — the route does not exist on a live
  * deployment. Per memory: an earlier "Enter demo" button on the
@@ -14,9 +15,11 @@
  */
 import { NextResponse, type NextRequest } from "next/server";
 import { db } from "@/lib/server/store";
-import type { StoredUser, StoredWallet } from "@/lib/server/store";
+import type { StoredUser, StoredWallet, StoredTxn } from "@/lib/server/store";
 import { createSession } from "@/lib/server/session";
 import { randomId } from "@/lib/server/crypto";
+import { attachDocument } from "@/lib/server/kyc-service";
+import { addWalletFreeze, removeWalletFreeze } from "@/lib/server/wallet-freeze";
 
 const DEMO_PHONE = "+255700000000";
 const DEMO_DISPLAY = "Demo Player";
@@ -46,20 +49,39 @@ type EmailState = "verified" | "unverified" | "none";
  * of the `predeploy` chain. So the fixture writes a real APPROVED row, and the session
  * stamp is no longer the only thing claiming approval.
  *
- * ⭐ AND IT TAKES THE OTHER FOUR STATES, exactly as `?email=` already does, so the harness
+ * ⚠️ 2026-09-13 · THE DEFAULT STAYS `approved`, FOR A DIFFERENT REASON. Depositing and betting ask no
+ * identity question any more (`kyc-gate.ts` — identity is required before withdrawal only), so a
+ * `none` demo player could deposit and stake. What still reads the row: the WITHDRAWAL gate
+ * (`/wallet/withdraw` renders `KycGatePanel` instead of the form for an account never approved), the
+ * one small first-deposit notice on /wallet (with `&deposit=1` — the app-wide identity bar that used
+ * to be named here was DELETED later on 2026-09-13, by the owner's quiet rule), and the officer
+ * surfaces that show a player's identity standing. So `approved` is still the state that shows the
+ * ordinary signed-in product; the other states exist to drive those surfaces on purpose.
+ *
+ * ⭐ AND IT TAKES THE OTHER SIX STATES, exactly as `?email=` already does, so the harness
  * can drive every gate panel without hand-editing the database:
- *   /auth/demo?kyc=none | pending | more_info | rejected | approved (default)
+ *   /auth/demo?kyc=none | uploaded | pending | more_info | rejected | refused_final | approved (default)
+ * ⭐ 2026-09-13 — `uploaded` (a document attached through the real writer, never sent) and
+ * `refused_final` (UNDERAGE, wallet frozen `IDENTITY_REFUSED`, exactly as a final refusal leaves it)
+ * complete the six states of the withdraw panel. `&deposit=1` adds ONE confirmed deposit row and
+ * `&deposit=0` fails it — that row is what the first-deposit identity notice on /wallet asks about.
  * ⛔ `none` writes NO ROW, because that is what a real new account looks like; a row that
  * merely SAYS NOT_STARTED would exercise a state the product never produces at sign-up.
  */
-type KycState = "approved" | "none" | "pending" | "more_info" | "rejected";
+type KycState = "approved" | "none" | "uploaded" | "pending" | "more_info" | "rejected" | "refused_final";
+const KYC_STATES: readonly KycState[] = ["approved", "none", "uploaded", "pending", "more_info", "rejected", "refused_final"];
 
-const KYC_STATUS: Record<Exclude<KycState, "none">, "APPROVED" | "PENDING_REVIEW" | "ADDITIONAL_INFO_REQUIRED" | "REJECTED"> = {
+const KYC_STATUS: Record<Exclude<KycState, "none">, "APPROVED" | "IN_PROGRESS" | "PENDING_REVIEW" | "ADDITIONAL_INFO_REQUIRED" | "REJECTED"> = {
   approved: "APPROVED",
+  uploaded: "IN_PROGRESS",
   pending: "PENDING_REVIEW",
   more_info: "ADDITIONAL_INFO_REQUIRED",
   rejected: "REJECTED",
+  refused_final: "REJECTED",
 };
+
+/** A 1×1 PNG that passes `validateDocImage` — the fixture `seed-kyc-stages-local.mts` attaches too. */
+const DEMO_DOC_PNG = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
 
 async function ensureDemoKyc(userId: string, kycState: KycState) {
   const existing = await db.kyc.findByUserId(userId);
@@ -75,8 +97,10 @@ async function ensureDemoKyc(userId: string, kycState: KycState) {
     id: existing?.id ?? `kyc_${randomId(10)}`,
     userId,
     status,
-    rejectReason: null,
-    rejectNote: status === "REJECTED" ? "Demo fixture — document illegible." : null,
+    // ⭐ A FINAL code for `refused_final`, a recoverable one for `rejected` — `kycGateState` tells the
+    // two apart by exactly this field, so a fixture without it cannot show the final-refusal panel.
+    rejectReason: kycState === "refused_final" ? "UNDERAGE" : kycState === "rejected" ? "BLURRY_DOC" : null,
+    rejectNote: kycState === "rejected" ? "Demo fixture — document illegible." : null,
     idType: "NIDA",
     idNumber: "19900101700000000000",
     idExpiry: null,
@@ -85,8 +109,9 @@ async function ensureDemoKyc(userId: string, kycState: KycState) {
     dob: "1990-01-01",
     documents: [],
     reviewerId: null,
-    reviewedAt: now,
-    submittedAt: now,
+    reviewedAt: kycState === "uploaded" || kycState === "pending" ? null : now,
+    // An `uploaded` file was never sent: a null `submittedAt` is what makes it "uploaded", not "with us".
+    submittedAt: kycState === "uploaded" ? null : now,
     // ⛔ ONLY the approved fixture carries the first-approval stamp. The withdraw gate asks
     // THIS, not `status`, so a `pending`/`rejected` fixture that carried it would silently
     // let the payout form render and the harness would prove the wrong thing.
@@ -94,6 +119,39 @@ async function ensureDemoKyc(userId: string, kycState: KycState) {
     createdAt: existing?.createdAt ?? now,
     updatedAt: now,
   });
+  if (kycState === "uploaded") {
+    // Through the REAL writer, so the row carries a document exactly as a player's upload leaves it.
+    const r = await attachDocument(userId, "NIDA_FRONT", DEMO_DOC_PNG);
+    if (!r.ok) throw new Error(`demo fixture: attachDocument failed — ${r.error}`);
+  }
+}
+
+/**
+ * ⭐ THE WALLET AS EACH STATE LEAVES IT (2026-09-13). A final refusal freezes the wallet
+ * (`kyc-service.freezeForFinalRefusal`), so `refused_final` holds `IDENTITY_REFUSED` through the real
+ * helper and every other state lifts THAT hold again — never another reason. `deposit` adds or fails
+ * ONE confirmed deposit row (null leaves it as it is): the first-deposit identity notice reads it.
+ */
+async function ensureDemoWallet(userId: string, kycState: KycState, deposit: boolean | null) {
+  const meta = { actorId: null, note: "demo fixture" };
+  if (kycState === "refused_final") await addWalletFreeze(userId, "IDENTITY_REFUSED", meta);
+  else await removeWalletFreeze(userId, "IDENTITY_REFUSED", meta);
+  if (deposit === null) return;
+  const w = await db.wallet.findByUserId(userId);
+  if (!w) return;
+  const id = "txn_demo_first_deposit";
+  const now = new Date().toISOString();
+  const existing = await db.txn.findById(id);
+  if (deposit && !existing) {
+    await db.txn.create({
+      id, walletId: w.id, userId, type: "DEPOSIT", status: "CONFIRMED",
+      amount: DEMO_STARTING_BALANCE, fee: 0, taxWithheld: 0, balanceAfter: DEMO_STARTING_BALANCE, currency: "TZS",
+      provider: "MPESA", providerRef: "demo_first_deposit", msisdn: null, description: "Demo fixture deposit",
+      positionId: null, amlReason: null, createdAt: now, updatedAt: now, completedAt: now,
+    } as StoredTxn);
+  } else if (existing) {
+    await db.txn.update(id, { status: deposit ? "CONFIRMED" : "FAILED", updatedAt: now });
+  }
 }
 
 async function ensureDemoUser(emailState: EmailState) {
@@ -164,17 +222,19 @@ async function bootstrapDemo(req: NextRequest) {
   const raw = req.nextUrl.searchParams.get("email");
   const emailState: EmailState = raw === "unverified" || raw === "none" ? raw : "verified";
   const rawKyc = req.nextUrl.searchParams.get("kyc");
-  const kycState: KycState =
-    rawKyc === "none" || rawKyc === "pending" || rawKyc === "more_info" || rawKyc === "rejected"
-      ? rawKyc : "approved";
+  const kycState: KycState = (KYC_STATES as readonly string[]).includes(rawKyc ?? "") ? (rawKyc as KycState) : "approved";
+  const rawDeposit = req.nextUrl.searchParams.get("deposit");
+  const deposit = rawDeposit === "1" ? true : rawDeposit === "0" ? false : null;
   const { userId, phoneE164 } = await ensureDemoUser(emailState);
   await ensureDemoKyc(userId, kycState);
+  await ensureDemoWallet(userId, kycState, deposit);
   await createSession({
     userId,
     phoneE164,
     role: "PLAYER",
     // ⚠️ The cookie stamp MIRRORS the row now instead of contradicting it. Nothing gates on
-    // this value — every money gate re-reads the database (`kyc-gate.ts`) — but a fixture
+    // this value — the withdrawal gate, the only identity question on a money path since
+    // 2026-09-13, re-reads the database (`kyc-gate.ts`) — but a fixture
     // whose cookie says APPROVED over a REJECTED row is a trap for whoever debugs the next
     // failure, and it is what made the pre-2026-09-05 lie invisible.
     kycStatus: kycState === "none" ? "NOT_STARTED" : KYC_STATUS[kycState],

@@ -115,8 +115,10 @@ export function ApplyClient({ app, documents, missing, kycGate, fee, lipa, walle
   const [feeSettled, setFeeSettled] = useState(app.feeWaived || app.feePaid || !!app.feeReference);
   const [balanceTzs, setBalanceTzs] = useState(walletPay.balanceTzs);
   const [feePending, startFee] = useTransition();
-  // The two doors DEPOSIT holds shut, in the SAME ORDER the server asks them -- identity, then
-  // email -- so a person cannot clear the one it names and then be refused for the other.
+  // The two doors the FEE PAYMENT holds shut, in the SAME ORDER the server asks them -- identity,
+  // then email -- so a person cannot clear the one it names and then be refused for the other.
+  // 2026-09-13: these were "the two doors DEPOSIT holds shut". A deposit now asks email only; the
+  // identity door here is the agent programme's own requirement, kept by that ruling (payFeeFromWallet).
   const kycBlocks = !app.feeWaived && !feeSettled && !walletPay.kycApproved;
   const emailBlocks = !app.feeWaived && !feeSettled && walletPay.kycApproved && !walletPay.emailVerified;
   const canAfford = balanceTzs >= fee.totalTzs;
@@ -219,7 +221,7 @@ export function ApplyClient({ app, documents, missing, kycGate, fee, lipa, walle
           </div>
           <p className="text-body-sm leading-relaxed text-text-muted">{t.agent.docPhotoHint}</p>
           <p className="text-body-sm leading-relaxed text-text-muted">{app.source === "OFFICER_INVITED" ? t.agent.inviteKycNote : t.agent.docIdNote}</p>
-          {identityBlocks && kycGate && <KycGatePanel state={kycGate} returnTo="/agent/apply" />}
+          {identityBlocks && kycGate && <KycGatePanel state={kycGate} purpose="agent" returnTo="/agent/apply" />}
         </section>
       )}
 
@@ -334,12 +336,13 @@ export function ApplyClient({ app, documents, missing, kycGate, fee, lipa, walle
           {!app.feeWaived && LIPA_QR_RELEASED && <LipaQrPanel lipa={lipa} account={fee.destinationAccount} amountTzs={fee.totalTzs} />}
           {/* PAY IT FROM THE WALLET -- and GATE THE OFFER, never the refusal.
 
-              Paying from a wallet inherits every precondition of DEPOSITING, and two of them are
-              NOT enforced at the agent door: identity APPROVED (a self-service applicant always
-              has it, but an OFFICER_INVITED one is deliberately exempt) and a verified email
-              (checked nowhere upstream). Under the old out-of-band rail neither could strand
-              anybody. Under this one an un-KYC'd invitee cannot fund a wallet, cannot pay, and --
-              before this -- was told nothing.
+              Paying from a wallet asks two things NOT enforced at the agent door: identity APPROVED
+              (a self-service applicant always has it, but an OFFICER_INVITED one is deliberately
+              exempt) and a verified email (checked nowhere upstream). Under the old out-of-band
+              rail neither could strand anybody. Under this one an unverified invitee cannot pay,
+              and -- before this -- was told nothing. (2026-09-13: identity is no longer a deposit
+              precondition. The fee payment keeps it as the agent programme's own requirement, so
+              an invitee may hold a funded wallet and still meet this panel.)
 
               So each door renders the GATE and the ACTION THAT CLEARS IT, in the SAME ORDER the
               server asks them, so a person cannot fix the thing they were told about and then be
@@ -350,7 +353,7 @@ export function ApplyClient({ app, documents, missing, kycGate, fee, lipa, walle
               {kycBlocks ? (
                 /* returnTo brings them BACK to the wizard, and the step they land on is
                    recomputed from what is missing -- which is this one. */
-                <KycGatePanel state={kycGate ?? "not_started"} returnTo="/agent/apply" />
+                <KycGatePanel state={kycGate ?? "not_started"} purpose="agent" returnTo="/agent/apply" />
               ) : emailBlocks ? (
                 <div className="space-y-2">
                   <p className="text-body-sm leading-relaxed text-text">{t.agent.payEmailFirst}</p>

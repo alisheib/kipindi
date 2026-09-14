@@ -12,7 +12,21 @@ import { useRouter } from "next/navigation";
 import { formatTzs } from "@/lib/utils";
 import { useMayAct, ActReadOnly } from "@/components/admin/act-gate";
 
-export function AmlActionRow({ txnId, amount }: { txnId: string; amount: number }) {
+/* ⚠️ 2026-09-13 — `isWithdrawal` and `legacyTwoOfficer` are decided ONCE, on the server (page.tsx), so this row
+   never claims a rule that does not bind it. No withdrawal is held for review since that date; the two-officer
+   rule binds only a legacy hold (a withdrawal at or above the threshold held before it), and a deposit owed back
+   is refused by Approve and moves no money on Reject. */
+export function AmlActionRow({
+  txnId,
+  amount,
+  isWithdrawal,
+  legacyTwoOfficer,
+}: {
+  txnId: string;
+  amount: number;
+  isWithdrawal: boolean;
+  legacyTwoOfficer: boolean;
+}) {
   // A1 — this control only ACTS, so a role holding VIEW without ACT is shown why rather
   // than being offered a button the server will refuse (and logged as a privilege
   // escalation for pressing it). See docs/ADMIN-CONSOLE-FINDINGS.md.
@@ -70,8 +84,12 @@ export function AmlActionRow({ txnId, amount }: { txnId: string; amount: number 
     overlay.run(
       kind === "approve" ? `Approving ${formatTzs(amount)}…` : "Rejecting transaction…",
       kind === "approve"
-        ? "Recording your approval. Large payouts need a second, different officer; the final approval dispatches the payout to the gateway."
-        : "Returning funds to player wallet.",
+        ? legacyTwoOfficer
+          ? "Recording your approval. A legacy large payout still needs a second, different officer; the second approval dispatches the payout to the gateway."
+          : "Recording your approval and dispatching the payout to the gateway."
+        : isWithdrawal
+          ? "Returning funds to player wallet."
+          : "Closing the deposit row. No money is sent.",
     );
     startTransition(async () => {
       /* Declared out here because the RESET below has to see it — see the comment there. */
@@ -91,7 +109,7 @@ export function AmlActionRow({ txnId, amount }: { txnId: string; amount: number 
           } else if (kind === "approve") {
             overlay.succeed(`Approved · ${formatTzs(amount)}`, message ?? "Payout dispatched to the gateway.");
           } else {
-            overlay.succeed("Rejected", "Funds returned to wallet.");
+            overlay.succeed("Rejected", isWithdrawal ? "Funds returned to wallet." : "Deposit row closed. No money was sent; the return is still owed.");
           }
         } else {
           /* ⭐ DG-S-05 — read the address, if the refusal carries one. `"field" in result` is
@@ -133,8 +151,9 @@ export function AmlActionRow({ txnId, amount }: { txnId: string; amount: number 
         {/* Approve DISPATCHES the payout to the gateway (dispatchApprovedWithdrawal):
             AML_REVIEW → PROCESSING with a real provider ref, settled exactly-once by
             the webhook/reconcile path — the hold is kept until the provider confirms.
-            Large payouts (≥ 1M) require two different officers. Reject returns the held
-            funds to the player. */}
+            Since 2026-09-13 no withdrawal is held for review; only a LEGACY hold (a withdrawal
+            at or above the threshold held before that date) still requires two different
+            officers. Reject returns a held withdrawal to the wallet; on a deposit it moves no money. */}
         <Button
           size="sm"
           variant="primary"
@@ -160,8 +179,17 @@ export function AmlActionRow({ txnId, amount }: { txnId: string; amount: number 
           Reject
         </Button>
       </div>
+      {/* ⚠️ 2026-09-13 — WAS "Large payouts (≥ threshold) need two different officers" on EVERY row, deposits
+          included. No withdrawal is held for review since that date, so the two-officer line shows only where
+          the rule still binds. */}
       <p className="text-body-sm text-text-tertiary">
-        Large payouts (≥ {formatTzs(TWO_PERSON_THRESHOLD_TZS)}) need <span className="text-text-secondary">two different officers</span>; approval dispatches the payout. <span className="text-text-secondary">Reject</span> returns the held funds.
+        {!isWithdrawal ? (
+          "A deposit owed back cannot be approved. Reject closes the row; it sends no money."
+        ) : legacyTwoOfficer ? (
+          <>A legacy large payout (≥ <span className="font-mono tabular-nums">{formatTzs(TWO_PERSON_THRESHOLD_TZS)}</span>) still needs a second, different officer to release it. Reject returns the held funds.</>
+        ) : (
+          "Approve dispatches the payout. Reject returns the held funds."
+        )}
       </p>
       {mode && (
         <div className="flex items-start gap-1.5">

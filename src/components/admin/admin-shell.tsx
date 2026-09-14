@@ -82,28 +82,68 @@ export async function ConfidentialBand({ session }: { session: AdminSession }) {
 // returns a Promise and needs no wrapper — the two that DO are wrapped, not all three,
 // because wrapping something that never needed it teaches the next reader the wrong rule.
 export const getSidebarBadges = reactCache(async () => {
-  const [aml, sof, kyc] = await Promise.all([
+  const [aml, sof, pendingKyc, refused] = await Promise.all([
     Promise.resolve(db.txn.listByStatus("AML_REVIEW")).then((r) => r.length).catch(() => 0),
     Promise.resolve(db.sourceOfFunds.listPending()).then((r) => r.length).catch(() => 0),
-    import("@/lib/server/kyc-service").then(({ listPendingKyc }) => listPendingKyc()).then((r) => r.length).catch(() => 0),
+    import("@/lib/server/kyc-service").then(({ listPendingKyc }) => listPendingKyc()).catch(() => []),
+    openRefusedFundsCases().catch(() => 0),
   ]);
-  // Approvals badge surfaces work waiting on an officer: pending KYC + AML +
-  // source-of-funds. This is the admin's "new player to review" signal.
+  const kyc = pendingKyc.length;
+  // Approvals badge: the work /admin/approvals itself lists — its KYC queue (files with us, and files we
+  // asked more of), AML holds and source-of-funds declarations.
   const approvals = kyc + aml + sof;
+  // ⭐ THE KYC QUEUE BADGE (2026-09-13) — officer work that holds a player's money. From that date identity is
+  // asked before a withdrawal and nothing else, so a SUBMITTED file can be a player waiting on their own
+  // balance (S14), and a finally-refused account holding money waits on an officer's recorded decision (S1).
+  // ⛔ It counts only what an officer can clear: not ADDITIONAL_INFO_REQUIRED (the player's move — /admin/kyc
+  // files it "with the player"), and not "funded, nothing submitted". A badge that never clears stops being read.
+  // ⛔ Open refused cases are NOT added to "approvals": that page does not list them, and a badge points at
+  // the page holding the work.
+  const withUs = pendingKyc.filter((k) => k.status === "PENDING_REVIEW").length;
   return {
     aml: aml > 0 ? String(aml) : undefined,
     compliance: aml + sof > 0 ? String(aml + sof) : undefined,
+    kyc: withUs + refused > 0 ? String(withUs + refused) : undefined,
     approvals: approvals > 0 ? String(approvals) : undefined,
   };
 });
+
+/**
+ * Finally-refused accounts whose balance still waits on an officer — the "open" cases of
+ * `/admin/kyc/refused` (2026-09-13, S1).
+ *
+ * ⭐ ONE DEFINITION OF "OPEN": the count is `refusedFundsReport()`'s own `accounts[].open`, never a second
+ * predicate written here. ⚡ BUT THAT REPORT IS HEAVY (every submission, every wallet, and a durable audit
+ * read) and this runs on EVERY admin render, so it is reached only through two cheap NECESSARY conditions:
+ * a newest submission REJECTED on a FINAL code exists, and one such account holds money. An open case implies
+ * both, so skipping the report when either is false cannot under-count — and with no refusals on file the
+ * badge costs the one scalar read below.
+ * ⛔ `listStageFacts`, NOT `listByStatus(["REJECTED"])`. The status read joins every document row — inline
+ * image bytes unless `KYC_STORAGE=r2` — on every admin page. The stage feed is scalars, newest submission per
+ * user: the very rows `refusedFundsReport` filters, so this precondition and the report cannot disagree about
+ * who stands refused.
+ * ⛔ Throws on any failed read; the caller turns that into "no badge", like every badge in this function.
+ */
+async function openRefusedFundsCases(): Promise<number> {
+  const [{ isFinalRefusal }, { walletHeldTzs }] = await Promise.all([import("@/lib/kyc-refusal"), import("@/lib/kyc-stage")]);
+  const facts = await (async () => db.kyc.listStageFacts())();
+  const finalUsers = facts.filter((f) => f.status === "REJECTED" && isFinalRefusal(f.rejectReason)).map((f) => f.userId);
+  if (finalUsers.length === 0) return 0;
+  const held = await Promise.all(finalUsers.map((u) => Promise.resolve(db.wallet.findByUserId(u)).then((w) => walletHeldTzs(w))));
+  if (!held.some((h) => h > 0)) return 0;
+  const { refusedFundsReport } = await import("@/lib/server/refused-funds");
+  const report = await refusedFundsReport();
+  if (report.accountsFailed) throw new Error("refused accounts could not be read");
+  return report.accounts.filter((a) => a.open).length;
+}
 
 export async function AdminSidebar({ activeKey, viewDomains, isOwner }: { activeKey: string; viewDomains: AdminDomain[]; isOwner: boolean }) {
   const badges = await getSidebarBadges();
   // RBAC nav gate — show only the groups/items whose domain the viewer may see.
   const groups = filterNavGroups(viewDomains, isOwner);
   return (
-    <aside className="hidden lg:flex shrink-0 border-r border-border flex-col gap-1 sticky top-0 self-start max-h-screen overflow-y-auto"
-      style={{ width: 216, padding: "18px 14px", background: "var(--panel)" }}>
+    <aside className="hidden lg:flex shrink-0 border-r border-border flex-col gap-1 sticky top-0 self-start max-h-screen overflow-y-auto px-[14px] py-[18px]"
+      style={{ width: 216, background: "var(--panel)" }}>
       {/* ⭐ DG-A-18 · the console's own brand link had NO hover response on any of its 44 pages —
           the hover probe's only universal miss. It is a link to /admin; it now says so on approach,
           using the same `--pill-active` fill the nav rows below it use for their active state. */}

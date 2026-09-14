@@ -49,7 +49,8 @@ import { roundPhase, resultClock, handoverClock, type HandoverClock } from "@/li
 import type { RoundSuccessor } from "@/lib/server/updown-board";
 // ⛔ ONE RULE FOR "why did this stake come back", shared with the round page, the settlement
 // proof, the push and the inbox. Five copies is five chances to disagree about someone money.
-import { refundReasonFor, REFUND_REASON_KEY } from "@/lib/updown-refund-reason";
+import { refundReasonFor, viewerRefundCopy } from "@/lib/updown-refund-reason";
+import { STATUS_TONE, TONE_CHIP } from "@/lib/status-tone";
 // ⛔ ONE RULE for "what would I be paid" (D2) — shared with the quick-bet controls, the round
 // page and the server's own `myExactPayout`. The card never re-derives money.
 import { impliedMultiplier, emptySideOf, formatMultiplier, type UpDownPricing } from "@/lib/updown-pricing";
@@ -150,9 +151,6 @@ export type UpDownCardProps = {
   marketId?: string;
   /** Signed-out taps route to sign-in instead of placing. */
   isAuthed?: boolean;
-  /** Identity not yet approved (2026-09-05) — quick-bet is off and taps route to the
-   *  round detail, where the gate panel explains why and offers the one action. */
-  kycBlocked?: boolean;
   /** Quick-stake selector bounds (the chain's, else the platform default). */
   minStake?: number;
   maxStake?: number;
@@ -458,7 +456,7 @@ export function UpDownCard(props: UpDownCardProps) {
     pricing, state, outcome, closePrice, voidReason,
     sourceClass, sourceQuotedAt, className,
     selectionClosesAtMs, serverNowMs, myExactPayout, myPayoutIfUp, myPayoutIfDown, myRefundedStake,
-    marketId, isAuthed, kycBlocked, minStake, maxStake, walletBalance, myUpStake = 0, myDownStake = 0,
+    marketId, isAuthed, minStake, maxStake, walletBalance, myUpStake = 0, myDownStake = 0,
     expectedResultAtMs = null, resolvedAtMs = null, successor, receipt,
   } = props;
   const { t } = useT();
@@ -623,6 +621,11 @@ export function UpDownCard(props: UpDownCardProps) {
     voidReason: voidReason ?? null,
     refundedStake: myRefundedStake ?? 0,
   });
+  // ⛔ 2026-09-13 · On a VOID round `refundReason` is the ROUND's reason whether or not this
+  // viewer bet, so the pill and "your stake is back" are gated on THEIR refunded stake. A viewer
+  // with nothing returned gets the round's neutral void note, never a claim about money.
+  const refundCopy = viewerRefundCopy(refundReason, myRefundedStake ?? 0);
+  const refundCopyText = refundCopy ? (t.market as Record<string, string>)[refundCopy.key] : undefined;
   // ⛔ Both null together, or both numbers. A `downPct` that stayed a number while `upPct` went
   // null would put the cold-start branch and the paint back out of step, which is the defect.
   const downPct = upPct === null ? null : Math.max(0, 100 - upPct);
@@ -658,13 +661,9 @@ export function UpDownCard(props: UpDownCardProps) {
   // logic the round-detail bet box uses too). The card does NOT reorder the board or
   // router.refresh() per tap — the game is fast, so taps must feel instant; the
   // board's 20s poller reconciles server truth.
-  // ⭐ `!kycBlocked` (2026-09-05) NEEDS NO NEW UI ON THE BOARD, and that is why it is the
-  // right shape here. When quick-bet is off the buttons already ROUTE TO THE ROUND DETAIL
-  // instead of placing — and that is where the identity panel lives, with the explanation
-  // and the one action that clears it. So an unverified player taps UP, lands on the round,
-  // and is told why in full. A gate panel squeezed into a board card would repeat that
-  // sentence up to six times on one screen and crowd out the game.
-  const canQuickBet = bettable && !!marketId && isAuthed === true && !kycBlocked;
+  // ⛔ No identity term since 2026-09-13: a stake asks no identity question (`kyc-gate.ts`), so the
+  // `!kycBlocked` clause that switched quick-bet off for unverified players from 2026-09-05 is deleted.
+  const canQuickBet = bettable && !!marketId && isAuthed === true;
 
   // ── UD-17 (option a — default per the audit's recommendation, 2026-08-07) ──
   //
@@ -1098,10 +1097,16 @@ export function UpDownCard(props: UpDownCardProps) {
           // comes from `refundReasonFor` — one rule shared with the round page, the settlement
           // proof, the push and the inbox. NEUTRAL chrome throughout: a refund is not a failure.
           <div className="rounded-xl p-3.5" style={{ background: "color-mix(in oklab, var(--bg-inset) 70%, transparent)", border: "1px solid var(--border)" }}>
-            <Chip>{t.market.udRefundTitle}</Chip>
-            <p className="mt-2 text-body-sm leading-[1.5] text-text-muted">
-              {(t.market as Record<string, string>)[REFUND_REASON_KEY[refundReason]]}
-            </p>
+            {refundCopy?.claimsRefund ? (
+              <Chip>{t.market.udRefundTitle}</Chip>
+            ) : (
+              // 2026-09-13 · nothing of THIS viewer's came back, so no "Stake returned" pill: the
+              // round's own VOID word in the player VOID tone the round page already uses.
+              <Chip variant={TONE_CHIP[STATUS_TONE.VOID.player]}>{t.market.statusVoid}</Chip>
+            )}
+            {refundCopyText && (
+              <p className="mt-2 text-body-sm leading-[1.5] text-text-muted">{refundCopyText}</p>
+            )}
           </div>
         ) : state === "resolved" ? (
           // The market outcome, NOT the player's payout — no gold here.

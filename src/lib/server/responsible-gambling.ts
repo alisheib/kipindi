@@ -24,6 +24,7 @@ import type { StoredResponsibleGambling, StoredTxn } from "./store";
 import type { ServiceResult } from "./auth-service";
 import { sendEmailToUser, selfExclusionHtml, coolOffHtml } from "./email";
 import { revokeUserSessions } from "./session-registry";
+import { addWalletFreeze } from "./wallet-freeze";
 import { notifySelfExclusion, notifyCoolOff } from "./notification-service";
 import { formatTzs } from "@/lib/utils";
 
@@ -266,10 +267,12 @@ export async function selfExclude(userId: string, period: keyof typeof SELF_EXCL
     selfExclusionStartedAt: (cur as { selfExclusionStartedAt?: string | null }).selfExclusionStartedAt
       ?? new Date().toISOString(),
   });
-  // Freeze user + wallet
+  // Freeze user + wallet.
+  // ⭐ THE WALLET HOLD IS RECORDED BY REASON (2026-09-13), not as a bare FROZEN. A wallet can now
+  // be frozen for more than one reason — this, a final identity refusal, an officer — and re-opening
+  // a served exclusion must lift THIS hold and no other (`wallet-freeze.ts`).
   await db.user.update(userId, { status: "SELF_EXCLUDED" });
-  const wallet = await db.wallet.findByUserId(userId);
-  if (wallet) await db.wallet.update(wallet.id, { status: "FROZEN" });
+  await addWalletFreeze(userId, "SELF_EXCLUSION", { actorId: userId, note: `self-exclusion · ${period}` });
   // Kill the session server-side so the block is immediate on every device,
   // not just whenever the idle/absolute timeout eventually fires.
   await revokeUserSessions(userId);

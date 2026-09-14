@@ -6,6 +6,425 @@
 
 ---
 
+## 2026-09-13 (fourth) · The accepted-Terms record lagged the published Terms — corrected forward, and the rows already written are identified, not rewritten
+
+**Found by the audit of the identity-at-withdrawal release (session 95), not an owner ruling — recorded here because it
+changes how an existing compliance record must be read.**
+
+**What was wrong.** `User.acceptedTermsVersion` is the record of WHICH text of `/legal/terms` a player agreed to at
+registration. It was a string literal in `auth-service.ts`, and the page printed its own literal. They drifted twice:
+- `46ace149` (2026-09-09) rewrote §4 and moved the stamp to `2026-09-09`; the page went on printing `2026-09-07`.
+- The identity-at-withdrawal release moved the page to `Version 2026-09-13` (§2, §3, the new §3a, and that evening §3
+  and §5) and left the stamp at `2026-09-09`. So **every player who registered after `1699c17a` went live
+  (2026-09-13 17:12 UTC) was shown Terms v2026-09-13 — including §3a, the clause the whole ruling above rests on — and
+  recorded as accepting 2026-09-09.** Measured on production read-only at 19:30 UTC: **1** such account (created 19:14
+  UTC); every other player's stamp matches what they were shown.
+
+**What changes.** One module, `src/lib/terms-version.ts` (`TERMS_VERSION = "2026-09-13"`), printed by the page and
+stamped by both registration paths, with a hash of the binding bodies pinned beside it so the text cannot move without
+the editor facing the version. `npm run test:terms-binding` (in `predeploy`) fails on a literal date in the page, a
+local copy of the constant, a literal stamp, or a text change without a hash change — each proven by a planted control.
+
+**What deliberately does NOT change.**
+- ⛔ **No row is rewritten.** No hand-applied SQL on production, and a rewritten acceptance record is worse than a
+  known-imprecise one. The affected rows are exactly: `acceptedTermsVersion = '2026-09-09'` **and** `acceptedTermsAt` at
+  or after **2026-09-13 17:12 UTC** and before the deploy of this fix (stated in the session 95 block of
+  `LIVE-QA-CAMPAIGN.md` §6b). For those accounts the text actually shown was v2026-09-13.
+- Nothing re-asks existing players to accept; the version is a record, not a gate (unchanged since 2026-04-01).
+
+**In the same release, and recorded in `LIVE-QA-CAMPAIGN.md` §6b rather than here because they enforce rulings already
+made:** a FINAL refusal is now closed to the player's own KYC writes on the server (the page had only hidden the forms,
+so one POST could re-queue a refused case, release its reserved number or replace its evidence — S2 and S16 above), an
+approved, in-review or approved-once-and-re-verifying identity can no longer be rewritten by the player, every player
+KYC write re-reads the row under the lock an officer's decision holds (so a refusal landing during an upload is never
+reverted), and the NIDA mock's two QA hooks (a number ending `0000` fabricated a SANCTIONS match — since 2026-09-13 a
+final refusal that freezes the wallet) no longer answer in production.
+
+**⚠️ One change to a compliance control rides with it — the AGE GATE is one predicate now.** Registration measured age
+as `(now − date of birth) / 365.25 days`; the KYC service, the NIDA check and the officer's workstation each used a
+different rule. For about half of all birth dates the two disagreed for up to twelve hours around the 18th birthday,
+and the KYC service's own lock — seeing "17" where registration had seen "18" — issued an **automatic FINAL UNDERAGE
+refusal** (wallet frozen, no officer) to a player already 18 in Dar es Salaam. From this release every gate asks
+`isOfAge` (`src/lib/id-documents.ts`): **whole calendar years on the Africa/Dar_es_Salaam date**. Registration is
+therefore stricter by up to one day for a player registering on the eve of their 18th birthday, and never looser —
+a person under 18 by the Tanzanian calendar is refused everywhere, and a person 18 by it is refused nowhere.
+
+---
+
+## 2026-09-13 (third) · Withdrawals are no longer held for a two-officer review — any amount up to the per-withdrawal cap pays out at once
+
+**Owner ruling (Ali, 2026-09-13, the evening the identity release went live).** Put to him with the consequence
+stated — *"big payouts leave with no second person checking them, and the Board letter currently lists this check as
+one of our controls"* — against two alternatives (also remove the per-withdrawal maximum; or keep the rules and only
+reword), he chose: **remove the review, keep the maximum.** It replaces the withdrawal hold described as a control in
+earlier entries — including the G-15 rule (*"the existing WITHDRAWAL hold is the control"*), whose duty to state the
+hold on the jackpot notification no longer applies — and in the first 2026-09-13 entry below and the Board letter
+draft. Those entries are not edited; this one is the record of the change.
+
+**What changes.** Until today every withdrawal whose gross amount was TZS 1,000,000 or more was held (`AML_REVIEW`)
+and sent only after two different compliance officers approved it (`/admin/aml`). From this ruling **no new
+withdrawal is held.** ⭐ **One switch, not a deletion:** `WITHDRAWAL_AML_HOLD = false` in `src/lib/server/payments.ts`
+gates the hold branch of `dispatchWithdrawal`. Player withdrawals and refused-funds returns use that same dispatch,
+so both pay out at once. `AML_REVIEW_THRESHOLD_TZS` stays as the reporting line (the FIU suspicious-activity report
+still flags settled transactions of TZS 1,000,000 or more; the identity queue still orders by it).
+
+**What does NOT change.**
+- **Identity before withdrawal** — `assertIdentityForPayout`, an identity approved by a person.
+- **The per-withdrawal cap** — TZS 5,000,000 (`WITHDRAW_MAX_TZS`); a larger amount is refused.
+- **Payout destination binding** — a payout goes only to the number registered on the account.
+- **Source of Funds on deposits** — a single deposit of TZS 1,000,000 or more, or TZS 5,000,000 within 30 days,
+  still needs an accepted declaration first.
+- **The stops an officer still has** — the wallet freeze and the payout pause switch.
+- **The record** — every withdrawal still writes `withdraw.initiated` with the account's identity status.
+- **Rows already held** would still be released or rejected by officers on `/admin/aml` (two officers for a large
+  one), and `AML_REVIEW` stays in use for deposits owed back to excluded players. **Measured on production before the
+  change: 0 withdrawals in `AML_REVIEW`; the largest withdrawal ever made was TZS 5,000.**
+
+**⚠️ What the operator accepts, in plain words.**
+- A player whose identity is approved can take up to TZS 5,000,000 out in one withdrawal, as often as their balance
+  allows, with no second person looking at it first. The only human checks on money leaving are the identity review
+  and the Source-of-Funds declaration on the way in.
+- **The payout float:** one withdrawal can now draw up to TZS 5,000,000 from the Selcom float the moment it is
+  requested, and the low-float warning is set at TZS 1,000,000. Keep the float funded above the largest payout expected.
+- **A refused player holding more than TZS 5,000,000** cannot be returned the whole balance in one decision: the return
+  is a withdrawal and the cap applies. No such account exists; a split return has no ruling yet.
+- The AML policy, the Terms (§3, §5 — amended the same day inside version 2026-09-13, a player-favourable change) and the
+  draft Board letter described the two-officer review as a control; all are corrected in the same release.
+
+**Code:** `src/lib/server/payments.ts` (`WITHDRAWAL_AML_HOLD`) · player copy `src/lib/i18n-dict.ts` (withdraw hint and
+secured note, Help FAQ) · `src/app/legal/terms/page.tsx` §3/§5 · `src/app/legal/aml/page.tsx` §1/§2 · the game rules ·
+the chatbot prompts · `/admin/aml` and `/admin/approvals` notices.
+**Tests:** `test:payments` inverted — a gross TZS 1,000,000 withdrawal is not held, the cap is enforced at the service,
+the switch is asserted off, and a seeded pre-ruling `AML_REVIEW` row is still released and reverted correctly; the
+production drive `qa:e177`, whose safety rested on the hold, is disabled.
+
+## 2026-09-13 · Identity verification moves to WITHDRAWAL ONLY — depositing and playing open at the door
+
+**Ruling:** the owner (Ali), **2026-09-13**. Players complained, in volume, about having to
+upload documents **and wait for a human to approve them** before they could put in a single
+shilling or place a single bet. Ali took it to the Gaming Board, and the Board has permitted
+50pick to enforce identity (KYC) finalisation **only at withdrawal**.
+
+The ladder is now:
+
+> **register → confirm email → deposit and play → verify identity → withdraw**
+
+Brief of record: [`SESSION-PROMPT-KYC-AT-WITHDRAWAL.md`](SESSION-PROMPT-KYC-AT-WITHDRAWAL.md).
+Board letter (draft): [`BOARD-DISCLOSURE-KYC-AT-WITHDRAWAL.md`](BOARD-DISCLOSURE-KYC-AT-WITHDRAWAL.md).
+
+### ⛔ This supersedes the 2026-09-05 entry IN PART — and that entry is not edited
+
+The 2026-09-05 entry below stays exactly as written. It is the correct account of what was
+decided then. These are the conditions it states that **no longer hold**:
+
+| 2026-09-05 said | Now (2026-09-13) |
+|---|---|
+| Deposit asks `status === "APPROVED"` | ⛔ **NO LONGER TRUE.** A deposit asks no identity question at all. The confirmed email is the door. |
+| Bet asks `status === "APPROVED"` | ⛔ **NO LONGER TRUE.** Neither polls nor Up & Down ask. |
+| Withdraw asks `approvedAt != null` — *ever* approved | ✅ **Still true, unchanged.** The asymmetry and its reasons stand. |
+| Bonuses are HELD in `PENDING_KYC` until approval | ⛔ **Removed.** Measured on production at cut-over: **0 bonus grants of any status**, so nothing is held and nothing needs draining. The bonus wallet is withdrawn from the product in any case (`feature-state.ts`). `PENDING_KYC` stays in the enum — removing a member is a migration, and history must still render. |
+| Deposit asks RG lockout → identity → email | ⚠️ **Now RG lockout → email → caps + Source of Funds.** The middle term is gone. |
+| `forceReverifyKyc` locks deposits and bets immediately | ⛔ **NO LONGER TRUE.** See *the lever this costs* below. |
+| "Production is emptied the day before go-live, so there is no legacy population" | Measured instead — see *cut-over* below. |
+| Never gated: cash-out, settlement, refunds, every deposit-completion path | ✅ **Still true.** |
+
+⛔ **Do not "restore" the deposit or bet gate by reading the 2026-09-05 entry, the
+2026-09-05 Board letter, or any comment written between those dates.** Read the dates. This
+area has now been inverted three times: 2026-08-20 (identity off withdrawal), 2026-09-05
+(identity before everything), 2026-09-13 (identity before withdrawal only).
+
+### How a player is told — quietly (owner instruction, 2026-09-13, later the same day)
+
+> *"we don't have to over-tell the user to verify before he withdraws … when he goes to withdraw
+> say verify before you withdraw, and maybe on first deposit a small notice … nothing in the wrong
+> place, and everything functional without ever explaining things in annoying ways."* — Ali
+
+A first design moved the identity step upstream with four prompts — a sentence on deposit, win
+and cash-out receipts, a reminder email 72 hours after a deposit, and an email after a blocked
+withdrawal — plus a bar on every page for an unverified account holding money. **None of it
+shipped.** What ships:
+
+- the **withdraw page** shows the identity panel instead of the form;
+- **one** small, dismissible notice on the wallet after the account's first confirmed deposit;
+- the places a player goes to look: `/profile/kyc`, the status pill on `/profile`, the legal
+  pages, help;
+- notices that answer an event: submitted, more information requested, approved, refused, and a
+  decision on a refused player's balance.
+
+⚠️ **What this costs, stated plainly:** with fewer prompts, more players will meet the identity
+step for the first time when they try to withdraw, and will wait for our review at that moment.
+Terms §3 and the withdraw panel both state the step and the usual review time.
+⛔ Do not re-add receipt sentences, reminders or a site-wide bar without a new instruction.
+
+### The seven rulings — each was put to Ali WITH its consequence, and he ruled
+
+| # | Question | Ali's ruling | The consequence he accepted, in plain words |
+|---|---|---|---|
+| 1 | Remove the documents, the approval wait, or both? | **Both. Nothing at all before depositing or betting** — not documents, not a submission. | Every control that lived behind the identity review now runs **after** the money has come in and been played, not before. |
+| 2 | A deposit ceiling for accounts that have not verified? | **No cap.** | An unidentified account may deposit without an identity-based limit. What still applies: the limits a player sets for themselves, and the Source-of-Funds gate (a single deposit of TZS 1,000,000 or more, or TZS 5,000,000 in 30 days, needs an accepted declaration first). |
+| 3 | Age, once no officer sees a document before play? | **Declared age only, until withdrawal** — the date of birth typed at sign-up and the 18+ tickbox. | 🔴 **A person under 18 who types a false date of birth can deposit and gamble. If they never withdraw, no human ever sees a document and the platform never learns.** |
+| 4 | Terms §10's 14-day notice? | **Re-version the legal documents and ship now.** The change is player-favourable. | See *the counter-case* below — it is favourable at the door, and not at the exit. |
+| 5 | A player we refuse at withdrawal who is holding real money? | **An officer decides each case, with a recorded reason.** No fixed rule. | Unbounded discretion is the weakest thing to hand a regulator, so the discretion is made accountable — see *S1* below. |
+| 6 | Should re-opening a verification still block deposits and bets? | **No — the officer uses the wallet freeze**, which stops money both ways. | Re-verification stops being a money control. A freeze had no officer lever at all until this change built one. |
+| 7 | Does approval still overwrite a chosen nickname with the legal name? | **No — the nickname stays.** | Reverses a 2026-06-14 ruling. It has its own entry directly below this one. |
+
+Two more consequences were stated to Ali and accepted, and they are recorded here in the
+words they were put in:
+
+- 🔴 **Self-exclusion on a new SIM.** A self-excluded person who registers a new account on a
+  new phone number becomes a new account with no link to the old one. They can deposit,
+  gamble and lose **with no control at all until they try to withdraw**. Before this change,
+  the identity review stopped them before any money moved. (`assertSignInAllowed` only knows
+  the *same* account — nothing compares a new registration against the exclusion register.)
+- 🔴 **Sanctions and PEP screening moves behind the money.** The only screening on the platform
+  is the officer's *sanctions clear* attestation at identity review (`kyc-attestations.ts`).
+  **No deposit and no bet is ever screened.** A sanctioned person can fund an account and play
+  it; they are first assessed when they ask for their money.
+
+### ⚠️ The counter-case — and why the 2026-09-07 reasoning must not be reused
+
+Ruling 4 waives §10's notice because the change favours players. **It does at the door. It
+does not at the exit.** A person the old gate would have stopped before they put in a shilling
+can now deposit, play, win — and be refused at withdrawal. For that person the new position is
+*worse*: they lost money they could not have lost, or won money they cannot collect.
+
+That population is exactly the one the gate existed to catch, so the defence *"it only harms
+the people it was meant to stop"* is true — and it is exactly the argument an inspector will
+run in the opposite direction.
+
+⛔ **The 2026-09-07 entry's reasoning — *"nothing the platform does changed"* — is not
+available here.** Something the platform does did change. The answer to the counter-case is
+not that argument; it is **Terms §3a**, which states, before anyone can reach the situation,
+what happens when we cannot verify someone who holds a balance. §3a ships **in the same deploy**
+as the gate removal, in English, Swahili and Chinese. ⛔ Shipping the waiver without §3a live
+would be the one ordering mistake in this change that could not be defended.
+
+### 🔴 S1 — the refused player holding money: Ali's ruling, and the accountability built around it
+
+**Before this change the platform had no answer.** A player refused at identity review who
+holds a real balance had no refund path, no forfeiture path, no ledger action and no published
+rule — and `reviewKyc`'s REJECT branch froze nothing, so **a person we had formally refused
+could keep betting and losing to the house**. Under the 2026-09-05 gate that was close to
+impossible, because an unapproved account could not hold money. From today it is routine.
+
+**Ali's ruling: an officer decides each case, with a recorded reason.** What makes that a
+policy rather than a gap:
+
+1. **Two kinds of refusal, told apart by the reason code.**
+   - **Recoverable** — `BLURRY_DOC`, `EXPIRED_ID`, `DETAILS_MISMATCH`, `OTHER`. The player may
+     submit again, as today. Nothing is frozen; nothing is decided about the money.
+   - **Final** — `UNDERAGE`, `SANCTIONED`, `DUPLICATE_IDENTITY`. On any of these **the wallet is
+     frozen in the same step** (it stops deposits, bets and withdrawals alike), a COMPLIANCE fact
+     is written, and the player can no longer restart verification by themselves. An officer can
+     re-open a final refusal, with a written reason, if it was wrong.
+     ⭐ This adds **no new gate**: it pulls the lever `wallet.status !== "ACTIVE"` that already
+     refuses at deposit and at withdrawal. It is not a re-litigation of ruling 1 either — that
+     ruling governs *when we ask an unverified person for documents*, not *whether a person we
+     have already refused may keep funding an account*.
+2. **A closed set of outcomes, freely chosen.** For any final refusal, the officer picks
+   exactly one, and each writes its **own** audit action. ⚠️ *Any* final refusal, including an
+   account that was approved once and refused later (a sanctions finding after a
+   re-verification, say): the refusal freezes that wallet too, so the withdrawal right an
+   earlier approval carries cannot be exercised, and nobody but an officer can decide what
+   happens to the money in it.
+   - **Return the deposits** — the money the player put in (confirmed deposits less anything
+     already paid out), capped at the balance, is sent back to the account's registered number;
+     anything above that is forfeited.
+   - **Return the whole balance** — everything withdrawable is sent back.
+   - **Hold pending appeal** — nothing moves; the wallet stays frozen; the case stays open.
+   - **Forfeit** — the balance moves to the house.
+   Discretion over *which*. **Never over *whether it is recorded*.**
+3. **A mandatory typed justification** — at least 20 characters, on every outcome, and the
+   deciding officer may not be the player.
+4. **Real money actions, not a runbook.** None existed: `reverseStuckPayoutAction` handles
+   stuck payouts only, `adjustmentEntries` is a hand correction, `recordFeeRefund` is the agent
+   fee. A **return** goes through the ordinary payout rail — the same exactly-once withdrawal
+   transaction, the same reconcile sweep, **the same TZS 1,000,000 two-officer AML hold**, and
+   only ever to the number registered on the account. It carries **no withdrawal fee**: it is
+   money we decided to give back, not a withdrawal the player chose, and charging for it would
+   quietly keep part of it. A **forfeiture** is a confirmed debit posted atomically with its
+   ledger group, so the trial balance still ties to the shilling.
+5. **The player is told** — the outcome and the officer's reason, in-app and by email — because
+   §3a promises exactly that.
+6. **One report an inspector can be handed** — every such decision, who took it, when, the
+   amounts, and the reason, beside every finally-refused account still holding money with no
+   decision yet. That report is what turns "case by case" from a gap into a policy.
+
+**Two holes closed with it:**
+
+- 🔴 **S16 — a final refusal no longer frees the document number.** The one-document-one-account
+  index is partial, `WHERE status <> 'REJECTED'`, deliberately, so a real citizen is not locked
+  out by a bad photo (`IDENTITY-POLICY.md`). Combined with money it became a laundering shape:
+  a minor refused `UNDERAGE` with a balance, their document released, an adult accomplice
+  submits the same document on a second account. Both unique indexes now keep the number held
+  for the three final codes, and the fast-path duplicate read asks the same question. A
+  recoverable refusal still frees it.
+- 🔴 **S2 — the refusal loop is bounded for final codes.** `startKyc` used to allow a restart
+  from any refusal with no attempt cap. After a final refusal the door back is an officer.
+
+### 🔴 THE LEVER THIS COSTS — recorded the way the 2026-08-20 entry recorded it
+
+The 2026-08-20 entry recorded *"`forceReverifyKyc` is no longer a money control"* when the
+withdrawal gate was removed. The 2026-09-05 gate gave it teeth back — it stopped deposits and
+bets. **From today it stops nothing at all:** withdrawal asks `approvedAt`, which re-verification
+never clears by design, and deposits and bets ask nothing.
+
+So an officer who forms a doubt about a verified player **changes a status and changes nothing
+else** unless they also freeze the wallet. Per ruling 6 that is the design. ⛔ **But until this
+change there was no officer control that freezes a wallet** — self-exclusion was the only writer
+of `FROZEN` (`admin/players/[id]/actions.ts` said so in as many words). A freeze and an unfreeze
+now exist as officer actions, each with a mandatory reason and a COMPLIANCE audit, and the freeze
+is offered **on the re-verify control itself**, so the first officer who needs it does not reach
+for the one that no longer works.
+
+⚠️ **A wallet can now be frozen for more than one reason at once** — self-exclusion, a final
+identity refusal, an officer. Each reason is recorded on the wallet, each lifter removes only its
+own, and the wallet is active again only when none remain. Without that, re-opening a served
+self-exclusion would silently unfreeze a wallet an officer had frozen for a sanctions refusal.
+
+### What replaces the two gates — a RECORD, and deliberately a field, not a row
+
+Per the 2026-08-20 precedent, a removed gate leaves a record behind, stamped on **every** event
+(*"a stamp that appeared selectively would make its own absence ambiguous"*):
+
+- **Deposit:** `kycStatus` (and whether the account was ever approved) on the existing
+  `deposit.initiated` row. One row per deposit already exists; this is a payload field.
+- **Bet:** the same two fields on the existing `market.position.opened` row. ⛔ **Never a second
+  row per bet.** Every audit append takes one database-global advisory lock and inserts under a
+  unique `prevHash`: the whole platform's audit log is a single serialised writer. A second row
+  per bet would double the load on that one point on the hottest path in the repo. *The record
+  is per-event where events are rare and per-field where they are not, because the audit chain
+  is a single global writer.* A guard asserts the row count for one bet stays at one.
+- ⭐ **The recorder is a different function from the gate and degrades the opposite way.** The
+  withdrawal gate refuses when it cannot read (*"we could not check"* is not *"you are
+  verified"*). The recorder never refuses and never throws — a deposit is money the player has
+  already decided to send — and records `UNREADABLE` as itself, never collapsed into
+  `NOT_STARTED`, which would be a claim about the player rather than about our database.
+- 🔴 **Both withdrawal audit payloads carried an authority string citing the 2026-09-05 ruling**
+  (`withdraw.kyc_blocked` and `withdraw.unverified_payer`). Those rows are HMAC-chained,
+  append-only and retained seven years; an auditor reading next month's payout would have been
+  handed a reason that no longer governs. Both now cite this entry.
+
+### What deliberately does NOT change
+
+- **The withdrawal gate** and its `approvedAt` asymmetry.
+- ⛔ **The agent programme keeps its identity requirement.** Agents handle other people's
+  money; the Board's permission concerns players funding their own accounts. Removing identity
+  from `/agent/apply` would extend this ruling well past what was granted. **Nobody "finishes the
+  job" here later.**
+- **The email gate on the first deposit — and it is now load-bearing in a way it has never
+  been.** With identity gone from the deposit path it is the only thing between a stranger and a
+  funded account, and the only verified contact channel the platform has. The one-time-code
+  registration path creates an account with no email at all, and phone is not a fallback (the
+  SMS provider reports success in production while delivering nothing). ⛔ Any future work that
+  relaxes this gate re-opens a funded, uncontactable account.
+- **The Source-of-Funds gate, the AML two-officer hold, payout destination binding**, and the
+  identity system itself (four documents, `(idType, idNumber)` uniqueness, the human review).
+
+### The other scenarios, stated rather than implied
+
+- **S6 · one human, two accounts, two documents.** Unchanged in kind (`IDENTITY-POLICY.md`
+  already concedes it), but duplicates now fund and play first and are discovered at cash-out.
+- **S8 · large deposits.** The Source-of-Funds gate sat *below* the identity gate, so it was
+  unreachable for an unverified account. It is now the platform's **first compliance contact**
+  with a large depositor whose name it does not hold, and the officer's screen must show that the
+  account is not identity-verified — a declaration from an unnamed person is a weaker artefact.
+- **S10 · operator retries.** `retryWithdrawalAction` and `bulkRetryAction` call `withdraw()`
+  directly. The withdrawal gate still stops them for unverified accounts; the population reaching
+  them is now mostly unverified, so that side effect fires often rather than rarely.
+- **S11 · bonus at the door.** Removing the hold means a referred sign-up would receive stakeable
+  bonus money with no identity check — but the bonus wallet is withdrawn and no grant can be
+  minted in production. Should it return, winnings stay non-withdrawable until wagered and
+  withdrawal stays gated.
+- **S13 · chargebacks and provider reversals.** Traced 2026-09-13: a reversal of an
+  already-credited deposit is detected (`webhook.terminal_contradicted`), escalated for review,
+  and **never clawed back automatically** — an officer decides. That behaviour is identical for
+  verified and unverified accounts. Because withdrawal still needs identity, a reversed deposit on
+  an unverified account can have been staked but not paid out, which bounds the exposure.
+- **S14 · the review queue becomes a money queue.** A backlog is no longer untidy; it is a player
+  waiting for their own money. The queue's wait is stated to the player as a number, and a
+  breach of it raises a compliance alert.
+
+### Cut-over — measured on production, 2026-09-13, not assumed
+
+Read-only, against the production database, before any code changed:
+
+| | Accounts | Holding cash |
+|---|---|---|
+| Players `APPROVED` | 7 | 4 · TZS 55,805 |
+| Players `IN_PROGRESS` | 10 | 0 |
+| Players `REJECTED` / `PENDING_REVIEW` / `ADDITIONAL_INFO_REQUIRED` | 0 | — |
+| Staff | 3 | 1 · TZS 15,075 |
+| Bonus grants, any status | 0 | — |
+| `APPROVED` with no `approvedAt` stamp | 0 | — |
+| Never-approved players holding cash | **0** | — |
+
+- The **10 in-progress players gain depositing and playing** the moment this deploys. Nobody
+  previously refused gains anything, because nobody has been refused.
+- **Applied to production 2026-09-13 20:08 (Dar es Salaam), before the push of `1699c17a`**, with
+  `prisma migrate deploy`. Re-measured read-only immediately before: 0 conflicts under the new
+  document-number predicate (both indexes), **11** `PENDING_KYC` accounts (one more than the morning's
+  10 — a player registered in between), 0 frozen wallets. After: 0 `PENDING_KYC`, `Wallet.freezeReasons`
+  present, both unique indexes keep a number reserved on UNDERAGE / SANCTIONED / DUPLICATE_IDENTITY.
+  No money moved.
+- `User.status = "PENDING_KYC"` was set at registration and **gated nothing** — sign-in refuses only
+  suspended, closed and self-excluded accounts. After this change it would have labelled every
+  ordinary, happily-playing customer as pending something and told the officer that the whole
+  roster "needs review". New accounts are created `ACTIVE`, and the 10 existing rows are
+  normalised to `ACTIVE` in the same release.
+
+### The Board letters
+
+`BOARD-DISCLOSURE-KYC-FIRST.md` (2026-09-05) was a **draft for Ali and was never sent**. Its
+§§1–4 describe a gate that no longer exists; it is marked accordingly and kept as the record.
+The letter that describes the position from today is `BOARD-DISCLOSURE-KYC-AT-WITHDRAWAL.md`.
+
+**Code:** `src/lib/server/kyc-gate.ts` (the withdrawal gate and the recorder) ·
+`src/lib/kyc-approval.ts` (one predicate for the page and the server) ·
+`wallet-service.deposit()/withdraw()` · `market-service.buyPositionInner()` ·
+`bonus-service.creditBonus()` · `kyc-service.reviewKyc()/startKyc()` ·
+`src/lib/server/refused-funds.ts` (S1) · `/admin/kyc/refused` (the report) ·
+`src/lib/server/wallet-freeze.ts` · `src/lib/server/kyc-notice.ts` +
+`src/components/wallet/kyc-first-deposit-notice.tsx` (the one first-deposit notice) ·
+`src/components/kyc/kyc-gate-panel.tsx` (the withdraw screen) ·
+`prisma/migrations/20260913120000_kyc_at_withdrawal`.
+**Tests:** see `SESSION-PROMPT-KYC-AT-WITHDRAWAL.md` §Status — every suite named there was run
+explicitly, including the ones `predeploy` does not run.
+
+---
+
+## 2026-09-13 (second) · Approval no longer replaces a chosen nickname with the legal name — reverses 2026-06-14
+
+**Ruling:** Ali, **2026-09-13**, as ruling 7 of the entry above.
+
+**What it reverses.** On 2026-06-14 Ali ruled that approving an identity **always** sets the
+account's display name to the verified legal name, *"even over a chosen handle"*. That ruling was
+never entered in this log — it lived only in a code comment in `kyc-service.ts` — which is exactly
+how a reversal gets undone by a reader who finds the comment and not the date. It is entered here
+so that cannot happen.
+
+**Why it changes now.** Under the 2026-09-05 gate, approval happened before anyone had played, so
+nothing visible changed. From today, a player may spend weeks on the leaderboard and in comments
+under a handle, then **appear under their legal name at the moment they cash out** — unannounced,
+and not reversible by them.
+
+**The rule from today.** Approval does not write the display name at all. The legal name is
+**recorded** on the submission and shown to the officer; it is **not displayed** to other players.
+The approval email still greets the player by their first name — that is a private message to
+the person named.
+
+**The accounts the old rule already renamed — measured on production 2026-09-13, not assumed.**
+Every approved account (7 players, 1 staff) shows its verified legal name as its display name,
+because the 2026-06-14 rule wrote it on approval. Their earlier handles were never recorded (the
+`kyc.approved` audit carried only `nameBackfilled: true`), so there is nothing to restore them to.
+⛔ They are **not** reverted in bulk: blanking eight people's public names without asking would be a
+change of its own, and some chose to verify under their own name. Each can set a handle at any time
+on `/profile`, and this ruling only guarantees approval never takes that choice away again.
+
+⛔ **Do not restore the overwrite by reading the comment history of `kyc-service.ts`.**
+
+---
+
 ## 2026-09-12 (third) · 🔴 AN INTERSTITIAL CHANNELS PANEL — this OVERRIDES the two entries below
 
 **Decision:** Ali, **2026-09-12**, having been shown in writing that the entry below rules the
@@ -36,6 +455,20 @@ panel is anchored **top-right**, and its vertical offset is not a constant — i
 the bottom of `<main>`, i.e. below the header *and* below whatever conditional bars are above it.
 That is what stops it covering the **KYC-verify banner**, the bar that gates depositing. A
 hardcoded 72px would have sat on it.
+
+> **2026-09-13 note — two facts in the paragraph above changed, and this entry is not rewritten.**
+> (1) The KYC-verify banner no longer exists: identity is asked before withdrawal only, and the
+> owner's quiet rule deleted the app-wide bar (see the 2026-09-13 entry above). The bars the offset
+> still protects are the email-verify, announcement, away-summary and ticker bars.
+> (2) The offset now ALSO clears any sticky bar pinned under the header (`pinnedBarBottom` in
+> `channels-panel.tsx`). Measuring `<main>` alone put the card on top of `/markets`' search-and-filter
+> bar, which lives inside `<main>` and pins as the page scrolls — on a phone, at every scroll position
+> until the X. ⛔ And the panel is **no longer shown on the `/markets` list at all**: the re-inspection
+> the same day found that even below the pinned bar it covered the tabs and sort row as the page
+> loads, the chip row at 1280 and the pagination at the bottom — the densest control page has no free
+> corner. It still appears on every other eligible page, and the Needle now keeps out of its way. The same day's visual pass also found that the panel had never appeared on `/markets`
+> at all: a closed filter-sheet dialog kept in the DOM matched the "a modal is open" check
+> (`src/lib/modal-open.ts` now asks for a visible one).
 
 **⭐ AND THE EMAIL RULE IS NOW DEFAULT-DENY, WHICH THE FIVE-ITEM LIST WAS NOT.** The same audit
 measured what the opt-out list actually left behind: **sixteen harm-shaped templates still carried

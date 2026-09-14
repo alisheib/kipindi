@@ -60,10 +60,9 @@ const RATE_PATTERNS: Array<{ re: RegExp; what: string }> = [
    * fill it from `objectionWindowHours`.
    *
    * ⛔ SCOPED BY THE OBJECTION WORD, NOT BY THE HOURS. The dictionary is full of legitimate
-   * 24-hour statements that must NOT trip this: the AML review hold on large withdrawals, the
-   * email-link expiry, the responsible-gambling cooling-off durations, the "Last 24 hours"
-   * range picker. Only a number standing next to the word for an objection is a restatement of
-   * this setting. The three languages are matched in one alternation so a translation cannot
+   * 24-hour statements that must NOT trip this: the email-link expiry, the responsible-gambling
+   * cooling-off durations, the "Last 24 hours" range picker. Only a number standing next to the
+   * word for an objection is a restatement of this setting. The three languages are matched in one alternation so a translation cannot
    * quietly fall outside the rule.
    */
   /**
@@ -189,7 +188,6 @@ console.log("\n§2 · the scanner catches what F2 actually fixed");
      * one of them — then be widened by the next session until it caught nothing. Each of these
      * is a REAL string from the product, and none is a restatement of the objection window.
      */
-    ["amlHold", "Amounts ≥ TZS 1,000,000 may require AML review (up to 24 hours)."],
     ["emailExpiry", "Check your inbox and click the link. The link expires in 24 hours."],
     ["rgLimits", "Decreases take effect immediately. Increases deferred 24 hours."],
     ["rangePicker", "Last 24 hours"],

@@ -200,10 +200,31 @@ console.log("\n§8 · trilingual copy and a real mount");
   const shell = read("src/components/layout/app-shell.tsx");
   // ⚠️ ASSERT THE MOUNT, NOT THE IMPORT. A component that exists and is never rendered is this
   // platform's most repeated defect — E-226, E-227, E-232 and E-224's DAL filter.
+  // ⭐ WITHDRAWN 2026-09-13 (Ali: "keep only the socials popup … hide the install for now, later we
+  // activate"). The mount STAYS in the shell, behind the feature state — so re-enabling is one word in
+  // `feature-state.ts`, and 8.2 still proves the mount exists: a later tidy-up cannot delete it and
+  // leave a switch that opens nothing.
   ok("8.2 ⛔ it is RENDERED by the shell, not merely imported",
-     /<Suspense fallback=\{null\}><LazyInstallInvite \/><\/Suspense>/.test(shell), "importing is not mounting");
+     /\{installInviteLive && <Suspense fallback=\{null\}><LazyInstallInvite \/><\/Suspense>\}/.test(shell), "importing is not mounting");
   ok("8.3 …and it is NOT session-gated — a visitor who has not signed up is exactly who benefits",
-     !/session && <Suspense fallback=\{null\}><LazyInstallInvite/.test(shell), "");
+     !/session && (installInviteLive && )?<Suspense fallback=\{null\}><LazyInstallInvite/.test(shell)
+       && !/const installInviteLive = [^;\n]*session/.test(shell), "");
+  ok("8.4 ⛔ the shell mounts it only behind the feature state, resolved on the server",
+     /const installInviteLive = installInviteIsLive\(\);/.test(shell), "a mount with no switch cannot be withdrawn");
+}
+
+// ── §9 · THE SWITCH — withdrawn today, and the ON branch still runs ──────────────────────────
+console.log("\n§9 · withdrawn today (2026-09-13), and re-enabling still works");
+{
+  const { installInviteIsLive } = await import("../src/lib/feature-state.ts");
+  const prev = process.env.FEATURE_INSTALL;
+  delete process.env.FEATURE_INSTALL;
+  ok("9.1 ⛔ the invitation ships WITHDRAWN — the popup is hidden (owner instruction 2026-09-13)", installInviteIsLive() === false);
+  process.env.FEATURE_INSTALL = "ACTIVE";
+  ok("9.2 the ON branch still answers — re-enabling is a switch, not a rebuild", installInviteIsLive() === true);
+  process.env.FEATURE_INSTALL = "COMING_SOON";
+  ok("9.3 …and a value the module does not understand falls back to the shipped state, never ACTIVE", installInviteIsLive() === false);
+  if (prev === undefined) delete process.env.FEATURE_INSTALL; else process.env.FEATURE_INSTALL = prev;
 }
 
 console.log(`\ninstall-invite: ${pass} passed, ${fails.length} failed`);

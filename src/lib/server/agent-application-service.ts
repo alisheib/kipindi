@@ -557,11 +557,15 @@ export async function setReferees(
  * a Swahili UI for every refusal that had no branch, and made rewording a sentence a silent
  * regression. ⛔ A new refusal without a token is that defect again.
  *
- * The last four arrived with the WALLET rail (Ali, 2026-09-10). Paying from a wallet inherits
- * every precondition of DEPOSITING, and two of them are not checked at the agent door:
- *  · `kyc_required`     — deposit needs identity APPROVED. `applicantEligibility` enforces this
- *                         for self-service but exempts an OFFICER-INVITED applicant on purpose,
- *                         so an invitee could reach the payment step unable to fund a wallet.
+ * The last four arrived with the WALLET rail (Ali, 2026-09-10), when paying from a wallet inherited
+ * two preconditions of DEPOSITING that are not checked at the agent door:
+ *  · `kyc_required`     — then: deposit needed identity APPROVED. ⚠️ Since 2026-09-13 a deposit asks
+ *                         no identity question (`kyc-gate.ts`), so this refusal is no longer inherited
+ *                         from depositing — it is the AGENT PROGRAMME'S OWN requirement, which that
+ *                         ruling deliberately kept (agents handle other people's money).
+ *                         `applicantEligibility` enforces it for self-service but exempts an
+ *                         OFFICER-INVITED applicant on purpose, so an invitee can reach the payment
+ *                         step unverified — possibly with a funded wallet — and is refused here.
  *  · `email_unverified` — deposit needs a verified email; nothing upstream checks it.
  *  · `insufficient_balance` — the commonest refusal of all, and the one that must carry the
  *                         SHORTFALL so the surface can offer a deposit for the right amount.
@@ -620,14 +624,17 @@ export async function recordFeePayment(userId: string, input: { feeReference: st
  * construction. `COMPLIANCE-DECISIONS.md` § 2026-09-10.
  *
  * ── GATE THE OFFER, NEVER THE REFUSAL — and this rail added two new gates ───────────────────
- * ⛔ Paying from a wallet inherits EVERY PRECONDITION OF DEPOSITING, and `wallet/deposit/page.tsx`
- * renders a gate instead of the form for two of them. Neither was checked at the agent door,
- * because under the out-of-band rail neither could strand anybody:
+ * ⛔ When this rail shipped (2026-09-10), paying from a wallet inherited two preconditions of
+ * depositing that `wallet/deposit/page.tsx` rendered as gates. Neither was checked at the agent
+ * door, because under the out-of-band rail neither could strand anybody:
  *  · KYC APPROVED — `applicantEligibility` enforces it for self-service, but `!opts.forInvitation`
- *    exempts an OFFICER-INVITED applicant deliberately ("decided at approval"). Under this rail
- *    an un-KYC'd invitee cannot fund a wallet and therefore cannot pay. ⚠️ And the invitation
- *    email hard-codes `feeWaivable: true`, so it says the fee *may* be waived while the waiver is
- *    a separate officer action — an unwaived invitee would simply be stuck.
+ *    exempts an OFFICER-INVITED applicant deliberately ("decided at approval"). ⚠️ SINCE 2026-09-13
+ *    DEPOSITING ASKS NO IDENTITY QUESTION (`kyc-gate.ts`), so an unverified invitee CAN now fund a
+ *    wallet — and is still refused HERE, because the agent programme keeps its identity requirement
+ *    by ruling (docs/COMPLIANCE-DECISIONS.md 2026-09-13, "What deliberately does NOT change"). The
+ *    check below is that requirement, not a copy of a deposit gate. ⛔ Do not delete it as stale.
+ *    ⚠️ And the invitation email hard-codes `feeWaivable: true`, so it says the fee *may* be waived
+ *    while the waiver is a separate officer action — an unwaived invitee must verify to pay.
  *  · A VERIFIED EMAIL — required by deposit, checked nowhere upstream.
  *
  * ── WHAT IS RETAINED FROM THE OLD RAIL, AND WHAT IS NOT ─────────────────────────────────────
@@ -667,9 +674,12 @@ export async function payFeeFromWallet(userId: string): Promise<FeeResult & { sh
       return { ok: false as const, error: "A refund from your previous application is still being processed. Wait for it before paying again.", code: "INVALID" as const, refusal: "refund_owed" as const };
     }
 
-    // ⛔ THE DEPOSIT PRECONDITIONS, CHECKED BEFORE ANY MONEY MOVES, in the SAME ORDER the deposit
-    // screen asks them — identity, then email — so a person cannot clear the one they were told
-    // about and then be refused for another.
+    // ⛔ THE TWO PRECONDITIONS, CHECKED BEFORE ANY MONEY MOVES, in the SAME ORDER the application
+    // screen shows them (`apply-client.tsx`: identity, then email) — so a person cannot clear the one
+    // they were told about and then be refused for another. ⚠️ Until 2026-09-13 these were "the
+    // deposit preconditions, in the deposit screen's order". A deposit now asks email only; identity
+    // here is the AGENT PROGRAMME'S requirement, kept by that ruling, and it still asks the CURRENT
+    // status — the withdrawal gate's approved-ever question is a different rule for a different door.
     const kyc = await getKycStatus(userId);
     if (!kyc || kyc.status !== "APPROVED") {
       return { ok: false as const, error: "Verify your identity before paying the registration fee.", code: "INVALID" as const, refusal: "kyc_required" as const };

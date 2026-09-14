@@ -24,8 +24,9 @@
  * ─── THE THREE THINGS A GUARD MUST STATE ───
  *  1. POPULATION — DISCOVERED, NEVER LISTED: every `<a>` inside `<footer>`, at each of five
  *     viewport/locale cells. Currently 17 links × 5 cells = 85 probes.
- *  2. HEAD COUNT OUTSIDE THE FLOOR — zero, once the footer carries the same bottom clearance
- *     as `<main>`. It was 4 before the fix.
+ *  2. HEAD COUNT OUTSIDE THE FLOOR — zero, once the footer carries the bottom clearance. It was
+ *     4 before the fix. ⚠️ Since 2026-09-13 the footer's is the ONLY copy: `<main>` carried the
+ *     same 88px and the two stacked into ~250px of empty band above the footer on phones.
  *  3. THE CONTROL — `--prove-red` re-zeroes the footer's bottom padding in the page, which is
  *     exactly the pre-fix state. If that still passes, this drive is decorative.
  *

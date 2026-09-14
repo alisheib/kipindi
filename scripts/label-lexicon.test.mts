@@ -969,16 +969,15 @@ check("§5j private-map matcher ACCEPTS a tone ternary (a colour is not a word)"
   /**
    * ⛔ DECIDED, WITH ITS REASON — this is not a place to park a defect.
    *
-   * The AML policy tells a regulator, in all three locales, that a held withdrawal sits in
-   * `AML_REVIEW` status, in the `font-mono` code voice. That is a QUOTED IDENTIFIER, not a
-   * label: the whole point is that the word in the policy matches the word in the console, so
-   * translating it would break the match the document exists to make. One file, three lines
-   * (en · sw · zh), and the list may only shrink.
+   * The AML policy USED TO tell a regulator, in all three locales, that a held withdrawal sits in
+   * `AML_REVIEW` status, in the `font-mono` code voice — a QUOTED IDENTIFIER, exempted so the word
+   * in the policy matched the word in the console. That exemption is gone (see below), and the
+   * list may only shrink.
    */
-  const LITERAL_ARM_OK = new Map<string, string>([
-    ["src/app/legal/aml/page.tsx",
-     "the AML policy quotes the system's own withdrawal status so a regulator can match policy to console"],
-  ]);
+  // 2026-09-13: EMPTY. The AML policy was the one exemption: it quoted the raw AML_REVIEW status for a held
+  // withdrawal. It no longer quotes that word, and since the owner's 2026-09-13 ruling it no longer describes
+  // a withdrawal hold at all (no withdrawal is held for review), so the list shrank to nothing.
+  const LITERAL_ARM_OK = new Map<string, string>([]);
 
   const armHits: string[] = [];
   let armExempt = 0;

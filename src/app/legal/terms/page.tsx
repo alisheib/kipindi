@@ -2,6 +2,7 @@ import { LegalHeader, LegalSection, LEGAL_BINDING_LANGUAGE as BINDING } from "..
 import { SUPPORT_EMAIL, LICENCE_NUMBER } from "@/lib/server/support-config";
 import { getServerT, type Locale } from "@/lib/i18n-server";
 import { getGlobalConfig } from "@/lib/server/market-config";
+import { TERMS_VERSION } from "@/lib/terms-version";
 
 // The void ground in §6 tracks a LIVE setting, so this page cannot be statically baked — it
 // would freeze a legal promise at whatever the window was on the day of the last build.
@@ -24,10 +25,34 @@ const TITLE: Record<Locale, string> = {
  * BINDING English text — a player protection got shorter — so it cannot ride in on a version
  * that still claims 2026-04-01. `COMPLIANCE-DECISIONS.md` carries the reasoning.
  */
+/**
+ * ⛔ BUMPED 2026-09-13 (owner ruling, Ali — docs/COMPLIANCE-DECISIONS.md 2026-09-13). §3 moved from
+ * "before you can deposit, place a bet or withdraw" to "before your first withdrawal", §2 stopped naming
+ * NIDA as the only document, and §3a is NEW: what happens if we cannot verify you.
+ * ⚠️ NO 14-DAY §10 NOTICE, ON THE OWNER'S RULING — the change is favourable to players at the door. It is
+ * NOT favourable at the exit, for a player the old gate would have stopped before they paid in, and the
+ * compliance entry says so in its own words. §3a is the answer to that, and ⛔ it ships in the SAME
+ * release as the gate removal: the waiver without §3a live is the one ordering mistake in this change
+ * that could not be defended.
+ * ⛔ The 2026-09-07 entry's reasoning ("nothing the platform does changed") is NOT available here.
+ * ⭐ §3 and §3a are written as SEPARATE paragraphs, each stating what IS required and none naming
+ * depositing or playing beside identity: `test:kyc-copy-truth` reads every legal file — its deny and
+ * Gaming-Board rules take a paragraph as the unit, and its entrance rule a sentence with its neighbours —
+ * so a true claim is kept in its own paragraph rather than one sentence away from another.
+ *
+ * ⛔ 2026-09-13 (evening): withdrawals are no longer held for officer review; the per-withdrawal maximum
+ * is TZS 5,000,000. Owner ruling (Ali), player-favourable, so it ships under the SAME version date with no
+ * §10 notice. §3 lost its two-officer clause and §5 now states the cap, in all three languages.
+ * `WITHDRAWAL_AML_HOLD` is false in payments.ts and the cap is WITHDRAW_MAX_TZS in validators.ts — if that
+ * cap ever moves, §5 moves with it. Do not restore the hold sentence.
+ */
+// ⭐ The version is `TERMS_VERSION`, the SAME constant registration stamps on the account
+// (`src/lib/terms-version.ts`, `test:terms-binding`) — so what a player read and what was recorded
+// as accepted cannot diverge again. Two literals did, twice (2026-09-09 and 2026-09-13).
 const META: Record<Locale, string> = {
-  en: "Version 2026-09-07 · Effective on account registration.",
-  sw: "Toleo 2026-09-07 · Yanaanza kutumika unaposajili akaunti.",
-  zh: "版本 2026-09-07 · 自账户注册时生效。",
+  en: `Version ${TERMS_VERSION} · Effective on account registration.`,
+  sw: `Toleo ${TERMS_VERSION} · Yanaanza kutumika unaposajili akaunti.`,
+  zh: `版本 ${TERMS_VERSION} · 自账户注册时生效。`,
 };
 
 /**
@@ -44,9 +69,6 @@ const META: Record<Locale, string> = {
  * hour two could not be honoured, and a public promise the code refuses is worse than a shorter
  * one it keeps. Ali ruled ④ (2026-09-05) to narrow it to the window actually in force, and the
  * META version below is bumped in the same change because the binding English text moved.
- *
- * ⚠️ THE OTHER THREE "24 hours" IN THIS FILE ARE NOT THIS. §5 and its SW/ZH twins are the AML
- * review hold on large withdrawals — unrelated, unchanged, and they must stay 24.
  */
 /**
  * ⭐ EXPORTED so `scripts/terms-cancellation.test.mts` can RENDER it. §4 is binding prose that
@@ -68,7 +90,7 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
 
       <LegalSection n="2" title="Account eligibility">
         <ul className="list-disc pl-5 space-y-1">
-          <li>Tanzanian resident with a valid NIDA national identification number</li>
+          <li>Tanzanian resident holding a valid identity document — a National ID (NIDA), a passport, a driving licence or a voter&apos;s card</li>
           <li>Aged 18 or older at the time of registration</li>
           <li>One account per natural person; duplicate accounts will be closed and balances forfeited per AML rules</li>
           <li>You must keep your registered phone number, email, and address up to date</li>
@@ -77,27 +99,52 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
 
       <LegalSection n="3" title="Identity verification (KYC)">
         <p>
-          Identity verification is <strong>required</strong> before you can deposit, place a
-          bet or withdraw. You verify once, with any one of four documents — a National ID (NIDA)
-          number, a passport, a driving licence or a voter&apos;s card — with photographic
-          evidence reviewed by our compliance team. One document may only be used on one
-          account. An account that has been verified once keeps the right to withdraw the money
-          it holds even if we later ask it to verify again. We may request additional documents
-          (proof of address, source-of-funds declaration) if your activity triggers
-          anti-money-laundering thresholds, and withdrawals of TZS 1,000,000 or more are held
-          for review by two compliance officers.
+          Identity verification is <strong>required</strong>{" "}before your first withdrawal. You
+          verify once, with any one of four documents — a National ID (NIDA) number, a passport, a
+          driving licence or a voter&apos;s card — with photographic evidence reviewed by our
+          compliance team. One document may only be used on one account.
+        </p>
+        <p>
+          An account that has been verified once keeps the right to withdraw the money it holds
+          even if we later ask it to verify again.
+        </p>
+        <p>
+          We may request additional documents (proof of address, source-of-funds declaration) if
+          your activity triggers anti-money-laundering thresholds.
+        </p>
+      </LegalSection>
+
+      <LegalSection n="3a" title="If we cannot verify you">
+        <p>
+          If we cannot verify your identity, we will not send money out of your account. We will
+          tell you why. Where the reason is one you can fix — an unclear photo, an expired document
+          or details that do not match — you may submit again.
+        </p>
+        <p>
+          Where we refuse an account permanently — because the holder is under 18, because of a
+          sanctions concern, or because the identity is already used on another account — no money
+          can be paid into or out of the account from that moment, and the document stays linked to
+          it.
+        </p>
+        <p>
+          We will then decide what happens to the balance case by case, and write to you with our
+          decision and the reason. The decision may be to return the money you paid in, to return
+          the whole balance, to hold the balance while you appeal, or to keep it.
+        </p>
+        <p>
+          Any money we return is sent only to the mobile-money number registered on your account.
         </p>
       </LegalSection>
 
       <LegalSection n="4" title="How price-competition markets work">
         <p>
-          50pick operates a <strong className="text-text">whole-pool Price Competition</strong> market model.
+          50pick operates a <strong className="text-text">whole-pool Price Competition</strong>{" "}market model.
           All stakes — YES and NO — are pooled. We deduct our commission, and the remaining net pool is
           distributed to the winning side, pro-rata to each correct stake&apos;s share of the winning
           side&apos;s pool.
         </p>
         <p>
-          <strong className="text-text">Our commission is 13% of the losing side.</strong> The winning side&apos;s
+          <strong className="text-text">Our commission is 13% of the losing side.</strong>{" "}The winning side&apos;s
           stakes are returned in full and are never touched; our commission comes only out of the money staked on
           the outcome that did not happen. It follows that{" "}
           <strong className="text-text">a winning bet is never paid less than it staked</strong>.
@@ -108,7 +155,7 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
         </p>
         <p>
           The rates that apply to a market are <strong className="text-text">fixed when that market is
-          created</strong> and cannot be changed afterwards. A later change to our rates affects future markets
+          created</strong>{" "}and cannot be changed afterwards. A later change to our rates affects future markets
           only; it can never re-price a bet you have already placed. The exact commission taken from a settled
           pool is shown, in shillings, on that market&apos;s resolution panel.
         </p>
@@ -131,9 +178,8 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
 
       <LegalSection n="5" title="Settlement and payout">
         <p>
-          Payouts are credited to your wallet immediately on market settlement. Withdrawals to mobile money or
-          bank complete within 60 seconds for amounts under TZS 1,000,000; larger amounts may be held for AML
-          review for up to 24 hours.
+          Payouts are credited to your wallet immediately on market settlement. Withdrawals are paid to the
+          mobile-money number registered on your account, up to TZS 5,000,000 per withdrawal.
         </p>
         <p>
           <strong className="text-text">A withdrawal is charged a 1.5% fee, and nothing else. No tax is withheld
@@ -178,7 +224,7 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
 
       <LegalSection n="10" title="Changes">
         <p>
-          We will notify you in writing (in-app + SMS) at least 14 days before any material change to these
+          We will notify you in writing in the app at least 14 days before any material change to these
           Terms. Continued use after the change constitutes acceptance.
         </p>
       </LegalSection>
@@ -197,7 +243,7 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
 
       <LegalSection n="2" title="Sifa za kustahili kufungua akaunti">
         <ul className="list-disc pl-5 space-y-1">
-          <li>Mkazi wa Tanzania mwenye namba halali ya kitambulisho cha taifa cha NIDA</li>
+          <li>Mkazi wa Tanzania mwenye hati halali ya utambulisho — Kitambulisho cha Taifa (NIDA), pasipoti, leseni ya udereva au kadi ya mpiga kura</li>
           <li>Mwenye umri wa miaka 18 au zaidi wakati wa kusajili</li>
           <li>Akaunti moja kwa kila mtu; akaunti za nakala zitafungwa na salio kupotea kwa mujibu wa kanuni za AML</li>
           <li>Ni lazima usasishe namba yako ya simu, barua pepe, na anwani uliyosajili</li>
@@ -206,15 +252,42 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
 
       <LegalSection n="3" title="Uthibitisho wa utambulisho (KYC)">
         <p>
-          Uthibitisho wa utambulisho <strong>unahitajika</strong> kabla ya kuweka fedha, kuweka
-          dau au kutoa fedha. Unathibitisha mara moja, kwa kutumia mojawapo ya nyaraka nne —
-          namba ya NIDA, pasipoti, leseni ya udereva au kadi ya mpiga kura — pamoja na ushahidi
-          wa picha unaokaguliwa na timu yetu ya uzingatiaji. Nyaraka moja inaweza kutumika
-          kwenye akaunti moja pekee. Akaunti iliyothibitishwa mara moja inabaki na haki ya kutoa
-          fedha ilizonazo hata tukiomba baadaye ithibitishwe upya. Tunaweza kuomba nyaraka za
-          ziada (uthibitisho wa anwani, tamko la chanzo cha fedha) iwapo shughuli zako zitavuka
-          viwango vya kuzuia uoshaji wa fedha, na kutoa TZS 1,000,000 au zaidi kunashikiliwa kwa
-          ukaguzi wa maafisa wawili.
+          Uthibitisho wa utambulisho <strong>unahitajika</strong> kabla ya kutoa fedha kwa mara ya
+          kwanza. Unathibitisha mara moja, kwa kutumia mojawapo ya nyaraka nne — namba ya NIDA,
+          pasipoti, leseni ya udereva au kadi ya mpiga kura — pamoja na ushahidi wa picha
+          unaokaguliwa na timu yetu ya uzingatiaji. Nyaraka moja inaweza kutumika kwenye akaunti
+          moja pekee.
+        </p>
+        <p>
+          Akaunti iliyothibitishwa mara moja inabaki na haki ya kutoa fedha ilizonazo hata tukiomba
+          baadaye ithibitishwe upya.
+        </p>
+        <p>
+          Tunaweza kuomba nyaraka za ziada (uthibitisho wa anwani, tamko la chanzo cha fedha) iwapo
+          shughuli zako zitavuka viwango vya kuzuia uoshaji wa fedha.
+        </p>
+      </LegalSection>
+
+      <LegalSection n="3a" title="Tusipoweza kukuthibitisha">
+        <p>
+          Tusipoweza kuthibitisha utambulisho wako, hatutatuma pesa kutoka kwenye akaunti yako.
+          Tutakueleza sababu. Pale sababu ni jambo unaloweza kurekebisha — picha isiyo wazi, nyaraka
+          iliyoisha muda wake au taarifa zisizolingana — unaweza kuwasilisha tena.
+        </p>
+        <p>
+          Tukikataa akaunti kabisa — kwa sababu mwenye akaunti yuko chini ya miaka 18, kwa sababu ya
+          wasiwasi wa vikwazo, au kwa sababu utambulisho huo tayari unatumika kwenye akaunti nyingine
+          — hakuna pesa inayoweza kuingizwa wala kutolewa kwenye akaunti hiyo tangu wakati huo, na
+          nyaraka inabaki imeunganishwa nayo.
+        </p>
+        <p>
+          Kisha tutaamua kitakachofanyika kwa salio, kesi kwa kesi, na tutakuandikia uamuzi wetu
+          pamoja na sababu. Uamuzi unaweza kuwa kurudisha pesa ulizoingiza, kurudisha salio lote,
+          kushikilia salio wakati unakata rufaa, au kulibakisha.
+        </p>
+        <p>
+          Pesa yoyote tunayorudisha hutumwa tu kwa namba ya pesa ya simu iliyosajiliwa kwenye akaunti
+          yako.
         </p>
       </LegalSection>
 
@@ -260,9 +333,8 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
 
       <LegalSection n="5" title="Ufungaji na malipo">
         <p>
-          Malipo huingizwa kwenye pochi yako mara moja soko linapofungwa. Utoaji wa fedha kwenda kwenye pesa za simu au
-          benki hukamilika ndani ya sekunde 60 kwa kiasi chini ya TZS 1,000,000; kiasi kikubwa zaidi kinaweza kushikiliwa
-          kwa ukaguzi wa AML kwa hadi saa 24.
+          Malipo huingizwa kwenye pochi yako mara moja soko linapofungwa. Utoaji wa fedha hulipwa kwenye nambari ya
+          pesa ya simu iliyosajiliwa kwenye akaunti yako, hadi TZS 5,000,000 kwa kila utoaji.
         </p>
         <p>
           <strong className="text-text">Utoaji wa fedha hutozwa ada ya 1.5%, na si kitu kingine. Hakuna kodi inayokatwa
@@ -306,7 +378,7 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
 
       <LegalSection n="10" title="Mabadiliko">
         <p>
-          Tutakuarifu kwa maandishi (ndani ya programu + SMS) angalau siku 14 kabla ya mabadiliko yoyote muhimu ya Masharti
+          Tutakuarifu kwa maandishi ndani ya programu angalau siku 14 kabla ya mabadiliko yoyote muhimu ya Masharti
           haya. Kuendelea kutumia huduma baada ya mabadiliko ni kukubali.
         </p>
       </LegalSection>
@@ -316,14 +388,13 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
     <>
       <LegalSection n="1" title="运营方与牌照">
         <p>
-          50pick 服务由在坦桑尼亚联合共和国注册的 50pick Ltd 运营（TIN 待定），并持有坦桑尼亚博彩委员会
-          （Gaming Board of Tanzania）颁发的牌照，牌照号 {LICENCE_NUMBER()}。玩家须年满 18 周岁，且在下注时身处坦桑尼亚境内。
+          50pick 服务由在坦桑尼亚联合共和国注册的 50pick Ltd 运营（TIN 待定），并持有坦桑尼亚博彩委员会（Gaming Board of Tanzania）颁发的牌照，牌照号 {LICENCE_NUMBER()}。玩家须年满 18 周岁，且在下注时身处坦桑尼亚境内。
         </p>
       </LegalSection>
 
       <LegalSection n="2" title="账户资格">
         <ul className="list-disc pl-5 space-y-1">
-          <li>持有有效 NIDA 国民身份号码的坦桑尼亚居民</li>
+          <li>持有有效身份证件的坦桑尼亚居民——国民身份证（NIDA）、护照、驾驶证或选民证</li>
           <li>注册时年满 18 周岁</li>
           <li>每位自然人仅限一个账户；重复账户将被关闭，余额按 AML 规定予以没收</li>
           <li>您必须及时更新所登记的电话号码、电子邮箱和地址</li>
@@ -332,19 +403,36 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
 
       <LegalSection n="3" title="身份验证（KYC）">
         <p>
-          在充值、投注或提现之前，<strong>必须</strong>先完成身份验证。您只需验证一次，可使用四种
-          证件之一——国民身份证（NIDA）号码、护照、驾驶证或选民证——并提交由我们的合规团队审核的
-          照片证据。一份证件仅可用于一个账户。已完成一次验证的账户，即使我们此后要求重新验证，仍
-          保留提取其账户内资金的权利。如果您的活动触发反洗钱阈值，我们可能会要求提供额外文件
-          （地址证明、资金来源声明）；TZS 1,000,000 及以上的提现须经两名合规专员审核。
+          首次提现之前，<strong>必须</strong>完成身份验证。您只需验证一次，可使用四种证件之一——
+          国民身份证（NIDA）号码、护照、驾驶证或选民证——并提交由我们的合规团队审核的照片证据。一份证件仅可用于一个账户。
+        </p>
+        <p>
+          已完成一次验证的账户，即使我们此后要求重新验证，仍保留提取其账户内资金的权利。
+        </p>
+        <p>
+          如果您的活动触发反洗钱阈值，我们可能会要求提供额外文件（地址证明、资金来源声明）。
+        </p>
+      </LegalSection>
+
+      <LegalSection n="3a" title="如果我们无法验证您的身份">
+        <p>
+          如果我们无法验证您的身份，我们不会从您的账户中汇出任何资金。我们会告知您原因。若原因属于您可以纠正的情况——照片不清晰、证件已过期或信息不符——您可以重新提交。
+        </p>
+        <p>
+          若我们永久拒绝某一账户——因为持有人未满 18 周岁、存在制裁疑虑，或该身份已被其他账户使用——
+          自那一刻起，该账户不得再转入或转出任何资金，且该证件仍与其绑定。
+        </p>
+        <p>
+          随后我们会逐案决定余额的处理方式，并以书面形式告知您决定及理由。决定可能是退还您转入的资金、退还全部余额、在您申诉期间暂扣余额，或不予退还。
+        </p>
+        <p>
+          我们退还的任何资金，只会汇入您账户登记的移动支付号码。
         </p>
       </LegalSection>
 
       <LegalSection n="4" title="价格竞争市场的运作方式">
         <p>
-          50pick 采用 <strong className="text-text">全资金池价格竞争（whole-pool Price Competition）</strong> 市场模型。
-          所有注金——YES 与 NO——汇入同一资金池。我们扣除佣金后，剩余的净资金池按各正确注金在获胜方资金池中所占份额，
-          按比例分配给获胜方。
+          50pick 采用 <strong className="text-text">全资金池价格竞争（whole-pool Price Competition）</strong> 市场模型。所有注金——YES 与 NO——汇入同一资金池。我们扣除佣金后，剩余的净资金池按各正确注金在获胜方资金池中所占份额，按比例分配给获胜方。
         </p>
         <p>
           <strong className="text-text">我们的佣金为失败一方的 13%。</strong>
@@ -355,26 +443,21 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
           若所有投注都在同一方，则不存在失败一方，我们不收取任何费用，所有注金全额退还。市场被作废时同理。
         </p>
         <p>
-          适用于某个市场的费率<strong className="text-text">在该市场创建时即已固定</strong>，此后不可更改。我们日后调整费率
-          仅影响未来的市场；绝不会重新计价您已下的注。已结算奖池实际收取的佣金，会以先令金额显示在该市场的结算面板上。
+          适用于某个市场的费率<strong className="text-text">在该市场创建时即已固定</strong>，此后不可更改。我们日后调整费率仅影响未来的市场；绝不会重新计价您已下的注。已结算奖池实际收取的佣金，会以先令金额显示在该市场的结算面板上。
         </p>
         <p>
-          转盘上显示的概率是由当前资金池构成所<em>隐含</em>的，并随每一笔新下注而更新——它们并非保证的赔率。在投注开放期间，
-          由于资金池仍在变动，您的最终赔付尚未确定。
+          转盘上显示的概率是由当前资金池构成所<em>隐含</em>的，并随每一笔新下注而更新——它们并非保证的赔率。在投注开放期间，由于资金池仍在变动，您的最终赔付尚未确定。
           <strong className="text-text">投注一经关闭，资金池即告最终确定，我们会通知您：若您所选一方获胜，您将收到的确切金额。</strong>
         </p>
         <p>
           下注后有一小段兑现（cash-out）窗口：前 5 分钟内您可全额取回本金且不收取任何费用——
-          <strong>前提是您下注时，该市场仍剩余至少 5 分钟的投注时间</strong>。在 Up &amp; Down 的 3 分钟与 5 分钟场次中，
-          该条件永远无法满足，因此<strong>这些场次完全不提供兑现</strong>。以奖金资助的持仓在任何时候均不可卖出。
-          此后持仓将被锁定并保留至结算 — 无法卖出。若无人投注对方，则没有奖金可供支付，所有注金将全额退还，不收取任何费用。
+          <strong>前提是您下注时，该市场仍剩余至少 5 分钟的投注时间</strong>。在 Up &amp; Down 的 3 分钟与 5 分钟场次中，该条件永远无法满足，因此<strong>这些场次完全不提供兑现</strong>。以奖金资助的持仓在任何时候均不可卖出。此后持仓将被锁定并保留至结算 — 无法卖出。若无人投注对方，则没有奖金可供支付，所有注金将全额退还，不收取任何费用。
         </p>
       </LegalSection>
 
       <LegalSection n="5" title="结算与派彩">
         <p>
-          市场结算后，派彩立即记入您的钱包。提现至移动货币或银行账户，金额低于 TZS 1,000,000 的将在 60 秒内完成；金额较大者
-          可能因 AML 审查而被暂扣最长 24 小时。
+          市场结算后，派彩立即记入您的钱包。提现款项将支付至您账户注册的移动支付号码，每笔最高 TZS 5,000,000。
         </p>
         <p>
           <strong className="text-text">提现收取 1.5% 手续费，除此之外别无其他。我们不会从您的资金中预扣任何税款。</strong>
@@ -393,8 +476,7 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
         <p>
           您可以在
           <a href="/profile/responsible-gambling" className="text-gold-300 hover:text-gold-200 underline-offset-2 hover:underline ml-1">责任博彩</a>
-          中设置存款限额、暂停游戏或自我排除。
-          另请参阅专门的<a href="/legal/responsible-gambling" className="text-gold-300 hover:text-gold-200 underline-offset-2 hover:underline">责任博彩政策</a>。
+          中设置存款限额、暂停游戏或自我排除。另请参阅专门的<a href="/legal/responsible-gambling" className="text-gold-300 hover:text-gold-200 underline-offset-2 hover:underline">责任博彩政策</a>。
         </p>
       </LegalSection>
 
@@ -406,14 +488,13 @@ export function content(objectionHours: number): Record<Locale, React.ReactNode>
 
       <LegalSection n="9" title="责任">
         <p>
-          在法律允许的最大范围内，我方责任以发生任何争议事件时您钱包中持有的余额为限。对于因操纵比赛或第三方欺诈造成的损失，
-          我方不承担责任，此类情形按 Match Integrity Annex (B) 处理。
+          在法律允许的最大范围内，我方责任以发生任何争议事件时您钱包中持有的余额为限。对于因操纵比赛或第三方欺诈造成的损失，我方不承担责任，此类情形按 Match Integrity Annex (B) 处理。
         </p>
       </LegalSection>
 
       <LegalSection n="10" title="变更">
         <p>
-          在对本条款作出任何重大变更前，我们将至少提前 14 天以书面形式（应用内 + 短信）通知您。变更后继续使用即视为接受。
+          在对本条款作出任何重大变更前，我们将至少提前 14 天在应用内以书面形式通知您。变更后继续使用即视为接受。
         </p>
       </LegalSection>
     </>

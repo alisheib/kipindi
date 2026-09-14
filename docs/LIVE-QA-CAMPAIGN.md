@@ -1476,6 +1476,10 @@ which it named by filename.
 
 | # | Sev | Area | Finding | Evidence |
 |---|---|---|---|---|
+| **E-385** | ✅ **FIXED 2026-09-13 (session 95) — `test:kyc-step-guards` §8, RED-proven by `id-documents` anchor** | identity · **the age gates disagreed, and the KYC lock issued an AUTOMATIC FINAL refusal to a player already 18** | Registration measured age as `(now − dob) / 365.25 days`; `submitIdentityStep`'s lock used `ageOn` (whole years on UTC dates); the NIDA mock and the officer's workstation used 365.25 again. For a birth date whose 18 years hold five 29 Februaries the schema said "18" from 12:00 UTC the day before the birthday while `ageOn` said "17" until 00:00 UTC — and the lock, seeing 17 on a DOB the schema passed, froze the wallet and wrote REJECTED/UNDERAGE with **no officer**. ⭐ One predicate now, `isOfAge` (`src/lib/id-documents.ts`): whole calendar years on the **Africa/Dar_es_Salaam** date, used by `validators.dateOfBirth`, the KYC lock, `nida.ts` and `/admin/kyc/[id]`. Compliance note: `COMPLIANCE-DECISIONS.md` 2026-09-13 (fourth). | found by the P0 adversarial workflow (two skeptics confirmed) · §8.4 pins the review's own case (`2008-01-15` at `2026-01-14T13:00Z`: 365.25 said 18, `isOfAge` says 17) · §8.2/8.3 the EAT midnight boundary · §8.6 no `365.25` left in any age gate |
+| **E-384** | ✅ **FIXED 2026-09-13 (session 95) — `test:kyc-step-guards` §5** | identity · **the NIDA mock's QA hooks answered PRODUCTION players, and one of them issued a FINAL sanctions refusal** | `nida.ts` fabricated a SANCTIONS match for any 20-digit number ending `0000` and a MISMATCH for `…9999`, with no environment check — and `NIDA_API_URL` is unset in production, so the mock IS the production path. Since 2026-09-13 SANCTIONED is a FINAL code: a real citizen whose NIDA ended `0000` would have had the wallet frozen, `nida.sanctioned_match` + `kyc.refused_final` written to the tamper-evident compliance chain for a match that never happened, and no way back but an officer. A real `…9999` NIDA could never verify. Now `nidaQaHooksEnabled()` = `NODE_ENV !== "production"`; the declared-age check is real logic and stays. | `nida.ts` before: `if (opts.nida.endsWith("0000")) … SANCTIONED` · §5.1 production off · §5.3–5.5 both hooks behind the switch, none outside it · §5.6 still reachable locally (`kyc-flow-stress`, `qa:cert-d2`) |
+| **E-383** | ✅ **FIXED 2026-09-13 (session 95) — `test:kyc-step-guards` 48/0, RED-proven twice (18 and 5 failures)** | identity · money · **a FINALLY refused player could undo their own refusal by POST, and an approved identity could be rewritten with no review** | The release closed a final refusal in `startKyc` and hid the forms on `/profile/kyc` — but `submitIdentityStep`, `attachDocument` and `submitForReview` asked only "does a row exist?", and a server action is reachable whether or not a form renders it. **Driven on the pre-fix code:** a refused UNDERAGE player overwrote the code with DETAILS_MISMATCH through the NIDA mismatch path, switched to a passport (the reserved number was then taken by another account), re-queued the case — and an officer's Unfreeze read the identity hold as stale and set the wallet ACTIVE. APPROVED / PENDING_REVIEW / approved-once-and-re-verifying identities could be replaced, releasing the approved number while withdrawals stayed open. ⭐ **And the first fix left a race** (P0 adversarial review): each step checked the row it read, awaited an R2 upload / the NIDA latency, and wrote that stale copy back, reverting an officer's final refusal that landed in between. Fix: `closedToPlayer` + `underSubmissionLock` — every player write re-reads the row under `kyc:<userId>`, the lock `reviewKyc` holds, and builds from it; `submitForReview` is a compare-and-swap. | RED 1 (guards removed): 18 failures incl. `1.10 … {"ok":true,"changed":true,"status":"ACTIVE"}` · RED 2 (lock writes the stale row): `7.2 … "ADDITIONAL_INFO_REQUIRED"`, `7.4 … "PENDING_REVIEW"`, `7.5` number replaced · §4 controls: new player, recoverable refusal re-upload, re-verification upload, restart-then-re-enter all still work |
+| **E-382** | ✅ **FIXED 2026-09-13 (session 95) — `test:terms-binding` 17/0 (in `predeploy`)** | legal · **every player who registered after the identity-at-withdrawal release was recorded as accepting a Terms text that no longer existed** | `auth-service.ts` stamped `acceptedTermsVersion = "2026-09-09"` while `/legal/terms` printed "Version 2026-09-13" from `1699c17a` (17:12 UTC) — so players were shown §3a and recorded against a text without it. The two were separate literals and had already drifted the other way (page 2026-09-07 / stamp 2026-09-09). ⭐ One module, `src/lib/terms-version.ts` (`TERMS_VERSION` + `TERMS_TEXT_SHA` over the binding bodies AND the binding-language sentence), printed by the page and stamped by both registration paths. ⛔ No row rewritten: affected = stamp `2026-09-09` with `acceptedTermsAt` ≥ 2026-09-13 17:12 UTC and before this fix's deploy. | production read-only 2026-09-13 19:30 UTC: **1** such account (created 19:14 UTC), all 20 players stamped `2026-09-09` · controls: literal META date, local constant copy, literal stamp, one-word change, binding-sentence change, whitespace-only reformat |
 | **E-381** | 🟡 **PARTLY FIXED + LIVE 2026-09-12 (session 92). ⛔ DO NOT READ THIS AS CLOSED.** The DOCUMENT path — the journey players reported — is fixed and guarded (`test:revoked-deadend` 16/16 incl. a `javaScriptEnabled:false` case; proven RED 8 failures / exit 1). 🔴 **THE BLANK PAGE IS STILL REACHABLE MID-VISIT**: `RefreshPoller`'s `router.refresh()` re-renders the root layout, so the branch fires while the player sits still and `redirect()` degrades to a client navigation that lands blank — **measured at t+28s on `/markets`, `innerText.length === 0`, still 0 six seconds later** (`npm run repro:revoked-midvisit`). ⚠️ An attempted fix RETRY-STORMED and was reverted. FOUR P0s open — `docs/SESSION-REVOKED-DEADEND.md` §6 items 1–4 | player · **EVERY route, public ones included** · **a player whose session had been displaced opened any 50pick link and landed on a COMPLETELY BLANK navy page** | 🔴 **ALI, from player reports: *"they were logged in, closed the browser, came back later, opened a 50pick link, and got stuck on a blue screen with nothing"*** — stuck on `/auth/login?revoked=1&next=%2Fmarkets%2Fmkt_8ec80bc79eae484c65d0`. **Nothing was failing.** The server rendered the login page and returned **200**; the browser had nowhere to put it. `app/layout.tsx` renders `<AppShell>{children}</AppShell>` in the **ROOT layout**, and `app-shell.tsx:72` returns `<SessionRevokedRedirect>` **instead of** `{children}`; that shim called `router.replace(...)`, a **soft** navigation — and **the App Router does not re-execute a shared root layout on a soft navigation**, so the tree kept AppShell's revoked output, which has no `children` slot at all. The URL changed and the payload mounted nowhere, leaving the bare `body` at `lab(0 13.0161 -26.0492)`: the navy, and literally nothing else. ⭐ **This is the SAME LAW `auth/layout.tsx` and `bounce-authed.ts` already document** — *"a layout is NOT re-executed on a client-side soft navigation"* — applied there and never applied to the root layout. **And one fault compounds it:** `kp_session` is **never cleared** (`jar.delete` throws in a render, caught at `session.ts:144` — measured still present, 387 bytes), so the device re-enters the branch on EVERY request. It was a **total lockout from the whole platform**, not a blip. ⛔ **And the copy lies**: `signedOutBody` says *"signed in on another device"*, false for every `revoked_no_active_record` cause — including a **failed DB read**, which `dbGet` cannot distinguish from an absent row. | Reproduced: `/wallet` `/positions` `/markets` **and the public `/legal/rules`** all `innerText.length === 0`; the SAME url hard-loaded renders **1029** chars + a password field; RSC **200**; **zero** console and page errors; dead-end body holds only `div hidden`, the toast region, 15 scripts, `next-route-announcer`. Production `AuditLog`: **116** `revoked_no_active_record` + **104** `revoked_by_newer_login` = **220 revocations against 30 logins** across **7 distinct accounts of 10 total**, with **0** idle-timeout and **0** expiry — and `usr_600ed623f6` wrote **9 rows in 31 seconds, 7 naming the same `replacedBy`**: the loop, recorded in our own audit log. ⛔ **The guard asserts the RENDERED PAGE, never the URL — the URL was correct all along (`path=/auth/login`), so a URL check would have shipped green against a blank screen.** |
 | **E-303** | 🔴 **FIXED 2026-09-06 (session 88 · PROGRESS-AND-PHONE)** | player · `/markets` · **a market whose betting had closed and whose result was not out appeared on NO player surface at all** | 🔴 **ALI: *"as long as selection closed but result not out he should see it, in a tab called progress or in progress… when results are out he won't see it anymore."*** Two layers caused it: `markets/page.tsx` dropped every LIVE row past `resolutionAt` (`live.filter(m => !isClosedByTime(m))`), and `/results` reads RESOLVED ∪ VOIDED only (`listTerminalMarkets`) — so the row was in neither. A player who had BET could still find it under `/positions`; a player who had not simply lost it. ⛔ The earlier `MGMT-SPEC-2026-09-05` plan's **D4** said *"positions page only, no lens on the board"* — Ali corrected that; the board is the deliverable. ✅ New `progress` lens, sixth in `STATUS_IDS`. ⭐ **Asserted as a PARTITION, not membership:** every row of `all` is exactly one of `open`, `progress`, or verdict-recorded — a membership check passes over a population where the defect cannot appear. ⛔ **State D (verdict stamped, money not yet moved) is EXCLUDED** — Ali's stopping condition is the RESULT, not the settlement. | Production census 2026-09-06: **A open 43 · B LIVE-selection-closed 2 · C CLOSED-no-verdict 12 · D 0 · E settled 127.** Fourteen markets invisible to a non-bettor at the moment of measuring. `test:discovery-contract` §2b.1–2b.12 · `red:discovery-contract` 12/12 |
 | **E-304** | 🔴 **FIXED 2026-09-06 (session 88)** | player · `/markets` · **the `New` tab advertised markets that had already stopped taking bets** | Live before this session and NOT a consequence of the tab work. `matchesStatus("new")` was `status === "LIVE" && pool === 0 && predictors === 0` with no selection-closed test, while `market-card.tsx` gates its NEW badge on its own `live = status === "LIVE" && !selectionClosed`. ⛔ So the board and the card **disagreed about which markets wear the badge** — the one thing that predicate's own comment promises they cannot do — and a player tapping `New` was offered somewhere to place the first bet on a market that would refuse it. | `test:board-discovery` §5 · `red:board-discovery` `new-drifts-to-a-clock` |
@@ -6039,6 +6043,192 @@ state**, 1,338,504 of players' stakes in escrow, and every ledger entry ever wri
 > **UPDATED 2026-08-06 (session 33):** the **material system merge is IN FLIGHT** on `main`,
 > landing one atom per commit. Read the block directly below this note before touching
 > `src/app/globals.css`, `src/app/motion.css`, or anything under `src/components/ui/`.
+
+### 🟡 Session 95 (2026-09-13 → 14) — THE AUDIT OF THE IDENTITY-AT-WITHDRAWAL RELEASE: four P0s found and fixed; the P1 batch IN FLIGHT
+
+> ⚠️ **IN FLIGHT** — session `ali-f6`, since 2026-09-13 19:25 UTC, in `C:\kipindi-main` on `main` (push = live). Touching:
+> `kyc-service`, `refused-funds`, `wallet-service`, `wallet-freeze`, `auth-service`, `nida`, `notification-service`, `email`,
+> `i18n-dict`, `src/app/legal/*`, the `/admin/kyc*` and `/admin/players/[id]` pages, this file and `COMPLIANCE-DECISIONS.md`.
+> Peer `ali-e4` (House Bots, worktree `C:\kipindi-house-bots`, branch `house-bots`) holds its merge of `main` until this
+> line is removed and the block says DONE. Brief of record: `docs/SESSION-PROMPT-KYC-AUDIT.md`.
+
+#### ⏭️ **RESUME AT (session 96 · ⛔ if this block still says IN FLIGHT, the audit session is running or died mid-batch — read its findings list below before touching any file it names):**
+💰 **MONEY POSITION:** no production money moved by this session. Read-only on production 2026-09-13 19:30 UTC: 23 wallets, all
+ACTIVE with 0 freeze reasons, 0 negative; 20 players + 3 staff, 0 `PENDING_KYC`; KYC 12 IN_PROGRESS · 9 APPROVED · 0 refused;
+0 withdrawals or deposits in flight, 0 `AML_REVIEW`; 0 bonus grants; 0 never-approved players holding cash. Migration
+`20260913120000_kyc_at_withdrawal` finished 17:08:52 UTC, not rolled back, checksum = the LF sha256 of the file on `main`.
+
+✅ **P0 LIVE:** `c6ab54c8` pushed 21:27:12 UTC and **served at 21:30:01 UTC** (`?dpl=`); production `/legal/terms` 200 in
+en/sw/zh with "Version 2026-09-13" and 0 fused words; `/auth/register`, `/auth/login`, `/help`, `/markets` 200; database
+healthy; the signed-out drive `scripts/live/kyc-at-withdrawal-prod.mjs` **49 passed, 0 failed**. Local: `tsc` · `next build` ·
+a `next start` render of 8 routes (`NEXT_PHASE` exemption, below) · the KYC battery listed in the commit message.
+
+⏳ **P1 BATCH — UNCOMMITTED ON THE AUDIT MACHINE while this line stands.** A six-group implementation workflow (legal text,
+dictionary + chat copy, admin console, player UI, guards, comms copy) plus the money services by hand: `refused-funds.ts`
+(cap before forfeit, blocking holds, earlier forfeits, the report's `money` flag + payout status now + case state, the
+failed-return letter, the Swahili reason), `wallet-service.ts` (a return pays only through the identity hold; a failed
+`rfd:` return tells the player the truth), `wallet-freeze.ts` (`staleIdentityHold` / `liftStaleIdentityHold`),
+`kyc-service.ts` (re-open refused while money is in flight + evidence pointers; non-final decisions lift a stale hold),
+`user-service.ts` (closure refused on a held, funded wallet), guard `scripts/refused-funds-p1.test.mts`. ⛔ If this session
+dies before the batch is pushed, NOTHING of it exists on `origin/main`. 💾 A **backup snapshot** of the working tree is on the
+side branch **`audit-95-p1-wip`** (NOT deployed — Railway builds `main` only; refreshed as the batch moves, a single commit on
+top of `0b42e02f`). To continue on another machine WITHOUT switching branches: `git fetch origin audit-95-p1-wip` then
+`git diff 0b42e02f FETCH_HEAD | git apply` in a clean `main` checkout, re-run the battery, commit by name. The snapshot is
+unverified work in progress — the guard files in it may be mid-edit.
+
+**Shipped as `AUDIT 95 (1/n)` — the four P0s** (register rows in §6):
+- **E-382** — the accepted-Terms stamp lagged the published Terms (players since `1699c17a` recorded against 2026-09-09).
+- **E-383** — a finally refused player could undo their own refusal by POST; an approved identity could be rewritten; and the
+  first fix's stale-copy race could revert an officer's refusal mid-upload.
+- **E-384** — the NIDA mock's QA hooks answered production players (a `…0000` NIDA = a fabricated FINAL sanctions refusal).
+- **E-385** — the age gates disagreed, and the KYC lock froze the wallet of a player already 18 in Dar es Salaam.
+
+**Queued in the P1 batch (CONFIRMED by the six audit lanes; ids assigned when each ships):** refused-funds — a return above the
+5,000,000 cap forfeits first, then fails · a return pays through an officer's own freeze · the report counts a dispatched return
+as returned · earlier forfeits inflate "returnable deposits" · a failed return tells a frozen player the money is "available" ·
+no letter when a payout fails after a forfeit · the Swahili letter omits the reason · a refused player can close their account
+(balance undecidable) · re-open while a return is in flight · re-open deletes the refusal's evidence pointers · a stale identity
+hold has no screen to lift it · COMPLIANCE sees the freeze control as read-only (route domain) · refused balances rendered without
+the `accounting` gate (latent) · binding Terms §2 automatic forfeiture and §3a "no money in or out" contradict the ruling and the
+code · rules/yes-no and rules/up-down still say v2026-09-10 · false money copy (Source-of-Funds email "higher withdrawal limits",
+fairness "paid the moment the second signature lands", deposit "usually within a minute", "daily limits may apply") · the guard
+gaps (`test:kyc-gate` not in `predeploy`, no census of `Wallet.status` writers, no rule against withdrawal-review claims in copy).
+
+⚠️ **Traps paid for this session:** ① `next dev` on this machine was poisoned by a Turbopack PostCSS worker failing to spawn
+(`0xc0000142`, commit charge 30.5/35.2 GB with three kipindi-social dev servers up) and kept serving the cached panic for EVERY
+page — a render check against it proves nothing either way. ② `next start` refuses the in-memory store; a LOCAL render check
+can run it with `NEXT_PHASE=phase-production-build` (the build's own exemption) — never on a deploy. ③ Editing a line a red
+anchor quotes turns `test:red-anchors` from 11 to 12 failures; the anchor moves with the code (`id-documents.anchors.mjs`).
+
+### 🟢 Session 94 (2026-09-13) — IDENTITY MOVES TO WITHDRAWAL, ASKED QUIETLY — and the install popup is switched off
+
+#### ⏭️ **RESUME AT (session 95 · ⛔ READ `docs/SESSION-PROMPT-KYC-AT-WITHDRAWAL.md` §Status FIRST — it is the brief of record and its rows name every guard run. Session 92's P0s (E-381) in `docs/SESSION-REVOKED-DEADEND.md` §6 were NOT touched by this session and remain the open platform work):**
+💰 **MONEY POSITION:** no production money moved by this session. **`1699c17a` LIVE 2026-09-13 20:12:00** (served `dpl=1699c17af8df5cf7b1f457bef1f1a5e67eee2415`, ~2.5 min after the push). Migration `20260913120000_kyc_at_withdrawal` applied to production **20:08:42, before the push**, by `prisma migrate deploy` — read-only pre-flight: 0 conflicts under the new document-number predicate (both indexes), **11** `PENDING_KYC` (one more than the morning), 0 frozen wallets; after, and again after the deploy: **0 `PENDING_KYC`, all 22 users ACTIVE**, `Wallet.freezeReasons` present, both unique indexes keep a number reserved on UNDERAGE / SANCTIONED / DUPLICATE_IDENTITY, 12 IN_PROGRESS / 9 APPROVED submissions.
+
+⭐ **ADDENDUM, THE SAME EVENING — WITHDRAWALS ARE NO LONGER HELD FOR A TWO-OFFICER REVIEW** (commit `KYC AT WITHDRAWAL (6/n)`, owner ruling of
+record `docs/COMPLIANCE-DECISIONS.md` 2026-09-13 third). Ali chose it from three options put with their consequences
+(remove the review · remove the review and the maximum · keep both and only reword): **remove the review, keep the
+TZS 5,000,000 per-withdrawal maximum.** Production held **0** withdrawals in `AML_REVIEW` at the time (the largest
+withdrawal ever made was TZS 5,000), so nothing was stranded.
+- **Mechanism — one switch, not a deletion:** `WITHDRAWAL_AML_HOLD = false` in `src/lib/server/payments.ts` gates the
+  hold branch of `dispatchWithdrawal`, which player withdrawals and refused-funds returns share. `/admin/aml`,
+  `dispatchApprovedWithdrawal`, the two-officer rule for any row already held, and `AML_REVIEW` itself stay: deposits
+  owed back to excluded players still use them.
+- **Corrected in the same release:** withdraw hint and secured note, Help FAQ 3 and 4, the legacy review popup, the "on
+  hold" hint (en/sw/zh) · Terms §3 and §5 (amended inside v2026-09-13, player-favourable) · AML policy §1 and §2 · both
+  game-rules pages · the live chatbot prompt and its offline fallback (which also stated a **daily withdrawal cap of
+  TZS 500,000 that exists nowhere in the code** — removed) · `/admin/aml` and `/admin/approvals` (dated notice; the
+  withdrawal-only "Co-sign required" chip removed) · the FIU report's threshold line, which goes to the regulator ·
+  the draft Board letter (§2 item 4 names the accepted consequence), FLOWS, runbooks and checklists; past records got
+  dated "no longer true" notes, not rewrites.
+- **Tests:** `test:payments` inverted and extended — a gross TZS 1,000,000 withdrawal is sent at once, exactly
+  5,000,000 is accepted and 5,000,001 refused with nothing moved, the switch is asserted off, and seeded pre-ruling
+  `AML_REVIEW` rows still release, dispatch and revert correctly (60/0, mutation-proven by its author).
+- 🔴 **`qa:e177` is DISABLED** (`scripts/live-e177-unverified-payer.mjs` exits before any network call): it was a
+  production real-money drive whose safety rested on the hold stopping its TZS 1,000,000 withdrawal. Do not re-enable
+  it without redesigning it — it would now send the money.
+- ⚠️ **Stated consequences, not bugs:** a single payout can draw up to TZS 5,000,000 from the Selcom float at once
+  (the low-float warning is at 1,000,000 — keep the float funded); a refused player holding more than 5,000,000 cannot
+  be returned the whole balance in one decision (no split-return ruling). The `package.json` `qa:e177` entry was left
+  (the script refuses to run).
+- **Audit prompt for a fresh session:** `docs/SESSION-PROMPT-KYC-AUDIT.md` — validates the whole identity-at-withdrawal
+  release and this change, and tells that session how to coordinate with another session pushing to `main` at the same
+  time.
+
+⭐ **WHAT SHIPPED.** Owner ruling (Ali, 2026-09-13, with the Gaming Board's permission): identity verification is
+required **before withdrawal only**. Ladder: register → confirm email → deposit and play → verify identity → withdraw.
+Ruling of record: `docs/COMPLIANCE-DECISIONS.md` 2026-09-13 (the ruling · *how a player is told — quietly*) and the
+second 2026-09-13 entry (the nickname). Board letter DRAFT for Ali: `docs/BOARD-DISCLOSURE-KYC-AT-WITHDRAWAL.md`.
+
+| Fact | Where it lives |
+|---|---|
+| The one identity gate (withdraw only, asks *ever approved*) | `src/lib/server/kyc-gate.ts` · `src/lib/kyc-approval.ts` |
+| Final refusals freeze the wallet first; document number stays reserved | `src/lib/kyc-refusal.ts` · `kyc-service.ts` · migration `20260913120000_kyc_at_withdrawal` |
+| Freeze by reason (self-exclusion · identity refused · officer) | `src/lib/server/wallet-freeze.ts` · `Wallet.freezeReasons` |
+| A refused player's balance: officer decides, four outcomes, one report | `src/lib/server/refused-funds.ts` · `/admin/kyc/refused` (paged) |
+| The quiet rule: withdraw panel + ONE first-deposit notice | `kyc-gate-panel.tsx` · `kyc-first-deposit-notice.tsx` · `src/lib/server/kyc-notice.ts` |
+| Officer surfaces | `/admin/kyc` · `/admin/approvals` · `/admin/kyc/[id]` money card · `/admin/players` 8th stage + `?funded=` · `/admin/finance` Held for unverified |
+| Install popup WITHDRAWN (socials panel kept) | `src/lib/feature-state.ts` → `install` · `FEATURE_INSTALL=ACTIVE` re-enables |
+
+🔴 **THREE MONEY DEFECTS IN MY OWN FIRST DRAFT, FOUND BEFORE ANYTHING SHIPPED** (`test:refused-funds-race`, RED-proven):
+① `decideRefusedFunds` wrapped in `withLock` — nested locks JOIN the outer transaction, so the forfeit and the payout hold
+would have committed only at return with the gateway call inside one open transaction; ② without it two officers could
+forfeit one case twice (guard was `balance ≥ amount`) → compare-and-swap on the decided balance; ③ a throw from
+`withdraw()` after the forfeit skipped the decision's audit row → caught as `payoutError`. Review round added: a paused
+network refuses a RETURN before anything moves; the officer payout is exempt from the player rate limit; a re-open whose
+hold-lift fails says so; Unfreeze removes a stale identity hold.
+
+⭐ **THE QUIET RULE, AND WHAT IT COSTS.** A first design moved identity upstream (a sentence on every deposit/win/cash-out
+receipt, a 72-hour reminder, an email after a blocked withdrawal, a bar on every page). Ali: *"don't over-tell … nothing in
+the wrong place … never explaining things in annoying ways."* None of it shipped. The cost, recorded in the compliance
+entry and the Board letter: more players meet the identity step for the first time at withdrawal, and wait for review then.
+🔴 The visual pass found the rule broken on a page no guard looked at: `/wallet/deposit`'s footer rendered the WITHDRAW
+page's `wallet.securedBody` (an identity-documents sentence). Fixed with its own line; `test:kyc-at-withdrawal` §B8 now
+pins every string the deposit screen renders, in all three locales, with a control.
+
+🔴 **A CLOSED DIALOG COUNTED AS OPEN** — found while proving the socials panel: `/markets` keeps its filter sheet in the DOM
+closed, and `[role=dialog][aria-modal=true]` matched it, so the socials panel AND the responsible-gambling reality check
+never appeared on `/markets`. `src/lib/modal-open.ts` asks for a VISIBLE dialog; both callers use it.
+
+⭐ **THE VISUAL PASS — FOUR FIX ROUNDS, TWO FULL INSPECTIONS, AND WHAT NO SUITE COULD SEE.** Every player state
+(new · funded · uploaded · pending · more-info · rejected · refused-final · approved · email-unverified) × en/sw/zh ×
+360/768/1280, the signed-out legal and auth pages, the socials panel and the admin console at 390/1280 were captured
+as viewport tiles (never full-page) from a local `next dev` on the in-memory store, and read by agents against a
+written checklist — ~300 pages, ~980 tiles. The first inspection (414 agents) confirmed 34 + 29 defect clusters; a
+second, full re-inspection after two fix rounds (168 agents, 0 tiles uninspected) confirmed 95 findings, fixed in two
+more rounds, and the final capture was checked again by eye.
+- 🔴 **Words ran together on the LIVE site and in no suite:** `https://50pick.tz/legal/terms` served
+  `<strong>required</strong>before` (×4, and `/legal/aml` ×1). The source had the space; the Next/SWC build drops it
+  where a bold phrase is followed by text that continues onto the next source line (an agent's "the TypeScript
+  compile keeps the space" proof was about the wrong compiler). Fixed with explicit `{" "}` at every site (Terms ×4,
+  Up & Down rules ×3, `/admin/approvals`, `/admin/kyc`); **`qa:live` [A] now asserts the rendered body of every public
+  route** with two controls. ⚠️ 25 staff-console runs of the same shape are listed, unconfirmed, in OPEN.
+- 🔴 **Binding Terms v2026-09-13 §5 and §10 promised what the product does not do** — "withdrawals to mobile money or
+  bank complete within 60 seconds … larger amounts may be held up to 24 hours" and notice "in-app + SMS". Corrected in
+  en/sw/zh inside the same unreleased version: payouts go to the registered mobile-money number, every withdrawal of
+  TZS 1,000,000 or more IS held for two-officer review, notice is in the app. `rate-copy` still finds 13% ×3, 1.5% ×3.
+- False money statements removed: home "paid to your M-Pesa wallet in seconds", "No cards", Help FAQ (OTP / "enter your
+  number" / 60 seconds), withdraw hint "may require AML review", deposit subtitle "or bank"; Game Rules read the retired
+  `commissionRate` (10% locally) and now read the live loser-share rate via `poolFee` (13%, as production and
+  settlement); a voided Up & Down round told a player who never bet "your stake is back in full" (card AND round page —
+  `viewerRefundCopy`, E-65's reason rule now asked per viewer); a FAILED deposit rendered as a green "+TZS"; the chatbot named three deposit methods of five.
+- State: a finally refused player was offered a resubmit and a "Verify ID" row; an approved player "Verify ID"; the
+  console read a final refusal as retryable (roster now "Finally refused", not a ninth stage); an already-frozen wallet
+  offered "Freeze wallet" (now "Add an officer hold").
+- Overlays and layout: the chat bubble painted at the desktop offset over the bottom rail until hydration (now not
+  drawn until the viewport is measured) and used a 768 breakpoint beside a 1024 rail; the socials panel covered /markets
+  controls at every scroll position (now not shown on the /markets list; the Needle keeps out of its way); a CLOSED
+  filter-sheet dialog silenced the socials panel and the RG reality check on /markets (`isModalDialogOpen`); the email
+  prompt shown twice on /wallet/deposit; the /auth/forgot-password nested anchor (hydration error on every visit since
+  600a1074); footer band on phones; profile stats/avatar/badge shelf; withdraw hero and 3+1 picker; market detail tiles,
+  sticky card, H1; the home board never revealing on phones; the sparkline end dot drawn as an oval; the wallet result
+  count on its chip strip; sw/zh wraps, orphans, split currency amounts, spaced dashes (100 zh strings) and punctuation.
+
+| Check | Result |
+|---|---|
+| `tsc` · `next build` (predeploy part 1) | ✅ · ✅ |
+| Final battery on the pushed tree (38 guards) | ✅ — incl. `kyc-gate` 96, `kyc-at-withdrawal` 94, `kyc-copy-truth` 318, `kyc-stage` 104, `refused-funds` 64, `refused-funds-race` 16, `wallet-freeze` 39, `updown-void-copy` 49, `rate-copy` 40, `rules-copy` 71, `cert-c1` 1145, `cert-c3` 1447, `dal-parity` 285, `control-gates` 281, `social-panel` 53, `stacking` 113 |
+| `test:motion` · `qa:live` · `test:revoked-deadend` (local :3009) | ✅ 43/0 · ✅ **199/0** (20 new fused-word assertions) · ✅ |
+| Red only where `c63a4668` was already red | `failure-reasons` §10.1/10.2 · `read-tiers` 7.1 |
+| Visual | 2 full inspections (414 + 168 agents, 0 tiles uninspected) · 4 fix rounds · final capture (301 pages) checked by eye |
+| Production migration | ✅ applied 20:08:42, pre- and post-checks above |
+| Deploy | ✅ `1699c17a` served at 20:12:00 |
+| Live drive `scripts/live/kyc-at-withdrawal-prod.mjs` (signed out) | ✅ **49 passed, 0 failed** — R/A not driven (no QA phone/email on this machine; Ali’s address is not a test inbox), O not driven (`ADMIN_DRIVE` revokes Ali’s session) |
+| Production served-HTML scan | ✅ 0 fused words across 14 public routes × en/sw/zh · Terms: no “60 seconds”, no “in-app + SMS”, the two-officer hold present |
+| Red harnesses on the clean tree | `red:kyc-gate` 10 caught / 0 missed (on `1699c17a`) · `red:refused-funds-race` 3/0 · `red:bonus-withdrawable` 9/9 · `red:install-invite` ✅ · `red:kyc-copy-truth` ✅ · `red:refused-funds` ✅ — each left 0 files dirty, run strictly one at a time · `test:red-anchors` 1638 passed / 11 failed = the pre-existing baseline (two anchors this session had drifted were repaired in `f714a6ee`) |
+
+**PRE-EXISTING, RECORDED, NOT FIXED (all byte-identical on `c63a4668`):** `test:failure-reasons` §10.1/10.2 — the agent
+apply page toasts a raw server string · `test:read-tiers` 7.1 — `/admin/agents` renders `phoneE164` unreviewed ·
+`test:red-anchors` 11 (7 §1 parse, header-fit + house-book stale, §4 ratchet 74/65) · the design-frozen `decomment`
+treats a `/*` inside a `//` comment as a block opener. Fixed on the way because it broke `qa:live`: `/auth/forgot-password`
+nested a link inside each contact card link (a hydration error on every visit, since 600a1074).
+
+**OPEN / DEFERRED — none of these blocks a player; each is written down so it is not rediscovered:**
+- **For Ali, not for code:** the Board letter `docs/BOARD-DISCLOSURE-KYC-AT-WITHDRAWAL.md` is a DRAFT to send · Terms "(TIN pending)" needs a real TIN (no TIN exists anywhere in code) · sw uses the loanword "dial" in 7 strings and "kidhibiti" in 3 (one word should be chosen; only `noBetYet` was aligned).
+- **Ruling-shaped, not built:** held-bucket floors 1M/100K are an ordering aid without a ruling · SUPPORT money-split read tier · 8 approved accounts show legal names (recorded, not reverted) · `user.locale` accepts EN/SW only and the language menu never writes it.
+- **Staff console (English-only), unconfirmed:** 25 multi-line text runs of the same shape as the fused-words defect — retention:198, updown/proposals:202/444/450/457/459, system:280, settlement:192, config:119, config-form:263/269, roles:53, read-tiers-matrix:105, roles-matrix:76, stuck-payout-controls:89, bulk-resolve-bar:435, sources:209, updown:374, updown-controls:1291, ai-polls:238, candidates:188, ai-toolkit:281, house/[marketId]:259/362, settle-button:91 — check each in the SERVED HTML (`qa:live` covers public routes only) · admin tables cut at 390 with no scroll cue · KPI labels truncate · KYC funnel stages cut · refused-funds report shows ids, not names · overview feed times are UTC unlabeled · player Activity timestamp column wraps to three lines · two different risk scores for one player (profile ring vs KYC workstation) · `kycStageLabel` could take `rejectReason` so the roster uses one badge · the roster filter "Rejected · after upload" still lists final refusals.
+- **Player polish, low:** dates render en-GB in sw/zh · badge names bilingual in every locale · Up & Down voided card empty band · updown sw history legend cramped · shared `query-bar` count beside a scrolling chip strip on /positions, /results, /watchlist, /proposals, /fairness, /notifications, /updown/history, /profile/account, /profile/invite (only /wallet fixed; none flagged by the inspection) · wallet `loading.tsx` lacks the count line (~20px shift) · DOB row still `px-3.5 py-2.5` + a 10.5px tag (a same-pixel conversion would lower the spacing ratchet by 2) · the chat bubble ignores `safe-area-inset-bottom` (locked by `stacking-contract` + `install-invite`'s 148) · auth rail hard bottom edge (design call) · zh officer free-text note joined with an ASCII space · `legal/agent-terms` zh spaced dashes (pinned by a hash in two guards) · Terms §4 zh "YES 与 NO" and sw "NDIYO" vs the app's "NDIO" · `conviction-dial` falls back to the retired commission sentence if an admin turns the estimate off · `/legal/rules/up-down` passes the polls config, not Up & Down's (both 13% today).
+- **Pre-existing reds, byte-identical on `c63a4668`:** `test:failure-reasons` §10.1/10.2 (agent apply toast) · `test:read-tiers` 7.1 (`/admin/agents` phone) · `test:red-anchors` 11 · the design-frozen `decomment` treats a `/*` inside a `//` comment as a block opener. Session 92's P0s (`docs/SESSION-REVOKED-DEADEND.md` §6) untouched.
 
 ### 🟢 Session 93 (2026-09-12) — 50pick HAS SOCIAL ACCOUNTS, AND THE PRODUCT NOW SAYS SO
 

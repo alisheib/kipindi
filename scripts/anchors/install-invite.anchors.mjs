@@ -94,9 +94,26 @@ export const MUTATIONS = [
        + "stays in three languages — and nothing renders it. That is E-226, E-227, E-232 and "
        + "E-224's DAL filter, and it is the single most repeated defect on this platform.",
     file: SHELL,
-    from: `      <Suspense fallback={null}><LazyInstallInvite /></Suspense>`,
+    from: `      {installInviteLive && <Suspense fallback={null}><LazyInstallInvite /></Suspense>}`,
     to: ``,
     check: "8.2 ⛔ it is RENDERED by the shell, not merely imported",
+  },
+  {
+    name: "the-withdrawn-invitation-mounts-anyway",
+    why: "⛔ WITHDRAWN 2026-09-13 (Ali: keep only the socials popup). The switch is resolved in the shell; "
+       + "hard-wiring it true puts the popup back on every screen while feature-state.ts still says WITHDRAWN.",
+    file: SHELL,
+    from: `  const installInviteLive = installInviteIsLive();`,
+    to: `  const installInviteLive = true;`,
+    check: "8.4 ⛔ the shell mounts it only behind the feature state, resolved on the server",
+  },
+  {
+    name: "the-invitation-ships-active-again",
+    why: "The product constant flipped back without an instruction — the popup returns for every visitor.",
+    file: "src/lib/feature-state.ts",
+    from: `  install: "WITHDRAWN",`,
+    to: `  install: "ACTIVE",`,
+    check: "9.1 ⛔ the invitation ships WITHDRAWN",
   },
   {
     name: "the-manifest-names-an-icon-that-is-not-there",

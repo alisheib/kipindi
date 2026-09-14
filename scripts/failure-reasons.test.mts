@@ -54,25 +54,14 @@ async function fundedUser(id: string, balance: number): Promise<void> {
     id: `wal_${id}`, userId: id, balance, pending: 0, hold: 0, bonusBalance: 0,
     currency: "TZS", status: "ACTIVE", createdAt: now(), updatedAt: now(),
   } as StoredWallet);
-  // 🔴 APPROVED KYC IS PART OF "FUNDED" FROM 2026-09-05, AND LEAVING IT OUT DID NOT MAKE
-  // THIS FILE FAIL HONESTLY — IT MADE IT MEASURE THE WRONG GATE. Identity now precedes
-  // the stake-bounds check in `buyPositionInner`, so an unverified fixture turned §1.8's
-  // "over-max is refused with `stake_above_max`" into "…refused with `kyc_not_verified`":
-  // three assertions still red, none of them about stake bounds any more, and §1.10's
-  // "the refusals above are not blanket" quietly proving nothing at all.
-  // ⛔ This is the fixture catching up with the product, NOT the gate being relaxed for
-  // the suite. The refusal itself is proven — deliberately, against its own unverified
-  // fixtures — in `test:kyc-gate`.
-  await db.kyc.upsert({
-    id: `kyc_${id}`, userId: id, status: "APPROVED", rejectReason: null, rejectNote: null,
-    idType: "NIDA", idNumber: `199001011${String(seq).padStart(11, "0")}`, idExpiry: null,
-    idVerifiedAt: now(), fullName: "Fixture Player", dob: "1990-01-01", documents: [],
-    reviewerId: null, reviewedAt: now(), submittedAt: now(),
-    // The column the WITHDRAW arm of the gate reads. A fixture approved without it is a
-    // player who can bet and cannot be paid — a state the product never produces.
-    approvedAt: now(),
-    createdAt: now(), updatedAt: now(),
-  });
+  // ⭐ NO IDENTITY ROW, DELIBERATELY (2026-09-13). From 2026-09-05 this fixture carried an APPROVED
+  // submission, because identity then preceded the stake-bounds check in `buyPositionInner` and an
+  // unverified fixture turned §1.8's `stake_above_max` into `kyc_not_verified` — three assertions red,
+  // none of them about stake bounds. That bet gate is DELETED (owner ruling 2026-09-13: identity is
+  // asked before a withdrawal and before nothing else), so the fixture is now the account most real
+  // players are: funded and never verified.
+  // ⛔ So §1.10 also proves a stake needs no identity: if a bet gate ever returns, §1.1–§1.10 go red on
+  // `kyc_not_verified` instead of quietly measuring it. §9f pins where the identity reasons may come from.
 }
 
 // ── §1 · the acceptance criterion, driven ────────────────────────────────────
@@ -1070,6 +1059,103 @@ console.log("\n§9e · the chosen reason actually reaches the player's screen");
        !/:\s*t\.common\.stakeHasntMoved\s*\n\s*\}/.test(dial) || /resultData\.error \?\? t\.common\.stakeHasntMoved/.test(dial),
        "the hardcoded claim is back in front of every refusal");
   }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// §9f · ⛔ THE IDENTITY REASONS COME FROM ONE PLACE — the withdrawal gate
+// ═══════════════════════════════════════════════════════════════════════════
+//
+// ⭐ OWNER RULING, 2026-09-13 (docs/COMPLIANCE-DECISIONS.md): identity is asked before a WITHDRAWAL
+// and before nothing else. §9d proves each `kyc_*` row is REACHABLE — and it cannot see WHERE from. A
+// literal `reason: "kyc_not_verified"` restored in `deposit()` or `buyPositionInner()` keeps §9d green
+// (the row was reachable before and is reachable after) while a player is refused a deposit or a stake
+// on identity again. So this section pins the emitters themselves:
+//   · the four gate reasons are written, in a `reason:` position, in exactly ONE file — `kyc-gate.ts`'s
+//     `REFUSAL_BY_STATUS` — and `withdraw()` is the gate's only caller;
+//   · `kyc_refused_final` is written in exactly one place, `startKyc`;
+//   · neither `deposit()` nor `buyPositionInner()` carries an identity refusal or asks the gate;
+//   · and the registry shape the surfaces rely on: the four are error/modal, the final one error/inline
+//     (a hard block shown beside the restart it refuses). §6.2 accepts both: neither is a `warning`.
+console.log("\n§9f · the identity reasons come from the withdrawal gate, and from nowhere on the way in");
+{
+  const walkF = (dir: string, out: string[] = []): string[] => {
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+      const p = `${dir}/${e.name}`;
+      if (e.isDirectory()) walkF(p, out);
+      else if (/\.(ts|tsx)$/.test(e.name)) out.push(p);
+    }
+    return out;
+  };
+  const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/(^|[^:])\/\/.*$/gm, "$1");
+  // ⛔ The registry and the mapper are excluded for §9d's reason: a row citing itself is not an emitter.
+  const tree = walkF("src")
+    .filter((f) => !f.endsWith("failure-reasons.ts") && !f.endsWith("error-copy.ts"))
+    .map((f) => ({ f, code: strip(readFileSync(f, "utf8")) }));
+  ok("9f.0 · fixture · the whole of src was walked", tree.length > 100, `${tree.length} files`);
+
+  const GATE_REASONS = ["kyc_not_verified", "kyc_pending_review", "kyc_more_info", "kyc_rejected"] as const;
+  const emitsLiteral = (code: string, reason: string) => new RegExp(`\\breason:\\s*["']${reason}["']`).test(code);
+  for (const reason of GATE_REASONS) {
+    const files = tree.filter((t) => emitsLiteral(t.code, reason)).map((t) => t.f);
+    ok(`9f.${reason} · ★ written in exactly one file — the withdrawal gate`,
+       files.length === 1 && files[0].endsWith("src/lib/server/kyc-gate.ts"), files.join(", ") || "(nowhere)");
+  }
+  const callers = tree
+    .filter((t) => /\bassertIdentityForPayout\s*\(/.test(t.code.replace(/\bfunction\s+assertIdentityForPayout\s*\(/g, "")))
+    .map((t) => t.f);
+  ok("9f.gate · ★ the gate has exactly one caller outside its own file — wallet-service",
+     callers.length === 1 && callers[0].endsWith("src/lib/server/wallet-service.ts"), callers.join(", ") || "(none)");
+
+  const bodyOf = (src: string, head: string) => {
+    const i = src.indexOf(head);
+    if (i < 0) return "";
+    const next = src.slice(i + head.length).search(/\n(?:export\s+)?(?:async\s+)?function\s/);
+    return next < 0 ? src.slice(i) : src.slice(i, i + head.length + next);
+  };
+  const walletCode = strip(readFileSync("src/lib/server/wallet-service.ts", "utf8"));
+  const marketCode = strip(readFileSync("src/lib/server/market-service.ts", "utf8"));
+  const withdrawFn = bodyOf(walletCode, "export async function withdraw(");
+  const depositFn = bodyOf(walletCode, "export async function deposit(");
+  const betFn = bodyOf(marketCode, "async function buyPositionInner(");
+  ok("9f.fixture · withdraw(), deposit() and buyPositionInner() were each found",
+     withdrawFn.length > 2_000 && depositFn.length > 2_000 && betFn.length > 2_000,
+     `withdraw=${withdrawFn.length} deposit=${depositFn.length} bet=${betFn.length}`);
+  ok("9f.withdraw · ★ …and that caller is withdraw(), which hands the gate's own reason straight through",
+     /assertIdentityForPayout\(userId\)/.test(withdrawFn) && /reason:\s*withdrawGate\.reason/.test(withdrawFn));
+  const IDENTITY_REFUSAL = /\breason:\s*["']kyc_|\bassertIdentityForPayout\s*\(|\bassertKycForMoney\s*\(/;
+  ok("9f.deposit · ⛔ deposit() carries no identity refusal and asks no identity gate",
+     !IDENTITY_REFUSAL.test(depositFn), (depositFn.match(IDENTITY_REFUSAL) ?? [""])[0]);
+  ok("9f.bet · ⛔ buyPositionInner() — both products stake through it — carries none either",
+     !IDENTITY_REFUSAL.test(betFn), (betFn.match(IDENTITY_REFUSAL) ?? [""])[0]);
+  ok("9f.control · the refusal detector fires on a restored gate, in either shape",
+     IDENTITY_REFUSAL.test('return { ok: false, error: "x", code: "INVALID", reason: "kyc_not_verified" };')
+     && IDENTITY_REFUSAL.test("const g = await assertIdentityForPayout(userId);"));
+
+  const finals = tree.filter((t) => emitsLiteral(t.code, "kyc_refused_final")).map((t) => t.f);
+  ok("9f.kyc_refused_final · ★ written in exactly one file — kyc-service",
+     finals.length === 1 && finals[0].endsWith("src/lib/server/kyc-service.ts"), finals.join(", ") || "(nowhere)");
+  ok("9f.kyc_refused_final · …inside startKyc, the restart it refuses",
+     emitsLiteral(bodyOf(strip(readFileSync("src/lib/server/kyc-service.ts", "utf8")), "export async function startKyc("), "kyc_refused_final"));
+
+  for (const reason of GATE_REASONS) {
+    ok(`9f.registry.${reason} · error, on the modal channel — a hard block whose fix lives on another page`,
+       REASONS[reason].severity === "error" && REASONS[reason].channel === "modal", `${REASONS[reason].severity}/${REASONS[reason].channel}`);
+  }
+  ok("9f.registry.kyc_refused_final · error, INLINE — beside the restart it refuses, never a modal",
+     REASONS.kyc_refused_final.severity === "error" && REASONS.kyc_refused_final.channel === "inline",
+     `${REASONS.kyc_refused_final.severity}/${REASONS.kyc_refused_final.channel}`);
+  // ⭐ AND ITS SENTENCE IS FINISHED AND ITS OWN in every language — it is shown to a person who cannot
+  // lift the block, so a generic fallback or a leftover placeholder is the worst available answer.
+  for (const loc of LOCALES) {
+    const body = renderFailure({ ok: false, error: "", reason: "kyc_refused_final" } as never,
+      DICT[loc].error as unknown as Record<string, string>, "fallback", formatTzs).body;
+    ok(`9f.copy.${loc} · kyc_refused_final renders a finished sentence of its own`,
+       body !== "fallback" && body.trim().length > 10 && !/\{\w+\}/.test(body), body.slice(0, 80));
+  }
+  const refusedEn = renderFailure({ ok: false, error: "", reason: "kyc_refused_final" } as never,
+    DICT.en.error as unknown as Record<string, string>, "fallback", formatTzs).body;
+  ok("9f.copy.en · ⛔ …and it never tells them to try again — the restart is exactly what it refuses",
+     !/try again|resubmit|start again|re-?submit/i.test(refusedEn), refusedEn);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

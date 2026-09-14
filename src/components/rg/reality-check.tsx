@@ -24,6 +24,7 @@ import { I } from "@/components/ui/glyphs";
 // module cache can never be hydrated server-side. `HELPLINE_TEL` is pinned beside `HELPLINE`.
 import { HELPLINE, HELPLINE_TEL } from "@/lib/support-config";
 import { useT } from "@/lib/i18n";
+import { isModalDialogOpen } from "@/lib/modal-open";
 
 const DEFAULT_INTERVAL   = 30; // minutes
 
@@ -91,8 +92,11 @@ export function RealityCheckHost({ enabled, intervalMin = DEFAULT_INTERVAL, user
         // confirmation is disorienting. The check fires on the next tick
         // (30s later) when the modal has likely been dismissed. The
         // lastPromptAt is NOT updated, so the check isn't lost.
-        const hasOpenModal = document.querySelector('[role="dialog"][aria-modal="true"]');
-        if (hasOpenModal) return;
+        // 🔴 A VISIBLE modal only (2026-09-13). The bare selector matched the markets filter sheet's CLOSED
+        // dialog, which stays in the DOM — so on /markets this reminder deferred every 30 seconds for as long as
+        // the player stayed there, and never fired. `isModalDialogOpen` also counts the money confirmations,
+        // which are alert dialogs the old selector did not match.
+        if (isModalDialogOpen()) return;
 
         const sessionMin = Math.floor((now - startedAt) / 60_000);
         setElapsedMin(sessionMin);

@@ -227,6 +227,21 @@ export const STATUS_TONE = {
    * GREEN done, ROSE refused.
    */
   KYC_NOTHING_YET: { admin: "slate" },
+  /**
+   * ⭐ ADDED 2026-09-13 — "Funded · nothing sent". SLATE, AND AMBER WAS CONSIDERED AND REFUSED.
+   *
+   * Amber means "somebody must act, and it is not simply waiting". Under the 2026-09-13 ladder
+   * (register → confirm email → deposit and play → verify identity → withdraw) nobody must: a
+   * funded player who has sent nothing is in the ORDINARY, permitted state, and nothing is asked
+   * of them until they reach for their money. It is also about to be the roster's MAJORITY — so
+   * amber here would repaint most of the column in the "act now" colour, which is *"it says
+   * pending kyc always"* again, in a new tone.
+   * ⛔ Not royal either: royal on this column is `KYC_WITH_US`, the one stage that is OUR move.
+   * ⛔ Not gilt: §M3 reserves gilt for money that was EARNED, and a balance is not a win.
+   * The money fact is carried by the WORD and by the roster's `?funded=` axis; the tone keeps
+   * amber and royal meaning what they mean.
+   */
+  KYC_FUNDED_NOTHING_YET: { admin: "slate" },
   KYC_UPLOADED:    { admin: "amber" },
   /** ⭐ THE ONLY STAGE THAT IS OUR MOVE. Royal is "waiting on a queue" — ours. */
   KYC_WITH_US:     { admin: "royal" },

@@ -320,6 +320,34 @@ export function ageOn(isoDate: string, now: Date): number {
 /** The minimum age to hold a 50pick account. Mirrored by `validators.dateOfBirth`. */
 export const MIN_AGE_YEARS = 18;
 
+/** The jurisdiction whose calendar decides a birthday. Tanzania — the licence is the Gaming Board's. */
+export const AGE_TIMEZONE = "Africa/Dar_es_Salaam";
+
+/** Today's calendar date in `AGE_TIMEZONE`, as `YYYY-MM-DD`. */
+export function platformDateOf(now: Date): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: AGE_TIMEZONE, year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
+}
+
+/** Whole calendar years on the date it is in Tanzania — the one age every gate asks. */
+export function ageOnPlatformDate(isoDob: string, now: Date): number {
+  return ageOn(String(isoDob).slice(0, 10), new Date(`${platformDateOf(now)}T00:00:00Z`));
+}
+
+/**
+ * ⛔ THE ONE AGE GATE (found 2026-09-13, audit session 95). Registration (`validators.dateOfBirth`) measured
+ * age as `(now − dob) / 365.25 days`, while the KYC service's lock used `ageOn` — whole calendar years on UTC
+ * dates — and the NIDA mock and the officer's workstation used 365.25 again. For a birth date whose 18 years
+ * hold five 29 Februaries the schema says "18" twelve hours before the birthday, while `ageOn` says "17"
+ * until 00:00 UTC — and `submitIdentityStep`'s lock, seeing 17 on a DOB the schema had passed, issues an
+ * AUTOMATIC FINAL UNDERAGE refusal: wallet frozen, number reserved, `kyc.refused_final` with no officer, on a
+ * player who is already 18 in Dar es Salaam. One predicate, on the Tanzanian calendar date, makes the service
+ * lock what its comment always said it was — a second lock the schema already enforced.
+ */
+export function isOfAge(isoDob: string, now: Date): boolean {
+  const age = ageOnPlatformDate(isoDob, now);
+  return Number.isFinite(age) && age >= MIN_AGE_YEARS;
+}
+
 /**
  * Why a number was refused. ⛔ Each arm is a DIFFERENT sentence to the player —
  * "invalid" is never an acceptable answer on an identity field.

@@ -106,6 +106,39 @@ export function refundReasonFor(input: {
 }
 
 /**
+ * ⛔ 2026-09-13 · A VOID ROUND IS NOT A REFUND TO SOMEONE WHO NEVER BET ON IT.
+ *
+ * 🔴 `refundReasonFor` answers for the ROUND when it voided (the console's round explorer needs
+ * exactly that, with no viewer at all), so a brand-new player with no deposit and no bet was
+ * told "Your stake is back in full" under a "Stake returned" pill — on a round with a TZS 0 pool
+ * and no bettors. A false money statement.
+ *
+ * This is the one rule for what a VIEWER may be told:
+ *   · THIS viewer had a stake returned → `claimsRefund: true`, the refund sentence
+ *     (`REFUND_REASON_KEY`) and the "Stake returned" pill;
+ *   · the round voided and they had nothing returned → `claimsRefund: false`, WHY it voided
+ *     (`VOID_NOTE_KEY`) and not one word about money.
+ * `unmatched` needs a refunded stake by construction, so it can never reach the second arm.
+ */
+export type ViewerRefundCopy = { claimsRefund: boolean; key: string } | null;
+
+/** The neutral "why the round voided" line — the refund sentences minus the claim about a stake. */
+export const VOID_NOTE_KEY: Record<Exclude<RefundReason, "unmatched">, string> = {
+  "no-move": "udVoidNoteNoMove",
+  "source-failed": "udVoidNoteSourceFailed",
+  "source-mismatch": "udVoidNoteSourceMismatch",
+  operator: "udVoidNoteOperator",
+  unexplained: "udVoidNoteUnexplained",
+};
+
+export function viewerRefundCopy(reason: RefundReason | null, refundedStake = 0): ViewerRefundCopy {
+  if (!reason) return null;
+  if (refundedStake > 0) return { claimsRefund: true, key: REFUND_REASON_KEY[reason] };
+  if (reason === "unmatched") return null;
+  return { claimsRefund: false, key: VOID_NOTE_KEY[reason] };
+}
+
+/**
  * ⛔ E-56 · A VOID IS NEVER AN UP OR A DOWN.
  *
  * Exported so the rule is testable rather than living inside a ternary. A settled round shows

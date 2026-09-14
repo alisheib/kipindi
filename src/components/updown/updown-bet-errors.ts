@@ -58,17 +58,10 @@ import { renderFailure, hasReason, type FailureDetail, type FailureReason } from
  */
 const MODAL_TITLE_BY_REASON: Partial<Record<FailureReason, keyof UdErrDict>> = {
   loss_limit_daily: "udErrRgLimitTitle",
-  // ── The identity gate (2026-09-05) ────────────────────────────────────────────────
-  // ⛔ FOUR ROWS FOR FOUR REASONS, and omitting any one of them is not a missing nicety —
-  // it is the loss-cap defect above, repeated. Without a row the heading falls back to
-  // `udErrSuspendedTitle` ("Betting unavailable"), which over a body reading "we are
-  // reviewing your documents" states an operator outage on the one refusal that is
-  // ordinary progress. The bodies already differ per reason via the registry; the
-  // headings have to as well or the loudest line on the screen is the wrong one.
-  kyc_not_verified:   "udErrKycNotVerifiedTitle",
-  kyc_pending_review: "udErrKycPendingTitle",
-  kyc_more_info:      "udErrKycMoreInfoTitle",
-  kyc_rejected:       "udErrKycRejectedTitle",
+  // ⛔ THE FOUR IDENTITY ROWS WERE DELETED 2026-09-13, WITH THEIR TWELVE DICTIONARY KEYS. A stake asks
+  // no identity question any more (`kyc-gate.ts`), so no bet refusal can carry a `kyc_*` reason and a
+  // heading for one would be copy no player can reach. The registry rows stay — `withdraw()` still
+  // emits all four — but that refusal never reaches this modal.
 };
 
 /**
@@ -89,14 +82,10 @@ const MODAL_TITLE_BY_REASON: Partial<Record<FailureReason, keyof UdErrDict>> = {
  * ⛔ NEVER `success` — gold is earned money (`failure-reasons.ts` §6).
  */
 const MODAL_TONE_BY_REASON: Partial<Record<FailureReason, "danger" | "warning" | "info">> = {
-  // Nothing is wrong: we have their documents and we have not finished looking.
-  kyc_pending_review: "info",
-  // The player has a specific, do-able next step. Amber says "your move" without
-  // claiming a fault.
-  kyc_more_info: "warning",
-  // `kyc_not_verified` and `kyc_rejected` keep `danger`: one is a wall they have not
-  // started climbing, the other is a decision that went against them. Both are honest
-  // in red.
+  // ⛔ EMPTY SINCE 2026-09-13. Its only rows were the identity reasons (`kyc_pending_review` → info,
+  // `kyc_more_info` → warning), and a stake no longer carries one. The map — and the rule it encodes,
+  // that tone is chosen by WHOSE decision it was and not by severity — stays for the next reason that
+  // is ordinary progress rather than a fault.
 };
 
 /** How the surface must present the refusal (§5 decision matrix). */
@@ -116,17 +105,14 @@ export type UdBetFailure =
       /**
        * 🔴 THE MODAL'S TONE, AND IT USED TO BE HARD-WIRED TO `danger`.
        *
-       * That was true while every `modal`-channel reason in the registry was severity
-       * `error`. The 2026-09-05 identity gate broke that assumption on purpose:
-       * `kyc_pending_review` is severity **`info`** — the player has done everything
-       * asked of them and is waiting on OUR review queue. Rendering that in the red
-       * `danger` crest, with the ✗ glyph and `role="alertdialog"`, tells a player who did
-       * nothing wrong that something failed. It is our delay, and it must not be coloured
-       * as their fault.
-       *
-       * ⛔ Derive it from the registry `severity`, never from `kind`. `OperationVariant`
-       * and `Severity` share three members by construction; the mapping is the whole of
-       * `SEVERITY_VARIANT` below.
+       * ⭐ IT IS CHOSEN BY REASON (`MODAL_TONE_BY_REASON`), NEVER BY SEVERITY. From 2026-09-05
+       * the identity gate put `kyc_pending_review` — registry severity `error`, because the
+       * player cannot lift it — on this bet modal, where a red `danger` crest with an ✗ and
+       * `role="alertdialog"` would have told a player waiting on OUR review queue that they
+       * had failed. Severity answers how loud; it cannot answer whose decision it was.
+       * ⚠️ Since 2026-09-13 a stake asks no identity question, so no `kyc_*` reason reaches
+       * this modal and the tone map is empty. The per-reason rule stays for the next reason
+       * that is ordinary progress rather than a fault. Unclassified reasons keep `danger`.
        */
       variant: "danger" | "warning" | "info";
     };
@@ -141,12 +127,7 @@ type UdErrDict = {
   udErrSuspendedBody: string;
   udErrRgLimitTitle: string;
   udErrRgLimitBody: string;
-  /** Identity-gate modal headings (2026-09-05). The BODIES come from the reason
-   *  registry (`t.error.errKyc*`); only the heading is chosen here. */
-  udErrKycNotVerifiedTitle: string;
-  udErrKycPendingTitle: string;
-  udErrKycMoreInfoTitle: string;
-  udErrKycRejectedTitle: string;
+  // ⛔ The four identity-gate headings (2026-09-05) were deleted 2026-09-13 with the bet gate.
 };
 
 export function udBetErrorCopy(
@@ -182,9 +163,9 @@ export function udBetErrorCopy(
       // ⛔ THE HEADING COMES FROM THE REASON, NOT THE SEVERITY — `MODAL_TITLE_BY_REASON`
       // above records what titling by severity did to the loss cap.
       const titleKey = (f.reason && MODAL_TITLE_BY_REASON[f.reason]) ?? "udErrSuspendedTitle";
-      // ⛔ THE TONE IS CHOSEN BY REASON TOO. See the `variant` note on UdBetFailure:
-      // hard-wiring `danger` here painted `kyc_pending_review` — our own review queue —
-      // as the player's failure. Unclassified reasons keep `danger`.
+      // ⛔ THE TONE IS CHOSEN BY REASON TOO. See the `variant` note on UdBetFailure: from
+      // 2026-09-05 to 2026-09-13 hard-wiring `danger` here would have painted our own review
+      // queue as the player's failure. Unclassified reasons keep `danger`.
       const tone = (f.reason && MODAL_TONE_BY_REASON[f.reason]) ?? "danger";
       return { kind: "blocked", title: m[titleKey], body: f.body, variant: tone };
     }

@@ -161,8 +161,11 @@ export default async function LandingPage() {
       <HowItWorks t={t} />
 
       {/* ── §1c PICK A SIDE NOW + §1d BROWSE BY TOPIC — one section, one surface, 48 between ── */}
+      {/* 2026-09-13 — threshold 0: on a phone this band is so tall that 12% of it never fits the
+          viewport, so it never revealed and the landing showed a blank band. Same rise, and it
+          fires once the band's top is 10% above the viewport bottom. */}
       {comp.grid.length > 0 && (
-        <Reveal band="board" className="kp-band kp-band--tight">
+        <Reveal band="board" className="kp-band kp-band--tight" threshold={0} rootMargin="0px 0px -10% 0px">
           <div className="kp-band__inner">
             <div className="kp-shead">
               <div>

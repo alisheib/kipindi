@@ -127,7 +127,7 @@ export default async function ReceiptPage({ params }: { params: Promise<{ id: st
             <span className="font-mono tabular-nums text-text">{formatTzs(txn.fee)}</span>
           </Row>
         )}
-        <Row label={t.wallet.method}>{friendlyProviderLabel(txn.provider)}</Row>
+        <Row label={t.wallet.method}>{txn.provider === "CARD" ? t.wallet.methodCard : friendlyProviderLabel(txn.provider)}</Row>
         <Row label={t.wallet.transactionId}>
           <span className="font-mono text-[12px] break-all">{txn.id}</span>
         </Row>

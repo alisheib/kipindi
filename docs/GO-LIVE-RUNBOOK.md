@@ -187,8 +187,10 @@ tier-gating, and the resolution-policy changes.** Use `feat/payment-selcom`.
 
 **Remaining (needs Selcom keys/docs from Ali):**
 1. Fill `selcomAdapter.deposit`/`withdraw` in `src/lib/server/payments.ts` (return
-   `PENDING` + provider ref; the wrapper already owns the correlation id, audit, and the
-   AML ≥ 1,000,000 TZS hold). Follow `docs/PAYMENT-INTEGRATION-CHECKLIST.md` (on the branch).
+   `PENDING` + provider ref; the wrapper already owns the correlation id and audit — ⚠️ **2026-09-13:
+   it no longer holds a withdrawal ≥ 1,000,000 TZS for AML review** (`WITHDRAWAL_AML_HOLD = false`;
+   `COMPLIANCE-DECISIONS.md` § 2026-09-13 (third)); every withdrawal up to the TZS 5,000,000 cap goes
+   to the gateway at once). Follow `docs/PAYMENT-INTEGRATION-CHECKLIST.md` (on the branch).
 2. **Verify every endpoint/field/signature against Selcom's real docs — never guess a
    signature.** Selcom uses a signed-header scheme (`Authorization: SELCOM base64(apiKey)`,
    `Digest` = HMAC-SHA256 of the signed fields with the API secret).
@@ -197,7 +199,9 @@ tier-gating, and the resolution-policy changes.** Use `feat/payment-selcom`.
 4. Confirm the inbound webhook contract in `route.ts` matches Selcom (header names +
    `${timestamp}.${body}` HMAC + `normalizeStatus`). Map MNO → Selcom channel codes.
 5. Test: `PAYMENTS_DEMO_ASYNC=true` suites + full gate + `e2e:money` on local PG (drift 0.00)
-   + a sandbox round-trip (deposit→webhook→credited once; withdrawal payout; ≥1M → AML hold).
+   + a sandbox round-trip (deposit→webhook→credited once; withdrawal payout; a withdrawal up to
+   5,000,000 dispatches at once, one above 5,000,000 is refused). ⚠️ 2026-09-13: there is no ≥1M AML
+   hold to test any more — a large test withdrawal is not parked, and on a live rail it **really leaves**.
    Merge `feat/payment-selcom` → `main` → deploy → verify.
 
 **What to get from Selcom:** base URLs (sandbox + prod), API key + secret, vendor/merchant ID,

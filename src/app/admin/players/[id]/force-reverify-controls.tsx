@@ -5,27 +5,34 @@
  *  Shown only when KYC is APPROVED. The confirm happens in the kit <Modal> (portal +
  *  focus-trap + scroll-lock + Esc) — changing a player's compliance state deserves a
  *  deliberate surface, not an inline link.
- *  🔴 WHAT IT LOCKS CHANGED TWICE — TELL THE OFFICER THE CURRENT ANSWER. Until 2026-08-20
- *  this said it re-locked withdrawals; from 2026-08-20 it stopped being a money control at
- *  all (Board comment #1); from 2026-09-05 it locks DEPOSITS and BETTING immediately and
- *  STILL DOES NOT STOP A PAYOUT — the withdraw gate asks whether the account was EVER
- *  approved, so a player re-verifying keeps money they already earned under an identity we
- *  accepted.
- *  ⛔ Telling an officer this stops a payout, at the moment they choose it to stop a payout,
- *  is the officer-facing twin of E-5. To stop money leaving: freeze the wallet, pause
- *  payouts, or the AML ≥ TZS 1,000,000 two-officer hold. docs/BOARD-DISCLOSURE-B-E.md §6. */
+ *
+ *  🔴 WHAT IT STOPS HAS CHANGED THREE TIMES — TELL THE OFFICER THE CURRENT ANSWER. Until
+ *  2026-08-20 it re-locked withdrawals; from 2026-08-20 it stopped being a money control;
+ *  from 2026-09-05 it locked deposits and betting; **from 2026-09-13 it stops NO money at
+ *  all** — depositing and playing ask no identity question, and withdrawal asks whether the
+ *  account was EVER approved, which re-verification never clears. It means "we are
+ *  re-checking you", and nothing else (docs/COMPLIANCE-DECISIONS.md 2026-09-13, ruling 6).
+ *
+ *  ⭐ SO THE LEVER THAT DOES STOP MONEY IS OFFERED RIGHT HERE. An officer who opens this
+ *  dialog with a doubt about the account is exactly the officer who needs the freeze, and
+ *  the first one to need it must not reach for the control that no longer works. The
+ *  checkbox runs `freezeWalletByOfficer` with the SAME written reason, in the same action.
+ *
+ *  ⛔ Telling an officer this stops money, at the moment they choose it to stop money, is
+ *  the officer-facing twin of E-5. */
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/toast";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { I } from "@/components/ui/glyphs";
 import { forceReverifyKycAction } from "./actions";
 import { runAdminAction } from "@/lib/client/run-admin-action";
 import { focusFirstInvalid } from "@/lib/client/focus-first-invalid";
 import { useMayAct, ActReadOnly } from "@/components/admin/act-gate";
 
-export function ForceReverifyControls({ userId }: { userId: string }) {
+export function ForceReverifyControls({ userId, walletFrozen = false }: { userId: string; walletFrozen?: boolean }) {
   // A1 — this control only ACTS, so a role holding VIEW without ACT is shown why rather
   // than being offered a button the server will refuse (and logged as a privilege
   // escalation for pressing it). See docs/ADMIN-CONSOLE-FINDINGS.md.
@@ -34,6 +41,7 @@ export function ForceReverifyControls({ userId }: { userId: string }) {
   const [pending, start] = useTransition();
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState("");
+  const [alsoFreeze, setAlsoFreeze] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
   const reasonRef = useRef<HTMLTextAreaElement>(null);
@@ -49,21 +57,25 @@ export function ForceReverifyControls({ userId }: { userId: string }) {
       const fd = new FormData();
       fd.set("userId", userId);
       fd.set("reason", reason.trim());
+      if (alsoFreeze) fd.set("alsoFreeze", "1");
       const r = await runAdminAction(() => forceReverifyKycAction(fd));
       if (!r.ok) {
         toast({ title: "Blocked", description: r.error, variant: "danger" });
         if (r.field) focusFirstInvalid(document.body, [r.field]);
         return;
       }
-      setOpen(false); setReason("");
+      const froze = alsoFreeze;
+      setOpen(false); setReason(""); setAlsoFreeze(false);
       router.refresh();
-      toast({ title: "Re-verification required", description: "Deposits and betting are locked now. This does NOT stop withdrawals — freeze the wallet or pause payouts for that.", variant: "warning" });
+      toast(froze
+        ? { title: "Re-verification required · wallet frozen", description: "The player must re-submit documents, and deposits, bets and withdrawals are stopped until an officer lifts the freeze.", variant: "warning" }
+        : { title: "Re-verification required", description: "This stops no money. To stop deposits, bets and withdrawals, freeze the wallet.", variant: "warning" });
     });
   };
 
   return (
     <>
-      <Button type="button" size="sm" variant="ghost" disabled={pending} leading={<I.shieldcheck s={13} />} onClick={() => { setOpen(true); setReason(""); }}>
+      <Button type="button" size="sm" variant="ghost" disabled={pending} leading={<I.shieldcheck s={13} />} onClick={() => { setOpen(true); setReason(""); setAlsoFreeze(false); }}>
         Force re-verify KYC
       </Button>
 
@@ -72,7 +84,7 @@ export function ForceReverifyControls({ userId }: { userId: string }) {
         onClose={() => { if (!pending) setOpen(false); }}
         role="alertdialog"
         ariaLabel="Force re-verify KYC"
-        maxWidth={420}
+        maxWidth={440}
         closeOnScrim={!pending}
         showClose={!pending}
         ariaBusy={pending}
@@ -81,7 +93,7 @@ export function ForceReverifyControls({ userId }: { userId: string }) {
         <p className="font-mono text-micro uppercase eyebrow font-bold text-text mb-1">KYC · Re-verify</p>
         <h3 className="font-display text-[18px] font-bold text-text leading-tight">Force KYC re-verification?</h3>
         <p className="mt-1 text-body-sm italic text-text-subtle">
-          Moves this APPROVED player back to re-verification and asks them to re-submit their documents. Audit-logged. <strong>Deposits and betting stop immediately.</strong> It does <strong>not</strong> stop withdrawals — money they have already earned stays reachable, so to hold it, freeze the wallet or pause payouts.
+          Moves this APPROVED player back to re-verification and asks them to re-submit their documents. Audit-logged. <strong>This stops no money.</strong> Depositing and playing need no identity, and withdrawal stays open to an account that was approved once.
         </p>
         <label className="mt-3 block">
           {/* DG-A-14: "Reason · Sababu (required, audit-logged)" was one microlabel with its
@@ -103,9 +115,22 @@ export function ForceReverifyControls({ userId }: { userId: string }) {
           />
           <span className="font-mono text-[10px] text-text-subtle">{reason.trim().length} / 300</span>
         </label>
+        {walletFrozen ? (
+          <p className="mt-3 rounded-md border border-border bg-bg-inset px-3 py-2 text-body-sm text-text-muted">
+            The wallet is already frozen, so no money can move while they re-verify.
+          </p>
+        ) : (
+          <div className="mt-3 rounded-md border border-border bg-bg-inset px-3 py-2">
+            <Checkbox
+              checked={alsoFreeze}
+              onChange={(v) => { if (!pending) setAlsoFreeze(v); }}
+              label={<span className="text-body-sm text-text"><strong>Also freeze the wallet</strong> — stops deposits, bets and withdrawals until an officer lifts it. Uses the reason above.</span>}
+            />
+          </div>
+        )}
         <div className="mt-4 flex flex-col gap-2">
           <Button type="button" variant="claret" size="lg" fullWidth loading={pending} disabled={reason.trim().length < 5} onClick={submit}>
-            Force re-verify
+            {alsoFreeze ? "Force re-verify and freeze" : "Force re-verify"}
           </Button>
           <Button type="button" variant="ghost" size="md" fullWidth disabled={pending} onClick={() => { if (!pending) setOpen(false); }}>
             Cancel · Ghairi

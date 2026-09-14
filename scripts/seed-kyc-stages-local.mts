@@ -40,7 +40,10 @@ const PNG = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJA
 /** A NIDA number that is unique per player — the tuple index refuses duplicates. */
 const nida = (n: number) => `1990010100000000${String(n).padStart(4, "0")}`;
 
-async function player(tag: string, n: number): Promise<string> {
+/** `balance` — money in the wallet. From 2026-09-13 an unverified player can hold it, and the roster's
+ *  "Funded · nothing sent" stage only exists for a player who does. Accounts are created ACTIVE, as
+ *  registration has created them since the same date. */
+async function player(tag: string, n: number, balance = 0): Promise<string> {
   const id = `usr_stage_${tag}`;
   const ts = now();
   const existing = await db.user.findById(id);
@@ -50,13 +53,13 @@ async function player(tag: string, n: number): Promise<string> {
       phoneE164: `+2557100${String(n).padStart(5, "0")}`,
       displayName: `Stage ${tag}`,
       email: `stage.${tag}@50pick.test`,
-      status: "PENDING_KYC",
+      status: "ACTIVE",
       role: "PLAYER",
       locale: "EN",
       createdAt: ts,
       updatedAt: ts,
     } as unknown as StoredUser);
-    await db.wallet.create({ id: `wal_stage_${tag}`, userId: id, balance: 0, createdAt: ts, updatedAt: ts } as unknown as StoredWallet);
+    await db.wallet.create({ id: `wal_stage_${tag}`, userId: id, balance, createdAt: ts, updatedAt: ts } as unknown as StoredWallet);
   }
   return id;
 }
@@ -93,10 +96,18 @@ if (!(await db.user.findById(OFFICER))) {
 
 /* ── 1 · nothing_yet · NO SUBMISSION ROW AT ALL ─────────────────────────────
    ⛔ `startKyc` is deliberately NOT called. A player who registers and never opens
-   /profile/kyc has no row, and `kycStage(null)` is the arm that covers them. A row
+   /profile/kyc has no row, and `kycStage(null, money)` is the arm that covers them. A row
    that merely SAYS NOT_STARTED would exercise a state sign-up never produces. */
 const pNone = await player("none", 1);
 console.log(`  nothing_yet            ${pNone}  (no submission row — startKyc never called)`);
+
+/* ── 1b · funded_nothing_yet · NO ROW, AND MONEY IN THE WALLET (2026-09-13) ─────
+   The same "sent nothing" as above, holding TZS 25,000 — the normal new player since identity
+   moved to withdrawal. Without it the roster drive's per-stage partition returns no rows for
+   the eighth stage. The balance is written straight onto the fixture wallet: this is a LOCAL
+   seed for a roster screen, not a money test, and no ledger reads it. */
+const pFunded = await player("funded", 88, 25_000);
+console.log(`  funded_nothing_yet     ${pFunded}  (no submission row, TZS 25,000 held)`);
 
 /* ── 2 · nothing_yet · a row, identity done, ZERO documents ─────────────────
    The other half of the same word: they opened it and stopped. Same chip, and that

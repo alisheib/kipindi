@@ -35,9 +35,9 @@ const SUBTITLE: Record<Locale, string> = {
   zh: "50pick 各产品适用的具约束力规则。",
 };
 const META: Record<Locale, string> = {
-  en: "Version 2026-09-10 · Issued by 50pick Management.",
-  sw: "Toleo 2026-09-10 · Imetolewa na Uongozi wa 50pick.",
-  zh: "版本 2026-09-10 · 由 50pick 管理层发布。",
+  en: "Version 2026-09-13 · Issued by 50pick Management.",
+  sw: "Toleo 2026-09-13 · Imetolewa na Uongozi wa 50pick.",
+  zh: "版本 2026-09-13 · 由 50pick 管理层发布。",
 };
 
 const INTRO: Record<Locale, string> = {
@@ -69,7 +69,9 @@ const CARDS = (l: Locale): { yesNo: [string, string]; upDown: [string, string]; 
       };
     case "zh":
       return {
-        yesNo: [`${yes}/${no} 市场`, `以 ${yes} 或 ${no} 回答一个现实世界的问题。`],
+        /* 2026-09-13: no Latin-style spaces around the CJK side words (是/否) — they broke the
+           line and left "题。" alone on the card. */
+        yesNo: [`${yes}/${no}市场`, `以${yes}或${no}回答一个现实世界的问题。`],
         upDown: [`${up}${down}`, "预测所追踪的数值最终是更高还是更低。"],
         common: "两种产品的共同之处",
       };
@@ -84,19 +86,19 @@ const CARDS = (l: Locale): { yesNo: [string, string]; upDown: [string, string]; 
 
 const COMMON: Record<Locale, readonly string[]> = {
   en: [
-    "One account per person, 18 or older, resident in Tanzania, and verified before you deposit, bet or withdraw.",
+    "One account per person, 18 or older, resident in Tanzania, and verified before your first withdrawal.",
     "Our commission is taken only from the losing side, so a winning bet is never paid less than it staked.",
     "A one-sided market or round is refunded in full, and no fee is ever charged on a refunded stake.",
     "Every result is settled against a named public source and written to an append-only audit chain.",
   ],
   sw: [
-    "Akaunti moja kwa kila mtu, miaka 18 au zaidi, mkazi wa Tanzania, na uthibitisho kabla ya kuweka pesa, kuweka dau au kutoa pesa.",
+    "Akaunti moja kwa kila mtu, miaka 18 au zaidi, mkazi wa Tanzania, na uthibitisho kabla ya kutoa pesa kwa mara ya kwanza.",
     "Kamisheni yetu huchukuliwa kutoka upande ulioshindwa pekee, hivyo dau lililoshinda halilipwi pungufu ya kilichowekwa.",
     "Soko au raundi ya upande mmoja hurudishwa kamili, na hakuna ada kwa dau lililorudishwa.",
     "Kila matokeo hutatuliwa kwa chanzo rasmi kilichotajwa na huandikwa kwenye mnyororo wa ukaguzi usiofutika.",
   ],
   zh: [
-    "每人限一个账户，须年满 18 周岁、居住于坦桑尼亚，并在充值、下注或提现前完成验证。",
+    "每人限一个账户，须年满 18 周岁、居住于坦桑尼亚，并在首次提现前完成验证。",
     "我们的佣金仅从失败方扣取，因此获胜的下注所得永不低于本金。",
     "单边市场或回合全额退还，且退款绝不收取任何费用。",
     "每项结果均依据具名公开来源结算，并写入仅可追加的审计链。",
@@ -200,9 +202,10 @@ function RuleCard({
       <span className={`inline-flex h-[40px] w-[40px] items-center justify-center rounded-md shrink-0 ${tint}`}>
         {icon}
       </span>
+      {/* 2026-09-13: balanced so a zh card line never ends on a stranded character. */}
       <div className="flex-1 min-w-0">
-        <p className="font-display text-body-sm font-semibold text-text">{title}</p>
-        <p className="mt-0.5 text-body-sm text-text-subtle">{sub}</p>
+        <p className="font-display text-body-sm font-semibold text-text text-balance">{title}</p>
+        <p className="mt-0.5 text-body-sm text-text-subtle text-balance">{sub}</p>
       </div>
       <I.chevronRight s={14} className="shrink-0 text-text-subtle" />
     </Link>

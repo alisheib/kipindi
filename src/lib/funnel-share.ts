@@ -12,10 +12,15 @@
  * The arithmetic was correct for what it computed — `value / previous.value` — and the premise
  * was wrong. ⛔ **THESE STAGES ARE NOT NESTED, AND THAT IS MEASURED, NOT ARGUED**
  * (`scripts/s29-insights-vs-db.cjs`, production): **12 players placed a bet with no confirmed
- * deposit**, and **9 deposited without approved KYC**. A player can fund a wallet before KYC
- * clears, and a bonus or an operator adjustment can put someone into a market having never
- * deposited at all. So *"conversion from the previous stage"* is not a quantity that exists on
- * this platform, and printing it produced a number that reads as broken arithmetic on the
+ * deposit**, and **9 deposited without approved KYC**. A player could fund a wallet before KYC
+ * cleared, and a bonus or an operator adjustment can put someone into a market having never
+ * deposited at all.
+ * ⭐ AND FROM 2026-09-13 THE FIRST HALF IS THE DESIGN, NOT AN EDGE. Identity is asked before a
+ * withdrawal and at no earlier step (docs/COMPLIANCE-DECISIONS.md 2026-09-13), so depositing and
+ * betting before verifying is the ordinary ladder — the non-nesting this module discloses is now
+ * the normal shape of the data, which is one more reason the denominator must stay the top stage.
+ *
+ * So *"conversion from the previous stage"* is not a quantity that exists on this platform, and printing it produced a number that reads as broken arithmetic on the
  * owner's dashboard — or worse, as a triumph ("deposit conversion is 183%").
  *
  * ⭐ THE DENOMINATOR IS THE TOP STAGE, FOR EVERY ROW. Against four independent counts, "what

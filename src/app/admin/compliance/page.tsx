@@ -311,7 +311,9 @@ export default async function AdminCompliancePage({
                 <AdminFunnelChart steps={kycSteps} />
                 <div className="flex items-center justify-between pt-3 mt-2 border-t border-border-subtle text-caption text-text-tertiary">
                   <span>End-to-end approval: <span className="font-semibold text-text">{kycConv.toFixed(1)}%</span></span>
-                  <a href="/admin/players?status=PENDING_KYC" className="text-royal-300 hover:underline font-medium">View pending →</a>
+                  {/* ⛔ Was `/admin/players?status=PENDING_KYC` — a status that gated nothing, retired
+                      2026-09-13 and no longer a filter option, so the link opened "All statuses". */}
+                  <a href="/admin/kyc" className="text-royal-300 hover:underline font-medium">Open the KYC queue →</a>
                 </div>
               </>
             )}
@@ -519,7 +521,8 @@ export default async function AdminCompliancePage({
         {/* §E — Operational notes */}
         <AdminCard className="border-info-border bg-info-bg">
           <div className="flex items-start gap-3">
-            <I.warning s={18} />
+            {/* shrink-0 (2026-09-13): at 390 the flex row squeezed this 18px glyph to about 5px beside the paragraph. */}
+            <I.warning s={18} className="shrink-0" />
             <div className="text-caption text-text-secondary space-y-1">
               <p className="text-text font-bold">Inspector mode</p>
               <p>

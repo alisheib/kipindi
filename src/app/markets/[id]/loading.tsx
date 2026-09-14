@@ -50,8 +50,9 @@ export default async function MarketDetailLoading() {
           </div>
         </div>
 
-        {/* Right — the bet widget (dial), sticky column on desktop, FIRST on mobile */}
-        <div className="order-1 lg:order-2 space-y-3 lg:sticky lg:top-6" aria-hidden>
+        {/* Right — the bet widget (dial), sticky column on desktop, FIRST on mobile.
+            The sticky offset MUST match page.tsx's aside (56px header + 16px air). */}
+        <div className="order-1 lg:order-2 space-y-3 lg:sticky lg:top-[72px]" aria-hidden>
           <div className="rounded-xl border border-border bg-bg-elevated p-6 kp-shimmer-track" style={{ height: 260 }}>
             <div className="flex flex-col items-center justify-center h-full gap-3">
               <div className="h-[128px] w-[128px] rounded-full bg-bg-overlay/20" />

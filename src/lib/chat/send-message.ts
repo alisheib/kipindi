@@ -39,7 +39,7 @@ import type { Citation, Lang, Message } from "@/components/chat/types";
 // ⛔ A-5: never render a number nobody produced. The bounds now come from the same constants the
 // deposit form validates against, and every claim that could not be sourced is DELETED rather
 // than softened — a vaguer invented number is still invented.
-import { DEPOSIT_MIN_TZS, DEPOSIT_MAX_TZS } from "@/lib/server/validators";
+import { DEPOSIT_MIN_TZS, DEPOSIT_MAX_TZS, WITHDRAW_MAX_TZS } from "@/lib/server/validators";
 import { PLATFORM_MIN_STAKE } from "@/lib/payout";
 import { formatTzs } from "@/lib/utils";
 
@@ -225,15 +225,14 @@ function stubReply(userText: string, lang: Lang): Reply {
       paragraphs: [
         "To deposit money on 50pick:",
         "1. Open your **Wallet** and tap **Deposit**[1]",
-        "2. Choose your payment method — M-Pesa, Airtel Money, or HaloPesa",
+        "2. Choose your payment method — M-Pesa, Airtel Money, HaloPesa, Mixx by Yas or card",
         `3. Enter the amount — from {${formatTzs(DEPOSIT_MIN_TZS)}} to {${formatTzs(DEPOSIT_MAX_TZS)}}`,
         "4. Confirm the payment on your phone",
-        "If a deposit does not arrive, your money is safe — the receipt in your wallet shows its exact state, and support can trace it[2]. Deposits need a confirmed email; withdrawals need verified identity[3].",
+        "If a deposit does not arrive, your money is safe — the receipt in your wallet shows its exact state, and support can trace it[2]. Deposits need a confirmed email.",
       ],
       citations: [
         { n: 1, href: "/wallet/deposit", label: "/wallet/deposit" },
         { n: 2, href: "/help#deposit-failed", label: "/help#deposit-failed" },
-        { n: 3, href: "/profile/kyc", label: "/profile/kyc" },
       ],
     };
   }
@@ -269,17 +268,25 @@ function stubReply(userText: string, lang: Lang): Reply {
         "1. Winnings settle after the market resolves and the objection window closes[1]",
         "2. Once settled, winnings go directly to your **Wallet**",
         "3. To withdraw, go to **Wallet → Withdraw** and enter the amount",
-        // ⚠️ THE QUALIFIER IS THE CLAIM. `/legal/terms` and `chat.ts` both say a
-        // withdrawal UNDER TZS 1,000,000 settles in about 60 seconds, and that at or
-        // above that line it is held for compliance review for up to 24h. Dropping
-        // "under TZS 1,000,000" turned a sourced statement into a promise the
-        // platform breaks on exactly the withdrawals that matter most.
-        "4. Funds go to the M-Pesa number on your account — under TZS 1,000,000 that is typically within {60 seconds}; TZS 1,000,000 and above is held for compliance review, up to {24 hours}[2]",
-        "Daily withdrawal cap is {TZS 500,000} unless you've raised it in **Profile → Account**.",
+        // ⛔ NO HOLD AND NO SPEED (owner ruling 2026-09-13). This step used to say a withdrawal
+        // under TZS 1,000,000 arrives "within 60 seconds" and one at or above it "is held for
+        // compliance review, up to 24 hours". The hold is switched off (`WITHDRAWAL_AML_HOLD`,
+        // payments.ts): no officer reviews a withdrawal before it is sent, and the 60 seconds
+        // was a speed nothing measures. The cap is read from `WITHDRAW_MAX_TZS`, the constant
+        // the withdraw form enforces. No fee figure here, for the same reason as the objection
+        // window above: the rate is config (`withdrawalFeeRate`) this pure stub cannot read.
+        `4. The money is sent to the mobile number registered on your account — any amount up to {${formatTzs(WITHDRAW_MAX_TZS)}} per withdrawal[2]`,
+        // 🔴 "Daily withdrawal cap is TZS 500,000 unless you've raised it in Profile → Account"
+        // was INVENTED and is DELETED (2026-09-13). No daily or rolling withdrawal cap exists:
+        // `withdrawAmount` (validators.ts) caps a SINGLE withdrawal, `withdraw()` reads no
+        // per-day total, the `DAILY_LIMIT` reason in payments.ts is returned by no adapter,
+        // and /profile/account has no limit control.
+        "You verify your identity once, before your first withdrawal[3]. After that, no withdrawal waits for an officer's review, whatever its size.",
       ],
       citations: [
         { n: 1, href: "/fairness", label: "/fairness" },
         { n: 2, href: "/wallet/withdraw", label: "/wallet/withdraw" },
+        { n: 3, href: "/profile/kyc", label: "/profile/kyc" },
       ],
     };
   }
@@ -306,20 +313,21 @@ function stubReply(userText: string, lang: Lang): Reply {
        * tier model, no per-tier limit, and no per-day cap anywhere in this platform.
        *
        * What is actually true is one rule, and it is the rule the live system prompt
-       * already states: nothing is unlocked incrementally — a player may look around
-       * freely and may do none of deposit, bet or withdraw until an officer approves
-       * one document plus a selfie.
+       * already states: identity is verified once, before a player's first WITHDRAWAL,
+       * and nothing else waits on it (owner ruling 2026-09-13). ⛔ This answer said "you
+       * cannot deposit, bet or withdraw until approved" from 2026-09-05 to 2026-09-13 —
+       * a stub answer is served verbatim, so a superseded rule in it is a false statement
+       * to every player who asks, in the one channel built to help them.
        */
       paragraphs: [
         "Here's how identity verification works on 50pick:",
         "1. Go to **Profile → Verify identity** to start[1]",
         "2. Upload any ONE of four documents — NIDA, passport, driving licence or voter's card — plus a selfie",
-        "3. Until our team approves it you can register, sign in and look around, but you cannot deposit, bet or withdraw",
-        "4. Review is usually done within a day; while it is pending there is nothing else for you to do[2]",
+        "3. You verify once, before your first withdrawal",
+        "4. Our team usually reviews documents within 24 hours; while it is pending there is nothing else for you to do",
       ],
       citations: [
         { n: 1, href: "/profile/kyc", label: "/profile/kyc" },
-        { n: 2, href: "/legal/aml", label: "/legal/aml" },
       ],
     };
   }

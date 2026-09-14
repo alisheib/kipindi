@@ -105,7 +105,13 @@ export const EMAIL_TEMPLATES: readonly EmailSpec[] = [
   { template: "kycSubmittedHtml",          trigger: "src/lib/server/kyc-service.ts",       audience: "player",  chrome: "royal", money: false },
   { template: "kycApprovedHtml",           trigger: "src/lib/server/kyc-service.ts",       audience: "player",  chrome: "gold",  money: false },
   { template: "kycRejectedHtml",           trigger: "src/lib/server/kyc-service.ts",       audience: "player",  chrome: "royal", money: false },
+  // 2026-09-13 · S1 — the written decision about a finally-refused player's balance (Terms §3a).
+  { template: "refusedFundsDecisionHtml",  trigger: "src/lib/server/refused-funds.ts",     audience: "player",  chrome: "royal", money: true },
   { template: "kycMoreInfoHtml",           trigger: "src/lib/server/kyc-service.ts",       audience: "player",  chrome: "royal", money: false },
+  // ⛔ NO "VERIFY BEFORE YOU WITHDRAW" LETTER BELONGS IN THIS LIST (owner, 2026-09-13, the quiet rule).
+  // A player learns identity comes before a withdrawal on the withdrawal screen and in one dismissible
+  // wallet notice; a player EMAIL about identity answers something that happened in verification —
+  // the four KYC letters above and `refusedFundsDecisionHtml`. `test:cert-c1` §5b holds it.
   // ── Agent affiliate programme ─────────────────────────────────────────────
   { template: "agentApprovedHtml",              trigger: "src/lib/server/agent-application-service.ts", audience: "player",  chrome: "gold",  money: true },
   { template: "agentRejectedHtml",              trigger: "src/lib/server/agent-application-service.ts", audience: "player",  chrome: "royal", money: true },
@@ -149,6 +155,9 @@ export const EMAIL_TEMPLATES: readonly EmailSpec[] = [
   { template: "sentinelDownAdminHtml",     trigger: "src/lib/server/notification-service.ts", audience: "officer", chrome: "royal", money: false },
   { template: "aiCreditLimitAdminHtml",    trigger: "src/lib/server/notification-service.ts", audience: "officer", chrome: "royal", money: false },
   { template: "backupUnhealthyAdminHtml",  trigger: "src/lib/server/notification-service.ts", audience: "officer", chrome: "royal", money: false },
+  // 2026-09-13 · the identity review queue became a MONEY queue — a player waits on it for their own
+  // withdrawal. One alert per submission past `KYC_REVIEW_SLA_HOURS`, never one per tick.
+  { template: "kycReviewOverdueAdminHtml", trigger: "src/lib/server/notification-service.ts", audience: "officer", chrome: "royal", money: false },
 ];
 
 /**
@@ -255,6 +264,11 @@ export const NOTIFICATION_EMITTERS: readonly EmitterSpec[] = [
   { fn: "notifyReferralJoined",        kind: "AFFILIATE",         audience: "player" },
   { fn: "notifyReferralReward",        kind: "AFFILIATE",         audience: "player" },
   { fn: "notifyKyc",                   kind: "KYC",               audience: "player" },
+  // ⛔ No "verify before you withdraw" bell row belongs here either (owner, 2026-09-13, the quiet rule —
+  // see EMAIL_TEMPLATES). `notifyKyc` answers verification events; nothing prompts. `test:cert-c3` §7.
+  // 2026-09-13 · S1 — the decision about a finally-refused player's balance. A money kind: every
+  // outcome states a figure (held, returned or not returned).
+  { fn: "notifyRefusedFundsDecision",  kind: "WITHDRAW",          audience: "player" },
   { fn: "notifySof",                   kind: "KYC",               audience: "player" },
   { fn: "notifySelfExclusion",         kind: "RG",                audience: "player" },
   { fn: "notifyCoolOff",               kind: "RG",                audience: "player" },
@@ -294,4 +308,7 @@ export const NOTIFICATION_EMITTERS: readonly EmitterSpec[] = [
   { fn: "notifyAdminsSentinelDown",    kind: "SECURITY",          audience: "officer" },
   { fn: "notifyAdminsAiCreditLimit",   kind: "SECURITY",          audience: "officer" },
   { fn: "notifyAdminsBackupUnhealthy", kind: "SECURITY",          audience: "officer" },
+  // 2026-09-13 · an identity review past `KYC_REVIEW_SLA_HOURS`. KYC, like `notifyAdminKycReview`: it is
+  // the same queue, and the kind is what routes an officer's bell tint to it.
+  { fn: "notifyAdminsKycReviewOverdue", kind: "KYC",              audience: "officer" },
 ];

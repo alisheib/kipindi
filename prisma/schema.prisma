@@ -572,6 +572,14 @@ model Wallet {
   userId       String       @unique
   user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   status       WalletStatus @default(ACTIVE)
+  /// WHY the wallet is frozen — one entry per independent hold (2026-09-13).
+  /// `SELF_EXCLUSION` · `IDENTITY_REFUSED` · `OFFICER` (`src/lib/wallet-freeze-reasons.ts`).
+  /// ⛔ `status` is FROZEN exactly when this is non-empty (CLOSED is terminal and ignores it),
+  /// and every lifter removes ONLY its own reason. Before this column, self-exclusion was the
+  /// only writer of FROZEN, so re-opening a served exclusion simply unfroze the wallet — which
+  /// would have silently lifted an officer's freeze on a sanctions refusal the day a second
+  /// writer existed. Written only by `src/lib/server/wallet-freeze.ts`.
+  freezeReasons String[]  @default([])
   balance      Decimal      @default(0) @db.Decimal(18, 2)
   pending      Decimal      @default(0) @db.Decimal(18, 2)
   hold         Decimal      @default(0) @db.Decimal(18, 2)

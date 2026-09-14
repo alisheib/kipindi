@@ -274,7 +274,7 @@ export function AiToolkit({ status, canAct = true }: { status: AiToolkitStatus; 
           <>
             <p>
               With this ON, a market reaching its resolve date is sealed by the <strong>AI alone</strong> —
-              no human officer — whenever it is at least <strong>{confidenceThreshold}% confident</strong>
+              no human officer — whenever it is at least <strong>{confidenceThreshold}% confident</strong>{" "}
               the outcome is locked. The money then pays automatically once the objection window closes.
             </p>
             <p className="mt-2">

@@ -10,13 +10,14 @@
  * mark rather than a colour, so `test:gold-is-money` has nothing to object to and the page keeps
  * one meaning for gold.
  *
- * ⭐ THE M-PESA MARK GOES THROUGH `PaymentLogo`. The marks are TRADEMARKED and must not be
- * redrawn or re-tinted; `public/pay/mpesa.svg` is a vertical lockup drawn for a light surface, so
- * it needs the white tile that component owns. ⛔ Never inline the SVG.
+ * ⭐ THE MOBILE-MONEY MARKS GO THROUGH `PaymentLogo`. The marks are TRADEMARKED and must not be
+ * redrawn or re-tinted; every one in `public/pay/` is drawn for a light surface, so it needs the
+ * white tile that component owns. ⛔ Never inline the SVG.
  */
 import Link from "next/link";
 import { I } from "@/components/ui/glyphs";
 import { PaymentLogo } from "@/components/wallet/payment-logo";
+import { MOBILE_MONEY_METHODS } from "@/lib/payment-providers";
 import { Chip } from "@/components/ui/chip";
 import { STATUS_TONE, TONE_CHIP } from "@/lib/status-tone";
 import { pickLocalized } from "@/lib/localized";
@@ -75,13 +76,22 @@ export function TrustBand({
           {cells.map((c) => (
             <div key={c.h}>
               <span className="kp-trust__glyph" aria-hidden>{c.glyph}</span>
-              <h3 className="kp-trust__h">{c.h}</h3>
-              <p className="kp-trust__b">{c.b}</p>
+              {/* `text-balance` (2026-09-13): at 1280 and 768 the zh bodies left one glyph alone on
+                  the last line. Balance, not pretty, because Firefox and older Safari ignore pretty. */}
+              <h3 className="kp-trust__h text-balance">{c.h}</h3>
+              <p className="kp-trust__b text-balance">{c.b}</p>
               {c.marks && (
-                <span className="kp-trust__marks">
-                  {/* The official mark on its own white tile. `hue` is unused on this path — it
-                      only feeds the initials placeholder when a mark has not been delivered. */}
-                  <PaymentLogo id="MPESA" name="M-Pesa" hue={140} size={40} />
+                /* All four rails (2026-09-13). The cell says "mobile money in and out", and one
+                   M-Pesa mark was left over from the old M-Pesa-only copy. The list and its order
+                   come from the catalogue the deposit and withdraw pickers use. Four 40px tiles
+                   plus three 8px gaps is 184px, and the middle cell at 768 has 192px. `flex-wrap`
+                   lets narrower cells wrap instead of overflowing. */
+                <span className="kp-trust__marks flex-wrap">
+                  {/* Each official mark sits on its own white tile. `hue` is not used for a
+                      delivered logo; it only colours the initials placeholder. */}
+                  {MOBILE_MONEY_METHODS.map((m) => (
+                    <PaymentLogo key={m.id} id={m.id} name={m.name} hue={m.hue ?? 0} size={40} />
+                  ))}
                 </span>
               )}
             </div>

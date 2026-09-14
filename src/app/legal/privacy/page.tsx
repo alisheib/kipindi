@@ -57,7 +57,7 @@ function content(): Record<Locale, React.ReactNode> { return {
       <LegalSection n="3" title="Lawful basis">
         <ul className="list-disc pl-5 space-y-1">
           <li><strong className="text-text">Performance of contract</strong>: account, wallet, bet placement, settlement</li>
-          <li><strong className="text-text">Legal obligation</strong>: KYC under the Gaming Act, AML/CFT under POCA, tax under the Income Tax Act</li>
+          <li><strong className="text-text">Legal obligation</strong>: identity verification (KYC) and AML/CFT under the Anti-Money Laundering Act and POCA, tax under the Income Tax Act</li>
           <li><strong className="text-text">Legitimate interest</strong>: fraud prevention, market-integrity monitoring, security alerting</li>
           <li><strong className="text-text">Consent</strong>: marketing communications (revocable any time)</li>
         </ul>
@@ -145,7 +145,7 @@ function content(): Record<Locale, React.ReactNode> { return {
       <LegalSection n="3" title="Msingi wa kisheria">
         <ul className="list-disc pl-5 space-y-1">
           <li><strong className="text-text">Utekelezaji wa mkataba</strong>: akaunti, pochi, uwekaji wa dau, ufungaji</li>
-          <li><strong className="text-text">Wajibu wa kisheria</strong>: KYC chini ya Gaming Act, AML/CFT chini ya POCA, kodi chini ya Income Tax Act</li>
+          <li><strong className="text-text">Wajibu wa kisheria</strong>: uthibitisho wa utambulisho (KYC) na AML/CFT chini ya Anti-Money Laundering Act na POCA, kodi chini ya Income Tax Act</li>
           <li><strong className="text-text">Maslahi halali</strong>: kuzuia udanganyifu, ufuatiliaji wa uadilifu wa soko, tahadhari za usalama</li>
           <li><strong className="text-text">Ridhaa</strong>: mawasiliano ya matangazo (yanaweza kufutwa wakati wowote)</li>
         </ul>
@@ -203,7 +203,7 @@ function content(): Record<Locale, React.ReactNode> { return {
           Mtu anapoomba kuwa wakala wa 50pick, hutupatia majina, mawasiliano na nakala za
           vitambulisho vya taifa vya wadhamini wawili, na anathibitisha kuwa kila mdhamini
           amekubali. Kama wewe ni mdhamini wa aina hiyo: tunahifadhi taarifa zako kwa ajili ya
-          kuhakiki maombi hayo pekee; nakala ya kitambulisho huharibiwa siku {AGENT_REFEREE_DOC_HOLD_DAYS}
+          kuhakiki maombi hayo pekee; nakala ya kitambulisho huharibiwa siku {AGENT_REFEREE_DOC_HOLD_DAYS}{" "}
           baada ya uamuzi, na mara moja maombi yakikataliwa; hatuwasiliani nawe kamwe kwa
           matangazo; na unaweza kutuomba tuharibu taarifa zako mapema zaidi kwa kumwandikia
           msimamizi wa data aliyetajwa katika §1 — huhitaji kuwa na akaunti.
@@ -216,8 +216,7 @@ function content(): Record<Locale, React.ReactNode> { return {
       <LegalSection n="1" title="数据控制者">
         <p>
           50pick Ltd，坦桑尼亚达累斯萨拉姆。联系方式：{" "}
-          <a href={`mailto:${SUPPORT_EMAIL()}`} className="font-mono text-brand-300 underline-offset-2 hover:underline">{SUPPORT_EMAIL()}</a>。我们的数据保护官（DPO）
-          可通过同一地址联系。
+          <a href={`mailto:${SUPPORT_EMAIL()}`} className="font-mono text-brand-300 underline-offset-2 hover:underline">{SUPPORT_EMAIL()}</a>。我们的数据保护官（DPO）可通过同一地址联系。
         </p>
       </LegalSection>
 
@@ -234,7 +233,7 @@ function content(): Record<Locale, React.ReactNode> { return {
       <LegalSection n="3" title="法律依据">
         <ul className="list-disc pl-5 space-y-1">
           <li><strong className="text-text">合同履行</strong>：账户、钱包、下注、结算</li>
-          <li><strong className="text-text">法律义务</strong>：依据 Gaming Act 的 KYC、依据 POCA 的 AML/CFT、依据 Income Tax Act 的税务</li>
+          <li><strong className="text-text">法律义务</strong>：依据 Anti-Money Laundering Act 与 POCA 的身份验证（KYC）及 AML/CFT、依据 Income Tax Act 的税务</li>
           <li><strong className="text-text">合法利益</strong>：欺诈防范、市场完整性监控、安全告警</li>
           <li><strong className="text-text">同意</strong>：营销通讯（可随时撤回）</li>
         </ul>
@@ -273,25 +272,19 @@ function content(): Record<Locale, React.ReactNode> { return {
 
       <LegalSection n="7" title="Cookie">
         <p>
-          我们仅使用必要的最小集合：会话认证（HMAC 签名的 HttpOnly cookie，7 天 TTL）、主题偏好、语言偏好。不使用任何
-          第三方广告或追踪 cookie。
+          我们仅使用必要的最小集合：会话认证（HMAC 签名的 HttpOnly cookie，7 天 TTL）、主题偏好、语言偏好。不使用任何第三方广告或追踪 cookie。
         </p>
       </LegalSection>
 
       <LegalSection n="8" title="安全">
         <p>
-          会话以 HMAC-SHA-256 签名。OTP 验证码采用 scrypt + 每个 OTP 独立盐值（salt）+ 全局胡椒值（pepper）进行哈希。
-          密码：采用 scrypt 与每位用户独立盐值（NIST SP 800-132）。所有传输中的数据均通过 TLS 1.2+ 传输。数据库层静态数据通过 AES-256 加密。每年进行
-          一次 ISO 27001 审计；每年进行两次渗透测试。
+          会话以 HMAC-SHA-256 签名。OTP 验证码采用 scrypt + 每个 OTP 独立盐值（salt）+ 全局胡椒值（pepper）进行哈希。密码：采用 scrypt 与每位用户独立盐值（NIST SP 800-132）。所有传输中的数据均通过 TLS 1.2+ 传输。数据库层静态数据通过 AES-256 加密。每年进行一次 ISO 27001 审计；每年进行两次渗透测试。
         </p>
       </LegalSection>
 
       <LegalSection n="9" title="非客户人士（推荐人）">
         <p>
-          当有人申请成为 50pick 代理时，会向我们提供两位推荐人的姓名、联系方式及国民身份证扫描件，
-          并确认每位推荐人均已同意。若您是此类推荐人：我们仅为核实该申请而保存您的信息；身份证扫描件
-          在决定作出后 {AGENT_REFEREE_DOC_HOLD_DAYS} 天销毁，申请被拒绝时立即销毁；我们绝不会为营销目的联系您；
-          您也可以写信给第 1 条所列的数据控制者，要求提前销毁您的信息——无需拥有账户。
+          当有人申请成为 50pick 代理时，会向我们提供两位推荐人的姓名、联系方式及国民身份证扫描件，并确认每位推荐人均已同意。若您是此类推荐人：我们仅为核实该申请而保存您的信息；身份证扫描件在决定作出后 {AGENT_REFEREE_DOC_HOLD_DAYS} 天销毁，申请被拒绝时立即销毁；我们绝不会为营销目的联系您；您也可以写信给第 1 条所列的数据控制者，要求提前销毁您的信息——无需拥有账户。
         </p>
       </LegalSection>
     </>

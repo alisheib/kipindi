@@ -21,11 +21,13 @@
  */
 import { ScrollX } from "@/components/ui/scroll-x";
 import { formatTzs, pctNum } from "@/lib/utils";
+import { poolFee, resolveFeeModel } from "@/lib/payout";
 import type { RateConfig } from "@/lib/server/market-config";
 
 /** Every live number the two documents quote. ⛔ Nothing here may be typed by hand. */
 export type RulesRates = {
-  /** Bare number for a "N%" slot — 13, not 0.13. The copy carries the "%" so Chinese can place it. */
+  /** Bare number for a "N%" slot — 13, not 0.13. The copy carries the "%" so Chinese can place it.
+   *  It is our fee as a share of the LOSING side (see `losingSideRate`). */
   commissionPct: number;
   /** What the winning side actually receives from the losing pool, as a percentage. */
   netSharePct: number;
@@ -34,20 +36,40 @@ export type RulesRates = {
   maxStake: number;
   freeExitMinutes: number;
   objectionHours: number;
-  /** The raw rate, kept so the worked example can compute rather than restate. */
+  /** The raw losing-side rate, kept so the worked example can compute rather than restate. */
   commissionRate: number;
 };
 
+/**
+ * The fee the rules quote, as a share of the LOSING side.
+ *
+ * 🔴 FIXED 2026-09-13. This read `cfg.commissionRate` — the RETIRED capped-commission rate
+ * (market-config: "legacy arm only", 0.10) — so both rules documents and their worked examples
+ * told players 10% while `/legal/terms` and settlement charged 13%. The live model is
+ * `loser-share`: fee = (platformFeeRate + operatorFeeRate) × the losing pool, with no ceiling.
+ * The rate is now read back from `poolFee` itself (`shareOfLosers` is the loser-share rate after
+ * the same resolve and clamp settlement applies), so these documents cannot quote a number the
+ * arithmetic does not charge.
+ *
+ * ⚠️ A global config set back to `capped-commission` has no flat share of the losing side, and
+ * the documents' prose would be false under it whatever number they showed; that arm keeps its
+ * headline rate, and a return to it needs the prose rewritten first.
+ */
+function losingSideRate(cfg: RateConfig): number {
+  return resolveFeeModel(cfg) === "loser-share" ? poolFee(0, 0, cfg).shareOfLosers : cfg.commissionRate;
+}
+
 export function ratesFrom(cfg: RateConfig): RulesRates {
+  const rate = losingSideRate(cfg);
   return {
-    commissionPct: pctNum(cfg.commissionRate),
-    netSharePct: pctNum(1 - cfg.commissionRate),
+    commissionPct: pctNum(rate),
+    netSharePct: pctNum(1 - rate),
     withdrawalFeePct: pctNum(cfg.withdrawalFeeRate),
     minStake: cfg.minStake,
     maxStake: cfg.maxStake,
     freeExitMinutes: cfg.freeExitGraceMinutes,
     objectionHours: cfg.objectionWindowHours,
-    commissionRate: cfg.commissionRate,
+    commissionRate: rate,
   };
 }
 

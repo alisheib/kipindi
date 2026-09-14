@@ -37,6 +37,8 @@ export function Reveal({
   band,
   className,
   children,
+  threshold = 0.12,
+  rootMargin = "0px 0px -8% 0px",
   ...rest
 }: {
   as?: "section" | "div";
@@ -44,6 +46,13 @@ export function Reveal({
   band: string;
   className?: string;
   children: React.ReactNode;
+  /**
+   * The kit's 0.12 by default. ⚠️ 2026-09-13: a ratio is a share of the ELEMENT, so a band taller
+   * than ~7.7 viewports (0.92 / 0.12) can never show 12% of itself, and never reveals — the home
+   * board at 360 was a permanent blank band. A tall band passes 0 (plus a margin) instead.
+   */
+  threshold?: number;
+  rootMargin?: string;
 } & React.HTMLAttributes<HTMLElement>) {
   const ref = useRef<HTMLElement>(null);
   const [shown, setShown] = useState(false);
@@ -74,11 +83,11 @@ export function Reveal({
           io.disconnect();     // once, then never again
         }
       },
-      { threshold: 0.12, rootMargin: "0px 0px -8% 0px" },
+      { threshold, rootMargin },
     );
     io.observe(el);
     return () => io.disconnect();
-  }, []);
+  }, [threshold, rootMargin]);
 
   return (
     <Tag

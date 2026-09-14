@@ -12,9 +12,6 @@ import { WatchStar } from "@/components/markets/watch-star";
 import { isWatching } from "@/lib/server/watchlist-service";
 import { resolveWinShareToken } from "@/lib/server/share-token";
 import { SidePicker } from "@/components/markets/side-picker";
-import { KycGatePanel } from "@/components/kyc/kyc-gate-panel";
-import { kycGateState } from "@/lib/kyc-gate-state";
-import { getKycStatus } from "@/lib/server/kyc-service";
 import { MarketCard } from "@/components/markets/market-card";
 import { getSimilarMarkets } from "@/lib/server/market-service";
 import { ChartToggle } from "@/components/charts/chart-toggle";
@@ -340,23 +337,14 @@ export default async function MarketDetail({
   // over a stake the server would have funded without complaint — the platform
   // refusing to spend the bonus it had just given them.
   let myBalance: number | undefined;
-  // The identity gate, for RENDERING only — `buyPosition` re-checks it on submit, so this
-  // decides what the player is shown, never what they are allowed. `null` = approved.
-  //
-  // ⛔ A FAILED READ SHOWS THE GATE, NOT THE DIAL. Every other degrade on this page fails
-  // toward showing the player MORE; this one fails toward showing them a step they may not
-  // need, because the alternative is a stake control the server will refuse. Being asked to
-  // verify when you already have is a moment of confusion; being handed a dial that eats
-  // your tap and returns a modal is a money surface lying.
-  let playGate: ReturnType<typeof kycGateState> = "not_started";
+  // ⛔ NO IDENTITY READ ON THIS PAGE SINCE 2026-09-13. A stake asks no identity question
+  // (`kyc-gate.ts`); from 2026-09-05 to 2026-09-13 this page read the KYC row and replaced the
+  // conviction dial with an identity panel, and both are deleted. Do not restore them.
   if (session) {
     try {
       const w = await db.wallet.findByUserId(session.userId);
       myBalance = (w?.balance ?? 0) + (w?.bonusBalance ?? 0);
     } catch { myBalance = undefined; }
-    try {
-      playGate = kycGateState((await getKycStatus(session.userId))?.status);
-    } catch { /* graceful — the gate shows, see above */ }
   }
 
   // Pre-compute hedge-warning for the aside
@@ -442,9 +430,11 @@ export default async function MarketDetail({
         <div className="mb-3 flex flex-wrap items-center gap-2">
           <Chip variant="cat" size="lg">{marketCategoryLabel(t, m.category)}</Chip>
           {/* C1a hero state — LIVE only while actually accepting predictions
-              (open/closing); waiting & resolved carry their own state chips. */}
+              (open/closing); waiting & resolved carry their own state chips.
+              2026-09-13 — `market.statusLive`, the key the market cards use: zh `common.live`
+              is 直播 ("broadcast") while the card the player tapped said 实时. */}
           {(heroState === "open" || heroState === "closing") && m.status === "LIVE" && (
-            <Chip variant="live" size="lg" dot>{t.common.live}</Chip>
+            <Chip variant="live" size="lg" dot>{t.market.statusLive}</Chip>
           )}
           {heroState === "closing" && (
             <span className="closing-pill inline-flex items-center gap-1.5 rounded-full border h-[26px] px-2.5 font-mono text-caption font-bold uppercase tracking-[0.10em] tabular-nums">
@@ -489,8 +479,9 @@ export default async function MarketDetail({
             KEPT and lands on `text-display-3` (36): the desktop emphasis is a deliberate part
             of this page's composition, and 36 is the next rung above 28. ⛔ NOT
             `text-title-md md:text-title-lg` (22/28) — that demotes the market question below
-            every other page title, which is the opposite of what this page is for. */}
-        <h1 className="font-display text-title-lg md:text-display-3 font-bold leading-tight tracking-[-0.02em] text-text">{pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh)}</h1>
+            every other page title, which is the opposite of what this page is for.
+            2026-09-13 — balanced wrapping: sw titles left one word alone on line two. */}
+        <h1 className="font-display text-title-lg md:text-display-3 font-bold leading-tight tracking-[-0.02em] text-text text-balance">{pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh)}</h1>
       </header>
 
       {/* ── Main two-column layout ──
@@ -532,8 +523,10 @@ export default async function MarketDetail({
             </p>
           )}
 
-          {/* 2. KPI strip — volume, participation, timing at a glance */}
-          <div className="grid grid-cols-3 gap-3">
+          {/* 2. KPI strip — volume, participation, timing at a glance.
+              2026-09-13 — two columns on a phone with the date tile spanning both: three across
+              at 360 wrapped every label one word per line. `sm` and up is unchanged. */}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             {/* "TZS 0" is factually true, but on a fresh market it reads as
                 failure rather than as an opening. Same words the card uses, so
                 the two surfaces say the same thing about the same state. */}
@@ -544,7 +537,7 @@ export default async function MarketDetail({
                 note on the function below. */}
             <Stat size="xl" labelStyle="widest" boxed="card" label={t.market.volume}     value={freshMarket ? t.market.noPoolYet : formatTzsCompact(m.yesPool + m.noPool)} icon={<I.chart s={14} />} />
             <Stat size="xl" labelStyle="widest" boxed="card" label={t.market.predictors} value={String(m.predictorCount)}     icon={<I.users s={14} />} />
-            <KPI label={t.market.resolves}   value={fmtTime(m.resolutionAt)} mono />
+            <KPI label={t.market.resolves}   value={fmtTime(m.resolutionAt)} mono className="col-span-2 sm:col-span-1" />
           </div>
 
           {/* 2b. Resolution panel — outcome, attestation, pool + fee (resolved only) */}
@@ -753,8 +746,11 @@ export default async function MarketDetail({
             Reproduced on production at 1040–1200px wide: the band just above the `lg`
             breakpoint where row 1 is still short enough for the panel to be pinned
             while row 2 has already scrolled into it.
-            Stays well under the nav (z-40) and the Needle (z-45). */}
-        <aside className="order-1 lg:order-2 lg:col-start-2 lg:row-start-1 space-y-3 lg:sticky lg:top-6 lg:z-10">
+            Stays well under the nav (z-40) and the Needle (z-45).
+            2026-09-13 — offset 72px = the 56px sticky header (an inline height in top-app-bar.tsx;
+            no token exists) + 16px air. The old spacing key resolved to 32px on this scale, so
+            the stuck card slid under the header. loading.tsx mirrors it. */}
+        <aside className="order-1 lg:order-2 lg:col-start-2 lg:row-start-1 space-y-3 lg:sticky lg:top-[72px] lg:z-10">
           {!isResolved && m.status === "LIVE" && !closedByTime && !selectionClosed ? (
             session ? (
               <>
@@ -795,14 +791,9 @@ export default async function MarketDetail({
                   )}
                 </div>
               )}
-              {/* ⛔ THE DIAL IS NOT RENDERED FOR AN UNVERIFIED PLAYER — not disabled.
-                  Same rule the guest branch below already follows: a control that cannot
-                  be used is replaced by the thing that unblocks it, one tap away. The
-                  server refuses the stake either way (`buyPositionInner`); this is so the
-                  refusal is never met by surprise, mid-gesture, on the conviction dial. */}
-              {playGate ? (
-                <KycGatePanel state={playGate} returnTo={`/markets/${m.id}`} />
-              ) : (
+              {/* ⛔ The identity panel that replaced this dial for an unverified player from
+                  2026-09-05 to 2026-09-13 is deleted: a stake asks no identity question
+                  (`kyc-gate.ts`). Every signed-in player gets the dial. */}
               <SidePicker
                 marketId={m.id}
                 marketTitle={pickLocalized(locale, m.titleEn, m.titleSw, m.titleZh)}
@@ -819,7 +810,6 @@ export default async function MarketDetail({
                 maxStake={stakeCfg.maxStake}
                 boardHref="/markets"
               />
-              )}
               </>
             ) : (
               /* Sign-in CTA — styled to invite prediction */
@@ -1007,9 +997,9 @@ function similarTimeLeft(iso: string, t: Awaited<ReturnType<typeof getServerT>>[
  *   (b) an owner decision to accept 13.5/bold — at which point this function goes.
  * Either way it is a change to a file this pass does not own.
  */
-function KPI({ label, value, icon, mono }: { label: string; value: string; icon?: React.ReactNode; mono?: boolean }) {
+function KPI({ label, value, icon, mono, className }: { label: string; value: string; icon?: React.ReactNode; mono?: boolean; className?: string }) {
   return (
-    <div className="rounded-md border border-border bg-bg-elevated p-3">
+    <div className={`rounded-md border border-border bg-bg-elevated p-3 ${className ?? ""}`}>
       <div className="flex items-center gap-1.5 text-text-subtle">
         {icon}
         <p className="font-mono text-micro uppercase eyebrow font-semibold">{label}</p>

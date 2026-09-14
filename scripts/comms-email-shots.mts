@@ -70,6 +70,11 @@ const PAGES: { name: string; html: string }[] = [
   { name: "kycApprovedHtml", html: E.kycApprovedHtml({ name: "Asha", reference: "kyc_41ab77cd" }) },
   { name: "kycRejectedHtml", html: E.kycRejectedHtml({ reason: "The photograph of the back of your ID was too blurred for our officer to read the document number.", reference: "kyc_41ab77cd" }) },
   { name: "kycMoreInfoHtml", html: E.kycMoreInfoHtml({ reason: "Please add a photograph of the back of your ID card.", reference: "kyc_41ab77cd" }) },
+  // 2026-09-13 · the officer's written decision on a finally-refused player's balance (S1), on two
+  // outcomes, and the officer's overdue-review alert.
+  { name: "refusedFundsDecisionHtml", html: E.refusedFundsDecisionHtml({ outcome: "RETURN_DEPOSITS", returnedTzs: 20_000, forfeitedTzs: 5_000, balanceTzs: 25_000, reason: "You must be 18 or older to use 50pick.", reference: "rfd_a1b2c3d4e5" }) },
+  { name: "refusedFundsDecisionHtml.hold", html: E.refusedFundsDecisionHtml({ outcome: "HOLD_PENDING_APPEAL", returnedTzs: 0, forfeitedTzs: 0, balanceTzs: 25_000, reason: "This identity is already registered to another account.", reference: "rfd_f6g7h8i9j0" }) },
+  { name: "kycReviewOverdueAdminHtml", html: E.kycReviewOverdueAdminHtml({ reference: "kyc_41ab77cd", playerLabel: "Asha Mwakalinga", submittedAt: "2026-09-12T08:00:00.000Z", hoursWaiting: 26, reviewUrl: "https://www.50pick.tz/admin/kyc/u1" }) },
   { name: "kycSubmittedAdminHtml", html: E.kycSubmittedAdminHtml({ reference: "kyc_41ab77cd", phoneMasked: "+2557••••5678", name: "Asha Mwakalinga", nidaMasked: "•••• 1234", submittedAt: "2026-07-31T09:00:00.000Z", reviewUrl: "/admin/players/u1?tab=kyc" }) },
   { name: "sofSubmittedHtml", html: E.sofSubmittedHtml() },
   { name: "sofDecisionHtml", html: E.sofDecisionHtml({ status: "ACCEPTED", note: "Payslips accepted" }) },

@@ -106,8 +106,17 @@ section("§2 · where it must never appear");
   ok("2.4 ⭐ suppression is tested in the EFFECT *and* in the RENDER",
      (c.match(/suppressedRoute\(pathname\)/g) ?? []).length >= 2,
      "first-visit-primer shipped this exact bug: the effect returned early on the new path, `open` stayed true, and the card sat over the bet widget");
-  ok("2.5 it never covers a real dialog",
-     /\[role="dialog"\]\[aria-modal="true"\]/.test(c));
+  /* 🔴 2026-09-13 — "A REAL DIALOG" MEANS A VISIBLE ONE. This asserted the bare selector
+     `[role="dialog"][aria-modal="true"]` in the component, and the component obeyed it: it deferred
+     whenever that matched. The markets filter sheet keeps a CLOSED dialog in the DOM, so on /markets it
+     always matched and the panel never appeared there — measured with a browser probe, not inferred.
+     The deferral now goes through the shared `isModalDialogOpen()` (src/lib/modal-open.ts), which counts
+     only a dialog with a box that is not hidden — and the reality check uses the same helper. */
+  const modalHelper = read("src/lib/modal-open.ts");
+  ok("2.5 it never covers a real dialog — through the shared visible-modal check",
+     /isModalDialogOpen\(\)/.test(c));
+  ok("2.5b …which counts only a dialog that is actually on screen, not one merely in the DOM",
+     /aria-modal="true"/.test(modalHelper) && /getBoundingClientRect/.test(modalHelper) && /width <= 0 \|\| box\.height <= 0/.test(modalHelper));
   /* 🔴 THE WHOLE COMPLIANCE OVERRIDE RESTS ON THIS, AND IT USED TO BE AN IDENTIFIER TEST.
      `promoSuppressed` appears twice in the component's own signature, so deleting all three
      BEHAVIOURAL uses left the check green — and nothing else would have caught it: this repo's

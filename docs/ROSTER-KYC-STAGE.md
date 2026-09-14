@@ -1,6 +1,7 @@
 # The roster's KYC stage — who uploaded, and who did not
 
-> **Status** 🟢 Shipped 2026-09-11. **Authority for this feature.**
+> **Status** 🟢 Shipped 2026-09-11 · ⚠️ **EIGHT stages since 2026-09-13** (§2a — identity moved to
+> withdrawal, so an unverified player can hold money, and the roster now says which). **Authority for this feature.**
 > **Surface** `/admin/players` (the console calls it **Roster**).
 > **Guards** `npm run test:kyc-stage` (in `predeploy`) · `npm run qa:kyc-roster` (localhost) ·
 > `npm run test:kyc-restart-docs` (needs a real Postgres).
@@ -37,14 +38,15 @@ reachable. That is why the fix is a derived column and not a relabelling.
 
 ---
 
-## 2 · The seven words
+## 2 · The eight words
 
 Scan order is workflow order, and **the first word says whose move it is** — the only
-decision an officer scanning 500 rows actually makes. Exactly **one** of the seven is ours.
+decision an officer scanning 500 rows actually makes. Exactly **one** of the eight is ours.
 
 | Stage | Word | Tone | Whose move |
 |---|---|---|---|
 | `nothing_yet` | **Nothing yet** | slate | player |
+| `funded_nothing_yet` | **Funded · nothing sent** | slate | player — ⚠️ money-rights viewers only (§2a, §5) |
 | `uploaded` | **Uploaded · not sent** | amber | player ⭐ |
 | `with_us` | **Submitted · with us** | royal | **US** |
 | `more_needed` | **More needed · player** | amber | player |
@@ -54,6 +56,16 @@ decision an officer scanning 500 rows actually makes. Exactly **one** of the sev
 | *(render state)* | **Not available** | slate | the read failed |
 
 ### Word rulings — each is load-bearing
+
+- ⛔ **A FINAL refusal reads "Finally refused", and it is not a ninth stage** (2026-09-13). A player
+  refused on UNDERAGE, SANCTIONED or DUPLICATE_IDENTITY cannot resubmit and their wallet is frozen, so
+  "Rejected · after upload" read as a retryable file. `isFinalRefusalCell(stage, rejectReason)` swaps
+  only the WORD on the roster (`REVIEW.kycRefusedFinal`, the word `/admin/kyc/refused` uses). `/admin/kyc`
+  needs no swap: its tables list only `with_us`, `uploaded`, `more_needed` and `funded_nothing_yet`, never a
+  rejected stage. The stage, its tone, the filter and the tally are unchanged, because a
+  new stage would break the closed set `test:kyc-stage` §4f pins. ⚠️ So the filter option
+  "Rejected · after upload" still lists final refusals. The eight words are written with
+  non-breaking spaces, so a stage chip never wraps inside its capsule.
 
 - ⛔ **"Submitted" appears on exactly ONE stage**, and it is the one where `submittedAt` is
   non-null by construction. `uploaded` is a player who attached every required photo and
@@ -65,12 +77,14 @@ decision an officer scanning 500 rows actually makes. Exactly **one** of the sev
 - ⛔ **No word contains "Pending".** The Account column on the same row already reads "Pending
   KYC" and both render upper-cased — "PENDING KYC" beside "PENDING REVIEW" two cells apart is
   the complaint relocated, not answered.
-- ⛔ **Never word `nothing_yet` as "never opened KYC".** Both sign-up doors redirect a new
-  account to `/profile/kyc?welcome=new`, which creates the row — so a missing row today means
-  a legacy account, an abandon, a **swallowed `startKyc` failure**, or a non-player. "Nothing
-  yet" is honest for all four; "never opened" would accuse a player the platform itself failed.
+- ⛔ **Never word `nothing_yet` as "never opened KYC".** From 2026-09-05 to 2026-09-13 both
+  sign-up doors redirected a new account to `/profile/kyc`, which created the row. Since the
+  2026-09-13 ruling a new player lands on the deposit page instead, so a missing row is now the
+  **normal** state of a player who deposits and plays — besides an abandon, a **swallowed
+  `startKyc` failure**, or a non-player. "Nothing yet" is honest for all of them; "never opened"
+  would accuse a player of skipping a step the platform no longer asks of them.
 - **EN-only**, like every family on this console. The lexicon forbids inventing Swahili, and
-  four of the seven have no shipped source to lift from.
+  five of the eight have no shipped source to lift from.
 
 ### Amber is spent deliberately
 
@@ -80,13 +94,35 @@ sitting on a complete upload they never sent, and an officer's outstanding reque
 resulting scan is the direct answer to *"it says pending kyc always"*: a sea of **slate**,
 **amber** where somebody must act, **royal** for our own queue, **green** done, **rose** refused.
 
+### 2a · The eighth word — money (2026-09-13)
+
+From 2026-09-13 identity is asked before a **withdrawal** and before nothing else
+(`docs/COMPLIANCE-DECISIONS.md`), so an account that has sent us nothing can hold real money. That
+is the population a compliance officer most needs to see, and "Nothing yet" hid it.
+
+- **`funded_nothing_yet`** ⇔ nothing sent (no row, or `NOT_STARTED` / `IN_PROGRESS` with 0 documents)
+  **and** never approved (`approvedEver` — the withdrawal gate's own predicate, `src/lib/kyc-approval.ts`)
+  **and** `balance + hold > 0` (`walletHeldTzs`, the liability basis; bonus excluded).
+- ⛔ **Money changes no other stage.** `test:kyc-stage` §8 proves it over the whole input space. A
+  once-approved player under re-verification who holds money stays "Nothing yet" — they can still
+  withdraw, so they are not the population this word exists for.
+- **Slate, not amber.** Amber would repaint the new normal majority as "act now" — the exact
+  complaint §1 answered.
+- `kycStage(facts, money)` takes money as a **required** second argument; `MONEY_NOT_APPLIED` is
+  not zero, and a viewer without money rights, or a failed wallet read, passes it.
+- The same page gains a money axis, `?funded=held|none`, and `/admin/finance` a **"Held for
+  unverified"** tile beside "Wallet liability" (same basis, so it is a subset of it; frozen and
+  closed never-approved money rides its caption). A failed read shows **Not available**, never
+  TZS 0.
+
 ---
 
 ## 3 · Where the code lives
 
 | File | Role |
 |---|---|
-| `src/lib/kyc-stage.ts` | The derivation. Pure, imports nothing, exhaustive by construction. |
+| `src/lib/kyc-stage.ts` | The derivation. Pure (imports only `kyc-approval.ts` and, since 2026-09-13, `kyc-refusal.ts` for `isFinalRefusalCell`), exhaustive by construction. Also the money tally `tallyHeldForUnverified`. |
+| `src/lib/server/kyc-money.ts` | The one server join of identity × wallets (`readKycMoneySnapshot`, `kycMoneyRows`) — never throws, each failed half named. |
 | `src/lib/admin-status-lexicon.ts` → `KYC_STAGE` | The words. |
 | `src/lib/status-tone.ts` → `KYC_*` | The colours. |
 | `src/components/admin/status-badge.tsx` → `KycStageBadge` | Enum → chip. |
@@ -176,6 +212,15 @@ KPI, by mix bar and via `?status=PENDING_KYC`.
 What stays privileged is the submission's **contents** — id number, images, date of birth —
 and that is untouched: still behind the PII gate and `<Sensitive>` on the detail page. The
 roster cell carries **a workflow word and nothing else**.
+
+⚠️ **The MONEY split is gated, and that is not a contradiction (2026-09-13).** "Funded · nothing
+sent" is a standing-balance fact, and SUPPORT reads `money.figures` masked (`roles.ts`). So the funded
+stage, the `?funded=` axis, the money column and the balance sort are offered only to
+`canView(role, "accounting")`; SUPPORT sees the same person as "Nothing yet" — which claims only what
+it always claimed — and its render reads **no wallet at all**. This also closed a live leak:
+`?sort=balance` used to load every wallet and order the roster by balance for SUPPORT too. (The
+`?status=PENDING_KYC` view named above no longer exists: that status gated nothing, new accounts are
+created `ACTIVE`, and the migration normalised the rest.)
 
 ---
 

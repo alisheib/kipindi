@@ -305,10 +305,15 @@ ok("5.7 · success auto-dismisses on the SHARED default (no bespoke timer)",
   !/autoCloseMs/.test(RECEIPT), "an autoCloseMs here would be a second definition of the 5s");
 // 🔴 RE-AIMED 2026-09-05 — THE PROXY WENT STALE, THE LAW DID NOT.
 // This read `/variant="danger"/` in the blocked modal's source, as a stand-in for "does not
-// auto-dismiss". That held while the refusal had exactly one tone. The identity gate added
-// `kyc_pending_review` at severity `info` — our own review queue, which must not arrive as a
-// red crest with an ✗ and `role="alertdialog"` — so the variant became dynamic and the literal
-// vanished, reddening a check about auto-dismissal on a change that never touched timers.
+// auto-dismiss". That held while the refusal had exactly one tone. The 2026-09-05 bet identity
+// gate brought `kyc_pending_review` to this modal — our own review queue, which must not arrive
+// as a red crest with an ✗ and `role="alertdialog"` — so the variant became dynamic
+// (`MODAL_TONE_BY_REASON`) and the literal vanished, reddening a check about auto-dismissal on a
+// change that never touched timers.
+// ⚠️ 2026-09-13: that bet gate is DELETED (identity is asked before a withdrawal only), so no stake
+// carries a `kyc_*` reason and `MODAL_TONE_BY_REASON` is empty. The variant stays dynamic and this
+// assertion is unchanged, because what it pins was never the identity rows: it is that no refusal
+// tone is ever `success`.
 //
 // ⛔ THE ACTUAL RULE IS IN `OperationResultModal`: auto-close is armed ONLY for
 // `variant === "success"`. So the law to pin is that a refusal is NEVER `success` — which is

@@ -1,5 +1,12 @@
 # THE SHELL, THE CARE SYSTEM, AND THE INSTALL INVITATION — session 70's work order
 
+> ⛔ **2026-09-13 — THE INSTALL INVITATION IS WITHDRAWN (hidden), NOT DELETED.** Ali: *"keep only the
+> socials popup … the install, hide it for now, later we activate — it's disturbing users."* The
+> switch is `install` in `src/lib/feature-state.ts` (WITHDRAWN); the shell mounts the component only
+> while `installInviteIsLive()` is true. Re-enable with `install: "ACTIVE"` or `FEATURE_INSTALL=ACTIVE`
+> on the server. `test:install-invite` §8–§9 hold the gated mount and the switch;
+> ⚠️ the `qa:install-shown` live drive is EXPECTED to fail while it is withdrawn.
+
 > ✅ **CLOSED 2026-08-27 (session 70). ALL FOUR OF ALI'S ITEMS ARE ANSWERED AND EVERY ONE IS
 > PUSHED AND DRIVEN.** This file is now HISTORY — read `docs/LIVE-QA-CAMPAIGN.md`'s topmost
 > `RESUME AT (session 71)` instead, and `docs/RG-AUDIT-2026-08-27.md` for item 2.

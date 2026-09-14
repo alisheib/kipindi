@@ -32,7 +32,9 @@
  *       10,000 payout, and the shilling after it releases one
  *   §5  a REAL bet produces the same unlock, and the LEDGER says so — a CONFIRMED
  *       `BONUS_CREDIT`, not merely a balance that moved
- *   §6  and it needs no identity: an unverified player is paid (Board comment #1, B × J)
+ *   §6  identity IS asked at withdrawal (owner ruling 2026-09-13): this file's fixtures are verified,
+ *       and an unverified account is refused ON IDENTITY — the control that keeps §1–§5 about the
+ *       bonus rule rather than the gate
  *
  * ⚠️ EVERY SECTION ASKS `withdraw()`, never the balance column. A rule about what may leave
  * the platform, checked against the number the platform happens to be holding, proves only
@@ -77,9 +79,11 @@ let seq = 0;
 const localDigits = new Map<string, string>();
 
 /**
- * A player with a wallet and NO KYC submission at all.
- * ⛔ Deliberately unverified: identity is no longer a precondition of withdrawal (Board
- * comment #1), so a fixture that quietly approves KYC would be testing the retired path.
+ * A player with a wallet — and, through the `verified-fixtures` import, an APPROVED identity.
+ * 🔴 This used to say "NO KYC submission at all … identity is no longer a precondition of
+ * withdrawal (Board comment #1)". False since 2026-09-05, and false under the ruling that governs
+ * now (2026-09-13: identity is required before a withdrawal and before nothing else). Every payout
+ * this file asserts clears the identity gate first; §6.2 is the one fixture downgraded by hand.
  */
 async function player(id: string, balance: number): Promise<void> {
   const local = `77${String(++seq).padStart(7, "0")}`;
@@ -260,21 +264,26 @@ console.log("\n§6 · the payout path requires identity, and the bonus rule is s
   // protect Board comment #1 so that a re-introduced gate could not slip in while every
   // other assertion in the file went on passing for the wrong reason.
   //
-  // The owner has now re-imposed the identity precondition on withdrawal, as a control
-  // stricter than the Board required and disclosed as such
-  // (`docs/COMPLIANCE-DECISIONS.md`, 2026-09-05). So the assertion flips — but its JOB is
-  // unchanged: keep this file honest about WHY its payouts succeed.
+  // The owner then re-imposed the identity precondition on withdrawal (2026-09-05), and on
+  // 2026-09-13 ruled the version that governs now: identity is required before a WITHDRAWAL
+  // and before nothing else (`docs/COMPLIANCE-DECISIONS.md` 2026-09-13; `assertIdentityForPayout`).
+  // The 2026-09-05 ruling also gated deposits and bets — those gates are deleted, this one is
+  // not — so the assertion stays flipped and its JOB is unchanged: keep this file honest about
+  // WHY its payouts succeed.
   //
   // ⭐ THAT MATTERS MORE NOW, NOT LESS. Every fixture here is verified (`verified-fixtures`),
   // so §1.4/§3.4/§4.4/§5.6 pass a gate they are not about. If the bonus rule regressed AND
   // identity were the only thing being proved, this file would look green while measuring
   // nothing. 6.2 is the control that keeps the two apart: an UNVERIFIED account with ample
   // cash is refused — on identity, by name — so we know the payouts above cleared identity
-  // and were decided by the bonus rule.
+  // and were decided by the bonus rule. `red:bonus-withdrawable`'s `identity-gate-removed`
+  // mutation is the proof that 6.2 can see the gate go.
   ok("6.1 · ★ the fixtures this file pays ARE verified — so §1.4/§3.4/§4.4/§5.6 test the bonus rule, not the gate",
      !!(await db.kyc.findByUserId("bw_real"))?.approvedAt && !!(await db.kyc.findByUserId("bw_flip"))?.approvedAt);
-  // ⛔ Built by hand, NOT through `player()`, because the wrapper approves everything it
-  // creates — the one fixture in this file that must stay unverified cannot come from it.
+  // ⛔ Built through `player()` and then DOWNGRADED by hand: the `verified-fixtures` import wraps
+  // `db.user.create` and approves every PLAYER it creates, so the one fixture in this file that must
+  // stay unverified has to have that row replaced — status AND the first-approval stamp, because the
+  // gate asks `approvedEver`, which accepts either.
   await player("bw_unverified", 12_000);
   const k = await db.kyc.findByUserId("bw_unverified");
   if (k) await db.kyc.upsert({ ...k, status: "NOT_STARTED", approvedAt: null, updatedAt: new Date().toISOString() });

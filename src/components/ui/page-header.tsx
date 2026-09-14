@@ -49,7 +49,9 @@ export function PageHeader({
           are already overridden on this very element by `leading-tight` (1.25 → 35px) and
           `tracking-[-0.02em]` (−0.56px at 28px), which are emitted after the fontSize rungs in
           the served sheet. So the computed style is byte-for-byte what it was. */}
-      <h1 className="font-display text-title-lg font-bold text-text leading-tight tracking-[-0.02em]">
+      {/* 2026-09-13: balanced, so a wrapping title never leaves one word or one CJK glyph alone
+          on its last line (the Chinese AML title did). */}
+      <h1 className="font-display text-title-lg font-bold text-text leading-tight tracking-[-0.02em] text-balance">
         {title}
       </h1>
       {subtitle != null && (

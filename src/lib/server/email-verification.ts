@@ -16,10 +16,16 @@
  *
  * ⚠️ As of the 2026-07-18 real-money launch, `emailVerifiedAt` IS a hard gate on
  * the money-in path: `wallet-service.deposit()` refuses a deposit until it is
- * set (a confirmed address is required before the first deposit, independently of the
- * identity gate — see `kyc-gate.ts`). Anything that
- * changes an address therefore clears the flag and re-gates depositing — that is
- * intentional, and `setUserEmail` is the single writer that guarantees it.
+ * set. Anything that changes an address therefore clears the flag and re-gates
+ * depositing — that is intentional, and `setUserEmail` is the single writer that
+ * guarantees it.
+ *
+ * 🔴 FROM 2026-09-13 THIS IS THE FRONT DOOR. From 2026-09-05 to 2026-09-13 an approved
+ * identity was a second, independent requirement for depositing; that gate is DELETED
+ * (identity is asked before WITHDRAWAL only — `kyc-gate.ts`, docs/COMPLIANCE-DECISIONS.md
+ * 2026-09-13). A confirmed address is now the only thing between a stranger and a funded
+ * account, and the only verified contact channel the platform holds. ⛔ Nothing may relax
+ * the clear-on-change rule above.
  */
 import { appUrl } from "@/lib/app-url";
 import { db } from "./store";

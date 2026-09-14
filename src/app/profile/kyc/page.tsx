@@ -13,6 +13,9 @@ import { Input, Field as KitField } from "@/components/ui/input";
 import { FilterPill, FilterGroupKey } from "@/components/ui/filter-pill";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { submitIdentityAction, submitKycForReviewAction, restartKycAction } from "./actions";
+import { isFinalRefusal } from "@/lib/kyc-refusal";
+import { KYC_REVIEW_SLA_HOURS } from "@/lib/kyc-sla";
+import { durationHours } from "@/lib/duration-phrase";
 import {
   ID_DOC_TYPES,
   ID_DOC_SPECS,
@@ -24,7 +27,7 @@ import { KycDocUploader, KycExtraDocUploader } from "@/components/profile/kyc-do
 import { RewardBurst } from "@/components/brand/reward-burst";
 import { SUPPORT_EMAIL } from "@/lib/server/support-config";
 import { getPayoutStatus, payoutsAcceptingRequests } from "@/lib/server/payout-status";
-import { getServerT, type Dict } from "@/lib/i18n-server";
+import { getServerT, type Dict, type Locale } from "@/lib/i18n-server";
 import { bannerFor } from "@/lib/failure-banner";
 import { PageContainer } from "@/components/layout/page-container";
 
@@ -36,7 +39,7 @@ export async function generateMetadata() {
 }
 
 export default async function KycPage({ searchParams }: { searchParams?: Promise<{ welcome?: string; reason?: string; id?: string; idType?: string; idNumber?: string; idExpiry?: string; submitted?: string; fullName?: string; dob?: string; email?: string; next?: string }> }) {
-  const { t } = await getServerT();
+  const { t, locale } = await getServerT();
   const session = await currentSession();
   if (!session) redirect("/auth/login?next=/profile/kyc");
 
@@ -66,7 +69,6 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
 
   const sp = (await searchParams) ?? {};
   const banner = bannerFor(sp.reason, t.error as unknown as Record<string, string>);
-  const isWelcome = sp.welcome === "new";
   // Safe internal return target (IA review R6) — a gated action (e.g. Withdraw)
   // sends `?next=/wallet/withdraw`; on approval we offer a "Continue" CTA back
   // to it. Reject anything that isn't a same-site absolute path (no open redirect).
@@ -99,23 +101,34 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
   const allAttached = attachedCount >= requiredSlots.length;
   const submitted = kyc?.status === "PENDING_REVIEW" || kyc?.status === "APPROVED";
   const rejected = kyc?.status === "REJECTED";
+  // 2026-09-13 — a FINAL refusal (under 18, sanctions, identity used on another account) is closed to
+  // the player: `startKyc` refuses a restart, so the rail, the step forms and the "resubmit" sentence
+  // would all be offering a journey the server refuses. The page says what the withdraw panel says.
+  const finalRefusal = rejected && isFinalRefusal(kyc?.rejectReason ? String(kyc.rejectReason) : null);
   const needsInfo = kyc?.status === "ADDITIONAL_INFO_REQUIRED";
+  // 2026-09-13 — once the documents are HANDED IN, the ID and selfie steps are done by
+  // STATUS, not by re-counting slots: the rail marked SELFIE current on a pending submission.
+  const docsHandedIn = submitted || (needsInfo && (kyc?.documents ?? []).length > 0);
   const extraRequests = kyc?.extraRequests ?? [];
   const rejectLabel = humanizeRejectReason(kyc?.rejectReason ? String(kyc.rejectReason) : null, t);
 
-  // E-5, AND ITS SECOND CHAPTER. The burst once read "You can now deposit and withdraw
+  // E-5, AND ITS LATER CHAPTERS. The burst once read "You can now deposit and withdraw
   // freely", which was wrong twice over: deposits were not KYC-gated at all, so approval
   // never unlocked them, and the burst rendered directly beneath the banner telling the
   // player to confirm their email before adding money. It was then narrowed to say only
-  // what approval really unlocked.
+  // what approval really unlocked. From 2026-09-05 to 2026-09-13 approval did unlock
+  // depositing, playing and cashing out, and the copy widened to match.
   //
-  // ⭐ FROM 2026-09-05 THE ORIGINAL SENTENCE IS TRUE — approval unlocks depositing,
-  // playing and cashing out — so the copy widens back out. ⛔ But the DISCIPLINE that
-  // narrowed it does not relax: the second gate is still real. When the payout provider
-  // cannot pay, /wallet/withdraw refuses regardless of identity, so the burst still ASKS
-  // the live gate instead of assuming it, and says "add money and play" rather than
-  // promising a payout we cannot make. Promising anything at the player's proudest moment
-  // that the next screen refuses is the defect, not the specific sentence.
+  // ⭐ FROM 2026-09-13 APPROVAL OPENS CASHING OUT AND NOTHING ELSE (`kyc-gate.ts`), so both
+  // sentences speak of that alone: `kycApprovedBody` says cashing out is open;
+  // `kycApprovedPayoutsPaused` says the identity is verified but withdrawals are paused for
+  // everyone and the balance is safe. ⛔ Neither may name adding money or playing — those
+  // never waited on this approval, and saying approval opened them re-teaches the old ladder.
+  // ⛔ And the DISCIPLINE that narrowed it the first time does not relax: the second gate is
+  // still real. When the payout provider cannot pay, /wallet/withdraw refuses regardless of
+  // identity, so the burst still ASKS the live gate instead of assuming it. Promising a payout
+  // at the player's proudest moment that the next screen refuses is the defect, not the
+  // specific sentence. `test:kyc-approved-copy` pins this selection.
   //
   // ⚠️ Default to `operational` on failure, matching derivePayoutStatus's own fallback —
   // an unreachable DB is not evidence that payouts are down.
@@ -160,32 +173,12 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
         </div>
       )}
 
-      {isWelcome && !submitted && !idDone && (
-        <section className="rounded-xl border border-gold-700 bg-gold-500/10 p-4 lg:p-5 flex flex-col sm:flex-row sm:items-center gap-3">
-          <div className="flex-1">
-            <p className="font-display text-[14px] font-bold text-gold-300">
-              {t.auth.welcomeTo50pick}
-            </p>
-            <p className="mt-1 text-body-sm text-text-muted leading-snug">
-              {t.profile.kycWelcomeCan + " "}<span className="font-bold text-text">{t.profile.kycWelcomeBrowse}</span>.
-              {t.profile.kycWelcomeLater}
-            </p>
-          </div>
-          {/* 🔴 THIS WAS THE PRIMARY BUTTON AND IT SAID "SKIP FOR NOW", pointing at
-              /markets — correct while a PENDING_KYC player could stake, and actively
-              misleading from 2026-09-05, when it became a gold call-to-action inviting a
-              player to a board where every stake control is a gate panel.
-              ⛔ It is now GHOST, not primary: the primary action on this screen is the
-              form below it. Looking around is still offered — browsing is genuinely free
-              — but it is no longer dressed as the thing to do next. */}
-          <Link
-            href="/markets"
-            className="btn btn-ghost btn-lg btn-pill whitespace-nowrap"
-          >
-            {t.profile.kycSkipForNow}
-          </Link>
-        </section>
-      )}
+      {/* ⛔ THE "WELCOME, NEW PLAYER" BLOCK THAT STOOD HERE IS DELETED (2026-09-13), with its four
+          dictionary keys. From 2026-09-05 every new account was redirected to this page, so it greeted
+          them and explained that verifying opened adding money and playing. From 2026-09-13 a new
+          account lands where it was going, or on adding money (`auth/register/actions.ts`), and
+          reaches this page only by choosing to verify — so the block had no audience, and its
+          sentence was false. */}
 
       <PageHero glow="info">
         <PageHeader
@@ -194,32 +187,73 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
           eyebrow={t.profile.kycIdentityVerification}
           title={t.profile.verifyIdentity}
         />
-        <p className="mt-2 text-[13px] text-text-muted leading-snug max-w-prose">
-          {t.profile.verifyBody}
+        {/* 2026-09-13 — balanced: the zh more-info sentence left "方。" alone on its last line at 360. */}
+        <p className="mt-2 text-[13px] text-text-muted leading-snug max-w-prose text-balance">
+          {kyc?.status === "PENDING_REVIEW"
+            ? t.profile.verifyBodyReviewing
+            : needsInfo
+              ? t.profile.verifyBodyMoreInfo
+              // 2026-09-13 — a final refusal was told "Verify before your first withdrawal" under a
+              // refusal it cannot undo. It reads the withdraw panel's own title for that state.
+              : finalRefusal
+                ? t.kycGate.titleRejected
+                : t.profile.verifyBody}
         </p>
       </PageHero>
 
       {rejected && (
-        <section role="alert" className="rounded-xl border border-no-700 bg-no-500/[0.08] p-4 lg:p-5">
+        // ⛔ APP-STATE DANGER, NOT THE BETTING NO RED (2026-09-13) — DESIGN_AUTHORITY §B2a keeps that ink
+        // for the NO side of a stake. Box, disc and ink are the kit Callout's danger tone, verbatim.
+        <section role="alert" className="rounded-xl border border-danger-500/50 bg-danger-500/10 p-4 lg:p-5">
           <div className="flex items-start gap-3">
             {/* ⚠️ LITERALS, not `h-9 w-9` — spacing is overridden (tailwind.config.ts:200-215),
                 so `h-9` renders 64px. This is the surface that gates every withdrawal. */}
-            <span className="inline-flex h-[36px] w-[36px] shrink-0 items-center justify-center rounded-full bg-no-500/15 text-no-300">
+            <span className="inline-flex h-[36px] w-[36px] shrink-0 items-center justify-center rounded-full bg-danger-500/15 text-danger-fg">
               <I.alertCircle s={18} />
             </span>
             <div className="min-w-0">
-              <p className="font-display text-[14px] font-bold text-no-300">{t.profile.rejected}</p>
+              <p className="font-display text-[14px] font-bold text-danger-fg">{t.profile.rejected}</p>
               <p className="mt-1 text-body-sm text-text-muted leading-snug">
-                {rejectLabel ? <>{t.profile.kycRejectReason}: <span className="font-semibold text-text">{rejectLabel}</span>. </> : null}
+                {/* 2026-09-13 — zh stops are full-width: "原因：…。" read "原因: ….", ASCII set in a Chinese
+                    sentence. The stop after the address stays OUTSIDE the link, so it is never part of it. */}
+                {rejectLabel ? <>{t.profile.kycRejectReason}{locale === "zh" ? "：" : ": "}<span className="font-semibold text-text">{rejectLabel}</span>{locale === "zh" ? "。" : ". "}</> : null}
                 {kyc?.rejectNote ? `${kyc.rejectNote} ` : ""}
-                {t.profile.kycResubmitOrEmail}{" "}
-                <a href={`mailto:${SUPPORT_EMAIL()}?subject=KYC%20review`} className="text-brand-300 underline-offset-2 hover:underline">{SUPPORT_EMAIL()}</a>.
+                {/* A final refusal cannot "re-enter your details below and resubmit" — there is no below. */}
+                {finalRefusal ? null : (
+                  <>
+                    {t.profile.kycResubmitOrEmail}{" "}
+                    <a href={`mailto:${SUPPORT_EMAIL()}?subject=KYC%20review`} className="text-brand-300 underline-offset-2 hover:underline">{SUPPORT_EMAIL()}</a>{locale === "zh" ? "。" : "."}
+                  </>
+                )}
               </p>
-              {/* Restarting CLEARS the submission, so it must be a deliberate tap,
-                  never a page load — see the read-before-start note above. */}
-              <form action={restartKycAction} className="mt-3">
-                <SubmitButton label={t.error.tryAgain} pendingLabel={t.common.loading} />
-              </form>
+              {/* ⭐ A FINAL refusal (under 18, sanctions, identity used on another account) is NOT
+                  restarted by the player (2026-09-13 — `startKyc` refuses it, `kyc-refusal.ts`): the
+                  wallet is frozen and an officer decides the balance. So this page offers the route to
+                  support and says why, instead of a "try again" the server would refuse.
+                  ⭐ THE SAME WORDS AS THE WITHDRAW PANEL'S `refused_final` state (`kycGate.*`), so the two
+                  screens cannot tell one player two stories. The route stays this page's own support
+                  email, with the address visible for a phone that has no mail app.
+                  A recoverable refusal keeps the restart. Restarting CLEARS the submission, so it must
+                  be a deliberate tap, never a page load — see the read-before-start note above. */}
+              {finalRefusal ? (
+                <div data-kyc-refused-final="1" className="mt-3">
+                  <p className="text-body-sm text-text leading-snug">{t.kycGate.bodyRefusedFinal}</p>
+                  <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                    <a
+                      href={`mailto:${SUPPORT_EMAIL()}?subject=KYC%20review`}
+                      className="btn btn-primary btn-md btn-pill inline-flex items-center gap-1.5"
+                    >
+                      <I.mail s={14} />
+                      {t.kycGate.ctaSupport}
+                    </a>
+                    <a href={`mailto:${SUPPORT_EMAIL()}`} className="font-mono text-body-sm text-text-muted underline underline-offset-2 select-all">{SUPPORT_EMAIL()}</a>
+                  </div>
+                </div>
+              ) : (
+                <form action={restartKycAction} className="mt-3">
+                  <SubmitButton label={t.error.tryAgain} pendingLabel={t.common.loading} />
+                </form>
+              )}
             </div>
           </div>
         </section>
@@ -234,9 +268,10 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
             </span>
             <div className="min-w-0">
               <p className="font-display text-[14px] font-bold text-gold-300">{t.profile.kycMoreInfo}</p>
-              <p className="mt-1 text-body-sm text-text-muted leading-snug">
+              {/* zh sets sentences with no joining space; a space there reads as a typo. */}
+              <p className="mt-1 text-body-sm text-text-muted leading-snug text-balance">
                 {kyc?.rejectNote ? <span className="font-semibold text-text">{kyc.rejectNote}</span> : t.profile.kycMoreInfoBody1}
-                {" "}{t.profile.kycMoreInfoBody2}
+                {locale === "zh" ? "" : " "}{t.profile.kycMoreInfoBody2}
               </p>
             </div>
           </div>
@@ -262,260 +297,297 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
         </section>
       )}
 
-      {/* C1b — 4-node verification rail (ID → selfie → review → verified) with a
-          gilt fill up to the current node; done nodes go green (page convention),
-          the live node carries the gilt ring. */}
-      <ProgressRail
-        nodes={[
-          // ⛔ The first node is named after the document the player actually chose.
-          // It said "NIDA" unconditionally, which on a passport journey labelled the
-          // step after a document the player never touched.
-          { label: idLabel,              glyph: "idCard",      done: idDone },
-          { label: t.profile.selfie,     glyph: "user",        done: allAttached },
-          { label: t.profile.review,     glyph: "shieldcheck", done: kyc?.status === "APPROVED" },
-          { label: t.profile.idVerified, glyph: "check",       done: kyc?.status === "APPROVED" },
-        ]}
-      />
+      {/* 2026-09-13 — A FINAL REFUSAL HAS NO STEPS LEFT. The rail and both step forms stay off the page, because
+          `startKyc` refuses a restart and the upload would be refused. ⚠️ `test:kyc-honesty` finds step 2 by its
+          exact opening condition, so the gate is this wrapper, not an extra term inside that condition. */}
+      {!finalRefusal && (
+        <>
+        {/* C1b — 4-node verification rail (ID → selfie → review → verified) with a
+            gilt fill up to the current node; done nodes go green (page convention),
+            the live node carries the gilt ring. */}
+        <ProgressRail
+          nodes={[
+            // ⛔ The first node is named after the document the player actually chose.
+            // It said "NIDA" unconditionally, which on a passport journey labelled the
+            // step after a document the player never touched.
+            { label: idLabel,              glyph: "idCard",      done: idDone || docsHandedIn },
+            { label: t.profile.selfie,     glyph: "user",        done: allAttached || docsHandedIn },
+            { label: t.profile.review,     glyph: "shieldcheck", done: kyc?.status === "APPROVED" },
+            { label: t.profile.idVerified, glyph: "check",       done: kyc?.status === "APPROVED" },
+          ]}
+          tightLabels={locale === "sw"}
+        />
 
-      {!idDone && (
-        <section className="rounded-xl glass-panel p-5 lg:p-6 space-y-4">
-          <div className="flex items-center gap-2">
-            <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-brand-500/15 text-brand-300">
-              <I.user s={15} />
-            </span>
-            <h2 className="font-display text-[15px] font-semibold text-text">{t.profile.step1} · {t.profile.identityDocument}</h2>
-          </div>
+        {!idDone && (
+          <section className="rounded-xl glass-panel p-5 lg:p-6 space-y-4">
+            <div className="flex items-center gap-2">
+              <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-brand-500/15 text-brand-300">
+                <I.user s={15} />
+              </span>
+              <h2 className="font-display text-[15px] font-semibold text-text">{t.profile.step1} · {t.profile.identityDocument}</h2>
+            </div>
 
-          {/* ── THE CHOOSER ──────────────────────────────────────────────────
-              ⛔ NOT A HAND-ROLLED CONTROL. `FilterPill` is the ONE filter/segment
-              language on this platform (DESIGN_AUTHORITY: hand-rolling a second is a
-              documented refusal), and its `semantics="tab"` reading — exactly one
-              option in force, choosing it navigates — is what this rail is.
+            {/* ── THE CHOOSER ──────────────────────────────────────────────────
+                ⛔ NOT A HAND-ROLLED CONTROL. `FilterPill` is the ONE filter/segment
+                language on this platform (DESIGN_AUTHORITY: hand-rolling a second is a
+                documented refusal), and its `semantics="tab"` reading — exactly one
+                option in force, choosing it navigates — is what this rail is.
 
-              ⭐ IT IS A LINK, AND THAT IS THE FEATURE. The type lands in the URL, so
-              (a) the form round-trips to the SAME document after a refused submit,
-              (b) it works with no JavaScript at all, and (c) switching document
-              deliberately drops the previous number rather than validating a passport
-              against a licence's rule.
+                ⭐ IT IS A LINK, AND THAT IS THE FEATURE. The type lands in the URL, so
+                (a) the form round-trips to the SAME document after a refused submit,
+                (b) it works with no JavaScript at all, and (c) switching document
+                deliberately drops the previous number rather than validating a passport
+                against a licence's rule.
 
-              ⚠️ Every pill is 44px and only the SELECTED one carries an outline — both
-              properties belong to the primitive, so this call site cannot drift from
-              the other eight rails that use it. */}
-          <div>
-            <FieldLegend as="p" className="block mb-1.5">{t.profile.chooseIdType}</FieldLegend>
-            <p className="mb-2.5 text-body-sm text-text-muted leading-snug">{t.profile.chooseIdTypeBody}</p>
-            <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label={t.profile.chooseIdType}>
-              <FilterGroupKey>{t.profile.idDocsNeeded}</FilterGroupKey>
-              {ID_DOC_TYPES.map((ty) => (
-                <FilterPill
-                  key={ty}
-                  href={`/profile/kyc?idType=${ty}`}
-                  label={(t.profile as unknown as Record<string, string>)[ID_DOC_SPECS[ty].labelKey]}
-                  on={ty === chosenType}
-                  semantics="tab"
-                  testId={`idType:${ty}`}
-                  replace
-                  scroll={false}
+                ⚠️ Every pill is 44px and only the SELECTED one carries an outline — both
+                properties belong to the primitive, so this call site cannot drift from
+                the other eight rails that use it. */}
+            <div>
+              <FieldLegend as="p" className="block mb-1.5">{t.profile.chooseIdType}</FieldLegend>
+              <p className="mb-2.5 text-body-sm text-text-muted leading-snug">{t.profile.chooseIdTypeBody}</p>
+              <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label={t.profile.chooseIdType}>
+                {/* Own line at EVERY width (2026-09-13): inline at 1280 the key took the first
+                    row with three chips and wrapped the fourth under itself. */}
+                <FilterGroupKey className="basis-full">{t.profile.idDocsNeeded}</FilterGroupKey>
+                {ID_DOC_TYPES.map((ty) => (
+                  <FilterPill
+                    key={ty}
+                    href={`/profile/kyc?idType=${ty}`}
+                    label={(t.profile as unknown as Record<string, string>)[ID_DOC_SPECS[ty].labelKey]}
+                    on={ty === chosenType}
+                    semantics="tab"
+                    testId={`idType:${ty}`}
+                    replace
+                    scroll={false}
+                  />
+                ))}
+              </div>
+            </div>
+
+            <form action={submitIdentityAction} className="space-y-4">
+              {/* The form carries its own copy of the choice, so what is VALIDATED is
+                  what was on screen — never a query string a link could have staled. */}
+              <input type="hidden" name="idType" value={chosenType} />
+              <Field
+                id="idNumber"
+                label={(t.profile as unknown as Record<string, string>)[spec.numberLabelKey]}
+                hint={(t.profile as unknown as Record<string, string>)[spec.hintKey]}
+                type="text"
+                required
+                {...(spec.htmlPattern ? { pattern: spec.htmlPattern } : {})}
+                title={(t.profile as unknown as Record<string, string>)[spec.ruleKey]}
+                maxLength={chosenType === "NIDA" ? 20 : 40}
+                inputMode={spec.inputMode}
+                defaultValue={(sp as Record<string, string | undefined>).idNumber ?? ""}
+              />
+              {/* ⛔ A `pattern` ONLY where a published rule exists. Synthesising one for
+                  the licence or the voter's card from our own sanity band would put a
+                  browser-enforced lockout in front of a real citizen on a rule no
+                  authority ever published.
+
+                  ⛔ AND NO PLACEHOLDER (A-5). A placeholder must never become a value;
+                  the shape lives in the hint and in the rule line below, which are text
+                  rather than a greyed value sitting in a box. The rule is named IN FULL
+                  whenever the server refused the number — "invalid" is never an
+                  acceptable answer on an identity field (§F4). */}
+              {sp.reason === "id_number_format" && (
+                <p role="alert" className="-mt-2 text-body-sm leading-snug text-no-300">
+                  {(t.profile as unknown as Record<string, string>)[spec.ruleKey]}
+                </p>
+              )}
+
+              {/* ⛔ ASKED FOR ONLY WHERE THE DOCUMENT HAS ONE. A NIDA and a voter's card
+                  do not expire, and asking for a date a document does not carry invites
+                  an invented one — which is worse than no date in a compliance record. */}
+              {spec.expires && (
+                <div>
+                  <FieldLegend as="label" htmlFor="idExpiry" className="block mb-2">
+                    {t.profile.idExpiryLabel}
+                  </FieldLegend>
+                  <DateSelect
+                    name="idExpiry"
+                    id="idExpiry"
+                    required
+                    min={new Date().toISOString().slice(0, 10)}
+                    max={`${new Date().getFullYear() + 20}-12-31`}
+                    defaultValue={(sp as Record<string, string | undefined>).idExpiry ?? ""}
+                  />
+                  <p className="mt-1.5 text-body-sm text-text-subtle">{t.profile.idExpiryHint}</p>
+                </div>
+              )}
+              <Field
+                id="fullName"
+                label={t.profile.fullName}
+                hint={t.profile.fullNameHint}
+                type="text"
+                required
+                minLength={3}
+                maxLength={100}
+                defaultValue={(sp as Record<string, string | undefined>).fullName ?? ""}
+              />
+              <div>
+                <FieldLegend as="label" htmlFor="dob" className="block mb-2">
+                  {t.auth.dobLabel}
+                </FieldLegend>
+                {user?.dob ? (
+                  // Already collected (and 18+ gated) at sign-up — don't make the
+                  // user type it again. Show it read-only for confirmation and
+                  // submit the stored value. NORMALISE to YYYY-MM-DD: prod stores
+                  // dob as a Prisma DateTime, read back as a full ISO string
+                  // ("1990-01-15T00:00:00.000Z"); the KYC validator only accepts
+                  // YYYY-MM-DD, so the raw ISO was being rejected ("Use YYYY-MM-DD").
+                  <>
+                    <input type="hidden" name="dob" value={user.dob.slice(0, 10)} />
+                    <div className="flex items-center gap-2 rounded-xl border border-border bg-bg-elevated px-3.5 py-2.5">
+                      <I.check s={14} className="text-yes-300 shrink-0" />
+                      <span className="text-[13px] text-text">{formatDob(user.dob.slice(0, 10), locale)}</span>
+                      <span className="ml-auto text-[10.5px] text-text-subtle">{t.profile.fromSignUp}</span>
+                    </div>
+                    <p className="mt-1.5 text-body-sm text-text-subtle">
+                      {t.profile.dobFromSignUp}{" "}
+                      <a href={`mailto:${SUPPORT_EMAIL()}`} className="text-brand-300 underline-offset-2 hover:underline hover:text-brand-200">{t.error.contactSupport}</a>
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <DateSelect
+                      name="dob"
+                      id="dob"
+                      required
+                      min="1930-01-01"
+                      max={new Date(new Date().getFullYear() - 18, new Date().getMonth(), new Date().getDate()).toISOString().slice(0, 10)}
+                    />
+                    <p className="mt-1.5 text-body-sm text-text-subtle">{t.auth.dobHint}</p>
+                  </>
+                )}
+              </div>
+              {emailVerified && user?.email ? (
+                // 2026-09-13 — a CONFIRMED account email is shown, not re-asked: the empty
+                // box read "Required" over an inbox we had already proven. The hidden input
+                // keeps the action's contract; `setUserEmail` treats the same address as
+                // unchanged, so nothing is re-sent and the confirmation stands.
+                <div>
+                  <FieldLegend as="p" className="block mb-2">
+                    {t.common.email}
+                  </FieldLegend>
+                  <input type="hidden" name="email" value={user.email} />
+                  {/* 2026-09-13 — the address gets the row's FULL width on its own line, with the
+                      tag beneath. Sharing a line with the tag in a mono face split it mid-word at
+                      360 in every locale. Wrapping only breaks inside a word when the address is
+                      longer than the whole line. Never truncate: an ellipsis does not shorten an
+                      address, it states a different one. Same pixels as the DOB row above. */}
+                  <div className="flex items-start gap-2 rounded-xl border border-border bg-bg-elevated px-[14px] py-[10px]">
+                    {/* mt-0.5 centres the 14px glyph on the address's 18px line. */}
+                    <I.check s={14} className="mt-0.5 text-success-fg shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <span className="block break-words text-body-sm text-text">{user.email}</span>
+                      <span className="block text-body-sm text-text-subtle">{t.common.confirmed}</span>
+                    </div>
+                  </div>
+                  <p className="mt-1.5 text-body-sm text-text-subtle">{t.profile.dobFromSignUp}</p>
+                </div>
+              ) : (
+                <Field
+                  id="email"
+                  label={t.common.email}
+                  hint={t.profile.emailHint}
+                  type="email"
+                  required
+                  maxLength={254}
+                  inputMode="text"
+                  placeholder="you@example.com"
+                  defaultValue={(sp as Record<string, string | undefined>).email ?? ""}
+                />
+              )}
+              <SubmitButton label={`${t.profile.continueVerification}`} pendingLabel={t.common.loading} />
+            </form>
+            <details className="border-t border-border pt-3 text-[12.5px] text-text-muted">
+              <summary className="font-display font-semibold text-text cursor-pointer flex items-center gap-2">
+                <I.shieldQuestion s={14} className="text-text-subtle shrink-0" />
+                {t.profile.whyWeAsk}
+              </summary>
+              <p className="mt-1.5 leading-snug">
+                {t.profile.whyWeAskBody}
+              </p>
+            </details>
+          </section>
+        )}
+
+        {idDone && !submitted && (
+          <section className="rounded-xl glass-panel p-5 lg:p-6 space-y-3">
+            <div className="flex items-center gap-2">
+              {/* This badge marks STEP 1 being done, not identity being verified.
+                  It renders on `idDone && !submitted` — a number that passed its
+                  document's format rule and the uniqueness check — before a single
+                  photo is uploaded and long before an officer looks at anything. It
+                  used to read "ID verified" (SW "Imethibitishwa", ZH "已验证"), which
+                  told an unverified player they were verified on the one surface
+                  that must never overstate. docs/IDENTITY-POLICY.md, the owner
+                  decision: `idVerifiedAt` means "format accepted", there is no
+                  authority check, and "if any surface contradicts it, that surface
+                  is wrong". Same string is still correct in the stepper above,
+                  where it is gated on `kyc?.status === "APPROVED"`. */}
+              <span className="inline-flex items-center gap-1 rounded-pill border border-yes-700 bg-yes-500/10 px-2.5 py-0.5 font-mono text-micro font-bold uppercase tracking-[0.1em] text-yes-300">
+                <I.check s={11} />
+                {t.profile.idSaved}
+              </span>
+              {/* Which document this submission is built on, stated where the player
+                  can see it — a passport journey that never names the passport leaves
+                  somebody wondering whether the right thing was recorded. */}
+              <span className="font-mono text-micro uppercase tracking-[0.1em] text-text-subtle">{idLabel}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-brand-500/15 text-brand-300">
+                <I.camera s={15} />
+              </span>
+              <h2 className="font-display text-[15px] font-semibold text-text">{t.profile.step2} · {t.profile.uploadDocuments}</h2>
+            </div>
+            <p className="text-body-sm text-text-muted leading-snug">
+              {t.profile.uploadDocsBody}
+            </p>
+            {/* ⛔ THE SLOTS COME FROM THE CATALOGUE, NOT FROM THIS FILE. A NIDA asks for
+                front + back + selfie; the other three ask for one image of the document
+                + a selfie. ⭐ THE SELFIE SURVIVES ON ALL FOUR ON PURPOSE: "Selfie matches
+                the ID photo" is one of the officer's four attestations, so dropping it
+                for three of the types would have removed the human control while widening
+                the document list — exactly what the policy forbids.
+                ⚠️ `sm:grid-cols-*` is derived from the count, or a two-slot document
+                renders a 3-column grid with a hole in it at ≥640px. */}
+            <div className={`grid grid-cols-1 gap-2 ${requiredSlots.length >= 3 ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
+              {requiredSlots.map((slot) => (
+                <KycDocUploader
+                  key={slot}
+                  label={(t.profile as unknown as Record<string, string>)[DOC_SLOT_LABEL_KEY[slot]]}
+                  docType={slot}
+                  attached={hasDoc(slot)}
                 />
               ))}
             </div>
-          </div>
-
-          <form action={submitIdentityAction} className="space-y-4">
-            {/* The form carries its own copy of the choice, so what is VALIDATED is
-                what was on screen — never a query string a link could have staled. */}
-            <input type="hidden" name="idType" value={chosenType} />
-            <Field
-              id="idNumber"
-              label={(t.profile as unknown as Record<string, string>)[spec.numberLabelKey]}
-              hint={(t.profile as unknown as Record<string, string>)[spec.hintKey]}
-              type="text"
-              required
-              {...(spec.htmlPattern ? { pattern: spec.htmlPattern } : {})}
-              title={(t.profile as unknown as Record<string, string>)[spec.ruleKey]}
-              maxLength={chosenType === "NIDA" ? 20 : 40}
-              inputMode={spec.inputMode}
-              defaultValue={(sp as Record<string, string | undefined>).idNumber ?? ""}
-            />
-            {/* ⛔ A `pattern` ONLY where a published rule exists. Synthesising one for
-                the licence or the voter's card from our own sanity band would put a
-                browser-enforced lockout in front of a real citizen on a rule no
-                authority ever published.
-
-                ⛔ AND NO PLACEHOLDER (A-5). A placeholder must never become a value;
-                the shape lives in the hint and in the rule line below, which are text
-                rather than a greyed value sitting in a box. The rule is named IN FULL
-                whenever the server refused the number — "invalid" is never an
-                acceptable answer on an identity field (§F4). */}
-            {sp.reason === "id_number_format" && (
-              <p role="alert" className="-mt-2 text-body-sm leading-snug text-no-300">
-                {(t.profile as unknown as Record<string, string>)[spec.ruleKey]}
-              </p>
-            )}
-
-            {/* ⛔ ASKED FOR ONLY WHERE THE DOCUMENT HAS ONE. A NIDA and a voter's card
-                do not expire, and asking for a date a document does not carry invites
-                an invented one — which is worse than no date in a compliance record. */}
-            {spec.expires && (
-              <div>
-                <FieldLegend as="label" htmlFor="idExpiry" className="block mb-2">
-                  {t.profile.idExpiryLabel}
-                </FieldLegend>
-                <DateSelect
-                  name="idExpiry"
-                  id="idExpiry"
-                  required
-                  min={new Date().toISOString().slice(0, 10)}
-                  max={`${new Date().getFullYear() + 20}-12-31`}
-                  defaultValue={(sp as Record<string, string | undefined>).idExpiry ?? ""}
-                />
-                <p className="mt-1.5 text-body-sm text-text-subtle">{t.profile.idExpiryHint}</p>
-              </div>
-            )}
-            <Field
-              id="fullName"
-              label={t.profile.fullName}
-              hint={t.profile.fullNameHint}
-              type="text"
-              required
-              minLength={3}
-              maxLength={100}
-              defaultValue={(sp as Record<string, string | undefined>).fullName ?? ""}
-            />
-            <div>
-              <FieldLegend as="label" htmlFor="dob" className="block mb-2">
-                {t.auth.dobLabel}
-              </FieldLegend>
-              {user?.dob ? (
-                // Already collected (and 18+ gated) at sign-up — don't make the
-                // user type it again. Show it read-only for confirmation and
-                // submit the stored value. NORMALISE to YYYY-MM-DD: prod stores
-                // dob as a Prisma DateTime, read back as a full ISO string
-                // ("1990-01-15T00:00:00.000Z"); the KYC validator only accepts
-                // YYYY-MM-DD, so the raw ISO was being rejected ("Use YYYY-MM-DD").
-                <>
-                  <input type="hidden" name="dob" value={user.dob.slice(0, 10)} />
-                  <div className="flex items-center gap-2 rounded-xl border border-border bg-bg-elevated px-3.5 py-2.5">
-                    <I.check s={14} className="text-yes-300 shrink-0" />
-                    <span className="font-mono text-[13px] text-text">{user.dob.slice(0, 10)}</span>
-                    <span className="ml-auto text-[10.5px] text-text-subtle">{t.profile.fromSignUp}</span>
-                  </div>
-                  <p className="mt-1.5 text-body-sm text-text-subtle">
-                    {t.profile.dobFromSignUp}{" "}
-                    <a href={`mailto:${SUPPORT_EMAIL()}`} className="text-brand-300 underline-offset-2 hover:underline hover:text-brand-200">{t.error.contactSupport}</a>
-                  </p>
-                </>
+            <p className="text-body-sm text-text-subtle">
+              {t.profile.tapToAttach}
+            </p>
+            <p className="font-mono text-[11px] font-bold tabular-nums text-text-muted">
+              {t.profile.docsAttachedCount.replace("{n}", String(attachedCount)).replace("{total}", String(requiredSlots.length))}{allAttached ? ` — ${t.profile.readyToSubmit}` : ""}
+            </p>
+            <form action={submitKycForReviewAction}>
+              {allAttached ? (
+                <SubmitButton label={t.common.confirm} pendingLabel={t.common.loading} />
               ) : (
                 <>
-                  <DateSelect
-                    name="dob"
-                    id="dob"
-                    required
-                    min="1930-01-01"
-                    max={new Date(new Date().getFullYear() - 18, new Date().getMonth(), new Date().getDate()).toISOString().slice(0, 10)}
-                  />
-                  <p className="mt-1.5 text-body-sm text-text-subtle">{t.auth.dobHint}</p>
+                  <button
+                    type="submit"
+                    disabled
+                    className="btn btn-ghost btn-lg btn-pill w-full"
+                  >
+                    {t.common.confirm}
+                  </button>
+                  <p className="mt-2 text-body-sm text-text-subtle text-center">{t.profile.attachAllThree}</p>
                 </>
               )}
-            </div>
-            <Field
-              id="email"
-              label={t.common.email}
-              hint={t.profile.emailHint}
-              type="email"
-              required
-              maxLength={254}
-              inputMode="text"
-              placeholder="you@example.com"
-              defaultValue={(sp as Record<string, string | undefined>).email ?? ""}
-            />
-            <SubmitButton label={`${t.profile.continueVerification}`} pendingLabel={t.common.loading} />
-          </form>
-          <details className="border-t border-border pt-3 text-[12.5px] text-text-muted">
-            <summary className="font-display font-semibold text-text cursor-pointer flex items-center gap-2">
-              <I.shieldQuestion s={14} className="text-text-subtle shrink-0" />
-              {t.profile.whyWeAsk}
-            </summary>
-            <p className="mt-1.5 leading-snug">
-              {t.profile.whyWeAskBody}
-            </p>
-          </details>
-        </section>
-      )}
-
-      {idDone && !submitted && (
-        <section className="rounded-xl glass-panel p-5 lg:p-6 space-y-3">
-          <div className="flex items-center gap-2">
-            {/* This badge marks STEP 1 being done, not identity being verified.
-                It renders on `idDone && !submitted` — a number that passed its
-                document's format rule and the uniqueness check — before a single
-                photo is uploaded and long before an officer looks at anything. It
-                used to read "ID verified" (SW "Imethibitishwa", ZH "已验证"), which
-                told an unverified player they were verified on the one surface
-                that must never overstate. docs/IDENTITY-POLICY.md, the owner
-                decision: `idVerifiedAt` means "format accepted", there is no
-                authority check, and "if any surface contradicts it, that surface
-                is wrong". Same string is still correct in the stepper above,
-                where it is gated on `kyc?.status === "APPROVED"`. */}
-            <span className="inline-flex items-center gap-1 rounded-pill border border-yes-700 bg-yes-500/10 px-2.5 py-0.5 font-mono text-micro font-bold uppercase tracking-[0.1em] text-yes-300">
-              <I.check s={11} />
-              {t.profile.idSaved}
-            </span>
-            {/* Which document this submission is built on, stated where the player
-                can see it — a passport journey that never names the passport leaves
-                somebody wondering whether the right thing was recorded. */}
-            <span className="font-mono text-micro uppercase tracking-[0.1em] text-text-subtle">{idLabel}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-brand-500/15 text-brand-300">
-              <I.camera s={15} />
-            </span>
-            <h2 className="font-display text-[15px] font-semibold text-text">{t.profile.step2} · {t.profile.uploadDocuments}</h2>
-          </div>
-          <p className="text-body-sm text-text-muted leading-snug">
-            {t.profile.uploadDocsBody}
-          </p>
-          {/* ⛔ THE SLOTS COME FROM THE CATALOGUE, NOT FROM THIS FILE. A NIDA asks for
-              front + back + selfie; the other three ask for one image of the document
-              + a selfie. ⭐ THE SELFIE SURVIVES ON ALL FOUR ON PURPOSE: "Selfie matches
-              the ID photo" is one of the officer's four attestations, so dropping it
-              for three of the types would have removed the human control while widening
-              the document list — exactly what the policy forbids.
-              ⚠️ `sm:grid-cols-*` is derived from the count, or a two-slot document
-              renders a 3-column grid with a hole in it at ≥640px. */}
-          <div className={`grid grid-cols-1 gap-2 ${requiredSlots.length >= 3 ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
-            {requiredSlots.map((slot) => (
-              <KycDocUploader
-                key={slot}
-                label={(t.profile as unknown as Record<string, string>)[DOC_SLOT_LABEL_KEY[slot]]}
-                docType={slot}
-                attached={hasDoc(slot)}
-              />
-            ))}
-          </div>
-          <p className="text-body-sm text-text-subtle">
-            {t.profile.tapToAttach}
-          </p>
-          <p className="font-mono text-[11px] font-bold tabular-nums text-text-muted">
-            {attachedCount}/{requiredSlots.length} {t.toast.documentAttached.toLowerCase()}{allAttached ? ` — ${t.profile.readyToSubmit}` : ""}
-          </p>
-          <form action={submitKycForReviewAction}>
-            {allAttached ? (
-              <SubmitButton label={t.common.confirm} pendingLabel={t.common.loading} />
-            ) : (
-              <>
-                <button
-                  type="submit"
-                  disabled
-                  className="btn btn-ghost btn-lg btn-pill w-full"
-                >
-                  {t.common.confirm}
-                </button>
-                <p className="mt-2 text-body-sm text-text-subtle text-center">{t.profile.attachAllThree}</p>
-              </>
-            )}
-          </form>
-        </section>
+            </form>
+          </section>
+        )}
+        </>
       )}
 
       {submitted && kyc?.status === "APPROVED" && (
@@ -539,8 +611,8 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
             <I.clock s={28} />
           </div>
           <p className="font-display text-[18px] font-bold text-gold-300">{t.profile.inReview}</p>
-          <p className="text-[13px] text-text-muted leading-snug max-w-[400px] mx-auto">
-            {t.profile.kycReviewingBody}
+          <p className="text-[13px] text-text-muted leading-snug max-w-[400px] mx-auto text-balance">
+            {t.profile.kycReviewingBody.replace("{hours}", durationHours(locale, KYC_REVIEW_SLA_HOURS))}
           </p>
         </section>
       )}
@@ -556,7 +628,7 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
           href="/wallet"
           className="font-display text-[13px] font-semibold text-gold-300 hover:text-gold-200 transition-colors"
         >
-          {t.common.deposit} → {t.common.wallet}
+          {t.common.wallet} →
         </Link>
       </div>
     </PageContainer>
@@ -568,7 +640,16 @@ export default async function KycPage({ searchParams }: { searchParams?: Promise
 // (first not-yet-done step); done nodes read green (the page's done colour), the
 // current node carries the gilt ring, future nodes are muted line-art. Purely
 // presentational — reflects server-derived `done` flags, no motion.
-function ProgressRail({ nodes }: { nodes: { label: string; glyph: keyof typeof I; done: boolean }[] }) {
+//
+// ⚠️ 2026-09-13 — EQUAL FLEXIBLE COLUMNS, CONNECTORS DRAWN BETWEEN CENTRES. The columns were a
+// fixed 64px with the connectors as flex siblings, so a long Swahili label ("IMETHIBITISHWA",
+// ~104px at the eyebrow's 0.14em) ran into its neighbour and off the right edge at 360px. Each
+// column now takes a quarter of the rail; a multi-word label wraps (balanced), and a single
+// long word overflows its column symmetrically (flex centring) instead of to one side.
+// ⛔ Swahili drops the eyebrow tracking for `tracking-normal`: 84px at 0 against an 80px
+// column at 360 still clears the neighbour label; at 0.14em no layout can hold it. en/zh
+// keep `.eyebrow` unchanged.
+function ProgressRail({ nodes, tightLabels = false }: { nodes: { label: string; glyph: keyof typeof I; done: boolean }[]; tightLabels?: boolean }) {
   const firstUndone = nodes.findIndex((n) => !n.done);
   // All done → the last node is the "current"; else the first not-done node.
   const activeIndex = firstUndone === -1 ? nodes.length - 1 : firstUndone;
@@ -588,29 +669,43 @@ function ProgressRail({ nodes }: { nodes: { label: string; glyph: keyof typeof I
             ? "text-gold-300"
             : "text-text-subtle";
         return (
-          <div key={i} className="contents">
-            <div className="flex w-[64px] shrink-0 flex-col items-center">
-              {/* ⚠️ LITERALS — `h-9` is 64px on this repo's overridden scale, i.e. edge-to-edge
-                  inside the w-[64px] column with zero gutter. 32px leaves the label room. */}
-              <span className={`inline-flex h-[32px] w-[32px] items-center justify-center rounded-full ${circleCls}`}>
-                {node.done ? <I.check s={16} /> : <Glyph s={16} />}
-              </span>
-              <span className={`mt-2 text-center font-mono text-micro font-semibold uppercase leading-tight eyebrow ${labelCls}`}>
-                {node.label}
-              </span>
-            </div>
+          <div key={i} className="relative flex min-w-0 flex-1 flex-col items-center">
             {i < nodes.length - 1 && (
+              // From 8px past this circle's edge to 8px short of the next one (radius 16 + 8).
               <div
                 aria-hidden
-                className="mt-[17px] h-[2px] flex-1 rounded-full"
-                style={{ background: i < activeIndex ? "color-mix(in oklab, var(--gold-500) 75%, transparent)" : "var(--border)" }}
+                className="absolute top-[15px] h-[2px] rounded-full"
+                style={{
+                  left: "calc(50% + 24px)",
+                  right: "calc(-50% + 24px)",
+                  background: i < activeIndex ? "color-mix(in oklab, var(--gold-500) 75%, transparent)" : "var(--border)",
+                }}
               />
             )}
+            {/* ⚠️ LITERALS — `h-9` is 64px on this repo's overridden scale. */}
+            <span className={`inline-flex h-[32px] w-[32px] items-center justify-center rounded-full ${circleCls}`}>
+              {node.done ? <I.check s={16} /> : <Glyph s={16} />}
+            </span>
+            <span className={`mt-2 text-center text-balance font-mono text-micro font-semibold uppercase leading-tight ${tightLabels ? "tracking-normal" : "eyebrow"} ${labelCls}`}>
+              {node.label}
+            </span>
           </div>
         );
       })}
     </section>
   );
+}
+
+/**
+ * The date of birth as a person reads it, in the page's language ("1 January 1990",
+ * "1 Januari 1990", "1990年1月1日"). Formatted in UTC because the stored value is a calendar
+ * date, not an instant — any other zone can move it a day. Falls back to the raw value.
+ */
+const DOB_INTL_TAG: Record<Locale, string> = { en: "en-GB", sw: "sw-TZ", zh: "zh-CN" };
+function formatDob(isoDate: string, locale: Locale): string {
+  const d = new Date(`${isoDate}T00:00:00Z`);
+  if (Number.isNaN(d.getTime())) return isoDate;
+  return new Intl.DateTimeFormat(DOB_INTL_TAG[locale], { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }).format(d);
 }
 
 /**

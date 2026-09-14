@@ -16,6 +16,7 @@ import { loadConfig, saveConfig } from "@/lib/server/config-store";
 import { TWO_PERSON_THRESHOLD_TZS } from "../../aml/constants";
 import { maskEmail } from "@/lib/server/email";
 import { selfExclusionStanding } from "@/lib/server/responsible-gambling";
+import { removeWalletFreeze } from "@/lib/server/wallet-freeze";
 
 /**
  * Privileged player-management actions. Each one:
@@ -49,6 +50,10 @@ const ACTION_DOMAIN: Record<string, AdminDomain> = {
   approveKycAction: "compliance",
   rejectKycAction: "compliance",
   requestKycInfoAction: "compliance",
+  // 2026-09-13 — the officer's wallet freeze and the door back from a final identity refusal.
+  // Compliance decisions, never support: a freeze stops a player's money in both directions.
+  freezeWalletAction: "compliance",
+  unfreezeWalletAction: "compliance",
 };
 
 async function requireAdmin(action: string): Promise<string> {
@@ -173,26 +178,22 @@ export async function restorePlayerAction(formData: FormData) {
   }
 
   try {
-    // ⛔ DO NOT HARD-CODE "ACTIVE" HERE. E-238's bet-path fix is read-only precisely because
-    // restoring a status needs to know what it was BEFORE — and a PENDING_KYC player promoted
-    // to ACTIVE would walk through the identity gate they had not passed. It is derivable
-    // without a column: `kyc-service.ts:735` promotes PENDING_KYC → ACTIVE on approval, so
-    // approved KYC is exactly the condition for ACTIVE and everything else lands back on
-    // PENDING_KYC.
-    const kyc = await db.kyc.findByUserId(userId);
-    const nextStatus = kyc?.status === "APPROVED" ? "ACTIVE" as const : "PENDING_KYC" as const;
+    // ⭐ ACTIVE, AND SINCE 2026-09-13 THAT IS THE WHOLE ANSWER. This used to restore to
+    // PENDING_KYC for anyone not approved, because a PENDING_KYC player promoted to ACTIVE would
+    // have walked through an identity gate. There is no such gate on sign-in, deposit or play any
+    // more (the only identity gate is on withdrawal, and it reads the KYC row, never this status),
+    // so PENDING_KYC means nothing and every account restores to ACTIVE — the status new accounts
+    // are now created with (docs/COMPLIANCE-DECISIONS.md 2026-09-13).
+    const nextStatus = "ACTIVE" as const;
     await db.user.update(userId, { status: nextStatus });
 
-    // ⭐ AND THE WALLET HAS TO COME BACK WITH THE ACCOUNT. `selfExclude()` freezes it
-    // (responsible-gambling.ts:224) and — measured — NOTHING in the codebase has ever
-    // unfrozen one, so before this the money stayed frozen even for an account an officer
-    // had "restored". Self-exclusion is the only writer of FROZEN, so an unfreeze here
-    // cannot be releasing some other hold.
+    // ⭐ AND THE WALLET COMES BACK WITH THE ACCOUNT — but only by lifting the SELF-EXCLUSION hold.
+    // 🔴 This used to set the wallet straight to ACTIVE on the strength of "self-exclusion is the
+    // only writer of FROZEN". From 2026-09-13 it is not: a FINAL identity refusal and an officer can
+    // freeze a wallet too, and reopening a served exclusion must not silently lift either. The
+    // wallet is ACTIVE again only if no other hold remains (`wallet-freeze.ts`).
     if (selfExcluded) {
-      const wallet = await db.wallet.findByUserId(userId);
-      if (wallet && wallet.status === "FROZEN") {
-        await db.wallet.update(wallet.id, { status: "ACTIVE" });
-      }
+      await removeWalletFreeze(userId, "SELF_EXCLUSION", { actorId: officerId, note: reason, ref: { via: "rg.self_exclusion.reopened" } });
     }
 
     // ⚠️ `selfExclusionUntil` IS DELIBERATELY LEFT AS IT IS. It is the cross-operator
@@ -347,11 +348,14 @@ export async function adjustBalanceAction(formData: FormData) {
 // ─── Force re-verify KYC (audit §9.3 #4) ────────────────────────────────────
 // Moves an APPROVED player to ADDITIONAL_INFO_REQUIRED → reopens the resubmit flow.
 // Audited in kyc-service.
-// 🔴 IT DOES NOT RE-LOCK WITHDRAWALS ANY MORE — that is what this comment claimed until
+// 🔴 IT DOES NOT RE-LOCK WITHDRAWALS — that is what this comment claimed until
 // 2026-08-20, and it was the whole reason an officer reached for this control. The
-// withdrawal identity gate is gone (Board comment #1, 2026-08-19). To stop money
-// leaving, freeze the wallet, pause payouts, or rely on the AML ≥ TZS 1,000,000
-// two-officer hold. See docs/BOARD-DISCLOSURE-B-E.md §6.1.
+// withdrawal gate asks whether the account was EVER approved (`kyc-gate.ts`, 2026-09-13),
+// and re-verifying never clears that. To stop money leaving, the stops are: freeze the
+// wallet, or pause payouts. ⛔ Do NOT rely on an AML hold — the TZS 1,000,000 two-officer
+// hold this comment used to name was switched off by the owner ruling of 2026-09-13
+// (`WITHDRAWAL_AML_HOLD` in payments.ts); a large withdrawal is sent without review.
+// See docs/BOARD-DISCLOSURE-B-E.md §6.1.
 export async function forceReverifyKycAction(formData: FormData) {
   const officerId = await requireAdmin("forceReverifyKycAction");
   const userId = String(formData.get("userId") ?? "");
@@ -362,6 +366,17 @@ export async function forceReverifyKycAction(formData: FormData) {
     const { forceReverifyKyc } = await import("@/lib/server/kyc-service");
     const r = await forceReverifyKyc(officerId, userId, reason);
     if (!r.ok) return { ok: false as const, error: r.error };
+    // ⭐ "ALSO FREEZE THE WALLET" (2026-09-13). Re-verification stops no money any more, so the
+    // dialog offers the lever that does, with the same written reason. It needs the SAME compliance
+    // grant this action already demanded above, so nothing is widened by offering it here.
+    // ⚠️ If the freeze fails the re-verification has still happened — the officer is told plainly
+    // rather than shown a success that only half-happened.
+    if (String(formData.get("alsoFreeze") ?? "") === "1") {
+      const { freezeWalletByOfficer } = await import("@/lib/server/wallet-freeze");
+      const f = await freezeWalletByOfficer(officerId, userId, reason);
+      revalidatePath(`/admin/players/${userId}`);
+      if (!f.ok) return { ok: false as const, error: `Re-verification was required, but the wallet was NOT frozen: ${f.error}` };
+    }
     revalidatePath(`/admin/players/${userId}`);
     return { ok: true as const };
   } catch (err) {
@@ -446,3 +461,51 @@ export async function requestKycInfoAction(formData: FormData) {
   }
   return r.ok ? { ok: true as const } : { ok: false as const, error: r.error };
 }
+
+// ─── Wallet freeze (officer) — 2026-09-13 ─────────────────────────────────────
+//
+// ⭐ THE LEVER RULING 6 HANDS THE OFFICER. From 2026-09-13 re-verification blocks no money at all,
+// so an officer with a doubt about an account needs a control that does: the freeze stops deposits,
+// bets and withdrawals alike. It had no officer control before this — self-exclusion was the only
+// writer of FROZEN. `wallet-freeze.ts` records the hold BY REASON, so this never lifts a
+// self-exclusion or a final identity refusal, and they never lift this.
+// ⛔ COMPLIANCE domain, step-up 2FA, mandatory written reason, awaited COMPLIANCE audit.
+
+export async function freezeWalletAction(formData: FormData) {
+  const officerId = await requireAdmin("freezeWalletAction");
+  const userId = String(formData.get("userId") ?? "");
+  const reason = String(formData.get("reason") ?? "").trim().slice(0, 300);
+  if (!userId) return { ok: false as const, error: "Missing user id." };
+  if (reason.length < 5) return fieldError("reason", "Reason is required (≥ 5 chars).");
+  try {
+    const { freezeWalletByOfficer } = await import("@/lib/server/wallet-freeze");
+    const r = await freezeWalletByOfficer(officerId, userId, reason);
+    if (!r.ok) return { ok: false as const, error: r.error };
+    revalidatePath(`/admin/players/${userId}`);
+    return { ok: true as const, changed: r.changed };
+  } catch (err) {
+    return { ok: false as const, error: safeError(err, "Freeze failed") };
+  }
+}
+
+export async function unfreezeWalletAction(formData: FormData) {
+  const officerId = await requireAdmin("unfreezeWalletAction");
+  const userId = String(formData.get("userId") ?? "");
+  const reason = String(formData.get("reason") ?? "").trim().slice(0, 300);
+  if (!userId) return { ok: false as const, error: "Missing user id." };
+  if (reason.length < 5) return fieldError("reason", "Reason is required (≥ 5 chars).");
+  try {
+    const { unfreezeWalletByOfficer } = await import("@/lib/server/wallet-freeze");
+    const r = await unfreezeWalletByOfficer(officerId, userId, reason);
+    if (!r.ok) return { ok: false as const, error: r.error };
+    revalidatePath(`/admin/players/${userId}`);
+    return { ok: true as const, status: r.status };
+  } catch (err) {
+    return { ok: false as const, error: safeError(err, "Unfreeze failed") };
+  }
+}
+
+/* ⛔ NO "re-open a final refusal" action here (removed 2026-09-13): the one door back after a FINAL
+   identity refusal is `reopenFinalRefusalWorkstationAction` on /admin/kyc/[id], where the officer sees the
+   case. A second copy on this page had no caller (`test:orphan-actions`), and an uncalled server action is
+   still a reachable endpoint. */

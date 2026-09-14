@@ -94,10 +94,12 @@ export function PublicFooter({
    * ⚠️ A SCREENSHOT CANNOT SEE THIS. A `position: fixed` bar paints over the link and the
    * image looks identical whether the link is reachable or buried; only a hit test at real
    * coordinates tells the two apart. Guard: `npm run qa:footer-reachable`.
-   * ⭐ The clearance is COPIED from `app-shell.tsx`, not re-derived — one bar, one number.
+   * ⭐ 2026-09-13: this is now the ONLY clearance for the rail. `<main>` no longer carries a copy —
+   * the two stacked into ~250px of blank above this footer — because the shell renders this footer
+   * unconditionally, so the document always ends here.
    */
   return (
-    <footer className="mt-12 bg-bg-elevated/40 pb-[calc(88px+env(safe-area-inset-bottom))] lg:pb-0">
+    <footer className="mt-8 lg:mt-12 bg-bg-elevated/40 pb-[calc(88px+env(safe-area-inset-bottom))] lg:pb-0">
       {/* Heraldic claret rule with gilt midpoint — regulator/footer chrome. */}
       <div aria-hidden className="claret-rule mx-auto max-w-board" />
       <div className="mx-auto max-w-board px-3 lg:px-6 pt-2 pb-7 grid grid-cols-1 md:grid-cols-4 gap-6 text-[12px]">

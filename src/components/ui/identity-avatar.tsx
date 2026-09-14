@@ -271,7 +271,9 @@ export function IdentityAvatar({
       ? { boxShadow: `0 0 0 2px var(--bg-elevated), 0 0 0 ${Math.max(2, size * 0.045)}px ${TIER_RING[tier]}${tier === "sovereign" ? `, 0 0 0 1px ${TIER_RING.sovereign} inset` : ""}` }
       : undefined;
   return (
-    <span className={"crest-holder" + (className ? " " + className : "")} style={{ width: size, height: size }}>
+    // ⛔ ROUND HOLDER (2026-09-13): a caller's ring or shadow lands on THIS span, and while it was
+    // square the profile hero painted a square frame behind the round crest.
+    <span className={"crest-holder" + (className ? " " + className : "")} style={{ width: size, height: size, borderRadius: "50%" }}>
       <span style={{ width: size, height: size, borderRadius: "50%", overflow: "hidden", display: "inline-grid", placeItems: "center", flexShrink: 0, ...ringStyle }}>
         {src
           ? <img src={src} alt={name || "User avatar"} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />

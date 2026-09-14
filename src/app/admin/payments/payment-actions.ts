@@ -131,8 +131,10 @@ export async function retryDepositAction(formData: FormData): Promise<Result> {
   if (r.ok) {
     await db.txn.update(txnId, { status: "CANCELLED", description: `${t.description ?? "deposit failed"} · superseded by retry` });
   } else {
-    // Retry refused (kill-switch, KYC, rate limit, bounds) — no replacement txn was
-    // created, so the FAILED row must stay in the queue. Record why, cancel nothing.
+    // Retry refused (kill-switch, frozen wallet, RG lockout, unconfirmed email, caps / Source of
+    // Funds, rate limit, bounds) — no replacement txn was created, so the FAILED row must stay in
+    // the queue. Record why, cancel nothing. ⚠️ Identity is NOT among these since 2026-09-13: a
+    // deposit asks no identity question (`kyc-gate.ts`); from 2026-09-05 to 2026-09-13 it did.
     await db.txn.update(txnId, { description: `${t.description ?? "deposit failed"} · retry refused: ${r.error ?? "unknown"}` });
   }
   audit({ category: "WALLET", action: "payments.retry.deposit", actorId: g.userId, targetType: "Transaction", targetId: txnId, payload: { retried: r.ok, newStatus: r.ok ? r.data?.status : null } });
@@ -171,13 +173,18 @@ export async function retryWithdrawalAction(formData: FormData): Promise<Result>
   if (!t || t.type !== "WITHDRAWAL" || t.status !== "FAILED") return { ok: false, error: "Not a retryable failed withdrawal." };
   const { withdraw } = await import("@/lib/server/wallet-service");
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  // ⛔ THE 4th ARGUMENT IS THE OPERATOR, AND IT IS NOT OPTIONAL IN PRACTICE. Identity
-  // verification is no longer a precondition of withdrawal (Board comment #1,
-  // 2026-08-19), so this path can now push a payout for an UNVERIFIED account — which
-  // the identity gate used to stop here as a side effect. `withdraw()` records who
-  // initiated it; without this argument the compliance record would name the PLAYER
-  // for an action an officer took. `undefined` is the idempotencyKey this path has
-  // never passed. See docs/BOARD-DISCLOSURE-B-E.md §6.2.
+  // ⛔ THE 4th ARGUMENT IS THE OPERATOR, AND IT IS NOT OPTIONAL IN PRACTICE. `withdraw()`
+  // records who initiated a payout; without this argument the compliance record would name
+  // the PLAYER for an action an officer took. `undefined` is the idempotencyKey this path has
+  // never passed.
+  // ⚠️ THE ORIGINAL REASON IS DATED. It was written for 2026-08-19, when identity was NOT a
+  // precondition of withdrawal (Board comment #1; docs/BOARD-DISCLOSURE-B-E.md §6.2), so this
+  // path could push a payout for a never-verified account. Since 2026-09-05 — and unchanged by
+  // the 2026-09-13 ruling — `withdraw()` refuses an account that was never approved
+  // (`kyc-gate.ts`), for an operator retry exactly as for the player. The argument still
+  // matters: an account under re-verification (approved once, not APPROVED now) IS paid, and
+  // its `withdraw.unverified_payer` row must name the officer (`operatorInitiated`).
+  // docs/COMPLIANCE-DECISIONS.md 2026-09-13, S10.
   const r = await withdraw(t.userId, { provider: (t.provider ?? "MPESA"), amount: Math.abs(t.amount), msisdn: t.msisdn ?? undefined } as any, undefined, g.userId);
   if (r.ok) {
     await db.txn.update(txnId, { status: "CANCELLED", description: `${t.description ?? "withdrawal failed"} · superseded by retry` });
