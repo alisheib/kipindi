@@ -16,6 +16,14 @@
  *                                                              SW loses the bell AND the menu
  *   without the gap yield     EN over  0px · SW over  9px    → SW still loses the account menu
  *
+ * ⚠️ RETIRED 2026-09-14 (session 96, register E-407): `bar-gap-stops-yielding`. Re-measured at 1024px, signed in, with
+ * the bar's gap widened from 12px to 20px (the mutation's exact effect, `gap-4` on this project's scale): the SW account
+ * menu's right edge moves 1000 → 1016px of 1024 and the bar's scrollWidth stays 1024; EN does not move. The header has
+ * gained slack since this table was written (the bar's phone padding px-3 → px-2 on 2026-09-11, ee3cc696, among other
+ * changes), so the gap yield is no longer load-bearing and the product SURVIVES the mutation — `red:header-fit`
+ * correctly reported it "broken: the witness never moved". A case the product survives proves nothing, so it is
+ * removed rather than re-aimed at a defect that no longer exists. The `lg:gap-2` yield stays in the bar as slack.
+ *
  * ⭐ THE SECOND ONE IS THE INTERESTING MUTATION. It is GREEN in English and RED in Swahili
  * only — so a harness that ran one locale would report it MISSED and quietly certify a repair
  * that was 9px short for the language most of this platform's players read. A red fleet is only
@@ -35,13 +43,5 @@ export const MUTATIONS = [
     suite: "header-fit",
     from: `<span className="hidden sm:inline lg:hidden xl:inline">`,
     to: `<span className="hidden sm:inline">`,
-  },
-  {
-    name: "bar-gap-stops-yielding",
-    why: "the bar keeps sm:gap-4 through the lg–xl band, charging 20px three times; English survives it and SWAHILI DOES NOT — 9px, and the account menu goes",
-    file: BAR,
-    suite: "header-fit",
-    from: `className="mx-auto max-w-board flex items-center h-full gap-2 px-3 sm:gap-4 sm:px-5 lg:gap-2 xl:gap-4"`,
-    to: `className="mx-auto max-w-board flex items-center h-full gap-2 px-3 sm:gap-4 sm:px-5"`,
   },
 ];

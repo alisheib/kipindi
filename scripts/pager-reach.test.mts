@@ -35,7 +35,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 let pass = 0, fail = 0;
 const ok = (l: string, c: boolean, x = "") => { c ? pass++ : fail++; console.log(`${c ? "PASS" : "FAIL"} ${l}${x ? ` — ${x}` : ""}`); };
 
-const { pageWindow, reachablePages } = await import("../src/components/ui/pagination.tsx");
+const { pageWindow, reachablePages, phoneWindow } = await import("../src/components/ui/pagination.tsx");
 
 // ── 1 · THE INVARIANT, swept ────────────────────────────────────────────────
 {
@@ -77,9 +77,56 @@ const { pageWindow, reachablePages } = await import("../src/components/ui/pagina
   ok("1: a page below 1 clamps too", reachablePages(-4, 5).every((p) => p >= 1 && p <= 5), JSON.stringify(reachablePages(-4, 5)));
 }
 
+// ── 1b · THE PHONE ROW (2026-09-14, register E-400 ⑦) — swept like §1 ─────────
+// Below `sm` the numbers get a row of their own and the four arrows share the next one, so the numbers row
+// must fit a narrow card: at most five 44px buttons. It is a SUBSET of the window, never a new set, and the
+// page the player is on is always in it.
+{
+  let over = 0, notSubset = 0, missingCurrent = 0, checked = 0;
+  for (const total of [1, 2, 3, 4, 5, 6, 7, 8, 9, 12, 25, 60, 199]) {
+    for (let page = 1; page <= total; page++) {
+      checked++;
+      const phone = phoneWindow(page, total);
+      const window = pageWindow(page, total).filter((p) => p !== "...");
+      if (phone.length > 5) over++;
+      if (phone.some((p) => !window.includes(p))) notSubset++;
+      if (!phone.includes(page)) missingCurrent++;
+    }
+  }
+  ok(`1b: swept ${checked} pairs`, checked > 300, String(checked));
+  ok("1b: the phone row never holds more than five numbers", over === 0, `${over} pairs over`);
+  ok("1b: …every one of them is in the desktop window", notSubset === 0, `${notSubset} pairs offered a number the window does not`);
+  ok("1b: …and the current page is always among them", missingCurrent === 0, `${missingCurrent} pairs hid the current page`);
+  ok("1b: five pages or fewer are shown whole on a phone", phoneWindow(3, 5).join(",") === "1,2,3,4,5", phoneWindow(3, 5).join(","));
+  ok("1b: seven pages show the current page and its neighbours (the 360 case that stranded »)",
+     phoneWindow(4, 7).join(",") === "3,4,5" && phoneWindow(1, 7).join(",") === "1,2" && phoneWindow(7, 7).join(",") === "6,7",
+     `${phoneWindow(4, 7)} | ${phoneWindow(1, 7)} | ${phoneWindow(7, 7)}`);
+  ok("1b: a URL page beyond the end clamps here too", phoneWindow(999, 9).join(",") === "8,9", phoneWindow(999, 9).join(","));
+}
+
 // ── 2 · THE CONTROLS — present, named, and dead at the ends ─────────────────
 {
   const pager = decomment(readFileSync(join(ROOT, "src/components/ui/pagination.tsx"), "utf8"));
+
+  // 2b · the controls wrap as GROUPS (2026-09-14). A defect-returning check, run on the real file and on a planted
+  // copy of the pre-fix row (every control a direct child of one wrapping flex row), which must be reported.
+  const groupDefects = (src: string): string[] => {
+    const d: string[] = [];
+    const back = src.match(/<div className="order-2 flex items-center gap-1 sm:order-none" data-pager-group="back">([\s\S]*?)<\/div>/)?.[1] ?? "";
+    const pages = src.match(/<div className="order-1 flex basis-full items-center justify-center gap-1 sm:order-none sm:basis-auto" data-pager-group="pages">([\s\S]*?)\n        <\/div>/)?.[1] ?? "";
+    const fwd = src.match(/<div className="order-3 flex items-center gap-1 sm:order-none" data-pager-group="forward">([\s\S]*?)<\/div>/)?.[1] ?? "";
+    if (!/to=\{1\}/.test(back) || !/to=\{safePage - 1\}/.test(back)) d.push("first and previous are not grouped together");
+    if (!/to=\{safePage \+ 1\}/.test(fwd) || !/to=\{totalPages\}/.test(fwd)) d.push("next and last are not grouped together");
+    if (!/pages\.map\(/.test(pages)) d.push("the numbers are not a group of their own");
+    if (!/onPhone\.has\(p\)/.test(pages) || !/hidden sm:contents/.test(pages)) d.push("the numbers outside the phone window are not hidden below sm");
+    if (!/const onPhone = new Set\(phoneWindow\(safePage, totalPages\)\);/.test(src)) d.push("the phone window is not the exported phoneWindow");
+    return d;
+  };
+  ok("2b: first/previous, the numbers, and next/last wrap as three groups; below sm the numbers are phoneWindow",
+     groupDefects(pager).length === 0, groupDefects(pager).join("; "));
+  const plantedFlat = pager.replace(/data-pager-group="back"/, "").replace(/data-pager-group="forward"/, "");
+  ok("2b: control · a row whose arrows are no longer grouped is reported", plantedFlat !== pager && groupDefects(plantedFlat).length > 0,
+     groupDefects(plantedFlat).join("; "));
 
   ok("2: a FIRST control targets page 1", /<Control\s+to=\{1\}/.test(pager));
   ok("2: a LAST control targets the final page", /<Control\s+to=\{totalPages\}/.test(pager));

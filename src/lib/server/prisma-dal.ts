@@ -361,6 +361,12 @@ function toStoredRG(r: any): StoredResponsibleGambling {
     pendingWeeklyIncreaseEffectiveAt: iso(r.pendingWeeklyIncreaseEffectiveAt),
     pendingMonthlyIncreaseTo: numOrNull(r.pendingMonthlyIncreaseTo),
     pendingMonthlyIncreaseEffectiveAt: iso(r.pendingMonthlyIncreaseEffectiveAt),
+    pendingLossLimitTo: numOrNull(r.pendingLossLimitTo),
+    pendingLossLimitEffectiveAt: iso(r.pendingLossLimitEffectiveAt),
+    pendingSessionLimitTo: r.pendingSessionLimitTo ?? null,
+    pendingSessionLimitEffectiveAt: iso(r.pendingSessionLimitEffectiveAt),
+    playStartedAt: iso(r.playStartedAt),
+    playLastSeenAt: iso(r.playLastSeenAt),
   };
 }
 
@@ -818,6 +824,15 @@ export const prismaDb = {
      * Ordered so the set is stable between calls; capped because the only
      * caller runs on an unauthenticated endpoint and does password work per row.
      */
+    /** E-409 · see the in-memory twin in store.ts. ⛔ Both OR arms are non-empty (an empty `{}` in an OR matches every row). */
+    expireMarketingConsent: async (beforeIso: string): Promise<string[]> => {
+      const before = new Date(beforeIso);
+      const where = { marketingOptIn: true, OR: [{ lastLoginAt: { lt: before } }, { lastLoginAt: null, createdAt: { lt: before } }] };
+      const rows = await pc().user.findMany({ where, select: { id: true } });
+      if (rows.length === 0) return [];
+      await pc().user.updateMany({ where: { ...where, id: { in: rows.map((r) => r.id) } }, data: { marketingOptIn: false } });
+      return rows.map((r) => r.id);
+    },
     findAllByEmail: async (email: string, cap = 5): Promise<StoredUser[]> => {
       const norm = email.trim().toLowerCase();
       if (!norm) return [];
@@ -1797,6 +1812,11 @@ export const prismaDb = {
         pendingWeeklyIncreaseEffectiveAt: r.pendingWeeklyIncreaseEffectiveAt ? new Date(r.pendingWeeklyIncreaseEffectiveAt) : null,
         pendingMonthlyIncreaseTo: r.pendingMonthlyIncreaseTo,
         pendingMonthlyIncreaseEffectiveAt: r.pendingMonthlyIncreaseEffectiveAt ? new Date(r.pendingMonthlyIncreaseEffectiveAt) : null,
+        // E-408 · `undefined` (a caller that never read these) leaves the column untouched rather than nulling it.
+        ...(r.pendingLossLimitTo !== undefined ? { pendingLossLimitTo: r.pendingLossLimitTo } : {}),
+        ...(r.pendingLossLimitEffectiveAt !== undefined ? { pendingLossLimitEffectiveAt: r.pendingLossLimitEffectiveAt ? new Date(r.pendingLossLimitEffectiveAt) : null } : {}),
+        ...(r.pendingSessionLimitTo !== undefined ? { pendingSessionLimitTo: r.pendingSessionLimitTo } : {}),
+        ...(r.pendingSessionLimitEffectiveAt !== undefined ? { pendingSessionLimitEffectiveAt: r.pendingSessionLimitEffectiveAt ? new Date(r.pendingSessionLimitEffectiveAt) : null } : {}),
       };
       const row = await pc().responsibleGambling.upsert({
         where: { userId: r.userId },
@@ -1804,6 +1824,10 @@ export const prismaDb = {
         update: data,
       });
       return toStoredRG(row);
+    },
+    /** E-408 · see the in-memory twin. `updateMany` so a player with no RG row (no limit) is a no-op, not a throw. */
+    touchPlayClock: async (userId: string, startedAtIso: string, lastSeenIso: string): Promise<void> => {
+      await pc().responsibleGambling.updateMany({ where: { userId }, data: { playStartedAt: new Date(startedAtIso), playLastSeenAt: new Date(lastSeenIso) } });
     },
   },
 

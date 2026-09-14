@@ -26,6 +26,7 @@ Countdown band
 - label: mono 8.5px/600, ls 0.12em, uppercase, `--text-faint` — "CLOSES IN" / "SELECTIONS CLOSED" / "ROUND SETTLED"
 - digits: mono 28px/700 tabular, ls 0.05em, lh 1, `--text`
 - final 30 s: digits `--no-300` + `ud-count-pulse` 1s infinite (opacity 1→0.55), ease `--ease-conduct`. **NEW keyframe** `ud-count-pulse` — add to kit; gated by `prefers-reduced-motion` (animation: none)
+  ⚠️ SUPERSEDED 2026-09-14 (register E-406, DESIGN_AUTHORITY §B2a): the final-30 s digits keep their running ink (`--text`) and `ud-count-pulse` alone carries the urgency — rose digits beside an Up/Down round read as "price going down". This frozen redline is kept as delivered.
 - after close: digits `00:00` in `--text-subtle`; status chip right-aligned: kit `.chip-pending` — "Awaiting result" / "Confirming price"
 
 Stats band (all four survive 360: countdown above counts as the fourth)

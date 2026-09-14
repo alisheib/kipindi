@@ -10,21 +10,43 @@ import { cookies } from "next/headers";
 import { cache } from "react";
 import { signSession, verifySession, randomId } from "./crypto";
 import { audit } from "./audit";
-import { getActiveSessionId, setActiveSessionId, clearActiveSession } from "./session-registry";
+import { readActiveSession, setActiveSessionId, clearActiveSession } from "./session-registry";
 
 /**
- * B-13 — request-scoped "this session was just revoked" signal.
+ * B-13 — request-scoped "this session just ENDED, and why" signal.
  *
  * `getSession()` mostly runs during Server Component renders, where cookie
- * mutation THROWS — so the kp_revoked flash was never actually written from the
- * common path and the revoked device saw an unexplained silent sign-out.
- * React `cache()` gives one shared cell per request render pass: the mismatch
- * branch sets it, and AppShell (which itself calls getSession) reads it to
- * route the device to `/auth/login?revoked=1` with the real explanation.
+ * mutation THROWS. React `cache()` gives one shared cell per request render
+ * pass: `getSession()` records the reason, and AppShell (which itself calls
+ * getSession) reads it to explain the sign-out to the player.
+ *
+ * 🔴 E-381 · FOUR REASONS, NOT ONE, BECAUSE THE COPY WAS TRUE IN ONE CAUSE OF ~16.
+ *  · `displaced` — the registry holds a DIFFERENT session: a newer sign-in elsewhere. The only
+ *    cause "signed in on another device" is true for.
+ *  · `no_record` — the registry holds NO row: a sign-out elsewhere, a suspension, a
+ *    self-exclusion, a closure, a staff role change, an agent decision, erasure, or a row cleared
+ *    by maintenance. `/auth/session-ended` reads the account to say which.
+ *  · `expired` / `idle` — the 7-day cap or 24 h without activity.
  */
-const revocationSignal = cache(() => ({ revoked: false }));
-export function wasSessionRevokedThisRequest(): boolean {
-  return revocationSignal().revoked;
+export type SessionEndReason = "displaced" | "no_record" | "expired" | "idle";
+const endSignal = cache((): { reason: SessionEndReason | null } => ({ reason: null }));
+/** Why this request's session ended, or null if it did not. Request-scoped. */
+export function sessionEndedThisRequest(): SessionEndReason | null {
+  return endSignal().reason;
+}
+
+/**
+ * ONE AUDIT ROW PER ENDED SESSION PER INSTANCE, not one per request. A dead cookie is presented on
+ * every request until the player signs in again — every poll, every SSE retry — and production
+ * recorded one device writing 9 rows in 31 seconds. Bounded, so it can never grow without limit.
+ */
+const auditedEnds: Set<string> = (globalThis as { __50PICK_AUDITED_ENDS?: Set<string> }).__50PICK_AUDITED_ENDS
+  ?? ((globalThis as { __50PICK_AUDITED_ENDS?: Set<string> }).__50PICK_AUDITED_ENDS = new Set());
+function auditOnce(key: string, write: () => void) {
+  if (auditedEnds.has(key)) return;
+  if (auditedEnds.size >= 5000) auditedEnds.clear();
+  auditedEnds.add(key);
+  write();
 }
 
 export type SessionData = {
@@ -99,6 +121,12 @@ export async function createSession(data: Omit<SessionData, "iat" | "exp" | "ses
     lastSeenAt: now,
     playStartedAt: now,
   };
+  // 🔴 E-381 · THE REGISTRY ROW FIRST, THE COOKIE SECOND. This used to set the cookie and then
+  // register, with the registry write swallowing its own failure — so a login whose row never
+  // persisted looked completely successful, and the next deploy or other instance found no row
+  // and signed the player out. `setActiveSessionId` now THROWS when the row cannot be written,
+  // and no cookie has been handed out when it does.
+  const previousSessionId = await setActiveSessionId(data.userId, session.sessionId);
   const token = signSession(session);
   const jar = await cookies();
   jar.set(COOKIE_NAME, token, {
@@ -108,10 +136,6 @@ export async function createSession(data: Omit<SessionData, "iat" | "exp" | "ses
     path: "/",
     maxAge: Math.floor(SESSION_TTL_MS / 1000),
   });
-  // Register as the ONLY active session for this user. Any previous
-  // session (on another device) is now invalid — getSession() will
-  // reject it on the next request.
-  const previousSessionId = await setActiveSessionId(data.userId, session.sessionId);
   audit({
     category: "AUTH",
     action: "session.created",
@@ -123,13 +147,63 @@ export async function createSession(data: Omit<SessionData, "iat" | "exp" | "ses
   return session;
 }
 
+export type SessionState = { session: SessionData | null; ended: SessionEndReason | null };
+
+/**
+ * The session AND, when there is none, why it ended. ⭐ For Route Handlers: React `cache()` only
+ * shares a cell inside a Server Component render, so `sessionEndedThisRequest()` is always null
+ * there (measured 2026-09-14 — `/auth/session-ended` saw no reason at all until it called this).
+ */
 export async function getSession(): Promise<SessionData | null> {
+  const r = await getSessionState();
+  if (r.ended) endSignal().reason = r.ended;
+  return r.session;
+}
+
+export async function getSessionState(): Promise<SessionState> {
   const jar = await cookies();
   const token = jar.get(COOKIE_NAME)?.value;
   const session = verifySession<SessionData>(token);
-  if (!session) return null;
+  if (!session) return { session: null, ended: null };
 
   const now = Date.now();
+  // 🔴 E-381 · THE ORDER IS: EXPIRY, IDLE, THEN THE REGISTRY — and none of them deletes the cookie.
+  //
+  // ① Expiry and idle come FIRST. Registry rows never expire, so a session that is genuinely
+  //    7-day-expired or 24 h idle AND rowless used to be audited as a revocation and told
+  //    "signed in on another device".
+  // ② NOTHING HERE DELETES THE COOKIE ANY MORE. In a render the delete threw and was swallowed;
+  //    in a Route Handler (`/api/events`, every poll) it SUCCEEDED — so the first background
+  //    request after a session ended erased the only evidence of why, and the next page the
+  //    player opened signed them out in silence. The one place a dead cookie is cleared is
+  //    `/auth/session-ended`, which reads the reason first and then says it.
+  // ③ An UNREADABLE registry is not a revocation. See (d) below.
+  //
+  // Absolute expiry — hard 7-day cap. Without this, a tampered cookie
+  // with a far-future exp could survive indefinitely.
+  if (session.exp && now > session.exp) {
+    auditOnce(`expired:${session.sessionId}`, () =>
+      audit({ category: "AUTH", action: "session.expired", actorId: session.userId, targetType: "Session", targetId: session.sessionId }));
+    return { session: null, ended: "expired" };
+  }
+  // Idle timeout — kick the session if it hasn't been seen in 24h, even
+  // though the absolute exp may still be hours away. LCCP / GBT
+  // account-protection: idle browsers that left the tab open should not
+  // remain authenticated for the full 7-day cap.
+  const lastSeen = session.lastSeenAt ?? session.iat ?? now;
+  if (now - lastSeen > IDLE_TIMEOUT_MS) {
+    auditOnce(`idle:${session.sessionId}`, () =>
+      audit({
+        category: "AUTH",
+        action: "session.idle_timeout",
+        actorId: session.userId,
+        targetType: "Session",
+        targetId: session.sessionId,
+        payload: { idleMs: now - lastSeen },
+      }));
+    return { session: null, ended: "idle" };
+  }
+
   // Single-active-session check (DB-authoritative).
   //
   //   a) Registry has THIS sessionId → valid, proceed
@@ -138,62 +212,24 @@ export async function getSession(): Promise<SessionData | null> {
   //      what makes server-side revocation (logout/suspend/self-exclude) real —
   //      a deleted row means logged out, not "claim the slot". A cookie minted
   //      before the durable registry existed lands here once and re-logs-in.
-  const activeId = await getActiveSessionId(session.userId);
-  if (!activeId || activeId !== session.sessionId) {
-    // B-13 — the cookie mutations below THROW in a Server Component render
-    // (most getSession calls), so the flash was silently never written and the
-    // player got an unexplained sign-out. The request-scoped signal is the
-    // render-safe channel: AppShell reads it and sends the revoked device to
-    // /auth/login?revoked=1 with the explanation. The cookie path is kept for
-    // actions/route handlers, where it does work.
-    revocationSignal().revoked = true;
-    try {
-      jar.delete(COOKIE_NAME);
-      // Short-lived flash cookie so the login page can explain WHY
-      // the user was signed out (rather than a silent redirect).
-      jar.set("kp_revoked", "1", {
-        httpOnly: false,
-        path: "/",
-        maxAge: 30,
-        sameSite: "lax",
-        secure: process.env.NODE_ENV === "production",
-      });
-    } catch { /* read-only context */ }
-    audit({
-      category: "AUTH",
-      action: activeId ? "session.revoked_by_newer_login" : "session.revoked_no_active_record",
-      actorId: session.userId,
-      targetType: "Session",
-      targetId: session.sessionId,
-      payload: { replacedBy: activeId },
-    });
-    return null;
-  }
-
-  // Absolute expiry — hard 7-day cap. Without this, a tampered cookie
-  // with a far-future exp could survive indefinitely.
-  if (session.exp && now > session.exp) {
-    try { jar.delete(COOKIE_NAME); } catch { /* read-only context */ }
-    audit({ category: "AUTH", action: "session.expired", actorId: session.userId, targetType: "Session", targetId: session.sessionId });
-    return null;
-  }
-  // Idle timeout — kick the session if it hasn't been seen in 24h, even
-  // though the absolute exp may still be hours away. LCCP / GBT
-  // account-protection: idle browsers that left the tab open should not
-  // remain authenticated for the full 7-day cap.
-  const lastSeen = session.lastSeenAt ?? session.iat ?? now;
-  if (now - lastSeen > IDLE_TIMEOUT_MS) {
-    // Drop the cookie so subsequent calls are clean.
-    try { jar.delete(COOKIE_NAME); } catch { /* read-only context */ }
-    audit({
-      category: "AUTH",
-      action: "session.idle_timeout",
-      actorId: session.userId,
-      targetType: "Session",
-      targetId: session.sessionId,
-      payload: { idleMs: now - lastSeen },
-    });
-    return null;
+  //   d) 🔴 E-381 · Registry UNREADABLE → the signed, unexpired, recently-active cookie is
+  //      trusted for THIS request. A database blip used to sign out every player not warm in
+  //      this instance's cache. Nothing is cached, so the next request asks again and a real
+  //      revocation takes effect the moment the database answers. Every money path reads and
+  //      writes the database itself, so this admits nothing a blip would not already refuse.
+  const reg = await readActiveSession(session.userId, session.sessionId);
+  if (reg.state === "absent" || (reg.state === "active" && reg.sessionId !== session.sessionId)) {
+    const displaced = reg.state === "active";
+    auditOnce(`revoked:${session.sessionId}`, () =>
+      audit({
+        category: "AUTH",
+        action: displaced ? "session.revoked_by_newer_login" : "session.revoked_no_active_record",
+        actorId: session.userId,
+        targetType: "Session",
+        targetId: session.sessionId,
+        payload: { replacedBy: reg.state === "active" ? reg.sessionId : null },
+      }));
+    return { session: null, ended: displaced ? "displaced" : "no_record" };
   }
 
   // ── E-235 · WHERE ONE PLAY SESSION ENDS AND THE NEXT BEGINS ──────────────
@@ -232,9 +268,9 @@ export async function getSession(): Promise<SessionData | null> {
       // back to the in-memory refreshed value, the next mutable
       // request will resync.
     }
-    return refreshed;
+    return { session: refreshed, ended: null };
   }
-  return { ...session, playStartedAt };
+  return { session: { ...session, playStartedAt }, ended: null };
 }
 
 export async function destroySession() {

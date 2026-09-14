@@ -8,6 +8,8 @@ import { getSession } from "@/lib/server/session";
 import { listWatchedMarketIds } from "@/lib/server/watchlist-service";
 import { getServerT } from "@/lib/i18n-server";
 import { PageContainer } from "@/components/layout/page-container";
+import { db } from "@/lib/server/store";
+import { MarketingConsent } from "./marketing-consent";
 
 // Localised tab title (POLISH-BACKLOG §1.7) — was the hard-coded English
 // "Notifications", which a Swahili player saw in their browser tab and history.
@@ -21,7 +23,10 @@ export default async function NotificationSettingsPage() {
   const { t } = await getServerT();
   const session = await getSession();
   if (!session) redirect("/auth/login?next=/profile/notifications");
-  const watched = await listWatchedMarketIds(session.userId).catch(() => [] as string[]);
+  const [watched, user] = await Promise.all([
+    listWatchedMarketIds(session.userId).catch(() => [] as string[]),
+    Promise.resolve(db.user.findById(session.userId)).catch(() => null),
+  ]);
 
   return (
     <PageContainer tier="form" className="space-y-5">
@@ -29,6 +34,10 @@ export default async function NotificationSettingsPage() {
       <PageHeader tone="info" icon={<I.bellRing s={22} />} eyebrow={t.push.eyebrow} title={t.push.pageTitle} />
 
       <PushSettings />
+
+      {/* E-409 · marketing consent, withdrawable at any time (Privacy §3). Hidden if the account read failed —
+          a switch showing a guessed state would be a lie about a consent. */}
+      {user && <MarketingConsent initialOn={user.marketingOptIn} />}
 
       {/* Watchlist summary — what these alerts are actually about. */}
       <section className="rounded-xl glass-panel p-5">

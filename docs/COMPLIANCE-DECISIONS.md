@@ -6,7 +6,7 @@
 
 ---
 
-## 2026-09-14 (fourth) · House bots — accounts 50pick operates may stake to add liquidity (reverses F6 "do not build")
+## 2026-09-14 (ninth) · House bots — accounts 50pick operates may stake to add liquidity (reverses F6 "do not build")
 
 **Status when written:** decided, and being built on branch `house-bots` (build commit 1 of 8). Nothing is live until the release merge, and the master switch ships **OFF**: Ali alone switches house bots on. The design authority is [`HOUSE-BOTS.md`](HOUSE-BOTS.md). The plan of record is `plans/house-bots/` on that branch, where `04-amendments.md` outranks `02-sealed-flows.md` and `03-design-spec.md`, which outrank `PLAN.md`.
 
@@ -153,6 +153,167 @@ Risks 8–12 (release and verification) are appended to this entry in build comm
 - Every owner action writes an audit row in its `HOUSE_AUDIT` category: COMPLIANCE for designation, the switch, limits, rules, Enter now, targets and vetoes.
 - The house-liquidity regulator report and CSV (R1) list house stakes, the Enter now register, targets and vetoes.
 - The Board disclosure draft is tracked by `boardDisclosureSections`.
+
+---
+
+## 2026-09-14 (eighth) · RG Policy v2026-09-14.3 — every limit waits 24 hours to loosen, and a new sign-in no longer restarts the session limit
+
+**Session 97, register E-411 — closes the two items the (fifth) entry recorded as open. Not an owner ruling; recorded
+because two controls changed and the policy with them.**
+
+| Control | Before | Now |
+|---|---|---|
+| Daily loss limit — raise or remove | applied **at once** | waits 24 hours; setting or lowering applies at once (`limitChange`, the deposit-limit rule) |
+| Session time limit — raise or remove | applied **at once** | the same |
+| Session time limit — sign out and back in | **restarted the clock**: `createSession` restamps the cookie's `playStartedAt` | the sitting is also held per player (`ResponsibleGambling.playStartedAt` / `playLastSeenAt`, written at every bet attempt, a refused one included, at most once a minute); while the last attempt is inside the play-session gap (30 min) the earlier start is measured |
+
+**Schema, expand-only:** migration `20260914120000_rg_pending_limits_play_clock` adds six nullable columns
+(`pendingLossLimitTo/EffectiveAt`, `pendingSessionLimitTo/EffectiveAt`, `playStartedAt`, `playLastSeenAt`); every
+statement is `ADD COLUMN IF NOT EXISTS`. A pending removal is `…To = null` with its time set, as for deposit limits; the
+player's notice, the staff player page, the RG analytics count and the RG report key on the time.
+
+**Policy §2 (en/sw/zh), Version 2026-09-14.3:** the 24-hour rule is stated once for every limit, and the session limit
+line adds *"Signing out and back in does not restart it."* The settings line says "a limit", not "a deposit limit".
+
+**Guard:** `test:rg-limit-change` 24/0 — the loss and session limits (first applies now, removal and raise wait, a lower
+value supersedes a pending raise) and the play clock (35 minutes into a 30-minute limit refused; a sign-in a minute later
+still refused; after a 39-minute break a new sitting; no clock for a player without a limit).
+
+---
+
+## 2026-09-14 (seventh) · Agent Terms v2026-09-14 — one Chinese dash, punctuation only
+
+**Session 97, register E-400 ③ — not an owner ruling; recorded because the binding text's hash moved.** The Chinese
+fee clause of `/legal/agent-terms` joined two sentences with an ASCII-spaced dash (`充值 — 无需上传收据`); it now reads
+`充值——无需上传收据`, the Chinese dash with no spaces, as everywhere else in the zh documents. **No word changed in any
+language**, and the English binding text is untouched. The version still moves (`AGENT_TERMS_VERSION` 2026-09-11 →
+**2026-09-14**, with `AGENT_TERMS_TEXT_SHA`), because the binding bodies are hashed across all three locales and a text
+that moves without its version is the defect `test:agent-terms-binding` §3 exists to stop. Moving the version forces no
+re-acceptance: nothing compares an application's stamp to it (the 2026-09-11 entry's note stands).
+
+---
+
+## 2026-09-14 (sixth) · Privacy v2026-09-14.3 — §2–§6 checked against the code; marketing consent becomes withdrawable, and its 2-year lapse is enforced
+
+**Found by checking the lines session 96 left unverified (§4 aggregator and source registry, §5 periods, §6) against the
+code (session 97) — not an owner ruling, except where one is cited; recorded because a published notice changed and two
+controls were built.** Register **E-409**. A third version on one date: **Version 2026-09-14.3** in en/sw/zh.
+
+| § | It said | The code | Now says |
+|---|---|---|---|
+| 2 | Financial: deposits, withdrawals, MSISDN, predictions | a card deposit collects a billing name and address (`deposit/actions.ts`); a withdrawal looks up the name registered to the receiving number (`selcom.ts` `selcomCashinNameLookup`) | adds both |
+| 3 | Consent to marketing "(revocable any time)" | the ONLY writer of `User.marketingOptIn` was the sign-up form — no way to withdraw short of closing the account | **a control now exists**: Profile → Notifications, "Product news", audited `privacy.marketing_consent.given/withdrawn`; the notice names where |
+| 4 | "Mobile-money aggregator (Selcom or Azampay)" | Selcom is wired and live; the Azampay adapter throws `NOT_WIRED` and is not contracted; Selcom also takes cards | Selcom named, with what it receives: the number and amount; for a card, email, account name, phone and billing name/address; before a withdrawal it returns the registered name |
+| 4 | "Source registry partners for resolution data" | `source-registry.ts` is a local allow-list of public domains; it sends nothing to anyone | removed |
+| 5 | Account + KYC, transactions, audit log: "7 years" | nothing deletes them at 7 years; transactions, ledger and audit rows are never deleted; on erasure contact details, password, and the ID name and number are pseudonymised at once, the document images kept 7 years | "at least 7 years", and the erasure behaviour stated |
+| 5 | Marketing "until withdrawn or 2 years of inactivity" | neither half ran (the 2-year period is the owner's, `DATA-RETENTION.md`; its row was "📋 Policy") | **enforced**: `retention.purge.daily` clears the flag after 730 days without a sign-in (account creation if none), one `privacy.marketing_consent.lapsed` audit row per account; sentence says "until you withdraw it, close your account, or 2 years pass without you signing in" |
+| 6 | Objection: "opt out of profiling for marketing" | no marketing profiling exists, and no opt-out control | "object to how we use your data by writing to us; we do not profile you for marketing" |
+
+§6 Access ("within 30 days") stays: the self-service export answers at once. Rectification and erasure are served by the
+request register.
+
+**Guards.** `test:privacy-notice` (in `predeploy`) pins v2026-09-14.3 with the English hash, and a new §4d ties the new
+statements to their witnesses — Selcom named in each locale, Azampay not named while its adapter is `NOT_WIRED`, the
+retired sentences absent, §3's path present and backed by an action that writes the flag on the player's own session with
+an audit row, §5's 2-year lapse present only while `retention.ts` enforces it — with four planted controls.
+`test:retention` covers the lapse (800 days lapses, last month kept, never-signed-in measured from creation, 729 days kept,
+rows kept, one audit row each). `scripts/live/kyc-at-withdrawal-prod.mjs` checks the new wording in all three languages.
+`/admin/retention` and `DATA-RETENTION.md` say the same.
+
+**⛔ Do not restore** Azampay, "source registry partners", a bare "7 years", or a marketing profiling opt-out, until the thing
+they describe exists.
+
+---
+
+## 2026-09-14 (fifth) · RG Policy v2026-09-14.2 — §2 checked against the code; removing a deposit limit now waits 24 hours
+
+**Found by checking §2 against the code (session 97), which the (third) entry below recorded as not yet done — not an
+owner ruling; recorded because a published policy changed and a control's behaviour changed.** Register **E-408**.
+
+**One control was wrong, not just its description.** §2 promised *"Increases to any of them are deferred 24 hours"*.
+`setLimits` treated only `newVal !== null && (oldVal === null || newVal > oldVal)` as an increase, so:
+
+| Change | Before | Now |
+|---|---|---|
+| Remove a deposit limit (clear the field) | applied **instantly** — the 24-hour wait could be skipped with one save | waits 24 hours; the gate keeps enforcing the old limit meanwhile |
+| Set a first deposit limit | deferred 24 hours (a player reining themselves in waited a day) | applies immediately |
+| Re-save the current value (the form sends every field back) | silently cancelled a pending increase | changes nothing |
+| Lower an existing limit / raise one | immediate / deferred 24 hours | unchanged |
+
+One rule now, `depositLimitChange` in `src/lib/server/responsible-gambling.ts`: tighter applies now, looser (including
+removal) waits 24 hours. A pending removal is stored as `pending…To = null` with its effective time set, so there is **no
+schema change**; every reader keys on the time (the player's notice, the staff player page, the RG analytics count, the
+RG report). The player's pending notice also printed the DAILY pending value whatever was pending; it now lists each.
+Guard: `test:rg-limit-change` 13/0, in `predeploy`; 11 failures on the pre-fix tree.
+
+**§2 wording, en/sw/zh, now only what runs:**
+- Deposit limits: *"Setting or lowering a limit takes effect immediately. Raising or removing one takes effect after 24 hours."*
+- Session time limit said *"automatic logout"*. Nothing logs a player out: at the limit **new bets are refused**; the
+  player stays signed in and can deposit and withdraw (E-235, `market-service.ts`). Now says so, with the 15–480 minute range.
+- Reality check said *"a banner … showing … net win/loss for the session"*. It is a dialog that shows **how long you have
+  been playing** and links to limits, a break and self-exclusion; it computes no money figure. Now says so.
+- Self-exclusion said *"permanent requires documented review to reopen"*. A permanent exclusion **cannot** be reopened
+  (`admin/players/[id]/actions.ts`); a timed one does not reopen by itself, and after the period an officer reopens it on
+  request with a recorded reason. Now says so. The staff player page's *"only the player can re-enable"* is corrected too.
+- The settings screen's line (`rg.limitsDescription`, three locales) says the same rule.
+
+**Version.** The header reads **Version 2026-09-14.2** (Toleo / 版本): the second version on one date takes a `.2`
+suffix, as Privacy does.
+
+**Recorded, not changed here:**
+- **The session time limit's clock restarts on a new sign-in** (`createSession` stamps `playStartedAt: now`), so signing
+  out and in resets it. Fixing it needs the play-session start held server-side per player, not in the cookie. The policy
+  does not describe the restart; it must not be published as a feature.
+- **The daily loss limit and the session limit loosen instantly** (raise or remove). The policy promises the 24-hour wait
+  for deposit limits only, which is what it now says. Deferring them needs pending fields for each (a migration).
+
+**⛔ Do not restore** "automatic logout", a net win/loss figure in the reality check, or "documented review" for a
+permanent exclusion until the control exists.
+
+---
+
+## 2026-09-14 (fourth) · Privacy v2026-09-14.2 — §4 names every service the code sends personal data to; §7 and §8 say only what runs
+
+**Found by the audit's recorded open tail (register E-400 ④), checked against the code, the live site and the providers'
+own published terms by session 96 — not an owner ruling; recorded because a published notice changed.** Register **E-404**.
+
+**Why a new version, not a same-day amendment.** Privacy v2026-09-14 reached production at 02:42 UTC today, and this
+correction removes two security statements a reader could have relied on, so it is not purely in the player's favour. The
+label is **Version 2026-09-14.2** in en/sw/zh: a second version published on the same date carries a `.2` suffix (the
+first is the bare date). `test:privacy-notice` (in `predeploy`) pins the label with the English text's hash and requires
+this entry.
+
+**§4 — services that receive personal data and were not named:**
+
+| Service | What the code sends | Where, and the source |
+|---|---|---|
+| **Cloudflare's network** | every request to `www.50pick.tz` — the canonical app URL — decrypted at Cloudflare's edge and re-encrypted to the origin (SSL mode Full (strict)) | measured 2026-09-14: `server: cloudflare` and `cf-ray` on www; the apex `50pick.tz` is served by Railway's edge. Zone settings read through the Cloudflare API the same day |
+| **Postmark** | every email we send; opens tracked on every email (`TrackOpens: true`) and links tracked unless a call site turns it off (`trackLinks = true` by default) — `src/lib/server/email.ts` | United States: "Postmark is a US-based company and we also store our data in the US" (postmarkapp.com GDPR FAQ, read 2026-09-14) |
+| **Anthropic** | the 50pick Help chat: the last ten turns and the new question; the system prompt carries only the language and the objection window, no account data — `chatWithClaude` in `src/app/_actions/chat.ts` | "data is stored in the US"; "by default, we may route customer traffic to select countries in the US, Europe, Asia and Australia" (privacy.claude.com, page dated 2026-06-15, read 2026-09-14) |
+| **Sentry** | server error reports after `scrubForAudit` removes Tanzanian mobile numbers, digit runs of 12 or more and email addresses; `sendDefaultPii` off, no breadcrumbs — `src/lib/server/monitoring.ts` | EU region `de.sentry.io` (the record in `monitoring.ts`, 2026-07-31) |
+| **Browser push services** | if a player turns notifications on: the device's push subscription and an encrypted payload (`web-push`) | the company that makes the player's browser; stated conditionally, because push runs in stub mode until VAPID keys are set |
+
+**§7 — cookies.** "Theme preference" is removed: no code writes a theme cookie (one dark theme, DESIGN_AUTHORITY B3). The
+list now describes the six cookies the code writes: the sign-in session (`kp_session`, at most 7 days — `SESSION_TTL_MS`),
+the language (`kp-locale`), the 30-second sign-out note (`kp_revoked`), the dismissed identity notice (`kp-kyc-notice`),
+and, on staff accounts only, the two-factor cookies (`kp_admin_totp`, `kp_pending_2fa`). A sentence now says display
+choices are kept in the browser's own storage.
+
+**§8 — security.**
+- *"All data in transit over TLS 1.2+"* becomes *"Connections to our website and app are encrypted in transit with TLS
+  (HTTPS)"*. Measured 2026-09-14 with one handshake per protocol version: `50pick.tz` refuses TLS 1.0 and 1.1, but
+  **`www.50pick.tz` accepted TLS 1.0 and 1.1** — the zone's Minimum TLS Version was 1.0. Both hosts redirect HTTP to
+  HTTPS and send HSTS (`src/proxy.ts`). The notice no longer names a protocol version: that is a dashboard setting no
+  code pins. **The zone minimum was raised to 1.2 the same morning** on the owner's instruction (08:02:26 UTC, one API call he approved), and re-measured at 08:02:37 UTC: both hosts now refuse TLS 1.0 and 1.1. The notice's wording stays version-free on purpose.
+- *"At-rest encryption via AES-256 in the database tier"* is removed: no record establishes it for the Railway volumes. The
+  notice now states what the records show — two-factor keys encrypted with AES-256-GCM (`src/lib/server/totp.ts` →
+  `encryptSecret`) and database backups sealed with AES-256-GCM before storage (`src/lib/server/backup/core.ts`,
+  `docs/BACKUP-RUNBOOK.md`).
+- *"(NIST SP 800-132)"* is removed from the password sentence: that standard specifies PBKDF2, and the platform uses scrypt.
+- The ISO 27001 / penetration-testing sentence is **unchanged**. It rests on the owner's attestation recorded on 2026-08-20.
+
+**Not re-verified in this pass, and not claimed:** §4's aggregator line (Selcom or Azampay) and source-registry line, §5's
+retention periods and §6's response times.
 
 ---
 

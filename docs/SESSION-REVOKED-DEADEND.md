@@ -1,6 +1,6 @@
 # The revoked-session dead end — why a returning player saw a blank blue page
 
-**Status:** 🟡 hotfix LIVE. The structural fix and the copy fix are still owed — see §6.
+**Status:** ✅ §6 items 0–14 FIXED 2026-09-14 (session 97) — §5b (0–3, 5–9) and §5c (4, 10–14).
 **Authority:** this file, for everything about `?revoked=1`.
 **Reported:** 2026-09-12 by Ali, from player reports: *"they were logged in, closed the browser,
 came back later, opened a 50pick link, and got stuck on a blue screen with nothing."*
@@ -179,7 +179,7 @@ bug: **8 failures, exit 1**, every failure reading `text=0 path=/auth/login`. `t
 the fix but were added after that mutation run, so they are not themselves mutation-proven — see §6
 item 0.
 
-### 🔴 WHAT IS STILL NOT FIXED — THE BLANK PAGE IS STILL REACHABLE
+### 🔴 WHAT WAS STILL NOT FIXED ON 2026-09-12 — THE BLANK PAGE WAS STILL REACHABLE (fixed 2026-09-14, §5b)
 
 ⛔ **Only the DOCUMENT path is fixed. Do not read this file as "E-381 is closed".** An earlier
 draft of this section said the check "cannot fire mid-visit at all". **That was wrong, and it was
@@ -208,6 +208,89 @@ platform is worse than the bug. ⛔ Do not re-attempt it without driving the rep
 
 ⚠️ Also still true: `kp_session` is never cleared, so a displaced device re-enters this branch on
 every request until it signs in again, and each of those requests writes another audit row.
+
+---
+
+## 5b. What shipped 2026-09-14 (session 97)
+
+**§6 item 0 — the three JavaScript-off assertions are mutation-proven**, in a throwaway `git worktree` (Turbopack
+needs `turbopack.root` widened to accept a `node_modules` junction outside the project; webpack cannot build this
+app). With the old `window.location.replace` shim swapped back into `app-shell.tsx`, the guard's 13 JavaScript-on
+checks stayed green and **exactly the 3 JavaScript-off checks failed**; with `revoked=1` misspelt inside the server
+redirect, **exactly the third** failed.
+
+**§6 item 1 — the mid-visit blank page.** The root layout no longer navigates on anything but a document load.
+- ⭐ **Why the reverted attempt could not work:** Next strips `rsc` and the router-state headers before the proxy
+  sees a request (`server/web/adapter.js`) *and again* before `headers()` (`request-store.js`), and strips `_rsc`
+  from the URL. A refresh arrives looking exactly like a document. The discriminator is the browser-set
+  `Sec-Fetch-Mode`: `navigate` only for a real navigation. ⚠️ **Mode, not dest** — a navigation re-issued by
+  `public/sw.js` arrives `navigate` / dest `empty` (measured); the router's flight is `cors` / `empty`.
+  `src/proxy.ts` stamps `x-kp-document`; a browser without Sec-Fetch headers gets the in-place answer.
+- **Document:** a real 307 to **`/auth/session-ended`**, a Route Handler — the one place a dead cookie is cleared
+  (§1 fault 3) — which works out the reason itself and 303s to the login page.
+- **Anything else** (refresh, Server Action, prefetch): no navigation. The page renders with `{children}` as for
+  a signed-out visitor, plus a server-rendered notice under the bar whose only action is a plain `<a>` to the same
+  handler. Measured on the pre-fix tree with the new guard: the refresh blanked the page **and fired 100 flight
+  requests** — the retry storm was the old branch itself, not only the reverted fix. After: text kept, 1 flight.
+  `npm run repro:revoked-midvisit` now exits 0 (two real 30 s poller intervals, the page kept its 899 characters).
+
+**§6 item 2 — `/api/events` and every Route Handler:** `getSession()` deletes no cookie any more, in any branch. A
+Route Handler used to succeed at the delete and erase the only evidence of why the session ended.
+
+**§6 item 2 (registry read) — `readActiveSession` answers `active` / `absent` / `unavailable`.** A failed read is
+`unavailable`, never cached, and `getSession()` trusts the signed, unexpired, recently-active cookie for that one
+request. ⭐ No retry on the read: once a failure no longer revokes, a retry only buys latency on the query every
+request makes. ⚠️ **Found while fixing:** the in-process Map is never invalidated across instances, so a cache hit
+that DISAGREES with the cookie is now re-read from the database before anyone is called "displaced".
+
+**§6 item 3 — `dbSet`:** the row is written first (one retry on a transient code), the cache only after it lands,
+and a failure throws `SessionRegistryWriteError`. `createSession` now registers BEFORE it sets the cookie.
+
+**§6 items 5–9:**
+- 5 · `/auth/*` stays excluded from both answers (the OTP and 2FA steps are a sign-in in progress a reload must not
+  lose). A dead cookie there is harmless: the login page states the reason from the same request signal.
+- 6 · the copy is true per cause. `/auth/session-ended` reads the cookie and the account: a different registry
+  session → `revoked=1` ("another device"); no row → `closed=1`, `error=blocked`, `excluded=…` from the account's
+  own status, else `ended=session`; expired or idle → `ended=idle`. Two new keys in three locales
+  (`sessionEndedBody`, `sessionIdleBody`).
+- 7 · every sign-in error outranks every sign-out panel. The `kp_revoked` note (Privacy §7, 30 s) is now written
+  by the handler and read last, with generic wording.
+- 8 · `getSession()` checks expiry, then idle, then the registry.
+- 9 · both expiry paths now reach the player (`ended=idle`, "Session expired").
+- ⭐ One audit row per ended session per instance (a bounded Set), not one per request.
+
+**Guards:** `test:revoked-deadend` 39/0 (§1 document path re-presents the dead cookie per case, §2 JavaScript off,
+§3 mid-visit refresh — page kept, notice a visible rectangle, link reaches login, no storm — §4 idle copy and
+wrong-password precedence). On the pre-fix tree: 10 failures. `test:session-registry` 15/0 (new, in `predeploy`).
+
+**Still open:** item 4 (a soft navigation inside the SPA keeps stale authed chrome until the next refresh or
+document load — the notice now appears on the next refresh), items 10–14.
+
+### 5c. The rest of §6, same day (session 97, register E-412)
+
+- **Item 4 — the stale signed-in shell.** `SessionPresence` (mounted only in the signed-in shell) asks
+  `/api/session/status` on every navigation after the first render and when the tab becomes visible; when the session is
+  gone it leaves with a DOCUMENT navigation to `/auth/session-ended` (at most once a minute, so a disagreement can never
+  loop). An unreadable registry counts as active. Driven: a displaced player clicking a nav `<Link>` lands on the sign-in
+  page with the reason, the cookie cleared, and browses as a guest afterwards.
+- **Item 10 — the console's gates.** Measured: an `/admin/template.tsx` is NOT re-rendered on a soft navigation; a
+  section's own `layout.tsx` IS. The view and act gates moved out of `admin/layout.tsx` into `AdminSectionGate`, rendered
+  by 38 section layouts and by the two pages without one (`/admin`, `/admin/players`). **The leak was real:** on the
+  previous tree an AUDITOR who followed the KYC queue's own link into `/admin/players/[id]` (support — not viewable)
+  got the player profile rendered; a SUPPORT officer leaving a blocked page stayed "Restricted"; a COMPLIANCE officer
+  entering a view-only section kept "may act". `test:admin-section-gate` 16/0, 5 failures on the previous tree.
+- **Item 11 — the guard.** `test:layout-staleness` now verifies the 38 section layouts by shape, draws its population
+  from what layouts IMPORT (so `app-shell.tsx` is in it), corrects the false REVIEWED reason for `admin/layout.tsx`, and
+  is in `predeploy`.
+- **Item 12 — the registry.** An agreeing cache hit is trusted for 30 s, then re-read, so a revocation on another
+  container holds here within 30 s; the Map is capped at 20,000; `retention.purge.daily` deletes `ActiveSession` rows
+  older than 8 days (a session lives at most 7 from the sign-in that wrote its row). `test:session-registry` 17/0.
+- **Item 13 — `sw.js`.** The offline fallback can no longer be `undefined` (a minimal page answers when the branded one
+  was never cached); precache adds each asset on its own instead of an atomic `addAll`; static assets are
+  stale-while-revalidate, so a same-URL asset refreshes by itself (`CACHE_NAME` v4).
+- **Item 14 — the anchor.** `NextHashField` puts `location.hash` into the sign-in form; the action re-attaches a
+  validated `#[A-Za-z0-9_-]{1,80}` to `next`. `SessionPresence` carries the fragment too. Driven:
+  `/positions#pos_…` signed out → sign in → `/positions#pos_…`.
 
 ---
 

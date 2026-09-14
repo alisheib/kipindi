@@ -148,7 +148,7 @@ export default async function AgentTermsPage() {
           <p>代理<strong>绝不持有玩家资金</strong>。代理不接受存款、不支付奖金、不为账户充值。玩家自行存取款，与其他所有玩家完全相同。</p>
         </LegalSection>
         <LegalSection n="2" title="申请">
-          <p>申请须持有已完成身份验证的 50pick 账户，且不得为 50pick 员工。您需提交七份文件——简历、正式申请信、Serikali ya Mtaa 信函，以及两位推荐人的信函和身份证副本——并从您的 50pick 钱包支付 <strong>{feeStr}</strong>{vatClause.zh}的注册费。余额不足时请先按常规方式充值 — 无需上传收据，也无需填写参考号。合规官审核申请后批准或拒绝；决定权仅属于该合规官。</p>
+          <p>申请须持有已完成身份验证的 50pick 账户，且不得为 50pick 员工。您需提交七份文件——简历、正式申请信、Serikali ya Mtaa 信函，以及两位推荐人的信函和身份证副本——并从您的 50pick 钱包支付 <strong>{feeStr}</strong>{vatClause.zh}的注册费。余额不足时请先按常规方式充值——无需上传收据，也无需填写参考号。合规官审核申请后批准或拒绝；决定权仅属于该合规官。</p>
           <p>若申请未获批准且费用已收到，将在 <strong>{refundDays} 天内全额退还</strong>至原付款账户。除非决定为最终决定，您可在 {cooldown} 天后再次申请。</p>
         </LegalSection>
         <LegalSection n="3" title="佣金">

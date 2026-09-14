@@ -15,7 +15,8 @@
  * unverified". §8-§10 prove the rules that keep those honest: money moves ONE arm and no
  * other, "verified" is the withdrawal gate's own predicate, the liability figure is on the
  * wallet-liability basis, a failed read is never zero, and `PENDING_KYC` no longer reads as a
- * state.
+ * state. §11 (2026-09-14) proves every count of files "with us" is one rule; §12 that the
+ * liability tile names its basis and the frozen and closed money that basis leaves out.
  *
  * ⛔ NO DATABASE, BY DESIGN. `scripts/dal-parity.test.mts` states the rule this file
  * obeys: *"a guard that talks to Postgres SKIPS when `DATABASE_URL` is absent — which is
@@ -40,9 +41,12 @@ import {
   kycStage, kycFileEverArrived, isKycStage, KYC_STAGES,
   MONEY_NOT_APPLIED, MONEY_ONLY_STAGES, MONEY_SPLIT_STAGES, stageTurnsOnMoney,
   walletHeldTzs, FUNDED_AXIS, isFundedAxis, fundedAxisOf, tallyHeldForUnverified,
+  kycStageOfFile, isFileWithUs,
   type KycStage, type KycStatusToken, type KycStageFacts, type KycMoney,
 } from "../src/lib/kyc-stage.ts";
 import { approvedEver } from "../src/lib/kyc-approval.ts";
+import { tallyWalletLiability, walletLiabilityCaption } from "../src/lib/wallet-liability.ts";
+import { formatTzsCompact } from "../src/lib/utils.ts";
 import {
   kycStageLabel, kycStageVariant, fundedAxisLabel,
   accountStatusLabel, playerStatusVariant, presentedAccountStatus,
@@ -69,8 +73,12 @@ const ok = (label: string, cond: boolean, why = "", evidence = "") => {
 
 /** Block comments and FULL-LINE `//` comments removed — so an assertion about CODE is not
  *  satisfied (or tripped) by a comment that merely mentions the pattern. Full-line only, so a
- *  `//` inside a string on a code line is never eaten. */
-const code = (src: string) => src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^[ \t]*\/\/.*$/gm, "");
+ *  `//` inside a string on a code line is never eaten.
+ *  🔴 LINE COMMENTS FIRST (2026-09-14). Block comments were stripped first, and admin-shell.tsx has a `//` line
+ *  reading "every /admin/(star) page's subtree": its slash-star opened a "block comment" that ran to the next star-slash and
+ *  swallowed getSidebarBadges whole — so a check for a line there failed on correct code, and a check for
+ *  ABSENCE there would have passed on anything. §0g plants that shape. */
+const code = (src: string) => src.replace(/^[ \t]*\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
 
 const stageSrc = read("lib/kyc-stage.ts");
 const badgeSrc = read("components/admin/status-badge.tsx");
@@ -99,6 +107,9 @@ ok("§0e control · the money-threshold regex flags a planted non-zero threshold
   !(["heldTzs >= 1000"].join("").match(/heldTzs\s*[<>=!]+\s*\d+/g) ?? []).every((m) => /\b0\b/.test(m)));
 ok("§0f control · the comment stripper removes a planted block and line comment but keeps code",
   code("/* db.kyc.list() */\n  // db.kyc.list()\nconst x = 1;") === "\n\nconst x = 1;");
+ok("§0g control · a glob in a LINE comment does not open a block comment that swallows the code after it",
+  code("// every /admin/* page\nconst kept = 1;\n/* a real block */\nconst also = 2;").includes("const kept = 1;")
+  && code("// every /admin/* page\nconst kept = 1;\n/* a real block */\nconst also = 2;").includes("const also = 2;"));
 
 /* ════════════════════════════════════════════════════════════════════════════
  * §1 · THE DERIVATION IS TOTAL — every state a production row can hold, at every money.
@@ -431,8 +442,11 @@ ok("§9f a genuine zero is representable as a number (the FAILED read is a diffe
   empty.accounts === 0 && empty.tzs === 0 && empty.basisTotalTzs === 0 && empty.frozen.tzs === 0 && empty.closed.tzs === 0);
 
 const analyticsCode = code(analyticsSrc);
-ok("§9g `walletLiabilityTotal` sums through the ONE shared `walletHeldTzs`, ACTIVE only",
-  /if \(w\.status === "ACTIVE"\) total \+= walletHeldTzs\(w\)/.test(analyticsCode));
+// ⚠️ 2026-09-14 (E-400 ⑦e): the ACTIVE sum moved into `tallyWalletLiability` (one read, the frozen and closed money
+// reported beside it). Its arithmetic is proven by EXECUTION in §12a against the oracle above; this pins the wiring.
+ok("§9g `walletLiabilityTotal` is the ACTIVE figure of the one tally, over one wallet read",
+  /export async function walletLiabilityTotal\(\) \{\s*return \(await walletLiabilityByStatus\(\)\)\.activeTzs;\s*\}/.test(analyticsCode)
+  && /return tallyWalletLiability\(await db\.wallet\.listAll\(\)\);/.test(analyticsCode));
 ok("§9h 🔴 `unverifiedLiability` returns a FAILED arm on a failed read, and tallies through the pure function",
   /if \(!read\.ok\) return \{ ok: false, failed: read\.failed \};/.test(analyticsCode)
   && /tallyHeldForUnverified\(read\.facts, read\.wallets\)/.test(analyticsCode));
@@ -485,6 +499,157 @@ ok("§10j cohorts: the KPI and the health meter read ONE approved-ever count (th
 ok("§10k ⛔ cohorts reads no money — it is the growth domain, and GROWTH reads money.figures as none",
   !/wallet|formatTzs|unverifiedLiability|heldTzs/i.test(cohortsCode));
 ok("§10l ⛔ the roster carries no 'needs review' caption", !/needs review/i.test(pageCode));
+
+/* ════════════════════════════════════════════════════════════════════════════
+ * §11 · "WAITING ON US" IS ONE RULE (2026-09-14, register E-400 ⑦d).
+ *
+ * `listPendingKyc` returns PENDING_REVIEW and ADDITIONAL_INFO_REQUIRED. /admin/approvals counted both as
+ * "KYC pending" (4) while /admin/kyc said "2 with us", listed the player's files in a queue no officer could
+ * clear, and the Approvals sidebar badge added them too. Every reader now asks `isFileWithUs`.
+ * ⛔ Each source check is a FUNCTION returning its defects, run on the real file (must be empty) AND on a
+ * planted copy carrying the shipped defect (must not be) — so a check that stopped matching goes red.
+ * ══════════════════════════════════════════════════════════════════════════ */
+console.log("\n§11 · the approvals queue, the badges and the workstation count files with us by one rule");
+const fileRowOf = (f: KycStageFacts) => ({
+  status: f.status, documents: Array.from({ length: f.documentCount }, (_, i) => ({ docType: `d${i}` })),
+  submittedAt: f.submittedAt, approvedAt: f.approvedAt,
+});
+ok("§11a `kycStageOfFile` is `kycStage` over the whole product space (built from a full row)",
+  rows.every((x) => kycStageOfFile(fileRowOf(x.f)) === kycStage(x.f, MONEY_NOT_APPLIED)));
+ok("§11b 🔴 `isFileWithUs` is true exactly on the `with_us` arm — every combination",
+  rows.every((x) => isFileWithUs(fileRowOf(x.f)) === (kycStage(x.f, MONEY_NOT_APPLIED) === "with_us")),
+  JSON.stringify(rows.filter((x) => isFileWithUs(fileRowOf(x.f)) !== (x.s === "with_us")).slice(0, 2)));
+ok("§11c an approved-once row keeps its stamp through the row shape (`approvedAt` optional on StoredKyc)",
+  kycStageOfFile({ status: "IN_PROGRESS", documents: [], submittedAt: null }) === "nothing_yet"
+  && kycStageOfFile({ status: "IN_PROGRESS", documents: [], submittedAt: null, approvedAt: "2026-08-01T00:00:00.000Z" }) === "nothing_yet");
+// The population the audit measured: two submitted files and two we asked more of.
+const QUEUE = [
+  { status: "PENDING_REVIEW" as const, documents: [1, 2, 3], submittedAt: "2026-09-13T08:00:00.000Z", approvedAt: null },
+  { status: "ADDITIONAL_INFO_REQUIRED" as const, documents: [1, 2, 3], submittedAt: "2026-09-12T08:00:00.000Z", approvedAt: null },
+  { status: "PENDING_REVIEW" as const, documents: [1, 2], submittedAt: "2026-09-13T09:00:00.000Z", approvedAt: "2026-07-01T00:00:00.000Z" },
+  { status: "ADDITIONAL_INFO_REQUIRED" as const, documents: [1, 2], submittedAt: "2026-09-11T08:00:00.000Z", approvedAt: "2026-07-01T00:00:00.000Z" },
+];
+ok("§11d the measured queue splits 2 with us / 2 with the player, and nothing is lost between them",
+  QUEUE.filter(isFileWithUs).length === 2 && QUEUE.filter((k) => kycStageOfFile(k) === "more_needed").length === 2,
+  "", `${QUEUE.filter(isFileWithUs).length} with us · ${QUEUE.filter((k) => kycStageOfFile(k) === "more_needed").length} with the player`);
+
+const approvalsSrc = read("app/admin/approvals/page.tsx");
+const shellSrc = read("components/admin/admin-shell.tsx");
+const workstationSrc = read("app/admin/kyc/[id]/page.tsx");
+
+function approvalsDefects(src: string): string[] {
+  const c = code(src);
+  const d: string[] = [];
+  if (!/const kycWithUsAll = kycPendingAll\.filter\(isFileWithUs\);/.test(c)) d.push("the queue is not filtered through isFileWithUs");
+  if (!/const kycWithPlayer = kycPendingAll\.filter\(\(k\) => kycStageOfFile\(k\) === "more_needed"\)\.length;/.test(c)) d.push("the with-the-player count is not the more_needed arm");
+  // Every other use of the raw list is a count or a population that includes the player's files.
+  const rawUses = (c.match(/kycPendingAll(?!\.filter\()/g) ?? []).length;
+  const declared = /const kycPendingAll = await listPendingKyc\(\)/.test(c) ? 1 : 0;
+  if (rawUses - declared !== 0) d.push(`kycPendingAll is read ${rawUses - declared} time(s) outside the split`);
+  const kpi = c.match(/<AdminKpi\s+label="KYC with us"[\s\S]*?\/>/)?.[0] ?? "";
+  if (!kpi) d.push("no 'KYC with us' KPI");
+  if (kpi && !/value=\{kycFailed \? "" : kycWithUsAll\.length\}/.test(kpi)) d.push("the KPI value is not the with-us count");
+  if (kpi && !/pulse=\{!kycFailed && kycWithUsAll\.length > 0\}/.test(kpi)) d.push("the KPI pulse is not the with-us count");
+  if (/label="KYC pending"/.test(c)) d.push("the 'KYC pending' label is back");
+  if (/More info asked/.test(c)) d.push("a 'More info asked' chip is back in the with-us table");
+  if (!/\[\.\.\.kycWithUsAll\]\.sort\(/.test(c) || !/applySort\(kycWithUsAll,/.test(c)) d.push("the table does not sort the with-us population");
+  if (!/kycWithUsAll\.length === 0 \?/.test(c)) d.push("the empty state does not test the with-us population");
+  if (!/kycWithPlayer > 0 && \(/.test(c)) d.push("the files with the player are not said on the card");
+  return d;
+}
+function shellDefects(src: string): string[] {
+  const c = code(src);
+  const d: string[] = [];
+  if (!/const withUs = pendingKyc\.filter\(isFileWithUs\)\.length;/.test(c)) d.push("the badges do not count through isFileWithUs");
+  if (!/const approvals = withUs \+ aml \+ sof;/.test(c)) d.push("the Approvals badge does not add the with-us count");
+  if (/pendingKyc\.length/.test(c)) d.push("a badge reads pendingKyc.length");
+  if (/status === "PENDING_REVIEW"/.test(c)) d.push("a hand-written PENDING_REVIEW test sits beside the rule");
+  return d;
+}
+function workstationDefects(src: string): string[] {
+  const c = code(src);
+  const d: string[] = [];
+  if (!/await listPendingKyc\(\)[^\n]*\)\)\.filter\(isFileWithUs\);/.test(c)) d.push("the queue position is not counted through isFileWithUs");
+  if (/listPendingKyc\(\)[^\n]*status === "PENDING_REVIEW"/.test(c)) d.push("a hand-written PENDING_REVIEW filter is back");
+  return d;
+}
+ok("§11e /admin/approvals: KPI, table, empty state and note all read the split", approvalsDefects(approvalsSrc).length === 0,
+  approvalsDefects(approvalsSrc).join("; "));
+ok("§11f the sidebar badges count files with us, and Approvals adds only those", shellDefects(shellSrc).length === 0,
+  shellDefects(shellSrc).join("; "));
+ok("§11g the workstation's queue position counts files with us", workstationDefects(workstationSrc).length === 0,
+  workstationDefects(workstationSrc).join("; "));
+// ⛔ PLANTED CONTROLS — the shipped defects, re-planted into copies of today's files. Each MUST be reported.
+const plantedKpi = approvalsSrc.replace('value={kycFailed ? "" : kycWithUsAll.length}', 'value={kycFailed ? "" : kycPendingAll.length}');
+const plantedTable = approvalsSrc.replace("applySort(kycWithUsAll,", "applySort(kycPendingAll,");
+const plantedBadge = shellSrc.replace("const approvals = withUs + aml + sof;", "const approvals = pendingKyc.length + aml + sof;");
+const plantedStation = workstationSrc.replace(".filter(isFileWithUs);", '.filter((k) => k.status !== "APPROVED");');
+ok("§11h control · each planted copy differs from the real file (the replacement found its target)",
+  plantedKpi !== approvalsSrc && plantedTable !== approvalsSrc && plantedBadge !== shellSrc && plantedStation !== workstationSrc);
+ok("§11i control · the old KPI (every listPendingKyc row) is reported", approvalsDefects(plantedKpi).length > 0,
+  "", approvalsDefects(plantedKpi).join("; "));
+ok("§11j control · a table sorting the raw list is reported", approvalsDefects(plantedTable).length > 0,
+  "", approvalsDefects(plantedTable).join("; "));
+ok("§11k control · an Approvals badge adding every listPendingKyc row is reported", shellDefects(plantedBadge).length > 0,
+  "", shellDefects(plantedBadge).join("; "));
+ok("§11l control · a workstation filter that is not the rule is reported", workstationDefects(plantedStation).length > 0,
+  "", workstationDefects(plantedStation).join("; "));
+
+/* ════════════════════════════════════════════════════════════════════════════
+ * §12 · "WALLET LIABILITY" SAYS ITS BASIS (2026-09-14, register E-400 ⑦e).
+ *
+ * The tile counts ACTIVE wallets (the basis §9 pins, and the one "Held for unverified" is a subset of) and said
+ * only "real-time", so a frozen, undecided balance left the headline with nothing on the tile to say so. The
+ * basis stays; the caption now names it and the frozen and closed money it leaves out, from the same read.
+ * ══════════════════════════════════════════════════════════════════════════ */
+console.log("\n§12 · the liability tile names its basis and what the basis leaves out");
+const LIAB = tallyWalletLiability(WALLETS);
+ok("§12a 🔴 the headline is the §9 oracle's ACTIVE arithmetic, unchanged", LIAB.activeTzs === liabilityOracle,
+  "", `${LIAB.activeTzs} vs ${liabilityOracle}`);
+ok("§12b …and it is the very figure 'Held for unverified' reconciles against", LIAB.activeTzs === T.basisTotalTzs,
+  "", `${LIAB.activeTzs} vs ${T.basisTotalTzs}`);
+const FACTS_HELD = [...FACTS, { userId: "u_appr_frozen", status: "APPROVED", approvedAt: "2026-09-02T00:00:00.000Z" }];
+const WALLETS_HELD = [
+  ...WALLETS,
+  { userId: "u_appr_frozen", status: "FROZEN" as const, balance: 900, hold: 100 }, // an officer's hold on an APPROVED player
+  { userId: "u_frozen_empty", status: "FROZEN" as const, balance: 0, hold: 0 },    // frozen, holds nothing
+];
+const LH = tallyWalletLiability(WALLETS_HELD);
+const UH = tallyHeldForUnverified(FACTS_HELD, WALLETS_HELD);
+ok("§12c 🔴 an APPROVED player's frozen balance is counted beside the headline — 'Held for unverified' never could",
+  LH.frozen.accounts === 2 && LH.frozen.tzs === 5000 && UH.frozen.accounts === 1 && UH.frozen.tzs === 4000,
+  "", JSON.stringify({ liability: LH.frozen, unverified: UH.frozen }));
+ok("§12d a frozen wallet holding nothing is not counted, closed money is, and the headline did not move",
+  LH.activeTzs === LIAB.activeTzs && LH.closed.accounts === 1 && LH.closed.tzs === 70);
+const capLeft = walletLiabilityCaption(LH);
+const capNone = walletLiabilityCaption(tallyWalletLiability(WALLETS.filter((w) => w.status === "ACTIVE")));
+ok("§12e the caption names its basis and each amount the basis leaves out",
+  capLeft === `active wallets only · +${formatTzsCompact(5000)} frozen · +${formatTzsCompact(70)} closed`, "", capLeft);
+ok("§12f with nothing frozen or closed it SAYS so — never an empty caption, never 'real-time'",
+  capNone === "active wallets · nothing frozen or closed", "", capNone);
+
+function financeTileDefects(src: string): string[] {
+  const c = code(src);
+  const d: string[] = [];
+  const tile = c.match(/<AdminKpi\s+label="Wallet liability"[\s\S]*?\/>/)?.[0] ?? "";
+  if (!tile) d.push("no Wallet liability tile");
+  if (tile && !/value=\{liability === null \? "" : formatTzsCompact\(liability\.activeTzs\)\}/.test(tile)) d.push("the headline is not the active figure of the one read");
+  if (tile && !/delta=\{liability === null \? undefined : walletLiabilityCaption\(liability\)\}/.test(tile)) d.push("the caption is not the basis caption");
+  if (tile && !/unavailable=\{liability === null\}/.test(tile)) d.push("a failed read is not unavailable");
+  if (/real-time/.test(tile)) d.push("the tile says only 'real-time'");
+  if (!/const liability = await walletLiabilityByStatus\(\)\.catch\(\(\) => null\);/.test(c)) d.push("the tile does not read walletLiabilityByStatus once");
+  if (/walletLiabilityTotal\(/.test(c)) d.push("a second, separate liability read is back");
+  return d;
+}
+ok("§12g /admin/finance: one snapshot, the active figure, and a caption that says the basis",
+  financeTileDefects(financeSrc).length === 0, financeTileDefects(financeSrc).join("; "));
+const plantedRealtime = financeSrc.replace("delta={liability === null ? undefined : walletLiabilityCaption(liability)}", 'delta="real-time"');
+const plantedTwoReads = financeSrc.replace("const liability = await walletLiabilityByStatus().catch(() => null);", "const liability = await walletLiabilityTotal().catch(() => null);");
+ok("§12h control · each planted copy differs from the real file", plantedRealtime !== financeSrc && plantedTwoReads !== financeSrc);
+ok("§12i control · the old 'real-time' caption is reported", financeTileDefects(plantedRealtime).length > 0,
+  "", financeTileDefects(plantedRealtime).join("; "));
+ok("§12j control · a separate total read is reported", financeTileDefects(plantedTwoReads).length > 0,
+  "", financeTileDefects(plantedTwoReads).join("; "));
 
 console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — ${pass} passed, ${fail} failed`);
 if (pass + fail < 90) { console.error(`!! only ${pass + fail} assertions ran — the parsers have stopped finding things. Treating as failure.`); process.exit(3); }

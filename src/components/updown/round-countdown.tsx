@@ -388,7 +388,10 @@ export function RoundCountdownPod({
         style={{
           fontFamily: "var(--font-mono)", fontSize: 28, fontWeight: 700,
           fontVariantNumeric: "tabular-nums", letterSpacing: "0.05em", lineHeight: 1,
-          color: urgent ? "var(--no-300)"
+          // ⛔ NOT ROSE IN THE FINAL 30 s (2026-09-14, register E-400 ⓪). `--no-300` beside an Up/Down round reads as
+          // "price going down" — the betting pair names a SIDE (DESIGN_AUTHORITY §B2a). Urgency is the pulse's job;
+          // the digits take the plain running ink.
+          color: urgent ? "var(--text)"
             // ⭐ E-166 · a counting handover is "something is coming" — the same brand ink the
             // result clock uses, for the same reason. Never rose: a void hands over as a win does.
             : inHandover ? (hand!.counting ? "var(--brand-300)" : "var(--text-subtle)")
@@ -454,7 +457,8 @@ export function RoundCountdown({ closesAtMs, label, lockAtMs, lockLabel, serverN
         style={{
           fontFamily: "var(--font-mono)", fontSize: 24, fontWeight: 700,
           fontVariantNumeric: "tabular-nums", letterSpacing: "0.05em", lineHeight: 1.1,
-          color: urgent ? "var(--no-300)" : running ? "var(--text)" : "var(--text-subtle)",
+          // Final 30 s: the pulse, not rose (E-400 ⓪, §B2a) — see the pod above.
+          color: running ? "var(--text)" : "var(--text-subtle)",
         }}
       >
         {/* ⛔ `—:—`, NEVER a dead `0:00` — the pod's own rule (E-99/E-166), owed here

@@ -27,9 +27,9 @@ import {
   KYC_HELD_BUCKET_LABEL,
 } from "@/lib/server/kyc-risk";
 import { approvedEver } from "@/lib/kyc-approval";
-import { walletHeldTzs } from "@/lib/kyc-stage";
+import { walletHeldTzs, isFileWithUs, kycStageOfFile } from "@/lib/kyc-stage";
 import { SofReviewRow } from "./sof-review-client";
-import { formatDateTime, formatTzs, formatTzsCompact } from "@/lib/utils";
+import { formatDateTime, formatTzs, formatTzsCompact, adminCount } from "@/lib/utils";
 import { AdminBody } from "@/components/admin/admin-body";
 import { KpiGrid } from "@/components/admin/admin-body";
 
@@ -50,6 +50,8 @@ type KycField = "priority" | "waited" | "user" | "name" | "docs" | "held";
  *   · the KYC queue's default order is money-weighted age for a viewer with money rights (see below);
  *   · the source-of-funds table says, per row, whether identity was ever approved.
  * The full identity queue — with us, with the player, funded — is /admin/kyc.
+ * ⭐ 2026-09-14 (E-400 ⑦d): the KYC tile and table hold the files WITH US only (`isFileWithUs`), so this page and
+ * /admin/kyc give one number; a file we asked more of is the player's move and is counted beside, never in, the queue.
  */
 export default async function AdminApprovalsPage({
   searchParams,
@@ -78,6 +80,13 @@ export default async function AdminApprovalsPage({
   try { sofAll = (await db.sourceOfFunds.listPending()) as StoredSourceOfFunds[]; } catch { sofFailed = true; }
   let kycFailed = false;
   const kycPendingAll = await listPendingKyc().catch(() => { kycFailed = true; return []; });
+  // ⭐ SPLIT BY WHOSE MOVE IT IS (2026-09-14, register E-400 ⑦d). `listPendingKyc` also returns the files we asked
+  // more of, which wait on the PLAYER. This page counted them as "KYC pending" (4) while /admin/kyc said "2 with us",
+  // and listed them in a queue no officer could clear. The KPI and the table now hold `isFileWithUs` files only —
+  // the `with_us` arm of the roster's derivation, the rule /admin/kyc and the sidebar badges use — and the files
+  // with the player are counted beside it and left to /admin/kyc's "With the player" table.
+  const kycWithUsAll = kycPendingAll.filter(isFileWithUs);
+  const kycWithPlayer = kycPendingAll.filter((k) => kycStageOfFile(k) === "more_needed").length;
   const recent = getAuditPage({ category: "ADMIN", limit: 60 });
   // ⚠️ THE LOG'S EMPTY TEST READS THIS FILTERED LIST (2026-09-13). It read `recent` — every ADMIN row — so a
   // console with admin activity but no approval among it drew the card with nothing inside at all.
@@ -110,7 +119,7 @@ export default async function AdminApprovalsPage({
   // own money. The default is now `compareQueuePriority` (kyc-risk.ts: a refused cash-out first, then the held
   // BUCKET, oldest first inside it — never balance × age) for a viewer with money rights, and oldest first for
   // everyone else. ⭐ "Waited · FIFO" sorts by time WAITED, so its first click (descending) IS oldest first.
-  type KycRow = (typeof kycPendingAll)[number];
+  type KycRow = (typeof kycWithUsAll)[number];
   const waitingSince = (k: KycRow) => k.submittedAt ?? k.updatedAt;
   const heldOf = (k: KycRow) => (moneyKnown ? walletHeldTzs(walletByUser.get(k.userId)) : 0);
   const attemptsOf = (k: KycRow) => attemptsByUser?.get(k.userId)?.count ?? 0;
@@ -120,10 +129,10 @@ export default async function AdminApprovalsPage({
   const kyc = parseSort<KycField>(sp, kycAllowed, moneyKnown ? "priority" : "waited", "desc", "kyc");
   const kycSorted =
     kyc.sort === "priority"
-      ? [...kycPendingAll].sort(
+      ? [...kycWithUsAll].sort(
           compareQueuePriority<KycRow>((k) => ({ attemptedCashOut: attemptsOf(k) > 0, heldTzs: heldOf(k), waitingSince: waitingSince(k) }), kyc.dir),
         )
-      : applySort(kycPendingAll, kyc.sort, kyc.dir, {
+      : applySort(kycWithUsAll, kyc.sort, kyc.dir, {
           waited: (k) => now - Date.parse(waitingSince(k)),
           user: (k) => k.userId,
           name: (k) => k.fullName ?? "",
@@ -166,7 +175,15 @@ export default async function AdminApprovalsPage({
 
       <AdminBody>
         <KpiGrid>
-          <AdminKpi label="KYC pending" sw="Vitambulisho" value={kycFailed ? "" : kycPendingAll.length} unavailable={kycFailed} pulse={!kycFailed && kycPendingAll.length > 0} />
+          {/* "KYC with us", the /admin/kyc word — it was "KYC pending" over every `listPendingKyc` row (E-400 ⑦d). */}
+          <AdminKpi
+            label="KYC with us"
+            sw="Vitambulisho"
+            value={kycFailed ? "" : kycWithUsAll.length}
+            unavailable={kycFailed}
+            pulse={!kycFailed && kycWithUsAll.length > 0}
+            delta={!kycFailed && kycWithPlayer > 0 ? `+${kycWithPlayer} with the player` : undefined}
+          />
           <AdminKpi label="AML pending" sw="Inasubiri ukaguzi" value={amlFailed ? "" : amlAll.length} unavailable={amlFailed} pulse={!amlFailed && amlAll.length > 0} />
           <AdminKpi label="SOF declarations" sw="Asili ya pesa" value={sofFailed ? "" : sofAll.length} unavailable={sofFailed} pulse={!sofFailed && sofAll.length > 0} />
           {/* ⛔ WAS "Avg cosign time", value "—", never computed (removed 2026-09-13). A tile that always
@@ -183,17 +200,19 @@ export default async function AdminApprovalsPage({
 
         {/* KYC review queue */}
         <AdminCard
-          title="KYC · awaiting verification"
+          title="KYC · with us, awaiting an officer"
           sw="Vitambulisho vinasubiri"
           action={<Link href={"/admin/kyc" as Route} className="row-link font-mono text-micro text-royal-300">KYC queue →</Link>}
         >
           {kycFailed ? (
             <AdminLoadError what="the KYC queue" />
-          ) : kycPendingAll.length === 0 ? (
+          ) : (
+            <>
+          {kycWithUsAll.length === 0 ? (
             <div className="flex items-center gap-3 py-4">
               {/* shrink-0 (2026-09-13): at 390 the flex row squeezed this 18px glyph to about 8px beside the sentence. */}
               <I.shieldcheck s={18} className="shrink-0" />
-              <p className="text-caption text-text-secondary">No identity submissions pending. New submissions appear here the moment a player submits for review.</p>
+              <p className="text-caption text-text-secondary">No identity file is waiting on an officer. A file appears here the moment a player sends it.</p>
             </div>
           ) : (
             <>
@@ -251,18 +270,16 @@ export default async function AdminApprovalsPage({
                     const slots = k.idType ? ID_DOC_SPECS[k.idType as IdDocType]?.requiredSlots.length : undefined;
                     const attempts = attemptsByUser?.get(k.userId);
                     const bucket = kycHeldBucket(heldOf(k));
-                    const moreAsked = k.status === "ADDITIONAL_INFO_REQUIRED";
                     return (
                     <tr key={k.id} className="border-b border-border-subtle/50 last:border-b-0" data-kyc-approvals-row={k.userId}>
                       <td className="py-2 pr-3">
                         <div className="flex flex-wrap gap-1">
                           {/* nowrap through `style` (2026-09-14): Chip sets white-space inline (G-7), so a class cannot reach
-                              it, and the auto-width column folded "More info asked" and "Holds nothing" onto two lines. */}
+                              it, and the auto-width column folded "Holds nothing" onto two lines. ⛔ No "More info asked" chip
+                              any more: such a file is the player's move and is not in this table (E-400 ⑦d). */}
                           {attempts && <Chip size="sm" variant="danger" style={{ whiteSpace: "nowrap" }}>{attempts.count > 1 ? `Cash-out refused ×${attempts.count}` : "Cash-out refused"}</Chip>}
                           {moneyKnown && <Chip size="sm" variant={bucket >= 2 ? "warning" : "neutral"} style={{ whiteSpace: "nowrap" }}>{KYC_HELD_BUCKET_LABEL[bucket]}</Chip>}
-                          {/* The PLAYER's move: `listPendingKyc` still holds it, so it is said rather than hidden. */}
-                          {moreAsked && <Chip size="sm" variant="neutral" style={{ whiteSpace: "nowrap" }}>More info asked</Chip>}
-                          {!moneyKnown && !attempts && !moreAsked && <span className="text-text-tertiary">—</span>}
+                          {!moneyKnown && !attempts && <span className="text-text-tertiary">—</span>}
                         </div>
                       </td>
                       <td className="py-2 pr-3 font-mono whitespace-nowrap">
@@ -281,6 +298,17 @@ export default async function AdminApprovalsPage({
               </table>
             </ScrollX>
             <AdminPagination total={kycSorted.length} page={kycPage} baseHref={kycBase} param="kycpage" />
+            </>
+          )}
+          {/* ⭐ SAID, NOT HIDDEN: the files we asked more of left this table, so their count stays on the card that used
+              to list them, and points at the table that does. One string, so no JSX line join can fuse two words. */}
+          {kycWithPlayer > 0 && (
+            <p className="mt-3 text-body-sm text-text-muted max-w-[80ch]" data-kyc-with-player={kycWithPlayer}>
+              {kycWithPlayer === 1
+                ? "1 file we asked more of is with the player, so it is not in this queue. The KYC queue lists it under “With the player”."
+                : `${adminCount(kycWithPlayer, "file")} we asked more of are with the player, so they are not in this queue. The KYC queue lists them under “With the player”.`}
+            </p>
+          )}
             </>
           )}
         </AdminCard>

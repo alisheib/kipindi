@@ -339,8 +339,10 @@ const ALLOW: readonly Allow[] = [
     //   so only Chinese trips. ⛔ Not reworded here: player copy is not this guard's to edit.
     where: "src/app/legal/agent-terms/page.tsx · zh",
     rule: 1,
-    sha: "5b4bd2f920b7d9f8",
-    excerpt: "余额不足时请先按常规方式充值 — 无需上传收据，也无需填写参考号。",
+    // 2026-09-14 (session 97, E-400 ③): the unit's text moved with one punctuation fix — the ASCII-spaced " — " became
+    // the Chinese "——" (Agent Terms v2026-09-14). Re-read in full: the same true sentence, so the allowance follows it.
+    sha: "e3f6cdfbb12d58b9",
+    excerpt: "余额不足时请先按常规方式充值——无需上传收据，也无需填写参考号。",
     why: "the denial is about a fee receipt; identity is the agent application's own requirement, in another sentence",
   },
 ];
@@ -1008,6 +1010,37 @@ function literalsIn(src: string, base = 0, out: { text: string; at: number }[] =
   return out;
 }
 const proseOf = (t: string) => decodeEntities(t.replace(/<[^>]*>/g, " ")).replace(/\s+/g, " ").trim();
+
+/** E-400 ⑥ · title+body units for rule 4 — see the note where `notifyJoined` is built. Exported shape: Unit[]. */
+function joinTitleBody(
+  src: string,
+  decls: readonly Decl[],
+  skip: RegExp,
+  lineOf: (at: number) => number,
+  amlBranch: Span | null | undefined,
+): Unit[] {
+  const lits = literalsIn(src);
+  const prop = (at: number) => /(title|body)(En|Sw|Zh)\s*:\s*$/.exec(src.slice(Math.max(0, at - 24), at));
+  const units: Unit[] = [];
+  for (let i = 0; i < lits.length; i++) {
+    const t = prop(lits[i].at);
+    if (!t || t[1] !== "title") continue;
+    const fn = declAt(decls, lits[i].at);
+    if (fn && skip.test(fn)) continue;
+    const bodyLit = lits.slice(i + 1).find((l) => l.at > lits[i].at && l.at - lits[i].at < 900 && prop(l.at)?.[1] === "body" && prop(l.at)?.[2] === t[2]);
+    if (!bodyLit || declAt(decls, bodyLit.at) !== fn) continue;
+    const title = proseOf(lits[i].text);
+    const body = proseOf(bodyLit.text);
+    if (!hasLetters(title) || !hasLetters(body)) continue;
+    const zh = t[2] === "Zh";
+    const parts = zh ? body.split(/(?<=[，。；：！？])/).map((x) => x.trim()).filter(Boolean) : sentencesOf(body);
+    const branch = fn === "notifyWithdraw" && amlBranch && insideAny(lits[i].at, [amlBranch]) ? "#AML_REVIEW" : "";
+    parts.forEach((part, k) => {
+      units.push({ key: `${fn ?? "top"}${branch}@${lineOf(lits[i].at)}~title+body${k}`, text: zh ? `${title}${part}` : `${title} ${part}` });
+    });
+  }
+  return units;
+}
 const hasLetters = (t: string) => /\p{L}/u.test(t);
 
 // ── §6.0 · the proofs behind the surface allow-list, and the same proofs failing on planted source ──────────────
@@ -1087,6 +1120,13 @@ console.log("     the legal pages are read under rule 4 in §2, file by file and
     const branch = fn === "notifyWithdraw" && P3.branch && insideAny(l.at, [P3.branch]) ? "#AML_REVIEW" : "";
     notifyUnits.push({ key: `${fn ?? "top"}${branch}@${notifyLine(l.at)}`, text });
   }
+  // ⭐ E-400 ⑥ (2026-09-14) · A BELL ENTRY IS READ AS ONE THING — title, then body. Rule 4 reads a SENTENCE, so a title
+  // naming the withdrawal ("Withdrawal update") over a body making the claim ("Compliance review takes up to 24h.") was
+  // two innocent units. `notifyJoined` pairs each `title<L>:` literal with the next `body<L>:` literal of the same
+  // locale in the same object, and puts the title in front of EVERY body sentence (zh: every clause, no separator).
+  // ⚠️ Limit, stated: a title or body computed into a variable before the object literal is not paired.
+  const notifyJoined = joinTitleBody(NOTIFY_SRC, notifyDecls, OFFICER_EMITTER, notifyLine, P3.branch);
+  notifyUnits.push(...notifyJoined);
 
   // The chat assistant — one unit per LINE: the live prompt is one template literal of bullet lines.
   const linesOf = (rel: string): Unit[] => {
@@ -1118,6 +1158,20 @@ console.log("     the legal pages are read under rule 4 in §2, file by file and
     const found = scan(p.where, LOCALES, p.units, [4]);
     ok(`§6 ${p.where} · rule 4 — ${RULE_NAME[4]}`, found[4].length === 0, found[4].join(" | "));
   }
+}
+
+// ── §6.2b · CONTROL for the title+body pairing (E-400 ⑥) — the claim split across the two must be caught ─────────
+{
+  const planted = `export function notifyPlanted(userId: string) {\n  return create({ userId, titleEn: "Withdrawal update", bodyEn: "Compliance review takes up to 24 hours. Tap to view." });\n}\n`;
+  const decls = declsIn(planted);
+  const joined = joinTitleBody(planted, decls, /^notifyAdmins?[A-Z]\w*$/, lineIndex(planted), null);
+  const alone = literalsIn(planted).map((l) => proseOf(l.text)).filter(hasLetters);
+  ok("§6 control · a notification body alone does not trip rule 4 (so the pairing is what catches it)",
+    alone.every((t) => rule4("en", t) === null), alone.join(" | "));
+  ok("§6 control · the title+body pairing reports the claim split across them",
+    joined.some((u) => rule4("en", u.text) !== null), joined.map((u) => u.text).join(" | "));
+  ok("§6 control · the pairing finds the live notifyWithdraw entries (it is not reading nothing)",
+    joinTitleBody(NOTIFY_SRC, declsIn(NOTIFY_SRC), /^notifyAdmins?[A-Z]\w*$/, lineIndex(NOTIFY_SRC), P3.branch).some((u) => u.key.startsWith("notifyWithdraw")));
 }
 
 // ── §6.3 · every surface is proven AND still matches live copy — an allowance outliving its copy is a hole ───────

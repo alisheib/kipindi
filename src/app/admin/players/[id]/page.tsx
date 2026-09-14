@@ -315,7 +315,7 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
             SUPPORT agent running the desk never sees a player's financials. */}
         {canSeeMoney && (
         <KpiGrid>
-          <AdminKpi label="Lifetime deposit"    sw="Jumla ya amana"        value={txnsFailed ? "" : formatTzsCompact(lifetimeDeposits)} unavailable={txnsFailed} delta={wallet ? `wallet ${formatTzs(wallet.balance)}` : undefined} />
+          <AdminKpi label="Lifetime deposit"    sw="Jumla ya amana"        value={txnsFailed ? "" : formatTzsCompact(lifetimeDeposits)} unavailable={txnsFailed} delta={wallet ? `wallet ${formatTzs(wallet.balance).replace(" ", "\u00a0")}` : undefined} />
           <AdminKpi label="Lifetime withdrawal" sw="Jumla ya utoaji"       value={txnsFailed ? "" : formatTzsCompact(lifetimeWithdrawals)} unavailable={txnsFailed} delta={`${txns.filter((t) => t.type === "WITHDRAWAL").length} txns`} />
           <AdminKpi label="NGR contribution"    sw="Mchango wa mapato"     value={txnsFailed ? "" : formatTzsCompact(ngr)} unavailable={txnsFailed} delta={`${txns.filter((t) => t.type === "BET_PLACED").length} positions`} />
           <AdminKpi label="Last position"      sw="Nafasi ya mwisho"      value={txnsFailed ? "" : (() => { const lb = txns.filter((t) => t.type === "BET_PLACED").sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0]; return lb ? formatDateShort(lb.createdAt) : "never"; })()} unavailable={txnsFailed} delta={`${txns.filter((t) => t.type === "BET_PLACED").length} positions`} />
@@ -679,13 +679,16 @@ function LimitsTab({ rg }: { rg: Awaited<ReturnType<typeof db.responsible.get>> 
       <Item label="Daily loss limit"      value={rg.dailyLossLimit      !== null ? formatTzs(rg.dailyLossLimit)      : "no limit"} />
       <Item label="Session time limit"    value={rg.sessionTimeLimitMin !== null ? `${rg.sessionTimeLimitMin} min`   : "no limit"} />
       <Item label="Reality check interval" value={`${rg.realityCheckIntervalMin} min`} />
-      {rg.pendingIncreaseTo !== null && (
-        <Item label="Pending limit increase" value={
-          <span className="text-warning font-medium">
-            {formatTzs(rg.pendingIncreaseTo)} effective {formatDateTimeSafe(rg.pendingIncreaseEffectiveAt)}
-          </span>
-        } />
-      )}
+      {/* E-408 — each pending deposit-limit change, keyed on its effective time; `to` null is a pending REMOVAL. */}
+      {([["daily deposit limit", rg.pendingIncreaseTo, rg.pendingIncreaseEffectiveAt, "tzs"], ["weekly deposit limit", rg.pendingWeeklyIncreaseTo, rg.pendingWeeklyIncreaseEffectiveAt, "tzs"], ["monthly deposit limit", rg.pendingMonthlyIncreaseTo, rg.pendingMonthlyIncreaseEffectiveAt, "tzs"], ["daily loss limit", rg.pendingLossLimitTo ?? null, rg.pendingLossLimitEffectiveAt ?? null, "tzs"], ["session time limit", rg.pendingSessionLimitTo ?? null, rg.pendingSessionLimitEffectiveAt ?? null, "min"]] as const)
+        .filter(([, , at]) => !!at)
+        .map(([what, to, at, unit]) => (
+          <Item key={what} label={`Pending ${what}`} value={
+            <span className="text-warning font-medium">
+              {to === null ? "removal" : unit === "min" ? `${to} min` : formatTzs(to)} effective {formatDateTimeSafe(at)}
+            </span>
+          } />
+        ))}
     </dl>
   );
 }
@@ -701,7 +704,7 @@ function ExclusionTab({ rg }: { rg: Awaited<ReturnType<typeof db.responsible.get
             <p className="font-bold text-text">Self-exclusion active</p>
             {/* An exclusion expiry is the one date an officer must never read three hours
                 early: it decides whether a player may be let back in. Zoned, always. */}
-            <p>Until {formatDateTime(rg.selfExclusionUntil)}. One-way until expiry — only the player can re-enable after the period ends.</p>
+            <p>Until {formatDateTime(rg.selfExclusionUntil)}. It cannot be shortened, and it does not reopen by itself: once the period has ended, an officer may reopen it at the player&apos;s request, with a recorded reason. A permanent exclusion cannot be reopened.</p>
           </div>
         </div>
       ) : <p className="text-caption text-text-tertiary">No self-exclusion active.</p>}

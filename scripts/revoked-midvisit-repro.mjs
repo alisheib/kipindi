@@ -1,7 +1,12 @@
 /**
- * E-381 §6 item 1 — THE HALF THAT IS STILL BROKEN. A repro, not a gate.
+ * E-381 §6 item 1 — the mid-visit blank page. A repro, not a gate.
  *
- * ⛔ THIS IS EXPECTED TO FAIL. It is committed so the next session can see the remaining defect
+ * ✅ FIXED 2026-09-14 (session 97): this now exits 0 — sitting on /markets through two real
+ * RefreshPoller intervals, the page kept its 899 characters. AppShell no longer navigates on a
+ * flight request; it renders the page with an in-place notice (`test:revoked-deadend` §3 is the
+ * gate). The history below is kept because it is why the fix is shaped the way it is.
+ *
+ * ⛔ (Until 2026-09-14) THIS WAS EXPECTED TO FAIL. It is committed so the next session can see the remaining defect
  * in one command instead of re-deriving it, and so the claim "E-381 is fixed" can never be made
  * without someone having to look at this. It is deliberately NOT in `predeploy` — a red
  * assertion in the gate chain would block every deploy.

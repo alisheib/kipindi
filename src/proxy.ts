@@ -215,6 +215,23 @@ export async function proxy(req: NextRequest) {
   // Full path + query so server components can round-trip the exact destination
   // (e.g. the admin TOTP gate preserving ?tab=kyc on a deep link from an email).
   requestHeaders.set("x-href", pathname + search);
+  // 🔴 E-381 · WHETHER THIS REQUEST IS A DOCUMENT LOAD. A hard load and a `router.refresh()` flight
+  // need opposite answers from AppShell when a session has ended: a document can take a real 307, a
+  // flight cannot (the redirect degrades to a client navigation that lands on a blank body).
+  // ⚠️ `rsc` CANNOT TELL THEM APART HERE: Next strips the flight headers before this proxy runs
+  // (`server/web/adapter.js`, "Headers should only be stripped for middleware") and again before
+  // `headers()` (`request-store.js`), and strips `_rsc` from the URL — measured 2026-09-14, a refresh
+  // arrived looking exactly like a document. `Sec-Fetch-Mode` is set by the BROWSER, cannot be
+  // written by page script, and Next does not touch it: `navigate` only for a real navigation,
+  // `cors`/`same-origin` for the router's fetch. A browser that sends no Sec-Fetch headers at all
+  // gets "0" — the in-place answer, which cannot blank. Always SET, never forwarded.
+  // ⚠️ MODE, NOT DEST: a navigation our service worker forwards (`public/sw.js` → `fetch(request)`)
+  // arrives as mode `navigate` with dest `empty` — measured 2026-09-14 — while the router's flight is
+  // mode `cors`, dest `empty`. Page script can never create a `navigate`-mode request.
+  requestHeaders.set(
+    "x-kp-document",
+    req.headers.get("sec-fetch-mode") === "navigate" && !req.headers.has("next-action") ? "1" : "0",
+  );
   return withSecurityHeaders(
     NextResponse.next({ request: { headers: requestHeaders } }),
     secure,

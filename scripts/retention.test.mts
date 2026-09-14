@@ -309,6 +309,31 @@ ok("…proven by running it a THIRD time and watching the count stay put",
   getAuditPage({ limit: 10_000 }).filter((e) => e.action === "retention.purge.daily").length === purgeRows
     && afterAnotherNoop.notifications === 0 && afterAnotherNoop.aiPollRawResponses === 0);
 
+// ── E-409 · marketing consent lapses after 2 years without a sign-in (Privacy §5) — a flag cleared, no row deleted ──
+{
+  const mk = async (id: string, phone: string, optIn: boolean, lastLoginDaysAgo: number | null, createdDaysAgo: number) =>
+    db.user.create({
+      id, phoneE164: phone, passwordHash: "h", passwordSalt: "s", failedLoginCount: 0, lockedUntil: null, role: "PLAYER",
+      status: "ACTIVE", locale: "EN", displayName: id, dob: null, region: null, acceptedTermsVersion: null, acceptedTermsAt: null,
+      marketingOptIn: optIn, twoFactorEnabled: false, avatarDataUrl: null,
+      lastLoginAt: lastLoginDaysAgo === null ? null : iso(now - lastLoginDaysAgo * DAY), createdAt: iso(now - createdDaysAgo * DAY),
+    } as never);
+  await mk("u_mkt_stale", "+255700009101", true, 800, 900);    // consented, last sign-in 800 days ago → lapses
+  await mk("u_mkt_recent", "+255700009102", true, 30, 900);    // consented, signed in last month → kept
+  await mk("u_mkt_never", "+255700009103", true, null, 760);   // consented, never signed in, created 760 days ago → lapses
+  await mk("u_mkt_edge", "+255700009104", true, 729, 900);     // one day inside the window → kept
+  const r = await runRetentionPass(now);
+  const opt = async (id: string) => (await db.user.findById(id))?.marketingOptIn;
+  ok("E-409 · consent with no sign-in for 800 days lapses", (await opt("u_mkt_stale")) === false);
+  ok("E-409 · consent from a player seen last month is kept", (await opt("u_mkt_recent")) === true);
+  ok("E-409 · never signed in: measured from account creation (760 days → lapses)", (await opt("u_mkt_never")) === false);
+  ok("E-409 · one day inside the 730-day window is kept (no off-by-one)", (await opt("u_mkt_edge")) === true);
+  ok("E-409 · the pass reports the two it cleared", r.marketingConsentsLapsed === 2, `got ${r.marketingConsentsLapsed}`);
+  ok("E-409 · the account rows are still there", !!(await db.user.findById("u_mkt_stale")) && !!(await db.user.findById("u_mkt_never")));
+  ok("E-409 · one COMPLIANCE audit row per lapsed account",
+    getAuditPage({ limit: 10_000 }).filter((e) => e.action === "privacy.marketing_consent.lapsed").length === 2);
+}
+
 console.log("");
 console.log("─".repeat(64));
 console.log(`  DATA RETENTION: ${pass} passed, ${fail} failed`);

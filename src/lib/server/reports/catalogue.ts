@@ -865,7 +865,9 @@ export async function buildRgEngagement(generatorId: string): Promise<Report> {
     const hasLimit = r.dailyDepositLimit !== null || r.weeklyDepositLimit !== null || r.monthlyDepositLimit !== null || r.dailyLossLimit !== null || r.sessionTimeLimitMin !== null;
     const sx = r.selfExclusionUntil && new Date(r.selfExclusionUntil).getTime() > now;
     const co = r.coolingOffUntil && new Date(r.coolingOffUntil).getTime() > now;
-    if (!hasLimit && !sx && !co && r.pendingIncreaseTo === null) continue;
+    // E-408 — a pending change is keyed on its effective time (a pending REMOVAL carries `to = null`).
+    const pending = !!(r.pendingIncreaseEffectiveAt || r.pendingWeeklyIncreaseEffectiveAt || r.pendingMonthlyIncreaseEffectiveAt || r.pendingLossLimitEffectiveAt || r.pendingSessionLimitEffectiveAt);
+    if (!hasLimit && !sx && !co && !pending) continue;
     if (hasLimit) withAnyLimit++;
     limitRows.push({
       player: maskUserId(u.id),

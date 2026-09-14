@@ -7,11 +7,15 @@ import { FieldLegend } from "@/components/ui/field-legend";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { closeAccountAction } from "./actions";
 import { useT } from "@/lib/i18n";
+import { CLOSE_ACCOUNT_PHRASE, isCloseAccountConfirmation } from "@/lib/close-account-phrase";
 
 export function CloseAccountForm() {
-  const { t } = useT();
+  const { t, locale } = useT();
   const [confirm, setConfirm] = useState("");
-  const canSubmit = confirm.trim() === "CLOSE MY ACCOUNT";
+  // ⭐ The player's own language (E-400 ⑦c) — and the SAME rule the server action applies, so the button can never be
+  // enabled for an input the action then refuses (the form trimmed and the action did not, until 2026-09-14).
+  const phrase = CLOSE_ACCOUNT_PHRASE[locale] ?? CLOSE_ACCOUNT_PHRASE.en;
+  const canSubmit = isCloseAccountConfirmation(confirm);
   const formRef = useRef<HTMLFormElement>(null);
 
   return (
@@ -27,7 +31,7 @@ export function CloseAccountForm() {
       </label>
       <label className="block">
         <FieldLegend className="block mb-1.5">
-          {t.common.type} <span className="font-mono text-danger-fg">CLOSE MY ACCOUNT</span> {t.common.typeToConfirm}
+          {t.common.type} <span className="font-mono text-danger-fg" data-close-phrase>{phrase}</span> {t.common.typeToConfirm}
         </FieldLegend>
         <input
           name="confirm"
@@ -64,6 +68,9 @@ export function CloseAccountForm() {
              which is the figure §A3 states for the one focus recipe. */
           className="w-full h-[var(--h-input)] px-3 rounded-md border border-border bg-bg-overlay font-mono text-[16px] tabular-nums text-text focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-transparent focus:border-claret-400 focus:shadow-[0_0_0_4px_color-mix(in_oklab,var(--claret-500)_25%,transparent)] transition-colors"
           autoComplete="off"
+          /* The Latin phrases are capitals: a phone keyboard offers them without a Caps Lock hunt. No effect on zh. */
+          autoCapitalize="characters"
+          spellCheck={false}
         />
       </label>
       <ConfirmDialog

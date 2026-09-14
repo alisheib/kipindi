@@ -26,20 +26,24 @@ export async function POST(req: Request) {
     name?: string;
     balance?: number;
     password?: string;
+    /** Dev only (E-381 §6 item 10 drive): seed a NON-owner staff account. Defaults to ADMIN, as before. */
+    role?: "ADMIN" | "COMPLIANCE" | "MODERATOR" | "FINANCE" | "GROWTH" | "AUDITOR" | "SUPPORT" | "PLAYER";
   } | null;
 
   const phone = body?.phone || "+255700000001";
   const name = body?.name || "Ali Admin";
   const balance = Math.min(body?.balance ?? 1_000_000, 100_000_000);
   const password = body?.password || "Admin2026!";
+  const STAFF = ["ADMIN", "COMPLIANCE", "MODERATOR", "FINANCE", "GROWTH", "AUDITOR", "SUPPORT", "PLAYER"] as const;
+  const role = STAFF.find((r) => r === body?.role) ?? "ADMIN";
 
   // If user already exists, just promote + fund + set session
   const existing = await db.user.findByPhone(phone);
   if (existing) {
-    await db.user.update(existing.id, { role: "ADMIN", status: "ACTIVE", displayName: name });
+    await db.user.update(existing.id, { role, status: "ACTIVE", displayName: name });
     const w = await db.wallet.findByUserId(existing.id);
     if (w) await db.wallet.update(w.id, { balance });
-    await createSession({ userId: existing.id, phoneE164: phone, role: "ADMIN", kycStatus: "APPROVED" });
+    await createSession({ userId: existing.id, phoneE164: phone, role, kycStatus: "APPROVED" });
     return NextResponse.json({ ok: true, userId: existing.id, phone, name, balance, note: "existing user promoted" });
   }
 
@@ -57,7 +61,7 @@ export async function POST(req: Request) {
     passwordSalt: salt,
     failedLoginCount: 0,
     lockedUntil: null,
-    role: "ADMIN",
+    role,
     status: "ACTIVE",
     locale: "EN",
     displayName: name,
@@ -111,7 +115,7 @@ export async function POST(req: Request) {
   };
   await db.kyc.upsert(kyc);
 
-  await createSession({ userId: id, phoneE164: phone, role: "ADMIN", kycStatus: "APPROVED" });
+  await createSession({ userId: id, phoneE164: phone, role, kycStatus: "APPROVED" });
 
   audit({
     category: "SECURITY",

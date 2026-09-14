@@ -87,24 +87,27 @@ export async function ConfidentialBand({ session }: { session: AdminSession }) {
 // told a role without money rights how many refused accounts still hold a balance. Both callers pass the viewer's
 // answer (view on accounting); `reactCache` memoises per argument, so it is still one run per request.
 export const getSidebarBadges = reactCache(async (canSeeMoney: boolean) => {
-  const [aml, sof, pendingKyc, refused] = await Promise.all([
+  const [aml, sof, pendingKyc, refused, { isFileWithUs }] = await Promise.all([
     Promise.resolve(db.txn.listByStatus("AML_REVIEW")).then((r) => r.length).catch(() => 0),
     Promise.resolve(db.sourceOfFunds.listPending()).then((r) => r.length).catch(() => 0),
     import("@/lib/server/kyc-service").then(({ listPendingKyc }) => listPendingKyc()).catch(() => []),
     openRefusedFundsCases(canSeeMoney).catch(() => 0),
+    import("@/lib/kyc-stage"),
   ]);
-  const kyc = pendingKyc.length;
-  // Approvals badge: the work /admin/approvals itself lists — its KYC queue (files with us, and files we
-  // asked more of), AML holds and source-of-funds declarations.
-  const approvals = kyc + aml + sof;
+  // ⭐ ONE RULE FOR "WAITING ON US" — `isFileWithUs` (src/lib/kyc-stage.ts), the `with_us` arm of the roster's
+  // derivation. ⛔ It counts only what an officer can clear: not ADDITIONAL_INFO_REQUIRED (the player's move —
+  // /admin/kyc files it "with the player"), and not "funded, nothing submitted". A badge that never clears stops
+  // being read.
+  const withUs = pendingKyc.filter(isFileWithUs).length;
+  // Approvals badge: the work /admin/approvals itself lists — the KYC files with us, AML holds and source-of-funds
+  // declarations. 🔴 It added every `listPendingKyc` row until 2026-09-14, so a file we had asked more of kept the
+  // badge lit while the page's own queue (which now lists files with us only, E-400 ⑦d) had nothing to clear.
+  const approvals = withUs + aml + sof;
   // ⭐ THE KYC QUEUE BADGE (2026-09-13) — officer work that holds a player's money. From that date identity is
   // asked before a withdrawal and nothing else, so a SUBMITTED file can be a player waiting on their own
   // balance (S14), and a finally-refused account holding money waits on an officer's recorded decision (S1).
-  // ⛔ It counts only what an officer can clear: not ADDITIONAL_INFO_REQUIRED (the player's move — /admin/kyc
-  // files it "with the player"), and not "funded, nothing submitted". A badge that never clears stops being read.
   // ⛔ Open refused cases are NOT added to "approvals": that page does not list them, and a badge points at
   // the page holding the work.
-  const withUs = pendingKyc.filter((k) => k.status === "PENDING_REVIEW").length;
   return {
     aml: aml > 0 ? String(aml) : undefined,
     compliance: aml + sof > 0 ? String(aml + sof) : undefined,
@@ -655,7 +658,9 @@ export function FeedRow({
   }[variant];
   return (
     <div className="flex items-center gap-2.5 py-2 border-b border-dashed border-border-subtle text-caption last:border-b-0 hover:bg-bg-overlay/30 transition-colors rounded-sm -mx-1 px-1">
-      <span className="font-mono text-micro text-text-tertiary w-[60px] shrink-0 tabular-nums">{ts}</span>
+      {/* E-400 ⑦g — `min-w`, not `w`, and one line: /admin/approvals passes a full date ("14 Sep 2026, 10:32"), which wrapped
+          to three lines inside a fixed 60px column. The column now grows to its timestamp; a clock ("10:32:05") still fits 60. */}
+      <span className="font-mono text-micro text-text-tertiary min-w-[60px] shrink-0 whitespace-nowrap tabular-nums">{ts}</span>
       <span
         className={[
           "font-mono text-micro px-1.5 py-0.5 rounded-sm tracking-[0.10em] shrink-0",

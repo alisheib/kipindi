@@ -127,7 +127,8 @@ export function LandingHero({ figures, t, locale, isAuthed, nowMs, cards }: Prop
         {/* ── the proof rail: three measured facts about the live book ─────────────── */}
         <div className="kp-proof">
           <div className="kp-proof__fig">
-            <span className="kp-proof__num" style={{ color: "var(--yes-400)" }}>
+            {/* Plain text ink (E-400 ⑦f): a count of open markets is not a side; the pip carries the live signal. */}
+            <span className="kp-proof__num" style={{ color: "var(--text)" }}>
               <span className="kp-proof__pip" aria-hidden />
               {formatNumber(figures.openCount)}
             </span>

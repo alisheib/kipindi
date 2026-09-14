@@ -401,7 +401,7 @@ function cardKey(c: CardClock): string {
  * lets `useServerNowGated` hold the card still for a whole round while the number inside it
  * still moves. ⛔ `urgent` is decided HERE, off the same `left` the digits are drawn from — read
  * from a second sampling of the clock upstairs it could cross the 30-second line a tick either
- * side of the number the player is looking at, and paint a rose "last seconds" pulse on `0:31`.
+ * side of the number the player is looking at, and start the "last seconds" pulse on `0:31`.
  */
 function CardCountdownDigits({
   digits, targetMs, serverNowMs, seedNowMs, urgentEligible, tone,
@@ -419,13 +419,16 @@ function CardCountdownDigits({
       className={cn("m-tick font-mono font-bold tabular-nums leading-none", urgent && "ud-count-pulse")}
       style={{
         fontSize: 28, letterSpacing: "0.05em",
-        // Three states, three inks: rose = your last seconds to bet · brand = the
-        // result is coming · subtle = nothing is counting. Never rose for the wait —
-        // `confirming` is CALM by design (see this file's header), not an alarm.
+        // Inks: `tone` (plain while betting · brand = the result is coming · subtle = nothing
+        // is counting). Never rose for the wait — `confirming` is CALM by design (see this
+        // file's header), not an alarm.
         // ⭐ E-166 · a COUNTING handover is brand too — the same "something is coming"
         // ink, for the same reason. ⛔ And never rose, on any handover branch: a void
         // hands over exactly like a win does, and the next match is not an alarm.
-        color: urgent ? "var(--no-300)" : tone,
+        // ⛔ AND NOT ROSE IN THE LAST 30 s EITHER (2026-09-14, register E-400 ⓪). The digits sit beside the
+        // round's Up and Down sides, and `--no-300` there reads as "price going down" — the betting pair names a
+        // side (DESIGN_AUTHORITY §B2a). The `ud-count-pulse` below carries the urgency; the ink stays the tone.
+        color: tone,
         // ⛔ The ladder, not a typed number — see the twin of this line in
         // `round-countdown.tsx` for why `--t-base` and not `--t-flick`.
         transition: "color var(--t-base) var(--m-glide)",

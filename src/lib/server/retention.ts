@@ -18,6 +18,7 @@
  * privacy policy describing collection that does not happen: the document is not wrong
  * about what we intend, it is wrong about what we do.
  */
+import { pruneStaleActiveSessions } from "./session-registry";
 import { db } from "./store";
 import { audit } from "./audit";
 import { aiPollStore } from "./ai-poll-generation";
@@ -83,6 +84,16 @@ export const OTP_RETENTION_DAYS = 30;
  */
 export const AIPOLL_PAYLOAD_RETENTION_DAYS = 30;
 
+/**
+ * E-409 · marketing consent lapses after this many days without activity (last sign-in, else account creation).
+ * ⭐ The owner's period (DATA-RETENTION.md, "2 years, from last activity"), published in Privacy §5 since before
+ * launch and enforced by NOTHING until 2026-09-14. It clears one boolean; it deletes no row.
+ */
+export const MARKETING_CONSENT_LAPSE_DAYS = 730;
+
+/** E-381 §6 item 12 · registry rows older than this can only name an expired session (7-day cap + a day's margin). */
+export const ACTIVE_SESSION_ROW_DAYS = 8;
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 export type RetentionResult = {
@@ -104,6 +115,10 @@ export type RetentionResult = {
   agentInvitationsExpired: number;
   agentRefereeDocsPurged: number;
   agentApplicantDocsPurged: number;
+  /** E-409 · accounts whose marketing consent lapsed after 2 years without activity (flag cleared, row kept). */
+  marketingConsentsLapsed: number;
+  /** E-381 §6 item 12 · `ActiveSession` rows deleted because the session they name is past its 7-day cap. */
+  staleSessionRows: number;
 };
 
 /**
@@ -155,8 +170,25 @@ export async function runRetentionPass(now = Date.now()): Promise<RetentionResul
     return { referee: 0, applicant: 0 };
   });
 
+  // E-409 · marketing consent after 2 years without activity. Best-effort like the agent classes; one audit row per
+  // account, because a consent change is a per-person record, not a statistic.
+  const lapsedIds = await Promise.resolve(db.user.expireMarketingConsent(new Date(now - MARKETING_CONSENT_LAPSE_DAYS * DAY_MS).toISOString()))
+    .catch((err) => {
+      console.error("[retention] marketing consent lapse failed:", (err as Error)?.message ?? err);
+      return [] as string[];
+    });
+  for (const id of lapsedIds) {
+    audit({ category: "COMPLIANCE", action: "privacy.marketing_consent.lapsed", actorId: null, targetType: "User", targetId: id, payload: { lapseDays: MARKETING_CONSENT_LAPSE_DAYS } });
+  }
+
+  const staleSessionRows = await pruneStaleActiveSessions(new Date(now - ACTIVE_SESSION_ROW_DAYS * DAY_MS).toISOString())
+    .catch((err) => {
+      console.error("[retention] stale session-row prune failed:", (err as Error)?.message ?? err);
+      return 0;
+    });
+
   const agentTouched = agentStale.drafts + agentStale.invitations + agentDocs.referee + agentDocs.applicant > 0;
-  if (notifications > 0 || otps > 0 || aiPolls.rawResponses > 0 || aiPolls.generations > 0 || agentTouched) {
+  if (notifications > 0 || otps > 0 || aiPolls.rawResponses > 0 || aiPolls.generations > 0 || agentTouched || lapsedIds.length > 0 || staleSessionRows > 0) {
     audit({
       category: "SYSTEM",
       action: "retention.purge.daily",
@@ -173,6 +205,8 @@ export async function runRetentionPass(now = Date.now()): Promise<RetentionResul
         agentDraftsExpired: agentStale.drafts, agentInvitationsExpired: agentStale.invitations,
         agentRefereeDocsPurged: agentDocs.referee, agentRefereeDocHoldDays: AGENT_REFEREE_DOC_HOLD_DAYS,
         agentApplicantDocsPurged: agentDocs.applicant, agentRejectedDocHoldDays: AGENT_REJECTED_DOC_HOLD_DAYS, agentApprovedDocHoldYears: AGENT_APPROVED_DOC_HOLD_YEARS,
+        marketingConsentsLapsed: lapsedIds.length, marketingConsentLapseDays: MARKETING_CONSENT_LAPSE_DAYS,
+        staleSessionRows, activeSessionRowDays: ACTIVE_SESSION_ROW_DAYS,
       },
     });
   }
@@ -184,5 +218,7 @@ export async function runRetentionPass(now = Date.now()): Promise<RetentionResul
     agentInvitationsExpired: agentStale.invitations,
     agentRefereeDocsPurged: agentDocs.referee,
     agentApplicantDocsPurged: agentDocs.applicant,
+    marketingConsentsLapsed: lapsedIds.length,
+    staleSessionRows,
   };
 }
