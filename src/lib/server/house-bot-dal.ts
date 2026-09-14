@@ -1596,7 +1596,8 @@ function memSeed(): void {
 
 const SORTED_CHECKS: { [T in HouseTable]: ReadonlyArray<MemCheck<HouseRows[T]>> } = Object.fromEntries(
   (Object.keys(MEM) as HouseTable[]).map((t) => [t, [...MEM_CHECKS[t]].sort(byName)]),
-) as { [T in HouseTable]: ReadonlyArray<MemCheck<HouseRows[T]>> };
+  // Object.fromEntries widens to a string index; every HouseTable key is present by construction.
+) as unknown as { [T in HouseTable]: ReadonlyArray<MemCheck<HouseRows[T]>> };
 
 /**
  * The one memory write. In Postgres order: column types, then the CHECKs (by name), then the
@@ -2480,7 +2481,7 @@ async function sqlPage<R extends { createdAt: string; id: string }>(
 
 /** An insert without the database-stamped times, so the column defaults write them. */
 function withoutStamps<R extends object>(row: R): Record<string, unknown> {
-  const copy: Record<string, unknown> = { ...row };
+  const copy = { ...row } as Record<string, unknown>;
   delete copy.createdAt;
   delete copy.updatedAt;
   return copy;
