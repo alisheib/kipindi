@@ -27,7 +27,13 @@
    - **Never overlap `npm ci`, `next build`, `test:all` or Playwright with another session on the same laptop.**
 3. **P0.2 and P0.3 are ✅** (2026-09-13, build session `ali-e4`; details in the P0 table). Nothing else to check before the hold lifts.
 4. **⛔ HOLD before P0.4.** Wait until BOTH:
-   - (a) **Any machine, checkable in git:** the KYC audit's fixes are on `origin/main`, and the topmost RESUME AT in `git show origin/main:docs/LIVE-QA-CAMPAIGN.md` §6b is the audit session's own block (newer than "session 95"), saying its work is done. ali-f6's first fix ("P0", no migration) was pushed at 21:27 UTC 2026-09-13; its P1 batch was still in flight. **Last check, late 2026-09-13 UTC:** `origin/main` was at "AUDIT 95 (2/n) · docs: the P0s are live, and the P1 batch is recorded as uncommitted while it is", and the topmost §6b block was "session 96", still marked IN FLIGHT. No migration newer than `20260913120000_kyc_at_withdrawal` had landed. **So the hold stands.**
+   - (a) **Any machine, checkable in git:** the KYC audit's fixes are on `origin/main`, and the topmost RESUME AT in `git show origin/main:docs/LIVE-QA-CAMPAIGN.md` §6b is the audit session's own block (newer than "session 95"), saying its work is done. ali-f6's first fix ("P0", no migration) was pushed at 21:27 UTC 2026-09-13; its P1 batch was still in flight. **Last check, 2026-09-14 00:53 UTC:**
+     - `origin/main` was at "AUDIT 95 (3/n) · docs: the uncommitted P1 batch has a backup snapshot on audit-95-p1-wip, and §6b says how to continue it on another machine".
+     - The topmost §6b block was still "session 96". Its P0 fixes are LIVE. Its **P1 batch is uncommitted on the audit machine**, with a backup snapshot on the side branch `audit-95-p1-wip` (not deployed); §6b says how to continue it elsewhere.
+     - P1 touches `refused-funds`, `wallet-service`, `wallet-freeze`, `kyc-service`, `user-service` (closure) and COMPLIANCE-DECISIONS, which include House Bots hook points.
+     - No migration newer than `20260913120000_kyc_at_withdrawal` had landed.
+     - ali-f6 was still live. Build session ali-e4 asked it for a P1 ETA and proposed a merge-only of `origin/main` into `house-bots` (no `npm ci`, build or tests before its ALL-CLEAR; our COMPLIANCE entry held until P1 lands). No answer yet.
+     - **So the hold stands.**
    - (b) **Same laptop only:** no other session on this machine is inside a heavy Node window (on Ali-Blade15: wait for ali-f6's "ALL-CLEAR heavy window"). On a different PC this condition does not apply, but coordinate with that PC's own sessions.
 
    If unsure, ask the audit session (if it is live on your machine) or Ali. Then:
