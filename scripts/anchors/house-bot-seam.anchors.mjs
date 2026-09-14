@@ -16,6 +16,8 @@ export const SEAM_SITES = [
   "revertNoFundsBonus", "txnMarker", "H4", "wagering", "superseded", "audit", "receipts", "recruit",
   "reverseWageringOrphan", "markerOrphan", "cashOutValue", "cashOutPosition", "markerCashout", "markerOneSided",
   "markerVoid", "markerWin", "reverseWagering", "markerEmergency", "reverseWageringEmergency",
+  // 04 A17 (h): the liquidity label and the per-stake email rule (04 F6) on outcome notices.
+  "labelOneSided", "labelWin", "labelLoss", "labelCancelled", "labelVerdict", "labelSelectionClosed",
 ];
 
 export const H2_ORDER = ["standing", "role", "consent", "cash", "conflicts", "money", "staff", "rate"];

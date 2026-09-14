@@ -166,7 +166,60 @@ Every CHECK is named `<Model>_<field>_check` (the target delays are split into `
 
 ## 3. Money seam
 
-⏳ Written in commit 2. Until then the gate order is PLAN §3 as amended by N1 §3 and N2 §3, set out step by step in [`FLOWS.md`](FLOWS.md) §9.
+A house stake is `placeHouseBet(botUserId, {marketId, side, stake, idempotencyKey}, {botId, intentId})` in `market-service.ts`. It runs the **same** function a player's bet runs, `buyPositionInner(userId, opts, ctx)`, with a house bet context (`BetContext`, 04 A7). The house gates live in `src/lib/server/house-bot/seam.ts` and are called only from anchored sites; they can only add a refusal (I1). The engine's `fire.ts` (commit 4) is the only file allowed to import `placeHouseBet`.
+
+### 3.1 Order of checks for a house stake
+
+| Step | Where | What refuses |
+|---|---|---|
+| H0 | First, before any other gate | The key must be `houseIntentKey(intentId)` and no session clock may ride along → `house_key_mismatch`. **Pre-lookup:** the key already placed this bot's stake → the original is returned with `replayed: true`; a stake by another user or bot → `house_key_mismatch`. **The intent is loaded by id with no status filter**: missing, or a different bot, holder, market, side or stake → `house_key_mismatch`. A cancelled or re-queued row goes on and ends `house_intent_superseded` at `markPlaced`. |
+| H1 | Pre-lock, fresh | Unreadable control or bot → `house_gate_unreadable` (BUSY). Switch off → `house_disabled`. Bot not ACTIVE or not this holder's → `house_bot_inactive`. |
+| — | The player's gates, unchanged | Rate limit, maintenance, self-exclusion and cooling-off, account status, market status and close, stake bounds (`stakeBoundsForMarket`), side. The session time limit is skipped for a house stake (A7 ruling). |
+| H2 | Inside `wallet:<botUser>`, after the wallet and the holder's own loss limit | In declared order (`H2_ORDER`): **standing** (RG timers and status, as the player path) · **role** ≠ PLAYER → `house_account_ineligible` · **consent**: fingerprint matches and no void newer than the last verification, else `house_consent_stale` · **cash**: balance < stake → `house_cash_only` · **conflicts**: the holder's own OPEN position → `OWNER_POSITION`, a house position on the other side → `OPPOSITE_SIDE` · **money caps** STAKE_MIN, STAKE_MAX, PER_MARKET, BALANCE_FLOOR, DAILY_STAKE, DAILY_LOSS_PROJECTED, EXPOSURE · **staff-chosen** (MANUAL or a targeted COUNTER) STAFF_CHOSEN_PER_DAY, STAFF_CHOSEN_DAILY_STAKE, TARGET_ONCE · **rate** PER_MARKET_COUNT (terminal, checked first in its group), MIN_GAP, PER_HOUR, PER_DAY. |
+| — | Funding | A house stake is cash only by construction: the whole stake is real money, the bonus part is 0. |
+| H3 | Inside `market:<id>`, after the closed re-check | The raw product line not in `HOUSE_PRODUCTS` → `house_product_not_allowed`. An Up & Down market whose round lock (open + duration, or the market close) has passed, or that has no round → `house_round_locked`. Staff-chosen rows on a blacked-out market → `house_info_blackout`. Another bot holds an OPEN position here → `OTHER_BOT`. All bots' open stake + this > `gCapPerMarketTzs` → GLOBAL_PER_MARKET. **Mode condition** (from the claimed row): COUNTER — trigger no longer OPEN → `house_trigger_gone`; trigger account on the bot's side → `TRIGGER_BOTH_SIDES`; `rawPool(botSide) + stake` > locked opposite money (`lockedA15` untargeted, `locked` targeted) → `house_condition_gone{COUNTER}`. FILL — against `locked`. OPENER and MANUAL OPENER — both pools must be 0. MANUAL THIN — against `locked`, then counterparty concentration: share limit not set, or the top account's share above it → `house_counterparty_concentration`. |
+| H4 | Inside `house:control`, the innermost lock, wrapping the money writes | Control re-read: switch off → `house_disabled`. GLOBAL_DAILY_STAKE, GLOBAL_LOSS_PROJECTED, GLOBAL_EXPOSURE, GLOBAL_BETS_PER_MINUTE, GLOBAL_BETS_PER_DAY. COUNTERPARTY_COUNT / COUNTERPARTY_TZS — a COUNTER is charged to its trigger account; a MANUAL THIN is attributed pro rata to every opposite account holding ≥ 25% of the locked money. GLOBAL_STAFF_CHOSEN_PER_DAY / _DAILY_STAKE. Then `staleAt` on the database clock (`clock_timestamp()`): a CLAIMED row past it → `house_intent_stale`. |
+| H5–H9 | The money writes | `markPlaced` is the first money statement: no CLAIMED row → the writes roll back → `house_intent_superseded`. The Position and the BET_PLACED transaction carry `houseBotId`. No wagering is recorded. The one `market.position.opened` audit row gains `houseBotId` and `intentId`. No bet receipt, push or email. No recruiter prize. Pools, odds, `predictorCount` and the live balance event are unchanged (D6). |
+
+Every cap that is **not set refuses** (§5.1). Every read in H2–H4 is a plain SELECT on the lock's transaction — no row lock a player's bet could queue behind (04 A9).
+
+### 3.2 Locks and timeouts (04 A9)
+- Lock order `wallet:<botUser>` → `market:<id>` → `house:control`. Because every lock joins the outer transaction, `house:control` is held until the wallet lock's transaction commits.
+- The house branch sets `lock_timeout = 2s` (`HOUSE_BET_LOCK_TIMEOUT`) on its transaction before the market lock, so a house bet waits at most 2 s on `market:<id>` or `house:control`; 55P03 comes back as BUSY, never a failure. A player's bet takes no timeout.
+- Admission never queues a house stake (`withAdmission(fn, {maxWaitMs: 0})`): a saturated platform sheds the house first.
+- Switching OFF never waits on `house:control`: it is written first, in autocommit, and H4's re-read makes it binding for any bet not yet holding the lock (commit 4 builds the drain).
+
+### 3.3 Locked money: `lockedForHouse` (N1 §4.1)
+`src/lib/server/house-bot/pools.ts` → `houseSeamStore.lockedPool`, one SQL statement (memory twin in the DAL). A stake counts as locked only when its exit window (`exit-window.ts`, the same formula `cashOutValue` offers) closed at least `LOCK_MARGIN_MS` (7 s) ago on the database clock, and only when its account is a PLAYER, holds no live bot, is not penalty-boxed today, and was not recruited by a live bot's holder. `lockedA15` is the one unfiltered, unmarginned column, for the untargeted COUNTER only. Raw pools stay raw.
+
+### 3.4 The information blackout (N1 §3)
+`src/lib/server/house-bot/blackout.ts`, output `{blocked}` only. A LIVE poll is blocked for Enter now and targeted reactions while any of `sentinelOutcome`, `sentinelConfidence`, `sentinelDetermined`, `sentinelClosedAt`, `resolvedOutcome`, `resolutionStage1By` is set, while `resolveClaimedAt` is younger than `RESOLVE_CLAIM_TTL_MS`, or once `reopenedAt` is set. Automated kinds are not blacked out.
+
+### 3.5 Sanctioned changes to the player path
+With a null marker, each gives a player exactly what they had before; the letter is PLAN §3's, 04 A18's or N1 §2's.
+
+| Change | What it does | Where |
+|---|---|---|
+| (b) | A replayed idempotency key that belongs to another account's bet (or, for a house stake, another bot's) refuses `idempotency_key_conflict` instead of returning that bet as this caller's receipt. | `buyPositionInner` replay |
+| (c) | `buyPositionAction` refuses a key starting `hb:` with `idempotency_key_conflict`. | `app/markets/actions.ts` |
+| (d) | `cashOutValue` takes `houseBotId`; a house position is not sellable (`HOUSE_POSITION`). Output for every player position is byte-identical to the golden grid captured before the change. | `market-service.ts`, both page callers |
+| (e) | `cashOutPosition` refuses a house position `house_position_no_exit`. | `market-service.ts` |
+| (f)/(n) | Objection standing: a user whose only positions on the market are house-marked → `HOUSE_STAKE_ONLY`; own plus house stays eligible. | `objections-service.ts`, market page, resolution panel |
+| (g) | Wagering reversal is skipped for marked positions in settlement, emergency void and orphan repair (A17); `onRecruitBet` and `onRecruitSettlement` take a required `houseBotId` and return on a marked position. | `market-service.ts`, `affiliate-service.ts` |
+| (j) | `replayed: true` on both replay paths. | `buyPositionInner` |
+| (k) | `exitWindowClosesAt` extracted into `src/lib/exit-window.ts`; `graceMs > 0` kept (A14). | `market-service.ts` |
+| (m) | The comment side chip ignores marked positions. | `app/markets/actions.ts` |
+| (p) | `stakeBoundsForMarket(market)` extracted with identical output. | `market-service.ts` |
+| (r) | `adminReopenMarket` stamps `reopenedAt` (never cleared) and `reopenCount`. | `market-service.ts` |
+| Propagation | The marker is copied onto WIN payouts, one-sided, VOID, emergency-void and orphan refunds, and cash-out transactions. | `market-service.ts` |
+
+⏳ Still to land in commit 2: (h) the liquidity label line on per-bettor outcome notices (A17 list), and the (a) post-commit hook call site. (i) the holder chip and (o) the activity-feed chip are commit 5.
+
+### 3.6 Registries
+- **`BET_PATH_REASONS`** (`src/lib/house-bot/bet-path.ts`) lists every refusal the bet path can return to a house stake; `test:house-bot-seam` reads the bet-path sources and fails in both directions.
+- **`GATE_PARITY`** (`scripts/lib/house-bot-gate-parity.ts`, typechecked) has one row per reason: a fixture proving `placeHouseBet` and `buyPosition` refuse alike, or a stated exemption.
+- **SEAM sites** (`scripts/anchors/house-bot-seam.anchors.mjs`): every `ctx.kind` comparison in `market-service.ts` sits under a `// SEAM:<name>` marker, and the markers are exactly the declared list.
+- **Failure reasons:** every `house_*` reason and `idempotency_key_conflict` is registered in `failure-reasons.ts` with en/sw/zh copy (sw/zh drafted, native review); `FailureDetail` gains `cap`, `conflict` and `condition`.
 
 ---
 

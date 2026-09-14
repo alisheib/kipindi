@@ -279,6 +279,49 @@ section("§6 · (b) a reused key refuses instead of replaying another account's 
   ok("6.3 · CONTROL · A's own retry still replays, now marked replayed: true (j)", ra2.ok === true && ra2.data?.replayed === true && ra2.data?.positionId === ra.data.positionId, show(ra2));
 }
 
+// ═══ §8 · outcome notices name a liquidity stake (04 A17 (h)) ═══════════════════════════════
+section("§8 · the liquidity label on outcome notices");
+{
+  const LABEL = "50pick liquidity stake";
+  const rows = async (userId: string, kind?: string) => ((await w.db.notification.findByUser(userId, 200)) as Any[]).filter((n) => !kind || n.kind === kind);
+  // WIN on a house stake, LOSS on the player's.
+  const { market, player } = await pollWithLockedNo(10_000);
+  const b = await w.bot();
+  const r = await w.place(b, await w.intent(b, market.id, { kind: "FILL", side: "YES", stakeTzs: 5_000 }));
+  await w.svc.resolveMarket({ marketId: market.id, outcome: "YES", officerId: OFFICER });
+  await w.svc.settleMarket(market.id, { force: true });
+  await sleep(500);
+  const win = (await rows(b.userId, "WIN")).find((n) => n.bodyEn.includes(r.data.positionId) || n.titleEn.includes("won"));
+  ok("8.1 · the holder's WIN notice for a house stake carries the label in all three languages",
+    !!win && win.bodyEn.includes(LABEL) && win.bodySw.includes("Dau la ukwasi la 50pick") && win.bodyZh.includes("50pick 流动性投注"), win?.bodyEn ?? "no WIN row");
+  const loss = (await rows(player, "LOSS"))[0];
+  ok("8.2 · CONTROL · the player's LOSS notice on the same market carries no label", !!loss && !loss.bodyEn.includes(LABEL), loss?.bodyEn ?? "no LOSS row");
+
+  // Selection closed: a holder with a house stake AND an own stake gets two notices — the house figures
+  // labelled, and personal figures that exclude the house money.
+  const m2 = await w.poll({ graceMin: 0 });
+  const h = await w.bot();
+  const ro = await w.place(h, await w.intent(h, m2.id, { kind: "OPENER", side: "YES", stakeTzs: 3_000 }));
+  const other = await w.user({ balance: 100_000 });
+  await w.svc.buyPosition(other, { marketId: m2.id, side: "NO", stake: 4_000, idempotencyKey: crypto.randomUUID() });
+  const own = await w.svc.buyPosition(h.userId, { marketId: m2.id, side: "NO", stake: 2_000, idempotencyKey: crypto.randomUUID() });
+  ok("8.3 · fixture · a holder with a house YES 3,000 and their own NO 2,000", ro.ok === true && own.ok === true, `${show(ro)} · ${show(own)}`);
+  await w.mdal.marketStore.stamp(m2.id, { selectionClosedAt: new Date(Date.now() - 1_000).toISOString() });
+  const sc = await w.svc.notifySelectionClosedForMarket(m2.id);
+  await sleep(500);
+  const closed = await rows(h.userId, "SELECTION_CLOSED");
+  const houseNotice = closed.filter((n) => n.bodyEn.includes(LABEL));
+  const personal = closed.filter((n) => !n.bodyEn.includes(LABEL));
+  ok("8.4 · selection closed → one labelled notice for the house stake and one personal notice", sc.notified === true && houseNotice.length === 1 && personal.length === 1,
+    `${closed.length} row(s): ${closed.map((n) => n.bodyEn).join(" | ")}`);
+  ok("8.5 · …the labelled one names only the YES (house) figure; the personal one only the NO (own) figure",
+    houseNotice[0]?.bodyEn.includes("If YES wins") && !houseNotice[0]?.bodyEn.includes("If NO wins")
+      && personal[0]?.bodyEn.includes("If NO wins") && !personal[0]?.bodyEn.includes("If YES wins"),
+    `${houseNotice[0]?.bodyEn} | ${personal[0]?.bodyEn}`);
+  const otherClosed = await rows(other, "SELECTION_CLOSED");
+  ok("8.6 · CONTROL · a player with no house stake gets exactly one unlabelled notice", otherClosed.length === 1 && !otherClosed[0].bodyEn.includes(LABEL));
+}
+
 // ═══ §7 · Postgres only: the ledger ties, and lockedForHouse's SQL is the JS exit window ═════
 if (w.onPostgres) {
   section("§7 · Postgres: trial balance and the lockedForHouse SQL");

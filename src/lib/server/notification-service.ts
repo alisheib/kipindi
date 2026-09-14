@@ -338,6 +338,16 @@ export function notifyBetPlaced(userId: string, opts: {
 }
 
 /**
+ * ⭐ HOUSE BOTS · THE LIQUIDITY LABEL (04 A17 (h)). A holder's account can carry stakes 50pick placed
+ * from it. Their outcome notices are still sent (2026-08-22 "announce every outcome"), and each one that
+ * is about a house-marked position says so, so the holder never mistakes 50pick's stake for their own.
+ * ⛔ APPENDED ONLY WHEN `houseStake` IS TRUE: a player's notice is byte-identical, and the words match the
+ * holder chip ("50pick liquidity stake", F10). sw/zh drafted, native review.
+ */
+const LIQUIDITY_LINE = { en: " · 50pick liquidity stake", sw: " · Dau la ukwasi la 50pick", zh: " · 50pick 流动性投注" } as const;
+const liquidityLine = (houseStake: boolean | undefined, lang: keyof typeof LIQUIDITY_LINE): string => (houseStake ? LIQUIDITY_LINE[lang] : "");
+
+/**
  * ⭐ E-101 · `href` IS REQUIRED, and the default it replaced was the defect.
  *
  * It used to default to `"/positions"`, so a win notification landed the player on the
@@ -346,7 +356,7 @@ export function notifyBetPlaced(userId: string, opts: {
  * wrong for one of two products is not a safe default; it is a decision nobody made. Callers
  * now state where the money is, and `positionPermalinkHref` is how they say it.
  */
-export function notifyWin(userId: string, amount: number, label: LocalizedText, href: string) {
+export function notifyWin(userId: string, amount: number, label: LocalizedText, href: string, house?: { houseStake?: boolean }) {
   // ⛔ NO IDENTITY SENTENCE ON A WIN (owner, 2026-09-13, the quiet rule). A receipt says what happened
   // to the money and nothing about verification; `test:cert-c3` §7 asserts it in all three languages.
   return notify({
@@ -355,9 +365,9 @@ export function notifyWin(userId: string, amount: number, label: LocalizedText, 
     titleEn: `You won ${formatTzs(amount)}`,
     titleSw: `Umeshinda ${formatTzs(amount)}`,
     titleZh: `您赢得 ${formatTzs(amount)}`,
-    bodyEn: `${label.en} paid out. Tap to view.`,
-    bodySw: `${label.sw} kimelipa. Bonyeza kuona.`,
-    bodyZh: `${label.zh} 已赔付。点击查看。`,
+    bodyEn: `${label.en} paid out. Tap to view.${liquidityLine(house?.houseStake, "en")}`,
+    bodySw: `${label.sw} kimelipa. Bonyeza kuona.${liquidityLine(house?.houseStake, "sw")}`,
+    bodyZh: `${label.zh} 已赔付。点击查看。${liquidityLine(house?.houseStake, "zh")}`,
     href,
   });
 }
@@ -366,7 +376,7 @@ export function notifyWin(userId: string, amount: number, label: LocalizedText, 
  * Loss receipt — direct, respectful language. No euphemisms that could
  * delay the player's awareness of their loss (LCCP harm-prevention).
  */
-export function notifyLoss(userId: string, opts: { stake: number; marketTitle: LocalizedText; marketId: string; positionId?: string }) {
+export function notifyLoss(userId: string, opts: { stake: number; marketTitle: LocalizedText; marketId: string; positionId?: string; houseStake?: boolean }) {
   const ref = opts.positionId ? ` · ${opts.positionId}` : "";
   return notify({
     userId,
@@ -383,12 +393,12 @@ export function notifyLoss(userId: string, opts: { stake: number; marketTitle: L
     // moment it had been placed and lost. `投注未中` is the idiomatic "the bet did not
     // win" and cannot be read as a placement failure.
     titleZh: `投注未中 · ${formatTzs(opts.stake)}`,
-    bodyEn: `${opts.marketTitle.en.slice(0, 70)} · your side didn't win.${ref}`,
+    bodyEn: `${opts.marketTitle.en.slice(0, 70)} · your side didn't win.${liquidityLine(opts.houseStake, "en")}${ref}`,
     // ⚠️ Carries the market title, like EN and ZH. Without it a Swahili player with
     // several open positions got "your side didn't win" with nothing saying WHICH
     // market — the one thing the receipt exists to identify.
-    bodySw: `${opts.marketTitle.sw.slice(0, 70)} · Upande wako haukushinda.${ref}`,
-    bodyZh: `${opts.marketTitle.zh.slice(0, 50)} · 您所选的一方未获胜。${ref}`,
+    bodySw: `${opts.marketTitle.sw.slice(0, 70)} · Upande wako haukushinda.${liquidityLine(opts.houseStake, "sw")}${ref}`,
+    bodyZh: `${opts.marketTitle.zh.slice(0, 50)} · 您所选的一方未获胜。${liquidityLine(opts.houseStake, "zh")}${ref}`,
     href: `/markets/${opts.marketId}`,
   });
 }
@@ -442,6 +452,8 @@ type UpDownResultOpts = {
    */
   pushTag: string;
   positionId?: string;
+  /** House bots (04 A17 (h)): the position is a 50pick liquidity stake — the body carries the label. */
+  houseStake?: boolean;
 };
 
 /**
@@ -463,9 +475,9 @@ function notifyUpDownResult(
     userId,
     kind,
     titleEn: copy.titleEn, titleSw: copy.titleSw, titleZh: copy.titleZh,
-    bodyEn: `${copy.bodyEn}${ref}`,
-    bodySw: `${copy.bodySw}${ref}`,
-    bodyZh: `${copy.bodyZh}${ref}`,
+    bodyEn: `${copy.bodyEn}${liquidityLine(opts.houseStake, "en")}${ref}`,
+    bodySw: `${copy.bodySw}${liquidityLine(opts.houseStake, "sw")}${ref}`,
+    bodyZh: `${copy.bodyZh}${liquidityLine(opts.houseStake, "zh")}${ref}`,
     href: opts.roundHref,
   }, { pushTag: opts.pushTag });
 }
@@ -620,6 +632,8 @@ export function notifySelectionClosed(userId: string, opts: {
   marketTitle: LocalizedText; marketId: string;
   payoutIfYes: number; payoutIfNo: number;
   hasYes: boolean; hasNo: boolean;
+  /** House bots (04 A17 (h)): the figures are the holder's 50pick liquidity stakes, sent as their own notice. */
+  houseStake?: boolean;
 }) {
   const both = opts.hasYes && opts.hasNo;
   const only = opts.hasYes ? opts.payoutIfYes : opts.payoutIfNo;
@@ -660,9 +674,9 @@ export function notifySelectionClosed(userId: string, opts: {
     titleEn: both ? "Betting closed — your payouts are set" : `Betting closed — you receive ${formatTzs(only)} if you're right`,
     titleSw: both ? "Dau limefungwa — malipo yako yamewekwa" : `Dau limefungwa — utapata ${formatTzs(only)} ukiwa sahihi`,
     titleZh: both ? "投注已截止 — 您的赔付已确定" : `投注已截止 — 若判断正确您将获得 ${formatTzs(only)}`,
-    bodyEn,
-    bodySw,
-    bodyZh,
+    bodyEn: `${bodyEn}${liquidityLine(opts.houseStake, "en")}`,
+    bodySw: `${bodySw}${liquidityLine(opts.houseStake, "sw")}`,
+    bodyZh: `${bodyZh}${liquidityLine(opts.houseStake, "zh")}`,
     href: `/markets/${opts.marketId}`,
   });
 }
@@ -1041,6 +1055,8 @@ export function notifyVerdictRecorded(userId: string, opts: {
   paysFrom: string;
   /** True when this verdict REPLACED an earlier one (an upheld objection, remedy REVERSE). */
   reversed?: boolean;
+  /** House bots (04 A17 (h)): the player holds a 50pick liquidity stake on this market. */
+  houseStake?: boolean;
 }) {
   const isVoid = opts.outcome === "VOID";
   const word = {
@@ -1067,9 +1083,9 @@ export function notifyVerdictRecorded(userId: string, opts: {
     titleEn,
     titleSw,
     titleZh,
-    bodyEn: `${title.en.slice(0, 60)} · No money has moved yet. Payout from ${opts.paysFrom} — if you think this result is wrong, object before then.`,
-    bodySw: `${title.sw.slice(0, 60)} · Hakuna fedha iliyohamishwa bado. Malipo kuanzia ${opts.paysFrom} — kama unaamini matokeo haya si sahihi, pinga kabla ya muda huo.`,
-    bodyZh: `${title.zh.slice(0, 45)} · 尚未有任何资金转移。赔付不早于 ${opts.paysFrom} — 若您认为该结果有误，请在此之前提出异议。`,
+    bodyEn: `${title.en.slice(0, 60)} · No money has moved yet. Payout from ${opts.paysFrom} — if you think this result is wrong, object before then.${liquidityLine(opts.houseStake, "en")}`,
+    bodySw: `${title.sw.slice(0, 60)} · Hakuna fedha iliyohamishwa bado. Malipo kuanzia ${opts.paysFrom} — kama unaamini matokeo haya si sahihi, pinga kabla ya muda huo.${liquidityLine(opts.houseStake, "sw")}`,
+    bodyZh: `${title.zh.slice(0, 45)} · 尚未有任何资金转移。赔付不早于 ${opts.paysFrom} — 若您认为该结果有误，请在此之前提出异议。${liquidityLine(opts.houseStake, "zh")}`,
     href: `/markets/${opts.marketId}`,
   });
 }
@@ -1205,7 +1221,7 @@ export function notifyProposalDeclined(userId: string, opts: { titleEn: string; 
  *  came back twice. That is the ordinary case on a voided market, not a corner: the
  *  platform allows repeat bets by design. `notifyCashout` and `notifyOneSidedRefund`
  *  already carry the reference for exactly this reason; these two did not. */
-export function notifyRefund(userId: string, opts: { stake: number; marketTitle: LocalizedText; marketId: string; positionId?: string }) {
+export function notifyRefund(userId: string, opts: { stake: number; marketTitle: LocalizedText; marketId: string; positionId?: string; houseStake?: boolean }) {
   const ref = opts.positionId ? ` · ${opts.positionId}` : "";
   return notify({
     userId,
@@ -1213,16 +1229,16 @@ export function notifyRefund(userId: string, opts: { stake: number; marketTitle:
     titleEn: `Refund · ${formatTzs(opts.stake)} returned`,
     titleSw: `Kurudishiwa · ${formatTzs(opts.stake)}`,
     titleZh: `退款 · 已退回 ${formatTzs(opts.stake)}`,
-    bodyEn: `${opts.marketTitle.en.slice(0, 70)} was voided. Your stake has been returned.${ref}`,
-    bodySw: `${opts.marketTitle.sw.slice(0, 70)} limebatilishwa. Dau lako limerudishwa.${ref}`,
-    bodyZh: `${opts.marketTitle.zh.slice(0, 50)} 已作废。您的本金已全额退回。${ref}`,
+    bodyEn: `${opts.marketTitle.en.slice(0, 70)} was voided. Your stake has been returned.${liquidityLine(opts.houseStake, "en")}${ref}`,
+    bodySw: `${opts.marketTitle.sw.slice(0, 70)} limebatilishwa. Dau lako limerudishwa.${liquidityLine(opts.houseStake, "sw")}${ref}`,
+    bodyZh: `${opts.marketTitle.zh.slice(0, 50)} 已作废。您的本金已全额退回。${liquidityLine(opts.houseStake, "zh")}${ref}`,
     href: `/markets/${opts.marketId}`,
   });
 }
 
 /** Player notice: a market they had a stake in was cancelled (emergency void).
  *  Carries the admin's reason and confirms the full refund. */
-export function notifyMarketCancelled(userId: string, opts: { stake: number; marketTitle: LocalizedText; marketId: string; reason: string; positionId?: string }) {
+export function notifyMarketCancelled(userId: string, opts: { stake: number; marketTitle: LocalizedText; marketId: string; reason: string; positionId?: string; houseStake?: boolean }) {
   const ref = opts.positionId ? ` · ${opts.positionId}` : "";
   return notify({
     userId,
@@ -1230,9 +1246,9 @@ export function notifyMarketCancelled(userId: string, opts: { stake: number; mar
     titleEn: `Market cancelled · ${formatTzs(opts.stake)} refunded`,
     titleSw: `Soko limefutwa · ${formatTzs(opts.stake)} imerejeshwa`,
     titleZh: `市场已取消 · 已退款 ${formatTzs(opts.stake)}`,
-    bodyEn: `"${opts.marketTitle.en.slice(0, 60)}" was cancelled: ${opts.reason.slice(0, 120)}. Your full stake has been returned to your wallet.${ref}`,
-    bodySw: `"${opts.marketTitle.sw.slice(0, 60)}" limefutwa: ${opts.reason.slice(0, 120)}. Dau lako lote limerejeshwa kwenye pochi yako.${ref}`,
-    bodyZh: `"${opts.marketTitle.zh.slice(0, 60)}" 已取消：${opts.reason.slice(0, 120)}。您的本金已全额退回钱包。${ref}`,
+    bodyEn: `"${opts.marketTitle.en.slice(0, 60)}" was cancelled: ${opts.reason.slice(0, 120)}. Your full stake has been returned to your wallet.${liquidityLine(opts.houseStake, "en")}${ref}`,
+    bodySw: `"${opts.marketTitle.sw.slice(0, 60)}" limefutwa: ${opts.reason.slice(0, 120)}. Dau lako lote limerejeshwa kwenye pochi yako.${liquidityLine(opts.houseStake, "sw")}${ref}`,
+    bodyZh: `"${opts.marketTitle.zh.slice(0, 60)}" 已取消：${opts.reason.slice(0, 120)}。您的本金已全额退回钱包。${liquidityLine(opts.houseStake, "zh")}${ref}`,
     href: "/wallet",
   });
 }
@@ -1289,7 +1305,7 @@ export function notifyCashout(userId: string, opts: {
 }
 
 /** One-sided refund — all bets were on the same side so everyone gets their stake back at 0% fee. */
-export function notifyOneSidedRefund(userId: string, opts: { stake: number; marketTitle: LocalizedText; marketId: string; positionId?: string }) {
+export function notifyOneSidedRefund(userId: string, opts: { stake: number; marketTitle: LocalizedText; marketId: string; positionId?: string; houseStake?: boolean }) {
   const ref = opts.positionId ? ` · ${opts.positionId}` : "";
   return notify({
     userId,
@@ -1297,9 +1313,9 @@ export function notifyOneSidedRefund(userId: string, opts: { stake: number; mark
     titleEn: `Full refund · ${formatTzs(opts.stake)}`,
     titleSw: `Pesa imerudishwa · ${formatTzs(opts.stake)}`,
     titleZh: `全额退款 · ${formatTzs(opts.stake)}`,
-    bodyEn: `${opts.marketTitle.en.slice(0, 60)} — all bets were on one side. Full stake returned, no fee.${ref}`,
-    bodySw: `${opts.marketTitle.sw.slice(0, 60)} — wote walibetia upande mmoja. Dau lako lote limerudishwa bila gharama.${ref}`,
-    bodyZh: `${opts.marketTitle.zh.slice(0, 50)} — 所有投注都在同一方。本金全额退回，不收取手续费。${ref}`,
+    bodyEn: `${opts.marketTitle.en.slice(0, 60)} — all bets were on one side. Full stake returned, no fee.${liquidityLine(opts.houseStake, "en")}${ref}`,
+    bodySw: `${opts.marketTitle.sw.slice(0, 60)} — wote walibetia upande mmoja. Dau lako lote limerudishwa bila gharama.${liquidityLine(opts.houseStake, "sw")}${ref}`,
+    bodyZh: `${opts.marketTitle.zh.slice(0, 50)} — 所有投注都在同一方。本金全额退回，不收取手续费。${liquidityLine(opts.houseStake, "zh")}${ref}`,
     href: `/markets/${opts.marketId}`,
   });
 }
