@@ -918,6 +918,21 @@ const memoryDb = {
       return id ? store.users.get(id) ?? null : null;
     },
     create: (u: StoredUser) => { store.users.set(u.id, u); store.usersByPhone.set(u.phoneE164, u.id); return u; },
+    /**
+     * E-409 · marketing consent lapses after 2 years without activity (Privacy §5, the owner's period in
+     * DATA-RETENTION.md). Activity = the last sign-in, or account creation if there never was one. Returns the ids
+     * cleared, so the retention pass can audit each. Mirrors the Prisma DAL.
+     */
+    expireMarketingConsent: (beforeIso: string): string[] => {
+      const cutoff = Date.parse(beforeIso);
+      const ids: string[] = [];
+      for (const u of store.users.values()) {
+        if (!u.marketingOptIn) continue;
+        const last = Date.parse(u.lastLoginAt ?? u.createdAt);
+        if (Number.isFinite(last) && last < cutoff) { store.users.set(u.id, { ...u, marketingOptIn: false, updatedAt: new Date().toISOString() }); ids.push(u.id); }
+      }
+      return ids;
+    },
     /** Find a user by email (case-insensitive). Used to enforce one-email-per-account. */
     findByEmail: (email: string): StoredUser | null => {
       const norm = email.trim().toLowerCase();

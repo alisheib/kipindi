@@ -20,10 +20,13 @@ const TITLE: Record<Locale, string> = {
 // carries a `.2` suffix (the first is the bare date). `test:privacy-notice` pins the version with the English body's hash.
 // 2026-09-14.2 (session 96, register E-404): §4 names the processors the code sends personal data to; §7 and §8 say only
 // what runs.
+// 2026-09-14.3 (session 97, register E-409): §2–§6 checked against the code — the payment gateway named with what it
+// receives, the source-registry "partners" line removed (nothing is sent to them), retention periods stated as minimums,
+// marketing consent withdrawable from the profile (the control is new), no marketing profiling claimed.
 const META: Record<Locale, string> = {
-  en: "Version 2026-09-14.2 · Aligned with the Tanzania Personal Data Protection Act 2022 and EU GDPR principles.",
-  sw: "Toleo 2026-09-14.2 · Imeoanishwa na Tanzania Personal Data Protection Act 2022 na kanuni za EU GDPR.",
-  zh: "版本 2026-09-14.2 · 符合 Tanzania Personal Data Protection Act 2022 及 EU GDPR 原则。",
+  en: "Version 2026-09-14.3 · Aligned with the Tanzania Personal Data Protection Act 2022 and EU GDPR principles.",
+  sw: "Toleo 2026-09-14.3 · Imeoanishwa na Tanzania Personal Data Protection Act 2022 na kanuni za EU GDPR.",
+  zh: "版本 2026-09-14.3 · 符合 Tanzania Personal Data Protection Act 2022 及 EU GDPR 原则。",
 };
 
 /**
@@ -53,7 +56,7 @@ function content(): Record<Locale, React.ReactNode> { return {
         <ul className="list-disc pl-5 space-y-1">
           <li><strong className="text-text">Identity</strong>: full name and date of birth; the type and number of one of four documents — a National ID (NIDA), a passport, a driving licence or a voter&apos;s card — and its expiry date where the document has one; photographs of that document; and a selfie</li>
           <li><strong className="text-text">Contact</strong>: phone number (E.164), email address, region</li>
-          <li><strong className="text-text">Financial</strong>: deposit and withdrawal records, mobile-money MSISDN, prediction activity</li>
+          <li><strong className="text-text">Financial</strong>: deposit and withdrawal records, mobile-money MSISDN, prediction activity; for a card deposit, the billing name and address you enter; and the name registered to a mobile-money number you withdraw to</li>
           <li><strong className="text-text">Technical</strong>: IP address and browser user-agent string, recorded on sign-in and security events; session issue and expiry times</li>
           <li><strong className="text-text">Behavioural</strong>: deposit and loss limit changes, self-exclusion and cooling-off periods</li>
         </ul>
@@ -64,15 +67,14 @@ function content(): Record<Locale, React.ReactNode> { return {
           <li><strong className="text-text">Performance of contract</strong>: account, wallet, bet placement, settlement</li>
           <li><strong className="text-text">Legal obligation</strong>: identity verification (KYC) and AML/CFT under the Anti-Money Laundering Act and POCA, tax under the Income Tax Act</li>
           <li><strong className="text-text">Legitimate interest</strong>: fraud prevention, market-integrity monitoring, security alerting</li>
-          <li><strong className="text-text">Consent</strong>: marketing communications (revocable any time)</li>
+          <li><strong className="text-text">Consent</strong>: marketing communications — you can withdraw it at any time under Profile → Notifications</li>
         </ul>
       </LegalSection>
 
       <LegalSection n="4" title="Sharing">
         <p>We share data with:</p>
         <ul className="list-disc pl-5 space-y-1">
-          <li>Mobile-money aggregator (Selcom or Azampay) for payment routing</li>
-          <li>Source registry partners for resolution data</li>
+          <li>Selcom, our payment gateway, which processes deposits and withdrawals: it receives the mobile-money number and the amount; for a card deposit, also your email address, your account name, your phone number and the billing name and address you enter; and before a withdrawal it tells us the name registered to the receiving number</li>
           <li>Gaming Board of Tanzania, Tanzania Revenue Authority, FIU when legally compelled</li>
           <li>Cloud hosting providers: Railway, in the United States (region us-west2), which runs the app, holds its databases and keeps backups of them; and Cloudflare R2, in Western Europe, which stores identity documents, selfies and encrypted database backups; and GitHub Actions, in the United States, which creates the nightly database backup and test-restores it before it is encrypted and stored</li>
           <li>Cloudflare&apos;s network, which carries every connection to www.50pick.tz: each request is decrypted at the Cloudflare data centre nearest to you and encrypted again on its way to our servers</li>
@@ -86,10 +88,10 @@ function content(): Record<Locale, React.ReactNode> { return {
 
       <LegalSection n="5" title="Retention">
         <ul className="list-disc pl-5 space-y-1">
-          <li>Account + KYC records: 7 years after closure (AML statutory)</li>
-          <li>Prediction and transaction history: 7 years</li>
-          <li>Audit log entries: 7 years</li>
-          <li>Marketing preferences: until withdrawn or 2 years of inactivity</li>
+          <li>Account and identity (KYC) records: at least 7 years after the account is closed (AML statutory). If you ask us to erase a closed account, your contact details, password and the name and number on your identity record are removed at once; the images of your identity documents are kept until at least 7 years after closure</li>
+          <li>Prediction and transaction history: at least 7 years</li>
+          <li>Audit log entries: at least 7 years</li>
+          <li>Marketing consent: until you withdraw it, close your account, or 2 years pass without you signing in</li>
         </ul>
       </LegalSection>
 
@@ -99,7 +101,7 @@ function content(): Record<Locale, React.ReactNode> { return {
           <li><strong className="text-text">Rectification</strong>: correct inaccurate data</li>
           <li><strong className="text-text">Erasure</strong>: subject to AML retention requirements</li>
           <li><strong className="text-text">Portability</strong>: receive your data in a machine-readable format</li>
-          <li><strong className="text-text">Objection</strong>: opt out of profiling for marketing</li>
+          <li><strong className="text-text">Objection</strong>: object to how we use your data by writing to us; we do not profile you for marketing</li>
           <li><strong className="text-text">Complaint</strong>: with the Personal Data Protection Commission of Tanzania</li>
         </ul>
       </LegalSection>
@@ -149,7 +151,7 @@ function content(): Record<Locale, React.ReactNode> { return {
         <ul className="list-disc pl-5 space-y-1">
           <li><strong className="text-text">Utambulisho</strong>: jina kamili na tarehe ya kuzaliwa; aina na namba ya mojawapo ya nyaraka nne — Kitambulisho cha Taifa (NIDA), pasipoti, leseni ya udereva au kadi ya mpiga kura — pamoja na tarehe ya kuisha muda wake pale nyaraka inapokuwa nayo; picha za nyaraka hiyo; na selfie</li>
           <li><strong className="text-text">Mawasiliano</strong>: namba ya simu (E.164), anwani ya barua pepe, mkoa</li>
-          <li><strong className="text-text">Fedha</strong>: kumbukumbu za kuweka na kutoa fedha, MSISDN ya pesa za simu, shughuli za utabiri</li>
+          <li><strong className="text-text">Fedha</strong>: kumbukumbu za kuweka na kutoa fedha, MSISDN ya pesa za simu, shughuli za utabiri; kwa kuweka fedha kwa kadi, jina na anwani ya bili unayoandika; na jina lililosajiliwa kwa namba ya pesa za simu unayotolea fedha</li>
           <li><strong className="text-text">Kiufundi</strong>: anwani ya IP na maandishi ya user-agent ya kivinjari, huhifadhiwa unapoingia na kwenye matukio ya usalama; muda wa kuanza na wa kuisha wa kipindi</li>
           <li><strong className="text-text">Kitabia</strong>: mabadiliko ya mipaka ya kuweka fedha na hasara, vipindi vya kujiondoa na kupumzika</li>
         </ul>
@@ -160,15 +162,14 @@ function content(): Record<Locale, React.ReactNode> { return {
           <li><strong className="text-text">Utekelezaji wa mkataba</strong>: akaunti, pochi, uwekaji wa dau, utatuzi wa masoko</li>
           <li><strong className="text-text">Wajibu wa kisheria</strong>: uthibitisho wa utambulisho (KYC) na AML/CFT chini ya Anti-Money Laundering Act na POCA, kodi chini ya Income Tax Act</li>
           <li><strong className="text-text">Maslahi halali</strong>: kuzuia udanganyifu, ufuatiliaji wa uadilifu wa soko, tahadhari za usalama</li>
-          <li><strong className="text-text">Ridhaa</strong>: mawasiliano ya matangazo (yanaweza kufutwa wakati wowote)</li>
+          <li><strong className="text-text">Ridhaa</strong>: mawasiliano ya matangazo — unaweza kuiondoa wakati wowote kwenye Wasifu → Arifa</li>
         </ul>
       </LegalSection>
 
       <LegalSection n="4" title="Kushiriki data">
         <p>Tunashiriki data na:</p>
         <ul className="list-disc pl-5 space-y-1">
-          <li>Mkusanyaji wa pesa za simu (Selcom au Azampay) kwa ajili ya uelekezaji wa malipo</li>
-          <li>Washirika wa rejista za chanzo kwa ajili ya data ya utatuzi wa masoko</li>
+          <li>Selcom, lango letu la malipo, linaloshughulikia kuweka na kutoa fedha: hupokea namba ya pesa za simu na kiasi; kwa kuweka fedha kwa kadi, pia anwani yako ya barua pepe, jina la akaunti yako, namba yako ya simu na jina na anwani ya bili unayoandika; na kabla ya kutoa fedha hutuambia jina lililosajiliwa kwa namba inayopokea</li>
           <li>Bodi ya Michezo ya Kubahatisha Tanzania, Mamlaka ya Mapato Tanzania (Tanzania Revenue Authority), FIU pale tunapolazimishwa kisheria</li>
           <li>Watoa huduma za wingu: Railway, nchini Marekani (kanda us-west2), inayoendesha programu, kuhifadhi hifadhidata zake na nakala rudufu zake; na Cloudflare R2, barani Ulaya Magharibi, inayohifadhi nyaraka za utambulisho, selfie na nakala rudufu za hifadhidata zilizosimbwa; na GitHub Actions, nchini Marekani, inayotengeneza nakala rudufu ya kila usiku ya hifadhidata na kuijaribu kabla ya kusimbwa na kuhifadhiwa</li>
           <li>Mtandao wa Cloudflare, unaopitisha kila muunganisho wa www.50pick.tz: kila ombi husimbuliwa katika kituo cha data cha Cloudflare kilicho karibu nawe na kusimbwa tena linapoelekea kwenye seva zetu</li>
@@ -182,10 +183,10 @@ function content(): Record<Locale, React.ReactNode> { return {
 
       <LegalSection n="5" title="Uhifadhi">
         <ul className="list-disc pl-5 space-y-1">
-          <li>Kumbukumbu za akaunti na KYC: miaka 7 baada ya kufungwa (sharti la kisheria la AML)</li>
-          <li>Historia ya utabiri na miamala: miaka 7</li>
-          <li>Maingizo ya kumbukumbu za ukaguzi (audit log): miaka 7</li>
-          <li>Mapendeleo ya matangazo: hadi yatakapofutwa au miaka 2 ya kutokuwa na shughuli</li>
+          <li>Kumbukumbu za akaunti na utambulisho (KYC): angalau miaka 7 baada ya akaunti kufungwa (sharti la kisheria la AML). Ukituomba kufuta akaunti iliyofungwa, taarifa zako za mawasiliano, nenosiri, na jina na namba kwenye rekodi yako ya utambulisho huondolewa mara moja; picha za nyaraka zako za utambulisho huhifadhiwa hadi angalau miaka 7 baada ya kufungwa</li>
+          <li>Historia ya utabiri na miamala: angalau miaka 7</li>
+          <li>Maingizo ya kumbukumbu za ukaguzi (audit log): angalau miaka 7</li>
+          <li>Ridhaa ya matangazo: hadi utakapoiondoa, kufunga akaunti yako, au miaka 2 ipite bila kuingia</li>
         </ul>
       </LegalSection>
 
@@ -195,7 +196,7 @@ function content(): Record<Locale, React.ReactNode> { return {
           <li><strong className="text-text">Kurekebisha</strong>: kusahihisha data isiyo sahihi</li>
           <li><strong className="text-text">Kufuta</strong>: kwa kuzingatia masharti ya uhifadhi ya AML</li>
           <li><strong className="text-text">Kubebeka</strong>: kupokea data yako katika muundo unaosomeka na mashine</li>
-          <li><strong className="text-text">Kupinga</strong>: kujitoa kwenye uchambuzi wa wasifu kwa ajili ya matangazo</li>
+          <li><strong className="text-text">Kupinga</strong>: kupinga jinsi tunavyotumia data yako kwa kutuandikia; hatuchambui wasifu wako kwa ajili ya matangazo</li>
           <li><strong className="text-text">Malalamiko</strong>: kwa Tume ya Ulinzi wa Data Binafsi ya Tanzania</li>
         </ul>
       </LegalSection>
@@ -244,7 +245,7 @@ function content(): Record<Locale, React.ReactNode> { return {
         <ul className="list-disc pl-5 space-y-1">
           <li><strong className="text-text">身份</strong>：全名与出生日期；所提交证件的类型与号码（国民身份证（NIDA）、护照、驾驶证或选民证四者之一），以及证件载明的有效期（如有）；该证件的照片；以及一张自拍照</li>
           <li><strong className="text-text">联系方式</strong>：电话号码（E.164）、电子邮箱地址、地区</li>
-          <li><strong className="text-text">财务</strong>：存款与提现记录、移动货币 MSISDN、预测活动</li>
+          <li><strong className="text-text">财务</strong>：存款与提现记录、移动货币 MSISDN、预测活动；银行卡充值时您填写的账单姓名与地址；以及您提现至的移动货币号码的注册姓名</li>
           <li><strong className="text-text">技术</strong>：IP 地址与浏览器 user-agent 字符串（在登录及安全事件时记录）；会话签发与到期时间</li>
           <li><strong className="text-text">行为</strong>：存款与亏损限额变更、自我排除与冷静期</li>
         </ul>
@@ -255,15 +256,14 @@ function content(): Record<Locale, React.ReactNode> { return {
           <li><strong className="text-text">合同履行</strong>：账户、钱包、下注、结算</li>
           <li><strong className="text-text">法律义务</strong>：依据 Anti-Money Laundering Act 与 POCA 的身份验证（KYC）及 AML/CFT、依据 Income Tax Act 的税务</li>
           <li><strong className="text-text">合法利益</strong>：欺诈防范、市场完整性监控、安全告警</li>
-          <li><strong className="text-text">同意</strong>：营销通讯（可随时撤回）</li>
+          <li><strong className="text-text">同意</strong>：营销通讯——您可随时在“个人资料 → 通知”中撤回</li>
         </ul>
       </LegalSection>
 
       <LegalSection n="4" title="信息共享">
         <p>我们与以下各方共享数据：</p>
         <ul className="list-disc pl-5 space-y-1">
-          <li>移动货币聚合方（Selcom 或 Azampay），用于支付路由</li>
-          <li>来源登记合作方，用于结算数据</li>
+          <li>Selcom，我们的支付网关，处理充值与提现：接收移动货币号码和金额；银行卡充值时，还接收您的电子邮箱、账户名称、电话号码以及您填写的账单姓名与地址；提现前，它会告诉我们收款号码的注册姓名</li>
           <li>在依法被强制要求时，向坦桑尼亚博彩委员会、Tanzania Revenue Authority、FIU 提供</li>
           <li>云托管服务商：Railway（美国，us-west2 区域），运行本应用、存放其数据库并保存数据库备份；Cloudflare R2（西欧），存放身份证件、自拍照及加密的数据库备份；以及 GitHub Actions（美国），负责生成每晚的数据库备份，并在加密存储前进行恢复验证</li>
           <li>Cloudflare 网络：承载所有访问 www.50pick.tz 的连接；每个请求在离您最近的 Cloudflare 数据中心解密，并在发往我们服务器的途中重新加密</li>
@@ -277,10 +277,10 @@ function content(): Record<Locale, React.ReactNode> { return {
 
       <LegalSection n="5" title="保留期限">
         <ul className="list-disc pl-5 space-y-1">
-          <li>账户与 KYC 记录：注销后 7 年（AML 法定要求）</li>
-          <li>预测与交易历史：7 年</li>
-          <li>审计日志条目：7 年</li>
-          <li>营销偏好：直至撤回或连续 2 年无活动</li>
+          <li>账户与身份（KYC）记录：账户注销后至少 7 年（AML 法定要求）。如您要求删除已注销的账户，您的联系方式、密码以及身份记录上的姓名与证件号码将立即删除；身份证件图片保留至注销后至少 7 年</li>
+          <li>预测与交易历史：至少 7 年</li>
+          <li>审计日志条目：至少 7 年</li>
+          <li>营销同意：直至您撤回、注销账户，或连续 2 年未登录</li>
         </ul>
       </LegalSection>
 
@@ -290,7 +290,7 @@ function content(): Record<Locale, React.ReactNode> { return {
           <li><strong className="text-text">更正权</strong>：更正不准确的数据</li>
           <li><strong className="text-text">删除权</strong>：受 AML 保留要求约束</li>
           <li><strong className="text-text">可携权</strong>：以机器可读格式接收您的数据</li>
-          <li><strong className="text-text">反对权</strong>：选择退出用于营销的画像分析</li>
+          <li><strong className="text-text">反对权</strong>：可来信反对我们使用您数据的方式；我们不会为营销目的对您进行画像分析</li>
           <li><strong className="text-text">投诉权</strong>：向坦桑尼亚个人数据保护委员会投诉</li>
         </ul>
       </LegalSection>

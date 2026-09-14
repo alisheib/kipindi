@@ -53,7 +53,7 @@ const SCHEDULE: Row[] = [
   // The business case for 3 years was weak in any event: what is actually stored is
   // `User.marketingOptIn`, a boolean, plus the audit trail of consent changes. There is no
   // rich marketing dataset here being preserved.
-  { category: "Marketing-consent records", swahili: "Idhini ya matangazo", retentionYears: 2, legalBasis: "Tanzania PDPA §15", trigger: "From last activity (matches the player-facing policy)", storage: "Postgres" },
+  { category: "Marketing-consent records", swahili: "Idhini ya matangazo", retentionYears: 2, legalBasis: "Tanzania PDPA §15", trigger: "From last sign-in — cleared by the daily retention pass; withdrawable by the player at any time", storage: "Postgres (flag cleared nightly)" },
   { category: "OTP code hashes", swahili: "Misimbo ya OTP", retentionYears: "30 days", legalBasis: "Operational only", trigger: "From issue", storage: "Postgres (purged nightly)" },
   { category: "Session cookies", swahili: "Vidakuzi vya kikao", retentionYears: "7 days max TTL", legalBasis: "Operational only", trigger: "Per cookie expiry", storage: "Browser only (HMAC-signed)" },
   // ⚠️ MARKED N/A 2026-08-21 (Ali's decision, audit F-01). This published a 3-year retention

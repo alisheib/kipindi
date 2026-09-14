@@ -6,6 +6,38 @@
 
 ---
 
+## 2026-09-14 (sixth) · Privacy v2026-09-14.3 — §2–§6 checked against the code; marketing consent becomes withdrawable, and its 2-year lapse is enforced
+
+**Found by checking the lines session 96 left unverified (§4 aggregator and source registry, §5 periods, §6) against the
+code (session 97) — not an owner ruling, except where one is cited; recorded because a published notice changed and two
+controls were built.** Register **E-409**. A third version on one date: **Version 2026-09-14.3** in en/sw/zh.
+
+| § | It said | The code | Now says |
+|---|---|---|---|
+| 2 | Financial: deposits, withdrawals, MSISDN, predictions | a card deposit collects a billing name and address (`deposit/actions.ts`); a withdrawal looks up the name registered to the receiving number (`selcom.ts` `selcomCashinNameLookup`) | adds both |
+| 3 | Consent to marketing "(revocable any time)" | the ONLY writer of `User.marketingOptIn` was the sign-up form — no way to withdraw short of closing the account | **a control now exists**: Profile → Notifications, "Product news", audited `privacy.marketing_consent.given/withdrawn`; the notice names where |
+| 4 | "Mobile-money aggregator (Selcom or Azampay)" | Selcom is wired and live; the Azampay adapter throws `NOT_WIRED` and is not contracted; Selcom also takes cards | Selcom named, with what it receives: the number and amount; for a card, email, account name, phone and billing name/address; before a withdrawal it returns the registered name |
+| 4 | "Source registry partners for resolution data" | `source-registry.ts` is a local allow-list of public domains; it sends nothing to anyone | removed |
+| 5 | Account + KYC, transactions, audit log: "7 years" | nothing deletes them at 7 years; transactions, ledger and audit rows are never deleted; on erasure contact details, password, and the ID name and number are pseudonymised at once, the document images kept 7 years | "at least 7 years", and the erasure behaviour stated |
+| 5 | Marketing "until withdrawn or 2 years of inactivity" | neither half ran (the 2-year period is the owner's, `DATA-RETENTION.md`; its row was "📋 Policy") | **enforced**: `retention.purge.daily` clears the flag after 730 days without a sign-in (account creation if none), one `privacy.marketing_consent.lapsed` audit row per account; sentence says "until you withdraw it, close your account, or 2 years pass without you signing in" |
+| 6 | Objection: "opt out of profiling for marketing" | no marketing profiling exists, and no opt-out control | "object to how we use your data by writing to us; we do not profile you for marketing" |
+
+§6 Access ("within 30 days") stays: the self-service export answers at once. Rectification and erasure are served by the
+request register.
+
+**Guards.** `test:privacy-notice` (in `predeploy`) pins v2026-09-14.3 with the English hash, and a new §4d ties the new
+statements to their witnesses — Selcom named in each locale, Azampay not named while its adapter is `NOT_WIRED`, the
+retired sentences absent, §3's path present and backed by an action that writes the flag on the player's own session with
+an audit row, §5's 2-year lapse present only while `retention.ts` enforces it — with four planted controls.
+`test:retention` covers the lapse (800 days lapses, last month kept, never-signed-in measured from creation, 729 days kept,
+rows kept, one audit row each). `scripts/live/kyc-at-withdrawal-prod.mjs` checks the new wording in all three languages.
+`/admin/retention` and `DATA-RETENTION.md` say the same.
+
+**⛔ Do not restore** Azampay, "source registry partners", a bare "7 years", or a marketing profiling opt-out, until the thing
+they describe exists.
+
+---
+
 ## 2026-09-14 (fifth) · RG Policy v2026-09-14.2 — §2 checked against the code; removing a deposit limit now waits 24 hours
 
 **Found by checking §2 against the code (session 97), which the (third) entry below recorded as not yet done — not an

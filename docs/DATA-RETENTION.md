@@ -33,7 +33,7 @@
 | AI poll payloads (`rawResponse`, `generation`) | **30 days** | Generation date | Operational only | ✅ **Code** — `retention.purge.daily`. ⛔ **Blanks two COLUMNS; deletes no row** — the decision record (state, title, reviewer, cost, published market) is kept. `rawResponse` gets a tombstone sentence rather than a NULL so a reviewer can tell *pruned* from *never existed*. ⚠️ There is no `trace` column on `AIPoll` — `trace` is on **`MarketCandidate`** and is a decision trail, not a payload; it is NOT pruned | `AIPoll` |
 | Self-exclusion register | **5 years** | End of exclusion | LCCP SR Code 3.4.4 | 📋 Policy | `ResponsibleGambling` |
 | Behavioural-marker logs (RG) | **5 years** | Event date | LCCP SR Code 3.4.1 | 📋 Policy | `ResponsibleGambling` |
-| Marketing-consent records | **2 years** | Last activity | PDPA 2022 §15 | 📋 Policy | `User.marketingOptIn` |
+| Marketing-consent records | **2 years** | Last sign-in (account creation if none) | PDPA 2022 §15 | ✅ **Code** (2026-09-14, E-409) — `retention.purge.daily` clears the flag (`MARKETING_CONSENT_LAPSE_DAYS`), one `privacy.marketing_consent.lapsed` audit row per account; also cleared on closure and erasure; the player withdraws it at any time on `/profile/notifications` | `User.marketingOptIn` |
 | Customer-support tickets | ⛔ **N/A — no ticket store exists** | Ticket close, once built | PDPA 2022 §22 | ⛔ Nothing to enforce against; revisit with Unit K | — |
 | Backup artifacts | **90 days** rolling | Snapshot date | DR/BCP | 📋 Policy — operator action | R2 `50pick-backups` |
 | Session records | — | — | — | ⛔ **N/A** — the `Session` model has never been written to; the platform uses a signed cookie plus `ActiveSession`. A prune here would be a permanent no-op dressed as a control. | — |

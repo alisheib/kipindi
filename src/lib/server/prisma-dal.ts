@@ -812,6 +812,15 @@ export const prismaDb = {
      * Ordered so the set is stable between calls; capped because the only
      * caller runs on an unauthenticated endpoint and does password work per row.
      */
+    /** E-409 · see the in-memory twin in store.ts. ⛔ Both OR arms are non-empty (an empty `{}` in an OR matches every row). */
+    expireMarketingConsent: async (beforeIso: string): Promise<string[]> => {
+      const before = new Date(beforeIso);
+      const where = { marketingOptIn: true, OR: [{ lastLoginAt: { lt: before } }, { lastLoginAt: null, createdAt: { lt: before } }] };
+      const rows = await pc().user.findMany({ where, select: { id: true } });
+      if (rows.length === 0) return [];
+      await pc().user.updateMany({ where: { ...where, id: { in: rows.map((r) => r.id) } }, data: { marketingOptIn: false } });
+      return rows.map((r) => r.id);
+    },
     findAllByEmail: async (email: string, cap = 5): Promise<StoredUser[]> => {
       const norm = email.trim().toLowerCase();
       if (!norm) return [];

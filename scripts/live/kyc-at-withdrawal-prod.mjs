@@ -81,13 +81,13 @@ try {
     // c6ab54c8 (served 2026-09-13) — copied, not invented. The AML policy moved to v2026-09-14 the same day: its Swahili and
     // Chinese FIU names changed under a version dated 2026-09-13 (COMPLIANCE-DECISIONS.md 2026-09-14, second).
     en: { terms: ["version 2026-09-14", "before your first withdrawal", "if we cannot verify you", "any money we return is sent only to the mobile-money number"], aml: ["version 2026-09-14", "before their first withdrawal"], rules: ["verified before your first withdrawal"], old: ["required before you can deposit, place a", "required of every player before they", "behavioural anomalies are detected", "duplicate accounts will be closed and balances forfeited", "no money can be paid into or out of the account"],
-      privacy: ["version 2026-09-14.2", "cloudflare's network", "postmark, in the united states", "anthropic, which writes the answers in the 50pick help chat", "sentry, in the european union", "encrypted in transit with tls (https)"],
+      privacy: ["version 2026-09-14.3", "selcom, our payment gateway", "profile → notifications", "at least 7 years", "cloudflare's network", "postmark, in the united states", "anthropic, which writes the answers in the 50pick help chat", "sentry, in the european union", "encrypted in transit with tls (https)"],
       privacyOld: ["tls 1.2+", "database tier", "theme preference", "sp 800-132"] },
     sw: { terms: ["toleo 2026-09-14", "kabla ya kutoa fedha kwa mara ya kwanza", "tusipoweza kukuthibitisha"], aml: ["toleo 2026-09-14", "kabla ya kutoa fedha kwa mara ya kwanza"], rules: ["kabla ya kutoa pesa kwa mara ya kwanza"], old: ["unahitajika kabla ya kuweka fedha, kuweka", "unahitajika kwa kila mchezaji kabla ya"],
-      privacy: ["toleo 2026-09-14.2", "mtandao wa cloudflare", "postmark, nchini marekani", "gumzo la msaada wa 50pick", "sentry, katika umoja wa ulaya", "kwa tls (https)"],
+      privacy: ["toleo 2026-09-14.3", "selcom, lango letu la malipo", "wasifu → arifa", "angalau miaka 7", "mtandao wa cloudflare", "postmark, nchini marekani", "gumzo la msaada wa 50pick", "sentry, katika umoja wa ulaya", "kwa tls (https)"],
       privacyOld: ["tls 1.2+", "tabaka la hifadhidata", "mapendeleo ya mandhari", "sp 800-132"] },
     zh: { terms: ["版本 2026-09-14", "首次提现之前", "如果我们无法验证您的身份"], aml: ["版本 2026-09-14", "首次提现之前"], rules: ["首次提现前完成验证"], old: ["在充值、投注或提现之前", "检测到行为异常"],
-      privacy: ["版本 2026-09-14.2", "cloudflare 网络", "postmark（美国）", "“50pick 帮助”聊天", "sentry（欧盟）", "tls（https）加密"],
+      privacy: ["版本 2026-09-14.3", "selcom，我们的支付网关", "个人资料 → 通知", "至少 7 年", "cloudflare 网络", "postmark（美国）", "“50pick 帮助”聊天", "sentry（欧盟）", "tls（https）加密"],
       privacyOld: ["tls 1.2+", "数据库层", "主题偏好", "sp 800-132"]},
   };
   for (const loc of LOCALES) {

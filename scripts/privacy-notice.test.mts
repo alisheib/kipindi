@@ -21,7 +21,7 @@
  * 2026-08-20 COMPLIANCE-DECISIONS entry). `test:cert-d1` §2b keeps its older negatives; this suite is the gate.
  * ⛔ EVERY CHECK HAS A PLANTED CONTROL (§5): the defect it exists for, re-planted into a copy of today's files.
  */
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join, dirname, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createHash } from "node:crypto";
@@ -39,9 +39,9 @@ const ok = (label: string, cond: boolean, why = "", evidence = "") => {
 const code = (src: string) => src.replace(/^[ \t]*\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
 
 /* ── The pinned facts. Moving any of these is a legal act: a dated COMPLIANCE-DECISIONS entry comes with it. ── */
-const PRIVACY_VERSION = "2026-09-14.2";
+const PRIVACY_VERSION = "2026-09-14.3";
 /** sha256 (first 12 hex) of the ENGLISH content block, whitespace-collapsed. The English text is the binding one. */
-const PRIVACY_EN_SHA = "a93e1c374ff2";
+const PRIVACY_EN_SHA = "40a25a292c9b";
 /** Every cookie name the code writes, as of v2026-09-14.2. A new one must be described in §7 first. */
 const COOKIES = ["kp-kyc-notice", "kp-locale", "kp_admin_totp", "kp_pending_2fa", "kp_revoked", "kp_session"];
 
@@ -264,6 +264,46 @@ function cookieDefects(src: string): string[] {
 ok("§4c each cookie is described in en/sw/zh §7, with the lifetimes the code sets", cookieDefects(pageSrc).length === 0, cookieDefects(pageSrc).join("; "));
 
 /* ════════════════════════════════════════════════════════════════════════════
+ * §4d · SHARING, RETENTION AND CONSENT — v2026-09-14.3 (session 97, register E-409). Each statement tied to its witness.
+ * ══════════════════════════════════════════════════════════════════════════ */
+console.log("\n§4d · §3 consent, §4 payment gateway, §5 retention — each tied to the code");
+const paymentsSrc = code(read("src/lib/server/payments.ts"));
+const retentionSrc = code(read("src/lib/server/retention.ts"));
+const CONSENT_ACTION = "src/app/profile/notifications/actions.ts";
+const consentSrc = existsSync(join(ROOT, CONSENT_ACTION)) ? code(read(CONSENT_ACTION)) : "";
+/** What the notice may no longer say, per locale — each was false against the code on 2026-09-14. */
+const RETIRED_FACTS: Record<Loc, string[]> = {
+  en: ["Source registry partners", "2 years of inactivity", "opt out of profiling for marketing", "(revocable any time)"],
+  sw: ["Washirika wa rejista za chanzo", "miaka 2 ya kutokuwa na shughuli", "kujitoa kwenye uchambuzi wa wasifu kwa ajili ya matangazo", "(yanaweza kufutwa wakati wowote)"],
+  zh: ["来源登记合作方", "连续 2 年无活动", "选择退出用于营销的画像分析", "（可随时撤回）"],
+};
+const CONSENT_PATH: Record<Loc, string> = { en: "Profile → Notifications", sw: "Wasifu → Arifa", zh: "个人资料 → 通知" };
+function factDefects(src: string, payments: string, consent: string): string[] {
+  const d: string[] = [];
+  const bl = blocks(src);
+  const azampayStub = /name:\s*"azampay"[\s\S]{0,200}?NOT_WIRED\("azampay"\)/.test(payments);
+  for (const l of LOCS) {
+    if (azampayStub && section(bl[l], "4").includes("Azampay")) d.push(`${l} §4 names Azampay, whose adapter throws NOT_WIRED — nothing is sent to it`);
+    if (!section(bl[l], "4").includes("Selcom")) d.push(`${l} §4 does not name Selcom, the wired payment gateway`);
+    for (const w of RETIRED_FACTS[l]) if (bl[l].includes(w)) d.push(`${l} carries the retired statement "${w}"`);
+    if (section(bl[l], "3").includes(CONSENT_PATH[l]) !== true) d.push(`${l} §3 does not say where consent is withdrawn ("${CONSENT_PATH[l]}")`);
+  }
+  // §5's 2-year lapse is true only while the daily retention pass enforces it.
+  if (LOCS.some((l) => /2 years pass without you signing in|miaka 2 ipite bila kuingia|连续 2 年未登录/.test(section(bl[l], "5")))
+      && (!/MARKETING_CONSENT_LAPSE_DAYS = 730;/.test(retentionSrc) || !/expireMarketingConsent\(/.test(retentionSrc))) {
+    d.push("§5 states a 2-year marketing-consent lapse that retention.ts does not enforce (MARKETING_CONSENT_LAPSE_DAYS = 730, expireMarketingConsent)");
+  }
+  // The place §3 names must exist and must really write the flag, on the player's own session, audited.
+  if (!/export async function setMarketingConsentAction/.test(consent) || !/marketingOptIn:\s*next/.test(consent)
+      || !/currentSession\(\)/.test(consent) || !/privacy\.marketing_consent\./.test(consent)) {
+    d.push(`${CONSENT_ACTION} does not provide the consent control §3 promises (session, marketingOptIn write, audit)`);
+  }
+  return d;
+}
+ok("§4d en/sw/zh §3/§4/§5 say only what the code does: Selcom named, no unwired Azampay, no retired statement, consent withdrawable where it says",
+  factDefects(pageSrc, paymentsSrc, consentSrc).length === 0, factDefects(pageSrc, paymentsSrc, consentSrc).join("; "));
+
+/* ════════════════════════════════════════════════════════════════════════════
  * §5 · PLANTED CONTROLS — the defects this suite exists for, re-planted into copies. Each MUST be reported.
  * ══════════════════════════════════════════════════════════════════════════ */
 console.log("\n§5 · planted controls");
@@ -271,7 +311,7 @@ const plantTls = pageSrc.replace("Connections to our website and app are encrypt
 const plantProcessor = pageSrc.replace("<li>Postmark, nchini Marekani,", "<li>Huduma ya barua pepe, nchini Marekani,");
 const plantTheme = pageSrc.replace("your language, a note kept", "theme preference, your language, a note kept");
 const plantWord = pageSrc.replace("We never sell personal data.", "We do not sell personal data.");
-const plantVersion = pageSrc.replace('sw: "Toleo 2026-09-14.2 ·', 'sw: "Toleo 2026-09-14 ·');
+const plantVersion = pageSrc.replace('sw: "Toleo 2026-09-14.3 ·', 'sw: "Toleo 2026-09-14.2 ·');
 ok("§5a control · each planted copy found its target",
   [plantTls, plantProcessor, plantTheme, plantWord, plantVersion].every((p) => p !== pageSrc));
 ok("§5b control · a restored 'TLS 1.2+' is reported", securityDefects(plantTls).length > 0 && versionDefects(plantTls, decisionsSrc).length > 0,
@@ -289,6 +329,12 @@ const plantedCookieFile = { path: join(ROOT, "src/planted.ts"), src: 'const X = 
 ok("§5h control · a new cookie write is caught by the census", !cookieCensus([...srcFiles, plantedCookieFile]).every((n) => COOKIES.includes(n)),
   "", JSON.stringify(cookieCensus([...srcFiles, plantedCookieFile]).filter((n) => !COOKIES.includes(n))));
 ok("§5i control · a compliance log without the version's entry is reported", versionDefects(pageSrc, "# empty\n").length > 0);
+const plantAzampay = pageSrc.replace("<li>Selcom，我们的支付网关", "<li>Selcom 或 Azampay，我们的支付网关");
+const plantRetired = pageSrc.replace("Marketing consent: until you withdraw it, close your account, or 2 years pass without you signing in", "Marketing preferences: until withdrawn or 2 years of inactivity");
+ok("§5j control · planted §4/§5 copies found their targets", plantAzampay !== pageSrc && plantRetired !== pageSrc);
+ok("§5k control · Azampay restored to ONE locale is reported", factDefects(plantAzampay, paymentsSrc, consentSrc).some((x) => x.startsWith("zh §4 names Azampay")));
+ok("§5l control · the retired marketing retention is reported", factDefects(plantRetired, paymentsSrc, consentSrc).some((x) => x.includes("2 years of inactivity")));
+ok("§5m control · a consent promise with no control behind it is reported", factDefects(pageSrc, paymentsSrc, "").some((x) => x.includes("consent control")));
 
 console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — ${pass} passed, ${fail} failed`);
 if (pass + fail < 20) { console.error(`!! only ${pass + fail} assertions ran`); process.exit(3); }
