@@ -6,6 +6,51 @@
 
 ---
 
+## 2026-09-14 (fourth) · Privacy v2026-09-14.2 — §4 names every service the code sends personal data to; §7 and §8 say only what runs
+
+**Found by the audit's recorded open tail (register E-400 ④), checked against the code, the live site and the providers'
+own published terms by session 96 — not an owner ruling; recorded because a published notice changed.** Register **E-404**.
+
+**Why a new version, not a same-day amendment.** Privacy v2026-09-14 reached production at 02:42 UTC today, and this
+correction removes two security statements a reader could have relied on, so it is not purely in the player's favour. The
+label is **Version 2026-09-14.2** in en/sw/zh: a second version published on the same date carries a `.2` suffix (the
+first is the bare date). `test:privacy-notice` (in `predeploy`) pins the label with the English text's hash and requires
+this entry.
+
+**§4 — services that receive personal data and were not named:**
+
+| Service | What the code sends | Where, and the source |
+|---|---|---|
+| **Cloudflare's network** | every request to `www.50pick.tz` — the canonical app URL — decrypted at Cloudflare's edge and re-encrypted to the origin (SSL mode Full (strict)) | measured 2026-09-14: `server: cloudflare` and `cf-ray` on www; the apex `50pick.tz` is served by Railway's edge. Zone settings read through the Cloudflare API the same day |
+| **Postmark** | every email we send; opens tracked on every email (`TrackOpens: true`) and links tracked unless a call site turns it off (`trackLinks = true` by default) — `src/lib/server/email.ts` | United States: "Postmark is a US-based company and we also store our data in the US" (postmarkapp.com GDPR FAQ, read 2026-09-14) |
+| **Anthropic** | the 50pick Help chat: the last ten turns and the new question; the system prompt carries only the language and the objection window, no account data — `chatWithClaude` in `src/app/_actions/chat.ts` | "data is stored in the US"; "by default, we may route customer traffic to select countries in the US, Europe, Asia and Australia" (privacy.claude.com, page dated 2026-06-15, read 2026-09-14) |
+| **Sentry** | server error reports after `scrubForAudit` removes Tanzanian mobile numbers, digit runs of 12 or more and email addresses; `sendDefaultPii` off, no breadcrumbs — `src/lib/server/monitoring.ts` | EU region `de.sentry.io` (the record in `monitoring.ts`, 2026-07-31) |
+| **Browser push services** | if a player turns notifications on: the device's push subscription and an encrypted payload (`web-push`) | the company that makes the player's browser; stated conditionally, because push runs in stub mode until VAPID keys are set |
+
+**§7 — cookies.** "Theme preference" is removed: no code writes a theme cookie (one dark theme, DESIGN_AUTHORITY B3). The
+list now describes the six cookies the code writes: the sign-in session (`kp_session`, at most 7 days — `SESSION_TTL_MS`),
+the language (`kp-locale`), the 30-second sign-out note (`kp_revoked`), the dismissed identity notice (`kp-kyc-notice`),
+and, on staff accounts only, the two-factor cookies (`kp_admin_totp`, `kp_pending_2fa`). A sentence now says display
+choices are kept in the browser's own storage.
+
+**§8 — security.**
+- *"All data in transit over TLS 1.2+"* becomes *"Connections to our website and app are encrypted in transit with TLS
+  (HTTPS)"*. Measured 2026-09-14 with one handshake per protocol version: `50pick.tz` refuses TLS 1.0 and 1.1, but
+  **`www.50pick.tz` accepted TLS 1.0 and 1.1** — the zone's Minimum TLS Version was 1.0. Both hosts redirect HTTP to
+  HTTPS and send HSTS (`src/proxy.ts`). The notice no longer names a protocol version: that is a dashboard setting no
+  code pins. Raising the zone minimum to 1.2 is the owner's dashboard action (register E-404).
+- *"At-rest encryption via AES-256 in the database tier"* is removed: no record establishes it for the Railway volumes. The
+  notice now states what the records show — two-factor keys encrypted with AES-256-GCM (`src/lib/server/totp.ts` →
+  `encryptSecret`) and database backups sealed with AES-256-GCM before storage (`src/lib/server/backup/core.ts`,
+  `docs/BACKUP-RUNBOOK.md`).
+- *"(NIST SP 800-132)"* is removed from the password sentence: that standard specifies PBKDF2, and the platform uses scrypt.
+- The ISO 27001 / penetration-testing sentence is **unchanged**. It rests on the owner's attestation recorded on 2026-08-20.
+
+**Not re-verified in this pass, and not claimed:** §4's aggregator line (Selcom or Azampay) and source-registry line, §5's
+retention periods and §6's response times.
+
+---
+
 ## 2026-09-14 (third) · The Responsible Gambling Policy gets a version, and §3 names only the signs the code computes
 
 **Found by the public-page audit (session 95), not an owner ruling — recorded because a published policy changed.**

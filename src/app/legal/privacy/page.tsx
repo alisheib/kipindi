@@ -15,12 +15,15 @@ const TITLE: Record<Locale, string> = {
   sw: "Sera ya Faragha",
   zh: "隐私政策",
 };
-// The notice carries a version like the other /legal documents (since 2026-09-14): move the date in the SAME
-// commit as any change to its English text, with a dated COMPLIANCE-DECISIONS.md entry.
+// The notice carries a version like the other /legal documents (since 2026-09-14): move it in the SAME commit as any
+// change to its English text, with a dated COMPLIANCE-DECISIONS.md entry. A second version published on the same date
+// carries a `.2` suffix (the first is the bare date). `test:privacy-notice` pins the version with the English body's hash.
+// 2026-09-14.2 (session 96, register E-404): §4 names the processors the code sends personal data to; §7 and §8 say only
+// what runs.
 const META: Record<Locale, string> = {
-  en: "Version 2026-09-14 · Aligned with the Tanzania Personal Data Protection Act 2022 and EU GDPR principles.",
-  sw: "Toleo 2026-09-14 · Imeoanishwa na Tanzania Personal Data Protection Act 2022 na kanuni za EU GDPR.",
-  zh: "版本 2026-09-14 · 符合 Tanzania Personal Data Protection Act 2022 及 EU GDPR 原则。",
+  en: "Version 2026-09-14.2 · Aligned with the Tanzania Personal Data Protection Act 2022 and EU GDPR principles.",
+  sw: "Toleo 2026-09-14.2 · Imeoanishwa na Tanzania Personal Data Protection Act 2022 na kanuni za EU GDPR.",
+  zh: "版本 2026-09-14.2 · 符合 Tanzania Personal Data Protection Act 2022 及 EU GDPR 原则。",
 };
 
 /**
@@ -72,6 +75,11 @@ function content(): Record<Locale, React.ReactNode> { return {
           <li>Source registry partners for resolution data</li>
           <li>Gaming Board of Tanzania, Tanzania Revenue Authority, FIU when legally compelled</li>
           <li>Cloud hosting providers: Railway, in the United States (region us-west2), which runs the app, holds its databases and keeps backups of them; and Cloudflare R2, in Western Europe, which stores identity documents, selfies and encrypted database backups; and GitHub Actions, in the United States, which creates the nightly database backup and test-restores it before it is encrypted and stored</li>
+          <li>Cloudflare&apos;s network, which carries every connection to www.50pick.tz: each request is decrypted at the Cloudflare data centre nearest to you and encrypted again on its way to our servers</li>
+          <li>Postmark, in the United States, which sends our emails: it keeps a record of each email, and records when an email is opened and which link in it is clicked</li>
+          <li>Anthropic, which writes the answers in the 50pick Help chat: it receives the messages of that conversation, not your account details; it stores data in the United States and may process a request in the United States, Europe, Asia or Australia</li>
+          <li>Sentry, in the European Union, which receives error reports from our servers: Tanzanian phone numbers, email addresses and long numbers such as a NIDA number are removed from a report before it is sent</li>
+          <li>If you turn on notifications, the push service of your browser, run by the company that makes it, delivers them; the content of each notification is encrypted</li>
         </ul>
         <p className="text-text">We never sell personal data.</p>
       </LegalSection>
@@ -98,16 +106,19 @@ function content(): Record<Locale, React.ReactNode> { return {
 
       <LegalSection n="7" title="Cookies">
         <p>
-          We use a minimum-necessary set: session authentication (HMAC-signed HttpOnly cookies, 7-day TTL),
-          theme preference, language preference. No third-party advertising or tracking cookies.
+          We use a minimum-necessary set of cookies: your sign-in session (HMAC-signed HttpOnly cookies that end at most 7 days after you sign in),
+          your language, a note kept for 30 seconds that explains why you were signed out, a record that you dismissed the identity notice on your wallet,
+          and, on staff accounts only, the two-factor sign-in cookies. No third-party advertising or tracking cookies.
+          Some display choices, such as hiding your balance or dismissing a prompt, are kept in your browser&apos;s own storage on your device.
         </p>
       </LegalSection>
 
       <LegalSection n="8" title="Security">
         <p>
           Sessions signed with HMAC-SHA-256. OTP codes hashed with scrypt + per-OTP salt + global pepper.
-          Passwords: scrypt with a per-user salt (NIST SP 800-132). All data in transit over TLS 1.2+. At-rest
-          encryption via AES-256 in the database tier. Annual ISO 27001 audit cadence; pentest twice a year.
+          Passwords: scrypt with a per-user salt. Connections to our website and app are encrypted in transit with TLS (HTTPS).
+          Two-factor authentication keys are encrypted in the database with AES-256-GCM, and database backups are encrypted with AES-256-GCM before they are stored.
+          Annual ISO 27001 audit cadence; pentest twice a year.
         </p>
       </LegalSection>
 
@@ -160,6 +171,11 @@ function content(): Record<Locale, React.ReactNode> { return {
           <li>Washirika wa rejista za chanzo kwa ajili ya data ya utatuzi wa masoko</li>
           <li>Bodi ya Michezo ya Kubahatisha Tanzania, Mamlaka ya Mapato Tanzania (Tanzania Revenue Authority), FIU pale tunapolazimishwa kisheria</li>
           <li>Watoa huduma za wingu: Railway, nchini Marekani (kanda us-west2), inayoendesha programu, kuhifadhi hifadhidata zake na nakala rudufu zake; na Cloudflare R2, barani Ulaya Magharibi, inayohifadhi nyaraka za utambulisho, selfie na nakala rudufu za hifadhidata zilizosimbwa; na GitHub Actions, nchini Marekani, inayotengeneza nakala rudufu ya kila usiku ya hifadhidata na kuijaribu kabla ya kusimbwa na kuhifadhiwa</li>
+          <li>Mtandao wa Cloudflare, unaopitisha kila muunganisho wa www.50pick.tz: kila ombi husimbuliwa katika kituo cha data cha Cloudflare kilicho karibu nawe na kusimbwa tena linapoelekea kwenye seva zetu</li>
+          <li>Postmark, nchini Marekani, inayotuma barua pepe zetu: huhifadhi kumbukumbu ya kila barua pepe, na hurekodi barua pepe inapofunguliwa na kiungo kinachobofywa ndani yake</li>
+          <li>Anthropic, inayoandika majibu katika gumzo la Msaada wa 50pick: hupokea ujumbe wa mazungumzo hayo, si taarifa za akaunti yako; huhifadhi data nchini Marekani na inaweza kuchakata ombi nchini Marekani, Ulaya, Asia au Australia</li>
+          <li>Sentry, katika Umoja wa Ulaya, inayopokea ripoti za hitilafu kutoka kwenye seva zetu: namba za simu za Tanzania, anwani za barua pepe na namba ndefu kama namba ya NIDA huondolewa kwenye ripoti kabla haijatumwa</li>
+          <li>Ukiwasha arifa, huduma ya arifa ya kivinjari chako, inayoendeshwa na kampuni iliyokitengeneza, huziwasilisha; maudhui ya kila arifa husimbwa</li>
         </ul>
         <p className="text-text">Kamwe hatuuzi data binafsi.</p>
       </LegalSection>
@@ -186,17 +202,19 @@ function content(): Record<Locale, React.ReactNode> { return {
 
       <LegalSection n="7" title="Vidakuzi (Cookies)">
         <p>
-          Tunatumia seti ya chini kabisa inayohitajika: uthibitishaji wa kipindi (vidakuzi vya HttpOnly vilivyosainiwa kwa
-          HMAC, TTL ya siku 7), mapendeleo ya mandhari, mapendeleo ya lugha. Hakuna vidakuzi vya matangazo au ufuatiliaji vya watu wengine.
+          Tunatumia seti ya chini kabisa ya vidakuzi inayohitajika: kipindi chako cha kuingia (vidakuzi vya HttpOnly vilivyosainiwa kwa HMAC, vinavyoisha si zaidi ya siku 7 baada ya kuingia),
+          lugha yako, ujumbe unaohifadhiwa kwa sekunde 30 unaoeleza kwa nini ulitolewa kwenye akaunti, kumbukumbu kwamba ulifunga taarifa ya utambulisho kwenye pochi yako,
+          na, kwa akaunti za wafanyakazi pekee, vidakuzi vya kuingia kwa uthibitishaji wa hatua mbili. Hakuna vidakuzi vya matangazo au ufuatiliaji vya watu wengine.
+          Baadhi ya machaguo ya maonyesho, kama kuficha salio lako au kufunga ujumbe, huhifadhiwa kwenye hifadhi ya kivinjari chako ndani ya kifaa chako.
         </p>
       </LegalSection>
 
       <LegalSection n="8" title="Usalama">
         <p>
           Vipindi vinasainiwa kwa HMAC-SHA-256. Misimbo ya OTP inafichwa kwa scrypt + chumvi (salt) ya kila OTP + pilipili
-          (pepper) ya jumla. Nywila: scrypt pamoja na chumvi (salt) ya kila mtumiaji (NIST SP 800-132). Data yote inayosafirishwa hupita kwenye TLS 1.2+.
-          Ufichaji wa data iliyohifadhiwa kupitia AES-256 katika tabaka la hifadhidata. Mzunguko wa ukaguzi wa ISO 27001 kila
-          mwaka; pentest mara mbili kwa mwaka.
+          (pepper) ya jumla. Nywila: scrypt pamoja na chumvi (salt) ya kila mtumiaji. Miunganisho na tovuti na programu yetu husimbwa inaposafirishwa kwa TLS (HTTPS).
+          Funguo za uthibitishaji wa hatua mbili husimbwa ndani ya hifadhidata kwa AES-256-GCM, na nakala rudufu za hifadhidata husimbwa kwa AES-256-GCM kabla ya kuhifadhiwa.
+          Mzunguko wa ukaguzi wa ISO 27001 kila mwaka; pentest mara mbili kwa mwaka.
         </p>
       </LegalSection>
 
@@ -248,6 +266,11 @@ function content(): Record<Locale, React.ReactNode> { return {
           <li>来源登记合作方，用于结算数据</li>
           <li>在依法被强制要求时，向坦桑尼亚博彩委员会、Tanzania Revenue Authority、FIU 提供</li>
           <li>云托管服务商：Railway（美国，us-west2 区域），运行本应用、存放其数据库并保存数据库备份；Cloudflare R2（西欧），存放身份证件、自拍照及加密的数据库备份；以及 GitHub Actions（美国），负责生成每晚的数据库备份，并在加密存储前进行恢复验证</li>
+          <li>Cloudflare 网络：承载所有访问 www.50pick.tz 的连接；每个请求在离您最近的 Cloudflare 数据中心解密，并在发往我们服务器的途中重新加密</li>
+          <li>Postmark（美国）：发送我们的电子邮件；保存每封邮件的记录，并记录邮件何时被打开以及其中哪个链接被点击</li>
+          <li>Anthropic：为“50pick 帮助”聊天撰写回答；接收该对话中的消息，不含您的账户信息；数据存储于美国，请求可能在美国、欧洲、亚洲或澳大利亚处理</li>
+          <li>Sentry（欧盟）：接收我们服务器的错误报告；报告发送前，会删除其中的坦桑尼亚电话号码、电子邮箱地址以及 NIDA 号码等长数字</li>
+          <li>如您开启通知，通知由您浏览器的推送服务（由该浏览器的开发公司运营）送达；每条通知的内容均经过加密</li>
         </ul>
         <p className="text-text">我们绝不出售个人数据。</p>
       </LegalSection>
@@ -274,13 +297,13 @@ function content(): Record<Locale, React.ReactNode> { return {
 
       <LegalSection n="7" title="Cookie">
         <p>
-          我们仅使用必要的最小集合：会话认证（HMAC 签名的 HttpOnly cookie，7 天 TTL）、主题偏好、语言偏好。不使用任何第三方广告或追踪 cookie。
+          我们仅使用必要的最小 cookie 集合：您的登录会话（HMAC 签名的 HttpOnly cookie，登录后最长 7 天失效）、您的语言、一条保留 30 秒、说明您为何被退出登录的提示、您已关闭钱包身份提示的记录，以及仅限员工账户的双重验证登录 cookie。不使用任何第三方广告或追踪 cookie。部分显示选择（例如隐藏余额或关闭提示）保存在您设备上的浏览器存储中。
         </p>
       </LegalSection>
 
       <LegalSection n="8" title="安全">
         <p>
-          会话以 HMAC-SHA-256 签名。OTP 验证码采用 scrypt + 每个 OTP 独立盐值（salt）+ 全局胡椒值（pepper）进行哈希。密码：采用 scrypt 与每位用户独立盐值（NIST SP 800-132）。所有传输中的数据均通过 TLS 1.2+ 传输。数据库层静态数据通过 AES-256 加密。每年进行一次 ISO 27001 审计；每年进行两次渗透测试。
+          会话以 HMAC-SHA-256 签名。OTP 验证码采用 scrypt + 每个 OTP 独立盐值（salt）+ 全局胡椒值（pepper）进行哈希。密码：采用 scrypt 与每位用户独立盐值。与我们网站及应用之间的连接在传输中通过 TLS（HTTPS）加密。双重验证密钥在数据库中以 AES-256-GCM 加密，数据库备份在存储前以 AES-256-GCM 加密。每年进行一次 ISO 27001 审计；每年进行两次渗透测试。
         </p>
       </LegalSection>
 
