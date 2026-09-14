@@ -42,8 +42,8 @@ export const MUTATIONS = [
     why: "⭐ THE REGRESSION THAT LOOKS RIGHT: the LAST control is still there, still named, still a double chevron — and it steps ONE page instead of jumping to the end. Nothing about the row looks different, and a player on page 3 of 60 clicking » lands on page 4",
     file: PAGER,
     suite: "pager-reach",
-    from: `        <Control to={totalPages} disabled={!hasNext} cls={\`\${btnBase} \${hasNext ? btnInactive : btnDisabled}\`} aria={lastLabel}>`,
-    to: `        <Control to={safePage + 1} disabled={!hasNext} cls={\`\${btnBase} \${hasNext ? btnInactive : btnDisabled}\`} aria={lastLabel}>`,
+    from: `          <Control to={totalPages} disabled={!hasNext} cls={\`\${btnBase} \${hasNext ? btnInactive : btnDisabled}\`} aria={lastLabel}>`,
+    to: `          <Control to={safePage + 1} disabled={!hasNext} cls={\`\${btnBase} \${hasNext ? btnInactive : btnDisabled}\`} aria={lastLabel}>`,
     expect: "2: a LAST control targets the final page",
   },
   {
@@ -51,8 +51,8 @@ export const MUTATIONS = [
     why: "the FIRST control loses its aria-label. A double chevron is not self-describing, so a screen reader announces an unnamed link — and the control a blind player needs most to escape page 40 becomes the one they cannot identify",
     file: PAGER,
     suite: "pager-reach",
-    from: `        <Control to={1} disabled={!hasPrev} cls={\`\${btnBase} \${hasPrev ? btnInactive : btnDisabled}\`} aria={firstLabel}>`,
-    to: `        <Control to={1} disabled={!hasPrev} cls={\`\${btnBase} \${hasPrev ? btnInactive : btnDisabled}\`}>`,
+    from: `          <Control to={1} disabled={!hasPrev} cls={\`\${btnBase} \${hasPrev ? btnInactive : btnDisabled}\`} aria={firstLabel}>`,
+    to: `          <Control to={1} disabled={!hasPrev} cls={\`\${btnBase} \${hasPrev ? btnInactive : btnDisabled}\`}>`,
     expect: "2: first carries an aria-label",
   },
   {
@@ -69,8 +69,8 @@ export const MUTATIONS = [
     why: "on page 1 the FIRST control stays live, so it renders as a real link to the page already being read. `Control` only emits a `<span aria-disabled>` when told to, so this is a navigable dead end rather than a greyed one",
     file: PAGER,
     suite: "pager-reach",
-    from: `        <Control to={1} disabled={!hasPrev} cls={\`\${btnBase} \${hasPrev ? btnInactive : btnDisabled}\`} aria={firstLabel}>`,
-    to: `        <Control to={1} cls={\`\${btnBase} \${hasPrev ? btnInactive : btnDisabled}\`} aria={firstLabel}>`,
+    from: `          <Control to={1} disabled={!hasPrev} cls={\`\${btnBase} \${hasPrev ? btnInactive : btnDisabled}\`} aria={firstLabel}>`,
+    to: `          <Control to={1} cls={\`\${btnBase} \${hasPrev ? btnInactive : btnDisabled}\`} aria={firstLabel}>`,
     expect: "2: first is disabled when there is no previous page",
   },
   {

@@ -54,6 +54,23 @@ export function pageWindow(page: number, totalPages: number): (number | "...")[]
  * The invariant is still worth pinning, because it is the thing a future simplification
  * of `pageWindow` would silently break.
  */
+/**
+ * The page numbers a PHONE shows (below `sm`) — a subset of `pageWindow`, never a different set.
+ *
+ * 🔴 WHY (2026-09-14, register E-400 ⑦). Below `sm` every control wrapped independently, so a pager in a
+ * narrow card at 360 stacked `« ‹ 1 2 3` / `4 5 6 7 ›` / `»` — the last-page control alone on a third row,
+ * which reads as a broken layout and puts "jump to the end" where nobody looks. Below `sm` the row is now
+ * two deliberate rows: the numbers, then the four arrows together. The numbers row must fit a narrow card
+ * on its own line, so it carries at most five buttons (236px): every page when there are five or fewer,
+ * otherwise the current page and its neighbours. ⛔ Nothing becomes unreachable: first, previous, next and
+ * last are on every width, so `reachablePages`' ends and neighbours hold on a phone too.
+ */
+export function phoneWindow(page: number, totalPages: number): number[] {
+  const safe = Math.min(Math.max(1, page), Math.max(1, totalPages));
+  const numbers = pageWindow(safe, totalPages).filter((p): p is number => p !== "...");
+  return totalPages <= 5 ? numbers : numbers.filter((p) => Math.abs(p - safe) <= 1);
+}
+
 export function reachablePages(page: number, totalPages: number): number[] {
   const safe = Math.min(Math.max(1, page), Math.max(1, totalPages));
   const set = new Set<number>([1, totalPages]);
@@ -115,6 +132,7 @@ export function Pagination({
   };
 
   const pages = pageWindow(safePage, totalPages);
+  const onPhone = new Set(phoneWindow(safePage, totalPages));
 
   // ⚠️ 44px WRITTEN LITERALLY, NOT `h-10` (campaign finding G-2, 2026-08-02).
   // This project overrides Tailwind's spacing scale in `tailwind.config.ts`, where the
@@ -169,33 +187,52 @@ export function Pagination({
           block stays 92px tall. ⛔ So the trade-off this change was expected to force —
           "hide the numbers on a phone and keep only first/prev/next/last" — was NOT taken,
           because the measurement says it is not needed. Nothing is hidden at any width.
-          ⚠️ Re-measure before adding a ninth kind of control; the next one is not free. */}
+          ⚠️ Re-measure before adding a ninth kind of control; the next one is not free.
+          🔴 AND THE WRAP WAS NOT ALWAYS TWO ROWS (2026-09-14, register E-400 ⑦). Inside a narrower card the same
+          eleven controls went to THREE rows at 360 — `« ‹ 1 2 3` / `4 5 6 7 ›` / `»` — with the last-page control
+          alone. The controls now wrap as GROUPS: below `sm` the numbers take the first row (`phoneWindow`, at most
+          five) and the four arrows share the second, so no control can be left on a row of its own; from `sm`
+          the three groups sit in one row in reading order, exactly as before. */}
       <div className="flex flex-wrap items-center justify-center sm:justify-end gap-1">
         {/* ⛔ FIRST and LAST are the point of this control existing: a player on page 40 of
             60 could otherwise only step one page at a time. They are disabled exactly as
             prev/next are — a `<span aria-disabled>` in URL mode, so a dead control is never
             a link — and they keep the same 44px box, so the row's rhythm does not change. */}
-        <Control to={1} disabled={!hasPrev} cls={`${btnBase} ${hasPrev ? btnInactive : btnDisabled}`} aria={firstLabel}>
-          <I.chevronsLeft s={14} />
-        </Control>
-        <Control to={safePage - 1} disabled={!hasPrev} cls={`${btnBase} ${hasPrev ? btnInactive : btnDisabled}`} aria={prevLabel}>
-          <I.chevronLeft s={14} />
-        </Control>
-        {pages.map((p, i) =>
-          p === "..." ? (
-            <span key={`dots-${i}`} className="px-1 text-text-subtle">…</span>
-          ) : (
-            <Control key={p} to={p} cls={`${btnBase} ${p === safePage ? btnActive : btnInactive}`}>
-              {p}
-            </Control>
-          ),
-        )}
-        <Control to={safePage + 1} disabled={!hasNext} cls={`${btnBase} ${hasNext ? btnInactive : btnDisabled}`} aria={nextLabel}>
-          <I.chevronRight s={14} />
-        </Control>
-        <Control to={totalPages} disabled={!hasNext} cls={`${btnBase} ${hasNext ? btnInactive : btnDisabled}`} aria={lastLabel}>
-          <I.chevronsRight s={14} />
-        </Control>
+        <div className="order-2 flex items-center gap-1 sm:order-none" data-pager-group="back">
+          <Control to={1} disabled={!hasPrev} cls={`${btnBase} ${hasPrev ? btnInactive : btnDisabled}`} aria={firstLabel}>
+            <I.chevronsLeft s={14} />
+          </Control>
+          <Control to={safePage - 1} disabled={!hasPrev} cls={`${btnBase} ${hasPrev ? btnInactive : btnDisabled}`} aria={prevLabel}>
+            <I.chevronLeft s={14} />
+          </Control>
+        </div>
+        <div className="order-1 flex basis-full items-center justify-center gap-1 sm:order-none sm:basis-auto" data-pager-group="pages">
+          {/* Below `sm` a page outside `phoneWindow` is hidden, and so is every ellipsis (the window it elides
+              is not the phone's). `sm:contents` hands the button straight back to this flex row from `sm` up. */}
+          {pages.map((p, i) =>
+            p === "..." ? (
+              <span key={`dots-${i}`} className="hidden px-1 text-text-subtle sm:inline">…</span>
+            ) : onPhone.has(p) ? (
+              <Control key={p} to={p} cls={`${btnBase} ${p === safePage ? btnActive : btnInactive}`}>
+                {p}
+              </Control>
+            ) : (
+              <span key={p} className="hidden sm:contents">
+                <Control to={p} cls={`${btnBase} ${p === safePage ? btnActive : btnInactive}`}>
+                  {p}
+                </Control>
+              </span>
+            ),
+          )}
+        </div>
+        <div className="order-3 flex items-center gap-1 sm:order-none" data-pager-group="forward">
+          <Control to={safePage + 1} disabled={!hasNext} cls={`${btnBase} ${hasNext ? btnInactive : btnDisabled}`} aria={nextLabel}>
+            <I.chevronRight s={14} />
+          </Control>
+          <Control to={totalPages} disabled={!hasNext} cls={`${btnBase} ${hasNext ? btnInactive : btnDisabled}`} aria={lastLabel}>
+            <I.chevronsRight s={14} />
+          </Control>
+        </div>
       </div>
     </div>
   );

@@ -31,8 +31,9 @@ const VIEWPORTS = [
 // circular — this is the independent copy of what a human decided the player should read.
 const EXPECT = {
   en: "Type CLOSE MY ACCOUNT exactly as shown to confirm.",
-  sw: "Andika CLOSE MY ACCOUNT kama ilivyoonyeshwa ili kuthibitisha.",
-  zh: "请完全按照显示输入 CLOSE MY ACCOUNT 以确认。",
+  // 2026-09-14 (E-400 ⑦c): each locale names its own phrase — `src/lib/close-account-phrase.ts`.
+  sw: "Andika FUNGA AKAUNTI YANGU kama ilivyoonyeshwa ili kuthibitisha.",
+  zh: "请完全按照显示输入“关闭我的账户”以确认。",
 };
 const LANG_ATTR = { en: "en", sw: "sw", zh: "zh" };
 

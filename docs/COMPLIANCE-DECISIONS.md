@@ -38,7 +38,7 @@ choices are kept in the browser's own storage.
   (HTTPS)"*. Measured 2026-09-14 with one handshake per protocol version: `50pick.tz` refuses TLS 1.0 and 1.1, but
   **`www.50pick.tz` accepted TLS 1.0 and 1.1** — the zone's Minimum TLS Version was 1.0. Both hosts redirect HTTP to
   HTTPS and send HSTS (`src/proxy.ts`). The notice no longer names a protocol version: that is a dashboard setting no
-  code pins. Raising the zone minimum to 1.2 is the owner's dashboard action (register E-404).
+  code pins. **The zone minimum was raised to 1.2 the same morning** on the owner's instruction (08:02:26 UTC, one API call he approved), and re-measured at 08:02:37 UTC: both hosts now refuse TLS 1.0 and 1.1. The notice's wording stays version-free on purpose.
 - *"At-rest encryption via AES-256 in the database tier"* is removed: no record establishes it for the Railway volumes. The
   notice now states what the records show — two-factor keys encrypted with AES-256-GCM (`src/lib/server/totp.ts` →
   `encryptSecret`) and database backups sealed with AES-256-GCM before storage (`src/lib/server/backup/core.ts`,

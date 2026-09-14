@@ -144,6 +144,16 @@ export function LivePulseGrid({ markets }: { markets: Market[] }) {
 }
 
 /**
+ * Renders a title with every hyphenated token ("30-day", "month-end?", "Man-City") in a nowrap span, so a balanced
+ * wrap can move the whole token but never break after its hyphen (E-400 ⑦b). `split` with a capturing group puts
+ * the tokens at odd indices and the text between them — spaces included — at even ones, so no space is added or lost.
+ */
+export function KeepHyphenated({ text }: { text: string }) {
+  const parts = text.split(/(\S*[\p{L}\p{N}]-[\p{L}\p{N}]\S*)/u);
+  return <>{parts.map((part, i) => (i % 2 === 1 ? <span key={i} className="whitespace-nowrap">{part}</span> : part))}</>;
+}
+
+/**
  * C1e — the DENSE TippingBar-wall card that gives /live its own identity (so it
  * stops being /markets with a different URL): category + time · title · the bar ·
  * the @ prices. No spark / trader crest / KPI strip / big buttons — the point is
@@ -182,9 +192,21 @@ function PulseCard({ market, index }: { market: Market; index: number }) {
           {market.timeLeft}
         </span>
       </div>
-      {/* text-balance: "by month-end?" broke at its hyphen and left "end?" alone on line two (visual pass 2). */}
-      <h3 className="min-h-[2.6em] font-display text-[13.5px] font-semibold leading-snug text-text line-clamp-2 text-balance group-hover:text-aqua-200">
-        {title}
+      {/* text-balance: "by month-end?" broke at its hyphen and left "end?" alone on line two (visual pass 2).
+          🔴 AND BALANCING STILL BROKE AT A HYPHEN (2026-09-14, register E-400 ⑦b): "30-" / "day". A title is market
+          data, not dictionary copy, so the fix cannot be a word joiner in a string — `KeepHyphenated` keeps each
+          hyphenated token on one line at render. And the two-line clamp cut a long Swahili question before its
+          deadline, which is the word a bettor needs: Swahili gets three lines, with the minimum height moved with it
+          so every card in the wall keeps one height.
+          ⚠️ The minimum is an EXACT multiple of `leading-snug` (1.375): it was 2.6em, a hair under two lines, so a
+          one-line title sat 2px shorter than a two-line one (measured 35 vs 37px) and the bars below them did not line up. */}
+      <h3
+        className={`font-display text-[13.5px] font-semibold leading-snug text-text text-balance group-hover:text-aqua-200 ${
+          locale === "sw" ? "min-h-[4.125em] line-clamp-3" : "min-h-[2.75em] line-clamp-2"
+        }`}
+        data-title-lines={locale === "sw" ? 3 : 2}
+      >
+        <KeepHyphenated text={title} />
       </h3>
       {/* 🔴 PV-06, second pass · 2026-09-03. This bar carried NO `empty` prop, so the kit's
           cold-start rail was structurally UNREACHABLE on this wall no matter what the pool

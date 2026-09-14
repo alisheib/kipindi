@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { reasonKeyFor } from "@/lib/failure-banner";
 import { currentSession } from "@/lib/server/auth-service";
 import { closeAccount, exportUserData } from "@/lib/server/user-service";
+import { isCloseAccountConfirmation } from "@/lib/close-account-phrase";
 import { audit } from "@/lib/server/audit";
 
 export async function exportDataAction(): Promise<{ ok: true; payload: string; filename: string } | { ok: false; error: string }> {
@@ -89,7 +90,8 @@ export async function closeAccountAction(formData: FormData) {
   const session = await currentSession();
   if (!session) redirect("/auth/login");
   const confirm = String(formData.get("confirm") ?? "");
-  if (confirm !== "CLOSE MY ACCOUNT") {
+  // One rule with the form (`src/lib/close-account-phrase.ts`): any locale's phrase, typed whole (E-400 ⑦c).
+  if (!isCloseAccountConfirmation(confirm)) {
     redirect(`/profile/account?reason=close_confirm_required`);
   }
   const reason = String(formData.get("reason") ?? "").slice(0, 500);

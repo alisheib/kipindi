@@ -3617,15 +3617,15 @@ html[data-sheet-open] .route-enter { animation: none; }
   color: var(--text-subtle);
   margin-top: 4px;
 }
-/* An 8px pip beside the live count, carrying the YES glow — the same ink the board uses for a
-   market that is taking bets. */
+/* An 8px pip beside the live count. ⚠️ 2026-09-14 (E-400 ⑦f): it carried the YES ink and glow, "the same ink the board
+   uses for a market that is taking bets" — but that ink names a SIDE (§B2a), and a player's LIVE signal is the broadcast
+   red (§B11, `.live-dot`). The pip now wears `--live-400`, without the YES glow, and the count beside it is plain text. */
 .kp-proof__pip {
   display: inline-block;
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--yes-400);
-  box-shadow: var(--bar-glow-yes);
+  background: var(--live-400);
   flex: none;
 }
 @media (min-width: 561px) {
@@ -3969,7 +3969,10 @@ html[data-sheet-open] .route-enter { animation: none; }
 .mcardp-meta { display:flex; align-items:center; flex-wrap: nowrap; gap: 5px 7px; font-family: var(--font-mono); font-size: 11px; color: var(--text-subtle); min-width: 0; margin-top: auto; }
 .mcardp-meta > span:not(.dot):not(.mcardp-meta-right) { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .mcardp-meta .dot { width:3px;height:3px;border-radius:50%;background:var(--border-strong); flex-shrink:0; }
-.mcardp-meta .live { color: var(--yes-300); display:inline-flex; align-items:center; gap:5px; }
+/* 2026-09-14 (register E-400 ⑦f): the time left on a live card was painted `--yes-300`, directly under the YES/NO
+   buttons, where betting-YES green reads as a side (§B2a). A player's LIVE signal is the broadcast red dot and chip
+   (§B11), so the countdown text takes the brighter neutral ink the meta row does not otherwise use. */
+.mcardp-meta .live { color: var(--text-muted); display:inline-flex; align-items:center; gap:5px; }
 .mcardp-meta-right { margin-left:auto; display:inline-flex; align-items:center; flex-shrink:0; }
 /* The "how it works" trigger. Was 8 inline style props plus two onMouseEnter/
    onMouseLeave handlers that re-typed four colours in JS to fake :hover — a hover
@@ -4620,7 +4623,9 @@ textarea::-webkit-resizer {
   font-weight: 700;
   color: var(--text-faint);
 }
-.kp-topic__live { color: var(--yes-400); }
+/* 2026-09-14 (E-400 ⑦f): "N live" on a topic tile was betting-YES green (§B2a); neutral ink, one step above the
+   faint meta line it sits in. */
+.kp-topic__live { color: var(--text-muted); }
 /* The topic's crowd lean, drawn with the conviction bar's own gradient. ⛔ Rendered ONLY when the
    topic has money on it — a 50%-wide bar over an empty topic is the same fabricated claim as a
    "50%" label, drawn instead of written (licence condition 1). */
