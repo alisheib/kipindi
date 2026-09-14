@@ -12,12 +12,12 @@
 ## Status now
 | | |
 |---|---|
-| **Overall** | 🟡 **BUILDING · commit 1 of 8 done** |
+| **Overall** | 🟡 **BUILDING · commit 1 of 8 done · Commit 2 (money seam) in progress** |
 | **Current step** | P0 ✅ (P0.1–P0.6). **Commit 1 ✅ (2026-09-14, OMEGA-COMPILE01):** the schema, the two migrations, the DAL and memory twins, the pure modules and the docs of record. All 10 review findings are fixed (F1's deadlock case proven red, then green). `origin/main` `3eb192e9` is merged, and the house migrations were renamed past `main`'s new RG migration. On the merged tree: typecheck 0, rules 492/0, dal-parity 1207/0, migrations 679/0, `red:dal-parity` 9/9, `test:all` 336/353 (the 17 reds are identical on clean `origin/main`; 3 of them are NOT MEASURED, on port 3009), `test:motion` 43/0, S1(c) old build 12/0, and `/admin` rendered at 1280 and 360. Evidence: "📜 Commit 1 record", step 7.8. **Next: Commit 2, the money seam (RESUME AT step 4).** |
 | **Blocked on** | Nothing. On Ali-Blade15, heavy Node goes through the shared lock (RESUME AT step 2). |
 | **Production** | Nothing deployed. The feature does not exist in production. |
 | **Master switch** | n/a (ships OFF at release; Ali alone turns it on) |
-| **Last updated** | 2026-09-14 (~18:05 EAT) · OMEGA-COMPILE01 · `F:/kipindi-house-bots` (Commit 1 closed ✅; next is Commit 2) |
+| **Last updated** | 2026-09-14 · OMEGA-COMPILE01 · `F:/kipindi-house-bots` (Commit 1 closed ✅; Commit 2 🟡 started) |
 
 ## ▶ RESUME AT (overwrite this block every time you stop)
 1. Get onto the branch on whatever machine you are on: `README.md` → "Resume on any machine" (steps 0–5).
@@ -25,8 +25,8 @@
    - **Heavy Node on Ali-Blade15** means a build, `next start` or dev, tsc, Playwright, `test:all` or any full battery. `test:house-bot-migrations` counts too: it boots Postgres and runs migrate many times. Wrap the command in the shared lock: `bash /c/Users/Ali/heavy-node-lock.sh run <your-session-name> <command>`. It waits on its own while another session holds the lock; `bash /c/Users/Ali/heavy-node-lock.sh status` shows the holder. Light work (git, edits, a single pure tsx suite) needs no lock. On a PC where no other 50pick session runs, no lock is needed.
    - **Message another session only** when your push changes something it is actively editing: the same file, or a migration. This branch never pushes `main` before REL-4.
 3. **Commit 1 is ✅** (2026-09-14, OMEGA-COMPILE01). Its whole history is in "📜 Commit 1 record" below, moved there verbatim from this block: the P0.4 hold, the P1 guard notes, the review record with the refuted findings, the merge and the `test:all` baseline.
-4. **Next: start Commit 2 (money seam).**
-   1. Set its row to 🟡, update Status now and this block, then commit and push `house-bots`.
+4. **Commit 2 (money seam) is 🟡** (started 2026-09-14, OMEGA-COMPILE01, unattended run on Ali's ruling).
+   1. ✅ Row set to 🟡, Status and this block updated, pushed.
    2. Build it from "Scope per commit → Commit 2", PLAN, and `04-amendments.md` (A7, A9, A12, A14, A15, A17, A18, A21, F3, and the N1/N2 seam bullets).
    3. **Before editing any money path,** read the bet-concurrency rules in `market-service.ts`: an abort must escape `withLock`, writes inside a lock take the caller's `tx`, and emits happen after the outer lock.
    4. Anchors in `market-service.ts`, `store.ts` and `prisma-dal.ts` moved in the 2026-09-14 merge (E-381, E-408…E-413), so re-derive every plan `file:line` first.
@@ -170,7 +170,7 @@ Run in **Git Bash** from the worktree.
 | # | Commit | Status | impl | tsc | suites | all | red | drive | review | docs | push |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | 1 | Docs of record · schema · migrations · DAL · pure modules | ✅ 2026-09-14 · OMEGA-COMPILE01 · "house-bots: C1 · Commit 1 closed" | ✅ | ✅ 0 | ✅ rules 492/0 · migrations 679/0 · dal-parity 1207/0 | ✅ 336/353; the 17 reds identical on clean `origin/main` (3 NOT MEASURED, port 3009); `responsive` NOT MEASURED; `motion` 43/0 | ✅ `red:dal-parity` 9/9 | ✅ S1(c) old build 12/0 · `/admin` 1280 + 360 read | ✅ 10/10 fixed | ✅ | ✅ |
-| 2 | Money seam (`placeHouseBet`, gates, markers, exclusions) | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
+| 2 | Money seam (`placeHouseBet`, gates, markers, exclusions) | 🟡 2026-09-14 · OMEGA-COMPILE01 | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 | 3 | Designation · eligibility · password verification (services) | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | — | ⬜ | ⬜ | ⬜ | ⬜ |
 | 4 | Engine · notifications · holder hooks · money hooks · schema gate | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 | 5 | Reporting · data rights · resolver exposure · holder chip | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | — | ⬜ | ⬜ | ⬜ | ⬜ |
