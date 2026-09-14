@@ -13,11 +13,11 @@
 | | |
 |---|---|
 | **Overall** | 🟡 **PLANNED · build not started** |
-| **Current step** | P0.4 half done: `origin/main` merged into `house-bots` 2026-09-14 (merge-only, agreed with ali-f6). `npm ci`, tests, P0.5 and P0.6 wait for the KYC audit's P1 push + ALL-CLEAR (RESUME AT step 4). N1–N2 (Enter now; targeted polls and exact timing) are written into the plan (2026-09-14). **Commit 1 🟡 edit-only:** schema, the two migrations, pure modules, DAL, suites and docs are being written as `WIP house-bots:` commits; nothing is compiled or tested until the hold lifts. The COMPLIANCE entry stays held until P1 lands. |
-| **Blocked on** | ⛔ **HOLD: KYC audit in flight.** The KYC-at-withdrawal release ("KYC AT WITHDRAWAL (1/n)"…"(7/n)") **is on `origin/main`**, and its migration **is applied in production** (verified 2026-09-13). But session **`ali-f6`** is auditing that release and has confirmed P0/P1 defects. Fixes will be pushed to `main` over the following hours, touching `kyc-service`, `refused-funds`, `wallet-service`, `auth-service`, `wallet-freeze`, `notification-service`, `email`, `nida`, `i18n-dict`, `src/app/legal/*`, `COMPLIANCE-DECISIONS.md` and LIVE-QA §6b. ali-f6 plans no new migration and will message first if that changes. **Wait until the KYC audit session's own block tops `docs/LIVE-QA-CAMPAIGN.md` §6b on `origin/main` before P0.4 (checkable from any machine; see RESUME AT step 4). On Ali-Blade15 only, also wait for ali-f6's "ALL-CLEAR heavy window" message before any `npm ci`, build, test run or Playwright (that laptop bluescreens under concurrent heavy Node).** |
+| **Current step** | Hold lifted (ALL-CLEAR 2026-09-14). P0.4: `npm ci` and embedded-postgres ✅; the second merge of `origin/main` waits until the Commit 1 files are committed. P0.5 ✅. **Commit 1 🟡:** schema, the two migrations, pure modules, DAL, suites and docs are being written; next they are committed as `WIP house-bots:`, then typechecked and tested (RESUME AT step 7). The COMPLIANCE entry goes in after the merge, below P1's 2026-09-14 entries. |
+| **Blocked on** | Nothing external. ✅ **Hold lifted 2026-09-14:** the KYC audit (`ali-f6`) pushed its P1 fixes ("AUDIT 95 (4/n)"…"(9/n)", no migration), its §6b "RESUME AT (session 96)" handover tops `origin/main`, and it sent "ALL-CLEAR heavy window" (after 02:55 UTC). On Ali-Blade15, still run only one heavy Node job at a time. |
 | **Production** | Nothing deployed. The feature does not exist in production. |
 | **Master switch** | n/a (ships OFF at release; Ali turns it on himself) |
-| **Last updated** | 2026-09-14 ~02:20 UTC · Ali-Blade15 · build session `ali-e4` (N1–N2 written into the plan; still holding before the rest of P0.4) |
+| **Last updated** | 2026-09-14 (after the ALL-CLEAR) · Ali-Blade15 · build session `ali-e4` (P0.4 installs and P0.5 done; Commit 1 files being written) |
 
 ## ▶ RESUME AT (overwrite this block every time you stop)
 1. Get onto the branch on whatever machine you are on: `README.md` → "Resume on any machine" (steps 0–5).
@@ -26,7 +26,7 @@
    - As it reported at ~21:00 UTC, its heavy windows were tsc + next build + suites for its first fix, then Playwright captures, the full predeploy battery and its red harnesses (which rewrite files only in `C:/kipindi-main`). It promised to send "ALL-CLEAR heavy window" and "DONE".
    - **Never overlap `npm ci`, `next build`, `test:all` or Playwright with another session on the same laptop.**
 3. **P0.2 and P0.3 are ✅** (2026-09-13, build session `ali-e4`; details in the P0 table). Nothing else to check before the hold lifts.
-4. **⛔ HOLD before P0.4.** Wait until BOTH:
+4. **✅ Hold lifted 2026-09-14.** Both conditions below were met: P1 and the §6b session 96 block are on `origin/main`, and ali-f6 sent the ALL-CLEAR. The block is kept as the record of how the hold worked; the live next steps are step 7. The conditions were:
    - (a) **Any machine, checkable in git:** the KYC audit's fixes are on `origin/main`, and the topmost RESUME AT in `git show origin/main:docs/LIVE-QA-CAMPAIGN.md` §6b is the audit session's own block (newer than "session 95"), saying its work is done. ali-f6's first fix ("P0", no migration) was pushed at 21:27 UTC 2026-09-13; its P1 batch was still in flight. **Last check, 2026-09-14 02:41 UTC:**
      - **P1 is pushed.** `origin/main` is at "AUDIT 95 (9/n) · the release's claims get gates…", six commits after "(3/n)" and 128 files; ali-f6 told ali-e4. It added no migration: none is newer than `20260913120000_kyc_at_withdrawal`.
      - **Still pending on the audit side:** a docs-only §6b handover commit, then Railway deploy verification, production read-only checks and its red harnesses. **"ALL-CLEAR heavy window" has not been sent.**
@@ -66,7 +66,13 @@
 6. **N1–N2 written into the plan (2026-09-14, `ali-e4`).**
    - **Where:** the last section of `04-amendments.md` holds N1 (Enter now, polls only) and N2 (targeted polls, exact timing). All 49 review findings are merged and a 40-finding consistency critic is applied. D17–D18 and risks 13–20 are in PLAN §16b, the overlaps in PLAN §18, and `TGT-01`…`TGT-40` in `01-scenario-register.md`. The owner defaults are W7–W16 below.
    - **How to build:** N1–N2 add no commit and no third migration. Build them inside commits 1–8 per the "N1/N2" bullets under Scope per commit.
-   - **Unchanged:** the P0.4 hold (step 4).
+   - The P0.4 hold (step 4) has since been lifted.
+7. **Next, in order (2026-09-14, `ali-e4`; one heavy job at a time on Ali-Blade15):**
+   1. The Commit 1 file-writing workflow finishes: review its output, then commit it as `WIP house-bots:` commits and push.
+   2. Merge `origin/main` into `house-bots` (merge only; it brings P1 and the §6b docs; expected overlaps are `package.json` and `docs/FLOWS.md`), then push.
+   3. `npx prisma generate`, `npm run typecheck`, then `test:house-bot-rules`, `test:dal-parity`, `test:house-bot-migrations`, `red:dal-parity`, `test:red-anchors` and `test:guards-exist`, one at a time. Fix what fails.
+   4. P0.6: record the local admin render method.
+   5. Write the COMPLIANCE-DECISIONS House bots entry below P1's 2026-09-14 entries, then the review workflow and the rest of Commit 1's definition of done.
 
 ## Legend
 ⬜ not started · 🟡 in progress · ✅ done (date · machine · commit subject) · ⛔ blocked (reason) · ⏭️ skipped by Ali's ruling · — not applicable
@@ -81,8 +87,8 @@ Run in **Git Bash** from the worktree.
 | P0.1 | `git fetch origin`, then `git cat-file -e origin/main:prisma/migrations/20260913120000_kyc_at_withdrawal/migration.sql` succeeds | ✅ 2026-09-13 · Ali-Blade15 (planning session) |
 | P0.2 | `git log origin/main --oneline --grep "KYC AT WITHDRAWAL"` lists the series, and the topmost RESUME AT in `docs/LIVE-QA-CAMPAIGN.md` §6b on `origin/main` says the KYC-at-withdrawal work is pushed and its migration applied in production | ✅ 2026-09-13 · Ali-Blade15 · build session `ali-e4`: the grep lists all seven, "KYC AT WITHDRAWAL (1/n) · the gate, S1, the freeze model, legal and copy" through "(7/n) · the audit prompt states the legal-version rule precisely". The topmost §6b RESUME AT on origin/main (session 95) states the release is LIVE and that `20260913120000_kyc_at_withdrawal` was applied to production at 20:08:42 EAT, before the push. ⚠️ ali-f6's audit block is still to come; that is the P0.4 hold, not a P0.2 failure |
 | P0.3 | See the three steps below | ✅ 2026-09-13 · **LF variant matched.** Step 1 re-derived by `ali-e4` from `git show origin/main:…/migration.sql`: LF `3f03069239a84c0cefdc1da2cd07a1e18136c358936e9d55747964483f38e5f2`, CRLF `bf82c95d71016be99f66bcfe29adc0512be9e3f3383a2d4200ceebb76534e765`. Steps 2–3 were done by session `ali-f6` in a read-only transaction: checksum `3f030692…f5f2` (= LF), `finished_at` 2026-09-13 17:08:52 UTC, `rolled_back_at` NULL, applied_steps_count 1. On Ali's ruling this session did not query production itself |
-| P0.4 | **Merge, never rebase:** `git merge --no-edit origin/main` on `house-bots`, then `npm ci` + `npm i -D --no-save embedded-postgres@18.3.0-beta.17`, then push `house-bots` | 🟡 **2026-09-14 · merge-only done**: `origin/main` "AUDIT 95 (3/n)" merged into `house-bots` with ali-f6's agreement. **Still ⛔ for the rest:** `npm ci` + embedded-postgres wait until BOTH (a) the KYC audit's own block tops §6b on `origin/main` (any machine can check) AND (b), on Ali-Blade15 only, ali-f6 has sent "ALL-CLEAR heavy window". Merge `origin/main` again after its P1 push (never rebase). Tell every live 50pick session on your machine before `npm ci` |
-| P0.5 | `npm run db:scratch` starts PostgreSQL on `127.0.0.1:5433` (loopback only) | ⬜ |
+| P0.4 | **Merge, never rebase:** `git merge --no-edit origin/main` on `house-bots`, then `npm ci` + `npm i -D --no-save embedded-postgres@18.3.0-beta.17`, then push `house-bots` | 🟡 **2026-09-14 · Ali-Blade15 · `ali-e4`:** merge-only of "AUDIT 95 (3/n)" done earlier with ali-f6's agreement. After ali-f6's ALL-CLEAR (and after telling it): `npm ci` ✅ (its `prisma generate` postinstall passed on the in-progress Commit 1 schema) and `npm i -D --no-save embedded-postgres@18.3.0-beta.17` ✅. **Still open:** the second merge of `origin/main` (P1 + §6b docs, "AUDIT 95 (11/n)"), after the Commit 1 files are committed; then push |
+| P0.5 | `npm run db:scratch` starts PostgreSQL on `127.0.0.1:5433` (loopback only) | ✅ 2026-09-14 · Ali-Blade15 · `ali-e4`: `tsx scripts/db-scratch.mts --run node --version` initialised a fresh cluster in `.pgscratch/` (git-ignored), printed "Ready: PostgreSQL 18.3" on 127.0.0.1:5433 (the script sets `listen_addresses=127.0.0.1`), ran the command and stopped cleanly (exit 0) |
 | P0.6 | Local admin render method, recorded: ______ | ⬜ |
 
 **P0.3: production migration row matches the file**
@@ -114,7 +120,7 @@ Run in **Git Bash** from the worktree.
 
 | # | Commit | Status | impl | tsc | suites | all | red | drive | review | docs | push |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| 1 | Docs of record · schema · migrations · DAL · pure modules | 🟡 edit-only (hold) | 🟡 | ⛔ hold | ⛔ hold | ⛔ hold | — | ⛔ hold | ⬜ | 🟡 | ⬜ |
+| 1 | Docs of record · schema · migrations · DAL · pure modules | 🟡 | 🟡 | ⬜ | ⬜ | ⬜ | — | ⬜ | ⬜ | 🟡 | ⬜ |
 | 2 | Money seam (`placeHouseBet`, gates, markers, exclusions) | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 | 3 | Designation · eligibility · password verification (services) | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | — | ⬜ | ⬜ | ⬜ | ⬜ |
 | 4 | Engine · notifications · holder hooks · money hooks · schema gate | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
