@@ -1,0 +1,54 @@
+import { headers } from "next/headers";
+import { currentSession } from "@/lib/server/auth-service";
+import { db } from "@/lib/server/store";
+import { isStaffRole, isAdmin, isOwnerOnlyPath, domainForPath, DOMAIN_LABEL, DOMAIN_SUMMARY, roleLabel } from "@/lib/server/roles";
+import { canView, canAct } from "@/lib/server/rbac";
+import { AdminRestricted } from "@/components/admin/admin-restricted";
+import { AdminActProvider, ActReadOnlyBanner } from "@/components/admin/act-gate";
+import { crumbsFromPath } from "@/components/admin/admin-nav-groups";
+
+/**
+ * 🔴 E-381 §6 item 10 (2026-09-14) · THE CONSOLE'S VIEW AND ACT GATES, DECIDED WHERE A NAVIGATION RE-RUNS THEM.
+ *
+ * These gates lived in `app/admin/layout.tsx`, computed from `x-pathname`. A layout is NOT re-executed on a soft
+ * navigation, so the verdict of the page an officer hard-loaded governed every page they clicked to afterwards:
+ * a SUPPORT officer who landed on /admin/players (allowed) and followed an in-page link into an accounting page
+ * had that page's children rendered — and the `AdminActProvider` handing ~20 money and compliance controls their
+ * "may act" answer kept the previous domain's answer. Live, not latent: non-owner staff personas exist on production.
+ *
+ * ⭐ A SECTION'S OWN LAYOUT IS re-executed when a navigation enters it (measured: `/admin/players` → `/admin/finance`
+ * → `/admin/players` re-rendered each section layout with its own path; an `/admin/template.tsx` did NOT re-render).
+ * So every top-level console section has a `layout.tsx` that renders this, and the two pages without a section
+ * layout of their own (`/admin`, `/admin/players`) wrap themselves in it. `test:admin-section-gate` enumerates the
+ * console's pages from disk and fails for any page not under this gate.
+ *
+ * ⚠️ One nested case is FAIL-CLOSED, stated: `/admin/players/cohorts` (growth) sits under the players routes
+ * (support). Its gate is its own layout, and the players list and `/admin/players/[id]` carry theirs, so no gate
+ * wraps another and every entry re-decides.
+ * ⛔ A missing session, a non-staff account or a missing `x-pathname` renders the restricted panel: never children.
+ */
+export async function AdminSectionGate({ children }: { children: React.ReactNode }) {
+  const h = await headers();
+  const path = h.get("x-pathname") ?? "";
+  const title = crumbsFromPath(path || "/admin").at(-1) ?? "Restricted";
+  const session = await currentSession();
+  const user = session ? await Promise.resolve(db.user.findById(session.userId)).catch(() => null) : null;
+  if (!session || !user || !isStaffRole(user.role) || !path.startsWith("/admin")) {
+    return <AdminRestricted title={title} need="a staff sign-in" />;
+  }
+  const role = user.role;
+  const ownerOnly = isOwnerOnlyPath(path);
+  const domain = domainForPath(path);
+  const viewBlocked = ownerOnly ? !isAdmin(role) : !(await canView(role, domain));
+  if (viewBlocked) {
+    return <AdminRestricted title={title} need={ownerOnly ? "Owner (ADMIN) only" : `${DOMAIN_LABEL[domain]} access`} />;
+  }
+  const mayAct = ownerOnly ? isAdmin(role) : await canAct(role, domain);
+  const readOnly = !mayAct && DOMAIN_SUMMARY[domain].act !== "—";
+  return (
+    <AdminActProvider mayAct={mayAct} role={roleLabel(role)} domainLabel={DOMAIN_LABEL[domain]}>
+      {readOnly && <ActReadOnlyBanner role={roleLabel(role)} domainLabel={DOMAIN_LABEL[domain]} />}
+      {children}
+    </AdminActProvider>
+  );
+}

@@ -1,4 +1,5 @@
 import { AdminPageHead, AdminKpi, AdminCard, FeedRow, AdminFunnel, AdminStackedBar, AdminLoadError } from "@/components/admin/admin-shell";
+import { AdminSectionGate } from "@/components/admin/admin-section-gate";
 import { AdminAreaChart, CATEGORICAL_RAMP } from "@/components/admin/admin-charts";
 import { I } from "@/components/ui/glyphs";
 import { db } from "@/lib/server/store";
@@ -25,7 +26,12 @@ const CATEGORY_VARIANT: Record<AuditCategory, "gold" | "royal" | "danger" | "suc
   SYSTEM:     "neutral",
 };
 
+/** E-381 §6 item 10 — /admin has no section layout of its own, so the page carries its gate. */
 export default async function AdminOverviewPage() {
+  return <AdminSectionGate><AdminOverviewContent /></AdminSectionGate>;
+}
+
+async function AdminOverviewContent() {
   // A-5: null (not 0) on a failed read → an explicit "couldn't compute" tile,
   // never a fabricated "TZS 0" / "0 pending" presented as real.
   const active24h = await activePlayers("today").catch(() => null);

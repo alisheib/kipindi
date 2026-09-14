@@ -13,7 +13,10 @@
 // cache-first below (they match the .png rule), so without a cache-version bump
 // every returning visitor keeps seeing the OLD logo from the SW cache forever.
 // Bumping the name makes `activate` delete the stale cache and re-fetch fresh.
-const CACHE_NAME = "50pick-v3";
+// v3 → v4 (2026-09-14, E-381 §6 item 13): static assets are now stale-while-revalidate, so a same-URL asset
+// refreshes on the next visit by itself — this name no longer has to be bumped by hand for that. The bump
+// clears caches written by the old cache-first rule once.
+const CACHE_NAME = "50pick-v4";
 // C2j — dedicated branded offline route (precached below) instead of falling
 // back to the data-heavy home page.
 const OFFLINE_URL = "/offline";
@@ -26,13 +29,29 @@ const PRECACHE = [
   "/brand/mark-color.svg",
 ];
 
-// Install: precache critical assets
+// Install: precache critical assets.
+// ⚠️ E-381 §6 item 13 · ONE AT A TIME, NOT addAll. `cache.addAll` is atomic: one failed precache fetch (a deploy
+// in progress, a flaky connection) rejected the whole install and discarded the worker — and with it the offline
+// page. Each asset is now added on its own, and a failure leaves the others cached.
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(PRECACHE)),
+    caches.open(CACHE_NAME).then((cache) =>
+      Promise.allSettled(PRECACHE.map((url) => cache.add(url)))),
   );
   self.skipWaiting();
 });
+
+/** The branded offline page if it is cached, otherwise a minimal one — never `undefined`. */
+function offlineResponse() {
+  return caches.match(OFFLINE_URL).then((cached) => cached || new Response(
+    '<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
+      + '<title>50pick · offline</title><body style="margin:0;min-height:100vh;display:grid;place-items:center;'
+      + 'background:#0b0d2e;color:#e8e9f5;font:16px system-ui,sans-serif;text-align:center;padding:24px">'
+      + '<div><p style="font-weight:700;font-size:20px">You are offline</p>'
+      + '<p>Check your connection and try again · Hakuna mtandao, jaribu tena.</p></div></body>',
+    { status: 503, headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } },
+  ));
+}
 
 // Activate: clean old caches
 self.addEventListener("activate", (event) => {
@@ -62,25 +81,27 @@ self.addEventListener("fetch", (event) => {
     url.pathname.startsWith("/hero/") ||
     url.pathname.match(/\.(woff2?|ttf|otf|svg|png|jpg|webp|ico)$/)
   ) {
+    // Stale-while-revalidate: answer from the cache at once when we can, and refresh the entry in the background,
+    // so a replaced logo at the same URL reaches the player on their next visit (it used to need a CACHE_NAME bump).
     event.respondWith(
-      caches.match(request).then((cached) => {
-        if (cached) return cached;
-        return fetch(request).then((response) => {
-          if (response.ok) {
-            const clone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
-          }
+      caches.open(CACHE_NAME).then((cache) => cache.match(request).then((cached) => {
+        const network = fetch(request).then((response) => {
+          if (response.ok) cache.put(request, response.clone());
           return response;
         });
-      }),
+        if (cached) { event.waitUntil(network.catch(() => undefined)); return cached; }
+        return network;
+      })),
     );
     return;
   }
 
   // Navigation — network-first, offline fallback
   if (request.mode === "navigate") {
+    // ⛔ E-381 §6 item 13 · `caches.match` resolves to `undefined` when the page was never cached, and
+    // `respondWith(undefined)` throws — the player got the browser's own network-error page instead of ours.
     event.respondWith(
-      fetch(request).catch(() => caches.match(OFFLINE_URL)),
+      fetch(request).catch(() => offlineResponse()),
     );
     return;
   }

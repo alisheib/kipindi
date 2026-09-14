@@ -1,6 +1,6 @@
 # The revoked-session dead end — why a returning player saw a blank blue page
 
-**Status:** ✅ §6 items 0–3 and 5–9 FIXED 2026-09-14 (session 97) — see §5b. Items 4 and 10–14 remain open.
+**Status:** ✅ §6 items 0–14 FIXED 2026-09-14 (session 97) — §5b (0–3, 5–9) and §5c (4, 10–14).
 **Authority:** this file, for everything about `?revoked=1`.
 **Reported:** 2026-09-12 by Ali, from player reports: *"they were logged in, closed the browser,
 came back later, opened a 50pick link, and got stuck on a blue screen with nothing."*
@@ -265,6 +265,32 @@ wrong-password precedence). On the pre-fix tree: 10 failures. `test:session-regi
 
 **Still open:** item 4 (a soft navigation inside the SPA keeps stale authed chrome until the next refresh or
 document load — the notice now appears on the next refresh), items 10–14.
+
+### 5c. The rest of §6, same day (session 97, register E-412)
+
+- **Item 4 — the stale signed-in shell.** `SessionPresence` (mounted only in the signed-in shell) asks
+  `/api/session/status` on every navigation after the first render and when the tab becomes visible; when the session is
+  gone it leaves with a DOCUMENT navigation to `/auth/session-ended` (at most once a minute, so a disagreement can never
+  loop). An unreadable registry counts as active. Driven: a displaced player clicking a nav `<Link>` lands on the sign-in
+  page with the reason, the cookie cleared, and browses as a guest afterwards.
+- **Item 10 — the console's gates.** Measured: an `/admin/template.tsx` is NOT re-rendered on a soft navigation; a
+  section's own `layout.tsx` IS. The view and act gates moved out of `admin/layout.tsx` into `AdminSectionGate`, rendered
+  by 38 section layouts and by the two pages without one (`/admin`, `/admin/players`). **The leak was real:** on the
+  previous tree an AUDITOR who followed the KYC queue's own link into `/admin/players/[id]` (support — not viewable)
+  got the player profile rendered; a SUPPORT officer leaving a blocked page stayed "Restricted"; a COMPLIANCE officer
+  entering a view-only section kept "may act". `test:admin-section-gate` 16/0, 5 failures on the previous tree.
+- **Item 11 — the guard.** `test:layout-staleness` now verifies the 38 section layouts by shape, draws its population
+  from what layouts IMPORT (so `app-shell.tsx` is in it), corrects the false REVIEWED reason for `admin/layout.tsx`, and
+  is in `predeploy`.
+- **Item 12 — the registry.** An agreeing cache hit is trusted for 30 s, then re-read, so a revocation on another
+  container holds here within 30 s; the Map is capped at 20,000; `retention.purge.daily` deletes `ActiveSession` rows
+  older than 8 days (a session lives at most 7 from the sign-in that wrote its row). `test:session-registry` 17/0.
+- **Item 13 — `sw.js`.** The offline fallback can no longer be `undefined` (a minimal page answers when the branded one
+  was never cached); precache adds each asset on its own instead of an atomic `addAll`; static assets are
+  stale-while-revalidate, so a same-URL asset refreshes by itself (`CACHE_NAME` v4).
+- **Item 14 — the anchor.** `NextHashField` puts `location.hash` into the sign-in form; the action re-attaches a
+  validated `#[A-Za-z0-9_-]{1,80}` to `next`. `SessionPresence` carries the fragment too. Driven:
+  `/positions#pos_…` signed out → sign in → `/positions#pos_…`.
 
 ---
 

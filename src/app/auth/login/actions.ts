@@ -34,7 +34,11 @@ export async function startLoginAction(formData: FormData) {
   // ONLY when it points at an in-app destination.
   const next = /^\/(?![/\\])/.test(nextRaw) ? nextRaw : "";
   // And never let `next` send the user back to the auth pages themselves.
-  const safeNext = next && !next.startsWith("/auth/") ? next : "";
+  // E-381 §6 item 14 — a position permalink's `#pos_…` fragment, read by `NextHashField` (a fragment never reaches the
+  // server), re-attached after its shape is checked, so every redirect below that carries `next` carries it too.
+  const hashRaw = String(formData.get("nextHash") ?? "");
+  const safeHash = /^#[A-Za-z0-9_-]{1,80}$/.test(hashRaw) ? hashRaw : "";
+  const safeNext = next && !next.startsWith("/auth/") ? (next.includes("#") ? next : next + safeHash) : "";
 
   const result = await loginWithPassword({ identifier, password });
   if (!result.ok) {

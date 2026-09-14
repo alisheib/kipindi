@@ -29,6 +29,8 @@
  *    show the notice as a visible rectangle, and its plain link must reach the login page.
  * §4 THE COPY (§6 items 6, 8, 9) — an idle cookie is told it went idle, not "another device"; and
  *    a wrong password outranks every sign-out panel (item 7).
+ * §5 ITEM 4 — a displaced player who keeps clicking <Link>s leaves the signed-in shell for the sign-in page.
+ * §6 ITEM 14 — `/positions#pos_…` signed out → sign in → back on /positions WITH the anchor.
  *
  * Local only: it drives /auth/demo, which is 404 in production. §4's idle case re-signs a real
  * cookie, so it needs the dev server's SESSION_SECRET in this process's environment.
@@ -235,6 +237,65 @@ console.log("\n[revoked-deadend] §4 the reason given is the true one");
   ok("wrong password · the error is shown, not a sign-out story",
     /wrong phone or password/i.test(wr.text) && !/signed out/i.test(wr.text), `(text excerpt=${wr.text.slice(0, 160).replace(/\s+/g, " ")})`);
   await w.close();
+}
+
+// ── §5 E-381 §6 item 4 · a displaced player who keeps CLICKING must not keep the signed-in shell.
+console.log("\n[revoked-deadend] §5 soft navigation while displaced");
+{
+  const ctx = await browser.newContext();
+  const p = await ctx.newPage();
+  await p.goto(BASE + "/auth/demo", { waitUntil: "domcontentloaded" });
+  await wait(1200);
+  await p.goto(BASE + "/markets", { waitUntil: "domcontentloaded" });
+  await wait(3000);
+  const other = await browser.newContext();
+  const o = await other.newPage();
+  await o.goto(BASE + "/auth/demo", { waitUntil: "domcontentloaded" });
+  await wait(1200);
+  await other.close();
+  // The app's own nav <Link> — a SOFT navigation, which does not re-run the root layout.
+  const link = p.locator('a[href="/leaderboard"], a[href="/results"], a[href="/live"]').first();
+  ok("§5 precondition · a nav link to click", (await link.count()) > 0);
+  if (await link.count()) {
+    await link.click();
+    await wait(7000);
+    const r = await readPage(p);
+    ok("§5 the displaced player is taken out of the signed-in shell to a rendered login page with the reason",
+      r.path === "/auth/login" && r.hasPassword && r.search.includes("revoked=1"), `(path=${r.path} search=${r.search})`);
+    ok("§5 …and the dead cookie is gone", !(await sessionCookie(ctx)));
+    await p.goto(BASE + "/markets", { waitUntil: "domcontentloaded" });
+    await wait(3000);
+    ok("§5 afterwards the player browses as a guest — no second bounce", (await readPage(p)).path === "/markets");
+  }
+  await ctx.close();
+}
+
+// ── §6 E-381 §6 item 14 · a position permalink keeps its anchor through sign-in.
+console.log("\n[revoked-deadend] §6 a #pos_ anchor survives signing in");
+{
+  const phone = "+255700000074";
+  const password = "QaPlayer2026!";
+  const seed = await browser.newContext();
+  const sp = await seed.newPage();
+  await sp.goto(BASE + "/", { waitUntil: "domcontentloaded" });
+  const seeded = await sp.request.post(BASE + "/api/dev-test/seed-admin", { data: { role: "PLAYER", phone, password, name: "QA Anchor" } });
+  ok("§6 precondition · a player with a password", seeded.ok());
+  await seed.close();
+  const ctx = await browser.newContext();
+  const p = await ctx.newPage();
+  await p.goto(BASE + "/positions#pos_qaanchor123", { waitUntil: "domcontentloaded" });
+  await wait(3500);
+  const at = await p.evaluate(() => ({ path: location.pathname, hash: location.hash, field: document.querySelector('input[name="nextHash"]')?.value ?? null }));
+  ok("§6 signed out, the protected link lands on sign-in with its fragment in the form", at.path === "/auth/login" && at.field === "#pos_qaanchor123", JSON.stringify(at));
+  // The visible phone box (the named `identifier` input is the hidden value it writes).
+  const idField = p.locator('form:has(input[type="password"]) input[type="text"]:visible').first();
+  await idField.fill(phone.replace("+255", ""));
+  await p.fill('input[type="password"]', password);
+  await p.locator('form:has(input[type="password"]) button[type="submit"]').first().click();
+  await wait(7000);
+  const after = await p.evaluate(() => ({ path: location.pathname, hash: location.hash }));
+  ok("§6 after signing in the player is on /positions WITH the #pos_ anchor", after.path === "/positions" && after.hash === "#pos_qaanchor123", JSON.stringify(after));
+  await ctx.close();
 }
 
 await browser.close();

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { NextHashField } from "@/components/auth/next-hash-field";
 import { I } from "@/components/ui/glyphs";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { AuthPanel, AuthHeader } from "@/components/auth/auth-panel";
@@ -271,6 +272,7 @@ export default async function LoginPage({
 
           <form action={startLoginAction} className="space-y-4">
             {nextSafe && <input type="hidden" name="next" value={nextSafe} />}
+            <NextHashField />
             {/* Phone/Email switcher. Both methods submit under `identifier`; the
                 server discriminates on a literal `@` (email) vs `tzPhone`
                 normalisation (a bare 9-digit MSISDN → +255…). Phone mode reuses

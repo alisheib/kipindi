@@ -41,9 +41,29 @@ import { isTransient } from "./retry";
 declare global {
   // eslint-disable-next-line no-var
   var __50PICK_ACTIVE_SESSIONS: Map<string, string> | undefined;
+  // eslint-disable-next-line no-var
+  var __50PICK_ACTIVE_SESSIONS_AT: Map<string, number> | undefined;
 }
 const cache: Map<string, string> =
   globalThis.__50PICK_ACTIVE_SESSIONS ?? (globalThis.__50PICK_ACTIVE_SESSIONS = new Map());
+/**
+ * 🔴 E-381 §6 item 12 (2026-09-14) · WHEN each cache entry was last confirmed by the database.
+ * The Map was never invalidated and never evicted: a suspension, self-exclusion or sign-out handled by ANOTHER
+ * container deleted the row there, while this container kept answering "active" from memory for as long as it
+ * lived — the stated purpose of `revokeUserSessions` did not hold across instances. An agreeing hit is now trusted
+ * for CACHE_TTL_MS only, then re-read; and the Map is capped so it cannot grow with the lifetime user count.
+ * ⚠️ Without a database the Map IS the registry (local dev, unit tests): no TTL applies there.
+ */
+const cacheAt: Map<string, number> =
+  globalThis.__50PICK_ACTIVE_SESSIONS_AT ?? (globalThis.__50PICK_ACTIVE_SESSIONS_AT = new Map());
+export const CACHE_TTL_MS = 30_000;
+const CACHE_MAX = 20_000;
+function remember(userId: string, sessionId: string) {
+  if (hasDatabase() && cache.size >= CACHE_MAX && !cache.has(userId)) { cache.clear(); cacheAt.clear(); }
+  cache.set(userId, sessionId);
+  cacheAt.set(userId, Date.now());
+}
+function forget(userId: string) { cache.delete(userId); cacheAt.delete(userId); }
 
 /** What the registry says about one user. ⛔ `unavailable` means UNKNOWN — never treat it as `absent`. */
 export type RegistryRead =
@@ -119,12 +139,13 @@ async function dbDelete(userId: string): Promise<void> {
  */
 export async function readActiveSession(userId: string, expectedSessionId?: string): Promise<RegistryRead> {
   const hit = cache.get(userId);
-  if (hit && (expectedSessionId === undefined || hit === expectedSessionId || !hasDatabase())) {
+  const fresh = !hasDatabase() || Date.now() - (cacheAt.get(userId) ?? 0) < CACHE_TTL_MS;
+  if (hit && fresh && (expectedSessionId === undefined || hit === expectedSessionId || !hasDatabase())) {
     return { state: "active", sessionId: hit };
   }
   const fromDb = await dbGet(userId);
-  if (fromDb.state === "active") cache.set(userId, fromDb.sessionId);
-  else if (fromDb.state === "absent" && hasDatabase()) cache.delete(userId);
+  if (fromDb.state === "active") remember(userId, fromDb.sessionId);
+  else if (fromDb.state === "absent" && hasDatabase()) forget(userId);
   return fromDb;
 }
 
@@ -143,7 +164,7 @@ export async function getActiveSessionId(userId: string): Promise<string | null>
 export async function setActiveSessionId(userId: string, sessionId: string): Promise<string | null> {
   const previous = await getActiveSessionId(userId);
   await dbSet(userId, sessionId);
-  cache.set(userId, sessionId);
+  remember(userId, sessionId);
   return previous ?? null;
 }
 
@@ -151,7 +172,7 @@ export async function setActiveSessionId(userId: string, sessionId: string): Pro
 export async function clearActiveSession(userId: string, expectedSessionId: string): Promise<void> {
   const current = await getActiveSessionId(userId);
   if (current === expectedSessionId) {
-    cache.delete(userId);
+    forget(userId);
     await dbDelete(userId);
   }
 }
@@ -162,6 +183,20 @@ export async function clearActiveSession(userId: string, expectedSessionId: stri
  * than waiting for idle/absolute timeout.
  */
 export async function revokeUserSessions(userId: string): Promise<void> {
-  cache.delete(userId);
+  forget(userId);
   await dbDelete(userId);
+}
+
+/**
+ * E-381 §6 item 12 · delete registry rows that can only belong to a dead session. A session lives at most 7 days from
+ * the sign-in that wrote its row (`SESSION_TTL_MS`), and the row's `updatedAt` is that sign-in, so a row older than
+ * `beforeIso` (the retention pass passes 8 days) names a session `getSession()` already refuses as expired. Returns the
+ * count. No database → nothing to do.
+ */
+export async function pruneStaleActiveSessions(beforeIso: string): Promise<number> {
+  if (!hasDatabase()) return 0;
+  const client = prisma();
+  if (!client) return 0;
+  const r = await client.activeSession.deleteMany({ where: { updatedAt: { lt: new Date(beforeIso) } } });
+  return r.count;
 }

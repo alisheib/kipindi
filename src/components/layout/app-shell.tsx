@@ -36,6 +36,7 @@ import { NavProgress } from "@/components/ui/nav-progress";
 import { RouteTransition } from "@/components/ui/route-transition";
 import { getSession, sessionEndedThisRequest, type SessionEndReason } from "@/lib/server/session";
 import { NoticeBar, NoticeBarAction } from "@/components/ui/notice-bar";
+import { SessionPresence } from "./session-presence";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/server/store";
 import { guestUser } from "@/lib/ui-stubs";
@@ -376,6 +377,8 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
           audit described. What was unbounded was the DURATION. */}
       {session && <Suspense fallback={null}><LazyNotifyPoller /></Suspense>}
       {session && <Suspense fallback={null}><LazyEventStream /></Suspense>}
+      {/* E-381 §6 item 4 — the signed-in shell notices, on the next navigation, that the session ended. */}
+      {session && <SessionPresence />}
       <Suspense fallback={null}><LazyWinCelebration /></Suspense>
       <Suspense fallback={null}>
         <AuthFlash />

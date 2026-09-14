@@ -75,7 +75,19 @@ function walkLayouts(dir: string, out: string[] = []): string[] {
   }
   return out;
 }
-const layouts = walkLayouts("src/app").sort();
+const allLayouts = walkLayouts("src/app").sort();
+/**
+ * ⭐ E-381 §6 item 10 (2026-09-14) · THE SECTION-GATE LAYOUTS ARE A CLASS OF THEIR OWN. Each console section has a
+ * layout whose whole body renders `AdminSectionGate` — the view/act gate moved there BECAUSE a section's own layout is
+ * re-executed when a navigation enters it. They are verified by SHAPE below (exactly the wrapper, nothing else), so the
+ * ratchet on the layouts that can freeze a value stays at the four that exist.
+ */
+const SECTION_GATE_BODY = /^import \{ AdminSectionGate \} from "@\/components\/admin\/admin-section-gate";\n\n\/\*\*[^\n]*\*\/\nexport default function SectionLayout\(\{ children \}: \{ children: React\.ReactNode \}\) \{\n  return <AdminSectionGate>\{children\}<\/AdminSectionGate>;\n\}\n$/;
+const sectionGates = allLayouts.filter((f) => f.startsWith("src/app/admin/") && f !== "src/app/admin/layout.tsx" && /AdminSectionGate/.test(read(f)));
+const layouts = allLayouts.filter((f) => !sectionGates.includes(f));
+ok(`1.0 ${sectionGates.length} console section layouts are EXACTLY the gate wrapper (they decide nothing else)`,
+   sectionGates.length >= 38 && sectionGates.every((f) => SECTION_GATE_BODY.test(read(f))),
+   sectionGates.filter((f) => !SECTION_GATE_BODY.test(read(f))).join(" · "));
 /**
  * ⛔ A RATCHET, AND IT MAY ONLY BE RAISED BY A HUMAN WHO READ THIS FILE. A new layout is a new
  * place for a per-request value to freeze, and the whole finding is that nobody thinks about that
@@ -101,16 +113,44 @@ console.log("\n§2 · a layout may not answer \"where am I?\" from the x-pathnam
  */
 const REVIEWED: Record<string, string> = {
   "src/app/admin/layout.tsx":
-    "REVIEWED · three reads remain, and none of them decides a rendered value any more. "
-    + "(a) two `x-href ?? x-pathname` reads only preserve a deep-link through a redirect whose "
-    + "PRIMARY line is `proxy.ts`'s `isProtected` middleware gate — a soft navigation that skips "
-    + "this layout has already passed that gate. (b) `path` now feeds only FALLBACKS: the "
-    + "breadcrumb and both navs re-derive from `usePathname()`. "
-    + "⚠️ (c) `TOTP_EXEMPT.has(path)` is FILED, NOT FIXED — see E-229. It is latent today "
-    + "(`/api/health` reports `security.adminTotp: DISABLED` on production, and A6 is parked), and "
-    + "the sensitive actions behind it step up independently via `requireAdminTotp`.",
+    "REVIEWED (corrected 2026-09-14, E-381 §6 item 11) · the earlier reason said `path` fed only fallbacks, and it was "
+    + "FALSE: `path` decided `viewBlocked`, `mayAct` and `readOnly`, i.e. whether children rendered and whether ~20 "
+    + "controls could act — frozen at the hard-loaded page. Those gates MOVED to `AdminSectionGate` (§1.0). What remains: "
+    + "(a) two `x-href ?? x-pathname` reads preserve a deep link through the sign-in redirect, whose primary line is "
+    + "`proxy.ts`; (b) `path` feeds the breadcrumb and nav FALLBACKS, re-derived from `usePathname()` (§3); "
+    + "⚠️ (c) `TOTP_EXEMPT.has(path)` is FILED, NOT FIXED — E-229, latent while admin TOTP is disabled on production, "
+    + "and the sensitive actions step up independently via `requireAdminTotp`.",
+  "src/components/layout/app-shell.tsx":
+    "REVIEWED (added 2026-09-14, E-381 §6 item 11 — rendered by the ROOT layout on every request, and invisible to a "
+    + "population of files named layout.tsx). (a) `/admin` early return: crossing between the two shells is a hard "
+    + "navigation (`test:shell-boundary`). (b) the ended-session answer: a DOCUMENT load redirects; any other request "
+    + "renders the page in place with a notice, so nothing frozen can blank it (`test:revoked-deadend` §3).",
+  "src/components/admin/admin-section-gate.tsx":
+    "REVIEWED (added 2026-09-14) · rendered by each console SECTION layout, which is re-executed on every navigation "
+    + "into the section — measured, and driven by `test:admin-section-gate`.",
 };
-for (const f of layouts) {
+/**
+ * ⭐ E-381 §6 item 11 · THE POPULATION INCLUDES WHAT A LAYOUT RENDERS. It used to be files NAMED `layout.tsx`, so
+ * `app-shell.tsx` — rendered by the root layout on every request, and the file behind the blank-page defect — was
+ * never in it. Every `@/` or relative import of every layout (section gates included) is resolved and joins §2.
+ */
+function importsOf(file: string): string[] {
+  const out: string[] = [];
+  for (const m of read(file).matchAll(/from\s+"(@\/[^"]+|\.{1,2}\/[^"]+)"/g)) {
+    const spec = m[1];
+    const base = spec.startsWith("@/") ? join("src", spec.slice(2)) : join(file, "..", spec);
+    for (const ext of [".tsx", ".ts", "/index.tsx", "/index.ts"]) {
+      const cand = (base + ext).replace(/\\/g, "/");
+      try { if (statSync(cand).isFile()) { out.push(cand); break; } } catch { /* not this one */ }
+    }
+  }
+  return out;
+}
+const rendered = [...new Set(allLayouts.flatMap(importsOf))].filter((f) => !f.endsWith("layout.tsx")).sort();
+ok("1.3 ⭐ POSITIVE CONTROL · the rendered population reaches app-shell.tsx and the section gate",
+   rendered.includes("src/components/layout/app-shell.tsx") && rendered.includes("src/components/admin/admin-section-gate.tsx"),
+   rendered.slice(0, 12).join(" · "));
+for (const f of [...layouts, ...rendered]) {
   const src = read(f);
   const reads = READS_PATHNAME.test(src);
   if (!reads) { ok(`2.1 ${f} does not read the x-pathname header at all`, true); continue; }
@@ -125,8 +165,8 @@ for (const f of layouts) {
      stillMatch.length > 0,
      "no reviewed file matches — the pattern has rotted and every check in §2 is vacuous");
   ok("2.3 …and the reviewed list may only SHRINK — every entry still exists on disk",
-     Object.keys(REVIEWED).every((f) => layouts.includes(f)),
-     Object.keys(REVIEWED).filter((f) => !layouts.includes(f)).join(" · "));
+     Object.keys(REVIEWED).every((f) => layouts.includes(f) || rendered.includes(f)),
+     Object.keys(REVIEWED).filter((f) => !layouts.includes(f) && !rendered.includes(f)).join(" · "));
 }
 // A server-decided active state in a layout is the legal-nav bug, whatever file it appears in.
 for (const f of layouts) {

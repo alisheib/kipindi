@@ -1,4 +1,5 @@
 import { parseQuery, matchesQuery, fieldNames, USER_SEARCH } from "@/lib/search";
+import { AdminSectionGate } from "@/components/admin/admin-section-gate";
 import { AdminPageHead, AdminCard, AdminKpi, AdminLoadError } from "@/components/admin/admin-shell";
 import { AdminPagination, PER_PAGE, parsePage, buildBaseHref } from "@/components/admin/admin-pagination";
 import { SortTh } from "@/components/admin/admin-sort";
@@ -27,7 +28,13 @@ import { KpiGrid } from "@/components/admin/admin-body";
 export const metadata = { title: "Admin · Players" };
 export const dynamic = "force-dynamic";
 
-export default async function AdminPlayersPage({ searchParams }: { searchParams: Promise<{ q?: string; status?: string; kyc?: string; funded?: string; sort?: string; dir?: string; page?: string }> }) {
+type PlayersSearch = { q?: string; status?: string; kyc?: string; funded?: string; sort?: string; dir?: string; page?: string };
+/** E-381 §6 item 10 — the list has no section layout (its siblings `[id]` and `cohorts` carry their own), so it gates itself. */
+export default async function AdminPlayersPage(props: { searchParams: Promise<PlayersSearch> }) {
+  return <AdminSectionGate><AdminPlayersContent {...props} /></AdminSectionGate>;
+}
+
+async function AdminPlayersContent({ searchParams }: { searchParams: Promise<PlayersSearch> }) {
   const sp = await searchParams;
   // RBAC: only accounting-view roles see wallet balances (Support = roster, no money).
   const _session = await currentSession();

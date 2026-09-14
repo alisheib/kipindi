@@ -100,6 +100,20 @@ cache.set("u6", "s6-old"); table.set("u6", { userId: "u6", sessionId: "s6-new" }
 ok("③ a disagreement the database cannot confirm is `unavailable`, not displaced", (await reg.readActiveSession("u6", "s6-new")).state === "unavailable");
 failRead = null;
 
+// ④ E-381 §6 item 12 · a revocation on ANOTHER instance reaches this one within the cache TTL.
+{
+  const at = (globalThis as { __50PICK_ACTIVE_SESSIONS_AT?: Map<string, number> }).__50PICK_ACTIVE_SESSIONS_AT!;
+  table.set("u7", { userId: "u7", sessionId: "s7" });
+  await reg.readActiveSession("u7", "s7");                  // warm: cached and confirmed now
+  table.delete("u7");                                        // a suspension handled by another container
+  reads = 0;
+  const warm = await reg.readActiveSession("u7", "s7");
+  ok("④ inside the TTL an agreeing hit is still a memory answer (no read on the hot path)", warm.state === "active" && reads === 0);
+  at.set("u7", Date.now() - reg.CACHE_TTL_MS - 1);          // the TTL passes
+  const later = await reg.readActiveSession("u7", "s7");
+  ok("④ after the TTL the database is asked, and the revocation holds here too", later.state === "absent" && reads === 1 && !cache.has("u7"), JSON.stringify(later));
+}
+
 console.error = quiet;
 console.log(`\n${fails.length === 0 ? "ALL PASS" : "FAILED"} — ${pass} passed, ${fails.length} failed`);
 if (fails.length) process.exit(1);
