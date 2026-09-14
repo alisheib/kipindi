@@ -214,6 +214,23 @@ section("§2 · H2_ORDER fixtures");
     const r = await w.place(b, i2);
     ok("2.4 · MIN_GAP + PER_MARKET_COUNT → PER_MARKET_COUNT (the terminal cap wins within group 5)", capOf(r) === "PER_MARKET_COUNT", show(r));
   }
+  {
+    // 02 §3.4: a Pause written under wallet:<botUser> while a bet already past H1 waits for that lock is
+    // honoured inside the lock — even though the CLAIMED intent itself was never cancelled.
+    const b = await w.bot();
+    const { market, i } = await opener(b);
+    const hold = withLock(`wallet:${b.userId}`, async () => {
+      await sleep(300);
+      await w.dal.houseBotStore.setStatus(b.botId, { from: ["ACTIVE"], to: "PAUSED", pauseReason: "MANUAL", pausedFromStatus: null });
+      await sleep(200);
+    });
+    await sleep(100);
+    const r = await w.place(b, i);
+    await hold;
+    const row = await w.dal.houseBotIntentStore.get(i.id);
+    ok("2.5 · a bot paused under its wallet lock while a claimed bet waits → house_bot_inactive in H2, 0 positions, intent not PLACED",
+      r.ok === false && r.reason === "house_bot_inactive" && (await houseCount(market.id)) === 0 && row?.status !== "PLACED", `${show(r)} · intent ${row?.status}`);
+  }
 }
 
 // ═══ §3 · global caps (H3, H4) ════════════════════════════════════════════════════════════════
@@ -430,6 +447,19 @@ section("§5 · in-lock re-reads");
     const r2 = await w.place(b2, i2);
     ok("5.8 · the share limit NOT SET → house_counterparty_concentration (Enter now refuses)", r2.ok === false && r2.reason === "house_counterparty_concentration", show(r2));
     await w.dal.houseBotIntentStore.cancelLive({ houseBotId: b2.botId }, "CASE_DONE");
+    {
+      // LIE-01: the share limit NOT SET turns Enter now off for BOTH entry conditions (MON-14's consequence).
+      const bo = await w.bot();
+      const eo = await manualOpener(bo);
+      const ro = await w.place(bo, eo.i);
+      ok("5.8b · share limit NOT SET → an Enter now OPENER on an empty poll is refused house_counterparty_concentration",
+        ro.ok === false && ro.reason === "house_counterparty_concentration" && (await houseCount(eo.market.id)) === 0, show(ro));
+      await w.limits({ gStaffChosenMaxCounterpartyShare: 50 });
+      const bc = await w.bot();
+      const ec = await manualOpener(bc);
+      const rc = await w.place(bc, ec.i);
+      ok("5.8c · CONTROL · with the share limit at 50 the same Enter now OPENER places", rc.ok === true, show(rc));
+    }
     await w.limits({ gStaffChosenMaxCounterpartyShare: 80 });
     const b3 = await w.bot();
     const i3 = await w.intent(b3, market.id, { kind: "MANUAL", entryCondition: "THIN", side: "YES", stakeTzs: 5_000 });
