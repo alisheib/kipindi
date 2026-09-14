@@ -324,7 +324,7 @@ export async function coolOff(userId: string, period: keyof typeof COOLING_OFF_P
   sendEmailToUser(userId, (email) => ({
     to: email,
     subject: `Break confirmed · ${PERIOD_LABEL[period] ?? period}`,
-    html: coolOffHtml({ duration: PERIOD_LABEL[period] ?? period, endDate: fmtDate(until) }),
+    html: coolOffHtml({ duration: PERIOD_LABEL[period] ?? period, endDate: fmtDate(until), untilIso: new Date(until).toISOString() }),
     tag: "cool-off",
   }));
   // In-app mirror — parity with self-exclusion. A phone-only player with no
@@ -544,8 +544,10 @@ export async function getLimitUsage(userId: string): Promise<LimitUsage> {
 /**
  * Markers-of-harm detector — LCCP SR Code 3.4.1.
  *
- * Single-marker fires an in-app prompt; multi-marker triggers a Player-Safety
- * outreach within 24h. Markers detected:
+ * ⛔ READ-ONLY, AND NOTHING IS SENT TO THE PLAYER (2026-09-14). The one caller is
+ * detectHarmMarkersForAllUsers → /admin/compliance. There is NO in-app prompt and NO
+ * outreach job — the published Responsible Gambling Policy §3 and COMPLIANCE-DECISIONS
+ * 2026-09-14 (third) say so; do not restore either sentence without building it. Markers:
  *
  *   1. RAPID_DEPOSIT_ESCALATION  — 3+ deposits in 60 min OR 24h sum > 2× 7d-prior daily-avg
  *   2. CHASING_LOSSES            — deposit within 30 min of PLACING a bet, repeated 3+ times.
@@ -556,8 +558,8 @@ export async function getLimitUsage(userId: string): Promise<LimitUsage> {
  *   5. SESSION_OVERRUN           — current session exceeds reality-check interval × 4
  *
  * The detector is read-only — it computes from existing audit + transaction
- * history, never mutates user state. Output drives the in-app prompt and the
- * /admin/compliance Player Safety dashboard.
+ * history, never mutates user state. Output drives the /admin/compliance Player
+ * Safety dashboard only.
  */
 export type HarmMarker =
   | "RAPID_DEPOSIT_ESCALATION"

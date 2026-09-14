@@ -38,10 +38,11 @@ import { getPayoutStatus, payoutsAcceptingRequests } from "./payout-status";
 import { isPaymentPaused } from "./payment-ops";
 import { addWalletFreeze } from "./wallet-freeze";
 import { randomId } from "./crypto";
-import { notifyRefusedFundsDecision } from "./notification-service";
-import { sendEmailToUser, refusedFundsDecisionHtml } from "./email";
+import { notifyRefusedFundsDecision, notifyRefusedFundsReturnFailed } from "./notification-service";
+import { sendEmailToUser, refusedFundsDecisionHtml, refusedFundsReturnFailedHtml } from "./email";
+import { WITHDRAW_MAX_TZS } from "./validators";
 import { isFinalRefusal } from "@/lib/kyc-refusal";
-import { currentFreezeReasons } from "@/lib/wallet-freeze-reasons";
+import { currentFreezeReasons, FREEZE_REASON_LABEL } from "@/lib/wallet-freeze-reasons";
 import { PROVIDER_MIN_PAYOUT_TZS } from "@/lib/payout";
 import { normalizeTzLocalDigits } from "@/lib/phone-normalize";
 import {
@@ -50,6 +51,7 @@ import {
   RETURNS_MONEY,
   REFUSED_FUNDS_JUSTIFICATION_MIN,
   REFUSED_FUNDS_JUSTIFICATION_MAX,
+  REFUSED_FUNDS_FORFEIT_DESCRIPTION,
   isRefusedFundsOutcome,
   isReturnProvider,
   type RefusedFundsOutcome,
@@ -61,6 +63,12 @@ const PLAYER_REASON: Record<string, string> = {
   UNDERAGE: "You must be 18 or older to use 50pick.",
   SANCTIONED: "We're unable to verify this identity.",
   DUPLICATE_IDENTITY: "This identity is already registered to another account.",
+};
+/** ⭐ The same reason in Swahili — the letter's Swahili half used to say only "we could not verify you" (audit session 95). */
+const PLAYER_REASON_SW: Record<string, string> = {
+  UNDERAGE: "Lazima uwe na umri wa miaka 18 au zaidi kutumia 50pick.",
+  SANCTIONED: "Hatuwezi kuthibitisha utambulisho huu.",
+  DUPLICATE_IDENTITY: "Utambulisho huu tayari umesajiliwa kwenye akaunti nyingine.",
 };
 
 type Availability = { allowed: boolean; why: string | null; returnTzs: number; forfeitTzs: number };
@@ -89,6 +97,12 @@ export type RefusedFundsPosition = {
   lastDepositProvider: ReturnProvider | null;
   payoutsOpen: boolean;
   minPayout: number;
+  /** Σ earlier refused-funds forfeits on this account — they count against "what the player paid in". */
+  forfeitedBefore: number;
+  /** Freeze reasons OTHER than IDENTITY_REFUSED. While any stands, every money outcome is unavailable. */
+  blockingHolds: string[];
+  /** Open bets still settling into this wallet — null while the store has no per-user reader. */
+  openPositions: { count: number; stakedTzs: number } | null;
   outcomes: Record<RefusedFundsOutcome, Availability>;
 };
 
@@ -126,7 +140,17 @@ export async function refusedFundsPosition(userId: string): Promise<RefusedFunds
   const balance = w?.balance ?? 0;
   const hold = w?.hold ?? 0;
   const payoutsOpen = payoutsAcceptingRequests(payouts.status);
-  const returnableDeposits = Math.min(balance, Math.max(0, facts.confirmedDeposits - facts.paidOut));
+  // ⛔ EARLIER FORFEITS COUNT AGAINST "WHAT THE PLAYER PAID IN" (audit session 95, 2026-09-13). An open bet that settles
+  // into the frozen wallet after a FORFEIT re-opens the case; without this, "return the deposits" offered the
+  // winnings as deposits that had already been forfeited.
+  const forfeitedBefore = txns
+    .filter((t) => t.type === "ADJUSTMENT_DEBIT" && t.status === "CONFIRMED" && t.description === REFUSED_FUNDS_FORFEIT_DESCRIPTION)
+    .reduce((s, t) => s + Math.abs(t.amount), 0);
+  const returnableDeposits = Math.min(balance, Math.max(0, facts.confirmedDeposits - facts.paidOut - forfeitedBefore));
+  // ⛔ ANY OTHER HOLD BLOCKS EVERY MONEY OUTCOME (audit session 95). The refused-funds exception pays out of a wallet the
+  // IDENTITY refusal froze — never through an officer's own hold ("do not pay") or a self-exclusion. The officer lifts
+  // that hold first, on its own control, where it is recorded.
+  const blockingHolds = w ? currentFreezeReasons(w).filter((r) => r !== "IDENTITY_REFUSED") : [];
 
   const base = {
     userId,
@@ -144,6 +168,11 @@ export async function refusedFundsPosition(userId: string): Promise<RefusedFunds
     lastDepositProvider: facts.lastDepositProvider,
     payoutsOpen,
     minPayout: PROVIDER_MIN_PAYOUT_TZS,
+    forfeitedBefore,
+    blockingHolds,
+    // ⚠️ Not read yet: the store has no per-user open-position reader. Stays null (the case page renders it only when
+    // known) until one exists — recorded in LIVE-QA §6b session 95 rather than guessed from bet transactions.
+    openPositions: null,
   };
   const closedOutcomes = { RETURN_DEPOSITS: NONE, RETURN_BALANCE: NONE, HOLD_PENDING_APPEAL: NONE, FORFEIT: NONE };
 
@@ -158,23 +187,30 @@ export async function refusedFundsPosition(userId: string): Promise<RefusedFunds
 
   // The preconditions every money outcome shares.
   const moneyBlock =
-    hold > 0 ? `A payout of ${hold.toLocaleString("en")} TZS is already in flight. Wait for it to settle, then decide.`
+    blockingHolds.length > 0 ? `This wallet is also held for: ${blockingHolds.map((r) => FREEZE_REASON_LABEL[r]).join(", ")}. No money can move on this case until that hold is lifted on its own control.`
+    : hold > 0 ? `A payout of ${hold.toLocaleString("en")} TZS is already in flight. Wait for it to settle, then decide.`
     : balance <= 0 ? "There is no withdrawable balance to decide."
     : null;
+  // ⛔ A RETURN ABOVE THE PER-WITHDRAWAL CAP IS REFUSED HERE, BEFORE THE FORFEIT (audit session 95, 2026-09-13).
+  // `withdraw()` enforces `WITHDRAW_MAX_TZS` only AFTER step 3's forfeit has committed, so RETURN_DEPOSITS on 6,000,000
+  // forfeited the remainder and then failed — money moved on a decision that could never be carried out.
+  const overCap = (n: number) => `TZS ${n.toLocaleString("en")} is above the per-withdrawal maximum of TZS ${WITHDRAW_MAX_TZS.toLocaleString("en")}. A return is one withdrawal, and no split return has been ruled — hold the balance and escalate.`;
   const railBlock = payoutsOpen ? null : "The payout rail is not accepting requests right now, so nothing can be sent.";
   const belowMin = (n: number) => `TZS ${n.toLocaleString("en")} is below the smallest amount the payout rail can send (TZS ${PROVIDER_MIN_PAYOUT_TZS.toLocaleString("en")}).`;
 
   const returnDeposits: Availability = (() => {
     if (moneyBlock) return { allowed: false, why: moneyBlock, returnTzs: 0, forfeitTzs: 0 };
-    if (returnableDeposits <= 0) return { allowed: false, why: "Nothing the player paid in is left to return — every deposit is accounted for by earlier payouts.", returnTzs: 0, forfeitTzs: 0 };
+    if (returnableDeposits <= 0) return { allowed: false, why: "Nothing the player paid in is left to return — every deposit is accounted for by earlier payouts or forfeits.", returnTzs: 0, forfeitTzs: 0 };
     if (railBlock) return { allowed: false, why: railBlock, returnTzs: returnableDeposits, forfeitTzs: balance - returnableDeposits };
     if (returnableDeposits < PROVIDER_MIN_PAYOUT_TZS) return { allowed: false, why: belowMin(returnableDeposits), returnTzs: returnableDeposits, forfeitTzs: balance - returnableDeposits };
+    if (returnableDeposits > WITHDRAW_MAX_TZS) return { allowed: false, why: overCap(returnableDeposits), returnTzs: returnableDeposits, forfeitTzs: balance - returnableDeposits };
     return { allowed: true, why: null, returnTzs: returnableDeposits, forfeitTzs: balance - returnableDeposits };
   })();
   const returnBalance: Availability = (() => {
     if (moneyBlock) return { allowed: false, why: moneyBlock, returnTzs: 0, forfeitTzs: 0 };
     if (railBlock) return { allowed: false, why: railBlock, returnTzs: balance, forfeitTzs: 0 };
     if (balance < PROVIDER_MIN_PAYOUT_TZS) return { allowed: false, why: belowMin(balance), returnTzs: balance, forfeitTzs: 0 };
+    if (balance > WITHDRAW_MAX_TZS) return { allowed: false, why: overCap(balance), returnTzs: balance, forfeitTzs: 0 };
     return { allowed: true, why: null, returnTzs: balance, forfeitTzs: 0 };
   })();
   const forfeit: Availability = moneyBlock
@@ -343,18 +379,37 @@ export async function decideRefusedFunds(input: {
         payoutStatus,
         payoutError,
         provider: provider ?? null,
+        // The holds standing when this was decided — so the record itself shows no other hold was paid through.
+        walletHolds: pos.walletHolds,
         instruction: "Owner ruling 2026-09-13 · an officer decides a finally-refused player's balance case by case, with a recorded reason",
       },
     });
 
-    // ── 6 · the player is told — only when the decision was carried out in full ──
+    // ── 6 · the player is told ──────────────────────────────────────────────────────
     if (!payoutError) {
       const facts = { outcome, returnedTzs, forfeitedTzs, balanceTzs: pos.balance };
       notifyRefusedFundsDecision(userId, facts).catch(() => {});
       sendEmailToUser(userId, (email) => ({
         to: email,
         subject: outcome === "HOLD_PENDING_APPEAL" ? "Your balance is held · Salio lako limeshikiliwa" : "Decision on your balance · Uamuzi kuhusu salio lako",
-        html: refusedFundsDecisionHtml({ ...facts, reason: PLAYER_REASON[pos.rejectReason ?? ""] ?? "We're unable to verify this identity.", reference: decisionId }),
+        html: refusedFundsDecisionHtml({
+          ...facts,
+          reason: PLAYER_REASON[pos.rejectReason ?? ""] ?? "We're unable to verify this identity.",
+          // ⭐ The Swahili half of the letter carries the reason too — Terms §3a promises it in every language (audit session 95).
+          reasonSw: PLAYER_REASON_SW[pos.rejectReason ?? ""] ?? PLAYER_REASON_SW.SANCTIONED,
+          reference: decisionId,
+        }),
+        tag: "kyc-refused-funds",
+      })).catch(() => {});
+    } else if (forfeitedTzs > 0) {
+      // ⛔ MONEY MOVED, SO THE PLAYER IS WRITTEN TO (audit session 95, 2026-09-13). The forfeit committed and the return did
+      // not start; this path used to send nothing at all, while Terms §3a promises the player a written decision. They are
+      // told what was kept and that the return did not go through — and the officer's next decision writes again.
+      Promise.resolve(notifyRefusedFundsReturnFailed(userId, { amountTzs: avail.returnTzs, forfeitedTzs })).catch(() => {});
+      sendEmailToUser(userId, (email) => ({
+        to: email,
+        subject: "Your return did not go through · Kurudisha pesa hakukufanikiwa",
+        html: refusedFundsReturnFailedHtml({ amountTzs: avail.returnTzs, forfeitedTzs, reference: decisionId }),
         tag: "kyc-refused-funds",
       })).catch(() => {});
     }
@@ -377,21 +432,38 @@ export type RefusedFundsDecisionRow = {
   returnedTzs: number;
   forfeitedTzs: number;
   payoutTxnId: string | null;
+  /** The payout's status AT DECISION TIME, as recorded in the audit row. Never the truth about where the money is now. */
   payoutStatus: string | null;
   payoutError: string | null;
+  /**
+   * ⭐ The payout transaction's status NOW (audit session 95, 2026-09-13). A return used to count as "returned" the moment
+   * it was dispatched — PROCESSING — and a later FAILED verdict put the money back in the frozen wallet while the report
+   * kept adding it to "Returned to players". null when there was no payout or it could not be read.
+   */
+  payoutTxnStatusNow: string | null;
+  /** `returnedTzs` only once the payout CONFIRMED. */
+  returnSettledTzs: number;
+  /** `returnedTzs` while the payout is still in flight. */
+  returnInFlightTzs: number;
   entryHash: string | null;
 };
+
+/** Where a finally-refused account's money stands — what the officer must do next. */
+export type RefusedCaseState = "undecided" | "on_hold" | "return_in_flight" | "return_failed" | "settled";
 
 export type RefusedAccountRow = {
   userId: string;
   kycId: string;
   rejectCode: string;
-  balance: number;
-  hold: number;
+  /** null when the report was read WITHOUT money rights (`refusedFundsReport({ money: false })`) — no wallet was read. */
+  balance: number | null;
+  hold: number | null;
   walletStatus: "ACTIVE" | "FROZEN" | "CLOSED" | null;
   lastDecision: RefusedFundsDecisionRow | null;
-  /** A withdrawable balance is still in the wallet — no decision taken yet, a hold, or a return whose payout failed. */
-  open: boolean;
+  /** A withdrawable balance is still in the wallet — no decision taken yet, a hold, or a return whose payout failed. null without money rights. */
+  open: boolean | null;
+  /** null without money rights. */
+  state: RefusedCaseState | null;
 };
 
 const OUTCOME_BY_ACTION = new Map(Object.entries(REFUSED_FUNDS_ACTION).map(([o, a]) => [a, o as RefusedFundsOutcome]));
@@ -415,8 +487,49 @@ export function toDecisionRow(e: AuditEntry): RefusedFundsDecisionRow {
     payoutTxnId: str(p.payoutTxnId),
     payoutStatus: str(p.payoutStatus),
     payoutError: str(p.payoutError),
+    // Filled by `withPayoutNow` from the payout transaction itself — an audit row cannot know how its payout ended.
+    payoutTxnStatusNow: null,
+    returnSettledTzs: 0,
+    returnInFlightTzs: 0,
     entryHash: e.entryHash ?? null,
   };
+}
+
+/**
+ * ⭐ WHERE EACH RETURN ENDED, read from the payout transaction NOW (audit session 95, 2026-09-13). The decision row is
+ * immutable and records the status at dispatch; only the transaction knows whether the money arrived, is still in
+ * flight, or came back. A read that fails leaves the row "unknown" (null) — never "returned".
+ */
+export async function withPayoutNow(rows: RefusedFundsDecisionRow[]): Promise<RefusedFundsDecisionRow[]> {
+  const statusById = new Map<string, string | null>();
+  for (const id of new Set(rows.map((r) => r.payoutTxnId).filter((x): x is string => !!x))) {
+    try { statusById.set(id, (await db.txn.findById(id))?.status ?? null); } catch { statusById.set(id, null); }
+  }
+  return rows.map((r) => {
+    const now = r.payoutTxnId ? statusById.get(r.payoutTxnId) ?? null : null;
+    const inFlight = now === "PROCESSING" || now === "PENDING" || now === "AML_REVIEW";
+    return { ...r, payoutTxnStatusNow: now, returnSettledTzs: now === "CONFIRMED" ? r.returnedTzs : 0, returnInFlightTzs: inFlight ? r.returnedTzs : 0 };
+  });
+}
+
+/** Where a finally-refused account's money stands, from the wallet and the last decision. */
+function caseState(balance: number, hold: number, last: RefusedFundsDecisionRow | null): RefusedCaseState {
+  if (hold > 0) return "return_in_flight";
+  if (balance <= 0) return "settled";
+  if (!last) return "undecided";
+  if (last.outcome === "HOLD_PENDING_APPEAL") return "on_hold";
+  if (last.payoutError || last.payoutTxnStatusNow === "FAILED") return "return_failed";
+  // Money back in the wallet after a FORFEIT or a completed return (a bet that settled afterwards) is a new question.
+  return "undecided";
+}
+
+/**
+ * ⭐ ONE PREDICATE for "this case waits on an officer" — the sidebar badge, the /admin/kyc KPI and the report all ask it
+ * (P1 review, 2026-09-14): three hand-typed copies agreed only by coincidence. A failed return waits too — its money is
+ * back in the frozen wallet and nothing will move it without a new decision.
+ */
+export function awaitsOfficer(a: Pick<RefusedAccountRow, "state">): boolean {
+  return a.state === "undecided" || a.state === "return_failed";
 }
 
 /**
@@ -427,34 +540,44 @@ export function toDecisionRow(e: AuditEntry): RefusedFundsDecisionRow {
  * can say so: a list that quietly stops, or a failed read shown as "no refused accounts", is a false
  * compliance all-clear.
  */
-export async function refusedFundsReport(): Promise<{
+export async function refusedFundsReport(opts: { money?: boolean } = {}): Promise<{
   decisions: RefusedFundsDecisionRow[];
   decisionsTotal: number;
   decisionsTruncated: boolean;
   accounts: RefusedAccountRow[];
   accountsFailed: boolean;
 }> {
+  // ⛔ WITHOUT MONEY RIGHTS, NO WALLET IS READ (audit session 95, 2026-09-13). The report page, the /admin/kyc KPI and the
+  // sidebar badge used to read every wallet for any viewer who reached a compliance route; a role granted compliance
+  // without accounting then saw every refused player's balance. The caller passes `canView(role, "accounting")`.
+  const money = opts.money !== false;
   const durable = await getAuditByActionsDurable(Object.values(REFUSED_FUNDS_ACTION), { category: "COMPLIANCE", limit: 2000 });
-  const decisions = durable.entries.map(toDecisionRow);
+  const decisions = await withPayoutNow(durable.entries.map(toDecisionRow));
   const lastByUser = new Map<string, RefusedFundsDecisionRow>();
   for (const d of decisions) if (d.userId && !lastByUser.has(d.userId)) lastByUser.set(d.userId, d); // newest first
 
   let accounts: RefusedAccountRow[] = [];
   let accountsFailed = false;
   try {
-    const [facts, wallets] = await Promise.all([db.kyc.listStageFacts(), db.wallet.listAll()]);
+    const facts = await db.kyc.listStageFacts();
+    const wallets = money ? await db.wallet.listAll() : [];
     const walletByUser = new Map(wallets.map((w) => [w.userId, w]));
     accounts = facts
       .filter((f) => f.status === "REJECTED" && isFinalRefusal(f.rejectReason))
-      .map((f) => {
-        const w = walletByUser.get(f.userId);
+      .map((f): RefusedAccountRow => {
         const last = lastByUser.get(f.userId) ?? null;
+        if (!money) {
+          return { userId: f.userId, kycId: f.id, rejectCode: f.rejectReason ?? "", balance: null, hold: null, walletStatus: null, lastDecision: last, open: null, state: null };
+        }
+        const w = walletByUser.get(f.userId);
+        const balance = w?.balance ?? 0;
+        const hold = w?.hold ?? 0;
         return {
           userId: f.userId,
           kycId: f.id,
           rejectCode: f.rejectReason ?? "",
-          balance: w?.balance ?? 0,
-          hold: w?.hold ?? 0,
+          balance,
+          hold,
           walletStatus: w?.status ?? null,
           lastDecision: last,
           // ⛔ OPEN IS WHERE THE MONEY IS, NOT WHAT THE LAST DECISION WAS CALLED (found in review, 2026-09-13).
@@ -462,10 +585,13 @@ export async function refusedFundsReport(): Promise<{
           // AFTER its forfeit committed read "closed" while the money sat in the frozen wallet, and dropped off
           // the badge and the KPI. A withdrawable balance still in the wallet is an undecided case, whatever
           // was recorded; money in flight (`hold`) is on its way out and is not.
-          open: (w?.balance ?? 0) > 0,
+          open: balance > 0,
+          state: caseState(balance, hold, last),
         };
       })
-      .sort((a, b) => Number(b.open) - Number(a.open) || (b.balance + b.hold) - (a.balance + a.hold));
+      .sort((a, b) => money
+        ? Number(b.open) - Number(a.open) || ((b.balance ?? 0) + (b.hold ?? 0)) - ((a.balance ?? 0) + (a.hold ?? 0))
+        : Number(!b.lastDecision) - Number(!a.lastDecision));
   } catch {
     accountsFailed = true;
   }

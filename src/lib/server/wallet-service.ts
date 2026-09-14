@@ -19,7 +19,7 @@
  *    on OUR commission, never on a player's money.
  */
 import { audit } from "./audit";
-import { sendEmailToUser, depositConfirmedHtml, depositPendingHtml, depositFailedHtml, depositReversedHtml, withdrawalSentHtml, withdrawalUnderReviewHtml, amlRejectRefundHtml } from "./email";
+import { sendEmailToUser, depositConfirmedHtml, depositPendingHtml, depositFailedHtml, depositReversedHtml, withdrawalSentHtml, withdrawalUnderReviewHtml, amlRejectRefundHtml, refusedFundsReturnFailedHtml } from "./email";
 import { db, type StoredTxn } from "./store";
 import { randomId } from "./crypto";
 import { dispatchDeposit, dispatchWithdrawal, verifyDepositStatus, verifyWithdrawalStatus, type CardCheckoutContext, type PaymentProvider, type LadderResult } from "./payments";
@@ -32,9 +32,11 @@ import { DepositSchema, AdminDepositSchema, WithdrawSchema } from "./validators"
 import { checkDepositLimit, isLockedOut } from "./responsible-gambling";
 import { assertIdentityForPayout, readIdentityStanding } from "./kyc-gate";
 import { isFinalRefusal } from "@/lib/kyc-refusal";
+import { currentFreezeReasons } from "@/lib/wallet-freeze-reasons";
+import { REFUSED_FUNDS_FORFEIT_DESCRIPTION } from "@/lib/refused-funds-outcomes";
 import type { FailureReason, FailureDetail } from "@/lib/failure-reasons";
 import { paymentMethodName } from "@/lib/payment-providers";
-import { notifyDeposit, notifyWithdraw, notifyAdminsAmlReview } from "./notification-service";
+import { notifyDeposit, notifyWithdraw, notifyAdminsAmlReview, notifyRefusedFundsReturnFailed } from "./notification-service";
 import { withLock } from "./locks";
 import { emit } from "./event-bus";
 import { postLedgerEntries, depositEntries, rgSuspenseEntries, withdrawalEntries, internalCreditEntries, adjustmentEntries, agentCommissionEntries, agentRegistrationFeeEntries, withMoneyTx } from "./ledger";
@@ -871,15 +873,28 @@ export async function settleWithdrawalFailed(txnId: string, reason: string): Pro
     const liveWallet = await db.wallet.findByUserId(done.userId);
     if (liveWallet) emit("wallet:balance", { userId: done.userId, balance: liveWallet.balance });
     audit({ category: "WALLET", action: "withdraw.failed", actorId: done.userId, targetType: "Transaction", targetId: txnId, payload: { reason } });
-    notifyWithdraw(done.userId, { status: "FAILED", amount: refunded, provider: friendlyProvider(done.provider), reason });
-    // Dual-channel parity with every other money event: the funds came back to
-    // the wallet, so the player gets an email too (purpose-built refund template).
-    sendEmailToUser(done.userId, (email) => ({
-      to: email,
-      subject: `Withdrawal returned · ${formatTzs(refunded)}`,
-      html: amlRejectRefundHtml({ amount: refunded, reason, reference: done.id, gatewayRef: done.providerRef ?? null, railLabel: payoutRailLabel(done.payoutRail) }),
-      tag: "withdrawal",
-    })).catch(() => {});
+    if (done.idempotencyKey?.startsWith("rfd:")) {
+      // ⛔ A FAILED REFUSED-FUNDS RETURN IS NOT "YOUR FUNDS ARE AVAILABLE AGAIN" (audit session 95, 2026-09-13). The money
+      // is back in a wallet the identity refusal keeps FROZEN, and an officer decides the next step — the generic notice
+      // ("Funds returned to your balance", "the full amount is available again") told a refused player the opposite.
+      Promise.resolve(notifyRefusedFundsReturnFailed(done.userId, { amountTzs: refunded, forfeitedTzs: 0 })).catch(() => {});
+      sendEmailToUser(done.userId, (email) => ({
+        to: email,
+        subject: "Your return did not go through · Kurudisha pesa hakukufanikiwa",
+        html: refusedFundsReturnFailedHtml({ amountTzs: refunded, forfeitedTzs: 0, reference: done.id }),
+        tag: "kyc-refused-funds",
+      })).catch(() => {});
+    } else {
+      notifyWithdraw(done.userId, { status: "FAILED", amount: refunded, provider: friendlyProvider(done.provider), reason });
+      // Dual-channel parity with every other money event: the funds came back to
+      // the wallet, so the player gets an email too (purpose-built refund template).
+      sendEmailToUser(done.userId, (email) => ({
+        to: email,
+        subject: `Withdrawal returned · ${formatTzs(refunded)}`,
+        html: amlRejectRefundHtml({ amount: refunded, reason, reference: done.id, gatewayRef: done.providerRef ?? null, railLabel: payoutRailLabel(done.payoutRail) }),
+        tag: "withdrawal",
+      })).catch(() => {});
+    }
   }
   return !!done;
 }
@@ -1744,7 +1759,11 @@ export async function withdraw(
     // ⭐ A REFUSED-FUNDS RETURN MAY PAY OUT OF A FROZEN WALLET — and only a return, and never a CLOSED
     // one (S1, 2026-09-13). The final refusal froze this wallet; unfreezing it to pay would open a
     // window in which the refused player could bet. Every other withdrawal still stops here.
-    if (w.status !== "ACTIVE" && !(refundReturn && w.status === "FROZEN")) return { ok: false as const, error: "Wallet frozen.", code: "SUSPENDED" as const };
+    // ⛔ …AND ONLY WHILE THE IDENTITY REFUSAL IS THE ONE HOLD STANDING (audit session 95, 2026-09-13). The exception was
+    // written as "a frozen wallet may pay", which paid a return straight through an officer's own "do not pay" hold or a
+    // self-exclusion. It is "this refusal's hold may pay": any other reason still stops the money here.
+    const refundThroughFreeze = !!refundReturn && w.status === "FROZEN" && currentFreezeReasons(w).every((r) => r === "IDENTITY_REFUSED");
+    if (w.status !== "ACTIVE" && !refundThroughFreeze) return { ok: false as const, error: "Wallet frozen.", code: "SUSPENDED" as const };
     // 🔴 `E-223` · THIS REFUSAL USED TO SAY NOTHING. It returned `INVALID` with no `reason`,
     // so `errorCopy` fell through to the generic `errInvalid` — *"That didn't go through.
     // Check the details and try again."* — on the most common refusal of the money-out
@@ -2531,6 +2550,12 @@ export async function forfeitRefusedBalance(opts: {
     const wallet = await db.wallet.findByUserId(opts.userId);
     if (!wallet) return { ok: false as const, error: "Wallet not found." };
     if (wallet.status === "CLOSED") return { ok: false as const, error: "The wallet is closed." };
+    // ⛔ NOT THROUGH ANOTHER HOLD (audit session 95, 2026-09-13): the refused-funds exception moves money out of a wallet
+    // the IDENTITY refusal froze — never past an officer's own "do not move" hold or a self-exclusion.
+    const otherHolds = currentFreezeReasons(wallet).filter((r) => r !== "IDENTITY_REFUSED");
+    if (otherHolds.length > 0) {
+      return { ok: false as const, error: `The wallet is also held for: ${otherHolds.join(", ")}. Nothing was forfeited — lift that hold first.` };
+    }
     // ⛔ The refusal must still be FINAL when the money moves — an officer may have re-opened it a moment ago.
     // Mirrors the refused-funds return check in `withdraw()` (found in review, 2026-09-13).
     const refusal = await db.kyc.findByUserId(opts.userId);
@@ -2555,7 +2580,7 @@ export async function forfeitRefusedBalance(opts: {
         amount: -amount, fee: 0, taxWithheld: 0,
         balanceAfter: updated.balance, currency: "TZS",
         provider: "INTERNAL", providerRef: null, msisdn: null,
-        description: "Balance forfeited · identity refused",
+        description: REFUSED_FUNDS_FORFEIT_DESCRIPTION,
         positionId: null, amlReason: opts.note.slice(0, 300),
         createdAt: now, updatedAt: now, completedAt: now,
       }, tx);

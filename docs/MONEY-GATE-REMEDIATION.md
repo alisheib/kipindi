@@ -1454,7 +1454,7 @@ re-implementation of its logic.
 there are, and that question is the whole `controls-and-guards` lane — one of the five that had
 never run. **It was answered by a scan, not by a workflow.**
 
-**Method:** every `npm run x` or backticked `` `x` `` across `src/`, `scripts/`, `docs/` and
+**Method:** every `npm run <name>` or backticked `` `<name>` `` across `src/`, `scripts/`, `docs/` and
 `prisma/`, checked against `package.json`. 2,145 files, **680 distinct script names cited**.
 
 | where | phantoms | verdict |
@@ -1467,7 +1467,7 @@ and reported `test:5433` (a port), `red:true` (a YAML value) and `red:52:human` 
 guards, and it failed on the entire `maswali-*` family — a **proposed** product whose
 implementation plan legitimately names the scripts it intends to create. A guard that fails on
 correct work gets switched off, which is worse than not having it. It now requires a real
-citation (`npm run x`, or backticks) and fails **only on code**; documents are listed.
+citation (`npm run <name>`, or backticks) and fails **only on code**; documents are listed.
 
 #### 🔴 The one that was money: `test:agent-waterfall`
 

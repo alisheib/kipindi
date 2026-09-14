@@ -26,6 +26,8 @@ import { forfeitRefusedBalance } from "../src/lib/server/wallet-service.ts";
 import { decideRefusedFunds } from "../src/lib/server/refused-funds.ts";
 import { getAuditForTarget } from "../src/lib/server/audit.ts";
 import { REFUSED_FUNDS_ACTION } from "../src/lib/refused-funds-outcomes.ts";
+// §3 reads source through the SHARED stripper — never a private one (2026-09-14).
+import { decomment } from "./lib/decomment.mts";
 
 let pass = 0, fail = 0;
 function ok(label: string, cond: boolean, extra?: string) {
@@ -128,19 +130,97 @@ async function refusedPlayer(tag: string, balance: number, deposits: number[]): 
 }
 
 // ═══ §3 · the decision takes no lock ═════════════════════════════════════════════════════════
+//
+// ⭐ 2026-09-14 (audit session 95). This check used to read the source through a PRIVATE comment stripper —
+// the E-108 shape `scripts/lib/decomment.mts` exists to end — and knew ONE spelling of the defect: an import
+// from "./locks" and a literal `withLock(` in the body. It passed an alias (`withLock as serial`), the
+// "@/lib/server/locks" path, `withAdvisoryLock`, and `withMoneyTx` — the same outer transaction by another
+// door (ledger.ts) — including a wrapper declared beside the function and called from inside it. So:
+//   · the SHARED stripper;
+//   · no import from "./locks" or "@/lib/server/locks" (static, dynamic or require);
+//   · none of withLock / withMoneyTx / withAdvisoryLock — or any alias bound to one — in decideRefusedFunds'
+//     body OR in any function of this file the body reaches (a wrapper is the body by another name).
+// ⚠️ Functions IMPORTED from elsewhere are not followed: `withdraw()` takes its own wallet lock by design, and
+// that lock is released before the gateway call. What this holds is that the DECISION opens no outer one.
 {
   const src = readFileSync(new URL("../src/lib/server/refused-funds.ts", import.meta.url), "utf8");
-  const stripComments = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
-  const importsLock = (s: string) => /from\s+["']\.\/locks["']/.test(stripComments(s));
-  const takesLock = (s: string) => /\bwithLock\s*\(/.test(stripComments(s));
-  const start = src.indexOf("export async function decideRefusedFunds");
-  const end = src.indexOf("\nexport ", start + 10);
-  const body = start < 0 ? "" : src.slice(start, end < 0 ? undefined : end);
-  ok("3a the decision function is found — the checks below are measuring something", body.length > 1_000, `${body.length} chars`);
+  const LOCK_FNS = ["withLock", "withMoneyTx", "withAdvisoryLock"];
+  const escRe = (n: string) => n.replace(/\$/g, "\\$");
+  const LOCK_MODULE = /(?:\bfrom\s*|\bimport\s*\(\s*|\brequire\s*\(\s*)["'`](?:\.\/locks|@\/lib\/server\/locks)(?:\.ts)?["'`]/;
+  const importsLock = (s: string) => LOCK_MODULE.test(decomment(s));
+  /** Top-level declarations of decommented source — each starts at column 0 in this codebase. */
+  const declsOf = (d: string) => {
+    const starts = [0];
+    for (const m of d.matchAll(/\n(?=[A-Za-z_$@])/g)) starts.push((m.index ?? 0) + 1);
+    return starts.map((s, i) => {
+      const end = i + 1 < starts.length ? starts[i + 1] : d.length;
+      const head = d.slice(s, Math.min(end, s + 300));
+      const m = head.match(/^(?:export\s+)?(?:default\s+)?(?:async\s+)?function\s*\*?\s*([\w$]+)/) ?? head.match(/^(?:export\s+)?(?:const|let|var)\s+([\w$]+)/);
+      return { name: m ? m[1] : null, start: s, end };
+    });
+  };
+  /** The three lock functions, plus every name this file binds to one (`withLock as serial`, `const tx = withMoneyTx`). */
+  const lockNames = (d: string) => {
+    const names = new Set(LOCK_FNS);
+    for (const m of d.matchAll(/\b(?:withLock|withMoneyTx|withAdvisoryLock)\s+as\s+([A-Za-z_$][\w$]*)/g)) names.add(m[1]);
+    for (const m of d.matchAll(/\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*(?::[^=;]*)?=\s*(?:withLock|withMoneyTx|withAdvisoryLock)\b(?!\s*\()/g)) names.add(m[1]);
+    // A destructured rename — `const { withMoneyTx: inTx } = ledger`.
+    for (const m of d.matchAll(/\b(?:withLock|withMoneyTx|withAdvisoryLock)\s*:\s*([A-Za-z_$][\w$]*)/g)) names.add(m[1]);
+    return names;
+  };
+  // A namespace member counts too (`ledger.withMoneyTx(`): withMoneyTx lives in ledger.ts, not locks.ts, so the import
+  // check never sees `import * as ledger`.
+  const mentionsLock = (text: string, names: Iterable<string>) =>
+    [...names].some((n) => new RegExp(`(?<![\\w$])${escRe(n)}\\b`).test(decomment(text)));
+  /** decideRefusedFunds' body, and the text of every same-file declaration it reaches. */
+  const decisionReach = (s: string) => {
+    const d = decomment(s);
+    const decls = declsOf(d);
+    const root = decls.find((x) => x.name === "decideRefusedFunds");
+    if (!root) return { body: "", reach: "", reached: [] as string[] };
+    const seen = new Set(["decideRefusedFunds"]);
+    const queue = [root];
+    let reach = "";
+    while (queue.length > 0) {
+      const cur = queue.shift()!;
+      const text = d.slice(cur.start, cur.end);
+      reach += `${text}\n`;
+      for (const m of text.matchAll(/\b([A-Za-z_$][\w$]*)\s*(?:<[^()]*>)?\s*\(/g)) {
+        const next = decls.find((x) => x.name === m[1]);
+        if (next?.name && !seen.has(next.name)) { seen.add(next.name); queue.push(next); }
+      }
+    }
+    return { body: d.slice(root.start, root.end), reach, reached: [...seen] };
+  };
+  const decisionTakesLock = (s: string) => mentionsLock(decisionReach(s).reach, lockNames(decomment(s)));
+
+  const { body, reached } = decisionReach(src);
+  ok("3a the decision function is found — the checks below are measuring something", body.length > 1_000, `${body.length} chars · reaches ${reached.join(", ")}`);
   ok("3b refused-funds.ts imports no lock", !importsLock(src));
-  ok("3c decideRefusedFunds takes no lock", body.length > 0 && !takesLock(body));
+  ok("3c decideRefusedFunds takes no lock", body.length > 0 && !decisionTakesLock(src), "withLock / withMoneyTx / withAdvisoryLock (or an alias) in the decision or a function it reaches");
   ok("3d CONTROL — the import check sees a lock import", importsLock(`import { withLock } from "./locks";`));
-  ok("3e CONTROL — the body check sees a wrapped body, and ignores one in a comment", takesLock("return withLock(`k`, async () => {});") && !takesLock("// withLock(`k`)"));
+  ok("3e CONTROL — the body check sees a wrapped body, and ignores one in a comment", mentionsLock("return withLock(`k`, async () => {});", LOCK_FNS) && !mentionsLock("// withLock(`k`)", LOCK_FNS));
+
+  // ⭐ The shapes the old check passed — each must now be caught.
+  const aliasFile = `import { withLock as serial } from "@/lib/server/locks";\nexport async function decideRefusedFunds(input: unknown) {\n  return serial("refused-funds:k", async () => input);\n}\nexport const after = 1;\n`;
+  ok("3f CONTROL — an aliased import from \"@/lib/server/locks\" is seen as a lock import", importsLock(aliasFile));
+  ok("3g CONTROL — …and the alias called in the body is seen as taking the lock", decisionTakesLock(aliasFile));
+  ok("3h CONTROL — a dynamic import(\"./locks\") is seen", importsLock(`const { withLock } = await import("./locks");`));
+  const wrapperFile = `import { withMoneyTx } from "./ledger";\nasync function atomically<T>(fn: () => Promise<T>): Promise<T> {\n  return withMoneyTx(async () => fn());\n}\nexport async function decideRefusedFunds(input: unknown) {\n  return atomically(async () => input);\n}\nexport const after = 1;\n`;
+  ok("3i CONTROL — a withMoneyTx WRAPPER declared beside the decision and called from it is caught", decisionTakesLock(wrapperFile) && !importsLock(wrapperFile));
+  ok("3j CONTROL — withMoneyTx straight in the body is caught", decisionTakesLock(`export async function decideRefusedFunds() {\n  return withMoneyTx(async (tx) => tx);\n}\n`));
+  ok("3k CONTROL — withAdvisoryLock in the body is caught", decisionTakesLock(`export async function decideRefusedFunds() {\n  return withAdvisoryLock("k", async () => 1);\n}\n`));
+  ok("3l CONTROL — withMoneyTx imported under another name is caught", decisionTakesLock(`import { withMoneyTx as inOneTx } from "./ledger";\nexport async function decideRefusedFunds() {\n  return inOneTx(async () => 1);\n}\n`));
+  ok("3m CONTROL — a lock in a function the decision does NOT reach is not charged to it",
+    !decisionTakesLock(`async function helper() { return 1; }\nexport async function decideRefusedFunds() {\n  return helper();\n}\nexport async function elsewhere() {\n  return withLock("k", async () => 1);\n}\n`));
+  const hidden = `export async function decideRefusedFunds() {\n  const note = "/*";\n  return withLock("k", async () => note); // */\n}\n`;
+  const retired = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+  ok("3n CONTROL — a \"/*\" inside a string does not hide the lock from the shared stripper", decisionTakesLock(hidden));
+  ok("3o CONTROL — …where the retired private stripper was blind to it", !/\bwithLock\s*\(/.test(retired(hidden)));
+  ok("3p CONTROL — a namespace import of the ledger called as `ledger.withMoneyTx(` is caught",
+    decisionTakesLock(`import * as ledger from "./ledger";\nexport async function decideRefusedFunds() {\n  return ledger.withMoneyTx(async () => 1);\n}\n`));
+  ok("3q CONTROL — a destructured rename, `const { withMoneyTx: inTx } = ledger`, is caught",
+    decisionTakesLock(`import * as ledger from "./ledger";\nconst { withMoneyTx: inTx } = ledger;\nexport async function decideRefusedFunds() {\n  return inTx(async () => 1);\n}\n`));
 }
 
 console.log(`\nrefused-funds-race: ${pass} passed, ${fail} failed`);

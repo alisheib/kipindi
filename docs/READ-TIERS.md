@@ -88,6 +88,8 @@ So the whole player drill-down is already open to them. Read from
 | Adjust the balance | hidden | `capMoney` (accounting) ✅ |
 | Export the player's data | hidden | `capCompliance` ✅ |
 | Force KYC re-verification | hidden | `capCompliance` ✅ |
+| Freeze the wallet / add or lift an officer hold | hidden | `capCompliance` ✅ — passed to the control as `canAct` (2026-09-14): the route's domain is *support*, so the shell's act-gate alone showed a COMPLIANCE officer these controls as read-only |
+| Lift a stale identity hold (no final refusal behind it) | hidden | `capCompliance` ✅ — same `canAct`; offered only when `staleIdentityHold` is true (2026-09-14) |
 
 ⭐ **The good news first, because it changes the size of this job.** Every *action* on that page
 is already capability-gated, and the two highest-risk reads — the phone number and the identity

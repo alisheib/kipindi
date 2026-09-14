@@ -1268,15 +1268,21 @@ export function kycApprovedHtml({ name, reference }: { name: string; reference?:
  * cannot be restarted by the player — `startKyc` refuses it — and its wallet is frozen while an officer
  * decides the balance. "Resubmit" and a button into `/profile/kyc` are both false on it, so that branch
  * names the one door that exists: support. Opt-in; without the flag this renders exactly as before.
+ *
+ * ⭐ `reasonSw` (2026-09-14). On a final refusal the Swahili line said the refusal could not be restarted
+ * and never said WHY — the reason reached a Swahili reader in English only. When the caller passes the same
+ * player-safe reason in Swahili, it leads that line. Final refusals only: the recoverable line already tells
+ * the reader what to do, and a reason in front of it would say it twice. Without it nothing changes.
  */
-export function kycRejectedHtml({ reason, reference, finalRefusal = false }: { reason: string; reference?: string; finalRefusal?: boolean }): string {
+export function kycRejectedHtml({ reason, reasonSw, reference, finalRefusal = false }: { reason: string; reasonSw?: string; reference?: string; finalRefusal?: boolean }): string {
+  const swReason = finalRefusal && reasonSw?.trim() ? `${reasonSw.trim()} ` : "";
   return wrap(`
     ${eyebrow("Identity check", "Ukaguzi wa utambulisho")}
     ${heading(finalRefusal ? "Identity verification refused" : "Identity check needs attention")}
     ${subtitle(reason)}
     ${finalRefusal ? subtitle("This verification can't be restarted from your account. Contact support and our team will explain what happens to your balance.") : ""}
     ${subtitleSw(finalRefusal
-      ? "Uthibitisho huu ulikataliwa na hauwezi kuanzishwa upya kutoka kwenye akaunti yako. Wasiliana na huduma kwa wateja na timu yetu itakueleza kitakachofanyika kwa salio lako."
+      ? `${swReason}Uthibitisho huu ulikataliwa na hauwezi kuanzishwa upya kutoka kwenye akaunti yako. Wasiliana na huduma kwa wateja na timu yetu itakueleza kitakachofanyika kwa salio lako.`
       : "Tafadhali angalia tena nyaraka zako na uwasilishe upya.")}
     ${reference ? detailRows([{ label: "Reference", value: reference }]) : ""}
     ${finalRefusal ? ctaButton("/help", "Contact support · Wasiliana nasi") : ctaButton("/profile/kyc", "Resubmit · Wasilisha tena")}
@@ -1291,22 +1297,31 @@ export function kycRejectedHtml({ reason, reference, finalRefusal = false }: { r
  * player is given is the refusal category (`reason`, already player-safe — a sanctions refusal says
  * nothing about a list); ⛔ the officer's internal justification is never put here.
  * Royal chrome: it is money leaving the player's control, never earned money.
+ *
+ * ⭐ 2026-09-14 — two gaps closed. `reasonSw`: the English line gave the reason and the Swahili line did not,
+ * so a Swahili reader was refused without being told why; with the Swahili reason passed, that line gives it
+ * too (without it, the general sentence stays). And a HOLD PENDING APPEAL now says how to appeal, in both
+ * languages — a letter holding money pending an appeal it never mentioned left the player no door to it.
  */
-export function refusedFundsDecisionHtml({ outcome, returnedTzs, forfeitedTzs, balanceTzs, reason, reference }: {
+export function refusedFundsDecisionHtml({ outcome, returnedTzs, forfeitedTzs, balanceTzs, reason, reasonSw, reference }: {
   outcome: "RETURN_DEPOSITS" | "RETURN_BALANCE" | "HOLD_PENDING_APPEAL" | "FORFEIT";
   returnedTzs: number;
   forfeitedTzs: number;
   balanceTzs: number;
   reason: string;
+  /** The same player-safe reason, in Swahili. Optional: without it the Swahili line keeps the general sentence. */
+  reasonSw?: string;
   reference: string;
 }): string {
   const rows: Array<{ label: string; value: string }> = [];
   let headEn: string;
   let bodySw: string;
+  let appealEn = "";
   if (outcome === "HOLD_PENDING_APPEAL") {
     headEn = "Your balance is held while we review your case";
     rows.push({ label: "Balance held", value: formatTzs(balanceTzs) });
-    bodySw = `Salio lako la ${formatTzs(balanceTzs)} limeshikiliwa tunapokagua suala lako. Tutakuandikia uamuzi wetu.`;
+    bodySw = `Salio lako la ${formatTzs(balanceTzs)} limeshikiliwa tunapokagua suala lako. Tutakuandikia uamuzi wetu. Ikiwa unaamini kukataliwa huku si sahihi, wasiliana na huduma kwa wateja ili kukata rufaa.`;
+    appealEn = " If you believe our refusal is wrong, contact support to appeal.";
   } else if (outcome === "FORFEIT") {
     headEn = "Your balance will not be returned";
     rows.push({ label: "Not returned", value: formatTzs(forfeitedTzs) });
@@ -1318,11 +1333,43 @@ export function refusedFundsDecisionHtml({ outcome, returnedTzs, forfeitedTzs, b
     bodySw = `${formatTzs(returnedTzs)} zinatumwa kwa namba yako iliyosajiliwa.${forfeitedTzs > 0 ? ` ${formatTzs(forfeitedTzs)} hazitarudishwa.` : ""}`;
   }
   rows.push({ label: "Reference", value: reference });
+  const swLead = reasonSw?.trim()
+    ? `Hatukuweza kuthibitisha utambulisho wako: ${reasonSw.trim()}`
+    : "Hatukuweza kuthibitisha utambulisho wako.";
   return wrap(`
     ${eyebrow("Identity check · your balance", "Ukaguzi wa utambulisho · salio lako")}
     ${heading(headEn)}
-    ${subtitle(`We could not verify your identity: ${reason} This is our decision about the money in your account.`)}
-    ${subtitleSw(`Hatukuweza kuthibitisha utambulisho wako. ${bodySw}`)}
+    ${subtitle(`We could not verify your identity: ${reason} This is our decision about the money in your account.${appealEn}`)}
+    ${subtitleSw(`${swLead} ${bodySw}`)}
+    ${detailRows(rows)}
+    ${ctaButton("/help", "Contact support · Wasiliana nasi")}
+  `);
+}
+
+/**
+ * ⭐ A REFUSED-FUNDS RETURN WHOSE PAYOUT DID NOT GO THROUGH (2026-09-14).
+ *
+ * The decision letter above told the player "we are returning your money". When that payout then fails, the
+ * ordinary failure path puts the amount back into the wallet — which stays frozen — and until this letter the
+ * player heard nothing more, holding a letter that said money was on its way.
+ * ⛔ It says only what is true when it is sent: the amount is back in the account, the account stays frozen,
+ * and our team decides the next step. It promises no retry and no date, because none is scheduled.
+ * ⛔ No identity sentence (the quiet rule): it answers a payout that failed, not a verification event.
+ * Royal chrome: money did not arrive; nothing was earned.
+ */
+export function refusedFundsReturnFailedHtml({ amountTzs, forfeitedTzs, reference }: {
+  amountTzs: number;
+  forfeitedTzs: number;
+  reference: string;
+}): string {
+  const rows: Array<{ label: string; value: string }> = [{ label: "Back in your account", value: formatTzs(amountTzs) }];
+  if (forfeitedTzs > 0) rows.push({ label: "Not returned", value: formatTzs(forfeitedTzs) });
+  rows.push({ label: "Reference", value: reference });
+  return wrap(`
+    ${eyebrow("Your balance · return not completed", "Salio lako · urejeshaji haukukamilika")}
+    ${heading("Your return did not go through")}
+    ${subtitle(`The return of ${formatTzs(amountTzs)} to your registered number did not go through. The money is in your account, which stays frozen; our team will decide the next step and write to you.${forfeitedTzs > 0 ? ` ${formatTzs(forfeitedTzs)} will not be returned.` : ""}`)}
+    ${subtitleSw(`Urejeshaji wa ${formatTzs(amountTzs)} kwa namba yako iliyosajiliwa haukufanikiwa. Pesa ziko kwenye akaunti yako, ambayo inabaki imegandishwa; timu yetu itaamua hatua inayofuata na kukuandikia.${forfeitedTzs > 0 ? ` ${formatTzs(forfeitedTzs)} hazitarudishwa.` : ""}`)}
     ${detailRows(rows)}
     ${ctaButton("/help", "Contact support · Wasiliana nasi")}
   `);
@@ -1487,11 +1534,17 @@ export function selfExclusionHtml({ period, endDate }: { period: string; endDate
   `);
 }
 
-export function coolOffHtml({ duration, endDate }: { duration: string; endDate: string }): string {
+export function coolOffHtml({ duration, endDate, untilIso }: { duration: string; endDate: string; /** ISO instant — the Swahili line prints its YYYY-MM-DD, never an English month name. */ untilIso?: string }): string {
+  // ⛔ 2026-09-14 — this said "You can still sign in and withdraw your money at any time", which overstated: a
+  // break blocks neither, but a withdrawal keeps conditions of its own that a break does not change. The line
+  // now says only what the break does NOT block. ⛔ No identity sentence here (the quiet rule).
+  // ⭐ And the Swahili line this mail never had. It names the end date and not the duration, because the
+  // duration label reaches this builder in English.
   return wrap(`
     ${eyebrow("Break active", "Pumzika")}
     ${heading("Break confirmed")}
-    ${subtitle(`Betting and deposits are paused for ${duration}, until ${endDate}. You can still sign in and withdraw your money at any time.`)}
+    ${subtitle(`Betting and deposits are paused for ${duration}, until ${endDate}. Your break does not block sign-in or withdrawals.`)}
+    ${subtitleSw(`Kuweka dau na amana kumesimamishwa${untilIso ? ` hadi ${untilIso.slice(0, 10)}` : ""}. Mapumziko haya hayazuii kuingia kwenye akaunti wala kutoa pesa.`)}
     ${detailRows([
       { label: "Duration", value: duration },
       { label: "Resumes", value: endDate },
@@ -1792,11 +1845,14 @@ export function sofDecisionHtml({ status, note }: {
   status: "ACCEPTED" | "REJECTED" | "MORE_INFO"; note?: string;
 }): string {
   if (status === "ACCEPTED") {
+    // ⛔ 2026-09-14 — this said "Higher deposit and withdrawal limits are now unlocked", and both halves were
+    // false: `withdraw()` never reads source of funds, and acceptance raises no limit. What acceptance does is
+    // let a deposit that was waiting on a declaration go through, so that is all the letter says.
     return wrap(`
       ${eyebrow("Source of funds", "Chanzo cha fedha")}
       ${heading("Source of funds accepted")}
-      ${subtitle("Your source-of-funds review is complete. Higher deposit and withdrawal limits are now unlocked.")}
-      ${subtitleSw("Ukaguzi wa chanzo cha fedha umekamilika. Vikomo vya juu sasa vimefunguliwa.")}
+      ${subtitle("Your source-of-funds review is complete. Deposits that needed a declaration can now go through.")}
+      ${subtitleSw("Ukaguzi wa chanzo cha fedha umekamilika. Amana zilizohitaji tamko sasa zinaweza kukubaliwa.")}
       ${ctaButton("/wallet/deposit", "Make a deposit · Weka pesa")}
     `);
   }
