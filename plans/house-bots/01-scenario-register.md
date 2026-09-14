@@ -2622,3 +2622,1062 @@ test:house-bot-seam: stakeBoundsForMarket equals the old inline result for a pol
 - **Evidence:** src/lib/utils.ts:60-65 (formatTzs, maximumFractionDigits 0); src/lib/server/market-service.ts:1106 (Number.isInteger stake); src/lib/payout.ts:166-168 (TZS integer bounds)
 - **Fix:** payout.ts: add `PLATFORM_CURRENCY = {code:'TZS', minorUnits:0}`. The rules JSON stores it (FS-07 schema), parseHouseBotRules compares, and startHouseBotEngine checks it at boot.
 - **Test:** test:house-bot-rules: a stubbed minorUnits 2 → parse returns RULES_OUTDATED and the engine boot check turns the switch off.
+
+## targeted-and-manual (40)
+
+> Anchors were read in `C:\kipindi-house-bots` on 2026-09-14, after `origin/main` "AUDIT 95 (3/n)" was merged in. Re-derive every anchor after P0.4 before relying on it. "N1 §4.3" and "N2 §6" name subsections of `04-amendments.md` N1–N2, whose citation rule these scenarios follow.
+
+### TGT-01 [gap] Enter now on a poll with a thin side places one stake on the thin side
+- **Trigger:**
+  - Bot A is ACTIVE and master is ON. `enterNow.enabled` is on with `thinStakeTzs` 10,000.
+  - Limits: `capStaffChosenPerDay` 3, `capStaffChosenDailyTzs` 30,000, `gCapStaffChosenPerDay` 10, `gCapStaffChosenDailyTzs` 100,000, `gStaffChosenMaxCounterpartyShare` 50.
+  - Poll P: raw YES 12,000, all locked for the house (three PLAYER accounts with 4,000 each, every exit window closed more than `LOCK_MARGIN_MS` ago). Raw NO 3,000, also locked.
+  - Officer X picks P, types a reason and presses Enter now.
+- **Expected:**
+  - **Preview:**
+    - The side is **NO**, because raw NO 3,000 < locked YES 12,000. The stake is min(10,000, 12,000 − 3,000) = TZS 9,000.
+    - Caption: "Saved Enter now stake (v{n}) TZS 10,000, cut to fit players' locked money (room TZS 9,000)".
+    - Players' money: "Locked: YES TZS 12,000 · NO TZS 3,000". "Checked {HH:MM:SS} EAT" with a "Check again" button.
+    - Limits line: "Staff-chosen used today: 0 of 3 · TZS 0 of TZS 30,000 · all bots: 0 of 10 · TZS 0 of TZS 100,000".
+    - The preview writes one `ENTER_NOW_PREVIEWED` event with `actorId` X. There is no `OPENER_SIDE_DRAWN`, because the market is not empty.
+  - **Press:**
+    - HouseBotPress `ENTER_NOW` is inserted in state CHECKING.
+    - One transaction then writes three things: the MANUAL intent, the `ENTER_NOW_REQUESTED` event and the press update to QUEUED with its `intentId`.
+      - The intent has `entryCondition` THIN, `requestedById` X, `anchorKey` `manual:X:<submitId>`, `dueAt` now and `staleAt` = `dueAt` + 15 s.
+      - The officer's reason goes in the event `reason` column, never in `payload`.
+    - The intent is fired inline and ends PLACED. The press becomes DONE.
+  - **Money:**
+    - One marked position, NO 9,000; `Position.stake` = the intent's `stakeTzs`.
+    - H4 splits the stake pro rata across the three YES accounts (each holds 33%, so each is ≥ 25%): 3,000 each into COUNTERPARTY_TZS and +1 each into COUNTERPARTY_COUNT.
+  - **Records:**
+    - Exactly one COMPLIANCE `house_bot.enter_now`, written under the press lease, with `auditId` set.
+    - R9 `houseStake` on P = `{yes:0, no:9000, staffChosen:{yes:0, no:9000, requestedBy:[X]}}`.
+  - **Alerts:**
+    - `notifyAdminsHouseBotStaffChosen` sends bell + email to every `houseBotAlertRecipients()`, uncapped, and not counted in `countInHour`.
+    - The body never quotes the reason. It says "Reason recorded in the activity feed →".
+    - `notifyAdminsHouseBotBet` sends nothing for this row. The holder notice is capped as usual.
+  - **Modal:** "Placed · TZS 9,000 NO on “P” at {HH:MM:SS} EAT.", read from `getEnterNowStatusAction`, never from the inline return value.
+- **Plan:** N1 §2 (HouseBotPress, intent columns), §3 H2–H4, §4.2, §4.3, §6, §7; I1; I4.
+- **Evidence:**
+  - `src/lib/server/market-service.ts:1174-1202`: the bet path allows unlimited positions on either side, so every house one-bot, one-side and holder rule lives only in H2/H3.
+  - `:2671` (`hadRunway`) and `:2687` (`sellable`): a player stake counts as locked only after its exit window.
+  - 04 A15.
+- **Fix:** N1.
+- **Test:**
+  - `test:house-bot-engine` happy path on both stores: 1 press DONE, 1 intent PLACED, 1 `ENTER_NOW_REQUESTED`, 1 audit, 1 position of 9,000, 3 counterparty attributions of 3,000.
+  - `test:house-bot-comms`: both admins get the uncapped bell and email, and no reason text appears in any notification row.
+  - `drive:house-bots-local` THIN case (local seeded database only).
+
+### TGT-02 [gap] Enter now on an empty market takes the market's one drawn side; the automated OPENER agrees
+- **Trigger:**
+  - Poll M has raw YES 0 and raw NO 0.
+  - Officer X opens the Enter now modal and picks M. They close it, open it again, switch to Bot B, and try again the next EAT day.
+  - Separately, Bot C has OPENER mode on polls, and the planner plans an automated OPENER for M.
+  - Two race variants: (a) X's preview and the planner draw in the same second; (b) the planner's own transaction rolls back after its draw.
+- **Expected:**
+  - **One draw per market.**
+    - The first draw writes exactly one HouseBotEvent `OPENER_SIDE_DRAWN` for M (unique `hbe_opener_draw_uq`), payload `{side, drawnFor}`.
+    - `actorId` is X when a preview or press causes the draw. It is null only when automated planning draws first.
+    - In race (a), the losing `INSERT … ON CONFLICT DO NOTHING RETURNING` returns 0 rows and reads the winner's side. Both show the same side.
+  - **The planner draws outside `decide()`.**
+    - It calls `openerSide(M)` in its own autocommit statement before `decide()`, and passes `{openerSide}` in decide's input.
+    - `decide.ts` never imports the store.
+    - In race (b) the rollback does not undo the committed draw, and the next pass uses it.
+  - **Every later preview shows the same side** (re-open, Bot B, next EAT day), and so does the automated OPENER intent on M.
+  - **Stake and condition.**
+    - `entryCondition` OPENER; stake `openerStakeTzs`.
+    - H3 requires yesPool = noPool = 0. Otherwise `house_condition_gone` → SKIPPED(CONDITION_GONE), and the side is never re-chosen.
+    - If nobody joins, the one-sided refund returns the stake at 0 (HB-LC-35).
+  - **Records.** X's previews without a press count in R1 "previews without a stake" for X that month.
+- **Plan:** N1 §2 (`hbe_opener_draw_uq`, OPENER_SIDE_DRAWN `actorId`), §4.1 `opener-side.ts`, §4.2 step 3; PLAN §1-F4 OPENER.
+- **Evidence:**
+  - `plans/house-bots/PLAN.md:91`: OPENER takes "a random side" while both pools are 0.
+  - `PLAN.md:218`: `decide.ts` is pure with an injected `crypto.randomInt`.
+  - `02-sealed-flows.md` §3.9: cancel writes CANCELLED_BY_ADMIN, which stays final for FILL/OPENER (X11).
+- **Fix:** N1 §2 draw index and actor; the planner draws before `decide()`; `decide()` takes the side as input.
+- **Test:**
+  - `test:house-bot-engine` draw invariance:
+    - preview ×3, Bot B, next EAT day (injected clock) and the automated OPENER all get one side and exactly 1 event;
+    - race (a) gives 1 event; race (b) keeps the draw;
+    - `decide()` with an injected side is deterministic;
+    - source pin: `decide.ts` imports no store or `opener-side.ts`.
+  - `test:dal-parity`: the draw twin (commit 1).
+  - `red:house-bot-engine` mutation "`openerSide` replaced by a per-intent `randomInt`" must fail the invariance assertion.
+
+### TGT-03 [gap] Double click, double tap, or two tabs on Enter now
+- **Trigger:**
+  - (a) Two presses 40 ms apart on a slow phone.
+  - (b) Two identical requests with the same `submitId` reach the server together, with the latch bypassed.
+  - (c) The same request is replayed after the first placed.
+  - (d) The same `submitId` is posted for a different market.
+  - (e) A second tab, with its own `submitId`, presses on the same bot and market while the first intent is PENDING or CLAIMED.
+  - (f) A third tab presses with Bot B on that market.
+- **Expected:**
+  - (a) The `useRef` latch sends one request.
+  - (b) Both requests insert HouseBotPress. One insert hits `hbp_actor_submit_uq`; `uniqueViolation(err)` returns that name, and the loser reads the existing row:
+    - CHECKING → "Still checking this press…", and the client polls `getEnterNowStatusAction`;
+    - QUEUED or DONE → that intent's live status with `duplicate:true`.
+    - Never a second intent, event, audit or alert.
+  - (c) The press is DONE, so the response is the placed status with `duplicate:true`.
+  - (d) SUBMIT_ID_REUSED: "This request id was already used for a different action. Reload and try again." 0 intents.
+  - (e) The second intent insert hits `hbi_manual_live_market_uq`. The second press becomes REFUSED with its code: "Another Enter now on this market is being placed. Wait for its result." Once the first has placed, a new press is refused by the no-room or holding refusals (N1 §6). With TGT-01's pools that is BALANCED, because house NO 9,000 fills the room.
+  - (f) Refused with "Bot A already holds this market. One bot per market." At money level, H3 OTHER_BOT backs it up.
+  - `DUPLICATE_SUBMIT` is never silently ignored in this modal.
+  - Exactly one position. Every refused press is its own durable HouseBotPress row with its code.
+- **Plan:** N1 §2 HouseBotPress press flow (steps 2, 4 and 8), §4.3; C4; CA-19.
+- **Evidence:**
+  - `04-amendments.md:1834`: buttons disable only after a re-render (`agents-client.tsx:31-43`).
+  - `04-amendments.md:1851`: C4 "a duplicate is ignored".
+  - `PLAN.md:156`: AlertOnce stores only key and `createdAt`, so it can't replay a refusal.
+  - `01-scenario-register.md:1535`: CA-19 has the client ignore DUPLICATE_SUBMIT.
+- **Fix:** N1 §2. HouseBotPress with `hbp_actor_submit_uq` replaces the C4 AlertOnce submit claim for every N1/N2 action. `uniqueViolation(err)` discriminates index names.
+- **Test:**
+  - `test:house-bot-engine`, both stores:
+    - (b) → 1 press, 1 intent, 1 event, 1 audit, 1 position; the other call returns CHECKING or `duplicate:true`;
+    - (d) → SUBMIT_ID_REUSED with 0 intents;
+    - (e) → 1 PLACED + 1 REFUSED press.
+  - `test:dal-parity`: `uniqueViolation` returns the right name for each new index on both stores, and rethrows an unknown unique violation.
+  - `test:house-bot-console` jsdom: two presses in 50 ms → 1 request.
+  - `red:house-bot-console` mutation "latch removed" must fail (two requests).
+
+### TGT-04 [gap] Trying to re-roll the side or the amount
+- **Trigger:** The owner dislikes the previewed figures (THIN NO 9,000 on P, or the drawn side on empty M). They try five things:
+  - (a) closes and re-opens the modal;
+  - (b) switches to Bot B;
+  - (c) waits until the next EAT day;
+  - (d) presses, then cancels the PENDING MANUAL row from the activity feed within its 15 s, with a reason;
+  - (e) tries to cancel without a reason.
+- **Expected:**
+  - (a)–(c):
+    - The THIN side and amount are a pure function of raw pools, `lockedForHouse` and the bot's saved rules and caps: the same inputs give the same figures.
+    - Bot B can differ only through its own saved stake and cap clamps, never on side.
+    - The OPENER side is the persisted draw (TGT-02).
+    - No jitter is applied.
+  - (d) The cancel:
+    - writes CANCELLED(CANCELLED_BY_ADMIN);
+    - writes COMPLIANCE `house_bot.staff_intent_cancelled {botId, marketId, intentId, side, stakeTzs}`;
+    - writes event STAFF_INTENT_CANCELLED with the reason in the `reason` column;
+    - frees `hbi_manual_live_market_uq`.
+    - If the row was claimed meanwhile, C7's copy applies: "Too late — this bet is being placed now."
+    - A new press on the same pools shows the same side and amount.
+  - (e) Field error on `reason`: "Give a reason (5 to 300 characters)." Input validation runs before the press insert, so there is no press row, event or audit.
+  - **Declining is possible, but recorded:** `ENTER_NOW_PREVIEWED` rows (R1 previews without a stake), the cancel's COMPLIANCE row and the R1 "Vetoes" section per officer. Accepted risk 13.
+- **Plan:** N1 §4.1–§4.2; N1 §6 staff cancels; PLAN §16b risk 13; N1 §9 R1 vetoes.
+- **Evidence:**
+  - `02-sealed-flows.md` §3.9: today's cancel needs no reason and writes only ADMIN `house_bot.intent_cancelled`.
+  - `04-amendments.md:1935-1939`: C7 cancel copies.
+- **Fix:** N1 formula side and amount; the persisted draw; reasoned staff cancels.
+- **Test:**
+  - `test:house-bot-engine` re-roll matrix: preview ×3, Bot B, next EAT day, and cancel-then-press give identical side and condition, and the same stake for the same bot.
+  - `test:house-bot-console`:
+    - cancel without a reason → field error, 0 rows;
+    - with a reason → 1 COMPLIANCE row and 1 STAFF_INTENT_CANCELLED event, with the reason text only in the event `reason` column.
+  - `test:house-bot-reports`: the R1 vetoes row.
+
+### TGT-05 [gap] Stale dropdown: the poll closed or the cutoff passed between listing and press
+- **Trigger:**
+  - Poll P closes 18:00:00. Bot A's `minTimeToCutoff` is 5:00, so `deadlineAt` is 17:55:00.
+  - The picker lists P at 17:54:30 and the owner picks it (preview ok). They type a reason and press at 17:55:05.
+  - Variants:
+    - (b) Stage-1 or a Sentinel seal closes P between the pick and the press.
+    - (c) The close lands after the intent insert.
+    - (d) The owner keeps the modal open for 70 s without pressing.
+- **Expected:**
+  - (a) Refused before insert: "Too late: betting closes at 18:00:00 EAT and Bot A stops 5:00 before that." The press is REFUSED with its code. 0 intents and no COMPLIANCE audit.
+  - (b) "Betting on this market has closed."
+  - (c) A16 at fire: SKIPPED(MARKET_NOT_LIVE), or EXPIRED(CUTOFF) for an in-lock `selection_closed`.
+  - (d) After `validUntilIso` (60 s), submit is disabled with "These figures are over 60 s old — Check again".
+  - The picker re-queries on focus only while no market is selected (TGT-33).
+- **Plan:** N1 §6 timing and market refusals; §8 preview validity; A12; A16.
+- **Evidence:**
+  - `src/lib/server/market-service.ts:1090-1091`: LIVE and selection-closed checks before the lock.
+  - `:1413`: in-lock `selection_closed`.
+  - `04-amendments.md:456`: A16 early-close row.
+- **Fix:** N1.
+- **Test:**
+  - `test:house-bot-console` refusal fixtures (a), (b); fake timers for (d).
+  - `test:house-bot-engine` close-after-insert → SKIPPED(MARKET_NOT_LIVE) and EXPIRED(CUTOFF), 0 positions.
+
+### TGT-06 [gap] The thin side flips, or an empty market gets a bet, between preview, press and fire
+- **Trigger:** Poll P closes 18:00:00; Bot A's `minTimeToCutoff` is 2:00.
+  - (a) Preview at 17:56:00: locked YES 12,000; raw NO 3,000, all locked. Result NO 9,000. At 17:56:10 three players stake NO 5,000 each. With less than the 5-min grace left, those stakes have no free exit (their exit closes at `placedAt`), so they count as locked from 17:56:17. The owner presses at 17:56:30, with the preview still valid.
+  - (b) An OPENER press on empty poll M is inserted, and a player stakes on M before the house bet takes `market:M`.
+  - (c) The thin side flips after the insert but before the fire's re-check.
+  - (d) Another stake uses Bot A's exposure between insert and fire, so the clamp cuts 9,000 to 6,000.
+- **Expected:**
+  - (a) The press recomputes locked NO 18,000 against raw YES 12,000, so the side is now YES with min(10,000, 18,000 − 12,000) = 6,000. The press is refused as stale with "The thin side changed since you checked (now YES). Review the new figures, then press Enter now again." The response carries the new preview. 0 intents.
+  - (b) H3 `house_condition_gone` → SKIPPED(CONDITION_GONE). The side is **never** flipped and nothing moves.
+  - (c) The fire re-runs `enterNowDecision` without locks. A different side or condition gives SKIPPED(CONDITION_GONE) with no lock taken, and `why` names the new thin side and pools.
+  - (d) The write-back clamp (N1 §4.3 step 6):
+    - `UPDATE … SET "stakeTzs"=6000, decision = decision || {firedStakeTzs:6000} WHERE id=$1 AND status='CLAIMED' AND "claimedBy"=$me AND "stakeTzs">6000 RETURNING *`;
+    - then `placeHouseBet` runs with the returned row's figures;
+    - H0 matches, the position is 6,000, master stays ON.
+  - A stake never grows: the press takes min(confirmed, recomputed).
+- **Plan:** N1 §3 H0/H3, §4.2, §4.3 fire re-check, §6 stale-preview refusal; N1 §4.3 write-back clamp.
+- **Evidence:**
+  - `src/lib/server/market-service.ts:2665-2671`: `closesAt`, and `hadRunway` false when less than the grace is left.
+  - `01-scenario-register.md:2286` (FS-04): `exitWindowClosesAt` = `placedAt` without runway.
+  - `PLAN.md:201`: H3 reads the kind from the claimed row.
+- **Fix:** N1; the N1 §4.3 write-back clamp for all kinds.
+- **Test:**
+  - `test:house-bot-engine`:
+    - (a) → stale refusal with YES 6,000, 0 intents, press REFUSED;
+    - (c) → SKIPPED(CONDITION_GONE) with 0 lock acquisitions (spy);
+    - (d) → `Position.stake` = the row's `stakeTzs` = 6,000, 0 SECURITY rows.
+  - `test:house-bot-caps` (Postgres + memory): a player bet racing the OPENER inside the lock → `house_condition_gone`, with pools and balances consistent.
+  - `red:house-bot-engine` mutation "fire takes the new thin side" must fail (c).
+
+### TGT-07 [gap] No room: only cancellable player money, only house money, or a balanced market
+- **Trigger:**
+  - (a) Players A and B each staked YES 5,000 at 14:00:00 (free exit until 14:05:00), and nothing else is on the market. The owner previews at 14:02:00 and again at 14:05:03.
+  - (b) Only Bot A's earlier opener stake is on the market.
+  - (c) Locked YES 5,000 and locked NO 5,000.
+  - (d) Two containers: the bet's container reads the database clock, and player A's cash-out lands on a container 5 s behind it at the boundary.
+- **Expected:**
+  - (a) At 14:02:00, ONLY_SELLABLE: "No stake yet: the players' money here can still be cancelled free until 14:05:07 EAT. Try again then."
+    - The time includes `LOCK_MARGIN_MS` (7 s), and `retryAtIso` is 14:05:07.
+    - At 14:05:03 the refusal is still ONLY_SELLABLE, because the margin hasn't passed.
+    - The modal re-previews automatically once at 14:05:07 and shows NO 10,000.
+  - (b) HOUSE_ONLY: "No player money here that the house can add to. Stakes from 50pick, staff, agent and bot-holder accounts, and from accounts excluded for the day, don't count."
+  - (c) BALANCED: "No thin side: players' locked money is YES TZS 5,000 · NO TZS 5,000, and neither side can take more without passing the other."
+  - (a)–(c) write no intent. The press is REFUSED with the family code.
+  - (d) The margin makes the race safe:
+    - `lockedForHouse` counts the stake only when its exit close ≤ DB `now()` − 7 s.
+    - A container at most 5 s behind then already sees the window closed, so the cash-out refuses.
+    - If the cash-out committed first, the in-lock sum no longer includes it and H3 refuses `house_condition_gone`.
+    - The HB-LC-04 free option never opens.
+- **Plan:** N1 §4.2 step 5; N1 §4.1 `lockedForHouse` + `LOCK_MARGIN_MS`; A15; A24 clock skew.
+- **Evidence:**
+  - `src/lib/server/market-service.ts:2662`: `sinceBet` uses the cashing container's `Date.now()`.
+  - `:2734` and `:2793`: cash-out decides sellable inside `market:<id>` on its own clock.
+  - `04-amendments.md:619`: A24 stops claims only above 5 s skew.
+  - `01-scenario-register.md:772`: HB-LC-04.
+- **Fix:** N1 §4.1: one SQL aggregate on the lock transaction with the exit-window filter and `LOCK_MARGIN_MS = 7000`.
+- **Test:**
+  - `test:house-bot-engine`: (a) at exit − 1 s, at exit + 3 s, and allowed at exit + 7 s; `retryAtIso`; (b); (c).
+  - Constants test: `LOCK_MARGIN_MS` ≥ 5,000 + 2,000.
+  - Golden-grid parity of the SQL exit expression against `exitWindowClosesAt` (A14 grid).
+  - `test:house-bot-caps`: two processes with injected clocks +5 s and −5 s; a cash-out racing a THIN press never succeeds after a house stake counted it.
+  - `red:house-bot-money` mutation "THIN uses raw pools instead of `lockedForHouse`" must fail (a).
+
+### TGT-08 [gap] Master OFF at press, and OFF landing mid-flight
+- **Trigger:**
+  - (a) The switch is OFF when the modal opens.
+  - (b) Another admin switches OFF after the modal opened.
+  - (c) OFF lands while the inline fire waits for `market:<id>`, so A9's conditional cancel makes the CLAIMED row CANCELLED.
+  - (d) OFF lands after the bet already holds `house:control`.
+- **Expected:**
+  - (a) "House bots are off. Switch them on to use Enter now."
+  - (b) "House bots were switched off by {name | the system: {cause}} at {HH:MM:SS} EAT after you opened this. Nothing was placed."
+  - (c) The row is already CANCELLED(MASTER_OFF), with 0 positions.
+    - H0 loads the intent by id without a status filter. Its figures match, so the bet continues.
+    - H4 then refuses `house_disabled`, or `markPlaced` returns 0 rows → `house_intent_superseded`.
+    - Never `house_key_mismatch`: 0 SECURITY rows, and `offCause` stays MANUAL.
+    - Modal: "Cancelled — house bots were switched off. Nothing moved."
+  - (d) Placed. OFF shows the drain copy "Switched off. A bet already in its final step may still complete." Modal: "Placed — it was already in its final step when house bots were switched off."
+  - The modal's final state always comes from `getEnterNowStatusAction`.
+- **Plan:** N1 §4.3 master OFF; N1 §3 ordered H0; A9; C10.
+- **Evidence:**
+  - `04-amendments.md:273-276`: A9 writes OFF first, then drains with a 3 s lock timeout.
+  - `PLAN.md:202`: `markPlaced` is conditional on `status='CLAIMED'`.
+  - `src/lib/server/locks.ts:112-121`: nested locks join the parent transaction until it commits.
+- **Fix:** N1; N1 §3 H0 without a status filter.
+- **Test:**
+  - `test:house-bot-caps`: OFF injected before H1, while waiting on the market lock, and while holding `house:control` → CANCELLED / superseded / PLACED. 0 SECURITY rows and `offCause` unchanged in every arm.
+  - `test:house-bot-console`: stale-switch copy.
+  - `red:house-bot-money` mutation "H0 filters `status='CLAIMED'`" must fail arm (c).
+
+### TGT-09 [gap] Bot paused or auto-paused, holder cause, or void consent at press
+- **Trigger:**
+  - (a) Another admin paused Bot A after the modal opened.
+  - (b) The holder self-excluded (consent void), or their password changed, or their wallet is frozen.
+  - (c) The password change lands after the intent insert, and the SSE HOUSE_BOT bell for the auto-pause reaches the open page while the modal shows "Placing…". In the same seconds another admin saves `enterNow.enabled=false`.
+- **Expected:**
+  - (a) "{name | The system} paused Bot A at {HH:MM} EAT after you opened this ({reason}). Nothing was placed."
+  - (b) The first cause's C8/C9 copy + " Enter now is off until this is fixed." The press is REFUSED with the cause code, and no intent is written.
+    - A consent void also ends every ACTIVE target of Bot A (TGT-40).
+  - (c) H2 refuses `house_consent_stale` → AUTO_PAUSED(PASSWORD_CHANGED) through the A10 mapper, with its usual audit and alerts. The modal says "Not placed — Bot A auto-paused: password changed."
+    - The open dialog counts as dirty, so C11 shows its change Callout instead of dispatching `50pick:refresh`.
+    - The modal stays mounted. The strip's Enter now button renders disabled with its reason instead of unmounting.
+    - Exactly one refresh runs when the dialog closes.
+- **Plan:** N1 §6 bot and holder refusals; §8 open dialog counts as dirty; A2; A3; C8; C9; C11.
+- **Evidence:**
+  - `src/lib/server/responsible-gambling.ts:349`: `isLockedOut`.
+  - `PLAN.md:261`: `house_consent_stale` → AUTO_PAUSED(PASSWORD_CHANGED).
+  - `04-amendments.md:959-961`: C11 dispatches `50pick:refresh` on a clean page.
+- **Fix:** N1; UX-04 dialog-dirty rule.
+- **Test:**
+  - `test:house-bot-holder-lifecycle`: each cause refuses with its copy, 0 intents, press REFUSED.
+  - `test:house-bot-engine`: a cause injected between insert and H2 → auto-pause, 0 positions.
+  - jsdom: open the modal, emit a HOUSE_BOT SSE event and a status change → 0 refresh dispatches and the modal is still mounted; close → exactly 1 refresh.
+
+### TGT-10 [gap] Staff-chosen caps under concurrency, unset or cleared global caps, and the minimum gap
+- **Trigger:** Bot A has min gap 30 s and `capStaffChosenPerDay` 3.
+  - (a) The owner presses on distinct polls P1, P2 and P3, 35 s apart, then P4.
+  - (b) Bot A has 2 PLACED staff-chosen stakes today and its last bet was 40 s ago. Two admins press on P3 and P4 at the same instant.
+  - (c) Bot A has 2 PLACED MANUAL stakes today, a targeted COUNTER fires (the 3rd), and then the owner presses Enter now.
+  - (d) `gCapStaffChosenPerDay` 3 and `gMaxBetsPerMinute` 20: 10 presses at once across Bots A–J on 10 distinct polls, each bot's own caps free. Second run: `gCapStaffChosenDailyTzs` 30,000, 10 × 9,000.
+  - (e) `gCapStaffChosenPerDay` is NULL.
+  - (f) While ON, with one PENDING MANUAL, the owner clears `gCapStaffChosenPerDay` on Limits.
+  - (g) Bot A's last bet was 8 s ago.
+- **Expected:**
+  - (a) 3 PLACED. The 4th press is refused before insert with the STAFF_CHOSEN_PER_DAY pre-check copy (N1 §6).
+  - (b) Both pass the pre-checks, and H2 under `wallet:<botUser>` serializes them: 1 PLACED + 1 SKIPPED(CAP_STAFF_CHOSEN_PER_DAY). The declared H2 order puts staff-chosen caps before the deferrable MIN_GAP, so the loser never reports CAP_MIN_GAP.
+  - (c) The targeted COUNTER counts against the same cap, because the count covers `kind='MANUAL' OR "targetId" IS NOT NULL`. The press is refused as in (a).
+  - (d) H4 under `house:control` gives exactly 3 PLACED + 7 SKIPPED(CAP_GLOBAL_STAFF_CHOSEN_PER_DAY). The TZS run gives 3 + 7 SKIPPED(CAP_GLOBAL_STAFF_CHOSEN_DAILY_STAKE).
+  - (e) Every press is refused with `field` `gCapStaffChosenPerDay` and href `/admin/house-bots?tab=limits`.
+    - The fix link closes the modal first (its `submitId` is discarded; the reason draft is kept), then `router.push`, then `focusFirstInvalid`.
+    - Switching house bots ON is not blocked: PLAN F3's "Set N global limits first" list excludes staff-chosen caps.
+  - (f) The clear is allowed: staff-chosen caps are exempt from 02 §3.8.
+    - Consequence preview: "Enter now and targets will be off for every bot. 1 queued staff-chosen stakes will be skipped."
+    - The clear takes `house:control` briefly.
+    - The PENDING MANUAL's H4 re-read sees NULL → SKIPPED(CAP_GLOBAL_STAFF_CHOSEN_PER_DAY), 0 positions, and automated intents are untouched.
+  - (g) The preview shows "Next possible {HH:MM:SS} EAT (minimum gap 30 s)". The press is refused: "Bot A's last bet was 8 s ago; its minimum gap is 30 s. Possible from {HH:MM:SS} EAT."
+    - If an automated bet lands after an insert, a 30 s gap frees only after `staleAt` (15 s), so the fire gives SKIPPED(CAP_MIN_GAP), not a deferral.
+  - The preview limits line reads, e.g., "Staff-chosen used today: 2 of 3 · TZS 18,000 of TZS 30,000 · all bots: 5 of 10 · TZS 45,000 of TZS 100,000".
+- **Plan:** N1 §2 staff-chosen cap family; §3 H2 declared order and H4; §5; A24 deferral; I6.
+- **Evidence:**
+  - `PLAN.md:322`: min gap ≥ 20 s.
+  - `PLAN.md:200`: the H2 cap list has no order.
+  - `02-sealed-flows.md` §3.8: "Can't clear a limit while bots are on. Switch off first."
+  - `src/lib/server/rate-limit.ts:95`: `bet.place` 30 / 10 per minute, shared with the holder.
+- **Fix:** N1 §2 caps, §3 order pinned in `scripts/anchors/house-bot-seam.anchors.mjs`; clear-while-ON exemption.
+- **Test:**
+  - `test:house-bot-caps` (Postgres + memory):
+    - (a) with an injected clock stepping past the gap;
+    - (b), (c), (d) for count and TZS;
+    - (f);
+    - a test that asserts the declared H2 order from the anchors file.
+  - `test:house-bot-console`: refusal copy, href, focus after the push, consequence preview.
+
+### TGT-11 [gap] The holder holds their own stake; the holder bets against their bot after an Enter now
+- **Trigger:**
+  - (a) Bot A's holder has their own OPEN stake on P when the owner opens Enter now.
+  - (b) The holder stakes on P after the intent insert but before H2.
+  - (c) After Enter now NO 9,000 on P, the holder stakes YES 20,000, then YES 5,000.
+- **Expected:**
+  - (a) Picker row greyed "The holder has their own stake here". The press is refused: "The holder has their own open stake on this market, so Bot A can't enter it."
+    - The press is REFUSED with code OWNER_POSITION.
+    - COMPLIANCE `house_bot.enter_now_refused {botId, marketId, code}` is written through the press lease.
+    - If the action dies before the append, the planner repairs it after 60 s, once.
+  - (b) H2 refuses `house_market_conflict{OWNER_POSITION}` → the PLAN §4.6 mapper row. 0 positions.
+  - (c) Both holder bets commit and are never refused.
+    - One A21 AlertOnce `holder-against:<botId>:<marketId>` and event HOLDER_AGAINST_BOT.
+    - The second bet raises nothing, and Bot A's status is unchanged.
+- **Plan:** PLAN §3 H2; A21; N1 §2 press flow step 6; N1 §6 holding refusals.
+- **Evidence:**
+  - `src/lib/server/market-service.ts:1174-1202`: a player may hold both sides.
+  - `04-amendments.md:553-555`: A21 hook check, never refuse, never pause.
+- **Fix:** N1.
+- **Test:**
+  - `test:house-bot-caps`: OWNER_POSITION before insert and between insert and H2.
+  - `test:house-bot-engine`: A21 after MANUAL → 1 alert for two holder bets.
+  - `test:house-bot-reports`: the refused press is in the R1 Enter now register with code OWNER_POSITION and exactly 1 COMPLIANCE row, including after an audit killed after its lease (repaired once when the lease expires).
+
+### TGT-12 [gap] Another bot holds the market, this bot has a queued stake there, or it holds the other side
+- **Trigger:** Poll P. Four setups:
+  - (a) Bot B holds a COUNTER position on P.
+  - (b) Bot B has a PENDING FILL on P.
+  - (c) Bot A has a PENDING COUNTER on P, due in 40 s.
+  - (d) Bot A holds NO 8,000 from an earlier COUNTER. Players have locked YES 12,000 and locked NO 30,000, so raw NO is 38,000 and the formula side is YES.
+  - (e) Bot A holds 2 NO stakes with `freqMaxPerMarket` 2, and the formula side is NO.
+  - (f) Race: an automated OPPOSITE_SIDE or OTHER_BOT position commits between the insert and the locks.
+- **Expected:**
+  - (a) and (b): picker "Held by Bot B"; press "Bot B already holds this market. One bot per market."
+  - (c) "Bot A already has a queued stake here (Counter, due {HH:MM:SS} EAT). Wait for it or cancel it first."
+  - (d) OWN_OTHER_SIDE: "Bot A already holds NO here and the thinner side is now YES, so it can't add." The picker greys the row, and the press is REFUSED with code OWN_OTHER_SIDE.
+  - (e) "Bot A has 2 of 2 stakes on this market." The picker greys the row.
+  - (f) H2 `house_market_conflict{OPPOSITE_SIDE}` → SKIPPED(CAP_OPPOSITE_SIDE), with its own feed-copy row (never the MARKET_HELD sentence). H3 OTHER_BOT → SKIPPED(MARKET_HELD). Two bots racing still give exactly one position.
+- **Plan:** I3; N1 §4.2 (`enterNowDecision` takes the bot's own OPEN house positions), §6 holding refusals; PLAN §4.4 MARKET_HELD.
+- **Evidence:**
+  - `PLAN.md:34`: I3, one bot and one side per market.
+  - `PLAN.md:200-201`: H2 OPPOSITE_SIDE and PER_MARKET_COUNT; H3 OTHER_BOT.
+  - `PLAN.md:269`: `house_market_conflict` → SKIPPED(MARKET_HELD) today.
+- **Fix:** N1 §4.2 own-position input; the mapper row for OPPOSITE_SIDE.
+- **Test:**
+  - `test:house-bot-engine` and `test:house-bot-console`: each of (a)–(e) refused with its copy, 0 intents.
+  - `test:house-bot-caps`: (f) → SKIPPED(CAP_OPPOSITE_SIDE) with its feed sentence; two bots racing → 1 position.
+
+### TGT-13 [gap] Up & Down market id posted directly to Enter now → refused, 0 intents
+- **Trigger:**
+  - (a) A tampered or buggy client posts `enterNowHouseBotAction` with the market id of BTC 5-min #412, pasted from `/admin/updown`.
+  - (b) `previewEnterNowAction` gets the same id.
+  - (c) The owner types "btc" into the Enter now picker.
+  - (d) A builder bypasses the action and inserts a MANUAL intent with `productLine` UPDOWN through the DAL.
+- **Expected:**
+  - (a) Refused: "Enter now is for polls only. Up & Down entries are automatic."
+    - The press is REFUSED with its code (N1 §6).
+    - 0 intents, 0 `OPENER_SIDE_DRAWN`, 0 `ENTER_NOW_REQUESTED`, no COMPLIANCE row.
+    - The product check reads the raw `productLine`.
+  - (b) Same copy. The product check runs before either preview write, so there is no draw and no `ENTER_NOW_PREVIEWED`.
+  - (c) The picker lists polls only. No Up & Down option is shown, greyed or otherwise.
+  - (d) `CHECK (kind<>'MANUAL' OR "productLine"='MARKET')` rejects the insert, and the memory twin rejects it the same way.
+  - Up & Down entries stay automatic (COUNTER, FILL, OPENER). Exact timing there is the COUNTER delay with min = max (TGT-20).
+  - Up & Down Enter now is in §5 "Explicitly NOT built", item 4. A future amendment would need a price no older than 5 s at preview, at fire and inside the lock; a tighter manual closeness limit; and a COMPLIANCE ruling.
+- **Plan:** N1 §2 CHECK; N1 §6 product refusal; N1 §8 picker (polls only); §5 Explicitly NOT built (item 4).
+- **Evidence:**
+  - `04-amendments.md:439`: A15 accepts a vendor bar up to 120 s old.
+  - `src/lib/server/updown-terminal-vendor.ts:51`: `CACHE_TTL_MS = 30_000`.
+  - `PLAN.md:92-93`: the closeness rule exists so the house never cherry-picks the side already winning.
+  - `src/lib/server/market-dal.ts:158`: the DAL turns every product line other than UPDOWN into MARKET, so the check must read the raw column.
+- **Fix:** N1 (polls only, W9).
+- **Test:**
+  - `test:house-bot-migrations`: the CHECK rejects a MANUAL UPDOWN row and accepts a COUNTER UPDOWN row.
+  - `test:dal-parity`: the memory twin rejects it too.
+  - `test:house-bot-console`:
+    - (a), (b) → the copy, 0 HouseBotIntent and 0 HouseBotEvent rows, press REFUSED;
+    - (c) → 0 Up & Down options.
+  - `red:house-bot-console` mutation "product refusal removed" must fail (the CHECK surfaces instead of the copy).
+
+### TGT-14 [gap] Information blackout: a result check is recorded, a resolve claim is live, or the claim is stale
+- **Trigger:**
+  - (a) At 18:00, three hours before `resolutionAt`, an officer presses "Re-check this market now" on LIVE poll P. The AI returns YES at 70%: an outcome, but not confident. Sentinel fields are stamped and P stays LIVE.
+    - Bot A has an ACTIVE target on P with a PENDING targeted reaction.
+    - Another admin opens Enter now on P.
+  - (b) The scheduled resolve trigger claims poll Q (`resolveClaimedAt` set) and is running its AI call. A press on Q.
+  - (c) That trigger crashed after the claim, leaving `resolveClaimedAt` 9 min old; a second fixture has it 11 min old. Bot A has an ACTIVE target on Q.
+  - (d) The stamp on P commits while a fire already past its re-checks waits for `market:P`.
+  - (e) During the operator's paid AI call (before `resolveDueMarket` takes the claim), a press on P2, which has no verdict yet.
+- **Expected:**
+  - **Blocked when:** `status='LIVE'` and any of these holds:
+    - `sentinelOutcome`, `sentinelConfidence`, `sentinelDetermined`, `sentinelClosedAt`, `resolvedOutcome` or `resolutionStage1By` is non-null;
+    - `resolveClaimedAt` is younger than `RESOLVE_CLAIM_TTL_MS`;
+    - `reopenedAt` is non-null.
+  - (a) The picker greys P, and the press is refused: "Not available: an AI result check is recorded on this market."
+    - The press is REFUSED with code INFO_BLACKOUT, and COMPLIANCE `house_bot.enter_now_refused {botId, marketId, code:'INFO_BLACKOUT'}` is written.
+    - The planner ends the target ENDED(INFO_BLACKOUT) within 15 s, with a TARGET_ENDED event.
+    - The pending reaction ends SKIPPED(INFO_BLACKOUT) at fire.
+  - (b) Refused the same way while the claim is live.
+  - (c) At 9 min: blocked, but `endTargets` skips its pass for a `resolveClaimedAt`-only block, so the target stays ACTIVE. At 11 min: not blocked, and Enter now proceeds.
+  - (d) The H3 re-read under `market:P` refuses `house_info_blackout` → SKIPPED(INFO_BLACKOUT). 0 positions, no alert.
+  - (e) Allowed. No verdict exists anywhere during that call, and this is the only unmarked window.
+  - **Isolation:**
+    - `blackout.ts` exports only `{blocked:boolean}`.
+    - `decide.ts` receives `blocked` as an injected argument and never imports `blackout.ts`.
+    - Automated untargeted decisions on P are byte-identical to an unstamped twin.
+- **Plan:** N1 §3 H3; N1 §4.1 `blackout.ts`; PLAN §18 rows amending I2 and A13; N2 §4 `endTargets`.
+- **Evidence:**
+  - `src/lib/server/market-service.ts:2212-2215`: claim under `market:<id>`, TTL at `:2054`.
+  - `:2256-2270`: `sentinelFields` exist only when the AI returned an outcome.
+  - `:2355-2363`: the early re-check stamps and keeps the market LIVE.
+  - `src/app/admin/resolver-queue/resolution-mode-action.ts:70-71`: the AI call runs before the claim.
+  - `src/app/admin/resolver-queue/page.tsx:489`: "Sentinel says".
+  - `PLAN.md:33`: I2.
+- **Fix:** `blackout.ts`, H3 refusal, `endTargets` skip rule, PLAN §18 rows.
+- **Test:**
+  - `test:house-bot-info-edge`: the twin; source pins (exports and importers of `blackout.ts`; `decide.ts` doesn't import it).
+  - `test:house-bot-caps`: (d) in-lock stamp.
+  - `test:house-bot-engine`: stale-claim fixture at 9 and 11 min; the target is ended within one pass in (a).
+  - `red:house-bot-engine` mutation "blackout call removed from `fire.ts`" must fail the no-lock SKIPPED assertion.
+
+### TGT-15 [gap] 50pick busy, a held wallet lock past `staleAt`, or the engine stale or disabled
+- **Trigger:**
+  - (a) Admission is saturated at the press.
+  - (b) Admission frees for the insert, then saturates. The inline fire and the poller retries all return BUSY.
+  - (c) The holder's withdrawal holds `wallet:<botUser>` from T−1 s to T+19 s, and the inline fire at T enters `placeHouseBet`.
+  - (d) P2028 is injected three times between T+14 s and T+18 s.
+  - (e) The container is killed with `kill -9` inside the locks after the claim.
+  - (f) Poller beats are 45 s old.
+  - (g) `HOUSE_BOT_ENGINE=false`.
+- **Expected:**
+  - (a) "50pick is busy right now — nothing was placed. Try again in a few seconds." The press is REFUSED with code BUSY, and no intent is written.
+  - (b) Attempts run at T, T+1 s, T+6 s and T+14 s (the backoff is capped at `staleAt` − 1 s).
+    - Each BUSY requeue leaves `attempts` where it was before that claim and adds 1 to `transientAttempts`.
+    - After the fourth BUSY no requeue fits before `staleAt` − 1 s, so the row ends EXPIRED(STALE). The planner runs its STALE pass before its POISON pass, and POISON applies only to `attempts` ≥ 3. So no POISON row and no alert.
+    - "Retrying" shows only while `nextAttemptAt` < `staleAt`.
+    - Modal: "Not placed: 50pick was busy until the time limit (15 s) passed. Nothing moved."
+  - (c) The wallet lock frees at T+19 s and H2–H4 pass.
+    - Inside `house:control`, before `markPlaced`, the seam re-reads the claimed row. `NOT ("staleAt" > clock_timestamp())` on the DB clock gives BetAbort → `house_intent_stale` → EXPIRED(STALE).
+    - No alert, 0 positions.
+    - The action returned after 10 s with CLAIMED, and the modal polled to the result.
+  - (d) The retry replays the same key. H0 loads the row without a status filter and its figures match. The `staleAt` check refuses, so there are 0 positions.
+  - (e) Rollback. The planner marks the CLAIMED MANUAL row EXPIRED(STALE) once `staleAt` + 5 s < now(), without waiting for `claimedUntil`. That frees `hbi_manual_live_market_uq` within one pass, and a new press on the market is accepted.
+  - (f) "The bot engine is not running (last seen {HH:MM:SS} EAT). Enter now is off until it runs."
+  - (g) "The bot engine is disabled on this server, so Enter now is off."
+- **Plan:** N1 §4.3; N1 §3 `staleAt` in the seam; N1 §4.3 transient requeue; A10 poison; A24; C11 engine health.
+- **Evidence:**
+  - `src/lib/server/admission.ts:168-201`: sheds only on a full queue or `maxWaitMs <= 0`, with no per-call option.
+  - `src/lib/server/locks.ts:126-143`: the advisory lock is the first statement of its own `$transaction` (timeout 30 s, maxWait 10 s).
+  - `04-amendments.md:283`: the 2 s `lock_timeout` covers only `market:<id>` and `house:control`.
+  - `src/lib/server/retry.ts:47-54`: P2028 and 08006 retryable, 4 attempts.
+  - `04-amendments.md:317`: poison rule.
+  - `PLAN.md:258`: BUSY backoff.
+- **Fix:** N1 §3 `staleAt`; N1 §4.3 transient requeue; `BET_PATH_REASONS` and `GATE_PARITY {exempt:'house context only'}` gain `house_intent_stale`.
+- **Test:**
+  - `test:house-bot-caps` (Postgres): (c) → EXPIRED(STALE) between T+15 s and T+20 s, 0 positions, 0 alerts; (d) → 0 positions; (e) → index freed within one pass after `staleAt` + 5 s.
+  - `test:house-bot-engine`: 5 BUSY outcomes before `staleAt` (test backoff 2 s) → EXPIRED(STALE), `transientAttempts` 5, 0 POISON rows, 0 alerts; pass order STALE before POISON.
+  - `test:house-bot-seam`: `GATE_PARITY` row.
+  - `test:house-bot-console` fake timers: "Retrying" hidden once `nextAttemptAt` ≥ `staleAt`; (f), (g) copy.
+  - `red:house-bot-money` mutation N1-5 must fail (c) (a position appears).
+
+### TGT-16 [gap] Deploy mid-press or mid-poll, closing mid-flight, a lost response, NO_RECORD versus CHECKING
+- **Trigger:**
+  - (a) A deploy lands while the modal is open, and the press hits `UnrecognizedActionError`.
+  - (b) The press is sent and the server places it, but the connection drops before the reply.
+  - (c) An injected 50 s stall holds the press in CHECKING before the intent insert. The client's 45 s card offers "Check now".
+  - (d) A BUSY refusal is recorded, but its reply is lost.
+  - (e) A deploy lands while the modal polls status during Retrying.
+  - (f) The owner closes the modal (✕ or Esc) during Placing, then reloads.
+  - (g) The TOTP cookie expires during status polling.
+  - (h) The deploy's SIGTERM reaches the container while an inline fire is running.
+- **Expected:**
+  - (a) STALE_BUILD: "50pick was updated. This page is from the previous version, so nothing was saved. Your changes are kept — press Reload, then save again."
+    - This is true: the action never ran, so there is no press row.
+    - The reason is restored from the C12 draft, the pending marker is cleared, and the next press mints a new `submitId`.
+  - (b) From 8 s the sub-label reads "It carries on if you close this window. The result will show on this page and in Activity." At 45 s: "No answer from 50pick — we don't know if this was placed."
+    - "Check now" calls `getEnterNowStatusAction(botId, submitId)`. The press is DONE, so it shows "Placed · TZS {x} {SIDE} on “{title}” at {HH:MM:SS} EAT."
+    - "Try again" calls status first. It resends the same `submitId` only while no definitive answer exists, and a resend returns the recorded state with `duplicate:true`.
+  - (c) While the press is CHECKING, status says "Still checking this press…", never "Not placed". It then follows the press to QUEUED or DONE.
+    - NO_RECORD appears only when no press row exists (the request never reached the server): "No stake was recorded for this press. Nothing moved. You can press Enter now again."
+  - (d) "Try again" → status → REFUSED{BUSY} → "50pick is busy right now — nothing was placed. Try again in a few seconds." Never DUPLICATE_SUBMIT. The next press mints a new `submitId`.
+  - (e) The status call's STALE_BUILD shows "50pick was updated while this was being placed. Reload to see the result, and don't press Enter now again until you have."
+  - (e) and (f) after the reload: the BotStrip finds sessionStorage `hb:pendingEnterNow:<botId>` `{submitId, marketId, title, at, build}`, under 10 minutes old.
+    - It reads status and shows a Callout: "Your Enter now on “{title}” at {HH:MM:SS} EAT: Placed · TZS {x} {SIDE}", or "Not placed: {sentence}. Nothing moved.", or "…is still being placed.", with "View in activity".
+    - The marker is cleared on a terminal status.
+  - (g) "Verify again to see the result of your Enter now — it may already be placed." A REAUTH on search or preview shows C12's re-auth copy, never "Search failed. Try again."
+  - (h) The intent is registered in `globalThis.__50PICK_HOUSE_BOT_ENGINE.inFlight`, so the SIGTERM requeue skips it. The row stays CLAIMED, and there is at most one position.
+- **Plan:** N1 §2 press flow steps 7–8; §4.3 (`fireClaimedIntent` in-flight registration); §8 result states and pending marker; C11 uncertain results; C12.
+- **Evidence:**
+  - `src/lib/client/run-admin-action.ts:22-32`: any throw becomes "Server error — nothing may have applied."
+  - `04-amendments.md:1010`: C12 STALE_BUILD copy.
+  - `04-amendments.md:1017`: `hb:pendingOff` marker precedent.
+  - `04-amendments.md:964-966`: C11 8 s label and 45 s card.
+  - `04-amendments.md:612`: SIGTERM requeues claims not in flight.
+  - `PLAN.md:156`: AlertOnce can't replay a refusal.
+- **Fix:** N1 HouseBotPress status reads; pending marker; status-call copy mapping; in-flight registration.
+- **Test:**
+  - `test:deploy-skew`: arms for `enterNowHouseBotAction` and `getEnterNowStatusAction`.
+  - `test:house-bot-console` fake timers:
+    - (b) 8 s label and 45 s card;
+    - Check now on DONE, REFUSED, CHECKING and no row;
+    - (c) a 50 s stall plus a concurrent status read → never NO_RECORD for a press that then places;
+    - (d) → REFUSED{BUSY};
+    - (e) STALE_BUILD on the third poll → exact copy, and the marker renders the post-reload Callout;
+    - (f) close during Retrying, reload → Callout;
+    - (g) copy.
+  - `test:house-bot-engine`: (h) → row CLAIMED, 1 position.
+
+### TGT-17 [gap] Re-auth and non-owner attempts on every N1/N2 action
+- **Trigger:** (a) The admin's TOTP cookie expired while they typed a reason. (b) They signed in on another device. (c) A FINANCE, SUPPORT or RESOLVER user posts an action directly. (d) The TOTP cookie expires while the Enter now modal polls status for a QUEUED press. The actions are `searchHouseBotMarketsAction`, `previewEnterNowAction`, `enterNowHouseBotAction`, `getEnterNowStatusAction`, `previewHouseBotTargetAction`, `addHouseBotTargetAction`, `updateHouseBotTargetAction`, `removeHouseBotTargetAction` and `cancelHouseBotIntentAction` on a staff-chosen intent.
+- **Expected:**
+  - `requireHouseOwner()` is the first statement of every action. It runs before input validation and before the HouseBotPress insert (N1 §2 press flow step 1).
+  - (a)/(b) REAUTH_TOTP or REAUTH_LOGIN with `next`, and no redirect is thrown. 0 HouseBotPress, HouseBotIntent, HouseBotEvent, HouseBotTarget and audit rows. The reason is kept in the C12 sessionStorage draft. The next press mints a new submitId, because no press row exists for the refused request.
+  - Search and preview calls that hit REAUTH show C12's re-auth copy, never "Search failed. Try again."
+  - (c) NOT_OWNER plus exactly one SECURITY `privilege_escalation_blocked` row. 0 press rows. The preview writes no `OPENER_SIDE_DRAWN` and no `ENTER_NOW_PREVIEWED`.
+  - (d) The status call shows "Verify again to see the result of your Enter now — it may already be placed." After re-auth, the page reads status with the submitId kept in the `hb:pendingEnterNow:<botId>` marker (UX-03). It never says "nothing was saved".
+- **Plan:** C12; N1 §2 press flow step 1; N1 §6; N2 §6; N1 §8 (UX-03); PLAN §12 console.
+- **Evidence:** `rbac-guard.ts:208-225` (`requireOwner` accepts any ADMIN and redirects or throws; SECURITY row at `:215`).
+- **Fix:** `requireHouseOwner` first in each of the 9 exports; press insert only after it.
+- **Test:** `test:house-bot-console`: 8 non-owner roles × 9 actions → NOT_OWNER, 1 SECURITY row each, 0 rows in the four house tables; REAUTH without a redirect; a source pin that `requireHouseOwner` is the first awaited call in each export. `red:house-bot-console` mutation "`requireOwner` swapped in" must fail.
+
+### TGT-18 [gap] Replica duplicate: inline fire on one container, poller on another, SIGTERM and a late lock
+- **Trigger:** Two containers, A and B, run during the 60 s overlap (F7). A's action inserts the MANUAL intent (press QUEUED) and claims it inline, while B's poller ticks in the same second. Variants: (a) A is killed after the claim, before the locks. (b) A is killed inside the locks. (c) A is killed after commit. (d) A gets SIGTERM during the inline fire. (e) The holder's withdrawal holds `wallet:<botUser>` for 20 s, so the fire's lock transaction expires (P2028) and retries.
+- **Expected:**
+  - B's claim needs a PENDING row or an expired claim, so it can't take A's live claim. There is at most one position: `hbi_manual_anchor_uq`, and I4's key `hb:<intentId>`.
+  - (a)/(b) Rollback. The planner marks the CLAIMED row EXPIRED(STALE) once `staleAt + 5 s < now()`, without waiting for `claimedUntil` (N1 §4.3). That frees `hbi_manual_live_market_uq`. The press moves to DONE. If any fire reaches the seam later, the in-lock `staleAt` re-read refuses `house_intent_stale` → EXPIRED(STALE), with no alert.
+  - (c) PLACED, because `markPlaced` is in the same transaction. A8 repairs `notifyAdminsHouseBotStaffChosen` once. The press-row lease repair writes exactly one COMPLIANCE `house_bot.enter_now` after 60 s.
+  - (d) The inline intent is in `globalThis.__50PICK_HOUSE_BOT_ENGINE.inFlight`, so the SIGTERM requeue skips it. The row stays CLAIMED, the 30 s heartbeat runs, and there is one position at most. It counts toward A's `$freeSlots`.
+  - (e) The lock is acquired at about T+20 s, and the re-read inside `house:control` sees `NOT ("staleAt" > clock_timestamp())` on the DB clock → `house_intent_stale` → EXPIRED(STALE), 0 positions. The modal's final status comes from `getEnterNowStatusAction`, never from the inline return value.
+  - BUSY and 55P03 requeues increment `transientAttempts`, not `attempts`, so no FAILED(POISON) row or alert appears.
+  - `fireClaimedIntent` throws when called inside a lock or an ambient admission slot.
+- **Plan:** N1 §4.3 (inline fire, transient requeue, planner expiry); N1 §3 `staleAt`; A8; A10; A24 SIGTERM row; F7.
+- **Evidence:** PLAN:226 (SIGTERM requeues this instance's non-firing claims), :246 (`$freeSlots` = 2 − in-flight), :249 (heartbeat); `locks.ts:107-121` (a nested lock joins the parent transaction), `:137` (advisory lock is the transaction's first statement); `admission.ts:168-186`; `retry.ts:47-50` (P2028 and 08006 retried).
+- **Fix:** the N1 §4.3 in-flight registry and assertions; the N1 §3 seam check; the N1 §4.3 planner expiry at `staleAt + 5 s`.
+- **Test:**
+  - S4 rehearsal 3 (two OS processes) with MANUAL cases: `kill -9` after the claim, inside the market lock and after commit → at most 1 position per intent, and 0 CLAIMED rows after `staleAt + 5 s` plus one planner pass. SIGTERM during an inline fire → row CLAIMED, then 1 position.
+  - `test:house-bot-caps` (Postgres): `wallet:<botUser>` held 20 s → EXPIRED(STALE) by 15–20 s, 0 positions; P2028 injected three times over 14–18 s → 0 positions; 5 BUSY outcomes before `staleAt` (injected backoff 2 s) → EXPIRED(STALE), 0 POISON rows, 0 alerts.
+  - Source pins: `enterNowHouseBotAction` never calls the fire inside `withLock` or `$transaction`; a fire inside `withLock` throws.
+  - `red:house-bot-money` mutation N1-5 must produce a position.
+
+### TGT-19 [gap] A target added after a player already entered; arming decided by the sweep on DB time
+- **Trigger:**
+  - Player X staked YES on poll P at 14:00:00 (DB time).
+  - The owner adds a target on P at DB 14:00:30, so `effectiveFrom` is 14:00:42.
+  - Y stakes at 14:00:35 and Z at 14:00:50.
+  - Replica 2's hook cache was loaded at 14:00:29, and its clock is 8 s ahead.
+  - (d) Later the owner removes the target (no live reaction) at 14:10:00, and W stakes at 14:10:01 on replica 2.
+- **Expected:**
+  - No post-commit hook, on any replica, decides a poll trigger. The hook keeps Up & Down triggers only, and it is suspended while |skew| > 5 s.
+  - The sweep reads targets fresh in its own pass. It decides only unmarked LIVE positions older than 5 s with no COUNTER intent, and it tests `placedAt ≥ effectiveFrom` against its DB watermark.
+  - X and Y get no targeted reaction (X was before the add; Y was inside arming). Their triggers follow PLAN §4.4 scope rules with no `targetId`.
+  - Z gets exactly one targeted COUNTER, decided before its `dueAt` (TGT-20 (b)).
+  - (c) With replica 2's +8 s clock, a stake at DB 14:00:25 carries `placedAt` 14:00:33 < 14:00:42 and is not armed. Only a skew above 12 s could arm a stake placed before the add, and A24 alerts above 5 s.
+  - (d) W is decided without the target: a scope bot may react, and 0 rows are CANCELLED(TARGET_REMOVED).
+  - The add response shows "Armed from 14:00:42 EAT".
+- **Plan:** N2 §4 steps 1–2; A11; A24 clock-skew and high-volume rows; PLAN §18 row amending the §4.3 fast path.
+- **Evidence:** PLAN:229 (hook fast path with a 5 s soft cache), :230 (sweep keyset and watermark); `market-service.ts:1238` (`placedAt` from the bettor container's JS clock); 04-amendments.md:619 (skew guard), :622 (sweep filter).
+- **Fix:** poll triggers are decided only in the sweep; `TARGET_ARMING_SEC = 12` pin kept.
+- **Test:** `test:house-bot-engine`:
+  - trigger 1 s before `effectiveFrom` → 0 target rows; 1 s after → 1;
+  - 8 s skew with a cache loaded before the add → the target reacts to a stake after arming;
+  - a stake 1 s after removal on a second process → 0 CANCELLED(TARGET_REMOVED);
+  - a source pin that the hook returns before deciding when `productLine='MARKET'`.
+  - `red:house-bot-engine` mutation "`effectiveFrom` dropped from the scope check" must fail.
+
+### TGT-20 [gap] Exact timing golden rows, with the hold plus LOCK_MARGIN_MS
+- **Trigger:**
+  - (a) Bot A has a chain-scoped Up & Down COUNTER, delay 10–10, on BTC 3-min; a player stakes 40 s after the actual open.
+  - Poll target rows (grace 5, paid 0 unless stated): (b) STAKE 10 s; (c) EXIT_CLOSE 10 s; (d) EXIT_CLOSE 5 s; (e) grace 5, paid 2, STAKE 10 s; (f) poll created at grace 5, platform grace lowered to 3 before the add, STAKE 10 s; (g) poll with grace 0, STAKE 10 s.
+- **Expected:**
+  - (a) `dueAt = placedAt + 10 s`. A 3-min round's runway is shorter than the grace, so the exit closes at `placedAt` and the stake is already past exit close + 7 s at +10 s. `staleAt = dueAt + 30 s`. It usually lands 12–15 s after the stake. Feed: "placed 13 s after the stake (asked 10 s)".
+  - Every target uses `dueAt = max(requested, exitWindowClosesAt(trigger, market) + LOCK_MARGIN_MS)` and `staleAt = dueAt + 60 s`:
+    - (b) requested +0:10, hold +5:07 → `dueAt` = `placedAt` + 5:07, `heldToExit:true`.
+    - (c) requested +5:10 → +5:10, `heldToExit:false`.
+    - (d) requested +5:05 < +5:07 → +5:07, `heldToExit:true`.
+    - (e) exit +7:00 → +7:07.
+    - (f) the frozen rates give +5:07, in `decide.ts` and in `previewHouseBotTargetAction`; never +3:07.
+    - (g) no runway, so the exit closes at `placedAt`; hold +0:07, requested +0:10 → +0:10.
+  - Decision JSON: `{targetId, delaySec, timingFrom, requestedDueAt, heldToExit}`.
+  - Never earlier than asked: `Position.placedAt ≥ requestedDueAt` and ≥ exit close + 7 s. Feed lateness = `placedAt − requestedDueAt`.
+  - The preview's `held`, `never` and sentence equal the N2 §5 golden row for each case.
+- **Plan:** N2 §4 steps 5 and 12; N1 §4.1 `LOCK_MARGIN_MS`; N2 §6 target preview; N2 §5 golden rows; A14.
+- **Evidence:** `market-service.ts:2655-2659` (`ratesFor(market)`: the poll's own frozen rates), `:2671` (`hadRunway`); `market-config.ts:217-218` (defaults grace 5, paid 0); `src/lib/updown-durations.ts:251-262` (the round locks `durationMinutes` after open); 04-amendments.md:619 (claims wait `dueAt ≤ now() − max(0, skew) − 2 s`).
+- **Fix:** N2 absolute hold with the margin; the server-side target preview.
+- **Test:**
+  - `test:house-bot-rules`: `effectiveTargetTiming` = `decide.ts` on (b)–(g); constants test `LOCK_MARGIN_MS = 7000` ≥ A24's 5 s + 2 s.
+  - `test:house-bot-engine`: `dueAt` for (a)–(g).
+  - `test:house-bot-console`: frozen grace 5 with live grace 3 → 5:07; the action writes 0 rows.
+  - `drive:house-bots-local` (local seeded DB): (b), (c) and (a).
+  - `red:house-bot-engine`: "`dueAt = requested` without the exit hold" fails (b); "hold drops `LOCK_MARGIN_MS`" fails (d).
+
+### TGT-21 [gap] "Get in 10 s after the player" while their exit is free; they cash out during the hold
+- **Trigger:** FIRST target on poll P, STAKE 10 s. Player A stakes NO 12,500 at 14:00:00, so the reaction is due 14:05:07. They cash out at 14:00:15 for their full stake. Variant (b): containers with clocks +5 s and −5 s, and a cash-out attempt on the slow container at its local 14:04:58 while the fire runs at DB 14:05:07. Variant (c): player B stakes YES at 14:10:00.
+- **Expected:**
+  - No house stake exists before 14:05:07, so the house gives no free option.
+  - The fire sees the trigger gone: H3 `house_trigger_gone` → SKIPPED(TRIGGER_EXITED). One PENALTY_BOXED event `{cause CASHED_OUT_COUNTERED}` and one AlertOnce.
+  - The skipped reaction leaves the FIRST target ACTIVE. (c) is reacted to normally if B is not penalty-boxed.
+  - (b) `lockedForHouse` counts A's stake only when its exit closed at least 7 s ago on the DB clock. A cash-out the slow container still accepts (it is inside that container's window) therefore never succeeds after the house counted the stake.
+  - An officer cancelling the PENDING reaction before the cash-out is a veto (TGT-36), not this path.
+  - No early-entry option exists anywhere (N1/N2 "Not built").
+- **Plan:** N2 §4 steps 5 and 8; N1 §4.1; A15; R5; D18.
+- **Evidence:** `market-service.ts:2661-2662` (`sinceBet` from the cashing container's `Date.now()`), `:2687-2691` (sellable in the window; full refund in grace), `:3278-3345` (one-sided refund branch); `market-service.ts:1238` (`placedAt` is JS time).
+- **Fix:** N2 absolute hold; `LOCK_MARGIN_MS` in `lockedForHouse`.
+- **Test:** `test:house-bot-engine`: cash-out during the hold → SKIPPED(TRIGGER_EXITED) + PENALTY_BOXED, 0 house positions, target ACTIVE. Two processes with injected clocks +5 s and −5 s: a cash-out racing a targeted fire at the boundary never succeeds after the house counted the stake. `red:house-bot-money` mutation N1-7 must fail the skew case.
+
+### TGT-22 [gap] Target removed, or bot paused or removed, mid-delay
+- **Trigger:** A targeted reaction on poll P is PENDING, due in 3 min. (a) The owner removes the target with a reason. (b) They press Remove with no reason. (c) They pause the bot. (d) They remove the bot. (e) The reaction is CLAIMED and already holds `house:control` when (a) lands. (f) A target with no PENDING or CLAIMED reaction is removed. (g) A second Remove arrives on the same target.
+- **Expected:**
+  - (a) A veto. The target becomes ENDED(VETOED), not REMOVED. The PENDING reaction is CANCELLED by a conditional update with RETURNING. Records per TGT-35. P can never be targeted again by any bot.
+  - (b) Refused before any write, field `reason`: "Give a reason (5 to 300 characters)." 0 press rows.
+  - (c) Reactions CANCELLED as 02 §3.4. The target stays ACTIVE and inert, and the trigger stays consumed (risk 18).
+  - (d) Intents CANCELLED; the target becomes ENDED(BOT_REMOVED) in the Remove service.
+  - (e) The reaction completes PLACED: the removal waits on `wallet:<botUser>` until the bet commits, then counts 0 live reactions, so the target ends REMOVED (the poll still can't be targeted again) and `target_removed.cancelled[]` is empty. If the reaction is CLAIMED but not yet inside the seam, the removal cancels it instead: the target ends VETOED, and the fire reaches H0, continues to `markPlaced` and ends `house_intent_superseded`: no `house_key_mismatch`, no SECURITY row, master stays ON.
+  - (f) REMOVED, reason required. No staff-cancel audit. P can never be targeted again.
+  - (g) An ok no-op: "Already removed." or "Already ended: {caption}." The press row is DONE.
+- **Plan:** N2 §6 removal; N2 §2 never-retarget; N1 §3 H0; N2 §6 locks; N2 §4 steps 9–10; 02 §3.4–3.5.
+- **Evidence:** `02-sealed-flows.md:332` (pause cancels PENDING), `:342` (Remove cancels PENDING and CLAIMED); PLAN:165 (COUNTER anchor unique with no status filter); PLAN:198 (H0 pre-lookup), :250 (conditional terminal writes), :271 (`house_key_mismatch` → master OFF).
+- **Fix:** N2 §6 remove semantics.
+- **Test:** `test:house-bot-engine` removal matrix (a)–(g). `test:house-bot-caps`: removal, auto-pause and master OFF each injected between F5 and H0 → CANCELLED or superseded, 0 SECURITY rows, `offCause` unchanged, 0 positions. `red:house-bot-money` mutation "H0 filters `status='CLAIMED'`" must fail.
+
+### TGT-23 [gap] Target poll closed early, voided, reopened, re-checked or purged mid-delay
+- **Trigger:** A reaction is PENDING on target poll P.
+  - (a) Stage-1 or a single-admin resolve closes P.
+  - (b) Emergency void.
+  - (c) An admin presses "Re-check this market now", the AI is confident, and P closes with Sentinel fields; then another admin presses Reopen.
+  - (d) P is deleted or orphan-repaired.
+  - (e) A crashed resolve leaves `resolveClaimedAt` older than `RESOLVE_CLAIM_TTL_MS` on LIVE P.
+  - (f) `resolveClaimedAt` is younger than the TTL when the reaction fires.
+- **Expected:**
+  - (a)/(b) The reaction ends SKIPPED(MARKET_NOT_LIVE) (A16 planner update or fire re-read); the target ends MARKET_CLOSED within one planner pass.
+  - (c) Reopen sets `reopenedAt` and `reopenCount` in the same `marketStore.set(m)`. The target ends MARKET_REOPENED within one pass, even though no intent ever saw MARKET_NOT_LIVE, and it never re-arms. New triggers on P → SKIPPED(MARKET_REOPENED) for every mode. Add target and Enter now on P are refused: "Not available: this market was reopened after a result check." Full path: TGT-34.
+  - (d) SKIPPED(MARKET_GONE); the target ends MARKET_GONE. The feed renders from `decision.snapshot`.
+  - (e) Not blocked by that field alone. `endTargets` skips its pass and the target stays ACTIVE.
+  - (f) Fire or H3 → SKIPPED(INFO_BLACKOUT). `endTargets` does not end the target on `resolveClaimedAt` alone. If the resolve completes, the next pass ends it MARKET_CLOSED.
+  - A staff-chosen stake already PLACED on P, then voided or reopened → one AlertOnce `staff-stake-voided:<marketId>` and an R1 row. If the voiding or reopening officer is in `requestedBy`, see TGT-38.
+- **Plan:** A16 (MARKET_REOPENED now reads `reopenedAt`); N1 §2 change (r); N1 §3 blackout; N1 §4.5 `staff-stake-voided`; N2 §4 step 9.
+- **Evidence:** `market-service.ts:4000-4034` (`adminReopenMarket` nulls the Sentinel fields at `:4011` and `resolveClaimedAt` at `:4024`; `market.reopened` audit at `:4029`), `:4061` (`emergencyVoidMarket`), `:2966` (`resolveMarket`); `markets/actions.ts:183`, `:203`; `resolver-queue/resolution-mode-action.ts:44` (`recheckMarketNowAction`); 04-amendments.md:457 (A16 reopen row "leaves no marker").
+- **Fix:** N2 §4 `endTargets`; the N1 §2 `reopenedAt` marker; the N1 §3 resolve-claim TTL rule.
+- **Test:** `test:house-bot-engine` lifecycle table: each transition gives its terminal state within one pass; reopen with no prior intent → MARKET_REOPENED; a stale-claim fixture keeps the target ACTIVE. `test:house-bot-seam`: `adminReopenMarket` output is byte-identical apart from `reopenedAt`/`reopenCount`. `red:house-bot-engine` mutation "blackout ignores `reopenedAt`" must fail.
+
+### TGT-24 [gap] FIRST vs EVERY, a race, the per-market count and the staff-chosen caps
+- **Trigger:**
+  - (a) A FIRST target gets two triggers 2 s apart; both reactions fire concurrently.
+  - (b) An EVERY target with `freqMaxPerMarket=2` gets 4 triggers, 2 min apart.
+  - (c) A FIRST target's first reaction hits a staff-chosen cap.
+  - (d) Bot A has `capStaffChosenPerDay=3`, with 1 MANUAL and 2 targeted stakes PLACED today; another targeted reaction fires.
+  - (e) `gCapStaffChosenPerDay=3` with 0 placed today: 10 staff-chosen fires (5 MANUAL, 5 targeted) across 10 bots × 10 markets at once.
+  - (f) `capStaffChosenPerDay` is NULL.
+- **Expected:**
+  - (a) H2 under `wallet:<botUser>` checks TARGET_ONCE before the deferrable rate caps (N1 §3 H2). Result: 1 PLACED + 1 SKIPPED(CAP_TARGET_ONCE), never CAP_MIN_GAP. The target ends DONE within one planner pass.
+  - (b) 2 PLACED; the later ones SKIPPED(CAP_PER_MARKET_COUNT).
+  - (c) The reaction is SKIPPED and the target stays ACTIVE ("until one reaction is placed").
+  - (d) SKIPPED(CAP_STAFF_CHOSEN_PER_DAY): MANUAL and targeted rows count together, and the check is terminal, ahead of MIN_GAP. The same bot's automated COUNTERs are neither counted nor blocked.
+  - (e) Exactly 3 PLACED + 7 SKIPPED(CAP_GLOBAL_STAFF_CHOSEN_PER_DAY) (H4 under `house:control`). The TZS cap behaves the same way.
+  - (f) Every reaction → SKIPPED(CAP_STAFF_CHOSEN_PER_DAY) (NULL refuses).
+  - Staff-chosen counts read `hbi_staff_bot_finished_idx` and `hbi_staff_finished_idx`, with no Seq Scan.
+- **Plan:** N1 §2 staff-chosen caps; N1 §3 H2 and H4; N2 §3 H2; N2 §4 step 9.
+- **Evidence:** PLAN:200 (H2 PER_MARKET_COUNT); PLAN:322 (min gap ≥ 20 s); 04-amendments.md:615 (rate caps defer within lateness, else SKIPPED).
+- **Fix:** N2; the staff-chosen cap family.
+- **Test:** `test:house-bot-caps` (Postgres + memory): (a), mixed MANUAL + targeted against one per-bot cap, the 10-bot global burst, and a test that asserts the declared H2 order. EXPLAIN pin extended to the two staff indexes. `red:house-bot-money` mutation N2-M1 (TARGET_ONCE removed from H2) fails (a); `red:house-bot-money` mutation N2-M2 (the staff-chosen count omits targeted rows) fails (d).
+
+### TGT-25 [gap] Penalty-boxed, holder-recruit, staff, AGENT or bot-holder trigger on a target; counterparty caps
+- **Trigger:** EVERY target on poll P. Stakes arrive from: a penalty-boxed account; an account recruited by Bot A's holder; a staff account; an AGENT; Bot B's holder's own unmarked account; a normal player already countered 3 times today. On P, a staff account also holds locked YES 50,000 beside player Q's locked YES 10,000.
+- **Expected:**
+  - The trigger filter is unchanged. Penalty-boxed → one SKIPPED row with `targetId` and PENALTY_BOX. Holder recruit → SKIPPED(HOLDER_RECRUIT) with `targetId`. Staff, AGENT and a live bot's account → filtered with no row (I3).
+  - The player countered 3 times → SKIPPED(CAP_COUNTERPARTY_COUNT); counterparty caps apply to targeted COUNTERs (N1 §3 H4).
+  - Q's reaction is cut against `lockedForHouse(YES)`, which excludes the staff account, so the 50,000 gives no room. The cut is at most TZS 10,000 minus the raw NO pool.
+  - A targeted COUNTER counts only against its trigger. Pro-rata attribution is for MANUAL THIN only (TGT-37).
+- **Plan:** N1 §3 H4; N1 §4.1; PLAN §4.3 trigger filter; A21.
+- **Evidence:** PLAN:231 (trigger filter: PLAYER, not a live bot, not penalty-boxed); PLAN:335 (counters per player per day 3 and 30,000); 04-amendments.md:556 (HOLDER_RECRUIT).
+- **Fix:** N2 (no exemption); `lockedForHouse` eligibility.
+- **Test:** `test:house-bot-engine` trigger matrix, asserting the row and code per account kind. `test:house-bot-caps`: 4th counter against one player → CAP_COUNTERPARTY_COUNT; staff-only locked money on the trigger side → no room. `red:house-bot-money` mutation N1-6 (an eligibility exclusion dropped from `lockedForHouse`) must fail.
+
+### TGT-26 [gap] A target and an automatic COUNTER compete for one trigger
+- **Trigger:** Bot A has an armed ACTIVE target on Sports poll P. Bot C has poll COUNTER mode on with Sports in scope. A player stakes on P. Variants: (b) Bot A is outside its schedule. (c) Bot A is PAUSED. (d) Bot A fails a cap pre-check and Bot C is in its no-react zone. (e) Two sweep passes on two replicas decide the same trigger.
+- **Expected:**
+  - Exactly one COUNTER row for the trigger (`hbi_counter_anchor_uq`). Here it is Bot A's targeted reaction with `targetId`; react probability is not applied to the target candidate.
+  - (b)/(c) Bot A is ineligible, so Bot C may take the trigger on its own timing: no `targetId`, `staleAt = dueAt + 600 s`, automated caps, the capped `notifyAdminsHouseBotBet`. Bot A's later reactions on P then see MARKET_HELD.
+  - (d) Neither is eligible: one SKIPPED COUNTER row carrying Bot A's code and `targetId`.
+  - (e) The second insert gets 23505, which `uniqueViolation(err)` names as `hbi_counter_anchor_uq` → "already decided". An unknown index name is rethrown, never swallowed.
+- **Plan:** N2 §4 steps 1 and 4; N1 §2 `uniqueViolation`; PLAN §4.4.
+- **Evidence:** PLAN:165 (COUNTER anchor unique, no status filter); 04-amendments.md:622 (sweep filters positions that have no COUNTER intent).
+- **Fix:** N2; the DAL discriminator.
+- **Test:** `test:house-bot-engine`: target + scope bot → exactly 1 row, target first; (b) → Bot C row without `targetId`; (d) → 1 SKIPPED row with `targetId`. `test:dal-parity`: `uniqueViolation` returns the same name on both stores, and an unknown name rethrows.
+
+### TGT-27 [gap] Rules format: missing N1/N2 keys, rules from a newer build, a post-release v2
+- **Trigger:** (a) A v1 rules JSON lacks `enterNow` and `targeting`. (b) A rollback leaves Bot A's rules at v99 while the owner presses Enter now, and a PENDING targeted reaction exists on an ACTIVE target. (c) Counterfactual: N1/N2 built after REL-4 with `schemaVersion: 2`.
+- **Expected:**
+  - (a) Parses to `enterNow {enabled:false, thinStakeTzs:null, openerStakeTzs:null}` and `targeting {enabled:false}`, with no pause. The Enter now button is not rendered, and the Add target head action is not rendered.
+  - (b) The press is refused and stored as a REFUSED press row with code RULES_FROM_FUTURE: "Bot A's rules were saved by a newer 50pick build (v99). Enter now is off until that build is back." The planner skips the bot. The reaction is never placed and ends EXPIRED(STALE) after its `staleAt`. After 10 min: one AlertOnce `rules-future:<botId>:99` (F4). Bot status unchanged.
+  - (c) Every bot goes AUTO_PAUSED(RULES_OUTDATED) until Rules shows the `migrateRules` diff and the owner saves. This is why N1/N2 fold into v1 (N1 §2 rules JSON v1).
+- **Plan:** N1 §2 rules JSON v1; A4; C14; F4; N1 §8 (UX-20).
+- **Evidence:** 04-amendments.md:184-187 (RULES_FROM_FUTURE requeues without a pause; new fields default to deny), :1683-1685 (F4 older and future rules).
+- **Fix:** rules JSON v1 folded into commit 1.
+- **Test:** `test:house-bot-rules`: missing keys → narrowest values, no pause. `test:house-bot-engine`: v99 for 11 min on an injected clock → 1 alert, 0 fires, the press REFUSED with its code. `test:house-bot-console`: no Enter now button while `enterNow.enabled` is false.
+
+### TGT-28 [gap] The audit and report trail of every staff-chosen stake
+- **Trigger:** One EAT month, 2 officers.
+  - **Enter now:** 40 presses. 5 are refused before insert (3 INFO_BLACKOUT, 1 OWNER_POSITION, 1 BALANCED). 35 insert: 31 PLACED, 2 EXPIRED(STALE), 1 SKIPPED(CONDITION_GONE), and 1 CANCELLED by a staff cancel.
+  - **Previews:** 60, each in its own minute; 2 are on empty markets.
+  - **Targets:** 5 added. Their reactions: 12 PLACED, 3 SKIPPED, 1 cancelled when its target is removed.
+  - **Void:** 1 emergency void of a market holding an Enter now stake.
+  - **Faults:** one inline audit append fails transiently; one planner repair is killed after taking its lease.
+- **Expected:**
+  - **Press rows:** HouseBotPress = 47 (40 ENTER_NOW, 5 TARGET_ADD, 1 TARGET_REMOVE, 1 STAFF_CANCEL). Every refused press keeps its code.
+  - **Identity:** presses = inserted MANUAL intents + refused press rows (40 = 35 + 5).
+  - **Intents and events:** 35 MANUAL intents and 35 `ENTER_NOW_REQUESTED` events. 60 `ENTER_NOW_PREVIEWED`. 2 `OPENER_SIDE_DRAWN`, each with `actorId` = the previewing officer.
+  - **COMPLIANCE rows, exactly:**
+    - 35 `house_bot.enter_now`;
+    - 4 `house_bot.enter_now_refused` (the 3 INFO_BLACKOUT and 1 OWNER_POSITION presses; BALANCED gets none);
+    - 5 `target_added`;
+    - 1 `target_removed`;
+    - 1 `staff_intent_cancelled` (the removal's cancelled reaction is listed in `target_removed.cancelled[]`).
+  - **Audit faults:** the failed append is repaired once through the press lease after 60 s. The killed repair is completed after its 5-minute lease expires. Never 2 rows for one press.
+  - **Positions:** exactly 43 `market.position.opened` rows for staff-chosen stakes.
+  - **Alerts:** 43 `notifyAdminsHouseBotStaffChosen` alerts per recipient; 0 staff-chosen rows in `notifyAdminsHouseBotBet`. The void sends 1 `staff-stake-voided`.
+  - **R1 sections:**
+    - entry split per bot and product, tying to house totals;
+    - Enter now register from HouseBotPress: 40 rows with officer names, outcome or refusal code;
+    - previews without a stake, per officer per month;
+    - markets later voided or reopened: 1;
+    - markets decided by the officer who chose a stake;
+    - staff-chosen scorecard;
+    - targets register: 5;
+    - vetoes: 2.
+  - **R9:** the void audit carries `houseStake {yes, no, staffChosen:{yes, no, requestedBy:[<officer id>]}}`.
+  - **DSAR:** holds the four event kinds of N1 §9's DSAR rule as `{kind, at, actor:'50pick owner'}`, with no press rows, reasons, marketIds or officer ids.
+  - **Reasons and payloads:** reasons live only in event and press `reason` columns. Payload keys stay within R7. Alert bodies say "Reason recorded in the activity feed →".
+- **Plan:** N1 §2 press flow steps 6 and 9; N1 §9 (R9 shape, R1 sections, DSAR); R7; A19; A20.
+- **Evidence:** `audit.ts:23`, `:336-358` (each append takes one DB-global chain lock); 04-amendments.md:525 (A19 source scan), :536-537 (A20: house tables 7 years, AlertOnce 30 days); `market-service.ts:4061` (`emergencyVoidMarket`).
+- **Fix:** HouseBotPress audit lease; R1 sections.
+- **Test:**
+  - `test:house-bot-reports`: the fixture's exact counts, R1 sections and R9 shape.
+  - `test:house-bot-caps`: audit delayed 70 s → exactly 1 row; repair killed after its lease → exactly 1 row after the lease.
+  - `test:house-bot-console`: payload pin; no reason text in any payload.
+  - `test:dsar-secrets`: the kind list, no reason text.
+  - `test:erasure` §8: press and event reasons become "[erased]".
+
+### TGT-29 [gap] The picker lists polls only, leaks no private data and works at 360 px by keyboard
+- **Trigger:** Poll P has a planted needle in `sentinelReasoning`, its AIPoll `reasoning` and `reviewedBy`, and positions from named players with phones. At 360 px, keyboard only, the owner:
+  - types "elec";
+  - picks P, types one more letter and presses Enter;
+  - clears the box to 1 character;
+  - pastes P's market id;
+  - pastes an Up & Down market id, for purpose enter-now and for purpose target.
+- **Expected:**
+  - **Private data:** the `searchHouseBotMarketsAction` JSON holds only the pinned public fields. No needle, display name, phone or per-account figure appears; pools are aggregates only.
+  - **Polls only:** matching uses `HOUSE_BOT_MARKET_PICKER_SEARCH` (title, category, id) through `matchesQuery` only. A pasted poll id finds P. The Up & Down id finds nothing for either purpose, because Up & Down markets are excluded, not greyed. The hint never suggests a coin.
+  - **Short queries:** 0–1 characters list "Closing soonest".
+  - **Selection contract:**
+    - Enter in the combobox calls `preventDefault` and never submits.
+    - A pick sets the title text and collapses the listbox.
+    - Typing after a pick clears the selection, the preview and its submitId, and disables submit.
+    - A late preview for another market is dropped.
+    - Arrow keys skip `aria-disabled` options.
+  - **Greyed rows** show their reason in text, never opacity. Examples: "Not available: an AI result check is recorded on this market.", "Not available: this market was reopened after a result check.", the OWN_OTHER_SIDE copy, and "Bot A has {n} of {max} stakes here"
+  - **Layout at 360 px:**
+    - the listbox is in-flow with no portal;
+    - options wrap and are ≥44 px;
+    - each "SIDE TZS x" group is a nowrap `.amount` span;
+    - one polite count;
+    - focus follows UX-10;
+    - the picker takes `mayAct` as a prop.
+  - Search writes 0 rows.
+- **Plan:** N1 §8 MarketPicker (UX-01, UX-10, UX-12, UX-13, UX-19); N1 §4.4 polls only; N1 §6 search and preview; N1 §3 blackout; N1 §4.2 own position; A13; 03 phase D.
+- **Evidence:** `search/fields.ts:47` (MARKET_SEARCH), `:106` (POLL_SEARCH includes AI `reasoning`), `:210` (UD_ROUND_SEARCH); `scripts/search-adoption.test.mts:75-77` (hand-rolled `.toLowerCase().includes(` fails); `select.tsx:372` (kit Select portals); `admin/markets/[id]/page.tsx:91-95`, `:396` (admin positions with name and phone); `prisma/schema.prisma:2103-2133` (AIPoll `reasoning`, `reviewedBy`).
+- **Fix:** picker DAL with an explicit public select; the `MarketPicker` component.
+- **Test:**
+  - `test:house-bot-info-edge`: pinned DAL field list; planted needles.
+  - `test:house-bot-console` jsdom: Enter with an ok preview → 0 calls to `enterNowHouseBotAction`; typing after a pick clears the preview; a late preview is dropped; pasted poll id → P; Up & Down id → 0 rows; source pin: no `.includes(` in `picker.ts`; search writes 0 rows.
+  - Phase D drive at 360/768/1280 on the local seeded DB only.
+  - `red:house-bot-console`: "picker DAL selects `sentinelOutcome`" and "Enter `preventDefault` removed" must fail.
+
+### TGT-30 [gap] A bot with only Enter now or targets; schedule differences
+- **Trigger:** Bot M has every automatic mode off, `enterNow.enabled` and `targeting.enabled` on, staff-chosen caps set, 2 ACTIVE targets, and schedule 08:00–18:00. At 21:00 the owner presses Enter now on poll Q, and a player stakes on target poll P at 21:05. Variants: (b) `enterNow.enabled` false with targeting on. (c) Every mode, Enter now and targeting all off.
+- **Expected:**
+  - Start succeeds. Its dialog says "Bot M has no automatic mode: it bets only when you press Enter now or a target reacts." and lists "Active targets: 2 →".
+  - The 21:00 Enter now places: the schedule is ignored (W8).
+  - The 21:05 reaction → SKIPPED(OUTSIDE_SCHEDULE) with `targetId`: targets obey the schedule (W8).
+  - Strip status: `enterNow.available=true` and `targets.active=2`. Availability evaluates the refusal steps before the option step.
+  - (b) The Enter now button is not rendered, and Start still succeeds.
+  - (c) Start is refused: "Turn on at least one entry mode."
+- **Plan:** N1 §5 Start rule; N2 §4 step 10; W8; N1 §8 (UX-20); 02 §3.3 item 6.
+- **Evidence:** `02-sealed-flows.md:312-318` (Start refusals; item 6 "Turn on at least one entry mode."); PLAN:80 (F3 "no mode is on").
+- **Fix:** N1 §5 Start rule.
+- **Test:** `test:house-bot-console`: Start truth table (automatic modes × `enterNow.enabled` × `targeting.enabled`); strip fixture with no button. `test:house-bot-engine` schedule: MANUAL placed outside the schedule, targeted SKIPPED(OUTSIDE_SCHEDULE).
+
+### TGT-31 [gap] Sunset, feature withdrawn, and removal with active targets
+- **Trigger:** `ops:house-bots-sunset --apply --reason` runs with 3 ACTIVE targets, one PENDING MANUAL intent (its press QUEUED) and one open PLACED staff-chosen stake. Then `FEATURE_HOUSEBOTS=WITHDRAWN` is deployed. The owner then presses Enter now, Add target, Remove on an ended target, and Cancel on the cancelled intent.
+- **Expected:**
+  - **Sunset:** master OFF(SUNSET); every bot REMOVED(SUNSET); the MANUAL intent CANCELLED by a conditional update. Its press becomes DONE on the planner's next pass while the planner still runs, and otherwise stays QUEUED over a cancelled intent, which the status action reads as cancelled. Targets → ENDED(SUNSET) with one TARGET_ENDED event each. One COMPLIANCE `house_bot.sunset`.
+  - **After WITHDRAWN:**
+    - Enter now and Add target are refused: "House bots are withdrawn." Each leaves a REFUSED press row with its code.
+    - Remove on the ended target is an ok no-op: "Already ended: House bots withdrawn."
+    - Cancel returns "Already cancelled."
+  - The open stake settles normally, and cash-out on it still returns `house_position_no_exit`.
+  - Reports keep every press, intent, target and event row (A20).
+  - A second `--apply` changes 0 rows.
+- **Plan:** F2; N1 §2 press flow; N2 §4 step 10; 02 §3.9.
+- **Evidence:** 04-amendments.md:1638 ("gate the offer, never the refusal"), :1641-1646 (the script), :1655 (withdrawn test).
+- **Fix:** the sunset script ends targets.
+- **Test:** `test:withdrawn-features` section: dry run writes 0 rows; `--apply` leaves 0 ACTIVE targets and 0 live intents; a second `--apply` changes 0; press refusal copy; `house_position_no_exit` unchanged; reports keep the house lines.
+
+### TGT-32 [gap] Stake bounds, balance or exposure shrink between decision and fire, for every kind
+- **Trigger:**
+  - (a) Enter now preview TZS 9,000 on P (THIN); before the fire the live minimum is raised to 10,000.
+  - (b) The holder withdraws, leaving TZS 6,000 above the balance floor.
+  - (c) An automated COUNTER is decided at 8,000; before its fire another stake uses Bot A's exposure headroom, so the clamp gives 5,000.
+  - (d) A targeted COUNTER's clamp gives 4,000, but the row was cancelled a moment earlier.
+  - (e) A FILL clamps from 6,000 to 3,000.
+  - (f) 08006 on COMMIT after (c) placed, then the retry replays.
+- **Expected:**
+  - In `fire.ts`, after the F5 step-9 clamp, any clamp below `row.stakeTzs` runs `UPDATE "HouseBotIntent" SET "stakeTzs"=$c, decision = decision || jsonb_build_object('firedStakeTzs',$c) WHERE id=$1 AND status='CLAIMED' AND "claimedBy"=$me AND "stakeTzs">$c RETURNING *`. `placeHouseBet` then gets the returned row's `marketId`, `side` and `stakeTzs`.
+  - (c)/(e) Placed at 5,000 and 3,000. H0 loads the row by id and matches, so there is no `house_key_mismatch`, master stays ON, and 0 SECURITY rows. `Position.stake` = `row.stakeTzs`.
+  - (a) Below the minimum → SKIPPED(STAKE_BOUNDS_CHANGED) with no seam call and no alert.
+  - (b) Placed at 6,000 if that is ≥ the minimum. A withdrawal landing after the clamp is refused at H2's balance floor, with its existing mapper row and AlertOnce.
+  - (d) The update returns 0 rows: stop, with no seam call and no write.
+  - (f) H0's pre-lookup finds the key with the same user and bot → `replayed:true`. The row is PLACED, master stays ON.
+  - A stake never grows, even when a cap was raised after the decision. The modal and feed state `firedStakeTzs`.
+- **Plan:** N1 §3 H0; N1 §4.3 write-back clamp; PLAN F5 step 9; A7 (p); F5.
+- **Evidence:** `market-service.ts:1100-1118` (live stake bounds; `stake_below_min`); PLAN:198 (H0), :250 (conditional terminal writes), :271 (`house_key_mismatch` → master OFF); `retry.ts:47-50` (08006 retried with the same key).
+- **Fix:** the write-back clamp for all kinds; the H0 ordered rule.
+- **Test:** `test:house-bot-engine` (both stores): (a)–(f) for MANUAL, targeted COUNTER, COUNTER, FILL and OPENER; `placeHouseBet` spy shows 0 calls for (a) and (d). `red:house-bot-engine` mutation N1-6 (the write-back UPDATE removed) must turn (c) into `house_key_mismatch`.
+
+### TGT-33 [gap] Changing market after a preview
+- **Trigger:**
+  - (a) The owner picks poll A. The preview is ok (NO TZS 9,000), a reason is typed, and submit is enabled. They click back into the combobox, type "derby" and press Enter before the debounced results arrive, so there is no active option.
+  - (b) They arrow to poll B and press Enter to pick it. B's preview is slow, and they tap submit.
+  - (c) A's late preview response arrives after B is selected.
+  - (d) They arrow across a greyed (`aria-disabled`) option, then click it.
+  - (e) The same sequences in the Add target modal.
+- **Expected:**
+  - (a) Enter in the combobox always calls `preventDefault` and `stopPropagation`. With no active option it does nothing, so there are 0 calls to `enterNowHouseBotAction`.
+    - Typing after the pick already cleared `selectedMarketId`, discarded A's preview and its `submitId`, and disabled submit.
+  - (b) The pick sets the input text to B's title, collapses the listbox (`aria-expanded=false`) and stores `selectedMarketId`=B. A's preview is cleared, so submit stays disabled until B's preview returns.
+  - (c) The response is dropped: its sequence number is old and its `marketId` ≠ `selectedMarketId`.
+    - A's `ENTER_NOW_PREVIEWED` row was still written on the server, and R1 counts it as a preview without a stake.
+  - (d) Arrow keys skip `aria-disabled` options, and click and Enter refuse them.
+  - The press posts the preview's own `marketId` with `confirmed{side, entryCondition, stakeTzs}`. The client never posts while it differs from `selectedMarketId`, and the stale-preview refusal also refuses a mismatch (N1 §6).
+  - Re-query on focus happens only while no market is selected.
+  - (e) Same contract. "Add target" and "Save" stay disabled while `previewHouseBotTargetAction` loads or returns `never=true`, and a response for another poll is dropped.
+- **Plan:** N1 §8 MarketPicker selection contract; N2 §8 target modal; N2 §6 target preview; N1 §6 Enter now preview.
+- **Evidence:**
+  - `02-sealed-flows.md:155`: house-bot modals submit on Enter.
+  - `src/components/ui/select.tsx:220` (arrow keys step options) and `:241` (Enter handled inside the kit listbox).
+  - `03-design-spec.md` "All dialogs": "Esc closes unless pending".
+- **Fix:** N1 §8 selection contract.
+- **Test:**
+  - `test:house-bot-console` jsdom:
+    - (a) Enter in the combobox with an ok preview → 0 calls;
+    - typing after a pick → preview cleared and submit disabled;
+    - (c) a late preview for A after picking B → dropped, and B's figures render;
+    - (d) arrow keys skip greyed options;
+    - the same three cases in the Add target modal.
+  - `red:house-bot-console` mutation "Enter `preventDefault` removed" must fail (a request is sent).
+  - Phase D drive step against the local seeded database only, because the preview writes.
+
+### TGT-34 [gap] An early re-check, then a reopen, then Enter now or Add target
+- **Trigger:**
+  - Poll P is LIVE: betting closes 18:00, result due 21:00, resolution mode human. No bot has ever had an intent on P.
+  - At 14:00 an admin presses "Re-check this market now" and the AI returns YES at 95%. The toast reads "Closed for the ceremony. AI suggests YES (95%)."
+  - At 14:05 the admin presses Reopen: P is LIVE again, and the Sentinel fields and `resolveClaimedAt` are nulled.
+  - At 14:10 a player's NO 20,000 is locked and raw YES is 0, so the thin side is YES. Then:
+    - (a) the admin presses Enter now with Bot A;
+    - (b) they add a target on P for Bot B;
+    - (c) a new player stake on P reaches Bot C, which has poll COUNTER mode;
+    - (d) Bot A already held an Enter now stake NO 5,000 on P from 13:00.
+- **Expected:**
+  - `adminReopenMarket` sets `reopenedAt` and `reopenCount` = 1 in the same `marketStore.set(m)`. Its output is otherwise byte-identical. A second reopen sets `reopenCount` = 2 and moves `reopenedAt` to that reopen.
+  - (a) The picker greys P. The press is refused: "Not available: this market was reopened after a result check."
+    - The press is REFUSED with code INFO_BLACKOUT, and COMPLIANCE `house_bot.enter_now_refused {botId, marketId, code:'INFO_BLACKOUT'}` is written.
+    - The action chooses the reopened copy from `reopenedAt` (not Sentinel data); `blackout.ts` still returns only `{blocked}`.
+    - 0 intents.
+  - (b) Refused with the same copy (code INFO_BLACKOUT). The TARGET_ADD press is REFUSED, and 0 targets are created.
+  - (c) A16 reads `reopenedAt` for every mode: the trigger is SKIPPED(MARKET_REOPENED). FILL and OPENER are never planned on P.
+  - (d) The existing stake rides. The planner sends AlertOnce `staff-stake-voided:<P>`, "… was reopened at 14:05 EAT", once. R1 lists P under "Markets with a staff-chosen stake later voided or reopened".
+  - An ACTIVE target on a poll that goes through the same re-check and reopen is ended MARKET_CLOSED when the planner sees it closed, or MARKET_REOPENED if it first sees the reopened market. It never re-arms.
+- **Plan:** N1 §2 PredictionMarket `reopenedAt`/`reopenCount` (sanctioned player-path change (r)); N1 §3 blackout; A16 reopen row amended; N1 §4.5 `staff-stake-voided` alert; N2 §4 `endTargets`.
+- **Evidence:**
+  - `src/lib/server/market-service.ts:2380-2386`: a confident check before the result time closes P with Sentinel fields, no outcome and no stage-1 stamp.
+  - `:4000-4025`: reopen accepts any CLOSED market without `resolutionStage1By` (`:4005`), nulls the Sentinel columns (`:4011`) and `resolveClaimedAt` (`:4024`), and its `audit(` at `:4027` is not awaited.
+  - `src/app/markets/actions.ts:183-189`: `adminReopenMarketAction`.
+  - `src/app/admin/resolver-queue/resolution-mode-action.ts:70-71`, `:88`: the re-check and its toast.
+  - `04-amendments.md:457`: A16 detected a reopen only when an intent with MARKET_NOT_LIVE existed.
+- **Fix:** the `reopenedAt`/`reopenCount` columns and (r); blackout and A16 read `reopenedAt`.
+- **Test:**
+  - `test:house-bot-seam`: reopen sets both columns in one `set`, the output is otherwise identical, and the memory twin matches.
+  - `test:house-bot-migrations`: both columns nullable and expand-only in `…_house_bot_markers`.
+  - `test:house-bot-engine` fixture: re-check → reopen → (a), (b) refused with 0 intents and 0 targets; (c) SKIPPED(MARKET_REOPENED); (d) one alert.
+  - `red:house-bot-engine` mutation "blackout ignores `reopenedAt`" must fail (a) (a position appears).
+
+### TGT-35 [gap] Veto by removing a target with a queued reaction
+- **Trigger:**
+  - Officer X adds a FIRST target on poll P for Bot A.
+  - At 14:00:00 a player stakes YES 10,000, and the sweep queues a targeted NO 8,000 due 14:05:07.
+  - At 14:02 X believes YES will win and presses Remove with reason "Changed my mind on this poll".
+  - At 14:02:30 X tries to add the target again, and Officer Y tries to target P with Bot B.
+  - Variant: on an EVERY target, X removes it only while a wrong-side reaction is queued.
+- **Expected:**
+  - **Reason:** without one, the press is refused with field `reason`: "Give a reason (5 to 300 characters)." Nothing is written.
+  - **Write transaction:** press TARGET_REMOVE. Under `wallet:<botUser>` then `house:targets` (never `house:control`):
+    - the target becomes ENDED(VETOED), not REMOVED, because a PENDING reaction exists;
+    - the reaction becomes CANCELLED(TARGET_REMOVED) by a conditional update with RETURNING;
+    - TARGET_REMOVED `{targetId, outcome:'VETOED', cancelledIntentIds, pressId}` is written for the target, and STAFF_INTENT_CANCELLED for the reaction, each with the reason in the event `reason` column;
+    - the press becomes DONE; commit.
+  - **After the locks are released:**
+    - one COMPLIANCE `house_bot.target_removed {botId, marketId, targetId, outcome:'VETOED', cancelled:[{intentId, side, stakeTzs}], reason}`, through the press lease (no separate `staff_intent_cancelled` row);
+    - one roster alert to every recipient, linking to `/admin/house-bots/<id>?tab=history&event=<eventId>`, with no reason quoted.
+  - **No re-add:** both add attempts are refused with REFUSED press rows: "This poll's target was stopped at 14:02 EAT; it can't be targeted again."
+  - **Trigger consumed:** the 14:00:00 trigger stays consumed, and no bot reacts to it (risk 18). Later stakes on P may still get automated scope counters.
+  - **EVERY variant:** one veto per poll, ever. Selective vetoing of each wrong-side reaction is impossible.
+  - **R1:** Vetoes lists X, 14:02, P, side NO, TZS 8,000, and the reason. The targets register shows VETOED.
+- **Plan:** N2 §6 removal (veto); N2 §2 never-retarget; N2 §6 locks; N1 §2 press flow; N1 §9 R1 vetoes; PLAN §16b risk 18.
+- **Evidence:** `02-sealed-flows.md` §3.9 (cancel took no reason and wrote an ADMIN audit); 04-amendments.md:1283 (R7: `intent_cancelled` is ADMIN); PLAN:165 (COUNTER anchor with no status filter); `audit.ts:336-358` (the chain lock forbids audits inside locks).
+- **Fix:** the veto semantics in `removeHouseBotTargetAction`; the never-again check in the add refusals.
+- **Test:**
+  - `test:house-bot-engine` veto matrix, including EVERY.
+  - `test:house-bot-console`: reason required; re-add refused for the same bot and for another bot; exactly one `target_removed` row whose `cancelled[]` lists each cancelled intent, and 0 `staff_intent_cancelled` rows; no reason text in any payload.
+  - A19 source scan extended to `src/app/admin/house-bots/**` and `src/lib/server/house-bot/**`.
+  - With the audit queue delayed 5 s, the remove runs concurrently with a house bet and a holder withdrawal, and both finish in under 1 s.
+  - `red:house-bot-console`: "re-add allowed after veto" and "removal with a live reaction writes REMOVED" must fail.
+
+### TGT-36 [gap] Veto by cancelling a queued staff-chosen stake
+- **Trigger:**
+  - (a) Officer X presses Enter now on poll P at 14:00:00. 50pick is busy, so the MANUAL intent is PENDING and retrying until 14:00:15. Officer Y cancels it from Activity with a reason.
+  - (b) Bot A's targeted reaction on poll Q is PENDING, due 14:05:07; Y cancels it with a reason.
+  - (c) A cancel with no reason.
+  - (d) A cancel that lands after the intent is CLAIMED.
+  - (e) A cancel of an automated COUNTER (no `targetId`).
+  - (f) An officer sets a target delay of 86,400 s to hold a day-long option.
+- **Expected:**
+  - (a)/(b) Press STAFF_CANCEL. PENDING → CANCELLED(CANCELLED_BY_ADMIN), event STAFF_INTENT_CANCELLED with the reason in its `reason` column. After commit: COMPLIANCE `house_bot.staff_intent_cancelled {botId, marketId, intentId, side, stakeTzs}`.
+  - (a) `hbi_manual_live_market_uq` frees; the Enter now press becomes DONE. X's modal reads the cancelled status from `getEnterNowStatusAction`, followed by "Nothing moved." A new press shows the same formula side (no re-roll).
+  - (b) In the same transaction Q's target becomes ENDED(VETOED) with a TARGET_ENDED event. Q can never be targeted again by any bot.
+  - (c) Refused before any write, field `reason`: "Give a reason (5 to 300 characters)."
+  - (d) "Too late — this bet is being placed now." The press is REFUSED with its code, and no veto is recorded.
+  - (e) Unchanged 02 §3.9: no reason required, ADMIN `house_bot.intent_cancelled`.
+  - (f) C1 field error "Between 5 and 600 seconds." The DB CHECK `delayMaxSec BETWEEN 5 AND 600` also refuses it, so the longest queued targeted option is 600 s after the hold.
+  - R1 Vetoes lists (a) and (b) by officer.
+- **Plan:** N1 §6 staff cancels; N2 §2 delay bounds and never-retarget; N1 §2 press flow; 02 §3.9.
+- **Evidence:** PLAN:374 (`cancelHouseBotIntentAction`: PENDING → CANCELLED, "Already firing" if CLAIMED); `02-sealed-flows.md` §3.9; 04-amendments.md:1283 (R7 ADMIN category); `04-amendments.md:1935-1939` (C7 cancel copies).
+- **Fix:** reason, COMPLIANCE row and target veto on the staff-chosen cancel path.
+- **Test:** `test:house-bot-console` cancel matrix (a)–(e). `test:house-bot-migrations`: `delayMaxSec` 601 is rejected. `test:house-bot-engine`: a targeted cancel gives VETOED, and a re-add is refused. `red:house-bot-console` mutation N1-10 must fail.
+
+### TGT-37 [gap] A staff-chosen stake sized against one player, an AGENT, staff or another bot's holder
+- **Trigger:** Bot A's `thinStakeTzs` is 10,000, `gStaffChosenMaxCounterpartyShare` 50, and per-player counters 3 and 30,000. Raw YES on each poll is 2,000, held by player V (locked).
+  - (a) Locked NO 50,000: player X holds 40,000 (80%) and Y holds 10,000.
+  - (b) Locked NO 12,000 held by a single AGENT account.
+  - (c) The same stake held by a staff account.
+  - (d) The same stake held by Bot B's holder's personal account.
+  - (e) The same stake held by an account whose `recruitedBy` is a live bot's holder.
+  - (f) The same stake held by an account in today's penalty box.
+  - (g) Locked NO 40,000 split: W 20,000 (50%), X 12,000 (30%), Y 4,800 (12%), Z 3,200 (8%).
+  - (h) On polls P1–P4, X and Y each hold 10,000 of 20,000 locked NO. The owner presses on all four, spaced past the min gap, with staff-chosen caps at 10.
+  - (i) After the insert in the control case, one of the two NO players is changed to role AGENT before H3.
+  - (j) `gStaffChosenMaxCounterpartyShare` is NULL.
+- **Expected:**
+  - **Eligibility.** `lockedForHouse` excludes accounts whose role is not PLAYER, holders of any non-REMOVED bot, penalty-boxed accounts and live bots' holders' recruits. It is the same SQL at preview, fire and H3. The preview shows aggregates only, never accounts or handles.
+  - (a) X holds more than 50% of eligible locked NO, so the press is refused before insert (N1 §6). If concentration first appears between insert and H3, the in-lock refusal is `house_counterparty_concentration` (N1 §4.6 mapper row). 0 positions.
+  - (b)–(f) Eligible locked NO is 0, so no side qualifies: "No thin side: players' locked money is YES TZS 2,000 · NO TZS 0, and neither side can take more without passing the other." 0 intents.
+    - Control: the same 12,000 held by two PLAYERs with 6,000 each gives YES TZS 10,000, placed.
+  - (g) YES 10,000 placed. H4 attributes the stake pro rata to accounts holding at least 25%: W 5,000 and X 3,000, each +1 to COUNTERPARTY_COUNT. Y and Z are not counted.
+  - (h) Each press attributes 5,000 to X and to Y. The first three place. The 4th is refused with COUNTERPARTY_LIMIT at the caps pre-check when the count is already visible, otherwise SKIPPED(CAP_COUNTERPARTY_COUNT) at H4.
+    - Exactly 50% is allowed; only more than the share refuses.
+  - (i) The in-lock sum is 6,000 < raw YES 2,000 + 10,000, so `house_condition_gone` → SKIPPED(CONDITION_GONE).
+  - (j) Every Enter now press is refused with STAFF_LIMITS_UNSET (field `gStaffChosenMaxCounterpartyShare`); a THIN stake that reaches H3 anyway is refused `house_counterparty_concentration`.
+  - The targeted COUNTER amount cut and FILL use the same `lockedForHouse`, so an AGENT's locked stake never enlarges either (A15 amended).
+- **Plan:** N1 §3 H3/H4; N1 §4.1 `lockedForHouse`; I3; PLAN §4.3 trigger filter; A21 recruits; PLAN §18 A15 row.
+- **Evidence:**
+  - `PLAN.md:34`: I3, never react to designated, staff or AGENT accounts.
+  - `PLAN.md:231`: the trigger filter covers only triggers.
+  - `PLAN.md:335`: counters per player per day, 3 and 30,000.
+  - `src/app/markets/actions.ts:74-86`: `buyPositionAction` has no role check.
+  - `prisma/schema.prisma:284` and `:324`: `User.recruitedBy` and its index.
+  - `prisma/schema.prisma:1798`: `Position @@index([marketId, status])`.
+- **Fix:** `lockedForHouse` eligibility (N1 §4.1); the concentration refusal (N1 §3 H3); pro-rata attribution (N1 §3 H4).
+- **Test:**
+  - `test:house-bot-caps` (Postgres + memory): (a) → refused; exactly 50% → placed; (b)–(f) against the PLAYER control; (g) attribution rows; (h) → 4th press COUNTERPARTY_LIMIT, or SKIPPED(CAP_COUNTERPARTY_COUNT) when racing; (i) → SKIPPED(CONDITION_GONE); (j).
+  - `test:house-bot-engine`: FILL and targeted COUNTER ignore an AGENT's locked stake.
+  - `test:dal-parity`: memory twin identical.
+  - Golden-grid SQL/JS parity; EXPLAIN pin at 20,000 positions per market using `(marketId, status)`.
+  - `red:house-bot-money` mutation "eligibility exclusion dropped" must fail (b).
+
+### TGT-38 [gap] The officer who chose a house stake decides that market
+- **Trigger:** Admin A presses Enter now: NO 9,000 on poll P, whose source wording is ambiguous. Admin B added the target on poll R whose reaction placed YES 6,000. Then: (a) A alone seals P as NO through the ceremony. (b) A emergency-voids P. (c) A reopens P after a close. (d) A rejects, or upholds, an objection on P. (e) B resolves R. (f) Admin C, who chose nothing, resolves P.
+- **Expected:**
+  - Nothing is refused. The 2026-07-24 guardrail stands: no officer-conflict block.
+  - The R9 payloads (`market.adjudicated`, `market.emergency_void`, `objection.rejected`/`upheld`) carry `houseStake:{yes:0,no:9000,staffChosen:{yes:0,no:9000,requestedBy:["<A>"]}}`. For R, `requestedBy` is `["<B>"]`, the officer who added the target.
+  - The resolver card, ceremony, emergency-void confirm and objection panel show "of which chosen by you: TZS 9,000" to A. C sees only the R2 line.
+  - (a)–(e) One AlertOnce `staff-stake-self-decided:<marketId>:<action>` per market and action, bell + email to every `houseBotAlertRecipients()`. (b)/(c) also send `staff-stake-voided:<marketId>`, a separate key.
+  - (f) No self-decided alert.
+  - R1 "markets decided by the officer who chose a house stake on them" lists P for each action and R once. The Board draft names risk 20.
+- **Plan:** N1 §4.5 and N1 §7 (`staff-stake-self-decided`); N1 §9 (R9 shape, R1 section (e)); PLAN §16b risk 20; 04 R9.
+- **Evidence:** `docs/COMPLIANCE-DECISIONS.md:2263-2271` (a single admin resolves even with a position; the conflict block was deleted from `resolveMarket` and `emergencyVoidMarket`), `:2289-2291` (guardrail); `market-service.ts:2966`, `:4000`, `:4061`; `objections-service.ts:386`, `:467`; 04-amendments.md:1316-1335 (R9).
+- **Fix:** R9 `staffChosen.requestedBy`; the N1 §4.5 planner alert; the R1 section.
+- **Test:** `test:house-bot-reports`: exact payload shape, and `{yes:0,no:0,staffChosen:{yes:0,no:0,requestedBy:[]}}` on a non-house market; one alert per action for A and B, none for C. `test:two-admin` and `test:officer-conflict` pass unchanged; the content-integrity `RESOLVE` guard stays green. Source pin: no refusal branch reads `requestedBy`.
+
+### TGT-39 [gap] Staff-edge scorecard alert
+- **Trigger:** Control row: `gStaffEdgeWinRatePts=15`, `gStaffEdgeNetTzs=100000`. September 2026 EAT, polls, no refunds in the fixture. The automated modes' win rate on polls that month is 49%.
+  - Officer X: 14 settled staff-chosen stakes, 12 won, net +TZS 84,000.
+  - Officer Y: 9 settled, 9 won, net +TZS 150,000.
+  - Officer Z: 20 settled, 11 won, net +TZS 120,000.
+  - Variants: (b) `gStaffEdgeWinRatePts` NULL. (c) Both thresholds NULL.
+- **Expected:**
+  - The pass runs during the first EAT day of October 2026, over September's staff-chosen stakes settled by then.
+  - X: 85.7% is 36.7 points above 49% and there are ≥10 settled stakes → one AlertOnce `staff-edge:<X>:2026-09`, bell + email to every recipient.
+  - Z: 6 points, but net ≥ 100,000 → one `staff-edge:<Z>:2026-09`.
+  - Y: fewer than 10 settled → no alert.
+  - Further planner passes send nothing more for that month.
+  - (b) Only Z alerts. (c) No alerts.
+  - The R1 scorecard per officer per month shows presses, placed, settled, won/lost/refunded, win rate and net TZS, beside the automated modes' figures for the same products and period. It is present in every variant.
+  - Staff-chosen includes MANUAL and targeted stakes. A target's stakes count for the officer who added it.
+  - The baseline ties to `book.ts`'s automatic entry split.
+- **Plan:** N1 §4.5 staff edge; N1 §9 R1 scorecard; N1 §2 control columns; PLAN §16b risk 13.
+- **Evidence:** `admin/markets/[id]/page.tsx:91-95`, `:396` (admins see positions with names and phones); `prisma/schema.prisma:2103-2133` (AIPoll `confidence`, `reasoning`, `reviewedBy`); PLAN I2 (AI data is private).
+- **Fix:** the monthly planner pass and the R1 scorecard.
+- **Test:** `test:house-bot-reports` fixture: X and Z alert once each, Y never, (b) and (c) as stated, and a second pass adds 0; the baseline ties to the book. `test:house-bot-migrations`: CHECK bounds 1–100 and 0–1,000,000,000.
+
+### TGT-40 [gap] Consent void ends every target
+- **Trigger:** Bot A (ACTIVE) has 4 ACTIVE targets on long-running polls and one PENDING targeted reaction. The holder self-excludes. Repeat for COOLING_OFF, IDENTITY_REFUSED, HOLDER_ERASURE_REQUEST and HOLDER_WITHDREW, and once on a PAUSED bot. Control: the holder's account is suspended (not a void cause). Five weeks later an officer reopens the account, the owner re-verifies and opens Start.
+- **Expected:**
+  - In the same `wallet:<botUser>` transaction that writes `consentVoidAt`, whether by hook, sweep or mapper, every ACTIVE target becomes ENDED(CONSENT_VOID) with `endedAt` and one TARGET_ENDED event each. If that transaction rolls back, the targets stay ACTIVE.
+  - ACTIVE bot: auto-pauses per C8, and the PENDING reaction is CANCELLED. PAUSED bot: status unchanged, but its targets still end.
+  - A second detector pass finds nothing to change.
+  - Suspension: consent is not voided, and targets stay ACTIVE and inert.
+  - After re-verify, the Start confirm reads "Active targets: 0 →" (it reads 4 in the suspension case). After Start, a stake on those polls gets no targeted reaction.
+  - A fresh add on those polls is allowed (not VETOED or REMOVED), with a reason and a new `effectiveFrom`.
+  - The holder's DSAR `events[]` shows the TARGET_ENDED rows (N1 §9 DSAR).
+- **Plan:** N2 §4 step 10; C8; A3; N2 §2 `endCause`; N1 §9 DSAR.
+- **Evidence:** 04-amendments.md:128-140 (A3 `consentVoidCause` and its writers), :822-825 (C8 void written under `wallet:<botUser>`), :835 ("Never resumes by itself"); `responsible-gambling.ts:356-357` (cooling-off lifts by timer).
+- **Fix:** end targets inside the consent-void writer; the Start confirm line.
+- **Test:** `test:house-bot-designation`: each of the 5 causes ends all ACTIVE targets as CONSENT_VOID in the void transaction; an injected rollback leaves them ACTIVE; suspension keeps them ACTIVE and inert; the Start confirm fixture shows the count. `red:house-bot-engine` mutation N2-E8 must fail.

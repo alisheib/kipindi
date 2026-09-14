@@ -559,6 +559,8 @@ hold, paid, failed; AML rejected in `admin/aml/actions.ts`; officer adjustment. 
 5. **Throughput.** Bot bets serialise on `house:control` (ms-long), and the holder shares the `bet.place` rate bucket (min gap ≥ 20s).
 6. **Delivery.** Merge conflicts with the parallel session are likely. `overlapSeconds` in production is unverified; the design is correct either way. sw/zh legal text needs native review. The leaderboard shows the holder's display name.
 
+Risks 13–20 (stakes chosen by staff; D17–D18) are in §16b. Like the risks above, they go into the COMPLIANCE entry and HOUSE-BOTS.md.
+
 ---
 
 ## 14. Password lifecycle — sealed (Ali: "if he changes his password we must enter the new one")
@@ -677,15 +679,54 @@ inside `withLock("login:<id>")`, and then dropped.
 | D15 | Build starts only when the other session's KYC-at-withdrawal work is on `origin/main` | hooks touch the same wallet-freeze and RG code |
 | D16 | Master switch tone brand; holder-password field `new-password` + ignore attributes | §15 X5; password-manager trap |
 
+## 16b. Decisions added 2026-09-14 (by Claude under D9, at Ali's request)
+On 2026-09-14 Ali asked for two features: **Enter now** (pick a poll and enter it at the click) and **targeted polls with exact entry timing** (react a set number of seconds after a player's stake). Ali asked Claude to decide the details from the app's logic and architecture. The full specification is `04-amendments.md` N1–N2. The owner defaults Ali may override are rows W7–W16 in PROGRESS.md "Waiting on Ali"; the build uses them until Ali says otherwise.
+
+### D17 · Enter now (a manual one-shot stake on a poll)
+- An owner (any ADMIN passing `requireHouseOwner`) may press **Enter now** on an ACTIVE bot to place one house stake on a chosen LIVE **poll**, now, apart from the automatic modes. Enter now on Up & Down is not built (W9).
+- **The server computes the side and the amount** from public pool data. Nobody types either.
+  - The side is the thinner side, measured against locked money of eligible player accounts only, with a 7 s safety margin after each free exit closes.
+  - On an empty poll, the side is the poll's single drawn side, shared with the automated OPENER.
+  - The amount is the bot's saved Enter now stake, cut to fit.
+- Every house gate applies, plus the information blackout, the staff-chosen caps (per bot and for all bots) and the counterparty share limit.
+- One press places at most one stake. Every press, placed or refused, is kept as a record.
+- **Supersedes** F6 §3.3 and §4 R5 ("never discretionary") as to the market and the moment only, never the side or the amount.
+
+### D18 · Targeted polls and exact entry timing
+- A bot may hold **targets**: explicit LIVE polls chosen in the MarketPicker (polls only, W13).
+- For each target it reacts, as a COUNTER, to real players' stakes placed after the target is armed.
+- Each target has its own whole-second delay of 5–600 s (fixed or a range), counted from the stake or from the moment the player's free exit closes.
+- It **never lands before the player's free exit closes plus 7 s**: `dueAt = max(requested, exit close + LOCK_MARGIN_MS)`.
+- Exact timing on Up & Down is the existing chain-scoped COUNTER delay with min = max (5–600 s).
+- Cancelling a queued staff-chosen stake, or removing a target that has a queued reaction, is a **veto**. It needs a reason and writes a COMPLIANCE row, and that poll can never be targeted again by any bot.
+- When the holder's consent is voided, every active target of that bot ends.
+- Targeted reactions count toward the staff-chosen caps and alert every admin, exactly like Enter now.
+- Early entry before the player's free exit closes is not built. Asking for it needs a new amendment and a COMPLIANCE ruling that amends A15.
+
+### Accepted risks 13–20 (§13; the COMPLIANCE entry and HOUSE-BOTS.md take them verbatim)
+13. **Selection edge, bounded not eliminated.** Staff choose the poll and the moment, and can decline after seeing the computed side. They can also see what players cannot: positions with owner names and phones on the admin market page, AML views, and AI poll data (reasoning, confidence, reviewer). The side can't be typed, but it can be matched by waiting until the thinner side is the side they favour. Bounds: the blackout (AI result check recorded, or market reopened), the formula side and amount, staff-chosen caps inside the locks, the counterparty share limit and pro-rata counterparty caps, a durable record of every press (placed or refused), previews per officer, the vetoes register, and the monthly staff-edge scorecard with its alert (W16).
+14. New with D17: a person chooses the moment of an opener stake and of any stake; opening empty markets is already superseded (UPDOWN D3, automated OPENER).
+15. **Void after a staff-chosen stake.** A single admin can still void or reopen a market holding one (no officer lock: I10 and the 2026-07-24 guardrail). Mitigation is display, the R9 `houseStake.staffChosen` payload, the `staff-stake-voided` alert and an R1 row only.
+16. **Amounts are deterministic,** so a repeated Enter now stake is recognisable (D6 fingerprint). With no jitter, an amount can't be re-rolled either.
+17. **A fixed target delay makes reactions predictable.** The field hint recommends a range.
+18. **Consumed trigger.** A target removed or ended after a trigger was decided consumes that trigger. No other bot may react to it (one COUNTER row per trigger).
+19. **Counterparty concentration.** A staff-chosen stake can still be matched mostly against a few players' money. It is bounded by the share limit (refused when one account holds more than 50% of the locked opposite money, W15). It is also bounded by pro-rata counterparty caps: the stake counts toward the per-player daily counter limits of every account holding at least 25%.
+20. **An officer may decide a market holding a stake they chose** (resolve, void, reopen or an objection ruling). There is no refusal (2026-07-24 guardrail, I10). The mitigations are display, audit and alert only: the viewer sees "of which chosen by you", the decision audit records `requestedBy`, and `staff-stake-self-decided` alerts every admin.
+
+### Do not restore
+- No human-typed side.
+- No human-typed amount.
+- No sizing against cancellable money: only locked money of eligible accounts counts, 7 s after its free exit closes.
+
 ## 17. Supporting documents and the new-session prompt
 Right after this plan is approved, these files are copied to **`plans/house-bots/ (branch house-bots) `** (durable; committed on branch `house-bots` and worked on only in its own worktree, so
 the parallel session can't sweep them):
 - `PLAN.md`: this file.
 - `00-NEW-SESSION-PROMPT.md`: the prompt below.
-- `01-scenario-register.md`: 241 scenarios with expected behaviour and the test for each.
+- `01-scenario-register.md`: 241 scenarios with expected behaviour and the test for each, plus `TGT-01`…`TGT-40` added 2026-09-14.
 - `02-sealed-flows.md`: every flow, step by step.
 - `03-design-spec.md`: screen-by-screen design and the render protocol.
-- `04-amendments.md`: verified amendments A/C/R/P/S/F, all mandatory.
+- `04-amendments.md`: verified amendments A/C/R/P/S/F and N1–N2, all mandatory.
 
 > ⚠️ **Superseded 2026-09-13:** the plan now lives on branch `house-bots` under `plans/house-bots/`. The authoritative prompt is `plans/house-bots/00-NEW-SESSION-PROMPT.md` and progress is tracked in `plans/house-bots/PROGRESS.md`. The block below is the original draft, kept for the record.
 
@@ -757,6 +798,28 @@ the resolution below is final.
 | Engine robustness (A8, A10, A11, A13, A15, A16, A19, A24) | alert outbox (`alertedAt`); compile-time exhaustive mapper + `isEngineTransient`; `scopeFrom` so switching on never replays history; allowlisted `PublicMarketView`; fresh-price closeness against both targets; lifecycle table (reopen, void, chain stop, purge, missing wallet); audits outside locks from an allowlist; backlog lateness, admission backpressure, heartbeats per instance, clock-skew guard, replica-safe caps |
 | Scope over time (C14) | explicit chain and category lists (new ones out of scope until added); `parseHouseBotRules` → RULES_FROM_FUTURE / RULES_OUTDATED / RULES_INVALID; live-derived bounds; cap windows named in hints |
 | Release (A23) | KYC-at-withdrawal on origin/main first; preflight script; `houseBotSchemaReady()` gate (503 + engine idle if missing); rollback only with switch OFF and 0 open marked positions |
+| Intent uniqueness (§2 "Uniqueness", N1 §2) | **Replaced by four named partial unique indexes:**<br>- `hbi_counter_anchor_uq` `("anchorKey") WHERE kind='COUNTER'`<br>- `hbi_fill_opener_anchor_uq` `("kind","anchorKey") WHERE kind IN ('FILL','OPENER') AND status<>'CANCELLED'`<br>- `hbi_manual_anchor_uq` `("anchorKey") WHERE kind='MANUAL'`, where anchorKey is `manual:<requestedById>:<submitId>`<br>- `hbi_manual_live_market_uq` `("marketId") WHERE kind='MANUAL' AND status IN ('PENDING','CLAIMED')`<br>**Other named unique indexes:** `hbe_opener_draw_uq`, `hbt_active_market_uq`, `hbp_actor_submit_uq`.<br>**Telling them apart:** callers go only by index name, through DAL `uniqueViolation(err)`. It reads 23505 from P2002 `meta.target` or P2010 `meta`, and the memory twin throws the same code and name. An unknown unique violation is rethrown. |
+| Lateness (A24 `"dueAt" > now() − maxLateness`) | **Replaced by `staleAt`** (NOT NULL on every intent):<br>- COUNTER without target, FILL and OPENER: dueAt + 30 s (Up & Down) or + 600 s (polls)<br>- targeted COUNTER: dueAt + 60 s<br>- MANUAL: dueAt + 15 s<br>**Claims** filter `"staleAt" > now()`.<br>**In the seam,** the claimed row is re-read inside `house:control` before `markPlaced`, on the DB clock. `NOT ("staleAt" > clock_timestamp())` gives `house_intent_stale` → EXPIRED(STALE), with no alert.<br>**A24's rate-cap deferral** reads "the window frees before `staleAt`". |
+| Transient retries vs poison (A10, A24) | BUSY, `rate_limited`, 55P03 and `isEngineTransient` requeues increment `transientAttempts`, not `attempts`. The claim filter `attempts < 3` is unchanged. The STALE expiry pass runs before POISON, and POISON applies only to `attempts >= 3` with an expired claim. MANUAL and targeted CLAIMED rows become EXPIRED(STALE) once `staleAt` + 5 s < now(), without waiting for `claimedUntil`. |
+| OPENER side (§1-F4 "a random side") | Now "a random side drawn once per market". The planner calls `openerSide(marketId)` in its own autocommit statement before `decide()` and passes `{openerSide}` in; `decide.ts` stays pure and never imports the store. Enter now previews and presses read the same `hbe_opener_draw_uq` row, with `actorId` = the officer (null only for automated planning). |
+| Start mode rule (§1-F3 "no mode is on"; 02 §3.3 item 6) | "No mode is on" is true only when every automatic mode, `enterNow.enabled` and `targeting.enabled` are all off. The Start confirm lists "Active targets: {n} →". |
+| R9 / sanctioned change (q) | **Payload** is exactly `houseStake:{yes:number,no:number,staffChosen:{yes:number,no:number,requestedBy:string[]}}`.<br>**With no house stake:** `{yes:0,no:0,staffChosen:{yes:0,no:0,requestedBy:[]}}`.<br>**For targets,** `requestedBy` = the officer who added the target.<br>**Use:** display, audit and alert only (I10). |
+| New sanctioned change (r) | `adminReopenMarket` (`market-service.ts:4000-4040`) sets `reopenedAt` and `reopenCount` in the same `marketStore.set(m)`; its output is otherwise byte-identical (seam test). A16's MARKET_REOPENED detection reads `reopenedAt` for every mode, replacing "an intent with MARKET_NOT_LIVE exists". |
+| Privacy line (P1) | Replaced by the N1 §10 line: stakes on markets chosen by an automated system or by 50pick staff. It folds into P1's version bump. |
+| I2 (engine never reads Sentinel fields) | Holds "except `blackout.ts` and the H3 site, whose only output is `{blocked:boolean}`". `decide.ts` receives `blocked` as an injected argument and never imports `blackout.ts` (source pin). |
+| A13 token walker | Exempts `blackout.ts` by name, like `designation.ts`. Every other engine and picker module stays under the walker. |
+| A15 locked pool → `lockedForHouse` | **Query:** one SQL aggregate on the lock transaction, grouped by side and also returning per-account shares. It sums `stake` over positions with `"marketId"=$1 AND status='OPEN' AND "houseBotId" IS NULL` whose exit-window expression ≤ clock_timestamp() − `LOCK_MARGIN_MS` (7000).<br>**Excluded accounts:** role ≠ PLAYER; holders of any non-REMOVED bot; accounts penalty-boxed today; recruits of any live bot's holder.<br>**Used by:** Enter now preview, fire and H3; the targeted COUNTER cut and H3; FILL, whose hold becomes the latest `exitCloseAt + LOCK_MARGIN_MS` among the stakes it counts (replaces A15 "FILL timing").<br>**Not used by** the untargeted COUNTER, which keeps A15 through the `lockedA15` column.<br>**Unchanged:** raw pools in the THIN formula stay the raw market pools. |
+| I3 for staff-chosen sizing | **Concentration:** MANUAL THIN refuses `house_counterparty_concentration` when one account holds more than `gStaffChosenMaxCounterpartyShare` percent of `lockedForHouse(opposite)`. A NULL share refuses.<br>**Attribution:** the stake is attributed pro rata to every opposite-side account holding at least 25% of that money, and counts into COUNTERPARTY_COUNT/TZS for each. |
+| §4.3 fast path | Poll triggers are decided only in the sweep. It reads targets fresh and compares `placedAt` with `effectiveFrom` using its DB watermark. The post-commit hook keeps Up & Down triggers only and is suspended while \|skew\| > 5 s. `TARGET_ARMING_SEC` stays 12. |
+| H0 (§3) | **Ordered rule:**<br>1. The key equals `houseIntentKey(intentId)` and there is no `playStartedAt`.<br>2. The pre-lookup runs: same user and bot → `replayed:true`; another user or bot → `house_key_mismatch`.<br>3. The intent is loaded by id with no status filter. Missing, or `houseBotId`, `botUserId`, `marketId`, `side` or `stakeTzs` differing from ctx/opts → `house_key_mismatch`.<br>**Status is never part of H0.** A non-CLAIMED row proceeds, `markPlaced` returns 0 rows, and the result is `house_intent_superseded`. |
+| §1-F5 step 9 stake clamp | **Write-back for every kind:** `UPDATE "HouseBotIntent" SET "stakeTzs"=$c, decision = decision \|\| jsonb_build_object('firedStakeTzs',$c) WHERE id=$1 AND status='CLAIMED' AND "claimedBy"=$me AND "stakeTzs">$c RETURNING *`.<br>**0 rows** → stop.<br>**Otherwise** `placeHouseBet` gets the returned row's `marketId`, `side` and `stakeTzs`.<br>**Never grows.** Below the minimum → SKIPPED(STAKE_BOUNDS_CHANGED) without calling the seam. |
+| Fires per process (§4.2, A24 SIGTERM) | **Guards:** `fireClaimedIntent` throws inside a lock or an ambient admission slot.<br>**Accounting:** inline Enter now fires register in `globalThis.__50PICK_HOUSE_BOT_ENGINE.inFlight`, count toward `$freeSlots`, get the 30 s heartbeat and are excluded from the SIGTERM requeue.<br>**Status:** the modal's final status comes from `getEnterNowStatusAction`, never from the inline return value. |
+| C4 submit claim | For Enter now, target add/update/remove and staff cancels, the AlertOnce `submit:<actor>:<submitId>` claim is replaced by `HouseBotPress`, unique on `hbp_actor_submit_uq`. The press is inserted CHECKING before any lock, its move to DONE is inside the write transaction, and a refusal is a separate conditional REFUSED update. `DUPLICATE_SUBMIT` is never silently ignored in these modals. C4 is unchanged for the password dialogs. |
+| Clearing limits (02 §3.8; C1) | **Exemption:** every staff-chosen cap, `gStaffChosenMaxCounterpartyShare`, `targetsMaxActive` and `gTargetsMaxActive` is exempt from "Can't clear a limit while bots are on" and from C1's refusal to clear a cap on an ACTIVE bot.<br>**Clearing** takes `house:control` briefly. Previews: staff-chosen caps "Enter now and targets will be off for every bot. {n} queued staff-chosen stakes will be skipped." (per bot: "for Bot A"); `targetsMaxActive` or `gTargetsMaxActive` "No target can be added until this is set. {n} active targets keep reacting — clear a staff-chosen limit to stop them betting."; `gStaffChosenMaxCounterpartyShare` "Enter now will be off for every bot. {n} queued Enter now stakes will be skipped."<br>**Master ON:** these caps are not required for it, and they are excluded from PLAN F3's "Set N global limits first" list. |
+| Cancel a queued stake (02 §3.9) | **When the intent is staff-chosen** (MANUAL, or `targetId` not null), the cancel:<br>- requires a reason (5–300);<br>- writes COMPLIANCE `house_bot.staff_intent_cancelled {botId, marketId, intentId, side, stakeTzs}` and event STAFF_INTENT_CANCELLED, with the reason in the reason column;<br>- ends a linked target as ENDED(VETOED).<br>**Removing a target** with a PENDING or CLAIMED reaction also ends it VETOED, and writes one COMPLIANCE `house_bot.target_removed` whose `cancelled[]` lists the cancelled reactions.<br>**After a veto or removal,** that poll can never be targeted again by any bot. |
+| Dialogs and refresh (03 S4 "RefreshPoller is disabled while any dialog is open") | Superseded by C11 plus N1 §8. Any open house-bot dialog counts as dirty in HouseBotFormContext, so C11 shows its change Callout instead of dispatching `50pick:refresh`, and runs exactly one refresh when the dialog closes. |
+| A19 audits outside locks | **Target actions:** take `wallet:<botUser>` then `house:targets` (bets never take it), commit, then run the awaited COMPLIANCE audit and roster alert. They never take `house:control`.<br>**Source scan:** "no `audit(` inside a `withLock` callback" extends to `src/app/admin/house-bots/**` and `src/lib/server/house-bot/**`. |
+| A23 schema gate | `houseBotSchemaReady()` and the preflight check 8 house tables (7th `HouseBotTarget`, 8th `HouseBotPress`), plus the new columns. |
 
 **Amendment index** (full text in `04-amendments.md`)
 - **Blockers:**
@@ -802,5 +865,8 @@ the resolution below is final.
   - F7 no module-scope state + fresh maintenance read.
   - F8 raw-SQL password writers walker.
   - F9 no prizes, cashback or rewards on house stakes.
+- **Owner request 2026-09-14 (D17–D18, §16b):**
+  - N1 Enter now: polls only; formula side and amount; `HouseBotPress`; staff-chosen caps; blackout.
+  - N2 targeted polls and exact timing: `HouseBotTarget`; delays 5–600 s; absolute hold; vetoes.
 - **Duplicates:** G1 = R5 and G2 = R9 (R5 and R9 are the text to build).
 - **Complete:** `04-amendments.md` holds every set above.

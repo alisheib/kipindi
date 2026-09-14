@@ -225,11 +225,11 @@ AdminBody
  │   AdminCard: row flex-wrap justify-between gap-3
  │     left: status Chip + reason sentence text-body-sm ("Password changed on 12 Sep, 09:14 — enter the new password to continue")
  │     right: flex flex-wrap gap-2 — Start (primary md, ConfirmDialog tone="brand") · Pause (ghost md, ConfirmDialog tone="brand") ·
- │            Re-verify (primary md when AUTO_PAUSED(PASSWORD_CHANGED), else ghost md; Modal form) · Remove (danger md, Modal form)
+ │            Re-verify (primary md when AUTO_PAUSED(PASSWORD_CHANGED), else ghost md; Modal form) · Remove (danger md, Modal form) · Enter now (primary md, between Pause and Re-verify; not rendered while `enterNow.enabled` is false; disabled with its visible reason when unavailable; 04 N1 §8)
  │     disabled buttons carry VISIBLE reason text under the row (not `title` only)
  │   KpiGrid cols="sm3": Live balance · Today's net · Open exposure (formatTzsCompact; unavailable on read fail)
  │   REMOVED → Callout tone="neutral" "Removed on … by … — this bot is read-only." and no action buttons
- ├ Tabs line href ?tab= overview · rules(count=unset caps) · activity · money · history
+ ├ Tabs line href ?tab= overview · rules(count=unset caps) · targets(count=active targets; 04 N2 §8) · activity · money · history
  └ panel
 ```
 - **overview:**
@@ -252,6 +252,7 @@ AdminBody
   - Columns: Type (`txnTypeLabel` `status-badge.tsx:364`) · Amount (`formatTzsSigned`, `td.tabular`, neutral ink) · Status (`txnStatusLabel` `:383`) · When · House chip (Chip sm neutral "House stake" on marked rows) · `.row-link` "Open →" `/admin/transactions?q=`.
   - Empty: "No money movements since designation on {date}."
 - **history:** as in S1. Empty: "No changes yet."
+- **targets:** 04 N2 §8: params `status=active|ended|all` and `target=hbt_…`, the targets table, Add/Edit/Remove target and the lexicon.
 
 **Responsive (S3)**
 
@@ -283,15 +284,17 @@ AdminBody
 | Re-verify | same, `initialFocus` password | PasswordInput md `autoComplete="off"` + attempts line + locked/rate-limited Callout warning with countdown | primary, disabled while empty/locked | no typed word |
 | Start | `ConfirmDialog tone="brand" pending={pending}` (`confirm-dialog.tsx:36-80`; the default tone is claret, so it must be passed) | rule summary `text-body-sm` | kit | refusal with `{field, href}` → close, push, focus |
 | Pause | ConfirmDialog tone="brand" + optional reason Textarea in body | — | kit | file listed in EXEMPT ① with reason (`unsaved-changes.test.mts` ① wording) |
-| Cancel intent | ConfirmDialog tone="brand" | "Cancel this pending house bet?" | kit | CLAIMED → "Already firing" |
+| Cancel intent | ConfirmDialog tone="brand" | "Cancel this pending house bet?" | kit | CLAIMED → "Already firing"; a staff-chosen intent uses the staff-cancel Modal form with a reason (5–300) and writes a COMPLIANCE audit (04 N1 §6, §8) |
+| Enter now | kit `Modal`; 04 N1 §8 | 04 N1 §8 | 04 N1 §8 | counts as dirty while open (C11); ✕ and Esc allowed while Placing or Retrying; the preview is a write, driven only on the local seeded DB |
+| Add / Edit / Remove target | kit `Modal`; 04 N2 §8 | 04 N2 §8 | 04 N2 §8 | in-flow two-option toggles, never a kit Select inside; reason 5–300 required |
 | Kill OFF | no dialog | — | Toggle OFF click | overlay running "Switching off…" → success "House bots are off. No bot will place a bet." / timeout copy per plan |
 
 **All dialogs**
 - `test:popup-fit` bans `truncate` and `line-clamp` inside them (`popup-fit.test.mts` header).
 - Width 420 at ≥640. At 360 the Modal fits the viewport width with 16px gutters (verify in phase D). Buttons stack full-width (`flex-col-reverse`).
-- Esc closes unless pending.
+- Esc closes unless pending. Exception: the Enter now modal allows ✕ and Esc while Placing or Retrying, because the stake carries on (04 N1 §8).
 - Focus returns to the trigger (`modal.tsx` focus-return note).
-- RefreshPoller is disabled while any dialog is open, so the confirm summary can't go stale.
+- Any open house-bot dialog counts as dirty in HouseBotFormContext: C11 shows its change Callout instead of dispatching `50pick:refresh`, and runs exactly one refresh when the dialog closes (04 N1 §8, N2 §8).
 
 ### S5 Engine-stale Callout
 `<Callout tone="danger" size="md" surface="panel" emphasis="strong" role="alert" title="The bot engine is not running" meta={"Last seen 14:02:11 EAT"}>No bot will place a bet. Switch bots off, or check the server.</Callout>` (props at `callout.tsx:166-240`).
@@ -351,7 +354,7 @@ AdminBody
 - Section rail: `nav aria-label` + `aria-current`. No `role=tab`/`aria-selected` (§K7b).
 - Tables: `th scope="col"`. `ScrollX label` names the region.
 - Every input has a `Field label`. Hints and errors are linked by the kit. Refused saves focus the first invalid field in document order.
-- Live regions: the picker count is polite; engine-stale is `role="alert"`; nothing else announces.
+- Live regions: the picker counts (UserPicker and MarketPicker) are polite; engine-stale is `role="alert"`; Enter now and target results announce once, politely, through C7's single polite region, with focus moved to the result heading (04 N1 §8, N2 §8); nothing else announces.
 - Reduced motion: kit exits only. No new animation, so all three motion gates (§M6) are inherited.
 - Contrast: never `text-text-faint` below 12.5px on `bg-bg-overlay` without `test:contrast` coverage. Disabled controls must carry `cursor-not-allowed` to earn the exemption (§A1).
 

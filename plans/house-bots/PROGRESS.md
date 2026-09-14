@@ -13,11 +13,11 @@
 | | |
 |---|---|
 | **Overall** | 🟡 **PLANNED · build not started** |
-| **Current step** | P0.4 half done: `origin/main` merged into `house-bots` 2026-09-14 (merge-only, agreed with ali-f6). `npm ci`, tests, P0.5 and P0.6 wait for the KYC audit's P1 push + ALL-CLEAR (RESUME AT step 4). Meanwhile Commit 1 is written edit-only as pushed WIP commits. |
+| **Current step** | P0.4 half done: `origin/main` merged into `house-bots` 2026-09-14 (merge-only, agreed with ali-f6). `npm ci`, tests, P0.5 and P0.6 wait for the KYC audit's P1 push + ALL-CLEAR (RESUME AT step 4). N1–N2 (Enter now; targeted polls and exact timing) are written into the plan (2026-09-14). Next: Commit 1 as edit-only pushed WIP commits. |
 | **Blocked on** | ⛔ **HOLD: KYC audit in flight.** The KYC-at-withdrawal release ("KYC AT WITHDRAWAL (1/n)"…"(7/n)") **is on `origin/main`**, and its migration **is applied in production** (verified 2026-09-13). But session **`ali-f6`** is auditing that release and has confirmed P0/P1 defects. Fixes will be pushed to `main` over the following hours, touching `kyc-service`, `refused-funds`, `wallet-service`, `auth-service`, `wallet-freeze`, `notification-service`, `email`, `nida`, `i18n-dict`, `src/app/legal/*`, `COMPLIANCE-DECISIONS.md` and LIVE-QA §6b. ali-f6 plans no new migration and will message first if that changes. **Wait until the KYC audit session's own block tops `docs/LIVE-QA-CAMPAIGN.md` §6b on `origin/main` before P0.4 (checkable from any machine; see RESUME AT step 4). On Ali-Blade15 only, also wait for ali-f6's "ALL-CLEAR heavy window" message before any `npm ci`, build, test run or Playwright (that laptop bluescreens under concurrent heavy Node).** |
 | **Production** | Nothing deployed. The feature does not exist in production. |
 | **Master switch** | n/a (ships OFF at release; Ali turns it on himself) |
-| **Last updated** | 2026-09-13 21:02 UTC · Ali-Blade15 · build session `ali-e4` (P0.2 and P0.3 verified; holding before P0.4) |
+| **Last updated** | 2026-09-14 ~02:20 UTC · Ali-Blade15 · build session `ali-e4` (N1–N2 written into the plan; still holding before the rest of P0.4) |
 
 ## ▶ RESUME AT (overwrite this block every time you stop)
 1. Get onto the branch on whatever machine you are on: `README.md` → "Resume on any machine" (steps 0–5).
@@ -64,6 +64,10 @@
    - **P0.5 and P0.6.**
    - Start **Commit 1**: set its row to 🟡 and push that change first.
 5. **C4 restored (2026-09-13, `ali-e4`).** Amendment C4's lost title, merge list and first evidence bullets were recovered verbatim from the planning agent's transcript and put back in `04-amendments.md`, with a note saying so. The file's header now warns that its line anchors date from 2026-09-13. Nothing is open here.
+6. **N1–N2 written into the plan (2026-09-14, `ali-e4`).**
+   - **Where:** the last section of `04-amendments.md` holds N1 (Enter now, polls only) and N2 (targeted polls, exact timing). All 49 review findings are merged and a 40-finding consistency critic is applied. D17–D18 and risks 13–20 are in PLAN §16b, the overlaps in PLAN §18, and `TGT-01`…`TGT-40` in `01-scenario-register.md`. The owner defaults are W7–W16 below.
+   - **How to build:** N1–N2 add no commit and no third migration. Build them inside commits 1–8 per the "N1/N2" bullets under Scope per commit.
+   - **Unchanged:** the P0.4 hold (step 4).
 
 ## Legend
 ⬜ not started · 🟡 in progress · ✅ done (date · machine · commit subject) · ⛔ blocked (reason) · ⏭️ skipped by Ali's ruling · — not applicable
@@ -139,6 +143,17 @@ Detail lives in `PLAN.md` + `04-amendments.md`. Names here are pointers, not spe
 - **Code:** DAL + in-memory twin; `src/lib/house-bot/{constants, pause-reasons, rules, clock}`; `server/house-bot/book.ts`.
 - **Constants and policy:** `HOUSE_AUDIT` (R7); `PENALTY_BOXED` kind (R5); product policy (F1); rules parse/migrator (F4).
 - **Suites:** `test:house-bot-rules`, `test:house-bot-migrations`, `test:dal-parity`.
+- **N1/N2 schema and pure modules:**
+  - **Tables:** `HouseBotPress` (8th table) and `HouseBotTarget` (7th), each with a memory twin, A20 7-year retention, a P3 row and a chain-purge NEVER entry. A23 `houseBotSchemaReady()` and the preflight count 8 tables.
+  - **HouseBotIntent:** kind MANUAL, `requestedById`, `entryCondition`, `staleAt`, `transientAttempts`, `targetId`, the polls-only MANUAL CHECK, and the named indexes `hbi_counter_anchor_uq`, `hbi_fill_opener_anchor_uq`, `hbi_manual_anchor_uq`, `hbi_manual_live_market_uq`, `hbi_staff_bot_finished_idx`, `hbi_staff_finished_idx`.
+  - **HouseBotEvent:** `marketId`, the new kinds and `hbe_opener_draw_uq`.
+  - **Caps and control columns:** the staff-chosen caps, `targetsMaxActive`, `gTargetsMaxActive`, `gStaffChosenMaxCounterpartyShare`, `gStaffEdgeWinRatePts`, `gStaffEdgeNetTzs` and `boardDisclosureSections`.
+  - **Markets:** `PredictionMarket.reopenedAt` and `reopenCount` in the markers migration.
+  - **DAL:** `uniqueViolation()`.
+  - **Rules:** v1 `enterNow` and `targeting`; `N1-*` and `N2-*` cross-field rules; the Start mode rule; `effectiveTiming.enterNow` and `effectiveTargetTiming`.
+  - **Constants:** `LOCK_MARGIN_MS` (7000) and `TARGET_ARMING_SEC` (12), both pinned; `house:targets`; EngineCodes, cap codes and `HOUSE_AUDIT` keys.
+  - **COMPLIANCE entry:** D17/D18, risks 13–20 and the do-not-restore lines.
+  - **Suites:** rules, migrations and dal-parity gain the N1/N2 cases: press, intent-insert, draw and target twins. The picker case waits for commit 7.
 
 **Commit 2: money seam**
 - **Seam:** `placeHouseBet` + `buyPositionGuarded`; H0–H9; bet context (A7); lock timeouts (A9 seam); scope predicate + H3 refusals (A12 seam).
@@ -146,6 +161,17 @@ Detail lives in `PLAN.md` + `04-amendments.md`. Names here are pointers, not spe
 - **Settlement paths:** wagering reversal skipped everywhere + labels (A17); sanctioned changes (a)–(q) (A18); holder-vs-own-bot hook (A21 seam); gate parity (F3).
 - **Suites:** `test:house-bot-seam`, `test:house-bot-money`, `test:house-bot-caps`.
 - **RED:** `red:house-bot-money`.
+- **N1/N2 seam:**
+  - **Modules:** `pools.ts` (`lockedForHouse`) and `blackout.ts` (`{blocked}` only; A13 exempts it by name).
+  - **H0:** the ordered rule; status is never part of it.
+  - **`staleAt`:** re-read on `clock_timestamp()` before `markPlaced` → `house_intent_stale`.
+  - **H2:** declared order pinned in `house-bot-seam.anchors.mjs`, with `STAFF_CHOSEN_PER_DAY`, `STAFF_CHOSEN_DAILY_STAKE` and `TARGET_ONCE`.
+  - **H3:** MANUAL `entryCondition` from the claimed row; `house_counterparty_concentration`; `house_info_blackout` for MANUAL and targeted rows.
+  - **H4:** `GLOBAL_STAFF_CHOSEN_*` and pro-rata counterparty attribution.
+  - **`lockedForHouse`:** one SQL aggregate with the exclusions and `LOCK_MARGIN_MS`; golden-grid parity with `exitWindowClosesAt`; EXPLAIN pin at 20,000 positions; memory twin. H3 uses it for MANUAL, targeted COUNTER and FILL.
+  - **Sanctioned change (r):** `adminReopenMarket` stamps `reopenedAt` and `reopenCount`.
+  - **Registries:** `GATE_PARITY` and `BET_PATH_REASONS` rows; reasons in en/sw/zh.
+  - **RED:** the N1/N2 `red:house-bot-money` mutations.
 
 **Commit 3: designation services (no console actions yet)**
 - Eligibility with contexts.
@@ -153,6 +179,10 @@ Detail lives in `PLAN.md` + `04-amendments.md`. Names here are pointers, not spe
 - Consent void, service side (A3); password history (A4); erasure refusal + pseudonymising + `house_bot_live` (A5 erasure, R6); recipients (A22).
 - `HOUSE_BOT` notification kind + `notifyHouseBotOwner` + owner email template.
 - **Suites:** `test:house-bot-designation`.
+- **N1/N2 services:**
+  - **Consent void (A3):** ends every ACTIVE target as ENDED(CONSENT_VOID), with TARGET_ENDED events, in the same `wallet:<botUser>` transaction.
+  - **Erasure (A5):** pseudonymises `HouseBotPress.reason` and the new event reasons to "[erased]".
+  - **Suite:** `test:house-bot-designation` gains one case per void cause.
 
 **Commit 4: engine**
 - **Hooks and causes:** trigger hook + sweep; holder hook matrix (A2); causes and void, engine side (A3); closure → auto-REMOVED (A5 closure); holder-vs-own-bot alert (A21).
@@ -165,16 +195,34 @@ Detail lives in `PLAN.md` + `04-amendments.md`. Names here are pointers, not spe
 - ⚠️ **Before pushing Commit 4, see W1** (public repo).
 - **Suites:** `test:house-bot-engine`, `test:house-bot-info-edge`, `test:house-bot-comms`, `test:house-bot-holder-lifecycle`.
 - **RED:** `red:house-bot-engine`.
+- **N1/N2 engine:**
+  - **Modules:** `opener-side.ts`, called by the planner before `decide()`, so decide stays pure; `enter-now.ts`, whose decision reads the bot's own positions, and its `marketHeld` predicate.
+  - **Fire:** `fire.ts fireClaimedIntent` (no lock, no ambient admission, `inFlight` registry); the write-back clamp for every kind.
+  - **Claims and planner:** claim on `staleAt`; `transientAttempts`; the STALE pass before POISON; MANUAL and targeted expiry at `staleAt` + 5 s; press audit lease repair.
+  - **Lifecycle:** FILL on `lockedForHouse`; A16 reopen from `reopenedAt`.
+  - **Targets:** poll triggers in the sweep only (the hook keeps Up & Down and is suspended above 5 s skew); target decide; hold to exit close + `LOCK_MARGIN_MS`; fire re-read; `endTargets()`.
+  - **Copy and alerts:** mapper and `feed-copy.ts` rows; `notifyAdminsHouseBotStaffChosen`; target roster alerts; `staff-stake-voided`, `staff-stake-self-decided` and `staff-edge` alerts; hourly summary split.
+  - **RED:** the N1/N2 `red:house-bot-engine` mutations.
 
 **Commit 5: reporting and data rights**
 - §9 splits; house-liquidity report + CSV (R1); exposure everywhere (R2); statutory notes (R3); no rewards on house stakes (R4, F9).
 - DSAR views (R5 = G1); durable audit readers (R8); `houseStake` in decision audits + KYC card (R9 = G2).
 - Resolver display (§1-F11); holder chip + SellButton `houseStake`.
 - **Suites:** `test:house-bot-reports`, plus `test:dsar-secrets` and `test:erasure` additions.
+- **N1/N2 reports:**
+  - **Book:** entry split (automatic, targeted, Enter now) in `book.ts`.
+  - **R1 sections:** entry split; Enter now register from `HouseBotPress` (placed and refused, with code); previews without a stake; voided or reopened markets; markets decided by the choosing officer; staff-chosen scorecard; targets register; vetoes.
+  - **Other outputs:** CSV columns; R9 (q) `houseStake.staffChosen.requestedBy`; "of which chosen by you" on the resolver card, ceremony, emergency-void confirm and objection panel; R3 memo.
+  - **Data rights:** R5 `events[]` kinds; `test:erasure` §8 reason bucket; `test:dsar-secrets` kind list.
 
 **Commit 6: public text**
 - Rulebook §8 carve-out + disclosure (en/sw/zh); Terms §4; privacy notice (P1); META bumps; §10 waiver record (P2); FAQ; chatbot bullet.
 - **Suites:** `test:house-bot-disclosure`.
+- **N1/N2 text:**
+  - Privacy line naming staff-chosen markets (en/sw/zh, native review).
+  - Chatbot forbidden phrases.
+  - Board draft section "Stakes chosen by staff".
+  - `test:house-bot-disclosure` §docs pins risks 13–20 and the do-not-restore lines.
 
 **Commit 7: console**
 - **Routes and wizard:** `/admin/house-bots` routes, tabs and views; wizard + UserPicker (C5); rules and limits forms (C1, C2, C6, C14, C15).
@@ -184,6 +232,14 @@ Detail lives in `PLAN.md` + `04-amendments.md`. Names here are pointers, not spe
 - **Ops scripts:** `ops:house-bots-off` (A9); `--drift` / `ops:house-bots-remark` (S3); feature state + `ops:house-bots-sunset` (F2).
 - **Suites:** `test:house-bot-console`.
 - **RED and visual:** `red:house-bot-console`; `qa:house-bots-visual`.
+- **N1/N2 console:**
+  - **Press flow:** `HouseBotPress` for every N1/N2 action.
+  - **Actions:** `searchHouseBotMarketsAction` (polls only, `HOUSE_BOT_MARKET_PICKER_SEARCH`), `previewEnterNowAction`, `enterNowHouseBotAction`, `getEnterNowStatusAction`, `previewHouseBotTargetAction`, and `add/update/removeHouseBotTargetAction` (`wallet:<botUser>` then `house:targets`; audit and alert after release); the staff-chosen cancel veto.
+  - **Picker:** `MarketPicker` and picker DAL; the dal-parity picker case lands here.
+  - **Screens:** Enter now modal; targets tab; rules and limits fields with the 02 §3.8 exemption; strip `enterNow`/`targets`; Start-confirm active-targets line; Board disclosure checklist; feed entry filter; lexicon tables.
+  - **Gates:** A19 source scan widened; gate outcome per new file.
+  - **Ops and records:** sunset ends targets; FAILURE-INVENTORY §6.
+  - **RED and visual:** RED console mutations; visual fixtures.
 
 **Commit 8: end-to-end and release prep**
 - **Ops scripts:** `seed:house-bots-local`, `drive:house-bots-local`, `ops:house-bots-status`, `ops:preflight-house-bot-migrations` (A23).
@@ -194,14 +250,22 @@ Detail lives in `PLAN.md` + `04-amendments.md`. Names here are pointers, not spe
   - final docs (P4: RULES §2.11, FLOWS §9, FAILURE-INVENTORY §7.1, AGENT-PROGRAMME §5, DATA-RETENTION);
   - A1 record.
 - **Scenario coverage gate** (below).
+- **N1/N2 drive:**
+  - **`drive:house-bots-local`** (local seeded DB only): Enter now THIN and OPENER; a poll target STAKE 10 s (lands from 5:07); EXIT_CLOSE 10 s (from 5:10); an Up & Down 3-min COUNTER 10/10.
+  - **Phase D:** a step for Esc with a choice open.
+  - **S4 rehearsal 3:** includes inline fire vs poller.
+  - **Release record:** prints "Enter now preview: NOT MEASURED in production (it writes)".
+  - **FAILURE-INVENTORY §7.1:** entry kinds, target statuses and end causes.
+  - **Coverage gate:** includes every `TGT-` id (re-count with grep).
 
 ### Scenario coverage gate (before REL-0)
-Every scenario id in `01-scenario-register.md` (`HB-ACC-*`, `HB-LC-*`, `ENG-*`, `CA-*`, `CRA-*`, `FS-*`) must appear in at
+Every scenario id in `01-scenario-register.md` (`HB-ACC-*`, `HB-LC-*`, `ENG-*`, `CA-*`, `CRA-*`, `FS-*`, `TGT-*`) must appear in at
 least one house-bot test assertion name or comment, or be listed here with a reason.
 
 | Metric | Value |
 |---|---|
 | Ids in register | 241 on 2026-09-13 (CA 57 · CRA 37 · ENG 52 · FS 41 · HB-ACC 59 · HB-LC 52). Re-count with grep before quoting. |
+| Ids in register, `TGT-*` | 40 on 2026-09-14 (`TGT-01`…`TGT-40`, section `targeted-and-manual`). Re-count with grep before quoting. |
 | Ids covered by tests | ⬜ not measured yet |
 | Exceptions (id · reason) | — |
 
@@ -249,7 +313,7 @@ Run every Release command in **Git Bash**. S2 R0's "Rebase on origin/main" is su
 ⛔ **From REL-4 on, record REL-5, REL-6 and every later change to this file on branch `house-bots` only.** A docs-only push to
 `main` is another production deploy.
 
-## ⏳ Waiting on Ali (owner defaults he may override; the build uses the default unless he says otherwise)
+## ⏳ Waiting on Ali (owner defaults Ali may override; the build uses the default unless Ali says otherwise)
 | # | Question | Default being built |
 |---|---|---|
 | W1 | GitHub repo is **public** | Ali (2026-09-13): "keep public for now, later we make private". ✅ **Answered early, 2026-09-13 UTC, to build session `ali-e4`:** keep the repo public and push Commit 4's engine code publicly (Ali typed "3b" = "keep it public and push the engine code anyway", then approved this edit manually). No further question is needed before Commit 4 unless the repo's visibility changes first. |
@@ -258,10 +322,23 @@ Run every Release command in **Git Bash**. S2 R0's "Rebase on origin/main" is su
 | W4 | Retention of skipped/expired intents (A20) | kept 7 years (proposal on file: 90 days) |
 | W5 | Platform-wide sign-out on password change (A1) | not in this build (separate hardening) |
 | W6 | A pointer to this planner in `main`'s CLAUDE.md / NEXT-PLAN | the House Bots session must NOT push `main` for it; whichever session next pushes `main` for its own work may add the row |
+| W7 | Reason on staff-chosen actions | a reason (5–300) is required on every Enter now press, target add/update/remove and staff cancel |
+| W8 | Schedule, pool band and closing-soon skip | Enter now ignores the schedule, pool band and closing-soon skip; targets obey the schedule and ignore the pool band and closing-soon skip |
+| W9 | Products for Enter now | Enter now: polls only (Up & Down not built) |
+| W10 | Who may press, and who is told | any ADMIN may press, and every staff-chosen PLACED stake alerts every admin (bell + email, uncapped) |
+| W11 | Information blackout scope | a LIVE poll is closed to Enter now and targets while any of `sentinelOutcome`, `sentinelConfidence`, `sentinelDetermined`, `sentinelClosedAt`, `resolvedOutcome`, `resolutionStage1By` is recorded, while `resolveClaimedAt` is younger than `RESOLVE_CLAIM_TTL_MS`, or once `reopenedAt` is set |
+| W12 | Late-entry tolerance (`staleAt`) | 15 s Enter now, 60 s targets |
+| W13 | Products for targets | targets are polls only |
+| W14 | Target defaults; early entry | target defaults reactTo FIRST and timingFrom STAKE, early entry not built |
+| W15 | Counterparty share limit | counterparty share limit 50% |
+| W16 | Staff-edge alert | staff-edge alert at 15 points or TZS 100,000 |
+
+W15 and W16 are recommended values for nullable control-row columns: `gStaffChosenMaxCounterpartyShare` (NULL makes Enter now refuse), and `gStaffEdgeWinRatePts` / `gStaffEdgeNetTzs` (NULL turns that alert off). The "Use recommended values" button fills them; nothing saves them silently.
 
 ## 📓 Session log (append-only, newest first)
 | Date | Machine | Paths | Session | What happened | Where it stopped |
 |---|---|---|---|---|---|
+| 2026-09-14 (~01:00–02:20 UTC) | Ali-Blade15 | `C:/kipindi-house-bots` | Build (`ali-e4`, continued) | Sealed N1–N2 with a split workflow: 7 writers plus a consistency critic, which returned 40 findings (2 blockers, 11 majors, 27 minors). Each was checked against the code and all 40 were applied. Re-derived the code anchors after the merge. Replaced the sealing sheet's private ids with N1/N2 section references, because they collided with 04's C-amendments and PLAN's D-decisions, and made the new copy gender-neutral. Wrote N1–N2 into `04-amendments.md` (last section, plus pointer notes on A15, A16, A23, A24, C4, R9 and P1), PLAN §13/§16b/§17/§18, `01` (TGT-01…TGT-40), `02` §3.3/§3.8/§3.9, `03` S3/S4/§4, README, the prompt and this file. No npm, build, test or server run; nothing touched production. | **N1–N2 ✅ in the plan.** The P0.4 hold is unchanged. **Next:** Commit 1 as edit-only WIP. The Commit 1 spec workflow (run `wf_2bf70f6b-d40`) was still running at this point; its output exists only on Ali-Blade15, so another machine re-derives Commit 1 from PLAN, 04 and this file. |
 | 2026-09-13 (~21:05 UTC) | Ali-Blade15 | `C:/kipindi-house-bots`, hooks `C:/kipindi-house-bots-hooks` | Build (`ali-e4`) | Coordinated with `ali-f6` (KYC audit: port 3009, heavy windows, no new migration planned) and messaged the planning session. **P0.2 ✅. P0.3 ✅ on the LF variant:** hashes re-derived here; the production row was read by ali-f6 in a read-only transaction; Ali ruled that is enough. On Ali's ruling, committed the planning session's uncommitted hold notice together with these results. **Installed the README step 5 push guard** (Ali approved): `extensions.worktreeConfig=true` on the shared repo; `core.hooksPath` set only in this worktree's `config.worktree` (the main checkout still has none; its `.git/hooks` held only samples); the hook refused a simulated push to `main` and passed `house-bots` (tested by feeding it stdin, never by a real push). Read the prompt, README, PLAN, `02`, `03` and `04` in full (not yet `01`). Found amendment C4's heading and opening text missing, then recovered them verbatim from the planning agent's transcript and restored them, plus a stale-anchor warning at the top of `04-amendments.md`. Later in the same session: Ali answered W1 early (the repo stays public); the hold was rewritten so any machine can check it; read CLAUDE.md, TRAPS, SETUP, F6-LIQUIDITY-DESIGN, UPDOWN-FINAL-DESIGN §D3/§3b and `01` in full. Ali then asked for two new features: Enter now, and targeted markets with exact entry timing. The design-and-review workflow finished with a draft and 49 review findings; its final seal overflowed the output limit. Every finding was ruled ACCEPTED (some merged), and a split sealing workflow started writing the final N1–N2 text. **2026-09-14:** with ali-f6's agreement, `origin/main` "AUDIT 95 (3/n)" was merged into `house-bots`, merge only. ali-f6's P1 ETA was about 2–3 hours, then its red harnesses. No npm, build, test or server run. Nothing touched production. In `C:/kipindi-main` no files changed; only its shared git config gained `extensions.worktreeConfig`. | **P0.4 half done:** merged; `npm ci`, tests, P0.5 and P0.6 wait for P1 + ALL-CLEAR. **N1–N2:** sealing in progress, not yet in the plan. **Next:** write N1–N2 into the plan, then Commit 1 as edit-only WIP |
 | 2026-09-13 | Ali-Blade15 | `C:/kipindi-house-bots` | Planning (ali-4c) | Session `ali-f6` reported that KYC-at-withdrawal is on origin/main and applied in production, and that its audit has P0/P1 fixes coming. Verified P0.1 and the commit series; recorded the blob hash for P0.3. Added the coordination section and the atomic-permission rule to the prompt. Relayed everything to the new session `ali-e4`. | P0 partly done; ⛔ hold before P0.4 for ali-f6's fixes |
 | 2026-09-13 | Ali-Blade15 | `C:/kipindi-main`, `C:/kipindi-house-bots` | Planner | Moved the plan into git on branch `house-bots` with this tracker, README and prompt. A fresh-machine simulation and a mechanics check found 26 issues (push-to-main override, rebase on a shared branch, Windows path/shell syntax, local Postgres recipe, checksum on CRLF, missing A23/G1/G2 placement, post-REL-4 recording, release criteria). All fixed. An independent re-check confirmed 26/26 and found 7 follow-ups, also fixed (REL-4 release worktree, merge-not-rebase everywhere, LF/CRLF checksums, server DATABASE_URL, sync fallback, dpl compare, migrate-status target). | Build not started; P0 blocked on the KYC push |

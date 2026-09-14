@@ -307,7 +307,7 @@ This applies to every player, not just bot holders; the house-bot flows work eit
 ### 3.3 Start (`startHouseBotAction`)
 - **Dialog:** `ConfirmDialog` tone brand, without `pending` (overlay pattern, `confirm-dialog.tsx:73-77`).
   - Title "Start "{label}"?"
-  - Body: the saved-rules sentence plus "Stakes real money from {holder}'s wallet (TZS {balance} now)."
+  - Body: the saved-rules sentence plus "Stakes real money from {holder}'s wallet (TZS {balance} now)." When the bot has ACTIVE targets, add the line "Active targets: {n} →", linking to `?tab=targets&status=active` (04 N2 §4).
   - Confirm button "Start bot". Focus starts on Cancel (`modal.tsx:514`).
 - **Refusals, checked in this order:**
   1. Removed: "This bot was removed."
@@ -315,7 +315,7 @@ This applies to every player, not just bot holders; the house-bot flows work eit
   3. Password fingerprint: "Can't start: his password changed on {date}. Enter the new password first." Fix → `?reverify=1`.
   4. Unset cap: `field`, "Set {cap} before starting.", href `?tab=rules`.
   5. No product: "Choose at least one product."
-  6. No mode: "Turn on at least one entry mode."
+  6. No mode (every automatic mode, `enterNow.enabled` and `targeting.enabled` all off; 04 N1 §5): "Turn on at least one entry mode."
   7. Loss cap: "Can't start: today's settled loss TZS {x} has reached the daily loss cap TZS {cap}. Raise the cap or wait until 00:00 EAT."
   8. Holder's own limit: "Can't start: his own daily loss limit would block even the minimum stake." (`checkLossLimit`, `responsible-gambling.ts:492-511`)
 - **Success:**
@@ -386,6 +386,7 @@ This applies to every player, not just bot holders; the house-bot flows work eit
   - "Per-market limit TZS {g} is below bot "{label}" max stake TZS {x}." (field `gCapPerMarketTzs`)
   - "Max bots must be at least {n} — you have {n}."
   - "Can't clear a limit while bots are on. Switch off first."
+    - **Exempt (04 N1 §5, PLAN §18):** `gCapStaffChosenPerDay`, `gCapStaffChosenDailyTzs`, `gStaffChosenMaxCounterpartyShare` and `gTargetsMaxActive` may be cleared while bots are on. Clearing takes `house:control` briefly, so a queued staff-chosen stake re-reads NULL in H4 and is refused. Consequence previews: 04 N1 §5 "Clearing is never blocked". On the rules form, the per-bot `capStaffChosenPerDay`, `capStaffChosenDailyTzs` and `targetsMaxActive` are likewise exempt from 04 C1's "pause it before clearing".
 - **Success:**
   - version check, `house:control` taken briefly;
   - LIMITS_SAVED and awaited COMPLIANCE `house_bot.limits_saved`;
@@ -399,6 +400,12 @@ This applies to every player, not just bot holders; the house-bot flows work eit
   - Already finished: "Already {outcome}."
   - Missing: "That stake no longer exists."
   - ADMIN audit `house_bot.intent_cancelled`.
+- **Staff-chosen intents** (kind MANUAL, or `targetId` not null; 04 N1 §6 "Staff cancels", N1 §8):
+  - The ConfirmDialog is replaced by a Modal form (`staff-cancel-modal.tsx`) with a required `HouseTextField` "Reason" (5–300 code points; "Give a reason (5 to 300 characters).").
+  - The request carries a `submitId`. A `HouseBotPress` row (purpose STAFF_CANCEL) is inserted CHECKING before the locks and moves to DONE inside the cancel transaction.
+  - PENDING → CANCELLED(CANCELLED_BY_ADMIN), with event STAFF_INTENT_CANCELLED (reason in its reason column). If the intent has a `targetId`, that target becomes ENDED(VETOED) in the same transaction, and no bot can target that poll again.
+  - After commit, COMPLIANCE `house_bot.staff_intent_cancelled {botId, marketId, intentId, side, stakeTzs}` replaces the ADMIN `house_bot.intent_cancelled`.
+  - Automated intents keep the flow above unchanged.
 - **After:** overlay "Stake cancelled", then refresh.
 
 ## 4. System flows (no admin action)

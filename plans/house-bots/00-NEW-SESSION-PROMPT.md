@@ -46,10 +46,10 @@ Do this before any command that writes, installs, builds, runs a server, runs te
 2. Read `plans/house-bots/PROGRESS.md`. **Its "RESUME AT" block is your first instruction.** The Status table and Session log show what earlier sessions on other machines did.
 
 ## READ BEFORE WRITING CODE (in `plans/house-bots/`)
-1. `PLAN.md`: decisions D1–D16 and invariants I1–I10 are binding; §18 reconciles overlapping amendments.
-2. `04-amendments.md`: A1–A5 and A7–A24 (no A6), C1–C15, R1–R9, P1–P4, S1–S5, F1–F9 (future safeguards), G1–G2 (= R5/R9). **Every one is mandatory.** Commit placement is listed in `PROGRESS.md`.
+1. `PLAN.md`: decisions D1–D16 (§16) and D17–D18 (§16b) and invariants I1–I10 are binding; §18 reconciles overlapping amendments.
+2. `04-amendments.md`: A1–A5 and A7–A24 (no A6), C1–C15, R1–R9, P1–P4, S1–S5, F1–F9 (future safeguards), G1–G2 (= R5/R9), N1–N2 (Enter now; targeted polls and exact timing; last section). **Every one is mandatory.** Commit placement is listed in `PROGRESS.md`.
 3. `02-sealed-flows.md` and `03-design-spec.md`: the flow and design law for every screen.
-4. `01-scenario-register.md`: 241 scenarios. By REL-0, each id must be covered by a test assertion (PROGRESS "Scenario coverage gate").
+4. `01-scenario-register.md`: 241 scenarios (2026-09-13) plus `TGT-01`…`TGT-40` (2026-09-14); prefixes HB-ACC, HB-LC, ENG, CA, CRA, FS, TGT (re-count with grep before quoting). By REL-0, each id must be covered by a test assertion (PROGRESS "Scenario coverage gate").
 5. Repo files: `CLAUDE.md` (except its git-push rule; see overrides), `docs/COMPLIANCE-DECISIONS.md` (newest entries), `docs/F6-LIQUIDITY-DESIGN.md`, `docs/UPDOWN-FINAL-DESIGN.md` §D3/§3b, `docs/DESIGN_AUTHORITY.md`, `docs/TRAPS.md`, `docs/SETUP.md`.
 
 **Precedence:** amendments > sealed flows / design spec > PLAN. Where any document disagrees with the **code**, trust the code, say so,

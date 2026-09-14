@@ -15,11 +15,11 @@ From a phone or any browser: https://github.com/alisheib/kipindi/blob/house-bots
 |---|---|---|
 | `PROGRESS.md` | Status, resume point, commit checklist, release steps, session log | **The only record of progress** |
 | `00-NEW-SESSION-PROMPT.md` | Paste into a new Claude Code session to build or resume | — |
-| `04-amendments.md` | Verified amendments, all mandatory: A1–A5 and A7–A24 (there is no A6: it became R5/G1) · C1–C15 (C4–C7 are in the last section) · R1–R9 (R1–R4 in the last section) · P1–P4 (P1 in the last section) · S1–S5 · F1–F9 (future safeguards) · G1–G2 (= R5/R9) | **1st** |
+| `04-amendments.md` | Verified amendments, all mandatory: A1–A5 and A7–A24 (there is no A6: it became R5/G1) · C1–C15 (C4–C7 are in the second-to-last section) · R1–R9 (R1–R4 in the second-to-last section) · P1–P4 (P1 in the second-to-last section) · S1–S5 · F1–F9 (future safeguards) · G1–G2 (= R5/R9) · N1–N2 (Enter now; targeted polls and exact timing; last section) | **1st** |
 | `02-sealed-flows.md` | Every flow step by step (password lifecycle in depth) | 2nd |
 | `03-design-spec.md` | Screen-by-screen design law and the render/responsive protocol | 2nd |
-| `PLAN.md` | Approved plan: decisions D1–D16, invariants I1–I10, flows §1-F1…F11, data, engine, console, verification; §18 reconciles overlaps | 3rd |
-| `01-scenario-register.md` | 241 scenarios, each with its expected behaviour and test | reference |
+| `PLAN.md` | Approved plan: decisions D1–D16 and D17–D18 (§16b), invariants I1–I10, flows §1-F1…F11, data, engine, console, verification; §18 reconciles overlaps | 3rd |
+| `01-scenario-register.md` | 241 scenarios (2026-09-13) plus 40 `TGT-` scenarios (2026-09-14); prefixes HB-ACC, HB-LC, ENG, CA, CRA, FS, TGT; re-count with grep. Each has its expected behaviour and test | reference |
 
 **Order of authority:** `04-amendments.md` > `02-sealed-flows.md` / `03-design-spec.md` > `PLAN.md`. Where any of them
 disagrees with the code, trust the code and fix the doc in the same commit.
