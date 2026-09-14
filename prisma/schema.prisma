@@ -278,7 +278,7 @@ model User {
   /// the awaited audit read, and a failed read BLOCKS.
   passwordSetAt        DateTime?  @db.Timestamptz(3)
   /// How the hash was last set: REGISTRATION · SELF_CHANGE · RESET_LINK · OFFICER_TEMP · REHASH.
-  /// SQL-only CHECK "User_passwordSetVia_check" (migration 20260914120100_house_bot_markers).
+  /// SQL-only CHECK "User_passwordSetVia_check" (migration 20260914150100_house_bot_markers).
   passwordSetVia       String?
   /// When an OFFICER last set this account's email (04 A4). A RESET_LINK password within the 30 days
   /// after it blocks designate and re-verify.
@@ -654,7 +654,7 @@ model Transaction {
   /// copied from the Position on every create that carries a positionId (04 R3). NULL for every
   /// player row. Soft reference, no FK. ⛔ Written in CREATE only — every update path skips it.
   /// SQL-only partial index "Transaction_createdAt_marked_idx" (createdAt) WHERE houseBotId IS NOT NULL
-  /// (migration 20260914120100_house_bot_markers).
+  /// (migration 20260914150100_house_bot_markers).
   houseBotId        String?
   amlReviewedById   String?
   amlReviewedAt     DateTime?
@@ -1739,7 +1739,7 @@ model PredictionMarket {
   /// When an officer last REOPENED this market (N1 §2). Written only by adminReopenMarket, in the
   /// same store write as the reopen (sanctioned change r). The house engine reads it for
   /// MARKET_REOPENED and the information blackout. NULL = never reopened; never cleared.
-  /// ⚠️ TIMESTAMPTZ(3), unlike this model's other times (migration 20260914120100_house_bot_markers).
+  /// ⚠️ TIMESTAMPTZ(3), unlike this model's other times (migration 20260914150100_house_bot_markers).
   reopenedAt                DateTime?              @db.Timestamptz(3)
   /// How many times it was reopened (N1 §2). NULL = never; never cleared.
   reopenCount               Int?
@@ -1832,7 +1832,7 @@ model Position {
   /// ⭐ HOUSE MARKER (PLAN §2 Markers, I8; 04 S3). The HouseBot that placed this stake; NULL for every
   /// player bet. Soft reference, no FK. ⛔ Written in CREATE only; every update skips it (the one
   /// sanctioned exception is the commit-7 remark script, NULL → id only).
-  /// SQL-only partial indexes (migration 20260914120100_house_bot_markers), each WHERE houseBotId IS NOT NULL:
+  /// SQL-only partial indexes (migration 20260914150100_house_bot_markers), each WHERE houseBotId IS NOT NULL:
   ///   "Position_houseBotId_placedAt_marked_idx" (houseBotId, placedAt) — per-bot rolling windows
   ///   "Position_marketId_marked_idx" (marketId)                        — house money per market
   ///   "Position_houseBotId_open_idx" (houseBotId) AND status='OPEN'    — open exposure (04 A24)
@@ -1849,8 +1849,8 @@ model Position {
 // ============================================================================
 //
 // ⛔ ALL HOUSE DDL LIVES IN TWO HAND-WRITTEN, RE-RUNNABLE MIGRATIONS:
-//   20260914120000_house_bot_tables   — these 8 tables, their CHECKs, indexes and seed rows
-//   20260914120100_house_bot_markers  — the columns on User, Position, Transaction, PredictionMarket
+//   20260914150000_house_bot_tables   — these 8 tables, their CHECKs, indexes and seed rows
+//   20260914150100_house_bot_markers  — the columns on User, Position, Transaction, PredictionMarket
 // Every CHECK and every PARTIAL index is SQL-only (the Prisma DSL has neither); each model names its
 // partial indexes below. Do not "tidy" them away as drift: the partial uniques ARE the exactly-once
 // guarantees, and the house DAL maps their names.
