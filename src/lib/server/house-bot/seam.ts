@@ -1,7 +1,7 @@
 /**
  * THE HOUSE GATES OF THE MONEY SEAM — H0 to H4 (PLAN §3, 04 A7/A9/A12/A15, N1 §3, N2 §3).
  *
- * A house stake is placed by `placeHouseBet`, which runs the SAME `buyPositionGuarded` a player's bet
+ * A house stake is placed by `placeHouseBet`, which runs the SAME `buyPositionInner` a player's bet
  * runs. That function calls into this module at five anchored sites, and only when `ctx.kind` is
  * "house". Everything here can ONLY ADD a refusal (PLAN I1): no gate a player meets is skipped, and a
  * player's bet never reaches this file.
@@ -42,7 +42,7 @@ import type { StoredMarket, StoredPosition } from "../market-service";
 
 export type HouseBetContext = { kind: "house"; botId: string; intentId: string };
 
-/** The refusal shape `buyPositionGuarded` returns — `ServiceResult`'s failure arm. */
+/** The refusal shape `buyPositionInner` returns — `ServiceResult`'s failure arm. */
 export type HouseRefusal = {
   ok: false;
   error: string;

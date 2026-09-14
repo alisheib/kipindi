@@ -156,7 +156,9 @@ export const MUTATIONS = [
        + "still works perfectly, the money path just stops asking it. Same defect class as E-240, "
        + "one floor down.",
     file: MARKET,
-    from: `  const sessionLimit = await checkSessionTimeLimit(userId, opts.playStartedAt);`,
+    // Re-anchored 2026-09-14 (house bots build commit 2): the session clock now arrives on the bet context,
+    // and a house stake has none (04 A7); the injected defect — the bet path stops asking — is unchanged.
+    from: `  const sessionLimit = ctx.kind === "player" ? await checkSessionTimeLimit(userId, ctx.playStartedAt) : null;`,
     to: `  const sessionLimit = null as { exceeded: boolean; limitMin: number; playedMin: number } | null;`,
     check: "4.1 ⭐ forty-five minutes into a thirty-minute limit, the bet is REFUSED",
   },

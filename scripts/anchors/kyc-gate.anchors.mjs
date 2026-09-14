@@ -124,8 +124,10 @@ export const MUTATIONS = [
     why: "The bet gate's replacement, deleted — the same silent loss on the stake path. Nothing a "
        + "player can see changes.",
     file: MARKET,
-    from: `payoutIfWin: c.payoutIfWin, kycStatus: standing.kycStatus, everApproved: standing.everApproved },`,
-    to: `payoutIfWin: c.payoutIfWin },`,
+    // Re-anchored 2026-09-14 (house bots build commit 2): the payload became a multi-line object when the
+    // house marker fields were added beside these two; the injected defect is unchanged.
+    from: `payoutIfWin: c.payoutIfWin, kycStatus: standing.kycStatus, everApproved: standing.everApproved,`,
+    to: `payoutIfWin: c.payoutIfWin,`,
     check: "7.5 · one bet writes EXACTLY ONE market.position.opened row, with kycStatus AND everApproved",
   },
   {

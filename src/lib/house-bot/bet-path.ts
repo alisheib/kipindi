@@ -3,7 +3,7 @@
  *
  * ⛔ WHY A LIST. The house engine maps each refusal to an action (skip, pause, requeue, fail), and a
  * refusal it has never heard of must be a compile error there, not a surprise at 3 a.m. So the reasons
- * `buyPositionGuarded`, the house gates (`server/house-bot/seam.ts`) and `placeHouseBet` emit are
+ * `buyPositionInner`, the house gates (`server/house-bot/seam.ts`) and `placeHouseBet` emit are
  * enumerated here, and `test:house-bot-seam` reads those sources and fails in BOTH directions: a reason
  * literal the list lacks, or a list entry nothing emits. The engine's mapper (build commit 4) is typed
  * `satisfies Record<HouseBetOutcomeKey, Action>` over this list.

@@ -121,7 +121,7 @@ const anchors = await import("./anchors/house-bot-seam.anchors.mjs") as {
 section("§2 · BET_PATH_REASONS");
 {
   const { BET_PATH_REASONS } = await import("../src/lib/house-bot/bet-path.ts");
-  const guarded = fnBody(SVC_SRC, "async function buyPositionGuarded(") + fnBody(SVC_SRC, "export async function placeHouseBet(");
+  const guarded = fnBody(SVC_SRC, "async function buyPositionInner(") + fnBody(SVC_SRC, "export async function placeHouseBet(");
   const source = decomment(guarded) + "\n" + decomment(SEAM_SRC);
   const literals = (s: string) => new Set([...s.matchAll(/reason:\s*(?:\(?[^,;}\n]*?\?\s*)?"([a-z_]+)"(?:\s*:\s*"([a-z_]+)")?/g)]
     .flatMap((m) => [m[1], m[2]]).filter(Boolean) as string[]);
@@ -134,7 +134,7 @@ section("§2 · BET_PATH_REASONS");
   const emittedReasons = [...emitted].filter((r) => registered.has(r));
   const missing = emittedReasons.filter((r) => !(BET_PATH_REASONS as readonly string[]).includes(r));
   const dead = (BET_PATH_REASONS as readonly string[]).filter((r) => !emitted.has(r));
-  ok("2.0 · the reader sees buyPositionGuarded, placeHouseBet and the house gates", guarded.length > 20_000 && SEAM_SRC.length > 5_000 && emittedReasons.length >= 25,
+  ok("2.0 · the reader sees buyPositionInner, placeHouseBet and the house gates", guarded.length > 20_000 && SEAM_SRC.length > 5_000 && emittedReasons.length >= 25,
     `${guarded.length} + ${SEAM_SRC.length} chars · ${emittedReasons.length} reasons`);
   ok("2.1 · every reason the bet path emits is in BET_PATH_REASONS", missing.length === 0, missing.join(", "));
   ok("2.2 · every BET_PATH_REASONS entry is emitted by the bet path", dead.length === 0, dead.join(", "));

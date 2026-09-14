@@ -952,7 +952,7 @@ export async function buyPosition(userId: string, opts: BuyOpts): Promise<BuyRes
     // an aborted one is 25P02). Gated on the caller's idempotency key: without
     // one, a retry would be a double bet, so we make exactly one attempt.
     return await withAdmission(() =>
-      withTransientRetry(() => buyPositionGuarded(userId, opts, { kind: "player", playStartedAt: opts.playStartedAt }), !!opts.idempotencyKey),
+      withTransientRetry(() => buyPositionInner(userId, opts, { kind: "player", playStartedAt: opts.playStartedAt }), !!opts.idempotencyKey),
     );
   } catch (err) {
     if (err instanceof AdmissionBusy) {
@@ -971,7 +971,7 @@ export async function buyPosition(userId: string, opts: BuyOpts): Promise<BuyRes
  * ⭐ THE HOUSE STAKE — a bet from a designated account, through the player's own bet path (PLAN §3).
  *
  * ⛔ ONLY `house-bot/fire.ts` MAY IMPORT THIS (PLAN I1, source pin). It adds refusals and markers to
- * `buyPositionGuarded`; it never removes a gate. The key is always `houseIntentKey(intentId)`, and the
+ * `buyPositionInner`; it never removes a gate. The key is always `houseIntentKey(intentId)`, and the
  * intent row must already exist and match these figures (H0).
  *
  * Differences from `buyPosition`, each anchored: admission never queues (`maxWaitMs: 0`, 04 A24 — a
@@ -985,7 +985,7 @@ export async function placeHouseBet(
 ): Promise<BuyResult> {
   try {
     return await withAdmission(() =>
-      withTransientRetry(() => buyPositionGuarded(botUserId, opts, { kind: "house", botId: house.botId, intentId: house.intentId }), true),
+      withTransientRetry(() => buyPositionInner(botUserId, opts, { kind: "house", botId: house.botId, intentId: house.intentId }), true),
     { maxWaitMs: 0 });
   } catch (err) {
     if (err instanceof AdmissionBusy || isLockTimeout(err)) {
@@ -1001,7 +1001,7 @@ function isLockTimeout(err: unknown): boolean {
   return !!e && (e.code === "55P03" || e.meta?.code === "55P03" || (typeof e.message === "string" && e.message.includes("55P03")));
 }
 
-async function buyPositionGuarded(userId: string, opts: BuyOpts, ctx: BetContext): Promise<BuyResult> {
+async function buyPositionInner(userId: string, opts: BuyOpts, ctx: BetContext): Promise<BuyResult> {
   // ── H0 · house bots: the key, the replay and the intent row, before any other gate (N1 §3) ──
   // SEAM:H0
   let houseIntent: StoredHouseBotIntent | null = null;

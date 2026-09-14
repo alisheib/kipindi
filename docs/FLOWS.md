@@ -132,7 +132,7 @@ Every item above is a contract-pending integration — the platform code is read
 
 ⏳ **Lands in build commit 2.** Nothing below runs today: `placeHouseBet` does not exist yet, and the house-bots master switch ships OFF. The design authority is [`HOUSE-BOTS.md`](HOUSE-BOTS.md); this table is PLAN §3 as amended by N1 §3, N2 §3 and A7, A9, A12 and A15 (`plans/house-bots/04-amendments.md`). Final text in build commit 8.
 
-A house bet goes through the same service as a player's bet (`buyPositionGuarded`) with a `house` bet context, and these checks run in this order. The first failing check returns. Lock order is `wallet:<botUser>` → `market:<id>` → `house:control`, and a house bet sets `lock_timeout` 2 s before the market and control locks. Every kind-specific check reads the claimed intent row by id, never a call argument.
+A house bet goes through the same service as a player's bet (`buyPositionInner`) with a `house` bet context, and these checks run in this order. The first failing check returns. Lock order is `wallet:<botUser>` → `market:<id>` → `house:control`, and a house bet sets `lock_timeout` 2 s before the market and control locks. Every kind-specific check reads the claimed intent row by id, never a call argument.
 
 | Step | Where | Check → refusal |
 |---|---|---|
