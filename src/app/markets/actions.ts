@@ -14,6 +14,7 @@ import { requireAdminTotp } from "@/lib/server/admin-guard";
 // ⛔ The SAME rule the wizard applies client-side — imported, never re-implemented.
 import { criterionTranslationIssue } from "@/lib/localized";
 import { isHouseIntentKey } from "@/lib/house-bot/constants";
+import { commentSideFor } from "@/lib/comment-side";
 
 /**
  * F3 — toggle the watchlist star on a market. Returns the NEW state so the
@@ -343,9 +344,8 @@ export async function postCommentAction(formData: FormData) {
   const body = String(formData.get("body") ?? "");
   // Surface which side they hold as a small trust badge on the comment.
   // ⛔ SANCTIONED CHANGE (m) (house bots, 04 A18): a liquidity stake never gives the commenter a side —
-  // it is 50pick's stake, and a public chip would reveal it. Only the player's own OPEN stakes count.
-  const open = (await listPositionsForUser(session.userId)).filter((p) => p.marketId === marketId && p.status === "OPEN" && p.houseBotId == null);
-  const side: CommentSide = open.length ? (open[open.length - 1].side as "YES" | "NO") : null;
+  // the rule lives in `commentSideFor`, which ignores house-marked positions.
+  const side: CommentSide = commentSideFor(await listPositionsForUser(session.userId), marketId);
   const r = await addComment(session.userId, marketId, body, side);
   if (r.ok) revalidatePath(`/markets/${marketId}`);
   return r;

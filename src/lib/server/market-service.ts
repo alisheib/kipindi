@@ -2185,7 +2185,8 @@ export async function notifyVerdictRecordedForMarket(
   if (m.settledAt) return { bettors: 0 };
   const paysFrom = formatDateTime(m.objectionsClosedAt);
 
-  const open = (await listPositionsForMarket(marketId)).filter((p) => p.status === "OPEN");
+  const everyPosition = await listPositionsForMarket(marketId);
+  const open = everyPosition.filter((p) => p.status === "OPEN");
   // One message per PLAYER, not per position — a hedged holder with six positions on one
   // market gets one notice about one verdict.
   const bettors = Array.from(new Set(open.map((p) => p.userId)));
@@ -2196,8 +2197,11 @@ export async function notifyVerdictRecordedForMarket(
       outcome,
       paysFrom,
       reversed: opts?.reversed === true,
-      // SEAM:labelVerdict — the holder of a liquidity stake here is told so (04 A17 (h)).
+      // SEAM:labelVerdict — the holder of a liquidity stake here is told so (04 A17 (h)); a holder whose
+      // every position here is house-marked is not invited to object, by the SAME predicate
+      // `objectionEligibility` refuses with (all positions, any status).
       houseStake: open.some((p) => p.userId === userId && p.houseBotId != null),
+      houseOnly: everyPosition.filter((p) => p.userId === userId).every((p) => p.houseBotId != null),
     }).catch(() => {});
   }
   return { bettors: bettors.length };

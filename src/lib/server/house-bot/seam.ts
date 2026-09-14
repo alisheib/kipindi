@@ -28,7 +28,6 @@ import type { FailureDetail, FailureReason } from "@/lib/failure-reasons";
 import type { Side } from "@/lib/payout";
 import { db } from "../store";
 import { positionStore } from "../market-dal";
-import { chainStore, roundStore } from "../updown-dal";
 import { isLockedOut } from "../responsible-gambling";
 import { passwordFingerprint } from "../password-reset";
 import {
@@ -160,7 +159,9 @@ export async function houseH2(input: {
   if (u.role !== "PLAYER") return { ok: false, error: "House account ineligible.", code: "INVALID", reason: "house_account_ineligible" };
   // H2_ORDER:consent — PLAN §18: fingerprint matches AND no void newer than the last verification.
   const bot = await houseBotStore.get(ctx.botId, tx);
-  if (!bot) return { ok: false, error: "House bot is not active.", code: "SUSPENDED", reason: "house_bot_inactive" };
+  // Status and holder are re-read HERE, under the wallet lock every Pause, auto-pause and Remove writes
+  // under, so a CLAIMED intent already past H1 is refused inside the lock (02 §3.4).
+  if (!bot || bot.status !== "ACTIVE" || bot.userId !== userId) return { ok: false, error: "House bot is not active.", code: "SUSPENDED", reason: "house_bot_inactive" };
   const consentValid = passwordFingerprint(u.passwordHash) === bot.passwordFingerprint
     && (bot.consentVoidAt == null || Date.parse(bot.verifiedAt) > Date.parse(bot.consentVoidAt));
   if (!consentValid) return { ok: false, error: "House consent stale.", code: "INVALID", reason: "house_consent_stale" };
@@ -236,10 +237,11 @@ export async function houseH3(input: {
     return refuse({ ok: false, error: "Product not allowed for house stakes.", code: "INVALID", reason: "house_product_not_allowed" });
   }
   if (raw === "UPDOWN") {
-    const round = await roundStore.getByMarketId(fresh.id);
-    const chain = round ? await chainStore.get(round.chainId) : null;
+    // The round and its chain are read on the lock transaction (one statement) — a pooled read here would
+    // hold market:<id> while waiting for a second connection, unbounded by lock_timeout (04 A9).
+    const round = await houseSeamStore.roundLock(fresh.id, tx);
     const closesAt = Date.parse(fresh.selectionClosedAt ?? fresh.resolutionAt);
-    const lockAt = round && chain ? Math.min(Date.parse(round.opensAt) + chain.durationMinutes * 60_000, closesAt) : Number.NaN;
+    const lockAt = round ? Math.min(Date.parse(round.opensAt) + round.durationMinutes * 60_000, closesAt) : Number.NaN;
     if (!(lockAt > Date.now())) return refuse({ ok: false, error: "Round locked.", code: "INVALID", reason: "house_round_locked" });
   }
 
@@ -261,11 +263,13 @@ export async function houseH3(input: {
   const pool = needsPool ? await lockedForHouse(fresh.id, { tx, ...lockedPoolInputs(fresh) }) : null;
 
   if (intent.kind === "COUNTER") {
-    const trigger = intent.triggerPositionId ? await positionStore.get(intent.triggerPositionId) : null;
+    // The trigger account's positions on this market, on the lock transaction; the trigger is found among
+    // them, so a row naming a trigger on another market or of another account fails closed.
+    const theirs = intent.triggerUserId ? await positionStore.listForUserAndMarket(intent.triggerUserId, fresh.id, tx) : [];
+    const trigger = theirs.find((p) => p.id === intent.triggerPositionId);
     if (!trigger || trigger.status !== "OPEN") {
       return refuse({ ok: false, error: "Trigger no longer open.", code: "INVALID", reason: "house_trigger_gone" });
     }
-    const theirs = await positionStore.listForUserAndMarket(trigger.userId, fresh.id, tx);
     if (theirs.some((p) => p.status === "OPEN" && p.side === side)) return refuse(conflict("TRIGGER_BOTH_SIDES"));
     // A15 for the untargeted COUNTER (`lockedA15`); `lockedForHouse` for a targeted one (N2 §3).
     const against = intent.targetId != null ? pool![opposite(side)].locked : pool![opposite(side)].lockedA15;
@@ -275,17 +279,19 @@ export async function houseH3(input: {
   } else if (intent.kind === "OPENER") {
     if (fresh.yesPool !== 0 || fresh.noPool !== 0) return refuse(conditionGone("OPENER"));
   } else if (intent.kind === "MANUAL") {
+    // Step 4 · counterparty concentration (INT-02). ⛔ A NULL share limit turns Enter now OFF — both entry
+    // conditions — which is the consequence the console states when the limit is cleared (MON-14).
+    const concentration = (): H3Result => refuse({ ok: false, error: "Counterparty concentration.", code: "INVALID", reason: "house_counterparty_concentration" });
     if (intent.entryCondition === "OPENER") {
       if (fresh.yesPool !== 0 || fresh.noPool !== 0) return refuse(conditionGone("OPENER"));
+      if (control.gStaffChosenMaxCounterpartyShare == null) return concentration();
     } else {
       const lockedOpp = pool![opposite(side)].locked;
       if (rawPool(side) + stake > lockedOpp) return refuse(conditionGone("THIN"));
-      // Step 4 · counterparty concentration (INT-02): a NULL share refuses Enter now outright.
       const share = control.gStaffChosenMaxCounterpartyShare;
+      if (share == null) return concentration();
       const top = pool![opposite(side)].accounts[0];
-      if (share == null || (top != null && top.lockedTzs * 100 > share * lockedOpp)) {
-        return refuse({ ok: false, error: "Counterparty concentration.", code: "INVALID", reason: "house_counterparty_concentration" });
-      }
+      if (top != null && top.lockedTzs * 100 > share * lockedOpp) return concentration();
     }
   } else {
     const never: never = intent.kind;

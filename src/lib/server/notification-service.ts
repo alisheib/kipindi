@@ -668,17 +668,20 @@ export function notifySelectionClosed(userId: string, opts: {
     ? `${opts.marketTitle.zh.slice(0, 50)} · 投注已截止。若「${yesW.zh}」获胜您将获得 ${formatTzs(opts.payoutIfYes)}；若「${noW.zh}」获胜您将获得 ${formatTzs(opts.payoutIfNo)}。`
     : `${opts.marketTitle.zh.slice(0, 50)} · 投注已截止。若「${oneW.zh}」获胜您将获得 ${formatTzs(only)}。`;
 
+  // House bots (04 A17 (h)): a lock screen truncates the body, so the house notice names itself in the
+  // TITLE too, and it rides its own push tag so it can never replace the holder's personal notice.
+  const titlePrefix = (lang: keyof typeof LIQUIDITY_LINE) => (opts.houseStake ? `${LIQUIDITY_LINE[lang].slice(3)} · ` : "");
   return notify({
     userId,
     kind: "SELECTION_CLOSED",
-    titleEn: both ? "Betting closed — your payouts are set" : `Betting closed — you receive ${formatTzs(only)} if you're right`,
-    titleSw: both ? "Dau limefungwa — malipo yako yamewekwa" : `Dau limefungwa — utapata ${formatTzs(only)} ukiwa sahihi`,
-    titleZh: both ? "投注已截止 — 您的赔付已确定" : `投注已截止 — 若判断正确您将获得 ${formatTzs(only)}`,
+    titleEn: titlePrefix("en") + (both ? "Betting closed — your payouts are set" : `Betting closed — you receive ${formatTzs(only)} if you're right`),
+    titleSw: titlePrefix("sw") + (both ? "Dau limefungwa — malipo yako yamewekwa" : `Dau limefungwa — utapata ${formatTzs(only)} ukiwa sahihi`),
+    titleZh: titlePrefix("zh") + (both ? "投注已截止 — 您的赔付已确定" : `投注已截止 — 若判断正确您将获得 ${formatTzs(only)}`),
     bodyEn: `${bodyEn}${liquidityLine(opts.houseStake, "en")}`,
     bodySw: `${bodySw}${liquidityLine(opts.houseStake, "sw")}`,
     bodyZh: `${bodyZh}${liquidityLine(opts.houseStake, "zh")}`,
     href: `/markets/${opts.marketId}`,
-  });
+  }, opts.houseStake ? { pushTag: `selection-closed-house:${opts.marketId}` } : undefined);
 }
 
 /**
@@ -1057,6 +1060,8 @@ export function notifyVerdictRecorded(userId: string, opts: {
   reversed?: boolean;
   /** House bots (04 A17 (h)): the player holds a 50pick liquidity stake on this market. */
   houseStake?: boolean;
+  /** House bots: every position the player has on this market is a liquidity stake (no objection standing). */
+  houseOnly?: boolean;
 }) {
   const isVoid = opts.outcome === "VOID";
   const word = {
@@ -1083,9 +1088,11 @@ export function notifyVerdictRecorded(userId: string, opts: {
     titleEn,
     titleSw,
     titleZh,
-    bodyEn: `${title.en.slice(0, 60)} · No money has moved yet. Payout from ${opts.paysFrom} — if you think this result is wrong, object before then.${liquidityLine(opts.houseStake, "en")}`,
-    bodySw: `${title.sw.slice(0, 60)} · Hakuna fedha iliyohamishwa bado. Malipo kuanzia ${opts.paysFrom} — kama unaamini matokeo haya si sahihi, pinga kabla ya muda huo.${liquidityLine(opts.houseStake, "sw")}`,
-    bodyZh: `${title.zh.slice(0, 45)} · 尚未有任何资金转移。赔付不早于 ${opts.paysFrom} — 若您认为该结果有误，请在此之前提出异议。${liquidityLine(opts.houseStake, "zh")}`,
+    // ⛔ A holder whose ONLY stakes here are liquidity stakes has no standing to object (HOUSE_STAKE_ONLY,
+    // `objections-service.ts`), so their notice never invites an objection the platform would refuse.
+    bodyEn: `${title.en.slice(0, 60)} · No money has moved yet. Payout from ${opts.paysFrom}${opts.houseOnly ? "." : " — if you think this result is wrong, object before then."}${liquidityLine(opts.houseStake, "en")}`,
+    bodySw: `${title.sw.slice(0, 60)} · Hakuna fedha iliyohamishwa bado. Malipo kuanzia ${opts.paysFrom}${opts.houseOnly ? "." : " — kama unaamini matokeo haya si sahihi, pinga kabla ya muda huo."}${liquidityLine(opts.houseStake, "sw")}`,
+    bodyZh: `${title.zh.slice(0, 45)} · 尚未有任何资金转移。赔付不早于 ${opts.paysFrom}${opts.houseOnly ? "。" : " — 若您认为该结果有误，请在此之前提出异议。"}${liquidityLine(opts.houseStake, "zh")}`,
     href: `/markets/${opts.marketId}`,
   });
 }

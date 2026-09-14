@@ -35,6 +35,7 @@ import { prisma, hasDatabase } from "./prisma";
 import type { Prisma, PrismaClient } from "@prisma/client";
 import { randomId } from "./crypto";
 import { marketStore, positionStore } from "./market-dal";
+import { chainStore, roundStore } from "./updown-dal";
 import { db } from "./store";
 import {
   HOUSE_ID_PREFIX, houseIntentKey, SUBMIT_ID_RE, RUNTIME_KEY, HOUSE_CONTROL_ID, TARGET_ARMING_SEC,
@@ -1638,6 +1639,8 @@ export interface HouseSeamStore {
   blackoutRow(marketId: string, tx?: HouseTx): Promise<HouseBlackoutRow | null>;
   /** The RAW product line — `market-dal` coerces anything but UPDOWN to MARKET, which A12 must not trust. */
   rawProductLine(marketId: string, tx?: HouseTx): Promise<string | null>;
+  /** A12: the Up & Down round's open time and its chain's duration, in one statement; null when no round. */
+  roundLock(marketId: string, tx?: HouseTx): Promise<{ opensAt: string; durationMinutes: number } | null>;
   /** N1 §3: status, and whether `staleAt` is still ahead of the database clock (`clock_timestamp()`). */
   intentFreshness(id: string, tx?: HouseTx): Promise<{ status: IntentStatus; fresh: boolean } | null>;
   /**
@@ -2718,6 +2721,11 @@ const memoryHouseSeam: HouseSeamStore = {
     const m = await marketStore.get(marketId);
     return m ? (m.productLine as string) : null;
   },
+  async roundLock(marketId) {
+    const round = await roundStore.getByMarketId(marketId);
+    const chain = round ? await chainStore.get(round.chainId) : null;
+    return round && chain ? { opensAt: new Date(ms(round.opensAt)).toISOString(), durationMinutes: chain.durationMinutes } : null;
+  },
   async intentFreshness(id) {
     const i = memIntents.get(id);
     return i ? { status: i.status, fresh: ms(i.staleAt) > Date.now() } : null;
@@ -3762,6 +3770,11 @@ const prismaHouseSeam: HouseSeamStore = {
   async rawProductLine(marketId, tx) {
     const rows = await sql(tx, `SELECT "productLine"::text AS "productLine" FROM "PredictionMarket" WHERE "id" = $1::text`, [marketId]);
     return rows[0] ? String(rows[0].productLine) : null;
+  },
+  async roundLock(marketId, tx) {
+    const rows = await sql(tx, `SELECT r."opensAt" AS "opensAt", c."durationMinutes" AS "durationMinutes" FROM "UpDownRound" r`
+      + ` JOIN "UpDownChain" c ON c."id" = r."chainId" WHERE r."marketId" = $1::text`, [marketId]);
+    return rows[0] ? { opensAt: iso(rows[0].opensAt), durationMinutes: Number(rows[0].durationMinutes) } : null;
   },
   async intentFreshness(id, tx) {
     const rows = await sql(tx, `SELECT "status", ("staleAt" > clock_timestamp()) AS "fresh" FROM "HouseBotIntent" WHERE "id" = $1::text`, [id]);
