@@ -140,7 +140,7 @@ const MARKUP = `
   </div>
 </div>`;
 
-type NeedleApi = { setSuppressed: (v: boolean) => void };
+type NeedleApi = { setSuppressed: (v: boolean) => void; recheckRest: () => void };
 type Hx = typeof import("@/lib/needle-haptics");
 
 /**
@@ -289,8 +289,11 @@ function mountNeedle(
       });
     },
     onCross: () => haptic("cross"),
-    onPark: () => { haptic("tuck"); save(); },
-    onSleep: () => { el.style.willChange = "auto"; haptic("settled"); save(); },
+    // A rest glide (E-400 ①) ends in the engine's own park, so it lands here too: no haptic for it — the player did
+    // nothing — and no re-check, or a glide could chain into another.
+    onPark: () => { if (gliding) { gliding = false; glideQuietUntil = performance.now() + 2000; save(); return; } haptic("tuck"); save(); scheduleClear(); },
+    // …and the sleep that follows a glide is silent too (measured: it buzzed once per glide before this).
+    onSleep: () => { el.style.willChange = "auto"; if (performance.now() >= glideQuietUntil) { haptic("settled"); scheduleClear(); } save(); },
     onTrue: () => haptic("trueFound"),
     onDetent: (strength, quarters) => hapticDetent(strength, quarters),
     onCatch: (info) => {
@@ -333,6 +336,117 @@ function mountNeedle(
     const L = body.limits();
     return (body.cx - L.minX) <= ((L.maxX + body.size) - body.cx) ? "left" : "right";
   };
+
+  /* ── ⭐ E-400 ① · COME TO REST WHERE NOTHING IS UNDER IT ─────────────────────────────────────────────────────
+     Measured 2026-09-14 at 360 and 768: the parked disc and its tap pad cover a 12–16px strip of the right edge at one
+     fixed height, and landed on an interactive control in 6 of 40 samples (a CTA's end, the Rounds/Chart toggle, a
+     footer link). No static pose fixes that — a deeper tuck is a 16px target, under the 24px minimum exactly where it
+     overlaps. So on REST (a park or a sleep), on SCROLL-IDLE, on a route change and on a resize, the host measures the
+     footprint (the visible disc ∪ the tap pad); if an interactive element is under it, it picks the NEAREST rail
+     position within a third of the viewport where nothing is, and glides there on the engine's OWN park spring
+     (`target` + `parking`, exactly the path `parkTo` takes) — or snaps under reduced motion. If no clear position
+     exists within reach it stays where it is. The engine is not edited: this is host logic, like `nearestEdge`.
+     ⛔ Never while held, mid-throw, parking, suppressed, or on a top/bottom edge; never chained (a glide's own park
+     does not re-check); `test:needle-rest` reviews the glide frame by frame. */
+  const INTERACTIVE = 'a[href],button,input:not([type="hidden"]),select,textarea,summary,[role="button"],[role="link"],[role="tab"],[role="switch"],[role="checkbox"],[role="menuitem"],[tabindex]:not([tabindex="-1"])';
+  const CLEARANCE = 4;
+  let gliding = false;
+  let glideQuietUntil = 0;
+  let clearTimer: number | null = null;
+  /* The footprint from the ENGINE's pose, not the DOM: the disc's box (the tap pad sits inside it on a side rail),
+     clipped to the viewport. ⚠️ Measured 2026-09-14: under reduced motion the app's universal clamp gives #needle a
+     near-zero transition, so getBoundingClientRect() right after a paint still returned the previous position and the
+     rest check looked at the wrong place. Geometry has no such lag. */
+  function footprint() {
+    const v = viewport();
+    return { left: Math.max(0, body.x), right: Math.min(v.w, body.x + body.size), top: body.y, bottom: body.y + body.size };
+  }
+  /* What must not be under the disc is a control's CONTENT — its text, icon or field — or the whole of a SMALL
+     control (≤ 64px either way). Measured: on /markets and /live every rail height crosses a full-width card link, so
+     "any control" left no clear position at all, while 16px of a 328px card's padding hides nothing a player needs.
+     The session-96 cases were all content: a CTA's label end, the Rounds/Chart toggle, a footer link. */
+  const SMALL_CONTROL = 64;
+  function contentRects(n: HTMLElement, band: { left: number; right: number }) {
+    const out: Array<{ left: number; right: number; top: number; bottom: number }> = [];
+    const r = n.getBoundingClientRect();
+    const inBand = (x: { left: number; right: number }) => x.right >= band.left - CLEARANCE && x.left <= band.right + CLEARANCE;
+    if (r.width <= SMALL_CONTROL || r.height <= SMALL_CONTROL || n.matches("input,select,textarea")) {
+      if (inBand(r)) out.push({ left: r.left, right: r.right, top: r.top, bottom: r.bottom });
+      return out;
+    }
+    const walker = document.createTreeWalker(n, NodeFilter.SHOW_TEXT);
+    const range = document.createRange();
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      if (!(node.textContent || "").trim() || node.parentElement?.closest("svg")) continue;
+      range.selectNodeContents(node);
+      for (const t of range.getClientRects()) if (t.width > 0 && inBand(t)) out.push({ left: t.left, right: t.right, top: t.top, bottom: t.bottom });
+    }
+    for (const e of n.querySelectorAll("svg,img,video,canvas,input,select,textarea")) {
+      if (e.parentElement?.closest("svg")) continue;
+      const t = e.getBoundingClientRect();
+      if (t.width > 0 && inBand(t)) out.push({ left: t.left, right: t.right, top: t.top, bottom: t.bottom });
+    }
+    return out;
+  }
+  function controlsInBand(fp: { left: number; right: number }) {
+    const out: Array<{ left: number; right: number; top: number; bottom: number }> = [];
+    for (const n of document.querySelectorAll<HTMLElement>(INTERACTIVE)) {
+      if (root.contains(n)) continue;
+      const r = n.getBoundingClientRect();
+      if (r.width < 1 || r.height < 1) continue;
+      if (r.right < fp.left - CLEARANCE || r.left > fp.right + CLEARANCE) continue;
+      if (r.bottom < -viewport().h || r.top > 2 * viewport().h) continue;
+      const cs = getComputedStyle(n);
+      if (cs.visibility === "hidden" || cs.pointerEvents === "none") continue;
+      out.push(...contentRects(n, fp));
+    }
+    return out;
+  }
+  /** The y to rest at: `null` = already clear (or not applicable), `undefined` = nothing clear within reach. */
+  function clearRestY(): number | null | undefined {
+    if (!body.parked || body.held || body.parking || isSuppressed()) return null;
+    if (body.edge !== "left" && body.edge !== "right") return null;
+    const fp = footprint();
+    const rects = controlsInBand(fp);
+    const covers = (dy: number) => rects.some((r) =>
+      r.left < fp.right + CLEARANCE && r.right > fp.left - CLEARANCE
+      && r.top < fp.bottom + dy + CLEARANCE && r.bottom > fp.top + dy - CLEARANCE);
+    if (!covers(0)) return null;
+    const L = body.limits();
+    const m = 14;
+    const minY = L.minY + m;
+    const maxY = Math.max(minY, L.maxY - m);
+    const reach = viewport().h / 3;
+    for (let d = 2; d <= reach; d += 2) {
+      for (const sign of [-1, 1]) {
+        const y = body.y + sign * d;
+        if (y < minY || y > maxY) continue;
+        if (!covers(y - body.y)) return y;
+      }
+    }
+    return undefined;
+  }
+  function settleClear() {
+    clearTimer = null;
+    const y = clearRestY();
+    if (y === null || y === undefined) return;
+    if (calmed) {
+      body.y = y;
+      body.snapPark(body.edge);
+      paint(0);
+      save();
+      return;
+    }
+    gliding = true;
+    body.parked = false;
+    body.parking = true;
+    body.target = { x: body.x, y };
+    start();
+  }
+  function scheduleClear(delay = 180) {
+    if (clearTimer !== null) window.clearTimeout(clearTimer);
+    clearTimer = window.setTimeout(settleClear, delay);
+  }
 
   let saved: { x?: number; y?: number; edge?: string } | null = null;
   try { saved = JSON.parse(localStorage.getItem("50pick.needle.pos") || "null"); } catch { /* ignore */ }
@@ -556,6 +670,11 @@ function mountNeedle(
     on(window.visualViewport, "resize", applyViewport as EventListener);
     on(window.visualViewport, "scroll", applyViewport as EventListener);
   }
+  // Scroll-idle: any scroller (capture), not just the window. Passive — it only arms a timer.
+  on(document, "scroll", (() => scheduleClear()) as EventListener, { capture: true, passive: true });
+  on(window, "resize", (() => scheduleClear(260)) as EventListener);
+  scheduleClear(900);
+
   on(document, "visibilitychange", (() => {
     if (document.hidden) stop();
     else if (body.awake && !isSuppressed()) { body.acc = 0; start(); }
@@ -591,14 +710,14 @@ function mountNeedle(
   // one is a dark pattern — CLAUDE-CODE-BRIEF §4.1).
   const recompute = () => {
     if (isSuppressed()) { root.classList.add("needle-suppressed"); stop(); }
-    else { root.classList.remove("needle-suppressed"); if (body.awake) start(); }
+    else { root.classList.remove("needle-suppressed"); if (body.awake) start(); scheduleClear(400); }
   };
   on(window, "50pick:needle-suppress", (() => { modalSuppress++; recompute(); }) as EventListener);
   on(window, "50pick:needle-release", (() => { modalSuppress = Math.max(0, modalSuppress - 1); recompute(); }) as EventListener);
 
   // React-driven visibility (money routes + navbar toggle).
   function setSuppressed(v: boolean) { routeSuppressed = v; recompute(); }
-  apiRef.current = { setSuppressed };
+  apiRef.current = { setSuppressed, recheckRest: () => scheduleClear(450) };
   setSuppressed(wantSuppressed.current);   // apply whatever React already computed
 
   // Live-sync the Needle's mute cache with the app's "Sound & feedback" master switch,
@@ -612,6 +731,7 @@ function mountNeedle(
   // ── cleanup: remove EVERY listener, cancel the loop, drop the API, empty the root.
   return () => {
     stop();
+    if (clearTimer !== null) window.clearTimeout(clearTimer);
     motionGateObserver.disconnect();
     window.clearInterval(sessionTimer);
     for (const [t, type, h, opts] of listeners) t.removeEventListener(type, h, opts as EventListenerOptions);
@@ -672,6 +792,8 @@ export function Needle() {
     const suppressed = hiddenPref || isMoneySurface(pathname);
     wantSuppressed.current = suppressed;
     apiRef.current?.setSuppressed(suppressed);
+    // A new page is new content under the rail (E-400 ①).
+    apiRef.current?.recheckRest();
   }, [hiddenPref, pathname]);
 
   return <div id="needle-root" ref={hostRef} data-needle-theme={theme} />;
