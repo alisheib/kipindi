@@ -3481,11 +3481,11 @@ await guard("19", async () => {
     await sweep(recR);
     const botR = await botRow(bR.botId);
     const keyFree = await S.houseBotAlertOnceStore.claim(K.ALERT_KEY.password(bR.botId, readR.snapshot.fingerprintNow));
-    ok("19.C6 · ⭐ ruling 133 · a look that lands between the pause and its A1 records NOTHING: no second CREDENTIAL_CHANGED, no A2, and the A1 key is left for the look that paused the bot",
+    ok("19.C6 · ⭐ rulings 133 and 138 · a look landing between the pause and its A1 records NOTHING — no second CREDENTIAL_CHANGED, no A2 — and pays the ONE A1 the pause still owes",
       moved === true && (await eventsOf(bR.botId, ["CREDENTIAL_CHANGED"])).length === 0
-        && recR.n(bR.userId, "passwordChanged") === 0 && recR.n(bR.userId, "passwordPaused") === 0
-        && botR.credentialChangedAt == null && keyFree === true,
-      j({ moved, cred: (await eventsOf(bR.botId, ["CREDENTIAL_CHANGED"])).length, fns: recR.fns(bR.userId), keyFree }));
+        && recR.n(bR.userId, "passwordChanged") === 0 && recR.n(bR.userId, "passwordPaused") === 1
+        && botR.credentialChangedAt == null && keyFree === false,
+      j({ moved, cred: (await eventsOf(bR.botId, ["CREDENTIAL_CHANGED"])).length, fns: recR.fns(bR.userId), keyClaimedByRetry: keyFree === false }));
 
     const rec7 = recorder();
     await w.setUserFields(bR.userId, { passwordHash: newHash(), passwordSetVia: "RESET_LINK", passwordSetAt: iso() });
@@ -3509,6 +3509,26 @@ await guard("19", async () => {
         && recV.n(bV.userId, "passwordChanged") === 1 && recV.n(bV.userId, "passwordPaused") === 0,
       j({ status: botV.status, reason: botV.pauseReason, via: botV.credentialChangedVia, fns: recV.fns(bV.userId) }));
     await retire(bV.botId);
+
+    const bF = await w.bot();
+    await w.setUserFields(bF.userId, { passwordHash: newHash(), passwordSetVia: "SELF_CHANGE", passwordSetAt: iso() });
+    const recF = recorder({ throwOn: "passwordPaused" });
+    const rF = await hook(bF.userId, "PASSWORD_SELF_CHANGE", recF);
+    const botF = await botRow(bF.botId);
+    ok("19.C9 · ⭐ an A1 whose send FAILS is never replaced by an A2: the pause and its event stand, and no credential record is written for the change that caused the pause",
+      rF?.kind === "applied" && botF.status === "AUTO_PAUSED" && botF.pauseReason === "PASSWORD_CHANGED" && botF.credentialChangedAt == null
+        && (await eventsOf(bF.botId, ["CREDENTIAL_CHANGED"])).length === 0 && recF.n(bF.userId, "passwordChanged") === 0,
+      j({ status: botF.status, cred: botF.credentialChangedAt, fns: recF.fns(bF.userId) }));
+    const recF2 = recorder();
+    await sweep(recF2);
+    ok("19.C9b · ⭐ ruling 138 · the next look pays the A1 the failed send dropped — once — and still writes no credential record",
+      recF2.n(bF.userId, "passwordPaused") === 1 && recF2.n(bF.userId, "passwordChanged") === 0
+        && (await eventsOf(bF.botId, ["CREDENTIAL_CHANGED"])).length === 0,
+      j({ fns: recF2.fns(bF.userId), cred: (await eventsOf(bF.botId, ["CREDENTIAL_CHANGED"])).length }));
+    const recF3 = recorder();
+    await sweep(recF3);
+    ok("19.C9c · …and once it is delivered the claim stands: no third A1", recF3.of(bF.userId).length === 0, j(recF3.fns(bF.userId)));
+    await retire(bF.botId);
   }
 
   /* ── 19.D · rows 16–18: a signal that carries no cause and never stops a bot (ruling 126) ── */
@@ -3536,11 +3556,14 @@ await guard("19", async () => {
 
     const rec2fa = recorder();
     await hook(b.userId, "TWO_FA_ON", rec2fa);
+    const afterOn = await eventsOf(b.botId, ["HOLDER_2FA_ON", "HOLDER_2FA_OFF"]);
     await hook(b.userId, "TWO_FA_OFF", rec2fa);
-    const twofa = await eventsOf(b.botId, ["HOLDER_2FA_ON", "HOLDER_2FA_OFF"]);
-    ok("19.D3 · A2 row 18 (D5) · 2FA on and off each write their own event and alert nobody",
-      twofa.length === 2 && twofa.filter((e: Any) => e.kind === "HOLDER_2FA_ON").length === 1 && rec2fa.of(b.userId).length === 0,
-      j({ kinds: twofa.map((e: Any) => e.kind), fns: rec2fa.fns(b.userId) }));
+    const afterOff = await eventsOf(b.botId, ["HOLDER_2FA_ON", "HOLDER_2FA_OFF"]);
+    ok("19.D3 · A2 row 18 (D5) · 2FA writes the event of the change that HAPPENED — on → HOLDER_2FA_ON, off → HOLDER_2FA_OFF, one each — and alerts nobody",
+      afterOn.length === 1 && afterOn[0].kind === "HOLDER_2FA_ON"
+        && afterOff.length === 2 && afterOff.filter((e: Any) => e.kind === "HOLDER_2FA_OFF").length === 1
+        && rec2fa.of(b.userId).length === 0,
+      j({ on: afterOn.map((e: Any) => e.kind), off: afterOff.map((e: Any) => e.kind), fns: rec2fa.fns(b.userId) }));
 
     const recS = recorder();
     const countBefore = (await eventsOf(b.botId)).length;
@@ -3595,9 +3618,11 @@ await guard("19", async () => {
 
     const recR = recorder();
     const read = await CTL.readBotAndHolder(b.botId, {});
-    const applied = await HH.applyHolderCauses(read, { detectedBy: "SWEEP", alerts: recR.alerts });
-    ok("19.F2 · ruling 123 · REMOVED is the end: an apply on a removed bot writes nothing and tells nobody",
-      applied.kind === "none" && applied.added.length === 0 && applied.cleared.length === 0 && recR.calls.length === 0, j(applied));
+    const spiedR = await spyWrites(() => HH.applyHolderCauses(read, { detectedBy: "SWEEP", alerts: recR.alerts }));
+    const applied = spiedR.result;
+    ok("19.F2 · ⭐ ruling 123 · REMOVED is the end: an apply on a removed bot makes NO store call at all — every later write is conditional, so only the early return proves it — and tells nobody",
+      applied.kind === "none" && applied.added.length === 0 && applied.cleared.length === 0 && recR.calls.length === 0 && j(spiedR.seen) === j([]),
+      j({ applied, seen: spiedR.seen }));
 
     const b3 = await w.bot();
     await w.setUserFields(b3.userId, { status: "SUSPENDED" });

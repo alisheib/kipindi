@@ -256,6 +256,12 @@ export async function applyHolderCauses(read: FoundRead, o: { detectedBy: "HOOK"
     }
   }
 
+  // Ruling 138 · the pause OWES an A1 for this change. A send that failed gave its claim back (claimThen), so the next
+  // look pays it — the alert only, never a second record: the pause itself is this change's record.
+  if (pw && pwKey && !bellSent.has("PASSWORD_CHANGED") && pausedByThisChange(bot, pw)) {
+    await claimThen(pwKey.key, "A1 retry", () => o.alerts.passwordPaused(bot, { method: pw.method, changedAt: pw.changedAt, cancelled: 0 }));
+  }
+
   // Ruling 124 · the cause set of a stopped bot, compared and rewritten under the wallet lock.
   const recorded = await recordCauseSet(bot, causes, { detectedBy: o.detectedBy, events: !wasActive, skip: eventWritten });
   out.added = recorded.added.map((c) => c.code);
