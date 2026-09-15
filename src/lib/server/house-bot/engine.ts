@@ -17,7 +17,8 @@
  * ⛔ CLAIMS WAIT FOR A HEALTHY PROCESS (A24): none while stopping, none while the measured skew is unknown or over
  * 5 s, none while admission has a queue or half its in-flight slots taken, and never more than 2 fires at once.
  */
-import { INSTANCE_ID, acquireLeadership, releaseLeadership } from "../leader";
+import { INSTANCE_ID, acquireLeadership, leadershipSnapshot, releaseLeadership } from "../leader";
+import type { EngineAlerts } from "./outcomes";
 import { admissionSnapshot, type AdmissionSnapshot } from "../admission";
 import { houseBotRuntimeStore } from "../house-bot-dal";
 import { hasDatabase, prisma } from "../prisma";
@@ -33,6 +34,7 @@ import {
   POLLER_INTERVAL_MS,
   POLLER_JITTER_MS,
   RUNTIME_KEY,
+  SWEEP_INTERVAL_MS,
 } from "@/lib/house-bot/constants";
 import { houseBotSchemaReady } from "./schema-ready";
 
@@ -54,8 +56,12 @@ export type EngineState = {
   skewMeasuredAt: number | null;
   pollerBusy: boolean;
   plannerBusy: boolean;
+  sweepBusy: boolean;
   lastPollerTickAt: number | null;
   lastPlannerTickAt: number | null;
+  lastSweepTickAt: number | null;
+  /** The post-commit hook's semaphore, overflow count, soft cache and alert channel (C4-SPEC ruling 110). */
+  hook: HookState;
   /**
    * The planner's cadence markers and scan cursors (C4-SPEC rulings 77, 91). Correctness never depends on them: every
    * effect is an AlertOnce claim or a conditional write, so a failover that starts them over repeats nothing.
@@ -70,8 +76,20 @@ export type EngineState = {
     poller: ReturnType<typeof setTimeout> | null;
     planner: ReturnType<typeof setInterval> | null;
     skew: ReturnType<typeof setInterval> | null;
+    sweep: ReturnType<typeof setInterval> | null;
   };
   signalsBound: boolean;
+};
+
+export type HookState = {
+  /** Hook calls running now; at `HOOK_SEMAPHORE` a new one is dropped (04 A24). */
+  inFlight: number;
+  /** Dropped calls since boot — the sweep decides each of them. A count, never ids. */
+  dropped: number;
+  /** PLAN §4.3's soft cache: whether any bot is ACTIVE with the switch ON, and the holders A21 watches. */
+  cache: { atMs: number; live: boolean; holderIds: ReadonlySet<string> } | null;
+  /** Set when the engine starts with the trigger's ticks; null until then, so the hook never runs unwired (ruling 46). */
+  alerts: EngineAlerts | null;
 };
 
 export type TickContext = { state: EngineState; instanceId: string };
@@ -79,6 +97,10 @@ export type TickContext = { state: EngineState; instanceId: string };
 export type EngineTicks = {
   pollerTick: (ctx: TickContext) => Promise<void>;
   plannerTick: (ctx: TickContext) => Promise<void>;
+  /** The trigger sweep, every `SWEEP_INTERVAL_MS`, only while this instance holds the planner's lease (ruling 103). */
+  sweepTick: (ctx: TickContext) => Promise<void>;
+  /** The alert channel the post-commit hook uses (ruling 46: never a default). */
+  hookAlerts: EngineAlerts;
   /** SIGTERM: return this instance's claims that are not in flight to PENDING. Best effort (A24). */
   requeueMine?: (instanceId: string, excludeIntentIds: readonly string[]) => Promise<number>;
 };
@@ -99,9 +121,10 @@ declare global {
 function freshState(): EngineState {
   return {
     started: false, stopping: false, refused: null, bootAt: null, inFlight: new Map(), skewMs: null, skewMeasuredAt: null,
-    pollerBusy: false, plannerBusy: false, lastPollerTickAt: null, lastPlannerTickAt: null,
+    pollerBusy: false, plannerBusy: false, sweepBusy: false, lastPollerTickAt: null, lastPlannerTickAt: null, lastSweepTickAt: null,
+    hook: { inFlight: 0, dropped: 0, cache: null, alerts: null },
     planner: { oversightAtMs: null, hourlyKey: null, scan: {} },
-    timers: { first: null, poller: null, planner: null, skew: null }, signalsBound: false,
+    timers: { first: null, poller: null, planner: null, skew: null, sweep: null }, signalsBound: false,
   };
 }
 
@@ -136,6 +159,16 @@ export function claimGate(
 /** N2 §4 step 1: the post-commit hook is suspended while this container's skew is unknown or over 5 s. */
 export function hookSuspendedBySkew(state: EngineState = engineState()): boolean {
   return state.skewMs == null || Math.abs(state.skewMs) > MAX_TOLERATED_SKEW_MS;
+}
+
+/**
+ * Ruling 103 · the sweep runs only where the planner's lease is held and unexpired. It reads what the planner's last
+ * `acquireLeadership` observed and never writes the lease itself; a brief double sweep at failover is harmless (anchor
+ * conflicts, a forward-only watermark).
+ */
+export function holdsPlannerLease(snapshot: ReturnType<typeof leadershipSnapshot> = leadershipSnapshot()): boolean {
+  const lease = snapshot[HOUSE_PLANNER_TASK];
+  return !!lease && lease.isMe && lease.expiresInSec > 0;
 }
 
 async function defaultDbClockMs(): Promise<number> {
@@ -204,6 +237,7 @@ export async function startHouseBotEngine(ticks: EngineTicks, deps: EngineDeps =
   state.started = true;
   state.stopping = false;
   state.refused = null;
+  state.hook.alerts = ticks.hookAlerts ?? null;
   const clock = deps.dbClockMs ?? defaultDbClockMs;
   await measureSkew(state, clock);
   state.timers.skew = setInterval(() => { void measureSkew(state, clock); }, SKEW_MEASURE_INTERVAL_MS);
@@ -243,12 +277,26 @@ export async function startHouseBotEngine(ticks: EngineTicks, deps: EngineDeps =
       state.lastPlannerTickAt = Date.now();
     }
   };
+  const sweepOnce = async () => {
+    if (state.stopping || state.sweepBusy || !holdsPlannerLease()) return;
+    state.sweepBusy = true;
+    try {
+      await ticks.sweepTick(ctx);
+    } catch (e) {
+      console.error("[house-bot] sweep pass failed:", (e as Error)?.message ?? e);
+    } finally {
+      state.sweepBusy = false;
+      state.lastSweepTickAt = Date.now();
+    }
+  };
   state.timers.first = setTimeout(() => {
     state.timers.first = null;
     void pollOnce();
     void planOnce();
     state.timers.planner = setInterval(() => { void planOnce(); }, PLANNER_INTERVAL_MS);
     state.timers.planner.unref?.();
+    state.timers.sweep = setInterval(() => { void sweepOnce(); }, SWEEP_INTERVAL_MS);
+    state.timers.sweep.unref?.();
   }, FIRST_TICK_DELAY_MS);
   state.timers.first.unref?.();
 
@@ -275,6 +323,8 @@ export async function stopHouseBotEngine(ticks: Pick<EngineTicks, "requeueMine">
   }
   if (state.timers.planner) clearInterval(state.timers.planner);
   state.timers.planner = null;
+  if (state.timers.sweep) clearInterval(state.timers.sweep);
+  state.timers.sweep = null;
   if (!state.started) return;
   console.log(`[house-bot] ${reason} — the engine stops claiming and hands its claims back`);
   if (ticks.requeueMine) {
@@ -296,5 +346,8 @@ export function houseBotEngineHealth(state: EngineState = engineState()) {
     inFlight: state.inFlight.size,
     lastPollerTickAt: state.lastPollerTickAt ? new Date(state.lastPollerTickAt).toISOString() : null,
     lastPlannerTickAt: state.lastPlannerTickAt ? new Date(state.lastPlannerTickAt).toISOString() : null,
+    lastSweepTickAt: state.lastSweepTickAt ? new Date(state.lastSweepTickAt).toISOString() : null,
+    /** Bet-hook calls dropped at the semaphore since boot (ruling 110); the sweep decided each. */
+    hookDropped: state.hook.dropped,
   };
 }

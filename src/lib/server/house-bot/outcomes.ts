@@ -60,6 +60,7 @@ import { OUTCOME_TABLE, outcomeKey, type OutcomeAction } from "./outcome-map";
 import { isEngineTransient, transientBackoffMs } from "./transient";
 import { readBotAndHolder, type BotAndHolder } from "./control";
 import { voidHouseConsent } from "./designation";
+import { playerHandle } from "./alerts";
 
 /** What the engine tells people. Step 9 supplies the real emitters; tests inject recorders. */
 export type EngineAlerts = {
@@ -244,15 +245,39 @@ async function unmapped(intent: StoredHouseBotIntent, me: string, alerts: Engine
   return out;
 }
 
-async function penaltyBox(intent: StoredHouseBotIntent): Promise<void> {
-  if (!intent.triggerUserId) return;
-  const key = ALERT_KEY.penalty(intent.triggerUserId);
+/**
+ * R5 · THE PENALTY BOX (C4-SPEC rulings 27, 106–107). The AlertOnce row `penalty:<userId>:<EAT day>` IS the box: the
+ * trigger filter and `lockedPool` read it. Claiming it is the boxing; the PENALTY_BOXED event `{cause, day, intentId}`
+ * (the user is the event's column) and ONE admin alert follow. ⛔ A failed send never releases the claim — releasing
+ * would un-box the account. True when this call boxed it.
+ */
+export async function boxAccount(
+  input: { userId: string; houseBotId: string | null; marketId: string | null; cause: "CASHED_OUT_COUNTERED" | "BOTH_SIDES"; intentId: string },
+  alerts: EngineAlerts,
+): Promise<boolean> {
+  const key = ALERT_KEY.penalty(input.userId);
   const claim = await houseBotAlertOnceStore.claimWithEatSuffix(key.prefix, key.unit);
-  if (!claim.claimed) return;
-  await houseBotEventStore.append({
-    houseBotId: intent.houseBotId, userId: intent.triggerUserId, marketId: intent.marketId, kind: "PENALTY_BOXED",
-    fromStatus: null, toStatus: null, reason: null, actorId: null, payload: { cause: "CASHED_OUT_COUNTERED", intentId: intent.id },
-  });
+  if (!claim.claimed) return false;
+  const day = claim.key.slice(key.prefix.length + 1);
+  try {
+    await houseBotEventStore.append({
+      houseBotId: input.houseBotId, userId: input.userId, marketId: input.marketId, kind: "PENALTY_BOXED",
+      fromStatus: null, toStatus: null, reason: null, actorId: null, payload: { cause: input.cause, day, intentId: input.intentId },
+    });
+    await alerts.once(claim.key, {
+      code: "PENALTY_BOXED", botId: input.houseBotId, intentId: input.intentId, marketId: input.marketId,
+      detail: { cause: input.cause, day, handle: playerHandle(input.userId) },
+    });
+  } catch (e) {
+    // The box stands (the claimed row). Its record or its alert is lost, never the box.
+    console.error("[house-bot] penalty box recorded without its event or alert:", String((e as Error)?.message ?? e).slice(0, 300));
+  }
+  return true;
+}
+
+async function penaltyBox(intent: StoredHouseBotIntent, alerts: EngineAlerts): Promise<void> {
+  if (!intent.triggerUserId) return;
+  await boxAccount({ userId: intent.triggerUserId, houseBotId: intent.houseBotId, marketId: intent.marketId, cause: "CASHED_OUT_COUNTERED", intentId: intent.id }, alerts);
 }
 
 /** The market as it is now; `undefined` when the read itself failed (ruling 51). */
@@ -301,7 +326,7 @@ export async function applyOutcome(input: { intent: StoredHouseBotIntent; me: st
       if (!out.written) return out;
       if (action.alert === "botDaily") await alertOnce(ALERT_KEY.botDaily(intent.houseBotId, action.reasonCode), alerts, { code: action.reasonCode, botId: intent.houseBotId, intentId: intent.id });
       if (action.alert === "stakeNotWhole") await alertOnce(ALERT_KEY.stakeNotWhole(intent.houseBotId), alerts, { code: "STAKE_NOT_WHOLE", botId: intent.houseBotId, intentId: intent.id });
-      if (action.penalty) await penaltyBox(intent);
+      if (action.penalty) await penaltyBox(intent, alerts);
       return out;
     }
     case "autoPause": {

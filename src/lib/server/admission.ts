@@ -133,6 +133,18 @@ export function inAdmission(): boolean {
   return reentrancy.getStore() === true;
 }
 
+/**
+ * Run `fn` OUTSIDE the enclosing withAdmission() slot: nothing `fn` starts is treated as already holding a slot.
+ *
+ * ⛔ WHY (house bots, C4-SPEC ruling 102). AsyncLocalStorage is inherited by every promise started inside the slot,
+ * including a fire-and-forget hook kicked off after a bet commits. Inside the slot, a nested withAdmission() skips
+ * the semaphore (invariant 2), so the hook's work would run uncounted on a slot the bet already released. The bet's
+ * post-commit hook goes through this, nested with `runOutsideLock`.
+ */
+export function runOutsideAdmission<T>(fn: () => T): T {
+  return reentrancy.exit(fn);
+}
+
 /* ── Core ────────────────────────────────────────────────────────────────── */
 
 function settle(w: Waiter, admitted: boolean): boolean {

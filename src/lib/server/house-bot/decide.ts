@@ -188,8 +188,11 @@ export type CounterInput = {
   globalScopeFrom: string | null;
   /** ACTIVE bots whose rules parse. */
   bots: readonly DecideBot[];
-  /** The ACTIVE target on this poll, when its bot is one of `bots` (N2 §4 step 2 (a)). */
-  target: (DecideTarget & { drawnDelaySec: number; lockedAtDue: number | null }) | null;
+  /**
+   * The ACTIVE target on this poll, when its bot is one of `bots` (N2 §4 step 2 (a)). `staffChosenRoomTzs` is the
+   * staff-chosen TZS the bot and the platform have left today, the smaller of the two (N2 §4 step 6; C4-SPEC ruling 94).
+   */
+  target: (DecideTarget & { drawnDelaySec: number; lockedAtDue: number | null; staffChosenRoomTzs: number }) | null;
   /** `lockedForHouse` at the pass instant. */
   pools: LockedPool;
   price: UdPrice;
@@ -252,7 +255,9 @@ export function decideCounter(input: CounterInput, deps: { randomInt: RandomInt 
     triggerUserId: trigger.userId,
     targetId: null,
     side: botSide,
-    stakeTzs: 0,
+    // C4-SPEC ruling 120 · a row decided NOT to react records the smallest stake the bot could have placed here (the
+    // schema holds every intent's stake to 1 … 1,000,000,000); a reacting row overrides it with the decided stake.
+    stakeTzs: Math.max(1, bot.stakeMinTzs ?? input.bounds.min, input.bounds.min),
     dueAt: trigger.placedAt,
     deadlineAt: iso(cutoffMs),
     staleAt: trigger.placedAt,
@@ -305,7 +310,8 @@ export function decideCounter(input: CounterInput, deps: { randomInt: RandomInt 
     let stake = 0;
     if (!code) {
       const cut = (target.lockedAtDue ?? 0) - input.pools[botSide].raw;
-      const clamped = clampStake(Math.min(shapedAmount(bot.rules, trigger.stakeTzs, deps.randomInt), cut), bot, input.bounds);
+      // N2 §4 step 6 · never past the staff-chosen TZS left today (a missing figure is no room: the clamp fails closed).
+      const clamped = clampStake(Math.min(shapedAmount(bot.rules, trigger.stakeTzs, deps.randomInt), cut, target.staffChosenRoomTzs), bot, input.bounds);
       stake = clamped.stake;
       if (!clamped.ok) code = "STAKE_BELOW_MIN";
     }

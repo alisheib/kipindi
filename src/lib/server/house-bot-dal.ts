@@ -1470,6 +1470,11 @@ export interface HouseBotIntentStore {
   listLiveOnMarket(marketId: string, tx?: HouseTx): Promise<StoredHouseBotIntent[]>;
   countLiveForTarget(targetId: string, tx?: HouseTx): Promise<number>;
   countPlacedForTarget(targetId: string, tx?: HouseTx): Promise<number>;
+  /**
+   * R5 BOTH_SIDES (C4-SPEC ruling 106): the newest PLACED COUNTER whose trigger account is `userId` on this market —
+   * "the house countered this account here" — through `HouseBotIntent_triggerUserId_createdAt_idx`. Null when none.
+   */
+  placedCounterFor(userId: string, marketId: string, tx?: HouseTx): Promise<StoredHouseBotIntent | null>;
   /** The poller's claim (N1 §4.3). `skewGuardMs` = max(0, skew) + 2 s (A24). */
   claimBatch(input: { me: string; freeSlots: number; skewGuardMs: number }): Promise<StoredHouseBotIntent[]>;
   /** The inline Enter now claim — no skew term, because `dueAt` is the database's own now(). */
@@ -1610,6 +1615,19 @@ export type PlannableMarketsInput = {
   after: { cutoff: string; id: string } | null;
   limit: number;
 };
+
+/** One sweep candidate (C4-SPEC ruling 104). Only what a trigger decision reads (I2); no market row. */
+export type TriggerRow = { id: string; userId: string; marketId: string; side: IntentSide; stake: number; placedAt: string; status: string };
+
+export type TriggerPageInput = {
+  fromIso: string;
+  beforeIso: string;
+  after: { placedAt: string; id: string } | null;
+  limit: number;
+};
+
+/** The trigger filter's facts about the staking account (PLAN §4.3; C4-SPEC ruling 36). */
+export type TriggerAccount = { role: string; recruitedBy: string | null; penaltyToday: boolean };
 
 /** One bot's marked stakes, for the H2 rate and per-market caps (04 A24: rolling windows). */
 export type HouseBotUsage = {
@@ -1753,6 +1771,18 @@ export interface HouseSeamStore {
    * `marketView` (A13).
    */
   plannableMarkets(input: PlannableMarketsInput, tx?: HouseTx): Promise<Array<{ id: string; cutoff: string }>>;
+  /**
+   * The sweep's keyset page (C4-SPEC rulings 103–104): unmarked positions on a LIVE market placed in `[fromIso,
+   * beforeIso]`, after `after` in `(placedAt, id)`, that no COUNTER intent is anchored on — oldest first, at most 200.
+   * ⛔ A plain SELECT through `Position_placedAt_id_idx`; the product line is NOT filtered here, so the trigger can raise
+   * A12's once-only product alert (ruling 90).
+   */
+  triggerPage(input: TriggerPageInput, tx?: HouseTx): Promise<TriggerRow[]>;
+  /**
+   * The trigger filter's account facts (PLAN §4.3), the predicates `lockedPool` applies: the role, the recruiter, and
+   * whether today's penalty box row exists (`penalty:<userId>:<EAT day from DB now()>`). Null when no such user.
+   */
+  triggerAccount(userId: string, tx?: HouseTx): Promise<TriggerAccount | null>;
   /** N1 §3: status, and whether `staleAt` is still ahead of the database clock (`clock_timestamp()`). */
   intentFreshness(id: string, tx?: HouseTx): Promise<{ status: IntentStatus; fresh: boolean } | null>;
   /**
@@ -2359,6 +2389,12 @@ const memoryHouseBotIntents: HouseBotIntentStore = {
   },
   async countPlacedForTarget(targetId) {
     return [...memIntents.values()].filter((i) => i.targetId === targetId && i.status === "PLACED").length;
+  },
+  async placedCounterFor(userId, marketId) {
+    const r = [...memIntents.values()]
+      .filter((i) => i.kind === "COUNTER" && i.status === "PLACED" && i.triggerUserId === userId && i.marketId === marketId)
+      .sort((a, b) => ms(b.createdAt) - ms(a.createdAt) || (a.id < b.id ? 1 : -1))[0];
+    return r ? clone(r) : null;
   },
   async claimBatch({ me, freeSlots, skewGuardMs }) {
     if (freeSlots <= 0) return [];
@@ -2975,6 +3011,30 @@ const memoryHouseSeam: HouseSeamStore = {
       .filter((r) => afterMs == null || ms(r.cutoff) > afterMs || (ms(r.cutoff) === afterMs && r.id > after!.id))
       .slice(0, Math.min(200, pageLimit(limit)));
   },
+  async triggerPage({ fromIso, beforeIso, after, limit }) {
+    const from = ms(fromIso);
+    const before = ms(beforeIso);
+    const anchored = new Set([...memIntents.values()].filter((i) => i.kind === "COUNTER").map((i) => i.anchorKey));
+    const afterMs = after ? ms(after.placedAt) : null;
+    const out: TriggerRow[] = [];
+    for (const p of await positionStore.values()) {
+      if (p.houseBotId != null || anchored.has(p.id)) continue;
+      const at = ms(p.placedAt);
+      if (!(at >= from && at <= before)) continue;
+      if (afterMs != null && !(at > afterMs || (at === afterMs && p.id > after!.id))) continue;
+      const m = await marketStore.get(p.marketId);
+      if (!m || m.status !== "LIVE") continue;
+      out.push({ id: p.id, userId: p.userId, marketId: p.marketId, side: p.side as IntentSide, stake: Number(p.stake), placedAt: new Date(at).toISOString(), status: p.status });
+    }
+    return out
+      .sort((a, b) => ms(a.placedAt) - ms(b.placedAt) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+      .slice(0, Math.min(200, pageLimit(limit)));
+  },
+  async triggerAccount(userId) {
+    const u = await db.user.findById(userId);
+    if (!u) return null;
+    return { role: u.role, recruitedBy: u.recruitedBy ?? null, penaltyToday: memAlertOnce.has(`penalty:${u.id}:${eatDayKey(Date.now())}`) };
+  },
   async intentFreshness(id) {
     const i = memIntents.get(id);
     return i ? { status: i.status, fresh: ms(i.staleAt) > Date.now() } : null;
@@ -3487,6 +3547,11 @@ const prismaHouseBotIntents: HouseBotIntentStore = {
   async countPlacedForTarget(targetId, tx) {
     const rows = await sql(tx, `SELECT count(*)::int AS "n" FROM "HouseBotIntent" WHERE "targetId" = $1::text AND "status" = 'PLACED'`, [targetId]);
     return Number(rows[0]?.n ?? 0);
+  },
+  async placedCounterFor(userId, marketId, tx) {
+    const rows = await sql(tx, `SELECT * FROM "HouseBotIntent" WHERE "triggerUserId" = $1::text AND "marketId" = $2::text`
+      + ` AND "kind" = 'COUNTER' AND "status" = 'PLACED' ORDER BY "createdAt" DESC, "id" DESC LIMIT 1`, [userId, marketId]);
+    return rows[0] ? toHouseBotIntent(rows[0]) : null;
   },
   async claimBatch({ me, freeSlots, skewGuardMs }) {
     if (freeSlots <= 0) return [];
@@ -4133,6 +4198,29 @@ const prismaHouseSeam: HouseSeamStore = {
       + ` ORDER BY x."cutoff", x."id" LIMIT $7::int`;
     const rows = await sql(tx, text, [productLine, kind, fromIso, toIso, after?.cutoff ?? null, after?.id ?? "", Math.min(200, pageLimit(limit)), `${DEMO_PREFIX}%`]);
     return rows.map((r) => ({ id: String(r.id), cutoff: iso(r.cutoff) as string }));
+  },
+  async triggerPage({ fromIso, beforeIso, after, limit }, tx) {
+    // Position times are naive UTC (as `plannableMarkets`); ISO bounds are cast `::timestamp`.
+    const text = `SELECT p."id", p."userId", p."marketId", p."side"::text AS "side", p."stake"::text AS "stake", p."placedAt",`
+      + ` p."status"::text AS "status"`
+      + ` FROM "Position" p JOIN "PredictionMarket" m ON m."id" = p."marketId"`
+      + ` WHERE p."houseBotId" IS NULL AND m."status"::text = 'LIVE'`
+      + ` AND p."placedAt" >= $1::timestamp AND p."placedAt" <= $2::timestamp`
+      + ` AND ($3::timestamp IS NULL OR (p."placedAt", p."id") > ($3::timestamp, $4::text))`
+      + ` AND NOT EXISTS (SELECT 1 FROM "HouseBotIntent" i WHERE i."kind" = 'COUNTER' AND i."anchorKey" = p."id")`
+      + ` ORDER BY p."placedAt", p."id" LIMIT $5::int`;
+    const rows = await sql(tx, text, [fromIso, beforeIso, after?.placedAt ?? null, after?.id ?? "", Math.min(200, pageLimit(limit))]);
+    return rows.map((r) => ({
+      id: String(r.id), userId: String(r.userId), marketId: String(r.marketId), side: String(r.side) as IntentSide,
+      stake: Number(r.stake), placedAt: iso(r.placedAt) as string, status: String(r.status),
+    }));
+  },
+  async triggerAccount(userId, tx) {
+    const rows = await sql(tx, `SELECT u."role"::text AS "role", u."recruitedBy",`
+      + ` EXISTS (SELECT 1 FROM "HouseBotAlertOnce" a WHERE a."key" = 'penalty:' || u."id" || ':' || ${EAT_SQL.dayKey}) AS "penaltyToday"`
+      + ` FROM "User" u WHERE u."id" = $1::text`, [userId]);
+    const r = rows[0];
+    return r ? { role: String(r.role), recruitedBy: r.recruitedBy == null ? null : String(r.recruitedBy), penaltyToday: r.penaltyToday === true } : null;
   },
   async intentFreshness(id, tx) {
     const rows = await sql(tx, `SELECT "status", ("staleAt" > clock_timestamp()) AS "fresh" FROM "HouseBotIntent" WHERE "id" = $1::text`, [id]);

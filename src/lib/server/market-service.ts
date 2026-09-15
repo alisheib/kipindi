@@ -18,8 +18,8 @@
 import { audit } from "./audit";
 import { db } from "./store";
 import { randomId } from "./crypto";
-import { withLock } from "./locks";
-import { withAdmission, AdmissionBusy } from "./admission";
+import { withLock, runOutsideLock } from "./locks";
+import { withAdmission, AdmissionBusy, runOutsideAdmission } from "./admission";
 import { withTransientRetry } from "./retry";
 import { emit } from "./event-bus";
 import { spendBonusLocked, recordWageringLocked, reverseWagering, reverseWageringLocked, refundBonusToActive, refundBonusLocked, expireActiveGrants, type BonusAllocation } from "./bonus-service";
@@ -42,7 +42,7 @@ import { exitWindowFacts } from "@/lib/exit-window";
 // anchored `ctx.kind === "house"` site (`scripts/anchors/house-bot-seam.anchors.mjs`).
 import { houseH0, houseH1, houseH2, houseH3, houseH4, type Counterparty, type HouseBetContext, type HouseRefusal } from "./house-bot/seam";
 import { houseBotIntentStore, houseSeamStore, type LockedPool, type StoredHouseBotIntent } from "./house-bot-dal";
-import { HOUSE_CONTROL_LOCK, HOUSE_BET_LOCK_TIMEOUT } from "@/lib/house-bot/constants";
+import { HOUSE_CONTROL_LOCK, HOUSE_BET_LOCK_TIMEOUT, HOUSE_BOT_ENGINE_ENV } from "@/lib/house-bot/constants";
 import { getRequireTwoOfficerResolution } from "./resolution-policy";
 import { isMaintenanceMode, maintenanceMessage } from "./platform-config";
 import { recordSnapshot } from "./market-history";
@@ -1776,6 +1776,16 @@ async function buyPositionInner(userId: string, opts: BuyOpts, ctx: BetContext):
         // (below) and can never be overwritten by a later bet or by the other result.
         tag: UPDOWN_PUSH_TAG_BET,
       });
+    }
+    // H10 · a player's Up & Down stake reaches the house trigger AFTER the commit (C4-SPEC rulings 101–102, 109): outside
+    // the lock and the admission slot, the engine switch read before the import, nothing awaited on the bet path. Polls
+    // are sweep-only (N2 §4 step 1); the call carries only facts this block already holds.
+    // SEAM:trigger
+    if (ctx.kind === "player" && market.productLine === "UPDOWN" && process.env[HOUSE_BOT_ENGINE_ENV] !== "false") {
+      const facts = { positionId: c.positionId, userId, marketId: opts.marketId, side: opts.side, stake: opts.stake, placedAt: c.placedAt };
+      runOutsideAdmission(() => runOutsideLock(() => {
+        void import("./house-bot/trigger").then((m) => m.onPlayerBetCommitted(facts)).catch(() => {});
+      }));
     }
   }
 

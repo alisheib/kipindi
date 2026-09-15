@@ -528,6 +528,11 @@ export const SWEEP_LOOKBACK_MS = 90_000;
 /** …and never further back than this. */
 export const SWEEP_MAX_LOOKBACK_MS = 600_000;
 export const SWEEP_PAGE_SIZE = 200;
+/**
+ * The sweep's own timer, on the planner's leader only (C4-SPEC ruling 103): a 15 s cadence would land a targeted
+ * reaction due at +7 s up to ~20 s late.
+ */
+export const SWEEP_INTERVAL_MS = 5_000;
 
 /**
  * A claim's lease. ≥ 15 s admission wait + 4 × (10 s pool wait + 30 s transaction) + 5 s (04 A10), so

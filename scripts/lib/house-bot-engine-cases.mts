@@ -5,7 +5,7 @@
  * Sections follow the build order in `plans/house-bots/C4-SPEC.md` §5:
  *   §1 the lock exit · §2 the planner lease · §3 attribution · §4 the market view · §5 Enter now decision ·
  *   §6 the outcome table · §7 decide · §8 source pins · §9 feed copy · §10 schema gate · §11 engine process · §12 market view · §13 applyOutcome · §14 the A15 price read ·
- *   §15 the Enter now loader, the opener draw and marketHeld · §16 fire and the poller · §17 the planner.
+ *   §15 the Enter now loader, the opener draw and marketHeld · §16 fire and the poller · §17 the planner · §18 the trigger.
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { readFileSync } from "node:fs";
@@ -286,7 +286,7 @@ await guard("7", () => {
   const c = DE.decideCounter(ctrIn(), { randomInt: minRand });
   ok("7.1 · untargeted COUNTER: held to the player's exit (placed + 5 min) with NO lock margin", c.row && c.row.status === "PENDING" && c.row.dueAt === at(-1 + 300) && c.row.side === "NO", j(c.row));
   ok("7.2 · …80% of 10,000 = 8,000; stale 600 s after due; held recorded", c.row && c.row.stakeTzs === 8_000 && c.row.staleAt === at(-1 + 300 + 600) && c.row.decision.held === true, j(c.row));
-  const tgt = { targetId: "hbt_1", houseBotId: "hb_a", delayMinSec: 10, delayMaxSec: 10, timingFrom: "STAKE", reactTo: "FIRST", effectiveFrom: at(-100), drawnDelaySec: 10, lockedAtDue: 10_000 };
+  const tgt = { targetId: "hbt_1", houseBotId: "hb_a", delayMinSec: 10, delayMaxSec: 10, timingFrom: "STAKE", reactTo: "FIRST", effectiveFrom: at(-100), drawnDelaySec: 10, lockedAtDue: 10_000, staffChosenRoomTzs: 1_000_000_000 };
   const t = DE.decideCounter(ctrIn({ target: tgt }), { randomInt: minRand });
   ok("7.3 · targeted COUNTER: held to the exit + LOCK_MARGIN_MS, stale 60 s after", t.row && t.row.targetId === "hbt_1" && t.row.dueAt === at(-1 + 307) && t.row.staleAt === at(-1 + 367) && t.row.decision.lockMarginMs === 7_000, j(t.row));
   const late = DE.decideCounter(ctrIn({ view: MV.projectMarketView(viewRow({ selectionClosedAt: at(-1 + 330) })) }), { randomInt: minRand });
@@ -781,10 +781,12 @@ await guard("13", async () => {
     ok("13.15 · balance_insufficient and house_cash_only share CAP_BALANCE_FLOOR → ONE alert for the bot today", rec.codes("CAP_BALANCE_FLOOR") === 1
       && rec.calls.some((c) => c.fn === "once" && c.code === "CAP_BALANCE_FLOOR" && c.key.startsWith(`bot:${b.botId}:CAP_BALANCE_FLOOR`)), j(rec.calls));
     ok("13.16 · A7 · stake_not_whole → one STAKE_NOT_WHOLE alert", rec.codes("STAKE_NOT_WHOLE") === 1);
-    ok("13.17 · no other terminal row alerts, stops the bot or touches the switch", rec.calls.filter((c) => c.fn === "once").length === 2 && rec.count("botStopped") === 0 && rec.count("security") === 0
+    ok("13.17 · no other terminal row alerts (the penalty box's own alert is 13.18b), stops the bot or touches the switch", rec.calls.filter((c) => c.fn === "once" && c.code !== "PENALTY_BOXED").length === 2 && rec.count("botStopped") === 0 && rec.count("security") === 0
       && (await botRow(b.botId)).status === "ACTIVE" && (await S.houseBotControlStore.get()).enabled === true, j(rec.calls));
     const boxed = await S.houseBotEventStore.listByKinds(["PENALTY_BOXED"], { userId: trig, limit: 10 });
     ok("13.18 · R5 · a trigger exit boxes the trigger account: one PENALTY_BOXED event (CASHED_OUT_COUNTERED)", boxed.length === 1 && boxed[0].payload?.cause === "CASHED_OUT_COUNTERED", j(boxed));
+    ok("13.18b · ruling 107 · …with ONE PENALTY_BOXED admin alert, on the box's own key", rec.codes("PENALTY_BOXED") === 1
+      && rec.calls.some((c) => c.fn === "once" && c.code === "PENALTY_BOXED" && String(c.key).startsWith(`penalty:${trig}:`)), j(rec.calls.filter((c) => c.fn === "once")));
     await apply({ ...(await fresh(b)), triggerUserId: trig }, refuse("house_trigger_gone"), rec.alerts);
     ok("13.19 · …a second exit the same EAT day boxes nothing more", (await S.houseBotEventStore.listByKinds(["PENALTY_BOXED"], { userId: trig, limit: 10 })).length === 1);
     const b2 = await w.bot();
@@ -2400,6 +2402,681 @@ await guard("17", async () => {
   const left = (await P.$queryRawUnsafe(`SELECT count(*)::int AS "n" FROM "HouseBotAlertOnce" WHERE "key" LIKE $1::text`, `${tag}:%`)) as Any[];
   ok("17.76 · ruling 86 · 5,001 throttle rows past 30 days are purged in ONE nightly run (two batches of 5,000); the young row stays",
     (r?.houseBotAlertOncePurged ?? 0) >= 5_001 && left[0]?.n === 1, j({ purged: r?.houseBotAlertOncePurged, threw: r?.threw, left }));
+});
+
+/* ═══ §18 · the trigger: the post-commit hook and the sweep (PLAN §4.3, 04 A11, A12, A21, A24, R5, N2 §4; C4-SPEC rulings 90–110, 114–115) ═══ */
+section("§18 · trigger.ts — the bet hook and the sweep");
+const TG: Any = await import("../../src/lib/server/house-bot/trigger.ts");
+const ADM18: Any = await import("../../src/lib/server/admission.ts");
+if (STORE === "memory") {
+  await guard("18", async () => {
+    // ── source pins: the call site (rulings 101–102) and the trigger's imports (N1 §3, ruling 108) ──
+    const svc = readFileSync(join(ROOT, "src/lib/server/market-service.ts"), "utf8").replace(/\r\n/g, "\n");
+    const seamAt = svc.indexOf("// SEAM:trigger");
+    const end = seamAt >= 0 ? svc.indexOf("\n    }\n", seamAt) : -1;
+    const block = seamAt >= 0 && end > seamAt ? svc.slice(seamAt, end) : "";
+    const cond = block.split("\n")[1] ?? "";
+    ok("18.1 · ruling 101 · one // SEAM:trigger block; its condition is a player's Up & Down stake, the engine switch read in it",
+      svc.split("// SEAM:trigger").length === 2
+        && /^\s*if \(ctx\.kind === "player" && market\.productLine === "UPDOWN" && process\.env\[HOUSE_BOT_ENGINE_ENV\] !== "false"\) \{$/.test(cond), j(cond));
+    const envAt = block.indexOf("process.env[HOUSE_BOT_ENGINE_ENV]");
+    const importAt = block.indexOf('import("./house-bot/trigger")');
+    const exitAt = block.indexOf("runOutsideAdmission(() => runOutsideLock(() => {");
+    ok("18.2 · A24/R6 · the env check precedes the dynamic import, which runs inside runOutsideAdmission(() => runOutsideLock(…)); nothing awaited",
+      envAt >= 0 && importAt > envAt && exitAt > envAt && exitAt < importAt && !/\bawait\b/.test(block), j(block));
+    const committedAt = svc.indexOf("if (result.ok && committed) {");
+    const standingAt = svc.indexOf("const standing = await readIdentityStanding(userId);");
+    const auditAt = svc.indexOf('action: "market.position.opened"');
+    const recruitAt = svc.indexOf("// SEAM:recruit");
+    ok("18.3 · the hook sits under the committed guard and after the position audit (never between readIdentityStanding and it), before the recruit accrual",
+      committedAt > 0 && standingAt > committedAt && auditAt > standingAt && seamAt > auditAt && recruitAt > seamAt, j({ committedAt, standingAt, auditAt, seamAt, recruitAt }));
+    const facts = block.match(/const facts = \{([^}]*)\}/)?.[1] ?? "";
+    ok("18.4 · ruling 101 · the call passes only facts the block already holds",
+      j(facts.split(",").map((s) => s.split(":")[0].trim()).filter(Boolean)) === j(["positionId", "userId", "marketId", "side", "stake", "placedAt"]), facts);
+    const tsrc = decomment(readFileSync(join(ROOT, "src/lib/server/house-bot/trigger.ts"), "utf8"));
+    ok("18.5 · N1 §3 · trigger.ts never loads fire.ts, the house bet function or oversight.ts, and is a pinned importer of blackout.ts",
+      !/from "\.\/fire"|placeHouseBet|from "\.\/oversight"/.test(tsrc) && /from "\.\/blackout"/.test(tsrc));
+    ok("18.6 · ruling 108 · the trigger times a targeted row only through targetDueAt (no lock-margin arithmetic of its own)",
+      /targetDueAt\(/.test(tsrc) && !/LOCK_MARGIN_MS/.test(tsrc));
+
+    // ── pure: the staff-chosen room (ruling 94), the lease check (103), the admission exit (102) ──
+    const tgtRoom = { targetId: "hbt_r", houseBotId: "hb_a", delayMinSec: 10, delayMaxSec: 10, timingFrom: "STAKE", reactTo: "EVERY", effectiveFrom: at(-100), drawnDelaySec: 10, lockedAtDue: 10_000 };
+    const roomed = DE.decideCounter(ctrIn({ target: { ...tgtRoom, staffChosenRoomTzs: 3_000 } }), { randomInt: minRand });
+    ok("18.7 · N2 §4 step 6 · a targeted stake is clamped to the staff-chosen TZS left today (asked 8,000 → 3,000)",
+      roomed.row?.targetId === "hbt_r" && roomed.row.status === "PENDING" && roomed.row.stakeTzs === 3_000, j(roomed.row));
+    const unknown = DE.decideCounter(ctrIn({ target: { ...tgtRoom } }), { randomInt: minRand });
+    ok("18.8 · …a missing room figure fails closed: no targeted stake (SKIPPED STAKE_BELOW_MIN naming the target)",
+      unknown.row?.status === "SKIPPED" && unknown.row.reasonCode === "STAKE_BELOW_MIN" && unknown.row.targetId === "hbt_r", j(unknown.row));
+    const skipLow = DE.decideCounter(ctrIn({ filtered: "PENALTY_BOX" }), { randomInt: minRand });
+    const skipHigh = DE.decideCounter(ctrIn({ filtered: "PENALTY_BOX", bots: [botOf({ stakeMinTzs: 5_000 })] }), { randomInt: minRand });
+    ok("18.8b · ruling 120 · a row decided NOT to react records the smallest stake the bot could place (max(1, stakeMin, live min)), never 0",
+      skipLow.row?.status === "SKIPPED" && skipLow.row.stakeTzs === 1_000 && skipHigh.row?.stakeTzs === 5_000, j({ low: skipLow.row?.stakeTzs, high: skipHigh.row?.stakeTzs }));
+    ok("18.9 · ruling 103 · the sweep runs only under a held, unexpired planner lease",
+      EN2.holdsPlannerLease({ "house-bot": { holder: "this instance", isMe: true, expiresInSec: 30 } })
+        && !EN2.holdsPlannerLease({ "house-bot": { holder: "hb-other", isMe: false, expiresInSec: 30 } })
+        && !EN2.holdsPlannerLease({ "house-bot": { holder: "this instance", isMe: true, expiresInSec: 0 } })
+        && !EN2.holdsPlannerLease({ lifecycle: { holder: "this instance", isMe: true, expiresInSec: 30 } }) && !EN2.holdsPlannerLease({}));
+    const inside = await ADM18.withAdmission(async () => [ADM18.inAdmission(), ADM18.runOutsideAdmission(() => ADM18.inAdmission())]);
+    ok("18.10 · ruling 102 · runOutsideAdmission leaves the slot (inside true, escaped false)", j(inside) === j([true, false]), j(inside));
+    const nested = await L.withLock(`hb-test:trigger:${process.pid}`, async () => ADM18.withAdmission(async () =>
+      ADM18.runOutsideAdmission(() => L.runOutsideLock(() => [L.inLock(), L.currentLockTx() != null, ADM18.inAdmission()]))));
+    ok("18.11 · …nested with runOutsideLock inside a lock and a slot: no lock, no lock transaction, no slot", j(nested) === j([false, false, false]), j(nested));
+
+    // ── the hook's gates (rulings 109–110) ──
+    const quiet = { placed: async () => {}, once: async () => {}, security: async () => {}, botStopped: async () => {}, switchedOff: async () => {} };
+    const bet = { positionId: "pos_hook_x", userId: "usr_hook_x", marketId: "mkt_hook_x", side: "YES", stake: 1_000, placedAt: new Date().toISOString() };
+    const stOf = (o: Any = {}, hook: Any = {}) => ({ ...EN2.engineState(), started: true, stopping: false, skewMs: 0, inFlight: new Map(), ...o, hook: { inFlight: 0, dropped: 0, cache: null, alerts: quiet, ...hook } });
+    ok("18.12 · ruling 109 · an engine that has not started, or has no alert channel, leaves the stake to the sweep",
+      (await TG.onPlayerBetCommitted(bet, { state: stOf({ started: false }) })) === "notStarted" && (await TG.onPlayerBetCommitted(bet, { state: stOf({}, { alerts: null }) })) === "notStarted");
+    ok("18.13 · N2 §4 step 1 · skew unknown or over 5 s → suspended",
+      (await TG.onPlayerBetCommitted(bet, { state: stOf({ skewMs: null }) })) === "skew" && (await TG.onPlayerBetCommitted(bet, { state: stOf({ skewMs: 5_001 }) })) === "skew");
+    const full = stOf({}, { inFlight: K.HOOK_SEMAPHORE });
+    const dropped = await TG.onPlayerBetCommitted(bet, { state: full });
+    ok("18.14 · A24 · at HOOK_SEMAPHORE calls the next is dropped and counted; health reports hookDropped (a count, no ids)",
+      dropped === "dropped" && full.hook.dropped === 1 && full.hook.inFlight === K.HOOK_SEMAPHORE && EN2.houseBotEngineHealth(full).hookDropped === 1, String(dropped));
+    ok("18.15 · PLAN §4.3 · a fresh soft cache with no ACTIVE bot and no holder → idle",
+      (await TG.onPlayerBetCommitted(bet, { state: stOf({}, { cache: { atMs: Date.now(), live: false, holderIds: new Set() } }) })) === "idle");
+    const broken = stOf();
+    const failed = await TG.onPlayerBetCommitted(null, { state: broken });
+    ok("18.16 · a hook that throws answers `failed` — never a throw to the bet — and gives its semaphore slot back", failed === "failed" && broken.hook.inFlight === 0, String(failed));
+    globalThis.__50PICK_HOUSE_BOT_ENGINE = undefined;
+    const fresh18 = EN2.engineState();
+    ok("18.17 · ruling 110 · a fresh engine state: hook 0 in flight, 0 dropped, no channel; the sweep timer unarmed",
+      fresh18.hook.inFlight === 0 && fresh18.hook.dropped === 0 && fresh18.hook.alerts === null && fresh18.timers.sweep === null && EN2.houseBotEngineHealth(fresh18).hookDropped === 0);
+  });
+}
+
+await guard("18", async () => {
+  const w = await loadWorld();
+  if (!(await w.db.user.findById(WORLD_OFFICER))) await w.user({ id: WORLD_OFFICER, role: "ADMIN" });
+  await w.limits();
+  await w.ageHouseMinute();
+  const S = HDAL;
+  const msg = (e: unknown) => String((e as Error)?.message ?? e);
+  // Every call the mutations can make throw is caught and asserted (E25's lesson).
+  const safe = async (fn: () => Promise<Any>): Promise<Any> => { try { return await fn(); } catch (e) { return { threw: msg(e) }; } };
+  const dbNow = async (): Promise<number> => (await S.houseBotRuntimeStore.dbClock()).nowMs;
+  const pauseAll = async () => {
+    for (const b of (await S.houseBotStore.listNonRemoved()) as Any[]) {
+      if (b.status === "ACTIVE") await S.houseBotStore.setStatus(b.id, { from: ["ACTIVE"], to: "AUTO_PAUSED", pauseReason: "UNMAPPED_REFUSAL", pauseDetail: null, pausedFromStatus: "ACTIVE" });
+    }
+  };
+  // Earlier sections leave live rows and ACTIVE bots; only §18's own bot may decide here.
+  await S.houseBotIntentStore.cancelLive({ all: true }, "MASTER_OFF");
+  await pauseAll();
+  await w.switchOff();
+  await w.switchOn();
+  // The scope start is planted at T0 and no fixture stake is placed until the DATABASE clock is 7 s past it: a stake aged
+  // 6 s is then still in scope, while every earlier section's stake is not.
+  const T0 = await dbNow();
+  const T0iso = new Date(T0).toISOString();
+  const plantScope = () => S.houseBotRuntimeStore.upsert(K.RUNTIME_KEY.global, { scopeFrom: T0iso });
+  await plantScope();
+  while ((await dbNow()) < T0 + 7_000) await sleep(250);
+
+  const trigRules = () => {
+    const r: Any = R.DEFAULT_RULES_V1({ stakeBounds: { minTzs: 1_000, maxTzs: 10_000_000 } });
+    r.scope.products.polls = true;
+    r.scope.categories = ["macro"];
+    // 1 is the field's minimum (0 is RULES_INVALID, and an unparseable bot decides nothing — 18.19 guards that).
+    r.scope.skipPollsClosingWithinMin = 1;
+    r.modes.polls = { counter: true, fill: false, opener: false };
+    r.counter.delayMinSec = 10;
+    r.counter.delayMaxSec = 10;
+    r.counter.reactProbabilityPct = 100;
+    r.counter.amount = { kind: "PCT", pct: 50 };
+    r.shaping.roundToTzs = 1_000;
+    r.shaping.jitterPct = 0;
+    r.guards.noReactZonePollsMin = 0;
+    r.guards.minTimeToCutoffPollsMin = 1;
+    r.targeting = { enabled: true };
+    return r;
+  };
+  /** The one deciding bot: every other bot is paused first; its scope starts at T0. */
+  const soloBot = async (o: Any = {}) => {
+    await pauseAll();
+    const b = await w.bot({ caps: o.caps ?? {}, ...(o.balance != null ? { balance: o.balance } : {}) });
+    const cur: Any = await S.houseBotStore.get(b.botId);
+    const saved = await S.houseBotStore.saveRules(b.botId, cur.rulesVersion, { rules: o.rules ?? trigRules() });
+    if (!saved.ok) throw new Error("§18 fixture: saveRules CAS failed");
+    await S.houseBotRuntimeStore.upsert(K.RUNTIME_KEY.bot(b.botId), { scopeFrom: T0iso });
+    return b;
+  };
+  /** A player's stake, aged `ageMs` (default 6 s — past the sweep's 5 s filter). */
+  const stakeOn = async (marketId: string, side: string, stake = 10_000, o: Any = {}) => {
+    const userId = o.userId ?? await w.user({ balance: 1_000_000, ...(o.user ?? {}) });
+    const r = await w.svc.buyPosition(userId, { marketId, side, stake, idempotencyKey: crypto.randomUUID() });
+    if (!r.ok) throw new Error(`§18 fixture: a stake was refused — ${j(r)}`);
+    const age = o.ageMs ?? 6_000;
+    if (age > 0) await w.backdate(r.data.positionId, age);
+    return { userId: userId as string, positionId: r.data.positionId as string };
+  };
+  /** A bot's OPEN house stake through the seam (a player's YES must already be locked on the market). */
+  const houseStake = async (b: Any, marketId: string, side = "NO", stakeTzs = 2_000) => {
+    const i = await w.intent(b, marketId, { kind: "FILL", side, stakeTzs });
+    const r = await w.place(b, i);
+    if (!r.ok) throw new Error(`§18 fixture: the house stake was refused — ${j(r)}`);
+    return r;
+  };
+  const rowFor = (b: Any, marketId: string) => ({
+    id: S.newHouseId("intent"), houseBotId: b.botId, botUserId: b.userId, kind: "FILL", marketId, productLine: "MARKET", anchorKey: marketId,
+    triggerPositionId: null, triggerUserId: null, targetId: null, requestedById: null, entryCondition: null, side: "NO", stakeTzs: 2_000,
+    dueAt: w.iso(600_000), deadlineAt: w.iso(3_600_000), staleAt: w.iso(1_200_000), status: "PENDING", reasonCode: null, why: null,
+    decision: {}, attempts: 0, transientAttempts: 0, nextAttemptAt: null, claimedBy: null, claimedUntil: null, positionId: null, finishedAt: null, alertedAt: null,
+  });
+  const recorder = () => {
+    const calls: Any[] = [];
+    const alerts = {
+      placed: async (i: Any) => { calls.push({ fn: "placed", id: i.id }); },
+      once: async (key: string, m: Any) => { calls.push({ fn: "once", key, code: m.code, m }); },
+      security: async (m: Any) => { calls.push({ fn: "security", code: m.code }); },
+      botStopped: async (bot: Any, change: Any) => { calls.push({ fn: "botStopped", botId: bot.id, ...change }); },
+      switchedOff: async (change: Any) => { calls.push({ fn: "switchedOff", ...change }); },
+    };
+    return { alerts, calls, keyed: (prefix: string) => calls.filter((c) => c.fn === "once" && String(c.key).startsWith(prefix)) };
+  };
+  const ctx18 = { state: EN2.engineState(), instanceId: `hb-test-sweep-${process.pid}` };
+  const sweep = (alerts: Any, o: Any = {}) => safe(() => TG.sweepPass(ctx18, { alerts, randomInt: (min: number) => min, ...o }));
+  const counterOf = (positionId: string) => S.houseBotIntentStore.findByAnchor("COUNTER", positionId) as Promise<Any>;
+  const pos = (id: string) => w.mdal.positionStore.get(id) as Promise<Any>;
+  const setMarket = async (marketId: string, patch: { status?: string; productLine?: string }) => {
+    if (w.onPostgres) {
+      if (patch.status) await w.prisma().$executeRawUnsafe(`UPDATE "PredictionMarket" SET "status" = '${patch.status}' WHERE "id" = $1`, marketId);
+      if (patch.productLine) await w.prisma().$executeRawUnsafe(`UPDATE "PredictionMarket" SET "productLine" = '${patch.productLine}' WHERE "id" = $1`, marketId);
+    } else {
+      const m = await w.mdal.marketStore.get(marketId);
+      if (patch.status) await w.mdal.marketStore.set({ ...m, status: patch.status });
+      if (patch.productLine) (await w.mdal.marketStore.get(marketId)).productLine = patch.productLine;
+    }
+  };
+  /** On Postgres `User.recruitedBy` references `AffiliateAgent.userId`: a holder who recruits is an agent. Memory has no such key. */
+  const asAgent = async (userId: string) => {
+    if (w.onPostgres) {
+      await w.prisma().$executeRawUnsafe(`INSERT INTO "AffiliateAgent" ("id", "userId", "code") VALUES ($1, $2, $3) ON CONFLICT ("userId") DO NOTHING`,
+        `aff_hb_${userId}`, userId, `HB${userId.replace(/[^A-Za-z0-9]/g, "").slice(-12)}`);
+    }
+  };
+  /** The facts a pass reads now, so a case can prove the pass DECIDES before it asserts what was not decided. */
+  const decidingFor = async (botId: string) => {
+    const nowMs = await dbNow();
+    const f: Any = await safe(() => TG.loadPassFacts(nowMs, { targets: true }));
+    return f?.decide === true && (f.bots as Any[]).some((x) => x.botId === botId);
+  };
+  const sameFields = (a: Any, b: Any) => !!a && Object.keys(b).length === Object.keys(a).length && Object.keys(b).every((k) => a[k] === b[k]);
+  const armedTarget = async (b: Any, marketId: string) => {
+    const t = await S.targetStore.insert({ id: S.newHouseId("target"), houseBotId: b.botId, marketId, delayMinSec: 10, delayMaxSec: 10, timingFrom: "STAKE", reactTo: "EVERY",
+      createdById: WORLD_OFFICER, snapshot: { titleEn: "House seam poll", category: "macro" } });
+    // A fixture of time: armed a minute ago (the insert writes createdAt and effectiveFrom = createdAt + 12 s from DB now()).
+    if (w.onPostgres) {
+      await w.prisma().$executeRawUnsafe(`UPDATE "HouseBotTarget" SET "createdAt" = "createdAt" - interval '60 seconds', "effectiveFrom" = "effectiveFrom" - interval '60 seconds' WHERE "id" = $1`, t.id);
+    } else {
+      const mem = (globalThis as Any).__50PICK_HB_TARGETS as Map<string, Any>;
+      const cur = mem.get(t.id);
+      mem.set(t.id, { ...cur, createdAt: new Date(Date.parse(cur.createdAt) - 60_000).toISOString(), effectiveFrom: new Date(Date.parse(cur.effectiveFrom) - 60_000).toISOString() });
+    }
+    return t;
+  };
+
+  /* ── 18.20 an aged poll stake → one COUNTER; a second pass writes nothing more ── */
+  {
+    const b = await soloBot();
+    ok("18.19 · fixture · §18's bot parses, its scope has started and the pass DECIDES (every negative case below would otherwise pass vacuously)", await decidingFor(b.botId));
+    const m = await w.poll();
+    const t = await stakeOn(m.id, "YES", 10_000);
+    const rec = recorder();
+    const p1 = await sweep(rec.alerts);
+    const r = await counterOf(t.positionId);
+    const p = await pos(t.positionId);
+    ok("18.20 · an aged poll stake under a covering bot → ONE PENDING COUNTER on the other side, anchored on the stake",
+      !p1.threw && r?.status === "PENDING" && r.houseBotId === b.botId && r.triggerPositionId === t.positionId && r.triggerUserId === t.userId && r.side === "NO" && r.productLine === "MARKET", j({ p1, r }));
+    ok("18.21 · …50% of 10,000 = 5,000, due 10 s after the stake (no exit window), stale 600 s after due",
+      r?.stakeTzs === 5_000 && Date.parse(r.dueAt) === Date.parse(p.placedAt) + 10_000 && Date.parse(r.staleAt) === Date.parse(r.dueAt) + 600_000, j({ r, placedAt: p?.placedAt }));
+    const p2 = await sweep(rec.alerts);
+    ok("18.22 · a second pass writes no second row (the page's anchor filter)", !p2.threw && (await S.houseBotIntentStore.listLiveOnMarket(m.id)).length === 1, j(p2));
+  }
+
+  /* ── 18.23 the sweep's 5 s age filter (A24) ── */
+  {
+    await soloBot();
+    const m = await w.poll();
+    const t = await stakeOn(m.id, "YES", 10_000, { ageMs: 0 });
+    const rec = recorder();
+    await sweep(rec.alerts);
+    const young = await counterOf(t.positionId);
+    await w.backdate(t.positionId, 6_000);
+    await sweep(rec.alerts);
+    ok("18.23 · A24 · a stake younger than 5 s is not decided by the sweep; once 6 s old it is", young == null && (await counterOf(t.positionId)) != null, j({ young }));
+  }
+
+  /* ── 18.24 scope start, a non-player, the penalty box, a recruit (A11, I3, PLAN §4.3, ruling 36) ── */
+  {
+    const b = await soloBot();
+    const rec = recorder();
+    const mEarly = await w.poll();
+    const early = await stakeOn(mEarly.id, "YES", 10_000);
+    await S.houseBotRuntimeStore.upsert(K.RUNTIME_KEY.global, { scopeFrom: new Date(await dbNow()).toISOString() });
+    const pe = await sweep(rec.alerts);
+    await plantScope();
+    ok("18.24 · A11 · a stake placed before the global scope start writes no row — decided out of scope, not idle",
+      !pe.threw && (await counterOf(early.positionId)) == null && (pe.outcomes?.outOfScope ?? 0) >= 1 && (pe.outcomes?.idle ?? 0) === 0, j(pe));
+    const mClosed = await w.poll();
+    const gone = await stakeOn(mClosed.id, "YES", 10_000);
+    // A stake cashed out before the sweep reads it (the status the cash-out writes; its money flow has its own suites).
+    if (w.onPostgres) await w.prisma().$executeRawUnsafe(`UPDATE "Position" SET "status" = 'CASHED_OUT' WHERE "id" = $1`, gone.positionId);
+    else (await pos(gone.positionId)).status = "CASHED_OUT";
+    const pc = await sweep(rec.alerts);
+    ok("18.24b · ruling 114 · a stake no longer OPEN when read writes no row (a row would only box the player at fire)",
+      !pc.threw && (await counterOf(gone.positionId)) == null && (pc.outcomes?.closed ?? 0) >= 1, j(pc));
+    const mAgent = await w.poll();
+    const agent = await stakeOn(mAgent.id, "YES", 10_000, { user: { role: "AGENT" } });
+    const mBoxed = await w.poll();
+    const boxedUser = await w.user({ balance: 1_000_000 });
+    await S.houseBotAlertOnceStore.claimWithEatSuffix(`penalty:${boxedUser}`, "day");
+    const boxed = await stakeOn(mBoxed.id, "YES", 10_000, { userId: boxedUser });
+    const mRecruit = await w.poll();
+    await asAgent(b.userId);
+    const recruit = await stakeOn(mRecruit.id, "YES", 10_000, { user: { recruitedBy: b.userId } });
+    const p = await sweep(rec.alerts);
+    ok("18.25 · I3 · a non-PLAYER account's stake is never a trigger (no row, decided as not a player)",
+      !p.threw && (await counterOf(agent.positionId)) == null && (p.outcomes?.notPlayer ?? 0) >= 1, j(p));
+    const rb = await counterOf(boxed.positionId);
+    ok("18.26 · PLAN §4.3 · a penalty-boxed account leaves ONE SKIPPED(PENALTY_BOX) row (its stake the bot's smallest, ruling 120)",
+      rb?.status === "SKIPPED" && rb.reasonCode === "PENALTY_BOX" && rb.stakeTzs >= 1_000, j(rb));
+    const rr = await counterOf(recruit.positionId);
+    ok("18.27 · A21 · a live holder's recruit leaves ONE SKIPPED(HOLDER_RECRUIT) row", rr?.status === "SKIPPED" && rr.reasonCode === "HOLDER_RECRUIT", j(rr));
+  }
+
+  /* ── 18.28 the holding predicate and the cap pre-check, loaded for the bot the row names (rulings 93–94) ── */
+  {
+    await soloBot();
+    const other = await w.bot(); // its rules never parse, so it never decides; its live FILL holds the market
+    const m = await w.poll();
+    const held = await stakeOn(m.id, "YES", 10_000);
+    const fill = { ...rowFor(other, m.id) };
+    const ins = await safe(() => S.houseBotIntentStore.insert(fill));
+    const p = await sweep(recorder().alerts);
+    const rh = await counterOf(held.positionId);
+    ok("18.28 · rulings 58, 93 · another bot's live intent holds the market → SKIPPED(MARKET_HELD)", !ins.threw && rh?.status === "SKIPPED" && rh.reasonCode === "MARKET_HELD", j({ ins: ins.threw, rh, p }));
+    await S.houseBotIntentStore.cancelPending(fill.id, "BOT_NOT_ACTIVE");
+  }
+  {
+    await soloBot({ balance: 500 });
+    const m = await w.poll();
+    const t = await stakeOn(m.id, "YES", 10_000);
+    const p = await sweep(recorder().alerts);
+    const r = await counterOf(t.positionId);
+    ok("18.29 · ruling 94 · a money cap that refuses even the smallest stake → SKIPPED with its code (a 500 TZS balance: CAP_BALANCE_FLOOR), never PENDING",
+      r?.status === "SKIPPED" && r.reasonCode === "CAP_BALANCE_FLOOR", j({ r, p }));
+  }
+
+  /* ── 18.30 A21 · the holder against their own bot (ruling 105) ── */
+  const holderEvents = async (marketId: string) => (await S.houseBotEventStore.listByKinds(["HOLDER_AGAINST_BOT"], { marketId, limit: 5 })) as Any[];
+  {
+    const b = await soloBot();
+    const m = await w.poll();
+    await stakeOn(m.id, "YES", 10_000, { ageMs: 10_000 });
+    const placed = await safe(() => houseStake(b, m.id, "NO", 2_000));
+    const mSame = await w.poll();
+    await stakeOn(mSame.id, "YES", 10_000, { ageMs: 10_000 });
+    const placedSame = await safe(() => houseStake(b, mSame.id, "NO", 2_000));
+    const h = await stakeOn(m.id, "YES", 3_000, { userId: b.userId });
+    const hSame = await stakeOn(mSame.id, "NO", 1_000, { userId: b.userId });
+    const rec = recorder();
+    const p1 = await sweep(rec.alerts);
+    const alert = rec.keyed(`holder-against:${b.botId}:${m.id}`);
+    const ev = await holderEvents(m.id);
+    const want = { side: "YES", stakeTzs: 3_000, botSide: "NO", botStakeTzs: 2_000 };
+    ok("18.30 · fixture · the bot holds an OPEN NO house stake on both polls", !placed.threw && !placedSame.threw, j({ placed, placedSame }));
+    ok("18.31 · A21 · the holder's YES against the bot's NO → ONE alert holder-against:<bot>:<market>, aggregates only",
+      alert.length === 1 && sameFields(alert[0].m.detail, want) && alert[0].m.botId === b.botId && alert[0].m.marketId === m.id && !j(alert[0].m).includes(b.userId), j({ p1, alerts: rec.calls.filter((c) => c.fn === "once") }));
+    ok("18.32 · …and ONE HOLDER_AGAINST_BOT event: the bot, the holder and the market as columns; {side, stakeTzs, botSide, botStakeTzs}",
+      ev.length === 1 && ev[0].houseBotId === b.botId && ev[0].userId === b.userId && sameFields(ev[0].payload, want), j(ev));
+    ok("18.33 · I3 · the holder's own stake is never a trigger: no COUNTER row on it", (await counterOf(h.positionId)) == null);
+    ok("18.34 · A21 · the holder on the SAME side as the bot → nothing", rec.keyed(`holder-against:${b.botId}:${mSame.id}`).length === 0
+      && (await holderEvents(mSame.id)).length === 0 && (await counterOf(hSame.positionId)) == null);
+    const rec2 = recorder();
+    await sweep(rec2.alerts);
+    ok("18.35 · a second pass (the stake still in the lookback) sends and writes nothing more", rec2.keyed(`holder-against:${b.botId}:${m.id}`).length === 0 && (await holderEvents(m.id)).length === 1);
+  }
+
+  /* ── 18.36 A21 runs whatever the switch says; OFF decides nothing, and the watermark still moves (rulings 104–105) ── */
+  {
+    const b = await soloBot();
+    const m = await w.poll();
+    await stakeOn(m.id, "YES", 10_000, { ageMs: 10_000 });
+    const placed = await safe(() => houseStake(b, m.id, "NO", 2_000));
+    const mOff = await w.poll();
+    const player = await stakeOn(mOff.id, "YES", 10_000);
+    await w.switchOff();
+    await stakeOn(m.id, "YES", 1_000, { userId: b.userId });
+    const rec = recorder();
+    const before: Any = await S.houseBotRuntimeStore.get(K.RUNTIME_KEY.global);
+    const p = await sweep(rec.alerts);
+    const after: Any = await S.houseBotRuntimeStore.get(K.RUNTIME_KEY.global);
+    await w.switchOn();
+    await plantScope();
+    ok("18.36 · ruling 105 · switch OFF: the holder's stake against their bot is still alerted, once", !placed.threw && rec.keyed(`holder-against:${b.botId}:${m.id}`).length === 1, j({ p, placed }));
+    ok("18.37 · A11 · switch OFF: an aged player stake gets no row; the pass decides nothing", (await counterOf(player.positionId)) == null && (p.outcomes?.inserted ?? 0) === 0 && (p.outcomes?.idle ?? 0) >= 1, j(p));
+    // The stored mark only moves forward: an earlier pass that read nothing may already stand at its passNow − 5 s, ahead of
+    // stakes aged 6 s right after it (the lookback still reads them). What the pass ASKS for is the last stake it read.
+    ok("18.38 · ruling 104 · …and the pass asks the watermark for the last stake it read (a real stake, never passNow − 5 s), and the stored mark never moves back",
+      p.read > 0 && typeof p.advance?.id === "string" && p.advance.id !== ""
+        && Date.parse(after?.sweepPlacedAt) >= Date.parse(before?.sweepPlacedAt) && Date.parse(after?.sweepPlacedAt) >= Date.parse(p.advance.placedAt),
+      j({ before: before?.sweepPlacedAt, after: after?.sweepPlacedAt, advance: p.advance, read: p.read }));
+  }
+
+  /* ── 18.39 a failed decision holds the watermark, and the lookback reads the stake again (ruling 104) ── */
+  {
+    const b = await soloBot();
+    const m = await w.poll();
+    await stakeOn(m.id, "YES", 10_000, { ageMs: 10_000 });
+    const placed = await safe(() => houseStake(b, m.id, "NO", 2_000));
+    const h = await stakeOn(m.id, "YES", 1_000, { userId: b.userId });
+    const hp = await pos(h.positionId);
+    const down = recorder();
+    down.alerts.once = async () => { throw new Error("alert channel down"); };
+    const precedes = (a: { placedAt: string; id: string }, x: { placedAt: string; id: string }) =>
+      Date.parse(a.placedAt) < Date.parse(x.placedAt) || (Date.parse(a.placedAt) === Date.parse(x.placedAt) && a.id < x.id);
+    const markBefore: Any = await S.houseBotRuntimeStore.get(K.RUNTIME_KEY.global);
+    const pFail = await sweep(down.alerts);
+    const mark: Any = await S.houseBotRuntimeStore.get(K.RUNTIME_KEY.global);
+    const failedStake = { placedAt: new Date(Date.parse(hp.placedAt)).toISOString(), id: h.positionId };
+    const markTuple = (r: Any) => ({ placedAt: r?.sweepPlacedAt, id: r?.sweepPositionId ?? "" });
+    ok("18.39 · a decision that throws (A21's alert channel down) is counted; the pass never asks past that stake, and the stored mark stays put or behind it",
+      !placed.threw && pFail.failed >= 1 && (pFail.advance == null || precedes(pFail.advance, failedStake))
+        && (j(markTuple(mark)) === j(markTuple(markBefore)) || precedes(markTuple(mark), failedStake)),
+      j({ pFail, markBefore: markTuple(markBefore), mark: markTuple(mark), stake: failedStake }));
+    const up = recorder();
+    const pUp = await sweep(up.alerts);
+    ok("18.40 · …the next pass reads the stake again and the alert goes out (its claim was given back)", up.keyed(`holder-against:${b.botId}:${m.id}`).length === 1, j(pUp));
+  }
+
+  /* ── 18.41 R5 BOTH_SIDES, and the box's record (rulings 106–107) ── */
+  {
+    const b = await soloBot();
+    const m = await w.poll();
+    const player = await w.user({ balance: 1_000_000 });
+    const yes = await stakeOn(m.id, "YES", 10_000, { userId: player });
+    const counter = { ...rowFor(b, m.id), kind: "COUNTER", anchorKey: yes.positionId, triggerPositionId: yes.positionId, triggerUserId: player, status: "PLACED",
+      positionId: `pos_hb_both_${process.pid}`, finishedAt: w.iso(-1_000), attempts: 1 };
+    const ins = await safe(() => S.houseBotIntentStore.insert(counter));
+    const no = await stakeOn(m.id, "NO", 2_000, { userId: player });
+    const rec = recorder();
+    const p = await sweep(rec.alerts);
+    const r = await counterOf(no.positionId);
+    const ev = (await S.houseBotEventStore.listByKinds(["PENALTY_BOXED"], { userId: player, limit: 5 })) as Any[];
+    const day = CLOCK.eatDayKey(await dbNow());
+    ok("18.41 · R5 · the house countered this account here and it now holds both sides → its new stake leaves SKIPPED(PENALTY_BOX)",
+      !ins.threw && r?.status === "SKIPPED" && r.reasonCode === "PENALTY_BOX", j({ ins: ins.threw, r, p }));
+    ok("18.42 · ruling 107 · ONE PENALTY_BOXED event {cause: BOTH_SIDES, day: today's EAT day, intentId: that COUNTER} on the market",
+      ev.length === 1 && ev[0].payload?.cause === "BOTH_SIDES" && ev[0].payload?.day === day && ev[0].payload?.intentId === counter.id && ev[0].marketId === m.id, j(ev));
+    const boxAlerts = rec.keyed(`penalty:${player}:`);
+    ok("18.43 · ruling 107 · ONE admin alert on the box's key, code PENALTY_BOXED, the player named only by handle",
+      boxAlerts.length === 1 && boxAlerts[0].code === "PENALTY_BOXED" && boxAlerts[0].m.detail?.handle === playerHandle(player) && !j(boxAlerts[0].m).includes(player), j(boxAlerts));
+    ok("18.44 · the box stands: the account reads penalty-boxed today", (await S.houseSeamStore.triggerAccount(player))?.penaltyToday === true);
+    const lone = await w.user({ balance: 1_000_000 });
+    const m2 = await w.poll();
+    const y2 = await stakeOn(m2.id, "YES", 10_000, { userId: lone });
+    const one = await safe(() => S.houseBotIntentStore.insert({ ...counter, id: S.newHouseId("intent"), marketId: m2.id, anchorKey: y2.positionId, triggerPositionId: y2.positionId, triggerUserId: lone, positionId: `pos_hb_one_${process.pid}` }));
+    const y3 = await stakeOn(m2.id, "YES", 1_000, { userId: lone });
+    await sweep(recorder().alerts);
+    const r3 = await counterOf(y3.positionId);
+    ok("18.45 · CONTROL · countered but still on ONE side → not boxed; its next stake is decided normally",
+      !one.threw && (await S.houseSeamStore.triggerAccount(lone))?.penaltyToday === false && r3 != null && r3.reasonCode !== "PENALTY_BOX", j({ one: one.threw, r3 }));
+  }
+  {
+    const u = await w.user();
+    const down = recorder();
+    down.alerts.once = async () => { throw new Error("alert channel down"); };
+    const boxed = await safe(() => OC.boxAccount({ userId: u, houseBotId: null, marketId: null, cause: "BOTH_SIDES", intentId: `hbi_x_${process.pid}` }, down.alerts));
+    const again = await S.houseBotAlertOnceStore.claimWithEatSuffix(`penalty:${u}`, "day");
+    ok("18.46 · ruling 107 · a failed box alert never releases the box: boxed, the claim not free again, the account reads boxed",
+      boxed === true && again.claimed === false && (await S.houseSeamStore.triggerAccount(u))?.penaltyToday === true, j({ boxed, again }));
+    ok("18.47 · …and a second boxing the same EAT day boxes nothing (false)",
+      (await safe(() => OC.boxAccount({ userId: u, houseBotId: null, marketId: null, cause: "BOTH_SIDES", intentId: `hbi_y_${process.pid}` }, recorder().alerts))) === false);
+  }
+  {
+    const b = await soloBot();
+    const m = await w.poll();
+    const u = await w.user();
+    const i = await w.intent(b, m.id, { kind: "COUNTER", triggerPositionId: `pos_hb_gone_${process.pid}`, triggerUserId: u, side: "NO" });
+    const rec = recorder();
+    const out = await safe(() => OC.applyOutcome({ intent: i, me: "world", answer: { ok: false, code: "REFUSED", reason: "house_trigger_gone" }, alerts: rec.alerts }));
+    const ev = (await S.houseBotEventStore.listByKinds(["PENALTY_BOXED"], { userId: u, limit: 5 })) as Any[];
+    const day = CLOCK.eatDayKey(await dbNow());
+    ok("18.48 · R5 · a trigger exit boxes with {cause: CASHED_OUT_COUNTERED, day, intentId} and ONE PENALTY_BOXED alert",
+      !out.threw && ev.length === 1 && ev[0].payload?.cause === "CASHED_OUT_COUNTERED" && ev[0].payload?.day === day && ev[0].payload?.intentId === i.id
+        && rec.keyed(`penalty:${u}:`).length === 1, j({ out, ev, calls: rec.calls }));
+  }
+
+  /* ── 18.49 targeted COUNTERs (N2 §4 steps 2–6; rulings 38, 94, 108) ── */
+  {
+    const b = await soloBot();
+    const m = await w.poll({ graceMin: 5, paidMin: 0 });
+    const t = await armedTarget(b, m.id);
+    const trig = await stakeOn(m.id, "YES", 10_000);
+    const p = await sweep(recorder().alerts);
+    const r = await counterOf(trig.positionId);
+    const placedMs = Date.parse((await pos(trig.positionId)).placedAt);
+    ok("18.49 · N2 §4 · a stake on a targeted poll → ONE PENDING targeted COUNTER naming the target", r?.status === "PENDING" && r.targetId === t.id && r.decision?.entry === "TARGET", j({ r, p }));
+    ok("18.50 · ruling 108 · asked 10 s after the stake, held to the 5-min exit + 7 s → due +307 s, stale +367 s, heldToExit",
+      !!r && Date.parse(r.dueAt) === placedMs + 307_000 && Date.parse(r.staleAt) === placedMs + 367_000 && r.decision.heldToExit === true
+        && Date.parse(r.decision.requestedDueAt) === placedMs + 10_000, j(r));
+    ok("18.51 · ruling 38 · sized against the trigger side's money locked AT the due time: 50% of 10,000 = 5,000", r?.stakeTzs === 5_000, j(r?.stakeTzs));
+  }
+  {
+    const b = await soloBot({ caps: { capStaffChosenDailyTzs: 3_000 } });
+    const m = await w.poll();
+    await armedTarget(b, m.id);
+    const trig = await stakeOn(m.id, "YES", 10_000);
+    await sweep(recorder().alerts);
+    const r = await counterOf(trig.positionId);
+    ok("18.52 · ruling 94 · the targeted stake is clamped to the staff-chosen TZS left today (bot cap 3,000 → 3,000, not 5,000)",
+      r?.status === "PENDING" && r.targetId != null && r.stakeTzs === 3_000, j(r));
+  }
+  {
+    const b = await soloBot();
+    const m = await w.poll();
+    const t = await armedTarget(b, m.id);
+    const trig = await stakeOn(m.id, "YES", 10_000);
+    const nowMs = await dbNow();
+    const facts = await safe(() => TG.loadPassFacts(nowMs, { targets: true }));
+    await S.targetStore.endActive(t.id, "VETOED");
+    const p = await pos(trig.positionId);
+    const row = { id: trig.positionId, userId: trig.userId, marketId: m.id, side: "YES", stake: 10_000, placedAt: new Date(Date.parse(p.placedAt)).toISOString(), status: "OPEN" };
+    const out = await safe(() => TG.decideTrigger(row, facts, { alerts: recorder().alerts, randomInt: (min: number) => min }));
+    const r = await counterOf(trig.positionId);
+    ok("18.53 · N2 §4 step 4.6 · the target ended between the pass read and the insert → the same pass writes the UNTARGETED row",
+      facts?.targets?.get?.(m.id)?.id === t.id && out === "inserted" && r?.status === "PENDING" && r.targetId == null, j({ out, r }));
+  }
+  {
+    const b = await soloBot();
+    const m = await w.poll();
+    const t = await armedTarget(b, m.id);
+    const u = await w.user({ balance: 1_000_000 });
+    await S.houseBotAlertOnceStore.claimWithEatSuffix(`penalty:${u}`, "day");
+    const trig = await stakeOn(m.id, "YES", 10_000, { userId: u });
+    await sweep(recorder().alerts);
+    const r = await counterOf(trig.positionId);
+    ok("18.54 · TGT-25 · a penalty-boxed stake on a targeted poll → ONE SKIPPED(PENALTY_BOX) row naming the target", r?.status === "SKIPPED" && r.reasonCode === "PENALTY_BOX" && r.targetId === t.id, j(r));
+  }
+
+  /* ── 18.55 once-only scope alerts (ruling 90) ── */
+  {
+    await soloBot();
+    const mJ = await w.poll();
+    const sJ = await stakeOn(mJ.id, "YES", 10_000);
+    const mU = await w.poll();
+    const sU = await stakeOn(mU.id, "YES", 10_000);
+    await setMarket(mJ.id, { productLine: "JACKPOT" });
+    await setMarket(mU.id, { productLine: "UPDOWN" });
+    const rec = recorder();
+    const p = await sweep(rec.alerts);
+    const rec2 = recorder();
+    await sweep(rec2.alerts);
+    await setMarket(mJ.id, { productLine: "MARKET" });
+    await setMarket(mU.id, { productLine: "MARKET" });
+    ok("18.55 · A12 · a raw product line no policy admits → ONE product-denied:<line>:<EAT day> alert, no row",
+      rec.keyed("product-denied:JACKPOT:").length === 1 && (await counterOf(sJ.positionId)) == null, j({ p, keys: rec.calls.filter((c) => c.fn === "once").map((c) => c.key) }));
+    ok("18.56 · A12 · an Up & Down market with no round → ONE ud-orphan-market:<market> alert, no row", rec.keyed(`ud-orphan-market:${mU.id}`).length === 1 && (await counterOf(sU.positionId)) == null);
+    ok("18.57 · …once only: a second pass sends neither again", rec2.keyed("product-denied:JACKPOT:").length === 0 && rec2.keyed(`ud-orphan-market:${mU.id}`).length === 0);
+  }
+  {
+    const p = await sweep(recorder().alerts, { admission: () => ({ queueDepth: 1 }) });
+    ok("18.58 · A24 · an admission queue → the pass is skipped: no read, no watermark write", p.skipped === "ADMISSION" && p.read === 0 && p.advance === null, j(p));
+  }
+
+  /* ── 18.59 the new DAL reads on this store: triggerPage, triggerAccount, placedCounterFor ── */
+  {
+    const b = await soloBot();
+    const m = await w.poll();
+    const s1 = await stakeOn(m.id, "YES", 10_000, { ageMs: 12_000 });
+    const s2 = await stakeOn(m.id, "YES", 10_000, { ageMs: 9_000 });
+    const placed = await safe(() => houseStake(b, m.id, "NO", 2_000));
+    const houseIds = (await w.positionsOf(m.id)).filter((x: Any) => x.houseBotId != null).map((x: Any) => x.id as string);
+    for (const id of houseIds) await w.backdate(id, 6_000);
+    const mc = await w.poll();
+    const sClosed = await stakeOn(mc.id, "YES", 10_000);
+    await setMarket(mc.id, { status: "CLOSED" });
+    const mA = await w.poll();
+    const sAnch = await stakeOn(mA.id, "YES", 10_000);
+    const anch = await safe(() => S.houseBotIntentStore.insert({ ...rowFor(b, mA.id), kind: "COUNTER", anchorKey: sAnch.positionId, triggerPositionId: sAnch.positionId,
+      triggerUserId: sAnch.userId, status: "SKIPPED", reasonCode: "NOT_REACTING", finishedAt: w.iso() }));
+    const now = await dbNow();
+    const page = (o: Any = {}) => S.houseSeamStore.triggerPage({ fromIso: new Date(now - 120_000).toISOString(), beforeIso: new Date(now - 5_000).toISOString(), after: null, limit: 200, ...o }) as Promise<Any[]>;
+    const ids = (rows: Any[]) => rows.map((x) => x.id as string);
+    const all = await page();
+    ok("18.59 · triggerPage · unmarked stakes on a LIVE market, oldest first", ids(all).includes(s1.positionId) && ids(all).indexOf(s2.positionId) > ids(all).indexOf(s1.positionId), j(ids(all).slice(-8)));
+    ok("18.60 · …never a marked (house) stake, a stake on a market no longer LIVE, or a stake a COUNTER is anchored on",
+      !placed.threw && !anch.threw && houseIds.length === 1 && !houseIds.some((id) => ids(all).includes(id)) && !ids(all).includes(sClosed.positionId) && !ids(all).includes(sAnch.positionId),
+      j({ placed: placed.threw, anch: anch.threw, houseIds }));
+    const p1: Any = await pos(s1.positionId);
+    const p1At = new Date(Date.parse(p1.placedAt)).toISOString();
+    const afterS1 = await page({ after: { placedAt: p1At, id: s1.positionId } });
+    ok("18.61 · …keyset: after (placedAt, id) of the first stake the page starts strictly after it", !ids(afterS1).includes(s1.positionId) && ids(afterS1).includes(s2.positionId));
+    const upToS1 = await page({ beforeIso: p1At });
+    ok("18.62 · …the window includes `beforeIso` itself and nothing newer", ids(upToS1).includes(s1.positionId) && !ids(upToS1).includes(s2.positionId));
+    const r1 = all.find((x) => x.id === s1.positionId);
+    ok("18.63 · …a row is exactly {id, userId, marketId, side, stake, placedAt, status}",
+      !!r1 && j(Object.keys(r1).sort()) === j(["id", "marketId", "placedAt", "side", "stake", "status", "userId"]) && r1.userId === s1.userId && r1.stake === 10_000 && r1.side === "YES" && r1.status === "OPEN", j(r1));
+    ok("18.64 · …bounded by its limit", (await page({ limit: 1 })).length === 1);
+
+    await asAgent(b.userId);
+    const recruitUser = await w.user({ recruitedBy: b.userId });
+    const acct = await S.houseSeamStore.triggerAccount(recruitUser);
+    ok("18.65 · triggerAccount · role, recruiter, no box", acct?.role === "PLAYER" && acct.recruitedBy === b.userId && acct.penaltyToday === false, j(acct));
+    await S.houseBotAlertOnceStore.claimWithEatSuffix(`penalty:${recruitUser}`, "day");
+    ok("18.66 · …today's box row is seen (its day computed from the database clock)", (await S.houseSeamStore.triggerAccount(recruitUser))?.penaltyToday === true);
+    const oldBox = await w.user();
+    await S.houseBotAlertOnceStore.claim(`penalty:${oldBox}:2000-01-01`);
+    ok("18.67 · …a box from another day is not today's", (await S.houseSeamStore.triggerAccount(oldBox))?.penaltyToday === false);
+    ok("18.68 · …an unknown account → null", (await S.houseSeamStore.triggerAccount(`usr_hb_nobody_${process.pid}`)) === null);
+
+    const pu = await w.user();
+    const mk = (o: Any) => safe(() => S.houseBotIntentStore.insert({ ...rowFor(b, mA.id), kind: "COUNTER", triggerUserId: pu, ...o }));
+    const pending = await mk({ anchorKey: `pos_hb_pc1_${process.pid}`, triggerPositionId: `pos_hb_pc1_${process.pid}` });
+    ok("18.69 · placedCounterFor · a PENDING COUNTER is not a counter placed", !pending.threw && (await S.houseBotIntentStore.placedCounterFor(pu, mA.id)) === null, j(pending.threw));
+    const placedA = await mk({ anchorKey: `pos_hb_pc2_${process.pid}`, triggerPositionId: `pos_hb_pc2_${process.pid}`, status: "PLACED", positionId: `pos_hb_pc2p_${process.pid}`, finishedAt: w.iso(), attempts: 1 });
+    await sleep(25);
+    const placedB = await mk({ anchorKey: `pos_hb_pc3_${process.pid}`, triggerPositionId: `pos_hb_pc3_${process.pid}`, status: "PLACED", positionId: `pos_hb_pc3p_${process.pid}`, finishedAt: w.iso(), attempts: 1 });
+    const found: Any = await S.houseBotIntentStore.placedCounterFor(pu, mA.id);
+    ok("18.70 · …the newest PLACED COUNTER on (account, market)", !placedA.threw && !placedB.threw && found?.id === placedB.id, j({ found: found?.id, a: placedA.id, b: placedB.id }));
+    ok("18.71 · …another market or another account → null",
+      (await S.houseBotIntentStore.placedCounterFor(pu, m.id)) === null && (await S.houseBotIntentStore.placedCounterFor(`usr_hb_nobody_${process.pid}`, mA.id)) === null);
+    if (!pending.threw) await S.houseBotIntentStore.cancelPending(pending.id, "BOT_NOT_ACTIVE");
+  }
+
+  /* ── 18.72 the hook, end to end through a real Up & Down stake and the live call site (rulings 101–102, 109) ── */
+  {
+    const cfg: Any = await import("../../src/lib/server/updown-config.ts");
+    const uds: Any = await import("../../src/lib/server/updown-service.ts");
+    const udd: Any = await import("../../src/lib/server/updown-dal.ts");
+    const { seedDefaultSources, addSource }: Any = await import("../../src/lib/server/source-registry.ts");
+    await seedDefaultSources();
+    await addSource({ domain: "api.twelvedata.com", label: "Twelve Data", category: "crypto", rationale: "test fixture (mirrors production)", addedBy: "system" });
+    const a = await cfg.createAsset({ key: `T${process.pid}`, symbol: "BTC/USD", nameEn: "Bitcoin", nameSw: "Bitcoin", iconKey: "crypto",
+      priceSourceUrl: "https://api.twelvedata.com/quote", category: "crypto", decimals: 2, minMoveTicks: 2 }, WORLD_OFFICER);
+    if (a.ok) await cfg.setAssetEnabled(a.data.id, true, WORLD_OFFICER);
+    const c = a.ok ? await cfg.createChain({ assetId: a.data.id, durationMinutes: 5 }, WORLD_OFFICER) : a;
+    if (c.ok) await cfg.setChainState(c.data.id, "RUNNING", WORLD_OFFICER);
+    const chain = c.ok ? await udd.chainStore.get(c.data.id) : null;
+    const boundary = new Date(cfg.cleanGridAnchor(Date.now() + 60_000)).toISOString();
+    let opened: Any = { ok: false, error: `fixture: ${a.error ?? c.error}` };
+    if (chain) {
+      const o = await udd.observationStore.ensure(a.data.id, boundary);
+      await udd.observationStore.confirm(o.id, { price: 60_000, sourceUrl: "https://api.twelvedata.com/quote", sourceQuotedAt: boundary,
+        evidence: "BTC quoted 60000", confidence: 96, model: "test-stub", rawHash: `ht_${process.pid}` });
+      opened = await uds.openRound(chain, boundary, o.id, 60_000);
+    }
+    ok("18.72 · fixture · a real Up & Down round is open on a running chain", opened.ok === true, opened.ok ? "" : String(opened.error));
+    if (opened.ok) {
+      const round = await udd.roundStore.get(opened.data.id);
+      const udRules = trigRules();
+      udRules.scope.products = { updown: true, polls: false };
+      udRules.scope.categories = [];
+      udRules.scope.chains = [`${a.data.id}:5`];
+      udRules.modes.updown = { counter: true, fill: false, opener: false };
+      udRules.modes.polls = { counter: false, fill: false, opener: false };
+      udRules.guards.noReactZoneUdSec = 0;
+      udRules.guards.minTimeToCutoffUdSec = 10;
+      udRules.updown.closenessPct = 100;
+      udRules.targeting = { enabled: false };
+      const b = await soloBot({ rules: udRules });
+      ok("18.72b · fixture · the Up & Down bot parses on the new chain and the pass decides", await decidingFor(b.botId));
+      const state = EN2.engineState();
+      const rec = recorder();
+      const saved = { started: state.started, stopping: state.stopping, skewMs: state.skewMs, alerts: state.hook.alerts, cache: state.hook.cache };
+      state.started = true;
+      state.stopping = false;
+      state.skewMs = 0;
+      state.hook.alerts = rec.alerts;
+      state.hook.cache = null;
+      const waitRow = async (positionId: string, withinMs: number): Promise<{ row: Any; ms: number }> => {
+        const t0 = Date.now();
+        while (Date.now() - t0 < withinMs) {
+          const r = await counterOf(positionId);
+          if (r) return { row: r, ms: Date.now() - t0 };
+          await sleep(100);
+        }
+        return { row: null, ms: Date.now() - t0 };
+      };
+      try {
+        const player = await w.user({ balance: 1_000_000 });
+        const udBet = await w.svc.buyPosition(player, { marketId: round.marketId, side: "YES", stake: 5_000, idempotencyKey: crypto.randomUUID() });
+        const got = udBet.ok ? await waitRow(udBet.data.positionId, 5_000) : { row: null, ms: 0 };
+        ok("18.73 · ⭐ ruling 101 · a player's Up & Down stake → the hook decides it with no sweep: one COUNTER anchored on the stake",
+          udBet.ok === true && got.row?.kind === "COUNTER" && got.row.triggerUserId === player && got.row.productLine === "UPDOWN" && got.row.houseBotId === b.botId, j({ bet: udBet.ok ? "ok" : udBet, got }));
+        ok("18.74 · …on the other side, PENDING, with the A15 price it used recorded", got.row?.side === "NO" && got.row?.status === "PENDING"
+          && ["observation", "vendor_bar"].includes(got.row?.decision?.priceSource), j(got.row));
+        const waitMs = Math.max(2_000, got.ms * 3);
+        const poll = await w.poll();
+        const pollBet = await w.svc.buyPosition(player, { marketId: poll.id, side: "YES", stake: 5_000, idempotencyKey: crypto.randomUUID() });
+        const pollGot = pollBet.ok ? await waitRow(pollBet.data.positionId, waitMs) : { row: null, ms: 0 };
+        ok("18.75 · N2 §4 step 1 · a poll stake reaches no hook: no row, while the same armed hook decided Up & Down (polls are sweep-only)",
+          pollBet.ok === true && got.row != null && pollGot.row == null, j({ pollGot, upDownMs: got.ms }));
+        const prevEnv = process.env[K.HOUSE_BOT_ENGINE_ENV];
+        process.env[K.HOUSE_BOT_ENGINE_ENV] = "false";
+        let offGot: Any = null;
+        try {
+          const offBet = await w.svc.buyPosition(player, { marketId: round.marketId, side: "YES", stake: 1_000, idempotencyKey: crypto.randomUUID() });
+          offGot = offBet.ok ? await waitRow(offBet.data.positionId, waitMs) : { row: null, refused: offBet };
+        } finally {
+          if (prevEnv === undefined) delete process.env[K.HOUSE_BOT_ENGINE_ENV];
+          else process.env[K.HOUSE_BOT_ENGINE_ENV] = prevEnv;
+        }
+        ok("18.76 · A24/R6 · HOUSE_BOT_ENGINE=false → the hook returns before its import: no row for the next Up & Down stake",
+          got.row != null && offGot?.row == null && offGot?.refused == null, j(offGot));
+      } finally {
+        state.started = saved.started;
+        state.stopping = saved.stopping;
+        state.skewMs = saved.skewMs;
+        state.hook.alerts = saved.alerts;
+        state.hook.cache = saved.cache;
+      }
+    }
+  }
+
+  await S.houseBotIntentStore.cancelLive({ all: true }, "MASTER_OFF");
 });
 
 console.log(`\n@@SUMMARY ${JSON.stringify({ pass, fail })}`);

@@ -22,6 +22,8 @@ export const SEAM_SITES = [
   // 04 A17 (h): the liquidity label and the per-stake email rule (04 F6) on outcome notices.
   "labelOneSided", "labelWin", "labelLoss", "labelCancelled", "labelVerdict", "labelSelectionClosed",
   "labelSelectionClosedPersonal",
+  // C4-SPEC ruling 101: the Up & Down post-commit trigger hook (player stakes only, after the commit, outside the lock).
+  "trigger",
 ];
 
 export const H2_ORDER = ["standing", "role", "consent", "cash", "conflicts", "money", "staff", "rate"];
