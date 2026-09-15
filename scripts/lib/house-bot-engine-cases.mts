@@ -2839,7 +2839,8 @@ await guard("18", async () => {
     const b = await soloBot();
     const m = await w.poll();
     const u = await w.user();
-    const i = await w.intent(b, m.id, { kind: "COUNTER", triggerPositionId: `pos_hb_gone_${process.pid}`, triggerUserId: u, side: "NO" });
+    // Its own anchor: §16 already anchors a COUNTER on `pos_hb_gone_<pid>` (hbi_counter_anchor_uq) in a full run.
+    const i = await w.intent(b, m.id, { kind: "COUNTER", triggerPositionId: `pos_hb_gone18_${process.pid}_${Date.now()}`, triggerUserId: u, side: "NO" });
     const rec = recorder();
     const out = await safe(() => OC.applyOutcome({ intent: i, me: "world", answer: { ok: false, code: "REFUSED", reason: "house_trigger_gone" }, alerts: rec.alerts }));
     const ev = (await S.houseBotEventStore.listByKinds(["PENALTY_BOXED"], { userId: u, limit: 5 })) as Any[];
