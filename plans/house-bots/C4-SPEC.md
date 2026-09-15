@@ -263,7 +263,7 @@ Authority order: 04 > 02/03 > PLAN > 01; the later and more specific text wins.
 30. **Target checks run inside `fireClaimedIntent`, after the scope step** (N2 §4 step 7 + N1 §4.3 step 6). "Exit-window fit" means N2 step 5's EXIT_WINDOW_TOO_LATE rule.
 31. **Hooks never run inside a lock:** fired after the outermost lock returns, or through the `locks.ts` exit helper (§2 trap).
 
-*Rulings taken while building (2026-09-16, §5 steps 1–2; the code carries the rule, these record why):*
+*Rulings taken while building (2026-09-15, §5 steps 1–2; the code carries the rule, these record why):*
 
 32. **The strict lease write is opt-in.** `acquireLeadership(task, {strictWrite:true})` fails closed on a lost lease write (A24); the lifecycle ticker keeps its swallowing write and 3-minute lease ("the lifecycle caller is unchanged", §5 step 1). The same swallow in the lifecycle lease is a platform item, not house-bot scope.
 33. **An invalid side and a foreign idempotency key are engine faults.** On the bet path `market_not_live` is the invalid-side refusal (`buyPositionInner`), which a stored intent cannot produce; `idempotency_key_conflict` can only follow a defect H0 missed. Both → FAILED(INTERNAL) + SECURITY + master OFF(ENGINE_FAULT), as `house_key_mismatch` (PLAN §4.6).
@@ -276,14 +276,14 @@ Authority order: 04 > 02/03 > PLAN > 01; the later and more specific text wins.
 40. **Out of scope writes no row.** A demo market, a product no policy admits, an Up & Down market with no round and a poll with no cutoff produce no intent; `decide` returns the code (UD_NO_ROUND, NO_CUTOFF, PRODUCT_NOT_SUPPORTED) for the caller's once-only alerts (A12 tests). A demo market reuses PRODUCT_NOT_SUPPORTED.
 41. **The information blackout gates staff-chosen rows only.** `decideCounter` applies `blocked` to the target candidate; an untargeted COUNTER, FILL and OPENER ignore it (N1 §3 "for staff-chosen rows only", as H3 does).
 
-*Rulings taken in §5 step 3 (2026-09-16):*
+*Rulings taken in §5 step 3 (2026-09-15):*
 
 42. **The engine shell takes its passes as arguments, and `instrumentation.ts` is wired in step 4.** A booted engine with no poller would beat for work nobody did; `startHouseBotEngine(ticks, deps)` is proven on its own now, and the boot call lands with the poller tick.
 43. **The database TimeZone gate is exact:** `current_setting('TimeZone')` must be `UTC` or `Etc/UTC` (A4). The local scratch cluster reports the machine zone, so the engine refuses there; local drives set the cluster to UTC rather than widen the gate.
 44. **The schema gate caches only "ready".** A not-ready answer is asked again on every call, so a container that booted mid-migration recovers without a restart; a failing probe is not ready (fails closed).
 45. **`marketView` is a seam-store member** (plain SELECT, both twins), so `test:dal-parity`'s existing both-implementations check covers it with no new wiring pin. The row types live in the DAL; `market-view.ts` re-exports them type-only and stays pure.
 
-*Rulings taken in §5 step 4 (2026-09-16):*
+*Rulings taken in §5 step 4 (2026-09-15):*
 
 46. **The engine is wired into `instrumentation.ts` only with the alert emitters (step 9), not in step 4.** `applyOutcome` and fire take `EngineAlerts` as a required argument with no default, so no build can run the engine with a silent alert channel; ruling 42's "wire in step 4" moves to step 9.
 47. **Where a deferred rate cap waits.** MIN_GAP defers to the seam's own `detail.until`; GLOBAL_BETS_PER_MINUTE defers 60 s (its window length, an upper bound on when it frees); PER_HOUR and PER_DAY skip — the seam's answer does not carry their free time, and an hour-scale deferral outlives `staleAt` for every Up & Down and targeted row. A deferral past `staleAt` skips (N1 §4.3).
