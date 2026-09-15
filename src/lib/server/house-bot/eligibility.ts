@@ -231,7 +231,9 @@ export async function houseBotEligibility(
     const openHouse = bot ? await houseOpenExposure(bot.id).catch(() => null) : 0;
     blocking.push(row("ACCOUNT_CLOSED", "Account closed",
       `Account closed on ${day(user.closedAt)} — it can't be reopened. TZS ${fmt(balanceTzs)} and TZS ${fmt(openHouse)} of open house stakes stay in the closed wallet; recover the float out of band. Remove the bot.`));
-  } else if (user.status !== "ACTIVE") {
+  } else if (user.status !== "ACTIVE" && user.status !== "COOLED_OFF") {
+    // ⚠️ COOLED_OFF is left to the RG row below: the status outlives the break (nothing resets it when the
+    // timer runs out, and the bet path lets such an account bet), so reading it here would block Start for good.
     blocking.push(row("NOT_ACTIVE", `Not active (${user.status})`, `This account is not active (${user.status}).`));
   }
   if (!user.passwordHash || !user.passwordSalt) {

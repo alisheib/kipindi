@@ -73,6 +73,8 @@ import { clearBackupCodes } from "./backup-codes";
 import { revokeUserSessions } from "./session-registry";
 import type { KycExtraRequest } from "./store";
 import { pseudonymiseAgentApplications, purgeAgentDocumentsForUser } from "./agent-application-service";
+import { houseBotAlertOnceStore, houseBotStore } from "./house-bot-dal";
+import { ALERT_KEY } from "@/lib/house-bot/constants";
 
 /**
  * How long an identity document is held after account closure before erasure may destroy
@@ -111,7 +113,8 @@ export function isErasedPhone(phoneE164: string): boolean {
 }
 
 export type AnonymizeOutcome =
-  | { ok: false; error: string; reason: "not_found" | "not_closed" }
+  /** `house_bot_live`: the account is still a house bot (04 A5, R6) — nothing was written, the request stays open. */
+  | { ok: false; error: string; reason: "not_found" | "not_closed" | "house_bot_live" }
   | {
       ok: true;
       /** Already-erased input: every counter is 0 and nothing was written. */
@@ -138,6 +141,10 @@ export type AnonymizeOutcome =
         /** Agent objects R2 refused — their rows keep the key for a re-run. */
         agentDocumentObjectsFailed: number;
         watchlistEntries: number;
+        /** House-bot rows of the account pseudonymised: label "Erased <TAIL6>", notes and reasons "[erased]" (04 A5). */
+        houseBots: number;
+        /** Notification rows whose quoted bot label was replaced (04 R6) — admin inboxes included. */
+        houseBotNotificationsRedacted: number;
       };
     };
 
@@ -175,11 +182,35 @@ export async function anonymizeClosedAccount(
     };
   }
 
+  /**
+   * ⛔ A LIVE HOUSE BOT REFUSES, BEFORE ANY DESTRUCTIVE WRITE (04 A5, R6). An erased account could no longer
+   * be verified, paused for a cause or recognised by its owner, while stakes kept landing in its name. The
+   * owner removes the bot, then the officer re-runs this — the request stays PENDING meanwhile. Every owner is
+   * told once per bot (AlertOnce `erasure-blocked:<botId>`), by bell and email.
+   * A read that throws escapes this function, which is also a refusal: nothing below has run.
+   */
+  const liveBot = await houseBotStore.findLiveByUserId(userId);
+  if (liveBot) {
+    try {
+      if (await houseBotAlertOnceStore.claim(ALERT_KEY.erasureBlocked(liveBot.id))) {
+        const { notifyAdminsHouseBotErasureBlocked } = await import("./notification-service");
+        await notifyAdminsHouseBotErasureBlocked({ botId: liveBot.id, holderUserId: userId });
+      }
+    } catch (err) {
+      console.error("[erasure] house-bot owner alert failed:", (err as Error)?.message ?? err);
+    }
+    return {
+      ok: false,
+      reason: "house_bot_live",
+      error: `This account is still house bot ${liveBot.id}. The owner must remove it at /admin/house-bots/${liveBot.id} before it can be erased.`,
+    };
+  }
+
   const counts = {
     kycSubmissions: 0, idNumbersHashed: 0, documentsDeleted: 0, documentObjectsFailed: 0,
     agentApplicationsRedacted: 0, agentDocumentsDeleted: 0, agentDocumentObjectsFailed: 0,
     extraRequestsCleared: 0, comments: 0, notificationsDeleted: 0, notificationsRedacted: 0,
-    otps: 0, pushSubscriptions: 0, watchlistEntries: 0,
+    otps: 0, pushSubscriptions: 0, watchlistEntries: 0, houseBots: 0, houseBotNotificationsRedacted: 0,
   };
 
   // The clock runs from closure. A CLOSED row with no `closedAt` predates that column being
@@ -370,6 +401,21 @@ export async function anonymizeClosedAccount(
   for (const mask of frozenMasks) {
     counts.notificationsRedacted += await db.notification.redactFragment(mask, ERASED_AUTHOR_NAME);
   }
+
+  // ── 4b · HOUSE BOTS — a label can be the holder's name (04 A5, R6) ──────────────────────────────
+  // ⚠️ The labels are read BEFORE the rows are pseudonymised: afterwards they read "Erased <TAIL6>" and would
+  // match nothing already written into an admin's inbox. Ids, markers, intents and amounts are kept.
+  // A re-run reports zero, like every other step: a bot already reading "Erased <TAIL6>" is not counted again.
+  for (const bot of await houseBotStore.listByUserId(userId)) {
+    const tail = bot.id.slice(-6).toUpperCase();
+    if (bot.label === `Erased ${tail}`) continue;
+    counts.houseBots++;
+    counts.houseBotNotificationsRedacted += await db.notification.redactFragment(`"${bot.label}"`, `"Erased bot ${tail}"`);
+  }
+  const house = await houseBotStore.pseudonymiseForUser(userId);
+  // A bot designated between the refusal above and here cannot happen (designation refuses a CLOSED account),
+  // but the DAL refuses again under its row locks — surface it rather than report a complete erasure.
+  if (!house.ok) throw new Error(`erasure: ${userId} became house bot ${house.botId} during erasure — re-run after removing it`);
 
   // ── 5 · CREDENTIALS AND DEVICE STATE ────────────────────────────────────────────────
   counts.otps = await db.otp.deleteAllForPhone(user.phoneE164);
