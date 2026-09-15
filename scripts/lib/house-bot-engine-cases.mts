@@ -2383,5 +2383,20 @@ await guard("17", async () => {
   }
 });
 
+/* ── 17.76 the P3 purge loops past one batch (ruling 86) — Postgres: only SQL can age a throttle row 31 days ── */
+await guard("17", async () => {
+  if (!onPostgres) return;
+  const RET: Any = await import("../../src/lib/server/retention.ts");
+  const P = prisma();
+  const tag = `case:ret:${process.pid}`;
+  await P.$executeRawUnsafe(`INSERT INTO "HouseBotAlertOnce" ("key", "createdAt") SELECT $1::text || ':' || g::text, now() - interval '31 days' FROM generate_series(1, 5001) g`, tag);
+  await P.$executeRawUnsafe(`INSERT INTO "HouseBotAlertOnce" ("key") VALUES ($1::text)`, `${tag}:young`);
+  let r: Any;
+  try { r = await RET.runRetentionPass(); } catch (e) { r = { threw: String((e as Error)?.message ?? e) }; }
+  const left = (await P.$queryRawUnsafe(`SELECT count(*)::int AS "n" FROM "HouseBotAlertOnce" WHERE "key" LIKE $1::text`, `${tag}:%`)) as Any[];
+  ok("17.76 · ruling 86 · 5,001 throttle rows past 30 days are purged in ONE nightly run (two batches of 5,000); the young row stays",
+    (r?.houseBotAlertOncePurged ?? 0) >= 5_001 && left[0]?.n === 1, j({ purged: r?.houseBotAlertOncePurged, threw: r?.threw, left }));
+});
+
 console.log(`\n@@SUMMARY ${JSON.stringify({ pass, fail })}`);
 process.exit(fail === 0 ? 0 : 1);

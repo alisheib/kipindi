@@ -382,6 +382,10 @@ Authority order: 04 > 02/03 > PLAN > 01; the later and more specific text wins.
 111. **The engine gets a switch-off channel and one switch-off helper.** `EngineAlerts.switchedOff({cause, cancelled})` (required, ruling 46), and `engineSwitchOff` takes every engine cause: ENGINE_FAULT and ENGINE_ERRORS keep `alerts.security` and their audits; GLOBAL_LOSS_STOP uses `house_bot.loss_stop` and `alerts.switchedOff`. The A19 order is unchanged (autocommit OFF, cancel, event, awaited audit, alert).
 112. **WALLET_MISSING** (A16 table, HB-LC-10): per bot with OPEN house exposure (`houseBookStore.openExposure(null)`), REMOVED bots included, a missing holder wallet → an ACTIVE bot is AUTO_PAUSED(WALLET_MISSING) through `stopBot`, and a danger AlertOnce `settle-blocked:<botId>:<EAT day>` repeats daily while the exposure stays open. The alert carries counts only; step 9's emitter lists the markets.
 
+*Ruling taken building `planner.ts` (2026-09-15, fifth session):*
+
+113. **The `exit-config` alert (ruling 89) is not built in step 5.** Its check needs `effectiveTiming(rules, RulesContext)` over the live exit settings of polls and every chain, and no server builder of `RulesContext.exitRates` exists yet — commit 7's Start action needs the same builder. A planner-only reader would be a second reader of one fact. It lands with that builder. Until then a widened exit window is still visible per trigger: the decision writes SKIPPED(EXIT_WINDOW_TOO_LATE) (A16 table, "Exit rules widened"). PROGRESS carries it as ⬜.
+
 No decision here needs Ali; W17 remains the only open owner question.
 
 ## 7. Guards that will go red, and how to move each honestly
