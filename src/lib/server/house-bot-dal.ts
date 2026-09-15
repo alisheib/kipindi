@@ -3823,6 +3823,27 @@ export async function houseTransaction<R>(fn: (tx: HouseTx) => Promise<R>): Prom
   }
 }
 
+/**
+ * Several house writes as ONE unit, from inside a lock the caller already holds (the consent void, Start and
+ * re-verify write under `wallet:<botUser>`). On Postgres a lock `tx` already is one transaction, so the writes
+ * join it — a throw escapes the lock and rolls every one back; with no `tx` a transaction is opened. On the
+ * memory store every house map is restored if `fn` throws (the same limit as `houseTransaction`: a concurrent
+ * memory write made while `fn` awaits would be restored with it).
+ *
+ * ⛔ The caller must let the error escape its lock. Catching it inside `withLock` would commit the writes made
+ * before the throw on Postgres while the memory store restored them.
+ */
+export async function houseAtomic<R>(tx: HouseTx, fn: (tx: HouseTx) => Promise<R>): Promise<R> {
+  if (usePrisma) return tx ? fn(tx) : pc().$transaction((t) => fn(t));
+  const restore = memSnapshot();
+  try {
+    return await fn(null);
+  } catch (e) {
+    restore();
+    throw e;
+  }
+}
+
 /** Test helper — wipe the in-memory house stores and re-seed the `global` rows. No-op against
  *  Prisma, so a test that forgets to guard it cannot truncate a real database. */
 export function __resetHouseBotMemoryStores(): void {

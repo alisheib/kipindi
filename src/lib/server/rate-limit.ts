@@ -95,6 +95,9 @@ export const RATE_RULES: Record<string, RateRule> = {
   "bet.place":     { capacity: 30, refillPerMin: 10 },
   "bet.cashout":   { capacity: 10, refillPerMin: 2 },   // 10 burst, ~30s between after burst
   "ai.batch":      { capacity: 5,  refillPerMin: 0.25 }, // 5 batch-generations burst, ~4/hr — caps AI-spend abuse
+  // House bots (02 §2.6 step 5, PLAN §6): an owner checking an account holder's password, keyed
+  // `<officer>:<holder>`. A refusal here never touches the holder's own sign-in counter.
+  "housebot.verify": { capacity: 3, refillPerMin: 0.2 },
 };
 
 export type RateResult = { allowed: boolean; remaining: number; retryAfterSec: number };
