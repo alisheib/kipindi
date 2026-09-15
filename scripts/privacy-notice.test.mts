@@ -313,15 +313,13 @@ console.log("\n§4e · every external host the CSP admits is classified; Google 
 const gaLib = read("src/lib/google-tag.ts");
 const gaComponent = code(read("src/components/analytics/google-tag.tsx"));
 const layoutSrc = code(read("src/app/layout.tsx"));
-/** CSP host → what it is. `analytics` hosts require the §4/§7 Google Analytics clauses. */
-const CSP_HOSTS: Record<string, "analytics" | "fonts"> = {
+/** CSP host → what it is. `analytics` hosts require the §4/§7 Google Analytics clauses.
+ *  ⛔ Google Fonts was here until 2026-09-15 and is deliberately gone: the families are self-hosted, and a font CDN
+ *  coming back must be classified (and named in §4) before it can pass. */
+const CSP_HOSTS: Record<string, "analytics"> = {
   "https://*.googletagmanager.com": "analytics",
   "https://*.google-analytics.com": "analytics",
   "https://*.analytics.google.com": "analytics",
-  // ⚠️ Google Fonts CSS is @imported by globals.css at runtime, so a player's browser does contact Google for it.
-  // Classified, not yet named in §4 — raised with the owner 2026-09-15 (COMPLIANCE-DECISIONS 2026-09-15, "Open").
-  "https://fonts.googleapis.com": "fonts",
-  "https://fonts.gstatic.com": "fonts",
 };
 function cspHosts(proxy: string): string[] {
   const consts = new Map<string, string>();

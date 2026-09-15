@@ -108,7 +108,14 @@ export function gaLocation(href: string): string | null {
  *  The mark is removed before sending, so it never reaches the property. */
 export const GA_VIEW_MARK = "kp_view";
 
-const ANALYTICS_HOST = /(^|\.)(google-analytics\.com|analytics\.google\.com|googletagmanager\.com)$/i;
+const ANALYTICS_HOST = /(^|\.)(google-analytics\.com|analytics\.google\.com|googletagmanager\.com|google\.com)$/i;
+/**
+ * 🔴 Found LIVE 2026-09-15: gtag.js also sends a copy of each hit to `https://www.google.com/g/collect` (Google's
+ * ads-measurement path). The CSP refuses it, but that left the CSP as the ONLY control on a hit this guard never
+ * saw, plus a console violation on every page. A hit to google.com is now dropped here: this property is
+ * analytics-only (Privacy §4 "not used for advertising"), so there is nothing that endpoint may receive.
+ */
+const DROPPED_HOST = /(^|\.)google\.com$/i;
 
 /** True for a request to a Google Analytics / Tag Manager host (an absolute URL). */
 export function gaIsAnalyticsRequest(url: string): boolean {
@@ -151,6 +158,7 @@ const serialise = (pairs: Array<[string, string]>) => pairs.map(([k, v]) => `${e
 export function gaScrubHit(url: string, body: string | null | undefined): { url: string; body: string | null } | null {
   let u: URL;
   try { u = new URL(url); } catch { return null; }
+  if (DROPPED_HOST.test(u.hostname)) return null;
   if (!keepEvent(u.searchParams)) return null;
   const shared = scrubParams(u.searchParams);
   if (shared === null) return null;

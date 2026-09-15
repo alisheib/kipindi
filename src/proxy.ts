@@ -149,8 +149,9 @@ const GA_HOSTS_CONNECT = "https://*.google-analytics.com https://*.analytics.goo
 const CSP_BASE = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline' 'unsafe-eval' ${GA_HOSTS_SCRIPT}`,
-  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-  "font-src 'self' https://fonts.gstatic.com data:",
+  // Fonts are self-hosted by next/font — no Google Fonts hosts (removed 2026-09-15, see globals.css).
+  "style-src 'self' 'unsafe-inline'",
+  "font-src 'self' data:",
   "img-src 'self' data: blob:",
   `connect-src 'self' ws: wss: ${GA_HOSTS_CONNECT}`,
   "frame-ancestors 'none'",

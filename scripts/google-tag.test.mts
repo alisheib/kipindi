@@ -108,6 +108,13 @@ ok("§6j the analytics-host test: collectors and GTM yes; our site, relative pat
   && gaIsAnalyticsRequest("https://www.googletagmanager.com/td?id=1")
   && !gaIsAnalyticsRequest(`${W}/api/health`) && !gaIsAnalyticsRequest("/g/collect")
   && !gaIsAnalyticsRequest("https://evil.example/?h=google-analytics.com") && !gaIsAnalyticsRequest("https://google-analytics.com.evil.example/g/collect"));
+// Seen live 2026-09-15: gtag.js duplicates each hit to www.google.com/g/collect.
+const googleCopy = `https://www.google.com/g/collect?${SHARED}&dl=${enc(`${W}/markets`)}&en=page_view&ep.kp_view=1`;
+ok("§6k the google.com copy of a hit is recognised and dropped, even a clean marked view",
+  gaIsAnalyticsRequest(googleCopy) && gaScrubHit(googleCopy, null) === null);
+ok("§6k control · the same hit to the GA collector is still sent, and look-alikes of google.com are not analytics",
+  gaScrubHit(googleCopy.replace("https://www.google.com/", "https://www.google-analytics.com/"), null) !== null
+  && !gaIsAnalyticsRequest("https://google.com.evil.example/g/collect") && !gaIsAnalyticsRequest("https://notgoogle.com/g/collect"));
 ok("§6 control · the unmarked-view rule is what drops §6a (the same hit marked is kept)", gaScrubHit(historyView, null) === null && ours !== null);
 ok("§6 control · the mark constant is the one the tests use", GA_VIEW_MARK === "kp_view");
 

@@ -60,10 +60,22 @@ in the real app and set the disable switch, as it must off the live host).
    from a raw address at all — the guard should be the second line, not the only one.
 3. **Consent banner.** Analytics runs on legitimate interest (§3), which the Tanzania PDPA 2022 permits; an EU visitor
    under GDPR would normally be asked first. Adding a banner is a design and legal call.
-4. **Google Fonts, pre-existing and separate from this change:** `globals.css` `@import`s `fonts.googleapis.com` at
-   runtime, so every player's browser contacts Google for font CSS, although `next/font` already self-hosts the same
-   three families. §4 does not name it. Either remove the import (the fonts are already served from our own host) or
-   name it. `test:privacy-notice` §4e classifies the two font hosts explicitly so the gap stays visible.
+4. ~~Google Fonts~~ — **CLOSED the same day (owner approved).** `globals.css` `@import`ed `fonts.googleapis.com`,
+   so every visitor's browser also fetched the three families from Google, although `next/font` already self-hosts
+   them under the same family names; §4 never named it. Proven dead weight before removal: the live site with
+   `fonts.googleapis.com` / `fonts.gstatic.com` blocked painted identical fonts (CDP platform fonts) on `/`,
+   `/legal/privacy`, `/markets`, `/auth/login` at 1280 and 390 px, 0.000–0.002% pixels different. The import is
+   removed, both hosts are out of `style-src` / `font-src`, and `test:privacy-notice` §4e no longer classifies them,
+   so a font CDN returning fails until it is named. Emails still reference Google Fonts: that HTML is rendered by the
+   recipient's mail client, not by 50pick.
+
+**Follow-up, same day — `www.google.com/g/collect`.** Live, gtag.js also sends a copy of each hit to Google's
+ads-measurement endpoint. The CSP refused it, but the CSP was the only control on a hit the guard never saw. The guard
+now recognises `google.com` and drops those hits (`test:google-tag` §6k), since this property is analytics-only.
+
+5. **Cloudflare Web Analytics** injects `static.cloudflareinsights.com/beacon.min.js` at the edge on every page. The
+   CSP blocks it, so it collects nothing today, but it logs a violation on every load. Turn it off in the Cloudflare
+   dashboard (owner action); don't admit it to the CSP without naming it in §4.
 
 **⛔ Do not** turn on ad storage, Google signals, user-id, or the automatic page view, or remove an exclusion, without
 moving the notice first.
