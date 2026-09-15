@@ -1318,7 +1318,11 @@ export interface HouseBotControlStore {
    * no second SWITCH_OFF event (two workers faulting at once produce one).
    */
   switchOff(input: { cause: OffCause; byId: string | null; reason: string | null }): Promise<StoredHouseBotControl | null>;
-  /** ON, conditional on OFF; clears `offCause`. Null means it was already on. */
+  /**
+   * ON, conditional on OFF; clears `offCause`. Null means it was already on. ⛔ The same transaction writes
+   * `global.scopeFrom = now()` (04 A11, C4-SPEC ruling 92): a switch-on that left scope NULL would put every stake out
+   * of scope, and one that left an old instant would replay history.
+   */
   switchOn(input: { byId: string; reason: string | null }, tx?: HouseTx): Promise<StoredHouseBotControl | null>;
   /** CAS on `limitsVersion` (+1). Only `LIMIT_FIELDS` are writable; anything else throws. */
   saveLimits(baseVersion: number, patch: HouseBotLimitsPatch, tx?: HouseTx): Promise<CasResult<StoredHouseBotControl>>;
@@ -1447,7 +1451,11 @@ export interface HouseBotEventStore {
 export interface HouseBotIntentStore {
   /** Raw insert; a unique violation rethrows for `uniqueViolation`. */
   insert(row: NewHouseBotIntent, tx?: HouseTx): Promise<StoredHouseBotIntent>;
-  /** The sweep's insert: any unique clash is "already decided" and returns null. */
+  /**
+   * The sweep's and planner's insert: a clash on the row's OWN anchor index is "already decided" and returns null —
+   * `hbi_counter_anchor_uq` for a COUNTER, `hbi_fill_opener_anchor_uq` for FILL and OPENER. ⛔ Any other unique
+   * violation (the id, the idempotency key) is a defect and raises (C4-SPEC ruling 97, TGT-26(e)). MANUAL throws.
+   */
   insertIgnoringConflict(row: NewHouseBotIntent, tx?: HouseTx): Promise<StoredHouseBotIntent | null>;
   /**
    * ⭐ THE INSERT HOLDS THE TARGET ROW (N2 §4 step 4.6). `FOR SHARE` on the target, then the
@@ -1487,12 +1495,26 @@ export interface HouseBotIntentStore {
   cancelLive(scope: { houseBotId: string } | { targetId: string } | { all: true }, reasonCode: string, tx?: HouseTx): Promise<StoredHouseBotIntent[]>;
   /** The write-back clamp (MON-02): shrink only, conditional on this worker's claim. */
   clampStake(id: string, me: string, stakeTzs: number): Promise<StoredHouseBotIntent | null>;
-  /** Planner pass 1: PENDING past `deadlineAt` → EXPIRED(CUTOFF). */
+  /**
+   * Planner pass 1: past `deadlineAt` → EXPIRED(CUTOFF) — PENDING rows, and CLAIMED rows whose claim has expired
+   * (ENG-16: "an in-flight claim is never expired"; C4-SPEC ruling 72).
+   */
   expirePastDeadline(): Promise<string[]>;
   /** Planner pass 2, before POISON: → EXPIRED(STALE) (N1 §4.3 pass order). */
   expireStale(): Promise<string[]>;
   /** Planner pass 3: an expired claim with 3 attempts → FAILED(POISON). */
   poison(): Promise<string[]>;
+  /** Planner A16 sweep (C4-SPEC ruling 88): the distinct markets holding PENDING rows, oldest row first, at most `limit`. */
+  listPendingMarketIds(limit: number): Promise<string[]>;
+  /**
+   * PENDING rows on one market → SKIPPED(`code`), conditional on PENDING; returns the ids. `automatedOnly` leaves MANUAL
+   * and targeted rows alone (a reopened market: fire's blackout decides those).
+   */
+  skipPendingOnMarket(marketId: string, code: string, opts?: { automatedOnly?: boolean }): Promise<string[]>;
+  /** Oversight (ruling 79): PLACED staff-chosen rows finished at or after `sinceIso`, oldest first, at most `limit`. */
+  staffChosenPlacedSince(input: { sinceIso: string; limit: number }): Promise<StoredHouseBotIntent[]>;
+  /** Hourly summaries (ruling 80): PLACED rows finished in `[fromIso, toIso)`, per bot, bots in id order. */
+  placedInWindow(input: { fromIso: string; toIso: string }): Promise<PlacedInWindow[]>;
   /**
    * SIGTERM (A24, C4-SPEC ruling 70): this worker's CLAIMED rows, except `excludeIds` (the fires still in flight), back
    * to PENDING with the claim's attempt handed back. Conditional on the claim; returns the released ids.
@@ -1577,6 +1599,18 @@ export interface HouseBookStore {
   openExposure(houseBotId: string | null, tx?: HouseTx): Promise<Array<{ houseBotId: string; openStakeTzs: number }>>;
 }
 
+/** One bot's PLACED rows in a window (hourly summaries, C4-SPEC ruling 80). Staff-chosen = MANUAL or targeted. */
+export type PlacedInWindow = { houseBotId: string; count: number; stakeTzs: number; staffChosenCount: number; staffChosenTzs: number };
+
+export type PlannableMarketsInput = {
+  kind: "FILL" | "OPENER";
+  productLine: "MARKET" | "UPDOWN";
+  fromIso: string;
+  toIso: string | null;
+  after: { cutoff: string; id: string } | null;
+  limit: number;
+};
+
 /** One bot's marked stakes, for the H2 rate and per-market caps (04 A24: rolling windows). */
 export type HouseBotUsage = {
   /** The newest marked position of this bot, any market (MIN_GAP). */
@@ -1628,7 +1662,7 @@ export type LockedPool = { YES: LockedPoolSide; NO: LockedPoolSide };
 export type HouseViewRound = {
   roundId: string;
   chainId: string;
-  /** `<asset symbol>:<duration minutes>`, the rules' chain key. */
+  /** `<assetId>:<durationMinutes>`, the rules' chain key — the asset's ID, never its symbol (C4-SPEC rulings 45, 99). */
   chainKey: string;
   roundNumber: number;
   opensAt: string;
@@ -1706,10 +1740,19 @@ export interface HouseSeamStore {
   roundLock(marketId: string, tx?: HouseTx): Promise<{ opensAt: string; durationMinutes: number } | null>;
   /**
    * 04 A13: the engine's ONE market read — exactly `HOUSE_MARKET_FIELDS` (`server/house-bot/market-view.ts`) plus
-   * the round, its chain's duration and state and its asset's symbol and switch, in one statement. The product line
+   * the round, its chain's duration and state and its asset's id and switch, in one statement. The product line
    * is raw; the exit rates come from the frozen fee snapshot. ⛔ No result-check column is selected.
    */
   marketView(marketId: string, tx?: HouseTx): Promise<HouseMarketViewRow | null>;
+  /**
+   * The planner's FILL/OPENER scan (C4-SPEC ruling 91): `{id, cutoff}` of LIVE, not reopened, not demo markets of one
+   * raw product line that are in A12 scope (a poll with a cutoff; a round on a RUNNING chain of an enabled asset),
+   * with the cutoff in `(fromIso, toIso]` (`toIso` null = no upper bound), OPENER only on two empty pools, and no
+   * intent of that kind anchored on the market unless CANCELLED by something other than an officer (02 X11).
+   * Keyset-paged on `(cutoff, id)`; at most 200 rows. ⛔ Ids and cutoffs only — the planner reads each market through
+   * `marketView` (A13).
+   */
+  plannableMarkets(input: PlannableMarketsInput, tx?: HouseTx): Promise<Array<{ id: string; cutoff: string }>>;
   /** N1 §3: status, and whether `staleAt` is still ahead of the database clock (`clock_timestamp()`). */
   intentFreshness(id: string, tx?: HouseTx): Promise<{ status: IntentStatus; fresh: boolean } | null>;
   /**
@@ -1920,10 +1963,15 @@ const memoryHouseBotControl: HouseBotControlStore = {
   },
   async switchOn(input) {
     memSeed();
-    const cur = memControl.get(HOUSE_CONTROL_ID)!;
-    if (cur.enabled) return null;
-    return memUpdate("HouseBotControl", cur, {
-      enabled: true, offCause: null, switchedAt: nowIso(), switchedById: input.byId, switchedReason: input.reason,
+    // One synchronous body: the control write and the scope start land together (ruling 92).
+    return memAtomic(() => {
+      const cur = memControl.get(HOUSE_CONTROL_ID)!;
+      if (cur.enabled) return null;
+      const row = memUpdate("HouseBotControl", cur, {
+        enabled: true, offCause: null, switchedAt: nowIso(), switchedById: input.byId, switchedReason: input.reason,
+      });
+      memRuntimeUpsert(RUNTIME_KEY.global, { scopeFrom: nowIso() });
+      return row;
     });
   },
   async saveLimits(baseVersion, patch) {
@@ -2249,17 +2297,38 @@ const isUniqueError = (e: unknown): boolean => !!e && typeof e === "object" && (
 const toIntentRow = (row: NewHouseBotIntent, createdAt: string): StoredHouseBotIntent =>
   ({ ...row, idempotencyKey: houseIntentKey(row.id), createdAt });
 
+/**
+ * Ruling 97 · the memory twin of `ON CONFLICT (<the row's anchor index>) DO NOTHING`: is the row's OWN anchor taken?
+ * `hbi_counter_anchor_uq` covers every COUNTER; `hbi_fill_opener_anchor_uq` a FILL/OPENER that is not CANCELLED.
+ */
+function memAnchorTaken(row: NewHouseBotIntent): boolean {
+  if (row.kind === "COUNTER") return [...memIntents.values()].some((i) => i.kind === "COUNTER" && i.anchorKey === row.anchorKey);
+  if (row.kind === "FILL" || row.kind === "OPENER") {
+    return [...memIntents.values()].some((i) => i.kind === row.kind && i.anchorKey === row.anchorKey && i.status !== "CANCELLED");
+  }
+  throw new Error("house-bot-dal: an engine insert takes COUNTER, FILL or OPENER rows only (C4-SPEC ruling 97)");
+}
+
+/** Ruling 97 · the anchor index a Postgres engine insert may treat as "already decided" — partial-index inference. */
+function anchorConflictSql(kind: IntentKind): string {
+  if (kind === "COUNTER") return `ON CONFLICT ("anchorKey") WHERE "kind" = 'COUNTER' DO NOTHING RETURNING *`;
+  if (kind === "FILL" || kind === "OPENER") {
+    return `ON CONFLICT ("kind", "anchorKey") WHERE "kind" IN ('FILL','OPENER') AND "status" <> 'CANCELLED' DO NOTHING RETURNING *`;
+  }
+  throw new Error("house-bot-dal: an engine insert takes COUNTER, FILL or OPENER rows only (C4-SPEC ruling 97)");
+}
+
+/** A planner scan row's market is out of every house scope when its title marks a demo (`isDemoMarket`'s prefix). */
+const DEMO_PREFIX = "Demo · ";
+
 const memoryHouseBotIntents: HouseBotIntentStore = {
   async insert(row) {
     return memWrite("HouseBotIntent", toIntentRow(row, nowIso()), "insert");
   },
   async insertIgnoringConflict(row) {
-    try {
-      return memWrite("HouseBotIntent", toIntentRow(row, nowIso()), "insert");
-    } catch (e) {
-      if (isUniqueError(e)) return null;
-      throw e;
-    }
+    // ⛔ No await between the anchor check and the write (ruling 97): any OTHER unique clash raises from memWrite.
+    if (memAnchorTaken(row)) return null;
+    return memWrite("HouseBotIntent", toIntentRow(row, nowIso()), "insert");
   },
   async insertTargetedIfActive(targetId, row) {
     if (row.targetId !== targetId) throw new Error("house-bot-dal: insertTargetedIfActive row.targetId must equal targetId");
@@ -2268,12 +2337,8 @@ const memoryHouseBotIntents: HouseBotIntentStore = {
     return memAtomic(() => {
       const t = memTargets.get(targetId);
       if (!t || t.status !== "ACTIVE") return { inserted: false, targetActive: false, row: null };
-      try {
-        return { inserted: true, targetActive: true, row: memWrite("HouseBotIntent", toIntentRow(row, nowIso()), "insert") };
-      } catch (e) {
-        if (isUniqueError(e)) return { inserted: false, targetActive: true, row: null };
-        throw e;
-      }
+      if (memAnchorTaken(row)) return { inserted: false, targetActive: true, row: null };
+      return { inserted: true, targetActive: true, row: memWrite("HouseBotIntent", toIntentRow(row, nowIso()), "insert") };
     });
   },
   async get(id) {
@@ -2387,7 +2452,8 @@ const memoryHouseBotIntents: HouseBotIntentStore = {
   async expirePastDeadline() {
     const now = Date.now();
     return memAtomic(() => [...memIntents.values()]
-      .filter((i) => i.status === "PENDING" && ms(i.deadlineAt) <= now)
+      .filter((i) => ms(i.deadlineAt) <= now
+        && (i.status === "PENDING" || (i.status === "CLAIMED" && i.claimedUntil != null && ms(i.claimedUntil) < now)))
       .map((i) => memWrite("HouseBotIntent", { ...i, status: "EXPIRED", reasonCode: "CUTOFF", finishedAt: nowIso() }, "update").id));
   },
   async expireStale() {
@@ -2403,6 +2469,41 @@ const memoryHouseBotIntents: HouseBotIntentStore = {
     return memAtomic(() => [...memIntents.values()]
       .filter((i) => i.status === "CLAIMED" && i.claimedUntil != null && ms(i.claimedUntil) < now && i.attempts >= MAX_NON_TRANSIENT_ATTEMPTS)
       .map((i) => memWrite("HouseBotIntent", { ...i, status: "FAILED", reasonCode: "POISON", finishedAt: nowIso() }, "update").id));
+  },
+  async listPendingMarketIds(limit) {
+    const first = new Map<string, number>();
+    for (const i of memIntents.values()) {
+      if (i.status !== "PENDING") continue;
+      const at = ms(i.createdAt);
+      if (!first.has(i.marketId) || at < first.get(i.marketId)!) first.set(i.marketId, at);
+    }
+    return [...first.entries()].sort((a, b) => a[1] - b[1] || (a[0] < b[0] ? -1 : 1)).slice(0, pageLimit(limit)).map(([id]) => id);
+  },
+  async skipPendingOnMarket(marketId, code, opts) {
+    return memAtomic(() => [...memIntents.values()]
+      .filter((i) => i.status === "PENDING" && i.marketId === marketId && (!opts?.automatedOnly || !isStaffChosen(i)))
+      .map((i) => memWrite("HouseBotIntent", { ...i, status: "SKIPPED", reasonCode: code, finishedAt: nowIso() }, "update").id));
+  },
+  async staffChosenPlacedSince({ sinceIso, limit }) {
+    const since = ms(sinceIso);
+    return [...memIntents.values()]
+      .filter((i) => i.status === "PLACED" && isStaffChosen(i) && i.finishedAt != null && ms(i.finishedAt) >= since)
+      .sort((a, b) => ms(a.finishedAt) - ms(b.finishedAt) || (a.id < b.id ? -1 : 1))
+      .slice(0, pageLimit(limit))
+      .map(clone);
+  },
+  async placedInWindow({ fromIso, toIso }) {
+    const from = ms(fromIso), to = ms(toIso);
+    const acc = new Map<string, PlacedInWindow>();
+    for (const i of memIntents.values()) {
+      if (i.status !== "PLACED" || i.finishedAt == null || ms(i.finishedAt) < from || ms(i.finishedAt) >= to) continue;
+      const row = acc.get(i.houseBotId) ?? { houseBotId: i.houseBotId, count: 0, stakeTzs: 0, staffChosenCount: 0, staffChosenTzs: 0 };
+      row.count += 1;
+      row.stakeTzs += i.stakeTzs;
+      if (isStaffChosen(i)) { row.staffChosenCount += 1; row.staffChosenTzs += i.stakeTzs; }
+      acc.set(i.houseBotId, row);
+    }
+    return [...acc.values()].sort((a, b) => (a.houseBotId < b.houseBotId ? -1 : 1));
   },
   async markAlerted(id) {
     const i = memIntents.get(id);
@@ -2845,6 +2946,35 @@ const memoryHouseSeam: HouseSeamStore = {
       } : null,
     };
   },
+  async plannableMarkets({ kind, productLine, fromIso, toIso, after, limit }) {
+    const from = ms(fromIso);
+    const to = toIso == null ? Number.POSITIVE_INFINITY : ms(toIso);
+    const out: Array<{ id: string; cutoff: string }> = [];
+    for (const m of await marketStore.values()) {
+      if (m.status !== "LIVE" || (m.productLine as string) !== productLine || m.reopenedAt != null || m.titleEn.startsWith(DEMO_PREFIX)) continue;
+      let cutoffMs: number;
+      if (productLine === "UPDOWN") {
+        const round = await roundStore.getByMarketId(m.id);
+        const chain = round ? await chainStore.get(round.chainId) : null;
+        const asset = chain ? await assetStore.get(chain.assetId) : null;
+        if (!round || !chain || chain.state !== "RUNNING" || asset?.enabled !== true) continue;
+        cutoffMs = Math.min(ms(round.opensAt) + chain.durationMinutes * 60_000, ms(m.selectionClosedAt ?? m.resolutionAt));
+      } else {
+        if (!m.selectionClosedAt) continue;
+        cutoffMs = ms(m.selectionClosedAt);
+      }
+      if (kind === "OPENER" && (Number(m.yesPool) !== 0 || Number(m.noPool) !== 0)) continue;
+      if (!(cutoffMs > from) || cutoffMs > to) continue;
+      const planned = [...memIntents.values()].some((i) => i.kind === kind && i.anchorKey === m.id && (i.status !== "CANCELLED" || i.reasonCode === "CANCELLED_BY_ADMIN"));
+      if (planned) continue;
+      out.push({ id: m.id, cutoff: new Date(cutoffMs).toISOString() });
+    }
+    const afterMs = after ? ms(after.cutoff) : null;
+    return out
+      .sort((a, b) => ms(a.cutoff) - ms(b.cutoff) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+      .filter((r) => afterMs == null || ms(r.cutoff) > afterMs || (ms(r.cutoff) === afterMs && r.id > after!.id))
+      .slice(0, Math.min(200, pageLimit(limit)));
+  },
   async intentFreshness(id) {
     const i = memIntents.get(id);
     return i ? { status: i.status, fresh: ms(i.staleAt) > Date.now() } : null;
@@ -2959,8 +3089,13 @@ const prismaHouseBotControl: HouseBotControlStore = {
       `"switchedById" = ${p.col("HouseBotControl", "switchedById", input.byId)}`,
       `"switchedReason" = ${p.col("HouseBotControl", "switchedReason", input.reason)}`,
     ], `"id" = ${p.raw(HOUSE_CONTROL_ID, "text")} AND "enabled" = false`);
-    const rows = await sql(tx, text, p.values);
-    return rows[0] ? toHouseBotControl(rows[0]) : null;
+    // One transaction: the control write and `global.scopeFrom` (ruling 92). A caller's tx is joined.
+    return inTx(tx, async (t) => {
+      const rows = await sql(t, text, p.values);
+      if (!rows[0]) return null;
+      await prismaHouseBotRuntime.setScopeFrom(RUNTIME_KEY.global, t);
+      return toHouseBotControl(rows[0]);
+    });
   },
   async saveLimits(baseVersion, patch, tx) {
     const p = new Params();
@@ -3317,7 +3452,7 @@ const prismaHouseBotIntents: HouseBotIntentStore = {
   },
   async insertIgnoringConflict(row, tx) {
     const p = new Params();
-    const rows = await sql(tx, insertSql("HouseBotIntent", withoutStamps(toIntentRow(row, "")), p, `ON CONFLICT DO NOTHING RETURNING *`), p.values);
+    const rows = await sql(tx, insertSql("HouseBotIntent", withoutStamps(toIntentRow(row, "")), p, anchorConflictSql(row.kind)), p.values);
     return rows[0] ? toHouseBotIntent(rows[0]) : null;
   },
   async insertTargetedIfActive(targetId, row, tx) {
@@ -3326,7 +3461,7 @@ const prismaHouseBotIntents: HouseBotIntentStore = {
       const held = await sql(t, `SELECT 1 AS "ok" FROM "HouseBotTarget" WHERE "id" = $1::text AND "status" = 'ACTIVE' FOR SHARE`, [targetId]);
       if (held.length === 0) return { inserted: false, targetActive: false, row: null };
       const p = new Params();
-      const rows = await sql(t, insertSql("HouseBotIntent", withoutStamps(toIntentRow(row, "")), p, `ON CONFLICT DO NOTHING RETURNING *`), p.values);
+      const rows = await sql(t, insertSql("HouseBotIntent", withoutStamps(toIntentRow(row, "")), p, anchorConflictSql(row.kind)), p.values);
       return rows[0]
         ? { inserted: true, targetActive: true, row: toHouseBotIntent(rows[0]) }
         : { inserted: false, targetActive: true, row: null };
@@ -3486,7 +3621,7 @@ const prismaHouseBotIntents: HouseBotIntentStore = {
   },
   async expirePastDeadline() {
     const text = updateSql("HouseBotIntent", [`"status" = 'EXPIRED'`, `"reasonCode" = 'CUTOFF'`, `"finishedAt" = now()`],
-      `"status" = 'PENDING' AND "deadlineAt" <= now()`, { returning: `"id"` });
+      `"deadlineAt" <= now() AND ("status" = 'PENDING' OR ("status" = 'CLAIMED' AND "claimedUntil" < now()))`, { returning: `"id"` });
     return (await sql(null, text, [])).map((r) => String(r.id));
   },
   async expireStale() {
@@ -3505,6 +3640,35 @@ const prismaHouseBotIntents: HouseBotIntentStore = {
       `"status" = 'CLAIMED' AND "claimedUntil" < now() AND "attempts" >= ${p.raw(MAX_NON_TRANSIENT_ATTEMPTS, "int")}`,
       { returning: `"id"` });
     return (await sql(null, text, p.values)).map((r) => String(r.id));
+  },
+  async listPendingMarketIds(limit) {
+    const rows = await sql(null, `SELECT "marketId" FROM "HouseBotIntent" WHERE "status" = 'PENDING'`
+      + ` GROUP BY "marketId" ORDER BY min("createdAt"), "marketId" LIMIT $1::int`, [pageLimit(limit)]);
+    return rows.map((r) => String(r.marketId));
+  },
+  async skipPendingOnMarket(marketId, code, opts) {
+    const p = new Params();
+    const text = updateSql("HouseBotIntent", [
+      `"status" = 'SKIPPED'`,
+      `"reasonCode" = ${p.col("HouseBotIntent", "reasonCode", code)}`,
+      `"finishedAt" = now()`,
+    ], `"status" = 'PENDING' AND "marketId" = ${p.raw(marketId, "text")}${opts?.automatedOnly ? ` AND NOT ${STAFF_CHOSEN_SQL}` : ""}`,
+    { returning: `"id"` });
+    return (await sql(null, text, p.values)).map((r) => String(r.id));
+  },
+  async staffChosenPlacedSince({ sinceIso, limit }) {
+    const p = new Params();
+    const rows = await sql(null, `SELECT * FROM "HouseBotIntent" WHERE "status" = 'PLACED' AND ${STAFF_CHOSEN_SQL}`
+      + ` AND "finishedAt" >= ${p.col("HouseBotIntent", "finishedAt", sinceIso)} ORDER BY "finishedAt", "id" LIMIT ${p.raw(pageLimit(limit), "int")}`, p.values);
+    return rows.map(toHouseBotIntent);
+  },
+  async placedInWindow({ fromIso, toIso }) {
+    const p = new Params();
+    const rows = await sql(null, `SELECT "houseBotId", count(*)::int AS "n", coalesce(sum("stakeTzs"), 0)::text AS "tzs",`
+      + ` (count(*) FILTER (WHERE ${STAFF_CHOSEN_SQL}))::int AS "sn", coalesce(sum("stakeTzs") FILTER (WHERE ${STAFF_CHOSEN_SQL}), 0)::text AS "stzs"`
+      + ` FROM "HouseBotIntent" WHERE "status" = 'PLACED' AND "finishedAt" >= ${p.col("HouseBotIntent", "finishedAt", fromIso)}`
+      + ` AND "finishedAt" < ${p.col("HouseBotIntent", "finishedAt", toIso)} GROUP BY "houseBotId" ORDER BY "houseBotId"`, p.values);
+    return rows.map((r) => ({ houseBotId: String(r.houseBotId), count: Number(r.n), stakeTzs: Number(r.tzs), staffChosenCount: Number(r.sn), staffChosenTzs: Number(r.stzs) }));
   },
   async markAlerted(id) {
     const text = updateSql("HouseBotIntent", [`"alertedAt" = now()`],
@@ -3949,6 +4113,26 @@ const prismaHouseSeam: HouseSeamStore = {
         chainRunning: r.chainState === "RUNNING", assetEnabled: r.assetEnabled === true,
       } : null,
     };
+  },
+  async plannableMarkets({ kind, productLine, fromIso, toIso, after, limit }, tx) {
+    // Market and round times are naive UTC (as `dayRows`); ISO bounds are cast `::timestamp`.
+    const text = `SELECT x."id", x."cutoff" FROM (SELECT m."id",`
+      + ` CASE WHEN m."productLine"::text = 'UPDOWN'`
+      + ` THEN least(r."opensAt" + (c."durationMinutes" * interval '1 minute'), coalesce(m."selectionClosedAt", m."resolutionAt"))`
+      + ` ELSE m."selectionClosedAt" END AS "cutoff"`
+      + ` FROM "PredictionMarket" m LEFT JOIN "UpDownRound" r ON r."marketId" = m."id"`
+      + ` LEFT JOIN "UpDownChain" c ON c."id" = r."chainId" LEFT JOIN "UpDownAsset" a ON a."id" = c."assetId"`
+      + ` WHERE m."status"::text = 'LIVE' AND m."productLine"::text = $1::text AND m."reopenedAt" IS NULL AND m."titleEn" NOT LIKE $8::text`
+      + ` AND (($1::text = 'MARKET' AND m."selectionClosedAt" IS NOT NULL)`
+      + ` OR ($1::text = 'UPDOWN' AND r."id" IS NOT NULL AND c."state"::text = 'RUNNING' AND a."enabled" = true))`
+      + ` AND ($2::text <> 'OPENER' OR (m."yesPool" = 0 AND m."noPool" = 0))`
+      + ` AND NOT EXISTS (SELECT 1 FROM "HouseBotIntent" i WHERE i."kind" = $2::text AND i."anchorKey" = m."id"`
+      + ` AND (i."status" <> 'CANCELLED' OR i."reasonCode" = 'CANCELLED_BY_ADMIN'))) x`
+      + ` WHERE x."cutoff" > $3::timestamp AND ($4::timestamp IS NULL OR x."cutoff" <= $4::timestamp)`
+      + ` AND ($5::timestamp IS NULL OR (x."cutoff", x."id") > ($5::timestamp, $6::text))`
+      + ` ORDER BY x."cutoff", x."id" LIMIT $7::int`;
+    const rows = await sql(tx, text, [productLine, kind, fromIso, toIso, after?.cutoff ?? null, after?.id ?? "", Math.min(200, pageLimit(limit)), `${DEMO_PREFIX}%`]);
+    return rows.map((r) => ({ id: String(r.id), cutoff: iso(r.cutoff) as string }));
   },
   async intentFreshness(id, tx) {
     const rows = await sql(tx, `SELECT "status", ("staleAt" > clock_timestamp()) AS "fresh" FROM "HouseBotIntent" WHERE "id" = $1::text`, [id]);

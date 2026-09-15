@@ -50,6 +50,9 @@ export const MINUTES_PER_WEEK = 7 * MINUTES_PER_DAY;
 export const EAT_SQL = {
   dayKey: `to_char(now() AT TIME ZONE 'Africa/Dar_es_Salaam', 'YYYY-MM-DD')`,
   hourKey: `to_char(now() AT TIME ZONE 'Africa/Dar_es_Salaam', 'YYYY-MM-DD"T"HH24')`,
+  // The EAT hour just ended — the hour an hourly summary covers (C4-SPEC ruling 80), as previousMonthKey names the
+  // month the staff-edge pass judges.
+  previousHourKey: `to_char((now() AT TIME ZONE 'Africa/Dar_es_Salaam') - interval '1 hour', 'YYYY-MM-DD"T"HH24')`,
   monthKey: `to_char(now() AT TIME ZONE 'Africa/Dar_es_Salaam', 'YYYY-MM')`,
   // The EAT month just ended. Subtracting a month from the 29th–31st clamps to the previous
   // month's last day, so the result is always the previous month.
@@ -58,13 +61,14 @@ export const EAT_SQL = {
 } as const;
 
 /** The units an EAT-suffixed AlertOnce key can carry (`ALERT_KEY` in `constants.ts`). */
-export const EAT_KEY_UNITS = ["day", "hour", "month", "previousMonth", "minute"] as const;
+export const EAT_KEY_UNITS = ["day", "hour", "previousHour", "month", "previousMonth", "minute"] as const;
 export type EatKeyUnit = (typeof EAT_KEY_UNITS)[number];
 
 /** Unit → SQL fragment, for a claim that is handed `{prefix, unit}` rather than a fragment. */
 export const EAT_SQL_BY_UNIT: Record<EatKeyUnit, string> = {
   day: EAT_SQL.dayKey,
   hour: EAT_SQL.hourKey,
+  previousHour: EAT_SQL.previousHourKey,
   month: EAT_SQL.monthKey,
   previousMonth: EAT_SQL.previousMonthKey,
   minute: EAT_SQL.minuteKey,
@@ -81,6 +85,11 @@ function eatIso(atMs: number): string {
  */
 export function eatHourKey(atMs: number): string {
   return eatIso(atMs).slice(0, 13);
+}
+
+/** The EAT hour just ended at an instant: 10:00 UTC on 14 Sep 2026 (13:00 EAT) is "2026-09-14T12". */
+export function eatPreviousHourKey(atMs: number): string {
+  return eatHourKey(atMs - 3_600_000);
 }
 
 /** The EAT month (`YYYY-MM`) an instant falls in. */
@@ -109,6 +118,8 @@ export function eatKeyFor(unit: EatKeyUnit, atMs: number): string {
       return eatDayKey(atMs);
     case "hour":
       return eatHourKey(atMs);
+    case "previousHour":
+      return eatPreviousHourKey(atMs);
     case "month":
       return eatMonthKey(atMs);
     case "previousMonth":

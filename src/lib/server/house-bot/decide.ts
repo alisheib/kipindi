@@ -22,7 +22,7 @@ import {
   type EngineCode,
 } from "@/lib/house-bot/constants";
 import { expandWindows, formatWhole, type HouseBotRulesV1 } from "@/lib/house-bot/rules";
-import type { LockedPool } from "../house-bot-dal";
+import type { LockedPool, NewHouseBotIntent } from "../house-bot-dal";
 import { bettableFrom, cutoffOf, scopeCode, type PublicMarketView } from "./market-view";
 
 export type DecideSide = "YES" | "NO";
@@ -209,7 +209,8 @@ export function decideCounter(input: CounterInput, deps: { randomInt: RandomInt 
   if (scope) return { row: null, code: scope };
   if (view.status !== "LIVE") return { row: null, code: "MARKET_NOT_LIVE" };
   const placedMs = ms(trigger.placedAt);
-  if (placedMs < ms(input.globalScopeFrom ?? trigger.placedAt)) return { row: null, code: null };
+  // A11 · a NULL scope start is OUT of scope, never "no bound" (C4-SPEC ruling 92).
+  if (input.globalScopeFrom == null || placedMs < ms(input.globalScopeFrom)) return { row: null, code: null };
 
   const product = productOf(view);
   const cutoffMs = ms(cutoffOf(view));
@@ -230,11 +231,11 @@ export function decideCounter(input: CounterInput, deps: { randomInt: RandomInt 
   };
   const passNowMs = ms(input.passNow);
 
-  const inBotScope = input.bots.filter((b) => placedMs >= ms(b.scopeFrom ?? trigger.placedAt) && botCovers(b, view, "counter"));
+  const inBotScope = input.bots.filter((b) => b.scopeFrom != null && placedMs >= ms(b.scopeFrom) && botCovers(b, view, "counter"));
   const targetBot = input.target ? input.bots.find((b) => b.botId === input.target!.houseBotId) ?? null : null;
   const targetEligible =
     input.target && targetBot && product === "MARKET" && ms(input.target.effectiveFrom) <= placedMs
-      && placedMs >= ms(targetBot.scopeFrom ?? trigger.placedAt)
+      && targetBot.scopeFrom != null && placedMs >= ms(targetBot.scopeFrom)
       && targetBot.rules.targeting.enabled && targetBot.rules.scope.products.polls
       && (targetBot.rules.scope.categories as string[]).includes(view.category)
       ? { target: input.target, bot: targetBot }
@@ -291,8 +292,7 @@ export function decideCounter(input: CounterInput, deps: { randomInt: RandomInt 
   if (targetEligible) {
     const { target, bot } = targetEligible;
     const g = guards(bot);
-    const requestedMs = (target.timingFrom === "STAKE" ? placedMs : exit.exitCloseAtMs) + target.drawnDelaySec * 1000;
-    const dueMs = Math.max(requestedMs, exit.exitCloseAtMs + LOCK_MARGIN_MS);
+    const { requestedMs, dueMs } = targetDueAt({ placedAtMs: placedMs, exitCloseAtMs: exit.exitCloseAtMs, timingFrom: target.timingFrom, delaySec: target.drawnDelaySec });
     const deadlineMs = cutoffMs - g.minTimeToCutoffSec * 1000;
     let code: EngineCode | null = marketCode;
     if (!code && !inSchedule(bot.rules, placedMs)) code = "OUTSIDE_SCHEDULE";
@@ -403,6 +403,31 @@ export function decideCounter(input: CounterInput, deps: { randomInt: RandomInt 
   };
 }
 
+/**
+ * N2 §4 step 5 · the ONE due-time formula for a targeted reaction (C4-SPEC ruling 108): requested = the stake or the
+ * exit close + the drawn delay; due = max(requested, exit close + LOCK_MARGIN_MS). `decideCounter` and the trigger's
+ * loader (which reads `lockedForHouse` as of `dueMs`) both call it.
+ */
+export function targetDueAt(input: { placedAtMs: number; exitCloseAtMs: number; timingFrom: "STAKE" | "EXIT_CLOSE"; delaySec: number }): { requestedMs: number; dueMs: number } {
+  const requestedMs = (input.timingFrom === "STAKE" ? input.placedAtMs : input.exitCloseAtMs) + input.delaySec * 1000;
+  return { requestedMs, dueMs: Math.max(requestedMs, input.exitCloseAtMs + LOCK_MARGIN_MS) };
+}
+
+/**
+ * A decision as the row the store inserts. The caller mints the id and names the anchor (a COUNTER's trigger
+ * position, a FILL's or OPENER's market); a row decided terminal (SKIPPED, EXPIRED) is finished at the decision.
+ */
+export function intentRowOf(row: DecidedRow, o: { id: string; anchorKey: string; nowIso: string }): NewHouseBotIntent {
+  return {
+    id: o.id, houseBotId: row.houseBotId, botUserId: row.botUserId, kind: row.kind, marketId: row.marketId, productLine: row.productLine,
+    anchorKey: o.anchorKey, triggerPositionId: row.triggerPositionId, triggerUserId: row.triggerUserId, targetId: row.targetId,
+    requestedById: null, entryCondition: null, side: row.side, stakeTzs: row.stakeTzs, dueAt: row.dueAt, deadlineAt: row.deadlineAt,
+    staleAt: row.staleAt, status: row.status, reasonCode: row.reasonCode, why: row.why, decision: row.decision, attempts: 0,
+    transientAttempts: 0, nextAttemptAt: null, claimedBy: null, claimedUntil: null, positionId: null,
+    finishedAt: row.status === "PENDING" ? null : o.nowIso, alertedAt: null,
+  };
+}
+
 /** N2 §4 step 5: the target's delay, drawn BEFORE the loader reads `lockedForHouse` as of the due time. */
 export function drawTargetDelay(target: Pick<DecideTarget, "delayMinSec" | "delayMaxSec">, randomInt: RandomInt): number {
   return target.delayMinSec === target.delayMaxSec ? target.delayMinSec : randomInt(target.delayMinSec, target.delayMaxSec);
@@ -436,7 +461,8 @@ export function planFill(input: PlanInput, deps: { randomInt: RandomInt }): Deci
   const r = bot.rules;
   const cutoffMs = ms(cutoffOf(view));
   const leadMs = (product === "UPDOWN" ? r.fill.leadUdSec : r.fill.leadPollsMin * 60) * 1000;
-  const scopeFromMs = Math.max(ms(input.globalScopeFrom ?? input.passNow), ms(bot.scopeFrom ?? input.passNow));
+  if (input.globalScopeFrom == null || bot.scopeFrom == null) return { row: null, code: null }; // ruling 92
+  const scopeFromMs = Math.max(ms(input.globalScopeFrom), ms(bot.scopeFrom));
   if (cutoffMs - leadMs < scopeFromMs) return { row: null, code: null };
 
   const p = r.fill.targetThinSharePct;
@@ -490,7 +516,8 @@ export function planOpener(input: PlanInput & { openerSide: DecideSide }, deps: 
   const product = productOf(view);
   const r = bot.rules;
   const fromMs = ms(bettableFrom(view));
-  const scopeFromMs = Math.max(ms(input.globalScopeFrom ?? input.passNow), ms(bot.scopeFrom ?? input.passNow));
+  if (input.globalScopeFrom == null || bot.scopeFrom == null) return { row: null, code: null }; // ruling 92
+  const scopeFromMs = Math.max(ms(input.globalScopeFrom), ms(bot.scopeFrom));
   if (fromMs < scopeFromMs) return { row: null, code: null };
   const delaySec = product === "UPDOWN"
     ? deps.randomInt(r.opener.delayUdMinSec, r.opener.delayUdMaxSec)

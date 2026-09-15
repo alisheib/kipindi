@@ -1596,7 +1596,10 @@ section("§13 · clock");
   {
     const at = Date.UTC(2026, 8, 30, 20, 59, 59, 999);
     ok("13.5 · each unit's key builder is the one the memory store uses",
-      same([...EAT_KEY_UNITS], ["day", "hour", "month", "previousMonth", "minute"]) &&
+      // C4-SPEC ruling 80 adds previousHour: an hourly summary's key names the hour summarised.
+      same([...EAT_KEY_UNITS], ["day", "hour", "previousHour", "month", "previousMonth", "minute"]) &&
+        eatKeyFor("previousHour", Date.UTC(2026, 8, 14, 10)) === "2026-09-14T12" &&
+        eatKeyFor("previousHour", Date.UTC(2026, 8, 30, 21)) === "2026-09-30T23" &&
         eatKeyFor("day", at) === eatDayKey(at) && eatKeyFor("hour", at) === eatHourKey(at) &&
         eatKeyFor("month", at) === eatMonthKey(at) && eatKeyFor("minute", at) === eatMinuteKey(at));
     ok("13.5b · the previous-month key is the EAT month just ended, across a month and a year turn",
@@ -1611,6 +1614,7 @@ section("§13 · clock");
       EAT_SQL.hourKey === `to_char(now() AT TIME ZONE 'Africa/Dar_es_Salaam', 'YYYY-MM-DD"T"HH24')` &&
       EAT_SQL.monthKey === `to_char(now() AT TIME ZONE 'Africa/Dar_es_Salaam', 'YYYY-MM')` &&
       EAT_SQL.previousMonthKey === `to_char((now() AT TIME ZONE 'Africa/Dar_es_Salaam') - interval '1 month', 'YYYY-MM')` &&
+      EAT_SQL.previousHourKey === `to_char((now() AT TIME ZONE 'Africa/Dar_es_Salaam') - interval '1 hour', 'YYYY-MM-DD"T"HH24')` &&
       EAT_SQL.minuteKey === `to_char(now() AT TIME ZONE 'Africa/Dar_es_Salaam', 'YYYY-MM-DD"T"HH24:MI')` &&
       EAT_KEY_UNITS.every((u) => EAT_SQL_BY_UNIT[u] === (EAT_SQL as Record<string, string>)[`${u}Key`]));
   ok("13.7 · a duration after a stake: 20 → 0:20, 307 → 5:07, 3907 → 1:05:07",

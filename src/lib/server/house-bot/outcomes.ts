@@ -71,6 +71,8 @@ export type EngineAlerts = {
   security(message: EngineAlertMessage): Promise<void>;
   /** A bot was auto-paused or removed by the engine. */
   botStopped(bot: StoredHouseBot, change: { to: "AUTO_PAUSED" | "REMOVED"; cause: PauseReason; cancelled: number }): Promise<void>;
+  /** The engine switched house bots OFF for a money reason (GLOBAL_LOSS_STOP) — never a defect (C4-SPEC ruling 111). */
+  switchedOff(change: { cause: OffCause; cancelled: number }): Promise<void>;
 };
 
 export type EngineAlertMessage = { code: string; botId?: string | null; intentId?: string | null; marketId?: string | null; detail?: Record<string, unknown> };
@@ -87,14 +89,15 @@ export type AppliedOutcome =
 
 /* ═══ Engine audits (04 A19 allowlist) ═════════════════════════════════════════════════════════════ */
 
-async function engineAudit(action: HouseAuditAction, target: { type: "HouseBot"; id: string } | { type: "HouseBotControl"; id: string }, payload: Record<string, unknown>): Promise<string | null> {
+export async function engineAudit(action: HouseAuditAction, target: { type: "HouseBot"; id: string } | { type: "HouseBotControl"; id: string }, payload: Record<string, unknown>): Promise<string | null> {
   if (!isAllowedHouseAuditPayload(payload)) throw new Error(`house engine audit ${action}: payload keys outside the R7 allowlist`);
   const entry = (await audit({ category: HOUSE_AUDIT[action], action, actorId: SYSTEM_HOUSE_BOT_ACTOR, targetType: target.type, targetId: target.id, payload })) as unknown;
   const id = entry && typeof entry === "object" && typeof (entry as { id?: unknown }).id === "string" ? (entry as { id: string }).id : null;
   return id;
 }
 
-async function alertOnce(key: string | EatSuffixedKey, alerts: EngineAlerts, message: EngineAlertMessage): Promise<boolean> {
+/** Claim the key, then send; a failed send gives the claim back (C3 review LI-8). True when this call sent it. */
+export async function alertOnce(key: string | EatSuffixedKey, alerts: EngineAlerts, message: EngineAlertMessage): Promise<boolean> {
   const claim = typeof key === "string"
     ? { claimed: await houseBotAlertOnceStore.claim(key), key }
     : await houseBotAlertOnceStore.claimWithEatSuffix(key.prefix, key.unit);
@@ -118,7 +121,10 @@ async function alertOnce(key: string | EatSuffixedKey, alerts: EngineAlerts, mes
 export async function stopBot(
   botId: string,
   /** `field` names the rules field for RULES_INVALID and RULES_OUTDATED (`HouseBot.pauseDetail`, C4-SPEC ruling 65). */
-  change: { to: "AUTO_PAUSED"; cause: PauseReason; field?: string | null } | { to: "REMOVED"; cause: "ACCOUNT_CLOSED" },
+  change:
+    /** `auditAction` names a realised-loss stop `house_bot.loss_stop` (A19; C4-SPEC ruling 82). */
+    | { to: "AUTO_PAUSED"; cause: PauseReason; field?: string | null; auditAction?: "house_bot.loss_stop" }
+    | { to: "REMOVED"; cause: "ACCOUNT_CLOSED" },
   alerts: EngineAlerts,
 ): Promise<boolean> {
   const bot = await houseBotStore.get(botId);
@@ -135,7 +141,8 @@ export async function stopBot(
     houseBotId: bot.id, userId: bot.userId, marketId: null, kind: change.to === "REMOVED" ? "REMOVED" : "AUTO_PAUSED",
     fromStatus: bot.status, toStatus: change.to, reason: null, actorId: null, payload: { cause: change.cause, cancelled: cancelled.length },
   });
-  const auditId = await engineAudit(change.to === "REMOVED" ? "house_bot.removed" : "house_bot.auto_paused", { type: "HouseBot", id: bot.id }, {
+  const action = change.to === "REMOVED" ? "house_bot.removed" : (change.auditAction ?? "house_bot.auto_paused");
+  const auditId = await engineAudit(action, { type: "HouseBot", id: bot.id }, {
     botId: bot.id, holderUserId: bot.userId, from: bot.status, to: change.to, cause: change.cause, counts: { cancelled: cancelled.length },
   });
   if (auditId) await houseBotEventStore.setAuditId(event.id, auditId);
@@ -176,8 +183,11 @@ async function stopForCause(intent: StoredHouseBotIntent, me: string, cause: Pau
   return { kind: "botStopped", to: cause === "ACCOUNT_CLOSED" ? "REMOVED" : "AUTO_PAUSED", cause };
 }
 
-/** Master OFF from the engine (ENGINE_FAULT or ENGINE_ERRORS). Conditional: two workers faulting at once write one. */
-export async function engineSwitchOff(cause: Extract<OffCause, "ENGINE_FAULT" | "ENGINE_ERRORS">, alerts: EngineAlerts, message: EngineAlertMessage): Promise<boolean> {
+/**
+ * Master OFF from the engine: ENGINE_FAULT or ENGINE_ERRORS (a defect: `alerts.security`) or GLOBAL_LOSS_STOP (money:
+ * `house_bot.loss_stop` and `alerts.switchedOff`, C4-SPEC rulings 82, 111). Conditional: two writers produce one OFF.
+ */
+export async function engineSwitchOff(cause: Extract<OffCause, "ENGINE_FAULT" | "ENGINE_ERRORS" | "GLOBAL_LOSS_STOP">, alerts: EngineAlerts, message: EngineAlertMessage): Promise<boolean> {
   const off = await houseBotControlStore.switchOff({ cause, byId: null, reason: null });
   if (!off) return false;
   const cancelled = await houseBotIntentStore.cancelLive({ all: true }, "MASTER_OFF");
@@ -185,11 +195,13 @@ export async function engineSwitchOff(cause: Extract<OffCause, "ENGINE_FAULT" | 
     houseBotId: null, userId: null, marketId: null, kind: "SWITCH_OFF", fromStatus: "ON", toStatus: "OFF", reason: null, actorId: null,
     payload: { cause, cancelled: cancelled.length },
   });
-  const auditId = await engineAudit(cause === "ENGINE_FAULT" ? "house_bot.engine_fault" : "house_bot.switch_off", { type: "HouseBotControl", id: off.id }, {
+  const action = cause === "ENGINE_FAULT" ? "house_bot.engine_fault" : cause === "GLOBAL_LOSS_STOP" ? "house_bot.loss_stop" : "house_bot.switch_off";
+  const auditId = await engineAudit(action, { type: "HouseBotControl", id: off.id }, {
     from: "ON", to: "OFF", cause, counts: { cancelled: cancelled.length },
   });
   if (auditId) await houseBotEventStore.setAuditId(event.id, auditId);
-  await alerts.security(message);
+  if (cause === "GLOBAL_LOSS_STOP") await alerts.switchedOff({ cause, cancelled: cancelled.length });
+  else await alerts.security(message);
   return true;
 }
 

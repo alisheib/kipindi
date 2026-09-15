@@ -465,8 +465,17 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
       && both("interruptStale", /PRESS_REFUSAL_INTERRUPTED/, /PRESS_REFUSAL_INTERRUPTED/));
   ok("6.sealed.sql · listAuditRepair measures age from updatedAt, on both stores",
     both("listAuditRepair", /"updatedAt" < now\(\)/, /p\.updatedAt/) && !/"createdAt" < now\(\)/.test(objectMethod(priPress, "listAuditRepair")));
+  // C4-SPEC ruling 97 moved the conflict clause into `anchorConflictSql(row.kind)` (only the row's own anchor index is
+  // "already decided"); the defect this pins is unchanged — the share lock is taken BEFORE the insert.
   ok("6.sealed.sql · insertTargetedIfActive holds the target FOR SHARE before inserting",
-    /FOR SHARE[\s\S]*ON CONFLICT DO NOTHING/.test(objectMethod(region(houseDalSrc, "const prismaHouseBotIntents:"), "insertTargetedIfActive")));
+    /FOR SHARE[\s\S]*insertSql\("HouseBotIntent"[\s\S]*anchorConflictSql\(row\.kind\)/.test(objectMethod(region(houseDalSrc, "const prismaHouseBotIntents:"), "insertTargetedIfActive")));
+  {
+    const conflict = houseDalSrc.slice(houseDalSrc.indexOf("function anchorConflictSql("), houseDalSrc.indexOf("function anchorConflictSql(") + 900);
+    ok("6.sealed.sql · ruling 97 · the engine insert swallows only its own anchor index (partial-index inference, never a bare ON CONFLICT DO NOTHING)",
+      conflict.includes(`ON CONFLICT ("anchorKey") WHERE "kind" = 'COUNTER' DO NOTHING`)
+        && conflict.includes(`ON CONFLICT ("kind", "anchorKey") WHERE "kind" IN ('FILL','OPENER') AND "status" <> 'CANCELLED' DO NOTHING`)
+        && !/ON CONFLICT DO NOTHING/.test(objectMethod(region(houseDalSrc, "const prismaHouseBotIntents:"), "insertIgnoringConflict")));
+  }
   {
     const insert = objectMethod(region(houseDalSrc, "const prismaHouseBotTargets:"), "insert");
     ok("6.sealed.sql · targetStore.insert stamps createdAt and effectiveFrom from one database now(), by hand",

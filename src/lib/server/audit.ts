@@ -666,6 +666,59 @@ export async function getAuditByActionsDurable(
 }
 
 /**
+ * ⭐ THE NAMED ACTIONS ON A SET OF TARGETS SINCE A TIME, NEWEST FIRST — the house oversight read (04 N1 §4.5,
+ * C4-SPEC ruling 79): "was a market holding a staff-chosen stake decided, voided or reopened, and by whom?"
+ *
+ * One indexed read over `@@index([targetType, targetId])`. Same durable contract as the readers above: without a
+ * database the ring is all there is, and `truncated` says when the limit bit.
+ */
+export async function getAuditForTargetsDurable(input: {
+  targetType: string;
+  targetIds: readonly string[];
+  actions: readonly string[];
+  sinceIso: string;
+  limit?: number;
+}): Promise<{ entries: AuditEntry[]; truncated: boolean }> {
+  const limit = input.limit ?? 500;
+  const ids = [...new Set(input.targetIds)];
+  const actions = [...new Set(input.actions)];
+  if (ids.length === 0 || actions.length === 0) return { entries: [], truncated: false };
+  const since = new Date(input.sinceIso);
+  const db = prisma();
+  if (!db) {
+    const all = [...ring]
+      .filter((e) => e.targetType === input.targetType && e.targetId != null && ids.includes(e.targetId) && actions.includes(e.action) && Date.parse(e.createdAt) >= since.getTime())
+      .reverse();
+    return { entries: all.slice(0, limit), truncated: all.length > limit };
+  }
+  const rows = await db.auditLog.findMany({
+    where: { targetType: input.targetType, targetId: { in: ids }, action: { in: actions }, createdAt: { gte: since } },
+    orderBy: { createdAt: "desc" },
+    take: limit + 1,
+    select: {
+      id: true, category: true, action: true, actorId: true, targetType: true,
+      targetId: true, payload: true, ip: true, userAgent: true, createdAt: true,
+      prevHash: true, entryHash: true,
+    },
+  });
+  const entries: AuditEntry[] = rows.slice(0, limit).map((r) => ({
+    id: r.id,
+    category: r.category as AuditCategory,
+    action: r.action,
+    actorId: r.actorId,
+    targetType: r.targetType,
+    targetId: r.targetId,
+    payload: (r.payload ?? undefined) as Record<string, unknown> | undefined,
+    ip: r.ip,
+    userAgent: r.userAgent,
+    createdAt: r.createdAt.toISOString(),
+    prevHash: r.prevHash,
+    entryHash: r.entryHash,
+  }));
+  return { entries, truncated: rows.length > limit };
+}
+
+/**
  * ⭐ EVERY AUDITED EVENT AN ACTOR PERFORMED, NEWEST FIRST — the durable twin of
  * `getAuditForActor`, and what the player's own activity feed reads.
  *

@@ -557,7 +557,8 @@ export async function voidHouseConsent(input: { userId: string; cause: ConsentVo
     for (const target of ended) {
       await houseBotEventStore.append({
         houseBotId: bot.id, userId, marketId: target.marketId, kind: "TARGET_ENDED", fromStatus: "ACTIVE", toStatus: "ENDED",
-        reason: null, actorId: input.actorId, payload: { targetId: target.id, cause: "CONSENT_VOID" },
+        // N2 §2's event table names the key `endCause` (C4-SPEC ruling 76).
+        reason: null, actorId: input.actorId, payload: { targetId: target.id, endCause: "CONSENT_VOID" },
       }, t);
     }
     let cancelled: string[] = [];

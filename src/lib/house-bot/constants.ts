@@ -615,6 +615,8 @@ export const OFFICER_EMAIL_WINDOW_DAYS = 30;
 /** AlertOnce throttle rows are operational only (P3); `retention.ts` re-exports this in commit 4. */
 export const HOUSEBOT_ALERT_ONCE_RETENTION_DAYS = 30;
 export const HOUSEBOT_ALERT_ONCE_PURGE_BATCH = 5_000;
+/** One nightly run purges at most this many batches; the rest waits for the next night (C4-SPEC ruling 86). */
+export const HOUSEBOT_ALERT_ONCE_PURGE_MAX_BATCHES = 20;
 
 /** Bots, events, intents, targets and presses: never deleted (04 A20). */
 export const HOUSEBOT_RECORD_RETENTION_YEARS = 7;
@@ -678,8 +680,11 @@ export const ALERT_KEY = {
   nameRisk: (botId: string, nameHash: string) => `bot:${botId}:NAME_RISK:${nameHash}`,
   /** A holder cause cleared (04 C13). */
   cleared: (botId: string, cause: string, clearedAtIso: string) => `bot:${botId}:CLEARED:${cause}:${clearedAtIso}`,
-  /** Hourly summaries, built from PLACED intents (04 C13). */
-  summary: (audience: "admins" | "holder", botId: string | "all") => suffixed(`summary:${audience}:${botId}`, "hour"),
+  /**
+   * Hourly summaries, built from PLACED intents (04 C13). The suffix names the hour SUMMARISED — the one just ended
+   * (C4-SPEC ruling 80) — not the hour the summary was sent in.
+   */
+  summary: (audience: "admins" | "holder", botId: string | "all") => suffixed(`summary:${audience}:${botId}`, "previousHour"),
   productDenied: (value: string) => suffixed(`product-denied:${value}`, "day"),
   rulesFuture: (botId: string | "global", version: number) => `rules-future:${botId}:${version}`,
   /** Live stake bounds moved (04 F5): the bot can no longer bet, or a stake is clamped. */

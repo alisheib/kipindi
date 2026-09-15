@@ -25,7 +25,7 @@ import { aiPollStore } from "./ai-poll-generation";
 import { pruneSiteVisits, SITE_VISIT_RETENTION_DAYS } from "./site-visits";
 import { expireStaleAgentApplications, purgeAgedAgentDocuments, AGENT_REFEREE_DOC_HOLD_DAYS, AGENT_REJECTED_DOC_HOLD_DAYS, AGENT_APPROVED_DOC_HOLD_YEARS } from "./agent-application-service";
 import { houseBotAlertOnceStore } from "./house-bot-dal";
-import { HOUSEBOT_ALERT_ONCE_RETENTION_DAYS } from "@/lib/house-bot/constants";
+import { HOUSEBOT_ALERT_ONCE_PURGE_BATCH, HOUSEBOT_ALERT_ONCE_PURGE_MAX_BATCHES, HOUSEBOT_ALERT_ONCE_RETENTION_DAYS } from "@/lib/house-bot/constants";
 
 /** House-bot alert throttles are operational only: 30 days from creation (04 P3, A20). One constant, re-exported. */
 export { HOUSEBOT_ALERT_ONCE_RETENTION_DAYS };
@@ -204,10 +204,15 @@ export async function runRetentionPass(now = Date.now()): Promise<RetentionResul
       return 0;
     });
 
-  // 04 P3 · house-bot alert throttles. Best-effort like the classes above; one batch a night (the DAL bounds it).
+  // 04 P3 · house-bot alert throttles. Best-effort like the classes above. A20 purges "in batches of 5,000": loop
+  // until a batch comes back short, at most HOUSEBOT_ALERT_ONCE_PURGE_MAX_BATCHES a night (C4-SPEC ruling 86).
   let houseBotAlertOncePurged = 0;
   try {
-    houseBotAlertOncePurged = await houseBotAlertOnceStore.purgeBatch(HOUSEBOT_ALERT_ONCE_RETENTION_DAYS);
+    for (let batch = 0; batch < HOUSEBOT_ALERT_ONCE_PURGE_MAX_BATCHES; batch++) {
+      const n = await houseBotAlertOnceStore.purgeBatch(HOUSEBOT_ALERT_ONCE_RETENTION_DAYS, HOUSEBOT_ALERT_ONCE_PURGE_BATCH);
+      houseBotAlertOncePurged += n;
+      if (n < HOUSEBOT_ALERT_ONCE_PURGE_BATCH) break;
+    }
   } catch (err) {
     console.error("[retention] house-bot alert throttle purge failed:", (err as Error)?.message ?? err);
   }

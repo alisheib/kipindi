@@ -18,7 +18,7 @@
  * called, so H0 compares the figures the row carries; 0 rows written means the row is no longer this worker's.
  */
 import { FIRE_HEARTBEAT_MS, HOUSE_PRODUCTS, REQUEUE_BACKOFF_SEC, capEngineCode, houseIntentKey, type EngineCode } from "@/lib/house-bot/constants";
-import { parseHouseBotRules, type HouseBotRulesV1 } from "@/lib/house-bot/rules";
+import { HOUSE_LIMITS_SCHEMA_VERSION, parseHouseBotRules, type HouseBotRulesV1 } from "@/lib/house-bot/rules";
 import { currentLockTx, inLock } from "../locks";
 import { inAdmission } from "../admission";
 import { positionStore } from "../market-dal";
@@ -108,7 +108,10 @@ async function fire(row: StoredHouseBotIntent, deps: FireDeps): Promise<FireResu
   let intent = row;
   try {
     // 1 · master · 2 · maintenance (F7)
-    if (!(await readControl()).enabled) return apply(intent, deps, refusal("house_disabled"));
+    const control = await readControl();
+    if (!control.enabled) return apply(intent, deps, refusal("house_disabled"));
+    // F4 · limits saved by a newer build: nothing is placed, nothing is paused — back to PENDING (ruling 100).
+    if (control.limitsSchemaVersion > HOUSE_LIMITS_SCHEMA_VERSION) return requeueQuietly(intent, deps);
     if (await maintenanceOn()) return apply(intent, deps, refusal("maintenance"));
 
     // 3 · bot · 4 · holder

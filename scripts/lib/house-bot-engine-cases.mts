@@ -5,7 +5,7 @@
  * Sections follow the build order in `plans/house-bots/C4-SPEC.md` §5:
  *   §1 the lock exit · §2 the planner lease · §3 attribution · §4 the market view · §5 Enter now decision ·
  *   §6 the outcome table · §7 decide · §8 source pins · §9 feed copy · §10 schema gate · §11 engine process · §12 market view · §13 applyOutcome · §14 the A15 price read ·
- *   §15 the Enter now loader, the opener draw and marketHeld · §16 fire and the poller.
+ *   §15 the Enter now loader, the opener draw and marketHeld · §16 fire and the poller · §17 the planner.
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { readFileSync } from "node:fs";
@@ -340,6 +340,21 @@ await guard("7", () => {
   ok("7.28 · OPENER: both pools 0 → the drawn side", opener.row && opener.row.kind === "OPENER" && opener.row.side === "NO", j(opener.row));
   ok("7.29 · OPENER never plans once a pool has money", DE.planOpener({ ...fillIn(), openerSide: "NO" }, { randomInt: minRand }).row === null);
   ok("7.30 · A11: OPENER only when bettableFrom is inside scope", DE.planOpener({ ...openIn({ globalScopeFrom: at(0) }), openerSide: "NO" }, { randomInt: minRand }).row === null);
+
+  // Ruling 92 · a NULL scope start is OUT of scope, never "no bound". Each has a control that decides with the scope set.
+  ok("7.31 · ruling 92 · never switched on (global scopeFrom NULL) → no COUNTER row; CONTROL: set → a row",
+    DE.decideCounter(ctrIn({ globalScopeFrom: null }), { randomInt: minRand }).row === null && DE.decideCounter(ctrIn(), { randomInt: minRand }).row != null);
+  ok("7.32 · …a bot never Started (its scopeFrom NULL) is out of scope → no row",
+    DE.decideCounter(ctrIn({ bots: [botOf({ scopeFrom: null })] }), { randomInt: minRand }).row === null);
+  ok("7.33 · …FILL with the bot's scopeFrom NULL → no row; CONTROL: set → a row",
+    DE.planFill(fillIn({ bot: botOf({ scopeFrom: null }) }), { randomInt: minRand }).row === null && DE.planFill(fillIn(), { randomInt: minRand }).row != null);
+  ok("7.34 · …OPENER with global scopeFrom NULL → no row", DE.planOpener({ ...openIn({ globalScopeFrom: null }), openerSide: "NO" }, { randomInt: minRand }).row === null);
+  const tdStake = DE.targetDueAt({ placedAtMs: 0, exitCloseAtMs: 300_000, timingFrom: "STAKE", delaySec: 10 });
+  const tdExit = DE.targetDueAt({ placedAtMs: 0, exitCloseAtMs: 300_000, timingFrom: "EXIT_CLOSE", delaySec: 10 });
+  ok("7.35 · ruling 108 · one due-time formula: STAKE 10 s on a 5-min exit → requested 0:10, held to 5:07; EXIT_CLOSE 10 s → 5:10",
+    tdStake.requestedMs === 10_000 && tdStake.dueMs === 307_000 && tdExit.requestedMs === 310_000 && tdExit.dueMs === 310_000, j({ tdStake, tdExit }));
+  const tgtTwo = DE.decideCounter(ctrIn({ target: { ...tgt, timingFrom: "EXIT_CLOSE" } }), { randomInt: minRand });
+  ok("7.36 · …and decideCounter uses it: a targeted EXIT_CLOSE 10 s reaction is due at the exit + 10 s", tgtTwo.row?.dueAt === at(-1 + 310), j(tgtTwo.row));
 });
 
 /* ═══ §8 · source pins (memory child only) ═══════════════════════════════════════════════════════ */
@@ -1870,6 +1885,498 @@ await guard("16", async () => {
       await S.houseBotIntentStore.cancelPending(x.id, "BOT_NOT_ACTIVE");
       await S.houseBotIntentStore.finish(x.id, (await row(x.id)).claimedBy ?? ME, { status: "CANCELLED", reasonCode: "BOT_NOT_ACTIVE" });
     }
+  }
+});
+
+/* ═══ §17 · the planner (N1 §4.3 pass order, N1 §4.5, N2 §4 step 9, A16, F4, F5, PLAN §3; rulings 71–100, 111–112) ═══ */
+section("§17 · plannerPass and its duties");
+const PL: Any = await import("../../src/lib/server/house-bot/planner.ts");
+const CAPS: Any = await import("../../src/lib/server/house-bot/cap-precheck.ts");
+const PA: Any = await import("../../src/lib/server/house-bot/press-audit.ts");
+const OV: Any = await import("../../src/lib/server/house-bot/oversight.ts");
+const AUD: Any = await import("../../src/lib/server/audit.ts");
+const DSG: Any = await import("../../src/lib/server/house-bot/designation.ts");
+const HB_BOOK: Any = await import("../../src/lib/server/house-bot/book.ts");
+await guard("17", async () => {
+  const w = await loadWorld();
+  if (!(await w.db.user.findById(WORLD_OFFICER))) await w.user({ id: WORLD_OFFICER, role: "ADMIN" });
+  await w.limits();
+  await w.switchOn();
+  await w.ageHouseMinute();
+  const S = HDAL;
+  // Earlier sections leave live rows; nothing in §17 may act on them by accident.
+  await S.houseBotIntentStore.cancelLive({ all: true }, "MASTER_OFF");
+  const parseCtx = await RC.loadParseContext();
+  const dbNow = async (): Promise<number> => (await S.houseBotRuntimeStore.dbClock()).nowMs;
+  const msg = (e: unknown) => String((e as Error)?.message ?? e);
+  const planRules = (o: Any = {}) => {
+    const r: Any = R.DEFAULT_RULES_V1({ stakeBounds: { minTzs: 1_000, maxTzs: 10_000_000 } });
+    r.scope.products.polls = true;
+    r.scope.categories = ["macro"];
+    r.modes.polls = { counter: true, fill: true, opener: true };
+    r.shaping.roundToTzs = 1_000;
+    r.shaping.jitterPct = 0;
+    r.targeting = { enabled: true };
+    return merge(r, o);
+  };
+  /** An ACTIVE bot with parseable planner rules, a min gap F5 accepts, and its scope started now. */
+  const botWith = async (caps: Any = {}, rules: Any = planRules()) => {
+    const b = await w.bot({ caps: { freqMinGapSec: 20, ...caps } });
+    const cur: Any = await S.houseBotStore.get(b.botId);
+    const saved = await S.houseBotStore.saveRules(b.botId, cur.rulesVersion, { rules });
+    if (!saved.ok) throw new Error("§17 fixture: saveRules CAS failed");
+    await S.houseBotRuntimeStore.setScopeFrom(K.RUNTIME_KEY.bot(b.botId));
+    return b;
+  };
+  const parsedOf = async (botId: string) => {
+    const bot: Any = await S.houseBotStore.get(botId);
+    const p: Any = R.parseHouseBotRules(bot.rules, parseCtx);
+    if (!p.ok) throw new Error(`§17 fixture: rules do not parse — ${p.code} ${p.field ?? ""}`);
+    return { bot, rules: p.rules };
+  };
+  const recorder = () => {
+    const calls: Any[] = [];
+    const alerts = {
+      placed: async (i: Any) => { calls.push({ fn: "placed", id: i.id }); },
+      once: async (key: string, m: Any) => { calls.push({ fn: "once", key, code: m.code, m }); },
+      security: async (m: Any) => { calls.push({ fn: "security", code: m.code }); },
+      botStopped: async (bot: Any, change: Any) => { calls.push({ fn: "botStopped", botId: bot.id, ...change }); },
+      switchedOff: async (change: Any) => { calls.push({ fn: "switchedOff", ...change }); },
+    };
+    return { alerts, calls, count: (fn: string) => calls.filter((c) => c.fn === fn).length, keyed: (prefix: string) => calls.filter((c) => c.fn === "once" && String(c.key).startsWith(prefix)) };
+  };
+  // Every duty call is caught and asserted (E25's lesson): a throw handed to the guard would skip every later case.
+  const safe = async (fn: () => Promise<Any>): Promise<Any> => { try { return await fn(); } catch (e) { return { threw: msg(e) }; } };
+  const row = (id: string) => S.houseBotIntentStore.get(id) as Promise<Any>;
+  const is = async (id: string, status: string, code: string | null) => { const r = await row(id); return !!r && r.status === status && (code == null || r.reasonCode === code); };
+  const pollAt = (o: { closeInMs?: number; title?: string } = {}): Promise<Any> => w.svc.createMarket({
+    titleEn: o.title ?? "House planner poll", titleSw: "Soko la mpangaji", category: "macro", sourceUrl: "https://bot.go.tz",
+    resolutionCriterion: "Resolves at the official date.", resolutionAt: w.iso(7 * 864e5), proposedBy: WORLD_OFFICER,
+    ...(o.closeInMs != null ? { selectionClosedAt: w.iso(o.closeInMs) } : {}),
+    rateOverrides: { freeExitGraceMinutes: 0, paidExitWindowMinutes: 0 },
+  });
+  /** A player's YES stake on the market, aged past its exit close + LOCK_MARGIN_MS (grace 0). */
+  const lockYes = async (marketId: string, yes = 10_000) => {
+    const p = await w.user({ balance: 100_000 });
+    const r = await w.svc.buyPosition(p, { marketId, side: "YES", stake: yes, idempotencyKey: crypto.randomUUID() });
+    if (!r.ok) throw new Error(`§17 fixture: a player bet was refused — ${j(r)}`);
+    for (const pos of await w.positionsOf(marketId)) await w.backdate(pos.id, 10_000);
+    return p as string;
+  };
+  /** Market stamps whose own flows live elsewhere (close, void, reopen, a result check, a resolve claim). */
+  const stamp = async (marketId: string, patch: { status?: string; reopened?: boolean; resolveClaimed?: boolean; sentinelClosed?: boolean }) => {
+    if (w.onPostgres) {
+      const P = w.prisma();
+      if (patch.status) await P.$executeRawUnsafe(`UPDATE "PredictionMarket" SET "status" = '${patch.status}' WHERE "id" = $1`, marketId);
+      if (patch.reopened) await P.$executeRawUnsafe(`UPDATE "PredictionMarket" SET "reopenedAt" = (clock_timestamp() AT TIME ZONE 'UTC') WHERE "id" = $1`, marketId);
+      if (patch.resolveClaimed) await P.$executeRawUnsafe(`UPDATE "PredictionMarket" SET "resolveClaimedAt" = (clock_timestamp() AT TIME ZONE 'UTC') WHERE "id" = $1`, marketId);
+      if (patch.sentinelClosed) await P.$executeRawUnsafe(`UPDATE "PredictionMarket" SET "sentinelClosedAt" = (clock_timestamp() AT TIME ZONE 'UTC') WHERE "id" = $1`, marketId);
+    } else {
+      const m = await w.mdal.marketStore.get(marketId);
+      const now = new Date().toISOString();
+      await w.mdal.marketStore.set({ ...m, ...(patch.status ? { status: patch.status } : {}), ...(patch.reopened ? { reopenedAt: now } : {}),
+        ...(patch.resolveClaimed ? { resolveClaimedAt: now } : {}), ...(patch.sentinelClosed ? { sentinelClosedAt: now } : {}) });
+    }
+  };
+  const rowOf = (b: Any, marketId: string, o: Any = {}) => ({
+    id: S.newHouseId("intent"), houseBotId: b.botId, botUserId: b.userId, kind: "FILL", marketId, productLine: "MARKET", anchorKey: marketId,
+    triggerPositionId: null, triggerUserId: null, targetId: null, requestedById: null, entryCondition: null, side: "NO", stakeTzs: 2_000,
+    dueAt: w.iso(-5_000), deadlineAt: w.iso(3_600_000), staleAt: w.iso(600_000), status: "PENDING", reasonCode: null, why: null,
+    decision: {}, attempts: 0, transientAttempts: 0, nextAttemptAt: null, claimedBy: null, claimedUntil: null, positionId: null, finishedAt: null, alertedAt: null, ...o,
+  });
+  const insert = (r: Any) => safe(() => S.houseBotIntentStore.insert(r));
+  const ctxOf = () => ({ state: { ...EN2.engineState(), planner: { oversightAtMs: null, hourlyKey: null, scan: {} } }, instanceId: `hb-test-planner-${process.pid}` });
+  const auditTotal = async (action: string) => (await AUD.getAuditByActionsDurable([action], { limit: 5_000 })).total as number;
+  const target = (b: Any, marketId: string, o: Any = {}) => safe(() => S.targetStore.insert({
+    id: S.newHouseId("target"), houseBotId: b.botId, marketId, delayMinSec: 10, delayMaxSec: 10, timingFrom: "STAKE", reactTo: "EVERY",
+    createdById: WORLD_OFFICER, snapshot: { titleEn: "House planner poll", category: "macro" }, ...o,
+  }));
+
+  /* ── 17.1 the deadline pass also ends abandoned claims (ruling 72) ── */
+  {
+    const b = await botWith();
+    const pend = await insert(rowOf(b, (await pollAt()).id, { deadlineAt: w.iso(-1_000) }));
+    const dead = await insert(rowOf(b, (await pollAt()).id, { status: "CLAIMED", claimedBy: "hb-gone", claimedUntil: w.iso(-1_000), attempts: 1, deadlineAt: w.iso(-500) }));
+    const live = await insert(rowOf(b, (await pollAt()).id, { status: "CLAIMED", claimedBy: "hb-live", claimedUntil: w.iso(120_000), attempts: 1, deadlineAt: w.iso(-500) }));
+    const expired = await safe(() => S.houseBotIntentStore.expirePastDeadline());
+    ok("17.1 · fixture · three rows inserted", !pend.threw && !dead.threw && !live.threw, j({ pend: pend.threw, dead: dead.threw, live: live.threw }));
+    ok("17.2 · PENDING past its deadline → EXPIRED(CUTOFF)", await is(pend.id, "EXPIRED", "CUTOFF"), j(expired));
+    ok("17.3 · ENG-16 · a CLAIMED row past its deadline whose claim has expired → EXPIRED(CUTOFF)", await is(dead.id, "EXPIRED", "CUTOFF"), j(await row(dead.id)));
+    ok("17.4 · …while a live claim past its deadline is never expired (fire's own deadline check owns it)", await is(live.id, "CLAIMED", null), j(await row(live.id)));
+    await S.houseBotIntentStore.finish(live.id, "hb-live", { status: "CANCELLED", reasonCode: "BOT_NOT_ACTIVE" });
+  }
+
+  /* ── 17.5 STALE before POISON; one poison audit per pass (A10, A19; ruling 73) ── */
+  {
+    const b = await botWith();
+    const staleAndSpent = await insert(rowOf(b, (await pollAt()).id, { status: "CLAIMED", claimedBy: "hb-gone", claimedUntil: w.iso(-2_000), attempts: 3, staleAt: w.iso(-1_000) }));
+    const poisonA = await insert(rowOf(b, (await pollAt()).id, { status: "CLAIMED", claimedBy: "hb-gone", claimedUntil: w.iso(-2_000), attempts: 3 }));
+    const poisonB = await insert(rowOf(b, (await pollAt()).id, { status: "CLAIMED", claimedBy: "hb-gone", claimedUntil: w.iso(-2_000), attempts: 3 }));
+    const before = await auditTotal("house_bot.poison");
+    const rec = recorder();
+    const pass = await safe(() => PL.plannerPass(ctxOf(), { alerts: rec.alerts, liveBounds: async () => ({ minStake: 1_000, maxStake: 10_000_000, refillPerMin: 10 }) }));
+    const after = await auditTotal("house_bot.poison");
+    ok("17.5 · a spent claim that is also past staleAt → EXPIRED(STALE), not POISON (N1: STALE runs first)", await is(staleAndSpent.id, "EXPIRED", "STALE"), j(await row(staleAndSpent.id)));
+    ok("17.6 · a spent claim still before staleAt → FAILED(POISON)", (await is(poisonA.id, "FAILED", "POISON")) && (await is(poisonB.id, "FAILED", "POISON")), j(pass?.duties));
+    ok("17.7 · one poison alert per intent (poison:<id>)", rec.keyed(`poison:${poisonA.id}`).length === 1 && rec.keyed(`poison:${poisonB.id}`).length === 1, j(rec.calls.filter((c) => c.fn === "once").map((c) => c.key)));
+    ok("17.8 · A19 · ONE house_bot.poison audit for the pass, not one per intent", after - before === 1, `before ${before} · after ${after}`);
+    ok("17.9 · ruling 98 · the money-safety duties ran, so the pass beat", pass?.beat === true && (await S.houseBotRuntimeStore.get(K.RUNTIME_KEY.plannerBeat)) != null, j(pass?.duties));
+    const order = Object.keys(pass?.duties ?? {});
+    const want = ["deadline", "stale", "poison", "press", "pressAudit", "alertRepair", "endTargets", "pendingLifecycle", "rulesOutcomes", "revalidateLive", "lossStops", "walletMissing", "fillOpener"];
+    ok("17.10 · ruling 71 · the duties ran in the ruled order", j(order.slice(0, want.length)) === j(want), j(order));
+  }
+
+  /* ── 17.11 press DONE and the A8 alert repair (N1 §4.5) ── */
+  {
+    const b = await botWith();
+    const m = await pollAt();
+    const man = await insert(rowOf(b, m.id, { kind: "MANUAL", entryCondition: "THIN", requestedById: WORLD_OFFICER, anchorKey: K.manualAnchorKey(WORLD_OFFICER, crypto.randomUUID()), staleAt: w.iso(15_000) }));
+    const press = await S.pressStore.insertChecking({ id: S.newHouseId("press"), actorId: WORLD_OFFICER, submitId: crypto.randomUUID(), purpose: "ENTER_NOW", houseBotId: b.botId, marketId: m.id, targetId: null, intentId: null, reason: "Planner press case" });
+    const queued = press.ok ? await S.houseTransaction((tx: Any) => S.pressStore.queue(press.row.id, man.id, tx)) : null;
+    await S.houseBotIntentStore.cancelPending(man.id, "CANCELLED_BY_ADMIN");
+    const placed = await insert(rowOf(b, (await pollAt()).id, { status: "PLACED", positionId: `pos_hb_placed_${process.pid}_${Date.now()}`, finishedAt: w.iso(-60_000), attempts: 1 }));
+    const rec = recorder();
+    const p1 = await safe(() => PL.plannerPass(ctxOf(), { alerts: rec.alerts, liveBounds: async () => ({ minStake: 1_000, maxStake: 10_000_000, refillPerMin: 10 }) }));
+    const pr: Any = press.ok ? await S.pressStore.get(press.row.id) : null;
+    ok("17.11 · a QUEUED press whose intent is terminal → DONE in the press pass", queued?.state === "QUEUED" && pr?.state === "DONE", j({ p: pr?.state, duties: p1?.duties?.press }));
+    ok("17.12 · A8 · a PLACED row whose alert never went out (finished 60 s ago) is alerted once by the repair", !placed.threw && rec.calls.filter((c) => c.fn === "placed" && c.id === placed.id).length === 1 && (await row(placed.id))?.alertedAt != null, j(placed.threw ?? rec.calls.filter((c) => c.fn === "placed")));
+    const rec2 = recorder();
+    await safe(() => PL.plannerPass(ctxOf(), { alerts: rec2.alerts, liveBounds: async () => ({ minStake: 1_000, maxStake: 10_000_000, refillPerMin: 10 }) }));
+    ok("17.13 · …and never twice (the alertedAt claim)", rec2.calls.filter((c) => c.fn === "placed" && c.id === placed.id).length === 0);
+  }
+
+  /* ── 17.14 the press audit builder (ruling 74; the 60 s lease repair itself is NOT MEASURED here — no backdating of presses) ── */
+  {
+    const press = (o: Any) => ({ id: "hbp_x", actorId: WORLD_OFFICER, submitId: "s", purpose: "ENTER_NOW", houseBotId: "hb_x", marketId: "mkt_x", targetId: null, intentId: "hbi_x", state: "QUEUED", code: null, reason: "Because the pool is thin", auditId: null, auditClaimUntil: null, createdAt: w.iso(), updatedAt: w.iso(), ...o });
+    const intent = { id: "hbi_x", marketId: "mkt_x", side: "NO", stakeTzs: 5_000, entryCondition: "THIN", status: "PLACED" };
+    const q = PA.pressAuditEntry(press({}), { intent, events: [], holderUserId: "usr_h" });
+    ok("17.14 · an ENTER_NOW press QUEUED → house_bot.enter_now with the intent's side, stake, condition and outcome",
+      q?.action === "house_bot.enter_now" && q.payload.stakeTzs === 5_000 && q.payload.outcome === "PLACED" && q.payload.holderUserId === "usr_h" && K.isAllowedHouseAuditPayload(q.payload), j(q));
+    ok("17.15 · a REFUSED(OWNER_POSITION) press → house_bot.enter_now_refused; REFUSED(STAKE_BELOW_MIN) → no audit",
+      PA.pressAuditEntry(press({ state: "REFUSED", code: "OWNER_POSITION" }), { intent: null, events: [], holderUserId: null })?.action === "house_bot.enter_now_refused"
+        && PA.pressAuditEntry(press({ state: "REFUSED", code: "STAKE_BELOW_MIN" }), { intent: null, events: [], holderUserId: null }) === null);
+    ok("17.16 · a TARGET_ADD press with no TARGET_ADDED event is never guessed (null)", PA.pressAuditEntry(press({ purpose: "TARGET_ADD", state: "DONE", intentId: null }), { intent: null, events: [], holderUserId: null }) === null);
+    const ev = { kind: "TARGET_ADDED", marketId: "mkt_x", payload: { targetId: "hbt_x", delayMinSec: 10, delayMaxSec: 20, timingFrom: "STAKE", reactTo: "FIRST", label: "Leaky" } };
+    const t = PA.pressAuditEntry(press({ purpose: "TARGET_ADD", state: "DONE", intentId: null, targetId: "hbt_x" }), { intent: null, events: [ev], holderUserId: null });
+    ok("17.17 · …with its event → house_bot.target_added from the event's own fields, and no label (R7)", t?.action === "house_bot.target_added" && t.payload.delayMaxSec === 20 && !("label" in t.payload), j(t));
+    const written = await safe(() => PA.writePressAudit(press({}), q));
+    const entry = typeof written === "string" ? (await AUD.getAuditByActionsDurable(["house_bot.enter_now"], { limit: 50 })).entries.find((e: Any) => e.id === written) : null;
+    ok("17.18 · ruling 74 · the repair writes AS THE OFFICER who pressed, never system_house_bot", entry?.actorId === WORLD_OFFICER && entry?.category === "COMPLIANCE", j({ written, actor: entry?.actorId }));
+  }
+
+  /* ── 17.19 endTargets (N2 §4 step 9; rulings 75–76) ── */
+  {
+    const b = await botWith({ targetsMaxActive: 50 });
+    const nowMs = await dbNow();
+    const closed = await pollAt(); const tClosed = await target(b, closed.id); await stamp(closed.id, { status: "CLOSED" });
+    const reopened = await pollAt(); const tReopened = await target(b, reopened.id); await stamp(reopened.id, { reopened: true });
+    const claimed = await pollAt(); const tClaimed = await target(b, claimed.id); await stamp(claimed.id, { resolveClaimed: true });
+    const checked = await pollAt(); const tChecked = await target(b, checked.id); await stamp(checked.id, { sentinelClosed: true });
+    const open = await pollAt(); const tOpen = await target(b, open.id);
+    const done = await pollAt(); const tDone = await target(b, done.id, { reactTo: "FIRST" });
+    if (!tDone.threw) await insert(rowOf(b, done.id, { kind: "COUNTER", anchorKey: `pos_hb_done_${process.pid}`, triggerPositionId: `pos_hb_done_${process.pid}`, triggerUserId: WORLD_OFFICER, targetId: tDone.id, status: "PLACED", positionId: `pos_hb_donep_${process.pid}`, finishedAt: w.iso(-1_000), attempts: 1 }));
+    const n = await safe(() => PL.endTargets(nowMs, parseCtx));
+    const get = (t: Any) => S.targetStore.get(t.id) as Promise<Any>;
+    const ended = async (t: Any, cause: string) => { const r = await get(t); return r?.status === "ENDED" && r?.endCause === cause; };
+    ok("17.19 · fixture · six targets inserted", ![tClosed, tReopened, tClaimed, tChecked, tOpen, tDone].some((t) => t.threw), j([tClosed, tReopened, tClaimed, tChecked, tOpen, tDone].map((t) => t.threw ?? "ok")));
+    ok("17.20 · a closed poll → ENDED(MARKET_CLOSED)", await ended(tClosed, "MARKET_CLOSED"), j({ n, t: await get(tClosed) }));
+    ok("17.21 · a reopened poll → ENDED(MARKET_REOPENED)", await ended(tReopened, "MARKET_REOPENED"));
+    ok("17.22 · N2 step 9.5 · a young resolve claim ALONE never ends a target (stays ACTIVE)", (await get(tClaimed))?.status === "ACTIVE");
+    ok("17.23 · …while a recorded result check does → ENDED(INFO_BLACKOUT)", await ended(tChecked, "INFO_BLACKOUT"));
+    ok("17.24 · reactTo FIRST with a PLACED reaction → ENDED(DONE)", await ended(tDone, "DONE"));
+    ok("17.25 · CONTROL · an open, in-scope, reactable poll's target stays ACTIVE", (await get(tOpen))?.status === "ACTIVE");
+    const evs = (await S.houseBotEventStore.listByKinds(["TARGET_ENDED"], { marketId: closed.id, limit: 5 })) as Any[];
+    ok("17.26 · ruling 76 · one TARGET_ENDED event, payload {targetId, endCause} — never `cause`", evs.length === 1 && evs[0].payload?.endCause === "MARKET_CLOSED" && evs[0].payload?.targetId === tClosed.id && !("cause" in (evs[0].payload ?? {})), j(evs));
+    const again = await safe(() => PL.endTargets(nowMs, parseCtx));
+    ok("17.27 · a second pass writes no second event (conditional end)", ((await S.houseBotEventStore.listByKinds(["TARGET_ENDED"], { marketId: closed.id, limit: 5 })) as Any[]).length === 1, j(again));
+    // Rules the bot can no longer parse leave its targets ACTIVE and inert (04:4005), even out of the rules' scope.
+    const cur: Any = await S.houseBotStore.get(b.botId);
+    await S.houseBotStore.saveRules(b.botId, cur.rulesVersion, { rules: { schemaVersion: 99 } });
+    await safe(async () => PL.endTargets(await dbNow(), parseCtx));
+    ok("17.28 · unparseable rules leave an in-scope target ACTIVE (inert)", (await get(tOpen))?.status === "ACTIVE");
+    const cur2: Any = await S.houseBotStore.get(b.botId);
+    await S.houseBotStore.saveRules(b.botId, cur2.rulesVersion, { rules: planRules({ scope: { categories: ["weather"] } }) });
+    await safe(async () => PL.endTargets(await dbNow(), parseCtx));
+    ok("17.29 · a category no longer in the saved rules → ENDED(OUT_OF_SCOPE)", await ended(tOpen, "OUT_OF_SCOPE"), j(await get(tOpen)));
+    const late = await pollAt({ closeInMs: 10 * 60_000 });
+    const b2 = await botWith({}, planRules({ guards: { noReactZonePollsMin: 30 } }));
+    const tLate = await target(b2, late.id);
+    await safe(async () => PL.endTargets(await dbNow(), parseCtx));
+    ok("17.30 · a poll with no reactable stake left (no-react zone covers the rest) → ENDED(CUTOFF_PASSED)", !tLate.threw && (await ended(tLate, "CUTOFF_PASSED")), j(tLate.threw ?? (await get(tLate))));
+  }
+
+  /* ── 17.31 the A16 PENDING sweep (ruling 88) ── */
+  {
+    const b = await botWith();
+    const shut = await pollAt();
+    const pShut = await insert(rowOf(b, shut.id));
+    await stamp(shut.id, { status: "CLOSED" });
+    const re = await pollAt();
+    const pFill = await insert(rowOf(b, re.id));
+    const pMan = await insert(rowOf(b, re.id, { kind: "MANUAL", entryCondition: "THIN", requestedById: WORLD_OFFICER, anchorKey: K.manualAnchorKey(WORLD_OFFICER, crypto.randomUUID()), staleAt: w.iso(15_000) }));
+    await stamp(re.id, { reopened: true });
+    const n = await safe(() => PL.sweepPendingLifecycle());
+    ok("17.31 · A16 · PENDING on a closed poll → SKIPPED(MARKET_NOT_LIVE)", await is(pShut.id, "SKIPPED", "MARKET_NOT_LIVE"), j({ n, r: await row(pShut.id) }));
+    ok("17.32 · …on a reopened poll the FILL → SKIPPED(MARKET_REOPENED) (never re-planned)", await is(pFill.id, "SKIPPED", "MARKET_REOPENED"));
+    ok("17.33 · …while the staff-chosen row is left PENDING for fire's blackout", await is(pMan.id, "PENDING", null));
+    await S.houseBotIntentStore.cancelPending(pMan.id, "BOT_NOT_ACTIVE");
+  }
+
+  /* ── 17.34 rules-parse outcomes and F4's future alert (ruling 100) ── */
+  {
+    const control = await S.houseBotControlStore.get();
+    const old = await botWith();
+    const oldCur: Any = await S.houseBotStore.get(old.botId);
+    await S.houseBotStore.saveRules(old.botId, oldCur.rulesVersion, { rules: { schemaVersion: 0, scope: { products: { polls: true } } } });
+    const oldJson = j((await S.houseBotStore.get(old.botId) as Any).rules);
+    const fut = await botWith();
+    const futCur: Any = await S.houseBotStore.get(fut.botId);
+    await S.houseBotStore.saveRules(fut.botId, futCur.rulesVersion, { rules: { schemaVersion: 99 } });
+    const rec = recorder();
+    const r1 = await safe(async () => PL.rulesOutcomes(await dbNow(), control, parseCtx, rec.alerts));
+    await safe(async () => PL.rulesOutcomes(await dbNow(), control, parseCtx, rec.alerts));
+    await safe(async () => PL.rulesOutcomes(await dbNow(), control, parseCtx, rec.alerts));
+    const oldBot: Any = await S.houseBotStore.get(old.botId);
+    ok("17.34 · F4 · v0 rules → AUTO_PAUSED(RULES_OUTDATED) once", oldBot.status === "AUTO_PAUSED" && oldBot.pauseReason === "RULES_OUTDATED" && rec.calls.filter((c) => c.fn === "botStopped" && c.botId === old.botId).length === 1, j({ r1, s: oldBot.status, p: oldBot.pauseReason }));
+    ok("17.35 · …and the rules JSON is byte-identical after 3 passes (the engine never converts)", j(oldBot.rules) === oldJson);
+    const futBot: Any = await S.houseBotStore.get(fut.botId);
+    const futRt: Any = await S.houseBotRuntimeStore.get(K.RUNTIME_KEY.bot(fut.botId));
+    ok("17.36 · rules from a newer build: never paused, the idle start recorded, no alert before 10 min",
+      futBot.status === "ACTIVE" && futRt?.rulesFutureSince != null && rec.keyed(`rules-future:${fut.botId}:`).length === 0, j({ s: futBot.status, since: futRt?.rulesFutureSince }));
+    await S.houseBotRuntimeStore.upsert(K.RUNTIME_KEY.bot(fut.botId), { rulesFutureSince: w.iso(-11 * 60_000) });
+    const rec2 = recorder();
+    await safe(async () => PL.rulesOutcomes(await dbNow(), control, parseCtx, rec2.alerts));
+    await safe(async () => PL.rulesOutcomes(await dbNow(), control, parseCtx, rec2.alerts));
+    ok("17.37 · …idle for 11 min → ONE alert rules-future:<botId>:99, the status still ACTIVE",
+      rec2.keyed(`rules-future:${fut.botId}:99`).length === 1 && (await S.houseBotStore.get(fut.botId) as Any).status === "ACTIVE", j(rec2.calls.filter((c) => c.fn === "once").map((c) => c.key)));
+    const futCur2: Any = await S.houseBotStore.get(fut.botId);
+    await S.houseBotStore.saveRules(fut.botId, futCur2.rulesVersion, { rules: planRules() });
+    await safe(async () => PL.rulesOutcomes(await dbNow(), control, parseCtx, recorder().alerts));
+    ok("17.38 · rules that parse again clear the idle start", (await S.houseBotRuntimeStore.get(K.RUNTIME_KEY.bot(fut.botId)) as Any)?.rulesFutureSince == null);
+    await S.houseBotStore.setStatus(fut.botId, { from: ["ACTIVE"], to: "PAUSED", pauseReason: "MANUAL", pausedFromStatus: null });
+  }
+
+  /* ── 17.39 F5 revalidateLive (A7, F5, N1 §5; ruling 84) ── */
+  {
+    const control = await S.houseBotControlStore.get();
+    const low = await botWith({ stakeMinTzs: 1_000, stakeMaxTzs: 4_000 });
+    const clamp = await botWith({ stakeMinTzs: 2_000, stakeMaxTzs: 10_000 });
+    const live = { minStake: 2_000, maxStake: 5_000, refillPerMin: 10 };
+    const both = [await parsedOf(low.botId), await parsedOf(clamp.botId)];
+    const rec = recorder();
+    const r1 = await safe(() => PL.revalidateLive(both, control, rec.alerts, async () => live));
+    const r2 = await safe(() => PL.revalidateLive(both, control, rec.alerts, async () => live));
+    const lowBot: Any = await S.houseBotStore.get(low.botId);
+    ok("17.39 · F5 · the platform minimum raised above the bot's minimum → AUTO_PAUSED(RULES_INVALID, stakeMinTzs), one stop over two passes",
+      lowBot.status === "AUTO_PAUSED" && lowBot.pauseReason === "RULES_INVALID" && lowBot.pauseDetail?.field === "stakeMinTzs" && rec.calls.filter((c) => c.fn === "botStopped" && c.botId === low.botId).length === 1, j({ r1, r2, s: lowBot.status, d: lowBot.pauseDetail }));
+    const hash = PL.boundsHashOf(live);
+    ok("17.40 · a maximum that only narrows → stays ACTIVE, ONE bounds-clamp alert for the hash", (await S.houseBotStore.get(clamp.botId) as Any).status === "ACTIVE" && rec.keyed(`bounds-clamp:${clamp.botId}:${hash}`).length === 1, j(rec.calls.filter((c) => c.fn === "once").map((c) => c.key)));
+    ok("17.41 · the live hash is recorded on the global runtime row", (await S.houseBotRuntimeStore.get(K.RUNTIME_KEY.global) as Any)?.boundsHash === hash);
+    const p = both[1];
+    ok("17.42 · unplaceableField · a min gap under the live floor, and a global per-market cap under the live minimum",
+      PL.unplaceableField({ ...p.bot, freqMinGapSec: 10 }, p.rules, { gCapPerMarketTzs: null }, { minStake: 1_000, maxStake: 1e7, refillPerMin: 10 }) === "freqMinGapSec"
+        && PL.unplaceableField(p.bot, p.rules, { gCapPerMarketTzs: 500 }, { minStake: 1_000, maxStake: 1e7, refillPerMin: 10 }) === "gCapPerMarketTzs"
+        && PL.unplaceableField(p.bot, p.rules, { gCapPerMarketTzs: null }, { minStake: 1_000, maxStake: 1e7, refillPerMin: 10 }) === null);
+    await S.houseBotStore.setStatus(clamp.botId, { from: ["ACTIVE"], to: "PAUSED", pauseReason: "MANUAL", pausedFromStatus: null });
+  }
+
+  /* ── 17.43 realised-loss stops (PLAN §3; rulings 82–83, 111) ── */
+  {
+    const m = await pollAt();
+    await lockYes(m.id);
+    // The stake is placed under an open loss cap (H2's projected-loss cap would refuse 2,000 against 1,000); the cap is
+    // lowered afterwards, as an owner saving a tighter cap mid-day would.
+    const b = await botWith();
+    const i = await w.intent(b, m.id, { kind: "FILL", side: "NO", stakeTzs: 2_000 });
+    const placed = await w.place(b, i);
+    await w.setCaps(b.botId, { capDailyLossTzs: 1_000 });
+    const res = await safe(() => w.svc.resolveMarket({ marketId: m.id, outcome: "YES", officerId: WORLD_OFFICER }));
+    const st = await safe(() => w.svc.settleMarket(m.id, { force: true }));
+    const before = await auditTotal("house_bot.loss_stop");
+    const control = await S.houseBotControlStore.get();
+    const rec = recorder();
+    const s1 = await safe(async () => PL.lossStops(await dbNow(), [await S.houseBotStore.get(b.botId)], { ...control, gCapDailyLossTzs: null }, rec.alerts));
+    const s2 = await safe(async () => PL.lossStops(await dbNow(), [await S.houseBotStore.get(b.botId)], { ...control, gCapDailyLossTzs: null }, rec.alerts));
+    const bot: Any = await S.houseBotStore.get(b.botId);
+    ok("17.43 · fixture · a house NO 2,000 placed, resolved YES and settled", placed.ok === true && !res?.threw && !st?.threw, j({ placed: placed.ok ? true : placed, res, st }));
+    ok("17.44 · realised loss 2,000 ≥ the bot's cap 1,000 → AUTO_PAUSED(DAILY_LOSS_STOP), audited house_bot.loss_stop, one stop over two passes",
+      bot.status === "AUTO_PAUSED" && bot.pauseReason === "DAILY_LOSS_STOP" && (await auditTotal("house_bot.loss_stop")) - before === 1 && rec.count("botStopped") === 1, j({ s1, s2, status: bot.status }));
+    const all = await safe(async () => (await HB_BOOK.houseDayBook(CLOCK.eatDayKey(await dbNow()), null)).realisedLossTzs);
+    const rec2 = recorder();
+    const g1 = await safe(async () => PL.lossStops(await dbNow(), [], { ...control, enabled: true, gCapDailyLossTzs: all }, rec2.alerts));
+    const g2 = await safe(async () => PL.lossStops(await dbNow(), [], { ...control, enabled: true, gCapDailyLossTzs: all }, rec2.alerts));
+    const offs = (await S.houseBotEventStore.listByKinds(["SWITCH_OFF"], { limit: 50 })) as Any[];
+    const ctl: Any = await S.houseBotControlStore.get();
+    ok("17.45 · the global realised loss at the global cap → OFF(GLOBAL_LOSS_STOP) once: one switchedOff alert, never security",
+      g1?.global === true && g2?.global === false && ctl.enabled === false && ctl.offCause === "GLOBAL_LOSS_STOP" && rec2.count("switchedOff") === 1 && rec2.count("security") === 0, j({ g1, g2, off: ctl.offCause, calls: rec2.calls }));
+    ok("17.46 · …with a SWITCH_OFF event carrying the cause", offs.some((e) => e.payload?.cause === "GLOBAL_LOSS_STOP"));
+    await w.switchOn();
+  }
+
+  /* ── 17.47 FILL and OPENER planning (PLAN F4, A11, A15; rulings 91–96) ── */
+  {
+    const rules = planRules();
+    const fillLeadMs = rules.fill.leadPollsMin * 60_000;
+    const b = await botWith({}, rules);
+    const near = await pollAt({ closeInMs: fillLeadMs + 5_000 });
+    await lockYes(near.id, 10_000);
+    const far = await pollAt({ closeInMs: fillLeadMs + 60 * 60_000 });
+    await lockYes(far.id, 10_000);
+    const empty = await pollAt({ closeInMs: 2 * 3_600_000 });
+    const control = await S.houseBotControlStore.get();
+    const state = ctxOf().state;
+    const minDraw = (min: number) => min;
+    const r1 = await safe(async () => PL.planFillAndOpener(await dbNow(), state, control, [await parsedOf(b.botId)], { randomInt: minDraw, drawRandomInt: () => 1 }));
+    const fill: Any = await S.houseBotIntentStore.findByAnchor("FILL", near.id);
+    ok("17.47 · a poll whose FILL is due within the horizon gets ONE PENDING FILL on its thin side, sized to 40% of players' locked YES (6,666 → 6,000)",
+      fill?.status === "PENDING" && fill.side === "NO" && fill.stakeTzs === 6_000 && fill.houseBotId === b.botId, j({ r1, fill }));
+    ok("17.48 · ruling 91 · a poll whose FILL is an hour away is not planned yet", (await S.houseBotIntentStore.findByAnchor("FILL", far.id)) == null);
+    const opener: Any = await S.houseBotIntentStore.findByAnchor("OPENER", empty.id);
+    const draw: Any = await S.houseBotEventStore.findOpenerDraw(empty.id);
+    ok("17.49 · an empty poll created after Start → one OPENER on the side drawn once (NO), the draw naming the bot, for OPENER_PLAN",
+      opener?.status === "PENDING" && opener.side === "NO" && draw?.payload?.side === "NO" && draw?.houseBotId === b.botId && draw?.payload?.drawnFor === "OPENER_PLAN", j({ opener, draw }));
+    const r2 = await safe(async () => PL.planFillAndOpener(await dbNow(), state, control, [await parsedOf(b.botId)], { randomInt: minDraw, drawRandomInt: () => 0 }));
+    const fills = await S.houseBotIntentStore.listLiveOnMarket(near.id);
+    ok("17.50 · a second pass plans nothing more on either market", r2?.fill === 0 && r2?.opener === 0 && fills.length === 1, j({ r2, fills: fills.length }));
+    const oldEmpty = await pollAt({ closeInMs: 3 * 3_600_000 });
+    const b2 = await botWith({}, planRules({ scope: { categories: ["weather"] } }));
+    const r3 = await safe(async () => PL.planFillAndOpener(await dbNow(), state, control, [await parsedOf(b2.botId)], { randomInt: minDraw }));
+    ok("17.51 · a bot that does not cover the category plans nothing and draws nothing", (await S.houseBotEventStore.findOpenerDraw(oldEmpty.id)) == null, j(r3));
+    const b3 = await botWith({}, rules);
+    const r4 = await safe(async () => PL.planFillAndOpener(await dbNow(), ctxOf().state, control, [await parsedOf(b3.botId)], { randomInt: minDraw }));
+    ok("17.52 · A11 · a poll created before the bot's Start gets no OPENER from that bot", (await S.houseBotIntentStore.findByAnchor("OPENER", oldEmpty.id)) == null, j(r4));
+    const g: Any = await S.houseBotRuntimeStore.get(K.RUNTIME_KEY.global);
+    await S.houseBotRuntimeStore.upsert(K.RUNTIME_KEY.global, { scopeFrom: null });
+    const late = await pollAt({ closeInMs: 4 * 3_600_000 });
+    const b4 = await botWith({}, rules);
+    const r5 = await safe(async () => PL.planFillAndOpener(await dbNow(), ctxOf().state, control, [await parsedOf(b4.botId)], { randomInt: minDraw }));
+    ok("17.53 · ruling 92 · never switched on (global scopeFrom NULL) → nothing planned", r5?.opener === 0 && (await S.houseBotIntentStore.findByAnchor("OPENER", late.id)) == null, j(r5));
+    await S.houseBotRuntimeStore.upsert(K.RUNTIME_KEY.global, { scopeFrom: g?.scopeFrom ?? w.iso() });
+    await w.switchOff();
+    const off = await safe(() => PL.plannerPass(ctxOf(), { alerts: recorder().alerts, liveBounds: async () => ({ minStake: 1_000, maxStake: 10_000_000, refillPerMin: 10 }) }));
+    await w.switchOn();
+    ok("17.54 · P:500 · with the master OFF the pass skips FILL/OPENER planning", off?.duties?.fillOpener === "skipped", j(off?.duties));
+    for (const id of [fill?.id, opener?.id]) if (id) await S.houseBotIntentStore.cancelPending(id, "BOT_NOT_ACTIVE");
+  }
+
+  /* ── 17.55 the scan, the anchor-scoped insert and switch-on's scope start (rulings 91, 92, 97) ── */
+  {
+    const b = await botWith();
+    const a = await pollAt({ closeInMs: 30 * 3_600_000 });
+    const c = await pollAt({ closeInMs: 30 * 3_600_000 + 1_000 });
+    const demo = await pollAt({ closeInMs: 30 * 3_600_000 + 500, title: "Demo · planner" });
+    const cancelled = await pollAt({ closeInMs: 30 * 3_600_000 + 2_000 });
+    const vetoed = await pollAt({ closeInMs: 30 * 3_600_000 + 3_000 });
+    const oc = await insert(rowOf(b, cancelled.id, { kind: "OPENER" }));
+    await S.houseBotIntentStore.cancelPending(oc.id, "BOT_NOT_ACTIVE");
+    const ov = await insert(rowOf(b, vetoed.id, { kind: "OPENER" }));
+    await S.houseBotIntentStore.cancelPending(ov.id, "CANCELLED_BY_ADMIN");
+    const fromIso = new Date(Date.parse(a.selectionClosedAt) - 1).toISOString();
+    const toIso = vetoed.selectionClosedAt;
+    const page = await safe(() => S.houseSeamStore.plannableMarkets({ kind: "OPENER", productLine: "MARKET", fromIso, toIso, after: null, limit: 200 }));
+    const ids = Array.isArray(page) ? page.map((r: Any) => r.id) : [];
+    ok("17.55 · the scan lists in-scope empty polls in cutoff order, re-lists a plain CANCELLED opener, and leaves out a demo and an officer's cancel (02 X11)",
+      j(ids) === j([a.id, c.id, cancelled.id]), j({ page, want: [a.id, c.id, cancelled.id] }));
+    const next = await safe(() => S.houseSeamStore.plannableMarkets({ kind: "OPENER", productLine: "MARKET", fromIso, toIso, after: page[0], limit: 200 }));
+    ok("17.56 · keyset: after the first row the page starts at the second", Array.isArray(next) && next[0]?.id === c.id, j(next));
+    await lockYes(c.id, 1_000);
+    const again = await safe(() => S.houseSeamStore.plannableMarkets({ kind: "OPENER", productLine: "MARKET", fromIso, toIso, after: null, limit: 200 }));
+    ok("17.57 · a poll with money in it is no longer an OPENER candidate", Array.isArray(again) && !again.some((r: Any) => r.id === c.id), j(again));
+    const trig = `pos_hb_anchor_${process.pid}`;
+    const first = await safe(() => S.houseBotIntentStore.insertIgnoringConflict(rowOf(b, a.id, { kind: "COUNTER", anchorKey: trig, triggerPositionId: trig, triggerUserId: WORLD_OFFICER, status: "SKIPPED", reasonCode: "NOT_REACTING", finishedAt: w.iso() })));
+    const dup = await safe(() => S.houseBotIntentStore.insertIgnoringConflict(rowOf(b, a.id, { kind: "COUNTER", anchorKey: trig, triggerPositionId: trig, triggerUserId: WORLD_OFFICER, status: "SKIPPED", reasonCode: "NOT_REACTING", finishedAt: w.iso() })));
+    const idClash = await safe(() => S.houseBotIntentStore.insertIgnoringConflict(rowOf(b, a.id, { id: first?.id, kind: "COUNTER", anchorKey: `${trig}_b`, triggerPositionId: `${trig}_b`, triggerUserId: WORLD_OFFICER, status: "SKIPPED", reasonCode: "NOT_REACTING", finishedAt: w.iso() })));
+    const manual = await safe(() => S.houseBotIntentStore.insertIgnoringConflict(rowOf(b, a.id, { kind: "MANUAL", entryCondition: "THIN", requestedById: WORLD_OFFICER, anchorKey: K.manualAnchorKey(WORLD_OFFICER, crypto.randomUUID()) })));
+    ok("17.58 · ruling 97 · a second decision on the same trigger → null (already decided)", first?.id != null && dup === null, j({ first: first?.id ?? first, dup }));
+    ok("17.59 · …but an id clash is a defect and raises (TGT-26(e)), and a MANUAL row is refused", typeof idClash?.threw === "string" && typeof manual?.threw === "string", j({ idClash, manual }));
+    await w.switchOff();
+    const beforeOn = await dbNow();
+    await w.switchOn();
+    const gl: Any = await S.houseBotRuntimeStore.get(K.RUNTIME_KEY.global);
+    ok("17.60 · ruling 92 · switch-on writes global scopeFrom in the same step", gl?.scopeFrom != null && Date.parse(gl.scopeFrom) >= beforeOn - 1_000, j({ scopeFrom: gl?.scopeFrom, beforeOn: new Date(beforeOn).toISOString() }));
+  }
+
+  /* ── 17.61 hourly summaries (rulings 80–81) ── */
+  {
+    const b = await botWith();
+    const placedRow = await insert(rowOf(b, (await pollAt()).id, { status: "PLACED", positionId: `pos_hb_sum_${process.pid}`, finishedAt: w.iso(), alertedAt: w.iso(), attempts: 1 }));
+    const control = await S.houseBotControlStore.get();
+    const rec = recorder();
+    // The window is the hour just ended at `nowMs`: an hour ahead of the database clock makes it the current hour.
+    const h1 = await safe(async () => PL.hourlyDuties((await dbNow()) + 3_600_000, { ...control, bellAlertsPerHour: 0, holderNoticesPerHour: 0 }, rec.alerts));
+    const h2 = await safe(async () => PL.hourlyDuties((await dbNow()) + 3_600_000, { ...control, bellAlertsPerHour: 0, holderNoticesPerHour: 0 }, rec.alerts));
+    const admins = rec.calls.filter((c) => c.code === "HOUR_SUMMARY_ADMINS");
+    const holder = rec.calls.filter((c) => c.code === "HOUR_SUMMARY_HOLDER" && c.m.botId === b.botId);
+    const prevHour = CLOCK.eatKeyFor("previousHour", await dbNow());
+    ok("17.61 · admins' summary once, keyed on the hour summarised (previousHour), beyond a 0 cap", !placedRow.threw && admins.length === 1 && admins[0].key === `summary:admins:all:${prevHour}` && admins[0].m.detail.beyondCap >= 1, j({ h1, h2, admins }));
+    ok("17.62 · …and the holder's once, counting their PLACED stake (0 notices an hour = summary only)", holder.length === 1 && holder[0].m.detail.count >= 1, j(holder));
+  }
+
+  /* ── 17.63 oversight (N1 §4.5; ruling 79) ── */
+  {
+    const b = await botWith();
+    const quiet = await pollAt();
+    const q = await insert(rowOf(b, quiet.id, { kind: "MANUAL", entryCondition: "THIN", requestedById: WORLD_OFFICER, anchorKey: K.manualAnchorKey(WORLD_OFFICER, crypto.randomUUID()), status: "PLACED", positionId: `pos_hb_ov1_${process.pid}`, finishedAt: w.iso(-5_000), alertedAt: w.iso(), attempts: 1, staleAt: w.iso(10_000) }));
+    await stamp(quiet.id, { status: "VOIDED" });
+    const decided = await pollAt();
+    const d = await insert(rowOf(b, decided.id, { kind: "MANUAL", entryCondition: "THIN", requestedById: WORLD_OFFICER, anchorKey: K.manualAnchorKey(WORLD_OFFICER, crypto.randomUUID()), status: "PLACED", positionId: `pos_hb_ov2_${process.pid}`, finishedAt: w.iso(-5_000), alertedAt: w.iso(), attempts: 1, staleAt: w.iso(10_000) }));
+    await AUD.audit({ category: "COMPLIANCE", action: "market.emergency_void", actorId: WORLD_OFFICER, targetType: "Market", targetId: decided.id, payload: { reason: "planner case" } });
+    await stamp(decided.id, { status: "VOIDED" });
+    const rec = recorder();
+    const o1 = await safe(async () => OV.oversightPass(rec.alerts, await dbNow()));
+    const o2 = await safe(async () => OV.oversightPass(rec.alerts, await dbNow()));
+    const vQuiet = rec.calls.filter((c) => c.key === `staff-stake-voided:${quiet.id}`);
+    const vDecided = rec.calls.filter((c) => c.key === `staff-stake-voided:${decided.id}`);
+    const self = rec.calls.filter((c) => c.key === `staff-stake-self-decided:${decided.id}:voided`);
+    ok("17.63 · a voided poll holding a staff-chosen stake → ONE staff-stake-voided alert over two passes", !q.threw && vQuiet.length === 1, j({ o1, o2, q: q.threw }));
+    ok("17.64 · ruling 79 · no void audit → the alert carries NO time (never the moment the pass noticed)", vQuiet[0]?.m.detail.atIso === null, j(vQuiet[0]?.m.detail));
+    ok("17.65 · …with the emergency-void audit → its time", !d.threw && vDecided.length === 1 && typeof vDecided[0].m.detail.atIso === "string", j(vDecided[0]?.m.detail));
+    ok("17.66 · the officer who chose the stake also voided the market → ONE staff-stake-self-decided:<market>:voided (a record, nothing refused)", self.length === 1 && self[0].m.detail.actorId === WORLD_OFFICER, j(self));
+    ok("17.67 · bulkMarketIds reads the batch's resolved list only", j(OV.bulkMarketIds({ selection: ["a", "b"], resolved: ["b"] })) === j(["b"]));
+  }
+
+  /* ── 17.68 cap pre-check (ruling 94) ── */
+  {
+    const facts = (o: Any = {}) => merge({
+      bot: { stakeMinTzs: 1_000, stakeMaxTzs: 10_000, capPerMarketTzs: 50_000, balanceFloorTzs: 0, capDailyStakeTzs: 1e6, capDailyLossTzs: 1e6, capOpenExposureTzs: 1e6, capStaffChosenPerDay: 5, capStaffChosenDailyTzs: 1e6 },
+      control: { gCapPerMarketTzs: 1e6, gCapDailyStakeTzs: 1e7, gCapDailyLossTzs: 1e7, gCapOpenExposureTzs: 1e7, gCounterPerPlayerPerDay: 3, gCounterPerPlayerTzsPerDay: 1e6, gCapStaffChosenPerDay: 10, gCapStaffChosenDailyTzs: 1e7 },
+      balance: 100_000, stakeOnMarket: 0, stakedToday: 0, projectedLossToday: 0, openExposure: 0, houseOnMarket: 0, globalStakedToday: 0,
+      globalProjectedLossToday: 0, globalExposure: 0, staffChosen: null, counterparty: null,
+    }, o);
+    ok("17.68 · generous facts → no cap refuses", CAPS.capPrecheck(facts(), 1_000) === null);
+    ok("17.69 · an unset minimum refuses first (CAP_STAKE_MIN), as H2 does", CAPS.capPrecheck(facts({ bot: { stakeMinTzs: null } }), 1_000) === "CAP_STAKE_MIN");
+    ok("17.70 · the seam's order: the bot's PER_MARKET before the global per-market cap", CAPS.capPrecheck(facts({ stakeOnMarket: 49_500, houseOnMarket: 1e6 }), 1_000) === "CAP_PER_MARKET");
+    ok("17.71 · a balance floor that the stake would break → CAP_BALANCE_FLOOR", CAPS.capPrecheck(facts({ balance: 1_500, bot: { balanceFloorTzs: 1_000 } }), 1_000) === "CAP_BALANCE_FLOOR");
+    ok("17.72 · staff-chosen caps bind only staff-chosen rows", CAPS.capPrecheck(facts({ bot: { capStaffChosenPerDay: null } }), 1_000) === null
+      && CAPS.capPrecheck(facts({ bot: { capStaffChosenPerDay: null }, staffChosen: { count: 0, tzs: 0, globalCount: 0, globalTzs: 0 } }), 1_000) === "CAP_STAFF_CHOSEN_PER_DAY");
+    ok("17.73 · a COUNTER's trigger account at its daily count → CAP_COUNTERPARTY_COUNT", CAPS.capPrecheck(facts({ counterparty: { count: 3, tzs: 0 } }), 1_000) === "CAP_COUNTERPARTY_COUNT");
+  }
+
+  /* ── 17.74 the consent void's TARGET_ENDED payload (ruling 76) and fire with limits from a newer build (ruling 100) ── */
+  {
+    const b = await botWith({ targetsMaxActive: 5 });
+    const m = await pollAt();
+    const t = await target(b, m.id);
+    const v = await safe(() => DSG.voidHouseConsent({ userId: b.userId, cause: "SELF_EXCLUDED", actorId: null }));
+    const evs = (await S.houseBotEventStore.listByKinds(["TARGET_ENDED"], { marketId: m.id, limit: 5 })) as Any[];
+    ok("17.74 · a consent void ends the target with payload {targetId, endCause: CONSENT_VOID} — never `cause`",
+      !t.threw && evs.length === 1 && evs[0].payload?.endCause === "CONSENT_VOID" && !("cause" in (evs[0].payload ?? {})), j({ v, evs }));
+  }
+  if (w.onPostgres) {
+    const b = await botWith();
+    const m = await pollAt();
+    await lockYes(m.id);
+    const i = await w.intent(b, m.id, { kind: "FILL", side: "NO", stakeTzs: 2_000 });
+    let out: Any;
+    try {
+      await w.prisma().$executeRawUnsafe(`UPDATE "HouseBotControl" SET "limitsSchemaVersion" = "limitsSchemaVersion" + 1`);
+      out = await safe(() => FI.fireClaimedIntent(i, { me: "world", alerts: recorder().alerts }));
+    } finally {
+      await w.prisma().$executeRawUnsafe(`UPDATE "HouseBotControl" SET "limitsSchemaVersion" = "limitsSchemaVersion" - 1`);
+    }
+    const r: Any = await row(i.id);
+    ok("17.75 · F4 · limits saved by a newer build (Postgres): fire places nothing and hands the row back PENDING", out?.kind === "requeued" && r.status === "PENDING" && (await w.positionsOf(m.id)).every((p: Any) => p.houseBotId == null), j({ out, status: r.status }));
+    await S.houseBotIntentStore.cancelPending(i.id, "BOT_NOT_ACTIVE");
   }
 });
 

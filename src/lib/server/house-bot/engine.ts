@@ -56,6 +56,15 @@ export type EngineState = {
   plannerBusy: boolean;
   lastPollerTickAt: number | null;
   lastPlannerTickAt: number | null;
+  /**
+   * The planner's cadence markers and scan cursors (C4-SPEC rulings 77, 91). Correctness never depends on them: every
+   * effect is an AlertOnce claim or a conditional write, so a failover that starts them over repeats nothing.
+   */
+  planner: {
+    oversightAtMs: number | null;
+    hourlyKey: string | null;
+    scan: Record<string, { cutoff: string; id: string } | null>;
+  };
   timers: {
     first: ReturnType<typeof setTimeout> | null;
     poller: ReturnType<typeof setTimeout> | null;
@@ -91,6 +100,7 @@ function freshState(): EngineState {
   return {
     started: false, stopping: false, refused: null, bootAt: null, inFlight: new Map(), skewMs: null, skewMeasuredAt: null,
     pollerBusy: false, plannerBusy: false, lastPollerTickAt: null, lastPlannerTickAt: null,
+    planner: { oversightAtMs: null, hourlyKey: null, scan: {} },
     timers: { first: null, poller: null, planner: null, skew: null }, signalsBound: false,
   };
 }
