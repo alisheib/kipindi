@@ -38,6 +38,7 @@ const { getActiveSessionId, setActiveSessionId }: Any = await import("../../src/
 const RG: Any = await import("../../src/lib/server/responsible-gambling.ts");
 const { removeWalletFreeze }: Any = await import("../../src/lib/server/wallet-freeze.ts");
 const { fileDsarRequest, fulfillDsarRequest, listDsarRequests }: Any = await import("../../src/lib/server/privacy.ts");
+const { saveConfig }: Any = await import("../../src/lib/server/config-store.ts");
 const N: Any = await import("../../src/lib/server/notification-service.ts");
 const { MONEY_KINDS, NOTIFICATION_KINDS }: Any = await import("../../src/lib/server/comms-registry.ts");
 const { MARKET_CATEGORIES }: Any = await import("../../src/lib/markets/categories.ts");
@@ -349,6 +350,9 @@ section("§3 · houseBotEligibility — every blocking row in its contexts");
     ok(`3.12.${ctx} · an open erasure request → ERASURE_REQUEST in ${ctx}`, rs.blocking.some((r: Any) => r.code === "ERASURE_REQUEST" && r.message.includes(req.id)), j(rs.blocking.map((r: Any) => r.code)));
   }
   req.status = "REJECTED";
+  // Ruling 130 · holder snapshots read the DURABLE queue; a request closed in this process's array alone would still read
+  // open from the stored copy, as it would on any other container. Write it through, as every real status change does.
+  await saveConfig("privacy.dsar_queue", listDsarRequests());
 
   await w.setUserFields(clean, { lockedUntil: new Date(Date.now() + 600_000).toISOString() });
   ok("3.13 · sign-in locked → SIGN_IN_LOCKED in designate and reverify", (await codes(clean, "designate")).includes("SIGN_IN_LOCKED") && (await codes(clean, "reverify", d.bot.id)).includes("SIGN_IN_LOCKED"));

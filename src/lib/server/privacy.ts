@@ -15,7 +15,7 @@
 import { audit } from "./audit";
 import { db } from "./store";
 import type { StoredUser } from "./store";
-import { loadConfig, saveConfig } from "./config-store";
+import { loadConfig, loadConfigResult, saveConfig } from "./config-store";
 import { anonymizeClosedAccount, type AnonymizeOutcome } from "./erasure";
 // 🔴 THE DSAR BUNDLE INVENTED A THIRD ADDRESS. `privacy@50pick.tz` appeared nowhere else in
 // the platform — no config, no admin field, and contradicting `/legal/privacy` §1 — on the two
@@ -209,6 +209,22 @@ export function asRequestableType(raw: unknown): RequestableType | null {
   return (REQUESTABLE_TYPES as readonly string[]).includes(String(raw))
     ? (String(raw) as RequestableType)
     : null;
+}
+
+/**
+ * The account's open ERASURE request (PENDING or PARTIAL), read from the DURABLE queue (house bots, C4-SPEC rulings 85,
+ * 130). The process array above is hydrated by a fire-and-forget read at module load, so a container can answer from an
+ * empty array just after boot, or miss a request another container filed. This reads the stored copy, awaited, and
+ * then this process's own array (a request filed here whose write-through has not landed yet), and answers with the
+ * first open request in either — failing closed.
+ *
+ * ⛔ A READ THAT FAILS THROWS. A house holder snapshot must never read "no request" from a queue it could not read.
+ */
+export async function openErasureRequest(userId: string): Promise<DsarRequest | null> {
+  const open = (r: DsarRequest) => r.userId === userId && r.type === "ERASURE" && (r.status === "PENDING" || r.status === "PARTIAL");
+  const stored = await loadConfigResult<DsarRequest[]>(DSAR_QUEUE_KEY);
+  if (!stored.ok) throw new Error(`privacy: the data-rights queue is unreadable — ${stored.error}`);
+  return (stored.value ?? []).find(open) ?? queue.find(open) ?? null;
 }
 
 export function listDsarRequests(filter?: { status?: DsarStatus }): DsarRequest[] {

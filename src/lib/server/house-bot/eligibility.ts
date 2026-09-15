@@ -24,7 +24,7 @@
  */
 import { db, type StoredUser, type StoredWallet } from "../store";
 import { getRgSettings, isLockedOut, checkLossLimit } from "../responsible-gambling";
-import { listDsarRequests } from "../privacy";
+import { openErasureRequest } from "../privacy";
 import { getAuditForTargetDurable } from "../audit";
 import { passwordFingerprint } from "../password-reset";
 import { positionStore } from "../market-dal";
@@ -54,6 +54,7 @@ export const ELIGIBILITY_BLOCKING_CODES = [
   "OWN_ACCOUNT",
   "ROSTER_FULL",
   "ERASURE_REQUEST",
+  "ERASURE_UNREADABLE",
   "SIGN_IN_LOCKED",
   "PASSWORD_SET_BY_SUPPORT",
   "PASSWORD_HISTORY_UNREADABLE",
@@ -303,7 +304,13 @@ export async function houseBotEligibility(
   }
 
   // ── an open erasure request ───────────────────────────────────────────────────────────────────────
-  const erasure = listDsarRequests().find((r) => r.userId === userId && r.type === "ERASURE" && (r.status === "PENDING" || r.status === "PARTIAL"));
+  // C4-SPEC ruling 130 · the durable queue, awaited; a queue that cannot be read is a blocking row, never "no request".
+  let erasure: Awaited<ReturnType<typeof openErasureRequest>> = null;
+  try {
+    erasure = await openErasureRequest(userId);
+  } catch {
+    blocking.push(row("ERASURE_UNREADABLE", "Data requests unreadable", "Couldn't read the data-rights queue. Refresh to try again."));
+  }
   if (erasure) {
     blocking.push(row("ERASURE_REQUEST", "Erasure requested",
       `They asked for their data to be erased (${erasure.id}, ${day(erasure.requestedAt)}). Liquidity stakes can't continue — resolve the request or remove the bot.`));

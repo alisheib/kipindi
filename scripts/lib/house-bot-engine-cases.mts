@@ -2635,6 +2635,17 @@ await guard("18", async () => {
     ok("18.22 · a second pass writes no second row (the page's anchor filter)", !p2.threw && (await S.houseBotIntentStore.listLiveOnMarket(m.id)).length === 1, j(p2));
   }
 
+  /* ── 18.15b the hook's soft cache, discriminated: a live bot exists, so only the cache can answer idle (mutation T32 once passed 18.15) ── */
+  {
+    await soloBot();
+    const hookFacts = { positionId: `pos_hook_idle_${process.pid}`, userId: `usr_hook_nobody_${process.pid}`, marketId: "mkt_hook_x", side: "YES", stake: 1_000, placedAt: new Date().toISOString() };
+    const stateWith = (cache: Any) => ({ ...EN2.engineState(), started: true, stopping: false, skewMs: 0, inFlight: new Map(), hook: { inFlight: 0, dropped: 0, cache, alerts: recorder().alerts } });
+    const idle = await safe(() => TG.onPlayerBetCommitted(hookFacts, { state: stateWith({ atMs: Date.now(), live: false, holderIds: new Set() }) }));
+    const fresh = await safe(() => TG.onPlayerBetCommitted(hookFacts, { state: stateWith(null) }));
+    ok("18.15b · PLAN §4.3 · a fresh soft cache saying nothing is live answers idle with no decision — while a fresh read with a live bot decides the same stake (not a player)",
+      idle === "idle" && fresh === "notPlayer", j({ idle, fresh }));
+  }
+
   /* ── 18.23 the sweep's 5 s age filter (A24) ── */
   {
     await soloBot();

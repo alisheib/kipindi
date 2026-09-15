@@ -55,7 +55,7 @@ import {
   type HouseAuditAction,
   type OffCause,
 } from "@/lib/house-bot/constants";
-import { isPauseReason, type ConsentVoidCause, type PauseReason } from "@/lib/house-bot/pause-reasons";
+import { isPauseReason, type ConsentVoidCause, type PauseDetail, type PauseReason } from "@/lib/house-bot/pause-reasons";
 import { OUTCOME_TABLE, outcomeKey, type OutcomeAction } from "./outcome-map";
 import { isEngineTransient, transientBackoffMs } from "./transient";
 import { readBotAndHolder, type BotAndHolder } from "./control";
@@ -121,10 +121,14 @@ export async function alertOnce(key: string | EatSuffixedKey, alerts: EngineAler
  */
 export async function stopBot(
   botId: string,
-  /** `field` names the rules field for RULES_INVALID and RULES_OUTDATED (`HouseBot.pauseDetail`, C4-SPEC ruling 65). */
+  /**
+   * `field` names the rules field for RULES_INVALID and RULES_OUTDATED (`HouseBot.pauseDetail`, C4-SPEC ruling 65).
+   * `detail` is the whole `pauseDetail` for a holder cause (the cause set, the password method — rulings 123–125); it
+   * wins over `field`.
+   */
   change:
     /** `auditAction` names a realised-loss stop `house_bot.loss_stop` (A19; C4-SPEC ruling 82). */
-    | { to: "AUTO_PAUSED"; cause: PauseReason; field?: string | null; auditAction?: "house_bot.loss_stop" }
+    | { to: "AUTO_PAUSED"; cause: PauseReason; field?: string | null; detail?: PauseDetail | null; auditAction?: "house_bot.loss_stop" }
     | { to: "REMOVED"; cause: "ACCOUNT_CLOSED" },
   alerts: EngineAlerts,
 ): Promise<boolean> {
@@ -133,7 +137,10 @@ export async function stopBot(
   const moved = await withLock(`wallet:${bot.userId}`, (tx) =>
     change.to === "REMOVED"
       ? houseBotStore.setStatus(bot.id, { from: ["ACTIVE", "PAUSED", "AUTO_PAUSED"], to: "REMOVED", pauseReason: null, pausedFromStatus: null, removal: { byId: null, reason: null, cause: "ACCOUNT_CLOSED" } }, tx ?? undefined)
-      : houseBotStore.setStatus(bot.id, { from: ["ACTIVE"], to: "AUTO_PAUSED", pauseReason: change.cause, pauseDetail: change.field ? { field: change.field } : null, pausedFromStatus: "ACTIVE" }, tx ?? undefined),
+      : houseBotStore.setStatus(bot.id, {
+        from: ["ACTIVE"], to: "AUTO_PAUSED", pauseReason: change.cause,
+        pauseDetail: change.detail ?? (change.field ? { field: change.field } : null), pausedFromStatus: "ACTIVE",
+      }, tx ?? undefined),
   );
   if (!moved) return false;
   // ── after the lock ──

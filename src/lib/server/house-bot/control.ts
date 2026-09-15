@@ -19,7 +19,7 @@ import { db } from "../store";
 import { loadConfigResult } from "../config-store";
 import { PLATFORM_CONFIG_KEY, type PlatformConfig } from "../platform-config";
 import { getRgSettings, checkLossLimit } from "../responsible-gambling";
-import { listDsarRequests } from "../privacy";
+import { openErasureRequest } from "../privacy";
 import { passwordFingerprint } from "../password-reset";
 import { houseBotControlStore, houseBotStore, type StoredHouseBot, type StoredHouseBotControl } from "../house-bot-dal";
 import { consentValid, holderCauses, type HolderSnapshot } from "@/lib/house-bot/consent";
@@ -66,7 +66,8 @@ export async function readBotAndHolder(botId: string, opts: { ownerLossStakeTzs?
   const wallet = await db.wallet.findByUserId(bot.userId);
   const rg = await getRgSettings(bot.userId);
   const kyc = await db.kyc.findByUserId(bot.userId);
-  const erasure = listDsarRequests().some((r) => r.userId === bot.userId && r.type === "ERASURE" && (r.status === "PENDING" || r.status === "PARTIAL"));
+  // Ruling 130 · the durable queue, awaited; a failed read throws (fire requeues, the sweep retries).
+  const erasure = (await openErasureRequest(bot.userId)) != null;
   let ownerLossBlocked = false;
   if (opts.ownerLossStakeTzs != null && opts.ownerLossStakeTzs > 0) {
     ownerLossBlocked = !(await checkLossLimit(bot.userId, opts.ownerLossStakeTzs)).allowed;

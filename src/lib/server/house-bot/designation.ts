@@ -354,6 +354,8 @@ async function accountChangedSince(fresh: StoredUser, checkedAtMs: number): Prom
 /** The eligibility rows that refuse a re-verify. Suspension, freeze and role do not (C8, PLAN §18). */
 const REVERIFY_BLOCKING_ROWS: ReadonlySet<string> = new Set([
   "ACCOUNT_MISSING", "ACCOUNT_CLOSED", "NO_PASSWORD", "RG_LOCKED", "RG_UNREADABLE", "ERASURE_REQUEST",
+  // C4-SPEC ruling 130: an unreadable data-rights queue fails closed, like every other unreadable row here.
+  "ERASURE_UNREADABLE",
   "SIGN_IN_LOCKED", "PASSWORD_SET_BY_SUPPORT", "PASSWORD_HISTORY_UNREADABLE",
 ]);
 
