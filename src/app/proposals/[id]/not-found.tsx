@@ -2,7 +2,7 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { I } from "@/components/ui/glyphs";
 import { FiftyMark } from "@/components/brand";
-import { dict, type Locale } from "@/lib/i18n-dict";
+import { dict, localeOrDefault, type Locale } from "@/lib/i18n-dict";
 
 /**
  * Colocated not-found for /proposals/[id] — mirrors markets/[id]/not-found so an
@@ -12,8 +12,7 @@ import { dict, type Locale } from "@/lib/i18n-dict";
  */
 export default async function ProposalNotFound() {
   const jar = await cookies();
-  const raw = jar.get("kp-locale")?.value;
-  const locale: Locale = raw === "sw" || raw === "zh" ? raw : "en";
+  const locale: Locale = localeOrDefault(jar.get("kp-locale")?.value);
   const t = dict[locale];
 
   return (

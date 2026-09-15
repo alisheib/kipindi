@@ -74,12 +74,16 @@ const MINI_DICT = {
   },
 } as const;
 
+/**
+ * The visitor's chosen language, else Swahili — the platform default (`localeOrDefault` in `i18n-dict.ts`, copied here
+ * because this boundary may import nothing but React). Keep the two in step.
+ */
 function readLocale(): "en" | "sw" | "zh" {
-  if (typeof document === "undefined") return "en";
+  if (typeof document === "undefined") return "sw";
   const m = document.cookie.match(/(?:^|; )kp-locale=([^;]*)/);
-  if (!m) return "en";
+  if (!m) return "sw";
   const v = decodeURIComponent(m[1]);
-  return v === "sw" || v === "zh" ? v : "en";
+  return v === "en" || v === "sw" || v === "zh" ? v : "sw";
 }
 
 export default function GlobalError({
@@ -96,7 +100,8 @@ export default function GlobalError({
     }
   }, [error]);
 
-  const t = useMemo(() => MINI_DICT[readLocale()], []);
+  const lang = useMemo(() => readLocale(), []);
+  const t = MINI_DICT[lang];
 
   // Inline OKLCH so the page is readable even with no stylesheet.
   const BG = "oklch(15% 0.130 268)";
@@ -110,7 +115,7 @@ export default function GlobalError({
   const BORDER = "oklch(34% 0.130 268)";
 
   return (
-    <html lang="en">
+    <html lang={lang}>
       <body
         style={{
           margin: 0,

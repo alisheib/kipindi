@@ -11,15 +11,14 @@
 
 import { useEffect, type ReactNode } from "react";
 import { I18nProvider, LocaleChangeOverlay, type Locale } from "@/lib/i18n";
+import { DEFAULT_LOCALE, localeOrDefault } from "@/lib/i18n-dict";
 import { ToastProvider } from "@/components/ui/toast";
 import { getPrefs } from "@/lib/haptics";
 
 function readInitialLocale(): Locale {
-  if (typeof document === "undefined") return "en";
+  if (typeof document === "undefined") return DEFAULT_LOCALE;
   const m = document.cookie.match(/(?:^|; )kp-locale=([^;]*)/);
-  if (!m) return "en";
-  const v = decodeURIComponent(m[1]);
-  return v === "sw" || v === "zh" ? v : "en";
+  return localeOrDefault(m ? decodeURIComponent(m[1]) : null);
 }
 
 /** Heuristic: mid-tier Android ≤4 cores or ≤4GB RAM or explicit Save-Data. */

@@ -21,7 +21,7 @@
 /** The only cookie the product reads for language. */
 export const LOCALE_COOKIE = "kp-locale";
 
-/** `<html lang>` carries exactly these values — layout.tsx narrows anything else to "en". */
+/** `<html lang>` carries exactly these values — layout.tsx narrows anything else to "sw", the platform default (`localeOrDefault`, 2026-09-15). */
 export const LOCALES = ["en", "sw", "zh"];
 
 /** Browser-level locale, so `Intl` formatting matches what a real visitor in that locale gets. */
