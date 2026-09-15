@@ -22,7 +22,9 @@ const ok = (l: string, c: boolean, x = "") => {
   console.log(`${c ? "PASS" : "FAIL"} [${STORE}] ${l}${x ? ` — ${x}` : ""}`);
 };
 const section = (t: string) => console.log(`\n[${STORE}] ${t}`);
-const j = (v: unknown) => JSON.stringify(v)?.slice(0, 260) ?? String(v);
+// ⛔ NEVER TRUNCATED. `j` is used on both sides of comparisons; a 260-character cut once hid a Sentinel verdict
+// appended to a view's title past the cut, so the A13 case could not fail (mutation S17 missed).
+const j = (v: unknown) => JSON.stringify(v) ?? String(v);
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 /** A throw is a failed assertion, never a crashed suite. */
 async function guard(label: string, fn: () => Promise<void> | void): Promise<void> {
