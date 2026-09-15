@@ -21,6 +21,18 @@
 > closed **by owner direction with the code gap still present** and exposure measured at or near
 > zero. If exposure moves, they reopen — which is why the mechanism is kept legible in each row.
 
+## ▶ 0 · MOBILE VISUAL PLAN — `MOBILE-VISUAL` · 🟠 **APPROVED 2026-09-15 · START HERE** · 0/20 units ✅ · 0/9 defects ✅
+
+Ali, 2026-09-15: *"later any session please start with the mobile visual plan and start with the progress."*
+**▶ Work order and tracker: [`MOBILE-VISUAL-PLAN.md`](MOBILE-VISUAL-PLAN.md). Open it at §0 (RESUME AT), then §1 (status board).**
+
+| | |
+|---|---|
+| **Why** | Players on phones call the site "chunky". Measured live at 360: a 347px market card, 237px of pinned chrome on `/markets` (≈ 1.6 cards visible), an 11-screen home |
+| **Shape** | 20 units in two phases of kind: **[Compact]** market-board density behind a "Card spacing" switch, and **[General]** phone fit for everyone (header, home, chat bubble, popups, questions, toasts, celebrations, notices, notifications, page shells, footer), plus defects D1–D9 |
+| **Next** | Session S1 → U1 (baseline instrument + QA player) and U2 (density setting + switch). Two units per session |
+| **Rule** | Every session rewrites the plan's §0 and ticks §1 in its own commits, and **updates this row's counts in the same commit** |
+
 ## 00 · PRE-LAUNCH DATA RESET — `PRELAUNCH-RESET` · 🏁 **DONE 2026-09-11, EXECUTED ON PRODUCTION**
 
 Ali's go-live instruction, 2026-09-11. **▶ Record and runbook:
@@ -806,6 +818,10 @@ frozen and shipped. **Revised 2026-07-31 against the live platform, not against 
 > ⛔ Ruled OUT by Ali in the same breath, do not re-ask: compact list / density toggle · search
 > typeahead · admin filter rails · `/wallet` tabs · the `/markets` `aria-pressed` wording ·
 > the `rounded-pill` → `rounded-chip` sweep. All six keep their reasons in PLAN-OF-RECORD §8.8.
+> ⚠️ **SUPERSEDED FOR PHONES, 2026-09-15:** Ali ruled **Compact by default + a "Card spacing: Comfortable / Compact" switch** on phones
+> (< 640px). It is a spacing density on the existing cards, **not** the kit's compact list (`MarketListRow` stays unbuilt). The other five
+> items above still stand. Record: PLAN-OF-RECORD §8.8 "ALI'S RULINGS — 2026-09-15"; work order:
+> [`MOBILE-VISUAL-PLAN.md`](MOBILE-VISUAL-PLAN.md).
 >
 > 🗄️ **(history) The QA login block, and how it was diagnosed —**
 > `login(page, "alpha")` and `"echo"` both land back on the signed-out shell — the identifier

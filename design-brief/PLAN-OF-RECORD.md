@@ -906,6 +906,24 @@ Put to him as four plain-English choices at the close of batch 5, with the trade
 | Admin filter rails · `/wallet`'s section tabs | ⛔ **Leave both as they are** | The exclusions are now RULED, not merely defensible. ⛔ Do not propose them again |
 | The stale QA credentials | ▶ **Re-mint from the office PC** | Done — 6/6, and all eight rails then verified on production |
 
+### ⚖️ ALI'S RULINGS — 2026-09-15, the Mobile Visual Plan (asked explicitly and answered)
+
+Players on phones split between "sizes are fine" and "chunky and big". A live capture at 360/412 showed the cause is **density**, not
+type or tap size. Ali was asked in plain-English choices. **The first row reverses the compact-list deferral above FOR PHONES ONLY**, and it is
+recorded here so no session reads the 2026-08-14 row as still current. The full plan, units and tracker: [`docs/MOBILE-VISUAL-PLAN.md`](../docs/MOBILE-VISUAL-PLAN.md).
+
+| Question | Ali's answer | What it means |
+|---|---|---|
+| Phones: some like today's size, some find it chunky | ▶ **Compact by default + a Comfortable / Compact switch** | Supersedes "compact list stays deferred" **for phones (< 640px)**. It stays honest to this section's reason: the switch is **"Card spacing"**, never "list view"; it changes the market board's spacing only; **`MarketListRow` is still NOT built**; `DENSITY_IDS ["grid","list"]` stays unwired. ≥ 640 unchanged |
+| How far to tighten home on phones | ▶ **Tighten, keep every section** | Spacing, hero and CTA height only; sections, copy and the PV-01 backdrop unchanged |
+| Chat bubble on phones | ▶ **44px, hides while scrolling** | Returns when scrolling stops; never hidden while the chat is open |
+| Sparkline in Compact | ▶ **Keep it, slimmer (28 → 20px)** | Compact removes nothing |
+| Signed-out market detail on phones | ▶ **Market split first, sign-in box after** | Signed-in order unchanged |
+| Countdown showing SEC at 148 days | ▶ **Simplify everywhere** | ≥ 1 day: days + hours; < 24h: four tiles; all widths |
+| Confirmation questions on phones | ▶ **Slide up from the bottom** | Sign out, deposit/withdraw confirm, RG confirms, close account, cash-out. Bet confirm stays centred |
+| Toasts on phones | ▶ **At most 2 at once** | The rest queue; none expires unseen |
+| Notice bars on phones | ▶ **One at a time, announcements always** | Maintenance and session-ended always show; the email-verify bar keeps first place and stays non-dismissible (collapsible only); the away summary waits behind it |
+
 ### Found by batch 6, NOT batch 6's — filed rather than fixed (2026-08-15)
 
 | Finding | Measured | Why it is not fixed here |
