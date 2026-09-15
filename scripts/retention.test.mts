@@ -33,6 +33,9 @@ import {
 } from "../src/lib/server/retention.ts";
 import { aiPollStore, AIPOLL_PAYLOAD_PRUNED } from "../src/lib/server/ai-poll-generation.ts";
 import { verifyChain, getAuditPage } from "../src/lib/server/audit.ts";
+import { HOUSEBOT_ALERT_ONCE_RETENTION_DAYS } from "../src/lib/server/retention.ts";
+import { houseBotAlertOnceStore, houseBotEventStore } from "../src/lib/server/house-bot-dal.ts";
+import { ALERT_KEY } from "../src/lib/house-bot/constants.ts";
 
 let pass = 0, fail = 0;
 const ok = (l: string, c: boolean, x = "") => {
@@ -81,6 +84,31 @@ const mkOtp = async (id: string, ageMs: number) =>
 await mkOtp("otp_aged", (OTP_RETENTION_DAYS + 5) * DAY);
 await mkOtp("otp_young", 0); // just issued — inside the window and still readable
 
+/**
+ * A time fixture: the house stores stamp rows with `new Date()`, so a row written inside `asOf(n, …)` carries a
+ * creation time n days ago. Only the fixture's own writes run while the clock is shifted.
+ */
+const asOf = async <T,>(ageDays: number, fn: () => Promise<T>): Promise<T> => {
+  const RealDate = Date;
+  const shifted = RealDate.now() - ageDays * DAY;
+  class PastDate extends RealDate {
+    constructor(...args: unknown[]) {
+      if (args.length === 0) super(shifted);
+      else super(...(args as [string]));
+    }
+    static now() { return shifted; }
+  }
+  globalThis.Date = PastDate as unknown as DateConstructor;
+  try { return await fn(); } finally { globalThis.Date = RealDate; }
+};
+
+// 04 P3 · house-bot alert throttles go after 30 days; a house decision record never goes.
+const HB_THROTTLE_AGED = ALERT_KEY.rulesFuture("hb_ret_aged", 2);
+const HB_THROTTLE_YOUNG = ALERT_KEY.rulesFuture("hb_ret_young", 2);
+const hbAgedClaimed = await asOf(HOUSEBOT_ALERT_ONCE_RETENTION_DAYS + 1, () => houseBotAlertOnceStore.claim(HB_THROTTLE_AGED));
+const hbYoungClaimed = await asOf(1, () => houseBotAlertOnceStore.claim(HB_THROTTLE_YOUNG));
+const hbOldRecord = await asOf(400, () => houseBotEventStore.drawOpenerSide({ marketId: "mkt_ret_hb", houseBotId: null, side: "YES", actorId: null, drawnFor: "OPENER_PLAN" }));
+
 // Money that must be byte-identical afterwards.
 const wallet = await db.wallet.create({
   id: "wal_ret", userId: "u_ret", balance: 250_000, pending: 0, hold: 0, currency: "TZS",
@@ -128,6 +156,23 @@ ok("⛔ the AGED notification is gone", !ids.includes("ntf_aged"), ids.join(",")
 ok("the YOUNG notification survives", ids.includes("ntf_young"));
 ok("a row one day INSIDE the window survives — the boundary is not off by one",
   ids.includes("ntf_edge"), `remaining: ${ids.join(",")}`);
+
+ok("P3 · fixture · the aged and young house-bot throttles and the 400-day-old decision record were written",
+  hbAgedClaimed === true && hbYoungClaimed === true && hbOldRecord.drawn === true);
+ok("P3 · the pass purges exactly the house-bot throttle older than 30 days", result.houseBotAlertOncePurged === 1,
+  `houseBotAlertOncePurged=${result.houseBotAlertOncePurged}`);
+// A key that is still stored cannot be claimed again; a purged one can.
+const agedFree = await houseBotAlertOnceStore.claim(HB_THROTTLE_AGED);
+if (agedFree) await houseBotAlertOnceStore.release(HB_THROTTLE_AGED);
+ok("P3 · ⛔ the aged throttle is gone (its key is free again) …", agedFree === true);
+ok("P3 · …the young throttle survives (its key is still taken)", (await houseBotAlertOnceStore.claim(HB_THROTTLE_YOUNG)) === false);
+ok("P3 · 🔴 the 400-day-old house decision record survives — house records are never deleted (7 years, POCA)",
+  (await houseBotEventStore.findOpenerDraw("mkt_ret_hb"))?.id === hbOldRecord.eventId);
+const hbPurgeEntry = getAuditPage({ limit: 10_000 }).find((e) => e.action === "retention.purge.daily"
+  && (e.payload as { houseBotAlertOncePurged?: number } | undefined)?.houseBotAlertOncePurged === 1);
+ok("P3 · the audit payload names houseBotAlertOncePurged and its 30-day period",
+  (hbPurgeEntry?.payload as { houseBotAlertOnceRetentionDays?: number } | undefined)?.houseBotAlertOnceRetentionDays === HOUSEBOT_ALERT_ONCE_RETENTION_DAYS,
+  JSON.stringify(hbPurgeEntry?.payload ?? {}));
 
 // ── 3 · It deletes NOTHING ELSE ──────────────────────────────────────────────────────
 section("3 · money, ledger and the audit chain are untouched");
@@ -290,8 +335,8 @@ ok("5b.8 the audit row says BLANKED, and carries no field named for a deletion",
 section("5 · running it twice deletes nothing more");
 
 const second = await runRetentionPass(now);
-ok("second pass deletes nothing", second.notifications === 0 && second.otps === 0,
-  `notifications=${second.notifications}, otps=${second.otps}`);
+ok("second pass deletes nothing", second.notifications === 0 && second.otps === 0 && second.houseBotAlertOncePurged === 0,
+  `notifications=${second.notifications}, otps=${second.otps}, houseBotAlertOncePurged=${second.houseBotAlertOncePurged}`);
 ok("…and blanks no further payload — the prune is idempotent",
   second.aiPollRawResponses === 0 && second.aiPollGenerations === 0,
   `raw=${second.aiPollRawResponses}, gen=${second.aiPollGenerations}`);
