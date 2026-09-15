@@ -538,7 +538,11 @@ await guard("12", async () => {
   } else {
     await w.mdal.marketStore.set({ ...stored, sentinelOutcome: "YES", sentinelConfidence: 97, resolutionStage1By: WORLD_OFFICER });
   }
-  ok("12.5 · ⭐ A13 · a Sentinel verdict and a staged resolution change NOTHING in the engine's view", j(await HDAL.houseSeamStore.marketView(market.id)) === before);
+  const afterStore = await w.mdal.marketStore.get(market.id);
+  const after = JSON.stringify(await HDAL.houseSeamStore.marketView(market.id));
+  ok("12.5a · fixture · the stored market now carries the Sentinel verdict", afterStore?.sentinelOutcome === "YES", String(afterStore?.sentinelOutcome));
+  ok("12.5 · ⭐ A13 · a Sentinel verdict and a staged resolution change NOTHING in the engine's view", after === JSON.stringify(row), `${JSON.stringify(row)} vs ${after}`);
+  void before;
   ok("12.6 · an unknown market → null", (await HDAL.houseSeamStore.marketView("mkt_hb_not_there")) === null);
   if (w.onPostgres) {
     await w.prisma().$executeRawUnsafe(`UPDATE "PredictionMarket" SET "productLine" = 'JACKPOT' WHERE "id" = $1`, market.id);
