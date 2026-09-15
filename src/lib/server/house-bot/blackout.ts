@@ -19,15 +19,23 @@ import { houseSeamStore, type HouseTx, type HouseBlackoutRow } from "../house-bo
 
 export type InfoBlackout = { blocked: boolean };
 
+/**
+ * `countResolveClaim` (default true) — whether a young resolve claim blocks. The planner's `endTargets` passes false:
+ * a claim alone never ENDS a target, because fire and H3 still refuse while it is young (N2 §4 step 9.5). The output
+ * stays exactly `{blocked}`.
+ */
+export type BlackoutOptions = { countResolveClaim?: boolean };
+
 /** Pure: the rule on a row, at an instant. Exported for the seam suite's truth table. */
-export function blackoutFromRow(row: HouseBlackoutRow | null, nowMs: number): InfoBlackout {
+export function blackoutFromRow(row: HouseBlackoutRow | null, nowMs: number, opts: BlackoutOptions = {}): InfoBlackout {
   if (!row || row.status !== "LIVE") return { blocked: false };
   const stamped = row.sentinelOutcome != null || row.sentinelConfidence != null || row.sentinelDetermined != null
     || row.sentinelClosedAt != null || row.resolvedOutcome != null || row.resolutionStage1By != null;
-  const freshClaim = row.resolveClaimedAt != null && nowMs - Date.parse(row.resolveClaimedAt) < RESOLVE_CLAIM_TTL_MS;
+  const freshClaim = opts.countResolveClaim !== false
+    && row.resolveClaimedAt != null && nowMs - Date.parse(row.resolveClaimedAt) < RESOLVE_CLAIM_TTL_MS;
   return { blocked: stamped || freshClaim || row.reopenedAt != null };
 }
 
-export async function infoBlackout(marketId: string, opts: { tx?: HouseTx } = {}): Promise<InfoBlackout> {
-  return blackoutFromRow(await houseSeamStore.blackoutRow(marketId, opts.tx), Date.now());
+export async function infoBlackout(marketId: string, opts: { tx?: HouseTx } & BlackoutOptions = {}): Promise<InfoBlackout> {
+  return blackoutFromRow(await houseSeamStore.blackoutRow(marketId, opts.tx), Date.now(), { countResolveClaim: opts.countResolveClaim });
 }

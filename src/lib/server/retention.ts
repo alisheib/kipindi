@@ -24,6 +24,11 @@ import { audit } from "./audit";
 import { aiPollStore } from "./ai-poll-generation";
 import { pruneSiteVisits, SITE_VISIT_RETENTION_DAYS } from "./site-visits";
 import { expireStaleAgentApplications, purgeAgedAgentDocuments, AGENT_REFEREE_DOC_HOLD_DAYS, AGENT_REJECTED_DOC_HOLD_DAYS, AGENT_APPROVED_DOC_HOLD_YEARS } from "./agent-application-service";
+import { houseBotAlertOnceStore } from "./house-bot-dal";
+import { HOUSEBOT_ALERT_ONCE_RETENTION_DAYS } from "@/lib/house-bot/constants";
+
+/** House-bot alert throttles are operational only: 30 days from creation (04 P3, A20). One constant, re-exported. */
+export { HOUSEBOT_ALERT_ONCE_RETENTION_DAYS };
 
 /**
  * 🔴 NOTIFICATION RETENTION IS COUPLED TO THE UP & DOWN DIGEST. Read this before changing it.
@@ -123,6 +128,8 @@ export type RetentionResult = {
   /** First-party visit counts (`SiteVisitPage` + `SiteVisitSource`) older than SITE_VISIT_RETENTION_DAYS. They identify
    *  no one; the period bounds size. */
   siteVisitRows: number;
+  /** 04 P3 · `HouseBotAlertOnce` throttle rows older than HOUSEBOT_ALERT_ONCE_RETENTION_DAYS. Decisions and events are never deleted. */
+  houseBotAlertOncePurged: number;
 };
 
 /**
@@ -197,8 +204,16 @@ export async function runRetentionPass(now = Date.now()): Promise<RetentionResul
       return 0;
     });
 
+  // 04 P3 · house-bot alert throttles. Best-effort like the classes above; one batch a night (the DAL bounds it).
+  let houseBotAlertOncePurged = 0;
+  try {
+    houseBotAlertOncePurged = await houseBotAlertOnceStore.purgeBatch(HOUSEBOT_ALERT_ONCE_RETENTION_DAYS);
+  } catch (err) {
+    console.error("[retention] house-bot alert throttle purge failed:", (err as Error)?.message ?? err);
+  }
+
   const agentTouched = agentStale.drafts + agentStale.invitations + agentDocs.referee + agentDocs.applicant > 0;
-  if (notifications > 0 || otps > 0 || aiPolls.rawResponses > 0 || aiPolls.generations > 0 || agentTouched || lapsedIds.length > 0 || staleSessionRows > 0 || siteVisitRows > 0) {
+  if (notifications > 0 || otps > 0 || aiPolls.rawResponses > 0 || aiPolls.generations > 0 || agentTouched || lapsedIds.length > 0 || staleSessionRows > 0 || siteVisitRows > 0 || houseBotAlertOncePurged > 0) {
     audit({
       category: "SYSTEM",
       action: "retention.purge.daily",
@@ -218,6 +233,7 @@ export async function runRetentionPass(now = Date.now()): Promise<RetentionResul
         marketingConsentsLapsed: lapsedIds.length, marketingConsentLapseDays: MARKETING_CONSENT_LAPSE_DAYS,
         staleSessionRows, activeSessionRowDays: ACTIVE_SESSION_ROW_DAYS,
         siteVisitRows, siteVisitRetentionDays: SITE_VISIT_RETENTION_DAYS,
+        houseBotAlertOncePurged, houseBotAlertOnceRetentionDays: HOUSEBOT_ALERT_ONCE_RETENTION_DAYS,
       },
     });
   }
@@ -232,5 +248,6 @@ export async function runRetentionPass(now = Date.now()): Promise<RetentionResul
     marketingConsentsLapsed: lapsedIds.length,
     staleSessionRows,
     siteVisitRows,
+    houseBotAlertOncePurged,
   };
 }
