@@ -95,6 +95,9 @@ export const RATE_RULES: Record<string, RateRule> = {
   "bet.place":     { capacity: 30, refillPerMin: 10 },
   "bet.cashout":   { capacity: 10, refillPerMin: 2 },   // 10 burst, ~30s between after burst
   "ai.batch":      { capacity: 5,  refillPerMin: 0.25 }, // 5 batch-generations burst, ~4/hr — caps AI-spend abuse
+  // First-party visit counter (/api/pv), per IP. A real visitor sends one beacon per page; 60 burst and 30/min steady
+  // covers fast browsing on a shared mobile-carrier IP, and stops one client from inflating the counts.
+  "pv.ip":         { capacity: 60, refillPerMin: 30 },
 };
 
 export type RateResult = { allowed: boolean; remaining: number; retryAfterSec: number };

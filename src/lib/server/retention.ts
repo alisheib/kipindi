@@ -22,6 +22,7 @@ import { pruneStaleActiveSessions } from "./session-registry";
 import { db } from "./store";
 import { audit } from "./audit";
 import { aiPollStore } from "./ai-poll-generation";
+import { pruneSiteVisits, SITE_VISIT_RETENTION_DAYS } from "./site-visits";
 import { expireStaleAgentApplications, purgeAgedAgentDocuments, AGENT_REFEREE_DOC_HOLD_DAYS, AGENT_REJECTED_DOC_HOLD_DAYS, AGENT_APPROVED_DOC_HOLD_YEARS } from "./agent-application-service";
 
 /**
@@ -119,6 +120,9 @@ export type RetentionResult = {
   marketingConsentsLapsed: number;
   /** E-381 §6 item 12 · `ActiveSession` rows deleted because the session they name is past its 7-day cap. */
   staleSessionRows: number;
+  /** First-party visit counts (`SiteVisitPage` + `SiteVisitSource`) older than SITE_VISIT_RETENTION_DAYS. They identify
+   *  no one; the period bounds size. */
+  siteVisitRows: number;
 };
 
 /**
@@ -187,8 +191,14 @@ export async function runRetentionPass(now = Date.now()): Promise<RetentionResul
       return 0;
     });
 
+  const siteVisitRows = await pruneSiteVisits(now)
+    .catch((err) => {
+      console.error("[retention] site visit count prune failed:", (err as Error)?.message ?? err);
+      return 0;
+    });
+
   const agentTouched = agentStale.drafts + agentStale.invitations + agentDocs.referee + agentDocs.applicant > 0;
-  if (notifications > 0 || otps > 0 || aiPolls.rawResponses > 0 || aiPolls.generations > 0 || agentTouched || lapsedIds.length > 0 || staleSessionRows > 0) {
+  if (notifications > 0 || otps > 0 || aiPolls.rawResponses > 0 || aiPolls.generations > 0 || agentTouched || lapsedIds.length > 0 || staleSessionRows > 0 || siteVisitRows > 0) {
     audit({
       category: "SYSTEM",
       action: "retention.purge.daily",
@@ -207,6 +217,7 @@ export async function runRetentionPass(now = Date.now()): Promise<RetentionResul
         agentApplicantDocsPurged: agentDocs.applicant, agentRejectedDocHoldDays: AGENT_REJECTED_DOC_HOLD_DAYS, agentApprovedDocHoldYears: AGENT_APPROVED_DOC_HOLD_YEARS,
         marketingConsentsLapsed: lapsedIds.length, marketingConsentLapseDays: MARKETING_CONSENT_LAPSE_DAYS,
         staleSessionRows, activeSessionRowDays: ACTIVE_SESSION_ROW_DAYS,
+        siteVisitRows, siteVisitRetentionDays: SITE_VISIT_RETENTION_DAYS,
       },
     });
   }
@@ -220,5 +231,6 @@ export async function runRetentionPass(now = Date.now()): Promise<RetentionResul
     agentApplicantDocsPurged: agentDocs.applicant,
     marketingConsentsLapsed: lapsedIds.length,
     staleSessionRows,
+    siteVisitRows,
   };
 }

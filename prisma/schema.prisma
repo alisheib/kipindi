@@ -2560,3 +2560,33 @@ enum LedgerEntryType {
   SETTLEMENT_RESERVE // DEAD. Was reserveRate × pool.
   SETTLEMENT_AGGREGATOR // DEAD. Was aggregatorRate × pool.
 }
+
+/// FIRST-PARTY VISIT COUNTS — daily totals, one row per (EAT day, page). Written by `/api/pv` for EVERY visitor
+/// (Ali, 2026-09-15), which needs no consent only because nothing here identifies anyone: no user, no IP, no session,
+/// no cookie id. The path is masked and carries no query (src/lib/site-visits.ts). Pruned by `retention.purge.daily`
+/// after SITE_VISIT_RETENTION_DAYS.
+model SiteVisitPage {
+  id      String @id @default(cuid())
+  day     String // EAT day, YYYY-MM-DD (src/lib/eat-day.ts)
+  path    String // masked, no query or fragment; "(other)" once a day holds SITE_VISIT_MAX_PATHS distinct paths
+  views   Int    @default(0)
+  entries Int    @default(0) // visits that LANDED on this page
+
+  @@unique([day, path])
+  @@index([day])
+}
+
+/// Where visits came from, per EAT day: the referrer HOST and the campaign tags of each visit's first page. Same
+/// no-identifier rule as SiteVisitPage.
+model SiteVisitSource {
+  id       String @id @default(cuid())
+  day      String
+  referrer String @default("") // host only; "" = direct or internal
+  source   String @default("")
+  medium   String @default("")
+  campaign String @default("")
+  visits   Int    @default(0)
+
+  @@unique([day, referrer, source, medium, campaign])
+  @@index([day])
+}

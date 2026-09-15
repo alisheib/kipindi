@@ -14,6 +14,7 @@ import {
   GA_COOKIE_DAYS, GA_COOKIE_EXPIRES_SECONDS, GA_HOSTS, GA_MEASUREMENT_ID, GA_VIEW_MARK,
   gaExcluded, gaIsAnalyticsRequest, gaLocation, gaPath, gaReferrer, gaScrubHit,
 } from "../src/lib/google-tag.ts";
+import { CONSENT_DENY_DAYS, CONSENT_GRANT_DAYS, CONSENT_VERSION, parseConsent, serialiseConsent } from "../src/lib/analytics-consent.ts";
 
 let pass = 0, fail = 0;
 const ok = (label: string, cond: boolean, evidence = "") => {
@@ -117,6 +118,26 @@ ok("§6k control · the same hit to the GA collector is still sent, and look-ali
   && !gaIsAnalyticsRequest("https://google.com.evil.example/g/collect") && !gaIsAnalyticsRequest("https://notgoogle.com/g/collect"));
 ok("§6 control · the unmarked-view rule is what drops §6a (the same hit marked is kept)", gaScrubHit(historyView, null) === null && ours !== null);
 ok("§6 control · the mark constant is the one the tests use", GA_VIEW_MARK === "kp_view");
+
+console.log("\n§7 · consent — analytics is opt-in (Tanzania PDPA 2022: no legitimate-interests ground)");
+const DAY = 86_400_000;
+const NOW = Date.UTC(2026, 8, 15, 12, 0, 0);
+const rec = (o: Record<string, unknown>) => JSON.stringify(o);
+ok("§7a nothing stored, empty, or garbage → unset (analytics stays off)",
+  parseConsent(null, NOW) === "unset" && parseConsent("", NOW) === "unset" && parseConsent("{not json", NOW) === "unset" && parseConsent("null", NOW) === "unset");
+ok("§7b a record from another version, an unknown choice, or a non-numeric time → unset",
+  parseConsent(rec({ v: 2, choice: "granted", at: NOW }), NOW) === "unset"
+  && parseConsent(rec({ v: 1, choice: "yes", at: NOW }), NOW) === "unset"
+  && parseConsent(rec({ v: 1, choice: "granted", at: String(NOW) }), NOW) === "unset");
+ok("§7c a timestamp from the future is not a decision", parseConsent(rec({ v: 1, choice: "granted", at: NOW + 2 * DAY }), NOW) === "unset");
+ok("§7d a yes lasts 395 days, then the visitor is asked again",
+  parseConsent(serialiseConsent("granted", NOW - 394 * DAY), NOW) === "granted"
+  && parseConsent(serialiseConsent("granted", NOW - 395 * DAY), NOW) === "unset");
+ok("§7e a no lasts 180 days, and is not re-asked sooner",
+  parseConsent(serialiseConsent("denied", NOW - 179 * DAY), NOW) === "denied"
+  && parseConsent(serialiseConsent("denied", NOW - 180 * DAY), NOW) === "unset");
+ok("§7f serialise → parse round-trips both answers", parseConsent(serialiseConsent("granted", NOW), NOW) === "granted" && parseConsent(serialiseConsent("denied", NOW), NOW) === "denied");
+ok("§7 control · a yes lasts exactly as long as the cookies it allows", CONSENT_GRANT_DAYS === GA_COOKIE_DAYS && CONSENT_DENY_DAYS === 180 && CONSENT_VERSION === 1);
 
 console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — ${pass} passed, ${fail} failed`);
 if (pass + fail < 30) { console.error(`!! only ${pass + fail} assertions ran`); process.exit(3); }

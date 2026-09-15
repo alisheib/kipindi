@@ -8,6 +8,7 @@ import { isChatbotEnabled } from "@/lib/server/ai-controls";
 import { SUPPORT_EMAIL } from "@/lib/server/support-config";
 import { ScrollRestore } from "@/components/ui/scroll-restore";
 import { GoogleTag } from "@/components/analytics/google-tag";
+import { SiteVisitBeacon } from "@/components/analytics/site-visit-beacon";
 import { appUrl } from "@/lib/app-url";
 import "./globals.css";
 import "./state-tokens.css";
@@ -153,6 +154,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         {/* GA4 — live hosts only, never on /admin or a tokened page, addresses scrubbed. Read the
             component's header before touching it; Privacy §4/§7 describe exactly this. */}
         <GoogleTag />
+        {/* First-party visit counter — every visitor, no cookie, no identifier; see site-visit-beacon.tsx. */}
+        <SiteVisitBeacon />
         <ThemeProvider initialLocale={lang}>
           <ScrollRestore />
           <AppShell>{children}</AppShell>

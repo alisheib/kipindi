@@ -140,6 +140,7 @@ export const NAV_GROUPS: ReadonlyArray<NavGroup> = [
       { href: "/admin/affiliate", label: "Affiliate", key: "affiliate", domain: "growth" },
       { href: "/admin/bonuses",   label: "Bonuses",   key: "bonuses", domain: "growth" },
       { href: "/admin/invites",   label: "Invites",   key: "invites", domain: "growth" },
+      { href: "/admin/traffic",   label: "Traffic",   key: "traffic", domain: "growth" },
     ],
   },
   {
@@ -248,6 +249,7 @@ const ROUTE_KEYS: ReadonlyArray<readonly [prefix: string, key: string]> = [
   ["/admin/affiliate", "affiliate"],
   ["/admin/bonuses", "bonuses"],
   ["/admin/invites", "invites"],
+  ["/admin/traffic", "traffic"],
   ["/admin/moderation", "moderation"],
   ["/admin/compliance", "compliance"],
   ["/admin/aml", "aml"],

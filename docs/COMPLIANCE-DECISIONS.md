@@ -6,6 +6,46 @@
 
 ---
 
+## 2026-09-15 (second) · Privacy v2026-09-15.2 — Google Analytics becomes opt-in, and every visit is counted first-party with no identifier
+
+**Owner decision (Ali, 2026-09-15): "count all, full detail with OK".** The first release (below) ran GA for every visitor
+on *legitimate interest*. Checked against the law before building a consent banner: the Tanzania PDPA 2022 has **no
+general legitimate-interests ground** — consent is the basis for ordinary processing — and "use of cookies and other
+third-party trackers which can identify a natural person will qualify as disclosure of personal data and be subject to
+the PDPA" (DLA Piper, *Data Protection Laws of the World — Tanzania*; the Future of Privacy Forum's overview likewise
+finds no legitimate-interests basis). Ali wants every visitor counted, so the design splits the two jobs:
+
+| Part | What it does | Why it is lawful |
+|---|---|---|
+| **Google Analytics — opt-in** | `ConsentPrompt` asks once (bottom invitation slot, priority 0; Allow and Decline of **equal weight**; no close button; never over a money control; not shown to automation). `GoogleTag` fetches nothing until `consent === "granted"`. A yes lasts 395 days (= the cookies), a no 180 days, then the visitor is asked again. Privacy §7 carries `AnalyticsChoice`: turning it off sets Google's disable switch and **deletes `_ga` / `_ga_W66WRL67MQ`** | consent, recorded in the browser's storage (`src/lib/analytics-consent.ts`) |
+| **First-party visit counts — every visitor** | `SiteVisitBeacon` sends six fields (masked path, referrer HOST, campaign tags, entry flag) to `POST /api/pv`; the server re-validates, drops crawlers/previews/automation and cross-site posts, rate-limits per IP (`pv.ip`; the IP is the bucket key only, never stored or logged), and adds one to **daily totals** in `SiteVisitPage` / `SiteVisitSource`. Visits (arrivals) and page views — **no unique visitors**, deliberately: that needs a per-person key. Shown on `/admin/traffic` (growth domain) | nothing stored identifies anyone: no user, IP, user-agent, hash or cookie — the tables' fields are pinned by `test:privacy-notice` §4g |
+
+**Notice (en/sw/zh), same version 2026-09-15.2:** §2 "if you allow analytics" + a **Visit counts** line; §3 analytics
+leaves *Legitimate interest* and joins *Consent*, pointing at §7; §4 Google Analytics "only if you allow analytics"; §5
+visit counts 400 days; §7 the opt-in, the storage lifetimes, deletion on withdrawal, and the control.
+
+**Also corrected:** `insights.ts`, `/admin/insights` and `test:insights` said the platform has "zero web analytics" —
+visits are now counted, but anonymously, so they still cannot become a funnel stage (a visit cannot be joined to a
+registration). `docs/DATA-RETENTION.md` and `docs/DATA-LAYER.md` carry the new tables.
+
+**Guards.** `test:site-visits` (payload, server re-validation, bot filter — which caught `bot\b` dropping a real
+"CUBOT" Android phone — EAT day, path cap, stored fields, purge). `test:google-tag` §7 (consent parsing, expiry
+boundaries). `test:privacy-notice` §4f (opt-in wording in three languages, the tag gated on consent, withdrawal clears
+cookies, prompt mounted ungated, equal-weight buttons) and §4g (visit-count wording, tables without personal fields,
+beacon without browser storage), each with planted controls; the cookie census now includes `_ga` / `_ga_W66WRL67MQ`,
+which the code expires on withdrawal. Both new suites run in `predeploy`.
+
+**Owner items from the entry below:** ② done by Ali (history-based page views off); ① data retention set by Ali in GA
+(the value is not yet recorded here, so the notice states no GA period); ③ decided — this entry.
+**Still open:** transfers outside Tanzania — the PDPA requires a PDPC permit or safeguards, which covers Google as well
+as the processors already named in §4 (Railway, Cloudflare, Postmark, Anthropic, Sentry); Cloudflare Web Analytics
+beacon to be switched off in the dashboard (the API token supplied lacks *Account Settings*).
+
+**⛔ Do not** load Google Analytics before consent, weight the two answers differently, or add any identifier (user, IP,
+hash, cookie, storage) to the visit counter, without a new owner decision and a notice change first.
+
+---
+
 ## 2026-09-15 · Privacy v2026-09-15 — Google Analytics (G-W66WRL67MQ) goes on the site, and the notice says exactly what it sees
 
 **Owner instruction (Ali, 2026-09-15): install the Google tag received for 50pick "everywhere needed", done "the most

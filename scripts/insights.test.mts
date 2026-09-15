@@ -74,7 +74,7 @@ function txn(userId: string, type: StoredTxn["type"], amount: number, month: str
   const i = await getInsights(true);
   const keys = i.funnel.map((s) => s.key);
   ok("funnel keys are register→kyc→deposit→bet", JSON.stringify(keys) === JSON.stringify(["register", "kyc", "deposit", "bet"]), keys.join(","));
-  ok("there is NO 'visit' stage (not instrumented → would be fabrication)", !keys.includes("visit"));
+  ok("there is NO 'visit' stage (visits are counted anonymously on /admin/traffic — they cannot be joined to registrations, so a rate would be fabrication)", !keys.includes("visit"));
 }
 
 // ── 3. Funnel counts real users; staff excluded; PENDING ignored ─────────

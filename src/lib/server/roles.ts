@@ -252,6 +252,8 @@ export const ROUTE_DOMAINS: ReadonlyArray<readonly [prefix: string, domain: Admi
   ["/admin/affiliate", "growth"],
   ["/admin/bonuses", "growth"],
   ["/admin/invites", "growth"],
+  // First-party website traffic (2026-09-15) — growth reads acquisition; no player data on the page.
+  ["/admin/traffic", "growth"],
   // support
   ["/admin/players", "support"],
   // trading

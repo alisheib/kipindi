@@ -117,8 +117,8 @@ export default async function InsightsPage() {
                 the one above it.
               </>
             )}{" "}
-            A “visits” stage is deliberately absent: the platform has no web-analytics instrumentation, so any
-            visit number here would be invented. Add analytics first, then this gains a real top stage.
+            A “visits” stage is deliberately absent: visits are counted on Traffic, but anonymously, so they cannot be
+            joined to the players counted here, and a visit-to-register rate would be invented.
           </p>
         </AdminCard>
 
