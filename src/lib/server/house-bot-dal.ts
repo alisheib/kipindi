@@ -1679,6 +1679,12 @@ export interface HouseSeamStore {
   botUsage(input: { houseBotId: string; marketId: string }, tx?: HouseTx): Promise<HouseBotUsage>;
   marketUsage(input: { houseBotId: string; marketId: string }, tx?: HouseTx): Promise<HouseMarketUsage>;
   globalUsage(tx?: HouseTx): Promise<HouseGlobalUsage>;
+  /**
+   * The placement instants of marked positions in the last `withinSec` seconds (1–86,400) on the database clock,
+   * newest first: one bot's (`houseBotId`), or every bot's (null). The Enter now rate facts (N1 §4.2 step 11) read
+   * the same rolling windows H2's `botUsage` and H4's `globalUsage` count, as instants rather than counts.
+   */
+  placedTimes(input: { houseBotId: string | null; withinSec: number }, tx?: HouseTx): Promise<string[]>;
   /** PLACED COUNTER rows keyed on each player, plus PLACED MANUAL rows attributing a share to them,
    *  finished in the current EAT day (from DB `now()`). A player with none is returned with zeros. */
   counterpartyToday(userIds: readonly string[], tx?: HouseTx): Promise<CounterpartyToday[]>;
@@ -1722,6 +1728,12 @@ function pageLimit(limit: number): number {
 /** A whole, non-negative count or duration argument, refused identically by both stores. */
 function wholeArg(name: string, v: number): number {
   if (!Number.isSafeInteger(v) || v < 0) throw new Error(`house-bot-dal: ${name} must be a whole number ≥ 0`);
+  return v;
+}
+
+/** `placedTimes`' window: whole seconds, 1 to 86,400 (the longest rate window, PER_DAY), refused identically. */
+function placedWindowSec(v: number): number {
+  if (wholeArg("withinSec", v) < 1 || v > 86_400) throw new Error("house-bot-dal: withinSec must be 1 to 86400");
   return v;
 }
 
@@ -2714,6 +2726,16 @@ const memoryHouseSeam: HouseSeamStore = {
       if (at > now - DAY_MS) betsLastDay++;
     }
     return { betsLastMinute, betsLastDay };
+  },
+  async placedTimes({ houseBotId, withinSec }) {
+    const since = Date.now() - placedWindowSec(withinSec) * 1000;
+    const out: number[] = [];
+    for (const p of await positionStore.values()) {
+      if (p.houseBotId == null || (houseBotId != null && p.houseBotId !== houseBotId)) continue;
+      const at = ms(p.placedAt);
+      if (at > since) out.push(at);
+    }
+    return out.sort((a, b) => b - a).map((t) => new Date(t).toISOString());
   },
   async counterpartyToday(userIds) {
     const w = eatDayWindow(eatDayKey(Date.now()));
@@ -3776,6 +3798,14 @@ const prismaHouseSeam: HouseSeamStore = {
       + ` count(*)::int AS "day"`
       + ` FROM "Position" WHERE "houseBotId" IS NOT NULL AND "placedAt" > ${DB_CLOCK_UTC_SQL} - interval '1 day'`, []);
     return { betsLastMinute: Number(rows[0].minute), betsLastDay: Number(rows[0].day) };
+  },
+  async placedTimes({ houseBotId, withinSec }, tx) {
+    const secs = placedWindowSec(withinSec);
+    const who = houseBotId == null ? `"houseBotId" IS NOT NULL` : `"houseBotId" = $2::text`;
+    const rows = await sql(tx, `SELECT "placedAt" FROM "Position" WHERE ${who}`
+      + ` AND "placedAt" > ${DB_CLOCK_UTC_SQL} - ($1::int * interval '1 second') ORDER BY "placedAt" DESC`,
+      houseBotId == null ? [secs] : [secs, houseBotId]);
+    return rows.map((r) => iso(r.placedAt as Date));
   },
   async counterpartyToday(userIds, tx) {
     if (userIds.length === 0) return [];

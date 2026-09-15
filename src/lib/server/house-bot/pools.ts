@@ -34,6 +34,22 @@ export function lockedPoolInputs(market: LockedPoolMarket): { graceMs: number; p
   };
 }
 
+/**
+ * The same inputs from the engine's view (04 A13), whose exit rates the DAL resolved from the same frozen snapshot.
+ * The engine holds a `PublicMarketView`, never a market row; the engine suite proves both give equal inputs.
+ */
+export function lockedPoolInputsOfView(view: {
+  exitRates: { graceMin: number; paidMin: number };
+  selectionClosedAt: string | null;
+  resolutionAt: string;
+}): { graceMs: number; paidMs: number; closesAt: string } {
+  return {
+    graceMs: Math.round(Math.max(0, view.exitRates.graceMin) * 60_000),
+    paidMs: Math.round(Math.max(0, view.exitRates.paidMin) * 60_000),
+    closesAt: view.selectionClosedAt ?? view.resolutionAt,
+  };
+}
+
 /** `lockedForHouse(marketId, {tx?, graceMs, paidMs, closesAt, asOf?})` — one SQL aggregate (N1 §4.1). */
 export function lockedForHouse(
   marketId: string,
