@@ -153,6 +153,7 @@
     "test:agent-terms-binding": "tsx scripts/agent-terms-binding.test.mts",
     "test:terms-binding": "tsx scripts/terms-binding.test.mts",
     "test:privacy-notice": "tsx scripts/privacy-notice.test.mts",
+    "test:google-tag": "tsx scripts/google-tag.test.mts",
     "test:close-account-phrase": "tsx scripts/close-account-phrase.test.mts",
     "test:betting-ink": "tsx scripts/betting-ink.test.mts",
     "test:kyc-step-guards": "tsx scripts/kyc-step-guards.test.mts",
