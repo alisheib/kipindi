@@ -429,7 +429,8 @@ await guard("10", async () => {
         && Object.values(E.engineState().timers).every((t) => t === null) && ticked === 0, j(refused));
     } finally {
       await db.$executeRawUnsafe(`ALTER TABLE "HouseBotPress_hb_gate" RENAME TO "HouseBotPress"`);
-      globalThis.__50PICK_HOUSE_SCHEMA_READY = undefined;
+      // ⛔ The schema cache is NOT cleared here: 10.13 must prove the gate itself asks again after a not-ready
+      // answer. Clearing it made a gate that cached "not ready" pass (mutation S3 missed).
       globalThis.__50PICK_HOUSE_BOT_ENGINE = undefined;
     }
     const back = await H.GET();
