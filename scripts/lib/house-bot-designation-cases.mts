@@ -934,6 +934,20 @@ section("§11 · review fixes — consent that lands mid-check, repeat episodes,
     const mid = await count();
     await fulfillDsarRequest({ id: req.id, officerId: OFFICER });
     ok("11.10 · the first alert failed to reach anyone → the second refused attempt still alerts exactly once", mid === before && (await count()) === before + 1, `${before} ${mid} ${await count()}`);
+
+    // …and the other path: the send runs but reaches nobody (no recipient read back), then recipients return.
+    await clearRoster();
+    const h2 = await holder();
+    rlReset();
+    await desig(h2);
+    await w.setUserFields(h2, { status: "CLOSED", closedAt: new Date().toISOString() });
+    const req2 = fileDsarRequest({ userId: h2, type: "ERASURE" });
+    const before2 = await count();
+    w.db.user.listByRoles = () => [];
+    try { await fulfillDsarRequest({ id: req2.id, officerId: OFFICER }); } finally { w.db.user.listByRoles = realList; }
+    const mid2 = await count();
+    await fulfillDsarRequest({ id: req2.id, officerId: OFFICER });
+    ok("11.10b · a send that reached no recipient gives the claim back → the next refused attempt alerts exactly once", mid2 === before2 && (await count()) === before2 + 1, `${before2} ${mid2} ${await count()}`);
   }
 
   // LI-9 · erasure renames only the erased bot's own notices, never another holder's live bot with the freed label.
@@ -962,7 +976,8 @@ section("§11 · review fixes — consent that lands mid-check, repeat episodes,
   // UX-2 · started, paused, started inside 90 s are three notices, the newest "started".
   {
     const h = await holder();
-    for (const n of ["started", "paused", "started"]) await N.notifyHouseBotOwner(h, n);
+    // Spaced by a few ms: two rows in the same millisecond have no defined newest-first order.
+    for (const n of ["started", "paused", "started"]) { await N.notifyHouseBotOwner(h, n); await sleep(5); }
     const rows = await houseRows(h);
     ok("11.12 · three state notices inside the dedupe window → three rows, newest \"Liquidity stakes started\"",
       rows.length === 3 && rows[0].titleEn === "Liquidity stakes started", j(rows.map((r: Any) => r.titleEn)));
