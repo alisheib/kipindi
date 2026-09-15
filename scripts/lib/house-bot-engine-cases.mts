@@ -342,7 +342,9 @@ await guard("7", () => {
 if (STORE === "memory") {
   section("§8 · source pins");
   const code = (rel: string) => decomment(readFileSync(join(ROOT, rel), "utf8"));
-  const importsOf = (src: string) => [...src.matchAll(/^\s*(import|export)\s+(type\s+)?[\s\S]*?\s+from\s+["']([^"']+)["']/gm)].map((m) => ({ typeOnly: !!m[2], spec: m[3] }));
+  // ⛔ The span between the keyword and `from` may not cross a `;` — a lazy span across statements read
+  // `export const X = [...]; import type {…} from "…"` as ONE value import (found by 8.1 on market-view.ts).
+  const importsOf = (src: string) => [...src.matchAll(/^\s*(import|export)\s+(type\s+)?[^;]*?\s+from\s+["']([^"']+)["']/gm)].map((m) => ({ typeOnly: !!m[2], spec: m[3] }));
   const PURE = [
     "src/lib/server/house-bot/decide.ts",
     "src/lib/server/house-bot/enter-now-decision.ts",
@@ -382,6 +384,209 @@ await guard("9", () => {
   ok("9.6 · fillCopy fills known placeholders and leaves unknown ones visible", FC.fillCopy("{bot} · {nope}", { bot: "Bot A" }) === "Bot A · {nope}");
   const texts = [...Object.values(FC.ENGINE_CODE_SENTENCE), ...Object.values(FC.PRESS_REFUSAL_SENTENCE), ...Object.values(FC.TARGET_END_CAPTION)] as string[];
   ok("9.7 · no sentence carries a square bracket (Tailwind scans src)", texts.every((t) => !/[[\]]/.test(t)));
+});
+
+/* ═══ §10 · the schema gate (04 A23) ══════════════════════════════════════════════════════════════ */
+section("§10 · houseBotSchemaReady and /api/health");
+const SR: Any = await import("../../src/lib/server/house-bot/schema-ready.ts");
+await guard("10", async () => {
+  const full = { tables: [...SR.HOUSE_SCHEMA_TABLES], columns: SR.HOUSE_SCHEMA_COLUMNS.map(([table, column]: string[]) => ({ table, column })), seeds: { control: 1, runtime: 1 } };
+  ok("10.1 · every table, marker column and seed → ready", SR.schemaStateFrom(full).ready === true);
+  const noPress = SR.schemaStateFrom({ ...full, tables: full.tables.filter((t: string) => t !== "HouseBotPress") });
+  ok("10.2 · the 8th table missing → not ready, naming it", !noPress.ready && j(noPress.missingTables) === j(["HouseBotPress"]), j(noPress));
+  const noMarker = SR.schemaStateFrom({ ...full, columns: full.columns.filter((c: Any) => !(c.table === "Position" && c.column === "houseBotId")) });
+  ok("10.3 · the Position marker missing → not ready, naming it", !noMarker.ready && j(noMarker.missingColumns) === j(["Position.houseBotId"]), j(noMarker));
+  ok("10.4 · tables without their seeded rows → not ready", SR.schemaStateFrom({ ...full, seeds: { control: 0, runtime: 1 } }).ready === false && SR.schemaStateFrom({ ...full, seeds: null }).ready === false);
+  const thrown = await SR.houseBotSchemaReady({ probe: async () => { throw new Error("probe down"); } });
+  ok("10.5 · a probe that throws → NOT ready (fails closed), probeFailed", thrown.ready === false && thrown.probeFailed === true, j(thrown));
+  globalThis.__50PICK_HOUSE_SCHEMA_READY = undefined;
+  const real = await SR.houseBotSchemaReady();
+  ok(`10.6 · the real ${STORE} store is ready`, real.ready === true, j(real));
+
+  const H: Any = await import("../../src/app/api/health/route.ts");
+  const res = await H.GET();
+  const body: Any = await res.json();
+  ok("10.7 · /api/health answers 200 with houseBots.schemaReady true", res.status === 200 && body.houseBots?.schemaReady === true, `${res.status} ${j(body.houseBots)}`);
+  ok("10.8 · …and reports this instance's engine (not started in a suite)", body.houseBots?.engine?.started === false, j(body.houseBots?.engine));
+
+  if (onPostgres) {
+    const db = prisma();
+    await db.$executeRawUnsafe(`ALTER TABLE "HouseBotPress" RENAME TO "HouseBotPress_hb_gate"`);
+    try {
+      globalThis.__50PICK_HOUSE_SCHEMA_READY = undefined;
+      const gone = await SR.houseBotSchemaReady();
+      ok("10.9 · a real missing table → not ready, naming it", !gone.ready && gone.missingTables.includes("HouseBotPress"), j(gone));
+      const r503 = await H.GET();
+      const b503: Any = await r503.json();
+      ok("10.10 · ⛔ /api/health answers 503 with houseBots.schemaReady false and ok false", r503.status === 503 && b503.houseBots?.schemaReady === false && b503.ok === false, `${r503.status} ${j(b503.houseBots)}`);
+      const head = await H.HEAD();
+      ok("10.11 · HEAD agrees with GET (503)", head.status === 503, String(head.status));
+      const E: Any = await import("../../src/lib/server/house-bot/engine.ts");
+      globalThis.__50PICK_HOUSE_BOT_ENGINE = undefined;
+      let ticked = 0;
+      const refused = await E.startHouseBotEngine({ pollerTick: async () => { ticked++; }, plannerTick: async () => { ticked++; } });
+      ok("10.12 · the engine does not start on a missing schema, and arms no timer", refused.started === false && refused.refused === "SCHEMA_NOT_READY"
+        && Object.values(E.engineState().timers).every((t) => t === null) && ticked === 0, j(refused));
+    } finally {
+      await db.$executeRawUnsafe(`ALTER TABLE "HouseBotPress_hb_gate" RENAME TO "HouseBotPress"`);
+      globalThis.__50PICK_HOUSE_SCHEMA_READY = undefined;
+      globalThis.__50PICK_HOUSE_BOT_ENGINE = undefined;
+    }
+    const back = await H.GET();
+    ok("10.13 · restored → 200 again (a not-ready answer is not cached)", back.status === 200, String(back.status));
+  }
+});
+
+/* ═══ §11 · the engine process (PLAN §4.2, 04 A4, A24) ══════════════════════════════════════════ */
+section("§11 · engine boot, back-pressure and stop");
+const EN2: Any = await import("../../src/lib/server/house-bot/engine.ts");
+const { INSTANCE_ID }: Any = await import("../../src/lib/server/leader.ts");
+const HDAL: Any = await import("../../src/lib/server/house-bot-dal.ts");
+await guard("11", async () => {
+  const st = (o: Any = {}) => ({ ...EN2.engineState(), started: true, stopping: false, skewMs: 0, inFlight: new Map(), ...o });
+  const adm = (o: Any = {}) => ({ inFlight: 0, queueDepth: 0, limits: { maxInFlight: 10, maxQueue: 500, maxWaitMs: 15_000 }, ...o });
+  ok("11.1 · not started → no claims", EN2.claimGate({ ...st(), started: false }, adm()).reason === "NOT_STARTED");
+  ok("11.2 · stopping → no claims", EN2.claimGate(st({ stopping: true }), adm()).reason === "STOPPING");
+  ok("11.3 · skew not yet measured → no claims (fails closed)", EN2.claimGate(st({ skewMs: null }), adm()).reason === "SKEW_UNKNOWN");
+  ok("11.4 · A24: +6 s skew → no claims", EN2.claimGate(st({ skewMs: 6_000 }), adm()).reason === "SKEW");
+  ok("11.5 · …and −6 s too", EN2.claimGate(st({ skewMs: -6_000 }), adm()).reason === "SKEW");
+  ok("11.6 · A24: an admission queue → no claims", EN2.claimGate(st(), adm({ queueDepth: 1 })).reason === "ADMISSION");
+  ok("11.7 · A24: in-flight at half the maximum → no claims", EN2.claimGate(st(), adm({ inFlight: 5 })).reason === "ADMISSION");
+  const four = EN2.claimGate(st(), adm({ inFlight: 4 }));
+  ok("11.8 · …below half → claims, with 2 free slots", four.ok === true && four.freeSlots === 2, j(four));
+  const busy = new Map([["hbi_1", { startedAt: 0, inline: false }], ["hbi_2", { startedAt: 0, inline: true }]]);
+  ok("11.9 · two fires in flight → FULL", EN2.claimGate(st({ inFlight: busy }), adm()).reason === "FULL");
+  ok("11.10 · A24 claim guard = max(0, skew) + 2 s", (EN2.claimGate(st({ skewMs: 3_000 }), adm()) as Any).skewGuardMs === 5_000 && (EN2.claimGate(st({ skewMs: -3_000 }), adm()) as Any).skewGuardMs === 2_000);
+  ok("11.11 · N2 §4: the bet hook is suspended while skew is unknown or over 5 s", EN2.hookSuspendedBySkew(st({ skewMs: null })) && EN2.hookSuspendedBySkew(st({ skewMs: 5_001 })) && !EN2.hookSuspendedBySkew(st({ skewMs: 5_000 })));
+
+  const probe = st({ skewMs: 0 });
+  ok("11.12 · a clock that throws → skew unknown (claims pause)", (await EN2.measureSkew(probe, async () => { throw new Error("db down"); })) === null && probe.skewMs === null);
+  ok("11.13 · skew is measured against the round-trip midpoint", Math.abs((await EN2.measureSkew(probe, async () => Date.now() + 1_000))! - 1_000) <= 50, String(probe.skewMs));
+
+  const ticks = { pollerTick: async () => {}, plannerTick: async () => {} };
+  const ready = async () => ({ ready: true });
+  globalThis.__50PICK_HOUSE_BOT_ENGINE = undefined;
+  const off = await EN2.startHouseBotEngine(ticks, { env: () => "false", schemaReady: ready, timeZone: async () => "UTC" });
+  ok("11.14 · HOUSE_BOT_ENGINE=false → not started, no timer", off.started === false && off.refused === "ENV_DISABLED" && Object.values(EN2.engineState().timers).every((t) => t === null));
+  globalThis.__50PICK_HOUSE_BOT_ENGINE = undefined;
+  const zone = await EN2.startHouseBotEngine(ticks, { env: () => undefined, schemaReady: ready, timeZone: async () => "Africa/Dar_es_Salaam" });
+  ok("11.15 · A4: a database TimeZone that is not UTC → not started", zone.started === false && zone.refused === "DB_TIMEZONE");
+  ok("11.16 · …and no boot row was written by a refused start", (await HDAL.houseBotRuntimeStore.get(`engine:${INSTANCE_ID}`)) === null);
+  globalThis.__50PICK_HOUSE_BOT_ENGINE = undefined;
+  const on = await EN2.startHouseBotEngine(ticks, { env: () => undefined, schemaReady: ready, timeZone: async () => "Etc/UTC", dbClockMs: async () => Date.now() + 1_000 });
+  const firstTimer = EN2.engineState().timers.first;
+  const again = await EN2.startHouseBotEngine(ticks, { env: () => undefined, schemaReady: ready, timeZone: async () => "UTC" });
+  ok("11.17 · a clean start: started, skew measured, the first pass armed", on.started === true && Math.abs(EN2.engineState().skewMs - 1_000) <= 50 && firstTimer !== null, j(EN2.houseBotEngineHealth()));
+  ok("11.18 · A24: startHouseBotEngine called twice arms ONE timer", again.started === true && EN2.engineState().timers.first === firstTimer);
+  const row = await HDAL.houseBotRuntimeStore.get(`engine:${INSTANCE_ID}`);
+  ok("11.19 · the boot row engine:<instance> says enabled, with a boot time", row?.engineEnabled === true && !!row?.bootAt, j(row));
+  let requeued: Any = null;
+  await EN2.stopHouseBotEngine({ requeueMine: async (id: string, exclude: string[]) => { requeued = { id, exclude }; return 0; } }, "test");
+  await sleep(10);
+  ok("11.20 · stop: stopping set, every timer cleared, claims handed back for this instance", EN2.engineState().stopping === true && Object.values(EN2.engineState().timers).every((t) => t === null)
+    && requeued?.id === INSTANCE_ID && EN2.claimGate(EN2.engineState(), adm()).ok === false, j(requeued));
+  globalThis.__50PICK_HOUSE_BOT_ENGINE = undefined;
+  if (onPostgres) {
+    const tz = String(((await prisma().$queryRawUnsafe(`SELECT current_setting('TimeZone') AS "z"`)) as Any[])[0].z);
+    const real = await EN2.startHouseBotEngine(ticks, { env: () => undefined, schemaReady: ready, dbClockMs: async () => Date.now() });
+    ok(`11.21 · the real TimeZone probe (${tz}) agrees with the boot decision`, (EN2.UTC_ZONES.includes(tz)) === (real.refused !== "DB_TIMEZONE"), j(real));
+    await EN2.stopHouseBotEngine({}, "test");
+    globalThis.__50PICK_HOUSE_BOT_ENGINE = undefined;
+  }
+});
+
+/** Module-scope `let`/`var`, or a `new Map|Set|WeakMap` constant not typed Readonly (04 F7). */
+// ⛔ The lookahead carries its own `\s*`: outside it, backtracking the whitespace let "ReadonlySet" slip past (11.24).
+const MUTABLE_MODULE_STATE = /^(?:export\s+)?(?:let|var)\s+\w+|^(?:export\s+)?const\s+\w+\s*(?::(?!\s*Readonly(?:Set|Map)<)[^=]+)?=\s*new\s+(?:Map|Set|WeakMap)\b/gm;
+if (STORE === "memory") {
+  section("§11b · F7 source pin: no module-scope mutable state in server/house-bot/");
+  const { readdirSync } = await import("node:fs");
+  const dir = join(ROOT, "src/lib/server/house-bot");
+  const offenders: string[] = [];
+  for (const f of readdirSync(dir).filter((n: string) => n.endsWith(".ts"))) {
+    const src = decomment(readFileSync(join(dir, f), "utf8"));
+    for (const m of src.matchAll(MUTABLE_MODULE_STATE)) offenders.push(`${f}: ${m[0]}`);
+  }
+  ok("11.22 · no top-level let, var or mutable Map/Set in any server/house-bot module (state lives on globalThis)", offenders.length === 0, offenders.join(" | "));
+  ok("11.23 · CONTROL · the pin sees a planted module Map and an untyped module Set", [..."const cache = new Map();\nconst seen = new Set<string>();".matchAll(MUTABLE_MODULE_STATE)].length === 2);
+  ok("11.24 · CONTROL · a ReadonlySet/ReadonlyMap constant is allowed (the type forbids mutation)", [..."const ROWS: ReadonlySet<string> = new Set([\"a\"]);".matchAll(MUTABLE_MODULE_STATE)].length === 0);
+}
+
+/* ═══ §12 · the engine's one market read (04 A12, A13) ═══════════════════════════════════════════ */
+section("§12 · houseSeamStore.marketView");
+const { loadWorld, OFFICER: WORLD_OFFICER }: Any = await import("./house-bot-world.mts");
+await guard("12", async () => {
+  const w = await loadWorld();
+  await w.user({ id: WORLD_OFFICER, role: "ADMIN" });
+  const market = await w.poll({ graceMin: 5, paidMin: 2 });
+  ok("12.0 · fixture · a poll exists", typeof market?.id === "string", j(market));
+  const row = await HDAL.houseSeamStore.marketView(market.id);
+  const stored = await w.mdal.marketStore.get(market.id);
+  const isoOrNull = (s: string | null | undefined) => (s ? new Date(s).toISOString() : null);
+  ok("12.1 · a poll: raw product line, category, status, pools and times match the stored market",
+    !!row && row.productLine === "MARKET" && row.category === stored.category && row.status === stored.status && row.yesPool === Number(stored.yesPool)
+      && row.noPool === Number(stored.noPool) && row.resolutionAt === isoOrNull(stored.resolutionAt) && row.selectionClosedAt === isoOrNull(stored.selectionClosedAt)
+      && row.createdAt === isoOrNull(stored.createdAt) && row.titleEn === stored.titleEn, j(row));
+  ok("12.2 · …the exit rates are the market's FROZEN ones (grace 5, paid 2)", row?.exitGraceMin === 5 && row?.exitPaidMin === 2, j(row));
+  ok("12.3 · …no round, never reopened", row?.round === null && row?.reopenedAt === null);
+  const KEYS = ["id", "productLine", "category", "status", "yesPool", "noPool", "selectionClosedAt", "resolutionAt", "createdAt", "titleEn", "exitGraceMin", "exitPaidMin", "reopenedAt", "round"];
+  ok("12.4 · the row carries exactly the allowlisted keys", j(Object.keys(row ?? {}).sort()) === j([...KEYS].sort()), j(Object.keys(row ?? {})));
+  const before = j(row);
+  if (w.onPostgres) {
+    await w.prisma().$executeRawUnsafe(`UPDATE "PredictionMarket" SET "sentinelOutcome" = 'YES', "sentinelConfidence" = 97, "resolutionStage1By" = $1 WHERE "id" = $2`, WORLD_OFFICER, market.id);
+  } else {
+    await w.mdal.marketStore.set({ ...stored, sentinelOutcome: "YES", sentinelConfidence: 97, resolutionStage1By: WORLD_OFFICER });
+  }
+  ok("12.5 · ⭐ A13 · a Sentinel verdict and a staged resolution change NOTHING in the engine's view", j(await HDAL.houseSeamStore.marketView(market.id)) === before);
+  ok("12.6 · an unknown market → null", (await HDAL.houseSeamStore.marketView("mkt_hb_not_there")) === null);
+  if (w.onPostgres) {
+    await w.prisma().$executeRawUnsafe(`UPDATE "PredictionMarket" SET "productLine" = 'JACKPOT' WHERE "id" = $1`, market.id);
+    try {
+      const raw = await HDAL.houseSeamStore.marketView(market.id);
+      ok("12.7 · A12 · the RAW product line reaches the view (JACKPOT), and scope refuses it", raw?.productLine === "JACKPOT" && MV.scopeCode(MV.projectMarketView(raw)) === "PRODUCT_NOT_SUPPORTED", j(raw?.productLine));
+    } finally {
+      await w.prisma().$executeRawUnsafe(`UPDATE "PredictionMarket" SET "productLine" = 'MARKET' WHERE "id" = $1`, market.id);
+    }
+  }
+
+  // A real Up & Down round: asset → chain → confirmed observation → openRound (the Commit 3 caps fixture).
+  const cfg: Any = await import("../../src/lib/server/updown-config.ts");
+  const uds: Any = await import("../../src/lib/server/updown-service.ts");
+  const udd: Any = await import("../../src/lib/server/updown-dal.ts");
+  const { seedDefaultSources, addSource }: Any = await import("../../src/lib/server/source-registry.ts");
+  await seedDefaultSources();
+  await addSource({ domain: "api.twelvedata.com", label: "Twelve Data", category: "crypto", rationale: "test fixture (mirrors production)", addedBy: "system" });
+  const a = await cfg.createAsset({ key: `E${process.pid}`, symbol: "BTC/USD", nameEn: "Bitcoin", nameSw: "Bitcoin", iconKey: "crypto",
+    priceSourceUrl: "https://api.twelvedata.com/quote", category: "crypto", decimals: 2, minMoveTicks: 2 }, WORLD_OFFICER);
+  if (a.ok) await cfg.setAssetEnabled(a.data.id, true, WORLD_OFFICER);
+  const c = a.ok ? await cfg.createChain({ assetId: a.data.id, durationMinutes: 5 }, WORLD_OFFICER) : a;
+  if (c.ok) await cfg.setChainState(c.data.id, "RUNNING", WORLD_OFFICER);
+  const chain = c.ok ? await udd.chainStore.get(c.data.id) : null;
+  const boundary = new Date(cfg.cleanGridAnchor(Date.now() + 60_000)).toISOString();
+  let opened: Any = { ok: false, error: `fixture: ${a.error ?? c.error}` };
+  if (chain) {
+    const o = await udd.observationStore.ensure(a.data.id, boundary);
+    await udd.observationStore.confirm(o.id, { price: 60_000, sourceUrl: "https://api.twelvedata.com/quote", sourceQuotedAt: boundary,
+      evidence: "BTC quoted 60000", confidence: 96, model: "test-stub", rawHash: `hv_${process.pid}` });
+    opened = await uds.openRound(chain, boundary, o.id, 60_000);
+  }
+  ok("12.8 · fixture · a real Up & Down round is open on a running chain", opened.ok === true, opened.ok ? "" : String(opened.error));
+  if (opened.ok) {
+    const round = await udd.roundStore.get(opened.data.id);
+    const v = await HDAL.houseSeamStore.marketView(round.marketId);
+    ok("12.9 · the chain key is the rules' `<assetId>:<durationMinutes>`", v?.round?.chainKey === `${a.data.id}:5`, j(v?.round));
+    ok("12.10 · the round's number, open time, open price and duration are the stored round's",
+      v?.productLine === "UPDOWN" && v.round.roundNumber === round.roundNumber && v.round.opensAt === isoOrNull(round.opensAt)
+        && v.round.openPrice === (round.openPrice == null ? null : Number(round.openPrice)) && v.round.durationMinutes === 5
+        && v.round.upTarget === (round.upTarget == null ? null : Number(round.upTarget)) && v.round.downTarget === (round.downTarget == null ? null : Number(round.downTarget)), j(v?.round));
+    ok("12.11 · a running chain on an enabled asset reads as such", v?.round?.chainRunning === true && v.round.assetEnabled === true);
+    const view = MV.projectMarketView(v);
+    ok("12.12 · A12 cutoff = min(opensAt + 5 min, the market's close)", MV.cutoffOf(view) === new Date(Math.min(Date.parse(v.round.opensAt) + 300_000, Date.parse(v.selectionClosedAt ?? v.resolutionAt))).toISOString());
+    await cfg.setChainState(c.data.id, "PAUSED", WORLD_OFFICER);
+    await cfg.setAssetEnabled(a.data.id, false, WORLD_OFFICER);
+    const paused = await HDAL.houseSeamStore.marketView(round.marketId);
+    ok("12.13 · A16 · a paused chain and a disabled asset are visible to the engine", paused?.round?.chainRunning === false && paused.round.assetEnabled === false, j(paused?.round));
+  }
 });
 
 console.log(`\n@@SUMMARY ${JSON.stringify({ pass, fail })}`);

@@ -276,6 +276,13 @@ Authority order: 04 > 02/03 > PLAN > 01; the later and more specific text wins.
 40. **Out of scope writes no row.** A demo market, a product no policy admits, an Up & Down market with no round and a poll with no cutoff produce no intent; `decide` returns the code (UD_NO_ROUND, NO_CUTOFF, PRODUCT_NOT_SUPPORTED) for the caller's once-only alerts (A12 tests). A demo market reuses PRODUCT_NOT_SUPPORTED.
 41. **The information blackout gates staff-chosen rows only.** `decideCounter` applies `blocked` to the target candidate; an untargeted COUNTER, FILL and OPENER ignore it (N1 §3 "for staff-chosen rows only", as H3 does).
 
+*Rulings taken in §5 step 3 (2026-09-16):*
+
+42. **The engine shell takes its passes as arguments, and `instrumentation.ts` is wired in step 4.** A booted engine with no poller would beat for work nobody did; `startHouseBotEngine(ticks, deps)` is proven on its own now, and the boot call lands with the poller tick.
+43. **The database TimeZone gate is exact:** `current_setting('TimeZone')` must be `UTC` or `Etc/UTC` (A4). The local scratch cluster reports the machine zone, so the engine refuses there; local drives set the cluster to UTC rather than widen the gate.
+44. **The schema gate caches only "ready".** A not-ready answer is asked again on every call, so a container that booted mid-migration recovers without a restart; a failing probe is not ready (fails closed).
+45. **`marketView` is a seam-store member** (plain SELECT, both twins), so `test:dal-parity`'s existing both-implementations check covers it with no new wiring pin. The row types live in the DAL; `market-view.ts` re-exports them type-only and stays pure.
+
 No decision here needs Ali; W17 remains the only open owner question.
 
 ## 7. Guards that will go red, and how to move each honestly

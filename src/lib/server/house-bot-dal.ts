@@ -35,7 +35,8 @@ import { prisma, hasDatabase } from "./prisma";
 import type { Prisma, PrismaClient } from "@prisma/client";
 import { randomId } from "./crypto";
 import { marketStore, positionStore } from "./market-dal";
-import { chainStore, roundStore } from "./updown-dal";
+import { assetStore, chainStore, roundStore } from "./updown-dal";
+import { snapshotOrLegacy } from "./market-config";
 import { db } from "./store";
 import {
   HOUSE_ID_PREFIX, houseIntentKey, SUBMIT_ID_RE, RUNTIME_KEY, HOUSE_CONTROL_ID, TARGET_ARMING_SEC,
@@ -1618,6 +1619,42 @@ export type LockedPoolSide = {
 };
 export type LockedPool = { YES: LockedPoolSide; NO: LockedPoolSide };
 
+/** One Up & Down round as the engine may see it (04 A13). */
+export type HouseViewRound = {
+  roundId: string;
+  chainId: string;
+  /** `<asset symbol>:<duration minutes>`, the rules' chain key. */
+  chainKey: string;
+  roundNumber: number;
+  opensAt: string;
+  durationMinutes: number;
+  openPrice: number | null;
+  upTarget: number | null;
+  downTarget: number | null;
+  chainRunning: boolean;
+  assetEnabled: boolean;
+};
+
+/** The engine's one market read (04 A13): `HOUSE_MARKET_FIELDS`, and the round columns when a round exists. */
+export type HouseMarketViewRow = {
+  id: string;
+  /** RAW — `market-dal` coerces anything but UPDOWN to MARKET, which A12 must not trust. */
+  productLine: string;
+  category: string;
+  status: string;
+  yesPool: number;
+  noPool: number;
+  selectionClosedAt: string | null;
+  resolutionAt: string;
+  createdAt: string;
+  titleEn: string;
+  /** Frozen exit rates in minutes, resolved from the fee snapshot (legacy rows included). */
+  exitGraceMin: number;
+  exitPaidMin: number;
+  reopenedAt: string | null;
+  round: HouseViewRound | null;
+};
+
 /** The columns the information blackout reads (N1 §3) — and nothing else. */
 export type HouseBlackoutRow = {
   status: string;
@@ -1656,6 +1693,12 @@ export interface HouseSeamStore {
   rawProductLine(marketId: string, tx?: HouseTx): Promise<string | null>;
   /** A12: the Up & Down round's open time and its chain's duration, in one statement; null when no round. */
   roundLock(marketId: string, tx?: HouseTx): Promise<{ opensAt: string; durationMinutes: number } | null>;
+  /**
+   * 04 A13: the engine's ONE market read — exactly `HOUSE_MARKET_FIELDS` (`server/house-bot/market-view.ts`) plus
+   * the round, its chain's duration and state and its asset's symbol and switch, in one statement. The product line
+   * is raw; the exit rates come from the frozen fee snapshot. ⛔ No result-check column is selected.
+   */
+  marketView(marketId: string, tx?: HouseTx): Promise<HouseMarketViewRow | null>;
   /** N1 §3: status, and whether `staleAt` is still ahead of the database clock (`clock_timestamp()`). */
   intentFreshness(id: string, tx?: HouseTx): Promise<{ status: IntentStatus; fresh: boolean } | null>;
   /**
@@ -2749,6 +2792,26 @@ const memoryHouseSeam: HouseSeamStore = {
     const chain = round ? await chainStore.get(round.chainId) : null;
     return round && chain ? { opensAt: new Date(ms(round.opensAt)).toISOString(), durationMinutes: chain.durationMinutes } : null;
   },
+  async marketView(marketId) {
+    const m = await marketStore.get(marketId);
+    if (!m) return null;
+    const rates = snapshotOrLegacy(m.feeSnapshot);
+    const round = await roundStore.getByMarketId(marketId);
+    const chain = round ? await chainStore.get(round.chainId) : null;
+    const asset = chain ? await assetStore.get(chain.assetId) : null;
+    const at = (s: string | null | undefined) => (s ? new Date(ms(s)).toISOString() : null);
+    return {
+      id: m.id, productLine: m.productLine as string, category: m.category, status: m.status,
+      yesPool: Number(m.yesPool), noPool: Number(m.noPool), selectionClosedAt: at(m.selectionClosedAt),
+      resolutionAt: at(m.resolutionAt)!, createdAt: at(m.createdAt)!, titleEn: m.titleEn,
+      exitGraceMin: rates.freeExitGraceMinutes, exitPaidMin: rates.paidExitWindowMinutes, reopenedAt: at(m.reopenedAt),
+      round: round && chain ? {
+        roundId: round.id, chainId: chain.id, chainKey: `${chain.assetId}:${chain.durationMinutes}`, roundNumber: round.roundNumber,
+        opensAt: at(round.opensAt)!, durationMinutes: chain.durationMinutes, openPrice: round.openPrice, upTarget: round.upTarget,
+        downTarget: round.downTarget, chainRunning: chain.state === "RUNNING", assetEnabled: asset?.enabled === true,
+      } : null,
+    };
+  },
   async intentFreshness(id) {
     const i = memIntents.get(id);
     return i ? { status: i.status, fresh: ms(i.staleAt) > Date.now() } : null;
@@ -3808,6 +3871,33 @@ const prismaHouseSeam: HouseSeamStore = {
     const rows = await sql(tx, `SELECT r."opensAt" AS "opensAt", c."durationMinutes" AS "durationMinutes" FROM "UpDownRound" r`
       + ` JOIN "UpDownChain" c ON c."id" = r."chainId" WHERE r."marketId" = $1::text`, [marketId]);
     return rows[0] ? { opensAt: iso(rows[0].opensAt), durationMinutes: Number(rows[0].durationMinutes) } : null;
+  },
+  async marketView(marketId, tx) {
+    const rows = await sql(tx, `SELECT m."id", m."productLine"::text AS "productLine", m."category", m."status"::text AS "status",`
+      + ` m."yesPool"::float8 AS "yesPool", m."noPool"::float8 AS "noPool", m."selectionClosedAt", m."resolutionAt", m."createdAt",`
+      + ` m."titleEn", m."feeSnapshot", m."reopenedAt",`
+      + ` r."id" AS "roundId", r."chainId" AS "chainId", r."roundNumber" AS "roundNumber", r."opensAt" AS "opensAt",`
+      + ` r."openPrice"::float8 AS "openPrice", r."upTarget"::float8 AS "upTarget", r."downTarget"::float8 AS "downTarget",`
+      + ` c."durationMinutes" AS "durationMinutes", c."state"::text AS "chainState", c."assetId" AS "assetId", a."enabled" AS "assetEnabled"`
+      + ` FROM "PredictionMarket" m LEFT JOIN "UpDownRound" r ON r."marketId" = m."id"`
+      + ` LEFT JOIN "UpDownChain" c ON c."id" = r."chainId" LEFT JOIN "UpDownAsset" a ON a."id" = c."assetId"`
+      + ` WHERE m."id" = $1::text`, [marketId]);
+    const r = rows[0];
+    if (!r) return null;
+    const rates = snapshotOrLegacy(r.feeSnapshot);
+    const num = (v: unknown) => (v == null ? null : Number(v));
+    return {
+      id: String(r.id), productLine: String(r.productLine), category: String(r.category), status: String(r.status),
+      yesPool: Number(r.yesPool), noPool: Number(r.noPool), selectionClosedAt: iso(r.selectionClosedAt), resolutionAt: iso(r.resolutionAt),
+      createdAt: iso(r.createdAt), titleEn: String(r.titleEn), exitGraceMin: rates.freeExitGraceMinutes, exitPaidMin: rates.paidExitWindowMinutes,
+      reopenedAt: iso(r.reopenedAt),
+      round: r.roundId != null && r.durationMinutes != null ? {
+        roundId: String(r.roundId), chainId: String(r.chainId), chainKey: `${String(r.assetId)}:${Number(r.durationMinutes)}`,
+        roundNumber: Number(r.roundNumber), opensAt: iso(r.opensAt), durationMinutes: Number(r.durationMinutes),
+        openPrice: num(r.openPrice), upTarget: num(r.upTarget), downTarget: num(r.downTarget),
+        chainRunning: r.chainState === "RUNNING", assetEnabled: r.assetEnabled === true,
+      } : null,
+    };
   },
   async intentFreshness(id, tx) {
     const rows = await sql(tx, `SELECT "status", ("staleAt" > clock_timestamp()) AS "fresh" FROM "HouseBotIntent" WHERE "id" = $1::text`, [id]);

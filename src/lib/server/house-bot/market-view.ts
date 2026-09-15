@@ -44,40 +44,9 @@ export const HOUSE_ROUND_FIELDS = [
   "assetEnabled",
 ] as const;
 
-export type HouseViewRound = {
-  roundId: string;
-  chainId: string;
-  /** `<asset symbol>:<duration minutes>`, the rules' chain key. */
-  chainKey: string;
-  roundNumber: number;
-  opensAt: string;
-  durationMinutes: number;
-  openPrice: number | null;
-  upTarget: number | null;
-  downTarget: number | null;
-  chainRunning: boolean;
-  assetEnabled: boolean;
-};
-
-/** One row as the DAL selects it: `HOUSE_MARKET_FIELDS`, and the round columns when a round exists. */
-export type HouseMarketViewRow = {
-  id: string;
-  /** RAW — `market-dal` coerces anything but UPDOWN to MARKET, which A12 must not trust. */
-  productLine: string;
-  category: string;
-  status: string;
-  yesPool: number;
-  noPool: number;
-  selectionClosedAt: string | null;
-  resolutionAt: string;
-  createdAt: string;
-  titleEn: string;
-  /** Frozen exit rates in minutes, already resolved from the fee snapshot (legacy rows included). */
-  exitGraceMin: number;
-  exitPaidMin: number;
-  reopenedAt: string | null;
-  round: HouseViewRound | null;
-};
+/** The row the DAL's `houseSeamStore.marketView` selects with this list (types live with the DAL). */
+import type { HouseMarketViewRow, HouseViewRound } from "../house-bot-dal";
+export type { HouseMarketViewRow, HouseViewRound };
 
 export type PublicMarketView = {
   id: string;

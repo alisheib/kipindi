@@ -16,6 +16,8 @@ import { isAdminTotpEnforced } from "@/lib/server/admin-guard";
 import { redisHealth } from "@/lib/server/redis";
 import { emailHealth } from "@/lib/server/email";
 import { pingDatabase } from "@/lib/server/prisma";
+import { houseBotSchemaReady } from "@/lib/server/house-bot/schema-ready";
+import { houseBotEngineHealth } from "@/lib/server/house-bot/engine";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -50,6 +52,14 @@ export async function GET() {
       // gets booleans and a latency.
       console.error(`[health] NOT READY — database reachable=${dbPing.reachable} migrated=${dbPing.tableExists}: ${dbPing.error ?? "(no error text)"}`);
     }
+    // 🔴 HOUSE BOTS (04 A23). Every Position and Transaction create writes `houseBotId`, so a build booted on a
+    // database without the house schema would fail every bet. Not ready here is a 503 for the same reason a
+    // missing migration is: it stops a broken deploy from taking over. Only asked once the database answers.
+    const houseSchema = dbReady && dbPing.envSet ? await houseBotSchemaReady() : null;
+    const ready = dbReady && (!dbPing.envSet || houseSchema?.ready === true);
+    if (dbReady && !ready) {
+      console.error(`[health] NOT READY — house-bot schema missing: tables=${houseSchema?.missingTables.join(",") || "-"} columns=${houseSchema?.missingColumns.join(",") || "-"} seeded=${houseSchema?.seeded} probeFailed=${houseSchema?.probeFailed}`);
+    }
 
     let userCount = -1;
     try { userCount = await db.user.count(); } catch { /* graceful */ } // audit H4 — COUNT(*), not a full scan every probe
@@ -63,7 +73,7 @@ export async function GET() {
 
     return NextResponse.json(
       {
-        ok: dbReady,
+        ok: ready,
         uptimeSec,
         timestamp: new Date().toISOString(),
         version: process.env.NEXT_PUBLIC_APP_VERSION ?? "1.0.0",
@@ -98,6 +108,12 @@ export async function GET() {
         // is sweeping, and which. `admission` stays per-container by design — see
         // docs/POLISH-BACKLOG.md §3 for the pool arithmetic that implies.
         leadership: leadershipSnapshot(),
+        // House bots (04 A23, S2 REL-5): whether the house schema is here, and whether THIS instance runs the
+        // engine and why not. `schemaReady` is null only when the database itself did not answer.
+        houseBots: {
+          schemaReady: dbPing.envSet ? (houseSchema ? houseSchema.ready : null) : true,
+          engine: houseBotEngineHealth(),
+        },
         // Whether anything would TELL you about an error, as opposed to recording it.
         // Server exceptions are durable on box either way (audit chain, scrubbed and
         // deduped); `alerting: false` means nobody is paged and someone has to go and
@@ -190,10 +206,10 @@ export async function GET() {
         // 503, not 500: "I am running but not ready to serve", which is what Railway's
         // deploy gate and any uptime monitor need to see. A 200 here is a promise that
         // this container can take a bet.
-        status: dbReady ? 200 : 503,
+        status: ready ? 200 : 503,
         headers: {
           "cache-control": "no-store, max-age=0",
-          "x-health": dbReady ? "ok" : "not-ready",
+          "x-health": ready ? "ok" : "not-ready",
         },
       },
     );
@@ -213,8 +229,9 @@ export async function HEAD() {
   // which one you believe becomes a matter of luck.
   const dbPing = await pingDatabase();
   const dbReady = !dbPing.envSet || (dbPing.reachable && dbPing.tableExists);
+  const ready = dbReady && (!dbPing.envSet || (await houseBotSchemaReady()).ready);
   return new NextResponse(null, {
-    status: dbReady ? 200 : 503,
-    headers: { "x-health": dbReady ? "ok" : "not-ready", "cache-control": "no-store" },
+    status: ready ? 200 : 503,
+    headers: { "x-health": ready ? "ok" : "not-ready", "cache-control": "no-store" },
   });
 }
