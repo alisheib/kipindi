@@ -694,7 +694,11 @@ Modernization is complete — all tokens, components, and focus rings updated.
   guard rewrites every GA request (gtag.js's own history page views use the RAW address and leaked tokens when
   driven) and drops gtag's copies to `www.google.com/g/collect`. Privacy §4/§7 describe it; `test:google-tag` +
   `test:privacy-notice` §4e gate it. Fonts are self-hosted by `next/font` only: no Google Fonts `@import`, and no
-  fonts.googleapis/gstatic in the CSP (removed 2026-09-15, proven pixel-identical). Read
+  fonts.googleapis/gstatic in the CSP (removed 2026-09-15, proven pixel-identical).
+  ⛔ GA IS OPT-IN (2026-09-15.2): `ConsentPrompt` asks, `GoogleTag` loads nothing until `consent === "granted"`
+  (`src/lib/analytics-consent.ts` — Tanzania PDPA has no legitimate-interests ground). EVERY visit is also counted
+  first-party with no identifier: `SiteVisitBeacon` → `POST /api/pv` → `SiteVisitPage`/`SiteVisitSource` daily totals,
+  shown on `/admin/traffic` (growth). Gates: `test:site-visits`, `test:privacy-notice` §4f/§4g. Read
   `docs/COMPLIANCE-DECISIONS.md` 2026-09-15 before touching any of it.
 - **Secrets**: production throws FATAL if `SESSION_SECRET` or `OTP_PEPPER`
   missing. Dev-only fallbacks unreachable in production.

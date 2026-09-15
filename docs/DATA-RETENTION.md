@@ -33,6 +33,7 @@
 | House-bot runtime counters | ⛔ **N/A** — fixed rows overwritten in place; per-instance engine rows (`engine:*`, `beat:poller:*`) deleted after 24 h | — | — | ⏳ lands in build commit 4 (planner `pruneInstanceRows`) | `HouseBotRuntime` |
 | In-app notifications | **180 days** | Creation | Operational only | ✅ **Code** — `retention.purge.daily` | `Notification` |
 | OTP code hashes | **30 days** | Issue | Operational only | ✅ **Code** — `retention.purge.daily` | `Otp` |
+| First-party visit counts (daily totals per page and per source) | **400 days** | The EAT day counted | Not personal data — no identifier, IP, user-agent or cookie is stored (Privacy §2 "Visit counts"); the period bounds size | ✅ **Code** (2026-09-15) — `retention.purge.daily` (`SITE_VISIT_RETENTION_DAYS`, `src/lib/server/site-visits.ts`) | `SiteVisitPage`, `SiteVisitSource` |
 | Up & Down price observations | Indefinite | — | Fairness evidence (GLI-19) | **Never deleted** — write-once per `(asset, boundary)` | `UpDownObservation` |
 | Market snapshots (pool history) | Newest **800** per market (`MAX_POINTS`) | — | Operational only | ✅ **Code** — FIFO prune in `market-history.ts`, but ⚠️ **it has never evicted anything** — see §2c | `MarketSnapshot` |
 | AI usage events | `RETAIN_DAYS` | Event date | Operational only | ✅ **Code** — opportunistic prune in `ai-usage.ts` | `AiUsageEvent` |

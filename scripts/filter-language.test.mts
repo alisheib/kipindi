@@ -225,6 +225,7 @@ const ADMIN_SURFACES = [
   "src/app/admin/house/page.tsx",                   // /admin/house — window + the product rail on BY GAME
   "src/app/admin/reports/page.tsx",                 // window only
   "src/app/admin/transactions/page.tsx",            // window only
+  "src/app/admin/traffic/page.tsx",                 // window only — first-party visit counts (2026-09-15)
   "src/app/admin/updown/page.tsx",                  // window only
 ];
 

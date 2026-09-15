@@ -21,6 +21,11 @@ const LazyEventStream = lazy(() =>
 const LazyInstallInvite = lazy(() =>
   import("@/components/pwa/install-invite").then((m) => ({ default: m.InstallInvite })),
 );
+// Analytics consent — opt-in, asked once (see components/analytics/consent-prompt.tsx). Lazy for the same reason
+// as the invitations: it renders nothing until well after first paint.
+const LazyConsentPrompt = lazy(() =>
+  import("@/components/analytics/consent-prompt").then((m) => ({ default: m.ConsentPrompt })),
+);
 const LazyChannelsPanel = lazy(() =>
   import("@/components/social/channels-panel").then((m) => ({ default: m.ChannelsPanel })),
 );
@@ -406,6 +411,11 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
           ⛔ WITHDRAWN 2026-09-13 — mounted only while `installInviteLive` (feature-state.ts) is true.
           The mount stays, so re-enabling is one word rather than a rebuild. */}
       {installInviteLive && <Suspense fallback={null}><LazyInstallInvite /></Suspense>}
+      {/* ANALYTICS CONSENT — NOT feature-gated and NOT session-gated: Google Analytics may run for any visitor,
+          so any visitor must be asked first, and nothing loads until they answer. It shares the bottom invitation
+          slot at priority 0, so it never stacks with the install card. ⛔ Do not put it behind a flag — a hidden
+          prompt means nobody can consent, which is safe, but it would silently turn analytics off for everyone. */}
+      <Suspense fallback={null}><LazyConsentPrompt /></Suspense>
       {/* THE CHANNELS PANEL, and like the install invitation it is NOT session-gated — a visitor
           who has not signed up is exactly who benefits from finding the channels. Its own rules
           do the gating (a second visit, 45 seconds in, once per visit, never on a money-commit

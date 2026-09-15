@@ -1,0 +1,63 @@
+/**
+ * FIRST-PARTY VISIT COUNTING — what the browser sends to our own counter. Pure and client-safe.
+ *
+ * Ali, 2026-09-15: every visitor counted, Google Analytics detail only with consent. So this counter runs for
+ * EVERYONE, and that is only defensible because of what it does NOT carry:
+ *   · no cookie, no localStorage, no sessionStorage — nothing is stored on the visitor's device;
+ *   · no identifier of any kind — not a client id, not a user id, not the session;
+ *   · no query string except campaign tags, no fragment, and a personal-record id in a path is masked
+ *     (the same `gaPath` rules Google Analytics gets);
+ *   · the referrer is reduced to its HOST (`mail.google.com`), never a path or query;
+ *   · pages that carry a secret or are staff-only (`gaExcluded`) are not counted at all.
+ * The server keeps only daily totals. See `src/lib/server/site-visits.ts` for what it stores.
+ */
+import { GA_HOSTS, gaExcluded, gaPath } from "@/lib/google-tag";
+
+export type VisitPayload = {
+  /** Path, masked, no query or fragment, at most PATH_MAX chars. */
+  p: string;
+  /** External referrer host without `www.`, "" when direct or internal. Only meaningful on an entry. */
+  r: string;
+  /** Campaign tags, lowercased and capped; "" when absent. Only meaningful on an entry. */
+  s: string;
+  m: string;
+  c: string;
+  /** True for the first page view of a document load (a visit's entry), false for an in-app navigation. */
+  e: boolean;
+};
+
+export const PATH_MAX = 200;
+export const TAG_MAX = 64;
+
+const clean = (v: string | null) => (v ?? "").trim().toLowerCase().replace(/[\x00-\x1f]/g, "").slice(0, TAG_MAX);
+
+/** The payload for a page view of `href`, or null when this page is not counted (another host, excluded, unparseable). */
+export function visitPayload(href: string, referrer: string, entry: boolean): VisitPayload | null {
+  let url: URL;
+  try { url = new URL(href); } catch { return null; }
+  if (!GA_HOSTS.includes(url.hostname)) return null;
+  let decoded: string;
+  try { decoded = decodeURIComponent(url.pathname); } catch { return null; }
+  const path = decoded.replace(/\/{2,}/g, "/");
+  const normal = path.length > 1 ? path.replace(/\/$/, "") : path;
+  if (gaExcluded(normal.toLowerCase())) return null;
+  const p = gaPath(normal).slice(0, PATH_MAX);
+
+  let r = "";
+  if (entry && referrer) {
+    try {
+      const ref = new URL(referrer);
+      const host = ref.hostname.toLowerCase().replace(/^www\./, "");
+      if (host && !GA_HOSTS.map((h) => h.replace(/^www\./, "")).includes(host)) r = host.slice(0, TAG_MAX);
+    } catch { /* not a URL — direct */ }
+  }
+  const q = url.searchParams;
+  return {
+    p,
+    r,
+    s: entry ? clean(q.get("utm_source")) : "",
+    m: entry ? clean(q.get("utm_medium")) : "",
+    c: entry ? clean(q.get("utm_campaign")) : "",
+    e: entry,
+  };
+}

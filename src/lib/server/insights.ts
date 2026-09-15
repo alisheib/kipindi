@@ -2,9 +2,11 @@
  * Owner insight aggregates (F7) — decision-grade BI.
  *
  * HONESTY RULES (this is an owner-facing money surface):
- *  - There is **no "visit" stage** in the funnel. The platform has ZERO web
- *    analytics instrumentation (no pageview table, no vendor). A visit count
- *    would be invented, so the funnel starts at REGISTER and says so.
+ *  - There is **no "visit" stage** in the funnel. Visits ARE counted since 2026-09-15 —
+ *    first-party daily totals on /admin/traffic (src/lib/server/site-visits.ts) — but they
+ *    carry no identifier, so a visit can never be joined to the player who registered. A
+ *    visit stage on top of this funnel would imply a conversion rate nothing measures, so
+ *    the funnel starts at REGISTER and says so.
  *  - Retention is **activity**-retention (did a cohort's players actually BET in
  *    a later month), derived from confirmed BET_PLACED rows. A login-frequency
  *    curve is NOT possible — `user.lastLoginAt` is a single latest value and the

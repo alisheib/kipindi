@@ -39,11 +39,13 @@ const ok = (label: string, cond: boolean, why = "", evidence = "") => {
 const code = (src: string) => src.replace(/^[ \t]*\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
 
 /* ── The pinned facts. Moving any of these is a legal act: a dated COMPLIANCE-DECISIONS entry comes with it. ── */
-const PRIVACY_VERSION = "2026-09-15";
+const PRIVACY_VERSION = "2026-09-15.2";
 /** sha256 (first 12 hex) of the ENGLISH content block, whitespace-collapsed. The English text is the binding one. */
-const PRIVACY_EN_SHA = "8e338f8434d9";
+const PRIVACY_EN_SHA = "0d420f35b21f";
 /** Every cookie name the code writes, as of v2026-09-14.2. A new one must be described in §7 first. */
-const COOKIES = ["kp-kyc-notice", "kp-locale", "kp_admin_totp", "kp_pending_2fa", "kp_revoked", "kp_session"];
+const COOKIES = ["_ga", "_ga_W66WRL67MQ", "kp-kyc-notice", "kp-locale", "kp_admin_totp", "kp_pending_2fa", "kp_revoked", "kp_session"];
+// ⭐ `_ga` / `_ga_W66WRL67MQ` joined the census 2026-09-15.2: gtag.js SETS them, and our code EXPIRES them when consent is
+// withdrawn (`google-tag.tsx` expireCookie) — a deletion is a write, so the census must see it; it is never spelled to dodge it.
 
 const PAGE = "src/app/legal/privacy/page.tsx";
 const pageSrc = read(PAGE);
@@ -250,6 +252,8 @@ const COOKIE_WORDS: Record<string, Record<Loc, string[]>> = {
   "kp-kyc-notice": { en: ["identity notice"], sw: ["taarifa ya utambulisho"], zh: ["身份提示"] },
   kp_admin_totp: { en: ["staff accounts only", "two-factor"], sw: ["wafanyakazi pekee", "hatua mbili"], zh: ["仅限员工账户", "双重验证"] },
   kp_pending_2fa: { en: ["staff accounts only", "two-factor"], sw: ["wafanyakazi pekee", "hatua mbili"], zh: ["仅限员工账户", "双重验证"] },
+  _ga: { en: ["_ga", "turning analytics off deletes them"], sw: ["_ga", "kuzima takwimu huvifuta"], zh: ["_ga", "关闭分析会将其删除"] },
+  _ga_W66WRL67MQ: { en: ["_ga_W66WRL67MQ", "turning analytics off deletes them"], sw: ["_ga_W66WRL67MQ", "kuzima takwimu huvifuta"], zh: ["_ga_W66WRL67MQ", "关闭分析会将其删除"] },
 };
 function cookieDefects(src: string): string[] {
   const d: string[] = [];
@@ -367,7 +371,7 @@ function thirdPartyDefects(src: string, proxy: string, lib: string, component: s
   if (!/send_page_view: false/.test(component)) d.push("the automatic page view is on — it sends the raw address (§4 'identifying part removed')");
   for (const k of ["ad_storage", "ad_user_data", "ad_personalization"]) if (!new RegExp(`${k}: "denied"`).test(component)) d.push(`${k} is not denied (§4 'not used for advertising')`);
   if (!/allow_google_signals: false/.test(component) || !/allow_ad_personalization_signals: false/.test(component)) d.push("Google signals or ad personalisation is on (§4 'not used for advertising')");
-  if (!/w\[DISABLE_KEY\] = location === null;/.test(component)) d.push("the ga-disable switch is not set on every route (§4 'does not run on staff pages')");
+  if (!/w\[DISABLE_KEY\] = !allowed;/.test(component)) d.push("the ga-disable switch is not set on every route (§4 'does not run on staff pages')");
   for (const p of ["/admin", "/auth/reset-password", "/auth/verify-email", "/agent/invite"]) if (!lib.includes(`"${p}",`)) d.push(`GA_EXCLUDED_PREFIXES lost "${p}" (§4)`);
   // §4 "with any part that could identify you removed" is true ON THE WIRE only while the transport guard is
   // installed before gtag.js loads — gtag's own history page views use the raw address (driven 2026-09-15).
@@ -393,7 +397,7 @@ const plantTls = pageSrc.replace("Connections to our website and app are encrypt
 const plantProcessor = pageSrc.replace("<li>Postmark, nchini Marekani,", "<li>Huduma ya barua pepe, nchini Marekani,");
 const plantTheme = pageSrc.replace("your language, a note kept", "theme preference, your language, a note kept");
 const plantWord = pageSrc.replace("We never sell personal data.", "We do not sell personal data.");
-const plantVersion = pageSrc.replace('sw: "Toleo 2026-09-15 ·', 'sw: "Toleo 2026-09-14.3 ·');
+const plantVersion = pageSrc.replace('sw: "Toleo 2026-09-15.2 ·', 'sw: "Toleo 2026-09-15 ·');
 ok("§5a control · each planted copy found its target",
   [plantTls, plantProcessor, plantTheme, plantWord, plantVersion].every((p) => p !== pageSrc));
 ok("§5b control · a restored 'TLS 1.2+' is reported", securityDefects(plantTls).length > 0 && versionDefects(plantTls, decisionsSrc).length > 0,
@@ -442,6 +446,121 @@ ok("§5u control · planted guard/img copies found their targets", plantNoGuard 
 ok("§5v control · the transport guard removed is reported", thirdPartyDefects(pageSrc, proxyRaw, gaLib, plantNoGuard, layoutSrc).some((x) => x.includes("transport guard")));
 ok("§5w control · analytics hosts restored to img-src are reported", thirdPartyDefects(pageSrc, plantImg, gaLib, gaComponent, layoutSrc).some((x) => x.includes("img-src")));
 ok("§5t control · the retired 'no tracking cookies' claim restored is reported", thirdPartyDefects(plantRetiredClaim, proxyRaw, gaLib, gaComponent, layoutSrc).some((x) => x.includes("no third-party tracking")));
+
+/* ════════════════════════════════════════════════════════════════════════════
+ * §4f · CONSENT — v2026-09-15.2. Google Analytics is OPT-IN: the Tanzania PDPA 2022 has no legitimate-interests
+ * ground, and a tracker that can identify a person needs consent. Every sentence saying so is tied to the code.
+ * ══════════════════════════════════════════════════════════════════════════ */
+console.log("\n§4f · Google Analytics runs only with consent, and the notice says exactly that");
+const consentLib = read("src/lib/analytics-consent.ts");
+const promptSrc = code(read("src/components/analytics/consent-prompt.tsx"));
+const shellSrc = code(read("src/components/layout/app-shell.tsx"));
+const denyDays = (lib: string) => Number(lib.match(/export const CONSENT_DENY_DAYS = (\d+);/)?.[1]);
+const grantDays = (lib: string) => Number(lib.match(/export const CONSENT_GRANT_DAYS = (\d+);/)?.[1]);
+function consentWords(lib: string): Record<Loc, { s3: string[]; s4: string[]; s7: string[]; lawful: RegExp }> {
+  const d = denyDays(lib);
+  return {
+    en: { s3: ["Google Analytics — only if you allow it", "§7"], s4: ["only if you allow analytics"], s7: ["Only if you allow analytics", "Analytics is off until you", `${d} days if you decline`, "<AnalyticsChoice />"], lawful: /measuring how the website is used/ },
+    sw: { s3: ["Google Analytics — ikiwa tu utairuhusu", "§7"], s4: ["ikiwa tu utaruhusu takwimu"], s7: ["Ikiwa tu utaruhusu takwimu", "Takwimu zimezimwa hadi", `siku ${d} ukikataa`, "<AnalyticsChoice />"], lawful: /kupima jinsi tovuti inavyotumika/ },
+    zh: { s3: ["Google Analytics——仅在首次询问时您同意", "第 7 条"], s4: ["仅在您允许分析时启用"], s7: ["仅在您允许分析时", "在您作出选择之前，分析处于关闭状态", `拒绝则保存 ${d} 天`, "<AnalyticsChoice />"], lawful: /衡量网站的使用情况/ },
+  };
+}
+function consentDefects(page: string, component: string, prompt: string, shell: string, lib: string): string[] {
+  const d: string[] = [];
+  const bl = blocks(page);
+  const W = consentWords(lib);
+  for (const l of LOCS) {
+    const s3 = section(bl[l], "3");
+    for (const w of W[l].s3) if (!s3.includes(w)) d.push(`${l} §3 does not say "${w}" (analytics under consent)`);
+    const li = (s3.match(/<li>[\s\S]*?<\/li>/g) ?? []).find((x) => /Legitimate interest|Maslahi halali|合法利益/.test(x)) ?? "";
+    if (W[l].lawful.test(li)) d.push(`${l} §3 still lists analytics under legitimate interest — the PDPA has no such ground`);
+    for (const w of W[l].s4) if (!section(bl[l], "4").includes(w)) d.push(`${l} §4 does not say "${w}"`);
+    for (const w of W[l].s7) if (!section(bl[l], "7").includes(w)) d.push(`${l} §7 does not say "${w}"`);
+  }
+  if (grantDays(lib) !== 395) d.push(`CONSENT_GRANT_DAYS is ${grantDays(lib)}, but §7 states 395 days`);
+  if (!/const allowed = location !== null && consent === "granted";/.test(component)) d.push(`GoogleTag is not gated on consent === "granted" — the tag could load without consent (§3, §7)`);
+  if (!/if \(consent === "denied"\) clearAnalyticsCookies\(\);/.test(component)) d.push(`withdrawing consent does not delete the _ga cookies (§7 "turning analytics off deletes them")`);
+  // gtag.js batches: a view queued while consent was granted can flush after withdrawal (driven 2026-09-15). The guard
+  // must re-read consent at SEND time, in both transports, or "turning analytics off" still lets queued hits leave.
+  if ((component.match(/if \(readConsent\(\) !== "granted"\) return (?:true|skip\(\));/g) ?? []).length !== 2) d.push(`the transport guard does not re-check consent at send time in both sendBeacon and fetch — queued hits could leave after withdrawal (§7)`);
+  const mount = shell.match(/.*<LazyConsentPrompt \/>.*/g) ?? [];
+  if (mount.length !== 1 || /&&/.test(mount[0])) d.push("ConsentPrompt is not mounted exactly once, ungated, in the app shell — nobody could consent");
+  // Line-scoped: `onClick={() => …}` contains a ">", so a `[^>]*` tag matcher never reaches the attributes.
+  const allow = prompt.match(/.*data-testid="consent-allow".*/)?.[0] ?? "";
+  const decline = prompt.match(/.*data-testid="consent-decline".*/)?.[0] ?? "";
+  const style = (b: string) => `${b.match(/variant="[^"]+"/)?.[0] ?? "?"} ${b.match(/size="[^"]+"/)?.[0] ?? "?"}`;
+  if (!allow || !decline) d.push("the prompt lost its Allow or Decline button");
+  else if (style(allow) !== style(decline)) d.push(`Allow (${style(allow)}) and Decline (${style(decline)}) are not of equal weight — a nudge is not consent`);
+  return d;
+}
+ok("§4f en/sw/zh §3/§4/§7 say analytics is opt-in, and the tag, the prompt and the withdrawal do what they say",
+  consentDefects(pageSrc, gaComponent, promptSrc, shellSrc, consentLib).length === 0,
+  consentDefects(pageSrc, gaComponent, promptSrc, shellSrc, consentLib).join("; "),
+  `deny ${denyDays(consentLib)} days · grant ${grantDays(consentLib)} days`);
+
+/* ════════════════════════════════════════════════════════════════════════════
+ * §4g · FIRST-PARTY VISIT COUNTS — v2026-09-15.2. Counted for EVERY visitor without consent, which is only true to say
+ * while the tables hold nothing personal and the browser stores nothing. Each is read from the code.
+ * ══════════════════════════════════════════════════════════════════════════ */
+console.log("\n§4g · visit counts: what §2 and §5 say is what the schema and the beacon do");
+const schemaSrc = read("prisma/schema.prisma");
+const visitsServer = read("src/lib/server/site-visits.ts");
+const beaconSrc = code(read("src/components/analytics/site-visit-beacon.tsx"));
+const visitsClient = code(read("src/lib/site-visits.ts"));
+const retentionDays = (srv: string) => Number(srv.match(/export const SITE_VISIT_RETENTION_DAYS = (\d+);/)?.[1]);
+const modelFields = (schema: string, name: string) =>
+  (schema.match(new RegExp(`model ${name} \\{([\\s\\S]*?)\\n\\}`))?.[1] ?? "").split(/\r?\n/).map((l) => l.trim()).filter((l) => /^[a-z]\w*\s/.test(l)).map((l) => l.split(/\s+/)[0]).sort();
+const VISIT_WORDS: Record<Loc, { s2: string[]; s5: (d: number) => string }> = {
+  en: { s2: ["Visit counts", "our own servers", "no cookie or identifier is used"], s5: (d) => `Visit counts, daily totals that identify no one: ${d} days` },
+  sw: { s2: ["Hesabu za matembeleo", "seva zetu wenyewe", "hakuna kidakuzi wala kitambulisho"], s5: (d) => `Hesabu za matembeleo, jumla za kila siku zisizomtambulisha mtu yeyote: siku ${d}` },
+  zh: { s2: ["访问计数", "我们自己的服务器", "不使用 cookie 或标识符"], s5: (d) => `访问计数（不识别任何人的每日总数）：${d} 天` },
+};
+function visitDefects(page: string, schema: string, server: string, beacon: string, client: string): string[] {
+  const d: string[] = [];
+  const bl = blocks(page);
+  const days = retentionDays(server);
+  if (!(days > 0)) d.push("SITE_VISIT_RETENTION_DAYS is unreadable");
+  for (const l of LOCS) {
+    for (const w of VISIT_WORDS[l].s2) if (!section(bl[l], "2").includes(w)) d.push(`${l} §2 does not say "${w}" (visit counts)`);
+    if (!section(bl[l], "5").includes(VISIT_WORDS[l].s5(days))) d.push(`${l} §5 does not state the visit-count period read from the code (${days} days)`);
+  }
+  const page_ = JSON.stringify(modelFields(schema, "SiteVisitPage"));
+  const src_ = JSON.stringify(modelFields(schema, "SiteVisitSource"));
+  if (page_ !== JSON.stringify(["day", "entries", "id", "path", "views"])) d.push(`SiteVisitPage has fields ${page_} — §2 says nothing that could identify you is kept`);
+  if (src_ !== JSON.stringify(["campaign", "day", "id", "medium", "referrer", "source", "visits"])) d.push(`SiteVisitSource has fields ${src_} — §2 says nothing that could identify you is kept`);
+  for (const [name, s] of [["site-visit-beacon.tsx", beacon], ["lib/site-visits.ts", client]] as const) {
+    if (/document\.cookie|localStorage|sessionStorage|indexedDB/.test(s)) d.push(`${name} touches browser storage — §2 says no cookie or identifier is used`);
+  }
+  if (!/navigator\.sendBeacon\(SITE_VISIT_ENDPOINT, JSON\.stringify\(payload\)\)/.test(beacon)) d.push("the beacon no longer sends exactly visitPayload(...) — its fields are what §2 describes");
+  return d;
+}
+ok("§4g en/sw/zh §2/§5 describe the visit counts, the tables hold no personal field, the browser stores nothing",
+  visitDefects(pageSrc, schemaSrc, visitsServer, beaconSrc, visitsClient).length === 0,
+  visitDefects(pageSrc, schemaSrc, visitsServer, beaconSrc, visitsClient).join("; "),
+  `${retentionDays(visitsServer)} days`);
+
+const plantUngated = gaComponent.replace(' && consent === "granted"', "");
+const plantNudge = promptSrc.replace(/variant="ghost"(?= size="sm" data-testid="consent-allow")/, 'variant="primary"');
+const plantLI = pageSrc.replace("security alerting</li>", "security alerting, measuring how the website is used</li>");
+const plantChoiceSw = pageSrc.replace(/(ndani ya kifaa chako\.\s*<\/p>\s*)<AnalyticsChoice \/>/, "$1");
+const plantFlagged = shellSrc.replace("<Suspense fallback={null}><LazyConsentPrompt /></Suspense>", "{installInviteLive && <Suspense fallback={null}><LazyConsentPrompt /></Suspense>}");
+const plantIpField = schemaSrc.replace(/(model SiteVisitPage \{[\s\S]*?)(\r?\n  views)/, "$1$2\n  ip      String");
+const plantStorage = beaconSrc.replace("const entry = !entered.current;", "const entry = !localStorage.getItem('kp-seen');");
+const plantVisitSw = pageSrc.replace("seva zetu wenyewe", "seva");
+ok("§5x control · planted consent and visit-count copies found their targets",
+  [plantUngated !== gaComponent, plantNudge !== promptSrc, plantLI !== pageSrc, plantChoiceSw !== pageSrc, plantFlagged !== shellSrc, plantIpField !== schemaSrc, plantStorage !== beaconSrc, plantVisitSw !== pageSrc].every(Boolean));
+ok("§5y control · a tag no longer gated on consent is reported", consentDefects(pageSrc, plantUngated, promptSrc, shellSrc, consentLib).some((x) => x.includes("not gated on consent")));
+ok("§5z control · a bright Allow beside a grey Decline is reported", consentDefects(pageSrc, gaComponent, plantNudge, shellSrc, consentLib).some((x) => x.includes("equal weight")));
+ok("§5aa control · analytics restored under legitimate interest (en) is reported", consentDefects(plantLI, gaComponent, promptSrc, shellSrc, consentLib).some((x) => x.startsWith("en §3 still lists analytics")));
+ok("§5ab control · the §7 control dropped from ONE locale (sw) is reported", consentDefects(plantChoiceSw, gaComponent, promptSrc, shellSrc, consentLib).some((x) => x.startsWith("sw §7") && x.includes("AnalyticsChoice")));
+ok("§5ac control · a consent prompt hidden behind a feature flag is reported", consentDefects(pageSrc, gaComponent, promptSrc, plantFlagged, consentLib).some((x) => x.includes("ungated")));
+const plantNoSendCheck = gaComponent.replace('if (readConsent() !== "granted") return skip();', "");
+ok("§5ag control · a fetch transport that no longer re-checks consent at send time is reported",
+  plantNoSendCheck !== gaComponent && consentDefects(pageSrc, plantNoSendCheck, promptSrc, shellSrc, consentLib).some((x) => x.includes("send time")));
+ok("§5ad control · an ip column on the visit table is reported", visitDefects(pageSrc, plantIpField, visitsServer, beaconSrc, visitsClient).some((x) => x.includes("SiteVisitPage has fields")));
+ok("§5ae control · a beacon that touches localStorage is reported", visitDefects(pageSrc, schemaSrc, visitsServer, plantStorage, visitsClient).some((x) => x.includes("browser storage")));
+ok("§5af control · the visit-count sentence dropped from ONE locale (sw) is reported", visitDefects(plantVisitSw, schemaSrc, visitsServer, beaconSrc, visitsClient).some((x) => x.startsWith("sw §2")));
+
 
 console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — ${pass} passed, ${fail} failed`);
 if (pass + fail < 20) { console.error(`!! only ${pass + fail} assertions ran`); process.exit(3); }

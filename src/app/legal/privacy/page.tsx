@@ -3,6 +3,7 @@ import { SUPPORT_EMAIL } from "@/lib/server/support-config";
 import { getServerT, type Locale } from "@/lib/i18n-server";
 // ⭐ The referee clock is the service's constant — §9 states the number the purge actually runs on.
 import { AGENT_REFEREE_DOC_HOLD_DAYS } from "@/lib/server/agent-application-service";
+import { AnalyticsChoice } from "@/components/analytics/analytics-choice";
 
 export async function generateMetadata() {
   const { locale } = await getServerT();
@@ -26,10 +27,14 @@ const TITLE: Record<Locale, string> = {
 // 2026-09-15: Google Analytics added (`src/components/analytics/google-tag.tsx`) — §2 technical data, §3 legitimate
 // interest, §4 the processor with what it receives and where it does not run, §7 its two cookies replace "no third-party
 // tracking cookies". Every clause is tied to `src/lib/google-tag.ts` by `test:privacy-notice` §4e.
+// 2026-09-15.2: analytics becomes OPT-IN — the Tanzania PDPA 2022 has no legitimate-interests ground, and trackers that
+// identify a person need consent. §2/§4 "if you allow analytics", §3 moves analytics from legitimate interest to consent,
+// §7 states the choice, its storage and lifetimes, and carries the <AnalyticsChoice /> control. Same version: §2 "Visit counts" and
+// §5 their 400 days — the first-party counter (src/lib/server/site-visits.ts) that counts every visit with no identifier.
 const META: Record<Locale, string> = {
-  en: "Version 2026-09-15 · Aligned with the Tanzania Personal Data Protection Act 2022 and EU GDPR principles.",
-  sw: "Toleo 2026-09-15 · Imeoanishwa na Tanzania Personal Data Protection Act 2022 na kanuni za EU GDPR.",
-  zh: "版本 2026-09-15 · 符合 Tanzania Personal Data Protection Act 2022 及 EU GDPR 原则。",
+  en: "Version 2026-09-15.2 · Aligned with the Tanzania Personal Data Protection Act 2022 and EU GDPR principles.",
+  sw: "Toleo 2026-09-15.2 · Imeoanishwa na Tanzania Personal Data Protection Act 2022 na kanuni za EU GDPR.",
+  zh: "版本 2026-09-15.2 · 符合 Tanzania Personal Data Protection Act 2022 及 EU GDPR 原则。",
 };
 
 /**
@@ -60,7 +65,8 @@ function content(): Record<Locale, React.ReactNode> { return {
           <li><strong className="text-text">Identity</strong>: full name and date of birth; the type and number of one of four documents — a National ID (NIDA), a passport, a driving licence or a voter&apos;s card — and its expiry date where the document has one; photographs of that document; and a selfie</li>
           <li><strong className="text-text">Contact</strong>: phone number (E.164), email address, region</li>
           <li><strong className="text-text">Financial</strong>: deposit and withdrawal records, mobile-money MSISDN, prediction activity; for a card deposit, the billing name and address you enter; and the name registered to a mobile-money number you withdraw to</li>
-          <li><strong className="text-text">Technical</strong>: IP address and browser user-agent string, recorded on sign-in and security events; session issue and expiry times; and, through Google Analytics, the pages you open, your device and browser type, and your approximate location</li>
+          <li><strong className="text-text">Technical</strong>: IP address and browser user-agent string, recorded on sign-in and security events; session issue and expiry times; and, if you allow analytics, through Google Analytics, the pages you open, your device and browser type, and your approximate location</li>
+          <li><strong className="text-text">Visit counts</strong>: for every visit, our own servers add one to daily totals of the page opened, the website that linked to it and any campaign tags in its address; no cookie or identifier is used, and nothing that could identify you is kept</li>
           <li><strong className="text-text">Behavioural</strong>: deposit and loss limit changes, self-exclusion and cooling-off periods</li>
         </ul>
       </LegalSection>
@@ -69,8 +75,8 @@ function content(): Record<Locale, React.ReactNode> { return {
         <ul className="list-disc pl-5 space-y-1">
           <li><strong className="text-text">Performance of contract</strong>: account, wallet, bet placement, settlement</li>
           <li><strong className="text-text">Legal obligation</strong>: identity verification (KYC) and AML/CFT under the Anti-Money Laundering Act and POCA, tax under the Income Tax Act</li>
-          <li><strong className="text-text">Legitimate interest</strong>: fraud prevention, market-integrity monitoring, security alerting, measuring how the website is used</li>
-          <li><strong className="text-text">Consent</strong>: marketing communications — you can withdraw it at any time under Profile → Notifications</li>
+          <li><strong className="text-text">Legitimate interest</strong>: fraud prevention, market-integrity monitoring, security alerting</li>
+          <li><strong className="text-text">Consent</strong>: marketing communications — you can withdraw it at any time under Profile → Notifications; and Google Analytics — only if you allow it when first asked, and you can change that at any time in §7 of this policy</li>
         </ul>
       </LegalSection>
 
@@ -84,7 +90,7 @@ function content(): Record<Locale, React.ReactNode> { return {
           <li>Postmark, in the United States, which sends our emails: it keeps a record of each email, and records when an email is opened and which link in it is clicked</li>
           <li>Anthropic, which writes the answers in the 50pick Help chat: it receives the messages of that conversation, not your account details; it stores data in the United States and may process a request in the United States, Europe, Asia or Australia</li>
           <li>Sentry, in the European Union, which receives error reports from our servers: Tanzanian phone numbers, email addresses and long numbers such as a NIDA number are removed from a report before it is sent</li>
-          <li>Google Analytics, run by Google, which measures how the website is used: it receives the address and title of each page you open, with any part that could identify you removed; your browser and device type; an approximate location derived from your IP address; and a random identifier kept in a cookie. It does not receive your name, phone number, email address or account details, and it is not used for advertising. It does not run on staff pages or on a page opened from a password-reset, email-verification or agent-invitation link. Google may process this data in the United States and other countries</li>
+          <li>Google Analytics, run by Google, only if you allow analytics, which measures how the website is used: it receives the address and title of each page you open, with any part that could identify you removed; your browser and device type; an approximate location derived from your IP address; and a random identifier kept in a cookie. It does not receive your name, phone number, email address or account details, and it is not used for advertising. It does not run on staff pages or on a page opened from a password-reset, email-verification or agent-invitation link. Google may process this data in the United States and other countries</li>
           <li>If you turn on notifications, the push service of your browser, run by the company that makes it, delivers them; the content of each notification is encrypted</li>
         </ul>
         <p className="text-text">We never sell personal data.</p>
@@ -96,6 +102,7 @@ function content(): Record<Locale, React.ReactNode> { return {
           <li>Prediction and transaction history: at least 7 years</li>
           <li>Audit log entries: at least 7 years</li>
           <li>Marketing consent: until you withdraw it, close your account, or 2 years pass without you signing in</li>
+          <li>Visit counts, daily totals that identify no one: 400 days</li>
         </ul>
       </LegalSection>
 
@@ -114,11 +121,13 @@ function content(): Record<Locale, React.ReactNode> { return {
         <p>
           We use a minimum-necessary set of cookies: your sign-in session (HMAC-signed HttpOnly cookies that end at most 7 days after you sign in),
           your language, a note kept for 30 seconds that explains why you were signed out, a record that you dismissed the identity notice on your wallet,
-          and, on staff accounts only, the two-factor sign-in cookies. Google Analytics sets two cookies, _ga and _ga_W66WRL67MQ, holding a random
-          identifier used to count visits; they last 395 days. No advertising cookies. You can refuse or delete cookies in your browser&apos;s settings;
-          refusing the Google Analytics cookies does not change how 50pick works.
+          and, on staff accounts only, the two-factor sign-in cookies. Only if you allow analytics, Google Analytics sets two cookies, _ga and _ga_W66WRL67MQ,
+          holding a random identifier used to count visits; they last 395 days, and turning analytics off deletes them. Analytics is off until you
+          choose: your choice is kept in your browser&apos;s storage for 395 days if you allow it, or 180 days if you decline, and then you are asked
+          again. No advertising cookies. Refusing analytics does not change how 50pick works.
           Some display choices, such as hiding your balance or dismissing a prompt, are kept in your browser&apos;s own storage on your device.
         </p>
+        <AnalyticsChoice />
       </LegalSection>
 
       <LegalSection n="8" title="Security">
@@ -158,7 +167,8 @@ function content(): Record<Locale, React.ReactNode> { return {
           <li><strong className="text-text">Utambulisho</strong>: jina kamili na tarehe ya kuzaliwa; aina na namba ya mojawapo ya nyaraka nne — Kitambulisho cha Taifa (NIDA), pasipoti, leseni ya udereva au kadi ya mpiga kura — pamoja na tarehe ya kuisha muda wake pale nyaraka inapokuwa nayo; picha za nyaraka hiyo; na selfie</li>
           <li><strong className="text-text">Mawasiliano</strong>: namba ya simu (E.164), anwani ya barua pepe, mkoa</li>
           <li><strong className="text-text">Fedha</strong>: kumbukumbu za kuweka na kutoa fedha, MSISDN ya pesa za simu, shughuli za utabiri; kwa kuweka fedha kwa kadi, jina na anwani ya bili unayoandika; na jina lililosajiliwa kwa namba ya pesa za simu unayotolea fedha</li>
-          <li><strong className="text-text">Kiufundi</strong>: anwani ya IP na maandishi ya user-agent ya kivinjari, huhifadhiwa unapoingia na kwenye matukio ya usalama; muda wa kuanza na wa kuisha wa kipindi; na, kupitia Google Analytics, kurasa unazofungua, aina ya kifaa na kivinjari chako, na eneo lako la takriban</li>
+          <li><strong className="text-text">Kiufundi</strong>: anwani ya IP na maandishi ya user-agent ya kivinjari, huhifadhiwa unapoingia na kwenye matukio ya usalama; muda wa kuanza na wa kuisha wa kipindi; na, ukiruhusu takwimu, kupitia Google Analytics, kurasa unazofungua, aina ya kifaa na kivinjari chako, na eneo lako la takriban</li>
+          <li><strong className="text-text">Hesabu za matembeleo</strong>: kwa kila tembeleo, seva zetu wenyewe huongeza moja kwenye jumla za kila siku za ukurasa uliofunguliwa, tovuti iliyokuleta na lebo za kampeni kwenye anwani yake; hakuna kidakuzi wala kitambulisho kinachotumika, na hakuna chochote kinachoweza kukutambulisha kinachohifadhiwa</li>
           <li><strong className="text-text">Kitabia</strong>: mabadiliko ya mipaka ya kuweka fedha na hasara, vipindi vya kujiondoa na kupumzika</li>
         </ul>
       </LegalSection>
@@ -167,8 +177,8 @@ function content(): Record<Locale, React.ReactNode> { return {
         <ul className="list-disc pl-5 space-y-1">
           <li><strong className="text-text">Utekelezaji wa mkataba</strong>: akaunti, pochi, uwekaji wa dau, utatuzi wa masoko</li>
           <li><strong className="text-text">Wajibu wa kisheria</strong>: uthibitisho wa utambulisho (KYC) na AML/CFT chini ya Anti-Money Laundering Act na POCA, kodi chini ya Income Tax Act</li>
-          <li><strong className="text-text">Maslahi halali</strong>: kuzuia udanganyifu, ufuatiliaji wa uadilifu wa soko, tahadhari za usalama, kupima jinsi tovuti inavyotumika</li>
-          <li><strong className="text-text">Ridhaa</strong>: mawasiliano ya matangazo — unaweza kuiondoa wakati wowote kwenye Wasifu → Arifa</li>
+          <li><strong className="text-text">Maslahi halali</strong>: kuzuia udanganyifu, ufuatiliaji wa uadilifu wa soko, tahadhari za usalama</li>
+          <li><strong className="text-text">Ridhaa</strong>: mawasiliano ya matangazo — unaweza kuiondoa wakati wowote kwenye Wasifu → Arifa; na Google Analytics — ikiwa tu utairuhusu unapoulizwa mara ya kwanza, na unaweza kubadilisha uamuzi huo wakati wowote katika §7 ya sera hii</li>
         </ul>
       </LegalSection>
 
@@ -182,7 +192,7 @@ function content(): Record<Locale, React.ReactNode> { return {
           <li>Postmark, nchini Marekani, inayotuma barua pepe zetu: huhifadhi kumbukumbu ya kila barua pepe, na hurekodi barua pepe inapofunguliwa na kiungo kinachobofywa ndani yake</li>
           <li>Anthropic, inayoandika majibu katika gumzo la Msaada wa 50pick: hupokea ujumbe wa mazungumzo hayo, si taarifa za akaunti yako; huhifadhi data nchini Marekani na inaweza kuchakata ombi nchini Marekani, Ulaya, Asia au Australia</li>
           <li>Sentry, katika Umoja wa Ulaya, inayopokea ripoti za hitilafu kutoka kwenye seva zetu: namba za simu za Tanzania, anwani za barua pepe na namba ndefu kama namba ya NIDA huondolewa kwenye ripoti kabla haijatumwa</li>
-          <li>Google Analytics, inayoendeshwa na Google, inayopima jinsi tovuti inavyotumika: hupokea anwani na kichwa cha kila ukurasa unaofungua, sehemu yoyote inayoweza kukutambulisha ikiwa imeondolewa; aina ya kivinjari na kifaa chako; eneo la takriban linalotokana na anwani yako ya IP; na kitambulisho cha nasibu kinachohifadhiwa kwenye kidakuzi. Haipokei jina lako, namba ya simu, anwani ya barua pepe wala taarifa za akaunti yako, na haitumiki kwa matangazo. Haiendeshwi kwenye kurasa za wafanyakazi wala kwenye ukurasa uliofunguliwa kutoka kiungo cha kubadilisha nenosiri, cha kuthibitisha barua pepe au cha mwaliko wa wakala. Google inaweza kuchakata data hii nchini Marekani na nchi nyingine</li>
+          <li>Google Analytics, inayoendeshwa na Google, ikiwa tu utaruhusu takwimu, inayopima jinsi tovuti inavyotumika: hupokea anwani na kichwa cha kila ukurasa unaofungua, sehemu yoyote inayoweza kukutambulisha ikiwa imeondolewa; aina ya kivinjari na kifaa chako; eneo la takriban linalotokana na anwani yako ya IP; na kitambulisho cha nasibu kinachohifadhiwa kwenye kidakuzi. Haipokei jina lako, namba ya simu, anwani ya barua pepe wala taarifa za akaunti yako, na haitumiki kwa matangazo. Haiendeshwi kwenye kurasa za wafanyakazi wala kwenye ukurasa uliofunguliwa kutoka kiungo cha kubadilisha nenosiri, cha kuthibitisha barua pepe au cha mwaliko wa wakala. Google inaweza kuchakata data hii nchini Marekani na nchi nyingine</li>
           <li>Ukiwasha arifa, huduma ya arifa ya kivinjari chako, inayoendeshwa na kampuni iliyokitengeneza, huziwasilisha; maudhui ya kila arifa husimbwa</li>
         </ul>
         <p className="text-text">Kamwe hatuuzi data binafsi.</p>
@@ -194,6 +204,7 @@ function content(): Record<Locale, React.ReactNode> { return {
           <li>Historia ya utabiri na miamala: angalau miaka 7</li>
           <li>Maingizo ya kumbukumbu za ukaguzi (audit log): angalau miaka 7</li>
           <li>Ridhaa ya matangazo: hadi utakapoiondoa, kufunga akaunti yako, au miaka 2 ipite bila kuingia</li>
+          <li>Hesabu za matembeleo, jumla za kila siku zisizomtambulisha mtu yeyote: siku 400</li>
         </ul>
       </LegalSection>
 
@@ -212,11 +223,13 @@ function content(): Record<Locale, React.ReactNode> { return {
         <p>
           Tunatumia seti ya chini kabisa ya vidakuzi inayohitajika: kipindi chako cha kuingia (vidakuzi vya HttpOnly vilivyosainiwa kwa HMAC, vinavyoisha si zaidi ya siku 7 baada ya kuingia),
           lugha yako, ujumbe unaohifadhiwa kwa sekunde 30 unaoeleza kwa nini ulitolewa kwenye akaunti, kumbukumbu kwamba ulifunga taarifa ya utambulisho kwenye pochi yako,
-          na, kwa akaunti za wafanyakazi pekee, vidakuzi vya kuingia kwa uthibitishaji wa hatua mbili. Google Analytics huweka vidakuzi viwili, _ga na _ga_W66WRL67MQ, vyenye kitambulisho
-          cha nasibu kinachotumika kuhesabu matembeleo; vinadumu siku 395. Hakuna vidakuzi vya matangazo. Unaweza kukataa au kufuta vidakuzi kwenye mipangilio
-          ya kivinjari chako; kukataa vidakuzi vya Google Analytics hakubadilishi jinsi 50pick inavyofanya kazi.
+          na, kwa akaunti za wafanyakazi pekee, vidakuzi vya kuingia kwa uthibitishaji wa hatua mbili. Ikiwa tu utaruhusu takwimu, Google Analytics huweka vidakuzi viwili, _ga na _ga_W66WRL67MQ,
+          vyenye kitambulisho cha nasibu kinachotumika kuhesabu matembeleo; vinadumu siku 395, na kuzima takwimu huvifuta. Takwimu zimezimwa hadi
+          utakapochagua: uamuzi wako huhifadhiwa kwenye hifadhi ya kivinjari chako kwa siku 395 ukiruhusu, au siku 180 ukikataa, kisha utaulizwa
+          tena. Hakuna vidakuzi vya matangazo. Kukataa takwimu hakubadilishi jinsi 50pick inavyofanya kazi.
           Baadhi ya machaguo ya maonyesho, kama kuficha salio lako au kufunga ujumbe, huhifadhiwa kwenye hifadhi ya kivinjari chako ndani ya kifaa chako.
         </p>
+        <AnalyticsChoice />
       </LegalSection>
 
       <LegalSection n="8" title="Usalama">
@@ -255,7 +268,8 @@ function content(): Record<Locale, React.ReactNode> { return {
           <li><strong className="text-text">身份</strong>：全名与出生日期；所提交证件的类型与号码（国民身份证（NIDA）、护照、驾驶证或选民证四者之一），以及证件载明的有效期（如有）；该证件的照片；以及一张自拍照</li>
           <li><strong className="text-text">联系方式</strong>：电话号码（E.164）、电子邮箱地址、地区</li>
           <li><strong className="text-text">财务</strong>：存款与提现记录、移动货币 MSISDN、预测活动；银行卡充值时您填写的账单姓名与地址；以及您提现至的移动货币号码的注册姓名</li>
-          <li><strong className="text-text">技术</strong>：IP 地址与浏览器 user-agent 字符串（在登录及安全事件时记录）；会话签发与到期时间；以及通过 Google Analytics 收集的您打开的页面、设备与浏览器类型和大致位置</li>
+          <li><strong className="text-text">技术</strong>：IP 地址与浏览器 user-agent 字符串（在登录及安全事件时记录）；会话签发与到期时间；以及在您允许分析时，通过 Google Analytics 收集的您打开的页面、设备与浏览器类型和大致位置</li>
+          <li><strong className="text-text">访问计数</strong>：每次访问时，我们自己的服务器会在每日总数中为所打开的页面、链接到该页面的网站及其地址中的推广标签各加一；不使用 cookie 或标识符，也不保存任何可识别您身份的信息</li>
           <li><strong className="text-text">行为</strong>：存款与亏损限额变更、自我排除与冷静期</li>
         </ul>
       </LegalSection>
@@ -264,8 +278,8 @@ function content(): Record<Locale, React.ReactNode> { return {
         <ul className="list-disc pl-5 space-y-1">
           <li><strong className="text-text">合同履行</strong>：账户、钱包、下注、结算</li>
           <li><strong className="text-text">法律义务</strong>：依据 Anti-Money Laundering Act 与 POCA 的身份验证（KYC）及 AML/CFT、依据 Income Tax Act 的税务</li>
-          <li><strong className="text-text">合法利益</strong>：欺诈防范、市场完整性监控、安全告警、衡量网站的使用情况</li>
-          <li><strong className="text-text">同意</strong>：营销通讯——您可随时在“个人资料 → 通知”中撤回</li>
+          <li><strong className="text-text">合法利益</strong>：欺诈防范、市场完整性监控、安全告警</li>
+          <li><strong className="text-text">同意</strong>：营销通讯——您可随时在“个人资料 → 通知”中撤回；以及 Google Analytics——仅在首次询问时您同意后才会开启，您可随时在本政策第 7 条中更改</li>
         </ul>
       </LegalSection>
 
@@ -279,7 +293,7 @@ function content(): Record<Locale, React.ReactNode> { return {
           <li>Postmark（美国）：发送我们的电子邮件；保存每封邮件的记录，并记录邮件何时被打开以及其中哪个链接被点击</li>
           <li>Anthropic：为“50pick 帮助”聊天撰写回答；接收该对话中的消息，不含您的账户信息；数据存储于美国，请求可能在美国、欧洲、亚洲或澳大利亚处理</li>
           <li>Sentry（欧盟）：接收我们服务器的错误报告；报告发送前，会删除其中的坦桑尼亚电话号码、电子邮箱地址以及 NIDA 号码等长数字</li>
-          <li>Google Analytics（由 Google 运营）：衡量网站的使用情况；接收您打开的每个页面的地址与标题（已删除任何可能识别您身份的部分）、您的浏览器与设备类型、根据您的 IP 地址推断的大致位置，以及保存在 cookie 中的随机标识符。不接收您的姓名、电话号码、电子邮箱地址或账户信息，也不用于广告。不在员工页面上运行，也不在通过重置密码、验证邮箱或代理邀请链接打开的页面上运行。Google 可能在美国及其他国家处理这些数据</li>
+          <li>Google Analytics（由 Google 运营，仅在您允许分析时启用）：衡量网站的使用情况；接收您打开的每个页面的地址与标题（已删除任何可能识别您身份的部分）、您的浏览器与设备类型、根据您的 IP 地址推断的大致位置，以及保存在 cookie 中的随机标识符。不接收您的姓名、电话号码、电子邮箱地址或账户信息，也不用于广告。不在员工页面上运行，也不在通过重置密码、验证邮箱或代理邀请链接打开的页面上运行。Google 可能在美国及其他国家处理这些数据</li>
           <li>如您开启通知，通知由您浏览器的推送服务（由该浏览器的开发公司运营）送达；每条通知的内容均经过加密</li>
         </ul>
         <p className="text-text">我们绝不出售个人数据。</p>
@@ -291,6 +305,7 @@ function content(): Record<Locale, React.ReactNode> { return {
           <li>预测与交易历史：至少 7 年</li>
           <li>审计日志条目：至少 7 年</li>
           <li>营销同意：直至您撤回、注销账户，或连续 2 年未登录</li>
+          <li>访问计数（不识别任何人的每日总数）：400 天</li>
         </ul>
       </LegalSection>
 
@@ -307,8 +322,9 @@ function content(): Record<Locale, React.ReactNode> { return {
 
       <LegalSection n="7" title="Cookie">
         <p>
-          我们仅使用必要的最小 cookie 集合：您的登录会话（HMAC 签名的 HttpOnly cookie，登录后最长 7 天失效）、您的语言、一条保留 30 秒、说明您为何被退出登录的提示、您已关闭钱包身份提示的记录，以及仅限员工账户的双重验证登录 cookie。Google Analytics 设置两个 cookie：_ga 和 _ga_W66WRL67MQ，保存用于统计访问的随机标识符，有效期 395 天。不使用任何广告 cookie。您可以在浏览器设置中拒绝或删除 cookie；拒绝 Google Analytics 的 cookie 不会改变 50pick 的正常使用。部分显示选择（例如隐藏余额或关闭提示）保存在您设备上的浏览器存储中。
+          我们仅使用必要的最小 cookie 集合：您的登录会话（HMAC 签名的 HttpOnly cookie，登录后最长 7 天失效）、您的语言、一条保留 30 秒、说明您为何被退出登录的提示、您已关闭钱包身份提示的记录，以及仅限员工账户的双重验证登录 cookie。仅在您允许分析时，Google Analytics 才会设置两个 cookie：_ga 和 _ga_W66WRL67MQ，保存用于统计访问的随机标识符，有效期 395 天；关闭分析会将其删除。在您作出选择之前，分析处于关闭状态；您的选择保存在浏览器存储中——允许则保存 395 天，拒绝则保存 180 天，之后会再次询问。不使用任何广告 cookie。拒绝分析不会影响 50pick 的正常使用。部分显示选择（例如隐藏余额或关闭提示）保存在您设备上的浏览器存储中。
         </p>
+        <AnalyticsChoice />
       </LegalSection>
 
       <LegalSection n="8" title="安全">

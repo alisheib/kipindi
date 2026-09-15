@@ -278,7 +278,7 @@ model User {
   /// the awaited audit read, and a failed read BLOCKS.
   passwordSetAt        DateTime?  @db.Timestamptz(3)
   /// How the hash was last set: REGISTRATION · SELF_CHANGE · RESET_LINK · OFFICER_TEMP · REHASH.
-  /// SQL-only CHECK "User_passwordSetVia_check" (migration 20260914150100_house_bot_markers).
+  /// SQL-only CHECK "User_passwordSetVia_check" (migration 20260915150100_house_bot_markers).
   passwordSetVia       String?
   /// When an OFFICER last set this account's email (04 A4). A RESET_LINK password within the 30 days
   /// after it blocks designate and re-verify.
@@ -654,7 +654,7 @@ model Transaction {
   /// copied from the Position on every create that carries a positionId (04 R3). NULL for every
   /// player row. Soft reference, no FK. ⛔ Written in CREATE only — every update path skips it.
   /// SQL-only partial index "Transaction_createdAt_marked_idx" (createdAt) WHERE houseBotId IS NOT NULL
-  /// (migration 20260914150100_house_bot_markers).
+  /// (migration 20260915150100_house_bot_markers).
   houseBotId        String?
   amlReviewedById   String?
   amlReviewedAt     DateTime?
@@ -1739,7 +1739,7 @@ model PredictionMarket {
   /// When an officer last REOPENED this market (N1 §2). Written only by adminReopenMarket, in the
   /// same store write as the reopen (sanctioned change r). The house engine reads it for
   /// MARKET_REOPENED and the information blackout. NULL = never reopened; never cleared.
-  /// ⚠️ TIMESTAMPTZ(3), unlike this model's other times (migration 20260914150100_house_bot_markers).
+  /// ⚠️ TIMESTAMPTZ(3), unlike this model's other times (migration 20260915150100_house_bot_markers).
   reopenedAt                DateTime?              @db.Timestamptz(3)
   /// How many times it was reopened (N1 §2). NULL = never; never cleared.
   reopenCount               Int?
@@ -1832,7 +1832,7 @@ model Position {
   /// ⭐ HOUSE MARKER (PLAN §2 Markers, I8; 04 S3). The HouseBot that placed this stake; NULL for every
   /// player bet. Soft reference, no FK. ⛔ Written in CREATE only; every update skips it (the one
   /// sanctioned exception is the commit-7 remark script, NULL → id only).
-  /// SQL-only partial indexes (migration 20260914150100_house_bot_markers), each WHERE houseBotId IS NOT NULL:
+  /// SQL-only partial indexes (migration 20260915150100_house_bot_markers), each WHERE houseBotId IS NOT NULL:
   ///   "Position_houseBotId_placedAt_marked_idx" (houseBotId, placedAt) — per-bot rolling windows
   ///   "Position_marketId_marked_idx" (marketId)                        — house money per market
   ///   "Position_houseBotId_open_idx" (houseBotId) AND status='OPEN'    — open exposure (04 A24)
@@ -1849,8 +1849,8 @@ model Position {
 // ============================================================================
 //
 // ⛔ ALL HOUSE DDL LIVES IN TWO HAND-WRITTEN, RE-RUNNABLE MIGRATIONS:
-//   20260914150000_house_bot_tables   — these 8 tables, their CHECKs, indexes and seed rows
-//   20260914150100_house_bot_markers  — the columns on User, Position, Transaction, PredictionMarket
+//   20260915150000_house_bot_tables   — these 8 tables, their CHECKs, indexes and seed rows
+//   20260915150100_house_bot_markers  — the columns on User, Position, Transaction, PredictionMarket
 // Every CHECK and every PARTIAL index is SQL-only (the Prisma DSL has neither); each model names its
 // partial indexes below. Do not "tidy" them away as drift: the partial uniques ARE the exactly-once
 // guarantees, and the house DAL maps their names.
@@ -2943,4 +2943,34 @@ enum LedgerEntryType {
   SETTLEMENT_TAX // DEAD. Was taxRate × pool.
   SETTLEMENT_RESERVE // DEAD. Was reserveRate × pool.
   SETTLEMENT_AGGREGATOR // DEAD. Was aggregatorRate × pool.
+}
+
+/// FIRST-PARTY VISIT COUNTS — daily totals, one row per (EAT day, page). Written by `/api/pv` for EVERY visitor
+/// (Ali, 2026-09-15), which needs no consent only because nothing here identifies anyone: no user, no IP, no session,
+/// no cookie id. The path is masked and carries no query (src/lib/site-visits.ts). Pruned by `retention.purge.daily`
+/// after SITE_VISIT_RETENTION_DAYS.
+model SiteVisitPage {
+  id      String @id @default(cuid())
+  day     String // EAT day, YYYY-MM-DD (src/lib/eat-day.ts)
+  path    String // masked, no query or fragment; "(other)" once a day holds SITE_VISIT_MAX_PATHS distinct paths
+  views   Int    @default(0)
+  entries Int    @default(0) // visits that LANDED on this page
+
+  @@unique([day, path])
+  @@index([day])
+}
+
+/// Where visits came from, per EAT day: the referrer HOST and the campaign tags of each visit's first page. Same
+/// no-identifier rule as SiteVisitPage.
+model SiteVisitSource {
+  id       String @id @default(cuid())
+  day      String
+  referrer String @default("") // host only; "" = direct or internal
+  source   String @default("")
+  medium   String @default("")
+  campaign String @default("")
+  visits   Int    @default(0)
+
+  @@unique([day, referrer, source, medium, campaign])
+  @@index([day])
 }

@@ -98,6 +98,9 @@ export const RATE_RULES: Record<string, RateRule> = {
   // House bots (02 §2.6 step 5, PLAN §6): an owner checking an account holder's password, keyed
   // `<officer>:<holder>`. A refusal here never touches the holder's own sign-in counter.
   "housebot.verify": { capacity: 3, refillPerMin: 0.2 },
+  // First-party visit counter (/api/pv), per IP. A real visitor sends one beacon per page; 60 burst and 30/min steady
+  // covers fast browsing on a shared mobile-carrier IP, and stops one client from inflating the counts.
+  "pv.ip":         { capacity: 60, refillPerMin: 30 },
 };
 
 export type RateResult = { allowed: boolean; remaining: number; retryAfterSec: number };
