@@ -377,7 +377,7 @@ await guard("9", () => {
   ok("9.1 · every engine code, CAP_ codes included, has a sentence", missing.length === 0 && Object.keys(FC.ENGINE_CODE_SENTENCE).length === new Set(all).size, j(missing));
   ok("9.2 · every target end cause has its N2 §8 caption", K.TARGET_END_CAUSES.every((c: string) => !!FC.TARGET_END_CAPTION[c]) && FC.TARGET_END_CAPTION.VETOED === "Stopped by staff (veto) — can't be targeted again");
   ok("9.3 · every press refusal code has its N1 §8 sentence", FC.PRESS_REFUSAL_CODES.every((c: string) => !!FC.PRESS_REFUSAL_SENTENCE[c]));
-  ok("9.4 · a staff-chosen row without its own sentence reads “{entry} not placed: …”", FC.staffChosenSentence("CAP_PER_HOUR") === `{entry} not placed: ${FC.ENGINE_CODE_SENTENCE.CAP_PER_HOUR}.`);
+  ok("9.4 · a staff-chosen row without its own sentence reads “{entry} not placed: …”", FC.staffChosenSentence("CAP_PER_HOUR") === "{entry} not placed: {bot}'s hourly bet limit was reached.", FC.staffChosenSentence("CAP_PER_HOUR"));
   ok("9.5 · N1's own sentence wins where N1 wrote one", FC.staffChosenSentence("STALE") === "{entry} not placed: 50pick was busy until the time limit (15 s) passed.");
   ok("9.6 · fillCopy fills known placeholders and leaves unknown ones visible", FC.fillCopy("{bot} · {nope}", { bot: "Bot A" }) === "Bot A · {nope}");
   const texts = [...Object.values(FC.ENGINE_CODE_SENTENCE), ...Object.values(FC.PRESS_REFUSAL_SENTENCE), ...Object.values(FC.TARGET_END_CAPTION)] as string[];
