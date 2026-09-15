@@ -446,6 +446,11 @@ section("§7 · blackout and attribution");
   ok("7.3 · a resolve claim 9:59 old → blocked", b({ resolveClaimedAt: new Date(now - 599_000).toISOString() }) === true);
   ok("7.4 · a resolve claim 10:01 old → not blocked", b({ resolveClaimedAt: new Date(now - 601_000).toISOString() }) === false);
   ok("7.5 · a non-LIVE market is never 'blocked' (the bet path refuses it anyway)", b({ status: "CLOSED", sentinelOutcome: "YES" }) === false);
+  // N2 §4 step 9.5: `endTargets` never ends a target on a young resolve claim alone.
+  const noClaim = (o: Record<string, unknown>) => blackoutFromRow({ ...base, ...o } as never, now, { countResolveClaim: false }).blocked;
+  ok("7.5b · countResolveClaim:false · a resolve claim 9:59 old alone → not blocked", noClaim({ resolveClaimedAt: new Date(now - 599_000).toISOString() }) === false);
+  ok("7.5c · …but a Sentinel stamp or a reopen still blocks with that option", noClaim({ resolveClaimedAt: new Date(now - 599_000).toISOString(), sentinelOutcome: "YES" }) === true
+    && noClaim({ reopenedAt: "2026-09-13T00:00:00.000Z" }) === true);
   const a = attributeStake(5_000, [{ userId: "u80", lockedTzs: 8_000 }, { userId: "u20", lockedTzs: 2_000 }], 10_000);
   ok("7.6 · 5,000 against 8,000 / 2,000 → 4,000 to the 80% holder, nothing to the 20% one", JSON.stringify(a) === JSON.stringify([{ userId: "u80", sharePct: 80, attributedTzs: 4_000 }]), JSON.stringify(a));
   const edge = attributeStake(1_000, [{ userId: "u25", lockedTzs: 2_500 }], 10_000);
