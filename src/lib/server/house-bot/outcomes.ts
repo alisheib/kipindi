@@ -115,13 +115,18 @@ async function alertOnce(key: string | EatSuffixedKey, alerts: EngineAlerts, mes
  * AUTO_PAUSED, or REMOVED for a closed account (A5). The status write is the only statement under the wallet lock;
  * a bot already out of ACTIVE is left as it is (a second worker's pause writes nothing more).
  */
-export async function stopBot(botId: string, change: { to: "AUTO_PAUSED"; cause: PauseReason } | { to: "REMOVED"; cause: "ACCOUNT_CLOSED" }, alerts: EngineAlerts): Promise<boolean> {
+export async function stopBot(
+  botId: string,
+  /** `field` names the rules field for RULES_INVALID and RULES_OUTDATED (`HouseBot.pauseDetail`, C4-SPEC ruling 65). */
+  change: { to: "AUTO_PAUSED"; cause: PauseReason; field?: string | null } | { to: "REMOVED"; cause: "ACCOUNT_CLOSED" },
+  alerts: EngineAlerts,
+): Promise<boolean> {
   const bot = await houseBotStore.get(botId);
   if (!bot) return false;
   const moved = await withLock(`wallet:${bot.userId}`, (tx) =>
     change.to === "REMOVED"
       ? houseBotStore.setStatus(bot.id, { from: ["ACTIVE", "PAUSED", "AUTO_PAUSED"], to: "REMOVED", pauseReason: null, pausedFromStatus: null, removal: { byId: null, reason: null, cause: "ACCOUNT_CLOSED" } }, tx ?? undefined)
-      : houseBotStore.setStatus(bot.id, { from: ["ACTIVE"], to: "AUTO_PAUSED", pauseReason: change.cause, pauseDetail: null, pausedFromStatus: "ACTIVE" }, tx ?? undefined),
+      : houseBotStore.setStatus(bot.id, { from: ["ACTIVE"], to: "AUTO_PAUSED", pauseReason: change.cause, pauseDetail: change.field ? { field: change.field } : null, pausedFromStatus: "ACTIVE" }, tx ?? undefined),
   );
   if (!moved) return false;
   // ── after the lock ──

@@ -370,6 +370,8 @@ export const ENGINE_CODES = [
   "TARGET_ENDED",
   "COUNTERPARTY_CONCENTRATION",
   "CAP_OPPOSITE_SIDE",
+  // C4-SPEC ruling 66: the bot's saved scope no longer covers the market at fire
+  "OUT_OF_SCOPE",
 ] as const;
 
 /**

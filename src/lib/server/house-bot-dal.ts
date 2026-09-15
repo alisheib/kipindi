@@ -1493,6 +1493,11 @@ export interface HouseBotIntentStore {
   expireStale(): Promise<string[]>;
   /** Planner pass 3: an expired claim with 3 attempts → FAILED(POISON). */
   poison(): Promise<string[]>;
+  /**
+   * SIGTERM (A24, C4-SPEC ruling 70): this worker's CLAIMED rows, except `excludeIds` (the fires still in flight), back
+   * to PENDING with the claim's attempt handed back. Conditional on the claim; returns the released ids.
+   */
+  releaseClaims(me: string, excludeIds: readonly string[]): Promise<string[]>;
   /** The A8 alert claim: true for exactly one sender. */
   markAlerted(id: string): Promise<boolean>;
   /** PLACED rows whose alert never went out, finished more than 30 s ago (A8). */
@@ -2366,6 +2371,12 @@ const memoryHouseBotIntents: HouseBotIntentStore = {
       .filter((i) => LIVE_STATUSES.includes(i.status) && inScope(i))
       .sort((a, b) => ms(a.createdAt) - ms(b.createdAt))
       .map((i) => memWrite("HouseBotIntent", { ...i, status: "CANCELLED", reasonCode, finishedAt: nowIso() }, "update")));
+  },
+  async releaseClaims(me, excludeIds) {
+    const skip = new Set(excludeIds);
+    return memAtomic(() => [...memIntents.values()]
+      .filter((i) => i.status === "CLAIMED" && i.claimedBy === me && !skip.has(i.id))
+      .map((i) => memWrite("HouseBotIntent", { ...i, status: "PENDING", claimedBy: null, claimedUntil: null, attempts: Math.max(0, i.attempts - 1) }, "update").id));
   },
   async clampStake(id, me, stakeTzs) {
     const c = wholeArg("stakeTzs", stakeTzs);
@@ -3452,6 +3463,16 @@ const prismaHouseBotIntents: HouseBotIntentStore = {
       `"finishedAt" = now()`,
     ], `${LIVE_SQL} AND ${scopeSql}`);
     return (await sql(tx, text, p.values)).map(toHouseBotIntent).sort(byCreatedAsc);
+  },
+  async releaseClaims(me, excludeIds) {
+    const p = new Params();
+    const text = updateSql("HouseBotIntent", [
+      `"status" = 'PENDING'`,
+      `"claimedBy" = NULL`,
+      `"claimedUntil" = NULL`,
+      `"attempts" = greatest("attempts" - 1, 0)`,
+    ], `"status" = 'CLAIMED' AND "claimedBy" = ${p.raw(me, "text")} AND NOT ("id" = ANY(${p.raw([...excludeIds], "text[]")}))`, { returning: `"id"` });
+    return (await sql(null, text, p.values)).map((r) => String(r.id));
   },
   async clampStake(id, me, stakeTzs) {
     const p = new Params();

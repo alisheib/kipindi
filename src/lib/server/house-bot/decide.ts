@@ -161,13 +161,20 @@ export function orderBots<T extends Pick<DecideBot, "botId" | "openExposure" | "
 
 const productOf = (view: PublicMarketView): "MARKET" | "UPDOWN" => (view.productLine === "UPDOWN" ? "UPDOWN" : "MARKET");
 
+/**
+ * The saved rules' scope for this market (C14): the product on and the chain or category listed, and — when `mode` is
+ * given — that mode on. Fire asks with `mode` null for staff-chosen rows, which no automatic mode governs (ruling 66).
+ */
+export function rulesCover(r: HouseBotRulesV1, view: PublicMarketView, mode: "counter" | "fill" | "opener" | null): boolean {
+  if (productOf(view) === "UPDOWN") {
+    return r.scope.products.updown && (mode == null || r.modes.updown[mode]) && view.round != null && (r.scope.chains as string[]).includes(view.round.chainKey);
+  }
+  return r.scope.products.polls && (mode == null || r.modes.polls[mode]) && (r.scope.categories as string[]).includes(view.category);
+}
+
 /** The bot's scope for this market: product on, the mode on, and the chain or category listed (C14). */
 export function botCovers(bot: DecideBot, view: PublicMarketView, mode: "counter" | "fill" | "opener"): boolean {
-  const r = bot.rules;
-  if (productOf(view) === "UPDOWN") {
-    return r.scope.products.updown && r.modes.updown[mode] && view.round != null && (r.scope.chains as string[]).includes(view.round.chainKey);
-  }
-  return r.scope.products.polls && r.modes.polls[mode] && (r.scope.categories as string[]).includes(view.category);
+  return rulesCover(bot.rules, view, mode);
 }
 
 /* ═══ COUNTER ═══════════════════════════════════════════════════════════════════════════════════ */

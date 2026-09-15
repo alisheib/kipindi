@@ -43,6 +43,7 @@ export const ENGINE_CODE_SENTENCE = {
   UD_STALE_PRICE: "no fresh price was available",
   MARKET_REOPENED: "the market was reopened",
   CHAIN_NOT_RUNNING: "the Up & Down chain was not running",
+  OUT_OF_SCOPE: "{bot}'s rules no longer cover this market",
   HOLDER_RECRUIT: "the player was recruited by a bot holder",
   STALE: "50pick was busy until the time limit passed",
   CANCELLED_BY_ADMIN: "{name} cancelled it before it was placed (recorded as a veto)",
