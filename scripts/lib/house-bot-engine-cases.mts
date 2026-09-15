@@ -1223,6 +1223,9 @@ await guard("15", async () => {
   const drawsOn = async (marketId: string) => ((await S.houseBotEventStore.listByKinds(["OPENER_SIDE_DRAWN"], { marketId, limit: 50 })) as Any[]);
   const finishLive = (id: string) => S.houseBotIntentStore.finish(id, ME, { status: "CANCELLED", reasonCode: "BOT_NOT_ACTIVE" });
   const NOT_HELD = j({ held: false });
+  // A decision that throws is an answer the case asserts on — never a throw handed to the section guard, which would
+  // report only "threw" and skip every case after it (mutation E25 first missed 15.25 that way).
+  const decideSafe = (input: Any): Any => { try { return EN.enterNowDecision(input); } catch (e) { return { threw: String((e as Error)?.message ?? e) }; } };
 
   /* ── 15.0 UX-15's worked example on a real poll ── */
   const b1 = await botWith();
@@ -1244,7 +1247,7 @@ await guard("15", async () => {
     !!inp && inp.pools.YES.locked === 12_000 && inp.pools.NO.raw === 3_000 && inp.pools.NO.locked === 3_000 && inp.pools.YES.accounts.length === 3, j(inp?.pools));
   ok("15.2 · a poll holding money is never drawn: openerDraw null, drawn false, not blocked, no OPENER_SIDE_DRAWN row",
     !!inp && inp.openerDraw === null && load.drawn === false && inp.blocked === false && (await drawsOn(m.id)).length === 0, j(inp?.openerDraw));
-  const d: Any = inp ? EN.enterNowDecision(inp) : null;
+  const d: Any = inp ? decideSafe(inp) : null;
   ok("15.3 · ⭐ UX-15 end to end: THIN on NO, 9,000, binding room, top account 33.3%, three attributed accounts",
     d?.ok === true && d.side === "NO" && d.entryCondition === "THIN" && d.stakeTzs === 9_000 && d.binding === "room" && d.decision.lockedByTopAccountPct === 33.3 && d.decision.attributedAccounts === 3, j(d));
   const usage = await S.houseSeamStore.botUsage({ houseBotId: b1.botId, marketId: m.id });
@@ -1274,7 +1277,7 @@ await guard("15", async () => {
     j(ai && { bot: ai.bot.placedAt, platform: ai.control.platformPlacedAt, pos: pos?.placedAt }));
   ok("15.9 · …each YES account is charged its attributed 3,000 today (count 1)",
     !!ai && players.slice(0, 3).every((p) => { const c = ai.counterparties.find((x: Any) => x.userId === p); return c?.count === 1 && c?.tzs === 3_000; }), j(ai?.counterparties));
-  ok("15.10 · …and the thin side is gone: the same load now decides BALANCED", !!ai && EN.enterNowDecision(ai).code === "BALANCED", j(ai && EN.enterNowDecision(ai)));
+  ok("15.10 · …and the thin side is gone: the same load now decides BALANCED", !!ai && decideSafe(ai).code === "BALANCED", j(ai && decideSafe(ai)));
 
   /* ── 15.11 marketHeld (N1 §4.4; §6 refusal 15 a–d) ── */
   ok("15.11 · one placed stake here and room under the per-market count → not held", j(await ENL.marketHeld(b1.botId, m.id)) === NOT_HELD);
@@ -1330,7 +1333,7 @@ await guard("15", async () => {
   const dark = await ENL.loadEnterNowInput(b1.botId, m5.id, DRAW, { randomInt: () => 1 });
   ok("15.24 · ⭐ blackout first: an EMPTY poll with a recorded AI check loads blocked, with no draw and no OPENER_SIDE_DRAWN row",
     dark.ok && dark.input.blocked === true && dark.input.openerDraw === null && dark.drawn === false && (await drawsOn(m5.id)).length === 0, j(dark.ok ? { blocked: dark.input.blocked, draw: dark.input.openerDraw } : dark));
-  ok("15.25 · …and the decision refuses INFO_BLACKOUT", dark.ok && EN.enterNowDecision(dark.input).code === "INFO_BLACKOUT");
+  ok("15.25 · …and the decision refuses INFO_BLACKOUT", dark.ok && decideSafe(dark.input).code === "INFO_BLACKOUT", j(dark.ok ? decideSafe(dark.input) : dark));
 
   const m6 = await w.poll();
   const first = await ENL.loadEnterNowInput(b1.botId, m6.id, DRAW, { randomInt: () => 1 });
@@ -1339,7 +1342,7 @@ await guard("15", async () => {
   ok("15.26 · an empty poll draws: side NO (randomInt → 1), for ENTER_NOW_PREVIEW, drawn true", draw6?.side === "NO" && draw6?.drawnFor === "ENTER_NOW_PREVIEW" && first.drawn === true, j(first));
   ok("15.27 · …one OPENER_SIDE_DRAWN row carrying the officer, the bot, the side and the draw time",
     rows6.length === 1 && rows6[0].actorId === WORLD_OFFICER && rows6[0].houseBotId === b1.botId && rows6[0].payload?.side === "NO" && Date.parse(rows6[0].createdAt) === Date.parse(draw6?.drawnAt), j(rows6));
-  const dOpen: Any = first.ok ? EN.enterNowDecision(first.input) : null;
+  const dOpen: Any = first.ok ? decideSafe(first.input) : null;
   ok("15.28 · …and the decision is OPENER on the drawn side for the opener stake", dOpen?.ok === true && dOpen.entryCondition === "OPENER" && dOpen.side === "NO" && dOpen.stakeTzs === 5_000 && dOpen.binding === "openerStake", j(dOpen));
   const again = await ENL.loadEnterNowInput(b2.botId, m6.id, { actorId: null, drawnFor: "ENTER_NOW" }, { randomInt: () => 0 });
   ok("15.29 · ⭐ never re-rolled: another bot, another caller and randomInt → 0 read the SAME side, drawnFor and drawnAt; still one row",
