@@ -16,6 +16,10 @@
  * land with step 9's emitters, never before (ruling 128) — a hook that pauses a bot with no alert channel would stop
  * liquidity silently.
  *
+ * ⛔ A CHANGE IS IDENTIFIED BY THE PAUSE'S OWN DETAIL (ruling 133). The alert key is claimed after the status write, so a
+ * second look landing in between would otherwise record the same change again and silence A1. The credential branch runs
+ * only when the bot was NOT paused by this very change — the pause writes the method and the instant with the status.
+ *
  * ⛔ THE A19 ORDER (ruling 131). Status, the cause set, the credential stamp, the void and their events are written under
  * `wallet:<userId>`; the audit and every bell, email and holder notice go after the lock is released.
  */
@@ -127,6 +131,18 @@ async function notice(alerts: HolderAlerts, userId: string, kind: HolderNoticeKi
   await safeSend(`holder ${kind}`, () => alerts.holderNotice(userId, kind));
 }
 
+const sameInstant = (a: string | null | undefined, b: string | null | undefined): boolean =>
+  a == null || b == null ? a == null && b == null : Date.parse(a) === Date.parse(b);
+
+/**
+ * Ruling 133 · was the bot paused BY this very change? `stopBot` writes the method and the instant into `pauseDetail` in
+ * the same statement as the status, so a look that lands between that write and its A1 can tell, and leaves it alone.
+ */
+function pausedByThisChange(bot: StoredHouseBot, pw: Extract<HolderCause, { code: "PASSWORD_CHANGED" }>): boolean {
+  return bot.pauseReason === "PASSWORD_CHANGED" && bot.pauseDetail?.method === pw.method
+    && sameInstant(bot.pauseDetail?.changedAt, pw.changedAt);
+}
+
 /* ═══ The one apply (rulings 122–126, 131) ═════════════════════════════════════════════════════════ */
 
 export async function applyHolderCauses(read: FoundRead, o: { detectedBy: "HOOK" | "SWEEP"; alerts: HolderAlerts }): Promise<HolderApplied> {
@@ -194,8 +210,11 @@ export async function applyHolderCauses(read: FoundRead, o: { detectedBy: "HOOK"
     }
   }
 
-  // PLAN §14 · a password change on a bot that was already stopped: recorded once per new fingerprint, never a status move.
-  if (!wasActive && pw && pwKey && (bot.status === "PAUSED" || bot.status === "AUTO_PAUSED")) {
+  // PLAN §14 · a password change on a bot that is not running: recorded once per new fingerprint, never a status move.
+  // Ruling 135 · also when THIS apply stopped it for another cause, whose stop says nothing about the password.
+  // Ruling 133 · never when the bot was paused BY this very change: that pause is the record, and A1 is its alert.
+  const stoppedBefore = !wasActive && (bot.status === "PAUSED" || bot.status === "AUTO_PAUSED");
+  if (pw && pwKey && !bellSent.has("PASSWORD_CHANGED") && (stoppedBefore || stoppedNow) && !pausedByThisChange(bot, pw)) {
     // CREDENTIAL_CHANGED and A2 are this change's record and alert; the cause-set step adds neither again.
     eventWritten.add("PASSWORD_CHANGED");
     bellSent.add("PASSWORD_CHANGED");
@@ -225,7 +244,13 @@ export async function applyHolderCauses(read: FoundRead, o: { detectedBy: "HOOK"
           botId: bot.id, holderUserId: bot.userId, from: written.stamped.status, to: written.stamped.status, cause: "PASSWORD_CHANGED", code: pw.method,
         });
         if (auditId) await houseBotEventStore.setAuditId(written.eventId, auditId);
-        await safeSend("A2", () => o.alerts.passwordChanged(written!.stamped, { method: pw.method, changedAt: pw.changedAt }));
+        // Ruling 134 · 02 §2.2: A1 again when the bot is already paused FOR a password change (nothing was queued to
+        // stop, so `cancelled` is 0); A2 for PAUSED(NEW|MANUAL) and for a pause with any other cause.
+        if (written.stamped.pauseReason === "PASSWORD_CHANGED") {
+          await safeSend("A1 again", () => o.alerts.passwordPaused(written!.stamped, { method: pw.method, changedAt: pw.changedAt, cancelled: 0 }));
+        } else {
+          await safeSend("A2", () => o.alerts.passwordChanged(written!.stamped, { method: pw.method, changedAt: pw.changedAt }));
+        }
         if (pw.method === "OFFICER_TEMP") await notice(o.alerts, bot.userId, "password_temp");
       }
     }

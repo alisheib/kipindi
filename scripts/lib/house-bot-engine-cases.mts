@@ -5,7 +5,7 @@
  * Sections follow the build order in `plans/house-bots/C4-SPEC.md` §5:
  *   §1 the lock exit · §2 the planner lease · §3 attribution · §4 the market view · §5 Enter now decision ·
  *   §6 the outcome table · §7 decide · §8 source pins · §9 feed copy · §10 schema gate · §11 engine process · §12 market view · §13 applyOutcome · §14 the A15 price read ·
- *   §15 the Enter now loader, the opener draw and marketHeld · §16 fire and the poller · §17 the planner · §18 the trigger.
+ *   §15 the Enter now loader, the opener draw and marketHeld · §16 fire and the poller · §17 the planner · §18 the trigger · §19 the holder hook and the L2 holder sweep.
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { readFileSync } from "node:fs";
@@ -3091,5 +3091,636 @@ await guard("18", async () => {
   await S.houseBotIntentStore.cancelLive({ all: true }, "MASTER_OFF");
 });
 
+/* ═══ §19 · the holder hook and the L2 holder sweep (04 A2, A3, A5, C8, C13, R6; PLAN §14; 02 §2.2–2.3; rulings 121–135) ═══ */
+section("§19 · holder-hook.ts — every A2 row, through the hook and through the sweep");
+const HH: Any = await import("../../src/lib/server/house-bot/holder-hook.ts");
+const RG19: Any = await import("../../src/lib/server/responsible-gambling.ts");
+const WF19: Any = await import("../../src/lib/server/wallet-freeze.ts");
+const PRIV19: Any = await import("../../src/lib/server/privacy.ts");
+const CS19: Any = await import("../../src/lib/server/config-store.ts");
+const EL19: Any = await import("../../src/lib/server/house-bot/eligibility.ts");
+
+if (STORE === "memory") {
+  await guard("19", () => {
+    const src = decomment(readFileSync(join(ROOT, "src/lib/server/house-bot/holder-hook.ts"), "utf8"));
+    ok("19.1 · R6, ruling 127 · the holder hook never reads HOUSE_BOT_ENGINE and never loads fire.ts or the house bet function",
+      !/HOUSE_BOT_ENGINE|placeHouseBet|from "\.\/fire"/.test(src));
+    ok("19.2 · ruling 122 · ONE apply — the hook and the sweep both call applyHolderCauses — and the only status write here is the cause-set rewrite (stopBot and voidHouseConsent own the rest)",
+      (src.match(/applyHolderCauses\(/g) ?? []).length === 3 && (src.match(/houseBotStore\.setStatus\(/g) ?? []).length === 1,
+      j({ applies: (src.match(/applyHolderCauses\(/g) ?? []).length, setStatus: (src.match(/houseBotStore\.setStatus\(/g) ?? []).length }));
+    ok("19.3 · ruling 133 · the credential branch is guarded by the pause's own detail, not by who claimed the alert key first",
+      /!pausedByThisChange\(bot, pw\)/.test(src)
+        && /bot\.pauseReason === "PASSWORD_CHANGED" && bot\.pauseDetail\?\.method === pw\.method/.test(src));
+  });
+}
+
+await guard("19", async () => {
+  const w = await loadWorld();
+  if (!(await w.db.user.findById(WORLD_OFFICER))) await w.user({ id: WORLD_OFFICER, role: "ADMIN" });
+  await w.limits();
+  const S = HDAL;
+  const msg = (e: unknown) => String((e as Error)?.message ?? e);
+  // Every call a mutation can make throw is caught and asserted (E25's lesson).
+  const safe = async (fn: () => Promise<Any>): Promise<Any> => { try { return await fn(); } catch (e) { return { threw: msg(e) }; } };
+  const iso = () => new Date().toISOString();
+  const newHash = () => `hash_holder_${crypto.randomUUID()}`;
+  const botRow = (id: string) => S.houseBotStore.get(id) as Promise<Any>;
+  const eventsOf = async (botId: string, kinds?: string[]) =>
+    ((await S.houseBotEventStore.listByBot(botId, { limit: 500, ...(kinds ? { kinds } : {}) })).rows as Any[]);
+  const causeCodes = (b: Any) => ((b?.pauseDetail?.causes ?? []) as Any[]).map((c) => c.code).sort().join(",");
+  const auditsFor = async (botId: string) => { await auditFlush(); return (getAuditPage({ limit: 10_000 }) as Any[]).filter((e) => e.targetId === botId); };
+  const retire = async (botId: string) => {
+    const b = await botRow(botId);
+    if (b && b.status !== "REMOVED") {
+      await S.houseBotStore.setStatus(botId, {
+        from: [b.status], to: "REMOVED", pauseReason: null, pausedFromStatus: null,
+        removal: { byId: WORLD_OFFICER, reason: "section 19 fixture", cause: "MANUAL" },
+      });
+    }
+  };
+
+  // ⛔ The sweep reads EVERY non-REMOVED bot, so earlier sections' bots would be decided here too (and their holders
+  // carry causes those sections planted). Only §19's own bots may be live while §19 runs.
+  await S.houseBotIntentStore.cancelLive({ all: true }, "MASTER_OFF");
+  for (const b of (await S.houseBotStore.listNonRemoved()) as Any[]) await retire(b.id);
+  ok("19.4 · fixture · no bot from an earlier section is left live for the sweep", ((await S.houseBotStore.listNonRemoved()) as Any[]).length === 0);
+  // 04 A2's test runs every row with the master switch OFF; R6 keeps the hook and the sweep running whatever it says.
+  await safe(() => w.switchOff());
+
+  const recorder = (o: { throwOn?: string } = {}) => {
+    const calls: Any[] = [];
+    const push = (fn: string, rec: Any) => {
+      calls.push({ fn, inLock: L.inLock() || L.currentLockTx() != null, ...rec });
+      if (o.throwOn === fn) throw new Error(`injected ${fn} failure`);
+    };
+    const alerts = {
+      passwordPaused: async (bot: Any, ch: Any) => push("passwordPaused", { botId: bot.id, userId: bot.userId, status: bot.status, ...ch }),
+      passwordChanged: async (bot: Any, ch: Any) => push("passwordChanged", { botId: bot.id, userId: bot.userId, status: bot.status, ...ch }),
+      botStopped: async (bot: Any, ch: Any) => push("botStopped", { botId: bot.id, userId: bot.userId, status: bot.status, ...ch }),
+      causeAdded: async (bot: Any, c: Any) => push("causeAdded", { botId: bot.id, userId: bot.userId, code: c.code }),
+      causeCleared: async (bot: Any, code: string) => push("causeCleared", { botId: bot.id, userId: bot.userId, code }),
+      holderLockedOut: async (bot: Any) => push("holderLockedOut", { botId: bot.id, userId: bot.userId }),
+      officerSetEmail: async (bot: Any) => push("officerSetEmail", { botId: bot.id, userId: bot.userId }),
+      breakEnded: async (bot: Any, until: string) => push("breakEnded", { botId: bot.id, userId: bot.userId, until }),
+      holderNotice: async (userId: string, kind: string) => push("holderNotice", { userId, kind }),
+    };
+    const label = (c: Any) => c.fn === "holderNotice" ? `notice:${c.kind}`
+      : (c.fn === "causeAdded" || c.fn === "causeCleared") ? `${c.fn}:${c.code}` : c.fn;
+    const of = (userId: string) => calls.filter((c) => c.userId === userId);
+    return {
+      alerts, calls, of,
+      fns: (userId: string) => of(userId).map(label),
+      n: (userId: string, fn: string) => of(userId).filter((c) => label(c) === fn || c.fn === fn).length,
+    };
+  };
+  const quietEngine: Any = { placed: async () => {}, once: async () => {}, security: async () => {}, switchedOff: async () => {}, botStopped: async () => {} };
+  const hook = (userId: string, event: string, rec: Any, meta?: Any) =>
+    safe(() => HH.onHolderAccountChangedWith(userId, event, { alerts: rec.alerts, ...(meta ? { meta } : {}) }));
+  const sweep = (rec: Any) => safe(() => HH.holderSweep({ alerts: rec.alerts }));
+
+  /** Every write and read the hook can make, counted while `fn` runs (A2: "a user with no bot gets zero extra writes"). */
+  const spyWrites = async (fn: () => Promise<Any>): Promise<Any> => {
+    const seen: string[] = [];
+    const patched: Any[] = [];
+    const targets: Any[] = [
+      [S.houseBotStore, "findLiveByUserId"], [S.houseBotStore, "get"], [S.houseBotStore, "setStatus"],
+      [S.houseBotStore, "setConsentVoid"], [S.houseBotStore, "setCredentialChanged"], [S.houseBotEventStore, "append"],
+      [S.houseBotAlertOnceStore, "claim"], [S.houseBotAlertOnceStore, "claimWithEatSuffix"], [S.houseBotIntentStore, "cancelLive"],
+    ];
+    for (const [obj, name] of targets) {
+      const orig = obj[name];
+      patched.push([obj, name, orig]);
+      obj[name] = async (...args: Any[]) => { seen.push(name); return orig.apply(obj, args); };
+    }
+    try { return { result: await fn(), seen }; } finally { for (const [obj, name, orig] of patched) obj[name] = orig; }
+  };
+
+  /* ── 19.5–19.8 · what the hook does with no bot, a removed bot, a wrong event and the engine switched off ── */
+  {
+    const stranger = await w.user({ passwordHash: "hash_stranger" });
+    const rec = recorder();
+    const spied = await spyWrites(() => hook(stranger, "PASSWORD_SELF_CHANGE", rec));
+    ok("19.5 · A2 · a user with no bot costs ONE indexed read and writes nothing",
+      spied.result?.kind === "noBot" && j(spied.seen) === j(["findLiveByUserId"]) && rec.calls.length === 0, j(spied));
+
+    const gone = await w.bot();
+    await retire(gone.botId);
+    const recG = recorder();
+    const rG = await hook(gone.userId, "ACCOUNT_CLOSED", recG);
+    ok("19.6 · a REMOVED bot is no live bot: the hook returns before reading the holder and tells nobody",
+      rG?.kind === "noBot" && recG.calls.length === 0, j(rG));
+
+    const hint = await w.bot();
+    const recH = recorder();
+    await w.setUserFields(hint.userId, { passwordHash: newHash(), passwordSetVia: "SELF_CHANGE", passwordSetAt: iso() });
+    const rH = await hook(hint.userId, "ACCOUNT_CLOSED", recH); // a wrong or stale event
+    const botH = await botRow(hint.botId);
+    ok("19.7 · ⭐ ruling 121 · the event is only a hint: a stale ACCOUNT_CLOSED event on an open account applies the causes that were READ (PASSWORD_CHANGED), never a removal",
+      rH?.applied?.kind === "paused" && botH.status === "AUTO_PAUSED" && botH.pauseReason === "PASSWORD_CHANGED" && botH.removedCause == null, j({ rH, botH: { status: botH.status, reason: botH.pauseReason } }));
+    await retire(hint.botId);
+
+    const env = await w.bot();
+    const recE = recorder();
+    const prevEnv = process.env[K.HOUSE_BOT_ENGINE_ENV];
+    process.env[K.HOUSE_BOT_ENGINE_ENV] = "false";
+    let rE: Any = null;
+    try {
+      await w.setUserFields(env.userId, { status: "SUSPENDED" });
+      rE = await hook(env.userId, "SUSPENDED", recE);
+    } finally {
+      if (prevEnv === undefined) delete process.env[K.HOUSE_BOT_ENGINE_ENV];
+      else process.env[K.HOUSE_BOT_ENGINE_ENV] = prevEnv;
+    }
+    ok("19.8 · R6, ruling 127 · the holder hook runs whatever HOUSE_BOT_ENGINE says (the bot is still stopped with the engine switched off)",
+      rE?.applied?.kind === "paused" && (await botRow(env.botId)).pauseReason === "ACCOUNT_SUSPENDED", j(rE));
+    await retire(env.botId);
+  }
+
+  /* ── 19.A · every A2 row, first through the hook, then through the sweep with no hook at all ── */
+  const pwChange = (via: string) => async (u: string) => { await w.setUserFields(u, { passwordHash: newHash(), passwordSetVia: via, passwordSetAt: iso() }); };
+  const ROWS: Any[] = [
+    { n: "1", what: "password changed in settings", event: "PASSWORD_SELF_CHANGE", change: pwChange("SELF_CHANGE"),
+      status: "AUTO_PAUSED", reason: "PASSWORD_CHANGED", causes: "PASSWORD_CHANGED", pw: "SELF_CHANGE",
+      fns: ["passwordPaused", "notice:password_paused"], events: ["AUTO_PAUSED"] },
+    { n: "2", what: "a reset link", event: "PASSWORD_RESET_LINK", change: pwChange("RESET_LINK"),
+      status: "AUTO_PAUSED", reason: "PASSWORD_CHANGED", causes: "PASSWORD_CHANGED", pw: "RESET_LINK",
+      fns: ["passwordPaused", "notice:password_paused"], events: ["AUTO_PAUSED"] },
+    { n: "3", what: "support's temporary password", event: "PASSWORD_OFFICER_TEMP", change: pwChange("OFFICER_TEMP"),
+      status: "AUTO_PAUSED", reason: "PASSWORD_CHANGED", causes: "PASSWORD_CHANGED", pw: "OFFICER_TEMP",
+      fns: ["passwordPaused", "notice:password_temp"], events: ["AUTO_PAUSED"] },
+    { n: "5", what: "the account closed", event: "ACCOUNT_CLOSED", change: async (u: string) => { await w.setUserFields(u, { status: "CLOSED", closedAt: iso() }); },
+      removed: true, fns: ["botStopped", "notice:removed"], events: ["REMOVED"] },
+    { n: "6", what: "self-exclusion", event: "SELF_EXCLUDED", change: async (u: string) => { await RG19.selfExclude(u, "24h"); },
+      status: "AUTO_PAUSED", reason: "SELF_EXCLUDED", voidCause: "SELF_EXCLUDED", causes: "SELF_EXCLUDED,WALLET_FROZEN",
+      fns: ["botStopped"], events: ["AUTO_PAUSED", "CONSENT_VOIDED"] },
+    { n: "7", what: "a cooling-off break", event: "COOLING_OFF", change: async (u: string) => { await RG19.coolOff(u, "1h"); },
+      status: "AUTO_PAUSED", reason: "COOLING_OFF", voidCause: "COOLING_OFF", causes: "COOLING_OFF",
+      fns: ["botStopped"], events: ["AUTO_PAUSED", "CONSENT_VOIDED"] },
+    { n: "8", what: "his own daily loss limit", event: "LOSS_LIMIT_SET",
+      change: async (u: string) => { const cur = await RG19.getRgSettings(u); await w.db.responsible.upsert({ ...cur, dailyLossLimit: 500 }); },
+      status: "AUTO_PAUSED", reason: "OWNER_LOSS_LIMIT", causes: "OWNER_LOSS_LIMIT", fns: ["botStopped"], events: ["AUTO_PAUSED"] },
+    { n: "9", what: "suspended by an officer", event: "SUSPENDED", change: async (u: string) => { await w.setUserFields(u, { status: "SUSPENDED" }); },
+      status: "AUTO_PAUSED", reason: "ACCOUNT_SUSPENDED", causes: "ACCOUNT_SUSPENDED", fns: ["botStopped"], events: ["AUTO_PAUSED"] },
+    { n: "10", what: "an officer's wallet hold", event: "WALLET_FREEZE", change: async (u: string) => { await WF19.freezeWalletByOfficer(WORLD_OFFICER, u, "section 19 fixture hold"); },
+      status: "AUTO_PAUSED", reason: "WALLET_FROZEN", causes: "WALLET_FROZEN", fns: ["botStopped"], events: ["AUTO_PAUSED"] },
+    { n: "11", what: "a final identity refusal", event: "IDENTITY_REFUSED", optional: true,
+      change: async (u: string) => {
+        await w.db.kyc.upsert({
+          id: `kyc_${u}`, userId: u, status: "REJECTED", rejectReason: "UNDERAGE", rejectNote: null, fullName: "Fixture", dob: "2010-01-01",
+          documents: [], reviewerId: WORLD_OFFICER, reviewedAt: iso(), submittedAt: iso(), createdAt: iso(), updatedAt: iso(),
+        });
+      },
+      status: "AUTO_PAUSED", reason: "IDENTITY_REFUSED", voidCause: "IDENTITY_REFUSED", causes: "IDENTITY_REFUSED",
+      fns: ["botStopped"], events: ["AUTO_PAUSED", "CONSENT_VOIDED"] },
+    { n: "12", what: "promoted to staff", event: "ROLE_CHANGED", change: async (u: string) => { await w.setUserFields(u, { role: "ADMIN" }); },
+      status: "AUTO_PAUSED", reason: "ROLE_CHANGED", causes: "ROLE_CHANGED", fns: ["botStopped", "notice:role_changed"], events: ["AUTO_PAUSED"] },
+    { n: "13", what: "approved as an agent", event: "ROLE_CHANGED", change: async (u: string) => { await w.setUserFields(u, { role: "AGENT" }); },
+      status: "AUTO_PAUSED", reason: "ROLE_CHANGED", causes: "ROLE_CHANGED", fns: ["botStopped", "notice:role_changed"], events: ["AUTO_PAUSED"] },
+    { n: "14", what: "an erasure request filed", event: "ERASURE_REQUEST", change: async (u: string) => { PRIV19.fileDsarRequest({ userId: u, type: "ERASURE" }); },
+      status: "AUTO_PAUSED", reason: "HOLDER_ERASURE_REQUEST", voidCause: "HOLDER_ERASURE_REQUEST", causes: "HOLDER_ERASURE_REQUEST",
+      fns: ["botStopped", "notice:erasure_request"], events: ["AUTO_PAUSED", "CONSENT_VOIDED"] },
+  ];
+
+  const runRow = async (r: Any, mode: "HOOK" | "SWEEP"): Promise<Any> => {
+    const b = await w.bot();
+    const m = await w.poll();
+    const live = await w.intent(b, m.id);
+    const rec = recorder();
+    const before = new Set((await eventsOf(b.botId)).map((e: Any) => e.id));
+    const fixture = await safe(() => r.change(b.userId));
+    if (fixture?.threw) return { b, notMeasured: fixture.threw };
+    const res = mode === "HOOK" ? await hook(b.userId, r.event, rec) : await sweep(rec);
+    const bot = await botRow(b.botId);
+    const fresh = (await eventsOf(b.botId)).filter((e: Any) => !before.has(e.id));
+    const stop = rec.of(b.userId).find((c: Any) => c.fn === "botStopped" || c.fn === "passwordPaused");
+    const audits = (await auditsFor(b.botId)).map((a: Any) => a.action);
+    const shape = {
+      status: bot?.status, reason: bot?.pauseReason ?? null, removedCause: bot?.removedCause ?? null,
+      voidCause: bot?.consentVoidCause ?? null, causes: causeCodes(bot), fns: rec.fns(b.userId), events: fresh.map((e: Any) => e.kind).sort(),
+    };
+    const out = {
+      ...shape, res, detectedBy: bot?.pauseDetail?.detectedBy ?? null, detail: bot?.pauseDetail ?? null,
+      cancelled: stop?.cancelled ?? null, intent: (await S.houseBotIntentStore.get(live.id))?.status,
+      anyInLock: rec.of(b.userId).some((c: Any) => c.inLock), audits,
+    };
+    // Whichever path did NOT run must now find nothing left to do.
+    const rec2 = recorder();
+    const eventsBefore2 = (await eventsOf(b.botId)).length;
+    if (mode === "HOOK") await sweep(rec2); else await hook(b.userId, r.event, rec2);
+    const again = { fns: rec2.fns(b.userId), newEvents: (await eventsOf(b.botId)).length - eventsBefore2, status: (await botRow(b.botId))?.status };
+    return { b, out, again, shape };
+  };
+
+  const seen: Record<string, Any> = {};
+  for (const r of ROWS) {
+    for (const mode of ["HOOK", "SWEEP"] as const) {
+      const got = await runRow(r, mode);
+      if (got.notMeasured) {
+        ok(`19.A${r.n}.${mode} · NOT MEASURED on this store — the fixture row could not be written (${String(got.notMeasured).slice(0, 80)})`, r.optional === true && STORE === "postgres");
+        await retire(got.b.botId);
+        continue;
+      }
+      const o = got.out;
+      const stateOk = r.removed
+        ? o.status === "REMOVED" && o.removedCause === "ACCOUNT_CLOSED"
+        : o.status === r.status && o.reason === r.reason && o.voidCause === (r.voidCause ?? null) && o.causes === r.causes && o.detectedBy === mode;
+      const pwOk = !r.pw || (o.detail?.method === r.pw && o.detail?.officerReset === (r.pw === "OFFICER_TEMP") && o.detail?.changedAt != null);
+      const resOk = mode === "HOOK" ? o.res?.kind === "applied" : o.res?.changed >= 1 && o.res?.failed === 0;
+      ok(`19.A${r.n}.${mode} · A2 row ${r.n} (${r.what}) → ${r.removed ? "REMOVED(ACCOUNT_CLOSED)" : `${r.status}(${r.reason})`}${r.voidCause ? ` · consent void ${r.voidCause}` : ""} · alerts ${r.fns.join(" + ")} · events ${r.events.join(" + ")} · the queued stake cancelled · every alert after the lock`,
+        stateOk && pwOk && resOk && j(o.fns) === j(r.fns) && j(o.events) === j(r.events)
+          && o.cancelled === 1 && o.intent === "CANCELLED" && o.anyInLock === false
+          && o.audits.includes(r.removed ? "house_bot.removed" : "house_bot.auto_paused"),
+        j({ ...o, detail: undefined, res: undefined }));
+      ok(`19.A${r.n}.${mode}b · idempotent · the ${mode === "HOOK" ? "sweep" : "hook"} that follows it writes no event and sends nothing`,
+        got.again.fns.length === 0 && got.again.newEvents === 0 && got.again.status === o.status, j(got.again));
+      seen[`${r.n}.${mode}`] = got.shape;
+      await retire(got.b.botId);
+    }
+    const h = seen[`${r.n}.HOOK`], s = seen[`${r.n}.SWEEP`];
+    if (h && s) {
+      ok(`19.A${r.n}.same · ⭐ 04 A2 · with the hook disabled the L2 sweep reaches the same status, cause set, alerts and events`, j(h) === j(s), j({ hook: h, sweep: s }));
+    }
+  }
+
+  /* ── 19.B · a bot that is already stopped: the cause set, its events and its bells (ruling 124) ── */
+  {
+    const b = await w.bot();
+    await S.houseBotStore.setStatus(b.botId, { from: ["ACTIVE"], to: "PAUSED", pauseReason: "MANUAL", pausedFromStatus: "ACTIVE" });
+    const rec = recorder();
+    await w.setUserFields(b.userId, { status: "SUSPENDED" });
+    const r1 = await hook(b.userId, "SUSPENDED", rec);
+    let bot = await botRow(b.botId);
+    const added1 = await eventsOf(b.botId, ["HOLDER_CAUSE_ADDED"]);
+    ok("19.B1 · ruling 124 · a new cause on a PAUSED bot keeps its status and reason, records the cause set, writes ONE HOLDER_CAUSE_ADDED {cause, detectedBy} and rings ONE cause-added bell; no stop alert",
+      r1?.applied?.kind === "none" && j(r1?.applied?.added) === j(["ACCOUNT_SUSPENDED"]) && bot.status === "PAUSED" && bot.pauseReason === "MANUAL"
+        && causeCodes(bot) === "ACCOUNT_SUSPENDED" && bot.pauseDetail?.detectedBy === "HOOK"
+        && added1.length === 1 && added1[0].payload?.cause === "ACCOUNT_SUSPENDED" && added1[0].payload?.detectedBy === "HOOK"
+        && j(rec.fns(b.userId)) === j(["causeAdded:ACCOUNT_SUSPENDED"]),
+      j({ r1, status: bot.status, causes: causeCodes(bot), added: added1.length, fns: rec.fns(b.userId) }));
+
+    const rec2 = recorder();
+    await hook(b.userId, "SUSPENDED", rec2);
+    await sweep(rec2);
+    ok("19.B2 · ⭐ ruling 124 · the same cause seen again by the hook and by the sweep writes nothing and rings nothing — the cause-set rewrite IS the dedupe",
+      rec2.of(b.userId).length === 0 && (await eventsOf(b.botId, ["HOLDER_CAUSE_ADDED"])).length === 1, j(rec2.fns(b.userId)));
+
+    const rec3 = recorder();
+    await w.setUserFields(b.userId, { role: "ADMIN" });
+    await Promise.all([hook(b.userId, "ROLE_CHANGED", rec3), sweep(rec3)]);
+    bot = await botRow(b.botId);
+    const roleEvents = (await eventsOf(b.botId, ["HOLDER_CAUSE_ADDED"])).filter((e: Any) => e.payload?.cause === "ROLE_CHANGED");
+    ok("19.B3 · a hook and a sweep racing on one new cause → ONE event, ONE bell and ONE role_changed notice (A2 rows 12–13)",
+      roleEvents.length === 1 && rec3.n(b.userId, "causeAdded:ROLE_CHANGED") === 1 && rec3.n(b.userId, "notice:role_changed") === 1
+        && causeCodes(bot) === "ACCOUNT_SUSPENDED,ROLE_CHANGED",
+      j({ events: roleEvents.length, fns: rec3.fns(b.userId), causes: causeCodes(bot) }));
+
+    const rec4 = recorder();
+    await w.setUserFields(b.userId, { status: "ACTIVE" });
+    await sweep(rec4);
+    bot = await botRow(b.botId);
+    ok("19.B4 · C13 · a recorded cause that is no longer live rings ONE cause-cleared bell and leaves the set; the bot stays PAUSED (it never resumes by itself)",
+      j(rec4.fns(b.userId)) === j(["causeCleared:ACCOUNT_SUSPENDED"]) && causeCodes(bot) === "ROLE_CHANGED"
+        && bot.status === "PAUSED" && bot.pauseReason === "MANUAL", j({ fns: rec4.fns(b.userId), causes: causeCodes(bot), status: bot.status }));
+    const rec5 = recorder();
+    await sweep(rec5);
+    ok("19.B5 · …and the next sweep rings no second cleared bell", rec5.of(b.userId).length === 0, j(rec5.fns(b.userId)));
+
+    const rec6 = recorder();
+    await w.setUserFields(b.userId, { role: "PLAYER" });
+    await sweep(rec6);
+    bot = await botRow(b.botId);
+    ok("19.B6 · the last cause clears too: an empty cause set, the status and reason still untouched",
+      j(rec6.fns(b.userId)) === j(["causeCleared:ROLE_CHANGED"]) && causeCodes(bot) === "" && bot.status === "PAUSED", j({ fns: rec6.fns(b.userId), causes: causeCodes(bot) }));
+
+    const rec7 = recorder();
+    await RG19.selfExclude(b.userId, "24h");
+    const r7 = await hook(b.userId, "SELF_EXCLUDED", rec7);
+    bot = await botRow(b.botId);
+    const voidEvents = (await eventsOf(b.botId, ["HOLDER_CAUSE_ADDED"])).filter((e: Any) => e.payload?.cause === "SELF_EXCLUDED");
+    const frozenEvents = (await eventsOf(b.botId, ["HOLDER_CAUSE_ADDED"])).filter((e: Any) => e.payload?.cause === "WALLET_FROZEN");
+    ok("19.B7 · A3 · a consent-voiding cause on a PAUSED bot voids consent without moving the status: ONE SELF_EXCLUDED event (the void writes its own), ONE WALLET_FROZEN event, a bell for each, no stop alert",
+      r7?.applied?.kind === "voided" && bot.status === "PAUSED" && bot.pauseReason === "MANUAL" && bot.consentVoidCause === "SELF_EXCLUDED"
+        && voidEvents.length === 1 && frozenEvents.length === 1
+        && rec7.n(b.userId, "causeAdded:SELF_EXCLUDED") === 1 && rec7.n(b.userId, "causeAdded:WALLET_FROZEN") === 1 && rec7.n(b.userId, "botStopped") === 0,
+      j({ r7, status: bot.status, voidCause: bot.consentVoidCause, fns: rec7.fns(b.userId) }));
+    await retire(b.botId);
+  }
+
+  /* ── 19.C · PLAN §14 and 02 §2.2 · a password change on a bot that is not running ── */
+  {
+    const b = await w.bot();
+    await S.houseBotStore.setStatus(b.botId, { from: ["ACTIVE"], to: "PAUSED", pauseReason: "MANUAL", pausedFromStatus: "ACTIVE" });
+    const rec = recorder();
+    const setAt = iso();
+    await w.setUserFields(b.userId, { passwordHash: newHash(), passwordSetVia: "SELF_CHANGE", passwordSetAt: setAt });
+    const r1 = await hook(b.userId, "PASSWORD_SELF_CHANGE", rec);
+    let bot = await botRow(b.botId);
+    const cred = await eventsOf(b.botId, ["CREDENTIAL_CHANGED"]);
+    const audits = (await auditsFor(b.botId)).filter((a: Any) => a.action === "house_bot.credential_changed");
+    ok("19.C1 · 02 §2.2 row 92 · PAUSED(MANUAL) + a password change → the status and reason stand, the credential fields are stamped, ONE CREDENTIAL_CHANGED {method, changedAt, detectedBy}, A2 once, no A1, no cause-added event or bell",
+      r1?.applied?.kind === "credential" && bot.status === "PAUSED" && bot.pauseReason === "MANUAL"
+        && bot.credentialChangedVia === "SELF_CHANGE" && bot.credentialChangedAt != null
+        && cred.length === 1 && cred[0].payload?.method === "SELF_CHANGE" && Date.parse(cred[0].payload?.changedAt) === Date.parse(setAt) && cred[0].payload?.detectedBy === "HOOK"
+        && (await eventsOf(b.botId, ["HOLDER_CAUSE_ADDED"])).filter((e: Any) => e.payload?.cause === "PASSWORD_CHANGED").length === 0
+        && j(rec.fns(b.userId)) === j(["passwordChanged"]) && causeCodes(bot) === "PASSWORD_CHANGED",
+      j({ r1, status: bot.status, via: bot.credentialChangedVia, cred: cred.length, fns: rec.fns(b.userId) }));
+    ok("19.C1b · ruling 28 · its record is the SECURITY audit house_bot.credential_changed by system_house_bot, linked from the event",
+      audits.length === 1 && audits[0].actorId === K.SYSTEM_HOUSE_BOT_ACTOR && audits[0].category === "SECURITY" && cred[0]?.auditId === audits[0].id,
+      j({ audits: audits.map((a: Any) => ({ actor: a.actorId, cat: a.category })), auditId: cred[0]?.auditId }));
+
+    const rec2 = recorder();
+    await sweep(rec2);
+    ok("19.C2 · the sweep's later look at the SAME change → no second A2 and no second record (the pw:<botId>:<fingerprint> claim)",
+      rec2.of(b.userId).length === 0 && (await eventsOf(b.botId, ["CREDENTIAL_CHANGED"])).length === 1, j(rec2.fns(b.userId)));
+
+    const rec3 = recorder();
+    await w.setUserFields(b.userId, { passwordHash: newHash(), passwordSetVia: "RESET_LINK", passwordSetAt: iso() });
+    await sweep(rec3);
+    bot = await botRow(b.botId);
+    ok("19.C3 · X4 · changed again before re-verify → a new fingerprint alerts again (A2, method RESET_LINK) and records a second CREDENTIAL_CHANGED",
+      j(rec3.fns(b.userId)) === j(["passwordChanged"]) && rec3.of(b.userId)[0].method === "RESET_LINK"
+        && (await eventsOf(b.botId, ["CREDENTIAL_CHANGED"])).length === 2 && bot.credentialChangedVia === "RESET_LINK" && bot.pauseReason === "MANUAL",
+      j({ fns: rec3.fns(b.userId), cred: (await eventsOf(b.botId, ["CREDENTIAL_CHANGED"])).length }));
+    await retire(b.botId);
+
+    const b4 = await w.bot();
+    await w.setUserFields(b4.userId, { status: "SUSPENDED" });
+    await hook(b4.userId, "SUSPENDED", recorder());
+    const rec4 = recorder();
+    await w.setUserFields(b4.userId, { passwordHash: newHash(), passwordSetVia: "OFFICER_TEMP", passwordSetAt: iso() });
+    await hook(b4.userId, "PASSWORD_OFFICER_TEMP", rec4);
+    const bot4 = await botRow(b4.botId);
+    ok("19.C4 · 02 §2.2 row 94 · AUTO_PAUSED(ACCOUNT_SUSPENDED) + an officer's temporary password → status and reason kept, OFFICER_TEMP recorded, A2, and the holder's password_temp notice (A2 row 3)",
+      bot4.status === "AUTO_PAUSED" && bot4.pauseReason === "ACCOUNT_SUSPENDED" && bot4.credentialChangedVia === "OFFICER_TEMP"
+        && j(rec4.fns(b4.userId)) === j(["passwordChanged", "notice:password_temp"]) && rec4.of(b4.userId)[0].method === "OFFICER_TEMP",
+      j({ status: bot4.status, reason: bot4.pauseReason, fns: rec4.fns(b4.userId) }));
+    await retire(b4.botId);
+
+    const b5 = await w.bot();
+    const rec5 = recorder();
+    await w.setUserFields(b5.userId, { passwordHash: newHash(), passwordSetVia: "SELF_CHANGE", passwordSetAt: iso() });
+    await Promise.all([hook(b5.userId, "PASSWORD_SELF_CHANGE", rec5), sweep(rec5), hook(b5.userId, "PASSWORD_SELF_CHANGE", rec5)]);
+    const bot5 = await botRow(b5.botId);
+    ok("19.C5 · ruling 125 · two hooks and a sweep racing over one ACTIVE bot's password change → ONE A1, ONE AUTO_PAUSED event, ONE holder notice, and never an A2",
+      rec5.n(b5.userId, "passwordPaused") === 1 && rec5.n(b5.userId, "notice:password_paused") === 1 && rec5.n(b5.userId, "passwordChanged") === 0
+        && (await eventsOf(b5.botId, ["AUTO_PAUSED"])).length === 1 && (await eventsOf(b5.botId, ["CREDENTIAL_CHANGED"])).length === 0
+        && bot5.status === "AUTO_PAUSED" && bot5.pauseReason === "PASSWORD_CHANGED",
+      j({ fns: rec5.fns(b5.userId), auto: (await eventsOf(b5.botId, ["AUTO_PAUSED"])).length }));
+    await retire(b5.botId);
+
+    /* ⭐ ruling 133 · the window between a pause and its A1 — the race that made a second look record the change again. */
+    const bR = await w.bot();
+    await w.setUserFields(bR.userId, { passwordHash: newHash(), passwordSetVia: "SELF_CHANGE", passwordSetAt: iso() });
+    const readR = await CTL.readBotAndHolder(bR.botId, { ownerLossStakeTzs: 1_000 });
+    const causeR = readR.causes.find((c: Any) => c.code === "PASSWORD_CHANGED");
+    const moved = await OC.stopBot(bR.botId, {
+      to: "AUTO_PAUSED", cause: "PASSWORD_CHANGED",
+      detail: { causes: readR.causes, detectedBy: "HOOK", method: causeR.method, changedAt: causeR.changedAt, officerReset: false },
+    }, quietEngine);
+    const recR = recorder();
+    await sweep(recR);
+    const botR = await botRow(bR.botId);
+    const keyFree = await S.houseBotAlertOnceStore.claim(K.ALERT_KEY.password(bR.botId, readR.snapshot.fingerprintNow));
+    ok("19.C6 · ⭐ ruling 133 · a look that lands between the pause and its A1 records NOTHING: no second CREDENTIAL_CHANGED, no A2, and the A1 key is left for the look that paused the bot",
+      moved === true && (await eventsOf(bR.botId, ["CREDENTIAL_CHANGED"])).length === 0
+        && recR.n(bR.userId, "passwordChanged") === 0 && recR.n(bR.userId, "passwordPaused") === 0
+        && botR.credentialChangedAt == null && keyFree === true,
+      j({ moved, cred: (await eventsOf(bR.botId, ["CREDENTIAL_CHANGED"])).length, fns: recR.fns(bR.userId), keyFree }));
+
+    const rec7 = recorder();
+    await w.setUserFields(bR.userId, { passwordHash: newHash(), passwordSetVia: "RESET_LINK", passwordSetAt: iso() });
+    await hook(bR.userId, "PASSWORD_RESET_LINK", rec7);
+    const botR2 = await botRow(bR.botId);
+    ok("19.C7 · ⭐ ruling 134 · 02 §2.2 row 93 · a bot already paused FOR a password change alerts A1 AGAIN on the next change — never A2 — with nothing cancelled, and records it",
+      j(rec7.fns(bR.userId)) === j(["passwordPaused"]) && rec7.of(bR.userId)[0].cancelled === 0 && rec7.of(bR.userId)[0].method === "RESET_LINK"
+        && (await eventsOf(bR.botId, ["CREDENTIAL_CHANGED"])).length === 1 && botR2.credentialChangedVia === "RESET_LINK" && botR2.pauseReason === "PASSWORD_CHANGED",
+      j({ fns: rec7.fns(bR.userId), cancelled: rec7.of(bR.userId)[0]?.cancelled, cred: (await eventsOf(bR.botId, ["CREDENTIAL_CHANGED"])).length }));
+    await retire(bR.botId);
+
+    const bV = await w.bot();
+    await RG19.selfExclude(bV.userId, "24h");
+    await w.setUserFields(bV.userId, { passwordHash: newHash(), passwordSetVia: "SELF_CHANGE", passwordSetAt: iso() });
+    const recV = recorder();
+    await hook(bV.userId, "SELF_EXCLUDED", recV);
+    const botV = await botRow(bV.botId);
+    ok("19.C8 · ⭐ ruling 135 · a password change that lands while ANOTHER cause stops the same ACTIVE bot is still recorded, with A2 (02 row 94) — neither look may drop it",
+      botV.status === "AUTO_PAUSED" && botV.pauseReason === "SELF_EXCLUDED" && botV.credentialChangedVia === "SELF_CHANGE"
+        && (await eventsOf(bV.botId, ["CREDENTIAL_CHANGED"])).length === 1
+        && recV.n(bV.userId, "passwordChanged") === 1 && recV.n(bV.userId, "passwordPaused") === 0,
+      j({ status: botV.status, reason: botV.pauseReason, via: botV.credentialChangedVia, fns: recV.fns(bV.userId) }));
+    await retire(bV.botId);
+  }
+
+  /* ── 19.D · rows 16–18: a signal that carries no cause and never stops a bot (ruling 126) ── */
+  {
+    const b = await w.bot();
+    const before = new Set((await eventsOf(b.botId)).map((e: Any) => e.id));
+    const rec = recorder();
+    await hook(b.userId, "LOCKED_OUT", rec);
+    await hook(b.userId, "LOCKED_OUT", rec);
+    const bot = await botRow(b.botId);
+    ok("19.D1 · A2 row 16 · a lockout never stops a bot (anyone could lock the holder out): ONE SECURITY bell for the EAT day, no status change, no event",
+      bot.status === "ACTIVE" && rec.n(b.userId, "holderLockedOut") === 1 && (await eventsOf(b.botId)).filter((e: Any) => !before.has(e.id)).length === 0,
+      j({ status: bot.status, fns: rec.fns(b.userId) }));
+
+    const recE = recorder();
+    await hook(b.userId, "EMAIL_CHANGED", recE, { byOfficer: false });
+    await hook(b.userId, "EMAIL_CHANGED", recE, { byOfficer: true });
+    await w.setUserFields(b.userId, { emailSetByOfficerAt: iso() });
+    await hook(b.userId, "EMAIL_CHANGED", recE, { byOfficer: true });
+    await hook(b.userId, "EMAIL_CHANGED", recE, { byOfficer: true });
+    const emailEvents = await eventsOf(b.botId, ["HOLDER_EMAIL_CHANGED"]);
+    ok("19.D2 · A2 row 17 · every email change writes HOLDER_EMAIL_CHANGED {byOfficer}; only an officer-set email rings, once per stamp, and an officer claim with no stamp rings nothing",
+      emailEvents.length === 4 && emailEvents.filter((e: Any) => e.payload?.byOfficer === true).length === 3 && recE.n(b.userId, "officerSetEmail") === 1,
+      j({ events: emailEvents.length, byOfficer: emailEvents.filter((e: Any) => e.payload?.byOfficer === true).length, fns: recE.fns(b.userId) }));
+
+    const rec2fa = recorder();
+    await hook(b.userId, "TWO_FA_ON", rec2fa);
+    await hook(b.userId, "TWO_FA_OFF", rec2fa);
+    const twofa = await eventsOf(b.botId, ["HOLDER_2FA_ON", "HOLDER_2FA_OFF"]);
+    ok("19.D3 · A2 row 18 (D5) · 2FA on and off each write their own event and alert nobody",
+      twofa.length === 2 && twofa.filter((e: Any) => e.kind === "HOLDER_2FA_ON").length === 1 && rec2fa.of(b.userId).length === 0,
+      j({ kinds: twofa.map((e: Any) => e.kind), fns: rec2fa.fns(b.userId) }));
+
+    const recS = recorder();
+    const countBefore = (await eventsOf(b.botId)).length;
+    await sweep(recS);
+    ok("19.D4 · ruling 126 · the L2 sweep never repeats rows 16–18 — none of them leaves a durable signal to compare against",
+      recS.of(b.userId).length === 0 && (await eventsOf(b.botId)).length === countBefore && (await botRow(b.botId)).status === "ACTIVE",
+      j({ fns: recS.fns(b.userId), before: countBefore, after: (await eventsOf(b.botId)).length }));
+    await retire(b.botId);
+  }
+
+  /* ── 19.E · C8 · the break that ended (ruling 129) ── */
+  {
+    const b = await w.bot();
+    const rec = recorder();
+    await RG19.coolOff(b.userId, "1h");
+    await hook(b.userId, "COOLING_OFF", rec);
+    const readLive = await CTL.readBotAndHolder(b.botId, { ownerLossStakeTzs: 1_000 });
+    const ringsWhileRunning = await HH.breakEnded(readLive, rec.alerts);
+    ok("19.E1 · C8 · while the break is still running there is no break-end bell", ringsWhileRunning === false && rec.n(b.userId, "breakEnded") === 0, j({ ringsWhileRunning }));
+
+    const cur = await RG19.getRgSettings(b.userId);
+    const ended = new Date(Date.now() - 60_000).toISOString();
+    await w.db.responsible.upsert({ ...cur, coolingOffUntil: ended });
+    const rec2 = recorder();
+    await sweep(rec2);
+    const bot = await botRow(b.botId);
+    const bell = rec2.of(b.userId).find((c: Any) => c.fn === "breakEnded");
+    ok("19.E2 · ⭐ C8, ruling 16 · when the break ends the sweep rings ONCE, keyed on the break's own end; the void still stands as CONSENT_VOID{COOLING_OFF}; no cause-added event, and no cleared bell for the break",
+      rec2.n(b.userId, "breakEnded") === 1 && bell != null && Date.parse(bell.until) === Date.parse(ended)
+        && causeCodes(bot) === "CONSENT_VOID" && bot.consentVoidCause === "COOLING_OFF" && bot.status === "AUTO_PAUSED"
+        && (await eventsOf(b.botId, ["HOLDER_CAUSE_ADDED"])).length === 0
+        && rec2.n(b.userId, "causeAdded") === 0 && rec2.n(b.userId, "causeCleared") === 0,
+      j({ fns: rec2.fns(b.userId), until: bell?.until, causes: causeCodes(bot), status: bot.status }));
+
+    const rec3 = recorder();
+    await sweep(rec3);
+    ok("19.E3 · …and the next sweep rings nothing: one bell per break", rec3.of(b.userId).length === 0, j(rec3.fns(b.userId)));
+    await retire(b.botId);
+  }
+
+  /* ── 19.F · A5 · closure removes the bot from any status, and REMOVED is the end ── */
+  {
+    const b = await w.bot();
+    await S.houseBotStore.setStatus(b.botId, { from: ["ACTIVE"], to: "PAUSED", pauseReason: "MANUAL", pausedFromStatus: "ACTIVE" });
+    const rec = recorder();
+    await w.setUserFields(b.userId, { status: "CLOSED", closedAt: iso() });
+    await hook(b.userId, "ACCOUNT_CLOSED", rec);
+    const bot = await botRow(b.botId);
+    ok("19.F1 · A5 · a closed account removes the bot from PAUSED too, with the holder's removal notice",
+      bot.status === "REMOVED" && bot.removedCause === "ACCOUNT_CLOSED" && j(rec.fns(b.userId)) === j(["botStopped", "notice:removed"]),
+      j({ status: bot.status, cause: bot.removedCause, fns: rec.fns(b.userId) }));
+
+    const recR = recorder();
+    const read = await CTL.readBotAndHolder(b.botId, {});
+    const applied = await HH.applyHolderCauses(read, { detectedBy: "SWEEP", alerts: recR.alerts });
+    ok("19.F2 · ruling 123 · REMOVED is the end: an apply on a removed bot writes nothing and tells nobody",
+      applied.kind === "none" && applied.added.length === 0 && applied.cleared.length === 0 && recR.calls.length === 0, j(applied));
+
+    const b3 = await w.bot();
+    await w.setUserFields(b3.userId, { status: "SUSPENDED" });
+    await hook(b3.userId, "SUSPENDED", recorder());
+    const rec3 = recorder();
+    await w.setUserFields(b3.userId, { status: "CLOSED", closedAt: iso() });
+    await sweep(rec3);
+    const bot3 = await botRow(b3.botId);
+    ok("19.F3 · …and from AUTO_PAUSED through the sweep, once — ACCOUNT_CLOSED wins over every other cause (no cause-added bell beside it)",
+      bot3.status === "REMOVED" && bot3.removedCause === "ACCOUNT_CLOSED"
+        && rec3.n(b3.userId, "botStopped") === 1 && rec3.n(b3.userId, "notice:removed") === 1 && rec3.n(b3.userId, "causeAdded") === 0,
+      j({ status: bot3.status, fns: rec3.fns(b3.userId) }));
+  }
+
+  /* ── 19.G · ruling 130 · the erasure queue is read from its durable copy, and fails closed ── */
+  {
+    const b = await w.bot();
+    if (onPostgres) {
+      const key = "privacy.dsar_queue";
+      const stored = ((await loadConfig(key)) ?? []) as Any[];
+      const foreign = {
+        id: `dsar_other_${crypto.randomUUID().slice(0, 8)}`, userId: b.userId, type: "ERASURE", status: "PENDING", reason: null,
+        requestedAt: iso(), fulfilledAt: null, fulfilledBy: null, exportRef: null, erasureHeldUntil: null,
+      };
+      await CS19.saveConfigOrThrow(key, [...stored, foreign]);
+      const open = await PRIV19.openErasureRequest(b.userId);
+      const rec = recorder();
+      await hook(b.userId, "ERASURE_REQUEST", rec);
+      const bot = await botRow(b.botId);
+      ok("19.G1 · ⭐ ruling 130 · a request filed on ANOTHER container — in the stored queue, absent from this process's array — stops the bot and voids consent",
+        open?.id === foreign.id && bot.status === "AUTO_PAUSED" && bot.consentVoidCause === "HOLDER_ERASURE_REQUEST",
+        j({ open: open?.id, status: bot.status, voidCause: bot.consentVoidCause }));
+      await CS19.saveConfigOrThrow(key, stored);
+      await retire(b.botId);
+
+      const b2 = await w.bot();
+      await w.setUserFields(b2.userId, { status: "SUSPENDED" });
+      const rec2 = recorder();
+      let hookRes: Any = null, sweepRes: Any = null, elig: Any = null;
+      await prisma().$executeRawUnsafe(`ALTER TABLE "SystemConfig" RENAME TO "SystemConfig_hb19"`);
+      try {
+        hookRes = await hook(b2.userId, "SUSPENDED", rec2);
+        sweepRes = await sweep(rec2);
+        elig = await EL19.houseBotEligibility(b2.userId, { context: "start", botId: b2.botId });
+      } finally {
+        await prisma().$executeRawUnsafe(`ALTER TABLE "SystemConfig_hb19" RENAME TO "SystemConfig"`);
+      }
+      const bot2 = await botRow(b2.botId);
+      ok("19.G2 · ⭐ ruling 130 · an unreadable data-rights queue fails CLOSED: the hook answers failed, the sweep counts the bot as failed, nothing is written or sent, and Start shows ERASURE_UNREADABLE",
+        hookRes?.kind === "failed" && sweepRes?.failed >= 1 && bot2.status === "ACTIVE" && rec2.calls.length === 0
+          && (elig?.blocking ?? []).some((r: Any) => r.code === "ERASURE_UNREADABLE"),
+        j({ hookRes, sweepRes, status: bot2.status, blocking: (elig?.blocking ?? []).map((r: Any) => r.code) }));
+
+      const rec3 = recorder();
+      await sweep(rec3);
+      ok("19.G3 · …and once the queue reads again the next sweep applies the cause it could not read before",
+        (await botRow(b2.botId)).pauseReason === "ACCOUNT_SUSPENDED" && rec3.n(b2.userId, "botStopped") === 1, j({ fns: rec3.fns(b2.userId) }));
+      await retire(b2.botId);
+    } else {
+      ok("19.G1 · NOT MEASURED on the memory store — it keeps no stored config, so 'filed on another container' and 'unreadable queue' exist only on Postgres", STORE === "memory");
+      await retire(b.botId);
+    }
+  }
+
+  /* ── 19.H · a failure never costs the record, and never skips the next bot (ruling 131) ── */
+  {
+    const b = await w.bot();
+    await S.houseBotStore.setStatus(b.botId, { from: ["ACTIVE"], to: "PAUSED", pauseReason: "MANUAL", pausedFromStatus: "ACTIVE" });
+    await w.setUserFields(b.userId, { status: "SUSPENDED" });
+    const rec = recorder({ throwOn: "causeAdded" });
+    const res = await hook(b.userId, "SUSPENDED", rec);
+    const bot = await botRow(b.botId);
+    const ev = (await eventsOf(b.botId, ["HOLDER_CAUSE_ADDED"]))[0];
+    const freed = ev ? await S.houseBotAlertOnceStore.claim(`bot:${b.botId}:CAUSE:ACCOUNT_SUSPENDED:${ev.id}`) : false;
+    ok("19.H1 · ruling 131 · a failed cause-added send never fails the apply: the event and the cause set stand, and the claim is given back",
+      res?.kind === "applied" && ev != null && causeCodes(bot) === "ACCOUNT_SUSPENDED" && freed === true,
+      j({ res, event: ev?.id, freed }));
+    await retire(b.botId);
+
+    const bad = await w.bot();
+    const good = await w.bot();
+    await w.setUserFields(good.userId, { status: "SUSPENDED" });
+    const rec2 = recorder();
+    const origGet = S.houseBotStore.get;
+    let hookRes: Any = null, sweepRes: Any = null;
+    S.houseBotStore.get = async (id: string, tx?: Any) => {
+      if (id === bad.botId) throw new Error("injected bot read failure");
+      return origGet.call(S.houseBotStore, id, tx);
+    };
+    try {
+      hookRes = await hook(bad.userId, "SUSPENDED", rec2);
+      sweepRes = await sweep(rec2);
+    } finally { S.houseBotStore.get = origGet; }
+    ok("19.H2 · a read that throws → the hook answers failed (never a throw to the writer that called it) and the sweep counts that bot and still decides the NEXT one",
+      hookRes?.kind === "failed" && sweepRes?.failed >= 1 && sweepRes?.bots >= 2
+        && (await botRow(good.botId)).pauseReason === "ACCOUNT_SUSPENDED" && rec2.n(good.userId, "botStopped") === 1,
+      j({ hookRes, sweepRes, fns: rec2.fns(good.userId) }));
+    await retire(bad.botId);
+    await retire(good.botId);
+  }
+
+  /* ── 19.I · several live causes at once (04 A3 order) ── */
+  {
+    const b = await w.bot();
+    const m = await w.poll();
+    const live = await w.intent(b, m.id);
+    const rec = recorder();
+    await w.setUserFields(b.userId, { status: "SUSPENDED", passwordHash: newHash(), passwordSetVia: "SELF_CHANGE", passwordSetAt: iso() });
+    await hook(b.userId, "SUSPENDED", rec);
+    const bot = await botRow(b.botId);
+    ok("19.I1 · ⭐ 04 A3 · with several causes live the FIRST in HOLDER_CAUSES order becomes the pause reason (PASSWORD_CHANGED before ACCOUNT_SUSPENDED) and the WHOLE set is recorded, with A1 and the holder's notice",
+      bot.status === "AUTO_PAUSED" && bot.pauseReason === "PASSWORD_CHANGED" && causeCodes(bot) === "ACCOUNT_SUSPENDED,PASSWORD_CHANGED"
+        && bot.pauseDetail?.method === "SELF_CHANGE" && j(rec.fns(b.userId)) === j(["passwordPaused", "notice:password_paused"])
+        && (await S.houseBotIntentStore.get(live.id))?.status === "CANCELLED",
+      j({ reason: bot.pauseReason, causes: causeCodes(bot), fns: rec.fns(b.userId) }));
+    const rec2 = recorder();
+    await sweep(rec2);
+    ok("19.I2 · …and the sweep that follows finds the set current: no second bell, no second event",
+      rec2.of(b.userId).length === 0, j(rec2.fns(b.userId)));
+    await retire(b.botId);
+  }
+
+  await S.houseBotIntentStore.cancelLive({ all: true }, "MASTER_OFF");
+});
 console.log(`\n@@SUMMARY ${JSON.stringify({ pass, fail })}`);
 process.exit(fail === 0 ? 0 : 1);
