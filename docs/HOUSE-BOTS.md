@@ -240,6 +240,11 @@ With a null marker, each gives a player exactly what they had before; the letter
 - `rules-context.ts` keys chains `<assetId>:<durationMinutes>` for every chain of an enabled asset; a chain saved by symbol, or on a disabled asset, reads as stale.
 - UX-15's worked example runs on a real poll on both stores, and the decided NO 9,000 goes through `placeHouseBet` unchanged.
 
+**Fire and the poller** (commit 4, §5 step 4; `test:house-bot-engine` §16 on both stores; C4-SPEC rulings 63–70):
+- `server/house-bot/fire.ts` `fireClaimedIntent(row, {me, alerts})` is the only caller of `placeHouseBet`. It throws inside a lock, a lock's transaction or an admission slot (MON-13), and holds the row in `inFlight` with a 30 s heartbeat until it returns. It re-checks, in order: master, maintenance, bot, holder, rules, market, A12 scope and product policy, the bot's saved scope (OUT_OF_SCOPE when an owner narrowed it after the decision), A16 (reopened, chain stopped), the deadline against the fresh cutoff, the schedule (never for Enter now), the target (removed, vetoed, react-to-first), the blackout for staff-chosen rows, a COUNTER's trigger, Up & Down closeness, and for Enter now the holding rule and a re-run decision. A re-check that finds what a bet-path refusal names is applied as that refusal through `applyOutcome`, so a pre-check and the seam write the same row, audit and alert. Rules from a newer build requeue the row; outdated or invalid rules pause the bot with the field.
+- The stake is re-cut per kind before the bet — an untargeted COUNTER against `lockedA15`, a targeted COUNTER and FILL against `locked`, Enter now by its re-run decision — and a smaller stake is written back to the claimed row first; a stake never grows. Nothing left to add to → CONDITION_GONE; less than the minimum → STAKE_BOUNDS_CHANGED; a row another worker now holds → nothing written.
+- `server/house-bot/worker.ts` `pollerPass`: the A24 claim gate, `claimBatch`, a beat only after a claim, then the claimed rows fired together. `requeueMine`, for SIGTERM, returns this instance's claims to PENDING except the ones still in flight (`houseBotIntentStore.releaseClaims`).
+
 ---
 
 ## 5. Caps and limits
