@@ -4,7 +4,7 @@
  * ⭐ TWO DIFFERENT THINGS, KEPT APART ON PURPOSE (04 A3).
  * - `pauseReason` is HISTORY: the reason the bot stopped, written once, shown in History. It never
  *   gates anything.
- * - The CAUSES are LIVE: `holderCauses()` (commit 3) recomputes them from the holder's account every
+ * - The CAUSES are LIVE: `holderCauses()` (`consent.ts`) recomputes them from the holder's account every
  *   time, and Start, Re-verify and the strip read only them. A bot paused for a password change
  *   whose holder then self-excludes has one reason and two causes, and gating on the reason alone
  *   would offer a Start that consent no longer allows.
@@ -122,6 +122,14 @@ export const isHolderCauseCode = closedListGuard(HOLDER_CAUSES);
 
 /** The only causes a re-verify can clear (04 A3). Everything else waits, or needs an officer. */
 export const REVERIFY_ELIGIBLE_CAUSES = ["PASSWORD_CHANGED", "CONSENT_VOID"] as const satisfies readonly HolderCauseCode[];
+
+/**
+ * Causes a re-verify neither clears nor waits for: consent survives them (04 C8 "Other causes (suspended,
+ * frozen, role) still don't block re-verify", 02 §2.6 step 4, PLAN §18 §14-step-4 row). Start still
+ * refuses while any of them is live. ⚠️ A3's own sentence reads stricter ("limited to PASSWORD_CHANGED and
+ * CONSENT_VOID"); the binding reconciliation sides with C8, and so does this list (C3-SPEC §6 ruling 21).
+ */
+export const REVERIFY_TOLERATED_CAUSES = ["ACCOUNT_SUSPENDED", "WALLET_FROZEN", "ROLE_CHANGED", "OWNER_LOSS_LIMIT"] as const satisfies readonly HolderCauseCode[];
 
 // ---------------------------------------------------------------------------
 // Cause details — also what `pauseDetail` stores (04 A2, A4, A7)
@@ -364,13 +372,14 @@ export function canStart(status: HouseBotStatus, causes: readonly HolderCause[])
 
 /**
  * Re-verify is allowed only on a stopped bot, outside a responsible-gambling lock, when every live
- * cause is one a fresh password clears — and never over support's temporary password.
+ * cause is one a fresh password clears or one consent survives — and never over support's temporary
+ * password. A closed account, an open erasure request and a final identity refusal refuse it.
  */
 export function canReverify(status: HouseBotStatus, causes: readonly HolderCause[], rgLocked: boolean): boolean {
   if (status === "ACTIVE" || status === "REMOVED" || rgLocked) return false;
   return causes.every(
     (c) =>
-      (REVERIFY_ELIGIBLE_CAUSES as readonly string[]).includes(c.code) &&
+      ((REVERIFY_ELIGIBLE_CAUSES as readonly string[]).includes(c.code) || (REVERIFY_TOLERATED_CAUSES as readonly string[]).includes(c.code)) &&
       !(c.code === "PASSWORD_CHANGED" && c.method === "OFFICER_TEMP"),
   );
 }

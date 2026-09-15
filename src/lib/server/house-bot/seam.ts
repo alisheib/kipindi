@@ -23,6 +23,7 @@
  */
 import { houseIntentKey, HOUSE_PRODUCTS, COUNTERPARTY_ATTRIBUTION_MIN_PCT, type CapCode, type ConflictCode } from "@/lib/house-bot/constants";
 import { eatDayKey } from "@/lib/house-bot/clock";
+import { consentValid } from "@/lib/house-bot/consent";
 import { formatDateTime } from "@/lib/utils";
 import type { FailureDetail, FailureReason } from "@/lib/failure-reasons";
 import type { Side } from "@/lib/payout";
@@ -162,9 +163,8 @@ export async function houseH2(input: {
   // Status and holder are re-read HERE, under the wallet lock every Pause, auto-pause and Remove writes
   // under, so a CLAIMED intent already past H1 is refused inside the lock (02 §3.4).
   if (!bot || bot.status !== "ACTIVE" || bot.userId !== userId) return { ok: false, error: "House bot is not active.", code: "SUSPENDED", reason: "house_bot_inactive" };
-  const consentValid = passwordFingerprint(u.passwordHash) === bot.passwordFingerprint
-    && (bot.consentVoidAt == null || Date.parse(bot.verifiedAt) > Date.parse(bot.consentVoidAt));
-  if (!consentValid) return { ok: false, error: "House consent stale.", code: "INVALID", reason: "house_consent_stale" };
+  // The one predicate Start, the strip and `?reverify=1` read too (`consent.ts`).
+  if (!consentValid(bot, passwordFingerprint(u.passwordHash))) return { ok: false, error: "House consent stale.", code: "INVALID", reason: "house_consent_stale" };
   // H2_ORDER:cash — cash only by construction (A7): the whole stake is real money.
   if (input.walletBalance < stake) {
     return { ok: false, error: "House stakes use cash only.", code: "INVALID", reason: "house_cash_only", detail: { balance: input.walletBalance, needed: stake } };

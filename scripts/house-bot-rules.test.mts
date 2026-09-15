@@ -167,7 +167,12 @@ import {
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const THIS = fileURLToPath(import.meta.url);
 const HOUSE_DIR = join(ROOT, "src/lib/house-bot");
-const MODULE_FILES = ["clock.ts", "constants.ts", "pause-reasons.ts", "rules.ts"] as const;
+/**
+ * Every module in the folder, read from the directory — never a hand-picked list. Until commit 3 this was
+ * four names, and `bet-path.ts` (commit 2) sat beside them unchecked; a new pure module is now under the law
+ * the moment it exists. §0's population check names the files the law must at least see.
+ */
+const MODULE_FILES = readdirSync(HOUSE_DIR).filter((f) => f.endsWith(".ts")).sort();
 
 /* ═══ §13's child mode — a fresh process under a foreign TZ reports its EAT readings, then exits ═══ */
 
@@ -341,6 +346,9 @@ section("§0 · module law");
     ok(`0.${f} · every cited npm key exists in package.json`, missing.length === 0, missing.join(", "));
   }
   ok("0.population · the import parser saw the modules' imports (≥ 8 statements)", importCount >= 8, `saw ${importCount}`);
+  ok("0.population.files · the law reads the folder, and it holds at least the six known modules",
+    ["bet-path.ts", "clock.ts", "consent.ts", "constants.ts", "pause-reasons.ts", "rules.ts"].every((f) => (MODULE_FILES as readonly string[]).includes(f)),
+    MODULE_FILES.join(", "));
 
   // ⛔ CONTROLS — each check above can fail.
   ok("0.c1 · CONTROL · a planted client directive is seen", `"use ${"client"}";\nexport const x = 1;`.includes("use client"));
