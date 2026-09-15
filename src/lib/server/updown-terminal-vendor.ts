@@ -125,6 +125,24 @@ export async function vendorBarsFor(
   }
 }
 
+/** The 1-minute ranges: their last bar is the freshest price the cache can hold. */
+const ONE_MINUTE_RANGES = (Object.keys(VENDOR_PLAN) as TerminalRange[]).filter((r) => VENDOR_PLAN[r].intervalMs === 60_000);
+
+/**
+ * The newest cached 1-minute bar for this asset, or null — from the cache ONLY (04 A15: house bots make no new
+ * metered calls). Never fetches, never extends a TTL, whatever the cache holds and however old it is; the caller
+ * judges the bar's age. A cached failure (null bars) is no bar.
+ */
+export function peekVendorBar(assetId: string): VendorBar | null {
+  let newest: VendorBar | null = null;
+  for (const range of ONE_MINUTE_RANGES) {
+    const bars = cache.get(`${assetId}:${range}`)?.bars;
+    const last = bars && bars.length > 0 ? bars[bars.length - 1] : null;
+    if (last && (!newest || last.t > newest.t)) newest = last;
+  }
+  return newest;
+}
+
 /** Test hook — the suite clears the cache between fixtures. */
 export function __clearVendorCacheForTests(): void {
   cache.clear();

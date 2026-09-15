@@ -3,13 +3,21 @@
  *
  * `outcome-map.ts` decides WHICH action a result is; this module performs it on the row this worker claimed.
  * Every terminal write is conditional on `status='CLAIMED' AND "claimedBy"=$me` (the DAL's `finish`, `requeueTransient`,
- * `defer`); 0 rows means another worker owns the row, and nothing else is written.
+ * `defer`); 0 rows means another worker owns the row, and nothing else is written — except an engine fault, which
+ * switches house bots OFF whoever holds the row now (C4-SPEC ruling 53).
  *
  * ⛔ THE AUTO-PAUSE ORDER (04 A19). The status write commits under `wallet:<botUser>` — the lock every Pause,
  * auto-pause and Remove takes, so a CLAIMED intent already past H1 is refused inside the lock. EVERYTHING ELSE runs
  * after that lock returns: cancelling the bot's intents, the event, the awaited COMPLIANCE audit, the alerts. An
  * audit append takes a database-wide serialised lock; holding the holder's wallet lock across it would stall their
  * own bets.
+ *
+ * ⛔ A CONSENT-VOID CAUSE VOIDS CONSENT (04 A3, TGT-40). A refusal or a re-read that names self-exclusion, a break,
+ * a final identity refusal or an erasure request goes through `voidHouseConsent`, which ends the bot's targets in
+ * its own wallet-lock transaction — a plain pause would leave them ACTIVE. The holder's own withdrawal is never
+ * written by the engine (ruling 52).
+ *
+ * ⛔ A READ THAT FAILS IS A REQUEUE, NEVER A GUESS (ruling 51). The re-reads below either answer or requeue.
  *
  * ⛔ ALERTS ARE A REQUIRED ARGUMENT. There is no default: an engine that runs with a silent alert channel would
  * place stakes nobody is told about. The emitters are build step 9; the engine is wired into the server with them
@@ -26,6 +34,7 @@ import {
   houseBotRuntimeStore,
   houseBotStore,
   houseSeamStore,
+  type HouseMarketViewRow,
   type StoredHouseBot,
   type StoredHouseBotIntent,
 } from "../house-bot-dal";
@@ -46,10 +55,10 @@ import {
   type HouseAuditAction,
   type OffCause,
 } from "@/lib/house-bot/constants";
-import { isConsentVoidCause, isPauseReason, type PauseReason } from "@/lib/house-bot/pause-reasons";
+import { isPauseReason, type ConsentVoidCause, type PauseReason } from "@/lib/house-bot/pause-reasons";
 import { OUTCOME_TABLE, outcomeKey, type OutcomeAction } from "./outcome-map";
 import { isEngineTransient, transientBackoffMs } from "./transient";
-import { readBotAndHolder } from "./control";
+import { readBotAndHolder, type BotAndHolder } from "./control";
 import { voidHouseConsent } from "./designation";
 
 /** What the engine tells people. Step 9 supplies the real emitters; tests inject recorders. */
@@ -61,7 +70,7 @@ export type EngineAlerts = {
   /** SECURITY: the engine found a defect and switched house bots off. */
   security(message: EngineAlertMessage): Promise<void>;
   /** A bot was auto-paused or removed by the engine. */
-  botStopped(bot: StoredHouseBot, change: { to: "AUTO_PAUSED" | "REMOVED"; cause: PauseReason | "ACCOUNT_CLOSED"; cancelled: number }): Promise<void>;
+  botStopped(bot: StoredHouseBot, change: { to: "AUTO_PAUSED" | "REMOVED"; cause: PauseReason; cancelled: number }): Promise<void>;
 };
 
 export type EngineAlertMessage = { code: string; botId?: string | null; intentId?: string | null; marketId?: string | null; detail?: Record<string, unknown> };
@@ -74,7 +83,7 @@ export type AppliedOutcome =
   | { kind: "requeued"; nextAttemptAt: string | null }
   | { kind: "deferred"; until: string }
   | { kind: "terminal"; status: "SKIPPED" | "EXPIRED" | "FAILED" | "CANCELLED"; code: EngineCode; written: boolean }
-  | { kind: "botStopped"; to: "AUTO_PAUSED" | "REMOVED"; cause: string };
+  | { kind: "botStopped"; to: "AUTO_PAUSED" | "REMOVED"; cause: PauseReason };
 
 /* ═══ Engine audits (04 A19 allowlist) ═════════════════════════════════════════════════════════════ */
 
@@ -129,6 +138,39 @@ export async function stopBot(botId: string, change: { to: "AUTO_PAUSED"; cause:
   return true;
 }
 
+/** The causes the engine voids consent for. HOLDER_WITHDREW is the holder's own act and is never written here. */
+const ENGINE_VOID_CAUSES = ["SELF_EXCLUDED", "COOLING_OFF", "IDENTITY_REFUSED", "HOLDER_ERASURE_REQUEST"] as const satisfies readonly ConsentVoidCause[];
+const isEngineVoidCause = (c: PauseReason): c is (typeof ENGINE_VOID_CAUSES)[number] => (ENGINE_VOID_CAUSES as readonly string[]).includes(c);
+
+/**
+ * Stop the intent's bot for a holder cause, then close the claimed row (C4-SPEC ruling 52):
+ *   · ACCOUNT_CLOSED → REMOVED (A5);
+ *   · an engine void cause → `voidHouseConsent` (targets ended, intents cancelled, the pause — one wallet-lock
+ *     transaction) and one `botStopped` alert when it paused an ACTIVE bot; a void that already stands → `stopBot`;
+ *   · anything else → AUTO_PAUSED through `stopBot`.
+ * The claimed row ends CANCELLED(BOT_NOT_ACTIVE); when the stop already cancelled it the write finds nothing.
+ */
+async function stopForCause(intent: StoredHouseBotIntent, me: string, cause: PauseReason, alerts: EngineAlerts): Promise<AppliedOutcome> {
+  if (cause === "ACCOUNT_CLOSED") {
+    await stopBot(intent.houseBotId, { to: "REMOVED", cause }, alerts);
+  } else if (isEngineVoidCause(cause)) {
+    const bot = await houseBotStore.get(intent.houseBotId);
+    const voided = bot ? await voidHouseConsent({ userId: bot.userId, cause, actorId: null }) : null;
+    if (voided?.voided) {
+      if (voided.from === "ACTIVE") {
+        const after = await houseBotStore.get(voided.botId);
+        if (after) await alerts.botStopped(after, { to: "AUTO_PAUSED", cause, cancelled: voided.intentsCancelled });
+      }
+    } else {
+      await stopBot(intent.houseBotId, { to: "AUTO_PAUSED", cause }, alerts);
+    }
+  } else {
+    await stopBot(intent.houseBotId, { to: "AUTO_PAUSED", cause }, alerts);
+  }
+  await houseBotIntentStore.finish(intent.id, me, { status: "CANCELLED", reasonCode: "BOT_NOT_ACTIVE" });
+  return { kind: "botStopped", to: cause === "ACCOUNT_CLOSED" ? "REMOVED" : "AUTO_PAUSED", cause };
+}
+
 /** Master OFF from the engine (ENGINE_FAULT or ENGINE_ERRORS). Conditional: two workers faulting at once write one. */
 export async function engineSwitchOff(cause: Extract<OffCause, "ENGINE_FAULT" | "ENGINE_ERRORS">, alerts: EngineAlerts, message: EngineAlertMessage): Promise<boolean> {
   const off = await houseBotControlStore.switchOff({ cause, byId: null, reason: null });
@@ -153,6 +195,15 @@ async function terminal(intent: StoredHouseBotIntent, me: string, status: "SKIPP
   return { kind: "terminal", status, code, written };
 }
 
+/** Back to PENDING with the MON-10 backoff, or — with no time left — terminal on whichever bound is nearer (ruling 50). */
+async function requeue(intent: StoredHouseBotIntent, me: string): Promise<AppliedOutcome> {
+  const requeued = await houseBotIntentStore.requeueTransient(intent.id, me, transientBackoffMs(intent.transientAttempts, REQUEUE_BACKOFF_SEC));
+  if (requeued) return { kind: "requeued", nextAttemptAt: requeued.nextAttemptAt };
+  const nearer = Date.parse(intent.staleAt) <= Date.parse(intent.deadlineAt) ? "STALE" : "BUSY_TIMEOUT";
+  return terminal(intent, me, "EXPIRED", nearer);
+}
+
+/** An infrastructure failure (A10): the transient clock, the 2-minute alert, the contention count, then the requeue. */
 async function transient(intent: StoredHouseBotIntent, me: string, alerts: EngineAlerts, rateLimited: boolean): Promise<AppliedOutcome> {
   const run = await houseBotRuntimeStore.markTransient();
   if (run.transientSince && Date.now() - Date.parse(run.transientSince) >= TRANSIENT_ALERT_AFTER_MS) {
@@ -163,11 +214,17 @@ async function transient(intent: StoredHouseBotIntent, me: string, alerts: Engin
     // PLAN §4.6: two `rate_limited` in an hour means the holder is using the account — one contention alert.
     if (count >= 2) await alertOnce(ALERT_KEY.botDaily(intent.houseBotId, "HOLDER_CONTENTION"), alerts, { code: "HOLDER_CONTENTION", botId: intent.houseBotId });
   }
-  const requeued = await houseBotIntentStore.requeueTransient(intent.id, me, transientBackoffMs(intent.transientAttempts, REQUEUE_BACKOFF_SEC));
-  if (requeued) return { kind: "requeued", nextAttemptAt: requeued.nextAttemptAt };
-  // No time left before staleAt or the deadline: terminal on whichever bound is nearer (N1 §4.3 MON-10).
-  const nearer = Date.parse(intent.staleAt) <= Date.parse(intent.deadlineAt) ? "STALE" : "BUSY_TIMEOUT";
-  return terminal(intent, me, "EXPIRED", nearer);
+  return requeue(intent, me);
+}
+
+/** A10: a refusal this build does not know. Fail the row, pause the bot, tell someone once a day. */
+async function unmapped(intent: StoredHouseBotIntent, me: string, alerts: EngineAlerts, reason: string): Promise<AppliedOutcome> {
+  const out = await terminal(intent, me, "FAILED", "UNMAPPED");
+  await stopBot(intent.houseBotId, { to: "AUTO_PAUSED", cause: "UNMAPPED_REFUSAL" }, alerts);
+  await alertOnce(ALERT_KEY.botDaily(intent.houseBotId, "UNMAPPED_REFUSAL"), alerts, {
+    code: "UNMAPPED_REFUSAL", botId: intent.houseBotId, intentId: intent.id, detail: { reason },
+  });
+  return out;
 }
 
 async function penaltyBox(intent: StoredHouseBotIntent): Promise<void> {
@@ -179,6 +236,15 @@ async function penaltyBox(intent: StoredHouseBotIntent): Promise<void> {
     houseBotId: intent.houseBotId, userId: intent.triggerUserId, marketId: intent.marketId, kind: "PENALTY_BOXED",
     fromStatus: null, toStatus: null, reason: null, actorId: null, payload: { cause: "CASHED_OUT_COUNTERED", intentId: intent.id },
   });
+}
+
+/** The market as it is now; `undefined` when the read itself failed (ruling 51). */
+async function rereadMarket(marketId: string): Promise<HouseMarketViewRow | null | undefined> {
+  try {
+    return await houseSeamStore.marketView(marketId);
+  } catch {
+    return undefined;
+  }
 }
 
 /**
@@ -197,15 +263,7 @@ export async function applyOutcome(input: { intent: StoredHouseBotIntent; me: st
   }
 
   const key = outcomeKey(answer);
-  if (key == null) {
-    // A10: a refusal this build does not know. Fail the row, pause the bot, tell someone once.
-    const out = await terminal(intent, me, "FAILED", "UNMAPPED");
-    await stopBot(intent.houseBotId, { to: "AUTO_PAUSED", cause: "UNMAPPED_REFUSAL" }, alerts);
-    await alertOnce(ALERT_KEY.botDaily(intent.houseBotId, "UNMAPPED_REFUSAL"), alerts, {
-      code: "UNMAPPED_REFUSAL", botId: intent.houseBotId, intentId: intent.id, detail: { reason: answer.ok ? "ok" : (answer.reason ?? answer.code) },
-    });
-    return out;
-  }
+  if (key == null) return unmapped(intent, me, alerts, answer.ok ? "ok" : (answer.reason ?? answer.code));
   const action: OutcomeAction = OUTCOME_TABLE[key];
 
   switch (action.kind) {
@@ -220,51 +278,61 @@ export async function applyOutcome(input: { intent: StoredHouseBotIntent; me: st
     case "transient":
       return transient(intent, me, alerts, key === "rate_limited");
     case "terminal": {
-      const out = await terminal(intent, me, action.status, action.code);
+      const out = await terminal(intent, me, action.status, action.reasonCode);
+      // A defect is a defect whoever holds the row now (ruling 53).
+      if (action.engineFault) await engineSwitchOff("ENGINE_FAULT", alerts, { code: answer.ok ? "ENGINE_FAULT" : (answer.reason ?? answer.code), botId: intent.houseBotId, intentId: intent.id });
       if (!out.written) return out;
-      if (action.alert === "botDaily") await alertOnce(ALERT_KEY.botDaily(intent.houseBotId, action.code), alerts, { code: action.code, botId: intent.houseBotId, intentId: intent.id });
+      if (action.alert === "botDaily") await alertOnce(ALERT_KEY.botDaily(intent.houseBotId, action.reasonCode), alerts, { code: action.reasonCode, botId: intent.houseBotId, intentId: intent.id });
       if (action.alert === "stakeNotWhole") await alertOnce(ALERT_KEY.stakeNotWhole(intent.houseBotId), alerts, { code: "STAKE_NOT_WHOLE", botId: intent.houseBotId, intentId: intent.id });
       if (action.penalty) await penaltyBox(intent);
-      if (action.engineFault) await engineSwitchOff("ENGINE_FAULT", alerts, { code: answer.ok ? "ENGINE_FAULT" : (answer.reason ?? answer.code), botId: intent.houseBotId, intentId: intent.id });
       return out;
     }
     case "autoPause": {
-      await stopBot(intent.houseBotId, { to: "AUTO_PAUSED", cause: action.cause }, alerts);
+      const out = await stopForCause(intent, me, action.cause, alerts);
       if (action.anomaly) await alertOnce(ALERT_KEY.botDaily(intent.houseBotId, "ANOMALY"), alerts, { code: "ANOMALY", botId: intent.houseBotId, intentId: intent.id, detail: { reason: key } });
-      return { kind: "botStopped", to: "AUTO_PAUSED", cause: action.cause };
+      return out;
     }
     case "rereadAccount": {
-      // A10: `account_blocked` names five states — pause with the one found.
+      // A10: `account_blocked` names five states — stop with the one found (ruling 49; an unreadable account is ACCOUNT_BLOCKED).
       const bot = await houseBotStore.get(intent.houseBotId);
-      const user = bot ? await db.user.findById(bot.userId).catch(() => null) : null;
-      if (user?.status === "CLOSED" || user?.closedAt) {
-        await stopBot(intent.houseBotId, { to: "REMOVED", cause: "ACCOUNT_CLOSED" }, alerts);
-        return { kind: "botStopped", to: "REMOVED", cause: "ACCOUNT_CLOSED" };
+      // ⛔ try/catch, not `.catch`: the memory store answers with a plain value, not a promise.
+      let user: Awaited<ReturnType<typeof db.user.findById>> = null;
+      try {
+        user = bot ? await db.user.findById(bot.userId) : null;
+      } catch {
+        user = null;
       }
-      if (bot && (user?.status === "SELF_EXCLUDED" || user?.status === "COOLED_OFF")) {
-        const cause = user.status === "SELF_EXCLUDED" ? "SELF_EXCLUDED" : "COOLING_OFF";
-        await voidHouseConsent({ userId: bot.userId, cause, actorId: null });
-        return { kind: "botStopped", to: "AUTO_PAUSED", cause };
-      }
-      const cause: PauseReason = user?.status === "SUSPENDED" ? "ACCOUNT_SUSPENDED" : "ACCOUNT_BLOCKED";
-      await stopBot(intent.houseBotId, { to: "AUTO_PAUSED", cause }, alerts);
-      return { kind: "botStopped", to: "AUTO_PAUSED", cause };
+      const cause: PauseReason = !user ? "ACCOUNT_BLOCKED"
+        : user.status === "CLOSED" || user.closedAt ? "ACCOUNT_CLOSED"
+          : user.status === "SELF_EXCLUDED" ? "SELF_EXCLUDED"
+            : user.status === "COOLED_OFF" ? "COOLING_OFF"
+              : user.status === "SUSPENDED" ? "ACCOUNT_SUSPENDED"
+                : "ACCOUNT_BLOCKED";
+      return stopForCause(intent, me, cause, alerts);
     }
     case "rereadConsent": {
-      const read = await readBotAndHolder(intent.houseBotId).catch(() => null);
-      const first = read && read.found ? read.causes[0]?.code : null;
-      const cause: PauseReason = first && isPauseReason(first) ? first : first === "CONSENT_VOID" && read?.found && read.bot.consentVoidCause && isConsentVoidCause(read.bot.consentVoidCause) && isPauseReason(read.bot.consentVoidCause) ? read.bot.consentVoidCause : "PASSWORD_CHANGED";
-      await stopBot(intent.houseBotId, { to: "AUTO_PAUSED", cause }, alerts);
-      return { kind: "botStopped", to: "AUTO_PAUSED", cause };
+      let read: BotAndHolder;
+      try {
+        read = await readBotAndHolder(intent.houseBotId);
+      } catch {
+        return transient(intent, me, alerts, false);
+      }
+      if (!read.found) return stopForCause(intent, me, "ACCOUNT_MISSING", alerts);
+      const first = read.causes[0];
+      // Re-verified between the refusal and this read: the row may try again before staleAt.
+      if (!first) return requeue(intent, me);
+      const code = first.code === "CONSENT_VOID" ? first.cause : first.code;
+      return stopForCause(intent, me, isPauseReason(code) ? code : "PASSWORD_CHANGED", alerts);
     }
     case "rereadMarketOrAccount": {
-      const view = await houseSeamStore.marketView(intent.marketId).catch(() => undefined);
+      const view = await rereadMarket(intent.marketId);
+      if (view === undefined) return transient(intent, me, alerts, false);
       if (view === null) return terminal(intent, me, "SKIPPED", "MARKET_GONE");
-      await stopBot(intent.houseBotId, { to: "AUTO_PAUSED", cause: "ACCOUNT_MISSING" }, alerts);
-      return { kind: "botStopped", to: "AUTO_PAUSED", cause: "ACCOUNT_MISSING" };
+      return stopForCause(intent, me, "ACCOUNT_MISSING", alerts);
     }
     case "rereadMarketLive": {
-      const view = await houseSeamStore.marketView(intent.marketId).catch(() => null);
+      const view = await rereadMarket(intent.marketId);
+      if (view === undefined) return transient(intent, me, alerts, false);
       return !view || view.status !== "LIVE" ? terminal(intent, me, "SKIPPED", "MARKET_NOT_LIVE") : terminal(intent, me, "EXPIRED", "CUTOFF");
     }
     case "conflict": {
@@ -274,7 +342,7 @@ export async function applyOutcome(input: { intent: StoredHouseBotIntent; me: st
     case "cap": {
       const detail = !answer.ok ? (answer.detail as { cap?: unknown; until?: unknown } | undefined) : undefined;
       const cap = detail?.cap;
-      if (!isCapCode(cap)) return terminal(intent, me, "FAILED", "UNMAPPED");
+      if (!isCapCode(cap)) return unmapped(intent, me, alerts, `house_cap_reached:${String(cap)}`);
       if ((DEFERRABLE_CAP_CODES as readonly string[]).includes(cap)) {
         // N1 §4.3: defer to the window's end when that is before staleAt (C4-SPEC ruling 47 for the window ends).
         const untilMs = typeof detail?.until === "string" ? Date.parse(detail.until) : cap === "GLOBAL_BETS_PER_MINUTE" ? Date.now() + 60_000 : Number.NaN;

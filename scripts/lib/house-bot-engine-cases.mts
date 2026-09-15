@@ -4,7 +4,7 @@
  *
  * Sections follow the build order in `plans/house-bots/C4-SPEC.md` §5:
  *   §1 the lock exit · §2 the planner lease · §3 attribution · §4 the market view · §5 Enter now decision ·
- *   §6 the outcome table · §7 decide · §8 source pins · §9 feed copy.
+ *   §6 the outcome table · §7 decide · §8 source pins · §9 feed copy · §10 schema gate · §11 engine process · §12 market view · §13 applyOutcome.
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { readFileSync } from "node:fs";
@@ -235,15 +235,15 @@ await guard("6", () => {
   ok("6.2 · an unknown reason has no key (A10 UNMAPPED)", OM.outcomeKey({ ok: false, code: "INVALID", reason: "house_reason_from_the_future" }) === null);
   ok("6.3 · a bare BUSY maps to code:BUSY; a reason spelled like a bare key does not", OM.outcomeKey({ ok: false, code: "BUSY" }) === "code:BUSY" && OM.outcomeKey({ ok: false, code: "BUSY", reason: "code:BUSY" }) === null);
   const row = (k: string) => (OM.OUTCOME_TABLE as Any)[k];
-  ok("6.4 · A7: bounds that moved → SKIPPED(STAKE_BOUNDS_CHANGED), no alert", row("stake_below_min").code === "STAKE_BOUNDS_CHANGED" && !row("stake_below_min").alert && row("stake_above_max").code === "STAKE_BOUNDS_CHANGED");
+  ok("6.4 · A7: bounds that moved → SKIPPED(STAKE_BOUNDS_CHANGED), no alert", row("stake_below_min").reasonCode === "STAKE_BOUNDS_CHANGED" && !row("stake_below_min").alert && row("stake_above_max").reasonCode === "STAKE_BOUNDS_CHANGED");
   ok("6.5 · A7: a stake that is not whole → FAILED + AlertOnce", row("stake_not_whole").status === "FAILED" && row("stake_not_whole").alert === "stakeNotWhole");
   ok("6.6 · N1: stale → EXPIRED(STALE); blackout → SKIPPED(INFO_BLACKOUT); concentration → SKIPPED(COUNTERPARTY_CONCENTRATION)",
-    row("house_intent_stale").status === "EXPIRED" && row("house_intent_stale").code === "STALE" && row("house_info_blackout").code === "INFO_BLACKOUT" && row("house_counterparty_concentration").code === "COUNTERPARTY_CONCENTRATION");
+    row("house_intent_stale").status === "EXPIRED" && row("house_intent_stale").reasonCode === "STALE" && row("house_info_blackout").reasonCode === "INFO_BLACKOUT" && row("house_counterparty_concentration").reasonCode === "COUNTERPARTY_CONCENTRATION");
   ok("6.7 · an invalid side and a key mismatch stop the engine (SECURITY + master OFF)", row("market_not_live").engineFault === true && row("house_key_mismatch").engineFault === true);
-  ok("6.8 · a trigger exit puts the trigger in the penalty box", row("house_trigger_gone").penalty === true && row("house_trigger_gone").code === "TRIGGER_EXITED");
+  ok("6.8 · a trigger exit puts the trigger in the penalty box", row("house_trigger_gone").penalty === true && row("house_trigger_gone").reasonCode === "TRIGGER_EXITED");
   const transient = keys.filter((k) => row(k).kind === "transient").sort();
   ok("6.9 · the transient rows are exactly BUSY, rate_limited, gate unreadable and system_busy", j(transient) === j(["code:BUSY", "house_gate_unreadable", "rate_limited", "system_busy"]), j(transient));
-  const codes = keys.filter((k) => row(k).kind === "terminal").map((k) => row(k).code);
+  const codes = keys.filter((k) => row(k).kind === "terminal").map((k) => row(k).reasonCode);
   ok("6.10 · every terminal code is an EngineCode", codes.every((c) => K.isEngineCode(c)), j(codes.filter((c) => !K.isEngineCode(c))));
   ok("6.11 · account_blocked re-reads the account; consent stale recomputes the causes (A10, A3)", row("account_blocked").kind === "rereadAccount" && row("house_consent_stale").kind === "rereadConsent");
 });
@@ -593,6 +593,484 @@ await guard("12", async () => {
     await cfg.setAssetEnabled(a.data.id, false, WORLD_OFFICER);
     const paused = await HDAL.houseSeamStore.marketView(round.marketId);
     ok("12.13 · A16 · a paused chain and a disabled asset are visible to the engine", paused?.round?.chainRunning === false && paused.round.assetEnabled === false, j(paused?.round));
+  }
+});
+
+/* ═══ §13 · applyOutcome — what a bet-path answer writes (PLAN §4.6, 04 A8, A10, A19, N1 §4.3) ═══════════════ */
+section("§13 · applyOutcome on the claimed row");
+const OC: Any = await import("../../src/lib/server/house-bot/outcomes.ts");
+const TR: Any = await import("../../src/lib/server/house-bot/transient.ts");
+const CTL: Any = await import("../../src/lib/server/house-bot/control.ts");
+const { AdmissionBusy }: Any = await import("../../src/lib/server/admission.ts");
+const { auditFlush, getAuditPage }: Any = await import("../../src/lib/server/audit.ts");
+await guard("13", async () => {
+  const w = await loadWorld();
+  if (!(await w.db.user.findById(WORLD_OFFICER))) await w.user({ id: WORLD_OFFICER, role: "ADMIN" });
+  await w.limits();
+  await w.switchOn();
+  const S = HDAL;
+  const ME = "world"; // `loadWorld().intent` claims every row as "world"
+  const recorder = (onStop?: () => void) => {
+    const calls: Any[] = [];
+    const alerts = {
+      placed: async (i: Any) => { calls.push({ fn: "placed", id: i.id, inLock: L.inLock() }); },
+      once: async (key: string, m: Any) => { calls.push({ fn: "once", key, code: m.code, inLock: L.inLock() }); },
+      security: async (m: Any) => { calls.push({ fn: "security", code: m.code, inLock: L.inLock() }); },
+      botStopped: async (bot: Any, change: Any) => { onStop?.(); calls.push({ fn: "botStopped", botId: bot.id, status: bot.status, ...change, inLock: L.inLock() }); },
+    };
+    return { alerts, calls, count: (fn: string) => calls.filter((c) => c.fn === fn).length, codes: (code: string) => calls.filter((c) => c.fn === "once" && c.code === code).length };
+  };
+  const fresh = async (b: Any, o: Any = {}) => { const m = await w.poll(); return w.intent(b, m.id, o); };
+  const row = (id: string) => S.houseBotIntentStore.get(id) as Promise<Any>;
+  const botRow = (id: string) => S.houseBotStore.get(id) as Promise<Any>;
+  const refuse = (reason: string, detail?: Any) => ({ ok: false, code: "REFUSED", reason, ...(detail ? { detail } : {}) });
+  const apply = (intent: Any, answer: Any, alerts: Any) => OC.applyOutcome({ intent, me: ME, answer, alerts });
+  const eventsOf = async (botId: string) => ((await S.houseBotEventStore.listByBot(botId, { limit: 100 })).rows as Any[]);
+  const auditsOf = async (pred: (e: Any) => boolean) => { await auditFlush(); return (getAuditPage({ limit: 10_000 }) as Any[]).filter(pred); };
+  const streak = async () => Number((await S.houseBotRuntimeStore.get(K.RUNTIME_KEY.global))?.errorStreak);
+  const since = () => new Date(Date.now() - 1_000).toISOString();
+  const offIds = async () => new Set(((await S.houseBotEventStore.listByKinds(["SWITCH_OFF"], { limit: 500 })) as Any[]).map((e) => e.id));
+  const newOffs = async (before: Set<string>) => ((await S.houseBotEventStore.listByKinds(["SWITCH_OFF"], { limit: 500 })) as Any[]).filter((e) => !before.has(e.id));
+  const auditIds = async () => new Set((await auditsOf(() => true)).map((e) => e.id));
+
+  /* ── 13.1 placed: the A8 claim ── */
+  {
+    const b = await w.bot();
+    const m = await w.poll();
+    const i = await w.intent(b, m.id, { kind: "OPENER", stakeTzs: 1_000 });
+    const placed = await w.place(b, i);
+    ok("13.1a · fixture · a real house bet placed the claimed intent", placed.ok === true && (await row(i.id))?.status === "PLACED", j(placed));
+    await S.houseBotRuntimeStore.bumpErrorStreak();
+    await S.houseBotRuntimeStore.bumpErrorStreak();
+    const rec = recorder();
+    const first = await apply(await row(i.id), { ok: true }, rec.alerts);
+    ok("13.1 · ok → placed, the A8 alertedAt claim taken, ONE placed alert", first.kind === "placed" && first.alerted === true && (await row(i.id)).alertedAt != null && rec.count("placed") === 1, j(first));
+    ok("13.1b · …and the error streak is reset", (await streak()) === 0, String(await streak()));
+    const again = await apply(await row(i.id), { ok: true, replayed: true }, rec.alerts);
+    ok("13.2 · a replayed ok after the claim → alerted false, no second alert", again.kind === "placed" && again.alerted === false && rec.count("placed") === 1, j(again));
+    const m2 = await w.poll();
+    const i2 = await w.intent(b, m2.id, { kind: "OPENER", stakeTzs: 1_000 });
+    const p2 = await w.place(b, i2);
+    const rec2 = recorder();
+    const both = await Promise.all([apply(await row(i2.id), { ok: true }, rec2.alerts), apply(await row(i2.id), { ok: true, replayed: true }, rec2.alerts)]);
+    ok("13.3 · two workers answering ok for one PLACED row → exactly one alert", p2.ok === true && rec2.count("placed") === 1 && both.filter((o: Any) => o.alerted).length === 1, j(both));
+    const claimed = await fresh(b);
+    const rec3 = recorder();
+    const noClaim = await apply(claimed, { ok: true }, rec3.alerts);
+    ok("13.4 · the engine never writes PLACED: an ok on a row still CLAIMED takes no claim and alerts nobody", noClaim.alerted === false && (await row(claimed.id)).status === "CLAIMED" && rec3.count("placed") === 0, j(await row(claimed.id)));
+    await S.houseBotIntentStore.finish(claimed.id, ME, { status: "CANCELLED", reasonCode: "BOT_NOT_ACTIVE" });
+  }
+
+  /* ── 13.5 transient: requeue with backoff, never the streak ── */
+  {
+    const b = await w.bot();
+    await S.houseBotRuntimeStore.resetErrorStreak();
+    const TRANSIENTS: Array<[string, Any]> = [
+      ["system_busy", refuse("system_busy")],
+      ["code:BUSY (no reason)", { ok: false, code: "BUSY" }],
+      ["house_gate_unreadable", refuse("house_gate_unreadable")],
+      ["thrown 55P03", { thrown: Object.assign(new Error("lock"), { code: "55P03" }) }],
+      ["thrown P1017 under meta", { thrown: Object.assign(new Error("closed"), { meta: { code: "P1017" } }) }],
+      ["thrown AdmissionBusy", { thrown: new AdmissionBusy("shed", 0) }],
+    ];
+    for (const [label, answer] of TRANSIENTS) {
+      const i = await fresh(b);
+      const t0 = Date.now();
+      const out = await apply(i, answer, recorder().alerts);
+      const r = await row(i.id);
+      const wait = Date.parse(r.nextAttemptAt) - t0;
+      ok(`13.5 · ${label} → PENDING again, transientAttempts 1, attempts handed back, next try in ≈1 s`,
+        out.kind === "requeued" && r.status === "PENDING" && r.claimedBy === null && r.transientAttempts === 1 && r.attempts === 0 && wait >= 500 && wait <= 2_500, `${wait} ms · ${j(r)}`);
+    }
+    ok("13.6 · no transient answer moved the error streak", (await streak()) === 0, String(await streak()));
+    for (const [n, lo, hi] of [[1, 4_000, 6_500], [3, 44_000, 47_000], [7, 44_000, 47_000]] as Array<[number, number, number]>) {
+      const i = await fresh(b, { transientAttempts: n });
+      const t0 = Date.now();
+      await apply(i, refuse("system_busy"), recorder().alerts);
+      const wait = Date.parse((await row(i.id)).nextAttemptAt) - t0;
+      ok(`13.7 · MON-10 backoff after ${n} earlier transient tries is ${lo / 1000}–${hi / 1000} s`, wait >= lo && wait <= hi, `${wait} ms`);
+    }
+    const nearStale = await fresh(b, { staleAt: w.iso(1_500) });
+    await sleep(700);
+    const outStale = await apply(nearStale, refuse("system_busy"), recorder().alerts);
+    ok("13.8 · ruling 50 · no time before staleAt (staleAt ≤ deadline) → EXPIRED(STALE)", outStale.kind === "terminal" && (await row(nearStale.id)).status === "EXPIRED" && (await row(nearStale.id)).reasonCode === "STALE", j(outStale));
+    const nearDeadline = await fresh(b, { deadlineAt: w.iso(1_200), staleAt: w.iso(600_000) });
+    await sleep(1_400);
+    const outDead = await apply(nearDeadline, refuse("system_busy"), recorder().alerts);
+    ok("13.9 · ruling 50 · the deadline passed first (deadline < staleAt) → EXPIRED(BUSY_TIMEOUT)", (await row(nearDeadline.id)).status === "EXPIRED" && (await row(nearDeadline.id)).reasonCode === "BUSY_TIMEOUT", j(outDead));
+
+    // A10: two minutes of transient failures → one ENGINE_DB_TRANSIENT alert an hour. The control runs FIRST, before the
+    // hour's AlertOnce key is claimed — after it, a missing time check would pass the control for the wrong reason.
+    await S.houseBotRuntimeStore.resetErrorStreak();
+    const recDb = recorder();
+    await apply(await fresh(b), refuse("system_busy"), recDb.alerts);
+    ok("13.10 · CONTROL · a transient run that started just now alerts nobody", recDb.codes("ENGINE_DB_TRANSIENT") === 0 && (await S.houseBotRuntimeStore.get(K.RUNTIME_KEY.global))?.transientSince != null);
+    await S.houseBotRuntimeStore.upsert(K.RUNTIME_KEY.global, { transientSince: new Date(Date.now() - 180_000).toISOString() });
+    await apply(await fresh(b), refuse("system_busy"), recDb.alerts);
+    await apply(await fresh(b), { thrown: Object.assign(new Error("x"), { code: "57014" }) }, recDb.alerts);
+    ok("13.11 · a transient run older than 2 minutes → ONE ENGINE_DB_TRANSIENT alert for the hour", recDb.codes("ENGINE_DB_TRANSIENT") === 1, j(recDb.calls));
+    await S.houseBotRuntimeStore.resetErrorStreak();
+
+    // PLAN §4.6: `rate_limited` twice in an hour → one holder-contention alert.
+    const bc = await w.bot();
+    const recRl = recorder();
+    const rl1 = await apply(await fresh(bc), refuse("rate_limited"), recRl.alerts);
+    ok("13.12 · one rate_limited → requeued, no contention alert", rl1.kind === "requeued" && recRl.codes("HOLDER_CONTENTION") === 0, j(rl1));
+    await apply(await fresh(bc), refuse("rate_limited"), recRl.alerts);
+    await apply(await fresh(bc), refuse("rate_limited"), recRl.alerts);
+    ok("13.13 · the second in the hour → ONE HOLDER_CONTENTION alert; the third adds none", recRl.codes("HOLDER_CONTENTION") === 1, j(recRl.calls));
+  }
+
+  /* ── 13.14 every plain terminal row, its alert and the penalty box ── */
+  {
+    const b = await w.bot();
+    const trig = await w.user();
+    const rec = recorder();
+    const TERMINALS = Object.entries(OM.OUTCOME_TABLE).filter(([, a]: Any) => a.kind === "terminal" && !a.engineFault) as Array<[string, Any]>;
+    ok("13.14a · fixture · the table has plain terminal rows to walk", TERMINALS.length >= 15, String(TERMINALS.length));
+    for (const [key, action] of TERMINALS) {
+      const i = await fresh(b);
+      const answer = key.startsWith("code:") ? { ok: false, code: key.slice(5) } : refuse(key);
+      const out = await apply(action.penalty ? { ...i, triggerUserId: trig } : i, answer, rec.alerts);
+      const r = await row(i.id);
+      ok(`13.14 · ${key} → ${action.status}(${action.reasonCode})`, out.kind === "terminal" && out.written === true && r.status === action.status && r.reasonCode === action.reasonCode && r.finishedAt != null, j(r));
+    }
+    ok("13.15 · balance_insufficient and house_cash_only share CAP_BALANCE_FLOOR → ONE alert for the bot today", rec.codes("CAP_BALANCE_FLOOR") === 1
+      && rec.calls.some((c) => c.fn === "once" && c.code === "CAP_BALANCE_FLOOR" && c.key.startsWith(`bot:${b.botId}:CAP_BALANCE_FLOOR`)), j(rec.calls));
+    ok("13.16 · A7 · stake_not_whole → one STAKE_NOT_WHOLE alert", rec.codes("STAKE_NOT_WHOLE") === 1);
+    ok("13.17 · no other terminal row alerts, stops the bot or touches the switch", rec.calls.filter((c) => c.fn === "once").length === 2 && rec.count("botStopped") === 0 && rec.count("security") === 0
+      && (await botRow(b.botId)).status === "ACTIVE" && (await S.houseBotControlStore.get()).enabled === true, j(rec.calls));
+    const boxed = await S.houseBotEventStore.listByKinds(["PENALTY_BOXED"], { userId: trig, limit: 10 });
+    ok("13.18 · R5 · a trigger exit boxes the trigger account: one PENALTY_BOXED event (CASHED_OUT_COUNTERED)", boxed.length === 1 && boxed[0].payload?.cause === "CASHED_OUT_COUNTERED", j(boxed));
+    await apply({ ...(await fresh(b)), triggerUserId: trig }, refuse("house_trigger_gone"), rec.alerts);
+    ok("13.19 · …a second exit the same EAT day boxes nothing more", (await S.houseBotEventStore.listByKinds(["PENALTY_BOXED"], { userId: trig, limit: 10 })).length === 1);
+    const b2 = await w.bot();
+    const notMine = await fresh(b2);
+    const rec2 = recorder();
+    const out = await OC.applyOutcome({ intent: notMine, me: "another-worker", answer: refuse("balance_insufficient"), alerts: rec2.alerts });
+    ok("13.20 · a row this worker does not hold → written false, the row untouched, no alert", out.written === false && (await row(notMine.id)).status === "CLAIMED" && rec2.calls.length === 0, j(out));
+    await S.houseBotIntentStore.finish(notMine.id, ME, { status: "CANCELLED", reasonCode: "BOT_NOT_ACTIVE" });
+    const staleRef = await apply(await fresh(b2), refuse("house_intent_superseded"), rec2.alerts);
+    ok("13.21 · house_intent_superseded → noop, nothing written", staleRef.kind === "noop" && rec2.calls.length === 0);
+  }
+
+  /* ── 13.22 engine faults: FAILED(INTERNAL) + SECURITY + master OFF(ENGINE_FAULT) ── */
+  {
+    for (const key of ["market_not_live", "idempotency_key_conflict", "house_key_mismatch"]) {
+      await w.switchOn();
+      const b = await w.bot();
+      const other = await fresh(b);
+      const i = await fresh(b);
+      const rec = recorder();
+      const offBefore = await offIds();
+      const audBefore = await auditIds();
+      const out = await apply(i, refuse(key), rec.alerts);
+      const c = await S.houseBotControlStore.get();
+      const off = await newOffs(offBefore);
+      const aud = await auditsOf((e) => e.action === "house_bot.engine_fault" && e.targetId === c.id && !audBefore.has(e.id));
+      ok(`13.22 · ${key} → FAILED(INTERNAL), master OFF(ENGINE_FAULT), one SECURITY alert`, out.status === "FAILED" && out.code === "INTERNAL" && c.enabled === false && c.offCause === "ENGINE_FAULT" && rec.count("security") === 1, `${j(out)} · ${j(c)}`);
+      ok(`13.23 · ${key} → every live intent CANCELLED(MASTER_OFF), one SWITCH_OFF event carrying its audit id`, (await row(other.id)).status === "CANCELLED" && (await row(other.id)).reasonCode === "MASTER_OFF"
+        && off.length === 1 && off[0].payload?.cause === "ENGINE_FAULT" && aud.length === 1 && off[0].auditId === aud[0].id, `${j(off)} · ${aud.length}`);
+    }
+    await w.switchOn();
+    const b = await w.bot();
+    const [i1, i2] = [await fresh(b), await fresh(b)];
+    const rec = recorder();
+    const offBefore = await offIds();
+    await Promise.all([apply(i1, refuse("house_key_mismatch"), rec.alerts), apply(i2, refuse("house_key_mismatch"), rec.alerts)]);
+    const offs = await newOffs(offBefore);
+    ok("13.24 · two workers faulting at once → ONE SWITCH_OFF event and ONE SECURITY alert", offs.length === 1 && rec.count("security") === 1, `${j(offs)} · ${j(rec.calls)}`);
+    ok("13.25 · …and neither row is left CLAIMED", (await row(i1.id)).status !== "CLAIMED" && (await row(i2.id)).status !== "CLAIMED");
+    await w.switchOn();
+    const b3 = await w.bot();
+    const moved = await fresh(b3);
+    const out = await OC.applyOutcome({ intent: moved, me: "another-worker", answer: refuse("house_key_mismatch"), alerts: recorder().alerts });
+    ok("13.26 · ruling 53 · a fault on a row someone else moved still switches house bots OFF", out.written === false && (await S.houseBotControlStore.get()).enabled === false, j(out));
+    await w.switchOn();
+  }
+
+  /* ── 13.27 the bet path's pause refusals ── */
+  {
+    const PAUSES = Object.entries(OM.OUTCOME_TABLE).filter(([, a]: Any) => a.kind === "autoPause") as Array<[string, Any]>;
+    const VOIDS = ["SELF_EXCLUDED", "COOLING_OFF"];
+    ok("13.27a · fixture · the table's pause rows", PAUSES.length === 7, j(PAUSES.map(([k]) => k)));
+    for (const [key, action] of PAUSES) {
+      const b = await w.bot();
+      const m = await w.poll();
+      const tgt = await S.targetStore.insert({
+        id: S.newHouseId("target"), houseBotId: b.botId, marketId: m.id, delayMinSec: 5, delayMaxSec: 10, timingFrom: "STAKE", reactTo: "FIRST",
+        createdById: WORLD_OFFICER, snapshot: { titleEn: "Target poll", category: "macro", cutoff: w.iso(3_600_000), rawYes: 0, rawNo: 0 },
+      });
+      const pending = await fresh(b);
+      const i = await fresh(b);
+      const rec = recorder();
+      const from = since();
+      const out = await apply(i, refuse(key), rec.alerts);
+      const bot = await botRow(b.botId);
+      const evs = (await eventsOf(b.botId)).filter((e) => e.kind === "AUTO_PAUSED" && Date.parse(e.createdAt) >= Date.parse(from));
+      const aud = await auditsOf((e) => e.action === "house_bot.auto_paused" && e.targetId === b.botId);
+      const stop = rec.calls.find((c) => c.fn === "botStopped");
+      ok(`13.27 · ${key} → AUTO_PAUSED(${action.cause}) from ACTIVE`, out.kind === "botStopped" && bot.status === "AUTO_PAUSED" && bot.pauseReason === action.cause && bot.pausedFromStatus === "ACTIVE", j(bot));
+      ok(`13.28 · ${key} → both live intents CANCELLED(BOT_NOT_ACTIVE), one AUTO_PAUSED event, one audit, ONE botStopped alert`,
+        (await row(i.id)).status === "CANCELLED" && (await row(pending.id)).reasonCode === "BOT_NOT_ACTIVE" && evs.length === 1 && aud.length === 1
+          && rec.count("botStopped") === 1 && stop?.cause === action.cause && stop?.cancelled === 2, `${j(evs)} · ${aud.length} · ${j(rec.calls)}`);
+      const tNow = await S.targetStore.get(tgt.id);
+      if (VOIDS.includes(action.cause)) {
+        ok(`13.29 · ⭐ A3 · ${key} VOIDS consent: consentVoidCause ${action.cause} and the bot's ACTIVE target ENDED(CONSENT_VOID)`,
+          bot.consentVoidCause === action.cause && bot.consentVoidAt != null && tNow.status === "ENDED" && tNow.endCause === "CONSENT_VOID", `${j(bot)} · ${j(tNow)}`);
+      } else {
+        ok(`13.29 · ${key} pauses without a consent void`, bot.consentVoidAt === null, j(bot));
+      }
+      if (action.anomaly) ok(`13.30 · ${key} is unreachable by A7 → one ANOMALY alert`, rec.codes("ANOMALY") === 1, j(rec.calls));
+      const second = await fresh(b);
+      const rec2 = recorder();
+      await apply(second, refuse(key), rec2.alerts);
+      ok(`13.31 · ${key} again on the paused bot → no second event or alert, and the claimed row is closed CANCELLED(BOT_NOT_ACTIVE)`,
+        rec2.count("botStopped") === 0 && (await eventsOf(b.botId)).filter((e) => e.kind === "AUTO_PAUSED").length === 1
+          && (await row(second.id)).status === "CANCELLED" && (await row(second.id)).reasonCode === "BOT_NOT_ACTIVE", `${j(rec2.calls)} · ${j(await row(second.id))}`);
+    }
+  }
+
+  /* ── 13.32 ⭐ A19 order ── */
+  {
+    const b = await w.bot();
+    const i = await fresh(b);
+    const trail: string[] = [];
+    const real = { setStatus: S.houseBotStore.setStatus, cancelLive: S.houseBotIntentStore.cancelLive, append: S.houseBotEventStore.append, setAuditId: S.houseBotEventStore.setAuditId };
+    S.houseBotStore.setStatus = async (...a: Any[]) => { trail.push(`status:${L.inLock()}`); return real.setStatus.apply(S.houseBotStore, a); };
+    S.houseBotIntentStore.cancelLive = async (...a: Any[]) => { trail.push(`cancel:${L.inLock()}`); return real.cancelLive.apply(S.houseBotIntentStore, a); };
+    S.houseBotEventStore.append = async (...a: Any[]) => { trail.push(`event:${L.inLock()}`); return real.append.apply(S.houseBotEventStore, a); };
+    S.houseBotEventStore.setAuditId = async (...a: Any[]) => { trail.push(`auditId:${L.inLock()}`); return real.setAuditId.apply(S.houseBotEventStore, a); };
+    const rec = recorder(() => trail.push(`alert:${L.inLock()}`));
+    try {
+      await apply(i, refuse("wallet_frozen"), rec.alerts);
+    } finally {
+      Object.assign(S.houseBotStore, { setStatus: real.setStatus });
+      Object.assign(S.houseBotIntentStore, { cancelLive: real.cancelLive });
+      Object.assign(S.houseBotEventStore, { append: real.append, setAuditId: real.setAuditId });
+    }
+    ok("13.32 · ⭐ A19 · status inside the lock; then cancel, event, audit id, alert — each after the lock returns",
+      j(trail) === j(["status:true", "cancel:false", "event:false", "auditId:false", "alert:false"]), j(trail));
+    const b2 = await w.bot();
+    const i2 = await fresh(b2);
+    let release!: () => void;
+    const gate = new Promise<void>((r) => { release = r; });
+    let entered!: () => void;
+    const holding = new Promise<void>((r) => { entered = r; });
+    const held = L.withLock(`wallet:${b2.userId}`, async () => { entered(); await gate; });
+    await holding;
+    const p = apply(i2, refuse("wallet_frozen"), recorder().alerts);
+    await sleep(300);
+    const mid = await botRow(b2.botId);
+    release();
+    await held;
+    await p;
+    ok("13.33 · the status write waits for wallet:<botUser> (held → still ACTIVE; released → AUTO_PAUSED)", mid.status === "ACTIVE" && (await botRow(b2.botId)).status === "AUTO_PAUSED", `${mid.status} → ${(await botRow(b2.botId)).status}`);
+  }
+
+  /* ── 13.34 account_blocked: re-read the account (A5, A10, ruling 49) ── */
+  {
+    const cases: Array<[string, Any, string, string]> = [
+      ["CLOSED", { status: "CLOSED", closedAt: w.iso() }, "REMOVED", "ACCOUNT_CLOSED"],
+      ["SELF_EXCLUDED", { status: "SELF_EXCLUDED" }, "AUTO_PAUSED", "SELF_EXCLUDED"],
+      ["COOLED_OFF", { status: "COOLED_OFF" }, "AUTO_PAUSED", "COOLING_OFF"],
+      ["SUSPENDED", { status: "SUSPENDED" }, "AUTO_PAUSED", "ACCOUNT_SUSPENDED"],
+      ["ACTIVE (nothing found)", {}, "AUTO_PAUSED", "ACCOUNT_BLOCKED"],
+    ];
+    for (const [label, patch, to, cause] of cases) {
+      const b = await w.bot();
+      if (Object.keys(patch).length) await w.setUserFields(b.userId, patch);
+      const i = await fresh(b);
+      const rec = recorder();
+      const out = await apply(i, refuse("account_blocked"), rec.alerts);
+      const bot = await botRow(b.botId);
+      const stop = rec.calls.find((c) => c.fn === "botStopped");
+      ok(`13.34 · account ${label} → ${to}(${cause}), the row closed, one botStopped alert`, out.kind === "botStopped" && bot.status === to && (to === "REMOVED" ? bot.removedCause === cause && bot.removedById === null : bot.pauseReason === cause)
+        && (await row(i.id)).status === "CANCELLED" && rec.count("botStopped") === 1 && stop?.to === to && stop?.cause === cause, `${j(bot)} · ${j(rec.calls)}`);
+      if (to === "REMOVED") {
+        const ev = (await eventsOf(b.botId)).find((e) => e.kind === "REMOVED");
+        const aud = await auditsOf((e) => e.action === "house_bot.removed" && e.targetId === b.botId);
+        ok("13.35 · A5 · the REMOVED event carries the house_bot.removed audit id", !!ev && aud.length === 1 && ev.auditId === aud[0].id, `${j(ev)} · ${aud.length}`);
+      }
+      if (cause === "SELF_EXCLUDED" || cause === "COOLING_OFF") ok(`13.36 · ${label} voids consent (${cause})`, bot.consentVoidCause === cause, j(bot));
+    }
+    const bp = await w.bot();
+    await S.houseBotStore.setStatus(bp.botId, { from: ["ACTIVE"], to: "PAUSED", pauseReason: "MANUAL", pausedFromStatus: null });
+    await w.setUserFields(bp.userId, { status: "CLOSED", closedAt: w.iso() });
+    await apply(await fresh(bp), refuse("account_blocked"), recorder().alerts);
+    ok("13.37 · a PAUSED bot whose account closed is REMOVED too", (await botRow(bp.botId)).status === "REMOVED");
+  }
+
+  /* ── 13.38 house_consent_stale: recompute the holder's causes (A3, PLAN §14) ── */
+  {
+    const bpw = await w.bot();
+    await w.setUserFields(bpw.userId, { passwordHash: "hash_holder_v2", passwordSetVia: "SELF_CHANGE", passwordSetAt: w.iso() });
+    await apply(await fresh(bpw), refuse("house_consent_stale"), recorder().alerts);
+    const pw = await botRow(bpw.botId);
+    ok("13.38 · a changed password → AUTO_PAUSED(PASSWORD_CHANGED), no consent void", pw.status === "AUTO_PAUSED" && pw.pauseReason === "PASSWORD_CHANGED" && pw.consentVoidAt === null, j(pw));
+    const bid = await w.bot();
+    await S.houseBotStore.setConsentVoid(bid.botId, "IDENTITY_REFUSED");
+    const recId = recorder();
+    await apply(await fresh(bid), refuse("house_consent_stale"), recId.alerts);
+    const idb = await botRow(bid.botId);
+    ok("13.39 · a standing IDENTITY_REFUSED void → AUTO_PAUSED(IDENTITY_REFUSED) (a void that already stands still stops the bot)", idb.status === "AUTO_PAUSED" && idb.pauseReason === "IDENTITY_REFUSED" && recId.count("botStopped") === 1, j(idb));
+    const bw = await w.bot();
+    await S.houseBotStore.setConsentVoid(bw.botId, "HOLDER_WITHDREW");
+    await apply(await fresh(bw), refuse("house_consent_stale"), recorder().alerts);
+    const wd = await botRow(bw.botId);
+    const confirm = await auditsOf((e) => e.action === "house_bot.holder_withdrew_consent" && e.targetId === bw.botId);
+    ok("13.40 · a standing HOLDER_WITHDREW void → AUTO_PAUSED(HOLDER_WITHDREW), and the engine never writes the holder's withdrawal", wd.status === "AUTO_PAUSED" && wd.pauseReason === "HOLDER_WITHDREW" && confirm.length === 0, `${j(wd)} · ${confirm.length}`);
+    const bok = await w.bot();
+    const iok = await fresh(bok);
+    const outOk = await apply(iok, refuse("house_consent_stale"), recorder().alerts);
+    ok("13.41 · ruling 51 · consent valid again by the time of the re-read → requeued, the bot stays ACTIVE", outOk.kind === "requeued" && (await botRow(bok.botId)).status === "ACTIVE", j(outOk));
+    const bun = await w.bot();
+    const iun = await fresh(bun);
+    const realGet = S.houseBotStore.get;
+    S.houseBotStore.get = async () => { throw Object.assign(new Error("read failed"), { code: "P1001" }); };
+    let outUn: Any;
+    try { outUn = await apply(iun, refuse("house_consent_stale"), recorder().alerts); } finally { Object.assign(S.houseBotStore, { get: realGet }); }
+    ok("13.42 · ruling 51 · an unreadable holder → requeued, never a guessed pause", outUn?.kind === "requeued" && (await botRow(bun.botId)).status === "ACTIVE", j(outUn));
+  }
+
+  /* ── 13.43 market re-reads (PLAN §4.6 NOT_FOUND, A10 INVALID) ── */
+  {
+    const b = await w.bot();
+    const gone = await fresh(b);
+    const outGone = await apply({ ...gone, marketId: "mkt_hb_gone" }, { ok: false, code: "NOT_FOUND" }, recorder().alerts);
+    ok("13.43 · NOT_FOUND and the market is gone → SKIPPED(MARKET_GONE)", (await row(gone.id)).status === "SKIPPED" && (await row(gone.id)).reasonCode === "MARKET_GONE", j(outGone));
+    const realView = S.houseSeamStore.marketView;
+    for (const code of ["NOT_FOUND", "INVALID", "SELECTION_CLOSED"]) {
+      const iv = await fresh(b);
+      S.houseSeamStore.marketView = async () => { throw Object.assign(new Error("read failed"), { code: "P1001" }); };
+      let outV: Any;
+      try { outV = await apply(iv, { ok: false, code }, recorder().alerts); } finally { Object.assign(S.houseSeamStore, { marketView: realView }); }
+      ok(`13.44 · ruling 51 · ${code} with an unreadable market → requeued, the bot stays ACTIVE`, outV?.kind === "requeued" && (await botRow(b.botId)).status === "ACTIVE", j(outV));
+    }
+    const live = await fresh(b);
+    await apply(live, refuse("selection_closed"), recorder().alerts);
+    ok("13.45 · selection_closed on a LIVE market → EXPIRED(CUTOFF)", (await row(live.id)).status === "EXPIRED" && (await row(live.id)).reasonCode === "CUTOFF", j(await row(live.id)));
+    const inv = await fresh(b);
+    await apply({ ...inv, marketId: "mkt_hb_gone" }, { ok: false, code: "INVALID" }, recorder().alerts);
+    ok("13.46 · INVALID and the market is gone → SKIPPED(MARKET_NOT_LIVE)", (await row(inv.id)).reasonCode === "MARKET_NOT_LIVE");
+    const closed = await fresh(b);
+    await w.mdal.marketStore.stamp(closed.marketId, { status: "CLOSED" });
+    ok("13.47a · fixture · the market now reads CLOSED", (await S.houseSeamStore.marketView(closed.marketId))?.status === "CLOSED");
+    await apply(closed, { ok: false, code: "SELECTION_CLOSED" }, recorder().alerts);
+    ok("13.47 · SELECTION_CLOSED on a market no longer LIVE → SKIPPED(MARKET_NOT_LIVE)", (await row(closed.id)).status === "SKIPPED" && (await row(closed.id)).reasonCode === "MARKET_NOT_LIVE");
+    const bm = await w.bot();
+    const acc = await fresh(bm);
+    await apply(acc, { ok: false, code: "NOT_FOUND" }, recorder().alerts);
+    ok("13.48 · NOT_FOUND while the market exists → AUTO_PAUSED(ACCOUNT_MISSING)", (await botRow(bm.botId)).pauseReason === "ACCOUNT_MISSING" && (await row(acc.id)).status === "CANCELLED");
+  }
+
+  /* ── 13.49 conflicts and caps (N1 §4.6, ruling 47) ── */
+  {
+    const b = await w.bot();
+    const conflict = async (detail: Any) => { const i = await fresh(b); await apply(i, refuse("house_market_conflict", detail), recorder().alerts); return (await row(i.id)).reasonCode; };
+    ok("13.49 · conflict OPPOSITE_SIDE → SKIPPED(CAP_OPPOSITE_SIDE)", (await conflict({ conflict: "OPPOSITE_SIDE" })) === "CAP_OPPOSITE_SIDE");
+    ok("13.50 · conflict OWNER_POSITION / OTHER_BOT / TRIGGER_BOTH_SIDES / none → SKIPPED(MARKET_HELD)",
+      (await conflict({ conflict: "OWNER_POSITION" })) === "MARKET_HELD" && (await conflict({ conflict: "OTHER_BOT" })) === "MARKET_HELD"
+        && (await conflict({ conflict: "TRIGGER_BOTH_SIDES" })) === "MARKET_HELD" && (await conflict(undefined)) === "MARKET_HELD");
+    const cap = async (detail: Any, o: Any = {}) => {
+      const i = await fresh(b, o);
+      const t0 = Date.now();
+      const out = await apply(i, refuse("house_cap_reached", detail), recorder().alerts);
+      return { out, r: await row(i.id), t0 };
+    };
+    const until = new Date(Date.now() + 30_000).toISOString();
+    const gap = await cap({ cap: "MIN_GAP", until });
+    ok("13.51 · MIN_GAP freeing before staleAt → deferred to the seam's own `until`, attempts handed back", gap.out.kind === "deferred" && gap.r.status === "PENDING" && gap.r.nextAttemptAt === until && gap.r.attempts === 0 && gap.r.transientAttempts === 0, j(gap.r));
+    const late = await cap({ cap: "MIN_GAP", until: new Date(Date.now() + 900_000).toISOString() });
+    ok("13.52 · MIN_GAP freeing after staleAt → SKIPPED(CAP_MIN_GAP)", late.r.status === "SKIPPED" && late.r.reasonCode === "CAP_MIN_GAP", j(late.r));
+    const perMin = await cap({ cap: "GLOBAL_BETS_PER_MINUTE" });
+    const minWait = Date.parse(perMin.r.nextAttemptAt) - perMin.t0;
+    ok("13.53 · ruling 47 · GLOBAL_BETS_PER_MINUTE → deferred one window (≈60 s)", perMin.out.kind === "deferred" && minWait >= 59_000 && minWait <= 61_500, `${minWait} ms`);
+    const perMinLate = await cap({ cap: "GLOBAL_BETS_PER_MINUTE" }, { staleAt: w.iso(30_000) });
+    ok("13.54 · …but past staleAt → SKIPPED(CAP_GLOBAL_BETS_PER_MINUTE)", perMinLate.r.reasonCode === "CAP_GLOBAL_BETS_PER_MINUTE");
+    const hour = await cap({ cap: "PER_HOUR" });
+    const day = await cap({ cap: "PER_DAY" });
+    ok("13.55 · ruling 47 · PER_HOUR and PER_DAY carry no free time → SKIPPED", hour.r.reasonCode === "CAP_PER_HOUR" && day.r.reasonCode === "CAP_PER_DAY");
+    const terminalCap = await cap({ cap: "PER_MARKET_COUNT", until });
+    ok("13.56 · a cap that does not defer (PER_MARKET_COUNT) skips even with a free time", terminalCap.r.status === "SKIPPED" && terminalCap.r.reasonCode === "CAP_PER_MARKET_COUNT");
+    const bu = await w.bot();
+    const iu = await fresh(bu);
+    const recU = recorder();
+    await apply(iu, refuse("house_cap_reached", { cap: "NO_SUCH_CAP" }), recU.alerts);
+    ok("13.57 · ruling 54 · an unknown cap code → FAILED(UNMAPPED), AUTO_PAUSED(UNMAPPED_REFUSAL), one alert", (await row(iu.id)).reasonCode === "UNMAPPED"
+      && (await botRow(bu.botId)).pauseReason === "UNMAPPED_REFUSAL" && recU.codes("UNMAPPED_REFUSAL") === 1, j(recU.calls));
+  }
+
+  /* ── 13.58 UNMAPPED (A10) ── */
+  {
+    const b = await w.bot();
+    const other = await fresh(b);
+    const i = await fresh(b);
+    const rec = recorder();
+    const out = await apply(i, refuse("house_brand_new_reason"), rec.alerts);
+    const bot = await botRow(b.botId);
+    ok("13.58 · an unknown reason → FAILED(UNMAPPED), AUTO_PAUSED(UNMAPPED_REFUSAL), its intents cancelled, one alert", out.status === "FAILED" && (await row(i.id)).reasonCode === "UNMAPPED"
+      && bot.pauseReason === "UNMAPPED_REFUSAL" && (await row(other.id)).status === "CANCELLED" && rec.codes("UNMAPPED_REFUSAL") === 1 && rec.count("botStopped") === 1, `${j(out)} · ${j(rec.calls)}`);
+    await S.houseBotStore.setStatus(b.botId, { from: ["AUTO_PAUSED"], to: "ACTIVE", pauseReason: null, pausedFromStatus: null });
+    await apply(await fresh(b), refuse("code:BUSY"), rec.alerts);
+    await apply(await fresh(b), { ok: false, code: "SOMETHING_NEW" }, rec.alerts);
+    ok("13.59 · a reason spelled like a table key (\"code:BUSY\") and an unknown bare code are UNMAPPED too — and alert once a day", rec.codes("UNMAPPED_REFUSAL") === 1 && (await botRow(b.botId)).pauseReason === "UNMAPPED_REFUSAL", j(rec.calls));
+  }
+
+  /* ── 13.60 the error streak (ENG-11) ── */
+  {
+    await w.switchOn();
+    await S.houseBotRuntimeStore.resetErrorStreak();
+    const b = await w.bot();
+    const rec = recorder();
+    const boom = () => ({ thrown: new Error("engine defect") });
+    const o1 = await apply(await fresh(b), boom(), rec.alerts);
+    ok("13.60 · a non-transient throw → FAILED(INTERNAL), streak 1, still ON", o1.status === "FAILED" && o1.code === "INTERNAL" && (await streak()) === 1 && (await S.houseBotControlStore.get()).enabled === true, j(o1));
+    await apply(await fresh(b), { thrown: Object.assign(new Error("deadlock"), { code: "40P01" }) }, rec.alerts);
+    ok("13.61 · a transient throw between them leaves the streak alone", (await streak()) === 1);
+    await apply(await fresh(b), boom(), rec.alerts);
+    ok("13.62 · two in a row → still ON", (await S.houseBotControlStore.get()).enabled === true && (await streak()) === 2);
+    const audBefore = await auditIds();
+    await apply(await fresh(b), boom(), rec.alerts);
+    const c = await S.houseBotControlStore.get();
+    const aud = await auditsOf((e) => e.action === "house_bot.switch_off" && e.payload?.cause === "ENGINE_ERRORS" && !audBefore.has(e.id));
+    ok("13.63 · the third → master OFF(ENGINE_ERRORS), one SECURITY alert, one switch_off audit", c.enabled === false && c.offCause === "ENGINE_ERRORS" && rec.count("security") === 1 && aud.length === 1, `${j(c)} · ${aud.length}`);
+    await w.switchOn();
+    await S.houseBotRuntimeStore.resetErrorStreak();
+  }
+
+  /* ── 13.64 isEngineTransient and the backoff (A10, MON-10) ── */
+  ok("13.64 · isEngineTransient: admission shedding, retry.ts codes, the engine codes (top level and meta)",
+    TR.isEngineTransient(new AdmissionBusy("timeout", 15_000)) && TR.isEngineTransient({ code: "40001" }) && TR.isEngineTransient({ code: "55P03" })
+      && TR.isEngineTransient({ meta: { code: "57P03" } }) && TR.isEngineTransient({ code: "P1008" }));
+  ok("13.65 · CONTROL · a unique violation, a plain Error, a string and null are not transient",
+    !TR.isEngineTransient({ code: "P2002" }) && !TR.isEngineTransient(new Error("x")) && !TR.isEngineTransient("55P03") && !TR.isEngineTransient(null));
+  ok("13.66 · transientBackoffMs walks 1, 5, 15, 45 s and stays at 45 s", [-1, 0, 1, 2, 3, 9].map((n) => TR.transientBackoffMs(n, K.REQUEUE_BACKOFF_SEC)).join(",") === "1000,1000,5000,15000,45000,45000");
+
+  /* ── 13.67 maintenanceOn (F7, ruling 48) ── */
+  {
+    const PCFG: Any = await import("../../src/lib/server/platform-config.ts");
+    const CS: Any = await import("../../src/lib/server/config-store.ts");
+    if (!onPostgres) {
+      ok("13.67 · memory: no config store → not in maintenance", (await CTL.maintenanceOn()) === false);
+    } else {
+      const before = await CS.loadConfigResult(PCFG.PLATFORM_CONFIG_KEY);
+      try {
+        await CS.saveConfigOrThrow(PCFG.PLATFORM_CONFIG_KEY, { timezone: "Africa/Dar_es_Salaam", maintenanceMode: true });
+        ok("13.67 · a stored config in maintenance → true", (await CTL.maintenanceOn()) === true);
+        await CS.saveConfigOrThrow(PCFG.PLATFORM_CONFIG_KEY, { maintenanceMode: true });
+        ok("13.68 · a row without a timezone reads as the defaults, as getPlatformConfig reads it → false", (await CTL.maintenanceOn()) === false);
+        await CS.saveConfigOrThrow(PCFG.PLATFORM_CONFIG_KEY, { timezone: "Africa/Dar_es_Salaam", maintenanceMode: false });
+        ok("13.69 · CONTROL · maintenance off → false", (await CTL.maintenanceOn()) === false);
+        await prisma().$executeRawUnsafe(`ALTER TABLE "SystemConfig" RENAME TO "SystemConfig_hb_gate"`);
+        let threw = false;
+        try { await CTL.maintenanceOn(); } catch { threw = true; } finally { await prisma().$executeRawUnsafe(`ALTER TABLE "SystemConfig_hb_gate" RENAME TO "SystemConfig"`); }
+        ok("13.70 · ⛔ an unreadable config THROWS (a requeue, never a stake)", threw === true);
+      } finally {
+        if (before.ok && before.value != null) await CS.saveConfigOrThrow(PCFG.PLATFORM_CONFIG_KEY, before.value);
+        else await prisma().systemConfig.deleteMany({ where: { key: PCFG.PLATFORM_CONFIG_KEY } });
+      }
+    }
   }
 });
 

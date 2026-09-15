@@ -23,7 +23,7 @@ export type OutcomeAction =
   | {
       kind: "terminal";
       status: "SKIPPED" | "EXPIRED" | "CANCELLED" | "FAILED";
-      code: EngineCode;
+      reasonCode: EngineCode;
       /** `botDaily`: AlertOnce per bot, code and EAT day. `stakeNotWhole`: AlertOnce per bot per day. */
       alert?: "botDaily" | "stakeNotWhole";
       /** SECURITY alert and master OFF(ENGINE_FAULT). */
@@ -50,45 +50,45 @@ export const OUTCOME_TABLE = {
   ok: { kind: "placed" },
   // The player's own gates.
   rate_limited: { kind: "transient" },
-  maintenance: { kind: "terminal", status: "SKIPPED", code: "MAINTENANCE" },
+  maintenance: { kind: "terminal", status: "SKIPPED", reasonCode: "MAINTENANCE" },
   self_excluded: { kind: "autoPause", cause: "SELF_EXCLUDED" },
   cooling_off: { kind: "autoPause", cause: "COOLING_OFF" },
   // C4-SPEC ruling 20: unreachable for a house stake (A7 — no session clock rides along).
   session_limit_reached: { kind: "autoPause", cause: "ACCOUNT_BLOCKED", anomaly: true },
   account_blocked: { kind: "rereadAccount" },
   // A7: not whole is a bug in the engine; bounds that moved after the decision are routine.
-  stake_not_whole: { kind: "terminal", status: "FAILED", code: "INTERNAL", alert: "stakeNotWhole" },
-  stake_below_min: { kind: "terminal", status: "SKIPPED", code: "STAKE_BOUNDS_CHANGED" },
-  stake_above_max: { kind: "terminal", status: "SKIPPED", code: "STAKE_BOUNDS_CHANGED" },
+  stake_not_whole: { kind: "terminal", status: "FAILED", reasonCode: "INTERNAL", alert: "stakeNotWhole" },
+  stake_below_min: { kind: "terminal", status: "SKIPPED", reasonCode: "STAKE_BOUNDS_CHANGED" },
+  stake_above_max: { kind: "terminal", status: "SKIPPED", reasonCode: "STAKE_BOUNDS_CHANGED" },
   // On the bet path this reason is the INVALID SIDE refusal (`buyPositionInner`), which a stored intent cannot
   // produce: a defect, so the engine stops (PLAN §4.6, C4-SPEC ruling 7).
-  market_not_live: { kind: "terminal", status: "FAILED", code: "INTERNAL", engineFault: true },
+  market_not_live: { kind: "terminal", status: "FAILED", reasonCode: "INTERNAL", engineFault: true },
   // H0 runs the key checks first; reaching this means the key belongs to another bet — the same defect class.
-  idempotency_key_conflict: { kind: "terminal", status: "FAILED", code: "INTERNAL", engineFault: true },
+  idempotency_key_conflict: { kind: "terminal", status: "FAILED", reasonCode: "INTERNAL", engineFault: true },
   wallet_frozen: { kind: "autoPause", cause: "WALLET_FROZEN" },
   wallet_missing: { kind: "autoPause", cause: "WALLET_MISSING" },
   loss_limit_daily: { kind: "autoPause", cause: "OWNER_LOSS_LIMIT" },
-  balance_insufficient: { kind: "terminal", status: "SKIPPED", code: "CAP_BALANCE_FLOOR", alert: "botDaily" },
+  balance_insufficient: { kind: "terminal", status: "SKIPPED", reasonCode: "CAP_BALANCE_FLOOR", alert: "botDaily" },
   selection_closed: { kind: "rereadMarketLive" },
   system_busy: { kind: "transient" },
   // The house gates.
-  house_key_mismatch: { kind: "terminal", status: "FAILED", code: "INTERNAL", engineFault: true },
+  house_key_mismatch: { kind: "terminal", status: "FAILED", reasonCode: "INTERNAL", engineFault: true },
   house_gate_unreadable: { kind: "transient" },
-  house_disabled: { kind: "terminal", status: "CANCELLED", code: "MASTER_OFF" },
-  house_bot_inactive: { kind: "terminal", status: "CANCELLED", code: "BOT_NOT_ACTIVE" },
+  house_disabled: { kind: "terminal", status: "CANCELLED", reasonCode: "MASTER_OFF" },
+  house_bot_inactive: { kind: "terminal", status: "CANCELLED", reasonCode: "BOT_NOT_ACTIVE" },
   house_account_ineligible: { kind: "autoPause", cause: "ROLE_CHANGED" },
   house_consent_stale: { kind: "rereadConsent" },
-  house_cash_only: { kind: "terminal", status: "SKIPPED", code: "CAP_BALANCE_FLOOR", alert: "botDaily" },
+  house_cash_only: { kind: "terminal", status: "SKIPPED", reasonCode: "CAP_BALANCE_FLOOR", alert: "botDaily" },
   house_market_conflict: { kind: "conflict" },
   house_cap_reached: { kind: "cap" },
-  house_trigger_gone: { kind: "terminal", status: "SKIPPED", code: "TRIGGER_EXITED", penalty: true },
-  house_condition_gone: { kind: "terminal", status: "SKIPPED", code: "CONDITION_GONE" },
+  house_trigger_gone: { kind: "terminal", status: "SKIPPED", reasonCode: "TRIGGER_EXITED", penalty: true },
+  house_condition_gone: { kind: "terminal", status: "SKIPPED", reasonCode: "CONDITION_GONE" },
   house_intent_superseded: { kind: "noop" },
-  house_product_not_allowed: { kind: "terminal", status: "SKIPPED", code: "PRODUCT_NOT_SUPPORTED" },
-  house_round_locked: { kind: "terminal", status: "EXPIRED", code: "CUTOFF" },
-  house_info_blackout: { kind: "terminal", status: "SKIPPED", code: "INFO_BLACKOUT" },
-  house_intent_stale: { kind: "terminal", status: "EXPIRED", code: "STALE" },
-  house_counterparty_concentration: { kind: "terminal", status: "SKIPPED", code: "COUNTERPARTY_CONCENTRATION" },
+  house_product_not_allowed: { kind: "terminal", status: "SKIPPED", reasonCode: "PRODUCT_NOT_SUPPORTED" },
+  house_round_locked: { kind: "terminal", status: "EXPIRED", reasonCode: "CUTOFF" },
+  house_info_blackout: { kind: "terminal", status: "SKIPPED", reasonCode: "INFO_BLACKOUT" },
+  house_intent_stale: { kind: "terminal", status: "EXPIRED", reasonCode: "STALE" },
+  house_counterparty_concentration: { kind: "terminal", status: "SKIPPED", reasonCode: "COUNTERPARTY_CONCENTRATION" },
   // The bare codes (no reason).
   "code:NOT_FOUND": { kind: "rereadMarketOrAccount" },
   "code:INVALID": { kind: "rereadMarketLive" },

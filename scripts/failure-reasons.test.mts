@@ -676,6 +676,10 @@ console.log("\n§8c · the services still emit the reasons that replaced the phr
       // House bots (build commit 3, 02 §3.3 item 8): an owner's Start is refused while the holder's own limit would
       // block the minimum stake. It is an officer's read; every house stake still meets `buyPosition`'s own check.
       "src/lib/server/house-bot/eligibility.ts": "officer-facing Start refusal; no player bet passes through it",
+      // House bots (build commit 4, F5 / PLAN §14 OWNER_LOSS_LIMIT): the engine's fresh holder read asks whether the
+      // holder's own limit would block a house stake before firing. It answers the engine only; the stake itself still
+      // meets `buyPosition`'s own check, which is the refusal that says why.
+      "src/lib/server/house-bot/control.ts": "engine pre-fire holder read; refuses no player, the house stake still meets buyPosition's check",
     };
     const all = walkServer("src/lib/server").filter((f) => !f.endsWith("responsible-gambling.ts")).filter(callsIt);
     const callers = all.filter((f) => !Object.keys(READ_ONLY_CALLERS).some((x) => f.endsWith(x)));
