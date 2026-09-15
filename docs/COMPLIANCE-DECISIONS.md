@@ -55,9 +55,11 @@ Postmark, Anthropic, Sentry). Recorded here as the owner's report of the regulat
 a change in the law or the Board's guidance. ② Cloudflare Web Analytics — Ali reports it off in the dashboard (the account's Web
 Analytics page shows "Get started", i.e. no site). ⚠️ **But checked live the same hour, the beacon is STILL injected**
 into `/`, `/legal/privacy` and `/markets` (`static.cloudflareinsights.com/beacon.min.js`, requested, and refused by our
-CSP). A second switch injects it — see the entry's follow-up once identified. Harmless while the CSP blocks it (it
-collects nothing), but it must be turned off at its source rather than left to fail.
-**Open item:** the Cloudflare injection's source. (GA data retention — closed by the entry above, v2026-09-15.3.)
+CSP). **Resolved the same day:** the source was a Cloudflare Web Analytics site for 50pick.tz with **Automatic
+setup** (Analytics → Web Analytics → Manage site). Ali set it to **Disable**; checked live at 11:02 UTC, the beacon is gone
+from `/`, `/legal/privacy` and `/markets`: no tag in the HTML, no request, no CSP error. ⛔ Re-enabling it is a new
+processor on every page, so it would need a §4 entry first. Note that the dashboard's "Set up hostname" form ENABLES it.
+**Open items:** none. (GA data retention was closed by the entry above, v2026-09-15.3.)
 
 **⛔ Do not** load Google Analytics before consent, weight the two answers differently, or add any identifier (user, IP,
 hash, cookie, storage) to the visit counter, without a new owner decision and a notice change first.
