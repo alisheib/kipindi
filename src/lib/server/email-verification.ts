@@ -113,6 +113,13 @@ export async function sendEmailVerification(userId: string, email: string, name?
 export async function setUserEmail(
   userId: string,
   email: string,
+  /**
+   * `byOfficer` — support set this address (`setPlayerEmailAction`). Stamps `emailSetByOfficerAt` in the
+   * same update as the address (04 A4): a reset link sent to an address support chose is not the holder's
+   * own password change, and a house-bot consent check refuses one within 30 days of it. Never cleared —
+   * the window is what expires it.
+   */
+  opts: { byOfficer?: boolean } = {},
 ): Promise<
   | { ok: true; changed: boolean; verificationSent: boolean; deliveryIssue?: SendResult["reason"] }
   | { ok: false; error: string; code: "NOT_FOUND" | "EMAIL_TAKEN"; reason: FailureReason }
@@ -159,7 +166,7 @@ export async function setUserEmail(
   }
 
   // New / changed address: store it, reset verification, send a fresh link.
-  await db.user.update(userId, { email: next, emailVerifiedAt: null });
+  await db.user.update(userId, { email: next, emailVerifiedAt: null, ...(opts.byOfficer ? { emailSetByOfficerAt: new Date().toISOString() } : {}) });
   audit({ category: "COMPLIANCE", action: "user.email.set", actorId: userId, targetType: "User", targetId: userId, payload: { verified: false } });
   const name = (user.displayName?.trim().split(/\s+/)[0]) || displayLabel({ id: userId, displayName: user.displayName ?? null });
   // Report what ACTUALLY happened. A suppressed (previously hard-bounced) address

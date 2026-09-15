@@ -239,7 +239,9 @@ export async function consumeResetToken(
 
   const salt = randomId(32);
   const hash = await hashPassword(newPassword, salt);
-  await db.user.update(user.id, { passwordHash: hash, passwordSalt: salt });
+  // ⛔ The history columns ride in the SAME update as the hash (04 A4): the audit below is not awaited, and
+  // a house-bot consent check that read it instead would wave through a password it never saw set.
+  await db.user.update(user.id, { passwordHash: hash, passwordSalt: salt, passwordSetAt: new Date().toISOString(), passwordSetVia: "RESET_LINK" });
 
   audit({
     category: "AUTH",
@@ -268,7 +270,9 @@ export async function adminResetPassword(
   const tempPassword = randomId(12);
   const salt = randomId(32);
   const hash = await hashPassword(tempPassword, salt);
-  await db.user.update(userId, { passwordHash: hash, passwordSalt: salt });
+  // OFFICER_TEMP in the same update (04 A4): support's password is not the holder's consent, and the
+  // audit below is fire-and-forget.
+  await db.user.update(userId, { passwordHash: hash, passwordSalt: salt, passwordSetAt: new Date().toISOString(), passwordSetVia: "OFFICER_TEMP" });
 
   audit({
     category: "ADMIN",
@@ -323,7 +327,7 @@ export async function changePassword(
 
   const salt = randomId(32);
   const hash = await hashPassword(newPassword, salt);
-  await db.user.update(userId, { passwordHash: hash, passwordSalt: salt });
+  await db.user.update(userId, { passwordHash: hash, passwordSalt: salt, passwordSetAt: new Date().toISOString(), passwordSetVia: "SELF_CHANGE" });
 
   audit({
     category: "AUTH",

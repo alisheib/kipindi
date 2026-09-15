@@ -2142,3 +2142,131 @@ export async function runKycReviewSlaAlerts(opts: { nowMs?: number; maxAlerts?: 
   }
   return run;
 }
+
+/* ---- House bots (build commit 3) ---- */
+
+/** The holder events `notifyHouseBotOwner` announces (PLAN §7, 02 §2.3/§3.2–§3.5, 04 A3, C13). */
+export type HouseBotOwnerNotice =
+  | "designated" | "started" | "paused" | "password_paused" | "removed" | "reverified" | "verify_reserved" | "withdrew";
+
+/** The notices that also send an email; every other one is bell + push only (04 C13). */
+const HOUSE_BOT_OWNER_EMAILED = ["designated", "removed", "reverified"] as const satisfies readonly HouseBotOwnerNotice[];
+
+/**
+ * The account holder's liquidity notice (kind `HOUSE_BOT`). Link always `/positions`.
+ *
+ * ⛔ RETURNS EARLY WHILE THE HOLDER IS SELF-EXCLUDED OR ON A BREAK (04 C13 "RG gate", A2): a responsible-
+ * gambling lock means no outbound engagement, and a notice about stakes from their account is exactly that.
+ * Outcome notices on their positions keep today's behaviour; this emitter only.
+ * ⛔ Never SMS. `HOUSE_BOT` is not a money kind (PLAN §18, W17): these notices state no figure.
+ * ⚠️ Swahili and Chinese are drafted and marked for native review, like every other house-bot holder string.
+ */
+export async function notifyHouseBotOwner(userId: string, notice: HouseBotOwnerNotice, opts: { atMs?: number } = {}): Promise<StoredNotification | null> {
+  const { isLockedOut } = await import("./responsible-gambling");
+  if ((await isLockedOut(userId)).locked) return null;
+  const { formatEat } = await import("@/lib/house-bot/clock");
+  const atMs = opts.atMs ?? Date.now();
+  const hhmm = formatEat(atMs, "HH:MM");
+  const COPY: Record<HouseBotOwnerNotice, { titleEn: string; titleSw: string; titleZh: string; bodyEn: string; bodySw: string; bodyZh: string }> = {
+    designated: {
+      titleEn: "Your account now provides liquidity", titleSw: "Akaunti yako sasa inatoa ukwasi", titleZh: "您的账户现在提供流动性",
+      bodyEn: "50pick will place liquidity stakes from your account as you agreed. You keep full use of it. Nothing is placed until 50pick starts them. You can stop this at any time by changing your password or contacting 50pick.",
+      bodySw: "50pick itaweka dau za ukwasi kutoka kwenye akaunti yako kama ulivyokubali. Unaendelea kuitumia kikamilifu. Hakuna dau litakalowekwa hadi 50pick izianze. Unaweza kusimamisha hili wakati wowote kwa kubadilisha nenosiri lako au kuwasiliana na 50pick.",
+      bodyZh: "50pick 将按您的同意从您的账户下注流动性投注。您仍可完全使用您的账户。在 50pick 启动之前不会下任何注。您可随时通过更改密码或联系 50pick 停止此安排。",
+    },
+    started: {
+      titleEn: "Liquidity stakes started", titleSw: "Dau za ukwasi zimeanza", titleZh: "流动性投注已开始",
+      bodyEn: "50pick started placing liquidity stakes from your account. You can stop them at any time by changing your password or contacting 50pick.",
+      bodySw: "50pick imeanza kuweka dau za ukwasi kutoka kwenye akaunti yako. Unaweza kuzisimamisha wakati wowote kwa kubadilisha nenosiri lako au kuwasiliana na 50pick.",
+      bodyZh: "50pick 已开始从您的账户下注流动性投注。您可随时通过更改密码或联系 50pick 停止。",
+    },
+    paused: {
+      titleEn: "Liquidity stakes paused", titleSw: "Dau za ukwasi zimesimamishwa", titleZh: "流动性投注已暂停",
+      bodyEn: "50pick paused liquidity stakes from your account. Your balance and open stakes are unchanged.",
+      bodySw: "50pick imesimamisha dau za ukwasi kutoka kwenye akaunti yako. Salio lako na dau zilizo wazi hazijabadilika.",
+      bodyZh: "50pick 已暂停从您的账户下注流动性投注。您的余额和未结算投注不受影响。",
+    },
+    password_paused: {
+      titleEn: "Liquidity stakes paused", titleSw: "Dau za ukwasi zimesimamishwa", titleZh: "流动性投注已暂停",
+      bodyEn: "Your password changed, so 50pick stopped placing liquidity stakes from your account. Your balance and open stakes are unchanged.",
+      bodySw: "Nenosiri lako limebadilika, kwa hiyo 50pick imeacha kuweka dau za ukwasi kutoka kwenye akaunti yako. Salio lako na dau zilizo wazi hazijabadilika.",
+      bodyZh: "您的密码已更改，因此 50pick 已停止从您的账户下注流动性投注。您的余额和未结算投注不受影响。",
+    },
+    removed: {
+      titleEn: "Liquidity stakes ended", titleSw: "Dau za ukwasi zimekoma", titleZh: "流动性投注已结束",
+      bodyEn: "50pick no longer uses your account for liquidity stakes. Open stakes settle to your wallet as normal.",
+      bodySw: "50pick haitumii tena akaunti yako kwa dau za ukwasi. Dau zilizo wazi zitalipwa kwenye pochi yako kama kawaida.",
+      bodyZh: "50pick 不再使用您的账户进行流动性投注。未结算投注将照常结算到您的钱包。",
+    },
+    reverified: {
+      titleEn: "Your permission was confirmed", titleSw: "Ruhusa yako imethibitishwa", titleZh: "您的授权已确认",
+      bodyEn: `50pick confirmed your permission for liquidity stakes with your current password at ${hhmm} EAT. If you did not give your password to 50pick, change it now — that stops liquidity stakes at once.`,
+      bodySw: `50pick imethibitisha ruhusa yako ya dau za ukwasi kwa nenosiri lako la sasa saa ${hhmm} EAT. Kama hukuipa 50pick nenosiri lako, libadilishe sasa — hilo husimamisha dau za ukwasi mara moja.`,
+      bodyZh: `50pick 已于东非时间 ${hhmm} 使用您当前的密码确认了您对流动性投注的授权。如果您没有将密码提供给 50pick，请立即更改密码——这将立即停止流动性投注。`,
+    },
+    verify_reserved: {
+      titleEn: "A wrong password was tried", titleSw: "Nenosiri lisilo sahihi lilijaribiwa", titleZh: "有人尝试了错误的密码",
+      bodyEn: "Someone at 50pick tried to confirm your permission with a wrong password. Your sign-in is not locked.",
+      bodySw: "Mtu wa 50pick alijaribu kuthibitisha ruhusa yako kwa nenosiri lisilo sahihi. Kuingia kwako hakujafungwa.",
+      bodyZh: "50pick 的工作人员尝试用错误的密码确认您的授权。您的登录未被锁定。",
+    },
+    withdrew: {
+      titleEn: "Liquidity stakes stopped", titleSw: "Dau za ukwasi zimesimamishwa", titleZh: "流动性投注已停止",
+      bodyEn: "Done — 50pick won't place new liquidity stakes from your account. Open stakes settle as normal.",
+      bodySw: "Imekamilika — 50pick haitaweka dau mpya za ukwasi kutoka kwenye akaunti yako. Dau zilizo wazi zitalipwa kama kawaida.",
+      bodyZh: "已完成——50pick 不会再从您的账户下注新的流动性投注。未结算投注将照常结算。",
+    },
+  };
+  const row = await notify({ userId, kind: "HOUSE_BOT", ...COPY[notice], href: "/positions" }, { pushTag: `house-bot-${notice}` });
+  if ((HOUSE_BOT_OWNER_EMAILED as readonly string[]).includes(notice)) {
+    try {
+      const { sendEmailToUser, houseBotOwnerHtml } = await import("./email");
+      const kind = notice as (typeof HOUSE_BOT_OWNER_EMAILED)[number];
+      sendEmailToUser(userId, (to) => ({
+        to,
+        subject: `${COPY[notice].titleEn} · 50pick`,
+        html: houseBotOwnerHtml({ kind, at: `${formatEat(atMs, "D MMM, HH:MM")} EAT` }),
+        tag: "house-bot-owner",
+      })).catch(() => {});
+    } catch { /* holder email is best-effort; the bell row above is the record */ }
+  }
+  return row;
+}
+
+/**
+ * Officer alert: erasure refused because the account is still a house bot (04 R6). Bell + email to
+ * `houseBotAlertRecipients()`. The caller claims AlertOnce `erasure-blocked:<botId>` first, so a repeated
+ * erasure attempt raises one alert. `{holder}` is `playerHandle` only.
+ */
+export async function notifyAdminsHouseBotErasureBlocked(opts: { botId: string; holderUserId: string }): Promise<void> {
+  const { houseBotAlertRecipients, playerHandle } = await import("./house-bot/alerts");
+  const recipients = await houseBotAlertRecipients();
+  const holder = playerHandle(opts.holderUserId);
+  const href = `/admin/house-bots/${opts.botId}`;
+  for (const r of recipients) {
+    await notify({
+      userId: r.id,
+      kind: "HOUSE_BOT",
+      titleEn: `Erasure blocked — ${opts.botId} is still a house bot`,
+      titleSw: `Ufutaji umezuiwa — ${opts.botId} bado ni boti ya nyumba`,
+      titleZh: `删除已被阻止 — ${opts.botId} 仍是平台机器人`,
+      bodyEn: `${holder} asked for their data to be erased. Erasure refuses until an owner removes house bot ${opts.botId}; the request stays open.`,
+      bodySw: `${holder} ameomba data yake ifutwe. Ufutaji unakataa hadi mmiliki aondoe boti ${opts.botId}; ombi linabaki wazi.`,
+      bodyZh: `${holder} 已申请删除其数据。在所有者移除平台机器人 ${opts.botId} 之前，删除将被拒绝；该申请保持未结。`,
+      href,
+    }).catch(() => {});
+  }
+  try {
+    const { sendEmail, houseBotErasureBlockedAdminHtml } = await import("./email");
+    const { resolvePhoneEmail } = await import("./email-map");
+    const emails = [...new Set(
+      recipients
+        .map((o) => (o.email || resolvePhoneEmail(o.phoneE164) || "").trim().toLowerCase())
+        .filter((e) => e && !e.endsWith("@stub") && !e.endsWith("@none")),
+    )];
+    const html = houseBotErasureBlockedAdminHtml({ botId: opts.botId, holder, botUrl: href });
+    for (const to of emails) {
+      sendEmail({ to, subject: `Erasure blocked · house bot ${opts.botId}`, html, tag: "house-bot-erasure-blocked", trackLinks: false }).catch(() => {});
+    }
+  } catch { /* officer email is best-effort */ }
+}

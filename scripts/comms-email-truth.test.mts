@@ -288,6 +288,14 @@ const RENDERS: Rendered[] = [
   { template: "kycReviewOverdueAdminHtml",
     benign:  E.kycReviewOverdueAdminHtml({ reference: "kyc_a1", playerLabel: "Asha M.", submittedAt: "2026-09-12T08:00:00.000Z", hoursWaiting: 26, reviewUrl: "https://www.50pick.tz/admin/kyc/u1" }),
     hostile: E.kycReviewOverdueAdminHtml({ reference: HOSTILE, playerLabel: HOSTILE, submittedAt: HOSTILE, hoursWaiting: 0, reviewUrl: "https://www.50pick.tz/admin/kyc/u1" }) },
+  // House bots (build commit 3). The holder letter takes no caller text but its time, so the hostile render
+  // puts the payload there; the officer alert puts it in every free-text position.
+  { template: "houseBotOwnerHtml",
+    benign:  E.houseBotOwnerHtml({ kind: "designated", at: "15 Sep, 14:02 EAT" }),
+    hostile: E.houseBotOwnerHtml({ kind: "reverified", at: HOSTILE }) },
+  { template: "houseBotErasureBlockedAdminHtml",
+    benign:  E.houseBotErasureBlockedAdminHtml({ botId: "hb_a1b2c3d4e5f6", holder: "Player #A3F2K8", botUrl: "/admin/house-bots/hb_a1b2c3d4e5f6" }),
+    hostile: E.houseBotErasureBlockedAdminHtml({ botId: HOSTILE, holder: HOSTILE, botUrl: "/admin/house-bots/hb_a1b2c3d4e5f6" }) },
 ];
 
 // ── 1 · The registry is the inventory, and it matches reality ───────────────────
@@ -323,7 +331,10 @@ ok("every template is rendered by this suite",
 // `grep -c "^export function [a-zA-Z]*Html" src/lib/server/email.ts` = 63, not added up.
 // ⚠️ 63 → 64 on 2026-09-14: `refusedFundsReturnFailedHtml`, the player letter when a refused-funds RETURN's
 // payout failed and the amount came back into the frozen wallet. Measured the same way after the edit = 64.
-ok(`the inventory is 64 templates (found ${exported.length})`, exported.length === 64);
+// ⚠️ 64 → 66 on 2026-09-15 (branch house-bots, build commit 3): `houseBotOwnerHtml`, the holder's
+// designated / removed / reverified letter, and `houseBotErasureBlockedAdminHtml`, the officer alert when an
+// erasure is refused because the account is still a house bot. Measured the same way after the edit = 66.
+ok(`the inventory is 66 templates (found ${exported.length})`, exported.length === 66);
 
 // ── 2 · Every template has a real sender ───────────────────────────────────────
 section("2 · wiring — a template with no sender is a template nobody gets");

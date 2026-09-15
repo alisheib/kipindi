@@ -461,7 +461,9 @@ export type StoredNotification = {
      * message goes to both sides of the market. Deliberately not `SELECTION_CLOSED`:
      * that is the earlier event, when betting shut and the pools froze.
      */
-    | "VERDICT";
+    | "VERDICT"
+    /** House bots: the holder's liquidity notices and the officers' house-bot alerts. Not a money kind. */
+    | "HOUSE_BOT";
   titleEn: string;
   titleSw: string;
   titleZh?: string | null;

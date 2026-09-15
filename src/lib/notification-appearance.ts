@@ -45,6 +45,7 @@ export const iconFor = (k: Kind) => {
     case "AFFILIATE":    return I.megaphone;
     case "PROPOSAL":     return I.fileCheck;
     case "WATCHLIST":    return I.star;
+    case "HOUSE_BOT":    return I.activity;
     default:             return I.coins;
   }
 };
@@ -82,6 +83,8 @@ export const tintFor = (k: Kind) => {
     case "PROPOSAL":     return "border-gold-700 bg-gold-500/10 text-gold-300";
     // Informational, never a "bet now" nudge → royal/info, never gold.
     case "WATCHLIST":    return "border-info-border bg-info-bg/30 text-info-fg";
+    // An account notice, never a celebration and never an alarm → info.
+    case "HOUSE_BOT":    return "border-info-border bg-info-bg/30 text-info-fg";
     default:             return "border-border bg-bg-overlay text-text-muted";
   }
 };

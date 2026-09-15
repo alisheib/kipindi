@@ -144,6 +144,15 @@ const EMITTED: { fn: string; row: StoredNotification | null }[] = [
   { fn: "notifyAdminMarketResolution", row: await N.notifyAdminMarketResolution("c3_officer", { title: "Closed poll", marketId: "mkt_11" }) },
   { fn: "notifyAdminMarketCancelled", row: await N.notifyAdminMarketCancelled("c3_officer", { title: "Cancelled poll", reason: "Source retracted", refundedCount: 3, refundedTzs: 30_000 }) },
   { fn: "notifyAdminProposalReview", row: await N.notifyAdminProposalReview("c3_officer", { proposerLabel: "Asha M.", titleEn: "A market idea", proposalId: "prp_1" }) },
+  // ── House bots (build commit 3) — every holder notice, each a distinct message, so none is deduped away.
+  { fn: "notifyHouseBotOwner",       row: await N.notifyHouseBotOwner(U, "designated") },
+  { fn: "notifyHouseBotOwner",       row: await N.notifyHouseBotOwner(U, "started") },
+  { fn: "notifyHouseBotOwner",       row: await N.notifyHouseBotOwner(U, "paused") },
+  { fn: "notifyHouseBotOwner",       row: await N.notifyHouseBotOwner(U, "password_paused") },
+  { fn: "notifyHouseBotOwner",       row: await N.notifyHouseBotOwner(U, "removed") },
+  { fn: "notifyHouseBotOwner",       row: await N.notifyHouseBotOwner(U, "reverified", { atMs: Date.parse("2026-09-15T11:02:00.000Z") }) },
+  { fn: "notifyHouseBotOwner",       row: await N.notifyHouseBotOwner(U, "verify_reserved") },
+  { fn: "notifyHouseBotOwner",       row: await N.notifyHouseBotOwner(U, "withdrew") },
 ];
 
 // ── 1 · Registry ↔ code ────────────────────────────────────────────────────────
@@ -157,7 +166,7 @@ ok("every registered emitter exists", registeredFns.every((f) => exportedFns.inc
   `phantom: ${registeredFns.filter((f) => !exportedFns.includes(f)).join(", ") || "-"}`);
 ok("every registered kind is a real kind", NOTIFICATION_EMITTERS.every((e) => NOTIFICATION_KINDS.includes(e.kind)));
 // The fan-out emitters return void, so they are exercised in §5 instead.
-const FANOUT = ["notifyAdminObjectionFiled", "notifyAdminsAmlReview", "notifyAdminsSentinelDown", "notifyAdminsAiCreditLimit", "notifyAdminsBackupUnhealthy", "notifyAdminsKycReviewOverdue"];
+const FANOUT = ["notifyAdminObjectionFiled", "notifyAdminsAmlReview", "notifyAdminsSentinelDown", "notifyAdminsAiCreditLimit", "notifyAdminsBackupUnhealthy", "notifyAdminsKycReviewOverdue", "notifyAdminsHouseBotErasureBlocked"];
 ok("every emitter is driven by this suite",
   exportedFns.every((f) => EMITTED.some((e) => e.fn === f) || FANOUT.includes(f)),
   `never driven: ${exportedFns.filter((f) => !EMITTED.some((e) => e.fn === f) && !FANOUT.includes(f)).join(", ") || "-"}`);
@@ -246,8 +255,10 @@ section("5 · fan-out — officer alerts reach officers, complete in 3 locales")
   await N.notifyAdminObjectionFiled("obj_1", "A disputed poll");
   // 2026-09-13 · an identity review past its target — driven with the shape the SLA chore passes.
   await N.notifyAdminsKycReviewOverdue({ kycId: "kyc_c3", userId: U, playerLabel: "Asha M.", submittedAt: "2026-09-12T08:00:00.000Z", hoursWaiting: 26 });
+  // House bots (build commit 3) — an erasure refused while the account is still a house bot (04 R6).
+  await N.notifyAdminsHouseBotErasureBlocked({ botId: "hb_c3erasure01", holderUserId: U });
   const rows = await db.notification.findByUser("c3_officer", 500);
-  ok("officer received the fan-out alerts", rows.length >= before + 6, `before=${before} after=${rows.length}`);
+  ok("officer received the fan-out alerts", rows.length >= before + 7, `before=${before} after=${rows.length}`);
   const fresh = rows.slice(0, rows.length - before);
   for (const r of fresh) {
     ok(`fan-out "${r.titleEn.slice(0, 34)}": has Chinese`, !!r.titleZh && !!r.bodyZh && /[一-鿿]/.test(r.titleZh));

@@ -163,6 +163,10 @@ export const EMAIL_TEMPLATES: readonly EmailSpec[] = [
   // 2026-09-13 · the identity review queue became a MONEY queue — a player waits on it for their own
   // withdrawal. One alert per submission past `KYC_REVIEW_SLA_HOURS`, never one per tick.
   { template: "kycReviewOverdueAdminHtml", trigger: "src/lib/server/notification-service.ts", audience: "officer", chrome: "royal", money: false },
+  // ── House bots (build commit 3) ───────────────────────────────────────────
+  // The holder's designated / removed / reverified letter — no figure, so not money, and royal.
+  { template: "houseBotOwnerHtml",         trigger: "src/lib/server/notification-service.ts", audience: "player",  chrome: "royal", money: false },
+  { template: "houseBotErasureBlockedAdminHtml", trigger: "src/lib/server/notification-service.ts", audience: "officer", chrome: "royal", money: false },
 ];
 
 /**
@@ -211,6 +215,11 @@ export const NOTIFICATION_KINDS = [
   // A verdict is recorded but nothing has been paid — the notice that makes the
   // objection window exercisable (management ruling ①, 2026-09-05).
   "VERDICT",
+  // House bots (build commit 3): the holder's liquidity notices and the officers' house-bot alerts.
+  // ⛔ NOT a money kind, although PLAN §7 put it there (PLAN §18, W17): these notices state no figure, and
+  // `test:cert-c3` §6 requires one of every money kind — the rule stays as strict as it is. A holder's own
+  // stakes keep their own money receipts.
+  "HOUSE_BOT",
 ] as const;
 export type NotificationKind = (typeof NOTIFICATION_KINDS)[number];
 
@@ -319,4 +328,9 @@ export const NOTIFICATION_EMITTERS: readonly EmitterSpec[] = [
   // 2026-09-13 · an identity review past `KYC_REVIEW_SLA_HOURS`. KYC, like `notifyAdminKycReview`: it is
   // the same queue, and the kind is what routes an officer's bell tint to it.
   { fn: "notifyAdminsKycReviewOverdue", kind: "KYC",              audience: "officer" },
+  // ── House bots (build commit 3) ─────────────────────────────────────────
+  // The holder's notices (bell + push; designated, removed and reverified also email). Never SMS (04 C13).
+  { fn: "notifyHouseBotOwner",         kind: "HOUSE_BOT",         audience: "player" },
+  // An erasure refused while the account is still a house bot (04 R6) — to `houseBotAlertRecipients()`.
+  { fn: "notifyAdminsHouseBotErasureBlocked", kind: "HOUSE_BOT",  audience: "officer" },
 ];

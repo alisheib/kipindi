@@ -2205,3 +2205,66 @@ export function kycReviewOverdueAdminHtml({ reference, playerLabel, submittedAt,
     ${ctaButton(reviewUrl, "Open the case")}
   `);
 }
+
+// ─── House bots (build commit 3) ─────────────────────────────────────────
+// EN + SW in one message like every other template; Swahili drafted for native review. Royal: nothing here
+// is money earned. ⛔ Never sent by SMS (04 C13).
+
+/** The three holder events that also send an email (02 §3.2, §3.5; 04 C13). */
+export type HouseBotOwnerEmailKind = "designated" | "removed" | "reverified";
+
+const HOUSE_BOT_OWNER_EMAIL: Record<HouseBotOwnerEmailKind, { eyebrow: string; heading: string; en: string; sw: string }> = {
+  designated: {
+    eyebrow: "Liquidity",
+    heading: "Your account now provides liquidity",
+    en: "50pick will place liquidity stakes from your account as you agreed. You keep full use of it. Nothing is placed until 50pick starts them. You can stop this at any time by changing your password or contacting 50pick.",
+    sw: "50pick itaweka dau za ukwasi kutoka kwenye akaunti yako kama ulivyokubali. Unaendelea kuitumia kikamilifu. Hakuna dau litakalowekwa hadi 50pick izianze. Unaweza kusimamisha hili wakati wowote kwa kubadilisha nenosiri lako au kuwasiliana na 50pick.",
+  },
+  removed: {
+    eyebrow: "Liquidity",
+    heading: "Liquidity stakes ended",
+    en: "50pick no longer uses your account for liquidity stakes. Open stakes settle to your wallet as normal.",
+    sw: "50pick haitumii tena akaunti yako kwa dau za ukwasi. Dau zilizo wazi zitalipwa kwenye pochi yako kama kawaida.",
+  },
+  reverified: {
+    eyebrow: "Security",
+    heading: "Your permission was confirmed",
+    en: "50pick confirmed your permission for liquidity stakes with your current password. If you did not give your password to 50pick, change it now — that stops liquidity stakes at once.",
+    sw: "50pick imethibitisha ruhusa yako ya dau za ukwasi kwa nenosiri lako la sasa. Kama hukuipa 50pick nenosiri lako, libadilishe sasa — hilo husimamisha dau za ukwasi mara moja.",
+  },
+};
+
+/**
+ * The account holder's liquidity notice by email (04 C13 `notifyHouseBotOwner`). `at` is the EAT time the
+ * event happened, already formatted. It names no bot label, no officer and no figure — the holder's own
+ * stakes carry their own receipts.
+ */
+export function houseBotOwnerHtml({ kind, at }: { kind: HouseBotOwnerEmailKind; at: string }): string {
+  const c = HOUSE_BOT_OWNER_EMAIL[kind];
+  return wrap(`
+    ${eyebrow(c.eyebrow, "Ukwasi")}
+    ${heading(c.heading)}
+    ${subtitle(c.en)}
+    ${subtitleSw(c.sw)}
+    ${detailRows([{ label: "When", value: at }])}
+    ${ctaButton("/positions", "Open your stakes · Fungua dau zako")}
+  `);
+}
+
+/**
+ * Officer alert: an erasure request was refused because the account is still a house bot (04 R6). The
+ * holder is named only by `playerHandle` ("Player #TAIL") and the bot only by its id — a label can be the
+ * holder's name, and this mail outlives the erasure it reports.
+ */
+export function houseBotErasureBlockedAdminHtml({ botId, holder, botUrl }: { botId: string; holder: string; botUrl: string }): string {
+  return wrap(`
+    ${eyebrow("House bots · erasure blocked")}
+    ${heading("An erasure is waiting on a house bot")}
+    ${subtitle(`${holder} asked for their data to be erased, and the account is still house bot ${botId}. Erasure refuses until an owner removes the bot. The request stays open meanwhile — its statutory clock is still running.`)}
+    ${detailRows([
+      { label: "Bot", value: botId },
+      { label: "Holder", value: holder },
+    ])}
+    ${ctaButton(botUrl, "Open the bot")}
+  `);
+}

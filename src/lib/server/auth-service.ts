@@ -633,6 +633,10 @@ export async function registerWithPassword(input: PasswordRegisterInput): Promis
     emailVerifiedAt: null,
     passwordHash: hash,
     passwordSalt: salt,
+    // House bots (04 A4): the password's history, in the same write as the hash — eligibility reads
+    // these columns, never an audit row that a lost write could drop.
+    passwordSetAt: new Date().toISOString(),
+    passwordSetVia: "REGISTRATION",
     failedLoginCount: 0,
     lockedUntil: null,
     role: isBootstrapAdmin ? "ADMIN" : "PLAYER",
@@ -803,8 +807,12 @@ export function resolveLoginIdentifier(
   return parsed.success ? { kind: "phone", value: parsed.data.phone } : null;
 }
 
-const LOCKOUT_MAX_FAILS = 5;
-const LOCKOUT_DURATION_MS = 30 * 60 * 1000;   // 30-minute lockout per LCCP guidance
+/**
+ * Exported for the house-bot password check (04 C4), which shares this counter with sign-in but never
+ * sets `lockedUntil` and stops two attempts short of it — one number, so the two can never disagree.
+ */
+export const LOCKOUT_MAX_FAILS = 5;
+export const LOCKOUT_DURATION_MS = 30 * 60 * 1000;   // 30-minute lockout per LCCP guidance
 
 /**
  * Spend the same scrypt work a real password check would, and discard it.

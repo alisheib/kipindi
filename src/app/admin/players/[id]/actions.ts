@@ -245,7 +245,7 @@ export async function setPlayerEmailAction(formData: FormData) {
   // not a DB index, so the direct write silently succeeded on a duplicate) and
   // never sent a confirmation link — leaving the player unverified, un-emailed,
   // and unable to deposit after a support agent "fixed" their address.
-  const r = await setUserEmail(userId, email);
+  const r = await setUserEmail(userId, email, { byOfficer: true });
   if (!r.ok) return { ok: false as const, error: r.error };
   audit({
     category: "ADMIN",
