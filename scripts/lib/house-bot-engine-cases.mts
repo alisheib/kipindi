@@ -4,7 +4,7 @@
  *
  * Sections follow the build order in `plans/house-bots/C4-SPEC.md` §5:
  *   §1 the lock exit · §2 the planner lease · §3 attribution · §4 the market view · §5 Enter now decision ·
- *   §6 the outcome table · §7 decide · §8 source pins · §9 feed copy · §10 schema gate · §11 engine process · §12 market view · §13 applyOutcome.
+ *   §6 the outcome table · §7 decide · §8 source pins · §9 feed copy · §10 schema gate · §11 engine process · §12 market view · §13 applyOutcome · §14 the A15 price read.
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { readFileSync } from "node:fs";
@@ -702,9 +702,18 @@ await guard("13", async () => {
     // A10: two minutes of transient failures → one ENGINE_DB_TRANSIENT alert an hour. The control runs FIRST, before the
     // hour's AlertOnce key is claimed — after it, a missing time check would pass the control for the wrong reason.
     await S.houseBotRuntimeStore.resetErrorStreak();
+    // ⛔ Free this hour's key first, and prove it is still free after the control: §13.5's transients could have
+    // claimed it, and a control run against a claimed key passes for the wrong reason (mutation M5 missed).
+    const dbKey = K.ALERT_KEY.engineDb();
+    await S.houseBotAlertOnceStore.release((await S.houseBotAlertOnceStore.claimWithEatSuffix(dbKey.prefix, dbKey.unit)).key);
+    const dbKeyFree = async () => {
+      const c = await S.houseBotAlertOnceStore.claimWithEatSuffix(dbKey.prefix, dbKey.unit);
+      if (c.claimed) await S.houseBotAlertOnceStore.release(c.key);
+      return c.claimed;
+    };
     const recDb = recorder();
     await apply(await fresh(b), refuse("system_busy"), recDb.alerts);
-    ok("13.10 · CONTROL · a transient run that started just now alerts nobody", recDb.codes("ENGINE_DB_TRANSIENT") === 0 && (await S.houseBotRuntimeStore.get(K.RUNTIME_KEY.global))?.transientSince != null);
+    ok("13.10 · CONTROL · a transient run that started just now alerts nobody, and the hour's key stays unclaimed", recDb.codes("ENGINE_DB_TRANSIENT") === 0 && (await dbKeyFree()) && (await S.houseBotRuntimeStore.get(K.RUNTIME_KEY.global))?.transientSince != null, j(recDb.calls));
     await S.houseBotRuntimeStore.upsert(K.RUNTIME_KEY.global, { transientSince: new Date(Date.now() - 180_000).toISOString() });
     await apply(await fresh(b), refuse("system_busy"), recDb.alerts);
     await apply(await fresh(b), { thrown: Object.assign(new Error("x"), { code: "57014" }) }, recDb.alerts);
@@ -929,7 +938,7 @@ await guard("13", async () => {
     const realGet = S.houseBotStore.get;
     S.houseBotStore.get = async () => { throw Object.assign(new Error("read failed"), { code: "P1001" }); };
     let outUn: Any;
-    try { outUn = await apply(iun, refuse("house_consent_stale"), recorder().alerts); } finally { Object.assign(S.houseBotStore, { get: realGet }); }
+    try { outUn = await apply(iun, refuse("house_consent_stale"), recorder().alerts); } catch (e) { outUn = { threw: String((e as Error)?.message ?? e) }; } finally { Object.assign(S.houseBotStore, { get: realGet }); }
     ok("13.42 · ruling 51 · an unreadable holder → requeued, never a guessed pause", outUn?.kind === "requeued" && (await botRow(bun.botId)).status === "ACTIVE", j(outUn));
   }
 
@@ -944,7 +953,7 @@ await guard("13", async () => {
       const iv = await fresh(b);
       S.houseSeamStore.marketView = async () => { throw Object.assign(new Error("read failed"), { code: "P1001" }); };
       let outV: Any;
-      try { outV = await apply(iv, { ok: false, code }, recorder().alerts); } finally { Object.assign(S.houseSeamStore, { marketView: realView }); }
+      try { outV = await apply(iv, { ok: false, code }, recorder().alerts); } catch (e) { outV = { threw: String((e as Error)?.message ?? e) }; } finally { Object.assign(S.houseSeamStore, { marketView: realView }); }
       ok(`13.44 · ruling 51 · ${code} with an unreadable market → requeued, the bot stays ACTIVE`, outV?.kind === "requeued" && (await botRow(b.botId)).status === "ACTIVE", j(outV));
     }
     const live = await fresh(b);
@@ -1011,10 +1020,16 @@ await guard("13", async () => {
     const bot = await botRow(b.botId);
     ok("13.58 · an unknown reason → FAILED(UNMAPPED), AUTO_PAUSED(UNMAPPED_REFUSAL), its intents cancelled, one alert", out.status === "FAILED" && (await row(i.id)).reasonCode === "UNMAPPED"
       && bot.pauseReason === "UNMAPPED_REFUSAL" && (await row(other.id)).status === "CANCELLED" && rec.codes("UNMAPPED_REFUSAL") === 1 && rec.count("botStopped") === 1, `${j(out)} · ${j(rec.calls)}`);
-    await S.houseBotStore.setStatus(b.botId, { from: ["AUTO_PAUSED"], to: "ACTIVE", pauseReason: null, pausedFromStatus: null });
-    await apply(await fresh(b), refuse("code:BUSY"), rec.alerts);
-    await apply(await fresh(b), { ok: false, code: "SOMETHING_NEW" }, rec.alerts);
-    ok("13.59 · a reason spelled like a table key (\"code:BUSY\") and an unknown bare code are UNMAPPED too — and alert once a day", rec.codes("UNMAPPED_REFUSAL") === 1 && (await botRow(b.botId)).pauseReason === "UNMAPPED_REFUSAL", j(rec.calls));
+    const reactivate = () => S.houseBotStore.setStatus(b.botId, { from: ["AUTO_PAUSED"], to: "ACTIVE", pauseReason: null, pausedFromStatus: null });
+    await reactivate();
+    const spelled = await fresh(b);
+    await apply(spelled, refuse("code:BUSY"), rec.alerts);
+    ok("13.59 · a reason spelled like a table key (\"code:BUSY\") is FAILED(UNMAPPED), not a transient requeue", (await row(spelled.id)).status === "FAILED" && (await row(spelled.id)).reasonCode === "UNMAPPED", j(await row(spelled.id)));
+    await reactivate();
+    const bare = await fresh(b);
+    await apply(bare, { ok: false, code: "SOMETHING_NEW" }, rec.alerts);
+    ok("13.59b · an unknown bare code is FAILED(UNMAPPED) and pauses again, and the alert stays once a day", (await row(bare.id)).reasonCode === "UNMAPPED"
+      && (await botRow(b.botId)).pauseReason === "UNMAPPED_REFUSAL" && rec.codes("UNMAPPED_REFUSAL") === 1, j(rec.calls));
   }
 
   /* ── 13.60 the error streak (ENG-11) ── */
@@ -1071,6 +1086,95 @@ await guard("13", async () => {
         else await prisma().systemConfig.deleteMany({ where: { key: PCFG.PLATFORM_CONFIG_KEY } });
       }
     }
+  }
+});
+
+/* ═══ §14 · the A15 price read (udPriceForDecision, peekVendorBar) ════════════════════════════════════════════ */
+section("§14 · udPriceForDecision: a cached vendor bar, else a fresh observation, never a paid call");
+const UDP: Any = await import("../../src/lib/server/house-bot/ud-price.ts");
+const VEN: Any = await import("../../src/lib/server/updown-terminal-vendor.ts");
+await guard("14", async () => {
+  const cfg: Any = await import("../../src/lib/server/updown-config.ts");
+  const udd: Any = await import("../../src/lib/server/updown-dal.ts");
+  const { seedDefaultSources, addSource }: Any = await import("../../src/lib/server/source-registry.ts");
+  await seedDefaultSources();
+  await addSource({ domain: "api.twelvedata.com", label: "Twelve Data", category: "crypto", rationale: "test fixture (mirrors production)", addedBy: "system" }).catch(() => null);
+  const made = await cfg.createAsset({ key: `P${process.pid}`, symbol: "ETH/USD", nameEn: "Ether", nameSw: "Ether", iconKey: "crypto",
+    priceSourceUrl: "https://api.twelvedata.com/quote", category: "crypto", decimals: 2, minMoveTicks: 2 }, WORLD_OFFICER);
+  ok("14.0 · fixture · a real asset exists", made.ok === true, j(made));
+  const asset = made.data;
+  const vendorAsset = { id: asset.id, symbol: asset.symbol, priceSourceUrl: asset.priceSourceUrl, sourceDomain: asset.sourceDomain ?? "api.twelvedata.com" };
+  const utc = (ms: number) => new Date(ms).toISOString().slice(0, 19).replace("T", " ");
+  /** Fill the terminal's cache the way the chart route does, through a fake vendor (no network). */
+  const cacheBars = async (range: string, bars: Array<{ t: number; c: number }>, status = 200) => {
+    let calls = 0;
+    const fake = async () => { calls++; return new Response(JSON.stringify({ values: bars.map((b) => ({ datetime: utc(b.t), open: String(b.c), high: String(b.c), low: String(b.c), close: String(b.c) })) }), { status }); };
+    const got = await VEN.vendorBarsFor(vendorAsset, range, "test-key", fake);
+    return { got, calls };
+  };
+  const observe = async (boundaryMs: number, price: number, quotedMs: number) => {
+    const o = await udd.observationStore.ensure(asset.id, new Date(boundaryMs).toISOString());
+    return udd.observationStore.confirm(o.id, { price, sourceUrl: "https://api.twelvedata.com/quote", sourceQuotedAt: new Date(quotedMs).toISOString(),
+      evidence: "fixture", confidence: 96, model: "test-stub", rawHash: `hp_${process.pid}_${boundaryMs}` });
+  };
+  const minute = (ms: number) => Math.floor(ms / 60_000) * 60_000;
+  const realFetch = globalThis.fetch;
+  let paid = 0;
+  // Never the network: a paid call is counted and answered with a refusal here, so a defect cannot reach the vendor.
+  globalThis.fetch = (async () => { paid++; return new Response("{}", { status: 500 }); }) as Any;
+  try {
+    VEN.__clearVendorCacheForTests();
+    const now = Date.now();
+    ok("14.1 · nothing cached and no observation → null (UD_STALE_PRICE)", (await UDP.udPriceForDecision(asset.id, { nowMs: now })) === null);
+    ok("14.2 · ⛔ A15 · a cache miss makes NO vendor call", paid === 0 && VEN.peekVendorBar(asset.id) === null, `${paid} calls`);
+
+    const seeded = await cacheBars("15M", [{ t: minute(now) - 180_000, c: 101 }, { t: minute(now) - 60_000, c: 102 }]);
+    ok("14.3a · fixture · the chart path cached two 1-minute bars with one fake call", seeded.calls === 1 && seeded.got?.length === 2, j(seeded));
+    const fresh = await UDP.udPriceForDecision(asset.id, { nowMs: minute(now) + 30_000 });
+    ok("14.3 · the newest cached bar, 90 s from its open → vendor_bar at its close", fresh?.source === "vendor_bar" && fresh.price === 102 && fresh.ageSec === 90, j(fresh));
+    ok("14.4 · …and still no paid call (peek reads the cache only)", paid === 0, `${paid} calls`);
+    const aged = await UDP.udPriceForDecision(asset.id, { nowMs: minute(now) + 60_000 });
+    ok("14.5 · 120 s from the bar's open → not a vendor price; no observation → null", aged === null, j(aged));
+
+    await cacheBars("1H", [{ t: minute(now), c: 105 }]);
+    const newest = await UDP.udPriceForDecision(asset.id, { nowMs: minute(now) + 10_000 });
+    ok("14.6 · the newest bar across the 1-minute ranges wins (1H's newer bar over 15M's)", newest?.price === 105 && newest.ageSec === 10, j(newest));
+
+    VEN.__clearVendorCacheForTests();
+    await cacheBars("6H", [{ t: minute(now), c: 999 }]);
+    ok("14.7 · a 5-minute bar (6H) is not a 1-minute bar → no vendor price", VEN.peekVendorBar(asset.id) === null && (await UDP.udPriceForDecision(asset.id, { nowMs: minute(now) + 5_000 })) === null);
+    VEN.__clearVendorCacheForTests();
+    await cacheBars("30M", [{ t: minute(now), c: 1 }], 500);
+    ok("14.8 · a cached vendor FAILURE is no bar", VEN.peekVendorBar(asset.id) === null);
+
+    VEN.__clearVendorCacheForTests();
+    const b1 = minute(now) - 600_000, b2 = minute(now) - 300_000;
+    await observe(b1, 200, now - 400_000);
+    await observe(b2, 210, now - 30_000);
+    const obs = await UDP.udPriceForDecision(asset.id, { nowMs: now });
+    ok("14.9 · no bar → the LATEST confirmed observation, aged from the source's own quote time", obs?.source === "observation" && obs.price === 210 && obs.ageSec === 30, j(obs));
+    const oldObs = await UDP.udPriceForDecision(asset.id, { nowMs: now + 210_000 });
+    ok("14.10 · A15 test · a 4-minute-old observation and no vendor bar → null", oldObs === null, j(oldObs));
+    const view = MV.projectMarketView(viewRow({ productLine: "UPDOWN", selectionClosedAt: null, resolutionAt: at(900), round: roundOf({ openPrice: 100, upTarget: 110, downTarget: 96 }) }));
+    ok("14.11 · …which the closeness rule reads as UD_STALE_PRICE", DE.udCloseness(view, oldObs, 25) === "UD_STALE_PRICE");
+
+    const realList = udd.observationStore.list;
+    udd.observationStore.list = async () => { throw Object.assign(new Error("read failed"), { code: "P1001" }); };
+    let unreadable: Any = "not called";
+    try { unreadable = await UDP.udPriceForDecision(asset.id, { nowMs: now }); } catch (e) { unreadable = { threw: String((e as Error)?.message ?? e) }; } finally { Object.assign(udd.observationStore, { list: realList }); }
+    ok("14.12 · an unreadable observation store → null (no older price, no throw)", unreadable === null, j(unreadable));
+
+    // A15's red: the observation still sits at the open while the market has moved to 0.93 of the margin.
+    VEN.__clearVendorCacheForTests();
+    const margin = 4; // min(110 − 100, 100 − 96)
+    await cacheBars("15M", [{ t: minute(now), c: 100 + 0.93 * margin }]);
+    const moved = await UDP.udPriceForDecision(asset.id, { nowMs: minute(now) + 20_000 });
+    ok("14.13 · ⭐ A15 · vendor bar at open + 0.93 × margin → UD_CLOSENESS at 25%", moved?.source === "vendor_bar" && DE.udCloseness(view, moved, 25) === "UD_CLOSENESS", j(moved));
+    ok("14.14 · CONTROL · the same market read at the open price is close — the board-price read would have placed", DE.udCloseness(view, { price: 100, source: "observation", ageSec: 5 }, 25) === null);
+    ok("14.15 · no paid vendor call was made anywhere in §14", paid === 0, `${paid} calls`);
+  } finally {
+    globalThis.fetch = realFetch;
+    VEN.__clearVendorCacheForTests();
   }
 });
 
