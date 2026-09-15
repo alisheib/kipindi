@@ -634,6 +634,16 @@ await guard("13", async () => {
   const offIds = async () => new Set(((await S.houseBotEventStore.listByKinds(["SWITCH_OFF"], { limit: 500 })) as Any[]).map((e) => e.id));
   const newOffs = async (before: Set<string>) => ((await S.houseBotEventStore.listByKinds(["SWITCH_OFF"], { limit: 500 })) as Any[]).filter((e) => !before.has(e.id));
   const auditIds = async () => new Set((await auditsOf(() => true)).map((e) => e.id));
+  // ⛔ WAIT ON THE DATABASE CLOCK, NOT ON A TIMER. The requeue compares the database's now(); a Node timer starts from the
+  // event loop's cached time, so after synchronous work `sleep(n)` can end before n ms have really passed. 13.9 requeued a
+  // row once in seven Postgres runs with a 200 ms margin while the clocks agreed (fourth session, 2026-09-15).
+  const untilDbPast = async (instantMs: number, marginMs = 150) => {
+    for (let k = 0; k < 100; k++) {
+      if ((await S.houseBotRuntimeStore.dbClock()).nowMs > instantMs + marginMs) return;
+      await sleep(50);
+    }
+    throw new Error(`untilDbPast: the database clock never passed ${new Date(instantMs).toISOString()}`);
+  };
 
   /* ── 13.1 placed: the A8 claim ── */
   {
@@ -693,13 +703,17 @@ await guard("13", async () => {
       ok(`13.7 · MON-10 backoff after ${n} earlier transient tries is ${lo / 1000}–${hi / 1000} s`, wait >= lo && wait <= hi, `${wait} ms`);
     }
     const nearStale = await fresh(b, { staleAt: w.iso(1_500) });
-    await sleep(700);
+    // The requeue needs `staleAt − 1 s > now()`: wait until the database clock has passed that bound.
+    await untilDbPast(Date.parse(nearStale.staleAt) - 1_000);
     const outStale = await apply(nearStale, refuse("system_busy"), recorder().alerts);
     ok("13.8 · ruling 50 · no time before staleAt (staleAt ≤ deadline) → EXPIRED(STALE)", outStale.kind === "terminal" && (await row(nearStale.id)).status === "EXPIRED" && (await row(nearStale.id)).reasonCode === "STALE", j(outStale));
     const nearDeadline = await fresh(b, { deadlineAt: w.iso(1_200), staleAt: w.iso(600_000) });
-    await sleep(1_400);
+    await untilDbPast(Date.parse(nearDeadline.deadlineAt));
+    const clockBefore = { db: new Date((await S.houseBotRuntimeStore.dbClock()).nowMs).toISOString(), js: new Date().toISOString() };
     const outDead = await apply(nearDeadline, refuse("system_busy"), recorder().alerts);
-    ok("13.9 · ruling 50 · the deadline passed first (deadline < staleAt) → EXPIRED(BUSY_TIMEOUT)", (await row(nearDeadline.id)).status === "EXPIRED" && (await row(nearDeadline.id)).reasonCode === "BUSY_TIMEOUT", j(outDead));
+    const deadRow = await row(nearDeadline.id);
+    ok("13.9 · ruling 50 · the deadline passed first (deadline < staleAt) → EXPIRED(BUSY_TIMEOUT)", deadRow.status === "EXPIRED" && deadRow.reasonCode === "BUSY_TIMEOUT",
+      `${j(outDead)} · row ${j({ status: deadRow.status, deadlineAt: deadRow.deadlineAt, nextAttemptAt: deadRow.nextAttemptAt, claimedAt: nearDeadline.claimedUntil })} · before apply ${j(clockBefore)}`);
 
     // A10: two minutes of transient failures → one ENGINE_DB_TRANSIENT alert an hour. The control runs FIRST, before the
     // hour's AlertOnce key is claimed — after it, a missing time check would pass the control for the wrong reason.
