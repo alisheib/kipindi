@@ -160,6 +160,57 @@ async function withAdvisoryLock<T>(key: string, fn: (tx: Prisma.TransactionClien
   });
 }
 
+/* ── The bounded drain (04 A9 step 2) ───────────────────────────────── */
+
+/** "3s" / "250ms" → milliseconds. One home for the bound: the constant the caller passes. */
+function timeoutMs(timeout: string): number {
+  const m = /^(\d+)(ms|s)$/.exec(timeout.trim());
+  if (!m) throw new Error(`drainLock: bad timeout ${timeout}`);
+  return Number(m[1]) * (m[2] === "s" ? 1000 : 1);
+}
+
+/**
+ * Wait, bounded, for a key to come free, then let it go again — the kill switch's drain (04 A9 step 2).
+ *
+ * The OFF write lands BEFORE this, with no lock, and is already binding; the drain only answers whether a bet that
+ * was already inside the lock has finished, so the operator is told the truth. "busy" is an answer, never a failure.
+ *
+ * ⛔ It must not run inside a lock: a drain that joined its caller's transaction would take a lock the caller
+ * already holds and answer "drained" about itself.
+ */
+export async function drainLock(key: string, o: { timeout: string }): Promise<"drained" | "busy"> {
+  if (inLock() || currentLockTx() !== null) throw new Error(`drainLock(${key}) must not run inside a lock`);
+  const ms = timeoutMs(o.timeout);
+  if (!hasDatabase()) {
+    // The memory twin: the chain's tail resolves when the holder lets go.
+    const prev = memLocks.get(key);
+    if (!prev) return "drained";
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const expired = new Promise<"busy">((resolve) => { timer = setTimeout(() => resolve("busy"), ms); });
+    try {
+      return await Promise.race([prev.then(() => "drained" as const).catch(() => "drained" as const), expired]);
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
+  }
+  const db = prisma()!;
+  const lockId = hashKey64(key);
+  try {
+    await db.$transaction(async (tx) => {
+      // SET LOCAL lives for this transaction only, and the lock is released the moment it ends.
+      await tx.$executeRawUnsafe(`SET LOCAL lock_timeout = '${o.timeout}'`);
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(${lockId}::bigint)`;
+    }, { timeout: ms + 15_000, maxWait: 10_000 });
+    return "drained";
+  } catch (e) {
+    // 55P03 lock_not_available: somebody is still inside. Anything else is a real failure.
+    const err = e as { code?: unknown; meta?: { code?: unknown }; message?: unknown };
+    const busy = err?.code === "55P03" || err?.meta?.code === "55P03" || (typeof err?.message === "string" && err.message.includes("55P03"));
+    if (busy) return "busy";
+    throw e;
+  }
+}
+
 /* ── Public API ─────────────────────────────────────────────────────── */
 
 /**

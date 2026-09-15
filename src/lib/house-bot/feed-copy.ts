@@ -212,6 +212,18 @@ export const STAFF_EVENT_WORD = {
   STAFF_INTENT_CANCELLED: "Staff-chosen stake cancelled",
 } as const satisfies Partial<Record<HouseBotEventKind, string>>;
 
+/**
+ * What an operator is told when house bots are switched off (04 A9 F9 steps 2 and 4). One home for the words the
+ * console action and its ops script both print (both land in commit 7); only BUSY and DRAINED differ, and only in
+ * the second sentence.
+ */
+export const SWITCH_OFF_COPY = {
+  DRAINED: "House bots are off. No bot will place a bet.",
+  BUSY: "Switched off. A bet already in its final step may still complete.",
+  ALREADY_OFF: "House bots were already off. No bot will place a bet.",
+  WRITE_FAILED: "Could not reach the database. House bots were NOT switched off. Try again, or turn on Maintenance mode.",
+} as const;
+
 export const ENTRY_WORD = { AUTO: "Automatic", TARGET: "Targeted", MANUAL: "Enter now" } as const;
 
 export const PRESS_STATE_WORD = { CHECKING: "Checking", REFUSED: "Refused", QUEUED: "Queued", DONE: "Done" } as const satisfies Record<PressState, string>;

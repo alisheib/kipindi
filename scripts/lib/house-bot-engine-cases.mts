@@ -3159,7 +3159,7 @@ await guard("19", async () => {
       botStopped: async (bot: Any, ch: Any) => push("botStopped", { botId: bot.id, userId: bot.userId, status: bot.status, ...ch }),
       causeAdded: async (bot: Any, c: Any) => push("causeAdded", { botId: bot.id, userId: bot.userId, code: c.code }),
       causeCleared: async (bot: Any, code: string) => push("causeCleared", { botId: bot.id, userId: bot.userId, code }),
-      holderLockedOut: async (bot: Any) => push("holderLockedOut", { botId: bot.id, userId: bot.userId }),
+      holderLockedOut: async (bot: Any, until: string | null) => push("holderLockedOut", { botId: bot.id, userId: bot.userId, until }),
       officerSetEmail: async (bot: Any) => push("officerSetEmail", { botId: bot.id, userId: bot.userId }),
       breakEnded: async (bot: Any, until: string) => push("breakEnded", { botId: bot.id, userId: bot.userId, until }),
       holderNotice: async (userId: string, kind: string) => push("holderNotice", { userId, kind }),
@@ -3293,6 +3293,7 @@ await guard("19", async () => {
     const bot = await botRow(b.botId);
     const fresh = (await eventsOf(b.botId)).filter((e: Any) => !before.has(e.id));
     const stop = rec.of(b.userId).find((c: Any) => c.fn === "botStopped" || c.fn === "passwordPaused");
+    const a1Call = rec.of(b.userId).find((c: Any) => c.fn === "passwordPaused") ?? null;
     const audits = (await auditsFor(b.botId)).map((a: Any) => a.action);
     const shape = {
       status: bot?.status, reason: bot?.pauseReason ?? null, removedCause: bot?.removedCause ?? null,
@@ -3300,7 +3301,7 @@ await guard("19", async () => {
     };
     const out = {
       ...shape, res, detectedBy: bot?.pauseDetail?.detectedBy ?? null, detail: bot?.pauseDetail ?? null,
-      cancelled: stop?.cancelled ?? null, intent: (await S.houseBotIntentStore.get(live.id))?.status,
+      cancelled: stop?.cancelled ?? null, a1: a1Call, intent: (await S.houseBotIntentStore.get(live.id))?.status,
       anyInLock: rec.of(b.userId).some((c: Any) => c.inLock), audits,
     };
     // Whichever path did NOT run must now find nothing left to do.
@@ -3324,7 +3325,9 @@ await guard("19", async () => {
       const stateOk = r.removed
         ? o.status === "REMOVED" && o.removedCause === "ACCOUNT_CLOSED"
         : o.status === r.status && o.reason === r.reason && o.voidCause === (r.voidCause ?? null) && o.causes === r.causes && o.detectedBy === mode;
-      const pwOk = !r.pw || (o.detail?.method === r.pw && o.detail?.officerReset === (r.pw === "OFFICER_TEMP") && o.detail?.changedAt != null);
+      // A1 for a change that stopped a RUNNING bot is never the "again" variant (02 §2.2 rows 91 and 93).
+      const pwOk = !r.pw || (o.detail?.method === r.pw && o.detail?.officerReset === (r.pw === "OFFICER_TEMP") && o.detail?.changedAt != null
+        && o.a1?.again === false && o.a1?.cancelled === 1);
       const resOk = mode === "HOOK" ? o.res?.kind === "applied" : o.res?.changed >= 1 && o.res?.failed === 0;
       ok(`19.A${r.n}.${mode} · A2 row ${r.n} (${r.what}) → ${r.removed ? "REMOVED(ACCOUNT_CLOSED)" : `${r.status}(${r.reason})`}${r.voidCause ? ` · consent void ${r.voidCause}` : ""} · alerts ${r.fns.join(" + ")} · events ${r.events.join(" + ")} · the queued stake cancelled · every alert after the lock`,
         stateOk && pwOk && resOk && j(o.fns) === j(r.fns) && j(o.events) === j(r.events)
@@ -3491,8 +3494,8 @@ await guard("19", async () => {
     await w.setUserFields(bR.userId, { passwordHash: newHash(), passwordSetVia: "RESET_LINK", passwordSetAt: iso() });
     await hook(bR.userId, "PASSWORD_RESET_LINK", rec7);
     const botR2 = await botRow(bR.botId);
-    ok("19.C7 · ⭐ ruling 134 · 02 §2.2 row 93 · a bot already paused FOR a password change alerts A1 AGAIN on the next change — never A2 — with nothing cancelled, and records it",
-      j(rec7.fns(bR.userId)) === j(["passwordPaused"]) && rec7.of(bR.userId)[0].cancelled === 0 && rec7.of(bR.userId)[0].method === "RESET_LINK"
+    ok("19.C7 · ⭐ ruling 134 · 02 §2.2 row 93 · a bot already paused FOR a password change alerts A1 AGAIN on the next change — never A2 — flagged again:true so its body never claims it stopped anything, and records it",
+      j(rec7.fns(bR.userId)) === j(["passwordPaused"]) && rec7.of(bR.userId)[0].cancelled === 0 && rec7.of(bR.userId)[0].again === true && rec7.of(bR.userId)[0].method === "RESET_LINK"
         && (await eventsOf(bR.botId, ["CREDENTIAL_CHANGED"])).length === 1 && botR2.credentialChangedVia === "RESET_LINK" && botR2.pauseReason === "PASSWORD_CHANGED",
       j({ fns: rec7.fns(bR.userId), cancelled: rec7.of(bR.userId)[0]?.cancelled, cred: (await eventsOf(bR.botId, ["CREDENTIAL_CHANGED"])).length }));
     await retire(bR.botId);
@@ -3521,8 +3524,8 @@ await guard("19", async () => {
       j({ status: botF.status, cred: botF.credentialChangedAt, fns: recF.fns(bF.userId) }));
     const recF2 = recorder();
     await sweep(recF2);
-    ok("19.C9b · ⭐ ruling 138 · the next look pays the A1 the failed send dropped — once — and still writes no credential record",
-      recF2.n(bF.userId, "passwordPaused") === 1 && recF2.n(bF.userId, "passwordChanged") === 0
+    ok("19.C9b · ⭐ ruling 138 · the next look pays the A1 the failed send dropped — once, as the STOP alert it was (again:false) — and still writes no credential record",
+      recF2.n(bF.userId, "passwordPaused") === 1 && recF2.of(bF.userId)[0]?.again === false && recF2.n(bF.userId, "passwordChanged") === 0
         && (await eventsOf(bF.botId, ["CREDENTIAL_CHANGED"])).length === 0,
       j({ fns: recF2.fns(bF.userId), cred: (await eventsOf(bF.botId, ["CREDENTIAL_CHANGED"])).length }));
     const recF3 = recorder();
@@ -3536,12 +3539,17 @@ await guard("19", async () => {
     const b = await w.bot();
     const before = new Set((await eventsOf(b.botId)).map((e: Any) => e.id));
     const rec = recorder();
+    const lockedUntil = new Date(Date.now() + 600_000).toISOString();
+    await w.setUserFields(b.userId, { lockedUntil });
     await hook(b.userId, "LOCKED_OUT", rec);
     await hook(b.userId, "LOCKED_OUT", rec);
     const bot = await botRow(b.botId);
-    ok("19.D1 · A2 row 16 · a lockout never stops a bot (anyone could lock the holder out): ONE SECURITY bell for the EAT day, no status change, no event",
-      bot.status === "ACTIVE" && rec.n(b.userId, "holderLockedOut") === 1 && (await eventsOf(b.botId)).filter((e: Any) => !before.has(e.id)).length === 0,
-      j({ status: bot.status, fns: rec.fns(b.userId) }));
+    const lockBell = rec.of(b.userId).find((c: Any) => c.fn === "holderLockedOut");
+    ok("19.D1 · A2 row 16 · a lockout never stops a bot (anyone could lock the holder out): ONE SECURITY bell for the EAT day, carrying when the lockout ends (C13's copy), no status change, no event",
+      bot.status === "ACTIVE" && rec.n(b.userId, "holderLockedOut") === 1
+        && lockBell?.until != null && Date.parse(lockBell.until) === Date.parse(lockedUntil)
+        && (await eventsOf(b.botId)).filter((e: Any) => !before.has(e.id)).length === 0,
+      j({ status: bot.status, until: lockBell?.until, fns: rec.fns(b.userId) }));
 
     const recE = recorder();
     await hook(b.userId, "EMAIL_CHANGED", recE, { byOfficer: false });

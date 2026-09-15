@@ -76,7 +76,10 @@ export async function readBotAndHolder(botId: string, opts: { ownerLossStakeTzs?
   const snapshot: HolderSnapshot = {
     bot,
     fingerprintNow,
-    user: { role: user.role, status: user.status, closedAt: user.closedAt ?? null, passwordSetAt: user.passwordSetAt ?? null, passwordSetVia: user.passwordSetVia ?? null },
+    user: {
+      role: user.role, status: user.status, closedAt: user.closedAt ?? null,
+      passwordSetAt: user.passwordSetAt ?? null, passwordSetVia: user.passwordSetVia ?? null, lockedUntil: user.lockedUntil ?? null,
+    },
     wallet: wallet ? { status: wallet.status, freezeReasons: wallet.freezeReasons ?? null } : null,
     rg: { selfExclusionUntil: rg.selfExclusionUntil ?? null, coolingOffUntil: rg.coolingOffUntil ?? null },
     erasureRequestOpen: erasure,

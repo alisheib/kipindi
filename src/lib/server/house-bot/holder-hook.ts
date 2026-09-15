@@ -47,8 +47,12 @@ export type HolderNoticeKind = Extract<HouseBotOwnerNotice, "password_paused" | 
 
 /** Who is told (02 §2.3, C8, C13). Step 9 supplies the emitters; cases inject recorders. */
 export type HolderAlerts = {
-  /** A1: a running bot stopped because the holder's password changed. */
-  passwordPaused(bot: StoredHouseBot, change: { method: CredentialChangedVia; changedAt: string | null; cancelled: number }): Promise<void>;
+  /**
+   * A1: the holder's password changed. `again` is false when THIS change stopped a running bot (02:106's body, with
+   * `cancelled` queued stakes) and true when the bot was already paused for an earlier password change (02 §2.2
+   * row 93's "A1 again"), where nothing was queued to stop — never inferred from `cancelled`, which is 0 in both.
+   */
+  passwordPaused(bot: StoredHouseBot, change: { method: CredentialChangedVia; changedAt: string | null; cancelled: number; again: boolean }): Promise<void>;
   /** A2: the password changed while the bot was already stopped (officer-reset wording for OFFICER_TEMP). */
   passwordChanged(bot: StoredHouseBot, change: { method: CredentialChangedVia; changedAt: string | null }): Promise<void>;
   /** A running bot was auto-paused or removed for any other holder cause — the engine's own channel. */
@@ -57,8 +61,8 @@ export type HolderAlerts = {
   causeAdded(bot: StoredHouseBot, cause: HolderCause): Promise<void>;
   /** A recorded cause is no longer live (C13; never a break's end, which is `breakEnded`). */
   causeCleared(bot: StoredHouseBot, code: HolderCauseCode): Promise<void>;
-  /** Row 16: the holder was locked out by failed sign-ins (SECURITY bell). Never a pause. */
-  holderLockedOut(bot: StoredHouseBot): Promise<void>;
+  /** Row 16: the holder was locked out by failed sign-ins (SECURITY bell, C13's copy names when it ends). Never a pause. */
+  holderLockedOut(bot: StoredHouseBot, until: string | null): Promise<void>;
   /** Row 17: an officer set the holder's email. */
   officerSetEmail(bot: StoredHouseBot): Promise<void>;
   /** C8: the holder's break ended; their permission must be confirmed again before Start. */
@@ -114,12 +118,13 @@ async function claimThen(key: string | EatSuffixedKey, what: string, send: () =>
  * the new fingerprint so the sweep's later look at the same change sends nothing.
  */
 function stopChannel(alerts: HolderAlerts, password: { key: string; method: CredentialChangedVia; changedAt: string | null } | null): EngineAlerts {
+  // A1 here is always the change that stopped a RUNNING bot (again: false); the repeat lives in the credential branch.
   const unused = async () => { throw new Error("house-bot holder hook: stopBot uses botStopped only"); };
   return {
     placed: unused, once: unused, security: unused, switchedOff: unused,
     botStopped: async (bot, change) => {
       if (password && change.cause === "PASSWORD_CHANGED") {
-        await claimThen(password.key, "A1", () => alerts.passwordPaused(bot, { method: password.method, changedAt: password.changedAt, cancelled: change.cancelled }));
+        await claimThen(password.key, "A1", () => alerts.passwordPaused(bot, { method: password.method, changedAt: password.changedAt, cancelled: change.cancelled, again: false }));
         return;
       }
       await safeSend("stop", () => alerts.botStopped(bot, change));
@@ -247,7 +252,7 @@ export async function applyHolderCauses(read: FoundRead, o: { detectedBy: "HOOK"
         // Ruling 134 · 02 §2.2: A1 again when the bot is already paused FOR a password change (nothing was queued to
         // stop, so `cancelled` is 0); A2 for PAUSED(NEW|MANUAL) and for a pause with any other cause.
         if (written.stamped.pauseReason === "PASSWORD_CHANGED") {
-          await safeSend("A1 again", () => o.alerts.passwordPaused(written!.stamped, { method: pw.method, changedAt: pw.changedAt, cancelled: 0 }));
+          await safeSend("A1 again", () => o.alerts.passwordPaused(written!.stamped, { method: pw.method, changedAt: pw.changedAt, cancelled: 0, again: true }));
         } else {
           await safeSend("A2", () => o.alerts.passwordChanged(written!.stamped, { method: pw.method, changedAt: pw.changedAt }));
         }
@@ -259,7 +264,9 @@ export async function applyHolderCauses(read: FoundRead, o: { detectedBy: "HOOK"
   // Ruling 138 · the pause OWES an A1 for this change. A send that failed gave its claim back (claimThen), so the next
   // look pays it — the alert only, never a second record: the pause itself is this change's record.
   if (pw && pwKey && !bellSent.has("PASSWORD_CHANGED") && pausedByThisChange(bot, pw)) {
-    await claimThen(pwKey.key, "A1 retry", () => o.alerts.passwordPaused(bot, { method: pw.method, changedAt: pw.changedAt, cancelled: 0 }));
+    // The retry re-sends the STOP alert (again: false); the count it would have carried is gone with the failed send,
+    // and 0 reads truthfully as "nothing is queued now".
+    await claimThen(pwKey.key, "A1 retry", () => o.alerts.passwordPaused(bot, { method: pw.method, changedAt: pw.changedAt, cancelled: 0, again: false }));
   }
 
   // Ruling 124 · the cause set of a stopped bot, compared and rewritten under the wallet lock.
@@ -327,9 +334,11 @@ async function recordCauseSet(
 
 /* ═══ Rows 16–18 (ruling 126) and C8's break end (ruling 129) ═════════════════════════════════════════ */
 
-async function eventOnly(bot: StoredHouseBot, event: HolderEvent, meta: { byOfficer?: boolean }, alerts: HolderAlerts): Promise<void> {
+async function eventOnly(read: FoundRead, event: HolderEvent, meta: { byOfficer?: boolean }, alerts: HolderAlerts): Promise<void> {
+  const bot = read.bot;
   if (event === "LOCKED_OUT") {
-    await claimThen(ALERT_KEY.holderLocked(bot.id), "locked out", () => alerts.holderLockedOut(bot));
+    const until = read.snapshot.user.lockedUntil ?? null;
+    await claimThen(ALERT_KEY.holderLocked(bot.id), "locked out", () => alerts.holderLockedOut(bot, until));
     return;
   }
   if (event === "EMAIL_CHANGED") {
@@ -381,7 +390,7 @@ export async function onHolderAccountChangedWith(
     const read = await readBotAndHolder(live.id, { ownerLossStakeTzs: live.stakeMinTzs });
     if (!read.found) return { kind: "accountMissing" };
     const applied = await applyHolderCauses(read, { detectedBy: "HOOK", alerts: deps.alerts });
-    await eventOnly(read.bot, event, deps.meta ?? {}, deps.alerts);
+    await eventOnly(read, event, deps.meta ?? {}, deps.alerts);
     return { kind: "applied", applied };
   } catch (e) {
     console.error("[house-bot] holder hook failed — the holder sweep decides this change:", errMessage(e));

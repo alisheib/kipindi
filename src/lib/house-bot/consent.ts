@@ -48,6 +48,8 @@ export type HolderSnapshot = {
     closedAt: string | null;
     passwordSetAt?: string | null;
     passwordSetVia?: string | null;
+    /** A2 row 16 · when a sign-in lockout ends, for C13's bell. Never a cause: anyone can lock the holder out. */
+    lockedUntil?: string | null;
   };
   /** Null when the account has no wallet. The eligibility row covers that; it is not a holder cause. */
   wallet: { status: "ACTIVE" | "FROZEN" | "CLOSED"; freezeReasons?: readonly string[] | null } | null;

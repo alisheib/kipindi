@@ -636,5 +636,120 @@ if (w.onPostgres) {
   }
 }
 
+// ═══ §7 · the kill switch as a service: A9's four steps (04 A9 F9; C4-SPEC ruling 139) ═══════════
+section("§7 · switchOffHouseBots");
+{
+  const KS: Any = await import("../../src/lib/server/house-bot/kill-switch.ts");
+  const { SWITCH_OFF_COPY }: Any = await import("../../src/lib/house-bot/feed-copy.ts");
+  const { drainLock, inLock, currentLockTx }: Any = await import("../../src/lib/server/locks.ts");
+  const { auditFlush, getAuditPage }: Any = await import("../../src/lib/server/audit.ts");
+
+  const recSwitch = () => {
+    const calls: Any[] = [];
+    const unused = async () => { throw new Error("caps §7: the kill switch speaks only on switchedOff"); };
+    return {
+      calls,
+      alerts: {
+        placed: unused, once: unused, security: unused, botStopped: unused,
+        switchedOff: async (c: Any) => { calls.push({ ...c, inLock: inLock() || currentLockTx() != null }); },
+      },
+    };
+  };
+  const control = () => w.dal.houseBotControlStore.get() as Promise<Any>;
+  const offEvents = async () => ((await w.dal.houseBotEventStore.listByKinds(["SWITCH_OFF"], { limit: 200 })) as Any[]);
+  const offAudits = async () => { await auditFlush(); return (getAuditPage({ limit: 10_000 }) as Any[]).filter((e) => e.action === "house_bot.switch_off"); };
+
+  // ⛔ Earlier sections leave live rows behind; only this section's own stake may be counted by the cancel step.
+  await w.dal.houseBotIntentStore.cancelLive({ all: true }, "MASTER_OFF");
+
+  // ── 7.1 · the whole path, with a queued stake to cancel ──
+  {
+    await w.switchOn();
+    const b = await w.bot();
+    const { i } = await opener(b);
+    const rec = recSwitch();
+    const eventsBefore = (await offEvents()).length;
+    const auditsBefore = (await offAudits()).length;
+    const res = await KS.switchOffHouseBots({ cause: "MANUAL", byId: OFFICER, reason: "caps section 7", alerts: rec.alerts });
+    const c = await control();
+    const row = (await w.dal.houseBotIntentStore.get(i.id)) as Any;
+    const ev = (await offEvents()).slice(eventsBefore);
+    const au = (await offAudits()).slice(auditsBefore);
+    ok("7.1 · A9 steps 1–4 · OFF written, the drain answered, the queued stake CANCELLED(MASTER_OFF), ONE SWITCH_OFF event carrying {cause, cancelled, drain}, its audit linked, and the alert last and outside every lock",
+      res.ok === true && res.changed === true && res.drain === "drained" && res.message === SWITCH_OFF_COPY.DRAINED
+        && c.enabled === false && c.offCause === "MANUAL" && c.switchedById === OFFICER
+        && row.status === "CANCELLED" && row.reasonCode === "MASTER_OFF" && res.cancelled === 1
+        && ev.length === 1 && ev[0].payload?.cause === "MANUAL" && ev[0].payload?.cancelled === 1 && ev[0].payload?.drain === "drained"
+        && au.length === 1 && ev[0].auditId === au[0].id
+        && rec.calls.length === 1 && rec.calls[0].cause === "MANUAL" && rec.calls[0].cancelled === 1 && rec.calls[0].inLock === false,
+      JSON.stringify({ res, enabled: c.enabled, row: row.status, events: ev.length, audits: au.length, calls: rec.calls }));
+
+    // ── 7.2 · a second OFF changes nothing and says so ──
+    const rec2 = recSwitch();
+    const res2 = await KS.switchOffHouseBots({ cause: "MANUAL", byId: OFFICER, reason: "second press", alerts: rec2.alerts });
+    ok("7.2 · an OFF that finds it already off writes nothing, cancels nothing and tells nobody (two writers, one OFF)",
+      res2.ok === true && res2.changed === false && res2.drain === "skipped" && res2.cancelled === 0
+        && res2.message === SWITCH_OFF_COPY.ALREADY_OFF && rec2.calls.length === 0
+        && (await offEvents()).length === eventsBefore + 1 && (await offAudits()).length === auditsBefore + 1,
+      JSON.stringify({ res2, events: (await offEvents()).length - eventsBefore }));
+  }
+
+  // ── 7.3 · a bet still inside house:control: OFF is binding at once, the drain only informs ──
+  {
+    await w.switchOn();
+    const b = await w.bot();
+    const { i } = await opener(b);
+    const rec = recSwitch();
+    const hold = withLock(w.constants.HOUSE_CONTROL_LOCK, () => sleep(6_000));
+    await sleep(200);
+    const t0 = Date.now();
+    const pending = KS.switchOffHouseBots({ cause: "MANUAL", byId: OFFICER, reason: "held", alerts: rec.alerts });
+    // The switch must be binding long before the drain gives up: poll the row, not the promise.
+    let bindingMs = -1;
+    for (let k = 0; k < 60; k++) {
+      if ((await control()).enabled === false) { bindingMs = Date.now() - t0; break; }
+      await sleep(50);
+    }
+    const res = await pending;
+    const totalMs = Date.now() - t0;
+    await hold;
+    const r = await w.place(b, i);
+    ok("7.3 · ⭐ A9 steps 1–2 · with a bet still holding house:control the switch is OFF in well under 1.5 s (step 1 takes no lock) while the drain is still waiting",
+      bindingMs >= 0 && bindingMs < 1_500 && res.ok === true && res.changed === true, `binding in ${bindingMs} ms, answered in ${totalMs} ms`);
+    ok("7.4 · …and the bounded drain answers BUSY with A9's own words, without ever leaving the switch on",
+      res.drain === "busy" && res.message === SWITCH_OFF_COPY.BUSY && totalMs >= 2_500 && totalMs < 8_000 && (await control()).enabled === false,
+      `${res.drain} · ${res.message} · ${totalMs} ms`);
+    ok("7.5 · …and the next house bet is refused house_disabled", r.ok === false && r.reason === "house_disabled", show(r));
+  }
+
+  // ── 7.6 · the only outcome that leaves house bots ON says so ──
+  {
+    await w.switchOn();
+    const rec = recSwitch();
+    const realSwitchOff = w.dal.houseBotControlStore.switchOff;
+    const eventsBefore = (await offEvents()).length;
+    let res: Any;
+    w.dal.houseBotControlStore.switchOff = async () => { throw new Error("injected control write failure"); };
+    try { res = await KS.switchOffHouseBots({ cause: "MANUAL", byId: OFFICER, reason: "write fails", alerts: rec.alerts }); }
+    finally { w.dal.houseBotControlStore.switchOff = realSwitchOff; }
+    ok("7.6 · A9 · a failed OFF write is the one outcome that leaves house bots ON: it says so in plain words, writes no event and tells nobody",
+      res.ok === false && res.failure === "WRITE_FAILED" && res.message === SWITCH_OFF_COPY.WRITE_FAILED
+        && (await control()).enabled === true && (await offEvents()).length === eventsBefore && rec.calls.length === 0,
+      JSON.stringify({ res, enabled: (await control()).enabled }));
+    await w.switchOff();
+  }
+
+  // ── 7.7 · the drain must never answer about its own caller ──
+  {
+    let threw = "";
+    await withLock(w.constants.HOUSE_CONTROL_LOCK, async () => {
+      try { await drainLock(w.constants.HOUSE_CONTROL_LOCK, { timeout: "250ms" }); } catch (e) { threw = String((e as Error)?.message ?? e); }
+    });
+    ok("7.7 · ⭐ a drain inside a lock would answer 'drained' about itself: it refuses to run there", /must not run inside a lock/.test(threw), threw || "no throw");
+    const free = await drainLock(w.constants.HOUSE_CONTROL_LOCK, { timeout: "250ms" });
+    ok("7.8 · CONTROL · with nothing holding it the same drain answers drained", free === "drained", String(free));
+    await w.switchOn();
+  }
+}
 console.log(`\n@@SUMMARY ${JSON.stringify({ pass, fail, store: STORE })}`);
 process.exit(fail === 0 ? 0 : 1);
