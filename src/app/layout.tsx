@@ -140,11 +140,12 @@ export const viewport: Viewport = {
 };
 
 import { cookies } from "next/headers";
+import { localeOrDefault } from "@/lib/i18n-dict";
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const jar = await cookies();
-  const cookieLocale = jar.get("kp-locale")?.value;
-  const lang = cookieLocale === "sw" || cookieLocale === "zh" ? cookieLocale : "en";
+  // A visitor with no language chosen gets Swahili, the platform default (`localeOrDefault`).
+  const lang = localeOrDefault(jar.get("kp-locale")?.value);
   // Chatbot on/off (AI toolkit). Default ON if the read fails — a config hiccup must
   // never silently hide a working help widget.
   const chatbotEnabled = await isChatbotEnabled().catch(() => true);

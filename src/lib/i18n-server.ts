@@ -8,14 +8,14 @@
  *   const { t, locale } = await getServerT();
  */
 import { cookies } from "next/headers";
-import { dict, type Locale, type Dict } from "./i18n-dict";
+import { dict, localeOrDefault, type Locale, type Dict } from "./i18n-dict";
 
 export type { Locale, Dict };
 export { dict };
 
 export async function getServerT(): Promise<{ t: Dict; locale: Locale }> {
   const jar = await cookies();
-  const raw = jar.get("kp-locale")?.value;
-  const locale: Locale = raw === "sw" || raw === "zh" ? raw : "en";
+  // No choice yet → Swahili, the platform default (`localeOrDefault`).
+  const locale: Locale = localeOrDefault(jar.get("kp-locale")?.value);
   return { t: dict[locale] as Dict, locale };
 }

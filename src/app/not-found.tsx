@@ -1,9 +1,10 @@
 import Link from "next/link";
-import { cookies, headers } from "next/headers";
+import { cookies } from "next/headers";
 import { I } from "@/components/ui/glyphs";
 import { FiftyMark } from "@/components/brand";
 import { BrandTopo } from "@/components/brand-topo";
 import { getServerT } from "@/lib/i18n-server";
+import { localeOrDefault } from "@/lib/i18n-dict";
 
 /* ── Inline i18n dict for this server component (cannot use useT) ─────── */
 const t404 = {
@@ -41,23 +42,14 @@ const t404 = {
 
 type Locale = keyof typeof t404;
 
-/** Resolve locale: cookie → Accept-Language header → "en". */
+/**
+ * Resolve locale: the visitor's chosen language (the `kp-locale` cookie), else Swahili — the platform default, the same
+ * rule every other page uses (`localeOrDefault`). The browser's Accept-Language is no longer consulted: a 404 must not
+ * speak a different language from the page the visitor just left.
+ */
 async function resolveLocale(): Promise<Locale> {
   const jar = await cookies();
-  const cookieLocale = jar.get("kp-locale")?.value;
-  if (cookieLocale === "sw" || cookieLocale === "zh") return cookieLocale;
-
-  // Fall back to Accept-Language header
-  const h = await headers();
-  const accept = h.get("accept-language") ?? "";
-  // Parse primary language tags (e.g. "sw,en;q=0.9,zh;q=0.8")
-  for (const part of accept.split(",")) {
-    const tag = part.split(";")[0].trim().toLowerCase();
-    if (tag.startsWith("sw")) return "sw";
-    if (tag.startsWith("zh")) return "zh";
-    if (tag.startsWith("en")) return "en";
-  }
-  return "en";
+  return localeOrDefault(jar.get("kp-locale")?.value);
 }
 
 export async function generateMetadata() {

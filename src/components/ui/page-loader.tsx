@@ -29,7 +29,7 @@
 import { cookies } from "next/headers";
 import { BrandSpinner } from "@/components/brand";
 import { PageContainer, type MeasureTier } from "@/components/layout/page-container";
-import { dict, type Locale } from "@/lib/i18n-dict";
+import { dict, localeOrDefault, type Locale } from "@/lib/i18n-dict";
 
 export async function PageLoader({
   tier = "reading",
@@ -42,8 +42,7 @@ export async function PageLoader({
   rowHeight?: number;
 }) {
   const jar = await cookies();
-  const raw = jar.get("kp-locale")?.value;
-  const locale: Locale = raw === "sw" || raw === "zh" ? raw : "en";
+  const locale: Locale = localeOrDefault(jar.get("kp-locale")?.value);
   const t = dict[locale];
   return (
     <PageContainer tier={tier} className="content-fade-in">

@@ -1,5 +1,21 @@
 export type Locale = "en" | "sw" | "zh";
 
+/**
+ * ⭐ SWAHILI IS THE DEFAULT LANGUAGE (Ali, 2026-09-15). A visitor who has not chosen a language sees the site in
+ * Swahili. An explicit choice — the `kp-locale` cookie the language menu writes — is always honoured, so a player who
+ * picked English or Chinese keeps it. The browser's own language is not consulted.
+ *
+ * ⛔ ONE HOME. Every place that turns the cookie into a locale calls `localeOrDefault`, so the default can never differ
+ * between the server render, the client provider, a loader or a 404. (`global-error.tsx` keeps an inline copy on
+ * purpose: it may import nothing but React.)
+ */
+export const DEFAULT_LOCALE: Locale = "sw";
+
+/** The locale a raw `kp-locale` value names, or `DEFAULT_LOCALE` when it is missing or not a supported language. */
+export function localeOrDefault(raw: string | null | undefined): Locale {
+  return raw === "en" || raw === "sw" || raw === "zh" ? raw : DEFAULT_LOCALE;
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════
  *  DICTIONARY — every user-facing string on the platform.
  *

@@ -11,7 +11,7 @@ import {
   useMemo,
 } from "react";
 import { useRouter } from "next/navigation";
-import { dict, type Locale, type Dict } from "./i18n-dict";
+import { DEFAULT_LOCALE, dict, type Locale, type Dict } from "./i18n-dict";
 
 export type { Locale, Dict };
 export { dict };
@@ -32,8 +32,8 @@ const I18nContext = createContext<{
   setLocale: (l: Locale) => void;
   isChangingLocale: boolean;
 }>({
-  locale: "en",
-  t: dict.en,
+  locale: DEFAULT_LOCALE,
+  t: dict[DEFAULT_LOCALE] as Dict,
   setLocale: () => {},
   isChangingLocale: false,
 });
@@ -53,7 +53,7 @@ function writeCookie(name: string, value: string) {
   document.cookie = `${name}=${encodeURIComponent(value)}; path=/; max-age=${60 * 60 * 24 * 365}; samesite=lax`;
 }
 
-export function I18nProvider({ children, initial = "en" }: { children: ReactNode; initial?: Locale }) {
+export function I18nProvider({ children, initial = DEFAULT_LOCALE }: { children: ReactNode; initial?: Locale }) {
   const [locale, setLocaleState] = useState<Locale>(initial);
   const [isChangingLocale, setIsChangingLocale] = useState(false);
   const [isPending, startTransition] = useTransition();
