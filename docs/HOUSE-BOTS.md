@@ -1,6 +1,6 @@
 # House bots — the authority
 
-> 🟠 Being built on branch `house-bots` (commit 2 of 8, the money seam). Nothing is on production. The master switch ships OFF (D1).
+> 🟠 Being built on branch `house-bots` (commit 3 of 8, designation services). Nothing is on production. The master switch ships OFF (D1).
 
 **Authority, in order:** [`04-amendments.md`](../plans/house-bots/04-amendments.md) (its last section, "House bots: amendments N1–N2", is the sealed text) > [`02-sealed-flows.md`](../plans/house-bots/02-sealed-flows.md) / [`03-design-spec.md`](../plans/house-bots/03-design-spec.md) > [`PLAN.md`](../plans/house-bots/PLAN.md). Where any of them disagrees with the code, the code is checked and the document is corrected in the same commit. Where the build stands is [`PROGRESS.md`](../plans/house-bots/PROGRESS.md). The ruling of record is the House bots entry in [`COMPLIANCE-DECISIONS.md`](COMPLIANCE-DECISIONS.md).
 
@@ -41,7 +41,7 @@ The invariant column is PLAN's wording (I2 with its PLAN §18 amendment). "Guard
 | I6 | **Every** cap (money and count) is enforced inside the bet's own locks, never only in the engine. | `test:house-bot-caps` (commit 2): every cap code at its boundary, NULL refuses, concurrent bursts stop exactly. `test:house-bot-seam` §5: the declared `H2_ORDER` and cap sequence. | — |
 | I7 | House stakes are cash only. No bonus spend, no wagering accrual, no agent commission, no cash-out, no objection standing. | `test:house-bot-money` (commit 2): cash only, no cash-out (d)/(e); `test:house-bot-seam` §6: no wagering reversal or recruiter reward on a marked position, `HOUSE_STAKE_ONLY` objection standing. | The no-reward pin (R4, F9), commit 5. |
 | I8 | An immutable `houseBotId` marker sits on the Position and on every Transaction of it. Reports filter on the row marker, never on current status. Levy identity unchanged. The marker never reaches a public payload. | `test:house-bot-migrations` (commit 1): the two marker columns and their partial indexes. `test:dal-parity` (commit 1): the memory position store's full-row write keeps the stored marker and never takes the incoming one, at source level. `test:house-bot-migrations` §d c21 (commit 1): on Postgres and on memory, a full-row write neither drops a marker nor marks an unmarked stake. `test:house-bot-money` (commit 2): the marker on the position, BET_PLACED, WIN payout, VOID, one-sided, emergency and orphan refunds (a player's refund carries none); on Postgres the books balance and the levy identity holds with a house stake in the pool. | The reports suite, commit 5 (absent from every public payload). |
-| I9 | Owner self-exclusion, cooling-off, suspension, frozen or missing wallet, own loss limit, password change or role change auto-pause that bot and alert admins. | `test:house-bot-rules` (commit 1): every pause reason has a way out, and any two holder causes cleared in either order leave a step other than Remove at every point. | The designation suite, commit 3; the engine and holder-lifecycle suites, commit 4. |
+| I9 | Owner self-exclusion, cooling-off, suspension, frozen or missing wallet, own loss limit, password change or role change auto-pause that bot and alert admins. | `test:house-bot-rules` (commit 1): every pause reason has a way out, and any two holder causes cleared in either order leave a step other than Remove at every point. `test:house-bot-designation` (commit 3): each of the five consent-void causes auto-pauses an ACTIVE bot and ends every active target in the wallet transaction; the live causes, the RG backstop and Start's refusals; a planted fingerprint-only predicate is shown to let a voided bot through. | The engine and holder-lifecycle suites, commit 4 (the hook, the sweep and the admin alerts that detect each change). |
 | I10 | No officer-conflict lock (2026-07-24 ruling). House exposure is only **displayed** to resolvers. | `test:two-admin` and `test:officer-conflict`: a position-holding admin resolves or voids in one action, and no conflict block exists. | The reports suite, commit 5: resolver display, including "of which chosen by you" (risk 20). |
 
 ---
@@ -63,10 +63,10 @@ The invariant column is PLAN's wording (I2 with its PLAN §18 amendment). "Guard
 | `HouseBotControl` | `global` only | The master switch (`enabled`, `switchedAt/ById/Reason`, `offCause`), the global limits (§5), `limitsVersion` and `limitsSchemaVersion`, and `boardDisclosureSentAt` / `boardDisclosureSections`. `boardDisclosureSections` is NULL until the first record, and readers treat NULL as an empty list. | One fixed row. |
 | `HouseBotRuntime` | `global`, `beat:planner`, `bot:<id>`, `engine:<instance>`, `beat:poller:<instance>` | Hot counters kept off the control row and written with `INSERT … ON CONFLICT DO UPDATE`: the hour counter, the rate-limited counter, the sweep watermark and `scopeFrom`, error streaks, bounds and exit-config hashes, beats and clock skew. | Fixed rows overwritten in place. Per-instance rows (`engine:*`, `beat:poller:*`) are deleted after 24 h, because the instance id is random per boot (⏳ lands in build commit 4). |
 | `HouseBotAlertOnce` | the throttle key | One row per throttle key (§9.3). An alert is sent only when the claim's `INSERT … ON CONFLICT DO NOTHING RETURNING` returns a row, so two replicas send it once. | 30 days, purged by `retention.purge.daily` in batches of 5,000 (⏳ lands in build commit 4). |
-| `HouseBotEvent` | `hbe_…` | The append-only history of every bot and of the control row: `kind` (§2.4), `fromStatus` / `toStatus`, `reason`, `actorId` (null = `system_house_bot`), `marketId`, `payload`, `auditId`. | 7 years, never deleted. `reason` is pseudonymised on erasure (⏳ lands in build commit 3). |
+| `HouseBotEvent` | `hbe_…` | The append-only history of every bot and of the control row: `kind` (§2.4), `fromStatus` / `toStatus`, `reason`, `actorId` (null = `system_house_bot`), `marketId`, `payload`, `auditId`. | 7 years, never deleted. `reason` is pseudonymised on erasure (`erasure.ts`, commit 3). |
 | `HouseBotIntent` | `hbi_…` | Every decision, placed or not: `kind`, `anchorKey`, market and product line, trigger, side, `stakeTzs`, `dueAt` / `deadlineAt` / `staleAt`, `status` and `reasonCode`, `why` and `decision`, the claim and attempt columns, `positionId`, `idempotencyKey`, `finishedAt`, `alertedAt`. Staff-chosen rows add `requestedById` and `entryCondition` (Enter now) or `targetId` (a targeted COUNTER). | 7 years, never deleted, skipped and expired rows included (PROGRESS W4). |
 | `HouseBotTarget` | `hbt_…` | A poll one bot reacts to (N2): `delayMinSec` / `delayMaxSec`, `timingFrom`, `reactTo`, `effectiveFrom` (= `createdAt` + `TARGET_ARMING_SEC`, written from DB `now()` in the insert), `version`, the end and removal columns, and a `snapshot`. Officer ids and public poll fields only. | 7 years, never deleted. Never in the holder's data-rights export. |
-| `HouseBotPress` | `hbp_…` | Every officer press for Enter now, a target add, update or remove, and a staff cancel: `actorId` + `submitId` (one press per double tap), `purpose`, `state`, the refusal `code`, `reason`, and the audit lease (`auditId`, `auditClaimUntil`). | 7 years, never deleted. Officer data, never in the holder's export. `reason` is pseudonymised on erasure (⏳ lands in build commit 3). |
+| `HouseBotPress` | `hbp_…` | Every officer press for Enter now, a target add, update or remove, and a staff cancel: `actorId` + `submitId` (one press per double tap), `purpose`, `state`, the refusal `code`, `reason`, and the audit lease (`auditId`, `auditClaimUntil`). | 7 years, never deleted. Officer data, never in the holder's export. `reason` is pseudonymised on erasure (`erasure.ts`, commit 3). |
 
 Every house table is on the chain purge's NEVER list (`src/lib/server/chain-purge.ts`, DATA-RETENTION §7.1). This is the chain purge only: `HouseBotAlertOnce` is still purged at 30 days by the retention pass, and per-instance `HouseBotRuntime` rows after 24 h.
 
@@ -76,7 +76,7 @@ Every house table is on the chain purge's NEVER list (`src/lib/server/chain-purg
 |---|---|---|
 | `Position.houseBotId` | At create only (⏳ lands in build commit 2) | A soft reference with no foreign key. Every update skips it; it never reaches a public payload. |
 | `Transaction.houseBotId` | At create only, on every transaction of a marked position (⏳ lands in build commit 2) | As above. Reports filter on it (I8). |
-| `User.passwordSetAt`, `User.passwordSetVia`, `User.emailSetByOfficerAt` | In the same update as the password hash, or the officer's email edit (⏳ lands in build commit 3) | `passwordSetVia` is one of `PASSWORD_SET_VIA`. NULL on accounts older than the column; eligibility then falls back to an awaited audit read that fails closed (A4). |
+| `User.passwordSetAt`, `User.passwordSetVia`, `User.emailSetByOfficerAt` | In the same update as the password hash (registration, the settings change, the reset link, the officer's temporary password), or the officer's email edit (`setUserEmail(…, {byOfficer: true})`). Commit 3; a source pin in `test:house-bot-designation` refuses a new hash writer that sets no history. | `passwordSetVia` is one of `PASSWORD_SET_VIA`. NULL on accounts older than the column; eligibility then falls back to an awaited audit read that fails closed (A4). |
 | `PredictionMarket.reopenedAt`, `PredictionMarket.reopenCount` | By `adminReopenMarket`, sanctioned change (r) (⏳ lands in build commit 2) | Read by the information blackout and by A16's reopen detection. |
 
 **Foreign keys**
@@ -432,18 +432,19 @@ Lowering `maxDesignatedBots` below the number of designated bots is allowed and 
 
 ## 6. Eligibility, causes and the auto-pause matrix
 
-⏳ `houseBotEligibility`, password verification and the holder hook land in commits 3 and 4; their eligibility table is written then. The pure half — every reason, cause and way out — is `src/lib/house-bot/pause-reasons.ts`, and it is below.
+The pure half — every reason, cause and way out — is `src/lib/house-bot/pause-reasons.ts` and `consent.ts`. The services are `src/lib/server/house-bot/eligibility.ts` and `designation.ts` (commit 3); the console actions that call them land in commit 7, and the holder hook and sweep that detect each change in commit 4.
 
 ### 6.1 Reasons are history; causes are live (A3)
 - `pauseReason` is the reason a bot stopped, written once and shown in History. It never gates anything.
-- The **causes** are recomputed from the holder's account every time (`holderCauses()`, commit 3), and Start, Re-verify and the strip read only them. A bot paused for a password change whose holder then self-excludes has one reason and two causes; gating on the reason alone would offer a Start that consent no longer allows.
+- The **causes** are recomputed from the holder's account every time (`holderCauses()` in `consent.ts`), and Start, Re-verify and the strip read only them. A bot paused for a password change whose holder then self-excludes has one reason and two causes; gating on the reason alone would offer a Start that consent no longer allows.
 - NEW and MANUAL are the reasons of a PAUSED bot. ACCOUNT_CLOSED ends REMOVED. Every other reason is an AUTO_PAUSED one.
 - Why a bot was removed lives in `removedCause` (§6.5), never in `pauseReason`.
 
 ### 6.2 Consent
 - Consent is the owner entering the account's password (D5). The bot keeps a fingerprint of it, never the password.
 - **One validity predicate** (PLAN §18), used by H2, Start, the strip and `?reverify=1`: `consentValid = fingerprint matches AND (consentVoidAt IS NULL OR verifiedAt > consentVoidAt)`.
-- **What voids consent** (`CONSENT_VOID_CAUSES`): SELF_EXCLUDED, COOLING_OFF, IDENTITY_REFUSED, HOLDER_ERASURE_REQUEST, HOLDER_WITHDREW. A void stands until a re-verify whose `verifiedAt` is later — even when the password never changed, because the fingerprint alone would still match. A void also ends every active target of that bot as ENDED(CONSENT_VOID) (⏳ lands in build commit 3).
+- **What voids consent** (`CONSENT_VOID_CAUSES`): SELF_EXCLUDED, COOLING_OFF, IDENTITY_REFUSED, HOLDER_ERASURE_REQUEST, HOLDER_WITHDREW. A void stands until a re-verify whose `verifiedAt` is later — even when the password never changed, because the fingerprint alone would still match. A void also ends every active target of that bot as ENDED(CONSENT_VOID), with one TARGET_ENDED event each, in the same `wallet:<botUser>` transaction as the void (`voidHouseConsent`); Re-verify and Start never revive them.
+- **The void service** (`voidHouseConsent`): an ACTIVE bot → AUTO_PAUSED(cause) with `pausedFromStatus` ACTIVE and its live intents cancelled; a PAUSED or AUTO_PAUSED bot keeps its status and gets HOLDER_CAUSE_ADDED; a second pass changes nothing; a failure part-way rolls every write back. The holder is told only for HOLDER_WITHDREW (a confirmation); responsible-gambling causes send them nothing (C8).
 - **Responsible gambling outranks every other door** (`RG_CAUSES`: SELF_EXCLUDED, COOLING_OFF). While the lock stands even Re-verify is refused. When it ends, the bot needs a fresh password and then Start; it never resumes by itself (D11, C8).
 - **A password change** (PLAN §14, A2) records how it happened in `credentialChangedVia`: SELF_CHANGE, RESET_LINK, OFFICER_TEMP, or UNKNOWN for a holder whose `passwordSetVia` is NULL. A password support set (OFFICER_TEMP) is not the holder's consent, so Re-verify is refused until the holder sets their own.
 
@@ -451,8 +452,8 @@ Lowering `maxDesignatedBots` below the number of designated bots is allowed and 
 `HOLDER_CAUSES`: ACCOUNT_CLOSED, HOLDER_ERASURE_REQUEST, SELF_EXCLUDED, COOLING_OFF, IDENTITY_REFUSED, HOLDER_WITHDREW, CONSENT_VOID, PASSWORD_CHANGED, ACCOUNT_SUSPENDED, WALLET_FROZEN, ROLE_CHANGED, OWNER_LOSS_LIMIT.
 - The order is: terminal and statutory → responsible gambling → consent-voiding decisions → re-verifiable → lifted by an officer → clears by itself. The strip shows the first three, then "and N more".
 - CONSENT_VOID is listed only while a void stands and its original cause is no longer live; while the cause is live, the cause says more.
-- Only PASSWORD_CHANGED and CONSENT_VOID can be cleared by a re-verify (`REVERIFY_ELIGIBLE_CAUSES`), and never a password change through OFFICER_TEMP.
-- **Gating, pure.** `canStart`: not REMOVED, and no live cause. `canReverify`: stopped and not REMOVED, no responsible-gambling lock, and every live cause re-verifiable. `nextActions`: the union of each live cause's steps, plus START when Start is allowed; while a responsible-gambling lock stands, REVERIFY is withheld and WAIT offered. The service adds the refusals that need reads (eligibility, fingerprint, today's loss, the holder's own limit).
+- Only PASSWORD_CHANGED and CONSENT_VOID can be cleared by a re-verify (`REVERIFY_ELIGIBLE_CAUSES`), and never a password change through OFFICER_TEMP. Consent survives ACCOUNT_SUSPENDED, WALLET_FROZEN, ROLE_CHANGED and OWNER_LOSS_LIMIT (`REVERIFY_TOLERATED_CAUSES`): re-verify may run beside them, and Start waits for them (C8, 02 §2.6, PLAN §18 — A3's own sentence reads stricter; the reconciliation is binding).
+- **Gating, pure.** `canStart`: not REMOVED, and no live cause. `canReverify`: stopped and not REMOVED, no responsible-gambling lock, and every live cause re-verifiable or tolerated. `nextActions`: the union of each live cause's steps, plus START when Start is allowed; while a responsible-gambling lock stands, REVERIFY is withheld and WAIT offered. The service adds the refusals that need reads (eligibility, fingerprint, today's loss, the holder's own limit).
 
 ### 6.4 The way out of each pause reason (`PAUSE_REASON_WAY_OUT`)
 No reason is a dead end: `test:house-bot-rules` clears every pair of holder causes in both orders and requires a step other than REMOVE at each point. Remove itself is always available. `{label}` is the bot's label.
@@ -499,6 +500,29 @@ Two ways out belong to a live cause rather than a reason:
 - Remove cancels the bot's PENDING and CLAIMED intents. Open house positions keep their markers and settle normally (PLAN F8).
 - Closing the holder's account removes the bot with cause ACCOUNT_CLOSED (A5, commit 4). The sunset script removes every bot with cause SUNSET (F2, commit 7).
 
+### 6.6 Eligibility and the designation services (commit 3)
+`houseBotEligibility(userId, {context, botId?, actorId?})` is the one function behind the picker, the account card, designate, re-verify and Start. Every read that fails is a blocking row, never an absent one.
+
+| Context | Blocking rows (`code`) |
+|---|---|
+| always | STAFF_ACCOUNT · AGENT_ACCOUNT · ACCOUNT_CLOSED (with the closed-wallet float line) · NOT_ACTIVE (a COOLED_OFF status is left to the RG row: it outlives the break) · NO_PASSWORD · RG_LOCKED / RG_UNREADABLE · WALLET_MISSING · WALLET_NOT_ACTIVE · BALANCE_UNREADABLE |
+| designate (no bot) | ALREADY_LIVE_BOT · OWN_ACCOUNT · ROSTER_FULL |
+| designate, reverify, start | ERASURE_REQUEST (an open erasure request, with its id and date) |
+| designate, reverify | SIGN_IN_LOCKED · PASSWORD_SET_BY_SUPPORT (`passwordSetVia` OFFICER_TEMP, or RESET_LINK within 30 days after `emailSetByOfficerAt`; a legacy NULL history reads the durable audit log, awaited) · PASSWORD_HISTORY_UNREADABLE |
+| start (bot) | IDENTITY_REFUSED · PASSWORD_CHANGED · CONSENT_VOID · RG_SINCE_VERIFIED (the A3 backstop: a self-exclusion or break began after `verifiedAt`, even with no void written) · DAILY_LOSS_STOP · OWNER_LOSS_LIMIT |
+
+Warnings: EMAIL_UNVERIFIED · IDENTITY_NOT_APPROVED · RECRUITED · OPEN_POSITIONS · PUBLIC_NAME · NAME_RISK (`/50pick|house|bot|liquidity|ukwasi/i`) · SIGN_IN_LOCKED_WARNING (start: the bot continues). The C9 "agent application pending" warning needs the agent-application read and lands with the overview page (commit 7).
+
+**`verifyHouseBotPassword`** (C4). In order: an empty password refuses, uncounted and untrimmed; a `submitId` is claimed once (`ALERT_KEY.submit`); re-verify refuses a removed bot and is a no-op for a running bot with valid consent; the password-context rows and an RG lock refuse, uncounted; the `housebot.verify` bucket {capacity 3, refill 0.2/min}, keyed `<officer>:<holder>`; then inside `login:<userId>` on the fresh row: an expired lock is cleared, at `failedLoginCount ≥ LOCKOUT_MAX_FAILS − 2` the password is not checked (`RESERVED`), a wrong password adds 1 and never writes `lockedUntil`, a right one resets the count. `attemptsBeforeLock = max(0, 5 − 2 − failedLoginCount)`. It never creates a session, a cookie, an `ActiveSession` row or `lastLoginAt`, and writes no `auth.login.*` audit. The holder is told once when the owner's wrong tries reach the reserve.
+
+**`designateHouseBot`**: label and note → eligibility (so no attempt is spent on an account that cannot be designated) → the label pre-check → the password check → under `wallet:<userId>` the hash is re-read (a change since the check writes no row) → under `house:control` the roster is counted again and the bot (PAUSED(NEW)), its runtime row and DESIGNATED are written in one transaction. A clash the pre-check missed is named by the unique index: `HouseBot_labelKey_live_key` → field label, `HouseBot_userId_live_key` → "This account is already a house bot." with its id. Then COMPLIANCE `house_bot.designated` (no label, note or fingerprint) and the holder's notice.
+
+**`reverifyHouseBot`**: refuses on the rows above that stop a re-verify (closed, no password, RG, erasure, sign-in locked, support-set password, history unreadable), then `canReverify`; checks the password; under `wallet:<botUser>` refuses if the hash changed again while the owner typed; otherwise the new fingerprint and `verifiedAt`, AUTO_PAUSED → PAUSED(MANUAL), event VERIFIED, and the holder's "Your permission was confirmed". It never starts the bot.
+
+**`startHouseBot({officerId, botId, rulesContext})`** in 02 §3.3's order: removed → eligibility → consent (PASSWORD_CHANGED, CONSENT_VOID, RG_SINCE_VERIFIED) → the saved rules and caps (`parseHouseBotRules`, `rulesStartProblems`) → today's loss cap → the holder's own loss limit. Under `wallet:<botUser>` consent is read again, then ACTIVE, `scopeFrom` now and STARTED. With the master switch OFF the bot still starts and the result says `masterOn: false` (C10).
+
+**Erasure** (`anonymizeClosedAccount`, A5/R6): a non-REMOVED bot refuses (`house_bot_live`) before any destructive write, and every owner is alerted once per bot (`notifyAdminsHouseBotErasureBlocked`, AlertOnce `erasure-blocked:<botId>`). After Remove, erasure redacts each quoted label in any inbox to `"Erased bot <TAIL6>"` and pseudonymises the bot rows (label `Erased <TAIL6>`, note, `removedReason`, event and press reasons `[erased]`), counting `houseBots` and `houseBotNotificationsRedacted`; a re-run counts zero.
+
 ---
 
 ## 7. Console map
@@ -517,7 +541,7 @@ Two ways out belong to a live cause rather than a reason:
 
 ## 9. Alert matrix
 
-⏳ The emitters land in commits 3 and 4, each with a `comms-registry` row, under notification kind `HOUSE_BOT` (a money kind). The throttle keys are fixed now, in `ALERT_KEY`.
+The emitters land in commits 3 and 4, each with a `comms-registry` row, under notification kind `HOUSE_BOT`. ⚠️ `HOUSE_BOT` is **not** a money kind, although PLAN §7 put it there: a money kind must state a figure (`test:cert-c3` §6) and these notices state none (W17, waiting on Ali with this default). Commit 3 built `notifyHouseBotOwner` (all eight holder notices), `notifyAdminsHouseBotErasureBlocked`, and the email templates `houseBotOwnerHtml` and `houseBotErasureBlockedAdminHtml`; the others are commit 4. The throttle keys are fixed now, in `ALERT_KEY`.
 
 ### 9.1 Channel law
 - ⛔ **`HOUSE_BOT` is never sent by SMS** (C13, and F6's channel policy in commit 4). When every position behind a notice is house-marked there is no SMS, and email only through the holder's hourly summary.
@@ -550,6 +574,8 @@ Two ways out belong to a live cause rather than a reason:
 | A market holding a staff-chosen stake is decided by the officer who chose it (resolved, voided, reopened, objection upheld or rejected) | `notifyAdminsHouseBotAlert` | Every recipient | Bell + email | Once per market and action (`staffStakeSelfDecided`). A record only: nothing is refused. | `/admin/markets/<marketId>` |
 | An officer's staff-chosen stakes meet a staff-edge threshold for the month | `notifyAdminsHouseBotAlert` | Every recipient | Bell + email | Once per officer per month (`staffEdge`) | `/admin/reports?tab=library&range=custom&from=<YYYY-MM-01>&to=<YYYY-MM-last>` |
 | Holder: designated, started, paused, paused for a password change, removed | `notifyHouseBotOwner` | Holder | Bell + push, and email on designated and removed | — | `/positions` |
+| Holder: stopped liquidity stakes themselves (A3) | `notifyHouseBotOwner` (`withdrew`) | Holder | Bell + push | — | `/positions` |
+| An erasure is refused because the account is still a house bot (R6) | `notifyAdminsHouseBotErasureBlocked` | Every recipient | Bell + email | Once per bot (`erasureBlocked`) | `/admin/house-bots/<botId>` |
 | Holder: an owner confirmed their permission with their current password | `notifyHouseBotOwner` (`reverified`) | Holder | Bell + push + email | — | `/positions` |
 | Holder: wrong password attempts reached the attempts kept for the holder | `notifyHouseBotOwner` (`verify_reserved`) | Holder | Bell | — | `/positions` |
 | Holder: a house bet from their account | `notifyHouseBotOwnerStake` | Holder | Bell + push | While runtime `bot:<id>` count ≤ `holderNoticesPerHour`. A staff-chosen stake reads like any other. | `/positions/<positionId>` |

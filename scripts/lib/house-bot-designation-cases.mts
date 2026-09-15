@@ -733,8 +733,10 @@ section("§8 · erasure refuses a live bot, then pseudonymises it");
   const req = fileDsarRequest({ userId: h, type: "ERASURE" });
   const blocked = (a: Any) => a.kind === "HOUSE_BOT" && a.titleEn.startsWith("Erasure blocked");
   const alertsBefore = ((await w.db.notification.findByUser(OFFICER, 500)) as Any[]).filter(blocked).length;
-  const f1 = await fulfillDsarRequest({ id: req.id, officerId: OFFICER });
-  const f2 = await fulfillDsarRequest({ id: req.id, officerId: OFFICER });
+  // A throw is a refusal the officer cannot read — recorded as a failed assertion, never a crashed suite.
+  const tryFulfil = () => fulfillDsarRequest({ id: req.id, officerId: OFFICER }).catch((e: Any) => ({ ok: false, error: `THREW: ${e?.message}` }));
+  const f1 = await tryFulfil();
+  const f2 = await tryFulfil();
   const alerts = ((await w.db.notification.findByUser(OFFICER, 500)) as Any[]).filter(blocked).length - alertsBefore;
   ok("8.1 · a live bot → the erasure refuses with the R6 copy naming the bot", f1.ok === false && f1.error === `This account is still house bot ${d.bot.id}. The owner must remove it at /admin/house-bots/${d.bot.id} before it can be erased.`, j(f1));
   ok("8.1b · the request stays PENDING, and nothing was erased (label, phone kept)",

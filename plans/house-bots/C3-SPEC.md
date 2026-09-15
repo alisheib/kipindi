@@ -157,3 +157,14 @@ Same update as the hash:
 18. **Start in 3 is a service** (`startHouseBot` refusal chain and write) that the commit-7 action will call; no action, no console.
 19. Export the lockout constants from `auth-service.ts`; `playerHandle` = `displayLabel({id, displayName: null})`.
 20. Commit 7 uses `autoComplete="new-password"` (04).
+
+**Added while building (2026-09-15, OMEGA-COMPILE01):**
+
+21. **Re-verify tolerates suspension, freeze, role and the holder's own loss limit.** 04 A3's sentence ("causes limited to PASSWORD_CHANGED and CONSENT_VOID") is stricter than 04 C8 ("Other causes (suspended, frozen, role) still don't block re-verify"), 02 §2.6 step 4 and PLAN §18's §14-step-4 correction; the reconciliation is binding, so `canReverify` accepts `REVERIFY_TOLERATED_CAUSES` and Start still waits for them. This corrects §2.1's "Re-verify allowed only when causes ⊆ {PASSWORD_CHANGED, CONSENT_VOID}".
+22. **Admin copy is gender-neutral** ("their password", "Ask them…") where 02/04 wrote "his". `pause-reasons.ts` (commit 1) already does this; the sealed meaning is unchanged.
+23. **A COOLED_OFF status is not NOT_ACTIVE.** The status outlives the break (nothing resets it when the timer runs out, and the bet path lets such an account bet), so PLAN §6's "status ≠ ACTIVE" would block Start for good after every break. The RG row covers a break that still runs.
+24. **A new bot's rules are `{schemaVersion: 1}`** with every cap NULL. The rules form (commit 7) writes the real rules; Start refuses until then (no product, no mode, unset caps).
+25. **`house_bot.password_verified` is written once, by the password check**, for designate and re-verify alike; the re-verify write adds event VERIFIED only (no second SECURITY row).
+26. **A legacy password history whose audit read stops short (truncated at 200 rows with no password write found) is unreadable** and blocks, like a read that throws (04 A4 "a failed read blocks").
+27. **The holder's reserve notice** is sent when the owner's wrong try brings the count to the reserve; a RESERVED refusal adds none (C13 test "reaching reserve → 1 row").
+28. **The C9 "agent application pending" warning** needs the agent-application read and lands with the overview page (commit 7).
