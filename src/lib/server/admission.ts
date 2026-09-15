@@ -125,6 +125,14 @@ function recordWait(ms: number): void {
 /** Marks "a slot is already held on this async context" — invariant 2. */
 const reentrancy = new AsyncLocalStorage<true>();
 
+/**
+ * True inside a withAdmission() slot on this async context. The house-bot engine refuses to fire an intent from
+ * inside one (04 N1 §4.3 step 6, MON-13): its own `placeHouseBet` would otherwise run on the caller's slot.
+ */
+export function inAdmission(): boolean {
+  return reentrancy.getStore() === true;
+}
+
 /* ── Core ────────────────────────────────────────────────────────────────── */
 
 function settle(w: Waiter, admitted: boolean): boolean {

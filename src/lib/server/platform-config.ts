@@ -28,7 +28,9 @@ export type PlatformConfig = {
   } | null;
 };
 
-const CONFIG_KEY = "platform_config";
+/** The SystemConfig key. Exported for the house-bot engine, which reads it through `loadConfigResult` (04 F7). */
+export const PLATFORM_CONFIG_KEY = "platform_config";
+const CONFIG_KEY = PLATFORM_CONFIG_KEY;
 const DEFAULT: PlatformConfig = {
   timezone: process.env.PLATFORM_TIMEZONE || "Africa/Dar_es_Salaam",
   maintenanceMode: false,

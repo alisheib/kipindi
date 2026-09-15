@@ -283,6 +283,14 @@ Authority order: 04 > 02/03 > PLAN > 01; the later and more specific text wins.
 44. **The schema gate caches only "ready".** A not-ready answer is asked again on every call, so a container that booted mid-migration recovers without a restart; a failing probe is not ready (fails closed).
 45. **`marketView` is a seam-store member** (plain SELECT, both twins), so `test:dal-parity`'s existing both-implementations check covers it with no new wiring pin. The row types live in the DAL; `market-view.ts` re-exports them type-only and stays pure.
 
+*Rulings taken in §5 step 4 (2026-09-16):*
+
+46. **The engine is wired into `instrumentation.ts` only with the alert emitters (step 9), not in step 4.** `applyOutcome` and fire take `EngineAlerts` as a required argument with no default, so no build can run the engine with a silent alert channel; ruling 42's "wire in step 4" moves to step 9.
+47. **Where a deferred rate cap waits.** MIN_GAP defers to the seam's own `detail.until`; GLOBAL_BETS_PER_MINUTE defers 60 s (its window length, an upper bound on when it frees); PER_HOUR and PER_DAY skip — the seam's answer does not carry their free time, and an hour-scale deferral outlives `staleAt` for every Up & Down and targeted row. A deferral past `staleAt` skips (N1 §4.3).
+48. **Maintenance at fire reads the row, not the latch.** `control.ts maintenanceOn()` reads `platform_config` through `loadConfigResult`; an unreadable row throws (a transient requeue, never a stake). A stored row is interpreted as `getPlatformConfig` interprets it (no `timezone` → the defaults), so fire and the bet path never disagree; the seam's own maintenance check still runs inside the bet.
+49. **`account_blocked` is resolved by re-reading the account (A10).** CLOSED → REMOVED(ACCOUNT_CLOSED) through `stopBot` (A5); SELF_EXCLUDED or COOLED_OFF → `voidHouseConsent` with that cause (it pauses, ends the bot's targets and cancels its intents in its own wallet-lock transaction); SUSPENDED → AUTO_PAUSED(ACCOUNT_SUSPENDED); anything else, unreadable included → AUTO_PAUSED(ACCOUNT_BLOCKED).
+50. **A transient requeue with no time left expires on the nearer bound:** EXPIRED(STALE) when `staleAt ≤ deadlineAt`, else EXPIRED(BUSY_TIMEOUT) (N1 §4.3 MON-10, PLAN §4.6).
+
 No decision here needs Ali; W17 remains the only open owner question.
 
 ## 7. Guards that will go red, and how to move each honestly
