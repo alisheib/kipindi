@@ -6,6 +6,18 @@
 
 ---
 
+## 2026-09-15 (third) · Privacy v2026-09-15.3 — §5 states Google Analytics' retention: event data 2 months, user data 14 months
+
+**Owner report (Ali, 2026-09-15):** the GA4 property's Data retention is set to **event data 2 months** and **user data
+14 months** (Admin → Data collection and modification → Data retention). §5 of the notice now states both periods in
+en/sw/zh, "only if you allow analytics". This closes the retention item left open by the two entries below.
+
+These are property settings, not code, so `test:privacy-notice` §4f pins the owner-reported values in all three languages
+(with a planted control). **⛔ If anyone changes the retention in Google Analytics, the notice changes first** — a new
+version, the pin, and an entry here.
+
+---
+
 ## 2026-09-15 (second) · Privacy v2026-09-15.2 — Google Analytics becomes opt-in, and every visit is counted first-party with no identifier
 
 **Owner decision (Ali, 2026-09-15): "count all, full detail with OK".** The first release (below) ran GA for every visitor
@@ -37,9 +49,15 @@ which the code expires on withdrawal. Both new suites run in `predeploy`.
 
 **Owner items from the entry below:** ② done by Ali (history-based page views off); ① data retention set by Ali in GA
 (the value is not yet recorded here, so the notice states no GA period); ③ decided — this entry.
-**Still open:** transfers outside Tanzania — the PDPA requires a PDPC permit or safeguards, which covers Google as well
-as the processors already named in §4 (Railway, Cloudflare, Postmark, Anthropic, Sentry); Cloudflare Web Analytics
-beacon to be switched off in the dashboard (the API token supplied lacks *Account Settings*).
+**Closed by the owner the same day:** ① transfers outside Tanzania — Ali put the question to the Board, and the Board's
+answer was that **no permit or further step is required** for the processors named in §4 (Google, Railway, Cloudflare,
+Postmark, Anthropic, Sentry). Recorded here as the owner's report of the regulator's position; do not re-raise it without
+a change in the law or the Board's guidance. ② Cloudflare Web Analytics — Ali reports it off in the dashboard (the account's Web
+Analytics page shows "Get started", i.e. no site). ⚠️ **But checked live the same hour, the beacon is STILL injected**
+into `/`, `/legal/privacy` and `/markets` (`static.cloudflareinsights.com/beacon.min.js`, requested, and refused by our
+CSP). A second switch injects it — see the entry's follow-up once identified. Harmless while the CSP blocks it (it
+collects nothing), but it must be turned off at its source rather than left to fail.
+**Open item:** the Cloudflare injection's source. (GA data retention — closed by the entry above, v2026-09-15.3.)
 
 **⛔ Do not** load Google Analytics before consent, weight the two answers differently, or add any identifier (user, IP,
 hash, cookie, storage) to the visit counter, without a new owner decision and a notice change first.
