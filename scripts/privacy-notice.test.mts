@@ -39,9 +39,9 @@ const ok = (label: string, cond: boolean, why = "", evidence = "") => {
 const code = (src: string) => src.replace(/^[ \t]*\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
 
 /* ── The pinned facts. Moving any of these is a legal act: a dated COMPLIANCE-DECISIONS entry comes with it. ── */
-const PRIVACY_VERSION = "2026-09-14.3";
+const PRIVACY_VERSION = "2026-09-15";
 /** sha256 (first 12 hex) of the ENGLISH content block, whitespace-collapsed. The English text is the binding one. */
-const PRIVACY_EN_SHA = "40a25a292c9b";
+const PRIVACY_EN_SHA = "8e338f8434d9";
 /** Every cookie name the code writes, as of v2026-09-14.2. A new one must be described in §7 first. */
 const COOKIES = ["kp-kyc-notice", "kp-locale", "kp_admin_totp", "kp_pending_2fa", "kp_revoked", "kp_session"];
 
@@ -304,6 +304,88 @@ ok("§4d en/sw/zh §3/§4/§5 say only what the code does: Selcom named, no unwi
   factDefects(pageSrc, paymentsSrc, consentSrc).length === 0, factDefects(pageSrc, paymentsSrc, consentSrc).join("; "));
 
 /* ════════════════════════════════════════════════════════════════════════════
+ * §4e · THIRD-PARTY SCRIPTS — v2026-09-15. The §4a cookie census reads only what OUR code writes; a script
+ * loaded from another host writes its own cookies and sends its own hits, and no census of `src/` sees them.
+ * The population that cannot lie is the CSP: a browser runs and connects to nothing it does not list. So every
+ * external host in the CSP is classified, and the analytics one is tied to its notice clauses.
+ * ══════════════════════════════════════════════════════════════════════════ */
+console.log("\n§4e · every external host the CSP admits is classified; Google Analytics is described as it runs");
+const gaLib = read("src/lib/google-tag.ts");
+const gaComponent = code(read("src/components/analytics/google-tag.tsx"));
+const layoutSrc = code(read("src/app/layout.tsx"));
+/** CSP host → what it is. `analytics` hosts require the §4/§7 Google Analytics clauses.
+ *  ⛔ Google Fonts was here until 2026-09-15 and is deliberately gone: the families are self-hosted, and a font CDN
+ *  coming back must be classified (and named in §4) before it can pass. */
+const CSP_HOSTS: Record<string, "analytics"> = {
+  "https://*.googletagmanager.com": "analytics",
+  "https://*.google-analytics.com": "analytics",
+  "https://*.analytics.google.com": "analytics",
+};
+function cspHosts(proxy: string): string[] {
+  const consts = new Map<string, string>();
+  for (const m of proxy.matchAll(/const ([A-Z_]+) = "([^"]*)";/g)) consts.set(m[1], m[2]);
+  const start = proxy.indexOf("const CSP_BASE = [");
+  const body = start >= 0 ? proxy.slice(start, proxy.indexOf("];", start)) : "";
+  const expanded = body.replace(/\$\{([A-Z_]+)\}/g, (_, k: string) => consts.get(k) ?? `<unresolved ${k}>`);
+  return [...new Set(expanded.match(/https:\/\/[^\s"'`;]+|<unresolved [A-Z_]+>/g) ?? [])].sort();
+}
+/** The id and the cookie lifetime are READ from the library passed in — never retyped — so a lifetime changed in
+ *  code alone is a missing sentence in §7. */
+const gaId = (lib: string) => lib.match(/export const GA_MEASUREMENT_ID = "(G-[A-Z0-9]+)";/)?.[1] ?? "<no id>";
+const gaDays = (lib: string) => Number(lib.match(/export const GA_COOKIE_DAYS = (\d+);/)?.[1]);
+function gaWords(lib: string): Record<Loc, { s4: string[]; s7: string[] }> {
+  const cookie = `_ga_${gaId(lib).slice(2)}`, days = gaDays(lib);
+  return {
+    en: { s4: ["Google Analytics", "not used for advertising", "staff pages", "password-reset", "email-verification", "agent-invitation"], s7: ["_ga", cookie, `${days} days`, "No advertising cookies"] },
+    sw: { s4: ["Google Analytics", "haitumiki kwa matangazo", "kurasa za wafanyakazi", "kubadilisha nenosiri", "kuthibitisha barua pepe", "mwaliko wa wakala"], s7: ["_ga", cookie, `siku ${days}`, "Hakuna vidakuzi vya matangazo"] },
+    zh: { s4: ["Google Analytics", "不用于广告", "员工页面", "重置密码", "验证邮箱", "代理邀请"], s7: ["_ga", cookie, `${days} 天`, "不使用任何广告 cookie"] },
+  };
+}
+const RETIRED_COOKIE_CLAIM: Record<Loc, string> = {
+  en: "No third-party advertising or tracking cookies",
+  sw: "Hakuna vidakuzi vya matangazo au ufuatiliaji vya watu wengine",
+  zh: "不使用任何第三方广告或追踪 cookie",
+};
+function thirdPartyDefects(src: string, proxy: string, lib: string, component: string, layout: string): string[] {
+  const d: string[] = [];
+  const bl = blocks(src);
+  const hosts = cspHosts(proxy);
+  for (const h of hosts) if (!CSP_HOSTS[h]) d.push(`CSP admits "${h}", which is unclassified: what does it receive? classify it here and name it in §4`);
+  const analyticsLive = hosts.some((h) => CSP_HOSTS[h] === "analytics") || /<GoogleTag \/>/.test(layout);
+  const words = gaWords(lib);
+  if (analyticsLive && !(gaDays(lib) > 0 && gaDays(lib) <= 400)) d.push(`GA_COOKIE_DAYS is ${gaDays(lib)} — unreadable, or above the 400 days a browser will keep a cookie`);
+  for (const l of LOCS) {
+    if (bl[l].includes(RETIRED_COOKIE_CLAIM[l]) && analyticsLive) d.push(`${l} §7 still says there are no third-party tracking cookies`);
+    if (!analyticsLive) continue;
+    for (const w of words[l].s4) if (!section(bl[l], "4").includes(w)) d.push(`${l} §4 does not say "${w}" (Google Analytics)`);
+    for (const w of words[l].s7) if (!section(bl[l], "7").includes(w)) d.push(`${l} §7 does not say "${w}" (Google Analytics cookies)`);
+  }
+  if (!analyticsLive) return d;
+  // The witnesses behind the clauses — each is a sentence of §4 or §7.
+  if (!/<GoogleTag \/>/.test(layout)) d.push("CSP admits Google Analytics but the root layout does not mount <GoogleTag />");
+  if (!/cookie_expires: GA_COOKIE_EXPIRES_SECONDS/.test(component) || !/GA_COOKIE_EXPIRES_SECONDS = GA_COOKIE_DAYS \* 24 \* 60 \* 60/.test(lib)) d.push("§7's cookie lifetime is not what the tag is configured with");
+  if (!/send_page_view: false/.test(component)) d.push("the automatic page view is on — it sends the raw address (§4 'identifying part removed')");
+  for (const k of ["ad_storage", "ad_user_data", "ad_personalization"]) if (!new RegExp(`${k}: "denied"`).test(component)) d.push(`${k} is not denied (§4 'not used for advertising')`);
+  if (!/allow_google_signals: false/.test(component) || !/allow_ad_personalization_signals: false/.test(component)) d.push("Google signals or ad personalisation is on (§4 'not used for advertising')");
+  if (!/w\[DISABLE_KEY\] = location === null;/.test(component)) d.push("the ga-disable switch is not set on every route (§4 'does not run on staff pages')");
+  for (const p of ["/admin", "/auth/reset-password", "/auth/verify-email", "/agent/invite"]) if (!lib.includes(`"${p}",`)) d.push(`GA_EXCLUDED_PREFIXES lost "${p}" (§4)`);
+  // §4 "with any part that could identify you removed" is true ON THE WIRE only while the transport guard is
+  // installed before gtag.js loads — gtag's own history page views use the raw address (driven 2026-09-15).
+  const guardAt = component.indexOf("installTransportGuard(w);");
+  const loadAt = component.indexOf("document.head.appendChild(script)");
+  if (guardAt < 0 || loadAt < 0 || guardAt > loadAt) d.push("the transport guard is not installed before gtag.js loads — gtag's history page views would send the raw address (§4)");
+  if (!/\[GA_VIEW_MARK\]: "1"/.test(component)) d.push("our page views do not carry GA_VIEW_MARK — the guard would drop every page view");
+  if (!/en === "page_view" && p\.get\(`ep\.\$\{GA_VIEW_MARK\}`\) === null/.test(lib)) d.push("gaScrubHit no longer drops unmarked page views (§4)");
+  const imgSrc = (proxy.match(/"img-src [^"]*"|`img-src [^`]*`/)?.[0] ?? "");
+  if (/google|GA_HOSTS/.test(imgSrc)) d.push(`CSP img-src admits an analytics host (${imgSrc}) — the image fallback bypasses the transport guard`);
+  return d;
+}
+ok("§4e every CSP host is classified, and en/sw/zh §4/§7 describe Google Analytics as the code configures it",
+  thirdPartyDefects(pageSrc, read("src/proxy.ts"), gaLib, gaComponent, layoutSrc).length === 0,
+  thirdPartyDefects(pageSrc, read("src/proxy.ts"), gaLib, gaComponent, layoutSrc).join("; "),
+  `${cspHosts(read("src/proxy.ts")).length} external hosts · ${gaId(gaLib)} · ${gaDays(gaLib)} days`);
+
+/* ════════════════════════════════════════════════════════════════════════════
  * §5 · PLANTED CONTROLS — the defects this suite exists for, re-planted into copies. Each MUST be reported.
  * ══════════════════════════════════════════════════════════════════════════ */
 console.log("\n§5 · planted controls");
@@ -311,7 +393,7 @@ const plantTls = pageSrc.replace("Connections to our website and app are encrypt
 const plantProcessor = pageSrc.replace("<li>Postmark, nchini Marekani,", "<li>Huduma ya barua pepe, nchini Marekani,");
 const plantTheme = pageSrc.replace("your language, a note kept", "theme preference, your language, a note kept");
 const plantWord = pageSrc.replace("We never sell personal data.", "We do not sell personal data.");
-const plantVersion = pageSrc.replace('sw: "Toleo 2026-09-14.3 ·', 'sw: "Toleo 2026-09-14.2 ·');
+const plantVersion = pageSrc.replace('sw: "Toleo 2026-09-15 ·', 'sw: "Toleo 2026-09-14.3 ·');
 ok("§5a control · each planted copy found its target",
   [plantTls, plantProcessor, plantTheme, plantWord, plantVersion].every((p) => p !== pageSrc));
 ok("§5b control · a restored 'TLS 1.2+' is reported", securityDefects(plantTls).length > 0 && versionDefects(plantTls, decisionsSrc).length > 0,
@@ -335,6 +417,31 @@ ok("§5j control · planted §4/§5 copies found their targets", plantAzampay !=
 ok("§5k control · Azampay restored to ONE locale is reported", factDefects(plantAzampay, paymentsSrc, consentSrc).some((x) => x.startsWith("zh §4 names Azampay")));
 ok("§5l control · the retired marketing retention is reported", factDefects(plantRetired, paymentsSrc, consentSrc).some((x) => x.includes("2 years of inactivity")));
 ok("§5m control · a consent promise with no control behind it is reported", factDefects(pageSrc, paymentsSrc, "").some((x) => x.includes("consent control")));
+
+const proxyRaw = read("src/proxy.ts");
+const plantHost = proxyRaw.replace(`"connect-src 'self' ws: wss: \${GA_HOSTS_CONNECT}"`, `"connect-src 'self' ws: wss: \${GA_HOSTS_CONNECT} https://connect.facebook.net"`)
+  .replace("`connect-src 'self' ws: wss: ${GA_HOSTS_CONNECT}`", "`connect-src 'self' ws: wss: ${GA_HOSTS_CONNECT} https://connect.facebook.net`");
+const plantGaSw = pageSrc.replace("<li>Google Analytics, inayoendeshwa na Google,", "<li>Huduma ya takwimu, inayoendeshwa na Google,");
+const plantDays = gaLib.replace("export const GA_COOKIE_DAYS = 395;", "export const GA_COOKIE_DAYS = 730;");
+const plantAds = gaComponent.replace('ad_storage: "denied"', 'ad_storage: "granted"');
+const plantExcl = gaLib.replace('  "/admin",', "");
+const plantRetiredClaim = pageSrc.replace("No advertising cookies.", "No third-party advertising or tracking cookies.");
+ok("§5n control · planted §4e copies found their targets",
+  [plantHost !== proxyRaw, plantGaSw !== pageSrc, plantDays !== gaLib, plantAds !== gaComponent, plantExcl !== gaLib, plantRetiredClaim !== pageSrc].every(Boolean));
+ok("§5o control · a new external host in the CSP is reported", thirdPartyDefects(pageSrc, plantHost, gaLib, gaComponent, layoutSrc).some((x) => x.includes("connect.facebook.net")));
+ok("§5p control · Google Analytics dropped from ONE locale's §4 is reported", thirdPartyDefects(plantGaSw, proxyRaw, gaLib, gaComponent, layoutSrc).some((x) => x.startsWith("sw §4")));
+ok("§5q control · a cookie lifetime changed in code only is reported (and 730 days is past the browser cap)",
+  thirdPartyDefects(pageSrc, proxyRaw, plantDays, gaComponent, layoutSrc).some((x) => x.includes('"730 days"'))
+  && thirdPartyDefects(pageSrc, proxyRaw, plantDays, gaComponent, layoutSrc).some((x) => x.includes("400 days")),
+  thirdPartyDefects(pageSrc, proxyRaw, plantDays, gaComponent, layoutSrc).join("; "));
+ok("§5r control · ad storage granted is reported", thirdPartyDefects(pageSrc, proxyRaw, gaLib, plantAds, layoutSrc).some((x) => x.includes("ad_storage")));
+ok("§5s control · /admin dropped from the exclusions is reported", thirdPartyDefects(pageSrc, proxyRaw, plantExcl, gaComponent, layoutSrc).some((x) => x.includes('"/admin"')));
+const plantNoGuard = gaComponent.replace("installTransportGuard(w);", "");
+const plantImg = proxyRaw.replace(`"img-src 'self' data: blob:",`, "`img-src 'self' data: blob: ${GA_HOSTS_CONNECT}`,");
+ok("§5u control · planted guard/img copies found their targets", plantNoGuard !== gaComponent && plantImg !== proxyRaw);
+ok("§5v control · the transport guard removed is reported", thirdPartyDefects(pageSrc, proxyRaw, gaLib, plantNoGuard, layoutSrc).some((x) => x.includes("transport guard")));
+ok("§5w control · analytics hosts restored to img-src are reported", thirdPartyDefects(pageSrc, plantImg, gaLib, gaComponent, layoutSrc).some((x) => x.includes("img-src")));
+ok("§5t control · the retired 'no tracking cookies' claim restored is reported", thirdPartyDefects(plantRetiredClaim, proxyRaw, gaLib, gaComponent, layoutSrc).some((x) => x.includes("no third-party tracking")));
 
 console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — ${pass} passed, ${fail} failed`);
 if (pass + fail < 20) { console.error(`!! only ${pass + fail} assertions ran`); process.exit(3); }

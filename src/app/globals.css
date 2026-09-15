@@ -6,7 +6,12 @@
    the new tokens so we can retire the old slate-based palette.
    =========================================================================== */
 
-@import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+/* ⛔ NO GOOGLE FONTS @import (removed 2026-09-15). The three families are self-hosted by `next/font` in
+   `app/layout.tsx`, under the SAME family names the tokens below use ('Sora', 'Inter', 'JetBrains Mono').
+   The import only made every visitor's browser also fetch the same families from Google, which is a transfer
+   to Google that Privacy §4 does not name. It was proven dead weight before removal: the live site loaded with
+   fonts.googleapis.com/gstatic blocked painted the same fonts on 4 pages × 2 widths, 0.000–0.002% pixels
+   different. The CSP no longer admits those hosts, so re-adding the import would silently fail. */
 
 /* AI Help Companion — token extension + component styles. Layered on top
    of the kit tokens below so any kit value the chat surface references

@@ -6,6 +6,82 @@
 
 ---
 
+## 2026-09-15 · Privacy v2026-09-15 — Google Analytics (G-W66WRL67MQ) goes on the site, and the notice says exactly what it sees
+
+**Owner instruction (Ali, 2026-09-15): install the Google tag received for 50pick "everywhere needed", done "the most
+perfect way".** Recorded because a processor was added and the published notice had to change with it: before this,
+§7 said *"No third-party advertising or tracking cookies"*, which the tag makes false.
+
+**What runs** (`src/components/analytics/google-tag.tsx`, rules in `src/lib/google-tag.ts`, mounted once in the root layout):
+
+| Decision | Why |
+|---|---|
+| Loads only on `50pick.tz` / `www.50pick.tz`, after hydration | local, preview and staging traffic never pollutes the property |
+| **Never loads or sends on** `/admin`, `/api`, `/auth/admin`, `/auth/2fa`, `/auth/reset-password`, `/auth/verify-email`, `/auth/demo`, `/agent/invite` | staff screens carry player ids; reset and verify links carry a live `?token=`; the agent invitation token is a path segment. `window['ga-disable-G-W66WRL67MQ']` is set on every route change, so a soft navigation into `/admin` stops the tag too |
+| Automatic page view **off**; every view sends `gaLocation(...)` | a plain install sends `location.href`. The query keeps only `utm_*`, `gclid`, `gbraid`, `wbraid` (an allow-list: an unknown parameter is dropped); the fragment is dropped; `/wallet/receipt/<id>` and `/positions/<id>` become `:id`; the referrer is scrubbed the same way |
+| 🔴 **A transport guard rewrites every request to an analytics host** (`gaScrubHit`), installed before gtag.js loads | **found by driving the real gtag.js, not by reading docs:** the stream's enhanced measurement sends its OWN `page_view` on every client-side navigation from the RAW address, with the previous raw address as `dr`, ignoring `set page_location` and `send_page_view: false`. The first drive caught `?token=`, `?phone=`, a receipt id and an agent-invitation token on the wire although every event the component sent was clean. Google documents no code-side switch. The guard wraps `sendBeacon`/`fetch`/XHR for GA hosts only: every URL-valued parameter is scrubbed, a hit on an excluded page is dropped, a page view without our mark (`kp_view`, removed before sending) is dropped, a site-search event is dropped, an unreadable body is dropped. Re-driven: zero secret bytes, one view per navigation |
+| GA hosts **not** in CSP `img-src` (Google's published set lists them) | the image pixel is gtag.js's fallback transport, the one path the guard cannot rewrite — the browser refuses it, so a hit goes out scrubbed or not at all |
+| Consent Mode: `ad_storage`, `ad_user_data`, `ad_personalization` **denied**; Google signals and ad-personalisation signals **off** | §6 says "we do not profile you for marketing". Turning any of these on is a notice change first |
+| `_ga` / `_ga_W66WRL67MQ` last **395 days**, `SameSite=Lax; Secure` | Google's default is 2 years, but Chrome keeps no cookie past 400 days — "2 years" would be a false sentence |
+| CSP: the GA loader added to `script-src`, the collectors to `connect-src` | without it the browser silently refuses the tag |
+
+**Notice, en/sw/zh:** §2 technical data adds pages opened, device/browser type and approximate location via Google
+Analytics; §3 legitimate interest adds "measuring how the website is used"; §4 names Google Analytics with what it
+receives, what it does not, that it is not used for advertising, where it does not run, and that Google may process in
+the United States and other countries; §7 names both cookies and their 395 days, says "No advertising cookies", and that
+refusing them does not change how 50pick works.
+
+**Guards.** `test:google-tag` (54) — every exclusion in every spelling (`/ADMIN`, `//admin`, `/%61dmin`), the allow-list,
+masking, the referrer, look-alike hosts, and §6 the wire: the hits the real gtag.js produced, rewritten or dropped
+(unmarked history view, excluded page, batched body, outbound link query, site search), with controls.
+`test:privacy-notice` §4e — the population is the **CSP**, not `src/`: a third-party script writes its own cookies, which
+the §4a census cannot see, but a browser runs nothing the CSP does not list, so every external CSP host must be
+classified; the analytics clauses are tied to the code (id and cookie lifetime read from `google-tag.ts`, ad consent
+denied, signals off, automatic page view off, the disable switch, the four exclusions the notice names, the transport
+guard installed before the loader, our views marked, no GA host in `img-src`), with eight planted controls (39 total).
+
+**Browser proof, 2026-09-15** (real Chromium, Google's live gtag.js, the repo's component bundled, served as
+`https://www.50pick.tz` with the app's CSP; every GA request captured and answered locally, none reached the property):
+21/21 — landing with `?token=…&phone=…` sends one view with only the campaign parameters; `_ga` and `_ga_W66WRL67MQ` at
+395 days, `Secure`, `Lax`, no `_gcl_*`; consent on the wire `gcs=G101` (ads denied, analytics granted); one view per
+client-side navigation with the scrubbed referrer; receipt id masked; on `/admin` and `/agent/invite/<token>` zero
+requests, even for a scroll and an explicit `gtag('event')`; a hard landing on reset-password, `/admin` or an invitation
+never requests gtag.js; another host never contacts Google; no CSP violation. The same drive WITHOUT the guard failed 3
+checks with four secrets on the wire. ⚠️ `next dev` does not hydrate under a mapped hostname, which is why the component
+was bundled rather than driven inside the app; the app-side mount was proven separately (on `localhost` the component ran
+in the real app and set the disable switch, as it must off the live host).
+
+**Open — owner decisions, not made here:**
+1. **GA data retention** is set in the Google Analytics admin (Admin → Data collection → Data retention; default 2
+   months, maximum 14). The notice states no period until the chosen value is recorded here.
+2. **Enhanced measurement → "Page changes based on browser history events"** — turn it OFF in the stream settings
+   (Admin → Data streams → web → Enhanced measurement → Page views → Show advanced settings). It is ON today. With the
+   guard it can neither leak nor double-count (its views are dropped on the wire), but OFF stops gtag.js building a hit
+   from a raw address at all — the guard should be the second line, not the only one.
+3. **Consent banner.** Analytics runs on legitimate interest (§3), which the Tanzania PDPA 2022 permits; an EU visitor
+   under GDPR would normally be asked first. Adding a banner is a design and legal call.
+4. ~~Google Fonts~~ — **CLOSED the same day (owner approved).** `globals.css` `@import`ed `fonts.googleapis.com`,
+   so every visitor's browser also fetched the three families from Google, although `next/font` already self-hosts
+   them under the same family names; §4 never named it. Proven dead weight before removal: the live site with
+   `fonts.googleapis.com` / `fonts.gstatic.com` blocked painted identical fonts (CDP platform fonts) on `/`,
+   `/legal/privacy`, `/markets`, `/auth/login` at 1280 and 390 px, 0.000–0.002% pixels different. The import is
+   removed, both hosts are out of `style-src` / `font-src`, and `test:privacy-notice` §4e no longer classifies them,
+   so a font CDN returning fails until it is named. Emails still reference Google Fonts: that HTML is rendered by the
+   recipient's mail client, not by 50pick.
+
+**Follow-up, same day — `www.google.com/g/collect`.** Live, gtag.js also sends a copy of each hit to Google's
+ads-measurement endpoint. The CSP refused it, but the CSP was the only control on a hit the guard never saw. The guard
+now recognises `google.com` and drops those hits (`test:google-tag` §6k), since this property is analytics-only.
+
+5. **Cloudflare Web Analytics** injects `static.cloudflareinsights.com/beacon.min.js` at the edge on every page. The
+   CSP blocks it, so it collects nothing today, but it logs a violation on every load. Turn it off in the Cloudflare
+   dashboard (owner action); don't admit it to the CSP without naming it in §4.
+
+**⛔ Do not** turn on ad storage, Google signals, user-id, or the automatic page view, or remove an exclusion, without
+moving the notice first.
+
+---
+
 ## 2026-09-14 (ninth) · House bots — accounts 50pick operates may stake to add liquidity (reverses F6 "do not build")
 
 **Status when written:** decided, and being built on branch `house-bots` (build commit 1 of 8). Nothing is live until the release merge, and the master switch ships **OFF**: Ali alone switches house bots on. The design authority is [`HOUSE-BOTS.md`](HOUSE-BOTS.md). The plan of record is `plans/house-bots/` on that branch, where `04-amendments.md` outranks `02-sealed-flows.md` and `03-design-spec.md`, which outrank `PLAN.md`.

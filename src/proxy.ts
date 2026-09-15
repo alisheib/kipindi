@@ -137,13 +137,23 @@ const PROD_HEADERS: Record<string, string> = {
 // without it the browser blocks eval() and every page navigation crashes
 // with "Server Components render error" (digest 793074517). TODO: migrate
 // to nonce-based CSP when Next.js supports it for Turbopack builds.
+//
+// Google Analytics (`src/components/analytics/google-tag.tsx`): the loader from googletagmanager, and
+// hits as fetch/beacon to *.google-analytics.com / *.analytics.google.com (regional collectors).
+// Removing them does not remove the tag, it silently breaks it; removing the tag should remove them.
+// ⛔ GA hosts are deliberately NOT in `img-src`, although Google's published set lists them: the image
+// pixel is gtag.js's fallback transport, and it is the one path the component's transport guard cannot
+// rewrite. Refusing it here means a hit goes out scrubbed or not at all.
+const GA_HOSTS_SCRIPT = "https://*.googletagmanager.com";
+const GA_HOSTS_CONNECT = "https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com";
 const CSP_BASE = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
-  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-  "font-src 'self' https://fonts.gstatic.com data:",
+  `script-src 'self' 'unsafe-inline' 'unsafe-eval' ${GA_HOSTS_SCRIPT}`,
+  // Fonts are self-hosted by next/font — no Google Fonts hosts (removed 2026-09-15, see globals.css).
+  "style-src 'self' 'unsafe-inline'",
+  "font-src 'self' data:",
   "img-src 'self' data: blob:",
-  "connect-src 'self' ws: wss:",
+  `connect-src 'self' ws: wss: ${GA_HOSTS_CONNECT}`,
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",

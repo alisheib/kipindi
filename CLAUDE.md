@@ -689,6 +689,13 @@ Modernization is complete — all tokens, components, and focus rings updated.
 
 - **CSP**: `unsafe-eval` removed from script-src. `unsafe-inline` kept
   (required by Next.js hydration).
+- **Google Analytics (2026-09-15)**: `src/components/analytics/google-tag.tsx` + `src/lib/google-tag.ts`. The
+  CSP admits the GA loader (`script-src`) and collectors (`connect-src`) — deliberately NOT `img-src`. A transport
+  guard rewrites every GA request (gtag.js's own history page views use the RAW address and leaked tokens when
+  driven) and drops gtag's copies to `www.google.com/g/collect`. Privacy §4/§7 describe it; `test:google-tag` +
+  `test:privacy-notice` §4e gate it. Fonts are self-hosted by `next/font` only: no Google Fonts `@import`, and no
+  fonts.googleapis/gstatic in the CSP (removed 2026-09-15, proven pixel-identical). Read
+  `docs/COMPLIANCE-DECISIONS.md` 2026-09-15 before touching any of it.
 - **Secrets**: production throws FATAL if `SESSION_SECRET` or `OTP_PEPPER`
   missing. Dev-only fallbacks unreachable in production.
 - **Dev-test endpoints**: hard-blocked at the edge (proxy.ts) in production,
