@@ -278,6 +278,7 @@
     "test:house-bot-money": "tsx scripts/db-scratch.mts --run npx tsx scripts/house-bot-money.test.mts",
     "test:house-bot-caps": "tsx scripts/db-scratch.mts --run npx tsx scripts/house-bot-caps.test.mts",
     "test:house-bot-designation": "tsx scripts/db-scratch.mts --run npx tsx scripts/house-bot-designation.test.mts",
+    "test:house-bot-engine": "tsx scripts/db-scratch.mts --run npx tsx scripts/house-bot-engine.test.mts",
     "verify:house-bot-migrations-old-build": "tsx scripts/db-scratch.mts --run npx tsx scripts/house-bot-migrations-old-build.mts",
     "test:kyc-copy-truth": "tsx scripts/kyc-copy-truth.test.mts",
     "red:kyc-copy-truth": "node scripts/kyc-copy-truth-red.mjs",

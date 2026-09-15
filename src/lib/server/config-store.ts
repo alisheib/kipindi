@@ -104,6 +104,22 @@ export async function saveConfig(key: string, value: unknown): Promise<void> {
 }
 
 /**
+ * Persist a config value and THROW when the write fails. No-op without a DB.
+ *
+ * ⛔ For a caller whose correctness depends on the write landing — a leader lease (04 A24). `saveConfig` above
+ * swallows its error, so a lease claimed through it reports success even when no lease was stored, and a
+ * second container can claim the same work.
+ */
+export async function saveConfigOrThrow(key: string, value: unknown): Promise<void> {
+  if (!hasDatabase()) return;
+  const client = prisma();
+  if (!client) throw new Error(`[config] save "${key}": no database client`);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const json = value as any;
+  await client.systemConfig.upsert({ where: { key }, create: { key, value: json }, update: { value: json } });
+}
+
+/**
  * The FIELDS THAT ACTUALLY MOVED, as `{ field: { from, to } }` — the audit payload's
  * `changes`.
  *

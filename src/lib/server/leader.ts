@@ -30,7 +30,7 @@
  * consequence is a NUMBER, not a hand-wave — see docs/POLISH-BACKLOG.md §3.
  */
 import { withLock } from "./locks";
-import { loadConfig, saveConfig } from "./config-store";
+import { loadConfig, saveConfig, saveConfigOrThrow } from "./config-store";
 import { hasDatabase } from "./prisma";
 import { randomBytes } from "node:crypto";
 
@@ -88,11 +88,25 @@ const observed: Map<string, { holder: string; expiresAt: number; isMe: boolean }
  * therefore serialises across containers. Without it, two containers reading an expired
  * lease at the same instant would both write themselves in and both believe they won.
  */
-export async function acquireLeadership(task: string, now = Date.now()): Promise<boolean> {
+export type LeadershipOptions = {
+  /** How long the claim is good for. Defaults to LEASE_MS; the house planner passes 45 s (04 A24). */
+  leaseMs?: number;
+  now?: number;
+  /**
+   * ⛔ Fail closed when the lease WRITE fails. `saveConfig` swallows its error, so without this a lease that was
+   * never stored still returns true. The house planner sets it (04 A24); the lifecycle ticker's behaviour is
+   * unchanged.
+   */
+  strictWrite?: boolean;
+};
+
+export async function acquireLeadership(task: string, opts: LeadershipOptions = {}): Promise<boolean> {
+  const now = opts.now ?? Date.now();
+  const leaseMs = opts.leaseMs ?? LEASE_MS;
   // Single-process mode (dev, tests, no DATABASE_URL): there is nobody to contend with,
   // and refusing to run the sweeps would break every local workflow.
   if (!hasDatabase()) {
-    observed.set(task, { holder: INSTANCE_ID, expiresAt: now + LEASE_MS, isMe: true });
+    observed.set(task, { holder: INSTANCE_ID, expiresAt: now + leaseMs, isMe: true });
     return true;
   }
 
@@ -108,8 +122,8 @@ export async function acquireLeadership(task: string, now = Date.now()): Promise
       return false;
     }
 
-    const lease: Lease = { holder: INSTANCE_ID, expiresAt: now + LEASE_MS, renewedAt: now };
-    await saveConfig(keyFor(task), lease);
+    const lease: Lease = { holder: INSTANCE_ID, expiresAt: now + leaseMs, renewedAt: now };
+    await (opts.strictWrite ? saveConfigOrThrow : saveConfig)(keyFor(task), lease);
     observed.set(task, { holder: INSTANCE_ID, expiresAt: lease.expiresAt, isMe: true });
     return true;
   }).catch((e) => {

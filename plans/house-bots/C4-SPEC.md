@@ -263,6 +263,19 @@ Authority order: 04 > 02/03 > PLAN > 01; the later and more specific text wins.
 30. **Target checks run inside `fireClaimedIntent`, after the scope step** (N2 §4 step 7 + N1 §4.3 step 6). "Exit-window fit" means N2 step 5's EXIT_WINDOW_TOO_LATE rule.
 31. **Hooks never run inside a lock:** fired after the outermost lock returns, or through the `locks.ts` exit helper (§2 trap).
 
+*Rulings taken while building (2026-09-16, §5 steps 1–2; the code carries the rule, these record why):*
+
+32. **The strict lease write is opt-in.** `acquireLeadership(task, {strictWrite:true})` fails closed on a lost lease write (A24); the lifecycle ticker keeps its swallowing write and 3-minute lease ("the lifecycle caller is unchanged", §5 step 1). The same swallow in the lifecycle lease is a platform item, not house-bot scope.
+33. **An invalid side and a foreign idempotency key are engine faults.** On the bet path `market_not_live` is the invalid-side refusal (`buyPositionInner`), which a stored intent cannot produce; `idempotency_key_conflict` can only follow a defect H0 missed. Both → FAILED(INTERNAL) + SECURITY + master OFF(ENGINE_FAULT), as `house_key_mismatch` (PLAN §4.6).
+34. **Cash refusals skip under the balance-floor code.** `balance_insufficient` and `house_cash_only` → SKIPPED(CAP_BALANCE_FLOOR) + AlertOnce per bot per day (PLAN §4.6 names no code). `stake_not_whole` → FAILED(INTERNAL) + the `stakeNotWhole` AlertOnce (A7).
+35. **`enterNowDecision` uses the seam's own NULL and window rules.** A money cap that is not set leaves no room (STAKE_BELOW_MIN naming it); a rate cap that is not set refuses with its code; PER_HOUR and PER_DAY are the seam's rolling 3,600 s / 86,400 s windows (`botUsage`), not the EAT day N1 §4.2 mentions — the code is authority.
+36. **Trigger filter rows.** A marked position, a live bot's account or a non-PLAYER account is not a trigger (no row). A penalty-boxed or HOLDER_RECRUIT trigger leaves ONE SKIPPED row with that code when some bot covers the market, so "didn't react" stays visible (PLAN §4.3).
+37. **"Skip polls closing within" records CUTOFF** (no code of its own in PLAN §4.4). The pool band compares the raw YES + NO total.
+38. **Targeted timing is drawn before its money read.** `drawTargetDelay` draws the delay; the loader then reads `lockedForHouse(asOf: dueAt)` and passes both into `decideCounter`, which stays pure. The untargeted COUNTER's decision cut is PLAN F4's `nonHouse(trigger side) − raw(bot side)`; fire re-cuts on `lockedA15` through the write-back clamp.
+39. **FILL sizing.** Thin side S when `raw(S)·100 < p·(raw(S)+raw(opp))` and `locked(opp) > 0`; stake `floor(locked(opp)·p/(100−p)) − raw(S)`, cut to H3's `locked(opp) − raw(S)`, then the bot's maximum, the platform maximum and round-to; due `max(cutoff − lead − jitter, passNow)`. PLAN F4 says "up to that share" without a formula; A15/N1 size FILL against eligible locked money.
+40. **Out of scope writes no row.** A demo market, a product no policy admits, an Up & Down market with no round and a poll with no cutoff produce no intent; `decide` returns the code (UD_NO_ROUND, NO_CUTOFF, PRODUCT_NOT_SUPPORTED) for the caller's once-only alerts (A12 tests). A demo market reuses PRODUCT_NOT_SUPPORTED.
+41. **The information blackout gates staff-chosen rows only.** `decideCounter` applies `blocked` to the target candidate; an untargeted COUNTER, FILL and OPENER ignore it (N1 §3 "for staff-chosen rows only", as H3 does).
+
 No decision here needs Ali; W17 remains the only open owner question.
 
 ## 7. Guards that will go red, and how to move each honestly

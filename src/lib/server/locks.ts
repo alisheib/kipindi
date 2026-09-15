@@ -59,6 +59,22 @@ export function inLock(): boolean {
   return lockStore.getStore() !== undefined;
 }
 
+/**
+ * Run `fn` OUTSIDE every enclosing withLock(): nothing `fn` starts can see that lock's transaction.
+ *
+ * ⛔ WHY (house bots, plans/house-bots/C4-SPEC.md §2). AsyncLocalStorage is inherited by every promise started
+ * inside a lock callback — including a fire-and-forget hook kicked off after the write. That hook's own
+ * withLock would then JOIN a transaction that may already have committed, or that does not yet hold the row
+ * the hook reacts to. A hook started from inside a lock goes through this, or runs after the outermost lock
+ * returns.
+ *
+ * On the in-memory store the escaped callback is a top-level lock again, so it waits for a key the outer
+ * lock still holds — the same wait Postgres gives a second transaction.
+ */
+export function runOutsideLock<T>(fn: () => T): T {
+  return lockStore.exit(fn);
+}
+
 /* ── In-memory fallback (dev without Postgres) ──────────────────────── */
 
 const memLocks = new Map<string, Promise<unknown>>();

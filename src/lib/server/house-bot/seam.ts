@@ -21,7 +21,8 @@
  * ⛔ NULL CAPS REFUSE. An unset cap reads "Not set — this bot cannot bet" on the console; here it is a
  * `house_cap_reached` with that cap's code, so a cleared cap stops the next bet inside the locks.
  */
-import { houseIntentKey, HOUSE_PRODUCTS, COUNTERPARTY_ATTRIBUTION_MIN_PCT, type CapCode, type ConflictCode } from "@/lib/house-bot/constants";
+import { houseIntentKey, HOUSE_PRODUCTS, type CapCode, type ConflictCode } from "@/lib/house-bot/constants";
+import { attributeStake, type Counterparty } from "@/lib/house-bot/counterparty";
 import { eatDayKey } from "@/lib/house-bot/clock";
 import { consentValid } from "@/lib/house-bot/consent";
 import { formatDateTime } from "@/lib/utils";
@@ -302,16 +303,9 @@ export async function houseH3(input: {
 
 /* ═══ H4 ══════════════════════════════════════════════════════════════════════════════════════ */
 
-export type Counterparty = { userId: string; sharePct: number; attributedTzs: number };
+/** Pro-rata attribution lives in `@/lib/house-bot/counterparty` — one function for the preview, fire and H4 (N1 §4.1). */
+export { attributeStake, type Counterparty };
 export type H4Result = { refusal: HouseRefusal } | { refusal: null; counterparties: Counterparty[] | null };
-
-/** Pure: pro-rata attribution to every opposite account holding ≥ 25% of the locked money (N1 §4.1). */
-export function attributeStake(stakeTzs: number, accounts: ReadonlyArray<{ userId: string; lockedTzs: number }>, lockedOpp: number): Counterparty[] {
-  if (lockedOpp <= 0) return [];
-  return accounts
-    .filter((a) => a.lockedTzs * 100 >= COUNTERPARTY_ATTRIBUTION_MIN_PCT * lockedOpp)
-    .map((a) => ({ userId: a.userId, sharePct: Math.floor((a.lockedTzs * 100) / lockedOpp), attributedTzs: Math.floor((stakeTzs * a.lockedTzs) / lockedOpp) }));
-}
 
 /**
  * H4 — inside `house:control`, the innermost lock, immediately before the money writes. The control row
