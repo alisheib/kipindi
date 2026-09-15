@@ -15,7 +15,8 @@
  * control write uses. Every write below happens inside `wallet:<botUser>`, where Pause, auto-pause, Remove and
  * the seam's H2 re-read the bot; audits and notices go out after the lock is released (04 A19).
  */
-import { db } from "../store";
+import { db, type StoredUser } from "../store";
+import { hasOpenRequest } from "../privacy";
 import { withLock } from "../locks";
 import { audit } from "../audit";
 import { verifyPassword } from "../crypto";
@@ -256,6 +257,8 @@ export async function designateHouseBot(input: {
   const key = labelKey(label);
   const note = input.note ? normaliseText(input.note) || null : null;
 
+  // The CHECK time: the bot's `verifiedAt`. Anything that lands while the owner types is later than it (review LI-3).
+  const checkedAtMs = Date.now();
   const el = await houseBotEligibility(userId, { context: "designate", actorId: officerId });
   if (!el.eligible) {
     const first = el.blocking[0];
@@ -271,12 +274,15 @@ export async function designateHouseBot(input: {
   const v = await verifyHouseBotPassword({ officerId, userId, password: input.password, submitId: input.submitId });
   if (!v.ok) return { ok: false, code: v.code, message: v.message, field: v.field, row: v.row, attemptsBeforeLock: v.attemptsBeforeLock, retryAfterSec: v.retryAfterSec };
 
-  type Written = { kind: "changed" } | { kind: "full"; count: number; max: number } | { kind: "ok"; bot: StoredHouseBot };
+  type Written = { kind: "changed" } | { kind: "full"; count: number; max: number } | { kind: "blocked"; row: EligibilityRow } | { kind: "ok"; bot: StoredHouseBot };
   let written: Written;
   try {
     written = await withLock(`wallet:${userId}`, async (): Promise<Written> => {
       const fresh = await db.user.findById(userId);
       if (!fresh || passwordFingerprint(fresh.passwordHash) !== v.fingerprint) return { kind: "changed" };
+      // The account as it is now, under the lock erasure's live-bot check also takes (review MC-4, LI-3).
+      const stale = await accountChangedSince(fresh, checkedAtMs);
+      if (stale) return { kind: "blocked", row: stale };
       return withLock(HOUSE_CONTROL_LOCK, async (tx): Promise<Written> => {
         const count = await houseBotStore.countLive(tx);
         const control = await houseBotControlStore.get(tx);
@@ -285,7 +291,7 @@ export async function designateHouseBot(input: {
         const bot = await houseBotStore.designate({
           bot: {
             id: newHouseId("bot"), userId, label, labelKey: key, note, passwordFingerprint: v.fingerprint,
-            verifiedAt: now, verifiedById: officerId, designatedAt: now, designatedById: officerId,
+            verifiedAt: new Date(checkedAtMs).toISOString(), verifiedById: officerId, designatedAt: now, designatedById: officerId,
             rules: { schemaVersion: HOUSE_RULES_SCHEMA_VERSION }, ...NULL_CAPS,
           },
           event: { actorId: officerId, reason: null, payload: null },
@@ -306,12 +312,41 @@ export async function designateHouseBot(input: {
     throw e;
   }
   if (written.kind === "changed") return { ok: false, code: "PASSWORD_CHANGED", field: "password", message: DESIGNATE_COPY.passwordChanged };
+  if (written.kind === "blocked") return { ok: false, code: "INELIGIBLE", message: written.row.message, row: written.row };
   if (written.kind === "full") return { ok: false, code: "ROSTER_FULL", message: DESIGNATE_COPY.rosterFull(written.count, written.max), href: "/admin/house-bots?tab=limits" };
 
   // After the locks: the COMPLIANCE row (R7 — no label, note or fingerprint) and the holder's notice.
   await houseAudit("house_bot.designated", officerId, { type: "HouseBot", id: written.bot.id }, { botId: written.bot.id, holderUserId: userId });
   await notifyHouseBotOwner(userId, "designated").catch(() => null);
   return { ok: true, bot: written.bot };
+}
+
+/**
+ * What may have changed on the account between the owner's checks and the write, read again under
+ * `wallet:<userId>` (review MC-1, LI-3, MC-4): the account closed or no longer active, an erasure request filed, a
+ * responsible-gambling lock standing, or a self-exclusion or break STARTED after `checkedAtMs` (both stamps are the
+ * app clock). A read that throws refuses. Null means nothing changed.
+ */
+async function accountChangedSince(fresh: StoredUser, checkedAtMs: number): Promise<EligibilityRow | null> {
+  if (fresh.status === "CLOSED" || fresh.closedAt != null) {
+    return { code: "ACCOUNT_CLOSED", short: "Account closed", message: "Their account was closed a moment ago — it can't be designated or confirmed." };
+  }
+  if (hasOpenRequest(fresh.id, "ERASURE")) {
+    return { code: "ERASURE_REQUEST", short: "Erasure requested", message: "They asked for their data to be erased a moment ago. Liquidity stakes can't continue — resolve the request or remove the bot." };
+  }
+  try {
+    const s = await getRgSettings(fresh.id);
+    const lock = await isLockedOut(fresh.id);
+    const rg = { selfExclusionUntil: s.selfExclusionUntil ?? null, coolingOffUntil: s.coolingOffUntil ?? null };
+    const started = Math.max(Date.parse(s.selfExclusionStartedAt ?? "") || 0, Date.parse(s.coolingOffStartedAt ?? "") || 0);
+    if (lock.locked || rgLockStands({ user: fresh, rg, nowMs: Date.now() }) || started > checkedAtMs) {
+      const excluded = fresh.status === "SELF_EXCLUDED" || lock.reason === "self_exclusion";
+      return { code: "RG_LOCKED", short: excluded ? "Self-excluded" : "On a break", message: RG_LOCKED_COPY(excluded ? "self-excluded" : "on a break", excluded ? rg.selfExclusionUntil : rg.coolingOffUntil) };
+    }
+  } catch {
+    return { code: "RG_UNREADABLE", short: "Limits unreadable", message: "Couldn't read their responsible-gambling settings. Refresh to try again." };
+  }
+  return null;
 }
 
 /* ═══ Re-verify (02 §2.6 steps 3–7, 04 A3, C8) ═══════════════════════════════════════════════════════ */
@@ -326,6 +361,7 @@ export const REVERIFY_COPY = {
   changedAgain: "Their password changed again while you were typing. Ask them for the newest one.",
   running: "The bot is running. It pauses itself when the password changes — try again in a moment.",
   notReverifiable: "Re-verify can't clear what stops this bot now. Resolve the causes listed on the bot first.",
+  voidedMeanwhile: "Their permission ended while you were typing. Re-verify can't confirm it in the same step — look at the bot's causes, then try again.",
 } as const;
 
 export type ReverifyResult =
@@ -346,6 +382,8 @@ export async function reverifyHouseBot(input: { officerId: string; botId: string
   if (bot.status === "REMOVED") return { ok: false, code: "BOT_REMOVED", message: VERIFY_COPY.removed };
   if (input.password.length === 0) return { ok: false, code: "EMPTY", message: VERIFY_COPY.empty, field: "password" };
 
+  // The CHECK time, and the void as it stood before the password check: both are compared again under the lock.
+  const checkedAtMs = Date.now();
   const el = await houseBotEligibility(bot.userId, { context: "reverify", botId, actorId: officerId });
   const blockingRow = el.blocking.find((r) => REVERIFY_BLOCKING_ROWS.has(r.code));
   if (blockingRow) return { ok: false, code: "BLOCKED", message: blockingRow.message, row: blockingRow };
@@ -359,15 +397,25 @@ export async function reverifyHouseBot(input: { officerId: string; botId: string
   const v = await verifyHouseBotPassword({ officerId, userId: bot.userId, password: input.password, botId, submitId: input.submitId });
   if (!v.ok) return { ok: false, code: v.code, message: v.message, field: v.field, row: v.row, attemptsBeforeLock: v.attemptsBeforeLock, retryAfterSec: v.retryAfterSec };
 
-  type Written = { kind: "changed" } | { kind: "removed" } | { kind: "active" } | { kind: "ok"; status: HouseBotStatus; wasActive: boolean };
+  type Written = { kind: "changed" } | { kind: "removed" } | { kind: "active" } | { kind: "blocked"; row: EligibilityRow } | { kind: "ok"; status: HouseBotStatus; wasActive: boolean };
   const written = await withLock(`wallet:${bot.userId}`, (tx) => houseAtomic(tx, async (t): Promise<Written> => {
     const fresh = await db.user.findById(bot.userId);
     if (!fresh || passwordFingerprint(fresh.passwordHash) !== v.fingerprint) return { kind: "changed" };
     const cur = await houseBotStore.get(botId, t);
     if (!cur || cur.status === "REMOVED") return { kind: "removed" };
     if (cur.status === "ACTIVE") return { kind: "active" };
+    // ⛔ A void written while the owner typed is NOT cleared by this re-verify (review MC-1): compared by value, since
+    // the void is stamped on the database clock.
+    if (cur.consentVoidAt !== bot.consentVoidAt || cur.consentVoidCause !== bot.consentVoidCause) {
+      return { kind: "blocked", row: { code: "CONSENT_VOID", short: "Permission ended", message: REVERIFY_COPY.voidedMeanwhile } };
+    }
+    const stale = await accountChangedSince(fresh, checkedAtMs);
+    if (stale) return { kind: "blocked", row: stale };
     const wasActive = cur.pausedFromStatus === "ACTIVE";
-    const verified = await houseBotStore.setVerified(botId, { fingerprint: v.fingerprint, verifiedById: officerId }, t);
+    // `verifiedAt` is the check time — but later than the void this re-verify clears (checked unchanged just above),
+    // which the database clock may have stamped a few milliseconds past the app's.
+    const verifiedAt = new Date(Math.max(checkedAtMs, cur.consentVoidAt ? Date.parse(cur.consentVoidAt) + 1 : 0)).toISOString();
+    const verified = await houseBotStore.setVerified(botId, { fingerprint: v.fingerprint, verifiedById: officerId, verifiedAt }, t);
     if (!verified) return { kind: "active" };
     let status: HouseBotStatus = verified.status;
     if (verified.status === "AUTO_PAUSED") {
@@ -381,6 +429,7 @@ export async function reverifyHouseBot(input: { officerId: string; botId: string
     return { kind: "ok", status, wasActive };
   }));
   if (written.kind === "changed") return { ok: false, code: "CHANGED_AGAIN", field: "password", message: REVERIFY_COPY.changedAgain };
+  if (written.kind === "blocked") return { ok: false, code: "BLOCKED", message: written.row.message, row: written.row };
   if (written.kind === "removed") return { ok: false, code: "BOT_REMOVED", message: VERIFY_COPY.removed };
   if (written.kind === "active") return { ok: false, code: "BOT_ACTIVE", message: REVERIFY_COPY.running };
 
@@ -493,12 +542,16 @@ export async function voidHouseConsent(input: { userId: string; cause: ConsentVo
   const written = await withLock(`wallet:${userId}`, (tx) => houseAtomic(tx, async (t): Promise<Written> => {
     const bot = await houseBotStore.findLiveByUserId(userId, t);
     if (!bot) return { voided: false, reason: "NO_LIVE_BOT" };
-    const voided = await houseBotStore.setConsentVoid(bot.id, cause, t);
+    let voided = await houseBotStore.setConsentVoid(bot.id, cause, t);
+    // The holder's own "stop" on a void that stands for another cause is still recorded (review LI-4): the cause
+    // becomes HOLDER_WITHDREW, the audit and the confirmation go out. A repeat withdrawal changes nothing.
+    const supersedes = !voided && cause === "HOLDER_WITHDREW" ? bot.consentVoidCause : null;
+    if (!voided && cause === "HOLDER_WITHDREW") voided = await houseBotStore.upgradeConsentVoidCause(bot.id, t);
     if (!voided) return { voided: false, reason: "ALREADY_VOID" };
     const to: HouseBotStatus = bot.status === "ACTIVE" ? "AUTO_PAUSED" : bot.status;
     await houseBotEventStore.append({
       houseBotId: bot.id, userId, marketId: null, kind: "CONSENT_VOIDED", fromStatus: bot.status, toStatus: to,
-      reason: null, actorId: input.actorId, payload: { cause },
+      reason: null, actorId: input.actorId, payload: supersedes ? { cause, supersedes } : { cause },
     }, t);
     const ended = await targetStore.endAllForBot(bot.id, "CONSENT_VOID", t);
     for (const target of ended) {

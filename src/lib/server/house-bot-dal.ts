@@ -1344,13 +1344,26 @@ export interface HouseBotStore {
   setStatus(id: string, input: SetStatusInput, tx?: HouseTx): Promise<StoredHouseBot | null>;
   /** CAS on `rulesVersion` (+1). Only `rules` and `BOT_CAP_FIELDS`; engine code never calls it. */
   saveRules(id: string, baseVersion: number, patch: HouseBotRulesPatch, tx?: HouseTx): Promise<CasResult<StoredHouseBot>>;
-  /** Re-verify: new fingerprint, `verifiedAt` now, and the credential change and
-   *  `pausedFromStatus` cleared. Paused bots only. */
-  setVerified(id: string, input: { fingerprint: string; verifiedById: string }, tx?: HouseTx): Promise<StoredHouseBot | null>;
-  /** A password change seen while the bot is paused (02 §2.2). Paused bots only. */
+  /**
+   * Re-verify: new fingerprint, the credential change and `pausedFromStatus` cleared. Paused bots only.
+   * ⛔ `verifiedAt` is the caller's CHECK time (taken before the password was checked), never the write
+   * time: a void or a responsible-gambling episode that lands while the owner types is then later than it,
+   * so it still stands (review MC-1/LI-3).
+   */
+  setVerified(id: string, input: { fingerprint: string; verifiedById: string; verifiedAt: string }, tx?: HouseTx): Promise<StoredHouseBot | null>;
+  /** A password change seen while the bot is paused (02 §2.2). Paused bots only. Stamped on the lock-time clock. */
   setCredentialChanged(id: string, input: { via: CredentialChangedVia }, tx?: HouseTx): Promise<StoredHouseBot | null>;
-  /** Void consent (A3, C8). Null means consent is already void since the last verification. */
+  /**
+   * Void consent (A3, C8). Null means consent is already void since the last verification. The stamp is
+   * `GREATEST(clock_timestamp(), verifiedAt + 1 ms)`: taken when the lock is held (never the transaction's start),
+   * and always later than the verification it voids (review MC-2).
+   */
   setConsentVoid(id: string, cause: ConsentVoidCause, tx?: HouseTx): Promise<StoredHouseBot | null>;
+  /**
+   * The holder's own "stop" on a bot whose consent is already void for another cause (review LI-4): the standing
+   * void's cause becomes HOLDER_WITHDREW — the one no detector clears. Null when no void stands or it already is.
+   */
+  upgradeConsentVoidCause(id: string, tx?: HouseTx): Promise<StoredHouseBot | null>;
   /**
    * Erasure (A5, R6): refuses while any bot of the account is not REMOVED and writes nothing.
    * Otherwise rewrites every label to "Erased <id tail>" (and its key, so a name-shaped label
@@ -1397,6 +1410,8 @@ export type EatSuffixUnit = EatKeyUnit;
 export interface HouseBotAlertOnceStore {
   /** Once-only claim: true for exactly one caller across every replica. */
   claim(key: string, tx?: HouseTx): Promise<boolean>;
+  /** Gives a claim back when the send it guarded delivered nothing, so the next attempt tells someone (review LI-8). */
+  release(key: string, tx?: HouseTx): Promise<void>;
   /**
    * `<prefix>:<EAT day|hour|month|minute>` with the suffix computed INSIDE the insert from DB
    * `now()` (A24, CC-23), so two replicas either side of midnight claim one row. ⛔ Never build
@@ -1939,7 +1954,7 @@ const memoryHouseBots: HouseBotStore = {
     const cur = memBots.get(id);
     if (!cur || !PAUSED_ONLY.includes(cur.status)) return null;
     return memUpdate("HouseBot", cur, {
-      passwordFingerprint: input.fingerprint, verifiedAt: nowIso(), verifiedById: input.verifiedById,
+      passwordFingerprint: input.fingerprint, verifiedAt: new Date(ms(input.verifiedAt)).toISOString(), verifiedById: input.verifiedById,
       pausedFromStatus: null, credentialChangedAt: null, credentialChangedVia: null,
     });
   },
@@ -1952,7 +1967,12 @@ const memoryHouseBots: HouseBotStore = {
     const cur = memBots.get(id);
     if (!cur) return null;
     if (!(cur.consentVoidAt == null || ms(cur.verifiedAt) > ms(cur.consentVoidAt))) return null;
-    return memUpdate("HouseBot", cur, { consentVoidAt: nowIso(), consentVoidCause: cause });
+    return memUpdate("HouseBot", cur, { consentVoidAt: new Date(Math.max(Date.now(), ms(cur.verifiedAt) + 1)).toISOString(), consentVoidCause: cause });
+  },
+  async upgradeConsentVoidCause(id) {
+    const cur = memBots.get(id);
+    if (!cur || cur.consentVoidAt == null || ms(cur.verifiedAt) > ms(cur.consentVoidAt) || cur.consentVoidCause === "HOLDER_WITHDREW") return null;
+    return memUpdate("HouseBot", cur, { consentVoidCause: "HOLDER_WITHDREW" });
   },
   async pseudonymiseForUser(userId) {
     return memAtomic(() => {
@@ -2081,6 +2101,9 @@ const memoryHouseBotAlertOnce: HouseBotAlertOnceStore = {
     if (memAlertOnce.has(key)) return false;
     memWrite("HouseBotAlertOnce", { key, createdAt: nowIso() }, "insert");
     return true;
+  },
+  async release(key) {
+    memAlertOnce.delete(key);
   },
   async claimWithEatSuffix(prefix, unit) {
     const key = `${prefix}:${eatKeyFor(unit, Date.now())}`;
@@ -2937,7 +2960,7 @@ const prismaHouseBots: HouseBotStore = {
     const p = new Params();
     const text = updateSql("HouseBot", [
       `"passwordFingerprint" = ${p.col("HouseBot", "passwordFingerprint", input.fingerprint)}`,
-      `"verifiedAt" = now()`,
+      `"verifiedAt" = ${p.col("HouseBot", "verifiedAt", input.verifiedAt)}`,
       `"verifiedById" = ${p.col("HouseBot", "verifiedById", input.verifiedById)}`,
       `"pausedFromStatus" = NULL`,
       `"credentialChangedAt" = NULL`,
@@ -2949,7 +2972,7 @@ const prismaHouseBots: HouseBotStore = {
   async setCredentialChanged(id, input, tx) {
     const p = new Params();
     const text = updateSql("HouseBot", [
-      `"credentialChangedAt" = now()`,
+      `"credentialChangedAt" = clock_timestamp()`,
       `"credentialChangedVia" = ${p.col("HouseBot", "credentialChangedVia", input.via)}`,
     ], `"id" = ${p.raw(id, "text")} AND ${PAUSED_ONLY_SQL}`);
     const rows = await sql(tx, text, p.values);
@@ -2958,9 +2981,16 @@ const prismaHouseBots: HouseBotStore = {
   async setConsentVoid(id, cause, tx) {
     const p = new Params();
     const text = updateSql("HouseBot", [
-      `"consentVoidAt" = now()`,
+      `"consentVoidAt" = GREATEST(clock_timestamp(), "verifiedAt" + interval '1 millisecond')`,
       `"consentVoidCause" = ${p.col("HouseBot", "consentVoidCause", cause)}`,
     ], `"id" = ${p.raw(id, "text")} AND ("consentVoidAt" IS NULL OR "verifiedAt" > "consentVoidAt")`);
+    const rows = await sql(tx, text, p.values);
+    return rows[0] ? toHouseBot(rows[0]) : null;
+  },
+  async upgradeConsentVoidCause(id, tx) {
+    const p = new Params();
+    const text = updateSql("HouseBot", [`"consentVoidCause" = 'HOLDER_WITHDREW'`],
+      `"id" = ${p.raw(id, "text")} AND "consentVoidAt" IS NOT NULL AND NOT ("verifiedAt" > "consentVoidAt") AND "consentVoidCause" <> 'HOLDER_WITHDREW'`);
     const rows = await sql(tx, text, p.values);
     return rows[0] ? toHouseBot(rows[0]) : null;
   },
@@ -3084,6 +3114,9 @@ const prismaHouseBotAlertOnce: HouseBotAlertOnceStore = {
     const rows = await sql(tx, `INSERT INTO "HouseBotAlertOnce" ("key", "createdAt") VALUES ($1::text, now())`
       + ` ON CONFLICT ("key") DO NOTHING RETURNING "key"`, [key]);
     return rows.length === 1;
+  },
+  async release(key, tx) {
+    await exec(tx ?? null, `DELETE FROM "HouseBotAlertOnce" WHERE "key" = $1::text`, [key]);
   },
   async claimWithEatSuffix(prefix, unit, tx) {
     // ⛔ The suffix is computed HERE, from DB now(), inside the same statement as the insert.

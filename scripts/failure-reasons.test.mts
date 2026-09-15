@@ -666,13 +666,24 @@ console.log("\n§8c · the services still emit the reasons that replaced the phr
       }
       return out;
     };
-    const callers = walkServer("src/lib/server")
-      .filter((f) => !f.endsWith("responsible-gambling.ts"))
-      .filter((f) => /\bcheckLossLimit\s*\(/.test(
-        readFileSync(f, "utf8").replace(/\/\*[\s\S]*?\*\//g, " ").replace(/(^|[^:])\/\/.*$/gm, "$1")));
-    ok("8c.loss-limit · ⛔ `checkLossLimit` still has exactly ONE caller, and it is the one that says why",
+    const callsIt = (f: string) => /\bcheckLossLimit\s*\(/.test(
+      readFileSync(f, "utf8").replace(/\/\*[\s\S]*?\*\//g, " ").replace(/(^|[^:])\/\/.*$/gm, "$1"));
+    /**
+     * Callers that REFUSE NO PLAYER, each named with why. ⛔ A file here must still call it (checked below), so a
+     * stale exemption goes red instead of quietly widening. Nothing that answers a player may ever be listed.
+     */
+    const READ_ONLY_CALLERS: Record<string, string> = {
+      // House bots (build commit 3, 02 §3.3 item 8): an owner's Start is refused while the holder's own limit would
+      // block the minimum stake. It is an officer's read; every house stake still meets `buyPosition`'s own check.
+      "src/lib/server/house-bot/eligibility.ts": "officer-facing Start refusal; no player bet passes through it",
+    };
+    const all = walkServer("src/lib/server").filter((f) => !f.endsWith("responsible-gambling.ts")).filter(callsIt);
+    const callers = all.filter((f) => !Object.keys(READ_ONLY_CALLERS).some((x) => f.endsWith(x)));
+    ok("8c.loss-limit · ⛔ `checkLossLimit` still has exactly ONE player-refusing caller, and it is the one that says why",
        callers.length === 1 && callers[0].endsWith("market-service.ts"),
        callers.length ? callers.join(", ") : "NO caller — the daily-loss cap is not enforced at all");
+    const stale = Object.keys(READ_ONLY_CALLERS).filter((x) => !all.some((f) => f.endsWith(x)));
+    ok("8c.loss-limit.exempt · every named read-only caller still calls it (no stale exemption)", stale.length === 0, stale.join(", "));
   }
 
   // ⛔ AND THE BANNER CHANNEL MUST REJECT WHAT IT DOES NOT KNOW. `?reason=` is attacker-supplied

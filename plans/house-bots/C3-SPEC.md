@@ -168,3 +168,16 @@ Same update as the hash:
 26. **A legacy password history whose audit read stops short (truncated at 200 rows with no password write found) is unreadable** and blocks, like a read that throws (04 A4 "a failed read blocks").
 27. **The holder's reserve notice** is sent when the owner's wrong try brings the count to the reserve; a RESERVED refusal adds none (C13 test "reaching reserve → 1 row").
 28. **The C9 "agent application pending" warning** needs the agent-application read and lands with the overview page (commit 7).
+
+**Taken with the review's fixes (`wf_2208135b-079`, 15 confirmed, 3 refuted, 2026-09-15):**
+
+29. **`verifiedAt` is the check time** (taken before eligibility), passed to `setVerified` and `designate`; bumped 1 ms past a void the re-verify legitimately clears. A void and the RG stamps landing during the password check are later than it (MC-1, LI-3).
+30. **`setConsentVoid` stamps `GREATEST(clock_timestamp(), verifiedAt + 1 ms)`**; `setCredentialChanged` stamps `clock_timestamp()` (MC-2).
+31. **The RG backstop also compares the end dates** (`selfExclusionUntil`, `coolingOffUntil`) with `verifiedAt` (LI-1). This corrects §2.1's backstop formula, which is 04 A3's literal text.
+32. **A reset-link password also reads the durable officer-email audit rows** (awaited, fail closed, truncation inside the window = unreadable), and a counting `emailSetByOfficerAt` is never overwritten (LI-2, LI-5, LI-6).
+33. **The holder's letter has no button** and is registered in `NO_CTA_TEMPLATES`: a consent letter about a password (the `passwordChangedHtml` rule), and `test:position-permalink` 4.4 refuses a generic `/positions` link in any email.
+34. **`NotifyOptions` gains `push` and `dedupe`.** `verify_reserved` is bell only with the duplicate check; the other holder notices skip the check (UX-1, UX-2).
+35. **`test:kyc-copy-truth` §6 accepts `houseBotAlertRecipients()` as proof an officer emitter addresses officers**, only while the resolver's own body calls `listByRoles(["ADMIN"])` and filters `role === "ADMIN"` (checked, with a control) — one resolver (A22), proven, not trusted.
+36. **`redactFragment` gains an optional scope** (kind, href, created window) on both stores; erasure's label redaction uses it (LI-9). Mask redaction is unchanged.
+37. **A withdrawal over a standing void upgrades its cause** to HOLDER_WITHDREW (new DAL member `upgradeConsentVoidCause`), and `houseBotAlertOnceStore.release` gives back an alert claim whose send reached no one (LI-4, LI-8).
+38. **Erasure's live-bot check runs under `wallet:<userId>`**, and `fulfillDsarRequest` records a throw as a blocked erasure (reason `error`) (MC-4).

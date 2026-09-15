@@ -820,7 +820,7 @@ async function runCases(): Promise<void> {
     // (correctly) still count.
     await sleep(25);
     await rec("c16.d re-verify clears the credential change", async () => {
-      const r = await bots.setVerified("hb_c16", { fingerprint: "fp_c16b", verifiedById: OFFICER });
+      const r = await bots.setVerified("hb_c16", { fingerprint: "fp_c16b", verifiedById: OFFICER, verifiedAt: new Date().toISOString() });
       return r ? `${r.passwordFingerprint}:${r.credentialChangedAt}:${r.credentialChangedVia}` : null;
     });
     await sleep(25);
@@ -829,7 +829,7 @@ async function runCases(): Promise<void> {
       await mkUser("usr_c16b");
       await designate("hb_c16b", "usr_c16b", "Case sixteen B");
       await bots.setStatus("hb_c16b", { from: ["PAUSED"], to: "ACTIVE", pauseReason: null, pausedFromStatus: null });
-      return bots.setVerified("hb_c16b", { fingerprint: "fp_other", verifiedById: OFFICER });
+      return bots.setVerified("hb_c16b", { fingerprint: "fp_other", verifiedById: OFFICER, verifiedAt: new Date().toISOString() });
     });
   });
 

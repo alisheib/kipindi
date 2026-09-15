@@ -67,7 +67,16 @@ const DEDUPE_WINDOW_MS = 90_000;
  * player ever saw it. Up & Down therefore passes a PER-ROUND key. See
  * `updownResultPushTag` in `market-service.ts`, which is where the reasoning lives.
  */
-export type NotifyOptions = { pushTag?: string };
+export type NotifyOptions = {
+  pushTag?: string;
+  /** `false` writes the inbox row without a Web Push — a notice sealed as "bell only" (house bots `verify_reserved`, 04 C13). */
+  push?: boolean;
+  /**
+   * `false` skips the 90-second duplicate check. Only for a notice sent once per COMMITTED state change under a lock,
+   * whose fixed wording would otherwise swallow a real second transition (house bots: started → paused → started).
+   */
+  dedupe?: boolean;
+};
 
 export async function notify(input: NotifyInput, opts?: NotifyOptions): Promise<StoredNotification | null> {
   // Best-effort by contract: notifications are paired with money/auth/compliance
@@ -83,7 +92,7 @@ export async function notify(input: NotifyInput, opts?: NotifyOptions): Promise<
     // unique reference (position id, or the receipt href). Fail OPEN — if the
     // lookup errors we deliver, because a missing notification is worse than a
     // duplicate one.
-    try {
+    if (opts?.dedupe !== false) try {
       const dup = await db.notification.findRecentDuplicate({
         userId: input.userId,
         kind: input.kind,
@@ -161,7 +170,7 @@ export async function notify(input: NotifyInput, opts?: NotifyOptions): Promise<
     // locale. Fire-and-forget: sendPushToUser never throws, self-suppresses for
     // RG-locked players, and no-ops when VAPID is unconfigured. The inbox row
     // above stays the canonical record regardless of what the push channel does.
-    void (async () => {
+    if (opts?.push !== false) void (async () => {
       try {
         const { sendPushToUser } = await import("./push-service");
         const user = await db.user.findById(n.userId);
@@ -2217,7 +2226,10 @@ export async function notifyHouseBotOwner(userId: string, notice: HouseBotOwnerN
       bodyZh: "已完成——50pick 不会再从您的账户下注新的流动性投注。未结算投注将照常结算。",
     },
   };
-  const row = await notify({ userId, kind: "HOUSE_BOT", ...COPY[notice], href: "/positions" }, { pushTag: `house-bot-${notice}` });
+  // `verify_reserved` is bell only (04 C13) and keeps the duplicate check. Every other notice is sent once per
+  // committed state change, so a repeat inside 90 s is a real transition and must land (review UX-1, UX-2).
+  const reserved = notice === "verify_reserved";
+  const row = await notify({ userId, kind: "HOUSE_BOT", ...COPY[notice], href: "/positions" }, { pushTag: `house-bot-${notice}`, push: !reserved, dedupe: reserved });
   if ((HOUSE_BOT_OWNER_EMAILED as readonly string[]).includes(notice)) {
     try {
       const { sendEmailToUser, houseBotOwnerHtml } = await import("./email");
@@ -2238,13 +2250,14 @@ export async function notifyHouseBotOwner(userId: string, notice: HouseBotOwnerN
  * `houseBotAlertRecipients()`. The caller claims AlertOnce `erasure-blocked:<botId>` first, so a repeated
  * erasure attempt raises one alert. `{holder}` is `playerHandle` only.
  */
-export async function notifyAdminsHouseBotErasureBlocked(opts: { botId: string; holderUserId: string }): Promise<void> {
+export async function notifyAdminsHouseBotErasureBlocked(opts: { botId: string; holderUserId: string }): Promise<number> {
   const { houseBotAlertRecipients, playerHandle } = await import("./house-bot/alerts");
   const recipients = await houseBotAlertRecipients();
   const holder = playerHandle(opts.holderUserId);
   const href = `/admin/house-bots/${opts.botId}`;
+  let delivered = 0;
   for (const r of recipients) {
-    await notify({
+    const landed = await notify({
       userId: r.id,
       kind: "HOUSE_BOT",
       titleEn: `Erasure blocked — ${opts.botId} is still a house bot`,
@@ -2254,7 +2267,8 @@ export async function notifyAdminsHouseBotErasureBlocked(opts: { botId: string; 
       bodySw: `${holder} ameomba data yake ifutwe. Ufutaji unakataa hadi mmiliki aondoe boti ${opts.botId}; ombi linabaki wazi.`,
       bodyZh: `${holder} 已申请删除其数据。在所有者移除平台机器人 ${opts.botId} 之前，删除将被拒绝；该申请保持未结。`,
       href,
-    }).catch(() => {});
+    }).catch(() => null);
+    if (landed) delivered++;
   }
   try {
     const { sendEmail, houseBotErasureBlockedAdminHtml } = await import("./email");
@@ -2269,4 +2283,6 @@ export async function notifyAdminsHouseBotErasureBlocked(opts: { botId: string; 
       sendEmail({ to, subject: `Erasure blocked · house bot ${opts.botId}`, html, tag: "house-bot-erasure-blocked", trackLinks: false }).catch(() => {});
     }
   } catch { /* officer email is best-effort */ }
+  // The bell rows that landed: the caller gives its once-only claim back when this is 0 (review LI-8).
+  return delivered;
 }

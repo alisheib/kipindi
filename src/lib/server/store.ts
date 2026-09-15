@@ -433,6 +433,12 @@ export type StoredResponsibleGambling = {
   playLastSeenAt?: string | null;
 };
 
+/**
+ * Limits `redactFragment` to one bot's own notices (house-bots erasure, review LI-9): rows of `kind` whose href
+ * contains `hrefIncludes`, OR that were written in `[createdFrom, createdTo]`. Omitted = every row, as before.
+ */
+export type NotificationRedactScope = { kind: string; hrefIncludes: string; createdFrom: string; createdTo: string };
+
 export type StoredNotification = {
   id: string;
   userId: string;
@@ -1676,10 +1682,12 @@ const memoryDb = {
      * the cost of that collision is one notification reading "a former member" instead of
      * a mask, which is the right side to err on.
      */
-    redactFragment: (fragment: string, replacement: string): number => {
+    redactFragment: (fragment: string, replacement: string, scope?: NotificationRedactScope): number => {
       if (!fragment) return 0;
       let changed = 0;
       for (const [id, n] of store.notifications) {
+        if (scope && !(n.kind === scope.kind && ((n.href ?? "").includes(scope.hrefIncludes)
+          || (n.createdAt >= scope.createdFrom && n.createdAt <= scope.createdTo)))) continue;
         const next = { ...n };
         let hit = false;
         for (const f of ["titleEn", "titleSw", "titleZh", "bodyEn", "bodySw", "bodyZh"] as const) {

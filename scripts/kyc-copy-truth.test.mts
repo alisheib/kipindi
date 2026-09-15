@@ -1108,7 +1108,15 @@ console.log("     the legal pages are read under rule 4 in §2, file by file and
   const notifyDecls = declsIn(NOTIFY_SRC);
   const notifyLine = lineIndex(NOTIFY_SRC);
   const officerEmitters = notifyDecls.filter((x) => x.name && OFFICER_EMITTER.test(x.name));
-  const notProven = officerEmitters.filter((x) => !/\badminUserId\b|\blistByRoles\s*\(/.test(NOTIFY_SRC.slice(x.start, x.end))).map((x) => x.name);
+  // House bots (build commit 3, 04 A22): an emitter may take its recipients from `houseBotAlertRecipients()`, the ONE
+  // resolver — accepted only while that resolver itself provably reads the ADMIN role (proof, not trust).
+  const alertsSrc = readSrc("src/lib/server/house-bot/alerts.ts");
+  const resolverBody = alertsSrc.slice(alertsSrc.indexOf("export async function houseBotAlertRecipients"), alertsSrc.indexOf("export function playerHandle"));
+  const resolverProven = (body: string) => /\blistByRoles\s*\(\s*\[\s*"ADMIN"\s*\]\s*\)/.test(body) && /role === "ADMIN"/.test(body);
+  ok("§6 house-bot/alerts.ts · houseBotAlertRecipients provably reads ADMIN accounts only", resolverBody.length > 40 && resolverProven(resolverBody), resolverBody.slice(0, 160));
+  ok("§6 control · a resolver that reads every user is NOT proven", !resolverProven("export async function houseBotAlertRecipients() { return db.user.listAll(); }"));
+  const OFFICER_PROOF = new RegExp(`\\badminUserId\\b|\\blistByRoles\\s*\\(${resolverProven(resolverBody) ? "|\\bhouseBotAlertRecipients\\s*\\(" : ""}`);
+  const notProven = officerEmitters.filter((x) => !OFFICER_PROOF.test(NOTIFY_SRC.slice(x.start, x.end))).map((x) => x.name);
   ok("§6 notification-service.ts · every officer emitter excepted provably addresses officers (adminUserId or listByRoles)",
     officerEmitters.length >= 5 && notProven.length === 0, `${officerEmitters.length} excepted${notProven.length ? ` · NOT proven: ${notProven.join(", ")}` : ""}`);
   const notifyUnits: Unit[] = [];

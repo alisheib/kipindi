@@ -77,6 +77,11 @@ const PAGES: { name: string; html: string }[] = [
   // 2026-09-14 · the follow-up when a decided return's payout failed — with a forfeited part, the longest shape.
   { name: "refusedFundsReturnFailedHtml", html: E.refusedFundsReturnFailedHtml({ amountTzs: 20_000, forfeitedTzs: 5_000, reference: "rfd_a1b2c3d4e5" }) },
   { name: "kycReviewOverdueAdminHtml", html: E.kycReviewOverdueAdminHtml({ reference: "kyc_41ab77cd", playerLabel: "Asha Mwakalinga", submittedAt: "2026-09-12T08:00:00.000Z", hoursWaiting: 26, reviewUrl: "https://www.50pick.tz/admin/kyc/u1" }) },
+  // House bots (build commit 3) — every holder letter kind, and the officer alert with a real-length bot id.
+  { name: "houseBotOwnerHtml", html: E.houseBotOwnerHtml({ kind: "designated", at: "15 Sep 2026, 14:02 EAT" }) },
+  { name: "houseBotOwnerHtml.reverified", html: E.houseBotOwnerHtml({ kind: "reverified", at: "15 Sep 2026, 14:02 EAT" }) },
+  { name: "houseBotOwnerHtml.removed", html: E.houseBotOwnerHtml({ kind: "removed", at: "15 Sep 2026, 14:02 EAT" }) },
+  { name: "houseBotErasureBlockedAdminHtml", html: E.houseBotErasureBlockedAdminHtml({ botId: "hb_a1b2c3d4e5f6a7b8c9d0e1f2", holder: "Player #A3F2K8", botUrl: "https://www.50pick.tz/admin/house-bots/hb_a1b2c3d4e5f6a7b8c9d0e1f2" }) },
   { name: "kycSubmittedAdminHtml", html: E.kycSubmittedAdminHtml({ reference: "kyc_41ab77cd", phoneMasked: "+2557••••5678", name: "Asha Mwakalinga", nidaMasked: "•••• 1234", submittedAt: "2026-07-31T09:00:00.000Z", reviewUrl: "/admin/players/u1?tab=kyc" }) },
   { name: "sofSubmittedHtml", html: E.sofSubmittedHtml() },
   { name: "sofDecisionHtml", html: E.sofDecisionHtml({ status: "ACCEPTED", note: "Payslips accepted" }) },

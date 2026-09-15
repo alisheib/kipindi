@@ -193,6 +193,7 @@ export const NO_CTA_TEMPLATES: readonly string[] = [
   "agentFeeRefundedHtml",      // telling someone their own money came back is information, not solicitation
   "agentDeactivatedHtml",      // a paused partnership must not link into the product; support is the route
   "agentRevokedHtml",          // the partnership has ended; support is the route
+  "houseBotOwnerHtml",         // a consent letter ("change your password if you did not agree") — a button is a phishing shape
 ];
 
 /* ══ IN-APP ═════════════════════════════════════════════════════════════════ */

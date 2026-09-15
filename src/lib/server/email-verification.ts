@@ -36,6 +36,7 @@ import type { SendResult } from "./email";
 import { notify } from "./notification-service";
 import { displayLabel } from "@/lib/display-label";
 import type { FailureReason } from "@/lib/failure-reasons";
+import { OFFICER_EMAIL_WINDOW_DAYS } from "@/lib/house-bot/constants";
 
 const VERIFY_TTL_MS = 24 * 60 * 60 * 1000; // 24h
 // ⭐ THE BASE URL HAS ONE HOME: `appUrl()` (`src/lib/app-url.ts`).
@@ -166,7 +167,13 @@ export async function setUserEmail(
   }
 
   // New / changed address: store it, reset verification, send a fresh link.
-  await db.user.update(userId, { email: next, emailVerifiedAt: null, ...(opts.byOfficer ? { emailSetByOfficerAt: new Date().toISOString() } : {}) });
+  // ⛔ A stamp that still counts is never overwritten (house-bots review LI-2): an officer email, a reset link, then
+  // a second officer email would otherwise move the stamp past the reset and wave the support-chosen password through.
+  // It "counts" while the last password came by reset link at or after it, within the 30-day window.
+  const stampCounts = !!user.emailSetByOfficerAt && user.passwordSetVia === "RESET_LINK" && !!user.passwordSetAt
+    && Date.parse(user.emailSetByOfficerAt) <= Date.parse(user.passwordSetAt)
+    && Date.parse(user.passwordSetAt) - Date.parse(user.emailSetByOfficerAt) <= OFFICER_EMAIL_WINDOW_DAYS * 86_400_000;
+  await db.user.update(userId, { email: next, emailVerifiedAt: null, ...(opts.byOfficer && !stampCounts ? { emailSetByOfficerAt: new Date().toISOString() } : {}) });
   audit({ category: "COMPLIANCE", action: "user.email.set", actorId: userId, targetType: "User", targetId: userId, payload: { verified: false } });
   const name = (user.displayName?.trim().split(/\s+/)[0]) || displayLabel({ id: userId, displayName: user.displayName ?? null });
   // Report what ACTUALLY happened. A suppressed (previously hard-bounced) address

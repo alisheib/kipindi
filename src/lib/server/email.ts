@@ -2213,21 +2213,24 @@ export function kycReviewOverdueAdminHtml({ reference, playerLabel, submittedAt,
 /** The three holder events that also send an email (02 §3.2, §3.5; 04 C13). */
 export type HouseBotOwnerEmailKind = "designated" | "removed" | "reverified";
 
-const HOUSE_BOT_OWNER_EMAIL: Record<HouseBotOwnerEmailKind, { eyebrow: string; heading: string; en: string; sw: string }> = {
+const HOUSE_BOT_OWNER_EMAIL: Record<HouseBotOwnerEmailKind, { eyebrow: string; eyebrowSw: string; heading: string; en: string; sw: string }> = {
   designated: {
     eyebrow: "Liquidity",
+    eyebrowSw: "Ukwasi",
     heading: "Your account now provides liquidity",
     en: "50pick will place liquidity stakes from your account as you agreed. You keep full use of it. Nothing is placed until 50pick starts them. You can stop this at any time by changing your password or contacting 50pick.",
     sw: "50pick itaweka dau za ukwasi kutoka kwenye akaunti yako kama ulivyokubali. Unaendelea kuitumia kikamilifu. Hakuna dau litakalowekwa hadi 50pick izianze. Unaweza kusimamisha hili wakati wowote kwa kubadilisha nenosiri lako au kuwasiliana na 50pick.",
   },
   removed: {
     eyebrow: "Liquidity",
+    eyebrowSw: "Ukwasi",
     heading: "Liquidity stakes ended",
     en: "50pick no longer uses your account for liquidity stakes. Open stakes settle to your wallet as normal.",
     sw: "50pick haitumii tena akaunti yako kwa dau za ukwasi. Dau zilizo wazi zitalipwa kwenye pochi yako kama kawaida.",
   },
   reverified: {
     eyebrow: "Security",
+    eyebrowSw: "Usalama",
     heading: "Your permission was confirmed",
     en: "50pick confirmed your permission for liquidity stakes with your current password. If you did not give your password to 50pick, change it now — that stops liquidity stakes at once.",
     sw: "50pick imethibitisha ruhusa yako ya dau za ukwasi kwa nenosiri lako la sasa. Kama hukuipa 50pick nenosiri lako, libadilishe sasa — hilo husimamisha dau za ukwasi mara moja.",
@@ -2238,16 +2241,19 @@ const HOUSE_BOT_OWNER_EMAIL: Record<HouseBotOwnerEmailKind, { eyebrow: string; h
  * The account holder's liquidity notice by email (04 C13 `notifyHouseBotOwner`). `at` is the EAT time the
  * event happened, already formatted. It names no bot label, no officer and no figure — the holder's own
  * stakes carry their own receipts.
+ *
+ * ⛔ NO BUTTON. This is a consent letter: its instruction is "if you did not agree, change your password", and a
+ * button in a letter about a password is a phishing shape (the `passwordChangedHtml` rule). It also quotes no
+ * stake, so there is no one position to link to, and a generic list link is refused (`test:position-permalink` 4.4).
  */
 export function houseBotOwnerHtml({ kind, at }: { kind: HouseBotOwnerEmailKind; at: string }): string {
   const c = HOUSE_BOT_OWNER_EMAIL[kind];
   return wrap(`
-    ${eyebrow(c.eyebrow, "Ukwasi")}
+    ${eyebrow(c.eyebrow, c.eyebrowSw)}
     ${heading(c.heading)}
     ${subtitle(c.en)}
     ${subtitleSw(c.sw)}
     ${detailRows([{ label: "When", value: at }])}
-    ${ctaButton("/positions", "Open your stakes · Fungua dau zako")}
   `);
 }
 

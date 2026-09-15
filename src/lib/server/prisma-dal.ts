@@ -59,7 +59,7 @@ import type {
   StoredAgentApplicationDocument,
   StoredAgentInvitation,
   AgentApplicationStatus,
-  AgentDocType, StoredKycStageRow } from "./store";
+  AgentDocType, StoredKycStageRow, NotificationRedactScope } from "./store";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -2100,11 +2100,14 @@ export const prismaDb = {
      * is why it is reachable only from erasure — a rare, officer-triggered operation — and
      * never from a render path.
      */
-    redactFragment: async (fragment: string, replacement: string): Promise<number> => {
+    redactFragment: async (fragment: string, replacement: string, scope?: NotificationRedactScope): Promise<number> => {
       if (!fragment) return 0;
       const FIELDS = ["titleEn", "titleSw", "titleZh", "bodyEn", "bodySw", "bodyZh"] as const;
+      const text = { OR: FIELDS.map((f) => ({ [f]: { contains: fragment } })) };
       const rows = await pc().notification.findMany({
-        where: { OR: FIELDS.map((f) => ({ [f]: { contains: fragment } })) },
+        where: scope
+          ? { AND: [text, { kind: scope.kind }, { OR: [{ href: { contains: scope.hrefIncludes } }, { createdAt: { gte: new Date(scope.createdFrom), lte: new Date(scope.createdTo) } }] }] }
+          : text,
         select: { id: true, titleEn: true, titleSw: true, titleZh: true, bodyEn: true, bodySw: true, bodyZh: true },
       });
       let changed = 0;

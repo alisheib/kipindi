@@ -74,6 +74,7 @@ import { revokeUserSessions } from "./session-registry";
 import type { KycExtraRequest } from "./store";
 import { pseudonymiseAgentApplications, purgeAgentDocumentsForUser } from "./agent-application-service";
 import { houseBotAlertOnceStore, houseBotStore } from "./house-bot-dal";
+import { withLock } from "./locks";
 import { ALERT_KEY } from "@/lib/house-bot/constants";
 
 /**
@@ -114,7 +115,7 @@ export function isErasedPhone(phoneE164: string): boolean {
 
 export type AnonymizeOutcome =
   /** `house_bot_live`: the account is still a house bot (04 A5, R6) — nothing was written, the request stays open. */
-  | { ok: false; error: string; reason: "not_found" | "not_closed" | "house_bot_live" }
+  | { ok: false; error: string; reason: "not_found" | "not_closed" | "house_bot_live" | "error" }
   | {
       ok: true;
       /** Already-erased input: every counter is 0 and nothing was written. */
@@ -189,15 +190,22 @@ export async function anonymizeClosedAccount(
    * told once per bot (AlertOnce `erasure-blocked:<botId>`), by bell and email.
    * A read that throws escapes this function, which is also a refusal: nothing below has run.
    */
-  const liveBot = await houseBotStore.findLiveByUserId(userId);
+  // ⛔ UNDER `wallet:<userId>`, the lock designation writes its bot under (review MC-4): a designate that holds it
+  // first has committed its bot before this read; one that takes it after sees the account CLOSED and refuses.
+  const liveBot = await withLock(`wallet:${userId}`, () => houseBotStore.findLiveByUserId(userId));
   if (liveBot) {
+    const key = ALERT_KEY.erasureBlocked(liveBot.id);
+    let claimed = false;
     try {
-      if (await houseBotAlertOnceStore.claim(ALERT_KEY.erasureBlocked(liveBot.id))) {
+      claimed = await houseBotAlertOnceStore.claim(key);
+      if (claimed) {
         const { notifyAdminsHouseBotErasureBlocked } = await import("./notification-service");
-        await notifyAdminsHouseBotErasureBlocked({ botId: liveBot.id, holderUserId: userId });
+        // A send that reached nobody gives the claim back, so the next attempt still tells an owner (review LI-8).
+        if ((await notifyAdminsHouseBotErasureBlocked({ botId: liveBot.id, holderUserId: userId })) === 0) await houseBotAlertOnceStore.release(key);
       }
     } catch (err) {
       console.error("[erasure] house-bot owner alert failed:", (err as Error)?.message ?? err);
+      if (claimed) await houseBotAlertOnceStore.release(key).catch(() => {});
     }
     return {
       ok: false,
@@ -410,7 +418,12 @@ export async function anonymizeClosedAccount(
     const tail = bot.id.slice(-6).toUpperCase();
     if (bot.label === `Erased ${tail}`) continue;
     counts.houseBots++;
-    counts.houseBotNotificationsRedacted += await db.notification.redactFragment(`"${bot.label}"`, `"Erased bot ${tail}"`);
+    // ⛔ SCOPED to this bot's own notices (review LI-9): a removed label is free for another holder's live bot, and
+    // an unscoped rewrite would rename that bot in every officer's inbox. HOUSE_BOT rows that link to this bot, or
+    // were written while it was designated (live labels are unique, so no other bot bore it then).
+    counts.houseBotNotificationsRedacted += await db.notification.redactFragment(`"${bot.label}"`, `"Erased bot ${tail}"`, {
+      kind: "HOUSE_BOT", hrefIncludes: bot.id, createdFrom: bot.designatedAt, createdTo: bot.removedAt ?? new Date().toISOString(),
+    });
   }
   const house = await houseBotStore.pseudonymiseForUser(userId);
   // A bot designated between the refusal above and here cannot happen (designation refuses a CLOSED account),

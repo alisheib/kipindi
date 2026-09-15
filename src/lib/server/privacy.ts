@@ -126,7 +126,12 @@ export async function fulfillDsarRequest(opts: { id: string; officerId: string; 
 
   let erasure: AnonymizeOutcome | undefined;
   if (r.type === "ERASURE") {
-    erasure = await anonymizeClosedAccount(r.userId);
+    // A routine that THROWS part-way is a refusal the officer must see, not an unhandled error that writes no
+    // record (house-bots review MC-4): the same blocked row, with the reason "error". It is re-runnable.
+    erasure = await anonymizeClosedAccount(r.userId).catch((err: unknown): AnonymizeOutcome => {
+      console.error("[privacy] erasure threw:", (err as Error)?.message ?? err);
+      return { ok: false, reason: "error", error: "Erasure stopped part-way with an error. Nothing was marked fulfilled — fix the cause, then run it again." };
+    });
     if (!erasure.ok) {
       // ⛔ The SAME audit action the old refusal wrote, deliberately. A regulator reading the
       // chain for "when could we not erase, and why" gets one action name across both eras,

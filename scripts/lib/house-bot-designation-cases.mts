@@ -32,7 +32,8 @@ const { withLock }: Any = await import("../../src/lib/server/locks.ts");
 const { hashPassword, randomId, signSession }: Any = await import("../../src/lib/server/crypto.ts");
 const PR: Any = await import("../../src/lib/server/password-reset.ts");
 const { setUserEmail }: Any = await import("../../src/lib/server/email-verification.ts");
-const { auditFlush, getAuditPage }: Any = await import("../../src/lib/server/audit.ts");
+const { audit, auditFlush, getAuditPage }: Any = await import("../../src/lib/server/audit.ts");
+const { savePushSubscription }: Any = await import("../../src/lib/server/push-service.ts");
 const { getActiveSessionId, setActiveSessionId }: Any = await import("../../src/lib/server/session-registry.ts");
 const RG: Any = await import("../../src/lib/server/responsible-gambling.ts");
 const { removeWalletFreeze }: Any = await import("../../src/lib/server/wallet-freeze.ts");
@@ -772,6 +773,222 @@ section("§9 · who is told, and the HOUSE_BOT kind");
   const before = (await houseRows(rg)).length;
   const r = await N.notifyHouseBotOwner(rg, "started");
   ok("9.4 · a holder on a break gets no HOUSE_BOT notice (the RG gate)", r === null && (await houseRows(rg)).length === before);
+}
+
+// ═══ §11 · the review's findings (wf_2208135b-079), each as the failure it described ════════════════════
+section("§11 · review fixes — consent that lands mid-check, repeat episodes, officer emails, alerts, notices");
+{
+  await w.limits({ maxDesignatedBots: 20 });
+  await w.switchOn();
+
+  // MC-1 / LI-3 · a break taken while the owner types the password: re-verify refuses, the void stands.
+  {
+    const { botId, userId } = await runningBot();
+    await PR.changePassword(userId, PW, PW2);
+    await w.dal.houseBotStore.setStatus(botId, { from: ["ACTIVE"], to: "AUTO_PAUSED", pauseReason: "PASSWORD_CHANGED", pausedFromStatus: "ACTIVE" });
+    rlReset();
+    const r = await interleave(userId, () => reverify(botId, PW2), async () => { await RG.coolOff(userId, "1h"); });
+    ok("11.1 · a break started between the password check and the write → re-verify BLOCKED{RG_LOCKED}, nothing verified",
+      r.sawVerify && r.result.ok === false && r.result.row?.code === "RG_LOCKED" && (await bot(botId)).passwordFingerprint !== PR.passwordFingerprint((await user(userId)).passwordHash), j(r.result));
+    const cur = await RG.getRgSettings(userId);
+    await w.db.responsible.upsert({ ...cur, coolingOffUntil: new Date(Date.now() - 1_000).toISOString() });
+    ok("11.1b · …and once the break is over Start still refuses (no confirmation after it)", (await start(botId)).code === "CONSENT");
+  }
+  {
+    const { botId, userId } = await runningBot();
+    await PR.changePassword(userId, PW, PW2);
+    await w.dal.houseBotStore.setStatus(botId, { from: ["ACTIVE"], to: "AUTO_PAUSED", pauseReason: "PASSWORD_CHANGED", pausedFromStatus: "ACTIVE" });
+    rlReset();
+    // The void is written straight through the store while the test holds the wallet lock: it stands in for a
+    // writer that committed before re-verify took the lock, which is the order the review described.
+    const r = await interleave(userId, () => reverify(botId, PW2), async () => { await w.dal.houseBotStore.setConsentVoid(botId, "HOLDER_WITHDREW"); });
+    const b = await bot(botId);
+    ok("11.2 · a void committed while the owner types → re-verify BLOCKED{CONSENT_VOID}; the void still stands",
+      r.sawVerify && r.result.ok === false && r.result.row?.code === "CONSENT_VOID" && C.voidStands(b) && b.consentVoidCause === "HOLDER_WITHDREW", j({ result: r.result, void: b.consentVoidAt, verified: b.verifiedAt }));
+  }
+  {
+    await clearRoster();
+    const h = await holder();
+    rlReset();
+    // ⚠️ Not `RG.selfExclude`: its wallet freeze takes `wallet:<userId>`, the lock this test holds, so the real
+    // service already serialises with the insert. The settings row and status stand in for the part that does not.
+    const r = await interleave(h, () => desig(h), async () => {
+      const cur = await RG.getRgSettings(h);
+      await w.db.responsible.upsert({ ...cur, selfExclusionUntil: new Date(Date.now() + 86_400_000).toISOString(), selfExclusionStartedAt: new Date().toISOString() });
+      await w.setUserFields(h, { status: "SELF_EXCLUDED" });
+    });
+    ok("11.3 · a self-exclusion between the password check and the insert → designate refuses, 0 bots",
+      r.sawVerify && r.result.ok === false && r.result.row?.code === "RG_LOCKED" && !(await w.dal.houseBotStore.findLiveByUserId(h)), j(r.result));
+  }
+
+  // LI-1 · a second break, after a first that ended before designation, still refuses Start with no void written.
+  {
+    await clearRoster();
+    const h = await holder();
+    await RG.coolOff(h, "1h");
+    const first = await RG.getRgSettings(h);
+    await w.db.responsible.upsert({ ...first, coolingOffUntil: new Date(Date.now() - 60_000).toISOString() });
+    await sleep(5); // the first break and the check time must not share a millisecond
+    rlReset();
+    const d = await desig(h);
+    await makeStartable(d.bot.id);
+    rlReset();
+    const s1 = await start(d.bot.id);
+    await w.dal.houseBotStore.setStatus(d.bot.id, { from: ["ACTIVE"], to: "PAUSED", pauseReason: "MANUAL", pausedFromStatus: null });
+    await sleep(5);
+    await RG.coolOff(h, "1h");
+    const second = await RG.getRgSettings(h);
+    ok("11.4 · fixture · the first episode's start stamp is kept by the second break", second.coolingOffStartedAt === first.coolingOffStartedAt && Date.parse(second.coolingOffStartedAt) < Date.parse((await bot(d.bot.id)).verifiedAt));
+    await w.db.responsible.upsert({ ...second, coolingOffUntil: new Date(Date.now() + 20).toISOString() });
+    await sleep(60);
+    rlReset();
+    const s2 = await start(d.bot.id);
+    ok("11.4b · after the second break ends, Start refuses RG_SINCE_VERIFIED (the start stamp alone would have let it run)",
+      s1.ok === true && s2.ok === false && s2.row?.code === "RG_SINCE_VERIFIED", j(s2));
+  }
+
+  // LI-2 / LI-5 / LI-6 · the officer-email rule survives a second edit, a missing column, and a long history.
+  {
+    const h = await holder({ via: "REGISTRATION" });
+    await setUserEmail(h, `${h}.o1@test.tz`, { byOfficer: true });
+    const u1 = await user(h);
+    await PR.consumeResetToken(signSession({ purpose: "password-reset", userId: h, email: u1.email, pwh: PR.passwordFingerprint(u1.passwordHash), exp: Date.now() + 600_000 }), PW2);
+    const stamp = (await user(h)).emailSetByOfficerAt;
+    await setUserEmail(h, `${h}.o2@test.tz`, { byOfficer: true });
+    const e = await E.houseBotEligibility(h, { context: "designate", actorId: OFFICER });
+    ok("11.5 · officer email, reset link, officer email again → the stamp that counts is kept, still PASSWORD_SET_BY_SUPPORT",
+      (await user(h)).emailSetByOfficerAt === stamp && e.blocking.some((r: Any) => r.code === "PASSWORD_SET_BY_SUPPORT"), j(e.blocking.map((r: Any) => r.code)));
+  }
+  {
+    const h = await holder({ via: "RESET_LINK" });
+    await w.setUserFields(h, { passwordSetAt: new Date(Date.now() - 60 * 86_400_000).toISOString(), emailSetByOfficerAt: new Date(Date.now() - 45 * 86_400_000).toISOString() });
+    await setUserEmail(h, `${h}.later@test.tz`, { byOfficer: true });
+    const u = await user(h);
+    await PR.consumeResetToken(signSession({ purpose: "password-reset", userId: h, email: u.email, pwh: PR.passwordFingerprint(u.passwordHash), exp: Date.now() + 600_000 }), PW2);
+    const e = await E.houseBotEligibility(h, { context: "designate", actorId: OFFICER });
+    ok("11.5b · a stamp that no longer counts IS replaced: a later officer email, then a reset link → refused", e.blocking.some((r: Any) => r.code === "PASSWORD_SET_BY_SUPPORT"), j(e.blocking.map((r: Any) => r.code)));
+  }
+  {
+    const h = await holder({ via: "REGISTRATION" });
+    await audit({ category: "ADMIN", action: "player.email.set_by_officer", actorId: OFFICER, targetType: "User", targetId: h, payload: { prev: null, next: "x" } });
+    const u = await user(h);
+    await PR.consumeResetToken(signSession({ purpose: "password-reset", userId: h, email: u.email, pwh: PR.passwordFingerprint(u.passwordHash), exp: Date.now() + 600_000 }), PW2);
+    await auditFlush();
+    const e = await E.houseBotEligibility(h, { context: "designate", actorId: OFFICER });
+    ok("11.6 · an officer email recorded only in the audit log (column empty), then a reset link → refused",
+      !(await user(h)).emailSetByOfficerAt && e.blocking.some((r: Any) => r.code === "PASSWORD_SET_BY_SUPPORT"), j(e.blocking.map((r: Any) => r.code)));
+  }
+  {
+    const h = await holder({ via: null });
+    await audit({ category: "ADMIN", action: "player.email.set_by_officer", actorId: OFFICER, targetType: "User", targetId: h, payload: {} });
+    for (let i = 0; i < 205; i++) audit({ category: "ADMIN", action: "player.record_viewed", actorId: OFFICER, targetType: "User", targetId: h, payload: {} });
+    await audit({ category: "AUTH", action: "password_reset.completed", actorId: h, targetType: "User", targetId: h });
+    await auditFlush();
+    const e = await E.houseBotEligibility(h, { context: "designate", actorId: OFFICER });
+    ok("11.7 · a legacy history cut off at 200 rows inside the 30-day window → blocked (unreadable), never waved through",
+      e.blocking.some((r: Any) => r.code === "PASSWORD_HISTORY_UNREADABLE" || r.code === "PASSWORD_SET_BY_SUPPORT"), j(e.blocking.map((r: Any) => r.code)));
+  }
+
+  // LI-4 · a withdrawal on a bot already void for a break is recorded as the holder's own.
+  {
+    await clearRoster();
+    const h = await holder();
+    rlReset();
+    const d = await desig(h);
+    await RG.coolOff(h, "1h");
+    await D.voidHouseConsent({ userId: h, cause: "COOLING_OFF", actorId: "system_house_bot" });
+    const w1 = await D.withdrawHouseConsent(h);
+    const w2 = await D.withdrawHouseConsent(h);
+    const b = await bot(d.bot.id);
+    const auditsW = await audits((e) => e.action === "house_bot.holder_withdrew_consent" && e.targetId === d.bot.id);
+    ok("11.8 · withdraw over a standing COOLING_OFF void → cause HOLDER_WITHDREW, one audit, and the holder's confirmation (none: they are on a break)",
+      w1.voided === true && w2.voided === false && b.consentVoidCause === "HOLDER_WITHDREW" && C.voidStands(b) && auditsW.length === 1, j({ w1, w2, cause: b.consentVoidCause, audits: auditsW.length }));
+    ok("11.8b · …with a CONSENT_VOIDED event naming what it superseded", (await events(d.bot.id)).some((e: Any) => e.kind === "CONSENT_VOIDED" && e.payload?.supersedes === "COOLING_OFF"));
+  }
+
+  // MC-2 · a void written after a verification always stands, whatever the clocks say.
+  {
+    await clearRoster();
+    const h = await holder();
+    rlReset();
+    const d = await desig(h);
+    await w.dal.houseBotStore.setVerified(d.bot.id, { fingerprint: d.bot.passwordFingerprint, verifiedById: OFFICER, verifiedAt: new Date(Date.now() + 5_000).toISOString() });
+    const v = await w.dal.houseBotStore.setConsentVoid(d.bot.id, "HOLDER_WITHDREW");
+    ok("11.9 · a verification stamped ahead of the void's clock: the void is still later, so it stands",
+      !!v && Date.parse(v.consentVoidAt) > Date.parse(v.verifiedAt) && C.voidStands(v), j({ v: v?.consentVoidAt, at: v?.verifiedAt }));
+  }
+
+  // LI-8 · an alert whose send reached nobody gives its claim back.
+  {
+    await clearRoster();
+    const h = await holder();
+    rlReset();
+    await desig(h);
+    await w.setUserFields(h, { status: "CLOSED", closedAt: new Date().toISOString() });
+    const req = fileDsarRequest({ userId: h, type: "ERASURE" });
+    const count = async () => ((await w.db.notification.findByUser(OFFICER, 1000)) as Any[]).filter((n) => n.titleEn.startsWith("Erasure blocked")).length;
+    const before = await count();
+    const realList = w.db.user.listByRoles;
+    w.db.user.listByRoles = () => { throw new Error("injected recipients read failure"); };
+    try { await fulfillDsarRequest({ id: req.id, officerId: OFFICER }); } finally { w.db.user.listByRoles = realList; }
+    const mid = await count();
+    await fulfillDsarRequest({ id: req.id, officerId: OFFICER });
+    ok("11.10 · the first alert failed to reach anyone → the second refused attempt still alerts exactly once", mid === before && (await count()) === before + 1, `${before} ${mid} ${await count()}`);
+  }
+
+  // LI-9 · erasure renames only the erased bot's own notices, never another holder's live bot with the freed label.
+  {
+    await clearRoster();
+    const hx = await holder();
+    rlReset();
+    const dx = await desig(hx, { label: "Shared Desk" });
+    await N.notify({ userId: OFFICER, kind: "HOUSE_BOT", titleEn: `House bot "Shared Desk" paused · X`, titleSw: "x", titleZh: "机器人", bodyEn: "x", bodySw: "x sw", bodyZh: "固定", href: `/admin/house-bots/${dx.bot.id}` });
+    await w.dal.houseBotStore.setStatus(dx.bot.id, { from: ["PAUSED"], to: "REMOVED", pauseReason: null, pausedFromStatus: null, removal: { byId: OFFICER, reason: "fixture", cause: "MANUAL" } });
+    await sleep(5);
+    const hy = await holder();
+    rlReset();
+    const dy = await desig(hy, { label: "Shared Desk" });
+    await N.notify({ userId: OFFICER, kind: "HOUSE_BOT", titleEn: `House bot "Shared Desk" paused · Y`, titleSw: "y", titleZh: "机器人", bodyEn: "y", bodySw: "y sw", bodyZh: "固定", href: `/admin/house-bots/${dy.bot.id}` });
+    await w.setUserFields(hx, { status: "CLOSED", closedAt: new Date().toISOString() });
+    const { anonymizeClosedAccount }: Any = await import("../../src/lib/server/erasure.ts");
+    const res = await anonymizeClosedAccount(hx);
+    const rows = (await w.db.notification.findByUser(OFFICER, 1000)) as Any[];
+    const x = rows.find((n) => n.href === `/admin/house-bots/${dx.bot.id}`);
+    const y = rows.find((n) => n.href === `/admin/house-bots/${dy.bot.id}`);
+    ok("11.11 · the erased bot's notice is renamed; the live bot with the freed label keeps its name; one row counted",
+      res.ok === true && x?.titleEn.includes("Erased bot") && y?.titleEn === `House bot "Shared Desk" paused · Y` && res.counts.houseBotNotificationsRedacted === 1, j({ x: x?.titleEn, y: y?.titleEn, n: res.counts?.houseBotNotificationsRedacted }));
+  }
+
+  // UX-2 · started, paused, started inside 90 s are three notices, the newest "started".
+  {
+    const h = await holder();
+    for (const n of ["started", "paused", "started"]) await N.notifyHouseBotOwner(h, n);
+    const rows = await houseRows(h);
+    ok("11.12 · three state notices inside the dedupe window → three rows, newest \"Liquidity stakes started\"",
+      rows.length === 3 && rows[0].titleEn === "Liquidity stakes started", j(rows.map((r: Any) => r.titleEn)));
+    await N.notifyHouseBotOwner(h, "verify_reserved");
+    await N.notifyHouseBotOwner(h, "verify_reserved");
+    ok("11.12b · …while the reserve notice keeps its duplicate check (two in a row → one row)", (await houseRows(h)).filter((r: Any) => r.titleEn === "A wrong password was tried").length === 1);
+  }
+
+  // UX-1 · the reserve notice is bell only; a reverified notice pushes.
+  {
+    const h = await holder();
+    await savePushSubscription(h, { endpoint: `https://push.example/${h}`, p256dh: "p256dh-fixture", auth: "auth-fixture" });
+    const seen: string[] = [];
+    const realLog = console.log;
+    console.log = (...args: Any[]) => { const s = args.join(" "); if (s.includes("[push-stub]") && s.includes(h)) seen.push(s); realLog(...args); };
+    try {
+      await N.notifyHouseBotOwner(h, "verify_reserved");
+      await sleep(400);
+      const afterReserved = seen.length;
+      await N.notifyHouseBotOwner(h, "reverified");
+      await sleep(400);
+      ok("11.13 · verify_reserved sends no push; reverified sends one (a push this suite can see, so the zero is real)", afterReserved === 0 && seen.length === 1, j(seen));
+    } finally {
+      console.log = realLog;
+    }
+  }
 }
 
 // ═══ §10 · source pins (memory child only) ════════════════════════════════════════════════════════

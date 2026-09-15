@@ -138,11 +138,18 @@ export async function passwordContextRows(user: StoredUser, nowMs: number): Prom
   const via = user.passwordSetVia ?? null;
   if (via === "OFFICER_TEMP") {
     rows.push(row("PASSWORD_SET_BY_SUPPORT", "Password set by support", PASSWORD_SET_BY_SUPPORT_COPY("TEMP_PASSWORD", user.passwordSetAt ?? null)));
-  } else if (via === "RESET_LINK" && user.emailSetByOfficerAt && user.passwordSetAt) {
+  } else if (via === "RESET_LINK" && user.passwordSetAt) {
     const setAt = Date.parse(user.passwordSetAt);
-    const emailAt = Date.parse(user.emailSetByOfficerAt);
+    const emailAt = user.emailSetByOfficerAt ? Date.parse(user.emailSetByOfficerAt) : Number.NaN;
     if (emailAt <= setAt && setAt - emailAt <= OFFICER_EMAIL_WINDOW_DAYS * DAY_MS) {
       rows.push(row("PASSWORD_SET_BY_SUPPORT", "Password set by support", PASSWORD_SET_BY_SUPPORT_COPY("RESET_AFTER_OFFICER_EMAIL", user.passwordSetAt)));
+    } else {
+      // The column is not the only record (review LI-2, LI-5): an officer email written before the column existed, or
+      // one whose stamp a later edit moved, is still in the durable audit log. Awaited; a read that fails or stops
+      // short inside the window blocks.
+      const audited = await officerEmailBefore(user.id, setAt);
+      if (audited === "UNREADABLE") rows.push(row("PASSWORD_HISTORY_UNREADABLE", "Password history unreadable", "Couldn't check how their password was last changed. Refresh to try again."));
+      else if (audited === "FOUND") rows.push(row("PASSWORD_SET_BY_SUPPORT", "Password set by support", PASSWORD_SET_BY_SUPPORT_COPY("RESET_AFTER_OFFICER_EMAIL", user.passwordSetAt)));
     }
   } else if (via == null) {
     const legacy = await legacyPasswordHistory(user.id);
@@ -157,6 +164,29 @@ export async function passwordContextRows(user: StoredUser, nowMs: number): Prom
 
 const PASSWORD_WRITE_ACTIONS = ["password.changed", "password_reset.completed", "player.password_reset_by_officer"] as const;
 
+type AuditPage = { entries: ReadonlyArray<{ action: string; createdAt: string }>; truncated: boolean };
+
+/**
+ * Is there an officer email within the 30 days before `setAt` in this page? UNREADABLE when the page was cut off
+ * while its oldest row is still inside the window — an entry we did not read is not an entry that is absent
+ * (review LI-6).
+ */
+function officerEmailIn(page: AuditPage, setAt: number): "FOUND" | "NONE" | "UNREADABLE" {
+  const windowStart = setAt - OFFICER_EMAIL_WINDOW_DAYS * DAY_MS;
+  if (page.entries.some((e) => e.action === "player.email.set_by_officer" && Date.parse(e.createdAt) <= setAt && Date.parse(e.createdAt) >= windowStart)) return "FOUND";
+  const oldest = page.entries[page.entries.length - 1];
+  if (page.truncated && (!oldest || Date.parse(oldest.createdAt) >= windowStart)) return "UNREADABLE";
+  return "NONE";
+}
+
+async function officerEmailBefore(userId: string, setAt: number): Promise<"FOUND" | "NONE" | "UNREADABLE"> {
+  try {
+    return officerEmailIn(await getAuditForTargetDurable("User", userId, { limit: 200 }), setAt);
+  } catch {
+    return "UNREADABLE";
+  }
+}
+
 /**
  * A holder whose account is older than the history columns (04 A4): the newest password write in the durable
  * audit log decides. ⛔ AWAITED, AND A READ THAT FAILS OR STOPS SHORT BLOCKS — an officer reset that the page
@@ -169,10 +199,9 @@ async function legacyPasswordHistory(userId: string): Promise<{ kind: "OK" } | {
     if (!latest) return r.truncated ? { kind: "UNREADABLE" } : { kind: "OK" };
     if (latest.action === "player.password_reset_by_officer") return { kind: "SUPPORT", how: "TEMP_PASSWORD", atIso: latest.createdAt };
     if (latest.action === "password_reset.completed") {
-      const setAt = Date.parse(latest.createdAt);
-      const officerEmail = r.entries.find((e) => e.action === "player.email.set_by_officer"
-        && Date.parse(e.createdAt) <= setAt && setAt - Date.parse(e.createdAt) <= OFFICER_EMAIL_WINDOW_DAYS * DAY_MS);
-      if (officerEmail) return { kind: "SUPPORT", how: "RESET_AFTER_OFFICER_EMAIL", atIso: latest.createdAt };
+      const found = officerEmailIn(r, Date.parse(latest.createdAt));
+      if (found === "FOUND") return { kind: "SUPPORT", how: "RESET_AFTER_OFFICER_EMAIL", atIso: latest.createdAt };
+      if (found === "UNREADABLE") return { kind: "UNREADABLE" };
     }
     return { kind: "OK" };
   } catch {
@@ -320,12 +349,20 @@ export async function houseBotEligibility(
         blocking.push(row("CONSENT_VOID", "Permission ended",
           `Can't start: ${CONSENT_VOID_PHRASE[cv.cause]} on ${day(cv.at)} ended their permission. Enter their password to confirm it again.`, `/admin/house-bots/${bot.id}?reverify=1`));
       }
-      // The RG backstop (04 A3): a self-exclusion or break that began after the last verification refuses,
-      // even if no detector ever wrote the void. A failed read already refused above.
+      // The RG backstop (04 A3): a self-exclusion or break after the last verification refuses, even if no
+      // detector ever wrote the void. A failed read already refused above.
+      // ⚠️ THE START STAMPS ALONE MISS EVERY EPISODE AFTER THE FIRST (review LI-1): `selfExclude`/`coolOff` keep the
+      // first start for the register. The END dates only move forward, and designate and re-verify refuse while
+      // one runs — so an end later than `verifiedAt` means an episode was in force after the verification.
+      const verifiedMs = Date.parse(bot.verifiedAt);
       const startedMs = Math.max(Date.parse(rg?.selfExclusionStartedAt ?? "") || 0, Date.parse(rg?.coolingOffStartedAt ?? "") || 0);
-      if (rg && !cv && startedMs > Date.parse(bot.verifiedAt)) {
+      const endedMs = Math.max(Date.parse(rg?.selfExclusionUntil ?? "") || 0, Date.parse(rg?.coolingOffUntil ?? "") || 0);
+      if (rg && !cv && (startedMs > verifiedMs || endedMs > verifiedMs)) {
+        const when = startedMs > verifiedMs
+          ? `began on ${day(new Date(startedMs).toISOString())}`
+          : `ran until ${day(new Date(endedMs).toISOString())}`;
         blocking.push(row("RG_SINCE_VERIFIED", "Permission ended",
-          `Can't start: a self-exclusion or break began on ${day(new Date(startedMs).toISOString())}, after their permission was last confirmed. Enter their password to confirm it again.`, `/admin/house-bots/${bot.id}?reverify=1`));
+          `Can't start: a self-exclusion or break ${when}, after their permission was last confirmed. Enter their password to confirm it again.`, `/admin/house-bots/${bot.id}?reverify=1`));
       }
       if (bot.capDailyLossTzs != null) {
         const today = await houseDayBook(eatDayKey(nowMs), bot.id);
