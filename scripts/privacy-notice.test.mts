@@ -39,9 +39,9 @@ const ok = (label: string, cond: boolean, why = "", evidence = "") => {
 const code = (src: string) => src.replace(/^[ \t]*\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
 
 /* ── The pinned facts. Moving any of these is a legal act: a dated COMPLIANCE-DECISIONS entry comes with it. ── */
-const PRIVACY_VERSION = "2026-09-15.2";
+const PRIVACY_VERSION = "2026-09-15.3";
 /** sha256 (first 12 hex) of the ENGLISH content block, whitespace-collapsed. The English text is the binding one. */
-const PRIVACY_EN_SHA = "0d420f35b21f";
+const PRIVACY_EN_SHA = "df7dadf729d7";
 /** Every cookie name the code writes, as of v2026-09-14.2. A new one must be described in §7 first. */
 const COOKIES = ["_ga", "_ga_W66WRL67MQ", "kp-kyc-notice", "kp-locale", "kp_admin_totp", "kp_pending_2fa", "kp_revoked", "kp_session"];
 // ⭐ `_ga` / `_ga_W66WRL67MQ` joined the census 2026-09-15.2: gtag.js SETS them, and our code EXPIRES them when consent is
@@ -397,7 +397,7 @@ const plantTls = pageSrc.replace("Connections to our website and app are encrypt
 const plantProcessor = pageSrc.replace("<li>Postmark, nchini Marekani,", "<li>Huduma ya barua pepe, nchini Marekani,");
 const plantTheme = pageSrc.replace("your language, a note kept", "theme preference, your language, a note kept");
 const plantWord = pageSrc.replace("We never sell personal data.", "We do not sell personal data.");
-const plantVersion = pageSrc.replace('sw: "Toleo 2026-09-15.2 ·', 'sw: "Toleo 2026-09-15 ·');
+const plantVersion = pageSrc.replace('sw: "Toleo 2026-09-15.3 ·', 'sw: "Toleo 2026-09-15.2 ·');
 ok("§5a control · each planted copy found its target",
   [plantTls, plantProcessor, plantTheme, plantWord, plantVersion].every((p) => p !== pageSrc));
 ok("§5b control · a restored 'TLS 1.2+' is reported", securityDefects(plantTls).length > 0 && versionDefects(plantTls, decisionsSrc).length > 0,
@@ -477,6 +477,14 @@ function consentDefects(page: string, component: string, prompt: string, shell: 
     for (const w of W[l].s4) if (!section(bl[l], "4").includes(w)) d.push(`${l} §4 does not say "${w}"`);
     for (const w of W[l].s7) if (!section(bl[l], "7").includes(w)) d.push(`${l} §7 does not say "${w}"`);
   }
+  // v2026-09-15.3: §5 states the retention Ali set in the GA property (Admin → Data retention): event data 2 months,
+  // user data 14 months. Not readable from code — it is a property setting — so the owner-reported values are pinned here.
+  const GA_RETENTION: Record<Loc, string[]> = {
+    en: ["Google keeps the events it receives for 2 months", "for 14 months"],
+    sw: ["matukio inayopokea kwa miezi 2", "kwa miezi 14"],
+    zh: ["事件数据保留 2 个月", "保留 14 个月"],
+  };
+  for (const l of LOCS) for (const w of GA_RETENTION[l]) if (!section(blocks(page)[l], "5").includes(w)) d.push(`${l} §5 does not state Google Analytics retention "${w}"`);
   if (grantDays(lib) !== 395) d.push(`CONSENT_GRANT_DAYS is ${grantDays(lib)}, but §7 states 395 days`);
   if (!/const allowed = location !== null && consent === "granted";/.test(component)) d.push(`GoogleTag is not gated on consent === "granted" — the tag could load without consent (§3, §7)`);
   if (!/if \(consent === "denied"\) clearAnalyticsCookies\(\);/.test(component)) d.push(`withdrawing consent does not delete the _ga cookies (§7 "turning analytics off deletes them")`);
@@ -554,6 +562,9 @@ ok("§5z control · a bright Allow beside a grey Decline is reported", consentDe
 ok("§5aa control · analytics restored under legitimate interest (en) is reported", consentDefects(plantLI, gaComponent, promptSrc, shellSrc, consentLib).some((x) => x.startsWith("en §3 still lists analytics")));
 ok("§5ab control · the §7 control dropped from ONE locale (sw) is reported", consentDefects(plantChoiceSw, gaComponent, promptSrc, shellSrc, consentLib).some((x) => x.startsWith("sw §7") && x.includes("AnalyticsChoice")));
 ok("§5ac control · a consent prompt hidden behind a feature flag is reported", consentDefects(pageSrc, gaComponent, promptSrc, plantFlagged, consentLib).some((x) => x.includes("ungated")));
+const plantGaRetentionZh = pageSrc.replace("保留 14 个月", "保留 26 个月");
+ok("§5ah control · Google Analytics retention changed in ONE locale (zh) is reported",
+  plantGaRetentionZh !== pageSrc && consentDefects(plantGaRetentionZh, gaComponent, promptSrc, shellSrc, consentLib).some((x) => x.startsWith("zh §5")));
 const plantNoSendCheck = gaComponent.replace('if (readConsent() !== "granted") return skip();', "");
 ok("§5ag control · a fetch transport that no longer re-checks consent at send time is reported",
   plantNoSendCheck !== gaComponent && consentDefects(pageSrc, plantNoSendCheck, promptSrc, shellSrc, consentLib).some((x) => x.includes("send time")));

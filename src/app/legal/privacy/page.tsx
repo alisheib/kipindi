@@ -31,10 +31,11 @@ const TITLE: Record<Locale, string> = {
 // identify a person need consent. §2/§4 "if you allow analytics", §3 moves analytics from legitimate interest to consent,
 // §7 states the choice, its storage and lifetimes, and carries the <AnalyticsChoice /> control. Same version: §2 "Visit counts" and
 // §5 their 400 days — the first-party counter (src/lib/server/site-visits.ts) that counts every visit with no identifier.
+// 2026-09-15.3: §5 states Google Analytics' retention as set in the GA property by Ali — event data 2 months, user data 14 months.
 const META: Record<Locale, string> = {
-  en: "Version 2026-09-15.2 · Aligned with the Tanzania Personal Data Protection Act 2022 and EU GDPR principles.",
-  sw: "Toleo 2026-09-15.2 · Imeoanishwa na Tanzania Personal Data Protection Act 2022 na kanuni za EU GDPR.",
-  zh: "版本 2026-09-15.2 · 符合 Tanzania Personal Data Protection Act 2022 及 EU GDPR 原则。",
+  en: "Version 2026-09-15.3 · Aligned with the Tanzania Personal Data Protection Act 2022 and EU GDPR principles.",
+  sw: "Toleo 2026-09-15.3 · Imeoanishwa na Tanzania Personal Data Protection Act 2022 na kanuni za EU GDPR.",
+  zh: "版本 2026-09-15.3 · 符合 Tanzania Personal Data Protection Act 2022 及 EU GDPR 原则。",
 };
 
 /**
@@ -103,6 +104,7 @@ function content(): Record<Locale, React.ReactNode> { return {
           <li>Audit log entries: at least 7 years</li>
           <li>Marketing consent: until you withdraw it, close your account, or 2 years pass without you signing in</li>
           <li>Visit counts, daily totals that identify no one: 400 days</li>
+          <li>Google Analytics, only if you allow analytics: Google keeps the events it receives for 2 months, and data linked to your browser&apos;s random identifier for 14 months</li>
         </ul>
       </LegalSection>
 
@@ -205,6 +207,7 @@ function content(): Record<Locale, React.ReactNode> { return {
           <li>Maingizo ya kumbukumbu za ukaguzi (audit log): angalau miaka 7</li>
           <li>Ridhaa ya matangazo: hadi utakapoiondoa, kufunga akaunti yako, au miaka 2 ipite bila kuingia</li>
           <li>Hesabu za matembeleo, jumla za kila siku zisizomtambulisha mtu yeyote: siku 400</li>
+          <li>Google Analytics, ikiwa tu utaruhusu takwimu: Google huhifadhi matukio inayopokea kwa miezi 2, na data inayohusishwa na kitambulisho cha nasibu cha kivinjari chako kwa miezi 14</li>
         </ul>
       </LegalSection>
 
@@ -306,6 +309,7 @@ function content(): Record<Locale, React.ReactNode> { return {
           <li>审计日志条目：至少 7 年</li>
           <li>营销同意：直至您撤回、注销账户，或连续 2 年未登录</li>
           <li>访问计数（不识别任何人的每日总数）：400 天</li>
+          <li>Google Analytics（仅在您允许分析时）：Google 将其接收的事件数据保留 2 个月，与您浏览器随机标识符相关联的数据保留 14 个月</li>
         </ul>
       </LegalSection>
 
