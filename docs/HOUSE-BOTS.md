@@ -233,6 +233,13 @@ With a null marker, each gives a player exactly what they had before; the letter
 - `CLAIM_TTL_SEC` ≥ the admission wait + 4 × (the lock's pool wait + its transaction timeout) + 5 s, so a fire that retries its lock four times still owns its row.
 - `staleAt` = `dueAt` + `STALE_AFTER_SEC`, with one tolerance each for automatic rows on Up & Down, automatic rows on polls, a targeted COUNTER and an Enter now press. No stake lands after its `staleAt`: the seam re-reads it on the database clock inside `house:control`.
 
+**Enter now's inputs and holding rule** (commit 4, §5 step 4; `test:house-bot-engine` §15 on both stores; C4-SPEC rulings 58–62):
+- `server/house-bot/enter-now.ts` `loadEnterNowInput(botId, marketId, {actorId, drawnFor})` reads every input of the pure `enterNowDecision` fresh, **one statement at a time** (a preview never takes a burst of pooled connections from players' bets). The order: the bot, the market view (A13), **the blackout first**, the rules through `rules-context.ts` `loadParseContext()`, `lockedForHouse` on the view's frozen exit rates, the opener draw (only when both raw pools are 0 and the market is not blacked out), then the seam's own usage reads (`botUsage`, `marketUsage`, `houseDayBook`, `houseOpenExposure`, `staffChosenPlacedToday`, `counterpartyToday`), the placement instants (`houseSeamStore.placedTimes`: 86,400 s for the bot, 60 s for the platform), the control row and `stakeBoundsForMarket`, all on the database clock. It refuses only BOT_MISSING, MARKET_MISSING, RULES_FROM_FUTURE and RULES_REVIEW; the caller runs every other refusal first.
+- `marketHeld(botId, marketId, {ignoreIntentId})` is the one holding rule for the picker, the preview, the press and fire, answering in N1 §6 refusal 15's order: OWNER_POSITION (the holder's own OPEN stake); OTHER_BOT (another bot's live intent, ACTIVE target or OPEN house position); OWN_INTENT (this bot's live intent, the row being fired excepted); PER_MARKET_COUNT, counted as H2 counts it — this bot's marked positions here in any status, and a count that is not set holds the market.
+- `server/house-bot/opener-side.ts` `openerSide` writes one `OPENER_SIDE_DRAWN` event per market as its own autocommit statement (it throws inside a lock); every later call — another preview, another bot, the planner — reads that side, `drawnFor` and `drawnAt` back.
+- `rules-context.ts` keys chains `<assetId>:<durationMinutes>` for every chain of an enabled asset; a chain saved by symbol, or on a disabled asset, reads as stale.
+- UX-15's worked example runs on a real poll on both stores, and the decided NO 9,000 goes through `placeHouseBet` unchanged.
+
 ---
 
 ## 5. Caps and limits
