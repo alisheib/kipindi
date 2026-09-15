@@ -2293,10 +2293,14 @@ await guard("17", async () => {
     ok("17.58 · ruling 97 · a second decision on the same trigger → null (already decided)", first?.id != null && dup === null, j({ first: first?.id ?? first, dup }));
     ok("17.59 · …but an id clash is a defect and raises (TGT-26(e)), and a MANUAL row is refused", typeof idClash?.threw === "string" && typeof manual?.threw === "string", j({ idClash, manual }));
     await w.switchOff();
+    // Plant an hour-old scope start first, so only THIS switch-on can have moved it (mutation P32 once passed on a
+    // value an earlier case had written a moment before).
+    await S.houseBotRuntimeStore.upsert(K.RUNTIME_KEY.global, { scopeFrom: w.iso(-3_600_000) });
     const beforeOn = await dbNow();
     await w.switchOn();
     const gl: Any = await S.houseBotRuntimeStore.get(K.RUNTIME_KEY.global);
-    ok("17.60 · ruling 92 · switch-on writes global scopeFrom in the same step", gl?.scopeFrom != null && Date.parse(gl.scopeFrom) >= beforeOn - 1_000, j({ scopeFrom: gl?.scopeFrom, beforeOn: new Date(beforeOn).toISOString() }));
+    ok("17.60 · ruling 92 · switch-on writes global scopeFrom in the same step (an hour-old value is replaced by the switch-on instant)",
+      gl?.scopeFrom != null && Date.parse(gl.scopeFrom) >= beforeOn, j({ scopeFrom: gl?.scopeFrom, beforeOn: new Date(beforeOn).toISOString() }));
   }
 
   /* ── 17.61 hourly summaries (rulings 80–81) ── */
