@@ -87,25 +87,24 @@ export async function loadEnterNowInput(
   const { nowMs } = await houseBotRuntimeStore.dbClock();
   const dayKey = eatDayKey(nowMs);
   const counterpartyIds = [...new Set([...pools.YES.accounts, ...pools.NO.accounts].map((a) => a.userId))];
-  const [mine, usage, onMarket, botDay, allDay, botExposure, allExposure, botStaff, allStaff, wallet, botPlaced, platformPlaced, control, counterparties, bounds] =
-    await Promise.all([
-      positionStore.listForUserAndMarket(bot.userId, marketId),
-      houseSeamStore.botUsage({ houseBotId: botId, marketId }),
-      houseSeamStore.marketUsage({ houseBotId: botId, marketId }),
-      houseDayBook(dayKey, botId),
-      houseDayBook(dayKey, null),
-      houseOpenExposure(botId),
-      houseOpenExposure(null),
-      houseBotIntentStore.staffChosenPlacedToday({ houseBotId: botId }),
-      houseBotIntentStore.staffChosenPlacedToday({ houseBotId: null }),
-      db.wallet.findByUserId(bot.userId),
-      houseSeamStore.placedTimes({ houseBotId: botId, withinSec: BOT_RATE_WINDOW_SEC }),
-      houseSeamStore.placedTimes({ houseBotId: null, withinSec: PLATFORM_RATE_WINDOW_SEC }),
-      houseBotControlStore.get(),
-      houseSeamStore.counterpartyToday(counterpartyIds),
-      stakeBoundsForMarket({ id: marketId, productLine: view.productLine === "UPDOWN" ? "UPDOWN" : "MARKET" }),
-    ]);
+  // ⛔ ONE READ AT A TIME. A preview is an officer's click on a live money platform: fifteen parallel reads would take
+  // fifteen pooled connections from players' bets at once (a parallel first draft exhausted the scratch cluster).
+  const mine = await positionStore.listForUserAndMarket(bot.userId, marketId);
+  const usage = await houseSeamStore.botUsage({ houseBotId: botId, marketId });
+  const onMarket = await houseSeamStore.marketUsage({ houseBotId: botId, marketId });
+  const botDay = await houseDayBook(dayKey, botId);
+  const allDay = await houseDayBook(dayKey, null);
+  const botExposure = await houseOpenExposure(botId);
+  const allExposure = await houseOpenExposure(null);
+  const botStaff = await houseBotIntentStore.staffChosenPlacedToday({ houseBotId: botId });
+  const allStaff = await houseBotIntentStore.staffChosenPlacedToday({ houseBotId: null });
+  const wallet = await db.wallet.findByUserId(bot.userId);
   if (!wallet) throw new Error(`enter-now: the holder's wallet could not be read (bot ${botId})`);
+  const botPlaced = await houseSeamStore.placedTimes({ houseBotId: botId, withinSec: BOT_RATE_WINDOW_SEC });
+  const platformPlaced = await houseSeamStore.placedTimes({ houseBotId: null, withinSec: PLATFORM_RATE_WINDOW_SEC });
+  const control = await houseBotControlStore.get();
+  const counterparties = await houseSeamStore.counterpartyToday(counterpartyIds);
+  const bounds = await stakeBoundsForMarket({ id: marketId, productLine: view.productLine === "UPDOWN" ? "UPDOWN" : "MARKET" });
 
   // Ruling 59 · `own` is the holder's OPEN marked positions, as H2's conflict check reads them. Two sides cannot
   // both be held: H2 refuses OPPOSITE_SIDE before a second side is ever placed.
@@ -181,13 +180,12 @@ export type MarketHeld =
 export async function marketHeld(botId: string, marketId: string, opts: { ignoreIntentId?: string | null } = {}): Promise<MarketHeld> {
   const bot = await houseBotStore.get(botId);
   if (!bot) throw new Error(`marketHeld: no bot ${botId}`);
-  const [mine, live, target, onMarket, usage] = await Promise.all([
-    positionStore.listForUserAndMarket(bot.userId, marketId),
-    houseBotIntentStore.listLiveOnMarket(marketId),
-    targetStore.activeForMarket(marketId),
-    houseSeamStore.marketUsage({ houseBotId: botId, marketId }),
-    houseSeamStore.botUsage({ houseBotId: botId, marketId }),
-  ]);
+  // One read at a time, as the loader (pooled connections belong to players' bets first).
+  const mine = await positionStore.listForUserAndMarket(bot.userId, marketId);
+  const live = await houseBotIntentStore.listLiveOnMarket(marketId);
+  const target = await targetStore.activeForMarket(marketId);
+  const onMarket = await houseSeamStore.marketUsage({ houseBotId: botId, marketId });
+  const usage = await houseSeamStore.botUsage({ houseBotId: botId, marketId });
 
   // a · the holder's own OPEN stake (H2 OWNER_POSITION).
   if (mine.some((p) => p.status === "OPEN" && p.houseBotId == null)) return { held: true, code: "OWNER_POSITION" };

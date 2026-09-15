@@ -17,6 +17,13 @@ type Any = any;
 export const OFFICER = "usr_hb_officer";
 export const HOLDER_HASH = "hash_holder_v1";
 
+/**
+ * ⛔ ONE COUNTER PER PROCESS, NOT PER WORLD. A case file may call `loadWorld()` more than once (the engine suite does,
+ * per section); a counter that restarted with each world handed a second world's first bot the id of the first
+ * world's first bot (`HouseBot_pkey`).
+ */
+let seq = 0;
+
 export async function loadWorld() {
   process.env.MARKET_SCHEDULER = "false";
   const svc: Any = await import("../../src/lib/server/market-service.ts");
@@ -29,7 +36,6 @@ export async function loadWorld() {
   const { prisma }: Any = await import("../../src/lib/server/prisma.ts");
   const onPostgres = !!process.env.DATABASE_URL && process.env.USE_PRISMA_DAL !== "false";
 
-  let seq = 0;
   const uid = (p: string) => `${p}_${process.pid}_${++seq}`;
   const iso = (msFromNow = 0) => new Date(Date.now() + msFromNow).toISOString();
 

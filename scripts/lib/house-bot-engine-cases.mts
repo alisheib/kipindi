@@ -4,7 +4,8 @@
  *
  * Sections follow the build order in `plans/house-bots/C4-SPEC.md` §5:
  *   §1 the lock exit · §2 the planner lease · §3 attribution · §4 the market view · §5 Enter now decision ·
- *   §6 the outcome table · §7 decide · §8 source pins · §9 feed copy · §10 schema gate · §11 engine process · §12 market view · §13 applyOutcome · §14 the A15 price read.
+ *   §6 the outcome table · §7 decide · §8 source pins · §9 feed copy · §10 schema gate · §11 engine process · §12 market view · §13 applyOutcome · §14 the A15 price read ·
+ *   §15 the Enter now loader, the opener draw and marketHeld.
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { readFileSync } from "node:fs";
@@ -28,7 +29,8 @@ const j = (v: unknown) => JSON.stringify(v) ?? String(v);
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 /** A throw is a failed assertion, never a crashed suite. */
 async function guard(label: string, fn: () => Promise<void> | void): Promise<void> {
-  try { await fn(); } catch (e) { ok(`${label} · threw`, false, (e as Error)?.stack?.split("\n").slice(0, 3).join(" | ") ?? String(e)); }
+  // The whole message, on one line: Prisma puts the database's own text after its first lines, which a stack cut lost.
+  try { await fn(); } catch (e) { ok(`${label} · threw`, false, `${String((e as Error)?.message ?? e).replace(/\s+/g, " ")} | ${(e as Error)?.stack?.split("\n").slice(1, 4).join(" | ") ?? ""}`); }
 }
 
 process.env.MARKET_SCHEDULER = "false";
@@ -1175,6 +1177,257 @@ await guard("14", async () => {
   } finally {
     globalThis.fetch = realFetch;
     VEN.__clearVendorCacheForTests();
+  }
+});
+
+/* ═══ §15 · Enter now: the loader, the opener draw and the holding predicate (N1 §4.1, §4.2, §4.4) ═════════════ */
+section("§15 · loadEnterNowInput, openerSide and marketHeld");
+const ENL: Any = await import("../../src/lib/server/house-bot/enter-now.ts");
+const OS: Any = await import("../../src/lib/server/house-bot/opener-side.ts");
+const RC: Any = await import("../../src/lib/server/house-bot/rules-context.ts");
+const POOLS: Any = await import("../../src/lib/server/house-bot/pools.ts");
+await guard("15", async () => {
+  const w = await loadWorld();
+  if (!(await w.db.user.findById(WORLD_OFFICER))) await w.user({ id: WORLD_OFFICER, role: "ADMIN" });
+  await w.limits({ gStaffChosenMaxCounterpartyShare: 50 });
+  await w.switchOn();
+  // Earlier sections placed house bets this minute; GLOBAL_BETS_PER_MINUTE is not under test here.
+  await w.ageHouseMinute();
+  const S = HDAL;
+  const ME = "world";
+  const DRAW = { actorId: WORLD_OFFICER, drawnFor: "ENTER_NOW_PREVIEW" };
+  const enterNowRules = (o: Any = {}) => {
+    const r: Any = R.DEFAULT_RULES_V1({ stakeBounds: { minTzs: 1_000, maxTzs: 10_000_000 } });
+    r.scope.products.polls = true;
+    r.scope.categories = ["macro"];
+    r.shaping.roundToTzs = 1_000;
+    r.enterNow = { enabled: true, thinStakeTzs: 10_000, openerStakeTzs: 5_000 };
+    return merge(r, o);
+  };
+  const botWith = async (caps: Any = {}, rules: Any = enterNowRules()) => {
+    const b = await w.bot({ caps });
+    const cur: Any = await S.houseBotStore.get(b.botId);
+    const saved = await S.houseBotStore.saveRules(b.botId, cur.rulesVersion, { rules });
+    if (!saved.ok) throw new Error("§15 fixture: saveRules CAS failed");
+    return b;
+  };
+  // An AI result check recorded on a LIVE poll, written as §12 writes it.
+  const stamp = async (marketId: string) => {
+    if (w.onPostgres) {
+      await w.prisma().$executeRawUnsafe(`UPDATE "PredictionMarket" SET "sentinelOutcome" = 'YES', "sentinelConfidence" = 97 WHERE "id" = $1`, marketId);
+    } else {
+      const stored = await w.mdal.marketStore.get(marketId);
+      await w.mdal.marketStore.set({ ...stored, sentinelOutcome: "YES", sentinelConfidence: 97 });
+    }
+  };
+  const drawsOn = async (marketId: string) => ((await S.houseBotEventStore.listByKinds(["OPENER_SIDE_DRAWN"], { marketId, limit: 50 })) as Any[]);
+  const finishLive = (id: string) => S.houseBotIntentStore.finish(id, ME, { status: "CANCELLED", reasonCode: "BOT_NOT_ACTIVE" });
+  const NOT_HELD = j({ held: false });
+
+  /* ── 15.0 UX-15's worked example on a real poll ── */
+  const b1 = await botWith();
+  const m = await w.poll();
+  const players: string[] = [];
+  for (const [s, stake] of [["YES", 4_000], ["YES", 4_000], ["YES", 4_000], ["NO", 3_000]] as Array<[string, number]>) {
+    const p = await w.user({ balance: 100_000 });
+    players.push(p);
+    const r = await w.svc.buyPosition(p, { marketId: m.id, side: s, stake, idempotencyKey: crypto.randomUUID() });
+    if (!r.ok) throw new Error(`§15 fixture: a player bet was refused — ${j(r)}`);
+  }
+  // Grace 0: each exit closed at placement; 10 s back puts every stake past LOCK_MARGIN_MS.
+  for (const p of await w.positionsOf(m.id)) await w.backdate(p.id, 10_000);
+  const load = await ENL.loadEnterNowInput(b1.botId, m.id, DRAW, { randomInt: () => 1 });
+  const inp: Any = load.ok ? load.input : null;
+  ok("15.0 · fixture · the rules parse with Enter now on and round-to 1,000; the platform bounds admit 1,000–10,000",
+    !!inp && inp.rules.thinStakeTzs === 10_000 && inp.rules.openerStakeTzs === 5_000 && inp.rules.roundToTzs === 1_000 && inp.bounds.max >= 10_000 && inp.bounds.min <= 1_000, j(load));
+  ok("15.1 · the loader reads UX-15's pools through lockedForHouse: locked YES 12,000 · raw and locked NO 3,000 · three YES accounts",
+    !!inp && inp.pools.YES.locked === 12_000 && inp.pools.NO.raw === 3_000 && inp.pools.NO.locked === 3_000 && inp.pools.YES.accounts.length === 3, j(inp?.pools));
+  ok("15.2 · a poll holding money is never drawn: openerDraw null, drawn false, not blocked, no OPENER_SIDE_DRAWN row",
+    !!inp && inp.openerDraw === null && load.drawn === false && inp.blocked === false && (await drawsOn(m.id)).length === 0, j(inp?.openerDraw));
+  const d: Any = inp ? EN.enterNowDecision(inp) : null;
+  ok("15.3 · ⭐ UX-15 end to end: THIN on NO, 9,000, binding room, top account 33.3%, three attributed accounts",
+    d?.ok === true && d.side === "NO" && d.entryCondition === "THIN" && d.stakeTzs === 9_000 && d.binding === "room" && d.decision.lockedByTopAccountPct === 33.3 && d.decision.attributedAccounts === 3, j(d));
+  const usage = await S.houseSeamStore.botUsage({ houseBotId: b1.botId, marketId: m.id });
+  const wallet: Any = await w.db.wallet.findByUserId(b1.userId);
+  const bounds = await w.svc.stakeBoundsForMarket({ id: m.id, productLine: "MARKET" });
+  const control: Any = await S.houseBotControlStore.get();
+  ok("15.4 · the figures are the seam's own reads: stake on market, live balance, stakeBoundsForMarket, the share limit",
+    !!inp && inp.bot.stakeOnMarket === usage.stakeOnMarket && inp.bot.balance === wallet.balance && j(inp.bounds) === j(bounds)
+      && inp.control.gStaffChosenMaxCounterpartyShare === control.gStaffChosenMaxCounterpartyShare && control.gStaffChosenMaxCounterpartyShare === 50, j(inp?.bot));
+  ok("15.5 · now is the database clock, and every account on BOTH sides is asked for today's counters (four, all zero)",
+    !!inp && Math.abs(Date.parse(inp.now) - Date.now()) < 5_000 && inp.counterparties.length === 4 && inp.counterparties.every((c: Any) => c.count === 0 && c.tzs === 0)
+      && players.every((p) => inp.counterparties.some((c: Any) => c.userId === p)), j(inp?.counterparties));
+
+  /* ── 15.6 the figure the preview shows is the figure the gate places ── */
+  const manual = await w.intent(b1, m.id, { kind: "MANUAL", entryCondition: "THIN", side: d?.side, stakeTzs: d?.stakeTzs, decision: d?.decision ?? {}, why: d?.why ?? null });
+  const placed = await w.place(b1, manual);
+  const pos: Any = (await w.positionsOf(m.id)).find((p: Any) => p.houseBotId === b1.botId);
+  ok("15.6 · ⭐ the decided side and stake go through placeHouseBet unchanged (preview = gate)", placed.ok === true && pos?.side === "NO" && pos?.stake === 9_000, j(placed));
+  const after = await ENL.loadEnterNowInput(b1.botId, m.id, DRAW);
+  const ai: Any = after.ok ? after.input : null;
+  ok("15.7 · after it: own {NO, 1, 9,000}; the bot's staked, staff-chosen, per-market and the house-on-market figures count it",
+    !!ai && j(ai.own) === j({ side: "NO", count: 1, stakeTzs: 9_000 }) && ai.bot.staffChosenCountToday === 1 && ai.bot.staffChosenTzsToday === 9_000
+      && ai.control.globalStaffChosenCountToday >= 1 && ai.bot.stakedToday === 9_000 && ai.bot.stakeOnMarket === 9_000 && ai.control.houseOnMarket === 9_000,
+    j(ai && { own: ai.own, bot: ai.bot, houseOnMarket: ai.control.houseOnMarket }));
+  ok("15.8 · …the rate facts carry its placement instant, in the bot's 24 h window and the platform minute",
+    !!ai && ai.bot.placedAt.length === 1 && Date.parse(ai.bot.placedAt[0]) === Date.parse(pos.placedAt) && ai.control.platformPlacedAt.some((t: string) => Date.parse(t) === Date.parse(pos.placedAt)),
+    j(ai && { bot: ai.bot.placedAt, platform: ai.control.platformPlacedAt, pos: pos?.placedAt }));
+  ok("15.9 · …each YES account is charged its attributed 3,000 today (count 1)",
+    !!ai && players.slice(0, 3).every((p) => { const c = ai.counterparties.find((x: Any) => x.userId === p); return c?.count === 1 && c?.tzs === 3_000; }), j(ai?.counterparties));
+  ok("15.10 · …and the thin side is gone: the same load now decides BALANCED", !!ai && EN.enterNowDecision(ai).code === "BALANCED", j(ai && EN.enterNowDecision(ai)));
+
+  /* ── 15.11 marketHeld (N1 §4.4; §6 refusal 15 a–d) ── */
+  ok("15.11 · one placed stake here and room under the per-market count → not held", j(await ENL.marketHeld(b1.botId, m.id)) === NOT_HELD);
+  await w.setCaps(b1.botId, { freqMaxPerMarket: 1 });
+  const atCount = await ENL.marketHeld(b1.botId, m.id);
+  ok("15.12 · count 1 of max 1 → PER_MARKET_COUNT {count 1, max 1}", atCount.held && atCount.code === "PER_MARKET_COUNT" && atCount.count === 1 && atCount.max === 1, j(atCount));
+  const second = await w.intent(b1, m.id, { kind: "FILL", side: "NO", stakeTzs: 1_000 });
+  const gate = await w.place(b1, second);
+  ok("15.13 · ⭐ ruling 58 · the seam refuses that market for the same reason (house_cap_reached PER_MARKET_COUNT)",
+    gate.ok === false && gate.reason === "house_cap_reached" && gate.detail?.cap === "PER_MARKET_COUNT", j(gate));
+  await finishLive(second.id);
+  await w.setCaps(b1.botId, { freqMaxPerMarket: null });
+  const unset = await ENL.marketHeld(b1.botId, m.id);
+  ok("15.14 · a per-market count that is not set holds the market (the seam refuses NULL)", unset.held && unset.code === "PER_MARKET_COUNT" && unset.max === null, j(unset));
+  await w.setCaps(b1.botId, { freqMaxPerMarket: 6 });
+
+  const b2 = await botWith();
+  const byPosition = await ENL.marketHeld(b2.botId, m.id);
+  ok("15.15 · another bot's OPEN house position → OTHER_BOT (an aggregate read: no bot id)", byPosition.held && byPosition.code === "OTHER_BOT" && byPosition.botId === null, j(byPosition));
+
+  const m2 = await w.poll();
+  ok("15.16 · CONTROL · an untouched poll is held for nobody", j(await ENL.marketHeld(b1.botId, m2.id)) === NOT_HELD && j(await ENL.marketHeld(b2.botId, m2.id)) === NOT_HELD);
+  const i2 = await w.intent(b2, m2.id, { kind: "FILL", side: "YES", stakeTzs: 1_000 });
+  const byIntent = await ENL.marketHeld(b1.botId, m2.id);
+  ok("15.17 · another bot's live intent → OTHER_BOT naming that bot", byIntent.held && byIntent.code === "OTHER_BOT" && byIntent.botId === b2.botId, j(byIntent));
+  const ownIntent = await ENL.marketHeld(b2.botId, m2.id);
+  ok("15.18 · the bot's own live intent → OWN_INTENT with its id, kind and due time",
+    ownIntent.held && ownIntent.code === "OWN_INTENT" && ownIntent.intentId === i2.id && ownIntent.kind === "FILL" && ownIntent.dueAt === i2.dueAt, j(ownIntent));
+  ok("15.19 · …except the row being fired (ignoreIntentId) → not held", j(await ENL.marketHeld(b2.botId, m2.id, { ignoreIntentId: i2.id })) === NOT_HELD);
+  await finishLive(i2.id);
+  ok("15.20 · a finished intent holds nothing", j(await ENL.marketHeld(b1.botId, m2.id)) === NOT_HELD);
+
+  const m3 = await w.poll();
+  await S.targetStore.insert({
+    id: S.newHouseId("target"), houseBotId: b2.botId, marketId: m3.id, delayMinSec: 5, delayMaxSec: 10, timingFrom: "STAKE", reactTo: "FIRST",
+    createdById: WORLD_OFFICER, snapshot: { titleEn: "Target poll", category: "macro", cutoff: w.iso(3_600_000), rawYes: 0, rawNo: 0 },
+  });
+  const byTarget = await ENL.marketHeld(b1.botId, m3.id);
+  ok("15.21 · another bot's ACTIVE target → OTHER_BOT naming that bot", byTarget.held && byTarget.code === "OTHER_BOT" && byTarget.botId === b2.botId, j(byTarget));
+  ok("15.22 · the targeting bot is not held by its own target", j(await ENL.marketHeld(b2.botId, m3.id)) === NOT_HELD);
+
+  const m4 = await w.poll();
+  const holderBet = await w.svc.buyPosition(b1.userId, { marketId: m4.id, side: "YES", stake: 1_000, idempotencyKey: crypto.randomUUID() });
+  const i4 = await w.intent(b2, m4.id, { kind: "FILL", side: "YES", stakeTzs: 1_000 });
+  const byOwner = await ENL.marketHeld(b1.botId, m4.id);
+  ok("15.23 · the holder's own OPEN stake → OWNER_POSITION, answered before another bot's intent (§6 order: a before b)",
+    holderBet.ok === true && byOwner.held && byOwner.code === "OWNER_POSITION", `${j(holderBet)} · ${j(byOwner)}`);
+  await finishLive(i4.id);
+
+  /* ── 15.24 blackout first, then one draw per market ── */
+  const m5 = await w.poll();
+  await stamp(m5.id);
+  const dark = await ENL.loadEnterNowInput(b1.botId, m5.id, DRAW, { randomInt: () => 1 });
+  ok("15.24 · ⭐ blackout first: an EMPTY poll with a recorded AI check loads blocked, with no draw and no OPENER_SIDE_DRAWN row",
+    dark.ok && dark.input.blocked === true && dark.input.openerDraw === null && dark.drawn === false && (await drawsOn(m5.id)).length === 0, j(dark.ok ? { blocked: dark.input.blocked, draw: dark.input.openerDraw } : dark));
+  ok("15.25 · …and the decision refuses INFO_BLACKOUT", dark.ok && EN.enterNowDecision(dark.input).code === "INFO_BLACKOUT");
+
+  const m6 = await w.poll();
+  const first = await ENL.loadEnterNowInput(b1.botId, m6.id, DRAW, { randomInt: () => 1 });
+  const rows6 = await drawsOn(m6.id);
+  const draw6: Any = first.ok ? first.input.openerDraw : null;
+  ok("15.26 · an empty poll draws: side NO (randomInt → 1), for ENTER_NOW_PREVIEW, drawn true", draw6?.side === "NO" && draw6?.drawnFor === "ENTER_NOW_PREVIEW" && first.drawn === true, j(first));
+  ok("15.27 · …one OPENER_SIDE_DRAWN row carrying the officer, the bot, the side and the draw time",
+    rows6.length === 1 && rows6[0].actorId === WORLD_OFFICER && rows6[0].houseBotId === b1.botId && rows6[0].payload?.side === "NO" && Date.parse(rows6[0].createdAt) === Date.parse(draw6?.drawnAt), j(rows6));
+  const dOpen: Any = first.ok ? EN.enterNowDecision(first.input) : null;
+  ok("15.28 · …and the decision is OPENER on the drawn side for the opener stake", dOpen?.ok === true && dOpen.entryCondition === "OPENER" && dOpen.side === "NO" && dOpen.stakeTzs === 5_000 && dOpen.binding === "openerStake", j(dOpen));
+  const again = await ENL.loadEnterNowInput(b2.botId, m6.id, { actorId: null, drawnFor: "ENTER_NOW" }, { randomInt: () => 0 });
+  ok("15.29 · ⭐ never re-rolled: another bot, another caller and randomInt → 0 read the SAME side, drawnFor and drawnAt; still one row",
+    again.ok && j(again.input.openerDraw) === j(draw6) && again.drawn === false && (await drawsOn(m6.id)).length === 1, j(again.ok ? again.input.openerDraw : again));
+
+  const m7 = await w.poll();
+  const drawArgs = { houseBotId: b1.botId, actorId: null, drawnFor: "OPENER_PLAN" };
+  let inLockThrew = false;
+  try { await L.withLock(`hb-test:draw:${m7.id}`, async () => OS.openerSide(m7.id, drawArgs, { randomInt: () => 0 })); } catch { inLockThrew = true; }
+  ok("15.30 · openerSide inside a lock throws and writes no draw", inLockThrew && (await drawsOn(m7.id)).length === 0);
+  let badRandom = false;
+  try { await OS.openerSide(m7.id, drawArgs, { randomInt: () => 2 }); } catch { badRandom = true; }
+  ok("15.31 · a random answer other than 0 or 1 throws and writes no draw", badRandom && (await drawsOn(m7.id)).length === 0);
+  const plain = await OS.openerSide(m7.id, drawArgs, { randomInt: () => 0 });
+  ok("15.32 · CONTROL · the same call outside a lock draws YES (randomInt → 0)", plain.side === "YES" && plain.drawn === true && (await drawsOn(m7.id)).length === 1, j(plain));
+
+  /* ── 15.33 refusals the loader owns ── */
+  const future = await botWith({}, { schemaVersion: 99 });
+  const outdated = await botWith({}, { schemaVersion: 0 });
+  const rf = await ENL.loadEnterNowInput(future.botId, m2.id, DRAW);
+  const ro = await ENL.loadEnterNowInput(outdated.botId, m2.id, DRAW);
+  ok("15.33 · rules saved by a newer build → RULES_FROM_FUTURE; an outdated format → RULES_REVIEW", !rf.ok && rf.code === "RULES_FROM_FUTURE" && !ro.ok && ro.code === "RULES_REVIEW", `${j(rf)} · ${j(ro)}`);
+  const noBot = await ENL.loadEnterNowInput("hb_not_there", m2.id, DRAW);
+  const noMarket = await ENL.loadEnterNowInput(b1.botId, "mkt_hb_not_there", DRAW);
+  ok("15.34 · a missing bot → BOT_MISSING; a missing market → MARKET_MISSING", noBot.code === "BOT_MISSING" && noMarket.code === "MARKET_MISSING", `${j(noBot)} · ${j(noMarket)}`);
+
+  /* ── 15.35 the view's locked-pool inputs, placedTimes, the parse context ── */
+  const m8 = await w.poll({ graceMin: 5, paidMin: 2 });
+  const viewIn = POOLS.lockedPoolInputsOfView(MV.projectMarketView(await S.houseSeamStore.marketView(m8.id)));
+  const rowIn = POOLS.lockedPoolInputs(await w.mdal.marketStore.get(m8.id));
+  ok("15.35 · the view's locked-pool inputs equal H3's from the market row: grace 5 min, paid 2 min, the same close",
+    viewIn.graceMs === 300_000 && viewIn.paidMs === 120_000 && rowIn.graceMs === viewIn.graceMs && rowIn.paidMs === viewIn.paidMs && Date.parse(rowIn.closesAt) === Date.parse(viewIn.closesAt), `${j(viewIn)} vs ${j(rowIn)}`);
+
+  const t1 = await S.houseSeamStore.placedTimes({ houseBotId: b1.botId, withinSec: 86_400 });
+  const t2 = await S.houseSeamStore.placedTimes({ houseBotId: b2.botId, withinSec: 86_400 });
+  ok("15.36 · placedTimes: the bot's own placement and nothing of another bot's", t1.length === 1 && Date.parse(t1[0]) === Date.parse(pos.placedAt) && t2.length === 0, `${j(t1)} · ${j(t2)}`);
+  const all = await S.houseSeamStore.placedTimes({ houseBotId: null, withinSec: 86_400 });
+  ok("15.37 · every bot's placements (null) include it, newest first",
+    all.some((t: string) => Date.parse(t) === Date.parse(pos.placedAt)) && all.every((t: string, k: number) => k === 0 || Date.parse(all[k - 1]) >= Date.parse(t)), `${all.length} rows`);
+  const argOutcomes: string[] = [];
+  for (const bad of [0, 86_401, 1.5, -1]) {
+    try { await S.houseSeamStore.placedTimes({ houseBotId: b1.botId, withinSec: bad }); argOutcomes.push(`${bad}:accepted`); } catch { argOutcomes.push(`${bad}:refused`); }
+  }
+  ok("15.38 · a window outside 1–86,400 whole seconds is refused", argOutcomes.every((s) => s.endsWith(":refused")), argOutcomes.join(" "));
+  await w.backdate(pos.id, 60_000);
+  const in3600 = await S.houseSeamStore.placedTimes({ houseBotId: b1.botId, withinSec: 3_600 });
+  const in30 = await S.houseSeamStore.placedTimes({ houseBotId: b1.botId, withinSec: 30 });
+  await w.backdate(pos.id, 2 * 86_400_000 - 60_000);
+  const aged = await S.houseSeamStore.placedTimes({ houseBotId: b1.botId, withinSec: 86_400 });
+  await w.backdate(pos.id, -2 * 86_400_000);
+  ok("15.39 · the window is measured back from the database clock: a minute-old stake is inside 3,600 s, outside 30 s, and two days old is outside 86,400 s",
+    in3600.length === 1 && in30.length === 0 && aged.length === 0, `${j(in3600)} · ${j(in30)} · ${j(aged)}`);
+
+  // §12 disables its asset at the end, so §15 creates an enabled one of its own (sources were seeded by §12).
+  const cfg: Any = await import("../../src/lib/server/updown-config.ts");
+  const na = await cfg.createAsset({ key: `F${process.pid}`, symbol: "ETH/USD", nameEn: "Ether", nameSw: "Ether", iconKey: "crypto",
+    priceSourceUrl: "https://api.twelvedata.com/quote", category: "crypto", decimals: 2, minMoveTicks: 2 }, WORLD_OFFICER);
+  if (na.ok) {
+    await cfg.setAssetEnabled(na.data.id, true, WORLD_OFFICER);
+    await cfg.createChain({ assetId: na.data.id, durationMinutes: 5 }, WORLD_OFFICER);
+  }
+  const ctx = await RC.loadParseContext();
+  const assets: Any[] = await cfg.listAssets({ enabledOnly: true });
+  const chains: Any[] = await cfg.listChains();
+  const ofEnabled = chains.filter((c) => assets.some((a) => a.id === c.assetId));
+  const c0 = ofEnabled[0];
+  const a0 = c0 ? assets.find((a) => a.id === c0.assetId) : null;
+  ok("15.40 · fixture · an enabled asset with a chain exists (created here), and its id is not its symbol", !!a0 && a0.id !== a0.symbol && ofEnabled.some((c) => na.ok && c.assetId === na.data.id), j(a0 ?? na));
+  const ofDisabled = chains.filter((c) => !assets.some((a) => a.id === c.assetId));
+  ok("15.41b · a chain of a disabled asset (§12's, disabled at its end) is left out of the context",
+    ofDisabled.length >= 1 && ofDisabled.every((c) => !ctx.chains.some((k: Any) => k.key === `${c.assetId}:${c.durationMinutes}`)), j(ofDisabled.map((c) => c.assetId)));
+  ok("15.41 · the parse context: chain keys <assetId>:<durationMinutes> for every chain of an enabled asset; the platform's categories and durations",
+    j(ctx.chains.map((c: Any) => c.key).sort()) === j(ofEnabled.map((c) => `${c.assetId}:${c.durationMinutes}`).sort())
+      && j(ctx.categories) === j(R.RULES_CONTEXT_LISTS.categories) && j(ctx.durations) === j(R.RULES_CONTEXT_LISTS.durations), j(ctx.chains));
+  if (a0) {
+    const byId = R.parseHouseBotRules(enterNowRules({ scope: { products: { updown: true }, chains: [`${a0.id}:${c0.durationMinutes}`] } }), ctx);
+    const bySymbol = R.parseHouseBotRules(enterNowRules({ scope: { products: { updown: true }, chains: [`${a0.symbol}:${c0.durationMinutes}`] } }), ctx);
+    ok("15.42 · ⭐ a chain saved by asset id stays in scope; the same chain saved by symbol is dropped as stale",
+      byId.ok && byId.stale.length === 0 && byId.rules.scope.chains.length === 1 && bySymbol.ok && bySymbol.stale.length === 1 && bySymbol.rules.scope.chains.length === 0, `${j(byId)} · ${j(bySymbol)}`);
+  }
+
+  if (!w.onPostgres) {
+    const code = (rel: string) => decomment(readFileSync(join(ROOT, rel), "utf8"));
+    const FORBIDDEN15 = /\b(sentinel\w*|resolvedOutcome|resolutionEvidence|resolveClaimedAt|resolutionStage1By)\b/;
+    for (const f of ["enter-now.ts", "opener-side.ts", "rules-context.ts"]) {
+      const src = code(`src/lib/server/house-bot/${f}`);
+      ok(`15.43 · A13 · ${f} reads no result-check field and never names StoredMarket`, !FORBIDDEN15.test(src) && !/\bStoredMarket\b/.test(src), (src.match(FORBIDDEN15) ?? [""])[0]);
+    }
   }
 });
 
