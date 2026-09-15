@@ -28,7 +28,10 @@ const section = (t: string) => console.log(`\n[${STORE}] ${t}`);
 const j = (v: unknown) => JSON.stringify(v) ?? String(v);
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 /** A throw is a failed assertion, never a crashed suite. */
+/** `HB_ENGINE_SECTIONS=7,17` runs only those guarded sections — for mutation runs; the suite itself always runs all. */
+const ONLY_SECTIONS = (process.env.HB_ENGINE_SECTIONS ?? "").split(",").map((s) => s.trim()).filter(Boolean);
 async function guard(label: string, fn: () => Promise<void> | void): Promise<void> {
+  if (ONLY_SECTIONS.length > 0 && !ONLY_SECTIONS.includes(label)) return;
   // The whole message, on one line: Prisma puts the database's own text after its first lines, which a stack cut lost.
   try { await fn(); } catch (e) { ok(`${label} · threw`, false, `${String((e as Error)?.message ?? e).replace(/\s+/g, " ")} | ${(e as Error)?.stack?.split("\n").slice(1, 4).join(" | ") ?? ""}`); }
 }
