@@ -10,9 +10,10 @@ Wired: 2026-09-16. Code: `src/lib/server/sms-blackball.ts` (transport), `src/lib
 | | |
 |---|---|
 | Code | ✅ live on `main`, dark: production runs `SMS_PROVIDER=console`, `OTP_ENABLED` unset |
+| Railway | ✅ `BLACKBALL_CLIENT_ID`, `BLACKBALL_CLIENT_SECRET`, `BLACKBALL_WEBHOOK_SECRET`, `SMS_SENDER_ID=50pick` set and verified against `.env.local`; ⬜ `SMS_PROVIDER=blackball` awaiting owner approval (the switch is a production deploy) |
 | API configuration | ✅ `50pick-production` saved in the portal, status callback registered, `BLACKBALL_WEBHOOK_SECRET` set in Railway |
 | Sender ID | ✅ `50pick` (the portal's Send SMS list, exactly as shown) |
-| First live send | ✅ ACCEPTED → **DELIVRD / Success in 2 seconds**, Tigo Tz, **TZS 6** |
+| First live send | ✅ ACCEPTED → **DELIVRD / Success in 2 seconds**, Tigo Tz, **TZS 6** — received on the handset (confirmed by Ali) |
 | Delivery callback | 🔴 **not received** — see §4, most likely Cloudflare error 1010 |
 | Balance | TZS 244 after the first send |
 
@@ -205,9 +206,11 @@ Each step is independently reversible, and none of the later ones is safe withou
 3. ✅ **Live drive step 1** — `npm run live:blackball -- --step 1 --confirm`. Delivered.
 4. ⬜ **Cloudflare: turn Browser Integrity Check off for `/api/webhooks/*`** (§4), then confirm a
    real receipt lands: `node scripts/live/ops/sms-receipts.cjs <reference>`.
-5. ⬜ **Railway: `BLACKBALL_CLIENT_ID`, `BLACKBALL_CLIENT_SECRET`, `SMS_SENDER_ID=50pick`, then
-   `SMS_PROVIDER=blackball`.** OTP still off, so the blast radius is invite campaigns — which
-   `bonusIsLiveFor()` already holds shut.
+5. ◐ **Railway: `BLACKBALL_CLIENT_ID`, `BLACKBALL_CLIENT_SECRET`, `SMS_SENDER_ID=50pick`** ✅ set, then
+   **`SMS_PROVIDER=blackball`** ⬜. Independent of step 4 and safe before it: measured 2026-09-16,
+   production has **zero** phone invite entries, `bonus` is `WITHDRAWN` with no `FEATURE_BONUS`
+   override (so `sendCampaign` refuses before SMS), and `OTP_ENABLED` is unset — the only two send
+   paths are shut, so the switch makes the rail *configured* without sending anything.
 6. ⬜ **Only after a real receipt has been observed, and after a top-up:** `OTP_ENABLED=1`.
 
 ### Preconditions for step 6 — measured, none assumed
