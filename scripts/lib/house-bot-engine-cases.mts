@@ -2923,7 +2923,7 @@ await guard("18", async () => {
     const p1 = await sweep(rec.alerts);
     const alert = rec.keyed(`holder-against:${b.botId}:${m.id}`);
     const ev = await holderEvents(m.id);
-    const want = { side: "YES", stakeTzs: 3_000, botSide: "NO", botStakeTzs: 2_000 };
+    const want = { side: "YES", stakeTzs: 3_000, botSide: "NO", botStakeTzs: 2_000, productLine: "MARKET" }; // ruling 166 · the copy needs the product to say the right word
     ok("18.30 · fixture · the bot holds an OPEN NO house stake on both polls", !placed.threw && !placedSame.threw, j({ placed, placedSame }));
     ok("18.31 · A21 · the holder's YES against the bot's NO → ONE alert holder-against:<bot>:<market>, aggregates only",
       alert.length === 1 && sameFields(alert[0].m.detail, want) && alert[0].m.botId === b.botId && alert[0].m.marketId === m.id && !j(alert[0].m).includes(b.userId), j({ p1, alerts: rec.calls.filter((c) => c.fn === "once") }));
@@ -3324,7 +3324,7 @@ await guard("18", async () => {
         const holderBet = await w.svc.buyPosition(b.userId, { marketId: round.marketId, side: "YES", stake: 1_000, idempotencyKey: crypto.randomUUID() });
         let hev: Any[] = [];
         for (const t0 = Date.now(); Date.now() - t0 < 5_000 && hev.length === 0; await sleep(100)) hev = await holderEventsOn();
-        const want = { side: "YES", stakeTzs: 1_000, botSide: "NO", botStakeTzs: 2_000 };
+        const want = { side: "YES", stakeTzs: 1_000, botSide: "NO", botStakeTzs: 2_000, productLine: "UPDOWN" }; // ruling 166 · an Up & Down round, so the alert says Up/Down
         ok("18.78 · ⭐ L1 · A21 through the LIVE hook: the holder's Up & Down YES against their bot's NO → ONE HOLDER_AGAINST_BOT event, with no sweep run",
           holderBet.ok === true && hev.length === 1 && hev[0].houseBotId === b.botId && hev[0].userId === b.userId && sameFields(hev[0].payload, want), j({ bet: holderBet.ok ? "ok" : holderBet, hev }));
         ok("18.79 · …ONE alert holder-against:<bot>:<market>, and the holder's stake is never a trigger (no COUNTER on it)",
