@@ -127,7 +127,8 @@ Continue the 50pick MOBILE VISUAL PLAN. Perfect beats fast. No lost work, no rep
 2) READ BEFORE TOUCHING ANYTHING — in this order
    docs/MOBILE-VISUAL-PLAN.md: §0 RESUME AT (+ traps) · §1 status board · §1a closure ·
    §5 hard rules · §6 can/can't · §7 rulings · §8 defects · §8a phone design sheet · §8b motion spec ·
-   the two units named in §0 NEXT (§9) · §11 verification and test matrix.
+   the two units named in §0 NEXT (§9) · §11 verification and test matrix · §3b the professional critics'
+   baseline (their notes are inside each unit; at a phase end, show Ali what they flagged on that phase's surfaces).
    Evidence for any finding: docs/MOBILE-VISUAL-FINDINGS-2026-09.md (by id, e.g. S03-10).
    Also: CLAUDE.md, the .claude/skills/50pick-standards skill, and the DESIGN_AUTHORITY.md sections those units cite.
    ⛔ Only ⬜/🟡 rows are work. ✅ rows are finished — never redo them.
@@ -152,7 +153,8 @@ Continue the 50pick MOBILE VISUAL PLAN. Perfect beats fast. No lost work, no rep
 
 5) STOP AND ASK ME WHEN
    a §5 hard rule or a recorded ruling blocks the unit; a target proves wrong (write the reason in §2 first);
-   you need an owner item (GA4 browser data, my phones for U30, SW/ZH wording, phase-end visual sign-off);
+   you need an owner item (GA4 browser data, my phones for U30, SW/ZH wording, phase-end visual sign-off),
+   or an open owner item in §0 (5–9: hero headline, one-bet prices, leaderboard ROI, two-officer copy, footer) decides the unit;
    or anything would touch money logic, payouts or compliance text.
 
 6) CLOSE THE SESSION CLEANLY
