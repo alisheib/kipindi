@@ -96,6 +96,14 @@ section("§1 · a house stake places once, marked on every row");
     ok("1.13d · ⭐ (e) · the holder cannot sell a house stake even where the WINDOW IS OPEN, and it stays OPEN",
       sellOpen?.ok === false && sellOpen?.code === "SELECTION_CLOSED"
         && (await w.mdal.positionStore.get(housePos!.id)).status === "OPEN", show(sellOpen));
+    // ⭐ AND THE CONDITION IS THE RIGHT WAY ROUND. Removing the branch entirely changes nothing a case can see —
+    // `cashOutPosition` calls `cashOutValue`, whose own house branch (sanctioned change (d)) already refuses, so the
+    // two are defence in depth (measured 2026-09-16: the (e) mutation was MISSED twice). What the branch CAN get
+    // wrong is which side of the marker it names, and that is visible immediately: the player beside it must still
+    // be able to sell.
+    const sellPlayer = playerPos ? await w.svc.cashOutPosition(player, playerPos.id) : null;
+    ok("1.13e · ⭐ (e) · …while the PLAYER on the same market sells their own bet normally (the marker, not the market, is what refuses)",
+      sellPlayer?.ok === true && (await w.mdal.positionStore.get(playerPos!.id)).status === "CASHED_OUT", show(sellPlayer));
   }
 
   // D19c, C4 ruling 154: the holder's own data export keeps their money rows but never the house marker.

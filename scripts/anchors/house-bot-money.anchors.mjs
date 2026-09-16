@@ -150,10 +150,13 @@ export const MUTATIONS = [
     name: "(e) · cashOutPosition lets the holder sell a house stake",
     file: SVC,
     from: `    // SEAM:cashOutPosition\n    if (p.houseBotId != null) {`,
-    to: `    // SEAM:cashOutPosition\n    if (false) {`,
-    // ⚠️ NOT 1.13: on that fixture the platform's own window refuses the sale too, so this defect was MISSED
-    // (measured 2026-09-16). 1.13d puts the same stake on a market a player CAN still sell into.
-    expect: "1.13d · ⭐ (e) · the holder cannot sell a house stake even where the WINDOW IS OPEN",
+    to: `    // SEAM:cashOutPosition\n    if (p.houseBotId == null) {`,
+    // ⚠️ THE MUTATION FLIPS THE CONDITION, IT DOES NOT DELETE THE BRANCH. Deleting it is invisible: `cashOutPosition`
+    // calls `cashOutValue`, whose own house branch (sanctioned change (d), mutated separately) already refuses, so
+    // the two are defence in depth — measured twice on 2026-09-16, each time MISSED, on a closed window and on an
+    // open one. What this branch can really get wrong is which side of the marker it names, and 1.13e sees that at
+    // once: the player beside the house stake must still be able to sell their own bet.
+    expect: "1.13e · ⭐ (e) · …while the PLAYER on the same market sells their own bet normally",
     suite: "money-mem",
   },
   {
