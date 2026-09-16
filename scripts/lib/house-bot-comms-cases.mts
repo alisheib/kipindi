@@ -304,6 +304,29 @@ await guard("9", () => {
   const unknown = alertRow({ code: "A_CODE_FROM_A_NEWER_BUILD", at, money: (n: number) => `TZS ${n}`, botId: "hb_x" });
   ok("9.3 · ⭐ an unmapped code still reads as a sentence and names itself, in every language",
     /A_CODE_FROM_A_NEWER_BUILD/.test(unknown.titleEn) && /A_CODE_FROM_A_NEWER_BUILD/.test(unknown.titleZh) && unknown.href.startsWith("/") && unknown.severity === "warning", j(unknown.titleEn));
+  // Ruling 166 · a side is a WORD in the alert, never the stored token, and the vocabulary follows the product.
+  {
+    const a21 = (productLine: string) => alertRow({
+      code: "HOLDER_AGAINST_BOT", at, money: (n: number) => `TZS ${n}`, label: "Bot A", handle: "Player #A3F2K8", botId: "hb_x",
+      detail: { side: "YES", stakeTzs: 1_000, botSide: "NO", botStakeTzs: 2_000, productLine },
+    });
+    const poll = a21("MARKET"), ud = a21("UPDOWN");
+    ok("9.5 · ⭐ ruling 166 · the A21 alert says the SIDE WORD of each language, never the stored YES/NO",
+      /NDIO/i.test(poll.bodySw) && /HAPANA/i.test(poll.bodySw) && !/\bYES\b|\bNO\b/.test(poll.bodySw)
+      && /是/.test(poll.bodyZh) && /否/.test(poll.bodyZh) && !/\bYES\b|\bNO\b/.test(poll.bodyZh)
+      && /\bYES\b/.test(poll.bodyEn) && /\bNO\b/.test(poll.bodyEn),
+      j({ sw: poll.bodySw, zh: poll.bodyZh, en: poll.bodyEn }));
+    ok("9.6 · …and an Up & Down alert says Up/Down (Juu/Chini), because the vocabulary is the product's",
+      /Up/.test(ud.bodyEn) && /Down/.test(ud.bodyEn) && /Juu/i.test(ud.bodySw) && /Chini/i.test(ud.bodySw)
+      && /涨/.test(ud.bodyZh) && /跌/.test(ud.bodyZh) && !/\bYES\b|\bNO\b/.test(ud.bodyEn + ud.bodySw + ud.bodyZh),
+      j({ en: ud.bodyEn, sw: ud.bodySw, zh: ud.bodyZh }));
+    const bare = alertRow({
+      code: "HOLDER_AGAINST_BOT", at, money: (n: number) => `TZS ${n}`, label: "Bot A", botId: "hb_x",
+      detail: { side: "SOMETHING_NEW", stakeTzs: 1_000, botSide: null, botStakeTzs: 2_000, productLine: "MARKET" },
+    });
+    ok("9.7 · CONTROL · a side this build does not know reads as nothing at all, never as a raw token",
+      !/SOMETHING_NEW/.test(bare.bodyEn + bare.bodySw + bare.bodyZh), j({ en: bare.bodyEn }));
+  }
   // Oversight's two records reach every recipient (N1 04:3738); the staff-edge producer is commit 5 (ruling 78).
   ok("9.4 · the voided and self-decided records have their own copy, and it says a record was made, not that something was refused",
     /record only/.test(alertRow({ code: "STAFF_STAKE_VOIDED", at, money: (n: number) => `TZS ${n}`, detail: { action: "voided", titleEn: "A poll", side: "YES", stakeTzs: 1_000 } }).bodyEn)

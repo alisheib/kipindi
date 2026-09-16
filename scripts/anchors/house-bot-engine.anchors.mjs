@@ -366,4 +366,13 @@ export const MUTATIONS = [
     suite: "engine-mem",
     sections: "16",
   },
+  // 166 · the Swahili A21 body prints the stored token again (the class PROGRESS L22 records on a player page).
+  {
+    name: "review-166 · the alert copy prints the stored side token instead of the word",
+    file: "src/lib/house-bot/alert-copy.ts",
+    from: "${sideWordFor(\"sw\", c.detail?.side, c.detail?.productLine)}",
+    to: "${str(c.detail?.side, \"\")}",
+    expect: "9.5 · ⭐ ruling 166 · the A21 alert says the SIDE WORD of each language",
+    suite: "comms-mem",
+  },
 ];

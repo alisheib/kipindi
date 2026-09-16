@@ -316,6 +316,9 @@ section("§0 · module law");
     "@/lib/updown-durations",
     "@/lib/markets/categories",
     "@/lib/wallet-freeze-reasons",
+    // Ruling 166 · the platform's one side/outcome vocabulary. Pure, and the alternative is a hand-written
+    // `side === "YES" ? …` in three languages, which is the defect `side-label.ts` exists to end.
+    "@/lib/side-label",
     "./clock",
     "./constants",
     "./pause-reasons",

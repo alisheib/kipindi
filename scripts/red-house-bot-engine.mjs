@@ -38,6 +38,7 @@ const SUITES = {
   "caps-pg": { cmd: "npx tsx scripts/db-scratch.mts --run npx tsx scripts/house-bot-caps.test.mts", env: {} },
   "info-edge-mem": { cmd: "npx tsx scripts/lib/house-bot-info-edge-cases.mts", env: MEM_ENV },
   "designation-mem": { cmd: "npx tsx scripts/lib/house-bot-designation-cases.mts", env: MEM_ENV },
+  "comms-mem": { cmd: "npx tsx scripts/lib/house-bot-comms-cases.mts", env: MEM_ENV },
   "money-mem": { cmd: "npx tsx scripts/lib/house-bot-money-cases.mts", env: MEM_ENV },
   seam: { cmd: "npx tsx scripts/house-bot-seam.test.mts", env: {} },
 };

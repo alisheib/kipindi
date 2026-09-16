@@ -26,6 +26,8 @@
 export const MONEY_EVENT_CODES = [
   "deposited", "requested_withdrawal", "withdrawal_held", "withdrew", "withdrawal_failed", "withdrawal_rejected", "adjusted",
 ] as const;
+import { sideWordIn } from "@/lib/side-label";
+
 export type MoneyEventCode = (typeof MONEY_EVENT_CODES)[number];
 export const isMoneyEventCode = (v: string): v is MoneyEventCode => (MONEY_EVENT_CODES as readonly string[]).includes(v);
 
@@ -178,6 +180,12 @@ export type AlertRow = {
 
 const num = (v: unknown, dflt = 0): number => (typeof v === "number" && Number.isFinite(v) ? v : dflt);
 const str = (v: unknown, dflt = ""): string => (typeof v === "string" && v.length > 0 ? v : dflt);
+/**
+ * Ruling 166 · a side is a WORD, never the stored `YES`/`NO`. The product decides the vocabulary — a poll asks
+ * Yes/No, an Up & Down round moves Up/Down — and the alert's own detail carries it.
+ */
+const sideWordFor = (locale: "en" | "sw" | "zh", v: unknown, product: unknown): string =>
+  (v === "YES" || v === "NO" ? sideWordIn(locale, v, product === "UPDOWN" ? "UPDOWN" : "MARKET") : "");
 const tzs = (c: AlertContext, v: unknown): string => c.money(num(v));
 /** A bot with no label (a removed row read late) still reads as something a human can search for. */
 const botName = (c: AlertContext): string => (c.label ? `"${c.label}"` : c.botId ? `#${c.botId}` : "");
@@ -335,9 +343,9 @@ const ROWS = {
     titleEn: `A holder staked against their own house bot · ${c.at}`,
     titleSw: `Mwenye akaunti aliweka dau dhidi ya boti yake mwenyewe · ${c.at}`,
     titleZh: `一位持有人对自己的平台机器人下了反向注 · ${c.at}`,
-    bodyEn: `The holder of house bot ${botName(c)} staked ${tzs(c, c.detail?.stakeTzs)} ${str(c.detail?.side, "")} against its ${tzs(c, c.detail?.botStakeTzs)} ${str(c.detail?.botSide, "")} on this market. Nothing was refused; this is a record.`,
-    bodySw: `Mwenye boti ${botName(c)} aliweka dau la ${tzs(c, c.detail?.stakeTzs)} ${str(c.detail?.side, "")} dhidi ya dau lake la ${tzs(c, c.detail?.botStakeTzs)} ${str(c.detail?.botSide, "")} kwenye soko hili. Hakuna kilichokataliwa; hii ni kumbukumbu.`,
-    bodyZh: `平台机器人 ${botName(c)} 的持有人在该市场以 ${tzs(c, c.detail?.stakeTzs)} ${str(c.detail?.side, "")} 对其 ${tzs(c, c.detail?.botStakeTzs)} ${str(c.detail?.botSide, "")} 下了反向注。未拒绝任何操作；此为记录。`,
+    bodyEn: `The holder of house bot ${botName(c)} staked ${tzs(c, c.detail?.stakeTzs)} ${sideWordFor("en", c.detail?.side, c.detail?.productLine)} against its ${tzs(c, c.detail?.botStakeTzs)} ${sideWordFor("en", c.detail?.botSide, c.detail?.productLine)} on this market. Nothing was refused; this is a record.`,
+    bodySw: `Mwenye boti ${botName(c)} aliweka dau la ${tzs(c, c.detail?.stakeTzs)} ${sideWordFor("sw", c.detail?.side, c.detail?.productLine)} dhidi ya dau lake la ${tzs(c, c.detail?.botStakeTzs)} ${sideWordFor("sw", c.detail?.botSide, c.detail?.productLine)} kwenye soko hili. Hakuna kilichokataliwa; hii ni kumbukumbu.`,
+    bodyZh: `平台机器人 ${botName(c)} 的持有人在该市场以 ${tzs(c, c.detail?.stakeTzs)} ${sideWordFor("zh", c.detail?.side, c.detail?.productLine)} 对其 ${tzs(c, c.detail?.botStakeTzs)} ${sideWordFor("zh", c.detail?.botSide, c.detail?.productLine)} 下了反向注。未拒绝任何操作；此为记录。`,
     href: market(c),
     severity: "warning" as const,
   }),

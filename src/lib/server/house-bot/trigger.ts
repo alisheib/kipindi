@@ -304,7 +304,13 @@ async function holderAgainstOwnBot(row: TriggerRow, bot: StoredHouseBot, alerts:
   const positions = await positionStore.listForUserAndMarket(bot.userId, row.marketId);
   const against = positions.filter((p) => p.houseBotId === bot.id && p.status === "OPEN" && p.side !== row.side);
   if (against.length === 0) return false;
-  const detail = { side: row.side, stakeTzs: row.stake, botSide: against[0].side, botStakeTzs: against.reduce((sum, p) => sum + p.stake, 0) };
+  // Ruling 166 · the copy says a WORD, and the word differs by product (Yes/No vs Up/Down), so the alert carries the
+  // product line. One view read, on a path that sends at most once per bot and market (the AlertOnce claim below).
+  const productLine = (await houseSeamStore.marketView(row.marketId))?.productLine === "UPDOWN" ? "UPDOWN" : "MARKET";
+  const detail = {
+    side: row.side, stakeTzs: row.stake, botSide: against[0].side,
+    botStakeTzs: against.reduce((sum, p) => sum + p.stake, 0), productLine,
+  };
   const sent = await alertOnce(ALERT_KEY.holderAgainst(bot.id, row.marketId), alerts, { code: "HOLDER_AGAINST_BOT", botId: bot.id, marketId: row.marketId, detail });
   if (!sent) return false;
   await houseBotEventStore.append({

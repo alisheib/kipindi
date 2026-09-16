@@ -588,15 +588,29 @@ check("§5j private-map matcher ACCEPTS a tone ternary (a colour is not a word)"
   const notif = readFileSync(join(SRC, "lib/server/notification-service.ts"), "utf8");
   const market = readFileSync(join(SRC, "lib/server/market-service.ts"), "utf8");
 
-  // ⚠️ SCOPED TO PLAYER EMITTERS. The one surviving `marketTitle: string` is
-  // `notifyAdminObjectionFiled`, and §7f pins that it is the only one — so this cannot be
-  // satisfied by quietly reverting a player emitter to a bare string.
-  const bareSigs = notif.split(/\r?\n/).filter((l) => /marketTitle: string/.test(l));
+  // ⚠️ SCOPED TO PLAYER EMITTERS, AND THE SCOPE IS A NAMED SET — NOT A COUNT (house-bots C4-SPEC ruling 167).
+  // An ADMIN alert may carry the English question: `notifyAdminObjectionFiled` set that convention, and the house
+  // engine may read only `titleEn` (its market view is a pinned field list, A13). A COUNT of one went red the day a
+  // second admin emitter arrived, for a reason it does not hold — so the rule names each one, and requires it to
+  // exist, which a count never did. A PLAYER emitter with a bare string still fails here; so does a rotted name.
+  const ADMIN_BARE_TITLE_OK = ["notifyAdminObjectionFiled", "notifyAdminsHouseBotBet", "notifyAdminsHouseBotStaffChosen"];
+  const lines7a = notif.split(/\r?\n/);
+  /** The nearest `export async function <name>(` at or above a line — the emitter a signature line belongs to. */
+  const ownerOf = (idx: number): string => {
+    for (let i = idx; i >= 0; i--) {
+      const m = /^export async function (\w+)/.exec(lines7a[i]);
+      if (m) return m[1];
+    }
+    return "";
+  };
+  const bareOwners = lines7a.map((l, i) => (/marketTitle: string/.test(l) ? ownerOf(i) : null)).filter(Boolean) as string[];
+  const strays = bareOwners.filter((o) => !ADMIN_BARE_TITLE_OK.includes(o));
+  const missing = ADMIN_BARE_TITLE_OK.filter((n) => !bareOwners.includes(n));
   check("§7a no PLAYER emitter takes a bare `marketTitle: string`",
-    bareSigs.length === 1 && /notifyAdminObjectionFiled/.test(bareSigs[0]),
-    bareSigs.length !== 1
-      ? `${bareSigs.length} bare signatures — a string cannot carry SW or ZH, and the caller will pass titleEn`
-      : `the survivor is not the admin one: ${bareSigs[0].trim().slice(0, 70)}`);
+    strays.length === 0 && missing.length === 0,
+    strays.length
+      ? `${strays.join(", ")} take a bare string — a string cannot carry SW or ZH, and the caller will pass titleEn`
+      : `named admin emitters that no longer take one (update the list): ${missing.join(", ")}`);
   check("§7b the emitters take the three-language shape",
     (notif.match(/marketTitle: LocalizedText/g) ?? []).length >= 5,
     "");

@@ -2237,12 +2237,12 @@ export async function notifyAdminsHouseBotBet(opts: {
   const recipients = await houseBotAlertRecipients();
   const { formatTzs } = await import("@/lib/utils");
   const amount = formatTzs(opts.stakeTzs);
-  const side = await sideWords(opts.side);
+  const sideWord = await sideWords(opts.side); // ruling 166 · the name says it is a word, not the stored token
   // The second in the title is what keeps two stakes a minute apart from reading as one (04:1076).
   return fanOutHouseAdmin(recipients, {
-    titleEn: `House bot "${opts.label}" ${side.en} ${amount} on ${opts.marketTitle} · ${opts.at}`,
-    titleSw: `Boti "${opts.label}" ${side.sw} ${amount} kwenye ${opts.marketTitle} · ${opts.at}`,
-    titleZh: `平台机器人 "${opts.label}" ${side.zh} ${amount} · ${opts.marketTitle} · ${opts.at}`,
+    titleEn: `House bot "${opts.label}" ${sideWord.en} ${amount} on ${opts.marketTitle} · ${opts.at}`,
+    titleSw: `Boti "${opts.label}" ${sideWord.sw} ${amount} kwenye ${opts.marketTitle} · ${opts.at}`,
+    titleZh: `平台机器人 "${opts.label}" ${sideWord.zh} ${amount} · ${opts.marketTitle} · ${opts.at}`,
     bodyEn: `Placed automatically at ${opts.at} EAT. Reference ${opts.intentId}.`,
     bodySw: `Limewekwa kiotomatiki saa ${opts.at} EAT. Kumbukumbu ${opts.intentId}.`,
     bodyZh: `已于东非时间 ${opts.at} 自动下注。参考号 ${opts.intentId}。`,
@@ -2263,15 +2263,15 @@ export async function notifyAdminsHouseBotStaffChosen(opts: {
   const recipients = await houseBotAlertRecipients();
   const { formatTzs } = await import("@/lib/utils");
   const amount = formatTzs(opts.stakeTzs);
-  const side = await sideWords(opts.side);
+  const sideWord = await sideWords(opts.side); // ruling 166 · the name says it is a word, not the stored token
   const how = opts.entry === "MANUAL" ? `Enter now by ${opts.byName}` : `target by ${opts.byName}`;
   const howSw = opts.entry === "MANUAL" ? `Ingia sasa na ${opts.byName}` : `lengo la ${opts.byName}`;
   const howZh = opts.entry === "MANUAL" ? `由 ${opts.byName} 立即下注` : `由 ${opts.byName} 设定的目标`;
   const href = `/admin/house-bots/${opts.botId}?tab=activity&range=all&intent=${opts.intentId}`;
   return fanOutHouseAdmin(recipients, {
-    titleEn: `Staff-chosen · Bot "${opts.label}" ${side.en} ${amount} on ${opts.marketTitle} · ${how} · ${opts.at}`,
-    titleSw: `Iliyochaguliwa na wafanyakazi · Boti "${opts.label}" ${side.sw} ${amount} kwenye ${opts.marketTitle} · ${howSw} · ${opts.at}`,
-    titleZh: `员工选择 · 机器人 "${opts.label}" ${side.zh} ${amount} · ${opts.marketTitle} · ${howZh} · ${opts.at}`,
+    titleEn: `Staff-chosen · Bot "${opts.label}" ${sideWord.en} ${amount} on ${opts.marketTitle} · ${how} · ${opts.at}`,
+    titleSw: `Iliyochaguliwa na wafanyakazi · Boti "${opts.label}" ${sideWord.sw} ${amount} kwenye ${opts.marketTitle} · ${howSw} · ${opts.at}`,
+    titleZh: `员工选择 · 机器人 "${opts.label}" ${sideWord.zh} ${amount} · ${opts.marketTitle} · ${howZh} · ${opts.at}`,
     bodyEn: `Placed at ${opts.at} EAT. Side rule: ${opts.sideRule}. Reason recorded in the activity feed.`,
     // ⛔ Ruling 142 · the side rule is the engine's own composed English sentence (the activity feed owns it).
     // Presenting it as Swahili or Chinese would be presenting English as a translation: these carry the frame and
@@ -2283,7 +2283,7 @@ export async function notifyAdminsHouseBotStaffChosen(opts: {
       subject: `Staff-chosen house stake · ${opts.label} ${opts.side} ${amount}`,
       eyebrow: "House bots · staff-chosen",
       heading: "A stake chosen by a member of staff was placed",
-      subtitle: `House bot "${opts.label}" staked ${amount} ${side.en} on ${opts.marketTitle} at ${opts.at} EAT. The reason is recorded in the activity feed.`,
+      subtitle: `House bot "${opts.label}" staked ${amount} ${sideWord.en} on ${opts.marketTitle} at ${opts.at} EAT. The reason is recorded in the activity feed.`,
       rows: [
         { label: "Chosen by", value: opts.byName },
         { label: "How", value: opts.entry === "MANUAL" ? "Enter now" : "Target" },
