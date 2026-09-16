@@ -1612,6 +1612,75 @@ await guard("16", async () => {
     ok("16.10 · inside the lock margin a FILL finds no locked money → CONDITION_GONE …", trig.ok === true && outFill.kind === "finished" && (await is(fill.id, "SKIPPED", "CONDITION_GONE")), j(outFill));
     ok("16.11 · …while the untargeted COUNTER is cut against lockedA15 and places (A15 unchanged)", outCounter.outcome?.kind === "placed" && (await is(counter.id, "PLACED", null)), j(outCounter));
   }
+
+  /* ── 16.x7 · X7 · BOTH_SIDES checked again at fire (rulings 136, 159) ── */
+  {
+    const b = await botWith();
+    const m = await w.poll();
+    const p = await w.user({ balance: 100_000 });
+    const trig = await w.svc.buyPosition(p, { marketId: m.id, side: "YES", stake: 10_000, idempotencyKey: crypto.randomUUID() });
+    // The player takes the other side while the counter still waits — the gap X7 closes.
+    const hedge = await w.svc.buyPosition(p, { marketId: m.id, side: "NO", stake: 1_000, idempotencyKey: crypto.randomUUID() });
+    const counter = await w.intent(b, m.id, { kind: "COUNTER", side: "NO", stakeTzs: 2_000, triggerPositionId: trig.data?.positionId, triggerUserId: p });
+    const out = await fire(counter, recorder().alerts);
+    const boxed = (await S.houseBotEventStore.listByKinds(["PENALTY_BOXED"], { userId: p, limit: 10 })) as Any[];
+    const theirs = (await w.positionsOf(m.id)).filter((x: Any) => x.userId === p);
+    ok("16.x7a · ⭐ X7 · a trigger that holds BOTH sides when the counter fires → SKIPPED(PENALTY_BOX), nothing placed",
+      trig.ok === true && hedge.ok === true && (await is(counter.id, "SKIPPED", "PENALTY_BOX")) && (await houseOn(m.id)).length === 0, j({ out, trig: trig.ok, hedge: hedge.ok, row: await row(counter.id) }));
+    ok("16.x7b · …the account is penalty-boxed once, with cause BOTH_SIDES, naming this counter",
+      boxed.length === 1 && boxed[0].payload?.cause === "BOTH_SIDES" && boxed[0].payload?.intentId === counter.id, j(boxed.map((e: Any) => e.payload)));
+    ok("16.x7c · …and the player's own two stakes are untouched: both OPEN, the same amounts",
+      theirs.length === 2 && theirs.every((x: Any) => x.status === "OPEN") && theirs.map((x: Any) => x.stake).sort((a: number, z: number) => a - z).join() === "1000,10000",
+      j(theirs.map((x: Any) => `${x.side}:${x.stake}:${x.status}`)));
+  }
+  {
+    // CONTROL (16.11's shape): a trigger on ONE side → the counter still places, and nobody is boxed.
+    const b = await botWith();
+    const m = await w.poll();
+    const p = await w.user({ balance: 100_000 });
+    const trig = await w.svc.buyPosition(p, { marketId: m.id, side: "YES", stake: 10_000, idempotencyKey: crypto.randomUUID() });
+    const counter = await w.intent(b, m.id, { kind: "COUNTER", side: "NO", stakeTzs: 5_000, triggerPositionId: trig.data?.positionId, triggerUserId: p });
+    const out = await fire(counter, recorder().alerts);
+    const boxed = (await S.houseBotEventStore.listByKinds(["PENALTY_BOXED"], { userId: p, limit: 10 })) as Any[];
+    ok("16.x7d · CONTROL · a trigger on ONE side → the counter places and the account is not boxed",
+      out.outcome?.kind === "placed" && (await is(counter.id, "PLACED", null)) && boxed.length === 0, j({ out, boxed: boxed.length }));
+  }
+  {
+    // A house-marked position on the trigger's account is not the player's choice: it never makes "both sides" (ruling 159).
+    const { HOLDER_HASH } = (await import("./house-bot-world.mts")) as Any;
+    const b = await botWith();
+    const m = await w.poll();
+    const p = await w.user({ balance: 100_000, passwordHash: HOLDER_HASH });
+    const heldBot = await w.bot({ holderId: p });
+    const opener = await w.intent(heldBot, m.id, { kind: "OPENER", side: "NO", stakeTzs: 1_000 });
+    const placedOpener = await w.place(heldBot, opener);
+    const trig = await w.svc.buyPosition(p, { marketId: m.id, side: "YES", stake: 10_000, idempotencyKey: crypto.randomUUID() });
+    const counter = await w.intent(b, m.id, { kind: "COUNTER", side: "NO", stakeTzs: 2_000, triggerPositionId: trig.data?.positionId, triggerUserId: p });
+    const out = await fire(counter, recorder().alerts);
+    const boxed = (await S.houseBotEventStore.listByKinds(["PENALTY_BOXED"], { userId: p, limit: 10 })) as Any[];
+    const r = await row(counter.id);
+    ok("16.x7e · a house-marked NO beside the player's own YES is NOT both sides at fire: no box, not PENALTY_BOX (the seam decides the rest)",
+      placedOpener.ok === true && trig.ok === true && boxed.length === 0 && r?.reasonCode !== "PENALTY_BOX", j({ opener: placedOpener.ok, trig: trig.ok, out, row: r?.status, code: r?.reasonCode, boxed: boxed.length }));
+  }
+  {
+    // An opposite stake the player already SOLD is not a side they hold: only OPEN positions make "both sides".
+    const b = await botWith();
+    const m = await w.poll();
+    const p = await w.user({ balance: 100_000 });
+    const sold = await w.svc.buyPosition(p, { marketId: m.id, side: "NO", stake: 1_000, idempotencyKey: crypto.randomUUID() });
+    // A fixture of STATE, declared: this poll has no exit runway (16.11's shape, so the counter can place), so the sale is
+    // written as the status a real cash-out leaves — the read under test looks only at status and side.
+    const soldRow = sold.ok ? await w.mdal.positionStore.get(sold.data.positionId) : null;
+    if (soldRow) await w.mdal.positionStore.set({ ...soldRow, status: "CASHED_OUT", settledAt: new Date().toISOString() });
+    const cashed = { ok: (await w.mdal.positionStore.get(sold.data?.positionId))?.status === "CASHED_OUT" };
+    const trig = await w.svc.buyPosition(p, { marketId: m.id, side: "YES", stake: 10_000, idempotencyKey: crypto.randomUUID() });
+    const counter = await w.intent(b, m.id, { kind: "COUNTER", side: "NO", stakeTzs: 5_000, triggerPositionId: trig.data?.positionId, triggerUserId: p });
+    const out = await fire(counter, recorder().alerts);
+    const boxed = (await S.houseBotEventStore.listByKinds(["PENALTY_BOXED"], { userId: p, limit: 10 })) as Any[];
+    ok("16.x7f · a NO the player already cashed out plus an open YES is ONE side: the counter places, nobody is boxed",
+      sold.ok === true && cashed?.ok === true && trig.ok === true && out.outcome?.kind === "placed" && boxed.length === 0,
+      j({ sold: sold.ok, cashed: cashed?.ok ? "ok" : cashed, trig: trig.ok, out, boxed: boxed.length }));
+  }
   {
     const b = await botWith();
     const { m } = await lockedPoll(10_000);

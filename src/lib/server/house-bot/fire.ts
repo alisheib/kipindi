@@ -24,7 +24,7 @@ import { inAdmission } from "../admission";
 import { positionStore } from "../market-dal";
 import { placeHouseBet, stakeBoundsForMarket } from "../market-service";
 import { houseBotIntentStore, houseBotRuntimeStore, houseSeamStore, pressStore, targetStore, type StoredHouseBotIntent } from "../house-bot-dal";
-import { applyOutcome, stopBot, type AppliedOutcome, type BetAnswer, type EngineAlerts } from "./outcomes";
+import { applyOutcome, boxAccount, stopBot, type AppliedOutcome, type BetAnswer, type EngineAlerts } from "./outcomes";
 import { maintenanceOn, readBotAndHolder, readControl } from "./control";
 import { engineState } from "./engine";
 import { infoBlackout } from "./blackout";
@@ -176,6 +176,14 @@ async function fire(row: StoredHouseBotIntent, deps: FireDeps): Promise<FireResu
     if (intent.kind === "COUNTER") {
       const trigger = intent.triggerPositionId ? await positionStore.get(intent.triggerPositionId) : null;
       if (!trigger || trigger.status !== "OPEN" || trigger.marketId !== intent.marketId) return apply(intent, deps, refusal("house_trigger_gone"));
+      // X7 · rulings 136, 159: the trigger account now holds BOTH sides with its own money (house-marked positions are not
+      // its choice, as trigger.ts R5 reads them) → box the account and skip. The player's stakes are never touched; the
+      // seam's TRIGGER_BOTH_SIDES refusal stays behind this as the in-lock backstop.
+      const own = (await positionStore.listForUserAndMarket(trigger.userId, intent.marketId)).filter((p) => p.houseBotId == null && p.status === "OPEN");
+      if (own.some((p) => p.side === "YES") && own.some((p) => p.side === "NO")) {
+        await boxAccount({ userId: trigger.userId, houseBotId: intent.houseBotId, marketId: intent.marketId, cause: "BOTH_SIDES", intentId: intent.id }, deps.alerts);
+        return finish(intent, deps, "SKIPPED", "PENALTY_BOX");
+      }
     }
 
     // 14 · Up & Down closeness on a fresh price (A15)
