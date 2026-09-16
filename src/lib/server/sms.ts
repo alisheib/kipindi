@@ -200,7 +200,13 @@ function recordTestSms(to: string, body: string) {
 /* ══ THE TRANSPORTS ══════════════════════════════════════════════════════════ */
 
 /** One chunk's verdict, whoever carried it. */
-type ChunkOutcome = { ok: boolean; detail: string; message: string; balance: number | null };
+/** One chunk's verdict, whoever carried it.
+ *  ⭐ `ambiguous` IS A FIELD, NOT AN INFERENCE. It used to be derived here by regex-matching
+ *  the transport's own message text for "transport failure" — a magic string crossing a
+ *  module boundary. Reword that message in `sms-blackball.ts` and every lost reply would
+ *  silently become FAILED instead of UNKNOWN, and FAILED invites a retry: a second SMS at a
+ *  second charge. The transport knows whether the request completed, so it says so. */
+type ChunkOutcome = { ok: boolean; ambiguous: boolean; detail: string; message: string; balance: number | null };
 type SmsTransport = {
   name: SmsProviderId;
   sendChunk(msgs: { msisdn: string; text: string; reference: string }[]): Promise<ChunkOutcome>;
@@ -224,7 +230,7 @@ const consoleTransport: SmsTransport = {
       throw new SmsError("NOT_CONFIGURED", "the console provider delivers nothing in production");
     }
     for (const m of msgs) console.log(`\n[SMS → ${m.msisdn}]\n  ${m.text}\n  (ref: ${m.reference})\n`);
-    return { ok: true, detail: "console", message: "console", balance: null };
+    return { ok: true, ambiguous: false, detail: "console", message: "console", balance: null };
   },
 };
 
@@ -236,7 +242,9 @@ const blackballTransport: SmsTransport = {
     const problem = senderIdProblem(env.senderId);
     if (problem) throw new SmsError("NOT_CONFIGURED", `blackball: sender ID ${problem}`);
     const r = await blackballSend(env, msgs);
-    return { ok: r.ok, detail: describeBlackball(r), message: r.message, balance: r.balance };
+    // `transport` is set ONLY when no response arrived — the authoritative signal for "we do
+    // not know whether the gateway has this batch".
+    return { ok: r.ok, ambiguous: r.transport !== null, detail: describeBlackball(r), message: r.message, balance: r.balance };
   },
 };
 
@@ -447,7 +455,7 @@ export async function sendBatch(messages: SmsOutbound[]): Promise<SmsBatchOutcom
     if (outcome.balance !== null) balance = outcome.balance;
     const settledAt = new Date().toISOString();
     // A reply we could not complete is AMBIGUOUS; a reply that said no is a refusal.
-    const ambiguous = !outcome.ok && /transport failure/.test(outcome.message);
+    const ambiguous = !outcome.ok && outcome.ambiguous;
 
     for (const p of group) {
       if (outcome.ok) {

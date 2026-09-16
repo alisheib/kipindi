@@ -173,6 +173,12 @@ const auditCount = (action: string) => getAuditPage({ limit: 20_000 }).filter((a
   ok("§5 a hung gateway resolves as SMS_UNDELIVERABLE at the timeout, not never",
     r.ok === false && r.code === "SMS_UNDELIVERABLE" && elapsed < 2_000, `elapsed=${elapsed}ms`);
   ok("§5 …and leaves no live code behind", (await activeFor(phone)) === 0);
+  // ⛔ A LOST REPLY IS AMBIGUOUS, NOT A REFUSAL. The gateway may hold the message and bill
+  // for it; we only lost our half of the conversation. FAILED would invite a retry, and a
+  // retry is a second SMS at a second charge. This used to be decided by regex-matching the
+  // transport's message text — reword that message and every lost reply became FAILED.
+  const lost = (await db.smsMessage.listRecent(50)).find((m) => m.msisdn === phone.replace(/\D/g, ""));
+  ok("§5 ⛔ a lost reply is recorded UNKNOWN, never FAILED", lost?.status === "UNKNOWN", lost?.status ?? "(no row)");
   clearSms();
 }
 

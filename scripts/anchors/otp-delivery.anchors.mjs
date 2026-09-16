@@ -80,4 +80,15 @@ export const MUTATIONS = [
     to: `    msisdn: m.to,`,
     expect: `§6 …and stores the msisdn in the gateway's wire form, not E.164`,
   },
+  {
+    // 🔴 THE STRING COUPLING, BROKEN THE WAY IT WOULD ACTUALLY BREAK. Ambiguity was once
+    // inferred by regex-matching the transport's message text. This models the day somebody
+    // rewords that message: the facade stops recognising a lost reply, records FAILED, and
+    // FAILED invites a retry — a second SMS at a second charge.
+    name: "sms.ts — a lost reply stops being recognised as ambiguous",
+    file: "src/lib/server/sms.ts",
+    from: `    const ambiguous = !outcome.ok && outcome.ambiguous;`,
+    to: `    const ambiguous = !outcome.ok && /request did not complete/.test(outcome.message);`,
+    expect: `§5 ⛔ a lost reply is recorded UNKNOWN, never FAILED`,
+  },
 ];
