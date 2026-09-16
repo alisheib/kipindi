@@ -62,6 +62,13 @@ export type DecideBot = {
   marketHeld: boolean;
   /** A money or staff-chosen cap that already refuses any stake here, from the loader's pre-check. */
   capPrecheck: EngineCode | null;
+  /**
+   * ⭐ THE REACT ROLL, 1–100, DRAWN BY THE CALLER — ONCE PER PASS PER BOT (ruling 164). It is not drawn in here
+   * because `decideWithFlags` runs this function AGAIN after it loads the bot's flags, and a second draw turned a
+   * 60% bot into a 36% one. Optional in the type because FILL and OPENER never react; `decideCounter` THROWS when a
+   * bot reaches its roll without one, so a caller that forgets fails loudly instead of silently reacting.
+   */
+  reactRoll?: number;
 };
 
 export type DecideTarget = {
@@ -360,7 +367,11 @@ export function decideCounter(input: CounterInput, deps: { randomInt: RandomInt 
     if (!code && product === "UPDOWN") code = udCloseness(view, input.price, bot.rules.updown.closenessPct);
     if (!code && bot.marketHeld) code = "MARKET_HELD";
     if (!code && bot.capPrecheck) code = bot.capPrecheck;
-    if (!code && deps.randomInt(1, 100) > bot.rules.counter.reactProbabilityPct) code = "NOT_REACTING";
+    if (!code) {
+      // Ruling 164 · the caller draws this, once per pass per bot. No fallback draw: a missing roll is a caller defect.
+      if (typeof bot.reactRoll !== "number") throw new Error("house-bot decide: DecideBot.reactRoll is drawn by the caller (ruling 164)");
+      if (bot.reactRoll > bot.rules.counter.reactProbabilityPct) code = "NOT_REACTING";
+    }
     let stake = 0;
     let asked = 0;
     if (!code) {

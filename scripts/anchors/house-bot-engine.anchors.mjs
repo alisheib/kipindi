@@ -345,4 +345,25 @@ export const MUTATIONS = [
     suite: "engine-pg",
     sections: "18",
   },
+  // ── The 3-lens review's confirmed findings (rulings 164, 165) ─────────────────────────────────────────────────
+  // 164 · the roll moves back inside the pure decision, so the flag reload re-draws it and a 60% bot reacts at 36%.
+  {
+    name: "review-164 · the react probability is drawn inside the decision again",
+    file: DECIDE,
+    from: "    if (!code) {\n      // Ruling 164 · the caller draws this, once per pass per bot. No fallback draw: a missing roll is a caller defect.\n      if (typeof bot.reactRoll !== \"number\") throw new Error(\"house-bot decide: DecideBot.reactRoll is drawn by the caller (ruling 164)\");\n      if (bot.reactRoll > bot.rules.counter.reactProbabilityPct) code = \"NOT_REACTING\";\n    }",
+    to: "    if (!code && deps.randomInt(1, 100) > bot.rules.counter.reactProbabilityPct) code = \"NOT_REACTING\";",
+    expect: "18.164a · ⭐ ruling 164 · the flag reload does not re-draw the react roll",
+    suite: "engine-mem",
+    sections: "18",
+  },
+  // 165 · fire stops re-reading its claim when it writes nothing back, so a stale stake reaches H0 as a key mismatch.
+  {
+    name: "review-165 · fire places without re-reading the claim it holds",
+    file: FIRE,
+    from: "    } else {\n      // Ruling 165 · with nothing to write back, nothing else re-reads this row between the claim and the bet. A worker\n      // that stalled past CLAIM_TTL_SEC (its heartbeats are swallowed on purpose, step 2) would otherwise place the stake\n      // it read minutes ago, and H0 would answer KEY_MISMATCH — a SECURITY outcome that switches house bots off for\n      // everyone. A claim that moved is LOST, which is what the clamp branch already answers.\n      const fresh = await houseBotIntentStore.get(intent.id);\n      if (!fresh || fresh.status !== \"CLAIMED\" || fresh.claimedBy !== deps.me || fresh.stakeTzs !== intent.stakeTzs) return { kind: \"lost\" };\n    }",
+    to: "    }",
+    expect: "16.47 · ⭐ ruling 165 · the row's stake changed under this fire → LOST",
+    suite: "engine-mem",
+    sections: "16",
+  },
 ];

@@ -271,7 +271,7 @@ function rulesOf(o: Any = {}): Any {
 }
 function botOf(o: Any = {}): Any {
   return merge({ botId: "hb_a", botUserId: "usr_bot_a", label: "Bot A", rules: rulesOf(), stakeMinTzs: 1_000, stakeMaxTzs: 100_000, capOpenExposureTzs: 1e6,
-    openExposure: 0, lastPlacedAt: null, scopeFrom: at(-86_400), marketHeld: false, capPrecheck: null }, o);
+    openExposure: 0, lastPlacedAt: null, scopeFrom: at(-86_400), marketHeld: false, capPrecheck: null, reactRoll: 1 }, o);
 }
 const minRand = (min: number) => min;
 function ctrIn(o: Any = {}): Any {
@@ -321,6 +321,21 @@ await guard("7", () => {
 
   const bots = [botOf({ botId: "hb_b", openExposure: 500_000 }), botOf({ botId: "hb_c", openExposure: 100_000, lastPlacedAt: at(-10) }), botOf({ botId: "hb_d", openExposure: 100_000, lastPlacedAt: at(-60) })];
   ok("7.17 · PLAN §4.4 bot choice: lowest exposure share, then least recent bet, then id", j(DE.orderBots(bots).map((b: Any) => b.botId)) === j(["hb_d", "hb_c", "hb_b"]));
+  // Ruling 164 · the react roll is the CALLER's, drawn once per pass per bot. `reactProbabilityPct` defaults to 60.
+  const at60 = () => rulesOf({ counter: { reactProbabilityPct: 60 } });
+  const rollAt = (roll: Any) => DE.decideCounter(ctrIn({ bots: [botOf({ reactRoll: roll, rules: at60() })] }), { randomInt: minRand });
+  ok("7.37 · ⭐ ruling 164 · a react roll ABOVE the bot's probability → SKIPPED(NOT_REACTING)",
+    rollAt(61).row?.status === "SKIPPED" && rollAt(61).row?.reasonCode === "NOT_REACTING", j(rollAt(61).row));
+  ok("7.38 · …the boundary reacts: a roll EQUAL to the probability is a COUNTER, and 1 is too",
+    rollAt(60).row?.status === "PENDING" && rollAt(60).row?.kind === "COUNTER" && rollAt(1).row?.status === "PENDING",
+    j({ at60: rollAt(60).row?.status, at1: rollAt(1).row?.status }));
+  ok("7.39 · ⛔ a bot that reaches its roll WITHOUT one throws — the pure decision never draws it itself",
+    (() => {
+      const noRoll = botOf({ rules: at60() });
+      delete noRoll.reactRoll; // `merge` keeps the default when a key is undefined, so the key itself has to go
+      try { DE.decideCounter(ctrIn({ bots: [noRoll] }), { randomInt: minRand }); return false; }
+      catch (e) { return /reactRoll is drawn by the caller/.test(String((e as Error).message)); }
+    })());
   const boxed = DE.decideCounter(ctrIn({ filtered: "PENALTY_BOX" }), { randomInt: minRand });
   ok("7.18 · a penalty-boxed trigger leaves ONE SKIPPED(PENALTY_BOX) row", boxed.row && boxed.row.status === "SKIPPED" && boxed.row.reasonCode === "PENALTY_BOX", j(boxed.row));
   const heldTarget = DE.decideCounter(ctrIn({ target: tgt, bots: [botOf({ marketHeld: true }), botOf({ botId: "hb_z" })] }), { randomInt: minRand });
@@ -2019,6 +2034,29 @@ await guard("16", async () => {
       !ids.includes(stale.id) && (await is(stale.id, "PENDING", null)) && ids.includes(fresh.id), j({ ids, stale: stale.id, fresh: fresh.id }));
     await S.houseBotIntentStore.cancelLive({ all: true }, "MASTER_OFF");
   }
+
+  /* ── 16.47 ruling 165 · a claim that MOVED is lost, never a key mismatch ── */
+  {
+    // Nothing else live: this block fires a row whose stake another worker changed under it.
+    await S.houseBotIntentStore.cancelLive({ all: true }, "MASTER_OFF");
+    const b = await botWith();
+    const { m } = await lockedPoll(10_000);
+    const i = await w.intent(b, m.id, FILL({ stakeTzs: 2_000 }));
+    // What a re-claiming worker's own fire does at step 16 (MON-02): it clamps the row. This fire still holds 2,000.
+    const moved = await S.houseBotIntentStore.clampStake(i.id, ME, 1_000);
+    const rec = recorder();
+    const out = await fire(i, rec.alerts);
+    const house = await houseOn(m.id);
+    ok("16.47 · ⭐ ruling 165 · the row's stake changed under this fire → LOST: nothing placed, and no SECURITY alert switches house bots off",
+      moved?.stakeTzs === 1_000 && out.kind === "lost" && house.length === 0 && rec.count("security") === 0,
+      j({ out, moved: moved?.stakeTzs, house: house.length, security: rec.count("security") }));
+    const { m: m2 } = await lockedPoll(10_000);
+    const i2 = await w.intent(b, m2.id, FILL({ stakeTzs: 2_000 }));
+    const out2 = await fire(i2, recorder().alerts);
+    ok("16.48 · CONTROL · the same fire on an untouched row places, so 16.47 is not vacuous",
+      out2.kind === "outcome" && out2.outcome?.kind === "placed" && (await houseOn(m2.id)).length === 1, j(out2));
+    await S.houseBotIntentStore.cancelLive({ all: true }, "MASTER_OFF");
+  }
 });
 
 /* ═══ §17 · the planner (N1 §4.3 pass order, N1 §4.5, N2 §4 step 9, A16, F4, F5, PLAN §3; rulings 71–100, 111–112) ═══ */
@@ -3309,6 +3347,37 @@ await guard("18", async () => {
         state.hook.cache = saved.cache;
       }
     }
+  }
+
+  // ── Ruling 164 · the flag reload must not RE-DRAW the react roll ───────────────────────────────────────────────
+  // `decideWithFlags` runs the decision again once a bot's flags are loaded. When the roll lived inside the pure
+  // function, that second run re-rolled and a 60% bot reacted at 36%. The stub below returns 1 for the FIRST 1–100
+  // draw and 100 for every later one, so this stake is countered only while the roll is drawn once.
+  {
+    const rules164 = trigRules();
+    rules164.counter.reactProbabilityPct = 60; // ⛔ at the fixture's default of 100 every roll reacts and this cannot fail
+    const b164 = await soloBot({ rules: rules164 });
+    await S.houseBotRuntimeStore.upsert(K.RUNTIME_KEY.bot(b164.botId), { scopeFrom: w.iso(-3_600_000) });
+    await S.houseBotRuntimeStore.upsert(K.RUNTIME_KEY.global, { scopeFrom: w.iso(-3_600_000) });
+    // Drain whatever earlier blocks left decidable, so the pass under test decides exactly this stake (every decided
+    // row is anchored, and `triggerPage` skips an anchored stake).
+    await sweep(recorder().alerts);
+    const m164 = await w.poll();
+    const s164 = await stakeOn(m164.id, "YES", 10_000, { ageMs: 10_000 });
+    let rolls = 0;
+    const firstReacts = (min: number, max: number) => (min === 1 && max === 100 ? (++rolls === 1 ? 1 : 100) : min);
+    for (let pass = 0; pass < 6 && !(await counterOf(s164.positionId)); pass++) await sweep(recorder().alerts, { randomInt: firstReacts });
+    const row164 = await counterOf(s164.positionId);
+    ok("18.164a · ⭐ ruling 164 · the flag reload does not re-draw the react roll: a first roll of 1 at 60% → a PENDING COUNTER",
+      row164?.status === "PENDING" && row164?.kind === "COUNTER" && rolls >= 1, j({ rolls, row: row164 }));
+    const m164b = await w.poll();
+    const s164b = await stakeOn(m164b.id, "YES", 10_000, { ageMs: 10_000 });
+    let rollsB = 0;
+    const alwaysRefuses = (min: number, max: number) => (min === 1 && max === 100 ? (rollsB++, 100) : min);
+    for (let pass = 0; pass < 6 && !(await counterOf(s164b.positionId)); pass++) await sweep(recorder().alerts, { randomInt: alwaysRefuses });
+    const row164b = await counterOf(s164b.positionId);
+    ok("18.164b · CONTROL · a roll ABOVE the probability still refuses — SKIPPED(NOT_REACTING), so 18.164a is not vacuous",
+      row164b?.status === "SKIPPED" && row164b?.reasonCode === "NOT_REACTING" && rollsB >= 1, j({ rollsB, row: row164b }));
   }
 
   // ── L6 · a double sweep at leader failover (ruling 103) ────────────────────────────────────────────────────────

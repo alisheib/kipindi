@@ -252,11 +252,22 @@ async function decideWithFlags(base: DecideBase, target: TargetPrep | null, s: D
     ...base,
     bots: s.f.bots.map((b) => {
       const fl = flags.get(b.botId);
-      return fl ? { ...b, marketHeld: fl.marketHeld, capPrecheck: fl.capPrecheck } : b;
+      return { ...b, reactRoll: rollFor(b.botId), ...(fl ? { marketHeld: fl.marketHeld, capPrecheck: fl.capPrecheck } : {}) };
     }),
     // Before its bot is loaded the room is not yet known; the row that would use it forces the load below.
     target: target ? { ...target, staffChosenRoomTzs: flags.get(target.houseBotId)?.roomTzs ?? Number.POSITIVE_INFINITY } : null,
   });
+  // Ruling 164 · one react roll per bot per pass. The decision is re-run once a bot's flags are loaded, and a second
+  // draw would compound the configured probability (p²). Memoised by botId, not replayed by position: a bot its flags
+  // refuse consumes fewer draws on the later run.
+  const rolls = new Map<string, number>();
+  const rollFor = (botId: string): number => {
+    const seen = rolls.get(botId);
+    if (seen != null) return seen;
+    const v = s.randomInt(1, 100);
+    rolls.set(botId, v);
+    return v;
+  };
   let decided = decideCounter(input(), { randomInt: s.randomInt });
   for (let i = 0; i <= s.f.bots.length; i++) {
     const r = decided.row;

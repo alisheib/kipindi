@@ -237,6 +237,13 @@ async function fire(row: StoredHouseBotIntent, deps: FireDeps): Promise<FireResu
       const clamped = await houseBotIntentStore.clampStake(intent.id, deps.me, recomputed);
       if (!clamped) return { kind: "lost" };
       intent = clamped;
+    } else {
+      // Ruling 165 · with nothing to write back, nothing else re-reads this row between the claim and the bet. A worker
+      // that stalled past CLAIM_TTL_SEC (its heartbeats are swallowed on purpose, step 2) would otherwise place the stake
+      // it read minutes ago, and H0 would answer KEY_MISMATCH — a SECURITY outcome that switches house bots off for
+      // everyone. A claim that moved is LOST, which is what the clamp branch already answers.
+      const fresh = await houseBotIntentStore.get(intent.id);
+      if (!fresh || fresh.status !== "CLAIMED" || fresh.claimedBy !== deps.me || fresh.stakeTzs !== intent.stakeTzs) return { kind: "lost" };
     }
   } catch (e) {
     return apply(intent, deps, { thrown: e });
