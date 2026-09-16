@@ -29,6 +29,7 @@
  */
 import { createHmac, timingSafeEqual, randomBytes } from "node:crypto";
 import type { PaymentProvider } from "./payments";
+import { toMsisdn255 } from "@/lib/phone-normalize";
 
 // ── Credentials ───────────────────────────────────────────────────────────────
 export type SelcomEnv = {
@@ -158,13 +159,16 @@ export function verifySelcomCallback(opts: {
 // ── Phone / MNO normalisation ─────────────────────────────────────────────────
 
 /** Normalise a Tanzanian MSISDN to Selcom's `255XXXXXXXXX` (12 digits, no `+`,
- *  no leading 0). Accepts `07…`, `+2557…`, `2557…`, `7…`. */
+ *  no leading 0). Accepts `07…`, `+2557…`, `2557…`, `7…`.
+ *
+ *  ⛔ THE RULE ITSELF NOW LIVES IN `phone-normalize.ts` AS `toMsisdn255`, because
+ *  it is not Selcom's rule — it is the wire format the SMS gateway wants too, and a
+ *  second hand-written copy is how the two rails drift. This name is kept so the
+ *  nine payment call sites and `test:selcom` read unchanged; the five behavioural
+ *  assertions in `scripts/selcom-adapter.test.mts:56-60` are what prove the move
+ *  changed nothing. */
 export function toSelcomMsisdn(raw: string): string {
-  const d = raw.replace(/\D/g, "");
-  if (d.startsWith("255")) return d;
-  if (d.startsWith("0")) return "255" + d.slice(1);
-  if (d.length === 9) return "255" + d;
-  return d;
+  return toMsisdn255(raw);
 }
 
 /** Map our MNO enum → Selcom wallet-cashin `utilitycode` (disbursement/payout).

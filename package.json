@@ -795,7 +795,9 @@
     "qa:rules-pages": "node scripts/live/rules-pages-drive.mjs",
     "qa:wallet-empty-escape": "node scripts/live/wallet-empty-escape-drive.mjs",
     "ops:e266-eth-zh-icon": "tsx scripts/live/ops/e266-eth-zh-icon.mts",
-    "qa:support-shots": "node scripts/live/support-surface-shots.mjs"
+    "qa:support-shots": "node scripts/live/support-surface-shots.mjs",
+    "test:blackball": "tsx scripts/blackball-adapter.test.mts",
+    "red:blackball": "node scripts/red-blackball.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",

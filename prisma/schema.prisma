@@ -2590,3 +2590,83 @@ model SiteVisitSource {
   @@unique([day, referrer, source, medium, campaign])
   @@index([day])
 }
+
+// ============================================================================
+// SMS TRANSPORT LOG
+// ============================================================================
+
+/// Which of OUR lanes a message belongs to. Drives the cost floor — a campaign is
+/// refused on a low float, a login code never is — and tells a delivery receipt
+/// what it is allowed to act on.
+enum SmsPurpose {
+  OTP
+  INVITE
+  OPS
+}
+
+/// ⭐ "THE GATEWAY TOOK IT" AND "THE HANDSET GOT IT" ARE DIFFERENT FACTS, AND THIS
+/// ENUM REFUSES TO MERGE THEM. E-330 is what happens when they are one event: the
+/// console stub returned normally, the facade took the success branch, and
+/// `sms.delivered` went into the HMAC audit chain for a message that never left the
+/// building. ACCEPTED is the gateway's receipt; DELIVERED needs a delivery report.
+enum SmsStatus {
+  /// Row written, request not yet answered. A crash between the two leaves this.
+  QUEUED
+  /// The gateway answered `status:true`. It has the message — nothing more.
+  ACCEPTED
+  /// A delivery receipt reported success.
+  DELIVERED
+  /// The gateway refused it, or a receipt reported failure.
+  FAILED
+  /// ⛔ AMBIGUOUS, NOT FAILED. The request never completed, so the gateway may hold
+  /// the message and bill for it. Never retried blindly — that would be a second SMS
+  /// at a second charge. A receipt settles it if one arrives.
+  UNKNOWN
+}
+
+/// Every SMS this platform attempts, keyed by the `reference` we mint and hand to
+/// the gateway.
+///
+/// ⛔ WHY THIS TABLE HAS TO EXIST. A Blackball delivery receipt carries the
+/// reference and nothing else, and arrives minutes later — possibly at a different
+/// container. `smsHealth` is per-process and volatile; the audit chain is not
+/// indexed by reference. Without a row keyed on it a callback can only be
+/// acknowledged and thrown away, which makes registering a callback URL theatre.
+///
+/// ⛔ THE MESSAGE BODY IS NEVER STORED. It carries the OTP. `bodyLen` is what a cost
+/// or truncation question actually needs; the text is not, and a table holding it
+/// would be the richest credential store on the platform.
+model SmsMessage {
+  /// The gateway's floor is 20 characters — see `sms-blackball.ts`.
+  reference    String      @id
+  /// Bare `255XXXXXXXXX`, exactly as it went on the wire.
+  msisdn       String
+  purpose      SmsPurpose
+  provider     String
+  senderId     String
+  bodyLen      Int
+  status       SmsStatus   @default(QUEUED)
+  /// The gateway's own `message`, scrubbed and truncated. Never the body.
+  providerMsg  String?
+  /// ⭐ THE DELIVERY RECEIPT'S RAW STATUS TOKEN, UNMAPPED AND UNJUDGED. Blackball has
+  /// not published its value set, so this column is how the real vocabulary gets
+  /// learned from production instead of guessed here. An unrecognised token leaves
+  /// `status` untouched and lands here.
+  dlrStatus    String?
+  dlrDesc      String?
+  /// The undocumented `balance` echoed on the reply that carried this message.
+  balanceTzs   Decimal?    @db.Decimal(18, 2)
+  attempts     Int         @default(0)
+  /// What the message is ABOUT, so a receipt can act on it. "InviteEntry" | "Otp".
+  targetType   String?
+  targetId     String?
+  createdAt    DateTime    @default(now())
+  sentAt       DateTime?
+  deliveredAt  DateTime?
+  failedAt     DateTime?
+
+  @@index([status, createdAt])
+  @@index([msisdn, createdAt])
+  @@index([createdAt])
+  @@index([targetType, targetId])
+}
