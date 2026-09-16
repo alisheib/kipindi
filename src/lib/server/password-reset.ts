@@ -11,6 +11,7 @@
  *   2. Admin-initiated: officer generates a temporary password directly
  *      (for support requests from users without email).
  */
+import { runOutsideLock } from "./locks";
 import { appUrl } from "@/lib/app-url";
 import { createHash } from "node:crypto";
 import { db } from "./store";
@@ -242,6 +243,10 @@ export async function consumeResetToken(
   // ⛔ The history columns ride in the SAME update as the hash (04 A4): the audit below is not awaited, and
   // a house-bot consent check that read it instead would wave through a password it never saw set.
   await db.user.update(user.id, { passwordHash: hash, passwordSalt: salt, passwordSetAt: new Date().toISOString(), passwordSetVia: "RESET_LINK" });
+  // A2 · the holder hook: a house bot on this account stops, or records the change (C4-SPEC ruling 127).
+  runOutsideLock(() => {
+    void import("./house-bot/holder-hook").then((m) => m.onHolderAccountChanged(user.id, "PASSWORD_RESET_LINK")).catch(() => {});
+  });
 
   audit({
     category: "AUTH",
@@ -273,6 +278,10 @@ export async function adminResetPassword(
   // OFFICER_TEMP in the same update (04 A4): support's password is not the holder's consent, and the
   // audit below is fire-and-forget.
   await db.user.update(userId, { passwordHash: hash, passwordSalt: salt, passwordSetAt: new Date().toISOString(), passwordSetVia: "OFFICER_TEMP" });
+  // A2 · the holder hook: a house bot on this account stops, or records the change (C4-SPEC ruling 127).
+  runOutsideLock(() => {
+    void import("./house-bot/holder-hook").then((m) => m.onHolderAccountChanged(userId, "PASSWORD_OFFICER_TEMP")).catch(() => {});
+  });
 
   audit({
     category: "ADMIN",
@@ -328,6 +337,10 @@ export async function changePassword(
   const salt = randomId(32);
   const hash = await hashPassword(newPassword, salt);
   await db.user.update(userId, { passwordHash: hash, passwordSalt: salt, passwordSetAt: new Date().toISOString(), passwordSetVia: "SELF_CHANGE" });
+  // A2 · the holder hook: a house bot on this account stops, or records the change (C4-SPEC ruling 127).
+  runOutsideLock(() => {
+    void import("./house-bot/holder-hook").then((m) => m.onHolderAccountChanged(userId, "PASSWORD_SELF_CHANGE")).catch(() => {});
+  });
 
   audit({
     category: "AUTH",

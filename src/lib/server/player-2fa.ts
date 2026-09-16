@@ -13,6 +13,7 @@
  *
  * Every transition is audited under SECURITY (mirrors the admin TOTP audit set).
  */
+import { runOutsideLock } from "./locks";
 import { provisionTotp, verifyTotp, removeTotp, hasTotp } from "./totp";
 import { generateBackupCodes, remainingBackupCodes, consumeBackupCode, clearBackupCodes } from "./backup-codes";
 import { db } from "./store";
@@ -33,6 +34,10 @@ export async function confirmPlayer2fa(userId: string, code: string): Promise<{ 
   const valid = await verifyTotp(userId, code);
   if (!valid) return { ok: false, error: "invalid-code" };
   await db.user.update(userId, { twoFactorEnabled: true });
+  // A2 · the holder hook: a house bot on this account stops, or records the change (C4-SPEC ruling 127).
+  runOutsideLock(() => {
+    void import("./house-bot/holder-hook").then((m) => m.onHolderAccountChanged(userId, "TWO_FA_ON")).catch(() => {});
+  });
   const backupCodes = await generateBackupCodes(userId);
   audit({ category: "SECURITY", action: "player.2fa.enabled", actorId: userId, targetType: "User", targetId: userId });
   return { ok: true, backupCodes };
@@ -75,6 +80,10 @@ export async function disablePlayer2fa(userId: string, code: string): Promise<{ 
   await removeTotp(userId);
   await clearBackupCodes(userId);
   await db.user.update(userId, { twoFactorEnabled: false });
+  // A2 · the holder hook: a house bot on this account stops, or records the change (C4-SPEC ruling 127).
+  runOutsideLock(() => {
+    void import("./house-bot/holder-hook").then((m) => m.onHolderAccountChanged(userId, "TWO_FA_OFF")).catch(() => {});
+  });
   audit({ category: "SECURITY", action: "player.2fa.disabled", actorId: userId, targetType: "User", targetId: userId });
   return { ok: true };
 }

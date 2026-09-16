@@ -25,7 +25,7 @@
  */
 import { db } from "./store";
 import { audit } from "./audit";
-import { withLock } from "./locks";
+import { runOutsideLock, withLock } from "./locks";
 import { isFinalRefusal } from "@/lib/kyc-refusal";
 import {
   currentFreezeReasons,
@@ -86,14 +86,32 @@ async function applyFreeze(userId: string, reason: WalletFreezeReason, add: bool
   });
 }
 
+/**
+ * A2 row 10 · a hold added or lifted is a holder change, but only when something actually changed: these wrappers
+ * are idempotent, and a second click writes nothing and must tell nobody.
+ *
+ * ⛔ `runOutsideLock`, not a bare call: the identity paths call these from inside their own `kyc:` lock, and a hook
+ * started there would inherit that transaction and read rows the caller has not committed (C4-SPEC §2's trap).
+ */
+function announceHolderFreeze(userId: string, r: FreezeOutcome): void {
+  if (!r.ok || !r.changed) return;
+  runOutsideLock(() => {
+    void import("./house-bot/holder-hook").then((m) => m.onHolderAccountChanged(userId, "WALLET_FREEZE")).catch(() => {});
+  });
+}
+
 /** Add one hold. The wallet becomes FROZEN (unless CLOSED). */
-export function addWalletFreeze(userId: string, reason: WalletFreezeReason, meta: FreezeMeta): Promise<FreezeOutcome> {
-  return applyFreeze(userId, reason, true, meta);
+export async function addWalletFreeze(userId: string, reason: WalletFreezeReason, meta: FreezeMeta): Promise<FreezeOutcome> {
+  const r = await applyFreeze(userId, reason, true, meta);
+  announceHolderFreeze(userId, r);
+  return r;
 }
 
 /** Lift one hold. The wallet becomes ACTIVE only if no other hold remains. */
-export function removeWalletFreeze(userId: string, reason: WalletFreezeReason, meta: FreezeMeta): Promise<FreezeOutcome> {
-  return applyFreeze(userId, reason, false, meta);
+export async function removeWalletFreeze(userId: string, reason: WalletFreezeReason, meta: FreezeMeta): Promise<FreezeOutcome> {
+  const r = await applyFreeze(userId, reason, false, meta);
+  announceHolderFreeze(userId, r);
+  return r;
 }
 
 /**

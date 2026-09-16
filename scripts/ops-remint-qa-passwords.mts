@@ -22,6 +22,8 @@
  * Read-your-write: every row is re-read and the new secret verified against the stored
  * hash before the password is printed. A password that cannot verify is not reported as set.
  */
+// house-bot: covered by L2 sweep — this writes account rows directly, so no in-app hook fires; the holder
+// sweep re-reads every bot holder once a minute and applies whatever changed (04 F8, A2).
 import { Client } from "pg";
 import { hashPassword, verifyPassword, randomId } from "../src/lib/server/crypto.ts";
 

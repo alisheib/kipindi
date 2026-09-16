@@ -17,6 +17,7 @@
  *  - Self-exclusion is one-way until expiry; the player CANNOT cancel it themselves
  *  - All state changes audited (COMPLIANCE category)
  */
+import { runOutsideLock } from "./locks";
 import { PLAY_SESSION_GAP_MS } from "@/lib/play-session";
 import type { Prisma } from "@prisma/client";
 import { audit } from "./audit";
@@ -246,6 +247,10 @@ export async function setLimits(userId: string, input: SetLimitInput) {
   }
 
   await db.responsible.upsert(next);
+  // A2 · the holder hook: a house bot on this account stops, or records the change (C4-SPEC ruling 127).
+  runOutsideLock(() => {
+    void import("./house-bot/holder-hook").then((m) => m.onHolderAccountChanged(userId, "LOSS_LIMIT_SET")).catch(() => {});
+  });
   audit({
     category: "COMPLIANCE",
     action: deferredIncrease ? "rg.limit.increase.deferred" : "rg.limit.changed",
@@ -306,6 +311,10 @@ export async function selfExclude(userId: string, period: keyof typeof SELF_EXCL
   // a served exclusion must lift THIS hold and no other (`wallet-freeze.ts`).
   await db.user.update(userId, { status: "SELF_EXCLUDED" });
   await addWalletFreeze(userId, "SELF_EXCLUSION", { actorId: userId, note: `self-exclusion · ${period}` });
+  // A2 · the holder hook: a house bot on this account stops, or records the change (C4-SPEC ruling 127).
+  runOutsideLock(() => {
+    void import("./house-bot/holder-hook").then((m) => m.onHolderAccountChanged(userId, "SELF_EXCLUDED")).catch(() => {});
+  });
   // Kill the session server-side so the block is immediate on every device,
   // not just whenever the idle/absolute timeout eventually fires.
   await revokeUserSessions(userId);
@@ -346,6 +355,10 @@ export async function coolOff(userId: string, period: keyof typeof COOLING_OFF_P
       ?? new Date().toISOString(),
   });
   await db.user.update(userId, { status: "COOLED_OFF" });
+  // A2 · the holder hook: a house bot on this account stops, or records the change (C4-SPEC ruling 127).
+  runOutsideLock(() => {
+    void import("./house-bot/holder-hook").then((m) => m.onHolderAccountChanged(userId, "COOLING_OFF")).catch(() => {});
+  });
   audit({
     category: "COMPLIANCE",
     action: "rg.cooling_off.activated",

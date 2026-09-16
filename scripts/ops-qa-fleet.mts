@@ -33,6 +33,8 @@
  * refuses to touch any row outside that block, and refuses any account that is not role
  * PLAYER; the guard reads the ROLE BACK OFF THE ROW rather than trusting a remembered list.
  */
+// house-bot: covered by L2 sweep — this writes account rows directly, so no in-app hook fires; the holder
+// sweep re-reads every bot holder once a minute and applies whatever changed (04 F8, A2).
 import { Client } from "pg";
 import { hashPassword, randomId } from "../src/lib/server/crypto.ts";
 

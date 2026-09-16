@@ -12,6 +12,7 @@
  * In production this writes to a `dsar_request` Postgres table; here it lives on
  * `globalThis.__50PICK_DSAR_QUEUE` so it survives module reloads in dev.
  */
+import { runOutsideLock } from "./locks";
 import { audit } from "./audit";
 import { db } from "./store";
 import type { StoredUser } from "./store";
@@ -92,6 +93,12 @@ export function fileDsarRequest(opts: { userId: string; type: DsarType; reason?:
   };
   queue.push(r);
   persistQueue();
+  // A2 row 14 · an ERASURE request stops a house bot on this account while we handle it (04 A5, C9).
+  if (r.type === "ERASURE") {
+    runOutsideLock(() => {
+      void import("./house-bot/holder-hook").then((m) => m.onHolderAccountChanged(opts.userId, "ERASURE_REQUEST")).catch(() => {});
+    });
+  }
   audit({
     category: "ADMIN",
     action: "privacy.dsar.filed",

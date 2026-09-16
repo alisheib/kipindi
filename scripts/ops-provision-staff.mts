@@ -42,6 +42,8 @@
  * Owner seat cannot be handed out through a form; a script must not be the loophole. The
  * Owner path is `ADMIN_BOOTSTRAP_PHONES` + first login, which is one-shot and audited.
  */
+// house-bot: covered by L2 sweep — this writes account rows directly, so no in-app hook fires; the holder
+// sweep re-reads every bot holder once a minute and applies whatever changed (04 F8, A2).
 import { readFileSync, existsSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import { db, type StoredUser, type StoredWallet } from "../src/lib/server/store.ts";

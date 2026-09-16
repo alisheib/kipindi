@@ -10,6 +10,7 @@
  *  - AML retention overrides: financial + KYC records persist for 7 years even
  *    after closure (handled in production by a scheduled redaction job).
  */
+import { runOutsideLock } from "./locks";
 import { audit, getAuditForActorDurable, type AuditEntry } from "./audit";
 import { db } from "./store";
 import { dsarUserView } from "./privacy";
@@ -110,6 +111,10 @@ export async function closeAccount(userId: string, reason?: string): Promise<Ser
   if (wallet && wallet.status !== "CLOSED") {
     await db.wallet.update(wallet.id, { status: "CLOSED" });
   }
+  // A2 · the holder hook: a house bot on this account stops, or records the change (C4-SPEC ruling 127).
+  runOutsideLock(() => {
+    void import("./house-bot/holder-hook").then((m) => m.onHolderAccountChanged(userId, "ACCOUNT_CLOSED")).catch(() => {});
+  });
 
   // Closure confirmation — dual-channel (email + in-app), best-effort. Sent
   // before the session is destroyed; both swallow their own errors so a mail

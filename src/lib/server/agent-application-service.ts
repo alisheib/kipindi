@@ -43,7 +43,7 @@ import { db, type StoredAgentApplication, type StoredAgentApplicationDocument, t
 import type { ServiceResult } from "./auth-service";
 import { audit } from "./audit";
 import { randomId, generateOtp, hashOtp, verifyOtp } from "./crypto";
-import { withLock } from "./locks";
+import { runOutsideLock, withLock } from "./locks";
 import { getAgentConfig, type AgentConfig, type FeeVatTreatment } from "./agent-config";
 import { ensureAffiliateAccount, isApprovedAgent, agentStandingFor, AGENT_CODE_PREFIX } from "./affiliate-service";
 import { getKycStatus, reviewKyc, validateDocImage } from "./kyc-service";
@@ -1261,7 +1261,9 @@ export async function approveAgent(officerId: string, applicationId: string, inp
     return { ok: false, error: `The commission rate must be above 0% and no more than ${cfg.maxCommissionPct}%.`, code: "INVALID" };
   }
   const rate = Math.round(pct * 100) / 100;
-  return withLock(`agent:${applicationId}`, async () => {
+  // A2 row 13 · the hook needs the account whose role moved, and that is only known inside the lock.
+  let promotedUserId = "";
+  const approved = await withLock(`agent:${applicationId}`, async () => {
     const o = await officerLoads(officerId, applicationId);
     if (!o.ok) return { ok: false as const, error: o.error, code: o.code };
     const { app, applicant } = o;
@@ -1306,6 +1308,7 @@ export async function approveAgent(officerId: string, applicationId: string, inp
       return { ok: false as const, error: "The agent record could not be written. Nothing was changed.", code: "INVALID" as const };
     }
     await db.user.update(app.userId, { role: "AGENT", roleChangedAt: now, roleChangedBy: officerId } as Partial<StoredUser>);
+    promotedUserId = app.userId;
     await db.agentApplication.update(app.id, { status: "APPROVED", reviewerId: officerId, reviewedAt: now, approvedRatePct: rate, agentCode: code, expiresAt: null });
     // The role rides in the signed session cookie — without this the new agent sees nothing
     // until they happen to sign in again.
@@ -1315,6 +1318,13 @@ export async function approveAgent(officerId: string, applicationId: string, inp
     sendEmailToUser(app.userId, (email) => ({ to: email, subject: "You are now a Verified 50pick Agent", html: agentApprovedHtml({ agentCode: code, commissionPct: rate, windowMonths: cfg.commissionWindowMonths }), tag: "agent-approved" })).catch(() => {});
     return { ok: true as const, data: { agentCode: code, commissionPct: rate } };
   });
+  // Fired after the lock returns (C4-SPEC ruling 127): a hook inside it would join its transaction.
+  if (approved.ok && promotedUserId) {
+    runOutsideLock(() => {
+      void import("./house-bot/holder-hook").then((m) => m.onHolderAccountChanged(promotedUserId, "ROLE_CHANGED")).catch(() => {});
+    });
+  }
+  return approved;
 }
 
 const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -1397,7 +1407,7 @@ export async function revokeAgent(officerId: string, userId: string, reason: str
   const clean = (reason ?? "").trim().slice(0, 300);
   if (clean.length < 10) return { ok: false, error: "A reason (≥ 10 characters) is required to end a partnership.", code: "INVALID" };
   if (officerId === userId) return { ok: false, error: "You cannot revoke yourself.", code: "INVALID" };
-  return withLock(`agent:${userId}`, async () => {
+  const revoked = await withLock(`agent:${userId}`, async () => {
     const acct = await db.affiliate.findByUserId(userId);
     if (!isApprovedAgent(acct)) return { ok: false as const, error: "Not an approved agent.", code: "NOT_FOUND" as const };
     const now = iso();
@@ -1415,6 +1425,13 @@ export async function revokeAgent(officerId: string, userId: string, reason: str
     sendEmailToUser(userId, (email) => ({ to: email, subject: "Your 50pick agent partnership has ended", html: agentRevokedHtml({ reapplyAt }), tag: "agent-revoked" })).catch(() => {});
     return { ok: true as const };
   });
+  // A2 row 13b · back to PLAYER is also a role change: the cause clears, and the bot still waits for Start.
+  if (revoked.ok) {
+    runOutsideLock(() => {
+      void import("./house-bot/holder-hook").then((m) => m.onHolderAccountChanged(userId, "ROLE_CHANGED")).catch(() => {});
+    });
+  }
+  return revoked;
 }
 
 /** Settle a PENDING accrual out of band (the excluded / cooling-off agent's payable). No wallet

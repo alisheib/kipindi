@@ -1,5 +1,6 @@
 "use server";
 
+import { runOutsideLock } from "@/lib/server/locks";
 import { safeError } from "@/lib/server/safe-error";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -121,6 +122,10 @@ export async function suspendPlayerAction(formData: FormData) {
     const prevStatus = target.status;
     await db.user.update(userId, { status: "SUSPENDED" });
     await revokeUserSessions(userId); // suspended players are signed out immediately
+    // A2 · the holder hook: a house bot on this account stops, or records the change (C4-SPEC ruling 127).
+    runOutsideLock(() => {
+      void import("@/lib/server/house-bot/holder-hook").then((m) => m.onHolderAccountChanged(userId, "SUSPENDED")).catch(() => {});
+    });
     audit({
       category: "ADMIN",
       action: "player.suspended",
@@ -196,6 +201,10 @@ export async function restorePlayerAction(formData: FormData) {
     if (selfExcluded) {
       await removeWalletFreeze(userId, "SELF_EXCLUSION", { actorId: officerId, note: reason, ref: { via: "rg.self_exclusion.reopened" } });
     }
+    // A2 · the holder hook: a house bot on this account stops, or records the change (C4-SPEC ruling 127).
+    runOutsideLock(() => {
+      void import("@/lib/server/house-bot/holder-hook").then((m) => m.onHolderAccountChanged(userId, "RESTORED")).catch(() => {});
+    });
 
     // ⚠️ `selfExclusionUntil` IS DELIBERATELY LEFT AS IT IS. It is the cross-operator
     // register's record that the exclusion happened; /admin/self-exclusions and

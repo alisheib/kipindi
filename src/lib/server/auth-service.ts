@@ -17,7 +17,7 @@ import { sms, otpMessage } from "./sms";
 import { LoginRequestSchema, OtpVerifySchema, RegisterSchema, emailAddress } from "./validators";
 import type { z } from "zod";
 import { createSession, destroySession, getSession, type SessionData } from "./session";
-import { withLock } from "./locks";
+import { runOutsideLock, withLock } from "./locks";
 import { sendEmail, sendEmailToUser, welcomeHtml, loginNotificationHtml } from "./email";
 import { displayLabel } from "@/lib/display-label";
 import { resolvePhoneEmail } from "./email-map";
@@ -961,7 +961,11 @@ export async function loginWithPassword(input: PasswordLoginInput): Promise<Serv
   // Serialise password verification + counter update per user to prevent
   // concurrent wrong-password logins from losing increment counts (two
   // requests both read failedLoginCount=3, both write 4 → should be 5).
-  return withLock(`login:${user.id}`, async () => {
+  // A2 rows 16 and 12b · what the lock did, read after it returns: a hook inside the lock would join its
+  // transaction and read a row nobody has committed yet.
+  let lockedOutNow = false;
+  let promotedNow = false;
+  const signedIn: ServiceResult<{ userId: string; role: string; twoFactorRequired?: boolean }> = await withLock(`login:${user.id}`, async () => {
   // Re-read user inside the lock for fresh failedLoginCount
   const freshUser = await db.user.findById(user.id) ?? user;
 
@@ -973,6 +977,7 @@ export async function loginWithPassword(input: PasswordLoginInput): Promise<Serv
       lockedUntil: shouldLock ? new Date(Date.now() + LOCKOUT_DURATION_MS).toISOString() : freshUser.lockedUntil ?? null,
     };
     await db.user.update(user.id, patch);
+    lockedOutNow = shouldLock;
     audit({
       category: "SECURITY",
       action: shouldLock ? "auth.login.locked_after_failures" : "auth.login.bad_password",
@@ -1049,6 +1054,7 @@ export async function loginWithPassword(input: PasswordLoginInput): Promise<Serv
     if (!alreadyPromoted) {
       await db.user.update(user.id, { role: "ADMIN", status: "ACTIVE" });
       effectiveRole = "ADMIN";
+      promotedNow = true;
       await saveConfig(key, true);
       audit({
         category: "SECURITY",
@@ -1112,6 +1118,19 @@ export async function loginWithPassword(input: PasswordLoginInput): Promise<Serv
 
   return { ok: true, data: { userId: user.id, role: effectiveRole } };
   }); // end withLock login
+  // A2 row 16 · a lockout never stops a bot (anyone could lock an account out) — it is a SECURITY bell only.
+  // A2 row 12b · a bootstrap promotion is a role change, and a role change stops the bot.
+  if (lockedOutNow) {
+    runOutsideLock(() => {
+      void import("./house-bot/holder-hook").then((m) => m.onHolderAccountChanged(user.id, "LOCKED_OUT")).catch(() => {});
+    });
+  }
+  if (promotedNow) {
+    runOutsideLock(() => {
+      void import("./house-bot/holder-hook").then((m) => m.onHolderAccountChanged(user.id, "ROLE_CHANGED")).catch(() => {});
+    });
+  }
+  return signedIn;
 }
 
 /**

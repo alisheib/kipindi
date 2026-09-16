@@ -13,6 +13,7 @@
  *
  * The pure validation lives in ../../../lib/server/staff-roles.ts so it can be unit-tested.
  */
+import { runOutsideLock } from "@/lib/server/locks";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/server/store";
 import { audit } from "@/lib/server/audit";
@@ -37,6 +38,10 @@ async function applyRoleChange(
     // Role lives in the signed session cookie — revoke so the next request re-mints it
     // with the new role (nav/route/action gates then apply immediately).
     await revokeUserSessions(target.id);
+    // A2 · the holder hook: a house bot on this account stops, or records the change (C4-SPEC ruling 127).
+    runOutsideLock(() => {
+      void import("@/lib/server/house-bot/holder-hook").then((m) => m.onHolderAccountChanged(target.id, "ROLE_CHANGED")).catch(() => {});
+    });
     audit({
       category: "COMPLIANCE",
       action: "staff.role_changed",

@@ -57,6 +57,22 @@ export async function register() {
     } catch (err) {
       console.error("[instrumentation] Failed to start lifecycle ticker:", err);
     }
+
+    // House bots — the engine (04 A23, A24; C4-SPEC rulings 42 and 46: nothing that can pause a bot runs before its
+    // alert channel exists, so the channel is built here and handed to every tick). `startHouseBotEngine` refuses on
+    // its own when the feature is switched off in the environment, when the schema is not ready, or when the
+    // database is not on UTC — this caller needs no check of its own.
+    try {
+      const { startHouseBotEngine } = await import("./lib/server/house-bot/engine");
+      const { workerTicks } = await import("./lib/server/house-bot/worker");
+      const { plannerTicks } = await import("./lib/server/house-bot/planner");
+      const { triggerTicks } = await import("./lib/server/house-bot/trigger");
+      const { houseEngineAlerts } = await import("./lib/server/house-bot/emitters");
+      const alerts = houseEngineAlerts();
+      await startHouseBotEngine({ ...workerTicks(alerts), ...plannerTicks(alerts), ...triggerTicks(alerts) });
+    } catch (err) {
+      console.error("[instrumentation] Failed to start the house-bot engine:", err);
+    }
   }
 }
 

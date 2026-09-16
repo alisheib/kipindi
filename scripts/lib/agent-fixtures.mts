@@ -16,6 +16,8 @@
  * so an ENGINE guard can put an approved agent on the table without the paperwork. It must
  * write nothing the real approval does not.
  */
+// house-bot: covered by L2 sweep — this writes account rows directly, so no in-app hook fires; the holder
+// sweep re-reads every bot holder once a minute and applies whatever changed (04 F8, A2).
 import { db, type StoredWallet } from "../../src/lib/server/store.ts";
 import { ensureAffiliateAccount, AGENT_CODE_PREFIX } from "../../src/lib/server/affiliate-service.ts";
 import { splitWithholding } from "../../src/lib/agent-commission.ts";

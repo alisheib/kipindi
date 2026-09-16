@@ -398,6 +398,24 @@ export async function onHolderAccountChangedWith(
   }
 }
 
+/**
+ * WHAT THE PLATFORM'S WRITERS CALL (A2, ruling 128). The hook with the production channel bound, so a writer needs
+ * to know nothing about alerts. It never throws: a failure is logged and the L2 sweep decides the change within a
+ * minute, and no writer's own work is ever rolled back by a house-bot hook.
+ *
+ * ⛔ FIRE IT AFTER THE OUTERMOST LOCK RETURNS, or through `runOutsideLock` — a hook started inside a lock inherits
+ * that lock's transaction (`locks.ts`), and would read rows the caller has not committed yet.
+ */
+export async function onHolderAccountChanged(userId: string, event: HolderEvent, meta?: { byOfficer?: boolean }): Promise<HolderHookResult> {
+  try {
+    const { houseHolderAlerts } = await import("./emitters");
+    return await onHolderAccountChangedWith(userId, event, { alerts: houseHolderAlerts(), meta });
+  } catch (e) {
+    console.error("[house-bot] holder hook could not start — the holder sweep decides this change:", errMessage(e));
+    return { kind: "failed" };
+  }
+}
+
 export type HolderSweepResult = { bots: number; changed: number; failed: number };
 
 /** L2 (PLAN §14, A2): every non-REMOVED bot, one at a time, whatever the switch says. One bot's failure never skips the next. */

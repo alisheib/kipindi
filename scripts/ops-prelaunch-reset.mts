@@ -86,6 +86,8 @@
  * client to go stale against a schema mid-migration, and DDL-adjacent work (TRUNCATE,
  * transaction-scoped asserts) is not what the query builder is for.
  */
+// house-bot: covered by L2 sweep — this writes account rows directly, so no in-app hook fires; the holder
+// sweep re-reads every bot holder once a minute and applies whatever changed (04 F8, A2).
 import pg from "pg";
 import { createHash } from "node:crypto";
 import { readFileSync, existsSync, writeFileSync } from "node:fs";

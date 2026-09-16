@@ -19,6 +19,8 @@
  *   DATABASE_URL='postgresql://postgres:pw@localhost:5433/kipindi_load?schema=public' \
  *     npx tsx scripts/seed-staff-local.mts
  */
+// house-bot: covered by L2 sweep — this writes account rows directly, so no in-app hook fires; the holder
+// sweep re-reads every bot holder once a minute and applies whatever changed (04 F8, A2).
 import { db, type StoredUser, type StoredWallet } from "../src/lib/server/store.ts";
 import { hashPassword, randomId } from "../src/lib/server/crypto.ts";
 import { EDITABLE_ROLES } from "../src/lib/server/roles.ts";

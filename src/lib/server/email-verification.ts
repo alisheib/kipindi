@@ -27,6 +27,7 @@
  * account, and the only verified contact channel the platform holds. ⛔ Nothing may relax
  * the clear-on-change rule above.
  */
+import { runOutsideLock } from "./locks";
 import { appUrl } from "@/lib/app-url";
 import { db } from "./store";
 import { audit } from "./audit";
@@ -140,6 +141,10 @@ export async function setUserEmail(
   if (next === "") {
     if (!current) return { ok: true, changed: false, verificationSent: false };
     await db.user.update(userId, { email: null, emailVerifiedAt: null });
+    // A2 · the holder hook: a house bot on this account stops, or records the change (C4-SPEC ruling 127).
+    runOutsideLock(() => {
+      void import("./house-bot/holder-hook").then((m) => m.onHolderAccountChanged(userId, "EMAIL_CHANGED", { byOfficer: opts.byOfficer === true })).catch(() => {});
+    });
     audit({ category: "COMPLIANCE", action: "user.email.cleared", actorId: userId, targetType: "User", targetId: userId });
     return { ok: true, changed: true, verificationSent: false };
   }
@@ -174,6 +179,10 @@ export async function setUserEmail(
     && Date.parse(user.emailSetByOfficerAt) <= Date.parse(user.passwordSetAt)
     && Date.parse(user.passwordSetAt) - Date.parse(user.emailSetByOfficerAt) <= OFFICER_EMAIL_WINDOW_DAYS * 86_400_000;
   await db.user.update(userId, { email: next, emailVerifiedAt: null, ...(opts.byOfficer && !stampCounts ? { emailSetByOfficerAt: new Date().toISOString() } : {}) });
+  // A2 · the holder hook: a house bot on this account stops, or records the change (C4-SPEC ruling 127).
+  runOutsideLock(() => {
+    void import("./house-bot/holder-hook").then((m) => m.onHolderAccountChanged(userId, "EMAIL_CHANGED", { byOfficer: opts.byOfficer === true })).catch(() => {});
+  });
   audit({ category: "COMPLIANCE", action: "user.email.set", actorId: userId, targetType: "User", targetId: userId, payload: { verified: false } });
   const name = (user.displayName?.trim().split(/\s+/)[0]) || displayLabel({ id: userId, displayName: user.displayName ?? null });
   // Report what ACTUALLY happened. A suppressed (previously hard-bounced) address

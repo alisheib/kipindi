@@ -356,6 +356,23 @@ const KYC_SLA_WATCH_EVERY_MS = 15 * 60 * 1000;
 const KYC_SLA_WATCH_BOOT_GRACE_MS = 5 * 60 * 1000; // let boot settle, as retention and the watchdog do
 let lastKycSlaWatchAt = 0;
 
+/**
+ * L2 · the house-bot holder sweep (04 A2, PLAN §14; C4-SPEC ruling 129). Every non-REMOVED bot's holder account is
+ * re-read once a minute on the lifecycle leader, and whatever changed is applied — the same apply the hook uses.
+ *
+ * ⛔ IT RUNS WHATEVER `HOUSE_BOT_ENGINE` SAYS (R6, ruling 127): a hook can be lost to a raw-SQL write, a script or a
+ * missed import, and this is the layer that catches those. It is the LAST chore, with its own catch, so a failure
+ * here can never delay anything that moves money.
+ */
+async function maybeRunHolderSweep(): Promise<void> {
+  const { holderSweep } = await import("./house-bot/holder-hook");
+  const { houseHolderAlerts } = await import("./house-bot/emitters");
+  const r = await holderSweep({ alerts: houseHolderAlerts() });
+  if (r.changed > 0 || r.failed > 0) {
+    console.log(`[lifecycle] house-bot holder sweep — ${r.bots} bot(s), ${r.changed} changed, ${r.failed} failed`);
+  }
+}
+
 async function maybeWatchKycReviewSla(): Promise<void> {
   const now = Date.now();
   if (now - tickerStartedAt < KYC_SLA_WATCH_BOOT_GRACE_MS) return;
@@ -488,6 +505,7 @@ export async function runLifecyclePass(): Promise<void> {
     // The identity review target (2026-09-13) — LAST, with its own catch. See the block above
     // `runLifecyclePass`: it sends mail, and nothing that moves or books money waits behind it.
     await maybeWatchKycReviewSla().catch((e) => console.error("[lifecycle] identity review target:", e));
+    await maybeRunHolderSweep().catch((e) => console.error("[lifecycle] house-bot holder sweep:", e));
   } finally {
     // A completed pass ends the overrun: clear the consecutive count and re-arm the
     // alert so the NEXT episode is reported too. `skippedTotal` is lifetime and is

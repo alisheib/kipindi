@@ -12,6 +12,8 @@
  *
  * ⚠️ Dev/QA only — never point this at the production database.
  */
+// house-bot: covered by L2 sweep — this writes account rows directly, so no in-app hook fires; the holder
+// sweep re-reads every bot holder once a minute and applies whatever changed (04 F8, A2).
 process.env.SESSION_SECRET ??= "test-only-session-secret-32chars-min-aaaa";
 
 import { db, type StoredUser, type StoredWallet, type StoredKyc } from "../src/lib/server/store.ts";

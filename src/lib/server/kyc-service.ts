@@ -50,7 +50,7 @@ import { notifyKyc, notifyAdminKycReview } from "./notification-service";
 import { sendEmail, sendEmailToUser, kycRejectedHtml, kycApprovedHtml, kycSubmittedHtml, kycSubmittedAdminHtml, kycMoreInfoHtml } from "./email";
 import { resolvePhoneEmail } from "./email-map";
 import { setUserEmail } from "./email-verification";
-import { withLock } from "./locks";
+import { runOutsideLock, withLock } from "./locks";
 import { displayLabel } from "@/lib/display-label";
 import { isFinalRefusal } from "@/lib/kyc-refusal";
 import { addWalletFreeze, removeWalletFreeze, staleIdentityHold } from "./wallet-freeze";
@@ -252,6 +252,10 @@ export async function submitIdentityStep(userId: string, input: z.input<typeof K
       return { ok: true };
     });
     if (!refused.ok) return refused;
+    // A2 row 11 · a FINAL identity refusal voids a holder's consent and stops their bot (C4-SPEC ruling 127).
+    runOutsideLock(() => {
+      void import("./house-bot/holder-hook").then((m) => m.onHolderAccountChanged(userId, "IDENTITY_REFUSED")).catch(() => {});
+    });
     // ⛔ `finalRefusal`: the ordinary REJECTED notice says "Please re-submit", which is false on a final
     // code — the player cannot restart and the wallet is frozen while an officer decides the balance.
     notifyKyc(userId, "REJECTED", { finalRefusal: true }).catch(() => {});
@@ -380,6 +384,12 @@ export async function submitIdentityStep(userId: string, input: z.input<typeof K
       if (!nidaRefused.ok) return nidaRefused;
       // In-app + email notice (best-effort). ⛔ A final code must not be told to re-submit.
       const nidaFinal = isFinalRefusal(enumMember);
+      // A2 row 11 · only a FINAL code is a holder cause; a retryable NIDA answer leaves the bot alone.
+      if (nidaFinal) {
+        runOutsideLock(() => {
+          void import("./house-bot/holder-hook").then((m) => m.onHolderAccountChanged(userId, "IDENTITY_REFUSED")).catch(() => {});
+        });
+      }
       notifyKyc(userId, "REJECTED", { finalRefusal: nidaFinal }).catch(() => {});
       sendEmailToUser(userId, (email) => ({
         to: email,
@@ -988,7 +998,7 @@ export async function reopenFinalRefusal(officerId: string, userId: string, reas
   if (clean.length < REOPEN_FINAL_REFUSAL_REASON_MIN) {
     return { ok: false, error: `A reason of at least ${REOPEN_FINAL_REFUSAL_REASON_MIN} characters is required to re-open a final refusal.`, code: "INVALID" };
   }
-  return withLock(`kyc:${userId}`, async () => {
+  const reopened = await withLock(`kyc:${userId}`, async () => {
     const k = await db.kyc.findByUserId(userId);
     if (!k) return { ok: false as const, error: "No verification for this player.", code: "NOT_FOUND" as const };
     if (k.status !== "REJECTED" || !isFinalRefusal(k.rejectReason)) {
@@ -1049,6 +1059,15 @@ export async function reopenFinalRefusal(officerId: string, userId: string, reas
     }
     return { ok: true as const };
   });
+  // A2 row 11's way out · the refusal is re-opened, so the cause that voided consent is gone. The bot does not
+  // resume by itself; the holder's permission is confirmed again first. ⚠️ A failed wallet lift still re-opened
+  // the refusal, so the hook runs on that answer too.
+  if (reopened.ok || reopened.code === "INVALID") {
+    runOutsideLock(() => {
+      void import("./house-bot/holder-hook").then((m) => m.onHolderAccountChanged(userId, "IDENTITY_REOPENED")).catch(() => {});
+    });
+  }
+  return reopened;
 }
 
 export async function reviewKyc(opts: {
@@ -1092,7 +1111,7 @@ export async function reviewKyc(opts: {
     return { ok: false, error: "Tell the player what's needed (at least 5 characters).", code: "INVALID" };
   }
 
-  return withLock(`kyc:${userId}`, async () => {
+  const reviewed = await withLock(`kyc:${userId}`, async () => {
     const k = await db.kyc.findByUserId(userId);
     if (!k) return { ok: false as const, error: "No KYC submission for this user.", code: "NOT_FOUND" as const };
     if (k.status !== "PENDING_REVIEW" && k.status !== "ADDITIONAL_INFO_REQUIRED") {
@@ -1202,4 +1221,12 @@ export async function reviewKyc(opts: {
     }));
     return { ok: true as const };
   });
+  // A2 row 11 · an officer's FINAL refusal is a holder cause. Fired after the lock returns (C4-SPEC ruling 127):
+  // this function is also nested inside an `agent:` lock on the approval path.
+  if (reviewed.ok && decision === "REJECT" && isFinalRefusal(opts.rejectCode ?? "OTHER")) {
+    runOutsideLock(() => {
+      void import("./house-bot/holder-hook").then((m) => m.onHolderAccountChanged(userId, "IDENTITY_REFUSED")).catch(() => {});
+    });
+  }
+  return reviewed;
 }
