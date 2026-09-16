@@ -111,6 +111,62 @@ function firstSightIn(window: string): boolean {
 
 type StatusLine = { status?: unknown; reference?: unknown; description?: unknown; msisdn?: unknown };
 
+const isObject = (v: unknown): v is Record<string, unknown> => !!v && typeof v === "object" && !Array.isArray(v);
+const looksLikeLine = (v: unknown): boolean => isObject(v) && typeof v.reference === "string";
+
+/**
+ * The status lines in a callback body, or `null` when the body matches no shape we recognise.
+ *
+ * ⭐ THE DOCUMENTED SHAPE IS `{statuses:[…]}`, AND IT IS NOT THE ONLY ONE ACCEPTED. The first
+ * genuine callback has not been observed yet, and every other fact about this vendor that was
+ * measured contradicted its PDF (§1 of docs/BLACKBALL-SMS.md). A single status object, or a bare
+ * array of them, would otherwise be acknowledged with 200 and silently dropped — a delivery
+ * report lost with no trace, which is the one outcome this receiver must never have.
+ *
+ * `{statuses: []}` is a recognised, empty callback (not malformed); `null` means "unrecognised".
+ */
+export function readStatusLines(body: unknown): StatusLine[] | null {
+  if (isObject(body) && Array.isArray(body.statuses)) return body.statuses as StatusLine[];
+  if (looksLikeLine(body)) return [body as StatusLine];
+  if (Array.isArray(body) && body.length > 0 && body.every(looksLikeLine)) return body as StatusLine[];
+  return null;
+}
+
+/** Top-level key NAMES only — never values, which could carry an msisdn. */
+const topLevelKeys = (body: unknown): string[] => (isObject(body) ? Object.keys(body).slice(0, 10) : []);
+
+/**
+ * Record a callback we could not read. ⛔ Shape evidence only — reason, content-type, byte count and
+ * key names; never the body. Deduped per window so a misbehaving sender cannot flood the chain.
+ * Before this, a non-JSON or differently-shaped receipt left NO trace at all: indistinguishable from
+ * "Blackball never called".
+ */
+function noteMalformed(req: Request, reason: "bad-json" | "unrecognised-shape", bytes: number, keys: string[]) {
+  const contentType = (req.headers.get("content-type") ?? "").slice(0, 80);
+  if (!firstSightIn(`malformed:${reason}:${contentType}:${keys.join(",")}`)) return;
+  audit({
+    category: "SYSTEM",
+    action: "sms.dlr.malformed",
+    actorId: null,
+    targetType: null,
+    targetId: null,
+    payload: { reason, contentType, bytes, keys },
+  });
+}
+
+/**
+ * ⭐ A GET ANSWERS 200, AND DOES NOTHING ELSE.
+ *
+ * On 2026-09-16 the only request that reached this URL after the callback was registered was a
+ * browser GET from a Tanzanian address — very likely the vendor checking the URL while whitelisting
+ * it — and the route, POST-only, answered 405, which reads as "this URL is broken". A reachability
+ * check deserves a yes. No token is read, nothing is written, nothing is revealed that a POST's 401
+ * does not already reveal.
+ */
+export function GET() {
+  return NextResponse.json({ status: "Ok" });
+}
+
 export async function POST(req: Request) {
   if (!authorized(req)) {
     audit({
@@ -124,14 +180,22 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
 
-  let body: { statuses?: unknown } | null = null;
+  // Read as TEXT first: a body that is not JSON is exactly the case whose size and content-type
+  // are the evidence, and `req.json()` would consume it and throw that away.
+  const raw = await req.text();
+  let body: unknown = null;
   try {
-    body = await req.json();
+    body = JSON.parse(raw);
   } catch {
+    noteMalformed(req, "bad-json", raw.length, []);
     return NextResponse.json({ ok: false, error: "bad-json" }, { status: 400 });
   }
 
-  const lines: StatusLine[] = Array.isArray(body?.statuses) ? (body.statuses as StatusLine[]) : [];
+  const parsed = readStatusLines(body);
+  if (parsed === null) {
+    noteMalformed(req, "unrecognised-shape", raw.length, topLevelKeys(body));
+  }
+  const lines: StatusLine[] = parsed ?? [];
   const counts = { applied: 0, replayed: 0, unknownRef: 0, unmapped: 0, mismatch: 0, invites: 0 };
   const at = new Date().toISOString();
 

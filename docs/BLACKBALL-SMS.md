@@ -9,13 +9,15 @@ Wired: 2026-09-16. Code: `src/lib/server/sms-blackball.ts` (transport), `src/lib
 
 | | |
 |---|---|
-| Code | ✅ live on `main`, dark: production runs `SMS_PROVIDER=console`, `OTP_ENABLED` unset |
-| Railway | ✅ `BLACKBALL_CLIENT_ID`, `BLACKBALL_CLIENT_SECRET`, `BLACKBALL_WEBHOOK_SECRET`, `SMS_SENDER_ID=50pick` set and verified against `.env.local`; ⬜ `SMS_PROVIDER=blackball` awaiting owner approval (the switch is a production deploy) |
-| API configuration | ✅ `50pick-production` saved in the portal, status callback registered, `BLACKBALL_WEBHOOK_SECRET` set in Railway |
-| Sender ID | ✅ `50pick` (the portal's Send SMS list, exactly as shown) |
-| First live send | ✅ ACCEPTED → **DELIVRD / Success in 2 seconds**, Tigo Tz, **TZS 6** — received on the handset (confirmed by Ali) |
-| Delivery callback | 🔴 **not received** — see §4, most likely Cloudflare error 1010 |
-| Balance | TZS 244 after the first send |
+| Code | ✅ live on `main` |
+| Railway | ✅ **`SMS_PROVIDER=blackball`**, `BLACKBALL_CLIENT_ID`, `BLACKBALL_CLIENT_SECRET`, `BLACKBALL_WEBHOOK_SECRET`, `SMS_SENDER_ID=50pick` — verified: `/api/health` → `provider: blackball, configured: true, webhookSecretSet: true`; boot log prints no `[sms]` warning |
+| Cloudflare | ✅ Configuration Rule: Browser Integrity Check **off for `/api/webhooks/*` only** (§4) — verified |
+| API configuration | ✅ `50pick-production` saved in the portal, status callback registered |
+| Sender ID | ✅ `50pick` |
+| Live sends | ✅ step 1 DELIVRD / Success in 2 s (received on the handset); ✅ step 2 batch of two accepted in one request, TZS 12 — **3 of 6** drive sends used |
+| Delivery callback | 🔴 **still not received** — after the Cloudflare fix too; no POST from Blackball has reached the app (§4) |
+| Phone-code login | ⏸ `OTP_ENABLED` unset — deliberately (§7, step 6) |
+| Balance | TZS 232 |
 
 ---
 
@@ -152,27 +154,45 @@ receipt is explicitly inert, and an empty callback writes nothing to the audit c
 
 ---
 
-## 4 · 🔴 Cloudflare blocks Java 8 callers — the likely reason no receipt arrived
+## 4 · 🔴 The delivery callback has never reached production
 
-Measured 2026-09-16 against `www.50pick.tz`: any request whose User-Agent is **`Java/1.8…`,
-`Java/1.7…` or `Java/1.6…`** is answered by Cloudflare with **`403`, error code `1010`** ("banned
-based on browser signature"). Java 11/17/21, Apache HttpClient, okhttp, curl and Python pass. The
-block is **zone-wide** — `/api/webhooks/payments` and `/api/webhooks/postmark` are refused the same
-way — and the request never reaches the app, so production logs **nothing**.
+### 4.1 Cloudflare was blocking Java 8 callers — fixed
 
-Blackball's portal is a Java/Spring application; the first message was DELIVRD at 16:29:25 EAT and
-no callback, rejected or otherwise, reached production. ⚠️ **Not yet proven**: it needs either a
-blocked event in Cloudflare → Security → Events for `/api/webhooks/blackball`, or Blackball
-confirming their callback got a 403.
+Measured 2026-09-16: `www.50pick.tz` answered any User-Agent `Java/1.8…`, `Java/1.7…` or
+`Java/1.6…` with **`403`, error `1010`**, zone-wide (the payment and Postmark webhooks too), before
+the request reached the app. The zone's settings identify the source: **Browser Integrity Check on**;
+Bot Fight Mode off; no user-agent block rules; no custom rulesets.
 
-**The fix (Cloudflare, owner-approved):** Rules → Configuration Rules → *If* URI Path starts with
-`/api/webhooks/` → *Then* Browser Integrity Check **Off**. The rest of the site keeps it; the webhooks
-keep their own secrets and signatures. Verify with:
+**Fixed 2026-09-16** via the Cloudflare API — ruleset `http_config_settings` (id
+`80668a8a2a944a51a320e635df2d6459`), rule `c4b128509d2d4633bd70e40155bd01c5`:
+`starts_with(http.request.uri.path, "/api/webhooks/")` → `set_config { bic: false }`. Verified:
+
+| User-Agent | webhook, no token | webhook, token | `/api/health` | `/api/webhooks/payments` |
+|---|---|---|---|---|
+| `Java/1.8.0_292` | **401** (was 403) | **200** | 403 — still protected | **400** (was 403) |
+| `curl`, Java 17 | 401 | 200 | 405 | 400 |
+
+### 4.2 …and still no callback
+
+After the fix, drive step 2 sent two more messages (14:30 UTC). **No POST from Blackball reached the
+app** — Railway's HTTP log for the deployment shows exactly one request to the callback path:
+`GET /api/webhooks/blackball` at 14:42 UTC from **154.74.190.103** (Tanzania), a Firefox browser —
+very plausibly Blackball opening the URL while whitelisting it. The POST-only route answered **405**,
+which reads as "broken". So the remaining cause is on Blackball's side (callback not enabled or not
+yet whitelisted, or failing on their end) — or it was their GET check that failed.
+
+Hardened in response (`route.ts`, guarded by `test:sms-dlr` §11 and `red:sms-dlr`):
+- **GET answers `200 {"status":"Ok"}`** and does nothing else, so a reachability check passes.
+- A receipt shaped as a **single status object** or a **bare array** is accepted, not silently dropped.
+- A **non-JSON or unrecognised body is audited** as `sms.dlr.malformed` (shape only: reason,
+  content-type, byte count, key names — never values), so a vendor-side mismatch leaves evidence.
+
+⚠️ **How to look for a callback.** Railway keeps HTTP logs only for the CURRENT deployment — a replaced
+deployment returns nothing, which reads like "no traffic". Use both:
 
 ```bash
-curl -s -o /dev/null -w "%{http_code}\n" -X POST -A "Java/1.8.0_292" \
-  -H "Content-Type: application/json" -d '{"statuses":[]}' \
-  "https://www.50pick.tz/api/webhooks/blackball?token=<secret>"      # must be 200, not 403
+railway logs --http --json --lines 2000 | grep webhooks            # every request that reached the app
+node scripts/live/ops/sms-receipts.cjs                            # what the receiver recorded
 ```
 
 ---
@@ -204,7 +224,7 @@ low-balance alarm is edge-triggered — one audit row per downward crossing.
 | `SMS_BALANCE_FLOOR_TZS` / `SMS_BALANCE_ALERT_TZS` | default 50 / 150 (≈ 8 / 25 messages) |
 | `SMS_BALANCE_TTL_MS` | default 900000 (15 minutes) |
 | `INVITE_SMS_MAX_PER_SEND` | default 500 |
-| `OTP_ENABLED` | `1` turns phone-code login on |
+| `OTP_ENABLED` | `1` un-hides `/auth/otp`; ⚠️ no login/register UI links to it yet (§7, step 6) |
 
 Boot warns in production (fail-open) on: an unrecognised provider, a selected Blackball with no
 credentials, a sender ID over the cap, an unusable DLR secret, and — loudest — `OTP_ENABLED=1`
@@ -219,14 +239,23 @@ Each step is independently reversible, and none of the later ones is safe withou
 1. ✅ **Code lands with `SMS_PROVIDER=console`.** Nothing changes for players.
 2. ✅ **DLR secret in Railway; API configuration and callback URL saved in the portal.**
 3. ✅ **Live drive step 1** — `npm run live:blackball -- --step 1 --confirm`. Delivered.
-4. ⬜ **Cloudflare: turn Browser Integrity Check off for `/api/webhooks/*`** (§4), then confirm a
-   real receipt lands: `node scripts/live/ops/sms-receipts.cjs <reference>`.
-5. ◐ **Railway: `BLACKBALL_CLIENT_ID`, `BLACKBALL_CLIENT_SECRET`, `SMS_SENDER_ID=50pick`** ✅ set, then
-   **`SMS_PROVIDER=blackball`** ⬜. Independent of step 4 and safe before it: measured 2026-09-16,
-   production has **zero** phone invite entries, `bonus` is `WITHDRAWN` with no `FEATURE_BONUS`
-   override (so `sendCampaign` refuses before SMS), and `OTP_ENABLED` is unset — the only two send
-   paths are shut, so the switch makes the rail *configured* without sending anything.
-6. ⬜ **Only after a real receipt has been observed, and after a top-up:** `OTP_ENABLED=1`.
+4. ◐ **Cloudflare: Browser Integrity Check off for `/api/webhooks/*`** ✅ (§4.1). A real receipt
+   landing ⬜ — blocked on Blackball (§4.2, §8 item 1).
+5. ✅ **Railway: credentials, `SMS_SENDER_ID=50pick`, `SMS_PROVIDER=blackball`.** Safe before step 4:
+   measured 2026-09-16, production has **zero** phone invite entries, `bonus` is `WITHDRAWN` with no
+   `FEATURE_BONUS` override (so `sendCampaign` refuses before SMS), and `OTP_ENABLED` is unset — both
+   send paths are shut, so the switch made the rail *configured* without sending anything.
+6. ⏸ **Phone-code login.** Deliberately NOT enabled (decided 2026-09-16), for two reasons:
+   - ⛔ **`OTP_ENABLED=1` alone changes nothing for a player.** The login and registration forms are
+     wired only to `startLoginAction` / `startRegisterAction` (password); nothing links or redirects
+     into `/auth/otp` except the unwired OTP actions themselves. Flipping it would only expose an
+     orphan page — an unlinked way to trigger paid sends, for no player benefit.
+   - The preconditions below are not met: no genuine receipt has reached production, and TZS 232 is
+     about 38 messages.
+
+   **Offering phone-code login is a product change, not a variable:** a "send me a code" option on
+   `/auth/login` (and register), inside the frozen design system, in EN + SW + ZH, with the visual
+   and live drives that surface requires. Then `OTP_ENABLED=1`.
 
 ### Preconditions for step 6 — measured, none assumed
 
@@ -249,9 +278,13 @@ Each step is independently reversible, and none of the later ones is safe withou
 
 ## 8 · Still open with the vendor
 
-1. Did the status callback for the first message get **HTTP 403**? Which **User-Agent / Java
-   version** does it send? *(§4)*
-2. Can they **resend** that callback once our side is fixed, and do callbacks **retry** on a non-200?
+1. 🔴 **Is the status callback enabled for `50pick-production`, and has our URL been whitelisted?**
+   Three messages were delivered and no callback POST ever reached us — even after the Cloudflare fix.
+   Did their side log an attempt, and what response did it get? Was the 14:42 UTC GET from
+   154.74.190.103 their check (it got 405; the URL now answers GET with 200)? Which User-Agent does the
+   callback send? *(§4)*
+2. Can they **resend** the callbacks for the three messages, and do callbacks **retry** on a non-200?
+   Does the callback echo **our `reference`** (the portal's Ref column shows the client id instead)?
 3. **Egress IP addresses**, for an allowlist.
 4. The full **status and description** value set — especially the failure tokens.
 5. Billing per **segment** for UCS2 (70 chars) and long GSM7 messages.

@@ -283,11 +283,13 @@ The one thing worth repeating here, because it is a mechanic and not a number:
 
 ## Auth — current state (June 2026 hardened)
 
-**Phone + password.** Phone-code (OTP) sign-in is fully built and gated behind
-`OTP_ENABLED=1`. A licensed SMS provider exists as of 2026-09-16 (Blackball), so
-the blocker is gone — but the flip is a decision, not a default: with OTP on, an
-SMS outage is a LOGIN outage. ⚠️ Password sign-in stays available either way and is
-what `SMS_UNDELIVERABLE` routes the player to.
+**Phone + password.** The phone-code (OTP) server path is built and SMS is live
+(Blackball, `SMS_PROVIDER=blackball` since 2026-09-16), but ⛔ **no player-facing UI
+offers it**: `/auth/login` and `/auth/register` post only to the password actions, and
+`OTP_ENABLED=1` merely un-hides the `/auth/otp` page. Offering phone-code login is a
+product change (a "send me a code" option in the frozen design system, EN/SW/ZH, visual
+drives) — then the flag. With OTP on, an SMS outage is a LOGIN outage; password sign-in
+stays available either way and is what `SMS_UNDELIVERABLE` routes the player to.
 
 ### Registration flow
 ```
@@ -369,10 +371,12 @@ persists to `SmsMessage`; receipts land on `/api/webhooks/blackball`.
 unrecognised status token is recorded raw rather than guessed. Observed so far:
 `DELIVRD` / `Success`. First live send 2026-09-16: delivered in 2 seconds, TZS 6.
 
-🔴 **Cloudflare answers `403 error 1010` to `Java/1.x` user agents, zone-wide** — the
-likely reason the first delivery callback never reached the app. Fix: a Configuration
-Rule turning Browser Integrity Check off for `/api/webhooks/*`. Live state, the go-live
-order and the open vendor questions: `docs/BLACKBALL-SMS.md`.
+⚠️ **Cloudflare's Browser Integrity Check answers `403 error 1010` to `Java/1.x` user
+agents.** A Configuration Rule (2026-09-16) turns it off for `/api/webhooks/*` only — keep
+it, or every server-to-server webhook from a Java 8 caller is refused before the app sees
+it. 🔴 Even with it, no Blackball delivery callback has reached production yet; the cause
+is on their side. Railway keeps HTTP logs only for the CURRENT deployment. Live state, the
+go-live order and the open vendor questions: `docs/BLACKBALL-SMS.md`.
 
 ## Persistence
 
@@ -428,7 +432,7 @@ Required Railway env vars (set in service → Variables):
 | `SMS_SENDER_ID` | TCRA-licensed sender ID — ⛔ max 12 characters |
 | `BLACKBALL_CLIENT_ID` / `BLACKBALL_CLIENT_SECRET` | portal → Configurations → API Configurations |
 | `BLACKBALL_WEBHOOK_SECRET` | ≥ 16 chars; the DLR URL is `/api/webhooks/blackball?token=<this>` |
-| `OTP_ENABLED` | `1` turns phone-code login on. Do not flip before a real send AND a real receipt |
+| `OTP_ENABLED` | `1` un-hides `/auth/otp`. ⚠️ No login/register UI links to it yet, so it alone does not offer phone-code login |
 | `NODE_ENV` | `production` on Railway |
 | `NEXT_PUBLIC_APP_URL` | `https://kipindi-production.up.railway.app` |
 | `TESTER_BOOTSTRAP_PHONES` | comma-separated E.164 list — auto-fund 100K TZS on register |

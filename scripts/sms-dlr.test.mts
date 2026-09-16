@@ -20,7 +20,7 @@
  *
  * Run: npm run test:sms-dlr
  */
-import { POST, mapDlrStatus, authorized } from "../src/app/api/webhooks/blackball/route.ts";
+import { GET, POST, mapDlrStatus, authorized } from "../src/app/api/webhooks/blackball/route.ts";
 import { db } from "../src/lib/server/store.ts";
 import { getAuditPage } from "../src/lib/server/audit.ts";
 import { isProtectedPath } from "../src/proxy.ts";
@@ -329,6 +329,71 @@ const line = (reference: string, status: string, extra: Record<string, unknown> 
     getAuditPage({ limit: 20_000 }).filter((a) => a.action === "sms.dlr.received").length === receivedAfter + 1);
   const res = await post([{ status: "DELIVERED" }, { reference: "", status: "X" }]);
   ok("§10 lines with no reference are skipped without throwing", res.status === 200);
+}
+
+/* ══ §11 · WHAT A VENDOR MIGHT ACTUALLY SEND ════════════════════════════════ */
+{
+  // a · A reachability GET. On 2026-09-16 the only request that reached this URL after registration was
+  //     a browser GET from Tanzania, answered 405 — which reads to a vendor as "your URL is broken".
+  await settle(); // let the previous section's audit rows land before taking the baseline
+  const beforeGet = getAuditPage({ limit: 20_000 }).length;
+  const g = await GET();
+  await settle();
+  ok("§11 a GET answers 200", g.status === 200);
+  ok(`§11 …with exactly {"status":"Ok"}`, (await g.text()) === '{"status":"Ok"}');
+  ok("§11 …and writes nothing", getAuditPage({ limit: 20_000 }).length === beforeGet);
+
+  // b · A single status object instead of the documented array must not be silently dropped.
+  const single = await seed();
+  await POST(new Request(`${URL_BASE}?token=${SECRET}`, {
+    method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify(line(single, "DELIVRD", { description: "Success" })),
+  }));
+  ok("§11 ⛔ a SINGLE status object (no statuses array) is applied, not dropped",
+    (await db.smsMessage.findByReference(single))?.status === "DELIVERED");
+
+  // c · A bare array of status objects.
+  const bare = await seed();
+  await POST(new Request(`${URL_BASE}?token=${SECRET}`, {
+    method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify([line(bare, "DELIVRD")]),
+  }));
+  ok("§11 ⛔ a BARE array of status objects is applied", (await db.smsMessage.findByReference(bare))?.status === "DELIVERED");
+
+  // d · A body we cannot read must leave evidence, not silence.
+  const malformed = () => getAuditPage({ limit: 20_000 }).filter((a) => a.action === "sms.dlr.malformed");
+  await settle();
+  const m0 = malformed().length;
+  const odd = await POST(new Request(`${URL_BASE}?token=${SECRET}`, {
+    method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ msgId: "x", deliveryState: "DELIVRD", phone: "255772619619" }),
+  }));
+  await settle();
+  const oddRows = malformed();
+  ok("§11 ⛔ an unrecognised shape is acked but AUDITED as sms.dlr.malformed", odd.status === 200 && oddRows.length === m0 + 1,
+    `${m0} -> ${oddRows.length}`);
+  const pl = (oddRows[0]?.payload ?? {}) as Record<string, unknown>;
+  ok("§11 …recording key NAMES only, never values", JSON.stringify(pl.keys) === JSON.stringify(["msgId", "deliveryState", "phone"])
+    && !JSON.stringify(pl).includes("772619619"), JSON.stringify(pl));
+
+  const notJson = await POST(new Request(`${URL_BASE}?token=${SECRET}`, {
+    method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: "status=DELIVRD&reference=abc",
+  }));
+  await settle();
+  ok("§11 ⛔ a non-JSON body is 400 AND audited, not silently lost", notJson.status === 400 && malformed().length === m0 + 2);
+
+  // e · Dedupe: the same malformed shape again does not add another permanent row.
+  await POST(new Request(`${URL_BASE}?token=${SECRET}`, {
+    method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ msgId: "y", deliveryState: "DELIVRD", phone: "255700000000" }),
+  }));
+  await settle();
+  ok("§11 a repeated malformed shape is deduped", malformed().length === m0 + 2);
+
+  // f · Control: the recognised empty callback is NOT treated as malformed.
+  await post([]);
+  await settle();
+  ok("§11 control: {statuses: []} is recognised, not malformed", malformed().length === m0 + 2);
 }
 
 console.log(`\nsms-dlr: ${pass} passed, ${fail} failed`);

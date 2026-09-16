@@ -28,8 +28,11 @@ export const MUTATIONS = [
     // failed callback and retry forever.
     name: "route.ts — the reply reverts to this codebase's house {ok:true} shape",
     file: "src/app/api/webhooks/blackball/route.ts",
-    from: `  return NextResponse.json({ status: "Ok" });`,
-    to: `  return NextResponse.json({ ok: true });`,
+    // Anchored with its comment: the GET handler returns the same body, so the bare line is not unique.
+    from: `  // \`{ok:true}\` every other webhook in this codebase returns.
+  return NextResponse.json({ status: "Ok" });`,
+    to: `  // \`{ok:true}\` every other webhook in this codebase returns.
+  return NextResponse.json({ ok: true });`,
     expect: `§2 the body is byte-for-byte {"status":"Ok"}`,
   },
   {
@@ -109,5 +112,34 @@ export const MUTATIONS = [
       category: "SYSTEM",
       action: "sms.dlr.received",`,
     expect: `§10 ⛔ an empty callback writes NO sms.dlr.received row`,
+  },
+  {
+    // The only request that reached the URL after registration was a vendor-style browser GET, and a
+    // POST-only route answered 405 — which reads as "your callback URL is broken".
+    name: "route.ts — a reachability GET is refused again",
+    file: "src/app/api/webhooks/blackball/route.ts",
+    from: `export function GET() {
+  return NextResponse.json({ status: "Ok" });`,
+    to: `export function GET() {
+  return NextResponse.json({ ok: false }, { status: 405 });`,
+    expect: `§11 a GET answers 200`,
+  },
+  {
+    // A receipt shaped as one object instead of the documented array would be acked and dropped.
+    name: "route.ts — a single status object is no longer recognised",
+    file: "src/app/api/webhooks/blackball/route.ts",
+    from: `  if (looksLikeLine(body)) return [body as StatusLine];`,
+    to: ``,
+    expect: `§11 ⛔ a SINGLE status object (no statuses array) is applied, not dropped`,
+  },
+  {
+    // Silence was indistinguishable from "the vendor never called".
+    name: "route.ts — an unrecognised callback shape stops leaving evidence",
+    file: "src/app/api/webhooks/blackball/route.ts",
+    from: `  if (parsed === null) {
+    noteMalformed(`,
+    to: `  if (false) {
+    noteMalformed(`,
+    expect: `§11 ⛔ an unrecognised shape is acked but AUDITED as sms.dlr.malformed`,
   },
 ];
