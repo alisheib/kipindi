@@ -2258,6 +2258,28 @@ export function houseBotOwnerHtml({ kind, at }: { kind: HouseBotOwnerEmailKind; 
 }
 
 /**
+ * THE ADMIN'S HOUSE-BOT LETTER — one template for every alert that emails (pause, switch, money, alert, roster,
+ * staff-chosen). Its shape is the erasure letter's: eyebrow → heading → subtitle → detail rows → one CTA.
+ *
+ * ⛔ Royal chrome, never gold: gold is money chrome, and these letters state a figure only as a fact in a row, not
+ * as money owed to the reader (`comms-registry.ts` EMAIL_TEMPLATES, `test:gold-is-money`).
+ * ⛔ The holder is a handle, never a name or a phone (04 R6), and an officer's reason is never quoted (INT-10).
+ */
+export function houseBotAdminHtml({ eyebrow: eb, heading: hd, subtitle: sub, rows, cta }: {
+  eyebrow: string; heading: string; subtitle: string;
+  rows: Array<{ label: string; value: string }>;
+  cta?: { href: string; label: string } | null;
+}): string {
+  return wrap(`
+    ${eyebrow(eb)}
+    ${heading(hd)}
+    ${subtitle(sub)}
+    ${detailRows(rows)}
+    ${cta ? ctaButton(cta.href, cta.label) : ""}
+  `);
+}
+
+/**
  * Officer alert: an erasure request was refused because the account is still a house bot (04 R6). The
  * holder is named only by `playerHandle` ("Player #TAIL") and the bot only by its id — a label can be the
  * holder's name, and this mail outlives the erasure it reports.

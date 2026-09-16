@@ -153,6 +153,12 @@ const EMITTED: { fn: string; row: StoredNotification | null }[] = [
   { fn: "notifyHouseBotOwner",       row: await N.notifyHouseBotOwner(U, "reverified", { atMs: Date.parse("2026-09-15T11:02:00.000Z") }) },
   { fn: "notifyHouseBotOwner",       row: await N.notifyHouseBotOwner(U, "verify_reserved") },
   { fn: "notifyHouseBotOwner",       row: await N.notifyHouseBotOwner(U, "withdrew") },
+  // ── House bots (build commit 4, step 9) — ruling 132's three notices, and the holder's own two rows.
+  { fn: "notifyHouseBotOwner",       row: await N.notifyHouseBotOwner(U, "password_temp") },
+  { fn: "notifyHouseBotOwner",       row: await N.notifyHouseBotOwner(U, "role_changed") },
+  { fn: "notifyHouseBotOwner",       row: await N.notifyHouseBotOwner(U, "erasure_request") },
+  { fn: "notifyHouseBotOwnerStake",  row: await N.notifyHouseBotOwnerStake({ userId: U, positionId: "pos_c3house", side: "YES", stakeTzs: 8_000, marketTitle: "Will Dar get rain today?", at: "14:02:11" }) },
+  { fn: "notifyHouseBotOwnerHourSummary", row: await N.notifyHouseBotOwnerHourSummary({ userId: U, count: 5, stakeTzs: 40_000, fromHH: "14:00", toHH: "15:00" }) },
 ];
 
 // ── 1 · Registry ↔ code ────────────────────────────────────────────────────────
@@ -166,7 +172,10 @@ ok("every registered emitter exists", registeredFns.every((f) => exportedFns.inc
   `phantom: ${registeredFns.filter((f) => !exportedFns.includes(f)).join(", ") || "-"}`);
 ok("every registered kind is a real kind", NOTIFICATION_EMITTERS.every((e) => NOTIFICATION_KINDS.includes(e.kind)));
 // The fan-out emitters return void, so they are exercised in §5 instead.
-const FANOUT = ["notifyAdminObjectionFiled", "notifyAdminsAmlReview", "notifyAdminsSentinelDown", "notifyAdminsAiCreditLimit", "notifyAdminsBackupUnhealthy", "notifyAdminsKycReviewOverdue", "notifyAdminsHouseBotErasureBlocked"];
+const FANOUT = ["notifyAdminObjectionFiled", "notifyAdminsAmlReview", "notifyAdminsSentinelDown", "notifyAdminsAiCreditLimit", "notifyAdminsBackupUnhealthy", "notifyAdminsKycReviewOverdue", "notifyAdminsHouseBotErasureBlocked",
+  // House bots (build commit 4, step 9): eight admin fan-outs, each driven in §5.
+  "notifyAdminsHouseBotBet", "notifyAdminsHouseBotStaffChosen", "notifyAdminsHouseBotHourSummary", "notifyAdminsHouseBotPaused",
+  "notifyAdminsHouseBotSwitch", "notifyAdminsHouseBotMoneyEvent", "notifyAdminsHouseBotAlert", "notifyAdminsHouseBotRoster"];
 ok("every emitter is driven by this suite",
   exportedFns.every((f) => EMITTED.some((e) => e.fn === f) || FANOUT.includes(f)),
   `never driven: ${exportedFns.filter((f) => !EMITTED.some((e) => e.fn === f) && !FANOUT.includes(f)).join(", ") || "-"}`);
@@ -257,8 +266,17 @@ section("5 · fan-out — officer alerts reach officers, complete in 3 locales")
   await N.notifyAdminsKycReviewOverdue({ kycId: "kyc_c3", userId: U, playerLabel: "Asha M.", submittedAt: "2026-09-12T08:00:00.000Z", hoursWaiting: 26 });
   // House bots (build commit 3) — an erasure refused while the account is still a house bot (04 R6).
   await N.notifyAdminsHouseBotErasureBlocked({ botId: "hb_c3erasure01", holderUserId: U });
+  // House bots (build commit 4, step 9): the engine's eight admin fan-outs, driven in §5.
+  await N.notifyAdminsHouseBotBet({ botId: "hb_c3bot01", label: "Bot A", side: "YES", stakeTzs: 8_000, marketTitle: "Will Dar get rain today?", marketId: "mkt_c3house", intentId: "hbi_c3bet01", at: "14:02:11" });
+  await N.notifyAdminsHouseBotStaffChosen({ botId: "hb_c3bot01", label: "Bot A", side: "NO", stakeTzs: 12_000, marketTitle: "Will Dar get rain today?", marketId: "mkt_c3house", intentId: "hbi_c3staff01", entry: "MANUAL", byName: "Juma M.", sideRule: "the thinner side", at: "14:03:22" });
+  await N.notifyAdminsHouseBotHourSummary({ fromHH: "13:00", toHH: "14:00", count: 25, stakeTzs: 180_000, beyondCap: 5, staffChosen: 2, at: "14:00:04" });
+  await N.notifyAdminsHouseBotPaused({ variant: "A1", botId: "hb_c3bot01", label: "Bot A", holder: "Player #A3F2K8", how: "in their account settings", cancelled: 2, at: "14:04:10" });
+  await N.notifyAdminsHouseBotSwitch({ state: "OFF", cause: "MANUAL", byName: "Juma M.", cancelled: 3, drain: "busy", at: "14:05:00" });
+  await N.notifyAdminsHouseBotMoneyEvent({ botId: "hb_c3bot01", label: "Bot A", holder: "Player #A3F2K8", event: "withdrew", amountTzs: 50_000, txnId: "txn_c3house01", balanceTzs: 120_000, at: "14:06:30" });
+  await N.notifyAdminsHouseBotAlert({ code: "SETTLE_BLOCKED", botId: "hb_c3bot01", label: "Bot A", holder: "Player #A3F2K8", detail: { openStakeTzs: 240_000 }, at: "14:07:45" });
+  await N.notifyAdminsHouseBotRoster({ botId: "hb_c3bot01", label: "Bot A", event: "RULES_SAVED", line: "Bot A: daily loss cap TZS 50,000 to TZS 200,000 by Juma M. at 14:08:11 EAT.", eventId: "hbe_c3roster01", at: "14:08:11" });
   const rows = await db.notification.findByUser("c3_officer", 500);
-  ok("officer received the fan-out alerts", rows.length >= before + 7, `before=${before} after=${rows.length}`);
+  ok("officer received the fan-out alerts", rows.length >= before + 15, `before=${before} after=${rows.length}`);
   const fresh = rows.slice(0, rows.length - before);
   for (const r of fresh) {
     ok(`fan-out "${r.titleEn.slice(0, 34)}": has Chinese`, !!r.titleZh && !!r.bodyZh && /[一-鿿]/.test(r.titleZh));

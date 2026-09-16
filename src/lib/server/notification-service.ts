@@ -2156,7 +2156,9 @@ export async function runKycReviewSlaAlerts(opts: { nowMs?: number; maxAlerts?: 
 
 /** The holder events `notifyHouseBotOwner` announces (PLAN §7, 02 §2.3/§3.2–§3.5, 04 A3, C13). */
 export type HouseBotOwnerNotice =
-  | "designated" | "started" | "paused" | "password_paused" | "removed" | "reverified" | "verify_reserved" | "withdrew";
+  | "designated" | "started" | "paused" | "password_paused" | "removed" | "reverified" | "verify_reserved" | "withdrew"
+  // Ruling 132 · A2 rows 3, 12-13 and 14: a temporary password, a role change, and an erasure request.
+  | "password_temp" | "role_changed" | "erasure_request";
 
 /** The notices that also send an email; every other one is bell + push only (04 C13). */
 const HOUSE_BOT_OWNER_EMAILED = ["designated", "removed", "reverified"] as const satisfies readonly HouseBotOwnerNotice[];
@@ -2218,6 +2220,24 @@ export async function notifyHouseBotOwner(userId: string, notice: HouseBotOwnerN
       bodyEn: "Someone at 50pick tried to confirm your permission with a wrong password. Your sign-in is not locked.",
       bodySw: "Mtu wa 50pick alijaribu kuthibitisha ruhusa yako kwa nenosiri lisilo sahihi. Kuingia kwako hakujafungwa.",
       bodyZh: "50pick 的工作人员尝试用错误的密码确认您的授权。您的登录未被锁定。",
+    },
+    password_temp: {
+      titleEn: "Liquidity stakes paused", titleSw: "Dau za ukwasi zimesimamishwa", titleZh: "流动性投注已暂停",
+      bodyEn: "Support set a temporary password on your account, so 50pick stopped placing liquidity stakes from it. Change the temporary password in Account settings — only a password you set yourself gives permission. Your balance and open stakes are unchanged.",
+      bodySw: "Wafanyakazi wa 50pick wamekuwekea nenosiri la muda kwenye akaunti yako, kwa hiyo 50pick imeacha kuweka dau za ukwasi kutoka kwake. Badilisha nenosiri hilo la muda katika Mipangilio ya Akaunti — ni nenosiri ulilojiwekea mwenyewe tu linalotoa ruhusa. Salio lako na dau zilizo wazi hazijabadilika.",
+      bodyZh: "客服为您的账户设置了临时密码，因此 50pick 已停止从该账户下注流动性投注。请在账户设置中更改该临时密码——只有您自己设置的密码才构成授权。您的余额和未结算投注不受影响。",
+    },
+    role_changed: {
+      titleEn: "Liquidity stakes paused", titleSw: "Dau za ukwasi zimesimamishwa", titleZh: "流动性投注已暂停",
+      bodyEn: "Your account's role changed, so 50pick stopped placing liquidity stakes from it. Your balance and open stakes are unchanged.",
+      bodySw: "Cheo cha akaunti yako kimebadilika, kwa hiyo 50pick imeacha kuweka dau za ukwasi kutoka kwake. Salio lako na dau zilizo wazi hazijabadilika.",
+      bodyZh: "您账户的角色已更改，因此 50pick 已停止从该账户下注流动性投注。您的余额和未结算投注不受影响。",
+    },
+    erasure_request: {
+      titleEn: "Liquidity stakes stopped while we handle your request", titleSw: "Dau za ukwasi zimesimamishwa tunaposhughulikia ombi lako", titleZh: "在我们处理您的请求期间流动性投注已停止",
+      bodyEn: "You asked us to erase your data, so 50pick stopped placing liquidity stakes from your account while we handle your request. Your balance and open stakes are unchanged.",
+      bodySw: "Uliomba tufute data yako, kwa hiyo 50pick imeacha kuweka dau za ukwasi kutoka kwenye akaunti yako tunaposhughulikia ombi lako. Salio lako na dau zilizo wazi hazijabadilika.",
+      bodyZh: "您要求删除您的数据，因此在我们处理您的请求期间，50pick 已停止从您的账户下注流动性投注。您的余额和未结算投注不受影响。",
     },
     withdrew: {
       titleEn: "Liquidity stakes stopped", titleSw: "Dau za ukwasi zimesimamishwa", titleZh: "流动性投注已停止",
@@ -2285,4 +2305,434 @@ export async function notifyAdminsHouseBotErasureBlocked(opts: { botId: string; 
   } catch { /* officer email is best-effort */ }
   // The bell rows that landed: the caller gives its once-only claim back when this is 0 (review LI-8).
   return delivered;
+}
+
+/* ---- House bots (build commit 4, step 9): what the engine and the holder hook say ---- */
+
+/**
+ * The shape every admin house fan-out renders: a bell row in three languages, and the letter when the alert earns
+ * one (04 C13's channel column). `dedupe: false` is for the rows where two identical events are two events (02:429).
+ */
+type HouseAdminRow = {
+  titleEn: string; titleSw: string; titleZh: string;
+  bodyEn: string; bodySw: string; bodyZh: string;
+  href: string;
+  email?: { subject: string; eyebrow: string; heading: string; subtitle: string; rows: Array<{ label: string; value: string }>; cta?: { href: string; label: string } | null } | null;
+  dedupe?: boolean;
+};
+
+/** Bell first, then the letter. Returns the bell rows that landed, so a caller can give a once-only claim back. */
+async function fanOutHouseAdmin(recipients: Array<{ id: string; email?: string | null; phoneE164?: string | null }>, row: HouseAdminRow, tag: string): Promise<number> {
+  let delivered = 0;
+  for (const r of recipients) {
+    const landed = await notify({
+      userId: r.id, kind: "HOUSE_BOT",
+      titleEn: row.titleEn, titleSw: row.titleSw, titleZh: row.titleZh,
+      bodyEn: row.bodyEn, bodySw: row.bodySw, bodyZh: row.bodyZh,
+      href: row.href,
+    }, row.dedupe === false ? { dedupe: false } : undefined).catch(() => null);
+    if (landed) delivered++;
+  }
+  if (row.email) {
+    try {
+      const { sendEmail, houseBotAdminHtml } = await import("./email");
+      const { resolvePhoneEmail } = await import("./email-map");
+      const emails = [...new Set(
+        recipients
+          .map((o) => (o.email || resolvePhoneEmail(o.phoneE164 ?? "") || "").trim().toLowerCase())
+          .filter((e) => e && !e.endsWith("@stub") && !e.endsWith("@none")),
+      )];
+      const html = houseBotAdminHtml({ eyebrow: row.email.eyebrow, heading: row.email.heading, subtitle: row.email.subtitle, rows: row.email.rows, cta: row.email.cta ?? null });
+      for (const to of emails) {
+        sendEmail({ to, subject: row.email.subject, html, tag, trackLinks: false }).catch(() => {});
+      }
+    } catch { /* the letter is best-effort; the bell is the record */ }
+  }
+  return delivered;
+}
+
+/** Every automatic house stake, as it is placed (PLAN §7). Bell only, never email, never SMS (04 C13). */
+export async function notifyAdminsHouseBotBet(opts: {
+  botId: string; label: string; side: string; stakeTzs: number; marketTitle: string; marketId: string; intentId: string; at: string;
+}): Promise<number> {
+  const { houseBotAlertRecipients } = await import("./house-bot/alerts");
+  const recipients = await houseBotAlertRecipients();
+  const { formatTzs } = await import("@/lib/utils");
+  const amount = formatTzs(opts.stakeTzs);
+  // The second in the title is what keeps two stakes a minute apart from reading as one (04:1076).
+  return fanOutHouseAdmin(recipients, {
+    titleEn: `House bot "${opts.label}" ${opts.side} ${amount} on ${opts.marketTitle} · ${opts.at}`,
+    titleSw: `Boti "${opts.label}" ${opts.side} ${amount} kwenye ${opts.marketTitle} · ${opts.at}`,
+    titleZh: `平台机器人 "${opts.label}" ${opts.side} ${amount} · ${opts.marketTitle} · ${opts.at}`,
+    bodyEn: `Placed automatically at ${opts.at} EAT. Reference ${opts.intentId}.`,
+    bodySw: `Limewekwa kiotomatiki saa ${opts.at} EAT. Kumbukumbu ${opts.intentId}.`,
+    bodyZh: `已于东非时间 ${opts.at} 自动下注。参考号 ${opts.intentId}。`,
+    href: `/admin/house-bots/${opts.botId}?tab=activity&range=all&intent=${opts.intentId}`,
+  }, "house-bot-bet");
+}
+
+/**
+ * A stake a member of staff chose — Enter now, or a target (N1 §7, N2 §7). Bell AND email, uncapped and never
+ * counted against the hourly cap: a person chose it, so every admin hears about it.
+ * ⛔ Never quotes the officer's reason (04:3299): the body points at the feed, where the reason is recorded.
+ */
+export async function notifyAdminsHouseBotStaffChosen(opts: {
+  botId: string; label: string; side: string; stakeTzs: number; marketTitle: string; marketId: string; intentId: string;
+  entry: "MANUAL" | "TARGET"; byName: string; sideRule: string; at: string;
+}): Promise<number> {
+  const { houseBotAlertRecipients } = await import("./house-bot/alerts");
+  const recipients = await houseBotAlertRecipients();
+  const { formatTzs } = await import("@/lib/utils");
+  const amount = formatTzs(opts.stakeTzs);
+  const how = opts.entry === "MANUAL" ? `Enter now by ${opts.byName}` : `target by ${opts.byName}`;
+  const howSw = opts.entry === "MANUAL" ? `Ingia sasa na ${opts.byName}` : `lengo la ${opts.byName}`;
+  const howZh = opts.entry === "MANUAL" ? `由 ${opts.byName} 立即下注` : `由 ${opts.byName} 设定的目标`;
+  const href = `/admin/house-bots/${opts.botId}?tab=activity&range=all&intent=${opts.intentId}`;
+  return fanOutHouseAdmin(recipients, {
+    titleEn: `Staff-chosen · Bot "${opts.label}" ${opts.side} ${amount} on ${opts.marketTitle} · ${how} · ${opts.at}`,
+    titleSw: `Iliyochaguliwa na wafanyakazi · Boti "${opts.label}" ${opts.side} ${amount} kwenye ${opts.marketTitle} · ${howSw} · ${opts.at}`,
+    titleZh: `员工选择 · 机器人 "${opts.label}" ${opts.side} ${amount} · ${opts.marketTitle} · ${howZh} · ${opts.at}`,
+    bodyEn: `Placed at ${opts.at} EAT. Side rule: ${opts.sideRule}. Reason recorded in the activity feed.`,
+    bodySw: `Limewekwa saa ${opts.at} EAT. Kanuni ya upande: ${opts.sideRule}. Sababu imeandikwa kwenye mkondo wa shughuli.`,
+    bodyZh: `已于东非时间 ${opts.at} 下注。选边规则：${opts.sideRule}。原因已记录在活动记录中。`,
+    href,
+    email: {
+      subject: `Staff-chosen house stake · ${opts.label} ${opts.side} ${amount}`,
+      eyebrow: "House bots · staff-chosen",
+      heading: "A stake chosen by a member of staff was placed",
+      subtitle: `House bot "${opts.label}" staked ${amount} ${opts.side} on ${opts.marketTitle} at ${opts.at} EAT. The reason is recorded in the activity feed.`,
+      rows: [
+        { label: "Chosen by", value: opts.byName },
+        { label: "How", value: opts.entry === "MANUAL" ? "Enter now" : "Target" },
+        { label: "Side rule", value: opts.sideRule },
+        { label: "Reference", value: opts.intentId },
+      ],
+      cta: { href, label: "Open the activity feed" },
+    },
+  }, "house-bot-staff-chosen");
+}
+
+/** The hour just ended, for admins (C13). Bell only: the feed already has every row. */
+export async function notifyAdminsHouseBotHourSummary(opts: {
+  fromHH: string; toHH: string; count: number; stakeTzs: number; beyondCap: number; staffChosen: number; at: string;
+}): Promise<number> {
+  const { houseBotAlertRecipients } = await import("./house-bot/alerts");
+  const recipients = await houseBotAlertRecipients();
+  const { formatTzs } = await import("@/lib/utils");
+  const amount = formatTzs(opts.stakeTzs);
+  const beyond = opts.beyondCap > 0 ? ` ${opts.beyondCap} of them were beyond the hourly bell cap.` : "";
+  const beyondSw = opts.beyondCap > 0 ? ` Kati ya hizo, ${opts.beyondCap} zilipita kikomo cha saa cha kengele.` : "";
+  const beyondZh = opts.beyondCap > 0 ? ` 其中 ${opts.beyondCap} 笔超出每小时提醒上限。` : "";
+  const staff = opts.staffChosen > 0 ? ` ${opts.staffChosen} staff-chosen stakes were alerted one by one.` : "";
+  const staffSw = opts.staffChosen > 0 ? ` Dau ${opts.staffChosen} zilizochaguliwa na wafanyakazi zilitangazwa moja moja.` : "";
+  const staffZh = opts.staffChosen > 0 ? ` ${opts.staffChosen} 笔员工选择的投注已逐笔提醒。` : "";
+  return fanOutHouseAdmin(recipients, {
+    titleEn: `House bots · ${opts.fromHH}–${opts.toHH}: ${opts.count} stakes, ${amount} · ${opts.at}`,
+    titleSw: `Boti za nyumba · ${opts.fromHH}–${opts.toHH}: dau ${opts.count}, ${amount} · ${opts.at}`,
+    titleZh: `平台机器人 · ${opts.fromHH}–${opts.toHH}：${opts.count} 笔投注，${amount} · ${opts.at}`,
+    bodyEn: `Between ${opts.fromHH} and ${opts.toHH} EAT house bots placed ${opts.count} stakes totalling ${amount}.${beyond}${staff}`,
+    bodySw: `Kati ya saa ${opts.fromHH} na ${opts.toHH} EAT boti za nyumba ziliweka dau ${opts.count} zenye jumla ya ${amount}.${beyondSw}${staffSw}`,
+    bodyZh: `东非时间 ${opts.fromHH} 至 ${opts.toHH}，平台机器人共下注 ${opts.count} 笔，合计 ${amount}。${beyondZh}${staffZh}`,
+    href: `/admin/house-bots?tab=activity&range=custom&from=${encodeURIComponent(opts.fromHH)}&to=${encodeURIComponent(opts.toHH)}`,
+  }, "house-bot-hour-summary");
+}
+
+/**
+ * A bot stopped, or a reason was added to one already stopped (02 §2.2–2.3, C13). `variant` is the sealed row:
+ * A1 (a running bot stopped by a password change), A1_AGAIN (02 §2.2 row 93), A2 (changed while stopped),
+ * A2_OFFICER (support's temporary password), A2_ERASED (no password left), STOP (any other cause), CAUSE (a reason
+ * added to a bot that was already stopped).
+ */
+export async function notifyAdminsHouseBotPaused(opts: {
+  variant: "A1" | "A1_AGAIN" | "A2" | "A2_OFFICER" | "A2_ERASED" | "STOP" | "CAUSE";
+  botId: string; label: string; holder: string; at: string;
+  cause?: string; cancelled?: number; how?: string; changedAt?: string | null; status?: string; targetsEnded?: number; email?: boolean;
+}): Promise<number> {
+  const { houseBotAlertRecipients } = await import("./house-bot/alerts");
+  const recipients = await houseBotAlertRecipients();
+  const v = opts.variant;
+  const cancelled = opts.cancelled ?? 0;
+  const bot = `"${opts.label}"`;
+  const reverify = `/admin/house-bots/${opts.botId}?reverify=1`;
+  const plain = `/admin/house-bots/${opts.botId}`;
+  const how = opts.how ?? "";
+  const stopped = cancelled > 0
+    ? `The bot stopped and cancelled ${cancelled} queued stake${cancelled === 1 ? "" : "s"}.`
+    : "The bot stopped, and nothing was queued.";
+  const stoppedSw = cancelled > 0
+    ? `Boti ilisimama na ikafuta dau ${cancelled} zilizokuwa foleni.`
+    : "Boti ilisimama, na hakukuwa na dau kwenye foleni.";
+  const stoppedZh = cancelled > 0 ? `机器人已停止，并取消了 ${cancelled} 笔排队投注。` : "机器人已停止，且没有排队的投注。";
+  const targets = (opts.targetsEnded ?? 0) > 0 ? ` Its ${opts.targetsEnded} active targets were ended.` : "";
+
+  if (v === "A1" || v === "A1_AGAIN") {
+    const again = v === "A1_AGAIN";
+    const bodyEn = again
+      ? `${opts.holder} changed their 50pick password ${how} again at ${opts.at} EAT. The bot was already paused for the previous change and nothing was queued. No bet will be placed until you enter their newest password.`
+      : `${opts.holder} changed their 50pick password ${how} at ${opts.at} EAT. ${stopped} No bet will be placed until you enter their new password.`;
+    const bodySw = again
+      ? `${opts.holder} alibadilisha nenosiri lake la 50pick ${how} tena saa ${opts.at} EAT. Boti ilikuwa tayari imesimamishwa kwa mabadiliko yaliyotangulia na hakukuwa na dau kwenye foleni. Hakuna dau litakalowekwa hadi uweke nenosiri lake jipya zaidi.`
+      : `${opts.holder} alibadilisha nenosiri lake la 50pick ${how} saa ${opts.at} EAT. ${stoppedSw} Hakuna dau litakalowekwa hadi uweke nenosiri lake jipya.`;
+    const bodyZh = again
+      ? `${opts.holder} 于东非时间 ${opts.at} 再次更改了 50pick 密码。机器人此前已因上次更改而暂停，且没有排队的投注。在您输入其最新密码前不会下任何注。`
+      : `${opts.holder} 于东非时间 ${opts.at} 更改了 50pick 密码。${stoppedZh} 在您输入其新密码前不会下任何注。`;
+    return fanOutHouseAdmin(recipients, {
+      titleEn: `House bot ${bot} paused — password changed · ${opts.at}`,
+      titleSw: `Boti ${bot} imesimamishwa — nenosiri limebadilika · ${opts.at}`,
+      titleZh: `平台机器人 ${bot} 已暂停——密码已更改 · ${opts.at}`,
+      bodyEn, bodySw, bodyZh,
+      href: reverify,
+      email: {
+        subject: `House bot ${opts.label} paused — password changed`,
+        eyebrow: "House bots · paused",
+        heading: again ? "The holder changed their password again" : "A running house bot stopped: the password changed",
+        subtitle: bodyEn,
+        rows: [
+          { label: "Bot", value: opts.label },
+          { label: "Holder", value: opts.holder },
+          { label: "Stakes cancelled", value: String(cancelled) },
+        ],
+        cta: { href: reverify, label: "Enter new password" },
+      },
+    }, "house-bot-paused");
+  }
+
+  if (v === "A2" || v === "A2_OFFICER" || v === "A2_ERASED") {
+    const bodyEn = v === "A2_OFFICER"
+      ? `Support gave them a temporary password at ${opts.at} EAT. That is not their consent. Ask them to set their own password in Account settings, then enter it.`
+      : v === "A2_ERASED"
+        ? "This account has no password (erased or never set). It cannot be verified — remove the bot."
+        : `The bot is ${opts.status ?? "stopped"}, so nothing stopped. Enter their new password before it can run again.`;
+    const bodySw = v === "A2_OFFICER"
+      ? `Wafanyakazi walimpa nenosiri la muda saa ${opts.at} EAT. Hiyo si ruhusa yake. Mwombe ajiwekee nenosiri lake mwenyewe katika Mipangilio ya Akaunti, kisha uliweke.`
+      : v === "A2_ERASED"
+        ? "Akaunti hii haina nenosiri (limefutwa au halikuwekwa). Haiwezi kuthibitishwa — ondoa boti."
+        : `Boti i${opts.status ?? "mesimama"}, kwa hiyo hakuna kilichosimama. Weka nenosiri lake jipya kabla haijaweza kufanya kazi tena.`;
+    const bodyZh = v === "A2_OFFICER"
+      ? `客服于东非时间 ${opts.at} 为其设置了临时密码。这并不构成其授权。请让其在账户设置中自行设置密码，然后输入该密码。`
+      : v === "A2_ERASED"
+        ? "该账户没有密码（已删除或从未设置）。无法验证——请移除该机器人。"
+        : `机器人当前为${opts.status ?? "已停止"}，因此没有任何运行被中断。请输入其新密码后才能再次运行。`;
+    return fanOutHouseAdmin(recipients, {
+      titleEn: `House bot ${bot}: holder changed their password · ${opts.at}`,
+      titleSw: `Boti ${bot}: mwenye akaunti alibadilisha nenosiri lake · ${opts.at}`,
+      titleZh: `平台机器人 ${bot}：持有人更改了密码 · ${opts.at}`,
+      bodyEn, bodySw, bodyZh,
+      href: v === "A2_OFFICER" || v === "A2_ERASED" ? plain : reverify,
+    }, "house-bot-password");
+  }
+
+  // STOP and CAUSE: any other reason. A running bot that stopped also emails; a reason added to a stopped bot
+  // emails only for a closed account, a final identity refusal or an erasure request (04:1046-1048).
+  const cause = opts.cause ?? "a holder change";
+  const isStop = v === "STOP";
+  const bodyEn = isStop
+    ? `Cause: ${cause}. ${stopped}${targets} Open the bot to see what it needs.`
+    : `Cause: ${cause}. The bot was already stopped, so nothing changed for players. Its reasons are listed on its page.`;
+  const bodySw = isStop
+    ? `Sababu: ${cause}. ${stoppedSw}${targets ? ` Malengo yake ${opts.targetsEnded} yaliyokuwa hai yalikomeshwa.` : ""} Fungua boti kuona inachohitaji.`
+    : `Sababu: ${cause}. Boti ilikuwa tayari imesimama, kwa hiyo hakuna kilichobadilika kwa wachezaji. Sababu zake zimeorodheshwa kwenye ukurasa wake.`;
+  const bodyZh = isStop
+    ? `原因：${cause}。${stoppedZh} 打开该机器人查看其所需。`
+    : `原因：${cause}。该机器人此前已停止，因此对玩家没有影响。其原因已列在其页面上。`;
+  return fanOutHouseAdmin(recipients, {
+    titleEn: isStop ? `House bot ${bot} auto-paused — ${cause} · ${opts.at}` : `House bot ${bot}: ${cause} · ${opts.at}`,
+    titleSw: isStop ? `Boti ${bot} imesimamishwa kiotomatiki — ${cause} · ${opts.at}` : `Boti ${bot}: ${cause} · ${opts.at}`,
+    titleZh: isStop ? `平台机器人 ${bot} 已自动暂停——${cause} · ${opts.at}` : `平台机器人 ${bot}：${cause} · ${opts.at}`,
+    bodyEn, bodySw, bodyZh,
+    href: plain,
+    email: opts.email === false ? null : {
+      subject: isStop ? `House bot ${opts.label} auto-paused — ${cause}` : `House bot ${opts.label}: ${cause}`,
+      eyebrow: "House bots · paused",
+      heading: isStop ? "A house bot stopped" : "A new reason was added to a stopped house bot",
+      subtitle: bodyEn,
+      rows: [
+        { label: "Bot", value: opts.label },
+        { label: "Holder", value: opts.holder },
+        { label: "Cause", value: cause },
+        ...(isStop ? [{ label: "Stakes cancelled", value: String(cancelled) }] : []),
+      ],
+      cta: { href: plain, label: "Open the bot" },
+    },
+  }, "house-bot-paused");
+}
+
+/** House bots switched ON or OFF (02 §3.1, A9 step 4, ruling 111). Bell and email, never capped. */
+export async function notifyAdminsHouseBotSwitch(opts: {
+  state: "ON" | "OFF"; cause?: string; byName?: string | null; activeBots?: number; cancelled?: number; drain?: "drained" | "busy" | "skipped"; defect?: string | null; at: string;
+}): Promise<number> {
+  const { houseBotAlertRecipients } = await import("./house-bot/alerts");
+  const recipients = await houseBotAlertRecipients();
+  const on = opts.state === "ON";
+  const by = opts.byName ? ` by ${opts.byName}` : "";
+  const cause = opts.cause ?? "MANUAL";
+  const drained = opts.drain === "busy"
+    ? "Switched off. A bet already in its final step may still complete."
+    : "House bots are off. No bot will place a bet.";
+  const bodyEn = on
+    ? `${opts.activeBots ?? 0} bots are active. Each one still obeys its own rules and the global limits.`
+    : `${drained} Cause: ${cause}.${(opts.cancelled ?? 0) > 0 ? ` ${opts.cancelled} queued stakes were cancelled.` : ""}${opts.defect ? ` The engine stopped itself: ${opts.defect}.` : ""}`;
+  const bodySw = on
+    ? `Boti ${opts.activeBots ?? 0} ziko hai. Kila moja bado inafuata kanuni zake na vikomo vya jumla.`
+    : `${opts.drain === "busy" ? "Imezimwa. Dau lililo hatua yake ya mwisho linaweza bado kukamilika." : "Boti za nyumba zimezimwa. Hakuna boti itakayoweka dau."} Sababu: ${cause}.${(opts.cancelled ?? 0) > 0 ? ` Dau ${opts.cancelled} za foleni zilifutwa.` : ""}`;
+  const bodyZh = on
+    ? `当前有 ${opts.activeBots ?? 0} 个机器人处于活动状态。每个机器人仍遵守其自身规则与全局限额。`
+    : `${opts.drain === "busy" ? "已关闭。已进入最后步骤的投注仍可能完成。" : "平台机器人已关闭。任何机器人都不会下注。"} 原因：${cause}。${(opts.cancelled ?? 0) > 0 ? ` 已取消 ${opts.cancelled} 笔排队投注。` : ""}`;
+  return fanOutHouseAdmin(recipients, {
+    titleEn: on ? `House bots switched ON${by} · ${opts.at}` : `House bots switched OFF — ${cause} · ${opts.at}`,
+    titleSw: on ? `Boti za nyumba zimewashwa${by} · ${opts.at}` : `Boti za nyumba zimezimwa — ${cause} · ${opts.at}`,
+    titleZh: on ? `平台机器人已开启${by} · ${opts.at}` : `平台机器人已关闭——${cause} · ${opts.at}`,
+    bodyEn, bodySw, bodyZh,
+    href: "/admin/house-bots",
+    email: {
+      subject: on ? "House bots switched ON" : `House bots switched OFF — ${cause}`,
+      eyebrow: "House bots · master switch",
+      heading: on ? "House bots are on" : "House bots are off",
+      subtitle: bodyEn,
+      rows: [
+        { label: "Cause", value: cause },
+        ...(opts.byName ? [{ label: "By", value: opts.byName }] : []),
+        ...(on ? [] : [{ label: "Stakes cancelled", value: String(opts.cancelled ?? 0) }]),
+      ],
+      cta: { href: "/admin/house-bots", label: "Open house bots" },
+    },
+  }, "house-bot-switch");
+}
+
+/** The holder's own money moved on an account that is a live house bot (F7, 02 §3.6). Two events are two rows. */
+export async function notifyAdminsHouseBotMoneyEvent(opts: {
+  botId: string; label: string; holder: string; event: string; amountTzs: number; txnId: string; balanceTzs: number; at: string;
+}): Promise<number> {
+  const { houseBotAlertRecipients } = await import("./house-bot/alerts");
+  const recipients = await houseBotAlertRecipients();
+  const { formatTzs } = await import("@/lib/utils");
+  const amount = formatTzs(opts.amountTzs);
+  const balance = formatTzs(opts.balanceTzs);
+  const href = `/admin/transactions?q=${encodeURIComponent(opts.txnId)}&range=all`;
+  return fanOutHouseAdmin(recipients, {
+    titleEn: `House bot "${opts.label}": ${opts.holder} ${opts.event} ${amount} · ${opts.at}`,
+    titleSw: `Boti "${opts.label}": ${opts.holder} ${opts.event} ${amount} · ${opts.at}`,
+    titleZh: `平台机器人 "${opts.label}"：${opts.holder} ${opts.event} ${amount} · ${opts.at}`,
+    bodyEn: `Transaction ${opts.txnId}. Balance now ${balance}.`,
+    bodySw: `Muamala ${opts.txnId}. Salio sasa ${balance}.`,
+    bodyZh: `交易 ${opts.txnId}。当前余额 ${balance}。`,
+    href,
+    dedupe: false,
+    email: {
+      subject: `House bot ${opts.label}: the holder's money moved`,
+      eyebrow: "House bots · holder money",
+      heading: "Money moved on a live house-bot account",
+      subtitle: `${opts.holder} ${opts.event} ${amount} at ${opts.at} EAT on the account behind house bot "${opts.label}".`,
+      rows: [
+        { label: "Bot", value: opts.label },
+        { label: "Transaction", value: opts.txnId },
+        { label: "Balance now", value: balance },
+      ],
+      cta: { href, label: "Open the transaction" },
+    },
+  }, "house-bot-money");
+}
+
+/** Every other engine alert, rendered from the one copy table (C13, ruling 141). */
+export async function notifyAdminsHouseBotAlert(opts: {
+  code: string; botId?: string | null; label?: string | null; holder?: string | null; marketId?: string | null; intentId?: string | null;
+  detail?: Record<string, unknown>; at: string;
+}): Promise<number> {
+  const { houseBotAlertRecipients } = await import("./house-bot/alerts");
+  const recipients = await houseBotAlertRecipients();
+  const { alertRow } = await import("@/lib/house-bot/alert-copy");
+  const { formatTzs } = await import("@/lib/utils");
+  const row = alertRow({
+    code: opts.code, botId: opts.botId, intentId: opts.intentId, marketId: opts.marketId,
+    detail: opts.detail, label: opts.label, handle: opts.holder, at: opts.at, money: formatTzs,
+  });
+  return fanOutHouseAdmin(recipients, {
+    titleEn: row.titleEn, titleSw: row.titleSw, titleZh: row.titleZh,
+    bodyEn: row.bodyEn, bodySw: row.bodySw, bodyZh: row.bodyZh,
+    href: row.href,
+    email: {
+      subject: row.titleEn,
+      eyebrow: row.severity === "danger" ? "House bots · urgent" : "House bots · alert",
+      heading: row.titleEn.split(" · ")[0],
+      subtitle: row.bodyEn,
+      rows: [
+        ...(opts.label ? [{ label: "Bot", value: opts.label }] : []),
+        { label: "Code", value: opts.code },
+      ],
+      cta: { href: row.href, label: "Open in the console" },
+    },
+  }, "house-bot-alert");
+}
+
+/** A roster change: designated, verified, started, paused by hand, removed, rules or limits saved, targets (C13). */
+export async function notifyAdminsHouseBotRoster(opts: {
+  botId: string; label: string; event: string; line: string; eventId: string; at: string;
+}): Promise<number> {
+  const { houseBotAlertRecipients } = await import("./house-bot/alerts");
+  const recipients = await houseBotAlertRecipients();
+  const href = `/admin/house-bots/${opts.botId}?tab=history&event=${opts.eventId}`;
+  return fanOutHouseAdmin(recipients, {
+    titleEn: `House bot "${opts.label}" · ${opts.event} · ${opts.at}`,
+    titleSw: `Boti "${opts.label}" · ${opts.event} · ${opts.at}`,
+    titleZh: `平台机器人 "${opts.label}" · ${opts.event} · ${opts.at}`,
+    bodyEn: `${opts.line} Reason recorded in this bot's history.`,
+    bodySw: `${opts.line} Sababu imeandikwa kwenye historia ya boti hii.`,
+    bodyZh: `${opts.line} 原因已记录在该机器人的历史中。`,
+    href,
+    email: {
+      subject: `House bot ${opts.label} · ${opts.event}`,
+      eyebrow: "House bots · roster",
+      heading: "A house bot changed",
+      subtitle: opts.line,
+      rows: [
+        { label: "Bot", value: opts.label },
+        { label: "Change", value: opts.event },
+      ],
+      cta: { href, label: "Open its history" },
+    },
+  }, "house-bot-roster");
+}
+
+/**
+ * The holder's own notice for each stake placed from their account (PLAN §7). Bell and push, never email.
+ * ⛔ It never says a person chose the stake (04:3282): a staff-chosen stake reads exactly like an automatic one.
+ * ⛔ RG gate, as every holder notice has.
+ */
+export async function notifyHouseBotOwnerStake(opts: {
+  userId: string; positionId: string; side: string; stakeTzs: number; marketTitle: string; at: string;
+}): Promise<StoredNotification | null> {
+  const { isLockedOut } = await import("./responsible-gambling");
+  if ((await isLockedOut(opts.userId)).locked) return null;
+  const { formatTzs } = await import("@/lib/utils");
+  const amount = formatTzs(opts.stakeTzs);
+  return notify({
+    userId: opts.userId, kind: "HOUSE_BOT",
+    titleEn: `A liquidity stake was placed from your account · ${opts.at}`,
+    titleSw: `Dau la ukwasi limewekwa kutoka kwenye akaunti yako · ${opts.at}`,
+    titleZh: `已从您的账户下注一笔流动性投注 · ${opts.at}`,
+    bodyEn: `50pick placed ${amount} ${opts.side} on ${opts.marketTitle} at ${opts.at} EAT. It settles to your wallet as normal.`,
+    bodySw: `50pick imeweka ${amount} ${opts.side} kwenye ${opts.marketTitle} saa ${opts.at} EAT. Litalipwa kwenye pochi yako kama kawaida.`,
+    bodyZh: `50pick 已于东非时间 ${opts.at} 在 ${opts.marketTitle} 下注 ${amount} ${opts.side}。将照常结算到您的钱包。`,
+    href: `/positions/${opts.positionId}`,
+  });
+}
+
+/** The holder's hourly summary (PLAN §7). Bell only — house-only notices send no email (ruling 17). */
+export async function notifyHouseBotOwnerHourSummary(opts: {
+  userId: string; count: number; stakeTzs: number; fromHH: string; toHH: string;
+}): Promise<StoredNotification | null> {
+  const { isLockedOut } = await import("./responsible-gambling");
+  if ((await isLockedOut(opts.userId)).locked) return null;
+  const { formatTzs } = await import("@/lib/utils");
+  const amount = formatTzs(opts.stakeTzs);
+  return notify({
+    userId: opts.userId, kind: "HOUSE_BOT",
+    titleEn: `${opts.count} liquidity stakes from your account · ${opts.fromHH}–${opts.toHH}`,
+    titleSw: `Dau ${opts.count} za ukwasi kutoka kwenye akaunti yako · ${opts.fromHH}–${opts.toHH}`,
+    titleZh: `您的账户有 ${opts.count} 笔流动性投注 · ${opts.fromHH}–${opts.toHH}`,
+    bodyEn: `50pick placed ${opts.count} liquidity stakes (${amount}) from your account between ${opts.fromHH} and ${opts.toHH} EAT.`,
+    bodySw: `50pick iliweka dau ${opts.count} za ukwasi (${amount}) kutoka kwenye akaunti yako kati ya saa ${opts.fromHH} na ${opts.toHH} EAT.`,
+    bodyZh: `东非时间 ${opts.fromHH} 至 ${opts.toHH}，50pick 从您的账户下注 ${opts.count} 笔流动性投注（${amount}）。`,
+    href: "/positions",
+  });
 }

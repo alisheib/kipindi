@@ -167,6 +167,10 @@ export const EMAIL_TEMPLATES: readonly EmailSpec[] = [
   // The holder's designated / removed / reverified letter — no figure, so not money, and royal.
   { template: "houseBotOwnerHtml",         trigger: "src/lib/server/notification-service.ts", audience: "player",  chrome: "royal", money: false },
   { template: "houseBotErasureBlockedAdminHtml", trigger: "src/lib/server/notification-service.ts", audience: "officer", chrome: "royal", money: false },
+  // ── House bots (build commit 4, step 9) ───────────────────────────────────
+  // One parametrised letter behind every admin house alert that emails: pause, switch, money, alert, roster and
+  // staff-chosen. Royal, never gold: a figure in a detail row is a fact, not money promised to the reader.
+  { template: "houseBotAdminHtml",       trigger: "src/lib/server/notification-service.ts", audience: "officer", chrome: "royal", money: false },
 ];
 
 /**
@@ -334,4 +338,66 @@ export const NOTIFICATION_EMITTERS: readonly EmitterSpec[] = [
   { fn: "notifyHouseBotOwner",         kind: "HOUSE_BOT",         audience: "player" },
   // An erasure refused while the account is still a house bot (04 R6) — to `houseBotAlertRecipients()`.
   { fn: "notifyAdminsHouseBotErasureBlocked", kind: "HOUSE_BOT",  audience: "officer" },
+  // ── House bots (build commit 4, step 9): the engine's voice ──────────────
+  // Every automatic stake (bell only, capped per hour by the control row) and every staff-chosen one
+  // (bell + email, uncapped — a person chose it).
+  { fn: "notifyAdminsHouseBotBet",         kind: "HOUSE_BOT",     audience: "officer" },
+  { fn: "notifyAdminsHouseBotStaffChosen", kind: "HOUSE_BOT",     audience: "officer" },
+  { fn: "notifyAdminsHouseBotHourSummary", kind: "HOUSE_BOT",     audience: "officer" },
+  { fn: "notifyAdminsHouseBotPaused",      kind: "HOUSE_BOT",     audience: "officer" },
+  { fn: "notifyAdminsHouseBotSwitch",      kind: "HOUSE_BOT",     audience: "officer" },
+  { fn: "notifyAdminsHouseBotMoneyEvent",  kind: "HOUSE_BOT",     audience: "officer" },
+  { fn: "notifyAdminsHouseBotAlert",       kind: "HOUSE_BOT",     audience: "officer" },
+  { fn: "notifyAdminsHouseBotRoster",      kind: "HOUSE_BOT",     audience: "officer" },
+  // The holder's own two: one per stake, and the hour's summary. Bell (+ push), never email, never SMS.
+  { fn: "notifyHouseBotOwnerStake",        kind: "HOUSE_BOT",     audience: "player" },
+  { fn: "notifyHouseBotOwnerHourSummary",  kind: "HOUSE_BOT",     audience: "player" },
 ];
+
+/**
+ * F6 · WHICH CHANNELS A KIND MAY EVER USE (04 F6). One home, beside the kinds themselves, so a future fan-out asks
+ * the policy instead of re-deciding it — the drift `prisma-dal.ts` records for the lens lists is the same mistake.
+ *
+ * - `sms: "never"` means no SMS may ever carry this kind; `"otp"` means only a one-time code; `"allowed"` leaves the
+ *   channel to the emitter.
+ * - `email: "never"` means no letter; `"template-only"` means only through a registered template, so a new letter has
+ *   to pass `test:cert-c1`; `"allowed"` leaves it to the emitter.
+ * - HOUSE_BOT is `sms: "never"` (04 C13 — a liquidity notice never reaches a phone) and `email: "template-only"`
+ *   (ruling 17: house-only notices send no letter of their own; the holder's three letters and the admin letter are
+ *   registered templates).
+ *
+ * ⛔ `satisfies Record<NotificationKind, …>` is what makes a 19th kind impossible to ship without a row.
+ */
+export type ChannelRule = { sms: "never" | "otp" | "allowed"; email: "never" | "template-only" | "allowed" };
+
+export const CHANNEL_POLICY: Record<NotificationKind, ChannelRule> = {
+  WIN: { sms: "allowed", email: "allowed" },
+  LOSS: { sms: "never", email: "allowed" },
+  BET_PLACED: { sms: "never", email: "allowed" },
+  SELECTION_CLOSED: { sms: "never", email: "allowed" },
+  ROUND_RESULT: { sms: "never", email: "allowed" },
+  DEPOSIT: { sms: "allowed", email: "allowed" },
+  WITHDRAW: { sms: "allowed", email: "allowed" },
+  KYC: { sms: "never", email: "allowed" },
+  MATCH_START: { sms: "never", email: "allowed" },
+  RG: { sms: "never", email: "allowed" },
+  SECURITY: { sms: "otp", email: "allowed" },
+  AFFILIATE: { sms: "never", email: "allowed" },
+  PROPOSAL: { sms: "never", email: "allowed" },
+  BONUS: { sms: "never", email: "allowed" },
+  WATCHLIST: { sms: "never", email: "allowed" },
+  OBJECTION: { sms: "never", email: "allowed" },
+  VERDICT: { sms: "never", email: "allowed" },
+  HOUSE_BOT: { sms: "never", email: "template-only" },
+};
+
+/**
+ * What a fan-out may use for one notice. `houseOnly` is 04 F6's rule: when every position behind a notice is
+ * house-marked it never goes to a phone and never becomes a letter — the holder's hourly summary is the one account
+ * of those stakes, and it is a bell.
+ */
+export function channelAllowed(kind: NotificationKind, opts: { houseOnly?: boolean } = {}): { sms: boolean; email: boolean } {
+  if (opts.houseOnly === true) return { sms: false, email: false };
+  const row = CHANNEL_POLICY[kind];
+  return { sms: row.sms !== "never", email: row.email !== "never" };
+}

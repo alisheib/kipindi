@@ -296,6 +296,11 @@ const RENDERS: Rendered[] = [
   { template: "houseBotErasureBlockedAdminHtml",
     benign:  E.houseBotErasureBlockedAdminHtml({ botId: "hb_a1b2c3d4e5f6", holder: "Player #A3F2K8", botUrl: "/admin/house-bots/hb_a1b2c3d4e5f6" }),
     hostile: E.houseBotErasureBlockedAdminHtml({ botId: HOSTILE, holder: HOSTILE, botUrl: "/admin/house-bots/hb_a1b2c3d4e5f6" }) },
+  // House bots (build commit 4, step 9). The one parametrised admin letter: every free-text position takes the
+  // hostile payload, including a detail row's label and value, because every one of them is caller text.
+  { template: "houseBotAdminHtml",
+    benign:  E.houseBotAdminHtml({ eyebrow: "House bots · paused", heading: "A running house bot stopped", subtitle: "Player #A3F2K8 changed their 50pick password in their account settings at 14:02 EAT.", rows: [{ label: "Bot", value: "Bot A" }, { label: "Stakes cancelled", value: "2" }], cta: { href: "/admin/house-bots/hb_a1b2c3d4e5f6?reverify=1", label: "Enter new password" } }),
+    hostile: E.houseBotAdminHtml({ eyebrow: HOSTILE, heading: HOSTILE, subtitle: HOSTILE, rows: [{ label: HOSTILE, value: HOSTILE }], cta: { href: "/admin/house-bots/hb_a1b2c3d4e5f6", label: HOSTILE } }) },
 ];
 
 // ── 1 · The registry is the inventory, and it matches reality ───────────────────
@@ -334,7 +339,11 @@ ok("every template is rendered by this suite",
 // ⚠️ 64 → 66 on 2026-09-15 (branch house-bots, build commit 3): `houseBotOwnerHtml`, the holder's
 // designated / removed / reverified letter, and `houseBotErasureBlockedAdminHtml`, the officer alert when an
 // erasure is refused because the account is still a house bot. Measured the same way after the edit = 66.
-ok(`the inventory is 66 templates (found ${exported.length})`, exported.length === 66);
+// ⚠️ 66 → 67 on 2026-09-16 (branch house-bots, build commit 4, step 9): `houseBotAdminHtml`, the one
+// parametrised letter behind every admin house alert that emails — pause, switch, money, alert, roster and
+// staff-chosen. One template rather than six keeps the chrome and the CTA rules in a single place. Measured the
+// same way after the edit (`grep -c "^export function [a-zA-Z]*Html" src/lib/server/email.ts`) = 67.
+ok(`the inventory is 67 templates (found ${exported.length})`, exported.length === 67);
 
 // ── 2 · Every template has a real sender ───────────────────────────────────────
 section("2 · wiring — a template with no sender is a template nobody gets");
