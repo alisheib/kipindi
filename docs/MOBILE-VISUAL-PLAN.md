@@ -32,12 +32,16 @@
 ▶ NEXT: Session S1 → U1 (baseline instrument + signed-in QA player) and U2 (density setting + switch, no visual change).
   Read §5 (hard rules) and §9 U1–U2 before touching code.
 
-✔ LAST SESSION (S0b, 2026-09-15): seven-lens review of the plan (§13). Plan v2 adds U21–U30 (short screens and landscape,
-  keyboard, safe areas, large text, skeletons, empty/error states, touch, low-end motion, browser floor, real devices),
-  defects D10–D27, the phone design sheet (§8a) and the motion spec (§8b). No product code changed.
-  (S0, same day: the first version of this plan and the owner rulings, PLAN-OF-RECORD §8.8, NEXT-PLAN board.)
+✔ LAST SESSION (S0c, 2026-09-16): plan v3 — the 718-finding element inspection (§3a, record in
+  MOBILE-VISUAL-FINDINGS-2026-09.md), units U31–U40, defects D28–D41, §0a the session prompt, §1a closure,
+  and the tracker guard test:mobile-visual-plan (379 checks, RED 19/19) — which then caught six ownership
+  errors in this very plan. One product fix shipped in the safe-fix lane: D7 (a25c127b, live).
+  D8 and D15 were examined in that lane and deliberately left — the reasons are written in U20 and U27.
+  (S0b, 2026-09-15: the seven-lens review, U21–U30, D10–D27, §8a, §8b. S0, same day: the first plan,
+  the owner rulings in PLAN-OF-RECORD §8.8, the NEXT-PLAN board.)
 
-◐ HALF-DONE: nothing.
+◐ HALF-DONE: nothing. ⚠️ U31 carries a real backlog: 379 of the 718 findings are still UNVERIFIED
+  (usage limits stopped the verifiers for surface groups S07–S13). Treat them as leads, not facts.
 
 ? OPEN OWNER ITEMS (none blocks S1):
   1. U29: the browser floor, option A or B. Decided WITH NUMBERS: Ali pulls GA4 browser/version/screen data for
@@ -60,6 +64,11 @@
   · Landscape phones (640–1023 wide, ≤ 480 tall) miss every "< 640px" phone rule. U21 adds a short-height gate.
   · Under CDP network + CPU throttling, clicking a nav link to capture skeletons times out. Apply throttling first, then
     navigate by URL (`page.goto`) and screenshot at fixed times.
+  · ⛔ "THE DEPLOY IS UP" IS NOT "YOUR COMMIT IS LIVE". /api/health returning a small uptimeSec only says
+    SOMETHING deployed — on 2026-09-16 that was the PREVIOUS commit, and the fix looked absent on a page
+    that had simply not shipped yet. Read the commit: every page carries data-dpl-id on <html>, so
+      curl -s -A HeadlessChrome https://www.50pick.tz/<path> | grep -o 'data-dpl-id="[0-9a-f]\{8\}'
+    must equal YOUR sha before you re-measure anything or mark a row ✅.
   · ⛔ THE DEFAULT LANGUAGE IS SWAHILI since 8822b648 (2026-09-15), AFTER the measurements in §3 were taken with an
     English guest. A driver that photographs a fresh phone profile now gets SW, so a before/after pair captured
     "the same way" as §3 is NOT comparable unless it sets the kp-locale cookie. Set the locale explicitly in every
@@ -127,6 +136,9 @@ Continue the 50pick MOBILE VISUAL PLAN. Perfect beats fast. No lost work, no rep
 
 Legend: ⬜ not started · 🟡 in progress · 🔵 shipped, not yet verified live · ✅ verified on production · ⏸ blocked (reason).
 A row turns ✅ only after the production re-measure, **in the same commit that records the numbers**.
+On a **defect** row 🔵 means one thing more: *fixed and live, but its owning unit has not finished*, which happens when a
+defect is clear-cut enough to ship in the safe-fix lane on its own. It must name the commit that did it (the guard
+refuses a 🔵 without one), and the defect only reaches ✅ when its unit does — so an early fix can never close a unit.
 
 | Unit | Kind | Status | Session | Commit | Before → After (measured) | Guard RED-proven | Live ✅ (date) · notes |
 |---|---|---|---|---|---|---|---|
@@ -179,7 +191,7 @@ A row turns ✅ only after the production re-measure, **in the same commit that 
 | D4 | ⬜ | U16 |
 | D5 | ⬜ | U9 |
 | D6 | ⬜ | U10 |
-| D7 | ⬜ | U9 |
+| D7 | 🔵 shipped `a25c127b` 2026-09-16 (live) | U9 |
 | D8 | ⬜ | U20 |
 | D9 | ⬜ | U13 |
 | D10 | ⬜ | U10 |
@@ -260,6 +272,21 @@ Until then the status line stays 🟠 and `§0 NEXT` names real work.
     Every §3 measurement was taken with an English guest, so the baselines are labelled EN and the SW column is now the
     default player's experience, not the stress case (§5, and a §0 trap so no one recaptures "the same way" and compares
     two different languages). Re-checked against the new code: D12 (two 404 compositions) is untouched by it and stands.
+  - **The safe-fix lane** (Ali, 2026-09-15: *"if any issues need general fixing, proceed doing so"*, scoped to small
+    clear-cut defects that need no design decision). Three candidates examined; **one shipped.** **D7** (`a25c127b`,
+    live) gives the two Up & Down header links an `aria-label` from the keys their visible spans already use, with a new
+    `test:ui-consistency` rule — `collapsing-label-without-aria-label` — carrying the class rather than the two sites:
+    proven RED at exactly 2 findings, both in that file, 0 elsewhere in `src/`, and 0 after the fix. On production they
+    now announce "Soma kanuni kamili" and "Juu na Chini zako". **D8 and D15 were deliberately NOT shipped.** D8's honest
+    fix is a new tri-lingual key needing the native reader, and the one-line substitute would spend a second visible copy
+    change on one defect. D15 needs `--header-h`, which U23 has not created yet, so today it could only be a hand-typed
+    number — the thing §0d forbids. Both reasons are written into U20 and U27 so the question is not reopened. Deciding
+    D15 also narrowed it: `HashFocus` centres a **cold** load, so the overlap is on the order-link soft navigation only,
+    and a cold-load driver would have passed vacuously.
+  - Two traps earned the hard way and now in §0: **"the deploy is up" is not "your commit is live"** — `/api/health`
+    showed a fresh uptime for the PREVIOUS commit and the fix read as missing on a page that had not shipped; the
+    discriminator is `data-dpl-id` on `<html>`. And the board needed a state it did not have: **🔵 = shipped, unit not
+    finished**, which must name the commit that did it, or the board has to lie in one direction or the other.
 - **S0b · 2026-09-15.** Ali: *"check minor details you could have missed, things that are not always visible"*, then *"evaluate as a
   responsiveness, UI/UX, graphical, video-motion, animation, artist and compatibility engineer; anything under 10/10, push to 10."*
   - Second live capture: 320×640 (EN/SW), 360×640, landscape 780×360, the 404 and offline pages. A slow-network soft-navigation capture was
@@ -629,8 +656,11 @@ against the U1 baseline. **[General] control:** ≥ 640 shows a zero diff unless
 
 **U9 · [General] Defects D1 · D5 · D7 · D18 · D34**
 - D1: `.kp-strip-fade` fade 24→40px (below 1024; no test pins 24). If that isn't enough, add one gap step before the count; never put a positioned menu inside the mask.
-- D7: `aria-label`s on `updown/page.tsx:97-113` from `common.readFullRules` / `market.udHistoryTitle`. Guard: a `test:ui-consistency` rule
-  ("a link whose only label is `hidden sm:inline` needs `aria-label`", `Rule` shape `:80-85`, modelled on `bare-text-button`), baseline at 0. RED: remove one.
+- ✅ **D7 — SHIPPED EARLY, `a25c127b`, 2026-09-16, verified live.** `aria-label`s on `updown/page.tsx` from the same keys the visible spans use
+  (`common.readFullRules` / `market.udHistoryTitle`), matching the idiom `top-app-bar.tsx:302-320` already documents. The guard is the class, not
+  the two links: `test:ui-consistency` rule `collapsing-label-without-aria-label` (error, no baseline entry, so any future occurrence fails the
+  suite) — proven RED at exactly 2 findings, both in that file, 0 elsewhere in `src/`; 0 after the fix. On production the links now announce
+  "Soma kanuni kamili" and "Juu na Chini zako". **This unit still owes D1, D5, D18 and D34** — the row stays 🔵, not ✅.
 - D5: `SearchBox` prop `reserveEcho` (default true; all 14 call sites unchanged); only `results/page.tsx:372` passes false. Fix the stale
   comment at `results/page.tsx:355`. Driver: search-to-tabs gap ≤ 24.
 - D18: at 320 the active sort value is clipped in both densities. The sort `<summary>` gets `min-w-0` with the value on one line at `--type-small`, and the
@@ -796,6 +826,10 @@ against the U1 baseline. **[General] control:** ≥ 640 shows a zero diff unless
 - Footer list links (`src/components/layout/public-footer.tsx`, ≈ 19px rows) below 640 become `inline-flex items-center min-h-[var(--tap-min)]`,
   keeping font, colour and case. Not `.row-link` (`globals.css:1664`), which is uppercase. `qa:footer-reachable` stays green.
 - D8: new `market.signInToComment` in EN/SW/ZH (native check) used at `comments-thread.tsx:224-229`; `signInToPredict` stays on bet surfaces.
+  - ⛔ **Examined in the safe-fix lane on 2026-09-16 and deliberately NOT shipped.** The one-line version — swap in the existing `common.signIn`
+    ("Ingia" / "登录") — is accurate but strictly less informative than the wrong string it replaces, and it would spend a visible copy change in
+    three languages on a phrase this unit is going to change again. A defect worth fixing once is not worth shipping twice. It waits for the
+    native SW/ZH reader (§0 owner item 3), which is what `signInToComment` needs anyway.
 - Guards: footer link boxes ≥ 40 at 360; `test:i18n` parity; a source assertion that comments-thread no longer reads `signInToPredict`. RED restores each.
 - D24: the comments "Post" button keeps a stable width while pending: `min-w` equals its widest label ("Posting…") in each locale, with the spinner
   in place of the icon. Driver: no horizontal shift of the character counter during submit.
@@ -907,6 +941,14 @@ against the U1 baseline. **[General] control:** ≥ 640 shows a zero diff unless
   - ungated CSS `:hover` blocks are wrapped in `@media (hover: hover)`: `.btn:hover` lift, `.btn-yes/no/primary:hover` brightness,
     `.kp-qrow:hover` padding reflow, `.kp-rail__item:hover`, the `motion.css` raise hovers.
 - D15: a global `scroll-padding-top: calc(var(--header-h) + env(safe-area-inset-top) + 8px)`; pages with the discovery bar add its height.
+  - ⛔ **Examined in the safe-fix lane on 2026-09-16 and deliberately NOT shipped: it depends on U23.** `--header-h` does not exist yet (the header
+    offset is the literal `top-[56px]`), so the only fix available today is a hand-typed number — a second home for the header height, which is
+    what §0d forbids and what U23 exists to remove. **Do U23 first, then this is one declaration.**
+  - 🔎 **Re-measured while deciding, and the defect is narrower than its register line says.** `HashFocus` (`hash-focus.tsx`, mounted at
+    `markets/[id]/page.tsx:414`) scrolls a fragment target with `block: "center"`, so a FRESH load of `…#discussion` is centred and clears the
+    header. The overlap is on the **soft-navigation** path: the order links (`comments-thread.tsx:251`) change the query on the same route, the
+    `[]` effect does not re-run, and the browser lands the section flush under the sticky header. So the driver must test the ORDER LINKS, not a
+    cold load — a cold load passes vacuously. ⚠️ And `scroll-padding` also applies to `scrollIntoView`, so check the centred case did not shift.
 - D16: first **measure** back navigation (`/markets` → detail → back at 360: scroll lands within ±40px of where it was). Change `ScrollRestore` only if it
   fails (remove it and let Next restore, or switch to manual).
 - Guards (phone emulation):

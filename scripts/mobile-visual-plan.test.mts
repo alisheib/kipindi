@@ -132,6 +132,16 @@ for (const row of defectRows) {
     const owner = defectOwner.get(id) || "";
     ok(`§3 ${id} ✅ only after its unit ${owner || "?"} is ✅`, !!owner && (unitStatus.get(owner) || "").includes("✅"),
       `unit status: "${unitStatus.get(owner) || "unknown"}"`);
+  } else if (status.includes("🔵")) {
+    // 🔵 IS THE HONEST MIDDLE. A defect can be fixed on its own — outside its unit's session, in the
+    // safe-fix lane — long before the unit that owns it ships. Without a state for that, the board
+    // has to lie in one direction or the other: ⬜ on work that is live, or ✅ on a unit that has
+    // not been re-measured. 🔵 says "shipped, unit not finished", and it must name the commit that
+    // did it, or it is just a nicer-looking ⬜. (D7 shipped this way on 2026-09-16.)
+    const sha = (status.match(SHA) || [""])[0];
+    ok(`§3 ${id} 🔵 names the commit that shipped it`, !!sha && commitExists(sha), `status cell: "${status}"`);
+  } else if (status.includes("⬜")) {
+    ok(`§3 ${id} ⬜ claims no commit`, !SHA.test(status), `status cell: "${status}"`);
   }
 }
 

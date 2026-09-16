@@ -96,6 +96,16 @@ const plants = [
       const boardRow = p.split(/\r?\n/).find((l) => new RegExp(`^\\|\\s*${id}\\s*\\|`).test(l) && l !== defectRow);
       return boardRow ? p.replace(`${boardRow}\n`, "") : p;
     } },
+  { name: "a defect 🔵 shipped with no commit", expect: /names the commit that shipped it/,
+    plan: (p) => {
+      const boardRow = p.split(/\r?\n/).find((l) => /^\|\s*D\d+\s*\|\s*⬜\s*\|\s*U\d+\s*\|\s*$/.test(l));
+      return boardRow ? p.replace(boardRow, boardRow.replace("⬜", "🔵 shipped")) : p;
+    } },
+  { name: "a defect ⬜ that claims a commit anyway", expect: /claims no commit/,
+    plan: (p) => {
+      const boardRow = p.split(/\r?\n/).find((l) => /^\|\s*D\d+\s*\|\s*⬜\s*\|\s*U\d+\s*\|\s*$/.test(l));
+      return boardRow ? p.replace(boardRow, boardRow.replace("⬜", `⬜ ${realSha}`)) : p;
+    } },
   { name: "a table row that renders outside its table", expect: /no table row sits outside a table/,
     plan: (p) => p.replace("## §10 —", "| orphan | row | with no header |\n| second | line | of the fragment |\n\n## §10 —") },
   { name: "a closure claim that is not earned", expect: /every unit is ✅|every defect is ✅|lenses carry measured scores|real-device unit is ✅/,

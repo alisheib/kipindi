@@ -21,7 +21,7 @@
 > closed **by owner direction with the code gap still present** and exposure measured at or near
 > zero. If exposure moves, they reopen — which is why the mechanism is kept legible in each row.
 
-## ▶ 0 · MOBILE VISUAL PLAN — `MOBILE-VISUAL` · 🟠 **APPROVED 2026-09-15 (v3) · START HERE** · 0/40 units ✅ · 0/41 defects ✅
+## ▶ 0 · MOBILE VISUAL PLAN — `MOBILE-VISUAL` · 🟠 **APPROVED 2026-09-15 (v3) · START HERE** · 0/40 units ✅ · 0/41 defects ✅ · D7 shipped early and live (`a25c127b`)
 
 Ali, 2026-09-15: *"later any session please start with the mobile visual plan and start with the progress."*
 **▶ Work order and tracker: [`MOBILE-VISUAL-PLAN.md`](MOBILE-VISUAL-PLAN.md). Open it at §0 (RESUME AT), then §1 (status board).**
