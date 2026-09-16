@@ -323,4 +323,26 @@ export const MUTATIONS = [
     suite: "engine-mem",
     sections: "18",
   },
+  // L6 (a) · the loser's insert is no longer absorbed: without ON CONFLICT DO NOTHING it violates the anchor's unique
+  // index and throws, which the pass records as a failed decision. The row count stays 1, so ONLY 18.L6c can see this.
+  {
+    name: "L6 · the COUNTER insert drops its ON CONFLICT clause",
+    file: DAL,
+    from: "  if (kind === \"COUNTER\") return `ON CONFLICT (\"anchorKey\") WHERE \"kind\" = 'COUNTER' DO NOTHING RETURNING *`;",
+    to: "  if (kind === \"COUNTER\") return `RETURNING *`;",
+    expect: "18.L6c · …and neither pass failed: the loser's insert is absorbed by the anchor conflict, never an error",
+    suite: "engine-pg",
+    sections: "18",
+  },
+  // L6 (b) · the index the clause infers is never created (the suite migrates a fresh database on every run), so the guarantee
+  // itself is gone: with no unique index there is nothing to conflict on and no ONE row to count.
+  {
+    name: "L6 · the COUNTER anchor's unique index is not created",
+    file: "prisma/migrations/20260915150000_house_bot_tables/migration.sql",
+    from: "CREATE UNIQUE INDEX IF NOT EXISTS \"hbi_counter_anchor_uq\" ON \"HouseBotIntent\" (\"anchorKey\") WHERE \"kind\" = 'COUNTER';",
+    to: "-- (red drive) the COUNTER anchor's unique index is not created",
+    expect: "18.L6b · ⭐ L6 · a double sweep at failover writes ONE counter for the stake, never two",
+    suite: "engine-pg",
+    sections: "18",
+  },
 ];
