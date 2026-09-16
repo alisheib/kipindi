@@ -14,7 +14,11 @@
  * mutation, and a byte-identical check at the end.
  *
  * ⚠️ A run filtered to some sections cannot meet the two-store runner's population floor (`0.mem`/`0.pg · … exits 0
- * with assertions`), so those two floor lines are not counted as red; every CASE line still is.
+ * with assertions`). A floor line is not counted as red ONLY when a filter is on AND its own detail shows the child
+ * ran clean (exit 0, at least one assertion, none failed); a child that crashed or failed stays red. The runner's
+ * closing `ALL PASS`/`FAILURES` line is derived from those lines and is never counted on its own (the first full run,
+ * 2026-09-16, refused on it: Postgres §18 was 70 passed, 0 failed, under the 90 floor). A Postgres suite whose `0.pg` line never
+ * printed did not reach Postgres, and is red.
  */
 import { readFileSync, writeFileSync, renameSync, unlinkSync, existsSync } from "node:fs";
 import { execSync } from "node:child_process";
@@ -37,7 +41,12 @@ const SUITES = {
   "money-mem": { cmd: "npx tsx scripts/lib/house-bot-money-cases.mts", env: MEM_ENV },
   seam: { cmd: "npx tsx scripts/house-bot-seam.test.mts", env: {} },
 };
-const FLOOR = /^\s*FAIL 0\.(mem|pg) · the (memory|Postgres) run exits 0/;
+const FLOOR = /^\s*FAIL 0\.(?:mem|pg) · the (?:memory|Postgres) run exits 0 with assertions and no failure — exit (\d+) · (\d+) passed · (\d+) failed/;
+const SUMMARY = /^\s*(?:ALL PASS|FAILURES) — /;
+const benignFloor = (d, line) => {
+  const m = d.sections ? FLOOR.exec(line) : null;
+  return !!m && m[1] === "0" && Number(m[2]) > 0 && m[3] === "0";
+};
 
 const sha = (p) => createHash("sha256").update(readFileSync(p)).digest("hex");
 const write = (p, s) => {
@@ -57,9 +66,11 @@ const run = (d) => {
   } catch (e) {
     output = `${e.stdout ?? ""}${e.stderr ?? ""}`;
   }
-  const fails = output.split("\n").filter((l) => /^\s*FAIL/.test(l) && !(d.sections && FLOOR.test(l)));
+  const fails = output.split("\n").filter((l) => /^\s*FAIL/.test(l) && !SUMMARY.test(l) && !benignFloor(d, l));
   // A child that died before its summary is red even with no FAIL line (a thrown section is a FAIL line; a crash is not).
   const crashed = !/@@SUMMARY|ALL PASS|FAILURES/.test(output);
+  const pgMissing = d.suite.endsWith("-pg") && !/^\s*(?:PASS|FAIL) 0\.pg · /m.test(output);
+  if (pgMissing) fails.push("FAIL 0.pg · NOT MEASURED — the Postgres half never ran");
   return { red: fails.length > 0 || crashed, fails, output, crashed };
 };
 
