@@ -155,17 +155,35 @@ if (!has("--confirm")) {
 }
 
 const messages = plan.build();
+
+/**
+ * ⭐ TEE THE RAW REPLY, WITHOUT TOUCHING THE ADAPTER. `blackballSend` parses the reply into an
+ * outcome and flattens `data` — correct for production, but the success body is exactly what the
+ * vendor never documented, and whether `data` carries per-message ids is the open question. So
+ * `fetch` is wrapped here to keep a verbatim copy of the RESPONSE. ⛔ Only the response is
+ * captured: the request body carries `clientSecret` and is never read or printed.
+ */
+let rawReply: { status: number; body: string } | null = null;
+const realFetch = globalThis.fetch;
+globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+  const res = await realFetch(input, init);
+  rawReply = { status: res.status, body: await res.clone().text() };
+  return res;
+}) as typeof fetch;
+
 const startedAt = new Date().toISOString();
 const result = await blackballSend(env, messages);
+globalThis.fetch = realFetch;
 
 // ⭐ LEDGER FIRST, before any printing that could throw. A send that happened must be counted
 // even if the rest of this run fails — otherwise the ceiling under-counts exactly when it matters.
 // A transport failure is counted too: the gateway may have accepted and billed the batch.
 ledger.sends += plan.sends;
-ledger.runs.push({ at: startedAt, step, sends: plan.sends, ok: result.ok, balanceAfter: result.balance, references: messages.map((m) => m.reference) });
+ledger.runs.push({ at: startedAt, step, sends: plan.sends, ok: result.ok, balanceAfter: result.balance, references: messages.map((m) => m.reference), rawReply } as Ledger["runs"][number]);
 writeFileSync(LEDGER, JSON.stringify(ledger, null, 2) + "\n", "utf8");
 
 console.log(`sent at      ${startedAt}`);
+console.log(`raw reply    ${rawReply ? `HTTP ${(rawReply as { status: number }).status} ${(rawReply as { body: string }).body.slice(0, 600)}` : "(no response — transport failure)"}`);
 console.log(`result       ${describeBlackball(result)}`);
 console.log(`verdict      ${result.ok ? "ACCEPTED by the gateway" : result.transport ? "UNKNOWN — no reply; the gateway may still have it" : "REFUSED"}`);
 console.log(`balance      ${result.balance === null ? "(not reported)" : `TZS ${result.balance}`}`);
