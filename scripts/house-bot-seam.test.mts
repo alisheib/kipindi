@@ -139,7 +139,10 @@ section("§2 · BET_PATH_REASONS");
   const emitted = new Set([...literals(source), ...quoted]);
   const { REASONS } = await import("../src/lib/failure-reasons.ts");
   const registered = new Set(Object.keys(REASONS));
-  const emittedReasons = [...emitted].filter((r) => registered.has(r));
+  // ⛔ D19, C4 ruling 148: the house gates' reasons are SERVER-ONLY and have no registry row, so they are recognised by
+  // their shape; filtering on the registry alone would stop checking them in both directions.
+  const isHouseReason = (r: string) => r.startsWith("house_");
+  const emittedReasons = [...emitted].filter((r) => registered.has(r) || isHouseReason(r));
   const missing = emittedReasons.filter((r) => !(BET_PATH_REASONS as readonly string[]).includes(r));
   const dead = (BET_PATH_REASONS as readonly string[]).filter((r) => !emitted.has(r));
   ok("2.0 · the reader sees buyPositionInner, placeHouseBet and the house gates", guarded.length > 20_000 && SEAM_SRC.length > 5_000 && emittedReasons.length >= 25,
@@ -152,7 +155,15 @@ section("§2 · BET_PATH_REASONS");
     const s = literals(`reason: (wallet ? "wallet_frozen" : "wallet_missing")`);
     return s.has("wallet_frozen") && s.has("wallet_missing");
   })());
-  ok("2.3 · every BET_PATH_REASONS entry has a registry row with copy (failure-reasons.ts)", (BET_PATH_REASONS as readonly string[]).every((r) => registered.has(r)));
+  const playerReasons = (BET_PATH_REASONS as readonly string[]).filter((r) => !isHouseReason(r));
+  const houseReasons = (BET_PATH_REASONS as readonly string[]).filter(isHouseReason);
+  ok("2.3 · every PLAYER BET_PATH_REASONS entry has a registry row with copy (failure-reasons.ts)", playerReasons.length >= 15 && playerReasons.every((r) => registered.has(r)),
+    playerReasons.filter((r) => !registered.has(r)).join(", "));
+  ok("2.3b · ⛔ D19 · NO house_* reason has a row in the client-bundled failure registry (ruling 148)", houseReasons.length >= 15 && houseReasons.every((r) => !registered.has(r)),
+    `${houseReasons.length} house reasons · registered: ${houseReasons.filter((r) => registered.has(r)).join(", ")}`);
+  const { en: dictEn, sw: dictSw, zh: dictZh } = (await import("../src/lib/i18n-dict.ts")).dict as Record<string, Record<string, Record<string, string>>>;
+  const houseKeys = [dictEn, dictSw, dictZh].flatMap((d) => Object.values(d ?? {}).flatMap((ns) => Object.keys(ns ?? {}))).filter((k) => /^failHouse|^objHouse/.test(k));
+  ok("2.3c · ⛔ D19 · the client dictionary has no failHouse*/objHouse* key in any language", dictEn != null && houseKeys.length === 0, houseKeys.join(", "));
 }
 
 /* ═══ §3 · GATE_PARITY — the same account state gives the same answer on both paths (04 F3, A7) ═══ */
@@ -231,8 +242,12 @@ section("§4 · SEAM sites");
     String.raw`(?:[!=]==?|&&|\|\||!|\?\?)\s*\(?\s*${HOUSE_TOKEN}`,
     String.raw`\b(?:if|while|switch)\s*\(\s*!?\s*${HOUSE_TOKEN}`,
   ].join("|"));
-  /** Data carried along is not a branch: a notice's `houseStake:` value and `houseBotId: … ?? null`. */
-  const carried = (l: string) => l.replace(/\bhouseStake:\s*[^,})]+/g, "").replace(/\bhouseBotId:\s*[\w.]+\s*\?\?\s*null/g, "");
+  /**
+   * Data carried along is not a branch: `houseBotId: … ?? null`. ⛔ A notice's `houseStake:` argument is NOT exempt any more
+   * (owner ruling D19c, C4 ruling 143): a player's notice never learns a position is house-marked, so an argument that
+   * tells it so is a house branch and must be reported like one (4.c5).
+   */
+  const carried = (l: string) => l.replace(/\bhouseBotId:\s*[\w.]+\s*\?\?\s*null/g, "");
   const unanchored = (raw: string): number[] => {
     const rawLines = raw.split("\n"), code = decomment(raw).split("\n");
     const covered = new Set<number>();
@@ -275,7 +290,9 @@ section("§4 · SEAM sites");
     return at > 0 && fourth === bad.length + 1 && third === bad.length;
   })());
   ok("4.c4 · CONTROL · a commented-out branch and carried data are not branches",
-    plant(["  // if (ctx.kind === \"house\") skipGate();", "  notifyWin(u, { houseStake: p.houseBotId != null });", "  push({ houseBotId: p.houseBotId ?? null });"]) === 0);
+    plant(["  // if (ctx.kind === \"house\") skipGate();", "  push({ houseBotId: p.houseBotId ?? null });"]) === 0);
+  ok("4.c5 · D19c · a re-added outcome label argument (`houseStake: p.houseBotId != null`) IS reported as an unanchored house branch",
+    plant(["  notifyWin(u, { houseStake: p.houseBotId != null });"]) === 1 && plant(["  notifyLoss(p.userId, { stake: p.stake, houseStake: p.houseBotId != null });"]) === 1);
   const importers = (await import("node:child_process")).spawnSync("git", ["grep", "-l", "placeHouseBet", "--", "src"], { cwd: root, encoding: "utf8" }).stdout
     .split(/\r?\n/).filter(Boolean).filter((f) => f !== "src/lib/server/market-service.ts");
   const offenders = importers.filter((f) => /import[^;]*\bplaceHouseBet\b/.test(read(f)) && !f.endsWith("src/lib/server/house-bot/fire.ts"));
@@ -403,15 +420,20 @@ section("§6 · sanctioned changes");
     ok("6.m3 · CONTROL · a player's own open stake on this market gives the chip (other markets ignored)", playerSide === "NO", String(playerSide));
   }
 
-  // (h) UX-2: the house selection-closed notice rides its OWN push tag, so it can never replace the holder's
-  // personal notice on the lock screen (the title label is proven behaviourally in money 8.7).
+  // (h) D19c, C4 rulings 143–144: the house selection-closed notice, its title label and its own push tag are GONE —
+  // a holder gets any player's one notice (proven behaviourally in money 8.6–8.7). These pins keep them gone.
   {
     const notif = decomment(read("src/lib/server/notification-service.ts"));
     const sc = fnBody(notif, "export function notifySelectionClosed(");
-    const tagged = /opts\.houseStake\s*\?\s*\{\s*pushTag:\s*`selection-closed-house:\$\{opts\.marketId\}`\s*\}\s*:\s*undefined/;
-    ok("6.h1 · notifySelectionClosed passes pushTag selection-closed-house:<marketId> exactly when houseStake", tagged.test(sc), `${sc.length} chars read`);
-    ok("6.h1c · CONTROL · a notice with no house condition on the tag is not matched",
-      !tagged.test("}, { pushTag: `selection-closed-house:${opts.marketId}` });") && sc.length > 1_000);
+    const houseWords = /houseStake|houseOnly\s*\?\s*\{|selection-closed-house|LIQUIDITY_LINE|liquidityLine|liquidity|ukwasi|流动性/;
+    ok("6.h1 · D19c · notifySelectionClosed carries no house option, push tag or label", sc.length > 1_000 && !houseWords.test(sc), `${sc.length} chars read`);
+    const outcomeFns = ["export function notifyWin(", "export function notifyLoss(", "export function notifyRefund(", "export function notifyMarketCancelled(",
+      "export function notifyOneSidedRefund(", "export function notifyVerdictRecorded("].map((f) => [f, fnBody(notif, f)] as const);
+    const labelled = outcomeFns.filter(([, body]) => body.length < 100 || /houseStake|LIQUIDITY_LINE|liquidityLine|liquidity|ukwasi|流动性/.test(body)).map(([f]) => f);
+    ok("6.h1b · D19c · no outcome emitter takes a house label option or carries a liquidity word", labelled.length === 0, labelled.join(", "));
+    ok("6.h1c · CONTROL · the removed tag line and the removed label line are both matched",
+      houseWords.test("}, opts.houseStake ? { pushTag: `selection-closed-house:${opts.marketId}` } : undefined);")
+      && houseWords.test("bodyEn: `${label.en} paid out. Tap to view.${liquidityLine(house?.houseStake, \"en\")}`,"));
   }
 
   // A17 and H9: no wagering reversal and no recruiter reward on a marked position.

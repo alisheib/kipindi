@@ -73,6 +73,14 @@ section("§1 · a house stake places once, marked on every row");
     sell.ok === false && sell.error === "The sell-out window for this bet has closed — it now rides to settlement. · Muda wa kuuza dau hili umefungwa — litaenda hadi malipo."
       && !/liquidity|ukwasi|house|50pick/i.test(sell.error), sell.ok === false ? sell.error : "ok");
   ok("1.13 · …and the position stays OPEN", (await w.mdal.positionStore.get(pos.id)).status === "OPEN");
+
+  // D19c, C4 ruling 154: the holder's own data export keeps their money rows but never the house marker.
+  const { exportUserData } = await import("../../src/lib/server/user-service.ts");
+  const exported = await exportUserData(b.userId);
+  const rowOut = (exported.transactions as Any[]).find((t) => t.id === placedTxn?.id);
+  ok("1.14 · ruling 154 · the holder's export carries the house stake's transaction WITHOUT the house marker (the raw row has it)",
+    placedTxn?.houseBotId === b.botId && !!rowOut && !("houseBotId" in rowOut) && !JSON.stringify(exported).includes(b.botId),
+    JSON.stringify({ raw: placedTxn?.houseBotId, exported: rowOut ? Object.keys(rowOut) : null }));
 }
 
 // ═══ §2 · refusals that must move nothing ═══════════════════════════════════════════════════
@@ -409,7 +417,7 @@ section("§8 · no house wording on outcome notices, in any language");
   await sleep(500);
   const closed = await rows(h.userId, "SELECTION_CLOSED");
   ok("8.6 · selection closed → exactly ONE notice for the holder, naming BOTH figures (one book, as for any hedged player)",
-    sc.notified === true && closed.length === 1 && closed[0].bodyEn.includes("If YES wins") && closed[0].bodyEn.includes("If NO wins"),
+    sc.notified === true && closed.length === 1 && closed[0].bodyEn.includes("If YES wins you receive") && closed[0].bodyEn.includes("; if NO wins you receive"),
     `${closed.length} row(s): ${closed.map((n) => n.bodyEn).join(" | ")}`);
   ok("8.7 · …with the both-sides title and no house word in any language",
     closed.length === 1 && closed[0].titleEn === "Betting closed — your payouts are set" && leaks(closed[0]).length === 0, j({ title: closed[0]?.titleEn, leaks: leaks(closed[0]) }));

@@ -33,6 +33,19 @@ export type UserDataExport = {
   auditEntries: AuditEntry[];
 };
 
+/** Ruling 154 · the house keys a bet audit's payload carries for a house stake (`market-service.ts` SEAM:audit). */
+function withoutHouseAuditKeys<T extends { entries: AuditEntry[] }>(page: T): T {
+  return {
+    ...page,
+    entries: page.entries.map((e) => {
+      const payload = e.payload as Record<string, unknown> | null | undefined;
+      if (!payload || typeof payload !== "object" || !("houseBotId" in payload || "intentId" in payload)) return e;
+      const { houseBotId: _houseBot, intentId: _houseIntent, ...rest } = payload;
+      return { ...e, payload: rest } as AuditEntry;
+    }),
+  };
+}
+
 /**
  * GDPR Art 15 — return a structured snapshot of all data we hold on this user.
  *
@@ -52,7 +65,9 @@ export async function exportUserData(userId: string) {
     kyc: await db.kyc.findByUserId(userId),
     wallet: await db.wallet.findByUserId(userId),
     responsibleGambling: await db.responsible.get(userId),
-    transactions: await db.txn.findByUser(userId, 1000),
+    // ⛔ D19c, C4 ruling 154 (W2's recorded default, waiting on Ali and a lawyer): the holder's own money rows stay, but
+    // never the house marker a house-bot stake's rows carry — the file a holder downloads says nothing about house bots.
+    transactions: (await db.txn.findByUser(userId, 1000)).map(({ houseBotId: _houseMarker, ...row }) => row),
     /**
      * 🔴 THIS READ WAS THE RING, ON THE GDPR ART. 15 DOOR. The file a player downloads to
      * exercise a statutory right of access contained only whatever of their events happened to
@@ -66,7 +81,9 @@ export async function exportUserData(userId: string) {
      * access export is defensible; a capped export that does not say it is capped is not — the
      * recipient cannot tell an empty history from a withheld one.
      */
-    auditEntries: await getAuditForActorDurable(userId, { limit: 1000 }),
+    // ⛔ D19c, ruling 154: a house stake's own bet audit names the holder as actor and carries its bot and intent; the row
+    // is the holder's bet record and stays, the two house keys do not.
+    auditEntries: withoutHouseAuditKeys(await getAuditForActorDurable(userId, { limit: 1000 })),
   };
 }
 

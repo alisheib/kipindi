@@ -3,7 +3,7 @@
  * the memory store — never on its own.
  *
  * Sections:
- *   §1 recipients and channels · §2 the holder's own notices · §3 the caps and what the summary accounts for ·
+ *   §1 recipients and channels · §2 the holder is told NOTHING (D19c) · §3 the caps and what the summary accounts for ·
  *   §4 staff-chosen: uncapped, and never counted · §5 the words themselves (trilingual, no reason, no placeholder) ·
  *   §6 the dedupe window · §7 links · §8 SMS, never · §9 the channel policy.
  */
@@ -70,26 +70,39 @@ await guard("1", async () => {
   ok("1.3 · the row is a HOUSE_BOT bell with a link into the bot's history", row?.kind === "HOUSE_BOT" && /^\/admin\/house-bots\/hb_comms1\?tab=history&event=hbe_comms1$/.test(row?.href ?? ""), j(row?.href));
 });
 
-/* ═══ §2 · the holder's own notices ══════════════════════════════════════════════════════════════ */
-section("§2 · the holder hears about their own account, in their own language");
+/* ═══ §2 · the holder is told NOTHING (owner ruling D19c, C4 ruling 149) ═════════════════════════════
+ * These cases replaced "the holder's own notices". They prove the ABSENCE on every path that used to speak to the
+ * holder, with the per-holder cap at its MAXIMUM, so a notice that came back would land and be counted. */
+section("§2 · the holder receives no house-bot notice, on any path");
 await guard("2", async () => {
-  const holder = await w.user({});
-  const r = await N.notifyHouseBotOwnerStake({ userId: holder, positionId: "pos_comms1", side: "YES", stakeTzs: 8_000, marketTitle: "Will Dar get rain today?", at });
-  ok("2.1 · a stake from their account gives the holder one row, linked to the position itself",
-    r != null && r.kind === "HOUSE_BOT" && r.href === "/positions/pos_comms1", j({ href: r?.href }));
-  ok("2.2 · ⭐ 04 N1 §7 · it never says a person chose the stake: the body reads the same for an automatic and a staff-chosen row",
-    !/chose|officer|staff|Enter now/i.test(`${r?.bodyEn} ${r?.titleEn}`), j(r?.bodyEn));
-  ok("2.3 · it is complete in all three languages", !!r?.titleSw && !!r?.titleZh && !!r?.bodySw && !!r?.bodyZh && /[一-鿿]/.test(`${r?.titleZh}${r?.bodyZh}`));
+  const holderEmitters = Object.keys(N).filter((k) => /HouseBotOwner|houseBotOwner/.test(k));
+  ok("2.1 · the notification service exports no holder emitter at all", holderEmitters.length === 0, j(holderEmitters));
+  const holderMembers = Object.keys(EM.houseHolderAlerts?.() ?? {}).filter((k) => /holder(Notice)?$/i.test(k) || k === "holderNotice");
+  ok("2.2 · the holder hook's alert port has no holder member (admins only)", typeof EM.houseHolderAlerts === "function" && holderMembers.length === 0, j(holderMembers));
+  const playerRows = (REG.NOTIFICATION_EMITTERS as Any[]).filter((r) => r.kind === "HOUSE_BOT" && r.audience !== "officer");
+  ok("2.3 · every HOUSE_BOT row in the comms registry is an officer's", playerRows.length === 0, j(playerRows));
 
-  // ⛔ 04 C13's RG gate: a responsible-gambling lock means no outbound engagement at all.
-  const locked = await w.user({});
-  await RG.selfExclude(locked, "24h");
-  const before = await countHouse(locked);
-  const blocked = await N.notifyHouseBotOwnerStake({ userId: locked, positionId: "pos_comms2", side: "NO", stakeTzs: 1_000, marketTitle: "A poll", at });
-  const summary = await N.notifyHouseBotOwnerHourSummary({ userId: locked, count: 3, stakeTzs: 9_000, fromHH: "13:00", toHH: "14:00" });
-  const notice = await N.notifyHouseBotOwner(locked, "paused");
-  ok("2.4 · ⭐ 04:1074 · a self-excluded holder gets ZERO house rows — the stake notice, the summary and the state notice all return early",
-    blocked === null && summary === null && notice === null && (await countHouse(locked)) === before, j({ blocked, summary, notice }));
+  await w.limits({ bellAlertsPerHour: 60, holderNoticesPerHour: 60 });
+  const b = await w.bot();
+  const alerts = EM.houseEngineAlerts();
+  const beforeHolder = await rowsFor(b.userId);
+  const market = await w.poll({ graceMin: 0 });
+  const intent = await w.intent(b, market.id, { kind: "OPENER", side: "YES", stakeTzs: 1_000 });
+  const placed = await w.place(b, intent);
+  if (!placed.ok) throw new Error(`fixture: the house bet was refused — ${j(placed)}`);
+  const beforeAdmin = await countHouse(ADMIN_A);
+  await alerts.placed(await w.dal.houseBotIntentStore.get(intent.id));
+  ok("2.4 · CONTROL · the placed stake DID alert an admin (the channel is live, so silence below is not a dead channel)",
+    (await countHouse(ADMIN_A)) === beforeAdmin + 1, `${(await countHouse(ADMIN_A)) - beforeAdmin} admin rows`);
+  await alerts.botStopped(await w.dal.houseBotStore.get(b.botId), { to: "AUTO_PAUSED", cause: "LOSS_CAP", cancelled: 0 });
+  await sleep(20);
+  const afterHolder = await rowsFor(b.userId);
+  const newRows = afterHolder.filter((r) => !beforeHolder.some((x) => x.id === r.id));
+  ok("2.5 · ⭐ a stake placed from the holder's account and a stop of their bot give the holder ZERO rows of any kind, at a per-holder cap of 60",
+    newRows.length === 0, j(newRows.map((r) => `${r.kind}: ${r.titleEn}`)));
+  // §2's control stake used one count of this hour's admin bell cap; give it back, so §3 measures its cap from zero.
+  await w.dal.houseBotRuntimeStore.upsert(K.RUNTIME_KEY.global, { countInHour: 0 });
+  await w.limits();
 });
 
 /* ═══ §3 · the caps, and what the summary accounts for (04:1076, N1 04:3737) ═════════════════════ */
@@ -113,19 +126,16 @@ await guard("3", async () => {
   const holder = (await countHouse(b.userId)) - beforeHolder;
   ok("3.1 · ⭐ the admin bell cap holds: 5 automatic stakes in one hour give 3 rows at a cap of 3",
     admin === 3, `${admin} admin rows`);
-  ok("3.2 · ⭐ N1 04:3737 · the holder's own cap holds too: 2 rows at a cap of 2",
-    holder === 2, `${holder} holder rows`);
+  ok("3.2 · ⭐ D19c · the holder gets NO row for any of the 5 stakes (there is no holder notice to cap)",
+    holder === 0, `${holder} holder rows`);
   // What the caps suppressed is what the hour's summary reports.
   const beforeSummary = await countHouse(ADMIN_A);
   await alerts.once("k", { code: "HOUR_SUMMARY_ADMINS", detail: { fromIso: new Date(Date.parse("2026-09-16T10:00:00.000Z")).toISOString(), toIso: new Date(Date.parse("2026-09-16T11:00:00.000Z")).toISOString(), count: 5, stakeTzs: 5_010, beyondCap: 2, staffChosen: 1 } });
   const s = await newest(ADMIN_A);
   ok("3.3 · the hour's summary names the count, the money and what the cap held back",
     (await countHouse(ADMIN_A)) === beforeSummary + 1 && /5 stakes/.test(s?.titleEn ?? "") && /2 of them were beyond the hourly bell cap/.test(s?.bodyEn ?? "") && /1 staff-chosen/.test(s?.bodyEn ?? ""), j(s?.bodyEn));
-  const beforeHolderSummary = await countHouse(b.userId);
-  await alerts.once("k2", { code: "HOUR_SUMMARY_HOLDER", botId: b.botId, detail: { fromIso: new Date(Date.parse("2026-09-16T10:00:00.000Z")).toISOString(), toIso: new Date(Date.parse("2026-09-16T11:00:00.000Z")).toISOString(), count: 5, stakeTzs: 5_010, beyondCap: 3 } });
-  const hs = await newest(b.userId);
-  ok("3.4 · the holder's summary goes to the HOLDER, not to an admin, and links to their positions",
-    (await countHouse(b.userId)) === beforeHolderSummary + 1 && hs?.href === "/positions" && /5 liquidity stakes/.test(hs?.titleEn ?? ""), j({ title: hs?.titleEn, href: hs?.href }));
+  ok("3.4 · D19c · after five stakes and the admins' summary, the holder still has no house row (there is no holder summary)",
+    (await countHouse(b.userId)) === beforeHolder, j({ holderRows: (await countHouse(b.userId)) - beforeHolder }));
   await w.limits();
 });
 

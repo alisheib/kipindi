@@ -357,6 +357,19 @@ section("§0 · module law");
     badImports(`import { db } from "@/lib/server/store";\n`).length === 1 && badImports(`import type { Db } from "@/lib/server/store";\n`).length === 0);
   const planted = "`" + "test:" + "house-bot-planted-missing-guard" + "`";
   ok("0.c4 · CONTROL · a planted citation of a missing npm key is reported", citationsOf(`see ${planted}`).some((n) => !scripts.has(n)));
+
+  // C4 ruling 156 · the cases-only hook suspension is never called from product code (a production A2 kill switch).
+  const SUSPEND = new RegExp(["suspend(?:ed)?InAppHolder", "Hook\\w*ForCases", String.raw`\s*\(`].join(""));
+  const srcFiles = spawnSync("git", ["ls-files", "src"], { cwd: ROOT, encoding: "utf8" }).stdout.split(/\r?\n/).filter((f) => /\.(tsx?|mts|mjs|js)$/.test(f));
+  const callers = srcFiles.filter((f) => {
+    const code = decomment(readFileSync(join(ROOT, f), "utf8"));
+    return SUSPEND.test(code.replace(/export function suspend(?:ed)?InAppHolderHook\w*ForCases\(/g, "").replace(/\bsuspendedInAppHolderHookCallsForCases\(\) \+ 1/, ""));
+  });
+  ok("0.8 · ⛔ ruling 156 · no file under src/ calls suspendInAppHolderHookForCases or its counter (only case files may)",
+    srcFiles.length > 500 && callers.length === 0 && srcFiles.includes("src/lib/server/house-bot/holder-hook.ts"), `${srcFiles.length} files · callers: ${callers.join(", ")}`);
+  ok("0.8c · CONTROL · a planted call is seen, and the declaration alone is not",
+    SUSPEND.test("house.suspendInAppHolderHookForCases(true);") && SUSPEND.test("const n = HH.suspendedInAppHolderHookCallsForCases();")
+      && !SUSPEND.test("export function suspendInAppHolderHookForCases(on: boolean) {".replace(/export function suspend(?:ed)?InAppHolderHook\w*ForCases\(/g, "")));
 }
 
 /* ═══ §1 · C1 — one number parser for the form and the server ═══════════════════════════════ */

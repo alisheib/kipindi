@@ -2318,7 +2318,9 @@ await guard("17", async () => {
     const holder = rec.calls.filter((c) => c.code === "HOUR_SUMMARY_HOLDER" && c.m.botId === b.botId);
     const prevHour = CLOCK.eatKeyFor("previousHour", await dbNow());
     ok("17.61 · admins' summary once, keyed on the hour summarised (previousHour), beyond a 0 cap", !placedRow.threw && admins.length === 1 && admins[0].key === `summary:admins:all:${prevHour}` && admins[0].m.detail.beyondCap >= 1, j({ h1, h2, admins }));
-    ok("17.62 · …and the holder's once, counting their PLACED stake (0 notices an hour = summary only)", holder.length === 1 && holder[0].m.detail.count >= 1, j(holder));
+    // D19c, C4 ruling 149: the holder is never told, so the planner raises no holder summary — the PLACED stake above
+    // keeps this discriminating (the removed loop raised one for exactly this row at a 0 per-holder cap).
+    ok("17.62 · D19c · no holder summary is raised for the holder's PLACED stake, at a 0 per-holder cap", holder.length === 0 && rec.calls.every((c) => c.code !== "HOUR_SUMMARY_HOLDER"), j(rec.calls.map((c) => c.code)));
   }
 
   /* ── 17.63 oversight (N1 §4.5; ruling 79) ── */
@@ -3099,6 +3101,11 @@ const WF19: Any = await import("../../src/lib/server/wallet-freeze.ts");
 const PRIV19: Any = await import("../../src/lib/server/privacy.ts");
 const CS19: Any = await import("../../src/lib/server/config-store.ts");
 const EL19: Any = await import("../../src/lib/server/house-bot/eligibility.ts");
+// ⛔ C4 ruling 156: every A2 row here is driven through ONE path (the hook, or the sweep) with a recorder. The platform
+// writers the fixtures use (selfExclude, coolOff, the wallet freeze, fileDsarRequest) fire the REAL in-app hook
+// asynchronously, which raced the path under test on Postgres (6–7 reds before this, on `54dbb0dd` too). The in-app
+// entry is suspended for §19; the call sites are `test:house-bot-holder-lifecycle`'s to prove.
+HH.suspendInAppHolderHookForCases(true);
 
 if (STORE === "memory") {
   await guard("19", () => {
@@ -3162,6 +3169,8 @@ await guard("19", async () => {
       holderLockedOut: async (bot: Any, until: string | null) => push("holderLockedOut", { botId: bot.id, userId: bot.userId, until }),
       officerSetEmail: async (bot: Any) => push("officerSetEmail", { botId: bot.id, userId: bot.userId }),
       breakEnded: async (bot: Any, until: string) => push("breakEnded", { botId: bot.id, userId: bot.userId, until }),
+      // ⛔ A TRAP, not a channel (D19c, C4 ruling 149): `HolderAlerts` has no holder member any more. If the hook ever
+      // called one, it would record `notice:<kind>` here and break every exact call sequence below.
       holderNotice: async (userId: string, kind: string) => push("holderNotice", { userId, kind }),
     };
     const label = (c: Any) => c.fn === "holderNotice" ? `notice:${c.kind}`
@@ -3241,15 +3250,15 @@ await guard("19", async () => {
   const ROWS: Any[] = [
     { n: "1", what: "password changed in settings", event: "PASSWORD_SELF_CHANGE", change: pwChange("SELF_CHANGE"),
       status: "AUTO_PAUSED", reason: "PASSWORD_CHANGED", causes: "PASSWORD_CHANGED", pw: "SELF_CHANGE",
-      fns: ["passwordPaused", "notice:password_paused"], events: ["AUTO_PAUSED"] },
+      fns: ["passwordPaused"], events: ["AUTO_PAUSED"] },
     { n: "2", what: "a reset link", event: "PASSWORD_RESET_LINK", change: pwChange("RESET_LINK"),
       status: "AUTO_PAUSED", reason: "PASSWORD_CHANGED", causes: "PASSWORD_CHANGED", pw: "RESET_LINK",
-      fns: ["passwordPaused", "notice:password_paused"], events: ["AUTO_PAUSED"] },
+      fns: ["passwordPaused"], events: ["AUTO_PAUSED"] },
     { n: "3", what: "support's temporary password", event: "PASSWORD_OFFICER_TEMP", change: pwChange("OFFICER_TEMP"),
       status: "AUTO_PAUSED", reason: "PASSWORD_CHANGED", causes: "PASSWORD_CHANGED", pw: "OFFICER_TEMP",
-      fns: ["passwordPaused", "notice:password_temp"], events: ["AUTO_PAUSED"] },
+      fns: ["passwordPaused"], events: ["AUTO_PAUSED"] },
     { n: "5", what: "the account closed", event: "ACCOUNT_CLOSED", change: async (u: string) => { await w.setUserFields(u, { status: "CLOSED", closedAt: iso() }); },
-      removed: true, fns: ["botStopped", "notice:removed"], events: ["REMOVED"] },
+      removed: true, fns: ["botStopped"], events: ["REMOVED"] },
     { n: "6", what: "self-exclusion", event: "SELF_EXCLUDED", change: async (u: string) => { await RG19.selfExclude(u, "24h"); },
       status: "AUTO_PAUSED", reason: "SELF_EXCLUDED", voidCause: "SELF_EXCLUDED", causes: "SELF_EXCLUDED,WALLET_FROZEN",
       fns: ["botStopped"], events: ["AUTO_PAUSED", "CONSENT_VOIDED"] },
@@ -3273,12 +3282,12 @@ await guard("19", async () => {
       status: "AUTO_PAUSED", reason: "IDENTITY_REFUSED", voidCause: "IDENTITY_REFUSED", causes: "IDENTITY_REFUSED",
       fns: ["botStopped"], events: ["AUTO_PAUSED", "CONSENT_VOIDED"] },
     { n: "12", what: "promoted to staff", event: "ROLE_CHANGED", change: async (u: string) => { await w.setUserFields(u, { role: "ADMIN" }); },
-      status: "AUTO_PAUSED", reason: "ROLE_CHANGED", causes: "ROLE_CHANGED", fns: ["botStopped", "notice:role_changed"], events: ["AUTO_PAUSED"] },
+      status: "AUTO_PAUSED", reason: "ROLE_CHANGED", causes: "ROLE_CHANGED", fns: ["botStopped"], events: ["AUTO_PAUSED"] },
     { n: "13", what: "approved as an agent", event: "ROLE_CHANGED", change: async (u: string) => { await w.setUserFields(u, { role: "AGENT" }); },
-      status: "AUTO_PAUSED", reason: "ROLE_CHANGED", causes: "ROLE_CHANGED", fns: ["botStopped", "notice:role_changed"], events: ["AUTO_PAUSED"] },
+      status: "AUTO_PAUSED", reason: "ROLE_CHANGED", causes: "ROLE_CHANGED", fns: ["botStopped"], events: ["AUTO_PAUSED"] },
     { n: "14", what: "an erasure request filed", event: "ERASURE_REQUEST", change: async (u: string) => { PRIV19.fileDsarRequest({ userId: u, type: "ERASURE" }); },
       status: "AUTO_PAUSED", reason: "HOLDER_ERASURE_REQUEST", voidCause: "HOLDER_ERASURE_REQUEST", causes: "HOLDER_ERASURE_REQUEST",
-      fns: ["botStopped", "notice:erasure_request"], events: ["AUTO_PAUSED", "CONSENT_VOIDED"] },
+      fns: ["botStopped"], events: ["AUTO_PAUSED", "CONSENT_VOIDED"] },
   ];
 
   const runRow = async (r: Any, mode: "HOOK" | "SWEEP"): Promise<Any> => {
@@ -3372,8 +3381,8 @@ await guard("19", async () => {
     await Promise.all([hook(b.userId, "ROLE_CHANGED", rec3), sweep(rec3)]);
     bot = await botRow(b.botId);
     const roleEvents = (await eventsOf(b.botId, ["HOLDER_CAUSE_ADDED"])).filter((e: Any) => e.payload?.cause === "ROLE_CHANGED");
-    ok("19.B3 · a hook and a sweep racing on one new cause → ONE event, ONE bell and ONE role_changed notice (A2 rows 12–13)",
-      roleEvents.length === 1 && rec3.n(b.userId, "causeAdded:ROLE_CHANGED") === 1 && rec3.n(b.userId, "notice:role_changed") === 1
+    ok("19.B3 · a hook and a sweep racing on one new cause → ONE event, ONE bell, and NO holder notice (A2 rows 12–13; D19c)",
+      roleEvents.length === 1 && rec3.n(b.userId, "causeAdded:ROLE_CHANGED") === 1 && rec3.n(b.userId, "notice:role_changed") === 0
         && causeCodes(bot) === "ACCOUNT_SUSPENDED,ROLE_CHANGED",
       j({ events: roleEvents.length, fns: rec3.fns(b.userId), causes: causeCodes(bot) }));
 
@@ -3453,9 +3462,9 @@ await guard("19", async () => {
     await w.setUserFields(b4.userId, { passwordHash: newHash(), passwordSetVia: "OFFICER_TEMP", passwordSetAt: iso() });
     await hook(b4.userId, "PASSWORD_OFFICER_TEMP", rec4);
     const bot4 = await botRow(b4.botId);
-    ok("19.C4 · 02 §2.2 row 94 · AUTO_PAUSED(ACCOUNT_SUSPENDED) + an officer's temporary password → status and reason kept, OFFICER_TEMP recorded, A2, and the holder's password_temp notice (A2 row 3)",
+    ok("19.C4 · 02 §2.2 row 94 · AUTO_PAUSED(ACCOUNT_SUSPENDED) + an officer's temporary password → status and reason kept, OFFICER_TEMP recorded, A2, and NO holder notice (D19c; A2 row 3)",
       bot4.status === "AUTO_PAUSED" && bot4.pauseReason === "ACCOUNT_SUSPENDED" && bot4.credentialChangedVia === "OFFICER_TEMP"
-        && j(rec4.fns(b4.userId)) === j(["passwordChanged", "notice:password_temp"]) && rec4.of(b4.userId)[0].method === "OFFICER_TEMP",
+        && j(rec4.fns(b4.userId)) === j(["passwordChanged"]) && rec4.of(b4.userId)[0].method === "OFFICER_TEMP",
       j({ status: bot4.status, reason: bot4.pauseReason, fns: rec4.fns(b4.userId) }));
     await retire(b4.botId);
 
@@ -3464,8 +3473,8 @@ await guard("19", async () => {
     await w.setUserFields(b5.userId, { passwordHash: newHash(), passwordSetVia: "SELF_CHANGE", passwordSetAt: iso() });
     await Promise.all([hook(b5.userId, "PASSWORD_SELF_CHANGE", rec5), sweep(rec5), hook(b5.userId, "PASSWORD_SELF_CHANGE", rec5)]);
     const bot5 = await botRow(b5.botId);
-    ok("19.C5 · ruling 125 · two hooks and a sweep racing over one ACTIVE bot's password change → ONE A1, ONE AUTO_PAUSED event, ONE holder notice, and never an A2",
-      rec5.n(b5.userId, "passwordPaused") === 1 && rec5.n(b5.userId, "notice:password_paused") === 1 && rec5.n(b5.userId, "passwordChanged") === 0
+    ok("19.C5 · ruling 125 · two hooks and a sweep racing over one ACTIVE bot's password change → ONE A1, ONE AUTO_PAUSED event, NO holder notice, and never an A2",
+      rec5.n(b5.userId, "passwordPaused") === 1 && rec5.n(b5.userId, "notice:password_paused") === 0 && rec5.n(b5.userId, "passwordChanged") === 0
         && (await eventsOf(b5.botId, ["AUTO_PAUSED"])).length === 1 && (await eventsOf(b5.botId, ["CREDENTIAL_CHANGED"])).length === 0
         && bot5.status === "AUTO_PAUSED" && bot5.pauseReason === "PASSWORD_CHANGED",
       j({ fns: rec5.fns(b5.userId), auto: (await eventsOf(b5.botId, ["AUTO_PAUSED"])).length }));
@@ -3620,8 +3629,8 @@ await guard("19", async () => {
     await w.setUserFields(b.userId, { status: "CLOSED", closedAt: iso() });
     await hook(b.userId, "ACCOUNT_CLOSED", rec);
     const bot = await botRow(b.botId);
-    ok("19.F1 · A5 · a closed account removes the bot from PAUSED too, with the holder's removal notice",
-      bot.status === "REMOVED" && bot.removedCause === "ACCOUNT_CLOSED" && j(rec.fns(b.userId)) === j(["botStopped", "notice:removed"]),
+    ok("19.F1 · A5 · a closed account removes the bot from PAUSED too, and the holder is told nothing (D19c)",
+      bot.status === "REMOVED" && bot.removedCause === "ACCOUNT_CLOSED" && j(rec.fns(b.userId)) === j(["botStopped"]),
       j({ status: bot.status, cause: bot.removedCause, fns: rec.fns(b.userId) }));
 
     const recR = recorder();
@@ -3641,7 +3650,7 @@ await guard("19", async () => {
     const bot3 = await botRow(b3.botId);
     ok("19.F3 · …and from AUTO_PAUSED through the sweep, once — ACCOUNT_CLOSED wins over every other cause (no cause-added bell beside it)",
       bot3.status === "REMOVED" && bot3.removedCause === "ACCOUNT_CLOSED"
-        && rec3.n(b3.userId, "botStopped") === 1 && rec3.n(b3.userId, "notice:removed") === 1 && rec3.n(b3.userId, "causeAdded") === 0,
+        && rec3.n(b3.userId, "botStopped") === 1 && rec3.n(b3.userId, "notice:removed") === 0 && rec3.n(b3.userId, "causeAdded") === 0,
       j({ status: bot3.status, fns: rec3.fns(b3.userId) }));
   }
 
@@ -3743,7 +3752,7 @@ await guard("19", async () => {
     const bot = await botRow(b.botId);
     ok("19.I1 · ⭐ 04 A3 · with several causes live the FIRST in HOLDER_CAUSES order becomes the pause reason (PASSWORD_CHANGED before ACCOUNT_SUSPENDED) and the WHOLE set is recorded, with A1 and the holder's notice",
       bot.status === "AUTO_PAUSED" && bot.pauseReason === "PASSWORD_CHANGED" && causeCodes(bot) === "ACCOUNT_SUSPENDED,PASSWORD_CHANGED"
-        && bot.pauseDetail?.method === "SELF_CHANGE" && j(rec.fns(b.userId)) === j(["passwordPaused", "notice:password_paused"])
+        && bot.pauseDetail?.method === "SELF_CHANGE" && j(rec.fns(b.userId)) === j(["passwordPaused"])
         && (await S.houseBotIntentStore.get(live.id))?.status === "CANCELLED",
       j({ reason: bot.pauseReason, causes: causeCodes(bot), fns: rec.fns(b.userId) }));
     const rec2 = recorder();
@@ -3755,5 +3764,6 @@ await guard("19", async () => {
 
   await S.houseBotIntentStore.cancelLive({ all: true }, "MASTER_OFF");
 });
+HH.suspendInAppHolderHookForCases(false);
 console.log(`\n@@SUMMARY ${JSON.stringify({ pass, fail })}`);
 process.exit(fail === 0 ? 0 : 1);

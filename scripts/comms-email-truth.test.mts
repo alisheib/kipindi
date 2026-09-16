@@ -288,11 +288,8 @@ const RENDERS: Rendered[] = [
   { template: "kycReviewOverdueAdminHtml",
     benign:  E.kycReviewOverdueAdminHtml({ reference: "kyc_a1", playerLabel: "Asha M.", submittedAt: "2026-09-12T08:00:00.000Z", hoursWaiting: 26, reviewUrl: "https://www.50pick.tz/admin/kyc/u1" }),
     hostile: E.kycReviewOverdueAdminHtml({ reference: HOSTILE, playerLabel: HOSTILE, submittedAt: HOSTILE, hoursWaiting: 0, reviewUrl: "https://www.50pick.tz/admin/kyc/u1" }) },
-  // House bots (build commit 3). The holder letter takes no caller text but its time, so the hostile render
-  // puts the payload there; the officer alert puts it in every free-text position.
-  { template: "houseBotOwnerHtml",
-    benign:  E.houseBotOwnerHtml({ kind: "designated", at: "15 Sep, 14:02 EAT" }),
-    hostile: E.houseBotOwnerHtml({ kind: "reverified", at: HOSTILE }) },
+  // House bots (build commit 3). The officer alert puts the payload in every free-text position. (The holder letter
+  // was removed by owner ruling D19c, C4 ruling 149 — the holder receives no house-bot email.)
   { template: "houseBotErasureBlockedAdminHtml",
     benign:  E.houseBotErasureBlockedAdminHtml({ botId: "hb_a1b2c3d4e5f6", holder: "Player #A3F2K8", botUrl: "/admin/house-bots/hb_a1b2c3d4e5f6" }),
     hostile: E.houseBotErasureBlockedAdminHtml({ botId: HOSTILE, holder: HOSTILE, botUrl: "/admin/house-bots/hb_a1b2c3d4e5f6" }) },
@@ -343,7 +340,9 @@ ok("every template is rendered by this suite",
 // parametrised letter behind every admin house alert that emails — pause, switch, money, alert, roster and
 // staff-chosen. One template rather than six keeps the chrome and the CTA rules in a single place. Measured the
 // same way after the edit (`grep -c "^export function [a-zA-Z]*Html" src/lib/server/email.ts`) = 67.
-ok(`the inventory is 67 templates (found ${exported.length})`, exported.length === 67);
+// ⚠️ 67 → 66 on 2026-09-16 (branch house-bots, eighth session): `houseBotOwnerHtml` REMOVED by owner ruling D19c
+// (C4 ruling 149) — the holder receives no house-bot email at all. Measured the same way after the edit = 66.
+ok(`the inventory is 66 templates (found ${exported.length})`, exported.length === 66);
 
 // ── 2 · Every template has a real sender ───────────────────────────────────────
 section("2 · wiring — a template with no sender is a template nobody gets");

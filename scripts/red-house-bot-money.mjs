@@ -28,6 +28,8 @@ const SUITES = {
   seam: "npx tsx scripts/house-bot-seam.test.mts",
   "money-mem": "npx tsx scripts/lib/house-bot-money-cases.mts",
   "caps-mem": "npx tsx scripts/lib/house-bot-caps-cases.mts",
+  // D19-5 (C4 ruling 152): the designation cases prove the holder is told nothing.
+  "designation-mem": "npx tsx scripts/lib/house-bot-designation-cases.mts",
   "money-pg": "npx tsx scripts/db-scratch.mts --run npx tsx scripts/house-bot-money.test.mts",
   "caps-pg": "npx tsx scripts/db-scratch.mts --run npx tsx scripts/house-bot-caps.test.mts",
 };

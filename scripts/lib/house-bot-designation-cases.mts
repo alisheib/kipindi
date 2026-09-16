@@ -34,6 +34,27 @@ const PR: Any = await import("../../src/lib/server/password-reset.ts");
 const { setUserEmail }: Any = await import("../../src/lib/server/email-verification.ts");
 const { audit, auditFlush, getAuditPage }: Any = await import("../../src/lib/server/audit.ts");
 const { savePushSubscription }: Any = await import("../../src/lib/server/push-service.ts");
+const HH: Any = await import("../../src/lib/server/house-bot/holder-hook.ts");
+/**
+ * ⛔ C4 ruling 156: the backstops these cases prove (eligibility after an erasure request, the erasure refusal of a live bot,
+ * RG_SINCE_VERIFIED) sit BEHIND the A2 hook. The platform writers their fixtures use fire the real in-app hook
+ * asynchronously, which reached the bot first (voided or REMOVED it) and left the backstop unexercised — 10 reds on both
+ * stores, on `54dbb0dd` too. Each such fixture runs with the in-app entry suspended; the hook's own effect is engine §19's.
+ */
+const withoutInAppHook = async <T,>(fn: () => Promise<T> | T): Promise<T> => {
+  HH.suspendInAppHolderHookForCases(true);
+  const before = HH.suspendedInAppHolderHookCallsForCases();
+  try {
+    const out = await fn();
+    // The writer fired the hook through a dynamic import(); resume only once that call has REACHED the entry and been
+    // refused — resuming as soon as the writer returned let it run (measured). A writer that fires nothing is a fixture defect.
+    for (let i = 0; i < 1_000 && HH.suspendedInAppHolderHookCallsForCases() === before; i++) await sleep(5);
+    if (HH.suspendedInAppHolderHookCallsForCases() === before) throw new Error("withoutInAppHook: the fixture's writer fired no holder hook within 5 s");
+    return out;
+  } finally {
+    HH.suspendInAppHolderHookForCases(false);
+  }
+};
 const { getActiveSessionId, setActiveSessionId }: Any = await import("../../src/lib/server/session-registry.ts");
 const RG: Any = await import("../../src/lib/server/responsible-gambling.ts");
 const { removeWalletFreeze }: Any = await import("../../src/lib/server/wallet-freeze.ts");
@@ -75,6 +96,8 @@ const user = (id: string) => w.db.user.findById(id) as Promise<Any>;
 const bot = (id: string) => w.dal.houseBotStore.get(id) as Promise<Any>;
 const events = async (botId: string) => (await w.dal.houseBotEventStore.listByBot(botId, { limit: 100 })).rows as Any[];
 const houseRows = async (uid: string) => ((await w.db.notification.findByUser(uid, 500)) as Any[]).filter((n) => n.kind === "HOUSE_BOT");
+/** Every inbox row of ANY kind — D19c's absence is proven on this, so a notice moved to another kind is still caught. */
+const allRows = async (uid: string) => ((await w.db.notification.findByUser(uid, 500)) as Any[]);
 const audits = async (pred: (e: Any) => boolean) => { await auditFlush(); return (getAuditPage({ limit: 10_000 }) as Any[]).filter(pred); };
 
 async function clearRoster(): Promise<void> {
@@ -171,14 +194,15 @@ section("§1 · verifyHouseBotPassword — reserve, never lockedUntil, never a s
   rlReset();
   const w3 = await verify(h, "third-wrong-one");
   const rows3 = await houseRows(h);
-  ok("1.3b · the third wrong try reaches the reserve: attempts 0, and exactly 1 holder notice (verify_reserved)",
-    w3.attemptsBeforeLock === 0 && (await user(h)).failedLoginCount === 3 && rows3.length === 1 && rows3[0].titleEn === "A wrong password was tried", j(rows3.map((r: Any) => r.titleEn)));
+  // D19c, C4 ruling 149: reaching the reserve still refuses exactly as before — and tells the holder NOTHING.
+  ok("1.3b · the third wrong try reaches the reserve: attempts 0, and the holder's inbox stays EMPTY (no notice of any kind)",
+    w3.attemptsBeforeLock === 0 && (await user(h)).failedLoginCount === 3 && rows3.length === 0 && (await allRows(h)).length === 0, j((await allRows(h)).map((r: Any) => `${r.kind}: ${r.titleEn}`)));
   rlReset();
   const r4 = await verify(h, PW);
   const u4 = await user(h);
   ok("1.4 · at the reserve even the RIGHT password is refused without being checked: RESERVED, count unchanged, lockedUntil null",
     r4.code === "RESERVED" && u4.failedLoginCount === 3 && u4.lockedUntil == null, j(r4));
-  ok("1.4b · …and no holder notice is added by the refusal", (await houseRows(h)).length === 1);
+  ok("1.4b · …and no holder notice is added by the refusal", (await allRows(h)).length === 0);
   ok("1.4c · the reserve leaves the holder their own attempts: count + 2 < LOCKOUT_MAX_FAILS + 1", u4.failedLoginCount + D.RESERVED_ATTEMPTS === LOCKOUT_MAX_FAILS);
 
   await w.setUserFields(h, { failedLoginCount: 0 }); // the holder signed in once (sign-in resets the count)
@@ -344,7 +368,8 @@ section("§3 · houseBotEligibility — every blocking row in its contexts");
   ok("3.11 · roster full → ROSTER_FULL (\"Roster full (1 of 1)\") linking to Limits", full?.short === "Roster full (1 of 1)" && full?.href === "/admin/house-bots?tab=limits", j(full));
   await w.limits({ maxDesignatedBots: 20 });
 
-  const req = fileDsarRequest({ userId: clean, type: "ERASURE" });
+  // Ruling 157: a filed erasure request voids consent through the hook, and §3.16–3.17 below prove OTHER start rows.
+  const req = await withoutInAppHook(() => fileDsarRequest({ userId: clean, type: "ERASURE" }));
   for (const ctx of ["designate", "reverify", "start"]) {
     const rs = await E.houseBotEligibility(clean, { context: ctx, botId: ctx === "designate" ? undefined : d.bot.id, actorId: OFFICER });
     ok(`3.12.${ctx} · an open erasure request → ERASURE_REQUEST in ${ctx}`, rs.blocking.some((r: Any) => r.code === "ERASURE_REQUEST" && r.message.includes(req.id)), j(rs.blocking.map((r: Any) => r.code)));
@@ -421,7 +446,7 @@ section("§4 · designateHouseBot");
   ok("4.1c · one COMPLIANCE house_bot.designated, with no label, note or fingerprint in the payload (R7)",
     des.length === 1 && des[0].category === "COMPLIANCE" && !JSON.stringify(des[0].payload).includes("Asha") && !JSON.stringify(des[0].payload).includes(b?.passwordFingerprint), j(des[0]?.payload));
   const hn = await houseRows(h);
-  ok("4.1d · the holder is told once: \"Your account now provides liquidity\", with the way to stop it", hn.length === 1 && hn[0].bodyEn.includes("You can stop this at any time by changing your password or contacting 50pick.") && hn[0].href === "/positions");
+  ok("4.1d · D19c · designation tells the holder NOTHING: no house row, no row of any kind", hn.length === 0 && (await allRows(h)).length === 0, j((await allRows(h)).map((r: Any) => `${r.kind}: ${r.titleEn}`)));
   ok("4.1e · the successful check wrote password_verified exactly once", (await audits((e) => e.action === "house_bot.password_verified" && e.payload?.holderUserId === h && Date.parse(e.createdAt) >= since)).length === 1);
 
   const h2 = await holder();
@@ -534,10 +559,11 @@ section("§5 · voidHouseConsent — every cause ends every ACTIVE target, in th
       ev.some((e: Any) => e.kind === "CONSENT_VOIDED") && ev.some((e: Any) => e.kind === "AUTO_PAUSED") && (await w.dal.houseBotIntentStore.get(live.id)).status === "CANCELLED");
     const again = await D.voidHouseConsent({ userId, cause, actorId: "system_house_bot" });
     ok(`5.4.${cause} · a second pass changes nothing`, again.voided === false && again.reason === "ALREADY_VOID" && (await events(botId)).length === ev.length);
-    const holderNotices = (await houseRows(userId)).filter((n: Any) => n.titleEn !== "Your account now provides liquidity" && n.titleEn !== "Liquidity stakes started");
+    // D19c, C4 ruling 149: no house row at any point of the life — designated, started, voided or withdrawn.
+    const holderNotices = await houseRows(userId);
     if (cause === "HOLDER_WITHDREW") {
-      ok("5.5.HOLDER_WITHDREW · the holder's confirmation, and COMPLIANCE holder_withdrew_consent",
-        holderNotices.length === 1 && holderNotices[0].titleEn === "Liquidity stakes stopped" && (await audits((e) => e.action === "house_bot.holder_withdrew_consent" && e.targetId === botId)).length === 1);
+      ok("5.5.HOLDER_WITHDREW · NO holder confirmation (D19c), and COMPLIANCE holder_withdrew_consent",
+        holderNotices.length === 0 && (await audits((e) => e.action === "house_bot.holder_withdrew_consent" && e.targetId === botId)).length === 1, j(holderNotices.map((n: Any) => n.titleEn)));
     } else {
       ok(`5.5.${cause} · no holder notice, and COMPLIANCE house_bot.auto_paused`,
         holderNotices.length === 0 && (await audits((e) => e.action === "house_bot.auto_paused" && e.targetId === botId && e.payload?.cause === cause)).length === 1, j(holderNotices.map((n: Any) => n.titleEn)));
@@ -623,7 +649,7 @@ section("§6 · C8 — same password after a self-exclusion still needs a fresh 
   const b2 = await bot(botId);
   ok("6.5 · re-verify after the restore runs normally (never NOTHING_TO_VERIFY) → PAUSED(MANUAL), wasActive, VERIFIED",
     rv.ok === true && b2.status === "PAUSED" && b2.pauseReason === "MANUAL" && rv.wasActive === true && Date.parse(b2.verifiedAt) > Date.parse(b2.consentVoidAt) && (await events(botId)).some((e: Any) => e.kind === "VERIFIED"), j(rv));
-  ok("6.5b · the holder is told \"Your permission was confirmed\"", (await houseRows(userId)).some((n: Any) => n.titleEn === "Your permission was confirmed"));
+  ok("6.5b · D19c · re-verification tells the holder nothing (no house row)", (await houseRows(userId)).length === 0, j((await houseRows(userId)).map((n: Any) => n.titleEn)));
   rlReset();
   const s2 = await start(botId);
   ok("6.6 · Start now succeeds → ACTIVE with STARTED and a fresh scope", s2.ok === true && (await bot(botId)).status === "ACTIVE" && !!(await w.dal.houseBotRuntimeStore.get(`bot:${botId}`)).scopeFrom, j(s2));
@@ -735,7 +761,8 @@ section("§8 · erasure refuses a live bot, then pseudonymises it");
   await w.dal.houseBotEventStore.append({ houseBotId: d.bot.id, userId: h, marketId: null, kind: "PAUSED", fromStatus: "PAUSED", toStatus: "PAUSED", reason: "asked by Rehema", actorId: OFFICER, payload: null });
   await N.notify({ userId: OFFICER, kind: "HOUSE_BOT", titleEn: `House bot "Rehema Desk" paused`, titleSw: `Boti "Rehema Desk" imesimamishwa`, titleZh: `机器人 "Rehema Desk" 已暂停`, bodyEn: "fixture", bodySw: "fixture sw", bodyZh: "固定", href: `/admin/house-bots/${d.bot.id}` });
   await w.setUserFields(h, { status: "CLOSED", closedAt: new Date().toISOString() });
-  const req = fileDsarRequest({ userId: h, type: "ERASURE" });
+  // Ruling 156: the refusal is the backstop for a hook that did not run — with it running, A5 removes the bot first.
+  const req = await withoutInAppHook(() => fileDsarRequest({ userId: h, type: "ERASURE" }));
   const blocked = (a: Any) => a.kind === "HOUSE_BOT" && a.titleEn.startsWith("Erasure blocked");
   const alertsBefore = ((await w.db.notification.findByUser(OFFICER, 500)) as Any[]).filter(blocked).length;
   // A throw is a refusal the officer cannot read — recorded as a failed assertion, never a crashed suite.
@@ -772,11 +799,9 @@ section("§9 · who is told, and the HOUSE_BOT kind");
   ok("9.1 · recipients = every ADMIN, and no other role", ids.includes(OFFICER) && ids.includes(second) && !ids.includes(compliance), ids.join());
   ok("9.2 · the holder is named by handle only", A.playerHandle("usr_abcdef123456") === "Player #123456");
   ok("9.3 · HOUSE_BOT is a notification kind and NOT a money kind (W17)", NOTIFICATION_KINDS.includes("HOUSE_BOT") && !MONEY_KINDS.includes("HOUSE_BOT"));
-  const rg = await holder();
-  await RG.coolOff(rg, "1h");
-  const before = (await houseRows(rg)).length;
-  const r = await N.notifyHouseBotOwner(rg, "started");
-  ok("9.4 · a holder on a break gets no HOUSE_BOT notice (the RG gate)", r === null && (await houseRows(rg)).length === before);
+  // D19c, C4 ruling 149: there is no holder emitter left for an RG gate to guard.
+  const holderEmitters = Object.keys(N).filter((k) => /HouseBotOwner|houseBotOwner/.test(k));
+  ok("9.4 · D19c · the notification service exports no holder emitter at all", holderEmitters.length === 0, j(holderEmitters));
 }
 
 // ═══ §11 · the review's findings (wf_2208135b-079), each as the failure it described ════════════════════
@@ -840,7 +865,8 @@ section("§11 · review fixes — consent that lands mid-check, repeat episodes,
     const s1 = await start(d.bot.id);
     await w.dal.houseBotStore.setStatus(d.bot.id, { from: ["ACTIVE"], to: "PAUSED", pauseReason: "MANUAL", pausedFromStatus: null });
     await sleep(5);
-    await RG.coolOff(h, "1h");
+    // Ruling 156: RG_SINCE_VERIFIED is the backstop for a void the hook did not write — with it running, CONSENT answers first.
+    await withoutInAppHook(() => RG.coolOff(h, "1h"));
     const second = await RG.getRgSettings(h);
     ok("11.4 · fixture · the first episode's start stamp is kept by the second break", second.coolingOffStartedAt === first.coolingOffStartedAt && Date.parse(second.coolingOffStartedAt) < Date.parse((await bot(d.bot.id)).verifiedAt));
     await w.db.responsible.upsert({ ...second, coolingOffUntil: new Date(Date.now() + 20).toISOString() });
@@ -929,7 +955,7 @@ section("§11 · review fixes — consent that lands mid-check, repeat episodes,
     rlReset();
     await desig(h);
     await w.setUserFields(h, { status: "CLOSED", closedAt: new Date().toISOString() });
-    const req = fileDsarRequest({ userId: h, type: "ERASURE" });
+    const req = await withoutInAppHook(() => fileDsarRequest({ userId: h, type: "ERASURE" })); // ruling 156: the claim-release backstop, not A5
     const count = async () => ((await w.db.notification.findByUser(OFFICER, 1000)) as Any[]).filter((n) => n.titleEn.startsWith("Erasure blocked")).length;
     const before = await count();
     const realList = w.db.user.listByRoles;
@@ -945,7 +971,7 @@ section("§11 · review fixes — consent that lands mid-check, repeat episodes,
     rlReset();
     await desig(h2);
     await w.setUserFields(h2, { status: "CLOSED", closedAt: new Date().toISOString() });
-    const req2 = fileDsarRequest({ userId: h2, type: "ERASURE" });
+    const req2 = await withoutInAppHook(() => fileDsarRequest({ userId: h2, type: "ERASURE" }));
     const before2 = await count();
     w.db.user.listByRoles = () => [];
     try { await fulfillDsarRequest({ id: req2.id, officerId: OFFICER }); } finally { w.db.user.listByRoles = realList; }
@@ -977,33 +1003,20 @@ section("§11 · review fixes — consent that lands mid-check, repeat episodes,
       res.ok === true && x?.titleEn.includes("Erased bot") && y?.titleEn === `House bot "Shared Desk" paused · Y` && res.counts.houseBotNotificationsRedacted === 1, j({ x: x?.titleEn, y: y?.titleEn, n: res.counts?.houseBotNotificationsRedacted }));
   }
 
-  // UX-2 · started, paused, started inside 90 s are three notices, the newest "started".
+  // D19c, C4 ruling 149 (replaces UX-1 and UX-2, which tuned the holder's notices): the whole life of a bot — designate,
+  // Start, consent withdrawn — writes NOTHING to the holder's inbox and pushes NOTHING to their device. The push spy
+  // sees the stub's own line, so a zero here is a real zero (a push this suite can see).
   {
-    const h = await holder();
-    // Spaced by a few ms: two rows in the same millisecond have no defined newest-first order.
-    for (const n of ["started", "paused", "started"]) { await N.notifyHouseBotOwner(h, n); await sleep(5); }
-    const rows = await houseRows(h);
-    ok("11.12 · three state notices inside the dedupe window → three rows, newest \"Liquidity stakes started\"",
-      rows.length === 3 && rows[0].titleEn === "Liquidity stakes started", j(rows.map((r: Any) => r.titleEn)));
-    await N.notifyHouseBotOwner(h, "verify_reserved");
-    await N.notifyHouseBotOwner(h, "verify_reserved");
-    ok("11.12b · …while the reserve notice keeps its duplicate check (two in a row → one row)", (await houseRows(h)).filter((r: Any) => r.titleEn === "A wrong password was tried").length === 1);
-  }
-
-  // UX-1 · the reserve notice is bell only; a reverified notice pushes.
-  {
-    const h = await holder();
+    const { botId, userId: h } = await runningBot();
     await savePushSubscription(h, { endpoint: `https://push.example/${h}`, p256dh: "p256dh-fixture", auth: "auth-fixture" });
     const seen: string[] = [];
     const realLog = console.log;
-    console.log = (...args: Any[]) => { const s = args.join(" "); if (s.includes("[push-stub]") && s.includes(h)) seen.push(s); realLog(...args); };
+    console.log = (...args: Any[]) => { const line = args.join(" "); if (line.includes("[push-stub]") && line.includes(h)) seen.push(line); realLog(...args); };
     try {
-      await N.notifyHouseBotOwner(h, "verify_reserved");
+      const v = await D.voidHouseConsent({ userId: h, cause: "HOLDER_WITHDREW", actorId: OFFICER });
       await sleep(400);
-      const afterReserved = seen.length;
-      await N.notifyHouseBotOwner(h, "reverified");
-      await sleep(400);
-      ok("11.13 · verify_reserved sends no push; reverified sends one (a push this suite can see, so the zero is real)", afterReserved === 0 && seen.length === 1, j(seen));
+      ok("11.12 · D19c · designate → Start → withdrawn: the holder's inbox is EMPTY and nothing was pushed",
+        v.voided === true && (await allRows(h)).length === 0 && seen.length === 0, j({ voided: v.voided, rows: (await allRows(h)).map((r: Any) => `${r.kind}: ${r.titleEn}`), seen, botId }));
     } finally {
       console.log = realLog;
     }

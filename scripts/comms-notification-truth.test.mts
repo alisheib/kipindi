@@ -144,21 +144,7 @@ const EMITTED: { fn: string; row: StoredNotification | null }[] = [
   { fn: "notifyAdminMarketResolution", row: await N.notifyAdminMarketResolution("c3_officer", { title: "Closed poll", marketId: "mkt_11" }) },
   { fn: "notifyAdminMarketCancelled", row: await N.notifyAdminMarketCancelled("c3_officer", { title: "Cancelled poll", reason: "Source retracted", refundedCount: 3, refundedTzs: 30_000 }) },
   { fn: "notifyAdminProposalReview", row: await N.notifyAdminProposalReview("c3_officer", { proposerLabel: "Asha M.", titleEn: "A market idea", proposalId: "prp_1" }) },
-  // ── House bots (build commit 3) — every holder notice, each a distinct message, so none is deduped away.
-  { fn: "notifyHouseBotOwner",       row: await N.notifyHouseBotOwner(U, "designated") },
-  { fn: "notifyHouseBotOwner",       row: await N.notifyHouseBotOwner(U, "started") },
-  { fn: "notifyHouseBotOwner",       row: await N.notifyHouseBotOwner(U, "paused") },
-  { fn: "notifyHouseBotOwner",       row: await N.notifyHouseBotOwner(U, "password_paused") },
-  { fn: "notifyHouseBotOwner",       row: await N.notifyHouseBotOwner(U, "removed") },
-  { fn: "notifyHouseBotOwner",       row: await N.notifyHouseBotOwner(U, "reverified", { atMs: Date.parse("2026-09-15T11:02:00.000Z") }) },
-  { fn: "notifyHouseBotOwner",       row: await N.notifyHouseBotOwner(U, "verify_reserved") },
-  { fn: "notifyHouseBotOwner",       row: await N.notifyHouseBotOwner(U, "withdrew") },
-  // ── House bots (build commit 4, step 9) — ruling 132's three notices, and the holder's own two rows.
-  { fn: "notifyHouseBotOwner",       row: await N.notifyHouseBotOwner(U, "password_temp") },
-  { fn: "notifyHouseBotOwner",       row: await N.notifyHouseBotOwner(U, "role_changed") },
-  { fn: "notifyHouseBotOwner",       row: await N.notifyHouseBotOwner(U, "erasure_request") },
-  { fn: "notifyHouseBotOwnerStake",  row: await N.notifyHouseBotOwnerStake({ userId: U, positionId: "pos_c3house", side: "YES", stakeTzs: 8_000, marketTitle: "Will Dar get rain today?", at: "14:02:11" }) },
-  { fn: "notifyHouseBotOwnerHourSummary", row: await N.notifyHouseBotOwnerHourSummary({ userId: U, count: 5, stakeTzs: 40_000, fromHH: "14:00", toHH: "15:00" }) },
+  // ── House bots: NO holder notice exists (D19c, C4 ruling 149) — every house row below the registry is an officer's.
 ];
 
 // ── 1 · Registry ↔ code ────────────────────────────────────────────────────────

@@ -202,9 +202,9 @@ With a null marker, each gives a player exactly what they had before; the letter
 |---|---|---|
 | (b) | A replayed idempotency key that belongs to another account's bet refuses instead of returning that bet as this caller's receipt: a player gets `idempotency_key_conflict`; a house stake whose key belongs to another user or another bot gets `house_key_mismatch`. | `buyPositionInner` replay |
 | (c) | `buyPositionAction` refuses a key starting `hb:` with `idempotency_key_conflict`. | `app/markets/actions.ts` |
-| (d) | `cashOutValue` takes `houseBotId`; a house position is not sellable (`HOUSE_POSITION`). Output for every player position is byte-identical to the golden grid captured before the change. | `market-service.ts`, both page callers |
-| (e) | `cashOutPosition` refuses a house position `house_position_no_exit`. | `market-service.ts` |
-| (f)/(n) | Objection standing: a user whose only positions on the market are house-marked → `HOUSE_STAKE_ONLY`; own plus house stays eligible. | `objections-service.ts`, market page, resolution panel |
+| (d) | `cashOutValue` takes `houseBotId`; a house position is not sellable, and reads as a closed exit (`WINDOW_PASSED`, C4 ruling 147 — no caller can tell it apart, D19c). Output for every player position is byte-identical to the golden grid captured before the change. | `market-service.ts`, both page callers |
+| (e) | `cashOutPosition` refuses a house position with the closed exit window's own refusal, word for word (`exit_window_closed`, code `SELECTION_CLOSED`; C4 ruling 147). The house refusal reasons are server-only `HouseSeamReason`s, never in the client-bundled registry or dictionary (ruling 148). | `market-service.ts` |
+| (f)/(n) | Objection standing: a user whose only positions on the market are house-marked → `HOUSE_STAKE_ONLY` (server-only); own plus house stays eligible. The page shows the neutral state `NOT_ELIGIBLE` ("You can’t object to this result. If you have a concern, contact support.") and the filing path answers with its generic line (C4 ruling 146, D19c). | `objections-service.ts`, market page, resolution panel |
 | (g) | Wagering reversal is skipped for marked positions in settlement, emergency void and orphan repair (A17); `onRecruitBet` and `onRecruitSettlement` take a required `houseBotId` and return on a marked position. | `market-service.ts`, `affiliate-service.ts` |
 | (j) | `replayed: true` on both replay paths. | `buyPositionInner` |
 | (k) | `exitWindowClosesAt` extracted into `src/lib/exit-window.ts`; `graceMs > 0` kept (A14). | `market-service.ts` |
@@ -585,19 +585,18 @@ Warnings: EMAIL_UNVERIFIED · IDENTITY_NOT_APPROVED · RECRUITED · OPEN_POSITIO
 
 Every emitter is built, each with a `comms-registry` row, under notification kind `HOUSE_BOT`. ⚠️ `HOUSE_BOT` is **not** a money kind, although PLAN §7 put it there: a money kind must state a figure (`test:cert-c3` §6) and these notices state none. **Ali confirmed that on 2026-09-15** (W17): the notices stay in the inbox and out of the Money filter, so the platform's rule stays as strict as it is.
 
-**Commit 3** built `notifyHouseBotOwner` (eight holder notices), `notifyAdminsHouseBotErasureBlocked` and the templates `houseBotOwnerHtml` and `houseBotErasureBlockedAdminHtml`. **Commit 4 step 9** added:
-- the eight admin emitters — `notifyAdminsHouseBotBet`, `…StaffChosen`, `…HourSummary`, `…Paused`, `…Switch`, `…MoneyEvent`, `…Alert`, `…Roster` — and the holder's own two, `notifyHouseBotOwnerStake` and `notifyHouseBotOwnerHourSummary`;
-- ruling 132's three holder notices: `password_temp`, `role_changed` and `erasure_request` (en/sw/zh, Swahili and Chinese marked for native review);
+⛔ **Owner ruling D19c (2026-09-16): the holder receives no house-bot notice or email at all.** Commit 3's `notifyHouseBotOwner` (eight holder notices) and `houseBotOwnerHtml`, and step 9's holder emitters, were built and then REMOVED in the eighth session (C4 ruling 149); every row below is an admin's. **Commit 3** built `notifyAdminsHouseBotErasureBlocked` and the template `houseBotErasureBlockedAdminHtml`. **Commit 4 step 9** added:
+- the eight admin emitters — `notifyAdminsHouseBotBet`, `…StaffChosen`, `…HourSummary`, `…Paused`, `…Switch`, `…MoneyEvent`, `…Alert`, `…Roster`;
 - **one** parametrised admin letter, `houseBotAdminHtml`, behind every alert that emails (royal chrome, never gold);
 - `src/lib/house-bot/alert-copy.ts`: every alert code's words in three languages, derived from the engine's own call sites, with a fallback row so an unmapped code never reaches an admin as a bare machine token. It is pure — the caller injects the money formatter, because the house module law admits a small, deliberate set of value imports;
-- `src/lib/server/house-bot/emitters.ts`: the real `EngineAlerts` and `HolderAlerts`, which also own the two hourly caps (the planner's summary accounts for exactly what they suppress).
+- `src/lib/server/house-bot/emitters.ts`: the real `EngineAlerts` and `HolderAlerts` (admins only), which also own the admin bell's hourly cap (the planner's summary accounts for exactly what it suppresses).
 
 The throttle keys are fixed in `ALERT_KEY`. Proven by `test:house-bot-comms` (35/0 on both stores), `test:cert-c3` (1846/0), `test:cert-c1` (1232/0, its template inventory pinned at 67) and rendered: `qa:cert-c1` photographs all four shapes of the admin letter at 1280, 768, 360 and 1920, and `qa:house-bot-bells` stands the app up on a scratch database, writes every house row through the real emitters and photographs the bell and the inbox.
 
 ### 9.1 Channel law
 - ⛔ **`HOUSE_BOT` is never sent by SMS** (C13). F6's channel policy is built: `CHANNEL_POLICY` and `channelAllowed(kind, {houseOnly})` live in `comms-registry.ts` beside the kinds, exhaustive by annotation so a nineteenth kind cannot ship without a row. `HOUSE_BOT` is `sms: "never"`, `email: "template-only"`; and when every position behind a notice is house-marked, `channelAllowed` returns neither channel for ANY kind — the holder's hourly summary is the one account of those stakes, and it is a bell. ⚠️ SMS fan-out is not live (the provider is two stubs), so the policy's pin is a source walk over the house emitters rather than a behavioural drive, which would be a check that cannot fail.
 - Admin alerts go to everyone `houseBotAlertRecipients()` returns, the same rule as the owner guard (A22).
-- Holder emitters return early while the holder is under a responsible-gambling lockout (`isLockedOut`). Win, loss and refund notices keep today's behaviour, with a liquidity label line on marked positions.
+- ⛔ **Nothing reaches the holder (D19c).** Their win, loss, refund, verdict and selection-closed notices are byte-identical to any player's (C4 rulings 143–145); the only difference is F6's: no per-stake outcome EMAIL for a house-marked position, which carries no words. `test:house-bot-disclosure`, `verify:house-bot-bundle` and `qa:house-bot-holder-view` prove the absence (rulings 152, 155).
 - Bodies never quote an officer's reason, and name a holder or a trigger player only by their `Player #` handle (R6).
 - Every link still opens its event 60 days later; on a REMOVED bot it opens the read-only page.
 - A PLACED row's alert is claimed once through `alertedAt` and repaired 30 s later if the send was lost (A8).
@@ -610,9 +609,8 @@ The throttle keys are fixed in `ALERT_KEY`. Proven by `test:house-bot-comms` (35
 | Automatic bets beyond that cap | `notifyAdminsHouseBotHourSummary` | Admins | Bell | Once per EAT hour (`summary`). Adds "{s} staff-chosen stakes were alerted one by one" when s > 0. | `/admin/house-bots?tab=activity&range=today` |
 | A staff-chosen stake is PLACED (Enter now, or a target's reaction) | `notifyAdminsHouseBotStaffChosen` | Every recipient | Bell + email | Uncapped, and not counted in `countInHour`. | `/admin/house-bots/<botId>?tab=activity&range=all&intent=<intentId>` |
 | An ACTIVE bot auto-pauses | `notifyAdminsHouseBotPaused` | Admins | Bell + email | Never capped. A consent void adds "Its {n} active targets were ended." when n > 0. | `?reverify=1` when the way out is re-entering consent (a password change or a consent void); otherwise the bot page |
-| …and the holder is told | `notifyHouseBotOwner` | Holder | Bell + push | Not for a responsible-gambling cause or the holder's own loss limit. | `/positions` |
 | A cause is added to a bot that is not ACTIVE | C13 matrix | Admins | Bell | — | The bot page |
-| The holder's account is closed | C13 matrix | Admins; holder | Admins bell + email with the float amounts; holder email only | — | The bot page |
+| The holder's account is closed | C13 matrix | Admins | Admins bell + email with the float amounts (the holder gets only the platform's own closure letter, which names nothing) | — | The bot page |
 | A holder cause clears (account restored, freeze lifted, role back to PLAYER, break ended) | C13 matrix | Admins | Bell | Once per cause and clearing (`cleared`) | The bot page |
 | The holder is locked out by wrong sign-ins | C13 matrix | Admins | SECURITY bell | Once per bot per EAT day (`holderLocked`). The bot continues. | The bot page |
 | The holder stakes against their own bot (A21) | C13 matrix | Admins | Bell + email | Once per bot and market (`holderAgainst`). Writes event HOLDER_AGAINST_BOT. The bet is never refused and the bot never paused. | `/admin/markets/<marketId>` |
@@ -624,13 +622,7 @@ The throttle keys are fixed in `ALERT_KEY`. Proven by `test:house-bot-comms` (35
 | A market holding a staff-chosen stake is voided or reopened | `notifyAdminsHouseBotAlert` | Every recipient | Bell + email | Once per market (`staffStakeVoided`) | `/admin/markets/<marketId>` |
 | A market holding a staff-chosen stake is decided by the officer who chose it (resolved, voided, reopened, objection upheld or rejected) | `notifyAdminsHouseBotAlert` | Every recipient | Bell + email | Once per market and action (`staffStakeSelfDecided`). A record only: nothing is refused. | `/admin/markets/<marketId>` |
 | An officer's staff-chosen stakes meet a staff-edge threshold for the month | `notifyAdminsHouseBotAlert` | Every recipient | Bell + email | Once per officer per month (`staffEdge`) | `/admin/reports?tab=library&range=custom&from=<YYYY-MM-01>&to=<YYYY-MM-last>` |
-| Holder: designated, started, paused, paused for a password change, removed | `notifyHouseBotOwner` | Holder | Bell + push, and email on designated and removed | — | `/positions` |
-| Holder: stopped liquidity stakes themselves (A3) | `notifyHouseBotOwner` (`withdrew`) | Holder | Bell + push | — | `/positions` |
 | An erasure is refused because the account is still a house bot (R6) | `notifyAdminsHouseBotErasureBlocked` | Every recipient | Bell + email | Once per bot (`erasureBlocked`) | `/admin/house-bots/<botId>` |
-| Holder: an owner confirmed their permission with their current password | `notifyHouseBotOwner` (`reverified`) | Holder | Bell + push + email | — | `/positions` |
-| Holder: wrong password attempts reached the attempts kept for the holder | `notifyHouseBotOwner` (`verify_reserved`) | Holder | Bell only — no push (`NotifyOptions.push: false`) | The 90 s duplicate check. Every other holder notice skips it (`dedupe: false`): each is sent once per committed state change, so started → paused → started is three rows. | `/positions` |
-| Holder: a house bet from their account | `notifyHouseBotOwnerStake` | Holder | Bell + push | While runtime `bot:<id>` count ≤ `holderNoticesPerHour`. A staff-chosen stake reads like any other. | `/positions/<positionId>` |
-| Holder: bets beyond that cap | `notifyHouseBotOwnerHourSummary` | Holder | Bell | Once per EAT hour (`summary`) | `/positions` |
 | A press, or a target's reaction, refused, expired or cancelled | — | — | No bell | The press register and the activity feed record it. | — |
 
 ### 9.3 Throttle keys (`ALERT_KEY`)

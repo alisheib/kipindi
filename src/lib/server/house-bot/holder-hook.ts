@@ -349,7 +349,31 @@ export async function breakEnded(read: FoundRead, alerts: HolderAlerts): Promise
 
 /* ═══ The hook (ruling 121, 127) and the L2 sweep (ruling 129) ═══════════════════════════════════════════ */
 
-export type HolderHookResult = { kind: "noBot" } | { kind: "accountMissing" } | { kind: "applied"; applied: HolderApplied } | { kind: "failed" };
+export type HolderHookResult = { kind: "noBot" } | { kind: "accountMissing" } | { kind: "applied"; applied: HolderApplied } | { kind: "failed" } | { kind: "suspended" };
+
+/**
+ * ⛔ CASES ONLY (C4 ruling 156). A case that measures ONE path — a §19 row through the hook or through the sweep, or a
+ * backstop that sits behind the hook — suspends the IN-APP entry while its fixture writes, because every platform writer
+ * now fires the real hook asynchronously and would race the path under test. Process-local, never an environment
+ * variable or a config row: a production knob that silently disables A2 is the hazard this avoids. `test:house-bot-rules`
+ * §0 pins that no file under `src/` calls it.
+ * ⚠️ ONE FLAG ACROSS MODULE COPIES, on `globalThis` under a registered symbol: the call sites reach this file through a
+ * CommonJS `import()` while a case file imports it as ESM, and a module-level `let` gave each copy its own flag (measured:
+ * the first version suspended nothing).
+ */
+const SUSPENDED_FOR_CASES = Symbol.for("house-bot.in-app-holder-hook.suspended-for-cases");
+const SUSPENDED_CALLS = Symbol.for("house-bot.in-app-holder-hook.suspended-calls");
+export function suspendInAppHolderHookForCases(on: boolean): void {
+  (globalThis as Record<symbol, unknown>)[SUSPENDED_FOR_CASES] = on;
+}
+/**
+ * How many in-app calls the suspension has refused. A writer fires the hook through a dynamic `import()`, which can
+ * resolve a macrotask or more later, so a case resumes only once this count has moved — never on a guessed delay
+ * (measured: resuming right after the writer returned let the hook run and void consent).
+ */
+export function suspendedInAppHolderHookCallsForCases(): number {
+  return Number((globalThis as Record<symbol, unknown>)[SUSPENDED_CALLS] ?? 0);
+}
 
 /**
  * The hook body with its alert channel given. Step 9 wraps it with the real emitters and wires the call sites (ruling 128).
@@ -383,6 +407,10 @@ export async function onHolderAccountChangedWith(
  * that lock's transaction (`locks.ts`), and would read rows the caller has not committed yet.
  */
 export async function onHolderAccountChanged(userId: string, event: HolderEvent, meta?: { byOfficer?: boolean }): Promise<HolderHookResult> {
+  if ((globalThis as Record<symbol, unknown>)[SUSPENDED_FOR_CASES] === true) {
+    (globalThis as Record<symbol, unknown>)[SUSPENDED_CALLS] = suspendedInAppHolderHookCallsForCases() + 1;
+    return { kind: "suspended" };
+  }
   try {
     const { houseHolderAlerts } = await import("./emitters");
     return await onHolderAccountChangedWith(userId, event, { alerts: houseHolderAlerts(), meta });

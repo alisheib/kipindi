@@ -5,7 +5,7 @@
  *   npm run qa:house-bot-bells
  *
  * ⛔ THE ROWS ARE WRITTEN BY THE REAL EMITTERS, not by fixtures pasted into a page. The suite boots a scratch
- * database, starts the app against it, calls `notifyAdminsHouseBot*` and `notifyHouseBotOwner*` exactly as the
+ * database, starts the app against it, calls `notifyAdminsHouseBot*` exactly as the
  * engine does, then opens the bell in a browser and reads what an admin would read. A picture of hand-written HTML
  * would prove nothing about the emitter.
  *
@@ -128,12 +128,8 @@ try {
   await write("alert", () => N.notifyAdminsHouseBotAlert({ code: "SETTLE_BLOCKED", botId, label, holder: "Player #A3F2K8", detail: { openStakeTzs: 240_000 }, at: "14:07:45" }));
   await write("roster", () => N.notifyAdminsHouseBotRoster({ botId, label, event: "RULES_SAVED", eventId: "hbe_bells01", at: "14:08:11", detail: { byName: "Juma M.", field: "daily loss cap", from: "TZS 50,000", to: "TZS 200,000" } }));
   await write("target roster", () => N.notifyAdminsHouseBotRoster({ botId, label, event: "TARGET_ADDED", eventId: "hbe_bells02", at: "14:08:40", detail: { byName: "Juma M.", marketTitle: "Will Dar get rain today?", timing: { delaySec: 10, from: "STAKE", heldToExit: true } } }));
-  await write("holder stake", () => N.notifyHouseBotOwnerStake({ userId, positionId: "pos_bells01", side: "YES", stakeTzs: 8_000, marketTitle: "Will Dar get rain today?", at }));
-  await write("holder summary", () => N.notifyHouseBotOwnerHourSummary({ userId, count: 5, stakeTzs: 40_000, fromHH: "13:00", toHH: "14:00" }));
-  for (const kind of ["designated", "password_paused", "password_temp", "role_changed", "erasure_request", "removed"]) {
-    await write(`holder ${kind}`, () => N.notifyHouseBotOwner(userId, kind));
-  }
-  ok("1.1 · every emitter this commit adds wrote its row", written.length === 19, `${written.length} rows: ${written.join(", ")}`);
+  // ⛔ No holder rows: the holder receives no house-bot notice at all (D19c, C4 ruling 149). Every row is an admin's.
+  ok("1.1 · every emitter this commit adds wrote its row", written.length === 11, `${written.length} rows: ${written.join(", ")}`);
   // ⛔ "It wrote" is not "it landed", and the DATA LAYER saying so is not the DATABASE saying so: in a script's own
   // process the store can resolve to the memory twin, and the browser reads Postgres. Ask Postgres.
   const counter = new pg.Client({ connectionString: DATABASE_URL }) as unknown as { connect(): Promise<void>; query(q: string): Promise<{ rows: Array<{ n: string; userId: string }> }>; end(): Promise<void> };
@@ -142,7 +138,7 @@ try {
   await counter.end();
   const mine = counted.rows.find((r) => r.userId === userId);
   ok("1.2 · ⭐ and every row LANDED in Postgres, for the account the browser opens",
-    Number(mine?.n ?? 0) >= 19, `${mine?.n ?? 0} house rows for ${userId}; all owners: ${JSON.stringify(counted.rows)}`);
+    Number(mine?.n ?? 0) >= 11, `${mine?.n ?? 0} house rows for ${userId}; all owners: ${JSON.stringify(counted.rows)}`);
 
   // ── the inbox page (server-rendered: what an admin reads), then the bell panel ──
   for (const width of [1280, 360]) {
@@ -195,7 +191,7 @@ try {
         ok(`3.${width} · the bell panel opens over the page, with this commit's rows in it`, true);
         await page.screenshot({ path: join(OUT, `bell@${width}.png`) });
       } else {
-        // ⛔ The rows and the server are NOT in doubt: the same server renders "19 unread" on /notifications, and
+        // ⛔ The rows and the server are NOT in doubt: the same server renders the house rows as unread on /notifications, and
         // §2 above photographs them. What this harness cannot drive is the panel's own client poll under headless
         // `next dev` — its count stays 0 and the panel never opens. Commit 7's console visual pass drives a real
         // browser session and covers it; recorded here rather than dressed up as a pass.
