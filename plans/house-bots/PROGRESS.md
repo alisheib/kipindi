@@ -17,7 +17,7 @@
 | **Blocked on** | Nothing. On Ali-Blade15, heavy Node goes through the shared lock (RESUME AT step 2). ⚠️ **W20 for Ali, urgent: the GitHub repository is PUBLIC** (measured 2026-09-16 13:4x UTC, `api.github.com/repos/alisheib/kipindi` → `"visibility": "public"`), so the whole `house-bots` branch — code, plan and the D19 ruling itself — is readable by anyone, against D19. Only Ali can make it private. |
 | **Production** | Nothing deployed. The feature does not exist in production. |
 | **Master switch** | n/a (ships OFF at release; Ali alone turns it on) |
-| **Last updated** | 2026-09-16 ~16:20 UTC · OMEGA-COMPILE01 · `F:/kipindi-house-bots` (eighth session: D19 un-build ✅, X7 ✅, step 11 ✅; next Commit 4's closing gates, the `origin/main` merge first) |
+| **Last updated** | 2026-09-16 22:10 UTC · Ali-Blade15 · `C:/kipindi-house-bots` (ninth session, all-day unattended run: Phase 0 done — the repository re-measured PUBLIC at 22:10 UTC and Ali told again (W20); Ali confirmed this is the only session on the laptop, so no heavy-Node lock contention; `test:house-bot-rules` 518/0 here after `prisma generate`. Commit 5 🟡: rulings first, in `C5-SPEC.md` §6) |
 
 ## ⛔ OWNER RULING D19 (Ali, 2026-09-16) — HOUSE BOTS ARE NEVER PUBLIC. **This outranks every plan document.**
 
@@ -328,7 +328,7 @@ Run in **Git Bash** from the worktree.
 | 2 | Money seam (`placeHouseBet`, gates, markers, exclusions) | ✅ 2026-09-14 · OMEGA-COMPILE01 · "house-bots: C2 · Commit 2 closed" | ✅ | ✅ 0 | ✅ seam 90/0 · money 78/0 mem + 82/0 PG · caps 74/0 mem + 80/0 PG · dal-parity 1232/0 | ✅ 339/356; the 17 reds identical on clean `origin/main` (3 NOT MEASURED, port 3009); `responsive`/`motion` NOT MEASURED | ✅ `red:house-bot-money` 45/45 | ✅ real bets on scratch Postgres (ledger ties, lock timeouts, a real Up & Down round); the HOUSE_STAKE_ONLY screen state NOT MEASURED (not rendered) | ✅ 19/19 fixed | ✅ | ✅ |
 | 3 | Designation · eligibility · password verification (services) | ✅ 2026-09-15 · OMEGA-COMPILE01 · "house-bots: C3 · Commit 3 closed" | ✅ | ✅ 0 | ✅ designation 169/0 mem + 161/0 PG · rules 503/0 · seam 90/0 · dal-parity 1236/0 · migrations 679/0 · cert-c1 1215/0 · cert-c3 1705/0 · erasure 164/0 | ✅ 340/357; the 17 reds identical on clean `origin/main` (3 NOT MEASURED, port 3009); `responsive`/`motion` NOT MEASURED | — (24 in-place mutations, scratchpad harness, all caught; memory only) | ✅ services on scratch Postgres (no screen in this commit) | ✅ 15/15 fixed | ✅ | ✅ |
 | 4 | Engine · notifications · holder hooks · money hooks · schema gate | ✅ 2026-09-16 · OMEGA-COMPILE01 · "house-bots: C4 · Commit 4 closed" | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| 5 | Reporting · data rights · resolver exposure · staff edge (~~holder chip~~, struck by D19c) | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | — | ⬜ | ⬜ | ⬜ | ⬜ |
+| 5 | Reporting · data rights · resolver exposure · staff edge (~~holder chip~~, struck by D19c) | 🟡 2026-09-16 · Ali-Blade15 · ninth session started | ⬜ | ⬜ | ⬜ | ⬜ | — | ⬜ | ⬜ | ⬜ | ⬜ |
 | 6 | Public text (Rules, Terms, privacy, FAQ, chatbot) | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | — | ⬜ | ⬜ | ⬜ | ⬜ |
 | 7 | Console `/admin/house-bots` · nav/RBAC · ops scripts | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 | 8 | Local end-to-end drive · rehearsals · final docs · release prep | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | — | ⬜ | ⬜ | ⬜ | ⬜ |
