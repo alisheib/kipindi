@@ -59,6 +59,7 @@
     "test:house-bot-rules": "tsx scripts/house-bot-rules.test.mts",
     "test:house-bot-seam": "tsx scripts/house-bot-seam.test.mts",
     "capture:house-bot-exit-window-golden": "tsx scripts/house-bot-exit-window-golden.mts",
+    "red:house-bot-engine": "node scripts/red-house-bot-engine.mjs",
     "red:house-bot-money": "node scripts/red-house-bot-money.mjs",
     "test:agent-policy": "tsx scripts/agent-policy.test.mts",
     "test:programme-isolation": "tsx scripts/programme-isolation.test.mts",

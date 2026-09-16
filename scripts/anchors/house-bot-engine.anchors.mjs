@@ -1,0 +1,267 @@
+/**
+ * Anchors for `red:house-bot-engine` (C4 step 11) — each puts back one engine defect the plan names, on the file where it
+ * would live. DATA, so `test:red-anchors` can audit that every `from` still resolves exactly once without running the
+ * harness.
+ *
+ * ⭐ EACH MUTATION MUST FAIL ITS OWN ASSERTION. `expect` is the text of the `ok("…")` label that must turn red; a run that
+ * goes red on any other label only is WRONG-ASSERTION, and a run that stays green is MISSED.
+ *
+ * `suite` names what the harness runs for a mutation:
+ *   `engine-mem` / `engine-pg`  `scripts/lib/house-bot-engine-cases.mts` on the memory store / a scratch Postgres. `sections`
+ *                               ("16", "13,16") is passed as HB_ENGINE_SECTIONS so only those guarded sections run.
+ *                               `-pg` only for what memory cannot show: the Postgres twin's own SQL.
+ *   `caps-mem` / `caps-pg`      `scripts/lib/house-bot-caps-cases.mts` (§8 MON-06 is Postgres only).
+ *   `info-edge-mem`             `scripts/lib/house-bot-info-edge-cases.mts` (§1–§3 run in the memory child).
+ *   `designation-mem`           `scripts/lib/house-bot-designation-cases.mts`.
+ *
+ * N1-3, N1-4, N1-8 and N2-E1 had no assertion that could fail on them; each got a case first (16.46, 16.33b, 17.13b, 7.3b)
+ * and only then joined this list. N1-9 (the inline fire not registered in inFlight) is NOT declared: no inline fire exists
+ * yet (ruling 69 registers every fire; the inline Enter now fire is Commit 7's), so its mutation joins with that fire.
+ *
+ * ⛔ A red anchor quotes SOURCE. Editing one of these lines must be paired with re-anchoring here.
+ */
+const FIRE = "src/lib/server/house-bot/fire.ts";
+const PLANNER = "src/lib/server/house-bot/planner.ts";
+const DECIDE = "src/lib/server/house-bot/decide.ts";
+const DAL = "src/lib/server/house-bot-dal.ts";
+
+export const MUTATIONS = [
+  // ── N1 (04-amendments.md:3795-3804, `red:house-bot-engine` commit 4) ──────────────────────────────────────────────
+
+  // N1-1 · 04:3796 — fire takes the new thin side instead of skipping CONDITION_GONE (H0 then meets a side the row
+  // does not carry; the row is never the SKIPPED(CONDITION_GONE) the case requires).
+  {
+    name: "N1-1 · fire takes the new thin side instead of SKIPPED(CONDITION_GONE)",
+    file: FIRE,
+    from: `      if (d.side !== intent.side || d.entryCondition !== intent.entryCondition) return finish(intent, deps, "SKIPPED", "CONDITION_GONE");`,
+    to: `      if (d.side !== intent.side || d.entryCondition !== intent.entryCondition) intent = { ...intent, side: d.side, entryCondition: d.entryCondition };`,
+    expect: "16.36 · the thin side is NO now but the row says YES",
+    suite: "engine-mem",
+    sections: "16",
+  },
+  // N1-2 · 04:3797 — the planner's openerSide draw replaced by a per-intent randomInt (no OPENER_SIDE_DRAWN row, side
+  // from the decision's own RNG).
+  {
+    name: "N1-2 · the planner's OPENER side is a per-intent randomInt, not the once-per-market draw",
+    file: PLANNER,
+    from: `      const draw = await openerSide(view.id, { houseBotId: b.botId, actorId: null, drawnFor: "OPENER_PLAN" }, { randomInt: o.drawRandomInt });`,
+    to: `      const draw = { side: o.randomInt(0, 1) === 0 ? ("YES" as const) : ("NO" as const) }; void openerSide;`,
+    expect: "17.49 · an empty poll created after Start → one OPENER on the side drawn once",
+    suite: "engine-mem",
+    sections: "17",
+  },
+  // N1-5 · 04:3800 (TGT-34) and N2-E7 · 04:4409 — the same defect: the blackout ignores reopenedAt. The staff-chosen row
+  // on a reopened poll then places (fire's read, the Enter now loader and the seam's H3 all read blackout.ts).
+  {
+    name: "N1-5 / N2-E7 · the blackout ignores reopenedAt",
+    file: "src/lib/server/house-bot/blackout.ts",
+    from: `  return { blocked: stamped || freshClaim || row.reopenedAt != null };`,
+    to: `  return { blocked: stamped || freshClaim };`,
+    expect: "16.26 · …a staff-chosen row meets the information blackout instead",
+    suite: "engine-mem",
+    sections: "16",
+  },
+  // N1-6 · 04:3801 (MON-02) — the write-back UPDATE is removed: fire bets the smaller stake the row does not carry.
+  {
+    name: "N1-6 · the MON-02 write-back clamp is removed (the cut stake is used but never written to the row)",
+    file: FIRE,
+    from: `      const clamped = await houseBotIntentStore.clampStake(intent.id, deps.me, recomputed);\n      if (!clamped) return { kind: "lost" };\n      intent = clamped;`,
+    to: `      intent = { ...intent, stakeTzs: recomputed };`,
+    expect: "16.7 · a FILL of 20,000 against 10,000 locked is cut to 10,000, written back (firedStakeTzs)",
+    suite: "engine-mem",
+    sections: "16",
+  },
+  // N1-7 · 04:3802 — a transient requeue keeps the claim's attempt, so every transient try counts toward POISON (memory twin).
+  {
+    name: "N1-7 · a transient requeue does not hand the claim's attempt back (memory twin)",
+    file: DAL,
+    from: `      attempts: i.attempts - 1, transientAttempts: i.transientAttempts + 1,`,
+    to: `      attempts: i.attempts, transientAttempts: i.transientAttempts + 1,`,
+    expect: "13.5 · system_busy → PENDING again, transientAttempts 1, attempts handed back",
+    suite: "engine-mem",
+    sections: "13",
+  },
+  // N1-7pg · 04:3802 — the same, in the Postgres twin's UPDATE.
+  {
+    name: "N1-7pg · a transient requeue does not hand the claim's attempt back (Postgres SQL)",
+    file: DAL,
+    from: "      `\"attempts\" = \"attempts\" - 1`,\n      `\"transientAttempts\" = \"transientAttempts\" + 1`,",
+    to: "      `\"attempts\" = \"attempts\"`,\n      `\"transientAttempts\" = \"transientAttempts\" + 1`,",
+    expect: "13.5 · system_busy → PENDING again, transientAttempts 1, attempts handed back",
+    suite: "engine-pg",
+    sections: "13",
+  },
+
+  // ── N2 (04-amendments.md:4402-4410, `red:house-bot-engine`) ──────────────────────────────────────────────────────
+
+  // N2-E2 · 04:4404 — dueAt = requested, without the hold to the exit.
+  {
+    name: "N2-E2 · a targeted reaction is due at the requested time, not held to the exit",
+    file: DECIDE,
+    from: `  return { requestedMs, dueMs: Math.max(requestedMs, input.exitCloseAtMs + LOCK_MARGIN_MS) };`,
+    to: `  return { requestedMs, dueMs: requestedMs };`,
+    expect: "7.35 · ruling 108 · one due-time formula: STAKE 10 s on a 5-min exit → requested 0:10, held to 5:07",
+    suite: "engine-mem",
+    sections: "7",
+  },
+  // N2-E3 · 04:4405 — the hold without LOCK_MARGIN_MS.
+  {
+    name: "N2-E3 · a targeted reaction is held to the exit close with no LOCK_MARGIN_MS",
+    file: DECIDE,
+    from: `  return { requestedMs, dueMs: Math.max(requestedMs, input.exitCloseAtMs + LOCK_MARGIN_MS) };`,
+    to: `  return { requestedMs, dueMs: Math.max(requestedMs, input.exitCloseAtMs) };`,
+    expect: "7.3 · targeted COUNTER: held to the exit + LOCK_MARGIN_MS",
+    suite: "engine-mem",
+    sections: "7",
+  },
+  // N2-E4 · 04:4406 — endTargets ends a target on a young resolveClaimedAt alone.
+  {
+    name: "N2-E4 · endTargets counts a young resolve claim as a blackout",
+    file: PLANNER,
+    from: `infoBlackout(t.marketId, { countResolveClaim: false })`,
+    to: `infoBlackout(t.marketId, { countResolveClaim: true })`,
+    expect: "17.22 · N2 step 9.5 · a young resolve claim ALONE never ends a target",
+    suite: "engine-mem",
+    sections: "17",
+  },
+  // N2-E5 · 04:4407 — poll triggers reach the bet hook (the call site stops filtering on Up & Down). Caught by the source
+  // pin on the call site's condition; 18.75 cannot see it (its bot covers no poll, so a poll stake in the hook decides
+  // nothing either way).
+  {
+    name: "N2-E5 · a player's POLL stake reaches the post-commit hook",
+    file: "src/lib/server/market-service.ts",
+    from: `    if (ctx.kind === "player" && market.productLine === "UPDOWN" && process.env[HOUSE_BOT_ENGINE_ENV] !== "false") {`,
+    to: `    if (ctx.kind === "player" && process.env[HOUSE_BOT_ENGINE_ENV] !== "false") {`,
+    expect: "18.1 · ruling 101 · one // SEAM:trigger block; its condition is a player's Up & Down stake",
+    suite: "engine-mem",
+    sections: "18",
+  },
+  // N2-E6 · 04:4408 — the target check removed from the sweep's targeted insert (memory twin of FOR SHARE).
+  {
+    name: "N2-E6 · the targeted insert no longer checks the target is ACTIVE (memory twin)",
+    file: DAL,
+    from: `      if (!t || t.status !== "ACTIVE") return { inserted: false, targetActive: false, row: null };`,
+    to: `      void t;`,
+    expect: "18.53 · N2 §4 step 4.6 · the target ended between the pass read and the insert",
+    suite: "engine-mem",
+    sections: "18",
+  },
+  // N2-E6pg · 04:4408 — the same, the FOR SHARE read's result ignored in the Postgres twin.
+  {
+    name: "N2-E6pg · the targeted insert ignores the FOR SHARE target read (Postgres)",
+    file: DAL,
+    from: `      if (held.length === 0) return { inserted: false, targetActive: false, row: null };`,
+    to: `      void held;`,
+    expect: "18.53 · N2 §4 step 4.6 · the target ended between the pass read and the insert",
+    suite: "engine-pg",
+    sections: "18",
+  },
+  // N2-E8 · 04:4410 — a consent void leaves the bot's targets ACTIVE.
+  {
+    name: "N2-E8 · voidHouseConsent ends no target",
+    file: "src/lib/server/house-bot/designation.ts",
+    from: `    const ended = await targetStore.endAllForBot(bot.id, "CONSENT_VOID", t);`,
+    to: `    const ended: Array<{ id: string; marketId: string }> = [];`,
+    expect: "5.2.SELF_EXCLUDED · both ACTIVE targets → ENDED(CONSENT_VOID)",
+    suite: "designation-mem",
+  },
+
+  // ── 01-scenario-register.md ──────────────────────────────────────────────────────────────────────────────────────
+
+  // 01-754 · HB-LC-01 — "use board livePrice": the newest CONFIRMED observation, whatever its age and whatever the
+  // terminal's cached 1-minute bar says.
+  {
+    name: "01-754 · the A15 price read uses the board's livePrice (latest CONFIRMED observation) over the vendor bar",
+    file: "src/lib/server/house-bot/ud-price.ts",
+    from: `  const bar = peekVendorBar(assetId);`,
+    to: `  const board = (await observationStore.list({ assetId, state: "CONFIRMED", limit: 1 }).catch(() => []))[0];\n  if (board && board.price != null) return { price: board.price, source: "observation", ageSec: 0 };\n  const bar = peekVendorBar(assetId);`,
+    expect: "14.13 · ⭐ A15 · vendor bar at open + 0.93 × margin → UD_CLOSENESS at 25%",
+    suite: "engine-mem",
+    sections: "14",
+  },
+  // 01-770 · HB-LC-03 — sentinelOutcome added to the engine's market projection.
+  {
+    name: "01-770 · projectMarketView passes sentinelOutcome through",
+    file: "src/lib/server/house-bot/market-view.ts",
+    from: `    round: row.round ? { ...row.round } : null,\n  };`,
+    to: `    round: row.round ? { ...row.round } : null,\n    sentinelOutcome: (row as { sentinelOutcome?: string | null }).sentinelOutcome ?? null,\n  };`,
+    expect: "1.3 · projectMarketView returns exactly the pinned view keys",
+    suite: "info-edge-mem",
+  },
+
+  // ── C4 step 11 · MON-06 (ruling 162) and X7 (rulings 136, 159) ───────────────────────────────────────────────────
+
+  // MON-06 · LOCK_MARGIN_MS = 0: the +5 s house process counts the player's NO the instant its exit closes, while the
+  // −5 s process still cashes it out.
+  {
+    name: "MON-06 · LOCK_MARGIN_MS = 0 across two skewed processes",
+    file: "src/lib/house-bot/constants.ts",
+    from: `export const LOCK_MARGIN_MS = MAX_TOLERATED_SKEW_MS + CLAIM_SKEW_GUARD_MS;`,
+    to: `export const LOCK_MARGIN_MS = 0;`,
+    expect: "8.1 · ⭐ MON-06 · never both: no house stake counted money that was then cashed out",
+    suite: "caps-pg",
+  },
+  // X7 · fire's BOTH_SIDES check disabled: the seam's TRIGGER_BOTH_SIDES backstop writes MARKET_HELD, never PENALTY_BOX.
+  {
+    name: "X7 · fire no longer checks BOTH_SIDES on the trigger account",
+    file: FIRE,
+    from: `      if (own.some((p) => p.side === "YES") && own.some((p) => p.side === "NO")) {`,
+    to: `      if (false as boolean) {`,
+    expect: "16.x7a · ⭐ X7 · a trigger that holds BOTH sides when the counter fires → SKIPPED(PENALTY_BOX)",
+    suite: "engine-mem",
+    sections: "16",
+  },
+// ── Added with their cases (C4 step 11, eighth session): the plan items that had no assertion to fail on ─────────
+
+  // N1-3 · 04:3798 — the claim ignores staleAt (memory twin; the Postgres twin shares the rule and dal-parity pins them).
+  {
+    name: "N1-3 · the claim takes a row already past its staleAt",
+    file: DAL,
+    from: `      && ms(i.deadlineAt) > now && ms(i.staleAt) > now && i.attempts < MAX_NON_TRANSIENT_ATTEMPTS)`,
+    to: `      && ms(i.deadlineAt) > now && i.attempts < MAX_NON_TRANSIENT_ATTEMPTS)`,
+    expect: "16.46 · N1-3 · a due row already past its staleAt is NOT claimed",
+    suite: "engine-mem",
+    sections: "16",
+  },
+  // N1-4 · 04:3799 — the blackout call removed from fire.ts: the seam still refuses with the same code, so the case asserts
+  // WHERE the row stops (fire's own finish, never the bet path's outcome).
+  {
+    name: "N1-4 · fire no longer reads the information blackout",
+    file: FIRE,
+    from: `    if (staffChosen && (await infoBlackout(intent.marketId)).blocked) return finish(intent, deps, "SKIPPED", "INFO_BLACKOUT");`,
+    to: `    // blackout read removed`,
+    expect: "16.33b · N1-4 · a targeted reaction on a reopened (blacked-out) poll is stopped by fire itself",
+    suite: "engine-mem",
+    sections: "16",
+  },
+  // N1-8 · 04:3802 — the audit lease becomes an unconditional append: two planners at once write two audits.
+  {
+    name: "N1-8 · the press audit repair skips its lease",
+    file: PLANNER,
+    from: `    const leased = await pressStore.claimAuditLease(press.id);\n    if (!leased) continue;`,
+    to: `    const leased = press;`,
+    expect: "17.13b · ⭐ N1-8 · two planner passes at once over one unaudited press → exactly ONE",
+    suite: "engine-pg",
+    sections: "17",
+  },
+  // N2-E1 · 04:4403 — effectiveFrom dropped from arming: a stake placed before the target armed becomes a targeted reaction.
+  {
+    name: "N2-E1 · a target reacts to stakes placed before its effectiveFrom",
+    file: DECIDE,
+    from: `input.target && targetBot && product === "MARKET" && ms(input.target.effectiveFrom) <= placedMs`,
+    to: `input.target && targetBot && product === "MARKET"`,
+    expect: "7.3b · N2-E1 · a stake placed BEFORE the target's effectiveFrom is not a targeted reaction",
+    suite: "engine-mem",
+    sections: "7",
+  },
+  // L7 · the memory twin of placedCounterFor sorts oldest-first (its line now has its own shape; 18.70 pins newest-first).
+  {
+    name: "L7 · placedCounterFor (memory) returns the oldest PLACED counter",
+    file: DAL,
+    from: `.sort((a, b) => ms(b.createdAt) - ms(a.createdAt) || (b.id > a.id ? 1 : -1))[0];`,
+    to: `.sort((a, b) => ms(a.createdAt) - ms(b.createdAt) || (b.id > a.id ? 1 : -1))[0];`,
+    expect: "18.70 · …the newest PLACED COUNTER on (account, market)",
+    suite: "engine-mem",
+    sections: "18",
+  },
+];

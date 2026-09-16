@@ -289,6 +289,10 @@ await guard("7", () => {
   const tgt = { targetId: "hbt_1", houseBotId: "hb_a", delayMinSec: 10, delayMaxSec: 10, timingFrom: "STAKE", reactTo: "FIRST", effectiveFrom: at(-100), drawnDelaySec: 10, lockedAtDue: 10_000, staffChosenRoomTzs: 1_000_000_000 };
   const t = DE.decideCounter(ctrIn({ target: tgt }), { randomInt: minRand });
   ok("7.3 · targeted COUNTER: held to the exit + LOCK_MARGIN_MS, stale 60 s after", t.row && t.row.targetId === "hbt_1" && t.row.dueAt === at(-1 + 307) && t.row.staleAt === at(-1 + 367) && t.row.decision.lockMarginMs === 7_000, j(t.row));
+  // N2-E1 · a target reacts only to stakes placed at or after its effectiveFrom (the arming delay); 7.3 is the control.
+  const notYet = DE.decideCounter(ctrIn({ target: { ...tgt, effectiveFrom: at(5) } }), { randomInt: minRand });
+  ok("7.3b · N2-E1 · a stake placed BEFORE the target's effectiveFrom is not a targeted reaction (no targetId on any row)",
+    !notYet.row || notYet.row.targetId == null, j(notYet.row));
   const late = DE.decideCounter(ctrIn({ view: MV.projectMarketView(viewRow({ selectionClosedAt: at(-1 + 330) })) }), { randomInt: minRand });
   ok("7.4 · the exit hold passes the deadline while the delay alone fits → SKIPPED(EXIT_WINDOW_TOO_LATE)", late.row && late.row.status === "SKIPPED" && late.row.reasonCode === "EXIT_WINDOW_TOO_LATE", j(late.row));
   const cut = DE.decideCounter(ctrIn({ view: MV.projectMarketView(viewRow({ selectionClosedAt: at(-1 + 70) })) }), { randomInt: minRand });
@@ -1891,6 +1895,15 @@ await guard("16", async () => {
     ok("16.31 · a removed target → CANCELLED(TARGET_REMOVED)", await is(iR.id, "CANCELLED", "TARGET_REMOVED"), j(oR));
     ok("16.32 · a vetoed target → CANCELLED(TARGET_ENDED)", await is(iV.id, "CANCELLED", "TARGET_ENDED"), j({ oV, target: await S.targetStore.get(tv.id) }));
     ok("16.33 · a target ENDED for another cause (MARKET_CLOSED) → the reaction goes on and places", await is(iC.id, "PLACED", null), j(oC));
+    // N1-4 · fire's OWN blackout read (ruling 64). Without it the seam still refuses the same stake with the same code, so
+    // the row's status cannot tell them apart; WHERE it stops can: fire finishes the row itself, before the bet path.
+    const pb = await lockedPoll();
+    const tb = await target(pb.m.id);
+    const iB = await reaction(pb.m.id, tb.id, pb.player, pb.positionId);
+    await setMarket(pb.m.id, { reopened: true });
+    const oB = await fire(iB, recorder().alerts);
+    ok("16.33b · N1-4 · a targeted reaction on a reopened (blacked-out) poll is stopped by fire itself: finished SKIPPED(INFO_BLACKOUT), never sent to the bet path",
+      oB?.kind === "finished" && oB.code === "INFO_BLACKOUT" && (await is(iB.id, "SKIPPED", "INFO_BLACKOUT")), j(oB));
     const p2 = await w.user({ balance: 100_000 });
     const t2 = await w.svc.buyPosition(p2, { marketId: pc.m.id, side: "YES", stake: 5_000, idempotencyKey: crypto.randomUUID() });
     const iSecond = await reaction(pc.m.id, tc.id, p2, t2.data?.positionId ?? null);
@@ -1992,6 +2005,19 @@ await guard("16", async () => {
       await S.houseBotIntentStore.cancelPending(x.id, "BOT_NOT_ACTIVE");
       await S.houseBotIntentStore.finish(x.id, (await row(x.id)).claimedBy ?? ME, { status: "CANCELLED", reasonCode: "BOT_NOT_ACTIVE" });
     }
+  }
+  /* ── 16.46 N1-3 · the claim never takes a row past its staleAt (a late row is expired by the planner, never fired) ── */
+  {
+    // `claimBatch` takes any due row in the store, so this runs last in §16 with nothing else live.
+    await S.houseBotIntentStore.cancelLive({ all: true }, "MASTER_OFF");
+    const b = await botWith();
+    const stale = await S.houseBotIntentStore.insert(pendingRow(b, (await lockedPoll(0)).m.id, { dueAt: w.iso(-60_000), staleAt: w.iso(-1_000) }));
+    const fresh = await S.houseBotIntentStore.insert(pendingRow(b, (await lockedPoll(0)).m.id));
+    const claimed: Any[] = await S.houseBotIntentStore.claimBatch({ me: `hb-n13-${process.pid}`, freeSlots: 10, skewGuardMs: 0 });
+    const ids = claimed.map((r: Any) => r.id);
+    ok("16.46 · N1-3 · a due row already past its staleAt is NOT claimed and stays PENDING; CONTROL: the fresh due row beside it is claimed",
+      !ids.includes(stale.id) && (await is(stale.id, "PENDING", null)) && ids.includes(fresh.id), j({ ids, stale: stale.id, fresh: fresh.id }));
+    await S.houseBotIntentStore.cancelLive({ all: true }, "MASTER_OFF");
   }
 });
 
@@ -2150,6 +2176,24 @@ await guard("17", async () => {
     const rec2 = recorder();
     await safe(() => PL.plannerPass(ctxOf(), { alerts: rec2.alerts, liveBounds: async () => ({ minStake: 1_000, maxStake: 10_000_000, refillPerMin: 10 }) }));
     ok("17.13 · …and never twice (the alertedAt claim)", rec2.calls.filter((c) => c.fn === "placed" && c.id === placed.id).length === 0);
+
+    // N1-8 · the press audit LEASE (ruling 74), Postgres only: the repair picks a press only once its row is 60 s old, and
+    // only Postgres lets a case age one (a declared fixture of time). The lease matters when two planners list the same
+    // press before either writes (a failover), so two passes run AT ONCE; the lease must let exactly one audit through.
+    if (w.onPostgres && press.ok) {
+      const AUD17: Any = await import("../../src/lib/server/audit.ts");
+      await w.prisma().$executeRawUnsafe(`UPDATE "HouseBotPress" SET "updatedAt" = "updatedAt" - interval '120 seconds' WHERE "id" = $1`, press.row.id);
+      const bounds = async () => ({ minStake: 1_000, maxStake: 10_000_000, refillPerMin: 10 });
+      const both = await Promise.all([
+        safe(() => PL.plannerPass(ctxOf(), { alerts: recorder().alerts, liveBounds: bounds })),
+        safe(() => PL.plannerPass(ctxOf(), { alerts: recorder().alerts, liveBounds: bounds })),
+      ]);
+      await AUD17.auditFlush?.();
+      const rows = (await AUD17.getAuditByActionsDurable(["house_bot.enter_now"], { limit: 200 })).entries.filter((e: Any) => e.targetId === b.botId);
+      const audited: Any = await S.pressStore.get(press.row.id);
+      ok("17.13b · ⭐ N1-8 · two planner passes at once over one unaudited press → exactly ONE house_bot.enter_now audit, and the press records it",
+        rows.length === 1 && audited?.auditId === rows[0]?.id, j({ rows: rows.map((e: Any) => e.id), auditId: audited?.auditId, counts: both.map((p: Any) => p?.counts?.pressAudited) }));
+    }
   }
 
   /* ── 17.14 the press audit builder (ruling 74; the 60 s lease repair itself is NOT MEASURED here — no backdating of presses) ── */
