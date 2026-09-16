@@ -409,6 +409,8 @@
     "test:updown-bars": "tsx scripts/updown-bars.test.mts",
     "test:ops-audit-flush": "tsx scripts/ops-audit-flush.test.mts",
     "test:tracker-hygiene": "tsx scripts/tracker-hygiene.test.mts",
+    "test:mobile-visual-plan": "tsx scripts/mobile-visual-plan.test.mts",
+    "red:mobile-visual-plan": "node scripts/mobile-visual-plan-red.mjs",
     "test:proposal-evidence-age": "tsx scripts/proposal-evidence-age.test.mts",
     "test:payout-view": "tsx scripts/payout-view.test.mts",
     "test:market-calendar": "tsx scripts/market-calendar.test.mts",
