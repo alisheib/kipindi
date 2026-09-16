@@ -49,6 +49,15 @@
   2. U30: Ali's Android phone plus one budget Android for the real-device checklist at each phase end.
   3. A native SW/ZH reader for the new keys (U2, U20).
   4. Phase-end visual sign-off (§8a): Ali approves each phase's before/after contact sheet.
+  5. **NEW — the hero headline is English on a Swahili-default home page, and the ruling that made it
+     English predates the ruling that made Swahili the default.** `home.heroHeadline` is
+     "The wisdom of YES & NO." verbatim in all three locales, on `test:i18n`'s IDENTICAL_OK list, with
+     the reason written into the dictionary: *"YES and NO are product terms and the sentence is the
+     brand line."* That was decided when a new visitor saw English. Today the largest type on the
+     first screen a Tanzanian visitor meets is English, and two inches below it the same two words
+     appear as NDIO and HAPANA in the conviction bar and on every button. ⚖️ **Ali's call, not a
+     defect** — keep the English brand line, translate it, or keep English with the Swahili beneath.
+     Nothing in this plan changes it either way; U6 must not quietly re-set it.
 
 ⚠ TRAPS ALREADY MET (2026-09-15 capture):
   · `networkidle` never fires on www (live stream). Use `load` + a 2.5s wait.
@@ -1083,6 +1092,15 @@ by U1's driver at the §11 matrix unless a unit says otherwise.
 **U40 · [General] Player copy and terminology (EN/SW/ZH)**
 - One word per concept per locale (YES/NDIO/NDIYO, pool/bwawa/dimbwi, live/mubashara/hai, Top vs Leaderboard, Proposals' three names), plurals
   correct at n = 1, no operator jargon in player copy, no English abbreviations left in SW/ZH.
+- 📐 **Measured 2026-09-16, now that SW is the default — the NDIO/NDIYO split is not theoretical, it is shipped.** `i18n-dict.ts` says
+  `yes: "NDIO"` (`:2715`) and `yesOutcome: "NDIO"` (`:4078`) — the buttons, chips and outcome words — while **NDIYO** is what the product says
+  everywhere it explains itself: `howItWorksBody` (`:2753`), `probOverTime` / `probChartAria` (`:3535`, `:3537`), `backYesAria` /
+  `backYesAriaNoPrice` (`:3560-3561`), `faq1a` / `faq1aLoser` (`:4301-4302`), `contTodayLead/SoonLead/WeekLead` (`:3267-3269`). So a player
+  **hears** a different word from the one they **see**: the accessible name of the NDIO button is "Unga mkono NDIYO". ⛔ Both spellings are
+  real Swahili — which is exactly why this needs the native reader to choose, not a find-and-replace.
+- 📐 **And the date format is half-translated on one screen.** On a market detail page the chrome prints "27 Oct 2026, 00:00" and "23 Oct, 00:00"
+  while the resolution prose four rows below reads "Oktoba 23–25" — English month abbreviations inside Swahili, one card apart, on the
+  market detail page at 360 SW. Every locale's month and date formatting goes through one formatter, chosen with the native reader.
 - ⛔ Needs a native SW reader and a native ZH reader before ship; `test:i18n` keeps EN/SW/ZH in parity.
 - Guard: a source contract that the terms map to one key per concept, plus the parity test. RED: reintroduce a second spelling.
 
