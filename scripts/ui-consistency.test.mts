@@ -395,6 +395,52 @@ const RULES: Rule[] = [
     },
   },
   {
+    // 🔴 D7 (MOBILE-VISUAL-PLAN §8) · A LABEL THAT COLLAPSES MUST LEAVE A NAME BEHIND.
+    //
+    // The product's own idiom, written out in `top-app-bar.tsx:302-320`: below `sm` the deposit
+    // CTA's words go and the `+` glyph stays — *"the control itself never goes: the `+` glyph and
+    // its `aria-label` stay, exactly as they do on a phone, so nothing becomes unnameable or
+    // unreachable."* That is the rule this checks, because the two Up & Down header links were
+    // written to the same recipe and skipped the second half: on a phone they are a scroll glyph
+    // and a portfolio glyph that a screen reader announces as their href.
+    //
+    // ⛔ IT IS THE COLLAPSE THAT MAKES IT A DEFECT, not the icon. A control that never shows words
+    // is expected to carry an `aria-label` and is covered elsewhere; this rule fires only where a
+    // visible label EXISTS at one width and DISAPPEARS at another, leaving nothing — the case an
+    // author cannot see on the desktop they are building on. It is also why `hidden sm:*` is
+    // matched rather than any `hidden`: the class says "there is a label, just not here".
+    id: "collapsing-label-without-aria-label",
+    severity: "error",
+    desc: "a link or button whose only words sit in a `hidden sm:*` span and that carries no aria-label — below sm it is an unnameable glyph",
+    scan: (b, f) => {
+      if (isKitFile(f)) return [];
+      const out: Array<{ index: number; snippet: string }> = [];
+      // `(?:[^>]|=>)*?` for the same reason `bare-text-button` uses it: an arrow function in an
+      // attribute contains a `>`, and `[^>]*` would end the tag match at it.
+      for (const m of b.matchAll(/<(Link|button|a)\b((?:[^>]|=>)*?)>/gs)) {
+        const attrs = m[2];
+        if (/aria-label(?:ledby)?\s*=/.test(attrs)) continue;
+        const start = (m.index ?? 0) + m[0].length;
+        const close = b.indexOf(`</${m[1]}>`, start);
+        if (close < 0) continue;
+        const inner = b.slice(start, close);
+        if (inner.length > 1200) continue;                   // a wrapper around a region, not a control
+        const collapsing = inner.match(
+          /<span\b[^>]*className=\{?["'`][^"'`]*\bhidden\s+sm:(?:inline|inline-flex|block|flex)\b[^"'`]*["'`][^>]*>[\s\S]*?<\/span>/g,
+        );
+        if (!collapsing) continue;                           // nothing collapses here
+        let rest = inner;
+        for (const c of collapsing) rest = rest.split(c).join("");
+        // What a phone is left with. Tags (glyphs) and expressions are stripped; if a dictionary
+        // lookup or any real word survives, the control still names itself at every width.
+        if (/\{t\./.test(rest)) continue;
+        if (/[A-Za-z]{2,}/.test(rest.replace(/<[^>]*>/g, " ").replace(/\{[\s\S]*?\}/g, " "))) continue;
+        out.push({ index: m.index ?? 0, snippet: m[0].replace(/\s+/g, " ").slice(0, 90) });
+      }
+      return out;
+    },
+  },
+  {
     // 🔴 E-98 · A CONTROL THAT HIDES ITS OWN ANSWER. A dropdown's CLOSED trigger is the only
     // place an operator reads what they chose, so `truncate` there is not a layout fix — it is
     // data loss, which `scripts/admin-clip.test.mts` §1.3 already says in as many words about

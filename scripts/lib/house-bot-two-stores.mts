@@ -54,7 +54,13 @@ export async function runTwoStores(opts: { suite: string; casesFile: string; min
   await admin.query(`CREATE DATABASE "${DB}"`);
   await admin.end();
   try {
-    const url = `${BASE}/${DB}`;
+    // ⚠️ `connect_timeout` IS ABOUT THIS MACHINE, NOT ABOUT THE PRODUCT (C4-SPEC ruling 163). PostgreSQL on Windows
+    // forks a backend process per connection, and under load — a mutation drive, a build, agents reading the repo —
+    // that fork can take longer than Prisma's 5 s default, which surfaces as `Can't reach database server at
+    // 127.0.0.1:5433` in the middle of a green run (measured twice on 2026-09-16: engine §18 threw once and the money
+    // child died at 0 passed). 30 s changes nothing about what is tested: a cluster that is really down still fails,
+    // 25 s later. It is NOT a retry and NOT a tolerance for a failing assertion.
+    const url = `${BASE}/${DB}?connect_timeout=30`;
     const mig = spawnSync("npx", ["prisma", "migrate", "deploy"], {
       cwd: ROOT, env: { ...process.env, DATABASE_URL: url }, encoding: "utf8", shell: process.platform === "win32", timeout: 10 * 60_000,
     });

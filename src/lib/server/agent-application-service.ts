@@ -1473,10 +1473,15 @@ const OTP_TTL_MS = 5 * 60 * 1000;
  * 🔴 WHY IT IS EMAIL AND NOT SMS. The programme shipped inviting by phone, and the officer's
  * console said "A text with the link is on its way". It was not: `src/lib/server/sms.ts`
  * defaults to the `console` provider, Beem and Africa's Talking are declared stubs that
- * THROW, and the Selcom adapter's body is written against an unsigned contract. In production
+ * THROW, and the Selcom adapter's body was written against an unsigned contract. In production
  * `sms.ts` logged "console provider active in PRODUCTION … NOT delivered" while the console
  * promised delivery and the applicant's own status page said the link "was texted to your
  * number". Three surfaces asserting a delivery that could not happen.
+ *
+ * ⚠️ UPDATE 2026-09-16 — THE BLOCKER IS GONE AND THE DECISION STILL STANDS. Blackball is
+ * wired and licensed, so SMS can now deliver. This flow stays on email anyway: a mailbox is
+ * a durable record the applicant controls, and re-pointing an officer-issued credential at a
+ * channel because it became available is a decision to take deliberately, not by default.
  *
  * ⭐ POSTMARK IS LIVE AND CARRIES EVERY OTHER TRANSACTIONAL MAIL ON THE PLATFORM, so the
  * invitation now goes there — and `sendEmail` returns a `reason` (`sent` · `stub` ·

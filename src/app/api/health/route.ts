@@ -6,7 +6,7 @@
  */
 import { NextResponse } from "next/server";
 import { db } from "@/lib/server/store";
-import { sms, smsHealthSnapshot } from "@/lib/server/sms";
+import { sms, smsHealthSnapshot, smsBalanceSnapshot, smsConfigured } from "@/lib/server/sms";
 import { listMarkets } from "@/lib/server/market-service";
 import { auditRingSize } from "@/lib/server/audit";
 import { lifecycleTickerHealth } from "@/lib/server/lifecycle";
@@ -65,6 +65,7 @@ export async function GET() {
     try { userCount = await db.user.count(); } catch { /* graceful */ } // audit H4 — COUNT(*), not a full scan every probe
     const auditCount = auditRingSize();
     const smsHealth = smsHealthSnapshot();
+    const smsBalance = smsBalanceSnapshot();
     // OPS READ → productLine "ALL". A health probe reports what the platform is
     // actually running; a stalled Up & Down chain must show up here as a live-market
     // count that stops moving, not be filtered out of the signal.
@@ -95,7 +96,17 @@ export async function GET() {
         },
         sms: {
           provider: sms.name,
+          // ⛔ `configured` IS THE LOAD-BEARING FIELD, NOT `successRate`. A rate of
+          // null with provider "console" reads as a healthy idle rail; the same
+          // reading with provider "blackball" means every login code is failing.
+          // ⭐ `webhookSecretSet` is a BOOLEAN. This endpoint is public.
+          configured: smsConfigured(),
           successRate: smsHealth.successRate,
+          sent: smsHealth.sent,
+          failed: smsHealth.failed,
+          balanceTzs: smsBalance.tzs,
+          balanceBelowFloor: smsBalance.belowFloor,
+          webhookSecretSet: !!process.env.BLACKBALL_WEBHOOK_SECRET,
         },
         // The lifecycle ticker owns payment reconcile and the wallet↔ledger trial
         // balance. It skips a tick rather than overlap passes — correct, but it used

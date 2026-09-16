@@ -126,6 +126,35 @@ export function rateCheck(key: string, action: keyof typeof RATE_RULES): RateRes
   return { allowed: true, remaining: Math.floor(bucket.tokens), retryAfterSec: 0 };
 }
 
+/**
+ * Give one token back.
+ *
+ * ⭐ WHY THIS EXISTS. A bucket is spent BEFORE the work it authorises is attempted —
+ * it has to be, or a failing attempt costs nothing and an attacker can pump a paid
+ * gateway for free by aiming at numbers that always fail. But that ordering means a
+ * send which never left the box still charges the player their allowance: an SMS
+ * provider blip would lock a legitimate user out of their own login for the full
+ * ~30-second resend spacing, on an outage that was ours and not theirs.
+ *
+ * ⛔ SO THE NARROW FIX IS A REFUND, NOT A LATER CONSUME. Only a caller that KNOWS the
+ * authorised work did not happen may call this.
+ *
+ * ⛔ CLAMPED AT CAPACITY, so a refund can never mint allowance beyond the rule — a
+ * double refund is a no-op, not a free extra send. Fail-open and never throws, the
+ * same law `rateCheckAsync` follows.
+ */
+export function rateRefund(key: string, action: keyof typeof RATE_RULES): void {
+  const rule = RATE_RULES[action];
+  if (!rule) return;
+  const bucketKey = `${action}:${key}`;
+  const bucket = buckets.get(bucketKey);
+  // No bucket means nothing was spent on this container — there is nothing to return,
+  // and inventing a full one would hand out allowance the rule never granted.
+  if (!bucket) return;
+  bucket.tokens = Math.min(rule.capacity, bucket.tokens + 1);
+  buckets.set(bucketKey, bucket);
+}
+
 /* ── Redis-backed bucket ─────────────────────────────────────────────────── */
 
 const REDIS_PREFIX = "50pick:rl:";
@@ -238,6 +267,51 @@ export async function rateCheckAsync(key: string, action: keyof typeof RATE_RULE
   });
 
   return { allowed, remaining, retryAfterSec };
+}
+
+/** Return one token, clamped at capacity, in whichever store is authoritative. */
+const REFUND_LUA = `
+local key      = KEYS[1]
+local capacity = tonumber(ARGV[1])
+local nowMs    = tonumber(ARGV[2])
+local ttlMs    = tonumber(ARGV[3])
+
+local cur = redis.call('HGET', key, 'tokens')
+-- ⛔ NO BUCKET MEANS NOTHING WAS SPENT HERE. Creating one at capacity would hand out
+-- allowance the rule never granted, which is the opposite of what a refund is for.
+if cur == false then return 0 end
+
+local tokens = math.min(capacity, tonumber(cur) + 1)
+redis.call('HSET', key, 'tokens', tostring(tokens), 'ts', tostring(nowMs))
+redis.call('PEXPIRE', key, ttlMs)
+return 1
+`;
+
+/**
+ * The cross-container form of `rateRefund`. See that function for WHY a refund is the
+ * right shape and not "consume later".
+ *
+ * ⛔ FAIL-OPEN AND SILENT, like every other Redis path here: a refund that cannot be
+ * applied costs the player one send's worth of waiting, which is a far smaller harm
+ * than a throw on the login path. It mirrors into the local Map either way, so the
+ * `/admin/system` card and any post-Redis-failure fallback stay faithful.
+ */
+export async function rateRefundAsync(key: string, action: keyof typeof RATE_RULES): Promise<void> {
+  const rule = RATE_RULES[action];
+  if (!rule) return;
+  if (!getRedis()) {
+    rateRefund(key, action);
+    return;
+  }
+  const bucketKey = `${action}:${key}`;
+  await withRedis<number | null>(
+    (r) => r.eval(
+      REFUND_LUA, 1, `${REDIS_PREFIX}${bucketKey}`,
+      String(rule.capacity), String(Date.now()), String(bucketTtlMs(rule)),
+    ) as Promise<number>,
+    null,
+  ).catch(() => null);
+  rateRefund(key, action);
 }
 
 /**

@@ -68,7 +68,7 @@ un-build and X7 are done, and rulings 143–162 are taken):
 - **D19: nothing about house bots reaches a player, including the holder.** Never add or keep a public sentence, a
   chip, a label, a holder notice or email, or a failure message that names a house bot, a liquidity stake or a 50pick
   stake. The regulator draft and the admin console are the only places the feature is described.
-- Never push `main` or put `main` in a refspec; never rebase `house-bots`; merge `origin/main` only (check `git diff --stat house-bots...origin/main -- prisma/migrations` first; a main migration sorting after the house folders means renaming them again — **one is already waiting: `20260916120000_sms_message`**, so the next merge renames `20260915150000_house_bot_tables` / `20260915150100_house_bot_markers` past it).
+- Never push `main` or put `main` in a refspec; never rebase `house-bots`; merge `origin/main` only (check `git diff --stat house-bots...origin/main -- prisma/migrations` first; a main migration sorting after the house folders means renaming them again — **one is already waiting: `20260916120000_sms_message`**, so the next merge renames `20260916150000_house_bot_tables` / `20260916150100_house_bot_markers` past it).
 - Never touch production (no `railway`, no production database, not even a read). Never turn the master switch on; designate bots only in a local scratch database.
 - Never use ports 3009, 3011, 3013, 3014. Never edit, stage, check out or build in `F:/kipindi-main`. Never delete another session's files or worktrees.
 - Never skip hooks, force-push, or weaken a guard or ratchet to pass. If the permission system or the auto-mode classifier refuses something, do not work around it: record it and move on.

@@ -146,7 +146,9 @@ export async function startLoginOtpAction(formData: FormData) {
   if (!result.ok) {
     const params = new URLSearchParams({
       phone: phoneRaw,
-      error: result.code === "NOT_FOUND" ? "no_account" : result.code === "RATE_LIMITED" ? "rate_limited" : "blocked",
+      // SMS_UNDELIVERABLE is its own hop. Sending the player to /auth/otp for a code
+      // that was never sent is the dead-screen failure this whole change is against.
+      error: result.code === "NOT_FOUND" ? "no_account" : result.code === "SMS_UNDELIVERABLE" ? "sms_down" : result.code === "RATE_LIMITED" ? "rate_limited" : "blocked",
     });
     if (safeNext) params.set("next", safeNext);
     redirect(`/auth/login?${params.toString()}`);
@@ -174,7 +176,7 @@ export async function resendOtpAction(formData: FormData) {
   const params = new URLSearchParams({ purpose, phone });
   if (safeNext) params.set("next", safeNext);
   if (!result.ok) {
-    params.set("error", result.code === "NOT_FOUND" ? "no_account" : result.code === "RATE_LIMITED" ? "rate_limited" : "failed");
+    params.set("error", result.code === "NOT_FOUND" ? "no_account" : result.code === "SMS_UNDELIVERABLE" ? "sms_down" : result.code === "RATE_LIMITED" ? "rate_limited" : "failed");
     if (result.code === "RATE_LIMITED" && result.retryAfterSec) params.set("retry", String(result.retryAfterSec));
   } else {
     params.set("sent", "1");

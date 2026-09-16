@@ -283,8 +283,13 @@ The one thing worth repeating here, because it is a mechanic and not a number:
 
 ## Auth — current state (June 2026 hardened)
 
-**Phone + password** (interim). OTP code paths preserved — switch back
-once SMS provider (Selcom/Beem) is signed.
+**Phone + password.** The phone-code (OTP) server path is built and SMS is live
+(Blackball, `SMS_PROVIDER=blackball` since 2026-09-16), but ⛔ **no player-facing UI
+offers it**: `/auth/login` and `/auth/register` post only to the password actions, and
+`OTP_ENABLED=1` merely un-hides the `/auth/otp` page. Offering phone-code login is a
+product change (a "send me a code" option in the frozen design system, EN/SW/ZH, visual
+drives) — then the flag. With OTP on, an SMS outage is a LOGIN outage; password sign-in
+stays available either way and is what `SMS_UNDELIVERABLE` routes the player to.
 
 ### Registration flow
 ```
@@ -336,13 +341,42 @@ Auto-promotes on both register AND login (idempotent, never demotes).
 `PLAYER | AGENT | MODERATOR | ADMIN | COMPLIANCE | SUPPORT`. Non-player
 redirects to `/admin` after login.
 
-## SMS — currently dummy
+## SMS — Blackball Gateway
 
-`src/lib/server/sms.ts` defaults to the `console` provider — OTP codes
-print to stdout, never leave the server. Selcom / Beem / Africa's Talking
-adapters are stubs. Until you sign Selcom or Beem, **OTP cannot be
-delivered to a real phone** — that's the only reason auth is on
-password right now.
+`src/lib/server/sms.ts` is the facade; `sms-blackball.ts` is the transport. Two
+providers only: `blackball` (real) and `console` (dev). The Selcom / Beem /
+Africa's Talking adapters were deleted on 2026-09-16 — two threw, and the Selcom
+one was a complete HTTP body written against a guessed endpoint on an unsigned
+contract, which read as a working integration to anyone scanning the file.
+
+**Four things the vendor PDF does not say, measured against the live endpoint:**
+
+1. **Every failure is HTTP 400**, including `Invalid credentials`. `res.ok` is NOT
+   the verdict — the `status` boolean in the body is. `if (!res.ok) throw` collapses
+   every distinguishable failure into one opaque transport error.
+2. **`source` (sender ID) is capped at 12 characters**, enforced before auth.
+3. **`data` is an ARRAY** of `{field: message}` on a schema error and `null` on an
+   auth error; the PDF types it "Object".
+4. **A reply's `balance` is only half-true**: `0.0` on a refusal (decided before
+   auth), pre-charge on a success. The true figure is `POST /api/account/balance`.
+
+Also not in the PDF: `coding` is `GSM7` | `UCS2` (GSM-7 cannot carry Chinese — chosen
+per message by `smsCodingFor`), and a success carries no per-message id (`data: null`).
+
+`reference` is optional to them but must be ≥ 20 characters; we always send one,
+because a delivery receipt carries the reference and nothing else. Every attempt
+persists to `SmsMessage`; receipts land on `/api/webhooks/blackball`.
+
+⚠️ **ACCEPTED is not DELIVERED.** Only a delivery receipt writes `DELIVERED`, and an
+unrecognised status token is recorded raw rather than guessed. Observed so far:
+`DELIVRD` / `Success`. First live send 2026-09-16: delivered in 2 seconds, TZS 6.
+
+⚠️ **Cloudflare's Browser Integrity Check answers `403 error 1010` to `Java/1.x` user
+agents.** A Configuration Rule (2026-09-16) turns it off for `/api/webhooks/*` only — keep
+it, or every server-to-server webhook from a Java 8 caller is refused before the app sees
+it. 🔴 Even with it, no Blackball delivery callback has reached production yet; the cause
+is on their side. Railway keeps HTTP logs only for the CURRENT deployment. Live state, the
+go-live order and the open vendor questions: `docs/BLACKBALL-SMS.md`.
 
 ## Persistence
 
@@ -394,8 +428,11 @@ Required Railway env vars (set in service → Variables):
 | `SESSION_SECRET` | ≥ 32 chars; HMAC for session cookies |
 | `OTP_PEPPER` | ≥ 16 chars; global pepper for OTP hashing |
 | `ADMIN_BOOTSTRAP_PHONES` | comma-separated E.164 list — auto-promote on first register |
-| `SMS_PROVIDER` | `console` (current) / `selcom` / `beem` / `africas-talking` |
-| `SMS_SENDER_ID` | TCRA-licensed sender ID once SMS goes live |
+| `SMS_PROVIDER` | `console` (dev) / `blackball`. ⚠️ An unrecognised value is a FAILED choice, not a fallback |
+| `SMS_SENDER_ID` | TCRA-licensed sender ID — ⛔ max 12 characters |
+| `BLACKBALL_CLIENT_ID` / `BLACKBALL_CLIENT_SECRET` | portal → Configurations → API Configurations |
+| `BLACKBALL_WEBHOOK_SECRET` | ≥ 16 chars; the DLR URL is `/api/webhooks/blackball?token=<this>` |
+| `OTP_ENABLED` | `1` un-hides `/auth/otp`. ⚠️ No login/register UI links to it yet, so it alone does not offer phone-code login |
 | `NODE_ENV` | `production` on Railway |
 | `NEXT_PUBLIC_APP_URL` | `https://kipindi-production.up.railway.app` |
 | `TESTER_BOOTSTRAP_PHONES` | comma-separated E.164 list — auto-fund 100K TZS on register |

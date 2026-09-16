@@ -13,8 +13,8 @@ import type { HouseSeamReason } from "@/lib/house-bot/bet-path";
 import { audit } from "./audit";
 import { db, type StoredUser } from "./store";
 import { generateOtp, hashOtp, hashPassword, randomId, verifyOtp, verifyPassword } from "./crypto";
-import { rateCheckAsync } from "./rate-limit";
-import { sms, otpMessage } from "./sms";
+import { rateCheckAsync, rateRefundAsync } from "./rate-limit";
+import { sms, otpMessage, smsConfigured, SmsError } from "./sms";
 import { LoginRequestSchema, OtpVerifySchema, RegisterSchema, emailAddress } from "./validators";
 import type { z } from "zod";
 import { createSession, destroySession, getSession, type SessionData } from "./session";
@@ -109,7 +109,12 @@ export type ServiceResult<T = void> =
   // Same shape as `ActionFailure.field` in `src/lib/server/field-error.ts`, deliberately, so
   // an admin action can pass one straight through. ⚠️ Purely optional: a service that has not
   // been converted omits it and renders exactly as before.
-  | { ok: false; error: string; code?: "RATE_LIMITED" | "INVALID" | "EXPIRED" | "ALREADY_EXISTS" | "EMAIL_EXISTS" | "NOT_FOUND" | "TOO_MANY_ATTEMPTS" | "SUSPENDED" | "SELECTION_CLOSED" | "CONFLICT" | "TOO_EARLY" | "OBJECTION_OPEN" | "EMAIL_UNVERIFIED" | "BUSY"; retryAfterSec?: number; reason?: FailureReason | HouseSeamReason; detail?: FailureDetail; field?: string };
+  // ⭐ `SMS_UNDELIVERABLE` IS ITS OWN ARM, AND THE DISTINCTION IS THE POINT. It is not
+  // INVALID — the player did nothing wrong and there is no field to fix. It is not
+  // RATE_LIMITED — waiting will not help, because the gateway is the thing that is down.
+  // With OTP as a login path, this is the code that must route the player to the password
+  // door instead of to an OTP screen waiting for a code that was never sent.
+  | { ok: false; error: string; code?: "RATE_LIMITED" | "INVALID" | "EXPIRED" | "ALREADY_EXISTS" | "EMAIL_EXISTS" | "NOT_FOUND" | "TOO_MANY_ATTEMPTS" | "SUSPENDED" | "SELECTION_CLOSED" | "CONFLICT" | "TOO_EARLY" | "OBJECTION_OPEN" | "EMAIL_UNVERIFIED" | "BUSY" | "SMS_UNDELIVERABLE"; retryAfterSec?: number; reason?: FailureReason | HouseSeamReason; detail?: FailureDetail; field?: string };
 
 /**
  * THE ONE ACCOUNT-STATUS GATE EVERY SIGN-IN PATH MUST PASS (E-240, E-238).
@@ -246,7 +251,8 @@ export async function requestLoginOtp(input: z.input<typeof LoginRequestSchema>)
     return { ok: false, error: `Please wait ${cool.retryAfterSec}s before requesting another code.`, code: "RATE_LIMITED", retryAfterSec: cool.retryAfterSec };
   }
 
-  return await issueOtp(phone, "login", meta);
+  // Both buckets were spent above; a send that never happens must return them.
+  return await issueOtp(phone, "login", meta, ["otp.send", "otp.resend"]);
 }
 
 /** Register a new account — OTP-driven. Returns OTP id. */
@@ -265,7 +271,7 @@ export async function requestRegisterOtp(input: z.input<typeof RegisterSchema>):
     return { ok: false, error: "An account with that phone already exists.", code: "ALREADY_EXISTS" };
   }
 
-  const issued = await issueOtp(phone, "register", meta);
+  const issued = await issueOtp(phone, "register", meta, ["auth.register"]);
   if (!issued.ok) return issued;
   // Stash registration intent (DOB, terms) so OTP verify can finalize
   pendingRegistration.set(phone, { dob: parse.data.dob, marketingOptIn: parse.data.marketingOptIn ?? false });
@@ -282,7 +288,40 @@ declare global {
 const pendingRegistration: Map<string, { dob: string; marketingOptIn: boolean }> =
   globalThis.__50PICK_PENDING_REG ?? (globalThis.__50PICK_PENDING_REG = new Map());
 
-async function issueOtp(phone: string, purpose: "login" | "register" | "withdraw" | "reauth" | "self_exclusion", meta: { ip: string | null; ua: string | null }): Promise<ServiceResult<{ otpId: string; expiresAt: string }>> {
+/**
+ * Mint an OTP and get it to the handset.
+ *
+ * ⛔ `spentBuckets` IS NOT OPTIONAL POLISH. A rate-limit token is consumed BEFORE the
+ * send is attempted — it has to be, or a failing attempt costs nothing and an attacker
+ * pumps a paid gateway for free. That ordering means a send which never leaves the box
+ * still charges the player their allowance, so when the send fails the caller's spent
+ * buckets must be returned. They are passed IN rather than re-derived from `purpose`,
+ * because the mapping from purpose to buckets lives in the caller and a second copy here
+ * would be a second thing to keep right.
+ */
+async function issueOtp(
+  phone: string,
+  purpose: "login" | "register" | "withdraw" | "reauth" | "self_exclusion",
+  meta: { ip: string | null; ua: string | null },
+  spentBuckets: Parameters<typeof rateRefundAsync>[1][] = [],
+): Promise<ServiceResult<{ otpId: string; expiresAt: string }>> {
+  /**
+   * ⛔ REFUSE BEFORE MINTING ANYTHING. The OTP path was the one send site that never
+   * consulted `smsConfigured()` — `invite-service.ts` and `/admin/invites` both did.
+   * Without this the platform writes an Otp row, audits `otp.login.sent`, and sends the
+   * player to a screen counting down five minutes for a code that physically cannot
+   * arrive. ⭐ This matters far more now than it did: while OTP was dormant behind
+   * `OTP_ENABLED`, a misconfigured provider cost nothing. As a login path it IS the
+   * outage, and the player needs to be told to use their password, now.
+   */
+  if (!smsConfigured()) {
+    audit({ category: "SECURITY", action: "otp.refused_no_channel", actorId: null, targetType: "Phone", targetId: maskPhoneForAudit(phone), payload: { purpose, provider: sms.name }, ip: meta.ip, userAgent: meta.ua });
+    return {
+      ok: false,
+      error: "We can't send codes right now. Please sign in with your password · Tumia nenosiri kuingia.",
+      code: "SMS_UNDELIVERABLE",
+    };
+  }
   const code = generateOtp();
   const salt = randomId(8);
   // B-27 — the expiry is minted ONCE and returned to the caller, so the OTP
@@ -308,10 +347,60 @@ async function issueOtp(phone: string, purpose: "login" | "register" | "withdraw
 
   audit({ category: "AUTH", action: `otp.${purpose}.sent`, actorId: null, targetType: "Phone", targetId: maskPhoneForAudit(phone), payload: { otpId: otp.id }, ip: meta.ip, userAgent: meta.ua });
 
-  // Fire-and-forget SMS — provider failures don't block UX
-  sms.send(phone, otpMessage(code, "SW")).catch(() => {
-    audit({ category: "SECURITY", action: "sms.delivery_failed", actorId: null, targetType: "Phone", targetId: maskPhoneForAudit(phone), payload: { otpId: otp.id } });
-  });
+  /**
+   * 🔴 THIS WAS `sms.send(...).catch(() => audit(...))` — FIRE AND FORGET — AND OTP IS
+   * NOW A LOGIN PATH.
+   *
+   * Fire-and-forget was defensible while auth ran on passwords and OTP was a dormant
+   * second door: a provider blip cost nothing, because nobody was waiting on the code.
+   * With `OTP_ENABLED=1` the swallowed rejection IS the login outage — the player is sent
+   * to /auth/otp to type a code that was never sent, watching a five-minute countdown,
+   * with no way forward and nothing in any log saying why.
+   *
+   * ⛔ AWAITING ALONE WOULD NOT BE ENOUGH. Three things are wrong, not one:
+   *   ① a code nobody received stays LIVE for five minutes and counts against the
+   *      account's active-OTP set, so it must be consumed;
+   *   ② the rate-limit tokens were already spent on a send that did not happen, so the
+   *      player would be locked out of retrying for ~30s over OUR failure;
+   *   ③ the caller was told `ok: true`, which is the lie that produces the dead screen.
+   *
+   * ⚠️ The TIMEOUT is not here. It belongs to whoever owns the socket — `blackballSend`
+   * carries the AbortController and `BLACKBALL_TIMEOUT_MS` — so a hung gateway rejects in
+   * seconds rather than never, and there is exactly one timeout mechanism to reason about.
+   */
+  /**
+   * ⛔ try/catch, NOT `.catch()` ON THE db CALL. `db` is TYPED as the async Prisma DAL but
+   * IS the synchronous in-memory store whenever `DATABASE_URL` is unset — so `.catch(…)`
+   * type-checks and then throws "not a function" in dev, in every suite, and on any box
+   * without a database. `await` on a plain value is a harmless no-op; a method call on one
+   * is not. This is a repo-wide trap, and it cost this function a crash on the login path.
+   *
+   * 🔴 The locale itself is the open A4 finding: `otpMessage(code, "SW")` was hardcoded
+   * although the template supports EN/SW/ZH and `User.locale` exists. Swahili stays the
+   * DEFAULT — it is the platform's default language — but an English-speaking player now
+   * gets English. A courtesy, never load-bearing: any failure here falls back to SW.
+   */
+  let locale: "EN" | "SW" | "ZH" = "SW";
+  try {
+    const who = await db.user.findByPhone(phone);
+    if (who?.locale === "EN" || who?.locale === "SW" || who?.locale === "ZH") locale = who.locale;
+  } catch { /* the code still goes out, in the default language */ }
+  try {
+    await sms.send(phone, otpMessage(code, locale), { purpose: "OTP", targetType: "Otp", targetId: otp.id });
+  } catch (err) {
+    const code_ = err instanceof SmsError ? err.code : "UNKNOWN";
+    // ① A code that never left the box must not be live.
+    await db.otp.consume(otp.id);
+    // ② Give back what the caller spent on a send that did not happen.
+    for (const bucket of spentBuckets) await rateRefundAsync(phone, bucket).catch(() => {});
+    audit({ category: "SECURITY", action: "sms.delivery_failed", actorId: null, targetType: "Phone", targetId: maskPhoneForAudit(phone), payload: { otpId: otp.id, purpose, code: code_, provider: sms.name } });
+    // ③ A distinct code, so the surface can offer the password door rather than a form error.
+    return {
+      ok: false,
+      error: "We couldn't send your code. Please sign in with your password · Tumia nenosiri kuingia.",
+      code: "SMS_UNDELIVERABLE",
+    };
+  }
 
   return { ok: true, data: { otpId: otp.id, expiresAt } };
 }

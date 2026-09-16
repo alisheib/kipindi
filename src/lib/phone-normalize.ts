@@ -57,6 +57,36 @@ export function normalizeTzLocalDigits(raw: string): string {
 }
 
 /**
+ * ⭐ THE ONE DEFINITION OF A GATEWAY MSISDN — the wire format every Tanzanian
+ * provider we talk to actually wants: `255XXXXXXXXX`, twelve digits, no `+`, no
+ * leading zero.
+ *
+ * ⛔ IT IS NOT THE SAME THING AS `normalizeTzLocalDigits` ABOVE, AND THE TWO
+ * POINT IN OPPOSITE DIRECTIONS. That one REDUCES to the nine-digit subscriber
+ * number a player types into a form field; this one EXPANDS to the twelve-digit
+ * international form a machine reads. Both are needed. Conflating them is exactly
+ * how a `+255…` ends up on a wire that was promised `255…`.
+ *
+ * 🔴 THE TWO RAILS DISAGREED, AND NOTHING CAUGHT IT BECAUSE ONE OF THEM HAD
+ * NEVER RUN. `selcom.ts` normalised its payment MSISDNs to this shape from the
+ * start; `sms.ts:71` posted the stored `+255…` through untouched. No SMS has ever
+ * left this platform, so the mismatch was latent — the first real send is what
+ * would have found it. Both rails now come through here.
+ *
+ * Lives in this module because it is pure and imports nothing, so a client
+ * component can reach it — see the boundary note on `maskPhone` below.
+ *
+ * Guard: `npm run test:phone-normalize`.
+ */
+export function toMsisdn255(raw: string): string {
+  const d = (raw ?? "").replace(/\D/g, "");
+  if (d.startsWith("255")) return d;
+  if (d.startsWith("0")) return "255" + d.slice(1);
+  if (d.length === 9) return "255" + d;
+  return d;
+}
+
+/**
  * ⭐ THE ONE DEFINITION OF A MASKED PHONE NUMBER. Added 2026-09-06.
  *
  * 🔴 There were SEVEN hand-written masks across the admin console before this, in THREE

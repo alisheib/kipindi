@@ -338,7 +338,7 @@ export const MUTATIONS = [
   // itself is gone: with no unique index there is nothing to conflict on and no ONE row to count.
   {
     name: "L6 · the COUNTER anchor's unique index is not created",
-    file: "prisma/migrations/20260915150000_house_bot_tables/migration.sql",
+    file: "prisma/migrations/20260916150000_house_bot_tables/migration.sql",
     from: "CREATE UNIQUE INDEX IF NOT EXISTS \"hbi_counter_anchor_uq\" ON \"HouseBotIntent\" (\"anchorKey\") WHERE \"kind\" = 'COUNTER';",
     to: "-- (red drive) the COUNTER anchor's unique index is not created",
     expect: "18.L6b · ⭐ L6 · a double sweep at failover writes ONE counter for the stake, never two",

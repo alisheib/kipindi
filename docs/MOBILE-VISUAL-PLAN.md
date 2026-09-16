@@ -1,6 +1,6 @@
 # MOBILE VISUAL PLAN — 50pick on a phone
 
-> **STATUS: 🟠 PLAN v2 — approved by Ali 2026-09-15, re-reviewed the same day through seven lenses (§13), not started.**
+> **STATUS: 🟠 PLAN v3 — approved by Ali 2026-09-15; seven-lens review (§13), a full element inspection (§3a) and a professional critics panel (§3b) folded in 2026-09-16. Not started: 0 of 40 units.**
 > This file is a RECORD and a WORK ORDER, **not** design law.
 > The law is [`DESIGN_AUTHORITY.md`](DESIGN_AUTHORITY.md); token values live only in `src/app/globals.css`. This file mints no
 > law. Where it quotes a number, the number is a measurement with a date or a target with its arithmetic, never a definition.
@@ -15,6 +15,9 @@
 | **Branch** | `main`, one unit per commit (push = live deploy) |
 | **Live state** | ⚠️ re-derive every session: `git log --oneline -1 origin/main`. A merge state written in a table has a shelf life |
 | **Evidence** | `.qa-shots/mobile-visual/<unit>/<before\|after>/` (gitignored, per DESIGN_AUTHORITY §0b). Only numbers are written here |
+| **Findings record** | [`MOBILE-VISUAL-FINDINGS-2026-09.md`](MOBILE-VISUAL-FINDINGS-2026-09.md) — all 718 inspected items with evidence and verdicts |
+| **Tracker guard** | `npm run test:mobile-visual-plan` (RED control: `npm run red:mobile-visual-plan`, 19/19 planted lies caught, incl. a defect with two different owners and a table that no longer renders). Run it at the start and the end of every session |
+| **Critics panel** | §3b — six professional lenses on live phone frames; baseline 5–6.5/10. Re-run at the Seal: `scripts/live/mobile-visual-capture.mjs`, then the `visual-critics-panel` workflow |
 
 ---
 
@@ -30,12 +33,19 @@
 ▶ NEXT: Session S1 → U1 (baseline instrument + signed-in QA player) and U2 (density setting + switch, no visual change).
   Read §5 (hard rules) and §9 U1–U2 before touching code.
 
-✔ LAST SESSION (S0b, 2026-09-15): seven-lens review of the plan (§13). Plan v2 adds U21–U30 (short screens and landscape,
-  keyboard, safe areas, large text, skeletons, empty/error states, touch, low-end motion, browser floor, real devices),
-  defects D10–D27, the phone design sheet (§8a) and the motion spec (§8b). No product code changed.
-  (S0, same day: the first version of this plan and the owner rulings, PLAN-OF-RECORD §8.8, NEXT-PLAN board.)
+✔ LAST SESSION (S0d, 2026-09-16): the professional critics panel (§3b) — six lenses scored the live phone
+  experience 5–6.5/10 in Swahili (the Seal's baseline); 12 new defects D42–D53; owner items 6–9; the panel and
+  its capture stored in the repo so the Seal can repeat them exactly. No product code changed.
+✔ BEFORE IT (S0c, same day): plan v3 — the 718-finding element inspection (§3a, record in
+  MOBILE-VISUAL-FINDINGS-2026-09.md), units U31–U40, defects D28–D41, §0a the session prompt, §1a closure,
+  and the tracker guard test:mobile-visual-plan (379 checks, RED 19/19) — which then caught six ownership
+  errors in this very plan. One product fix shipped in the safe-fix lane: D7 (a25c127b, live).
+  D8 and D15 were examined in that lane and deliberately left — the reasons are written in U20 and U27.
+  (S0b, 2026-09-15: the seven-lens review, U21–U30, D10–D27, §8a, §8b. S0, same day: the first plan,
+  the owner rulings in PLAN-OF-RECORD §8.8, the NEXT-PLAN board.)
 
-◐ HALF-DONE: nothing.
+◐ HALF-DONE: nothing. ⚠️ U31 carries a real backlog: 379 of the 718 findings are still UNVERIFIED
+  (usage limits stopped the verifiers for surface groups S07–S13). Treat them as leads, not facts.
 
 ? OPEN OWNER ITEMS (none blocks S1):
   1. U29: the browser floor, option A or B. Decided WITH NUMBERS: Ali pulls GA4 browser/version/screen data for
@@ -43,6 +53,31 @@
   2. U30: Ali's Android phone plus one budget Android for the real-device checklist at each phase end.
   3. A native SW/ZH reader for the new keys (U2, U20).
   4. Phase-end visual sign-off (§8a): Ali approves each phase's before/after contact sheet.
+  5. **NEW — the hero headline is English on a Swahili-default home page, and the ruling that made it
+     English predates the ruling that made Swahili the default.** `home.heroHeadline` is
+     "The wisdom of YES & NO." verbatim in all three locales, on `test:i18n`'s IDENTICAL_OK list, with
+     the reason written into the dictionary: *"YES and NO are product terms and the sentence is the
+     brand line."* That was decided when a new visitor saw English. Today the largest type on the
+     first screen a Tanzanian visitor meets is English, and two inches below it the same two words
+     appear as NDIO and HAPANA in the conviction bar and on every button. ⚖️ **Ali's call, not a
+     defect** — keep the English brand line, translate it, or keep English with the Swahili beneath.
+     Nothing in this plan changes it either way; U6 must not quietly re-set it.
+  6. **NEW (critics panel, §3b) — a market with one bet shows certainty.** A single TZS 1,000 stake renders "NDIO 100%",
+     a solid bar with the needle pinned to the rail, and a tappable "HAPANA @ 0%". It is the true pool price, and the card
+     prints "1 mtabiri" under it, so nothing is hidden — but 0% reads as impossible. Options: a minimum pool before any crowd
+     price is shown; the displayed price shrunk toward 50% until then; or the display clamped off 0 and 100. ⚖️ Every option
+     changes the §5 cold-start rule, so this is a product rule for Ali, not a unit for a session.
+  7. **NEW (critics panel) — the leaderboard ranks raw ROI with no stated minimum and no stated window.** The crowned leader
+     has 6 settled predictions, third place has 44, and the settled count is the faintest type on the podium. Options: a
+     minimum settled count named on the page, ranking on a confidence bound, a window in the panel header.
+  8. **NEW (critics panel) — the how-it-works copy exposes a configuration switch.** "An officer signs it off — two, when
+     two-officer authorisation is enabled" (all locales) was hedged on purpose: one-officer resolution is the default, and a
+     page claiming two officers would be a regulatory finding (`i18n-dict.ts:609-617`). But a player reads a settings toggle.
+     "An officer signs it off" is true in both modes. ⚖️ Compliance copy — Ali's wording.
+  9. **NEW (critics panel) — the footer's legal furniture.** "RTP ya mchezo na sheria" is casino language on a product whose
+     own headline is "Si bahati" (it may be a Gaming Board requirement — confirm before touching); "Pendekeza masoko upate pesa"
+     carries an INAKUJA (coming soon) pill, so every page advertises a way to earn money that does not exist yet; "Kuwa wakala"
+     sits under UADILIFU (integrity); "Sera ya AML / KYC" is not translated. ⚖️ Compliance and marketing — Ali's call.
 
 ⚠ TRAPS ALREADY MET (2026-09-15 capture):
   · `networkidle` never fires on www (live stream). Use `load` + a 2.5s wait.
@@ -58,16 +93,85 @@
   · Landscape phones (640–1023 wide, ≤ 480 tall) miss every "< 640px" phone rule. U21 adds a short-height gate.
   · Under CDP network + CPU throttling, clicking a nav link to capture skeletons times out. Apply throttling first, then
     navigate by URL (`page.goto`) and screenshot at fixed times.
+  · ⛔ "THE DEPLOY IS UP" IS NOT "YOUR COMMIT IS LIVE". /api/health returning a small uptimeSec only says
+    SOMETHING deployed — on 2026-09-16 that was the PREVIOUS commit, and the fix looked absent on a page
+    that had simply not shipped yet. Read the commit: every page carries data-dpl-id on <html>, so
+      curl -s -A HeadlessChrome https://www.50pick.tz/<path> | grep -o 'data-dpl-id="[0-9a-f]\{8\}'
+    must equal YOUR sha before you re-measure anything or mark a row ✅.
+  · ⛔ THE DEFAULT LANGUAGE IS SWAHILI since 8822b648 (2026-09-15), AFTER the measurements in §3 were taken with an
+    English guest. A driver that photographs a fresh phone profile now gets SW, so a before/after pair captured
+    "the same way" as §3 is NOT comparable unless it sets the kp-locale cookie. Set the locale explicitly in every
+    capture, and read the SW numbers as the default player's experience (§5).
   · The Session table is empty. Real browser data is in AuditLog.userAgent: read-only
     `DATABASE_URL=<PROD_DATABASE_PUBLIC_URL> node scripts/live/q.cjs <sql-file>`, never printing the URL.
+```
+
+## §0a — The session prompt (paste this to start a session on any machine)
+
+⛔ This block is the contract. It relies only on this repository, so it works on any PC, with or without memory.
+
+```
+Continue the 50pick MOBILE VISUAL PLAN. Perfect beats fast. No lost work, no repeated work.
+
+1) GET THE TRUTH FIRST — never assume
+   Open the kipindi repo on this PC (office PC: F:\kipindi-main). Run:
+     git branch --show-current     (must be main)
+     git pull
+     git status
+     git log --oneline -8 origin/main
+     npm run test:mobile-visual-plan      (the tracker guard — must pass before you touch anything)
+   If origin has a commit newer than the last entry in docs/MOBILE-VISUAL-PLAN.md §2, or there are
+   uncommitted changes you did not make: STOP and tell me — another session may be in flight.
+   Never stage files you did not change. Never `git add -A`.
+
+2) READ BEFORE TOUCHING ANYTHING — in this order
+   docs/MOBILE-VISUAL-PLAN.md: §0 RESUME AT (+ traps) · §1 status board · §1a closure ·
+   §5 hard rules · §6 can/can't · §7 rulings · §8 defects · §8a phone design sheet · §8b motion spec ·
+   the two units named in §0 NEXT (§9) · §11 verification and test matrix · §3b the professional critics'
+   baseline (their notes are inside each unit; at a phase end, show Ali what they flagged on that phase's surfaces).
+   Evidence for any finding: docs/MOBILE-VISUAL-FINDINGS-2026-09.md (by id, e.g. S03-10).
+   Also: CLAUDE.md, the .claude/skills/50pick-standards skill, and the DESIGN_AUTHORITY.md sections those units cite.
+   ⛔ Only ⬜/🟡 rows are work. ✅ rows are finished — never redo them.
+   ⛔ Owner decisions in §4 and design-brief/PLAN-OF-RECORD.md §8.8 are settled — never re-ask them.
+
+3) BEFORE CODING, TELL ME THE SESSION PLAN
+   The two units, each unit's Accept line, the guard you will prove RED first, and any owner item
+   from §0 that blocks them. If the code no longer matches a unit's description, re-measure and say so
+   before changing anything.
+
+4) WORK EXACTLY AS §11 SAYS — one unit per commit
+   RED guard first → fix → green. Gates twice. Drive locally on `next dev` across the §11 test matrix
+   (320/360/412/768/1280, SW/EN/ZH, Comfortable + Compact, phone emulation, reduced-motion tier).
+   ⛔ SWAHILI FIRST — it is the default language, so it is the case a new player actually meets (§5), and
+   the §3 baselines were measured in English before that changed. Set the locale in every capture.
+   ⛔ Every driver's user agent MUST contain "HeadlessChrome" or /api/pv counts it as real traffic.
+   Look at the screenshots yourself; numbers alone are not proof.
+   In the SAME commit: §1 row (measured before → after, commit, guard, live date), a §2 entry, §0 rewritten,
+   the NEXT-PLAN.md board counts, and the LIVE-QA-CAMPAIGN.md register row + handoff.
+   Then: git branch --show-current → stage by name → commit → git push origin HEAD:main → wait for the
+   deploy → re-measure on https://www.50pick.tz → only then mark ✅.
+
+5) STOP AND ASK ME WHEN
+   a §5 hard rule or a recorded ruling blocks the unit; a target proves wrong (write the reason in §2 first);
+   you need an owner item (GA4 browser data, my phones for U30, SW/ZH wording, phase-end visual sign-off),
+   or an open owner item in §0 (5–9: hero headline, one-bet prices, leaderboard ROI, two-officer copy, footer) decides the unit;
+   or anything would touch money logic, payouts or compliance text.
+
+6) CLOSE THE SESSION CLEANLY
+   Rewrite §0, tick §1, add a §2 entry, update the NEXT-PLAN counts, run `npm run test:mobile-visual-plan`
+   (and the doc gates) twice, push. Then report: commits shipped, measured before → after, what is next,
+   and what you need from me. If context runs low: stop at a clean boundary, push the resume point first, say so.
 ```
 
 ## §1 — Status board
 
 Legend: ⬜ not started · 🟡 in progress · 🔵 shipped, not yet verified live · ✅ verified on production · ⏸ blocked (reason).
 A row turns ✅ only after the production re-measure, **in the same commit that records the numbers**.
+On a **defect** row 🔵 means one thing more: *fixed and live, but its owning unit has not finished*, which happens when a
+defect is clear-cut enough to ship in the safe-fix lane on its own. It must name the commit that did it (the guard
+refuses a 🔵 without one), and the defect only reaches ✅ when its unit does — so an early fix can never close a unit.
 
-| Unit | Kind | Status | Session | Commit | Before → After (measured) | Guard RED-proven | Notes |
+| Unit | Kind | Status | Session | Commit | Before → After (measured) | Guard RED-proven | Live ✅ (date) · notes |
 |---|---|---|---|---|---|---|---|
 | U1 Baseline instrument + QA player | — | ⬜ | S1 | | | | |
 | U2 Density setting + switch | Compact | ⬜ | S1 | | | | |
@@ -77,8 +181,8 @@ A row turns ✅ only after the production re-measure, **in the same commit that 
 | U6 Home tightening | General | ⬜ | S3 | | | | |
 | U7 Chat bubble (D3) | General | ⬜ | S4 | | | | |
 | U8 Countdown + guest order | General | ⬜ | S4 | | | | |
-| U9 Defects D1 · D5 · D7 · D18 | General | ⬜ | S5 | | | | |
-| U10 Defects D2 · D6 · D10 · D11 | General | ⬜ | S5 | | | | |
+| U9 Defects D1 · D5 · D7 · D18 · D34 | General | ⬜ | S5 | | | | |
+| U10 Defects D2 · D6 · D10 · D11 · D43 · D44 | General | ⬜ | S5 | | | | |
 | U11 Overlay census | — | ⬜ | S6 | | | | |
 | U12 `<Modal>` + questions as sheets | General | ⬜ | S7 | | | | |
 | U13 Result modal · bet confirm · sell confirm (+ D9) | General | ⬜ | S7 | | | | |
@@ -87,7 +191,7 @@ A row turns ✅ only after the production re-measure, **in the same commit that 
 | U16 Notice stack + first-visit coordination (D4 · D27) | General | ⬜ | S9 | | | | |
 | U17 Notifications | General | ⬜ | S9 | | | | |
 | U18 Page shells · primer · detail pages | General | ⬜ | S10 | | | | |
-| U19 Live carousel · Help rows · auth forms | General | ⬜ | S11 | | | | |
+| U19 Live carousel · Help rows · auth forms (D48) | General | ⬜ | S11 | | | | |
 | U20 Footer tap rows + Discussion copy (D8 · D24) | General | ⬜ | S11 | | | | |
 | U21 Short screens + landscape (D20) | General | ⬜ | S12 | | | | |
 | U22 On-screen keyboard + viewport units (D19) | General | ⬜ | S12 | | | | |
@@ -99,18 +203,153 @@ A row turns ✅ only after the production re-measure, **in the same commit that 
 | U28 Low-end performance + motion tiers (D17) | General | ⬜ | S15 | | | | |
 | U29 Browser compatibility floor | General | ⬜ | S16 | | | | owner decision A/B with data |
 | U30 Real-device + accessibility pass | — | ⬜ | S16 + every phase end | | | | needs Ali's phones |
+| U31 Verify the inspection backlog (379 items) | — | ⬜ | S17 | | | | S07–S13 findings, unverified |
+| U32 Market-card state truth (D29 · D35 · D42) | General | ⬜ | S18 | | | | money-truth; also E-415 |
+| U33 Chrome: menus, ticker, semantics (D30 · D32) | General | ⬜ | S18 | | | | one menu recipe + a11y |
+| U34 Signed-in header cluster (D31) | General | ⬜ | S19 | | | | balance capsule, eye, delta |
+| U35 Up & Down truth and fit (D36 · D37 · D45 · D52) | General | ⬜ | S19 | | | | board, round page, history |
+| U36 /live carousel, search and wall (D38 · D47 · D50) | General | ⬜ | S20 | | | | search survives a miss |
+| U37 Detail page copy, order and hints (D39 · D40 · D41 · D46) | General | ⬜ | S20 | | | | enum copy, reading order, InfoHint |
+| U38 One money grammar and number rules | General | ⬜ | S21 | | | | formats, signs, nowrap, tabular |
+| U39 Close the type ladder and icon set | General | ⬜ | S21 | | | | off-ladder literals, glyph sizes |
+| U40 Player copy and terminology (EN/SW/ZH) | General | ⬜ | S22 | | | | needs a native reader |
 
 | Defect | Status | Owning unit |
 |---|---|---|
-| D1 – D27 | ⬜ all | see §8 (each row names its unit) |
+| D1 | ⬜ | U9 |
+| D2 | ⬜ | U10 |
+| D3 | ⬜ | U7 |
+| D4 | ⬜ | U16 |
+| D5 | ⬜ | U9 |
+| D6 | ⬜ | U10 |
+| D7 | 🔵 shipped `a25c127b` 2026-09-16 (live) | U9 |
+| D8 | ⬜ | U20 |
+| D9 | ⬜ | U13 |
+| D10 | ⬜ | U10 |
+| D11 | ⬜ | U10 |
+| D12 | ⬜ | U26 |
+| D13 | ⬜ | U26 |
+| D14 | ⬜ | U27 |
+| D15 | ⬜ | U27 |
+| D16 | ⬜ | U27 |
+| D17 | ⬜ | U28 |
+| D18 | ⬜ | U9 |
+| D19 | ⬜ | U22 |
+| D20 | ⬜ | U21 |
+| D21 | ⬜ | U23 |
+| D22 | ⬜ | U24 |
+| D23 | ⬜ | U24 |
+| D24 | ⬜ | U20 |
+| D25 | ⬜ | U27 |
+| D26 | ⬜ | U25 |
+| D27 | ⬜ | U16 |
+| D28 | ⬜ | U3 |
+| D29 | ⬜ | U32 |
+| D30 | ⬜ | U33 |
+| D31 | ⬜ | U34 |
+| D32 | ⬜ | U33 |
+| D33 | ⬜ | U6 |
+| D34 | ⬜ | U9 |
+| D35 | ⬜ | U32 |
+| D36 | ⬜ | U35 |
+| D37 | ⬜ | U35 |
+| D38 | ⬜ | U36 |
+| D39 | ⬜ | U37 |
+| D40 | ⬜ | U37 |
+| D41 | ⬜ | U37 |
+| D42 | ⬜ | U32 |
+| D43 | ⬜ | U10 |
+| D44 | ⬜ | U10 |
+| D45 | ⬜ | U35 |
+| D46 | ⬜ | U37 |
+| D47 | ⬜ | U36 |
+| D48 | ⬜ | U19 |
+| D49 | ⬜ | U3 |
+| D50 | ⬜ | U36 |
+| D51 | ⬜ | U6 |
+| D52 | ⬜ | U35 |
+| D53 | ⬜ | U40 |
 
 | Seven-lens re-score (§13), done at the Seal from measurements | Responsiveness | UI/UX | Graphic | Video motion | Animation | Artist | Compatibility |
 |---|---|---|---|---|---|---|---|
 | Plan v2 target | 10 | 10 | 10 | 10 | 10 | 10 | 10 |
 | Measured at Seal | — | — | — | — | — | — | — |
 
+## §1a — When is this programme finished? (closure is earned, not declared)
+
+The programme may be marked **🏁 CLOSED** in the status line at the top of this file only when **every one** of these holds.
+`npm run test:mobile-visual-plan` enforces the mechanical ones and refuses a closure claim that is not earned.
+
+1. **Every unit row is ✅** — and a ✅ row carries: a commit SHA that exists in this repo, a measured `before → after`, `yes` in the
+   guard column (the guard was proven RED before the fix), and a live-verification date.
+2. **Every defect row is ✅**, and no defect is ✅ before its owning unit is.
+3. **The inspection backlog is empty** — U31 has verified or refuted all 379 🕓 items in the findings record, and anything confirmed
+   has an owning unit and a defect row.
+4. **The acceptance table in §11 is re-measured on production** in one final run (every width × locale × density × condition in the
+   test matrix), and the numbers are written into §11 beside the targets.
+5. **The seven lenses are re-scored from those measurements** (§1 lens row), not from intent.
+6. **U30 has passed on real phones** — keyboard, large text, TalkBack, WhatsApp in-app browser, installed app, landscape, battery saver —
+   and axe reports 0 serious/critical at 320 and 360 with overlays open.
+7. **Ali has signed off the final before/after contact sheet** (§8a), and the §2 log records that.
+8. **Nothing is left in "Comfortable vs Compact" drift**: the zero-diff control passes at ≥ 640 and in Comfortable.
+9. **The critics panel has been re-run at the Seal** — the same capture script and workflow, the same nine surfaces, the default language at
+   360 — and **nothing the verifiers mark `new` or `known` is a defect still visible on production**. Every upheld taste note is done or
+   explicitly declined by Ali in §4. The seven new scores go into §3b beside the baseline: reported, not gated — a critic's number is a
+   judgement, and a gate on a judgement is one a session can argue with. The defect list is not a judgement: each item names a frame and
+   survived a verifier.
+
+Until then the status line stays 🟠 and `§0 NEXT` names real work.
+
 ## §2 — Session log (newest first)
 
+- **S0d · 2026-09-16.** Ali: *"we want everyone to love it, especially professional visual critics."* A professional critics panel read 44
+  live phone frames in Swahili through six lenses, each claim re-checked on its own frame by an adversarial verifier, with a completeness
+  critic after them (§3b). Scores: art direction 6 · typography 6 · colour 6 · layout 6.5 · information design 5 · Swahili reader 6 ·
+  completeness 5.5 — the baseline the Seal re-runs against. Outcome: **D42–D53** (12 new defects, each located in the code), four owner
+  questions (§0 items 6–9), D29 reached independently by all six lenses, D1/D2/D3/D8 re-confirmed live in the default language, about thirty
+  evidence and taste notes filed inside the units that own them, and E-420 for market copy the generator writes.
+  - The completeness critic's findings had no verifier, so each was checked in the code before routing: two are deliberate designs (the
+    rail's product-line dot; Markets lit on home), one is a deliberate compliance hedge (the two-officer clause, now owner item 8), and one is
+    a real form defect (D48).
+  - **Two instruments corrected.** The completeness critic showed the pinned-chrome figure could not see the chat bubble (it counted bars
+    wider than 60% only), so the capture now reports floating overlays and U1 must. And the panel's two-value verdict filed three real,
+    known defects (D1, D2, D3) as "refuted", so the stored workflow has a third verdict, `known`.
+  - **Stored for the Seal:** `scripts/live/mobile-visual-capture.mjs` (refuses to run without the HeadlessChrome marker; no language cookie
+    unless asked, so it photographs the default a visitor gets) and `.claude/workflows/visual-critics-panel.js`. The capture was proven
+    by a full run from the repo. No product code changed.
+- **S0c · 2026-09-16.** Ali: *"run another set of inspections, for every bit, every filter, every card, every button, every number,
+  every text box, every container."* A 61-agent inspection ran over 13 surface groups (live phone measurement + code reading), with two
+  independent skeptics per group. **718 findings** (1 critical, 77 high, 314 medium, 326 low): 205 new, 35 extending known defects, 82
+  duplicates, 12 refuted, 5 deliberate, and **379 unverified** because usage limits killed the verifiers for S07–S13 and the synthesis.
+  The full record with evidence is [`MOBILE-VISUAL-FINDINGS-2026-09.md`](MOBILE-VISUAL-FINDINGS-2026-09.md); the synthesis was done by
+  hand in this session. New units U31–U40 and defects D28–D41. Money, security and compliance items were filed separately in
+  `LIVE-QA-CAMPAIGN.md` §6 (E-414 … E-419, register rows and detail) because they are not visual work. Also added: the tracker guard
+  `test:mobile-visual-plan` with a RED control, and §0a (the session prompt) and §1a (closure) in this file.
+  - **The tracker was checked against itself, and it had lied.** A structure pass over the finished v3 found six defects whose three
+    homes disagreed: D30 sat on U7 in §1 and §8 while its fix was written in U33; D35 was owned by U32 on the board and U10 in the
+    register; D40 pointed at U8 while U37 carried it. D28, D33 and D34 were owned by units whose text never mentioned them — a session
+    would have opened U3, U6 or U9 and found nothing to do. All six are corrected, and the three rules that would have caught them are
+    now **in** the guard (one owner in §1 and §8, named inside that unit, registered once and tracked once), with a fourth for tables
+    that no longer render. The guard is 338 checks, RED-proven 17/17. No product code changed.
+  - **A parallel session shipped `8822b648` while this plan was being written: Swahili is now the default language.**
+    Every §3 measurement was taken with an English guest, so the baselines are labelled EN and the SW column is now the
+    default player's experience, not the stress case (§5, and a §0 trap so no one recaptures "the same way" and compares
+    two different languages). Re-checked against the new code: D12 (two 404 compositions) is untouched by it and stands.
+  - **The safe-fix lane** (Ali, 2026-09-15: *"if any issues need general fixing, proceed doing so"*, scoped to small
+    clear-cut defects that need no design decision). Three candidates examined; **one shipped.** **D7** (`a25c127b`,
+    live) gives the two Up & Down header links an `aria-label` from the keys their visible spans already use, with a new
+    `test:ui-consistency` rule — `collapsing-label-without-aria-label` — carrying the class rather than the two sites:
+    proven RED at exactly 2 findings, both in that file, 0 elsewhere in `src/`, and 0 after the fix. On production they
+    now announce "Soma kanuni kamili" and "Juu na Chini zako". **D8 and D15 were deliberately NOT shipped.** D8's honest
+    fix is a new tri-lingual key needing the native reader, and the one-line substitute would spend a second visible copy
+    change on one defect. D15 needs `--header-h`, which U23 has not created yet, so today it could only be a hand-typed
+    number — the thing §0d forbids. Both reasons are written into U20 and U27 so the question is not reopened. Deciding
+    D15 also narrowed it: `HashFocus` centres a **cold** load, so the overlap is on the order-link soft navigation only,
+    and a cold-load driver would have passed vacuously.
+  - Two traps earned the hard way and now in §0: **"the deploy is up" is not "your commit is live"** — `/api/health`
+    showed a fresh uptime for the PREVIOUS commit and the fix read as missing on a page that had not shipped; the
+    discriminator is `data-dpl-id` on `<html>`. And the board needed a state it did not have: **🔵 = shipped, unit not
+    finished**, which must name the commit that did it, or the board has to lie in one direction or the other.
 - **S0b · 2026-09-15.** Ali: *"check minor details you could have missed, things that are not always visible"*, then *"evaluate as a
   responsiveness, UI/UX, graphical, video-motion, animation, artist and compatibility engineer; anything under 10/10, push to 10."*
   - Second live capture: 320×640 (EN/SW), 360×640, landscape 780×360, the 404 and offline pages. A slow-network soft-navigation capture was
@@ -121,15 +360,15 @@ A row turns ✅ only after the production re-measure, **in the same commit that 
   - Found D10–D27 and scored v1 honestly (7 · 8 · 8 · 5 · 6 · 7 · 3). Added U21–U30, §8a, §8b, the test matrix and §13, each gap with an owner unit and target.
   - ⚠️ Disclosure: the S0 and S0b captures used an Android user agent without "HeadlessChrome", so about 25–60 page views were
     counted as real traffic on 2026-09-15. The rule is now in §0 and §5. No product code changed.
-- **S0 · 2026-09-15.** Live capture of www.50pick.tz at 360×780 and 412×915, EN and SW, signed out (report:
-  https://claude.ai/artifact/NknLB5EDQ9qrKGPHjMwtBA). Code exploration of the card, board, chrome, overlays and gates. Three independent
+- **S0 · 2026-09-15.** Live capture of www.50pick.tz at 360×780 and 412×915, EN and SW, signed out. (A published report existed for this
+  pass and has since been deleted; the numbers that mattered are in §3 and §8, which is why nothing here depends on that link.) Code exploration of the card, board, chrome, overlays and gates. Three independent
   verification passes checked every file:line in this plan, and corrected nine claims before they were written down (among them: the email bar is
   not dismissible by design, DG-P-08 forbids truncating podium handles, `.row-link` is uppercase, and the Closing-soonest titles are 17px squeezed
   by layout, not 20px). Owner decisions 1–10 answered. Plan and rulings pushed. No product code changed.
 
 ---
 
-## §3 — Context: what was measured (2026-09-15, live, 360×780 unless noted)
+## §3 — Context: what was measured (2026-09-15, live, 360×780 unless noted, signed-out guest **in English** — before `8822b648` made Swahili the default, §5)
 
 Players (mostly on mobile) split: some say sizes are right, others that the site is "chunky and big". **Both are right.** Type and tap
 targets are sound (card title 15px, YES/NO 40px). **The problem is density:**
@@ -166,6 +405,103 @@ targets are sound (card title 15px, YES/NO 40px). **The problem is density:**
 | *code* low-end tier | `data-motion="reduced"` is automatic on budget phones but set after hydration, keeps every `backdrop-filter` blur, and a settings toggle writes `"full"` (D17) |
 | *code* compatibility | colours are raw `oklch()` + `color-mix()` with **no `@supports` fallback and no browserslist**. Chrome/WebView < 111, Samsung Internet < 21 and Opera Mini render near-unstyled |
 
+## §3a — The full element inspection (S0c, 2026-09-16)
+
+Every filter, card, button, number, text box and container on 13 surface groups was inspected: live on a phone **and** in the source.
+Record: [`MOBILE-VISUAL-FINDINGS-2026-09.md`](MOBILE-VISUAL-FINDINGS-2026-09.md) (718 items, each with evidence and a verdict).
+
+| Category | Findings | What the inspection kept finding |
+|---|---|---|
+| copy | 99 | untranslated enums in money copy, two words for one thing across EN/SW/ZH, plurals at n = 1 |
+| a11y | 83 | names that do not contain the visible label, roles that promise behaviour the control lacks, unreachable pause controls |
+| number | 81 | money that wraps between "TZS" and its digits, four sign grammars, two compaction grammars on one screen, clipped prices |
+| container | 75 | box-in-box padding stacking past 40px a side, gutters that disagree with the page (20/24 vs 16) |
+| layout | 68 | overflow at 320 SW, elements orphaned onto their own row, voids over 48px |
+| state | 64 | live-looking chrome over dead data, empty states that read as outages, skeletons unlike the page |
+| button | 60 | share/clear/FAQ/vote targets under the 40px floor, two shapes for one job |
+| typography | 49 | off-ladder literals (9, 9.5 mixed-case, 10.5, 11.5, 12.5, 13.5, 14.5, 15.5), 7–10 sizes inside one card |
+| textbox | 35 | 13px inputs that zoom iOS on focus, labels only in placeholders, missing keyboard hints |
+| filter | 33 | selection state on an attribute links may not carry, one-option groups, hidden scrollers |
+| link · card · icon · motion | 71 | sub-floor text links at money moments, two designs for one card object, nine glyph sizes, animation nobody sees |
+
+**The five that are not about looks** (filed in `LIVE-QA-CAMPAIGN.md` §6, verified in code by hand this session):
+a crafted `?error=` link prints attacker text inside the wallet's own red alert (E-414) · settled and void markets with no bets state an
+invented "YES 50%" (E-415) · the responsible-gambling reality check can be dismissed by a stray tap on the scrim (E-416) · the balance
+capsule announces "Hide password" on a money link (E-417) · a settlement ledger shows a platform fee that was never charged (E-419).
+
+## §3b — The professional critics panel (S0d, 2026-09-16)
+
+Ali: *"we want everyone to love it, especially professional visual critics."* So six critics looked at the product the way critics do —
+at the picture, not the code — and every claim was re-checked on its own frame by an adversarial verifier before it was kept.
+
+**How it ran.** 44 frames of 9 surfaces at 360×780, captured live in **Swahili**, the language a new visitor now gets, with a
+`HeadlessChrome` user agent. Six lenses — art direction, typography, colour and theme, layout and density, information design, and a
+Tanzanian Swahili reader — then a completeness critic asking what the six missed. 13 agents, 0 failures. **Re-runnable by any session:**
+capture with `node scripts/live/mobile-visual-capture.mjs`, then run the workflow `visual-critics-panel`
+(`.claude/workflows/visual-critics-panel.js`) with the directory of frames.
+
+**The baseline — the scores the Seal re-runs against**, each the critic's own judgement of today's phone experience:
+
+| Lens | Score | What holds it there, in the critic's own words |
+|---|---|---|
+| Art direction | **6** | "two distinctive assets — the needle rail and the gilt — applied by habit rather than by rule … that is what makes a carefully made product read as assembled" |
+| Typography | **6** | "no enforced ladder at the object level: a single results card carries six sizes against a written limit of three" |
+| Colour and theme | **6** | "the palette itself is competent" — no text-contrast failure in 44 frames — "the accents no longer mean anything stable" |
+| Layout and density | **6.5** | "the type is not chunky, the chrome and the empty states are" — 30% of the board viewport pinned; empty states hold desktop-sized boxes |
+| Information design | **5** | "wherever the platform has thin data, the graphics render it at full confidence" |
+| Swahili reader | **6** | "the editorial Swahili is an 8; the system-generated Swahili is a 4, and a player meets the system strings on every card" |
+| Completeness critic | **5.5** | "a fixed chat button covers content on nearly every screen and was left out of the pinned-chrome measurement, so no lens saw it" |
+
+⭐ **The layout critic answered Ali's original question independently, without being shown this plan's diagnosis:** *"On the owner's
+split verdict — 'good sizing' versus 'chunky and big' — both camps are right about different things: the type is not chunky, the
+chrome and the empty states are."* That is §3's finding, reached from the pictures alone.
+
+**What came back.** 116 claims. The verifiers kept 68 and refuted 29; 19 came from the completeness critic, which has no verifier, and
+the ones that could become defects were checked by hand in the code before routing. Of what survived:
+
+- **12 new defects, D42–D53** — each located in the code and routed to the unit that owns its surface (§8).
+- **D29 was flagged by all six lenses independently** — a HAPANA outcome printed in the NDIO green. It is the only finding every critic
+  reached alone, and it goes first in U32.
+- **Known defects re-confirmed live in the default language**: D1 (on /results the tab the fade hides is HAPANA), D2, D3 (on seven of nine
+  surfaces — wider than its register line), D7's glyphs, D8.
+- **Four owner questions** (§0 items 6–9): one-bet prices shown as certainty, leaderboard ROI with no minimum or window, the two-officer
+  clause, and the footer's legal furniture. The verifiers upheld the first two as defects; they go to Ali because each fix changes a
+  product rule, not a layout.
+- **Every other surviving finding is filed as a note inside the unit that owns its surface** (U1, U3–U10, U19, U20, U26, U32, U33,
+  U35–U40), except four with no single owner, listed at the end of this section. Taste notes are marked as taste; the phase sign-off
+  decides them, not a session. Nothing that survived verification was left unfiled — every one of the 87 was traced to a defect, an
+  owner item, a unit note, E-420 or the list below.
+- **Market content, not design** — a title that splits one verb in two ("wata shinda"), machine Swahili ("wanachama wa fiber-optic
+  wanaotumika"), one Premier League gameweek given two date windows, "Similar markets" listing one event twice — filed as **E-420** in
+  `LIVE-QA-CAMPAIGN.md`, because the text comes from the market generator and no unit here can fix it.
+- **A blind spot in this plan's own instrument.** The pinned-chrome figure counted only bars wider than 60% of the screen, so the 237px on
+  /markets never included the chat bubble. The capture now reports floating overlays separately, and U1 must too.
+
+**What the verifiers refused, and why it matters.** They were not polite. They refuted a claim that the board's sentiment bar mislabels its
+scope (a money-weighted mean over 32 markets equals the mean over the 6 that hold money — an identity, not an error); that settled needles
+"point the wrong way" (a settled bar is the closing crowd price, and a crowd that was wrong is exactly what /results exists to record); that
+"live" is two colours (red is MUBASHARA, the event being played; teal is *hai*, the market being open — two states, two inks); and that the
+chart's 67% badge floats free (it is a last-value axis marker, level with the line's end to 2px).
+⚠️ **And three real defects were filed as "refuted"** because the verifier knew they were already D1, D2 and D3: a two-value verdict had
+nowhere honest to put "true, and already known". Read by its counts alone, that bucket would have dropped live defects. The stored workflow
+now gives verifiers three verdicts — `new`, `known`, `refuted`.
+
+**What the critics praised, so it survives the fixes.** The tipping rail with its leaning gold needle is "a genuine proprietary device",
+the same object as the logo mark and recognisable with the logo cropped off; the dark royal ground is "properly built rather than borrowed";
+the long-form Swahili — how-it-works, the help desk, the sign-in card — "reads like someone who speaks the language wrote it"; and the
+sign-in screen is "the most assured screen in the set". §8a already protects the rail and the ground; every unit protects all four.
+
+**Four surviving notes with no single owning unit**, decided at the phase sign-off rather than by a session:
+- **Elevation does no work** (colour, low): nested surfaces share one fill and one 1.59:1 hairline, so a panel inside a card inside the page
+  reads as one flat plane. A colour-system question for §8a, not a unit.
+- **Red carries four meanings** (colour, taste): the live dot, the HAPANA side, the ticker's outcome words and errors are all red, three of
+  them within the top 180px. Also §8a.
+- **Settled markets nobody bet on are listed as full results** (completeness): the verifier refuted the same claim from the information
+  designer — a question asked, closed and resolved is a result whether or not anyone staked — so it is recorded as a policy question, not
+  a defect.
+- **Up & Down shows two currencies on one card** (completeness, correcting the art director): a USD asset price beside TZS stakes. Accurate
+  and unavoidable for a BTC round; noted so no session "fixes" it.
+
 ## §4 — Owner decisions (Ali, 2026-09-15, each asked explicitly)
 
 1. **Density:** Compact is the phone default, with a **Card spacing: Comfortable / Compact** switch to return to today's look.
@@ -201,6 +537,10 @@ view"), it changes spacing only, and **`MarketListRow` is still not built**. `DE
 - **B9/B10**: a new state is a prop or attribute on the existing component, with no new `.css` file and no second component. A moved spec changes its test in the same commit.
 - **Filter language** (§6/6b): sort and status never cost a tap at any width. The discovery bar **does not hide on scroll**; row 2 never scrolls.
 - **§A5/§A6**: SW ≈ 35–40% longer. Money and time are never clipped; zero horizontal overflow at 320/360.
+- **Swahili is the default language** (Ali, 2026-09-15; shipped `8822b648`, after this plan's measurements were taken). A visitor who has never
+  chosen a language sees **SW**, so SW is the **first** case for every unit, not the stress case: where a target below is written "at 360 EN",
+  the SW number beside it is the one a new player actually meets, and a unit is not done until SW passes at 320 and 360. The capture order in
+  every driver is **SW, then EN, then ZH**, and any before/after screenshot pair shown to Ali leads with SW.
 - **E-276**: Sign in and Sign up both visible at every width including 320, at the same height.
 - **Compliance messages are never hidden or made dismissible**: maintenance, session-ended, the email-verify bar (collapsible only), the 18+/RG
   footer lines, payout-status notices, the reality check's four actions.
@@ -267,6 +607,32 @@ view"), it changes spacing only, and **`MarketListRow` is still not built**. `DE
 | D25 | Tap leaves hover styles stuck (e.g. `.btn:hover` lift, `.kp-qrow:hover` padding reflow): 343 ungated `hover:` utilities + ungated CSS `:hover` | `tailwind.config.ts`, `globals.css:1065,1134-1210,3716` | U27 |
 | D26 | Loading ghosts don't match phone content (`/live` 180px, `/results` 220px, generic loaders), and 6 `SearchBox` Suspense boundaries have no fallback, so the page jumps | `live/loading.tsx`, `results/loading.tsx`, `ui/page-loader.tsx` | U25 |
 | D27 | Reaching the RG session time limit is announced only by a toast (`failure-reasons.ts:285`), which can expire unseen; a compliance message must persist | `src/lib/failure-reasons.ts`, `conviction-dial.tsx` | U16 |
+| D28 | The card share control is 25–26 × 36–37px — under the tap floor on both axes — on **every** card on every board, 12px from "Details" (S02-home-07, S03-03, S07-06) | `.mcardp-share` + its `::after`, `globals.css:5106` | U3 |
+| D29 | Resolved and void cards with no bets state an invented "YES 50%" and a centred needle; `noPrice` is gated on `live`, so the cold-start rule never reaches terminal states (S03-10, S07-01) | `market-card.tsx:276-277` | U32 |
+| D30 | The chat bubble covers the rail More menu's last row: its status badge is cut and ~27% of the row opens chat instead of navigating. U7's 44px bubble does not clear it (S01-01) | `nav-more.tsx:94`, `ChatRoot.tsx:317` | U33 |
+| D31 | Signed-in balance capsule: the hidden-balance mask overflows its reserved box (26.4px at TZS 0), the eye control is 32px, the 800ms delta flash shifts the header, and the link announces "Hide password" (S01-chrome-02/03/04/06) | `wallet-balance-pill.tsx:172` | U34 |
+| D32 | The live ticker cannot be paused, stopped or hidden on a phone (pause is hover/focus only), has no accessible name, and its duplicated track makes a screen reader read every event twice (S01-02) | `live-ticker.tsx:85-91, :153-154` | U33 |
+| D33 | Home topic tiles break the pool figure across lines — "TZS" on one line, "6K" on the next — on every pooled tile at 360 in all three locales (S02-home-01) | `.kp-topic__m`, `globals.css:4622` | U6 |
+| D34 | At 320 SW the board stats row ("25 hai · TZS 27K katika mchezo") cannot wrap or shrink and runs past the viewport edge beside a money figure (S03-01) | `markets/page.tsx` header row | U9 |
+| D35 | On cold-start cards at 320 SW the pool slot — the money slot — is the one thing allowed to shrink, so it ellipsises while the countdown and 44px info plate keep their width (S03-02) | `.mcardp-meta` | U32 |
+| D36 | Up & Down truth: at the lock the pod shows a dead "Betting closes in 00:00" beside a panel saying betting has closed, and a resolved card keeps ticking a live price that contradicts its own close (S05-01, S05-02) | `updown-card.tsx`, round page | U35 |
+| D37 | Up & Down history mixes scopes in one strip: "40 rounds" in the bar, "Rounds 12 · 95 bets" in the tile (page vs whole history), and the net-return sub-line spills into the next tile (S05-updown-NUM-01/02) | `updown/history/page.tsx` | U35 |
+| D38 | /live search: one typo unmounts the field mid-typing (keyboard closes, the query can only be cleared), and the hero above it changes height while typing, jumping the field 110–134px (S06-live-01, S06-live-02) | `live/page.tsx`, `featured-contest.tsx` | U36 |
+| D39 | Market detail money copy shows the raw YES/NO enum in SW/ZH — on the hedge warning and the bet-placed modal — while the buttons beside them say NDIO/HAPANA or 是/否 (S04-detail-01, S04-detail-02) | detail aside, result modal | U37 |
+| D40 | On the detail page the bet widget and the guest sign-in prompt are announced last, under the wrong heading: reading order does not match visual order (S04-detail-L04) | `markets/[id]/page.tsx:756` | U37 |
+| D41 | The InfoHint explanations for fee, multiplier and payout render as a one-line strip ~4× the screen width with a ~10×14px trigger, so on a phone the money explanation cannot be read or opened (S04-detail-03) | InfoHint in the stake panel | U37 |
+| D42 | The /results summary ring draws three arcs on the 171-market denominator but its legend names two ("NDIO 59 · HAPANA 88" = 147): 24 settled markets — 14% of the ring — sit in an arc named nowhere on the page (critics panel, three lenses) | `results/page.tsx:319` (`OutcomeDonut … voided`), legend `:324-331` prints YES · NO only | U32 |
+| D43 | The leaderboard list is ranked by ROI and no row shows ROI: the podium prints +26.8% / +13.2% / −3.9%, then rows 2–6 drop the number they are sorted by and leave 105–142px empty at the right (critics panel) | `leaderboard/page.tsx:460` (list row) | U10 |
+| D44 | The tier word "Fedha" (silver) is printed in the money gold, and podium rings #2 and #3 are the same pale blue — while the tier chips on the same screen already own real silver and bronze inks (critics panel, sampled) | `leaderboard/page.tsx:320` (`accent: "gold"`), podium `:546` | U10 |
+| D45 | Up & Down's page gutter is 20px; every other surface, and Up & Down's own footer, sits on 16. The wrapper is `px-4` — which reads like 16 and is **20 on this project's scale** (critics panel, measured on 8 surfaces) | `updown/page.tsx:68,86` | U35 |
+| D46 | The detail probability chart spaces date ticks by data point: a two-day interval and a one-day interval are both 153px, so the slope misstates the rate of change (critics panel, measured) | `charts/chart-toggle.tsx` (the chart library spaces points by index, not time) | U37 |
+| D47 | The /live hero truncates its own section label at 360 SW to "LILILO NA SHAKA…" — a relative clause whose head is exactly the part cut off, so the section never names itself (critics panel) | `mostContested` (`i18n-dict.ts:3254`) in the /live hero | U36 |
+| D48 | The sign-in form sets "Umesahau nenosiri?" as its dimmest label, dimmer than the static hint beside it and with no link ink, and carries the sign-up rules: the "Angalau herufi 8." hint, `minLength={8}` and an eight-dot placeholder that reads as a filled password (critics panel, code-confirmed) | `auth/login/page.tsx:288-296,310` | U19 |
+| D49 | A flat sparkline band — about 43px at ~1.06:1 against the card — renders on some cards and not others, so one list holds two card heights: /results 312 vs 278, /markets 354 vs 320 (critics panel, measured) | `market-card.tsx:390` (`MicroSpark … height={28} … area stretch`) | U3 |
+| D50 | On the /live hero the INASOGEA chip sits in the needle's value-label row ("NDIO 50%  INASOGEA  50% HAPANA"), so it reads as the name of the needle's position rather than a status (critics panel) | `tipping` (`i18n-dict.ts:3280`) in the /live hero | U36 |
+| D51 | The home hero's first figure "32" starts about 17px right of its own label because the live pip sits inside the number's flow, while "TZS 29K" and "8" sit on the 16px edge (critics panel, measured) | `landing-hero.tsx:131-132` (`.kp-proof__pip` inside `.kp-proof__num`) | U6 |
+| D52 | Up & Down's settled pod wraps its price pair with the arrow ending the first line ("$75,819.68 →" then "$75,824.01") (critics panel) | `updown-card.tsx:1121` | U35 |
+| D53 | The Swahili responsible-gambling line has two grammar slips: "Kama kucheza kamari **imekuwa sio** burudani, acha." — the ku- infinitive subject takes "kumekuwa", and the negative before a noun is "si" (critics panel, verified) | `stopGambling` (`i18n-dict.ts:4326`) | U40 |
 
 ## §8a — Phone design sheet (graphic + artist lenses; binds every unit)
 
@@ -345,6 +711,11 @@ against the U1 baseline. **[General] control:** ≥ 640 shows a zero diff unless
 - Mint one labelled production QA player (`QA Mobile 01`) under the standing grant; the commit says what was minted.
 - RED control: an injected `.mcardp{padding:40px}` trips the height assertions.
 - Accept: every "Before" number in §1 and §11 re-derived from JSON.
+- ⚠️ **The pinned-chrome figure had a blind spot, found by the critics panel's completeness critic (§3b).** Every capture before 2026-09-16
+  counted only fixed or sticky elements wider than 60% of the screen, so the 237px on /markets **excludes the floating chat bubble** — the
+  one pinned object that sits on top of content, on seven of nine surfaces (D3). This instrument reports floating overlays separately, with
+  their rectangles and what they cover at rest; `scripts/live/mobile-visual-capture.mjs` already does. A chrome budget that cannot see the
+  object players say covers their cards is the same class of error as a tap check that measures the button and not its hit area.
 
 **U2 · [Compact] Density setting + switch (no visual change yet)**
 - `src/app/layout.tsx:145` already awaits `cookies()` for `kp-locale`. It also reads `kp-density`, and only `comfortable` stamps
@@ -370,12 +741,24 @@ against the U1 baseline. **[General] control:** ≥ 640 shows a zero diff unless
   `.mcardp-info {`; `test:betting-ink` reads the first `.mcardp-meta .live`. So the Compact block goes **after the last card rule (≈ `globals.css:5115`)**,
   indented. It never re-declares `.mcardp-info`'s box and never repeats the `tap-rung.anchors.mjs` declaration text.
 - Existing duplicates: `.mcardp-spark` (`:3923`/`:3938`), `.mcardp-traders` (`:3924`/`:3928`).
+- **D28 — the share control is under the tap floor on both axes (25–26 × 36–37px) on every card in every state.** Its `::after` hit box
+  (`globals.css:5106`) grows to ≥ 40 × 40 centred on the glyph, and the gap to "Details" stays ≥ 8px so neither control steals the other's edge.
+  Growing a `::after` box does not move the glyph, so the compact geometry above is unaffected — and the declaration text `tap-rung.anchors.mjs`
+  reads is not repeated (see ⛔ above). Guard: `elementFromPoint` at the share centre and at each of its four inset corners returns the share
+  control, not "Details", on a live, closed, resolved and void card; `qa:tap-hit` covers the control at 320/360. RED: restore the 26px box.
 - Sparkline: `MicroSpark height={28}` with `stretch` (`market-card.tsx:390`), so a CSS height overrides it; check by eye that the line still reads.
 - Skeletons read a new `--mcard-h` token instead of literals at `markets/loading.tsx:95`, `markets/page.tsx:518`, `results/page.tsx:624`,
   `results/loading.tsx:25`, `updown/loading.tsx:33`, `app/loading.tsx:8`. `card-geometry.ts` exports both values.
 - `UpDownCard` (`updown-card.tsx:724`): the same gated gaps plus one `--sp` step on its inner blocks; UP/DOWN stay `btn-lg`. Target ≤ 430px.
 - Rebaseline by design: `qa:card-geometry`, `qa:card360`. Must stay green: `qa:tap-hit`, `test:card-share`, `test:tap-target`.
 - Accept: live priced card ≤ **305px** (354 − 52 ≈ 302), and every card state ≥ 45px shorter than its baseline at 360/412 in EN/SW/ZH; skeleton = card ±2.
+- **D49 — one list, two card heights, because of a chart nobody can see** (critics panel, measured). The sparkline band renders on some
+  cards and not others: /results cards are 312 or 278px tall, /markets cards 354 or 320 — the 34px difference is the band. Where it renders
+  it is about 43px of flat fill at ~1.06:1 against the card, so at 1× on a phone it reads as empty space. Decide whether it earns its place
+  **before** trimming it 28 → 20 above: no band when the series has fewer than two real points (settled and thin cards), and where it stays, a
+  fill that clears 3:1. Guard: every card of one state has one height at 360 SW. RED: restore the unconditional band.
+- (taste, critics panel) The card watermark sits at about 1% contrast and does no work; the art director would delete it. For the phase
+  sign-off, not a session.
 
 **U4 · [Compact] Discovery bar (still sticky, still one tap)**
 - `src/components/ui/query-bar.tsx:53-165` + CSS via a `data-bar-row` hook: rows become `display:contents` in a grid, giving one control line
@@ -386,6 +769,9 @@ against the U1 baseline. **[General] control:** ≥ 640 shows a zero diff unless
 - Guard: extend `scripts/live/bar-geometry-drive.mjs` (today stickiness only at ≥ 1280) with bar ≤ 80 at 360/412, sort and status visible with 0 taps,
   strip ≥ 160px. RED control: `display:none` on sort.
 - Accept: pinned chrome ≤ **201px** at 360 in EN/SW/ZH.
+- 📐 (critics panel, taste — art direction and layout) The pinned bar cuts the board's loudest objects mid-control as they scroll under it —
+  a card's YES/NO buttons sliced in half — with no fade and no elevation edge to say "this passes beneath". Whatever height this unit lands on,
+  the bar's lower edge carries a short fade or a hairline shadow so content visibly goes under it rather than being guillotined.
 
 **U5 · [General] Header pills + phone rhythm tokens**
 - CSS only, inside the existing `@media (max-width:639.98px)` E-276 block (`globals.css:3388`): `.kp-auth-cta { height: var(--h-control-sm) }`
@@ -394,6 +780,9 @@ against the U1 baseline. **[General] control:** ≥ 640 shows a zero diff unless
   after `:root`. Inline consumers `app/page.tsx:225` and `trust-band.tsx:103` follow the token. Re-run `qa:dg-rhythm` and `scripts/live/landing-seam.mjs`.
 - Guard: a source assertion that the phone block declares `height: var(--h-control-sm)` on `.kp-auth-cta`. RED control: 36px.
 - Accept: at 320 both pills visible and `scrollWidth === 320`.
+- 📐 (critics panel, taste) At 360 the two Up & Down header pills are bare glyphs — a scroll and a briefcase. D7 (`a25c127b`) gave both a
+  name for screen readers; a sighted player still sees two unlabelled icons on a money game's header. Decide here whether the phone rung
+  keeps a short word, or whether the glyphs are clear enough on their own — and show Ali at the phase sign-off.
 
 **U6 · [General] Home tightening (all sections kept)**
 - **Closing soonest** (`landing-hero.tsx:186-188` → `QuestionRow`; `globals.css:3695-3746`): `.kp-qrow__q` is `--type-h4` (17px) with no clamp,
@@ -404,8 +793,18 @@ against the U1 baseline. **[General] control:** ≥ 640 shows a zero diff unless
   `var(--h-control-lg)` with class `btn-xl` kept (update `scripts/live-material-probe.mjs:112` and `live-button-contrast.mjs`, which expect 56);
   `.kp-proof` phone block (`:3686-3690`) three across with numbers one rung down, only if SW captions and money don't clip; `.kp-topic` (`:4584`)
   min-h 64 → 48 with the meta inline.
+- **D33 — the topic tile breaks the pool figure across lines** ("TZS" on one line, "6K" on the next) on every pooled tile at 360 in all three
+  locales. The money node in `.kp-topic__m` (`globals.css:4622`) takes `white-space: nowrap` — U38's rule, applied early here because the tile is
+  already being touched — and the tile drops its label before it breaks a figure. This is checked **after** the min-h 64 → 48 change above, since
+  the shorter tile is the tighter case. Guard: 0 wrapped money nodes on the home topic tiles at 320/360 × EN/SW/ZH. RED: restore the wrap.
 - `test:hero-contract` / `test:landing-contract` test data only; `test:betting-ink` checks colours only.
 - Accept: home ≤ **7.5 screens** at 360 EN, ≤ 7.8 SW.
+- **D51 — the hero's three figures do not share a left edge** (critics panel, measured). "32" starts about 17px right of its label because
+  the live pip (`.kp-proof__pip`, `landing-hero.tsx:132`) sits inside the number's flow, while "TZS 29K" and "8" start on the 16px edge.
+  Hang the pip outside the flow, or give every row the same leading slot. Guard: the three figures' first glyphs line up within 1px at
+  320/360/412 SW. RED: put the pip back in flow.
+- 📐 Owner item 5 has a visual half the critics added: the English headline sets **YES** and **NO** in the outcome inks, so the brand line
+  teaches the colour rule in English one inch above the Swahili bar that uses it. Whatever Ali rules, the inks follow the words.
 
 ### Phase C — Chrome behaviour and defects (not density-gated; may move earlier)
 
@@ -418,6 +817,10 @@ against the U1 baseline. **[General] control:** ≥ 640 shows a zero diff unless
   (`stacking-contract.test.mts:188`, in predeploy).
 - Overlap is measured on the `::after` pulse ring, not the 44px box. `scripts/chat-responsiveness-e2e.mjs` is stale (wrong breakpoints) and not evidence.
 - Guard: a stacking-contract row plus a driver asserting the bubble spot hits the page while scrolling and the bubble after 400ms idle. RED: remove the hide rule.
+- 📐 **D3 is wider than its register line** (critics panel, 360 SW, 2026-09-16). The bubble covers content on **seven of nine** surfaces: a
+  ranked player's ROI on the leaderboard, the resolution criteria on a detail page (the line ends "…itathibitisha kwam" under it), the first
+  card title on home ("…litafungwa n"), the ⓘ plate and "Maelezo" on the board, and the /results pager. This unit's driver runs on all nine
+  surfaces, not on the board alone.
 
 **U8 · [General] Countdown everywhere + guest market split first**
 - `src/components/markets/countdown.tsx:87-109`: ≥ 1 day → days + hours; < 24h → 4 cells; `<time dateTime>` kept. Only call sites are
@@ -426,18 +829,30 @@ against the U1 baseline. **[General] control:** ≥ 640 shows a zero diff unless
   (probability section is `order-2`, `:499`). Signed-in order byte-identical.
 - Guard (driver): 2 cells when days ≥ 1, 4 under 24h; guest probability above sign-in; signed-in unchanged. RED: always 4 cells; restore `order-1`.
 - Accept: countdown panel ≤ 160px at 360.
+- 📐 (critics panel) The detail page spends its heaviest type on **two four-box countdowns ticking seconds 36 and 40 days out**, three of
+  whose four boxes hold identical values, and states the same dates three times. That is Ali's ruling "countdown simplified everywhere"
+  seen from a critic's chair: the simplified form is the fix.
 
-**U9 · [General] Defects D1 · D5 · D7**
+**U9 · [General] Defects D1 · D5 · D7 · D18 · D34**
 - D1: `.kp-strip-fade` fade 24→40px (below 1024; no test pins 24). If that isn't enough, add one gap step before the count; never put a positioned menu inside the mask.
-- D7: `aria-label`s on `updown/page.tsx:97-113` from `common.readFullRules` / `market.udHistoryTitle`. Guard: a `test:ui-consistency` rule
-  ("a link whose only label is `hidden sm:inline` needs `aria-label`", `Rule` shape `:80-85`, modelled on `bare-text-button`), baseline at 0. RED: remove one.
+- ✅ **D7 — SHIPPED EARLY, `a25c127b`, 2026-09-16, verified live.** `aria-label`s on `updown/page.tsx` from the same keys the visible spans use
+  (`common.readFullRules` / `market.udHistoryTitle`), matching the idiom `top-app-bar.tsx:302-320` already documents. The guard is the class, not
+  the two links: `test:ui-consistency` rule `collapsing-label-without-aria-label` (error, no baseline entry, so any future occurrence fails the
+  suite) — proven RED at exactly 2 findings, both in that file, 0 elsewhere in `src/`; 0 after the fix. On production the links now announce
+  "Soma kanuni kamili" and "Juu na Chini zako". **This unit still owes D1, D5, D18 and D34** — the row stays 🔵, not ✅.
 - D5: `SearchBox` prop `reserveEcho` (default true; all 14 call sites unchanged); only `results/page.tsx:372` passes false. Fix the stale
   comment at `results/page.tsx:355`. Driver: search-to-tabs gap ≤ 24.
 - D18: at 320 the active sort value is clipped in both densities. The sort `<summary>` gets `min-w-0` with the value on one line at `--type-small`, and the
   full value in its `aria-label`. If it still can't fit, the direction control shrinks to its 44px icon only. Driver: the sort value's `scrollWidth ≤ clientWidth` at
   320 EN/SW/ZH.
+- D34: at 320 the board stats row ("25 hai · TZS 27K katika mchezo") can neither wrap nor shrink, so it runs past the viewport edge **beside a money
+  figure** (`markets/page.tsx` header row). The row wraps below 400px — `flex-wrap` plus `min-w-0` on the text group — and the money figure stays
+  whole on whichever line it lands on; it is never ellipsised and never compacted further to buy room. Driver at 320/360 × EN/SW/ZH: no node's right
+  edge past the viewport, 0 ellipsised money nodes. RED: restore `nowrap` on the row.
+- 📐 **On /results, D1 hides an outcome** (critics panel). The tab the fade eats there is HAPANA — one of the two outcome filters reads
+  "HAPAI", at every scroll position, in the default language.
 
-**U10 · [General] Defects D2 · D6 · D10 · D11**
+**U10 · [General] Defects D2 · D6 · D10 · D11 · D43 · D44**
 - D2 (DG-P-08 binds): below `sm` the `TierBadge` moves under the handle (`:591` wrapper) and the handle steps one rung down, so it gets the full ≈ 85px
   column; `break-words` stays as the last resort. Measure the real handles plus a 15-char fixture.
 - D6: split the `:430-467` row into a wrapping status group (chips and closing/waiting/resolved pills) and a no-wrap action group
@@ -449,6 +864,17 @@ against the U1 baseline. **[General] control:** ≥ 640 shows a zero diff unless
   (`× 1.00` under "Down"), with the arrow icon kept.
 - Guards at 320/360 × EN/SW/ZH, with a 7-figure BTC price and a `×12.34` multiplier fixture: 0 ellipsised money nodes (`scrollWidth > clientWidth`
   on any node with a currency or `×` value) and 0 text overflow in the buttons. RED: restore the one-line caption.
+- **D43 — the list drops the number it is sorted by** (critics panel). The podium prints +26.8% / +13.2% / −3.9%; rows 2–6 carry rank,
+  avatar, handle and tier only, with 105–142px empty at the right (`leaderboard/page.tsx:460`). Put the sort value in that column —
+  tabular, right-aligned, with the settled count under it — so the podium and the list speak one language. Guard: every list row renders the
+  sorted metric at 320/360 SW. RED: remove it from the row.
+- **D44 — a silver tier printed in gold** (critics panel, sampled). The top-tier panel sets "Fedha" in the money gold (`:320`,
+  `accent: "gold"`), and podium rings #2 and #3 are the same pale blue, while the tier chips on the same screen already own silver and bronze
+  inks. One metal token per tier drives the word, the chip and the ring. Guard: the tier word's colour equals its chip's metal token. RED:
+  restore `accent: "gold"`.
+- 📐 D2 re-confirmed in the default language (critics panel): "@Dhire / sh", "@Libuh / i", "@Jayki / shan" — every podium handle.
+- (low, critics panel) Avatar initials are `handle.slice(0, 2)`, so @Jaykishan and @James both render "JA" in near-identical plates, and the
+  seed-hashed gradients produce hues found nowhere else in the palette. Fix alongside D44: hues from a fixed palette, and two letters that differ.
 
 ### Phase D — Overlays, messages, notifications, detail pages
 
@@ -578,7 +1004,7 @@ against the U1 baseline. **[General] control:** ≥ 640 shows a zero diff unless
 
 ### Phase E — General phone fit found in the 2026-09-15 screenshots
 
-**U19 · [General] Live carousel · Help rows · auth forms**
+**U19 · [General] Live carousel · Help rows · auth forms (D48)**
 - `/live` featured card (`src/app/live/featured-contest.tsx`): the 19px title (`:114`) unclamped over 5 lines, card ≈ 460px. Clamp to 3 lines, step the
   inner padding and CTA gap (`:135`) down one step each, arrows stay 44 (`:205`). Target ≤ 360px.
 - `/help` contact cards (`help/page.tsx:190`, `glass-panel p-4 space-y-2`, ≈ 146px each): below `sm` use the page's own row pattern (`:223`, ≈ 82px),
@@ -587,14 +1013,31 @@ against the U1 baseline. **[General] control:** ≥ 640 shows a zero diff unless
   (login, register, forgot-password, reset-password, otp, 2fa, verify-email), so all 7 are measured at 320/360 × 3 locales.
 - `/leaderboard` was checked and is not a defect (the gap is ≈ 41 CSS px, the page's normal rhythm).
 - Guard: per-surface driver targets. RED per sub-item.
+- **D48 — the sign-in form wears the sign-up form's rules** (critics panel, sampled; code-confirmed). `auth/login/page.tsx:288-296` gives
+  the password field the registration hint "Angalau herufi 8.", `minLength={8}` and an eight-dot placeholder that reads as a password
+  already typed; and "Umesahau nenosiri?" (`:310`) is set in the form's uppercase label style, dimmer than the static hint above it — so the
+  one action for a player who is locked out looks like a caption. On sign-in: no length hint, an empty or worded placeholder, and the recovery
+  action in the product's link style. ⚠️ Before dropping `minLength`, confirm no account can hold a shorter password: if none can, it is dead
+  weight on sign-in; if one can, it is locking that player out. Guard: no min-length hint on the login password field; the recovery link
+  matches the link token's style and contrast. RED per item.
 
 **U20 · [General] Footer tap rows + Discussion copy (D8)**
 - Footer list links (`src/components/layout/public-footer.tsx`, ≈ 19px rows) below 640 become `inline-flex items-center min-h-[var(--tap-min)]`,
   keeping font, colour and case. Not `.row-link` (`globals.css:1664`), which is uppercase. `qa:footer-reachable` stays green.
 - D8: new `market.signInToComment` in EN/SW/ZH (native check) used at `comments-thread.tsx:224-229`; `signInToPredict` stays on bet surfaces.
+  - ⛔ **Examined in the safe-fix lane on 2026-09-16 and deliberately NOT shipped.** The one-line version — swap in the existing `common.signIn`
+    ("Ingia" / "登录") — is accurate but strictly less informative than the wrong string it replaces, and it would spend a visible copy change in
+    three languages on a phrase this unit is going to change again. A defect worth fixing once is not worth shipping twice. It waits for the
+    native SW/ZH reader (§0 owner item 3), which is what `signInToComment` needs anyway.
 - Guards: footer link boxes ≥ 40 at 360; `test:i18n` parity; a source assertion that comments-thread no longer reads `signInToPredict`. RED restores each.
 - D24: the comments "Post" button keeps a stable width while pending: `min-w` equals its widest label ("Posting…") in each locale, with the spinner
   in place of the icon. Driver: no horizontal shift of the character counter during submit.
+- 📐 (critics panel) **The footer is about 920px on every page** — a third to a half of the short ones (sign-in, leaderboard, Up & Down).
+  Its contact details are styled exactly like navigation links, and on /auth/login the page's own legal strip is restated by the footer 60px
+  later. Its legal furniture is owner item 9. The tap-row work above makes it taller, so measure the footer's share of the short pages before
+  and after.
+- 📐 (critics panel, taste — art direction) The loudest colours on the whole phone are three other companies' logos in the footer's social
+  row (Instagram's gradient, TikTok's fringes, WhatsApp's green). Monochrome marks in the text ink keep the footer the product's own.
 
 ### Phase F — Phone conditions a portrait screenshot never shows (added by the S0b seven-lens review)
 
@@ -694,6 +1137,9 @@ against the U1 baseline. **[General] control:** ≥ 640 shows a zero diff unless
   - **`EmptyState` on phones:** padding one `--sp` step down, illustration 56 → 40, full-width box.
   - **Leaderboard with < 3 players:** rows on phones instead of the 640px table.
 - Guard: a driver renders each state at 320/360 EN/SW; the two not-found pages share one component (source assertion). RED per sub-item.
+- 📐 (critics panel, taste) An empty discussion panel takes **247px of a 543px usable screen** — a header, the sign-in button and one
+  centred sentence ("Hakuna maoni bado — anza mazungumzo.") with about 60px of void above and below it. An empty state takes its content's
+  height.
 
 **U27 · [General] Touch behaviour (D14 · D15 · D16 · D25)**
 - D14: pull-to-refresh (`pull-to-refresh.tsx:31-35`) ignores touches that start inside `[role="dialog"]`, `.kp-fsheet`, `.cm-panel`, horizontal scrollers or
@@ -703,6 +1149,14 @@ against the U1 baseline. **[General] control:** ≥ 640 shows a zero diff unless
   - ungated CSS `:hover` blocks are wrapped in `@media (hover: hover)`: `.btn:hover` lift, `.btn-yes/no/primary:hover` brightness,
     `.kp-qrow:hover` padding reflow, `.kp-rail__item:hover`, the `motion.css` raise hovers.
 - D15: a global `scroll-padding-top: calc(var(--header-h) + env(safe-area-inset-top) + 8px)`; pages with the discovery bar add its height.
+  - ⛔ **Examined in the safe-fix lane on 2026-09-16 and deliberately NOT shipped: it depends on U23.** `--header-h` does not exist yet (the header
+    offset is the literal `top-[56px]`), so the only fix available today is a hand-typed number — a second home for the header height, which is
+    what §0d forbids and what U23 exists to remove. **Do U23 first, then this is one declaration.**
+  - 🔎 **Re-measured while deciding, and the defect is narrower than its register line says.** `HashFocus` (`hash-focus.tsx`, mounted at
+    `markets/[id]/page.tsx:414`) scrolls a fragment target with `block: "center"`, so a FRESH load of `…#discussion` is centred and clears the
+    header. The overlap is on the **soft-navigation** path: the order links (`comments-thread.tsx:251`) change the query on the same route, the
+    `[]` effect does not re-run, and the browser lands the section flush under the sticky header. So the driver must test the ORDER LINKS, not a
+    cold load — a cold load passes vacuously. ⚠️ And `scroll-padding` also applies to `scrollIntoView`, so check the centred case did not shift.
 - D16: first **measure** back navigation (`/markets` → detail → back at 360: scroll lands within ±40px of where it was). Change `ScrollRestore` only if it
   fails (remove it and let Next restore, or switch to manual).
 - Guards (phone emulation):
@@ -766,6 +1220,156 @@ against the U1 baseline. **[General] control:** ≥ 640 shows a zero diff unless
 - **Record:** each check is ✅/❌ with a photo or screen recording in `.qa-shots/mobile-visual/U30/<phase>/` and a note in §1. The U22 `interactiveWidget` decision
   and the U24 real 130% check are made here.
 
+### Phase G — From the full element inspection (S0c, 2026-09-16)
+
+Every unit below cites finding ids from [`MOBILE-VISUAL-FINDINGS-2026-09.md`](MOBILE-VISUAL-FINDINGS-2026-09.md). Acceptance is measured
+by U1's driver at the §11 matrix unless a unit says otherwise.
+
+**U31 · Verify the inspection backlog (379 items)**
+- Usage limits killed the verifiers for S07–S13, so those findings are 🕓: reported, not confirmed. This unit works through them: re-check
+  the evidence (live measurement or file:line), then classify each as new · extends · duplicate · intentional · refuted, exactly as the
+  verified groups were.
+- Order: 🔴/🟠 first (S08 leaderboard/fairness/help, S09 auth, S10 wallet, S11 account, S12 overlays, S13 primitives), then 🟡, then ⚪.
+- Every confirmed item gets a defect row and an owning unit in the same commit; refuted ones are marked refuted in the record with the reason.
+- Accept: 0 rows left at 🕓 in the findings record; §1 shows the resulting defect rows.
+
+**U32 · [General] Market-card state truth (D29 · D35 · D42)**
+- `noPrice` must describe the pool, not the phase: a market with no bets shows no crowd price in **any** state (live, closed, resolved, void).
+  Terminal cards show the outcome and an empty bar, never a centred needle; the outcome word takes its own ink (a NO result is never YES-green).
+- The meta row protects money first: at 320 SW the pool keeps its width and the countdown or info plate yields.
+- 📐 **Re-confirmed live on 2026-09-16 at 360 SW, and the colour half is the worse half.** On `/results`, cards whose outcome is **HAPANA**
+  print "TOKEO · HAPANA" in the **YES green**, above a bar that is almost entirely green with the needle hard right — so the losing side's word,
+  the winning side's colour and a crowd price that was wrong all sit in one 80px block, and nothing on the card distinguishes a NDIO result from
+  a HAPANA one. Three cards in one screen. The outcome word takes its own ink before anything else in this unit.
+- 📐 **The same card states its result three times in two different words**: the chip "IMEKAMILIKA", the row "Imekamilika HAPANA", and the footer
+  "Imetatuliwa HAPANA". One fact, three statements, two vocabularies — the terminology half belongs to U40, the repetition to this unit: a terminal
+  card says its outcome **once**.
+- Guard: driver at 320/360 × EN/SW/ZH over a board containing live-empty, closed-empty, resolved-empty and void cards: 0 cards showing a
+  percentage with volume 0; 0 ellipsised money nodes. RED: restore the live-gated `noPrice`.
+- **D42 — a summary ring with a part nobody named** (three critics; the verifier measured the arcs at 124° / 182° / 49°).
+  `OutcomeDonut` draws YES, NO **and void** on the 171-market denominator (`results/page.tsx:319`), and the legend beside it prints only
+  "NDIO 59 · HAPANA 88" (`:324-331`) — 147. Twenty-four settled markets are a visible arc named nowhere. Put the third segment in the legend
+  with its count, in the neutral ink the arc uses, so the parts add up to the total on screen. Guard: the legend counts sum to the ring's
+  denominator on /results in 3 locales. RED: drop the void entry.
+- 📐 **D29 was the panel's loudest finding: all six critics reached it independently** — art direction, typography, colour, layout,
+  information design and the Swahili reader each reported a HAPANA outcome in the NDIO green. When six lenses converge on one defect, it goes first.
+- (low, critics panel) Cold-start cards centre "Bila dau bado" and "Kuwa wa kwanza kutabiri" inside an otherwise flush-left card, so the
+  list's left edge appears and disappears card by card. Keep the empty line in the slot the price line uses, aligned the way the price line is.
+- (low, critics panel) The predictor facepile's third disc shows "69" (a seeded handle's initials), which reads as "+69 more" beside
+  "3 watabiri". Initials that are digits, or any disc that looks like an overflow counter, must not appear in a stack that is counting people.
+
+**U33 · [General] Chrome: one menu recipe, ticker semantics (D30 · D32)**
+- One popover recipe for the language menu, the rail More menu, the bar More menu and the avatar menu: one radius, one row inset, one row
+  height (44), one selected-row treatment (`--pill-active`, never gilt), one scrim.
+- The More menu clears the chat bubble (raise the menu above it or inset the last row); D30's `elementFromPoint` check is the guard.
+- Ticker: an accessible name, the duplicated track hidden from assistive tech, and a pause control that works without hover — or it pauses
+  whenever `data-motion` is not `full`.
+- Guard: driver asserts every menu row ≥ 44px and hit-tests to itself; the ticker exposes one copy and a reachable pause. RED per item.
+- ⚖️ **For the phase sign-off, not defects** (critics panel; both deliberate in the code). The gilt dot on the Juu/Chini rail item is the
+  product-line mark (`bottom-nav.tsx:147`), but a player reads it as an unread badge that never clears, in the money colour; and "Masoko" is
+  lit on the home page because home counts as Markets (`:103`), with no Home item. Show Ali both before Phase C closes.
+- 📐 (critics panel) The live ticker is cut hard at the screen edge with no fade, so whatever word is passing the edge is sliced through the
+  letter, and nothing says the line continues; a marquee fades at both ends. And the language control reads the ISO code "SW" — clear to a
+  developer, less so to a player; decide with the native reader whether it says "Kiswahili" at phone width or keeps the code.
+
+**U34 · [General] Signed-in header cluster (D31)**
+- The masked balance fits its reserved box at every balance (TZS 0 → 7 figures); the eye control reaches 40px; the delta flash reserves its
+  space instead of resizing the bar (E-190's lesson); the link's accessible name states "balance hidden", never "Hide password".
+- Guard: driver at 320/360, signed in as the QA player, across balances 0 / 999,999 / 1,250,000: no header reflow on a delta, no overflow,
+  and the accessible name contains neither "password" nor a figure while hidden. RED: restore the mask width.
+
+**U35 · [General] Up & Down truth and fit (D36 · D37 · D45 · D52)**
+- A locked round shows one state in one voice (no dead clock beside "closed"); a resolved card shows its own close, never a ticking live price;
+  history figures state their scope (this page vs all rounds) and never spill between tiles.
+- Also from the record: duration chip clipped at 320, round-page title cut mid-word, custom-stake chip clipped at 360, two designs for one
+  countdown pod and one stake row.
+- Guard: driver over a full round lifecycle on a seeded local board (open → lock → settle → next) at 320/360 × EN/SW: one state per frame,
+  0 clipped money or duration values. RED per item.
+- **D45 — the one page off the gutter** (critics panel, measured on 8 surfaces). Up & Down's wrapper is `px-4` (`updown/page.tsx:68,86`) —
+  **20px on this scale**, not the 16 it reads as — while every other surface, and Up & Down's own footer, sits on 16. Use the page container
+  the rest of the product uses. Guard: the first content edge is 16px at 320/360/412, the same as /markets. RED: restore `px-4`.
+- **D52 — an arrow that ends a line** (critics panel). The settled pod prints `{open} → {close}` as loose text (`updown-card.tsx:1121`), so
+  at 360 SW it wraps to "$75,819.68 →" / "$75,824.01". The pair is one unit: keep it on one line, or stack it deliberately with the arrow as a
+  connector. Guard: the arrow never ends a line box at 320/360 × 3 locales, with a 7-figure price fixture.
+
+**U36 · [General] /live carousel, search and wall (D38 · D47 · D50)**
+- The search field survives a miss: the query stays editable, focus and keyboard are kept, and the empty state appears **below** the field.
+- The hero reserves its height so the field cannot jump while typing; the carousel pauses on a phone and does not resize the page under a thumb.
+- Guard: driver types a query that goes from hits to zero and back, asserting the field keeps focus and value; hero height stable within 8px
+  while typing. RED: restore the unmount.
+- **D47 — the section that cannot say its own name** (critics panel). `mostContested` is "Lililo na shaka zaidi" (`i18n-dict.ts:3254`), and
+  the /live hero truncates it at 360 SW to "LILILO NA SHAKA…" — the head of the phrase is exactly what is cut. Let the label wrap, or give it
+  a label that fits (native reader, U40). Guard: no ellipsised label in the /live hero at 320/360 × 3 locales.
+- **D50 — a status chip in a value slot** (critics panel). On the /live hero INASOGEA (`tipping`, `:3280`) sits in the needle's value-label
+  row, "NDIO 50%  INASOGEA  50% HAPANA", so it reads as naming the needle's position. Chips go with chips, beside the HAI pill; the value row
+  holds values. (The verifier did not sustain the critic's stronger claim that the chip was unearned.)
+- 📐 (critics panel, taste — information design) /live cards print a price with the pool and the predictor count removed, so a 50/50 from
+  one bet and a 50/50 from two hundred look identical on the page built to show what is moving. The sample travels with the price.
+- 📐 (critics panel, taste) The live hero carousel has three pagination controls for one set of six slides (arrows, a "1/6" counter and dots).
+  One is enough.
+
+**U37 · [General] Detail page copy, reading order and hints (D39 · D40 · D41 · D46)**
+- No raw enum reaches a player: the hedge warning and the bet-placed modal use `sideWord`, like the buttons beside them.
+- Reading order matches visual order on phones (the aside is not announced last), with the heading it belongs to.
+- InfoHint becomes an inline disclosure on phones: a ≥ 40px trigger, text that wraps inside the panel, no hover dependency.
+- Guard: accessible-name and DOM-order assertions on the detail page in 3 locales; InfoHint opens and reads fully at 320/360. RED per item.
+- **D46 — a date axis that is not a time axis** (critics panel; the verifier measured 153.5px and 153.0px for a two-day and a one-day
+  interval). The probability chart spaces points by index — the chart library's native behaviour — under calendar labels, so the slope
+  misstates how fast the price moved. Either feed empty points for the missing intervals so time runs linearly, or drop the dates for an
+  honest per-prediction axis. Guard: tick spacing is proportional to elapsed time on a fixture with uneven gaps. RED: remove the fill.
+- (low, critics panel) The detail page's third stat tile (INAISHA, the end date) is a lone full-width box about 8px shorter than the pair above
+  it, so the three tiles read as two sizes of one object. Give the three one height, or make the date a line rather than a tile.
+
+**U38 · [General] One money grammar and number rules**
+- One money primitive decides: currency placement, thousands grouping, the compaction threshold (and where compaction is allowed at all),
+  the sign glyph (U+2212, one position), tabular numerals, and `white-space: nowrap` so a figure never splits between "TZS" and its digits.
+- All three formatters (`formatTzs`, `formatTzsSigned`, compact) and every consumer (`Cash`, `Stat money`, `ReceiptRow`, ticker, cards, KPI tiles,
+  chart labels) go through it. USD figures on Up & Down get the same grouping rule.
+- Guard: a source contract that no player-facing money string bypasses the primitive, plus a driver asserting 0 wrapped or ellipsised money
+  nodes at 320/360 × 3 locales with 7-figure fixtures. RED: restore a raw `toLocaleString` at one call site.
+- 📐 **The art director's single biggest score driver** (critics panel): money is the least consistently treated element on the phone. The
+  same pool reads "TZS 3,000" in muted periwinkle on the board card and "TZS 3K" in white on the detail tile; in card footers money is the
+  dimmest text in its row while the countdown is the brightest; and gilt is spent on the settled status pill, the /results pager arrows, the
+  crown and the chart's 50% chip while pool figures stay blue. The typography verifier's counterpoint is recorded with it: the hero money figure
+  *is* gold, and the slash eyebrow is the sanctioned brand device — so the finding is not "gold has left money", it is "gold is not reserved
+  for money". This unit's money primitive decides the money ink; the settled pill and the pager arrows leave gold. ⚠️ `test:gold-is-money`
+  passes today over all of this — read what population it checks before relying on it here.
+
+**U39 · [General] Close the type ladder and the icon set**
+- Remove the off-ladder literals the inspection counted (9, 9.5 mixed-case, 10.5, 11.5, 12.5, 13.5, 14.5, 15.5 …) by moving each call site onto a rung;
+  cap the sizes inside one card at three; put every control glyph on the 16/18/20/24 set.
+- `test:type-scale` gains a ratchet that may only shrink, and the icon set becomes a named contract.
+- Guard: the ratchet's count at 0 new off-ladder sizes; driver samples card and chrome type. RED: add one literal.
+- 📐 (critics panel) Icons with borrowed meanings: withdraw is an upload arrow, gambling harm is a pause glyph, and the scales stand for three
+  different things across the rail, help and legal rows. The three /help contact rows use three plate materials and hues, one of them the YES
+  ink. And the monospace voice has spread from labels into running Swahili sentences. The icon contract names each glyph's one meaning.
+
+**U40 · [General] Player copy and terminology (EN/SW/ZH)**
+- One word per concept per locale (YES/NDIO/NDIYO, pool/bwawa/dimbwi, live/mubashara/hai, Top vs Leaderboard, Proposals' three names), plurals
+  correct at n = 1, no operator jargon in player copy, no English abbreviations left in SW/ZH.
+- 📐 **Measured 2026-09-16, now that SW is the default — the NDIO/NDIYO split is not theoretical, it is shipped.** `i18n-dict.ts` says
+  `yes: "NDIO"` (`:2715`) and `yesOutcome: "NDIO"` (`:4078`) — the buttons, chips and outcome words — while **NDIYO** is what the product says
+  everywhere it explains itself: `howItWorksBody` (`:2753`), `probOverTime` / `probChartAria` (`:3535`, `:3537`), `backYesAria` /
+  `backYesAriaNoPrice` (`:3560-3561`), `faq1a` / `faq1aLoser` (`:4301-4302`), `contTodayLead/SoonLead/WeekLead` (`:3267-3269`). So a player
+  **hears** a different word from the one they **see**: the accessible name of the NDIO button is "Unga mkono NDIYO". ⛔ Both spellings are
+  real Swahili — which is exactly why this needs the native reader to choose, not a find-and-replace.
+- 📐 **And the date format is half-translated on one screen.** On a market detail page the chrome prints "27 Oct 2026, 00:00" and "23 Oct, 00:00"
+  while the resolution prose four rows below reads "Oktoba 23–25" — English month abbreviations inside Swahili, one card apart, on the
+  market detail page at 360 SW. Every locale's month and date formatting goes through one formatter, chosen with the native reader.
+- ⛔ Needs a native SW reader and a native ZH reader before ship; `test:i18n` keeps EN/SW/ZH in parity.
+- Guard: a source contract that the terms map to one key per concept, plus the parity test. RED: reintroduce a second spelling.
+- **D53 — two grammar slips in the responsible-gambling line** (critics panel, verified). `stopGambling` (`i18n-dict.ts:4326`) reads "Kama
+  kucheza kamari imekuwa sio burudani, acha." — the ku- infinitive subject takes "kumekuwa", and the negative before a noun is "si".
+  ⛔ Compliance text in every page footer: the native reader writes it and Ali approves it; a session does not. Guard: the approved string is
+  pinned by the responsible-gambling copy contract. RED: restore the old line.
+- 📐 **The critics panel's Swahili list, each seen at 360 SW** — every item is either one-word-per-concept or English left inside Swahili:
+  the chart range control reads "1W / 1M / ALL"; resolution criteria date "Novemba 30, 2026" in American order; the featured result card carries
+  an English "SPORTS" chip; one Up & Down round is a "mechi" (a football match) in one panel and a "raundi" in the next; two different phrases for
+  "play responsibly" share a screen; "siku 1 zimebaki" puts a plural verb on one day; the tier badges show English initials S and B beside the
+  Swahili tier name, and the sort reads "ROI"; the prize pool is "bwawa" (a pond or swimming pool); one card says "none yet" two ways ("Bila dau
+  bado" / "Hakuna bwawa bado"); phone numbers are grouped two ways on consecutive lines; and "Hakuna kete. Imani tu." lands as a statement of
+  faith rather than of judgement. The native reader decides each one; none is a find-and-replace.
+
 ---
 
 ## §10 — Session order (two units per session)
@@ -789,7 +1393,13 @@ against the U1 baseline. **[General] control:** ≥ 640 shows a zero diff unless
 | S14 | U25 + U26 | skeletons, empty/error/offline states |
 | S15 | U27 + U28 | touch, low-end performance and motion tiers |
 | S16 | U29 + U30 | browser floor (owner decision with data), real devices + accessibility |
-| Seal | — | full production re-measure (every width × locale × density × condition in §11), the seven lenses re-scored from those measurements (§1), the full U30 checklist |
+| S17 | U31 | verify the backlog first: later units may change once those 379 items are judged |
+| S18 | U32 + U33 | card state truth, chrome menus and ticker |
+| S19 | U34 + U35 | signed-in header, Up & Down truth and fit |
+| S20 | U36 + U37 | /live search, detail copy, reading order and hints |
+| S21 | U38 + U39 | one money grammar, close the type ladder |
+| S22 | U40 | copy and terminology (with native readers) |
+| Seal | — | full production re-measure (every width × locale × density × condition in §11), the seven lenses re-scored from those measurements (§1), the full U30 checklist, §1a closure |
 
 **Phase-end gates:**
 - **Owner visual sign-off (§8a):** a contact sheet for Ali after S3 (Phase B), S5 (C), S11 (D + E) and S16 (F).
@@ -808,6 +1418,8 @@ U7–U10 don't depend on the density switch and may move earlier if Ali wants th
      `test:revoked-deadend`, `test:i18n` (+ `qa:live`).
    - By hand when touched: `test:tap-target`, `test:card-share`, `test:type-scale`, `red:filter-language`, `test:popup-fit`,
      `test:presence-class`, `test:wallet-reach`, `test:measure`, `test:docs`, `test:design-one-door`, `test:tracker-hygiene`, `test:integrity`.
+   - **Always, at the start and the end of a session:** `test:mobile-visual-plan` (the tracker guard). Its RED control
+     `red:mobile-visual-plan` is re-run whenever the guard or the board's shape changes.
    - Plus `test:all` compared against a clean `main` (`test:responsive` is already red with 81 pre-existing failures; compare counts).
 3. Local drive on `next dev` after `rm -rf .next/dev`: the unit's driver at 320/360/412/768/1280 × EN/SW/ZH × both densities, including the zero-diff control.
 4. **Look at the shots** at 360 EN, 360 SW and 412 EN. A green number is not proof.
@@ -858,7 +1470,13 @@ with its reason in §2, never silently.
 | Footer navigation links | ≈ 19px rows | ≥ 40px |
 | Confirmation questions | centred cards | bottom sheets, primary visible at 360×640, safe area respected |
 | Overlays (census) | not measured | all "fits"; ≤ 1 blocking overlay at a time; toasts ≤ 2 |
-| Defects D1–D27 (register §8) | 27 open | 0 |
+| Defects D1–D41 (register §8) | 41 open | 0 |
+| Inspection backlog (findings record) | 379 unverified | 0 left unverified (U31) |
+| Card share control | 25–26 × 36–37px | ≥ 40 × 40px on every card |
+| Cards stating a price with no bets | every resolved/void empty card | 0 in any state |
+| Money that wraps or ellipsises (320/360 × 3 locales, 7-figure fixtures) | multiple per surface | 0 |
+| Off-ladder type sizes on player surfaces | 8+ literals counted | 0 new; ratchet may only shrink |
+| Control glyph sizes | 9 in board chrome alone | the 16/18/20/24 set |
 | Tap floor / overflow / clipped money | holds | still holds in EN/SW/ZH |
 | Comfortable and ≥ 640 | — | zero diff against the U1 baseline |
 | Landscape 780×360 pinned chrome on `/markets` | 237px (66%) | ≤ 150px |
@@ -898,6 +1516,9 @@ with its reason in §2, never silently.
 ---
 
 ## §13 — Seven-lens review (S0b, 2026-09-15)
+
+> **Since 2026-09-16 this review has an outside counterpart: §3b**, where six professional critics scored the live product from its
+> pictures (5–6.5/10). The lens scores below are this plan's own, by coverage; §3b's are the outside view. The Seal re-runs both.
 
 Ali: *"evaluate your plan as a responsiveness, UI/UX, graphical, video-motion and animations engineer, and as an artist and a compatibility engineer;
 if any rating is less than 10/10, push it to 10."*

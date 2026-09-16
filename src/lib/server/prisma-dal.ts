@@ -55,6 +55,9 @@ import type {
   BonusGrantStatus,
   StoredInviteCampaign,
   StoredInviteEntry,
+  StoredSmsMessage,
+  SmsDlr,
+  SmsDlrResult,
   StoredAgentApplication,
   StoredAgentApplicationDocument,
   StoredAgentInvitation,
@@ -90,6 +93,73 @@ function numOrNull(d: unknown): number | null {
   if (d == null) return null;
   return Number(d);
 }
+
+/**
+ * SmsMessage row → StoredSmsMessage.
+ *
+ * ⚠️ `balanceTzs` is a `Decimal(18,2)`, so Prisma hands back a Decimal object, not a
+ * number. `numOrNull` is the same coercion every money column uses; a raw Decimal
+ * reaching a `<` against the cost floor compares as an object, and the floor then
+ * silently never trips — on the one instrument that decides whether a campaign is
+ * allowed to eat the float the login path needs.
+ */
+type SmsMessageRow = {
+  reference: string; msisdn: string; purpose: string; provider: string; senderId: string;
+  bodyLen: number; status: string; providerMsg: string | null; dlrStatus: string | null;
+  dlrDesc: string | null; balanceTzs: unknown; attempts: number; targetType: string | null;
+  targetId: string | null; createdAt: Date; sentAt: Date | null; deliveredAt: Date | null;
+  failedAt: Date | null;
+};
+
+function toStoredSmsMessage(s: SmsMessageRow): StoredSmsMessage {
+  return {
+    reference: s.reference,
+    msisdn: s.msisdn,
+    purpose: s.purpose as StoredSmsMessage["purpose"],
+    provider: s.provider,
+    senderId: s.senderId,
+    bodyLen: s.bodyLen,
+    status: s.status as StoredSmsMessage["status"],
+    providerMsg: s.providerMsg,
+    dlrStatus: s.dlrStatus,
+    dlrDesc: s.dlrDesc,
+    balanceTzs: numOrNull(s.balanceTzs),
+    attempts: s.attempts,
+    targetType: s.targetType,
+    targetId: s.targetId,
+    createdAt: iso(s.createdAt),
+    sentAt: iso(s.sentAt),
+    deliveredAt: iso(s.deliveredAt),
+    failedAt: iso(s.failedAt),
+  };
+}
+
+/**
+ * Every writable column of StoredSmsMessage, typed `Record<keyof …>` so `tsc` refuses a
+ * field added to the Stored shape and forgotten here.  `null` = not updatable.
+ * ⛔ A DateTime column MUST be "date": an ISO string reaching Prisma throws on Postgres
+ * and nowhere else, so every memory-backed suite would stay green straight through it.
+ */
+const SMS_MESSAGE_COLUMN: Record<keyof StoredSmsMessage, "date" | "plain" | null> = {
+  reference: null,
+  createdAt: null,
+  msisdn: "plain",
+  purpose: "plain",
+  provider: "plain",
+  senderId: "plain",
+  bodyLen: "plain",
+  status: "plain",
+  providerMsg: "plain",
+  dlrStatus: "plain",
+  dlrDesc: "plain",
+  balanceTzs: "plain",
+  attempts: "plain",
+  targetType: "plain",
+  targetId: "plain",
+  sentAt: "date",
+  deliveredAt: "date",
+  failedAt: "date",
+};
 
 // ---------------------------------------------------------------------------
 // Entity mappers: Prisma row → Stored* type
@@ -3011,6 +3081,116 @@ export const prismaDb = {
       } catch {
         return null;
       }
+    },
+  },
+
+  smsMessage: {
+    create: async (m: StoredSmsMessage): Promise<StoredSmsMessage> => {
+      const row = await pc().smsMessage.create({
+        data: {
+          reference: m.reference, msisdn: m.msisdn, purpose: m.purpose, provider: m.provider,
+          senderId: m.senderId, bodyLen: m.bodyLen, status: m.status, providerMsg: m.providerMsg,
+          dlrStatus: m.dlrStatus, dlrDesc: m.dlrDesc, balanceTzs: m.balanceTzs,
+          attempts: m.attempts, targetType: m.targetType, targetId: m.targetId,
+          createdAt: new Date(m.createdAt),
+          sentAt: m.sentAt ? new Date(m.sentAt) : null,
+          deliveredAt: m.deliveredAt ? new Date(m.deliveredAt) : null,
+          failedAt: m.failedAt ? new Date(m.failedAt) : null,
+        },
+      });
+      return toStoredSmsMessage(row);
+    },
+    createMany: async (ms: StoredSmsMessage[]): Promise<StoredSmsMessage[]> => {
+      // `createMany` cannot return rows, and these are written BEFORE the HTTP call so a
+      // crash mid-send still leaves a row for a receipt to land on. The input IS the row.
+      if (ms.length === 0) return [];
+      await pc().smsMessage.createMany({
+        data: ms.map((m) => ({
+          reference: m.reference, msisdn: m.msisdn, purpose: m.purpose, provider: m.provider,
+          senderId: m.senderId, bodyLen: m.bodyLen, status: m.status, providerMsg: m.providerMsg,
+          dlrStatus: m.dlrStatus, dlrDesc: m.dlrDesc, balanceTzs: m.balanceTzs,
+          attempts: m.attempts, targetType: m.targetType, targetId: m.targetId,
+          createdAt: new Date(m.createdAt),
+          sentAt: m.sentAt ? new Date(m.sentAt) : null,
+          deliveredAt: m.deliveredAt ? new Date(m.deliveredAt) : null,
+          failedAt: m.failedAt ? new Date(m.failedAt) : null,
+        })),
+        skipDuplicates: true,
+      });
+      return ms;
+    },
+    findByReference: async (reference: string): Promise<StoredSmsMessage | null> => {
+      const row = await pc().smsMessage.findUnique({ where: { reference } });
+      return row ? toStoredSmsMessage(row) : null;
+    },
+    update: async (reference: string, patch: Partial<StoredSmsMessage>): Promise<StoredSmsMessage | null> => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const data: Record<string, any> = {};
+      for (const [k, v] of Object.entries(patch)) {
+        if (v === undefined) continue;
+        const spec = SMS_MESSAGE_COLUMN[k as keyof StoredSmsMessage];
+        if (spec === null) continue;
+        if (spec === undefined) {
+          throw new Error(`[prisma-dal] smsMessage.update: unmapped field "${k}" — add it to SMS_MESSAGE_COLUMN or it is a silent production no-op.`);
+        }
+        data[k] = spec === "date" ? (v ? new Date(v as string) : null) : v;
+      }
+      if (Object.keys(data).length === 0) {
+        const row = await pc().smsMessage.findUnique({ where: { reference } });
+        return row ? toStoredSmsMessage(row) : null;
+      }
+      try {
+        const row = await pc().smsMessage.update({ where: { reference }, data });
+        return toStoredSmsMessage(row);
+      } catch (err) {
+        console.error(`[prisma-dal] smsMessage.update failed for ${reference}:`, err);
+        return null;
+      }
+    },
+    /**
+     * Apply a delivery receipt, monotonically — the same rule the memory DAL enforces.
+     *
+     * ⭐ THE GUARD IS IN THE `where`, NOT IN A READ-THEN-WRITE. Two containers handed the
+     * same receipt would both read QUEUED and both write, and the second would overwrite
+     * the first's timestamps. A conditional `updateMany` lets Postgres decide once: a row
+     * already DELIVERED or FAILED matches nothing, `count` is 0, and `changed` is false.
+     * That is what makes the provider's at-least-once retry a genuine no-op rather than a
+     * race we happen to usually win.
+     */
+    recordDlr: async (reference: string, d: SmsDlr): Promise<SmsDlrResult> => {
+      // The raw token is recorded even when it moves nothing — that is how the vendor's
+      // undocumented vocabulary gets learned from production rather than guessed here.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const stamp: Record<string, any> = { dlrStatus: d.rawStatus, dlrDesc: d.desc };
+      let changed = false;
+      if (d.status !== null) {
+        const when = new Date(d.at);
+        const r = await pc().smsMessage.updateMany({
+          where: { reference, status: { notIn: ["DELIVERED", "FAILED"] } },
+          data: {
+            ...stamp,
+            status: d.status,
+            ...(d.status === "DELIVERED" ? { deliveredAt: when } : {}),
+            ...(d.status === "FAILED" ? { failedAt: when } : {}),
+          },
+        });
+        changed = r.count > 0;
+      }
+      if (!changed) {
+        // Either the token was unrecognised or the row was already settled. Record the
+        // observation without touching `status`. ⛔ Never default an unknown token to
+        // DELIVERED — that is reporting delivery we have no evidence for, on the rail
+        // that carries login codes.
+        await pc().smsMessage.updateMany({ where: { reference }, data: stamp });
+      }
+      const row = await pc().smsMessage.findUnique({ where: { reference } });
+      return { changed, row: row ? toStoredSmsMessage(row) : null };
+    },
+    countSince: async (sinceIso: string, purpose?: StoredSmsMessage["purpose"]): Promise<number> =>
+      pc().smsMessage.count({ where: { createdAt: { gte: new Date(sinceIso) }, ...(purpose ? { purpose } : {}) } }),
+    listRecent: async (limit = 50): Promise<StoredSmsMessage[]> => {
+      const rows = await pc().smsMessage.findMany({ orderBy: { createdAt: "desc" }, take: limit });
+      return rows.map(toStoredSmsMessage);
     },
   },
 };

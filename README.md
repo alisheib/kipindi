@@ -50,7 +50,7 @@ All surfaces below are E2E-tested. Total: **9 suites · 246 tests passing**.
 **Mocked / stubbed for dev** (interface stable, swap is one line per service):
 
 - DB persistence — PostgreSQL via Prisma ORM (all entities in dedicated tables)
-- SMS dispatch — console provider (production swaps to Twilio / Africa's Talking)
+- SMS dispatch — **live** on the Blackball Gateway (`console` provider in dev)
 - NIDA verify — deterministic mock (production swaps to real mTLS endpoint)
 - Document upload — storage-key stub (production swaps to S3-compatible bucket)
 - Payment dispatch — instant approve (production swaps to Selcom or Azampay aggregator)
@@ -139,7 +139,8 @@ node scripts/generate-pdfs.mjs
 These are contract-pending — the platform code is ready to receive each adapter via the existing service interface.
 
 1. **Selcom / Azampay** payment aggregator agreement → wires `src/lib/server/payments.ts`
-2. **Twilio / Africa's Talking** SMS contract → wires `src/lib/server/sms.ts`
+2. ~~**SMS contract**~~ — **done 2026-09-16**: Blackball Gateway, wired in
+   `src/lib/server/sms-blackball.ts`. See `docs/BLACKBALL-SMS.md`.
 3. **Claude API** for AI market generation → wires the L1–L4 pipeline + cost tracking
 4. **NIDA** mTLS endpoint → wires `src/lib/server/nida.ts`
 5. **S3-compatible object storage** for KYC documents → wires the upload stub in `/profile/kyc`

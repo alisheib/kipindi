@@ -11,6 +11,11 @@
  *    production. The webhook receiver reads these EXACT env names; a naming
  *    mismatch made every callback 401 and deposits silently never credit — a
  *    guaranteed launch-day outage. Catch it at boot, not in production traffic.
+ *  - SMS (2026-09-16): an unrecognised SMS_PROVIDER, a selected Blackball with no
+ *    credentials, a sender ID over the gateway's 12-character cap, an unusable DLR
+ *    secret, and — loudest — OTP login switched on while SMS cannot deliver. Each of
+ *    these fails a whole rail SILENTLY; the first evidence would otherwise be a
+ *    player who cannot sign in.
  *
  * NOTE: the old POCA §16 conflicted-resolution boot alarm is gone — the two-officer
  * rule + officer-conflict block were retired (resolution-policy.ts; owner decision
@@ -18,9 +23,14 @@
  */
 import { assertPaymentModeSane } from "./payment-control";
 import { isAdminTotpEnforced } from "./admin-guard";
+import { smsConfigured, smsProviderResolution } from "./sms";
+import { blackballConfigured, senderIdProblem } from "./sms-blackball";
 
 /** The exact env names read by api/webhooks/payments/route.ts (KNOWN_PROVIDERS). */
 const WEBHOOK_SECRET_ENVS = ["SELCOM_WEBHOOK_SECRET", "AZAMPAY_WEBHOOK_SECRET", "MIXX_WEBHOOK_SECRET"] as const;
+
+/** The exact env the SMS delivery-receipt receiver reads (api/webhooks/blackball/route.ts). */
+const SMS_WEBHOOK_SECRET_ENV = "BLACKBALL_WEBHOOK_SECRET";
 
 /** Anything that will never verify a vendor signature: unset, a setup-template placeholder,
  *  or too short to be a generated secret. Exported so `test:webhook-secret` can drive it —
@@ -80,6 +90,63 @@ export async function runBootChecks(): Promise<void> {
           `Any provider whose secret is missing has EVERY callback rejected with 401 → deposits ` +
           `for that provider never credit. Set them in Railway before enabling the provider. ` +
           `(The legacy name PAYMENT_WEBHOOK_SECRET is NOT read by the code.)`,
+      );
+    }
+
+    /**
+     * ── SMS (2026-09-16) ────────────────────────────────────────────────────
+     * The same doctrine as the block above: these are conditions that produce a
+     * TOTAL, SILENT failure of a rail, and the first evidence would otherwise be a
+     * player who cannot sign in. All fail-open — a boot `throw` caused the C7 outage.
+     */
+    const resolution = smsProviderResolution();
+
+    // ⛔ ONE MISSING LETTER IN A RAILWAY VARIABLE. `SMS_PROVIDER=blackbal` is a FAILED
+    // choice, not a default, and the tri-state exists so it cannot quietly become the
+    // console stub — but nothing would SAY so without this line.
+    if (resolution === "unrecognised") {
+      console.error(
+        `[sms] WARNING: SMS_PROVIDER="${process.env.SMS_PROVIDER}" is not a provider this build knows. ` +
+          `Valid values are "console" and "blackball". NOTHING will be delivered and no message will be ` +
+          `marked sent — invite campaigns hold their phone entries and OTP refuses with SMS_UNDELIVERABLE.`,
+      );
+    }
+
+    if (resolution === "blackball") {
+      if (!blackballConfigured()) {
+        console.error(
+          `[sms] WARNING: SMS_PROVIDER=blackball but BLACKBALL_CLIENT_ID / BLACKBALL_CLIENT_SECRET are not set. ` +
+            `Every send will fail. Set them in Railway (Configurations → API Configurations in the Blackball portal).`,
+        );
+      }
+      const senderProblem = senderIdProblem(process.env.SMS_SENDER_ID);
+      if (senderProblem) {
+        // Measured against the live gateway: `source` is capped at 12 characters and the
+        // cap is enforced BEFORE authentication, so an over-long sender ID fails every
+        // send with a complaint about a field rather than about the sender ID.
+        console.error(`[sms] WARNING: SMS_SENDER_ID is ${senderProblem}. The gateway refuses the request outright.`);
+      }
+      if (webhookSecretUnusable(process.env[SMS_WEBHOOK_SECRET_ENV])) {
+        console.error(
+          `[sms] WARNING: ${SMS_WEBHOOK_SECRET_ENV} is MISSING, a PLACEHOLDER or too short. The delivery-receipt ` +
+            `receiver reads this exact name (api/webhooks/blackball/route.ts), so EVERY callback is rejected with ` +
+            `401 → delivery status is never recorded, InviteEntry.DELIVERED/BOUNCED are never written, and a ` +
+            `message that silently failed looks identical to one that arrived.`,
+        );
+      }
+    }
+
+    /**
+     * ⭐ THE LOUDEST ONE, AND THE REASON THIS BLOCK EXISTS AT ALL. With OTP as a login
+     * path, an SMS rail that cannot deliver is not a degraded feature — it is every
+     * player locked out. Password sign-in still works, which is exactly what the
+     * operator needs to be told in the same breath.
+     */
+    if (process.env.OTP_ENABLED === "1" && !smsConfigured()) {
+      console.error(
+        `[sms] 🔴 OTP LOGIN IS ON AND SMS CANNOT DELIVER (provider="${resolution}"). Every phone-code sign-in ` +
+          `will refuse with SMS_UNDELIVERABLE. Password sign-in is unaffected. Either fix the provider or unset ` +
+          `OTP_ENABLED.`,
       );
     }
   }

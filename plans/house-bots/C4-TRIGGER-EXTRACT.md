@@ -32,11 +32,11 @@
 ## 2. The sweep
 
 ### 2.1 Rules
-- Keyset `(placedAt, id)`, pages of `SWEEP_PAGE_SIZE = 200` until caught up (P:230; constants:530); index `Position_placedAt_id_idx` (migration `20260915150100:53`; schema.prisma:1844).
+- Keyset `(placedAt, id)`, pages of `SWEEP_PAGE_SIZE = 200` until caught up (P:230; constants:530); index `Position_placedAt_id_idx` (migration `20260916150100:53`; schema.prisma:1844).
 - Start `max(watermark − SWEEP_LOOKBACK_MS 90 000, dbNow − SWEEP_MAX_LOOKBACK_MS 600 000)` (A11 04:342; ruling 3; constants:527-529). Only positions older than `passNow − SWEEP_MIN_AGE_MS 5000` (04:622; constants:490).
 - SQL filter: unmarked, market LIVE, product line in scope, older than 5 s, `NOT EXISTS` a COUNTER intent with anchorKey = position id (04:622; 01:1203). `passNow` read once; ACTIVE targets with `createdAt ≤ passNow` in the same snapshot (N2 step 2, 04:3946).
 - OFF / no ACTIVE bot → the watermark advances, no writes (04:343; 01:1131). Admission saturated → skip the pass while `queueDepth > 0` (04:616; 01:1091(4)). Inserts `ON CONFLICT DO NOTHING` (P:230). Naive-UTC `placedAt`; bounds as ISO `::timestamp` (ENG-12 01:1146).
-- Watermark: `HouseBotRuntime` key `global` `sweepPlacedAt`/`sweepPositionId` (DAL:171-172), seeded to `now()` by migration `20260915150000:209` (memory seed DAL:1820); `advanceSweep(placedAt, positionId)` forward-only tuple compare (memory DAL:2126-2135; prisma 3179-3187).
+- Watermark: `HouseBotRuntime` key `global` `sweepPlacedAt`/`sweepPositionId` (DAL:171-172), seeded to `now()` by migration `20260916150000:209` (memory seed DAL:1820); `advanceSweep(placedAt, positionId)` forward-only tuple compare (memory DAL:2126-2135; prisma 3179-3187).
 - Watermark value unsettled: PLAN `min(max seen, now − 60 s)` (P:230) vs ENG-10 `dbNow − lookback` while OFF (01:1131) — open point 5. Which process runs the sweep and how often is specified nowhere (P:223-224; 04:2881-2892; `EngineTicks` engine.ts:70-75) — open point 4.
 
 ### 2.2 Missing DAL reads (both twins; `test:dal-parity` covers `HouseSeamStore`/`HouseBotRuntimeStore` members automatically, `scripts/dal-parity.test.mts:347-417`)

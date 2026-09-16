@@ -631,5 +631,75 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
     WALLET.test(`await db.wallet.update(id, { status: "FROZEN" });`) && WALLET.test(`UPDATE "Wallet" SET "status" = 'FROZEN'`));
 }
 
+/*
+ * ⚠️ §13 IS main's SECTION, RENUMBERED. It arrived as "§6" in the SMS release (2026-09-16) while this branch already
+ * had §6–§12 for the house tables, whose labels `scripts/anchors/dal-parity.anchors.mjs` names in its mutations. The
+ * numbers are labels, so main's section keeps its content and takes the next free number here; `docs/BLACKBALL-SMS.md`
+ * points at §13 on this branch. The next merge of main must not "restore" it to §6.
+ */
+/* ═══ §13 · SmsMessage — the delivery-receipt row (2026-09-16) ═════════════════════════ */
+{
+  // ⭐ WHY THIS TABLE NEEDS THE SAME GUARD AS THE MONEY ROWS. A delivery receipt is the ONLY
+  // writer of `status` after the send, it arrives on a different request, and every
+  // behavioural suite for it runs on the MEMORY backend. So a field dropped from the Prisma
+  // read mapper — or a DateTime written as a plain string — is invisible to every test that
+  // exists and shows up first as a receipt that silently records nothing on production.
+  const keys = storedKeys("StoredSmsMessage");
+  const read = region(dalSrc, "function toStoredSmsMessage(");
+  const map = region(dalSrc, "const SMS_MESSAGE_COLUMN");
+  const create = delegateMethod("smsMessage", "create");
+  const createMany = delegateMethod("smsMessage", "createMany");
+
+  ok("13.0 · the parser sees StoredSmsMessage's fields", keys.length >= 18, `saw ${keys.length}`);
+  for (const k of keys) {
+    ok(`13.read · toStoredSmsMessage maps "${k}" from the row`, readsFrom(read, k, "s"));
+    ok(`13.map · SMS_MESSAGE_COLUMN names "${k}"`, writesKey(map, k));
+    ok(`13.create · smsMessage.create writes "${k}"`, writesKey(create, k) || mentions(create, k));
+  }
+  // ⛔ EVERY TIMESTAMP MUST BE "date". An ISO string reaching a Prisma DateTime throws on
+  // Postgres and nowhere else, so the memory DAL would stay green straight through it.
+  for (const k of keys.filter((x) => /At$/.test(x) && x !== "createdAt")) {
+    ok(`13.date · "${k}" is typed "date" in the map`, new RegExp(`${k}: "date"`).test(map));
+  }
+  // The batch writer is what an invite campaign actually goes through; a field it forgets is
+  // a field that is null for every campaign message and correct for every OTP.
+  for (const k of keys) {
+    ok(`13.createMany · smsMessage.createMany writes "${k}"`, mentions(createMany, k));
+  }
+  // The map-driven update, not a hand-written allow-list — the 2026-09-07 affiliate no-op (§1).
+  const upd = delegateMethod("smsMessage", "update");
+  ok("13.update · smsMessage.update drives off SMS_MESSAGE_COLUMN", mentions(upd, "SMS_MESSAGE_COLUMN"));
+  ok("13.update · …and THROWS on an unmapped field rather than dropping it",
+    /unmapped field/.test(upd) && /throw new Error/.test(upd));
+  ok("13.update · …and carries no hand-written `if (patch.x !== undefined)` allow-list",
+    !/if \(patch\.\w+ !== undefined\)/.test(upd));
+
+  // ⭐ THE MONOTONIC RULE MUST HOLD IN BOTH BACKENDS, NOT ONLY THE ONE THE SUITES RUN ON.
+  // A receipt guard implemented in memory alone is a guard that passes every test and lets
+  // production overwrite a settled DELIVERED with a late FAILED.
+  const pDlr = delegateMethod("smsMessage", "recordDlr");
+  const mDlr = region(storeSrc, "recordDlr: (");
+  ok("13.dlr · the Prisma recordDlr resolves", pDlr.length > 200, `${pDlr.length} chars`);
+  ok("13.dlr · the memory recordDlr resolves", mDlr.length > 200, `${mDlr.length} chars`);
+  ok("13.dlr.prisma · the terminal guard is in the WHERE, so two containers cannot both apply it",
+    /notIn:\s*\["DELIVERED",\s*"FAILED"\]/.test(pDlr));
+  ok("13.dlr.memory · the memory side refuses to move a settled row too",
+    mentions(mDlr, "SMS_TERMINAL") && /includes\(m\.status\)/.test(mDlr));
+  ok("13.dlr · both sides record the RAW token even when it moves nothing",
+    mentions(pDlr, "dlrStatus") && mentions(mDlr, "dlrStatus"));
+  // ⛔ THE ONE DEFAULT THAT MUST NOT EXIST. An unrecognised token becoming DELIVERED is
+  // reporting delivery we have no evidence for, on the rail that carries login codes.
+  ok("13.dlr · neither side defaults an unknown token to DELIVERED",
+    !/\?\?\s*"DELIVERED"/.test(pDlr) && !/\?\?\s*"DELIVERED"/.test(mDlr));
+
+  // Controls — a parser that found nothing must go red, not quiet.
+  ok("13.c1 · CONTROL · `balanceTzs: null,` in a read mapper does NOT count as carrying it",
+    !readsFrom("    attempts: s.attempts,\n    balanceTzs: null,", "balanceTzs", "s"));
+  ok("13.c2 · CONTROL · a create body missing dlrStatus is reported missing",
+    !writesKey("          reference: m.reference, msisdn: m.msisdn,", "dlrStatus"));
+  ok("13.c3 · CONTROL · a column map that types a timestamp plain is caught",
+    !/deliveredAt: "date"/.test(`  deliveredAt: "plain",`));
+}
+
 console.log(`\ndal-parity: ${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);

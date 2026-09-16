@@ -324,6 +324,57 @@ export type StoredInviteEntry = {
   createdAt: string;
 };
 
+/** Which of OUR lanes a message belongs to — mirrors the `SmsPurpose` enum. */
+export type SmsPurpose = "OTP" | "INVITE" | "OPS";
+/** Mirrors the `SmsStatus` enum. ACCEPTED is the gateway's receipt; DELIVERED needs a
+ *  delivery report. ⛔ UNKNOWN is AMBIGUOUS, not failed — the request never completed,
+ *  so the gateway may hold the message and bill for it. */
+export type SmsStatus = "QUEUED" | "ACCEPTED" | "DELIVERED" | "FAILED" | "UNKNOWN";
+
+/** One SMS attempt, keyed by the reference handed to the gateway. ⛔ The message BODY is
+ *  never a field here: it carries the OTP. `bodyLen` is what a cost question needs. */
+export type StoredSmsMessage = {
+  reference: string;
+  msisdn: string;
+  purpose: SmsPurpose;
+  provider: string;
+  senderId: string;
+  bodyLen: number;
+  status: SmsStatus;
+  providerMsg: string | null;
+  dlrStatus: string | null;
+  dlrDesc: string | null;
+  balanceTzs: number | null;
+  attempts: number;
+  targetType: string | null;
+  targetId: string | null;
+  createdAt: string;
+  sentAt: string | null;
+  deliveredAt: string | null;
+  failedAt: string | null;
+};
+
+/** The two states a delivery receipt may never move a row out of. Exported because the
+ *  Prisma DAL must enforce the SAME rule — a monotonic guard implemented in only one
+ *  backend is a guard that holds in tests and not in production. */
+export const SMS_TERMINAL: readonly SmsStatus[] = ["DELIVERED", "FAILED"];
+
+/** One normalised line of a delivery receipt. ⛔ `status: null` means WE DO NOT RECOGNISE
+ *  the provider's token: record it raw and leave the row's status exactly as it was.
+ *  Shared by both DALs so the receipt contract cannot differ between them. */
+export type SmsDlr = { status: SmsStatus | null; rawStatus: string; desc: string | null; at: string };
+
+/** What applying a receipt did. `changed` is false on a replay, on an unrecognised token, and
+ *  on a row that had already settled — it is what tells the route whether a downstream write
+ *  (an InviteEntry status) is warranted at all.
+ *
+ *  ⚠️ NAMED, NOT INLINE, AND THAT IS LOAD-BEARING. `dal-parity`'s `region()` extracts a
+ *  function body by finding the first `{` after the signature, so an inline object literal in
+ *  either the parameters OR the return type silently hands the gate the TYPE instead of the
+ *  body — every assertion about the implementation then fails against 100 characters of type
+ *  annotation. Keep both sides of this signature named. */
+export type SmsDlrResult = { changed: boolean; row: StoredSmsMessage | null };
+
 /**
  * ⭐ EVERY TRANSACTION TYPE, AS DATA. The union below is DERIVED from this array so the
  * four surfaces that enumerate types by hand — the admin filter, the CSV export, the badge
@@ -902,6 +953,7 @@ declare global {
     bonusGrants: Map<string, StoredBonusGrant>;
     inviteCampaigns: Map<string, StoredInviteCampaign>;
     inviteEntries: Map<string, StoredInviteEntry>;
+    smsMessages: Map<string, StoredSmsMessage>;
   } | undefined;
 }
 
@@ -930,6 +982,7 @@ const store = globalThis.__50PICK_STORE ?? (globalThis.__50PICK_STORE = {
   bonusGrants: new Map(),
   inviteCampaigns: new Map(),
   inviteEntries: new Map(),
+  smsMessages: new Map(),
 });
 
 // Hot-reload safety: if a previous build created the global without the newer maps,
@@ -952,6 +1005,7 @@ if (!store.events)          store.events = new Map();
 if (!store.bonusGrants)     store.bonusGrants = new Map();
 if (!store.inviteCampaigns) store.inviteCampaigns = new Map();
 if (!store.inviteEntries)   store.inviteEntries = new Map();
+if (!store.smsMessages)     store.smsMessages = new Map();
 
 const memoryDb = {
   // USER
@@ -2101,6 +2155,59 @@ const memoryDb = {
       store.inviteEntries.set(id, next);
       return next;
     },
+  },
+
+  smsMessage: {
+    create: (m: StoredSmsMessage): StoredSmsMessage => { store.smsMessages.set(m.reference, m); return m; },
+    createMany: (ms: StoredSmsMessage[]): StoredSmsMessage[] => { for (const m of ms) store.smsMessages.set(m.reference, m); return ms; },
+    findByReference: (reference: string): StoredSmsMessage | null => store.smsMessages.get(reference) ?? null,
+    update: (reference: string, patch: Partial<StoredSmsMessage>): StoredSmsMessage | null => {
+      const m = store.smsMessages.get(reference);
+      if (!m) return null;
+      const next: StoredSmsMessage = { ...m, ...patch };
+      store.smsMessages.set(reference, next);
+      return next;
+    },
+    /**
+     * Apply a delivery receipt. ⛔ MONOTONIC: a row that already reached DELIVERED or
+     * FAILED never moves again, so the provider's at-least-once retry is a no-op and a
+     * late receipt cannot contradict a settled one. `changed` is what tells the route
+     * whether a downstream write (an InviteEntry status) is warranted.
+     *
+     * ⛔ A NULL `status` MEANS "WE DO NOT RECOGNISE THIS TOKEN". The raw token is still
+     * recorded — that is how the vendor's undocumented vocabulary gets learned — but the
+     * row's status is left exactly as it was. Defaulting an unknown token to DELIVERED
+     * would report delivery we have no evidence for, on the rail that carries login codes.
+     */
+    recordDlr: (reference: string, d: SmsDlr): SmsDlrResult => {
+      const m = store.smsMessages.get(reference);
+      if (!m) return { changed: false, row: null };
+      const settled = SMS_TERMINAL.includes(m.status);
+      const moving = d.status !== null && !settled && d.status !== m.status;
+      const next: StoredSmsMessage = {
+        ...m,
+        dlrStatus: d.rawStatus,
+        dlrDesc: d.desc,
+        ...(moving
+          ? {
+              status: d.status as SmsStatus,
+              deliveredAt: d.status === "DELIVERED" ? d.at : m.deliveredAt,
+              failedAt: d.status === "FAILED" ? d.at : m.failedAt,
+            }
+          : {}),
+      };
+      store.smsMessages.set(reference, next);
+      return { changed: moving, row: next };
+    },
+    countSince: (sinceIso: string, purpose?: SmsPurpose): number => {
+      let n = 0;
+      for (const m of store.smsMessages.values()) {
+        if (m.createdAt >= sinceIso && (!purpose || m.purpose === purpose)) n++;
+      }
+      return n;
+    },
+    listRecent: (limit = 50): StoredSmsMessage[] =>
+      Array.from(store.smsMessages.values()).sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, limit),
   },
 };
 
