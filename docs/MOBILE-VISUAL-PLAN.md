@@ -1038,6 +1038,13 @@ by U1's driver at the §11 matrix unless a unit says otherwise.
 - `noPrice` must describe the pool, not the phase: a market with no bets shows no crowd price in **any** state (live, closed, resolved, void).
   Terminal cards show the outcome and an empty bar, never a centred needle; the outcome word takes its own ink (a NO result is never YES-green).
 - The meta row protects money first: at 320 SW the pool keeps its width and the countdown or info plate yields.
+- 📐 **Re-confirmed live on 2026-09-16 at 360 SW, and the colour half is the worse half.** On `/results`, cards whose outcome is **HAPANA**
+  print "TOKEO · HAPANA" in the **YES green**, above a bar that is almost entirely green with the needle hard right — so the losing side's word,
+  the winning side's colour and a crowd price that was wrong all sit in one 80px block, and nothing on the card distinguishes a NDIO result from
+  a HAPANA one. Three cards in one screen. The outcome word takes its own ink before anything else in this unit.
+- 📐 **The same card states its result three times in two different words**: the chip "IMEKAMILIKA", the row "Imekamilika HAPANA", and the footer
+  "Imetatuliwa HAPANA". One fact, three statements, two vocabularies — the terminology half belongs to U40, the repetition to this unit: a terminal
+  card says its outcome **once**.
 - Guard: driver at 320/360 × EN/SW/ZH over a board containing live-empty, closed-empty, resolved-empty and void cards: 0 cards showing a
   percentage with volume 0; 0 ellipsised money nodes. RED: restore the live-gated `noPrice`.
 
