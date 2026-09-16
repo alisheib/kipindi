@@ -751,5 +751,54 @@ section("§7 · switchOffHouseBots");
     await w.switchOn();
   }
 }
+// ═══ §8 · Postgres only: MON-06 — two processes, clocks at −5 s and +5 s, a cash-out racing a house stake (ruling 162) ═══
+if (w.onPostgres) {
+  section("§8 · MON-06: the lock margin holds across two processes with skewed clocks (Postgres)");
+  {
+    const { spawn } = await import("node:child_process");
+    const { pathToFileURL } = await import("node:url");
+    const { join: joinPath, dirname: dirnamePath } = await import("node:path");
+    const { fileURLToPath: toPath } = await import("node:url");
+    const ROOT8 = joinPath(dirnamePath(toPath(import.meta.url)), "..", "..");
+    await w.limits();
+    const market = await w.poll({ graceMin: 1, paidMin: 1 });
+    const player = await w.user({ balance: 1_000_000 });
+    const bought = await w.svc.buyPosition(player, { marketId: market.id, side: "NO", stake: 10_000, idempotencyKey: crypto.randomUUID() });
+    if (!bought.ok) throw new Error(`MON-06 fixture: the player's bet was refused ${JSON.stringify(bought)}`);
+    // The exit window is 120 s from placement; move placement back 108 s so the window closes ~12 s ahead on the DB clock.
+    await w.backdate(bought.data.positionId, 108_000);
+    const pos = await w.mdal.positionStore.get(bought.data.positionId);
+    const T0 = Date.parse(pos.placedAt) + 120_000;
+    const b = await w.bot();
+    const run = (role: string, skewMs: number, extra: Record<string, string>) => new Promise<{ code: number | null; result: Any; out: string }>((resolve) => {
+      const child = spawn("npx", ["tsx", "--import", pathToFileURL(joinPath(ROOT8, "scripts", "lib", "clock-skew-preload.mjs")).href, "scripts/lib/house-bot-two-process-child.mts"], {
+        cwd: ROOT8, shell: process.platform === "win32",
+        env: { ...process.env, ROLE: role, SKEW_MS: String(skewMs), T0_ISO: new Date(T0).toISOString(), ...extra },
+      });
+      let out = "";
+      child.stdout?.on("data", (d) => { out += String(d); });
+      child.stderr?.on("data", (d) => { out += String(d); });
+      child.on("close", (code) => {
+        const m = /@@RESULT (\{.*\})/.exec(out);
+        resolve({ code, result: m ? JSON.parse(m[1]) : null, out });
+      });
+    });
+    const [cash, house] = await Promise.all([
+      run("cashout", -5_000, { POSITION_ID: pos.id, USER_ID: player }),
+      run("house", 5_000, { BOT_ID: b.botId, BOT_USER_ID: b.userId, MARKET_ID: market.id }),
+    ]);
+    ok("8.0 · fixture · both processes ran to the end and reported", cash.code === 0 && house.code === 0 && !!cash.result && !!house.result,
+      JSON.stringify({ cash: cash.result ?? cash.out.slice(-300), house: house.result ?? house.out.slice(-300) }));
+    const after = await w.mdal.positionStore.get(pos.id);
+    const housePositions = (await w.positionsOf(market.id)).filter((p: Any) => p.houseBotId != null);
+    const cashedOut = after?.status === "CASHED_OUT";
+    ok("8.1 · ⭐ MON-06 · never both: no house stake counted money that was then cashed out",
+      !(cashedOut && housePositions.length > 0), JSON.stringify({ status: after?.status, housePositions: housePositions.length, cash: cash.result, house: house.result }));
+    ok("8.2 · CONTROL · the race was live: the −5 s cash-out succeeded after the true close, and the +5 s house process tried more than 5 times and placed nothing",
+      cashedOut && cash.result?.success === true && Number(cash.result?.atDbMs) >= 500 && housePositions.length === 0 && Number(house.result?.attempts) > 5,
+      JSON.stringify({ cash: cash.result, house: house.result }));
+  }
+}
+
 console.log(`\n@@SUMMARY ${JSON.stringify({ pass, fail, store: STORE })}`);
 process.exit(fail === 0 ? 0 : 1);
