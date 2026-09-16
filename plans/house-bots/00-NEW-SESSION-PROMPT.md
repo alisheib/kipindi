@@ -16,6 +16,13 @@ Planning is finished and **approved by Ali (2026-09-13)**. Do not re-plan or re-
   - Work in Claude Code's normal ask-before-acting mode, never auto or bypass.
   - Make every tool call **one atomic action**: one edit, one command, or one git step. Never chain edit + commit + push, or several commands, into one call.
   - Before each call, say in one plain line what it does and why, so Ali can approve or refuse that step on its own.
+  - ⚠️ **An unattended run supersedes this rule while it lasts.** When the session was started with
+    `plans/house-bots/00-AUTONOMOUS-RUN-PROMPT.md`, Ali approves the command families ONCE in Phase 0 and is then away:
+    after Phase 0 you decide and act without waiting for him, and you never ask a question you can answer from the plan.
+    Everything else here still holds, the hard limits above all.
+- ⛔ **D19 (Ali, 2026-09-16) outranks every plan document: house bots are never public, and the holder sees nothing
+  either.** Read the "OWNER RULING D19" block at the top of `PROGRESS.md` before writing any code — it strikes work that
+  earlier documents still describe (the liquidity label, holder notices and emails, every public sentence).
 
 ## 🤝 OTHER CLAUDE SESSIONS: COORDINATE LIGHTLY (Ali, 2026-09-14)
 Only pushes to live need coordinating. Never send hello, ALL-CLEAR, start or end messages, and never wait on another session's reply.
@@ -72,7 +79,7 @@ and fix the document in the same commit.
   7. Fix every confirmed finding.
   8. Update `docs/HOUSE-BOTS.md` and `PROGRESS.md`.
   9. Commit, then push `house-bots`.
-- **Before pushing Commit 4** (the engine): ask Ali about the public repo (PROGRESS W1). Don't push Commit 4 until he answers.
+- **The public repo is ANSWERED** (W1, Ali 2026-09-13: keep it public for now and push the engine code anyway), so pushing `house-bots` never waits on him. ⚠️ D19 changed what that costs: W20 asks Ali to make the repository private, and only he can do it. Keep pushing meanwhile — the branch is the work's only backup.
 - **Green is not verification.** Drive real behaviour against the `db:scratch` Postgres (loopback only), and render real screens per PLAN §15, phases A–F.
   - Open and read every screenshot.
   - Report anything you couldn't measure as NOT MEASURED, never as passed.
