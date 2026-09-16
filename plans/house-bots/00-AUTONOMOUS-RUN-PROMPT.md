@@ -18,7 +18,7 @@ Ali will be away all day. He approves permissions and answers questions **only n
    built. Ali's standing instruction is to decide the rest yourself. The one item flagged for him and a lawyer (W2, a
    trigger player's data export vs the PDPA access right) is **not** a blocker: build the recorded default and move on.
    If something genuinely new appears, put it in "Waiting on Ali" with a recommended default and build the default.
-3. **Permissions, once.** Tell Ali in one plain list which command families this run needs, then exercise ONE harmless instance of each so every prompt appears now, not at 3 pm: `git fetch/add/commit/push origin house-bots` · `npm run --silent test:<key>` (incl. the two-store suites that boot the scratch Postgres on :5433) · `npx tsc --noEmit`, `npx esbuild`, `npx tsx` · `node <scratchpad>/*.mjs` (mutation harnesses) · PowerShell `New-Item -ItemType Junction`, `cmd /c rmdir`, `git worktree add/remove` · `npx next dev -p 3021` / `next start -p 3021` for renders + a Playwright screenshot script · `date -u`. If Ali wants fewer prompts, offer (don't apply without his explicit yes) an allowlist via the `update-config` skill scoped to those families and to `git push origin house-bots` only.
+3. **Permissions, once.** Tell Ali in one plain list which command families this run needs, then exercise ONE harmless instance of each so every prompt appears now, not at 3 pm: `git fetch/add/commit/push origin house-bots` · `npm run --silent test:<key>` (incl. the two-store suites that boot the scratch Postgres on :5433) · `npx tsc --noEmit`, `npx esbuild`, `npx tsx` · `node <scratchpad>/*.mjs` (mutation harnesses) · PowerShell `New-Item -ItemType Junction` and `[System.IO.Directory]::Delete` (never Git Bash `cmd /c rmdir` — MSYS mangles `/c`), `git worktree add/remove` · `npx next dev -p 3021` / `next start -p 3021` for renders + a Playwright screenshot script · `date -u`. If Ali wants fewer prompts, offer (don't apply without his explicit yes) an allowlist via the `update-config` skill scoped to those families and to `git push origin house-bots` only.
 4. **Say "Phase 0 done — running unattended"**, push PROGRESS with Ali's answers, and start.
 
 ## 🏃 THE UNATTENDED RUN — at least THREE plan commits
@@ -27,12 +27,13 @@ Ali will be away all day. He approves permissions and answers questions **only n
 
 **What is left, in order** (PROGRESS RESUME AT 4b ⬜ item 4 is authoritative; §5 steps 1–11 are built, the D19
 un-build and X7 are done, and rulings 143–162 are taken):
-1. **Finish step 11** (three items): (a) run `npm run red:house-bot-engine` to the end — 22 declared mutations, each
-   red on its own assertion — and act on every MISSED / WRONG-ASSERTION / STALE line by fixing the case or the anchor,
-   never by loosening an assertion; (b) **declare the mutations the new cases still lack** — L1 (the hook removed from
+1. **Finish step 11** (two items; `red:house-bot-engine` already runs green — 22 caught, 0 missed, 0 not measured,
+   0 files left dirty, 2026-09-16 — and any run of it must stay that way: act on every MISSED / WRONG-ASSERTION /
+   STALE line by fixing the case or the anchor, never by loosening an assertion):
+   (a) **declare the mutations the new cases still lack** — L1 (the hook removed from
    the call site → 18.77), L2 (the trigger run inside the admission slot or the lock → 18.80a–c), L3 (the sweep timer
    not started, or the lease check skipped → 11.30/11.31), L4 (the wrong counterparty id → 18.L4a–c), and 11b's EXPLAIN
-   pins (a read rewritten so it cannot use its partial index → the matching money 7.x pin); (c) **L6** — a double sweep
+   pins (a read rewritten so it cannot use its partial index → the matching money 7.x pin); (b) **L6** — a double sweep
    at leader failover writes one row per stake (two processes over one pass, reusing
    `scripts/lib/house-bot-two-process-child.mts`), with a case on Postgres and a mutation.
 2. **Commit 4's closing gates.** (a) **Merge `origin/main` first.** At the last handover it was `b726cb7f` (21 commits,
@@ -80,7 +81,7 @@ un-build and X7 are done, and rulings 143–162 are taken):
 - Fixture ids reused across sections collide on unique indexes only in a FULL run. `stakeTzs` is CHECKed 1…1e9 on every intent row. The sweep watermark only moves forward.
 - `npm run --silent test:<wrong-key>` prints nothing — grep `package.json`. An `await` inside a non-async arrow kills a cases file at load — `npx esbuild <cases> --outfile=/dev/null` first. Memory-store `db.*` returns plain values (try/catch, never `.catch`). Engine reads one at a time. Wait on the DATABASE clock, never `sleep()` margins.
 - Raw-text guards read comments (seam 4.3). `test:failure-reasons` 9b reads any `code: "X"` literal; 8c pins `checkLossLimit` callers.
-- Mutations: commit first; temporary `git worktree add --detach` + a `node_modules` junction; `HB_ENGINE_SECTIONS`; a run that never reached its store is NOT MEASURED (the harness must say so); restore bytes + `git diff --quiet`; remove the junction with `cmd /c rmdir`, never `rm -rf`, then `git worktree remove`.
+- Mutations: commit first; temporary `git worktree add --detach` + a `node_modules` junction; `HB_ENGINE_SECTIONS`; a run that never reached its store is NOT MEASURED (the harness must say so); restore bytes + `git diff --quiet`. ⛔ Remove the junction FIRST and PROVE it is gone (PowerShell `[System.IO.Directory]::Delete('<worktree>\node_modules', $false)`; in Git Bash `cmd /c rmdir` is mangled by MSYS path conversion and deletes NOTHING while reporting success), then `git worktree remove --force` — with the junction in place git deletes through it into the real `node_modules` (it took `.bin` and `.package-lock.json` on 2026-09-16; repair with `npm rebuild --ignore-scripts` and prove the toolchain with one suite).
 - Turbopack refuses a junctioned `node_modules` and webpack mode 500s on `node:` imports — render from a worktree with real `node_modules` (`F:/kipindi-old-build`, restored clean afterwards).
 - The scratch Postgres runs `Asia/Beirut`; the engine refuses to boot there (production TimeZone is NOT MEASURED — REL-0).
 - A module reached both by `import()` and by a CommonJS path loads TWICE: a module-level `let` is not shared. State two
