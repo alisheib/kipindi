@@ -37,7 +37,7 @@ import { REFUSED_FUNDS_FORFEIT_DESCRIPTION } from "@/lib/refused-funds-outcomes"
 import type { FailureReason, FailureDetail } from "@/lib/failure-reasons";
 import { paymentMethodName } from "@/lib/payment-providers";
 import { notifyDeposit, notifyWithdraw, notifyAdminsAmlReview, notifyRefusedFundsReturnFailed } from "./notification-service";
-import { withLock } from "./locks";
+import { runOutsideLock, withLock } from "./locks";
 import { emit } from "./event-bus";
 import { postLedgerEntries, depositEntries, rgSuspenseEntries, withdrawalEntries, internalCreditEntries, adjustmentEntries, agentCommissionEntries, agentRegistrationFeeEntries, withMoneyTx } from "./ledger";
 import { getEffectiveConfig } from "./market-config";
@@ -470,6 +470,10 @@ async function settleDepositConfirmed(txnId: string, providerRef?: string): Prom
 
   if (outcome.credited && outcome.txn) {
     const t = outcome.txn;
+    // F7 · the holder's own money moved: a live, ACTIVE house bot on this account tells every admin (02 §3.6).
+    runOutsideLock(() => {
+      void import("./house-bot/money-hook").then((m) => m.onHolderMoneyEvent(t.userId, { event: "deposited", amountTzs: Math.abs(t.amount), txnId: t.id })).catch(() => {});
+    });
     // Ledger DEPOSIT was posted atomically with the credit inside the lock (C3).
     audit({ category: "WALLET", action: "deposit.confirmed", actorId: t.userId, targetType: "Transaction", targetId: t.id, payload: { providerRef: providerRef ?? t.providerRef, balanceAfter: outcome.balance } });
     emit("wallet:balance", { userId: t.userId, balance: outcome.balance });
@@ -623,6 +627,10 @@ async function settleWithdrawalConfirmed(txnId: string): Promise<boolean> {
     // Ledger WITHDRAWAL was posted atomically with the hold-release inside the lock.
     audit({ category: "WALLET", action: "withdraw.confirmed", actorId: t.userId, targetType: "Transaction", targetId: txnId, payload: { providerRef: t.providerRef, gross, fee, gatewayShare: done.gatewayShare, net } });
     notifyWithdrawalSent(t);
+    // F7 · the holder's own money moved: a live, ACTIVE house bot on this account tells every admin (02 §3.6).
+    runOutsideLock(() => {
+      void import("./house-bot/money-hook").then((m) => m.onHolderMoneyEvent(t.userId, { event: "withdrew", amountTzs: gross, txnId: txnId })).catch(() => {});
+    });
   }
   return !!done;
 }
@@ -873,6 +881,10 @@ export async function settleWithdrawalFailed(txnId: string, reason: string): Pro
     const liveWallet = await db.wallet.findByUserId(done.userId);
     if (liveWallet) emit("wallet:balance", { userId: done.userId, balance: liveWallet.balance });
     audit({ category: "WALLET", action: "withdraw.failed", actorId: done.userId, targetType: "Transaction", targetId: txnId, payload: { reason } });
+    // F7 · the holder's own money moved: a live, ACTIVE house bot on this account tells every admin (02 §3.6).
+    runOutsideLock(() => {
+      void import("./house-bot/money-hook").then((m) => m.onHolderMoneyEvent(done.userId, { event: "withdrawal_failed", amountTzs: refunded, txnId: txnId })).catch(() => {});
+    });
     if (done.idempotencyKey?.startsWith("rfd:")) {
       // ⛔ A FAILED REFUSED-FUNDS RETURN IS NOT "YOUR FUNDS ARE AVAILABLE AGAIN" (audit session 95, 2026-09-13). The money
       // is back in a wallet the identity refusal keeps FROZEN, and an officer decides the next step — the generic notice
@@ -1822,6 +1834,10 @@ export async function withdraw(
     const f = dup.fee ?? 0;
     return { ok: true, data: { txnId: dup.id, status: dup.status, fee: f, net: Math.abs(dup.amount) - f } };
   }
+  // F7 · the holder's own money moved: a live, ACTIVE house bot on this account tells every admin (02 §3.6).
+  runOutsideLock(() => {
+    void import("./house-bot/money-hook").then((m) => m.onHolderMoneyEvent(userId, { event: "requested_withdrawal", amountTzs: amount, txnId: txnId })).catch(() => {});
+  });
 
   // ── THE COMPLIANCE RECORD BESIDE THE GATE ──────────────────────────────────
   //
@@ -1944,6 +1960,10 @@ export async function withdraw(
     // ⚠️ Unreachable while `WITHDRAWAL_AML_HOLD` is off (owner ruling 2026-09-13); kept so the switch stays one line.
     await db.txn.update(txnId, { status: "AML_REVIEW", amlReason: "Threshold ≥ TZS 1,000,000" });
     audit({ category: "COMPLIANCE", action: "withdraw.aml_held", actorId: userId, targetType: "Transaction", targetId: txnId, payload: { amount } });
+    // F7 · the holder's own money moved: a live, ACTIVE house bot on this account tells every admin (02 §3.6).
+    runOutsideLock(() => {
+      void import("./house-bot/money-hook").then((m) => m.onHolderMoneyEvent(userId, { event: "withdrawal_held", amountTzs: amount, txnId: txnId })).catch(() => {});
+    });
     notifyWithdraw(userId, { status: "AML_REVIEW", amount, net, provider: providerLabel });
     // Alert compliance officers (bell + email) so they act on the queue.
     notifyAdminsAmlReview({ txnKind: "WITHDRAWAL", amountTzs: amount, reference: txnId }).catch(() => {});
@@ -2595,6 +2615,35 @@ export async function forfeitRefusedBalance(opts: {
   });
 }
 
+/**
+ * Refund a withdrawal an AML officer rejected and mark it FAILED — ONE transaction (C4-SPEC ruling 137, L10).
+ *
+ * 🔴 WHAT THIS REPLACED. `rejectAmlAction` credited the wallet with an adjust that passed no transaction, then wrote
+ * FAILED on the withdrawal outside the inner wallet lock with no transaction either. A crash, a timeout or a failed
+ * write between the two left the money back in the wallet while the withdrawal still read AML_REVIEW — or the
+ * reverse — which is exactly the split `settleWithdrawalFailed` exists to prevent, and a second officer could then
+ * reject it again and refund it twice. Both writes now take the wallet lock's transaction: they commit together or
+ * roll back together.
+ *
+ * ⛔ Called INSIDE the caller's `aml-txn:<id>` lock, so the wallet lock joins that transaction (`locks.ts`); the
+ * caller's announcements belong after its own lock returns.
+ */
+export async function refundAmlRejection(txn: StoredTxn, reason: string): Promise<void> {
+  await withLock(`wallet:${txn.userId}`, async (tx) => {
+    if (txn.type === "WITHDRAWAL") {
+      const wallet = await db.wallet.findByUserId(txn.userId, tx);
+      if (wallet) {
+        const amt = Math.abs(txn.amount);
+        // withdraw() moved the funds balance → hold. Reversing on reject must BOTH credit balance AND release the
+        // hold, or `hold` leaks upward forever (corrupting the balance+hold invariant and the AML totals).
+        const updated = await db.wallet.adjust(wallet.id, { balance: amt, hold: -amt }, undefined, tx);
+        if (!updated) throw new Error(`aml reject ${txn.id}: wallet ${wallet.id} row missing`);
+      }
+    }
+    await db.txn.update(txn.id, { status: "FAILED", completedAt: new Date().toISOString(), amlReason: reason }, tx);
+  });
+}
+
 const ADJUSTMENT_CAP_TZS = 50_000_000;
 export async function adminAdjustBalance(
   userId: string,
@@ -2608,7 +2657,9 @@ export async function adminAdjustBalance(
   const cleanReason = (reason ?? "").trim().slice(0, 300);
   if (cleanReason.length < 5) return { ok: false, error: "A reason (≥ 5 chars) is required." };
 
-  return withLock(`wallet:${userId}`, async () => {
+  // F7 · the hook needs the adjustment's transaction id, which is only minted inside the lock.
+  let adjustedTxnId = "";
+  const adjusted: { ok: true; balance: number } | { ok: false; error: string; code?: string } = await withLock(`wallet:${userId}`, async () => {
     const wallet = await db.wallet.findByUserId(userId);
     if (!wallet) return { ok: false as const, error: "Wallet not found.", code: "NOT_FOUND" };
     if (wallet.status !== "ACTIVE") return { ok: false as const, error: `Wallet is ${wallet.status}, not ACTIVE.`, code: "INVALID" };
@@ -2656,8 +2707,16 @@ export async function adminAdjustBalance(
       payload: { txnId, amount, direction: amount >= 0 ? "credit" : "debit", balanceAfter: newBalance, reason: cleanReason },
     });
     emit("wallet:balance", { userId, balance: newBalance });
+    adjustedTxnId = txnId;
     return { ok: true as const, balance: newBalance };
   });
+  if (adjusted.ok && adjustedTxnId) {
+    // F7 · the holder's own money moved: a live, ACTIVE house bot on this account tells every admin (02 §3.6).
+    runOutsideLock(() => {
+      void import("./house-bot/money-hook").then((m) => m.onHolderMoneyEvent(userId, { event: "adjusted", amountTzs: amount, txnId: adjustedTxnId })).catch(() => {});
+    });
+  }
+  return adjusted;
 }
 
 /**

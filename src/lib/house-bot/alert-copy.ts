@@ -22,18 +22,25 @@
 
 /* ── Ruling 142 · a caller's verb or sentence never enters a translated body ───────────────────── */
 
-/** The holder-money events F7's hooks report. A closed list, because each one is a word in three languages. */
-export const MONEY_EVENT_CODES = ["deposited", "withdrew", "cashed_out", "adjusted", "paid_out"] as const;
+/** The holder-money events 02 §3.6 names, one code each. A closed list, because each is a phrase in three languages. */
+export const MONEY_EVENT_CODES = [
+  "deposited", "requested_withdrawal", "withdrawal_held", "withdrew", "withdrawal_failed", "withdrawal_rejected", "adjusted",
+] as const;
 export type MoneyEventCode = (typeof MONEY_EVENT_CODES)[number];
 export const isMoneyEventCode = (v: string): v is MoneyEventCode => (MONEY_EVENT_CODES as readonly string[]).includes(v);
 
-/** What the holder DID, in each language. The subject is always a handle, never a name (04 R6). */
+/**
+ * What happened to the holder's money, in each language — the phrase that sits between the handle and the amount.
+ * The subject is always a handle, never a name (04 R6). One row per 02 §3.6 write site.
+ */
 export const MONEY_EVENT_WORD: Record<MoneyEventCode, { en: string; sw: string; zh: string }> = {
   deposited: { en: "deposited", sw: "ameweka", zh: "存入了" },
+  requested_withdrawal: { en: "asked to withdraw", sw: "ameomba kutoa", zh: "申请提取" },
+  withdrawal_held: { en: "had a withdrawal held for review:", sw: "amesimamishiwa kutoa kwa ukaguzi:", zh: "的提款被暂扣审核：" },
   withdrew: { en: "withdrew", sw: "ametoa", zh: "提取了" },
-  cashed_out: { en: "cashed out", sw: "amechukua mapema", zh: "提前结清了" },
-  adjusted: { en: "had an adjustment of", sw: "amerekebishiwa", zh: "被调整了" },
-  paid_out: { en: "was paid", sw: "amelipwa", zh: "已获支付" },
+  withdrawal_failed: { en: "had a withdrawal fail and refunded", sw: "kutoa kumeshindwa na amerejeshewa", zh: "提款失败，已退回" },
+  withdrawal_rejected: { en: "had a withdrawal rejected and refunded", sw: "kutoa kumekataliwa na amerejeshewa", zh: "提款被拒绝，已退回" },
+  adjusted: { en: "had an officer adjustment of", sw: "amerekebishiwa na afisa kwa", zh: "被工作人员调整了" },
 };
 
 /** The roster changes C13 announces. `TARGET_*` are N2's; the rest are the bot's own life. */

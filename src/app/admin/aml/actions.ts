@@ -5,8 +5,8 @@ import { revalidatePath } from "next/cache";
 import { currentSession } from "@/lib/server/auth-service";
 import { db, type StoredTxn } from "@/lib/server/store";
 import { audit } from "@/lib/server/audit";
-import { withLock } from "@/lib/server/locks";
-import { dispatchApprovedWithdrawal } from "@/lib/server/wallet-service";
+import { runOutsideLock, withLock } from "@/lib/server/locks";
+import { dispatchApprovedWithdrawal, refundAmlRejection } from "@/lib/server/wallet-service";
 import { getFirstSignature, setFirstSignature } from "./stage1-store";
 
 import { TWO_PERSON_THRESHOLD_TZS } from "./constants";
@@ -142,7 +142,9 @@ export async function rejectAmlAction(formData: FormData) {
   // Lock the whole reject on the transaction (like approveAmlAction) so two
   // officers / a double-click can't both pass the AML_REVIEW check and refund
   // twice — crediting the player's balance for the same withdrawal more than once.
-  return withLock(`aml-txn:${txnId}`, async () => {
+  // F7 · the refunded withdrawal is announced after the lock returns; its facts live inside the lock.
+  let refunded: { userId: string; amountTzs: number } | null = null;
+  const rejected = await withLock(`aml-txn:${txnId}`, async () => {
     const all = (await db.txn.listByStatus("AML_REVIEW")) as StoredTxn[];
     const txn = all.find((t) => t.id === txnId);
     if (!txn) return { ok: false as const, error: "Transaction not in AML_REVIEW." };
@@ -153,26 +155,11 @@ export async function rejectAmlAction(formData: FormData) {
       return { ok: false as const, error: "You cannot review your own transaction." };
     }
 
-    // Reverse the held funds back to wallet (if it's a withdrawal that placed a
-    // hold) and mark FAILED. The inner wallet lock also guards against a
-    // concurrent bet/deposit/withdrawal reading a stale balance.
-    if (txn.type === "WITHDRAWAL") {
-      await withLock(`wallet:${txn.userId}`, async () => {
-        const wallet = await db.wallet.findByUserId(txn.userId);
-        if (wallet) {
-          const amt = Math.abs(txn.amount);
-          // withdraw() moved the funds balance -> hold. Reversing on reject must
-          // BOTH credit balance AND release the hold, or `hold` leaks upward
-          // forever (corrupting the balance+hold ledger invariant + AML totals).
-          await db.wallet.adjust(wallet.id, { balance: amt, hold: -amt });
-        }
-      });
-    }
-    await db.txn.update(txnId, {
-      status: "FAILED",
-      completedAt: new Date().toISOString(),
-      amlReason: reason,
-    });
+    // ⛔ ONE TRANSACTION (C4-SPEC ruling 137): the refund and the FAILED mark commit together or not at all. This used
+    // to credit the wallet with no transaction and write FAILED outside the wallet lock, so a failure between the
+    // two left them disagreeing — and a second officer could refund the same withdrawal again.
+    await refundAmlRejection(txn, reason);
+    if (txn.type === "WITHDRAWAL") refunded = { userId: txn.userId, amountTzs: Math.abs(txn.amount) };
 
     audit({
       category: "ADMIN",
@@ -199,4 +186,12 @@ export async function rejectAmlAction(formData: FormData) {
     revalidatePath("/admin/aml");
     return { ok: true as const };
   });
+  const done = refunded as { userId: string; amountTzs: number } | null;
+  if (rejected.ok && done) {
+    // F7 · the holder's own money came back: a live, ACTIVE house bot on this account tells every admin (02 §3.6).
+    runOutsideLock(() => {
+      void import("@/lib/server/house-bot/money-hook").then((m) => m.onHolderMoneyEvent(done.userId, { event: "withdrawal_rejected", amountTzs: done.amountTzs, txnId })).catch(() => {});
+    });
+  }
+  return rejected;
 }

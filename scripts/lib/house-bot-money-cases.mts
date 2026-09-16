@@ -537,5 +537,78 @@ if (w.onPostgres) {
   }
 }
 
+// ═══ §8 · L10 · an AML rejection refunds in ONE transaction (C4-SPEC ruling 137) ═══════════════════
+section("§8 · the AML rejection refund is atomic");
+{
+  const WS: Any = await import("../../src/lib/server/wallet-service.ts");
+  /** A withdrawal already held for AML review: 20,000 moved from balance to hold, the txn in AML_REVIEW. */
+  const heldWithdrawal = async (): Promise<{ userId: string; walletId: string; txnId: string }> => {
+    const userId = await w.user({ balance: 100_000 });
+    const wallet = (await w.db.wallet.findByUserId(userId)) as Any;
+    await w.db.wallet.adjust(wallet.id, { balance: -20_000, hold: 20_000 });
+    const txnId = `txn_l10_${crypto.randomUUID().slice(0, 12)}`;
+    const now = new Date().toISOString();
+    await w.db.txn.create({
+      id: txnId, walletId: wallet.id, userId, type: "WITHDRAWAL", status: "AML_REVIEW", amount: -20_000, fee: 0, taxWithheld: 0,
+      balanceAfter: 80_000, currency: "TZS", provider: "MPESA", providerRef: null, msisdn: null, description: "held withdrawal",
+      positionId: null, amlReason: "Threshold", createdAt: now, updatedAt: now, completedAt: null,
+    } as Any);
+    return { userId, walletId: wallet.id, txnId };
+  };
+
+  const ok1 = await heldWithdrawal();
+  const txn1 = (await w.db.txn.findById(ok1.txnId)) as Any;
+  await WS.refundAmlRejection(txn1, "rejected by the officer");
+  const wal1 = (await w.db.wallet.findByUserId(ok1.userId)) as Any;
+  const after1 = (await w.db.txn.findById(ok1.txnId)) as Any;
+  ok("8.1 · ruling 137 · a rejected withdrawal credits the balance back, releases the hold, and reads FAILED",
+    wal1.balance === 100_000 && wal1.hold === 0 && after1.status === "FAILED" && after1.amlReason === "rejected by the officer",
+    `balance ${wal1.balance} · hold ${wal1.hold} · ${after1.status}`);
+
+  if (w.onPostgres) {
+    // ⭐ The defect itself: a failure between the refund and the FAILED mark. Both must roll back together.
+    const bad = await heldWithdrawal();
+    const txnBad = (await w.db.txn.findById(bad.txnId)) as Any;
+    const realUpdate = w.db.txn.update;
+    let threw = "";
+    w.db.txn.update = async () => { throw new Error("injected failure on the FAILED write"); };
+    try { await WS.refundAmlRejection(txnBad, "must roll back"); } catch (e) { threw = String((e as Error)?.message ?? e); } finally { w.db.txn.update = realUpdate; }
+    const walBad = (await w.db.wallet.findByUserId(bad.userId)) as Any;
+    const txnStill = (await w.db.txn.findById(bad.txnId)) as Any;
+    ok("8.2 · ⭐ ruling 137 · when the FAILED write fails, the refund rolls back WITH it: the money stays held and the withdrawal still reads AML_REVIEW",
+      /injected failure/.test(threw) && walBad.balance === 80_000 && walBad.hold === 20_000 && txnStill.status === "AML_REVIEW",
+      `threw=${!!threw} · balance ${walBad.balance} · hold ${walBad.hold} · ${txnStill.status}`);
+  } else {
+    console.log("NOT MEASURED [memory] 8.2 · the in-memory store has no transactions to roll back; the rollback is a Postgres property");
+  }
+}
+
+// ═══ §9 · F7 · the holder's own money on a live house-bot account (02 §3.6) ═══════════════════════
+section("§9 · the money hook tells admins only about an ACTIVE bot, once per event");
+{
+  const MH: Any = await import("../../src/lib/server/house-bot/money-hook.ts");
+  const ownerMoney = async (botId: string) =>
+    ((await w.dal.houseBotEventStore.listByBot(botId, { limit: 200, kinds: ["OWNER_MONEY"] })).rows as Any[]);
+
+  const stranger = await w.user({ balance: 5_000 });
+  ok("9.1 · a player with no bot: nothing is read beyond one index lookup and nothing is written",
+    (await MH.onHolderMoneyEvent(stranger, { event: "deposited", amountTzs: 5_000, txnId: "txn_f7_none" })) === "noBot");
+
+  const paused = await w.bot();
+  await w.dal.houseBotStore.setStatus(paused.botId, { from: ["ACTIVE"], to: "PAUSED", pauseReason: "MANUAL", pausedFromStatus: "ACTIVE" });
+  ok("9.2 · 02 §3.6 · a PAUSED bot's holder moving their own money tells nobody and records nothing",
+    (await MH.onHolderMoneyEvent(paused.userId, { event: "withdrew", amountTzs: 1_000, txnId: "txn_f7_paused" })) === "notActive"
+      && (await ownerMoney(paused.botId)).length === 0);
+
+  const active = await w.bot();
+  const first = await MH.onHolderMoneyEvent(active.userId, { event: "withdrew", amountTzs: 50_000, txnId: "txn_f7_same" });
+  const second = await MH.onHolderMoneyEvent(active.userId, { event: "withdrew", amountTzs: 50_000, txnId: "txn_f7_same" });
+  const events = await ownerMoney(active.botId);
+  ok("9.3 · ⭐ 02 §3.6 · two identical money events on an ACTIVE bot are TWO events, each carrying the balance as it is now",
+    first === "sent" && second === "sent" && events.length === 2
+      && events.every((e) => e.payload?.event === "withdrew" && e.payload?.amountTzs === 50_000 && typeof e.payload?.balanceTzs === "number"),
+    JSON.stringify(events.map((e) => e.payload)));
+}
+
 console.log(`\n@@SUMMARY ${JSON.stringify({ pass, fail, store: STORE })}`);
 process.exit(fail === 0 ? 0 : 1);
