@@ -3043,6 +3043,45 @@ await guard("18", async () => {
     ok("18.58 · A24 · an admission queue → the pass is skipped: no read, no watermark write", p.skipped === "ADMISSION" && p.read === 0 && p.advance === null, j(p));
   }
 
+  /* ── 18.L4 the per-player counterparty caps refuse a trigger AT DECISION TIME, with the trigger account as counterparty (L4) ── */
+  {
+    const b = await soloBot();
+    const player = await w.user({ balance: 1_000_000 });
+    const clean = await w.user({ balance: 1_000_000 });
+    const mPast = await w.poll();
+    const earlier = await stakeOn(mPast.id, "YES", 10_000, { userId: player });
+    // Today's PLACED COUNTER against this player (TZS 2,000), as 18.41 writes one.
+    const counted = await safe(() => S.houseBotIntentStore.insert({ ...rowFor(b, mPast.id), kind: "COUNTER", anchorKey: earlier.positionId, triggerPositionId: earlier.positionId,
+      triggerUserId: player, status: "PLACED", positionId: `pos_hb_l4_${process.pid}`, finishedAt: w.iso(-1_000), attempts: 1 }));
+    const decideOn = async (userId: string) => {
+      const m = await w.poll();
+      const s = await stakeOn(m.id, "YES", 10_000, { ageMs: 10_000, userId });
+      // A pass reads one bounded page of the lookback, and earlier sections leave stakes in it (measured on Postgres: the
+      // first pass had not reached this stake). The decision is the same whichever pass makes it, so sweep until it is made.
+      for (let pass = 0; pass < 6; pass++) {
+        await sweep(recorder().alerts);
+        const r = await counterOf(s.positionId);
+        if (r) return r;
+      }
+      return null;
+    };
+    try {
+      await w.limits({ gCounterPerPlayerPerDay: 1 });
+      const byCount = await decideOn(player);
+      const control = await decideOn(clean);
+      ok("18.L4a · L4 · a player the house already countered once today, at a daily count of 1 → their next stake leaves SKIPPED(CAP_COUNTERPARTY_COUNT)",
+        !counted.threw && byCount?.status === "SKIPPED" && byCount.reasonCode === "CAP_COUNTERPARTY_COUNT", j({ counted: counted.threw, byCount }));
+      ok("18.L4b · CONTROL · another player with no counters today, same bot and limits → a PENDING COUNTER",
+        control?.status === "PENDING" && control.kind === "COUNTER", j(control));
+      await w.limits({ gCounterPerPlayerPerDay: 1_440, gCounterPerPlayerTzsPerDay: 2_000 });
+      const byTzs = await decideOn(player);
+      ok("18.L4c · L4 · …and at a daily TZS cap equal to what was already countered (2,000) → SKIPPED(CAP_COUNTERPARTY_TZS)",
+        byTzs?.status === "SKIPPED" && byTzs.reasonCode === "CAP_COUNTERPARTY_TZS", j(byTzs));
+    } finally {
+      await w.limits();
+    }
+  }
+
   /* ── 18.59 the new DAL reads on this store: triggerPage, triggerAccount, placedCounterFor ── */
   {
     const b = await soloBot();
