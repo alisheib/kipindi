@@ -554,6 +554,64 @@ if (w.onPostgres) {
     const pool = await w.dal.houseSeamStore.lockedPool({ marketId: hot.id, graceMs: 0, paidMs: 0, closesAt: hot.resolutionAt });
     ok("7.6 · CONTROL · the same statement returns the 20,000 stakes (10,000 a side, all locked)", pool.YES.locked === 10_000_000 && pool.NO.locked === 10_000_000,
       `${pool.YES.locked} / ${pool.NO.locked}`);
+
+    // ── A24 · "EXPLAIN pin at 1M/20k rows", and L5's triggerPage pin (C4 ruling 161) ──────────────────────────────
+    // 780,000 unmarked + 20,000 house-marked positions on top of the 200,000 above: 1,000,000 positions, 20,000 marked,
+    // spread over 30 days. Four bot ids; bots 1 and 3 hold OPEN stakes, bots 2 and 4 settled ones.
+    const markets = [hot, ...cold].map((m: Any) => m.id);
+    await pc.$executeRawUnsafe(
+      `INSERT INTO "Position" ("id", "userId", "marketId", "side", "stake", "bonusStakeTzs", "potentialPayout", "status", "placedAt")`
+      + ` SELECT 'pos_x1m_u_' || g, $1, ($2::text[])[1 + (g % 10)], (CASE WHEN g % 2 = 0 THEN 'YES' ELSE 'NO' END)::"MarketSide", 1000, 0, 2000,`
+      + ` 'OPEN'::"PositionStatus", (clock_timestamp() AT TIME ZONE 'UTC') - (g * interval '3.3 second') FROM generate_series(1, 780000) g`, who, markets);
+    await pc.$executeRawUnsafe(
+      `INSERT INTO "Position" ("id", "userId", "marketId", "side", "stake", "bonusStakeTzs", "potentialPayout", "status", "placedAt", "houseBotId")`
+      + ` SELECT 'pos_x1m_h_' || g, $1, ($2::text[])[1 + (g % 10)], (CASE WHEN g % 2 = 0 THEN 'YES' ELSE 'NO' END)::"MarketSide", 1000, 0, 2000,`
+      + ` (CASE WHEN g % 2 = 0 THEN 'OPEN' ELSE 'LOSS' END)::"PositionStatus", (clock_timestamp() AT TIME ZONE 'UTC') - (g * interval '129.6 second'),`
+      + ` 'hb_x1m_' || (1 + (g % 4)) FROM generate_series(1, 20000) g`, who, markets);
+    await pc.$executeRawUnsafe(`ANALYZE "Position"`);
+    const counted: Any[] = await pc.$queryRawUnsafe(`SELECT count(*)::int AS "all", count(*) FILTER (WHERE "houseBotId" IS NOT NULL)::int AS "marked" FROM "Position"`);
+    ok("7.7 · fixture · at least 1,000,000 positions, at least 20,000 of them house-marked", counted[0].all >= 1_000_000 && counted[0].marked >= 20_000, JSON.stringify(counted[0]));
+
+    /** Capture the SQL a DAL read sends through its transaction parameter, then EXPLAIN it with its real parameters. */
+    const planOf = async (call: (spy: Any) => Promise<unknown>): Promise<string> => {
+      let got: { text: string; values: unknown[] } | null = null;
+      const spy = { $queryRawUnsafe: async (text: string, ...values: unknown[]) => { got = { text, values }; return [{}]; }, $executeRawUnsafe: async () => 0 };
+      await call(spy).catch(() => null);
+      if (!got) return "";
+      const rows: Any[] = await pc.$queryRawUnsafe(`EXPLAIN ${(got as Any).text}`, ...(got as Any).values);
+      return rows.map((r) => Object.values(r)[0]).join("\n");
+    };
+    const noSeqScan = (plan: string) => plan.length > 0 && !/Seq Scan on "Position"/.test(plan);
+    const brief = (plan: string) => plan.split("\n").filter((l) => /Position|Index|Bitmap/.test(l)).join(" | ").slice(0, 300);
+    const book = w.dal.houseBookStore;
+    const nowIso = new Date().toISOString();
+    const PINS: Array<[string, (spy: Any) => Promise<unknown>]> = [
+      ["botUsage (per-bot rolling windows)", (spy) => houseSeamStore.botUsage({ houseBotId: "hb_x1m_1", marketId: hot.id }, spy)],
+      ["marketUsage (house stake on a market)", (spy) => houseSeamStore.marketUsage({ houseBotId: "hb_x1m_1", marketId: hot.id }, spy)],
+      ["globalUsage (GLOBAL_BETS_PER_MINUTE / day)", (spy) => houseSeamStore.globalUsage(spy)],
+      ["placedTimes, all bots, 1 day", (spy) => houseSeamStore.placedTimes({ houseBotId: null, withinSec: 86_400 }, spy)],
+      ["placedTimes, one bot, 1 hour", (spy) => houseSeamStore.placedTimes({ houseBotId: "hb_x1m_1", withinSec: 3_600 }, spy)],
+      ["dayRows, every bot in one GROUP BY", (spy) => book.dayRows({ fromIso: new Date(Date.now() - 2 * 86_400_000).toISOString(), toIso: nowIso, houseBotId: null }, spy)],
+      ["dayRows, one bot", (spy) => book.dayRows({ fromIso: new Date(Date.now() - 2 * 86_400_000).toISOString(), toIso: nowIso, houseBotId: "hb_x1m_1" }, spy)],
+      ["openExposure, every bot", (spy) => book.openExposure(null, spy)],
+      ["openExposure, one bot", (spy) => book.openExposure("hb_x1m_1", spy)],
+      ["triggerPage, the sweep's 90 s window (L5)", (spy) => houseSeamStore.triggerPage({ fromIso: new Date(Date.now() - 90_000).toISOString(), beforeIso: new Date(Date.now() - 5_000).toISOString(), after: null, limit: 200 }, spy)],
+    ];
+    for (const [i, [what, call]] of PINS.entries()) {
+      const plan = await planOf(call);
+      ok(`7.${8 + i} · A24 · EXPLAIN at 1M/20k: ${what} — no sequential scan on Position`, noSeqScan(plan), brief(plan) || "no statement captured");
+    }
+
+    // CONTROLS — the same reads, run for real, return what the fixture implies (so an empty statement cannot pass).
+    const openAll = (await book.openExposure(null)).filter((r: Any) => String(r.houseBotId).startsWith("hb_x1m_"));
+    ok("7.18 · CONTROL · open exposure of the fixture bots is exactly bots 1 and 3, TZS 5,000,000 each",
+      JSON.stringify(openAll.map((r: Any) => [r.houseBotId, r.openStakeTzs])) === JSON.stringify([["hb_x1m_1", 5_000_000], ["hb_x1m_3", 5_000_000]]), JSON.stringify(openAll));
+    const usage = await houseSeamStore.botUsage({ houseBotId: "hb_x1m_1", marketId: hot.id });
+    const g = await houseSeamStore.globalUsage();
+    const page = await houseSeamStore.triggerPage({ fromIso: new Date(Date.now() - 90_000).toISOString(), beforeIso: new Date(Date.now() - 5_000).toISOString(), after: null, limit: 200 });
+    ok("7.19 · CONTROL · botUsage, globalUsage and triggerPage read real rows from the fixture",
+      usage.placedLastDay > 100 && usage.lastPlacedAt != null && g.betsLastDay > 600 && page.length > 0 && page.length <= 200,
+      JSON.stringify({ usage, g, page: page.length }));
   }
 }
 
