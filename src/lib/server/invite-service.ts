@@ -20,7 +20,7 @@ import { bonusIsLiveFor } from "@/lib/feature-state";
 import { creditBonus } from "./bonus-service";
 import { tzPhone } from "./validators";
 import { sendEmail, inviteHtml } from "./email";
-import { sms, inviteMessage, smsConfigured } from "./sms";
+import { sendBatch, inviteMessage, smsConfigured } from "./sms";
 import { formatTzs } from "@/lib/utils";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -243,28 +243,88 @@ export async function sendCampaign(campaignId: string, adminId: string):
   const smsLive = smsConfigured();
   await db.inviteCampaign.update(campaignId, { status: "SENDING" });
   const entries = (await db.inviteEntry.findByCampaign(campaignId)).filter((e) => e.status === "QUEUED");
+  const emailEntries = entries.filter((e) => e.contactType === "EMAIL");
+  const phoneEntries = entries.filter((e) => e.contactType === "PHONE");
   let sent = 0, failed = 0, pending = 0;
-  for (const e of entries) {
-    // No live SMS channel → leave phone invites QUEUED (they'll send once a
-    // provider is configured). Never mark them SENT — that would lie to the admin.
-    if (e.contactType === "PHONE" && !smsLive) { pending++; continue; }
+
+  // ── Phase 1 · email — one provider call per recipient, unchanged ───────────
+  for (const e of emailEntries) {
     try {
-      if (e.contactType === "EMAIL") {
-        const r = await sendEmail({
-          to: e.contactValue,
-          subject: `You're invited to 50pick — ${formatTzs(e.bonusAmountTzs)} bonus`,
-          html: inviteHtml({ campaignName: campaign.name, bonusAmountTzs: e.bonusAmountTzs, code: campaign.code, message: campaign.messageEn }),
-          tag: "invite",
-        });
-        if (!r.ok) throw new Error("email delivery failed");
-      } else {
-        await sms.send(e.contactValue, inviteMessage({ message: campaign.messageSw || campaign.messageEn, code: campaign.code, bonusTzs: e.bonusAmountTzs }));
-      }
+      const r = await sendEmail({
+        to: e.contactValue,
+        subject: `You're invited to 50pick — ${formatTzs(e.bonusAmountTzs)} bonus`,
+        html: inviteHtml({ campaignName: campaign.name, bonusAmountTzs: e.bonusAmountTzs, code: campaign.code, message: campaign.messageEn }),
+        tag: "invite",
+      });
+      if (!r.ok) throw new Error("email delivery failed");
       await db.inviteEntry.update(e.id, { status: "SENT", sentAt: new Date().toISOString(), failureReason: null });
       sent++;
     } catch (err) {
       await db.inviteEntry.update(e.id, { status: "FAILED", failureReason: String((err as Error)?.message ?? err).slice(0, 200) });
       failed++;
+    }
+  }
+
+  /**
+   * ── Phase 2 · SMS — BATCHED, and bounded ──────────────────────────────────
+   *
+   * 🔴 THIS LOOP USED TO MAKE ONE HTTP REQUEST PER RECIPIENT, INSIDE A HELD
+   * POSTGRES TRANSACTION. `locks.ts:158` states that everything inside one
+   * `withLock` shares one transaction, and this whole function is inside one — so a
+   * 500-recipient campaign at roughly a second per call held a transaction open for
+   * about eight minutes: pool pressure, `idle_in_transaction` exposure, and VACUUM
+   * blocked behind it. SMS never exercised that because `smsConfigured()` was false
+   * and every phone entry was skipped; wiring a real provider is precisely what
+   * would have made it live.
+   *
+   * Blackball accepts 50 messages per request, so the same campaign is now 10
+   * requests rather than 500 — and `INVITE_SMS_MAX_PER_SEND` bounds the worst case
+   * regardless. ⚠️ The lock is still HELD across those requests, deliberately: it is
+   * the only thing stopping two "Send" clicks from reading the same QUEUED entries
+   * and double-delivering. Shortening the window ~50× is the honest fix; releasing
+   * the lock mid-send would trade a slow transaction for a duplicated invite.
+   *
+   * ⭐ Entries beyond the cap stay QUEUED and are reported as `pending`, which the
+   * campaign page already renders. They go out on the next Send. Silently dropping
+   * them — or marking them SENT — is the lie this whole function is written against.
+   */
+  if (!smsLive) {
+    // No live SMS channel → leave phone invites QUEUED (they'll send once a
+    // provider is configured). Never mark them SENT — that would lie to the admin.
+    pending += phoneEntries.length;
+  } else if (phoneEntries.length > 0) {
+    const cap = Number(process.env.INVITE_SMS_MAX_PER_SEND) || 500;
+    const take = phoneEntries.slice(0, cap);
+    pending += phoneEntries.length - take.length;
+    const byId = new Map(take.map((e) => [e.id, e]));
+
+    const { results, refused } = await sendBatch(
+      take.map((e) => ({
+        to: e.contactValue,
+        body: inviteMessage({ message: campaign.messageSw || campaign.messageEn, code: campaign.code, bonusTzs: e.bonusAmountTzs }),
+        purpose: "INVITE" as const,
+        targetType: "InviteEntry",
+        targetId: e.id,
+      })),
+    );
+
+    if (refused) {
+      // ⭐ THE SAME HONESTY AS THE `!smsLive` BRANCH. A cost or configuration refusal
+      // means nothing reached the gateway, so every entry stays QUEUED and reports as
+      // pending — never SENT, and never FAILED, which would strand them permanently.
+      pending += take.length;
+    } else {
+      for (const r of results) {
+        const e = r.targetId ? byId.get(r.targetId) : undefined;
+        if (!e) continue;
+        if (r.ok) {
+          await db.inviteEntry.update(e.id, { status: "SENT", sentAt: new Date().toISOString(), failureReason: null });
+          sent++;
+        } else {
+          await db.inviteEntry.update(e.id, { status: "FAILED", failureReason: (r.error ?? r.code ?? "send failed").slice(0, 200) });
+          failed++;
+        }
+      }
     }
   }
   // SENDING → SENT once this pass is done. Pending phone invites stay QUEUED so a

@@ -6,7 +6,7 @@ import { SystemActions, SupportConfigForm, TimezoneForm, MaintenanceModeForm, An
 import { getSupportConfig } from "@/lib/server/support-config";
 import { db } from "@/lib/server/store";
 import { verifyChain, getAuditPage } from "@/lib/server/audit";
-import { smsHealthSnapshot, sms as smsClient } from "@/lib/server/sms";
+import { smsHealthSnapshot, smsBalanceSnapshot, sms as smsClient } from "@/lib/server/sms";
 import { rateLimitSnapshot } from "@/lib/server/rate-limit";
 import { admissionSnapshot } from "@/lib/server/admission";
 import { retrySnapshot } from "@/lib/server/retry";
@@ -56,6 +56,7 @@ export default async function AdminSystemPage({
   const chain = verifyChain();
   const auditCount = getAuditPage({ limit: 100_000 }).length;
   const smsHealth = smsHealthSnapshot();
+  const smsBalance = smsBalanceSnapshot();
   let totalUsers = 0;
   try { totalUsers = (await db.user.list()).length; } catch { /* graceful */ }
   const buckets = rateLimitSnapshot();
@@ -101,7 +102,12 @@ export default async function AdminSystemPage({
           <AdminKpi label="Audit chain"   sw="Mlolongo wa ukaguzi" value={chain.valid ? "Valid" : "BROKEN"} delta={`${auditCount.toLocaleString()} entries`} deltaDir={chain.valid ? "up" : "down"} pulse={!chain.valid} />
           <AdminKpi label="Total users"   sw="Watumiaji"            value={totalUsers.toLocaleString()} />
           <AdminKpi label="Markets live"  sw="Soko hai"              value={liveMarkets.toLocaleString()} delta={`${resolvedMarkets} resolved`} />
-          <AdminKpi label="SMS provider"  sw="Watoa SMS"            value={smsHealth.sent + smsHealth.failed === 0 ? "Idle" : `${(smsHealth.successRate * 100).toFixed(1)}% ok`} delta={`${smsClient.name} · ${smsHealth.sent} sent`} />
+          {/* 🔴 E-330 ② — "never tried" reads as Idle, not as 100%. `successRate` is now
+              `null` for no traffic (the payment-ops.ts:66 shape), so this branches on the
+              value that actually carries the fact rather than re-deriving it. The balance
+              is here because TZS 250 buys roughly ten messages and an SMS rail that runs
+              out of credit is, once OTP is the login path, a login outage. */}
+          <AdminKpi label="SMS provider"  sw="Watoa SMS"            value={smsHealth.successRate === null ? "Idle" : `${(smsHealth.successRate * 100).toFixed(1)}% ok`} delta={`${smsClient.name} · ${smsHealth.sent} sent${smsBalance.tzs === null ? "" : ` · TZS ${smsBalance.tzs.toLocaleString()}`}`} deltaDir={smsBalance.belowAlert ? "down" : undefined} pulse={smsBalance.belowFloor} />
         </KpiGrid>
 
         {/* Maintenance mode — global pause of new bets + deposits (§9.3 #1) */}

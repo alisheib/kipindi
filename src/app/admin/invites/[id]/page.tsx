@@ -62,7 +62,7 @@ export default async function AdminCampaignDetailPage({ params, searchParams }: 
             <span className="text-warning-fg shrink-0 mt-0.5"><I.warning s={15} /></span>
             <span>
               <span className="font-semibold text-text">{queuedPhone} phone {queuedPhone === 1 ? "invite is" : "invites are"} waiting.</span>{" "}
-              SMS isn&apos;t live yet, so phone invites stay queued (email invites send normally). They&apos;ll go out automatically once an SMS provider is configured — set <span className="font-mono">SMS_PROVIDER</span>, <span className="font-mono">SMS_API_KEY</span> and <span className="font-mono">SMS_SENDER_ID</span>, then press Send again.
+              SMS isn&apos;t live yet, so phone invites stay queued (email invites send normally). They&apos;ll go out automatically once an SMS provider is configured — set <span className="font-mono">SMS_PROVIDER</span> to <span className="font-mono">blackball</span>, plus <span className="font-mono">BLACKBALL_CLIENT_ID</span>, <span className="font-mono">BLACKBALL_CLIENT_SECRET</span> and <span className="font-mono">SMS_SENDER_ID</span> (max 12 characters), then press Send again.
             </span>
           </div>
         )}

@@ -123,19 +123,86 @@ let campaignId = "";
   ok("structured: per-invitee amount applied", (d2?.entries.filter((e) => e.bonusAmountTzs === 25_000).length ?? 0) === 2);
 }
 
-// ── SMS-pending honesty: no live SMS → phone stays QUEUED, never false SENT ──
-{
-  const r = await createCampaign({ name: "Pending", bonusAmountTzs: 5_000, messageEn: "x", messageSw: "y" }, "usr_inv_admin");
+// ── SMS honesty across the three states a provider can be in ────────────────
+//
+// ⛔ THIS BLOCK WAS REWORKED, NOT RE-POINTED (2026-09-16). It used to read
+// `SMS_PROVIDER = "selcom"` with the comment "select a real provider with NO API
+// key". Selcom was deleted with the other dead SMS adapters, so that line now
+// selects an UNRECOGNISED provider: the assertion still passed, but for a reason
+// its own label denied. A test that survives the deletion of its subject is not
+// evidence, and re-pointing the string at "blackball" would have hidden the two
+// cases below that the old shape could never express.
+async function pendingCampaign(name: string) {
+  const r = await createCampaign({ name, bonusAmountTzs: 5_000, messageEn: "x", messageSw: "y" }, "usr_inv_admin");
   const cid = r.ok ? r.campaign.id : "";
-  await addContactsStructured(cid, [{ email: "p@x.com", phone: "0716555666" }], "usr_inv_admin");
-  // Select a real provider with NO API key → smsConfigured() is false.
-  process.env.SMS_PROVIDER = "selcom";
+  await addContactsStructured(cid, [{ email: `${name}@x.com`, phone: "0716555666" }], "usr_inv_admin");
+  return cid;
+}
+const SMS_ENVS = ["SMS_PROVIDER", "SMS_SENDER_ID", "BLACKBALL_CLIENT_ID", "BLACKBALL_CLIENT_SECRET"];
+const clearSms = () => { for (const k of SMS_ENVS) delete process.env[k]; };
+
+// ① The original intent, preserved: a real provider with no credentials.
+{
+  const cid = await pendingCampaign("Pending");
+  clearSms();
+  process.env.SMS_PROVIDER = "blackball";
   const sent = await sendCampaign(cid, "usr_inv_admin");
   ok("pending: email sent, phone pending, none failed", sent.ok && sent.sent === 1 && sent.pending === 1 && sent.failed === 0, sent.ok ? `sent=${sent.sent} pending=${sent.pending} failed=${sent.failed}` : "not ok");
   const detail = await getCampaignDetail(cid);
   ok("pending: phone entry stays QUEUED (not falsely SENT)", (detail?.counts.QUEUED ?? 0) === 1, `queued=${detail?.counts.QUEUED}`);
   ok("pending: email entry SENT", (detail?.counts.SENT ?? 0) === 1, `sent=${detail?.counts.SENT}`);
-  delete process.env.SMS_PROVIDER;
+  clearSms();
+}
+
+// ② ⭐ A TYPO IN A RAILWAY VARIABLE MUST REFUSE, NOT FALL BACK TO THE STUB. The old
+//    `pickProvider()` ended in `default: return consoleSms`, so one missing letter
+//    would have selected the console black hole on a production box — every invite
+//    reported SENT, nothing delivered, nothing anywhere saying so.
+{
+  const cid = await pendingCampaign("Typo");
+  clearSms();
+  process.env.SMS_PROVIDER = "blackbal";
+  const sent = await sendCampaign(cid, "usr_inv_admin");
+  ok("typo'd provider: phone stays pending, never falsely SENT", sent.ok && sent.sent === 1 && sent.pending === 1 && sent.failed === 0, sent.ok ? `sent=${sent.sent} pending=${sent.pending} failed=${sent.failed}` : "not ok");
+  const detail = await getCampaignDetail(cid);
+  ok("typo'd provider: phone entry stays QUEUED", (detail?.counts.QUEUED ?? 0) === 1, `queued=${detail?.counts.QUEUED}`);
+  clearSms();
+}
+
+// ③ ⭐ THE CASE THE OLD SUITE COULD NOT EXPRESS: a configured provider actually
+//    sending, and doing it in ONE request rather than one per recipient.
+{
+  const r = await createCampaign({ name: "Live", bonusAmountTzs: 5_000, messageEn: "x", messageSw: "y" }, "usr_inv_admin");
+  const cid = r.ok ? r.campaign.id : "";
+  await addContactsStructured(cid, [
+    { phone: "0716555601" }, { phone: "0716555602" }, { phone: "0716555603" },
+  ], "usr_inv_admin");
+  clearSms();
+  process.env.SMS_PROVIDER = "blackball";
+  process.env.SMS_SENDER_ID = "50PICK";
+  process.env.BLACKBALL_CLIENT_ID = "cid";
+  process.env.BLACKBALL_CLIENT_SECRET = "csec";
+
+  let calls = 0;
+  let lastCount = 0;
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = (async (_i: RequestInfo | URL, init?: RequestInit) => {
+    calls++;
+    lastCount = (JSON.parse(String(init?.body)) as { messages: unknown[] }).messages.length;
+    return new Response(JSON.stringify({ status: true, message: "Queued", data: null, balance: 250 }), {
+      status: 200, headers: { "content-type": "application/json" },
+    });
+  }) as typeof fetch;
+
+  const sent = await sendCampaign(cid, "usr_inv_admin");
+  globalThis.fetch = realFetch;
+
+  ok("live: all three phone invites SENT", sent.ok && sent.sent === 3 && sent.pending === 0 && sent.failed === 0, sent.ok ? `sent=${sent.sent} pending=${sent.pending} failed=${sent.failed}` : "not ok");
+  ok("live: ⭐ three recipients cost ONE request, not three", calls === 1, `calls=${calls}`);
+  ok("live: …and that request carried all three messages", lastCount === 3, `messages=${lastCount}`);
+  const detail = await getCampaignDetail(cid);
+  ok("live: no entry is left QUEUED", (detail?.counts.QUEUED ?? 0) === 0, `queued=${detail?.counts.QUEUED}`);
+  clearSms();
 }
 
 console.log(`\ninvite-service: ${pass} passed, ${fail} failed`);
