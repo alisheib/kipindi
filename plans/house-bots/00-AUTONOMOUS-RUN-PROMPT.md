@@ -8,7 +8,7 @@ Continue building **House Bots** for 50pick on branch `house-bots` of github.com
 
 Ali will be away all day. He approves permissions and answers questions **only now**. After Phase 0 you never wait on him.
 
-1. **Fetch and read, fast:** `git fetch origin`; read PROGRESS "Status now", RESUME AT, "Waiting on Ali", "💡 Proposed extra controls" and "🧷 Later — sealing to-do" (L6 and L23–L24 are this run's); skim C4-SPEC §6 rulings 143–162 (the D19 un-build, X7, step 11); **read PROGRESS's "OWNER RULING D19" block in full.**
+1. **Fetch and read, fast:** `git fetch origin`; read PROGRESS "Status now", RESUME AT, "Waiting on Ali", "💡 Proposed extra controls" and "🧷 Later — sealing to-do" (L9, L12–L20 and L23–L25 are open); skim `C5-SPEC-EXTRACT.md` in full and `C4-SPEC.md` §6 rulings 143–163 (the D19 un-build, X7, step 11, the closing gates); **read PROGRESS's "OWNER RULING D19" block in full.**
 2. **Ask nothing, but tell Ali one thing: W20.** The GitHub repository is still **public** (measured 2026-09-16 15:25 UTC),
    and D19 says house bots are never public. Only he can change it: GitHub → Settings → General → Danger Zone → Change
    visibility → Private, then check Railway still deploys `main`. Say it once, in one line, and carry on either way.
@@ -23,42 +23,32 @@ Ali will be away all day. He approves permissions and answers questions **only n
 
 ## 🏃 THE UNATTENDED RUN — at least THREE plan commits
 
-**Goal:** close Commit 4 (engine), then Commit 5 (reporting · data rights · resolver exposure · staff edge per ruling 78 — its holder chip and holder copy are struck by D19c), then Commit 6 (now the NON-disclosure commit: the private Gaming Board draft, the chatbot guard, the docs and the suite that proves the absence), and continue into Commit 7 (console) if context remains. Ali's cadence and quality bar still hold: a commit closes only when it is right logically (both stores, mutations aimed at every covered branch, `node scripts/test-all.mjs --skip responsive,motion` compared red-by-red against clean `origin/main` in `F:/kipindi-old-build`, the 3-lens review) and visually (every surface it produces rendered at 1280 and 360 and every bell and email rendered, each screenshot opened and read; the platform UI kit and the existing templates are the only look — a surface that invents its own look or words is a defect).
+**Goal:** **Commit 4 is ✅ CLOSED** (engine, the D19 un-build, X7, step 11 and every closing gate). Build **Commit 5** (reporting · data rights · resolver exposure · staff edge per ruling 78 — its holder-facing half is struck by D19c), then **Commit 6** (the NON-disclosure commit: the private Gaming Board draft, the chatbot guard, the docs and the suite that proves the absence), then **Commit 7** (the console — it brings the House Bots link in the admin navbar) if context remains. Ali's cadence and quality bar still hold: a commit closes only when it is right logically (both stores, mutations aimed at every covered branch, `node scripts/test-all.mjs --skip responsive,motion` compared red-by-red against clean `origin/main` in `F:/kipindi-old-build`, the 3-lens review) and visually (every surface it produces rendered at 1280 and 360 and every bell and email rendered, each screenshot opened and read; the platform UI kit and the existing templates are the only look — a surface that invents its own look or words is a defect).
 
-**What is left, in order** (PROGRESS RESUME AT 4b ⬜ item 4 is authoritative; §5 steps 1–11 are built, the D19
-un-build and X7 are done, and rulings 143–162 are taken):
-1. **Finish step 11** (two items; `red:house-bot-engine` already runs green — 22 caught, 0 missed, 0 not measured,
-   0 files left dirty, 2026-09-16 — and any run of it must stay that way: act on every MISSED / WRONG-ASSERTION /
-   STALE line by fixing the case or the anchor, never by loosening an assertion):
-   (a) **declare the mutations the new cases still lack** — L1 (the hook removed from
-   the call site → 18.77), L2 (the trigger run inside the admission slot or the lock → 18.80a–c), L3 (the sweep timer
-   not started, or the lease check skipped → 11.30/11.31), L4 (the wrong counterparty id → 18.L4a–c), and 11b's EXPLAIN
-   pins (a read rewritten so it cannot use its partial index → the matching money 7.x pin); (b) **L6** — a double sweep
-   at leader failover writes one row per stake (two processes over one pass, reusing
-   `scripts/lib/house-bot-two-process-child.mts`), with a case on Postgres and a mutation.
-2. **Commit 4's closing gates.** (a) **Merge `origin/main` first.** At the last handover it was `b726cb7f` (21 commits,
-   SMS on Blackball) and it brings `20260916120000_sms_message`, which sorts AFTER both house migration folders — so
-   `git mv` them past it (`20260916150000_house_bot_tables` / `20260916150100_house_bot_markers`, re-checked against
-   whatever `main` has by then) and update `prisma/schema.prisma`, `docs/HOUSE-BOTS.md`, `C4-TRIGGER-EXTRACT.md`, this
-   prompt and PROGRESS standing fact 5. A read-only `git merge-tree --write-tree house-bots origin/main` showed two
-   conflicts, `scripts/dal-parity.test.mts` and `src/lib/server/auth-service.ts`. Then `npx prisma generate`, tsc, and
-   the house suites on both stores. (b) Move `F:/kipindi-old-build` to the same `origin/main` and run
-   `node scripts/test-all.mjs --skip responsive,motion` in both trees, comparing red by red. (c) `verify:house-bot-bundle`
-   on a fresh build, `qa:house-bot-holder-view` (read every screenshot), the full `red:house-bot-money`. (d) The 3-lens
-   adversarial review as a Workflow (**Ali authorises it**: money/concurrency · logic/integrity/exploitability ·
-   UX/visual/repo gates; each reviewer researches first and writes its whole answer once) — give every reviewer D19 and
-   ask one of them to hunt for anything a player or holder could still see. (e) Fix every confirmed finding with a case
-   and a mutation. (f) Docs: `docs/HOUSE-BOTS.md` §4 and §12 and its stale counts line (re-derive every number), the
-   PROGRESS Commit 4 row ✅, push.
-3. Then **Commit 5** from `C5-SPEC-EXTRACT.md` — read its D19c banner first. Its reports, CSV, staff-edge,
-   resolver-exposure and data-rights work stands; its holder-facing half (the holder chip, `SellButton`'s `houseStake`,
-   the activity-feed chip, item 12) is struck. Take its 30 open points as rulings in a new `C5-SPEC.md` §6 **before any
-   code**, adjusted for D19: the holder's own export carries no house section (W2's default), the officer's DSAR view
-   keeps it. Render every admin surface at 1280 and 360 and read it.
-4. Then **Commit 6**, which D19 turned into a SHORT non-disclosure commit (read `C6-SPEC-EXTRACT.md`'s banner first):
-   the private Gaming Board draft, the chatbot's forbidden-phrase guard (D19d), the docs, and `test:house-bot-disclosure`
-   extended to pin the two rulebooks, Terms and the privacy notice **byte-identical to `origin/main`**.
-5. Then **Commit 7** (the console — it brings the House Bots link in the admin navbar) if context remains.
+**What is left, in order** (PROGRESS RESUME AT is authoritative):
+1. **Commit 5**, from `plans/house-bots/C5-SPEC-EXTRACT.md` — read its D19c banner FIRST. Its reports, CSV, staff-edge,
+   resolver-exposure and data-rights work stands; its holder-facing half (the holder chip, `SellButton`'s `houseStake`, the
+   activity-feed chip, extraction item 12) is struck by D19. **Before any code**, take its 30 open points as numbered rulings in
+   a new `plans/house-bots/C5-SPEC.md` §6, adjusted for D19: the holder's own export carries no house section (W2's recorded
+   default), while the officer's DSAR view keeps the full one. Then build in the extraction's §6 order (readers → the reports
+   suite → R9/R2 → R1's report and CSV → the staff edge → R8 → R3 and the §9 splits → R4/F9 → R5's officer door → R6's tests →
+   the absence assertions), proving each step on BOTH stores with a case and a mutation before building on it, and rendering
+   every admin surface it produces at 1280 and 360 — open each screenshot and read it.
+2. **Commit 6**, the short non-disclosure commit (read `C6-SPEC-EXTRACT.md`'s banner first): the private Gaming Board draft
+   `docs/BOARD-DISCLOSURE-HOUSE-BOTS.md`, the chatbot's forbidden-phrase guard (D19d), the docs, and `test:house-bot-disclosure`
+   extended into a NON-disclosure suite that pins the two rulebooks, Terms and the privacy notice **byte-identical to
+   `origin/main`**.
+3. **Commit 7** (the console) if context remains — and with it the two items Commit 4 deferred: **N1-9**'s mutation (an inline
+   fire not registered in `inFlight`, which needs the inline Enter now fire that lands there — PROGRESS L23) and the console
+   controls X1, X2, X4, X5, X6 recorded under "💡 Proposed extra controls".
+4. **Each commit closes the same way Commit 4 did:** merge `origin/main` first (check
+   `git diff --stat house-bots...origin/main -- prisma/migrations` — a new main migration means renaming the house folders
+   again, which is now a well-trodden path), `node scripts/test-all.mjs --skip responsive,motion` in this tree and in
+   `F:/kipindi-old-build` compared red by red, `verify:house-bot-bundle` on a fresh `npx next build`,
+   `qa:house-bot-holder-view`, the commit's own `red:` drive, the 3-lens adversarial review as a Workflow (**Ali authorises
+   it**: money/concurrency · logic/integrity/exploitability · UX/visual/repo gates; give every reviewer D19 and have one hunt
+   for anything a player or holder could still see), a fix with a case and a mutation for every confirmed finding, then
+   `docs/HOUSE-BOTS.md`, the PROGRESS row ✅ and a push.
 
 **Decide alone.** Where a document is silent or two disagree, decide within the approved plan (authority 04 > 02/03 > PLAN > 01; code over plan when the code is right), write the decision as a numbered ruling in the commit's SPEC §6 before the code, and move on. A genuine owner-only question that appears mid-run goes into PROGRESS "Waiting on Ali" with a recommended default, and you BUILD THE DEFAULT unless it is on the hard-limit list below. Improvements outside the plan go into "💡 Proposed extra controls" or "🧷 Later" — never built without Ali's yes.
 
