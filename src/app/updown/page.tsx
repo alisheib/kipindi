@@ -96,6 +96,11 @@ export default async function UpDownPage({
         <div className="mt-1 flex shrink-0 items-center gap-2">
           <Link
             href="/legal/rules/up-down"
+            /* ⛔ THE LABEL COLLAPSES BELOW `sm`, SO THE NAME MUST NOT. Same rule, same words as
+               the deposit CTA in `top-app-bar.tsx:302-320`: the glyph and its `aria-label` stay,
+               so a phone is never handed an unnameable control. The label is the SAME key the
+               span carries — one string, two presentations, never a second wording to translate. */
+            aria-label={t.common.readFullRules}
             className={HEADER_PILL}
           >
             <I.scrollText s={13} />
@@ -104,6 +109,7 @@ export default async function UpDownPage({
           {/* This game's own portfolio — separate from the long-form Bets page. */}
           <Link
             href="/updown/history"
+            aria-label={t.market.udHistoryTitle}
             className={HEADER_PILL}
           >
             <I.portfolio s={13} />
