@@ -2,6 +2,7 @@
  * RED DRIVE for the house-bot money seam — `red:house-bot-money`.
  *
  *   npm run red:house-bot-money            (needs a clean tree for its target files — commit first)
+ *   npm run red:house-bot-money -- --only "(e)"   (one mutation, by name prefix)
  *
  * Puts back each money defect declared in `scripts/anchors/house-bot-money.anchors.mjs` and the seam
  * source pins in `scripts/anchors/house-bot-seam.anchors.mjs`, runs the suite each one names, and requires
@@ -23,7 +24,11 @@ import { MUTATIONS as SEAM } from "./anchors/house-bot-seam.anchors.mjs";
 import { injectDefect } from "./red-anchor.mjs";
 
 const MEMORY_ONLY = process.argv.includes("--memory-only");
-const DEFECTS = [...SEAM, ...MONEY];
+// `--only (e),H5` runs just the named mutations (prefix match on the name) — for re-proving one fix without the fleet.
+const onlyArg = process.argv.find((a, i) => process.argv[i - 1] === "--only");
+const ONLY = onlyArg ? onlyArg.split(",").map((x) => x.trim()).filter(Boolean) : [];
+const ALL_DEFECTS = [...SEAM, ...MONEY];
+const DEFECTS = ONLY.length ? ALL_DEFECTS.filter((d) => ONLY.some((o) => d.name.startsWith(o))) : ALL_DEFECTS;
 const SUITES = {
   seam: "npx tsx scripts/house-bot-seam.test.mts",
   "money-mem": "npx tsx scripts/lib/house-bot-money-cases.mts",
