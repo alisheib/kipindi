@@ -3,6 +3,9 @@
 > **STATUS: ⚪ RECORD — evidence, not a work order.** The work order is [`MOBILE-VISUAL-PLAN.md`](MOBILE-VISUAL-PLAN.md);
 > every item below is either already covered by one of its units, filed in [`LIVE-QA-CAMPAIGN.md`](LIVE-QA-CAMPAIGN.md) §6 when it is a money,
 > security or compliance matter, or waiting in the unverified backlog (U31). This file mints no law and no design value.
+>
+> **Appendix (2026-09-16): the professional critics panel** — all 116 claims six critics and a completeness critic made about the live phone
+> frames, each with its verdict, the verifier's reasoning and where it was routed. It is the evidence behind the plan's §3b.
 
 ## §0 — What was inspected, and how
 
@@ -5088,3 +5091,1295 @@ Eleven distinct sizes in the kit exist on neither ladder (10.5, 11.5, 12.5, 13.5
 The doc line understates the control by 12px in each direction (the kind of drift input.tsx:54-58 and pagination.tsx:137-147 both record paying for), and the box takes the legacy 8px radius rather than the control radius every other small boxed control in the kit uses.
 
 *Evidence:* cash.tsx:16 documents "`<CashEye />` → boxed 28px toggle", but :117 emits `"h-7 w-7 rounded-md border border-border hover:border-border-strong"` — on this repo's scale `7` is 40px (tailwind.config.ts:220), so the control renders 40x40 with an 8px radius. The control radius is `--r-md` 12px (`rounded-control`, tailwind.config.ts:252).
+
+---
+
+## Appendix — the professional critics panel, 2026-09-16
+
+> **⚪ RECORD — the evidence behind `MOBILE-VISUAL-PLAN.md` §3b.** Six professional critics and a completeness critic read 44 live phone
+> frames (360×780, Swahili — the default a new visitor gets), and an adversarial verifier re-opened every named frame before a claim was kept.
+> Each surviving claim below names where it went: a defect (D-id), an owner item, a unit note, `LIVE-QA-CAMPAIGN.md` E-420, or the
+> no-owner list in §3b — and that routing was proven by a trace over all 87 survivors, which fails when any destination is missing.
+> Frames are named `<surface>__s<NN>.png` (NN = scroll screen) and live in the gitignored `.qa-shots/`, never in the repo.
+
+⚠️ **Read the verdicts, not only their counts.** This run's verifiers had two verdicts, so three claims that were real and already registered (D1, D2, D3)
+are marked *refuted* below with a reason that says so. The stored workflow (`.claude/workflows/visual-critics-panel.js`) now has a third verdict, `known`.
+
+### Scores and the critics' own summaries
+
+| Lens | Score | What holds the score there |
+|---|---|---|
+| Art direction | **6** | Holding it at 6 is the accent economy, not the craft. The system owns exactly two distinctive assets — the needle/rail and the gilt — and both are applied by habit rather than by rule: gilt lands on four different non-money jobs across four surfaces while money goes blue, white and gold on three screens in a row, and the rail is missing from a whole game. That is what makes a carefully made product read as assembled. The single change that would move the score most is a hard accent contract enforced in the tokens: gilt appears only on money and the brand mark, the YES and NO inks appear only on YES and NO (which alone fixes the green HAPANA on the results board), and the rail is the house device for any two-sided value — including Up & Down. Do that and the identity survives all eleven screens instead of the first one. |
+| Typography | **6** | What holds the score at 6 is that the type has no enforced ladder at the object level: a single results card carries six sizes against a written limit of three, and the biggest of them is a repeated status word while the market question is clamped and cut mid-title. Every other finding here is a symptom of the same missing rule — money without a fixed style, gilt without a fixed meaning, mono without a fixed job. The single change that would move it most is defining and enforcing the card ladder: one title size, one money style (mono tabular, gold, grouped thousands), one label rung, nothing else — then deleting whatever no longer fits, starting with the three redundant outcome statements on the results card. Fix the green HAPANA at the same time and this reads as an 8. |
+| Colour and theme | **6** | The palette itself is competent — the neutral ramp and the ground steps are the work of someone who knows dark themes, and I found no genuine text-contrast failure anywhere in 44 frames (I checked the one I expected to fail, the "UMESAHAU NENOSIRI?" link, and it measures 5.3:1). What holds the score at 6 is that the accents no longer mean anything stable: an accent that changes meaning between screens is worse than no accent, because a player learns the wrong rule and then gets it wrong on money. The single change that would move the score most is to re-anchor gilt to money and only money: make the pool figure on every card gold, and take gold off the 01/02/03 ordinals, the "INGIA" / "UCHAGUZI UNAFUNGWA BAADA YA" eyebrows, the pager rings and the IMEKAMILIKA chip. That one move fixes the inverted hierarchy on the card footer, restores test:gold-is-money, and frees a neutral to carry "settled" — after which the green/HAPANA collision is the only remaining semantic break. |
+| Layout and density | **6.5** | The craft floor is high — consistent theming, a real type scale, cards that mostly keep their internal geometry, and only small optical misalignments (a 20px jog on one hero figure, a 4px gutter shift on Up & Down, a 8px height difference between sibling tiles). What holds the score at 6.5 is density and system discipline: 30% of the board viewport is permanently pinned chrome, empty states hold open desktop-sized boxes, one repeated card element (the sparkline band) silently changes card height by 34px, and the left inset is five different numbers across five surfaces, which means no single compaction pass can be trusted. The green HAPANA on the results board costs it half a point on its own, because it is a correctness failure dressed as a style choice. The single change that would move the score most is not a colour fix but a density pass on the three repeated empty states — the cold-start card, the settled card's dead sparkline band, and the empty discussion panel. Those three together are worth roughly a card and a half of extra content per screen on every board in the product, and they are the specific thing the "chunky and big" players are seeing. |
+| Information design | **5** | The score is held down by a consistent pattern rather than by any one bug: wherever the platform has thin data, the graphics render it at full confidence, and wherever a figure could be cross-checked against another figure on the same or a neighbouring screen, it often disagrees. The craft is there — this is not a crude product — which is exactly why the arithmetic failures read as carelessness rather than as immaturity. The single change that would move the score most is putting sample size into the price itself: shrink the displayed probability toward 50 by pool size, clamp the extremes off 0 and 100, and print the predictor count beside every percentage on every surface including /live. That one change fixes the 100%/0% cards, makes the home bar's caption honest, defuses the chart's implied history, and stops the board training readers to distrust its own numbers. |
+| Swahili reader | **6** | The editorial Swahili is an 8; the system-generated Swahili is a 4, and a player meets the system strings on every card. What holds the score down is that the failures cluster on money and time — the pool, the settlement verb, the closing timestamp — which are exactly the strings a bettor has to trust. The single change that moves it most is a money-and-time glossary enforced in code: one word for the pool (retire "bwawa"), one word for settled, one spelling of NDIO, and a locale-aware date formatter so no English month can render on a Swahili page. That one pass fixes six of the findings below and lifts the product from "rendered in Swahili" to "authored in Swahili". |
+| Completeness critic | **5.5** | The core card and the dark theme are well made, and the panel's praise for them stands. What pulls the score down is what they missed. A fixed chat button covers content on nearly every screen and was left out of the pinned-chrome measurement, so no lens saw it. The front door's biggest type is English. Tabs, the podium and the facepile of player avatars are clipped or misleading exactly where a first-time bettor looks. The single change that would help most: move the chat button off the content column (into the bottom rail or the Zaidi menu), or reserve a clear strip for it and count it as chrome. That clears defects on markets, results, detail, leaderboard, home, help and live at once. |
+
+**Art direction — overall read.** There is a real design here, not a template: the green-to-red tipping rail with its leaning gold needle is a genuine proprietary device, it is the same object as the logo mark, and it carries the home hero, the board, the live feed and the results board — crop the logo off markets__s00.png and a returning player would still know whose product it is. The type is confident, the dark royal ground is properly built rather than borrowed, and login__s00.png is the most assured screen in the set. What lets it down is economy: the gold that is supposed to mean money is spent on pager arrows, status pills, crowns and a chart baseline while the actual pool figure appears in three different colours and two different number formats within two taps; the settled board prints HAPANA in the NDIO green over an all-green rail; Up & Down drops the rail, the needle and the currency entirely and reads as a bought-in widget wearing the house chrome; and every page, however short, ends in the same 920px undesigned link list whose loudest objects are three other companies' logos. The identity is strong for one screen and thins steadily to the bottom of the scroll.
+
+**Typography — overall read.** Typographically this is a real system, not a pile of defaults: the display face has character, the FAQ list on help__s01, the countdown tiles on detail__s01 and the footer link columns are set with a confident hand, and the body measure and leading on home hold up well under Swahili's extra length. What it lacks is discipline about which voice does which job. Monospace has spread from numerals into running sentences; letter-spaced uppercase labels appear so often that they have started truncating themselves in Swahili; gold — the colour the team's own sheet reserves for money — now marks eyebrows, step numbers and pagination while the pool figure on every card is the dimmest thing in its row; and money itself is set three different ways for the same amount. The sharpest single failure is on /results, where the settled outcome word is painted the YES green whether the market resolved NDIO or HAPANA.
+
+**Colour and theme — overall read.** The base is genuinely good and I want to say so first: the navy ground family (#03002D page → #07045A panel → #080860 card) is a well-built dark theme — no banding, no grey mush, no washed-out "dark grey" laziness — and the text ramp (#F5F8FF / #C6D1EC / #899DD1) all clears 6:1 on every ground I measured. Where it falls down is not craft, it is meaning. Five accent families are in play (royal, YES-green, NO-red, gilt, teal) and three of them have stopped carrying one job each: gilt has migrated off money onto eyebrows, section numerals, pagination rings and settled-status chips while the pool figure — the money — is painted in the same quiet #899DD1 as a metadata label; green now means YES, "up", "gain" AND "settled", which is why the /results board prints the word HAPANA in the YES green; and "live" is red in the ticker and teal in the badge 165px below it on the same screen. Underneath that, elevation is doing almost no work — outer panel and inner digit box share the identical fill and are separated only by a 1.59:1 hairline — so the page reads as one flat sheet of cards, except on /markets where two fully saturated traffic-light blocks per card make the board the one place the theme goes loud.
+
+**Layout and density — overall read.** Through a layout lens this is a genuinely well-made product, and I want to be clear about that before the faults: one dark theme held consistently across nine surfaces, a real type scale that is not being abused, a footer that is pixel-identical on five different pages, tab and sort rows that land on the same 16px gutter, and countdown digit boxes that sit on an honest grid. The spacing steps inside the home explainer sections (15 / 22 / 37 / 77 CSS) are a proper doubling rhythm, not ad hoc. On the owner's split verdict — "good sizing" versus "chunky and big" — my read is that both camps are right about different things: the type is not chunky, the chrome and the empty states are. On /markets 237px of the 780px viewport never scrolls, so 543px is left and that holds one and a half cards; a cold-start card spends 28% of its height saying "no bets yet" three times; the discussion panel on a market page spends 246px saying there are no comments; and a 34px sparkline band sits on some cards rendering as a flat hairline. Compaction here should come entirely out of chrome, empty states and repeated labels — exactly as the phone design sheet says — and none of it out of the headline, the 28px title, the YES/NO buttons or the percentages, which are the best-judged things on the screen. The one finding I would put in front of the owner today is not a spacing one: on the results board the outcome word is painted YES-green whether the market resolved NDIO or HAPANA, on the screen that announces who won money.
+
+**Information design — overall read.** Visually this is a confident, coherent product — the dark palette holds across nine surfaces, the card material and radii are consistent, the needle brand mark is genuinely distinctive, and the Swahili typography sets well at 360px with almost no clipping. The empty-market cards even get the hard part right: they refuse to invent a price and show a neutral dotted track instead. But through the information-design lens the numbers are the weakest layer of an otherwise strong design. Several graphics assert far more than the data behind them supports — a solid green bar and "NDIO 100%" resting on one TZS 1,000 bet, a probability chart with a range selector and a filled area drawn from a market with one predictor — and where a mark could be checked, it often fails: the results donut's parts sum to 147 beside a total of 171, the detail chart's date axis spaces one day the same as two, the settled cards point a needle at the side that lost, and the leaderboard ranks by a figure it then omits from five of its six rows. The most telling one is the home page's own sentiment bar, whose caption claims "every open market" for a number that can only come from the six markets that have money in them.
+
+**Swahili reader — overall read.** The long-form Swahili on this product is genuinely authored, not machine output: the how-it-works section, the help desk, the login card and the responsible-play tools read like someone who speaks the language wrote them, and small things that trip translators are right — "3 watabiri" vs "1 mtabiri", "Je," question framing, "Des"/"Okt" months in market copy, "Mubashara" for live. The failure is not in the prose, it is at the seams where the product's own system strings surface: the money vocabulary (a betting pool is called "bwawa", a pond), the settlement verbs (imekamilika vs imetatuliwa inside one card), the timestamps (English "27 Oct 2026" under a title that says "Okt"), and the leftovers the dictionary never reached (a SPORTS chip, 1W/1M/ALL, S and B tier letters, ROI). So home, help, login and the how-it-works block read as authored in Swahili; /results, the detail page's data panel, /leaderboard and the live ticker read as an English product wearing Swahili. And YES itself is spelled two ways in a single row on the market detail page — when the core word of a money product is unstable, nothing downstream feels settled.
+
+**Completeness critic — overall read.** The six lenses were thorough on the market card, the results board and Swahili wording, but they all looked past the objects that sit on top of the design or at its edges. The biggest misses: a floating chat button that covers data, links and legal text on seven of nine surfaces; an English hero headline ("The wisdom of YES & NO.") on the Swahili-default front door; and a leaderboard whose podium breaks every username mid-word and draws the same player with two unrelated avatars. Nobody reviewed the icons, the login form or the footer's actual links. Those areas hold real faults: a dead "coming soon" link, casino "RTP" wording in a product whose slogan is "Si bahati" (not chance), a sign-in form showing the sign-up password rule, and a comments panel whose button says "sign in to predict".
+
+### Art direction — 14 claims, 11 kept
+
+#### CP-001 · ✅ upheld · 🟡 medium defect (claimed high/defect) · `results__s02.png`
+**A settled HAPANA is printed in the NDIO green, on an all-green card** — routed to: **D29 (U32)**
+
+*Seen:* The card reads "TOKEO / HAPANA" set in #42c070 — sampled, and byte-identical to the green used for "TOKEO / NDIO" on results__s03.png and results__s04.png. It is the largest type on the card (~20 CSS px caps, twice the title's weight in colour). Directly beneath it the tipping rail is green across its entire width with the gold needle pinned at the far right, i.e. the crowd sat at ~100% NDIO. So a card whose answer was NO is rendered green headline, green rail, green needle-end. The same green appears for a NDIO outcome on results__s03.png over a rail that is entirely RED. The outcome ink never changes; only the word does.
+
+*Why it matters:* This is a real-money product whose entire semantic system is one sentence long: green is YES, red is NO. It is taught on the home hero, on every button, on every rail. On the results board that sentence is broken at the exact moment it pays out. A player scanning 171 settled markets reads colour before words — in Swahili, in daylight, on a budget phone — and will read half of them backwards. It also quietly undermines the tipping rail: if the rail and the verdict can be opposite colours and nobody flagged it, the rail stops being trusted as truth.
+
+*Critic's fix:* Bind the outcome word to the outcome ink, not to a generic "resolved" token: NDIO takes the YES green, HAPANA takes the HAPANA red (the #d02b31 family, lightened for type contrast on the dark ground), VOID/refund takes the neutral periwinkle. Then desaturate the settled rail to ~40% so the live crowd position stops competing with the verdict it contradicts.
+
+*Verifier:* Opened results__s02.png and sampled the 'TOKEO / HAPANA' glyphs: #42c070. Sampled the 'TOKEO / NDIO' glyphs on results__s03.png (both the top card and the second card): #42c070, byte-identical. Sampled the live NDIO percentage on markets__s01.png ('NDIO 67%'): also #42c070, so that green is provably the NDIO ink, not a neutral 'settled' mint — HAPANA elsewhere is #d02b31 (button fill, markets__s01) and #ff6e70 (donut arc, ticker). So a NO outcome is set in the YES ink, which breaks the sheet's own guardrail that 'the YES/NO inks keep their meaning'. Downgraded from high to medium because two of the critic's supporting details are embellishment rather than evidence: the all-green rail with the needle at the far right is truthful crowd data (the crowd sat ~100% NDIO and was wrong) — results__s03.png shows the same green word over a fully RED rail, which is the same rail rendering correctly — and the word 'HAPANA' is spelled out in full, so no reader is actually misled about the outcome. It is a colour-semantics violation, not a wrong answer on screen. Not covered by D1-D41 (D29 is about invented 50% on no-bet cards).
+
+#### CP-002 · ❌ refuted · ⚪ low taste (claimed high/defect) · `detail__s01.png`
+**The same market's pool is a different number and a different colour one tap apart** — routed to: **— not routed**
+
+*Seen:* This is market mkt_37fa…, the S!TE 2026 market. Here the KIASI tile reads "TZS 3K" in pure white (#f5f8ff sampled). On markets__s01.png the same market's card states the same figure as "TZS 3,000" in muted periwinkle (#899dd1 sampled). On home__s00.png the hero states the site total as "TZS 29K" in gold (#f3cb7a sampled). Three renderings of the one quantity this product exists to move: comma-grouped/blue on the board, abbreviated/white on the detail, abbreviated/gold in the hero — all reachable in two taps.
+
+*Why it matters:* The design sheet reserves gilt for money and brand. In practice money is the least consistently treated element in the system: it is gold exactly once, on the marketing hero, and then demoted to body-text blue on the board and to plain white on the page where a player decides how much to stake. A visitor cannot learn "gold means my money" because gold is never there when their money is. It also makes 3,000 and 3K look like two different figures on two screens in the same session.
+
+*Critic's fix:* Pick one money treatment and apply it everywhere a TZS figure appears: one abbreviation rule (full grouping under 10K, K/M above, or full grouping throughout — either is fine, one of them), and the gilt token for the numeral in every pool, stake, balance and payout. Then remove gold from everything that is not money or brand (see the results-board finding).
+
+*Verifier:* Opened detail__s01.png (KIASI tile, sampled #f5f8ff white, 'TZS 3K'), markets__s01.png (same market — the S!TE 2026 card, and the detail route in detail.json is /markets/mkt_37fa3fb7d2b5cc32f672 — 'TZS 3,000' sampled #899dd1) and home__s00.png ('TZS 29K' sampled #f3cb7a). The title is false on its own terms: TZS 3K and TZS 3,000 are the same number, not 'a different number'. And the third leg collapses on inspection — home__s00.png labels the gold 29K 'FEDHA ZILIZOWEKWA' directly under '32 MASOKO YALIYO WAZI', i.e. the site-wide staked total across 32 open markets. It is not this market's pool, so 'three renderings of the one quantity' is simply wrong; two of the three are different quantities. What survives is that a card's inline meta row abbreviates and mutes while the detail page's dedicated stat tile groups and whitens — a hierarchy difference between a secondary meta slot and a primary stat tile, which is normal, plus a genuine but minor 3K/3,000 formatting inconsistency. Nowhere near a high defect.
+
+#### CP-003 · ✅ upheld · 🟡 medium taste · `results__s00.png`
+**Gold is spent three times on chrome on one screen, and never on the money** — routed to: **U38**
+
+*Seen:* On this single screen gold appears as: the "IMETATULIWA · NDIO" status pill, a filled gold plate (#d6ae5a) with dark-brown text; the "MATOKEO MASHUHURI" crown glyph; and both pager arrow rings, drawn in #f3cb7a — the exact hex the home hero uses for the money figure. On results__s01–s04 the same board's gold-filled "IMEKAMILIKA" pill sits at the top-left of every card, so the loudest colour on the board is a status label. The money on those cards — "TZS 5,500", "TZS 1,000", "TZS 5,000" — is grey-blue #899dd1. On detail__s02.png the chart's 50% baseline chip is also #f3cb7a.
+
+*Why it matters:* Gilt is the product's scarcest asset and the one thing a player would recognise with the logo cropped off. Spent on a pager arrow, a crown, a status chip and a chart baseline, it stops meaning anything — and the thing it was reserved for is left in the dullest ink on the card. The results board ends up shouting "SETTLED" in gold at a player who came to see how much was won.
+
+*Critic's fix:* Demote the settled/featured chips to the neutral or outcome ink with an outline rather than a gold fill, and make the pager arrows the standard control stroke. Return #f3cb7a to money and to the brand needle only, and let it appear on the pool figure so the board's gold reads as the payout, not the paperwork.
+
+*Verifier:* Opened results__s00.png and sampled every object named. The 'IMETATULIWA · NDIO' pill is a gold gradient (#c79f49-#efc775) with #2e1b00 dark-brown text; the 'MATOKEO MASHUHURI' crown glyph is #f3cb7a; the pager arrow ring is #f3cb7a — the exact hex I sampled for the hero money figure on home__s00.png. Meanwhile the money on results__s01-s04 ('TZS 1,000', 'TZS 5,000') sampled #899dd1, the same muted periwinkle as the board cards. Opened results__s02.png and results__s03.png and confirmed the gold-filled 'IMEKAMILIKA' pill at the top-left of every card. This directly contradicts the design sheet's guardrail 4 ('Gilt stays reserved for money and brand', test:gold-is-money), so the observation is real and correctly measured. Keeping the critic's own taste classification rather than escalating, and keeping medium: it is a palette-allocation call, nothing is illegible or wrong.
+
+#### CP-004 · ✅ upheld · 🟡 medium defect · `results__s00.png`
+**The results donut has a third segment nobody named, and its legend doesn't add up to the count beside it** — routed to: **D42**
+
+*Seen:* The ring at the top of /results is drawn in three colours — sampled #42c070 mint, #ff6e70 salmon, and a periwinkle #899dd1 arc of roughly 50 degrees from about 10:30 to 12 o'clock. The legend to its right names two: "NDIO 59 · HAPANA 88". 59 + 88 = 147. Two hundred pixels below, the same screen's tab strip states "masoko 171". So ~24 markets are painted into the ring, occupy a seventh of it, and are never named anywhere on the screen.
+
+*Why it matters:* This ring is the first graphic a player meets on the settled board and the only summary of the platform's history. A silent grey wedge on a settlement chart, on a licensed gambling product, is the shape people read as "the ones that went missing" — and here the arithmetic on screen invites exactly that reading. Whatever those 24 are (void, refunded, cancelled), leaving them unlabelled turns an integrity story into a suspicion.
+
+*Critic's fix:* Add the third category to the legend with its count and its own word ("BATILI 24" or whatever the domain term is), so the three arcs and the three labels match and the three numbers sum to the 171 stated directly below.
+
+*Verifier:* Opened results__s00.png and traced the ring by angle at three radii. Green #42c070 runs 0-125 deg, salmon #ff6e70 runs 126-310 deg, periwinkle #899dd1 runs 311-360 deg — a 49-degree arc from about 10:22 to 12 o'clock, exactly as described. The ratios are not approximate, they are exact: 125/185/49 deg = 34.7/51.4/13.6%, and 59/88/24 of 171 = 34.5/51.5/14.0%. The legend beside the ring reads 'NDIO 59 · HAPANA 88' (147), and the same frame shows 'Zote 171' and 'masoko 171' about 190 CSS px below. So 24 markets are painted into a seventh of the ring and named nowhere on the screen. Every number the critic quoted checks out against the pixels. Severity and kind confirmed as stated.
+
+#### CP-005 · ✅ upheld · ⚪ low taste (claimed medium/defect) · `login__s01.png`
+**The page's own legal strip is restated by the global footer 60px later** — routed to: **U20**
+
+*Seen:* The login page ends with a centred mono strip: "18+ · LESENI YA GBT · MSAADA 0800 11 0011". About 60 CSS px below it, past the plum divider, the global footer opens with an 18+ roundel, the 50pick lockup, "Imepata leseni kutoka Bodi ya Michezo ya Kubahatisha ya Tanzania", the licence number, and further down "Simu ya msaada · 0800 11 0011". The same three facts, twice, in two different compositions, inside one screen. help__s02.png shows the identical stack with its own strip ("18+ · Cheza kwa busara · Bara la Tanzania + Zanzibar pekee") sitting directly on top of the same footer.
+
+*Why it matters:* The phone design sheet's rule 5 is one composition per job, and this is the same job done twice, adjacent, in different type. It reads as two teams shipping the same compliance line without seeing each other's work — which is precisely the "assembled, not designed" impression the owner is trying to shake. It also weakens the compliance message itself: a duty-of-care line repeated in two voices looks like boilerplate rather than intent.
+
+*Critic's fix:* Delete the per-page mini legal strips. The global footer already carries 18+, licence, helpline and the responsible-play line — make it the single home for that content, and if a page needs the 18+ mark above the fold, use the roundel alone, not a second sentence.
+
+*Verifier:* Opened login__s01.png. The strip '18+ · LESENI YA GBT · MSAADA 0800 11 0011' and the footer's 18+ roundel, 'Imepata leseni kutoka Bodi ya Michezo ya Kubahatisha ya Tanzania', 'Leseni: OUS00000202602' and 'Simu ya msaada · 0800 11 0011' are both present in that one frame, so the duplication is real. But two load-bearing details are wrong. I scanned the column at x=360: the strip sits at image y=237 (118 CSS) and the divider at image y=476 (238 CSS), with the footer's first fact at ~280 CSS — about 160 CSS px below the strip, not 60. And the divider sampled #e7c176, gold, not 'plum'. The corroborating frame also fails: help__s02.png's strip reads '18+ · Cheza kwa busara · Bara la Tanzania + Zanzibar pekee' — only '18+' overlaps the footer at all, so it is not 'the identical stack'. Duplicated compliance copy is also a defensible legal choice, not an error, so this is low taste at most.
+
+#### CP-006 · ❌ refuted · ⚪ low taste (claimed medium/taste) · `updown__s00.png`
+**Up & Down is a different product with the same top bar** — routed to: **— not routed**
+
+*Seen:* Nothing on this screen belongs to the visual system the other eight surfaces share. There is no green-to-red tipping rail and no gold needle anywhere on the page — the device that appears on the home hero, every home card, every markets card, the live hero, every live card and every results card is simply absent from an entire game. Money is in USD ("$75,824.01"), set in mint green on updown__s01.png, where TZS is blue or white or gold elsewhere. The round history is a strip of twelve small green/red arrow chips, a graphic device that exists nowhere else in the product. The section eyebrow says "MUBASHARA" in grey caps while a red-dot "MUBASHARA" pill sits 200px below it in the price bar — the same word, two treatments, one screen.
+
+*Why it matters:* Crop the top bar out of updown__s00.png and markets__s00.png and no one would guess they are the same company. For a product that is being asked to feel like one designed thing, the second game reads as a bought-in widget wearing the house chrome. It also wastes the strongest asset: the needle is the brand mark, and a game literally about a value crossing a line is where it would work hardest.
+
+*Critic's fix:* Rebuild the round pod around the house rail: the strike price as the needle's line, the current price as the needle, green above / red below — the same object as the market rail, doing the job it was designed for. Bring the TZS money treatment and the house gilt to the stake and payout rows, and retire the arrow-chip strip in favour of the rail at a small size.
+
+*Verifier:* Opened updown__s00.png and updown__s01.png. The opening sentence — 'Nothing on this screen belongs to the visual system the other eight surfaces share' — is falsified by the frame itself: the shared top bar, the brand needle mark, the red-dot MUBASHARA ticker (identical to home__s00, leaderboard__s00, help__s00), the bottom rail, the 'VICHUJIO' filter control that is the same object as markets__s01's 'Vichujio', the segmented Raundi/Chati pill that is the same object as leaderboard__s00's Zote/Masoko tabs, the same card material/radius, the same mono eyebrow labels, and the same 'MATOKEO BAADA YA' countdown label that detail__s01.png uses. updown__s01.png even carries the same dotted no-bets ruler used on live and markets cards. 'Money is in USD' is misleading: $75,824.01 is the Bitcoin reference price; the same card states its pool as 'JUMLA TZS 0', and the mint green on it is the up/positive colour beside '+0.01%'. The absent tipping rail follows from the game having no YES/NO crowd split to plot — there is no data for that device here. And the 'same word, two treatments' pair is 130 CSS px apart, not 200, and both are grey mono caps; the second merely adds a live dot. Existing Up & Down issues are already D7/D10/D11/D36/D37.
+
+#### CP-007 · ✅ upheld · ⚪ low taste (claimed medium/taste) · `updown__s02.png`
+**A fixed ~920px footer eats a third to a half of the shorter pages** — routed to: **U20**
+
+*Seen:* The plum divider that opens the footer lands at roughly 127 CSS px into this frame, i.e. about y=1687 of a 2607px document — so 920 CSS px, about 35% of the whole Up & Down page, is footer. The same 920px block appears unchanged on every route: on leaderboard__s01.png it opens right after the six-row table and accounts for about 43% of that 2129px page; on help__s02.png the same. The footer is the same height on a 2.7-screen page as on the 11-screen home.
+
+*Why it matters:* On the short surfaces the last thing a player sees before the page ends is not the product — it is a flat, undesigned list of eighteen links with no gilt, no rail, no needle and no panel material. The identity survives the hero and then thins into a directory, and on /updown and /leaderboard the directory is longer than the thing it is attached to. That is exactly where an 11-screen page and a 2.7-screen page should behave differently.
+
+*Critic's fix:* Give the footer two states. Keep the full directory at the bottom of the long marketing surfaces (home, help); on the app surfaces (updown, leaderboard, live, results, detail) collapse to a compact band: brand lockup, 18+, licence, helpline, and a single "Zaidi" disclosure that expands the rest. The saving is roughly 600px per app page.
+
+*Verifier:* The arithmetic is exact and I reproduced it. Scanning updown__s02.png I found the gold divider at image y=254 = 127 CSS; updown.json gives docH 2607 and vh 780, and s02 is the third of four frames (scrollY 1560), so the divider lands at doc y=1687 and the footer is 920 CSS px = 35.3% of the page. leaderboard__s01.png: divider at image y=860 = 430 CSS, scrollY 780, doc y=1210 of docH 2129, footer 919px = 43.2%. Both of the critic's figures are right to the pixel. Downgraded to low taste because the finding is structurally circular: a global footer is constant by definition, so its share of a page is purely a function of how short the page is, and the block is compliance, responsible-gaming and legal navigation that regulators expect on every route. 'The footer is the same height on a 2.7-screen page as on the 11-screen home' is a description of what a footer is, not a defect.
+
+#### CP-008 · ✅ upheld · ⚪ low taste (claimed medium/taste) · `markets__s01.png`
+**The pinned bar guillotines the loudest objects on the board with no fade and no elevation** — routed to: **U4**
+
+*Seen:* The discovery bar ends in a hairline at about y=171 CSS. Ten CSS pixels below it, the previous card's NDIO and HAPANA buttons are sliced horizontally through the middle of the letterforms — "NDIO @ 50%" and "HAPANA @ 50%" appear with their top halves missing, in full-saturation #008336 and #d02b31, hard-edged. There is no scrim, no fade, no shadow and no background change between the bar and the sliced buttons, so the half-buttons read as objects belonging to the toolbar. With 237px of pinned chrome on /markets and /results this recurs at essentially every scroll position (markets__s03.png, markets__s04.png, results__s02.png all show the same cut).
+
+*Why it matters:* This is not the strip-fade/count collision already logged — it is the seam itself. The two saturated buttons are the loudest things in the entire palette, and the design lets them be chopped in half and left floating under a transparent bar. On a board a player thumbs through for minutes, the eye keeps catching a broken-looking object at the top of the viewport, which does more to make the product feel unfinished than any single misalignment lower down.
+
+*Critic's fix:* Give the pinned bar a 24px bottom fade mask to bg-base (the `.kp-strip-fade` treatment already exists for the strip), or an elevation shadow plus an opaque ground, so scrolled content dissolves into the chrome rather than being cut. Either reads as intent; the hairline does not.
+
+*Verifier:* Opened markets__s01.png and cropped the band at image y=300-420. The previous card's NDIO and HAPANA buttons are cut horizontally through the letterforms — 'NDIO @ 50%' and 'HAPANA @ 50%' with their top halves gone, hard-edged, in the full-saturation fills I sampled as #008336 and #d02b31 — with no scrim, fade or shadow between them and the discovery bar. markets.json confirms the sticky discovery bar (top 56, h 116, bottom 172 CSS) and pinnedPx 237, and I confirmed the same cut on results__s02.png. So the frame shows what was described. Downgraded to low: an opaque sticky toolbar clipping whatever scrolls under it is ordinary sticky behaviour, not a malfunction; 'the half-buttons read as objects belonging to the toolbar' is the critic's reading, and a fade is an enhancement rather than a repair. Note D1 already records a related fade problem on the status strip.
+
+#### CP-009 · ✅ upheld · ⚪ low taste (claimed medium/taste) · `detail__s01.png`
+**The page spends its heaviest type on two identical countdowns and states the same date three times** — routed to: **U8**
+
+*Seen:* Two countdown grids are stacked in one panel: "UCHAGUZI UNAFUNGWA BAADA YA" reading 36 / 13 / 02 / 38, and "MATOKEO BAADA YA" reading 40 / 13 / 02 / 38 — eight boxed numerals at roughly 34 CSS px, identical in size, border, radius and spacing, so neither reads as more important. Above them a separate "INAISHA" tile states "27 Oct 2026, 00:00", and the second countdown's own sub-line states "27 Oct, 00:00" again — the same moment printed twice in two formats within 250 CSS px, plus a third time as a ticking clock.
+
+*Why it matters:* The design sheet names the signature moments that keep their scale on phones: the hero headline, the YES/NO buttons, the 28px market title, the win seal, the needle. A countdown is not on that list, yet it takes eight boxes of the largest numerals on the page and outweighs the title it sits under. The result is a detail page whose loudest statement is an administrative timestamp, repeated.
+
+*Critic's fix:* Keep one countdown at full scale — the one that changes what a player can do, the close — and demote the settlement time to a single line of label text with its date. Drop the separate INAISHA tile, which the settlement line already says.
+
+*Verifier:* Opened detail__s01.png. Both countdown grids are there — 'UCHAGUZI UNAFUNGWA BAADA YA' 36/13/02/38 and 'MATOKEO BAADA YA' 40/13/02/38 — eight boxed numerals at the same size, border, radius and spacing, and the 'INAISHA' tile above reads '27 Oct 2026, 00:00' while the second countdown's sub-line reads '27 Oct, 00:00'. So the equal-weight problem and one date printed twice in two formats are both visible. But 'two identical countdowns' is embellished: they count to different moments (36 days to 23 Oct vs 40 days to 27 Oct), which is exactly why there are two, and the first countdown's own sub-line reads '23 Oct, 00:00', not 27 — so the 'same date three times' is really 27 Oct twice plus its own ticking clock. That leaves a hierarchy preference, not a defect: low taste.
+
+#### CP-010 · ✅ upheld · ⚪ low taste (claimed medium/taste) · `home__s11.png`
+**The loudest colours in the entire product are three other companies' logos** — routed to: **U20**
+
+*Seen:* The last screen of the 11-screen home page opens with Instagram's pink-orange gradient glyph, TikTok's cyan/magenta note and WhatsApp's saturated green disc, all at full brand colour, side by side on the royal ground. Nothing else in the 44 frames is a multi-hue saturated object — the house palette is royal blue, one gold, one green, one red. The same row repeats at the top of the footer on every route (markets__s08.png, live__s08.png, results__s06.png, updown__s02.png, detail__s05.png), so every page in the product ends on it. WhatsApp's green also sits within a few degrees of the NDIO green used for outcomes.
+
+*Why it matters:* Every page hands its final colour statement to three other brands. In a system this disciplined about its ink — one gold, one green, one red, each with a job — importing three foreign colour systems at the end of every scroll is the single loudest inconsistency in the product, and it is the last thing a player sees before leaving.
+
+*Critic's fix:* Set the three social glyphs as monochrome marks in the footer link ink, with the platform name as the label. They are recognisable by silhouette; they do not need their brand colour to be tappable, and the row reads as part of the page for the first time.
+
+*Verifier:* Opened home__s11.png — the frame does open on the Instagram gradient glyph, the TikTok note and the WhatsApp disc at full brand colour, and I confirmed the same row at the top of the footer on login__s01.png, help__s02.png and updown__s02.png. I sampled the WhatsApp disc at #25d366 (hue 142) against the NDIO #42c070 (hue 145), so 'within a few degrees' is accurate. Downgraded because the supporting absolute is false: 'Nothing else in the 44 frames is a multi-hue saturated object' is contradicted by the 50pick needle mark itself — a saturated green/red split disc sitting in the top-left of all 44 frames — and by the three-colour results donut. 'Loudest colour in the product' is rhetoric about three ~28px glyphs. Rendering third-party marks in their own brand colours is standard practice and frequently required by those brands' guidelines, so this is a low taste note, not a defect.
+
+#### CP-011 · ❌ refuted · ⚪ low taste (claimed medium/taste) · `live__s01.png`
+**The live feed spends its boldness in the first screen and nothing for the next eight** — routed to: **— not routed**
+
+*Seen:* live__s00.png opens strongly: a big glowing tipping rail, teal live accents, a clear CTA. From live__s01.png to live__s08.png — roughly eight screens — the feed is near-identical cards in which the rail is replaced by a flat dotted grey ruler and the line "Bila dau bado". Across the six /live frames the real green-to-red rail appears only three times (the hero, one 83% card on live__s02.png, one 100% card on live__s04.png). Every other card carries the dotted placeholder, which is the same graphic the product uses for skeleton-like empty states on markets__s03.png.
+
+*Why it matters:* The page is called Mubashara — live — and after one screen it is eight screens of grey rulers saying nothing is happening. Through the identity lens the problem is not the emptiness, it's that emptiness was given the flattest possible mark: the one proprietary graphic in the system withdraws exactly where the page needs to look alive, and what replaces it looks like content that failed to load.
+
+*Critic's fix:* Give the no-bets state a designed mark rather than an absent one — the rail drawn at rest, centred needle, desaturated to ~25%, with "Kuwa wa kwanza kutabiri" as its label — so the card still reads as the same object and the feed keeps one continuous visual line down eight screens. And sort at least a few cards with real positions into the top of the feed.
+
+*Verifier:* Opened live__s01.png, live__s02.png and live__s03.png. The dotted ruler cards are there, and live__s02.png does carry the real 83% rail, so the critic looked at the right pixels. But the conclusion does not follow from them: every dotted card is captioned 'Bila dau bado' — no bets yet — so there is no crowd split to plot, and the rail appears precisely where there is data. This is a seeded-data condition of the capture, not a design decision. Worse, the implied remedy is the product's own catalogued defect: D29 records that resolved/void cards with no bets wrongly state an invented 'YES 50%' with a centred needle. Drawing a rail with no bets behind it is the bug; declining to is the fix. The critic is penalising the one screen that gets this right. 'Same graphic the product uses for skeleton-like empty states' is also hedged into meaninglessness — it is the no-bets state, deliberately.
+
+#### CP-012 · ✅ upheld · ⚪ low taste · `markets__s04.png`
+**The card watermark is a 1% contrast smudge — decoration that does no work** — routed to: **U3**
+
+*Seen:* Each market card carries a large category glyph watermark in its lower right, behind the pool figure and the countdown. Sampled at normal contrast it is #070659 against a card ground of #050357 — a delta of 2/3/2 across RGB, roughly 1% luminance. It is not legible as a shape; it registers only as faint mottling under the money row. Boosting contrast 4x reveals a full football glyph that no player will ever see. The same near-invisible treatment appears on the home cards and on the /results cards.
+
+*Why it matters:* Meanwhile the decorative backgrounds elsewhere are all different devices — a diagonal band and blown-up needle on the home hero (home__s00.png), a scales glyph behind the detail title (detail__s00.png), a circle-and-needle watermark on the help hero (help__s00.png), wave contours on login (login__s00.png). So the decorative layer is five unrelated ideas, one of which is below the threshold of vision. That is the difference between a system and a pile of individual screen decisions.
+
+*Critic's fix:* Pick one decorative device — the needle-in-circle, which is the mark — and use it at one scale and one opacity as the house watermark. On cards, either raise it to a visible 4–6% and place it where nothing sits on top, or remove it: at 1% it is cost with no image.
+
+*Verifier:* Verified by measurement on markets__s04.png. In a clean band of the first card the ground varies only between about (4,1,81) and (7,6,88) — a delta of roughly 3/5/7 across RGB, the same order of magnitude the critic quoted. I isolated the near-ground pixels and normalised them, and a complete football glyph resolves in the lower right behind the meta row, exactly as claimed; it is invisible at normal contrast. Accurate on every point. It stays low taste: invisible ornament costs nothing, obscures nothing and harms no reading — the only charge is that it is wasted effort. One small slip: on markets__s04.png the cards read 'Hakuna bwawa bado', so there is no pool figure for it to sit behind on this particular frame.
+
+#### CP-013 · ✅ upheld · ⚪ low taste (claimed low/defect) · `help__s00.png`
+**Icon plates change accent colour row to row with no rule** — routed to: **U39**
+
+*Seen:* In the /help contact column, three structurally identical rows carry three differently coloured icon plates: the phone plate has a teal border and teal glyph, the mail plate immediately below has a blue border and blue-white glyph, and the chat plate below that returns to teal. On help__s01.png the responsible-play plate in the same column is green. Four accent colours down one column of rows that differ only in their label.
+
+*Why it matters:* Small, but it is the tell. When identical components in one list carry four different accents, the reader's eye keeps looking for the meaning of the colour and there isn't one. Repeated across a product, this is what makes a careful design read as assembled — and /help is where an anxious player goes.
+
+*Critic's fix:* One accent for the whole column (the teal used for the primary contact), or a rule the user can learn: teal for channels that reach a human, green for safety tools. Either is fine; four with no rule is not.
+
+*Verifier:* Opened help__s00.png and sampled all three plates: phone plate border #124c66 with a #7fe2ba mint glyph; mail plate border #3041a2 with a #b5cfff blue-white glyph; chat plate border #025177 with a #64d0d1 cyan glyph. So three structurally identical contact rows do carry three different accents — in fact the critic undercounted, since the two 'teals' are not the same teal either. Corrected from defect to taste and held at low for two reasons: nothing is illegible or misleading, it is token allocation; and the fourth colour is oversold — the green plate on help__s01.png is 'Kucheza kwa busara' in a separate responsible-play card one screen down, where green is the standing safety accent, not a fourth arbitrary choice 'down one column of rows that differ only in their label'.
+
+#### CP-014 · ✅ upheld · ⚪ low taste (claimed low/defect) · `leaderboard__s00.png`
+**The silver tier is printed in the money gold** — routed to: **D44**
+
+*Seen:* The stat panel reads "DARAJA LA JUU" followed by "Fedha" — silver — set in #f3cb7a, the same gold as the hero's money figure and the results pager rings. One screen lower, the actual tier badges beside the podium names are metallic: a grey "S" on @Dhiresh and @Libuhi, a bronze "B" on @Jaykishan. So the tier system has its own metals, and the headline naming the silver tier is gold.
+
+*Why it matters:* A leaderboard's whole job is legible rank, and the metals are the fastest rank signal there is. Painting "silver" gold at the top of the page contradicts the badges it is summarising, and it spends the house gilt on a third non-money job on a third surface.
+
+*Critic's fix:* Set the tier name in its own metal — silver for Fedha, gold for Dhahabu, bronze for Shaba — matching the badge palette already used beside the names, and keep #f3cb7a off it unless the tier actually is gold.
+
+*Verifier:* Opened leaderboard__s00.png and sampled 'Fedha' after 'DARAJA LA JUU': #f3cb7a, identical to the hero money figure on home__s00.png and to the results pager rings on results__s00.png. One screen lower the podium badges are indeed metallic and different — a grey S on @Dhiresh and @Libuhi, a bronze B on @Jaykishan. So the observation holds as pixels. Corrected from defect to taste and kept low: the gold here is the panel's stat-value accent shared with the adjacent '26.8%' slot rather than a tier medal, and 'Fedha' in Swahili carries both 'silver' and 'money', so a gold value is not the flat contradiction the title implies. It is a token-consistency nit worth one line in the palette pass, nothing more.
+
+### Typography — 13 claims, 8 kept
+
+#### CP-015 · ✅ upheld · 🟡 medium defect (claimed high/defect) · `results__s02.png`
+**The settled outcome word is painted green whether the market resolved NDIO or HAPANA** — routed to: **D29 (U32)**
+
+*Seen:* On the middle card ("Je, fainali ya US Open Men's Singles 2026…") the outcome is set as "TOKEO" over a large mono "HAPANA". I sampled the glyph fill: rgb(66,192,112). That is the identical green used for the "NDIO" outcome on the card below it and on results__s03 — I sampled both and got 66,192,112/113. Everywhere else in the product HAPANA is red: the HAPANA button fill on markets__s00 is rgb(208,43,49) and the "50% HAPANA" label on live__s00 is a pink-red rgb(255,214,210). On this frame the sentiment bar above the word is also full green, so the reader sees green bar + green word on a market that resolved NO.
+
+*Why it matters:* The product spends every other screen teaching one ink pair — green is YES, red is NO — and then breaks it on the one screen where the answer is final and money has already moved. A player scanning the results board reads the colour before the word; on this card colour and word say opposite things, and the colour is the one that is wrong. It is the cheapest possible way to make a real-money platform look like it does not know its own result.
+
+*Critic's fix:* Ink the settled outcome with the same YES/NO tokens the buttons use: NDIO green, HAPANA red. Reserve the neutral "resolved" green for the status chrome (the IMEKAMILIKA pill), not for the outcome word itself.
+
+*Verifier:* Verified in the file. On results__s02 the middle card's display word HAPANA samples rgb(66,192,112); on results__s03 the NDIO display word samples rgb(66,192,112) — pixel-identical, not merely 'similar'. The contradiction is also real: the HAPANA button fill on markets__s00 samples exactly rgb(208,43,49), the live__s00 '50% HAPANA' label is pink-red, and the ticker running across every frame sets HAPANA in red. So the product's own YES=green / NO=red ink is inverted in the one place it states the settled result. The sentiment bar above it is indeed full green with the needle hard right. I checked the brief: not D29 (that is about invented 'YES 50%' on no-bet cards), not D39 (raw enum text). New. Correcting severity down from high: nothing factually wrong is displayed — the word literally reads HAPANA, and the same card repeats 'HAPANA' twice more in text — so this is a colour-semantics collision that misleads on a scan, not a wrong outcome. Medium.
+
+#### CP-016 · ❌ refuted · ⚪ low taste (claimed high/defect) · `results__s02.png`
+**A results card says the outcome four times, in four sizes and two different verbs, while the question itself is clamped and truncated** — routed to: **— not routed**
+
+*Seen:* One card carries the same fact four times: the gold pill "IMEKAMILIKA", the display "TOKEO / HAPANA", the outlined button "Imekamilika HAPANA", and the footer "Imetatuliwa HAPANA". Two different Swahili verbs (imekamilika / imetatuliwa) for one event, 380 image px apart. Measured cap heights on this frame (halved to CSS): HAPANA 20.5 → roughly 28px type; the market question 11.5 → roughly 16px; button label ~14px; "TZS 1,000" and "Imetatuliwa HAPANA" ~12px; "MICHEZO" and "TOKEO" ~10–11px. That is six type sizes in one card against the phone design sheet's limit of three (15 title · 28 % · 11–13 labels). The largest, boldest thing on the card is a repeated status word; the market question is the smallest full-size text and is cut mid-title at "Men's Singles 2026…".
+
+*Why it matters:* The card spends its whole type budget restating a one-word status and starves the only line a player actually needs to read — what was asked. On a 360px screen that trade is visible immediately: the eye lands on HAPANA, then has to hunt for a truncated question to find out what HAPANA refers to. It also puts this card two sizes over a rule the team has already written down, so every future card inherits the drift.
+
+*Critic's fix:* Keep one statement of the outcome — the inked word beside the question — and drop the button and footer repeats to a single quiet timestamp line. Give the question the 15–16px title rung and three lines instead of two; that alone removes the mid-word truncation. Settle on one verb (imetatuliwa) across chip, card and footer.
+
+*Verifier:* Opened results__s02 and measured. The count is wrong: the outcome word HAPANA appears three times (display, button, footer), not four — the gold pill says IMEKAMILIKA, which is the status, not the outcome. The type-size case misreads the sheet it invokes. Measured ink heights (image px, halve for CSS): HAPANA display 41 (~28px type — that IS the sheet's 28 rung), title 30 incl. descender / ~24 cap (~16px — the 15 title rung), button label 21 (~14px, a control token, not card type), 'TZS 1,000' 16, 'Imetatuliwa HAPANA' 16, 'MICHEZO' 16, 'TOKEO' 14 — the last four all sit in or one notch under the sheet's '11–13 labels' band. That is the three-rung scheme plus a 14px control label, not 'six sizes against a limit of three'. 'The market question is the smallest full-size text' is false: at ~16px it is the second-largest thing on the card and larger than every label. The two-line clamp on a list card with a Maelezo link to the full title is standard, not a defect. The only surviving kernel — imekamilika vs imetatuliwa for one event — is a minor copy nit that does not carry the claim as written.
+
+#### CP-017 · ❌ refuted · ⚪ low taste (claimed medium/defect) · `updown__s00.png`
+**Letter-spaced uppercase labels are wide enough in Swahili that they wrap and then ellipsise — the label truncates instead of the content** — routed to: **— not routed**
+
+*Seen:* Inside the round card, the status label under the title reads "TUNASOMA BEI YA / KUFUNGA… · BTC" — an uppercase tracked mono micro label that has wrapped onto two lines and then been cut with an ellipsis, so the reader is left with a half-sentence. The same pattern appears on live__s00, where the carousel label reads "LILILO NA SHAKA…" beside the 1/6 pager. On updown__s01 this exact string is shown a third way — as a pill "TUNASOMA BEI YA KUFUNGA…", still ellipsised — and then in full as plain sentence-case sans directly beneath it ("Tunasoma bei ya kufunga kutoka chanzo.").
+
+*Why it matters:* Tracking adds roughly 8–10% to a string's width, and uppercase adds more; Swahili strings are already 35–40% longer than the English these labels were sized for. The result is that the label system fails exactly where it is doing real work — telling a player why a live price is not yet settled. A truncated status in a money game reads as a bug, and the same message appearing three ways in two screens tells the reader nothing is authoritative.
+
+*Critic's fix:* Stop putting sentences in the tracked-uppercase rung. Reserve it for one- and two-word labels (BITCOIN, JUMLA, SIKU) and set anything longer in sentence-case sans at the 12–13px label rung, where it fits on one line at 360. Where the same status already appears as a sentence below, delete the label copy entirely.
+
+*Verifier:* Refuted at 3x magnification. On updown__s00 the label renders as 'TUNASOMA BEI YA / KUFUNGA… · BTC' — text CONTINUES after the ellipsis on the same line. No truncation mechanism can do that: text-overflow:ellipsis requires nowrap (so it cannot be on line two), and -webkit-line-clamp ellipsises only at the end of the clamped line, with nothing after it. The '…' is a literal character in the copy — a 'reading the closing price…' progress affordance. updown__s01 confirms it: the same string sits in a pill as 'TUNASOMA BEI YA KUFUNGA...' with ~128px of empty card to its right, so it is not hitting any box edge either, and the same card's resolved sibling shows the non-progress state as plain 'IMEKAMILIKA · BTC' with no ellipsis. 'LILILO NA SHAKA…' on live__s00 ends well clear of the pager button. The reader is not left with a half-sentence; they get the whole phrase plus a deliberate in-progress mark.
+
+#### CP-018 · ✅ upheld · ⚪ low defect (claimed medium/defect) · `detail__s01.png`
+**Money has no single typographic identity — the same figure is TZS 3K here and TZS 3,000 on the board** — routed to: **U38**
+
+*Seen:* The KIASI stat tile on this frame sets the pool as "TZS 3K" in white bold sans. The same market's card on markets__s01 sets it as "TZS 3,000" in dim mono, and the home hero on home__s00 sets its total as "TZS 29K" in gold mono. So one product renders currency in three faces (bold sans, mono, gold mono), two colours plus gold, and two number formats (abbreviated K, grouped thousands) — and here it abbreviates a four-digit figure into "3K" inside a tile that is 150 CSS px wide with room for "TZS 3,000" several times over.
+
+*Why it matters:* In a financial interface the money figure is the one element that must be instantly recognisable as money, in the same clothes, everywhere. A player who opens a card showing TZS 3,000 and lands on a page showing TZS 3K has to stop and decide whether those are the same number. Lossy abbreviation on a figure that fits is the worst version of this: it destroys precision to save space that was never needed.
+
+*Critic's fix:* Define one money style — mono tabular figures, one weight, one colour — and one format rule (group thousands below 1,000,000; abbreviate only above it). Apply it to the hero totals, the stat tiles and the card footers so the same amount is set identically on every surface.
+
+*Verifier:* Verified across three frames. detail__s01's KIASI tile reads 'TZS 3K' in white bold sans; markets__s01 carries the same market (S!TE 2026, NDIO 67%, which detail__s01's criteria panel names) with 'TZS 3,000' in dim mono; home__s00's hero sets 'TZS 29K' in gold mono. Same pool, two strings. Trimming the critic's framing: the 'three faces / two colours' half is weak — those are three different components (hero stat, stat tile, card footer) each internally consistent, which is normal typographic hierarchy, not a fault. And the K here is lossless (3,000 → 3K), so no precision is lost. What survives is a real money-formatting inconsistency worth one rule, not a system failure. Low.
+
+#### CP-019 · ✅ upheld · ⚪ low taste (claimed medium/defect) · `home__s04.png`
+**On every market card the money figure is the dimmest text in its row and the countdown is the brightest** — routed to: **U38**
+
+*Seen:* In the footer row of the first card, "TZS 18,000" is rgb(137,157,209) and "siku 2 zimebaki" beside it is rgb(198,209,236) on a card ground of rgb(6,3,85) — roughly 6.8:1 versus 12:1. Both are the same mono at the same size (I measured 8.5–9 CSS px of digit height for each), so the only difference is that the pool has been deliberately dimmed below the countdown. The same ranking repeats on the card below ("TZS 4,000" / "siku 75 zimebaki") and on every card on markets__s00 through markets__s04.
+
+*Why it matters:* The pool is the number that tells a player whether a market is worth entering; the countdown is context. Right now the type system says the opposite, and it says it on the most repeated object in the product. Combined with the fact that gold — the colour the design sheet reserves for money — never appears on these figures, money is the one thing on the card with no visual claim on the eye.
+
+*Critic's fix:* Swap the two contrasts: give the pool the brighter foreground token (and the gold money ink, which is what that token is for), and drop the countdown to the muted one. No size or layout change needed.
+
+*Verifier:* Sampled home__s04 and every number the critic quoted is exact: 'TZS 18,000' = rgb(137,157,209), 'siku 2 zimebaki' = rgb(198,209,236), card ground rgb(6,4,87); the second card repeats it at (133,153,205) vs (191,202,229). Same mono, same size, so the pool is deliberately on the muted token while the countdown is on the default foreground. But the defect framing does not hold: I computed the contrast and the dim figure still lands around 5.5–7:1 on its ground — comfortably past WCAG AA — so nothing is unreadable. 'The pool should outrank the countdown' is a hierarchy preference; the design sheet reserves gilt for money but nowhere says money must be the brightest ink in a row. Real, consistent, and worth a house decision — but taste, and low.
+
+#### CP-020 · ❌ refuted · ⚪ low taste (claimed medium/defect) · `login__s00.png`
+**Gilt is spent on eyebrows and step numbers, so it no longer means money** — routed to: **— not routed**
+
+*Seen:* On the sign-in card the only gold on screen is the tracked uppercase eyebrow "INGIA", on a page with no money on it at all. The same gold is used on detail__s01 for two label rows ("UCHAGUZI UNAFUNGWA BAADA YA", "MATOKEO BAADA YA") while the actual money figure on that frame, "TZS 3K", is plain white rgb(245,248,255) — I sampled both (gold rgb(243,203,122)). It is also used on home__s02/s03 for the step numerals 01/02/03, on results__s00 for the "IMETATULIWA · NDIO" pill and the pager arrows, and on detail__s00 for the eyebrow rule.
+
+*Why it matters:* The design sheet reserves gilt for money and brand, and there is a guard named for it. As used today gold marks at least five unrelated jobs, which means it marks nothing — the reader cannot use it as a signal, and the one place it would pay for itself (the pool figure, the win amount) does not get it. A colour that means five things is a decorative tint, not a system.
+
+*Critic's fix:* Pull gold off eyebrows, step numerals, status pills and pagination — those go to the muted label token. Return it to currency figures and the brand mark only, and let the gold-is-money check actually fail when it is used elsewhere.
+
+*Verifier:* Every sighting is real — I sampled login__s00's 'INGIA' eyebrow at rgb(243,203,122) exactly as claimed, detail__s01's two countdown headers are gold while 'TZS 3K' is white, home__s02/s03 set 01/02/03 in gold, results__s00 carries a gold 'IMETATULIWA · NDIO' pill, gold pager arrows and a gold crown, detail__s00 a gold eyebrow and hairline — but the conclusion is falsified by the critic's own evidence. home__s00's hero sets the headline money figure 'TZS 29K' in gold mono, which he cites himself in claim 4. Gold still marks money in its primary slot. And the rule he invokes reads 'Gilt stays reserved for money AND BRAND': the gold slash-plus-eyebrow device (the '/' before TANZANIA · DAR ES SALAAM on home__s00 and before BWAWA KUBWA KWANZA on home__s03) is the brand eyebrow system, explicitly permitted. Only the /results pager arrows are hard to defend as brand, and that is one control's outline.
+
+#### CP-021 · ✅ upheld · 🟡 medium defect · `detail__s01.png`
+**Dates are set with English month abbreviations on the Swahili-default page, beside Swahili months in the prose** — routed to: **U40 dates**
+
+*Seen:* This one frame carries "27 Oct 2026, 00:00" in the INAISHA panel, "23 Oct, 00:00" and "27 Oct, 00:00" in the two countdown headers — and, in the resolution-criteria panel at the bottom of the same frame, the body prose reads "(iliyofanyika Oktoba 23–25,". So the machine-formatted dates say Oct and the human-written sentence four inches below says Oktoba, on a page whose every other word is Swahili.
+
+*Why it matters:* This is the default language for a visitor who has chosen nothing, and the dates are the part of the page a player checks before committing money — when a market opens, when it settles. English month stubs sitting inside Swahili sentences tell the reader the translation is a veneer over an English product, which is precisely the impression a market operating in Tanzania cannot afford.
+
+*Critic's fix:* Pass the active locale to the date formatter (Okt / Nov / Des in SW) rather than defaulting to en. Then make the two countdown headers share one setting — right now the first puts its label on its own line with the date beneath, and the second runs label and date on one line.
+
+*Verifier:* All four strings are on detail__s01 exactly as described: 'INAISHA / 27 Oct 2026, 00:00', the two countdown headers '23 Oct, 00:00' and '27 Oct, 00:00', and the criteria prose '(iliyofanyika Oktoba 23–25,'. Swahili abbreviates Oktoba as 'Okt', never 'Oct'. And the evidence is stronger than the critic knew: detail__s00 — the top of this same route — renders the market title with 'Okt 23–25', so the human-authored copy uses the Swahili abbreviation while the machine formatter on the same page emits the English one. live__s00 likewise carries 'Des 1–13'. So the date formatter, not the copy, is the outlier, and it is systemic across every date field on a Swahili-default product. Genuine localization defect; medium stands.
+
+#### CP-022 · ✅ upheld · 🟡 medium defect · `login__s00.png`
+**"Umesahau nenosiri?" is set as the dimmest, smallest micro-label on the form, indistinguishable from a caption** — routed to: **D48**
+
+*Seen:* Under the password field, the recovery action reads "UMESAHAU NENOSIRI?" in uppercase tracked mono at roughly 11px, right-aligned, with no underline and no link colour — I sampled its brightest pixel at rgb(119,136,184), dimmer than the field hint "Angalau herufi 8." directly above it at rgb(135,155,208). Every genuine link elsewhere in the product is teal sentence-case with a chevron ("Maelezo ›") or plain sans underlined (detail__s02).
+
+*Why it matters:* A locked-out player on a phone is looking for exactly this one control, and it has been given the typographic treatment the system uses for inert labels — smaller, dimmer and flatter than the hint text beside it. It also sits at roughly an 11px cap on a dark ground, which is the least legible thing on the screen for the older half of the audience.
+
+*Critic's fix:* Set it in the link style the rest of the product uses — sentence case, sans, the teal link token, at the 13–15px rung — and left-align it under the field it belongs to so it reads as an action rather than a footnote.
+
+*Verifier:* Sampled login__s00 and both numbers are exact: 'UMESAHAU NENOSIRI?' brightest pixel rgb(119,136,184), the static field hint 'Angalau herufi 8.' directly above it rgb(135,155,208). It is uppercase tracked mono, right-aligned, no underline, no link ink — the same style the form uses for its non-interactive labels SIMU and NENOSIRI. The comparison holds too: detail__s02 sets its real links as underlined sans ('Onyesha maandishi asili ya Kiingereza') and an underlined mono URL, and card links are teal 'Maelezo ›'. So the one interactive text control on the sign-in form is the only thing on screen wearing the label style, and it is dimmer than the static text beside it — an affordance inversion on account recovery. Contrast is still ~5.3:1, so it is legible, not invisible; medium/defect is right.
+
+#### CP-023 · ❌ refuted · ⚪ low taste (claimed medium/defect) · `markets__s00.png`
+**The pinned discovery bar mixes four type voices in 116px of chrome that never leaves the screen** — routed to: **— not routed**
+
+*Seen:* Inside the sticky bar: the search placeholder "Tafuta soko" is tracked monospace; the tab labels "Wazi" and "Zinafunga leo" are sans-bold with their counts ("32", "0") set in mono at a smaller size; the right-hand summary "masoko 32" is entirely lowercase mono; the two controls beneath, "Pesa nyingi" and "Vichujio", are sentence-case sans. Directly above, the header stat line "MASOKO ● 32 hai · TZS 29K katika mchezo" is tracked mono running as a sentence. That is four type treatments plus a mono sentence stacked in the 237px of chrome that index.json records as pinned on this route.
+
+*Why it matters:* This strip is the most-seen furniture in the product — it is fixed above the board on /markets and /results for their entire 8.8 and 6.3 screens. With no single voice it reads as four widgets bolted together rather than one instrument, and the mono placeholder in particular makes the search field look disabled or pre-filled rather than tappable. The mono "masoko 32" also restates the count already inside the "Wazi 32" tab.
+
+*Critic's fix:* Pick one voice for the bar: sans for anything a finger acts on (placeholder, tab labels, control labels), mono tabular only for the numerals that sit beside them. Delete the duplicate "masoko 32" summary — which also removes the collision the plan tracks as D1.
+
+*Verifier:* The claim contradicts itself (116px, then 237px) and both readings fail against the evidence. index.json records /markets pinned as three separate items: topbar h=56, '.kp-discovery-bar' h=116, rail h=65 — pinnedPx 237 is the sum, so the 237 figure includes the top app bar and the bottom rail, neither of which holds anything the critic listed. And markets__s01 — the scrolled frame on the same route — shows exactly what the 116px bar contains once the page moves: the tab row (Wazi 32 / Zinafunga leo 0 / masoko 32) and the control row (Pesa nyingi ⌄ ↓ / Vichujio ⌄). The search field 'Tafuta soko' and the header stat line 'MASOKO ● 32 hai · TZS 29K katika mchezo' have both scrolled away. So two of the five voices he counts are not in the chrome that 'never leaves the screen'; what stays is mono plus sans in two weights.
+
+#### CP-024 · ✅ upheld · ⚪ low defect · `help__s02.png`
+**Phone numbers are grouped one way on one line and another way on the next** — routed to: **U40 list**
+
+*Seen:* Two lines apart in the same footer list: "Wasiliana nasi · 0769777877" — ten digits with no grouping at all — and "Simu ya msaada · 0800 11 0011", grouped 4-2-4. On help__s00 the first number is the headline figure of its contact card, set in 20px bold sans, still as one ten-digit run. The login form on login__s00 sets its phone placeholder as "712 345 678", grouped 3-3-3 — a third pattern.
+
+*Why it matters:* An ungrouped ten-digit string is materially harder to read back, hold in memory and dial correctly, and this is a support line — the number a player reaches for when something has gone wrong with their money. Three grouping patterns across three screens also makes the contact details look transcribed rather than designed.
+
+*Critic's fix:* Adopt one national grouping (0769 777 877 / 0800 110 011) and apply it in the footer, the help cards and the login placeholder. Set all three in tabular figures so the digit runs align when they stack.
+
+*Verifier:* Verified on help__s02: 'Wasiliana nasi · 0769777877' as an unbroken ten-digit run sits two lines above 'Simu ya msaada · 0800 11 0011' grouped 4-2-4. help__s00 confirms the third data point — the same number is the headline of the TUPIGIE card, bold sans, still ungrouped — and login__s00 sets its placeholder '712 345 678' as 3-3-3. Three patterns for one kind of datum. Mild mitigation the critic skipped: 0800 11 0011 is a toll-free shortcode whose conventional grouping legitimately differs from a mobile MSISDN, so only the ungrouped ten-digit run is clearly wrong. Low, and it is a real copy defect rather than a preference.
+
+#### CP-025 · ❌ refuted · ⚪ low taste (claimed low/defect) · `home__s03.png`
+**Letter-spacing is applied to the two-digit step numerals, so "02" reads as "0 2"** — routed to: **— not routed**
+
+*Seen:* The two step markers on this frame render as gold numerals with a visible gap inside them: "0 2" above "Kila matokeo yana chanzo kilichotajwa" and "0 3" above "Washindi wanagawana bwawa", each followed by a hairline rule. The same happens to "0 1" on home__s02. The gap between the two digits is the same width as the tracking on the neighbouring uppercase labels, so it is the label letter-spacing being inherited by a numeral.
+
+*Why it matters:* Tracking is meant for uppercase words; inside a number it breaks the figure into two, and a reader glancing at a three-step explainer sees "0 2" rather than the second step. It is small, but it is precisely the kind of detail a professional critic reads as evidence that the type rules were applied by class rather than by judgement — and this is the page's flagship explainer.
+
+*Critic's fix:* Zero the letter-spacing on the step numeral (it is a figure, not a label) or drop the leading zero entirely and set 1 / 2 / 3. Keep the tracking on the uppercase eyebrow beside it.
+
+*Verifier:* I cropped home__s03 at 6x and home__s02. The gap is real but tiny — roughly 3 CSS px between the two glyphs of an ~11px tracked mono numeral, which is the same tracking carried by the neighbouring uppercase label 'BWAWA KUBWA KWANZA' in the identical style. That is the house tracked-mono label voice applied consistently to a decorative step marker, not an inherited-style bug: nothing here distinguishes 'inherited by accident' from 'set deliberately, like every other micro label'. At 6x the pair still reads as 02, one number; the claim that it 'reads as 0 2' does not survive looking at it. Decorative chrome, no data at risk.
+
+#### CP-026 · ✅ upheld · ⚪ low taste (claimed low/defect) · `live__s04.png`
+**Market titles have no house style for figures — the same quantity appears as a word on one card and a symbol on the next** — routed to: **E-420**
+
+*Seen:* First card: "Je, mfumuko wa bei wa Tanzania (NCPI) utazidi asilimia 3.5 mwezi Septemba 2026…". Third card, two cards below it: "Je, kiwango cha mfumuko wa bei Tanzania (NCPI) kitashuka chini ya 3.5% mwezi Septemba 2026…". The same quantity — 3.5 percent — is spelled out as "asilimia 3.5" on one and set as "3.5%" on the other, in the same feed, in the same type. The dates behave the same way: live__s02 carries "Sept 19–21, 2026", "20 Septemba 2026" and "Septemba 18–20, 2026" within one screen.
+
+*Why it matters:* These two cards are the same index, opposite directions — a player comparing them has to translate between two notations to see that. Percent, date and currency notation is where an editorial product earns its authority; a feed that changes notation card to card reads as a queue of operator submissions rather than an edited board, and this is the surface the plan lists as 8.7 screens of continuous scrolling.
+
+*Critic's fix:* Write a two-line figure style for market titles (percent always as the symbol; dates always as "18 Septemba 2026"; ranges with an en dash) and enforce it at market creation, so the board sets consistently without anyone re-typing existing titles by hand.
+
+*Verifier:* Both strings are on live__s04, two cards apart: 'utazidi asilimia 3.5 mwezi Septemba 2026' on the first UCHUMI card and 'kitashuka chini ya 3.5% mwezi Septemba 2026' on the third. Same quantity, same feed, same type. live__s02 confirms the date half within one screen: '(Sept 19–21, 2026)', 'tarehe 20 Septemba 2026', and '(Septemba 18–20, 2026)'. Correcting the kind: this is authored market content, not the typographic system — the type treatment is identical on every card and it is the copy that varies, so it is an editorial style-guide gap for whoever writes/generates market questions, not a rendering defect. Low.
+
+#### CP-027 · ✅ upheld · ⚪ low taste (claimed medium/taste) · `home__s00.png`
+**The monospace voice has grown past labels into running Swahili prose** — routed to: **U39**
+
+*Seen:* Below the sentiment bar, the caption "76% NDIO · 24% HAPANA — kila soko lililo wazi, kwa uzito wa fedha zilizowekwa" is set in tracked monospace and wraps to two full lines of sentence text. The ticker above it does the same ("TZS 5K imekamilika HAPANA kwenye…"), as does the market list's "Hakuna dau bado" — tracked mono, but sentence case, sitting directly under three uppercase tracked mono labels (MASOKO YALIYO WAZI / FEDHA ZILIZOWEKWA / UTABIRI ULIO WAZI). On later frames the same voice carries "Kuwa wa kwanza kutabiri" (markets__s03), the source line on updown__s01 and the licence line on help__s02.
+
+*Why it matters:* Monospace with added tracking gives every letter the same width and every gap a similar size, which is exactly what you want for a column of figures and exactly what you do not want for connected Swahili text, where word shape is the thing the eye reads. At 12–13px on a dark ground it slows the sentence measurably, and because the same face carries both the labels and the sentences, the reader loses the cue that tells label from statement. I am calling this taste rather than a fault because it is a coherent house choice, defensible as a 'data voice' — but it has clearly spread beyond the job it was chosen for.
+
+*Critic's fix:* Draw the boundary explicitly: monospace for numerals, codes, countdowns and one- or two-word labels; sentence-case sans at the 13px rung for anything with a verb in it. That single split would fix the caption, the ticker, the empty-state lines and the source line without adding a size.
+
+*Verifier:* Confirmed on home__s00: '76% NDIO · 24% HAPANA — kila soko lililo wazi, kwa uzito wa fedha zilizowekwa' is tracked mono, sentence case, wrapping to two full lines, directly under three uppercase tracked mono labels (MASOKO YALIYO WAZI / FEDHA ZILIZOWEKWA / UTABIRI ULIO WAZI), and the ticker above runs the same voice. The supporting sightings check out too — 'Kuwa wa kwanza kutabiri' in mono on home__s02's card, the source/licence lines on updown__s01 and help__s02. The critic correctly filed this as taste and it is: mono running text is a deliberate house voice, the wrap is clean, nothing truncates or collides, and no rule in the design sheet restricts mono to labels. Worth a voice decision; low.
+
+### Colour and theme — 12 claims, 9 kept
+
+#### CP-028 · ✅ upheld · 🟠 high defect · `results__s02.png`
+**The settled outcome word is printed in the YES green even when the outcome is HAPANA** — routed to: **D29 (U32)**
+
+*Seen:* On the middle card ("Je, fainali ya US Open Men's Singles 2026…") the outcome block at the top right reads "TOKEO" over "HAPANA" at ~40px, and the word HAPANA is #42C070 — the exact same green as the word NDIO on the cards in results__s03.png and results__s04.png, and the same green as the "83%" NDIO figure on the market cards. Directly beneath it the odds bar runs solid green from edge to edge with the gold needle parked at the far right. The only red anywhere on that card is nothing at all. results__s03.png shows the mirror case: "TOKEO / NDIO" in the same green sitting over a bar that is red from end to end.
+
+*Why it matters:* Green/red is the only binary signal this product has, and on a board of 171 settled markets it stops distinguishing YES from NO and starts meaning 'this one is finished'. A player scrolling results on a phone reads the colour before the word; here the colour says NDIO on a card that resolved HAPANA. It is also the one place colour touches an outcome that decided money.
+
+*Critic's fix:* Colour the outcome token by side, not by state: #42C070 for NDIO and the existing NO ink (#FF9795 on card ground) for HAPANA. If the intent was to signal 'settled', leave the token white (#F5F8FF) and let the gold IMEKAMILIKA chip carry settledness on its own — it already does.
+
+*Verifier:* Opened results__s02.png: the middle card's outcome block reads TOKEO / HAPANA and the word samples #42C070 — byte-identical to the NDIO word on results__s03.png and to the '83%' NDIO figure on home__s04.png. The odds bar beneath it is green at every x I sampled (x=70 #027938 through x=620 #209849), no red anywhere, gold needle at the far right. results__s04.png repeats it on a second card ('Je, Coventry City…' TOKEO/HAPANA, same green, same all-green bar), so it is systematic, not a one-off. The mirror is real too: results__s03.png's Man Utd card says TOKEO/NDIO in the same green over a bar that is red end to end. Two embellishments: the word is ~28 CSS px not '~40px' (cap height 45 image px — the critic doubled), and the sentence 'the only red anywhere on that card is nothing at all' is garbled. Neither touches the substance. Not in the D1–D41 brief; D29 is about invented 'YES 50%' on unbet cards, a different thing. This breaks §8a rule 4 ('the YES/NO inks keep their meaning') on the largest element of every settled card, and the bar contradicts the outcome at the same time, so a glance reads a lost NO as a won YES.
+
+#### CP-029 · ✅ upheld · 🟡 medium defect (claimed high/defect) · `results__s02.png`
+**Gilt has migrated off money onto status and eyebrows, inverting test:gold-is-money** — routed to: **U38**
+
+*Seen:* On this one card the "IMEKAMILIKA" chip is a solid gold fill (#D6AE5A with a #A17833 border and near-black text) while the pool figure on the same card, "TZS 1,000", is the quiet periwinkle #899DD1. Gold #F3CB7A also carries: the home section numerals 01/02/03 (home__s03.png), the "INGIA ILI KUTABIRI" eyebrow (detail__s00.png), "UCHAGUZI UNAFUNGWA BAADA YA" and "MATOKEO BAADA YA" (detail__s01.png), the chart's 50% reference chip (detail__s02.png), "MATOKEO MASHUHURI" and its crown plus both pagination rings (results__s00.png), and the "INGIA" eyebrow on login__s00.png. None of those is money and none is the brand needle.
+
+*Why it matters:* §8a rule 4 reserves gilt for money and brand, and a player learns that rule in about four screens. Once gold also means 'settled', 'section 2' and 'page forward', the eye no longer finds money by colour — which is the one thing a real-money product should never make people hunt for. On this card the status chip is the loudest object and the amount at stake is the quietest.
+
+*Critic's fix:* Make gilt a money-only token. Move the eyebrows, ordinals and pager rings to the mono label colour #899DD1, and give the settled chip a neutral fill (the #4963B3 pill border over the card ground reads as a chip without borrowing gold). Then hand the gold back to the pool figure.
+
+*Verifier:* I sampled all nine sites and every one landed on the nose. IMEKAMILIKA chip on results__s02.png is a gold gradient fill (#F2CA79 top → #C79F4A bottom, #D6AE5A mid) with an #A17833 border and near-black text, while the pool on the same card, TZS 1,000, is #899DD1. Gold #F3CB7A exactly: home__s03.png numerals 01/02/03, detail__s00.png 'INGIA ILI KUTABIRI', detail__s01.png 'UCHAGUZI UNAFUNGWA BAADA YA' and 'MATOKEO BAADA YA', detail__s02.png 50% reference chip, login__s00.png 'INGIA'; results__s00.png carries the crown, 'MATOKEO MASHUHURI', both pagination rings and a second gold 'IMETATULIWA · NDIO' chip. Where I push back: the guardrail reads 'gilt stays reserved for money AND BRAND', so kickers and section numerals in the brand gilt are defensible as brand accent, which thins the 'nine violations' framing to a handful. What survives cleanly is the inversion the critic names first — on a single card the status chip is the loudest object in solid gold and the money is the dimmest thing on it. Real, but medium, not high.
+
+#### CP-030 · ✅ upheld · 🟡 medium taste (claimed high/defect) · `home__s04.png`
+**The money figure is the dimmest thing in the card footer, and money has four different colours across the product** — routed to: **U38**
+
+*Seen:* In the footer of the Mwanza card, "TZS 18,000" is #899DD1 — the same colour as the mono metadata labels "MASOKO", "Hakuna bwawa bado" and the comment count. The words beside it, "siku 2 zimebaki" (days left), are the brighter #C6D1EC, and the loudest thing in the row is the navigation link "Maelezo" in teal #36BABA. So in one 60px row the hierarchy runs: Details > countdown > the pool. Across surfaces the same quantity takes four inks: TZS 29K is gold #F3CB7A on home__s00.png, the identical TZS 29K is white #F5F8FF on markets__s00.png, TZS 5K is #C6D1EC in the ticker, and the Up & Down price is green on updown__s01.png.
+
+*Why it matters:* The pool is the reason to open the card — it is the size of the prize. Painting it below the countdown and below a 'Details' link teaches the eye to skip it, and the same figure changing colour between the home hero and the board header makes it read as two different kinds of number rather than one.
+
+*Critic's fix:* One money token, applied everywhere a TZS or $ figure appears: gilt #F3CB7A at card-label size. Demote "Maelezo" from teal to the body colour with the chevron carrying the affordance, so the loudest thing in the footer is the amount.
+
+*Verifier:* The footer hexes on home__s04.png are exact: 'TZS 18,000' #899DD1, 'siku 2 zimebaki' #C6D1EC, 'Maelezo' #36BABA — money is the dimmest ink beside the countdown. The cross-surface split is real and is the strongest part: the same TZS 29K is #F3CB7A gold on home__s00.png and #F5F8FF white on markets__s00.png. But the claim is embellished twice. 'In one 60px row' is false — I measured Maelezo at image y=679 against the money row at y=600, a separate row ~39 CSS px lower, so the 'Details > countdown > pool' hierarchy is not one row. And the fourth ink fails: updown__s01.png's green $75,824.01 sits directly above a green '+0.01%' delta, so that green is the price-direction ink, not a money ink (the actual money on that card, 'JUMLA TZS 0', is white). So it is three inks, not four. There is also no rule that money must be gold — test:gold-is-money reserves gold FOR money, it does not require money to be gold — so this is a hierarchy preference, not a broken guardrail.
+
+#### CP-031 · ❌ refuted · ⚪ low taste (claimed high/defect) · `live__s00.png`
+**"Live" is red and teal on the same screen, 165px apart** — routed to: **— not routed**
+
+*Seen:* At the top, the ticker strip shows a #ED4A49 red dot beside "MUBASHARA". Immediately below it, the hero card's live badge is a teal #36BABA ring beside "HAI", and the teal continues into the carousel arrows and the active pagination dot. markets__s00.png shows the same split on one screen the other way round: the header's "32 hai" dot is teal #65D2D2 while the card below carries a maroon MUBASHARA chip with a red dot.
+
+*Why it matters:* Both words mean live, and the two markers sit inside one thumb-scroll of each other. A reader trying to learn 'what does the coloured dot mean' gets two contradictory answers on the first screen of the page named Mubashara. It also spends the one hue — red — that the product needs for HAPANA.
+
+*Critic's fix:* Pick one live token and apply it to the ticker dot, the MUBASHARA chip dot, the HAI ring and the board header dot. Teal is the better choice: it leaves red free for NO, and teal is already carrying liveness on /live and /markets.
+
+*Verifier:* The pixels are right and the conclusion is wrong. On live__s00.png the ticker dot is #ED4A49 and the hero badge ring is #36BABA; on markets__s00.png the header dot is #65D2D2 and the card chip is a #431151 maroon with an #ED4A49 dot. But the two colours are not two treatments of one concept — they mark two different words that mean two different things. Teal carries 'hai' (market open/active) and red carries 'MUBASHARA' (the event is being played live). markets__s00.png proves the split is meaningful rather than accidental: the header says '32 hai' while only some of the 32 cards carry a MUBASHARA chip, so the two cannot be the same population. Colouring two distinct states differently is the system working. The '165px apart' is also image pixels; the real gap is ~82 CSS px, the doubling the brief warns about.
+
+#### CP-032 · ✅ upheld · ⚪ low taste (claimed medium/defect) · `home__s00.png`
+**Red carries four unrelated meanings, three of them within the top 180px** — routed to: **no-owner**
+
+*Seen:* In the first 90 CSS px of this frame: a #ED4A49 dot meaning 'live', the word HAPANA in #FF6E70 meaning 'NO', and under the whole strip a solid wine hairline #7C2F4C used as a decorative rule (the same rule repeats between every home section — home__s03.png at image y=1160 — and above the footer on detail__s04.png). Elsewhere red is also the 18+ ring (detail__s04.png) and the maroon MUBASHARA chip fill. Counting the inks, the red family is seven distinct values: #D02B31, #CA4147, #FF9795, #FF6E70, #ED4A49, #A42E48, #7C2F4C.
+
+*Why it matters:* A dark theme has very few high-chroma slots and this product has spent its scarcest one four ways. The section rule is the worst of them: a wine hairline is the strongest colour on an otherwise neutral divider, so a purely decorative line reads at a glance as a warning or a loss boundary.
+
+*Critic's fix:* Make the section rule a neutral border token (#213480 at the same 1px, or a transparent-to-#4963B3 fade if the gradient is wanted). Move the live dot to teal per the previous finding. That leaves red doing two related jobs — NO and 18+ — which is defensible.
+
+*Verifier:* Verified on home__s00.png: within image y=132–177 (CSS 66–88) there is a #ED4A49 dot meaning live, 'HAPANA' in #FF6E70 meaning NO, and at y=176 a flat #7D2F54 wine hairline running the full width as a rule — three red meanings inside the first 90 CSS px, as claimed. The wine rule repeats as a section divider on home__s03.png at y=1160 (#7C2F4C at every x I sampled). One supporting instance is simply wrong: I scanned detail__s04.png row by row and the rule above the footer is at y=1196 and is a red→GOLD gradient (#67274E at x=65, #E7BF76 at centre, #57214B at x=665) — a different treatment, not the wine rule. The 18+ ring there is also #9B0D23, an eighth value the seven-value list omits. And each red use sits beside a word that disambiguates it (live dot next to MUBASHARA, HAPANA spelled out, 18+ inside its own ring), so nothing is misread — this is palette discipline, not a failure.
+
+#### CP-033 · ✅ upheld · ⚪ low defect (claimed medium/defect) · `markets__s00.png`
+**The graphic band under the odds bar renders at 1.05:1 and cannot be seen** — routed to: **D49**
+
+*Seen:* On the Mwanza card, between the green/red bar and the "3 watabiri" avatar row, there is a band roughly 490–515 CSS px down the frame whose fill is #091061 against the card's #07065C. That is a luminance ratio of 1.05:1. Zoomed 3× it resolves into a wedge with a straight sloping top edge — an area shape carrying some trend — but at 1× on a phone the row reads as empty space. The same band appears on home__s04.png and on the settled cards of results__s01.png.
+
+*Why it matters:* It is a graphic that reserves about 25 CSS px of height on every priced card on two boards and delivers nothing. On a phone in Dar daylight it is not faint, it is absent — so the card pays the vertical cost of a chart and shows no chart.
+
+*Critic's fix:* Either raise it to a visible wash — the YES ink at ~10% over a slightly darkened plot ground gets it past 3:1 against the card fill — or delete it and give the 25px back to the card, which several known defects (D33, D35) are already fighting for.
+
+*Verifier:* This one measures out precisely. On markets__s00.png the band under the Mwanza card's bar runs image y=980–1026 (CSS 490–513, exactly the range claimed) and samples #091162/#091061 against the card's #07065C/#06065B — I computed the WCAG ratio at 1.058:1. It is a wedge, not a rectangle: at x=620 the band is absent except for a 4px sliver at y=1020, so it has a sloping top edge as described. I could just barely perceive it in the 1x render, so 'cannot be seen' is a shade strong, but at 1.06:1 on a phone it is effectively invisible and whatever trend it encodes is unreadable. Correcting severity down: it is a decorative sparkline, nothing else on the card depends on it, and no user is misinformed — a dead ornament rather than a broken control.
+
+#### CP-034 · ✅ upheld · ⚪ low defect (claimed medium/defect) · `detail__s01.png`
+**Nested surfaces share one fill and one 1.59:1 hairline, so elevation does no work** — routed to: **no-owner**
+
+*Seen:* The "UCHAGUZI UNAFUNGWA BAADA YA" panel and the eight digit boxes sitting inside it both fill with #07045A — measured identical — and both are outlined in #213480. Against that fill a #213480 edge is 1.59:1. The stat tiles above (KIASI / WATABIRI) use the same fill and the same edge, and on detail__s04.png the "Ingia ili kutabiri" control has no fill at all, so a 1.59:1 hairline is the only thing that says 'this is a button'.
+
+*Why it matters:* Everything on the page is the same material at the same depth, so the eye gets no help deciding what contains what, and a control whose only boundary sits at 1.59:1 is below the 3:1 floor for non-text UI — in bright light or on a cheap panel the sign-in button stops looking like a button. It is also the reason the detail page feels flat rather than layered despite having five distinct panels.
+
+*Critic's fix:* Introduce one real step: keep the outer panel at #07045A and drop the nested boxes to the page ground (#080029) so the wells read as recessed. Raise control and panel borders to the pill token #4963B3, which measures 3.15:1 on #07045A and is already in the system on the filter chips.
+
+*Verifier:* Every number checks out, including one my first coarse scan nearly disproved. On detail__s01.png the countdown panel fill and the eight digit-box fills are both #07045A, measured identical. The digit-box border is #213480 (x=73 at y=760; y=672–673 at x=137) and the panel's own border is also #213480 at x=32–33 / y=542–543 — the #131164 I first hit at x=34 is the inner glow, not the border. The KIASI/WATABIRI tiles use the same #07045A fill and #213480 edge. I computed #213480 on #07045A at 1.590:1, matching the quoted figure to three digits. detail__s04.png confirms the payoff: 'Ingia ili kutabiri' fills #07045A, identical to the panel behind it, with only the #213480 hairline as its boundary — under WCAG 1.4.11's 3:1 for a control boundary. Docking it though: 'elevation does no work' is overstated, since the digit boxes and tiles are plainly legible in the 1x render, and the button's bright white bold label identifies it regardless of the edge.
+
+#### CP-035 · ✅ upheld · 🟡 medium defect · `results__s00.png`
+**The results donut has a third, unlabelled segment identified by colour alone** — routed to: **D42**
+
+*Seen:* The ring beside "MATOKEO" is drawn in three arcs: green, coral, and a lavender-grey arc of roughly 14% at the top left. The legend next to it reads only "NDIO 59 · HAPANA 88", with the two words tinted to match their arcs. The board header on the same frame says 171 markets; 59 + 88 = 147, so 24 markets live in the grey arc and are named nowhere on the page.
+
+*Why it matters:* A fifth of the ring is information the reader cannot decode, and what it most likely represents — void or refunded markets — is exactly the category a real-money player needs named. It is also the only chart in the product that puts a value on screen with no label at all.
+
+*Critic's fix:* Add the third term to the legend with its count ("Batili 24"), tinted to the arc, and give the arc a deliberate neutral rather than a leftover lavender. If the third category is not worth naming, do not draw it.
+
+*Verifier:* I walked the ring on results__s00.png degree by degree at r=33 from its centre (398,278). Three arcs, no more: #42C070 for 124° (34.4%), #FF6E70 for 182° (50.6%), and #899DD1 lavender-grey for 49° (13.6%). The arithmetic lands exactly on the critic's reading — 59/171 = 34.5%, 88/171 = 51.5%, 24/171 = 14.0% — so the donut is drawn on the 171 denominator while the legend beside it names only 'NDIO 59 · HAPANA 88'. Twenty-four markets occupy a visible arc that is never named anywhere on the page, and the grey is not even a legend colour, so it is identified by nothing at all rather than by colour alone. Severity stands at medium: it is a small header ornament, but an incomplete legend on a summary of settled outcomes is a real omission, not a preference.
+
+#### CP-036 · ❌ refuted · ⚪ low taste (claimed medium/taste) · `markets__s03.png`
+**The board is the only surface using flat fully saturated fills, and it stacks 30 of them** — routed to: **— not routed**
+
+*Seen:* Two cards are visible, each carrying a #008336 NDIO block and a #D02B31 HAPANA block at full opacity, about 140×44 CSS px each. Both cards state "Bila dau bado" and "Hakuna bwawa bado" — nothing has been priced — yet the pair is at exactly the same intensity as on the 83% card in markets__s00.png. Nothing else in the entire product is a flat saturated fill: every other surface is low-chroma navy with a 1px border. The comparison is on live__s02.png, where the identical fact is stated as "NDIO @ 83%" in green and "HAPANA @ 17%" in red as tinted labels on the card ground, and the board reads calm and legible.
+
+*Why it matters:* With 15 cards on the board, that is 30 saturated blocks down one column. They out-shout the market question, which is the actual content, and because every card gets the same pair at the same intensity the colour carries no information at all — a market with no liquidity looks exactly as urgent as one with 83% conviction and TZS 18,000 in it. This is where the dark theme goes from disciplined to a lightshow.
+
+*Critic's fix:* Take the /live treatment onto the board, or keep the buttons but drop them to a tinted fill — the ink at 12–14% over the card with the full ink for text and border — and reserve the solid fill for the primary action inside the bet sheet, where a single saturated block would then actually mean something.
+
+*Verifier:* The load-bearing premise is false. 'Nothing else in the entire product is a flat saturated fill' fails on the same frame: the Jisajili header button on markets__s03.png samples a flat #3351D1, as does 'Fungua soko →' on live__s00.png; the IMEKAMILIKA chip on results__s02.png is a solid gold fill, the MUBASHARA chip on markets__s00.png a solid #431151, and detail__s02.png carries a solid green 67% chip and a solid gold 50% chip. Flat saturated fills are the product's button and chip language, not a board anomaly. The comparison is also apples to oranges: the markets__s03.png blocks are the bet CTAs (I measured 143.5 × 39.5 CSS, not 140 × 44), while live__s02.png's 'NDIO @ 83%' is a compact list card with no CTA at all — it reads calmer because it has no buttons to render, not because it tints them. 'Stacks 30 of them' is not visible in the frame either; four blocks are.
+
+#### CP-037 · ✅ upheld · ⚪ low defect · `leaderboard__s00.png`
+**The Silver tier is printed in gold, and the podium expresses only first place in metal** — routed to: **D44**
+
+*Seen:* The stat panel reads "DARAJA LA JUU Fedha" with "Fedha" (Swahili for silver) in #F3CB7A — the identical gold as the crown, the #1 avatar ring and the "1" badge on the podium immediately below. Meanwhile the tier chip beside @Dhiresh on the same frame is a genuine grey silver "S" and @Jaykishan's is a bronze "B", so the component already owns a metal language. On the podium, the #2 and #3 avatar rings are the identical pale blue — neither silver nor bronze — while #1 gets the full gold ring and glow.
+
+*Why it matters:* The one word on the page naming the top tier is coloured as the wrong metal, next to chips that get the metals right, so the leaderboard contradicts itself inside one card. And a podium where second and third are rendered identically loses the only thing a podium exists to show.
+
+*Critic's fix:* Give the tier word its own metal token (silver #C7CEDB, bronze #B07A3E, gold #F3CB7A) and drive both the word and the chip from it. Ring the #2 and #3 avatars in silver and bronze so the ladder reads at a glance without the numerals.
+
+*Verifier:* Opened leaderboard__s00.png and sampled it. 'Fedha' in the DARAJA LA JUU panel is #F3CB7A, the same gold as the crown. The podium rings: #1 is #E0B762 gold, and #2 and #3 are both #C6D1EC — byte-identical to each other and to no metal at all. Meanwhile the tier chips on the same frame are a genuine grey #585C69 'S' and a bronze #5C4121 'B', so the component demonstrably already owns silver and bronze inks and the podium declines to use them while the tier name takes the wrong metal. Small surface and nothing breaks, so low is the right severity, but it is a factual inconsistency inside one component rather than a preference.
+
+#### CP-038 · ✅ upheld · ⚪ low taste (claimed low/defect) · `help__s00.png`
+**Three sibling contact rows use three different icon-plate materials and hues, one of them the YES ink** — routed to: **U39**
+
+*Seen:* "TUPIGIE" carries a mint-green phone glyph on a dark inset plate with a green border; "BARUA PEPE" carries a periwinkle envelope on a royal-bordered plate filled with the card colour; "MAZUNGUMZO YA MOJA KWA MOJA" carries a teal chat glyph on a dark inset plate again. Three equals in a vertical stack, three plate fills and three hues. help__s01.png repeats it: every FAQ icon is royal except the "Kucheza kwa busara" shield, which is green.
+
+*Why it matters:* The colour differences imply a distinction that does not exist — these are three ways to reach the same support desk. The green one is the worse half of it: green is the YES ink and the win colour, so it lands on a phone number and on the responsible-gambling shield, where it reads as endorsement rather than category.
+
+*Critic's fix:* One plate material and one hue for the whole row (the royal plate already used for BARUA PEPE), with the channel distinguished by its glyph and label only. Keep green out of support and safer-gambling surfaces entirely.
+
+*Verifier:* The three plates on help__s00.png do sample three different fills — TUPIGIE #0B1F5E, BARUA PEPE #161B75, MAZUNGUMZO #05115F — with three glyph hues, so the structural observation holds, and help__s01.png repeats it (every FAQ glyph royal except the green 'Kucheza kwa busara' shield). But the headline's dramatic clause is false: the phone glyph is #7FE2BA mint, not the NDIO green (#42C070 text / #008336 fill), so no YES ink is involved. The critic's own body text also undercuts the headline — it calls the third plate a 'dark inset plate again', which is two materials, not three. And the one deliberate deviation, the green safety shield, is a conventional and defensible semantic. A tidy-up, not a fault.
+
+#### CP-039 · ❌ refuted · ⚪ low taste · `home__s11.png`
+**Third-party brand colour is the highest-chroma object in the product, and one of them is the YES green** — routed to: **— not routed**
+
+*Seen:* The footer's first row renders the Instagram mark in its full magenta-to-orange gradient, the TikTok mark with its cyan and magenta fringes, and the WhatsApp mark as a saturated green disc. Nothing else on any of the 44 frames is that chromatic. The "Chanzo ↗" link on detail__s00.png and the 18+ mark on detail__s04.png are, by contrast, drawn as flat monochrome glyphs in the product's own inks.
+
+*Why it matters:* Three foreign palettes land in the quietest zone of the page and pull the eye to the least important links on it. The WhatsApp disc is the specific problem: it is the same green family as the YES ink, so a green circle appears in a product where a green circle has been taught to mean NDIO.
+
+*Critic's fix:* Draw all three marks as monochrome glyphs in the footer link colour #C6D1EC at the same optical weight as the other footer icons. Platform brand guidelines all permit a single-colour version, and the row reads as one family instead of three.
+
+*Verifier:* home__s11.png does render Instagram in its gradient, TikTok with cyan/magenta fringes and WhatsApp as a saturated disc — but the disc samples #25D366, which is WhatsApp's own brand green, not this product's YES green (#42C070 text, #008336 button fill). The second half of the title is therefore wrong, and it is the half that would have made this a finding rather than an observation. The first half is conventional practice and frequently a brand-usage requirement: third-party marks are supposed to be rendered in their own colours, and the contrast the critic draws with 'Chanzo ↗' and the 18+ mark is a contrast with the product's own glyphs, which is exactly the distinction a reader needs. Nothing to fix.
+
+### Layout and density — 12 claims, 11 kept
+
+#### CP-040 · ✅ upheld · 🟠 high defect · `results__s02.png`
+**The settled outcome word is painted YES-green whether the market resolved NDIO or HAPANA** — routed to: **D29 (U32)**
+
+*Seen:* On this frame the card "Je, fainali ya US Open Men's Singles 2026…" carries the label TOKEO and, beneath it, the word HAPANA set large in the same green used for NDIO — sitting directly above a price bar that is 100% green with the needle pinned to the far right. On results__s03.png the mirror case appears twice: TOKEO / NDIO, also green, above a bar that is 100% red with the needle at the far left. Across results__s01, s02, s03 and s04 every outcome word is the identical green, six instances, both outcomes. Yet on results__s00.png the header legend on the same page prints "NDIO 59" in green and "HAPANA 88" in red, and the ticker above it prints HAPANA in red.
+
+*Why it matters:* This is the screen where the platform announces who was right and whose money moved. The product teaches red = HAPANA on every button, chip, bar and ticker, then uses green for the word HAPANA at the largest size on the card. A player glancing at the board reads green-and-large as "yes / win" and has to stop and re-read the letters to learn it means the opposite. Colour is carrying no information here and is actively contradicting the rest of the system.
+
+*Critic's fix:* Tint the outcome word with the outcome's own ink — NDIO in the YES green, HAPANA in the NO red — and let the neutral gold "IMEKAMILIKA" chip carry the "settled" meaning it already carries. If a single colour is wanted for "settled", use the neutral/gilt one, never the YES ink.
+
+*Verifier:* Opened results__s00/01/02/03/04 and sampled the pixels. The outcome word under TOKEO is exactly rgb(66,192,112) in EVERY instance I sampled — HAPANA on s02 (US Open), HAPANA on s01 (Dar es Salaam), HAPANA on s04 (Coventry), NDIO on s03 (two cards). That value is not a generic 'settled' accent: it is byte-identical to the ink of 'NDIO 67%' and the 'NDIO' label on markets__s01, i.e. the literal YES ink. On the same /results page the header legend prints NDIO in rgb(113,215,144) green and HAPANA in rgb(255,151,149) red, and the ticker prints HAPANA in rgb(255,110,112) red. So one page codes HAPANA red in the legend and green — the YES ink — in the result. This breaks §8a guardrail 4 ('the YES/NO inks keep their meaning'). One embellishment, which does not change the verdict: on results__s03 the 'mirror case' (green NDIO over a 100%-red bar) appears ONCE, not twice — the upper card there has a green bar. Not in D1–D41.
+
+#### CP-041 · ✅ upheld · 🟡 medium defect · `results__s02.png`
+**A dead sparkline band adds 34px to some cards and not others, so one list has two card heights for no visible reason** — routed to: **D49**
+
+*Seen:* Between the price bar and the "1 mtabiri" line on this card there is an empty band about 57px tall containing one flat hairline stretched the full card width — no curve, no labels, no values. The Coventry card on results__s04.png has no band at all: its bar sits 22px above "1 mtabiri". index.json confirms the split: /results cards measure 312 or 278 (a 34px difference) and /markets cards 354 or 320 (the same 34px). The same band shows on home__s04.png as a barely-visible wedge and on markets__s00.png.
+
+*Why it matters:* 34px is 11% of a card, repeated down a board that is already 8.8 screens tall, spent on a graphic a player cannot read. Worse, it makes neighbouring cards of the same type differ in height with nothing visible to explain the difference, so the list loses its vertical rhythm and looks broken rather than data-driven.
+
+*Critic's fix:* Do not reserve the band when the series has fewer than two real points — on settled and thin cards drop it entirely so every card of that state has one height. If it is kept, raise its contrast and give it an axis so it reads as a chart, not as a stray rule in empty space.
+
+*Verifier:* Row-profiled results__s02 and results__s04. On the US Open card the bar ends at image y=789 and '1 mtabiri' starts at y=876 — an 87px image gap = 43.5 CSS, not the 57px claimed. Inside it, rows 838-845 (4 CSS tall) carry a flat fill spanning image x=64..655 (CSS 32..327.5, the full content width) at a green delta of only ~10/255 against the card ground — effectively invisible. The Coventry card on s04 has bar bottom y=849 and text at y=880: a 15 CSS gap, no band at all. I also profiled the s01 Dar es Salaam card the critic called a 'wedge': it is likewise a flat uniform fill (rows 485-517), no curve. index.json's 312/278 split and the 34px delta are real. So: a chart element that renders flat and below perceptibility, and that visibly gives one list two card heights. Correction: the band is 43px, not 57.
+
+#### CP-042 · ✅ upheld · 🟡 medium defect · `leaderboard__s01.png`
+**The leaderboard list is sorted by ROI and never shows ROI; the right 118px of every row is empty** — routed to: **D43**
+
+*Seen:* Rows 2–6 contain rank, avatar, handle and a tier badge. The last pixel of content in each row is the tier badge at about x=225 (CSS); the row runs to x=343. The right third of every row is empty. The control above the list on leaderboard__s00.png reads "ROI bora" (best ROI) and the three podium tiles do print +26.8%, +13.2%, −3.9% — but the moment the list starts, the number the ranking is built on disappears.
+
+*Why it matters:* A ranked table where the ranking value is invisible cannot be read or trusted — a player can see that @DEV is fifth but not by how much, and cannot tell why the order is what it is. And the space to print it is already sitting empty on the right of every row, so the layout is paying for the column and getting nothing.
+
+*Critic's fix:* Put the sorted value in the empty right column of each row, right-aligned in the tabular numeral face already used elsewhere (e.g. "+13.2%" with the settled count under it), so the podium and the list speak the same language and the row reads left-to-right as identity → score.
+
+*Verifier:* Opened leaderboard__s00, s01 and s02. s00 shows the sort control reading 'ROI bora' and the podium printing +26.8%, +13.2%, -3.9%. s01 rows 2-6 carry only rank, avatar, handle and tier badge; s02 is the footer, so there are no further rows with a number. Measured the last content pixel per row against the card's right edge at CSS 343.5: row 2 ends at 223.5 (120px empty), row 3 at 238.5 (105px), row 5 at 201.5 (142px). So the empty right band is real but varies 105-142px, not a uniform 118. The ranking metric is absent from every row of the list it orders. Not in D1-D41 (D2 covers the podium handle wrap, a different thing).
+
+#### CP-043 · ❌ refuted · ⚪ low taste (claimed medium/defect) · `results__s00.png`
+**An unlabelled gilt pager floats alone on its own row, and a second pager of a different design governs the same list** — routed to: **— not routed**
+
+*Seen:* Above the first card sits a cluster of two gold-ringed circular arrows with "1 / 3" between them. It is right-aligned: the first pixel of it is at x=200 CSS and it ends at x=343, so the left 200px of that row — nearly 60% — is blank. Nothing beside it says what it is paging. Four screens further down, results__s04.png shows a second, completely different pager: a bordered panel reading "1–12 KATI YA 171" with square numbered buttons 1 and 2.
+
+*Why it matters:* Two designs for one job on one page is exactly what the phone design sheet forbids, and the two disagree in front of the player — the top one implies three pages, the bottom implies fifteen. The gold ring also spends the product's money-and-brand colour on navigation chrome. And an unlabelled "1 / 3" hovering over an empty row gives a phone user no idea what will change if they tap it.
+
+*Critic's fix:* Give the featured-results carousel a visible label on the left of that row ("MATOKEO MASHUHURI 1/3") so the row is no longer half empty and the control is no longer anonymous, and restyle it in the neutral control ink so gilt stays with money. Use one pager composition for the list itself.
+
+*Verifier:* The geometry checks out — I measured the gold pager cluster on results__s00 at image x=400..687 = CSS 200..343.5, right-aligned with the left ~184px of the content row blank — but the load-bearing half of the claim is false. The card directly beneath that pager is a different composition: a blue SPORTS chip, a gold 'IMETATULIWA · NDIO' chip and a crown label reading 'MATOKEO MASHUHURI' (featured results). None of the cards on s01-s04 carry the crown or that chip layout. So the '1 / 3' pager pages a three-item featured-results carousel; the bordered '1-12 KATI YA 171' panel on s04 pages the 171-item main list. Two different lists, two pagers — not 'a second pager of a different design governing the same list'. What survives is that a right-aligned pager sits above the thing it pages without a label beside it, which is a composition preference, not a defect.
+
+#### CP-044 · ✅ upheld · 🟡 medium taste (claimed medium/defect) · `markets__s01.png`
+**The pinned discovery bar slices content mid-control with no fade, and 237px of the 780px viewport is permanently chrome** — routed to: **U4**
+
+*Seen:* On this frame the sticky bar ends at y=160 (CSS) and the card behind it resumes at y=165 — the green NDIO and red HAPANA buttons are cut exactly in half by a hard horizontal edge, with a 5px strip of page background between the sort row and the guillotine. Above the bar, the top app bar takes 56px; below, the rail takes 65px. index.json measures 237px pinned. What is left is 543px, and on this frame that holds the tail of one card, one whole 320px card, and the first 55px of the next.
+
+*Why it matters:* This is the answer to the players who say the app is "chunky": 30% of the screen never scrolls, so the board delivers about one and a half markets per screenful on a page 8.8 screens deep. And because the bar has no scrim, shadow or fade, the half-button hanging off its lower edge reads as a rendering fault rather than as content passing underneath.
+
+*Critic's fix:* Two separate moves. Add a short fade or a 1px hairline plus shadow at the bar's lower edge so passing content is visibly occluded, not amputated. Then buy screen back: collapse the sort row into the tab row once the page is scrolled (or hide the second row on scroll-down and restore it on scroll-up), which returns ~50px — roughly a whole extra card every two screens.
+
+*Verifier:* Opened markets__s01 and row-profiled it. The sticky bar's bottom border is at image y=322-323 = CSS 161.5 (claim: 160, close). Page background [8,0,41] then runs image y=324..343 = 10 CSS of strip, not the 5px claimed. Card content resumes at image y=344 = CSS 172, and the green NDIO / red HAPANA buttons are visibly sliced by that hard edge with no fade. index.json's pinnedPx 237 is real. But I am correcting the kind: a sticky bar with an opaque background always cuts the content scrolling under it — that is what sticky means, not a defect — and '237 of 780 is chrome' is a density judgement about how much discovery UI a board deserves. The measurable facts are there; the framing is preference.
+
+#### CP-045 · ✅ upheld · 🟡 medium defect · `updown__s00.png`
+**Up & Down uses a 20px page gutter where every other surface uses 16 — and its own footer uses 16.5** — routed to: **D45**
+
+*Seen:* Measured on the pixels: on this frame the page title "Juu na Chini", the BITCOIN price panel and the VICHUJIO panel all start at x=40 image px = 20 CSS. On home__s00.png, markets__s00.png, detail__s00.png and live__s01.png the equivalent edge — hero text, card border, panel border — is at x=32–33 image px = 16–16.5 CSS. On updown__s02.png the footer of the very same page returns to x=33 = 16.5. Card interiors are inconsistent on the same axis: the /markets card's content starts 16.5px inside its border, the /live card's 21px, the /help card's 21px, the /updown card's 17px.
+
+*Why it matters:* A player moving from the board to Up & Down sees the whole page step 4px to the right and then, at the footer of that same page, step back. It is below conscious notice and exactly what separates a page that feels machined from one that feels assembled — and it is the single measurable sign that the left edge is not owned by one token. The five different card paddings mean no compaction pass can be applied once and trusted.
+
+*Critic's fix:* Put every surface on the same PageContainer gutter (16) and give cards one padding token; the phone design sheet already names 16 for the gutter and 10/14/15/13 for card padding. Then add a check that fails if any page-level container declares its own horizontal padding.
+
+*Verifier:* This one is decisive on the pixels. I scanned for the outermost card/panel border on each page: updown__s00 round-card border and updown__s01 panel border both at image x=40 = CSS 20.0, and the page title 'Juu na Chini' at image x=41. Every other surface's equivalent border sits at image x=32 = CSS 16.0 — markets__s00, markets__s01, results__s02, detail__s01, live__s01, help__s01, leaderboard__s00, all identical. updown__s02's footer text is at image x=33 = CSS 16.5, so the same page drops back to the 16 gutter below the fold. That contradicts the design sheet's own rung ('Page side gutter 16 — PageContainer px-3'). Caveat: the second half of the claim, the card-interior insets (16.5/21/21/17), is weak — the card rule explicitly sanctions 10/14/15/13 padding rungs per card type, so varying interiors are not by themselves a defect. The gutter finding stands on its own. Not in D1-D41.
+
+#### CP-046 · ✅ upheld · ⚪ low defect (claimed medium/defect) · `updown__s01.png`
+**The from→to price pair breaks across two lines and leaves the arrow dangling at the end of the first** — routed to: **D52**
+
+*Seen:* In the settled round panel the right-hand column reads "$75,819.68 →" on line one and "$75,824.01" on line two, while the left-hand column reads "Juu / imeshinda" also broken over two lines. The arrow that connects the two prices sits at the end of the upper line, pointing into the right margin rather than at the value it points to.
+
+*Why it matters:* These are the two numbers that decide whether the round was won or lost. Broken this way the pair reads as one price followed by a stray glyph and then an unrelated price; at a glance a player cannot tell which is the open and which is the close. Money comparisons must never be allowed to wrap between their operands.
+
+*Critic's fix:* Make the price pair a non-wrapping unit — put open, arrow and close on one line at a size that fits 360 (drop to --type-micro for the arrow if needed), or stack it deliberately as open above close with the arrow as a vertical connector. Either way the arrow must never end a line.
+
+*Verifier:* Opened updown__s01. The settled-round pod reads exactly as described: left column 'Juu' / 'imeshinda' wrapped over two lines in green, right column '$75,819.68 →' on line one with the arrow as the last glyph pointing into the right margin, and '$75,824.01' alone on line two. The atomic from→to unit is genuinely broken. Correcting severity down: both figures are legible and in the right order, the pod is a settled-round summary rather than an action, so this is a wrap flaw rather than a money-comprehension failure. Distinct from D36/D37.
+
+#### CP-047 · ✅ upheld · ⚪ low defect (claimed medium/defect) · `live__s00.png`
+**The live hero's own section label is truncated at the default 360 width in the default language** — routed to: **D47**
+
+*Seen:* The hero card's label reads "LILILO NA SHAKA…" with an ellipsis, cut at about x=159 CSS, immediately left of the 44px circular prev button. Nothing is wrong with the space — the row simply caps the label. The same class of cut appears on updown__s00.png, where the round card's status reads "TUNASOMA BEI YA / KUFUNGA… · BTC": it both wraps to two lines and then ellipsises.
+
+*Why it matters:* This is the very first card a visitor meets on /live, and its category — the one word telling them what this carousel is showing — is the thing that gets cut. It is not a long-tail locale edge case: it is Swahili, which is now the default, at 360, which is the modal phone.
+
+*Critic's fix:* Let the label take the full row and move the prev/next cluster to its own baseline, or shorten the SW string. Any label that names what a component is showing should be allowed to wrap rather than truncate.
+
+*Verifier:* Opened live__s00: the teal label 'LILILO NA SHAKA…' runs image x=84..314 and terminates in an ellipsis at CSS 157 (claim: ~159, accurate). I also confirmed the second instance on updown__s00, where the round card's status reads 'TUNASOMA BEI YA' / 'KUFUNGA… · BTC' — it does both wrap to two lines and then ellipsise. But the critic embellished the diagnosis: 'nothing is wrong with the space' is untrue. I measured the prev button's left edge at CSS 176.5, so the label has only ~20px of slack before it collides with the 44px pager cluster — the row is genuinely tight, which is why the label is capped. Correcting severity to low: it is a decorative section label, not money or an action, and the cut word is still readable in context.
+
+#### CP-048 · ✅ upheld · ⚪ low defect (claimed medium/defect) · `detail__s01.png`
+**The third stat tile is a lone full-width box 8px shorter than the pair above it** — routed to: **U37 low**
+
+*Seen:* Measured: KIASI and WATABIRI are two tiles of 155.5 × 73.5 CSS sitting side by side with a 16.5px gap. Below them INAISHA is a single tile 327.5 CSS wide and 65.5 CSS tall — full width, 8px shorter than its siblings, with its content ("27 Oct 2026, 00:00") occupying the left 55% and the rest empty. The two upper tiles carry a small icon before their label; the lone one does not.
+
+*Why it matters:* Three boxes of the same family, in one block, with three different widths, two different heights and two different label treatments. The eye reads the pair as a unit and then the third as a mistake — the row that stretches over dead space is the one telling the player when the market ends, which is the one that should look most deliberate.
+
+*Critic's fix:* Keep the 2-up grid and give INAISHA the full-width slot only if it earns it (e.g. put the closing date and the settlement date side by side there); otherwise make it a third tile in the same grid with the same height, icon and padding as its siblings.
+
+*Verifier:* Measured detail__s01 directly. The KIASI tile's border spans image y=174..325 = 76.0 CSS tall; the INAISHA tile spans y=358..493 = 68.0 CSS. The 8px difference is exact. INAISHA runs image x=32..687 = 328 CSS, full width, and its content '27 Oct 2026, 00:00' stops just past the halfway mark. And the icon observation is right: KIASI and WATABIRI each carry a small glyph before the label, INAISHA carries none. Correcting severity down: the tiles are stacked, not side by side, so an 8px height difference is close to imperceptible — the missing icon is the half a reader would actually notice.
+
+#### CP-049 · ✅ upheld · ⚪ low defect · `home__s00.png`
+**The three hero figures do not share a left edge — the first is jogged 20px right by its live dot** — routed to: **D51**
+
+*Seen:* Measured on the pixels: the labels MASOKO YALIYO WAZI, FEDHA ZILIZOWEKWA and UTABIRI ULIO WAZI all begin at 16.5 CSS. Their values do not. "32" begins at 36.5 CSS because a red live dot occupies the gutter position ahead of it; "TZS 29K" begins at 17 and "8" at 17.5. So the first figure hangs 19px to the right of the other two and 20px to the right of its own label.
+
+*Why it matters:* These three divider-separated rows are the first thing under the hero headline and are meant to be read as a column of figures. A 20px jog on the top one breaks the column at exactly the point where the eye enters it, and it is the kind of misalignment a visual critic finds in two seconds.
+
+*Critic's fix:* Hang the live dot outside the text flow (absolute, in the left margin, or trailing the label) so all three values start on the same 16px edge — or give all three rows the same leading slot so the indent is deliberate and repeated rather than applied once.
+
+*Verifier:* Opened home__s00 and measured the glyphs, not the boxes. All three labels start at CSS 16.5. The white '32' glyph starts at image x=67 = CSS 33.5 because the red live dot occupies the gutter slot ahead of it; 'TZS 29K' starts at CSS 17.0 and '8' at CSS 17.5. So the misalignment is real and plainly visible in the frame — but it is 16.5-17px, not the 19-20px claimed (the critic's 36.5 CSS for '32' is about 3px past where the glyph actually begins).
+
+#### CP-050 · ✅ upheld · 🟡 medium taste · `detail__s04.png`
+**The discussion panel spends 246px — almost half the usable screen — saying there are no comments** — routed to: **U26**
+
+*Seen:* The Majadiliano panel runs from y=255 to y=501 CSS, 246px tall. It contains a header row, a 41px full-width button, and one centred grey sentence "Hakuna maoni bado — anza mazungumzo." There is 67px of nothing between the button and that sentence and 60px of nothing below it, then a further ~80px of empty page before the footer divider. The usable viewport on this page is 543px.
+
+*Why it matters:* Nearly half a screenful, at the end of a 5.9-screen page, communicates one fact that a single line already states. This is where the "it feels big and chunky" complaint actually comes from — not from type size, which is disciplined, but from empty states holding open desktop-sized boxes on a phone.
+
+*Critic's fix:* Give the empty comments panel an intrinsic height: header, the sign-in control, one line of copy, 16px padding — roughly 130px. Reserve the tall min-height only when there are threads to hold.
+
+*Verifier:* Measured detail__s04: the Majadiliano panel border runs image y=510..1003 = CSS 255.0 to 501.5, 247px tall — the claimed 246 is right. It holds a header row, one 41px full-width button and one centred grey sentence, with roughly 60px of void above the sentence (the critic said 67) and ~59px below it, then ~96px more empty page before the footer divider (they said ~80, understating it). 247 of 543 usable px is 45%, so 'almost half' is fair. The kind call is correct too: nothing here is broken or misaligned — it is an empty state given far more room than its content needs, which is a density judgement. Note the button itself says 'Ingia ili kutabiri' ('sign in to predict') for commenting, which is already D8, but that is not what this claim is about.
+
+#### CP-051 · ✅ upheld · ⚪ low taste (claimed medium/taste) · `markets__s03.png`
+**A cold-start card states "no bets yet" three times and centres two of them inside an otherwise left-aligned card** — routed to: **U32 low**
+
+*Seen:* On the Brentford/Chelsea card: a dashed empty bar, then "Bila dau bado" centred, then "Kuwa wa kwanza kutabiri" centred, then the NDIO/HAPANA buttons, then a meta row whose left item reads "Hakuna bwawa bado". Three statements of the same fact in one 320px card, and the two centred lines occupy about 90px — 28% of the card — between the bar and the buttons. Every other line in the card is flush left at the card's padding edge; these two are not. The same pattern repeats on markets__s04.png, live__s01.png and live__s02.png, where on live__s02 a card with bets shows "NDIO @ 83%" left and "HAPANA @ 17%" right in the very slot where its neighbours show one centred line — so the left column edge appears and disappears down the list.
+
+*Why it matters:* On a board where most markets are currently unbet, the dominant visual impression is a stack of tall cards repeating the same negative message with a wandering text axis. A player scanning for something to bet on gets less signal per screen than they should, and the list never settles into a rhythm the eye can ride.
+
+*Critic's fix:* Say it once. Keep "Bila dau bado" in the slot where the price percentages normally sit, left/right aligned exactly as they are, drop the second encouragement line (or fold it into the buttons' own affordance), and let the meta row show the countdown alone. That returns roughly 60px per empty card and keeps one left edge for the whole list.
+
+*Verifier:* Opened markets__s03 and live__s02. The centring observation is real and visible: on the cold-start cards a dashed empty bar is followed by 'Bila dau bado' and 'Kuwa wa kwanza kutabiri', both centred, occupying ~82 CSS of a 320px card (26%, not 28%), while the title, buttons and meta row are all flush to the padding edge. live__s02 confirms the alternation exactly — the Mwanza card shows 'NDIO @ 83%' left and 'HAPANA @ 17%' right in the very slot where its two neighbours show one centred 'Bila dau bado', so the left column edge does appear and disappear down the list. Two corrections though. First, 'three times' is an overstatement: 'Bila dau bado' (no bets) and 'Hakuna bwawa bado' (no pool) are two different fields, and 'Kuwa wa kwanza kutabiri' is a call to action, not a third statement of the same fact. Second, on markets__s03 the Brentford/Chelsea card's meta row is below the fold — the 'Hakuna bwawa bado' visible on that frame belongs to the card above it. Downgrading accordingly.
+
+### Information design — 19 claims, 10 kept
+
+#### CP-052 · ❌ refuted · ⚪ low taste (claimed high/defect) · `home__s00.png`
+**The board-sentiment bar says "every open market" when it can only be the six that have money** — routed to: **— not routed**
+
+*Seen:* Under the heading BODI YOTE, SASA HIVI a full-width green→red bar carries a gold tick at ~76% of its length, captioned "76% NDIO · 24% HAPANA — kila soko lililo wazi, kwa uzito wa fedha zilizowekwa" (every open market, weighted by money staked). The same screen states 32 open markets and 8 open predictions. On markets__s02/s03/s04 the board — sorted by biggest pool, descending — runs out of money after six cards and the remaining cards all read TZS 0 / "Bila dau bado". A money-weighted mean over the six funded markets visible on the board (18,000@83%, 4,000@50%, 3,000@67%, 1,000@100%, plus the small remainder) lands at ~76-77%, which is exactly the number on the bar. So the bar is computed only over markets that have money, while its caption claims all 32.
+
+*Why it matters:* This is the first data graphic a Swahili visitor sees, and it is the platform's claim about itself. Twenty-six of the thirty-two markets it says it covers contributed nothing to it. A visitor who scrolls two screens and sees a wall of TZS 0 has caught the home page overstating its own reach — the most expensive kind of error for a product whose selling line is that every outcome has a cited source.
+
+*Critic's fix:* Either weight the bar over all 32 (empty markets entering at the no-price state, which will pull it toward 50), or keep the money-weighting and correct the caption to name the real population and sample: "masoko 6 yenye dau · watabiri 8, kwa uzito wa fedha". Put n on the graphic, not only in the prose.
+
+*Verifier:* I opened home__s00 and the bar and caption are exactly as described (76% NDIO · 24% HAPANA — kila soko lililo wazi, kwa uzito wa fedha zilizowekwa; 32 masoko, TZS 29K, 8 utabiri). But the caption is self-consistent, not false: a mean weighted BY MONEY STAKED over all 32 markets is arithmetically identical to the same mean over the 6 funded ones, because a market with TZS 0 carries weight 0. I checked the arithmetic against the board: 18,000@83% (Mwanza, home__s04) + 4,000@50% (PUBG) + 3,000@67% (S!TE, markets__s01) + 1,000@100% (Iran, markets__s02) + the two small remainders = ~21,950/29,000 = 75.7% → the 76% on the bar. The critic has found a mathematical identity and dressed it as a scope error. There is no defect here.
+
+#### CP-053 · ✅ upheld · 🟡 medium defect (claimed high/defect) · `markets__s02.png`
+**One TZS 1,000 bet is rendered as a 100% / 0% certainty, needle pinned to the rail** — routed to: **owner 6**
+
+*Seen:* Two cards on one screen. "Je, Marekani na Iran watasaini makubaliano rasmi ya amani…" shows NDIO 100% at 28px, a bar that is solid green edge to edge with the gold needle against the right end, a button reading HAPANA @ 0%, and below it "1 mtabiri" and "TZS 1,000". Directly beneath, "Je, Manchester City wata shinda Premier League 2026/27?" shows NDIO 0%, a bar that is solid red edge to edge with the needle against the left end, and again "1 mtabiri". The same 0%/100% pair reappears on live__s04 for the Iran market. This is not the empty-market state — those cards render a dotted neutral track and "Bila dau bado" (markets__s03), and they do it correctly.
+
+*Why it matters:* The platform is telling players that a formal US-Iran peace treaty is a certainty and that Manchester City winning the league is impossible, on the strength of one thousand shillings from one account. It is also offering a tradeable price of 0% — a player who taps HAPANA @ 0% cannot know what they are paying or what they would win. Beyond the money risk, a board where the boldest, most saturated cards are the ones with the least evidence trains readers to distrust every percentage on the site.
+
+*Critic's fix:* Shrink the displayed price toward the 50% prior by pool size (a Laplace/liquidity-weighted estimator) until a minimum liquidity threshold is met, clamp the displayed range to roughly 3-97%, and print the sample inline with the price ("NDIO 83% · watabiri 3") rather than in 11px grey four rows down. Below the threshold, show the price as indicative and say so on the card.
+
+*Verifier:* Verified on markets__s02: the Iran card shows NDIO 100% at display size, a solid-green bar with the gold needle hard against the right rail, a live button reading HAPANA @ 0%, "1 mtabiri", "TZS 1,000"; the Manchester City card below it is the mirror (NDIO 0%, solid red, needle at the left rail, 1 mtabiri). live__s04 repeats NDIO @ 100% / HAPANA @ 0% for the same Iran market. The cold-start state (dotted track + "Bila dau bado", markets__s03/s04) is indeed a separate, well-handled state, so the one-bet case falls through to the rails. Mitigating, and why I lower the severity: the numbers are literally correct for a pool price, and the card prints its own sample ("1 mtabiri", "TZS 1,000") immediately under the bar, so nothing is hidden — the fault is that a tappable "@ 0%" price and a rail-pinned needle read as certainty. Not the same thing as D29 (invented 50% on zero-bet terminal cards).
+
+#### CP-054 · ✅ upheld · 🟡 medium defect (claimed high/defect) · `leaderboard__s01.png`
+**A ranked table that omits the variable it is ranked by** — routed to: **D43**
+
+*Seen:* The rows for ranks 2 through 6 (@Dhiresh, @Jaykishan, @Fulgence, @DEV, @James) contain exactly four things: the rank number, a circular initials avatar, the handle, and a tier medal. There is no ROI figure and no settled-bet count on any of them, and the right half of each row — roughly 210 image px of card, about 105 CSS px — is empty. The page is titled "Watabiri bora", the sort control above reads "ROI bora", and the podium on leaderboard__s00 does print the numbers (+26.8%, +13.2%, −3.9%). The values exist; they are simply dropped below rank 3. index.json records overflowX false for this surface, so nothing is scrolled off to the right.
+
+*Why it matters:* A leaderboard exists to let a reader check the ordering and judge the distance between places. Here the reader can see that @Fulgence is fourth but not by how much, not on what evidence, and not whether fourth place is profitable at all — which matters, because third place on this very board is negative. The ranking becomes an assertion the player is asked to take on faith on a page whose whole purpose is to display evidence.
+
+*Critic's fix:* Add the two columns that already exist in the podium to every row: the ROI (signed, coloured) and the settled count. There is room for both in the empty right half at 360px; if space is tight, drop the tier medal from the row and keep it on the profile.
+
+*Verifier:* Confirmed on leaderboard__s01. Rows 2–6 (@Dhiresh, @Jaykishan, @Fulgence, @DEV, @James) carry only rank number, initials avatar, handle and tier medal; I cropped row 2 at native resolution to be sure — nothing beyond the medal at x≈425 out of a card that runs to x≈688, so ~130 image px / 65 CSS px of dead card per row. index.json confirms overflowX=false for /leaderboard, so nothing is clipped off-screen. leaderboard__s00 proves the values exist (+26.8%, +13.2%, −3.9%, "N imetatuliwa") and the sort control says "ROI bora". Severity lowered from high because ranks 2 and 3 do get their numbers on the podium directly above, so only ranks 4–6 are numberless anywhere on the page. Distinct from D2 (podium handle wrapping).
+
+#### CP-055 · ✅ upheld · 🟡 medium defect (claimed high/defect) · `leaderboard__s00.png`
+**ROI ranked with no minimum sample, so first place is the least-evidenced player and sample size is the faintest text on the card** — routed to: **owner 7**
+
+*Seen:* The podium reads, left to right: @Dhiresh +13.2% over "18 imetatuliwa", @Libuhi +26.8% over "6 imetatuliwa" (crowned, gold ring, centre, highest plinth), @Jaykishan −3.9% over "44 imetatuliwa". The ROI figures are set large and in colour; the settled counts under them are the smallest and dimmest type in the panel. The summary panel above repeats "ROI BORA 26.8%" in green. No period is stated anywhere on the screen — not on the summary panel, not on the sort control ("ROI bora"), not on any podium figure.
+
+*Why it matters:* The ordering is inverted with respect to reliability: the player with the fewest resolved bets sits on the top step and the player with seven times as much evidence sits on the bottom one, in the negative. On a real-money platform this is the leaderboard telling newcomers to copy the noisiest record in the room. And a return figure with no window cannot be checked by anyone — 26.8% this week and 26.8% since launch are very different claims wearing the same label.
+
+*Critic's fix:* Require a minimum settled count to enter the ROI ranking (and name the threshold on the page), or rank on a lower-confidence-bound rather than the raw mean. Promote the settled count to the same weight as the percentage — it is the number that makes the percentage readable. Put the window in the panel header: "ROI BORA · siku 30".
+
+*Verifier:* The podium on leaderboard__s00 is exactly as described: @Dhiresh +13.2% / 18 imetatuliwa (rank 2), @Libuhi +26.8% / 6 imetatuliwa (crowned, gold ring, centre, tallest plinth), @Jaykishan −3.9% / 44 imetatuliwa (rank 3); the ROI figures are large and inked, the settled counts are the smallest, dimmest type on the panel; the summary repeats "ROI BORA 26.8%" in green; and I found no period anywhere on the screen — the tabs read Zote 6 / Masoko 4 / Juu na Chini 6 and the sort reads "ROI bora". The hierarchy inverting the evidence is real and verifiable. What is NOT verifiable from the frame is the title's stronger assertion "no minimum sample": one snapshot in which the leader has 6 settled does not prove the absence of a threshold (a floor of 5 would also produce this), and the tier medal may already encode volume. Downgraded to medium on that inference.
+
+#### CP-056 · ✅ upheld · 🟡 medium defect (claimed high/defect) · `results__s00.png`
+**The results donut has three segments, a two-item legend, and parts that do not sum to the whole printed beside it** — routed to: **D42**
+
+*Seen:* At the top of /results a donut ring sits between the word MATOKEO and the legend "NDIO 59 · HAPANA 88". The ring carries three visibly different arcs: green from roughly 8 to 11 o'clock, a grey-blue arc across the top from about 11 to 1 o'clock, and coral from 1 round to 7 o'clock. The legend names two of them. Two hundred image pixels below, the filter row reads "Zote 171" and, at the right, "masoko 171". 59 + 88 = 147, not 171 — 24 results, about one in seven, are in the ring but not in the legend. The HAPANA tab beside it is cut mid-word to "HAPAI" by the result count, so its own figure is unreadable too.
+
+*Why it matters:* This ring is the platform's public track record — the thing a sceptical visitor checks before depositing. It fails the simplest test anyone applies to a pie: the slices do not add up to the total printed next to them, and a seventh of the data has no name. A reader who does the arithmetic learns nothing except that the page does not agree with itself.
+
+*Critic's fix:* Label the third segment (presumably BATILI/void) in the legend with its count, so the three parts sum to 171 in plain sight. If void results should not count, exclude them from the ring and change the adjacent total to 147 with the void count stated separately.
+
+*Verifier:* I cropped and enlarged the ring on results__s00. There are unambiguously three arcs: green, coral, and a lavender/blue-grey wedge of roughly 50–60° — and the legend beside it names only two ("NDIO 59 · HAPANA 88"). 59+88 = 147 against "Zote 171" / "masoko 171" in the filter row, so the unnamed arc is the missing 24 (14% ≈ 50°, which matches the wedge I measured). An unlabelled third segment on a summary ring is a genuine fault. Two corrections: the critic's clock positions are wrong (green runs 12→~5, coral ~5→~10, lavender ~10→12, not 8–11/11–1/1–7), and the "HAPAI" clipping he cites in support is already known as D1. Severity lowered because the ring is a small decorative summary and every count it summarises is printed in full immediately below it.
+
+#### CP-057 · ❌ refuted · ⚪ low taste (claimed high/defect) · `results__s02.png`
+**On settled cards the needle points at the opposite side from the stated outcome, and nothing says what the needle is** — routed to: **— not routed**
+
+*Seen:* "Je, fainali ya US Open Men's Singles 2026…" carries TOKEO HAPANA at the top right, and directly under it a bar that is green for about 95% of its length with the gold needle hard against the right end. "1 mtabiri", "TZS 1,000". Two screens on, results__s04 shows the same shape for Coventry City: near-solid green bar, needle at the right, TOKEO HAPANA. In the other direction, results__s03 shows "Je, Manchester United na Manchester City watapiga…" with a solid red bar, the needle hard against the left end, and TOKEO NDIO. Unlike the /markets cards, the settled bars carry no percentage labels at all — the numbers that would explain the needle have been removed.
+
+*Why it matters:* Green plus a right-hand needle is the exact visual sentence the product uses everywhere else to mean YES. Placing it beside the word HAPANA, three cards in a row, leaves the reader with two contradictory readings and no caption to arbitrate — and the one that reads fastest is the wrong one. If the needle is the closing price, that is genuinely interesting information (the market was wrong) and deserves to be said out loud; as drawn it just looks like a bug.
+
+*Critic's fix:* Label the mark: "bei ya kufunga 96% NDIO" under the bar, restore the percentage labels the live cards have, and add an explicit divergence marker when the closing price and the outcome disagree. Failing that, remove the bar from settled cards entirely — an unlabelled needle on a decided market earns nothing.
+
+*Verifier:* Every pixel described is there — results__s02 US Open: TOKEO HAPANA over a ~95% green bar with the needle hard right, 1 mtabiri, TZS 1,000; results__s04 Coventry: same shape; results__s03 Man Utd/Man City: solid red bar, needle hard left, TOKEO NDIO — but the reading is wrong. That bar is the market's CLOSING PRICE and the outcome is what actually happened; a settled prediction market whose crowd was wrong is precisely what /results exists to record, and results__s01 shows the consistent case (Dar es Salaam: needle at ~15%, outcome HAPANA). Calling the needle "opposite" treats "the crowd was wrong" as a rendering bug. The only defensible fragment is the second clause — settled bars carry no % labels, so the needle is unlabelled — and that is a separate, lesser finding, not the one titled here.
+
+#### CP-058 · ✅ upheld · 🟠 high defect · `results__s01.png`
+**Every outcome word is printed in the YES ink, including HAPANA** — routed to: **D29 (U32)**
+
+*Seen:* On the Dar es Salaam rainfall card the outcome reads "TOKEO" in small caps above "HAPANA" set at roughly 72 image px (about 36 CSS px) in the same green used for the NDIO buttons and NDIO prices elsewhere on the site. Two cards down, "TOKEO NDIO" is set in the identical green. On results__s02 the US Open card shows "HAPANA" in green; on results__s03 both visible cards show "NDIO" in green; on results__s04 Coventry shows "HAPANA" in green. Across nine settled cards I opened, the outcome word is green in every case regardless of which side won. The word HAPANA is red in the live ticker, on the HAPANA buttons, and in the HAPANA prices on markets__s01.
+
+*Why it matters:* The phone design sheet reserves the YES/NO inks as meaning-bearing, and the rest of the product honours that. Here the largest coloured word on each settled card is coloured by nothing — so a reader scanning the results board at arm's length sees an unbroken column of green and reads it as a run of YES outcomes, when 88 of 147 went the other way. A colour that says the same thing whatever the data did is worse than no colour.
+
+*Critic's fix:* Bind the outcome word's colour to the outcome: green for NDIO, the HAPANA red for HAPANA, the neutral/void ink for void. If a single colour is wanted for calm, use the neutral foreground for both and let the word carry the meaning — but do not use one side's ink for both sides.
+
+*Verifier:* This one is solid and I could not break it. results__s01: "TOKEO HAPANA" in mint green, and two cards down "TOKEO NDIO" in the identical green. results__s02: US Open "HAPANA" green. results__s03: both cards "NDIO" green. results__s04: Coventry "HAPANA" green. It is the same ink as the "NDIO 100%" / "NDIO 67%" prices on markets__s01/s02, while HAPANA is red on the buttons, in the HAPANA prices and in the live ticker on home__s00. So the largest, most important token on a settled card is inked to mean the opposite of what it says, systematically, on every settled card. This breaks §8a guardrail 4 (the YES/NO inks keep their meaning) outright. Kept at high: it is a money-outcome word and the miscolouring is systemic, not incidental.
+
+#### CP-059 · ✅ upheld · 🟡 medium defect (claimed high/defect) · `live__s04.png`
+**Two complementary markets on the same inflation release close seven days apart** — routed to: **E-420**
+
+*Seen:* Two cards on the same screen, separated by one other card. The first: "Je, mfumuko wa bei wa Tanzania (NCPI) utazidi asilimia 3.5 mwezi Septemba 2026, kulingana na ripoti ya kila mwezi …" — siku 20 zimebaki. The third: "Je, kiwango cha mfumuko wa bei Tanzania (NCPI) kitashuka chini ya 3.5% mwezi Septemba 2026, kulingana na…" — siku 27 zimebaki. Same index, same month, same 3.5% threshold, opposite direction. Both read "Bila dau bado".
+
+*Why it matters:* These two questions must resolve from one NCPI release and their answers are logically locked together, yet one stops accepting bets a full week before the other. That week is a free option: after the first closes, anything that moves expectations can still be traded in the second. It also splits the liquidity of a board that, by its own home-page figures, has only eight open predictions in total — two half-empty markets where one market with a real pool should be.
+
+*Critic's fix:* Derive both close times from the same resolution event and make them identical, or merge the pair into one market with NDIO/HAPANA sides. Add a check at market creation that flags two open markets sharing a source, a date and a threshold.
+
+*Verifier:* Verified on live__s04. Card 1 (UCHUMI, siku 20 zimebaki): "…NCPI utazidi asilimia 3.5 mwezi Septemba 2026, kulingana na ripoti ya kila mwezi…"; card 3, one card later (UCHUMI, siku 27 zimebaki): "…NCPI kitashuka chini ya 3.5% mwezi Septemba 2026…". Same index, same month, same threshold, opposite direction, both "Bila dau bado" — and the second stays open a week longer on a question settled by the same single release, which is a real catalogue fault (split liquidity, and a window in which one market may still be open after the other's answer is knowable). Two caveats that lower it from high: they are not strictly complementary (exactly 3.5% resolves NO on both), and this is a seeded-content/market-ops defect, not a phone information-design one — nothing about how the two cards are drawn is wrong.
+
+#### CP-060 · ✅ upheld · 🟡 medium defect (claimed high/defect) · `detail__s02.png`
+**The probability chart's x-axis is spaced by data point, not by time, so the slope means nothing** — routed to: **D46**
+
+*Seen:* Under "UWEZEKANO WA NDIYO KWA MUDA" the axis labels sit at, in image pixels, "12 Sep" centred near x=148, "14 Sep" near x=302, "15 Sep" near x=455 — intervals of 154 and 153 px. The first interval covers two days, the second covers one. The plotted line changes gradient at exactly the 14 Sep tick, rising red from about 0% to the 50% dashed reference and then green on to 67%.
+
+*Why it matters:* The only thing a probability-over-time chart is for is the rate of change, and this axis makes the second day's move look the same size as the first two days' move. A player reading momentum off this line is reading an artefact of how many points happened to be stored, not of what the market did. Everything else on the panel — the percent axis, the 1W/1M/ALL selector, the reference line — is dressed as a proper time series, which is what makes the distortion invisible.
+
+*Critic's fix:* Plot on a true time scale with ticks at regular date intervals and points positioned by timestamp; step the line between observations rather than interpolating, so gaps in trading read as gaps.
+
+*Verifier:* I measured this rather than eyeballing it. On detail__s02 the label glyph groups centre at x=148.5, 302.0 and 455.0 image px — gaps of 153.5 and 153.0 — for "12 Sep", "14 Sep", "15 Sep", i.e. a two-day interval and a one-day interval drawn the same width. The line's gradient change lands exactly on the 14 Sep tick. A date-labelled axis on a categorical scale does misrepresent rate of change, so the finding stands. Downgraded from high because it is a three-point sparkline inside a collapsible panel, an ordinal axis is a defensible convention for such a sparse series, and no figure derived from the slope is printed anywhere.
+
+#### CP-061 · ❌ refuted · ⚪ low taste (claimed high/defect) · `detail__s02.png`
+**The 67% badge floats clear of the line end, and the chart implies a trading history one predictor cannot have** — routed to: **— not routed**
+
+*Seen:* The green line terminates near x=455 (image px). The green "67%" badge sits at x≈535-605, roughly 75 image px (about 37 CSS px) to its right, level with nothing. The gold "50%" badge sits at the same right-hand column with its dashed rule running the full plot width. Above the plot, a 1W / 1M / ALL segmented control has ALL selected. On the same page, two screens up (detail__s01), the stat tiles read KIASI TZS 3K and WATABIRI 1, and the line's left end rests at about 0% on 12 Sep.
+
+*Why it matters:* A range selector offering a week, a month and all time on three days of data, a filled area, a reference line and a 0%→67% ascent together promise a market that has been trading. The page's own numbers say one person has staked in it. The detached badge compounds it: the most important number on the chart is not touching the mark it labels, so a reader cannot tell whether 67% is where the line ended or a separate reading. And the leftmost point is the cold-start artefact, not a price anyone ever traded at.
+
+*Critic's fix:* Anchor the current-value badge to the last plotted point with a connector or place it directly on the line end. Hide range buttons that cover no additional data. Start the series at the first real bet, not at the seeded 0%, and when the series has fewer than a handful of observations draw the points alone with no connecting line.
+
+*Verifier:* Both halves fail when measured. I extracted the green pixels on detail__s02: the line terminates at x≈455, y≈776, and the 67% badge occupies x 535–605, y 759–790 — centre y 774, i.e. vertically level with the line's terminal point to within 2px, sitting in the right-hand axis-label gutter alongside 60% / 40% / 20% / 0% and directly above the 50% badge on its dashed rule. That is a textbook last-value axis marker, not a badge "level with nothing". The second half is refuted by arithmetic: markets__s01 shows this market at TZS 3,000 / 1 mtabiri / NDIO 67%, and one predictor placing 1,000 on HAPANA and then 2,000 on NDIO gives exactly 3,000, exactly 2000/3000 = 67%, and exactly a path starting at 0% — the history the chart draws is the one a single predictor can and did have.
+
+#### CP-062 · ❌ refuted · ⚪ low taste (claimed medium/defect) · `detail__s02.png`
+**The chart borrows the NDIO/HAPANA inks to mean "above/below 50%"** — routed to: **— not routed**
+
+*Seen:* The single plotted line is red from its start at ~0% up to where it crosses the gold 50% dashed rule, and green from that crossing to its end at 67%. Both segments describe the probability of NDIO. On the same page, green means NDIO and red means HAPANA on the price strip, the buttons and the related-market cards.
+
+*Why it matters:* The red half of this line is the NDIO probability, drawn in the colour the whole product uses for HAPANA. A reader who has spent two screens learning that red equals NO will read the red segment as the NO line and the green as the YES line, and conclude the two crossed on 14 September — which is not what the chart shows at all.
+
+*Critic's fix:* Draw the series in one neutral or brand ink and let the 50% rule carry the above/below reading, or split it into two lines (NDIO green, HAPANA red) that genuinely sum to 100.
+
+*Verifier:* The colouring on detail__s02 is as described — red from ~0% up to the 50% rule, green from there to 67% — but it does not borrow the inks, it honours them. Below 50% P(NDIO) means HAPANA is the majority side, so red is the correct ink for that stretch; above 50% NDIO leads, so green is correct. The ink changes exactly where the leading side changes. This is the same semantics as the price strip, the buttons and the related-market cards on the same page, not a conflicting second meaning.
+
+#### CP-063 · ✅ upheld · ⚪ low taste (claimed medium/defect) · `live__s04.png`
+**/live prints prices with the pool and the predictor count removed** — routed to: **U36**
+
+*Seen:* The Iran row on /live shows category, "siku 14 zimebaki", the question, a solid green bar with the needle at the right, and "NDIO @ 100%" / "HAPANA @ 0%". There is no TZS figure and no predictor count anywhere on the row. The same is true of the 83% Mwanza wind row on live__s02 and every other priced row I opened on this surface. The /markets card for the identical Iran market (markets__s02) does carry "1 mtabiri" and "TZS 1,000".
+
+*Why it matters:* The two figures that make a percentage interpretable are exactly the two this surface drops, and it drops them on the page most likely to be scanned fast. A reader on /markets can at least see that 100% rests on one thousand shillings; the same reader on /live cannot. The context was already computed and already displayed elsewhere — it was removed to make the row shorter.
+
+*Critic's fix:* Add the pool and the predictor count to the /live row, on the same line as the prices. If the row must stay compact, trade away the category chip or the "siku n zimebaki" before trading away the sample size.
+
+*Verifier:* Accurate as observed: on live__s04 the Iran row carries category, "siku 14 zimebaki", the question, a solid green bar and "NDIO @ 100% / HAPANA @ 0%" and no TZS figure or predictor count; live__s02 is the same for the 83%/17% Mwanza row; markets__s02 carries "1 mtabiri" and "TZS 1,000" for the identical Iran market. But /live is deliberately a compact price feed — the row shows category, countdown, question, price and nothing else, and unfunded rows correctly swap the price for "Bila dau bado" — so this is a density decision, not an error. The real harm (a 100% price with no visible sample) is already carried by finding 2; counting it twice at medium would double-charge it.
+
+#### CP-064 · ✅ upheld · ⚪ low taste (claimed medium/defect) · `detail__s01.png`
+**Two four-box countdowns ticking seconds at a 36-day range, three of whose four boxes hold identical values** — routed to: **U8**
+
+*Seen:* One panel holds two rows of four digit boxes. The first, under "UCHAGUZI UNAFUNGWA BAADA YA · 23 Oct, 00:00", reads 36 SIKU / 13 SAA / 02 DAK / 38 SEK. The second, under "MATOKEO BAADA YA · 27 Oct, 00:00", reads 40 SIKU / 13 SAA / 02 DAK / 38 SEK. Only the first box differs. The panel spans roughly y=545 to y=1070 in image pixels — about 262 CSS px, a third of the viewport — while the price strip for this market occupies a single cut-off line at the top of the same frame and the pool and predictor tiles above it about 75 CSS px.
+
+*Why it matters:* Eight digits animate once a second to tell a player something that will not change meaningfully for five weeks, and six of them are saying it twice. Meanwhile the numbers that actually bear on the decision — 67%, TZS 3K, 1 predictor — get a fraction of the space and none of the motion. On a phone, where every screen is scarce, the page has spent its largest panel on its least useful precision.
+
+*Critic's fix:* Show one countdown (to the close) and express the settlement as a relative offset — "matokeo siku 4 baadaye · 27 Okt". Drop to date-and-hour precision beyond 48 hours and switch to the ticking boxes only inside the final day.
+
+*Verifier:* The panel on detail__s01 is real and I measured it: 36/13/02/38 under "UCHAGUZI UNAFUNGWA BAADA YA · 23 Oct, 00:00" and 40/13/02/38 under "MATOKEO BAADA YA · 27 Oct, 00:00", spanning y≈545–1070 image px = ~262 CSS px, a third of the 780px viewport, against ~72 CSS px for the KIASI/WATABIRI tiles. Eight digit boxes ticking seconds for a 36-day horizon is disproportionate weight, and the panel also restates the "INAISHA 27 Oct 2026, 00:00" tile immediately above it. But the headline framing is wrong on two counts: the three identical boxes are a coincidence of both deadlines falling at 00:00, not duplicated design (any market with different clock times shows different values), and the price strip is "cut off" only because of where this scroll frame happens to start. What survives is a proportion complaint.
+
+#### CP-065 · ❌ refuted · ⚪ low taste (claimed medium/defect) · `detail__s01.png`
+**The same money is exact on one screen and rounded to one figure on another, with no approximation sign** — routed to: **— not routed**
+
+*Seen:* The board card for this market (markets__s01) reads "TZS 3,000". The detail page tile for the same market reads "KIASI TZS 3K". The same divergence appears with a real loss of value elsewhere: the settled Dar es Salaam rainfall card on results__s01 reads "TZS 5,500" while the live ticker across the top of home__s00, markets__s00 and login__s00 reads "TZS 5K imekamilika HAPANA" for what is evidently that settlement. Neither rounded form carries a ~ or an "approx".
+
+*Why it matters:* TZS 5K stated for TZS 5,500 is a nine per cent misstatement of a money figure, presented as a fact and repeated on every page in the marquee. On a licensed real-money product, money is the one quantity that should never silently lose precision, and the detail page — the screen a player commits from — is the last place to abbreviate it.
+
+*Critic's fix:* Show money in full with thousands separators on cards, tiles and tickers wherever it fits at 360px, which these all do. Reserve the K/M abbreviation for genuine aggregates (the 29K hero stat), and prefix those with ~ so the rounding is declared.
+
+*Verifier:* The first pair is not a loss at all: markets__s01 reads TZS 3,000 and detail__s01 reads KIASI TZS 3K — the same value, abbreviated in a compact tile, which is a site-wide convention. The "real loss of value" example is an unproven inference: the ticker on home__s00 reads "TZS 5K imekamilika HAPANA", and results__s04 shows a settled HAPANA market at exactly TZS 5,000 (Coventry City), so the ticker most plausibly refers to that, not to the TZS 5,500 rainfall settlement on results__s01. The critic picked the one reading that makes the formatter look lossy when an exact-match candidate is two frames away. No missing "~" is demonstrated.
+
+#### CP-066 · ❌ refuted · ⚪ low taste (claimed medium/defect) · `markets__s03.png`
+**The card with no data is taller than the card with data, and says "no bets" three separate times** — routed to: **— not routed**
+
+*Seen:* The "Je, Brentford NA Chelsea watapata kila mmoja angalau kadi 2 za njano…" card devotes, in order: a dotted neutral track spanning the card width, the centred line "Bila dau bado", the centred line "Kuwa wa kwanza kutabiri", NDIO and HAPANA buttons, and a footer reading "Hakuna bwawa bado" beside "siku 2 zimebaki". Three of those elements state the same single fact. index.json records the card heights on this board as a run of 320s followed by a run of 347s; measuring the Iran card on markets__s02 from its border at y≈398 to y≈1032 gives 317 CSS px for a card carrying a price, a bar, a predictor count, two priced buttons, a pool and a countdown.
+
+*Why it matters:* Twenty-six of thirty-two open markets are in this state, so the empty card is the board's dominant object — and it is the one given the most room and the least to say. A player scrolling /markets spends most of their screen time reading "there is nothing here" rendered three ways, over a dotted track that encodes nothing at all. The default sort is by pool size, which guarantees they meet this wall by the third screen.
+
+*Critic's fix:* Collapse the empty state to one line — "Bila dau bado · kuwa wa kwanza" — drop the dotted track and the duplicate footer, and let the empty card be visibly shorter than a funded one. Consider a "yenye dau" filter chip in the sticky bar so a player can see the six live markets without scrolling past twenty-six empty ones.
+
+*Verifier:* Both load-bearing assertions are embellished. On markets__s03/s04 the empty card carries a dotted track, "Bila dau bado", "Kuwa wa kwanza kutabiri", the two buttons and "Hakuna bwawa bado" — but "Kuwa wa kwanza kutabiri" is a call to action, not a third statement of the same fact, so it is one state line plus one pool-slot value plus a CTA. And index.json for /markets reads [354, 354, 320, 320, 320, 320, 347×6, 312, 312, 278]: the board is sorted by pool, the first six are the funded ones, and the two TALLEST cards on the whole board (354) are funded cards. So "the card with no data is taller than the card with data" is true only against the 320s and false against the 354s; the residue is a 27 CSS px density preference.
+
+#### CP-067 · ✅ upheld · 🟡 medium defect · `home__s04.png`
+**"INASOGEA" (it's moving) badged on a market with one predictor and seventy-five days to run** — routed to: **D50**
+
+*Seen:* The second card reads "Je, PUBG Global Championship 2026 (Des 1–13, İstanbul)…" and carries two chips: MUBASHARA and INASOGEA. Below: NDIO 50% with the needle dead centre, "1 mtabiri", NDIO @ 50% / HAPANA @ 50%, "TZS 4,000", "siku 75 zimebaki". On live__s00 the same market is the number-one entry in the "LILILO NA SHAKA…" carousel, where the word INASOGEA is set in italic directly beneath the needle at the centre of the 50/50 bar, reading as a label for that position. The /live header states "32 hai · 1 inasogea" — this is the one.
+
+*Why it matters:* A movement badge on a market that has had one bet in its life is a claim the card's own figures deny two rows lower. Worse, on /live the word sits under the needle where a reader will take it as an axis annotation — "the needle is here because it's moving" — rather than as a status chip, which conflates a state with a value. Since exactly one of thirty-two markets qualifies, the badge is currently doing nothing except mislabelling that one.
+
+*Critic's fix:* Gate INASOGEA on a minimum number of distinct predictors and a price move over a stated window, and say the window in the chip's tooltip. On the /live hero, move the chip up beside the HAI pill and out of the bar's label row, and put the actual split labels where it sits now.
+
+*Verifier:* I opened both frames. home__s04: the PUBG card carries MUBASHARA + INASOGEA chips, NDIO 50%, needle dead centre, 1 mtabiri, NDIO @ 50% / HAPANA @ 50%, TZS 4,000, siku 75 zimebaki. live__s00: the same market is entry 1/6 in "LILILO NA SHAKA…", header "32 hai · 1 inasogea", and the word INASOGEA is set in italic in the VALUE-LABEL ROW directly under the needle, reading "NDIO 50% INASOGEA 50% HAPANA" — a status badge parked in the slot where a value label belongs, so it reads as naming the needle's position. That placement ambiguity is the part I verified and it is a genuine defect. The title's own thrust — that the badge is unearned — I could not sustain: TZS 4,000 in the pool from 1 predictor means the price necessarily moved (opposing bets returning it to 50/50), and 75 days to close does not preclude recent movement.
+
+#### CP-068 · ❌ refuted · ⚪ low taste (claimed medium/defect) · `results__s01.png`
+**Settled markets with zero predictors and TZS 0 are counted in the 171 / 59 / 88 track record** — routed to: **— not routed**
+
+*Seen:* The second card reads "Je, Newcastle United watapatakadi za njano zaid…", TOKEO NDIO, "0 watabiri", the status pill "Imekamilika NDIO", and a footer "TZS 0". It sits in the same list, under the same "Zote 171" tab, as cards carrying TZS 5,500 and TZS 5,000, and nothing in the header, the donut or the tab counts separates the two kinds.
+
+*Why it matters:* The 171/59/88 scoreboard is what a visitor uses to decide whether this platform has a real history. A settled market nobody ever bet on is an administrative event, not a resolution anyone was exposed to, and including it inflates the record with activity that never happened. It also silently changes what the NDIO 59 / HAPANA 88 split measures — that ratio is currently a property of how questions were written, not of how players fared.
+
+*Critic's fix:* Count and display resolutions that had at least one bet as the headline figure, with the zero-participation settlements available behind the filter and named as such. If both are wanted in the total, split the donut into funded and unfunded and label both.
+
+*Verifier:* The card is there on results__s01 exactly as described (Newcastle United, TOKEO NDIO, "0 watabiri", pill "Imekamilika NDIO", footer TZS 0, in the "Zote 171" list beside TZS 5,500 and TZS 5,000 cards). But the tabs and header count MARKETS, not money — "masoko 171" says so on the same row — and a question that was asked, closed and resolved is a legitimate result whether or not anyone staked on it. Excluding them would be a policy choice, not a correction. The genuinely wrong thing visible on that card is the gradient bar with a dead-centre needle despite 0 bets — and that is already D29.
+
+#### CP-069 · ❌ refuted · ⚪ low taste (claimed medium/defect) · `help__s00.png`
+**/help offers one support number, no hours and no response window; the footer offers a second number the help page never mentions** — routed to: **— not routed**
+
+*Seen:* The help page's three contact cards read, top to bottom: TUPIGIE 0769777877 "Dawati letu la msaada"; BARUA PEPE msaada@50pick.tz "Tuandikie wakati wowote"; MAZUNGUMZO YA MOJA KWA MOJA "Ndani ya programu". No opening hours, no target response time, and no toll-free number appear on any of them. The footer on the same page (help__s02, help__s03) lists "Wasiliana nasi · 0769777877" and, on the next line, "Simu ya msaada · 0800 11 0011" — a second, free-to-call line that the support page itself never shows.
+
+*Why it matters:* A player who has lost money, or who wants to self-exclude, goes to /help and gets a number that costs them to dial while a free line exists two screens further down a page they have no reason to reach. "Write any time" is not an answer to the question they arrived with, which is when someone will reply. For a licensed operator this is also the one page where responsible-gambling reachability has to be unambiguous.
+
+*Critic's fix:* Put the 0800 line on /help as the first contact card, add operating hours to the phone cards and a stated target response time to email and chat, and reconcile the two lists so the help page is a superset of the footer.
+
+*Verifier:* The three cards on help__s00 are as quoted (TUPIGIE 0769777877 "Dawati letu la msaada"; BARUA PEPE msaada@50pick.tz "Tuandikie wakati wowote"; MAZUNGUMZO YA MOJA KWA MOJA "Ndani ya programu") with no hours — but the second half misreads the footer. On help__s03 and leaderboard__s01 the block is headed CHEZA KISTAARABU (play responsibly) and runs "Weka mipaka / Pumzika / Jizuie / Wasiliana nasi · 0769777877 / Simu ya msaada · 0800 11 0011 / Barua pepe… / Kama kucheza kamari imekuwa sio burudani, acha." A toll-free "Simu ya msaada" inside the responsible-gambling block is a problem-gambling helpline, not a hidden second customer-support line, and /help does surface responsible play (help__s01, "Kucheza kwa busara — Vikomo · mapumziko · kujizuia"). The residual "no stated hours" is a copy gap, not the finding as titled.
+
+#### CP-070 · ❌ refuted · ⚪ low taste (claimed medium/taste) · `leaderboard__s00.png`
+**A crowned podium whose third step holds a losing player** — routed to: **— not routed**
+
+*Seen:* Three plinths under a gold crown, with medal badges 1, 2, 3. The third, @Jaykishan, reads "−3.9%" in red over "44 imetatuliwa". The board has six ranked players in total ("Zote 6"), so the podium is showing the top half of the field.
+
+*Why it matters:* A podium is a graphic that asserts victory before the reader has read a single number — crown, medals, raised centre step. Putting a negative return on it means the form and the data are saying opposite things, and the form wins at a glance. With only six players ranked, a podium is also the wrong instrument: it dramatises rank differences in a field too small for rank to mean much.
+
+*Critic's fix:* Show the podium only when the top three are all positive and the field is large enough to be worth dramatising; otherwise fall back to the plain ranked table with values. At minimum, do not medal a negative return.
+
+*Verifier:* leaderboard__s00 does show @Jaykishan on plinth 3 at −3.9% in red over "44 imetatuliwa", with "Zote 6" above. Nothing is broken: rank 3 of 6 by ROI is rank 3 of 6 by ROI, the figure is honestly inked red, and a podium is simply the top-three treatment of whatever field exists. That the third-best ROI on a pre-launch board of six people is negative is a property of the seeded data — it evaporates the moment the field grows — not of the design. Suppressing or reordering it would be less honest than what is on screen.
+
+### Swahili reader — 27 claims, 19 kept
+
+#### CP-071 · ✅ upheld · 🟡 medium defect (claimed high/defect) · `home__s03.png`
+**The prize pool is called "bwawa" — a pond or swimming pool, not a pot of money** — routed to: **U40 list**
+
+*Seen:* Step 03 of the how-it-works block is headed "Washindi wanagawana bwawa" and the paragraph under it opens "Bwawa linagawanywa kati ya wote waliokuwa sahihi, kasoro kamisheni inayotozwa kwenye upande ulioshindwa pekee." The same word runs across the boards as "Hakuna bwawa bado" (home__s02, markets__s03, markets__s04, detail__s03, detail__s04).
+
+*Why it matters:* "Bwawa" in Tanzanian Swahili is a body of water — a pond, a dam, a swimming pool. No bettor in Dar uses it for a stake pot; the ordinary words are "mfuko", "jumla ya dau", or simply pool. This is the most important noun in the product — the money you are playing for — and it currently reads as a machine picking the wrong sense of the English word. It is the clearest single tell that the Swahili was translated rather than written, and it sits on the explainer whose whole job is to make players trust how winnings are shared.
+
+*Critic's fix:* Retire "bwawa" everywhere and adopt one term; "mfuko" is the safest Tanzanian choice ("Washindi wanagawana mfuko", and for the empty state "Bado hakuna fedha kwenye mfuko"). Put "bwawa" on a forbidden-terms list checked in CI so a later translation pass cannot reintroduce it.
+
+*Verifier:* Opened home__s03: step 03 is headed "Washindi wanagawana bwawa" and the paragraph reads "Bwawa linagawanywa kati ya wote waliokuwa sahihi, kasoro kamisheni inayotozwa kwenye upande ulioshindwa pekee." verbatim; the section label below is "BWAWA KUBWA KWANZA". "Hakuna bwawa bado" confirmed in the card footer on home__s02, markets__s03, markets__s04 and detail__s03. The word is genuinely a calque (bwawa = pond/dam/swimming pool) on the money noun, and it is used product-wide, so it is a real lexical defect — but it is comprehensible in context, there is no settled Swahili term for a betting pool, and nothing about it is wrong or misleading about the amount, so "high" is overstated.
+
+#### CP-072 · ✅ upheld · 🟡 medium defect (claimed high/defect) · `detail__s01.png`
+**YES is spelled two different ways in the same row: NDIO and NDIYO** — routed to: **U40 NDIO/NDIYO**
+
+*Seen:* The pinned probability strip at the top of this frame reads "NDIO 67% · INAELEKEA NDIYO · 33% HAPANA" — both spellings on one line, a few hundred pixels apart. Lower on the same page the resolution criteria begin "Itaamuliwa NDIYO iwapo CNBC au ripoti rasmi...", while every betting button on the site says NDIO and the chart panel (detail__s02) is headed "UWEZEKANO WA NDIYO KWA MUDA".
+
+*Why it matters:* Both forms are valid Swahili, so nothing looks broken — it looks careless, which on a money product is worse. A player choosing a side has to hold one label; when the button says NDIO and the rule that decides whether they get paid says NDIYO, a reasonable reader stops to check whether these are the same thing. This is distinct from the known D39 (raw YES/NO enum leaking through): here both strings are translated, they simply disagree with each other.
+
+*Critic's fix:* Pick NDIO — it matches the buttons, the ticker and the results board, and it is what a bettor says aloud — and sweep the sw dictionary for NDIYO. Add a lint rule that fails the build if both spellings appear in the same locale.
+
+*Verifier:* Opened detail__s01 and cropped the pinned strip at 4x: the left segment is N-D-I-O ("NDIO 67%"), the centre is N-D-I-Y-O ("INAELEKEA NDIYO"), the right "33% HAPANA" — both spellings on one strip, confirmed at the glyph level. "Itaamuliwa NDIYO iwapo CNBC..." confirmed lower on the same frame, and detail__s02's panel head "UWEZEKANO WA NDIYO KWA MUDA" confirmed, while every button on markets__s00/s03/s04 says NDIO. Real inconsistency; not high, because both spellings are legitimate Swahili for "yes" and no user is misled about which side they are backing.
+
+#### CP-073 · ✅ upheld · 🟡 medium defect (claimed high/defect) · `detail__s01.png`
+**The market's closing and result timestamps render with English month names** — routed to: **U40 dates**
+
+*Seen:* The "INAISHA" panel reads "27 Oct 2026, 00:00" and the countdown block is dated "23 Oct, 00:00" and "27 Oct, 00:00" — English "Oct". The countdown unit labels directly beneath are Swahili (SIKU / SAA / DAK / SEK), and the market title one screen above (detail__s00) writes the same month as "Okt 23–25".
+
+*Why it matters:* These two timestamps are the only things on the page telling a player when they can no longer bet and when they get paid. They come from a formatter that never received the sw locale, so the page contradicts itself about what month it is discussing — Swahili "Okt" in the question, English "Oct" in the deadline. It is the most visible proof on the site that Swahili is a skin over an English original, and it lands on the two values that matter most.
+
+*Critic's fix:* Pass the active locale into the date formatter (Intl.DateTimeFormat with sw-TZ, or the project's own month table) so it emits Okt/Des/Ago, in day-month-year order. Add a test that renders every date surface under sw and fails on any of the twelve English month abbreviations.
+
+*Verifier:* Opened detail__s01: "INAISHA / 27 Oct 2026, 00:00", "UCHAGUZI UNAFUNGWA BAADA YA 23 Oct, 00:00" and "MATOKEO BAADA YA 27 Oct, 00:00", with SIKU/SAA/DAK/SEK beneath — English "Oct" inside a Swahili panel, exactly as described. detail__s00 does write "Okt 23–25" in the title, and detail__s01's own criteria prose writes "Oktoba 23–25", so the same page uses three month spellings. A genuine i18n miss, but it is cosmetic — the date is still unambiguous — so medium, not high.
+
+#### CP-074 · ✅ upheld · 🟡 medium defect (claimed high/defect) · `live__s02.png`
+**Two live markets give Premier League Gameweek 5 two different date windows, on one screen** — routed to: **E-420**
+
+*Seen:* The top card asks about "Gameweek 5 ya Premier League (Sept 19–21, 2026)" and the third card on the same frame asks about "Gameweek 5 ya Premier League (Septemba 18–20, 2026)". Same competition, same gameweek, two windows, visible together without scrolling. The home board (home__s01) states the same gameweek a third time as "Sep 18–20, 2026".
+
+*Why it matters:* A player staking on "25 goals across all 10 matches of Gameweek 5" and one staking on "a hat-trick in Gameweek 5" are being told they are betting on different sets of fixtures. One of these will resolve against a window its own card never showed, and the bettor has the screenshot. That is a resolution dispute waiting to happen, sitting in plain sight rather than buried.
+
+*Critic's fix:* Derive the fixture window from one source per competition round instead of free text in each title, and reconcile these two now — 18–20 agrees with the home board, so 19–21 is the outlier. Add a check that two open markets naming the same competition round cannot state different dates.
+
+*Verifier:* Opened live__s02: the top card reads "Gameweek 5 ya Premier League (Sept 19–21, 2026)" and the third card on the same frame reads "Gameweek 5 ya Premier League (Septemba 18–20, 2026)" — both visible without scrolling. home__s01 confirms a third spelling, "(Sep 18–20, 2026)". The contradiction is real. It is seeded market content rather than a UI or layout fault, and no money is misstated, so medium rather than high.
+
+#### CP-075 · ❌ refuted · ⚪ low taste (claimed high/defect) · `home__s00.png`
+**The live ticker's settlement line is not a Swahili sentence** — routed to: **— not routed**
+
+*Seen:* The red ticker directly under the header reads "● MUBASHARA TZS 5K imekamilika HAPANA kwenye...". The identical string is pinned on every surface in the set (markets__s00, detail__s00, updown__s00, results__s00, leaderboard__s00, help__s00, login__s00).
+
+*Why it matters:* Word for word this is "TZS 5K has been completed NO on..." — the English template {amount} settled {side} on {market} with each slot swapped for a Swahili token and the grammar left behind. "Imekamilika" carries singular i-/ki- agreement attached to a money amount, and it means "is finished", not "paid out". This is the first Swahili a new visitor reads, on every page, and it is the line announcing that people are actually being paid — so the one string that should prove the platform settles is the one that reads like a bot.
+
+*Critic's fix:* Compose the ticker as a Swahili sentence rather than a slot swap: "TZS 5K zimelipwa kwa HAPANA katika {soko}". Templates that interpolate an amount or a side into a verb phrase need per-locale sentence patterns, not per-locale words.
+
+*Verifier:* Opened home__s00 (and markets__s00, detail__s00, updown__s00, results__s00, leaderboard__s00): the ticker reads "● MUBASHARA TZS 5K imekamilika HAPANA kwenye" and is cut at the viewport edge mid-word — it is a scrolling marquee caught mid-cycle, so the critic judged a fragment, not the string. The pattern also matches the product's own settled idiom seen in full on results__s01/s02/s03 ("Imekamilika HAPANA", "Imetatuliwa HAPANA"), so it is consistent house telegraphese, not a broken sentence. And "the identical string is pinned on every surface" is simply one global ticker component showing the same live event — not a defect at all.
+
+#### CP-076 · ✅ upheld · 🟡 medium defect · `results__s00.png`
+**The featured result card carries an English "SPORTS" category chip** — routed to: **U40 list**
+
+*Seen:* The first card on the results board shows a blue pill reading SPORTS, immediately beside the gold Swahili chip "IMETATULIWA · NDIO" and the Swahili label "MATOKEO MASHUHURI". Every other card in the set — results__s01 through s04, and every market card — labels the same category MICHEZO.
+
+*Why it matters:* One card style renders the raw category slug instead of the translated label, so the Swahili page shows an English word in a coloured chip at the top of its most prominent result. It also breaks the board's own scanning pattern: a reader filtering by eye for MICHEZO will never match this card.
+
+*Critic's fix:* Route the featured card's category through the same translation lookup the standard card uses, and assert in a test that no rendered chip text equals an untranslated category key under sw.
+
+*Verifier:* Opened results__s00: the featured card shows a blue pill reading SPORTS beside the gold "IMETATULIWA · NDIO" chip and "MATOKEO MASHUHURI". results__s01, s02 and s03 all label the same category MICHEZO, as do every markets card (markets__s02, s03, s04). A raw English category leaking onto the one card the board promotes is a real defect at the stated severity.
+
+#### CP-077 · ✅ upheld · 🟡 medium defect · `results__s01.png`
+**One settled card uses two different Swahili verbs for "settled"** — routed to: **U32/U40**
+
+*Seen:* The lower card carries a gold chip reading IMEKAMILIKA, a status button reading "Imekamilika NDIO", and a footer line reading "Imetatuliwa NDIO" — three labels for one state, two different verbs, inside one card. The card above does the same with HAPANA. The featured card (results__s00) uses IMETATULIWA; the leaderboard counts "6 imetatuliwa"; the ticker uses imekamilika.
+
+*Why it matters:* "Imekamilika" means finished or complete; "imetatuliwa" means resolved or adjudicated. For a prediction market these are not synonyms — one describes the event ending, the other the officer ruling and the payout being fixed. Showing both on one card leaves a player unsure whether the money has actually been decided, which is the one state they care about once their stake is in.
+
+*Critic's fix:* Choose "imetatuliwa" — it matches the integrity copy "Uthibitisho wa utatuzi" and the detail page's "Kigezo cha utatuzi" — and use it in the chip, the status button and the footer alike. Reserve any "imekamilika" wording for the event itself, if that state is shown at all.
+
+*Verifier:* Opened results__s01: the lower card carries the gold chip IMEKAMILIKA, the status button "Imekamilika NDIO" and the footer "Imetatuliwa NDIO" — three labels, two verbs, in one card; the card above does the same with HAPANA ("Imekamilika HAPANA" / "Imetatuliwa HAPANA"), and results__s02 repeats it. results__s00's featured chip says IMETATULIWA and leaderboard__s00 counts "6 imetatuliwa". A reader can reasonably think "completed" and "resolved" are two states, so medium/defect stands.
+
+#### CP-078 · ✅ upheld · ⚪ low defect (claimed medium/defect) · `home__s02.png`
+**Countdown reads "siku 1 zimebaki" — a plural verb with a single day** — routed to: **U40 list**
+
+*Seen:* The card footer on this frame reads "siku 1 zimebaki". The cards below read "siku 2 zimebaki" and "siku 75 zimebaki" (home__s04), which are correct, and the one-day form recurs on markets__s03, markets__s04 and live__s01.
+
+*Why it matters:* With one day the Swahili must be "siku 1 imebaki", or more naturally "imebaki siku moja". The string was pluralised once for English and reused, so the countdown is wrong precisely on the last day — the day the most people look at it and the most money moves. A native reader notices instantly, and it undercuts the sense that anyone proof-read the board.
+
+*Critic's fix:* Give the countdown a Swahili plural rule with a distinct one form ("imebaki siku 1" / "zimebaki siku {n}"), and check the hour, minute and second units for the same bug.
+
+*Verifier:* Opened home__s02: the card footer reads "siku 1 zimebaki"; markets__s03 and live__s01 repeat it, and home__s04 shows the correct plural cases "siku 2 zimebaki" / "siku 75 zimebaki". N-class agreement should be "imebaki" for one. Real grammar slip, but the countdown number is unambiguous and nothing is miscounted, so low rather than medium. Note the critic's supporting list is partly wrong: markets__s04 shows "siku 2 zimebaki" twice, not the one-day form.
+
+#### CP-079 · ✅ upheld · ⚪ low defect (claimed medium/defect) · `detail__s02.png`
+**The probability chart's range control is untranslated: 1W / 1M / ALL** — routed to: **U40 list**
+
+*Seen:* The panel headed "UWEZEKANO WA NDIYO KWA MUDA" contains a segmented control reading 1W, 1M and ALL, with ALL in the selected, highest-contrast state. The axis beneath reads "12 Sep, 14 Sep, 15 Sep".
+
+*Why it matters:* ALL is a plain English word occupying the most prominent state of the only interactive control on the detail page, and W/M are English initials for week and month. A reader who does not know English cannot tell what the third option shows — on the panel that visualises how the market's price has moved.
+
+*Critic's fix:* Translate the range control: WIKI 1 / MWEZI 1 / ZOTE (ZOTE is no wider than ALL, so the layout is safe). Sweep the chart component for other hardcoded English labels.
+
+*Verifier:* Opened detail__s02: under "UWEZEKANO WA NDIYO KWA MUDA" the segmented control reads 1W · 1M · ALL with ALL in the selected high-contrast pill, and the axis reads "12 Sep, 14 Sep, 15 Sep". Untranslated, as claimed. But 1W/1M are near-universal chart tokens and only "ALL" is真 English prose, on a small mono control that carries no money meaning — low, not medium.
+
+#### CP-080 · ✅ upheld · ⚪ low defect (claimed medium/defect) · `leaderboard__s00.png`
+**Tier badges show English initials S and B beside a Swahili tier name, and the sort says ROI** — routed to: **U40 list**
+
+*Seen:* The header card reads "DARAJA LA JUU Fedha" and "ROI BORA 26.8%"; the sort control reads "ROI bora". On the podium the circular tier badges beside @Dhiresh and @Libuhi read S, and @Jaykishan's reads B — repeated down the table on leaderboard__s01 for @Fulgence, @DEV and @James.
+
+*Why it matters:* The tier is named in Swahili ("Fedha") but marked with the English initial of Silver; bronze is marked B where the Swahili is "Shaba". A Swahili reader is handed the letter of a word they were never shown. ROI compounds it — a finance acronym in a third language used as the label of the control that ranks players, on a page aimed at ordinary Tanzanian bettors. Between them, both of the leaderboard's ranking signals are unreadable in the page's own language.
+
+*Critic's fix:* Derive the badge letter from the localised tier name (F for Fedha, S for Shaba, D for Dhahabu), or drop letters for colour plus an accessible name; and replace ROI with "Faida %" or "Faida bora", keeping ROI only as a parenthetical if the team insists.
+
+*Verifier:* Opened leaderboard__s00: header card reads "DARAJA LA JUU Fedha" and "ROI BORA 26.8%", sort control "ROI bora", and the podium badges beside @Dhiresh and @Libuhi read S while @Jaykishan's reads B; leaderboard__s01 repeats B for @Fulgence, @DEV and @James. The S-for-"Fedha" mismatch is real. The ROI half of the claim is weak — ROI is a borrowed acronym in common Tanzanian financial use and has no crisp Swahili equivalent — and single-letter tier badges are a standard convention, so low.
+
+#### CP-081 · ✅ upheld · 🟡 medium defect · `live__s00.png`
+**The hero carousel's section label is clipped mid-phrase: "LILILO NA SHAKA…"** — routed to: **D47**
+
+*Seen:* Inside the top hero card, left of the 1/6 pager arrows, the label reads "LILILO NA SHAKA…" with a trailing ellipsis. "Lililo na shaka" is a relative clause with nothing to complete it; the intended label is evidently something like "LILILO NA SHAKA ZAIDI" (most uncertain).
+
+*Why it matters:* This is precisely the case where longer Swahili breaks a slot fitted to English: the English label fits, the Swahili does not, so the phrase truncates into a fragment that names nothing. That label is the only thing telling a visitor what the six rotating cards have in common, and it is the first thing on the live feed.
+
+*Critic's fix:* Let the label wrap or shrink rather than truncate, and shorten the Swahili to something that fits the slot — "SHAKA ZAIDI" or "HAZIJULIKANI" both read as complete phrases at this width.
+
+*Verifier:* Opened live__s00 and zoomed the label at 4x: it reads "LILILO NA SHAKA…" with a genuine single ellipsis glyph, immediately left of the 1/6 pager arrows — CSS truncation, not authored copy. The surviving fragment is a bare relative clause with no head, so the label conveys nothing. Not one of D1/D18 (different element). Medium/defect as claimed.
+
+#### CP-082 · ❌ refuted · ⚪ low taste (claimed medium/defect) · `updown__s00.png`
+**Up & Down asks about "saa itakapoisha" (when the hour ends) for five-minute rounds** — routed to: **— not routed**
+
+*Seen:* Under the title "Juu na Chini" the subtitle reads "Je, bei itakuwa juu au chini saa itakapoisha?". On the same frame the filter reads "Bitcoin · 5 dakika", the card badge reads "5 DAKIKA", the section above the strip is headed "RAUNDI ZA MWISHO", and the card's countdown to results shows 01:03.
+
+*Why it matters:* "Saa" is an hour, or a clock. The strap line therefore tells a new player the bet resolves at the end of the hour while everything around it says the round is five minutes and closes in one. A first-time visitor sizing up the fastest game on the platform takes the timescale from the one sentence that explains it, and that sentence is wrong. It is also exactly what a literal rendering of a loose English "when time's up" produces.
+
+*Critic's fix:* Name the round, not an hour: "Je, bei itakuwa juu au chini raundi itakapoisha?", and fix "raundi" as the term for the unit so it agrees with "RAUNDI ZA MWISHO" above it.
+
+*Verifier:* Opened updown__s00: the subtitle is "Je, bei itakuwa juu au chini saa itakapoisha?" and the filter/badge do read "Bitcoin · 5 dakika" / "5 DAKIKA" with "RAUNDI ZA MWISHO" above and a 01:03 countdown. But "saa" in Swahili is also the clock/watch itself, so "saa itakapoisha" reads naturally as "when the clock runs out" — the critic's gloss "the hour" is one reading presented as the only one. The line is generic page copy that never asserts a duration, and nothing on the frame contradicts it. A wording preference, not a demonstrated defect.
+
+#### CP-083 · ✅ upheld · 🟡 medium defect · `updown__s01.png`
+**The same Up & Down round is called a football "mechi" in one panel and a "raundi" in another** — routed to: **U40 list**
+
+*Seen:* The lower card's panel is headed "MECHI IJAYO INAENDELEA" over an empty —:— timer, and the line under the outcome reads "Mechi inayofuata tayari imeanza." The previous screen (updown__s00) calls the same objects "RAUNDI ZA MWISHO" and "Raundi".
+
+*Why it matters:* "Mechi" in Tanzanian Swahili means a match — a football fixture. Applying it to a five-minute Bitcoin price round imports the wrong mental model into the one game on the platform that has nothing to do with sport, right next to a live BTC price. With a blank —:— timer sitting under a heading claiming the next one is already running, the panel reads as though it belongs to a different product.
+
+*Critic's fix:* Use "raundi" for the unit throughout Up & Down and remove "mechi" from this surface: "RAUNDI IJAYO INAENDELEA", "Raundi inayofuata tayari imeanza." Fix the placeholder timer alongside it so heading and clock agree.
+
+*Verifier:* Opened updown__s01: the lower card's panel is headed "MECHI IJAYO INAENDELEA" over an empty —:— timer, and the line under "Juu imeshinda" reads "Mechi inayofuata tayari imeanza." Opened updown__s00: the same objects are "RAUNDI ZA MWISHO", the toggle "Raundi", the history strip "za zamani → mpya". Two nouns for the core object of one game mode, one of them a football loanword applied to a Bitcoin price round. Real, and medium is fair.
+
+#### CP-084 · ✅ upheld · ⚪ low defect (claimed medium/defect) · `live__s03.png`
+**A live market question is machine Swahili: "wanachama wa fiber-optic wanaotumika"** — routed to: **E-420**
+
+*Seen:* The top card reads "Je, jumla ya wanachama wa fiber-optic wanaotumika nchini Kenya itazidi milioni 1.45 katika ripoti ya CA Q1 FY2026/27...".
+
+*Why it matters:* Read back, this says "the total of fibre-optic members who are being used in Kenya". "Wanachama" means members of a club or party, not subscribers (wateja, waliojisajili), and "wanaotumika" is the passive "who are used" where the source meant active (wanaotumia huduma). It is a betting question with real money against it whose subject is nonsense in Swahili — the clearest case in the set of market copy translated by machine and never read by a speaker.
+
+*Critic's fix:* Rewrite as "Je, idadi ya wateja wa mtandao wa fiber-optic wanaotumia huduma nchini Kenya itazidi milioni 1.45...", and put market titles through a human Swahili review before they go live, since these are the only strings a bettor reads word for word.
+
+*Verifier:* Opened live__s03: the top card reads "Je, jumla ya wanachama wa fiber-optic wanaotumika nchini Kenya itazidi milioni 1.45 katika ripoti ya CA Q1 FY2026/27…" verbatim. "Wanachama" is members-of-an-association, not subscribers, and "wanaotumika" is passive ("who are used") where "active" was meant — the phrase does read as machine output. But it is one seeded market title, not a UI surface or a repeated string, so low rather than medium.
+
+#### CP-085 · ✅ upheld · 🟡 medium defect · `results__s02.png`
+**A settled HAPANA outcome is printed in the product's YES green** — routed to: **D29 (U32)**
+
+*Seen:* The card shows "TOKEO" over a large HAPANA rendered in green — I sampled the glyphs at #41BF6F, the same family as the NDIO button green (#008036 on markets__s00) and the NDIO outcome on results__s03. Everywhere else HAPANA is red: the HAPANA button on markets__s00, the HAPANA percentage on live__s02, the HAPANA word in the ticker.
+
+*Why it matters:* The product teaches one colour rule on its first screen — green is NDIO, red is HAPANA, and the needle between them is the brand mark. The results board breaks that rule at the moment of truth: the outcome word is green whichever side won, so a player scanning settled cards reads the colour before the word and thinks YES. On the one board where people check whether they won, colour and text disagree.
+
+*Critic's fix:* Colour the settled outcome by side — green for NDIO, red for HAPANA — or, if the intent was "this is the final answer", use the gold settled treatment for both sides so green never means NO.
+
+*Verifier:* Opened results__s02 and sampled the glyphs: the large "HAPANA" under "TOKEO" is #42C070; sampling the "NDIO" outcome word on results__s03 gives the identical #42C070, so both outcomes are painted in one green. The critic's #41BF6F is within a shade of the true value. Confirmed red elsewhere by sampling: NDIO button #008336, HAPANA button #D02B31 on markets__s00, HAPANA @ 17% red on live__s02, HAPANA red in the ticker. This breaks the §8a guardrail that the YES/NO inks keep their meaning, and a losing-side result reading in the win colour is a real comprehension risk on a money surface.
+
+#### CP-086 · ✅ upheld · ⚪ low defect (claimed medium/defect) · `help__s02.png`
+**Two different Swahili phrases for "play responsibly" appear on screen at once** — routed to: **U40 list**
+
+*Seen:* The compliance strip mid-frame reads "18+ · Cheza kwa busara · Bara la Tanzania + Zanzibar pekee". The footer below it, on the same frame, is headed "CHEZA KISTAARABU". One screen up (help__s01) the card is titled "Kucheza kwa busara" with the sub-line "Vikomo · mapumziko · kujizuia", while the footer's own links read "Weka mipaka / Pumzika / Jizuie".
+
+*Why it matters:* Responsible-gambling wording is copy a regulator and a worried player both read literally, and the one place consistency is the entire point. Here the duty is stated two ways on a single frame — "kwa busara" (wisely) and "kistaarabu" (in a civilised manner) — and the three tools are named twice with different nouns (vikomo vs mipaka). It reads like two translators who never met, on the surface where that is least affordable.
+
+*Critic's fix:* Fix one compliance phrase in the dictionary — "Cheza kwa busara" is the plainer, more common Tanzanian form — and one name per tool (mipaka / mapumziko / kujizuia), then reference those keys from the footer, the help card and the strip instead of restating them.
+
+*Verifier:* Opened help__s02: the compliance strip reads "18+ · Cheza kwa busara · Bara la Tanzania + Zanzibar pekee" and the footer below it on the same frame is headed "CHEZA KISTAARABU" with links "Weka mipaka / Pumzika / Jizuie". help__s01 confirms the card "Kucheza kwa busara" with sub-line "Vikomo · mapumziko · kujizuia", and home__s11 repeats the "CHEZA KISTAARABU" footer. Two names for one responsible-gambling programme, both visible at once — real. It is a synonym pair, not a wrong statement, so low.
+
+#### CP-087 · ❌ refuted · ⚪ low taste (claimed medium/defect) · `live__s01.png`
+**The same fixture is named three ways, two of them on this frame** — routed to: **— not routed**
+
+*Seen:* The middle card reads "Je, Brentford NA Chelsea watapata kila mmoja angalau kadi 2 za njano katika mechi yao ya Premier League tarehe 18..." — NA in capitals mid-sentence — and the card directly beneath reads "Je, nusu zote mbili za mechi ya Brentford dhidi ya Chelsea (PL, Sep 18)...". The home board (home__s00) names the same fixture a third way: "Brentford vs Chelsea (Premier League, Sep 18)".
+
+*Why it matters:* Capitalised NA is an English convention — AND set in caps to stress that both teams must do the thing — and it does not survive translation: in Swahili it just looks like a shouted typo, and the "both" emphasis it was carrying, which is the whole point of that market, is lost. Meanwhile the same match is NA, "dhidi ya" and "vs", and the competition is "Premier League" and "PL", on adjacent cards, so a bettor scanning for the Brentford game has to read every card because no two name it alike.
+
+*Critic's fix:* Carry the emphasis in words rather than capitals — "Brentford na Chelsea wote wawili watapata..." — and settle one fixture convention ("X dhidi ya Y") and one competition name across all market titles.
+
+*Verifier:* Opened live__s01. The two strings are there, but the critic has misread the first: "Je, Brentford NA Chelsea watapata kila mmoja angalau kadi 2 za njano..." is not a fixture name — it is a compound subject, and the capitalised NA is the deliberate rendering of the emphasised AND that distinguishes an each-team market from an either-team one (the same convention Polymarket-style titles use). The second card, "mechi ya Brentford dhidi ya Chelsea (PL, Sep 18)", is a different market with its own authored title, and the "vs" variant on home__s00 belongs to a third market. Different markets phrasing their own questions is not the same string rendered inconsistently.
+
+#### CP-088 · ✅ upheld · ⚪ low defect · `detail__s02.png`
+**The resolution criteria date the outcome American-style: "Novemba 30, 2026"** — routed to: **U40 list**
+
+*Seen:* The top line of this frame, the tail of the resolution-criteria paragraph, reads "Novemba 30, 2026." — Swahili month name, month-day-year order. The market title (detail__s00) writes dates as "Okt 23–25" and the live board writes "tarehe 20 Septemba 2026".
+
+*Why it matters:* Tanzanian Swahili puts the day first: 30 Novemba 2026. Month-first is an American habit that travelled with the English source. On the paragraph that defines exactly when and against which source the market is decided, a date in a foreign order is a small but real reading tax — and it is the third date format on a single page.
+
+*Critic's fix:* Normalise every date in market copy and criteria to "tarehe {d} {Mwezi} {yyyy}", and generate these sentences from structured fields rather than translating an English sentence that already contains a formatted date.
+
+*Verifier:* Opened detail__s02: the top line, clipped by the sticky header but legible, reads "Novemba 30, 2026." Swahili convention is day-first ("30 Novemba 2026"), and live__s02/s03 write exactly that ("tarehe 20 Septemba 2026", "tarehe 30 Septemba 2026"), while detail__s00 writes "Okt 23–25". Real inconsistency, correctly rated low.
+
+#### CP-089 · ✅ upheld · ⚪ low defect · `home__s11.png`
+**The responsible-gambling line carries two grammar slips** — routed to: **D53**
+
+*Seen:* The italic line under the support contacts reads "Kama kucheza kamari imekuwa sio burudani, acha."
+
+*Why it matters:* The subject is the infinitive "kucheza", so the verb must take ku- agreement — "kumekuwa", not "imekuwa" — and negation before a noun is "si", not "sio". As written, it is the sentence a careful reader stumbles over, and it is the platform's duty-of-care line, printed in the footer of every page including login. Getting the grammar wrong in the one sentence that says "stop if this stops being fun" costs exactly the credibility that sentence exists to earn.
+
+*Critic's fix:* Rewrite as "Kama kucheza kamari hakujawa burudani tena, acha." and have a native speaker sign off the responsible-play block as a set rather than string by string.
+
+*Verifier:* Opened home__s11: the italic line under the support contacts reads "Kama kucheza kamari imekuwa sio burudani, acha." The subject "kucheza kamari" is a ku- infinitive, so the verb should be "kumekuwa", not "imekuwa"; and the negative copula before a noun should be "si burudani", not "sio burudani". Both slips are exactly as described, on a compliance line. Low/defect stands.
+
+#### CP-090 · ❌ refuted · ⚪ low taste (claimed low/defect) · `help__s01.png`
+**Two FAQ entries are not questions in Swahili** — routed to: **— not routed**
+
+*Seen:* The FAQ list includes "Nitatoa dau mapema?" and "Soko likifutwa?", alongside well-formed entries such as "Nitatoa pesa zangu vipi?" and "Kwa nini nathibitisha kitambulisho?".
+
+*Why it matters:* "Nitatoa dau mapema?" reads "Will I take a bet out early?" — a prediction about the reader, not the capability question ("Naweza kuuza dau mapema?") the panel presumably answers; it also reuses "nitatoa" from the withdraw-money question two rows up, so two different money actions share one verb. "Soko likifutwa?" is a bare subordinate clause with a question mark — "if a market is cancelled?" — with no main clause. These are the questions a player scans when their money is stuck, and two of them do not parse.
+
+*Critic's fix:* Rewrite as "Naweza kuuza dau langu mapema?" and "Itakuwaje soko likifutwa?", then check the rest of the FAQ for the same pattern of English headline fragments carried across without a Swahili main clause.
+
+*Verifier:* Opened help__s01: both strings are present. But "Nitatoa dau mapema?" is a well-formed Swahili question (future tense + question mark, "will I cash out early?") — it is merely a future rather than a modal "can I", which is a phrasing preference, not ungrammatical. "Soko likifutwa?" is an elliptical conditional heading of exactly the kind English FAQs use ("If a market is voided?"), and the same list carries other well-formed entries. The finding as titled — that two entries are not questions — is half wrong and the remaining half is headline ellipsis.
+
+#### CP-091 · ✅ upheld · ⚪ low defect · `markets__s02.png`
+**A market title splits a verb in two: "wata shinda"** — routed to: **E-420**
+
+*Seen:* The lower card reads "Je, Manchester City wata shinda Premier League 2026/27?" — tense marker and stem separated by a space. Other cards write the same construction correctly: "zitashinda" (home__s01), "itashinda" (results__s02), "watapata" (markets__s03).
+
+*Why it matters:* Swahili verbs are written as one word; "wata shinda" is the equivalent of writing "will win" as "wil lwin". It appears on the market board at full title size, and it tells a native reader that whatever produced these titles does not know the language — which invites them to doubt the rest.
+
+*Critic's fix:* Correct to "watashinda", and add a check over generated titles for a standalone subject-plus-tense fragment (wata, ita, zita, ata, uta followed by a space).
+
+*Verifier:* Opened markets__s02: the lower card reads "Je, Manchester City wata shinda Premier League 2026/27?" with a space between the tense marker and the stem. The correct joined form appears on the same set — "zitashinda" (home__s01), "itashinda" (results__s02), "watapata" (markets__s03), "watasaini" (markets__s02 above it). A plain typo in one seeded title; low/defect as claimed.
+
+#### CP-092 · ✅ upheld · ⚪ low defect · `markets__s03.png`
+**One cold-start card says "none yet" in two different ways** — routed to: **U40 list**
+
+*Seen:* The upper card shows "Bila dau bado" in the centre of the card and "Hakuna bwawa bado" in its footer row — two different negation patterns in one card, four lines apart. The same empty-bet state is worded "Hakuna dau bado" on the home board (home__s00, home__s01).
+
+*Why it matters:* "Bila X bado" and "Hakuna X bado" are different registers — the first reads as a label ("without a bet yet"), the second as a sentence ("there is no bet yet"). Having both inside one card, with a third variant for the identical state on home, makes the empty card feel assembled rather than written. These are the cards a brand-new market shows to its very first visitor.
+
+*Critic's fix:* Standardise on "Hakuna dau bado" for the empty-bet state, match the pool line to the same pattern, and delete the "Bila..." variant from the dictionary so it cannot be picked up again.
+
+*Verifier:* Opened markets__s03: the upper card shows "Bila dau bado" in the card centre and "Hakuna bwawa bado" in its footer; home__s02 shows the same pair. home__s01's compact rows word the same empty-bet state "Hakuna dau bado". The critic's framing is loose — the two lines in the card describe different things (bets vs pool), so they are not two labels for one value — but the real inconsistency underneath is verified: the same no-bets-yet state is "Bila dau bado" on the full card and "Hakuna dau bado" on the compact row, on the same surface. Low.
+
+#### CP-093 · ✅ upheld · ⚪ low taste · `home__s02.png`
+**"Hakuna kete. Imani tu." lands as a statement of faith, not of judgement** — routed to: **U40 list**
+
+*Seen:* The how-it-works opener reads "Kila swali ni tukio halisi lenye jibu la NDIO au HAPANA — linatatuliwa kupitia chanzo rasmi cha umma. Hakuna kete. Imani tu." — directly beneath the Swahili tagline "Tabiri matukio. Si bahati."
+
+*Why it matters:* "Imani" in Tanzanian usage carries religious weight: faith, belief in something unproven. The English behind it is almost certainly conviction or judgement, and the paragraph's entire argument is that this is skill measured against a verifiable public source, not belief. So the closing beat quietly argues against the sentence before it. I would defend the two-word rhythm; it is the noun I would change, and a reasonable editor could disagree.
+
+*Critic's fix:* Keep the cadence, change the noun: "Hakuna kete. Maamuzi tu." or "Hakuna kete. Uamuzi wako tu." — judgement rather than faith.
+
+*Verifier:* Opened home__s02: the how-it-works opener reads exactly "Kila swali ni tukio halisi lenye jibu la NDIO au HAPANA — linatatuliwa kupitia chanzo rasmi cha umma. Hakuna kete. Imani tu." directly under the tagline "Tabiri matukio. Si bahati." "Imani" is faith/belief, so the Swahili renders the English "just conviction" as "only faith" — which argues against the very claim the line above makes (this is skill, not luck). A fair reading of a signature line; it is a copy-judgement call, correctly filed as low taste.
+
+#### CP-094 · ❌ refuted · ⚪ low taste · `live__s00.png`
+**"INASOGEA" is doing two jobs and is clear in neither** — routed to: **— not routed**
+
+*Seen:* The hero card's needle carries the centred caption "INASOGEA" between "NDIO 50%" and "50% HAPANA", and the stats line at the top of the same card reads "32 hai · 1 inasogea". The same word appears as a blue card chip on home__s04 ("MUBASHARA · INASOGEA · NYINGINE").
+
+*Why it matters:* "Inasogea" means it is moving closer. As a needle caption on a 50/50 market it suggests the price is drifting; as a count ("1 inasogea") it suggests one market is about to close; as a card chip it could be either. A Tanzanian reader will most naturally take it as approaching — that is, closing soon — which is not what a price-movement badge means. This is a judgement call rather than an outright error, but it is the board-level signal that tells a player where the action is.
+
+*Critic's fix:* Split the concept: "INABADILIKA" (changing) or "BEI INAPANDA / INASHUKA" for price movement, and "INAKARIBIA KUFUNGWA" for closing soon, so the chip, the count and the needle caption each say one thing.
+
+*Verifier:* Opened live__s00 and home__s04. Every use is the same job: "32 hai · 1 inasogea" counts markets that are moving, the needle caption "INASOGEA" says this market's price is moving, and the blue chip on home__s04 tags that market as moving. One concept, three placements — that is a consistent token, the opposite of the claim. The 50/50 needle under the caption is the cold-start price shown on a market with no bets, which is a separate, already-logged issue (D29), not evidence of an ambiguous word.
+
+#### CP-095 · ❌ refuted · 🟡 medium defect · `leaderboard__s00.png`
+**Podium handles break mid-word on the Swahili default** — routed to: **— not routed**
+
+*Seen:* The three podium names wrap inside their columns as "@Dhire / sh", "@Libuh / i" and "@Jayki / shan".
+
+*Why it matters:* Confirming the known defect is still present with Swahili as the default, where the labels under the names ("18 imetatuliwa", "6 imetatuliwa") are longer than their English equivalents and squeeze the columns further than the English capture would suggest.
+
+*Critic's fix:* As already planned for D2; size the columns against the Swahili label, which is the longer of the three locales here.
+
+*Verifier:* Opened leaderboard__s00 and the break is there exactly as described ("@Dhire / sh", "@Libuh / i", "@Jayki / shan") — but this is D2 in the known-defect list, verbatim including the same example: "Leaderboard podium handles break mid-word ('@Dhire / sh')", `leaderboard/page.tsx:591-594`. Not a new finding.
+
+#### CP-096 · ❌ refuted · 🟡 medium defect · `detail__s01.png`
+**The chat bubble covers the tail of the resolution criteria** — routed to: **— not routed**
+
+*Seen:* Zoomed, the criteria paragraph reads "...Tanzania Tourist Board (TTB) itathibitisha kwam" with the rest of the word vanishing under the circular chat bubble; the same occlusion cuts "litafungwa n[dani]" out of the home hero card title (home__s00).
+
+*Why it matters:* Confirming the known bubble overlap on the Swahili default, and noting that on this surface it lands on the resolution criteria — the paragraph defining when a player gets paid — not only on card chrome.
+
+*Critic's fix:* As already planned for D3; when choosing the bubble's resting position, test it against the detail page's criteria panel, not just card footers.
+
+*Verifier:* Opened detail__s01 and home__s00: the occlusion is real — the criteria line ends "...Tourist Board (TTB) itathibitisha kwam" under the bubble, and the home hero title is cut at "litafungwa n". But this is D3 ("52px chat bubble covers card Details / 'Maelezo' / a tier badge", `ChatRoot.tsx:313-319`), and the brief's escalation note names the chat bubble overlapping card text explicitly as already found. Not new.
+
+#### CP-097 · ❌ refuted · 🟡 medium defect · `results__s00.png`
+**HAPANA filter tab is cut mid-word by the result count** — routed to: **— not routed**
+
+*Seen:* The filter strip reads "Zote 171 · NDIO 59 · HAPAI" with the HAPANA tab clipped where the fade meets "masoko 171". It stays clipped at every scroll position on this surface (results__s01 through s04).
+
+*Why it matters:* Confirming the known strip collision at 360 in Swahili, where HAPANA is two characters longer than NO, so the tab loses letters rather than trailing space — the clipped label is the filter half the board's readers want.
+
+*Critic's fix:* As already planned for D1.
+
+*Verifier:* Opened results__s00 through s03: the strip reads "Zote 171 · NDIO 59 · HAPAI" with the tab clipped where the fade meets "masoko 171", at every scroll position. Confirmed — and it is D1 verbatim: "Status strip's half chip collides with the result count (412 EN, 360 SW)", `.kp-strip-fade` `globals.css:3063-3068`. Not a new finding.
+
+### Completeness critic — 19 claims, 19 kept
+
+#### CP-098 · 🕓 no verifier (checked in code where routed) · 🟠 high defect · `leaderboard__s00.png`
+**A floating chat button covers content on seven surfaces, including a ranked player's ROI and the card's details link** — routed to: **D3 (U7)**
+
+*Seen:* A round chat-bubble button pinned about 40px above the bottom rail, at the right edge. leaderboard__s00: it sits on @Jaykishan's ROI so '-3.9%' reads '-3.9', and it covers the B tier badge and part of '44 imetatuliwa'. markets__s00: it covers the lower half of the card's (i) button and cuts 'Maelezo' to 'Maele'. results__s00: it covers '2026)' at the end of the featured title. results__s01: it covers 'Imetatuliwa NDIO' and 'Maelezo'. detail__s01: it covers words in the resolution-criteria paragraph ('kwam…'). home__s01: it overlaps the right end of the main 'Fungua akaunti' button. help__s00: it sits on the 'Mazungumzo ya moja kwa moja' live-chat card, so two chat entry points overlap. leaderboard__s01: it covers 'WhatsApp' in the footer. The pinned-element list in the page JSON has only the top bar, discovery bar and bottom rail, so the 237px/121px chrome figures leave the button out.
+
+*Why it matters:* It hides the figure a player is ranked by, the only link from a card to its detail page, and the legal resolution text. Because the measurement ignored it, every density and chrome finding in the panel understates how much of the screen is blocked.
+
+*Critic's fix:* Take the button out of the content column: put 'Msaada/Chat' in the Zaidi sheet or as a sixth rail item. If it must float, keep a matching bottom padding on scroll containers and hide it while a card's footer row is under it. Add it to the pinned-element instrument.
+
+#### CP-099 · 🕓 no verifier (checked in code where routed) · 🟠 high defect · `home__s00.png`
+**The home page's largest headline is in English, with YES and NO in the product's outcome colours** — routed to: **owner 5 (U6)**
+
+*Seen:* With lang=sw, the hero's display headline reads 'The wisdom of YES & NO.' (YES in green, NO in pink-red), about 90px tall. About 700px lower, the sentiment caption reads '76% NDIO · 24% HAPANA', and every button on the page says NDIO/HAPANA. The Swahili-reader lens listed 19 wording issues and none of them is this.
+
+*Why it matters:* It is the first and largest text a Swahili-default visitor reads, and it teaches the outcome words in a language the rest of the product never uses. The team's own vocabulary finding (NDIO vs NDIYO) matters less than this.
+
+*Critic's fix:* Set the hero from the dictionary: for example 'Hekima ya NDIO na HAPANA.' Keep the green/red on NDIO/HAPANA. Keep the English line only for lang=en.
+
+#### CP-100 · 🕓 no verifier (checked in code where routed) · 🟠 high defect · `leaderboard__s00.png`
+**All three podium usernames break mid-word** — routed to: **D2 (U10)**
+
+*Seen:* In the podium card the names wrap inside narrow columns: '@Dhire / sh', '@Libuh / i' (the first-place player, with one letter alone on the second line) and '@Jayki / shan'. The S/B tier badge beside each name pushes it narrower still.
+
+*Why it matters:* The one screen built to celebrate named people cannot show a name whole. The first-place name reads as '@Libuh' plus a stray 'i'.
+
+*Critic's fix:* Put the tier badge on the avatar instead of inline with the name, and stop names breaking inside words (no break-all, ellipsis on one line). Or stack name above badge in a column at least 104px wide.
+
+#### CP-101 · 🕓 no verifier (checked in code where routed) · 🟡 medium defect · `results__s00.png`
+**The scrolling filter tabs fade out the third tab, and on /results that hidden tab is HAPANA** — routed to: **D1 (U9)**
+
+*Seen:* results__s00, tab row: 'Zote 171 | NDIO 59 | HAPA▒' – the HAPANA tab fades to transparent after 'HAPA', and its count (88) is not visible. A monospace lowercase 'masoko 171' sits right after it on the same baseline, repeating 'Zote 171'. markets__s00 does the same: 'Wazi 32 | Zinafunga leo 0 | ▌ | masoko 32', with the third tab reduced to one faded stroke.
+
+*Why it matters:* Only one of the two outcome filters can be read. A player looking for markets that resolved NO sees 'HAPA' cut off, and the extra count looks like a fourth tab.
+
+*Critic's fix:* Move the result count out of the tab row (under the search field, or into the sort row). With it gone the three tabs fit in 328px. If they still overflow, start the fade after the last fully visible tab.
+
+#### CP-102 · 🕓 no verifier (checked in code where routed) · 🟡 medium defect · `leaderboard__s01.png`
+**The same player gets two unrelated avatars on one page, and list avatars add random off-palette colours** — routed to: **U10 low**
+
+*Seen:* leaderboard__s00 podium: DH/LI/JA are navy discs with a gold horizontal rule, three gold dots, a double ring (pale blue outside, gold inside) and a rank chip. leaderboard__s01 list: the same @Dhiresh and @Jaykishan are plain gradient discs with one ring and no rule or dots. @DEV's list avatar is a violet-magenta gradient with a tan ring, and @James's is teal-to-blue with a pale ring. Neither hue appears anywhere else in the palette. @Jaykishan and @James both render 'JA' in near-identical plates.
+
+*Why it matters:* Avatars are the only picture of a person in the product, and they do not identify anyone: one person looks like two, two people look like one, and the hues break the five-colour system the colour lens described.
+
+*Critic's fix:* Use one avatar component everywhere, with the podium adding only a ring or metal on top. Pick background colours from a fixed palette hashed on user id, and use two letters from the handle that differ (JK and JM).
+
+#### CP-103 · 🕓 no verifier (checked in code where routed) · 🟡 medium defect · `markets__s00.png`
+**A predictor avatar labelled '69' looks like '+69 more' beside '3 watabiri'** — routed to: **U32 low**
+
+*Seen:* markets__s00, first card: three overlapping avatars. The first two overlap so much that only 'D(' and 'D' show; the third reads '69'; then '3 watabiri'. home__s04 shows the same '69' avatar alone beside '1 mtabiri', which proves it is a player's initials, not an overflow count.
+
+*Why it matters:* '+N' is the standard way to show extra people in an avatar stack, so '69' next to '3' reads as a contradiction on the busiest card on the board. The two cut-off initials carry no information.
+
+*Critic's fix:* Overlap avatars by no more than 30% so initials stay readable. Never render numeric initials: fall back to the first letter, or a neutral person glyph for handles that start with a digit. Put overflow counts in a visibly different '+N' chip style.
+
+#### CP-104 · 🕓 no verifier (checked in code where routed) · 🟡 medium defect · `login__s00.png`
+**The sign-in form shows the sign-up password rule and a placeholder that looks like a filled password** — routed to: **D48**
+
+*Seen:* Under NENOSIRI, the empty field shows eight spaced dots (sampled #899DD1, the same colour as the '712 345 678' placeholder), and the helper below says 'Angalau herufi 8.' (at least 8 characters). The top bar on this page still shows an 'Ingia' button, which leads to the page you are on and is not marked as current.
+
+*Why it matters:* A returning player sees what looks like a saved password and a rule that only applies when creating one. Both suggest the field is already filled or the account is new. The extra Ingia button is a dead end.
+
+*Critic's fix:* Replace the dot placeholder with an empty field or 'Weka nenosiri'. Drop the min-length helper on login and keep it on registration. On /auth/login, hide the top-bar Ingia button or show it as current.
+
+#### CP-105 · 🕓 no verifier (checked in code where routed) · 🟡 medium defect · `detail__s04.png`
+**The discussion panel's only button says 'sign in to predict', not 'sign in to comment'** — routed to: **D8 (§3b)**
+
+*Seen:* In the 'Majadiliano 0' card, the full-width outline button reads 'Ingia ili kutabiri', above 'Hakuna maoni bado — anza mazungumzo.' The same 'predict' wording appears on the betting panel higher up the page (detail__s00, 'INGIA ILI KUTABIRI').
+
+*Why it matters:* Someone who wants to comment is told signing in is for betting. For a player who has never bet, commenting looks like it requires a wager.
+
+*Critic's fix:* Change the label to 'Ingia ili kutoa maoni'.
+
+#### CP-106 · 🕓 no verifier (checked in code where routed) · 🟡 medium defect · `home__s03.png`
+**The how-it-works section shows players an internal admin setting** — routed to: **owner 8**
+
+*Seen:* Step 02 body: 'Afisa anathibitisha — wawili, pale idhini ya maafisa wawili inapowashwa.' (An officer confirms — two, when two-officer approval is switched on.)
+
+*Why it matters:* A trust promise that depends on a switch tells a first-time player the safeguard is sometimes off. It is operator configuration written as marketing.
+
+*Critic's fix:* State the guarantee players actually get ('Kila matokeo yanathibitishwa na afisa kabla ya malipo'), or say 'maafisa wawili' outright if two-officer approval is always on in production.
+
+#### CP-107 · 🕓 no verifier (checked in code where routed) · 🟡 medium defect · `results__s01.png`
+**Markets and rounds nobody bet on are shown as full results** — routed to: **no-owner**
+
+*Seen:* results__s01: a settled card 'Je, Newcastle United watapata kadi za njano zaid…' with a gold IMEKAMILIKA chip, a large green 'NDIO', the needle at the exact centre, '0 watabiri', 'TZS 0' and an 'Imekamilika NDIO' pill – about 290px of card. updown__s01: a finished Bitcoin round shows 'Juu imeshinda' in green with the from→to price, while 'JUMLA TZS 0' and the player icon shows 0.
+
+*Why it matters:* The results board announces who won money, yet a new visitor sees wins declared where no one took part, alongside the few real payouts. The 171-market count is inflated by empty markets.
+
+*Critic's fix:* On /results, hide or collapse zero-pool markets into a single line ('Soko lilifungwa bila dau'). Exclude them from the headline counts and the chart, or show them in a distinct neutral state without the winner styling.
+
+#### CP-108 · 🕓 no verifier (checked in code where routed) · 🟡 medium defect · `home__s00.png`
+**The bottom rail has a permanent gold badge nobody explains, and on the home page it lights up the Markets tab** — routed to: **U33**
+
+*Seen:* A gold dot sits on the Juu/Chini rail icon in every frame of every surface (home, markets, results, live, leaderboard, help, login, detail, updown). It never clears, and gold is the money colour. On home__s00 at route '/', the Masoko tab is highlighted as active, the same state as markets__s00. There is no Home item.
+
+*Why it matters:* A badge that never clears trains players to ignore badges, and nothing says what it is for. Showing home and /markets as the same tab gives no signal of where you are, and tapping Masoko on home goes to a different page than the one it claims is open.
+
+*Critic's fix:* Remove the dot, or tie it to a real event (a round opening) and clear it once the tab is visited. Show no rail item as active on '/', or add a Nyumbani item.
+
+#### CP-109 · 🕓 no verifier (checked in code where routed) · 🟡 medium defect · `login__s02.png`
+**The global footer ships a dead 'coming soon' link, casino 'RTP' wording, and money-making offers under the heading 'Integrity'** — routed to: **owner 9**
+
+*Seen:* Under UADILIFU (integrity): 'Pendekeza masoko upate pesa' carries an 'INAKUJA' (coming soon) pill with a clock; 'RTP ya mchezo na sheria'; 'Kuwa wakala'. Under FARAGHA: 'Sera ya AML / KYC'. The same block repeats in home__s11, updown__s02 and leaderboard__s01. Home's own section headline (home__s02) is 'Tabiri matukio. Si bahati.'
+
+*Why it matters:* RTP (return-to-player) is slot-machine language and contradicts the 'not chance' pitch. A feature marked 'coming soon' is advertised on every page. Offers to earn money filed under 'integrity' read like a pitch sitting inside the compliance section. RTP, AML and KYC are English acronyms a Swahili reader has to guess.
+
+*Critic's fix:* Rename the RTP link to something like 'Ada na jinsi malipo yanavyohesabiwa'. Remove the INAKUJA row until the feature ships. Move 'upate pesa' and 'Kuwa wakala' into their own column (for example 'Pata pesa'). Spell out AML/KYC in Swahili ('Uthibitisho wa utambulisho').
+
+#### CP-110 · 🕓 no verifier (checked in code where routed) · 🟡 medium defect · `updown__s00.png`
+**Correction to the art-direction lens: Up & Down does not drop the currency. It shows two currencies on one card.** — routed to: **no-owner**
+
+*Seen:* updown__s00: the price strip reads 'BITCOIN $75,824.01', the round card shows '$75,824.01 0.00%', and the same card's pool reads 'JUMLA TZS 0'. updown__s01 shows 'Ufunguzi $75,824.01' and '$75,819.68 → $75,824.01' beside 'JUMLA TZS 0'.
+
+*Why it matters:* The upheld claim ('drops … the currency entirely') would send the fix the wrong way. For someone who has never bet, a card with dollars and shillings side by side raises the question of which currency their stake is in.
+
+*Critic's fix:* Label the price as the reference asset ('Bei ya BTC (USD)') in a muted style, and set the stake and pool in the house money style so TZS is clearly the player's currency.
+
+#### CP-111 · 🕓 no verifier (checked in code where routed) · ⚪ low defect · `updown__s00.png`
+**Two icon-only buttons in the Up & Down header have no labels** — routed to: **U5**
+
+*Seen:* To the right of the 'Juu na Chini' title are two pill buttons: one holds only a receipt/scroll glyph, the other a briefcase glyph plus a chevron. Neither has text nearby. Every other header action in the product has a label (for example 'SHIRIKI' on detail__s00).
+
+*Why it matters:* A first-time player cannot guess that these are probably rules/history and portfolio, so the one place to learn how the game works is hidden behind a picture.
+
+*Critic's fix:* Add short labels ('Sheria', 'Dau zangu'), or at least visible captions under the icons at phone width.
+
+#### CP-112 · 🕓 no verifier (checked in code where routed) · ⚪ low taste · `help__s01.png`
+**Icons are reused and mismatched: withdraw is an upload arrow, gambling harm is a pause glyph, and the scales mean three things** — routed to: **U39**
+
+*Seen:* help__s01 FAQ: 'Nitatoa pesa zangu vipi?' (how do I withdraw) uses an upload arrow ↑; 'Nina shida ya kucheza kupita kiasi' (I have a gambling problem) uses a media pause ‖. The balance-scales glyph is the Masoko rail icon, the 'NYINGINE' (other) category icon (home__s04, detail__s03) and the large card watermark behind the title on detail__s00.
+
+*Why it matters:* No lens reviewed icons. The pause glyph makes the most sensitive help question look like a player control, and one glyph for markets, 'other' and decoration drains it of meaning.
+
+*Critic's fix:* Use a download/cash-out glyph for withdrawal and a heart or hand-support glyph for gambling harm. Give 'Nyingine' its own neutral glyph (a dot grid) and keep the scales for Masoko only.
+
+#### CP-113 · 🕓 no verifier (checked in code where routed) · ⚪ low taste · `live__s00.png`
+**The live hero carousel has three pagination controls for one set of six slides** — routed to: **U36**
+
+*Seen:* Inside the hero card: prev/next circle buttons with '1 / 6' between them at the top right, plus a row of six dots (the first a teal pill) under the 'Fungua soko →' button, about 330px lower.
+
+*Why it matters:* It takes vertical space in a card the layout lens already found crowded, and it puts two navigation clusters around the one call to action.
+
+*Critic's fix:* Keep the dots (swipe) and one '1/6' indicator. Drop the arrow buttons on touch widths, which also frees room for the clipped 'LILILO NA SHAKA…' label.
+
+#### CP-114 · 🕓 no verifier (checked in code where routed) · ⚪ low defect · `detail__s03.png`
+**'Similar markets' repeats the same event under a second spelling and lists an unrelated geopolitics market** — routed to: **E-420**
+
+*Seen:* The page title (detail__s00) is 'Je, S!TE 2026 (Swahili International Tourism Expo…) itavutia maonyesho 200 au zaidi?'. Under 'Masoko yanayofanana' (detail__s03) are 'Je, Marekani na Iran watasaini makubaliano rasmi ya amani…' and 'Je, Swahili International Tourism Expo (SITE) 2026…'. The same event is styled 'S!TE' in one and 'SITE' in the other. detail__s02's source link is the generic 'https://www.cnbc.com/africa/' homepage.
+
+*Why it matters:* The recommendations match on the 'Nyingine' category, not meaning. A near-duplicate question on the same expo looks like an error, and a news homepage as the named source is not something a player can check an exhibitor count against.
+
+*Critic's fix:* Rank similar markets by shared entity or tags, and leave out questions on the same event (or group them under it). Use one spelling of the expo name. Link the source to the specific TTB/SITE report page, or name the document if no URL exists yet.
+
+#### CP-115 · 🕓 no verifier (checked in code where routed) · ⚪ low defect · `login__s00.png`
+**The live ticker is cut off at the screen edge with no fade, and its label is the English ISO code 'SW'** — routed to: **U33**
+
+*Seen:* On every surface the ticker line ends with a hard cut at x=360: 'TZS 5K imekamilika HAPANA kwenye' (the last letter half-cut). The tab strips on /results and /markets do use a fade mask. The language button beside it reads 'SW', an ISO code. The ticker prints HAPANA in red, which shows the product already knows the correct NO colour that /results gets wrong.
+
+*Why it matters:* The top line of every page ends in a broken word. For a Swahili reader the language control is labelled with English code rather than 'Kiswahili' or 'KI'.
+
+*Critic's fix:* Apply the same right-edge fade mask used on the tabs. Label the switcher with the language's own name ('Kiswahili ▾' / 'English').
+
+#### CP-116 · 🕓 no verifier (checked in code where routed) · ⚪ low defect · `login__s01.png`
+**In the footer, contact details look exactly like navigation links** — routed to: **U20**
+
+*Seen:* Under CHEZA KISTAARABU, five rows share one size, weight and colour: 'Weka mipaka' and 'Pumzika / Jizuie' (links to tools), then 'Wasiliana nasi · 0769777877', 'Simu ya msaada · 0800 11 0011' and 'Barua pepe · msaada@50pick.tz'. None has an icon, underline or call/email affordance.
+
+*Why it matters:* The helpline is the most important item in that column for someone in trouble, and nothing marks it as tappable, or marks the links as different from it.
+
+*Critic's fix:* Put the helpline in its own row with a phone icon and a tel: link, styled as an action. Leave the two tool links as plain links.
+
