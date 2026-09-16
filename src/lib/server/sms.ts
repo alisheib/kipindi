@@ -42,6 +42,7 @@
 import { audit } from "./audit";
 import { db, type SmsPurpose, type StoredSmsMessage } from "./store";
 import { randomId } from "./crypto";
+import { toMsisdn255 } from "@/lib/phone-normalize";
 import { appUrl } from "@/lib/app-url";
 import { formatTzs } from "@/lib/utils";
 import {
@@ -375,10 +376,18 @@ export async function sendBatch(messages: SmsOutbound[]): Promise<SmsBatchOutcom
 
   const nowIso = new Date().toISOString();
   const senderId = (process.env.SMS_SENDER_ID ?? "").trim();
+  // 🔴 THE STORED MSISDN MUST BE THE WIRE FORM, NOT THE STORED E.164.
+  // `User.phoneE164` holds `+255760000006`; the gateway is sent `255760000006`, and its
+  // delivery receipt quotes THAT back. Persisting the `+` form here meant the DLR route's
+  // identity cross-check (`row.msisdn !== msisdn.replace(/\D/g, "")`) could never match,
+  // so EVERY real receipt would have been discarded as a mismatch — and audited as a
+  // SECURITY event, turning correct vendor behaviour into a wall of false alarms. Found by
+  // `test:otp-delivery` §6, not by the DLR suite, which had seeded its own rows in the
+  // right shape and so could not see it.
   const prepared = messages.map((m) => ({
     out: m,
     reference: mintSmsReference(),
-    msisdn: m.to,
+    msisdn: toMsisdn255(m.to),
   }));
 
   // ⭐ ROWS FIRST, HTTP SECOND. A crash between the two leaves QUEUED rows carrying

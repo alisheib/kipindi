@@ -107,7 +107,7 @@ export default async function AdminSystemPage({
               value that actually carries the fact rather than re-deriving it. The balance
               is here because TZS 250 buys roughly ten messages and an SMS rail that runs
               out of credit is, once OTP is the login path, a login outage. */}
-          <AdminKpi label="SMS provider"  sw="Watoa SMS"            value={smsHealth.successRate === null ? "Idle" : `${(smsHealth.successRate * 100).toFixed(1)}% ok`} delta={`${smsClient.name} · ${smsHealth.sent} sent${smsBalance.tzs === null ? "" : ` · TZS ${smsBalance.tzs.toLocaleString()}`}`} deltaDir={smsBalance.belowAlert ? "down" : undefined} pulse={smsBalance.belowFloor} />
+          <AdminKpi label="SMS provider"  sw="Watoa SMS"            value={smsHealth.successRate === null ? "Idle" : `${(smsHealth.successRate * 100).toFixed(1)}% ok`} delta={`${smsClient.name} · ${smsHealth.sent} sent${smsBalance.tzs === null ? "" : ` · ${formatTzs(smsBalance.tzs)}`}`} deltaDir={smsBalance.belowAlert ? "down" : undefined} pulse={smsBalance.belowFloor} />
         </KpiGrid>
 
         {/* Maintenance mode — global pause of new bets + deposits (§9.3 #1) */}

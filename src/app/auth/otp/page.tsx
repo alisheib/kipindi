@@ -41,6 +41,7 @@ export default async function OtpPage({ searchParams }: { searchParams: Promise<
     expired: t.auth.codeExpired,
     too_many: t.auth.tooManyOtp,
     rate_limited: t.auth.otpRateLimited,
+    sms_down: t.auth.smsDownBody,
   };
 
   return (

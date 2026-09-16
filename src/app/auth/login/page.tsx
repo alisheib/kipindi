@@ -143,6 +143,16 @@ export default async function LoginPage({
             : t.auth.tooManyTriesBody,
           cta: null,
         };
+      case "sms_down":
+        // ⭐ WARNING, NOT DANGER, AND NO SUPPORT CTA. Nothing is wrong with the account —
+        // our gateway is down. The player needs the password field, which is already on
+        // this page, so the banner points at it rather than at a dead end.
+        return {
+          tone: "warning" as const,
+          title: t.auth.smsDown,
+          body: t.auth.smsDownBody,
+          cta: null,
+        };
       case "blocked":
         return {
           tone: "danger" as const,

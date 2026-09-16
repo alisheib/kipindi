@@ -799,7 +799,9 @@
     "test:blackball": "tsx scripts/blackball-adapter.test.mts",
     "red:blackball": "node scripts/red-blackball.mjs",
     "test:sms-dlr": "tsx scripts/sms-dlr.test.mts",
-    "red:sms-dlr": "node scripts/red-sms-dlr.mjs"
+    "red:sms-dlr": "node scripts/red-sms-dlr.mjs",
+    "test:otp-delivery": "tsx scripts/otp-delivery.test.mts",
+    "red:otp-delivery": "node scripts/red-otp-delivery.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",
