@@ -264,4 +264,63 @@ export const MUTATIONS = [
     suite: "engine-mem",
     sections: "18",
   },
+  // ── C4 step 11 · the L1–L4 cases' own mutations (ninth item of the Later list; each case existed first) ─────────
+
+  // L1 · A21 through the LIVE call site: the hook stops doing A21 at all, so the holder's Up & Down stake against
+  // their own bot raises no event and no alert, while every other hook duty still runs.
+  {
+    name: "L1 · the live hook no longer runs A21 (holder against their own bot)",
+    file: "src/lib/server/house-bot/trigger.ts",
+    from: `    await holderAgainstOwnBot(row, holderBot, deps.alerts);`,
+    to: `    // A21 no longer runs on the hook path`,
+    expect: "18.78 · ⭐ L1 · A21 through the LIVE hook",
+    suite: "engine-mem",
+    sections: "18",
+  },
+  // L2 · the call site drops both exits, so the hook runs inside `buyPosition`'s admission slot and its locks —
+  // exactly what 18.80's recorder reads (adm/lock true), with the 18.80c control proving the spy can see both.
+  {
+    name: "L2 · the post-commit hook runs inside the admission slot and the lock",
+    file: "src/lib/server/market-service.ts",
+    from: `      runOutsideAdmission(() => runOutsideLock(() => {
+        void import("./house-bot/trigger").then((m) => m.onPlayerBetCommitted(facts)).catch(() => {});
+      }));`,
+    to: `      void import("./house-bot/trigger").then((m) => m.onPlayerBetCommitted(facts)).catch(() => {});`,
+    expect: "18.80 · ⭐ L2 · the live hook's call ran OUTSIDE the admission slot and outside every lock",
+    suite: "engine-mem",
+    sections: "18",
+  },
+  // L3 (a) · the sweep timer is armed an hour apart, so a started engine holding the lease never sweeps inside the
+  // case's own window (it waits FIRST_TICK_DELAY_MS + 3 × SWEEP_INTERVAL_MS + 5 s for two sweeps).
+  {
+    name: "L3 · the trigger sweep runs hourly instead of every SWEEP_INTERVAL_MS",
+    file: "src/lib/server/house-bot/engine.ts",
+    from: `    state.timers.sweep = setInterval(() => { void sweepOnce(); }, SWEEP_INTERVAL_MS);`,
+    to: `    state.timers.sweep = setInterval(() => { void sweepOnce(); }, 60 * 60_000);`,
+    expect: "11.30 · ⭐ L3 · a started engine holding the planner's lease runs the sweep on its own timer",
+    suite: "engine-mem",
+    sections: "11",
+  },
+  // L3 (b) · the sweep no longer checks the planner's lease (ruling 103), so a second instance sweeps the same
+  // window while another holds it. Only Postgres can have another holder, so this one is the Postgres twin.
+  {
+    name: "L3 · the sweep runs without holding the planner's lease",
+    file: "src/lib/server/house-bot/engine.ts",
+    from: `    if (state.stopping || state.sweepBusy || !holdsPlannerLease()) return;`,
+    to: `    if (state.stopping || state.sweepBusy) return;`,
+    expect: "11.31 · L3 · …and while another instance holds a live lease: the planner attempted, yet 0 planner passes and 0 sweeps ran",
+    suite: "engine-pg",
+    sections: "11",
+  },
+  // L4 · ruling 94: the trigger account is the counterparty the money caps are measured against. Passing none makes
+  // the per-player counterparty caps unreachable at decision time, so a capped player is countered again.
+  {
+    name: "L4 · the trigger account is not passed as the counterparty",
+    file: "src/lib/server/house-bot/trigger.ts",
+    from: `counterpartyUserId: s.row.userId });`,
+    to: `counterpartyUserId: null });`,
+    expect: "18.L4a · L4 · a player the house already countered once today, at a daily count of 1 → their next stake leaves SKIPPED(CAP_COUNTERPARTY_COUNT)",
+    suite: "engine-mem",
+    sections: "18",
+  },
 ];

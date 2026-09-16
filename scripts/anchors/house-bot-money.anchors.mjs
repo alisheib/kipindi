@@ -349,4 +349,17 @@ export const MUTATIONS = [
     expect: "4.1d · D19c · designation tells the holder NOTHING",
     suite: "designation-mem",
   },
+  // ── C4 step 11b · A24's EXPLAIN pins (ruling 161) have their own mutation ──────────────────────────────────────
+  // A predicate rewritten to mean the same thing stops matching the PARTIAL index (… WHERE "houseBotId" IS NOT NULL),
+  // so the read falls back to a sequential scan of Position — invisible to every functional case, and the whole point
+  // of the pins. The fixture is 1,000,046 positions, 20,017 of them house-marked. The anchor is a plain string
+  // because the line it quotes contains backticks.
+  {
+    name: "A24-pin · openExposure's marker predicate no longer matches the partial index",
+    file: DAL,
+    from: "      + ` WHERE \"houseBotId\" IS NOT NULL AND \"status\"::text = 'OPEN' AND ($1::text IS NULL OR \"houseBotId\" = $1::text)`",
+    to: "      + ` WHERE coalesce(\"houseBotId\", '') <> '' AND \"status\"::text = 'OPEN' AND ($1::text IS NULL OR \"houseBotId\" = $1::text)`",
+    expect: "7.15 · A24 · EXPLAIN at 1M/20k: openExposure, every bot — no sequential scan on Position",
+    suite: "money-pg",
+  },
 ];
