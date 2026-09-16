@@ -74,6 +74,30 @@ section("§1 · a house stake places once, marked on every row");
       && !/liquidity|ukwasi|house|50pick/i.test(sell.error), sell.ok === false ? sell.error : "ok");
   ok("1.13 · …and the position stays OPEN", (await w.mdal.positionStore.get(pos.id)).status === "OPEN");
 
+  // ⭐ 1.13b–1.13d · THE REFUSAL MUST BE THE MARKER'S, NOT THE WINDOW'S. On the fixture above the exit window has
+  // already shut, so the platform refuses this sale anyway and removing the house branch changes nothing a case can
+  // see (measured 2026-09-16: mutation (e) was MISSED). Here the market is still open for selling: a player's own
+  // bet on it IS sellable, and the house stake beside it still is not.
+  {
+    const open = await w.poll({ graceMin: 10, paidMin: 10 });
+    const opener = await w.place(b, await w.intent(b, open.id, { kind: "OPENER", stakeTzs: 2_000 }));
+    const housePos = opener.ok ? await w.mdal.positionStore.get(opener.data.positionId) : null;
+    const player = await w.user({ balance: 100_000 });
+    const bet = await w.svc.buyPosition(player, { marketId: open.id, side: "NO", stake: 5_000, idempotencyKey: crypto.randomUUID() });
+    const mOpen = await w.svc.getMarket(open.id);
+    const playerPos = bet.ok ? await w.mdal.positionStore.get(bet.data.positionId) : null;
+    const playerValue = playerPos ? await w.svc.cashOutValue(playerPos, mOpen) : null;
+    ok("1.13b · CONTROL · this market is still open for selling: a PLAYER's own bet on it is sellable",
+      bet.ok === true && playerValue?.sellable === true, JSON.stringify({ bet: bet.ok, playerValue }));
+    const houseValue = housePos ? await w.svc.cashOutValue(housePos, mOpen) : null;
+    ok("1.13c · …and the house stake beside it is offered no sale (WINDOW_PASSED, the closed window's own word)",
+      opener.ok === true && houseValue?.sellable === false && houseValue?.reason === "WINDOW_PASSED", JSON.stringify({ opener: opener.ok, houseValue }));
+    const sellOpen = housePos ? await w.svc.cashOutPosition(b.userId, housePos.id) : null;
+    ok("1.13d · ⭐ (e) · the holder cannot sell a house stake even where the WINDOW IS OPEN, and it stays OPEN",
+      sellOpen?.ok === false && sellOpen?.code === "SELECTION_CLOSED"
+        && (await w.mdal.positionStore.get(housePos!.id)).status === "OPEN", show(sellOpen));
+  }
+
   // D19c, C4 ruling 154: the holder's own data export keeps their money rows but never the house marker.
   const { exportUserData } = await import("../../src/lib/server/user-service.ts");
   const exported = await exportUserData(b.userId);

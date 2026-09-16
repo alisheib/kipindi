@@ -151,7 +151,9 @@ export const MUTATIONS = [
     file: SVC,
     from: `    // SEAM:cashOutPosition\n    if (p.houseBotId != null) {`,
     to: `    // SEAM:cashOutPosition\n    if (false) {`,
-    expect: "1.13 · …and the position stays OPEN",
+    // ⚠️ NOT 1.13: on that fixture the platform's own window refuses the sale too, so this defect was MISSED
+    // (measured 2026-09-16). 1.13d puts the same stake on a market a player CAN still sell into.
+    expect: "1.13d · ⭐ (e) · the holder cannot sell a house stake even where the WINDOW IS OPEN",
     suite: "money-mem",
   },
   {
