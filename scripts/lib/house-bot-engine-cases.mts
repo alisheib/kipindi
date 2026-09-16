@@ -509,6 +509,39 @@ await guard("11", async () => {
   ok("11.20 · stop: stopping set, every timer cleared, claims handed back for this instance", EN2.engineState().stopping === true && Object.values(EN2.engineState().timers).every((t) => t === null)
     && requeued?.id === INSTANCE_ID && EN2.claimGate(EN2.engineState(), adm()).ok === false, j(requeued));
   globalThis.__50PICK_HOUSE_BOT_ENGINE = undefined;
+
+  // L3 · the sweep's 5 s timer and its lease check, driven FOR REAL on a started engine (ruling 103) — no fake timers, so
+  // this waits on the engine's own FIRST_TICK_DELAY_MS and SWEEP_INTERVAL_MS.
+  {
+    const LEADER: Any = await import("../../src/lib/server/leader.ts");
+    const waitUntil = async (cond: () => boolean, ms: number) => { const t0 = Date.now(); while (!cond() && Date.now() - t0 < ms) await sleep(250); return cond(); };
+    const countingTicks = (counts: { poller: number; planner: number; sweep: number }) => ({
+      pollerTick: async () => { counts.poller++; }, plannerTick: async () => { counts.planner++; }, sweepTick: async () => { counts.sweep++; },
+    });
+    const held = { poller: 0, planner: 0, sweep: 0 };
+    const startedHeld = await EN2.startHouseBotEngine(countingTicks(held), { env: () => undefined, schemaReady: ready, timeZone: async () => "UTC", dbClockMs: async () => Date.now() });
+    const swept = await waitUntil(() => held.sweep >= 2, K.FIRST_TICK_DELAY_MS + 3 * K.SWEEP_INTERVAL_MS + 5_000);
+    ok("11.30 · ⭐ L3 · a started engine holding the planner's lease runs the sweep on its own timer: ≥ 2 sweeps, the planner ran, the lease is ours",
+      startedHeld.started === true && swept && held.planner >= 1 && EN2.holdsPlannerLease(), j({ held, lease: LEADER.leadershipSnapshot()[K.HOUSE_PLANNER_TASK] }));
+    await EN2.stopHouseBotEngine({}, "test");
+    globalThis.__50PICK_HOUSE_BOT_ENGINE = undefined;
+    if (onPostgres) {
+      // Only Postgres can have ANOTHER holder (single-process mode always leads): write that instance's live lease first.
+      const CS11: Any = await import("../../src/lib/server/config-store.ts");
+      const key = `__LEADER_${K.HOUSE_PLANNER_TASK}__`;
+      await CS11.saveConfig(key, { holder: "hb-other-instance", expiresAt: Date.now() + 120_000, renewedAt: Date.now() });
+      const other = { poller: 0, planner: 0, sweep: 0 };
+      await EN2.startHouseBotEngine(countingTicks(other), { env: () => undefined, schemaReady: ready, timeZone: async () => "UTC", dbClockMs: async () => Date.now() });
+      // Wait for the planner's ATTEMPT (recorded even when the lease is refused), then two whole sweep intervals more.
+      const attempted = await waitUntil(() => EN2.engineState().lastPlannerTickAt != null, K.FIRST_TICK_DELAY_MS + 10_000);
+      await sleep(2 * K.SWEEP_INTERVAL_MS + 1_000);
+      ok("11.31 · L3 · …and while another instance holds a live lease: the planner attempted, yet 0 planner passes and 0 sweeps ran",
+        attempted && other.planner === 0 && other.sweep === 0 && !EN2.holdsPlannerLease(), j({ other, attempted, lease: LEADER.leadershipSnapshot()[K.HOUSE_PLANNER_TASK] }));
+      await EN2.stopHouseBotEngine({}, "test");
+      await CS11.saveConfig(key, { holder: "hb-other-instance", expiresAt: 0, renewedAt: Date.now() });
+      globalThis.__50PICK_HOUSE_BOT_ENGINE = undefined;
+    }
+  }
   if (onPostgres) {
     const tz = String(((await prisma().$queryRawUnsafe(`SELECT current_setting('TimeZone') AS "z"`)) as Any[])[0].z);
     const real = await EN2.startHouseBotEngine(ticks, { env: () => undefined, schemaReady: ready, dbClockMs: async () => Date.now() });
