@@ -3058,11 +3058,18 @@ await guard("18", async () => {
       const s = await stakeOn(m.id, "YES", 10_000, { ageMs: 10_000, userId });
       // A pass reads one bounded page of the lookback, and earlier sections leave stakes in it (measured on Postgres: the
       // first pass had not reached this stake). The decision is the same whichever pass makes it, so sweep until it is made.
+      // Ruling 92: a bot reacts only to stakes placed after it (and the switch) started. These stakes are aged 10 s so the
+    // sweep reads them, which put them BEFORE a bot started a moment ago — measured: every pass called them outOfScope,
+    // and the case passed or failed with the setup's timing. The scope is declared instead of raced.
+    await S.houseBotRuntimeStore.upsert(K.RUNTIME_KEY.bot(b.botId), { scopeFrom: w.iso(-3_600_000) });
+    await S.houseBotRuntimeStore.upsert(K.RUNTIME_KEY.global, { scopeFrom: w.iso(-3_600_000) });
+    const passes: Any[] = [];
       for (let pass = 0; pass < 6; pass++) {
-        await sweep(recorder().alerts);
+        passes.push(await sweep(recorder().alerts));
         const r = await counterOf(s.positionId);
         if (r) return r;
       }
+      console.log(`[${STORE}] 18.L4 diagnostic · no row for ${s.positionId} after 6 passes: ${j(passes.slice(-2))}`);
       return null;
     };
     try {

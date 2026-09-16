@@ -2389,7 +2389,8 @@ const memoryHouseBotIntents: HouseBotIntentStore = {
   async placedCounterFor(userId, marketId) {
     const r = [...memIntents.values()]
       .filter((i) => i.kind === "COUNTER" && i.status === "PLACED" && i.triggerUserId === userId && i.marketId === marketId)
-      .sort((a, b) => ms(b.createdAt) - ms(a.createdAt) || (a.id < b.id ? 1 : -1))[0];
+      // L7: the same newest-first order as `findByAnchor`, spelled on its own so a mutation can target this twin alone.
+      .sort((a, b) => ms(b.createdAt) - ms(a.createdAt) || (b.id > a.id ? 1 : -1))[0];
     return r ? clone(r) : null;
   },
   async claimBatch({ me, freeSlots, skewGuardMs }) {
