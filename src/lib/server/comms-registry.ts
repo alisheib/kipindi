@@ -42,7 +42,11 @@
  *   IN_APP  · 36 emitters · 3 language fields per row (en/sw/zh) · the bell
  *   EMAIL   · 47 templates · ONE bilingual EN+SW message, locale-independent
  *   PUSH    · fan-out of the IN_APP row, in the recipient's locale, no record
- *   SMS     · OTP only, outside this module (`sms.ts`) — never a Notification row
+ *   SMS     · OTP + invite campaigns, outside this module (`sms.ts` / `sms-blackball.ts`),
+ *             with its own record on `SmsMessage` and its own delivery receipts — and
+ *             STILL never a `Notification` row. (Blackball wired 2026-09-16; the surviving
+ *             half of the old claim is the half that matters, and it is measured: nothing
+ *             in `src/` writes `NotificationChannel.SMS`.)
  */
 
 /* ══ EMAIL ══════════════════════════════════════════════════════════════════ */
@@ -125,8 +129,12 @@ export const EMAIL_TEMPLATES: readonly EmailSpec[] = [
   { template: "agentApplicationSubmittedAdminHtml", trigger: "src/lib/server/agent-application-service.ts", audience: "officer", chrome: "royal", money: false },
   { template: "agentInvitationHtml",            trigger: "src/lib/server/agent-application-service.ts", audience: "player",  chrome: "royal", money: false },
   // ⭐ The invitation's one-time code. SMS-only until 2026-09-08, when the agent programme
-  // moved to Postmark because no SMS provider is licensed (`sms.ts` — two stubs that throw,
+  // moved to Postmark because no SMS provider was licensed (`sms.ts` — two stubs that threw,
   // one unsigned contract, `console` as the shipped default).
+  // ⚠️ A licensed provider EXISTS as of 2026-09-16 (Blackball), so the original blocker is
+  // gone — but this template STAYS on email and moving it back is a decision, not a tidy-up:
+  // an officer invitation reaches a mailbox the applicant controls and keeps a durable copy,
+  // which an SMS does not.
   { template: "agentInviteOtpHtml",             trigger: "src/lib/server/agent-application-service.ts", audience: "player",  chrome: "royal", money: false },
   { template: "agentDeactivatedHtml",           trigger: "src/lib/server/agent-application-service.ts", audience: "player",  chrome: "royal", money: false },
   { template: "agentRevokedHtml",               trigger: "src/lib/server/agent-application-service.ts", audience: "player",  chrome: "royal", money: false },

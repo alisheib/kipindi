@@ -13,7 +13,11 @@ var points to a Railway-managed Postgres service. No disk volumes needed.
 | `USE_PRISMA_DAL` | yes | Must be `true` for production. |
 | `SESSION_SECRET` | yes | >= 32 chars, used for session HMAC. |
 | `OTP_PEPPER` | yes | >= 16 chars, OTP global pepper. |
-| `SMS_PROVIDER` | optional | `console` (dev) / `selcom` / `beem` / `africas-talking`. Default `console`. |
+| `SMS_PROVIDER` | optional | `console` (dev) / `blackball`. Default `console`. ⚠️ An unrecognised value sends NOTHING and marks nothing sent. |
+| `SMS_SENDER_ID` | with blackball | TCRA sender ID, ⛔ max 12 chars — the gateway refuses anything longer. |
+| `BLACKBALL_CLIENT_ID` / `BLACKBALL_CLIENT_SECRET` | with blackball | From the portal, Configurations → API Configurations. |
+| `BLACKBALL_WEBHOOK_SECRET` | with blackball | >= 16 chars. Register the DLR URL as `https://<host>/api/webhooks/blackball?token=<this>`. |
+| `OTP_ENABLED` | optional | `1` turns phone-code login on. With it on, an SMS outage is a LOGIN outage. |
 | `NEXT_PUBLIC_APP_URL` | yes | Public URL of the app (e.g. `https://kipindi-production.up.railway.app`). |
 | `NEXT_PUBLIC_LICENSE_REF` | optional | Footer license reference. |
 | `SELCOM_WEBHOOK_SECRET` | per-provider | HMAC secret for Selcom payment callbacks. **Exact name** — read by `api/webhooks/payments/route.ts`. |

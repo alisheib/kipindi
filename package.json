@@ -801,7 +801,8 @@
     "test:sms-dlr": "tsx scripts/sms-dlr.test.mts",
     "red:sms-dlr": "node scripts/red-sms-dlr.mjs",
     "test:otp-delivery": "tsx scripts/otp-delivery.test.mts",
-    "red:otp-delivery": "node scripts/red-otp-delivery.mjs"
+    "red:otp-delivery": "node scripts/red-otp-delivery.mjs",
+    "live:blackball": "tsx scripts/live/blackball-drive.mts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",

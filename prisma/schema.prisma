@@ -384,9 +384,10 @@ model Otp {
   /// ⛔ Exactly one of `phoneE164` / `email` is set on any row — never both, never neither.
   phoneE164  String?
   /// ⭐ The address a code was sent to, when that address is an EMAIL. Added 2026-09-08:
-  /// the platform has no licensed SMS provider (`sms.ts` — Beem and Africa's Talking both
-  /// throw, Selcom is unsigned), so the agent invitation moved to Postmark, which is live
-  /// and already carries the transactional mail. ⛔ An email was NOT stored in `phoneE164`:
+  /// the platform had no licensed SMS provider (`sms.ts` — Beem and Africa's Talking both
+  /// threw, Selcom was unsigned), so the agent invitation moved to Postmark, which is live
+  /// and already carries the transactional mail. ⚠️ A provider was licensed on 2026-09-16
+  /// (Blackball); the agent invitation deliberately STAYED on email. ⛔ An email was NOT stored in `phoneE164`:
   /// a column whose name asserts one kind of address and holds another is how a PII sweep
   /// or an erasure query silently misses rows.
   email      String?
