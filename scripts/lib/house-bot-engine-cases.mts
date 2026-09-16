@@ -2639,7 +2639,8 @@ await guard("18", async () => {
     const calls: Any[] = [];
     const alerts = {
       placed: async (i: Any) => { calls.push({ fn: "placed", id: i.id }); },
-      once: async (key: string, m: Any) => { calls.push({ fn: "once", key, code: m.code, m }); },
+      // `adm`/`lock`: where the call ran — L2 proves the live hook runs outside the admission slot and every lock by behaviour.
+      once: async (key: string, m: Any) => { calls.push({ fn: "once", key, code: m.code, m, adm: ADM18.inAdmission(), lock: L.inLock() || L.currentLockTx() != null }); },
       security: async (m: Any) => { calls.push({ fn: "security", code: m.code }); },
       botStopped: async (bot: Any, change: Any) => { calls.push({ fn: "botStopped", botId: bot.id, ...change }); },
       switchedOff: async (change: Any) => { calls.push({ fn: "switchedOff", ...change }); },
@@ -3149,6 +3150,34 @@ await guard("18", async () => {
         }
         ok("18.76 · A24/R6 · HOUSE_BOT_ENGINE=false → the hook returns before its import: no row for the next Up & Down stake",
           got.row != null && offGot?.row == null && offGot?.refused == null, j(offGot));
+
+        // L1 · A21 through the LIVE hook: the holder's own Up & Down stake against their bot, at the real call site, no sweep.
+        // The players' stakes are aged past their exit windows so the bot's FILL has locked money to stand on.
+        for (const p of (await w.positionsOf(round.marketId)).filter((x: Any) => x.houseBotId == null)) await w.backdate(p.id, 20 * 60_000);
+        const botFill = await safe(async () => {
+          const i = await w.intent(b, round.marketId, { kind: "FILL", side: "NO", stakeTzs: 2_000, productLine: "UPDOWN" });
+          return w.place(b, i);
+        });
+        ok("18.77 · L1 fixture · the bot holds an OPEN NO house stake on the round", botFill?.ok === true, j(botFill));
+        const holderEventsOn = async () => (await S.houseBotEventStore.listByKinds(["HOLDER_AGAINST_BOT"], { marketId: round.marketId, limit: 5 })) as Any[];
+        const holderBet = await w.svc.buyPosition(b.userId, { marketId: round.marketId, side: "YES", stake: 1_000, idempotencyKey: crypto.randomUUID() });
+        let hev: Any[] = [];
+        for (const t0 = Date.now(); Date.now() - t0 < 5_000 && hev.length === 0; await sleep(100)) hev = await holderEventsOn();
+        const want = { side: "YES", stakeTzs: 1_000, botSide: "NO", botStakeTzs: 2_000 };
+        ok("18.78 · ⭐ L1 · A21 through the LIVE hook: the holder's Up & Down YES against their bot's NO → ONE HOLDER_AGAINST_BOT event, with no sweep run",
+          holderBet.ok === true && hev.length === 1 && hev[0].houseBotId === b.botId && hev[0].userId === b.userId && sameFields(hev[0].payload, want), j({ bet: holderBet.ok ? "ok" : holderBet, hev }));
+        ok("18.79 · …ONE alert holder-against:<bot>:<market>, and the holder's stake is never a trigger (no COUNTER on it)",
+          rec.keyed(`holder-against:${b.botId}:${round.marketId}`).length === 1 && holderBet.ok === true && (await counterOf(holderBet.data.positionId)) == null,
+          j(rec.calls.filter((c: Any) => c.fn === "once").map((c: Any) => c.key)));
+        // L2 · the hook's admission and lock exit, by BEHAVIOUR: the alert the live hook sent ran with no slot and no lock,
+        // although `buyPosition` holds a slot (withAdmission) and the wallet and market locks around the commit.
+        const a21 = rec.keyed(`holder-against:${b.botId}:${round.marketId}`)[0];
+        ok("18.80 · ⭐ L2 · the live hook's call ran OUTSIDE the admission slot and outside every lock",
+          !!a21 && a21.adm === false && a21.lock === false, j({ adm: a21?.adm, lock: a21?.lock }));
+        const probe = recorder();
+        await ADM18.withAdmission(async () => L.withLock(`hb-test:l2:${process.pid}`, () => probe.alerts.once("probe", { code: "PROBE" })));
+        ok("18.80c · CONTROL · the same recorder called inside a slot and a lock records adm and lock true (the spy can see them)",
+          probe.calls[0]?.adm === true && probe.calls[0]?.lock === true, j(probe.calls[0]));
       } finally {
         state.started = saved.started;
         state.stopping = saved.stopping;
