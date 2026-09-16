@@ -583,10 +583,19 @@ Warnings: EMAIL_UNVERIFIED · IDENTITY_NOT_APPROVED · RECRUITED · OPEN_POSITIO
 
 ## 9. Alert matrix
 
-The emitters land in commits 3 and 4, each with a `comms-registry` row, under notification kind `HOUSE_BOT`. ⚠️ `HOUSE_BOT` is **not** a money kind, although PLAN §7 put it there: a money kind must state a figure (`test:cert-c3` §6) and these notices state none (W17, waiting on Ali with this default). Commit 3 built `notifyHouseBotOwner` (all eight holder notices), `notifyAdminsHouseBotErasureBlocked`, and the email templates `houseBotOwnerHtml` and `houseBotErasureBlockedAdminHtml`; the others are commit 4. The throttle keys are fixed now, in `ALERT_KEY`.
+Every emitter is built, each with a `comms-registry` row, under notification kind `HOUSE_BOT`. ⚠️ `HOUSE_BOT` is **not** a money kind, although PLAN §7 put it there: a money kind must state a figure (`test:cert-c3` §6) and these notices state none. **Ali confirmed that on 2026-09-15** (W17): the notices stay in the inbox and out of the Money filter, so the platform's rule stays as strict as it is.
+
+**Commit 3** built `notifyHouseBotOwner` (eight holder notices), `notifyAdminsHouseBotErasureBlocked` and the templates `houseBotOwnerHtml` and `houseBotErasureBlockedAdminHtml`. **Commit 4 step 9** added:
+- the eight admin emitters — `notifyAdminsHouseBotBet`, `…StaffChosen`, `…HourSummary`, `…Paused`, `…Switch`, `…MoneyEvent`, `…Alert`, `…Roster` — and the holder's own two, `notifyHouseBotOwnerStake` and `notifyHouseBotOwnerHourSummary`;
+- ruling 132's three holder notices: `password_temp`, `role_changed` and `erasure_request` (en/sw/zh, Swahili and Chinese marked for native review);
+- **one** parametrised admin letter, `houseBotAdminHtml`, behind every alert that emails (royal chrome, never gold);
+- `src/lib/house-bot/alert-copy.ts`: every alert code's words in three languages, derived from the engine's own call sites, with a fallback row so an unmapped code never reaches an admin as a bare machine token. It is pure — the caller injects the money formatter, because the house module law admits a small, deliberate set of value imports;
+- `src/lib/server/house-bot/emitters.ts`: the real `EngineAlerts` and `HolderAlerts`, which also own the two hourly caps (the planner's summary accounts for exactly what they suppress).
+
+The throttle keys are fixed in `ALERT_KEY`. Proven by `test:house-bot-comms` (35/0 on both stores), `test:cert-c3` (1846/0), `test:cert-c1` (1232/0, its template inventory pinned at 67) and rendered: `qa:cert-c1` photographs all four shapes of the admin letter at 1280, 768, 360 and 1920, and `qa:house-bot-bells` stands the app up on a scratch database, writes every house row through the real emitters and photographs the bell and the inbox.
 
 ### 9.1 Channel law
-- ⛔ **`HOUSE_BOT` is never sent by SMS** (C13, and F6's channel policy in commit 4). When every position behind a notice is house-marked there is no SMS, and email only through the holder's hourly summary.
+- ⛔ **`HOUSE_BOT` is never sent by SMS** (C13). F6's channel policy is built: `CHANNEL_POLICY` and `channelAllowed(kind, {houseOnly})` live in `comms-registry.ts` beside the kinds, exhaustive by annotation so a nineteenth kind cannot ship without a row. `HOUSE_BOT` is `sms: "never"`, `email: "template-only"`; and when every position behind a notice is house-marked, `channelAllowed` returns neither channel for ANY kind — the holder's hourly summary is the one account of those stakes, and it is a bell. ⚠️ SMS fan-out is not live (the provider is two stubs), so the policy's pin is a source walk over the house emitters rather than a behavioural drive, which would be a check that cannot fail.
 - Admin alerts go to everyone `houseBotAlertRecipients()` returns, the same rule as the owner guard (A22).
 - Holder emitters return early while the holder is under a responsible-gambling lockout (`isLockedOut`). Win, loss and refund notices keep today's behaviour, with a liquidity label line on marked positions.
 - Bodies never quote an officer's reason, and name a holder or a trigger player only by their `Player #` handle (R6).
@@ -597,7 +606,7 @@ The emitters land in commits 3 and 4, each with a `comms-registry` row, under no
 
 | Event | Emitter | Audience | Channel | Throttle | Link |
 |---|---|---|---|---|---|
-| A fresh automatic house bet is PLACED | `notifyAdminsHouseBotBet` | Admins | Bell | While runtime `global` `countInHour` ≤ `bellAlertsPerHour`. Staff-chosen rows are excluded. | `/admin/house-bots/<botId>?tab=activity` |
+| A fresh automatic house bet is PLACED | `notifyAdminsHouseBotBet` | Admins | Bell | While runtime `global` `countInHour` ≤ `bellAlertsPerHour`. Staff-chosen rows are excluded, and never consume the count. | `/admin/house-bots/<botId>?tab=activity&range=all&intent=<intentId>` |
 | Automatic bets beyond that cap | `notifyAdminsHouseBotHourSummary` | Admins | Bell | Once per EAT hour (`summary`). Adds "{s} staff-chosen stakes were alerted one by one" when s > 0. | `/admin/house-bots?tab=activity&range=today` |
 | A staff-chosen stake is PLACED (Enter now, or a target's reaction) | `notifyAdminsHouseBotStaffChosen` | Every recipient | Bell + email | Uncapped, and not counted in `countInHour`. | `/admin/house-bots/<botId>?tab=activity&range=all&intent=<intentId>` |
 | An ACTIVE bot auto-pauses | `notifyAdminsHouseBotPaused` | Admins | Bell + email | Never capped. A consent void adds "Its {n} active targets were ended." when n > 0. | `?reverify=1` when the way out is re-entering consent (a password change or a consent void); otherwise the bot page |

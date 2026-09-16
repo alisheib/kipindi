@@ -19,6 +19,7 @@
 import { displayLabel } from "@/lib/display-label";
 import { formatEat } from "@/lib/house-bot/clock";
 import { RUNTIME_KEY } from "@/lib/house-bot/constants";
+import type { MoneyEventCode } from "@/lib/house-bot/alert-copy";
 import { HOLDER_CAUSES, type CredentialChangedVia, type PauseReason } from "@/lib/house-bot/pause-reasons";
 import {
   houseBotControlStore, houseBotRuntimeStore, houseBotStore, houseSeamStore,
@@ -237,13 +238,19 @@ export function houseHolderAlerts(): HolderAlerts {
 
 /* ═══ The two the console and the money hooks call directly ══════════════════════════════════════ */
 
-/** A roster change (C13): designated, verified, started, paused by hand, removed, rules or limits saved, targets. */
-export async function announceRoster(o: { botId: string; label: string; event: string; line: string; eventId: string }): Promise<void> {
+/**
+ * A roster change (C13): designated, verified, started, paused by hand, removed, rules or limits saved, targets.
+ * `event` is one of `ROSTER_EVENT_CODES` and `detail` its parts (ruling 142) — commit 7's console actions call this.
+ */
+export async function announceRoster(o: {
+  botId: string; label: string; event: string; eventId: string;
+  detail?: { byName?: string | null; field?: string | null; from?: string | null; to?: string | null; marketTitle?: string | null; timing?: { delaySec?: number | null; from?: "STAKE" | "EXIT" | null; heldToExit?: boolean | null } | null; cancelled?: number | null };
+}): Promise<void> {
   await safe("roster", () => notifyAdminsHouseBotRoster({ ...o, at: nowAt() }));
 }
 
-/** The holder's own money moved on a live house-bot account (F7, step 10's hooks). */
-export async function announceMoneyEvent(o: { botId: string; label: string; holderUserId: string; event: string; amountTzs: number; txnId: string; balanceTzs: number }): Promise<void> {
+/** The holder's own money moved on a live house-bot account (F7, step 10's hooks). `event` is a code (ruling 142). */
+export async function announceMoneyEvent(o: { botId: string; label: string; holderUserId: string; event: MoneyEventCode; amountTzs: number; txnId: string; balanceTzs: number }): Promise<void> {
   await safe("money event", () => notifyAdminsHouseBotMoneyEvent({
     botId: o.botId, label: o.label, holder: playerHandle(o.holderUserId), event: o.event,
     amountTzs: o.amountTzs, txnId: o.txnId, balanceTzs: o.balanceTzs, at: nowAt(),

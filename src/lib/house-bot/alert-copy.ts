@@ -20,6 +20,128 @@
  * ⚠️ Swahili and Chinese are drafted here and marked for native review, like every other house-bot string.
  */
 
+/* ── Ruling 142 · a caller's verb or sentence never enters a translated body ───────────────────── */
+
+/** The holder-money events F7's hooks report. A closed list, because each one is a word in three languages. */
+export const MONEY_EVENT_CODES = ["deposited", "withdrew", "cashed_out", "adjusted", "paid_out"] as const;
+export type MoneyEventCode = (typeof MONEY_EVENT_CODES)[number];
+export const isMoneyEventCode = (v: string): v is MoneyEventCode => (MONEY_EVENT_CODES as readonly string[]).includes(v);
+
+/** What the holder DID, in each language. The subject is always a handle, never a name (04 R6). */
+export const MONEY_EVENT_WORD: Record<MoneyEventCode, { en: string; sw: string; zh: string }> = {
+  deposited: { en: "deposited", sw: "ameweka", zh: "存入了" },
+  withdrew: { en: "withdrew", sw: "ametoa", zh: "提取了" },
+  cashed_out: { en: "cashed out", sw: "amechukua mapema", zh: "提前结清了" },
+  adjusted: { en: "had an adjustment of", sw: "amerekebishiwa", zh: "被调整了" },
+  paid_out: { en: "was paid", sw: "amelipwa", zh: "已获支付" },
+};
+
+/** The roster changes C13 announces. `TARGET_*` are N2's; the rest are the bot's own life. */
+export const ROSTER_EVENT_CODES = [
+  "DESIGNATED", "VERIFIED", "STARTED", "PAUSED", "REMOVED", "RULES_SAVED", "LIMITS_SAVED",
+  "TARGET_ADDED", "TARGET_CHANGED", "TARGET_REMOVED", "TARGET_STOPPED",
+] as const;
+export type RosterEventCode = (typeof ROSTER_EVENT_CODES)[number];
+export const isRosterEventCode = (v: string): v is RosterEventCode => (ROSTER_EVENT_CODES as readonly string[]).includes(v);
+
+/** The parts a roster sentence is built from. Values are language-neutral: a name, a field, a figure, a title. */
+export type RosterDetail = {
+  byName?: string | null;
+  /** RULES_SAVED / LIMITS_SAVED: which field moved, and from what to what (already formatted by the caller). */
+  field?: string | null;
+  from?: string | null;
+  to?: string | null;
+  /** TARGET_*: the poll's title, and what the target does — as PARTS, so each language says it itself. */
+  marketTitle?: string | null;
+  timing?: { delaySec?: number | null; from?: "STAKE" | "EXIT" | null; heldToExit?: boolean | null } | null;
+  /** TARGET_STOPPED: how many queued reactions the veto cancelled. */
+  cancelled?: number | null;
+};
+
+/** ⛔ A name may already end in a period ("Juma M."): the render showed "Juma M..". Trim before the sentence's own. */
+const by = (d: RosterDetail, lang: "en" | "sw" | "zh"): string => {
+  const name = (d.byName ?? "").trim().replace(/\.$/, "");
+  if (!name) return "";
+  return lang === "en" ? ` by ${name}` : lang === "sw" ? ` na ${name}` : `（${name}）`;
+};
+
+/** A target's timing, said in each language from its parts (N2 §5's shape: a delay, what it counts from, a hold). */
+const timing = (d: RosterDetail, lang: "en" | "sw" | "zh"): string => {
+  const tm = d.timing;
+  if (!tm || tm.delaySec == null) return "";
+  const from = tm.from ?? "STAKE";
+  if (lang === "en") {
+    return ` — ${tm.delaySec} s after each ${from === "STAKE" ? "stake" : "exit closing"}${tm.heldToExit ? ", held to the player's exit" : ""}`;
+  }
+  if (lang === "sw") {
+    return ` — sekunde ${tm.delaySec} baada ya kila ${from === "STAKE" ? "dau" : "kufungwa kwa dirisha la kutoka"}${tm.heldToExit ? ", limezuiliwa hadi mchezaji atoke" : ""}`;
+  }
+  return `——每笔${from === "STAKE" ? "投注" : "退出窗口关闭"}后 ${tm.delaySec} 秒${tm.heldToExit ? "，并保留至玩家退出" : ""}`;
+};
+const diff = (d: RosterDetail): string => (d.field && d.to ? `${d.field}: ${d.from ?? "—"} → ${d.to}` : (d.field ?? ""));
+
+/**
+ * One sentence per roster change, in each language. Every moving part is a value — a name, a field with its two
+ * figures, a poll title — so nothing here is an English sentence pasted into Swahili or Chinese (ruling 142).
+ */
+export const ROSTER_SENTENCE: Record<RosterEventCode, (d: RosterDetail) => { en: string; sw: string; zh: string }> = {
+  DESIGNATED: (d) => ({
+    en: `The bot was designated${by(d, "en")}.`,
+    sw: `Boti imeteuliwa${by(d, "sw")}.`,
+    zh: `该机器人已被指定${by(d, "zh")}。`,
+  }),
+  VERIFIED: (d) => ({
+    en: `The holder's permission was confirmed with their current password${by(d, "en")}.`,
+    sw: `Ruhusa ya mwenye akaunti imethibitishwa kwa nenosiri lake la sasa${by(d, "sw")}.`,
+    zh: `已用持有人当前的密码确认其授权${by(d, "zh")}。`,
+  }),
+  STARTED: (d) => ({
+    en: `The bot was started${by(d, "en")}.`,
+    sw: `Boti imeanzishwa${by(d, "sw")}.`,
+    zh: `该机器人已启动${by(d, "zh")}。`,
+  }),
+  PAUSED: (d) => ({
+    en: `The bot was paused by hand${by(d, "en")}.`,
+    sw: `Boti imesimamishwa kwa mkono${by(d, "sw")}.`,
+    zh: `该机器人已被手动暂停${by(d, "zh")}。`,
+  }),
+  REMOVED: (d) => ({
+    en: `The bot was removed${by(d, "en")}. Open stakes settle to the holder's wallet as normal.`,
+    sw: `Boti imeondolewa${by(d, "sw")}. Dau zilizo wazi zitalipwa kwenye pochi ya mwenye akaunti kama kawaida.`,
+    zh: `该机器人已被移除${by(d, "zh")}。未结算投注将照常结算到持有人的钱包。`,
+  }),
+  RULES_SAVED: (d) => ({
+    en: `Its rules changed — ${diff(d)}${by(d, "en")}.`,
+    sw: `Kanuni zake zimebadilika — ${diff(d)}${by(d, "sw")}.`,
+    zh: `其规则已更改——${diff(d)}${by(d, "zh")}。`,
+  }),
+  LIMITS_SAVED: (d) => ({
+    en: `The global limits changed — ${diff(d)}${by(d, "en")}.`,
+    sw: `Vikomo vya jumla vimebadilika — ${diff(d)}${by(d, "sw")}.`,
+    zh: `全局限额已更改——${diff(d)}${by(d, "zh")}。`,
+  }),
+  TARGET_ADDED: (d) => ({
+    en: `A target was added on "${d.marketTitle ?? "a poll"}"${timing(d, "en")}${by(d, "en")}.`,
+    sw: `Lengo limeongezwa kwenye "${d.marketTitle ?? "soko"}"${timing(d, "sw")}${by(d, "sw")}.`,
+    zh: `已在“${d.marketTitle ?? "一个投票"}”上添加目标${timing(d, "zh")}${by(d, "zh")}。`,
+  }),
+  TARGET_CHANGED: (d) => ({
+    en: `A target on "${d.marketTitle ?? "a poll"}" changed${timing(d, "en")}${by(d, "en")}.`,
+    sw: `Lengo kwenye "${d.marketTitle ?? "soko"}" limebadilika${timing(d, "sw")}${by(d, "sw")}.`,
+    zh: `“${d.marketTitle ?? "一个投票"}”上的目标已更改${timing(d, "zh")}${by(d, "zh")}。`,
+  }),
+  TARGET_REMOVED: (d) => ({
+    en: `A target on "${d.marketTitle ?? "a poll"}" was removed${by(d, "en")}.`,
+    sw: `Lengo kwenye "${d.marketTitle ?? "soko"}" limeondolewa${by(d, "sw")}.`,
+    zh: `“${d.marketTitle ?? "一个投票"}”上的目标已移除${by(d, "zh")}。`,
+  }),
+  TARGET_STOPPED: (d) => ({
+    en: `A target on "${d.marketTitle ?? "a poll"}" was stopped with ${d.cancelled ?? 0} queued reaction(s) cancelled${by(d, "en")}.`,
+    sw: `Lengo kwenye "${d.marketTitle ?? "soko"}" limesimamishwa na majibu ${d.cancelled ?? 0} yaliyokuwa foleni yamefutwa${by(d, "sw")}.`,
+    zh: `“${d.marketTitle ?? "一个投票"}”上的目标已停止，并取消了 ${d.cancelled ?? 0} 个排队中的反应${by(d, "zh")}。`,
+  }),
+};
+
 /** The severity the console renders the bell with. */
 export type AlertSeverity = "info" | "warning" | "danger";
 

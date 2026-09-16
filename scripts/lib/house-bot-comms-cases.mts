@@ -61,7 +61,7 @@ await guard("1", async () => {
   const before = { a: await countHouse(ADMIN_A), b: await countHouse(ADMIN_B) };
   const player = await w.user({});
   const beforePlayer = await countHouse(player);
-  await N.notifyAdminsHouseBotRoster({ botId: "hb_comms1", label: "Bot A", event: "RULES_SAVED", line: "Bot A: daily loss cap TZS 50,000 to TZS 200,000 by an officer at 14:02:11 EAT.", eventId: "hbe_comms1", at });
+  await N.notifyAdminsHouseBotRoster({ botId: "hb_comms1", label: "Bot A", event: "RULES_SAVED", eventId: "hbe_comms1", at, detail: { byName: "Juma M.", field: "daily loss cap", from: "TZS 50,000", to: "TZS 200,000" } });
   const after = { a: await countHouse(ADMIN_A), b: await countHouse(ADMIN_B) };
   ok("1.1 · 04 A22 · a roster change reaches EVERY admin, not the first one found",
     after.a === before.a + 1 && after.b === before.b + 1, j({ before, after }));
@@ -185,6 +185,26 @@ await guard("5", async () => {
   ok("5.3 · every row is complete in Chinese (cert-c3 §2's rule, for house rows too)", noZh.length === 0, noZh.slice(0, 2).map((r) => r.titleEn).join(" · "));
   const emoji = all.filter((r) => /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u.test(`${r.titleEn}${r.bodyEn}`));
   ok("5.4 · no emoji in an admin bell", emoji.length === 0, emoji.slice(0, 2).map((r) => r.titleEn).join(" · "));
+  // ── ruling 142 · a caller's verb or sentence never enters a translated body ──
+  await N.notifyAdminsHouseBotMoneyEvent({ botId: b.botId, label: "Bot A", holder: "Player #A3F2K8", event: "withdrew", amountTzs: 50_000, txnId: "txn_r142", balanceTzs: 120_000, at });
+  const findRow = async (needle: string): Promise<Any> => (await houseRows(ADMIN_A)).find((r) => `${r.titleEn} ${r.bodyEn} ${r.titleSw} ${r.bodySw}`.includes(needle));
+  const money = await findRow("txn_r142.");
+  ok("5.6 · ⭐ ruling 142 · the money row's verb is LOCALISED — Swahili says 'ametoa' and Chinese '提取了', and neither carries the English word",
+    /ametoa/.test(money?.titleSw ?? "") && /提取了/.test(money?.titleZh ?? "")
+      && !/withdrew/.test(`${money?.titleSw} ${money?.bodySw} ${money?.titleZh} ${money?.bodyZh}`),
+    j({ sw: money?.titleSw, zh: money?.titleZh }));
+  await N.notifyAdminsHouseBotRoster({ botId: b.botId, label: "Bot A", event: "RULES_SAVED", eventId: "hbe_r142", at: "14:09:59", detail: { byName: "Juma M.", field: "daily loss cap", from: "TZS 50,000", to: "TZS 200,000" } });
+  const roster = await findRow("14:09:59");
+  ok("5.7 · ⭐ ruling 142 · the roster sentence is BUILT in each language from parts (a name, a field, two figures), never pasted",
+    /Kanuni zake zimebadilika/.test(roster?.bodySw ?? "") && /其规则已更改/.test(roster?.bodyZh ?? "")
+      && /daily loss cap: TZS 50,000 → TZS 200,000/.test(roster?.bodySw ?? "") && /Juma M\./.test(roster?.bodySw ?? ""),
+    j({ sw: roster?.bodySw }));
+  await N.notifyAdminsHouseBotMoneyEvent({ botId: b.botId, label: "Bot A", holder: "Player #A3F2K8", event: "A_CODE_FROM_A_NEWER_BUILD", amountTzs: 1_000, txnId: "txn_r142b", balanceTzs: 1_000, at });
+  const unknownMoney = await findRow("A_CODE_FROM_A_NEWER_BUILD");
+  ok("5.8 · CONTROL · an unknown money code falls back to the code itself in all three languages — never 'undefined'",
+    /A_CODE_FROM_A_NEWER_BUILD/.test(unknownMoney?.titleSw ?? "") && !/undefined/.test(`${unknownMoney?.titleEn} ${unknownMoney?.titleSw} ${unknownMoney?.titleZh}`),
+    j(unknownMoney?.titleSw));
+
   // The needle: nowhere, in any language, in any row.
   const leaked = all.filter((r) => [r.titleEn, r.titleSw, r.titleZh, r.bodyEn, r.bodySw, r.bodyZh].some((s: string) => (s ?? "").includes("NEEDLE")));
   ok("5.5 · ⭐ N1 04:3734 · an officer's reason, seeded with a needle, appears in NO body in any language",

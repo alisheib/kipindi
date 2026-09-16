@@ -2321,6 +2321,16 @@ type HouseAdminRow = {
   dedupe?: boolean;
 };
 
+/**
+ * YES / NO in each language, from the platform's OWN dictionary (ruling 142). A second list of these words here
+ * would drift from the one players read on the market page.
+ */
+async function sideWords(side: string): Promise<{ en: string; sw: string; zh: string }> {
+  const { dict } = await import("@/lib/i18n-dict");
+  const key = side.toUpperCase() === "NO" ? "no" : "yes";
+  return { en: dict.en.common[key], sw: dict.sw.common[key], zh: dict.zh.common[key] };
+}
+
 /** Bell first, then the letter. Returns the bell rows that landed, so a caller can give a once-only claim back. */
 async function fanOutHouseAdmin(recipients: Array<{ id: string; email?: string | null; phoneE164?: string | null }>, row: HouseAdminRow, tag: string): Promise<number> {
   let delivered = 0;
@@ -2359,11 +2369,12 @@ export async function notifyAdminsHouseBotBet(opts: {
   const recipients = await houseBotAlertRecipients();
   const { formatTzs } = await import("@/lib/utils");
   const amount = formatTzs(opts.stakeTzs);
+  const side = await sideWords(opts.side);
   // The second in the title is what keeps two stakes a minute apart from reading as one (04:1076).
   return fanOutHouseAdmin(recipients, {
-    titleEn: `House bot "${opts.label}" ${opts.side} ${amount} on ${opts.marketTitle} · ${opts.at}`,
-    titleSw: `Boti "${opts.label}" ${opts.side} ${amount} kwenye ${opts.marketTitle} · ${opts.at}`,
-    titleZh: `平台机器人 "${opts.label}" ${opts.side} ${amount} · ${opts.marketTitle} · ${opts.at}`,
+    titleEn: `House bot "${opts.label}" ${side.en} ${amount} on ${opts.marketTitle} · ${opts.at}`,
+    titleSw: `Boti "${opts.label}" ${side.sw} ${amount} kwenye ${opts.marketTitle} · ${opts.at}`,
+    titleZh: `平台机器人 "${opts.label}" ${side.zh} ${amount} · ${opts.marketTitle} · ${opts.at}`,
     bodyEn: `Placed automatically at ${opts.at} EAT. Reference ${opts.intentId}.`,
     bodySw: `Limewekwa kiotomatiki saa ${opts.at} EAT. Kumbukumbu ${opts.intentId}.`,
     bodyZh: `已于东非时间 ${opts.at} 自动下注。参考号 ${opts.intentId}。`,
@@ -2384,23 +2395,27 @@ export async function notifyAdminsHouseBotStaffChosen(opts: {
   const recipients = await houseBotAlertRecipients();
   const { formatTzs } = await import("@/lib/utils");
   const amount = formatTzs(opts.stakeTzs);
+  const side = await sideWords(opts.side);
   const how = opts.entry === "MANUAL" ? `Enter now by ${opts.byName}` : `target by ${opts.byName}`;
   const howSw = opts.entry === "MANUAL" ? `Ingia sasa na ${opts.byName}` : `lengo la ${opts.byName}`;
   const howZh = opts.entry === "MANUAL" ? `由 ${opts.byName} 立即下注` : `由 ${opts.byName} 设定的目标`;
   const href = `/admin/house-bots/${opts.botId}?tab=activity&range=all&intent=${opts.intentId}`;
   return fanOutHouseAdmin(recipients, {
-    titleEn: `Staff-chosen · Bot "${opts.label}" ${opts.side} ${amount} on ${opts.marketTitle} · ${how} · ${opts.at}`,
-    titleSw: `Iliyochaguliwa na wafanyakazi · Boti "${opts.label}" ${opts.side} ${amount} kwenye ${opts.marketTitle} · ${howSw} · ${opts.at}`,
-    titleZh: `员工选择 · 机器人 "${opts.label}" ${opts.side} ${amount} · ${opts.marketTitle} · ${howZh} · ${opts.at}`,
+    titleEn: `Staff-chosen · Bot "${opts.label}" ${side.en} ${amount} on ${opts.marketTitle} · ${how} · ${opts.at}`,
+    titleSw: `Iliyochaguliwa na wafanyakazi · Boti "${opts.label}" ${side.sw} ${amount} kwenye ${opts.marketTitle} · ${howSw} · ${opts.at}`,
+    titleZh: `员工选择 · 机器人 "${opts.label}" ${side.zh} ${amount} · ${opts.marketTitle} · ${howZh} · ${opts.at}`,
     bodyEn: `Placed at ${opts.at} EAT. Side rule: ${opts.sideRule}. Reason recorded in the activity feed.`,
-    bodySw: `Limewekwa saa ${opts.at} EAT. Kanuni ya upande: ${opts.sideRule}. Sababu imeandikwa kwenye mkondo wa shughuli.`,
-    bodyZh: `已于东非时间 ${opts.at} 下注。选边规则：${opts.sideRule}。原因已记录在活动记录中。`,
+    // ⛔ Ruling 142 · the side rule is the engine's own composed English sentence (the activity feed owns it).
+    // Presenting it as Swahili or Chinese would be presenting English as a translation: these carry the frame and
+    // point at the feed, where the sentence and the officer's reason both live.
+    bodySw: `Limewekwa saa ${opts.at} EAT. Kanuni ya upande na sababu zimeandikwa kwenye mkondo wa shughuli.`,
+    bodyZh: `已于东非时间 ${opts.at} 下注。选边规则与原因均记录在活动记录中。`,
     href,
     email: {
       subject: `Staff-chosen house stake · ${opts.label} ${opts.side} ${amount}`,
       eyebrow: "House bots · staff-chosen",
       heading: "A stake chosen by a member of staff was placed",
-      subtitle: `House bot "${opts.label}" staked ${amount} ${opts.side} on ${opts.marketTitle} at ${opts.at} EAT. The reason is recorded in the activity feed.`,
+      subtitle: `House bot "${opts.label}" staked ${amount} ${side.en} on ${opts.marketTitle} at ${opts.at} EAT. The reason is recorded in the activity feed.`,
       rows: [
         { label: "Chosen by", value: opts.byName },
         { label: "How", value: opts.entry === "MANUAL" ? "Enter now" : "Target" },
@@ -2599,20 +2614,26 @@ export async function notifyAdminsHouseBotSwitch(opts: {
   }, "house-bot-switch");
 }
 
-/** The holder's own money moved on an account that is a live house bot (F7, 02 §3.6). Two events are two rows. */
+/**
+ * The holder's own money moved on an account that is a live house bot (F7, 02 §3.6). Two events are two rows.
+ * ⛔ `event` is a CODE, never a verb: a caller's word would land untranslated inside the Swahili and Chinese
+ * bodies, which is exactly what the first render of the inbox showed (ruling 142).
+ */
 export async function notifyAdminsHouseBotMoneyEvent(opts: {
   botId: string; label: string; holder: string; event: string; amountTzs: number; txnId: string; balanceTzs: number; at: string;
 }): Promise<number> {
   const { houseBotAlertRecipients } = await import("./house-bot/alerts");
   const recipients = await houseBotAlertRecipients();
   const { formatTzs } = await import("@/lib/utils");
+  const { MONEY_EVENT_WORD, isMoneyEventCode } = await import("@/lib/house-bot/alert-copy");
   const amount = formatTzs(opts.amountTzs);
   const balance = formatTzs(opts.balanceTzs);
+  const word = isMoneyEventCode(opts.event) ? MONEY_EVENT_WORD[opts.event] : { en: opts.event, sw: opts.event, zh: opts.event };
   const href = `/admin/transactions?q=${encodeURIComponent(opts.txnId)}&range=all`;
   return fanOutHouseAdmin(recipients, {
-    titleEn: `House bot "${opts.label}": ${opts.holder} ${opts.event} ${amount} · ${opts.at}`,
-    titleSw: `Boti "${opts.label}": ${opts.holder} ${opts.event} ${amount} · ${opts.at}`,
-    titleZh: `平台机器人 "${opts.label}"：${opts.holder} ${opts.event} ${amount} · ${opts.at}`,
+    titleEn: `House bot "${opts.label}": ${opts.holder} ${word.en} ${amount} · ${opts.at}`,
+    titleSw: `Boti "${opts.label}": ${opts.holder} ${word.sw} ${amount} · ${opts.at}`,
+    titleZh: `平台机器人 "${opts.label}"：${opts.holder}${word.zh} ${amount} · ${opts.at}`,
     bodyEn: `Transaction ${opts.txnId}. Balance now ${balance}.`,
     bodySw: `Muamala ${opts.txnId}. Salio sasa ${balance}.`,
     bodyZh: `交易 ${opts.txnId}。当前余额 ${balance}。`,
@@ -2622,7 +2643,7 @@ export async function notifyAdminsHouseBotMoneyEvent(opts: {
       subject: `House bot ${opts.label}: the holder's money moved`,
       eyebrow: "House bots · holder money",
       heading: "Money moved on a live house-bot account",
-      subtitle: `${opts.holder} ${opts.event} ${amount} at ${opts.at} EAT on the account behind house bot "${opts.label}".`,
+      subtitle: `${opts.holder} ${word.en} ${amount} at ${opts.at} EAT on the account behind house bot "${opts.label}".`,
       rows: [
         { label: "Bot", value: opts.label },
         { label: "Transaction", value: opts.txnId },
@@ -2664,29 +2685,41 @@ export async function notifyAdminsHouseBotAlert(opts: {
   }, "house-bot-alert");
 }
 
-/** A roster change: designated, verified, started, paused by hand, removed, rules or limits saved, targets (C13). */
+/**
+ * A roster change: designated, verified, started, paused by hand, removed, rules or limits saved, targets (C13).
+ * ⛔ `event` is a CODE and `detail` is its parts — a name, a field with its two figures, a poll's title — so each
+ * language's sentence is built here (ruling 142). It never quotes an officer's reason (INT-10): the body points at
+ * the bot's history, where the reason is recorded.
+ */
 export async function notifyAdminsHouseBotRoster(opts: {
-  botId: string; label: string; event: string; line: string; eventId: string; at: string;
+  botId: string; label: string; event: string; eventId: string; at: string;
+  detail?: { byName?: string | null; field?: string | null; from?: string | null; to?: string | null; marketTitle?: string | null; timing?: { delaySec?: number | null; from?: "STAKE" | "EXIT" | null; heldToExit?: boolean | null } | null; cancelled?: number | null };
 }): Promise<number> {
   const { houseBotAlertRecipients } = await import("./house-bot/alerts");
   const recipients = await houseBotAlertRecipients();
+  const { ROSTER_SENTENCE, isRosterEventCode } = await import("@/lib/house-bot/alert-copy");
+  const detail = opts.detail ?? {};
+  const said = isRosterEventCode(opts.event)
+    ? ROSTER_SENTENCE[opts.event](detail)
+    : { en: "The bot changed.", sw: "Boti imebadilika.", zh: "该机器人已更改。" };
   const href = `/admin/house-bots/${opts.botId}?tab=history&event=${opts.eventId}`;
   return fanOutHouseAdmin(recipients, {
     titleEn: `House bot "${opts.label}" · ${opts.event} · ${opts.at}`,
     titleSw: `Boti "${opts.label}" · ${opts.event} · ${opts.at}`,
     titleZh: `平台机器人 "${opts.label}" · ${opts.event} · ${opts.at}`,
-    bodyEn: `${opts.line} Reason recorded in this bot's history.`,
-    bodySw: `${opts.line} Sababu imeandikwa kwenye historia ya boti hii.`,
-    bodyZh: `${opts.line} 原因已记录在该机器人的历史中。`,
+    bodyEn: `${said.en} Reason recorded in this bot's history.`,
+    bodySw: `${said.sw} Sababu imeandikwa kwenye historia ya boti hii.`,
+    bodyZh: `${said.zh} 原因已记录在该机器人的历史中。`,
     href,
     email: {
       subject: `House bot ${opts.label} · ${opts.event}`,
       eyebrow: "House bots · roster",
       heading: "A house bot changed",
-      subtitle: opts.line,
+      subtitle: said.en,
       rows: [
         { label: "Bot", value: opts.label },
         { label: "Change", value: opts.event },
+        ...(detail.byName ? [{ label: "By", value: detail.byName }] : []),
       ],
       cta: { href, label: "Open its history" },
     },
@@ -2705,14 +2738,15 @@ export async function notifyHouseBotOwnerStake(opts: {
   if ((await isLockedOut(opts.userId)).locked) return null;
   const { formatTzs } = await import("@/lib/utils");
   const amount = formatTzs(opts.stakeTzs);
+  const side = await sideWords(opts.side);
   return notify({
     userId: opts.userId, kind: "HOUSE_BOT",
     titleEn: `A liquidity stake was placed from your account · ${opts.at}`,
     titleSw: `Dau la ukwasi limewekwa kutoka kwenye akaunti yako · ${opts.at}`,
     titleZh: `已从您的账户下注一笔流动性投注 · ${opts.at}`,
-    bodyEn: `50pick placed ${amount} ${opts.side} on ${opts.marketTitle} at ${opts.at} EAT. It settles to your wallet as normal.`,
-    bodySw: `50pick imeweka ${amount} ${opts.side} kwenye ${opts.marketTitle} saa ${opts.at} EAT. Litalipwa kwenye pochi yako kama kawaida.`,
-    bodyZh: `50pick 已于东非时间 ${opts.at} 在 ${opts.marketTitle} 下注 ${amount} ${opts.side}。将照常结算到您的钱包。`,
+    bodyEn: `50pick placed ${amount} ${side.en} on ${opts.marketTitle} at ${opts.at} EAT. It settles to your wallet as normal.`,
+    bodySw: `50pick imeweka ${amount} ${side.sw} kwenye ${opts.marketTitle} saa ${opts.at} EAT. Litalipwa kwenye pochi yako kama kawaida.`,
+    bodyZh: `50pick 已于东非时间 ${opts.at} 在 ${opts.marketTitle} 下注 ${amount} ${side.zh}。将照常结算到您的钱包。`,
     href: `/positions/${opts.positionId}`,
   });
 }

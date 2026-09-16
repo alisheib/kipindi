@@ -272,9 +272,9 @@ section("5 · fan-out — officer alerts reach officers, complete in 3 locales")
   await N.notifyAdminsHouseBotHourSummary({ fromHH: "13:00", toHH: "14:00", count: 25, stakeTzs: 180_000, beyondCap: 5, staffChosen: 2, at: "14:00:04" });
   await N.notifyAdminsHouseBotPaused({ variant: "A1", botId: "hb_c3bot01", label: "Bot A", holder: "Player #A3F2K8", how: "in their account settings", cancelled: 2, at: "14:04:10" });
   await N.notifyAdminsHouseBotSwitch({ state: "OFF", cause: "MANUAL", byName: "Juma M.", cancelled: 3, drain: "busy", at: "14:05:00" });
-  await N.notifyAdminsHouseBotMoneyEvent({ botId: "hb_c3bot01", label: "Bot A", holder: "Player #A3F2K8", event: "withdrew", amountTzs: 50_000, txnId: "txn_c3house01", balanceTzs: 120_000, at: "14:06:30" });
+  await N.notifyAdminsHouseBotMoneyEvent({ botId: "hb_c3bot01", label: "Bot A", holder: "Player #A3F2K8", event: "withdrew", amountTzs: 50_000, txnId: "txn_c3house01", balanceTzs: 120_000, at: "14:06:30" }); // a CODE, localised by the emitter (ruling 142)
   await N.notifyAdminsHouseBotAlert({ code: "SETTLE_BLOCKED", botId: "hb_c3bot01", label: "Bot A", holder: "Player #A3F2K8", detail: { openStakeTzs: 240_000 }, at: "14:07:45" });
-  await N.notifyAdminsHouseBotRoster({ botId: "hb_c3bot01", label: "Bot A", event: "RULES_SAVED", line: "Bot A: daily loss cap TZS 50,000 to TZS 200,000 by Juma M. at 14:08:11 EAT.", eventId: "hbe_c3roster01", at: "14:08:11" });
+  await N.notifyAdminsHouseBotRoster({ botId: "hb_c3bot01", label: "Bot A", event: "RULES_SAVED", eventId: "hbe_c3roster01", at: "14:08:11", detail: { byName: "Juma M.", field: "daily loss cap", from: "TZS 50,000", to: "TZS 200,000" } });
   const rows = await db.notification.findByUser("c3_officer", 500);
   ok("officer received the fan-out alerts", rows.length >= before + 15, `before=${before} after=${rows.length}`);
   const fresh = rows.slice(0, rows.length - before);
