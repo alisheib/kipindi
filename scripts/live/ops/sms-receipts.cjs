@@ -22,7 +22,17 @@ for (const line of fs.readFileSync(envFile, "utf8").split(/\r?\n/)) {
   const m = /^([A-Z_]+)=(.*)$/.exec(line);
   if (m && !process.env[m[1]]) process.env[m[1]] = m[2].replace(/^"|"$/g, "");
 }
-const { Client } = require(path.join(process.env.KP_REPO || path.resolve(__dirname, "..", "..", ".."), "node_modules", "pg"));
+const pg = require(path.join(process.env.KP_REPO || path.resolve(__dirname, "..", "..", ".."), "node_modules", "pg"));
+const { Client } = pg;
+/**
+ * ⛔ READ `timestamp without time zone` AS UTC. Prisma stores `DateTime` as `timestamp(3)` holding
+ * UTC wall time, but node-postgres parses that type in the PROCESS's local zone. On this machine
+ * (UTC+3) every printed time came out three hours early — the first read of this probe reported a
+ * send at 13:28Z as having happened before a pre-flight at 10:15Z, and a correct timestamp given to
+ * Ali was "corrected" into a wrong one. Checked against three independent clocks (Cloudflare,
+ * Blackball, Postgres now()) before this line was written.
+ */
+pg.types.setTypeParser(1114, (s) => new Date(s.replace(" ", "T") + "Z"));
 
 const filterRef = process.argv[2] || null;
 
