@@ -1,5 +1,13 @@
 # Commit 5 · reporting, data rights, resolver exposure, holder chip — build extraction
 
+> # ⛔ THE HOLDER-FACING HALF IS SUPERSEDED
+> **Owner ruling D19c (Ali, 2026-09-16): the holder sees nothing.** Do not build item 12's holder chip, the SellButton
+> `houseStake` note, or the `market.houseStakeChip` / `houseStakeLine` / `houseStakeNoExit` keys; `objHouseStakeOnly`
+> and `failHousePositionNoExit` lose their house wording and use the platform's existing neutral copy. **W2 is
+> re-opened:** a trigger player's data export carries no house wording either (see PROGRESS "Waiting on Ali" W2 — the
+> one place D19 meets a PDPA duty, for Ali and a lawyer). The reports, the readers, R2 exposure, R9 decision audits,
+> the CSV, the DSAR plumbing and every admin-console surface are unchanged.
+
 > A working aid, extracted read-only on 2026-09-15 (OMEGA-COMPILE01) from `04-amendments.md` (`04`), `02-sealed-flows.md` (`02`),
 > `03-design-spec.md` (`03`), `01-scenario-register.md` (`01`), `PLAN.md` (`P`), `PROGRESS.md` (`PR`), `docs/HOUSE-BOTS.md` (`HB`)
 > and the code on `house-bots` at `08c82f0f` (Commit 4 🟡, step 7 begun).

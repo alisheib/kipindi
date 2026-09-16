@@ -1,5 +1,20 @@
 # Commit 6 · public text: extraction, build order and open points
 
+> # ⛔ MOSTLY SUPERSEDED — READ THIS FIRST
+> **Owner ruling D19 (Ali, 2026-09-16): house bots are never public.** No rulebook, Terms, privacy, FAQ, home or
+> chatbot text mentions them; no META or `TERMS_VERSION` bump; no announcement; a holder sees nothing on their own
+> account. The full ruling is in `PROGRESS.md` ("OWNER RULING D19") and `docs/COMPLIANCE-DECISIONS.md`.
+>
+> **What survives of commit 6:** the private Gaming Board draft (`docs/BOARD-DISCLOSURE-HOUSE-BOTS.md` + the
+> `BOARD_DISCLOSURE_SECTIONS` constant, §3.4 below), the chatbot's forbidden-phrase guard (D19d — the guard only, never
+> the disclosure bullet), the docs of record (§1 and the P3/P4 doc tests), and `test:house-bot-disclosure` **inverted
+> into a non-disclosure suite**: it fails if any player-facing string in any locale names a house bot, a liquidity
+> stake or a 50pick stake, and it pins the rulebooks, Terms and the privacy notice byte-identical to `origin/main`.
+>
+> **Dead, do not build:** every public sentence in §3.1/§3.2/§3.3, the §2 rulebook/Terms/privacy edit targets, T1–T5 and
+> every other open point about public wording, versions or announcements. Read them only as the record of what was
+> planned before the ruling.
+
 > A working aid, extracted **read-only** on 2026-09-15 from `04-amendments.md` (`04`), `PLAN.md` (`P`),
 > `01-scenario-register.md` (`01`), `02-sealed-flows.md` (`02`), `03-design-spec.md` (`03`), `PROGRESS.md` (`PR`),
 > `docs/COMPLIANCE-DECISIONS.md` (`CD`), `docs/HOUSE-BOTS.md` (`HB`) and the code on `house-bots` at `08c82f0f`

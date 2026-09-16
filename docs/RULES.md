@@ -566,7 +566,7 @@ No commission, first-bet or turnover reward accrues on house-marked stakes (§2.
 - **Decided:** the House bots entry in `docs/COMPLIANCE-DECISIONS.md` (owner rulings D1–D18).
 - **Enforced:** ⏳ build commit 2 — the house gates H0–H4 in the bet path ([`FLOWS.md`](FLOWS.md) §9), and the sanctioned player-path changes (d)–(g): a house position has no cash-out value and refuses a cash-out, gives no objection standing, and skips wagering reversal and referral accrual at settlement.
 - **Configured:** ⏳ build commit 7 — `/admin/house-bots`, owner only.
-- **Stated:** ⏳ build commit 6 — the rulebook §8 carve-out, the §3/§4 disclosure line, Terms §4 and privacy §3.
+- **Stated:** ⛔ **nowhere, by owner ruling D19 (2026-09-16).** No rulebook, Terms, privacy, FAQ or chatbot text mentions house bots, and a holder sees nothing on their own account. Build commit 6 proves the absence instead (`test:house-bot-disclosure`) and keeps the Gaming Board draft private. The struck plan was a §8 carve-out, a §3/§4 disclosure line, Terms §4 and privacy §3.
 
 ---
 

@@ -151,7 +151,7 @@ moving the notice first.
 | # | Ruling |
 |---|---|
 | D1 | Build everything. A global **master switch ships OFF** on production, and Ali alone turns it on. |
-| D2/D7 | Amend the published Rules and Terms (en/sw/zh): a carve-out from the prohibited-conduct list for accounts 50pick operates, plus one disclosure line. **Effective on deploy, with no 14-day notice** (owner ruling; 50pick reports to GBT). |
+| D2/D7 | ⛔ **REVERSED by D19a (2026-09-16): no public text at all.** (Superseded text:) Amend the published Rules and Terms (en/sw/zh): a carve-out from the prohibited-conduct list for accounts 50pick operates, plus one disclosure line. **Effective on deploy, with no 14-day notice** (owner ruling; 50pick reports to GBT). |
 | D3 | The bot account belongs to a real person. **They may use it and withdraw normally.** The console reads the **live wallet balance** (no shadow balance). |
 | D3b | **No payment feature.** The holder tops up through the normal deposit flow and is reimbursed out of band. While their bot is **ACTIVE**, every deposit or withdrawal on the account alerts admins. While inactive, nothing is watched. |
 | D4 | A **roster** of bots, each with its own rules. One master switch plus global limits. |
@@ -204,6 +204,22 @@ On 2026-09-14 Ali asked for two features, **Enter now** and **targeted polls wit
 - The holder keeps the account and withdraws normally (D3). House stakes are cash only, are never cashed out, and earn no wagering progress, commission or reward.
 - The master switch ships OFF (D1).
 
+### Owner ruling D19 (Ali, 2026-09-16) — house bots are never public
+
+Ali was shown the exact sentences the change would touch and the risk in leaving them, and ruled:
+
+| # | Ruling |
+|---|---|
+| D19a | **No public text.** The two rulebooks, Terms, the privacy notice, the FAQ, the home copy and the chatbot keep the words they have today: no prohibited-conduct carve-out, no disclosure line, no Terms §4 paragraph, no privacy lawful-basis line, no META or `TERMS_VERSION` bump, no announcement. **This reverses D2/D7 and P1**, and it leaves the published rulebooks prohibiting bots and shared accounts while 50pick operates house accounts (accepted risk 21). Ali reports that the Gaming Board of Tanzania told him his answers are legally valid; no document is on file. |
+| D19b | The **private** Gaming Board draft (`BOARD-DISCLOSURE-HOUSE-BOTS.md`, DRAFT FOR ALI) and the admin-console house-liquidity report and CSV are still built. Ali decides if and when the draft is sent. |
+| D19c | **The holder sees nothing.** Stakes 50pick places on a holder's account look exactly like the holder's own bets — no chip, no explanatory line, no liquidity label on outcome notices, no house wording in any refusal — and the holder receives **no** house-bot notices or emails at all. Every alert goes to admins only. Consent stays what D5 says it is: the holder types their password. |
+| D19d | The chatbot **discloses nothing and may never lie**: a guard keeps "never bets against you", "independent", "cannot influence", "all stakes are from real players", "fully automated", "only automated", "no person decides", "no one at 50pick chooses" and any naming or confirming of an account out of the system prompt and `faq8a`, in all three locales. |
+| D19e | W18 is moot (no rule text moves) and W19 is superseded (there is no privacy line). |
+
+D19 outranks the plan documents; the branch record is `plans/house-bots/PROGRESS.md` under "OWNER RULING D19". The
+disclosure built into commit 4 (the liquidity label and the holder notices) is removed before commit 4 closes. **Nothing
+of it ever reached production.**
+
 ### Supersedes
 
 | What | Where | As to |
@@ -214,7 +230,7 @@ On 2026-09-14 Ali asked for two features, **Enter now** and **targeted polls wit
 | Seed at lock, never at open; house kept out of player metrics | `docs/UPDOWN-FINAL-DESIGN.md` D3 | the mechanism: an automated OPENER may stake at open, and house positions appear publicly like a player's (D6) |
 | Seed returned at stake, takes no profit | UPDOWN G2 | a house stake shares in winnings like any later stake |
 | Caps as "the only control" | UPDOWN G4 | caps work alongside the penalty box, the closeness rule, the exit-window hold and a settled-loss master stop |
-| Bots prohibited | the published rulebooks' prohibited-conduct lists | a carve-out for accounts 50pick operates (D2/D7; the text lands in build commit 6) |
+| Bots prohibited | the published rulebooks' prohibited-conduct lists | ⛔ **nothing — reversed by D19a (2026-09-16).** The rulebooks are not amended, so their prohibition still stands as published while 50pick operates house accounts (accepted risk 21). The struck plan was a carve-out plus one disclosure line (D2/D7). |
 | 14-day notice | Terms §10 | this change only (below) |
 | "Awaiting Ali's decision" | `docs/feature-backlog.md`, F6 | decided: build as house bots |
 
@@ -265,6 +281,14 @@ The two house migrations are applied to production from the build machine with `
 | W16 | Staff-edge alert | staff-edge alert at 15 points or TZS 100,000 |
 
 ### Accepted risks
+
+**21 (added 2026-09-16 with D19).** The published rulebooks say "Bots, scripts and automated tools may not be used to
+place stakes" and "Multiple accounts, **shared accounts** and account sales are prohibited", and the privacy notice
+names no house-liquidity processing. Under D19 none of that text changes, so the platform operates accounts in a way
+its own published rules prohibit and its notice does not describe. A player who learns of it, or a regulator, could
+call that misleading. Ali accepted this on 2026-09-16 after being shown the sentences and an alternative neutral
+wording, and reports that the Gaming Board told him his answers are legally valid (no document on file; REL-4 asks for
+one). The holder's own consent is unaffected: they agree privately and type their own password (D5).
 1. **Licence class and levies.** House stakes are taxed within the fee, and the pool becomes a "book" (F6 §3). Ali reports to GBT.
 2. **Consent is knowledge, not proof.** Password-only (D5). Officer resets are blocked, but resets before the 2026-09-11 audit genesis are invisible.
 3. **Exploitation is bounded, not eliminated.** Alt accounts farming counters are capped per account, and G4 still applies. Caps, penalty box, closeness rule and exit-window hold are the controls.

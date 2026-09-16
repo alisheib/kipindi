@@ -208,7 +208,7 @@ With a null marker, each gives a player exactly what they had before; the letter
 | (g) | Wagering reversal is skipped for marked positions in settlement, emergency void and orphan repair (A17); `onRecruitBet` and `onRecruitSettlement` take a required `houseBotId` and return on a marked position. | `market-service.ts`, `affiliate-service.ts` |
 | (j) | `replayed: true` on both replay paths. | `buyPositionInner` |
 | (k) | `exitWindowClosesAt` extracted into `src/lib/exit-window.ts`; `graceMs > 0` kept (A14). | `market-service.ts` |
-| (h) | The liquidity label ("50pick liquidity stake", en/sw/zh) is appended to a holder's outcome notice for a house stake: WIN, LOSS, VOID and orphan refunds, one-sided, emergency cancel, the four Up & Down rows, and the verdict notice. A holder whose every position on the market is house-marked is not invited to object. Selection closed splits into a labelled house notice (label in the title too, its own push tag `selection-closed-house:<marketId>`) and a personal notice whose figures exclude house money. No per-stake email is sent for a marked position (04 F6). | `notification-service.ts`, `market-service.ts` |
+| (h) | ⛔ **REMOVED by D19c (2026-09-16): a holder's outcome notice is byte-identical to any other player's.** (Superseded:) The liquidity label ("50pick liquidity stake", en/sw/zh) was appended to a holder's outcome notice for a house stake: WIN, LOSS, VOID and orphan refunds, one-sided, emergency cancel, the four Up & Down rows, and the verdict notice. A holder whose every position on the market is house-marked is not invited to object. Selection closed splits into a labelled house notice (label in the title too, its own push tag `selection-closed-house:<marketId>`) and a personal notice whose figures exclude house money. No per-stake email is sent for a marked position (04 F6). | `notification-service.ts`, `market-service.ts` |
 | (m) | The comment side chip ignores marked positions (`commentSideFor`, `src/lib/comment-side.ts`). | `app/markets/actions.ts` |
 | (p) | `stakeBoundsForMarket(market)` extracted with identical output. | `market-service.ts` |
 | (r) | `adminReopenMarket` stamps `reopenedAt` (never cleared) and `reopenCount`. | `market-service.ts` |
@@ -674,7 +674,18 @@ The throttle keys are fixed in `ALERT_KEY`. Proven by `test:house-bot-comms` (35
 
 ## 10. Disclosure surfaces
 
-⏳ Written in commit 6.
+⛔ **There are none, and that is the ruling** (owner ruling D19, 2026-09-16 — `COMPLIANCE-DECISIONS.md`).
+
+| Surface | What it says about house bots |
+|---|---|
+| The two rulebooks, Terms, the privacy notice, the FAQ, the home copy | Nothing. They keep the words they have on `main`: no carve-out, no disclosure line, no version bump, no announcement. |
+| A holder's own screens and notices | Nothing. A house stake looks exactly like the holder's own bet, and the holder receives no house-bot notice or email at all. |
+| The chatbot | Nothing — and it may never claim the opposite. `test:house-bot-disclosure` proves the false assurances stay out of the prompt and `faq8a` in all three locales. |
+| Every other player surface | Nothing. The suite proves no player-facing string, in any locale, names a house bot, a liquidity stake or a 50pick stake. |
+| The Gaming Board of Tanzania (**private**) | `BOARD-DISCLOSURE-HOUSE-BOTS.md`, a draft for Ali, plus the house-liquidity report and CSV in the admin console. Not a public surface. |
+
+The commit-6 suite is therefore a **non-disclosure** suite: it fails if any of that text appears, and it pins the
+rulebooks, Terms and the privacy notice byte-identical to `origin/main`.
 
 ---
 
