@@ -355,16 +355,24 @@ contract, which read as a working integration to anyone scanning the file.
 2. **`source` (sender ID) is capped at 12 characters**, enforced before auth.
 3. **`data` is an ARRAY** of `{field: message}` on a schema error and `null` on an
    auth error; the PDF types it "Object".
-4. **Every reply carries an undocumented `balance`** (TZS) — on failure too.
+4. **A reply's `balance` is only half-true**: `0.0` on a refusal (decided before
+   auth), pre-charge on a success. The true figure is `POST /api/account/balance`.
+
+Also not in the PDF: `coding` is `GSM7` | `UCS2` (GSM-7 cannot carry Chinese — chosen
+per message by `smsCodingFor`), and a success carries no per-message id (`data: null`).
 
 `reference` is optional to them but must be ≥ 20 characters; we always send one,
 because a delivery receipt carries the reference and nothing else. Every attempt
 persists to `SmsMessage`; receipts land on `/api/webhooks/blackball`.
 
-⚠️ **ACCEPTED is not DELIVERED.** The gateway taking a message is not a handset
-receiving one. Only a delivery receipt writes `DELIVERED`, and an unrecognised
-status token is recorded raw rather than guessed — Blackball has not published its
-value set. See `docs/BLACKBALL-SMS.md`.
+⚠️ **ACCEPTED is not DELIVERED.** Only a delivery receipt writes `DELIVERED`, and an
+unrecognised status token is recorded raw rather than guessed. Observed so far:
+`DELIVRD` / `Success`. First live send 2026-09-16: delivered in 2 seconds, TZS 6.
+
+🔴 **Cloudflare answers `403 error 1010` to `Java/1.x` user agents, zone-wide** — the
+likely reason the first delivery callback never reached the app. Fix: a Configuration
+Rule turning Browser Integrity Check off for `/api/webhooks/*`. Live state, the go-live
+order and the open vendor questions: `docs/BLACKBALL-SMS.md`.
 
 ## Persistence
 

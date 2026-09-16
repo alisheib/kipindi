@@ -41,13 +41,18 @@ const filterRef = process.argv[2] || null;
   await c.connect();
   try {
     // Prove this is production before trusting an empty answer.
+    // ⛔ THIS CHECK USED TO SKIP ITSELF. It looked for `stats.users` / `users` / `counts.users`, but
+    // /api/health exposes the count as `store.users` — so every read printed "(not exposed)" and went
+    // on to report, which is exactly the unverified read this guard exists to refuse. It now reads
+    // the real key and REFUSES when the count is missing or differs, never passing by default.
     const health = await (await fetch("https://www.50pick.tz/api/health")).json().catch(() => null);
     const users = Number((await c.query('SELECT COUNT(*)::int AS n FROM "User"')).rows[0].n);
-    const healthUsers = health?.stats?.users ?? health?.users ?? health?.counts?.users ?? null;
-    console.log(`cross-check  db users=${users}  /api/health users=${healthUsers ?? "(not exposed)"}`);
-    if (healthUsers !== null && Number(healthUsers) !== users) {
-      console.error("⛔ user counts differ — this is NOT production. Refusing to report.");
-      process.exit(2);
+    const healthUsers = health?.store?.users;
+    console.log(`cross-check  db users=${users}  /api/health store.users=${healthUsers ?? "(missing)"}`);
+    if (typeof healthUsers !== "number" || healthUsers !== users) {
+      console.error("⛔ cannot prove this database is production (user counts missing or different). Refusing to report.");
+      process.exitCode = 2;
+      return;
     }
 
     const rows = (

@@ -144,7 +144,7 @@ const line = (reference: string, status: string, extra: Record<string, unknown> 
 {
   const res = await post([line("sms_" + "f".repeat(24), "DELIVERED")]);
   ok("§3 an unknown reference still returns 200", res.status === 200);
-  ok(`§3 …with the same {"status":"Ok"} body — never a 404 probing oracle`,
+  ok(`§3 …with the same {"status":"Ok"} body: never a 404 probing oracle`,
     (await res.text()) === '{"status":"Ok"}');
 
   // ⭐ THE LIVE DRIVE'S RECEIPTS LAND HERE. It never writes a production row, so this audit is
@@ -192,6 +192,15 @@ const line = (reference: string, status: string, extra: Record<string, unknown> 
 /* ══ §6 · 🔴 AN UNRECOGNISED TOKEN IS RECORDED, NEVER GUESSED ═══════════════ */
 {
   ok("§6 the mapper recognises the delivered family", mapDlrStatus("DELIVRD") === "DELIVERED");
+  // ⭐ THE RECEIPT BLACKBALL ACTUALLY PRODUCED. Observed live 2026-09-16 in the portal's Out SMS
+  // for the first real send: status `DELIVRD`, description `Success`. Driven through the whole
+  // route rather than the mapper alone, so the one confirmed vendor pair is proven end to end.
+  const liveRef = await seed();
+  await post([line(liveRef, "DELIVRD", { description: "Success" })]);
+  const liveRow = await db.smsMessage.findByReference(liveRef);
+  ok("§6 ⭐ Blackball's observed receipt (DELIVRD / Success) moves the row to DELIVERED",
+    liveRow?.status === "DELIVERED" && liveRow.dlrStatus === "DELIVRD" && liveRow.dlrDesc === "Success",
+    `${liveRow?.status} ${liveRow?.dlrStatus} ${liveRow?.dlrDesc}`);
   ok("§6 …and the failed family", mapDlrStatus("UNDELIV") === "FAILED" && mapDlrStatus("EXPIRED") === "FAILED");
   ok("§6 …is case- and whitespace-insensitive", mapDlrStatus("  delivered ") === "DELIVERED");
   // ⛔ THE ASSERTION THAT MATTERS MOST.
@@ -303,6 +312,21 @@ const line = (reference: string, status: string, extra: Record<string, unknown> 
     }),
   );
   ok("§10 a body with no statuses array is acked, not a crash", noStatuses.status === 200);
+
+  // ⛔ The audit chain cannot be pruned, so an empty callback must not add a permanent row.
+  await settle();
+  const receivedBefore = getAuditPage({ limit: 20_000 }).filter((a) => a.action === "sms.dlr.received").length;
+  await post([]);
+  await post([]);
+  await settle();
+  const receivedAfter = getAuditPage({ limit: 20_000 }).filter((a) => a.action === "sms.dlr.received").length;
+  ok("§10 ⛔ an empty callback writes NO sms.dlr.received row", receivedAfter === receivedBefore,
+    `${receivedBefore} -> ${receivedAfter}`);
+  // Control: a callback that carries a line IS audited, so the assertion above is not vacuous.
+  await post([line("sms_" + "d".repeat(24), "DELIVRD")]);
+  await settle();
+  ok("§10 control: a callback carrying lines IS audited",
+    getAuditPage({ limit: 20_000 }).filter((a) => a.action === "sms.dlr.received").length === receivedAfter + 1);
   const res = await post([{ status: "DELIVERED" }, { reference: "", status: "X" }]);
   ok("§10 lines with no reference are skipped without throwing", res.status === 200);
 }

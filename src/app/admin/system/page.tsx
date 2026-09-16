@@ -105,8 +105,9 @@ export default async function AdminSystemPage({
           {/* 🔴 E-330 ② — "never tried" reads as Idle, not as 100%. `successRate` is now
               `null` for no traffic (the payment-ops.ts:66 shape), so this branches on the
               value that actually carries the fact rather than re-deriving it. The balance
-              is here because TZS 250 buys roughly ten messages and an SMS rail that runs
-              out of credit is, once OTP is the login path, a login outage. */}
+              is here because an SMS costs TZS 6 (measured on the first live send), the
+              account opened with TZS 250, and an SMS rail that runs out of credit is, once
+              OTP is the login path, a login outage. */}
           <AdminKpi label="SMS provider"  sw="Watoa SMS"            value={smsHealth.successRate === null ? "Idle" : `${(smsHealth.successRate * 100).toFixed(1)}% ok`} delta={`${smsClient.name} · ${smsHealth.sent} sent${smsBalance.tzs === null ? "" : ` · ${formatTzs(smsBalance.tzs)}`}`} deltaDir={smsBalance.belowAlert ? "down" : undefined} pulse={smsBalance.belowFloor} />
         </KpiGrid>
 

@@ -72,6 +72,11 @@ export function authorized(req: Request): boolean {
  * stored on `SmsMessage.dlrStatus`, and the real vocabulary gets learned from
  * production rather than invented here.
  *
+ * ⭐ OBSERVED, NOT ASSUMED: `DELIVRD` with description `Success`. The first live send
+ * (2026-09-16, sender `50pick`, Tigo Tz) reached the handset in two seconds and the
+ * portal's Out SMS recorded exactly that pair. It is the only token confirmed from
+ * Blackball so far; every other arm below is still the SMPP seed.
+ *
  * ⛔ THE ONE ARM THAT MUST NEVER EXIST IS A DEFAULT TO DELIVERED. That would report
  * delivery we have no evidence for, on the rail that carries login codes — and a
  * delivered-looking OTP nobody received is a support case with no trail.
@@ -227,14 +232,21 @@ export async function POST(req: Request) {
     // depend on an endpoint an attacker can reach.
   }
 
-  audit({
-    category: "SYSTEM",
-    action: "sms.dlr.received",
-    actorId: null,
-    targetType: null,
-    targetId: null,
-    payload: { lines: lines.length, ...counts },
-  });
+  // ⛔ AN EMPTY CALLBACK WRITES NOTHING. `sms.dlr.received` goes into the hash-chained audit
+  // log, which cannot be pruned without breaking the chain — so a row that records "nothing
+  // happened" is permanent noise. Measured 2026-09-16: fifteen authorised empty POSTs (a
+  // reachability test) wrote fifteen such rows. A callback that carries lines is still
+  // audited exactly once, whatever those lines turned out to be.
+  if (lines.length > 0) {
+    audit({
+      category: "SYSTEM",
+      action: "sms.dlr.received",
+      actorId: null,
+      targetType: null,
+      targetId: null,
+      payload: { lines: lines.length, ...counts },
+    });
+  }
 
   // ⛔ EXACTLY `{"status":"Ok"}`. Blackball's documented expectation, and not the
   // `{ok:true}` every other webhook in this codebase returns.

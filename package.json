@@ -802,7 +802,9 @@
     "red:sms-dlr": "node scripts/red-sms-dlr.mjs",
     "test:otp-delivery": "tsx scripts/otp-delivery.test.mts",
     "red:otp-delivery": "node scripts/red-otp-delivery.mjs",
-    "live:blackball": "tsx --env-file-if-exists=.env.local scripts/live/blackball-drive.mts"
+    "live:blackball": "tsx --env-file-if-exists=.env.local scripts/live/blackball-drive.mts",
+    "test:sms-cost-guard": "tsx scripts/sms-cost-guard.test.mts",
+    "red:sms-cost-guard": "node scripts/red-sms-cost-guard.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",

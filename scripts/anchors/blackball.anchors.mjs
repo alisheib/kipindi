@@ -39,9 +39,9 @@ export const MUTATIONS = [
     expect: `§4 data as an ARRAY flattens to per-field complaints`,
   },
   {
-    // The gateway reports credit on a REFUSED send too. A rail that reads `balance` only on
-    // success goes blind exactly as the float runs out — which is the moment the cost floor is
-    // the only thing standing between a campaign and an unusable login path.
+    // The parser must report `balance` faithfully on every reply, refused ones included. Which
+    // readings to TRUST is decided in sms.ts (accepted replies only — a refusal's 0.0 is decided
+    // before authentication); a parser that dropped the field would hide that evidence entirely.
     name: "sms-blackball.ts — balance is only read when the gateway said yes",
     file: "src/lib/server/sms-blackball.ts",
     from: `    balance: typeof o.balance === "number" && Number.isFinite(o.balance) ? o.balance : null,`,
@@ -83,8 +83,11 @@ export const MUTATIONS = [
     // path that is a login that hangs rather than one that fails and offers the password route.
     name: "sms-blackball.ts — the abort signal is dropped, so a hung gateway hangs forever",
     file: "src/lib/server/sms-blackball.ts",
-    from: `        signal: controller.signal,`,
-    to: `        signal: undefined,`,
+    // Anchored with the payload line: \`signal: controller.signal\` also appears in blackballBalance.
+    from: `        body: JSON.stringify(payload),
+        signal: controller.signal,`,
+    to: `        body: JSON.stringify(payload),
+        signal: undefined,`,
     expect: `§7 a hung gateway aborts at the timeout rather than never`,
   },
   {
@@ -107,5 +110,21 @@ export const MUTATIONS = [
     from: `  if (v.length > SENDER_ID_MAX_CHARS) {`,
     to: `  if (false && v.length > SENDER_ID_MAX_CHARS) {`,
     expect: `§8 13 characters is refused, and the message says why`,
+  },
+  {
+    // GSM-7 cannot carry Chinese: a ZH login code would reach the player as unreadable glyphs.
+    name: "sms-blackball.ts — coding detection always answers GSM7",
+    file: "src/lib/server/sms-blackball.ts",
+    from: `  for (const ch of text) if (!GSM7_CHARS.has(ch)) return "UCS2";`,
+    to: `  void text;`,
+    expect: `§11 ⛔ the Chinese OTP is UCS2: GSM-7 would garble it`,
+  },
+  {
+    // Omitting coding falls back to the gateway's GSM default for EVERY message.
+    name: "sms-blackball.ts — coding is dropped from the request",
+    file: "src/lib/server/sms-blackball.ts",
+    from: `      coding: smsCodingFor(m.text),`,
+    to: ``,
+    expect: `§1 exactly the five Swagger message fields, no extras`,
   },
 ];

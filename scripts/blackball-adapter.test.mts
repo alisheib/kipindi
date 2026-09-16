@@ -25,14 +25,17 @@ import {
   BATCH_MAX,
   REFERENCE_MIN_CHARS,
   SENDER_ID_MAX_CHARS,
+  blackballBalance,
   blackballConfigured,
   blackballEnv,
   blackballSend,
   describeBlackball,
   parseBlackballBody,
   senderIdProblem,
+  smsCodingFor,
   type BlackballEnv,
 } from "../src/lib/server/sms-blackball.ts";
+import { otpMessage } from "../src/lib/server/sms.ts";
 
 let pass = 0,
   fail = 0;
@@ -101,8 +104,8 @@ const OK_BODY = JSON.stringify({ status: true, message: "Queued", data: null, ba
       !Object.keys(c.headers).some((h) => /^authorization$/i.test(h)),
   );
   ok(
-    "§1 exactly the four documented message fields, no extras",
-    JSON.stringify(Object.keys(msgs[0]).sort()) === JSON.stringify(["msisdn", "reference", "source", "text"]),
+    "§1 exactly the five Swagger message fields, no extras",
+    JSON.stringify(Object.keys(msgs[0]).sort()) === JSON.stringify(["coding", "msisdn", "reference", "source", "text"]),
     Object.keys(msgs[0]).join(","),
   );
   ok("§1 the sender id is sent as `source`", msgs[0].source === "50PICK");
@@ -247,11 +250,13 @@ const OK_BODY = JSON.stringify({ status: true, message: "Queued", data: null, ba
   ok("§5 an empty body is a failure", empty.ok === false && empty.message === "empty body");
 }
 
-// ── §6 · BALANCE IS READ ON FAILURE TOO ───────────────────────────────────────
+// ── §6 · THE PARSER REPORTS `balance` FAITHFULLY, WHATEVER THE VERDICT ────────
 {
-  // ⭐ This is the one that matters for the cost floor: the gateway reports credit
-  // on a REFUSED send as well, so a rail that only reads it on success goes blind
-  // exactly when the float is running out.
+  // ⭐ The PARSER's job is to report the field exactly as sent, so a caller can decide what
+  // to trust. ⚠️ Deciding is not its job: a refusal is answered before authentication and
+  // carries `balance: 0.0`, which is not the account's balance — `sms.ts` records readings
+  // from ACCEPTED replies only (guarded by test:sms-cost-guard §2). A parser that silently
+  // dropped the field on refusals would hide exactly that evidence from the caller.
   const r = parseBlackballBody(JSON.stringify({ status: false, message: "Validation errors", data: [], balance: 117.5 }), 400);
   ok("§6 balance is read off a FAILED reply", r.balance === 117.5);
   const absent = parseBlackballBody(JSON.stringify({ status: true, message: "ok" }), 200);
@@ -369,6 +374,48 @@ const OK_BODY = JSON.stringify({ status: true, message: "Queued", data: null, ba
   );
   // Control for §10: prove the reader actually read the file it names.
   ok("§10 control: the source was actually loaded", /export async function blackballSend/.test(src));
+}
+
+// ── §11 · CODING — chosen from the text, never assumed ───────────────────────
+{
+  // The gateway accepts exactly [GSM7, UCS2] (read off it 2026-09-16) and defaults to GSM-7,
+  // which cannot carry Chinese. These are the REAL templates, not look-alike strings.
+  ok("§11 the Swahili OTP is GSM7", smsCodingFor(otpMessage("123456", "SW")) === "GSM7");
+  ok("§11 the English OTP is GSM7 (its apostrophe is GSM)", smsCodingFor(otpMessage("123456", "EN")) === "GSM7");
+  ok("§11 ⛔ the Chinese OTP is UCS2: GSM-7 would garble it", smsCodingFor(otpMessage("123456", "ZH")) === "UCS2");
+  ok("§11 ⛔ an em-dash pasted into an invite forces UCS2", smsCodingFor("Karibu 50pick — bonus") === "UCS2");
+  ok("§11 ⛔ a curly quote forces UCS2", smsCodingFor("Don’t share") === "UCS2");
+  ok("§11 ⛔ an emoji forces UCS2", smsCodingFor("Karibu \u{1F389}") === "UCS2");
+  ok("§11 GSM extension characters stay GSM7", smsCodingFor("€[]{}~|^\\") === "GSM7");
+  ok("§11 GSM accented letters stay GSM7", smsCodingFor("é à ü Ñ ß Ø") === "GSM7");
+
+  const s = stubFetch(() => ({ status: 200, body: OK_BODY }));
+  await blackballSend(ENV, [
+    { msisdn: "255772619619", text: otpMessage("111111", "SW"), reference: REF() },
+    { msisdn: "255772619619", text: otpMessage("222222", "ZH"), reference: REF() },
+  ]);
+  s.restore();
+  const wire = (s.calls[0].body.messages as { coding: string }[]).map((m) => m.coding);
+  ok("§11 each message carries its OWN coding on the wire", wire[0] === "GSM7" && wire[1] === "UCS2", wire.join(","));
+}
+
+// ── §12 · THE BALANCE ENDPOINT ───────────────────────────────────────────────
+{
+  // Captured verbatim from the live gateway, 2026-09-16, with our credentials.
+  const LIVE = JSON.stringify({ status: true, message: "Account balance", data: { name: "OCEAN ENTERTAINMENT LTD", currency: "TZS", email: "x@y" }, balance: 244.0 });
+  const s = stubFetch(() => ({ status: 200, body: LIVE }));
+  const r = await blackballBalance(ENV);
+  s.restore();
+  ok("§12 it POSTs to /api/account/balance on the configured host",
+    s.calls[0]?.url === "https://gateway.example/api/account/balance" && s.calls[0]?.method === "POST", s.calls[0]?.url);
+  ok("§12 …with auth only: no messages, so it can never send", JSON.stringify(Object.keys(s.calls[0].body)) === JSON.stringify(["auth"]));
+  ok("§12 an authenticated reply yields the true balance", r.ok === true && r.balance === 244);
+
+  // Captured verbatim: note the different wording from the send endpoint ("…used").
+  const s2 = stubFetch(() => ({ status: 400, body: JSON.stringify({ status: false, message: "Invalid credentials used", data: null, balance: 0.0 }) }));
+  const bad = await blackballBalance(ENV);
+  s2.restore();
+  ok("§12 ⛔ refused credentials read as NOT ok: its 0.0 is not a balance", bad.ok === false && bad.message === "Invalid credentials used");
 }
 
 console.log(`\nblackball-adapter: ${pass} passed, ${fail} failed`);

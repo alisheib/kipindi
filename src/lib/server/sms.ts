@@ -49,6 +49,7 @@ import {
   BATCH_MAX,
   REFERENCE_MIN_CHARS,
   blackballConfigured,
+  blackballBalance,
   blackballEnv,
   blackballSend,
   describeBlackball,
@@ -120,10 +121,24 @@ const balanceFloor = () => Number(process.env.SMS_BALANCE_FLOOR_TZS) || 50;
 /** Below this, officers are alarmed once, on the crossing. TZS. */
 const balanceAlert = () => Number(process.env.SMS_BALANCE_ALERT_TZS) || 150;
 
+/** A balance reading older than this is treated as UNKNOWN, never as low. */
+const balanceTtlMs = () => Number(process.env.SMS_BALANCE_TTL_MS) || 15 * 60_000;
+
 /**
- * Record the balance the gateway echoed. Called on EVERY reply — success and
- * failure alike, because Blackball reports credit on both, and a rail that only
- * reads it on success goes blind exactly as the float runs out.
+ * Record the balance from an ACCEPTED reply. ⛔ ONLY an accepted one.
+ *
+ * 🔴 A REFUSED REPLY'S `balance` IS NOT THE ACCOUNT'S BALANCE. Blackball validates a
+ * request BEFORE it authenticates it (measured 2026-09-16), so a refusal for bad
+ * credentials or a schema complaint never identifies the account and answers
+ * `balance: 0.0`. This function used to record every reply's figure — so a single
+ * auth failure would store TZS 0, trip the cost floor, and refuse every INVITE send.
+ * Those sends are refused BEFORE a request is made, so no fresh reading could ever
+ * arrive to clear it: a latch, set by an outage that had already ended.
+ *
+ * ⚠️ AN ACCEPTED REPLY'S FIGURE IS PRE-CHARGE. The first live send reported TZS 250
+ * and the portal then showed 244: the TZS 6 is applied after the reply. So a reading
+ * lags by one batch, which is harmless for a floor and is why the price is read from
+ * the portal, never computed from a reply.
  *
  * ⛔ THE ALARM IS EDGE-TRIGGERED, NOT LEVEL-TRIGGERED. A level check writes one
  * `sms.balance_low` row per send once the balance is low, burying the hash-chained
@@ -150,17 +165,25 @@ function recordBalance(tzs: number | null): void {
 export function smsBalanceSnapshot(): {
   tzs: number | null;
   at: number | null;
+  stale: boolean;
   belowAlert: boolean;
   belowFloor: boolean;
 } {
   const b = globalThis.__50PICK_SMS_BALANCE ?? null;
+  // ⛔ A STALE READING IS UNKNOWN, NOT LOW. The floor refuses INVITE sends before any
+  // request is made, so while it holds no new reading can arrive — only OTP traffic
+  // refreshes it. Without an expiry, a genuine low reading followed by a top-up would
+  // keep campaigns refused until somebody happened to log in by phone code.
+  const stale = b !== null && Date.now() - b.at > balanceTtlMs();
+  const live = b !== null && !stale;
   return {
     tzs: b?.tzs ?? null,
     at: b?.at ?? null,
+    stale,
     // ⛔ UNKNOWN IS NOT LOW. Before the first reply we have no reading, and refusing
     // traffic on an absence would take the rail down on every cold start.
-    belowAlert: b !== null && b.tzs <= balanceAlert(),
-    belowFloor: b !== null && b.tzs < balanceFloor(),
+    belowAlert: live && b!.tzs <= balanceAlert(),
+    belowFloor: live && b!.tzs < balanceFloor(),
   };
 }
 
@@ -210,6 +233,8 @@ type ChunkOutcome = { ok: boolean; ambiguous: boolean; detail: string; message: 
 type SmsTransport = {
   name: SmsProviderId;
   sendChunk(msgs: { msisdn: string; text: string; reference: string }[]): Promise<ChunkOutcome>;
+  /** The account's true balance, or null when it cannot be read. Optional: the console stub has none. */
+  balance?(): Promise<number | null>;
 };
 
 const consoleTransport: SmsTransport = {
@@ -245,6 +270,13 @@ const blackballTransport: SmsTransport = {
     // `transport` is set ONLY when no response arrived — the authoritative signal for "we do
     // not know whether the gateway has this batch".
     return { ok: r.ok, ambiguous: r.transport !== null, detail: describeBlackball(r), message: r.message, balance: r.balance };
+  },
+  async balance() {
+    const env = blackballEnv();
+    if (!env) return null;
+    const r = await blackballBalance(env);
+    // ⛔ Only an authenticated reply carries the account's balance; a refusal's 0.0 is not one.
+    return r.ok ? r.balance : null;
   },
 };
 
@@ -372,14 +404,26 @@ export async function sendBatch(messages: SmsOutbound[]): Promise<SmsBatchOutcom
 
   // ⛔ THE COST FLOOR EXEMPTS OTP, DELIBERATELY. The floor exists to stop a CAMPAIGN
   // eating the float the login path needs. Once OTP is the login path, refusing a
-  // login code to conserve TZS 40 is a self-inflicted outage — the opposite of what
-  // the floor is for.
+  // login code to conserve a few shillings is a self-inflicted outage — the opposite of
+  // what the floor is for. An OTP batch therefore never waits on a balance read either.
   const everyMessageIsOtp = messages.every((m) => (m.purpose ?? "OPS") === "OTP");
-  if (!everyMessageIsOtp && smsBalanceSnapshot().belowFloor) {
-    return refuse(
-      "BALANCE_FLOOR",
-      `SMS credit is below the TZS ${balanceFloor()} floor — non-critical messages are held so login codes keep sending`,
-    );
+  if (!everyMessageIsOtp) {
+    // ⭐ ASK, DON'T GUESS. With no reading, or a stale one, the floor would otherwise judge a
+    // campaign on nothing — and a campaign held by the floor makes no request that could
+    // refresh it. `POST /api/account/balance` is free and authenticated, so a missing or stale
+    // reading is replaced with the account's true balance before the decision is made. If the
+    // read fails the reading stays unknown, and unknown is never treated as low.
+    const before = smsBalanceSnapshot();
+    if ((before.tzs === null || before.stale) && transport.balance) {
+      const fresh = await transport.balance().catch(() => null);
+      if (fresh !== null) recordBalance(fresh);
+    }
+    if (smsBalanceSnapshot().belowFloor) {
+      return refuse(
+        "BALANCE_FLOOR",
+        `SMS credit is below the TZS ${balanceFloor()} floor — non-critical messages are held so login codes keep sending`,
+      );
+    }
   }
 
   const nowIso = new Date().toISOString();
@@ -451,8 +495,12 @@ export async function sendBatch(messages: SmsOutbound[]): Promise<SmsBatchOutcom
       continue;
     }
 
-    recordBalance(outcome.balance);
-    if (outcome.balance !== null) balance = outcome.balance;
+    // Only an ACCEPTED reply identifies the account — see recordBalance for why a
+    // refusal's `balance: 0.0` must never reach the floor.
+    if (outcome.ok) {
+      recordBalance(outcome.balance);
+      if (outcome.balance !== null) balance = outcome.balance;
+    }
     const settledAt = new Date().toISOString();
     // A reply we could not complete is AMBIGUOUS; a reply that said no is a refusal.
     const ambiguous = !outcome.ok && outcome.ambiguous;
@@ -473,7 +521,8 @@ export async function sendBatch(messages: SmsOutbound[]): Promise<SmsBatchOutcom
         await db.smsMessage.update(p.reference, {
           status: ambiguous ? "UNKNOWN" : "FAILED",
           providerMsg: outcome.message.slice(0, 200),
-          balanceTzs: outcome.balance,
+          // A refusal's `balance` is not the account's (it reads 0.0 before auth) — no figure beats a false one.
+          balanceTzs: null,
           ...(ambiguous ? {} : { failedAt: settledAt }),
         });
         results.push({
@@ -502,7 +551,7 @@ export async function sendBatch(messages: SmsOutbound[]): Promise<SmsBatchOutcom
         count: group.length,
         purposes: [...new Set(group.map((p) => p.out.purpose ?? "OPS"))],
         detail: outcome.detail,
-        balanceTzs: outcome.balance,
+        balanceTzs: outcome.ok ? outcome.balance : null,
       },
     });
   }

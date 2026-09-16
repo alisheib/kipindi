@@ -34,9 +34,12 @@
  *        that indexed it as an object would throw on the commonest failure this
  *        gateway produces.
  *
- *  ⭐ 4. EVERY REPLY CARRIES AN UNDOCUMENTED `balance` (TZS, a number), on success
- *        and on failure alike. That is free credit telemetry on every single send
- *        with no extra call, and it is what the cost floor in `sms.ts` runs on.
+ *  ⭐ 4. EVERY REPLY CARRIES AN UNDOCUMENTED `balance` (TZS, a number) — but it is
+ *        only the ACCOUNT's balance on an ACCEPTED reply. A refusal is decided before
+ *        authentication, never identifies the account, and answers `balance: 0.0`.
+ *        And an accepted reply's figure is PRE-CHARGE: the first live send reported
+ *        TZS 250, the portal then showed 244 (TZS 6 per SMS). The parser reports the
+ *        field faithfully either way; `sms.ts` decides which readings to trust.
  *
  * Also measured: `reference` is optional to them but must be ≥ 20 characters when
  * present; `text` has a 1-character floor; validation runs BEFORE authentication;
@@ -68,6 +71,42 @@ export const REFERENCE_MIN_CHARS = 20;
 
 const DEFAULT_ENDPOINT = "https://blackballgw.co.tz/api/sms/send";
 const DEFAULT_TIMEOUT_MS = 8_000;
+
+/* ══ CODING ══════════════════════════════════════════════════════════════════ */
+
+/**
+ * The two values the gateway accepts for `coding`. NOT in the vendor PDF — found in their
+ * Swagger (`Msg.coding: string Enum`) and the values read off the gateway itself on
+ * 2026-09-16: `coding:"NOPE"` → *"does not have a value in the enumeration [GSM7, UCS2]"*.
+ */
+export type SmsCoding = "GSM7" | "UCS2";
+
+/**
+ * GSM 03.38 — the basic character set plus the extension table (the extension characters cost
+ * two septets each, but they ARE representable, so they do not force UCS2).
+ */
+const GSM7_CHARS = new Set(
+  "@£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞÆæßÉ !\"#¤%&'()*+,-./0123456789:;<=>?" +
+    "¡ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÑÜ§¿abcdefghijklmnopqrstuvwxyzäöñüà" +
+    "\f^{}\\[~]|€",
+);
+
+/**
+ * The coding a message needs. ⛔ CHOSEN FROM THE TEXT, NEVER ASSUMED.
+ *
+ * 🔴 WHAT HAPPENS WITHOUT THIS. The portal labels GSM "(Default)", so a request that names no
+ * coding is sent as GSM-7 — and GSM-7 cannot carry Chinese at all. `otpMessage(code, "ZH")`
+ * would reach a Chinese-speaking player as unreadable glyphs around a six-digit code, on the
+ * rail that carries login codes. The same applies to anything an officer types into an invite
+ * campaign: an em-dash, a curly quote or an emoji pasted from a document is outside GSM-7.
+ *
+ * ⚠️ UCS2 is not free: a segment holds 70 characters instead of 160, so a UCS2 message is
+ * more likely to bill as several SMS. That is a price of correctness, not a reason to guess.
+ */
+export function smsCodingFor(text: string): SmsCoding {
+  for (const ch of text) if (!GSM7_CHARS.has(ch)) return "UCS2";
+  return "GSM7";
+}
 
 export type BlackballEnv = {
   clientId: string;
@@ -216,6 +255,8 @@ export async function blackballSend(
       msisdn: toMsisdn255(m.msisdn),
       source: env.senderId,
       reference: m.reference,
+      // Always explicit — relying on the gateway's GSM default garbles every non-GSM character.
+      coding: smsCodingFor(m.text),
     })),
   };
 
@@ -246,6 +287,46 @@ export async function blackballSend(
     }
     // Read as TEXT then parse, like `selcomFetch`: a non-JSON reply is exactly the
     // case where the raw shape is the evidence, and `res.json()` would throw it away.
+    return parseBlackballBody(await res.text(), res.status);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * Read the account balance — `POST /api/account/balance`, auth only. Sends nothing, costs nothing.
+ *
+ * ⭐ THE ONLY TRUSTWORTHY BALANCE READ. Not in the vendor PDF; found in their Swagger and measured
+ * 2026-09-16: `{"status":true,"message":"Account balance","data":{"name":…,"currency":"TZS",…},
+ * "balance":244.0}` — the portal's figure exactly, AFTER the first message's TZS 6 charge.
+ * The `balance` on a send reply is pre-charge on success and a meaningless 0.0 on a refusal
+ * (decided before authentication), so neither can price anything or clear a floor. This can.
+ *
+ * ⛔ `balance` is only the account's when `ok` is true — the same envelope, the same rule.
+ * Never throws; a transport failure comes back as `transport`, exactly like `blackballSend`.
+ */
+export async function blackballBalance(env: BlackballEnv): Promise<BlackballOutcome> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), env.timeoutMs);
+  try {
+    let res: Response;
+    try {
+      res = await fetch(new URL("/api/account/balance", env.endpoint).toString(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ auth: { clientId: env.clientId, clientSecret: env.clientSecret } }),
+        signal: controller.signal,
+      });
+    } catch (err) {
+      return {
+        ok: false,
+        httpStatus: 0,
+        message: "transport failure",
+        balance: null,
+        fieldErrors: {},
+        transport: String((err as Error)?.message ?? err).slice(0, 200),
+      };
+    }
     return parseBlackballBody(await res.text(), res.status);
   } finally {
     clearTimeout(timer);

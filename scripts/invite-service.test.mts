@@ -183,15 +183,23 @@ const clearSms = () => { for (const k of SMS_ENVS) delete process.env[k]; };
   process.env.BLACKBALL_CLIENT_ID = "cid";
   process.env.BLACKBALL_CLIENT_SECRET = "csec";
 
+  // SEND requests and BALANCE reads are counted apart. A campaign with no fresh balance reading
+  // asks `POST /api/account/balance` first (free, sends nothing) so the cost floor decides on the
+  // account's true balance — the claim below is about SENDS, and a combined counter would blur it.
   let calls = 0;
+  let balanceReads = 0;
   let lastCount = 0;
+  globalThis.__50PICK_SMS_BALANCE = undefined;
   const realFetch = globalThis.fetch;
-  globalThis.fetch = (async (_i: RequestInfo | URL, init?: RequestInit) => {
+  globalThis.fetch = (async (i: RequestInfo | URL, init?: RequestInit) => {
+    const json = (o: unknown) => new Response(JSON.stringify(o), { status: 200, headers: { "content-type": "application/json" } });
+    if (String(i).includes("/api/account/balance")) {
+      balanceReads++;
+      return json({ status: true, message: "Account balance", data: { currency: "TZS" }, balance: 244 });
+    }
     calls++;
     lastCount = (JSON.parse(String(init?.body)) as { messages: unknown[] }).messages.length;
-    return new Response(JSON.stringify({ status: true, message: "Queued", data: null, balance: 250 }), {
-      status: 200, headers: { "content-type": "application/json" },
-    });
+    return json({ status: true, message: "Successfully submitted 3 message(s) to broker.", data: null, balance: 244 });
   }) as typeof fetch;
 
   const sent = await sendCampaign(cid, "usr_inv_admin");
@@ -200,6 +208,7 @@ const clearSms = () => { for (const k of SMS_ENVS) delete process.env[k]; };
   ok("live: all three phone invites SENT", sent.ok && sent.sent === 3 && sent.pending === 0 && sent.failed === 0, sent.ok ? `sent=${sent.sent} pending=${sent.pending} failed=${sent.failed}` : "not ok");
   ok("live: ⭐ three recipients cost ONE request, not three", calls === 1, `calls=${calls}`);
   ok("live: …and that request carried all three messages", lastCount === 3, `messages=${lastCount}`);
+  ok("live: the cost floor read the true balance once, for free, before sending", balanceReads === 1, `balanceReads=${balanceReads}`);
   const detail = await getCampaignDetail(cid);
   ok("live: no entry is left QUEUED", (detail?.counts.QUEUED ?? 0) === 0, `queued=${detail?.counts.QUEUED}`);
   clearSms();

@@ -95,4 +95,19 @@ export const MUTATIONS = [
     to: `      if (entry) {`,
     expect: `§7 ⛔ a REGISTERED entry is never demoted by a late receipt`,
   },
+  {
+    // The audit chain cannot be pruned without breaking it, so an empty callback that audits is a
+    // permanent row per call. Measured: fifteen empty reachability probes wrote fifteen such rows.
+    name: "route.ts — an empty callback is audited again",
+    file: "src/app/api/webhooks/blackball/route.ts",
+    from: `  if (lines.length > 0) {
+    audit({
+      category: "SYSTEM",
+      action: "sms.dlr.received",`,
+    to: `  if (true) {
+    audit({
+      category: "SYSTEM",
+      action: "sms.dlr.received",`,
+    expect: `§10 ⛔ an empty callback writes NO sms.dlr.received row`,
+  },
 ];
