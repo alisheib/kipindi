@@ -226,7 +226,7 @@ With a null marker, each gives a player exactly what they had before; the letter
 
 ## 4. Engine
 
-⏳ Written in commit 4. The timings the engine will read are already fixed in `src/lib/house-bot/constants.ts`, so it arrives to pinned values. The relationships between them are the design, and `test:house-bot-rules` pins the first four:
+✅ **Built in commit 4** (§5 steps 1–11; rulings 29–163 in `plans/house-bots/C4-SPEC.md` §6). The timings the engine reads are fixed in `src/lib/house-bot/constants.ts`, so it arrives to pinned values. The relationships between them are the design, and `test:house-bot-rules` pins the first four:
 - `LOCK_MARGIN_MS` = `MAX_TOLERATED_SKEW_MS` + `CLAIM_SKEW_GUARD_MS`. It applies to `lockedForHouse` (Enter now, FILL and every targeted COUNTER), never to the untargeted COUNTER (§5.7).
 - `TARGET_ARMING_SEC` ≥ the largest tolerated skew + 2 s + the sweep's age filter (`SWEEP_MIN_AGE_MS`). Poll triggers are decided only in the sweep, so no trigger at or after a target's `effectiveFrom` can be decided before the target row exists.
 - `SWEEP_LOOKBACK_MS` ≥ 60 s.
@@ -268,6 +268,52 @@ With a null marker, each gives a player exactly what they had before; the letter
 - **The decision.** `decideCounter` runs with no holding or cap reads; only when it names a bot for a row that is not SKIPPED are that bot's `marketHeld` and `capPrecheck` read (and, for a targeted row, the staff-chosen TZS left today), and the decision runs again with them. A targeted row draws its delay first, then reads the money locked AT its due time (`targetDueAt`, the one formula); its stake never passes the staff-chosen room. A target that ended between the pass's read and the insert gets the untargeted decision in the same pass.
 - **A21 — a holder against their own bot.** A holder's stake on the side opposite their bot's OPEN house stake on that market sends one alert (`holder-against:<botId>:<marketId>`, given back if the send fails) and writes one HOLDER_AGAINST_BOT event with aggregates only (`{side, stakeTzs, botSide, botStakeTzs}`), whatever the switch says. The stake is never refused and the bot is never paused; the same side is nothing.
 - **The penalty box (R5).** The AlertOnce row `penalty:<userId>:<EAT day>` is the box. It is claimed when a countered trigger cashes out (CASHED_OUT_COUNTERED, at fire) or when the house countered an account on a market where it now holds both sides (BOTH_SIDES, in the trigger). Each boxing writes one PENALTY_BOXED event `{cause, day, intentId}` and one admin alert naming the player by handle only; a failed alert never un-boxes the account.
+
+**The holder's own account, watched (commit 4, §5 step 7; `test:house-bot-engine` §19 on both stores; C4-SPEC rulings 121–135, 138):**
+- `server/house-bot/holder-hook.ts` `onHolderAccountChanged(userId, event)` runs A2's table for every change to a holder's
+  account — password changed or reset, email changed by an officer, a responsible-gambling limit, a break or self-exclusion, a
+  closure, a role change, a suspension, a frozen wallet. Every call site fires it through `runOutsideLock` **after** the write
+  commits (a hook inside the lock would read a row nobody has committed yet), and never awaits it on the player's path.
+- The same table runs again in the **L2 sweep** with no hook at all, so an event that was missed (another container, a crash)
+  still lands. Both paths take the one apply (`applyHolderCauses`), and §19 runs every row twice — once through the hook, once
+  through the sweep — and compares the two outcomes.
+- A **pause that was caused by a credential change is recorded once** (ruling 133), a change that lands while another cause is
+  already stopping the bot is still recorded (135), a bot already paused FOR a password change that changes again raises A1
+  again rather than A2 (134), and a failed A1 send is paid by the next look, once (138).
+- ⛔ **D19c:** none of this reaches the holder. Every alert goes to admins; the holder receives nothing.
+
+**The kill switch (commit 4, §5 step 8; `test:house-bot-caps` §7; rulings 139–140):** `server/house-bot/kill-switch.ts`
+`switchOffHouseBots(cause)` runs A9's four steps under `drainLock` — a separate transaction with its own `lock_timeout`, which
+refuses to run inside a lock — so a switch-off cannot deadlock behind a bet. `SWITCH_OFF_COPY` is the one home for the words
+the operator sees. Nothing in flight is abandoned silently: claimed rows are cancelled and counted in the alert.
+
+**What the engine says, and to whom (commit 4, §5 step 9; `test:house-bot-comms`, `qa:cert-c1`, `qa:house-bot-bells`; ruling 142):**
+every emitter, the one alert copy table, F6's channel policy and all 20 A2 call sites are **admin-only**. Each bell and email was
+rendered through the real emitters and read at 1280 and 360. ⛔ **D19 (rulings 143–158) removed everything else**: the liquidity
+label, the holder's notices and emails, the house wording in refusals and in the objection panel, and the client-side `HOUSE_BOT`
+appearance case. The proof is in §12, and §10 states the rule.
+
+**The money hooks (commit 4, §5 step 10; ruling 137):** F7's seven write sites in 02 §3.6 carry the marker, and the AML refund is
+atomic (`rejectAmlAction`'s wallet adjust and its FAILED transaction in one transaction).
+
+**X7 · both sides, checked again at fire (commit 4; rulings 136 and 159):** the sweep boxes an account when the house's counter is
+already PLACED, but a poll counter can wait five minutes for the exit window, so `fire.ts` reads the trigger account's own OPEN
+positions (house-marked excluded) one more time immediately before placing. Both sides held → `boxAccount({cause: "BOTH_SIDES"})`
+and the intent finishes SKIPPED(`PENALTY_BOX`). The player's own stake is never refused by this; the seam's `TRIGGER_BOTH_SIDES`
+refusal has kept money from flowing there since commit 2.
+
+**What step 11 pinned (commit 4, §5 step 11; rulings 160–163):**
+- `test:house-bot-info-edge` (A13): the engine's market view carries only the pinned fields, on both twins, and no engine module
+  can read a result field — an esbuild-stripped walker over all 40 modules, with `blackout.ts` and `seam.ts` exempt **by name**
+  and `ud-price.ts` measured and deliberately not exempt.
+- **A24 at scale:** 1,000,046 positions with 20,017 house-marked, every engine read of `Position` EXPLAINed with its real
+  parameters — no sequential scan, each paired with a control that reads the fixture's own figures.
+- **MON-06:** two OS processes with clocks at −5 s and +5 s race a cash-out against a house stake at the lock boundary; never
+  both a house stake and a cashed-out position.
+- **L6:** two processes sweeping the same window, each held at a barrier inside its own page read, still write exactly ONE counter
+  for a stake — the failover overlap ruling 103 calls harmless, measured rather than assumed.
+- `red:house-bot-engine`: 29 declared mutations (`scripts/anchors/house-bot-engine.anchors.mjs`), each required to turn its own
+  assertion red, every file restored byte for byte.
 
 ---
 
@@ -716,13 +762,17 @@ rulebooks, Terms and the privacy notice byte-identical to `origin/main`.
 | 2 | `test:all` (`--skip responsive,motion`) against clean `origin/main` | The build machine | 339/356 · 2026-09-14 · OMEGA-COMPILE01 · `3841e807`: the 17 reds fail identically on clean `origin/main` `3eb192e9` (3 hard-code port 3009: NOT MEASURED); `responsive` and `motion` NOT MEASURED. The market page and resolution panel in the HOUSE_STAKE_ONLY state were not rendered: NOT MEASURED |
 | 3 · designation services | `test:house-bot-designation`: the case file runs on a scratch Postgres (`db-scratch`) and on the memory store — eligibility per context, the password check (reserve, rate bucket, double submit, no session), password history, designate races (label and account unique indexes, roster at max − 1), each consent-void cause ending every active target in the wallet transaction with an injected rollback, the C8 flow with a planted fingerprint-only predicate, Start's refusal order, erasure refusal and pseudonymising, the review's findings (§11), and source pins on every password-hash writer | A machine with the embedded Postgres; in CI `db-scratch` exits 2 (a FAIL, never a green) | ✅ 169/0 memory · 161/0 PostgreSQL 18.3 · 2026-09-15 · OMEGA-COMPILE01 · `624f6038`; 24 in-place mutations caught on the memory cases (Postgres half NOT MEASURED) |
 | 3 | `test:all` (`--skip responsive,motion`) against clean `origin/main` | The build machine | 340/357 · 2026-09-15 · OMEGA-COMPILE01 · `624f6038`: the 17 reds fail identically on clean `origin/main` `3eb192e9` (14 compared line for line; 3 hard-code port 3009: NOT MEASURED); `responsive` and `motion` NOT MEASURED. Review `wf_2208135b-079`: 15 confirmed, all fixed |
-| 4 · engine (in progress) | `test:house-bot-engine`: the case file runs on a scratch Postgres (`db-scratch`) and on the memory store — the lock exit and strict lease, the pure decisions, the schema gate and `/api/health`, engine boot and back-pressure, the market view, `applyOutcome`, the A15 price read, the Enter now loader and holding rule, and fire and the poller (§1–§16) | A machine with the embedded Postgres; in CI `db-scratch` exits 2 (a FAIL, never a green) | 🟡 interim: memory 398/0 · PostgreSQL 389/0 · 2026-09-15 · OMEGA-COMPILE01 · `d60fba39`; in-place mutations on the steps built so far all caught or recorded equivalent (PROGRESS code log). The info-edge, comms and holder-lifecycle suites and `red:house-bot-engine` are NOT MEASURED: they land with build steps 5–11 |
+| 4 · engine | `test:house-bot-engine`: the case file runs on a scratch Postgres (`db-scratch`) and on the memory store — the lock exit and strict lease, the pure decisions, the schema gate and `/api/health`, engine boot and back-pressure, the market view, `applyOutcome`, the A15 price read, the Enter now loader and holding rule, and fire and the poller (§1–§16) | A machine with the embedded Postgres; in CI `db-scratch` exits 2 (a FAIL, never a green) | 🟡 interim: memory 398/0 · PostgreSQL 389/0 · 2026-09-15 · OMEGA-COMPILE01 · `d60fba39`; in-place mutations on the steps built so far all caught or recorded equivalent (PROGRESS code log). The info-edge, comms and holder-lifecycle suites and `red:house-bot-engine` are NOT MEASURED: they land with build steps 5–11 |
 | 5 | The reports suite, and the house cases in `test:erasure` and `test:dsar-secrets` | — | Land in commit 5 |
 | 6 | The disclosure suite, which also pins risks 13–20 and the do-not-restore lines in §13 | — | Lands in commit 6 |
 | 7 | The console suite, its RED harness and the visual pass | — | Land in commit 7 |
 | 8 | The local end-to-end drive, the S4 rehearsals and the scenario coverage gate | — | Land in commit 8 |
 | Production | Nothing is deployed. | — | NOT MEASURED |
 
+| 4 | `red:house-bot-engine`: 29 declared mutations over the engine, the DAL, the trigger call site and the COUNTER migration — each must turn ITS OWN assertion red, and every file is restored byte for byte | The build machine (a temporary worktree with a `node_modules` junction) | 2026-09-16 · OMEGA-COMPILE01: **22 caught, 0 missed, 0 not measured, 0 files left dirty**, then 5 more (L1–L4 and the pins) and L6's 2, each caught on its own line |
+| 4 · D19 | `test:house-bot-disclosure` (the client import graph), `verify:house-bot-bundle` (a real `next build`, then every chunk scanned) and `qa:house-bot-holder-view` (ten pages served to a holder, RSC payloads included, six screenshots at 1280 and 360 opened and read) | The build machine | 2026-09-16 · OMEGA-COMPILE01: **320 house words in the public JavaScript before the un-build, 0 after**; disclosure 15/0; holder view 27/0. Found and fixed while proving it: the holder's data export carried `houseBotId` (ruling 154) and the payout-held box invited an objection the panel refuses (158) |
+| 4 | `test:house-bot-info-edge` (A13), A24's EXPLAIN pins at 1M/20k, MON-06 and L6 across two OS processes | The build machine (scratch Postgres) | 2026-09-16 · OMEGA-COMPILE01: info-edge memory 20/0 · Postgres 5/0; every pinned read plans without a sequential scan on `Position`; MON-06 never both; L6 exactly one counter |
+| 4 | `test:all` (`--skip responsive,motion`) against clean `origin/main` `b726cb7f` in `F:/kipindi-old-build` | The build machine | 2026-09-16 · OMEGA-COMPILE01 · **349/369 green** here vs **338/358** on clean `origin/main` `b726cb7f`: **19 of the 20 reds are identical in both trees** (recategorise · read-tiers · lock-tx-threading · type-scale · red-anchors · revoked-deadend · admin-section-gate · needle-rest · decomment · updown-digest · updown-source-class · settlement-expectation · orphans · grid-paging · chart-one-home · popup-fit · admin-act-gate · failure-reasons · updown-handover; three of them need port 3009, which another session holds). The 20th, `test:labels`, was red HERE and green on main — measured, not assumed — and it was this branch's: rulings 166 and 167 fixed it, and it is green now. On main only, `test:kyc-restart-docs` is NOT MEASURED in the baseline tree (it needs the 107 MB embedded-postgres binaries, which that checkout does not carry). |
 ---
 
 ## 13. Accepted risks
