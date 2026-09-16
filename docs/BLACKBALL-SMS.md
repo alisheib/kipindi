@@ -121,7 +121,22 @@ wrong token → 401, the portal URL → `200 {"status":"Ok"}`.
 ### The status vocabulary
 
 **Observed:** `DELIVRD` / `Success` (first live send, portal Out SMS). Every other arm of
-`mapDlrStatus()` is still the SMPP seed. An unrecognised token returns `null`: the row keeps its
+`mapDlrStatus()` is still the SMPP seed.
+
+The portal's Out SMS **CSV export** for that message (supplied by Ali, 2026-09-16):
+
+```csv
+"CODE","COUNT","CREATED","DELIVERED","MESSAGE","MSISDN","SENDER","STATUS","STATUSDESCRIPTION"
+"0","1","2026-09-16 16:29:23","2026-09-16 16:29:25","50pick: test message from Ali (1). …","255772619619","50pick","DELIVRD","Success"
+```
+
+- `CODE` `0` alongside `DELIVRD` — the SMPP convention where 0 is "no error". Failure rows should
+  carry a non-zero code; ask for the code list with the status list (§8).
+- `COUNT` `1` is the **segment count** — the billed unit (TZS 6 × COUNT).
+- ⚠️ **Neither the export nor the Out SMS screen shows our `reference`** (the screen's "Ref" column
+  holds the API client id). So it is still unproven that the callback's `reference` echoes the one we
+  sent. The first genuine receipt settles it: `sms-receipts.cjs` prints the reference it carried, and
+  the `sms_95f851757b62d3a8ea5a5865` of the first send is the value to look for. An unrecognised token returns `null`: the row keeps its
 status, the raw token is stored on `SmsMessage.dlrStatus`, and `sms.dlr.unmapped_status` is audited.
 ⛔ **There is no default-to-DELIVERED arm and there must never be one.**
 
