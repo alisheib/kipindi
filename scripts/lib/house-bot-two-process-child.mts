@@ -5,6 +5,10 @@
  *
  *   ROLE=cashout  POSITION_ID USER_ID T0_ISO            → try to cash the position out from T0 + 0.5 s until T0 + 6 s
  *   ROLE=house    BOT_ID BOT_USER_ID MARKET_ID T0_ISO   → try a house FILL YES 5,000 from T0 until T0 + 9 s
+ *   ROLE=sweep    POSITION_ID SIDE_ID T0_ISO            → run the trigger sweep from T0, and hold the pass that first
+ *                                                         reads POSITION_ID at a BARRIER until the other side has read
+ *                                                         it too, so both processes decide the same stake at once (L6,
+ *                                                         ruling 103 · a double sweep at leader failover)
  *
  * Prints one `@@RESULT {…}` line.
  */
@@ -49,6 +53,57 @@ try {
       await w.dal.houseBotIntentStore.cancelLive({ houseBotId: bot.botId }, "BOT_NOT_ACTIVE");
       await nap(150);
     }
+  } else if (role === "sweep") {
+    // L6 (ruling 103) · a double sweep at leader failover. The pass's own page read is instrumented: the first page
+    // that carries the watched stake raises this side's flag and waits for the other side's, so BOTH processes leave
+    // the read holding the same row and decide it at the same moment. Without the barrier the winner's insert would
+    // usually land before the loser's read, and `triggerPage` (NOT EXISTS an anchored COUNTER) would hide the row.
+    const positionId = env("POSITION_ID");
+    const sideId = env("SIDE_ID");
+    const raceId = env("RACE_ID");
+    const flag = (id: string) => `__L6_READ_${raceId}_${id}__`;
+    const DAL: Any = await import("../../src/lib/server/house-bot-dal.ts");
+    const CS: Any = await import("../../src/lib/server/config-store.ts");
+    const TRIG: Any = await import("../../src/lib/server/house-bot/trigger.ts");
+    const seen = new Set<string>();
+    const origPage = DAL.houseSeamStore.triggerPage.bind(DAL.houseSeamStore);
+    let barriered = false;
+    DAL.houseSeamStore.triggerPage = async (...args: Any[]) => {
+      const page = await origPage(...args);
+      for (const r of page) seen.add(r.id);
+      if (!barriered && page.some((r: Any) => r.id === positionId)) {
+        barriered = true;
+        await CS.saveConfig(flag(sideId), { at: Date.now() });
+        const until = Date.now() + 20_000;
+        for (;;) {
+          const other = await CS.loadConfig(flag(sideId === "a" ? "b" : "a"));
+          if (other) { result.barrier = true; break; }
+          if (Date.now() > until) { result.barrier = false; break; }
+          await nap(50);
+        }
+      }
+      return page;
+    };
+    const alerts = {
+      placed: async () => {}, once: async () => {}, security: async () => {},
+      botStopped: async () => {}, switchedOff: async () => {},
+    };
+    const passes: Any[] = [];
+    while ((await dbNowMs()) < T0) await nap(25);
+    for (let i = 0; i < 3 && !seen.has(positionId) && (await dbNowMs()) < T0 + 30_000; i++) {
+      (result.attempts as number)++;
+      passes.push(await TRIG.sweepPass({}, { alerts }));
+    }
+    const sum = (k: "read" | "failed") => passes.reduce((n: number, p: Any) => n + Number(p[k] ?? 0), 0);
+    result.passes = passes.length;
+    result.sawTarget = seen.has(positionId);
+    result.read = sum("read");
+    result.failed = sum("failed");
+    result.outcomes = passes.reduce((acc: Any, p: Any) => {
+      for (const [k, v] of Object.entries(p.outcomes ?? {})) acc[k] = (Number(acc[k] ?? 0) + Number(v));
+      return acc;
+    }, {} as Any);
+    result.success = result.sawTarget === true && result.barrier === true;
   } else {
     throw new Error(`two-process child: unknown ROLE ${role}`);
   }

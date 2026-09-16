@@ -3311,6 +3311,54 @@ await guard("18", async () => {
     }
   }
 
+  // ── L6 · a double sweep at leader failover (ruling 103) ────────────────────────────────────────────────────────
+  // TWO PROCESSES sweep the same window at the same moment. Each one's own page read is held at a barrier until the
+  // other has read the same stake, so both decide it together — the failover overlap the ruling calls harmless. The
+  // guarantee under test is the anchor's unique index with ON CONFLICT DO NOTHING, so this is Postgres only.
+  if (w.onPostgres) {
+    const { spawn } = await import("node:child_process");
+    const { fileURLToPath: toPath6 } = await import("node:url");
+    const { join: joinPath6, dirname: dirnamePath6 } = await import("node:path");
+    const ROOT6 = joinPath6(dirnamePath6(toPath6(import.meta.url)), "..", "..");
+    const b6 = await soloBot();
+    // Ruling 92 · the stake is aged into the sweep's window, which puts it BEFORE a bot that started a moment ago:
+    // declare the scope an hour back for the bot and globally, exactly as 18.L4 does, or every pass says outOfScope.
+    await S.houseBotRuntimeStore.upsert(K.RUNTIME_KEY.bot(b6.botId), { scopeFrom: w.iso(-3_600_000) });
+    await S.houseBotRuntimeStore.upsert(K.RUNTIME_KEY.global, { scopeFrom: w.iso(-3_600_000) });
+    const m6 = await w.poll();
+    const s6 = await stakeOn(m6.id, "YES", 10_000, { ageMs: 10_000 });
+    const raceId = `l6_${process.pid}`;
+    const T06 = (await S.houseBotRuntimeStore.dbClock()).nowMs + 5_000;
+    const runSweep = (sideId: string) => new Promise<Any>((resolve) => {
+      const child = spawn("npx", ["tsx", "scripts/lib/house-bot-two-process-child.mts"], {
+        cwd: ROOT6, shell: process.platform === "win32",
+        env: {
+          ...process.env, ROLE: "sweep", SIDE_ID: sideId, RACE_ID: raceId,
+          POSITION_ID: s6.positionId, T0_ISO: new Date(T06).toISOString(),
+        },
+      });
+      let out = "";
+      child.stdout?.on("data", (d) => { out += String(d); });
+      child.stderr?.on("data", (d) => { out += String(d); });
+      child.on("close", (code) => {
+        const got = /@@RESULT (\{.*\})/.exec(out);
+        resolve({ code, result: got ? JSON.parse(got[1]) : null, out });
+      });
+    });
+    const [A6, B6] = await Promise.all([runSweep("a"), runSweep("b")]);
+    ok("18.L6a · fixture · both sweep processes read the SAME stake in one window and met at the barrier",
+      A6.result?.sawTarget === true && B6.result?.sawTarget === true && A6.result?.barrier === true && B6.result?.barrier === true,
+      j({ a: A6.result ?? A6.out.slice(-400), b: B6.result ?? B6.out.slice(-400) }));
+    const counted6: Any[] = await w.prisma().$queryRawUnsafe(
+      `SELECT count(*)::int AS "n" FROM "HouseBotIntent" WHERE "kind" = 'COUNTER' AND "anchorKey" = $1::text`, s6.positionId);
+    const inserted6 = Number(A6.result?.outcomes?.inserted ?? 0) + Number(B6.result?.outcomes?.inserted ?? 0);
+    ok("18.L6b · ⭐ L6 · a double sweep at failover writes ONE counter for the stake, never two",
+      Number(counted6[0]?.n) === 1, j({ rows: counted6[0]?.n, a: A6.result?.outcomes, b: B6.result?.outcomes }));
+    ok("18.L6c · …and neither pass failed: the loser's insert is absorbed by the anchor conflict, never an error",
+      Number(A6.result?.failed) === 0 && Number(B6.result?.failed) === 0 && inserted6 >= 1,
+      j({ aFailed: A6.result?.failed, bFailed: B6.result?.failed, inserted: inserted6 }));
+  }
+
   await S.houseBotIntentStore.cancelLive({ all: true }, "MASTER_OFF");
 });
 
