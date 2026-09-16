@@ -24,7 +24,6 @@ import { passwordFingerprint } from "../password-reset";
 import { rateCheckAsync } from "../rate-limit";
 import { LOCKOUT_MAX_FAILS } from "../auth-service";
 import { getRgSettings, isLockedOut } from "../responsible-gambling";
-import { notifyHouseBotOwner } from "../notification-service";
 import {
   houseAtomic, houseBotAlertOnceStore, houseBotControlStore, houseBotEventStore, houseBotIntentStore, houseBotRuntimeStore,
   houseBotStore, newHouseId, targetStore, uniqueViolation, type StoredHouseBot,
@@ -206,8 +205,6 @@ export async function verifyHouseBotPassword(input: {
     case "wrong": {
       await houseAudit("house_bot.password_rejected", officerId, target, auditPayload);
       const left = attemptsBeforeLock(outcome.count);
-      // The holder is told once the owner's wrong tries reach the reserve (04 C13 `verify_reserved`).
-      if (left === 0) await notifyHouseBotOwner(userId, "verify_reserved").catch(() => null);
       return refuse("WRONG_PASSWORD", wrongPasswordCopy({ passwordSetAt: outcome.setAt, passwordSetVia: outcome.setVia }, left), { field: "password", attemptsBeforeLock: left });
     }
     case "right":
@@ -315,9 +312,8 @@ export async function designateHouseBot(input: {
   if (written.kind === "blocked") return { ok: false, code: "INELIGIBLE", message: written.row.message, row: written.row };
   if (written.kind === "full") return { ok: false, code: "ROSTER_FULL", message: DESIGNATE_COPY.rosterFull(written.count, written.max), href: "/admin/house-bots?tab=limits" };
 
-  // After the locks: the COMPLIANCE row (R7 — no label, note or fingerprint) and the holder's notice.
+  // After the locks: the COMPLIANCE row (R7 — no label, note or fingerprint). The holder is told nothing (D19c, ruling 149).
   await houseAudit("house_bot.designated", officerId, { type: "HouseBot", id: written.bot.id }, { botId: written.bot.id, holderUserId: userId });
-  await notifyHouseBotOwner(userId, "designated").catch(() => null);
   return { ok: true, bot: written.bot };
 }
 
@@ -435,7 +431,6 @@ export async function reverifyHouseBot(input: { officerId: string; botId: string
   if (written.kind === "removed") return { ok: false, code: "BOT_REMOVED", message: VERIFY_COPY.removed };
   if (written.kind === "active") return { ok: false, code: "BOT_ACTIVE", message: REVERIFY_COPY.running };
 
-  await notifyHouseBotOwner(bot.userId, "reverified").catch(() => null);
   return { ok: true, verified: true, status: written.status, wasActive: written.wasActive };
 }
 
@@ -513,7 +508,6 @@ export async function startHouseBot(input: { officerId: string; botId: string; r
   if (written.kind === "changed") return { ok: false, code: "CHANGED", message: "Can't start: their password or permission changed a moment ago. Enter their password to confirm it again.", href: `/admin/house-bots/${botId}?reverify=1` };
 
   await houseAudit("house_bot.started", officerId, { type: "HouseBot", id: botId }, { botId, holderUserId: bot.userId, from: written.from, to: "ACTIVE", rulesVersion: bot.rulesVersion });
-  await notifyHouseBotOwner(bot.userId, "started").catch(() => null);
   return { ok: true, alreadyRunning: false, masterOn: (await houseBotControlStore.get()).enabled };
 }
 
@@ -588,7 +582,6 @@ export async function voidHouseConsent(input: { userId: string; cause: ConsentVo
   const payload = { botId: written.botId, holderUserId: userId, from: written.from, to: written.to, cause, counts };
   if (cause === "HOLDER_WITHDREW") {
     await houseAudit("house_bot.holder_withdrew_consent", input.actorId, { type: "HouseBot", id: written.botId }, payload);
-    await notifyHouseBotOwner(userId, "withdrew").catch(() => null);
   } else if (written.from === "ACTIVE") {
     await houseAudit("house_bot.auto_paused", input.actorId, { type: "HouseBot", id: written.botId }, payload);
   }

@@ -9,6 +9,7 @@
  */
 import { headers } from "next/headers";
 import type { FailureReason, FailureDetail } from "@/lib/failure-reasons";
+import type { HouseSeamReason } from "@/lib/house-bot/bet-path";
 import { audit } from "./audit";
 import { db, type StoredUser } from "./store";
 import { generateOtp, hashOtp, hashPassword, randomId, verifyOtp, verifyPassword } from "./crypto";
@@ -108,7 +109,7 @@ export type ServiceResult<T = void> =
   // Same shape as `ActionFailure.field` in `src/lib/server/field-error.ts`, deliberately, so
   // an admin action can pass one straight through. ⚠️ Purely optional: a service that has not
   // been converted omits it and renders exactly as before.
-  | { ok: false; error: string; code?: "RATE_LIMITED" | "INVALID" | "EXPIRED" | "ALREADY_EXISTS" | "EMAIL_EXISTS" | "NOT_FOUND" | "TOO_MANY_ATTEMPTS" | "SUSPENDED" | "SELECTION_CLOSED" | "CONFLICT" | "TOO_EARLY" | "OBJECTION_OPEN" | "EMAIL_UNVERIFIED" | "BUSY"; retryAfterSec?: number; reason?: FailureReason; detail?: FailureDetail; field?: string };
+  | { ok: false; error: string; code?: "RATE_LIMITED" | "INVALID" | "EXPIRED" | "ALREADY_EXISTS" | "EMAIL_EXISTS" | "NOT_FOUND" | "TOO_MANY_ATTEMPTS" | "SUSPENDED" | "SELECTION_CLOSED" | "CONFLICT" | "TOO_EARLY" | "OBJECTION_OPEN" | "EMAIL_UNVERIFIED" | "BUSY"; retryAfterSec?: number; reason?: FailureReason | HouseSeamReason; detail?: FailureDetail; field?: string };
 
 /**
  * THE ONE ACCOUNT-STATUS GATE EVERY SIGN-IN PATH MUST PASS (E-240, E-238).

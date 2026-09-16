@@ -19,9 +19,9 @@ export const SEAM_SITES = [
   "revertNoFundsBonus", "txnMarker", "H4", "wagering", "superseded", "audit", "receipts", "recruit",
   "reverseWageringOrphan", "markerOrphan", "cashOutValue", "cashOutReason", "cashOutPosition", "markerCashout", "markerOneSided",
   "markerVoid", "markerWin", "reverseWagering", "markerEmergency", "reverseWageringEmergency",
-  // 04 A17 (h): the liquidity label and the per-stake email rule (04 F6) on outcome notices.
-  "labelOneSided", "labelWin", "labelLoss", "labelCancelled", "labelVerdict", "labelSelectionClosed",
-  "labelSelectionClosedPersonal",
+  // 04 F6: the per-stake email rule on outcome notices, and a verdict's objection standing (C4 rulings 143–145;
+  // D19 removed the liquidity label these sites used to carry).
+  "emailOneSided", "emailWin", "emailLoss", "emailCancelled", "verdictStanding", "selectionClosedEmail",
   // C4-SPEC ruling 101: the Up & Down post-commit trigger hook (player stakes only, after the commit, outside the lock).
   "trigger",
 ];

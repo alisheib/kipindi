@@ -27,6 +27,7 @@ import { eatDayKey } from "@/lib/house-bot/clock";
 import { consentValid } from "@/lib/house-bot/consent";
 import { formatDateTime } from "@/lib/utils";
 import type { FailureDetail, FailureReason } from "@/lib/failure-reasons";
+import type { HouseSeamReason } from "@/lib/house-bot/bet-path";
 import type { Side } from "@/lib/payout";
 import { db } from "../store";
 import { positionStore } from "../market-dal";
@@ -48,7 +49,7 @@ export type HouseRefusal = {
   ok: false;
   error: string;
   code: "INVALID" | "SUSPENDED" | "BUSY" | "NOT_FOUND";
-  reason?: FailureReason;
+  reason?: FailureReason | HouseSeamReason;
   detail?: FailureDetail;
 };
 

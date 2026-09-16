@@ -20,7 +20,7 @@ import { displayLabel } from "@/lib/display-label";
 import { formatEat } from "@/lib/house-bot/clock";
 import { RUNTIME_KEY } from "@/lib/house-bot/constants";
 import type { MoneyEventCode } from "@/lib/house-bot/alert-copy";
-import { HOLDER_CAUSES, type CredentialChangedVia, type PauseReason } from "@/lib/house-bot/pause-reasons";
+import type { CredentialChangedVia, PauseReason } from "@/lib/house-bot/pause-reasons";
 import {
   houseBotControlStore, houseBotRuntimeStore, houseBotStore, houseSeamStore,
   type StoredHouseBot, type StoredHouseBotIntent,
@@ -28,7 +28,6 @@ import {
 import {
   notifyAdminsHouseBotAlert, notifyAdminsHouseBotBet, notifyAdminsHouseBotHourSummary, notifyAdminsHouseBotMoneyEvent,
   notifyAdminsHouseBotPaused, notifyAdminsHouseBotRoster, notifyAdminsHouseBotStaffChosen, notifyAdminsHouseBotSwitch,
-  notifyHouseBotOwner, notifyHouseBotOwnerHourSummary, notifyHouseBotOwnerStake,
 } from "../notification-service";
 import { db } from "../store";
 import { playerHandle } from "./alerts";
@@ -70,8 +69,6 @@ function howChanged(method: CredentialChangedVia): string {
   return "";
 }
 
-/** The causes the holder hook speaks for itself (its own notices). Everything else is an engine cause. */
-const HOLDER_OWNED: ReadonlySet<string> = new Set<string>([...HOLDER_CAUSES, "HOLDER_WITHDREW"]);
 /** A2 rows 5, 11 and 14 also email when the cause is added to a bot that was already stopped (04:1046-1048). */
 const CAUSE_EMAILS: ReadonlySet<string> = new Set(["ACCOUNT_CLOSED", "IDENTITY_REFUSED", "HOLDER_ERASURE_REQUEST"]);
 
@@ -103,14 +100,7 @@ async function announcePlaced(intent: StoredHouseBotIntent): Promise<void> {
     // Over the cap the hour's summary accounts for it (planner.ts hourlyDuties) — nothing is lost, only quieter.
   }
 
-  // The holder hears about every stake from their account, staff-chosen or not, and it never says a person chose it.
-  const { count } = await houseBotRuntimeStore.bumpHourCount(RUNTIME_KEY.bot(intent.houseBotId));
-  if (intent.positionId && control.holderNoticesPerHour > 0 && count <= control.holderNoticesPerHour) {
-    await safe("holder stake", () => notifyHouseBotOwnerStake({
-      userId: intent.botUserId, positionId: intent.positionId!, side: intent.side, stakeTzs: intent.stakeTzs,
-      marketTitle: title, at,
-    }));
-  }
+  // ⛔ The holder hears nothing about a stake from their account (D19c, C4 ruling 149).
 }
 
 /** `EngineAlerts.once`: the summaries go to their own emitters; every other code is one alert row. */
@@ -127,16 +117,6 @@ async function announceOnce(message: EngineAlertMessage): Promise<void> {
     }));
     return;
   }
-  if (message.code === "HOUR_SUMMARY_HOLDER") {
-    const bot = message.botId ? await botOf(message.botId) : null;
-    if (!bot) return;
-    const from = typeof detail.fromIso === "string" ? hhmm(Date.parse(detail.fromIso)) : "";
-    const to = typeof detail.toIso === "string" ? hhmm(Date.parse(detail.toIso)) : "";
-    await safe("holder summary", () => notifyHouseBotOwnerHourSummary({
-      userId: bot.userId, count: Number(detail.count ?? 0), stakeTzs: Number(detail.stakeTzs ?? 0), fromHH: from, toHH: to,
-    }));
-    return;
-  }
   const bot = message.botId ? await botOf(message.botId) : null;
   const holderId = typeof detail.userId === "string" ? detail.userId : null;
   await safe("alert", () => notifyAdminsHouseBotAlert({
@@ -146,16 +126,13 @@ async function announceOnce(message: EngineAlertMessage): Promise<void> {
   }));
 }
 
-/** A bot the engine or the hook stopped. The holder hears it only for causes the hook does not speak for. */
+/** A bot the engine or the hook stopped. Admins only — the holder is never told (D19c, ruling 149). */
 async function announceStopped(bot: StoredHouseBot, change: { to: "AUTO_PAUSED" | "REMOVED"; cause: PauseReason; cancelled: number }): Promise<void> {
   const at = nowAt();
   await safe("stop", () => notifyAdminsHouseBotPaused({
     variant: "STOP", botId: bot.id, label: bot.label, holder: playerHandle(bot.userId),
     cause: change.cause, cancelled: change.cancelled, at,
   }));
-  if (!HOLDER_OWNED.has(change.cause)) {
-    await safe("holder paused", () => notifyHouseBotOwner(bot.userId, "paused"));
-  }
 }
 
 /** The whole engine channel. */
@@ -232,7 +209,6 @@ export function houseHolderAlerts(): HolderAlerts {
         detail: { until: untilIso }, at: nowAt(),
       }));
     },
-    holderNotice: async (userId, notice) => { await safe(`holder ${notice}`, () => notifyHouseBotOwner(userId, notice)); },
   };
 }
 

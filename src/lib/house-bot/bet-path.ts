@@ -56,6 +56,13 @@ export const BET_PATH_REASONS = [
 
 export type BetPathReason = (typeof BET_PATH_REASONS)[number];
 
+/**
+ * The house gates' own refusals. ⛔ SERVER-ONLY (C4 ruling 148, D19): they are not `FailureReason`s, have no
+ * player copy and no row in the client-bundled failure registry — only `ctx.kind === "house"` reaches them,
+ * and the console reads them through the engine's server-side copy.
+ */
+export type HouseSeamReason = Extract<BetPathReason, `house_${string}`>;
+
 /** Codes the bet path returns WITHOUT a reason (the pre-lock market and account checks). */
 export const BET_PATH_BARE_CODES = ["NOT_FOUND", "INVALID", "SELECTION_CLOSED", "BUSY"] as const;
 export type BetPathBareCode = (typeof BET_PATH_BARE_CODES)[number];

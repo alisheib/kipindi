@@ -69,11 +69,9 @@ const DEDUPE_WINDOW_MS = 90_000;
  */
 export type NotifyOptions = {
   pushTag?: string;
-  /** `false` writes the inbox row without a Web Push — a notice sealed as "bell only" (house bots `verify_reserved`, 04 C13). */
-  push?: boolean;
   /**
    * `false` skips the 90-second duplicate check. Only for a notice sent once per COMMITTED state change under a lock,
-   * whose fixed wording would otherwise swallow a real second transition (house bots: started → paused → started).
+   * whose fixed wording would otherwise swallow a real second transition (house-bot admin alerts, 02:429).
    */
   dedupe?: boolean;
 };
@@ -170,7 +168,7 @@ export async function notify(input: NotifyInput, opts?: NotifyOptions): Promise<
     // locale. Fire-and-forget: sendPushToUser never throws, self-suppresses for
     // RG-locked players, and no-ops when VAPID is unconfigured. The inbox row
     // above stays the canonical record regardless of what the push channel does.
-    if (opts?.push !== false) void (async () => {
+    void (async () => {
       try {
         const { sendPushToUser } = await import("./push-service");
         const user = await db.user.findById(n.userId);
@@ -347,16 +345,6 @@ export function notifyBetPlaced(userId: string, opts: {
 }
 
 /**
- * ⭐ HOUSE BOTS · THE LIQUIDITY LABEL (04 A17 (h)). A holder's account can carry stakes 50pick placed
- * from it. Their outcome notices are still sent (2026-08-22 "announce every outcome"), and each one that
- * is about a house-marked position says so, so the holder never mistakes 50pick's stake for their own.
- * ⛔ APPENDED ONLY WHEN `houseStake` IS TRUE: a player's notice is byte-identical, and the words match the
- * holder chip ("50pick liquidity stake", F10). sw/zh drafted, native review.
- */
-const LIQUIDITY_LINE = { en: " · 50pick liquidity stake", sw: " · Dau la ukwasi la 50pick", zh: " · 50pick 流动性投注" } as const;
-const liquidityLine = (houseStake: boolean | undefined, lang: keyof typeof LIQUIDITY_LINE): string => (houseStake ? LIQUIDITY_LINE[lang] : "");
-
-/**
  * ⭐ E-101 · `href` IS REQUIRED, and the default it replaced was the defect.
  *
  * It used to default to `"/positions"`, so a win notification landed the player on the
@@ -365,7 +353,7 @@ const liquidityLine = (houseStake: boolean | undefined, lang: keyof typeof LIQUI
  * wrong for one of two products is not a safe default; it is a decision nobody made. Callers
  * now state where the money is, and `positionPermalinkHref` is how they say it.
  */
-export function notifyWin(userId: string, amount: number, label: LocalizedText, href: string, house?: { houseStake?: boolean }) {
+export function notifyWin(userId: string, amount: number, label: LocalizedText, href: string) {
   // ⛔ NO IDENTITY SENTENCE ON A WIN (owner, 2026-09-13, the quiet rule). A receipt says what happened
   // to the money and nothing about verification; `test:cert-c3` §7 asserts it in all three languages.
   return notify({
@@ -374,9 +362,9 @@ export function notifyWin(userId: string, amount: number, label: LocalizedText, 
     titleEn: `You won ${formatTzs(amount)}`,
     titleSw: `Umeshinda ${formatTzs(amount)}`,
     titleZh: `您赢得 ${formatTzs(amount)}`,
-    bodyEn: `${label.en} paid out. Tap to view.${liquidityLine(house?.houseStake, "en")}`,
-    bodySw: `${label.sw} kimelipa. Bonyeza kuona.${liquidityLine(house?.houseStake, "sw")}`,
-    bodyZh: `${label.zh} 已赔付。点击查看。${liquidityLine(house?.houseStake, "zh")}`,
+    bodyEn: `${label.en} paid out. Tap to view.`,
+    bodySw: `${label.sw} kimelipa. Bonyeza kuona.`,
+    bodyZh: `${label.zh} 已赔付。点击查看。`,
     href,
   });
 }
@@ -385,7 +373,7 @@ export function notifyWin(userId: string, amount: number, label: LocalizedText, 
  * Loss receipt — direct, respectful language. No euphemisms that could
  * delay the player's awareness of their loss (LCCP harm-prevention).
  */
-export function notifyLoss(userId: string, opts: { stake: number; marketTitle: LocalizedText; marketId: string; positionId?: string; houseStake?: boolean }) {
+export function notifyLoss(userId: string, opts: { stake: number; marketTitle: LocalizedText; marketId: string; positionId?: string }) {
   const ref = opts.positionId ? ` · ${opts.positionId}` : "";
   return notify({
     userId,
@@ -402,12 +390,12 @@ export function notifyLoss(userId: string, opts: { stake: number; marketTitle: L
     // moment it had been placed and lost. `投注未中` is the idiomatic "the bet did not
     // win" and cannot be read as a placement failure.
     titleZh: `投注未中 · ${formatTzs(opts.stake)}`,
-    bodyEn: `${opts.marketTitle.en.slice(0, 70)} · your side didn't win.${liquidityLine(opts.houseStake, "en")}${ref}`,
+    bodyEn: `${opts.marketTitle.en.slice(0, 70)} · your side didn't win.${ref}`,
     // ⚠️ Carries the market title, like EN and ZH. Without it a Swahili player with
     // several open positions got "your side didn't win" with nothing saying WHICH
     // market — the one thing the receipt exists to identify.
-    bodySw: `${opts.marketTitle.sw.slice(0, 70)} · Upande wako haukushinda.${liquidityLine(opts.houseStake, "sw")}${ref}`,
-    bodyZh: `${opts.marketTitle.zh.slice(0, 50)} · 您所选的一方未获胜。${liquidityLine(opts.houseStake, "zh")}${ref}`,
+    bodySw: `${opts.marketTitle.sw.slice(0, 70)} · Upande wako haukushinda.${ref}`,
+    bodyZh: `${opts.marketTitle.zh.slice(0, 50)} · 您所选的一方未获胜。${ref}`,
     href: `/markets/${opts.marketId}`,
   });
 }
@@ -461,8 +449,6 @@ type UpDownResultOpts = {
    */
   pushTag: string;
   positionId?: string;
-  /** House bots (04 A17 (h)): the position is a 50pick liquidity stake — the body carries the label. */
-  houseStake?: boolean;
 };
 
 /**
@@ -484,9 +470,9 @@ function notifyUpDownResult(
     userId,
     kind,
     titleEn: copy.titleEn, titleSw: copy.titleSw, titleZh: copy.titleZh,
-    bodyEn: `${copy.bodyEn}${liquidityLine(opts.houseStake, "en")}${ref}`,
-    bodySw: `${copy.bodySw}${liquidityLine(opts.houseStake, "sw")}${ref}`,
-    bodyZh: `${copy.bodyZh}${liquidityLine(opts.houseStake, "zh")}${ref}`,
+    bodyEn: `${copy.bodyEn}${ref}`,
+    bodySw: `${copy.bodySw}${ref}`,
+    bodyZh: `${copy.bodyZh}${ref}`,
     href: opts.roundHref,
   }, { pushTag: opts.pushTag });
 }
@@ -641,8 +627,6 @@ export function notifySelectionClosed(userId: string, opts: {
   marketTitle: LocalizedText; marketId: string;
   payoutIfYes: number; payoutIfNo: number;
   hasYes: boolean; hasNo: boolean;
-  /** House bots (04 A17 (h)): the figures are the holder's 50pick liquidity stakes, sent as their own notice. */
-  houseStake?: boolean;
 }) {
   const both = opts.hasYes && opts.hasNo;
   const only = opts.hasYes ? opts.payoutIfYes : opts.payoutIfNo;
@@ -677,20 +661,17 @@ export function notifySelectionClosed(userId: string, opts: {
     ? `${opts.marketTitle.zh.slice(0, 50)} · 投注已截止。若「${yesW.zh}」获胜您将获得 ${formatTzs(opts.payoutIfYes)}；若「${noW.zh}」获胜您将获得 ${formatTzs(opts.payoutIfNo)}。`
     : `${opts.marketTitle.zh.slice(0, 50)} · 投注已截止。若「${oneW.zh}」获胜您将获得 ${formatTzs(only)}。`;
 
-  // House bots (04 A17 (h)): a lock screen truncates the body, so the house notice names itself in the
-  // TITLE too, and it rides its own push tag so it can never replace the holder's personal notice.
-  const titlePrefix = (lang: keyof typeof LIQUIDITY_LINE) => (opts.houseStake ? `${LIQUIDITY_LINE[lang].slice(3)} · ` : "");
   return notify({
     userId,
     kind: "SELECTION_CLOSED",
-    titleEn: titlePrefix("en") + (both ? "Betting closed — your payouts are set" : `Betting closed — you receive ${formatTzs(only)} if you're right`),
-    titleSw: titlePrefix("sw") + (both ? "Dau limefungwa — malipo yako yamewekwa" : `Dau limefungwa — utapata ${formatTzs(only)} ukiwa sahihi`),
-    titleZh: titlePrefix("zh") + (both ? "投注已截止 — 您的赔付已确定" : `投注已截止 — 若判断正确您将获得 ${formatTzs(only)}`),
-    bodyEn: `${bodyEn}${liquidityLine(opts.houseStake, "en")}`,
-    bodySw: `${bodySw}${liquidityLine(opts.houseStake, "sw")}`,
-    bodyZh: `${bodyZh}${liquidityLine(opts.houseStake, "zh")}`,
+    titleEn: both ? "Betting closed — your payouts are set" : `Betting closed — you receive ${formatTzs(only)} if you're right`,
+    titleSw: both ? "Dau limefungwa — malipo yako yamewekwa" : `Dau limefungwa — utapata ${formatTzs(only)} ukiwa sahihi`,
+    titleZh: both ? "投注已截止 — 您的赔付已确定" : `投注已截止 — 若判断正确您将获得 ${formatTzs(only)}`,
+    bodyEn,
+    bodySw,
+    bodyZh,
     href: `/markets/${opts.marketId}`,
-  }, opts.houseStake ? { pushTag: `selection-closed-house:${opts.marketId}` } : undefined);
+  });
 }
 
 /**
@@ -1067,9 +1048,7 @@ export function notifyVerdictRecorded(userId: string, opts: {
   paysFrom: string;
   /** True when this verdict REPLACED an earlier one (an upheld objection, remedy REVERSE). */
   reversed?: boolean;
-  /** House bots (04 A17 (h)): the player holds a 50pick liquidity stake on this market. */
-  houseStake?: boolean;
-  /** House bots: every position the player has on this market is a liquidity stake (no objection standing). */
+  /** Every position the player has on this market is house-marked, so they have no standing to object (ruling 145). */
   houseOnly?: boolean;
 }) {
   const isVoid = opts.outcome === "VOID";
@@ -1097,11 +1076,11 @@ export function notifyVerdictRecorded(userId: string, opts: {
     titleEn,
     titleSw,
     titleZh,
-    // ⛔ A holder whose ONLY stakes here are liquidity stakes has no standing to object (HOUSE_STAKE_ONLY,
-    // `objections-service.ts`), so their notice never invites an objection the platform would refuse.
-    bodyEn: `${title.en.slice(0, 60)} · No money has moved yet. Payout from ${opts.paysFrom}${opts.houseOnly ? "." : " — if you think this result is wrong, object before then."}${liquidityLine(opts.houseStake, "en")}`,
-    bodySw: `${title.sw.slice(0, 60)} · Hakuna fedha iliyohamishwa bado. Malipo kuanzia ${opts.paysFrom}${opts.houseOnly ? "." : " — kama unaamini matokeo haya si sahihi, pinga kabla ya muda huo."}${liquidityLine(opts.houseStake, "sw")}`,
-    bodyZh: `${title.zh.slice(0, 45)} · 尚未有任何资金转移。赔付不早于 ${opts.paysFrom}${opts.houseOnly ? "。" : " — 若您认为该结果有误，请在此之前提出异议。"}${liquidityLine(opts.houseStake, "zh")}`,
+    // ⛔ A player whose ONLY positions here are house-marked has no standing to object (`objectionEligibility`), so
+    // their notice never invites an objection the platform would refuse. It names nothing (D19c, ruling 145).
+    bodyEn: `${title.en.slice(0, 60)} · No money has moved yet. Payout from ${opts.paysFrom}${opts.houseOnly ? "." : " — if you think this result is wrong, object before then."}`,
+    bodySw: `${title.sw.slice(0, 60)} · Hakuna fedha iliyohamishwa bado. Malipo kuanzia ${opts.paysFrom}${opts.houseOnly ? "." : " — kama unaamini matokeo haya si sahihi, pinga kabla ya muda huo."}`,
+    bodyZh: `${title.zh.slice(0, 45)} · 尚未有任何资金转移。赔付不早于 ${opts.paysFrom}${opts.houseOnly ? "。" : " — 若您认为该结果有误，请在此之前提出异议。"}`,
     href: `/markets/${opts.marketId}`,
   });
 }
@@ -1237,7 +1216,7 @@ export function notifyProposalDeclined(userId: string, opts: { titleEn: string; 
  *  came back twice. That is the ordinary case on a voided market, not a corner: the
  *  platform allows repeat bets by design. `notifyCashout` and `notifyOneSidedRefund`
  *  already carry the reference for exactly this reason; these two did not. */
-export function notifyRefund(userId: string, opts: { stake: number; marketTitle: LocalizedText; marketId: string; positionId?: string; houseStake?: boolean }) {
+export function notifyRefund(userId: string, opts: { stake: number; marketTitle: LocalizedText; marketId: string; positionId?: string }) {
   const ref = opts.positionId ? ` · ${opts.positionId}` : "";
   return notify({
     userId,
@@ -1245,16 +1224,16 @@ export function notifyRefund(userId: string, opts: { stake: number; marketTitle:
     titleEn: `Refund · ${formatTzs(opts.stake)} returned`,
     titleSw: `Kurudishiwa · ${formatTzs(opts.stake)}`,
     titleZh: `退款 · 已退回 ${formatTzs(opts.stake)}`,
-    bodyEn: `${opts.marketTitle.en.slice(0, 70)} was voided. Your stake has been returned.${liquidityLine(opts.houseStake, "en")}${ref}`,
-    bodySw: `${opts.marketTitle.sw.slice(0, 70)} limebatilishwa. Dau lako limerudishwa.${liquidityLine(opts.houseStake, "sw")}${ref}`,
-    bodyZh: `${opts.marketTitle.zh.slice(0, 50)} 已作废。您的本金已全额退回。${liquidityLine(opts.houseStake, "zh")}${ref}`,
+    bodyEn: `${opts.marketTitle.en.slice(0, 70)} was voided. Your stake has been returned.${ref}`,
+    bodySw: `${opts.marketTitle.sw.slice(0, 70)} limebatilishwa. Dau lako limerudishwa.${ref}`,
+    bodyZh: `${opts.marketTitle.zh.slice(0, 50)} 已作废。您的本金已全额退回。${ref}`,
     href: `/markets/${opts.marketId}`,
   });
 }
 
 /** Player notice: a market they had a stake in was cancelled (emergency void).
  *  Carries the admin's reason and confirms the full refund. */
-export function notifyMarketCancelled(userId: string, opts: { stake: number; marketTitle: LocalizedText; marketId: string; reason: string; positionId?: string; houseStake?: boolean }) {
+export function notifyMarketCancelled(userId: string, opts: { stake: number; marketTitle: LocalizedText; marketId: string; reason: string; positionId?: string }) {
   const ref = opts.positionId ? ` · ${opts.positionId}` : "";
   return notify({
     userId,
@@ -1262,9 +1241,9 @@ export function notifyMarketCancelled(userId: string, opts: { stake: number; mar
     titleEn: `Market cancelled · ${formatTzs(opts.stake)} refunded`,
     titleSw: `Soko limefutwa · ${formatTzs(opts.stake)} imerejeshwa`,
     titleZh: `市场已取消 · 已退款 ${formatTzs(opts.stake)}`,
-    bodyEn: `"${opts.marketTitle.en.slice(0, 60)}" was cancelled: ${opts.reason.slice(0, 120)}. Your full stake has been returned to your wallet.${liquidityLine(opts.houseStake, "en")}${ref}`,
-    bodySw: `"${opts.marketTitle.sw.slice(0, 60)}" limefutwa: ${opts.reason.slice(0, 120)}. Dau lako lote limerejeshwa kwenye pochi yako.${liquidityLine(opts.houseStake, "sw")}${ref}`,
-    bodyZh: `"${opts.marketTitle.zh.slice(0, 60)}" 已取消：${opts.reason.slice(0, 120)}。您的本金已全额退回钱包。${liquidityLine(opts.houseStake, "zh")}${ref}`,
+    bodyEn: `"${opts.marketTitle.en.slice(0, 60)}" was cancelled: ${opts.reason.slice(0, 120)}. Your full stake has been returned to your wallet.${ref}`,
+    bodySw: `"${opts.marketTitle.sw.slice(0, 60)}" limefutwa: ${opts.reason.slice(0, 120)}. Dau lako lote limerejeshwa kwenye pochi yako.${ref}`,
+    bodyZh: `"${opts.marketTitle.zh.slice(0, 60)}" 已取消：${opts.reason.slice(0, 120)}。您的本金已全额退回钱包。${ref}`,
     href: "/wallet",
   });
 }
@@ -1321,7 +1300,7 @@ export function notifyCashout(userId: string, opts: {
 }
 
 /** One-sided refund — all bets were on the same side so everyone gets their stake back at 0% fee. */
-export function notifyOneSidedRefund(userId: string, opts: { stake: number; marketTitle: LocalizedText; marketId: string; positionId?: string; houseStake?: boolean }) {
+export function notifyOneSidedRefund(userId: string, opts: { stake: number; marketTitle: LocalizedText; marketId: string; positionId?: string }) {
   const ref = opts.positionId ? ` · ${opts.positionId}` : "";
   return notify({
     userId,
@@ -1329,9 +1308,9 @@ export function notifyOneSidedRefund(userId: string, opts: { stake: number; mark
     titleEn: `Full refund · ${formatTzs(opts.stake)}`,
     titleSw: `Pesa imerudishwa · ${formatTzs(opts.stake)}`,
     titleZh: `全额退款 · ${formatTzs(opts.stake)}`,
-    bodyEn: `${opts.marketTitle.en.slice(0, 60)} — all bets were on one side. Full stake returned, no fee.${liquidityLine(opts.houseStake, "en")}${ref}`,
-    bodySw: `${opts.marketTitle.sw.slice(0, 60)} — wote walibetia upande mmoja. Dau lako lote limerudishwa bila gharama.${liquidityLine(opts.houseStake, "sw")}${ref}`,
-    bodyZh: `${opts.marketTitle.zh.slice(0, 50)} — 所有投注都在同一方。本金全额退回，不收取手续费。${liquidityLine(opts.houseStake, "zh")}${ref}`,
+    bodyEn: `${opts.marketTitle.en.slice(0, 60)} — all bets were on one side. Full stake returned, no fee.${ref}`,
+    bodySw: `${opts.marketTitle.sw.slice(0, 60)} — wote walibetia upande mmoja. Dau lako lote limerudishwa bila gharama.${ref}`,
+    bodyZh: `${opts.marketTitle.zh.slice(0, 50)} — 所有投注都在同一方。本金全额退回，不收取手续费。${ref}`,
     href: `/markets/${opts.marketId}`,
   });
 }
@@ -2154,117 +2133,6 @@ export async function runKycReviewSlaAlerts(opts: { nowMs?: number; maxAlerts?: 
 
 /* ---- House bots (build commit 3) ---- */
 
-/** The holder events `notifyHouseBotOwner` announces (PLAN §7, 02 §2.3/§3.2–§3.5, 04 A3, C13). */
-export type HouseBotOwnerNotice =
-  | "designated" | "started" | "paused" | "password_paused" | "removed" | "reverified" | "verify_reserved" | "withdrew"
-  // Ruling 132 · A2 rows 3, 12-13 and 14: a temporary password, a role change, and an erasure request.
-  | "password_temp" | "role_changed" | "erasure_request";
-
-/** The notices that also send an email; every other one is bell + push only (04 C13). */
-const HOUSE_BOT_OWNER_EMAILED = ["designated", "removed", "reverified"] as const satisfies readonly HouseBotOwnerNotice[];
-
-/**
- * The account holder's liquidity notice (kind `HOUSE_BOT`). Link always `/positions`.
- *
- * ⛔ RETURNS EARLY WHILE THE HOLDER IS SELF-EXCLUDED OR ON A BREAK (04 C13 "RG gate", A2): a responsible-
- * gambling lock means no outbound engagement, and a notice about stakes from their account is exactly that.
- * Outcome notices on their positions keep today's behaviour; this emitter only.
- * ⛔ Never SMS. `HOUSE_BOT` is not a money kind (PLAN §18, W17): these notices state no figure.
- * ⚠️ Swahili and Chinese are drafted and marked for native review, like every other house-bot holder string.
- */
-export async function notifyHouseBotOwner(userId: string, notice: HouseBotOwnerNotice, opts: { atMs?: number } = {}): Promise<StoredNotification | null> {
-  const { isLockedOut } = await import("./responsible-gambling");
-  if ((await isLockedOut(userId)).locked) return null;
-  const { formatEat } = await import("@/lib/house-bot/clock");
-  const atMs = opts.atMs ?? Date.now();
-  const hhmm = formatEat(atMs, "HH:MM");
-  const COPY: Record<HouseBotOwnerNotice, { titleEn: string; titleSw: string; titleZh: string; bodyEn: string; bodySw: string; bodyZh: string }> = {
-    designated: {
-      titleEn: "Your account now provides liquidity", titleSw: "Akaunti yako sasa inatoa ukwasi", titleZh: "您的账户现在提供流动性",
-      bodyEn: "50pick will place liquidity stakes from your account as you agreed. You keep full use of it. Nothing is placed until 50pick starts them. You can stop this at any time by changing your password or contacting 50pick.",
-      bodySw: "50pick itaweka dau za ukwasi kutoka kwenye akaunti yako kama ulivyokubali. Unaendelea kuitumia kikamilifu. Hakuna dau litakalowekwa hadi 50pick izianze. Unaweza kusimamisha hili wakati wowote kwa kubadilisha nenosiri lako au kuwasiliana na 50pick.",
-      bodyZh: "50pick 将按您的同意从您的账户下注流动性投注。您仍可完全使用您的账户。在 50pick 启动之前不会下任何注。您可随时通过更改密码或联系 50pick 停止此安排。",
-    },
-    started: {
-      titleEn: "Liquidity stakes started", titleSw: "Dau za ukwasi zimeanza", titleZh: "流动性投注已开始",
-      bodyEn: "50pick started placing liquidity stakes from your account. You can stop them at any time by changing your password or contacting 50pick.",
-      bodySw: "50pick imeanza kuweka dau za ukwasi kutoka kwenye akaunti yako. Unaweza kuzisimamisha wakati wowote kwa kubadilisha nenosiri lako au kuwasiliana na 50pick.",
-      bodyZh: "50pick 已开始从您的账户下注流动性投注。您可随时通过更改密码或联系 50pick 停止。",
-    },
-    paused: {
-      titleEn: "Liquidity stakes paused", titleSw: "Dau za ukwasi zimesimamishwa", titleZh: "流动性投注已暂停",
-      bodyEn: "50pick paused liquidity stakes from your account. Your balance and open stakes are unchanged.",
-      bodySw: "50pick imesimamisha dau za ukwasi kutoka kwenye akaunti yako. Salio lako na dau zilizo wazi hazijabadilika.",
-      bodyZh: "50pick 已暂停从您的账户下注流动性投注。您的余额和未结算投注不受影响。",
-    },
-    password_paused: {
-      titleEn: "Liquidity stakes paused", titleSw: "Dau za ukwasi zimesimamishwa", titleZh: "流动性投注已暂停",
-      bodyEn: "Your password changed, so 50pick stopped placing liquidity stakes from your account. Your balance and open stakes are unchanged.",
-      bodySw: "Nenosiri lako limebadilika, kwa hiyo 50pick imeacha kuweka dau za ukwasi kutoka kwenye akaunti yako. Salio lako na dau zilizo wazi hazijabadilika.",
-      bodyZh: "您的密码已更改，因此 50pick 已停止从您的账户下注流动性投注。您的余额和未结算投注不受影响。",
-    },
-    removed: {
-      titleEn: "Liquidity stakes ended", titleSw: "Dau za ukwasi zimekoma", titleZh: "流动性投注已结束",
-      bodyEn: "50pick no longer uses your account for liquidity stakes. Open stakes settle to your wallet as normal.",
-      bodySw: "50pick haitumii tena akaunti yako kwa dau za ukwasi. Dau zilizo wazi zitalipwa kwenye pochi yako kama kawaida.",
-      bodyZh: "50pick 不再使用您的账户进行流动性投注。未结算投注将照常结算到您的钱包。",
-    },
-    reverified: {
-      titleEn: "Your permission was confirmed", titleSw: "Ruhusa yako imethibitishwa", titleZh: "您的授权已确认",
-      bodyEn: `50pick confirmed your permission for liquidity stakes with your current password at ${hhmm} EAT. If you did not give your password to 50pick, change it now — that stops liquidity stakes at once.`,
-      bodySw: `50pick imethibitisha ruhusa yako ya dau za ukwasi kwa nenosiri lako la sasa saa ${hhmm} EAT. Kama hukuipa 50pick nenosiri lako, libadilishe sasa — hilo husimamisha dau za ukwasi mara moja.`,
-      bodyZh: `50pick 已于东非时间 ${hhmm} 使用您当前的密码确认了您对流动性投注的授权。如果您没有将密码提供给 50pick，请立即更改密码——这将立即停止流动性投注。`,
-    },
-    verify_reserved: {
-      titleEn: "A wrong password was tried", titleSw: "Nenosiri lisilo sahihi lilijaribiwa", titleZh: "有人尝试了错误的密码",
-      bodyEn: "Someone at 50pick tried to confirm your permission with a wrong password. Your sign-in is not locked.",
-      bodySw: "Mtu wa 50pick alijaribu kuthibitisha ruhusa yako kwa nenosiri lisilo sahihi. Kuingia kwako hakujafungwa.",
-      bodyZh: "50pick 的工作人员尝试用错误的密码确认您的授权。您的登录未被锁定。",
-    },
-    password_temp: {
-      titleEn: "Liquidity stakes paused", titleSw: "Dau za ukwasi zimesimamishwa", titleZh: "流动性投注已暂停",
-      bodyEn: "Support set a temporary password on your account, so 50pick stopped placing liquidity stakes from it. Change the temporary password in Account settings — only a password you set yourself gives permission. Your balance and open stakes are unchanged.",
-      bodySw: "Wafanyakazi wa 50pick wamekuwekea nenosiri la muda kwenye akaunti yako, kwa hiyo 50pick imeacha kuweka dau za ukwasi kutoka kwake. Badilisha nenosiri hilo la muda katika Mipangilio ya Akaunti — ni nenosiri ulilojiwekea mwenyewe tu linalotoa ruhusa. Salio lako na dau zilizo wazi hazijabadilika.",
-      bodyZh: "客服为您的账户设置了临时密码，因此 50pick 已停止从该账户下注流动性投注。请在账户设置中更改该临时密码——只有您自己设置的密码才构成授权。您的余额和未结算投注不受影响。",
-    },
-    role_changed: {
-      titleEn: "Liquidity stakes paused", titleSw: "Dau za ukwasi zimesimamishwa", titleZh: "流动性投注已暂停",
-      bodyEn: "Your account's role changed, so 50pick stopped placing liquidity stakes from it. Your balance and open stakes are unchanged.",
-      bodySw: "Cheo cha akaunti yako kimebadilika, kwa hiyo 50pick imeacha kuweka dau za ukwasi kutoka kwake. Salio lako na dau zilizo wazi hazijabadilika.",
-      bodyZh: "您账户的角色已更改，因此 50pick 已停止从该账户下注流动性投注。您的余额和未结算投注不受影响。",
-    },
-    erasure_request: {
-      titleEn: "Liquidity stakes stopped while we handle your request", titleSw: "Dau za ukwasi zimesimamishwa tunaposhughulikia ombi lako", titleZh: "在我们处理您的请求期间流动性投注已停止",
-      bodyEn: "You asked us to erase your data, so 50pick stopped placing liquidity stakes from your account while we handle your request. Your balance and open stakes are unchanged.",
-      bodySw: "Uliomba tufute data yako, kwa hiyo 50pick imeacha kuweka dau za ukwasi kutoka kwenye akaunti yako tunaposhughulikia ombi lako. Salio lako na dau zilizo wazi hazijabadilika.",
-      bodyZh: "您要求删除您的数据，因此在我们处理您的请求期间，50pick 已停止从您的账户下注流动性投注。您的余额和未结算投注不受影响。",
-    },
-    withdrew: {
-      titleEn: "Liquidity stakes stopped", titleSw: "Dau za ukwasi zimesimamishwa", titleZh: "流动性投注已停止",
-      bodyEn: "Done — 50pick won't place new liquidity stakes from your account. Open stakes settle as normal.",
-      bodySw: "Imekamilika — 50pick haitaweka dau mpya za ukwasi kutoka kwenye akaunti yako. Dau zilizo wazi zitalipwa kama kawaida.",
-      bodyZh: "已完成——50pick 不会再从您的账户下注新的流动性投注。未结算投注将照常结算。",
-    },
-  };
-  // `verify_reserved` is bell only (04 C13) and keeps the duplicate check. Every other notice is sent once per
-  // committed state change, so a repeat inside 90 s is a real transition and must land (review UX-1, UX-2).
-  const reserved = notice === "verify_reserved";
-  const row = await notify({ userId, kind: "HOUSE_BOT", ...COPY[notice], href: "/positions" }, { pushTag: `house-bot-${notice}`, push: !reserved, dedupe: reserved });
-  if ((HOUSE_BOT_OWNER_EMAILED as readonly string[]).includes(notice)) {
-    try {
-      const { sendEmailToUser, houseBotOwnerHtml } = await import("./email");
-      const kind = notice as (typeof HOUSE_BOT_OWNER_EMAILED)[number];
-      sendEmailToUser(userId, (to) => ({
-        to,
-        subject: `${COPY[notice].titleEn} · 50pick`,
-        html: houseBotOwnerHtml({ kind, at: `${formatEat(atMs, "D MMM, HH:MM")} EAT` }),
-        tag: "house-bot-owner",
-      })).catch(() => {});
-    } catch { /* holder email is best-effort; the bell row above is the record */ }
-  }
-  return row;
-}
-
 /**
  * Officer alert: erasure refused because the account is still a house bot (04 R6). Bell + email to
  * `houseBotAlertRecipients()`. The caller claims AlertOnce `erasure-blocked:<botId>` first, so a repeated
@@ -2726,47 +2594,3 @@ export async function notifyAdminsHouseBotRoster(opts: {
   }, "house-bot-roster");
 }
 
-/**
- * The holder's own notice for each stake placed from their account (PLAN §7). Bell and push, never email.
- * ⛔ It never says a person chose the stake (04:3282): a staff-chosen stake reads exactly like an automatic one.
- * ⛔ RG gate, as every holder notice has.
- */
-export async function notifyHouseBotOwnerStake(opts: {
-  userId: string; positionId: string; side: string; stakeTzs: number; marketTitle: string; at: string;
-}): Promise<StoredNotification | null> {
-  const { isLockedOut } = await import("./responsible-gambling");
-  if ((await isLockedOut(opts.userId)).locked) return null;
-  const { formatTzs } = await import("@/lib/utils");
-  const amount = formatTzs(opts.stakeTzs);
-  const side = await sideWords(opts.side);
-  return notify({
-    userId: opts.userId, kind: "HOUSE_BOT",
-    titleEn: `A liquidity stake was placed from your account · ${opts.at}`,
-    titleSw: `Dau la ukwasi limewekwa kutoka kwenye akaunti yako · ${opts.at}`,
-    titleZh: `已从您的账户下注一笔流动性投注 · ${opts.at}`,
-    bodyEn: `50pick placed ${amount} ${side.en} on ${opts.marketTitle} at ${opts.at} EAT. It settles to your wallet as normal.`,
-    bodySw: `50pick imeweka ${amount} ${side.sw} kwenye ${opts.marketTitle} saa ${opts.at} EAT. Litalipwa kwenye pochi yako kama kawaida.`,
-    bodyZh: `50pick 已于东非时间 ${opts.at} 在 ${opts.marketTitle} 下注 ${amount} ${side.zh}。将照常结算到您的钱包。`,
-    href: `/positions/${opts.positionId}`,
-  });
-}
-
-/** The holder's hourly summary (PLAN §7). Bell only — house-only notices send no email (ruling 17). */
-export async function notifyHouseBotOwnerHourSummary(opts: {
-  userId: string; count: number; stakeTzs: number; fromHH: string; toHH: string;
-}): Promise<StoredNotification | null> {
-  const { isLockedOut } = await import("./responsible-gambling");
-  if ((await isLockedOut(opts.userId)).locked) return null;
-  const { formatTzs } = await import("@/lib/utils");
-  const amount = formatTzs(opts.stakeTzs);
-  return notify({
-    userId: opts.userId, kind: "HOUSE_BOT",
-    titleEn: `${opts.count} liquidity stakes from your account · ${opts.fromHH}–${opts.toHH}`,
-    titleSw: `Dau ${opts.count} za ukwasi kutoka kwenye akaunti yako · ${opts.fromHH}–${opts.toHH}`,
-    titleZh: `您的账户有 ${opts.count} 笔流动性投注 · ${opts.fromHH}–${opts.toHH}`,
-    bodyEn: `50pick placed ${opts.count} liquidity stakes (${amount}) from your account between ${opts.fromHH} and ${opts.toHH} EAT.`,
-    bodySw: `50pick iliweka dau ${opts.count} za ukwasi (${amount}) kutoka kwenye akaunti yako kati ya saa ${opts.fromHH} na ${opts.toHH} EAT.`,
-    bodyZh: `东非时间 ${opts.fromHH} 至 ${opts.toHH}，50pick 从您的账户下注 ${opts.count} 笔流动性投注（${amount}）。`,
-    href: "/positions",
-  });
-}

@@ -591,13 +591,6 @@ export async function hourlyDuties(nowMs: number, control: StoredHouseBotControl
     code: "HOUR_SUMMARY_ADMINS", detail: { ...window, count: automatic, stakeTzs: automaticTzs, beyondCap: beyond, staffChosen },
   })) summaries++;
 
-  // Each holder: every stake from their account, staff-chosen included; 0 notices per hour = summary only.
-  for (const r of rows) {
-    const cap = control.holderNoticesPerHour;
-    const over = cap === 0 ? r.count : Math.max(0, r.count - cap);
-    if (over > 0 && await alertOnce(ALERT_KEY.summary("holder", r.houseBotId), alerts, {
-      code: "HOUR_SUMMARY_HOLDER", botId: r.houseBotId, detail: { ...window, count: r.count, stakeTzs: r.stakeTzs, beyondCap: over },
-    })) summaries++;
-  }
+  // ⛔ No holder summary: the holder is told nothing about stakes from their account (D19c, C4 ruling 149).
   return { summaries, pruned };
 }

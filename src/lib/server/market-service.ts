@@ -1715,8 +1715,8 @@ async function buyPositionInner(userId: string, opts: BuyOpts, ctx: BetContext):
     // Up & Down: no per-round receipt. The card already shows the stake, and forty
     // inbox entries an hour is noise, not information. Money records are unaffected —
     // the txn, ledger and audit rows above are already written.
-    // H8 · no bet receipt, push or email for a house stake: the engine sends the holder its own capped
-    // liquidity notices (PLAN §7), and a receipt per stake would flood the holder's inbox.
+    // H8 · no bet receipt, push or email for a house stake: a receipt per stake would flood the holder's inbox,
+    // and nothing about a house stake is sent to the holder at all (D19c, ruling 149).
     // SEAM:receipts
     if (ctx.kind === "house") {
       // nothing here — see the note above
@@ -2024,23 +2024,7 @@ export async function notifySelectionClosedForMarket(marketId: string): Promise<
   let bettorsNotified = 0;
   for (const userId of bettors) {
     bettorsNotified++;
-    const all = open.filter((p) => p.userId === userId);
-    // ⭐ HOUSE BOTS (04 A17 (h)): a holder's personal figures exclude 50pick's liquidity stakes, which get a
-    // labelled bell of their own and no email (04 F6). A player with no marked position is unchanged.
-    // SEAM:labelSelectionClosed
-    const houseMine = all.filter((p) => p.houseBotId != null);
-    if (houseMine.length > 0) {
-      const sum = (s: Side) => houseMine.filter((p) => p.side === s).reduce((acc, p) => acc + (payoutByPosition.get(p.id) ?? 0), 0);
-      notifySelectionClosed(userId, {
-        marketTitle: localizedText(m.titleEn, m.titleSw, m.titleZh), marketId: m.id,
-        payoutIfYes: sum("YES"), payoutIfNo: sum("NO"),
-        hasYes: houseMine.some((p) => p.side === "YES"), hasNo: houseMine.some((p) => p.side === "NO"),
-        houseStake: true,
-      }).catch(() => {});
-    }
-    // SEAM:labelSelectionClosedPersonal — the personal notice counts only the holder's own stakes.
-    const mine = all.filter((p) => p.houseBotId == null);
-    if (mine.length === 0) continue;
+    const mine = open.filter((p) => p.userId === userId);
     const ifYes = mine.filter((p) => p.side === "YES").reduce((s, p) => s + (payoutByPosition.get(p.id) ?? 0), 0);
     const ifNo = mine.filter((p) => p.side === "NO").reduce((s, p) => s + (payoutByPosition.get(p.id) ?? 0), 0);
 
@@ -2050,6 +2034,10 @@ export async function notifySelectionClosedForMarket(marketId: string): Promise<
       hasYes: mine.some((p) => p.side === "YES"),
       hasNo: mine.some((p) => p.side === "NO"),
     }).catch(() => {});
+    // ⭐ HOUSE BOTS (04 F6, ruling 144): one notice over every position, exactly as for any player; only the
+    // email is skipped when every position here is house-marked. It says nothing about it (D19c).
+    // SEAM:selectionClosedEmail
+    if (mine.every((p) => p.houseBotId != null)) continue;
     sendEmailToUser(userId, (email) => ({
       to: email,
       subject: `Betting closed — if you're right you receive ${formatTzs(Math.max(ifYes, ifNo))} · ${m.titleEn.slice(0, 40)}`,
@@ -2208,10 +2196,8 @@ export async function notifyVerdictRecordedForMarket(
       outcome,
       paysFrom,
       reversed: opts?.reversed === true,
-      // SEAM:labelVerdict — the holder of a liquidity stake here is told so (04 A17 (h)); a holder whose
-      // every position here is house-marked is not invited to object, by the SAME predicate
-      // `objectionEligibility` refuses with (all positions, any status).
-      houseStake: open.some((p) => p.userId === userId && p.houseBotId != null),
+      // SEAM:verdictStanding — a player whose every position here is house-marked is not invited to object,
+      // by the SAME predicate `objectionEligibility` refuses with (all positions, any status). Ruling 145.
       houseOnly: everyPosition.filter((p) => p.userId === userId).every((p) => p.houseBotId != null),
     }).catch(() => {});
   }
@@ -2817,7 +2803,7 @@ export async function repairOrphanedPositions(): Promise<{ repaired: number; ref
       amlReason: null,
       createdAt: p.settledAt, updatedAt: p.settledAt, completedAt: p.settledAt,
     });
-    notifyRefund(p.userId, { stake: p.stake, marketTitle: localizedText("Orphaned position"), marketId: "", positionId: p.id, houseStake: p.houseBotId != null });
+    notifyRefund(p.userId, { stake: p.stake, marketTitle: localizedText("Orphaned position"), marketId: "", positionId: p.id });
     audit({
       category: "WALLET",
       action: "position.orphan_refund",
@@ -2909,7 +2895,7 @@ export function exitWindowClosesAt(
 export async function cashOutValue(
   position: Pick<StoredPosition, "side" | "stake" | "placedAt" | "bonusStakeTzs" | "houseBotId">,
   market: Pick<StoredMarket, "id" | "yesPool" | "noPool" | "resolutionAt" | "selectionClosedAt" | "feeSnapshot">,
-): Promise<{ value: number; ratio: number; gross: number; fee: number; feeRate: number; inGracePeriod: boolean; sellable: boolean; reason?: "WINDOW_PASSED" | "TOO_SHORT" | "BONUS_FUNDED" | "HOUSE_POSITION" }> {
+): Promise<{ value: number; ratio: number; gross: number; fee: number; feeRate: number; inGracePeriod: boolean; sellable: boolean; reason?: "WINDOW_PASSED" | "TOO_SHORT" | "BONUS_FUNDED" }> {
   // The poll's OWN rates, not live config — a mid-poll retune must not change the
   // exit terms a player was promised when he bet.
   const cfg = ratesFor(market);
@@ -2944,7 +2930,7 @@ export async function cashOutValue(
   // ⛔ The docstring above already stated the contract — "the UI must show 'rides to
   // settlement', not a sell price". Keep the two in one place, here.
   const bonusFunded = (position.bonusStakeTzs ?? 0) > 0;
-  // ⭐ SANCTIONED CHANGE (d) (house bots, PLAN §3): a liquidity stake is never sellable — the house can
+  // ⭐ SANCTIONED CHANGE (d) (house bots, PLAN §3): a house-marked position is never sellable — the house can
   // never exit (FS-28), so the offer and `cashOutPosition`'s refusal (e) read the same fact. A player's
   // position carries no marker and gets exactly the output the golden grid pins.
   // SEAM:cashOutValue
@@ -2962,7 +2948,8 @@ export async function cashOutValue(
   // SEAM:cashOutReason
   const reason = sellable
     ? undefined
-    : housePosition ? "HOUSE_POSITION" as const
+    // D19c, ruling 147: a house-marked position reads as a closed exit, so no caller can tell it apart.
+    : housePosition ? "WINDOW_PASSED" as const
     : bonusFunded ? "BONUS_FUNDED" as const
     : !hadRunway ? "TOO_SHORT" as const
     : "WINDOW_PASSED" as const;
@@ -3009,12 +2996,13 @@ export async function cashOutPosition(
     if (p.userId !== userId) return { ok: false as const, error: "Not your position.", code: "INVALID" as const, reason: "not_your_position" as const };
     if (p.status !== "OPEN") return { ok: false as const, error: "Position is no longer open.", code: "INVALID" as const, reason: "position_not_open" as const };
 
-    // ⛔ SANCTIONED CHANGE (e) (house bots, PLAN §3, I7): a liquidity stake has no early exit. The holder
-    // may sell their own bets; a house stake placed from their account rides to settlement, and its
-    // payout lands in the same wallet. Read under both locks, from the marker, never from bot status.
+    // ⛔ SANCTIONED CHANGE (e) (house bots, PLAN §3, I7): a house stake has no early exit. The holder may sell
+    // their own bets; a house stake placed from their account rides to settlement, and its payout lands in the
+    // same wallet. Read under both locks, from the marker, never from bot status. D19c, ruling 147: the refusal
+    // is the closed exit window's, word for word, because the offer already shows that state for it.
     // SEAM:cashOutPosition
     if (p.houseBotId != null) {
-      return { ok: false as const, error: "Liquidity stakes can't be sold early.", code: "INVALID" as const, reason: "house_position_no_exit" as const };
+      return { ok: false as const, error: "The sell-out window for this bet has closed — it now rides to settlement. · Muda wa kuuza dau hili umefungwa — litaenda hadi malipo.", code: "SELECTION_CLOSED" as const, reason: "exit_window_closed" as const };
     }
 
     // Bonus-funded bets cannot be cashed out — cash-out pays into the REAL
@@ -3616,8 +3604,8 @@ export async function settleMarket(
       // player heard about was the one where their money came back unchanged.
       // The digest states refunds with their own count and figure.
       if (!perEventNotificationsSuppressed(m)) {
-        notifyOneSidedRefund(p.userId, { stake: p.stake, marketTitle: localizedText(m.titleEn, m.titleSw, m.titleZh), marketId: m.id, positionId: p.id, houseStake: p.houseBotId != null });
-        // SEAM:labelOneSided — a liquidity stake's outcome is in the bell with its label; no per-stake email (04 F6).
+        notifyOneSidedRefund(p.userId, { stake: p.stake, marketTitle: localizedText(m.titleEn, m.titleSw, m.titleZh), marketId: m.id, positionId: p.id });
+        // SEAM:emailOneSided — no per-stake email for a house-marked position (04 F6); the bell is any player's (ruling 143).
         if (p.houseBotId == null) sendEmailToUser(p.userId, (email) => ({
           to: email,
           subject: `Full refund · ${formatTzs(p.stake)} returned`,
@@ -3639,7 +3627,6 @@ export async function settleMarket(
           roundHref: updownRoundHref,
           pushTag: updownResultPushTag(m.id),
           positionId: p.id,
-          houseStake: p.houseBotId != null,
         });
       }
     }
@@ -3746,7 +3733,7 @@ export async function settleMarket(
       // outcome reaches the player or none does. The Up & Down arm writes a bell row and
       // pushes it from one copy; the long-form arm keeps its own emitter and its email.
       if (!perEventNotificationsSuppressed(m)) {
-        notifyRefund(p.userId, { stake: p.stake, marketTitle: localizedText(m.titleEn, m.titleSw, m.titleZh), marketId: m.id, positionId: p.id, houseStake: p.houseBotId != null });
+        notifyRefund(p.userId, { stake: p.stake, marketTitle: localizedText(m.titleEn, m.titleSw, m.titleZh), marketId: m.id, positionId: p.id });
       } else {
         notifyUpDownRefund(p.userId, {
           stake: p.stake,
@@ -3754,7 +3741,6 @@ export async function settleMarket(
           roundHref: updownRoundHref,
           pushTag: updownResultPushTag(m.id),
           positionId: p.id,
-          houseStake: p.houseBotId != null,
         });
       }
     }
@@ -3900,8 +3886,8 @@ export async function settleMarket(
           // E-101 · the bell entry opens THIS ticket. It used to open `/positions`, which is
           // the long-form list — right product here by luck (this branch is suppressed for
           // Up & Down), wrong row always.
-          notifyWin(p.userId, payout, localizedText(`${m.titleEn} · ${p.id}`, m.titleSw ? `${m.titleSw} · ${p.id}` : null, m.titleZh ? `${m.titleZh} · ${p.id}` : null), positionPermalinkHref(p.id), { houseStake: p.houseBotId != null });
-          // SEAM:labelWin — no per-stake email for a liquidity stake (04 F6); the bell carries the label.
+          notifyWin(p.userId, payout, localizedText(`${m.titleEn} · ${p.id}`, m.titleSw ? `${m.titleSw} · ${p.id}` : null, m.titleZh ? `${m.titleZh} · ${p.id}` : null), positionPermalinkHref(p.id));
+          // SEAM:emailWin — no per-stake email for a house-marked position (04 F6); the bell is any player's (ruling 143).
           if (p.houseBotId == null) sendEmailToUser(p.userId, (email) => ({
             to: email,
             subject: `You won · ${formatTzs(payout)}`,
@@ -3919,7 +3905,6 @@ export async function settleMarket(
             roundHref: updownRoundHref,
             pushTag: updownResultPushTag(m.id),
             positionId: p.id,
-            houseStake: p.houseBotId != null,
           });
         }
       } else {
@@ -3942,8 +3927,8 @@ export async function settleMarket(
         // loss clause carries its own count and its own figure and is never folded
         // into the net — asserted by `npm run test:updown-digest`.
         if (!perEventNotificationsSuppressed(m)) {
-          notifyLoss(p.userId, { stake: p.stake, marketTitle: localizedText(m.titleEn, m.titleSw, m.titleZh), marketId: m.id, positionId: p.id, houseStake: p.houseBotId != null });
-          // SEAM:labelLoss — no per-stake email for a liquidity stake (04 F6); the bell carries the label.
+          notifyLoss(p.userId, { stake: p.stake, marketTitle: localizedText(m.titleEn, m.titleSw, m.titleZh), marketId: m.id, positionId: p.id });
+          // SEAM:emailLoss — no per-stake email for a house-marked position (04 F6); the bell is any player's (ruling 143).
           if (p.houseBotId == null) sendEmailToUser(p.userId, (email) => ({
             to: email,
             subject: `Bet lost · ${formatTzs(p.stake)}`,
@@ -3969,7 +3954,6 @@ export async function settleMarket(
             roundHref: updownRoundHref,
             pushTag: updownResultPushTag(m.id),
             positionId: p.id,
-            houseStake: p.houseBotId != null,
           });
         }
       }
@@ -4470,8 +4454,8 @@ export async function emergencyVoidMarket(opts: { marketId: string; officerId: s
       if (bonusPart > 0) pendingBonusRefunds.push({ userId: p.userId, amount: bonusPart });
       // Player notice — BOTH channels, and both carry the admin's reason so the
       // player knows WHY their market was pulled and that they were made whole.
-      notifyMarketCancelled(p.userId, { stake: p.stake, marketTitle: localizedText(m.titleEn, m.titleSw, m.titleZh), marketId: m.id, reason, positionId: p.id, houseStake: p.houseBotId != null });
-      // SEAM:labelCancelled — no per-stake email for a liquidity stake (04 F6); the bell carries the label.
+      notifyMarketCancelled(p.userId, { stake: p.stake, marketTitle: localizedText(m.titleEn, m.titleSw, m.titleZh), marketId: m.id, reason, positionId: p.id });
+      // SEAM:emailCancelled — no per-stake email for a house-marked position (04 F6); the bell is any player's (ruling 143).
       if (p.houseBotId == null) sendEmailToUser(p.userId, (email) => ({
         to: email,
         subject: `Market cancelled — ${formatTzs(p.stake)} refunded`,

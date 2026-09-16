@@ -108,9 +108,11 @@ export async function objectionEligibility(
   const minePositions = (await listPositionsForMarket(marketId)).filter((p) => p.userId === userId);
   if (minePositions.length === 0) return { eligible: false, why: "NO_POSITION" };
   // ⛔ SANCTIONED CHANGE (f)/(n) (house bots, PLAN §3, 04 A18): standing to object comes from the
-  // player's OWN money. A liquidity stake 50pick placed from their account gives none — otherwise the
+  // player's OWN money. A house stake placed from their account gives none — otherwise the
   // holder could freeze a market's payout on the strength of a stake they did not choose. Own plus house
   // positions stay eligible; a player with no marker is untouched.
+  // D19c, ruling 146: `HOUSE_STAKE_ONLY` never leaves the server — the page shows `NOT_ELIGIBLE` and the
+  // filing path answers with its generic sentence.
   if (minePositions.every((p) => p.houseBotId != null)) return { eligible: false, why: "HOUSE_STAKE_ONLY" };
 
   // ONE objection per player per market — for the life of the market, not merely
@@ -156,7 +158,6 @@ export async function fileObjection(
         ALREADY_SETTLED: "This market has already paid out — contact support.",
         WINDOW_CLOSED: "The objection window for this market has closed.",
         NO_POSITION: "Only a player who staked on this market can object to its result.",
-        HOUSE_STAKE_ONLY: "A 50pick liquidity stake doesn't give standing to object — only your own stakes do.",
         ALREADY_OBJECTED: "You already have an objection open on this market.",
         ALREADY_DECIDED: "Your objection on this market has already been reviewed. Contact support if you still disagree.",
       };

@@ -164,8 +164,7 @@ export const EMAIL_TEMPLATES: readonly EmailSpec[] = [
   // withdrawal. One alert per submission past `KYC_REVIEW_SLA_HOURS`, never one per tick.
   { template: "kycReviewOverdueAdminHtml", trigger: "src/lib/server/notification-service.ts", audience: "officer", chrome: "royal", money: false },
   // ── House bots (build commit 3) ───────────────────────────────────────────
-  // The holder's designated / removed / reverified letter — no figure, so not money, and royal.
-  { template: "houseBotOwnerHtml",         trigger: "src/lib/server/notification-service.ts", audience: "player",  chrome: "royal", money: false },
+  // Admin letters only — the holder receives no house-bot email (D19c, C4 ruling 149).
   { template: "houseBotErasureBlockedAdminHtml", trigger: "src/lib/server/notification-service.ts", audience: "officer", chrome: "royal", money: false },
   // ── House bots (build commit 4, step 9) ───────────────────────────────────
   // One parametrised letter behind every admin house alert that emails: pause, switch, money, alert, roster and
@@ -197,7 +196,6 @@ export const NO_CTA_TEMPLATES: readonly string[] = [
   "agentFeeRefundedHtml",      // telling someone their own money came back is information, not solicitation
   "agentDeactivatedHtml",      // a paused partnership must not link into the product; support is the route
   "agentRevokedHtml",          // the partnership has ended; support is the route
-  "houseBotOwnerHtml",         // a consent letter ("change your password if you did not agree") — a button is a phishing shape
 ];
 
 /* ══ IN-APP ═════════════════════════════════════════════════════════════════ */
@@ -334,8 +332,7 @@ export const NOTIFICATION_EMITTERS: readonly EmitterSpec[] = [
   // the same queue, and the kind is what routes an officer's bell tint to it.
   { fn: "notifyAdminsKycReviewOverdue", kind: "KYC",              audience: "officer" },
   // ── House bots (build commit 3) ─────────────────────────────────────────
-  // The holder's notices (bell + push; designated, removed and reverified also email). Never SMS (04 C13).
-  { fn: "notifyHouseBotOwner",         kind: "HOUSE_BOT",         audience: "player" },
+  // ⛔ No holder notices: every HOUSE_BOT row is an officer's (D19c, C4 ruling 149).
   // An erasure refused while the account is still a house bot (04 R6) — to `houseBotAlertRecipients()`.
   { fn: "notifyAdminsHouseBotErasureBlocked", kind: "HOUSE_BOT",  audience: "officer" },
   // ── House bots (build commit 4, step 9): the engine's voice ──────────────
@@ -349,9 +346,6 @@ export const NOTIFICATION_EMITTERS: readonly EmitterSpec[] = [
   { fn: "notifyAdminsHouseBotMoneyEvent",  kind: "HOUSE_BOT",     audience: "officer" },
   { fn: "notifyAdminsHouseBotAlert",       kind: "HOUSE_BOT",     audience: "officer" },
   { fn: "notifyAdminsHouseBotRoster",      kind: "HOUSE_BOT",     audience: "officer" },
-  // The holder's own two: one per stake, and the hour's summary. Bell (+ push), never email, never SMS.
-  { fn: "notifyHouseBotOwnerStake",        kind: "HOUSE_BOT",     audience: "player" },
-  { fn: "notifyHouseBotOwnerHourSummary",  kind: "HOUSE_BOT",     audience: "player" },
 ];
 
 /**
@@ -362,9 +356,8 @@ export const NOTIFICATION_EMITTERS: readonly EmitterSpec[] = [
  *   channel to the emitter.
  * - `email: "never"` means no letter; `"template-only"` means only through a registered template, so a new letter has
  *   to pass `test:cert-c1`; `"allowed"` leaves it to the emitter.
- * - HOUSE_BOT is `sms: "never"` (04 C13 — a liquidity notice never reaches a phone) and `email: "template-only"`
- *   (ruling 17: house-only notices send no letter of their own; the holder's three letters and the admin letter are
- *   registered templates).
+ * - HOUSE_BOT is `sms: "never"` (04 C13) and `email: "template-only"` (ruling 17: only the registered admin letters;
+ *   the holder receives no house-bot bell or letter at all — D19c, C4 ruling 149).
  *
  * ⛔ `satisfies Record<NotificationKind, …>` is what makes a 19th kind impossible to ship without a row.
  */

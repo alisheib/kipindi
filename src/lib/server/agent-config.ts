@@ -37,15 +37,10 @@ import { defineConfig } from "./define-config";
 
 const AGENT_CONFIG_KEY = "agent.config";
 
-/**
- * 🔴 THE HARD CEILING, AS A RULE RATHER THAN A SETTING.
- *
- * `RULES.md` §2.10 states it, this constant enforces it, and `validate()` is the only place
- * that reads it. It is exported so a guard can assert the rule and the value cannot drift
- * apart — ⛔ never so a surface can render it. A surface renders `cfg.maxCommissionPct`,
- * which is what an officer is actually held to.
- */
-export const PLATFORM_MAX_COMMISSION_PCT = 40;
+// 🔴 THE HARD CEILING (RULES.md §2.10) lives in the pure `../agent-commission-rule.ts`, so client code can read it
+// without pulling this module's Prisma import into the browser (C4 ruling 151). Re-exported for server callers.
+import { PLATFORM_MAX_COMMISSION_PCT } from "../agent-commission-rule";
+export { PLATFORM_MAX_COMMISSION_PCT };
 
 /**
  * VAT treatment of the registration fee.

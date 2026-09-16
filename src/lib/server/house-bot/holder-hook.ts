@@ -31,7 +31,6 @@ import {
 import { withLock } from "../locks";
 import { db } from "../store";
 import { houseAtomic, houseBotAlertOnceStore, houseBotEventStore, houseBotStore, type StoredHouseBot } from "../house-bot-dal";
-import type { HouseBotOwnerNotice } from "../notification-service";
 import { readBotAndHolder, type BotAndHolder } from "./control";
 import { voidHouseConsent } from "./designation";
 import { engineAudit, stopBot, type EngineAlerts } from "./outcomes";
@@ -42,10 +41,10 @@ export type HolderEvent =
   | "LOSS_LIMIT_SET" | "SUSPENDED" | "RESTORED" | "WALLET_FREEZE" | "IDENTITY_REFUSED" | "IDENTITY_REOPENED" | "ROLE_CHANGED"
   | "ERASURE_REQUEST" | "LOCKED_OUT" | "EMAIL_CHANGED" | "TWO_FA_ON" | "TWO_FA_OFF";
 
-/** The holder's own notices this module asks for; the last three are step 9's new kinds (ruling 132). */
-export type HolderNoticeKind = Extract<HouseBotOwnerNotice, "password_paused" | "removed"> | "password_temp" | "role_changed" | "erasure_request";
-
-/** Who is told (02 §2.3, C8, C13). Step 9 supplies the emitters; cases inject recorders. */
+/**
+ * Who is told (02 §2.3, C8, C13). Step 9 supplies the emitters; cases inject recorders.
+ * ⛔ ADMINS ONLY (D19c, C4 ruling 149): the holder is never told anything about the bot on their account.
+ */
 export type HolderAlerts = {
   /**
    * A1: the holder's password changed. `again` is false when THIS change stopped a running bot (02:106's body, with
@@ -67,8 +66,6 @@ export type HolderAlerts = {
   officerSetEmail(bot: StoredHouseBot): Promise<void>;
   /** C8: the holder's break ended; their permission must be confirmed again before Start. */
   breakEnded(bot: StoredHouseBot, untilIso: string): Promise<void>;
-  /** The holder's own notice (`notifyHouseBotOwner`, which keeps its responsible-gambling gate). */
-  holderNotice(userId: string, notice: HolderNoticeKind): Promise<void>;
 };
 
 export type HolderApplied = {
@@ -83,11 +80,6 @@ type FoundRead = Extract<BotAndHolder, { found: true }>;
 const VOID_CAUSES: ReadonlySet<string> = new Set(["SELF_EXCLUDED", "COOLING_OFF", "IDENTITY_REFUSED", "HOLDER_ERASURE_REQUEST"]);
 /** Causes whose clearing has its own path and no "cleared" bell: a break ends with C8's bell; a re-verify is an officer's own act. */
 const CLEARED_WITHOUT_BELL: ReadonlySet<string> = new Set(["COOLING_OFF", "CONSENT_VOID", "PASSWORD_CHANGED"]);
-/** The holder notice a newly seen cause sends (A2 holder column); PASSWORD_CHANGED is decided with its own record. */
-const NOTICE_FOR_CAUSE: Readonly<Partial<Record<HolderCauseCode, HolderNoticeKind>>> = {
-  ROLE_CHANGED: "role_changed",
-  HOLDER_ERASURE_REQUEST: "erasure_request",
-};
 
 const errMessage = (e: unknown) => String((e as Error)?.message ?? e).replace(/\s+/g, " ").slice(0, 300);
 
@@ -132,10 +124,6 @@ function stopChannel(alerts: HolderAlerts, password: { key: string; method: Cred
   };
 }
 
-async function notice(alerts: HolderAlerts, userId: string, kind: HolderNoticeKind): Promise<void> {
-  await safeSend(`holder ${kind}`, () => alerts.holderNotice(userId, kind));
-}
-
 const sameInstant = (a: string | null | undefined, b: string | null | undefined): boolean =>
   a == null || b == null ? a == null && b == null : Date.parse(a) === Date.parse(b);
 
@@ -161,7 +149,6 @@ export async function applyHolderCauses(read: FoundRead, o: { detectedBy: "HOOK"
   if (causes.some((c) => c.code === "ACCOUNT_CLOSED")) {
     if (await stopBot(bot.id, { to: "REMOVED", cause: "ACCOUNT_CLOSED" }, stopChannel(o.alerts, null))) {
       out.kind = "removed";
-      await notice(o.alerts, bot.userId, "removed");
     }
     return out;
   }
@@ -203,15 +190,7 @@ export async function applyHolderCauses(read: FoundRead, o: { detectedBy: "HOOK"
       if (first.code === "PASSWORD_CHANGED") {
         eventWritten.add("PASSWORD_CHANGED");
         bellSent.add("PASSWORD_CHANGED");
-        await notice(o.alerts, bot.userId, first.method === "OFFICER_TEMP" ? "password_temp" : "password_paused");
       }
-    }
-  }
-  if (stoppedNow) {
-    // A newly stopped bot's holder hears about a role change or an erasure request once, here (A2 holder column).
-    for (const c of causes) {
-      const kind = NOTICE_FOR_CAUSE[c.code];
-      if (kind) await notice(o.alerts, bot.userId, kind);
     }
   }
 
@@ -256,7 +235,6 @@ export async function applyHolderCauses(read: FoundRead, o: { detectedBy: "HOOK"
         } else {
           await safeSend("A2", () => o.alerts.passwordChanged(written!.stamped, { method: pw.method, changedAt: pw.changedAt }));
         }
-        if (pw.method === "OFFICER_TEMP") await notice(o.alerts, bot.userId, "password_temp");
       }
     }
   }
@@ -280,8 +258,6 @@ export async function applyHolderCauses(read: FoundRead, o: { detectedBy: "HOOK"
       if (bellSent.has(c.code) || recorded.silent.has(c.code)) continue;
       // The key names the event when this step wrote one, else the apply's instant; the cause-set rewrite is the dedupe.
       await claimThen(`bot:${bot.id}:CAUSE:${c.code}:${recorded.events.get(c.code) ?? appliedAtIso}`, "cause added", () => o.alerts.causeAdded(at, c));
-      const kind = NOTICE_FOR_CAUSE[c.code];
-      if (kind) await notice(o.alerts, bot.userId, kind);
     }
     const clearedAtIso = appliedAtIso;
     for (const code of recorded.cleared) {

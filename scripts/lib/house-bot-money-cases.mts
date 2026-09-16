@@ -65,9 +65,13 @@ section("§1 · a house stake places once, marked on every row");
 
   // No early exit, on the offer and on the refusal (sanctioned changes (d) and (e)).
   const co = await w.svc.cashOutValue(pos, m);
-  ok("1.11 · cashOutValue offers no sale on a house position (HOUSE_POSITION)", co.sellable === false && co.reason === "HOUSE_POSITION", JSON.stringify(co));
+  // D19c, ruling 147: the offer and the refusal read exactly as a closed exit does — nothing names the house.
+  ok("1.11 · cashOutValue offers no sale on a house position, as a closed window (WINDOW_PASSED)", co.sellable === false && co.reason === "WINDOW_PASSED", JSON.stringify(co));
   const sell = await w.svc.cashOutPosition(b.userId, pos.id);
-  ok("1.12 · cashOutPosition refuses house_position_no_exit", sell.ok === false && sell.reason === "house_position_no_exit", show(sell));
+  ok("1.12 · cashOutPosition refuses with the closed exit window's reason and code", sell.ok === false && sell.reason === "exit_window_closed" && sell.code === "SELECTION_CLOSED", show(sell));
+  ok("1.12b · …in the exit window's own words, byte for byte, with no house word",
+    sell.ok === false && sell.error === "The sell-out window for this bet has closed — it now rides to settlement. · Muda wa kuuza dau hili umefungwa — litaenda hadi malipo."
+      && !/liquidity|ukwasi|house|50pick/i.test(sell.error), sell.ok === false ? sell.error : "ok");
   ok("1.13 · …and the position stays OPEN", (await w.mdal.positionStore.get(pos.id)).status === "OPEN");
 }
 
@@ -361,10 +365,19 @@ section("§6 · (b) a reused key refuses instead of replaying another account's 
   ok("6.3 · CONTROL · A's own retry still replays, now marked replayed: true (j)", ra2.ok === true && ra2.data?.replayed === true && ra2.data?.positionId === ra.data.positionId, show(ra2));
 }
 
-// ═══ §8 · outcome notices name a liquidity stake (04 A17 (h)) ═══════════════════════════════
-section("§8 · the liquidity label on outcome notices");
+// ═══ §8 · D19c: a holder's outcome notice is any player's notice (C4 rulings 143–145) ════════════
+// Owner ruling D19 (2026-09-16): nothing about house bots reaches a player, the holder included. These cases
+// replaced the liquidity-label cases: they prove the ABSENCE, and each one would fail if a label came back.
+section("§8 · no house wording on outcome notices, in any language");
 {
-  const LABEL = "50pick liquidity stake";
+  /** Every house word a notice must not carry, in the three locales (the vocabulary the bundle scan uses). */
+  const HOUSE_WORDS = /liquidity|ukwasi|流动性|house|nyumba|\bboti\b|机器人|50pick/i;
+  /** The fixture market's own titles are operator data, not house wording — they are taken out before the test. */
+  const FIXTURE_TITLES = ["House seam poll", "Soko la jaribio"];
+  const ours = (v: unknown) => FIXTURE_TITLES.reduce((acc, t) => acc.split(t).join(""), String(v ?? ""));
+  const leaks = (n: Any): string[] => n == null ? ["no row"] : ["titleEn", "titleSw", "titleZh", "bodyEn", "bodySw", "bodyZh"]
+    .filter((f) => HOUSE_WORDS.test(ours(n[f]))).map((f) => `${f}: ${n[f]}`);
+  const j = (x: Any) => JSON.stringify(x);
   const rows = async (userId: string, kind?: string) => ((await w.db.notification.findByUser(userId, 200)) as Any[]).filter((n) => !kind || n.kind === kind);
   // WIN on a house stake, LOSS on the player's.
   const { market, player } = await pollWithLockedNo(10_000);
@@ -373,43 +386,38 @@ section("§8 · the liquidity label on outcome notices");
   await w.svc.resolveMarket({ marketId: market.id, outcome: "YES", officerId: OFFICER });
   await w.svc.settleMarket(market.id, { force: true });
   await sleep(500);
-  const win = (await rows(b.userId, "WIN")).find((n) => n.bodyEn.includes(r.data.positionId) || n.titleEn.includes("won"));
-  ok("8.1 · the holder's WIN notice for a house stake carries the label in all three languages",
-    !!win && win.bodyEn.includes(LABEL) && win.bodySw.includes("Dau la ukwasi la 50pick") && win.bodyZh.includes("50pick 流动性投注"), win?.bodyEn ?? "no WIN row");
+  const m1 = await w.svc.getMarket(market.id);
+  const win = (await rows(b.userId, "WIN")).find((n) => n.bodyEn.includes(r.data.positionId));
+  ok("8.1 · the holder's WIN notice for a house stake exists and carries no house word in any language", !!win && leaks(win).length === 0, j(leaks(win)));
+  ok("8.2 · …and its English body is the plain template, byte for byte",
+    !!win && win.bodyEn === `${m1.titleEn} · ${r.data.positionId} paid out. Tap to view.`, win?.bodyEn ?? "no WIN row");
+  ok("8.3 · …and its Swahili and Chinese bodies end exactly as any player's do",
+    !!win && win.bodySw.endsWith(`· ${r.data.positionId} kimelipa. Bonyeza kuona.`) && win.bodyZh.endsWith(`· ${r.data.positionId} 已赔付。点击查看。`), `${win?.bodySw} | ${win?.bodyZh}`);
   const loss = (await rows(player, "LOSS"))[0];
-  ok("8.2 · CONTROL · the player's LOSS notice on the same market carries no label", !!loss && !loss.bodyEn.includes(LABEL), loss?.bodyEn ?? "no LOSS row");
+  ok("8.4 · CONTROL · the player's LOSS notice on the same market exists and carries no house word", !!loss && leaks(loss).length === 0, loss?.bodyEn ?? "no LOSS row");
 
-  // Selection closed: a holder with a house stake AND an own stake gets two notices — the house figures
-  // labelled, and personal figures that exclude the house money.
+  // Selection closed: a holder with a house stake AND an own stake gets ONE notice over both, like any hedged player.
   const m2 = await w.poll({ graceMin: 0 });
   const h = await w.bot();
   const ro = await w.place(h, await w.intent(h, m2.id, { kind: "OPENER", side: "YES", stakeTzs: 3_000 }));
   const other = await w.user({ balance: 100_000 });
   await w.svc.buyPosition(other, { marketId: m2.id, side: "NO", stake: 4_000, idempotencyKey: crypto.randomUUID() });
   const own = await w.svc.buyPosition(h.userId, { marketId: m2.id, side: "NO", stake: 2_000, idempotencyKey: crypto.randomUUID() });
-  ok("8.3 · fixture · a holder with a house YES 3,000 and their own NO 2,000", ro.ok === true && own.ok === true, `${show(ro)} · ${show(own)}`);
+  ok("8.5 · fixture · a holder with a house YES 3,000 and their own NO 2,000", ro.ok === true && own.ok === true, `${show(ro)} · ${show(own)}`);
   await w.mdal.marketStore.stamp(m2.id, { selectionClosedAt: new Date(Date.now() - 1_000).toISOString() });
   const sc = await w.svc.notifySelectionClosedForMarket(m2.id);
   await sleep(500);
   const closed = await rows(h.userId, "SELECTION_CLOSED");
-  const houseNotice = closed.filter((n) => n.bodyEn.includes(LABEL));
-  const personal = closed.filter((n) => !n.bodyEn.includes(LABEL));
-  ok("8.4 · selection closed → one labelled notice for the house stake and one personal notice", sc.notified === true && houseNotice.length === 1 && personal.length === 1,
+  ok("8.6 · selection closed → exactly ONE notice for the holder, naming BOTH figures (one book, as for any hedged player)",
+    sc.notified === true && closed.length === 1 && closed[0].bodyEn.includes("If YES wins") && closed[0].bodyEn.includes("If NO wins"),
     `${closed.length} row(s): ${closed.map((n) => n.bodyEn).join(" | ")}`);
-  ok("8.5 · …the labelled one names only the YES (house) figure; the personal one only the NO (own) figure",
-    houseNotice[0]?.bodyEn.includes("If YES wins") && !houseNotice[0]?.bodyEn.includes("If NO wins")
-      && personal[0]?.bodyEn.includes("If NO wins") && !personal[0]?.bodyEn.includes("If YES wins"),
-    `${houseNotice[0]?.bodyEn} | ${personal[0]?.bodyEn}`);
+  ok("8.7 · …with the both-sides title and no house word in any language",
+    closed.length === 1 && closed[0].titleEn === "Betting closed — your payouts are set" && leaks(closed[0]).length === 0, j({ title: closed[0]?.titleEn, leaks: leaks(closed[0]) }));
   const otherClosed = await rows(other, "SELECTION_CLOSED");
-  ok("8.6 · CONTROL · a player with no house stake gets exactly one unlabelled notice", otherClosed.length === 1 && !otherClosed[0].bodyEn.includes(LABEL));
-  // UX-2: a lock screen truncates the body, so the house notice names itself in the TITLE, in all three languages.
-  ok("8.7 · the labelled selection-closed notice carries the label in its title (en/sw/zh); the personal one does not",
-    !!houseNotice[0] && houseNotice[0].titleEn.startsWith("50pick liquidity stake · ") && houseNotice[0].titleSw.startsWith("Dau la ukwasi la 50pick · ")
-      && houseNotice[0].titleZh.startsWith("50pick 流动性投注 · ") && !!personal[0] && !personal[0].titleEn.includes(LABEL),
-    `${houseNotice[0]?.titleEn} | ${personal[0]?.titleEn}`);
+  ok("8.8 · CONTROL · a player with no house stake gets exactly one notice with no house word", otherClosed.length === 1 && leaks(otherClosed[0]).length === 0);
 
-  // UX-1: the verdict notice. A holder whose every stake here is a liquidity stake is not invited to object
-  // (objecting would refuse HOUSE_STAKE_ONLY); a mixed holder and a player keep the invitation.
+  // The verdict notice. A holder whose every stake here is house-marked is not invited to object (objecting would be
+  // refused); a mixed holder and a player keep the invitation. Nobody's notice names why (ruling 145).
   const OBJECT = { en: "object before then", sw: "pinga kabla ya muda huo", zh: "提出异议" };
   const invites = (n: Any) => n.bodyEn.includes(OBJECT.en) && n.bodySw.includes(OBJECT.sw) && n.bodyZh.includes(OBJECT.zh);
   const invitesNone = (n: Any) => !n.bodyEn.includes(OBJECT.en) && !n.bodySw.includes(OBJECT.sw) && !n.bodyZh.includes(OBJECT.zh);
@@ -425,12 +433,15 @@ section("§8 · the liquidity label on outcome notices");
   await sleep(500);
   const verdictOf = async (userId: string, marketId: string) => (await rows(userId, "VERDICT")).find((n) => n.href?.includes(marketId));
   const vHouse = await verdictOf(hOnly.userId, v1.market.id), vMixed = await verdictOf(hMixed.userId, v2.market.id), vPlayer = await verdictOf(v1.player, v1.market.id);
-  ok("8.8 · fixture · a house-only holder, a mixed holder and a player each got a verdict notice",
+  ok("8.9 · fixture · a house-only holder, a mixed holder and a player each got a verdict notice",
     rv1.ok === true && rv2.ok === true && ownV.ok === true && !!vHouse && !!vMixed && !!vPlayer, `${show(rv1)} · ${show(rv2)} · ${show(ownV)} · ${!!vHouse}/${!!vMixed}/${!!vPlayer}`);
-  ok("8.9 · the house-only holder's verdict notice has the label and NO objection invitation in any language",
-    !!vHouse && invitesNone(vHouse) && vHouse.bodyEn.includes(LABEL), vHouse?.bodyEn ?? "no row");
-  ok("8.10 · the mixed holder keeps the invitation (and the label) in all three languages", !!vMixed && invites(vMixed) && vMixed.bodyEn.includes(LABEL), vMixed?.bodyEn ?? "no row");
-  ok("8.11 · CONTROL · the player keeps the invitation and has no label", !!vPlayer && invites(vPlayer) && !vPlayer.bodyEn.includes(LABEL), vPlayer?.bodyEn ?? "no row");
+  ok("8.10 · the house-only holder's verdict notice has NO objection invitation and no house word in any language",
+    !!vHouse && invitesNone(vHouse) && leaks(vHouse).length === 0, j({ body: vHouse?.bodyEn, leaks: vHouse ? leaks(vHouse) : null }));
+  ok("8.11 · the mixed holder keeps the invitation in all three languages, with no house word", !!vMixed && invites(vMixed) && leaks(vMixed).length === 0, vMixed?.bodyEn ?? "no row");
+  ok("8.12 · CONTROL · the player keeps the invitation and has no house word", !!vPlayer && invites(vPlayer) && leaks(vPlayer).length === 0, vPlayer?.bodyEn ?? "no row");
+  ok("8.13 · CONTROL · the mixed holder's and the player's verdict bodies are the same sentence apart from the title",
+    !!vMixed && !!vPlayer && vMixed.bodyEn.slice(vMixed.bodyEn.indexOf(" · ")) === vPlayer.bodyEn.slice(vPlayer.bodyEn.indexOf(" · ")),
+    `${vMixed?.bodyEn} | ${vPlayer?.bodyEn}`);
 }
 
 // ═══ §10 · orphan repair refunds a house stake with the marker (MC-3) — memory only ═══════════════

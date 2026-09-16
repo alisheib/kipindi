@@ -222,7 +222,8 @@ export default async function MarketDetail({
       objectionState = elig.eligible
         ? { state: "ELIGIBLE" }
         : elig.why === "NO_POSITION" ? { state: "NO_POSITION" }
-        : elig.why === "HOUSE_STAKE_ONLY" ? { state: "HOUSE_STAKE_ONLY" }
+        // D19c, ruling 146: the server's reason stays on the server; the panel gets a neutral state.
+        : elig.why === "HOUSE_STAKE_ONLY" ? { state: "NOT_ELIGIBLE" }
         : elig.why === "WINDOW_CLOSED" ? { state: "WINDOW_CLOSED" }
         : elig.why === "ALREADY_SETTLED" ? { state: "ALREADY_SETTLED" }
         : { state: "SIGNED_OUT" };

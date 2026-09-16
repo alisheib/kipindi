@@ -110,29 +110,10 @@ export type FailureReason =
   | "market_settled"
   | "cashout_value_zero"
   | "exit_window_closed"
-  // ── HOUSE BOTS · the money seam (build commit 2, PLAN §3, 04 A12/N1 §3) ──────────
-  /** Sanctioned change (b)/(c): an idempotency key that belongs to another account's bet, or a player
-   *  request carrying the reserved house prefix. The only house-era reason a player can meet on a bet. */
+  /** Sanctioned change (b)/(c): an idempotency key that belongs to another account's bet, or a request
+   *  carrying a reserved prefix. ⛔ The house seam's own refusals are NOT player reasons and never live in
+   *  this client-bundled file (C4 ruling 148, D19): they are `HouseSeamReason` in `house-bot/bet-path.ts`. */
   | "idempotency_key_conflict"
-  /** Sanctioned change (e): the holder tried to sell a liquidity stake. House stakes never exit early. */
-  | "house_position_no_exit"
-  | "house_key_mismatch"
-  | "house_gate_unreadable"
-  | "house_disabled"
-  | "house_bot_inactive"
-  | "house_account_ineligible"
-  | "house_consent_stale"
-  | "house_cash_only"
-  | "house_market_conflict"
-  | "house_cap_reached"
-  | "house_trigger_gone"
-  | "house_condition_gone"
-  | "house_intent_superseded"
-  | "house_product_not_allowed"
-  | "house_round_locked"
-  | "house_info_blackout"
-  | "house_intent_stale"
-  | "house_counterparty_concentration"
   // ── B2 · a WARNING shown before confirming, not a refusal ─────────────────
   | "bonus_wagering_one_side"
   // ── C2 SECOND TRANCHE · wallet, KYC, auth, proposals, objections ──────────
@@ -319,30 +300,8 @@ export const REASONS: Record<FailureReason, ReasonSpec> = {
   cashout_value_zero:   { severity: "warning", channel: "toast",  key: "failCashoutValueZero" },
   exit_window_closed:   { severity: "info",    channel: "toast",  key: "failExitWindowClosed" },
 
-  // ── HOUSE BOTS · the money seam (build commit 2) ──────────────────────────────────────────
-  // ⭐ Two of these reach a player: a request id that belongs to another bet (nothing moved, they can
-  // retry → warning) and a liquidity stake the holder tried to sell (nothing is wrong → info). The rest
-  // are read by the house engine's mapper and the console, never by a player surface — they are
-  // registered so the seam cannot emit a reason without copy in all three languages (PLAN §3).
+  // A request id that belongs to another bet: nothing moved, the player can retry → warning.
   idempotency_key_conflict:         { severity: "warning", channel: "toast", key: "failIdempotencyKeyConflict" },
-  house_position_no_exit:           { severity: "info",    channel: "toast", key: "failHousePositionNoExit" },
-  house_key_mismatch:               { severity: "error",   channel: "toast", key: "failHouseKeyMismatch" },
-  house_gate_unreadable:            { severity: "warning", channel: "toast", key: "failHouseGateUnreadable" },
-  house_disabled:                   { severity: "info",    channel: "toast", key: "failHouseDisabled" },
-  house_bot_inactive:               { severity: "info",    channel: "toast", key: "failHouseBotInactive" },
-  house_account_ineligible:         { severity: "error",   channel: "toast", key: "failHouseAccountIneligible" },
-  house_consent_stale:              { severity: "error",   channel: "toast", key: "failHouseConsentStale" },
-  house_cash_only:                  { severity: "warning", channel: "toast", key: "failHouseCashOnly" },
-  house_market_conflict:            { severity: "info",    channel: "toast", key: "failHouseMarketConflict" },
-  house_cap_reached:                { severity: "info",    channel: "toast", key: "failHouseCapReached" },
-  house_trigger_gone:               { severity: "info",    channel: "toast", key: "failHouseTriggerGone" },
-  house_condition_gone:             { severity: "info",    channel: "toast", key: "failHouseConditionGone" },
-  house_intent_superseded:          { severity: "info",    channel: "toast", key: "failHouseIntentSuperseded" },
-  house_product_not_allowed:        { severity: "error",   channel: "toast", key: "failHouseProductNotAllowed" },
-  house_round_locked:               { severity: "info",    channel: "toast", key: "failHouseRoundLocked" },
-  house_info_blackout:              { severity: "info",    channel: "toast", key: "failHouseInfoBlackout" },
-  house_intent_stale:               { severity: "info",    channel: "toast", key: "failHouseIntentStale" },
-  house_counterparty_concentration: { severity: "info",    channel: "toast", key: "failHouseCounterpartyConcentration" },
 
   bonus_wagering_one_side: { severity: "warning", channel: "inline", key: "failBonusWageringOneSide", needs: ["remaining"] },
 
@@ -593,11 +552,11 @@ export interface FailureDetail {
   limitMin?: number;
   /** `E-235` · how long this play session has actually run, in minutes. */
   playedMin?: number;
-  /** House bots · WHICH cap a `house_cap_reached` refusal hit (a `CapCode` in `house-bot/constants.ts`). */
+  /** Server-only (house seam): WHICH cap a refusal hit (a `CapCode` in `house-bot/constants.ts`). */
   cap?: string;
-  /** House bots · WHICH conflict a `house_market_conflict` refusal names (a `ConflictCode`). */
+  /** Server-only (house seam): WHICH conflict a refusal names (a `ConflictCode`). */
   conflict?: string;
-  /** House bots · the condition a `house_condition_gone` refusal lost: OPENER, THIN, COUNTER or FILL. */
+  /** Server-only (house seam): the condition a refusal lost: OPENER, THIN, COUNTER or FILL. */
   condition?: string;
 }
 

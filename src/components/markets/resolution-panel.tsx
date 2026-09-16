@@ -94,7 +94,7 @@ type Props = {
     | { state: "OPEN"; objectionId: string }
     | { state: "NO_POSITION" }
     /** House bots (04 A18 (n)): the viewer's only stakes here are liquidity stakes 50pick placed. */
-    | { state: "HOUSE_STAKE_ONLY" }
+    | { state: "NOT_ELIGIBLE" }
     | { state: "WINDOW_CLOSED" }
     | { state: "ALREADY_SETTLED" }
     | { state: "SIGNED_OUT" };
@@ -289,8 +289,8 @@ export function ResolutionPanel({
           <ObjectionDialog marketId={marketId} />
         ) : objection?.state === "NO_POSITION" ? (
           <p className="text-body-sm leading-relaxed text-text-subtle">{t.market.objOnlyStakeholders}</p>
-        ) : objection?.state === "HOUSE_STAKE_ONLY" ? (
-          <p className="text-body-sm leading-relaxed text-text-subtle">{t.market.objHouseStakeOnly}</p>
+        ) : objection?.state === "NOT_ELIGIBLE" ? (
+          <p className="text-body-sm leading-relaxed text-text-subtle">{t.market.objNotEligible}</p>
         ) : objection?.state === "WINDOW_CLOSED" ? (
           <p className="text-body-sm leading-relaxed text-text-subtle">{t.market.objWindowClosed}</p>
         ) : objection?.state === "ALREADY_SETTLED" ? (
