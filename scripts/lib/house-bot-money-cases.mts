@@ -383,7 +383,7 @@ section("§8 · no house wording on outcome notices, in any language");
   /** The fixture market's own titles are operator data, not house wording — they are taken out before the test. */
   const FIXTURE_TITLES = ["House seam poll", "Soko la jaribio"];
   const ours = (v: unknown) => FIXTURE_TITLES.reduce((acc, t) => acc.split(t).join(""), String(v ?? ""));
-  const leaks = (n: Any): string[] => n == null ? ["no row"] : ["titleEn", "titleSw", "titleZh", "bodyEn", "bodySw", "bodyZh"]
+  const leaks = (n: Any): string[] => n == null ? ["no row"] : ["titleEn", "titleSw", "titleZh", "bodyEn", "bodySw", "bodyZh", "href"]
     .filter((f) => HOUSE_WORDS.test(ours(n[f]))).map((f) => `${f}: ${n[f]}`);
   const j = (x: Any) => JSON.stringify(x);
   const rows = async (userId: string, kind?: string) => ((await w.db.notification.findByUser(userId, 200)) as Any[]).filter((n) => !kind || n.kind === kind);
@@ -397,8 +397,9 @@ section("§8 · no house wording on outcome notices, in any language");
   const m1 = await w.svc.getMarket(market.id);
   const win = (await rows(b.userId, "WIN")).find((n) => n.bodyEn.includes(r.data.positionId));
   ok("8.1 · the holder's WIN notice for a house stake exists and carries no house word in any language", !!win && leaks(win).length === 0, j(leaks(win)));
-  ok("8.2 · …and its English body is the plain template, byte for byte",
-    !!win && win.bodyEn === `${m1.titleEn} · ${r.data.positionId} paid out. Tap to view.`, win?.bodyEn ?? "no WIN row");
+  // The LINK is as visible as the words (a mutation that labelled only the href passed a body-only check — measured).
+  ok("8.2 · …and its English body is the plain template, byte for byte, and its link is the plain permalink",
+    !!win && win.bodyEn === `${m1.titleEn} · ${r.data.positionId} paid out. Tap to view.` && win.href === `/positions/${r.data.positionId}`, `${win?.bodyEn ?? "no WIN row"} · ${win?.href}`);
   ok("8.3 · …and its Swahili and Chinese bodies end exactly as any player's do",
     !!win && win.bodySw.endsWith(`· ${r.data.positionId} kimelipa. Bonyeza kuona.`) && win.bodyZh.endsWith(`· ${r.data.positionId} 已赔付。点击查看。`), `${win?.bodySw} | ${win?.bodyZh}`);
   const loss = (await rows(player, "LOSS"))[0];

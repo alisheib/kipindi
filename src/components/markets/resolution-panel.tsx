@@ -191,7 +191,8 @@ export function ResolutionPanel({
               {t.market.resHeld} <span className="font-mono tabular-nums">{formatDateTime(objectionsClosedAt)}</span>.
             </span>
           </p>
-          <p className="pl-[21px] leading-relaxed opacity-90">{t.market.resHeldWhy}</p>
+          {/* C4 ruling 158: never invite an objection the panel below refuses (the neutral NOT_ELIGIBLE state). */}
+          {objection?.state !== "NOT_ELIGIBLE" && <p className="pl-[21px] leading-relaxed opacity-90">{t.market.resHeldWhy}</p>}
         </div>
       ) : settledAt ? (
         // Just "Settled <when>". Who was paid and how much is INTERNAL — the player

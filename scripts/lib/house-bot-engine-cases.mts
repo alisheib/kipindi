@@ -2312,15 +2312,15 @@ await guard("17", async () => {
     const control = await S.houseBotControlStore.get();
     const rec = recorder();
     // The window is the hour just ended at `nowMs`: an hour ahead of the database clock makes it the current hour.
-    const h1 = await safe(async () => PL.hourlyDuties((await dbNow()) + 3_600_000, { ...control, bellAlertsPerHour: 0, holderNoticesPerHour: 0 }, rec.alerts));
-    const h2 = await safe(async () => PL.hourlyDuties((await dbNow()) + 3_600_000, { ...control, bellAlertsPerHour: 0, holderNoticesPerHour: 0 }, rec.alerts));
+    const h1 = await safe(async () => PL.hourlyDuties((await dbNow()) + 3_600_000, { ...control, bellAlertsPerHour: 0 }, rec.alerts));
+    const h2 = await safe(async () => PL.hourlyDuties((await dbNow()) + 3_600_000, { ...control, bellAlertsPerHour: 0 }, rec.alerts));
     const admins = rec.calls.filter((c) => c.code === "HOUR_SUMMARY_ADMINS");
     const holder = rec.calls.filter((c) => c.code === "HOUR_SUMMARY_HOLDER" && c.m.botId === b.botId);
     const prevHour = CLOCK.eatKeyFor("previousHour", await dbNow());
     ok("17.61 · admins' summary once, keyed on the hour summarised (previousHour), beyond a 0 cap", !placedRow.threw && admins.length === 1 && admins[0].key === `summary:admins:all:${prevHour}` && admins[0].m.detail.beyondCap >= 1, j({ h1, h2, admins }));
     // D19c, C4 ruling 149: the holder is never told, so the planner raises no holder summary — the PLACED stake above
-    // keeps this discriminating (the removed loop raised one for exactly this row at a 0 per-holder cap).
-    ok("17.62 · D19c · no holder summary is raised for the holder's PLACED stake, at a 0 per-holder cap", holder.length === 0 && rec.calls.every((c) => c.code !== "HOUR_SUMMARY_HOLDER"), j(rec.calls.map((c) => c.code)));
+    // keeps this discriminating (the removed loop raised one for exactly this row).
+    ok("17.62 · D19c · no holder summary is raised for the holder's PLACED stake", holder.length === 0 && rec.calls.every((c) => c.code !== "HOUR_SUMMARY_HOLDER"), j(rec.calls.map((c) => c.code)));
   }
 
   /* ── 17.63 oversight (N1 §4.5; ruling 79) ── */

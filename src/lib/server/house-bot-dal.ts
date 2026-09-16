@@ -148,7 +148,6 @@ export type StoredHouseBotControl = {
   gCounterPerPlayerTzsPerDay: number | null;
   maxDesignatedBots: number;
   bellAlertsPerHour: number;
-  holderNoticesPerHour: number;
   gCapStaffChosenPerDay: number | null;
   gCapStaffChosenDailyTzs: number | null;
   gTargetsMaxActive: number | null;
@@ -463,7 +462,6 @@ export const HOUSE_BOT_CONTROL_COLUMNS: Record<keyof StoredHouseBotControl, Colu
   gCounterPerPlayerTzsPerDay: { col: "gCounterPerPlayerTzsPerDay", kind: "bigint" },
   maxDesignatedBots: { col: "maxDesignatedBots", kind: "int" },
   bellAlertsPerHour: { col: "bellAlertsPerHour", kind: "int" },
-  holderNoticesPerHour: { col: "holderNoticesPerHour", kind: "int" },
   gCapStaffChosenPerDay: { col: "gCapStaffChosenPerDay", kind: "int" },
   gCapStaffChosenDailyTzs: { col: "gCapStaffChosenDailyTzs", kind: "bigint" },
   gTargetsMaxActive: { col: "gTargetsMaxActive", kind: "int" },
@@ -749,7 +747,6 @@ const MEM_CHECKS: { [T in HouseTable]: ReadonlyArray<MemCheck<HouseRows[T]>> } &
     { name: "HouseBotControl_gCounterPerPlayerTzsPerDay_check", ok: (r) => between(r.gCounterPerPlayerTzsPerDay, 0, TZS_MAX) },
     { name: "HouseBotControl_maxDesignatedBots_check", ok: (r) => between(r.maxDesignatedBots, 1, 20) },
     { name: "HouseBotControl_bellAlertsPerHour_check", ok: (r) => between(r.bellAlertsPerHour, 0, 60) },
-    { name: "HouseBotControl_holderNoticesPerHour_check", ok: (r) => between(r.holderNoticesPerHour, 0, 60) },
     { name: "HouseBotControl_gCapStaffChosenPerDay_check", ok: (r) => between(r.gCapStaffChosenPerDay, 1, 200) },
     { name: "HouseBotControl_gCapStaffChosenDailyTzs_check", ok: (r) => between(r.gCapStaffChosenDailyTzs, 0, TZS_MAX) },
     { name: "HouseBotControl_gTargetsMaxActive_check", ok: (r) => between(r.gTargetsMaxActive, 1, 200) },
@@ -1155,7 +1152,6 @@ function toHouseBotControl(r: any): StoredHouseBotControl {
     gCounterPerPlayerTzsPerDay: big(r.gCounterPerPlayerTzsPerDay),
     maxDesignatedBots: Number(r.maxDesignatedBots),
     bellAlertsPerHour: Number(r.bellAlertsPerHour),
-    holderNoticesPerHour: Number(r.holderNoticesPerHour),
     gCapStaffChosenPerDay: int(r.gCapStaffChosenPerDay),
     gCapStaffChosenDailyTzs: big(r.gCapStaffChosenDailyTzs),
     gTargetsMaxActive: int(r.gTargetsMaxActive),
@@ -1867,7 +1863,7 @@ function seededControl(now: string): StoredHouseBotControl {
     limitsVersion: 1, limitsSchemaVersion: 1,
     gCapDailyStakeTzs: null, gCapDailyLossTzs: null, gCapOpenExposureTzs: null, gCapPerMarketTzs: null,
     gMaxBetsPerMinute: null, gMaxBetsPerDay: null, gCounterPerPlayerPerDay: null, gCounterPerPlayerTzsPerDay: null,
-    maxDesignatedBots: 5, bellAlertsPerHour: 20, holderNoticesPerHour: 6,
+    maxDesignatedBots: 5, bellAlertsPerHour: 20,
     gCapStaffChosenPerDay: null, gCapStaffChosenDailyTzs: null, gTargetsMaxActive: null,
     gStaffChosenMaxCounterpartyShare: null, gStaffEdgeWinRatePts: null, gStaffEdgeNetTzs: null,
     boardDisclosureSentAt: null, boardDisclosureSections: [],

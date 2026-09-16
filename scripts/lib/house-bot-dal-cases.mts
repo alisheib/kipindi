@@ -71,7 +71,6 @@ export const LIMIT_BOUNDS: ReadonlyArray<readonly [string, number, number]> = [
   ["gCounterPerPlayerTzsPerDay", 0, 1_000_000_000],
   ["maxDesignatedBots", 1, 20],
   ["bellAlertsPerHour", 0, 60],
-  ["holderNoticesPerHour", 0, 60],
   ["gCapStaffChosenPerDay", 1, 200],
   ["gCapStaffChosenDailyTzs", 0, 1_000_000_000],
   ["gTargetsMaxActive", 1, 200],

@@ -77,6 +77,9 @@ let serverLog = "";
 server.stdout?.on("data", (d) => { serverLog += String(d); });
 server.stderr?.on("data", (d) => { serverLog += String(d); });
 
+/** Opened inside the try; closed in `finally` BEFORE the database is dropped (a FORCE drop kills an open connection, and an
+ *  unhandled `error` event then crashed the pass and hid the fixture's own error — measured on the first run). */
+let who: PgClient | null = null;
 try {
   let up = false;
   for (let i = 0; i < 120 && !up; i++) {
@@ -92,7 +95,8 @@ try {
   const demo = await page.goto(`${BASE}/auth/demo`, { waitUntil: "domcontentloaded" });
   ok("0.session · the demo session route mints a session", !!demo && demo.status() < 400, `status=${demo?.status()}`);
 
-  const who = new pg.Client({ connectionString: DATABASE_URL });
+  who = new pg.Client({ connectionString: DATABASE_URL });
+  (who as unknown as { on(e: string, f: (err: unknown) => void): void }).on("error", () => { /* the drop in finally ends it */ });
   await who.connect();
   const found = await who.query('SELECT id, "phoneE164" FROM "User" ORDER BY "createdAt" ASC LIMIT 5');
   const holderId = String(found.rows.find((r) => r.phoneE164 === "+255700000000")?.id ?? found.rows[0]?.id ?? "");
@@ -117,7 +121,7 @@ try {
   /** A poll with a neutral, readable title (the world's default names the suite), and a locked NO from a player. */
   const pollFor = async (title: string) => {
     const market = await w.poll({ graceMin: 0 });
-    await who.query('UPDATE "Market" SET "titleEn" = $1, "titleSw" = $2, "sourceUrl" = $3 WHERE id = $4', [title, title, "https://www.meteo.go.tz", market.id]);
+    await who!.query('UPDATE "PredictionMarket" SET "titleEn" = $1, "titleSw" = $2, "sourceUrl" = $3 WHERE id = $4', [title, title, "https://www.meteo.go.tz", market.id]);
     const player = await w.user({ balance: 1_000_000 });
     const r = await w.svc.buyPosition(player, { marketId: market.id, side: "NO", stake: 10_000, idempotencyKey: crypto.randomUUID() });
     if (!r.ok) throw new Error(`fixture: the player's bet was refused ${JSON.stringify(r)}`);
@@ -146,12 +150,25 @@ try {
     own.ok === true && !!houseOpen && !!houseWon && !!houseOnly, JSON.stringify({ own: own.ok, houseOpen, houseWon, houseOnly }));
 
   const SECRETS = [bot.botId, ...intentIds];
-  const leaks = (html: string): string[] => {
+  // ⚠️ `next dev` writes stack traces with ABSOLUTE FILE PATHS into the HTML, and this checkout's folder is named
+  // `kipindi-house-bots` — 142 "house-bots" hits on the first run, none of them product text (a production build carries
+  // no such path). Only this checkout's own root, in the spellings a trace uses, is taken out before the scan.
+  // Measured spellings: `F:\kipindi-house-bots` in a trace and `F:%5Ckipindi-house-bots` in a URL — so one pattern: a
+  // drive, then any run of separators in any escaping, then EXACTLY this checkout's folder name, and nothing else.
+  const CHECKOUT = ROOT.split(/[\\/]/).filter(Boolean).pop()!.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const ROOT_PATH = new RegExp(String.raw`[A-Za-z](?::|%3A)(?:\\|/|%5C|%2F)+` + CHECKOUT, "gi");
+  const withoutRoot = (html: string) => html.replace(ROOT_PATH, () => "<ROOT>");
+  const leaks = (raw: string): string[] => {
+    const html = withoutRoot(raw);
     const out = [...html.matchAll(WORDS), ...html.matchAll(IDENTIFIERS)].map((m) => m[0]);
     for (const s of SECRETS) if (html.includes(s)) out.push(`id:${s}`);
     return out;
   };
 
+  const folder = ROOT.split(/[\\/]/).filter(Boolean).pop() ?? "";
+  const trace = `at X (${ROOT}${String.fromCharCode(92)}x.js) · /Server/F:%5C${folder}`;
+  ok("2.c · CONTROL · the checkout path is taken out of a trace, and a product sentence beside it is still caught",
+    folder.length > 0 && leaks(trace).length === 0 && leaks(`${trace} · 50pick house-bots desk`).includes("house-bots"), JSON.stringify(leaks(trace)));
   // ── §2 · every page the holder can open, read whole (RSC payload included) ──
   const pages = [
     ["positions (open)", "/positions"],
@@ -166,14 +183,22 @@ try {
     ["wallet", "/wallet"],
   ] as const;
   for (const [what, path] of pages) {
-    const resp = await page.goto(`${BASE}${path}`, { waitUntil: "domcontentloaded" });
-    await page.waitForLoadState("networkidle", { timeout: 20_000 }).catch(() => {});
-    const url = page.url();
-    const signedOut = /\/auth(\/|\?|$)/.test(new URL(url).pathname + new URL(url).search);
-    const served = resp ? await resp.text().catch(() => "") : "";
-    const dom = await page.content();
-    if (signedOut || !resp || resp.status() >= 400) {
-      ok(`2 · ${what} (${path}) is served to the holder`, false, `status=${resp?.status()} url=${url}`);
+    // The SERVED document through the browser's own cookie jar (redirects followed); the live DOM separately, because a
+    // page may abort its own navigation (measured: ERR_ABORTED on a settled position's permalink) and that is not a leak.
+    const resp = await ctx.request.get(`${BASE}${path}`, { maxRedirects: 5 });
+    const served = await resp.text().catch(() => "");
+    const finalUrl = new URL(resp.url());
+    const signedOut = /\/auth(\/|\?|$)/.test(finalUrl.pathname + finalUrl.search);
+    let dom = "";
+    try {
+      await page.goto(`${BASE}${path}`, { waitUntil: "domcontentloaded" });
+      await page.waitForLoadState("networkidle", { timeout: 20_000 }).catch(() => {});
+    } catch (e) {
+      console.log(`note · ${path}: the browser navigation did not settle (${String((e as Error).message).split("\n")[0]}); the DOM is read as it stands`);
+    }
+    dom = await page.content().catch(() => "");
+    if (signedOut || resp.status() >= 400) {
+      ok(`2 · ${what} (${path}) is served to the holder`, false, `status=${resp.status()} url=${resp.url()}`);
       continue;
     }
     const found = [...new Set([...leaks(served), ...leaks(dom)])];
@@ -196,6 +221,11 @@ try {
   const neutral = ["Huwezi kupinga matokeo haya", "You can’t object to this result", "您无法对此结果提出异议"];
   if (neutral.some((s) => onlyText.includes(s))) {
     ok("3.2 · ruling 146 · the house-only holder's resolution panel says, neutrally, that they cannot object", true);
+    // Ruling 158 — found by reading this page's screenshot: the payout-held box above must not invite the objection.
+    const invitation = ["unaweza kupinga wakati fedha bado ziko kwenye dimbwi", "you can object while the pool is still intact"];
+    const heldBox = ["Malipo yamesimamishwa", "Payout is on hold"].some((s) => onlyText.includes(s));
+    ok("3.2b · ruling 158 · …and the payout-held box above it (present) does not invite an objection", heldBox && !invitation.some((s) => onlyText.includes(s)),
+      heldBox ? invitation.find((s) => onlyText.includes(s)) ?? "" : "the payout-held box was not rendered, so the check would be vacuous");
   } else if (/pinga|object|异议/i.test(onlyText)) {
     ok("3.2 · ruling 146 · the house-only holder's resolution panel says, neutrally, that they cannot object", false, onlyText.slice(0, 300).replace(/\s+/g, " "));
   } else {
@@ -221,10 +251,12 @@ try {
       ok(`5.${width} · ${name} never scrolls sideways`, m.w <= m.c + 1, `scrollW=${m.w} clientW=${m.c}`);
     }
   }
-  await who.end();
   await browser.close();
   console.log(`\nshots and served HTML written to ${OUT}`);
+} catch (e) {
+  ok("x · the pass ran to the end (a thrown fixture or page error is a failure, never a silent stop)", false, String((e as Error)?.stack ?? e).split("\n").slice(0, 4).join(" | "));
 } finally {
+  await who?.end().catch(() => {});
   // ⛔ THE TREE, NOT THE SHELL (a shell-spawned `next dev` survives `kill()` on Windows and keeps the port).
   if (server.pid) {
     if (process.platform === "win32") spawnSync("taskkill", ["/T", "/F", "/PID", String(server.pid)], { encoding: "utf8" });

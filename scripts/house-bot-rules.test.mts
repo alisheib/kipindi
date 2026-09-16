@@ -419,7 +419,8 @@ section("§1 · C1 parse table");
 section("§2 · bound matrix");
 {
   const NUMERIC = FIELD_ORDER.filter((id) => FIELD_META[id].min !== null && FIELD_META[id].max !== null);
-  ok("2.0 · the matrix covers every numeric rules, caps and limits field (≥ 60)", NUMERIC.length >= 60, `saw ${NUMERIC.length}`);
+  // 60 → 59 on 2026-09-16 (C4 ruling 153): `holderNoticesPerHour` removed with the holder notices (D19c). Measured = 59.
+  ok("2.0 · the matrix covers every numeric rules, caps and limits field (≥ 59)", NUMERIC.length >= 59, `saw ${NUMERIC.length}`);
 
   /** The copy a bound refusal must carry, written from the sealed table rather than the module. */
   const boundCopy = (id: FieldId, which: "BELOW" | "ABOVE", b: { min: number; max: number }): string => {

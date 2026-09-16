@@ -342,7 +342,8 @@ export const NULLABLE_LIMIT_FIELDS = [
 ] as const;
 
 /** `HouseBotControl` limits that are NOT NULL with a seeded default. */
-export const COUNT_LIMIT_FIELDS = ["maxDesignatedBots", "bellAlertsPerHour", "holderNoticesPerHour"] as const;
+/** ⛔ `holderNoticesPerHour` was removed before it shipped (C4 ruling 153): the holder is told nothing (D19c), so it had no reader. */
+export const COUNT_LIMIT_FIELDS = ["maxDesignatedBots", "bellAlertsPerHour"] as const;
 
 /** Every limit, in form order. */
 export const LIMIT_FIELDS = [
@@ -356,7 +357,6 @@ export const LIMIT_FIELDS = [
   "gCounterPerPlayerTzsPerDay",
   "maxDesignatedBots",
   "bellAlertsPerHour",
-  "holderNoticesPerHour",
   "gCapStaffChosenPerDay",
   "gCapStaffChosenDailyTzs",
   "gTargetsMaxActive",
@@ -788,11 +788,6 @@ const RAW_FIELDS = {
     recommended: 20,
     hint: "At {n} per hour each admin can get up to {24n} bet rows a day, plus summaries and pause, money and switch alerts.",
   }),
-  holderNoticesPerHour: num("limits", "Roster and alerts", "Holder notices per hour", "count", 0, 60, {
-    default: 6,
-    recommended: 6,
-    hint: "0 = summary only.",
-  }),
   gCapStaffChosenPerDay: num("limits", "Staff-chosen", "Staff-chosen stakes per day (all bots)", "count", 1, 200, {
     nullable: true,
     recommended: 10,
@@ -1008,7 +1003,6 @@ export function recommendedLimits(ctx: Pick<RulesContext, "stakeBounds">): House
     ...out,
     maxDesignatedBots: out.maxDesignatedBots ?? 5,
     bellAlertsPerHour: out.bellAlertsPerHour ?? 20,
-    holderNoticesPerHour: out.holderNoticesPerHour ?? 6,
   };
 }
 
@@ -2375,7 +2369,6 @@ export function validateHouseBotLimits(
     ...out,
     maxDesignatedBots: out.maxDesignatedBots as number,
     bellAlertsPerHour: out.bellAlertsPerHour as number,
-    holderNoticesPerHour: out.holderNoticesPerHour as number,
   };
   const previews: string[] = [];
   if (limits.maxDesignatedBots < ctx.bots.length) {

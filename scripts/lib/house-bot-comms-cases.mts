@@ -72,7 +72,7 @@ await guard("1", async () => {
 
 /* ═══ §2 · the holder is told NOTHING (owner ruling D19c, C4 ruling 149) ═════════════════════════════
  * These cases replaced "the holder's own notices". They prove the ABSENCE on every path that used to speak to the
- * holder, with the per-holder cap at its MAXIMUM, so a notice that came back would land and be counted. */
+ * holder, with a live admin channel as the control, so a notice that came back would land and be counted. */
 section("§2 · the holder receives no house-bot notice, on any path");
 await guard("2", async () => {
   const holderEmitters = Object.keys(N).filter((k) => /HouseBotOwner|houseBotOwner/.test(k));
@@ -82,7 +82,7 @@ await guard("2", async () => {
   const playerRows = (REG.NOTIFICATION_EMITTERS as Any[]).filter((r) => r.kind === "HOUSE_BOT" && r.audience !== "officer");
   ok("2.3 · every HOUSE_BOT row in the comms registry is an officer's", playerRows.length === 0, j(playerRows));
 
-  await w.limits({ bellAlertsPerHour: 60, holderNoticesPerHour: 60 });
+  await w.limits({ bellAlertsPerHour: 60 });
   const b = await w.bot();
   const alerts = EM.houseEngineAlerts();
   const beforeHolder = await rowsFor(b.userId);
@@ -98,7 +98,7 @@ await guard("2", async () => {
   await sleep(20);
   const afterHolder = await rowsFor(b.userId);
   const newRows = afterHolder.filter((r) => !beforeHolder.some((x) => x.id === r.id));
-  ok("2.5 · ⭐ a stake placed from the holder's account and a stop of their bot give the holder ZERO rows of any kind, at a per-holder cap of 60",
+  ok("2.5 · ⭐ a stake placed from the holder's account and a stop of their bot give the holder ZERO rows of any kind",
     newRows.length === 0, j(newRows.map((r) => `${r.kind}: ${r.titleEn}`)));
   // §2's control stake used one count of this hour's admin bell cap; give it back, so §3 measures its cap from zero.
   await w.dal.houseBotRuntimeStore.upsert(K.RUNTIME_KEY.global, { countInHour: 0 });
@@ -108,7 +108,7 @@ await guard("2", async () => {
 /* ═══ §3 · the caps, and what the summary accounts for (04:1076, N1 04:3737) ═════════════════════ */
 section("§3 · the hourly caps, and the summary that accounts for what they suppressed");
 await guard("3", async () => {
-  await w.limits({ bellAlertsPerHour: 3, holderNoticesPerHour: 2 });
+  await w.limits({ bellAlertsPerHour: 3 });
   const b = await w.bot();
   const alerts = EM.houseEngineAlerts();
   const beforeAdmin = await countHouse(ADMIN_A);

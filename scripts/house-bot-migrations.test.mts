@@ -405,7 +405,7 @@ async function checkSchema(url: string, label: string): Promise<void> {
     const row: Any = ctl[0] ?? {};
     ok(`${label}.seed · exactly one control row, id global`, ctl.length === 1 && row.id === C.HOUSE_CONTROL_ID, `${ctl.length} row(s)`);
     ok(`${label}.seed · the master switch is seeded OFF, with no off cause`, row.enabled === false && row.offCause === null);
-    const NOT_NULL_LIMITS: Record<string, number> = { maxDesignatedBots: 5, bellAlertsPerHour: 20, holderNoticesPerHour: 6 };
+    const NOT_NULL_LIMITS: Record<string, number> = { maxDesignatedBots: 5, bellAlertsPerHour: 20 };
     const setCaps = dal.LIMIT_FIELDS.filter((f) => !(f in NOT_NULL_LIMITS) && row[f] !== null);
     ok(`${label}.seed · every global cap is NULL (not set)`, setCaps.length === 0, setCaps.join(", "));
     ok(`${label}.seed · 5 designated bots, 20 bell alerts and 6 holder notices an hour`,

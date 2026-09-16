@@ -1960,7 +1960,6 @@ model HouseBotControl {
   gCounterPerPlayerTzsPerDay       BigInt?
   maxDesignatedBots                Int       @default(5)
   bellAlertsPerHour                Int       @default(20)
-  holderNoticesPerHour             Int       @default(6)
   /// N1 §2. NULL on the first three = Enter now and targets refuse; NULL share = Enter now refuses; NULL edge = alert off.
   gCapStaffChosenPerDay            Int?
   gCapStaffChosenDailyTzs          BigInt?

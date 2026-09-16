@@ -176,6 +176,8 @@ section("§3 · the player copy the un-build replaced says something true and na
     lines.every((s) => typeof s === "string" && s.length > 10) && lines.every((s) => houseHits(s!).length === 0 && !/50pick/i.test(s!)), JSON.stringify(lines));
   const panel = readFileSync(join(SRC, "components", "markets", "resolution-panel.tsx"), "utf8");
   ok("3.2 · the resolution panel renders the neutral state with the neutral key", /state === "NOT_ELIGIBLE"[\s\S]{0,200}t\.market\.objNotEligible/.test(panel));
+  ok("3.2b · ruling 158 · the payout-held box drops its objection invitation in exactly the NOT_ELIGIBLE state",
+    /objection\?\.state !== "NOT_ELIGIBLE" && <p[^>]*>\{t\.market\.resHeldWhy\}/.test(panel) && (panel.match(/t\.market\.resHeldWhy/g) ?? []).length === 1);
   const objections = strip("x.ts", readFileSync(join(SRC, "lib", "server", "objections-service.ts"), "utf8"));
   // Only the table a player reads: the server keeps its internal `HOUSE_STAKE_ONLY` reason (ruling 146).
   const table = /const msg = \{[\s\S]*?\n\s*\};/.exec(objections)?.[0] ?? "";
