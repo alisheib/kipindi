@@ -283,3 +283,5 @@ prelaunch-keep-users.json
 .prelaunch-reset-receipt.json
 .prelaunch-verified.json
 .prelaunch-quiesced.json
+# SMS live drive — counts chargeable sends against the ceiling (scripts/live/blackball-drive.mts).
+.blackball-drive-ledger.json

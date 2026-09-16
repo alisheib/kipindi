@@ -181,7 +181,9 @@ Each step is independently reversible, and none of the later ones is safe withou
    Still nothing sends, so a wrong secret costs a 401 in a log.
 3. **Flip `SMS_PROVIDER=blackball`.** OTP is still off, so the blast radius is invite campaigns —
    which `bonusIsLiveFor()` already holds shut.
-4. **Run the live drive** (`scripts/live/blackball-drive.mjs`, ≤ 6 chargeable sends).
+4. **Run the live drive** (`npm run live:blackball -- --step N --confirm`, ≤ 6 chargeable sends,
+   credentials from the gitignored `.env.local`). ⚠️ The drive writes no production row, so its
+   receipts arrive as `sms.dlr.unknown_reference` carrying the vendor's raw status and description.
    ⭐ Record the **observed DLR status tokens** and extend `mapDlrStatus()` from that evidence.
 5. **Only after a real send AND a real receipt have both been observed:** `OTP_ENABLED=1`.
 

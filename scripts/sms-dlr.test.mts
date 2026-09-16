@@ -146,6 +146,17 @@ const line = (reference: string, status: string, extra: Record<string, unknown> 
   ok("§3 an unknown reference still returns 200", res.status === 200);
   ok(`§3 …with the same {"status":"Ok"} body — never a 404 probing oracle`,
     (await res.text()) === '{"status":"Ok"}');
+
+  // ⭐ THE LIVE DRIVE'S RECEIPTS LAND HERE. It never writes a production row, so this audit is
+  // where the vendor's vocabulary is first seen — and it must keep BOTH fields, verbatim.
+  const probeRef = "sms_" + "e".repeat(24);
+  await post([{ reference: probeRef, status: "VENDOR_TOKEN_X", description: "Vendor description Y", msisdn: "255772619619" }]);
+  await settle();
+  const row = getAuditPage({ limit: 5_000 }).find((a) => a.action === "sms.dlr.unknown_reference" && a.targetId === probeRef);
+  const pl = (row?.payload ?? {}) as Record<string, unknown>;
+  ok("§3 the unknown-reference audit keeps the raw status token", pl.rawStatus === "VENDOR_TOKEN_X", JSON.stringify(pl));
+  ok("§3 …and the vendor's description, verbatim", pl.description === "Vendor description Y");
+  ok("§3 …and never the full msisdn", typeof pl.msisdn === "string" && !String(pl.msisdn).includes("772619619"));
 }
 
 /* ══ §4 · THE IDENTITY WE ASK ABOUT MUST BE THE ONE WE SETTLE ═══════════════ */

@@ -150,7 +150,13 @@ export async function POST(req: Request) {
           actorId: null,
           targetType: null,
           targetId: reference,
-          payload: { rawStatus },
+          // ⭐ BOTH vendor fields, verbatim. A receipt for a message sent by the live drive
+          // (`scripts/live/blackball-drive.mts`) lands HERE by design — the drive talks to the
+          // gateway directly and never writes a production SmsMessage row, because a local
+          // process writing production audit rows would fork the HMAC chain. So this row is
+          // where the vendor's undocumented status AND description vocabulary is first
+          // observed, and dropping the description would throw away half of it.
+          payload: { rawStatus, description: desc, msisdn: msisdn ? maskPhone(msisdn) : null },
         });
       }
       continue;
