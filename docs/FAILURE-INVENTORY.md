@@ -1,5 +1,8 @@
 # 50pick — THE FAILURE INVENTORY
 
+> ⛔ **Owner ruling D19 (Ali, 2026-09-16): house bots are never public, and the holder sees nothing.** §7.1's house rows
+> are marked in place. The ruling: `plans/house-bots/PROGRESS.md` "OWNER RULING D19".
+
 > **STATUS: 🔵 LIVE.** Workstream C's map: every server refusal a player can reach, what it
 > actually means, what the player is told today, what they must be told, and at what severity.
 >
@@ -817,12 +820,14 @@ surface anywhere uses a native `confirm()`/`alert()` — verified, not assumed.
 | **PositionStatus** | `OPEN` `WIN` `LOSS` `VOID` `CASHED_OUT` | `position-card.tsx`'s local map | `admin-status-lexicon.ts` | ⚠️ **two sites** — see 7.3 |
 | **PredictionMarketStatus** | `DRAFT` `LIVE` `CLOSED` `RESOLVED` `VOIDED` | `market.statusLive/statusResolved/statusVoid` | `components/admin/status-badge.tsx` | `admin-status-lexicon.ts` |
 | **KycStatus / TxnType / TxnStatus / FlagStatus** | — | wallet + profile surfaces | `admin-status-lexicon.ts` | `admin-status-lexicon.ts` |
-| **House bot status** (`HouseBot.status`) | `ACTIVE` `PAUSED` `AUTO_PAUSED` `REMOVED` | — (the holder sees only the liquidity chip) | ⏳ build commit 4/7 | `src/lib/house-bot/constants.ts` (`BOT_STATUSES`) |
-| **House pause reasons, removal causes and holder causes** | every value of `PAUSE_REASONS`, `REMOVE_CAUSES` and `HOLDER_CAUSES` | — (the holder sees only the liquidity chip) | ⏳ build commit 4/7 | `src/lib/house-bot/pause-reasons.ts` |
-| **House intent status** (`HouseBotIntent.status`) | `PENDING` `CLAIMED` `PLACED` `SKIPPED` `EXPIRED` `FAILED` `CANCELLED` | — (the holder sees only the liquidity chip) | ⏳ build commit 4/7 | `src/lib/house-bot/constants.ts` (`INTENT_STATUSES`) |
-| **EngineCode** | every value of `ENGINE_CODES`, plus `CAP_` + each cap code | — (the holder sees only the liquidity chip) | ⏳ build commit 4/7 | `src/lib/house-bot/constants.ts` (`ENGINE_CODES`, `CAP_CODES`) |
-| **House target status and end cause** (`HouseBotTarget`) | `ACTIVE` `ENDED` `REMOVED` · every value of `TARGET_END_CAUSES` | — (the holder sees only the liquidity chip) | ⏳ build commit 4/7 | `src/lib/house-bot/constants.ts` (`TARGET_STATUSES`, `TARGET_END_CAUSES`) |
-| **House press state** (`HouseBotPress.state`) | `CHECKING` `REFUSED` `QUEUED` `DONE` | — (the holder sees only the liquidity chip) | ⏳ build commit 4/7 | `src/lib/house-bot/constants.ts` (`PRESS_STATES`) |
+| **House bot status** (`HouseBot.status`) | `ACTIVE` `PAUSED` `AUTO_PAUSED` `REMOVED` | — ~~(the holder sees only the liquidity chip)~~ | ⏳ build commit 4/7 | `src/lib/house-bot/constants.ts` (`BOT_STATUSES`) |
+| **House pause reasons, removal causes and holder causes** | every value of `PAUSE_REASONS`, `REMOVE_CAUSES` and `HOLDER_CAUSES` | — ~~(the holder sees only the liquidity chip)~~ | ⏳ build commit 4/7 | `src/lib/house-bot/pause-reasons.ts` |
+| **House intent status** (`HouseBotIntent.status`) | `PENDING` `CLAIMED` `PLACED` `SKIPPED` `EXPIRED` `FAILED` `CANCELLED` | — ~~(the holder sees only the liquidity chip)~~ | ⏳ build commit 4/7 | `src/lib/house-bot/constants.ts` (`INTENT_STATUSES`) |
+| **EngineCode** | every value of `ENGINE_CODES`, plus `CAP_` + each cap code | — ~~(the holder sees only the liquidity chip)~~ | ⏳ build commit 4/7 | `src/lib/house-bot/constants.ts` (`ENGINE_CODES`, `CAP_CODES`) |
+| **House target status and end cause** (`HouseBotTarget`) | `ACTIVE` `ENDED` `REMOVED` · every value of `TARGET_END_CAUSES` | — ~~(the holder sees only the liquidity chip)~~ | ⏳ build commit 4/7 | `src/lib/house-bot/constants.ts` (`TARGET_STATUSES`, `TARGET_END_CAUSES`) |
+| **House press state** (`HouseBotPress.state`) | `CHECKING` `REFUSED` `QUEUED` `DONE` | — ~~(the holder sees only the liquidity chip)~~ | ⏳ build commit 4/7 | `src/lib/house-bot/constants.ts` (`PRESS_STATES`) |
+
+⛔ **Superseded by D19 (Ali, 2026-09-16):** the six house rows' player column is struck: there is no liquidity chip, and no player, the holder included, sees any of these values in any locale (D19c; C4-SPEC rulings 143–158).
 
 ### 7.2 · What the lexicon found that a gap-list would not have
 

@@ -28,6 +28,21 @@
 > player activity, and the harm and AML detectors can flag a bot account like any player's; W21 and W22 are moot. Read
 > PROGRESS.md "OWNER RULING D20" and `plans/house-bots/C5-D20-REPLAN.md` first.
 
+> # ⛔ HOUSE BOTS ARE NEVER PUBLIC, AND THE HOLDER SEES NOTHING (D19)
+> **Owner ruling D19 (Ali, 2026-09-16): house bots are never public.** No rulebook, Terms, privacy, FAQ, home or chatbot
+> text mentions them; no META or `TERMS_VERSION` bump; no announcement. The holder sees nothing: no chip, no label, no
+> house wording in any refusal, and no house-bot notice, email or summary; every alert goes to admins only. The chatbot
+> discloses nothing and never lies (a forbidden-phrase guard). D19 outranks this file, and D20 ranks just below it.
+> **Struck in this file, each marked in place:** P1's privacy line, versions, chatbot bullet, disclosure tracking and the
+> Board draft's notice-waiver section, with the Board-disclosure lines N1 and N2 built on that tracking; P2's Terms §10
+> waiver and legal-page comment block; P4's "stated" surfaces; N1 §10's and N2 §9/§10's public text; A17 (h), the
+> liquidity label; the house refusal copy (A12, A18 (n), N1 §3 and its placement row); every holder notice, email,
+> summary, chip and Stop action (A2's Holder column and row 15, A3, A5, A8, A16, A18 (o), C13, F2, F6, N1 §4.5, §4.6 and
+> §7, N2 §7, and their tests); and F2's public sunset line. **Not touched by D19:** the switch ships OFF, D3/D3b, D5
+> (consent by password), D6, the admin console and its alerts (apart from the disclosure-tracking lines above), audits,
+> internal docs, the engine rules, the private Board draft apart from that one section (D19b) and the chatbot's
+> forbidden-phrase guard (D19d). Read PROGRESS.md "OWNER RULING D19" first.
+
 Order of authority: this file > 02-sealed-flows.md / 03-design-spec.md > PLAN.md body. Overlaps between amendment sets are resolved in PLAN.md §18.
 
 Contents: A1–A24 (flows, data, money seam, engine) · C1–C3, C8–C15 (rules, consent, notifications, console) · R5–R9, P2–P4 (reporting, public text) · S/F (release, verification, future safeguards) · earlier set C4–C7, R1–R4, P1 and sequencing notes · N1–N2 (Enter now; targeted polls and exact timing) (last section).
@@ -117,25 +132,25 @@ Numbering follows the slots in the sequencing notes where they name the content:
 - **ACTIVE:** goes to AUTO_PAUSED (first cause) with `pausedFromStatus=ACTIVE`; PENDING and CLAIMED intents are cancelled conditionally.
 - **PAUSED or AUTO_PAUSED:** status is kept, the cause set is updated, event HOLDER_CAUSE_ADDED is written, and admins get a bell only. Rows 5, 11 and 14 also send email.
 - **REMOVED:** nothing happens.
-- Every holder house notice returns early while `isLockedOut` (`responsible-gambling.ts:349`).
+- ~~Every holder house notice returns early while `isLockedOut` (`responsible-gambling.ts:349`).~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** the holder receives no house-bot notice or email at all (C4 ruling 149), so nothing is gated here; in the table below the Holder column is struck, and so is row 15's holder-facing "Stop liquidity stakes", because a withdrawal the holder asks for through support is recorded with the officer as actor (C5-SPEC L49, Commit 7).
 
 | # | Change (writer) | Cause | Consent | Admin | Holder | Way out |
 |---|---|---|---|---|---|---|
-| 1 | Password changed in settings `password-reset.ts:326` | PASSWORD_CHANGED{SELF_CHANGE} | stale | seal-flows A1/A2 | H1 if it was ACTIVE | Re-verify → Start |
-| 2 | Reset link `:242` | PASSWORD_CHANGED{RESET_LINK} | stale | same | H1 | Re-verify (A4 check) → Start |
-| 3 | Support temporary password `:271` | PASSWORD_CHANGED{OFFICER_TEMP} | stale, re-verify blocked | officer-reset copy | "Change the temporary password in Account settings" | holder changes it himself → bell "set his own password" → Re-verify → Start |
+| 1 | Password changed in settings `password-reset.ts:326` | PASSWORD_CHANGED{SELF_CHANGE} | stale | seal-flows A1/A2 | ~~H1 if it was ACTIVE~~ | Re-verify → Start |
+| 2 | Reset link `:242` | PASSWORD_CHANGED{RESET_LINK} | stale | same | ~~H1~~ | Re-verify (A4 check) → Start |
+| 3 | Support temporary password `:271` | PASSWORD_CHANGED{OFFICER_TEMP} | stale, re-verify blocked | officer-reset copy | ~~"Change the temporary password in Account settings"~~ | holder changes it himself → bell "set his own password" → Re-verify → Start |
 | 4 | Erasure nulls the hash `erasure.ts:397` | none (already REMOVED by row 5) | — | — | — | — |
-| 5 | Account closed `user-service.ts:91` | ACCOUNT_CLOSED | void | bell + email with balance and open stakes | email only | none: auto-REMOVED (A5) |
+| 5 | Account closed `user-service.ts:91` | ACCOUNT_CLOSED | void | bell + email with balance and open stakes | ~~email only~~ | none: auto-REMOVED (A5) |
 | 6 | Self-exclusion `responsible-gambling.ts:274` | SELF_EXCLUDED{until} | void | bell + email | none (RG) | officer reopen (`players/[id]/actions.ts:161-188`) → Re-verify → Start |
 | 7 | Cooling-off `:315` | COOLING_OFF{until} | void | bell + email; AlertOnce when the break ends | none | expiry → Re-verify → Start |
 | 8 | Own loss limit set or lowered (`setLimits :130`) | OWNER_LOSS_LIMIT while `checkLossLimit(stakeMin)` refuses (rolling 24 h, `:501`) | intact | bell + email "frees HH:MM EAT (rolling 24 h)" | none | window frees or limit raised → Start |
 | 9 | Suspended `players/[id]/actions.ts:121` | ACCOUNT_SUSPENDED | intact | bell + email with the officer's reason | none | restore `:188` → bell → Start |
 | 10 | Officer or force-reverify freeze `wallet-freeze.ts:64` | WALLET_FROZEN{reasons} | intact | bell + email naming each hold | none (may be AML; no tipping off) | last hold lifted → Start |
 | 11 | Final identity refusal `kyc-service.ts:776` | IDENTITY_REFUSED | void | bell + email "officer decides TZS X, which includes 50pick float"; Remove recommended | none | `reopenFinalRefusal` `:825` → Re-verify → Start |
-| 12 | Promoted to staff `staff/actions.ts:36`, bootstrap `auth-service.ts:1049` | ROLE_CHANGED{to} | intact | bell + email | "role changed" notice | role back to PLAYER → Start |
-| 13 | Agent approved or revoked `agent-application-service.ts:1308`/`:1406` | ROLE_CHANGED{AGENT} / cleared | intact | bell + email | as row 12 | revoke → Start |
-| 14 | Erasure request filed `privacy.ts:80` | HOLDER_ERASURE_REQUEST | void | bell + email (once per request id) | "stopped while we handle your request" | request withdrawn → Re-verify → Start, or Remove |
-| 15 | Holder presses "Stop liquidity stakes" (A3) | HOLDER_WITHDREW | void | bell + email | confirmation | Re-verify → Start |
+| 12 | Promoted to staff `staff/actions.ts:36`, bootstrap `auth-service.ts:1049` | ROLE_CHANGED{to} | intact | bell + email | ~~"role changed" notice~~ | role back to PLAYER → Start |
+| 13 | Agent approved or revoked `agent-application-service.ts:1308`/`:1406` | ROLE_CHANGED{AGENT} / cleared | intact | bell + email | ~~as row 12~~ | revoke → Start |
+| 14 | Erasure request filed `privacy.ts:80` | HOLDER_ERASURE_REQUEST | void | bell + email (once per request id) | ~~"stopped while we handle your request"~~ | request withdrawn → Re-verify → Start, or Remove |
+| 15 | ~~Holder presses "Stop liquidity stakes" (A3)~~ | HOLDER_WITHDREW | void | bell + email | ~~confirmation~~ | Re-verify → Start |
 | 16 | Locked out by failed logins `auth-service.ts:972` | none: no pause, or anyone could stop a bot | intact | AlertOnce SECURITY bell | none | — |
 | 17 | Email set or cleared `email-verification.ts:134`/`:162`; officer-set email | none | intact; an officer-set email arms A4 | bell only if officer-set | none | — |
 | 18 | 2FA on/off `player-2fa.ts:35`/`:77` | none (D5) | intact | event plus info row | none | — |
@@ -169,12 +184,12 @@ Numbering follows the slots in the sequencing notes where they name the content:
 
 *Designate:* inside the insert transaction under `wallet:<user>`, compare `passwordFingerprint(fresh hash)` with the verified fingerprint. On a mismatch: "His password changed a moment ago — enter the new one." No row is created.
 
-*F10, add the holder action `withdrawHouseConsentAction`:*
-- Holder session only, behind a ConfirmDialog on the /positions chip.
+~~*F10, add the holder action `withdrawHouseConsentAction`:*~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** the holder has no Stop action, chip or copy (D19c); a withdrawal the holder asks for through support is recorded with the officer as actor, and `withdrawHouseConsent` is reshaped for that in Commit 7 (C5-SPEC L49).
+- ~~Holder session only, behind a ConfirmDialog on the /positions chip.~~
 - Sets HOLDER_WITHDREW and writes COMPLIANCE `house_bot.holder_withdrew_consent`.
-- Copy (en/sw/zh): "Done — 50pick won't place new liquidity stakes from your account. Open stakes settle as normal."
+- ~~Copy (en/sw/zh): "Done — 50pick won't place new liquidity stakes from your account. Open stakes settle as normal."~~
 
-*F6 alerts, add:* after VERIFIED the holder gets bell + push + email: "50pick confirmed your permission using your current password at HH:MM EAT. If you did not give it, change your password and contact support."
+*F6 alerts, add:* ~~after VERIFIED the holder gets bell + push + email: "50pick confirmed your permission using your current password at HH:MM EAT. If you did not give it, change your password and contact support."~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** the holder gets no notice or email when consent is verified (C4 ruling 149); the admins' VERIFIED alert (A22) stands.
 
 *Test:*
 - Self-exclude, then officer reopen: Start refused. Re-verify is refused while excluded and allowed after; then Start succeeds.
@@ -231,7 +246,7 @@ Numbering follows the slots in the sequencing notes where they name the content:
 *F8b Closure (new):*
 - The A2 hook or the sweep sets REMOVED(ACCOUNT_CLOSED) by `system_house_bot` and cancels intents.
 - Awaited COMPLIANCE `house_bot.removed{cause}`.
-- Admins get bell + email with the balance and open house stakes. The holder gets email only.
+- Admins get bell + email with the balance and open house stakes. ~~The holder gets email only.~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** the holder gets no house-bot email when closure removes the bot (C4 ruling 149); the admin alert stands.
 - Marked open positions settle into the closed wallet.
 
 *Erasure step `pseudonymiseHouseBotsForUser` (with memory twin):*
@@ -280,11 +295,11 @@ Numbering follows the slots in the sequencing notes where they name the content:
 
 *§4.5, replace the alert rule with:*
 - After any ok result, run `UPDATE … SET "alertedAt"=now() WHERE id=$1 AND status='PLACED' AND "alertedAt" IS NULL RETURNING`.
-- Send the admin bet alert and the holder notice only when a row comes back.
+- Send the admin bet alert ~~and the holder notice~~ only when a row comes back. ⛔ **Superseded by D19 (Ali, 2026-09-16):** there is no holder notice (C4 ruling 149), so the claim gates the admin alert only.
 - The planner repairs PLACED rows whose `alertedAt` is null and `finishedAt` is more than 30 s old.
 
 *Test:*
-- An injected 08006 after commit gives exactly one admin row and one holder row.
+- An injected 08006 after commit gives exactly one admin row ~~and one holder row~~. ⛔ **Superseded by D19 (Ali, 2026-09-16):** the holder gets no row (C4 ruling 149).
 - A duplicate fire gives none.
 - A kill after commit is repaired within 45 s.
 
@@ -402,7 +417,7 @@ If step 1 fails: "Could not reach the database. House bots were NOT switched off
 *§3 H3, add (raw row re-read inside the market lock):*
 - `house_product_not_allowed` → SKIPPED(PRODUCT_NOT_SUPPORTED).
 - `house_round_locked` → EXPIRED(CUTOFF).
-- Both get en/sw/zh copy.
+- ~~Both get en/sw/zh copy.~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** house refusal reasons carry no player copy in any language: they are server-only `HouseSeamReason` codes outside the player registry and dictionary, and the console words them through the engine's server-side copy (C4 ruling 148).
 
 *Engine codes and alerts:*
 - New codes NO_CUTOFF, UD_NO_ROUND and PRODUCT_NOT_SUPPORTED.
@@ -483,7 +498,7 @@ Engine modules may not import `StoredMarket`.
 |---|---|---|---|---|
 | Early close: Sentinel seal, human fallback, stage-1, single-admin resolve (`:2985`) | Planner every 15 s; conditional update on `status='PENDING'`; A10 re-read at fire | SKIPPED(MARKET_NOT_LIVE) | ride, settle normally | none |
 | Reopen (`:4000-4025` clears Sentinel fields and stamps, leaves no marker) | An intent with MARKET_NOT_LIVE exists for the market (engine's own data). Superseded: detection reads `PredictionMarket.reopenedAt` (sanctioned change (r), N1–N2). | new triggers SKIPPED(MARKET_REOPENED); FILL and OPENER never re-planned | ride | none |
-| Emergency void (`:4061`), operator Up & Down void, objection VOID | as early close | SKIPPED(MARKET_NOT_LIVE); H3 refuses | marked BET_REFUND, no wagering reversal (A17), realised 0 | (h) label |
+| Emergency void (`:4061`), operator Up & Down void, objection VOID | as early close | SKIPPED(MARKET_NOT_LIVE); H3 refuses | marked BET_REFUND, no wagering reversal (A17), realised 0 | ~~(h) label~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** no label; the holder's notice is byte-identical to any player's (C4 ruling 143). |
 | Chain paused, stopped or archived, or asset disabled (`updown-config.ts:1180-1185` clears only the next boundary; `chainPaused` at `updown-board.ts:849`) | view at decide and fire; planner sweep | SKIPPED(CHAIN_NOT_RUNNING); H3 refuses | ride; the healer is independent | none |
 | Cutoff or resolution moved (only `createMarket` writes these) | fire uses deadline = min(stored, fresh cutoff − minTimeToCutoff) | EXPIRED(CUTOFF) | — | source pin: `createMarket` plus dev-test only |
 | New chain or category; stored category unknown | per-chain fit at decide (bettableFrom + delay ≤ deadlineAt; FILL lead fits D); unknown category → "other" plus a rules-tab flag | misfit → no row | — | AlertOnce `chain-in-scope:<botId>:<chainId>` (scope defaults belong to §5) |
@@ -511,22 +526,22 @@ Engine modules may not import `StoredMarket`.
 - Every `reverseWagering` call (`:3798`, `:4248`, `:2559`) and `onRecruitSettlement` (`:3831`) skips marked positions.
 - `onRecruitBet` and `onRecruitSettlement` take a required `houseBotId: string | null`.
 
-*(h), list the emitters that get the liquidity label:*
-- selection-closed bell and email: personal figures exclude marked positions, and the house stake gets its own labelled line;
-- verdict recorded or reversed; market cancelled bell and email;
-- one-sided refund and orphan refund;
-- Up & Down win, loss, refund and one-sided rows, and the digest.
+~~*(h), list the emitters that get the liquidity label:*~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** no emitter carries a liquidity label: a holder's outcome notices are built by the same call as any player's and are byte-identical, selection closed is one notice over every position the player holds, and the Up & Down digest has no house split (C4 rulings 143–144; C5-SPEC ruling 235).
+- ~~selection-closed bell and email: personal figures exclude marked positions, and the house stake gets its own labelled line;~~
+- ~~verdict recorded or reversed; market cancelled bell and email;~~
+- ~~one-sided refund and orphan refund;~~
+- ~~Up & Down win, loss, refund and one-sided rows, and the digest.~~
 
 *Test:*
 - Emergency void and orphan repair of a marked position leave the holder's grant unchanged and put the marker on the refund.
-- A holder with mixed positions gets labelled notices, and his personal payout excludes house money.
+- ~~A holder with mixed positions gets labelled notices, and his personal payout excludes house money.~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** a holder's outcome rows equal the plain template byte for byte (C4 rulings 143, 152).
 - A non-holder's notices are byte-identical.
 
 ### A18 · MINOR · Sanctioned player-path changes (m)–(o)
 *Merged:* HB-ACC-13, -14, -32.
 - **(m)** The public comment side chip ignores marked positions (`markets/actions.ts:339`).
-- **(n)** A user whose only positions on the market are marked is refused with reason HOUSE_STAKE_ONLY, in en/sw/zh (`objections-service.ts:99-109`). Own plus house positions stay eligible.
-- **(o)** F10 adds the account activity feed as a chip surface, keyed on `payload.houseBotId`.
+- **(n)** A user whose only positions on the market are marked is refused with reason HOUSE_STAKE_ONLY, ~~in en/sw/zh~~ (`objections-service.ts:99-109`). Own plus house positions stay eligible. ⛔ **Superseded by D19 (Ali, 2026-09-16):** `HOUSE_STAKE_ONLY` is server-only, and the page shows the neutral "You can’t object to this result. If you have a concern, contact support." (C4 ruling 146).
+- ~~**(o)** F10 adds the account activity feed as a chip surface, keyed on `payload.houseBotId`.~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** there is no holder chip on any surface, the activity feed included (D19c).
 
 *Test (seam):*
 - House position only: side null, HOUSE_STAKE_ONLY.
@@ -1072,9 +1087,9 @@ Merged: HB-ACC-08, -10, -11, -31, -33, HB-LC-28, FS-09, FS-16, FS-17, CA-32 (eng
 
 | Event | Admins | Holder |
 |---|---|---|
-| auto-pause of an ACTIVE bot | bell + email | bell + push, except for RG causes and own loss limit |
+| auto-pause of an ACTIVE bot | bell + email | ~~bell + push, except for RG causes and own loss limit~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** none; the holder receives no house-bot notice (C4 ruling 149). |
 | cause added to a non-ACTIVE bot | bell | — |
-| account closed | bell + email with float amounts | email only |
+| account closed | bell + email with float amounts | ~~email only~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** none (C4 ruling 149). |
 | cause cleared (restored, freeze lifted, role back to PLAYER, break ended) | bell, AlertOnce `bot:<id>:CLEARED:<cause>:<clearedAt>`: "Bot A can be started again — {cause} cleared{; confirm his permission first}" | — |
 | holder locked out by wrong sign-ins | SECURITY bell, AlertOnce per day: "Holder of Bot A was locked out after 5 wrong sign-in attempts (until {t} EAT). The bot continues." | — |
 | holder stakes against his own bot (owner ruling: alert, never refuse) | bell + email, AlertOnce `holder-conflict:<botId>:<marketId>`: "Holder of Bot A staked TZS {x} {SIDE} against Bot A's TZS {y} {SIDE} on {market}." → `/admin/markets/<marketId>` | — |
@@ -1082,24 +1097,24 @@ Merged: HB-ACC-08, -10, -11, -31, -33, HB-LC-28, FS-09, FS-16, FS-17, CA-32 (eng
 - **Roster alerts.** `notifyAdminsHouseBotRoster` goes to every recipient passing C12's predicate: bell + email, uncapped, title ends HH:MM:SS.
   - Events: DESIGNATED, VERIFIED, STARTED, manual PAUSED, REMOVED, and RULES_SAVED / LIMITS_SAVED with a diff, e.g. "Bot A: daily loss cap TZS 50,000 → TZS 200,000 by Juma M. at 14:02:11 EAT".
   - Link: `/admin/house-bots/<id>?tab=history&event=<eventId>`.
-- **Holder transparency.** `notifyHouseBotOwner` gains two kinds (sw/zh drafted for native review):
-  - `reverified` (bell + push + email): "50pick confirmed your permission for liquidity stakes with your current password at {HH:MM} EAT. If you did not give your password to 50pick, change it now — that stops liquidity stakes at once."
-  - `verify_reserved` (bell): "Someone at 50pick tried to confirm your permission with a wrong password. Your sign-in is not locked."
-  - The designated notice adds: "You can stop this at any time by changing your password or contacting 50pick."
-- **RG gate.** Every holder HOUSE_BOT emitter returns early while `isLockedOut(userId).locked`. Outcome notices keep today's behaviour.
+- ~~**Holder transparency.** `notifyHouseBotOwner` gains two kinds (sw/zh drafted for native review):~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** `notifyHouseBotOwner` and every holder notice are deleted (C4 ruling 149): the holder is told nothing when consent is re-verified, a password try is reserved or the bot is designated; the admins' alerts stand.
+  - ~~`reverified` (bell + push + email): "50pick confirmed your permission for liquidity stakes with your current password at {HH:MM} EAT. If you did not give your password to 50pick, change it now — that stops liquidity stakes at once."~~
+  - ~~`verify_reserved` (bell): "Someone at 50pick tried to confirm your permission with a wrong password. Your sign-in is not locked."~~
+  - ~~The designated notice adds: "You can stop this at any time by changing your password or contacting 50pick."~~
+- **RG gate.** ~~Every holder HOUSE_BOT emitter returns early while `isLockedOut(userId).locked`.~~ Outcome notices keep today's behaviour. ⛔ **Superseded by D19 (Ali, 2026-09-16):** there is no holder HOUSE_BOT emitter to gate (C4 rulings 149–150).
 - **Channel.** HOUSE_BOT is never sent by SMS (`comms-registry` entry `sms:'never'`).
 - **Summaries** are built from PLACED intents in [HH:00, HH+1:00) EAT beyond the cap, and claimed once through AlertOnce `summary:<audience>:<botId|all>:<EAT hour>`. The runtime `countInHour` is only the live throttle.
 - **Links** (extend C7's table):
   - Auto-pause whose way out is re-entering consent (password change, or C8's void) → `?reverify=1`. Other pauses → the bot page. `?reverify=1` replaces the design spec's `#reverify`; HashFocus still targets `id="reverify"`.
   - Engine alert → `?tab=activity&range=all&outcome=failed&intent=<intentId>`.
-  - Holder stake → `/positions/<positionId>` (the route exists).
+  - ~~Holder stake → `/positions/<positionId>` (the route exists).~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** there is no holder per-stake notice, so there is no holder link (C4 ruling 149).
   - On a REMOVED bot, every link renders the read-only page.
 - **Limits hint** under bell alerts/hour: "At {n} per hour each admin can get up to {24n} bet rows a day, plus summaries and pause, money and switch alerts."
 
 **Test (`test:house-bot-comms`)**
 - Matrix rows give exact recipients and channels.
 - A second ADMIN saving rules → both ADMINs get the diff.
-- Re-verify gives 1 holder row in 3 locales plus an email. 2 wrong tries → 0 rows; reaching reserve → 1 row.
+- ~~Re-verify gives 1 holder row in 3 locales plus an email. 2 wrong tries → 0 rows; reaching reserve → 1 row.~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** re-verify, wrong tries and the reserve give the holder 0 rows and 0 emails (C4 ruling 149).
 - RG-locked holder: 0 HOUSE_BOT holder rows.
 - Stubbed SMS fan-out is never called.
 - Bets straddling 14:00 EAT: 20 bells plus 1 summary with N=5.
@@ -1216,7 +1231,7 @@ I read the code in `C:\kipindi-main` at HEAD `ac411357`, without editing anythin
 | CRA-29 | Its row-count assertion moves into R7's test. |
 | FS-06 | Core dropped it as an owner-level decision. The disclosure-text flip goes with it. |
 | FS-17 | C13 and F8 (channel policy). |
-| FS-25 | R2 has the single reader. The procedure note adds nothing. |
+| FS-25 | ~~R2 has the single reader.~~ The procedure note adds nothing. ⛔ **Superseded by D20 (Ali, 2026-09-17):** R2 is struck (C5-SPEC rulings 192–196); whether its `houseStakeByMarket` reader stays is decided in checkpoint C5-5b. |
 | FS-01 to -04, -07 to -16, -18 to -21, -23, -24, -27, -28, -31 to -34 | Outside §9/§10; already in the A and C amendments. |
 | AML public text | `/legal/aml` makes no claim about bet monitoring that house bets would falsify (`legal/aml/page.tsx:89-107`). ~~`detectSuspiciousBets` (`analytics.ts:476`, used at `admin/aml/page.tsx:35`) is already skipped in §9.~~ ⛔ **Superseded by D20 (Ali, 2026-09-17):** `detectSuspiciousBets` counts a house bot's stakes like any player's; the §9 exclusion is struck (C5-SPEC ruling 230). |
 | KYC risk score | No scoring factor reads bets (`kyc-risk.ts:57-79`), so house stakes don't move the score. ~~The display line is in R9.~~ ⛔ **Superseded by D20 (Ali, 2026-09-17):** the KYC card's house line is struck (C5-SPEC ruling 197). |
@@ -1341,7 +1356,7 @@ I read the code in `C:\kipindi-main` at HEAD `ac411357`, without editing anythin
 - `kyc-risk.ts:336` is listed in the HOUSE-BOTS.md risks for the KYC owner and is not edited here.
 
 **Test**
-- Source pin (positive control): no `getAuditPage` import in `report-pack.ts`, `server/house-bot/**`, or the house and RG builders in `catalogue.ts`.
+- Source pin (positive control): no `getAuditPage` import in `report-pack.ts`, `server/house-bot/**`, or the ~~house and~~ RG builders in `catalogue.ts`. ⛔ **Superseded by D20 (Ali, 2026-09-17):** there are no house report builders (C5-SPEC rulings 199–208); the pin stands for the pack, `catalogue.ts` and the house-bot modules (ruling 215).
 - `drive:house-bots-local` (Postgres): pack prepared and approved, then 12,000 BET rows, then a fresh module → `getReportPack().state === "approved"`. The in-memory store can't prove this, because the durable reader falls back to the ring (`audit.ts:633-637`).
 
 ### R9 · MINOR · Record what resolvers and identity officers saw
@@ -1385,16 +1400,16 @@ I read the code in `C:\kipindi-main` at HEAD `ac411357`, without editing anythin
 - 2026-09-07: a "correction; nothing the platform does changed" (`COMPLIANCE-DECISIONS.md:855-862`).
 - KYC 2026-09-13: waived as "player-favourable", plus "do not re-add a site-wide bar" (`:65`, `:74`, `:94-108`).
 
-**Choice under D2/D7: no banner, no bell, no SMS.** Add the "Terms §10" text below to the §10 COMPLIANCE-entry bullet:
+**Choice under D2/D7: no banner, no bell, no SMS.** ~~Add the "Terms §10" text below to the §10 COMPLIANCE-entry bullet:~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** no rulebook or Terms text changes, so Terms §10's notice is not engaged and there is nothing to waive; nothing is broadcast (D19a: no announcement).
 
-> "Terms §10 promises written notice (in-app + SMS) 14 days before a material change. This change is material and changes what the platform does, so neither the 2026-09-07 correction reasoning nor the 2026-09-13 'favourable to players' reasoning applies. The notice is waived on Ali's ruling alone (D2/D7), effective on deploy. Nothing is broadcast: the platform has no trilingual in-app notice channel (the /admin/system banner is one untranslated, dismissible string) and SMS cannot deliver in production (`smsConfigured()` is false). ⚠️ Open defect, not fixed in this build: §10's 'in-app + SMS' promise cannot be kept for any future change until SMS is live and a localised notice exists — owner to decide. Existing players keep `acceptedTermsVersion`; no re-acceptance."
+> ~~"Terms §10 promises written notice (in-app + SMS) 14 days before a material change. This change is material and changes what the platform does, so neither the 2026-09-07 correction reasoning nor the 2026-09-13 'favourable to players' reasoning applies. The notice is waived on Ali's ruling alone (D2/D7), effective on deploy. Nothing is broadcast: the platform has no trilingual in-app notice channel (the /admin/system banner is one untranslated, dismissible string) and SMS cannot deliver in production (`smsConfigured()` is false). ⚠️ Open defect, not fixed in this build: §10's 'in-app + SMS' promise cannot be kept for any future change until SMS is live and a localised notice exists — owner to decide. Existing players keep `acceptedTermsVersion`; no re-acceptance."~~
 
-**Code comments:** above META in `terms/page.tsx` and `rules/page.tsx`, add a house-bots block in the style of `terms/page.tsx:27-41`.
+~~**Code comments:** above META in `terms/page.tsx` and `rules/page.tsx`, add a house-bots block in the style of `terms/page.tsx:27-41`.~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** the legal pages keep exactly what they have on `main`, with no house-bots comment block.
 
 **Test** (`test:house-bot-disclosure`)
-- The house entry in COMPLIANCE-DECISIONS.md contains "waived on Ali's ruling alone", "smsConfigured" and "no re-acceptance".
+- ~~The house entry in COMPLIANCE-DECISIONS.md contains "waived on Ali's ruling alone", "smsConfigured" and "no re-acceptance".~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** there is no Terms §10 waiver to pin.
 - No file under `house-bots` imports `setAnnouncementAction` or `setPlatformConfig`.
-- Both legal pages carry the house META comment.
+- ~~Both legal pages carry the house META comment.~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** both legal pages stay byte-identical to `origin/main`.
 
 ### P3 · MINOR · Retention: the authority doc, the published page and the purge payload
 *Takes the doc half of CRA-07; the periods are A20.*
@@ -1442,10 +1457,10 @@ I read the code in `C:\kipindi-main` at HEAD `ac411357`, without editing anythin
 **§10 Docs, add:**
 - **RULES.md:**
   - §1 row "House liquidity stakes | accounts 50pick operates may stake; same fee, bounds and cut-offs; no cash-out, wagering, commission or objection standing | Both".
-  - New "### 2.11 · House liquidity stakes", covering decided (the COMPLIANCE entry), enforced (H0–H4 and (d)–(g)), configured (`/admin/house-bots`) and stated (rules §8 carve-out, §3/§4, terms §4, privacy §3).
+  - New "### 2.11 · House liquidity stakes", covering decided (the COMPLIANCE entry), enforced (H0–H4 and (d)–(g)), configured (`/admin/house-bots`) ~~and stated (rules §8 carve-out, §3/§4, terms §4, privacy §3)~~. ⛔ **Superseded by D19 (Ali, 2026-09-16):** no public surface states it; the rulebooks, Terms and privacy notice carry no house text (D19a).
   - One cross-reference line each in §2.4, §2.5, §2.6 and §2.10, plus a §6 history row.
 - **FLOWS.md:** new "## 9. House liquidity gates". Correct §3 `:66` to "single admin by default; two officers when enabled".
-- **FAILURE-INVENTORY.md:** §6 rows (as planned) and new §7.1 families: HouseBot status, pause reasons and causes, HouseBotIntent status, EngineCode. Admin words come from `status-tone.ts` and `feed-copy.ts`; the player sees only the holder chip.
+- **FAILURE-INVENTORY.md:** §6 rows (as planned) and new §7.1 families: HouseBot status, pause reasons and causes, HouseBotIntent status, EngineCode. Admin words come from `status-tone.ts` and `feed-copy.ts`; ~~the player sees only the holder chip~~. ⛔ **Superseded by D19 (Ali, 2026-09-16):** a player, the holder included, sees no house chip or house word (D19c).
 - **AGENT-PROGRAMME.md §5:** "No commission, first-bet or turnover reward accrues on house-marked stakes or settlements (`houseBotId`); the holder's own bets accrue normally."
 - **DATA-RETENTION.md:** as in P3.
 - **Doc-content tests:** every "test:docs greps/finds" in A1, A23 and CRA-25 moves into a `docs` section of `test:house-bot-disclosure`. `test:docs` stays a link check.
@@ -1470,7 +1485,7 @@ I read the code in `C:\kipindi-main` at HEAD `ac411357`, without editing anythin
 | 7 | R7 console audit pins |
 | 8 | P4 final docs |
 
-Two defaults the owner may override: R5 (what trigger players get in their export) and P2 (the §10 SMS-promise defect).
+Two defaults the owner may override: R5 (what trigger players get in their export) ~~and P2 (the §10 SMS-promise defect)~~. ⛔ **Superseded by D19 (Ali, 2026-09-16):** P2's §10 waiver is not engaged, because no Terms text changes (D19a).
 
 ### Critical Files for Implementation
 - C:\kipindi-main\src\lib\server\user-service.ts
@@ -1510,7 +1525,7 @@ Everything was checked against `C:\kipindi-main`. HEAD is `ac411357`, the KYC co
 - FS-26: A16 and I10. The test line moves to S4.
 - FS-28: plan (e) plus the money test.
 - FS-29: R3.
-- FS-30 (new locales): P1 (`Record<Locale>` copy, and the disclosure test loops over `Object.keys(dict)`).
+- FS-30 (new locales): P1 (~~`Record<Locale>` copy, and~~ the disclosure test loops over `Object.keys(dict)`). ⛔ **Superseded by D19 (Ali, 2026-09-16):** there is no holder chip, holder notice, house refusal copy or public disclosure to translate; the non-disclosure suite's loop over every locale is what covers a new one.
 - FS-31: contradicts D5.
 - FS-32: A12.
 - FS-33: A15.
@@ -1667,24 +1682,24 @@ NO-GO before R4: nothing merges. NO-GO after R4: go to S3.
 **Build now**
 - `feature-state.ts`: `FeatureName` gains `"houseBots"`, with `PRODUCT_STATE.houseBots = "ACTIVE"`.
 - `houseBotsLive()` is read by `startHouseBotEngine`, switch ON, Start, Designate and Re-verify.
-- It gates the offer only. `house_position_no_exit`, the markers and the reports are never gated (the file's own "gate the offer, never the refusal" rule).
+- It gates the offer only. ~~`house_position_no_exit`,~~ the markers and the reports are never gated (the file's own "gate the offer, never the refusal" rule). ⛔ **Superseded by D19 (Ali, 2026-09-16):** `house_position_no_exit` is deleted; a house position's cash-out gets the ordinary closed-exit refusal `exit_window_closed` (C4 ruling 147).
 - Add `offCause` SUNSET and remove reason SUNSET.
 
 **`ops:house-bots-sunset`** (commit 7; dry run by default; `--apply --reason`):
 - master OFF(SUNSET);
 - every bot that isn't REMOVED goes to REMOVED(SUNSET), and its intents are cancelled;
 - one event per bot, and one COMPLIANCE `house_bot.sunset{bots, cancelled, openExposureByMarket}`;
-- the holders get the normal Remove notices;
+- ~~the holders get the normal Remove notices;~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** the holders get nothing, and every alert goes to admins only (D19c; C4 ruling 149).
 - running it again changes nothing.
 
 **HOUSE-BOTS.md "Sunset runbook"**
 1. Run the script with `--apply`. No deploy needed.
-2. Commit `houseBots: "WITHDRAWN"`, change the public line to past tense with a META bump, and add a COMPLIANCE entry. Deploy.
+2. Commit `houseBots: "WITHDRAWN"`, ~~change the public line to past tense with a META bump,~~ and add a COMPLIANCE entry. Deploy. ⛔ **Superseded by D19 (Ali, 2026-09-16):** there is no public line to change and no META to bump (D19a).
 3. Run `ops:house-bots-status` until open marked positions reach 0. Never void automatically.
 4. All data is kept (A20).
 
 **Test (`test:withdrawn-features`, new section)**
-- `FEATURE_HOUSEBOTS=WITHDRAWN`: the engine starts 0 timers; ON, Start and Designate are refused with "House bots are withdrawn"; cash-out on a marked position still returns `house_position_no_exit`; ~~reports keep the house lines~~. ⛔ **Superseded by D20 (Ali, 2026-09-17):** reports carry no house lines (C5-SPEC rulings 224–231).
+- `FEATURE_HOUSEBOTS=WITHDRAWN`: the engine starts 0 timers; ON, Start and Designate are refused with "House bots are withdrawn"; cash-out on a marked position still returns ~~`house_position_no_exit`~~; ~~reports keep the house lines~~. ⛔ **Superseded by D20 (Ali, 2026-09-17):** reports carry no house lines (C5-SPEC rulings 224–231). ⛔ **Superseded by D19 (Ali, 2026-09-16):** the marked position's cash-out returns `exit_window_closed`, the ordinary closed-exit refusal (C4 ruling 147).
 - The ACTIVE branch is still driven.
 - Script: a dry run writes 0 rows; `--apply` leaves 0 live bots and 1 audit row; a second `--apply` makes 0 changes.
 
@@ -1749,12 +1764,12 @@ NO-GO before R4: nothing merges. NO-GO after R4: go to S3.
 **Build now (commit 4)**
 - `CHANNEL_POLICY satisfies Record<NotificationKind,{sms:'never'|'otp'|'allowed'; email:'never'|'template-only'|'allowed'}>` over `NOTIFICATION_KINDS` (`:202`).
 - Every future fan-out must call `channelAllowed(kind,{houseOnly})`.
-- When all of a notice's positions are house-marked: never SMS, and email only through the holder's hourly summary.
+- When all of a notice's positions are house-marked: never SMS, ~~and email only through the holder's hourly summary~~. ⛔ **Superseded by D19 (Ali, 2026-09-16):** such a notice sends no email, and there is no holder summary (C4 rulings 143 and 149; C5-SPEC ruling 235).
 - The HOUSE-BOTS.md alert matrix gains a Channel column.
 
 **Test**
 - The policy is exhaustive at compile time.
-- With `SMS_PROVIDER=selcom` stubbed, 50 house outcomes give 0 SMS calls and ≤ `holderNoticesPerHour` bells plus 1 summary.
+- With `SMS_PROVIDER=selcom` stubbed, 50 house outcomes give 0 SMS calls ~~and ≤ `holderNoticesPerHour` bells plus 1 summary~~. ⛔ **Superseded by D19 (Ali, 2026-09-16):** `holderNoticesPerHour` is removed and there is no holder summary (C4 rulings 149, 153).
 - A planted fan-out that skips `channelAllowed` turns the pin red.
 
 ## F7 · MAJOR · Replicas > 1, or the 60 s overlap (on top of A24)
@@ -2092,35 +2107,37 @@ NO-GO before R4: nothing merges. NO-GO after R4: go to S3.
 
 **P1 · MAJOR (privacy line) / MINOR (the rest) · Disclosure completeness.** Merged: CRA-09, CRA-23, CRA-24, CRA-25, CRA-26, CRA-27, FS-30.
 
+⛔ **Superseded by D19 (Ali, 2026-09-16):** struck below, each marked in place: the privacy line, the version bumps and the announcement question, the chatbot bullet, the disclosure tracking and the holder copy. **Still standing:** the chatbot's forbidden-phrase guard (D19d, with its full list), the private Board draft (D19b), the COMPLIANCE entry, the §12 leak list, and their tests.
+
 *Evidence:*
 - The privacy page's lawful-basis section says nothing about automated processing of bets for liquidity (`legal/privacy/page.tsx:57-63`).
 - `TERMS_VERSION = "2026-09-09"` is stamped only at registration (`auth-service.ts:72`, `:440`, `:655`).
 - The plan's leak test list omits the fairness feed and the share-image route.
 
 *§10, add:*
-- **Privacy notice**, §3 "Legitimate interest", in en/sw/zh with native review: "Liquidity: an automated system operated by 50pick reads bets placed on a market to decide stakes from accounts 50pick operates; accounts that exploit those stakes may be excluded from them for the day." Bump the page version. The line is replaced by the N1 §10 line (automated system or 50pick staff).
-- **Rules and Terms versions:** move to a version different from 2026-09-13, identical across locales.
-  - Bump `TERMS_VERSION`.
-  - Existing players keep their accepted version, with no re-acceptance gate, stated explicitly.
-  - Owner rules whether an in-app announcement goes out, since Terms §10 promises one.
-- **Chatbot:** quote the exact bullet. Forbidden phrases: "independent", "cannot influence", "never bets against you", or naming or confirming an account.
+- ~~**Privacy notice**, §3 "Legitimate interest", in en/sw/zh with native review: "Liquidity: an automated system operated by 50pick reads bets placed on a market to decide stakes from accounts 50pick operates; accounts that exploit those stakes may be excluded from them for the day." Bump the page version. The line is replaced by the N1 §10 line (automated system or 50pick staff).~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** the privacy notice keeps exactly its words on `main`, with no liquidity line and no version bump (D19a, D19e).
+- ~~**Rules and Terms versions:** move to a version different from 2026-09-13, identical across locales.~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** no rulebook or Terms text changes, so no version moves, `TERMS_VERSION` is not bumped, no acceptance is touched and nothing is announced (D19a).
+  - ~~Bump `TERMS_VERSION`.~~
+  - ~~Existing players keep their accepted version, with no re-acceptance gate, stated explicitly.~~
+  - ~~Owner rules whether an in-app announcement goes out, since Terms §10 promises one.~~
+- **Chatbot:** ~~quote the exact bullet.~~ Forbidden phrases: "independent", "cannot influence", "never bets against you", or naming or confirming an account. ⛔ **Superseded by D19 (Ali, 2026-09-16):** the chatbot gets no disclosure bullet; only the forbidden-phrase guard is built, with D19d's full list, over the system prompt and `faq8a` in all three locales.
 - **Board disclosure draft**, required sections:
   - what 50pick does;
   - a request to confirm the licence class;
   - levy treatment;
-  - the notice waiver;
+  - ~~the notice waiver;~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** the rulebooks and Terms are not amended (D19a reverses D2/D7), so there is no notice waiver for the draft to report; the draft itself stays private (D19b).
   - the controls;
   - how to inspect;
   - the accepted risks.
-- **Disclosure tracking:** add `HouseBotControl.boardDisclosureSentAt`. Until it is set, the ON modal shows the amber line "Board disclosure not recorded as sent".
+- ~~**Disclosure tracking:** add `HouseBotControl.boardDisclosureSentAt`. Until it is set, the ON modal shows the amber line "Board disclosure not recorded as sent".~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** no "Record disclosure sent" action and no ON-modal line are built; the Board draft stays private and Ali decides if and when it is sent (D19b).
 - **COMPLIANCE-DECISIONS:** heading "## 2026-09-13 (third) · House bots"; the supersede table names F6 §5 conditions 1–3.
-- **Locales:** holder copy is typed `Record<Locale, …>`, and the disclosure test loops over `Object.keys(dict)`.
+- **Locales:** ~~holder copy is typed `Record<Locale, …>`, and~~ the disclosure test loops over `Object.keys(dict)`. ⛔ **Superseded by D19 (Ali, 2026-09-16):** there is no holder copy in any locale (D19c); the non-disclosure suite loops over every locale in `Object.keys(dict)`.
 
 *§12 leak list, add:* `/api/fairness/recent`, `/results`, `/api/og/market/<id>`, the ticker feed and the comments thread, plus a planted positive-control needle.
 
 *Test:*
-- `test:house-bot-disclosure` finds the privacy line in all 3 locales.
-- Version strings match across locales and `TERMS_VERSION`.
+- ~~`test:house-bot-disclosure` finds the privacy line in all 3 locales.~~
+- ~~Version strings match across locales and `TERMS_VERSION`.~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** there is no privacy line and no version move; the suite pins the rulebooks, Terms and the privacy notice byte-identical to `origin/main` instead.
 - The forbidden-phrase check finds nothing.
 - The leak sweep finds the planted needle.
 
@@ -2139,7 +2156,7 @@ NO-GO before R4: nothing merges. NO-GO after R4: go to S3.
 | 3 (designation) | A3, A4, A22, C4 service side |
 | 4 (engine) | A2, A5, A7 mapper, A8, A9 OFF, A10, A11, A12, A13, A16, A19 engine audits, A21 |
 | 5 (reports) | ~~A6, R1–R4~~, A19 payloads ⛔ **Superseded by D20 (Ali, 2026-09-17):** A6 (the data-rights projection, R5 = G1), R1, R2, R3's §9 additions and R4's leaderboard option and source pin are struck; R3's §3 loss rules and marker source pin and R4's no-reward rule stand. |
-| 6 (public text) | P1 |
+| 6 (~~public text~~) | P1 ⛔ **Superseded by D19 (Ali, 2026-09-16):** Commit 6 publishes no text; it keeps the private Board draft, the chatbot's forbidden-phrase guard, the docs of record and the non-disclosure suite. |
 | 7 (console) | C1–C7, the A9 fallback script, A22 recipients |
 | 8 (drive, docs, release) | A23 release checklist |
 
@@ -2150,7 +2167,7 @@ NO-GO before R4: nothing merges. NO-GO after R4: go to S3.
    - D10, the trigger player's data export (A6).
    - Retention period for skipped intents (A20).
    - Lowering global caps: allow or refuse (C6).
-   - Terms announcement at deploy (P1).
+   - ~~Terms announcement at deploy (P1).~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** answered: nothing is announced and no Terms text changes (D19a).
    - ~~Whether R1 is v1.~~ ⛔ **Superseded by D20 (Ali, 2026-09-17):** answered: R1 is never built.
 
 ### Critical Files for Implementation
@@ -2341,7 +2358,7 @@ D17 (Enter now) and D18 (targeted polls and exact timing), accepted risks 13–2
   - `gStaffChosenMaxCounterpartyShare int NULL CHECK (… BETWEEN 10 AND 100)`: recommended 50. NULL means Enter now refuses (N1 §3 H3).
   - `gStaffEdgeWinRatePts int NULL CHECK (… BETWEEN 1 AND 100)`: recommended 15. NULL switches that alert off.
   - `gStaffEdgeNetTzs bigint NULL CHECK (… BETWEEN 0 AND 1000000000)`: recommended 100,000. NULL switches it off.
-  - `boardDisclosureSections text[] NULL` (INT-12), written by "Record disclosure sent" (N1 §10).
+  - `boardDisclosureSections text[] NULL` (INT-12)~~, written by "Record disclosure sent" (N1 §10)~~. ⛔ **Superseded by D19 (Ali, 2026-09-16):** P1's disclosure tracking is struck, so no "Record disclosure sent" console action writes it (see N1 §10).
 - **What they count:** PLACED rows `WHERE kind='MANUAL' OR "targetId" IS NOT NULL`, finished in the current EAT day (day key from DB `now()` in `Africa/Dar_es_Salaam`, A24).
 - **NULL:** the staff caps set to NULL mean Enter now and targets cannot bet. `targetsMaxActive` NULL means no target can be added for that bot; `gTargetsMaxActive` NULL means no target can be added for any bot. Active targets keep reacting (N2 §2).
 - **Master ON:** these columns are **not** required and are excluded from PLAN F3's "Set N global limits first" list.
@@ -2388,7 +2405,7 @@ D17 (Enter now) and D18 (targeted polls and exact timing), accepted risks 13–2
 - Memory twins and `test:dal-parity` cases land in commit 1 for the draw, the intent insert, the press and the target. The picker DAL parity case lands in commit 7.
 
 #### N1 §3 Money seam (commit 2)
-Sanctioned change (r) (N1 §2) is the only new player-path change; (q) is extended in N1 §9. Every kind-specific branch below reads the claimed intent row by `ctx.intentId`, never a call argument.
+Sanctioned change (r) (N1 §2) is the only new player-path change; ~~(q) is extended in N1 §9.~~ ⛔ **Superseded by D20 (Ali, 2026-09-17):** sanctioned change (q), R9's `houseStake` payload, is struck with its N1 §9 extension (C5-SPEC rulings 187–191). Every kind-specific branch below reads the claimed intent row by `ctx.intentId`, never a call argument.
 
 **H0, for `ctx.kind==='house'`: an ordered rule (MON-01)**
 1. The key must equal `houseIntentKey(intentId)` and there must be no `playStartedAt`, else `house_key_mismatch`.
@@ -2507,13 +2524,13 @@ The order is pinned as `H2_ORDER` in `scripts/anchors/house-bot-seam.anchors.mjs
 - `GATE_PARITY` gains all three as `{exempt: "house context only"}`.
 - **No new `ctx.kind` site.** The branches read the claimed row at the anchored H0/H2/H3/H4 sites in `house-bot-seam.anchors.mjs`.
 - **A9 unchanged:** `lock_timeout 2s` before `market:<id>` and `house:control`; plain SELECTs in H2.
-- **Registered copy.** PLAN §3 registers every `house_*` reason in en/sw/zh. en is binding; sw/zh are drafted and need native review.
+- ~~**Registered copy.** PLAN §3 registers every `house_*` reason in en/sw/zh. en is binding; sw/zh are drafted and need native review.~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** the three reasons below get no player copy in any language and the table is struck: they are server-only `HouseSeamReason` codes outside the player registry and dictionary, worded for the console by the engine's server-side copy (C4 ruling 148).
 
 | Reason | en | sw (native review) | zh (native review) |
 |---|---|---|---|
-| `house_info_blackout` | "This market isn't open to liquidity stakes right now." | "Soko hili halipokei dau za ukwasi kwa sasa." | "该市场目前不接受流动性投注。" |
-| `house_intent_stale` | "This liquidity stake is past its time limit, so it was not placed." | "Dau hili la ukwasi limepita muda wake, kwa hivyo halikuwekwa." | "该流动性投注已超过时限，因此未下注。" |
-| `house_counterparty_concentration` | "Most of the other side belongs to one account, so no liquidity stake was placed." | "Sehemu kubwa ya upande mwingine ni ya akaunti moja, kwa hivyo dau la ukwasi halikuwekwa." | "对方大部分资金属于同一账户，因此未下流动性投注。" |
+| `house_info_blackout` | ~~"This market isn't open to liquidity stakes right now."~~ | ~~"Soko hili halipokei dau za ukwasi kwa sasa."~~ | ~~"该市场目前不接受流动性投注。"~~ |
+| `house_intent_stale` | ~~"This liquidity stake is past its time limit, so it was not placed."~~ | ~~"Dau hili la ukwasi limepita muda wake, kwa hivyo halikuwekwa."~~ | ~~"该流动性投注已超过时限，因此未下注。"~~ |
+| `house_counterparty_concentration` | ~~"Most of the other side belongs to one account, so no liquidity stake was placed."~~ | ~~"Sehemu kubwa ya upande mwingine ni ya akaunti moja, kwa hivyo dau la ukwasi halikuwekwa."~~ | ~~"对方大部分资金属于同一账户，因此未下流动性投注。"~~ |
 
 - **`FailureDetail.cap` gains:** `STAFF_CHOSEN_PER_DAY`, `STAFF_CHOSEN_DAILY_STAKE`, `GLOBAL_STAFF_CHOSEN_PER_DAY`, `GLOBAL_STAFF_CHOSEN_DAILY_STAKE`, `TARGET_ONCE`.
 - **`FailureDetail` gains** `condition` (`OPENER`|`THIN`) for `house_condition_gone`.
@@ -2959,7 +2976,7 @@ RETURNING *;
   - A repair killed after its lease is retried once the lease expires. Exactly one row results.
 - **A8 alert repair.**
   - Covers PLACED MANUAL rows and PLACED rows with `targetId`. It routes them to `notifyAdminsHouseBotStaffChosen`: every `houseBotAlertRecipients()`, bell + email, uncapped, not counted in `countInHour` (N1 §7).
-  - `notifyAdminsHouseBotBet` excludes staff-chosen rows. Holder notices are unchanged.
+  - `notifyAdminsHouseBotBet` excludes staff-chosen rows. ~~Holder notices are unchanged.~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** there are no holder notices (C4 ruling 149).
 - **Staff stake voided** (`oversight.ts`, once a minute).
   - Scope: markets holding a PLACED staff-chosen stake with `finishedAt` in the last 30 days (`hbi_staff_finished_idx`).
   - Trigger: market status `VOIDED`, or `reopenedAt` later than that stake's `finishedAt`.
@@ -3005,7 +3022,7 @@ Every one gets a `feed-copy.ts` sentence, typed `satisfies Record<…, string>`.
 
 | Result | Intent | Alert |
 |---|---|---|
-| ok | PLACED by `markPlaced`; press → DONE | A8 claim, then `notifyAdminsHouseBotStaffChosen` for MANUAL and targeted rows, `notifyAdminsHouseBotBet` for the rest; holder notice unchanged |
+| ok | PLACED by `markPlaced`; press → DONE | A8 claim, then `notifyAdminsHouseBotStaffChosen` for MANUAL and targeted rows, `notifyAdminsHouseBotBet` for the rest; ~~holder notice unchanged~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** no holder notice (C4 ruling 149). |
 | `house_intent_superseded` | no-op (the row is already terminal) | none |
 | `house_intent_stale` | EXPIRED(STALE) | none |
 | `house_info_blackout` | SKIPPED(INFO_BLACKOUT) | none |
@@ -3307,7 +3324,7 @@ Every action starts with `requireHouseOwner()` (C12: `REAUTH_LOGIN | REAUTH_TOTP
 - `enterNow:{enabled, available, code?, reason?}`. `enabled` comes from the saved rules. `available` evaluates refusal steps 3–9 only; step 10 applies only to presses (UX-20).
 - `targets:{enabled, active, max, gMax, available, reason?}`. `available` evaluates the N2 §6 add refusals 4–8, without a market (UX-20).
 - `staffChosenToday:{bot:{n, max, tzs, maxTzs}, global:{n, max, tzs, maxTzs}}`.
-- `boardDisclosureStaffChosenSent:boolean` (N1 §10).
+- ~~`boardDisclosureStaffChosenSent:boolean` (N1 §10).~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** P1's disclosure tracking is struck, so the status action carries no Board-disclosure flag (see N1 §10).
 
 #### N1 §7 Notifications (commit 4; `comms-registry` rows; C13 matrix rows)
 
@@ -3320,7 +3337,7 @@ Every action starts with `requireHouseOwner()` (C12: `REAUTH_LOGIN | REAUTH_TOTP
 | `notifyAdminsHouseBotAlert`, AlertOnce `staff-stake-voided:<marketId>` | every recipient · bell + email | planner: a void or a reopen (`reopenedAt`) of a market holding a PLACED staff-chosen stake | "Market “{title}” holding a staff-chosen house stake ({SIDE} TZS {x}, Bot “{label}”) was {voided \| reopened} at {HH:MM} EAT." · `/admin/markets/<marketId>` |
 | `notifyAdminsHouseBotAlert`, AlertOnce `staff-stake-self-decided:<marketId>:<action>` | every recipient · bell + email | planner: the decision's actor is in ~~`houseStake.staffChosen.requestedBy`~~ (INT-06) ⛔ **Superseded by D20 (Ali, 2026-09-17):** decision audits carry no `houseStake` (C5-SPEC rulings 187–191); the actor is compared with `requestedBy` as N1 §4.5 defines it, which `oversight.ts` recomputes from the stakes | "Market “{title}” holding a house stake chosen by {name} was {resolved {OUTCOME} \| voided \| reopened \| objection upheld \| objection rejected} by {name} at {HH:MM} EAT. This is a record only; nothing was refused." · `/admin/markets/<marketId>` |
 | ~~`notifyAdminsHouseBotAlert`, AlertOnce `staff-edge:<officerId>:<YYYY-MM>`~~ ⛔ **Superseded by D20 (Ali, 2026-09-17):** this row is struck; the staff-edge alert is never built (C5-SPEC rulings 218–223) | ~~every recipient · bell + email~~ | ~~planner, monthly (INT-07)~~ | ~~"{name}'s staff-chosen stakes placed in {Month YYYY}: {n} settled, {w}% won against {a}% for automatic stakes on the same products; net {±TZS x}. See the staff-chosen scorecard →" · `/admin/reports?tab=library&range=custom&from=<YYYY-MM-01>&to=<YYYY-MM-last>` (pinned by the C13 +60-day test)~~ |
-| `notifyHouseBotOwnerStake` | holder · bell + push, capped by `holderNoticesPerHour`; returns early while `isLockedOut` | a PLACED staff-chosen row, identical to an automatic one | unchanged; it never says a person chose |
+| ~~`notifyHouseBotOwnerStake`~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** this row is struck: the emitter is deleted and the holder receives no house-bot notice (C4 ruling 149). | ~~holder · bell + push, capped by `holderNoticesPerHour`; returns early while `isLockedOut`~~ | ~~a PLACED staff-chosen row, identical to an automatic one~~ | ~~unchanged; it never says a person chose~~ |
 
 **Detection rules (planner, once a minute; ~~staff edge per N1 §4.5~~):** ⛔ **Superseded by D20 (Ali, 2026-09-17):** the staff-edge rule below is struck (C5-SPEC rulings 218–223).
 - **Self-decided.**
@@ -3398,7 +3415,7 @@ Every action starts with `requireHouseOwner()` (C12: `REAUTH_LOGIN | REAUTH_TOTP
 
 Body order:
 1. Eyebrow "Enter now". Title `Stake from Bot “{label}” now`.
-2. Until `boardDisclosureSections` contains "Stakes chosen by staff": `Callout tone="warning" size="sm"` "Board disclosure of staff-chosen stakes not recorded as sent". It is non-blocking.
+2. ~~Until `boardDisclosureSections` contains "Stakes chosen by staff": `Callout tone="warning" size="sm"` "Board disclosure of staff-chosen stakes not recorded as sent". It is non-blocking.~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** P1's disclosure tracking is struck, so the modal shows no Board-disclosure line (see N1 §10).
 3. `Field label="Poll"` › MarketPicker `purpose="enter-now"`.
 4. **Preview**, after a pick:
    - **Loading and errors:** `SkCard lines={3}` while loading. On error: "Couldn't check this poll — try again" + Retry. On REAUTH: C12 copy.
@@ -3486,7 +3503,7 @@ Body order:
   - AdminCard "Staff-chosen stakes" with `gCapStaffChosenPerDay`, `gCapStaffChosenDailyTzs`, `gTargetsMaxActive`, `gStaffChosenMaxCounterpartyShare`, `gStaffEdgeWinRatePts` and `gStaffEdgeNetTzs` (bounds and copy: N1 §5). ⛔ **Superseded by D20 (Ali, 2026-09-17):** the staff-edge alert behind the last two fields is struck (C5-SPEC rulings 218–223); whether this card still shows them is left to Commit 7's rulings (N1 §5).
   - "Today's usage" ProgressBars "Staff-chosen stakes" and "Staff-chosen TZS".
   - Clearing any staff-chosen cap while house bots are ON is allowed (MON-14), with the consequence preview "Enter now and targets will be off for every bot. {n} queued staff-chosen stakes will be skipped."
-- **Board disclosure:** P1's "Record disclosure sent" control gains a Checkbox list of `BOARD_DISCLOSURE_SECTIONS` (the draft's section headings, in `constants.ts`). Saving writes `boardDisclosureSections`.
+- ~~**Board disclosure:** P1's "Record disclosure sent" control gains a Checkbox list of `BOARD_DISCLOSURE_SECTIONS` (the draft's section headings, in `constants.ts`). Saving writes `boardDisclosureSections`.~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** there is no "Record disclosure sent" control to extend, because P1's disclosure tracking is struck; `BOARD_DISCLOSURE_SECTIONS` still equals the private draft's headings (N1 §10).
 - **Overview:** two usage bars, "Staff-chosen stakes" and "Staff-chosen TZS".
 - **Activity feed:**
   - FilterPill group "Entry: All · Automatic · Targeted · Enter now" (whitelisted `entry=auto|target|manual`; X1).
@@ -3577,7 +3594,7 @@ Body order:
   - THIN and OPENER;
   - the largest-player line and the next-possible line;
   - figures over the age limit;
-  - the Board line;
+  - ~~the Board line;~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** there is no Board line (see N1 §10).
   - one refusal per family, in both warning and danger tones.
 - **Result states:** every row of the result table, including the 8 s and 45 s copies.
 - **BotStrip:**
@@ -3640,15 +3657,15 @@ Body order:
   - DATA-RETENTION §2b tier ① gains "HouseBotPress reasons → `[erased]`".
 
 #### N1 §10 Public text (commit 6)
-- **Rules and Terms:** unchanged. "…including any stakes 50pick places to add liquidity" stays true.
-- **Privacy P1 line, replace.** It sits in §3 "Legitimate interest" (`legal/privacy/page.tsx:61`; re-derive). English is binding; sw and zh are drafts for native review.
-  - en: "Liquidity: 50pick may place stakes from accounts it operates, on markets chosen by an automated system or by 50pick staff; the automated system reads bets placed on a market to decide those stakes, and accounts that exploit them may be excluded from them for the day."
-  - sw (draft, native review): "Ukwasi: 50pick inaweza kuweka dau kutoka kwa akaunti inazoendesha, kwenye masoko yanayochaguliwa na mfumo wa kiotomatiki au na wafanyakazi wa 50pick; mfumo huo wa kiotomatiki husoma dau zilizowekwa kwenye soko ili kuamua dau hizo, na akaunti zinazozitumia vibaya zinaweza kuzuiwa kuzipata kwa siku hiyo."
-  - zh (draft, native review): "流动性：50pick 可能通过其运营的账户下注，所投注的市场由自动化系统或 50pick 员工选择；自动化系统会读取市场上的投注来决定这些下注，利用这些下注牟利的账户当天可能被排除在外。"
-  - **Why:** P1's line implies an automated system decides every stake. With D17/D18, staff choose the market and the moment.
-  - **Versioning:** it folds into P1's page-version bump before release. Built after REL-4, it would need its own META bump and COMPLIANCE entry (P2 precedent).
+- **Rules and Terms:** unchanged. ~~"…including any stakes 50pick places to add liquidity" stays true.~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** that planned public sentence is never published; the rulebooks, Terms and FAQ keep exactly their words on `main` (D19a).
+- ~~**Privacy P1 line, replace.** It sits in §3 "Legitimate interest" (`legal/privacy/page.tsx:61`; re-derive). English is binding; sw and zh are drafts for native review.~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** there is no privacy line to replace: the privacy notice keeps exactly its words on `main`, with no META bump (D19a, D19e).
+  - ~~en: "Liquidity: 50pick may place stakes from accounts it operates, on markets chosen by an automated system or by 50pick staff; the automated system reads bets placed on a market to decide those stakes, and accounts that exploit them may be excluded from them for the day."~~
+  - ~~sw (draft, native review): "Ukwasi: 50pick inaweza kuweka dau kutoka kwa akaunti inazoendesha, kwenye masoko yanayochaguliwa na mfumo wa kiotomatiki au na wafanyakazi wa 50pick; mfumo huo wa kiotomatiki husoma dau zilizowekwa kwenye soko ili kuamua dau hizo, na akaunti zinazozitumia vibaya zinaweza kuzuiwa kuzipata kwa siku hiyo."~~
+  - ~~zh (draft, native review): "流动性：50pick 可能通过其运营的账户下注，所投注的市场由自动化系统或 50pick 员工选择；自动化系统会读取市场上的投注来决定这些下注，利用这些下注牟利的账户当天可能被排除在外。"~~
+  - ~~**Why:** P1's line implies an automated system decides every stake. With D17/D18, staff choose the market and the moment.~~
+  - ~~**Versioning:** it folds into P1's page-version bump before release. Built after REL-4, it would need its own META bump and COMPLIANCE entry (P2 precedent).~~
 - **Chatbot:**
-  - The P1 bullet after `_actions/chat.ts:147` (re-derive) is unchanged.
+  - ~~The P1 bullet after `_actions/chat.ts:147` (re-derive) is unchanged.~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** there is no P1 chatbot bullet; the chatbot discloses nothing (D19d).
   - The forbidden-phrase list in `test:house-bot-disclosure` gains "fully automated", "only automated", "no person decides" and "no one at 50pick chooses".
 - **Board disclosure draft** (`docs/BOARD-DISCLOSURE-HOUSE-BOTS.md`): new section "Stakes chosen by staff". It covers:
   - Enter now (polls only);
@@ -3660,10 +3677,10 @@ Body order:
   - press and veto records, the COMPLIANCE audits ~~and R1 sections (b)–(h)~~;
   - the ~~three~~ alerts (every staff-chosen stake, a self-decided market, ~~staff edge~~); ⛔ **Superseded by D20 (Ali, 2026-09-17):** R1's sections and the staff-edge alert are struck (C5-SPEC rulings 202, 206, 218–223); the private Board draft says that reports and filings treat house accounts as ordinary player accounts and carry no house memo.
   - accepted risks 13–20.
-- **`boardDisclosureSections` (INT-12):**
-  - Written by P1's "Record disclosure sent" action from a checklist of `BOARD_DISCLOSURE_SECTIONS`. That constant must equal the draft's section headings (`test:house-bot-disclosure` §docs).
-  - The Enter now modal and the targets tab show "Board disclosure of staff-chosen stakes not recorded as sent" until the array contains "Stakes chosen by staff".
-  - The line is non-blocking. P1's ON-modal line keeps keying on `boardDisclosureSentAt`.
+- **`boardDisclosureSections` (INT-12):** ⛔ **Superseded by D19 (Ali, 2026-09-16):** P1's disclosure tracking is struck, so no "Record disclosure sent" action, checklist or console line is built, and Ali decides if and when the private draft is sent (D19b); the constant-equals-headings pin below stands.
+  - ~~Written by P1's "Record disclosure sent" action from a checklist of `BOARD_DISCLOSURE_SECTIONS`.~~ That constant must equal the draft's section headings (`test:house-bot-disclosure` §docs).
+  - ~~The Enter now modal and the targets tab show "Board disclosure of staff-chosen stakes not recorded as sent" until the array contains "Stakes chosen by staff".~~
+  - ~~The line is non-blocking. P1's ON-modal line keeps keying on `boardDisclosureSentAt`.~~
 - **COMPLIANCE-DECISIONS house entry.** Date it on commit 1's day.
   - On 2026-09-14 the main checkout already carries `## 2026-09-14`, `(second)` and `(third)`, plus 2026-09-13 up to `(fourth)`, so P1's `## 2026-09-13 (third) · House bots` heading collides.
   - Use the next free suffix on commit 1's day, re-derived with grep at commit time.
@@ -3777,7 +3794,7 @@ Body order:
   - a reason seeded with NEEDLE never appears in a body, and bodies end "Reason recorded in the activity feed →";
   - titles survive the 90 s dedupe;
   - hrefs render at +60 days, including TARGET_* history events;
-  - the holder notice is capped;
+  - ~~the holder notice is capped;~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** there is no holder notice to cap (C4 ruling 149).
   - voided, self-decided ~~and staff-edge~~ alerts reach every recipient; ⛔ **Superseded by D20 (Ali, 2026-09-17):** the staff-edge alert is struck (C5-SPEC rulings 218–223).
   - 0 SMS.
 - **`test:house-bot-holder-lifecycle`:** each A2 cause refuses Enter now with its copy (press REFUSED `HOLDER_CAUSE`).
@@ -3791,7 +3808,7 @@ Body order:
 - ~~**`test:dsar-secrets`** (INT-10): the holder's `events[]` holds exactly the four included kinds as `{kind, at, actor}`, with no reason text, no marketId, no press rows and no officer ids.~~ ⛔ **Superseded by D20 (Ali, 2026-09-17):** there is no holder `events[]` in any file (the internal record is struck, C5-SPEC ruling 238); `test:dsar-secrets` keeps the releasable doors' absence cases (ruling 243).
 - **`test:erasure` §8:** new bucket `houseBotPressAndEventReasons`, plus admin notification rows seeded with NAME in a reason → no NAME after erasure. `red:erasure` still fails 8.b when the redaction is skipped.
 - **`test:house-bot-disclosure`:**
-  - the privacy line in 3 locales;
+  - ~~the privacy line in 3 locales;~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** there is no privacy line; the suite pins the privacy notice byte-identical to `origin/main` instead.
   - the extended forbidden phrases are absent;
   - the "Stakes chosen by staff" section is present, and `BOARD_DISCLOSURE_SECTIONS` equals the draft's headings;
   - §docs: risks 13–20 and the three do-not-restore lines are in the COMPLIANCE entry and HOUSE-BOTS.md, and deleting one turns it red;
@@ -3808,7 +3825,7 @@ Body order:
     - without a reason → field error;
     - with `targetId` → target ENDED(VETOED), the `STAFF_INTENT_CANCELLED` event and the COMPLIANCE row;
     - an automatic row → unchanged ADMIN flow.
-  - **Board line:** a date but no section → the line is shown (INT-12).
+  - ~~**Board line:** a date but no section → the line is shown (INT-12).~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** there is no Board line (see N1 §10).
   - **Strip (UX-20):** `available` uses steps 3–9 only; `enabled=false` → no button; unavailable → disabled + reason.
   - **Picker grammar:** a pasted id finds that poll; 0–1 characters → "Closing soonest".
   - **jsdom:**
@@ -4221,7 +4238,7 @@ Every action starts with `requireHouseOwner()` (C12). Then it validates input (r
   - Every recipient, bell + email, uncapped, not counted in `countInHour`.
   - Title and body: N1 §7 `notifyAdminsHouseBotStaffChosen`, using its "target by {name}" and "a counter to Player #{handle}'s TZS {t} {SIDE} stake" branches, with " (asked {delay}, held to {h})" added after the side rule.
   - Href: `/admin/house-bots/<botId>?tab=activity&range=all&intent=<intentId>`.
-  - `notifyAdminsHouseBotBet` excludes staff-chosen rows. The holder notice `notifyHouseBotOwnerStake` is unchanged and capped.
+  - `notifyAdminsHouseBotBet` excludes staff-chosen rows. ~~The holder notice `notifyHouseBotOwnerStake` is unchanged and capped.~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** `notifyHouseBotOwnerStake` is deleted, and the holder receives no house-bot notice (C4 ruling 149).
   - Targeted rows count as staff-chosen for N1 §7's `staff-stake-voided`, `staff-stake-self-decided` ~~and `staff-edge`~~ alerts, with `requestedBy` = the target's `createdById`. ⛔ **Superseded by D20 (Ali, 2026-09-17):** the staff-edge alert is struck (C5-SPEC rulings 218–223).
 - **Skipped, expired or cancelled reactions:** no bell. The feed ~~and R1~~ record them. ⛔ **Superseded by D20 (Ali, 2026-09-17):** R1 is struck (C5-SPEC rulings 199–213); the activity feed records them.
 - `{holder}` is the `playerHandle` only (R6). Every href renders 60 days later (C13 test).
@@ -4239,7 +4256,7 @@ Every action starts with `requireHouseOwner()` (C12). Then it validates input (r
   - not rendered while `targeting.enabled` is false;
   - when rendered but `targets.available` is false, disabled, with the visible reason beneath (limit reached, limit not set, staff-chosen limits not set, bot removed, rules need review, withdrawn).
 - **FilterPill** "Active · Ended · All".
-- **Board line (N1 §10):** amber, non-blocking, "Board disclosure of staff-chosen stakes not recorded as sent", shown until `boardDisclosureSections` contains "Stakes chosen by staff".
+- ~~**Board line (N1 §10):** amber, non-blocking, "Board disclosure of staff-chosen stakes not recorded as sent", shown until `boardDisclosureSections` contains "Stakes chosen by staff".~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** the targets tab shows no Board line (see N1 §10).
 - **Table:** `AdminCard padding="p-0"` › `ScrollX label="Targeted polls"` › `.admin-tbl`, no `min-w`. Columns:
   - Poll: title (wraps) + category caption;
   - Staked: money second, `td.tabular`, sum of PLACED reaction stakes, "—" when none;
@@ -4334,7 +4351,7 @@ Every action starts with `requireHouseOwner()` (C12). Then it validates input (r
   - targets tab with 0 rows (targeting on and off) and n rows with every status and end cause;
   - highlighted row and "That target no longer exists";
   - Add target enabled, and disabled with its reason;
-  - the modal with each golden timing row, `never`, a refusal, loading, and the board line;
+  - the modal with each golden timing row, `never`, a refusal, loading, ~~and the board line~~; ⛔ **Superseded by D19 (Ali, 2026-09-16):** there is no board line (see N1 §10).
   - the remove modal with and without queued reactions;
   - the staff cancel modal;
   - the modal at 360×300 with the keyboard up.
@@ -4360,7 +4377,7 @@ Every action starts with `requireHouseOwner()` (C12). Then it validates input (r
   - holder `positions` include targeted rows with no officer ids;
   - trigger players' `counteredPositionsCount` includes targeted counters.
 - **Erasure:** target event and press reasons become "[erased]" (`test:erasure` §8 bucket, N1 §9).
-- **Public text:** N1 §10's privacy line covers "markets chosen … by 50pick staff".
+- **Public text:** ~~N1 §10's privacy line covers "markets chosen … by 50pick staff".~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** there is no public text about targets; the private Board section and the COMPLIANCE entry below cover them.
   - The Board section "Stakes chosen by staff" covers targets: the 5–600 s delays, the absolute hold with the 7 s margin, first or every stake, vetoes and never-retarget, and the staff-chosen caps.
   - The COMPLIANCE entry records D18 with risks 17 (fixed-delay predictability) and 18 (consumed trigger); risks 13 and 20 apply to target choice (PLAN §16b).
 - **Docs (commit 8):**
@@ -4433,7 +4450,7 @@ Every action starts with `requireHouseOwner()` (C12). Then it validates input (r
   - jsdom: Esc inside the choice group keeps the modal and typed values; dirty form + Add target → C10 dialog, and a refused save never opens the modal (spy); an HOUSE_BOT SSE event with the modal open → 0 refreshes, then exactly 1 on close; focus on the result heading and one polite announcement; a fix link closes the modal, pushes the absolute href, then focuses;
   - gate pins: `useMayAct` in each file, EXEMPT class ① or no raw control;
   - the A19 scan over the two extended globs; source pin: no target action takes `house:control`;
-  - no gold; a board-line fixture with a date but no section still shows the line;
+  - no gold; ~~a board-line fixture with a date but no section still shows the line;~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** there is no board line (see N1 §10).
   - the Start confirm lists the active target count.
 - **`test:house-bot-comms`:**
   - roster TARGET_* reach both admins by bell + email, uncapped, with an href resolving at +60 days;
@@ -4476,12 +4493,12 @@ N1–N2 add no commit and no third migration. Every table, column and index belo
 | Commit | N1 (Enter now, polls only) | N2 (targeted polls, exact timing) |
 |---|---|---|
 | 1 | **Tables and columns:**<br>- `HouseBotPress` (8th table) with `hbp_actor_submit_uq`, `(houseBotId, createdAt)` and `(state, createdAt)`, plus its A20 row (7 years), P3 row and chain-purge NEVER entry.<br>- HouseBotIntent: kind `MANUAL`; `requestedById`, `entryCondition`, `staleAt`, `transientAttempts`; CHECK `kind<>'MANUAL' OR "productLine"='MARKET'`.<br>- HouseBotEvent: `marketId`; kinds ENTER_NOW_PREVIEWED, ENTER_NOW_REQUESTED, OPENER_SIDE_DRAWN, STAFF_INTENT_CANCELLED; `hbe_opener_draw_uq`.<br>- Staff-chosen caps: `capStaffChosenPerDay` and `capStaffChosenDailyTzs` (HouseBot); `gCapStaffChosenPerDay`, `gCapStaffChosenDailyTzs`, `gStaffChosenMaxCounterpartyShare`, `gStaffEdgeWinRatePts`, `gStaffEdgeNetTzs` and `boardDisclosureSections` (control row).<br>- `PredictionMarket.reopenedAt` and `reopenCount` in `…_house_bot_markers`.<br>**Indexes:** `hbi_counter_anchor_uq`, `hbi_fill_opener_anchor_uq`, `hbi_manual_anchor_uq`, `hbi_manual_live_market_uq`, `hbi_staff_bot_finished_idx`, `hbi_staff_finished_idx`, `("status","staleAt")`. The A24 EXPLAIN pin covers them.<br>**DAL:** `uniqueViolation(err)` and its twin; press, intent-insert and draw twins.<br>**Rules and pure modules:** rules v1 `enterNow`; `N1-*` cross-field rules; the Start mode rule; `effectiveTiming.enterNow`.<br>**Constants:** EngineCodes; `CAP_STAFF_CHOSEN_*`; `LOCK_MARGIN_MS = 7000` (pinned); `HOUSE_AUDIT` keys `enter_now`, `enter_now_refused`, `staff_intent_cancelled`.<br>**Schema gate:** A23 counts 8 tables.<br>**COMPLIANCE:** D17, risks 13–16, 19 and 20, and the do-not-restore lines. | **Tables and columns:**<br>- `HouseBotTarget` (7th table) with its twin, `hbt_active_market_uq` and `hbt_market_idx`. Delays CHECK 5–600. `endCause` includes VETOED and CONSENT_VOID.<br>- Intent `targetId`, CHECK `("targetId" IS NULL OR kind='COUNTER')`, index `("targetId","status") WHERE "targetId" IS NOT NULL`.<br>- Event kinds TARGET_ADDED, TARGET_UPDATED, TARGET_REMOVED, TARGET_ENDED.<br>- `targetsMaxActive` and `gTargetsMaxActive`.<br>**Rules and pure modules:** rules v1 `targeting`; `N2-*` cross-field rules; `effectiveTargetTiming`, whose hold is exit close + `LOCK_MARGIN_MS`.<br>**Constants:** `TARGET_ARMING_SEC = 12` (pinned); `HOUSE_TARGETS_LOCK = "house:targets"`; `HOUSE_AUDIT` `target_added`, `target_updated`, `target_removed`.<br>**Records:** P3 row; COMPLIANCE D18 with risks 17 and 18. |
-| 2 | **Shared modules:** `pools.ts` (`lockedForHouse`) and `blackout.ts` (`{blocked}` only; A13 exempts it by name); `market-service.ts` imports the exported `RESOLVE_CLAIM_TTL_MS`.<br>**H0:** the ordered rule for every house kind.<br>**`staleAt` in the seam:** re-read inside `house:control` before `markPlaced` → `house_intent_stale`; `BET_PATH_REASONS` and `GATE_PARITY` rows.<br>**H2:** declared order pinned in `house-bot-seam.anchors.mjs`; `STAFF_CHOSEN_PER_DAY` and `STAFF_CHOSEN_DAILY_STAKE`.<br>**H3 for MANUAL:** OTHER_BOT and GLOBAL_PER_MARKET; `entryCondition` OPENER/THIN from the claimed row; `house_counterparty_concentration`; the in-lock blackout read → `house_info_blackout`.<br>**`lockedForHouse`:** one SQL aggregate with the exclusions and `LOCK_MARGIN_MS`; golden-grid parity with `exitWindowClosesAt`; EXPLAIN pin at 20,000 positions; memory twin. H3 uses it for MANUAL, targeted COUNTER and FILL.<br>**H4:** `GLOBAL_STAFF_CHOSEN_*`; pro-rata counterparty attribution for MANUAL THIN.<br>**Sanctioned change (r):** `adminReopenMarket` stamps `reopenedAt` and `reopenCount`.<br>**Registry:** new reasons with en/sw/zh copy. | **H2:** `TARGET_ONCE`; staff-chosen caps on targeted COUNTERs.<br>**H3:** `house_info_blackout` for targeted COUNTERs; the targeted COUNTER cut on `lockedForHouse`.<br>**H4:** COUNTERPARTY_COUNT/TZS apply unchanged. |
+| 2 | **Shared modules:** `pools.ts` (`lockedForHouse`) and `blackout.ts` (`{blocked}` only; A13 exempts it by name); `market-service.ts` imports the exported `RESOLVE_CLAIM_TTL_MS`.<br>**H0:** the ordered rule for every house kind.<br>**`staleAt` in the seam:** re-read inside `house:control` before `markPlaced` → `house_intent_stale`; `BET_PATH_REASONS` and `GATE_PARITY` rows.<br>**H2:** declared order pinned in `house-bot-seam.anchors.mjs`; `STAFF_CHOSEN_PER_DAY` and `STAFF_CHOSEN_DAILY_STAKE`.<br>**H3 for MANUAL:** OTHER_BOT and GLOBAL_PER_MARKET; `entryCondition` OPENER/THIN from the claimed row; `house_counterparty_concentration`; the in-lock blackout read → `house_info_blackout`.<br>**`lockedForHouse`:** one SQL aggregate with the exclusions and `LOCK_MARGIN_MS`; golden-grid parity with `exitWindowClosesAt`; EXPLAIN pin at 20,000 positions; memory twin. H3 uses it for MANUAL, targeted COUNTER and FILL.<br>**H4:** `GLOBAL_STAFF_CHOSEN_*`; pro-rata counterparty attribution for MANUAL THIN.<br>**Sanctioned change (r):** `adminReopenMarket` stamps `reopenedAt` and `reopenCount`.<br>~~**Registry:** new reasons with en/sw/zh copy.~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** the new reasons are server-only codes with no player copy (C4 ruling 148). | **H2:** `TARGET_ONCE`; staff-chosen caps on targeted COUNTERs.<br>**H3:** `house_info_blackout` for targeted COUNTERs; the targeted COUNTER cut on `lockedForHouse`.<br>**H4:** COUNTERPARTY_COUNT/TZS apply unchanged. |
 | 3 | A5 erasure pseudonymises `HouseBotPress.reason` and the new event reasons to "[erased]". | A3 consent void ends every ACTIVE target as ENDED(CONSENT_VOID), with TARGET_ENDED events, in the same `wallet:<botUser>` transaction. |
 | 4 | **Shared modules:**<br>- `opener-side.ts`: the planner calls it before `decide()`.<br>- `enter-now.ts`: the decision reads the bot's own positions (OWN_OTHER_SIDE, PER_MARKET_COUNT).<br>**Fire:** `fire.ts fireClaimedIntent` (no lock, no ambient admission slot, `inFlight` registry, heartbeat, excluded from the SIGTERM requeue); the write-back clamp for all kinds.<br>**Claims and planner:** claim on `staleAt`; mapper `transientAttempts`; the STALE pass runs before POISON; MANUAL and targeted CLAIMED rows expire at `staleAt` + 5 s; press audit lease and 60 s repair; the press moves to DONE on a terminal intent.<br>**Lifecycle:** FILL on `lockedForHouse`; A16 reopen detection from `reopenedAt`.<br>**Copy and alerts:** mapper and `feed-copy.ts` rows; `notifyAdminsHouseBotStaffChosen`, with `notifyAdminsHouseBotBet` excluding staff-chosen rows; `staff-stake-voided`, `staff-stake-self-decided` ~~and `staff-edge`~~ alerts (⛔ **Superseded by D20 (Ali, 2026-09-17):** the staff-edge alert is struck, C5-SPEC rulings 218–223); comms-registry and C13 rows. | **Triggers:** poll triggers are decided in the sweep only (DB watermark against `effectiveFrom`). The hook keeps Up & Down and is suspended while \|skew\| > 5 s.<br>**Decide and fire:** target candidate in `decide()`; hold = max(requested, exit close + `LOCK_MARGIN_MS`); `staleAt = dueAt + 60 s`; fire re-reads the target.<br>**Planner:** `endTargets()`, which skips a blackout that rests on `resolveClaimedAt` alone.<br>**Copy and alerts:** CAP_TARGET_ONCE, TARGET_REMOVED and TARGET_ENDED rows; target roster emitter (href `?tab=history&event=`); hourly summary split. |
 | 5 | **Book:** entry split in `book.ts`.<br>~~**R1 sections:** entry split; Enter now register from `HouseBotPress` (placed and refused, with code); previews without a stake; voided or reopened markets; markets decided by the choosing officer; staff-chosen scorecard.~~<br>~~**Other outputs:** CSV columns; R9 (q) exact shape with `requestedBy`; "of which chosen by you" display; R3 memo.~~<br>**Data rights:** ~~R5 `events[]` kinds;~~ `test:erasure` §8 reason bucket; ~~`test:dsar-secrets` kind list~~.<br>⛔ **Superseded by D20 (Ali, 2026-09-17):** R1's sections, the CSV columns, R9, the R2 display, the R3 memo, R5's event kinds and their `test:dsar-secrets` list are struck (C5-SPEC rulings 187–194, 202, 206, 213, 227, 238); the `book.ts` entry split stays only if checkpoint C5-5b names a remaining caller or a Commit 7 scope line; the `test:erasure` reason bucket stands (ruling 244). | ~~R1 targets register and vetoes section; `requestedBy` = the officer who added the target.~~ ⛔ **Superseded by D20 (Ali, 2026-09-17):** struck with R1 and R9. |
-| 6 | Privacy line (P1); chatbot forbidden phrases; Board section "Stakes chosen by staff"; `test:house-bot-disclosure` §docs pins risks 13–20 and the do-not-restore lines. | Covered by N1: the privacy line and the Board section name targets. |
-| 7 | **Actions:** the press flow for every N1/N2 action; `searchHouseBotMarketsAction`, `previewEnterNowAction`, `enterNowHouseBotAction`, `getEnterNowStatusAction`; staff-cancel veto in `cancelHouseBotIntentAction`.<br>**Picker:** `MarketPicker`, picker DAL and `HOUSE_BOT_MARKET_PICKER_SEARCH`; the dal-parity picker case lands here.<br>**Screens:** Enter now modal; rules and limits fields with the 02 §3.8 exemption; strip `enterNow`/`targets`; Start-confirm active-targets line; Board checklist writing `boardDisclosureSections`; feed entry filter; lexicon tables; `test:labels` and `test:chip-contract`.<br>**Gates and records:** gate outcome per new file; FAILURE-INVENTORY §6; visual fixtures. | **Actions:** `add/update/removeHouseBotTargetAction` (`wallet:<botUser>` then `house:targets`; audit and roster alert after release); `previewHouseBotTargetAction`.<br>**Screens:** targets tab (params, tab order); Add/Edit/Remove target modals with in-flow two-option toggles.<br>**Other:** A19 source scan widened; `ops:house-bots-sunset` ends targets. |
+| 6 | ~~Privacy line (P1);~~ chatbot forbidden phrases; Board section "Stakes chosen by staff"; `test:house-bot-disclosure` §docs pins risks 13–20 and the do-not-restore lines. ⛔ **Superseded by D19 (Ali, 2026-09-16):** there is no privacy line (D19a). | Covered by N1: ~~the privacy line and~~ the Board section name targets. |
+| 7 | **Actions:** the press flow for every N1/N2 action; `searchHouseBotMarketsAction`, `previewEnterNowAction`, `enterNowHouseBotAction`, `getEnterNowStatusAction`; staff-cancel veto in `cancelHouseBotIntentAction`.<br>**Picker:** `MarketPicker`, picker DAL and `HOUSE_BOT_MARKET_PICKER_SEARCH`; the dal-parity picker case lands here.<br>**Screens:** Enter now modal; rules and limits fields with the 02 §3.8 exemption; strip `enterNow`/`targets`; Start-confirm active-targets line; ~~Board checklist writing `boardDisclosureSections`;~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** no Board checklist is built (see N1 §10); feed entry filter; lexicon tables; `test:labels` and `test:chip-contract`.<br>**Gates and records:** gate outcome per new file; FAILURE-INVENTORY §6; visual fixtures. | **Actions:** `add/update/removeHouseBotTargetAction` (`wallet:<botUser>` then `house:targets`; audit and roster alert after release); `previewHouseBotTargetAction`.<br>**Screens:** targets tab (params, tab order); Add/Edit/Remove target modals with in-flow two-option toggles.<br>**Other:** A19 source scan widened; `ops:house-bots-sunset` ends targets. |
 | 8 | **Drive** (local seeded DB only): Enter now THIN and OPENER. S4 rehearsal 3 covers inline fire vs poller.<br>**Docs:** HOUSE-BOTS.md; RULES §2.11; FLOWS §9; FAILURE-INVENTORY §7.1 entry kinds and codes.<br>**Release record:** prints "Enter now preview: NOT MEASURED in production (it writes)".<br>**Coverage gate:** counts `TGT-*`. | **Drive:** poll target STAKE 10 s lands from 5:07, EXIT_CLOSE 10 s from 5:10, Up & Down 3-min COUNTER 10/10 at +10 s; phase D step "Esc with a choice open keeps the modal".<br>**Docs:** FAILURE-INVENTORY §7.1 target statuses and end causes. |
 
 Where the rest of the placement lives: the N1/N2 bullet of each commit is in PROGRESS.md "Scope per commit"; the owner defaults W7–W16 are in PROGRESS.md "Waiting on Ali"; the overlaps these amendments resolve are rows in PLAN §18 "Overlaps resolved".

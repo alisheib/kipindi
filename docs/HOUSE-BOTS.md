@@ -241,7 +241,7 @@ With a null marker, each gives a player exactly what they had before; the letter
 - **`BET_PATH_REASONS`** (`src/lib/house-bot/bet-path.ts`) lists every refusal the bet path can return to a house stake; `test:house-bot-seam` reads the bet-path sources and fails in both directions.
 - **`GATE_PARITY`** (`scripts/lib/house-bot-gate-parity.ts`, typechecked) has one row per reason: a fixture proving `placeHouseBet` and `buyPosition` refuse alike, or a stated exemption.
 - **SEAM sites** (`scripts/anchors/house-bot-seam.anchors.mjs`): every house branch in `market-service.ts` — any `ctx.kind` use, a `"house"` comparison, or a condition on `houseIntent`, `housePool`, `housePosition` or `houseBotId` — sits within the first three code lines under a `// SEAM:<name>` marker, read on decommented code. The markers are exactly the declared list (38), and each marker's window touches house state.
-- **Failure reasons:** every `house_*` reason and `idempotency_key_conflict` is registered in `failure-reasons.ts` with en/sw/zh copy (sw/zh drafted, native review); `FailureDetail` gains `cap`, `conflict` and `condition`.
+- **Failure reasons:** ~~every `house_*` reason and~~ `idempotency_key_conflict` is registered in `failure-reasons.ts` with en/sw/zh copy (sw/zh drafted, native review); `FailureDetail` gains `cap`, `conflict` and `condition`. ⛔ **Superseded by D19 (Ali, 2026-09-16):** the 18 `house_*` reasons and their sentences left the player registry and the dictionary: they are the server-only `HouseSeamReason`, and the console reads them through the engine's server-side copy (C4-SPEC ruling 148). `idempotency_key_conflict` names nothing and stays a player reason; `cap`, `conflict` and `condition` are documented in `failure-reasons.ts` as server-only.
 
 ---
 
@@ -809,7 +809,7 @@ Risks 1–6 are PLAN §13, risk 7 is amendment A1, and risks 13–20 are PLAN §
 3. **Exploitation is bounded, not eliminated.** Alt accounts farming counters are capped per account, and G4 still applies. Caps, penalty box, closeness rule and exit-window hold are the controls.
 4. **The holder sees house positions live** (they could front-run with an alt account). House stakes also count against their own RG loss limit, which auto-pauses the bot.
 5. **Throughput.** Bot bets serialise on `house:control` (ms-long), and the holder shares the `bet.place` rate bucket (min gap ≥ 20s).
-6. **Delivery.** Merge conflicts with the parallel session are likely. `overlapSeconds` in production is unverified; the design is correct either way. sw/zh legal text needs native review. The leaderboard shows the holder's display name.
+6. **Delivery.** Merge conflicts with the parallel session are likely. `overlapSeconds` in production is unverified; the design is correct either way. ~~sw/zh legal text needs native review.~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** no legal text changes, so there is none to review (D19a). The leaderboard shows the holder's display name.
 7. A password change or reset does not sign out the holder's other sessions (owner ruling 2026-09-13). Recommended hardening, as a separate platform commit: revoke at the three writers, re-mint the session of the device that made the change, and add login copy `kp_revoked=pw`. House consent is unaffected either way, because consent is the fingerprint, never a session. (also recorded as hardening H1, C9)
 
 Risks 8–12: ⏳ added in commit 8 (S5).

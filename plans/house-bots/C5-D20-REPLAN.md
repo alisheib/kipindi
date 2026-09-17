@@ -53,7 +53,7 @@ memo or column (W21, W22 moot).
 - **C5-5 close** — 🟡 the running fixer (`wf_c2cd11aa-ef0`), told D20 at 15:02 UTC: finish the gate findings, skip the
   display polish, write `plans/house-bots/tools/c5-s5-mutations.json` with only surviving code's mutations.
   **Exit:** pushed, reports green on both stores, `qa:house-bot-console-probe` 0 non-staff hits with its ADMIN control.
-- **C5-5b · D20 un-build** — with rulings 265, 266 (the fee derivation), 270 and 271 (§5) — remove rulings 187–197's code (R9 payloads and reads, the emergency-void house share in bell,
+- **C5-5b · D20 un-build** — with rulings 265, 266 (the fee derivation), 270, 271 and 273 (a) (§5) — remove rulings 187–197's code (R9 payloads and reads, the emergency-void house share in bell,
   letter and `qa:cert-c1`, the KYC house facts and line, `exposure-copy.ts`, `exposure-line.tsx`, the held-chip and bulk
   count changes, the row tag, the dialog slots, `houseStakeForConsole`, `houseBotLabelsForConsole`), every step-3 module,
   DAL member (both twins + its `test:dal-parity` case) and case whose only consumers were struck — kept only with a named
@@ -142,4 +142,4 @@ bots and what keeps D19 true").
      (271).
 273. **D19's in-place marks are applied now, not at C5-8.** The plan documents never received them (PLAN, the scenario
      register, 04, 02/03's S8 and holder notices, C4-SPEC's digest split, HOUSE-BOTS.md's holder leftovers); workflow
-     `wf_1694cc9f-878` marks them in place, so ruling 258's docs pass has only the code-facing docs left.
+     `wf_1694cc9f-878` marks them in place, so ruling 258's docs pass has only the code-facing docs left. Decided with it: (a) P1's disclosure tracking is struck everywhere it reaches — 04's N1/N2 Board-disclosure lines, C6's checklist and Commit 7's ON-modal "not recorded as sent" line — so the Commit 1 control columns `boardDisclosureSentAt` / `boardDisclosureSections` and the DAL writer `recordDisclosure` have no reader and no caller and are un-built in C5-5b with the staff-edge columns (265), and CRA-24 counts through the Board draft alone; (b) with no rule or Terms text changing (D19a), no Terms §10 notice is due, so the COMPLIANCE entry's waiver, its supersede row, W3 and the Board draft's "notice waiver" section are moot; (c) the admin house chip on `/admin/agents/[id]` (HB-ACC-24) and the "House stake" row chip in 03's transactions table are struck with D20's other chips and tags.

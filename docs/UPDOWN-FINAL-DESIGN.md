@@ -1,5 +1,8 @@
 # Up & Down — the final setup
 
+> ⛔ **Owner ruling D19 (Ali, 2026-09-16): house bots are never public.** No rulebook text discloses them; G2's house-bots
+> note is marked in place. The ruling: `plans/house-bots/PROGRESS.md` "OWNER RULING D19".
+
 **Written 2026-08-06 (session 31), from measurements against production, not from intent.**
 Ali: *"knowing now what data we have, what capabilities we have, analyse the whole flow and find
 the perfect final setup."*
@@ -188,7 +191,7 @@ build as D1's advisory, one column wider.
 
 ### G2 · D2 and D3 fight each other, and the loser is the player's trust
 
-> ⛔ **Superseded (house bots, 2026-09-13).** A house stake shares in winnings like any later stake, and winnings stay in the bot account. The multiplier moves with it exactly as G3 already requires the copy to own; the rulebook discloses that 50pick may add liquidity.
+> ⛔ **Superseded (house bots, 2026-09-13).** A house stake shares in winnings like any later stake, and winnings stay in the bot account. The multiplier moves with it exactly as G3 already requires the copy to own; ~~the rulebook discloses that 50pick may add liquidity.~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** the rulebooks say nothing about house stakes (D19a).
 
 If the house seeds the thin side (D3) and that seed **shares in the winnings**, then the pool-implied
 multiplier a player saw while betting (D2) is **higher than what they are actually paid** — the house

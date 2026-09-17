@@ -270,7 +270,7 @@ AdminBody
   - PendingChangesBar + UnsavedChangesGuard. A tab switch counts as an exit (§K7d).
 - **activity:** the S1 feed with Bot filter hidden.
 - **money:** `.admin-tbl`:
-  - Columns: Type (`txnTypeLabel` `status-badge.tsx:364`) · Amount (`formatTzsSigned`, `td.tabular`, neutral ink) · Status (`txnStatusLabel` `:383`) · When · House chip (Chip sm neutral "House stake" on marked rows) · `.row-link` "Open →" `/admin/transactions?q=`.
+  - Columns: Type (`txnTypeLabel` `status-badge.tsx:364`) · Amount (`formatTzsSigned`, `td.tabular`, neutral ink) · Status (`txnStatusLabel` `:383`) · When · ~~House chip (Chip sm neutral "House stake" on marked rows)~~ ⛔ **Superseded by D20 (Ali, 2026-09-17):** no row tag on marked rows (C5-D20-REPLAN ruling 266) · `.row-link` "Open →" `/admin/transactions?q=`.
   - Empty: "No money movements since designation on {date}."
 - **history:** as in S1. Empty: "No changes yet."
 - **targets:** 04 N2 §8: params `status=active|ended|all` and `target=hbt_…`, the targets table, Add/Edit/Remove target and the lexicon.

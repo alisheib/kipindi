@@ -246,7 +246,7 @@ Nothing of the struck work ever reached production.
 | Seed returned at stake, takes no profit | UPDOWN G2 | a house stake shares in winnings like any later stake |
 | Caps as "the only control" | UPDOWN G4 | caps work alongside the penalty box, the closeness rule, the exit-window hold and a settled-loss master stop |
 | Bots prohibited | the published rulebooks' prohibited-conduct lists | ⛔ **nothing — reversed by D19a (2026-09-16).** The rulebooks are not amended, so their prohibition still stands as published while 50pick operates house accounts (accepted risk 21). The struck plan was a carve-out plus one disclosure line (D2/D7). |
-| 14-day notice | Terms §10 | this change only (below) |
+| 14-day notice | Terms §10 | ⛔ **nothing — moot by D19a (2026-09-16):** no rule or Terms text changes, so no notice is due. (Was: this change only.) |
 | "Awaiting Ali's decision" | `docs/feature-backlog.md`, F6 | decided: build as house bots |
 | House money split out of reports; the admin house report, staff edge and resolver exposure lines | `plans/house-bots/04-amendments.md` R1–R3, R5, R9; `PLAN.md` §9 | ⛔ **reversed by D20 (2026-09-17):** house accounts are reported as ordinary player accounts, with no admin-only house tool |
 
@@ -269,7 +269,7 @@ Nothing of the struck work ever reached production.
   - It is symmetric by design: the bot enters only while the round is still a coin flip. Momentum bettors can't farm it, and the house never cherry-picks the side that is already winning.
 
 ### Terms §10 notice
-Terms §10 (v2026-09-14, in all three languages) promises written notice in the app at least 14 days before a material change. This change is material and changes what the platform does, so neither the 2026-09-07 correction reasoning nor the 2026-09-13 "favourable to players" reasoning applies. The notice is waived on Ali's ruling alone (D2/D7), effective on deploy. Nothing is broadcast: the platform has no trilingual in-app notice channel (the `/admin/system` banner is one untranslated, dismissible string), and SMS cannot deliver in production either (`smsConfigured()` is false), so no other channel could stand in. ⚠️ Open defect, not fixed in this build: §10's in-app notice promise cannot be kept for any future change until a localised in-app notice exists — owner to decide. Existing players keep `acceptedTermsVersion`; no re-acceptance.
+⛔ **Superseded by D19a (Ali, 2026-09-16):** no rulebook or Terms text changes, so no notice is due and nothing is waived. (Was:) Terms §10 (v2026-09-14, in all three languages) promises written notice in the app at least 14 days before a material change. This change is material and changes what the platform does, so neither the 2026-09-07 correction reasoning nor the 2026-09-13 "favourable to players" reasoning applies. The notice is waived on Ali's ruling alone (D2/D7), effective on deploy. Nothing is broadcast: the platform has no trilingual in-app notice channel (the `/admin/system` banner is one untranslated, dismissible string), and SMS cannot deliver in production either (`smsConfigured()` is false), so no other channel could stand in. ⚠️ Open defect, not fixed in this build: §10's in-app notice promise cannot be kept for any future change until a localised in-app notice exists — owner to decide. Existing players keep `acceptedTermsVersion`; no re-acceptance.
 
 ### Migration exception
 The two house migrations are applied to production from the build machine with `prisma migrate deploy` before the release merge (release step REL-2). This is an explicit exception to the 50pick-audit skill's "migrations reach production only through the deploy". It is needed because the start script applies DDL while the old container still serves. Ali's release "go" must name it.
@@ -282,7 +282,7 @@ The two house migrations are applied to production from the build machine with `
 | # | Question | Default being built |
 |---|---|---|
 | W2 | What a player — a *trigger* player or a holder — sees in their data export (R5) | ⛔ **Re-opened by owner ruling D19 (2026-09-16).** No releasable export — the player's "Export my data" or the officer's DSAR bundle — carries house wording, a house key or a house id; a holder's house stakes appear as their own bets. Excluded days and the countered count live only in the owner-only internal record (C5-SPEC rulings 168–170, 236, 239). **Waits on Ali and a lawyer** (the PDPA access right). |
-| W3 | Terms §10's written in-app notice can't be kept today (P2) | waived on Ali's ruling; defect recorded |
+| W3 | ⛔ **Moot by D19a (2026-09-16):** no text changes. (Was:) Terms §10's written in-app notice can't be kept today (P2) | waived on Ali's ruling; defect recorded |
 | W4 | Retention of skipped/expired intents (A20) | kept 7 years (proposal on file: 90 days) |
 | W5 | Platform-wide sign-out on password change (A1) | not in this build (separate hardening) |
 | W7 | Reason on staff-chosen actions | a reason (5–300) is required on every Enter now press, target add/update/remove and staff cancel |

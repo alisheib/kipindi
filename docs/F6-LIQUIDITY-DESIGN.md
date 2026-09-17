@@ -5,6 +5,10 @@
 > the House bots entry in [`COMPLIANCE-DECISIONS.md`](COMPLIANCE-DECISIONS.md); the design authority is
 > [`HOUSE-BOTS.md`](HOUSE-BOTS.md). This file is kept unchanged as the record of the risks that design answers.
 
+> ⛔ **Owner ruling D19 (Ali, 2026-09-16): house bots are never public.** No rulebook, Terms, privacy, FAQ or chatbot
+> text names them, and the holder sees nothing, so nothing public stands in for §5's condition 6 (marked in place below).
+> The ruling: `plans/house-bots/PROGRESS.md` "OWNER RULING D19".
+
 > ⚠️ **FEE ARITHMETIC IN THIS FILE IS THE RETIRED MODEL.** It reasons in
 > `min(commissionRate × pool, feeCeilingRate × smaller side)`, which since 2026-08-14 describes
 > only rounds frozen before the cutover. The platform charges **13% of the LOSING side** on both
@@ -249,7 +253,7 @@ problem is a *demand* problem, and house money is a poor substitute for demand.
 
 ## 5 · If Ali decides to build it anyway — the mandatory conditions
 
-> ⛔ Superseded 2026-09-13 by owner ruling D1: conditions 1–4 are not preconditions of this build (condition 1, written GBT approval, is waived by that ruling, not satisfied; condition 4 is replaced by I10 ~~display-only resolution~~ — ⛔ **Superseded by D20 (Ali, 2026-09-17):** of I10 only its rule of no officer-conflict lock stands, and no resolver screen displays house exposure). Condition 5 is built (per-bot and global caps, kill switch). Condition 6 is replaced by one rulebook and Terms disclosure line (D2, D6). See [`HOUSE-BOTS.md`](HOUSE-BOTS.md).
+> ⛔ Superseded 2026-09-13 by owner ruling D1: conditions 1–4 are not preconditions of this build (condition 1, written GBT approval, is waived by that ruling, not satisfied; condition 4 is replaced by I10 ~~display-only resolution~~ — ⛔ **Superseded by D20 (Ali, 2026-09-17):** of I10 only its rule of no officer-conflict lock stands, and no resolver screen displays house exposure). Condition 5 is built (per-bot and global caps, kill switch). ~~Condition 6 is replaced by one rulebook and Terms disclosure line (D2, D6).~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** there is no per-market label and no rulebook or Terms disclosure line, so nothing public stands in for condition 6 (D19a, D19c). See [`HOUSE-BOTS.md`](HOUSE-BOTS.md).
 
 I would not ship this without **all** of these:
 

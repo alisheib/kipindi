@@ -28,6 +28,10 @@
 > **Dead, do not build:** every public sentence in §3.1/§3.2/§3.3, the §2 rulebook/Terms/privacy edit targets, T1–T5 and
 > every other open point about public wording, versions or announcements. Read them only as the record of what was
 > planned before the ruling.
+>
+> **Marked in place by D19:** §0's scope quote and "Not in commit 6" line; §1's supersede-row and RULES.md notes; one
+> line under each of §2–§8 naming what is struck and what stands; §3.4's notice-waiver section; T12's commit-7
+> checklist; T24; and the owner-question count.
 
 > A working aid, extracted **read-only** on 2026-09-15 from `04-amendments.md` (`04`), `PLAN.md` (`P`),
 > `01-scenario-register.md` (`01`), `02-sealed-flows.md` (`02`), `03-design-spec.md` (`03`), `PROGRESS.md` (`PR`),
@@ -45,9 +49,9 @@
 
 PR "Scope per commit → Commit 6" (PR:389-396):
 
-> Rulebook §8 carve-out + disclosure (en/sw/zh); Terms §4; privacy notice (P1); META bumps; §10 waiver record (P2); FAQ; chatbot bullet.
+> ~~Rulebook §8 carve-out + disclosure (en/sw/zh); Terms §4; privacy notice (P1); META bumps; §10 waiver record (P2); FAQ; chatbot bullet.~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** no public text; PROGRESS now scopes Commit 6 as the non-disclosure commit (the private Board draft, the chatbot guard D19d, docs, the absence suite).
 > **Suites:** `test:house-bot-disclosure`.
-> **N1/N2 text:** privacy line naming staff-chosen markets (en/sw/zh, native review); chatbot forbidden phrases; Board draft section "Stakes chosen by staff"; `test:house-bot-disclosure` §docs pins risks 13–20 and the do-not-restore lines.
+> **N1/N2 text:** ~~privacy line naming staff-chosen markets (en/sw/zh, native review);~~ chatbot forbidden phrases; Board draft section "Stakes chosen by staff"; `test:house-bot-disclosure` §docs pins risks 13–20 and the do-not-restore lines. ⛔ **Superseded by D19 (Ali, 2026-09-16):** there is no privacy line (D19a); the forbidden phrases take D19d's full list.
 
 Source rows:
 - **P §10 "Public text and docs"** P:468-487 (the list of surfaces).
@@ -63,7 +67,7 @@ Source rows:
 - **03 S8** 03:334 — "Rules/terms text: plain `<p>` inside the existing `LegalSection` children (`legal/_components.tsx:95-110`…). No new classes, no emphasis colour. META versions bumped. `{pct}` placeholders kept."
 - **W3** (PR:492, PR:508): "Terms §10's written in-app notice can't be kept today (P2; since Terms v2026-09-14 §10 no longer promises SMS) — waived on Ali's ruling; defect recorded." Nothing in PR "Waiting on Ali" is open any more.
 
-**Not in commit 6** (named here so nothing drifts in): the holder chip, the SellButton `houseStake` note and the failure-reason copy (commit 5, 03 S8 / P:479); the §12 leak sweep over `/api/fairness/recent`, `/results`, `/api/og/market/<id>` (04:2080, commit 5's reports suite); the console Board-disclosure checklist and `boardDisclosureSections` writer (commit 7, 04:3620-3623); RULES §2.11 final text, FLOWS §9, FAILURE-INVENTORY §7.1 and risks 8–12 (commit 8, 04:1429-1440, 04:1611).
+**Not in commit 6** (named here so nothing drifts in): ~~the holder chip, the SellButton `houseStake` note and the failure-reason copy (commit 5, 03 S8 / P:479);~~ the §12 leak sweep over `/api/fairness/recent`, `/results`, `/api/og/market/<id>` (04:2080, commit 5's reports suite); ~~the console Board-disclosure checklist and `boardDisclosureSections` writer (commit 7, 04:3620-3623);~~ RULES §2.11 final text, FLOWS §9, FAILURE-INVENTORY §7.1 and risks 8–12 (commit 8, 04:1429-1440, 04:1611). ⛔ **Superseded by D19 (Ali, 2026-09-16):** no commit builds a holder chip, a `houseStake` note or player-facing house refusal copy (D19c; C4-SPEC rulings 146–148; C5-SPEC ruling 253), or a Board-disclosure checklist or record action (P1's disclosure tracking is struck, 04 N1 §10).
 
 ## 1. Already true (do not rebuild)
 
@@ -74,6 +78,7 @@ P2's three pinned phrases — "waived on Ali's ruling alone", "`smsConfigured()`
 lines (:221-224), owner defaults W2–W16 (:248-265) and accepted risks 1–7 and 13–20 (:267-285).
 ⚠️ The §10 paragraph was **updated for Terms v2026-09-14**: it says "written notice in the app", not "in-app + SMS"
 (PLAN §18 row "P2 Terms §10 notice text", P:824). P2's own quotation (04:1344, 04:1358) is the pre-v2026-09-14 text.
+⛔ **Superseded by D19 (Ali, 2026-09-16):** that supersede row's carve-out never lands (D19a reverses D2/D7, and PROGRESS names the row superseded), and with no Terms change there is no §10 waiver for P2's three phrases to pin (04 P2).
 
 **`docs/HOUSE-BOTS.md`** carries §13 risks 1–7 and 13–20 verbatim and the three do-not-restore lines (HB:717-745);
 §10 "Disclosure surfaces" is a stub: "⏳ Written in commit 6" (HB:666-670); §12's commit-6 row reads
@@ -86,6 +91,7 @@ privacy §3" (:569) is commit 6's own row, and §6 has the history row (:617).
 **`docs/DATA-RETENTION.md`** already has all four house rows plus targets and presses (:28-33), the §2b tier ① and
 NEVER entries (:100-102), and §7.1 (:346). **`docs/FLOWS.md` §9** exists (:131). **`docs/AGENT-PROGRAMME.md` §5** has the
 house sentence (:226).
+⛔ **Superseded by D19 (Ali, 2026-09-16):** RULES.md §2.11's Stated row now reads "nowhere, by owner ruling D19", so commit 6 has no Stated row to flip.
 
 **`HouseBotControl.boardDisclosureSentAt` / `boardDisclosureSections`** exist in schema, migration and both DAL twins
 (`house-bot-dal.ts:158,160,473-474,1165-1166,1873,2017,3173-3174`; `recordDisclosure(sections)` on both stores), with
@@ -95,6 +101,7 @@ event kind `BOARD_DISCLOSURE_RECORDED` (`constants.ts:277`) and audit key
 does not exist yet. Both are commit 6's (04:3610-3622).
 
 ## 2. Where the public text lives (code @08c82f0f — re-derive every line)
+⛔ **Superseded by D19 (Ali, 2026-09-16):** nothing in §2.1–§2.5 is edited: the rulebooks, Terms, privacy notice, FAQ, home copy and chatbot keep exactly their words on `main`, and the non-disclosure suite pins the rulebooks, Terms and the privacy notice byte-identical to `origin/main` (D19a). §2.4's `faq8a` and §2.5's prompt are where D19d's forbidden-phrase guard reads; §2.6's Swahili-first disclosure does not arise.
 
 ### 2.1 The two rulebooks
 - Chooser `src/app/legal/rules/page.tsx`: `META` :37-43 — `en: "Version 2026-09-13 · Issued by 50pick Management."`;
@@ -165,6 +172,7 @@ players see first. That raises T22 and makes the sw drafts the ones to read hard
 cookie `kp-locale` (`en` | `sw` | `zh`); anything else or absent → `sw`.
 
 ## 3. Every draft sentence the plan already gives (quote these; do not re-invent)
+⛔ **Superseded by D19 (Ali, 2026-09-16):** §3.1, §3.2, §3.3's bullet and §3.5 are struck and never published (D19a, D19d). §3.3's forbidden phrases stand, with D19d's full list (it adds "all stakes are from real players"), and §3.4's Board draft stands, private (D19b), apart from its notice-waiver section.
 
 ### 3.1 Privacy §3 — the **binding** version is N1's (04:3601-3606), which *replaces* P1's (04:2062)
 - **en:** "Liquidity: 50pick may place stakes from accounts it operates, on markets chosen by an automated system or by 50pick staff; the automated system reads bets placed on a market to decide those stakes, and accounts that exploit them may be excluded from them for the day."
@@ -199,7 +207,7 @@ stake, a self-decided market, ~~staff edge~~); accepted risks 13–20. ⛔ **Sup
 N2 adds (04:4319): the section "covers targets: the 5–600 s delays, the absolute hold with the 7 s margin, first or every
 stake, vetoes and never-retarget, and the staff-chosen caps."
 The whole-document sections come from P1 (04:2068-2075) and CRA-24 (01:2105-2113): what 50pick does · a request to
-confirm the licence class · levy treatment · the notice waiver · the controls · how to inspect · the accepted risks. ⛔ **Superseded in part by D20 (Ali, 2026-09-17):** "levy treatment" says house stakes count in GGR and the levies as player activity, with no house memo, and "how to inspect" names no house-liquidity report (CRA-24, 01:2112, names one; it is struck).
+confirm the licence class · levy treatment · ~~the notice waiver~~ · the controls · how to inspect · the accepted risks. ⛔ **Superseded in part by D20 (Ali, 2026-09-17):** "levy treatment" says house stakes count in GGR and the levies as player activity, with no house memo, and "how to inspect" names no house-liquidity report (CRA-24, 01:2112, names one; it is struck). ⛔ **Superseded by D19 (Ali, 2026-09-16):** the rulebooks and Terms are not amended (D19a reverses D2/D7), so there is no notice waiver for the draft to report.
 Format precedent: `docs/BOARD-DISCLOSURE-KYC-AT-WITHDRAWAL.md` (title "To the Gaming Board — …", a `> **Status:** DRAFT
 FOR ALI` block naming the ruling of record, then `## 1 ·` … `## 6 ·`).
 
@@ -212,6 +220,7 @@ FOR ALI` block naming the ruling of record, then `## 1 ·` … `## 6 ·`).
 - the Board draft's prose — T12.
 
 ## 4. Guards that pin these texts, and what a change needs to stay green honestly
+⛔ **Superseded by D19 (Ali, 2026-09-16):** no rulebook, Terms, privacy, FAQ, home or chat text changes, so none of the "→" consequences below arises (a Terms §4 line, a privacy bump, new FAQ copy, a new bullet or line), and guards 1–10 stay green on unchanged text. Guards 11–14 still apply to the Board draft, its constant and the suite.
 
 `test:all` runs **every** `test:*` key in `package.json` automatically (`scripts/test-all.mjs:41-43`), so a new key needs
 no wiring there; `predeploy` is a hand-written chain that already contains `test:i18n`, `test:support-contact`,
@@ -279,6 +288,7 @@ no wiring there; `predeploy` is a hand-written chain that already contains `test
     `scripts/live-e70-values.mjs legal` drive the pages on production. They are ops scripts, outside `test:all`.
 
 ## 5. Surfaces to render at 1280 and 360, in en, sw and zh
+⛔ **Superseded by D19 (Ali, 2026-09-16):** commit 6 changes nothing on rows 1–7 (D19a), so it has no new text to render there, and the no-cookie pass has no Swahili disclosure to show. The non-disclosure suite asserts the absence, and `qa:house-bot-holder-view` reads a holder's served pages (C4-SPEC ruling 155).
 
 **How:** `npm run build` then `next start` on a free port (never 3009/3011/3013/3014; 3021 is the branch's habit),
 Playwright with the cookie `kp-locale` = `en` | `sw` | `zh` (`responsive-audit.mjs:672` shows the shape:
@@ -305,6 +315,7 @@ Baseline for "unchanged elsewhere": the clean-main worktree `F:/kipindi-old-buil
 `ANTHROPIC_API_KEY` and an enabled chatbot; if it is not driven, record it **NOT MEASURED**, never "passed".
 
 ## 6. Build order (numbered; WIP-commit and push after each step)
+⛔ **Superseded by D19 (Ali, 2026-09-16):** steps 2, 4, 5, 6 and 8 are struck (no public words and no rulebook, Terms, privacy, FAQ, hero or chatbot-bullet edit or version bump), as are step 7's version entry and waivers and step 12's render pass over those pages. What stands: step 1 for the open points D19 leaves, step 3, step 9's Board draft, constant and docs, step 10's suite as a non-disclosure suite with D19d's forbidden-phrase guard, step 11, and step 12's gates.
 
 1. **Re-derive and decide.** Read this file whole; re-derive every `file:line`; fetch `origin/main` and check whether
    Terms / Privacy / the rulebooks / `privacy-notice.test.mts` moved again; write the chosen rulings for T1–T24 into
@@ -344,6 +355,7 @@ Baseline for "unchanged elsewhere": the clean-main worktree `F:/kipindi-old-buil
     push `house-bots`.
 
 ## 7. `test:house-bot-disclosure` — the case list
+⛔ **Superseded by D19 (Ali, 2026-09-16):** the suite is a non-disclosure suite: it fails if any player-facing string in any locale names a house bot, a liquidity stake or a 50pick stake, and it pins the rulebooks, Terms and the privacy notice byte-identical to `origin/main`. Struck: §1–§5, 6.1 and its "delete the bullet" mutation, 7.1–7.3, 9.1 and 9.3. Standing: 6.2–6.4 (with D19d's full list), 7.4, §8, 9.2, 9.4, §docs and §0.
 
 Pure (no database, no server); it renders the JSX maps the way `test:rules-copy` and `test:terms-cancellation` do
 (`yesNoContent(DRIVEN)`, `upDownContent(DRIVEN)`, `content(objectionHours)`) and reads the dictionary through
@@ -419,6 +431,7 @@ the prompt slice) asserts a non-trivial size before any negative assertion runs;
 loudly rather than passing an empty loop (`chat-safety` §2.1's shape).
 
 ## 8. Open points (T1–T24), each with a recommended ruling
+⛔ **Superseded by D19 (Ali, 2026-09-16):** struck: T1–T9, T10 except the phrase list's home (in the suite, with a population control), T11, T18, T20 (native review of legal text), T21, T22 and T23 (RULES.md §2.11's Stated row already reads "nowhere, by owner ruling D19"); T3 and T4, the two owner points, are moot (W18 moot, W19 superseded; D19e). Standing, for the Board draft, the constant, the docs and the non-disclosure suite: T12 (without its commit-7 checklist), T13, T14, T15, T16, T17, T19 and T24 (as marked).
 
 ⚠️ **OWNER** = a legal meaning changes; do not decide it in the build. **T3 and T4 only.**
 
@@ -521,8 +534,8 @@ where the sentence describes whose money the needle shows. Keep `{pct}`; add no 
 
 **T12 · Where `BOARD_DISCLOSURE_SECTIONS` lives.** Options: `src/lib/house-bot/constants.ts` (pure, already the home of
 every closed list, and within the §0 module law), or a console-side constant in commit 7.
-**Recommended: `constants.ts` in commit 6**, with §8.3's equality check — the constant and the draft ship together, so
-commit 7's checklist has something true to read.
+**Recommended: `constants.ts` in commit 6**, with §8.3's equality check — ~~the constant and the draft ship together, so
+commit 7's checklist has something true to read.~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** there is no commit-7 checklist (P1's disclosure tracking is struck); the constant and the draft still ship together.
 
 **T13 · HOUSE-BOTS.md §10 and the support script.** §10 is a stub; CRA-23 asks for a support script ("never confirm an
 account; escalate to the owner"). **Recommended:** write §10 as a table — surface · what it says · where the text lives
@@ -589,13 +602,13 @@ row points at commit 6, while its header says "Final text in build commit 8".
 and leave the rest ⏳ for commit 8; §docs asserts the row it can see (T14).
 
 **T24 · What is deliberately NOT in commit 6.** Record it in `PROGRESS.md` so the next session does not hunt for it:
-the §12 public-payload leak sweep (commit 5), the holder chip and SellButton copy (commit 5), the Board checklist
+the §12 public-payload leak sweep (commit 5), ~~the holder chip and SellButton copy (commit 5), the Board checklist
 action and the ON-modal amber line (commit 7, 04:2076, 04:3622-3623), the sunset "past tense + META bump" flip
 (F2/FS-06, 04:1650, 01:2321 — a future event, not this commit), and the "disclosure change procedure" for FS-25
-(aggregate-only public display).
+(aggregate-only public display)~~. ⛔ **Superseded by D19 (Ali, 2026-09-16):** none of those exists in any commit: no holder chip or SellButton copy (D19c), no Board checklist or ON-modal line (P1's disclosure tracking is struck), and no public line to flip at sunset or public disclosure procedure (D19a).
 
 ---
 
-**Count:** 24 open points (T1–T24). **Two need the owner:** T3 (waiving the two rulebooks' own "announced" promises)
-and T4 (which lawful basis the privacy line sits under, given the PDPA reading `main` recorded on 2026-09-15). Every
+**Count:** 24 open points (T1–T24). ~~**Two need the owner:** T3 (waiving the two rulebooks' own "announced" promises)
+and T4 (which lawful basis the privacy line sits under, given the PDPA reading `main` recorded on 2026-09-15).~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** neither needs the owner now: W18 is moot and W19 is superseded (D19e). Every
 other point has a recommended ruling the build may take on its own, written into `C6-SPEC.md` §6 before any code.

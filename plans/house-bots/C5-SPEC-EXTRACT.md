@@ -32,6 +32,13 @@
 > re-opened:** a trigger player's data export carries no house wording either (see PROGRESS "Waiting on Ali" W2 — the
 > one place D19 meets a PDPA duty, for Ali and a lawyer). ~~The reports, the readers, R2 exposure, R9 decision audits,
 > the CSV, the DSAR plumbing and every admin-console surface are unchanged.~~ ⛔ **Superseded by D20 (Ali, 2026-09-17):** the house reports, the CSV house column, R2 exposure, R9 decision audits and the internal record are struck (see the D20 banner above); the readers are decided member by member in C5-5b; the releasable data-rights doors stay house-free (D19), and Commit 7's console only controls the bots.
+>
+> **Marked in place by D19:** W2 in §0; §1's (d)/(e), (f)/(n) and (h) as "already landed"; §2's player and officer door
+> rows, the activity-feed row and the holder-facing table; §3 item 12; §4's holder-chip props assertion; §5 rows 13–17 and
+> the seed route; §6 step 13; §7 P29 (the digest split, C5-SPEC ruling 235); and §8 guards 7 and 15. D19 also strikes, in
+> what the D20 banner above already lists as dead, §0's holder-chip scope words, §1's "Not in `src` yet" chips, §3 item 5's
+> door sections, §4's `test:dsar-secrets` door case, §6 step 11's doors and guard 9's player chip keys: no releasable
+> door carries a house section (C5-SPEC rulings 168–169).
 
 > A working aid, extracted read-only on 2026-09-15 (OMEGA-COMPILE01) from `04-amendments.md` (`04`), `02-sealed-flows.md` (`02`),
 > `03-design-spec.md` (`03`), `01-scenario-register.md` (`01`), `PLAN.md` (`P`), `PROGRESS.md` (`PR`), `docs/HOUSE-BOTS.md` (`HB`)
@@ -58,7 +65,7 @@ PR "Scope per commit → Commit 5" (PR:378-390):
 **Suites:** `test:house-bot-reports` (new key, two stores), plus additions to `test:dsar-secrets` and `test:erasure`. No RED key is named for commit 5 (PLAN §12 lists RED for money/engine/console only) — see P26.
 
 **Owner defaults in force** (Ali, 2026-09-15, PR:487-506):
-- **W2** — a trigger player's export shows **excluded days + countered count only** (no ids, times, sides, amounts, bot ids or holder ids; D6).
+- **W2** — ~~a trigger player's export shows **excluded days + countered count only** (no ids, times, sides, amounts, bot ids or holder ids; D6).~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** W2 is re-opened: a player's export carries no house wording at all, a trigger player's included (PROGRESS W2; C5-SPEC rulings 168–169); Ali and a lawyer should confirm it.
 - **W4** — skipped/expired intents kept **7 years** (nothing in R1 may assume a 90-day window).
 - **W16** — staff-edge thresholds 15 points / TZS 100,000.
 - **W17** — `HOUSE_BOT` is **not** a money notification kind.
@@ -97,11 +104,11 @@ PR "Scope per commit → Commit 5" (PR:378-390):
 
 **Commit 2 (money seam) already landed**, so Commit 5 must not rebuild:
 - markers on every money row and the propagation table (HB §3.5 :198-216);
-- (d)/(e) `cashOutValue` → `HOUSE_POSITION` (`market-service.ts:2951` `const housePosition = position.houseBotId != null;`) and `cashOutPosition` → `house_position_no_exit`;
-- (f)/(n) `HOUSE_STAKE_ONLY` objection standing (`objections-service.ts:114`) with player copy `objHouseStakeOnly` (`i18n-dict.ts:788`);
+- (d)/(e) `cashOutValue` ~~→ `HOUSE_POSITION`~~ (`market-service.ts:2951` `const housePosition = position.houseBotId != null;`) and `cashOutPosition` ~~→ `house_position_no_exit`~~; ⛔ **Superseded by D19 (Ali, 2026-09-16):** a house position reports `WINDOW_PASSED` and is refused with `origin/main`'s exit-window refusal, `exit_window_closed`, word for word (D19c; C4-SPEC ruling 147);
+- (f)/(n) `HOUSE_STAKE_ONLY` objection standing (`objections-service.ts:114`) ~~with player copy `objHouseStakeOnly` (`i18n-dict.ts:788`)~~; ⛔ **Superseded by D19 (Ali, 2026-09-16):** `HOUSE_STAKE_ONLY` is server-only, the page shows the neutral `objNotEligible` state and `objHouseStakeOnly` is deleted (D19c; C4-SPEC ruling 146);
 - (m) `src/lib/comment-side.ts` (the public side chip ignores marked positions);
 - (g) wagering reversal and recruiter rewards skipped for marked rows (`market-service.ts:2789`, `:4092`, `:4554`; `affiliate-service.ts:1116-1118`, `:1214-1217` — **this is the seed of F9's population**);
-- (h) the A17 liquidity label on every holder outcome notice (`notification-service.ts:353-357` `LIQUIDITY_LINE`, and the `houseStake?: boolean` option on `notifyWin` :368, `notifyLoss` :388, selection-closed :644, verdict :1070, `notifyRefund` :1240, `notifyMarketCancelled` :1257, `notifyOneSidedRefund` :1324).
+- ~~(h) the A17 liquidity label on every holder outcome notice (`notification-service.ts:353-357` `LIQUIDITY_LINE`, and the `houseStake?: boolean` option on `notifyWin` :368, `notifyLoss` :388, selection-closed :644, verdict :1070, `notifyRefund` :1240, `notifyMarketCancelled` :1257, `notifyOneSidedRefund` :1324).~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** the label is removed: a holder's outcome notice is byte-identical to any player's, and Commit 5 asserts the label's absence (D19c; C4-SPEC rulings 143–144; C5-SPEC ruling 250).
 
 **Commit 3** built the erasure refusal and pseudonymising the reports and DSAR rely on: `AnonymizeOutcome.reason` gains `house_bot_live` (`erasure.ts:116-118`), the §4b house block `erasure.ts:413-431` (label redaction scoped by kind + href + designation window), `houseBotStore.pseudonymiseForUser` (DAL :1374-1380) rewriting bot, event and press reasons to `[erased]`, and counts `houseBots` / `houseBotNotificationsRedacted` (`erasure.ts:145-148`). C3-SPEC §4 defers to commit 5: "DSAR view, `test:dsar-secrets`, the `test:erasure` house buckets".
 
@@ -129,10 +136,10 @@ PR "Scope per commit → Commit 5" (PR:378-390):
 ### Data-rights doors
 | Door | Anchor | Change |
 |---|---|---|
-| Player | `user-service.ts exportUserData` :46-69: `transactions: await db.txn.findByUser(userId, 1000)` :54, `auditEntries: await getAuditForActorDurable(userId, {limit:1000})` :63; `UserDataExport` :24-33 | add `houseLiquidity`; personal reads exclude house rows; add `houseAuditCount` |
-| Officer | `privacy.ts buildDsarBundle` :292-330 (`schemaVersion: 1` :303, `txns = db.txn.findByUser(userId, 10_000)` :296), projection `dsarUserView` :261 | same section, `schemaVersion: 2` (R5) |
+| Player | `user-service.ts exportUserData` :46-69: `transactions: await db.txn.findByUser(userId, 1000)` :54, `auditEntries: await getAuditForActorDurable(userId, {limit:1000})` :63; `UserDataExport` :24-33 | ~~add `houseLiquidity`; personal reads exclude house rows; add `houseAuditCount`~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** no house section, key or count; a holder's house rows stay in the export as his own rows (C5-SPEC rulings 168–170) |
+| Officer | `privacy.ts buildDsarBundle` :292-330 (`schemaVersion: 1` :303, `txns = db.txn.findByUser(userId, 10_000)` :296), projection `dsarUserView` :261 | ~~same section, `schemaVersion: 2` (R5)~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** no house section and no `schemaVersion` bump (C5-SPEC rulings 168–169) |
 | Officer player page | `admin/players/[id]/page.tsx` :130-144 reads `exportUserData(id)` and computes lifetime KPIs from `data.transactions` | R5: it must read `db.txn.findByUser(id, 1000)` **directly** so its output is unchanged |
-| Player activity feed | `user-service.ts getOwnActivity` :173-178 → `profile/account/page.tsx` :83-84 | (o) the chip on rows whose `payload.houseBotId` is set |
+| Player activity feed | `user-service.ts getOwnActivity` :173-178 → `profile/account/page.tsx` :83-84 | ~~(o) the chip on rows whose `payload.houseBotId` is set~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** no chip: house-bet rows look exactly like the holder's own (D19c; C5-SPEC rulings 170, 253) |
 | Erasure | `erasure.ts` §4b :413-431; `AnonymizeOutcome` :116 | tests only (R6 §8 buckets, §11) |
 | DSAR queue | `privacy.ts openErasureRequest` :223 (built in commit 4, ruling 130) | reused, not changed |
 
@@ -159,15 +166,17 @@ PR "Scope per commit → Commit 5" (PR:378-390):
 | Bulk resolve | `resolver-queue/bulk-resolve-bar.tsx` :193 ("N selected · TZS X held"), per-row pool :477, total :484-490 | "N of these markets carry house stakes" |
 
 ### Holder-facing (F10, 03 S8)
+⛔ **Superseded by D19 (Ali, 2026-09-16):** the `SellButton` to Player copy rows are struck: no `houseStake` state, no chip or line on any player surface and no player key, and `sell-button.tsx` is not edited (D19c; C5-SPEC ruling 253). The admin player chip row is D20's (the banner above).
+
 | Surface | Anchor | Change |
 |---|---|---|
-| `SellButton` | `components/markets/sell-button.tsx` props :26-66 (no `houseStake`), grace/closed effects :67-100 | new `houseStake?: boolean` → no button, no banner, no countdown, one static note row |
-| Callers | `positions/page.tsx:425` (sellable computed :176-196 with `houseBotId` :190) and `markets/[id]/page.tsx:659` (`cashOutValue` :293) | pass `houseStake` separately from `alreadyClosed`, or a LIVE market says "Selling closed" |
-| PositionCard | `components/markets/position-card.tsx` Props :20-54, chip row :80-123 | chip after the status chip + line under the header |
-| Market own-positions | `markets/[id]/page.tsx:600-660` | chip after the status span |
-| Wallet rows | `wallet/wallet-client.tsx TxnRow` :431; the row type is `Transaction` in `src/lib/ui-stubs.ts:26-39` (**no `houseBotId` today**); the page reads `db.txn.findByUserWindow` :167/:289 and passes `transactions={pagedTxns}` :378 | the marker must be carried into the view type |
-| Up & Down history | `updown/history/page.tsx` bet chips :474-476, count-leads rule :455-462 | a separate labelled sub-row |
-| Player copy | `i18n-dict.ts` has only `objHouseStakeOnly` :788 and `failHousePositionNoExit` :2265 — the S8 keys `market.houseStakeChip`, `houseStakeLine`, `houseStakeNoExit` do **not** exist | add en/sw/zh (⚠️ Swahili is now the default locale, `8822b648`) |
+| `SellButton` | `components/markets/sell-button.tsx` props :26-66 (no `houseStake`), grace/closed effects :67-100 | ~~new `houseStake?: boolean` → no button, no banner, no countdown, one static note row~~ |
+| Callers | `positions/page.tsx:425` (sellable computed :176-196 with `houseBotId` :190) and `markets/[id]/page.tsx:659` (`cashOutValue` :293) | ~~pass `houseStake` separately from `alreadyClosed`, or a LIVE market says "Selling closed"~~ |
+| PositionCard | `components/markets/position-card.tsx` Props :20-54, chip row :80-123 | ~~chip after the status chip + line under the header~~ |
+| Market own-positions | `markets/[id]/page.tsx:600-660` | ~~chip after the status span~~ |
+| Wallet rows | `wallet/wallet-client.tsx TxnRow` :431; the row type is `Transaction` in `src/lib/ui-stubs.ts:26-39` (**no `houseBotId` today**); the page reads `db.txn.findByUserWindow` :167/:289 and passes `transactions={pagedTxns}` :378 | ~~the marker must be carried into the view type~~ |
+| Up & Down history | `updown/history/page.tsx` bet chips :474-476, count-leads rule :455-462 | ~~a separate labelled sub-row~~ |
+| Player copy | `i18n-dict.ts` has only `objHouseStakeOnly` :788 and `failHousePositionNoExit` :2265 — the S8 keys `market.houseStakeChip`, `houseStakeLine`, `houseStakeNoExit` do **not** exist | ~~add en/sw/zh (⚠️ Swahili is now the default locale, `8822b648`)~~ |
 | Admin player chip (03 S7) | `admin/players/[id]/page.tsx` chip row :226-262 (KYC chip precedent :244) | "House bot · Active" chip (see P24) |
 
 ### Rewards (R4 + F9)
@@ -188,7 +197,7 @@ PR "Scope per commit → Commit 5" (PR:378-390):
 9. **R9 = G2 decision audits** (04:1316-1337, 04:1790-1801; N1 §9 04:3577-3583; N2 §9 04:4311; PLAN §18 row "R9 / sanctioned change (q)" P:806; TGT-38 01:3635-3648). Exact shape `houseStake:{yes:number, no:number, staffChosen:{yes:number, no:number, requestedBy:string[]}}`, zero shape `{yes:0,no:0,staffChosen:{yes:0,no:0,requestedBy:[]}}`, read in the same call through R2's reader; `staffChosen` = the same rows restricted to `kind='MANUAL' OR "targetId" IS NOT NULL`; `requestedBy` = distinct officer ids, sorted — `requestedById` for MANUAL, the target's `createdById` for targeted. Nothing else in the payload changes. `kycMoneyFacts` gains `houseBetCount` and `houseStakedTzs`; the card adds "of which 50pick liquidity stakes: N · TZS X" when above 0.
 10. **Staff edge** (04:2930-2946 + 04:3271-3302 row; W16; TGT-39 01:3649-3669; C4-SPEC ruling 78). Evaluated **only during the first EAT day of each month, for the month just ended**, per officer over staff-chosen stakes placed that month and settled by evaluation time. Counts: settled = won + lost + refunded; win rate = won/(won+lost); net = payouts + refunds − stakes — **from `book.ts`, the same function as R1's scorecard**. Baseline: the automated rate over PLACED `kind<>'MANUAL' AND "targetId" IS NULL` rows on the same products in the same month (C4-SPEC ruling 29). Fires `staff-edge:<officerId>:<YYYY-MM>` when settled ≥ 10 **and** (win-rate delta ≥ `gStaffEdgeWinRatePts` with a non-empty baseline, **or** net ≥ `gStaffEdgeNetTzs`). Both thresholds NULL → nothing. Copy and href: "…{n} settled, {w}% won against {a}% for automatic stakes…" → `/admin/reports?tab=library&range=custom&from=<YYYY-MM-01>&to=<YYYY-MM-last>` (pinned by C13's +60-day test).
 11. **Entry split** (N1 §9 04:3554-3557; N2 §9 04:4301). `houseBotBook(filter, {byEntry:true})` joins each marked Position to its intent by the unique `positionId`; entry is `MANUAL`, `TARGETED` (COUNTER with `targetId`) or `AUTOMATIC`; **assert automatic + targeted + manual = house totals**.
-12. **Holder chip and SellButton** (P §1-F10 P:134-142; 03 S8 03:322-340; 02 F10 02:425-431; HB-ACC-40 01:689-697; HB §3.5 "(i)" and "(o)" HB:217). Chip "50pick liquidity stake" + the line "Placed by 50pick with your permission; it can't be cashed out and settles to your wallet.", en/sw/zh, on PositionCard, the market own-positions block, wallet rows, Up & Down history and the account activity feed; `SellButton houseStake` renders the static note row with **no** button, banner or countdown, and never "Selling closed".
+12. ~~**Holder chip and SellButton** (P §1-F10 P:134-142; 03 S8 03:322-340; 02 F10 02:425-431; HB-ACC-40 01:689-697; HB §3.5 "(i)" and "(o)" HB:217). Chip "50pick liquidity stake" + the line "Placed by 50pick with your permission; it can't be cashed out and settles to your wallet.", en/sw/zh, on PositionCard, the market own-positions block, wallet rows, Up & Down history and the account activity feed; `SellButton houseStake` renders the static note row with **no** button, banner or countdown, and never "Selling closed".~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** no holder chip, line or `SellButton` `houseStake` state on any surface; a house position reads as a closed exit (D19c; C4-SPEC ruling 147; C5-SPEC ruling 253).
 13. **Absence assertions** (P §12 P:520; CRA-27 01:2145-2153; FS-25 01:2535-2542). `houseBotId`, `hb_`/`hbi_` ids and `hb:` keys appear in **no** public payload: `getBoard`, `getRoundDetail`, market page props, leaderboard, trader avatars, `market:odds`, `/api/fairness/recent`, `/results`, `/api/og/market/<id>`, the ticker feed and the comments thread — with a planted positive-control needle.
 
 ## 4. Tests demanded
@@ -203,7 +212,7 @@ PR "Scope per commit → Commit 5" (PR:378-390):
 - R4/F9: the walker fails on a planted offending file; `excludeHouse:true` drops marked rows in both stores and the default output is unchanged.
 - R8: the source pin with a positive control; the pack state survives 12,000 BET rows (Postgres half or `drive:house-bots-local`).
 - Leak sweep with a planted needle (P:520, CRA-27); leaderboard still includes the bot; two-admin ON resolves a house-held market exactly like its twin.
-- Props assertion for the holder chip surfaces (HB-ACC-14 01:295).
+- ~~Props assertion for the holder chip surfaces (HB-ACC-14 01:295).~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** there is no chip; HB-ACC-14 counts as the `/profile/account` served-page absence (C5-SPEC rulings 248, 250).
 - KYC card: the line for a holder; a non-holder's snapshot identical.
 
 **`test:dsar-secrets`** (new §6–§8, 04:1232-1236 + 04:3743 + 04:4400): a holder with 1,200 house transactions, 3 deposits and 1,100 house audit rows — both doors contain the 3 deposits and `houseLiquidity.designations[0].consent.verifiedAt`; no fingerprint value, hash value or officer id; a column added later to `HouseBot` is absent; a trigger fixture 31 days after the AlertOnce purge still shows `excludedDays` with no `hb_`, `hbi_` or bot `userId`; officer-page KPIs for a non-holder byte-identical; `events[]` holds exactly the allowlisted kinds as `{kind, at, actor}` with no reason text and no marketId.
@@ -232,14 +241,14 @@ Ali's rule (PR:28-29): every surface a commit produces is rendered and read; a s
 | 10 | `/admin/players/<id>` — the S7 chip (see P24) and house rows in the transactions tab | a live holder | the KYC chip row :244-262 |
 | 11 | `/admin/house`, `/admin/finance`, `/admin/insights` — the §9 house lines and "House bots net" tile | a settled house fixture | `AdminKpi` (never gold — 03 §1 colour) and the `.admin-tbl` money rows |
 | 12 | `/admin/compliance` — the harm table holder chip | a holder flagged RAPID_DEPOSIT_ESCALATION | the existing marker chips |
-| 13 | `/positions` — PositionCard chip + SellButton note row | one marked OPEN position on a LIVE market, one unmarked | `Chip size="sm" variant="neutral"` + `text-body-sm text-text-muted` line (03 S8) |
-| 14 | `/markets/<id>` — own-positions block chip; signed-out view has no chip | as above | the status span row :600-660 |
-| 15 | `/wallet` — `TxnRow` chip (`Chip size="xs"` in the meta line) + the expanded panel line | marked BET_PLACED + BET_PAYOUT rows | `wallet-client.tsx TxnRow` :431 |
-| 16 | `/updown/history` — "{n} liquidity stakes" sub-row | a marked Up & Down position | the count-leads rule :455-476 |
-| 17 | `/profile/account` — activity-feed chip on house rows | audit rows carrying `payload.houseBotId` | the existing activity rows |
+| 13 | ~~`/positions` — PositionCard chip + SellButton note row~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** nothing to render: no chip, note row, sub-row or activity chip exists on any player surface (D19c; C5-SPEC ruling 253); `qa:house-bot-holder-view` reads the holder's served pages for house words instead (C4-SPEC ruling 155; C5-SPEC ruling 248). | ~~one marked OPEN position on a LIVE market, one unmarked~~ | ~~`Chip size="sm" variant="neutral"` + `text-body-sm text-text-muted` line (03 S8)~~ |
+| 14 | ~~`/markets/<id>` — own-positions block chip; signed-out view has no chip~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** as row 13. | ~~as above~~ | ~~the status span row :600-660~~ |
+| 15 | ~~`/wallet` — `TxnRow` chip (`Chip size="xs"` in the meta line) + the expanded panel line~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** as row 13. | ~~marked BET_PLACED + BET_PAYOUT rows~~ | ~~`wallet-client.tsx TxnRow` :431~~ |
+| 16 | ~~`/updown/history` — "{n} liquidity stakes" sub-row~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** as row 13. | ~~a marked Up & Down position~~ | ~~the count-leads rule :455-476~~ |
+| 17 | ~~`/profile/account` — activity-feed chip on house rows~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** as row 13. | ~~audit rows carrying `payload.houseBotId`~~ | ~~the existing activity rows~~ |
 | 18 | The staff-edge bell and email (Commit 4 step 9 emitters) | the TGT-39 fixture | `qa:cert-c1`'s visual pass; the other house alert templates |
 
-**Widths:** 320/360/640/768/1024/1280/1920 in the admin harness, 360/640/768/1024/1280/1920 for the player pass in en/sw/zh (`kp-locale`). Player surfaces need the new dev route `src/app/api/dev-test/seed-house-stake/route.ts` (03 §7 phase E; it must 404 in production **before its first `await`** — `scripts/dev-route-guard.test.mts`). Every PNG opened and read.
+**Widths:** 320/360/640/768/1024/1280/1920 in the admin harness, 360/640/768/1024/1280/1920 for the player pass in en/sw/zh (`kp-locale`). ~~Player surfaces need the new dev route `src/app/api/dev-test/seed-house-stake/route.ts` (03 §7 phase E; it must 404 in production **before its first `await`** — `scripts/dev-route-guard.test.mts`).~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** no dev seed route: the marker is create-only, so the method is a scratch database filled through the real services (C5-SPEC rulings 248, 253). Every PNG opened and read.
 
 ## 6. Build order (numbered steps for a fresh session)
 
@@ -255,7 +264,7 @@ Ali's rule (PR:28-29): every surface a commit produces is rendered and read; a s
 10. **R4 + F9.** `leaderboard({excludeHouse})` in both stores, the walker with its allowlist and positive control, the COMPLIANCE/HB do-not-restore lines.
 11. **R5 = G1 data rights.** `server/house-bot/dsar.ts houseLiquidityDsarView`, both doors, `schemaVersion: 2`, the `{excludeHouseBets}` / `{excludeHouse}` options with memory twins, `houseAuditCount`, the trigger-player projection, the officer player page switching to `db.txn.findByUser` directly. Extend `test:dsar-secrets`.
 12. **R6 tests.** `test:erasure` §8 buckets (with `MUST_HAVE_CONTENT` entries so an empty bucket cannot pass) and §11; `red:erasure` mutation re-run.
-13. **Holder-facing.** `SellButton houseStake` + both callers, the chip on the five player surfaces and the activity feed, the three i18n keys in en/sw/zh (sw drafted carefully — it is now the default locale), the marker carried into the wallet view type. Render §5 rows 13–17 at 360 and 1280 in three locales.
+13. ~~**Holder-facing.** `SellButton houseStake` + both callers, the chip on the five player surfaces and the activity feed, the three i18n keys in en/sw/zh (sw drafted carefully — it is now the default locale), the marker carried into the wallet view type. Render §5 rows 13–17 at 360 and 1280 in three locales.~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** nothing holder-facing is built (D19c; C5-SPEC ruling 253).
 14. **Absence assertions and the leak sweep** with a planted needle.
 15. **Closing gates** as in commits 2–4: `tsc`, every suite in §4, mutations on the new code (a temporary worktree with a `node_modules` junction — PR's technique), `test:all` against clean `F:/kipindi-old-build`, the 3-lens review, then docs (`HOUSE-BOTS.md` §8 replaces "⏳ Written in commit 5", §12 row 5, DATA-RETENTION §2b, PROGRESS, `C5-SPEC.md`).
 
@@ -293,7 +302,7 @@ Authority order: 04 > 02/03 > PLAN > 01; the later and more specific text wins.
 | P26 | A RED key for commit 5 | (a) no new `red:` key; mutations run from a scratchpad harness as in commits 3–4, plus the existing `red:erasure`; (b) a new `red:house-bot-reports` | **(a)** — PLAN §12 names RED for money/engine/console only (C3-SPEC ruling 17's precedent); every new assertion still gets a mutation |
 | P27 | Suite backend | (a) `test:house-bot-reports` runs on both stores through `runTwoStores`; (b) memory only | **(a)** — the book, the entry split and `stakeByMarket` are SQL joins; a memory-only suite would prove nothing about them |
 | P28 | The CSV house column and non-owner admins | (a) the column ships on the existing accounting-view CSV and the `house` filter joins `TxnSearchFilters` in both stores, recorded in the `transactions.exported` payload; (b) owner-only CSV | **(a)** — R1 04:1981-1982; the marker is admin data, never public (I8) |
-| P29 | The Up & Down digest house split | (a) stays in Commit 4 step 9; (b) move it into commit 5 with the reports | **(a)** — PR moved it into Commit 4 (record 2b); commit 5 must not build a second split |
+| P29 | ~~The Up & Down digest house split~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** struck: the digest carries no house line or label, and only F6's email rule is built (D19c; C5-SPEC ruling 235, L40) | ~~(a) stays in Commit 4 step 9; (b) move it into commit 5 with the reports~~ | ~~**(a)** — PR moved it into Commit 4 (record 2b); commit 5 must not build a second split~~ |
 | P30 | Closing commit 5 before Commit 4 step 9 | (a) build the staff-edge pass against `EngineAlerts`, and close only after step 9's emitter renders its bell and email; (b) close with the alert NOT MEASURED | **(a)** — Ali's rule: a surface not rendered is NOT MEASURED, never passed |
 
 ## 8. Guards that will go red, and how to move each honestly
@@ -306,7 +315,7 @@ Code anchors as of `08c82f0f`. Run each named suite right after touching its fil
 4. **`test:leaderboard-order`** calls `positionStore.leaderboard(...)` directly (`:129`, `:154`, `:160-164`). Adding `excludeHouse?` must not change the default result on either store; add the option with a default of `false` and a dal-parity case.
 5. **`test:two-admin`** `:146-149` reads `market.adjudicated.payload.resolutionAuth`. Adding `houseStake` beside it is safe; changing key order or nesting is not. **`test:officer-conflict`** must stay green: no refusal branch may read `requestedBy` (source pin).
 6. **`test:bulk-resolve`** 10.10/10.22 pin the bulk payload bounds (`scripts/bulk-resolve.test.mts:435`, `:487`); the anchors file quotes the dedupe block (`scripts/anchors/bulk-resolve.anchors.mjs:237-239`). Add the house field without splitting those blocks, or re-anchor to the same defect.
-7. **`test:feedback-law`** pins `src/components/markets/sell-button.tsx` (`:117`): the new `houseStake` state must still state a reason and a next step (§F4) and must not add a channel.
+7. **`test:feedback-law`** pins `src/components/markets/sell-button.tsx` (`:117`)~~: the new `houseStake` state must still state a reason and a next step (§F4) and must not add a channel~~. ⛔ **Superseded by D19 (Ali, 2026-09-16):** `sell-button.tsx` is not edited, so this guard is untouched (C5-SPEC ruling 253).
 8. **`test:popup-fit` `:113`** and **`test:unsaved-changes` `:130`** pin `emergency-void-control.tsx` (EXEMPT ① "fields open inside `<Modal>`"); **`test:unsaved-changes` `:153`**, **`test:control-gates` `:182`**, **`test:overdue-format` `:23`** (it imports `humanDuration` from the page) and **`design-gate/eyebrow-roles` `:180-183`** pin `resolver-queue/page.tsx`. Insert the house line without disturbing those shapes, and re-run each.
 9. **`test:labels` (`label-lexicon.test.mts:1067`)** allows exactly one lexicon exception on `resolver-queue/page.tsx`; **`test:chip-contract`** and **`test:i18n`** cover the new player chip keys — en/sw/zh, no English enum tokens (§L4), sw/zh not identical to en.
 10. **`test:house-bot-rules`**: 11.8 (every quoted `house_bot.*` literal is a `HOUSE_AUDIT` key — `house_bot.exported` already is), 11.22 (`EVENT_KINDS` exactly 30 — **do not add an event kind**; the R1 sections read existing kinds), and the §0 module law (a helper that needs `./rules` lives under `src/lib/server/house-bot/`).
@@ -314,7 +323,7 @@ Code anchors as of `08c82f0f`. Run each named suite right after touching its fil
 12. **`test:guards-exist`** refuses a suite key cited in code before `package.json` has it — add `"test:house-bot-reports"` in the same commit as the first citation. **`test:decomment`** `CARRIER_CEILING = 20` is exact: import `scripts/lib/decomment.mts`, never a new stripper. **`test:red-anchors`** `UNDECLARED_CEILING = 65` is exact.
 13. **`test:kyc-copy-truth`** covers the KYC card's copy; **`test:read-tiers` 6.10** pins the reveal payload shape. The "of which 50pick liquidity stakes" line names a count and an amount, never an account.
 14. **`test:erasure` / `red:erasure`**: new §8 buckets must be listed in `MUST_HAVE_CONTENT` (`scripts/erasure.test.mts:542-547`) or an unread bucket passes as clean; 8.0c's planted-needle control must stay.
-15. **`test:dsar-secrets`** currently has five sections (`scripts/dsar-export-secrets.test.mts`); §5 asserts both doors expose an **identical user field set** — the house section must be added to both doors in the same shape, or §5 goes red for a real reason.
+15. **`test:dsar-secrets`** currently has five sections (`scripts/dsar-export-secrets.test.mts`); §5 asserts both doors expose an **identical user field set** ~~— the house section must be added to both doors in the same shape, or §5 goes red for a real reason.~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** no releasable door gains a house section, so §5 stays green by construction (C5-SPEC rulings 168–169; §1 S2).
 16. **`test:pii-in-logs`**, **`test:orphans`**, **`test:type-scale`** (inherited red 909 vs 908 — never raise a ratchet), **`test:house-page`** and **`test:insights`** pins move when the §9 lines land: read the printed population first, then move the pin.
 17. **`test:cert-c1` / `test:cert-c3`**: only if a new `notify*` export or `*Html` template is added. The staff-edge alert reuses `notifyAdminsHouseBotAlert` (Commit 4 step 9) — if it is not built yet, the alert is injected through `EngineAlerts.once` and the registry row is step 9's.
 18. **`test:house-bot-seam` §4.3** still allows only `house-bot/fire.ts` to import `placeHouseBet`; no reporting module may import the seam. **I2 source pin:** `exposure.ts`, the report builders and the DSAR projection must not be imported by any engine module.

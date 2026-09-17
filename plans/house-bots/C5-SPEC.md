@@ -2567,8 +2567,8 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
      that names the id in its absence form (e.g. "HB-ACC-14 · D19c · /profile/account served HTML carries no house word").
      PROGRESS's Scenario coverage gate gets an Exceptions row "struck by D19" ONLY for ids with nothing left to assert: CRA-09
      and CRA-26 (wholly public text), FS-25's flag-on public fixture, and FS-30's public/holder-copy half. CRA-23 is covered by
-     Commit 6's D19d forbidden-phrase assertions; CRA-24 by the Board draft (docs) and Commit 7's ON-modal "not recorded as
-     sent" line; CRA-25 by `test:docs` on the COMPLIANCE-DECISIONS entry — each named in those commits, never as an exception.
+     Commit 6's D19d forbidden-phrase assertions; CRA-24 by the Board draft (docs) ~~and Commit 7's ON-modal "not recorded as
+     sent" line~~ (⛔ D19 struck P1's disclosure tracking — C5-D20-REPLAN ruling 273); CRA-25 by `test:docs` on the COMPLIANCE-DECISIONS entry — each named in those commits, never as an exception.
      Commit 5's named forms:
      - HB-ACC-12 / CRA-04: the player door shows nothing; the internal record holds the section; personal positions are still
        not built (236, 243, 246).

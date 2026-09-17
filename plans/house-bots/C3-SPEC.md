@@ -8,10 +8,18 @@
 > `test:erasure` house buckets (244–245). Nothing else in this file is touched by D20; D19 still binds everything. Read
 > PROGRESS.md "OWNER RULING D20" and `plans/house-bots/C5-D20-REPLAN.md` first.
 
+> # ⛔ THE HOLDER NOTICES HERE ARE STRUCK (D19)
+> **Owner ruling D19 (Ali, 2026-09-16): nothing about house bots reaches a player or the holder.** The holder receives no
+> house-bot notice or email at all, and every alert goes to admins only (D19c). Struck here, marked in place: the holder
+> notices, bell and letter in §0, §2.3 step 5, §2.4, §2.5 and §2.10, the holder's own withdrawal action in §2.6, and
+> rulings 6, 12, 27, 33 and 34's holder half (C4-SPEC ruling 149 deleted what Commit 3 built of them). The password check
+> and its two-attempt reserve, designation, the consent void, erasure and the admin recipients stand. Read PROGRESS.md
+> "OWNER RULING D19".
+
 > Working aid, written 2026-09-14 on OMEGA-COMPILE01 from a read-only extraction of `04-amendments.md` (`04`), `02-sealed-flows.md` (`02`), `01-scenario-register.md` (`01`), `PLAN.md`, `docs/HOUSE-BOTS.md` (`HB`) and the code at `b6971618`. **It is not an authority.** The documents it cites win, and every `file:line` must be re-derived before use. §6 records the rulings this build takes where the documents disagree or are silent; each ruling becomes a PLAN §18 row when the commit closes.
 
 ## 0. Scope of record
-- PROGRESS "Scope per commit → Commit 3"; PLAN:499 "Designation, eligibility and password **services** (no actions yet) · `HOUSE_BOT` kind + `notifyHouseBotOwner` + owner email template · `test:house-bot-designation`".
+- PROGRESS "Scope per commit → Commit 3"; PLAN:499 "Designation, eligibility and password **services** (no actions yet) · `HOUSE_BOT` kind ~~+ `notifyHouseBotOwner` + owner email template~~ · `test:house-bot-designation`". ⛔ **Superseded by D19 (Ali, 2026-09-16):** Commit 3 built `notifyHouseBotOwner` and the owner email template, and C4-SPEC ruling 149 deleted both; the holder receives no house-bot notice or email (D19c).
 - Placement: 04:645 `| 3 | A3 (service), A4, A5 (designation/erasure), A22 |`; 04:1434 `| 3 | R6 erasure step and house_bot_live |`; 04:4435 N1/N2: A5 erasure pseudonymises `HouseBotPress.reason` and event reasons to "[erased]"; A3 consent void ends every ACTIVE target as ENDED(CONSENT_VOID) with TARGET_ENDED events in the same `wallet:<botUser>` transaction.
 - The PROGRESS table has "—" in the red column for commit 3.
 
@@ -53,7 +61,7 @@ PLAN:343: "the one function behind picker, card, designate, re-verify and Start"
 2. Fresh bot read (re-verify): REMOVED → refuse; ACTIVE with a matching fingerprint → no-op (PLAN:609).
 3. Password-context rows and the RG block, uncounted, before any password check (C8).
 4. Rate bucket `housebot.verify` {capacity 3, refill 0.2/min}, key `<officer>:<target>` (02:165, PLAN:356). Refused → SECURITY `verify_rate_limited`; the holder's counter is untouched.
-5. **Reserve** (04:1838): `failedLoginCount >= LOCKOUT_MAX_FAILS − 2` → `verify_reserved`, password not checked. Copy: "Stop here — the last 2 attempts are kept for the holder. Ask him to sign in once (that resets the count), then try again." Holder bell (04:1058): "Someone at 50pick tried to confirm your permission with a wrong password. Your sign-in is not locked."
+5. **Reserve** (04:1838): `failedLoginCount >= LOCKOUT_MAX_FAILS − 2` → `verify_reserved`, password not checked. Copy: "Stop here — the last 2 attempts are kept for the holder. Ask him to sign in once (that resets the count), then try again." ~~Holder bell (04:1058): "Someone at 50pick tried to confirm your permission with a wrong password. Your sign-in is not locked."~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** the reserve and its SECURITY audit stand, but the holder gets no bell about it (D19c; C4-SPEC ruling 149).
 6. Inside `withLock("login:"+userId)` on the re-read row: clear an expired lock as login does; verify against the **fresh** row's salt and hash (04:1832: login's pre-lock pattern must not be copied); wrong → `failedLoginCount + 1`, **never set `lockedUntil`** (C4 04:1839, PLAN:612); right → reset the count and clear the lock. Wrong copy: "That isn't his current password. It was changed on <passwordSetAt> via <passwordSetVia>. N attempts left."
 7. Return: success → `passwordFingerprint(hash)`; refusal → `attemptsBeforeLock` and `retryAfterSec`.
 8. **Never** a session, cookie, `ActiveSession` row, `lastLoginAt`, bootstrap-admin promotion or `auth.login.*` audit. SECURITY audits `password_verified | password_rejected | verify_rate_limited | verify_account_locked | verify_reserved`. The password never reaches logs or errors (PLAN:360, 02:235-239).
@@ -67,14 +75,14 @@ Order (C4 04:1844-1847, C9 04:874, A3 04:142):
 3. Under `wallet:<userId>`: re-read the hash; if `fp(fresh) ≠ fp(verified)` → field `password` "His password changed a moment ago — enter the new one.", no row. Then under `house:control`: count again (`count < maxDesignatedBots`), else "The roster is full (5 of 5). Remove a bot or raise Max designated bots on Limits →"; insert PAUSED(NEW) + runtime row + DESIGNATED event in one transaction.
 - Label clash (incl. concurrent, `HouseBot_labelKey_live_key`) → field `label`: "Another bot is already called "Bot A" (Paused). Choose a different label." Same-account clash (`HouseBot_userId_live_key`) → `{ok:false, data:{botId}}` "This account is already a house bot."
 - Audit COMPLIANCE `house_bot.designated`, awaited, outside the locks, payload without label/note/fingerprint (R7 04:1287 wins over 02:294).
-- Holder notice (bell + push + email): "Your account now provides liquidity" / "50pick will place liquidity stakes from your account as you agreed. You keep full use of it. Nothing is placed until 50pick starts them. You can stop this at any time by changing your password or contacting 50pick." (02:302 + 04:1059)
+- ~~Holder notice (bell + push + email): "Your account now provides liquidity" / "50pick will place liquidity stakes from your account as you agreed. You keep full use of it. Nothing is placed until 50pick starts them. You can stop this at any time by changing your password or contacting 50pick." (02:302 + 04:1059)~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** the holder receives no notice or email when designated (D19c; C4-SPEC ruling 149).
 - Re-designating a removed account creates a new row (02:305).
 
 ### 2.5 Re-verify write
-02:172-177 / PLAN:614: release the login lock, take `wallet:<bot>`; if the stored hash's fingerprint no longer matches the verified one → "His password changed again while you were typing. Ask him for the newest one." (not counted); else `setVerified` (fingerprint, `verifiedAt/ById`, clear credential fields, `pausedFromStatus = null`); if the bot is AUTO_PAUSED, move to PAUSED(MANUAL); event VERIFIED; SECURITY audit `password_verified`. Holder notice `reverified` (bell + push + email, 04:1057): "50pick confirmed your permission for liquidity stakes with your current password at {HH:MM} EAT. If you did not give your password to 50pick, change it now — that stops liquidity stakes at once."
+02:172-177 / PLAN:614: release the login lock, take `wallet:<bot>`; if the stored hash's fingerprint no longer matches the verified one → "His password changed again while you were typing. Ask him for the newest one." (not counted); else `setVerified` (fingerprint, `verifiedAt/ById`, clear credential fields, `pausedFromStatus = null`); if the bot is AUTO_PAUSED, move to PAUSED(MANUAL); event VERIFIED; SECURITY audit `password_verified`. ~~Holder notice `reverified` (bell + push + email, 04:1057): "50pick confirmed your permission for liquidity stakes with your current password at {HH:MM} EAT. If you did not give your password to 50pick, change it now — that stops liquidity stakes at once."~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** no confirmation reaches the holder (D19c; C4-SPEC ruling 149).
 
 ### 2.6 Consent void service
-- Causes: exactly `CONSENT_VOID_CAUSES`. Callers: the holder hook, the L2 sweep and the mapper (commit 4) and `withdrawHouseConsentAction` (holder, HOLDER_WITHDREW, COMPLIANCE `holder_withdrew_consent`).
+- Causes: exactly `CONSENT_VOID_CAUSES`. Callers: the holder hook, the L2 sweep and the mapper (commit 4) ~~and `withdrawHouseConsentAction` (holder, HOLDER_WITHDREW, COMPLIANCE `holder_withdrew_consent`)~~. ⛔ **Superseded by D19 (Ali, 2026-09-16):** there is no holder-facing withdrawal action (D19c); a withdrawal the holder asks for through support is recorded with the officer as actor, and `withdrawHouseConsent` is reshaped for that in Commit 7 (C5-SPEC ruling 170, L49).
 - For a non-REMOVED bot in any status, under `wallet:<botUser>`, one transaction: `setConsentVoid` (conditional); event CONSENT_VOIDED; **end every ACTIVE target as ENDED(CONSENT_VOID) with one TARGET_ENDED event each** (N2 §4 step 10, 04:4009; no audit per target); ACTIVE bot → AUTO_PAUSED(first cause) with `pausedFromStatus = ACTIVE` and live intents cancelled; PAUSED / AUTO_PAUSED → status kept, HOLDER_CAUSE_ADDED; REMOVED → nothing. A rollback leaves targets ACTIVE; a second pass changes nothing; Re-verify and Start never revive targets (01 TGT-40).
 - Suspension is not a void: targets stay ACTIVE and inert.
 - Audit `house_bot.auto_paused` (COMPLIANCE, awaited, outside the locks). RG causes send no holder notice (C8); OWNER_LOSS_LIMIT is not an RG pause and does not void.
@@ -100,9 +108,10 @@ Same update as the hash:
 `houseBotAlertRecipients()` in `src/lib/server/house-bot/alerts.ts` — the same rule as the owner guard (today `requireOwner`: every ACTIVE ADMIN). Its alert callers arrive in commits 4 and 7.
 
 ### 2.10 `HOUSE_BOT` kind, `notifyHouseBotOwner`, owner email
-- Kind lists: `comms-registry.ts` `NOTIFICATION_KINDS` / `MONEY_KINDS` / `NOTIFICATION_EMITTERS`; `store.ts` `StoredNotification["kind"]`; `notification-appearance.ts` icon and tint. Never SMS (04:1061).
+⛔ **Superseded by D19 (Ali, 2026-09-16):** `notifyHouseBotOwner`, the owner notices and the owner email are deleted (C4-SPEC ruling 149), and `HOUSE_BOT` is an admin-only kind with no client-side case in `notification-appearance.ts` (C4-SPEC ruling 150). The kind lists and guards stand for the admin emitters.
+- Kind lists: `comms-registry.ts` `NOTIFICATION_KINDS` / `MONEY_KINDS` / `NOTIFICATION_EMITTERS`; `store.ts` `StoredNotification["kind"]`; ~~`notification-appearance.ts` icon and tint~~. Never SMS (04:1061).
 - Guards: `test:cert-c3` (registry both ways, every emitter driven, en/sw/zh, money kinds must carry a figure), `test:cert-c1` (email templates registered ↔ exported ↔ rendered; exported count pinned), `test:notifications-page`.
-- Owner notices (PLAN:387, 04:1056-1059, 02): designated (bell + push + email), started "Liquidity stakes started", paused "Liquidity stakes paused", password pause "Your password changed, so 50pick stopped placing liquidity stakes from your account. Your balance and open stakes are unchanged.", removed (bell + push + email) "Liquidity stakes ended" / "50pick no longer uses your account for liquidity stakes. Open stakes settle to your wallet as normal.", reverified (bell + push + email), verify_reserved (bell). Link always `/positions`. **Every holder emitter returns early while `isLockedOut(userId).locked`** (04:1060).
+- ~~Owner notices (PLAN:387, 04:1056-1059, 02): designated (bell + push + email), started "Liquidity stakes started", paused "Liquidity stakes paused", password pause "Your password changed, so 50pick stopped placing liquidity stakes from your account. Your balance and open stakes are unchanged.", removed (bell + push + email) "Liquidity stakes ended" / "50pick no longer uses your account for liquidity stakes. Open stakes settle to your wallet as normal.", reverified (bell + push + email), verify_reserved (bell). Link always `/positions`. **Every holder emitter returns early while `isLockedOut(userId).locked`** (04:1060).~~
 
 ## 3. Tests (`test:house-bot-designation`, memory + scratch Postgres)
 - PLAN:516: every blocking row per context (incl. started bots not blocked by "already a live bot"); officer-reset refusal; empty password uncounted; counter and `attemptsBeforeLock`; no session, no `lastLoginAt`; re-designate = new row; Start refused at the loss cap.
@@ -150,13 +159,13 @@ Same update as the hash:
 3. **One consent predicate:** a pure `consentValid` in `src/lib/house-bot/`, and seam H2 calls it. The seam anchors are re-aimed at the call (same defect).
 4. **Designate nesting:** `wallet:<userId>` → `house:control` (the global order, as C6's rules save).
 5. **C4 wins:** admin attempts never set `lockedUntil`. `attemptsBeforeLock = max(0, LOCKOUT_MAX_FAILS − 2 − failedLoginCount)` — the tries the admin may still make before the reserve.
-6. **Reserve notice:** the holder bell (C13).
+6. ~~**Reserve notice:** the holder bell (C13).~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** the holder gets no bell at the reserve (D19c; C4-SPEC ruling 149).
 7. **Source pin:** the password-write allow-list pin lands in 3 in `test:house-bot-designation` (a narrower pin; commit 4's walker supersedes it).
 8. **OTP registration:** no history write for a null hash (there is no password); erasure leaves the columns (the row is anonymised; eligibility refuses a closed account first).
 9. **`emailSetByOfficerAt`** is set only by the officer writer and never cleared; the 30-day window is what expires it (A4 reads it relative to `passwordSetAt`).
 10. **Resume with master OFF:** Start's own result decides (ACTIVE with the "switched off" line, per C10 and 02:193); the C4 test row is recorded as superseded by C10.
 11. **After re-verify:** an AUTO_PAUSED bot moves to PAUSED(MANUAL) (the causes, not the reason, gate what follows).
-12. **Void holder notice:** none for RG causes (C8); HOLDER_WITHDREW gets the holder confirmation; HOLDER_ERASURE_REQUEST and IDENTITY_REFUSED follow A2 rows 14/15 when their emitters land (commit 4).
+12. **Void holder notice:** none for RG causes (C8)~~; HOLDER_WITHDREW gets the holder confirmation; HOLDER_ERASURE_REQUEST and IDENTITY_REFUSED follow A2 rows 14/15 when their emitters land (commit 4)~~. ⛔ **Superseded by D19 (Ali, 2026-09-16):** none for any cause: the holder receives no house-bot notice (D19c; C4-SPEC ruling 149).
 13. **`HOUSE_BOT` is not added to `MONEY_KINDS`.** A money kind must state a figure, and the owner notices state none; weakening cert-c3's figure rule is not allowed. Recorded for Ali as a deviation from PLAN:378 with this default.
 14. Superseded scenario rows are not built as written.
 15. R7 wins: no label in any audit payload.
@@ -174,7 +183,7 @@ Same update as the hash:
 24. **A new bot's rules are `{schemaVersion: 1}`** with every cap NULL. The rules form (commit 7) writes the real rules; Start refuses until then (no product, no mode, unset caps).
 25. **`house_bot.password_verified` is written once, by the password check**, for designate and re-verify alike; the re-verify write adds event VERIFIED only (no second SECURITY row).
 26. **A legacy password history whose audit read stops short (truncated at 200 rows with no password write found) is unreadable** and blocks, like a read that throws (04 A4 "a failed read blocks").
-27. **The holder's reserve notice** is sent when the owner's wrong try brings the count to the reserve; a RESERVED refusal adds none (C13 test "reaching reserve → 1 row").
+27. ~~**The holder's reserve notice** is sent when the owner's wrong try brings the count to the reserve; a RESERVED refusal adds none (C13 test "reaching reserve → 1 row").~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** the holder is told nothing when the reserve is reached (D19c; C4-SPEC ruling 149).
 28. **The C9 "agent application pending" warning** needs the agent-application read and lands with the overview page (commit 7).
 
 **Taken with the review's fixes (`wf_2208135b-079`, 15 confirmed, 3 refuted, 2026-09-15):**
@@ -183,8 +192,8 @@ Same update as the hash:
 30. **`setConsentVoid` stamps `GREATEST(clock_timestamp(), verifiedAt + 1 ms)`**; `setCredentialChanged` stamps `clock_timestamp()` (MC-2).
 31. **The RG backstop also compares the end dates** (`selfExclusionUntil`, `coolingOffUntil`) with `verifiedAt` (LI-1). This corrects §2.1's backstop formula, which is 04 A3's literal text.
 32. **A reset-link password also reads the durable officer-email audit rows** (awaited, fail closed, truncation inside the window = unreadable), and a counting `emailSetByOfficerAt` is never overwritten (LI-2, LI-5, LI-6).
-33. **The holder's letter has no button** and is registered in `NO_CTA_TEMPLATES`: a consent letter about a password (the `passwordChangedHtml` rule), and `test:position-permalink` 4.4 refuses a generic `/positions` link in any email.
-34. **`NotifyOptions` gains `push` and `dedupe`.** `verify_reserved` is bell only with the duplicate check; the other holder notices skip the check (UX-1, UX-2).
+33. ~~**The holder's letter has no button** and is registered in `NO_CTA_TEMPLATES`: a consent letter about a password (the `passwordChangedHtml` rule), and `test:position-permalink` 4.4 refuses a generic `/positions` link in any email.~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** there is no holder letter: `houseBotOwnerHtml` and its registry rows are deleted (C4-SPEC ruling 149).
+34. **`NotifyOptions` gains `push` and `dedupe`.** ~~`verify_reserved` is bell only with the duplicate check; the other holder notices skip the check~~ (UX-1, UX-2). ⛔ **Superseded by D19 (Ali, 2026-09-16):** there are no holder notices (C4-SPEC ruling 149); the two options stand for the admin emitters.
 35. **`test:kyc-copy-truth` §6 accepts `houseBotAlertRecipients()` as proof an officer emitter addresses officers**, only while the resolver's own body calls `listByRoles(["ADMIN"])` and filters `role === "ADMIN"` (checked, with a control) — one resolver (A22), proven, not trusted.
 36. **`redactFragment` gains an optional scope** (kind, href, created window) on both stores; erasure's label redaction uses it (LI-9). Mask redaction is unchanged.
 37. **A withdrawal over a standing void upgrades its cause** to HOLDER_WITHDREW (new DAL member `upgradeConsentVoidCause`), and `houseBotAlertOnceStore.release` gives back an alert claim whose send reached no one (LI-4, LI-8).
