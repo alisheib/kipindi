@@ -1487,6 +1487,86 @@ export function slotFieldProblems(file: string, code: string, props: readonly st
   return problems;
 }
 
+/**
+ * Ruling 194 · where each page renders the R2 line: every `<ExposureLine>` a page holds, with its surface, whether it
+ * passes the signed-in officer, its product line, and the decision control whose `exposureSlot` it fills (or null for
+ * a line rendered in the page itself). The expected map is the ruling's surface list; the renders prove the pixels.
+ */
+export const EXPOSURE_WIRING: Readonly<Record<string, readonly string[]>> = {
+  "src/app/admin/resolver-queue/page.tsx": ["resolverQueue · viewer · MARKET · page"],
+  "src/app/admin/resolver/[id]/page.tsx": ["ceremony · viewer · MARKET · page"],
+  "src/app/admin/markets/[id]/page.tsx": ["marketPage · no viewer · MARKET · page"],
+  "src/app/admin/markets/page.tsx": ["voidConfirm · viewer · MARKET · EmergencyVoidControl"],
+  "src/app/admin/objections/page.tsx": ["objectionDialog · viewer · MARKET · ObjectionDecision", "objectionsRow · viewer · MARKET · page"],
+  "src/app/admin/updown/rounds/page.tsx": ["roundVoidDialog · no viewer · UPDOWN · VoidRoundControl", "roundsLever · no viewer · UPDOWN · page"],
+};
+/** The session expressions a page may pass as `viewerId` — the signed-in officer, never a literal or another id. */
+const VIEWER_EXPRESSIONS = ["session?.userId ?? null", "currentOfficerId"];
+export function exposureWiring(file: string, code: string): { lines: string[]; problems: string[] } {
+  const sf = parse(file, code);
+  const lines: string[] = [];
+  const problems: string[] = [];
+  walkTree(sf, (n) => {
+    if (!(ts.isJsxSelfClosingElement(n) || ts.isJsxOpeningElement(n)) || n.tagName.getText(sf) !== "ExposureLine") return;
+    const attr = (name: string) => n.attributes.properties.find((p): p is ts.JsxAttribute => ts.isJsxAttribute(p) && p.name.getText(sf) === name);
+    const lit = (a: ts.JsxAttribute | undefined) => (a?.initializer && ts.isStringLiteral(a.initializer) ? a.initializer.text : null);
+    const expr = (a: ts.JsxAttribute | undefined) => (a?.initializer && ts.isJsxExpression(a.initializer) ? a.initializer.expression?.getText(sf) ?? null : null);
+    const surface = lit(attr("surface")) ?? "(no literal surface)";
+    const viewer = expr(attr("viewerId"));
+    if (viewer != null && !VIEWER_EXPRESSIONS.includes(viewer)) problems.push(`${file}:${lineOf(sf, n)}: viewerId is not the signed-in officer: ${viewer}`);
+    const read = expr(attr("read")) ?? "";
+    if (!/^(exposureReadOf\(stakes, [\w.]+\)|house)$/.test(read)) problems.push(`${file}:${lineOf(sf, n)}: read is not this page's one read: ${read}`);
+    let slotOf = "page";
+    for (let p: ts.Node | undefined = n.parent; p && !ts.isSourceFile(p); p = p.parent) {
+      if (ts.isJsxAttribute(p)) {
+        const owner = p.parent?.parent;
+        if (p.name.getText(sf) === "exposureSlot" && owner && (ts.isJsxSelfClosingElement(owner) || ts.isJsxOpeningElement(owner))) slotOf = owner.tagName.getText(sf);
+        else slotOf = `(prop ${p.name.getText(sf)})`;
+        break;
+      }
+    }
+    lines.push(`${surface} · ${viewer != null ? "viewer" : "no viewer"} · ${lit(attr("productLine")) ?? "MARKET"} · ${slotOf}`);
+  });
+  return { lines: lines.sort(), problems };
+}
+/** Ruling 194 · the queue's held title and the bulk bar's neutral data, and ruling 197 · the KYC value's money gate, read from the pages. */
+export function heldAndBulkWiring(queue: string, kyc: string, market: string): string[] {
+  const problems: string[] = [];
+  const q = parse("src/app/admin/resolver-queue/page.tsx", queue);
+  let title = false, state = false, template = false;
+  walkTree(q, (n) => {
+    if (ts.isJsxAttribute(n) && n.name.getText(q) === "title" && n.initializer && ts.isJsxExpression(n.initializer) && n.initializer.expression?.getText(q) === "heldChipTitle(house, formatTzs)") title = true;
+    if (ts.isPropertyAssignment(n) && n.name.getText(q) === "exposureState" && n.initializer.getText(q) === "exposureStateOf(exposureReadOf(stakes, m.id))") state = true;
+    if (ts.isJsxAttribute(n) && n.name.getText(q) === "exposureCountTemplate" && n.initializer && ts.isJsxExpression(n.initializer) && n.initializer.expression?.getText(q) === "BULK_EXPOSURE_COUNT_TEMPLATE") template = true;
+  });
+  if (!title) problems.push("the queue's held chip title is not heldChipTitle(house, formatTzs)");
+  if (!/const house = exposureReadOf\(stakes, m\.id\);/.test(queue)) problems.push("the queue card's house is not its market's part of the page's one read");
+  if (!state) problems.push("the bulk rows do not carry exposureState from the page's one read");
+  if (!template) problems.push("the bulk bar is not handed BULK_EXPOSURE_COUNT_TEMPLATE");
+  const k = parse("src/app/admin/kyc/[id]/page.tsx", kyc);
+  let gate = false;
+  walkTree(k, (n) => {
+    if ((ts.isJsxSelfClosingElement(n) || ts.isJsxOpeningElement(n)) && n.tagName.getText(k) === "BetsPlacedValue") {
+      gate = n.attributes.properties.some((p) => ts.isJsxAttribute(p) && p.name.getText(k) === "canSeeMoney" && p.initializer != null && ts.isJsxExpression(p.initializer) && p.initializer.expression?.getText(k) === "canSeeMoney");
+    }
+  });
+  if (!gate) problems.push("the KYC card's value is not gated on the page's own canSeeMoney");
+  if (!market.includes("houseBotRowTag(botLabels.get(p.houseBotId) ?? \"—\")")) problems.push("the market page's row tag is not houseBotRowTag(label)");
+  return problems;
+}
+/** Ruling 192 · each client control renders its slot as a JSX child (or hands it on under the same name), and the bar reads its template in both places. */
+export function slotRenderedCount(file: string, code: string, prop: string): number {
+  const sf = parse(file, code);
+  let count = 0;
+  walkTree(sf, (n) => {
+    if (!ts.isIdentifier(n) || n.text !== prop) return;
+    const p = n.parent;
+    if (ts.isJsxExpression(p) && (ts.isJsxElement(p.parent) || ts.isJsxFragment(p.parent))) count++;
+    else if (ts.isCallExpression(p) && ts.isIdentifier(p.expression) && p.expression.text === "exposureCountLines" && p.arguments[1] === n) count++;
+  });
+  return count;
+}
+
 if (STORE === "memory") {
   section("§0 · C5 step 4 · ruling 191 (TGT-38: no refusal, page condition or client control reads a requester), ruling 197 (the KYC house figures' readers) and ruling 187 (the closed list of R9 payload sites)");
   // One read of src/ for every §0 step-4 pin; each group below runs in its own guard, so a plant whose anchor moved fails its
@@ -1746,6 +1826,29 @@ if (STORE === "memory") {
     };
     ok("0.196.c1 · CONTROL · a slot planted as the void reason's initial state, as the objection note's defaultValue, into a note setter and into the reason's FormData write are each reported",
       Object.values(fieldPlants).every((p) => p.some((x) => x.includes("a slot reaches a field"))), j(fieldPlants));
+    const rendered = SLOT_CONTROLS.map(([rel, props]) => ({ rel, count: slotRenderedCount(rel, code5(rel), props[0]) }));
+    const unrendered = slotRenderedCount(SLOT_CONTROLS[0][0], plant(lf(evc), "      {exposureSlot}\n", ""), "exposureSlot");
+    ok("0.192.2 · each dialog control renders its slot as a child (the void confirm, the objection dialog, the round-void dialog) and the bulk bar reads its template in the summary AND the confirmation; CONTROL: the void confirm with its slot child removed renders none",
+      rendered.slice(0, 3).every((r) => r.count >= 1) && rendered[3].count === 2 && unrendered === 0, j({ rendered, unrendered }));
+  });
+  await guard("0.step5.194", async () => {
+    const wiring = Object.keys(EXPOSURE_WIRING).map((rel) => ({ rel, ...exposureWiring(rel, code5(rel)) }));
+    ok("0.194.1 · ⛔ each page renders the R2 line where ruling 194 puts it: the queue card, the ceremony, the market page, the void confirm's slot, the objections row and its dialog's slot, the rounds lever and its dialog's slot — each from the page's one read, the viewer surfaces with the signed-in officer, the rounds in Up / Down words",
+      wiring.every((w) => w.problems.length === 0 && j(w.lines) === j([...EXPOSURE_WIRING[w.rel]].sort())), j(wiring));
+    const held = heldAndBulkWiring(code5("src/app/admin/resolver-queue/page.tsx"), code5("src/app/admin/kyc/[id]/page.tsx"), code5("src/app/admin/markets/[id]/page.tsx"));
+    ok("0.194.2 · the queue's held chip takes heldChipTitle over the card's own read, the bulk rows carry exposureState from the same read and the bar the one count template; the KYC value is gated on the page's canSeeMoney; the market page tags a marked row with houseBotRowTag",
+      held.length === 0, j(held));
+    const queue = code5("src/app/admin/resolver-queue/page.tsx"), ceremony = code5("src/app/admin/resolver/[id]/page.tsx"), rounds = code5("src/app/admin/updown/rounds/page.tsx");
+    const plants = {
+      noViewer: exposureWiring("src/app/admin/resolver/[id]/page.tsx", plant(ceremony, " viewerId={currentOfficerId}", "")).lines,
+      otherViewer: exposureWiring("src/app/admin/resolver/[id]/page.tsx", plant(ceremony, "viewerId={currentOfficerId}", "viewerId={m.resolutionStage1By}")).problems,
+      noUpDown: exposureWiring("src/app/admin/updown/rounds/page.tsx", plant(rounds, "productLine=\"UPDOWN\" className=\"mt-1 ml-auto max-w-[150px]\"", "className=\"mt-1 ml-auto max-w-[150px]\"")).lines,
+      staticTitle: heldAndBulkWiring(plant(queue, "title={heldChipTitle(house, formatTzs)}", "title=\"Player money held on this market until it resolves\""), code5("src/app/admin/kyc/[id]/page.tsx"), code5("src/app/admin/markets/[id]/page.tsx")),
+      moneyAlways: heldAndBulkWiring(queue, plant(code5("src/app/admin/kyc/[id]/page.tsx"), "canSeeMoney={canSeeMoney}", "canSeeMoney={true}"), code5("src/app/admin/markets/[id]/page.tsx")),
+    };
+    ok("0.194.c1 · CONTROL · the ceremony without the viewer, the ceremony handed another officer's id, the rounds lever in poll words, a static held title and a KYC value always shown money are each reported",
+      j(plants.noViewer) === j(["ceremony · no viewer · MARKET · page"]) && plants.otherViewer.length === 1 && j(plants.noUpDown) !== j([...EXPOSURE_WIRING["src/app/admin/updown/rounds/page.tsx"]].sort())
+        && plants.staticTitle.some((p) => p.includes("held chip title")) && plants.moneyAlways.some((p) => p.includes("canSeeMoney")), j(plants));
   });
   await guard("0.step5.175", async () => {
     const R2_WORD_SAMPLES = ["house stake", "House stakes", "dau la nyumba", "平台投注", "staff-chosen", "staff chosen"];
@@ -3571,7 +3674,8 @@ await guard("4.S5", async () => {
   const R = (globalThis as Any).React;
   const html = (props: Any) => renderToStaticMarkup(R.createElement(ExposureLine, props));
   const DOT = "<span class=\"text-border\"> · </span>";
-  const clause = (text: string) => `${DOT}<span class="whitespace-nowrap">${text}</span>`;
+  /** A clause as the renderer writes it: words that may wrap, each shilling figure held on one line. */
+  const clause = (text: string) => `${DOT}${text.replace(/TZS\s\S+/g, (m) => `<span class="whitespace-nowrap">${m}</span>`)}`;
 
   if (STORE === "memory") {
     // ── ruling 192 · the parts (pure) ──
@@ -3626,6 +3730,15 @@ await guard("4.S5", async () => {
       j(exposureCountLines(rows, XC.BULK_EXPOSURE_COUNT_TEMPLATE)));
     ok("4.197.5 · the KYC line (pure): \"of which house stakes: N\", \" · TZS X\" only when an amount is passed, nothing for a count of 0",
       XC.kycHouseBetsLine(2, 4_000, money) === `of which house stakes: 2 · ${money(4_000)}` && XC.kycHouseBetsLine(2, null, money) === "of which house stakes: 2" && XC.kycHouseBetsLine(0, 4_000, money) === null);
+    // ── ruling 192 · the renderer over two groups and the Up & Down words (pure views) ──
+    const bothHtml = html({ surface: "marketPage", read: both });
+    const udHtml = html({ surface: "roundsLever", read: automatic, productLine: "UPDOWN" });
+    ok("4.192.5 · ⭐ the renderer wraps even inside a nowrap table cell (a caller's layout class keeps its body face and wrapping), keeps each \"SIDE TZS x\" group on one line and puts the separator BETWEEN groups (YES in the yes colour, NO in the no colour); the Up & Down line says Down; no truncate or clamp anywhere",
+      bothHtml === `<p data-exposure="marketPage" class="font-sans text-body-sm text-text-muted whitespace-normal">House stake: <span class="whitespace-nowrap"><span class="text-yes-300">YES</span> ${money(6_000)}</span>${DOT}<span class="whitespace-nowrap"><span class="text-no-300">NO</span> ${money(9_000)}</span>${clause(`of which chosen by staff ${money(15_000)}`)}</p>`
+        && udHtml === `<p data-exposure="roundsLever" class="font-sans text-body-sm text-text-muted whitespace-normal">House stake: <span class="whitespace-nowrap"><span class="text-no-300">Down</span> ${money(2_000)}</span></p>`
+        && ![bothHtml, udHtml].some((h) => /truncate|line-clamp/.test(h))
+        && html({ surface: "objectionsRow", read: both, viewerId: A, className: "mt-1" }).startsWith('<p data-exposure="objectionsRow" class="font-sans text-body-sm text-text-muted whitespace-normal mt-1">'),
+      j({ bothHtml, udHtml, withLayout: html({ surface: "objectionsRow", read: both, viewerId: A, className: "mt-1" }).slice(0, 120) }));
   }
 
   // ── the surfaces' server output from the REAL reader (both stores) ──
@@ -3639,7 +3752,7 @@ await guard("4.S5", async () => {
   const VIEWER_SURFACES = ["resolverQueue", "ceremony", "voidConfirm", "objectionsRow", "objectionDialog"];
   const QUALIFIED = new Set(["ceremony", "voidConfirm", "objectionDialog"]);
   const expectedLine = (surface: string, viewerText: string | null) =>
-    `<p data-exposure="${surface}" class="text-body-sm text-text-muted">House stake: <span class="whitespace-nowrap"><span class="text-yes-300">YES</span> ${money(15_000)}</span>`
+    `<p data-exposure="${surface}" class="font-sans text-body-sm text-text-muted whitespace-normal">House stake: <span class="whitespace-nowrap"><span class="text-yes-300">YES</span> ${money(15_000)}</span>`
     + clause(`of which chosen by staff ${money(15_000)}`) + (viewerText ? clause(viewerText) : "") + (QUALIFIED.has(surface) ? clause("staff only — never sent to players") : "") + "</p>";
   const surfaceOut = VIEWER_SURFACES.map((surface) => ({
     surface,
@@ -3650,14 +3763,14 @@ await guard("4.S5", async () => {
     j(surfaceOut.slice(0, 2)));
   const noViewer = ["marketPage", "roundsLever", "roundVoidDialog"].map((surface) => ({ surface, a: html({ surface, read: read(mAB.id), viewerId: A }) }));
   ok("4.193.5 · the admin market page carries the staff clause and no viewer clause even for A; the rounds lever and its dialog carry neither",
-    noViewer[0].a === `<p data-exposure="marketPage" class="text-body-sm text-text-muted">House stake: <span class="whitespace-nowrap"><span class="text-yes-300">YES</span> ${money(15_000)}</span>${clause(`of which chosen by staff ${money(15_000)}`)}</p>`
+    noViewer[0].a === `<p data-exposure="marketPage" class="font-sans text-body-sm text-text-muted whitespace-normal">House stake: <span class="whitespace-nowrap"><span class="text-yes-300">YES</span> ${money(15_000)}</span>${clause(`of which chosen by staff ${money(15_000)}`)}</p>`
       && noViewer.slice(1).every((s) => !s.a.includes("chosen by")), j(noViewer));
   const zero = [...VIEWER_SURFACES, "marketPage", "roundsLever", "roundVoidDialog"].map((surface) => html({ surface, read: read(m0.id), viewerId: A }));
   ok("4.193.6 · ⭐ a market with no house stake renders NOTHING on every surface for every viewer (the page is today's page)", zero.every((h) => h === ""), j(zero));
   const settledHtml = html({ surface: "marketPage", read: read(mB.id), viewerId: B });
   const roundHtml = html({ surface: "roundsLever", read: read(rdH.marketId), productLine: "UPDOWN" });
   ok("4.192.4 · the voided market reads \"House stake settled: YES TZS 6,000\" with its staff clause; the Up & Down round's line uses the Down word in the NO colour",
-    settledHtml.includes(`House stake settled: <span class="whitespace-nowrap"><span class="text-yes-300">YES</span> ${money(6_000)}</span>`) && settledHtml.includes(`of which chosen by staff ${money(6_000)}`)
+    settledHtml.includes(`House stake settled: <span class="whitespace-nowrap"><span class="text-yes-300">YES</span> ${money(6_000)}</span>`) && settledHtml.includes(`of which chosen by staff <span class="whitespace-nowrap">${money(6_000)}</span>`)
       && roundHtml.includes(`<span class="text-no-300">Down</span> ${money(2_000)}`) && !roundHtml.includes("chosen by"), j({ settledHtml, roundHtml }));
 
   // ── the held title and the unread line, through a page's own try / catch ──
@@ -3676,8 +3789,8 @@ await guard("4.S5", async () => {
       && XC.heldChipTitle(read(m0.id), money) === "Player money held on this market until it resolves" && XC.heldChipTitle(read(mB.id), money) === "Player money held on this market until it resolves",
     j({ failed, titles: [read(mAB.id), read(m0.id)].map((r) => XC.heldChipTitle(r, money)) }));
   ok("4.190.d · ⭐ a failed read renders the unread line on every card — the house-free market included — with the qualifier where the surface carries it, and the bulk state is unread; CONTROL: with the flag off the same page read decides again",
-    unreadCeremony === `<p data-exposure="ceremony" class="text-body-sm text-text-muted">House stake: — couldn&#x27;t read${clause("staff only — never sent to players")}</p>`
-      && unreadQueue === "<p data-exposure=\"resolverQueue\" class=\"text-body-sm text-text-muted\">House stake: — couldn&#x27;t read</p>"
+    unreadCeremony === `<p data-exposure="ceremony" class="font-sans text-body-sm text-text-muted whitespace-normal">House stake: — couldn&#x27;t read${clause("staff only — never sent to players")}</p>`
+      && unreadQueue === "<p data-exposure=\"resolverQueue\" class=\"font-sans text-body-sm text-text-muted whitespace-normal\">House stake: — couldn&#x27;t read</p>"
       && XC.exposureStateOf(XC.exposureReadOf(failed, m0.id)) === "unread" && afterFlag instanceof Map && XC.exposureStateOf(XC.exposureReadOf(afterFlag, mAB.id)) === "held"
       && XC.exposureStateOf(XC.exposureReadOf(afterFlag, m0.id)) === "none",
     j({ unreadCeremony, unreadQueue }));
@@ -3691,12 +3804,12 @@ await guard("4.S5", async () => {
     const todayValue = (n: number, tzs: number, canSeeMoney: boolean) => canSeeMoney
       ? `<span class="font-mono tabular-nums">${n} ${n === 1 ? "bet" : "bets"} · <span class="whitespace-nowrap">${money(tzs)}</span> staked</span>`
       : `<span class="font-mono tabular-nums">${n} ${n === 1 ? "bet" : "bets"}</span>`;
-    const line = (text: string) => `<span data-exposure="kycCard" class="block text-body-sm text-text-muted">${text} · staff only — never sent to players</span>`;
+    const line = (text: string) => `<span data-exposure="kycCard" class="block text-body-sm text-text-muted">${text.replace(/TZS\s\S+/g, (m) => `<span class="whitespace-nowrap">${m}</span>`)} · staff only — never sent to players</span>`;
     const holderMoney = value(kyc.hFacts, true), holderNoMoney = value(kyc.hFacts, false);
     ok("4.197.6 · ⭐ the holder's \"Bets placed\" shows today's totals and then one block line \"of which house stakes: 2 · TZS 4,000\" with the X9 qualifier",
-      holderMoney === todayValue(3, 6_000, true).replace(/<\/span>$/, `${line(`of which house stakes: 2 · ${money(4_000)}`)}</span>`), holderMoney);
+      holderMoney === todayValue(3, 6_000, true).replace(/<\/span>$/, () => `${line(`of which house stakes: 2 · ${money(4_000)}`)}</span>`), holderMoney);
     ok("4.197.7 · ⛔ a role without the money view sees the house count and NO amount anywhere in the value",
-      holderNoMoney === todayValue(3, 6_000, false).replace(/<\/span>$/, `${line("of which house stakes: 2")}</span>`) && !holderNoMoney.includes("TZS"), holderNoMoney);
+      holderNoMoney === todayValue(3, 6_000, false).replace(/<\/span>$/, () => `${line("of which house stakes: 2")}</span>`) && !holderNoMoney.includes("TZS"), holderNoMoney);
     ok("4.197.8 · ⭐ a non-holder's value is byte-identical to today's, with and without the money view",
       value(kyc.tFacts, true) === todayValue(3, 6_000, true) && value(kyc.tFacts, false) === todayValue(3, 6_000, false), j([value(kyc.tFacts, true), value(kyc.tFacts, false)]));
   }

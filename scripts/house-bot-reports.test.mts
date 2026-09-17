@@ -23,9 +23,10 @@
  * refusals, the two-admin twin, the lock facts of the void's read and the decisions' result keys: memory 226, Postgres 148.
  * C5 step 5 added §0's ruling 198 player-surface pins, the R2 importer and slot pins and the R2 vocabulary words (memory only),
  * and §4.S5's R2 parts, surface renders, held title, bulk count, KYC line and objector notices (rulings 192–197; the pure
- * cases in the memory child): memory 258, Postgres 160.
+ * cases in the memory child): memory 258, Postgres 160; its render pass added the page-wiring and slot-rendering pins and
+ * the two-group renderer case (memory): memory 263, Postgres 160.
  * A section that stops running fails the floor even while every case that ran passed.
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 
-await runTwoStores({ suite: "test:house-bot-reports", casesFile: "scripts/lib/house-bot-reports-cases.mts", minPass: { memory: 258, postgres: 160 }, dbPrefix: "hb_reports" });
+await runTwoStores({ suite: "test:house-bot-reports", casesFile: "scripts/lib/house-bot-reports-cases.mts", minPass: { memory: 263, postgres: 160 }, dbPrefix: "hb_reports" });

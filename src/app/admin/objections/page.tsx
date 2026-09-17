@@ -148,7 +148,7 @@ export default async function AdminObjectionsPage({ searchParams }: { searchPara
                     <td className="text-right font-mono tabular-nums text-text-muted">
                       {o.status === "OPEN" && market && !market.settledAt ? formatTzs(pool) : "—"}
                       {actionable && (
-                        <ExposureLine surface="objectionsRow" read={exposureReadOf(stakes, o.marketId)} viewerId={session?.userId ?? null} className="mt-1" />
+                        <ExposureLine surface="objectionsRow" read={exposureReadOf(stakes, o.marketId)} viewerId={session?.userId ?? null} className="mt-1 ml-auto max-w-[220px]" />
                       )}
                     </td>
                     <td className="font-mono text-[10.5px] text-text-subtle whitespace-nowrap">

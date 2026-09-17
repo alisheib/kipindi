@@ -317,10 +317,7 @@ export default async function AdminUpDownRoundsPage({
                             and the SAME relationship the design had. `players` is a count, not
                             an amount, so it keeps `tabular-nums` and does NOT take `.amount`
                             (§M4 governs amounts only — see its own note on the population). */}
-                        <td className="px-4 py-3 text-right amount text-caption text-text-muted">
-                          {formatTzs(volume)}
-                          {!r.settledAt && <ExposureLine surface="roundsLever" read={exposureReadOf(stakes, r.marketId)} productLine="UPDOWN" className="mt-1" />}
-                        </td>
+                        <td className="px-4 py-3 text-right amount text-caption text-text-muted">{formatTzs(volume)}</td>
                         <td className="px-4 py-3 text-right font-mono text-caption tabular-nums text-text-muted">{players}</td>
                         <td className="px-4 py-3 text-right font-mono text-micro text-text-subtle whitespace-nowrap">{r.settledAt ? fmt(r.settledAt) : "—"}</td>
                         <td className="px-4 py-3 text-right whitespace-nowrap">
@@ -344,6 +341,9 @@ export default async function AdminUpDownRoundsPage({
                           ) : (
                             <ControlLocked what="Void & refund" need={CONTROL_DOMAIN.voidUpDownRound} />
                           )}
+                          {/* The house line under the lever, bounded to the lever's own measure so the Remedy column stays in view
+                              at 1280 (a wider Volume cell pushed it out of the table's visible width) — C5-SPEC ruling 194. */}
+                          {!r.settledAt && <ExposureLine surface="roundsLever" read={exposureReadOf(stakes, r.marketId)} productLine="UPDOWN" className="mt-1 ml-auto max-w-[150px]" />}
                         </td>
                       </tr>
                     );

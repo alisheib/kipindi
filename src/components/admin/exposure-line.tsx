@@ -2,8 +2,9 @@
  * ExposureLine — the house stake beside a money decision, rendered on the SERVER (C5-SPEC rulings 192–196; 03 S6).
  *
  * ⭐ ONE RENDERER FOR EVERY SURFACE. The words and the per-surface clauses come from `@/lib/house-bot/exposure-copy`; this
- * file only paints them: body-small muted text, each side word in its side's colour, each "SIDE TZS x" group kept on one
- * line so the sentence wraps between groups at 360 and never inside one, sentence case, and nothing truncated or clamped.
+ * file only paints them: body-small muted text in the body face that wraps (a table cell's mono face or nowrap is not inherited),
+ * each side word in its side's colour, each "SIDE TZS x" group kept on one line so the sentence wraps between groups at 360
+ * and never inside one, every shilling figure inside a clause kept whole, sentence case, and nothing truncated or clamped.
  *
  * ⛔ SERVER ONLY, AND ONLY A SERVER PAGE IMPORTS IT. No client directive, no hook, no handler. A decision control that sits
  * in a client component receives what this renders through a neutral `exposureSlot` prop from its server page, so no
@@ -17,6 +18,14 @@ import type { LabelProductLine } from "@/lib/side-label";
 import { formatTzs } from "@/lib/utils";
 
 const Dot = () => <span className="text-border"> · </span>;
+
+/** A shilling figure as `formatTzs` writes it ("TZS 9,000", "TZS −9,000"): the part of a clause that must never break. */
+const MONEY = /(TZS\s\S+)/;
+
+/** A clause whose words may wrap, with each figure in it held on one line. */
+function Clause({ text }: { text: string }) {
+  return <>{text.split(MONEY).map((part, i) => (i % 2 === 1 ? <span key={i} className="whitespace-nowrap">{part}</span> : part))}</>;
+}
 
 export function ExposureLine({
   surface,
@@ -32,14 +41,14 @@ export function ExposureLine({
   /** The signed-in officer, for "of which chosen by you" on the surfaces that carry it. */
   viewerId?: string | null;
   productLine?: LabelProductLine;
-  /** Spacing from the caller's layout only (a margin); the type, colour and wrapping are this component's. */
+  /** Spacing and width from the caller's layout only (a margin, a table cell's measure); type, colour and wrapping are this component's. */
   className?: string;
 }) {
   const parts = exposureParts(read, { surface, viewerId, productLine, money: formatTzs });
   if (!parts) return null;
   const qualifier = exposureQualifier(surface);
   return (
-    <p data-exposure={surface} className={className ? `text-body-sm text-text-muted ${className}` : "text-body-sm text-text-muted"}>
+    <p data-exposure={surface} className={className ? `font-sans text-body-sm text-text-muted whitespace-normal ${className}` : "font-sans text-body-sm text-text-muted whitespace-normal"}>
       {parts.label}
       {parts.groups.map((g, i) => (
         <Fragment key={g.side}>
@@ -49,9 +58,9 @@ export function ExposureLine({
           </span>
         </Fragment>
       ))}
-      {parts.staffClause ? <><Dot /><span className="whitespace-nowrap">{parts.staffClause}</span></> : null}
-      {parts.viewerClause ? <><Dot /><span className="whitespace-nowrap">{parts.viewerClause}</span></> : null}
-      {qualifier ? <><Dot /><span className="whitespace-nowrap">{qualifier}</span></> : null}
+      {parts.staffClause ? <><Dot /><Clause text={parts.staffClause} /></> : null}
+      {parts.viewerClause ? <><Dot /><Clause text={parts.viewerClause} /></> : null}
+      {qualifier ? <><Dot /><Clause text={qualifier} /></> : null}
     </p>
   );
 }

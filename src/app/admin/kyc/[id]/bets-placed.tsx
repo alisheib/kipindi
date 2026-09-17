@@ -7,10 +7,14 @@
  *
  * ⛔ SERVER ONLY. It takes the figures one by one — never the money facts object — and no client component imports it
  * (the ruling 197 pin in `test:house-bot-reports` §0). For an account with no house stake it renders exactly what the card
- * rendered before; `test:house-bot-reports` §4 compares the bytes.
+ * rendered before; `test:house-bot-reports` §4 compares the bytes. The words wrap in the card's half-width column; a
+ * shilling figure never breaks.
  */
 import { EXPOSURE_QUALIFIER, kycHouseBetsLine } from "@/lib/house-bot/exposure-copy";
 import { adminCount, formatTzs } from "@/lib/utils";
+
+/** A shilling figure as `formatTzs` writes it: held on one line while the words around it wrap in the half-width column. */
+const MONEY = /(TZS\s\S+)/;
 
 export function BetsPlacedValue({ betCount, stakedTzs, houseBetCount, houseStakedTzs, canSeeMoney }: {
   betCount: number;
@@ -25,7 +29,11 @@ export function BetsPlacedValue({ betCount, stakedTzs, houseBetCount, houseStake
     <span className="font-mono tabular-nums">
       {adminCount(betCount, "bet")}
       {canSeeMoney ? <>{" · "}<span className="whitespace-nowrap">{formatTzs(stakedTzs)}</span> staked</> : ""}
-      {house ? <span data-exposure="kycCard" className="block text-body-sm text-text-muted">{house} · {EXPOSURE_QUALIFIER}</span> : null}
+      {house ? (
+        <span data-exposure="kycCard" className="block text-body-sm text-text-muted">
+          {house.split(MONEY).map((part, i) => (i % 2 === 1 ? <span key={i} className="whitespace-nowrap">{part}</span> : part))}{" · "}{EXPOSURE_QUALIFIER}
+        </span>
+      ) : null}
     </span>
   );
 }
