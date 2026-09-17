@@ -1,9 +1,32 @@
 # Commit 5 · reporting, data rights, resolver exposure, staff edge — SPEC (rulings 168+)
 
+> # ⛔ D20 OUTRANKS THIS FILE WHEREVER THEY DIFFER — REPORTS TREAT HOUSE BOTS AS ORDINARY PLAYERS
+> **Owner ruling D20 (Ali, 2026-09-17, PROGRESS.md "OWNER RULING D20"): "Keep them in reports as normal players."** Every
+> report, statutory filing (the Gaming Board monthly pack, the FIU SAR, match integrity, daily ops), admin count, finance or
+> insights figure and harm or AML detector treats a house bot's account exactly like any player's account. No report, CSV,
+> memo, column, line, chip, tag, alert or record names house bots or splits house money out, and every admin-only house
+> tool (the private house report, the staff-edge alert, the house lines on admin screens, the internal record) is dropped.
+> D20 sits just below D19, which still binds everything (nothing about house bots reaches a player or the holder).
+> **Read `plans/house-bots/C5-D20-REPLAN.md` first:** it rules this file ruling by ruling and replaces §3's remaining steps
+> with checkpoints C5-5 close, C5-5b (the un-build), C5-6, C5-7 and C5-8.
+>
+> **Struck — never build; un-built in checkpoint C5-5b where built:** rulings 187–213 (211 and 212 stay only as recorded
+> platform defects L26/L27, no longer release preconditions), 218–231, 233–234, 236–238, 240–242, 246, 256 and 261–262;
+> 239's internal-record half; 254's R2 overview split (the CAP_EXPOSURE amount is Commit 7's to rule); 259's
+> `houseStakeForConsole` / `houseBotLabelsForConsole`; and the parts of 255 named under it. **Decided member by member in
+> C5-5b:** rulings 177–186 (a step-3 module, DAL member or case stays only with a named remaining caller or a cited
+> Commit 7 scope line). **Kept, and this file stays their authority:** 168–176, 214–217, 232, 235 (F6's email rule),
+> 239's absence half, 243–245, 247–253, 257–258, 259's audience with 260's console audit gate and
+> `qa:house-bot-console-probe`, and 263.
+>
+> **Accepted consequences, recorded for Ali:** statutory figures include 50pick's own house stakes as player activity; the
+> harm and AML detectors can flag a bot account like any player's; W21 and W22 are moot; L34 is closed (bots are players in
+> admin counts). Every struck ruling, step, table row and register row below carries its own ⛔ D20 line.
+
 > # ⛔ D19 OUTRANKS EVERYTHING IN THIS FILE
 > **Owner ruling D19 (Ali, 2026-09-16, PROGRESS.md "OWNER RULING D19"): house bots are never public, and the holder sees
-> nothing.** No public text (D19a). The regulator keeps its private paper, and the admin console, the audits and the
-> internal docs are unchanged (D19b). Stakes 50pick places on a holder's account look exactly like the holder's own bets,
+> nothing.** No public text (D19a). ~~The regulator keeps its private paper, and the admin console, the audits and the
+> internal docs are unchanged (D19b).~~ ⛔ **Superseded by D20 (Ali, 2026-09-17):** the regulator's private paper is the Board draft alone (Commit 6); no house report, CSV or memo is built, and Commit 7's console only controls the bots. Stakes 50pick places on a holder's account look exactly like the holder's own bets,
 > and the holder receives no house-bot notice or email (D19c). The chatbot discloses nothing but never lies (D19d, Commit 6).
 >
 > **The holder-facing half of `C5-SPEC-EXTRACT.md` is struck** (item 12, §5 rows 13–17, §6 step 13, the `seed-house-stake`
@@ -27,6 +50,8 @@
 > `EXP` = r9-r2-exposure · `DSAR` = r5-r6-data-rights · `R3` = r3-splits-r4. `ADJ n` = the orchestrator's adjudication n.
 
 ## 0. What this commit is
+
+⛔ **Superseded in part by D20 (Ali, 2026-09-17):** in the scope list, items 3 (R9 + R2) and 5 (staff edge) are struck; item 4 stands only for R8's two durable-reader swaps; item 6 stands only for the marker source pin (ruling 232); item 7 stands only for the `test:erasure` house buckets (R6, rulings 244–245); item 2's readers are decided member by member in C5-5b; items 1 and 8 stand. The "must never build" list stands, and D20 adds to it every house report, CSV, memo, column, admin-screen house line, chip, tag, alert and internal record (`C5-D20-REPLAN.md` §2).
 
 **Scope after D19, in one list.**
 1. **The D19 defects first:** `/api/health` names nothing about house bots; both releasable data-rights doors carry no
@@ -62,6 +87,8 @@
 - A new `red:` key, a new `EVENT_KINDS` entry, or a new `HOUSE_AUDIT` action.
 
 ## 1. Superseded texts (each named, with its replacement)
+
+⛔ **Superseded in part by D20 (Ali, 2026-09-17):** every text in the left column stays superseded (D20 revives none), but where the right column names a struck ruling nothing replaces it: S4 (the STAFF_EDGE row), S9 (190), S11 (213), S13 (L38 and 197), S18 (197), S19 (254), S20 (238), S22 (202, 237), S23 (213) and S25 (192). In S1–S3 the internal-record half (236–239) and in S10 ruling 238's actor words are struck, while the house-free releasable doors (168–170) stand. S8 (178, 187), S17 and S26 (183), and S24 and S31 (186) follow C5-5b's member-by-member decision.
 
 Each text below is marked superseded **in place** in the same commit that builds its replacement (ruling 258), never
 silently edited.
@@ -103,6 +130,8 @@ silently edited.
 | S33 | `docs/HOUSE-BOTS.md` :3, :163, :217, :223, :258, :259, :621-627, :642, :698, :766; `docs/DATA-RETENTION.md` :28, :31, :32, :33, :100, :102; `constants.ts:291-299` and `:692`; `designation.ts:533`, `:591` docstrings; `comms-registry.ts:396-399` docstring; `user-service.ts:25-34`, `:68-69`; `book.ts:46-56`; `oversight.ts:4-9`; `planner.ts:7-11`; `house-bot-comms-cases.mts:330`; `house-bot-two-stores.mts:3-4`; `PROGRESS.md:419`, `:425` | Rewritten in the docs pass (ruling 258). |
 
 ## 2. Defects found on the branch before any Commit 5 code
+
+⛔ **Superseded in part by D20 (Ali, 2026-09-17):** defects F1–F8 stand. A planned-surface risk or leak that lives on a struck surface is moot, because the surface is never built: the risks for R1's house filter, the internal record, staff-edge words, report parameters, the per-bot CSV, R2 lines and the §9 copy list, and leak rows 5, 7, 10, 11, 13, 15–23, 27, 31, 32 and 34–38. The engine-health and `status-tone.ts` risks, Commit 7's names, and leak rows 1–4, 6, 8, 9, 12, 14, 24–26, 28–30 and 33 stand.
 
 Measured at `d15eeb70`. None is live in production: `origin/main` has no house code. They are the first code fixed (§3
 step 2, right after the suite skeleton that proves them).
@@ -171,6 +200,8 @@ of the vocabulary for §9 copy (174).
 
 ## 3. Build order
 
+⛔ **Superseded in part by D20 (Ali, 2026-09-17):** steps 4, 6, 7, 9, 10 and 11 are struck, step 3 is decided member by member, and step 5 stands only as its close. The remaining work runs as the checkpoints in `C5-D20-REPLAN.md` §3 (C5-5 close, C5-5b un-build, C5-6, C5-7, C5-8). Each step carries its own line.
+
 Heavy Node on Ali-Blade15 (tsc, a Postgres suite, `next build`, `next dev`, Playwright, `test:all`, `test:house-bot-migrations`)
 goes through `bash /c/Users/Ali/heavy-node-lock.sh run <session> <command>` when another session could run; light work does
 not. Every step that changes a surface renders it and READS each screenshot before the next step starts (Ali, 2026-09-16).
@@ -194,20 +225,26 @@ touches a `'use client'` file re-runs `test:house-bot-disclosure` and `verify:ho
    169, 170 and 175 pins), `test:dal-parity` (170, 173), `test:lock-tx-threading`, `test:red-anchors`, the six health-string
    suites (171), `test:dsar-secrets` §9, and a fresh `next build` + `verify:house-bot-bundle` (the vocabulary module changed
    its consumers).
-3. **Readers, DAL twins, the book and the pure modules** — rulings **177–186**. Every new store member in both twins with
+3. **Readers, DAL twins, the book and the pure modules**
+   ⛔ **Superseded in part by D20 (Ali, 2026-09-17):** built; C5-5b keeps a reader, DAL member (both twins and its `test:dal-parity` case) or case only with a named remaining caller or a cited Commit 7 scope line, and removes the rest (rulings 177–186).
+   — rulings **177–186**. Every new store member in both twins with
    its `test:dal-parity` case; `stake-snapshot.ts`; `exposure.ts`; `entryRows`, the widened `houseBotBook`,
    `houseStaffScorecard`; `eatMonthWindow`; `feeInputs` and the fee derivation; the audit window; the shared homes
    (oversight helpers, the status word and tone map, the CSV cell module). **Re-run:** `test:dal-parity`,
    `test:house-bot-rules`, `test:house-bot-info-edge`, `test:house-bot-engine` §17 (both stores, plus a `requesterOf`
    mutation), `test:house-bot-money` §7 EXPLAIN, `test:house-bot-designation` (the status word), `test:txn-search`, and
    `test:house-bot-reports` §1–§2 (the step-1 assertions now green). No surface.
-4. **R9 + R2 server side** — rulings **187–191**, **195**, **197** (the `kycMoneyFacts` fields). Run right after:
+4. **R9 + R2 server side**
+   ⛔ **Superseded by D20 (Ali, 2026-09-17):** STRUCK — rulings 187–191, 195 and 197 are never built; what this step built is un-built in C5-5b (`C5-D20-REPLAN.md` §3).
+   — rulings **187–191**, **195**, **197** (the `kycMoneyFacts` fields). Run right after:
    `test:two-admin`, `test:officer-conflict` (both unedited), `test:bulk-resolve` + `red:bulk-resolve`,
    `test:red-anchors`, `test:house-bot-seam`, `test:read-tiers`, `test:kyc-copy-truth`, and reports §3 including the
    officer own-export case (170). Before the KYC edit, re-diff
    `src/app/admin/kyc/[id]/page.tsx` and `src/lib/server/kyc-risk.ts` against the latest `origin/main` (ruling 197).
    No surface yet.
-5. **R2 display** — rulings **192–194**, **196–198**. **Render phase C at 1280 and 360, each with a house and a
+5. **R2 display**
+   ⛔ **Superseded in part by D20 (Ali, 2026-09-17):** the R2 display (rulings 192–194, 196–198) and every render below are STRUCK and un-built in C5-5b. What stands of this step is its close: 259's audience with 260's console audit gate and `qa:house-bot-console-probe` (checkpoint C5-5 close, `C5-D20-REPLAN.md` §3).
+   — rulings **192–194**, **196–198**. **Render phase C at 1280 and 360, each with a house and a
    no-house fixture:** `/admin/resolver-queue` (card line, held-chip title in all three states, bulk bar count),
    `/admin/resolver/<id>` (viewer A and viewer C), `/admin/markets/<id>` (line + row tag), `/admin/objections` (row),
    `/admin/updown/rounds` (lever row), `/admin/kyc/<id>` (the line with and without money view). **Phase D (real route,
@@ -216,42 +253,60 @@ touches a `'use client'` file re-runs `test:house-bot-disclosure` and `verify:ho
    row. **Bell (phase C):** the emergency-void admin bell on `/notifications` with and without the house clause, en/sw/zh,
    at 1280 and 360 (§5 row 20). Fresh `next build` + `verify:house-bot-bundle` + `test:house-bot-disclosure` (four client
    controls touched).
-6. **R1 report, statement, CSVs, picker** — rulings **199–213**, **217**. **Render phase C at 1280 and 360:**
+6. **R1 report, statement, CSVs, picker**
+   ⛔ **Superseded by D20 (Ali, 2026-09-17):** STRUCK — rulings 199–213 and every render and artefact below are never built (211 and 212 stay only as recorded platform defects L26/L27); 217 stands for the rulings that remain.
+   — rulings **199–213**, **217**. **Render phase C at 1280 and 360:**
    `/admin/reports?tab=library` (the house-liquidity card and month picker, including the default month from a
    staff-edge href), `/admin/transactions` (the house Select), `/admin/markets/<id>` (the statement button on a market
    with and without a house stake). **Artefacts:** the house-liquidity XLSX reopened with ExcelJS and its cells asserted;
    its PDF opened and READ page by page; the same for the house-market statement ("House stake: none" included).
    `scripts/report-renderers-smoke.mjs` and `scripts/reports-verify-live.mts` updated. Fresh `next build` +
    `verify:house-bot-bundle` (`generate-button.tsx` and the picker wrapper touched).
-7. **Staff edge** — rulings **218–223**. **Render:** `qa:house-bot-bells` writes a STAFF_EDGE row and `/notifications` is
+7. **Staff edge**
+   ⛔ **Superseded by D20 (Ali, 2026-09-17):** STRUCK — rulings 218–223 and every render below are never built.
+   — rulings **218–223**. **Render:** `qa:house-bot-bells` writes a STAFF_EDGE row and `/notifications` is
    photographed and read at 1280 and 360 in en, sw and zh; `qa:cert-c1` renders `houseBotAdminHtml` for STAFF_EDGE from
    `alertRow` output and it is read; the alert's href opens the library tab with the picker on the judged month
    (phase C tile). The bell PANEL stays NOT MEASURED under L12.
-8. **R8** — rulings **214–216**. **Render phase C:** the report pack card in its new danger state ("Pack history could
+8. **R8**
+   ⛔ **Re-planned by D20 (Ali, 2026-09-17):** stands in full (rulings 214–216: report completeness under house audit volume) and lands in checkpoint C5-6 with rulings 244–245.
+   — rulings **214–216**. **Render phase C:** the report pack card in its new danger state ("Pack history could
    not be read completely — do not sign") at 1280 and 360; the RG engagement report's truncation sentence read in its PDF.
    Re-run `test:report-parity`.
-9. **R3 statutory + §9 splits** — rulings **224–232**, **235**. **Render phase C at 1280 and 360:** `/admin/house` (the
+9. **R3 statutory + §9 splits**
+   ⛔ **Superseded by D20 (Ali, 2026-09-17):** STRUCK — rulings 224–231 and every render and artefact below are never built (no report code changes). Rulings 232 (the marker pin) and 235 (F6's email rule) stand and move to checkpoint C5-7.
+   — rulings **224–232**, **235**. **Render phase C at 1280 and 360:** `/admin/house` (the
    marker card), `/admin/finance` (House bots net tile, margin delta), `/admin/insights`, `/admin/compliance` (holder chip).
    **Artefacts:** GBT monthly pack (with and without marked money), FIU SAR (Context in and out of a window), match
    integrity (with and without a voided house-held market), daily ops — XLSX cells asserted, PDFs read. Re-run
    `test:report-parity`, `test:predictor-count`, `test:product-line`, `test:read-tiers`, `test:house-page`,
    `test:insights`, `test:updown-digest` + `red:updown-digest`, `test:red-anchors`, `test:house-bot-seam`,
    `test:house-bot-disclosure` (R3 NEW-server-only-copy AMENDED: after each §9 step).
-10. **R4/F9 + D6** — rulings **233–234**. Re-run `test:leaderboard-order`, `test:report-parity` §5,
+10. **R4/F9 + D6**
+    ⛔ **Superseded by D20 (Ali, 2026-09-17):** STRUCK — rulings 233–234 are never built; the no-reward rule stays built in the money seam and recorded in the docs.
+    — rulings **233–234**. Re-run `test:leaderboard-order`, `test:report-parity` §5,
     `test:house-bot-disclosure`. No surface.
-11. **R5 internal record + doors** — rulings **236–242**, **246**. **Render phase C at 1280 and 360:**
+11. **R5 internal record + doors**
+    ⛔ **Superseded by D20 (Ali, 2026-09-17):** STRUCK — rulings 236–238, 240–242 and 246 and every render below are never built; ruling 239's absence half stands and moves to checkpoint C5-7.
+    — rulings **236–242**, **246**. **Render phase C at 1280 and 360:**
     `/admin/players/<id>` as ADMIN for a holder (S7 chip, transactions-tab row tag, the internal-record control), as ADMIN
     for a trigger player (control, no chip), as ADMIN for an ordinary player (neither), and as COMPLIANCE and SUPPORT for
     the holder (chip and row tag, NO internal-record control, no placeholder); the chip's failed-read form. Re-run
     `test:control-gates`, `test:orphan-actions`, `test:read-tiers` §8.19, `test:orphans`, `test:dsar-secrets`,
     `test:house-bot-disclosure`.
-12. **R6 erasure tests** — rulings **244–245**. `test:erasure`, `red:erasure` (three new mutations, each red on its own
+12. **R6 erasure tests**
+    ⛔ **Re-planned by D20 (Ali, 2026-09-17):** stands in full (rulings 244–245) and lands in checkpoint C5-6 with R8.
+    — rulings **244–245**. `test:erasure`, `red:erasure` (three new mutations, each red on its own
     assertion), engine 19.8b. No surface.
-13. **Absence sweep + holder-view extension** — rulings **243**, **247–250**. The service-layer sweep on both stores
+13. **Absence sweep + holder-view extension**
+    ⛔ **Re-planned by D20 (Ali, 2026-09-17):** stands (rulings 243, 247–250) as checkpoint C5-7, together with rulings 232, 235's F6 email rule and 239's absence half, with D20's struck ids added to 250's coverage and `qa:house-bot-console-probe` folded into the served layer. The per-bot CSV comparison in the production-posture pass (213) and the internal record's parts are struck with their rulings.
+    — rulings **243**, **247–250**. The service-layer sweep on both stores
     (reports §11, including the health read, 171); the extended `qa:house-bot-holder-view` with every viewer,
     `buildDsarBundle` through the leak check, the production-posture pass, and every new page captured as VIEWPORT TILES
     at 1280 and 360 and read.
-14. **Closing gates** — rulings **251–252**, rulings **253–257** (scope and register rows; 253's `git diff` check), then
+14. **Closing gates**
+    ⛔ **Re-planned by D20 (Ali, 2026-09-17):** stands as checkpoint C5-8 with D20's edits: `origin/main` merged first; `qa:house-bot-holder-view` and `qa:house-bot-console-probe`; the `qa:house-bot-bells` and `qa:cert-c1` renders of the staff-edge alert and the emergency-void house row are struck; ONE mutation batch covering only mutations whose from-text still exists at HEAD, each struck mutation listed as removed with its code and never counted as run; the docs say reports treat bots as players and that there is no house report.
+    — rulings **251–252**, rulings **253–257** (scope and register rows; 253's `git diff` check), then
     **258** (docs) and §8 (register rows):
     - every `test:house-bot-*` suite on BOTH stores (L18), not a chosen list;
     - `tsc`;
@@ -270,23 +325,25 @@ touches a `'use client'` file re-runs `test:house-bot-disclosure` and `verify:ho
 
 ### 4.1 `test:house-bot-reports` (new; `runTwoStores`, `scripts/lib/house-bot-reports-cases.mts`)
 
+⛔ **Superseded in part by D20 (Ali, 2026-09-17):** §3–§7, §10 and §12 are struck; §0, §1, §2 and §9 stand only in the parts named in their rows; §8 and §11 stand. C5-5b lowers the suite's two-store floors to the counts measured under D20 and names every removed case in its commit (`C5-D20-REPLAN.md` §3).
+
 `M` = memory child only (static source pins, or a clock only memory can move). `P` = Postgres only. `B` = both stores.
 
 | § | What it proves | Store | Rulings |
 |---|---|---|---|
-| 0 | **Static pins**, each with a planted control that goes red and a benign control that does not: R8 `getAuditPage` pin and RG write pin; the `.txn.create` marker pin and the direct-Transaction-writer pin; the reward walker; the D6 source pin; the TGT-38 requester pin (services, pages, client controls); the player-surfaces pin; the KYC house-field readers pin; the fee pins (FS-29 tokens, `allocateFeeShares` in `settleMarket` and `book.ts`, fee computed only in `houseBotBook`); the scorecard body pin; the resolution-path map pin; the I2 `exposure.ts` import pin; the "no HOUSE_AUDIT write with the holder as actor" pin; the single-vocabulary pin; the "no refusal branch reads the scorecard or verdict" pin; the "no DSAR door returns `db.txn.findByUser` rows unprojected" pin; the `attest.ts` no-builder import pin; the `status-tone.ts` no-HOUSE_BOT pin | M | 169, 170, 175, 179, 180, 183, 191, 197, 198, 201, 202, 215, 232, 233, 234, 241 |
-| 1 | **Readers**: `stakeRows`/`houseStakeByMarket` (open vs settled after a settlement and after a void, CASHED_OUT excluded, a marked position with no intent in yes/no only, `byRequester`); `entryRows` identity AUTOMATIC + TARGETED + MANUAL + UNKNOWN = `dayRows` with UNKNOWN = 0 on seam fixtures and a planted no-intent control; officer attribution (A's Enter now, B's target updated by C) equal to `requesterOf`; the month boundary on both instants; settled statuses; the baseline tie | B | 178–182 |
-| 2 | **Fee withheld**: the derived figure per bot and product, null (never 0) on a market with no own snapshot; the ledger cross-check per marked WIN position with zero tolerance, over a ≥5-winner fractional-tie loser-share poll, a capped-commission legacy-snapshot Up & Down round (HB-LC-24), a zero-share winner with no ledger line, and a no-snapshot market | B (cross-check P) | 183 |
-| 3 | **R9 payloads**: exact key sets at both levels; the zero shape; TGT-38 values (A → [A], B's target → [B], both → [A,B]); six changed sites and six byte-identical ones; `houseStakes` only on Batch rows and `houseStake` only on Market rows; `null` under `failExposureReadForCases` with a flag-off control; `requestedBy` equal to oversight's exported fold for the chooser AND a non-chooser; an officer's own `exportUserData` has no `houseStake` key while `/admin/audit` data keeps it; an ADMIN who generated both house reports and wrote `house_bot.exported`, and a COMPLIANCE officer refused by the per-bot CSV, each export their own data with no 175 vocabulary word at any depth (control: the durable rows exist) | B | 170, 178, 187–190, 213 |
-| 4 | **R2 display**: `exposure-copy.ts` parts; `viewerClause` for A, C, zero-house, and A+B on one market; the held-chip title's three states; the void notice figure equals `payload.houseStake.yes + no`; a non-house void's bell and email byte-identical to today's; player, holder and objector notice bodies byte-identical to their no-house twins; the KYC line (holder shows, non-holder byte-identical, no amount without money view, risk `.score` byte-identical) | B | 192–197 |
-| 5 | **R1 report and statement**: parameter validation after the gate (a PLAYER gets 403 "Forbidden" for any period or market id; malformed, future, `0026-08`, unknown market); filename and reference carry the period or market id; every section reconciles; the ledger total equals `MoneySummary.house`; section 5's positionId join; the two returned lines; `bonusStakeTzs === 0` line; truncation sentence and "Completeness"; resolution-path values including "not found in the audit log"; UNKNOWN flag; reimbursements empty state; the index's wrong-category row found and a ring-emptied Postgres read; the statement's sections and "House stake: none" | B (ring-emptied index P) | 199–208 |
-| 6 | **CSVs**: `house=only` / `house=exclude` exact under 500 rows on both stores, `house_bot_id` last; the clamp honesty case at 10 and 600 marked rows; the shared cell module (leading `=` `+` `-` `@` tab CR); per-bot CSV gate rows (1)–(4) with a PLAYER getting 404 with no bot lookup (a spy) and the frozen body (the served comparison with a missing sibling path is 248's), the exact header line, 501+ rows complete, `house_marked` exact, one `house_bot.exported` row and none on a refusal | B | 186, 210, 211, 213 |
-| 7 | **Staff edge**: the day-01 gate cases (a)–(f) through `plannerPass` with `Date.now` fixed; TGT-39 with disjoint officers for variants (a), (b), (c); (c) returns `{off:true}` with no book read (spy); a second pass adds 0; the key literal `staff-edge:<X>:2026-09` (memory) and `${eatPreviousMonthKey(dbNow)}` (Postgres); the alert href and the picker default agree for a month-end and a year-end run | gate M, rest B | 209, 218–223 |
+| 0 | ⛔ **Superseded in part by D20 (Ali, 2026-09-17):** STRUCK — the reward walker and the D6 source pin (233, 234), the TGT-38 requester pin (191), the player-surfaces pin (198), the KYC house-field readers pin (197), the resolution-path map pin (202), the "no refusal branch reads the scorecard or verdict" pin (180, 219) and the `attest.ts` pin (201); decided with their modules in C5-5b — the fee pins (183), the scorecard body pin (180) and the I2 `exposure.ts` pin (179); STAND — the R8 pins (215), the marker and direct-writer pins (232), the holder-as-actor pin (170), the single-vocabulary pin (175), the unprojected-door pin (169) and the `status-tone.ts` pin (its rule is ruling 174's). **Static pins**, each with a planted control that goes red and a benign control that does not: R8 `getAuditPage` pin and RG write pin; the `.txn.create` marker pin and the direct-Transaction-writer pin; the reward walker; the D6 source pin; the TGT-38 requester pin (services, pages, client controls); the player-surfaces pin; the KYC house-field readers pin; the fee pins (FS-29 tokens, `allocateFeeShares` in `settleMarket` and `book.ts`, fee computed only in `houseBotBook`); the scorecard body pin; the resolution-path map pin; the I2 `exposure.ts` import pin; the "no HOUSE_AUDIT write with the holder as actor" pin; the single-vocabulary pin; the "no refusal branch reads the scorecard or verdict" pin; the "no DSAR door returns `db.txn.findByUser` rows unprojected" pin; the `attest.ts` no-builder import pin; the `status-tone.ts` no-HOUSE_BOT pin | M | 169, 170, 175, 179, 180, 183, 191, 197, 198, 201, 202, 215, 232, 233, 234, 241 |
+| 1 | ⛔ **Superseded in part by D20 (Ali, 2026-09-17):** these readers' named consumers (R1, R2/R9, the staff edge) are struck; a case stays only for a member C5-5b keeps (178–182). **Readers**: `stakeRows`/`houseStakeByMarket` (open vs settled after a settlement and after a void, CASHED_OUT excluded, a marked position with no intent in yes/no only, `byRequester`); `entryRows` identity AUTOMATIC + TARGETED + MANUAL + UNKNOWN = `dayRows` with UNKNOWN = 0 on seam fixtures and a planted no-intent control; officer attribution (A's Enter now, B's target updated by C) equal to `requesterOf`; the month boundary on both instants; settled statuses; the baseline tie | B | 178–182 |
+| 2 | ⛔ **Superseded in part by D20 (Ali, 2026-09-17):** the fee derivation's named consumer, R1 section 3 (202), is struck; these cases stay only if C5-5b keeps ruling 183's derivation. **Fee withheld**: the derived figure per bot and product, null (never 0) on a market with no own snapshot; the ledger cross-check per marked WIN position with zero tolerance, over a ≥5-winner fractional-tie loser-share poll, a capped-commission legacy-snapshot Up & Down round (HB-LC-24), a zero-share winner with no ledger line, and a no-snapshot market | B (cross-check P) | 183 |
+| 3 | ⛔ **Superseded by D20 (Ali, 2026-09-17):** struck with rulings 187–190 and 213 (the ruling-170 own-export cases here exist only for those struck rows); never built, removed in C5-5b where built. ~~**R9 payloads**: exact key sets at both levels; the zero shape; TGT-38 values (A → [A], B's target → [B], both → [A,B]); six changed sites and six byte-identical ones; `houseStakes` only on Batch rows and `houseStake` only on Market rows; `null` under `failExposureReadForCases` with a flag-off control; `requestedBy` equal to oversight's exported fold for the chooser AND a non-chooser; an officer's own `exportUserData` has no `houseStake` key while `/admin/audit` data keeps it; an ADMIN who generated both house reports and wrote `house_bot.exported`, and a COMPLIANCE officer refused by the per-bot CSV, each export their own data with no 175 vocabulary word at any depth (control: the durable rows exist)~~ | B | 170, 178, 187–190, 213 |
+| 4 | ⛔ **Superseded by D20 (Ali, 2026-09-17):** struck with rulings 192–197; never built, removed in C5-5b where built. ~~**R2 display**: `exposure-copy.ts` parts; `viewerClause` for A, C, zero-house, and A+B on one market; the held-chip title's three states; the void notice figure equals `payload.houseStake.yes + no`; a non-house void's bell and email byte-identical to today's; player, holder and objector notice bodies byte-identical to their no-house twins; the KYC line (holder shows, non-holder byte-identical, no amount without money view, risk `.score` byte-identical)~~ | B | 192–197 |
+| 5 | ⛔ **Superseded by D20 (Ali, 2026-09-17):** struck with rulings 199–208; never built. ~~**R1 report and statement**: parameter validation after the gate (a PLAYER gets 403 "Forbidden" for any period or market id; malformed, future, `0026-08`, unknown market); filename and reference carry the period or market id; every section reconciles; the ledger total equals `MoneySummary.house`; section 5's positionId join; the two returned lines; `bonusStakeTzs === 0` line; truncation sentence and "Completeness"; resolution-path values including "not found in the audit log"; UNKNOWN flag; reimbursements empty state; the index's wrong-category row found and a ring-emptied Postgres read; the statement's sections and "House stake: none"~~ | B (ring-emptied index P) | 199–208 |
+| 6 | ⛔ **Superseded by D20 (Ali, 2026-09-17):** struck with rulings 210, 211 and 213; never built. ~~**CSVs**: `house=only` / `house=exclude` exact under 500 rows on both stores, `house_bot_id` last; the clamp honesty case at 10 and 600 marked rows; the shared cell module (leading `=` `+` `-` `@` tab CR); per-bot CSV gate rows (1)–(4) with a PLAYER getting 404 with no bot lookup (a spy) and the frozen body (the served comparison with a missing sibling path is 248's), the exact header line, 501+ rows complete, `house_marked` exact, one `house_bot.exported` row and none on a refusal~~ | B | 186, 210, 211, 213 |
+| 7 | ⛔ **Superseded by D20 (Ali, 2026-09-17):** struck with rulings 209 and 218–223; never built. ~~**Staff edge**: the day-01 gate cases (a)–(f) through `plannerPass` with `Date.now` fixed; TGT-39 with disjoint officers for variants (a), (b), (c); (c) returns `{off:true}` with no book read (spy); a second pass adds 0; the key literal `staff-edge:<X>:2026-09` (memory) and `${eatPreviousMonthKey(dbNow)}` (Postgres); the alert href and the picker default agree for a month-end and a year-end run~~ | gate M, rest B | 209, 218–223 |
 | 8 | **R8**: pack state `approved` with `preparedBy` and `historyIncomplete === false` after the ring is emptied, with `getAuditPage` returning none of the rows as the control; `historyIncomplete` true → the four pack actions refuse; 201 `rg.*` rows print the truncation sentence | P (ring-emptied proofs); pins M; historyIncomplete refusal B | 214–216 |
-| 9 | **R3 / §9**: class A twin equality on every statutory figure; class B lines; class C populations equal the computation over unmarked rows; all = players + house; the GBT memo present only with marked money and the pack otherwise equal to its twin apart from the GGR note; memo stakes vs Σ `dayRows` over the pack's EAT days; the month-boundary net difference; FIU Context in and out of a window; match integrity house parts only with a voided house-held market, one bulk audit read, Resolution path values; 50 late-night house bets raise no LATE_NIGHT flag; `detectSuspiciousBets` ignores house stakes; the compliance chip; `/admin/house` rows; the digest email rule (house-only day: bell byte-identical, no email; mixed day: one email) | B | 224–231, 235 |
-| 10 | **R4/F9/D6**: `leaderboard()` default equals a no-marker twin and ranks a holder's marked positions like a player's; `excludeHouse:true` drops only marked rows; the holder on the board and `predictorCount` counting the bot | B | 233, 234 |
+| 9 | ⛔ **Superseded in part by D20 (Ali, 2026-09-17):** struck with rulings 224–231 (reports treat a house bot's account as any player's), except the digest email rule at the end, which stands (235's F6 email rule, checkpoint C5-7). **R3 / §9**: class A twin equality on every statutory figure; class B lines; class C populations equal the computation over unmarked rows; all = players + house; the GBT memo present only with marked money and the pack otherwise equal to its twin apart from the GGR note; memo stakes vs Σ `dayRows` over the pack's EAT days; the month-boundary net difference; FIU Context in and out of a window; match integrity house parts only with a voided house-held market, one bulk audit read, Resolution path values; 50 late-night house bets raise no LATE_NIGHT flag; `detectSuspiciousBets` ignores house stakes; the compliance chip; `/admin/house` rows; the digest email rule (house-only day: bell byte-identical, no email; mixed day: one email) | B | 224–231, 235 |
+| 10 | ⛔ **Superseded by D20 (Ali, 2026-09-17):** struck with rulings 233–234; never built. ~~**R4/F9/D6**: `leaderboard()` default equals a no-marker twin and ranks a holder's marked positions like a player's; `excludeHouse:true` drops only marked rows; the holder on the board and `predictorCount` counting the bot~~ | B | 233, 234 |
 | 11 | **Absence sweep, service layer**: every viewer (signed out, another player, the holder, a trigger player); needles and controls (i)–(iii); `/api/health` read after `acquireLeadership(HOUSE_PLANNER_TASK)` with the raw-snapshot positive control; a mutation re-adding a house key or the lease name goes red here | B | 171, 247 |
-| 12 | **Internal record**: `exportInternalRecordAction` refuses a non-owner; the existence check runs for ADMIN only (a COMPLIANCE or SUPPORT render runs none of the internal-record reads — `houseBotStore.listByUserId`, `houseBotEventStore.listByUserKinds`, `houseBotIntentStore.counteredPositionsCount`, `houseLiquidityDsarView` — and renders no control or placeholder, a spy; the S7 chip's `findLiveByUserId` read is expected for every role, 241); cursor paging past 500 rows with a real total; the `house_bot.exported` row with `code: 'INTERNAL_RECORD'`; the classification sentence is the first key; `causes: null` + note when `readBotAndHolder` throws | B | 236–239 |
+| 12 | ⛔ **Superseded by D20 (Ali, 2026-09-17):** struck with rulings 236–238 and 239's internal-record half; never built. ~~**Internal record**: `exportInternalRecordAction` refuses a non-owner; the existence check runs for ADMIN only (a COMPLIANCE or SUPPORT render runs none of the internal-record reads — `houseBotStore.listByUserId`, `houseBotEventStore.listByUserKinds`, `houseBotIntentStore.counteredPositionsCount`, `houseLiquidityDsarView` — and renders no control or placeholder, a spy; the S7 chip's `findLiveByUserId` read is expected for every role, 241); cursor paging past 500 rows with a real total; the `house_bot.exported` row with `code: 'INTERNAL_RECORD'`; the classification sentence is the first key; `causes: null` + note when `readBotAndHolder` throws~~ | B | 236–239 |
 
 ### 4.2 Additions to existing suites
 
@@ -299,43 +356,45 @@ touches a `'use client'` file re-runs `test:house-bot-disclosure` and `verify:ho
   `decision.counterparties`; `classification` first). §9 a planted future `Transaction` column never reaches either door;
   a source pin (planted control) that neither `user-service.ts` nor `privacy.ts` imports `house-bot/dsar`; the officer
   page's lifetime KPIs equal for a holder and a non-holder. Every new assertion gets a recorded scratchpad mutation (the
-  suite has no red harness). Rulings 168, 236–243.
+  suite has no red harness). Rulings 168, 236–243. ⛔ **Superseded in part by D20 (Ali, 2026-09-17):** struck — §6's crowd-out characterization (242), §7's post-purge internal record (239's struck half), all of §8 (the internal record, 236–238), and §9's `house-bot/dsar` import pin and officer-page KPI equality (240); §5, §6's holder absence, §7's trigger-player twin equality and §9's planted `Transaction` column stand (168, 239's absence half, 243).
 - **`test:house-bot-money`**: 1.14 tightened to the exact 23-key set on the player door; 1.14b the officer bundle; 1.14c a
   non-holder's officer bundle has no `houseBotId` key (its proving half is Postgres); 1.14d the holder-acted house audit
   reaches neither the export nor `getOwnActivity`, with a chain control; the four money-read cases with 1,000+ marked rows
   ahead of the target row; §7 EXPLAIN gains `entryRows` (all bots and one bot) and `feeInputs` (lifetime) on the 1M/20k
-  fixture. Rulings 169, 170, 173, 180, 183.
+  fixture. Rulings 169, 170, 173, 180, 183. ⛔ **Superseded in part by D20 (Ali, 2026-09-17):** the §7 `entryRows` and `feeInputs` EXPLAINs follow C5-5b's member-by-member decision on rulings 180 and 183; the rest stands.
 - **`test:house-bot-engine`**: 10.7 → 200, measured after the planner lease is acquired: no key or value equals the
   pre-change literal `house-bot` or matches 175's vocabulary; under 171 (a) the planner task's key is absent from
   `leadership`, under 171 (b) the neutral name is checked against 175; POSITIVE CONTROL: the unfiltered
   `leadershipSnapshot()` holds `HOUSE_PLANNER_TASK` (whatever its value); 10.8 → the admin reader; 10.10 keeps the
   renamed-table 503 with `ok:false`; §17 `staffEdge` appended after the asserted 17.10 prefix, the marks literal read as "not run" when
   undefined; oversight swapped to `requesterOf` with §17 re-run and a mutation; 17.63 re-run after the oversight helpers
-  move; 19.8b. Rulings 171, 172, 178, 186, 218, 245.
-- **`test:house-bot-comms`**: the STAFF_EDGE delivery case (one bell per ADMIN recipient, one email per distinct
+  move; 19.8b. Rulings 171, 172, 178, 186, 218, 245. ⛔ **Superseded in part by D20 (Ali, 2026-09-17):** the §17 `staffEdge` duty is struck (218); the `requesterOf` swap and the helper moves follow C5-5b's decision on rulings 178 and 186; 10.7, 10.8, 10.10 and 19.8b stand.
+- ⛔ **Superseded by D20 (Ali, 2026-09-17):** struck with rulings 220–222 (the staff-edge alert); never built. ~~**`test:house-bot-comms`**: the STAFF_EDGE delivery case (one bell per ADMIN recipient, one email per distinct
   address, 0 SMS, two officers in the same second both land); the STAFF_EDGE copy case with full detail and with `{}`
   (title ends ` · HH:MM:SS`; n, w%, a% or the no-baseline clause; the signed TZS figure; the localised month; the two
   hrefs; no reason, no player handle); `announceOnce` resolving `detail.officerId` to a name with the "an officer"
-  fallback; the `:330` comment replaced. Rulings 220–222.
+  fallback; the `:330` comment replaced. Rulings 220–222.~~
 - **`test:house-bot-rules`**: `eatMonthWindow` pins; the module law over `staff-edge.ts`, `exposure-copy.ts`,
   `stake-snapshot.ts` (allowlist unchanged); the `failExposureReadForCases` pin (no src caller); `ALERT_KEY.summary`
   narrowed to `"admins"`; `DSAR_HOLDER_EVENT_KINDS` list unchanged (docstring only); 11.8 and 11.22 unchanged. Rulings
-  182, 190, 192, 219, 238, 258.
+  182, 190, 192, 219, 238, 258. ⛔ **Superseded in part by D20 (Ali, 2026-09-17):** struck — the module law over `staff-edge.ts` and `exposure-copy.ts` (219, 192), the `failExposureReadForCases` pin (190) and the event-kind docstring's change to "the officer-only internal record" (238); `eatMonthWindow` and `stake-snapshot.ts` follow C5-5b (182, 178); the `summary` narrowing and 11.8 / 11.22 stand.
 - **`test:house-bot-disclosure`** and **`verify:house-bot-bundle`**: both import the vocabulary module; the admitted
   measured words each with a planted client-file control; the bundle scan also matches file PATHS under `.next/static`
   with a planted file-name control. Rulings 174, 175.
 - **`qa:house-bot-holder-view`**: the extended page list and viewers, 4.2 (`buildDsarBundle` through `leaks()`), the
   production-posture pass, viewport tiles instead of `fullPage`. Ruling 248.
-- **`qa:house-bot-bells`**: a STAFF_EDGE row with the TGT-39 X figures; 1.1 exactly 12, 1.2 at least 12; en/sw/zh at 1280
-  and 360. Ruling 222.
-- **`qa:cert-c1`** (visual pass): `houseBotAdminHtml` for STAFF_EDGE built from `alertRow` output; `marketCancelledAdminHtml`
-  with and without the house row. Rulings 195, 222.
+- ⛔ **Superseded by D20 (Ali, 2026-09-17):** struck with ruling 222 (the staff-edge alert); never built. ~~**`qa:house-bot-bells`**: a STAFF_EDGE row with the TGT-39 X figures; 1.1 exactly 12, 1.2 at least 12; en/sw/zh at 1280
+  and 360. Ruling 222.~~
+- ⛔ **Superseded by D20 (Ali, 2026-09-17):** struck with rulings 195 and 222; never built. ~~**`qa:cert-c1`** (visual pass): `houseBotAdminHtml` for STAFF_EDGE built from `alertRow` output; `marketCancelledAdminHtml`
+  with and without the house row. Rulings 195, 222.~~
 - **`test:erasure`** / **`red:erasure`**: ruling 244. **`test:dal-parity`**: ruling 177. **`test:house-bot-seam`**:
   `SEAM:emergencyHouseShare`, HB-ACC-13 named (rulings 195, 249). **`test:txn-search`**: `house` in `matchesFilters`
   (ruling 210). **`test:report-parity`** §2 canonical JSON with a nested-difference control (ruling 225).
-  **`test:house-page`** §5.1 read list (ruling 231). **`test:house-bot-designation`**: the status word (ruling 186).
+  **`test:house-page`** §5.1 read list (ruling 231). **`test:house-bot-designation`**: the status word (ruling 186). ⛔ **Superseded in part by D20 (Ali, 2026-09-17):** struck — `SEAM:emergencyHouseShare` (195), the `test:txn-search` house cases (210), `test:report-parity` §2's canonical JSON for `MoneySummary.house` (225) and `test:house-page` §5.1 (231); `test:dal-parity` and the designation status word follow C5-5b (177, 186); `test:erasure` / `red:erasure` (244) and HB-ACC-13 (249) stand.
 
 ## 5. Surfaces to render
+
+⛔ **Superseded in part by D20 (Ali, 2026-09-17):** only rows 2 (checkpoint C5-6) and 16, and row 19's RG engagement artefact, stand; every other surface row is struck. C5-5b instead renders each un-built admin surface once at 1280 and 360 on the house fixture and reads that it looks like `origin/main`'s. In the absence renders, the per-bot CSV row is struck; the other rows stand (checkpoint C5-7).
 
 Admin surfaces only; every PNG opened and read. Phase **C** = the admin static harness; phase **D** = the real-route client
 pass (modals are NOT MEASURED in C, 03 X3). Widths: 1280 and 360 at minimum (the admin harness's 320/640/768/1024/1920 as
@@ -343,26 +402,26 @@ well where the step's harness already takes them). Viewport tiles, never full-pa
 
 | # | Surface | Route | Fixture | Kit neighbour it must look like | Phase |
 |---|---|---|---|---|---|
-| 1 | House-liquidity card + month picker | `/admin/reports?tab=library` (and `…&range=custom&from=2026-09-01&to=2026-09-30`) | a designated bot, REMOVED one included; a staff-edge href | the existing TEMPLATES cards (`AdminCard` + severity glyph tile + `Chip size="sm"` target + cadence mono + formats pills + `GenerateButton`); a kit Select | C |
+| 1 | ⛔ **Superseded by D20 (Ali, 2026-09-17):** struck (rulings 202, 209). ~~House-liquidity card + month picker~~ | `/admin/reports?tab=library` (and `…&range=custom&from=2026-09-01&to=2026-09-30`) | a designated bot, REMOVED one included; a staff-edge href | the existing TEMPLATES cards (`AdminCard` + severity glyph tile + `Chip size="sm"` target + cadence mono + formats pills + `GenerateButton`); a kit Select | C |
 | 2 | Report pack card, history-incomplete state | `/admin/reports` | a pack whose durable read is truncated | the pack card's existing danger lines | C |
-| 3 | House filter Select | `/admin/transactions?house=only` | marked and unmarked rows | the page's own `FilterSelect` | C |
-| 4 | Queue card house line, held-chip title, bulk bar count | `/admin/resolver-queue` | a LIVE market pending resolution with an OPEN marked position; one market whose read fails; 3 of 8 selected markets house-held | the crowd/held row and held chip; "N selected · TZS X held" | C (bar), D (bulk confirm) |
-| 5 | Ceremony house line + "of which chosen by you" | `/admin/resolver/<id>` | a poll with a PLACED staff-chosen stake by A; viewed by A and by C | the pools line inside `AdminCard` | C |
-| 6 | House line, "House bot · <label>" row tag, statement button | `/admin/markets/<id>` | one marked and two unmarked OPEN positions; a market with no house stake | pool figures; positions table rows with `Chip size="sm" variant="neutral"` | C |
-| 7 | Objections row line; decision dialog slot | `/admin/objections` | an OPEN objection on a house-held unsettled market | the "Pool held" column; `ObjectionDecision` | C (row), D (dialog) |
-| 8 | Emergency-void confirm slot | `/admin/markets` | a LIVE house-held market | `ConfirmVoid` | D |
-| 9 | Round lever house line; round-void dialog | `/admin/updown/rounds` | an open round holding a marked position | the volume cell and `VoidRoundControl` | C (row), D (dialog) |
-| 10 | "of which house stakes: N · TZS X" | `/admin/kyc/<id>` | a holder case with marked BET_PLACED rows; viewed with and without money view | the "Bets placed" `Field` | C |
-| 11 | S7 chip, transactions-tab row tag, internal-record control | `/admin/players/<id>` | a live holder; a trigger player; an ordinary player; viewers ADMIN, COMPLIANCE, SUPPORT; a failed chip read | the KYC chip row; the export button | C |
-| 12 | Marker card (net result, open stake) | `/admin/house` | a settled house fixture; a failed read | `AdminKpi` in its own `AdminCard`, `amount` class, never gold | C |
-| 13 | House bots net tile + margin delta | `/admin/finance` | house stakes > 0 and = 0 | `AdminKpi` with its one `delta` | C |
-| 14 | §9 lines | `/admin/insights` | marked rows | the existing insight rows | C |
-| 15 | Harm-table holder chip | `/admin/compliance` | a holder flagged RAPID_DEPOSIT_ESCALATION | the existing marker chips | C |
+| 3 | ⛔ **Superseded by D20 (Ali, 2026-09-17):** struck (ruling 210). ~~House filter Select~~ | `/admin/transactions?house=only` | marked and unmarked rows | the page's own `FilterSelect` | C |
+| 4 | ⛔ **Superseded by D20 (Ali, 2026-09-17):** struck (rulings 192–194). ~~Queue card house line, held-chip title, bulk bar count~~ | `/admin/resolver-queue` | a LIVE market pending resolution with an OPEN marked position; one market whose read fails; 3 of 8 selected markets house-held | the crowd/held row and held chip; "N selected · TZS X held" | C (bar), D (bulk confirm) |
+| 5 | ⛔ **Superseded by D20 (Ali, 2026-09-17):** struck (rulings 193, 194). ~~Ceremony house line + "of which chosen by you"~~ | `/admin/resolver/<id>` | a poll with a PLACED staff-chosen stake by A; viewed by A and by C | the pools line inside `AdminCard` | C |
+| 6 | ⛔ **Superseded by D20 (Ali, 2026-09-17):** struck (rulings 194, 208). ~~House line, "House bot · <label>" row tag, statement button~~ | `/admin/markets/<id>` | one marked and two unmarked OPEN positions; a market with no house stake | pool figures; positions table rows with `Chip size="sm" variant="neutral"` | C |
+| 7 | ⛔ **Superseded by D20 (Ali, 2026-09-17):** struck (rulings 194, 196). ~~Objections row line; decision dialog slot~~ | `/admin/objections` | an OPEN objection on a house-held unsettled market | the "Pool held" column; `ObjectionDecision` | C (row), D (dialog) |
+| 8 | ⛔ **Superseded by D20 (Ali, 2026-09-17):** struck (rulings 194, 196). ~~Emergency-void confirm slot~~ | `/admin/markets` | a LIVE house-held market | `ConfirmVoid` | D |
+| 9 | ⛔ **Superseded by D20 (Ali, 2026-09-17):** struck (ruling 194). ~~Round lever house line; round-void dialog~~ | `/admin/updown/rounds` | an open round holding a marked position | the volume cell and `VoidRoundControl` | C (row), D (dialog) |
+| 10 | ⛔ **Superseded by D20 (Ali, 2026-09-17):** struck (ruling 197). ~~"of which house stakes: N · TZS X"~~ | `/admin/kyc/<id>` | a holder case with marked BET_PLACED rows; viewed with and without money view | the "Bets placed" `Field` | C |
+| 11 | ⛔ **Superseded by D20 (Ali, 2026-09-17):** struck (rulings 236, 241). ~~S7 chip, transactions-tab row tag, internal-record control~~ | `/admin/players/<id>` | a live holder; a trigger player; an ordinary player; viewers ADMIN, COMPLIANCE, SUPPORT; a failed chip read | the KYC chip row; the export button | C |
+| 12 | ⛔ **Superseded by D20 (Ali, 2026-09-17):** struck (ruling 231). ~~Marker card (net result, open stake)~~ | `/admin/house` | a settled house fixture; a failed read | `AdminKpi` in its own `AdminCard`, `amount` class, never gold | C |
+| 13 | ⛔ **Superseded by D20 (Ali, 2026-09-17):** struck (ruling 224). ~~House bots net tile + margin delta~~ | `/admin/finance` | house stakes > 0 and = 0 | `AdminKpi` with its one `delta` | C |
+| 14 | ⛔ **Superseded by D20 (Ali, 2026-09-17):** struck (ruling 224). ~~§9 lines~~ | `/admin/insights` | marked rows | the existing insight rows | C |
+| 15 | ⛔ **Superseded by D20 (Ali, 2026-09-17):** struck (ruling 230). ~~Harm-table holder chip~~ | `/admin/compliance` | a holder flagged RAPID_DEPOSIT_ESCALATION | the existing marker chips | C |
 | 16 | Engine health card | `/admin/system` (server `page.tsx`) | engine started; engine refused | the existing system cards | C |
-| 17 | Staff-edge bell | `/notifications` | TGT-39 X figures, en/sw/zh | the other house alert rows | `qa:house-bot-bells` |
-| 18 | Staff-edge email; emergency-void admin email with and without the house row | — | as above | the other house admin emails; `marketCancelledAdminHtml` | `qa:cert-c1` |
-| 19 | Generated artefacts: house liquidity, house-market statement, GBT pack, FIU SAR, match integrity, daily ops, RG engagement | XLSX + PDF | the R1 fixture month | the GBT pack's section/column/notes shape | ExcelJS cells asserted; PDF read page by page |
-| 20 | Emergency-void admin bell with and without the house clause (195), en/sw/zh | `/notifications` at 1280 and 360 | an emergency void of a house-held market and of a no-house market; viewer an ADMIN | the existing SECURITY bell rows | C |
+| 17 | ⛔ **Superseded by D20 (Ali, 2026-09-17):** struck (ruling 222). ~~Staff-edge bell~~ | `/notifications` | TGT-39 X figures, en/sw/zh | the other house alert rows | `qa:house-bot-bells` |
+| 18 | ⛔ **Superseded by D20 (Ali, 2026-09-17):** struck (rulings 195, 222). ~~Staff-edge email; emergency-void admin email with and without the house row~~ | — | as above | the other house admin emails; `marketCancelledAdminHtml` | `qa:cert-c1` |
+| 19 | ⛔ **Superseded in part by D20 (Ali, 2026-09-17):** only the RG engagement artefact stands (R8, ruling 214; checkpoint C5-6); the house liquidity, house-market statement, GBT pack, FIU SAR, match integrity and daily ops artefacts are struck (no report code changes). Generated artefacts: house liquidity, house-market statement, GBT pack, FIU SAR, match integrity, daily ops, RG engagement | XLSX + PDF | the R1 fixture month | the GBT pack's section/column/notes shape | ExcelJS cells asserted; PDF read page by page |
+| 20 | ⛔ **Superseded by D20 (Ali, 2026-09-17):** struck (ruling 195). ~~Emergency-void admin bell with and without the house clause (195), en/sw/zh~~ | `/notifications` at 1280 and 360 | an emergency void of a house-held market and of a no-house market; viewer an ADMIN | the existing SECURITY bell rows | C |
 
 **Absence renders** (served HTML and RSC payload scanned; new pages photographed as tiles and read; ruling 248):
 
@@ -371,7 +430,7 @@ well where the step's harness already takes them). Viewport tiles, never full-pa
 | The holder | the existing ten holder pages, plus `/profile/account`, `/profile/activity`, `/updown/history`, `/updown/<roundId>` with a house Up & Down stake, `/api/positions/settled?markets=`, `/api/events` (the holder's session); their export and their officer-built bundle |
 | A trigger player (boxed through the real sweep or `boxAccount`) | the same pages and both files |
 | A signed-out visitor, and another player | `/`, `/markets`, `/markets/<id>`, `/live`, `/updown`, `/updown/<roundId>`, `/leaderboard`, `/results`, `/api/fairness/recent`, `/api/health`, `/api/og/market/<id>` (status and headers) |
-| A PLAYER session, the holder's included, on the production-posture pass (213 (1)) | `/admin/house-bots/<existing bot id>/export` and `/admin/house-bots/<unknown bot id>/export`, each compared with a non-existent sibling path under `/admin/` (status, body, every header except Date and request ids) |
+| ⛔ **Superseded by D20 (Ali, 2026-09-17):** struck (ruling 213: no per-bot CSV route). ~~A PLAYER session, the holder's included, on the production-posture pass (213 (1))~~ | ~~`/admin/house-bots/<existing bot id>/export` and `/admin/house-bots/<unknown bot id>/export`, each compared with a non-existent sibling path under `/admin/` (status, body, every header except Date and request ids)~~ |
 | Production posture (engine on by default, master OFF, planner lease held) | `/api/health` |
 
 ## 6. Rulings this build takes (168+)
@@ -627,6 +686,8 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
 
 ### 6.B · Readers, book, entry split, fee, pure modules
 
+⛔ **Superseded in part by D20 (Ali, 2026-09-17):** 176 stands; 177–186 were built in step 3 and are decided member by member in C5-5b (kept only with a named remaining caller or a cited Commit 7 scope line). Each carries its own line.
+
 176. **`test:house-bot-reports`: the key, the runner and what runs where.**
      - `package.json` gains `"test:house-bot-reports": "tsx scripts/db-scratch.mts --run npx tsx scripts/house-bot-reports.test.mts"`
        in the same commit as its first citation in code, a comment or a doc (`test:guards-exist`; the rules suite's
@@ -647,6 +708,7 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
        recorded.
 
 177. **Every new store member, in both twins, with a parity case.**
+     ⛔ **Superseded in part by D20 (2026-09-17)** — built in step 3; C5-5b keeps a member (both twins and its `test:dal-parity` case) only with a named remaining caller or a cited Commit 7 scope line, and un-builds the rest. Standing with their kept rulings: `db.txn.findByUser` `{excludeHouseBets}` (173), `getAuditForActorDurable` `{excludeActions}` (170) and `DailySettledTotals.ownRounds` (235's F6 email rule). Struck with their consumers: `TxnSearchFilters.house` (210), the `db.txn.topContributors` filter (224), `positionStore.leaderboard` `{excludeHouse}` (233), and every member whose only named consumer is R1, R2/R9, the staff edge, the per-bot CSV or the internal record.
      - `houseBookStore.entryRows({fromIso, toIso, houseBotId}, tx?)` (180); `houseBookStore.feeInputs({fromIso, toIso, houseBotId})` (183);
        `houseBookStore.stakeRows(marketIds, tx?)` (179).
      - `houseBookStore.ledgerRows({fromIso, toIso})`: one GROUP BY per bot × product × market × type over marked CONFIRMED
@@ -691,7 +753,9 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
      - **Proof:** a `test:dal-parity` case per member on both twins over one shared fixture (identical outputs); behavioural
        cases in reports §1, §5, §6, §12.
 
-178. **One requester rule, in one pure module.** `src/lib/house-bot/stake-snapshot.ts` (value imports on the module-law
+178. **One requester rule, in one pure module.**
+     ⛔ **Superseded in part by D20 (2026-09-17)** — built in step 3; decided member by member in C5-5b. Its consumers R9 (187), `exposure.ts` (179), `exposure-copy.ts` (192) and `entryRows`' officer column (180) are struck; `requesterOf` and `foldRequestedBy` stay only with a named remaining caller (oversight is Commit 4's engine, which D20 keeps).
+     `src/lib/house-bot/stake-snapshot.ts` (value imports on the module-law
      allowlist only) exports `requesterOf(i: {kind, requestedById, targetId}, targetCreatedById: string | null): string | null`
      (MANUAL → `requestedById`; `targetId` set → the target's `createdById`; otherwise null) and
      `foldRequestedBy(ids): string[]` (distinct, sorted).
@@ -715,6 +779,7 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
        `requesterOf` returns `requestedById` for a targeted row; the fold drops the sort or the dedupe.
 
 179. **`stakeRows` and `exposure.ts`.**
+     ⛔ **Superseded in part by D20 (2026-09-17)** — built in step 3; every consumer this ruling names is struck (R9 187–191, R2 192–197, 254's overview split, 259's `houseStakeForConsole`), so C5-5b removes `stakeRows` (both twins and its parity case) and `exposure.ts` unless a remaining caller or a cited Commit 7 scope line is named.
      - `houseBookStore.stakeRows(marketIds: string[], tx?: HouseTx): Promise<HouseStakeRow[]>` in BOTH twins beside
        `dayRows`/`openExposure` (`house-bot-dal.ts:1596-1601`). Postgres runs ONE statement: `"Position" p LEFT JOIN
        "HouseBotIntent" i ON i."positionId" = p."id" LEFT JOIN "HouseBotTarget" t ON t."id" = i."targetId" WHERE
@@ -751,6 +816,7 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
        passed the lock's `tx` (ruling 190's failing-read case then aborts the refunds).
 
 180. **`entryRows` and the one book function.**
+     ⛔ **Superseded in part by D20 (2026-09-17)** — built in step 3; its named consumers are struck (`staffEdgePass` 218, R1 sections (a) and (f) 202 and 206), so `entryRows`, the widened `houseBotBook`, `houseStaffScorecard` and their pins are decided member by member in C5-5b. `foldDayBook`, `HouseDayBook`, `houseDayBook`, `houseDayBooks` and `houseOpenExposure` stay byte-identical, as this ruling already required.
      - `houseBookStore.entryRows(input: {fromIso: string; toIso: string; houseBotId: string | null}, tx?: HouseTx): Promise<HouseEntryRawRow[]>`
        in both stores. Rows are grouped by `(houseBotId, productLine, entry: AUTOMATIC | TARGETED | MANUAL | UNKNOWN,
        officerId: string | null)`, each with `bets`, `staked`, `openStake`, `settledStake`, `returned`, and the
@@ -786,6 +852,7 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
        `placedInWindow` (pin red); `entryRows` loses the UNKNOWN branch (identity red).
 
 181. **Entry, officer, settled and baseline definitions.**
+     ⛔ **Superseded in part by D20 (2026-09-17)** — these definitions serve R1 (202, 206) and the staff edge (218–223), both struck; decided member by member with 180 in C5-5b.
      - **UNKNOWN.** A marked Position with no intent row is entry UNKNOWN: its own row in R1 (a) and the console split,
        never folded into AUTOMATIC, excluded from every officer row and the baseline. The identity AUTOMATIC + TARGETED +
        MANUAL + UNKNOWN = the book's bets, staked, open, settled and returned for the same window and bot is asserted against
@@ -817,7 +884,9 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
        over bots is taken; a marked CASHED_OUT position counts in settledStake and never in settled. Mutations: UNKNOWN folded into
        AUTOMATIC; cashedOut counted in settled; VOID not counted as refunded.
 
-182. **The EAT month window.** A pure `eatMonthWindow(monthKey: string): {fromMs: number; toMs: number} | null` in
+182. **The EAT month window.**
+     ⛔ **Superseded in part by D20 (2026-09-17)** — built in step 3; `eatMonthWindow`'s named consumers (the staff-edge month and the scorecard windows) are struck; decided member by member in C5-5b.
+     A pure `eatMonthWindow(monthKey: string): {fromMs: number; toMs: number} | null` in
      `src/lib/house-bot/clock.ts`, beside `eatPreviousMonthKey`, built on the `EAT_OFFSET_MS` that `clock.ts` re-exports from
      `eat-day.ts`. It returns null for a key that is not `YYYY-MM` with month 01–12; `book.ts` throws on null (as
      `dayWindowIso` does). A new helper is needed because `src/lib/house-bot/*` may not value-import `@/lib/server/*`
@@ -830,7 +899,9 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
        stores: a staff-chosen stake placed at 2026-09-30T20:59:59.999Z counts in 2026-09 and one at 2026-09-30T21:00:00.000Z
        in 2026-10. Mutation: `toMs` one day late → red.
 
-183. **Fee withheld per bot: derived from the frozen snapshot, cross-checked against the ledger.** `feeWithheldTzs` is
+183. **Fee withheld per bot: derived from the frozen snapshot, cross-checked against the ledger.**
+     ⛔ **Superseded in part by D20 (2026-09-17)** — built in step 3; R1 section 3 (202) is struck, and a per-bot fee figure in the console is a results figure that Commit 7's default rules out unless a control needs it (`C5-D20-REPLAN.md` §4); the derivation, `feeInputs`, the cross-check and their pins are decided member by member in C5-5b.
+     `feeWithheldTzs` is
      derived, never a constant null or 0.
      - For each house-marked WIN position in the window, its share is
        `allocateFeeShares(winnersForAllocation(<that market's positions: id, side, status, stake>, side).map(({id, stake}) => ({id, stake})), winningPool(side), poolFee(yesPool, noPool, snapshotOrLegacy(feeSnapshot), side).fee).get(position.id)`
@@ -874,7 +945,9 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
        `houseBotBook`. Money §7: `feeInputs` EXPLAIN for the lifetime window on the 1M/20k fixture. Mutations: an inner join
        that drops the zero-share winner; null replaced by 0; the share computed from live rates instead of the snapshot.
 
-184. **Where Commit 5's code may live (the info-edge walker).** Every Commit 5 module under `src/lib/server/house-bot/` or
+184. **Where Commit 5's code may live (the info-edge walker).**
+     ⛔ **Superseded in part by D20 (2026-09-17)** — the placement rule stands for whatever C5-5b keeps. The modules it lists whose rulings are struck (`staff-edge.ts` 219, `dsar.ts` 236, `exposure-copy.ts` 192, the R1 builders 202–208 and every §9 helper 224–231) are never built or are un-built; `exposure.ts`, `stake-snapshot.ts` and the status map follow C5-5b (179, 178, 186).
+     Every Commit 5 module under `src/lib/server/house-bot/` or
      `src/lib/house-bot/` (the `book.ts` and `oversight.ts` additions, `staff-edge.ts`, `exposure.ts`, `dsar.ts`,
      `stake-snapshot.ts`, `exposure-copy.ts`, the status map) obeys the walker as built (C4 ruling 160):
      - no token matching `sentinel` followed by word characters, `resolvedOutcome`, `resolutionEvidence`,
@@ -893,7 +966,9 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
      - **Proof:** `test:house-bot-info-edge` on both stores after each of those files changes; its planted virtual modules
        stay red.
 
-185. **A durable audit read over a window.** `getAuditByActionsDurable` gains optional `fromIso` / `toIso`
+185. **A durable audit read over a window.**
+     ⛔ **Superseded in part by D20 (2026-09-17)** — built in step 3; every consumer it names (R1's index and round-decision reads 202 and 207, the bulk read in R1 (d) and (e) 206, match integrity 229) is struck; decided member by member in C5-5b.
+     `getAuditByActionsDurable` gains optional `fromIso` / `toIso`
      (`createdAt >= from AND < to`); the ring fallback filters the same way before slicing; `total` counts inside the window.
      - Every existing caller passes neither, so its output is unchanged: `kyc-risk.ts:179`, `refused-funds.ts:554`,
        `oversight.ts:89`, `house-bot-engine-cases.mts:2160`, `:2230`, `:2252`.
@@ -910,6 +985,7 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
        Mutation: `<=` on `toIso` (the boundary row goes red).
 
 186. **Four private things get one shared home each.**
+     ⛔ **Superseded in part by D20 (2026-09-17)** — built in step 3; decided member by member in C5-5b: (1)'s R1 and statement importers are struck (oversight's re-export is engine code); (2)'s S7 chip (241) and compliance chip (230) are struck, the duplicate-label copy is not; (3) the CSV cell module was shared by the two struck CSVs (210, 213); (4) the `attest.ts` move existed for the struck `house-liquidity.ts` (201).
      - (1) `bulkMarketIds` (`oversight.ts:38`) and `selfDecidedAction` (`:57`) move to a shared server module (for example
        `src/lib/server/house-bot/decision-audits.ts`) and are re-exported from `oversight.ts`, because `oversight.ts:11`
        says only the planner imports it and engine-cases `:2530` uses `OV.bulkMarketIds`. R1 (d)/(e) and the statement
@@ -934,7 +1010,11 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
 
 ### 6.C · R9 decision audits and R2 exposure
 
-187. **R9: exactly six payload sites, one shape.** R9 changes exactly six payload sites:
+⛔ **Superseded by D20 (Ali, 2026-09-17):** every ruling in this section (187–198) is struck — never build; un-built in C5-5b where built.
+
+187. **R9: exactly six payload sites, one shape.**
+     ⛔ **STRUCK by D20 (2026-09-17)** — never build; un-built in C5-5b where built.
+     R9 changes exactly six payload sites:
      - `market.adjudicated` (`resolveMarket`; payload at `market-service.ts:3338-3360` carries `outcome`, `resolutionAuth`,
        pools and evidence), `market.emergency_void` (`emergencyVoidMarket`, `:4510-4518`), `objection.rejected`
        (`objections-service.ts:427-433`), `objection.upheld` (`:550-565`) and `market.resolve.bulk_override`
@@ -964,7 +1044,9 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
        no-house twin. `test:two-admin` unedited. Mutations: the payload gains `openTzs`; CASHED_OUT counted; `houseStake`
        inserted before an existing key.
 
-188. **Where each writer reads the house stake.** In its own call, after its refusal guards and before its audit, never on
+188. **Where each writer reads the house stake.**
+     ⛔ **STRUCK by D20 (2026-09-17)** — never build; un-built in C5-5b where built.
+     In its own call, after its refusal guards and before its audit, never on
      a refusal path, through `houseStakeForAudit` (never throws, pool client):
      - `resolveMarket`: on the adjudicate path only, after the guards at `:3286-3293` and before the audit at `:3326`. The
        stage-1 branch (`:3255-3283`) returns before any R9 audit and does not read.
@@ -980,7 +1062,9 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
        and a stage-1 attestation make no read (a spy). Mutation: the read moved after the refund loop and given the lock's
        `tx` → red.
 
-189. **The bulk Batch row uses `houseStakes`, a map.** `market.resolve.bulk_override` (targetType Market) carries
+189. **The bulk Batch row uses `houseStakes`, a map.**
+     ⛔ **STRUCK by D20 (2026-09-17)** — never build; un-built in C5-5b where built.
+     `market.resolve.bulk_override` (targetType Market) carries
      `houseStake` with the plain R9 shape. The `market.resolve.bulk` Batch row, normal and aborted alike, carries a DIFFERENT
      key, `houseStakes: {[marketId]: <R9 shape> | null}`, covering every market in resolved ∪ staged (for the aborted row,
      the markets sealed before the abort). One key with two shapes would let R1 (e) read `payload.houseStake.staffChosen` on
@@ -998,7 +1082,9 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
        value. `test:bulk-resolve`, `red:bulk-resolve` and `test:red-anchors` right after. Mutation: the map written under
        `houseStake` → red.
 
-190. **A failed exposure read records `null`, never a zero shape.** The decision proceeds; the payload carries
+190. **A failed exposure read records `null`, never a zero shape.**
+     ⛔ **STRUCK by D20 (2026-09-17)** — never build; un-built in C5-5b where built.
+     The decision proceeds; the payload carries
      `houseStake: null` (the key present) and the Batch map value is `null`; `console.error` names the market and the
      action. Displays show "House stake: — couldn't read" and never hide the line. R1 section (e) prints "not recorded" for
      null. Oversight is unaffected (it recomputes, 178). This does not contradict 04: R9's "{0,0} when there is none"
@@ -1011,7 +1097,9 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
        audit carries `houseStake === null` (or a null map value); CONTROL: the same fixture with the flag off gives the
        exact shape. Rules §0 pin. Mutation: a failed read writes the zero shape → red.
 
-191. **No refusal branch and no page condition reads the requester data (TGT-38).** A source pin in
+191. **No refusal branch and no page condition reads the requester data (TGT-38).**
+     ⛔ **STRUCK by D20 (2026-09-17)** — never build; un-built in C5-5b where built.
+     A source pin in
      `test:house-bot-reports` over decommented source:
      - (1) Services and actions — `market-service.ts`, `objections-service.ts`, `updown-service.ts`,
        `bulk-resolve-action.ts`, `bulk-resolve-eligibility.ts`, `resolution-policy.ts`, `app/markets/actions.ts`,
@@ -1031,6 +1119,7 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
        resolves a house-held market exactly like its no-house twin.
 
 192. **All R2 words live in `exposure-copy.ts`; one server component renders them; client controls get slots.**
+     ⛔ **STRUCK by D20 (2026-09-17)** — never build; un-built in C5-5b where built.
      - `src/lib/house-bot/exposure-copy.ts` is a pure module. It widens 03 §3's "admin sentences are built only in
        `feed-copy.ts`", as C4 ruling 141 did for `alert-copy.ts`. Module law: allowlisted value imports only
        (`@/lib/side-label` allowed, ruling 166); `stake-snapshot.ts` as types only; the money formatter injected (the
@@ -1064,7 +1153,9 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
        `test:unsaved-changes`, `test:eyebrow-roles`, `test:labels` and `test:type-scale` re-run unedited; phase C/D renders
        at 360 read for the wrap. Mutation: a client prop named `houseStake` → disclosure red.
 
-193. **"of which chosen by you" on exactly four surfaces.** "of which chosen by you: TZS X" renders on: the resolver queue
+193. **"of which chosen by you" on exactly four surfaces.**
+     ⛔ **STRUCK by D20 (2026-09-17)** — never build; un-built in C5-5b where built.
+     "of which chosen by you: TZS X" renders on: the resolver queue
      card, the ceremony page, the emergency-void confirm (only where the control itself renders: LIVE/CLOSED rows with
      `canEmergencyVoid`), and the objections row plus its decision dialog. `X = staffChosen.byRequester[viewerId]`, never the
      staff-chosen total (A's NO 9,000 and B's YES 6,000 on one market give A "9,000", not "15,000").
@@ -1080,7 +1171,9 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
        figure. Phase C renders of the queue card and the ceremony as A and as C. Mutations: the line shown to every viewer;
        the staff-chosen total used instead of `byRequester`.
 
-194. **The R2 lines on each admin surface.** Every display catches `houseStakeByMarket`'s throw and renders the unread
+194. **The R2 lines on each admin surface.**
+     ⛔ **STRUCK by D20 (2026-09-17)** — never build; un-built in C5-5b where built.
+     Every display catches `houseStakeByMarket`'s throw and renders the unread
      line.
      - **Resolver queue card** (`admin/resolver-queue/page.tsx`): the page reads `houseStakeByMarket` ONCE for the paged ids
        (session `:163`, paging near `:190`) and reuses the result for `bulkRows`. The line renders inside the same flex-wrap
@@ -1114,7 +1207,9 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
        `test:unsaved-changes`, `test:popup-fit`, `test:eyebrow-roles` and `test:labels` re-run unedited. Mutation: the title
        changed for a successfully read no-house market → byte-identity red.
 
-195. **The emergency-void admin notice carries the house share.** `notifyAdminMarketCancelled`
+195. **The emergency-void admin notice carries the house share.**
+     ⛔ **STRUCK by D20 (2026-09-17)** — never build; un-built in C5-5b where built.
+     `notifyAdminMarketCancelled`
      (`notification-service.ts:1252`, `:1272-1287`) and `marketCancelledAdminHtml` take optional
      `{houseRefundedTzs, houseRefundedCount}`, both counted inside `emergencyVoidMarket`'s refund loop.
      - The counting line (`if (p.houseBotId != null) houseRefundedTzs += p.stake`) IS a branch under the seam's BRANCH regex
@@ -1139,7 +1234,9 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
        at 1280 and 360 and read (§5 row 20). Mutations: the clause on a zero-house void (byte-identity red); the marker removed
        (seam red).
 
-196. **R2 lines never enter a field that reaches a player.** The house lines render OUTSIDE every field whose text goes to a
+196. **R2 lines never enter a field that reaches a player.**
+     ⛔ **STRUCK by D20 (2026-09-17)** — never build; un-built in C5-5b where built.
+     The house lines render OUTSIDE every field whose text goes to a
      player, and never prefill one:
      - the **emergency-void reason**: verbatim into `notifyMarketCancelled` for every bettor, the holder included
        (`notification-service.ts:1236-1248`), into every refunded player's email (`market-service.ts:4459-4464`), into every
@@ -1168,6 +1265,7 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
        byte-identity red.
 
 197. **The KYC card's house line.**
+     ⛔ **STRUCK by D20 (2026-09-17)** — never build; un-built in C5-5b where built.
      - `kycMoneyFacts` (`kyc-risk.ts:115-138`; type `:91-106`) gains `houseBetCount: number` and `houseStakedTzs: number`:
        CONFIRMED BET_PLACED rows with `houseBotId != null`, counted in the same loop over the transactions `kycCaseRead`
        already returns (`StoredTxn` carries `houseBotId` on both stores; no new read). `betCount` and `stakedTzs` stay the
@@ -1197,7 +1295,9 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
        in its population). Phase C render with and without money view. Mutation: the amount shown without `canSeeMoney` →
        red.
 
-198. **No player surface changes.** The R2/R9 build touches NO player surface. These stay byte-identical and pinned:
+198. **No player surface changes.**
+     ⛔ **STRUCK by D20 (2026-09-17)** — never build; un-built in C5-5b where built. Its rule becomes moot with the R2/R9 modules gone.
+     The R2/R9 build touches NO player surface. These stay byte-identical and pinned:
      `resolution-panel.tsx`, `app/markets/[id]/page.tsx` (its HOUSE_STAKE_ONLY → NOT_ELIGIBLE mapping at `:214-226`
      unchanged), `notifyMarketCancelled`, `marketCancelledRefundHtml`, `notifyObjectionDecided`, `notifyVerdictRecorded*`,
      and every `emergencyVoidMarketAction` / `resolveMarketAction` / objection action result shape. None imports
@@ -1210,7 +1310,11 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
 
 ### 6.D · R1 report, statement, CSVs, R7 index, R8
 
-199. **Two catalogue ids with declared parameters, parsed after the gate.** `REPORT_CATALOGUE` (`catalogue.ts:1052-1063`,
+⛔ **Superseded in part by D20 (Ali, 2026-09-17):** 199–213 are struck (211 and 212 stay only as recorded platform defects L26/L27); 214–217 (R8 and the mutation rule) stand.
+
+199. **Two catalogue ids with declared parameters, parsed after the gate.**
+     ⛔ **STRUCK by D20 (2026-09-17)** — never build; un-built in C5-5b where built.
+     `REPORT_CATALOGUE` (`catalogue.ts:1052-1063`,
      8 reports) gains `house-liquidity` (name "House liquidity report", `params: {period: "month"}`) and
      `house-market-statement` (name "House market statement", `params: {marketId: "required"}`). A catalogue entry gains an
      optional `params` descriptor, and the route (`src/app/api/admin/reports/[id]/route.ts`) parses ONLY the parameters its
@@ -1247,7 +1351,9 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
        "build threw" as a pass. Mutations: parameters parsed before the gate (a PLAYER sees 400 → red); the century not
        fixed (`0026-08` accepted → red).
 
-200. **Who may download the two catalogue reports.** Both keep `route.ts:32-46` exactly: ADMIN or `canView("accounting")`,
+200. **Who may download the two catalogue reports.**
+     ⛔ **STRUCK by D20 (2026-09-17)** — never build; un-built in C5-5b where built.
+     Both keep `route.ts:32-46` exactly: ADMIN or `canView("accounting")`,
      then `checkAdminTotp` → 403. No owner-only rule (CRA-02: "same access as other reports"). Ali is told in the handover
      that COMPLIANCE, FINANCE and AUDITOR can download them. The per-bot CSV (213) and the internal record (236) are the only
      owner-only house exports.
@@ -1255,7 +1361,9 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
      - **Proof:** reports §5: each accounting-view role downloads; a role without accounting view gets 403; TOTP not "ok"
        gets 403.
 
-201. **Where the builders live: a leaf `attest.ts`, no import cycle.** `regulatorSignatures` (`catalogue.ts:37`),
+201. **Where the builders live: a leaf `attest.ts`, no import cycle.**
+     ⛔ **STRUCK by D20 (2026-09-17)** — never build; un-built in C5-5b where built. The `attest.ts` move built in step 3 existed only to avoid a cycle with the struck `house-liquidity.ts`; C5-5b decides it member by member (186).
+     `regulatorSignatures` (`catalogue.ts:37`),
      `makeReference` (`:65`) and `maskUserId` (`:783`) move out of `catalogue.ts` into a new leaf server module,
      `src/lib/server/reports/attest.ts`, which imports neither `catalogue.ts` nor any builder. `catalogue.ts` and the new
      `src/lib/server/reports/house-liquidity.ts` both import from it, so there is no `catalogue.ts` ↔ `house-liquidity.ts`
@@ -1272,7 +1380,9 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
      - **Proof:** `test:read-tiers`, `test:product-line`, `test:house-bot-info-edge` re-run; a source pin (planted control)
        that `attest.ts` imports no builder.
 
-202. **The house-liquidity report's sections.** `buildHouseLiquidity(generatorId, {period})` returns ONE landscape report,
+202. **The house-liquidity report's sections.**
+     ⛔ **STRUCK by D20 (2026-09-17)** — never build; un-built in C5-5b where built.
+     `buildHouseLiquidity(generatorId, {period})` returns ONE landscape report,
      classification "Regulator hand-off", with `regulatorSignatures`; the reference and filename carry the period (199).
      AT LEAST these sections, in this order, each ≤ 12 columns, times as ISO strings with format `datetime` (EAT, `brand.ts`).
      Holders are printed by `maskUserId` (CRA-02's masked holder id, the mask every other regulator report uses, so rows
@@ -1322,7 +1432,9 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
        page. Mutations: a path family dropped from the map (pin red); section 3 computed on the cohort (tie to
        `MoneySummary.house` red); a holder printed unmasked (red).
 
-203. **Two money bases, never mixed in one figure.** Each section's description names its basis.
+203. **Two money bases, never mixed in one figure.**
+     ⛔ **STRUCK by D20 (2026-09-17)** — never build; un-built in C5-5b where built.
+     Each section's description names its basis.
      - **LEDGER basis:** marked `Transaction` rows with `createdAt` in `[packPeriodBounds.start, end)` (`report-pack.ts:53-81`,
        the statutory EAT month bounds, so R1 covers exactly the GBT pack's instants). It drives section 3's stakes, payouts,
        refunds, cash-outs and net per bot × product, and section 5. Its all-bot sum equals R3's `MoneySummary.house` over the
@@ -1342,7 +1454,9 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
        cohort line; section 3's all-bot sum equals `MoneySummary.house`; "open at period end" holds for a position settled
        after the end. Mutation: section 5 tied through two windows (boundary red).
 
-204. **Titles come from decision snapshots.** Section rows name a market by id plus the title from the intent's
+204. **Titles come from decision snapshots.**
+     ⛔ **STRUCK by D20 (2026-09-17)** — never build; un-built in C5-5b where built.
+     Section rows name a market by id plus the title from the intent's
      `decision.snapshot.titleEn` (a round adds `snapshot.roundNumber`), or the target's `snapshot.titleEn` for (g)
      (`decide.ts:234-241`, `:516`, `:561`; `enter-now-decision.ts:338`; `HouseTargetSnapshot`, `house-bot-dal.ts:249`). Only a
      row with no intent (a REFUSED Enter now press, or an UNKNOWN-entry position) reads the live market title, and it prints
@@ -1351,7 +1465,9 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
      - **Proof:** reports §5: a market whose live title changed after the stake prints the snapshot title; a refused press
        prints "(live title)".
 
-205. **No section truncates silently.** Every section that could be bounded pages its reader to completion under a
+205. **No section truncates silently.**
+     ⛔ **STRUCK by D20 (2026-09-17)** — never build; un-built in C5-5b where built.
+     Every section that could be bounded pages its reader to completion under a
      per-section hard-ceiling constant. When the ceiling or an audit read's `truncated` bites, the section description uses
      the platform's existing sentence, "Showing the most recent N of M; …" (which `reports-verify-live.mts:59` already
      recognises), and any totals row is labelled "Total (all)" and computed over all M. The summary carries one item,
@@ -1363,6 +1479,7 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
        Mutation: the sentence dropped → red.
 
 206. **Sections (b)–(h): sources and columns, and the renderer's limits.**
+     ⛔ **STRUCK by D20 (2026-09-17)** — never build; un-built in C5-5b where built.
      - **(b) Enter now register:** HouseBotPress purpose ENTER_NOW in the period, REFUSED included with its code, through
        `listRegister` with the new `purposes` filter (177), paged by keyset to the end (pages clamp at 500). A refused press
        has no intent, so its title is read live (204); a press's outcome and net come from its intent's `positionId`.
@@ -1400,7 +1517,9 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
        10 minutes, one just past period end; a voided staff-chosen stake; a market decided by its chooser; presses counted in
        any state; targets with P/S/C reactions; a veto. XLSX cells asserted and PDF pages read.
 
-207. **The R7 audit index: every house action, no category.** The index reads
+207. **The R7 audit index: every house action, no category.**
+     ⛔ **STRUCK by D20 (2026-09-17)** — never build; un-built in C5-5b where built.
+     The index reads
      `getAuditByActionsDurable(Object.keys(HOUSE_AUDIT), {fromIso, toIso, limit: INDEX_LIMIT})` with NO category option,
      newest first, windowed to the period (185), printing truncation in the section sentence (205). The action list is
      always `Object.keys(HOUSE_AUDIT)` (31 keys, `constants.ts:730-762`), never a hand-written list, and no quoted non-key such
@@ -1413,7 +1532,9 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
        emptied in the same process, are still listed; CONTROL: `getAuditPage` returns none of them there. If 185's IN spelling
        is chosen, one planted row per Prisma enum value is found. Mutation: category COMPLIANCE passed → red.
 
-208. **The house-market statement.** `buildHouseMarketStatement(generatorId, {marketId})`: classification "Regulator
+208. **The house-market statement.**
+     ⛔ **STRUCK by D20 (2026-09-17)** — never build; un-built in C5-5b where built.
+     `buildHouseMarketStatement(generatorId, {marketId})`: classification "Regulator
      hand-off", `regulatorSignatures`, reference and filename carrying the market id (prefix `HMS`). Sections:
      1. House intents on the market: kind, entry, why, due/placed EAT, side, stake, status/code, snapshot title and round.
      2. Marked positions and results: side, stake, status, payout.
@@ -1430,7 +1551,9 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
        no-house market prints "House stake: none"; the tie-out matches; phase C render of the button on both kinds of market;
        XLSX cells asserted and PDF read.
 
-209. **The month picker, and one month function shared with the staff-edge link.** The house-liquidity TEMPLATES card
+209. **The month picker, and one month function shared with the staff-edge link.**
+     ⛔ **STRUCK by D20 (2026-09-17)** — never build; un-built in C5-5b where built.
+     The house-liquidity TEMPLATES card
      (server `reports/page.tsx`, TEMPLATES `:53-110`; formats exactly `["Excel", "PDF"]`, because the route makes nothing
      else) renders a generic client wrapper holding a kit Select and `GenerateButton`.
      - `GenerateButton` (`generate-button.tsx`, fetch at `:36`) gains an optional generic `query?: Record<string, string>`
@@ -1457,7 +1580,9 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
        earliest bot. Phase C renders of the card and picker at 1280 and 360, including the default from a staff-edge href;
        fresh-build `verify:house-bot-bundle`. Mutation: the page computes the month itself (the year-end case goes red).
 
-210. **The transactions CSV: `house` filter and `house_bot_id` column.** On the existing accounting-view CSV route
+210. **The transactions CSV: `house` filter and `house_bot_id` column.**
+     ⛔ **STRUCK by D20 (2026-09-17)** — never build; un-built in C5-5b where built.
+     On the existing accounting-view CSV route
      (`src/app/api/admin/transactions/export/route.ts`; headers `:56-60`; filter build `:90-101`; `db.txn.search` `:102`):
      - `TxnSearchFilters` (`txn-filters.ts:32-46`) gains `house?: "only" | "exclude"`: `matchesFilters` checks
        `houseBotId != null` or `== null`; the Prisma `where` gets `{houseBotId: {not: null}}` or `{houseBotId: null}`. The two
@@ -1480,7 +1605,9 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
        `test:read-tiers` re-run. Phase C render of `/admin/transactions` with the Select at 1280 and 360. Mutation: the Prisma
        clause inverted → red on Postgres.
 
-211. **The CSV's 500-row clamp: an honesty case, and a LIVE defect recorded.** Measured on both trees: both stores clamp
+211. **The CSV's 500-row clamp: an honesty case, and a LIVE defect recorded.**
+     ⛔ **STRUCK by D20 (2026-09-17)** — never build; un-built in C5-5b where built. Only the record stands: the 500-row clamp is platform defect L26 for Ali, no longer a Commit 8 release precondition (no house column ships).
+     Measured on both trees: both stores clamp
      the search `take` to 500 (`prisma-dal.ts:1723` here, `:1708` on `origin/main` `b726cb7f`; `txn-filters.ts:161`), so the
      route's documented 50,000 ceiling (`:36`) is 500 in practice; the truncation shows only in `X-Export-Truncated` (`:165`)
      and the `transactions.exported` payload (`:147`), never inside the file an officer's `<a href>` download saves.
@@ -1496,7 +1623,9 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
      - **Source:** REP NEW-csv-500-clamp AMENDED; ADJ 10.
      - **Proof:** reports §6 on both stores at 10 and 600 rows. Mutation: the audit's `truncated` forced false → red at 600.
 
-212. **The CSV's missing TOTP step-up: a LIVE gap recorded.** Measured: the transactions CSV route has no TOTP step-up
+212. **The CSV's missing TOTP step-up: a LIVE gap recorded.**
+     ⛔ **STRUCK by D20 (2026-09-17)** — never build; un-built in C5-5b where built. Only the record stands: the missing TOTP step-up is platform defect L27 for Ali, no longer a Commit 8 release precondition (no `house_bot_id` column ships).
+     Measured: the transactions CSV route has no TOTP step-up
      (`:73-77`), unlike the reports route, whose comment records the B3 finding that a direct GET skips the admin layout's TOTP
      gate (reports route `:40-46`); the proxy covers `/admin` pages, not `/api/admin` (`src/proxy.ts`). Commit 5 does not edit
      the gate. Recorded in PROGRESS as **L27, LIVE on main** (the file already carries money and PII) and told to Ali, with a
@@ -1507,6 +1636,7 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
      - **Proof:** none in Commit 5 (a recorded gap); Commit 8's release checklist carries the precondition.
 
 213. **The owner-only per-bot CSV route ships in Commit 5, behind a gate that never confirms the feature to a player.**
+     ⛔ **STRUCK by D20 (2026-09-17)** — never build; un-built in C5-5b where built.
      - **Placement:** `src/app/admin/house-bots/[botId]/export/route.ts` (the `[botId]` slug matches 03 S3 and 04:3353; 04
        R1 at 04:1977 and N1 §9's CSV columns at 04:3576 place it in Commit 5, and PROGRESS's Commit 7 scope lists no CSV).
        Commit 7 renders the buttons with the tabs.
@@ -1621,7 +1751,10 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
 
 ### 6.E · Staff edge
 
+⛔ **Superseded by D20 (Ali, 2026-09-17):** every ruling in this section (218–223: the staff-edge alert, its R1 flag and TGT-39) is struck — never build; un-built in C5-5b where built.
+
 218. **The staff-edge duty runs after `hourly`, on the first EAT day of a month, and its gate is proven.**
+     ⛔ **STRUCK by D20 (2026-09-17)** — never build; un-built in C5-5b where built.
      - `staffEdgePass(alerts: EngineAlerts, nowMs: number): Promise<{officers: number; alerted: number; off: boolean}>` lives
        in `src/lib/server/house-bot/oversight.ts`; `planner.ts` is its only product importer, and no report builder imports
        `oversight.ts`.
@@ -1649,7 +1782,9 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
        same hour retries; (f) after a finished run, a second pass in the same hour does not run it again. Each of (a)–(f) has
        a mutation. Engine §17 on both stores: `staffEdge` after the 17.10 prefix; 17.61 (hourly) unchanged.
 
-219. **One integer verdict for the alert and R1's flag.** `staffEdgeVerdict(officer, baseline, thresholds: {winRatePts: number | null; netTzs: number | null}): {fires: boolean; rateMet: boolean; netMet: boolean}`
+219. **One integer verdict for the alert and R1's flag.**
+     ⛔ **STRUCK by D20 (2026-09-17)** — never build; un-built in C5-5b where built.
+     `staffEdgeVerdict(officer, baseline, thresholds: {winRatePts: number | null; netTzs: number | null}): {fires: boolean; rateMet: boolean; netMet: boolean}`
      in a new `src/lib/house-bot/staff-edge.ts` that imports only `./constants` (or `./clock`).
      - The rate condition holds when `winRatePts` is set, baseline won + lost ≥ 1, the officer's won + lost ≥ 1, and
        `100·won·(bw + bl) − 100·bw·(won + lost) ≥ winRatePts·(won + lost)·(bw + bl)` (integer cross-multiplication, equal to
@@ -1662,7 +1797,9 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
      - **Proof:** TGT-39's figures: X 12/14 against a 49/100 baseline fires on rate; Z 11/20 does not fire on rate but fires
        on net; Y has 9 settled and never fires. Rules §0 module law. Mutations: `>` for `≥`; cashedOut counted in settled.
 
-220. **The STAFF_EDGE copy row, and who resolves the officer's name.** `alert-copy.ts` (ROWS `:209-413`) gains a STAFF_EDGE
+220. **The STAFF_EDGE copy row, and who resolves the officer's name.**
+     ⛔ **STRUCK by D20 (2026-09-17)** — never build; un-built in C5-5b where built.
+     `alert-copy.ts` (ROWS `:209-413`) gains a STAFF_EDGE
      row, severity warning.
      - **Title (en):** "Staff edge: {name}'s staff-chosen stakes in {Month YYYY} · {HH:MM:SS}". It ends ` · ${c.at}` (the 90 s
        bell dedupe, `alert-copy.ts:11-12`), with no emoji and no unreplaced placeholder.
@@ -1697,6 +1834,7 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
        function (reports §7 year-end red).
 
 221. **TGT-39 on both stores, with disjoint officers, and delivery to every admin.**
+     ⛔ **STRUCK by D20 (2026-09-17)** — never build; un-built in C5-5b where built.
      - TGT-39's three variants use DISJOINT officer ids over the same automated baseline: X/Y/Z for (a), X2/Y2/Z2 for (b),
        X3/Y3/Z3 for (c). AlertOnce claims persist inside one child, so shared officers would make (b)'s "only Z alerts" see
        Z's claim from (a) and pass vacuously. The variants' threshold settings are TGT-39's own (01:3649-3669).
@@ -1716,7 +1854,9 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
      - **Proof:** reports §7 on both stores; the comms delivery case. Mutations: the claim key without the month suffix (a
        second month red); the pass reading the book before the NULL check (spy red).
 
-222. **Commit 5 closes only after the staff-edge alert is rendered and read.** The dependency is built
+222. **Commit 5 closes only after the staff-edge alert is rendered and read.**
+     ⛔ **STRUCK by D20 (2026-09-17)** — never build; un-built in C5-5b where built.
+     The dependency is built
      (`emitters.ts:139-157` → `notification-service.ts:2526-2554` → `fanOutHouseAdmin` to every ADMIN). All four must run:
      1. `qa:house-bot-bells` (`package.json:464`; `scripts/house-bot-bell-shots.mts:128`) writes a STAFF_EDGE row through
         `notifyAdminsHouseBotAlert` with TGT-39's X figures, moves 1.1 to exactly 12 rows written and 1.2 to at least 12
@@ -1732,7 +1872,9 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
      - **Source:** BOOK P30 AMENDED; BOOK MISSED (the library tab; the +60-day test).
      - **Proof:** the four items, each recorded with its screenshots or case counts.
 
-223. **R1's flag is its own record, and a month with no day-01 run sends no alert.** R1 (f)'s flag is computed at generation
+223. **R1's flag is its own record, and a month with no day-01 run sends no alert.**
+     ⛔ **STRUCK by D20 (2026-09-17)** — never build; un-built in C5-5b where built.
+     R1 (f)'s flag is computed at generation
      from `houseStaffScorecard` and `staffEdgeVerdict`, with the control row's thresholds at that moment, printed beside the
      flag ("15 pts · TZS 100,000", or "off") with "as of <generated EAT>". It can differ from the day-01 alert, because
      stakes settle later (N1 fixes evaluation to day 01, 04:3290; R1 can be generated any day and its flag is its own record,
@@ -1746,7 +1888,11 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
 
 ### 6.F · R3 statutory, §9 splits, R4/F9, D6
 
-224. **Every PLAN §9 row, in four classes that never share a line.** (PLAN.md:456-466.)
+⛔ **Superseded in part by D20 (Ali, 2026-09-17):** 224–231 and 233–234 are struck (no report code changes: reports treat a house bot's account as any player's); 232 (the marker pin) and 235 (F6's email rule) stand.
+
+224. **Every PLAN §9 row, in four classes that never share a line.**
+     ⛔ **STRUCK by D20 (2026-09-17)** — never build; un-built in C5-5b where built.
+     (PLAN.md:456-466.)
      - **(A) STATUTORY, UNCHANGED.** No code touched; each proven equal to a no-marker twin on both stores: every
        `MoneySummary` money field including `holdPct` (`report-money.ts:141-173`); `dailyPnl` and `categoryBreakdown` rows;
        `moneyByGame` money fields; the GBT pack's existing sections, rows and counts (`catalogue.ts:106-184`); daily ops'
@@ -1783,7 +1929,9 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
        Phase C renders of `/admin/finance` (with and without house stakes) and `/admin/insights`. Mutations: `holdPct` over
        unmarked rows (class A red); `topContributors` unfiltered on one twin (class C red).
 
-225. **`MoneySummary.house`.** `MoneySummary` gains `house: {stakes, returned, net, bets, houseShareOfStakesPct}`, computed
+225. **`MoneySummary.house`.**
+     ⛔ **STRUCK by D20 (2026-09-17)** — never build; un-built in C5-5b where built.
+     `MoneySummary` gains `house: {stakes, returned, net, bets, houseShareOfStakesPct}`, computed
      inside `summarise` (`report-money.ts:140`) from the SAME `conf` array: `stakes` = Σ|BET_PLACED| with `houseBotId` set;
      `returned` = Σ|BET_PAYOUT + CASHOUT + BET_REFUND| with `houseBotId` set; `net = returned − stakes`; `bets` = count of
      marked BET_PLACED; `houseShareOfStakesPct = stakes > 0 ? house.stakes / stakes × 100 : 0`. `holdPct` (`:169`) and every
@@ -1797,7 +1945,9 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
      - **Proof:** reports §9: all = players + house per window; `houseShareOfStakesPct` 0 with no stakes; report-parity §2 with
        its nested control. Mutation: `returned` without CASHOUT (identity red).
 
-226. **The statutory basis: the marked subset of the same rows.** Every §9 house line printed beside a statutory figure is
+226. **The statutory basis: the marked subset of the same rows.**
+     ⛔ **STRUCK by D20 (2026-09-17)** — never build; un-built in C5-5b where built.
+     Every §9 house line printed beside a statutory figure is
      the marked subset of the SAME `Transaction` rows that figure sums — same window, same status and type filters — so all =
      players + house holds row by row. The placement-day cohort (`book.ts:10-20`) stays the basis for caps, stops and R1's
      cohort sections only, and is never printed as a statutory memo: its returned money has no upper time bound
@@ -1816,7 +1966,9 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
        difference; a closed month's pack regenerated after a later payout reproduces its memo. c20.a/c20.b
        (`house-bot-dal-cases.mts:249-250`, `:925-946`) stay.
 
-227. **The GBT monthly pack's house memo, and W21.** `buildGbtMonthly` (`catalogue.ts:75`) keeps every existing section, row
+227. **The GBT monthly pack's house memo, and W21.**
+     ⛔ **STRUCK by D20 (2026-09-17)** — never build; un-built in C5-5b where built.
+     `buildGbtMonthly` (`catalogue.ts:75`) keeps every existing section, row
      and count byte-identical. A "House liquidity (memo)" section renders ONLY when the pack month holds at least one marked
      CONFIRMED transaction, with the rows:
      - "of which: house liquidity stakes (in the GGR base)" (value, count);
@@ -1840,7 +1992,9 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
        after the end; memo stakes equal Σ `dayRows`. XLSX cells asserted and PDF read. Mutation: the memo rendered
        unconditionally (twin equality red).
 
-228. **The FIU SAR's Context column.** `buildFiuSar` (`catalogue.ts:217`; columns `:306`) gains one column, "Context":
+228. **The FIU SAR's Context column.**
+     ⛔ **STRUCK by D20 (2026-09-17)** — never build; un-built in C5-5b where built.
+     `buildFiuSar` (`catalogue.ts:217`; columns `:306`) gains one column, "Context":
      "Designated house-liquidity account (since <EAT date of the covering window's designatedAt>)" when any designation window
      `[designatedAt, removedAt ?? ∞)` of a bot held by that user covers the row's `createdAt`; blank otherwise. It stops
      officers filing a holder's funding deposits as uninformed suspicions.
@@ -1859,6 +2013,7 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
        stays its inherited red) and `test:red-anchors` re-run. Mutation: `removedAt` ignored (the row after removal red).
 
 229. **Match integrity is built as sealed; its house parts render only when a voided market holds a marked position.**
+     ⛔ **STRUCK by D20 (2026-09-17)** — never build; un-built in C5-5b where built.
      (REFUTED → AMENDED; ADJ 6.) 04 R3 seals the "House stake" and "Resolution path" columns, and CRA-22 adds the house
      section, the refund flag and the predictor note. D19 strikes only public text and holder-facing surfaces and leaves every
      admin-console surface; the extract's banner and RESUME AT say "its reports … stand"; the "Sportradar + GBT integrity
@@ -1892,6 +2047,7 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
        void).
 
 230. **The harm and AML exclusions, and the compliance holder chip.**
+     ⛔ **STRUCK by D20 (2026-09-17)** — never build; un-built in C5-5b where built.
      1. `detectHarmMarkers` passes `{excludeHouseBets: true}` to `db.txn.findByUser` (`responsible-gambling.ts:788`/`:801`;
         the only 10,000-row caller; the option is ruling 173's). Deposits are never marked, so RAPID_DEPOSIT_ESCALATION still
         reads the holder's funding deposits. This only stops house volume raising RG flags against the holder, which reveals
@@ -1913,7 +2069,9 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
        stakes; the chip for a holder with an ACTIVE and with an AUTO_PAUSED bot, none for REMOVED. Phase C render of
        `/admin/compliance` at 1280 and 360. Mutation: the exclusion applied after the memory slice (memory red).
 
-231. **`/admin/house` gains one clearly labelled marker card.** `/admin/house` stays ledger-truth (`house/page.tsx:7-17`).
+231. **`/admin/house` gains one clearly labelled marker card.**
+     ⛔ **STRUCK by D20 (2026-09-17)** — never build; un-built in C5-5b where built.
+     `/admin/house` stays ledger-truth (`house/page.tsx:7-17`).
      Its §9 addition is two marker reads in their OWN `AdminCard` whose description names the source, "from the house marker on
      transactions and positions, not from the ledger":
      - "House bots — net result (included above)" = `MoneySummary.house.net` for the page's resolved window;
@@ -1951,6 +2109,7 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
      - **Proof:** the counts and the planted controls, each seen red or green.
 
 233. **`leaderboard({excludeHouse})` and the reward walker.**
+     ⛔ **STRUCK by D20 (2026-09-17)** — never build; un-built in C5-5b where built.
      1. `positionStore.leaderboard(limit, opts?: {sort, dir, productLine?, excludeHouse?: boolean})`, default false. The SQL
         appends the literal `and p."houseBotId" is null` inside the where at `market-dal.ts:1254` — no new bind, so `limit $1`
         and the optional `= $2` keep their positions (`:1250-1261`). The memory twin (`:708-716`) skips marked rows beside the
@@ -1979,7 +2138,9 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
        Reports §0 walker controls. `test:leaderboard-order` unchanged (its cases pass no option). `test:dal-parity` for the
        option. Mutation: the SQL literal placed outside the where (Postgres red).
 
-234. **D6: the bot stays on the public leaderboard, pinned.** On both stores: `leaderboard()` with no option ranks a holder's
+234. **D6: the bot stays on the public leaderboard, pinned.**
+     ⛔ **STRUCK by D20 (2026-09-17)** — never build; un-built in C5-5b where built.
+     On both stores: `leaderboard()` with no option ranks a holder's
      marked positions exactly like a player's; `excludeHouse: true` drops only marked rows; the default output equals a
      no-marker twin. A source pin: `src/app/leaderboard/page.tsx` and `src/lib/leaderboard/**` never pass `excludeHouse` (D19c
      makes the default-false rule stricter: the public page must never pass it). `predictorCount`, `traderSeedsByMarket`,
@@ -2022,7 +2183,11 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
 
 ### 6.G · R5 data rights and R6 erasure
 
-236. **R5's house projection is built only as an OWNER-ONLY internal record.** (ADJ 2; supersedes §1 S1.)
+⛔ **Superseded in part by D20 (Ali, 2026-09-17):** 236–238, 240–242 and 246 are struck (the internal record, the officer page's direct read, the S7 chip and row tag, the crowd-out record); 239 stands only in its absence half; 243–245 stand.
+
+236. **R5's house projection is built only as an OWNER-ONLY internal record.**
+     ⛔ **STRUCK by D20 (2026-09-17)** — never build; un-built in C5-5b where built.
+     (ADJ 2; supersedes §1 S1.)
      - `src/lib/server/house-bot/dsar.ts` exports `houseLiquidityDsarView(userId: string): Promise<HouseDsarRecord | null>`. It
        returns null when the account has no designation, no PENALTY_BOXED event and no countered position.
      - The record is an allowlist. Its FIRST key is `classification`, a fixed sentence: "Internal 50pick officer record — not
@@ -2077,6 +2242,7 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
        (red); the audit without `code` (red); `holderUserId` written for a trigger player (red).
 
 237. **The record's designations, positions and transactions.**
+     ⛔ **STRUCK by D20 (2026-09-17)** — never build; un-built in C5-5b where built.
      - `designations[]` = `{botId, status, causes, designatedAt, consent: {method: "password entered by 50pick", verifiedAt}, consentVoidAt, consentVoidCause, removedAt, removedReason, writtenBy50pick: {label, note}}`
        for every bot of `houseBotStore.listByUserId(userId)`, REMOVED included. `causes` are live, from `control.ts`
        `readBotAndHolder(botId)` (`:60`, causes `:94`); when it throws (e.g. `openErasureRequest` on an unreadable queue),
@@ -2103,6 +2269,7 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
        computed as `rows.length` (red).
 
 238. **The record's events: 17 kinds, read per bot, three actor words.**
+     ⛔ **STRUCK by D20 (2026-09-17)** — never build; un-built in C5-5b where built.
      - The events are exactly `DSAR_HOLDER_EVENT_KINDS` (17, `constants.ts:291-318`), read PER BOT of
        `houseBotStore.listByUserId(userId)` (REMOVED included) through
        `houseBotEventStore.listByBot(botId, {kinds: DSAR_HOLDER_EVENT_KINDS, limit: 500, cursor})`, following the cursor to a
@@ -2126,6 +2293,7 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
        by `userId` (the null-userId event missing → red); "50pick owner" for the holder (red).
 
 239. **Trigger players: nothing in their doors; decisions only in the internal record.**
+     ⛔ **Superseded in part by D20 (2026-09-17)** — the absence half STANDS (checkpoint C5-7): neither releasable door carries a trigger section, and a trigger player's `exportUserData` and `buildDsarBundle` equal an identical account's with no box and no countered positions. STRUCK (never build; un-built in C5-5b where built): `liquidityDecisions`, `counteredPositionsCount`, `listByUserKinds`, the record's note (L32) and its offer on `/admin/players/[id]`. The CRA-23 internal staff script sentence stands (Commit 6).
      - Neither releasable door carries a trigger section (168). `liquidityDecisions` =
        `{excludedDays: {rows: [{day, cause}], total, truncated}, counteredPositionsCount, note}` exists only in the internal
        record, null for a non-trigger account.
@@ -2159,7 +2327,9 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
        SKIPPED counter does not; 501+ boxed days page with a real total. `test:dal-parity` for both members. Mutation:
        `count(*)` instead of DISTINCT (red).
 
-240. **The officer player page reads transactions directly.** `/admin/players/[id]` (`page.tsx:130-144`) stops calling
+240. **The officer player page reads transactions directly.**
+     ⛔ **STRUCK by D20 (2026-09-17)** — never build; un-built in C5-5b where built.
+     `/admin/players/[id]` (`page.tsx:130-144`) stops calling
      `exportUserData(id)` and reads `db.txn.findByUser(id, 1000)` inside the same try/catch, keeping A-5's `txnsFailed` state:
      a thrown read shows "unavailable", never a fabricated TZS 0. Every `data.user!.id` use (measured at `:460`, `:461`,
      `:474`, `:475`, `:478`, `:482`; the D19 area counted seven, so re-derive) becomes the page's own `user.id` (non-null after
@@ -2173,7 +2343,9 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
        AND a holder; a thrown read renders "unavailable". Phase C render. Mutation: the catch removed (a thrown read crashes →
        red).
 
-241. **The admin S7 chip and the transactions-tab row tag, rendered on the server.** Built in Commit 5 (admin-only, valid
+241. **The admin S7 chip and the transactions-tab row tag, rendered on the server.**
+     ⛔ **STRUCK by D20 (2026-09-17)** — never build; un-built in C5-5b where built.
+     Built in Commit 5 (admin-only, valid
      under D19; 03 S7). In the server page's chip row (`players/[id]/page.tsx:240-275`; the KYC chip precedent at `:244`),
      from `houseBotStore.findLiveByUserId(id)` (it excludes REMOVED): "House bot · <status word>", with the word and variant
      from ruling 186's server-side map ("Active", "Paused", "Auto-paused"); REMOVED shows no chip.
@@ -2193,6 +2365,7 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
        reports §0: `status-tone.ts` carries no HOUSE_BOT token (planted control).
 
 242. **The export crowd-out is recorded for Ali, not built around.**
+     ⛔ **STRUCK by D20 (2026-09-17)** — never build; un-built in C5-5b where built.
      - The releasable doors keep their caps: the player door 1,000 transactions (`user-service.ts:70`, no total or truncated)
        and 1,000 audit rows (`:86`); the officer bundle 10,000 transactions (`privacy.ts:303`). No exclusion is built (168).
      - The crowd-out hits BOTH doors. At 04's reference rate of 200 house bets a day (a stake row, plus a payout or refund row
@@ -2288,7 +2461,9 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
      - **Source:** DSAR NEW-closure-engine-off STANDS.
      - **Proof:** 19.8b on both stores. Mutation: the hook returns early when the env is false (red).
 
-246. **Personal positions are not added to any export.** Not built in Commit 5: CRA-04 asks for them, R5 (the sealed text)
+246. **Personal positions are not added to any export.**
+     ⛔ **STRUCK by D20 (2026-09-17)** — never build; un-built in C5-5b where built.
+     Not built in Commit 5: CRA-04 asks for them, R5 (the sealed text)
      adds none, and extra controls wait for Ali's yes. 💡 **X14** (default: not built). If Ali ever approves them, house
      positions must appear exactly as own positions, with no marker, through an allowlist (D19c); under D19 such a section would
      list house stakes unlabelled.
@@ -2440,6 +2615,8 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
 
 ### 6.I · Scope moves, known gaps and deferrals
 
+⛔ **Superseded in part by D20 (Ali, 2026-09-17):** 253 and 257 stand; 254 and 255 are struck in the parts named under them; 256 is struck.
+
 253. **Nothing holder-facing, and no dev seed route.** No `SellButton` `houseStake`, no player chip, no activity-feed chip, no
      `market.houseStake*` or other player key. `sell-button.tsx` and the markets page's `heldLabel` are not edited (L21/L22 stay
      Ali's). D19c and rulings 146–147 already give the neutral words, and no holder-facing house surface exists in `src` outside
@@ -2455,7 +2632,9 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
      - **Proof:** `test:house-bot-disclosure`; `qa:house-bot-holder-view`; `git diff` shows no change to `sell-button.tsx`, the
        player dictionary keys or `heldLabel`.
 
-254. **R2's overview split and the CAP_EXPOSURE amount move to Commit 7.** A deliberate move off 04's placement table
+254. **R2's overview split and the CAP_EXPOSURE amount move to Commit 7.**
+     ⛔ **Superseded in part by D20 (2026-09-17)** — the R2 overview exposure split (L39) is STRUCK: never build. The CAP_EXPOSURE held amount is not ruled here; Commit 7's rulings decide it. R2's reader half named below goes with `exposure.ts` (179), decided in C5-5b.
+     A deliberate move off 04's placement table
      (04:2102 puts R1–R4 in Commit 5), for a non-D19 reason: the three-bucket overview split (Open on live markets / Awaiting
      settlement / Frozen by objection) and the CAP_EXPOSURE sentence naming the held amount land in Commit 7 with the console
      overview and feed and `test:house-bot-console`, because no overview page or feed renders before Commit 7 and an unrendered
@@ -2467,7 +2646,9 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
      - **Source:** EXP P22 AMENDED.
      - **Proof:** reports §1 (179).
 
-255. **What later commits owe because of Commit 5.** Recorded; nothing here is built now.
+255. **What later commits owe because of Commit 5.**
+     ⛔ **Superseded in part by D20 (2026-09-17)** — STRUCK: the per-bot CSV route-segment check (213), the owner links on the S7 and compliance chips (241, 230), the +60-day staff-edge href test (L38), the two `house_bot.exported` writers (L48), the audit index assertions (207), the per-bot CSV buttons (213), the R2 overview split (254; the CAP_EXPOSURE amount is Commit 7's to rule), R1 (e) and two-admin mode (L35), and the Commit 8 CSV clamp and TOTP release preconditions (211 and 212 stay recorded as platform defects L26/L27). L34 is closed: correct under D20. STANDS: Commit 7's neutral names (L33), `withdrawHouseConsent` reshaped (L49), L16's bell appearance, the console's "liquidity stakes" copy decision (L36), Commit 6's staff script (CRA-23) and FS-30, and Commit 8's `ops:house-bots-status` on the admin reader (172).
+     Recorded; nothing here is built now.
      - **Commit 7 — neutral names (L33).** `admin-nav-groups.ts` is imported by the client components `admin-sidebar-nav.tsx`
        and `admin-crumbs.tsx`, so a "House bots" nav label or an `/admin/house-bots` href added there ships to every visitor (and
        matches `house[_ -]?bots?`; the nav already ships `main`'s "House" → `/admin/house`, `admin-nav-groups.ts:94`, which is
@@ -2496,7 +2677,9 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
        buildNotes (counts); R3 NEW-harm-exclusion AMENDED (CRA-18); DSAR P24 STANDS; BOOK MISSED (+60-day test).
      - **Proof:** each has its register row (§8); the path-scan check at the closing gates.
 
-256. **The first reward feature owes `NON_HOUSE_POSITION_SQL`.** FS-05's `NON_HOUSE_POSITION_SQL` export and its prize-run audit
+256. **The first reward feature owes `NON_HOUSE_POSITION_SQL`.**
+     ⛔ **STRUCK by D20 (2026-09-17)** — never build; un-built in C5-5b where built. The no-reward rule itself stays built in the money seam and recorded in the docs.
+     FS-05's `NON_HOUSE_POSITION_SQL` export and its prize-run audit
      line are NOT built in Commit 5, because no prize, tournament or streak writer exists (`PROMOTION` is a BonusSource with no
      writer, `store.ts:261`). Every automated reward site today is closed to house stakes: the recruiter first-bet prize
      (`affiliate-service.ts:1112-1118`, called at `market-service.ts:1820`), agent/referral commission
@@ -2584,7 +2767,11 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
 
 ### 6.J · Added during the build
 
-259. **Every house read a console page renders goes through a viewer gate; a layout is not a gate.** (Added in C5 step 5's
+⛔ **Superseded in part by D20 (Ali, 2026-09-17):** 259 stands only in the part named under it; 260 and 263 stand; 261 and 262 are struck.
+
+259. **Every house read a console page renders goes through a viewer gate; a layout is not a gate.**
+     ⛔ **Superseded in part by D20 (2026-09-17)** — STRUCK with the R2 display and the KYC line (never build; un-built in C5-5b): `houseStakeForConsole`, `houseBotLabelsForConsole`, the KYC page's `houseVisible` pass and the re-reading of ruling 194. STANDS: `houseConsoleAudience` (the stored-role audience, failing closed) that ruling 260's audit gate uses, the measurement with its platform finding recorded for Ali, and the served probe (`qa:house-bot-console-probe`).
+     (Added in C5 step 5's
      review, finding d19-hunt-01, 2026-09-17; the step could not close under D19 without it.)
      - **Measured, not assumed.** On this branch's production build (`next start`, a scratch database, the step-5 render
        fixture) a signed-in PLAYER, the holder and a trigger player each requested `/admin/resolver-queue`,
@@ -2683,14 +2870,18 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
        read handed to no gate, a literal viewer or another route; the gate returning the rows for a viewer outside; the row
        filter and the key strip each dropped; the `HouseBot` target rule dropped.
 
-261. **The bulk count keeps the shipped words.** The bulk bar and its confirmation say "House stakes on {n} of these
+261. **The bulk count keeps the shipped words.**
+     ⛔ **STRUCK by D20 (2026-09-17)** — never build; un-built in C5-5b where built.
+     The bulk bar and its confirmation say "House stakes on {n} of these
      markets" and "House stake couldn't be read on {n} of these markets" (`BULK_EXPOSURE_COUNT_TEMPLATE`, one string, the two
      sentences split on `|`). The pair reads in parallel and leads with the vocabulary word, so a reader scanning the bar sees
      "House stake" first. Ruling 192's "{n} of these markets carry house stakes" is superseded. No code change.
      (Decided at C5 step 5's close, review finding conformance-4.)
      - **Proof:** reports 4.194.2 (the two sentences from the template), 0.175.r2p (both sentences are vocabulary hits).
 
-262. **Ruling 196's prefill mutation is proven by the slot-field pin.** "The reason field prefilled with the house line →
+262. **Ruling 196's prefill mutation is proven by the slot-field pin.**
+     ⛔ **STRUCK by D20 (2026-09-17)** — never build; un-built in C5-5b where built.
+     "The reason field prefilled with the house line →
      byte-identity red" cannot be proven through the byte-identity cases 4.195.7/8 and 4.196.1: a prefill happens in the
      client control, and those cases drive the services, which never see the dialog's initial state. The mutation is proven
      by reports §0 0.196.1 (each client decision control renders its slot as a child only — never a field's initial state, a
@@ -2713,6 +2904,8 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
        stay.
 
 ## 7. Guards that will move, and how to move each honestly
+
+⛔ **Superseded in part by D20 (Ali, 2026-09-17):** a move this table names for a struck ruling is never made, and where it was made it is moved back honestly in C5-5b (re-anchored to the same defect, never weakened). Rows whose every move serves struck rulings: 8, 12, 13, 16, 19, 20, 21, 23–33, 37–39 and 42. Rows that stand in part: 1 (the `staffEdge` duty is struck; the requester swap and helper moves follow 178 and 186), 3 (§6's crowd-out and the internal-record parts of §7–§8 are struck), 4 (§7's `entryRows` and `feeInputs` EXPLAINs follow 180 and 183), 5 (`staff-edge.ts`, `exposure-copy.ts`, the `failExposureReadForCases` pin and the `staffEdge` unit are struck; `eatMonthWindow` and `stake-snapshot.ts` follow 182 and 178), 9 (`SEAM:emergencyHouseShare` is struck), 14 (`dsar.ts` is struck; `exposure.ts` follows 179), 15 (members follow 177), 18 (the R9 writers' anchor run is struck), 35 (the `requireHouseOwner` note is struck with 213; the status word follows 186) and 36 (`dsar.ts` is struck). Rows 2, 6, 7, 10, 11, 17, 22, 34, 40, 41, 43 and 44 stand.
 
 Anchors as of `d15eeb70`. Run each named suite right after touching its file. Read a ratchet's printed population before
 moving any pin; never raise a ratchet; never allowlist a D19 guard's hit. One row per guard.
@@ -2766,16 +2959,18 @@ moving any pin; never raise a ratchet; never allowlist a D19 guard's hit. One ro
 
 ## 8. Register rows to add to PROGRESS (in the same commit that finds them)
 
+⛔ **Superseded in part by D20 (Ali, 2026-09-17):** rows for struck surfaces carry their own ⛔ D20 note. W21 and W22 are moot, L34 is closed (correct under D20), and L26/L27 are recorded platform defects only, no longer release preconditions.
+
 ### 8.1 ⏳ Waiting on Ali
 
 | # | Question | Default being built |
 |---|---|---|
-| **W21** | **House-liquidity lines on routine statutory filings.** The GBT monthly pack's "House liquidity (memo)" section renders only for a month holding marked money, so no earlier than Ali's own switch-on (D1); the FIU SAR's "Context" column renders from designation windows, which can exist BEFORE switch-on. Both reach a regulator on routine filings, possibly before Ali decides to send the private Board draft (D19b). The FIU is part of this question. (Rulings 227, 228.) | **Build as ruled.** Alternative: render both only after Ali records that the Board draft was sent — which would revive a sent-record writer for the private draft, because D19 struck P1's disclosure tracking (PROGRESS.md:38) and `boardDisclosureSentAt` has no writer today. |
-| **W22** | **Who the match-integrity report is for.** Its declared audience is "Sportradar + GBT integrity unit" (`reports/page.tsx:138`); Sportradar is a private vendor (a stub with no channel in code today), and D19b keeps regulator paper. (Ruling 229.) | **Build as sealed:** the Resolution path column for every voided market; the house parts (House stake column, voided-house-markets section, House-marked refund flag, "Predictors include house accounts (D6)") only when a voided market holds a marked position. Alternative: omit the house parts while Sportradar is a declared recipient; R1 and the house-market statement carry the same facts to the regulator alone. |
+| **W21** | ⛔ **Superseded by D20 (Ali, 2026-09-17):** moot — the GBT memo (227) and the FIU Context column (228) are struck, so no house line reaches a statutory filing. ~~**House-liquidity lines on routine statutory filings.** The GBT monthly pack's "House liquidity (memo)" section renders only for a month holding marked money, so no earlier than Ali's own switch-on (D1); the FIU SAR's "Context" column renders from designation windows, which can exist BEFORE switch-on. Both reach a regulator on routine filings, possibly before Ali decides to send the private Board draft (D19b). The FIU is part of this question. (Rulings 227, 228.)~~ | ~~**Build as ruled.** Alternative: render both only after Ali records that the Board draft was sent — which would revive a sent-record writer for the private draft, because D19 struck P1's disclosure tracking (PROGRESS.md:38) and `boardDisclosureSentAt` has no writer today.~~ |
+| **W22** | ⛔ **Superseded by D20 (Ali, 2026-09-17):** moot — match integrity's house parts (229) are struck; the report treats house accounts as any player's. ~~**Who the match-integrity report is for.** Its declared audience is "Sportradar + GBT integrity unit" (`reports/page.tsx:138`); Sportradar is a private vendor (a stub with no channel in code today), and D19b keeps regulator paper. (Ruling 229.)~~ | ~~**Build as sealed:** the Resolution path column for every voided market; the house parts (House stake column, voided-house-markets section, House-marked refund flag, "Predictors include house accounts (D6)") only when a voided market holds a marked position. Alternative: omit the house parts while Sportradar is a declared recipient; R1 and the house-market statement carry the same facts to the regulator alone.~~ |
 | **W23** | **The comment side chip (m) and H8 after D19c.** Worked example: the holder sees a house stake as his own YES bet on `/positions`, but his own comment on that market carries no "Holds YES" chip, while a player with the same position gets one. H8 (no inbox receipt for a house stake, `market-service.ts:1716-1720`) is the same class: a visible difference from "exactly like the holder's own bets". (Ruling 249.) | **(a) Keep (m)** — no side is shown under his name for a stake he did not choose. Alternative (b): remove (m), so the chip follows every open position (the stricter reading of D19c and D6; the account already shows publicly in trader avatars and on the leaderboard). |
-| **W24** | **The D5 consent wording contradicts itself across the record of decisions.** `PLAN.md:24` and `COMPLIANCE-DECISIONS.md:158`/`:201` say "the owner types the account's password"; the D19 restatement (`PROGRESS.md:40`; `COMPLIANCE-DECISIONS.md:215`, `:291`) says "the holder types their own password". The system stores only `verifiedAt` and `verifiedById`. (Rulings 202, 237.) | R1 prints only what the row stores: "account password verified in the 50pick console by <officer> at <time>". The internal record keeps R5's sealed "password entered by 50pick". When Ali rules, both strings follow in one commit; `:215` records his ruling and is not silently edited. |
-| **W2 · addendum 1** | **The export crowd-out hits both doors.** At 200 house bets a day, the player's self-serve export (newest 1,000 transactions, 1,000 audit rows) loses a holder's own deposits within days, and the officer bundle (10,000 transactions) within about a month; D19 forbids saying why, and the internal record does not restore them. (Ruling 242; L31.) | Nothing new built. **Neutral remedy offered** (needs no house wording, changes every player's export): the officer deliverable reads every transaction (paged) and states total and truncated; the player door's transactions carry total and truncated as its audit entries already do — or a cursor-paged or uncapped transactions export. Not built without Ali's yes. `test:dsar-secrets` §6 asserts today's degradation as a named gap. |
-| **W2 · addendum 2** | **The rights sentence.** The bundle says "access: Granted (this document)." while the owner-only internal record is withheld. (Ruling 242.) | The sentence stays exactly as it is (any "except…" would be house wording in the subject's file). Part of what Ali and a lawyer confirm under W2. |
+| **W24** | **The D5 consent wording contradicts itself across the record of decisions.** `PLAN.md:24` and `COMPLIANCE-DECISIONS.md:158`/`:201` say "the owner types the account's password"; the D19 restatement (`PROGRESS.md:40`; `COMPLIANCE-DECISIONS.md:215`, `:291`) says "the holder types their own password". The system stores only `verifiedAt` and `verifiedById`. (Rulings 202, 237.) | ⛔ **Superseded in part by D20 (Ali, 2026-09-17):** both strings this default governs are struck (R1's consent line, 202; the internal record's sealed value, 237); the question itself (the record of decisions contradicts itself on D5) is not answered by D20. R1 prints only what the row stores: "account password verified in the 50pick console by <officer> at <time>". The internal record keeps R5's sealed "password entered by 50pick". When Ali rules, both strings follow in one commit; `:215` records his ruling and is not silently edited. |
+| **W2 · addendum 1** | ⛔ **Superseded by D20 (Ali, 2026-09-17):** struck with ruling 242 (the crowd-out record and its `test:dsar-secrets` §6 characterization are never built). ~~**The export crowd-out hits both doors.** At 200 house bets a day, the player's self-serve export (newest 1,000 transactions, 1,000 audit rows) loses a holder's own deposits within days, and the officer bundle (10,000 transactions) within about a month; D19 forbids saying why, and the internal record does not restore them. (Ruling 242; L31.)~~ | ~~Nothing new built. **Neutral remedy offered** (needs no house wording, changes every player's export): the officer deliverable reads every transaction (paged) and states total and truncated; the player door's transactions carry total and truncated as its audit entries already do — or a cursor-paged or uncapped transactions export. Not built without Ali's yes. `test:dsar-secrets` §6 asserts today's degradation as a named gap.~~ |
+| **W2 · addendum 2** | ⛔ **Superseded by D20 (Ali, 2026-09-17):** moot — no internal record exists to be withheld (236 struck); the bundle's sentence stays exactly as it is (168). ~~**The rights sentence.** The bundle says "access: Granted (this document)." while the owner-only internal record is withheld. (Ruling 242.)~~ | ~~The sentence stays exactly as it is (any "except…" would be house wording in the subject's file). Part of what Ali and a lawyer confirm under W2.~~ |
 | **X5 (edit)** | The late-reaction count's home. | Under D19 it leaves `/api/health`: it lives on the admin-gated `/admin/system` server reader and Commit 7's strip (ruling 172). |
 | **X8 (note)** | Ali's X8 answer said "The drop count stays on `/api/health` (X5)". | **Reversed by D19** (ruling 172): the count is on the admin reader only. Ali is told in the handover. |
 
@@ -2783,49 +2978,49 @@ moving any pin; never raise a ratchet; never allowlist a D19 guard's hit. One ro
 
 | # | Proposal (found in) | Why it helps Ali | Default being built |
 |---|---|---|---|
-| **X9** | **Free-text qualifier and refusal** on the four surfaces where a house line sits beside text that reaches a player: the emergency-void confirm (the reason reaches every refunded player's bell and email, every objector, and the public settlement proof), the objection decision dialog (the note reaches the objector), the ceremony (the evidence reaches the public resolution panel), and the KYC case card (the "Note to the player" reaches the holder). (Ruling 196.) | An officer could copy the house fact into a field a player reads, holder included. | **(a) built:** the house line carries "staff only — never sent to players". **(b) not built:** the four server paths refuse text containing the house vocabulary with an admin-only field error. Until Ali answers, phase D reads each dialog for the hazard. |
-| **X10** | **SUPPORT visibility** of the S7 chip "House bot · <status>", its failed-read form, the transactions-tab row tag, and the internal-record export audit row on a player's admin audit panel; and **COMPLIANCE visibility** of the compliance harm-table holder chip "House bot holder since <date> · <status>". (Rulings 230, 236, 241.) | SUPPORT staff speak to holders and players by phone, and COMPLIANCE is the role the privacy card tells to reply to data subjects (the same human channel as X12); these are a human channel to a holder or a trigger player. | As sealed / as ruled: shown to every staff role that can open the page (the internal-record CONTROL is already ADMIN-only). |
-| **X11** | **R9 snapshot on two more decisions:** `market.autoresolved` (the AI seal, no officer) and `updown.round.void_operator` (the officer's round void, where R2 shows the house line on the lever but nothing records what the officer saw). (Ruling 187.) | R1's per-market record would show the house stake at every money decision; HB-LC-17 lists "voids an Up & Down round" among them. | Not built. R1 section 4 says these two record no house-stake snapshot. |
+| **X9** | ⛔ **Superseded by D20 (Ali, 2026-09-17):** moot — the R2 lines are struck (192–196). ~~**Free-text qualifier and refusal** on the four surfaces where a house line sits beside text that reaches a player: the emergency-void confirm (the reason reaches every refunded player's bell and email, every objector, and the public settlement proof), the objection decision dialog (the note reaches the objector), the ceremony (the evidence reaches the public resolution panel), and the KYC case card (the "Note to the player" reaches the holder). (Ruling 196.)~~ | ~~An officer could copy the house fact into a field a player reads, holder included.~~ | ~~**(a) built:** the house line carries "staff only — never sent to players". **(b) not built:** the four server paths refuse text containing the house vocabulary with an admin-only field error. Until Ali answers, phase D reads each dialog for the hazard.~~ |
+| **X10** | ⛔ **Superseded by D20 (Ali, 2026-09-17):** moot — the S7 chip, the row tag, the internal-record audit row and the compliance holder chip are struck (230, 236, 241). ~~**SUPPORT visibility** of the S7 chip "House bot · <status>", its failed-read form, the transactions-tab row tag, and the internal-record export audit row on a player's admin audit panel; and **COMPLIANCE visibility** of the compliance harm-table holder chip "House bot holder since <date> · <status>". (Rulings 230, 236, 241.)~~ | ~~SUPPORT staff speak to holders and players by phone, and COMPLIANCE is the role the privacy card tells to reply to data subjects (the same human channel as X12); these are a human channel to a holder or a trigger player.~~ | ~~As sealed / as ruled: shown to every staff role that can open the page (the internal-record CONTROL is already ADMIN-only).~~ |
+| **X11** | ⛔ **Superseded by D20 (Ali, 2026-09-17):** moot — R9 is struck (187). ~~**R9 snapshot on two more decisions:** `market.autoresolved` (the AI seal, no officer) and `updown.round.void_operator` (the officer's round void, where R2 shows the house line on the lever but nothing records what the officer saw). (Ruling 187.)~~ | ~~R1's per-market record would show the house stake at every money decision; HB-LC-17 lists "voids an Up & Down round" among them.~~ | ~~Not built. R1 section 4 says these two record no house-stake snapshot.~~ |
 | **X12** | **An officer-only line on the `/admin/privacy` erasure overlay:** "Don't tell the player why — the request stays open until an owner acts". (Ruling 244.) | The refusal names "house bot hb_…" to the compliance officer, whom the card tells to reply to the subject; nothing stops the reason being relayed word for word. | No change (the sealed admin copy, pinned by designation 8.1). |
-| **X13** | **A holder given a staff role.** ROLE_CHANGED pauses the bot but is not a removal; the person would then read R2 lines, the row tag, the house-liquidity report, the CSV house filter and `house_bot_id` about their own account, and receive the emergency-void notice's house share. (Ruling 257.) | Keeps D19c whole for a holder who joins the staff. | Accepted (they are staff; role assignment is the owner's act). Proposal: treat promotion of a designated account as its removal. |
-| **X14** | **Personal positions in the releasable exports** (CRA-04 asks; R5 adds none). (Ruling 246.) | A more complete access answer. | Not built. If yes: house positions appear exactly as own positions, unmarked, through an allowlist. |
+| **X13** | ⛔ **Superseded in part by D20 (Ali, 2026-09-17):** every surface it lists is struck (the R2 lines, the row tag, the house-liquidity report, the CSV house filter and `house_bot_id`, the void notice's house share). **A holder given a staff role.** ROLE_CHANGED pauses the bot but is not a removal; the person would then read R2 lines, the row tag, the house-liquidity report, the CSV house filter and `house_bot_id` about their own account, and receive the emergency-void notice's house share. (Ruling 257.) | Keeps D19c whole for a holder who joins the staff. | Accepted (they are staff; role assignment is the owner's act). Proposal: treat promotion of a designated account as its removal. |
+| **X14** | ⛔ **Superseded by D20 (Ali, 2026-09-17):** moot — ruling 246 is struck. ~~**Personal positions in the releasable exports** (CRA-04 asks; R5 adds none). (Ruling 246.)~~ | ~~A more complete access answer.~~ | ~~Not built. If yes: house positions appear exactly as own positions, unmarked, through an allowlist.~~ |
 
 ### 8.3 🧷 Later — sealing to-do
 
 | # | What is not sealed yet (found in) | Why it matters | Where it lands |
 |---|---|---|---|
-| **L26** | 🔴 **LIVE on main: the transactions CSV returns at most 500 rows while claiming a 50,000 ceiling, and the file itself never says so** (both stores clamp `take` to 500; ruling 211). | A regulator-facing money CSV has been silently incomplete since it shipped; an `<a href>` download never shows `X-Export-Truncated`. | A `main`-branch fix (Ali's call; told in the handover). **Commit 8 release precondition:** the export returns its documented ceiling. Until then a complete per-bet month is the per-bot CSVs plus R1. |
-| **L27** | 🔴 **LIVE on main: the transactions CSV has no TOTP step-up** (a direct GET skips the admin layout's gate; the proxy does not cover `/api/admin`; ruling 212). | The file carries money and PII. | A `main`-branch fix (told in the handover). **Commit 8 release precondition:** `checkAdminTotp` before `house_bot_id` reaches production; else the release adds it with a plain-text 403 "Two-factor verification required — verify, then export again". |
+| **L26** | 🔴 **LIVE on main: the transactions CSV returns at most 500 rows while claiming a 50,000 ceiling, and the file itself never says so** (both stores clamp `take` to 500; ruling 211). | A regulator-facing money CSV has been silently incomplete since it shipped; an `<a href>` download never shows `X-Export-Truncated`. | A `main`-branch fix (Ali's call; told in the handover). ~~**Commit 8 release precondition:** the export returns its documented ceiling. Until then a complete per-bet month is the per-bot CSVs plus R1.~~ ⛔ **Superseded by D20 (Ali, 2026-09-17):** a recorded platform defect only, no longer a release precondition (no house column ships; the per-bot CSVs and R1 are struck). |
+| **L27** | 🔴 **LIVE on main: the transactions CSV has no TOTP step-up** (a direct GET skips the admin layout's gate; the proxy does not cover `/api/admin`; ruling 212). | The file carries money and PII. | A `main`-branch fix (told in the handover). ~~**Commit 8 release precondition:** `checkAdminTotp` before `house_bot_id` reaches production; else the release adds it with a plain-text 403 "Two-factor verification required — verify, then export again".~~ ⛔ **Superseded by D20 (Ali, 2026-09-17):** a recorded platform defect only, no longer a release precondition (no `house_bot_id` column ships). |
 | **L28** | **Ring readers degraded by house volume:** `admin/resolver/[id]/page.tsx:61`, `admin/compliance/page.tsx:68-75`, `admin/approvals/page.tsx:90`, `admin/config/page.tsx:48`, `admin/reports/page.tsx:207`, `kyc-risk.ts:336` (ruling 257). | The 10,000-row ring spans every category; about 1,000 house BET rows a day shorten each history these pages show. | Platform / KYC owner; not Commit 5. Listed in `docs/HOUSE-BOTS.md` risks. |
 | **L29** | **False format labels on the report library** ("JSON (signed)", "FIU-format encrypted bundle", "CSV", "GBT cross-operator CSV"; the route makes only xlsx and pdf) (ruling 257). | A button promising a format it cannot produce. | A `main`-branch fix. |
 | **L30** | **A dead RG counter:** `admin/compliance/page.tsx:73` counts `rg.reality_check.continued`, which nothing writes (ruling 214). | The counter always reads 0. | A `main`-branch fix. `RG_AUDIT_ACTIONS` excludes it on purpose. |
-| **L31** | **The player export caps transactions at 1,000 without saying so**, and both doors crowd out a holder's own deposits (ruling 242). | A data-subject answer that silently loses the subject's own money rows. | Waits on Ali (W2 addendum 1). Not built without his yes. |
-| **L32** | **A penalty box whose event write failed (C4 ruling 117) is not listed in the internal record** (ruling 239). | The AlertOnce row that is the box purges after 30 days. | Recorded; the record carries a fixed note. No AlertOnce reader by prefix is added. |
+| **L31** | ⛔ **Superseded by D20 (Ali, 2026-09-17):** struck with ruling 242. ~~**The player export caps transactions at 1,000 without saying so**, and both doors crowd out a holder's own deposits (ruling 242).~~ | ~~A data-subject answer that silently loses the subject's own money rows.~~ | ~~Waits on Ali (W2 addendum 1). Not built without his yes.~~ |
+| **L32** | ⛔ **Superseded by D20 (Ali, 2026-09-17):** struck with the internal record (239's struck half). ~~**A penalty box whose event write failed (C4 ruling 117) is not listed in the internal record** (ruling 239).~~ | ~~The AlertOnce row that is the box purges after 30 days.~~ | ~~Recorded; the record carries a fixed note. No AlertOnce reader by prefix is added.~~ |
 | **L33** | **Commit 7's nav label, `/admin/house-bots` href and action names would ship in public chunks** (`admin-nav-groups.ts` is imported by client components; action export names ship; ruling 255). | A D19 disclosure in the first console commit. | Commit 7: neutral action names, a server-injected nav entry, a route segment checked by the path scan. |
-| **L34** | **Admin counts that include bots:** the queue card's predictors, the ceremony's "N predictors · M open", the `/admin/markets` predictors cell, the rounds lever's "from N players", the emergency-void toast and notice "refunded to N players", the KYC refused-balance line (ruling 255). | Admin wording that calls bot positions players. | Commit 7's copy decision (D6 keeps bots counted publicly). |
-| **L35** | **Two-admin mode: a chooser who attests stage 1 is never flagged as self-decided** (oversight matches only the stage-2 actor; ruling 255). | R1 (e) could miss a market decided by its chooser. | Commit 7 / R1 (e); two-admin mode ships OFF. |
-| **L36** | **The console still says "liquidity stakes"** (`pause-reasons.ts:311`; `eligibility.ts:247-248`, `:316`, `:413`; `designation.ts:331`, `:591`) (ruling 197). | The same words for the same things: the KYC card and R2 say "house stakes". | Commit 7's copy pass. |
-| **L37** | **FS-05: `NON_HOUSE_POSITION_SQL` and a prize-run "excluded house positions: N" line** are owed by the first reward feature (ruling 256). | No reward writer exists yet; the first one must not pay on house stakes. | The first rank, volume, streak or loss reward feature; the walker (233) goes red until it complies. |
-| **L38** | **The +60-day staff-edge href-route test** is Commit 7's (C4 ruling 23); NOT MEASURED in Commit 5 (ruling 222). | Nothing in Commit 5 may cite it as built. | Commit 7. |
-| **L39** | **R2's overview exposure split and the CAP_EXPOSURE held amount** (ruling 254). | No overview page renders before Commit 7. | Commit 7, with the amount ruled as the console's render-time "held now" figure. |
+| **L34** | ⛔ **Superseded by D20 (Ali, 2026-09-17):** closed — correct under D20: bots are players in admin counts, so this is not a defect. **Admin counts that include bots:** the queue card's predictors, the ceremony's "N predictors · M open", the `/admin/markets` predictors cell, the rounds lever's "from N players", the emergency-void toast and notice "refunded to N players", the KYC refused-balance line (ruling 255). | ~~Admin wording that calls bot positions players.~~ | ~~Commit 7's copy decision (D6 keeps bots counted publicly).~~ |
+| **L35** | ⛔ **Superseded by D20 (Ali, 2026-09-17):** struck — R1 (e) is never built (206; `C5-D20-REPLAN.md` §4). ~~**Two-admin mode: a chooser who attests stage 1 is never flagged as self-decided** (oversight matches only the stage-2 actor; ruling 255).~~ | ~~R1 (e) could miss a market decided by its chooser.~~ | ~~Commit 7 / R1 (e); two-admin mode ships OFF.~~ |
+| **L36** | **The console still says "liquidity stakes"** (`pause-reasons.ts:311`; `eligibility.ts:247-248`, `:316`, `:413`; `designation.ts:331`, `:591`) (ruling 197). | The same words for the same things: ~~the KYC card and R2 say "house stakes"~~. ⛔ **Superseded in part by D20 (Ali, 2026-09-17):** the KYC card and R2 lines it compares with are struck (197, 192). | Commit 7's copy pass. |
+| **L37** | ⛔ **Superseded by D20 (Ali, 2026-09-17):** struck with ruling 256 (the no-reward rule stays built in the money seam and recorded in the docs). ~~**FS-05: `NON_HOUSE_POSITION_SQL` and a prize-run "excluded house positions: N" line** are owed by the first reward feature (ruling 256).~~ | ~~No reward writer exists yet; the first one must not pay on house stakes.~~ | ~~The first rank, volume, streak or loss reward feature; the walker (233) goes red until it complies.~~ |
+| **L38** | ⛔ **Superseded by D20 (Ali, 2026-09-17):** struck with the staff-edge alert (222; `C5-D20-REPLAN.md` §4). ~~**The +60-day staff-edge href-route test** is Commit 7's (C4 ruling 23); NOT MEASURED in Commit 5 (ruling 222).~~ | ~~Nothing in Commit 5 may cite it as built.~~ | ~~Commit 7.~~ |
+| **L39** | ⛔ **Superseded in part by D20 (Ali, 2026-09-17):** the overview exposure split is struck; the CAP_EXPOSURE held amount is left to Commit 7's rulings. **R2's overview exposure split and the CAP_EXPOSURE held amount** (ruling 254). | No overview page renders before Commit 7. | Commit 7, with the amount ruled as the console's render-time "held now" figure. |
 | **L40** | **Commit 4 residue: the Up & Down digest house split** was scheduled in C4 step 9 and neither built nor recorded as struck (ruling 235). | A plan line nobody closed. | ✅ Closed in Commit 5: struck by D19c; only F6's email rule is built. |
 | **L41** | **`/api/health` published a `houseBots` block and the `house-bot` lease name** (§2 F1–F2; rulings 171–172). | A public D19 leak on the branch. | ✅ Fixed in Commit 5, with the X8 reversal. |
 | **L42** | **The officer DSAR deliverable carried `houseBotId`** on every Postgres row and `hb_…` for a holder (§2 F3; ruling 169). | The data subject's own file. | ✅ Fixed in Commit 5 (`dsarTxnView`). |
 | **L43** | **The absence vocabulary was defined three times and the bundle scan ignored file paths** (§2 F7; ruling 175). | Drift between guards. | ✅ Fixed in Commit 5 (one module, path scan). |
 | **L44** | **The served absence proof was blind** (engine off, holder only, full-page shots; §2 F8; ruling 248). | It could not see F2 or any other viewer. | ✅ Fixed in Commit 5. |
-| **L45** | **A month whose first EAT day had no successful staff-edge duty sends no alert** (ruling 223). | An engine or planner outage on day 01 skips the month. | Known gap (C4 ruling 80's precedent); R1's flag is the record. |
-| **L46** | **A human reward decision on a holder's losses** (a REQUEST-mode cashback or an officer bonus looking at losses that include house losses; ruling 257). | No code pin can see it. | Recorded; the KYC line and the S7 chip are the officer's cue. |
+| **L45** | ⛔ **Superseded by D20 (Ali, 2026-09-17):** struck with ruling 223. ~~**A month whose first EAT day had no successful staff-edge duty sends no alert** (ruling 223).~~ | ~~An engine or planner outage on day 01 skips the month.~~ | ~~Known gap (C4 ruling 80's precedent); R1's flag is the record.~~ |
+| **L46** | **A human reward decision on a holder's losses** (a REQUEST-mode cashback or an officer bonus looking at losses that include house losses; ruling 257). | No code pin can see it. | Recorded; ~~the KYC line and the S7 chip are the officer's cue~~. ⛔ **Superseded in part by D20 (Ali, 2026-09-17):** the two cues it names are struck (197, 241). |
 | **L47** | **Money idempotency probes and deposit reads were flooded by house rows** (a refund could be paid twice; §2 F5; ruling 173). | Money correctness. | ✅ Fixed in Commit 5 (`excludeHouseBets` on four reads). |
-| **L48** | **`house_bot.exported` has two writers told apart by `payload.code`** (the internal record `"INTERNAL_RECORD"`; the per-bot CSV, no code; rulings 213, 236). | A console suite assuming every row is owner-only would be wrong. | Commit 7's `test:house-bot-console`. |
+| **L48** | ⛔ **Superseded by D20 (Ali, 2026-09-17):** struck — no per-bot CSV and no internal record (213, 236). ~~**`house_bot.exported` has two writers told apart by `payload.code`** (the internal record `"INTERNAL_RECORD"`; the per-bot CSV, no code; rulings 213, 236).~~ | ~~A console suite assuming every row is owner-only would be wrong.~~ | ~~Commit 7's `test:house-bot-console`.~~ |
 | **L49** | **`withdrawHouseConsent` writes the holder as the audit actor** (§2 F4; ruling 170). | The holder-facing Stop is struck by D19c; such a row must never reach a holder's export or feed. | Pinned and excluded in Commit 5; reshaped with the officer as actor in Commit 7. |
 
 ### 8.4 Tell Ali in this session's handover
 
-- L26 and L27: two LIVE defects on `main` in the transactions CSV (the 500-row clamp; no TOTP step-up), both Commit 8 release
-  preconditions.
+- L26 and L27: two LIVE defects on `main` in the transactions CSV (the 500-row clamp; no TOTP step-up), ~~both Commit 8 release
+  preconditions~~. ⛔ **Superseded by D20 (Ali, 2026-09-17):** recorded platform defects only, no longer release preconditions (no house column ships).
 - X8 is reversed by D19: the drop count is no longer on `/api/health` (ruling 172).
-- COMPLIANCE, FINANCE and AUDITOR can download the house-liquidity report and statement (the platform's report gate, ruling 200).
-- The KYC card says "of which house stakes", departing from 04's "50pick liquidity stakes" on his consistency rule (ruling 197).
+- ⛔ **Superseded by D20 (Ali, 2026-09-17):** struck (ruling 200). ~~COMPLIANCE, FINANCE and AUDITOR can download the house-liquidity report and statement (the platform's report gate, ruling 200).~~
+- ⛔ **Superseded by D20 (Ali, 2026-09-17):** struck (ruling 197). ~~The KYC card says "of which house stakes", departing from 04's "50pick liquidity stakes" on his consistency rule (ruling 197).~~
 - W20: the repository is still public, so this spec and the docs describing house bots are readable by anyone.
-- W21–W24, the two W2 addenda, and X9–X14 wait on him, each with its default.
+- W21–W24, the two W2 addenda, and X9–X14 wait on him, each with its default. ⛔ **Superseded in part by D20 (Ali, 2026-09-17):** W21, W22, both W2 addenda, X9, X10, X11 and X14 are moot (their surfaces are struck); W23 and X12 stand; W24 and X13 stand only as their rows now say.
 

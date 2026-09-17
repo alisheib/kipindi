@@ -1,5 +1,19 @@
 # Commit 6 · public text: extraction, build order and open points
 
+> # ⛔ D20 — THE BOARD DRAFT SAYS REPORTS TREAT HOUSE ACCOUNTS AS ORDINARY PLAYER ACCOUNTS
+> **Owner ruling D20 (Ali, 2026-09-17, PROGRESS.md "OWNER RULING D20"): "Keep them in reports as normal players."** Every
+> report, statutory filing (the Gaming Board monthly pack, the FIU SAR, match integrity, daily ops), admin count, finance or
+> insights figure and harm or AML detector treats a house bot's account exactly like any player's account, and nothing names
+> house bots or splits house money out. D19 still binds everything. The ruling-by-ruling table is
+> `plans/house-bots/C5-D20-REPLAN.md`.
+>
+> **What changes for commit 6:** its shape is unchanged (the private Board draft, the chatbot guard, the docs of record and
+> the non-disclosure suite, as the D19 banner below says), but the draft must say that reports and statutory filings treat
+> house accounts as ordinary player accounts and carry **no house memo** — no GBT pack memo, no FIU SAR Context column, no
+> house-liquidity report (`C5-D20-REPLAN.md` §4). Its "levy treatment" section therefore says house stakes count in GGR and
+> the levies as player activity, and its "how to inspect" section cannot point to a house-liquidity report. In §3.4 and §7
+> below, R1's sections and the staff-edge alert are struck.
+
 > # ⛔ MOSTLY SUPERSEDED — READ THIS FIRST
 > **Owner ruling D19 (Ali, 2026-09-16): house bots are never public.** No rulebook, Terms, privacy, FAQ, home or
 > chatbot text mentions them; no META or `TERMS_VERSION` bump; no announcement; a holder sees nothing on their own
@@ -180,12 +194,12 @@ account; escalate to the owner."
 04:3610-3619 — `docs/BOARD-DISCLOSURE-HOUSE-BOTS.md` gains a section **"Stakes chosen by staff"** covering: Enter now
 (polls only); targets (polls only, 5–600 s, the absolute hold); the formula side and amount; the money the house may add
 to, and the share limit; the information blackout, including a reopen after a result check; staff-chosen caps, with NULL
-meaning off; press and veto records, the COMPLIANCE audits and R1 sections (b)–(h); the three alerts (every staff-chosen
-stake, a self-decided market, staff edge); accepted risks 13–20.
+meaning off; press and veto records, the COMPLIANCE audits ~~and R1 sections (b)–(h)~~; the ~~three~~ alerts (every staff-chosen
+stake, a self-decided market, ~~staff edge~~); accepted risks 13–20. ⛔ **Superseded by D20 (Ali, 2026-09-17):** R1's sections (the house-liquidity report) and the staff-edge alert are struck, so the section names neither; the other alerts and records it lists stand.
 N2 adds (04:4319): the section "covers targets: the 5–600 s delays, the absolute hold with the 7 s margin, first or every
 stake, vetoes and never-retarget, and the staff-chosen caps."
 The whole-document sections come from P1 (04:2068-2075) and CRA-24 (01:2105-2113): what 50pick does · a request to
-confirm the licence class · levy treatment · the notice waiver · the controls · how to inspect · the accepted risks.
+confirm the licence class · levy treatment · the notice waiver · the controls · how to inspect · the accepted risks. ⛔ **Superseded in part by D20 (Ali, 2026-09-17):** "levy treatment" says house stakes count in GGR and the levies as player activity, with no house memo, and "how to inspect" names no house-liquidity report (CRA-24, 01:2112, names one; it is struck).
 Format precedent: `docs/BOARD-DISCLOSURE-KYC-AT-WITHDRAWAL.md` (title "To the Gaming Board — …", a `> **Status:** DRAFT
 FOR ALI` block naming the ruling of record, then `## 1 ·` … `## 6 ·`).
 
@@ -383,7 +397,7 @@ Pure (no database, no server); it renders the JSX maps the way `test:rules-copy`
 
 **§8 · the Board draft and its constant** (04:3610-3623, 01:2105-2113)
 - 8.1 `docs/BOARD-DISCLOSURE-HOUSE-BOTS.md` exists, is headed DRAFT FOR ALI, and contains every required section incl. "Stakes chosen by staff".
-- 8.2 that section names: Enter now (polls only), targets (5–600 s, the absolute hold with the 7 s margin), the formula side and amount, the money the house may add to and the share limit, the blackout incl. reopen, the staff-chosen caps with NULL meaning off, press and veto records, the three alerts, risks 13–20 (04:3611-3619, 04:4319).
+- 8.2 that section names: Enter now (polls only), targets (5–600 s, the absolute hold with the 7 s margin), the formula side and amount, the money the house may add to and the share limit, the blackout incl. reopen, the staff-chosen caps with NULL meaning off, press and veto records, ~~the three alerts~~, risks 13–20 (04:3611-3619, 04:4319). ⛔ **Superseded by D20 (Ali, 2026-09-17):** the staff-edge alert is struck, so the section names two alerts (every staff-chosen stake, a self-decided market), not three.
 - 8.3 `BOARD_DISCLOSURE_SECTIONS` **equals** the draft's section headings, in order (04:3621).
 - 8.4 ⭐ CONTROL: a renamed heading, or an extra constant entry, is reported.
 

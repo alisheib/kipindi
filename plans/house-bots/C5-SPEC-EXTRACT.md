@@ -1,12 +1,37 @@
 # Commit 5 · reporting, data rights, resolver exposure, holder chip — build extraction
 
+> # ⛔ D20: THE REPORTING AND ADMIN-EXPOSURE HALF IS SUPERSEDED TOO
+> **Owner ruling D20 (Ali, 2026-09-17, PROGRESS.md "OWNER RULING D20"): "Keep them in reports as normal players."** Every
+> report, statutory filing, admin count, finance or insights figure and harm or AML detector treats a house bot's account
+> exactly like any player's account; nothing names house bots or splits house money out, and every admin-only house tool is
+> dropped. D20 outranks this extract and `C5-SPEC.md` wherever they differ, just below D19. Read
+> `plans/house-bots/C5-D20-REPLAN.md` first (the ruling-by-ruling table and the new checkpoints).
+>
+> **Dead, do not build** (kept only as the record of what was planned): R1 — the house-liquidity report, the house-market
+> statement, the transactions CSV `house` filter and `house_bot_id` column, the per-bot CSV; R7's index; R2 exposure on
+> every admin surface; R3's statutory notes and PLAN §9's splits (the GBT memo, the FIU Context column, match integrity's
+> house parts, daily ops' house rows, `MoneySummary.house`, the finance, insights and `/admin/house` lines, the harm and AML
+> exclusions, the compliance holder chip); R4/F9's `leaderboard({excludeHouse})` and reward walker; R5's internal record
+> and the admin player chip; R9's `houseStake` payloads and the KYC card's house line; the staff-edge alert and W16. In this
+> file: §0's scope bullets and the staff-edge paragraph; §1's "Not in `src` yet" list except `{excludeHouseBets}`
+> (C5-SPEC ruling 173) and R8's two swaps; in §2, the house halves of the `catalogue.ts` and `types.ts` rows, the report
+> route, reports page, generate-button and date-range rows, the §9 splits, transactions CSV, decision-audit, R2 exposure and
+> rewards tables, and the officer player page row; §3 items 1, 2, 4, 5, 7, 9, 10 and 11, and item 3 except its
+> `db.txn.create` marker pin; §4's tests for them; §5 rows 1–12 and 18; §6 steps 4–7, 9 (except the marker pin), 10 and 11,
+> and step 2's exposure, entry-split and scorecard readers (decided member by member in C5-5b); §7 P1–P8, P11, P13–P16,
+> P20–P25, P28 and P30 (P9 and P10 follow C5-5b); §8 guards 1–6, 8, 9, 13, 16 and 17, and the struck halves of 10, 11 and 18.
+>
+> **Still standing:** R8 (the pack and RG engagement read the durable audit table), R6's `test:erasure` buckets, the absence
+> assertions (§3 item 13), the marker pin, P17–P19, P26 and P27, and the money rules already built (no reward on house
+> stakes).
+
 > # ⛔ THE HOLDER-FACING HALF IS SUPERSEDED
 > **Owner ruling D19c (Ali, 2026-09-16): the holder sees nothing.** Do not build item 12's holder chip, the SellButton
 > `houseStake` note, or the `market.houseStakeChip` / `houseStakeLine` / `houseStakeNoExit` keys; `objHouseStakeOnly`
 > and `failHousePositionNoExit` lose their house wording and use the platform's existing neutral copy. **W2 is
 > re-opened:** a trigger player's data export carries no house wording either (see PROGRESS "Waiting on Ali" W2 — the
-> one place D19 meets a PDPA duty, for Ali and a lawyer). The reports, the readers, R2 exposure, R9 decision audits,
-> the CSV, the DSAR plumbing and every admin-console surface are unchanged.
+> one place D19 meets a PDPA duty, for Ali and a lawyer). ~~The reports, the readers, R2 exposure, R9 decision audits,
+> the CSV, the DSAR plumbing and every admin-console surface are unchanged.~~ ⛔ **Superseded by D20 (Ali, 2026-09-17):** the house reports, the CSV house column, R2 exposure, R9 decision audits and the internal record are struck (see the D20 banner above); the readers are decided member by member in C5-5b; the releasable data-rights doors stay house-free (D19), and Commit 7's console only controls the bots.
 
 > A working aid, extracted read-only on 2026-09-15 (OMEGA-COMPILE01) from `04-amendments.md` (`04`), `02-sealed-flows.md` (`02`),
 > `03-design-spec.md` (`03`), `01-scenario-register.md` (`01`), `PLAN.md` (`P`), `PROGRESS.md` (`PR`), `docs/HOUSE-BOTS.md` (`HB`)

@@ -74,8 +74,8 @@ memo or column (W21, W22 moot).
   struck ids added to 250's coverage. `qa:house-bot-holder-view` extended to every viewer + the production-posture pass,
   `buildDsarBundle` through the leak check, `qa:house-bot-console-probe` folded into the served layer; every captured page
   read as tiles at 1280 and 360.
-- **C5-8 · Closing gates** — rulings 251–253, 257–258 with D20 edits: merge `origin/main` first (check migrations; the
-  asheib-7d AI-poll push lands on main around 16:00 UTC 2026-09-17); every `test:house-bot-*` suite on both stores; tsc;
+- **C5-8 · Closing gates** — rulings 251–253, 257–258 with D20 edits: merge `origin/main` first (check migrations; `origin/main` is `05ae425f` as of 15:35 UTC 2026-09-17: the AI-poll max-horizon removal,
+  no new migration, a new top entry in `docs/COMPLIANCE-DECISIONS.md` — keep both entries); every `test:house-bot-*` suite on both stores; tsc;
   `test:all` here and in `F:/kipindi-old-build` compared red by red; fresh build + `verify:house-bot-bundle`;
   `qa:house-bot-holder-view` + `qa:house-bot-console-probe`; ONE mutation batch from a temporary worktree on its own
   scratch port covering ONLY mutations whose from-text still exists at HEAD (the 174 unrun step-3 mutations, `c5-s4`,

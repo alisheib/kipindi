@@ -1,5 +1,16 @@
 # House Bots — scenario register
 
+> # ⛔ HOUSE REPORTS, HOUSE LINES AND HOUSE SPLITS ARE SUPERSEDED
+> **Owner ruling D20 (Ali, 2026-09-17): house bot accounts are normal players everywhere.** Every report, statutory filing,
+> admin count, finance or insights figure and harm/AML detector treats a house bot's account exactly like any player's
+> account, and no report, CSV, memo, column, line, chip, tag or record names house bots or splits house money out. Rows
+> below that assert the house-liquidity report or statement, the transactions CSV `house` filter and `house_bot_id` column,
+> the per-bot CSV, R2 exposure lines on admin screens, R9 `houseStake` decision-audit keys, the staff-edge alert (TGT-39),
+> the PLAN §9 memo, splits and exclusions, the owner-only internal record or `leaderboard({excludeHouse})` are marked in
+> place "⛔ Superseded by D20", each saying what the Scenario coverage gate counts. D19 still binds everything; the kept
+> controls, audits, erasure, money rules and absence proofs are unchanged. Authority: PROGRESS.md "OWNER RULING D20" and
+> `plans/house-bots/C5-D20-REPLAN.md` (ruling by ruling).
+
 ## holder-account (45)
 
 ### HB-ACC-01 [gap] The holder changes his password in Account settings while the bot is idle: ACTIVE but not firing (master OFF, outside its schedule, no triggers, engine disabled), or PAUSED. Covers detection latency and the proactive check.
@@ -261,6 +272,7 @@ Failed attempts send nothing, until the reserve state is reached. Then one notic
 - **Test:** `test:house-bot-holder-lifecycle`: a status × cause matrix asserting the transitions and the exact recipients and channels.
 
 ### HB-ACC-12 [gap] The holder downloads his data (Art. 15 right of access), or an officer builds his DSAR bundle.
+- ⛔ **Superseded by D20 (Ali, 2026-09-17):** the owner-only internal record that C5-SPEC ruling 250 named as this id's home for the house section (rulings 236–238) is struck; D19 already keeps both releasable doors free of any house section (rulings 168–169), so this id is covered only by its absence form (ruling 243). Coverage gate: the internal-record half is struck by D20.
 - **Trigger:** exportUserData on /profile/account, or buildDsarBundle.
 - **Expected:** The export includes a `houseBot` section:
 - designation dates and status history (events);
@@ -351,7 +363,7 @@ Strip copy: "Self-excluded until 20 Sep. After an officer reopens the account, t
 - Consent is void. The account may not belong to one eligible adult, so Remove is the recommended CTA.
 
 On the funds decision:
-- The refused-funds screen shows the officer: "House bot account — house stakes TZS S and returns TZS W since designation".
+- ~~The refused-funds screen shows the officer: "House bot account — house stakes TZS S and returns TZS W since designation".~~
 - The owner gets bell + email when the decision is recorded, with the forfeited and returned amounts.
 - UNDERAGE also gets a COMPLIANCE audit flag.
 
@@ -363,13 +375,14 @@ If an officer reopens the refusal: Re-verify, then Start.
 - C:\kipindi-main\src\lib\server\market-service.ts:3548-3575: payout credits the wallet without checking its status.
 - **Fix:** - Add cause IDENTITY_REFUSED, read from wallet.freezeReasons.
 - Add emitter `notifyAdminsHouseBotFundsDecision`, called from decideRefusedFunds when the user has any bot row.
-- Add a house row on the refused-funds page.
+- ~~Add a house row on the refused-funds page.~~
 - Consent void until a VERIFIED event after the reopen.
 - **Test:** `test:house-bot-holder-lifecycle`:
 - Final refusal → paused IDENTITY_REFUSED.
 - Forfeiture → owner alert with amounts.
 - Reopen → Start refused until re-verify.
 - `test:house-bot-reports`: forfeit counted once.
+- ⛔ **Superseded by D20 (Ali, 2026-09-17):** the refused-funds screen gains no house line (D20: no admin screen splits house money out — the same class as the KYC card's struck house line, C5-SPEC ruling 197); the pause, the consent void and the owner's funds-decision alert are untouched by D20. Coverage gate: partly struck by D20.
 
 ### HB-ACC-19 [partial] After the holder changed his password, the admin keeps typing the OLD one.
 - **Trigger:** verifyHouseBotPassword, under withLock login:<id>, spends the holder's login failure counter: 5 failures lock the account for 30 minutes.
@@ -874,6 +887,7 @@ If he also holds his own stake, he may object.
 - **Test:** test:house-bot-engine — each of the 5 transitions mid-delay → SKIPPED(MARKET_NOT_LIVE) ≤ 1 tick; in-lock race labelled by status; trial balance unchanged.
 
 ### HB-LC-17 [partial] Ruling and void surfaces show house money as 'crowd' and 'player money', and several are missing from F11
+- ⛔ **Superseded by D20 (Ali, 2026-09-17):** struck whole — no ruling, void or resolver surface gains a house stake or "Players:" line, a "House bot · Bot A" row tag, a house held-chip tooltip, a bulk-bar house count, or a house share in the emergency-void admin bell and email (C5-SPEC rulings 192–196 and 198); a house account's money on those surfaces counts as a player's, as on `main`. Whether the reader behind the display stays is decided member by member in C5-5b. Coverage gate: struck by D20.
 - **Trigger:** An officer rules an objection (REVERSE/VOID), voids an Up & Down round, emergency-voids a poll, bulk-resolves, or reads the resolver queue, on markets where the house holds YES 8,000 of a 20,000 pool.
 - **Expected:** Every place a money decision is made shows "House stake: YES 8,000 · NO 0 (open)" and "Players: YES 2,000 · NO 10,000": resolver queue card, ceremony, objections ruling panel, Up & Down rounds void lever, emergency-void confirm, bulk-resolve summary ("3 of these markets carry house stakes"), admin market page. The admin market page tags each marked position row "House bot · Bot A". The resolver 'held' chip tooltip reads "Money held, including house TZS 8,000". The emergency-void admin bell/email body adds "of which house TZS 8,000 on 1 position". After settlement or void the line reads "House stake settled: …" (no open amount, since the house can't cash out). Display only (I10). Never shown to players.
 - **Plan:** F11; I10; §9 reporting
@@ -899,11 +913,12 @@ If he also holds his own stake, he may object.
 
 ### HB-LC-20 [partial] Poll settlement frozen by an open objection or officer hold keeps house exposure tied up for days
 - **Trigger:** A poll with house NO 20,000 is resolved and a player objects. Settlement retries every 5 min for 3 days; the bot hits capOpenExposure and every new decision skips CAP_EXPOSURE.
-- **Expected:** Exposure bars split "Open on live markets", "Awaiting settlement" and "Frozen by objection" (derived from status and settledAt, never from objection data inside the engine). CAP_EXPOSURE skips show why: "Skipped — TZS 20,000 is held on markets awaiting settlement". No auto-pause, no extra alert. The console reads objection counts for display only; the engine never does (I2).
+- **Expected:** ~~Exposure bars split "Open on live markets", "Awaiting settlement" and "Frozen by objection" (derived from status and settledAt, never from objection data inside the engine).~~ CAP_EXPOSURE skips show why: "Skipped — TZS 20,000 is held on markets awaiting settlement". No auto-pause, no extra alert. ~~The console reads objection counts for display only;~~ the engine never does (I2).
 - **Plan:** §8 overview cap bars; §4.4 CAP_<code> copy; I2
 - **Evidence:** C:/kipindi-main/src/lib/server/market-service.ts:3178-3191 (TOO_EARLY / OBJECTION_OPEN refusals); C:/kipindi-main/src/lib/server/market-scheduler.ts:56,266-270 (5-min back-off); C:/kipindi-main/src/lib/server/objections-service.ts:298-379 (officer hold, no window limit)
-- **Fix:** §8: exposure breakdown on the overview and limits tab (console-side query, not engine). feed-copy for CAP_EXPOSURE includes the held amount.
-- **Test:** test:house-bot-console — fixture with RESOLVED unsettled market shows the split; qa:house-bots-visual bars at 360.
+- **Fix:** ~~§8: exposure breakdown on the overview and limits tab (console-side query, not engine).~~ feed-copy for CAP_EXPOSURE includes the held amount.
+- **Test:** ~~test:house-bot-console — fixture with RESOLVED unsettled market shows the split; qa:house-bots-visual bars at 360.~~
+- ⛔ **Superseded by D20 (Ali, 2026-09-17):** the three-bucket exposure split on the overview and limits tab (R2's overview split, C5-SPEC ruling 254, PROGRESS L39) is struck; the CAP_EXPOSURE held amount is re-decided in Commit 7's rulings, and the engine still never reads objection state (I2). Coverage gate: partly struck by D20; the CAP_EXPOSURE half waits on Commit 7's ruling.
 
 ### HB-LC-21 [partial] Up & Down round without targets (no open price) or voided by source failure, no-move or operator
 - **Trigger:** A round has openPrice null (targets null) until the healer backfills; or the close reading fails past the abandon deadline → VOID source-failed; or the close stays inside the band → no-move; or an operator voids.
@@ -948,27 +963,30 @@ If he also holds his own stake, he may object.
 
 ### HB-LC-26 [partial] Emergency void (including deleting a published AI poll) of a LIVE market holding house positions
 - **Trigger:** ADMIN/COMPLIANCE voids a live poll with reason "Source withdrawn", or a published AI poll is deleted (which calls emergencyVoidMarket), while the house holds YES 8,000 and a COUNTER is PENDING.
-- **Expected:** All OPEN positions are refunded atomically. The house BET_REFUND row carries houseBotId (written at create). Pools zeroed, status VOIDED, settledAt stamped, COMPLIANCE audit market.emergency_void (payload unchanged). Holder gets notifyMarketCancelled bell and email with the reason and the liquidity label line. The admin notice shows the house share (HB-LC-17). The PENDING intent → SKIPPED(MARKET_NOT_LIVE) within one tick (HB-LC-16). Book realised 0 and exposure freed. No agent-commission accrual existed, so clawback finds none for house rows.
+- **Expected:** All OPEN positions are refunded atomically. The house BET_REFUND row carries houseBotId (written at create). Pools zeroed, status VOIDED, settledAt stamped, COMPLIANCE audit market.emergency_void (payload unchanged). Holder gets notifyMarketCancelled bell and email with the reason and the liquidity label line. ~~The admin notice shows the house share (HB-LC-17).~~ The PENDING intent → SKIPPED(MARKET_NOT_LIVE) within one tick (HB-LC-16). Book realised 0 and exposure freed. No agent-commission accrual existed, so clawback finds none for house rows.
 - **Plan:** §3 Propagation 'emergency void'; (h)
 - **Evidence:** C:/kipindi-main/src/lib/server/market-service.ts:4102-4104 (only settled markets refused), :4141-4176 (refund, notice and email per position), :4197 (settledAt); C:/kipindi-main/src/app/admin/ai-polls/actions.ts:356,395
 - **Fix:** (h) names notifyMarketCancelled and the cancel email explicitly; the propagation test drives the AI-poll delete path too.
 - **Test:** test:house-bot-money — void a market with house and player positions: markers on refunds, trial balance ties, holder notice labelled, intent skipped.
+- ⛔ **Superseded by D20 (Ali, 2026-09-17):** the emergency-void admin bell and email carry no house share (C5-SPEC ruling 195). Coverage gate: partly struck by D20.
 
 ### HB-LC-27 [partial] Objection upheld with REVERSE before settlement on a market where the house was winning
 - **Trigger:** Poll resolved YES (house YES 10,000). A player objects and a second officer upholds REVERSE: outcome flips to NO and a fresh objection window opens.
-- **Expected:** House positions stay OPEN; projected loss already counts them as lost; realised is recorded only when the new window settles. Bettors, including the holder, get the 'verdict reversed' notice, and the holder's copy carries the label (HB-LC-11). The ruling officer sees house exposure on the objections panel (HB-LC-17). The house has no objection standing of its own (f). COMPLIANCE audit objection.upheld is unchanged.
+- **Expected:** House positions stay OPEN; projected loss already counts them as lost; realised is recorded only when the new window settles. Bettors, including the holder, get the 'verdict reversed' notice, and the holder's copy carries the label (HB-LC-11). ~~The ruling officer sees house exposure on the objections panel (HB-LC-17).~~ The house has no objection standing of its own (f). COMPLIANCE audit objection.upheld is unchanged.
 - **Plan:** (f) objection standing; F11; (h)
 - **Evidence:** C:/kipindi-main/src/lib/server/objections-service.ts:525-531 (REVERSE flips outcome and re-opens the window), :482-492 (filer cannot rule); C:/kipindi-main/src/lib/server/market-service.ts:1937-1940 (reversed notice option)
 - **Fix:** Covered once HB-LC-11 and HB-LC-17 land; add a REVERSE case to the money test.
 - **Test:** test:house-bot-money — REVERSE then settle: house LOSS booked on the settle day, book and trial balance tie; comms shows the reversed notice with label.
+- ⛔ **Superseded by D20 (Ali, 2026-09-17):** the objections panel shows no house exposure (C5-SPEC rulings 192–194). Coverage gate: partly struck by D20.
 
 ### HB-LC-28 [partial] Holder bets personally on a market after his bot has staked there, gaining objection standing and holding both sides
 - **Trigger:** Bot A holds house NO 8,000. The holder (allowed to use the account, D3) later stakes YES 2,000 personally, then objects after the resolution.
-- **Expected:** H2 still refuses further house bets on that market (OWNER_POSITION). The trigger filter never counters the holder. The personal bet raises AlertOnce `holder-conflict:<botId>:<marketId>`, admin bell: "Bot A's holder staked YES 2,000 personally on a market where his bot holds NO 8,000" linking to the admin market page. His objection is allowed (he holds a non-house position), but the objections panel shows "Filed by the holder of house bot A (house NO 8,000 on this market)". Personal notices exclude house figures.
+- **Expected:** H2 still refuses further house bets on that market (OWNER_POSITION). The trigger filter never counters the holder. The personal bet raises AlertOnce `holder-conflict:<botId>:<marketId>`, admin bell: "Bot A's holder staked YES 2,000 personally on a market where his bot holds NO 8,000" linking to the admin market page. His objection is allowed (he holds a non-house position), ~~but the objections panel shows "Filed by the holder of house bot A (house NO 8,000 on this market)"~~. Personal notices exclude house figures.
 - **Plan:** §3 H2 OWNER_POSITION; (f); F7; §4.3 trigger filter
 - **Evidence:** C:/kipindi-main/src/lib/server/objections-service.ts:108 (standing = any position by user); C:/kipindi-main/src/lib/server/market-service.ts:883 (holder bets through the normal path)
-- **Fix:** Post-commit hook (a) also emits holder-conflict AlertOnce when a live bot's holder places a non-house bet on a market with house positions. The objections page adds the filer label (console-side read).
-- **Test:** test:house-bot-engine — holder personal bet after house bet → one alert, no counter. test:house-bot-console — objection panel label.
+- **Fix:** Post-commit hook (a) also emits holder-conflict AlertOnce when a live bot's holder places a non-house bet on a market with house positions. ~~The objections page adds the filer label (console-side read).~~
+- **Test:** test:house-bot-engine — holder personal bet after house bet → one alert, no counter. ~~test:house-bot-console — objection panel label.~~
+- ⛔ **Superseded by D20 (Ali, 2026-09-17):** the objections panel names no house bot and shows no house stake beside a filer (D20 strikes the house lines on the objections page, C5-SPEC rulings 192–194); the holder-conflict admin alert is untouched by D20. Coverage gate: partly struck by D20.
 
 ### HB-LC-29 [gap] A leftover Up & Down market row with no round (round insert failed after createMarket) is bettable with global bounds and no price context
 - **Trigger:** Two replicas fire the same chain boundary. createMarket succeeds but roundStore.create throws on the unique round number, leaving a LIVE UPDOWN market with no round row.
@@ -988,11 +1006,12 @@ If he also holds his own stake, he may object.
 
 ### HB-LC-31 [partial] Two-admin authorization toggled ON after bots are live
 - **Trigger:** The owner enables two-admin at the resolver-queue header. The first officer stages YES (market goes CLOSED with resolvedOutcome staged); a second officer confirms later; a mismatch or 'reopen' is attempted.
-- **Expected:** The engine sees status CLOSED → PENDING intents SKIPPED(MARKET_NOT_LIVE), and never reads the staged outcome (HB-LC-03). adminReopenMarket is refused once stage-1 exists, so HB-LC-15 does not apply. House exposure shows on both stage surfaces. Toggling OFF mid-stage lets the same officer complete. No house-specific officer conflict (I10). COMPLIANCE audit resolution.two_admin_enabled as today.
+- **Expected:** The engine sees status CLOSED → PENDING intents SKIPPED(MARKET_NOT_LIVE), and never reads the staged outcome (HB-LC-03). adminReopenMarket is refused once stage-1 exists, so HB-LC-15 does not apply. ~~House exposure shows on both stage surfaces.~~ Toggling OFF mid-stage lets the same officer complete. No house-specific officer conflict (I10). COMPLIANCE audit resolution.two_admin_enabled as today.
 - **Plan:** I2; I10; F11
 - **Evidence:** C:/kipindi-main/src/lib/server/resolution-policy.ts:55-67; C:/kipindi-main/src/lib/server/market-service.ts:2989-3007 (stage-1 → CLOSED), :3020-3027, :4005 (reopen refused after stage-1)
 - **Fix:** Add the two-admin path to the HB-LC-03 decision-diff test and the HB-LC-16 transition list.
 - **Test:** test:house-bot-engine — two-admin ON: stage-1 mid-delay → SKIPPED(MARKET_NOT_LIVE); decision identical with the staged outcome present.
+- ⛔ **Superseded by D20 (Ali, 2026-09-17):** neither stage surface shows a house exposure line (C5-SPEC rulings 192–194). Coverage gate: partly struck by D20.
 
 ### HB-LC-32 [covered] A single admin resolves a LIVE market (no LIVE guard) while a house bet is in flight
 - **Trigger:** An officer resolves YES at 15:00:00 while a claimed COUNTER holds wallet:<bot> and is waiting for market:<id>.
@@ -1514,11 +1533,12 @@ If he also holds his own stake, he may object.
 
 ### CA-17 [gap] The owner prints or needs a record of a bot's money and activity for out-of-band reimbursement or the Board, and the console has no print styling or export.
 - **Trigger:** Owner presses Ctrl+P on /admin/house-bots/<id>?tab=money, or asks for the holder's movements since designation to settle reimbursement.
-- **Expected:** No print layout is promised. The money and activity tabs offer "Download CSV" for the current filters: EAT timestamps, txn id, type, amount, house-marked flag, intent id, market, outcome, and a header row naming the bot, holder masked phone, range and generated-at. As a minimum, if he prints, the console sidebar, top bar, PendingChangesBar and overlays are hidden and tables print unclipped.
+- **Expected:** No print layout is promised. ~~The money and activity tabs offer "Download CSV" for the current filters: EAT timestamps, txn id, type, amount, house-marked flag, intent id, market, outcome, and a header row naming the bot, holder masked phone, range and generated-at.~~ As a minimum, if he prints, the console sidebar, top bar, PendingChangesBar and overlays are hidden and tables print unclipped.
 - **Plan:** §8 Console UX (money/activity tabs); §12 Verification
 - **Evidence:** No @media print rule exists in src/app/globals.css (grep), so printing reproduces the sidebar, top bar and the fixed PendingChangesBar (src/components/ui/unsaved-changes.tsx:243), and ScrollX tables clip. src/lib/server/admin-guard.ts:23-28,46-54: checkAdminTotp is the non-throwing check intended for download route handlers.
-- **Fix:** §8: add an owner-only route handler /admin/house-bots/[botId]/export?tab=money|activity&... guarded by session + ADMIN + checkAdminTotp (403 on failure), with an ADMIN audit house_bot.exported. Add print:hidden to the house-bots strip, bars and overlays only (don't touch the shell files owned by the parallel session). Owner decides whether CSV is wanted in v1.
-- **Test:** test:house-bot-console: export as a non-owner → 403 plus SECURITY row; CSV header and columns pinned; qa:house-bots-visual emulateMedia('print') screenshot shows no sidebar.
+- **Fix:** ~~§8: add an owner-only route handler /admin/house-bots/[botId]/export?tab=money|activity&... guarded by session + ADMIN + checkAdminTotp (403 on failure), with an ADMIN audit house_bot.exported.~~ Add print:hidden to the house-bots strip, bars and overlays only (don't touch the shell files owned by the parallel session). ~~Owner decides whether CSV is wanted in v1.~~
+- **Test:** ~~test:house-bot-console: export as a non-owner → 403 plus SECURITY row; CSV header and columns pinned;~~ qa:house-bots-visual emulateMedia('print') screenshot shows no sidebar.
+- ⛔ **Superseded by D20 (Ali, 2026-09-17):** there is no per-bot CSV export and no `house_bot.exported` writer for it (C5-SPEC ruling 213; Commit 7's console carries no results or P&L CSV); the print minimum is untouched by D20. Coverage gate: partly struck by D20.
 
 ### CA-18 [gap] The owner returns to a backgrounded tab (laptop lid, phone lock) and sees hours-old state (Active, engine OK) until the next 20 s poll, and SSE is paused while hidden.
 - **Trigger:** Console tab hidden for 2 hours, during which Bot A auto-paused and the master switched off; the owner brings the tab to the front.
@@ -1760,6 +1780,7 @@ If he also holds his own stake, he may object.
 - red:house-bot-console deletes one audit call; that assertion must go red.
 
 ### CRA-02 [gap] GBT asks for all house activity for a period, for example August 2026.
+- ⛔ **Superseded by D20 (Ali, 2026-09-17):** struck whole — there is no house-liquidity report, no month picker, no R7 audit index section, no house-market statement, and the transactions CSV gains no `house_bot_id` column and no `house` filter (C5-SPEC rulings 199–210 and 213); every report and CSV shows a house account as an ordinary player account. Rulings 211 and 212 survive only as the platform defects L26 and L27, no longer release preconditions. Coverage gate: struck by D20.
 - **Trigger:** A compliance officer or the owner opens /admin/reports → Report library and needs a period-bounded house-activity artefact. Or they export transactions to CSV.
 - **Expected:** A new catalogue report 'house-liquidity' covering the calendar month (packPeriodBounds, period passed as ?period=YYYY-MM). Classification 'Regulator hand-off', with regulatorSignatures. Sections:
 1. Designation register: botId, masked holder id, designatedAt/By, consent method and verifiedAt, status changes in the period, removedAt and reason.
@@ -1809,6 +1830,7 @@ test:dal-parity covers the new filter.
 - test:house-bot-reports: a source pin, with a positive control, fails on any getAuditPage import in those files.
 
 ### CRA-04 [gap] The holder exercises his right of access: 'Export my data', or an officer builds his DSAR bundle during or after designation.
+- ⛔ **Superseded by D20 (Ali, 2026-09-17):** the owner-only internal record that C5-SPEC ruling 250 named as this id's home for the house section (rulings 236–238), and ruling 242's crowd-out record, are struck; D19 already keeps both doors free of any house section (rulings 168–169), so this id is covered only by its absence form (ruling 243). Coverage gate: the internal-record half is struck by D20.
 - **Trigger:** /profile/account 'Export my data', or /admin/privacy or /admin/players 'Build bundle'.
 - **Expected:** Both doors add a houseLiquidity section:
 - every HouseBot row for the user: status, pauseReason, designatedAt, consent method ('password entered by 50pick owner') with verifiedAt, removedAt and reason, and the label and note marked 'written by 50pick'
@@ -1903,7 +1925,7 @@ Also:
 - **Trigger:** The owner pays the holder outside 50pick. The holder then deposits enough to cross the source-of-funds threshold (TZS 5,000,000 in 30 days).
 - **Expected:** - No platform money moves for the reimbursement, but the owner records it: HouseBotEvent REIMBURSEMENT_RECORDED {amountTzs, paidAt, method, externalRef, note}, plus a COMPLIANCE house_bot.reimbursement_recorded row.
 - The bot's money tab lists recorded reimbursements beside OWNER_MONEY events.
-- The house-liquidity report adds 'Operator reimbursements to holders (off-platform, as recorded)'.
+- ~~The house-liquidity report adds 'Operator reimbursements to holders (off-platform, as recorded)'.~~
 - The check card warns: 'Deposits above source-of-funds thresholds need a declaration — declare the funds as 50pick liquidity funding'.
 - The SOF gate itself is unchanged.
 - **Plan:** D3b (plan:22); F7 (plan:121-124); §13 risks (plan:554-560)
@@ -1911,10 +1933,11 @@ Also:
 - src/lib/server/kyc-risk.ts:77.
 - src/lib/server/reports/catalogue.ts:251-255: FIU includes deposits at or above the threshold.
 - **Fix:** - Add owner action recordHouseBotReimbursementAction: Modal form, owner-only, audited, no money write.
-- Add the house-liquidity report section and the eligibility warning.
+- Add ~~the house-liquidity report section and~~ the eligibility warning.
 - Add §13 risk 7: 'reimbursement is off-ledger; the record is declarative'.
 - **Test:** - test:house-bot-console: the action writes one event and one COMPLIANCE row, and wallet, transactions and ledger are byte-identical.
-- test:house-bot-reports: the section total equals the recorded events in the period.
+- ~~test:house-bot-reports: the section total equals the recorded events in the period.~~
+- ⛔ **Superseded by D20 (Ali, 2026-09-17):** the house-liquidity report and its reimbursement section are struck (C5-SPEC ruling 202); the rest of this row is untouched by D20. Coverage gate: partly struck by D20.
 
 ### CRA-09 [gap] The privacy notice does not disclose that an automated system processes every player's bets and can exclude some accounts (the penalty box).
 - **Trigger:** A player or the Personal Data Protection Commission reads /legal/privacy after house bots launch.
@@ -1928,6 +1951,7 @@ Also:
 - **Test:** test:house-bot-disclosure renders the privacy page in en, sw and zh and asserts the liquidity line appears in §3.
 
 ### CRA-10 [gap] A counterparty (trigger) player asks for his data, or asks why his bets are no longer countered after he was put in the penalty box.
+- ⛔ **Superseded by D20 (Ali, 2026-09-17):** the owner-only internal record that C5-SPEC ruling 239 made the only home of `liquidityDecisions` (the excluded days and the countered count) is struck with rulings 236–238; ruling 239's absence half stands — a trigger player's two doors carry nothing — and D19c already struck the support-script answer. Coverage gate: covered only by that absence form.
 - **Trigger:** A penalty-boxed player uses 'Export my data', or complains to support.
 - **Expected:** An owner ruling (proposed D10) is recorded. Until it is, the default is:
 - The access export includes the days his bets were excluded from liquidity counters, and a count of his positions that received a liquidity stake.
@@ -1940,6 +1964,7 @@ Also:
 - **Test:** test:dsar-secrets: a penalty-boxed fixture's export has the penaltyDays dates, and no houseBotId, hb_ or hbi_ id, and no bot userId appears anywhere in the JSON.
 
 ### CRA-11 [gap] A player's complaint about one market reaches GBT, and 50pick must produce the house's participation in that market.
+- ⛔ **Superseded by D20 (Ali, 2026-09-17):** struck whole — there is no house participation statement and no F11 house block on `/admin/markets/<id>` to link it from (C5-SPEC rulings 194 and 208). Coverage gate: struck by D20.
 - **Trigger:** A complaint: 'I lost because 50pick's account took the other side on market X'.
 - **Expected:** From /admin/markets/<id>, next to the F11 summary, the owner downloads a 'House participation statement' (PDF or XLSX). It contains:
 - every house intent on the market: kind, why, due and placed times, side, stake, public snapshot
@@ -1960,12 +1985,13 @@ The download is audited like every other report generation.
 - **Trigger:** Weekly leaderboard prizes or rank rewards are introduced after house bots ship.
 - **Expected:** - House-marked positions never earn a prize or reward. Reward ranking is computed over non-house positions only.
 - The public board may still show the bot (D6).
-- The build fails if a money writer consumes leaderboard data without the house filter.
+- ~~The build fails if a money writer consumes leaderboard data without the house filter.~~
 - **Plan:** D6 (plan:25); §9 leaderboard row (plan:466)
 - **Evidence:** src/lib/server/market-dal.ts:1231-1233 (the leaderboard groups all non-OPEN positions by userId, with no filter); src/app/_actions/chat.ts:154 (prize programmes already exist, e.g. proposals)
 - **Fix:** - Add a HOUSE-BOTS.md do-not-restore line and a COMPLIANCE-entry constraint: 'rank or P&L rewards exclude houseBotId rows'.
-- Add a source pin: any file importing leaderboard( or leaderboardPlayerCounts together with creditInternal, creditBonus or adminAdjustBalance must reference houseBotId.
-- **Test:** test:house-bot-reports source scan, with a positive control: a planted offending file makes it fail.
+- ~~Add a source pin: any file importing leaderboard( or leaderboardPlayerCounts together with creditInternal, creditBonus or adminAdjustBalance must reference houseBotId.~~
+- **Test:** ~~test:house-bot-reports source scan, with a positive control: a planted offending file makes it fail.~~
+- ⛔ **Superseded by D20 (Ali, 2026-09-17):** the reward source pin and its scan (C5-SPEC ruling 233's walker, with ruling 256's owed SQL) are struck; the rule that no prize or reward pays on house stakes stays in the docs (`docs/HOUSE-BOTS.md` "R4 — no rewards on house stakes" and its `docs/COMPLIANCE-DECISIONS.md` line), and the public board still shows the bot (D6). Coverage gate: partly struck by D20.
 
 ### CRA-13 [partial] Auto-pause and kill-switch audits are awaited while the wallet or house:control lock is still held, so bets queue behind the global audit-chain lock.
 - **Trigger:** A burst of auto-pauses, or master OFF, while the audit chain is busy (global advisory lock, 30 s transaction).
@@ -1990,41 +2016,45 @@ The download is audited like every other report generation.
 ### CRA-15 [gap] Compliance purges an archived Up & Down chain the house traded.
 - **Trigger:** The /admin/retention purge ceremony on a chain with house positions or intents.
 - **Expected:** - The precondition refuses while any HouseBotIntent on the chain's markets is PENDING or CLAIMED: 'N house intents are still live — cancel them or let them expire first'.
-- The cost panel shows 'House positions (kept)' and 'House intents (kept)'.
-- The evidence pack includes house positions per market.
+- ~~The cost panel shows 'House positions (kept)' and 'House intents (kept)'.~~
+- ~~The evidence pack includes house positions per market.~~
 - Intents, positions and markers are untouched, and verification is unchanged.
 - **Plan:** None
 - **Evidence:** src/lib/server/chain-purge.ts:10-13 (the NEVER list), :112-159 (preconditions), :204-216 (cost counts positions including house ones)
-- **Fix:** Add a §9 row: chain-purge precondition, cost rows, pack field and NEVER list entry for the house tables.
+- **Fix:** Add a §9 row: chain-purge precondition, ~~cost rows, pack field~~ and NEVER list entry for the house tables.
 - **Test:** test:chain-purge: a chain with a PENDING house intent is refused. After the intent expires the purge proceeds and the intent count is unchanged.
+- ⛔ **Superseded by D20 (Ali, 2026-09-17):** the purge cost panel and evidence pack name no house positions or intents (D20: no record splits house money out); the live-intent precondition and the NEVER list are untouched by D20. Coverage gate: partly struck by D20.
 
 ### CRA-16 [partial] A resolver sees house exposure, and the audit chain must prove what he saw.
 - **Trigger:** A single admin seals a poll where the house holds NO 40,000. Also emergency void and bulk seal.
-- **Expected:** - 'House stake: YES X · NO Y' is shown on the queue card, the ceremony, the admin market page and the bulk-resolve confirm modal.
-- market.adjudicated, market.emergency_void and market.resolve.bulk(_override) payloads carry a houseStake {yes, no} snapshot read in the same call.
+- **Expected:** - ~~'House stake: YES X · NO Y' is shown on the queue card, the ceremony, the admin market page and the bulk-resolve confirm modal.~~
+- ~~market.adjudicated, market.emergency_void and market.resolve.bulk(_override) payloads carry a houseStake {yes, no} snapshot read in the same call.~~
 - There is no block (I10).
 - **Plan:** I10 (plan:41); F11 (plan:143)
 - **Evidence:** src/lib/server/market-service.ts:3060-3081 (adjudicated payload has pools but no house stake), :4207-4214 (emergency_void payload); src/app/admin/resolver-queue/page.tsx:463-469 (pool display)
-- **Fix:** Extend F11 with the bulk-resolve modal and the houseStake fields on those three audit payloads.
-- **Test:** - test:house-bot-reports: resolving a fixture with a house position gives adjudicated payload.houseStake equal to the position sums.
+- **Fix:** ~~Extend F11 with the bulk-resolve modal and the houseStake fields on those three audit payloads.~~
+- **Test:** - ~~test:house-bot-reports: resolving a fixture with a house position gives adjudicated payload.houseStake equal to the position sums.~~
 - test:officer-conflict and test:two-admin stay green unchanged.
+- ⛔ **Superseded by D20 (Ali, 2026-09-17):** no resolver surface shows a house stake line and no decision audit carries `houseStake` (C5-SPEC rulings 187–194); a single admin still seals a house-held market with no block (I10). Coverage gate: partly struck by D20.
 
 ### CRA-17 [partial] Other players object to the result of a market where the house staked heavily.
 - **Trigger:** A player with a personal position files an objection; an officer rejects or upholds it.
 - **Expected:** - Filing is unchanged for players. The holder's house-only positions give him no standing (f).
-- The /admin/objections row and decision dialog show the house stake.
-- objection.rejected and objection.upheld payloads carry a houseStake snapshot.
+- ~~The /admin/objections row and decision dialog show the house stake.~~
+- ~~objection.rejected and objection.upheld payloads carry a houseStake snapshot.~~
 - An upheld VOID refunds house positions with the marker stamped.
-- Such objections are listed in the house-liquidity report.
+- ~~Such objections are listed in the house-liquidity report.~~
 - **Plan:** §3 (f) (plan:188); F11 (plan:143)
 - **Evidence:** src/lib/server/objections-service.ts:108 (standing = any position), :420-428 and :543-556 (decision payloads carry no house data); src/app/admin/objections/page.tsx:51, :142 (pool only)
-- **Fix:** - Extend F11 to /admin/objections and objection-decision.tsx.
-- Add houseStake to both decision audit payloads.
-- Add an objections section to CRA-02.
+- **Fix:** - ~~Extend F11 to /admin/objections and objection-decision.tsx.~~
+- ~~Add houseStake to both decision audit payloads.~~
+- ~~Add an objections section to CRA-02.~~
 - **Test:** - test:house-bot-money §6 (standing) as planned.
-- test:house-bot-reports: an upheld VOID fixture → refund transactions stamped and payload.houseStake present.
+- test:house-bot-reports: an upheld VOID fixture → refund transactions stamped ~~and payload.houseStake present~~.
+- ⛔ **Superseded by D20 (Ali, 2026-09-17):** the objections house line, the `houseStake` decision payloads and the report listing are struck (C5-SPEC rulings 187–194 and 202); standing (f) and the marker on an upheld VOID's refunds are untouched by D20. Coverage gate: partly struck by D20.
 
 ### CRA-18 [partial] The compliance Player Safety panel flags the holder because of bot activity, or loses his real signals.
+- ⛔ **Superseded by D20 (Ali, 2026-09-17):** the house-bet exclusion and the holder chip are struck (C5-SPEC ruling 230): the harm detectors read the holder's account exactly like any player's, house bets included, and may flag it (an accepted consequence); RAPID_DEPOSIT_ESCALATION still reads real deposits and nothing is suppressed. Coverage gate: struck by D20.
 - **Trigger:** The bot places 5+ bets between 00:00 and 06:00 EAT, and the holder tops up 3 times in an hour to fund it.
 - **Expected:** - LATE_NIGHT_PLAY and CHASING_LOSSES are computed from personal (non-house) BET_PLACED rows only. The house filter is applied in the query, so the 10,000-row window is all personal activity.
 - RAPID_DEPOSIT_ESCALATION still fires on real deposits (he is a real person).
@@ -2045,47 +2075,51 @@ test:dal-parity covers the new option.
 - **Trigger:** The holder deposits TZS 1,000,000 or more, or one of his withdrawals enters AML_REVIEW.
 - **Expected:** - The rows are included unchanged (statutory), and the two-officer AML release is unchanged.
 - Admins get the F7 alert.
-- The SAR gains a 'Context' column saying 'Designated house-liquidity account (since …)' when a designation window covers the transaction. Officers neither file uninformed suspicions nor suppress the row.
+- ~~The SAR gains a 'Context' column saying 'Designated house-liquidity account (since …)' when a designation window covers the transaction. Officers neither file uninformed suspicions nor suppress the row.~~
 - **Plan:** §9 FIU row (plan:461); F7 (plan:121-124)
 - **Evidence:** src/lib/server/reports/catalogue.ts:235-255 (DEPOSIT or WITHDRAWAL at or above the threshold, or AML_REVIEW), :301-309 (columns)
-- **Fix:** §9 FIU row: 'inclusion unchanged; add a Context column derived from HouseBot designation windows'.
-- **Test:** test:house-bot-reports: a 1.2M deposit inside the designation window gives a row with context; one outside gives blank context.
+- **Fix:** ~~§9 FIU row: 'inclusion unchanged; add a Context column derived from HouseBot designation windows'.~~
+- **Test:** ~~test:house-bot-reports: a 1.2M deposit inside the designation window gives a row with context; one outside gives blank context.~~
+- ⛔ **Superseded by D20 (Ali, 2026-09-17):** the FIU SAR carries no Context column (C5-SPEC ruling 228; W21 moot); its inclusion rule, the two-officer AML release and the F7 admin alert are untouched by D20. Coverage gate: partly struck by D20.
 
 ### CRA-20 [partial] The statutory monthly return (the GBT pack) for a month with house money.
 - **Trigger:** An officer prepares the monthly pack.
 - **Expected:** - Existing Aggregate financials rows and totals are unchanged.
-- New memo rows: 'of which: house liquidity stakes (in the GGR base)' (value and count), 'House liquidity net result (held in designated accounts; not operator revenue)', and 'Designated house accounts at period end'.
+- ~~New memo rows: 'of which: house liquidity stakes (in the GGR base)' (value and count), 'House liquidity net result (held in designated accounts; not operator revenue)', and 'Designated house accounts at period end'.~~
 - The stale note becomes 'GGR = stakes − payouts − refunds'.
-- The provenance note names the Position and Transaction markers and the HouseBot tables.
+- ~~The provenance note names the Position and Transaction markers and the HouseBot tables.~~
 - KYC, RG and provider sections are unchanged.
 - The pack sha256 covers the new PDF.
 - **Plan:** §9 buildGbtMonthly row (plan:462)
 - **Evidence:** src/lib/server/reports/catalogue.ts:120-125 (financial rows), :186 (stale GGR note), :190-199 (provenance rule and text); src/lib/server/report-money.ts:155 (actual GGR formula)
-- **Fix:** §9 gbt row: specify the three memo rows, the corrected GGR note and the provenance sentence.
-- **Test:** - test:house-bot-reports: the pack with a house fixture equals its no-marker twin on every existing row; memo rows equal houseBotBook; the note text is asserted.
+- **Fix:** §9 gbt row: specify ~~the three memo rows,~~ the corrected GGR note ~~and the provenance sentence~~.
+- **Test:** - test:house-bot-reports: the pack with a house fixture equals its no-marker twin on every existing row; ~~memo rows equal houseBotBook;~~ the note text is asserted.
 - test:report-parity stays green.
+- ⛔ **Superseded by D20 (Ali, 2026-09-17):** the GBT monthly pack carries no house memo and no provenance sentence about house markers (C5-SPEC ruling 227; W21 moot); its statutory figures include house stakes as player activity (an accepted consequence). Coverage gate: partly struck by D20.
 
 ### CRA-21 [partial] Hold % and margin move because of house liquidity, and the Board reads it as a change in margin.
 - **Trigger:** The house turns would-be one-sided refunds into matched, fee-bearing pools; the finance margin tile and the daily-ops margin change.
 - **Expected:** - The statutory hold % stays GGR ÷ stakes over all rows. Margin tone logic is unchanged.
-- A delta 'House liquidity: X% of stakes' is shown beside /admin/finance 'Operator margin' and the daily-ops Margin tile.
+- ~~A delta 'House liquidity: X% of stakes' is shown beside /admin/finance 'Operator margin' and the daily-ops Margin tile.~~
 - There is never a 'players-only GGR' figure.
 - **Plan:** §9 summarise row (plan:459); finance row (plan:464)
 - **Evidence:** src/lib/server/report-money.ts:169 (holdPct); src/lib/server/reports/catalogue.ts:645-646 and :699 (margin and 5% tone threshold); src/app/admin/finance/page.tsx:190
-- **Fix:** §9: add a houseShareOfStakesPct to MoneySummary.house and render it as the delta on both tiles.
-- **Test:** test:house-bot-reports: holdPct is identical to the no-marker twin; houseShare equals house stakes ÷ stakes.
+- **Fix:** ~~§9: add a houseShareOfStakesPct to MoneySummary.house and render it as the delta on both tiles.~~
+- **Test:** test:house-bot-reports: holdPct is identical to the no-marker twin; ~~houseShare equals house stakes ÷ stakes~~.
+- ⛔ **Superseded by D20 (Ali, 2026-09-17):** no house delta on either margin tile and no `MoneySummary.house` (C5-SPEC rulings 224–225); hold % stays GGR ÷ stakes over all rows and no players-only GGR exists. Coverage gate: partly struck by D20.
 
 ### CRA-22 [partial] The match-integrity report for markets with house participation.
 - **Trigger:** The GBT integrity unit requests the review; a market holding a house stake was voided.
-- **Expected:** - The Voided markets table gains 'House stake' and 'Resolution path (single admin / two officers)'.
-- House-marked refund rows are flagged.
-- A new section: 'Markets with house liquidity that were voided or reversed on objection'.
+- **Expected:** - The Voided markets table gains ~~'House stake' and~~ 'Resolution path (single admin / two officers)'.
+- ~~House-marked refund rows are flagged.~~
+- ~~A new section: 'Markets with house liquidity that were voided or reversed on objection'.~~
 - The stale 'two-officer resolution flow' note is corrected.
-- Predictors are unchanged, with the note 'includes house accounts' (D6).
+- Predictors are unchanged, ~~with the note 'includes house accounts' (D6)~~.
 - **Plan:** §9 match integrity row (plan:462)
 - **Evidence:** src/lib/server/reports/catalogue.ts:956-962 (market rows), :965-970 (refund rows), :1032 (stale two-officer note); src/lib/server/resolution-policy.ts:5-8 (single admin is the default)
 - **Fix:** Spell out the §9 match-integrity row with the columns, section and note fix above.
-- **Test:** test:house-bot-reports builds the report with a voided house market and asserts the columns, the section row and the note text.
+- **Test:** test:house-bot-reports builds the report with a voided house market and asserts the columns, ~~the section row and~~ the note text.
+- ⛔ **Superseded by D20 (Ali, 2026-09-17):** the match-integrity report gains no house column, refund flag, house section or predictor note (C5-SPEC ruling 229's house parts; W22 moot). Coverage gate: partly struck by D20.
 
 ### CRA-23 [partial] A player asks the chatbot or support: 'Is the house betting against me?'
 - **Trigger:** A chat widget question, the help FAQ, or an email to support.
@@ -2109,7 +2143,7 @@ Forbidden phrases: 'independent', 'cannot influence', 'never bets against you', 
 - levy treatment (house stakes are inside GGR)
 - the rules changed without 14-day notice
 - the controls
-- how to inspect (the house-liquidity report and the audit actions)
+- how to inspect (~~the house-liquidity report and~~ the audit actions)
 - accepted risks: a single admin may resolve markets the house holds; consent is password-only; the holder sees house positions
 
 The ON modal shows a non-blocking amber line, 'Board disclosure not recorded as sent', until the owner records the date (HouseBotControl.boardDisclosureSentAt, COMPLIANCE-audited).
@@ -2120,6 +2154,7 @@ The ON modal shows a non-blocking amber line, 'Board disclosure not recorded as 
 - §8: add the ON modal line and a 'Record disclosure sent' owner action.
 - **Test:** - test:docs passes.
 - test:house-bot-console: the ON modal fixture shows the line when the date is null and hides it once set; the record action writes one COMPLIANCE row.
+- ⛔ **Superseded by D20 (Ali, 2026-09-17):** the draft points to no house report: Commit 6's private Board draft must say that reports and filings treat house accounts as ordinary player accounts and carry no house memo (C5-D20-REPLAN §4). Coverage gate: partly struck by D20.
 
 ### CRA-25 [partial] The COMPLIANCE-DECISIONS entry: heading format and what it supersedes.
 - **Trigger:** Commit 1 writes the decision of record.
@@ -2155,7 +2190,7 @@ The ON modal shows a non-blocking amber line, 'Board disclosure not recorded as 
 ### CRA-28 [partial] Two-admin authorization is switched ON later.
 - **Trigger:** The owner enables resolution.two_admin_enabled from the resolver queue.
 - **Expected:** - Every market, including house-held ones, needs stage 1 by officer A and stage 2 by a different officer B.
-- The house exposure display is unchanged, and no officer-conflict block appears.
+- ~~The house exposure display is unchanged, and~~ no officer-conflict block appears.
 - The engine is unaffected; it never reads staged outcomes (I2).
 - The fairness feed shows twoOfficer true.
 - **Plan:** I10 (plan:41); I2 (plan:33)
@@ -2163,6 +2198,7 @@ The ON modal shows a non-blocking amber line, 'Board disclosure not recorded as 
 - **Fix:** Add a §12 assertion to test:house-bot-reports.
 - **Test:** - test:house-bot-reports: with requireTwoOfficer=true, a house-held market resolves only after a stage 2 by a different officer, exactly like its no-house twin.
 - test:two-admin and test:officer-conflict stay green.
+- ⛔ **Superseded by D20 (Ali, 2026-09-17):** there is no house exposure display (C5-SPEC rulings 192–194). Coverage gate: partly struck by D20.
 
 ### CRA-29 [partial] Audit chain continuity under high bot volume.
 - **Trigger:** 5 bots at freqMaxPerDay 200 add about 1,000 bets a day; the nightly backup runs verifyChainFull.
@@ -2187,31 +2223,34 @@ The ON modal shows a non-blocking amber line, 'Board disclosure not recorded as 
 ### CRA-31 [covered] /admin/house reconciliation and the trial balance with house rows.
 - **Trigger:** The owner opens /admin/house; the nightly trial balance runs.
 - **Expected:** - The waterfall is unchanged (house winnings stay in PLAYER legs).
-- Memo rows show 'House bots — net result (included above)' and the open exposure.
+- ~~Memo rows show 'House bots — net result (included above)' and the open exposure.~~
 - Trial-balance drift is 0, and the lifecycle drift alert never fires because of house activity.
 - Player liability includes the holder's wallet.
 - **Plan:** §9 /admin/house row (plan:463)
 - **Evidence:** src/lib/server/house-ledger.ts:221, :147; src/lib/server/ledger.ts:908; src/lib/server/lifecycle.ts:94-111
-- **Test:** test:house-bot-money: trial balance ties. test:house-page: pins updated.
+- **Test:** test:house-bot-money: trial balance ties. ~~test:house-page: pins updated.~~
+- ⛔ **Superseded by D20 (Ali, 2026-09-17):** `/admin/house` gains no house marker card (C5-SPEC ruling 231); the waterfall, trial balance and liability are untouched by D20. Coverage gate: partly struck by D20.
 
 ### CRA-32 [covered] Finance page tiles with house activity.
 - **Trigger:** /admin/finance for a period with house bets.
-- **Expected:** - Active players excludes house-only activity.
-- The Top-10 excludes house rows, and a 'House bots net' tile is added.
+- **Expected:** - ~~Active players excludes house-only activity.~~
+- ~~The Top-10 excludes house rows, and a 'House bots net' tile is added.~~
 - GGR, NGR and Wallet liability include house rows.
 - 'Held for unverified' includes an unapproved holder's winnings (a true figure).
 - **Plan:** §9 analytics row (plan:460); finance row (plan:464)
 - **Evidence:** src/app/admin/finance/page.tsx:90, :102-103, :185-200; src/lib/server/analytics.ts:173-176, :298-309
-- **Test:** test:house-bot-reports splits: all = players + house
+- **Test:** ~~test:house-bot-reports splits: all = players + house~~
+- ⛔ **Superseded by D20 (Ali, 2026-09-17):** `/admin/finance` counts a house account in active players and the Top-10 like any player's and gains no house tile (C5-SPEC rulings 224–225; PROGRESS L34 closed as correct under D20); GGR, NGR, wallet liability and 'Held for unverified' are untouched by D20. Coverage gate: partly struck by D20.
 
 ### CRA-33 [covered] Insights filters with house activity.
 - **Trigger:** /admin/insights.
-- **Expected:** - The ledger loop skips marked rows (LTV, first bet, retention); deposits are kept.
-- Top markets' predictors come from participantSplit.players.
+- **Expected:** - ~~The ledger loop skips marked rows (LTV, first bet, retention); deposits are kept.~~
+- ~~Top markets' predictors come from participantSplit.players.~~
 - The role filter is unchanged.
 - **Plan:** §9 finance/insights row (plan:464)
 - **Evidence:** src/lib/server/insights.ts:96-97, :107-126, :195
-- **Test:** test:insights pins updated, plus test:house-bot-reports
+- **Test:** ~~test:insights pins updated, plus test:house-bot-reports~~
+- ⛔ **Superseded by D20 (Ali, 2026-09-17):** insights read house rows exactly like a player's — LTV, first bet, retention and top markets' predictors included — and no insights code changes (C5-SPEC ruling 224, class C). Coverage gate: struck by D20.
 
 ### CRA-34 [covered] RG report counts (roster and engagement) when the holder self-excludes or sets limits.
 - **Trigger:** The holder self-excludes or sets a daily loss limit.
@@ -2225,19 +2264,21 @@ The ON modal shows a non-blocking amber line, 'Board disclosure not recorded as 
 ### CRA-35 [covered] Daily ops report: unique players and tickets.
 - **Trigger:** The daily operations report for a day with house bets.
 - **Expected:** - Sales, tickets, GGR and levies include house bets.
-- 'Unique players' counts non-house bettors only.
-- A 'House liquidity bets' row shows count and stake.
+- ~~'Unique players' counts non-house bettors only.~~
+- ~~A 'House liquidity bets' row shows count and stake.~~
 - **Plan:** §9 buildDailyOps row (plan:462)
 - **Evidence:** src/lib/server/reports/catalogue.ts:600-608, :684, :724
 - **Test:** test:house-bot-reports
+- ⛔ **Superseded by D20 (Ali, 2026-09-17):** daily ops counts house bettors in Unique players and adds no house row (C5-SPEC ruling 224); sales, tickets, GGR and levies include house bets. Coverage gate: partly struck by D20.
 
 ### CRA-36 [covered] The AML suspicious-bet scan sees bot velocity.
 - **Trigger:** The bot places 100+ bets in 24 hours.
-- **Expected:** - Marked rows raise no VELOCITY or STAKE_SPIKE flag.
-- The holder's personal bets are still analysed against their own median.
+- **Expected:** - ~~Marked rows raise no VELOCITY or STAKE_SPIKE flag.~~
+- ~~The holder's personal bets are still analysed against their own median.~~
 - **Plan:** §9 AML row (plan:465)
 - **Evidence:** src/lib/server/analytics.ts:487-493, :524
-- **Test:** test:house-bot-reports: AML exclusion
+- **Test:** ~~test:house-bot-reports: AML exclusion~~
+- ⛔ **Superseded by D20 (Ali, 2026-09-17):** the AML suspicious-bet scan reads house bets like any player's and may flag the account (an accepted consequence; C5-SPEC ruling 230). Coverage gate: struck by D20.
 
 ## future (34)
 
@@ -2297,11 +2338,12 @@ The ON modal shows a non-blocking amber line, 'Board disclosure not recorded as 
 
 ### FS-05 [gap] 50pick later introduces leaderboard prizes, a tournament, streak rewards or cashback on losses. The public leaderboard SQL groups every settled position by userId with no filter. House-marked wins would lift the holder's rank, and a real prize would be paid on 50pick's own liquidity stakes to the holder personally, displacing a real player.
 - **Trigger:** Any feature that pays money or rewards based on rank, volume, streaks or losses computed from Position rows.
-- **Expected:** Every money-bearing reward is computed only over positions with houseBotId IS NULL. The D6 display stays unchanged: the bot still appears on the public board. If the holder's non-house record qualifies on its own, he is paid on that alone. The prize-run audit payload records `excludedHousePositions`. Admins see an 'excluded house positions: N' line on the prize run.
+- **Expected:** Every money-bearing reward is computed only over positions with houseBotId IS NULL. The D6 display stays unchanged: the bot still appears on the public board. If the holder's non-house record qualifies on its own, he is paid on that alone. ~~The prize-run audit payload records `excludedHousePositions`. Admins see an 'excluded house positions: N' line on the prize run.~~
 - **Plan:** D6; §9 'Leaderboard … unchanged (D6), pinned by a test'
 - **Evidence:** src/lib/server/market-dal.ts:1225-1235 (leaderboard SQL: `where p."status" <> 'OPEN'`, group by userId, no house filter); src/lib/server/market-dal.ts:1249-1255 (player counts, unfiltered); src/lib/server/market-dal.ts:693-716 (memory twin)
-- **Fix:** Add the option `excludeHouse?: boolean` to positionStore.leaderboard and the memory twin now (default false, the D6 behaviour). Export `NON_HOUSE_POSITION_SQL`. Add a rule to COMPLIANCE entry and HOUSE-BOTS.md: 'No reward, prize, cashback or tournament may be computed on house-marked positions; public display may include them (D6).' New guard `test:house-bot-reward-exclusion`: it walks src for `group by p."userId"`, `positionStore.leaderboard(` and reward-credit call sites. Each must be annotated `display-only (D6)` in an allowlist that may only shrink, or pass excludeHouse:true.
-- **Test:** test:house-bot-reward-exclusion: a walker with a positive control (a fixture with an unannotated userId aggregate goes red). test:house-bot-reports: `leaderboard({excludeHouse:true})` drops marked rows, and the default output is unchanged in both stores (dal-parity).
+- **Fix:** ~~Add the option `excludeHouse?: boolean` to positionStore.leaderboard and the memory twin now (default false, the D6 behaviour). Export `NON_HOUSE_POSITION_SQL`.~~ Add a rule to COMPLIANCE entry and HOUSE-BOTS.md: 'No reward, prize, cashback or tournament may be computed on house-marked positions; public display may include them (D6).' ~~New guard `test:house-bot-reward-exclusion`: it walks src for `group by p."userId"`, `positionStore.leaderboard(` and reward-credit call sites. Each must be annotated `display-only (D6)` in an allowlist that may only shrink, or pass excludeHouse:true.~~
+- **Test:** ~~test:house-bot-reward-exclusion: a walker with a positive control (a fixture with an unannotated userId aggregate goes red). test:house-bot-reports: `leaderboard({excludeHouse:true})` drops marked rows, and the default output is unchanged in both stores (dal-parity).~~
+- ⛔ **Superseded by D20 (Ali, 2026-09-17):** no `excludeHouse` option, `NON_HOUSE_POSITION_SQL`, reward walker or prize-run house line is built or owed (C5-SPEC rulings 233–234 and 256); the rule that no reward pays on house stakes stays in the docs (`docs/HOUSE-BOTS.md` "R4 — no rewards on house stakes" and its `docs/COMPLIANCE-DECISIONS.md` line), and the bot stays on the public board (D6). Coverage gate: partly struck by D20.
 
 ### FS-06 [gap] The Board rules house participation unlawful, or Ali ends the programme. Today's plan offers a DB master switch (which any ADMIN can turn back on), per-bot Remove, and an env var. There is no terminal state, no single action removing every bot, no stated rule for open house positions, and no switch for the public disclosure text.
 - **Trigger:** A GBT letter or an owner decision to sunset house bots.
@@ -2319,12 +2361,13 @@ Notifications:
 After retirement:
 - Open house positions settle normally. A pari-mutuel pool can't void one position. An optional per-market emergencyVoid list is displayed, never automatic.
 - A code-level product state `houseBots: WITHDRAWN` makes ON impossible by DB edit, the engine doesn't boot, and the console renders read-only.
-- Reports keep their house lines. The public disclosure line flips to past tense with a META bump.
+- ~~Reports keep their house lines.~~ The public disclosure line flips to past tense with a META bump.
 - Markers, intents and events are kept.
 - **Plan:** D1; F8 Remove; F9 kill switch; §4.2 HOUSE_BOT_ENGINE=false; §10; §13
 - **Evidence:** src/lib/feature-state.ts:16-20 ('An operator cannot switch a withdrawn feature back on by editing a row'); src/lib/feature-state.ts:69 and :88-92 (FeatureState table); src/lib/feature-state.ts:110-118 (env override falls back to the shipped constant); src/lib/server/rbac-guard.ts:208-225 (requireOwner = any ADMIN, so any ADMIN can flip a DB switch back); src/lib/server/market-service.ts:4061 (emergencyVoidMarket: whole-market refund only)
 - **Fix:** Add `houseBots` to FeatureName in feature-state.ts (ACTIVE at release). It is consulted by startHouseBotEngine, setHouseBotSwitchAction(ON), startHouseBotAction and designateHouseBotAction. Add `retireHouseBotsAction` (requireOwner), offCause SUNSET, and remove reason SUNSET. Add a HOUSE-BOTS.md runbook 'Sunset' covering the export of open exposure, the disclosure flip checklist, and data retention. `ops:house-bots-status` prints open house exposure per market.
-- **Test:** test:house-bot-console: retire → all bots REMOVED, intents CANCELLED, 1 audit row, N holder notices, and a later ON attempt is refused. withdrawn-features-style section: FEATURE_HOUSEBOTS=WITHDRAWN → engine not started, ON refused, reports still show house lines. Open marked positions settle with markers intact, and the trial balance ties.
+- **Test:** test:house-bot-console: retire → all bots REMOVED, intents CANCELLED, 1 audit row, N holder notices, and a later ON attempt is refused. withdrawn-features-style section: FEATURE_HOUSEBOTS=WITHDRAWN → engine not started, ON refused, ~~reports still show house lines~~. Open marked positions settle with markers intact, and the trial balance ties.
+- ⛔ **Superseded by D20 (Ali, 2026-09-17):** reports carry no house lines to keep. Coverage gate: partly struck by D20.
 
 ### FS-07 [gap] A later release adds rules fields (per-chain amounts, a new mode) as rules v2. During Railway's 60 s deploy overlap, or after a rollback, an old container reads v2 JSON. A missing or renamed field silently takes a default, possibly a permissive one, and bets run under rules the owner never saved. New code reading v1 rows without a migrator would guess.
 - **Trigger:** Deploy of a rules schema change, deploy overlap, or rollback.
@@ -2496,18 +2539,19 @@ test:house-bot-seam: stakeBoundsForMarket equals the old inline result for a pol
 
 ### FS-22 [partial] The Board asks for a per-bet export of house activity for a month (market, side, stake, trigger player, outcome, net), or audits a past month. Ops may purge an Up & Down chain the bots traded, which deletes UpDownRound rows and blanks market titles, while retention deletes old notifications.
 - **Trigger:** A GBT information request, a chain purge, or a nightly retention pass.
-- **Expected:** - /admin/reports offers 'House liquidity activity' (CSV, date range) built from HouseBotIntent joined to Position and Transaction markers.
-- Its totals equal the house line in buildGbtMonthly for the same period.
-- Export writes a COMPLIANCE audit row.
-- Feed rows and the export render from the intent's `decision` snapshot (title, round number, pools at decision), so a purged chain still reads "BTC 5-min #412".
+- **Expected:** - ~~/admin/reports offers 'House liquidity activity' (CSV, date range) built from HouseBotIntent joined to Position and Transaction markers.~~
+- ~~Its totals equal the house line in buildGbtMonthly for the same period.~~
+- ~~Export writes a COMPLIANCE audit row.~~
+- Feed rows ~~and the export~~ render from the intent's `decision` snapshot (title, round number, pools at decision), so a purged chain still reads "BTC 5-min #412".
 - HouseBot, HouseBotIntent, HouseBotEvent and HouseBotAlertOnce are never deleted by retention or purge.
 - **Plan:** §9 reporting (lines in buildGbtMonthly / buildDailyOps); §8 activity feed 'built from HouseBotIntent joined to the trigger, market and settlement'; §2 decision Json
 - **Evidence:** src/lib/server/reports/catalogue.ts:74, :580, :946 (GBT monthly, daily ops, match integrity; no per-bet house report); src/lib/server/chain-purge.ts:10-13 (DELETE UpDownRound, REDACT market titles, NEVER Position/Transaction); src/lib/server/chain-purge.ts:412-429 (the purge writes); src/lib/server/lifecycle.ts:124-150 (retention pass deletes notifications and OTP rows)
-- **Fix:** catalogue.ts: add `buildHouseActivity(generatorId, period)` and register it in the reports UI. §8 feed and export read titles and round numbers from `decision.snapshot`, never live joins. Add HouseBot* tables to chain-purge.ts's NEVER list and to retention's exclusions, both in comment and pinned.
+- **Fix:** ~~catalogue.ts: add `buildHouseActivity(generatorId, period)` and register it in the reports UI.~~ §8 feed ~~and export~~ read titles and round numbers from `decision.snapshot`, never live joins. Add HouseBot* tables to chain-purge.ts's NEVER list and to retention's exclusions, both in comment and pinned.
 - **Test:** test:house-bot-reports:
-- Export totals equal the buildGbtMonthly house line.
-- A purged chain fixture → the feed row and export still show the round number and title.
+- ~~Export totals equal the buildGbtMonthly house line.~~
+- A purged chain fixture → the feed row ~~and export~~ still show the round number and title.
 - A retention pass leaves HouseBot* row counts unchanged.
+- ⛔ **Superseded by D20 (Ali, 2026-09-17):** there is no house activity export and no GBT house line (C5-SPEC rulings 202 and 227); the feed's snapshot titles and the never-deleted house tables are untouched by D20. Coverage gate: partly struck by D20.
 
 ### FS-23 [partial] Identity policy flips again and a KYC-before-bet gate returns (2026-09-05 style) with kyc_* reasons, while the holder is unverified. Under the plan these fall to FAILED(UNMAPPED), and identity is only a warning row at designation and Start.
 - **Trigger:** A COMPLIANCE-DECISIONS ruling re-adding a bet identity gate.
@@ -2535,21 +2579,23 @@ test:house-bot-seam: stakeBoundsForMarket equals the old inline result for a pol
 
 ### FS-25 [partial] The Board requires each market to show house liquidity publicly (e.g. "50pick liquidity: TZS 8,000 on DOWN"). The plan pins the marker as absent from every public payload (D6), so compliance would mean scattering new reads across the board, round page, market page and share card.
 - **Trigger:** A GBT disclosure ruling.
-- **Expected:** One aggregate reader, `houseStakeByMarket(marketIds) → {yes, no}`, already exists and feeds the F11 resolver display and reports. A future disclosure switches on in one public view model, shows only the aggregate (never holder identity or bot label), and passes through a META-bumped rules text in all locales.
+- **Expected:** One aggregate reader, `houseStakeByMarket(marketIds) → {yes, no}`, already exists ~~and feeds the F11 resolver display and reports~~. A future disclosure switches on in one public view model, shows only the aggregate (never holder identity or bot label), and passes through a META-bumped rules text in all locales.
 - **Plan:** D6; F11 resolver 'House stake: YES X · NO Y'; §12 test:house-bot-reports absence assertions
 - **Evidence:** src/lib/server/market-service.ts:1191-1195 (predictorCount feeds the Up & Down card, admin economics panel, regulator match-integrity report and public share card); src/lib/server/market-dal.ts:1225-1235 (public aggregates read Position without a marker)
-- **Fix:** §2 DAL: `houseStakeByMarket(marketIds)` with a memory twin, used by F11 and §9. HOUSE-BOTS.md 'Disclosure change procedure' names the view models, i18n keys and the test assertion to flip. The rule: aggregate only.
+- **Fix:** §2 DAL: `houseStakeByMarket(marketIds)` with a memory twin, ~~used by F11 and §9~~. HOUSE-BOTS.md 'Disclosure change procedure' names the view models, i18n keys and the test assertion to flip. The rule: aggregate only.
 - **Test:** test:house-bot-reports: the aggregate equals the sum of marked OPEN positions per side, and the absence assertions stay green. A flag-on fixture renders the aggregate with no userId or label in the payload.
+- ⛔ **Superseded by D20 (Ali, 2026-09-17):** the aggregate reader feeds no resolver display and no report (C5-SPEC rulings 192–194 and 224); whether `houseStakeByMarket` itself stays is decided member by member in C5-5b. Coverage gate: partly struck by D20.
 
 ### FS-26 [partial] Two-admin resolution is re-enabled, and possibly an entity-aware officer-conflict rule is added (F6 §5.3). Every 50pick officer is 'the house', so markets holding house stakes could become unresolvable, or a per-account conflict check would pass because it compares account ids.
 - **Trigger:** The resolver-queue toggle turns requireTwoOfficer on, or a new conflict ruling.
-- **Expected:** - **Two-admin on:** stage-1 closes the market, so pending intents → SKIPPED(MARKET_NOT_LIVE). The engine never reads the staged outcome. The resolver UI still shows the house stake.
+- **Expected:** - **Two-admin on:** stage-1 closes the market, so pending intents → SKIPPED(MARKET_NOT_LIVE). The engine never reads the staged outcome. ~~The resolver UI still shows the house stake.~~
 - **Future conflict rule:** treats house exposure as entity-level and routes affected markets to the documented path (a named independent reviewer, or auto mode). It never becomes a silent block or a silent pass.
 - test:two-admin and test:officer-conflict stay unchanged.
 - **Plan:** I10; F11; §12 'Existing gates touched'
 - **Evidence:** src/lib/server/resolution-policy.ts:26-27 (requireTwoOfficer default false); src/lib/server/resolution-policy.ts:55-78 (toggle with COMPLIANCE audit); docs/COMPLIANCE-DECISIONS.md:2370 (fee 'never of the identity of a bettor'); package.json:203-204 (test:officer-conflict, test:two-admin)
 - **Fix:** §12: add test:two-admin and test:officer-conflict to the touched gates. HOUSE-BOTS.md 'If conflict rules return' names houseStakeByMarket (FS-25) as the input and forbids per-account comparisons. The FS-12 field pin covers resolvedOutcome and resolutionEvidence.
 - **Test:** test:house-bot-engine: two-admin ON, stage-1 staged, a PENDING intent → SKIPPED(MARKET_NOT_LIVE); the engine projection has no resolvedOutcome. Existing test:two-admin passes unchanged.
+- ⛔ **Superseded by D20 (Ali, 2026-09-17):** the resolver UI shows no house stake (C5-SPEC rulings 192–194). Coverage gate: partly struck by D20.
 
 ### FS-27 [partial] An admin changes the platform timezone at /admin/config (any valid IANA zone), or PLATFORM_TIMEZONE differs. House bots use EAT for schedule windows, daily cap cohorts, AlertOnce day keys and hourly summaries, while the console's shared formatters follow the platform zone. Windows then look shifted, and the daily loss stop splits at a different midnight than the usage bars.
 - **Trigger:** setPlatformConfig({timezone}) or the env var.
@@ -2652,7 +2698,7 @@ test:house-bot-seam: stakeBoundsForMarket equals the old inline result for a pol
     - H4 splits the stake pro rata across the three YES accounts (each holds 33%, so each is ≥ 25%): 3,000 each into COUNTERPARTY_TZS and +1 each into COUNTERPARTY_COUNT.
   - **Records:**
     - Exactly one COMPLIANCE `house_bot.enter_now`, written under the press lease, with `auditId` set.
-    - R9 `houseStake` on P = `{yes:0, no:9000, staffChosen:{yes:0, no:9000, requestedBy:[X]}}`.
+    - ~~R9 `houseStake` on P = `{yes:0, no:9000, staffChosen:{yes:0, no:9000, requestedBy:[X]}}`.~~
   - **Alerts:**
     - `notifyAdminsHouseBotStaffChosen` sends bell + email to every `houseBotAlertRecipients()`, uncapped, and not counted in `countInHour`.
     - The body never quotes the reason. It says "Reason recorded in the activity feed →".
@@ -2668,6 +2714,7 @@ test:house-bot-seam: stakeBoundsForMarket equals the old inline result for a pol
   - `test:house-bot-engine` happy path on both stores: 1 press DONE, 1 intent PLACED, 1 `ENTER_NOW_REQUESTED`, 1 audit, 1 position of 9,000, 3 counterparty attributions of 3,000.
   - `test:house-bot-comms`: both admins get the uncapped bell and email, and no reason text appears in any notification row.
   - `drive:house-bots-local` THIN case (local seeded database only).
+- ⛔ **Superseded by D20 (Ali, 2026-09-17):** no decision audit carries an R9 `houseStake` (C5-SPEC rulings 187–191); the `house_bot.enter_now` row is untouched by D20. Coverage gate: partly struck by D20.
 
 ### TGT-02 [gap] Enter now on an empty market takes the market's one drawn side; the automated OPENER agrees
 - **Trigger:**
@@ -2689,7 +2736,7 @@ test:house-bot-seam: stakeBoundsForMarket equals the old inline result for a pol
     - `entryCondition` OPENER; stake `openerStakeTzs`.
     - H3 requires yesPool = noPool = 0. Otherwise `house_condition_gone` → SKIPPED(CONDITION_GONE), and the side is never re-chosen.
     - If nobody joins, the one-sided refund returns the stake at 0 (HB-LC-35).
-  - **Records.** X's previews without a press count in R1 "previews without a stake" for X that month.
+  - ~~**Records.** X's previews without a press count in R1 "previews without a stake" for X that month.~~
 - **Plan:** N1 §2 (`hbe_opener_draw_uq`, OPENER_SIDE_DRAWN `actorId`), §4.1 `opener-side.ts`, §4.2 step 3; PLAN §1-F4 OPENER.
 - **Evidence:**
   - `plans/house-bots/PLAN.md:91`: OPENER takes "a random side" while both pools are 0.
@@ -2704,6 +2751,7 @@ test:house-bot-seam: stakeBoundsForMarket equals the old inline result for a pol
     - source pin: `decide.ts` imports no store or `opener-side.ts`.
   - `test:dal-parity`: the draw twin (commit 1).
   - `red:house-bot-engine` mutation "`openerSide` replaced by a per-intent `randomInt`" must fail the invariance assertion.
+- ⛔ **Superseded by D20 (Ali, 2026-09-17):** there is no R1 report to count previews in (C5-SPEC rulings 199–207); the `ENTER_NOW_PREVIEWED` events are untouched by D20. Coverage gate: partly struck by D20.
 
 ### TGT-03 [gap] Double click, double tap, or two tabs on Enter now
 - **Trigger:**
@@ -2762,8 +2810,8 @@ test:house-bot-seam: stakeBoundsForMarket equals the old inline result for a pol
     - If the row was claimed meanwhile, C7's copy applies: "Too late — this bet is being placed now."
     - A new press on the same pools shows the same side and amount.
   - (e) Field error on `reason`: "Give a reason (5 to 300 characters)." Input validation runs before the press insert, so there is no press row, event or audit.
-  - **Declining is possible, but recorded:** `ENTER_NOW_PREVIEWED` rows (R1 previews without a stake), the cancel's COMPLIANCE row and the R1 "Vetoes" section per officer. Accepted risk 13.
-- **Plan:** N1 §4.1–§4.2; N1 §6 staff cancels; PLAN §16b risk 13; N1 §9 R1 vetoes.
+  - **Declining is possible, but recorded:** `ENTER_NOW_PREVIEWED` rows ~~(R1 previews without a stake)~~, the cancel's COMPLIANCE row ~~and the R1 "Vetoes" section per officer~~. Accepted risk 13.
+- **Plan:** N1 §4.1–§4.2; N1 §6 staff cancels; PLAN §16b risk 13; ~~N1 §9 R1 vetoes~~.
 - **Evidence:**
   - `02-sealed-flows.md` §3.9: today's cancel needs no reason and writes only ADMIN `house_bot.intent_cancelled`.
   - `04-amendments.md:1935-1939`: C7 cancel copies.
@@ -2773,7 +2821,8 @@ test:house-bot-seam: stakeBoundsForMarket equals the old inline result for a pol
   - `test:house-bot-console`:
     - cancel without a reason → field error, 0 rows;
     - with a reason → 1 COMPLIANCE row and 1 STAFF_INTENT_CANCELLED event, with the reason text only in the event `reason` column.
-  - `test:house-bot-reports`: the R1 vetoes row.
+  - ~~`test:house-bot-reports`: the R1 vetoes row.~~
+- ⛔ **Superseded by D20 (Ali, 2026-09-17):** there is no R1 report or vetoes section (C5-SPEC rulings 199–207); a decline stays recorded in the preview events and the cancel's COMPLIANCE row. Coverage gate: partly struck by D20.
 
 ### TGT-05 [gap] Stale dropdown: the poll closed or the cutoff passed between listing and press
 - **Trigger:**
@@ -2973,7 +3022,8 @@ test:house-bot-seam: stakeBoundsForMarket equals the old inline result for a pol
 - **Test:**
   - `test:house-bot-caps`: OWNER_POSITION before insert and between insert and H2.
   - `test:house-bot-engine`: A21 after MANUAL → 1 alert for two holder bets.
-  - `test:house-bot-reports`: the refused press is in the R1 Enter now register with code OWNER_POSITION and exactly 1 COMPLIANCE row, including after an audit killed after its lease (repaired once when the lease expires).
+  - `test:house-bot-reports`: ~~the refused press is in the R1 Enter now register with code OWNER_POSITION and~~ exactly 1 COMPLIANCE row, including after an audit killed after its lease (repaired once when the lease expires).
+- ⛔ **Superseded by D20 (Ali, 2026-09-17):** there is no R1 Enter now register (C5-SPEC rulings 199–207); the refused press row, its code and its one COMPLIANCE row are untouched by D20. Coverage gate: partly struck by D20.
 
 ### TGT-12 [gap] Another bot holds the market, this bot has a queued stake there, or it holds the other side
 - **Trigger:** Poll P. Four setups:
@@ -3284,11 +3334,12 @@ test:house-bot-seam: stakeBoundsForMarket equals the old inline result for a pol
   - (d) SKIPPED(MARKET_GONE); the target ends MARKET_GONE. The feed renders from `decision.snapshot`.
   - (e) Not blocked by that field alone. `endTargets` skips its pass and the target stays ACTIVE.
   - (f) Fire or H3 → SKIPPED(INFO_BLACKOUT). `endTargets` does not end the target on `resolveClaimedAt` alone. If the resolve completes, the next pass ends it MARKET_CLOSED.
-  - A staff-chosen stake already PLACED on P, then voided or reopened → one AlertOnce `staff-stake-voided:<marketId>` and an R1 row. If the voiding or reopening officer is in `requestedBy`, see TGT-38.
+  - A staff-chosen stake already PLACED on P, then voided or reopened → one AlertOnce `staff-stake-voided:<marketId>` ~~and an R1 row~~. If the voiding or reopening officer is in `requestedBy`, see TGT-38.
 - **Plan:** A16 (MARKET_REOPENED now reads `reopenedAt`); N1 §2 change (r); N1 §3 blackout; N1 §4.5 `staff-stake-voided`; N2 §4 step 9.
 - **Evidence:** `market-service.ts:4000-4034` (`adminReopenMarket` nulls the Sentinel fields at `:4011` and `resolveClaimedAt` at `:4024`; `market.reopened` audit at `:4029`), `:4061` (`emergencyVoidMarket`), `:2966` (`resolveMarket`); `markets/actions.ts:183`, `:203`; `resolver-queue/resolution-mode-action.ts:44` (`recheckMarketNowAction`); 04-amendments.md:457 (A16 reopen row "leaves no marker").
 - **Fix:** N2 §4 `endTargets`; the N1 §2 `reopenedAt` marker; the N1 §3 resolve-claim TTL rule.
 - **Test:** `test:house-bot-engine` lifecycle table: each transition gives its terminal state within one pass; reopen with no prior intent → MARKET_REOPENED; a stale-claim fixture keeps the target ACTIVE. `test:house-bot-seam`: `adminReopenMarket` output is byte-identical apart from `reopenedAt`/`reopenCount`. `red:house-bot-engine` mutation "blackout ignores `reopenedAt`" must fail.
+- ⛔ **Superseded by D20 (Ali, 2026-09-17):** there is no R1 row (C5-SPEC rulings 199–207); the `staff-stake-voided` admin alert is untouched by D20. Coverage gate: partly struck by D20.
 
 ### TGT-24 [gap] FIRST vs EVERY, a race, the per-market count and the staff-chosen caps
 - **Trigger:**
@@ -3366,27 +3417,28 @@ test:house-bot-seam: stakeBoundsForMarket equals the old inline result for a pol
   - **Audit faults:** the failed append is repaired once through the press lease after 60 s. The killed repair is completed after its 5-minute lease expires. Never 2 rows for one press.
   - **Positions:** exactly 43 `market.position.opened` rows for staff-chosen stakes.
   - **Alerts:** 43 `notifyAdminsHouseBotStaffChosen` alerts per recipient; 0 staff-chosen rows in `notifyAdminsHouseBotBet`. The void sends 1 `staff-stake-voided`.
-  - **R1 sections:**
-    - entry split per bot and product, tying to house totals;
-    - Enter now register from HouseBotPress: 40 rows with officer names, outcome or refusal code;
-    - previews without a stake, per officer per month;
-    - markets later voided or reopened: 1;
-    - markets decided by the officer who chose a stake;
-    - staff-chosen scorecard;
-    - targets register: 5;
-    - vetoes: 2.
-  - **R9:** the void audit carries `houseStake {yes, no, staffChosen:{yes, no, requestedBy:[<officer id>]}}`.
-  - **DSAR:** holds the four event kinds of N1 §9's DSAR rule as `{kind, at, actor:'50pick owner'}`, with no press rows, reasons, marketIds or officer ids.
+  - ~~**R1 sections:**~~
+    - ~~entry split per bot and product, tying to house totals;~~
+    - ~~Enter now register from HouseBotPress: 40 rows with officer names, outcome or refusal code;~~
+    - ~~previews without a stake, per officer per month;~~
+    - ~~markets later voided or reopened: 1;~~
+    - ~~markets decided by the officer who chose a stake;~~
+    - ~~staff-chosen scorecard;~~
+    - ~~targets register: 5;~~
+    - ~~vetoes: 2.~~
+  - ~~**R9:** the void audit carries `houseStake {yes, no, staffChosen:{yes, no, requestedBy:[<officer id>]}}`.~~
+  - ~~**DSAR:** holds the four event kinds of N1 §9's DSAR rule as `{kind, at, actor:'50pick owner'}`, with no press rows, reasons, marketIds or officer ids.~~
   - **Reasons and payloads:** reasons live only in event and press `reason` columns. Payload keys stay within R7. Alert bodies say "Reason recorded in the activity feed →".
-- **Plan:** N1 §2 press flow steps 6 and 9; N1 §9 (R9 shape, R1 sections, DSAR); R7; A19; A20.
+- **Plan:** N1 §2 press flow steps 6 and 9; ~~N1 §9 (R9 shape, R1 sections, DSAR);~~ R7; A19; A20.
 - **Evidence:** `audit.ts:23`, `:336-358` (each append takes one DB-global chain lock); 04-amendments.md:525 (A19 source scan), :536-537 (A20: house tables 7 years, AlertOnce 30 days); `market-service.ts:4061` (`emergencyVoidMarket`).
-- **Fix:** HouseBotPress audit lease; R1 sections.
+- **Fix:** HouseBotPress audit lease; ~~R1 sections~~.
 - **Test:**
-  - `test:house-bot-reports`: the fixture's exact counts, R1 sections and R9 shape.
+  - `test:house-bot-reports`: the fixture's exact counts, ~~R1 sections and R9 shape~~.
   - `test:house-bot-caps`: audit delayed 70 s → exactly 1 row; repair killed after its lease → exactly 1 row after the lease.
   - `test:house-bot-console`: payload pin; no reason text in any payload.
-  - `test:dsar-secrets`: the kind list, no reason text.
+  - `test:dsar-secrets`: ~~the kind list,~~ no reason text.
   - `test:erasure` §8: press and event reasons become "[erased]".
+- ⛔ **Superseded by D20 (Ali, 2026-09-17):** there are no R1 sections and no R9 `houseStake` on the void audit (C5-SPEC rulings 187–191 and 199–207), and no DSAR event kinds: D19 keeps them out of both releasable doors (ruling 168) and D20 strikes the internal record that held them (rulings 236–238); the press rows, intents, events, COMPLIANCE rows, audit repairs, positions and alerts are untouched by D20. Coverage gate: partly struck by D20.
 
 ### TGT-29 [gap] The picker lists polls only, leaks no private data and works at 360 px by keyboard
 - **Trigger:** Poll P has a planted needle in `sentinelReasoning`, its AIPoll `reasoning` and `reviewedBy`, and positions from named players with phones. At 360 px, keyboard only, the owner:
@@ -3451,7 +3503,8 @@ test:house-bot-seam: stakeBoundsForMarket equals the old inline result for a pol
 - **Plan:** F2; N1 §2 press flow; N2 §4 step 10; 02 §3.9.
 - **Evidence:** 04-amendments.md:1638 ("gate the offer, never the refusal"), :1641-1646 (the script), :1655 (withdrawn test).
 - **Fix:** the sunset script ends targets.
-- **Test:** `test:withdrawn-features` section: dry run writes 0 rows; `--apply` leaves 0 ACTIVE targets and 0 live intents; a second `--apply` changes 0; press refusal copy; `house_position_no_exit` unchanged; reports keep the house lines.
+- **Test:** `test:withdrawn-features` section: dry run writes 0 rows; `--apply` leaves 0 ACTIVE targets and 0 live intents; a second `--apply` changes 0; press refusal copy; `house_position_no_exit` unchanged; ~~reports keep the house lines~~.
+- ⛔ **Superseded by D20 (Ali, 2026-09-17):** reports carry no house lines. Coverage gate: partly struck by D20.
 
 ### TGT-32 [gap] Stake bounds, balance or exposure shrink between decision and fire, for every kind
 - **Trigger:**
@@ -3486,7 +3539,7 @@ test:house-bot-seam: stakeBoundsForMarket equals the old inline result for a pol
     - Typing after the pick already cleared `selectedMarketId`, discarded A's preview and its `submitId`, and disabled submit.
   - (b) The pick sets the input text to B's title, collapses the listbox (`aria-expanded=false`) and stores `selectedMarketId`=B. A's preview is cleared, so submit stays disabled until B's preview returns.
   - (c) The response is dropped: its sequence number is old and its `marketId` ≠ `selectedMarketId`.
-    - A's `ENTER_NOW_PREVIEWED` row was still written on the server, and R1 counts it as a preview without a stake.
+    - A's `ENTER_NOW_PREVIEWED` row was still written on the server, ~~and R1 counts it as a preview without a stake~~.
   - (d) Arrow keys skip `aria-disabled` options, and click and Enter refuse them.
   - The press posts the preview's own `marketId` with `confirmed{side, entryCondition, stakeTzs}`. The client never posts while it differs from `selectedMarketId`, and the stale-preview refusal also refuses a mismatch (N1 §6).
   - Re-query on focus happens only while no market is selected.
@@ -3506,6 +3559,7 @@ test:house-bot-seam: stakeBoundsForMarket equals the old inline result for a pol
     - the same three cases in the Add target modal.
   - `red:house-bot-console` mutation "Enter `preventDefault` removed" must fail (a request is sent).
   - Phase D drive step against the local seeded database only, because the preview writes.
+- ⛔ **Superseded by D20 (Ali, 2026-09-17):** there is no R1 report to count the preview (C5-SPEC rulings 199–207). Coverage gate: partly struck by D20.
 
 ### TGT-34 [gap] An early re-check, then a reopen, then Enter now or Add target
 - **Trigger:**
@@ -3525,7 +3579,7 @@ test:house-bot-seam: stakeBoundsForMarket equals the old inline result for a pol
     - 0 intents.
   - (b) Refused with the same copy (code INFO_BLACKOUT). The TARGET_ADD press is REFUSED, and 0 targets are created.
   - (c) A16 reads `reopenedAt` for every mode: the trigger is SKIPPED(MARKET_REOPENED). FILL and OPENER are never planned on P.
-  - (d) The existing stake rides. The planner sends AlertOnce `staff-stake-voided:<P>`, "… was reopened at 14:05 EAT", once. R1 lists P under "Markets with a staff-chosen stake later voided or reopened".
+  - (d) The existing stake rides. The planner sends AlertOnce `staff-stake-voided:<P>`, "… was reopened at 14:05 EAT", once. ~~R1 lists P under "Markets with a staff-chosen stake later voided or reopened".~~
   - An ACTIVE target on a poll that goes through the same re-check and reopen is ended MARKET_CLOSED when the planner sees it closed, or MARKET_REOPENED if it first sees the reopened market. It never re-arms.
 - **Plan:** N1 §2 PredictionMarket `reopenedAt`/`reopenCount` (sanctioned player-path change (r)); N1 §3 blackout; A16 reopen row amended; N1 §4.5 `staff-stake-voided` alert; N2 §4 `endTargets`.
 - **Evidence:**
@@ -3540,6 +3594,7 @@ test:house-bot-seam: stakeBoundsForMarket equals the old inline result for a pol
   - `test:house-bot-migrations`: both columns nullable and expand-only in `…_house_bot_markers`.
   - `test:house-bot-engine` fixture: re-check → reopen → (a), (b) refused with 0 intents and 0 targets; (c) SKIPPED(MARKET_REOPENED); (d) one alert.
   - `red:house-bot-engine` mutation "blackout ignores `reopenedAt`" must fail (a) (a position appears).
+- ⛔ **Superseded by D20 (Ali, 2026-09-17):** there is no R1 listing (C5-SPEC rulings 199–207); the `staff-stake-voided` alert is untouched by D20. Coverage gate: partly struck by D20.
 
 ### TGT-35 [gap] Veto by removing a target with a queued reaction
 - **Trigger:**
@@ -3561,8 +3616,8 @@ test:house-bot-seam: stakeBoundsForMarket equals the old inline result for a pol
   - **No re-add:** both add attempts are refused with REFUSED press rows: "This poll's target was stopped at 14:02 EAT; it can't be targeted again."
   - **Trigger consumed:** the 14:00:00 trigger stays consumed, and no bot reacts to it (risk 18). Later stakes on P may still get automated scope counters.
   - **EVERY variant:** one veto per poll, ever. Selective vetoing of each wrong-side reaction is impossible.
-  - **R1:** Vetoes lists X, 14:02, P, side NO, TZS 8,000, and the reason. The targets register shows VETOED.
-- **Plan:** N2 §6 removal (veto); N2 §2 never-retarget; N2 §6 locks; N1 §2 press flow; N1 §9 R1 vetoes; PLAN §16b risk 18.
+  - ~~**R1:** Vetoes lists X, 14:02, P, side NO, TZS 8,000, and the reason. The targets register shows VETOED.~~
+- **Plan:** N2 §6 removal (veto); N2 §2 never-retarget; N2 §6 locks; N1 §2 press flow; ~~N1 §9 R1 vetoes;~~ PLAN §16b risk 18.
 - **Evidence:** `02-sealed-flows.md` §3.9 (cancel took no reason and wrote an ADMIN audit); 04-amendments.md:1283 (R7: `intent_cancelled` is ADMIN); PLAN:165 (COUNTER anchor with no status filter); `audit.ts:336-358` (the chain lock forbids audits inside locks).
 - **Fix:** the veto semantics in `removeHouseBotTargetAction`; the never-again check in the add refusals.
 - **Test:**
@@ -3571,6 +3626,7 @@ test:house-bot-seam: stakeBoundsForMarket equals the old inline result for a pol
   - A19 source scan extended to `src/app/admin/house-bots/**` and `src/lib/server/house-bot/**`.
   - With the audit queue delayed 5 s, the remove runs concurrently with a house bet and a holder withdrawal, and both finish in under 1 s.
   - `red:house-bot-console`: "re-add allowed after veto" and "removal with a live reaction writes REMOVED" must fail.
+- ⛔ **Superseded by D20 (Ali, 2026-09-17):** there is no R1 vetoes section or targets register (C5-SPEC rulings 199–207); the veto's events, COMPLIANCE row and roster alert are untouched by D20. Coverage gate: partly struck by D20.
 
 ### TGT-36 [gap] Veto by cancelling a queued staff-chosen stake
 - **Trigger:**
@@ -3588,11 +3644,12 @@ test:house-bot-seam: stakeBoundsForMarket equals the old inline result for a pol
   - (d) "Too late — this bet is being placed now." The press is REFUSED with its code, and no veto is recorded.
   - (e) Unchanged 02 §3.9: no reason required, ADMIN `house_bot.intent_cancelled`.
   - (f) C1 field error "Between 5 and 600 seconds." The DB CHECK `delayMaxSec BETWEEN 5 AND 600` also refuses it, so the longest queued targeted option is 600 s after the hold.
-  - R1 Vetoes lists (a) and (b) by officer.
+  - ~~R1 Vetoes lists (a) and (b) by officer.~~
 - **Plan:** N1 §6 staff cancels; N2 §2 delay bounds and never-retarget; N1 §2 press flow; 02 §3.9.
 - **Evidence:** PLAN:374 (`cancelHouseBotIntentAction`: PENDING → CANCELLED, "Already firing" if CLAIMED); `02-sealed-flows.md` §3.9; 04-amendments.md:1283 (R7 ADMIN category); `04-amendments.md:1935-1939` (C7 cancel copies).
 - **Fix:** reason, COMPLIANCE row and target veto on the staff-chosen cancel path.
 - **Test:** `test:house-bot-console` cancel matrix (a)–(e). `test:house-bot-migrations`: `delayMaxSec` 601 is rejected. `test:house-bot-engine`: a targeted cancel gives VETOED, and a re-add is refused. `red:house-bot-console` mutation N1-10 must fail.
+- ⛔ **Superseded by D20 (Ali, 2026-09-17):** there is no R1 vetoes section (C5-SPEC rulings 199–207). Coverage gate: partly struck by D20.
 
 ### TGT-37 [gap] A staff-chosen stake sized against one player, an AGENT, staff or another bot's holder
 - **Trigger:** Bot A's `thinStakeTzs` is 10,000, `gStaffChosenMaxCounterpartyShare` 50, and per-player counters 3 and 30,000. Raw YES on each poll is 2,000, held by player V (locked).
@@ -3637,17 +3694,19 @@ test:house-bot-seam: stakeBoundsForMarket equals the old inline result for a pol
 - **Trigger:** Admin A presses Enter now: NO 9,000 on poll P, whose source wording is ambiguous. Admin B added the target on poll R whose reaction placed YES 6,000. Then: (a) A alone seals P as NO through the ceremony. (b) A emergency-voids P. (c) A reopens P after a close. (d) A rejects, or upholds, an objection on P. (e) B resolves R. (f) Admin C, who chose nothing, resolves P.
 - **Expected:**
   - Nothing is refused. The 2026-07-24 guardrail stands: no officer-conflict block.
-  - The R9 payloads (`market.adjudicated`, `market.emergency_void`, `objection.rejected`/`upheld`) carry `houseStake:{yes:0,no:9000,staffChosen:{yes:0,no:9000,requestedBy:["<A>"]}}`. For R, `requestedBy` is `["<B>"]`, the officer who added the target.
-  - The resolver card, ceremony, emergency-void confirm and objection panel show "of which chosen by you: TZS 9,000" to A. C sees only the R2 line.
+  - ~~The R9 payloads (`market.adjudicated`, `market.emergency_void`, `objection.rejected`/`upheld`) carry `houseStake:{yes:0,no:9000,staffChosen:{yes:0,no:9000,requestedBy:["<A>"]}}`. For R, `requestedBy` is `["<B>"]`, the officer who added the target.~~
+  - ~~The resolver card, ceremony, emergency-void confirm and objection panel show "of which chosen by you: TZS 9,000" to A. C sees only the R2 line.~~
   - (a)–(e) One AlertOnce `staff-stake-self-decided:<marketId>:<action>` per market and action, bell + email to every `houseBotAlertRecipients()`. (b)/(c) also send `staff-stake-voided:<marketId>`, a separate key.
   - (f) No self-decided alert.
-  - R1 "markets decided by the officer who chose a house stake on them" lists P for each action and R once. The Board draft names risk 20.
-- **Plan:** N1 §4.5 and N1 §7 (`staff-stake-self-decided`); N1 §9 (R9 shape, R1 section (e)); PLAN §16b risk 20; 04 R9.
+  - ~~R1 "markets decided by the officer who chose a house stake on them" lists P for each action and R once.~~ The Board draft names risk 20.
+- **Plan:** N1 §4.5 and N1 §7 (`staff-stake-self-decided`); ~~N1 §9 (R9 shape, R1 section (e));~~ PLAN §16b risk 20; ~~04 R9~~.
 - **Evidence:** `docs/COMPLIANCE-DECISIONS.md:2263-2271` (a single admin resolves even with a position; the conflict block was deleted from `resolveMarket` and `emergencyVoidMarket`), `:2289-2291` (guardrail); `market-service.ts:2966`, `:4000`, `:4061`; `objections-service.ts:386`, `:467`; 04-amendments.md:1316-1335 (R9).
-- **Fix:** R9 `staffChosen.requestedBy`; the N1 §4.5 planner alert; the R1 section.
-- **Test:** `test:house-bot-reports`: exact payload shape, and `{yes:0,no:0,staffChosen:{yes:0,no:0,requestedBy:[]}}` on a non-house market; one alert per action for A and B, none for C. `test:two-admin` and `test:officer-conflict` pass unchanged; the content-integrity `RESOLVE` guard stays green. Source pin: no refusal branch reads `requestedBy`.
+- **Fix:** ~~R9 `staffChosen.requestedBy`;~~ the N1 §4.5 planner alert; ~~the R1 section~~.
+- **Test:** `test:house-bot-reports`: ~~exact payload shape, and `{yes:0,no:0,staffChosen:{yes:0,no:0,requestedBy:[]}}` on a non-house market;~~ one alert per action for A and B, none for C. `test:two-admin` and `test:officer-conflict` pass unchanged; the content-integrity `RESOLVE` guard stays green. ~~Source pin: no refusal branch reads `requestedBy`.~~
+- ⛔ **Superseded by D20 (Ali, 2026-09-17):** no decision audit carries `houseStake` or `requestedBy`, no surface shows "of which chosen by you" or an R2 line, and there is no R1 section (C5-SPEC rulings 187–194 and 199–207); nothing is refused, and the `staff-stake-self-decided` alert is untouched by D20. Coverage gate: partly struck by D20.
 
 ### TGT-39 [gap] Staff-edge scorecard alert
+- ⛔ **Superseded by D20 (Ali, 2026-09-17):** struck whole — the monthly staff-edge pass, the STAFF_EDGE alert, R1's staff-chosen scorecard and flag, and TGT-39's two-store proof are struck (C5-SPEC rulings 218–223), with Commit 7's staff-edge href test (PROGRESS L38). Coverage gate: struck by D20.
 - **Trigger:** Control row: `gStaffEdgeWinRatePts=15`, `gStaffEdgeNetTzs=100000`. September 2026 EAT, polls, no refunds in the fixture. The automated modes' win rate on polls that month is 49%.
   - Officer X: 14 settled staff-chosen stakes, 12 won, net +TZS 84,000.
   - Officer Y: 9 settled, 9 won, net +TZS 150,000.
@@ -3677,8 +3736,9 @@ test:house-bot-seam: stakeBoundsForMarket equals the old inline result for a pol
   - Suspension: consent is not voided, and targets stay ACTIVE and inert.
   - After re-verify, the Start confirm reads "Active targets: 0 →" (it reads 4 in the suspension case). After Start, a stake on those polls gets no targeted reaction.
   - A fresh add on those polls is allowed (not VETOED or REMOVED), with a reason and a new `effectiveFrom`.
-  - The holder's DSAR `events[]` shows the TARGET_ENDED rows (N1 §9 DSAR).
-- **Plan:** N2 §4 step 10; C8; A3; N2 §2 `endCause`; N1 §9 DSAR.
+  - ~~The holder's DSAR `events[]` shows the TARGET_ENDED rows (N1 §9 DSAR).~~
+- **Plan:** N2 §4 step 10; C8; A3; N2 §2 `endCause`; ~~N1 §9 DSAR~~.
 - **Evidence:** 04-amendments.md:128-140 (A3 `consentVoidCause` and its writers), :822-825 (C8 void written under `wallet:<botUser>`), :835 ("Never resumes by itself"); `responsible-gambling.ts:356-357` (cooling-off lifts by timer).
 - **Fix:** end targets inside the consent-void writer; the Start confirm line.
 - **Test:** `test:house-bot-designation`: each of the 5 causes ends all ACTIVE targets as CONSENT_VOID in the void transaction; an injected rollback leaves them ACTIVE; suspension keeps them ACTIVE and inert; the Start confirm fixture shows the count. `red:house-bot-engine` mutation N2-E8 must fail.
+- ⛔ **Superseded by D20 (Ali, 2026-09-17):** no DSAR `events[]` shows these rows: D19 keeps house events out of both releasable doors (C5-SPEC ruling 168) and D20 strikes the internal record that held them (rulings 236–238). Coverage gate: partly struck by D20.
