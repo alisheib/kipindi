@@ -1762,6 +1762,151 @@ export function playerImportProblems(files: Array<{ rel: string; code: string }>
   return { population: population.length, problems };
 }
 
+/* ═══ §0 · C5 step 5 close · ruling 260 · every audit row a console file reads, and every house read it names, goes through the gate ═══ */
+
+/** The platform audit module and its row readers: every exported `getAudit*` (0.260.1 compares the list with the module's own exports). */
+export const AUDIT_MODULE = "src/lib/server/audit";
+export const AUDIT_ROW_READERS = ["getAuditById", "getAuditByActionsDurable", "getAuditForActor", "getAuditForActorDurable", "getAuditForTarget", "getAuditForTargetDurable", "getAuditForTargetsDurable", "getAuditPage", "getAuditPageDurable"] as const;
+/**
+ * The two console files that may name a house read module other than the gate, each for a reason pinned elsewhere: the
+ * system page's engine card (the reader is its own ADMIN-only gate, ruling 172, pin 0.172) and the bulk resolve action's
+ * R9 snapshot (written into its audit payload only, never into a result, rulings 187 and 191, pins 0.187 and 0.191).
+ */
+export const CONSOLE_HOUSE_READ_ALLOWED: Readonly<Record<string, readonly string[]>> = {
+  "src/app/admin/system/page.tsx": ["src/lib/server/house-bot/engine-health"],
+  "src/app/admin/resolver-queue/bulk-resolve-action.ts": ["src/lib/server/house-bot/exposure"],
+};
+/** A console file: a page, layout, route, action or component the console serves — everything under the three admin folders. */
+export const inConsolePopulation = (rel: string) =>
+  rel.startsWith("src/app/admin/") || rel.startsWith("src/app/api/admin/") || rel.startsWith("src/components/admin/");
+/** A house READ module: the house-bot server folder and the house store. (The pure R2 copy has its own importer law, 0.192.1.) */
+const isHouseReadModule = (resolved: string) => resolved.startsWith("src/lib/server/house-bot/") || resolved === "src/lib/server/house-bot-dal";
+/** The console route a file under `src/app/admin/` serves (its folder, dynamic segments kept); `null` anywhere else. */
+export const consoleRouteOf = (rel: string): string | null =>
+  rel.startsWith("src/app/admin/") ? `/${rel.slice("src/app/".length).split("/").slice(0, -1).join("/")}` : null;
+
+/**
+ * Ruling 260, read from disk: in every console file (1) each call of an audit row reader — imported by name (an alias
+ * included) or through a namespace — hands its result straight to `houseAuditForConsole` as its third argument (through
+ * `await`, parentheses, `.catch(…)`, `??`, a spread or an array only), and no file reaches the audit module by `import()`,
+ * `require` or a re-export; (2) each gate call names the signed-in viewer (`<session>?.userId ?? null` or
+ * `<session>.userId`, the binding read from `currentSession()` in the same file) and a console route that is the file's own
+ * route or a prefix of it with the same view domain and Owner-only standing — the question its section gate asks; and
+ * (3) no console file value-imports a house read module outside the two named, separately pinned homes.
+ * `roles` supplies `domainForPath` and `isOwnerOnlyPath` from `src/lib/server/roles.ts`.
+ */
+export function consoleHouseReadProblems(
+  files: Array<{ rel: string; code: string }>,
+  roles: { domainForPath: (p: string) => string; isOwnerOnlyPath: (p: string) => boolean },
+): { population: number; readerCalls: number; gateCalls: number; readerFiles: string[]; problems: string[] } {
+  const problems: string[] = [];
+  let population = 0, readerCalls = 0, gateCalls = 0;
+  const readerFiles = new Set<string>();
+  for (const { rel, code } of files) {
+    if (!inConsolePopulation(rel)) continue;
+    population++;
+    const sf = parse(rel, code);
+    const say = (what: string, n?: ts.Node) => problems.push(`${rel}${n ? `:${lineOf(sf, n)}` : ""}: ${what}`);
+    const readerLocals = new Map<string, string>();
+    const namespaces = new Set<string>();
+    let gateLocal: string | null = null;
+    for (const st of sf.statements) {
+      if (ts.isImportDeclaration(st) && ts.isStringLiteral(st.moduleSpecifier)) {
+        const resolved = resolveSpec(rel, st.moduleSpecifier.text);
+        const clause = st.importClause;
+        const bindings = clause?.namedBindings;
+        if (resolved === AUDIT_MODULE && clause && !clause.isTypeOnly) {
+          if (bindings && ts.isNamespaceImport(bindings)) namespaces.add(bindings.name.text);
+          if (bindings && ts.isNamedImports(bindings)) {
+            for (const e of bindings.elements) {
+              const imported = (e.propertyName ?? e.name).text;
+              if (!e.isTypeOnly && (AUDIT_ROW_READERS as readonly string[]).includes(imported)) readerLocals.set(e.name.text, imported);
+            }
+          }
+        }
+        if (resolved === CONSOLE_READ_MODULE && bindings && ts.isNamedImports(bindings)) {
+          for (const e of bindings.elements) if (!e.isTypeOnly && (e.propertyName ?? e.name).text === "houseAuditForConsole") gateLocal = e.name.text;
+        }
+      }
+    }
+    for (const i of importSpecifiers(rel, code)) {
+      const resolved = resolveSpec(rel, i.spec);
+      if (resolved === AUDIT_MODULE && (i.names.includes("(dynamic)") || i.names.includes("(re-export)"))) say(`reaches the audit module by ${i.names.join(", ")}, which the gate pin cannot follow`);
+    }
+    // A house server module: a value import, a re-export or an import() whose result the file keeps is a read the console
+    // could render or return. Only a fire-and-forget hook — `void import(…).then(…)`, its result discarded (the officer
+    // actions' holder and money hooks, run outside the lock) — reads nothing back.
+    const houseAllowed = (resolved: string) => (CONSOLE_HOUSE_READ_ALLOWED[rel] ?? []).includes(resolved);
+    const discarded = (call: ts.Node): boolean => {
+      let at: ts.Node = call;
+      while (ts.isPropertyAccessExpression(at.parent) && at.parent.expression === at && ["then", "catch", "finally"].includes(at.parent.name.text)
+        && ts.isCallExpression(at.parent.parent) && at.parent.parent.expression === at.parent) at = at.parent.parent;
+      return ts.isVoidExpression(at.parent);
+    };
+    walkTree(sf, (n) => {
+      const houseSays = (resolved: string, how: string, node: ts.Node) =>
+        say(`${how} the house read module ${resolved} — a console file reads house data only through ${CONSOLE_READ_MODULE}`, node);
+      if (ts.isImportDeclaration(n) && ts.isStringLiteral(n.moduleSpecifier)) {
+        const resolved = resolveSpec(rel, n.moduleSpecifier.text);
+        const clause = n.importClause;
+        const named = clause?.namedBindings && ts.isNamedImports(clause.namedBindings) ? clause.namedBindings.elements : null;
+        const typeOnly = !!clause?.isTypeOnly || (!!named && !clause?.name && named.length > 0 && named.every((e) => e.isTypeOnly));
+        if (isHouseReadModule(resolved) && !typeOnly && !houseAllowed(resolved)) houseSays(resolved, "imports", n);
+      } else if (ts.isExportDeclaration(n) && n.moduleSpecifier && ts.isStringLiteral(n.moduleSpecifier)) {
+        const resolved = resolveSpec(rel, n.moduleSpecifier.text);
+        if (isHouseReadModule(resolved) && !n.isTypeOnly && !houseAllowed(resolved)) houseSays(resolved, "re-exports", n);
+      } else if (ts.isCallExpression(n) && (n.expression.kind === ts.SyntaxKind.ImportKeyword || (ts.isIdentifier(n.expression) && n.expression.text === "require"))) {
+        const spec = literalText(n.arguments[0]);
+        const resolved = spec == null ? null : resolveSpec(rel, spec);
+        if (resolved && isHouseReadModule(resolved) && !houseAllowed(resolved) && !discarded(n)) houseSays(resolved, "keeps the result of import()ing", n);
+      }
+    });
+    // The bindings read from currentSession() in this file: a declaration's initializer, or an assignment.
+    const sessions = new Set<string>();
+    const fromSession = (e: ts.Expression | undefined) => !!e && /^await currentSession\(\)/.test(oneLine(e.getText(sf)));
+    walkTree(sf, (n) => {
+      if (ts.isVariableDeclaration(n) && ts.isIdentifier(n.name) && fromSession(n.initializer)) sessions.add(n.name.text);
+      if (ts.isBinaryExpression(n) && n.operatorToken.kind === ts.SyntaxKind.EqualsToken && ts.isIdentifier(n.left) && fromSession(n.right)) sessions.add(n.left.text);
+    });
+    const fileRoute = consoleRouteOf(rel);
+    walkTree(sf, (n) => {
+      if (!ts.isCallExpression(n)) return;
+      const callee = n.expression;
+      const reader = ts.isIdentifier(callee) ? readerLocals.get(callee.text)
+        : ts.isPropertyAccessExpression(callee) && ts.isIdentifier(callee.expression) && namespaces.has(callee.expression.text) && (AUDIT_ROW_READERS as readonly string[]).includes(callee.name.text) ? callee.name.text : undefined;
+      if (reader) {
+        readerCalls++;
+        readerFiles.add(rel);
+        let at: ts.Node = n;
+        for (;;) {
+          const p = at.parent;
+          if (ts.isParenthesizedExpression(p) || ts.isAwaitExpression(p) || ts.isSpreadElement(p) || ts.isArrayLiteralExpression(p)
+            || (ts.isBinaryExpression(p) && p.operatorToken.kind === ts.SyntaxKind.QuestionQuestionToken && p.left === at)) { at = p; continue; }
+          if (ts.isPropertyAccessExpression(p) && p.expression === at && p.name.text === "catch" && ts.isCallExpression(p.parent) && p.parent.expression === p) { at = p.parent; continue; }
+          break;
+        }
+        const gate = at.parent;
+        const gated = !!gateLocal && ts.isCallExpression(gate) && ts.isIdentifier(gate.expression) && gate.expression.text === gateLocal && gate.arguments[2] === at;
+        if (!gated) say(`${reader}(…) is not handed straight to houseAuditForConsole: ${snippet(sf, n)}`, n);
+      }
+      if (gateLocal && ts.isIdentifier(callee) && callee.text === gateLocal) {
+        gateCalls++;
+        const [viewer, route] = n.arguments;
+        const v = viewer ? oneLine(viewer.getText(sf)) : "";
+        const m = /^([A-Za-z_$][\w$]*)(?:\?\.userId \?\? null|\.userId)$/.exec(v);
+        if (n.arguments.length !== 3) say(`houseAuditForConsole takes ${n.arguments.length} arguments, not the viewer, the route and the read`, n);
+        if (!m || !sessions.has(m[1])) say(`hands the gate a viewer that is not the signed-in session's id: ${v || "(none)"}`, n);
+        if (!(route && ts.isStringLiteral(route))) { say(`asks the gate about a route that is not a literal: ${route ? oneLine(route.getText(sf)) : "(none)"}`, n); return; }
+        const r = route.text;
+        const ownRoute = !!fileRoute && r.startsWith("/admin") && (fileRoute === r || fileRoute.startsWith(`${r}/`))
+          && roles.domainForPath(r) === roles.domainForPath(fileRoute) && roles.isOwnerOnlyPath(r) === roles.isOwnerOnlyPath(fileRoute);
+        if (!ownRoute) say(`asks the gate about ${r}, not this file's own console route ${fileRoute ?? "(none: not under src/app/admin/)"} or a prefix with its view domain`, n);
+      }
+    });
+  }
+  return { population, readerCalls, gateCalls, readerFiles: [...readerFiles].sort(), problems };
+}
+
 if (STORE === "memory") {
   section("§0 · C5 step 4 · ruling 191 (TGT-38: no refusal, page condition or client control reads a requester), ruling 197 (the KYC house figures' readers) and ruling 187 (the closed list of R9 payload sites)");
   // One read of src/ for every §0 step-4 pin; each group below runs in its own guard, so a plant whose anchor moved fails its
@@ -2163,6 +2308,59 @@ if (STORE === "memory") {
     const DECLARED_SILENT = [XCp.EXPOSURE_QUALIFIER, XCp.HELD_CHIP_TITLE_TODAY, "Money held on this market until it resolves"].sort();
     ok("0.175.r2p · ⛔ every clause exposure-copy.ts emits — each surface's label, staff and viewer clause, the unread line, the held title's house state, both bulk sentences, the row tag, the KYC line, the bell's en / sw / zh share and the letter's row — is a vocabulary hit on its own; the only silent ones are exactly the X9 qualifier, today's held title and the unread held title",
       clauses.size >= 16 && j(silent) === j(DECLARED_SILENT), j({ clauses: clauses.size, silent }));
+  });
+  await guard("0.step5.260", async () => {
+    const ROLES: Any = await import("../../src/lib/server/roles.ts");
+    const roles = { domainForPath: ROLES.domainForPath, isOwnerOnlyPath: ROLES.isOwnerOnlyPath };
+    const r = consoleHouseReadProblems(files5, roles);
+    const auditReaders = exportedNames(`${AUDIT_MODULE}.ts`, code5(`${AUDIT_MODULE}.ts`)).filter((n) => /^getAudit/.test(n));
+    const MEASURED_LEAKS = ["src/app/admin/audit/page.tsx", "src/app/admin/players/[id]/page.tsx"];
+    ok("0.260.1 · ⛔ D19 · every audit row a console file reads — every file under src/app/admin/, src/app/api/admin/ and src/components/admin/, read from disk, and every getAudit* the audit module exports — goes straight to houseAuditForConsole with the signed-in viewer and the file's own console route; no console file reaches the audit module by import() or a re-export, and none imports a house read module — or keeps what one returns — outside the system page's engine card and the bulk action's R9 snapshot (the officer actions' fire-and-forget holder and money hooks read nothing back)",
+      r.problems.length === 0 && r.population >= 200 && j(auditReaders) === j([...AUDIT_ROW_READERS].sort()) && r.readerCalls >= 18 && r.gateCalls >= 17
+        && r.readerFiles.length >= 14 && MEASURED_LEAKS.every((f) => r.readerFiles.includes(f)),
+      j({ population: r.population, readerCalls: r.readerCalls, gateCalls: r.gateCalls, readerFiles: r.readerFiles, auditReaders, problems: r.problems }));
+
+    const PLAYER = "src/app/admin/players/[id]/page.tsx", AUDIT = "src/app/admin/audit/page.tsx", KYC = "src/app/admin/kyc/[id]/page.tsx";
+    const PLAYER_READ = "[...(getAuditForActor(id, 200) ?? []), ...(getAuditForTarget(\"User\", id, 200) ?? [])]";
+    const AUDIT_GATE = "houseAuditForConsole(session?.userId ?? null, \"/admin/audit\", getAuditPage({ limit: 100_000 }))";
+    const withFile = (rel: string, code: string) => [...files5.filter((f) => f.rel !== rel), { rel, code }];
+    const run = (rel: string, code: string) => consoleHouseReadProblems(withFile(rel, code), roles).problems.filter((p) => p.startsWith(rel));
+    const player = code5(PLAYER), audit = code5(AUDIT), kyc = code5(KYC);
+    const gatePlants = {
+      playerUngated: run(PLAYER, plant(player, `await houseAuditForConsole(viewer?.userId ?? null, "/admin/players", ${PLAYER_READ})`, PLAYER_READ)),
+      filteredFirst: run(AUDIT, plant(audit, AUDIT_GATE, "houseAuditForConsole(session?.userId ?? null, \"/admin/audit\", getAuditPage({ limit: 100_000 }).filter((e) => e.category !== \"AUTH\"))")),
+      literalViewer: run(AUDIT, plant(audit, AUDIT_GATE, "houseAuditForConsole(\"usr_admin\", \"/admin/audit\", getAuditPage({ limit: 100_000 }))")),
+      fakeSession: run(AUDIT, plant(audit, AUDIT_GATE, AUDIT_GATE.replace("session?.userId", () => "staff?.userId")).replace("export default async function AdminAuditPage(", () => "const staff = { userId: \"usr_admin\" };\nexport default async function AdminAuditPage(")),
+      otherDomainRoute: run(AUDIT, plant(audit, AUDIT_GATE, AUDIT_GATE.replace("\"/admin/audit\"", () => "\"/admin/players\""))),
+      overviewPrefix: run(AUDIT, plant(audit, AUDIT_GATE, AUDIT_GATE.replace("\"/admin/audit\"", () => "\"/admin\""))),
+      kycCatchKept: run(KYC, kyc),
+    };
+    ok("0.260.c1 · CONTROL · the player page's measured leak restored (both readers ungated), a reader filtered before the gate, a literal viewer, a viewer that is not the session read from currentSession(), another domain's route and the overview's broader \"/admin\" prefix are each reported; the KYC page's read through await, .catch and the gate is not",
+      gatePlants.playerUngated.filter((p) => p.includes("is not handed straight")).length === 2 && gatePlants.filteredFirst.some((p) => p.includes("getAuditPage(…) is not handed straight"))
+        && gatePlants.literalViewer.some((p) => p.includes("not the signed-in session's id")) && gatePlants.fakeSession.some((p) => p.includes("not the signed-in session's id"))
+        && gatePlants.otherDomainRoute.some((p) => p.includes("asks the gate about /admin/players")) && gatePlants.overviewPrefix.some((p) => p.includes("asks the gate about /admin,"))
+        && gatePlants.kycCatchKept.length === 0,
+      j(gatePlants));
+
+    const planted = (rel: string, code: string) => run(rel, code);
+    const importPlants = {
+      alias: planted("src/app/admin/planted/page.tsx", "import { getAuditPage as rows } from \"@/lib/server/audit\";\nexport default async function P() { return rows({ limit: 5 }).length; }"),
+      namespace: planted("src/app/admin/planted/feed.tsx", "import * as A from \"../../../lib/server/audit\";\nexport function F() { return A.getAuditForActor(\"usr_x\").length; }"),
+      dynamicInRoute: planted("src/app/api/admin/planted/route.ts", "export async function GET() { const m = await import(\"@/lib/server/audit\"); return Response.json(m.verifyChain()); }"),
+      component: planted("src/components/admin/planted-feed.tsx", "import { getAuditPage } from \"@/lib/server/audit\";\nimport { houseAuditForConsole } from \"@/lib/server/house-console-read\";\nimport { currentSession } from \"@/lib/server/auth-service\";\nexport async function Feed() { const session = await currentSession(); return (await houseAuditForConsole(session?.userId ?? null, \"/admin\", getAuditPage({ limit: 5 }))).length; }"),
+      houseStore: planted("src/app/admin/planted/labels/page.tsx", "import { houseBotStore } from \"@/lib/server/house-bot-dal\";\nexport default async function P() { return (await houseBotStore.get(\"x\"))?.label ?? null; }"),
+      houseDynamic: planted("src/app/admin/planted/actions.ts", "\"use server\";\nexport async function a() { const b = await import(\"../../../lib/server/house-bot/book\"); return typeof b; }"),
+      hookKept: planted("src/app/admin/planted/hook-actions.ts", "\"use server\";\nexport async function a(id: string) { return import(\"@/lib/server/house-bot/holder-hook\").then((m) => m.onHolderAccountChanged(id, \"SUSPENDED\")); }"),
+      hookDiscarded: planted("src/app/admin/planted/hook-void.ts", "\"use server\";\nexport async function a(id: string) { void import(\"@/lib/server/house-bot/holder-hook\").then((m) => m.onHolderAccountChanged(id, \"SUSPENDED\")).catch(() => {}); return { ok: true }; }"),
+      benign: planted("src/app/admin/planted/benign/page.tsx", "import { verifyChain, type AuditEntry } from \"@/lib/server/audit\";\nimport type { HouseStakeView } from \"@/lib/server/house-bot/exposure\";\n// getAuditPage({ limit: 5 }) in a comment\nexport default function P() { const e: AuditEntry[] = []; const v: HouseStakeView[] = []; return verifyChain().valid && e.length === v.length; }"),
+    };
+    ok("0.260.c2 · CONTROL · an aliased reader, a namespace reader, the audit module import()ed by an admin route handler, a shared console component that gates with a route it does not serve, the house store in a console page, a house module import()ed by a console action and a holder hook whose result an action returns are each reported; verifyChain, type-only imports of the audit and house modules, a reader named in a comment and a fire-and-forget hook (void import(…).then(…)) are not",
+      importPlants.alias.some((p) => p.includes("getAuditPage(…) is not handed straight")) && importPlants.namespace.some((p) => p.includes("getAuditForActor(…) is not handed straight"))
+        && importPlants.dynamicInRoute.some((p) => p.includes("by (dynamic)")) && importPlants.component.some((p) => p.includes("not under src/app/admin/"))
+        && importPlants.houseStore.some((p) => p.includes("imports the house read module src/lib/server/house-bot-dal")) && importPlants.houseDynamic.some((p) => p.includes("keeps the result of import()ing the house read module src/lib/server/house-bot/book"))
+        && importPlants.hookKept.some((p) => p.includes("keeps the result of import()ing the house read module src/lib/server/house-bot/holder-hook"))
+        && importPlants.benign.length === 0 && importPlants.hookDiscarded.length === 0,
+      j(importPlants));
   });
 }
 
@@ -4165,6 +4363,86 @@ await guard("4.S5", async () => {
     labels.player.size === 0 && labels.holder.size === 0 && typeof realLabel === "string" && realLabel.length > 0
       && j([...labels.admin.entries()]) === j([[botAB, realLabel], [`hb_${"0".repeat(24)}`, "—"]]),
     j({ player: [...labels.player.entries()], holder: [...labels.holder.entries()], admin: [...labels.admin.entries()], realLabel }));
+
+  // ── ruling 260 · the audit rows a console page renders: whole for the route's audience, house-free for anyone else ──
+  // Measured on this branch's production build before the gate: /admin/players/<holder> streamed the holder's
+  // house_bot.password_verified row, and /admin/audit every house row with its payload, to a signed-in player, the holder and
+  // a trigger player. The rows below are written as the services write them (the designation's password check and
+  // designation, a house report's generated row, the owner's per-bot export, an erasure refused on a live holder, an officer's
+  // own platform action) beside the fixture's real ones (the holder's house stake audits, R9's decision payloads).
+  const AU: Any = await import("../../src/lib/server/audit.ts");
+  const holderRows = [
+    await AU.audit({ category: "SECURITY", action: "house_bot.password_verified", actorId: A, targetType: "User", targetId: holderAB, payload: { holderUserId: holderAB, outcome: "VERIFIED" } }),
+    await AU.audit({ category: "COMPLIANCE", action: "house_bot.designated", actorId: A, targetType: "HouseBot", targetId: botAB, payload: { botId: botAB, holderUserId: holderAB } }),
+    await AU.audit({ category: "ADMIN", action: "report.house-liquidity.generated", actorId: A, targetType: null, targetId: null, payload: { format: "xlsx", filename: `house-liquidity-${tag}.xlsx` } }),
+    await AU.audit({ category: "ADMIN", action: "house_bot.exported", actorId: A, targetType: "HouseBot", targetId: botAB, payload: { botId: botAB, code: "INTERNAL_RECORD" } }),
+    await AU.audit({ category: "COMPLIANCE", action: "privacy.dsar.erasure_blocked", actorId: A, targetType: "User", targetId: holderAB, payload: { reason: "house_bot_live", requestId: `dsar_${tag}` } }),
+    await AU.audit({ category: "ADMIN", action: "player.suspended", actorId: A, targetType: "User", targetId: holderAB, payload: { reason: `fraud review ${tag}` } }),
+  ];
+  await AU.auditFlush();
+  // The console reads exactly as the pages do: the ring's rows for the holder (actor and target), plus the audit log's page.
+  const holderRead = () => [...AU.getAuditForActor(holderAB, 200), ...AU.getAuditForTarget("User", holderAB, 200)];
+  const logRead = () => AU.getAuditPage({ limit: 100_000 });
+  const inputHolder = holderRead(), inputLog = logRead();
+  const stakeRow = inputHolder.find((e: Any) => e.action === "market.position.opened" && typeof e.payload?.houseBotId === "string");
+  const r9Row = inputLog.find((e: Any) => e.payload && typeof e.payload === "object" && "houseStake" in e.payload && e.payload.houseStake);
+  const platformRow = inputHolder.find((e: Any) => e.id === holderRows[5]?.id);
+  const hitsOf = (rows: Any) => houseHits(j(rows));
+  const outsideRoute = async (viewer: Any, route: string, read: Any) => CR.houseAuditForConsole(viewer, route, read);
+  const outsideViews: Record<string, Any> = {
+    playerOnPlayers: await outsideRoute(plainPlayer, "/admin/players", holderRead()), holderOnPlayers: await outsideRoute(holderAB, "/admin/players", holderRead()),
+    triggerOnPlayers: await outsideRoute(triggerAB, "/admin/players", holderRead()), noSessionOnAudit: await outsideRoute(null, "/admin/audit", logRead()),
+    playerOnAudit: await outsideRoute(plainPlayer, "/admin/audit", logRead()), holderOnOverview: await outsideRoute(holderAB, "/admin", logRead()),
+    unknownOnAudit: await outsideRoute(`usr_nobody_${tag}`, "/admin/audit", logRead()), supportOnAudit: await outsideRoute(SUPPORT, "/admin/audit", logRead()),
+    moderatorOnPlayers: await outsideRoute(MOD, "/admin/players", holderRead()), adminOffConsole: await outsideRoute(A, "/markets", logRead()),
+  };
+  const survivor = (rows: Any[], id: string) => rows.find((e: Any) => e.id === id);
+  const outsideFacts = Object.fromEntries(Object.entries(outsideViews).map(([k, rows]) => [k, {
+    rows: rows.length, hits: hitsOf(rows).slice(0, 4),
+    houseActions: rows.filter((e: Any) => String(e.action).startsWith("house_bot.") || String(e.action).startsWith("report.house-") || e.targetType === "HouseBot").length,
+  }]));
+  const playerView = outsideViews.playerOnPlayers as Any[];
+  const keptStake = stakeRow ? survivor(playerView, stakeRow.id) : undefined;
+  const keptBlocked = survivor(playerView, holderRows[4]?.id);
+  ok("4.260.1 · ⛔ D19 · the rows a console page renders carry NO house action, no row about a house bot and no house key or word at any depth for a player, the holder and a trigger player on the player page, no session, a player, an unknown id and SUPPORT on the audit log, the holder on the overview, the MODERATOR on the player page and an ADMIN asking about a non-console route; CONTROL: the rows read carry the house words, the holder's own stake audit and the refused erasure survive with their other keys, and an officer's platform action is untouched",
+    hitsOf(inputHolder).length >= 5 && hitsOf(inputLog).length >= 10 && !!stakeRow && !!r9Row && !!platformRow
+      && Object.values(outsideFacts).every((f: Any) => f.rows > 0 && f.hits.length === 0 && f.houseActions === 0)
+      && !!keptStake && keptStake.payload.houseBotId === undefined && keptStake.payload.intentId === undefined && j(Object.keys(keptStake.payload).sort()) === j(Object.keys(stakeRow.payload).filter((k) => !["houseBotId", "intentId"].includes(k)).sort())
+      && !!keptBlocked && keptBlocked.payload.reason === "not_erasable" && keptBlocked.payload.requestId === `dsar_${tag}`
+      && j(survivor(playerView, platformRow.id)) === j(platformRow),
+    j({ inputHits: [hitsOf(inputHolder).length, hitsOf(inputLog).length], stakeRow: !!stakeRow, r9Row: !!r9Row, outsideFacts, keptStake: keptStake?.payload, keptBlocked: keptBlocked?.payload }));
+
+  const whole = async (viewer: Any, route: string, read: Any) => { const out = await CR.houseAuditForConsole(viewer, route, read); return j(out) === j(read) && hitsOf(out).length > 0; };
+  const insideViews = {
+    adminOnAudit: await whole(A, "/admin/audit", logRead()), adminOnPlayers: await whole(A, "/admin/players", holderRead()), adminOnStaff: await whole(A, "/admin/staff", holderRead()),
+    complianceOnAudit: await whole(CO, "/admin/audit", logRead()), complianceOnPlayers: await whole(CO, "/admin/players", holderRead()),
+    supportOnPlayers: await whole(SUPPORT, "/admin/players", holderRead()), supportOnOverview: await whole(SUPPORT, "/admin", logRead()), moderatorOnResolver: await whole(MOD, "/admin/resolver", logRead()),
+  };
+  const moderatorOnStaff = await CR.houseAuditForConsole(MOD, "/admin/staff", holderRead());
+  ok("4.260.2 · the audience reads every row whole, as the section gate would let it: the ADMIN on the audit log, the player page and the Owner-only staff page; COMPLIANCE on the audit log and the player page; SUPPORT on the player page and the overview; the MODERATOR on the resolver — while the MODERATOR on the Owner-only staff page gets the house-free rows",
+    Object.values(insideViews).every(Boolean) && hitsOf(moderatorOnStaff).length === 0 && moderatorOnStaff.length > 0, j({ insideViews, moderatorOnStaffHits: hitsOf(moderatorOnStaff).length }));
+
+  const durable = { entries: holderRead(), total: 9_999, truncated: true };
+  const pageOut = await CR.houseAuditForConsole(holderAB, "/admin/kyc", durable);
+  const promised = await CR.houseAuditForConsole(holderAB, "/admin/players", Promise.resolve(holderRead()));
+  const nullRead = await CR.houseAuditForConsole(holderAB, "/admin/kyc", Promise.resolve(null));
+  let rejected: Any = "resolved";
+  try { await CR.houseAuditForConsole(A, "/admin/kyc", Promise.reject(new Error(`durable read failed ${tag}`))); } catch (e) { rejected = String((e as Error)?.message ?? e); }
+  ok("4.260.3 · the gate keeps the read's shape: a durable page keeps its total and truncated flag with its entries filtered, a promised read is awaited, the page's own null stays null, and a failed read still rejects into the page's own catch",
+    pageOut.total === 9_999 && pageOut.truncated === true && pageOut.entries.length > 0 && hitsOf(pageOut).length === 0 && hitsOf(durable).length > 0
+      && Array.isArray(promised) && promised.length > 0 && hitsOf(promised).length === 0 && nullRead === null && rejected === `durable read failed ${tag}`,
+    j({ page: { total: pageOut.total, truncated: pageOut.truncated, entries: pageOut.entries.length }, promised: promised?.length, nullRead, rejected }));
+
+  const realFind = w.db.user.findById;
+  let auditUserReads = 0;
+  let adminWhileFailing: Any = "not run";
+  w.db.user.findById = (...args: Any[]) => { auditUserReads++; throw new Error(`user read failed (cases) ${args.length}`); };
+  try { adminWhileFailing = await CR.houseAuditForConsole(A, "/admin/audit", logRead()); } finally { w.db.user.findById = realFind; }
+  const restoredInput = logRead();
+  const adminRestored = await CR.houseAuditForConsole(A, "/admin/audit", restoredInput);
+  ok("4.260.4 · ⛔ fail closed: while the viewer's user read throws, even the ADMIN gets the house-free rows; CONTROL: the user read was really asked, and restored the ADMIN reads the rows whole again",
+    Array.isArray(adminWhileFailing) && adminWhileFailing.length > 0 && hitsOf(adminWhileFailing).length === 0 && auditUserReads >= 1 && hitsOf(adminRestored).length > 0 && j(adminRestored) === j(restoredInput),
+    j({ whileFailing: Array.isArray(adminWhileFailing) ? { rows: adminWhileFailing.length, hits: hitsOf(adminWhileFailing).length } : adminWhileFailing, auditUserReads, restoredHits: hitsOf(adminRestored).length }));
 
   // ── ruling 197 · the KYC card's value, rendered ──
   const kyc = R34.kyc;

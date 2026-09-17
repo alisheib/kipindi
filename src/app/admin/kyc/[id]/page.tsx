@@ -11,7 +11,7 @@ import { listPendingKyc } from "@/lib/server/kyc-service";
 import { kycCaseRead, kycMoneyFacts, toBlockedCashOut, getApprovalRecommendation, KYC_MAKER_CHECKER_THRESHOLD, type BlockedCashOut } from "@/lib/server/kyc-risk";
 import { currentSession } from "@/lib/server/auth-service";
 import { canView } from "@/lib/server/rbac";
-import { houseConsoleAudience } from "@/lib/server/house-console-read";
+import { houseConsoleAudience, houseAuditForConsole } from "@/lib/server/house-console-read";
 import { formatDateTime } from "@/lib/utils";
 import { KycDocViewer } from "./kyc-doc-viewer";
 import { Sensitive } from "@/components/ui/sensitive";
@@ -127,7 +127,7 @@ export default async function KycWorkstationPage({ params }: { params: Promise<{
   // ⭐ ONE AUDIT READ, TWO READERS (2026-09-13): the balance-decision history on a refused case and the
   // cash-outs we refused this player both come from this account's DURABLE audit rows (never the ring, which
   // empties on every deploy). ⛔ `null` = the read failed, and each reader says so rather than showing none.
-  const targetAudit = await getAuditForTargetDurable("User", id, { limit: 500 }).catch(() => null);
+  const targetAudit = await houseAuditForConsole(session?.userId ?? null, "/admin/kyc", getAuditForTargetDurable("User", id, { limit: 500 }).catch(() => null));
   const cashOuts = targetAudit
     ? targetAudit.entries.map(toBlockedCashOut).filter((c): c is BlockedCashOut => c !== null)
     : null;

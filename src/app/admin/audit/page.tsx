@@ -5,6 +5,8 @@ import { parseSort, applySort, SortTh } from "@/components/admin/admin-sort";
 import { GenerateButton } from "../reports/generate-button";
 import Link from "next/link";
 import { getAuditPage, verifyChain, type AuditCategory } from "@/lib/server/audit";
+import { currentSession } from "@/lib/server/auth-service";
+import { houseAuditForConsole } from "@/lib/server/house-console-read";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Chip } from "@/components/ui/chip";
 import { ScrollX } from "@/components/ui/scroll-x";
@@ -86,7 +88,8 @@ export default async function AdminAuditPage({
    * must stay truthful — so it wants a caching decision from whoever owns that module,
    * not a quiet edit from here.
    */
-  const allEntries = getAuditPage({ limit: 100_000 });
+  const session = await currentSession();
+  const allEntries = await houseAuditForConsole(session?.userId ?? null, "/admin/audit", getAuditPage({ limit: 100_000 }));
   const allFiltered = category || actorId
     ? allEntries.filter((e) => (!category || e.category === category) && (!actorId || e.actorId === actorId))
     : allEntries;

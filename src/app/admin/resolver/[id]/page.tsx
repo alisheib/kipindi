@@ -19,7 +19,7 @@ import { ControlLocked } from "@/components/admin/control-locked";
 import { formatDateTime, formatTzs } from "@/lib/utils";
 import { CEREMONY, SELECTION, bi } from "@/lib/admin-status-lexicon";
 import { ResolutionCeremony } from "./resolution-ceremony";
-import { houseStakeForConsole } from "@/lib/server/house-console-read";
+import { houseStakeForConsole, houseAuditForConsole } from "@/lib/server/house-console-read";
 import { exposureReadOf } from "@/lib/house-bot/exposure-copy";
 import { ExposureLine } from "@/components/admin/exposure-line";
 
@@ -67,7 +67,7 @@ export default async function ResolutionCeremonyPage({ params }: { params: Promi
   try { stakes = await houseStakeForConsole(currentOfficerId, "/admin/resolver", [m.id]); } catch { stakes = null; }
 
   // Evidence + attestation timeline from the immutable audit trail (bounded scan).
-  const resolutionAudit = getAuditPage({ category: "ADMIN", limit: 500 })
+  const resolutionAudit = (await houseAuditForConsole(session?.userId ?? null, "/admin/resolver", getAuditPage({ category: "ADMIN", limit: 500 })))
     .filter((e) => e.targetId === m.id && e.action.startsWith("market.resolve"))
     .reverse(); // oldest → newest (stage1 then stage2)
   const stage1Entry = resolutionAudit.find((e) => e.action === "market.resolve.stage1");

@@ -27,8 +27,10 @@
  * the two-group renderer case (memory): memory 263, Postgres 160. Its review added the console gate (ruling 259) — the pages'
  * one gated read in its own catch, the row tag and KYC wiring, the slot chain, the player population read from disk, the
  * player pages' printed words and the product-built vocabulary pin (memory), and §4.259 on both stores: memory 273, Postgres 164.
+ * Its close added ruling 260's pin over every console file's audit reads and house imports with its controls (memory) and
+ * §4.260's audit-row gate on both stores: memory 280, Postgres 168.
  * A section that stops running fails the floor even while every case that ran passed.
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 
-await runTwoStores({ suite: "test:house-bot-reports", casesFile: "scripts/lib/house-bot-reports-cases.mts", minPass: { memory: 273, postgres: 164 }, dbPrefix: "hb_reports" });
+await runTwoStores({ suite: "test:house-bot-reports", casesFile: "scripts/lib/house-bot-reports-cases.mts", minPass: { memory: 280, postgres: 168 }, dbPrefix: "hb_reports" });

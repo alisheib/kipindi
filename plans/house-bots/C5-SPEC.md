@@ -2623,6 +2623,94 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
        viewer, another route or no catch; the gate returning the figures for a non-staff role; the KYC house count passed
        ungated.
 
+260. **Every audit row a console file reads goes through the gate too; the served measurement covers every console page.**
+     (Added at C5 step 5's close, 2026-09-17: ruling 259's own served probe, extended, found a second leak on a page step 5
+     never touched; the step could not close under D19 without it.)
+     - **Measured, not assumed.** On `eff16f35`'s production build (`next start`, BUILD_ID newer than every `src` file), the
+       step-5 fixture was extended so it carries every kind of house data a console page could stream: house audit rows
+       (`house_bot.password_verified` targeting the holder, `house_bot.designated` and `house_bot.started` targeting the bot,
+       a house report's `report.house-liquidity.generated`, `house_bot.exported`), R9's `houseStake` on resolve, objection
+       and emergency-void audits, the holder's house-marked `BET_PLACED` rows and positions with their
+       `market.position.opened` audits (`houseBotId`, `intentId`), and one HOUSE_BOT admin notice (fanned out to 4 ADMINs).
+       Every console page was enumerated from disk (54 `page.tsx` under `src/app/admin/`, 65 route instances with the
+       dynamic segments filled from the fixture and the tab and category variants that change what renders) and requested by
+       a signed-in PLAYER, the holder and a trigger player as a document, an `RSC: 1` flight and a flight whose
+       `Next-Router-State-Tree` names the section segments, plus the 7 admin API GET routes: 606 non-staff responses. **72
+       carried house data, all with status 200**: `/admin/audit` (default and `?category=` COMPLIANCE, SECURITY, ADMIN —
+       `house_bot.*` actions, `HouseBot` targets, bot ids, `houseStake` / `staffChosen` payload keys, the report row's
+       "liquidity") and `/admin/players/<holder>` and `/admin/players/<officer>` with and without `?tab=audit` (the action
+       names, `HouseBot#…` targets). 9 responses for each of those 8 route instances. The overview's feed carried nothing only
+       because its page wraps its reads inside its own section gate; the six step-5 pages and the KYC case carried nothing
+       (ruling 259). The ADMIN control carried house data on 19 route instances.
+     - **The population, from disk.** 289 console files (`src/app/admin/**`, `src/app/api/admin/**`,
+       `src/components/admin/**`). 18 audit-row reader calls in 14 files: the overview, `/admin/audit`, approvals,
+       compliance (3), config, the KYC case, live ops (2), the player page (2, merged into one read), reports, the ceremony,
+       retention and system (row counts), the staff page and the agent application page. House read modules named by a
+       console file: the system page's engine card (its reader is its own ADMIN-only gate, ruling 172), the bulk resolve
+       action's R9 snapshot (written into its audit payload only, rulings 187 and 191), and three officer actions'
+       fire-and-forget hooks (`void import(…).then(…)` of the holder and money hooks, results discarded). No console page
+       lists notifications: the HOUSE_BOT notice is read only on `/notifications`, by its own recipient. The admin API routes
+       decide on the stored role themselves (403 or 404 for every non-staff request; `/api/admin/updown/symbol-check` answers
+       500 because `requireStaff` throws uncaught — `main`'s behaviour, no house word in it).
+     - **The gate.** `houseAuditForConsole(viewerUserId, route, read)` in `src/lib/server/house-console-read.ts` returns the
+       read unchanged for `houseConsoleAudience(viewerUserId, route)` (ruling 259's audience) and, for anyone else — failing
+       closed — drops every row whose action is a house-owned action or a house report's generated / failed row (the list a
+       player's own audit reads exclude, `OWN_AUDIT_EXCLUDED_ACTIONS`, now exported from `user-service.ts`) or whose target
+       is a `HouseBot`, and strips the house keys from the rest with the same `withoutHouseAuditKeys` a player's own export
+       uses (rulings 154, 170). It keeps the read's shape (the ring's array, a durable page with its total and truncated
+       flag, the page's own `null`), awaits a promised read and lets a rejected one reject into the page's own catch. Every
+       one of the 18 reader calls hands its result straight to it with the signed-in session's id and the file's own route,
+       the two row counts included (a count read outside the audience leaves the house rows out).
+     - **NOT fixed here, recorded for Ali:** the platform class ruling 259 recorded, now measured on every console page —
+       every console page streams its server payload to any signed-in account (the proxy checks only the cookie signature;
+       `admin/layout.tsx`'s redirect and `AdminSectionGate` change what is painted). The gates above cover house data only.
+     - **Source:** C5 step 5 close, the served probe extended to every console page; owner ruling D19; rulings 172, 259.
+     - **Proof:** reports §0 0.260.1 (the population from disk: every `getAudit*` the audit module exports, every call handed
+       straight to the gate with the session's id and the file's own route, no `import()` of the audit module, no kept house
+       read module outside the named homes) with controls 0.260.c1 (the player page's measured leak restored, a reader
+       filtered before the gate, a literal viewer, a viewer not read from `currentSession()`, another domain's route, the
+       overview's broader prefix; the KYC page's `await … .catch` read not reported) and 0.260.c2 (an aliased reader, a
+       namespace reader, the audit module `import()`ed by an admin route, a component gating with a route it does not serve,
+       the house store in a console page, a house module `import()`ed and kept, a hook whose result an action returns; a
+       fire-and-forget hook, `verifyChain` and type-only imports not reported). Reports §4.260.1–4 on both stores (a player,
+       the holder, a trigger player, no session, an unknown id, SUPPORT on the audit log, the holder on the overview, the
+       MODERATOR on the player page and an ADMIN off the console get no house action, row or word, while the holder's own
+       stake audit and the refused erasure keep their other keys and an officer's platform row is untouched; the ADMIN,
+       COMPLIANCE, SUPPORT and the MODERATOR each read their routes whole, the MODERATOR not the Owner-only staff page; the
+       read's shapes; fail closed on a failing user read). The served probe re-run on the fixed build: **0 of 606 non-staff
+       responses carry house data**, the ADMIN control still carries it on the same 19 route instances. Mutations: a page's
+       read handed to no gate, a literal viewer or another route; the gate returning the rows for a viewer outside; the row
+       filter and the key strip each dropped; the `HouseBot` target rule dropped.
+
+261. **The bulk count keeps the shipped words.** The bulk bar and its confirmation say "House stakes on {n} of these
+     markets" and "House stake couldn't be read on {n} of these markets" (`BULK_EXPOSURE_COUNT_TEMPLATE`, one string, the two
+     sentences split on `|`). The pair reads in parallel and leads with the vocabulary word, so a reader scanning the bar sees
+     "House stake" first. Ruling 192's "{n} of these markets carry house stakes" is superseded. No code change.
+     (Decided at C5 step 5's close, review finding conformance-4.)
+     - **Proof:** reports 4.194.2 (the two sentences from the template), 0.175.r2p (both sentences are vocabulary hits).
+
+262. **Ruling 196's prefill mutation is proven by the slot-field pin.** "The reason field prefilled with the house line →
+     byte-identity red" cannot be proven through the byte-identity cases 4.195.7/8 and 4.196.1: a prefill happens in the
+     client control, and those cases drive the services, which never see the dialog's initial state. The mutation is proven
+     by reports §0 0.196.1 (each client decision control renders its slot as a child only — never a field's initial state, a
+     setter's argument, a value / defaultValue / placeholder, a FormData write or a template) with its controls 0.196.c1,
+     each branch deciding a plant of its own. (Decided at C5 step 5's close, review finding conformance-5.)
+     - **Proof:** S5-M46 (`useState("")` → `useState(String(exposureSlot ?? ""))` in `emergency-void-control.tsx`) red on 0.196.1.
+
+263. **How ruling 175 measured the three R2 phrasings.** "chosen by staff", "chosen by you" and "including house" (word-bounded)
+     were added to the vocabulary on this evidence, not on a clean `origin/main` build and its served pages (the baseline
+     worktree `F:/kipindi-old-build` is never built in):
+     - `git grep -i -E` over `origin/main` `b726cb7f` `src/ public/ scripts/ prisma/ docs/`, re-measured 2026-09-17 at step 5's
+       close: **0 lines** for each phrasing (positive controls on the same tree: "including" 555 lines, "chosen by" 32,
+       "house" 1,669). Served content that is not source is seeded from `scripts/`, which is in the grep.
+     - every `.js` / `.mjs` / `.cjs` / `.css` file under `F:/kipindi-old-build/node_modules` (`b726cb7f`'s): **0 of 13,714
+       files** (positive control: "chosen by" in 11 files).
+     - this branch's fresh bundle (`verify:house-bot-bundle` ALL PASS on `eff16f35`'s build, the words included) and its
+       signed-out served pages (`/`, `/markets`, `/markets/<id>`, `/live`, `/updown`, `/updown/<round>`, `/leaderboard`,
+       `/results`, `/api/fairness/recent`, `/api/health`, `/api/og/market/<id>`: 0 hits in 11 responses).
+     - **Source:** C5 step 5 close, review finding conformance-7. A recorded departure from ruling 175's method; the words
+       stay.
+
 ## 7. Guards that will move, and how to move each honestly
 
 Anchors as of `d15eeb70`. Run each named suite right after touching its file. Read a ratchet's printed population before

@@ -4,6 +4,8 @@ import { Chip } from "@/components/ui/chip";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { db } from "@/lib/server/store";
 import { getAuditPage } from "@/lib/server/audit";
+import { currentSession } from "@/lib/server/auth-service";
+import { houseAuditForConsole } from "@/lib/server/house-console-read";
 import { matches } from "@/lib/ui-stubs";
 import { activePlayers, moneyFlowSeries, grossGamingRevenue } from "@/lib/server/analytics";
 import { dailyKpiSeries } from "@/lib/server/report-money";
@@ -52,8 +54,9 @@ export default async function AdminLivePage() {
   // sibling's honest "last 30" — never said it was showing ten. Read what you render.
   const BET_FEED = 10;
   const WALLET_FEED = 30;
-  const betEvents = getAuditPage({ category: "BET", limit: BET_FEED });
-  const walletEvents = getAuditPage({ category: "WALLET", limit: WALLET_FEED });
+  const session = await currentSession();
+  const betEvents = await houseAuditForConsole(session?.userId ?? null, "/admin/live", getAuditPage({ category: "BET", limit: BET_FEED }));
+  const walletEvents = await houseAuditForConsole(session?.userId ?? null, "/admin/live", getAuditPage({ category: "WALLET", limit: WALLET_FEED }));
 
   return (
     <>

@@ -20,6 +20,7 @@ import { displayLabel } from "@/lib/display-label";
 import { formatDateTime, formatTzs } from "@/lib/utils";
 import { EmptyState } from "@/components/ui/empty-state";
 import { getAuditForTargetDurable } from "@/lib/server/audit";
+import { houseAuditForConsole } from "@/lib/server/house-console-read";
 import type { Route } from "next";
 import { DocGrid, type DocTile } from "./doc-grid";
 import { feeEvidence, feeRefundDestination, whyNoReconcile } from "./fee-evidence";
@@ -57,7 +58,7 @@ export default async function AgentApplicationPage({ params }: { params: Promise
     (async () => (await db.agentInvitation.list()).find((i) => i.applicationId === app.id) ?? null)(),
     // ⭐ IN THE SAME PARALLEL BLOCK, not awaited after it — this page already fans five reads
     // out at once and a sixth in series would add a round trip to every open of the workstation.
-    getAuditForTargetDurable("AgentApplication", app.id, { limit: 40 }),
+    houseAuditForConsole(session?.userId ?? null, "/admin/agents", getAuditForTargetDurable("AgentApplication", app.id, { limit: 40 })),
   ]);
   const cfg = getAgentConfig();
   const fee = feeBreakdown(cfg);

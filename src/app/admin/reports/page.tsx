@@ -12,6 +12,7 @@ import { ScrollX } from "@/components/ui/scroll-x";
 import { Chip } from "@/components/ui/chip";
 import { I, categoryGlyph } from "@/components/ui/glyphs";
 import { getAuditPage } from "@/lib/server/audit";
+import { houseAuditForConsole } from "@/lib/server/house-console-read";
 import { GenerateButton } from "./generate-button";
 import { ReportPackCard } from "./report-pack-card";
 import { formatDateTime, formatTzs, formatTzsCompact } from "@/lib/utils";
@@ -204,7 +205,7 @@ export default async function AdminReportsPage({
 
   // Generation log = audit entries from ADMIN with action starting "report."
   // Pull the whole in-memory window (was capped at 30) so pagination owns the slicing.
-  const generated = getAuditPage({ category: "ADMIN", limit: 10000 }).filter((e) => e.action.startsWith("report."));
+  const generated = (await houseAuditForConsole(session.userId, "/admin/reports", getAuditPage({ category: "ADMIN", limit: 10000 }))).filter((e) => e.action.startsWith("report."));
 
   // Sort (URL-driven), then paginate — newest first by default.
   const { sort, dir } = parseSort(sp, ["time", "report", "reviewer"] as const, "time", "desc");

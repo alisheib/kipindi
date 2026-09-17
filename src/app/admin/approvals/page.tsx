@@ -13,6 +13,7 @@ import { ScrollX } from "@/components/ui/scroll-x";
 import { db, type StoredTxn, type StoredSourceOfFunds, type StoredKycStageRow } from "@/lib/server/store";
 import { ID_DOC_SPECS, type IdDocType } from "@/lib/id-documents";
 import { getAuditPage } from "@/lib/server/audit";
+import { houseAuditForConsole } from "@/lib/server/house-console-read";
 import { listPendingKyc } from "@/lib/server/kyc-service";
 import { currentSession } from "@/lib/server/auth-service";
 import { canView } from "@/lib/server/rbac";
@@ -87,7 +88,7 @@ export default async function AdminApprovalsPage({
   // with the player are counted beside it and left to /admin/kyc's "With the player" table.
   const kycWithUsAll = kycPendingAll.filter(isFileWithUs);
   const kycWithPlayer = kycPendingAll.filter((k) => kycStageOfFile(k) === "more_needed").length;
-  const recent = getAuditPage({ category: "ADMIN", limit: 60 });
+  const recent = await houseAuditForConsole(session?.userId ?? null, "/admin/approvals", getAuditPage({ category: "ADMIN", limit: 60 }));
   // ⚠️ THE LOG'S EMPTY TEST READS THIS FILTERED LIST (2026-09-13). It read `recent` — every ADMIN row — so a
   // console with admin activity but no approval among it drew the card with nothing inside at all.
   const recentApprovals = recent.filter((e) => e.action.startsWith("aml.") || e.action.startsWith("sof.") || e.action.startsWith("player.")).slice(0, 30);

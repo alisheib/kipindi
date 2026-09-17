@@ -6,6 +6,7 @@ import { SystemActions, SupportConfigForm, TimezoneForm, MaintenanceModeForm, An
 import { getSupportConfig } from "@/lib/server/support-config";
 import { db } from "@/lib/server/store";
 import { verifyChain, getAuditPage } from "@/lib/server/audit";
+import { houseAuditForConsole } from "@/lib/server/house-console-read";
 import { smsHealthSnapshot, smsBalanceSnapshot, sms as smsClient } from "@/lib/server/sms";
 import { rateLimitSnapshot } from "@/lib/server/rate-limit";
 import { admissionSnapshot } from "@/lib/server/admission";
@@ -144,7 +145,8 @@ export default async function AdminSystemPage({
   const tab: "platform" | "diagnostics" = sp.tab === "diagnostics" ? "diagnostics" : "platform";
   const platform = await getPlatformConfig().catch(() => ({ timezone: "Africa/Dar_es_Salaam" } as Awaited<ReturnType<typeof getPlatformConfig>>));
   const chain = verifyChain();
-  const auditCount = getAuditPage({ limit: 100_000 }).length;
+  const session = await currentSession().catch(() => null);
+  const auditCount = (await houseAuditForConsole(session?.userId ?? null, "/admin/system", getAuditPage({ limit: 100_000 }))).length;
   const smsHealth = smsHealthSnapshot();
   const smsBalance = smsBalanceSnapshot();
   let totalUsers = 0;

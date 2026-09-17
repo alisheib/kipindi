@@ -10,6 +10,8 @@ import { db, type StoredTxn } from "@/lib/server/store";
 // E-103 · one denominator for a funnel column, and the card says which.
 import { funnelShares } from "@/lib/funnel-share";
 import { verifyChain, getAuditPage } from "@/lib/server/audit";
+import { currentSession } from "@/lib/server/auth-service";
+import { houseAuditForConsole } from "@/lib/server/house-console-read";
 import { loadBackupRun, backupHealth } from "@/lib/server/backup/state";
 import { isMonitoringEnabled } from "@/lib/server/monitoring";
 import { kycFunnel, rgRosterCounts } from "@/lib/server/analytics";
@@ -65,11 +67,12 @@ export default async function AdminCompliancePage({
   let amlFailed = false;
   try { aml = (await db.txn.listByStatus("AML_REVIEW")) as StoredTxn[]; } catch { amlFailed = true; }
   const recentAml = aml.slice(0, 5);
-  const recentApprovals = getAuditPage({ category: "ADMIN", limit: 50 }).filter((e) => e.action.startsWith("aml.")).slice(0, 8);
-  const integrityAlerts = getAuditPage({ category: "BET", limit: 50 }).filter((e) => e.action.startsWith("integrity.alert.")).slice(0, 3);
+  const session = await currentSession();
+  const recentApprovals = (await houseAuditForConsole(session?.userId ?? null, "/admin/compliance", getAuditPage({ category: "ADMIN", limit: 50 }))).filter((e) => e.action.startsWith("aml.")).slice(0, 8);
+  const integrityAlerts = (await houseAuditForConsole(session?.userId ?? null, "/admin/compliance", getAuditPage({ category: "BET", limit: 50 }))).filter((e) => e.action.startsWith("integrity.alert.")).slice(0, 3);
 
   // Reality-check engagement — read from audit (rg.* events)
-  const rgEvents = getAuditPage({ category: "COMPLIANCE", limit: 200 });
+  const rgEvents = await houseAuditForConsole(session?.userId ?? null, "/admin/compliance", getAuditPage({ category: "COMPLIANCE", limit: 200 }));
   const continued = rgEvents.filter((e) => e.action === "rg.reality_check.continued").length;
   const tookBreak = rgEvents.filter((e) => e.action === "rg.cooling_off.activated").length;
   const sxd = rgEvents.filter((e) => e.action === "rg.self_exclusion.activated").length;

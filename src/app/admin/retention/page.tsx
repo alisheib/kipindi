@@ -9,6 +9,7 @@ import { AdminPageHead, AdminCard, AdminKpi } from "@/components/admin/admin-she
 import { Chip } from "@/components/ui/chip";
 import { db } from "@/lib/server/store";
 import { getAuditPage } from "@/lib/server/audit";
+import { houseAuditForConsole } from "@/lib/server/house-console-read";
 import { I } from "@/components/ui/glyphs";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { AdminBody } from "@/components/admin/admin-body";
@@ -110,7 +111,7 @@ export default async function AdminRetentionPage({ searchParams }: { searchParam
   }
   // Read through the audit API (like /admin/system) rather than poking the
   // globalThis ring directly — best-effort, capped read.
-  const auditEntries = getAuditPage({ limit: 100_000 }).length;
+  const auditEntries = (await houseAuditForConsole(session?.userId ?? null, "/admin/retention", getAuditPage({ limit: 100_000 }))).length;
 
   return (
     <>

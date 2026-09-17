@@ -19,6 +19,7 @@ import { selfExclusionStanding } from "@/lib/server/responsible-gambling";
 import { currentSession } from "@/lib/server/auth-service";
 import { canAct, canView } from "@/lib/server/rbac";
 import { exportUserData } from "@/lib/server/user-service";
+import { houseAuditForConsole } from "@/lib/server/house-console-read";
 import { I } from "@/components/ui/glyphs";
 import { formatTzs, formatTzsCompact, formatDate, formatDateTime, formatDateTimeSafe, formatDateShort } from "@/lib/utils";
 import { displayLabel, displayInitials } from "@/lib/display-label";
@@ -133,7 +134,7 @@ export default async function AdminPlayerDetailPage({ params, searchParams }: {
   const txns = data.transactions as StoredTxn[];
   // Merge the player's OWN actions with admin actions taken AGAINST them, so an
   // officer can see who suspended / reset / emailed / approved this account.
-  const audit = [...(getAuditForActor(id, 200) ?? []), ...(getAuditForTarget("User", id, 200) ?? [])]
+  const audit = (await houseAuditForConsole(viewer?.userId ?? null, "/admin/players", [...(getAuditForActor(id, 200) ?? []), ...(getAuditForTarget("User", id, 200) ?? [])]))
     .filter((e, i, arr) => arr.findIndex((x) => x.id === e.id) === i)
     .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""))
     .slice(0, 200);

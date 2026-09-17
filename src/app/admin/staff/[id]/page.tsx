@@ -8,6 +8,7 @@ import { ScrollX } from "@/components/ui/scroll-x";
 import { db } from "@/lib/server/store";
 import { currentSession } from "@/lib/server/auth-service";
 import { getAuditForTarget } from "@/lib/server/audit";
+import { houseAuditForConsole } from "@/lib/server/house-console-read";
 import { isAdmin, roleLabel } from "@/lib/server/roles";
 import { staffRoleInfos } from "@/lib/server/rbac";
 import { displayLabel, displayInitials } from "@/lib/display-label";
@@ -31,7 +32,7 @@ export default async function StaffDetailPage({ params }: { params: Promise<{ id
   const hasEmail = !!u.email;
 
   const roleInfos = await staffRoleInfos();
-  const audit = await getAuditForTarget("User", id, 100);
+  const audit = await houseAuditForConsole(session.userId, "/admin/staff", getAuditForTarget("User", id, 100));
   const roleChanges = audit.filter((e) => e.action === "staff.role_changed");
   const isSelf = id === session.userId;
 

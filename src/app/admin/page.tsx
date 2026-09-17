@@ -4,6 +4,8 @@ import { AdminAreaChart, CATEGORICAL_RAMP } from "@/components/admin/admin-chart
 import { I } from "@/components/ui/glyphs";
 import { db } from "@/lib/server/store";
 import { getAuditPage, type AuditCategory } from "@/lib/server/audit";
+import { currentSession } from "@/lib/server/auth-service";
+import { houseAuditForConsole } from "@/lib/server/house-console-read";
 import { activePlayers, grossGamingRevenue, netGamingRevenue, kycFunnel, providerSummary, rgRosterCounts, moneyFlowSeries } from "@/lib/server/analytics";
 import { dailyKpiSeries } from "@/lib/server/report-money";
 import { formatTzsCompact } from "@/lib/utils";
@@ -47,7 +49,8 @@ async function AdminOverviewContent() {
   // can't render as "no provider data" / a flat money-flow chart.
   const provs = await providerSummary("28d").then((l) => l.slice(0, 5)).catch(() => null);
   const rg = await rgRosterCounts().catch(() => null);
-  const recent = getAuditPage({ limit: 12 });
+  const session = await currentSession();
+  const recent = await houseAuditForConsole(session?.userId ?? null, "/admin", getAuditPage({ limit: 12 }));
   const flow = await moneyFlowSeries("today", 24).catch(() => null);
   // Read-only 7-day daily trend for the money-tile sparklines — each point is
   // that day's REAL GGR/NGR/active (canonical `summarise`), so the spark is the

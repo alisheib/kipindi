@@ -7,6 +7,8 @@ import { worstCaseWinnerRatio } from "@/lib/payout";
 import { FeeSimulator } from "./fee-simulator";
 import { getMarket } from "@/lib/server/market-service";
 import { getAuditPage } from "@/lib/server/audit";
+import { currentSession } from "@/lib/server/auth-service";
+import { houseAuditForConsole } from "@/lib/server/house-console-read";
 import { Chip } from "@/components/ui/chip";
 import {
   GlobalConfigForm,
@@ -45,7 +47,8 @@ export default async function AdminConfigPage({ searchParams }: { searchParams: 
     const m = await getMarket(marketId).catch(() => null);
     if (m) overrideMarketNames.set(marketId, m.titleEn);
   }
-  const recent = getAuditPage({ category: "ADMIN", limit: 50 }).filter(
+  const session = await currentSession();
+  const recent = (await houseAuditForConsole(session?.userId ?? null, "/admin/config", getAuditPage({ category: "ADMIN", limit: 50 }))).filter(
     (e) => e.action.startsWith("config."),
   ).slice(0, 12);
 
