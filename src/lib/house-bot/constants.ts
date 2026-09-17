@@ -605,9 +605,6 @@ export const TARGET_PREVIEW_DEBOUNCE_MS = 250;
 /** A staff-chosen stake is attributed to every opposite account holding at least this share (N1 §3). */
 export const COUNTERPARTY_ATTRIBUTION_MIN_PCT = 25;
 
-/** The staff-edge alert needs at least this many settled staff-chosen stakes in the month (N1 §4.5). */
-export const STAFF_EDGE_MIN_SETTLED = 10;
-
 /** The voided and self-decided oversight passes look back this far (N1 §4.5). */
 export const OVERSIGHT_LOOKBACK_DAYS = 30;
 
@@ -702,12 +699,6 @@ export const ALERT_KEY = {
   staffStakeVoided: (marketId: string) => `staff-stake-voided:${marketId}`,
   staffStakeSelfDecided: (marketId: string, action: StaffSelfDecidedAction) =>
     `staff-stake-self-decided:${marketId}:${action}`,
-  /**
-   * The monthly staff-edge alert. The pass runs only on the first EAT day of a month and judges the
-   * month just ended; the key carries that judged month (N1 §4.5, TGT-39: an October run writes
-   * 2026-09).
-   */
-  staffEdge: (officerId: string) => suffixed(`staff-edge:${officerId}`, "previousMonth"),
   /** `ENTER_NOW_PREVIEWED` at most once per officer, bot and poll per EAT minute (N1 §6). */
   preview: (actorId: string, botId: string, marketId: string) =>
     suffixed(`preview:${actorId}:${botId}:${marketId}`, "minute"),

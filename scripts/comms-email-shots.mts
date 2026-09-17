@@ -61,7 +61,6 @@ const PAGES: { name: string; html: string }[] = [
   { name: "marketCancelledRefundHtml", html: E.marketCancelledRefundHtml({ title: LONG, reason: "The published source retracted its result after settlement", amount: 25_000, reference: "pos_41ab77cd" }) },
   { name: "marketCancelledAdminHtml", html: E.marketCancelledAdminHtml({ title: LONG, reason: "Source retracted", refundedCount: 42, refundedTzs: 1_050_000 }) },
   // C5-SPEC ruling 195: the same letter when the void refunded house stakes — one more detail row, rendered and read beside the plain one.
-  { name: "marketCancelledAdminHtml.houseShare", html: E.marketCancelledAdminHtml({ title: LONG, reason: "Source retracted", refundedCount: 42, refundedTzs: 1_050_000, houseRefundedTzs: 8_000, houseRefundedCount: 2 }) },
   { name: "marketResolutionAdminHtml", html: E.marketResolutionAdminHtml({ title: LONG, closedAt: "2026-07-31T09:00:00.000Z", reviewUrl: "/admin/resolver-queue" }) },
   { name: "bonusCreditedHtml", html: E.bonusCreditedHtml({ amountTzs: 5_000, wagerRequiredTzs: 25_000, sourceLabel: "Welcome bonus" }) },
   { name: "bonusFulfilledHtml", html: E.bonusFulfilledHtml({ amountTzs: 5_000 }) },

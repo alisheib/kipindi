@@ -138,11 +138,6 @@ CREATE TABLE IF NOT EXISTS "HouseBotControl" (
     "gCapStaffChosenDailyTzs"          BIGINT,
     "gTargetsMaxActive"                INTEGER,
     "gStaffChosenMaxCounterpartyShare" INTEGER,
-    "gStaffEdgeWinRatePts"             INTEGER,
-    "gStaffEdgeNetTzs"                 BIGINT,
-    "boardDisclosureSentAt"            TIMESTAMPTZ(3),
-    -- NULL = nothing recorded (N1 §2: text[] NULL). Readers treat NULL as an empty list.
-    "boardDisclosureSections"          TEXT[],
     "createdAt"                        TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt"                        TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "HouseBotControl_pkey" PRIMARY KEY ("id"),
@@ -163,9 +158,7 @@ CREATE TABLE IF NOT EXISTS "HouseBotControl" (
     CONSTRAINT "HouseBotControl_gCapStaffChosenPerDay_check" CHECK ("gCapStaffChosenPerDay" IS NULL OR "gCapStaffChosenPerDay" BETWEEN 1 AND 200),
     CONSTRAINT "HouseBotControl_gCapStaffChosenDailyTzs_check" CHECK ("gCapStaffChosenDailyTzs" IS NULL OR "gCapStaffChosenDailyTzs" BETWEEN 0 AND 1000000000),
     CONSTRAINT "HouseBotControl_gTargetsMaxActive_check" CHECK ("gTargetsMaxActive" IS NULL OR "gTargetsMaxActive" BETWEEN 1 AND 200),
-    CONSTRAINT "HouseBotControl_gStaffChosenMaxCounterpartyShare_check" CHECK ("gStaffChosenMaxCounterpartyShare" IS NULL OR "gStaffChosenMaxCounterpartyShare" BETWEEN 10 AND 100),
-    CONSTRAINT "HouseBotControl_gStaffEdgeWinRatePts_check" CHECK ("gStaffEdgeWinRatePts" IS NULL OR "gStaffEdgeWinRatePts" BETWEEN 1 AND 100),
-    CONSTRAINT "HouseBotControl_gStaffEdgeNetTzs_check" CHECK ("gStaffEdgeNetTzs" IS NULL OR "gStaffEdgeNetTzs" BETWEEN 0 AND 1000000000)
+    CONSTRAINT "HouseBotControl_gStaffChosenMaxCounterpartyShare_check" CHECK ("gStaffChosenMaxCounterpartyShare" IS NULL OR "gStaffChosenMaxCounterpartyShare" BETWEEN 10 AND 100)
 );
 
 -- ⭐ SEEDED DISABLED. Every cap NULL (not set), so nothing can bet until an owner sets them (PLAN §2).

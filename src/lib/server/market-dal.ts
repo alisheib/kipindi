@@ -441,11 +441,6 @@ export interface PositionStore {
     sort: LeaderSortKey;
     dir: "asc" | "desc";
     productLine?: ProductLineFilter;
-    /**
-     * C5-SPEC ruling 233 · true drops house-marked positions before grouping; default false. ⛔ The public board never
-     * passes it (D6, ruling 234): a reward or prize over positions passes it instead.
-     */
-    excludeHouse?: boolean;
   }): Promise<Array<{
     userId: string;
     resolved: number;
@@ -719,7 +714,6 @@ const memoryPositions: PositionStore = {
     for (const p of positions.values()) {
       if (p.status === "OPEN") continue;
       if (pl && (markets.get(p.marketId)?.productLine ?? "MARKET") !== pl) continue;
-      if (opts?.excludeHouse && p.houseBotId != null) continue;
       const e = acc.get(p.userId) ?? { resolved: 0, staked: 0, paidOut: 0 };
       e.resolved += 1;
       e.staked += p.stake;
@@ -1262,7 +1256,6 @@ const prismaPositions: PositionStore = {
          ${pl ? `join "public"."PredictionMarket" m on m."id" = p."marketId"` : ""}
         where p."status" <> 'OPEN'
           ${pl ? `and coalesce(m."productLine", 'MARKET') = $2` : ""}
-          ${opts?.excludeHouse ? `and p."houseBotId" is null` : ""}
         group by p."userId"
         order by ${leaderboardOrderBy(opts)}
         limit $1`,

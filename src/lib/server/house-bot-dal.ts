@@ -152,11 +152,6 @@ export type StoredHouseBotControl = {
   gCapStaffChosenDailyTzs: number | null;
   gTargetsMaxActive: number | null;
   gStaffChosenMaxCounterpartyShare: number | null;
-  gStaffEdgeWinRatePts: number | null;
-  gStaffEdgeNetTzs: number | null;
-  boardDisclosureSentAt: string | null;
-  /** The column is `text[] NULL`; NULL (nothing recorded) reads as an empty list. */
-  boardDisclosureSections: string[];
   createdAt: string;
   updatedAt: string;
 };
@@ -466,10 +461,6 @@ export const HOUSE_BOT_CONTROL_COLUMNS: Record<keyof StoredHouseBotControl, Colu
   gCapStaffChosenDailyTzs: { col: "gCapStaffChosenDailyTzs", kind: "bigint" },
   gTargetsMaxActive: { col: "gTargetsMaxActive", kind: "int" },
   gStaffChosenMaxCounterpartyShare: { col: "gStaffChosenMaxCounterpartyShare", kind: "int" },
-  gStaffEdgeWinRatePts: { col: "gStaffEdgeWinRatePts", kind: "int" },
-  gStaffEdgeNetTzs: { col: "gStaffEdgeNetTzs", kind: "bigint" },
-  boardDisclosureSentAt: { col: "boardDisclosureSentAt", kind: "ts" },
-  boardDisclosureSections: { col: "boardDisclosureSections", kind: "textArray" },
   createdAt: { col: "createdAt", kind: "ts" },
   updatedAt: { col: "updatedAt", kind: "ts" },
 };
@@ -751,8 +742,6 @@ const MEM_CHECKS: { [T in HouseTable]: ReadonlyArray<MemCheck<HouseRows[T]>> } &
     { name: "HouseBotControl_gCapStaffChosenDailyTzs_check", ok: (r) => between(r.gCapStaffChosenDailyTzs, 0, TZS_MAX) },
     { name: "HouseBotControl_gTargetsMaxActive_check", ok: (r) => between(r.gTargetsMaxActive, 1, 200) },
     { name: "HouseBotControl_gStaffChosenMaxCounterpartyShare_check", ok: (r) => between(r.gStaffChosenMaxCounterpartyShare, 10, 100) },
-    { name: "HouseBotControl_gStaffEdgeWinRatePts_check", ok: (r) => between(r.gStaffEdgeWinRatePts, 1, 100) },
-    { name: "HouseBotControl_gStaffEdgeNetTzs_check", ok: (r) => between(r.gStaffEdgeNetTzs, 0, TZS_MAX) },
   ],
   HouseBotRuntime: [
     { name: "HouseBotRuntime_key_check", ok: (r) => r.key === "global" || r.key === "beat:planner"
@@ -1084,7 +1073,6 @@ function iso(d: Date | string | null | undefined): string | null {
 /** BIGINT arrives as JS bigint from raw SQL; every house value is ≤ 1e9, so Number is exact. */
 const big = (x: unknown): number | null => (x == null ? null : Number(x));
 const int = (x: unknown): number | null => (x == null ? null : Number(x));
-const arr = (x: unknown): string[] => (Array.isArray(x) ? (x as string[]) : []);
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 function toHouseBot(r: any): StoredHouseBot {
@@ -1156,10 +1144,6 @@ function toHouseBotControl(r: any): StoredHouseBotControl {
     gCapStaffChosenDailyTzs: big(r.gCapStaffChosenDailyTzs),
     gTargetsMaxActive: int(r.gTargetsMaxActive),
     gStaffChosenMaxCounterpartyShare: int(r.gStaffChosenMaxCounterpartyShare),
-    gStaffEdgeWinRatePts: int(r.gStaffEdgeWinRatePts),
-    gStaffEdgeNetTzs: big(r.gStaffEdgeNetTzs),
-    boardDisclosureSentAt: iso(r.boardDisclosureSentAt),
-    boardDisclosureSections: arr(r.boardDisclosureSections),
     createdAt: iso(r.createdAt),
     updatedAt: iso(r.updatedAt),
   };
@@ -1322,8 +1306,6 @@ export interface HouseBotControlStore {
   switchOn(input: { byId: string; reason: string | null }, tx?: HouseTx): Promise<StoredHouseBotControl | null>;
   /** CAS on `limitsVersion` (+1). Only `LIMIT_FIELDS` are writable; anything else throws. */
   saveLimits(baseVersion: number, patch: HouseBotLimitsPatch, tx?: HouseTx): Promise<CasResult<StoredHouseBotControl>>;
-  /** "Record disclosure sent" (N1 §10): the sections, and the time on the database clock. */
-  recordDisclosure(sections: readonly string[], tx?: HouseTx): Promise<StoredHouseBotControl>;
 }
 
 export interface HouseBotStore {
@@ -1865,8 +1847,7 @@ function seededControl(now: string): StoredHouseBotControl {
     gMaxBetsPerMinute: null, gMaxBetsPerDay: null, gCounterPerPlayerPerDay: null, gCounterPerPlayerTzsPerDay: null,
     maxDesignatedBots: 5, bellAlertsPerHour: 20,
     gCapStaffChosenPerDay: null, gCapStaffChosenDailyTzs: null, gTargetsMaxActive: null,
-    gStaffChosenMaxCounterpartyShare: null, gStaffEdgeWinRatePts: null, gStaffEdgeNetTzs: null,
-    boardDisclosureSentAt: null, boardDisclosureSections: [],
+    gStaffChosenMaxCounterpartyShare: null,
     createdAt: now, updatedAt: now,
   };
 }
@@ -2006,11 +1987,6 @@ const memoryHouseBotControl: HouseBotControlStore = {
     const cur = memControl.get(HOUSE_CONTROL_ID)!;
     if (cur.limitsVersion !== baseVersion) return { ok: false, current: clone(cur) };
     return { ok: true, row: memUpdate("HouseBotControl", cur, { ...defined(patch), limitsVersion: cur.limitsVersion + 1 }) };
-  },
-  async recordDisclosure(sections) {
-    memSeed();
-    const cur = memControl.get(HOUSE_CONTROL_ID)!;
-    return memUpdate("HouseBotControl", cur, { boardDisclosureSections: [...sections], boardDisclosureSentAt: nowIso() });
   },
 };
 
@@ -3163,16 +3139,6 @@ const prismaHouseBotControl: HouseBotControlStore = {
     const rows = await sql(tx, text, p.values);
     if (rows[0]) return { ok: true, row: toHouseBotControl(rows[0]) };
     return { ok: false, current: await prismaHouseBotControl.get(tx) };
-  },
-  async recordDisclosure(sections, tx) {
-    const p = new Params();
-    const text = updateSql("HouseBotControl", [
-      `"boardDisclosureSections" = ${p.col("HouseBotControl", "boardDisclosureSections", [...sections])}`,
-      `"boardDisclosureSentAt" = now()`,
-    ], `"id" = ${p.raw(HOUSE_CONTROL_ID, "text")}`);
-    const rows = await sql(tx, text, p.values);
-    if (!rows[0]) throw new HouseSchemaNotReady(`HouseBotControl '${HOUSE_CONTROL_ID}'`);
-    return toHouseBotControl(rows[0]);
   },
 };
 

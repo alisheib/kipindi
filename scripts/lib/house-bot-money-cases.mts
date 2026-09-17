@@ -777,32 +777,9 @@ if (w.onPostgres) {
       usage.placedLastDay > 100 && usage.lastPlacedAt != null && g.betsLastDay > 600 && page.length > 0 && page.length <= 200,
       JSON.stringify({ usage, g, page: page.length }));
 
-    // ── C5-SPEC rulings 180 and 183 · the entry split and the fee inputs at the same scale ──────────────────────────────
-    // entryRows is dayRows' cohort joined to the intent, its target and the market; feeInputs reads marked payouts by time
-    // and then only the positions of the markets they won. Neither may scan Position. Each has a CONTROL that runs it.
-    const twoDaysAgo = new Date(Date.now() - 2 * 86_400_000).toISOString();
-    const lifetimeTo = new Date(Date.now() + 86_400_000).toISOString();
-    const C5_PINS: Array<[string, (spy: Any) => Promise<unknown>]> = [
-      ["entryRows, every bot in one GROUP BY (2 days)", (spy) => book.entryRows({ fromIso: twoDaysAgo, toIso: nowIso, houseBotId: null }, spy)],
-      ["entryRows, one bot (2 days)", (spy) => book.entryRows({ fromIso: twoDaysAgo, toIso: nowIso, houseBotId: "hb_x1m_1" }, spy)],
-      ["feeInputs, every bot, lifetime", (spy) => book.feeInputs({ fromIso: "1970-01-01T00:00:00.000Z", toIso: lifetimeTo, houseBotId: null }, spy)],
-    ];
-    for (const [i, [what, call]] of C5_PINS.entries()) {
-      const plan = await planOf(call);
-      ok(`7.${20 + i} · C5 · EXPLAIN at 1M/20k: ${what} — no sequential scan on Position`, noSeqScan(plan), brief(plan) || "no statement captured");
-    }
-    const sumOf = (rows: Any[], k: string) => rows.filter((r) => String(r.houseBotId).startsWith("hb_x1m_")).reduce((s, r) => s + Number(r[k]), 0);
-    const entryReal = await book.entryRows({ fromIso: twoDaysAgo, toIso: nowIso, houseBotId: null });
-    const dayReal = await book.dayRows({ fromIso: twoDaysAgo, toIso: nowIso, houseBotId: null });
-    ok("7.23 · CONTROL · entryRows run for real over the same window: the fixture bots' bets and stakes equal dayRows' (every one UNKNOWN: the fixture wrote no intents)",
-      sumOf(entryReal, "bets") > 100 && sumOf(entryReal, "bets") === sumOf(dayReal, "bets") && sumOf(entryReal, "staked") === sumOf(dayReal, "staked")
-        && entryReal.filter((r: Any) => String(r.houseBotId).startsWith("hb_x1m_")).every((r: Any) => r.entry === "UNKNOWN"),
-      JSON.stringify({ entry: sumOf(entryReal, "bets"), day: sumOf(dayReal, "bets") }));
-    const feeReal: Any = await book.feeInputs({ fromIso: "1970-01-01T00:00:00.000Z", toIso: lifetimeTo, houseBotId: null });
-    const winMarkets = new Set((feeReal.wins as Any[]).map((x) => x.marketId));
-    ok("7.24 · CONTROL · feeInputs run for real over the lifetime: §5's settled house WIN is found, with exactly the markets it won and their positions — none of the 1M fixture's",
-      feeReal.wins.length >= 1 && feeReal.markets.length === winMarkets.size && (feeReal.markets as Any[]).every((m) => winMarkets.has(m.marketId) && m.positions.length >= 2)
-        && !(feeReal.markets as Any[]).some((m) => markets.includes(m.marketId)), JSON.stringify({ wins: feeReal.wins.length, markets: feeReal.markets.map((m: Any) => [m.marketId, m.positions.length]) }));
+    // ⛔ OWNER RULING D20 (2026-09-17) · rulings 180 and 183's readers (`entryRows`, `feeInputs`) were un-built in C5-5b
+    // with the book card, the entry split and the fee withheld they served, so their EXPLAIN pins and the two CONTROLs that
+    // ran them for real went with them. `dayRows` and `openExposure` — what the caps and the stops read — keep theirs above.
   }
 }
 

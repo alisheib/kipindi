@@ -35,8 +35,9 @@ const OWN_AUDIT_EXCLUDED_ACTIONS: readonly string[] = [...Object.keys(HOUSE_AUDI
 
 /**
  * Rulings 154 and 170 · the house keys an audit payload whose actor can be a player carries: a house stake's bet audit
- * (`houseBotId`, `intentId`; `market-service.ts` SEAM:audit), an officer's decision audit (`houseStake`, `houseStakes`,
- * R9, which names other officers), and an officer's fulfilled erasure (`privacy.dsar.fulfilled` spreads the routine's
+ * (`houseBotId`, `intentId`; `market-service.ts` SEAM:audit), `houseStake` / `houseStakes` (R9's decision-audit keys,
+ * whose writers owner ruling D20 un-built in C5-5b — the strip stays: a stored row written before the un-build keeps its
+ * key, and absence protection only widens), and an officer's fulfilled erasure (`privacy.dsar.fulfilled` spreads the routine's
  * counts, `houseBots` and `houseBotNotificationsRedacted` among them, 0 for an ordinary account). The durable rows and
  * `/admin/audit` keep them whole. ⛔ If Commit 5 adds another house key to an audit whose actor can be a player, it is
  * added here in the same commit.

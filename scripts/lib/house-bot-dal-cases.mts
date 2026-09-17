@@ -75,8 +75,6 @@ export const LIMIT_BOUNDS: ReadonlyArray<readonly [string, number, number]> = [
   ["gCapStaffChosenDailyTzs", 0, 1_000_000_000],
   ["gTargetsMaxActive", 1, 200],
   ["gStaffChosenMaxCounterpartyShare", 10, 100],
-  ["gStaffEdgeWinRatePts", 1, 100],
-  ["gStaffEdgeNetTzs", 0, 1_000_000_000],
 ];
 
 /** A press id in the browser's `crypto.randomUUID()` shape, fixed per case. */
@@ -691,18 +689,27 @@ async function runCases(): Promise<void> {
     });
     await rec("c11.b BIGINT limits read back as numbers", async () => {
       const cur = await control.get();
-      await control.saveLimits(cur.limitsVersion, { gStaffEdgeNetTzs: 1_000_000_000, gCounterPerPlayerTzsPerDay: 1_000_000_000 });
+      await control.saveLimits(cur.limitsVersion, { gCapDailyStakeTzs: 1_000_000_000, gCounterPerPlayerTzsPerDay: 1_000_000_000 });
       const back = await control.get();
-      return `${typeof back.gStaffEdgeNetTzs}:${back.gStaffEdgeNetTzs}:${typeof back.gCounterPerPlayerTzsPerDay}:${back.gCounterPerPlayerTzsPerDay}`;
+      return `${typeof back.gCapDailyStakeTzs}:${back.gCapDailyStakeTzs}:${typeof back.gCounterPerPlayerTzsPerDay}:${back.gCounterPerPlayerTzsPerDay}`;
     });
     await rec("c11.c an intent stake reads back as a number", async () => {
       const r = await intents.insert(fill("hbi_c11", "mkt_c11", { stakeTzs: 1_000_000_000 }));
       return `${typeof r.stakeTzs}:${r.stakeTzs}`;
     });
-    await rec("c11.d board disclosure sections: NULL reads as an empty list, then records", async () => {
-      const before = await control.get();
-      const after = await control.recordDisclosure(["Stakes chosen by staff"]);
-      return `${JSON.stringify(before.boardDisclosureSections)}|${JSON.stringify(after.boardDisclosureSections)}|${after.boardDisclosureSentAt !== null}`;
+    // ⛔ OWNER RULING D20 (rulings 265, 273 (a)) · the staff-edge and Board-disclosure columns are un-built. The same
+    // answer on both stores is the un-build's guard: a re-added column is not writable, whichever twin is asked.
+    await rec("c11.d the struck columns are not writable on either twin (D20: staff edge, Board disclosure)", async () => {
+      const cur = await control.get();
+      const tried = await Promise.all(["gStaffEdgeNetTzs", "gStaffEdgeWinRatePts", "boardDisclosureSections", "boardDisclosureSentAt"].map(async (col) => {
+        try {
+          await control.saveLimits(cur.limitsVersion, { [col]: col.startsWith("board") ? [] : 1 } as Any);
+          return `${col}:WRITTEN`;
+        } catch (e) {
+          return `${col}:${String((e as Error).message).includes("not a writable column") ? "refused" : "other"}`;
+        }
+      }));
+      return `${tried.join("|")}|${"boardDisclosureSections" in cur}`;
     });
   });
 

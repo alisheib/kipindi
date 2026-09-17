@@ -29,9 +29,6 @@ import { withLock } from "./locks";
 import { getMarket, listPositionsForMarket, type StoredMarket } from "./market-service";
 import { getEffectiveConfig } from "./market-config";
 import { notifyAdminObjectionFiled, notifyObjectionDecided } from "./notification-service";
-// C5-SPEC rulings 187–190 (R9): the house stake a ruling was taken over, recorded on its audit — read after the refusals,
-// on the pool client, never throwing; it decides nothing (TGT-38, ruling 191).
-import { houseStakeForAudit } from "./house-bot/exposure";
 import { MONEY_ROLES, type Role } from "./roles";
 import type { ServiceResult } from "./auth-service";
 
@@ -427,15 +424,13 @@ export async function rejectObjection(
     reviewedAt: new Date().toISOString(),
     reviewNote,
   });
-  // R9 (ruling 188): no lock on this path — after the update, before the audit.
-  const houseStake = await houseStakeForAudit(o.marketId, "objection.rejected");
   audit({
     category: "COMPLIANCE",
     action: "objection.rejected",
     actorId: officerId,
     targetType: "Market",
     targetId: o.marketId,
-    payload: { objectionId, objectorId: o.userId, reason: o.reason, note: reviewNote, effect: "verdict stands; settlement released", houseStake },
+    payload: { objectionId, objectorId: o.userId, reason: o.reason, note: reviewNote, effect: "verdict stands; settlement released" },
   });
   notifyObjectionDecided(o.userId, { upheld: false, marketId: o.marketId, note: reviewNote }).catch(() => {});
 
@@ -552,8 +547,6 @@ export async function upholdObjection(
       remedy: input.remedy,
     });
 
-    // R9 (ruling 188): inside the lock, after its refusals, before the audit — on the pool client, never the lock's transaction.
-    const houseStake = await houseStakeForAudit(m.id, "objection.upheld");
     audit({
       category: "COMPLIANCE",
       action: "objection.upheld",
@@ -570,8 +563,6 @@ export async function upholdObjection(
         note: reviewNote,
         objectionsClosedAt: m.objectionsClosedAt,
         note2: "money had not moved — the verdict was corrected before settlement",
-        // R9, the LAST key (ruling 187); null when the read failed (ruling 190).
-        houseStake,
       },
     });
 

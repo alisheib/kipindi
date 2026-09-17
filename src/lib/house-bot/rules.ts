@@ -337,8 +337,6 @@ export const NULLABLE_LIMIT_FIELDS = [
   "gCapStaffChosenDailyTzs",
   "gTargetsMaxActive",
   "gStaffChosenMaxCounterpartyShare",
-  "gStaffEdgeWinRatePts",
-  "gStaffEdgeNetTzs",
 ] as const;
 
 /** `HouseBotControl` limits that are NOT NULL with a seeded default. */
@@ -361,8 +359,6 @@ export const LIMIT_FIELDS = [
   "gCapStaffChosenDailyTzs",
   "gTargetsMaxActive",
   "gStaffChosenMaxCounterpartyShare",
-  "gStaffEdgeWinRatePts",
-  "gStaffEdgeNetTzs",
 ] as const satisfies readonly (
   | (typeof NULLABLE_LIMIT_FIELDS)[number]
   | (typeof COUNT_LIMIT_FIELDS)[number]
@@ -806,16 +802,6 @@ const RAW_FIELDS = {
     nullable: true,
     recommended: 50,
     hint: "Enter now refuses when one player holds more than this share of the players' locked money it would add to. Not set = Enter now is off for every bot.",
-  }),
-  gStaffEdgeWinRatePts: num("limits", "Oversight", "Staff edge: win rate", "pts", 1, 100, {
-    nullable: true,
-    recommended: 15,
-    hint: "Alert when an officer's staff-chosen win rate beats the automated bots' by at least this many points in a month (10 or more settled stakes). Not set = this alert is off.",
-  }),
-  gStaffEdgeNetTzs: num("limits", "Oversight", "Staff edge: net", "TZS", 0, TZS_RAIL_MAX, {
-    nullable: true,
-    recommended: 100_000,
-    hint: "Alert when an officer's staff-chosen stakes net at least this much in a month (10 or more settled stakes). Not set = this alert is off.",
   }),
 } satisfies Record<string, FieldSpec>;
 

@@ -101,13 +101,6 @@ export type KycMoneyFacts = {
   /** CONFIRMED stakes (`BET_PLACED`), polls and Up & Down alike, and their sum. */
   betCount: number;
   stakedTzs: number;
-  /**
-   * Of those, the house-marked ones (`houseBotId` set) and their sum (C5-SPEC ruling 197) — counted in the same loop, over the
-   * same rows; `betCount` and `stakedTzs` stay the totals. ⛔ EVIDENCE FOR THE OFFICER ONLY: never a score factor, and read
-   * only here and in server modules under `src/app/admin/` (`test:house-bot-reports` §0 pins the readers).
-   */
-  houseBetCount: number;
-  houseStakedTzs: number;
   /** The first CONFIRMED deposit, or null when the account has never deposited. */
   firstDepositAt: string | null;
 };
@@ -125,7 +118,6 @@ export function kycMoneyFacts(txns: readonly StoredTxn[]): KycMoneyFacts {
     withdrawnTzs: 0, withdrawalCount: 0,
     inFlightTzs: 0,
     betCount: 0, stakedTzs: 0,
-    houseBetCount: 0, houseStakedTzs: 0,
     firstDepositAt: null,
   };
   for (const t of txns) {
@@ -140,7 +132,6 @@ export function kycMoneyFacts(txns: readonly StoredTxn[]): KycMoneyFacts {
     } else if (t.type === "BET_PLACED" && t.status === "CONFIRMED") {
       out.betCount += 1;
       out.stakedTzs += amt;
-      if (t.houseBotId != null) { out.houseBetCount += 1; out.houseStakedTzs += amt; }
     }
   }
   return out;

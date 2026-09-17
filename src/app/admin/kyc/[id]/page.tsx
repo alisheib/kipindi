@@ -11,13 +11,12 @@ import { listPendingKyc } from "@/lib/server/kyc-service";
 import { kycCaseRead, kycMoneyFacts, toBlockedCashOut, getApprovalRecommendation, KYC_MAKER_CHECKER_THRESHOLD, type BlockedCashOut } from "@/lib/server/kyc-risk";
 import { currentSession } from "@/lib/server/auth-service";
 import { canView } from "@/lib/server/rbac";
-import { houseConsoleAudience, houseAuditForConsole } from "@/lib/server/house-console-read";
+import { houseAuditForConsole } from "@/lib/server/house-console-read";
 import { formatDateTime } from "@/lib/utils";
 import { KycDocViewer } from "./kyc-doc-viewer";
 import { Sensitive } from "@/components/ui/sensitive";
 import { maskDob } from "@/lib/server/sensitive-fields";
 import { KycDecisionRail } from "./kyc-decision-rail";
-import { BetsPlacedValue } from "./bets-placed";
 import { RefusedFundsPanel } from "./refused-funds-panel";
 import { ReopenRefusalControl } from "./reopen-refusal-control";
 import { isFinalRefusal, type FinalRefusalCode } from "@/lib/kyc-refusal";
@@ -105,9 +104,6 @@ export default async function KycWorkstationPage({ params }: { params: Promise<{
   // 🔴 ASKED BEFORE THE WALLET IS READ (2026-09-13) — the same money gate as the roster and /admin/kyc. A
   // viewer without it sees the counts and dates on "Money at stake", never a shilling figure.
   const canSeeMoney = session ? await canView(session.role, "accounting") : false;
-  // The house figures on "Bets placed" only for a viewer this page's audience holds (ruling 259): the layouts' checks do not
-  // stop a page's payload, so a player who requests a holder's case gets today's value and no house line.
-  const houseVisible = await houseConsoleAudience(session?.userId ?? null, "/admin/kyc");
 
   const decided = kyc.status === "APPROVED" || kyc.status === "REJECTED";
   // ⭐ ONE TRANSACTION SCAN (2026-09-13). The risk score and the "Money at stake" card read the same rows:
@@ -394,13 +390,10 @@ export default async function KycWorkstationPage({ params }: { params: Promise<{
                 <Field
                   label="Bets placed"
                   value={
-                    <BetsPlacedValue
-                      betCount={moneyFacts.betCount}
-                      stakedTzs={moneyFacts.stakedTzs}
-                      houseBetCount={houseVisible ? moneyFacts.houseBetCount : 0}
-                      houseStakedTzs={houseVisible ? moneyFacts.houseStakedTzs : 0}
-                      canSeeMoney={canSeeMoney}
-                    />
+                    <span className="font-mono tabular-nums">
+                      {adminCount(moneyFacts.betCount, "bet")}
+                      {canSeeMoney ? <>{" · "}<span className="whitespace-nowrap">{formatTzs(moneyFacts.stakedTzs)}</span> staked</> : ""}
+                    </span>
                   }
                 />
                 <Field

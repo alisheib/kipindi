@@ -30,8 +30,6 @@ import { KYC_REVIEW_SLA_HOURS } from "@/lib/kyc-sla";
 import { displayLabel } from "@/lib/display-label";
 import type { LocalizedText } from "@/lib/localized";
 import { sideWordIn, outcomeWordIn, type StoredSide, type StoredOutcome } from "@/lib/side-label";
-// C5-SPEC ruling 195: the emergency-void ADMIN notice's house share has its words in one staff-only home.
-import { voidNoticeHouseClause } from "@/lib/house-bot/exposure-copy";
 import type { NotificationFilter, NotificationSort } from "@/lib/notification-filters";
 
 export type NotifyInput = Omit<StoredNotification, "id" | "userId" | "readAt" | "dismissedAt" | "createdAt"> & {
@@ -1250,20 +1248,17 @@ export function notifyMarketCancelled(userId: string, opts: { stake: number; mar
   });
 }
 
-/** Officer confirmation that an emergency void completed — who/what/how-many.
- *  The house share (C5-SPEC ruling 195) is ONE clause after the refund figure, only when the void refunded a house stake;
- *  with none, every field is exactly what it was. Officers only: the player's `notifyMarketCancelled` above never learns it. */
-export function notifyAdminMarketCancelled(adminUserId: string, opts: { title: string; reason: string; refundedCount: number; refundedTzs: number; houseRefundedTzs?: number; houseRefundedCount?: number }) {
-  const house = voidNoticeHouseClause(opts, formatTzs);
+/** Officer confirmation that an emergency void completed — who/what/how-many. */
+export function notifyAdminMarketCancelled(adminUserId: string, opts: { title: string; reason: string; refundedCount: number; refundedTzs: number }) {
   return notify({
     userId: adminUserId,
     kind: "SECURITY",
     titleEn: `Market cancelled · ${opts.refundedCount} refunded`,
     titleSw: `Soko limefutwa · ${opts.refundedCount} wamerejeshewa`,
     titleZh: `市场已取消 · ${opts.refundedCount} 人已退款`,
-    bodyEn: `"${opts.title.slice(0, 60)}" was emergency-voided — ${formatTzs(opts.refundedTzs)} refunded to ${opts.refundedCount} ${opts.refundedCount === 1 ? "player" : "players"}${house?.en ?? ""}. Reason: ${opts.reason.slice(0, 100)}`,
-    bodySw: `Soko limefutwa kwa dharura. ${formatTzs(opts.refundedTzs)} imerejeshwa${house?.sw ?? ""}.`,
-    bodyZh: `"${opts.title.slice(0, 60)}" 已紧急作废 — 已向 ${opts.refundedCount} 位玩家退款 ${formatTzs(opts.refundedTzs)}${house?.zh ?? ""}。原因：${opts.reason.slice(0, 100)}`,
+    bodyEn: `"${opts.title.slice(0, 60)}" was emergency-voided — ${formatTzs(opts.refundedTzs)} refunded to ${opts.refundedCount} ${opts.refundedCount === 1 ? "player" : "players"}. Reason: ${opts.reason.slice(0, 100)}`,
+    bodySw: `Soko limefutwa kwa dharura. ${formatTzs(opts.refundedTzs)} imerejeshwa.`,
+    bodyZh: `"${opts.title.slice(0, 60)}" 已紧急作废 — 已向 ${opts.refundedCount} 位玩家退款 ${formatTzs(opts.refundedTzs)}。原因：${opts.reason.slice(0, 100)}`,
     href: "/admin/markets",
   });
 }

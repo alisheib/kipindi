@@ -108,7 +108,6 @@ try {
   const CRYPTO: Any = await import("../src/lib/server/crypto.ts");
   const AUD: Any = await import("../src/lib/server/audit.ts");
   const NS: Any = await import("../src/lib/server/notification-service.ts");
-  const EXP: Any = await import("../src/lib/server/house-bot/exposure.ts");
   const REG: Any = await import("../src/lib/server/session-registry.ts");
   const AGENT: Any = await import("../src/lib/server/agent-application-service.ts");
   const { MARKET_CATEGORIES }: Any = await import("../src/lib/server/market-service.ts");
@@ -190,7 +189,7 @@ try {
   const V1 = await poll("Will the ferry route reopen this week?");
   await bet(V1.id, "YES", 20_000); await manual(V1.id, A, "NO", 5_000); await bet(V1.id, "NO", 4_000);
   const voided = await w.svc.emergencyVoidMarket({ marketId: V1.id, officerId: B, reason: "The publisher withdrew the notice" });
-  ok("1.decisions · a resolve, an objection and an emergency void on house-held markets (R9's houseStake on each audit)", !!resolvedO1?.ok && !!filed?.ok && !!voided?.ok, JSON.stringify({ r: resolvedO1?.ok, o: filed?.ok, v: voided?.ok }));
+  ok("1.decisions · a resolve, an objection and an emergency void on house-held markets (their audits, and the holder's own marked rows)", !!resolvedO1?.ok && !!filed?.ok && !!voided?.ok, JSON.stringify({ r: resolvedO1?.ok, o: filed?.ok, v: voided?.ok }));
 
   // ── an Up & Down round with a house stake ──
   const cfg: Any = await import("../src/lib/server/updown-config.ts");
@@ -246,7 +245,10 @@ try {
   await AUD.audit({ category: "SYSTEM", action: "server.error", actorId: null, targetType: "Route", targetId: "/admin/markets/[id]", payload: { name: "Error", message: `house bot ${botId} label read failed`, stack: "Error: house bot label read failed", method: "GET", digest: null, repeatsSuppressed: 0, monitorEnabled: false } });
   await AUD.audit({ category: "COMPLIANCE", action: "privacy.dsar.erasure_blocked", actorId: A, targetType: "DsarRequest", targetId: "dsar_probe_blocked", payload: { userId: holder, reason: "house_bot_live" } });
   await AUD.audit({ category: "ADMIN", action: "privacy.dsar.fulfilled", actorId: A, targetType: "DsarRequest", targetId: "dsar_probe_done", payload: { type: "ERASURE", userId: applicant, exportRef: null, status: "FULFILLED", houseBots: 0, houseBotNotificationsRedacted: 0 } });
-  await AUD.audit({ category: "COMPLIANCE", action: "market.resolve.bulk", actorId: A, targetType: "Batch", targetId: "batch_probe", payload: { batchId: "batch_probe", resolved: [Q1.id], houseStakes: { [Q1.id]: await EXP.houseStakeForAudit(Q1.id, "market.resolve.bulk") } } });
+  // ⛔ A ROW WRITTEN BEFORE OWNER RULING D20 KEEPS ITS KEYS. R9 was un-built in C5-5b, so nothing writes `houseStakes`
+  // any more — which is exactly why the probe plants one by hand: a stored Batch row from before the un-build must still
+  // never reach a non-staff viewer (ruling 260's gate drops the row; rulings 154/170 strip the key from an own export).
+  await AUD.audit({ category: "COMPLIANCE", action: "market.resolve.bulk", actorId: A, targetType: "Batch", targetId: "batch_probe", payload: { batchId: "batch_probe", resolved: [Q1.id], houseStakes: { [Q1.id]: { yes: 0, no: 9_000, staffChosen: { yes: 0, no: 9_000, requestedBy: [A] } } } } });
   await AUD.audit({ category: "ADMIN", action: "report.house-liquidity.generated", actorId: A, targetType: null, targetId: null, payload: { format: "xlsx", filename: "house-liquidity-2026-08.xlsx" } });
   await AUD.audit({ category: "ADMIN", action: "house_bot.exported", actorId: A, targetType: "HouseBot", targetId: botId, payload: { botId, holderUserId: holder } });
   await AUD.auditFlush();

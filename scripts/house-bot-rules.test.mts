@@ -58,7 +58,6 @@ import {
   eatMinuteKey,
   eatMinuteOfDay,
   eatMonthKey,
-  eatMonthWindow,
   EAT_OFFSET_MS,
   eatWeekday,
   formatAfterStake,
@@ -352,9 +351,9 @@ section("§0 · module law");
   }
   ok("0.population · the import parser saw the modules' imports (≥ 8 statements)", importCount >= 8, `saw ${importCount}`);
   ok("0.population.files · the law reads the folder, and it holds at least the six known modules",
-    // C5-SPEC rulings 178 and 192: the one requester rule is a module of this folder, under the same law.
-    // C5-SPEC ruling 195: the staff-only R2 words (`exposure-copy.ts`) are a module of this folder too.
-    ["bet-path.ts", "clock.ts", "consent.ts", "constants.ts", "pause-reasons.ts", "rules.ts", "stake-snapshot.ts", "exposure-copy.ts"].every((f) => (MODULE_FILES as readonly string[]).includes(f)),
+    // C5-SPEC ruling 178: the one requester rule is a module of this folder, under the same law.
+    // ⛔ D20 un-built `exposure-copy.ts` (C5-5b): the R2 words have no home because there is no R2 line.
+    ["bet-path.ts", "clock.ts", "consent.ts", "constants.ts", "pause-reasons.ts", "rules.ts", "stake-snapshot.ts"].every((f) => (MODULE_FILES as readonly string[]).includes(f)),
     MODULE_FILES.join(", "));
 
   // ⛔ CONTROLS — each check above can fail.
@@ -377,16 +376,6 @@ section("§0 · module law");
   ok("0.8c · CONTROL · a planted call is seen, and the declaration alone is not",
     SUSPEND.test("house.suspendInAppHolderHookForCases(true);") && SUSPEND.test("const n = HH.suspendedInAppHolderHookCallsForCases();")
       && !SUSPEND.test("export function suspendInAppHolderHookForCases(on: boolean) {".replace(/export function suspend(?:ed)?InAppHolderHook\w*ForCases\(/g, "")));
-
-  // C5-SPEC ruling 190 · the cases-only exposure fault switch is never called from product code: a production-reachable way
-  // to make every decision audit record "house stake not read" would be the hazard ruling 156 names.
-  const FAIL_SWITCH = new RegExp(["failExposure", "ReadForCases", String.raw`\s*\(`].join(""));
-  const switchCallers = srcFiles.filter((f) => FAIL_SWITCH.test(decomment(readFileSync(join(ROOT, f), "utf8")).replace(/export function failExposureReadForCases\(/g, "")));
-  ok("0.9 · ⛔ ruling 190 · no file under src/ calls failExposureReadForCases (only case files may)",
-    srcFiles.includes("src/lib/server/house-bot/exposure.ts") && switchCallers.length === 0, `callers: ${switchCallers.join(", ")}`);
-  ok("0.9c · CONTROL · a planted call is seen, and the declaration alone is not",
-    FAIL_SWITCH.test("EXP.failExposureReadForCases(true);")
-      && !FAIL_SWITCH.test("export function failExposureReadForCases(on: boolean): void {".replace(/export function failExposureReadForCases\(/g, "")));
 }
 
 /* ═══ §1 · C1 — one number parser for the form and the server ═══════════════════════════════ */
@@ -436,8 +425,9 @@ section("§1 · C1 parse table");
 section("§2 · bound matrix");
 {
   const NUMERIC = FIELD_ORDER.filter((id) => FIELD_META[id].min !== null && FIELD_META[id].max !== null);
-  // 60 → 59 on 2026-09-16 (C4 ruling 153): `holderNoticesPerHour` removed with the holder notices (D19c). Measured = 59.
-  ok("2.0 · the matrix covers every numeric rules, caps and limits field (≥ 59)", NUMERIC.length >= 59, `saw ${NUMERIC.length}`);
+  // 60 → 59 on 2026-09-16 (C4 ruling 153): `holderNoticesPerHour` removed with the holder notices (D19c).
+  // 59 → 57 on 2026-09-18 (owner ruling D20, ruling 265): the two staff-edge thresholds are un-built. MEASURED = 57.
+  ok("2.0 · the matrix covers every numeric rules, caps and limits field (≥ 57)", NUMERIC.length >= 57, `saw ${NUMERIC.length}`);
 
   /** The copy a bound refusal must carry, written from the sealed table rather than the module. */
   const boundCopy = (id: FieldId, which: "BELOW" | "ABOVE", b: { min: number; max: number }): string => {
@@ -515,8 +505,6 @@ section("§2 · bound matrix");
     ["gCapStaffChosenDailyTzs", 0, 1_000_000_000],
     ["gTargetsMaxActive", 1, 200],
     ["gStaffChosenMaxCounterpartyShare", 10, 100],
-    ["gStaffEdgeWinRatePts", 1, 100],
-    ["gStaffEdgeNetTzs", 0, 1_000_000_000],
     ["gCounterPerPlayerPerDay", 1, 1_440],
     ["counter.delayMinSec", 5, 600],
     ["counter.delayMaxSec", 5, 600],
@@ -538,9 +526,6 @@ section("§2 · bound matrix");
     ["gCapStaffChosenDailyTzs", "1000000001", "At most TZS 1,000,000,000."],
     ["gTargetsMaxActive", "201", "Between 1 and 200."],
     ["gStaffChosenMaxCounterpartyShare", "9", "Between 10 and 100."],
-    ["gStaffEdgeWinRatePts", "101", "Between 1 and 100."],
-    ["gStaffEdgeNetTzs", "1000000001", "At most TZS 1,000,000,000."],
-    ["gStaffEdgeNetTzs", "0", "ok:0"],
     ["enterNow.openerStakeTzs", "999", "At least TZS 1,000 — the platform minimum."],
     ["gCounterPerPlayerPerDay", "1441", "Between 1 and 1,440."],
   ];
@@ -559,6 +544,16 @@ section("§2 · bound matrix");
   ok("2.groups · Start never requires a staff-chosen cap or the target maximum", !REQUIRED_FOR_START.some((f) => staff.includes(f)) && REQUIRED_FOR_START.length === 11);
   ok("2.groups · Master ON never requires a staff-chosen limit, the target maximum or a staff-edge threshold",
     !(REQUIRED_FOR_MASTER_ON as readonly string[]).some((f) => /StaffChosen|TargetsMaxActive|StaffEdge/.test(f)) && REQUIRED_FOR_MASTER_ON.length === 8);
+
+  // ⛔ OWNER RULING D20 (2026-09-17), ruling 265 · the staff-edge thresholds are UN-BUILT: a writer with no reader is a
+  // control that lies. No limit list, no meta row and no exemption may name one again.
+  const limitIds = FIELD_ORDER.filter((id) => FIELD_META[id].group === "limits");
+  const staffEdgeNames = [...limitIds, ...Object.keys(FIELD_META), ...CLEAR_EXEMPT].filter((f) => /staffedge/i.test(f.replace(/[^A-Za-z]/g, "")));
+  ok("2.d20 · ⛔ D20 · no limits field, no meta row and no clear-exemption names a staff edge, and the limits tab holds the sealed 14",
+    staffEdgeNames.length === 0 && limitIds.length === 14 && !("gStaffEdgeWinRatePts" in FIELD_META) && !("gStaffEdgeNetTzs" in FIELD_META),
+    `${limitIds.length} limits · ${staffEdgeNames.join(", ")}`);
+  ok("2.d20c · CONTROL · the detector reads a planted name (a re-added threshold would be reported)",
+    ["gStaffEdgeWinRatePts", "staff_edge_net"].every((f) => /staffedge/i.test(f.replace(/[^A-Za-z]/g, ""))) && !/staffedge/i.test("gCapStaffChosenPerDay".replace(/[^A-Za-z]/g, "")));
 
   // ⛔ CONTROL — "not set" coerced to 0 is the C1 defect: Number("") is 0, the validator's value is null.
   const unset = validateField("capPerMarketTzs", "", CTX);
@@ -823,12 +818,12 @@ section("§3 · cross-field rules — the limits form, conflicts and clearing");
       lowered.ok && same(lowered.previews, [line]) && MAX_BOTS_LOWERING_PREVIEW(3, 2) === line, lowered.ok ? canon(lowered.previews) : "refused");
   }
 
-  // X-CLEAR-ON — with the master ON only the exempt limits clear; the staff-edge thresholds do not.
+  // X-CLEAR-ON — with the master ON only the exempt limits clear; every other limit does not.
   const on = { masterOn: true, limits: limitsOf({ gTargetsMaxActive: 5 }) };
   refuses("3.X-CLEAR-ON · clearing the global per-market limit with bots on is refused",
     saveLimits({ gCapPerMarketTzs: null }, CTX, on), "gCapPerMarketTzs", "X-CLEAR-ON", "Can't clear a limit while bots are on. Switch off first.");
-  refuses("3.X-CLEAR-ON · clearing a staff-edge threshold with bots on is refused (not exempt)",
-    saveLimits({ gStaffEdgeWinRatePts: null }, CTX, on), "gStaffEdgeWinRatePts", "X-CLEAR-ON", "Can't clear a limit while bots are on. Switch off first.");
+  refuses("3.X-CLEAR-ON · clearing the global bets-per-day limit with bots on is refused (not exempt)",
+    saveLimits({ gMaxBetsPerDay: null }, CTX, on), "gMaxBetsPerDay", "X-CLEAR-ON", "Can't clear a limit while bots are on. Switch off first.");
   saves("3.X-CLEAR-ON · the four exempt limits, the counterparty share among them, clear with bots on",
     saveLimits({ gCapStaffChosenPerDay: null, gCapStaffChosenDailyTzs: null, gTargetsMaxActive: null, gStaffChosenMaxCounterpartyShare: null }, CTX, on));
   saves("3.X-CLEAR-ON · with the master OFF the per-market limit clears", saveLimits({ gCapPerMarketTzs: null }, CTX, { ...on, masterOn: false }));
@@ -864,8 +859,8 @@ section("§4 · recommended values");
     rec.enterNow.thinStakeTzs === 10_000 && rec.enterNow.openerStakeTzs === 2_000 &&
       caps.capStaffChosenPerDay === 3 && caps.capStaffChosenDailyTzs === 30_000 && caps.targetsMaxActive === null &&
       limits.gCapStaffChosenPerDay === 10 && limits.gCapStaffChosenDailyTzs === 100_000 && limits.gTargetsMaxActive === null);
-  ok("4.8 · …counterparty share 50%; staff edge 15 points and TZS 100,000",
-    limits.gStaffChosenMaxCounterpartyShare === 50 && limits.gStaffEdgeWinRatePts === 15 && limits.gStaffEdgeNetTzs === 100_000);
+  ok("4.8 · …counterparty share 50%, and nothing is recommended for a staff edge (D20 un-built it)",
+    limits.gStaffChosenMaxCounterpartyShare === 50 && !("gStaffEdgeWinRatePts" in limits) && !("gStaffEdgeNetTzs" in limits), canon(Object.keys(limits)));
   // ⛔ CONTROL — the validator is live: one planted value breaks the recommended set.
   const planted = validateHouseBotRules({ rules: rec, caps: { ...caps, stakeMinTzs: 20_000 } }, ctx);
   ok("4.c1 · CONTROL · the recommended caps with a planted Stake min 20,000 are refused", planted.ok === false);
@@ -1545,13 +1540,14 @@ section("§11 · constants");
     ]) && !["SWITCH_ON", "SWITCH_OFF", "LIMITS_SAVED", "PENALTY_BOXED"].some((k) => (DSAR_HOLDER_EVENT_KINDS as readonly string[]).includes(k)));
   ok("11.24 · CREDENTIAL_CHANGED_VIA is the three password writers plus UNKNOWN", same([...CREDENTIAL_CHANGED_VIA], [...PASSWORD_CHANGE_METHODS, "UNKNOWN"]));
   ok("11.25 · live intents are PENDING and CLAIMED", same([...LIVE_INTENT_STATUSES], ["PENDING", "CLAIMED"]));
+  // ⛔ D20 (ruling 265): `ALERT_KEY.staffEdge` was un-built with the staff-edge alert; the suffix machinery it used
+  // is still proven by the daily, hourly and per-minute keys here and by the dal cases' `previousMonth` claim (c18).
   ok("11.26 · an EAT-suffixed alert key hands the claim a prefix and a unit, never a finished key",
     same(
-      { daily: ALERT_KEY.botDaily("hb_1", "CAP_BALANCE_FLOOR"), db: ALERT_KEY.engineDb(), edge: ALERT_KEY.staffEdge("usr_1"), preview: ALERT_KEY.preview("usr_1", "hb_1", "mkt_1") },
+      { daily: ALERT_KEY.botDaily("hb_1", "CAP_BALANCE_FLOOR"), db: ALERT_KEY.engineDb(), preview: ALERT_KEY.preview("usr_1", "hb_1", "mkt_1") },
       {
         daily: { prefix: "bot:hb_1:CAP_BALANCE_FLOOR", unit: "day" },
         db: { prefix: "engine:db", unit: "hour" },
-        edge: { prefix: "staff-edge:usr_1", unit: "previousMonth" },
         preview: { prefix: "preview:usr_1:hb_1:mkt_1", unit: "minute" },
       },
     ) && ALERT_KEY.poison("hbi_1") === "poison:hbi_1");
@@ -1654,21 +1650,6 @@ section("§13 · clock");
     r.formattedAt === "15 Sep, 00:00" && formatEat(Date.UTC(2026, 8, 14, 10, 7, 30), "HH:MM:SS") === "13:07:30" &&
       formatEat(Date.UTC(2026, 8, 14, 10), "D MMM YYYY") === "14 Sep 2026");
   ok("13.9 · EAT midnight is Tuesday, minute 0", r.weekdayAt === "TUE" && r.minuteOfDayAt === 0);
-  {
-    // C5-SPEC ruling 182 · the EAT calendar month a stake was placed in.
-    const sep = eatMonthWindow("2026-09");
-    ok("13.13 · ruling 182 · eatMonthWindow(\"2026-09\") = [2026-08-31T21:00Z, 2026-09-30T21:00Z)",
-      sep?.fromMs === Date.UTC(2026, 7, 31, 21) && sep?.toMs === Date.UTC(2026, 8, 30, 21), canon(sep));
-    ok("13.14 · …\"2026-12\" ends at 2026-12-31T21:00Z (the year turns), \"2026-02\" at 2026-02-28T21:00Z",
-      eatMonthWindow("2026-12")?.toMs === Date.UTC(2026, 11, 31, 21) && eatMonthWindow("2026-02")?.toMs === Date.UTC(2026, 1, 28, 21), canon([eatMonthWindow("2026-12"), eatMonthWindow("2026-02")]));
-    ok("13.15 · …null for anything that is not YYYY-MM with month 01–12: \"2026-13\", \"2026-9\", \"2026-00\", \" 2026-09\", \"2026-09-01\"",
-      ["2026-13", "2026-9", "2026-00", " 2026-09", "2026-09-01"].every((k) => eatMonthWindow(k) === null));
-    ok("13.16 · …the window agrees with eatMonthKey at 23:59:59.999 and 00:00:00.000 EAT on both ends",
-      !!sep && eatMonthKey(sep.fromMs - 1) === "2026-08" && eatMonthKey(sep.fromMs) === "2026-09" && eatMonthKey(sep.toMs - 1) === "2026-09" && eatMonthKey(sep.toMs) === "2026-10");
-    const y26 = eatMonthWindow("0026-08");
-    ok("13.17 · …a year below 100 is that year, never 19xx (\"0026-08\" starts in year 26)", !!y26 && new Date(y26.fromMs + EAT_OFFSET_MS).getUTCFullYear() === 26, canon(y26));
-  }
-
   // Two fresh processes under foreign zones. TZ is read at start-up, so it has to be a child, not an assignment.
   const tsxCli = createRequire(import.meta.url).resolve("tsx/cli");
   const eatOnly = (x: ReturnType<typeof clockReadings>) => ({

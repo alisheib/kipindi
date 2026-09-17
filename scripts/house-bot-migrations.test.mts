@@ -412,7 +412,11 @@ async function checkSchema(url: string, label: string): Promise<void> {
       Object.entries(NOT_NULL_LIMITS).every(([f, v]) => row[f] === v),
       JSON.stringify(Object.fromEntries(Object.keys(NOT_NULL_LIMITS).map((f) => [f, row[f]]))));
     ok(`${label}.seed · limitsVersion and limitsSchemaVersion are 1`, row.limitsVersion === 1 && row.limitsSchemaVersion === 1);
-    ok(`${label}.seed · boardDisclosureSections is NULL, not an empty array`, row.boardDisclosureSections === null, JSON.stringify(row.boardDisclosureSections));
+    // ⛔ D20 (rulings 265, 273 (a)): the staff-edge and Board-disclosure columns are un-built, so the control row has
+    // neither — and a migration that re-adds one is reported here, by name, on a real cluster.
+    ok(`${label}.seed · the control row has no staff-edge and no Board-disclosure column (D20 un-built both)`,
+      ["gStaffEdgeWinRatePts", "gStaffEdgeNetTzs", "boardDisclosureSentAt", "boardDisclosureSections"].every((c) => !(c in row)),
+      JSON.stringify(Object.keys(row).filter((c) => /staffEdge|boardDisclosure/i.test(c))));
     const rt = (await c.query(`SELECT "key", "scopeFrom", "errorStreak" FROM "HouseBotRuntime"`)).rows;
     ok(`${label}.seed · one runtime row, global, out of scope (scopeFrom NULL) with no errors`,
       rt.length === 1 && rt[0].key === "global" && rt[0].scopeFrom === null && rt[0].errorStreak === 0, JSON.stringify(rt));

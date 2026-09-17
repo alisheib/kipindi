@@ -258,17 +258,10 @@ section("§4 · ruling 174 · no house word, prop name, action name, search fiel
   ok("4.c6 · CONTROL · a client bar that spells the bulk count sentence itself, and a client dialog that spells the Swahili house share, are found; a bar holding only the neutral exposureState / exposureCountTemplate names is not",
     slotHits("bar-hardcoded.tsx").includes("House stakes") && slotHits("void-sw.tsx").includes("dau la nyumba") && slotHits("bar-neutral.tsx").length === 0,
     JSON.stringify({ hardcoded: slotHits("bar-hardcoded.tsx"), sw: slotHits("void-sw.tsx"), neutral: slotHits("bar-neutral.tsx") }));
-  // The REAL renderer, imported by a planted client file over the real tree: the walker follows it into exposure-copy.ts.
-  const plantedEntry = join(SRC, "app", "admin", "markets", "planted-slot-client.tsx");
-  const overlay: Reader = {
-    exists: (p) => p === plantedEntry || disk.exists(p),
-    read: (p) => (p === plantedEntry ? `"use client";\nimport { ExposureLine } from "@/components/admin/exposure-line";\nexport const P = () => <ExposureLine surface="voidConfirm" read={null} />;` : disk.read(p)),
-  };
-  const viaRenderer = walkClientGraph([plantedEntry], overlay, SRC);
-  const copyFile = join(SRC, "lib", "house-bot", "exposure-copy.ts");
-  ok("4.c7 · CONTROL · a client component importing the real server renderer (instead of receiving its output as exposureSlot) reaches src/lib/house-bot/exposure-copy.ts — 1.2's house module — and its R2 words",
-    viaRenderer.reached.has(copyFile) && viaRenderer.hits.some((h) => h.file === copyFile && h.word === "House stake"),
-    JSON.stringify(viaRenderer.hits.filter((h) => h.file === copyFile).map((h) => h.word).slice(0, 6)));
+  // ⛔ OWNER RULING D20 (2026-09-17) · the real R2 renderer (`components/admin/exposure-line.tsx`) and its words
+  // (`lib/house-bot/exposure-copy.ts`) were un-built in C5-5b, so the control that imported them from a planted client file
+  // went with them. The three virtual shapes above still decide the same rule: a client file that spells the words itself,
+  // or reaches a module that does, is found; a neutral prop is not.
   const plantedTxn: TxnGrammar = { fields: { ...TXN_SEARCH.fields, house: { columns: ["houseBotId"] } }, default: [...TXN_SEARCH.default, "houseBotId"] };
   const plantedHouse = houseKeysOf(plantedTxn);
   ok("4.c5 · CONTROL · a planted `house` field, its column and a house default in a TXN_SEARCH copy are each reported by 4.1's own measure", plantedHouse.length === 3, plantedHouse.join(", "));

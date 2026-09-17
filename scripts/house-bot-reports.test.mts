@@ -13,26 +13,26 @@
  * slice (170, 171) on both stores; §1–§2 opened in step 3 (rulings 177–183), written red before the readers existed
  * (memory 58 passed · 40 failed, Postgres 14 passed · 44 failed), then made green by the readers.
  *
- * minPass is per store and MEASURED, and may only rise: C5 step 3 measured memory 141 (§0's pins and controls, §1, §2,
- * §1.177, §3, §11, the store case) and Postgres 81 (§1, §2 with the ledger cross-check, §1.177, §3, §11, the store case);
- * its verification added 11 cases on both stores (the NO side and the pure fold, the book's ranges and per-product open
- * exposure, the fee's product, window and null branches, and the window bounds of four readers): memory 152, Postgres 92.
- * C5 step 4 added §0's TGT-38 and KYC-reader pins (memory only), §3's R9 cases (rulings 170, 178, 187–190) and §4's
- * server-side void-notice and KYC cases (rulings 195, 197) on both stores: memory 213, Postgres 143. Its review fixes added the
- * page-condition, KYC-object and R9-site pins with their controls (memory) and, on both stores, the stage-2 and in-lock
- * refusals, the two-admin twin, the lock facts of the void's read and the decisions' result keys: memory 226, Postgres 148.
- * C5 step 5 added §0's ruling 198 player-surface pins, the R2 importer and slot pins and the R2 vocabulary words (memory only),
- * and §4.S5's R2 parts, surface renders, held title, bulk count, KYC line and objector notices (rulings 192–197; the pure
- * cases in the memory child): memory 258, Postgres 160; its render pass added the page-wiring and slot-rendering pins and
- * the two-group renderer case (memory): memory 263, Postgres 160. Its review added the console gate (ruling 259) — the pages'
- * one gated read in its own catch, the row tag and KYC wiring, the slot chain, the player population read from disk, the
- * player pages' printed words and the product-built vocabulary pin (memory), and §4.259 on both stores: memory 273, Postgres 164.
- * Its close added ruling 260's pin over every console file's audit reads and house imports with its controls (memory) and
- * §4.260's audit-row gate on both stores: memory 280, Postgres 168. Its review made the gate return no row outside the audience,
- * widened the pin to every gate export, the officer hooks and the audit readers outside the console with their controls
- * (memory), and added the KYC case's real durable read and the staff-role clause on both stores: memory 283, Postgres 170.
+ * minPass is per store and MEASURED, and may only rise — with ONE exception, taken by owner ruling D20 (2026-09-17) and
+ * its replan's ruling 265: checkpoint C5-5b un-built the reports, readers, R9 payloads, R2 display, KYC line and staff-edge
+ * artefacts this suite proved, so its floors FELL to what the un-built suite actually passes. They were measured by RUNNING
+ * it, never by arithmetic (ruling 275): **memory 77, Postgres 8** at C5-5b, every case that ran green on both stores.
+ *
+ * What the floors counted before, for the record: step 3 memory 141 / Postgres 81, its verification 152 / 92; step 4
+ * 213 / 143, its review fixes 226 / 148; step 5 258 / 160, its renders 263 / 160, ruling 259's gate 273 / 164, ruling 260's
+ * audit gate 280 / 168 and its review 283 / 170. C5-5b removed, by name: §1 (rulings 177–182, the readers and the book),
+ * §2 (ruling 183, the fee withheld and its ledger cross-check), §1.177 (every other new store member, 185's window and the
+ * platform members of 210, 224 and 233), §3's R9 cases (rulings 187–190), §4's void-notice and KYC cases (rulings 195, 197),
+ * §4.S5's R2 parts and surfaces (rulings 192–194, 196), and the §0 pins of rulings 179, 180, 183, 186 (1)(3)(4), 191's R9
+ * population, 192, 194, 197 and 259's display wiring.
+ *
+ * What STAYS, and is the whole suite now: §0's rulings 169, 170, 172 and 175 pins; ruling 186 (2)'s status-tone pin;
+ * rulings 191 and 270's I10 pins (no decision control, refusal branch or page condition reads a house read or a requester)
+ * with every planted control; ruling 187's list as the UN-BUILD's own guard (no audit payload carries a house stake);
+ * ruling 198's player-surface pins; ruling 260's console audit gate with its controls; §3's officer own-export case and
+ * §11's `/api/health` slice on both stores; and the store case.
  * A section that stops running fails the floor even while every case that ran passed.
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 
-await runTwoStores({ suite: "test:house-bot-reports", casesFile: "scripts/lib/house-bot-reports-cases.mts", minPass: { memory: 283, postgres: 170 }, dbPrefix: "hb_reports" });
+await runTwoStores({ suite: "test:house-bot-reports", casesFile: "scripts/lib/house-bot-reports-cases.mts", minPass: { memory: 77, postgres: 8 }, dbPrefix: "hb_reports" });

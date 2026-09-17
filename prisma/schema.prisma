@@ -1966,13 +1966,6 @@ model HouseBotControl {
   gCapStaffChosenDailyTzs          BigInt?
   gTargetsMaxActive                Int?
   gStaffChosenMaxCounterpartyShare Int?
-  gStaffEdgeWinRatePts             Int?
-  gStaffEdgeNetTzs                 BigInt?
-  /// Board disclosure (04 P1).
-  boardDisclosureSentAt            DateTime? @db.Timestamptz(3)
-  /// Sections recorded as sent, written by "Record disclosure sent" (N1 §2: text[] NULL, no default).
-  /// NULL = nothing recorded; readers treat NULL as an empty list.
-  boardDisclosureSections          String[]
   createdAt                        DateTime  @default(now()) @db.Timestamptz(3)
   updatedAt                        DateTime  @default(now()) @updatedAt @db.Timestamptz(3)
 }

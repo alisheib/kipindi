@@ -48,7 +48,6 @@ import {
   type BulkBlockReason,
 } from "@/lib/server/bulk-resolve-eligibility";
 import type { BulkResolveOutcome, BulkResolveResult } from "./bulk-resolve-types";
-import type { HouseStakeAudit } from "@/lib/server/house-bot/exposure";
 
 const DOMAIN = CONTROL_DOMAIN.bulkResolveMarkets;
 const OVERRIDE_DOMAIN = CONTROL_DOMAIN.bulkResolveOverride;
@@ -119,10 +118,6 @@ export async function bulkResolveMarketsAction(formData: FormData): Promise<Bulk
   }
 
   const batchId = randomUUID();
-  // R9 (C5-SPEC ruling 189): the house stake each sealed or staged market carried, keyed by market id, for the Batch row.
-  // Declared outside the try beside the buckets, so an aborted batch's boundary row still carries what was sealed before
-  // the abort. A DIFFERENT key from the override row's `houseStake`: a reader of a Batch row never gets the plain shape.
-  const houseStakes: Record<string, HouseStakeAudit | null> = {};
 
   // ⭐ DECLARED OUTSIDE THE TRY, DELIBERATELY. If anything below throws, the loop may
   // already have SEALED markets — and the first draft returned a bare `{ ok:false, error }`
@@ -142,7 +137,6 @@ export async function bulkResolveMarketsAction(formData: FormData): Promise<Bulk
     const { sentinelSourceVerdict } = await import("@/lib/server/market-sentinel");
     const { listSources, sourceMatchesAny, listDisabledCategories } = await import("@/lib/server/source-registry");
     const { armMarket } = await import("@/lib/server/market-scheduler");
-    const { houseStakeForAudit } = await import("@/lib/server/house-bot/exposure");
 
     // Read ONCE for the whole batch. `isSourceTrusted` re-reads the registry per call, so
     // asking it per market is a 20× store read for one answer that cannot change mid-batch.
@@ -268,10 +262,6 @@ export async function bulkResolveMarketsAction(formData: FormData): Promise<Bulk
       try {
         const r = await resolveMarket({ marketId: id, outcome, officerId: g.userId });
         if (r.ok) {
-          // R9 (rulings 188–189): one read per sealed or staged market, after its seal landed. The override row and the Batch
-          // map carry this same value; the read never throws (null when it failed, ruling 190), so no catch changes here.
-          const houseStake = await houseStakeForAudit(id, "market.resolve.bulk");
-          houseStakes[id] = houseStake;
           if (r.data?.stage === "stage1") {
             staged.push({ marketId: id, title, outcome, awaitingSecond: true });
           } else {
@@ -302,8 +292,6 @@ export async function bulkResolveMarketsAction(formData: FormData): Promise<Bulk
                 sentinelEvidence: m.sentinelEvidence ?? null,
                 yesPool: m.yesPool, noPool: m.noPool, grossPool: m.yesPool + m.noPool,
                 note: "An officer sealed a market the platform's own auto-resolve floor REFUSED, from the bulk bar, with a typed justification. The floor was not bypassed silently: the refusal, its reason and this justification are all recorded here against the officer's identity. No evidence was written to the player-facing settlement proof — the officer typed a justification, not a source quote.",
-                // R9, the LAST key (ruling 187).
-                houseStake,
               },
             });
           }
@@ -350,8 +338,6 @@ export async function bulkResolveMarketsAction(formData: FormData): Promise<Bulk
         skipped: skipped.map((r) => ({ marketId: r.marketId, reason: r.reason })),
         failed: failed.map((r) => ({ marketId: r.marketId, detail: r.detail })),
         note: "Bulk resolve from /admin/resolver-queue. Every market was sealed through resolveMarket — the same path, locks, ceremony, objection window and settle timer as the per-market control. No money moved in this action.",
-        // R9, the LAST key (ruling 189): {marketId: shape | null} over resolved ∪ staged.
-        houseStakes,
       },
     });
 
@@ -390,8 +376,6 @@ export async function bulkResolveMarketsAction(formData: FormData): Promise<Bulk
         alreadyApplied: alreadyApplied.map((r) => r.marketId),
         skipped: skipped.map((r) => ({ marketId: r.marketId, reason: r.reason })),
         note: "Bulk resolve from /admin/resolver-queue ABORTED part-way. Every market listed under `resolved` was sealed before the abort and its own market.adjudicated row stands; the markets after the abort were never attempted.",
-        // R9, the LAST key (ruling 189): the markets sealed before the abort.
-        houseStakes,
       },
     });
     revalidatePath("/admin/resolver-queue");
