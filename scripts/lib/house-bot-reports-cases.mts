@@ -1398,8 +1398,9 @@ if (STORE === "memory") {
       requesterNamingProblems("src/app/admin/resolver-queue/page.tsx", plantedPage, PAGE_FORBIDDEN_TOKENS).length === 1
         && requesterNamingProblems("src/app/admin/markets/emergency-void-control.tsx", plantedControl, REQUESTER_TOKENS).length === 1);
     const benign = "export async function voidIt(m: Any) {\n  const result = await withLock(key, async () => {\n    const houseStake = await houseStakeForAudit(m.id, \"market.emergency_void\");\n    audit({ action: \"x\", payload: { reason, houseStake } });\n    return { ok: true as const };\n  });\n  if (!result.ok) return { ok: false, error: \"no\" };\n  return result;\n}";
-    ok("0.191.c3 · CONTROL · a payload value read inside a lock whose result a refusal then checks is NOT reported, nor are the words in a comment",
+    ok("0.191.c3 · CONTROL · a payload value read inside a lock whose result a refusal then checks is NOT reported, nor are the words in a comment, nor the reader named in a TYPE",
       requesterRefusalProblems("src/planted.ts", benign).length === 0
+        && requesterRefusalProblems("src/planted.ts", `${benign}\nexport const pending: Awaited<ReturnType<typeof houseStakeForAudit>> | null = null;`).length === 0
         && requesterRefusalProblems("src/planted.ts", decomment(`${benign}\n// if (houseStake.staffChosen.requestedBy.includes(me)) return { ok: false };`)).length === 0,
       j(requesterRefusalProblems("src/planted.ts", benign)));
 
@@ -1420,11 +1421,13 @@ if (STORE === "memory") {
       bulkFilter: requesterRefusalProblems("src/app/admin/resolver-queue/bulk-resolve-action.ts", bulkFilter),
       bulkCall: requesterRefusalProblems("src/app/admin/resolver-queue/bulk-resolve-action.ts", bulkCall),
       okTrue: requesterRefusalProblems("src/lib/server/market-service.ts", okTrue),
+      stringKey: requesterRefusalProblems("src/app/admin/resolver-queue/bulk-resolve-action.ts", plant(bulkAction, "    revalidatePath(\"/markets\");", "    const key = \"staffChosen\";\n    revalidatePath(\"/markets\");")),
     };
     ok("0.191.c4 · CONTROL · each lock shape a condition check alone missed is reported: a `function` helper answering \"did this officer choose?\", the same as an arrow and as an object method, a `filter` predicate dropping the chooser's markets, houseStakes handed to another call, and houseStake in emergencyVoidMarket's ok:true result",
       Object.values(shapes).every((p) => p.length >= 1) && shapes.helperDecl.some((p) => p.includes("a condition reads a requester value"))
         && shapes.helperMethod.some((p) => p.includes("a condition reads a requester value")) && shapes.bulkFilter.some((p) => p.includes("an array predicate reads a requester value"))
-        && shapes.okTrue.some((p) => p.includes("outside a payload or its read: houseStake")) && shapes.bulkCall.some((p) => p.includes("outside a payload or its read: houseStakes")),
+        && shapes.okTrue.some((p) => p.includes("outside a payload or its read: houseStake")) && shapes.bulkCall.some((p) => p.includes("outside a payload or its read: houseStakes"))
+        && shapes.stringKey.some((p) => p.includes("a requester token spelled as a string")),
       j(Object.fromEntries(Object.entries(shapes).map(([k, v]) => [k, v.slice(0, 3)]))));
     const kinds = (problems: string[], kind: string) => problems.filter((p) => p.includes(kind)).length;
     const soloTernary = requesterRefusalProblems("src/planted.ts", "export async function f(me: string) {\n  const houseStake = await houseStakeForAudit(id);\n  const value = houseStake?.staffChosen.requestedBy.includes(me)\n    ? null\n    : houseStake;\n}");
@@ -1443,15 +1446,23 @@ if (STORE === "memory") {
       disabled: pageConditionProblems("src/app/admin/resolver-queue/page.tsx", `${queuePage}\nexport function PlantedC({ view, me }: Any) {\n  return <ResolveControls disabled={!!viewerClause(view, me)} />;\n}`).problems,
       earlyReturn: pageConditionProblems("src/app/admin/resolver-queue/page.tsx", `${queuePage}\nexport function PlantedD({ parts }: Any) {\n  const mine = parts.viewerClause;\n  if (mine) return null;\n  return <RecheckButton marketId="x" />;\n}`).problems,
       houseHidesVoid: pageConditionProblems("src/app/admin/markets/page.tsx", `${marketsPage}\nexport async function PlantedE({ m }: Any) {\n  const views = await houseStakeByMarket([m.id]);\n  return views.get(m.id)?.yes ? <ControlLocked /> : <EmergencyVoidControl marketId={m.id} title={m.titleEn} />;\n}`).problems,
+      logical: pageConditionProblems("src/app/admin/resolver-queue/page.tsx", `${queuePage}\nexport function PlantedF({ view, me }: Any) {\n  const mine = viewerClause(view, me);\n  return <div>{!mine && <RecheckButton marketId="x" />}</div>;\n}`).problems,
+      houseProp: pageConditionProblems("src/app/admin/markets/page.tsx", `${marketsPage}\nexport async function PlantedG({ m }: Any) {\n  const views = await houseStakeByMarket([m.id]);\n  return <EmergencyVoidControl marketId={m.id} title={m.titleEn} disabled={!!views.get(m.id)?.yes} />;\n}`).problems,
+      switchOnClause: pageConditionProblems("src/app/admin/resolver-queue/page.tsx", `${queuePage}\nexport function PlantedH({ parts }: Any) {\n  switch (parts.viewerClause ? "mine" : "other") {\n    case "mine": return null;\n    default: return <ResolveControls marketId="x" />;\n  }\n}`).problems,
     };
-    ok("0.191.c6 · CONTROL · a page lock that never names requestedBy is reported: `canResolve && !viewerClause(…) ? <ResolveControls/>`, `canDecide={canDecide && !parts.viewerClause}`, `disabled={!!viewerClause(…)}`, an early return on the viewer's clause before a control, and a void control hidden on a house-held market",
-      Object.values(pageLocks).every((p) => p.length >= 1), j(pageLocks));
+    ok("0.191.c6 · CONTROL · a page lock that never names requestedBy is reported, each by its own rule: `canResolve && !viewerClause(…) ? <ResolveControls/>`, `canDecide={canDecide && !parts.viewerClause}`, `disabled={!!viewerClause(…)}`, an early return on the viewer's clause before a control, a void control hidden on a house-held market, `{!mine && <RecheckButton/>}`, a void control disabled on a house-held market, and a switch on the viewer's clause",
+      Object.values(pageLocks).every((p) => p.length >= 1)
+        && pageLocks.ternary.some((p) => p.includes("a ternary on house-stake data decides a control")) && pageLocks.prop.some((p) => p.includes("a decision control's prop reads the viewer's stake"))
+        && pageLocks.earlyReturn.some((p) => p.includes("an if on house-stake data decides a control")) && pageLocks.logical.some((p) => p.includes("an && / || / ?? on house-stake data decides a control"))
+        && pageLocks.houseProp.some((p) => p.includes("a decision control's prop reads the house stake")) && pageLocks.switchOnClause.some((p) => p.includes("a switch on house-stake data decides a control")),
+      j(pageLocks));
     const pageBenign = {
       viewerLine: pageConditionProblems("src/app/admin/resolver-queue/page.tsx", `${queuePage}\nexport function BenignA({ view, me }: Any) {\n  const mine = viewerClause(view, me);\n  return mine ? <span>{mine}</span> : null;\n}`).problems,
       unreadLine: pageConditionProblems("src/app/admin/resolver-queue/page.tsx", `${queuePage}\nexport async function BenignB({ ids }: Any) {\n  let views = null;\n  try { views = await houseStakeByMarket(ids); } catch { views = null; }\n  return views ? <span>line</span> : <span>unread</span>;\n}`).problems,
       slot: pageConditionProblems("src/app/admin/markets/page.tsx", `${marketsPage}\nexport function BenignC({ m, view, me }: Any) {\n  const slot = viewerClause(view, me) ? <span>{viewerClause(view, me)}</span> : null;\n  return <EmergencyVoidControl marketId={m.id} title={m.titleEn} exposureSlot={slot} />;\n}`).problems,
+      bulkRows: pageConditionProblems("src/app/admin/resolver-queue/page.tsx", `${queuePage}\nexport async function BenignD({ rows, ids }: Any) {\n  const views = await houseStakeByMarket(ids);\n  const bulkRows = views ? rows : rows;\n  return <BulkResolveBar rows={bulkRows} totalPending={1} requireTwoOfficer={false} canOverride={false} objectionWindowHours={1} />;\n}`).problems,
     };
-    ok("0.191.c7 · CONTROL · display stays free: the viewer's line rendered on its own, the house line or its unread line, and a control handed the line through its exposureSlot are NOT reported",
+    ok("0.191.c7 · CONTROL · display stays free: the viewer's line rendered on its own, the house line or its unread line, a control handed the line through its exposureSlot, and the bulk bar's rows carrying ruling 192's neutral house state are NOT reported",
       Object.values(pageBenign).every((p) => p.length === 0), j(pageBenign));
 
   });
@@ -1483,9 +1494,10 @@ if (STORE === "memory") {
       spreadCall: kycHouseFieldProblems(withPage(plant(pageCode, railLine, `${railLine} {...kycMoneyFacts(txns)}`))),
       wrapped: kycHouseFieldProblems(withPage(plant(pageCode, railLine, `${railLine} data={{ ...moneyFacts, extra: 1 }}`))),
       serverAction: kycHouseFieldProblems(files.map((f) => (f.rel === "src/app/admin/kyc/[id]/kyc-actions.ts" ? { rel: f.rel, code: `${actions}\nexport async function houseFigures(f: Any) { return { houseBetCount: f.houseBetCount }; }` } : f))),
+      dynamicImport: kycHouseFieldProblems([...files, { rel: "src/app/wallet/facts/loader.ts", code: "export async function load(txns: Any) {\n  const { kycMoneyFacts: facts } = await import(\"@/lib/server/kyc-risk\");\n  return facts(txns).betCount;\n}" }]),
     };
-    ok("0.197.c2 · CONTROL · the pin follows the object, not only the field names: a player page importing kycMoneyFacts and handing the result to a client card, an alias of moneyFacts, a spread of the call, an object spreading moneyFacts, and a \"use server\" action returning a house figure are each reported",
-      objectShapes.playerImporter.length === 2 && objectShapes.alias.length === 1 && objectShapes.spreadCall.length === 1 && objectShapes.wrapped.length === 1 && objectShapes.serverAction.length === 1,
+    ok("0.197.c2 · CONTROL · the pin follows the object, not only the field names: a player page importing kycMoneyFacts and handing the result to a client card, a player module destructuring it from import(), an alias of moneyFacts, a spread of the call, an object spreading moneyFacts, and a \"use server\" action returning a house figure are each reported",
+      objectShapes.dynamicImport.length === 1 && objectShapes.playerImporter.length === 2 && objectShapes.alias.length === 1 && objectShapes.spreadCall.length === 1 && objectShapes.wrapped.length === 1 && objectShapes.serverAction.length === 1,
       j(objectShapes));
 
   });
@@ -1502,6 +1514,7 @@ if (STORE === "memory") {
       newFile: r9AuditSites([...files, { rel: "src/app/admin/planted/audit.ts", code: "export function x(houseStake: unknown) { audit({ action: \"x.planted\", payload: { houseStake } }); }" }]),
       outsidePayload: r9AuditSites([...files, { rel: "src/app/admin/planted/audit.ts", code: "export function x(houseStake: unknown) { audit({ action: \"market.reopened\", houseStake, payload: {} }); }" }]),
       spread: r9AuditSites([...files, { rel: "src/app/admin/planted/audit.ts", code: "export function x(houseStake: unknown) { audit({ action: \"market.reopened\", payload: { ...{ houseStake } } }); }" }]),
+      wholePayload: r9AuditSites([...files, { rel: "src/app/admin/planted/audit.ts", code: "export function x(houseStake: unknown) { audit({ action: \"x.planted\", payload: houseStake }); }" }]),
       comment: r9AuditSites([...files, { rel: "src/app/admin/planted/audit.ts", code: decomment("export function x() {\n  // audit({ action: \"x.planted\", payload: { houseStake } });\n}") }]),
     };
     const moved = (r: { sites: string[]; problems: string[] }) => j(r.sites) !== j([...R9_AUDIT_SITES].sort()) || r.problems.length > 0;
@@ -1510,7 +1523,8 @@ if (STORE === "memory") {
         && auditPlants.clawbackNull.sites.includes("houseStake · affiliate.clawback.completed · src/lib/server/market-service.ts")
         && auditPlants.movedToOverride.sites.includes("houseStakes · market.resolve.bulk_override · src/app/admin/resolver-queue/bulk-resolve-action.ts")
         && auditPlants.newFile.sites.includes("houseStake · x.planted · src/app/admin/planted/audit.ts")
-        && auditPlants.outsidePayload.problems.length === 1 && auditPlants.spread.problems.length >= 1 && !moved(auditPlants.comment),
+        && auditPlants.outsidePayload.problems.length === 1 && auditPlants.spread.problems.length >= 1 && !moved(auditPlants.comment)
+        && auditPlants.wholePayload.problems.some((p) => p.includes("a payload that is not an object literal names a requester token")),
       j(Object.fromEntries(Object.entries(auditPlants).map(([k, v]) => [k, { extraSites: v.sites.filter((s) => !(R9_AUDIT_SITES as readonly string[]).includes(s)), problems: v.problems }]))));
   });
 }
