@@ -188,7 +188,7 @@ function buildExpected(): Record<string, string> {
     "c11.a a BIGINT bot cap reads back as a number": "true:number:1000000000",
     "c11.b BIGINT limits read back as numbers": "number:1000000000:number:1000000000",
     "c11.c an intent stake reads back as a number": "number:1000000000",
-    "c11.d board disclosure sections: NULL reads as an empty list, then records": '[]|["Stakes chosen by staff"]|true',
+    "c11.d the struck columns are not writable on either twin (D20: staff edge, Board disclosure)": "gStaffEdgeNetTzs:refused|gStaffEdgeWinRatePts:refused|boardDisclosureSections:refused|boardDisclosureSentAt:refused|false",
     // c12 · reading violations (pure)
     "c12.a an unknown unique violation names nothing": "null",
     "c12.b a raw-SQL violation names its index": "hbt_active_market_uq",
