@@ -23,6 +23,11 @@ Planning is finished and **approved by Ali (2026-09-13)**. Do not re-plan or re-
 - ⛔ **D19 (Ali, 2026-09-16) outranks every plan document: house bots are never public, and the holder sees nothing
   either.** Read the "OWNER RULING D19" block at the top of `PROGRESS.md` before writing any code — it strikes work that
   earlier documents still describe (the liquidity label, holder notices and emails, every public sentence).
+- ⛔ **D20 (Ali, 2026-09-17), just below D19: house bots are ordinary players in every report.** Every report, statutory
+  filing, admin count, finance or insights figure and harm/AML detector treats a house bot's account exactly like any
+  player's; no report, CSV, memo, column, line, chip, tag, alert or record names house bots or splits house money out, and
+  every admin-only house tool is dropped. Read the "OWNER RULING D20" block in `PROGRESS.md` and
+  `plans/house-bots/C5-D20-REPLAN.md` (it outranks `C5-SPEC.md` wherever they differ) before writing any code.
 
 ## 🤝 OTHER CLAUDE SESSIONS: COORDINATE LIGHTLY (Ali, 2026-09-14)
 Only pushes to live need coordinating. Never send hello, ALL-CLEAR, start or end messages, and never wait on another session's reply.
@@ -44,9 +49,9 @@ Only pushes to live need coordinating. Never send hello, ALL-CLEAR, start or end
 
 ## READ BEFORE WRITING CODE (in `plans/house-bots/`)
 1. `PLAN.md`: decisions D1–D16 (§16) and D17–D18 (§16b) and invariants I1–I10 are binding; §18 reconciles overlapping amendments.
-2. `04-amendments.md`: A1–A5 and A7–A24 (no A6), C1–C15, R1–R9, P1–P4, S1–S5, F1–F9 (future safeguards), G1–G2 (= R5/R9), N1–N2 (Enter now; targeted polls and exact timing; last section). **Every one is mandatory.** Commit placement is listed in `PROGRESS.md`.
+2. `04-amendments.md`: A1–A5 and A7–A24 (no A6), C1–C15, R1–R9, P1–P4, S1–S5, F1–F9 (future safeguards), G1–G2 (= R5/R9), N1–N2 (Enter now; targeted polls and exact timing; last section). **Every one is mandatory.** ⛔ **Superseded in part by D20 (Ali, 2026-09-17):** R1, R2, R3's §9 additions, R4's leaderboard option and source pin, R5's house projection (= G1), R9 (= G2), F9's walker, R7's index reader, R8's house-report half and N1/N2's report, CSV, exposure and staff-edge parts are struck and never built (`C5-D20-REPLAN.md` §2); D19's strikes are named in its PROGRESS block. Commit placement is listed in `PROGRESS.md`.
 3. `02-sealed-flows.md` and `03-design-spec.md`: the flow and design law for every screen.
-4. `01-scenario-register.md`: 241 scenarios (2026-09-13) plus `TGT-01`…`TGT-40` (2026-09-14); prefixes HB-ACC, HB-LC, ENG, CA, CRA, FS, TGT (re-count with grep before quoting). By REL-0, each id must be covered by a test assertion (PROGRESS "Scenario coverage gate").
+4. `01-scenario-register.md`: 241 scenarios (2026-09-13) plus `TGT-01`…`TGT-40` (2026-09-14); prefixes HB-ACC, HB-LC, ENG, CA, CRA, FS, TGT (re-count with grep before quoting). By REL-0, each id must be covered by a test assertion (PROGRESS "Scenario coverage gate"). ⛔ **Superseded in part by D20 (Ali, 2026-09-17):** an id D20 strikes counts only in the form its ⛔ D20 line in the register gives (`C5-D20-REPLAN.md` §2, ruling 250).
 5. Repo files: `CLAUDE.md` (except its git-push rule; see overrides), `docs/COMPLIANCE-DECISIONS.md` (newest entries), `docs/F6-LIQUIDITY-DESIGN.md`, `docs/UPDOWN-FINAL-DESIGN.md` §D3/§3b, `docs/DESIGN_AUTHORITY.md`, `docs/TRAPS.md`, `docs/SETUP.md`.
 
 **Precedence:** amendments > sealed flows / design spec > PLAN. Where any document disagrees with the **code**, trust the code, say so,

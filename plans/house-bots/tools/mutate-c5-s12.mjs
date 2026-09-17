@@ -1,3 +1,5 @@
+// ⛔ RECORD ONLY (2026-09-17): the C5 steps 1-2 harness, already run (75/75 red). Its paths name Ali-Blade15 and a removed
+// worktree. Commit 5's closing batch (C5-D20-REPLAN.md §3, C5-8) builds its own harness and runs only surviving mutations.
 // Mutation runner for house-bots C5 steps 1-2. Runs against a TEMPORARY worktree only (never the main worktree).
 //   node mutate-c5-s12.mjs check                 validate every mutation's anchors (apply + restore, no suite)
 //   node mutate-c5-s12.mjs show M10              apply one mutation, print the changed lines, restore

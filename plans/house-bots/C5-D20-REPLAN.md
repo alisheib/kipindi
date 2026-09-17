@@ -53,7 +53,7 @@ memo or column (W21, W22 moot).
 - **C5-5 close** — 🟡 the running fixer (`wf_c2cd11aa-ef0`), told D20 at 15:02 UTC: finish the gate findings, skip the
   display polish, write `plans/house-bots/tools/c5-s5-mutations.json` with only surviving code's mutations.
   **Exit:** pushed, reports green on both stores, `qa:house-bot-console-probe` 0 non-staff hits with its ADMIN control.
-- **C5-5b · D20 un-build** — remove rulings 187–197's code (R9 payloads and reads, the emergency-void house share in bell,
+- **C5-5b · D20 un-build** — with rulings 265, 266 (the fee derivation), 270 and 271 (§5) — remove rulings 187–197's code (R9 payloads and reads, the emergency-void house share in bell,
   letter and `qa:cert-c1`, the KYC house facts and line, `exposure-copy.ts`, `exposure-line.tsx`, the held-chip and bulk
   count changes, the row tag, the dialog slots, `houseStakeForConsole`, `houseBotLabelsForConsole`), every step-3 module,
   DAL member (both twins + its `test:dal-parity` case) and case whose only consumers were struck — kept only with a named
@@ -87,7 +87,7 @@ memo or column (W21, W22 moot).
 
 - **Commit 6 (non-disclosure):** unchanged in shape (private Board draft, chatbot guard D19d, docs, absence suite). The
   draft must say reports and filings treat house accounts as ordinary player accounts and carry no house memo.
-- **Commit 7 (console, the navbar link):** the console CONTROLS bots — designate, rules and limits, Start/pause, kill
+- **Commit 7 (console, the navbar link)** — see also rulings 264–266, 271 below: the console CONTROLS bots — designate, rules and limits, Start/pause, kill
   switch, Enter now and targets, engine health, the action feed, cap usage. **Struck:** the R2 overview exposure split
   (L39), the staff-edge href test (L38), R1 (e)'s two-admin flag (L35), the per-bot CSV and internal-record writers (L48).
   **Default for its rulings:** no results/P&L report, CSV or per-market house line in the console beyond what a control
@@ -95,3 +95,51 @@ memo or column (W21, W22 moot).
   defect (bots are players in admin counts by D20).
 - **Commit 8 (release):** L26/L27 stay platform defects for Ali but are no longer release preconditions (no house column
   ships); final docs (RULES §2.11, FLOWS §9, DATA-RETENTION, FAILURE-INVENTORY §7.1) follow D20.
+
+## 5. Rulings taken while marking the plan (264–273, eleventh session, 2026-09-17)
+
+The seven document editors and the critic of workflow `wf_fd0c8c88-0b5` raised questions D20 does not answer in words.
+Each is decided here, inside D20's intent ("bots are normal players; no admin-only house tools; keep what controls the
+bots and what keeps D19 true").
+
+264. **The staff-stake-voided and staff-stake-self-decided admin alerts stay.** They are Commit 4's oversight alerts
+     (`oversight.ts`, C4 rulings 29 and 79) about what STAFF did with a bot — an integrity control, like the other admin
+     alerts about a bot's state — not a report, and not the staff-edge alert Ali dropped. PLAN §16b risks 15 and 20 keep
+     them as their measure.
+265. **The built staff-edge artefacts are un-built in C5-5b** (a writer with no reader is a control that lies — L14 and
+     C4 ruling 153's precedent): `gStaffEdgeWinRatePts` / `gStaffEdgeNetTzs` (the undeployed house migration's columns and
+     CHECKs, the schema, both DAL twins, `rules.ts` fields, `FIELD_META`, `CLEAR_EXEMPT`, the rules-suite pins and fixtures),
+     `ALERT_KEY.staffEdge`, `STAFF_EDGE_MIN_SETTLED` and `houseStaffScorecard`. Re-run `test:house-bot-migrations`,
+     `test:dal-parity` and `test:house-bot-rules`. **W16 is moot.**
+266. **Commit 7's console shows money only as usage against a configured limit.** A figure the bot's own controls need
+     stays — today's loss against the daily loss cap, open exposure against the exposure cap, the kill switch's held amount
+     if ruling 254's CAP_EXPOSURE figure is kept — written as "used X of Y". Struck from `03-design-spec.md` S1/S3 and PLAN
+     §8: the lifetime and today "Book" card, "Today's net" as a results KPI, fee withheld, and the money tab's house chip on
+     marked rows. The fee derivation (ruling 183) is therefore un-built in C5-5b unless another caller is measured.
+267. **Accepted risk 13 (a staff selection edge) has no report or alert measure under D20.** Ali dropped both the R1
+     scorecard and the staff-edge alert knowingly; the remaining controls are the staff-chosen caps, the voided and
+     self-decided alerts (264) and every press's audit row. Recorded in D20d.
+268. **Platform report-note defects that lived inside struck rulings 227 and 229 are recorded, not built:** the GBT pack's
+     GGR note omits refunded stakes; the match-integrity report's stale "two-officer" note; the missing "Resolution path"
+     column. They are `main`'s report code, which D20 leaves untouched on this branch — PROGRESS L57, for Ali.
+269. **The export crowd-out stays recorded as a platform defect.** Ruling 242's record is struck, but under D20 a bot's
+     stakes are the holder's own rows, so the player export's silent 1,000-row cap can still push a holder's own deposits
+     out: L31 stays open (the internal-record half of W2 addendum 1 and all of addendum 2 are moot).
+270. **An I10 pin survives R9's un-build.** Ruling 191's source pin (no refusal branch or page condition reads house or
+     requester data) also guarded I10's "no officer-conflict lock"; C5-5b keeps it re-anchored to I10 — no decision
+     control, refusal or page condition reads a house read or `requestedBy` — with its planted control.
+271. **House audit actions with no writer leave the constants in C5-5b:** `exported` (both writers struck: 213, 236) and
+     the house report action ids in `house-report-ids.ts` / `OWN_AUDIT_EXCLUDED_ACTIONS` (no house report exists; L54
+     moot), each only after a grep proves no writer and no stored row on the branch's scratch data depends on it (rows
+     already written keep their action name; the exclusion list keeps a name while any fixture or migration writes it).
+     `reimbursement_recorded` (R1's optional owner action) is decided at Commit 7's rulings; default: not built (D3b, no
+     payment feature).
+272. **Register rows under D20:** W16 moot (265); W21, W22 moot; W2 addendum 2 moot; X9, X10, X11 moot (their surfaces are
+     struck); X13 stays with a D20 note (a holder with a staff role still sees the console and the house audit rows through
+     259/260's staff audience — Commit 7's rulings); L32, L45 struck; L36 stays (Commit 7's copy pass, without the KYC/R2
+     comparison); L37 stays as a rule without a guard (the reward walker is struck; the first reward feature must exclude
+     house stakes itself — the money rule is unchanged); L46 stays as an accepted D20 risk (no staff cue exists); L54 moot
+     (271).
+273. **D19's in-place marks are applied now, not at C5-8.** The plan documents never received them (PLAN, the scenario
+     register, 04, 02/03's S8 and holder notices, C4-SPEC's digest split, HOUSE-BOTS.md's holder leftovers); workflow
+     `wf_1694cc9f-878` marks them in place, so ruling 258's docs pass has only the code-facing docs left.

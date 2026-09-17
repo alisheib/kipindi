@@ -249,7 +249,7 @@ problem is a *demand* problem, and house money is a poor substitute for demand.
 
 ## 5 · If Ali decides to build it anyway — the mandatory conditions
 
-> ⛔ Superseded 2026-09-13 by owner ruling D1: conditions 1–4 are not preconditions of this build (condition 1, written GBT approval, is waived by that ruling, not satisfied; condition 4 is replaced by I10 display-only resolution). Condition 5 is built (per-bot and global caps, kill switch). Condition 6 is replaced by one rulebook and Terms disclosure line (D2, D6). See [`HOUSE-BOTS.md`](HOUSE-BOTS.md).
+> ⛔ Superseded 2026-09-13 by owner ruling D1: conditions 1–4 are not preconditions of this build (condition 1, written GBT approval, is waived by that ruling, not satisfied; condition 4 is replaced by I10 ~~display-only resolution~~ — ⛔ **Superseded by D20 (Ali, 2026-09-17):** of I10 only its rule of no officer-conflict lock stands, and no resolver screen displays house exposure). Condition 5 is built (per-bot and global caps, kill switch). Condition 6 is replaced by one rulebook and Terms disclosure line (D2, D6). See [`HOUSE-BOTS.md`](HOUSE-BOTS.md).
 
 I would not ship this without **all** of these:
 

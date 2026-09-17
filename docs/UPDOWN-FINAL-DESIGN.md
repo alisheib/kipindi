@@ -80,7 +80,7 @@ signal is honest. ⛔ This must precede D3, because it changes how much house fl
 
 ### D3 · The house seeds the thin side — sized *after* D1 and D2
 
-> ⛔ **Superseded as to mechanism (house bots, owner decision 2026-09-13).** The house stakes through designated accounts ([`HOUSE-BOTS.md`](HOUSE-BOTS.md)): an automated OPENER may stake at open, house positions appear in public player metrics and leaderboards like any player's (D6), and house P&L stays separable through the `houseBotId` marker. Per-round and per-day exposure caps remain mandatory.
+> ⛔ **Superseded as to mechanism (house bots, owner decision 2026-09-13).** The house stakes through designated accounts ([`HOUSE-BOTS.md`](HOUSE-BOTS.md)): an automated OPENER may stake at open, house positions appear in public player metrics and leaderboards like any player's (D6), and house P&L stays separable through the `houseBotId` marker. Per-round and per-day exposure caps remain mandatory. ⛔ **Superseded in part by D20 (Ali, 2026-09-17):** the marker separates house money only where a control or money correctness needs it (caps, loss stops, idempotency); no report or admin analytics separates house P&L, and every report treats a house bot's account as a player's.
 
 Ali's decision of 2026-08-04, still unbuilt, and still the only thing that touches the remaining
 refunds. Unchanged in substance:

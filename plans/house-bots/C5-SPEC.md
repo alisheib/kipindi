@@ -212,7 +212,9 @@ touches a `'use client'` file re-runs `test:house-bot-disclosure` and `verify:ho
 0. **Before any edit.** Re-derive every anchor this file cites for the step. Read the printed population of every
    ratchet the step can move (`test:type-scale`, `test:labels` ADMIN_PROSE_RATCHET, `test:decomment` CARRIER_CEILING = 20,
    `test:red-anchors` UNDECLARED_CEILING = 65, `test:orphans`, `test:house-page` §5.1) before touching it. Never raise one.
-1. **`test:house-bot-reports` skeleton** — ruling **176**. The `package.json` key FIRST (`test:guards-exist`), the
+1. **`test:house-bot-reports` skeleton**
+   ⛔ **Superseded in part by D20 (Ali, 2026-09-17):** built; ruling 176 stands, but the §0 pins and cases of struck rulings are removed in C5-5b, and the entry-split, scorecard and fee assertions follow C5-5b's member-by-member decision on rulings 177–186 (`C5-D20-REPLAN.md` §3).
+   — ruling **176**. The `package.json` key FIRST (`test:guards-exist`), the
    two-store runner, the R1 fixture month with rows at 23:59:59.999 and 00:00:00.000 EAT on both month boundaries, the §0
    pins, and the §1–§2 entry-split, scorecard and fee assertions, written before any reader or builder (each seen red, then
    green). No surface.
@@ -458,7 +460,7 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
        rows (key-stripped, 170).
      - Neither door's reads pass `{excludeHouseBets}` or `{excludeHouse}`: excluding house rows would make house stakes
        look different from own bets and leave unexplained gaps in the holder's `balanceAfter` history.
-     - R5/G1's house section is built ONLY as the owner-only internal record (236), which no releasable door imports. No
+     - ~~R5/G1's house section is built ONLY as the owner-only internal record (236), which no releasable door imports.~~ ⛔ **Superseded by D20 (Ali, 2026-09-17):** R5/G1's house section is built nowhere, because the owner-only internal record is struck (rulings 236–238); both releasable doors stay house-free as this ruling says. No
        book, entry-split, scorecard, fee or exposure reader feeds either door.
      - This ruling supersedes by name §1 S1, S2, S3 and S15; the same commit rewrites `PROGRESS.md:131`, marks the extract
        lines, and rewrites `docs/COMPLIANCE-DECISIONS.md:268` (258).
@@ -503,15 +505,15 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
      - `exportUserData` (`auditEntries`, `user-service.ts:86`) and `getOwnActivity` (`user-service.ts:173-178`, the
        `/profile/account` feed) pass `Object.keys(HOUSE_AUDIT)`. `HOUSE_AUDIT` is imported into `user-service.ts`
        (server-only), never into `audit.ts`, so the platform audit module stays house-agnostic.
-     - `exportUserData` and `getOwnActivity` also exclude the report audit actions of the two house catalogue entries
-       (`report.house-liquidity.generated`, `.failed`, `report.house-market-statement.generated`, `.failed`). They come from
-       a closed list exported beside `REPORT_CATALOGUE`, never hand-typed, and go in the same `excludeActions` array.
+     - ~~`exportUserData` and `getOwnActivity` also exclude the report audit actions of the two house catalogue entries~~
+       ~~(`report.house-liquidity.generated`, `.failed`, `report.house-market-statement.generated`, `.failed`). They come from~~
+       ~~a closed list exported beside `REPORT_CATALOGUE`, never hand-typed, and go in the same `excludeActions` array.~~ ⛔ **Superseded by D20 (Ali, 2026-09-17):** the two house catalogue entries are struck (rulings 199–208), so no row with these actions is ever written; the exclusion of house-owned actions (`HOUSE_AUDIT`) above stands.
      - The holder's house BET audit rows (`market.position.opened`) are NOT excluded: they keep ruling 154's key strip,
        so a house bet looks like an own bet.
      - The key strip (`withoutHouseAuditKeys`, `user-service.ts:36-48`) ALSO drops `houseStake` and `houseStakes` beside
        `houseBotId` and `intentId`, so an officer's self-service export never carries an R9 snapshot with other officers'
        ids. The durable rows and `/admin/audit` keep them whole. If Commit 5 adds any other house key to an audit whose
-       actor can be a player, the strip grows in the same commit.
+       actor can be a player, the strip grows in the same commit. ⛔ **Superseded in part by D20 (Ali, 2026-09-17):** R9 is struck (rulings 187–191), so once C5-5b has un-built it no decision audit carries `houseStake` or `houseStakes`; the strip of `houseBotId` and `intentId` stands.
      - Not built: R5's `NOT (payload ? 'houseBotId')` and `houseAuditCount`.
      - **Source pin (planted control):** no `HOUSE_AUDIT` write under `src/` names the holder as its actor, outside tests.
        The one measured site, `withdrawHouseConsent` (`designation.ts:582-584`, `:591-594`, no src caller today), is listed
@@ -525,11 +527,11 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
      - **Proof:** money 1.14d (both stores): the test writes a holder-acted house audit through today's
        `withdrawHouseConsent`; it reaches neither `exportUserData().auditEntries` nor `getOwnActivity`'s rows; CONTROL: the
        row is in the chain. `test:dal-parity`: `excludeActions` on the ring and on Prisma, `total` over the filter.
-       Reports §3: an officer who adjudicated a house-held market exports their own data and the file has no `houseStake`
-       key, while the durable `market.adjudicated` row keeps it. Reports §3: an ADMIN who generated both house reports and
-       wrote `house_bot.exported`, and a COMPLIANCE officer refused by the per-bot CSV, each export their own data. No 175
-       vocabulary word appears at any depth. CONTROL: the durable rows exist. Mutations: the exclusion applied after the
-       limit (a fixture with more house rows than the limit → red); the strip without `houseStake` (§3 red); a planted
+       ~~Reports §3: an officer who adjudicated a house-held market exports their own data and the file has no `houseStake`~~
+       ~~key, while the durable `market.adjudicated` row keeps it. Reports §3: an ADMIN who generated both house reports and~~
+       ~~wrote `house_bot.exported`, and a COMPLIANCE officer refused by the per-bot CSV, each export their own data. No 175~~
+       ~~vocabulary word appears at any depth. CONTROL: the durable rows exist.~~ ⛔ **Superseded by D20 (Ali, 2026-09-17):** reports §3 is struck with R9, R1 and the per-bot CSV (§4.1 row 3; rulings 187–190, 199–213), so these own-export cases and the `houseStake` strip mutation are never built; money 1.14d, the `test:dal-parity` case, the pin and the other two mutations stand. Mutations: the exclusion applied after the
+       limit (a fixture with more house rows than the limit → red); ~~the strip without `houseStake` (§3 red);~~ a planted
        `withdrawHouseConsent` caller (pin red).
 
 171. **`/api/health` names nothing about house bots, in any key.**
@@ -593,7 +595,7 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
      - **The four transaction rules apply:** an abort must escape `withLock`; any write inside a lock takes the caller's
        `tx`; snapshots and emits fire after the outer lock; lock-key helpers stay in `lock-key.ts`. This edit adds a
        filter to four READS only: no read or write moves into or out of a lock or transaction, and nothing new is written.
-     - The same option serves the admin harm detector (230). This supersedes the amended D19 draft 170's "built for the admin
+     - ~~The same option serves the admin harm detector (230).~~ ⛔ **Superseded by D20 (Ali, 2026-09-17):** the harm and AML exclusions are struck (ruling 230), so the option serves only the four reads above. This supersedes the amended D19 draft 170's "built for the admin
        harm detector only".
      - **Source:** R3 MISSED (bounded windows and the probes); R3 NEW-harm-exclusion part 1 AMENDED (the option);
        ADJ 14.
@@ -606,7 +608,9 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
        red); the option dropped at `:2468` (refund case red). Re-run `test:lock-tx-threading` (literal windows in
        `wallet-service.ts`, C4-SPEC §7 item 7) and `test:red-anchors`.
 
-174. **No house vocabulary, template id, prop name or action name in any client module.** No word or identifier of the
+174. **No house vocabulary, template id, prop name or action name in any client module.**
+     ⛔ **Superseded in part by D20 (Ali, 2026-09-17):** the law stands (`C5-D20-REPLAN.md` §2 keeps rulings 168–175). The surfaces it names for struck rulings are never built, or are un-built in C5-5b, so those clauses constrain nothing: the R2 copy module, slots and slot names (192–196), the report card text, month labels, transactions filter labels and R1's house filter (199–210), `exportInternalRecordAction` (236), the §9 strings (224–231), and `staff-edge.ts` (219), `exposure-copy.ts` (192), `dsar.ts` (236), `attest.ts` (201) and `house-liquidity.ts` (202) in the import list.
+     No word or identifier of the
      shared vocabulary (175), no template id literal, no prop NAME and no imported server-action NAME may appear in any
      `'use client'` module, admin ones included, or in any module a client value-imports. Measured reason: a local
      Next 16 build ships server-action export names in public chunks
@@ -647,7 +651,9 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
        client import of an action whose name contains `HouseBot`; a `house` field in `TXN_SEARCH`; a `HOUSE_BOT` key in a
        planted `status-tone` copy.
 
-175. **One absence vocabulary module, and the words it may gain.** The vocabulary lives in ONE module,
+175. **One absence vocabulary module, and the words it may gain.**
+     ⛔ **Superseded in part by D20 (Ali, 2026-09-17):** the module, its consumers and the measurement rule for proposed words stand (ruling 263 keeps the three R2 phrasings as needles). The staff-edge words and the STAFF_EDGE row and R1 wording they come from belong to struck rulings (199–213, 218–223), and the timing tied to 192's first client slot is moot, because that slot is un-built in C5-5b.
+     The vocabulary lives in ONE module,
      `scripts/lib/house-bot-vocabulary.mjs` (plain `.mjs`, so `node` can import it). It exports:
      - the word union, keeping `house[_ -]?bots?`;
      - the identifiers, as the union of what the two guards carry today (for example `HouseBot\w*` (the broader
@@ -689,6 +695,7 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
 ⛔ **Superseded in part by D20 (Ali, 2026-09-17):** 176 stands; 177–186 were built in step 3 and are decided member by member in C5-5b (kept only with a named remaining caller or a cited Commit 7 scope line). Each carries its own line.
 
 176. **`test:house-bot-reports`: the key, the runner and what runs where.**
+     ⛔ **Superseded in part by D20 (Ali, 2026-09-17):** the key, the runner and the store rules stand. The book, entry-split, scorecard, fee, R9, R2, R1, CSV and staff-edge cases this ruling names, the ring-emptied R7 proof and the staff-edge fixture settings (`gStaffEdgeWinRatePts`, `gStaffEdgeNetTzs`) go with their rulings: struck, or decided member by member in C5-5b, which drops the suite's two-store floors to the measured counts (`C5-D20-REPLAN.md` §3).
      - `package.json` gains `"test:house-bot-reports": "tsx scripts/db-scratch.mts --run npx tsx scripts/house-bot-reports.test.mts"`
        in the same commit as its first citation in code, a comment or a doc (`test:guards-exist`; the rules suite's
        citation check, `house-bot-rules.test.mts:305-341`).
@@ -1685,10 +1692,10 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
        rows (written on the same target) never use up the limit; the state is derived newest first, as today. This
        deliberately differs from R8's named `getAuditByActionsDurable`, which applies its limit before the target filter (§1
        S32). On `truncated` it does NOT throw — `ReportPackCard` renders ABOVE both tabs of `/admin/reports`, so a throw would
-       take down the whole page (the library and the staff-edge landing included), and in the server actions it would be an
+       take down the whole page (the library ~~and the staff-edge landing~~ included), and in the server actions it would be an
        uncaught exception. Instead `ReportPack` gains `historyIncomplete: boolean`; the card prints a danger line, "Pack
        history could not be read completely — do not sign"; and the four pack actions return `{ok: false, error}` before any
-       transition.
+       transition. ⛔ **Superseded in part by D20 (Ali, 2026-09-17):** the staff-edge landing is struck (rulings 209, 222); the swap and the danger state stand.
      - **(2) `buildRgEngagement`** (`catalogue.ts:856`; today the ring read at `:887`) reads
        `getAuditByActionsDurable(RG_AUDIT_ACTIONS, {category: "COMPLIANCE", limit: 200})`. `RG_AUDIT_ACTIONS` is a new closed,
        exported list of every `rg.*` action written today (all COMPLIANCE): `rg.limit.changed` and
@@ -1709,11 +1716,11 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
 
 215. **R8's source pins.** In `test:house-bot-reports` §0.
      - **Population, read from disk:** `src/lib/server/report-pack.ts`, the whole of `src/lib/server/reports/catalogue.ts`
-       (after the swap it holds no ring read), `src/lib/server/reports/house-liquidity.ts`, `src/lib/server/reports/attest.ts`,
+       (after the swap it holds no ring read), ~~`src/lib/server/reports/house-liquidity.ts`, `src/lib/server/reports/attest.ts`,~~
        and every file under `src/lib/server/house-bot/`. After decomment, no whole-word match of `getAuditPage` (word
        boundaries, so `getAuditPageDurable`, which `catalogue.ts` legitimately imports and calls at `:14` and `:474`, is not a
        hit). Controls: a planted file calling `getAuditPage` is reported; a planted file calling only `getAuditPageDurable` is
-       not; the population count meets a floor.
+       not; the population count meets a floor. ⛔ **Superseded in part by D20 (Ali, 2026-09-17):** `house-liquidity.ts` and `attest.ts` belong to struck rulings (201, 202) and are not in the population; `report-pack.ts`, `catalogue.ts` and the files under `src/lib/server/house-bot/` stand.
      - **RG pin:** every string literal starting `rg.` that is the value of an `action:` property in an `audit({...})` call
        under `src/`, both ternary arms included, is in `RG_AUDIT_ACTIONS`. Controls: a planted write of an unlisted `rg.*`
        action is red; a planted read-only comparison (the `compliance/page.tsx:73` shape) and a freeze `ref` literal (the
@@ -1736,15 +1743,15 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
      - **Proof:** as stated. Mutation: `getReportPack` swapped back to the ring → `"draft"` → red.
 
 217. **No new red key; every new assertion still gets a mutation.** No new `red:` key for Commit 5 (PLAN §12 names RED
-     harnesses for money, engine and console only; C3-SPEC ruling 17). Every new assertion — the parameter validation, each
-     R1 section's reconciliation, the index's no-category control, the R8 pins, the CSV filter, the per-bot CSV gate, and
+     harnesses for money, engine and console only; C3-SPEC ruling 17). Every new assertion — ~~the parameter validation, each~~
+     ~~R1 section's reconciliation, the index's no-category control,~~ the R8 pins, ~~the CSV filter, the per-bot CSV gate,~~ and
      every mutation named in rulings 168–258 — is mutated from a scratchpad worktree harness (a temporary worktree with a
      `node_modules` junction; never `npm ci` through the junction), fails its own assertion, has an unmutated control run, and
      leaves the tree restored and clean. `red:erasure` keeps its existing mutation and gains three declared ones (244).
      `test:dsar-secrets` has no red harness while its header claims every negative assertion was broken on purpose
      (`dsar-export-secrets.test.mts:27`), so each new §6–§9 assertion's scratchpad mutation is run and recorded in PROGRESS.
      Declared anchors are added only where a harness already has an anchors file (`UNDECLARED_CEILING = 65` stays exact). Only
-     one mutation harness runs against a checkout at a time.
+     one mutation harness runs against a checkout at a time. ⛔ **Superseded in part by D20 (Ali, 2026-09-17):** the rule stands. The struck examples (R1's parameter validation, section reconciliation and index control, the CSV filter and the per-bot CSV gate, rulings 199–213) are never built, and a mutation named by a struck ruling is never run: C5-8's batch covers only mutations whose from-text still exists at HEAD and lists each struck one as removed (`C5-D20-REPLAN.md` §3).
      - **Source:** REP P26 STANDS; DSAR MISSED (the dsar-secrets red harness).
      - **Proof:** the PROGRESS mutation record lists each mutation, its target assertion, the red seen, the control green and
        the clean tree.
@@ -2389,7 +2396,9 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
      - **Source:** DSAR NEW-export-cap AMENDED; D19 draft 173 AMENDED; DSAR NEW-rights-sentence STANDS.
      - **Proof:** §6 as stated; the W2 addendum and L31 written in the same commit.
 
-243. **`test:dsar-secrets` §6–§9, and the Postgres proofs of absence.** The releasable-door absence is proven where the
+243. **`test:dsar-secrets` §6–§9, and the Postgres proofs of absence.**
+     ⛔ **Superseded in part by D20 (Ali, 2026-09-17):** the absence proofs stand (checkpoint C5-7). Struck with their rulings and never built: item 3's §6 crowd-out characterization (242), §7's post-purge internal record (239's struck half), all of §8 (the internal-record allowlist, 236–238), §9's `house-bot/dsar` import pin and officer-page KPI equality (240), and the two mutations aimed at them (the planted `dsar.ts` import, `classification` moved). §5, §6's holder absence, §7's trigger-player twin equality and §9's planted `Transaction` column stand (168, 239's absence half).
+     The releasable-door absence is proven where the
      null-key leak lives (Postgres, `prisma-dal.ts:410`), in three places:
      1. `test:house-bot-money` on both stores: 1.14 — every row of the holder's `exportUserData` has exactly the 23 allowlisted
         keys; 1.14b — the holder's `buildDsarBundle` likewise, neither JSON containing the bot id, an intent id, `hb:` or
@@ -2474,7 +2483,7 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
 
 247. **The service-layer absence sweep, for every viewer.** In `test:house-bot-reports` §11 on BOTH stores. The house fixture
      has poll and Up & Down house stakes, a penalty-boxed trigger, a holder comment, and one emergency void of a house-held
-     market (so R9 payloads and the void's bus frames and notices exist while the sweep runs). For each viewer — signed
+     market (so ~~R9 payloads and~~ the void's bus frames and notices exist while the sweep runs). ⛔ **Superseded in part by D20 (Ali, 2026-09-17):** no decision audit carries an R9 payload (rulings 187–191 are struck); the emergency void still writes its bus frames and notices. For each viewer — signed
      out, another player, the holder, a trigger player — `JSON.stringify` the output of:
      - `getBoard` (`updown-board.ts:663`) and `getRoundDetail` (`:1346`);
      - `getMarket` (`market-service.ts:509`);
@@ -2514,15 +2523,15 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
      - **Holder pages added** to the existing ten: `/profile/account`, `/profile/activity`, `/updown/history` and
        `/updown/<roundId>` with a house Up & Down stake in the fixture, `/api/positions/settled?markets=`, and `/api/events`
        read for the holder's session (every forwarded frame through the leak check). The officer
-       DELIVERABLE bundle (4.2), the internal record's absence from it, and the player export are read through the leak check.
+       DELIVERABLE bundle (4.2), ~~the internal record's absence from it,~~ and the player export are read through the leak check. ⛔ **Superseded in part by D20 (Ali, 2026-09-17):** there is no internal record to be absent (rulings 236–238 are struck); the bundle and the export are still read through the leak check.
      - A **trigger player** (boxed through the real sweep or `boxAccount`) gets the same pass over their pages and export.
      - A **signed-out visitor** and **another player** get `/`, `/markets`, `/markets/<id>`, `/live`, `/updown`,
        `/updown/<roundId>`, `/leaderboard`, `/results`, `/api/fairness/recent`, `/api/health` and `/api/og/market/<id>`
        (status and headers). (`/results/<id>` is not a route: `src/app/results` holds only `page.tsx` and its parts.)
      - A **second server pass in production posture:** `HOUSE_BOT_ENGINE` unset, master switch OFF, the planner lease acquired;
-       it reads `/api/health`, with a control that the engine did start, and requests the per-bot CSV route and a
-       non-existent sibling path under `/admin/` as a PLAYER and as the holder, for an existing and a non-existing bot id,
-       and compares them (213 (1): status, body, every header except Date and request ids). (The normal pass runs
+       it reads `/api/health`, with a control that the engine did start, ~~and requests the per-bot CSV route and a~~
+       ~~non-existent sibling path under `/admin/` as a PLAYER and as the holder, for an existing and a non-existing bot id,~~
+       ~~and compares them (213 (1): status, body, every header except Date and request ids).~~ ⛔ **Superseded in part by D20 (Ali, 2026-09-17):** there is no per-bot CSV route (ruling 213 is struck), so this pass reads `/api/health` with its control only. (The normal pass runs
        `next dev` with `HOUSE_BOT_ENGINE=false`, `:73`, so it can never see the leadership key; production runs the engine
        by default.)
      - Each new viewer gets a non-vacuity control (the fixture's market title is present); 2.c's checkout-path control and
@@ -2552,7 +2561,9 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
      - **Source:** D19 draft 181 AMENDED; ADJ 9.
      - **Proof:** the `test:house-bot-seam` (m) case re-run with HB-ACC-13 in its label; W23 in PROGRESS in the same commit.
 
-250. **Coverage for scenario ids D19 struck or reshaped.** A struck or reshaped id counts as covered only through an assertion
+250. **Coverage for scenario ids D19 struck or reshaped.**
+     ⛔ **Superseded in part by D20 (Ali, 2026-09-17):** the rule stands, and checkpoint C5-7 adds D20's struck ids to this coverage (`C5-D20-REPLAN.md` §2). Named forms below that rest on struck rulings are superseded: HB-ACC-12 / CRA-04 and CRA-10 (the internal record, 236–239; only the absence half stands), FS-25 (R2's admin reader, 192–194; `houseStakeByMarket` is decided in C5-5b) and CRA-17's admin half (187–194). Ids in the "unchanged admin, report and audit scenarios" list that D20 strikes carry their own ⛔ D20 line in `01-scenario-register.md` and count only in that form; struck whole: CRA-02, CRA-11, CRA-18, CRA-33, CRA-36, HB-LC-17 and TGT-39.
+     A struck or reshaped id counts as covered only through an assertion
      that names the id in its absence form (e.g. "HB-ACC-14 · D19c · /profile/account served HTML carries no house word").
      PROGRESS's Scenario coverage gate gets an Exceptions row "struck by D19" ONLY for ids with nothing left to assert: CRA-09
      and CRA-26 (wholly public text), FS-25's flag-on public fixture, and FS-30's public/holder-copy half. CRA-23 is covered by
@@ -2578,7 +2589,9 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
      - **Source:** D19 draft 183 AMENDED; D19 d19Impacts (scenario rows).
      - **Proof:** the REL-0 coverage gate reads each id against an assertion label.
 
-251. **How every admin surface is rendered and read.** Every surface in §5 is rendered and READ before the step that produced
+251. **How every admin surface is rendered and read.**
+     ⛔ **Superseded in part by D20 (Ali, 2026-09-17):** the method stands for the surfaces that remain (§5 rows 2 and 16, row 19's RG engagement artefact, and C5-5b's render of each un-built surface). The house lines and their failed-read fixtures, the staff-edge bell (222), the house-liquidity XLSX and PDF, and the per-bot CSV named here are struck with their rulings.
+     Every surface in §5 is rendered and READ before the step that produced
      it is done (Ali: a surface not rendered is NOT MEASURED, never passed; visual perfection at every step). Phase C is the
      admin static harness (`next dev` + the in-memory store + `DISABLE_ADMIN_TOTP=true`); phase D is the real-route client pass
      for modals (03 X3). At least 1280 and 360, VIEWPORT tiles (never full-page), the nextjs-portal hidden, each PNG opened and
@@ -2602,7 +2615,7 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
        it is merged first (the Commit 4 pattern), with the KYC re-diff (197);
      - `verify:house-bot-bundle` on a FRESH `next build` (L15; a build older than `src/` is NOT MEASURED);
      - `qa:house-bot-holder-view` extended (248; L20);
-     - `qa:house-bot-bells` and `qa:cert-c1` renders read (222, 195);
+     - ~~`qa:house-bot-bells` and `qa:cert-c1` renders read (222, 195);~~ ⛔ **Superseded by D20 (Ali, 2026-09-17):** the staff-edge alert (222) and the emergency-void house row (195) are struck, so neither render is owed; the other gates stand as checkpoint C5-8, which adds `qa:house-bot-console-probe` (`C5-D20-REPLAN.md` §3).
      - the mutation list (217) from a scratchpad worktree harness;
      - the 3-lens review, with one lens told to hunt API routes, DSAR deliverables and admin client chunks (the Commit 4 D19
        lens missed `/api/health` and the officer bundle);
@@ -2620,7 +2633,7 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
 253. **Nothing holder-facing, and no dev seed route.** No `SellButton` `houseStake`, no player chip, no activity-feed chip, no
      `market.houseStake*` or other player key. `sell-button.tsx` and the markets page's `heldLabel` are not edited (L21/L22 stay
      Ali's). D19c and rulings 146–147 already give the neutral words, and no holder-facing house surface exists in `src` outside
-     the neutral seams. The admin S7 chip (241) and "of which chosen by you" (193) are built as planned. No
+     the neutral seams. ~~The admin S7 chip (241) and "of which chosen by you" (193) are built as planned.~~ ⛔ **Superseded by D20 (Ali, 2026-09-17):** neither exists: the S7 chip (241) is never built, and "of which chosen by you" (193) is un-built in C5-5b. No
      `src/app/api/dev-test/seed-house-stake`: 03 §7 phase E step 2 "stamps `houseBotId`" on existing rows, but the marker is
      create-only in both stores (`store.ts:453`; `prisma-dal.ts:410`; the create-only update paths at `prisma-dal.ts:1597-1602`
      and `store.ts:1406-1412`, cases c21), so such a route cannot work through the DAL; it would also put house vocabulary under
@@ -2695,7 +2708,9 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
      - **Source:** R3 MISSED (FS-05); R3 NEW-reward-walker AMENDED; R3 alreadyBuilt and buildNotes (the reward sites).
      - **Proof:** the walker (233).
 
-257. **Known gaps recorded, not repaired.** Each goes into PROGRESS with where it lands (§8).
+257. **Known gaps recorded, not repaired.**
+     ⛔ **Superseded in part by D20 (Ali, 2026-09-17):** the record stands, with these entries changed: L29's "new house card" is never built (rulings 199–209); L46's two cues, the KYC card's house line (197) and the S7 chip (241), are struck; X13's listed surfaces (the R2 lines, the row tag, the house-liquidity report, the CSV house filter and `house_bot_id`, the void notice's house share) are struck; and of the gaps "also recorded under their rulings", the staff-edge month (223, L45), the box without its event (239's struck half, L32) and the export crowd-out record (242, L31) are struck with those rulings (§8.3).
+     Each goes into PROGRESS with where it lands (§8).
      - **Ring readers house volume degrades (L28).** The ring holds 10,000 rows across all categories (`audit.ts:63`,
        `:479-484`), so about 1,000 house BET rows a day shorten the history shown by `admin/resolver/[id]/page.tsx:61` (the
        ceremony's resolution audit), `admin/compliance/page.tsx:68-75` (AML approvals, integrity alerts, RG counters),
@@ -2726,6 +2741,7 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
      - **Proof:** the register rows exist in PROGRESS in the same commit.
 
 258. **The docs pass, in the same commit as the code.**
+     ⛔ **Superseded in part by D20 (Ali, 2026-09-17):** the docs pass stands as checkpoint C5-8's and is written for D20 (`C5-D20-REPLAN.md` §3): `docs/HOUSE-BOTS.md` §8 says every report treats a house bot's account as a player's and that there is no house report, instead of classes A–D and the basis rule; the Oversight bullet gains no `staffEdge` duty; the W2 rewrite at `COMPLIANCE-DECISIONS.md:268` names no internal record; and the source-comment edits below that describe struck rulings (the internal-record docstring at `constants.ts:291-299`, 238; `oversight.ts` and `planner.ts`, 218; `alert-copy.ts` and `house-bot-comms-cases.mts:330`, 220) are not made as written.
      - **`docs/HOUSE-BOTS.md`:** `:3` ("commit 3 of 8"); `:163` (the event-kind list governs the officer-only internal record;
        the releasable exports carry no house data; W2 pending); `:217` ("digest house split moved to commit 4" and "⏳ Commit 5:
        (i) the holder chip and (o) the activity-feed chip" rewritten as superseded by D19c, rulings 143–158; the digest keeps only

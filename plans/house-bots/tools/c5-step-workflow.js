@@ -1,6 +1,6 @@
 export const meta = {
   name: 'c5-build-step',
-  description: 'One Commit 5 build step: implement the given rulings, 3-lens adversarial review, fix, run every mutation from a scratchpad worktree',
+  description: 'SUPERSEDED (2026-09-17) by c5-step-fast.js and owner ruling D20 — kept as the record of C5 steps 1–4; do not run. One Commit 5 build step: implement the given rulings, 3-lens adversarial review, fix, run every mutation from a scratchpad worktree',
   phases: [
     { title: 'Build', detail: 'one implementer: the step rulings, suites green, renders read, push' },
     { title: 'Review', detail: 'three read-only lenses: conformance, D19 leak hunt, test strength' },
