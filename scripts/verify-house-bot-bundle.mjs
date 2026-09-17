@@ -17,6 +17,34 @@
  */
 import fs from "node:fs";
 import path from "node:path";
+import { houseHitsByFamily, HOUSE_WORD_SAMPLES, HOUSE_IDENTIFIER_SAMPLES, HOUSE_ID_SAMPLES, HOUSE_BENIGN_SAMPLES } from "./lib/house-bot-vocabulary.mjs";
+
+/**
+ * ⛔ THE VOCABULARY IS NOT DECLARED HERE (C5-SPEC ruling 175): words, identifiers and bounded ids come from
+ * `scripts/lib/house-bot-vocabulary.mjs`, the one module every absence proof imports.
+ *
+ * ⭐ A FILE'S PATH IS SCANNED AS WELL AS ITS CONTENT (ruling 175, 255). A route segment or a chunk named after the feature
+ * (`static/chunks/app/admin/house-bots/…`) is published to every visitor by its URL even when its bytes say nothing.
+ */
+/** Every hit in one file: its path under `.next/static` (forward slashes) and its content. */
+function scanFile(relPath, content) {
+  return [
+    ...houseHitsByFamily(relPath).map((h) => ({ where: "path", family: h.family, word: h.word, ctx: relPath })),
+    ...houseHitsByFamily(content).map((h) => ({ where: "content", family: h.family, word: h.word, ctx: content.slice(Math.max(0, h.index - 50), h.index + 70).replace(/\s+/g, " ") })),
+  ];
+}
+
+// ⛔ CONTROLS FIRST, BEFORE THE BUILD IS EVEN LOOKED FOR — the scanner must be able to fail before its silence means anything. A planted sample of every family
+// in a chunk's CONTENT, a planted feature name in a chunk's PATH, and the benign look-alikes found by neither.
+{
+  const planted = [...HOUSE_WORD_SAMPLES, ...HOUSE_IDENTIFIER_SAMPLES, ...HOUSE_ID_SAMPLES];
+  const missedContent = planted.filter((s) => scanFile("static/chunks/0a1b2c.js", `var a=${JSON.stringify(s)};`).length === 0);
+  const pathHits = scanFile("static/chunks/app/admin/house-bots/page-0a1b2c3d.js", "var a=1;");
+  const benign = HOUSE_BENIGN_SAMPLES.flatMap((s) => scanFile("static/chunks/app/admin/house/page-0a1b2c3d.js", `var a=${JSON.stringify(s)};`));
+  const controlsHold = missedContent.length === 0 && pathHits.some((h) => h.where === "path") && benign.length === 0;
+  console.log(`${controlsHold ? "PASS" : "FAIL"} control · every planted family sample in content is found (${planted.length}), a planted house-bots route path is found, and HOUSE_FEE, /admin/house and raw hb_ look-alikes are not${controlsHold ? "" : ` — missed ${JSON.stringify(missedContent)} · path ${JSON.stringify(pathHits)} · benign ${JSON.stringify(benign)}`}`);
+  if (!controlsHold) { console.log("FAIL — verify:house-bot-bundle: the scanner's own controls failed, so no result from it can be trusted"); process.exit(1); }
+}
 
 const root = path.resolve(process.argv[2] ?? process.cwd());
 const dir = path.join(root, ".next", "static");
@@ -42,25 +70,12 @@ if (newestSource > builtAt) {
   process.exit(2);
 }
 
-/** The house vocabulary in the three locales, and the identifiers the feature's code uses. */
-const PATTERNS = {
-  liquidity: /liquidity/gi,
-  ukwasi: /ukwasi/gi,
-  zhLiquidity: /流动性/g,
-  houseBot: /house[_ -]?bots?/gi,
-  houseSnake: /\bhouse_[a-z]+/g,
-  // `HOUSE_FEE` is the platform's own transaction type (the operator's fee), not house-bot wording.
-  HOUSE_UPPER: /HOUSE_(?!FEE\b)[A-Z_]+/g,
-  houseFields: /houseStake|houseOnly|houseBotId|HouseBot[A-Z]\w*/g,
-  botiNyumba: /boti (za|ya) nyumba/gi,
-  zhBot: /平台机器人/g,
-};
-
 const files = [];
 const walk = (d) => {
   for (const e of fs.readdirSync(d, { withFileTypes: true })) {
     const p = path.join(d, e.name);
-    if (e.isDirectory()) walk(p); else if (/\.(js|css|json|txt|map)$/.test(e.name)) files.push(p);
+    // Every file's PATH is scanned (a font or image named after the feature ships its name too); only text is read.
+    if (e.isDirectory()) walk(p); else files.push(p);
   }
 };
 walk(dir);
@@ -69,16 +84,13 @@ if (files.length === 0) { console.log(`NOT MEASURED — ${dir} holds no files`);
 let total = 0;
 const report = new Map();
 for (const f of files) {
-  const s = fs.readFileSync(f, "utf8");
-  for (const [name, re] of Object.entries(PATTERNS)) {
-    re.lastIndex = 0;
-    let m;
-    while ((m = re.exec(s))) {
-      total++;
-      const key = `${name} · "${m[0]}"`;
-      const r = report.get(key) ?? { n: 0, files: new Set(), ctx: s.slice(Math.max(0, m.index - 50), m.index + 70).replace(/\s+/g, " ") };
-      r.n++; r.files.add(path.relative(dir, f)); report.set(key, r);
-    }
+  const rel = path.relative(path.join(root, ".next"), f).replace(/\\/g, "/");
+  const content = /\.(js|css|json|txt|map)$/.test(f) ? fs.readFileSync(f, "utf8") : "";
+  for (const h of scanFile(rel, content)) {
+    total++;
+    const key = `${h.where} · ${h.family} · "${h.word}"`;
+    const r = report.get(key) ?? { n: 0, files: new Set(), ctx: h.ctx };
+    r.n++; r.files.add(path.relative(dir, f)); report.set(key, r);
   }
 }
 console.log(`scanned ${files.length} files under ${dir} (build ${new Date(builtAt).toISOString()})`);

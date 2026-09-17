@@ -19,6 +19,8 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { EXIT_WINDOW_GRID, exitGridCase } from "./lib/house-bot-exit-grid.mts";
+// Ruling 175 · the notice pins below are deliberately BROADER than the shared absence words, so they extend them.
+import { extendHouseWords } from "./lib/house-bot-vocabulary.mjs";
 
 process.env.DATABASE_URL = "";
 process.env.USE_PRISMA_DAL = "false";
@@ -425,11 +427,11 @@ section("§6 · sanctioned changes");
   {
     const notif = decomment(read("src/lib/server/notification-service.ts"));
     const sc = fnBody(notif, "export function notifySelectionClosed(");
-    const houseWords = /houseStake|houseOnly\s*\?\s*\{|selection-closed-house|LIQUIDITY_LINE|liquidityLine|liquidity|ukwasi|流动性/;
+    const houseWords = extendHouseWords(["houseStake", String.raw`houseOnly\s*\?\s*\{`, "selection-closed-house", "LIQUIDITY_LINE", "liquidityLine"]);
     ok("6.h1 · D19c · notifySelectionClosed carries no house option, push tag or label", sc.length > 1_000 && !houseWords.test(sc), `${sc.length} chars read`);
     const outcomeFns = ["export function notifyWin(", "export function notifyLoss(", "export function notifyRefund(", "export function notifyMarketCancelled(",
       "export function notifyOneSidedRefund(", "export function notifyVerdictRecorded("].map((f) => [f, fnBody(notif, f)] as const);
-    const labelled = outcomeFns.filter(([, body]) => body.length < 100 || /houseStake|LIQUIDITY_LINE|liquidityLine|liquidity|ukwasi|流动性/.test(body)).map(([f]) => f);
+    const labelled = outcomeFns.filter(([, body]) => body.length < 100 || extendHouseWords(["houseStake", "LIQUIDITY_LINE", "liquidityLine"]).test(body)).map(([f]) => f);
     ok("6.h1b · D19c · no outcome emitter takes a house label option or carries a liquidity word", labelled.length === 0, labelled.join(", "));
     ok("6.h1c · CONTROL · the removed tag line and the removed label line are both matched",
       houseWords.test("}, opts.houseStake ? { pushTag: `selection-closed-house:${opts.marketId}` } : undefined);")

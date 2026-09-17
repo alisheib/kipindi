@@ -22,6 +22,7 @@ import { spawn, spawnSync } from "node:child_process";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { chromium } from "playwright";
+import { houseHits } from "./lib/house-bot-vocabulary.mjs";
 
 const ROOT = join(import.meta.dirname, "..");
 const PORT = Number(process.env.HB_VIEW_PORT ?? 3021);
@@ -35,9 +36,10 @@ const ok = (l: string, c: boolean, x = "") => {
 const notMeasured = (l: string, why: string) => { unmeasured++; console.log(`NOT MEASURED ${l} — ${why}`); };
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-/** The vocabulary `test:house-bot-disclosure` and `verify:house-bot-bundle` use: words in any case, identifiers exactly. */
-const WORDS = /liquidity|ukwasi|流动性|house[ -]?bots?|boti (?:za|ya) nyumba|平台机器人/gi;
-const IDENTIFIERS = /\bhouse_[a-z]+|HOUSE_(?!FEE\b)[A-Z_]+|houseStake|houseOnly|houseBotId|HouseBot\w*/g;
+/**
+ * ⛔ The vocabulary is not declared here (C5-SPEC ruling 175): `houseHits` is the one module `test:house-bot-disclosure`,
+ * `verify:house-bot-bundle` and every other absence proof import — words in any case, identifiers exactly, bounded ids.
+ */
 
 const RAW = process.env.VERIFY_DATABASE_URL ?? "";
 if (!RAW) {
@@ -160,7 +162,7 @@ try {
   const withoutRoot = (html: string) => html.replace(ROOT_PATH, () => "<ROOT>");
   const leaks = (raw: string): string[] => {
     const html = withoutRoot(raw);
-    const out = [...html.matchAll(WORDS), ...html.matchAll(IDENTIFIERS)].map((m) => m[0]);
+    const out = houseHits(html);
     for (const s of SECRETS) if (html.includes(s)) out.push(`id:${s}`);
     return out;
   };

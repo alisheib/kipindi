@@ -35,11 +35,11 @@ const ok = (label: string, cond: boolean, detail = "") => {
 };
 const section = (t: string) => console.log(`\n${t}`);
 
-/** The house vocabulary in three locales — words, matched in any case. */
-export const HOUSE_WORDS = /liquidity|ukwasi|流动性|house[ -]?bots?|boti (?:za|ya) nyumba|平台机器人/gi;
-/** The feature's identifiers — matched EXACTLY (case-sensitive), so the platform's `HOUSE_FEE` txn type is not one. */
-export const HOUSE_IDENTIFIERS = /\bhouse_[a-z]+|HOUSE_(?!FEE\b)[A-Z_]+|houseStake|houseOnly|houseBotId|HouseBot\w*/g;
-const houseHits = (js: string): string[] => [...js.matchAll(HOUSE_WORDS), ...js.matchAll(HOUSE_IDENTIFIERS)].map((m) => m[0]);
+/**
+ * ⛔ THE VOCABULARY IS NOT DECLARED HERE (C5-SPEC ruling 175). Words, identifiers and bounded ids come from the one module
+ * every absence proof imports; `test:house-bot-reports` §0 refuses a consumer that declares its own pattern.
+ */
+import { houseHits, HOUSE_WORD_SAMPLES, HOUSE_IDENTIFIER_SAMPLES, HOUSE_ID_SAMPLES, HOUSE_BENIGN_SAMPLES } from "./lib/house-bot-vocabulary.mjs";
 
 type Reader = { exists(p: string): boolean; read(p: string): string };
 const disk: Reader = { exists: (p) => existsSync(p) && statSync(p).isFile(), read: (p) => readFileSync(p, "utf8") };
@@ -60,10 +60,16 @@ function resolveImport(from: string, spec: string, r: Reader, srcRoot: string): 
   return null;
 }
 
-/** Strip types and comments the way the bundler does, then list the VALUE imports that remain. */
+/**
+ * Strip types and comments the way the bundler does, then list the VALUE imports that remain.
+ *
+ * 🔴 `charset: "utf8"` IS LOAD-BEARING (found by ruling 175's planted per-family control, C5 step 2). esbuild's default
+ * charset is ASCII: it rewrites every non-ASCII character as a `\u` escape, so a planted `流动性` or `平台机器人` in a
+ * client file came out as escapes and the walker never saw a Chinese word. The strip now keeps the text as written.
+ */
 function strip(file: string, code: string): string {
   const loader = file.endsWith(".tsx") || file.endsWith(".jsx") ? "tsx" : "ts";
-  return transformSync(code, { loader, format: "esm", target: "es2022" }).code;
+  return transformSync(code, { loader, format: "esm", target: "es2022", charset: "utf8" }).code;
 }
 function valueImports(js: string): string[] {
   const specs = new Set<string>();
@@ -163,6 +169,24 @@ section("§2 · CONTROLS — planted chains are found; type-only imports and ser
   ok("2.c4 · a \"use server\" module is not followed (a server action is a reference, never bundled)", !words1.some((w) => w.startsWith("/app/actions.ts")), words1.join(", "));
   const r2 = run([`${V}/app/c.tsx`]);
   ok("2.c5 · a dynamic import() is followed, and an UPPER_SNAKE house identifier is found", r2.hits.some((h) => h.word === "HOUSE_BOT"), r2.hits.map((h) => h.word).join(", "));
+  // Ruling 175 · a planted client-file control per vocabulary family (words, identifiers, bounded ids), each found through
+  // the walker itself, and the benign look-alikes (the platform's HOUSE_FEE, /admin/house, a raw hb_ nonce) found by none.
+  const familyFiles: Record<string, string> = {};
+  const families: Array<[string, readonly string[]]> = [["words", HOUSE_WORD_SAMPLES], ["identifiers", HOUSE_IDENTIFIER_SAMPLES], ["ids", HOUSE_ID_SAMPLES]];
+  for (const [family, samples] of families) {
+    samples.forEach((sample, i) => {
+      familyFiles[`${V}/app/planted-${family}-${i}.tsx`] = `"use client";\nexport const planted = ${JSON.stringify(sample)};`;
+    });
+  }
+  HOUSE_BENIGN_SAMPLES.forEach((sample, i) => { familyFiles[`${V}/app/benign-${i}.tsx`] = `"use client";\nexport const benign = ${JSON.stringify(sample)};`; });
+  const fr: Reader = { exists: (p) => norm(p) in familyFiles, read: (p) => familyFiles[norm(p)] };
+  const runFamily = (entry: string) => walkClientGraph([entry], fr, V).hits;
+  for (const [family, samples] of families) {
+    const missed = samples.filter((_, i) => runFamily(`${V}/app/planted-${family}-${i}.tsx`).length === 0);
+    ok(`2.v · ruling 175 · CONTROL · every planted ${family} sample in a client file is found (${samples.length} planted)`, missed.length === 0, missed.join(", "));
+  }
+  const benignHits = HOUSE_BENIGN_SAMPLES.flatMap((_, i) => runFamily(`${V}/app/benign-${i}.tsx`).map((h) => h.word));
+  ok("2.v.b · ruling 175 · CONTROL · the benign look-alikes (HOUSE_FEE, /admin/house, raw hb_ prefixes, a 28-hex tail) are not hits", benignHits.length === 0, benignHits.join(", "));
   const r3 = run([`${V}/app/clean.tsx`]);
   ok("2.c6 · CONTROL · type-only house fields, a comment and the platform's HOUSE_FEE are not hits", r3.hits.length === 0, r3.hits.map((h) => h.word).join(", "));
 }
@@ -183,6 +207,45 @@ section("§3 · the player copy the un-build replaced says something true and na
   const table = /const msg = \{[\s\S]*?\n\s*\};/.exec(objections)?.[0] ?? "";
   ok("3.3 · the filing path's refusal table has no house row or sentence, and its generic line stands",
     table.length > 200 && houseHits(table).length === 0 && /You cannot object to this market\./.test(objections), `${table.length} chars · ${houseHits(table).join(", ")}`);
+}
+
+// ── §4 · the client-bundle law (C5-SPEC ruling 174), as far as Commit 5 step 2 can pin it ─────────────────────────
+section("§4 · ruling 174 · no house word, prop name, action name, search field or tone in any client module");
+{
+  const rel = (p: string) => relative(ROOT, p).replace(/\\/g, "/");
+  const reachedRel = new Set([...reached.keys()].map(rel));
+  // The surfaces the law names, measured reachable — so 1.1 reads them, rather than assuming it does.
+  const MUST_BE_READ = ["src/lib/status-tone.ts", "src/lib/search/fields.ts", "src/components/ui/search-box.tsx", "src/app/admin/system/system-client.tsx"];
+  const unread = MUST_BE_READ.filter((p) => !reachedRel.has(p));
+  ok("4.0 · the law's named client surfaces are inside §1's population (status-tone, the search grammar, the search box, the system client)", unread.length === 0, unread.join(", "));
+  const { TXN_SEARCH } = await import("../src/lib/search/fields.ts") as { TXN_SEARCH: { fields: Record<string, { columns: string[] }>; default: string[] } };
+  const txnHouse = [...Object.keys(TXN_SEARCH.fields), ...Object.values(TXN_SEARCH.fields).flatMap((x) => x.columns), ...TXN_SEARCH.default].filter((k) => /house/i.test(k));
+  ok("4.1 · R1's house filter is never a TXN_SEARCH field, column or default (the client search box imports it)", Object.keys(TXN_SEARCH.fields).length >= 5 && txnHouse.length === 0, txnHouse.join(", "));
+  const reportsReached = [...reachedRel].filter((p) => p.startsWith("src/lib/server/reports/"));
+  ok("4.2 · no report builder module (src/lib/server/reports/) is reachable from a client component", reportsReached.length === 0, reportsReached.join(", "));
+
+  // ⛔ CONTROLS — the three shapes the law exists for, planted in a virtual client tree, each found; their neutral twins not.
+  const V = "/v/src";
+  const files: Record<string, string> = {
+    [`${V}/app/card.tsx`]: `"use client";\nexport function Card({ houseStake }: { houseStake: number }) { return <b>{houseStake}</b>; }`,
+    [`${V}/app/neutral-card.tsx`]: `"use client";\nexport function Card({ exposureSlot }: { exposureSlot: string }) { return <b>{exposureSlot}</b>; }`,
+    [`${V}/app/button.tsx`]: `"use client";\nimport { exportHouseBotCsvAction } from "./actions";\nexport const B = () => <button onClick={() => exportHouseBotCsvAction()} />;`,
+    [`${V}/app/neutral-button.tsx`]: `"use client";\nimport { exportInternalRecordAction } from "./actions";\nexport const B = () => <button onClick={() => exportInternalRecordAction()} />;`,
+    [`${V}/app/actions.ts`]: `"use server";\nexport async function exportHouseBotCsvAction() {}\nexport async function exportInternalRecordAction() {}`,
+    [`${V}/app/tone-user.tsx`]: `"use client";\nimport { STATUS_TONE } from "@/lib/status-tone";\nexport const t = STATUS_TONE;`,
+    [`${V}/lib/status-tone.ts`]: `export const STATUS_TONE = { OPEN: "info", HOUSE_BOT_ACTIVE: "success" } as const;`,
+  };
+  const norm = (p: string) => p.replace(/\\/g, "/");
+  const vr: Reader = { exists: (p) => norm(p) in files, read: (p) => files[norm(p)] };
+  const hitsOf = (entry: string) => walkClientGraph([`${V}/app/${entry}`], vr, V).hits.map((h) => h.word);
+  ok("4.c1 · CONTROL · a client prop NAMED houseStake is found (destructured prop names survive the strip)", hitsOf("card.tsx").includes("houseStake"), hitsOf("card.tsx").join(", "));
+  ok("4.c2 · CONTROL · a client import of a server action whose NAME carries HouseBot is found on the client side", hitsOf("button.tsx").some((w) => w.includes("HouseBot")), hitsOf("button.tsx").join(", "));
+  ok("4.c3 · CONTROL · a HOUSE_BOT tone key in a planted status-tone copy is found through its client importer", hitsOf("tone-user.tsx").some((w) => w.startsWith("HOUSE_BOT")), hitsOf("tone-user.tsx").join(", "));
+  ok("4.c4 · CONTROL · the neutral twins (exposureSlot, exportInternalRecordAction) are not hits", hitsOf("neutral-card.tsx").length === 0 && hitsOf("neutral-button.tsx").length === 0,
+    [...hitsOf("neutral-card.tsx"), ...hitsOf("neutral-button.tsx")].join(", "));
+  const plantedTxn = { fields: { ...TXN_SEARCH.fields, house: { columns: ["houseBotId"] } }, default: TXN_SEARCH.default };
+  const plantedHouse = [...Object.keys(plantedTxn.fields), ...Object.values(plantedTxn.fields).flatMap((x) => x.columns)].filter((k) => /house/i.test(k));
+  ok("4.c5 · CONTROL · a planted `house` field in a TXN_SEARCH copy is reported by 4.1's measure", plantedHouse.length === 2, plantedHouse.join(", "));
 }
 
 console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — house-bot-disclosure: ${pass} passed, ${fail} failed`);

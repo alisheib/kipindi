@@ -13,7 +13,9 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
+import ts from "typescript";
 import { decomment } from "./decomment.mts";
+import { extendHouseWords, houseHits, HOUSE_WORD_SAMPLES, HOUSE_IDENTIFIER_SAMPLES, HOUSE_ID_SAMPLES } from "./house-bot-vocabulary.mjs";
 
 type Any = any;
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -146,6 +148,113 @@ if (STORE === "memory") {
     const benign = holderActorViolations([{ rel: "src/benign.ts", code: `async function houseAudit(action: A, actorId: string | null, t: T, p: P) {}\nawait houseAudit("house_bot.started", officerId, target, { holderUserId: bot.userId });\nawait voidHouseConsent({ userId: bot.userId, cause: code, actorId: null });\nexport function withdrawHouseConsent(holderUserId: string) { return 1; }` }]);
     ok("0.170.c4 · CONTROL · an officer actor, a holder id in the PAYLOAD, a null actor, the signature and the debt's own definition are not reported",
       benign.holder.length === 0 && benign.callers.length === 0, j(benign));
+  });
+}
+
+/* ═══ §0 · ruling 175 · one absence vocabulary ═══════════════════════════════════════════════════════════ */
+
+/**
+ * Every regular expression a file DECLARES whose pattern is fully known in source — a regex literal, or `RegExp(…)` /
+ * `new RegExp(…)` with a plain string or substitution-free template — compiled with its flags. A pattern built from a
+ * variable (`new RegExp(f.source, f.flags)`, a template with `${…}`) is not the file's own text and is not returned.
+ */
+export function declaredRegexes(file: string, code: string): Array<{ text: string; re: RegExp | null }> {
+  const kind = /\.m?js$/.test(file) ? ts.ScriptKind.JS : file.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS;
+  const sf = ts.createSourceFile(file, code, ts.ScriptTarget.Latest, true, kind);
+  const out: Array<{ text: string; re: RegExp | null }> = [];
+  const compile = (source: string, flags: string) => { try { return new RegExp(source, flags.replace(/[^dgimsuvy]/g, "")); } catch { return null; } };
+  const literalText = (n: ts.Node | undefined): string | null => {
+    if (!n) return null;
+    if (ts.isStringLiteral(n) || ts.isNoSubstitutionTemplateLiteral(n)) return n.text;
+    if (ts.isTaggedTemplateExpression(n) && n.tag.getText(sf) === "String.raw" && ts.isNoSubstitutionTemplateLiteral(n.template)) return n.template.rawText ?? n.template.text;
+    return null;
+  };
+  const visit = (n: ts.Node) => {
+    if (n.kind === ts.SyntaxKind.RegularExpressionLiteral) {
+      const t = n.getText(sf);
+      const cut = t.lastIndexOf("/");
+      out.push({ text: t, re: compile(t.slice(1, cut), t.slice(cut + 1)) });
+    } else if ((ts.isNewExpression(n) || ts.isCallExpression(n)) && n.expression.getText(sf) === "RegExp") {
+      const src = literalText(n.arguments?.[0]);
+      if (src != null) out.push({ text: `RegExp(${JSON.stringify(src)})`, re: compile(src, literalText(n.arguments?.[1]) ?? "") });
+    }
+    ts.forEachChild(n, visit);
+  };
+  visit(sf);
+  return out;
+}
+
+/**
+ * Neutral text of every shape the samples have (latin words, snake, camel, upper snake, CJK). A pattern that matches
+ * one of these is GENERIC (`/\\s+/`, `/[^a-z0-9]+/gi`, `/\\w+/`), not a house word list, whatever else it matches.
+ */
+const NEUTRAL_SAMPLES = ["hello world", "hello-worlds", "hello_world", "HelloWorld", "HELLO_WORLD", "你好世界", "hi_0123456789abcdef01234567"];
+/** A declared regex is a VOCABULARY pattern when a match on a sample is itself a house hit and it finds no neutral text. */
+const findsSample = (re: RegExp, samples: readonly string[]) => {
+  const g = () => new RegExp(re.source, re.flags.includes("g") ? re.flags : `${re.flags}g`);
+  if (NEUTRAL_SAMPLES.some((s) => [...s.matchAll(g())].some((m) => m[0].length > 0))) return false;
+  return samples.some((s) => [...s.matchAll(g())].some((m) => m[0].length > 0 && houseHits(m[0]).length > 0));
+};
+const ALL_SAMPLES = [...HOUSE_WORD_SAMPLES, ...HOUSE_IDENTIFIER_SAMPLES, ...HOUSE_ID_SAMPLES];
+const IMPORTS_VOCABULARY = /from\s*["'][./]*(?:lib\/)?house-bot-vocabulary\.mjs["']/;
+
+/** The single-source rule for one absence consumer: it imports the module and declares no vocabulary pattern of its own. */
+export function ownVocabulary(file: string, raw: string): { imports: boolean; own: string[] } {
+  const code = decomment(raw);
+  return { imports: IMPORTS_VOCABULARY.test(code), own: declaredRegexes(file, code).filter((d) => d.re && findsSample(d.re, ALL_SAMPLES)).map((d) => d.text) };
+}
+/** The subset rule for a deliberately broader list: it extends the shared words and declares no word list of its own. */
+export function broaderLists(file: string, raw: string): { extendsShared: number; ownWordLists: string[] } {
+  const code = decomment(raw);
+  return {
+    extendsShared: IMPORTS_VOCABULARY.test(code) ? (code.match(/\bextendHouseWords\s*\(/g) ?? []).length : 0,
+    ownWordLists: declaredRegexes(file, code).filter((d) => d.re && findsSample(d.re, HOUSE_WORD_SAMPLES)).map((d) => d.text),
+  };
+}
+
+/** The five absence consumers of ruling 175 that exist at this commit (the service-layer sweep lands in §11 of this file). */
+export const VOCABULARY_CONSUMERS = [
+  "scripts/house-bot-disclosure.test.mts",
+  "scripts/verify-house-bot-bundle.mjs",
+  "scripts/house-bot-holder-view-shots.mts",
+  "scripts/lib/house-bot-reports-cases.mts",
+] as const;
+/** The deliberately broader lists that import the shared words and extend them, with the extensions each must make. */
+export const BROADER_LISTS: ReadonlyArray<readonly [file: string, extensions: number]> = [
+  ["scripts/lib/house-bot-money-cases.mts", 2],
+  ["scripts/house-bot-seam.test.mts", 2],
+];
+
+if (STORE === "memory") {
+  section("§0 · ruling 175 · one absence vocabulary: every consumer imports it, none declares its own, broader lists extend it");
+  await guard("0.175", () => {
+    for (const file of VOCABULARY_CONSUMERS) {
+      const r = ownVocabulary(file, read(file));
+      ok(`0.175.${file.split("/").pop()} · imports the vocabulary module and declares no word, identifier or id pattern of its own`, r.imports && r.own.length === 0, j(r));
+    }
+    for (const [file, n] of BROADER_LISTS) {
+      const r = broaderLists(file, read(file));
+      ok(`0.175.subset.${file.split("/").pop()} · its broader notice words extend the shared words (${n} sites) and it keeps no word list of its own`, r.extendsShared >= n && r.ownWordLists.length === 0, j(r));
+    }
+    const everyShared = HOUSE_WORD_SAMPLES.filter((s) => !extendHouseWords(["house", "50pick"]).test(s));
+    ok("0.175.subset.module · an extended list still finds every shared word sample (the shared words are a subset by construction)", everyShared.length === 0, j(everyShared));
+
+    // ⛔ CONTROLS
+    const disclosure = read("scripts/house-bot-disclosure.test.mts");
+    const plantedLiteral = ownVocabulary("scripts/house-bot-disclosure.test.mts", `${disclosure}\nconst MINE = /liquidity|ukwasi|house[ -]?bots?/gi;\n`);
+    ok("0.175.c1 · CONTROL · a consumer that re-declares its own word regex (a literal) is reported", plantedLiteral.own.length === 1, j(plantedLiteral.own));
+    const plantedCtor = ownVocabulary("scripts/verify-house-bot-bundle.mjs", `${read("scripts/verify-house-bot-bundle.mjs")}\nconst ids = new RegExp(String.raw\`\\bhb[iethp]?_[0-9a-f]{24}\\b\`, "g");\n`);
+    ok("0.175.c2 · CONTROL · a consumer that builds its own id pattern with new RegExp(String.raw…) is reported", plantedCtor.own.length === 1, j(plantedCtor.own));
+    const noImport = ownVocabulary("scripts/house-bot-holder-view-shots.mts", read("scripts/house-bot-holder-view-shots.mts").replace(/import \{ houseHits \} from "\.\/lib\/house-bot-vocabulary\.mjs";/, ""));
+    ok("0.175.c3 · CONTROL · a consumer that stops importing the module is reported", noImport.imports === false, j(noImport));
+    const benign = ownVocabulary("scripts/x.mjs", `import { houseHits } from "./lib/house-bot-vocabulary.mjs";\nconst a = /\\s+/g; const b = new RegExp(f.source, f.flags); const c = /\\.(js|css)$/; const d = /\\/admin\\/house\\b/; const e2 = /[^a-z0-9]+/gi;\n// const e = /liquidity/;\nconst s = "const W = /liquidity/gi;";\n`);
+    ok("0.175.c4 · CONTROL · whitespace, slug and path regexes, a variable-built RegExp, /admin/house, a commented regex and a regex inside a STRING are not reported",
+      benign.imports && benign.own.length === 0, j(benign));
+    const money = read("scripts/lib/house-bot-money-cases.mts");
+    const plantedMoney = broaderLists("scripts/lib/house-bot-money-cases.mts", money.replace('extendHouseWords(["house", "50pick"])', "/liquidity|ukwasi|house|50pick/i"));
+    ok("0.175.c5 · CONTROL · a broader list rewritten as its own word regex is reported and loses an extension site", plantedMoney.ownWordLists.length === 1 && plantedMoney.extendsShared === 1, j(plantedMoney));
+    const codeScan = broaderLists("scripts/x.mts", `import { extendHouseWords } from "./house-bot-vocabulary.mjs";\nconst id = /houseBotId/; extendHouseWords(["house"]);\n`);
+    ok("0.175.c6 · CONTROL · a code-scanning identifier regex (/houseBotId/) in a broader-list file is not a word list", codeScan.ownWordLists.length === 0 && codeScan.extendsShared === 1, j(codeScan));
   });
 }
 

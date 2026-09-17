@@ -5,6 +5,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { loadWorld, HOLDER_HASH, OFFICER } from "./house-bot-world.mts";
 import { EXIT_WINDOW_GRID, exitGridCase } from "./house-bot-exit-grid.mts";
+// Ruling 175 · this suite's notice words are deliberately BROADER than the shared absence words (bare house, nyumba, 50pick).
+import { extendHouseWords } from "./house-bot-vocabulary.mjs";
 
 type Any = any;
 const STORE = process.env.HB_MONEY_STORE ?? "unknown";
@@ -71,7 +73,7 @@ section("§1 · a house stake places once, marked on every row");
   ok("1.12 · cashOutPosition refuses with the closed exit window's reason and code", sell.ok === false && sell.reason === "exit_window_closed" && sell.code === "SELECTION_CLOSED", show(sell));
   ok("1.12b · …in the exit window's own words, byte for byte, with no house word",
     sell.ok === false && sell.error === "The sell-out window for this bet has closed — it now rides to settlement. · Muda wa kuuza dau hili umefungwa — litaenda hadi malipo."
-      && !/liquidity|ukwasi|house|50pick/i.test(sell.error), sell.ok === false ? sell.error : "ok");
+      && !extendHouseWords(["house", "50pick"]).test(sell.error), sell.ok === false ? sell.error : "ok");
   ok("1.13 · …and the position stays OPEN", (await w.mdal.positionStore.get(pos.id)).status === "OPEN");
 
   // ⭐ 1.13b–1.13d · THE REFUSAL MUST BE THE MARKER'S, NOT THE WINDOW'S. On the fixture above the exit window has
@@ -411,7 +413,7 @@ section("§6 · (b) a reused key refuses instead of replaying another account's 
 section("§8 · no house wording on outcome notices, in any language");
 {
   /** Every house word a notice must not carry, in the three locales (the vocabulary the bundle scan uses). */
-  const HOUSE_WORDS = /liquidity|ukwasi|流动性|house|nyumba|\bboti\b|机器人|50pick/i;
+  const HOUSE_WORDS = extendHouseWords(["house", "nyumba", String.raw`\bboti\b`, "机器人", "50pick"]);
   /** The fixture market's own titles are operator data, not house wording — they are taken out before the test. */
   const FIXTURE_TITLES = ["House seam poll", "Soko la jaribio"];
   const ours = (v: unknown) => FIXTURE_TITLES.reduce((acc, t) => acc.split(t).join(""), String(v ?? ""));
