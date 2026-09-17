@@ -860,6 +860,197 @@ if (STORE === "memory") {
   });
 }
 
+/* ═══ §0 · C5 step 4 · ruling 191 (TGT-38) and ruling 197 · no refusal reads a requester; the KYC house figures stay on the officer's server ═══ */
+
+/**
+ * The R9 / R2 requester tokens (ruling 191), as identifiers — never a pattern (the vocabulary pin, ruling 175). A service may
+ * carry them only as a payload value or the read that produces it; a page may not name the two viewer ones at all; a client
+ * control may name none.
+ */
+export const REQUESTER_TOKENS = ["houseStake", "houseStakes", "staffChosen", "requestedBy", "byRequester", "houseStakeForAudit", "houseStakeByMarket"] as const;
+export const PAGE_FORBIDDEN_TOKENS = ["requestedBy", "byRequester"] as const;
+/** (1) the services and actions that decide a market (ruling 191's list, measured at this commit). */
+export const TGT38_SERVICES = [
+  "src/lib/server/market-service.ts", "src/lib/server/objections-service.ts", "src/lib/server/updown-service.ts",
+  "src/app/admin/resolver-queue/bulk-resolve-action.ts", "src/lib/server/bulk-resolve-eligibility.ts", "src/lib/server/resolution-policy.ts",
+  "src/app/markets/actions.ts", "src/app/admin/objections/actions.ts", "src/app/admin/updown/actions.ts", "src/app/admin/ai-polls/actions.ts",
+] as const;
+/** (2) the pages an officer decides from. */
+export const TGT38_PAGES = [
+  "src/app/admin/resolver-queue/page.tsx", "src/app/admin/resolver/[id]/page.tsx", "src/app/admin/markets/page.tsx",
+  "src/app/admin/markets/[id]/page.tsx", "src/app/admin/objections/page.tsx", "src/app/admin/updown/rounds/page.tsx",
+] as const;
+/** (3) the four client controls and the ceremony. */
+export const TGT38_CONTROLS = [
+  "src/app/admin/markets/emergency-void-control.tsx", "src/app/admin/objections/objection-decision.tsx", "src/app/admin/updown/rounds/void-round-control.tsx",
+  "src/app/admin/resolver-queue/bulk-resolve-bar.tsx", "src/app/admin/resolver/[id]/resolution-ceremony.tsx",
+] as const;
+
+/** Every identifier-shaped word of a decommented text (strings included: a page that spells a token in a string names it). */
+const wordsOf = (code: string): Set<string> => new Set(code.split(/[^A-Za-z0-9_$]+/).filter(Boolean));
+
+/**
+ * TGT-38 over one service or action (ruling 191 (1)). A requester value is a token, or a variable bound from an expression
+ * that reads one OUTSIDE a nested function (a `withLock` result whose callback reads the stake is not one — its callback
+ * returns the decision, not the stake). Reported: a token or such a variable in an if / while / do / for / switch / ternary
+ * condition or an `&&` / `||` operand, and in a `return` or on a line that answers `ok: false`.
+ */
+export function requesterRefusalProblems(file: string, code: string): string[] {
+  const sf = parse(file, code);
+  const tracked = new Set<string>(REQUESTER_TOKENS);
+  const idsIn = (node: ts.Node, intoFunctions: boolean): string[] => {
+    const out: string[] = [];
+    const go = (m: ts.Node) => {
+      if (!intoFunctions && m !== node && ts.isFunctionLike(m)) return;
+      if (ts.isIdentifier(m)) out.push(m.text);
+      else if (ts.isStringLiteral(m) || ts.isNoSubstitutionTemplateLiteral(m)) out.push(m.text);
+      ts.forEachChild(m, go);
+    };
+    go(node);
+    return out;
+  };
+  const bindNames = (name: ts.BindingName): string[] => (ts.isIdentifier(name) ? [name.text]
+    : name.elements.flatMap((e) => (ts.isBindingElement(e) ? bindNames(e.name) : [])));
+  for (let grew = true; grew;) {
+    grew = false;
+    walkTree(sf, (n) => {
+      let names: string[] = [];
+      let from: ts.Node | null = null;
+      if (ts.isVariableDeclaration(n) && n.initializer) { names = bindNames(n.name); from = n.initializer; }
+      else if (ts.isBinaryExpression(n) && n.operatorToken.kind === ts.SyntaxKind.EqualsToken && ts.isIdentifier(n.left)) { names = [n.left.text]; from = n.right; }
+      if (!from || !idsIn(from, false).some((t) => tracked.has(t))) return;
+      for (const name of names) if (!tracked.has(name)) { tracked.add(name); grew = true; }
+    });
+  }
+  const reads = (node: ts.Node | undefined) => !!node && idsIn(node, true).some((t) => tracked.has(t));
+  const problems: string[] = [];
+  const say = (what: string, node: ts.Node) => problems.push(`${file}:${sf.getLineAndCharacterOfPosition(node.getStart(sf)).line + 1}: ${what} ${node.getText(sf).replace(/\s+/g, " ").slice(0, 90)}`);
+  walkTree(sf, (n) => {
+    if ((ts.isIfStatement(n) || ts.isWhileStatement(n) || ts.isDoStatement(n)) && reads(n.expression)) say("a condition reads a requester value:", n.expression);
+    else if (ts.isForStatement(n) && reads(n.condition)) say("a loop condition reads a requester value:", n.condition!);
+    else if (ts.isSwitchStatement(n) && reads(n.expression)) say("a switch reads a requester value:", n.expression);
+    else if (ts.isConditionalExpression(n) && reads(n.condition)) say("a ternary reads a requester value:", n.condition);
+    else if (ts.isBinaryExpression(n) && [ts.SyntaxKind.AmpersandAmpersandToken, ts.SyntaxKind.BarBarToken].includes(n.operatorToken.kind) && (reads(n.left) || reads(n.right))) say("an && / || operand reads a requester value:", n);
+    else if (ts.isReturnStatement(n) && n.expression && /\bok\s*:\s*false\b/.test(n.expression.getText(sf)) && reads(n.expression)) say("a refusal returns a requester value:", n);
+  });
+  code.split("\n").forEach((line, k) => {
+    if (/\bok\s*:\s*false\b/.test(line) && [...wordsOf(line)].some((t) => tracked.has(t))) problems.push(`${file}:${k + 1}: a line that answers ok: false names a requester value`);
+  });
+  return [...new Set(problems)];
+}
+
+/** Ruling 191 (2) and (3): the words a page or a client control names. */
+export function requesterNamingProblems(file: string, code: string, forbidden: readonly string[]): string[] {
+  const words = wordsOf(code);
+  return forbidden.filter((t) => words.has(t)).map((t) => `${file} names ${t}`);
+}
+
+/** Ruling 197 · the two KYC house figures, as identifiers. */
+export const KYC_HOUSE_FIELDS = ["houseBetCount", "houseStakedTzs"] as const;
+export const KYC_RISK_MODULE = "src/lib/server/kyc-risk.ts";
+export const KYC_CASE_PAGE = "src/app/admin/kyc/[id]/page.tsx";
+const isClientModule = (code: string) => /^\s*["']use client["']/.test(code);
+
+/**
+ * Ruling 197's field-reader pin over `{rel, code}` files (decommented): `houseBetCount` / `houseStakedTzs` are named only in
+ * `kyc-risk.ts` and in SERVER modules under `src/app/admin/`, and the KYC case page never hands `moneyFacts` whole (an
+ * attribute or a spread) to a component imported from a `"use client"` module.
+ */
+export function kycHouseFieldProblems(files: Array<{ rel: string; code: string }>): string[] {
+  const problems: string[] = [];
+  const byRel = new Map(files.map((f) => [f.rel, f.code]));
+  for (const { rel, code } of files) {
+    const words = wordsOf(code);
+    if (!KYC_HOUSE_FIELDS.some((f) => words.has(f))) continue;
+    if (rel === KYC_RISK_MODULE) continue;
+    if (!rel.startsWith("src/app/admin/")) problems.push(`${rel} reads a KYC house figure outside the officer's console`);
+    else if (isClientModule(code)) problems.push(`${rel} is a client module and reads a KYC house figure`);
+  }
+  const page = byRel.get(KYC_CASE_PAGE);
+  if (page != null) {
+    const sf = parse(KYC_CASE_PAGE, page);
+    const imported = new Map<string, string>();
+    walkTree(sf, (n) => {
+      if (!ts.isImportDeclaration(n) || !ts.isStringLiteral(n.moduleSpecifier)) return;
+      const clause = n.importClause;
+      const names = [...(clause?.name ? [clause.name.text] : []),
+        ...(clause?.namedBindings && ts.isNamedImports(clause.namedBindings) ? clause.namedBindings.elements.map((e) => e.name.text) : [])];
+      for (const name of names) imported.set(name, resolveSpec(KYC_CASE_PAGE, n.moduleSpecifier.text));
+    });
+    const clientTarget = (tag: string) => {
+      const target = imported.get(tag.split(".")[0]);
+      if (!target) return false;
+      const code = byRel.get(`${target}.tsx`) ?? byRel.get(`${target}.ts`) ?? byRel.get(`${target}/index.tsx`) ?? null;
+      return code != null && isClientModule(code);
+    };
+    walkTree(sf, (n) => {
+      const element = ts.isJsxAttribute(n) || ts.isJsxSpreadAttribute(n) ? n.parent?.parent : null;
+      if (!element || !(ts.isJsxOpeningElement(element) || ts.isJsxSelfClosingElement(element))) return;
+      const whole = ts.isJsxSpreadAttribute(n) ? n.expression
+        : n.initializer && ts.isJsxExpression(n.initializer) ? n.initializer.expression : undefined;
+      if (whole && ts.isIdentifier(whole) && whole.text === "moneyFacts" && clientTarget(element.tagName.getText(sf))) {
+        problems.push(`${KYC_CASE_PAGE} passes moneyFacts whole to the client component ${element.tagName.getText(sf)}`);
+      }
+    });
+  }
+  return problems;
+}
+
+if (STORE === "memory") {
+  section("§0 · C5 step 4 · ruling 191 (TGT-38: no refusal, page condition or client control reads a requester) and ruling 197 (the KYC house figures' readers)");
+  await guard("0.step4", async () => {
+    const files = srcFiles().map((rel) => ({ rel, code: decomment(read(rel)) }));
+    const codeOf = (rel: string) => files.find((f) => f.rel === rel)?.code ?? null;
+    const missing = [...TGT38_SERVICES, ...TGT38_PAGES, ...TGT38_CONTROLS].filter((rel) => codeOf(rel) == null);
+    const writers = ["src/lib/server/market-service.ts", "src/lib/server/objections-service.ts", "src/app/admin/resolver-queue/bulk-resolve-action.ts"]
+      .map((rel) => (codeOf(rel) ?? "").split("houseStakeForAudit(").length - 1);
+    ok("0.191.0 · the population is real: all 21 files are read, and the pin sees R9's readers in the writers (market-service 2, objections-service 2, the bulk action 1)",
+      missing.length === 0 && j(writers) === j([2, 2, 1]), j({ missing, writers }));
+    const services = TGT38_SERVICES.flatMap((rel) => requesterRefusalProblems(rel, codeOf(rel) ?? ""));
+    ok("0.191.1 · ⛔ TGT-38 · no service or action reads houseStake, staffChosen, requestedBy or their readers in a condition or a refusal", services.length === 0, services.join(" · "));
+    const pages = TGT38_PAGES.flatMap((rel) => requesterNamingProblems(rel, codeOf(rel) ?? "", PAGE_FORBIDDEN_TOKENS));
+    ok("0.191.2 · ⛔ no decision page names requestedBy or byRequester (the viewer comparison lives only in exposure-copy.ts)", pages.length === 0, pages.join(" · "));
+    const controls = TGT38_CONTROLS.flatMap((rel) => requesterNamingProblems(rel, codeOf(rel) ?? "", REQUESTER_TOKENS));
+    ok("0.191.3 · ⛔ the four client controls and the ceremony name none of the requester tokens", controls.length === 0, controls.join(" · "));
+
+    const objections = (codeOf("src/lib/server/objections-service.ts") ?? "").split("\r\n").join("\n");
+    const plantedService = objections.replace("  await db.objection.update(objectionId, {\n    status: \"REJECTED\",",
+      "  const snap = await houseStakeForAudit(o.marketId);\n  const chose = snap?.staffChosen.requestedBy.includes(officerId);\n  if (chose) return { ok: false, error: \"You chose a stake on this market.\", code: \"CONFLICT\" };\n  await db.objection.update(objectionId, {\n    status: \"REJECTED\",");
+    const plantedDirect = "export async function seal(me: string) {\n  const view = await houseStakeByMarket([id]);\n  return view.get(id)!.staffChosen.requestedBy.includes(me) ? { ok: false, code: \"CONFLICT\" } : { ok: true };\n}";
+    const queuePage = codeOf("src/app/admin/resolver-queue/page.tsx") ?? "";
+    const plantedPage = `${queuePage}\nexport function Gate({ view, session, canResolve }: Any) {\n  const chosenByMe = view.staffChosen.requestedBy.includes(session.userId);\n  return canResolve && !chosenByMe ? null : null;\n}`;
+    const plantedControl = `${codeOf("src/app/admin/markets/emergency-void-control.tsx") ?? ""}\nexport function Line({ houseStake }: { houseStake: number }) { return houseStake; }`;
+    ok("0.191.c1 · CONTROL · a planted refusal branch in rejectObjection reading requestedBy is reported, and so is a refusing ternary on the reader",
+      plantedService !== objections && requesterRefusalProblems("src/lib/server/objections-service.ts", plantedService).length >= 2
+        && requesterRefusalProblems("src/planted.ts", plantedDirect).length >= 1, j(requesterRefusalProblems("src/lib/server/objections-service.ts", plantedService)));
+    ok("0.191.c2 · CONTROL · a planted `canResolve && !chosenByMe` in the queue page (chosenByMe read from requestedBy) is reported, and a client control naming houseStake is",
+      requesterNamingProblems("src/app/admin/resolver-queue/page.tsx", plantedPage, PAGE_FORBIDDEN_TOKENS).length === 1
+        && requesterNamingProblems("src/app/admin/markets/emergency-void-control.tsx", plantedControl, REQUESTER_TOKENS).length === 1);
+    const benign = "export async function voidIt(m: Any) {\n  const result = await withLock(key, async () => {\n    const houseStake = await houseStakeForAudit(m.id, \"market.emergency_void\");\n    audit({ action: \"x\", payload: { reason, houseStake } });\n    return { ok: true as const };\n  });\n  if (!result.ok) return { ok: false, error: \"no\" };\n  return result;\n}";
+    ok("0.191.c3 · CONTROL · a payload value read inside a lock whose result a refusal then checks is NOT reported, nor are the words in a comment",
+      requesterRefusalProblems("src/planted.ts", benign).length === 0
+        && requesterRefusalProblems("src/planted.ts", decomment(`${benign}\n// if (houseStake.staffChosen.requestedBy.includes(me)) return { ok: false };`)).length === 0,
+      j(requesterRefusalProblems("src/planted.ts", benign)));
+
+    const kyc = kycHouseFieldProblems(files);
+    const risk = codeOf(KYC_RISK_MODULE) ?? "";
+    const pageCode = codeOf(KYC_CASE_PAGE) ?? "";
+    ok("0.197.0 · the population is real: kyc-risk.ts declares and counts both house figures, and the KYC case page is read",
+      KYC_HOUSE_FIELDS.every((f) => risk.split(f).length - 1 >= 3) && pageCode.includes("kycMoneyFacts(txns)"), j(KYC_HOUSE_FIELDS.map((f) => risk.split(f).length - 1)));
+    ok("0.197.1 · ⛔ houseBetCount / houseStakedTzs are read only in kyc-risk.ts and server modules under src/app/admin/, and the case page never passes moneyFacts whole to a client component",
+      kyc.length === 0, kyc.join(" · "));
+    const plantedPlayer = [...files, { rel: "src/app/wallet/house-line.tsx", code: "export function L({ facts }: Any) { return facts.houseBetCount; }" }];
+    const plantedClient = [...files, { rel: "src/app/admin/kyc/[id]/house-chip.tsx", code: "\"use client\";\nexport function C({ f }: Any) { return f.houseStakedTzs; }" }];
+    const railLine = "<KycDecisionRail";
+    const plantedPass = files.map((f) => (f.rel === KYC_CASE_PAGE ? { rel: f.rel, code: f.code.replace(railLine, `${railLine} moneyFacts={moneyFacts}`) } : f));
+    const benignRead = files.map((f) => (f.rel === KYC_CASE_PAGE ? { rel: f.rel, code: `${f.code}\nexport function HouseLine({ moneyFacts }: Any) { return <span>{moneyFacts.houseBetCount}</span>; }` } : f));
+    ok("0.197.c1 · CONTROL · a planted player-side reader, a planted client reader under admin, and moneyFacts passed whole to KycDecisionRail are each reported; the server page reading the field is not",
+      kycHouseFieldProblems(plantedPlayer).length === 1 && kycHouseFieldProblems(plantedClient).length === 1
+        && pageCode.includes(railLine) && kycHouseFieldProblems(plantedPass).length === 1 && kycHouseFieldProblems(benignRead).length === 0,
+      j({ player: kycHouseFieldProblems(plantedPlayer), client: kycHouseFieldProblems(plantedClient), pass: kycHouseFieldProblems(plantedPass), benign: kycHouseFieldProblems(benignRead) }));
+  });
+}
+
 /* ═══ §3 · ruling 170 · an OFFICER's own "Export my data" and feed name nothing about house bots (both stores) ═══════ */
 // An officer is a player of their own account too, and the DSAR queue writes their actions with THEM as actor: the
 // fulfilled erasure spreads the routine's counts (`houseBots`, `houseBotNotificationsRedacted`, always present, 0 for an
@@ -1828,6 +2019,726 @@ await guard("1.177", async () => {
       open.total === 4 && j(fromOnly.entries.map((e: Any) => e.targetId)) === j(["w3", "w2"]) && j(toOnly.entries.map((e: Any) => e.targetId)) === j(["w0"]), j({ open: open.total, fromOnly: fromOnly.total, toOnly: toOnly.total }));
     void r0;
   }
+});
+
+/* ═══ §3 · C5 step 4 · rulings 170, 178, 187–190 · R9: the house stake every money decision records (both stores) ═══════ */
+// ⭐ WHAT IS REAL AND WHAT STANDS IN. Every stake below is claimed and placed through the real seam, every decision is the
+// product's own service call (resolveMarket, emergencyVoidMarket, rejectObjection, upholdObjection, holdSettlementAsOfficer,
+// adminReopenMarket, resolveDueMarket, voidRoundByOperator) and every audit row is read back from the chain. The one place a
+// stand-in is unavoidable is the bulk action: it is a "use server" action whose session gate (`softRequireStaff`) and
+// `revalidatePath` need a Next.js request, which a case child has none of. Those two imports — and, for the abort case only, a
+// verdict that throws for ONE named market (a switch on globalThis, off otherwise) — are stood in FOR THAT ONE FILE through
+// Node's module hooks. Every store, lock, seal, audit and house read beneath the action is the product's.
+// ⭐ THE READ SPY. `houseBookStore.stakeRows` is wrapped for this section only: each call records the market ids, the `tx` it
+// was handed (never one, ruling 179) and the statuses of those markets' positions AS THE CALLER'S OWN TRANSACTION SEES THEM —
+// so an emergency void's read is proven to happen before its refunds on Postgres too, where a pool read cannot tell.
+const R34: Any = { ready: false };
+section("§3 · rulings 187–190 · R9: six payload sites in one shape, the Batch map, null on a failed read, oversight's requester, and the officer's own export (170)");
+await guard("3.R9", async () => {
+  const { loadWorld, OFFICER }: Any = await import("./house-bot-world.mts");
+  const w: Any = await loadWorld();
+  const msg = (e: unknown) => String((e as Error)?.message ?? e);
+  const EXP: Any = await import("../../src/lib/server/house-bot/exposure.ts");
+  const OV: Any = await import("../../src/lib/server/house-bot/oversight.ts");
+  const OBJ: Any = await import("../../src/lib/server/objections-service.ts");
+  const AUD: Any = await import("../../src/lib/server/audit.ts");
+  const POL: Any = await import("../../src/lib/server/resolution-policy.ts");
+  const LOCKS: Any = await import("../../src/lib/server/locks.ts");
+  const { exportUserData }: Any = await import("../../src/lib/server/user-service.ts");
+  if (!(await w.db.user.findById(OFFICER))) await w.user({ id: OFFICER, role: "ADMIN" });
+  await w.limits();
+  await w.switchOn();
+  process.env.EMAIL_OUTBOX_CAPTURE = "1";
+  const sectionStart = Date.now();
+  const tag = `${process.pid}_${sectionStart % 1_000_000}`;
+  const G = globalThis as Any;
+
+  // ── people, bots, stakes ──
+  const staff = async (role: string, name: string) => {
+    const id = await w.user({ role });
+    await w.setUserFields(id, { email: `r9-${name}-${tag}@example.test` });
+    return id;
+  };
+  const A = await staff("ADMIN", "a"), B = await staff("ADMIN", "b"), C = await staff("ADMIN", "c"), MOD = await staff("MODERATOR", "m");
+  const show = (r: Any) => (r?.ok ? "ok" : `${r?.code ?? "?"}/${r?.error ?? r?.reason ?? "no-reason"}`);
+  const bet = async (marketId: string, side: "YES" | "NO", stake: number, age = 10_000) => {
+    const player = await w.user({ balance: 2_000_000 });
+    const r = await w.svc.buyPosition(player, { marketId, side, stake, idempotencyKey: crypto.randomUUID() });
+    if (!r.ok) throw new Error(`fixture player bet refused: ${show(r)}`);
+    if (age > 0) await w.backdate(r.data.positionId, age);
+    return { player, positionId: r.data.positionId as string };
+  };
+  // One bot per market (a second bot on a market is refused, OTHER_BOT); the bots take turns across markets, so no bot
+  // reaches its staff-chosen daily cap.
+  const bots = [await w.bot(), await w.bot(), await w.bot(), await w.bot()];
+  const botOf = new Map<string, Any>();
+  let turn = 0;
+  const botFor = (marketId: string) => {
+    if (!botOf.has(marketId)) botOf.set(marketId, bots[turn++ % bots.length]);
+    return botOf.get(marketId);
+  };
+  const house = async (marketId: string, o: Any, b: Any = botFor(marketId)) => {
+    await w.ageHouseMinute();
+    const intent = await w.intent(b, marketId, o);
+    const r = await w.place(b, intent);
+    if (!r.ok) throw new Error(`fixture house stake refused (${o.kind}): ${show(r)}`);
+    // Oversight's fold counts a stake finished STRICTLY before a decision's audit instant (ruling 178), and the audit is
+    // stamped on this process's clock: wait until that clock has passed the stake's own finish, never a guessed delay.
+    const finishedAt = (await w.dal.houseBotIntentStore.get(intent.id))?.finishedAt;
+    const at = finishedAt ? Date.parse(finishedAt) : Date.now();
+    while (Date.now() <= at) await new Promise((resolve) => setImmediate(resolve));
+    return { intent, positionId: r.data.positionId as string, bot: b };
+  };
+  const manualA = async (marketId: string) => {
+    await bet(marketId, "YES", 20_000);
+    return house(marketId, { kind: "MANUAL", entryCondition: "THIN", requestedById: A, anchorKey: w.constants.manualAnchorKey(A, crypto.randomUUID()), side: "NO", stakeTzs: 9_000 });
+  };
+  const reactionB = async (marketId: string) => {
+    const trigger = await bet(marketId, "NO", 10_000);
+    const b = botFor(marketId);
+    const t = await w.dal.targetStore.insert({
+      id: w.dal.newHouseId("target"), houseBotId: b.botId, marketId, delayMinSec: 10, delayMaxSec: 10, timingFrom: "STAKE", reactTo: "EVERY",
+      createdById: B, snapshot: { titleEn: "House seam poll", category: "macro", cutoff: w.iso(3_600_000), rawYes: 0, rawNo: 0 },
+    });
+    const placed = await house(marketId, { kind: "COUNTER", triggerPositionId: trigger.positionId, triggerUserId: trigger.player, targetId: t.id, decision: { reactTo: "EVERY" }, side: "YES", stakeTzs: 6_000 }, b);
+    return { ...placed, trigger };
+  };
+  const poll = async () => w.poll({ graceMin: 0 });
+  const shape = (yes: number, no: number, scYes: number, scNo: number, by: string[]) => ({ yes, no, staffChosen: { yes: scYes, no: scNo, requestedBy: [...by].sort() } });
+  const ZERO = shape(0, 0, 0, 0, []);
+  const S_A = shape(0, 9_000, 0, 9_000, [A]);
+  const S_B = shape(6_000, 0, 6_000, 0, [B]);
+  // ⚠️ "Both on one market" is A's Enter now and B's reaction on the SAME side: the seam refuses a second bot on a market
+  // (OTHER_BOT) and one bot on both sides of it (OPPOSITE_SIDE), so A's NO beside B's YES cannot be placed (C5 step 4).
+  const S_AB = shape(15_000, 0, 15_000, 0, [A, B]);
+
+  // ── the read spy ──
+  const book = w.dal.houseBookStore;
+  const realStakeRows = book.stakeRows;
+  const reads: Array<{ ids: string[]; tx: unknown; statuses: string[] }> = [];
+  book.stakeRows = async function spiedStakeRows(ids: string[], tx?: unknown) {
+    let statuses: string[] = [];
+    try {
+      if (w.onPostgres) {
+        const client: Any = LOCKS.currentLockTx() ?? w.prisma();
+        statuses = ((await client.$queryRawUnsafe(`SELECT "status"::text AS "s" FROM "Position" WHERE "marketId" = ANY($1::text[]) ORDER BY "id"`, ids)) as Any[]).map((r) => r.s);
+      } else {
+        for (const id of ids) for (const p of await w.mdal.positionStore.listForMarket(id)) statuses.push(p.status);
+      }
+    } catch (e) { statuses = [`status read failed: ${msg(e)}`]; }
+    reads.push({ ids: [...ids], tx, statuses });
+    return realStakeRows.call(this, ids, tx);
+  };
+  const readsDuring = async (fn: () => Promise<Any>) => { const from = reads.length; const out = await fn(); return { out, reads: reads.slice(from) }; };
+
+  // ── the bulk action, with its request-scope imports stood in (see the header) ──
+  const nodeModule: Any = await import("node:module");
+  const { pathToFileURL, fileURLToPath: fromFileUrl }: Any = await import("node:url");
+  const requireHere = nodeModule.createRequire(join(ROOT, "package.json"));
+  const BULK_KEY = { officer: Symbol.for("50pick.cases.bulkOfficer"), abortOn: Symbol.for("50pick.cases.bulkAbortOn") };
+  const standIn = (name: string, exportsObject: unknown): string => {
+    const filename = fromFileUrl(pathToFileURL(join(ROOT, "scripts", "lib", "case-stand-ins", name)).href);
+    const mod = new nodeModule.default(filename);
+    Object.assign(mod, { filename, loaded: true, exports: exportsObject });
+    requireHere.cache[filename] = mod;
+    return pathToFileURL(filename).href;
+  };
+  const realVerdict: Any = requireHere(join(ROOT, "src", "lib", "server", "bulk-resolve-eligibility.ts"));
+  const REDIRECT: Record<string, string> = {
+    "next/cache": standIn("next-cache.cjs", { revalidatePath() { /* no request, nothing to revalidate */ } }),
+    "@/lib/server/rbac-guard": standIn("rbac-guard.cjs", {
+      async softRequireStaff() { const id = G[BULK_KEY.officer]; return id ? { ok: true, userId: id, sessionId: "case" } : { ok: false, error: "no case officer" }; },
+    }),
+    "@/lib/server/bulk-resolve-eligibility": standIn("bulk-resolve-eligibility.cjs", {
+      ...realVerdict,
+      bulkVerdictFor(args: Any) {
+        if (G[BULK_KEY.abortOn] != null && args.market.id === G[BULK_KEY.abortOn]) throw new Error("case abort: the batch stops at this market");
+        return realVerdict.bulkVerdictFor(args);
+      },
+    }),
+  };
+  const ACTION_FILE = "/src/app/admin/resolver-queue/bulk-resolve-action.ts";
+  const hooks = nodeModule.registerHooks({
+    resolve(specifier: string, context: Any, nextResolve: Any) {
+      if (String(context?.parentURL ?? "").endsWith(ACTION_FILE) && REDIRECT[specifier]) return { url: REDIRECT[specifier], shortCircuit: true };
+      return nextResolve(specifier, context);
+    },
+  });
+  const BULK: Any = await import("../../src/app/admin/resolver-queue/bulk-resolve-action.ts");
+  const bulk = async (by: string, ids: string[], overrides: Record<string, string> = {}) => {
+    const fd = new FormData();
+    for (const id of ids) fd.append("marketIds", id);
+    for (const [id, reason] of Object.entries(overrides)) fd.append(`override:${id}`, reason);
+    G[BULK_KEY.officer] = by;
+    try { return await BULK.bulkResolveMarketsAction(fd); } finally { G[BULK_KEY.officer] = null; }
+  };
+  const closeWithRead = (marketId: string, confidence: number) => w.mdal.marketStore.stamp(marketId, {
+    status: "CLOSED", sentinelOutcome: "YES", sentinelConfidence: confidence, sentinelEvidence: "The official bulletin confirms the YES outcome today.",
+    sentinelSourceUrl: "https://bot.go.tz/bulletin", sentinelDetermined: true, sentinelClosedAt: new Date().toISOString(),
+  });
+  const OVERRIDE = "Checked the bulletin by hand; the outcome is confirmed.";
+
+  // ── readers ──
+  const ringRows = async (targetType: string, targetId: string, action: string): Promise<Any[]> => {
+    await AUD.auditFlush();
+    return (AUD.getAuditForTarget(targetType, targetId, 500) as Any[]).filter((e) => e.action === action);
+  };
+  const durableRows = async (targetType: string, targetId: string, action: string): Promise<Any[]> =>
+    ((await AUD.getAuditForTargetDurable(targetType, targetId, { limit: 500 })).entries as Any[]).filter((e) => e.action === action);
+  const sortKeys = (v: unknown): unknown => (Array.isArray(v) ? v.map(sortKeys) : v && typeof v === "object"
+    ? Object.fromEntries(Object.keys(v as object).sort().map((k) => [k, sortKeys((v as Record<string, unknown>)[k])])) : v);
+  const canon = (v: unknown) => JSON.stringify(sortKeys(v));
+  const sinceIso = () => new Date(Date.now() - 30 * 86_400_000).toISOString();
+  const foldAt = async (marketId: string, createdAtIso: string): Promise<string[] | null> => {
+    const stakes = ((await w.dal.houseBotIntentStore.staffChosenPlacedSince({ sinceIso: sinceIso(), limit: 500 })) as Any[]).filter((s) => s.marketId === marketId);
+    const creatorOf = new Map<string, string | null>();
+    for (const s of stakes) if (s.targetId != null && !creatorOf.has(s.targetId)) creatorOf.set(s.targetId, (await w.dal.targetStore.get(s.targetId))?.createdById ?? null);
+    return typeof OV.requestedByBefore === "function" ? OV.requestedByBefore(stakes, createdAtIso, creatorOf) : null;
+  };
+  const TODAY_KEYS: Record<string, string[]> = {
+    "market.adjudicated": ["outcome", "resolutionAuth", "soloResolved", "yesPool", "noPool", "grossPool", "stage1By", "stage2By", "sourceUrl", "evidence", "objectionsClosedAt", "objectionWindowHours", "settlement"],
+    "market.emergency_void": ["reason", "refundedCount", "refundedTzs", "grossPoolBefore", "title"],
+    "objection.rejected": ["objectionId", "objectorId", "reason", "note", "effect"],
+    "objection.upheld": ["objectionId", "objectorId", "reason", "remedy", "previousOutcome", "newOutcome", "note", "objectionsClosedAt", "note2"],
+    "market.resolve.bulk_override": ["batchId", "reason", "blockedBy", "allBlockReasons", "outcome", "stage", "confidence", "threshold", "citedSourceUrl", "approvedSourceUrl", "sentinelEvidence", "yesPool", "noPool", "grossPool", "note"],
+  };
+  const R9_MARKET_ACTIONS = Object.keys(TODAY_KEYS);
+  const BATCH_KEYS = ["batchId", "requireTwoOfficer", "attempted", "selection", "overrides", "resolved", "staged", "alreadyApplied", "skipped", "failed", "note"];
+  const ABORT_KEYS = ["batchId", "aborted", "error", "attempted", "selection", "resolved", "staged", "alreadyApplied", "skipped", "note"];
+  const UNCHANGED_ACTIONS = ["market.resolve.stage1", "market.reopened", "market.autoresolved", "objection.closed_by_void", "objection.officer_hold", "updown.round.void_operator"];
+  /** One Market row's R9 facts: the ring row keeps today's keys in order with `houseStake` LAST and exactly the shape at both levels; the durable row carries the same value. */
+  const r9Row = async (marketId: string, action: string, pick: (e: Any) => boolean, want: Any) => {
+    const ring = (await ringRows("Market", marketId, action)).filter(pick);
+    const durable = (await durableRows("Market", marketId, action)).filter(pick);
+    const row = ring[0];
+    const keys = Object.keys(row?.payload ?? {});
+    const inner = row?.payload?.houseStake;
+    const exact = ring.length === 1 && durable.length === 1 && j(keys) === j([...TODAY_KEYS[action], "houseStake"]) && j(inner) === j(want)
+      && (want === null ? inner === null : j(Object.keys(inner ?? {})) === j(["yes", "no", "staffChosen"]) && j(Object.keys(inner?.staffChosen ?? {})) === j(["yes", "no", "requestedBy"]))
+      && "houseStake" in (durable[0]?.payload ?? {}) && canon(durable[0].payload.houseStake) === canon(want)
+      && canon(Object.keys(durable[0].payload).sort()) === canon([...TODAY_KEYS[action], "houseStake"].sort());
+    return { row, durable: durable[0], exact, detail: j({ ring: ring.length, durable: durable.length, keys, inner, durableStake: durable[0]?.payload?.houseStake }) };
+  };
+  try {
+    // ════ adjudicate (resolveMarket) ════
+    const mAB = await poll();
+    const pY = await bet(mAB.id, "NO", 20_000);
+    await house(mAB.id, { kind: "MANUAL", entryCondition: "THIN", requestedById: A, anchorKey: w.constants.manualAnchorKey(A, crypto.randomUUID()), side: "YES", stakeTzs: 9_000 });
+    const rAB = await reactionB(mAB.id);
+    const adjAB = await readsDuring(() => w.svc.resolveMarket({ marketId: mAB.id, outcome: "YES", officerId: A }));
+    const aAB = await r9Row(mAB.id, "market.adjudicated", () => true, S_AB);
+    ok("3.187.1 · ⭐ market.adjudicated on a market with A's YES 9,000 and a reaction on B's target YES 6,000: today's keys in order, houseStake LAST, exactly {yes, no, staffChosen: {yes, no, requestedBy}} = [A, B] sorted",
+      adjAB.out?.ok === true && aAB.exact, aAB.detail);
+    ok("3.178.1 · requestedBy equals oversight's own fold at the row's instant — the CHOOSER (A) decided it",
+      !!aAB.row && j(aAB.row.payload.houseStake?.staffChosen?.requestedBy) === j(await foldAt(mAB.id, aAB.row?.createdAt)) && aAB.row?.actorId === A && [A, B].includes(aAB.row?.actorId), j(aAB.row?.payload?.houseStake));
+    ok("3.188.1 · the adjudication read once, for its own market, on no transaction (the pool client)",
+      adjAB.reads.length === 1 && j(adjAB.reads[0].ids) === j([mAB.id]) && adjAB.reads[0].tx === undefined, j(adjAB.reads));
+
+    const mA = await poll();
+    const pA1 = await bet(mA.id, "YES", 5_000);
+    await manualA(mA.id);
+    const adjA = await w.svc.resolveMarket({ marketId: mA.id, outcome: "NO", officerId: C });
+    const aA = await r9Row(mA.id, "market.adjudicated", () => true, S_A);
+    ok("3.187.2 · A's NO 9,000 alone → requestedBy [A]; decided by C, who chose nothing", adjA?.ok === true && aA.exact, aA.detail);
+    ok("3.178.2 · …and requestedBy equals oversight's fold for a NON-chooser too (C is not in it)",
+      !!aA.row && j(aA.row.payload.houseStake?.staffChosen?.requestedBy) === j(await foldAt(mA.id, aA.row?.createdAt)) && aA.row?.actorId === C && !(aA.row?.payload?.houseStake?.staffChosen?.requestedBy ?? [C]).includes(C), j(aA.row?.payload));
+
+    const m0 = await poll();
+    await bet(m0.id, "YES", 5_000);
+    await bet(m0.id, "NO", 3_000);
+    const adj0 = await w.svc.resolveMarket({ marketId: m0.id, outcome: "YES", officerId: A });
+    const a0 = await r9Row(m0.id, "market.adjudicated", () => true, ZERO);
+    ok("3.187.3 · a market with no marked position records the ZERO shape — a read that found nothing, the key present", adj0?.ok === true && a0.exact, a0.detail);
+
+    // refusals and stage-1 make no read
+    const again = await readsDuring(() => w.svc.resolveMarket({ marketId: mAB.id, outcome: "YES", officerId: B }));
+    ok("3.188.2 · a REFUSED adjudication (already resolved) makes no read", again.out?.ok === false && again.reads.length === 0, j({ out: again.out, reads: again.reads }));
+    const st = await poll();
+    await manualA(st.id);
+    const stT = await poll();
+    await bet(stT.id, "YES", 20_000);
+    await bet(stT.id, "NO", 9_000);
+    await POL.setRequireTwoOfficerResolution(true, A);
+    let stage1: Any, sameOfficer: Any, stage1T: Any, countersigned: Any;
+    try {
+      stage1 = await readsDuring(() => w.svc.resolveMarket({ marketId: st.id, outcome: "YES", officerId: A }));
+      sameOfficer = await readsDuring(() => w.svc.resolveMarket({ marketId: st.id, outcome: "YES", officerId: A }));
+      stage1T = await w.svc.resolveMarket({ marketId: stT.id, outcome: "YES", officerId: A });
+      countersigned = await readsDuring(() => w.svc.resolveMarket({ marketId: st.id, outcome: "YES", officerId: B }));
+    } finally {
+      await POL.setRequireTwoOfficerResolution(false, A);
+    }
+    ok("3.188.3 · a two-admin STAGE-1 attestation makes no read, and the same officer's refused second call makes none either",
+      stage1.out?.ok === true && stage1.out.data?.stage === "stage1" && stage1.reads.length === 0 && sameOfficer.out?.ok === false && sameOfficer.reads.length === 0,
+      j({ stage1: stage1.out, s1reads: stage1.reads.length, same: sameOfficer.out, sameReads: sameOfficer.reads.length }));
+    const aSt = await r9Row(st.id, "market.adjudicated", () => true, S_A);
+    ok("3.188.4 · …the countersignature (B) reads once and records the shape", countersigned.out?.ok === true && countersigned.reads.length === 1 && aSt.exact, aSt.detail);
+
+    // ════ emergency void ════
+    const mB = await poll();
+    const rB = await reactionB(mB.id);
+    const refusedRole = await readsDuring(() => w.svc.emergencyVoidMarket({ marketId: mB.id, officerId: MOD, reason: "Moderators may not void" }));
+    const refusedShort = await readsDuring(() => w.svc.emergencyVoidMarket({ marketId: mB.id, officerId: C, reason: "no" }));
+    const REASON_B = `Source withdrawn ${tag} B`;
+    const voidB = await readsDuring(() => w.svc.emergencyVoidMarket({ marketId: mB.id, officerId: C, reason: REASON_B }));
+    const vB = await r9Row(mB.id, "market.emergency_void", () => true, S_B);
+    ok("3.187.4 · B's target reaction YES 6,000 → requestedBy [B] on market.emergency_void, today's keys in order and houseStake LAST", voidB.out?.ok === true && vB.exact, vB.detail);
+    ok("3.178.3 · …equal to oversight's fold, decided by a NON-chooser (C)",
+      !!vB.row && vB.row?.actorId === C && j(vB.row.payload.houseStake?.staffChosen?.requestedBy) === j(await foldAt(mB.id, vB.row?.createdAt)), j(vB.row?.payload));
+    ok("3.188.5 · ⭐ the void read its stake BEFORE the refunds: once, on no transaction, while its own transaction still saw every position OPEN; a refused void (a moderator, a two-letter reason) read nothing",
+      voidB.reads.length === 1 && voidB.reads[0].tx === undefined && voidB.reads[0].statuses.length === 2 && voidB.reads[0].statuses.every((s) => s === "OPEN")
+        && refusedRole.out?.ok === false && refusedRole.reads.length === 0 && refusedShort.out?.ok === false && refusedShort.reads.length === 0,
+      j({ reads: voidB.reads, refusedRole: refusedRole.out, refusedShort: refusedShort.out }));
+
+    const mB2 = await poll();
+    await bet(mB2.id, "NO", 20_000);
+    const fill = await house(mB2.id, { kind: "FILL", side: "YES", stakeTzs: 2_000 });
+    const rB2 = await reactionB(mB2.id);
+    const pB2 = await bet(mB2.id, "YES", 5_000);
+    const m0v = await poll();
+    const pT = await bet(m0v.id, "YES", 5_000);
+    await bet(m0v.id, "NO", 3_000);
+    await w.setUserFields(pB2.player, { email: `r9-ph-${tag}@example.test` });
+    await w.setUserFields(pT.player, { email: `r9-pt-${tag}@example.test` });
+    const EM: Any = await import("../../src/lib/server/email.ts");
+    EM.clearEmailOutbox();
+    const REASON_TWIN = `Publisher retracted the source ${tag}`;
+    const voidB2 = await w.svc.emergencyVoidMarket({ marketId: mB2.id, officerId: B, reason: REASON_TWIN });
+    const vB2 = await r9Row(mB2.id, "market.emergency_void", () => true, shape(8_000, 0, 6_000, 0, [B]));
+    ok("3.187.5 · the same reaction beside an automatic FILL YES 2,000: yes 8,000, staff-chosen YES 6,000 only (the FILL has no requester), [B]", voidB2?.ok === true && vB2.exact, vB2.detail);
+    ok("3.178.4 · …decided by the CHOOSER (B), equal to oversight's fold",
+      !!vB2.row && vB2.row?.actorId === B && j(vB2.row.payload.houseStake?.staffChosen?.requestedBy) === j(await foldAt(mB2.id, vB2.row?.createdAt)), j(vB2.row?.payload));
+    const void0 = await w.svc.emergencyVoidMarket({ marketId: m0v.id, officerId: A, reason: REASON_TWIN });
+    const v0 = await r9Row(m0v.id, "market.emergency_void", () => true, ZERO);
+    ok("3.187.6 · a void with no house stake records the zero shape", void0?.ok === true && v0.exact, v0.detail);
+    await w.svc.settleMarket(m0.id, { force: true });
+    const refusedSettled = await readsDuring(() => w.svc.emergencyVoidMarket({ marketId: m0.id, officerId: A, reason: "Settled already, refuse" }));
+    ok("3.188.6 · a void refused because the market already settled reads nothing", refusedSettled.out?.ok === false && refusedSettled.reads.length === 0, j(refusedSettled.out));
+
+    // ════ objections: rejected and upheld ════
+    const detail = "The official source says otherwise, please look again.";
+    const o1 = await OBJ.fileObjection(rAB.trigger.player, { marketId: mAB.id, reason: "WRONG_OUTCOME", detail });
+    const o2 = await OBJ.fileObjection(pY.player, { marketId: mAB.id, reason: "SOURCE_CONTRADICTS", detail });
+    const o3 = await OBJ.fileObjection(pA1.player, { marketId: mA.id, reason: "WRONG_OUTCOME", detail });
+    const pA2 = (await w.svc.listPositionsForMarket(mA.id)).find((p: Any) => p.houseBotId == null && p.userId !== pA1.player && p.side === "YES");
+    const o4 = await OBJ.fileObjection(pA2?.userId, { marketId: mA.id, reason: "WRONG_OUTCOME", detail });
+    if (![o1, o2, o3, o4].every((o) => o?.ok)) throw new Error(`fixture objections: ${[o1, o2, o3, o4].map(show).join(" · ")}`);
+    const rej1 = await readsDuring(() => OBJ.rejectObjection(o1.data.objectionId, C, "The recorded verdict stands on the source."));
+    const x1 = await r9Row(mAB.id, "objection.rejected", (e) => e.payload?.objectionId === o1.data.objectionId, S_AB);
+    ok("3.187.7 · objection.rejected: today's keys in order, houseStake LAST, [A, B]", rej1.out?.ok === true && rej1.reads.length === 1 && x1.exact, x1.detail);
+    ok("3.178.5 · …equal to oversight's fold, rejected by a NON-chooser (C)",
+      !!x1.row && x1.row?.actorId === C && j(x1.row.payload.houseStake?.staffChosen?.requestedBy) === j(await foldAt(mAB.id, x1.row?.createdAt)));
+    const up2 = await readsDuring(() => OBJ.upholdObjection(o2.data.objectionId, B, { remedy: "REVERSE", note: "The source contradicts the verdict." }));
+    const u2 = await r9Row(mAB.id, "objection.upheld", (e) => e.payload?.objectionId === o2.data.objectionId, S_AB);
+    ok("3.187.8 · objection.upheld: today's keys in order, houseStake LAST, [A, B]", up2.out?.ok === true && up2.reads.length === 1 && u2.exact, u2.detail);
+    ok("3.178.6 · …equal to oversight's fold, upheld by the CHOOSER (B)",
+      !!u2.row && u2.row?.actorId === B && j(u2.row.payload.houseStake?.staffChosen?.requestedBy) === j(await foldAt(mAB.id, u2.row?.createdAt)));
+    const rej3 = await OBJ.rejectObjection(o3.data.objectionId, A, "The recorded verdict stands on the source.");
+    const x3 = await r9Row(mA.id, "objection.rejected", (e) => e.payload?.objectionId === o3.data.objectionId, S_A);
+    ok("3.178.7 · a rejection by the CHOOSER (A): [A], equal to oversight's fold",
+      rej3?.ok === true && x3.exact && x3.row?.actorId === A && j(x3.row?.payload?.houseStake?.staffChosen?.requestedBy) === j(await foldAt(mA.id, x3.row?.createdAt)), x3.detail);
+    const up4 = await OBJ.upholdObjection(o4.data.objectionId, C, { remedy: "VOID", note: "Nobody can tell; refund everyone." });
+    const u4 = await r9Row(mA.id, "objection.upheld", (e) => e.payload?.objectionId === o4.data.objectionId, S_A);
+    ok("3.178.8 · an uphold by a NON-chooser (C): [A], equal to oversight's fold",
+      up4?.ok === true && u4.exact && u4.row?.actorId === C && j(u4.row?.payload?.houseStake?.staffChosen?.requestedBy) === j(await foldAt(mA.id, u4.row?.createdAt)), u4.detail);
+    const rejAgain = await readsDuring(() => OBJ.rejectObjection(o1.data.objectionId, B, "A second answer to the same case."));
+    const upAgain = await readsDuring(() => OBJ.upholdObjection(o2.data.objectionId, C, { remedy: "VOID", note: "A second answer to the same case." }));
+    const hold = await OBJ.holdSettlementAsOfficer(C, { marketId: mAB.id, reason: "WRONG_OUTCOME", detail: "Holding while the source is read again." });
+    const selfReview = hold?.ok ? await readsDuring(() => OBJ.rejectObjection(hold.data.objectionId, C, "Releasing my own hold myself.")) : { out: hold, reads: [] };
+    ok("3.188.7 · refused rulings read nothing: a second rejection, a second uphold, and an officer ruling on their own hold",
+      rejAgain.out?.ok === false && rejAgain.reads.length === 0 && upAgain.out?.ok === false && upAgain.reads.length === 0 && selfReview.out?.ok === false && selfReview.reads.length === 0,
+      j({ rejAgain: rejAgain.out, upAgain: upAgain.out, selfReview: selfReview.out }));
+
+    // ════ bulk: the override rows and the Batch map ════
+    const b1 = await poll(); await manualA(b1.id); await closeWithRead(b1.id, 99);
+    const b0 = await poll(); await bet(b0.id, "YES", 5_000); await bet(b0.id, "NO", 3_000); await closeWithRead(b0.id, 99);
+    const bo = await poll(); await reactionB(bo.id); await closeWithRead(bo.id, 5);
+    const sk = await poll(); await manualA(sk.id); await closeWithRead(sk.id, 5);
+    const batch1 = await readsDuring(() => bulk(A, [b1.id, b0.id, bo.id, sk.id], { [bo.id]: OVERRIDE }));
+    const out1 = batch1.out;
+    const batchRow1 = (await ringRows("Batch", out1?.batchId ?? "none", "market.resolve.bulk"))[0];
+    const batchDurable1 = (await durableRows("Batch", out1?.batchId ?? "none", "market.resolve.bulk"))[0];
+    const want1 = { [b1.id]: S_A, [b0.id]: ZERO, [bo.id]: S_B };
+    ok("3.189.1 · ⭐ the Batch row (A's batch: two eligible, one overridden, one skipped) carries today's keys and then houseStakes: exactly resolved ∪ staged, keyed by market — the skipped row absent",
+      out1?.ok === true && j(out1.resolved.map((r: Any) => r.marketId).sort()) === j([b1.id, b0.id, bo.id].sort()) && out1.skipped.some((s: Any) => s.marketId === sk.id)
+        && j(Object.keys(batchRow1?.payload ?? {})) === j([...BATCH_KEYS, "houseStakes"]) && canon(batchRow1.payload.houseStakes) === canon(want1)
+        && canon(batchDurable1?.payload?.houseStakes) === canon(want1) && !("houseStake" in batchRow1.payload),
+      j({ out: out1 && { resolved: out1.resolved, skipped: out1.skipped, failed: out1.failed }, payload: batchRow1?.payload }));
+    const ov1 = await r9Row(bo.id, "market.resolve.bulk_override", () => true, S_B);
+    ok("3.189.2 · the override row (targetType Market) carries houseStake with the plain shape, LAST, never houseStakes; its value equals the Batch map's value for that market",
+      ov1.exact && !("houseStakes" in (ov1.row?.payload ?? {})) && j(ov1.row?.payload?.houseStake) === j(batchRow1?.payload?.houseStakes?.[bo.id]), ov1.detail);
+    ok("3.178.9 · …its requestedBy equals oversight's fold, overridden by a NON-chooser (A, for B's stake)",
+      !!ov1.row && ov1.row?.actorId === A && j(ov1.row?.payload?.houseStake?.staffChosen?.requestedBy) === j(await foldAt(bo.id, ov1.row?.createdAt)));
+    const perMarket = (id: string) => batch1.reads.filter((r) => r.ids.includes(id)).length;
+    ok("3.188.8 · the bulk action reads once per sealed market inside `if (r.ok)` (beside resolveMarket's own read), and never for the skipped row",
+      perMarket(b1.id) === 2 && perMarket(b0.id) === 2 && perMarket(bo.id) === 2 && perMarket(sk.id) === 0 && batch1.reads.every((r) => r.tx === undefined), j(batch1.reads.map((r) => r.ids)));
+    const bo2 = await poll(); await reactionB(bo2.id); await closeWithRead(bo2.id, 5);
+    const out2 = await bulk(B, [bo2.id], { [bo2.id]: OVERRIDE });
+    const ov2 = await r9Row(bo2.id, "market.resolve.bulk_override", () => true, S_B);
+    ok("3.178.10 · an override by the CHOOSER (B): [B], equal to oversight's fold",
+      out2?.ok === true && ov2.exact && ov2.row?.actorId === B && j(ov2.row?.payload?.houseStake?.staffChosen?.requestedBy) === j(await foldAt(bo2.id, ov2.row?.createdAt)), ov2.detail);
+
+    const s1 = await poll(); await manualA(s1.id); await closeWithRead(s1.id, 99);
+    await POL.setRequireTwoOfficerResolution(true, A);
+    let batch3: Any;
+    try { batch3 = await readsDuring(() => bulk(A, [s1.id])); } finally { await POL.setRequireTwoOfficerResolution(false, A); }
+    const batchRow3 = (await ringRows("Batch", batch3.out?.batchId ?? "none", "market.resolve.bulk"))[0];
+    ok("3.189.3 · a STAGED batch (two-admin on): the map covers the staged market, and only the action read (resolveMarket's stage-1 made none)",
+      batch3.out?.ok === true && j(batch3.out.staged.map((r: Any) => r.marketId)) === j([s1.id]) && canon(batchRow3?.payload?.houseStakes) === canon({ [s1.id]: S_A })
+        && batch3.reads.filter((r) => r.ids.includes(s1.id)).length === 1, j({ out: batch3.out?.staged, payload: batchRow3?.payload, reads: batch3.reads.length }));
+
+    const x1m = await poll(); await manualA(x1m.id); await closeWithRead(x1m.id, 99);
+    const x2m = await poll(); await manualA(x2m.id); await closeWithRead(x2m.id, 99);
+    G[BULK_KEY.abortOn] = x2m.id;
+    let out4: Any;
+    try { out4 = await bulk(A, [x1m.id, x2m.id]); } finally { G[BULK_KEY.abortOn] = null; }
+    const batchRows4 = await ringRows("Batch", out4?.batchId ?? "none", "market.resolve.bulk");
+    const batchDurable4 = await durableRows("Batch", out4?.batchId ?? "none", "market.resolve.bulk");
+    ok("3.189.4 · ⭐ an ABORTED batch: one Batch row only, marked aborted, today's abort keys and then houseStakes covering exactly what was sealed before the abort",
+      out4?.ok === true && j(out4.resolved.map((r: Any) => r.marketId)) === j([x1m.id]) && out4.failed.some((f: Any) => f.marketId === "(batch)")
+        && batchRows4.length === 1 && batchDurable4.length === 1 && batchRows4[0].payload.aborted === true
+        && j(Object.keys(batchRows4[0].payload)) === j([...ABORT_KEYS, "houseStakes"]) && canon(batchRows4[0].payload.houseStakes) === canon({ [x1m.id]: S_A })
+        && canon(batchDurable4[0].payload.houseStakes) === canon({ [x1m.id]: S_A }),
+      j({ out: out4 && { resolved: out4.resolved, failed: out4.failed }, rows: batchRows4.map((r) => r.payload) }));
+
+    // ════ ruling 190 · a failed read records null and the decision proceeds ════
+    const logged: string[] = [];
+    const realError = console.error;
+    const nA = await poll(); const pN1 = await bet(nA.id, "YES", 5_000); await manualA(nA.id);
+    const pN2 = (await w.svc.listPositionsForMarket(nA.id)).find((p: Any) => p.houseBotId == null && p.userId !== pN1.player && p.side === "YES");
+    const nV = await poll(); await reactionB(nV.id);
+    const n1 = await poll(); await manualA(n1.id); await closeWithRead(n1.id, 5);
+    let nulls: Any = {};
+    const flagSet = typeof EXP.failExposureReadForCases === "function";
+    if (flagSet) EXP.failExposureReadForCases(true);
+    console.error = (...args: unknown[]) => { logged.push(args.map(String).join(" ")); };
+    try {
+      nulls.adj = await w.svc.resolveMarket({ marketId: nA.id, outcome: "YES", officerId: C });
+      const oa = await OBJ.fileObjection(pN1.player, { marketId: nA.id, reason: "WRONG_OUTCOME", detail });
+      const ob = await OBJ.fileObjection(pN2?.userId, { marketId: nA.id, reason: "WRONG_OUTCOME", detail });
+      nulls.rej = oa?.ok ? await OBJ.rejectObjection(oa.data.objectionId, B, "The recorded verdict stands on the source.") : oa;
+      nulls.up = ob?.ok ? await OBJ.upholdObjection(ob.data.objectionId, B, { remedy: "VOID", note: "Refund everyone on this one." }) : ob;
+      nulls.oa = oa; nulls.ob = ob;
+      nulls.void = await w.svc.emergencyVoidMarket({ marketId: nV.id, officerId: A, reason: `Flagged read void ${tag}` });
+      nulls.bulk = await bulk(C, [n1.id], { [n1.id]: OVERRIDE });
+    } finally {
+      console.error = realError;
+      if (flagSet) EXP.failExposureReadForCases(false);
+    }
+    const nAdj = await r9Row(nA.id, "market.adjudicated", () => true, null);
+    const nRej = await r9Row(nA.id, "objection.rejected", (e) => e.payload?.objectionId === nulls.oa?.data?.objectionId, null);
+    const nUp = await r9Row(nA.id, "objection.upheld", (e) => e.payload?.objectionId === nulls.ob?.data?.objectionId, null);
+    const nVoid = await r9Row(nV.id, "market.emergency_void", () => true, null);
+    const nOv = await r9Row(n1.id, "market.resolve.bulk_override", () => true, null);
+    const nBatch = (await ringRows("Batch", nulls.bulk?.batchId ?? "none", "market.resolve.bulk"))[0];
+    ok("3.190.1 · ⭐ with the read failing, each of the five writers and the bulk action still decides (ok) and records houseStake: null with the key present — never a zero shape; the Batch map's value is null",
+      flagSet && nulls.adj?.ok === true && nulls.rej?.ok === true && nulls.up?.ok === true && nulls.void?.ok === true && nulls.bulk?.ok === true
+        && nAdj.exact && nRej.exact && nUp.exact && nVoid.exact && nOv.exact
+        && !!nBatch && "houseStakes" in nBatch.payload && nBatch.payload.houseStakes[n1.id] === null && n1.id in nBatch.payload.houseStakes,
+      j({ nulls: Object.fromEntries(Object.entries(nulls).map(([k, v]: Any) => [k, show(v)])), adj: nAdj.detail, rej: nRej.detail, up: nUp.detail, void: nVoid.detail, ov: nOv.detail, batch: nBatch?.payload?.houseStakes }));
+    ok("3.190.2 · …each failed read logs the market and the action it was for (and nothing else identifying)",
+      [[nA.id, "market.adjudicated"], [nA.id, "objection.rejected"], [nA.id, "objection.upheld"], [nV.id, "market.emergency_void"], [n1.id, "market.resolve.bulk"]]
+        .every(([id, action]) => logged.some((l) => l.includes(id) && l.includes(action))), j(logged.filter((l) => l.includes("[house-stake]"))));
+    ok("3.190.c1 · CONTROL · the same writers with the flag off gave the exact shapes above (3.187.1–8, 3.189.1–4), and the flag is off again: a read now succeeds",
+      aAB.exact && vB.exact && x1.exact && u2.exact && ov1.exact && j(await EXP.houseStakeForAudit?.(mAB.id)) !== "null", j(await EXP.houseStakeForAudit?.(mAB.id)));
+
+    // ════ the six sites R9 leaves byte-identical, each against a no-house twin ════
+    const MASK = new Set(["objectionId", "marketId", "objectionsClosedAt"]);
+    const masked = (p: Any) => j(Object.fromEntries(Object.entries(p ?? {}).map(([k, v]) => [k, MASK.has(k) ? "(masked)" : v])));
+    const twinRows: Array<{ action: string; house: Any; twin: Any }> = [];
+    const pushTwin = async (action: string, targetType: string, houseId: string, twinId: string) => {
+      twinRows.push({ action, house: (await ringRows(targetType, houseId, action))[0], twin: (await ringRows(targetType, twinId, action))[0] });
+    };
+    await pushTwin("market.resolve.stage1", "Market", st.id, stT.id);
+    const ro = await poll(); await manualA(ro.id); await w.mdal.marketStore.stamp(ro.id, { status: "CLOSED" });
+    const roT = await poll(); await bet(roT.id, "YES", 20_000); await bet(roT.id, "NO", 9_000); await w.mdal.marketStore.stamp(roT.id, { status: "CLOSED" });
+    const reopened = [await w.svc.adminReopenMarket(ro.id, C), await w.svc.adminReopenMarket(roT.id, C)];
+    await pushTwin("market.reopened", "Market", ro.id, roT.id);
+    const au = await poll(); await manualA(au.id);
+    const auT = await poll(); await bet(auT.id, "YES", 20_000); await bet(auT.id, "NO", 9_000);
+    const assessment = (marketId: string) => ({ marketId, title: "House seam poll", determined: true, outcome: "YES", confidence: 99,
+      evidence: "The official bulletin confirms the YES outcome today.", reasoning: "Read from the approved source.", sourceUrl: "https://bot.go.tz/bulletin", action: "assessed" });
+    for (const m of [au, auT]) await w.mdal.marketStore.stamp(m.id, { resolutionMode: "auto" });
+    const autos = [await w.svc.resolveDueMarket(au.id, { assessment: assessment(au.id) }), await w.svc.resolveDueMarket(auT.id, { assessment: assessment(auT.id) })];
+    await pushTwin("market.autoresolved", "Market", au.id, auT.id);
+    const hv = await poll(); await manualA(hv.id);
+    const hvT = await poll(); await bet(hvT.id, "YES", 20_000); await bet(hvT.id, "NO", 9_000);
+    const holdVoid: Any[] = [];
+    for (const m of [hv, hvT]) {
+      holdVoid.push(await w.svc.resolveMarket({ marketId: m.id, outcome: "YES", officerId: A }));
+      holdVoid.push(await OBJ.holdSettlementAsOfficer(C, { marketId: m.id, reason: "WRONG_OUTCOME", detail: "Holding while the source is read again." }));
+      holdVoid.push(await w.svc.emergencyVoidMarket({ marketId: m.id, officerId: B, reason: `Hold then void ${tag}` }));
+    }
+    await pushTwin("objection.officer_hold", "Market", hv.id, hvT.id);
+    await pushTwin("objection.closed_by_void", "Market", hv.id, hvT.id);
+    const round = async (label: string, withHouse: boolean) => {
+      const cfg: Any = await import("../../src/lib/server/updown-config.ts");
+      const uds: Any = await import("../../src/lib/server/updown-service.ts");
+      const udd: Any = await import("../../src/lib/server/updown-dal.ts");
+      const { seedDefaultSources, addSource }: Any = await import("../../src/lib/server/source-registry.ts");
+      await seedDefaultSources();
+      await addSource({ domain: "api.twelvedata.com", label: "Twelve Data", category: "crypto", rationale: "test fixture (mirrors production)", addedBy: "system" }).catch(() => null);
+      const a = await cfg.createAsset({ key: `R${label}${process.pid}`, symbol: "BTC/USD", nameEn: "Bitcoin", nameSw: "Bitcoin", iconKey: "crypto",
+        priceSourceUrl: "https://api.twelvedata.com/quote", category: "crypto", decimals: 2, minMoveTicks: 2 }, OFFICER);
+      if (!a.ok) throw new Error(`fixture round asset: ${a.error}`);
+      await cfg.setAssetEnabled(a.data.id, true, OFFICER);
+      const c = await cfg.createChain({ assetId: a.data.id, durationMinutes: 5 }, OFFICER);
+      if (!c.ok) throw new Error(`fixture round chain: ${c.error}`);
+      await cfg.setChainState(c.data.id, "RUNNING", OFFICER);
+      const chain = await udd.chainStore.get(c.data.id);
+      const boundary = new Date(cfg.cleanGridAnchor(Date.now() + 60_000)).toISOString();
+      const o = await udd.observationStore.ensure(a.data.id, boundary);
+      await udd.observationStore.confirm(o.id, { price: 60_000, sourceUrl: "https://api.twelvedata.com/quote", sourceQuotedAt: boundary,
+        evidence: "BTC quoted 60000", confidence: 96, model: "test-stub", rawHash: `hr_${label}_${process.pid}` });
+      const opened = await uds.openRound(chain, boundary, o.id, 60_000);
+      if (!opened.ok) throw new Error(`fixture round: ${opened.error}`);
+      const marketId = (await udd.roundStore.get(opened.data.id)).marketId as string;
+      // Both rounds' stakes lock on placement (no exit window), as §1's round does, so the house FILL's condition holds.
+      const snapshot = { ...((await w.svc.getMarket(marketId)).feeSnapshot as Record<string, unknown>), freeExitGraceMinutes: 0, paidExitWindowMinutes: 0 };
+      if (w.onPostgres) await w.prisma().$executeRawUnsafe(`UPDATE "PredictionMarket" SET "feeSnapshot" = $1::jsonb WHERE "id" = $2`, JSON.stringify(snapshot), marketId);
+      else (await w.mdal.marketStore.get(marketId)).feeSnapshot = structuredClone(snapshot);
+      await bet(marketId, "YES", 50_000, 60_000);
+      if (withHouse) await house(marketId, { kind: "FILL", productLine: "UPDOWN", side: "NO", stakeTzs: 2_000 });
+      else await bet(marketId, "NO", 2_000, 0);
+      return { roundId: opened.data.id as string, marketId, voided: await uds.voidRoundByOperator(opened.data.id, C, `Operator void ${tag}`) };
+    };
+    const rdH = await round("r9h", true), rdT = await round("r9t", false);
+    await pushTwin("updown.round.void_operator", "UpDownRound", rdH.roundId, rdT.roundId);
+    const r9Words = (p: unknown) => [...REQUESTER_TOKENS].filter((t) => j(p).includes(t));
+    const twinBad = twinRows.filter((t) => !t.house || !t.twin || j(Object.keys(t.house.payload ?? {})) !== j(Object.keys(t.twin.payload ?? {})) || masked(t.house.payload) !== masked(t.twin.payload) || r9Words(t.house.payload).length > 0);
+    ok("3.187.9 · ⭐ the six sites R9 leaves alone — stage-1, reopened, autoresolved, officer hold, closed by void, the operator's round void — are byte-identical to a no-house twin (keys in order, values with ids and times masked) and carry no R9 key",
+      reopened.every((r) => r?.ok) && autos.every((r) => r?.status === "resolved-auto") && holdVoid.every((r) => r?.ok) && rdH.voided?.ok && rdT.voided?.ok && stage1T?.ok
+        && twinRows.length === 6 && twinBad.length === 0,
+      j({ reopened: reopened.map(show), autos, holdVoid: holdVoid.map(show), rd: [show(rdH.voided), show(rdT.voided)], bad: twinBad.map((t) => ({ action: t.action, house: t.house?.payload, twin: t.twin?.payload })) }));
+
+    // ════ where each key may live ════
+    await AUD.auditFlush();
+    const sectionRows = (AUD.getAuditPage({ limit: 10_000 }) as Any[]).filter((e) => Date.parse(e.createdAt) >= sectionStart - 1);
+    const has = (e: Any, k: string) => !!e.payload && typeof e.payload === "object" && k in e.payload;
+    const withStake = sectionRows.filter((e) => has(e, "houseStake"));
+    const stakesRows = sectionRows.filter((e) => has(e, "houseStakes"));
+    ok("3.187.10 · ⭐ exactly six payload sites changed: houseStake appears only on Market rows of the five R9 actions and on EVERY such row; houseStakes only on market.resolve.bulk Batch rows and on every one; no row of the six unchanged actions carries either",
+      withStake.length > 0 && withStake.every((e) => e.targetType === "Market" && R9_MARKET_ACTIONS.includes(e.action)) && new Set(withStake.map((e) => e.action)).size === 5
+        && sectionRows.filter((e) => R9_MARKET_ACTIONS.includes(e.action)).every((e) => has(e, "houseStake"))
+        && stakesRows.length >= 5 && stakesRows.every((e) => e.targetType === "Batch" && e.action === "market.resolve.bulk")
+        && sectionRows.filter((e) => e.action === "market.resolve.bulk").every((e) => has(e, "houseStakes"))
+        && UNCHANGED_ACTIONS.every((a) => sectionRows.filter((e) => e.action === a).length >= 2)
+        && sectionRows.filter((e) => UNCHANGED_ACTIONS.includes(e.action)).every((e) => !has(e, "houseStake") && !has(e, "houseStakes")),
+      j({ stakeActions: [...new Set(withStake.map((e) => `${e.targetType}:${e.action}`))], stakesActions: [...new Set(stakesRows.map((e) => `${e.targetType}:${e.action}`))], unchanged: UNCHANGED_ACTIONS.map((a) => sectionRows.filter((e) => e.action === a).length) }));
+
+    // ════ ruling 170 · the officer's own export ════
+    const exp = await exportUserData(A);
+    const expRows = exp.auditEntries.entries as Any[];
+    const ringA = sectionRows.filter((e) => e.actorId === A);
+    const DECISIONS = ["market.adjudicated", "market.emergency_void", "objection.rejected", "market.resolve.bulk", "market.resolve.bulk_override"];
+    ok("3.170.1 · CONTROL · the /admin/audit rows for A's decisions keep houseStake and houseStakes whole",
+      DECISIONS.every((a) => ringA.some((e) => e.action === a)) && ringA.some((e) => has(e, "houseStake")) && ringA.some((e) => has(e, "houseStakes")), j(ringA.map((e) => e.action)));
+    ok("3.170.2 · ⛔ D19 · A's own export keeps those decisions and has no houseStake or houseStakes key — and no vocabulary word — at any depth",
+      DECISIONS.every((a) => expRows.some((e) => e.action === a)) && !expRows.some((e) => has(e, "houseStake") || has(e, "houseStakes")) && houseHits(j(exp)).length === 0,
+      j({ hits: houseHits(j(exp)).slice(0, 6), actions: [...new Set(expRows.map((e) => e.action))] }));
+
+    Object.assign(R34, { ready: true, w, A, B, C, MOD, tag, mB, mB2, m0v, nV, pB2, pT, rB, rB2, fill, REASON_B, REASON_TWIN, vB, vB2, v0, nVoid, sectionStart });
+  } finally {
+    book.stakeRows = realStakeRows;
+    G[BULK_KEY.abortOn] = null;
+    G[BULK_KEY.officer] = null;
+    hooks.deregister?.();
+  }
+});
+
+/* ═══ §4 · C5 step 4 · rulings 195, 197 · the void notice's house share and the KYC figures, server side (both stores) ═══ */
+// The emergency voids of §3 (mB: one house position; mB2: a house reaction and a FILL beside a player; m0v: no house stake;
+// nV: voided while the read failed) are read here from the bells and the captured mail. "Today's" words are written out
+// below from the templates as they stood at 34468728, and the two letters' bytes are pinned by hash (app URL masked), so a
+// no-house void is compared with the past — not with the code under test.
+section("§4 · rulings 195, 197 · the void notice's house share equals the audit's stake; a no-house void's bell and email and every player's are today's bytes; the KYC house figures");
+await guard("4.S4", async () => {
+  if (!R34.ready) { ok("4.0 · §3's R9 fixture was built", false, "§3.R9 threw before its fixture was ready"); return; }
+  const { w, A, B, C, MOD, tag, mB, mB2, m0v, nV, pB2, pT, rB, rB2, fill, REASON_B, REASON_TWIN, vB, vB2, v0, nVoid } = R34;
+  const { createHash } = await import("node:crypto");
+  const N: Any = await import("../../src/lib/server/notification-service.ts");
+  const E: Any = await import("../../src/lib/server/email.ts");
+  const APP: Any = await import("../../src/lib/app-url.ts");
+  const U: Any = await import("../../src/lib/utils.ts");
+  const load = async (rel: string): Promise<Any> => { try { return await import(rel); } catch { return {}; } };
+  const XC = await load("../../src/lib/house-bot/exposure-copy.ts");
+  const money = U.formatTzs;
+  const TITLE = "House seam poll";
+  const bells = async (userId: string, pred: (n: Any) => boolean) => {
+    for (let k = 0; k < 2_000; k++) {
+      const found = ((await N.listForUser(userId, 200)) as Any[]).filter(pred);
+      if (found.length > 0) return found;
+      await new Promise((r) => setTimeout(r, 5));
+    }
+    return [] as Any[];
+  };
+  const mails = async (to: string, pred: (m: Any) => boolean) => {
+    for (let k = 0; k < 2_000; k++) {
+      const found = (E.emailOutbox() as Any[]).filter((m) => m.to === to && pred(m));
+      if (found.length > 0) return found;
+      await new Promise((r) => setTimeout(r, 5));
+    }
+    return [] as Any[];
+  };
+  const bellOf = (n: Any) => j({ kind: n?.kind, titleEn: n?.titleEn, titleSw: n?.titleSw, titleZh: n?.titleZh, bodyEn: n?.bodyEn, bodySw: n?.bodySw, bodyZh: n?.bodyZh, href: n?.href });
+  /** The admin bell exactly as `notifyAdminMarketCancelled` wrote it at 34468728. */
+  const todayAdminBell = (o: { reason: string; refundedCount: number; refundedTzs: number }) => j({
+    kind: "SECURITY",
+    titleEn: `Market cancelled · ${o.refundedCount} refunded`,
+    titleSw: `Soko limefutwa · ${o.refundedCount} wamerejeshewa`,
+    titleZh: `市场已取消 · ${o.refundedCount} 人已退款`,
+    bodyEn: `"${TITLE}" was emergency-voided — ${money(o.refundedTzs)} refunded to ${o.refundedCount} ${o.refundedCount === 1 ? "player" : "players"}. Reason: ${o.reason.slice(0, 100)}`,
+    bodySw: `Soko limefutwa kwa dharura. ${money(o.refundedTzs)} imerejeshwa.`,
+    bodyZh: `"${TITLE}" 已紧急作废 — 已向 ${o.refundedCount} 位玩家退款 ${money(o.refundedTzs)}。原因：${o.reason.slice(0, 100)}`,
+    href: "/admin/markets",
+  });
+  /** The same bell with ruling 195's clause, as this step writes it. */
+  const houseAdminBell = (o: { reason: string; refundedCount: number; refundedTzs: number; houseTzs: number; houseCount: number }) => j({
+    kind: "SECURITY",
+    titleEn: `Market cancelled · ${o.refundedCount} refunded`,
+    titleSw: `Soko limefutwa · ${o.refundedCount} wamerejeshewa`,
+    titleZh: `市场已取消 · ${o.refundedCount} 人已退款`,
+    bodyEn: `"${TITLE}" was emergency-voided — ${money(o.refundedTzs)} refunded to ${o.refundedCount} ${o.refundedCount === 1 ? "player" : "players"}, of which house stakes ${money(o.houseTzs)} on ${o.houseCount} ${o.houseCount === 1 ? "position" : "positions"}. Reason: ${o.reason.slice(0, 100)}`,
+    bodySw: `Soko limefutwa kwa dharura. ${money(o.refundedTzs)} imerejeshwa, ikiwemo dau la nyumba ${money(o.houseTzs)} kwenye nafasi ${o.houseCount}.`,
+    bodyZh: `"${TITLE}" 已紧急作废 — 已向 ${o.refundedCount} 位玩家退款 ${money(o.refundedTzs)}，其中平台投注 ${money(o.houseTzs)}（${o.houseCount} 笔）。原因：${o.reason.slice(0, 100)}`,
+    href: "/admin/markets",
+  });
+  /** The player's bell exactly as `notifyMarketCancelled` wrote it at 34468728. */
+  const todayPlayerBell = (o: { reason: string; stake: number; positionId: string }) => j({
+    kind: "DEPOSIT",
+    titleEn: `Market cancelled · ${money(o.stake)} refunded`,
+    titleSw: `Soko limefutwa · ${money(o.stake)} imerejeshwa`,
+    titleZh: `市场已取消 · 已退款 ${money(o.stake)}`,
+    bodyEn: `"${TITLE}" was cancelled: ${o.reason.slice(0, 120)}. Your full stake has been returned to your wallet. · ${o.positionId}`,
+    bodySw: `"Soko la jaribio" limefutwa: ${o.reason.slice(0, 120)}. Dau lako lote limerejeshwa kwenye pochi yako. · ${o.positionId}`,
+    bodyZh: `"${TITLE}" 已取消：${o.reason.slice(0, 120)}。您的本金已全额退回钱包。 · ${o.positionId}`,
+    href: "/wallet",
+  });
+  const hashOf = (html: string) => createHash("sha256").update(String(html).split(APP.appUrl()).join("{APP}")).digest("hex");
+  /** sha256 of the two letters at 34468728 for a fixed input, the app URL masked (measured before this step's code). */
+  const TODAY_ADMIN_LETTER = "85de53540c8663e83f8dc7f4ba15ec7dedf88723b673bc3a526ce5d3bef5edd2";
+  const TODAY_REFUND_LETTER = "7ffbec83881b693f022123c8b001ab3551ffe65d25dadfba2ae4d4e212a6bae5";
+  const FIXED = { title: "R9 fixture poll", reason: "Source retracted by the publisher", refundedCount: 3, refundedTzs: 38_000 };
+  const emailOf = async (id: string) => (await w.db.user.findById(id))?.email as string;
+
+  // ── ruling 195 · the house share in the admin bell equals the audit's stake ──
+  const officers = [A, B, C, MOD];
+  const wantB2 = { reason: REASON_TWIN, refundedCount: 5, refundedTzs: 43_000, houseTzs: 8_000, houseCount: 2 };
+  const stakeB2 = vB2.row?.payload?.houseStake;
+  const b2Bells = await Promise.all(officers.map((o) => bells(o, (n) => n.bodyEn?.includes(`${money(43_000)} refunded`) && n.bodyEn?.includes(REASON_TWIN))));
+  ok("4.195.1 · ⭐ the emergency-void admin bell's house share equals payload.houseStake.yes + no (TZS 8,000 on 2 positions), in en, sw and zh, for every ADMIN, COMPLIANCE and MODERATOR officer",
+    stakeB2?.yes + stakeB2?.no === wantB2.houseTzs && b2Bells.every((list) => list.length === 1 && bellOf(list[0]) === houseAdminBell(wantB2)),
+    j({ stake: stakeB2, got: b2Bells.map((list) => list.map(bellOf)), want: houseAdminBell(wantB2) }));
+  const bBells = await Promise.all(officers.map((o) => bells(o, (n) => n.bodyEn?.includes(REASON_B))));
+  const wantB = { reason: REASON_B, refundedCount: 2, refundedTzs: 16_000, houseTzs: 6_000, houseCount: 1 };
+  ok("4.195.2 · …one house position: TZS 6,000 on 1 position (singular), equal to its audit's yes + no",
+    vB.row?.payload?.houseStake?.yes + vB.row?.payload?.houseStake?.no === 6_000 && bBells.every((list) => list.length === 1 && bellOf(list[0]) === houseAdminBell(wantB)),
+    j({ got: bBells.map((list) => list.map(bellOf)), want: houseAdminBell(wantB) }));
+  const nVBells = await bells(A, (n) => n.bodyEn?.includes(`Flagged read void ${tag}`));
+  ok("4.195.3 · the share is counted in the refund loop, not taken from the read: a void whose read failed (houseStake null) still tells officers TZS 6,000 on 1 position",
+    nVoid.row?.payload?.houseStake === null && nVBells.length === 1 && bellOf(nVBells[0]) === houseAdminBell({ reason: `Flagged read void ${tag}`, refundedCount: 2, refundedTzs: 16_000, houseTzs: 6_000, houseCount: 1 }),
+    j(nVBells.map(bellOf)));
+
+  // ── a no-house void: today's bell and letter ──
+  const zeroBells = await Promise.all(officers.map((o) => bells(o, (n) => n.bodyEn?.includes(`${money(8_000)} refunded`) && n.bodyEn?.includes(REASON_TWIN))));
+  ok("4.195.4 · ⭐ a NON-house void's admin bell is byte-identical to today's (all eight fields, for every officer; its audit's zero shape is 3.187.6)",
+    !!v0.row && zeroBells.every((list) => list.length === 1 && bellOf(list[0]) === todayAdminBell({ reason: REASON_TWIN, refundedCount: 2, refundedTzs: 8_000 })),
+    j({ got: zeroBells.map((list) => list.map(bellOf)), want: todayAdminBell({ reason: REASON_TWIN, refundedCount: 2, refundedTzs: 8_000 }) }));
+  const aEmail = await emailOf(A);
+  const zeroLetters = await mails(aEmail, (m) => m.tag === "market-cancelled-admin" && m.html.includes(REASON_TWIN) && m.html.includes(money(8_000)) && !m.html.includes(money(43_000)));
+  const houseLetters = await mails(aEmail, (m) => m.tag === "market-cancelled-admin" && m.html.includes(REASON_TWIN) && m.html.includes(money(43_000)));
+  ok("4.195.5 · ⭐ the NON-house void's admin letter is exactly the no-house render, and that render's bytes are today's (a fixed input's hash, pinned at 34468728)",
+    zeroLetters.length === 1 && zeroLetters[0].html === E.marketCancelledAdminHtml({ title: TITLE, reason: REASON_TWIN, refundedCount: 2, refundedTzs: 8_000 })
+      && hashOf(E.marketCancelledAdminHtml(FIXED)) === TODAY_ADMIN_LETTER && hashOf(E.marketCancelledAdminHtml({ ...FIXED, houseRefundedTzs: 0, houseRefundedCount: 0 })) === TODAY_ADMIN_LETTER,
+    j({ letters: zeroLetters.length, fixed: hashOf(E.marketCancelledAdminHtml(FIXED)) }));
+  const rowLabel = "Of which house stakes";
+  ok("4.195.6 · the house-held void's admin letter adds exactly one detail row — its figure TZS 8,000 on 2 positions — and is otherwise the no-house render",
+    houseLetters.length === 1 && houseLetters[0].html.includes(rowLabel) && houseLetters[0].html.includes(`${money(8_000)} on 2 positions`)
+      && houseLetters[0].html === E.marketCancelledAdminHtml({ title: TITLE, reason: REASON_TWIN, refundedCount: 5, refundedTzs: 43_000, houseRefundedTzs: 8_000, houseRefundedCount: 2 })
+      && !E.marketCancelledAdminHtml({ title: TITLE, reason: REASON_TWIN, refundedCount: 5, refundedTzs: 43_000 }).includes(rowLabel),
+    j({ letters: houseLetters.length }));
+
+  // ── the players' bells and letters, with and without house positions ──
+  const refPh = pB2.positionId, refPt = pT.positionId;
+  const phBells = await bells(pB2.player, (n) => n.kind === "DEPOSIT" && n.bodyEn?.includes(REASON_TWIN));
+  const ptBells = await bells(pT.player, (n) => n.kind === "DEPOSIT" && n.bodyEn?.includes(REASON_TWIN));
+  const maskRef = (s: string, ref: string) => s.split(ref).join("{ref}");
+  ok("4.195.7 · ⭐ a player's cancellation bell on a house-held market is byte-identical to the same stake's bell on a no-house market, and both are today's words",
+    phBells.length === 1 && ptBells.length === 1 && maskRef(bellOf(phBells[0]), refPh) === maskRef(bellOf(ptBells[0]), refPt)
+      && bellOf(phBells[0]) === todayPlayerBell({ reason: REASON_TWIN, stake: 5_000, positionId: refPh }) && bellOf(ptBells[0]) === todayPlayerBell({ reason: REASON_TWIN, stake: 5_000, positionId: refPt }),
+    j({ house: phBells.map(bellOf), twin: ptBells.map(bellOf) }));
+  const holderBells = await bells(rB2.bot.userId, (n) => n.kind === "DEPOSIT" && n.bodyEn?.includes(REASON_TWIN) && (n.bodyEn?.includes(rB2.positionId) || n.bodyEn?.includes(fill.positionId)));
+  ok("4.195.8 · …and the HOLDER's bells for the two house stakes (the reaction and the FILL) are any player's bells for those stakes: today's words, no house word",
+    holderBells.length === 2 && rB2.bot.botId === fill.bot.botId
+      && holderBells.some((n) => bellOf(n) === todayPlayerBell({ reason: REASON_TWIN, stake: 6_000, positionId: rB2.positionId }))
+      && holderBells.some((n) => bellOf(n) === todayPlayerBell({ reason: REASON_TWIN, stake: 2_000, positionId: fill.positionId }))
+      && holderBells.every((n) => houseHits(bellOf(n)).length === 0),
+    j(holderBells.map(bellOf)));
+  const phLetters = await mails(await emailOf(pB2.player), (m) => m.tag === "market-cancelled-refund");
+  const ptLetters = await mails(await emailOf(pT.player), (m) => m.tag === "market-cancelled-refund");
+  ok("4.195.9 · ⭐ the player's refund letter is byte-identical with and without house positions (reference masked), each exactly the template's render, whose bytes are today's",
+    phLetters.length === 1 && ptLetters.length === 1 && maskRef(phLetters[0].html, refPh) === maskRef(ptLetters[0].html, refPt)
+      && phLetters[0].html === E.marketCancelledRefundHtml({ title: TITLE, reason: REASON_TWIN, amount: 5_000, reference: refPh })
+      && hashOf(E.marketCancelledRefundHtml({ title: FIXED.title, reason: FIXED.reason, amount: 5_000, reference: "pos_ref" })) === TODAY_REFUND_LETTER,
+    j({ ph: phLetters.length, pt: ptLetters.length }));
+  void rB; void fill; void mB; void mB2; void m0v; void nV;
+
+  // ── the clause itself (pure) ──
+  const clause = typeof XC.voidNoticeHouseClause === "function" ? XC.voidNoticeHouseClause : null;
+  const row = typeof XC.voidEmailHouseRow === "function" ? XC.voidEmailHouseRow : null;
+  ok("4.195.10 · the clause (exposure-copy.ts, money injected): one position is singular in English; no share, a zero share or a missing argument gives null; the email row matches",
+    !!clause && !!row && j(clause({ houseRefundedTzs: 8_000, houseRefundedCount: 2 }, money)) === j({ en: `, of which house stakes ${money(8_000)} on 2 positions`, sw: `, ikiwemo dau la nyumba ${money(8_000)} kwenye nafasi 2`, zh: `，其中平台投注 ${money(8_000)}（2 笔）` })
+      && clause({ houseRefundedTzs: 1_000, houseRefundedCount: 1 }, money)?.en === `, of which house stakes ${money(1_000)} on 1 position`
+      && clause({ houseRefundedTzs: 0, houseRefundedCount: 0 }, money) === null && clause(undefined, money) === null && clause({}, money) === null
+      && j(row({ houseRefundedTzs: 8_000, houseRefundedCount: 2 }, money)) === j({ label: rowLabel, value: `${money(8_000)} on 2 positions` }) && row({ houseRefundedTzs: 0, houseRefundedCount: 0 }, money) === null,
+    j({ clause: clause ? clause({ houseRefundedTzs: 8_000, houseRefundedCount: 2 }, money) : "not built" }));
+
+  // ── ruling 197 · kycMoneyFacts: the house figures ──
+  const KR: Any = await import("../../src/lib/server/kyc-risk.ts");
+  const kycPoll = async () => w.poll({ graceMin: 0 });
+  const kycBet = async (userId: string, marketId: string, side: "YES" | "NO", stake: number) => {
+    const r = await w.svc.buyPosition(userId, { marketId, side, stake, idempotencyKey: crypto.randomUUID() });
+    if (!r.ok) throw new Error(`fixture kyc bet refused: ${r.code}/${r.error}`);
+    await w.backdate(r.data.positionId, 10_000);
+    return r.data.positionId as string;
+  };
+  const holder = await w.bot();
+  const k1 = await kycPoll(), k2 = await kycPoll(), k3 = await kycPoll();
+  await kycBet(holder.userId, k1.id, "YES", 2_000);
+  const counter2 = await w.user({ balance: 2_000_000 }), counter3 = await w.user({ balance: 2_000_000 });
+  await kycBet(counter2, k2.id, "NO", 10_000);
+  await kycBet(counter3, k3.id, "NO", 10_000);
+  for (const [m, stake, kind] of [[k2, 3_000, "FILL"], [k3, 1_000, "MANUAL"]] as const) {
+    await w.ageHouseMinute();
+    const o: Any = kind === "MANUAL"
+      ? { kind, entryCondition: "THIN", requestedById: A, anchorKey: w.constants.manualAnchorKey(A, crypto.randomUUID()), side: "YES", stakeTzs: stake }
+      : { kind, side: "YES", stakeTzs: stake };
+    const placed = await w.place(holder, await w.intent(holder, m.id, o));
+    if (!placed.ok) throw new Error(`fixture kyc house stake refused: ${placed.code}`);
+  }
+  const twin = await w.user({ balance: 5_000_000, passwordHash: "hash_holder_v1" });
+  await kycBet(twin, k1.id, "YES", 2_000);
+  await kycBet(twin, k2.id, "YES", 3_000);
+  await kycBet(twin, k3.id, "YES", 1_000);
+  const hRead = await KR.kycCaseRead(holder.userId);
+  const tRead = await KR.kycCaseRead(twin);
+  const hFacts = KR.kycMoneyFacts(hRead.txns), tFacts = KR.kycMoneyFacts(tRead.txns);
+  ok("4.197.1 · ⭐ a holder's KYC facts: betCount and stakedTzs stay the totals over every stake (3 · TZS 6,000); houseBetCount 2 and houseStakedTzs TZS 4,000 count the marked CONFIRMED stakes, from the rows the case read already returns",
+    hRead.txns.filter((t: Any) => t.houseBotId != null && t.type === "BET_PLACED").length === 2
+      && hFacts.betCount === 3 && hFacts.stakedTzs === 6_000 && hFacts.houseBetCount === 2 && hFacts.houseStakedTzs === 4_000, j(hFacts));
+  ok("4.197.2 · a non-holder with the same three stakes: houseBetCount 0 and houseStakedTzs 0, the totals equal the holder's",
+    tFacts.betCount === 3 && tFacts.stakedTzs === 6_000 && tFacts.houseBetCount === 0 && tFacts.houseStakedTzs === 0, j(tFacts));
+  const hRisk = await KR.kycRiskScore(holder.userId), tRisk = await KR.kycRiskScore(twin);
+  ok("4.197.3 · ⛔ the risk score is byte-identical for the holder and the no-house twin (the house figures are evidence, never a factor)",
+    typeof hRisk?.score === "number" && j(hRisk) === j(tRisk) && j(hRead.risk) === j(tRead.risk), j({ hRisk, tRisk }));
+  const txn = (o: Any) => ({ id: `t${Math.random()}`, userId: "u", walletId: "w", type: "BET_PLACED", status: "CONFIRMED", amount: -1_000, houseBotId: null, createdAt: "2026-09-01T00:00:00.000Z", ...o });
+  const pure = KR.kycMoneyFacts([
+    txn({ amount: -3_000, houseBotId: "hb_x" }), txn({ amount: 500, houseBotId: "hb_x" }), txn({ status: "PENDING", amount: -9_000, houseBotId: "hb_x" }),
+    txn({ type: "BET_REFUND", amount: 7_000, houseBotId: "hb_x" }), txn({ amount: -1_000 }), txn({ type: "DEPOSIT", amount: 50_000 }),
+  ]);
+  ok("4.197.4 · the pure count: CONFIRMED BET_PLACED only, magnitudes (a negative stake counts 3,000), a PENDING or a refund row never; an unmarked stake in the totals only",
+    pure.betCount === 3 && pure.stakedTzs === 4_500 && pure.houseBetCount === 2 && pure.houseStakedTzs === 3_500 && pure.depositedTzs === 50_000, j(pure));
+  void C; void B;
 });
 
 /* ═══ both stores · the store this child really runs on ══════════════════════════════════════════════ */

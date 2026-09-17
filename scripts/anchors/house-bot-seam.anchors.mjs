@@ -24,6 +24,8 @@ export const SEAM_SITES = [
   "emailOneSided", "emailWin", "emailLoss", "emailCancelled", "verdictStanding", "selectionClosedEmail",
   // C4-SPEC ruling 101: the Up & Down post-commit trigger hook (player stakes only, after the commit, outside the lock).
   "trigger",
+  // C5-SPEC ruling 195: the emergency void counts the house share its ADMIN notice states (the player's notice never learns it).
+  "emergencyHouseShare",
 ];
 
 export const H2_ORDER = ["standing", "role", "consent", "cash", "conflicts", "money", "staff", "rate"];

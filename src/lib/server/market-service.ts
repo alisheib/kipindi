@@ -43,6 +43,9 @@ import { exitWindowFacts } from "@/lib/exit-window";
 import { houseH0, houseH1, houseH2, houseH3, houseH4, type Counterparty, type HouseBetContext, type HouseRefusal } from "./house-bot/seam";
 import { houseBotIntentStore, houseSeamStore, type LockedPool, type StoredHouseBotIntent } from "./house-bot-dal";
 import { HOUSE_CONTROL_LOCK, HOUSE_BET_LOCK_TIMEOUT, HOUSE_BOT_ENGINE_ENV } from "@/lib/house-bot/constants";
+// C5-SPEC rulings 187–190 (R9): the house stake a market decision was taken over, recorded on that decision's audit. It
+// reads on the pool client — never a lock's transaction — never throws, and decides nothing (TGT-38, ruling 191).
+import { houseStakeForAudit } from "./house-bot/exposure";
 import { getRequireTwoOfficerResolution } from "./resolution-policy";
 import { isMaintenanceMode, maintenanceMessage } from "./platform-config";
 import { recordSnapshot } from "./market-history";
@@ -3323,6 +3326,8 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
   recordSnapshot(m.id, m.yesPool, m.noPool); // final point on the chart
   emit("market:resolve", { marketId: m.id, outcome: opts.outcome }); // SSE broadcast
 
+  // R9 (rulings 187–188): read after every refusal above and before the audit; stage-1 returned earlier and reads nothing.
+  const houseStake = await houseStakeForAudit(m.id, "market.adjudicated");
   audit({
     category: "ADMIN",
     action: "market.adjudicated",
@@ -3344,6 +3349,8 @@ export async function resolveMarket(opts: { marketId: string; outcome: Side | "V
       settlement: windowMs > 0
         ? "DEFERRED — no money moves until the objection window closes"
         : "IMMEDIATE — objection window is configured to 0h",
+      // R9, the LAST key: {yes, no, staffChosen: {yes, no, requestedBy}}, or null when the read failed (ruling 190).
+      houseStake,
     },
   });
 
@@ -4390,12 +4397,17 @@ export async function emergencyVoidMarket(opts: { marketId: string; officerId: s
 
     const now = new Date().toISOString();
     const grossPool = m.yesPool + m.noPool;
+    // R9 (rulings 187–188): the house stake BEFORE the refunds below, like `grossPool`. On the pool client, never `lockTx`:
+    // a failed statement cannot abort the refunds, and a failed read records null while the void proceeds (ruling 190).
+    const houseStake = await houseStakeForAudit(m.id, "market.emergency_void");
 
     // Refund every OPEN position its full stake. db.wallet.adjust is atomic, so
     // (like the resolveMarket VOID path) no nested wallet lock is needed.
     const open = (await listPositionsForMarket(m.id)).filter((p) => p.status === "OPEN");
     let refundedCount = 0;
     let refundedTzs = 0;
+    let houseRefundedCount = 0;
+    let houseRefundedTzs = 0;
     for (const p of open) {
       const w = await db.wallet.findByUserId(p.userId);
       // ⛔ REFUSE, NEVER SKIP. `if (!w) continue;` stepped over the position, left it
@@ -4464,6 +4476,8 @@ export async function emergencyVoidMarket(opts: { marketId: string; officerId: s
       })).catch(() => {});
       refundedCount++;
       refundedTzs += p.stake;
+      // SEAM:emergencyHouseShare — the house share the ADMIN notice states (ruling 195); the player's notice above never learns it.
+      if (p.houseBotId != null) { houseRefundedTzs += p.stake; houseRefundedCount++; }
     }
 
     // Pools are now empty (all stakes refunded, seeds returned). Mark VOIDED and
@@ -4497,7 +4511,7 @@ export async function emergencyVoidMarket(opts: { marketId: string; officerId: s
       actorId: opts.officerId,
       targetType: "Market",
       targetId: m.id,
-      payload: { reason, refundedCount, refundedTzs, grossPoolBefore: grossPool, title: m.titleEn },
+      payload: { reason, refundedCount, refundedTzs, grossPoolBefore: grossPool, title: m.titleEn, houseStake },
     });
 
     // An emergency void does not wait for objections — it is the kill switch. But
@@ -4518,11 +4532,11 @@ export async function emergencyVoidMarket(opts: { marketId: string; officerId: s
     // officer gets a definitive "done" beyond the result modal). Best-effort.
     const officers = await db.user.listByRoles(["ADMIN", "COMPLIANCE", "MODERATOR"]); // audit M5
     for (const o of officers) {
-      notifyAdminMarketCancelled(o.id, { title: m.titleEn, reason, refundedCount, refundedTzs }).catch(() => {});
+      notifyAdminMarketCancelled(o.id, { title: m.titleEn, reason, refundedCount, refundedTzs, houseRefundedTzs, houseRefundedCount }).catch(() => {});
       sendEmailToUser(o.id, (email) => ({
         to: email,
         subject: `Market cancelled · ${m.titleEn.slice(0, 50)}`,
-        html: marketCancelledAdminHtml({ title: m.titleEn, reason, refundedCount, refundedTzs }),
+        html: marketCancelledAdminHtml({ title: m.titleEn, reason, refundedCount, refundedTzs, houseRefundedTzs, houseRefundedCount }),
         tag: "market-cancelled-admin",
         trackLinks: false,
       })).catch(() => {});

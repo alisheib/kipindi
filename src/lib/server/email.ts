@@ -23,6 +23,8 @@ import { resolvePhoneEmail } from "./email-map";
 import { isSuppressed } from "./email-suppression";
 import { appUrl } from "@/lib/app-url";
 import { formatTzs, formatDateShort } from "@/lib/utils";
+// C5-SPEC ruling 195: the emergency-void ADMIN letter's house row has its words in one staff-only home.
+import { voidEmailHouseRow } from "@/lib/house-bot/exposure-copy";
 import { AGENT_REJECT_REASON } from "@/lib/admin-status-lexicon";
 // E-101 · an email that quotes a Reference must link to THAT reference, not to a list.
 import { positionPermalinkHref } from "@/lib/position-permalink";
@@ -1516,9 +1518,12 @@ export function marketCancelledRefundHtml({ title, reason, amount, reference }: 
 }
 
 /** Officer email confirming an emergency void completed (with the reason). */
-export function marketCancelledAdminHtml({ title, reason, refundedCount, refundedTzs }: {
+export function marketCancelledAdminHtml({ title, reason, refundedCount, refundedTzs, houseRefundedTzs, houseRefundedCount }: {
   title: string; reason: string; refundedCount: number; refundedTzs: number;
+  /** C5-SPEC ruling 195: the house share, one detail row only when it is above zero; without it the letter is byte-identical. */
+  houseRefundedTzs?: number; houseRefundedCount?: number;
 }): string {
+  const houseRow = voidEmailHouseRow({ houseRefundedTzs, houseRefundedCount }, formatTzs);
   return wrap(`
     ${eyebrow("Market cancelled · confirmation")}
     ${heading("Market voided & players refunded")}
@@ -1528,6 +1533,7 @@ export function marketCancelledAdminHtml({ title, reason, refundedCount, refunde
       { label: "Reason", value: reason },
       { label: "Players refunded", value: String(refundedCount) },
       { label: "Total refunded", value: formatTzs(refundedTzs) },
+      ...(houseRow ? [houseRow] : []),
     ])}
     ${ctaButton("/admin/markets", "Open markets")}
   `);

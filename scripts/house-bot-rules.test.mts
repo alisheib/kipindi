@@ -353,7 +353,8 @@ section("§0 · module law");
   ok("0.population · the import parser saw the modules' imports (≥ 8 statements)", importCount >= 8, `saw ${importCount}`);
   ok("0.population.files · the law reads the folder, and it holds at least the six known modules",
     // C5-SPEC rulings 178 and 192: the one requester rule is a module of this folder, under the same law.
-    ["bet-path.ts", "clock.ts", "consent.ts", "constants.ts", "pause-reasons.ts", "rules.ts", "stake-snapshot.ts"].every((f) => (MODULE_FILES as readonly string[]).includes(f)),
+    // C5-SPEC ruling 195: the staff-only R2 words (`exposure-copy.ts`) are a module of this folder too.
+    ["bet-path.ts", "clock.ts", "consent.ts", "constants.ts", "pause-reasons.ts", "rules.ts", "stake-snapshot.ts", "exposure-copy.ts"].every((f) => (MODULE_FILES as readonly string[]).includes(f)),
     MODULE_FILES.join(", "));
 
   // ⛔ CONTROLS — each check above can fail.
