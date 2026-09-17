@@ -265,7 +265,7 @@ The two house migrations are applied to production from the build machine with `
 
 | # | Question | Default being built |
 |---|---|---|
-| W2 | What a *trigger* player sees in their data export (R5) | excluded days + countered count only |
+| W2 | What a player — a *trigger* player or a holder — sees in their data export (R5) | ⛔ **Re-opened by owner ruling D19 (2026-09-16).** No releasable export — the player's "Export my data" or the officer's DSAR bundle — carries house wording, a house key or a house id; a holder's house stakes appear as their own bets. Excluded days and the countered count live only in the owner-only internal record (C5-SPEC rulings 168–170, 236, 239). **Waits on Ali and a lawyer** (the PDPA access right). |
 | W3 | Terms §10's written in-app notice can't be kept today (P2) | waived on Ali's ruling; defect recorded |
 | W4 | Retention of skipped/expired intents (A20) | kept 7 years (proposal on file: 90 days) |
 | W5 | Platform-wide sign-out on password change (A1) | not in this build (separate hardening) |
