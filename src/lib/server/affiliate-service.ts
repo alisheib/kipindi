@@ -1156,7 +1156,8 @@ export async function onRecruitBet(recruitUserId: string, opts: {
     let hasDeposited = true;
     if (cfg.prize.requireDeposit) {
       try {
-        const txns = await db.txn.findByUser(recruitUserId, 1000);
+        // ⛔ C5-SPEC ruling 173: house rows are never DEPOSITs but fill the newest-1,000 window; excluded in the read.
+        const txns = await db.txn.findByUser(recruitUserId, 1000, { excludeHouseBets: true });
         hasDeposited = txns.some((t) => t.type === "DEPOSIT" && t.status === "CONFIRMED");
       } catch { /* if we can't check, allow it — never block a valid reward */ }
     }

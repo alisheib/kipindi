@@ -491,7 +491,9 @@ async function settleDepositConfirmed(txnId: string, providerRef?: string): Prom
     // Affiliate accrual (first-deposit bonus / threshold prize) — best-effort.
     try {
       const { onRecruitDeposit } = await import("./affiliate-service");
-      const cumulativeDepositsTzs = (await db.txn.findByUser(t.userId, 1000))
+      // ⛔ C5-SPEC ruling 173: a holder's house rows are never DEPOSITs, but they fill a newest-1,000 window — excluded in
+      // the read, before the limit, so the holder's own deposits are counted. A non-holder's result is unchanged.
+      const cumulativeDepositsTzs = (await db.txn.findByUser(t.userId, 1000, { excludeHouseBets: true }))
         .filter((x) => x.type === "DEPOSIT" && x.status === "CONFIRMED")
         .reduce((sum, x) => sum + x.amount, 0);
       await onRecruitDeposit(t.userId, { cumulativeDepositsTzs });
@@ -2326,7 +2328,9 @@ export async function payAgentRegistrationFee(
      * impatient second tap must pay ONCE. The application id is the key, so the answer does
      * not depend on timing or on a client-supplied nonce.
      */
-    const priorTxn = (await db.txn.findByUser(userId, 200)).find(
+    // ⛔ C5-SPEC ruling 173 (a MONEY fix): on a house-bot holder about 200 house rows newer than the fee would push it out of
+    // this 200-row probe and the fee would be charged twice. House rows are never AGENT_REGISTRATION_FEE; excluded in the read.
+    const priorTxn = (await db.txn.findByUser(userId, 200, { excludeHouseBets: true })).find(
       (t) => t.type === "AGENT_REGISTRATION_FEE" && t.providerRef === groupRef && t.status === "CONFIRMED",
     );
     if (priorTxn) {
@@ -2465,7 +2469,9 @@ export async function refundAgentRegistrationFeeToWallet(
      * deliberately so. Spending needs an ACTIVE wallet; being given back money you are owed does
      * not. Refusing here would let an account freeze convert a debt into a forfeiture.
      */
-    const prior = (await db.txn.findByUser(userId, 200)).find(
+    // ⛔ C5-SPEC ruling 173 (a MONEY fix): the same probe for the refund — without the exclusion, house rows between two
+    // refund attempts hide the first refund and it is paid twice.
+    const prior = (await db.txn.findByUser(userId, 200, { excludeHouseBets: true })).find(
       (t) => t.type === "AGENT_REGISTRATION_FEE" && t.providerRef === groupRef && t.status === "CONFIRMED",
     );
     if (prior) {

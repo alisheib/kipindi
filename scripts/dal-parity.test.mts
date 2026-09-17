@@ -731,5 +731,30 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
   ok("14.c3 · CONTROL · a startsWith exclusion is caught", !noPrefixMatch("where: { actorId, NOT: { action: { startsWith: \"house_bot.\" } } }"));
 }
 
+/* ═══ §15 · txn.findByUser({excludeHouseBets}) in BOTH twins, before the limit (C5-SPEC ruling 173) ═══ */
+{
+  // ⛔ A MONEY FIX, SO BOTH HALVES OR NEITHER. The behaviour is test:house-bot-money §11 on both stores; this holds the shape:
+  // the memory twin drops marked rows inside .filter(), BEFORE .slice(-limit) (after it, the window stays flooded on memory
+  // only), and the Prisma twin puts houseBotId: null into the where that take limits.
+  const memLine = (() => { const a = storeSrc.indexOf("findByUser: (userId: string, limit = 50, opts?:"); if (a < 0) return ""; const b = storeSrc.indexOf(".reverse(),", a); return b < 0 ? "" : storeSrc.slice(a, b + 11); })();
+  const memFiltersBeforeSlice = (body: string) => {
+    const filterAt = body.indexOf(".filter(");
+    const optAt = body.indexOf("excludeHouseBets", filterAt);
+    const markerAt = body.indexOf("houseBotId == null", filterAt);
+    const sliceAt = body.indexOf(".slice(-limit)");
+    return filterAt >= 0 && optAt > filterAt && markerAt > filterAt && sliceAt > Math.max(optAt, markerAt);
+  };
+  // The method text up to its close: region() would stop at the brace of the options TYPE in its signature.
+  const pgBody = (() => { const block = region(dalSrc, "\n  txn: {"); const a = block.indexOf("findByUser: async ("); if (a < 0) return ""; const b = block.indexOf("\n    },", a); return b < 0 ? "" : block.slice(a, b); })();
+  const pgWhereBeforeTake = (body: string) => /where:\s*opts\?\.excludeHouseBets\s*\?\s*\{\s*userId,\s*houseBotId:\s*null\s*\}\s*:\s*\{\s*userId\s*\}/.test(body) && /take:\s*limit/.test(body);
+  ok("15.0 · both findByUser twins resolve and take { excludeHouseBets }", memLine.length > 80 && pgBody.length > 80 && /excludeHouseBets\?:\s*boolean/.test(pgBody), `memory ${memLine.length} · prisma ${pgBody.length}`);
+  ok("15.memory · the memory twin drops house-marked rows inside .filter(), before .slice(-limit)", memFiltersBeforeSlice(memLine), memLine.slice(0, 220));
+  ok("15.prisma · the Prisma twin puts houseBotId: null in the where (default: the bare userId where), which take then limits", pgWhereBeforeTake(pgBody), pgBody.slice(0, 260));
+  ok("15.c1 · CONTROL · a memory twin that filters AFTER the slice is caught",
+    !memFiltersBeforeSlice("findByUser: (userId: string, limit = 50, opts?: { excludeHouseBets?: boolean }) => Array.from(store.txns.values()).filter((t) => t.userId === userId).slice(-limit).filter((t) => !opts?.excludeHouseBets || t.houseBotId == null).reverse(),"));
+  ok("15.c2 · CONTROL · a Prisma twin that ignores the option is caught",
+    !pgWhereBeforeTake("findByUser: async (userId: string, limit = 50, opts?: { excludeHouseBets?: boolean }) => { const rows = await pc().transaction.findMany({ where: { userId }, orderBy: { createdAt: \"desc\" }, take: limit }); }"));
+}
+
 console.log(`\ndal-parity: ${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);

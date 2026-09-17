@@ -817,5 +817,162 @@ section("§9 · the money hook tells admins only about an ACTIVE bot, once per e
     JSON.stringify(events.map((e) => e.payload)));
 }
 
+// ═══ §11 · C5-SPEC ruling 173 · a money idempotency probe or deposit read never counts house rows (both stores) ═══
+// A MONEY fix: a holder's newest-N transaction window fills with house rows, so a probe for a prior fee or refund, or a
+// count of the holder's deposits, misses the row it exists to find. Each case writes MORE marked rows than the window
+// newer than the target row, proves the plain read misses it (the defect is real on this branch), then that the read
+// the service makes finds it — through the service where the service can be reached.
+section("§11 · ruling 173 · the four money reads exclude house rows before the limit");
+{
+  const WS: Any = await import("../../src/lib/server/wallet-service.ts");
+  const AFF: Any = await import("../../src/lib/server/affiliate-service.ts");
+  const AFFCFG: Any = await import("../../src/lib/server/affiliate-config.ts");
+  const nowIso = () => new Date().toISOString();
+  /** `n` house-marked BET_PLACED rows for the holder, each written after the target (a fixture of VOLUME, through the DAL). */
+  const markedRows = async (b: { botId: string; userId: string }, n: number, tag: string) => {
+    const wallet = (await w.db.wallet.findByUserId(b.userId)) as Any;
+    await sleep(5);
+    for (let k = 0; k < n; k++) {
+      const at = nowIso();
+      await w.db.txn.create({
+        id: `txn_hbfill_${tag}_${k}_${process.pid}`, walletId: wallet.id, userId: b.userId, type: "BET_PLACED", status: "CONFIRMED",
+        amount: -1_000, fee: 0, taxWithheld: 0, balanceAfter: null, currency: "TZS", provider: "INTERNAL", providerRef: null, msisdn: null,
+        description: "house fill", positionId: null, amlReason: null, createdAt: at, updatedAt: at, completedAt: at, houseBotId: b.botId,
+      } as Any);
+    }
+  };
+  const feeRows = async (userId: string, groupRef: string) =>
+    ((await w.db.txn.findByUser(userId, 100_000)) as Any[]).filter((t) => t.type === "AGENT_REGISTRATION_FEE" && t.providerRef === groupRef && t.status === "CONFIRMED");
+
+  // (1) The AGENT_REGISTRATION_FEE pay probe (200 rows).
+  {
+    const b = await w.bot({ balance: 1_000_000 });
+    const appId = `app_hb173_pay_${process.pid}`;
+    const first = await WS.payAgentRegistrationFee(b.userId, { applicationId: appId, amountTzs: 25_000, vatTzs: 0 });
+    await markedRows(b, 201, "pay");
+    const plainWindow = ((await w.db.txn.findByUser(b.userId, 200)) as Any[]).some((t) => t.providerRef === `agentfee_${appId}`);
+    ok("11.1 · CONTROL · 201 house rows newer than the fee push it out of the plain 200-row window (the defect is live without the option)",
+      first.ok === true && first.alreadyPaid === false && plainWindow === false, JSON.stringify({ first, plainWindow }));
+    const balBefore = (await w.bal(b.userId)).balance;
+    const again = await WS.payAgentRegistrationFee(b.userId, { applicationId: appId, amountTzs: 25_000, vatTzs: 0 });
+    const rows = await feeRows(b.userId, `agentfee_${appId}`);
+    ok("11.2 · ⭐ ruling 173 · the pay probe still finds the prior fee: alreadyPaid, the same txn, no second debit, exactly one fee row",
+      again.ok === true && again.alreadyPaid === true && again.txnId === first.txnId && (await w.bal(b.userId)).balance === balBefore && rows.length === 1,
+      JSON.stringify({ again, rows: rows.length, balBefore, balAfter: (await w.bal(b.userId)).balance }));
+  }
+
+  // (2) The AGENT_REGISTRATION_FEE refund probe (200 rows).
+  {
+    const b = await w.bot({ balance: 1_000_000 });
+    const appId = `app_hb173_refund_${process.pid}`;
+    const paid = await WS.payAgentRegistrationFee(b.userId, { applicationId: appId, amountTzs: 25_000, vatTzs: 0 });
+    const refunded = await WS.refundAgentRegistrationFeeToWallet(b.userId, { applicationId: appId, amountTzs: 25_000, vatTzs: 0 });
+    await markedRows(b, 201, "refund");
+    const plainWindow = ((await w.db.txn.findByUser(b.userId, 200)) as Any[]).some((t) => t.providerRef === `agentfee_refund_${appId}`);
+    ok("11.3 · CONTROL · 201 house rows newer than the refund push it out of the plain 200-row window",
+      paid.ok === true && refunded.ok === true && refunded.alreadyRefunded === false && plainWindow === false, JSON.stringify({ refunded, plainWindow }));
+    const balBefore = (await w.bal(b.userId)).balance;
+    const again = await WS.refundAgentRegistrationFeeToWallet(b.userId, { applicationId: appId, amountTzs: 25_000, vatTzs: 0 });
+    const rows = await feeRows(b.userId, `agentfee_refund_${appId}`);
+    ok("11.4 · ⭐ ruling 173 · the refund probe still finds the prior refund: alreadyRefunded, the same txn, no second credit, exactly one refund row",
+      again.ok === true && again.alreadyRefunded === true && again.txnId === refunded.txnId && (await w.bal(b.userId)).balance === balBefore && rows.length === 1,
+      JSON.stringify({ again, rows: rows.length, balBefore, balAfter: (await w.bal(b.userId)).balance }));
+  }
+
+  // (3) and (4) The deposit reads behind the recruiter prizes. ⚠️ Reachable only while the PLAYER referral programme is live
+  // (`invite` is WITHDRAWN as shipped): the case turns it on for this process with FEATURE_INVITE=ACTIVE, the server's own
+  // switch, and sets the prize through the config's own setter.
+  const inviteBefore = process.env.FEATURE_INVITE;
+  process.env.FEATURE_INVITE = "ACTIVE";
+  try {
+    const recruited = async (bot: { userId: string }) => {
+      const referrer = await w.user({ balance: 0 });
+      // The referrer's affiliate row first, as the real bind does (`User.recruitedBy` references it; Postgres enforces it).
+      await AFF.ensureAffiliateAccount(referrer);
+      await w.setUserFields(bot.userId, { recruitedBy: referrer, recruitedProgramme: "PLAYER", recruitedAt: nowIso() });
+      return referrer;
+    };
+    const confirmedDeposit = async (userId: string, amount: number, tag: string) => {
+      const wallet = (await w.db.wallet.findByUserId(userId)) as Any;
+      const at = nowIso();
+      await w.db.txn.create({
+        id: `txn_hb173_dep_${tag}_${process.pid}`, walletId: wallet.id, userId, type: "DEPOSIT", status: "CONFIRMED", amount, fee: 0, taxWithheld: 0,
+        balanceAfter: null, currency: "TZS", provider: "MPESA", providerRef: `hb173_${tag}_${process.pid}`, msisdn: null, description: "deposit",
+        positionId: null, amlReason: null, createdAt: at, updatedAt: at, completedAt: at,
+      } as Any);
+    };
+    const prizesFor = async (recruit: string) => ((await w.db.referralReward.listByRecruit(recruit)) as Any[]).filter((r) => r.type === "PRIZE");
+
+    // (3) cumulativeDepositsTzs → onRecruitDeposit's DEPOSIT_THRESHOLD prize, through the real deposit webhook.
+    {
+      const set = AFFCFG.setAffiliateConfig({ enabled: true, prize: { enabled: true, milestone: "DEPOSIT_THRESHOLD", depositThresholdTzs: 10_000, amountTzs: 1_000, capPerReferrer: 0, requireDeposit: false } }, OFFICER);
+      const b = await w.bot({ balance: 0 });
+      await recruited(b);
+      await confirmedDeposit(b.userId, 6_000, "first");
+      await markedRows(b, 1_001, "dep");
+      const plain = ((await w.db.txn.findByUser(b.userId, 1000)) as Any[]).filter((t) => t.type === "DEPOSIT" && t.status === "CONFIRMED").reduce((s, t) => s + t.amount, 0);
+      const wallet = (await w.db.wallet.findByUserId(b.userId)) as Any;
+      const at = nowIso();
+      const ref = `hb173_second_${process.pid}`;
+      await w.db.txn.create({
+        id: `txn_hb173_dep_second_${process.pid}`, walletId: wallet.id, userId: b.userId, type: "DEPOSIT", status: "PROCESSING", amount: 6_000, fee: 0, taxWithheld: 0,
+        balanceAfter: null, currency: "TZS", provider: "MPESA", providerRef: ref, msisdn: null, description: "deposit", positionId: null, amlReason: null,
+        createdAt: at, updatedAt: at, completedAt: null,
+      } as Any);
+      const plainAfter = plain + 6_000;
+      const settled = await WS.settlePaymentWebhook({ providerRef: ref, status: "CONFIRMED" });
+      const prizes = await prizesFor(b.userId);
+      ok("11.5 · CONTROL · with 1,001 house rows after the first deposit, the plain 1,000-row read would count only the second (6,000 < the 10,000 threshold)",
+        set.ok === true && plain === 0 && plainAfter === 6_000, JSON.stringify({ set: set.ok, plain }));
+      ok("11.6 · ⭐ ruling 173 · the real deposit confirmation counts BOTH deposits (12,000) and the recruiter's DEPOSIT_THRESHOLD prize is paid once",
+        settled.handled === true && prizes.length === 1, JSON.stringify({ settled, prizes: prizes.map((p) => [p.type, p.status, p.amountTzs]) }));
+    }
+
+    // (4) hasDeposited → onRecruitBet's FIRST_BET prize (requireDeposit).
+    {
+      const set = AFFCFG.setAffiliateConfig({ enabled: true, prize: { enabled: true, milestone: "FIRST_BET", minBetAmountTzs: 1_000, amountTzs: 1_000, capPerReferrer: 0, requireDeposit: true } }, OFFICER);
+      const b = await w.bot({ balance: 0 });
+      await recruited(b);
+      await confirmedDeposit(b.userId, 5_000, "bet");
+      await markedRows(b, 1_001, "bet");
+      const plainSees = ((await w.db.txn.findByUser(b.userId, 1000)) as Any[]).some((t) => t.type === "DEPOSIT" && t.status === "CONFIRMED");
+      await AFF.onRecruitBet(b.userId, { stake: 5_000, houseBotId: null });
+      const prizes = await prizesFor(b.userId);
+      ok("11.7 · CONTROL · the plain 1,000-row read no longer sees the holder's deposit behind 1,001 house rows", set.ok === true && plainSees === false, JSON.stringify({ set: set.ok, plainSees }));
+      ok("11.8 · ⭐ ruling 173 · onRecruitBet's hasDeposited sees the deposit: the recruiter's FIRST_BET prize is paid once",
+        prizes.length === 1, JSON.stringify(prizes.map((p) => [p.type, p.status, p.amountTzs])));
+    }
+  } finally {
+    if (inviteBefore === undefined) delete process.env.FEATURE_INVITE; else process.env.FEATURE_INVITE = inviteBefore;
+  }
+
+  // (5) The option itself, on the DAL twin this child runs: before the limit, and a player's read byte-identical.
+  {
+    const b = await w.bot({ balance: 0 });
+    await confirmedDepositForDal(b.userId);
+    await markedRows(b, 1_001, "dal");
+    const plain = (await w.db.txn.findByUser(b.userId, 1000)) as Any[];
+    const excluded = (await w.db.txn.findByUser(b.userId, 1000, { excludeHouseBets: true })) as Any[];
+    ok(`11.9 · ruling 173 · ${w.onPostgres ? "Prisma" : "memory"} txn.findByUser({excludeHouseBets}) filters BEFORE the limit: the deposit behind 1,001 marked rows is returned, and no marked row`,
+      plain.length === 1_000 && plain.every((t) => t.houseBotId != null) && excluded.length === 1 && excluded[0].type === "DEPOSIT" && excluded.every((t) => t.houseBotId == null),
+      JSON.stringify({ plain: plain.length, plainMarked: plain.filter((t) => t.houseBotId != null).length, excluded: excluded.map((t) => t.type) }));
+    const player = await w.user({ balance: 0 });
+    await confirmedDepositForDal(player);
+    const { player: bettor } = await pollWithLockedNo(3_000);
+    const twin = async (id: string) => JSON.stringify(await w.db.txn.findByUser(id, 1000)) === JSON.stringify(await w.db.txn.findByUser(id, 1000, { excludeHouseBets: true }));
+    ok("11.10 · ruling 173 · a NON-holder's read is byte-identical with and without the option (house rows are never theirs)",
+      (await twin(player)) && (await twin(bettor)) && ((await w.db.txn.findByUser(bettor, 1000)) as Any[]).length > 0);
+  }
+  async function confirmedDepositForDal(userId: string) {
+    const wallet = (await w.db.wallet.findByUserId(userId)) as Any;
+    const at = nowIso();
+    await w.db.txn.create({
+      id: `txn_hb173_daldep_${userId}`, walletId: wallet.id, userId, type: "DEPOSIT", status: "CONFIRMED", amount: 1_000, fee: 0, taxWithheld: 0,
+      balanceAfter: null, currency: "TZS", provider: "MPESA", providerRef: `hb173_dal_${userId}`, msisdn: null, description: "deposit",
+      positionId: null, amlReason: null, createdAt: at, updatedAt: at, completedAt: at,
+    } as Any);
+  }
+}
+
 console.log(`\n@@SUMMARY ${JSON.stringify({ pass, fail, store: STORE })}`);
 process.exit(fail === 0 ? 0 : 1);

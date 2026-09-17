@@ -1559,9 +1559,10 @@ export const prismaDb = {
       });
       return toStoredTxn(row);
     },
-    findByUser: async (userId: string, limit = 50): Promise<StoredTxn[]> => {
+    /** `excludeHouseBets` (C5-SPEC ruling 173): `houseBotId IS NULL` in the WHERE, before `take`. See the memory twin. */
+    findByUser: async (userId: string, limit = 50, opts?: { excludeHouseBets?: boolean }): Promise<StoredTxn[]> => {
       const rows = await pc().transaction.findMany({
-        where: { userId },
+        where: opts?.excludeHouseBets ? { userId, houseBotId: null } : { userId },
         orderBy: { createdAt: "desc" },
         take: limit,
       });

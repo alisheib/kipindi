@@ -1376,7 +1376,13 @@ const memoryDb = {
   },
   txn: {
     create: (t: StoredTxn) => { store.txns.set(t.id, t); return t; },
-    findByUser: (userId: string, limit = 50) => Array.from(store.txns.values()).filter((t) => t.userId === userId).slice(-limit).reverse(),
+    /**
+     * ⭐ `excludeHouseBets` (C5-SPEC ruling 173): drop house-marked rows (`houseBotId != null`) INSIDE the filter, BEFORE
+     * `.slice(-limit)` — or a holder's newest-N window stays flooded by house rows on this store only. Default off, so every
+     * existing caller reads exactly what it read before.
+     */
+    findByUser: (userId: string, limit = 50, opts?: { excludeHouseBets?: boolean }) =>
+      Array.from(store.txns.values()).filter((t) => t.userId === userId && (!opts?.excludeHouseBets || t.houseBotId == null)).slice(-limit).reverse(),
     /**
      * ⭐ ONE PLAYER'S TRANSACTIONS INSIDE A DATE WINDOW, NEWEST FIRST — the read `/wallet` filters
      * over. The window is applied HERE, in the store, and that is the whole point: filtering an
