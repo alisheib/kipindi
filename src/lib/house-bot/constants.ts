@@ -715,8 +715,10 @@ export const ALERT_KEY = {
 
 /**
  * The category of every house audit action. ⛔ A house action written with any other name, or any
- * other category, is a row the regulator index (`getAuditByActionsDurable(Object.keys(HOUSE_AUDIT))`)
- * cannot find. The rules suite pins that every quoted house audit literal under `src/` is a key here.
+ * other category, is a row no reader of this table can find — the console's action feed, the erasure
+ * routine's rewrites and every absence proof read it, and owner ruling D20 (2026-09-17) struck the
+ * regulator index that also did. The rules suite pins that every quoted house audit literal under
+ * `src/` is a key here.
  */
 export const HOUSE_AUDIT = {
   "house_bot.designated": "COMPLIANCE",

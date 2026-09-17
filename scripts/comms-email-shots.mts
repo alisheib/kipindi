@@ -60,7 +60,6 @@ const PAGES: { name: string; html: string }[] = [
   { name: "updownDigestHtml", html: E.updownDigestHtml({ dayLabel: "2 Aug", rounds: 4, wins: 1, losses: 3, refunds: 0, wonPayout: 8_700, lostStake: 15_000, refundedStake: 0, staked: 20_000, returned: 8_700, net: -11_300 }) },
   { name: "marketCancelledRefundHtml", html: E.marketCancelledRefundHtml({ title: LONG, reason: "The published source retracted its result after settlement", amount: 25_000, reference: "pos_41ab77cd" }) },
   { name: "marketCancelledAdminHtml", html: E.marketCancelledAdminHtml({ title: LONG, reason: "Source retracted", refundedCount: 42, refundedTzs: 1_050_000 }) },
-  // C5-SPEC ruling 195: the same letter when the void refunded house stakes — one more detail row, rendered and read beside the plain one.
   { name: "marketResolutionAdminHtml", html: E.marketResolutionAdminHtml({ title: LONG, closedAt: "2026-07-31T09:00:00.000Z", reviewUrl: "/admin/resolver-queue" }) },
   { name: "bonusCreditedHtml", html: E.bonusCreditedHtml({ amountTzs: 5_000, wagerRequiredTzs: 25_000, sourceLabel: "Welcome bonus" }) },
   { name: "bonusFulfilledHtml", html: E.bonusFulfilledHtml({ amountTzs: 5_000 }) },

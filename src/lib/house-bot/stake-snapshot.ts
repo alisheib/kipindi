@@ -6,9 +6,11 @@
  * requester, and an automated stake (COUNTER, FILL, OPENER with no target) has none. The CHECKs make MANUAL and targeted
  * rows disjoint (a MANUAL row never carries a target), so the order of the two branches cannot be observed.
  *
- * Every reader applies THIS function: the exposure line and its audit snapshot (`server/house-bot/exposure.ts`), the
- * oversight pass (`server/house-bot/oversight.ts`), and the proof that the book's officer column says the same
- * (`test:house-bot-reports` §1). A second spelling of the rule is a second answer to "who chose this stake".
+ * Every reader applies THIS function. Since owner ruling D20 (2026-09-17) there is one: the oversight pass
+ * (`server/house-bot/oversight.ts`), which raises the staff-stake alerts C5-D20-REPLAN ruling 264 keeps. The exposure line,
+ * its audit snapshot and the book's officer column were un-built in checkpoint C5-5b with the rest of the display and the
+ * R9 payloads, so no report, line or audit row names a requester any more; `test:house-bot-reports` 0.191 pins that (I10).
+ * A second spelling of the rule would be a second answer to "who chose this stake".
  *
  * ⛔ DISPLAY, AUDIT AND ALERT ONLY. No refusal branch and no page condition reads a requester (TGT-38): an officer who
  * chose a stake may still decide its market; the record says so afterwards.

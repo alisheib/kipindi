@@ -118,7 +118,15 @@ export async function houseOpenExposure(houseBotId: string | null, tx?: HouseTx)
   return rows.reduce((sum, r) => sum + r.openStakeTzs, 0);
 }
 
-/** The console's money card: today's cohort or the whole lifetime, plus live open exposure. */
+/**
+ * The console's money card: today's cohort or the whole lifetime, plus live open exposure.
+ *
+ * ⛔ NO CALLER TODAY, AND ITS PLANNED ONE IS STRUCK (owner ruling D20, 2026-09-17; C5-D20-REPLAN ruling 266). Commit 1 wrote
+ * this for the console's lifetime-and-today "Book" card, which D20 removed along with "Today's net" and the fee withheld: a
+ * Commit 7 console shows money only as usage against a configured limit, and that reads `houseDayBook` /
+ * `houseOpenExposure`, not this. It is left standing, unused and with no case, for Commit 7's rulings to give it a caller
+ * or delete it — recorded in PROGRESS by checkpoint C5-5b so it cannot be mistaken for live code (review test-strength-10).
+ */
 export async function houseBotBook(input: { houseBotId: string | null; range: "today" | "lifetime"; nowMs: number }): Promise<HouseBotBook> {
   const window = input.range === "today"
     ? dayWindowIso(eatDayKey(input.nowMs))
