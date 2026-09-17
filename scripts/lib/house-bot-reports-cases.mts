@@ -869,6 +869,8 @@ if (STORE === "memory") {
  */
 export const REQUESTER_TOKENS = ["houseStake", "houseStakes", "staffChosen", "requestedBy", "byRequester", "houseStakeForAudit", "houseStakeByMarket"] as const;
 export const PAGE_FORBIDDEN_TOKENS = ["requestedBy", "byRequester"] as const;
+/** The two readers that produce a requester value. */
+export const REQUESTER_READERS = ["houseStakeForAudit", "houseStakeByMarket"] as const;
 /** (1) the services and actions that decide a market (ruling 191's list, measured at this commit). */
 export const TGT38_SERVICES = [
   "src/lib/server/market-service.ts", "src/lib/server/objections-service.ts", "src/lib/server/updown-service.ts",
@@ -885,46 +887,195 @@ export const TGT38_CONTROLS = [
   "src/app/admin/markets/emergency-void-control.tsx", "src/app/admin/objections/objection-decision.tsx", "src/app/admin/updown/rounds/void-round-control.tsx",
   "src/app/admin/resolver-queue/bulk-resolve-bar.tsx", "src/app/admin/resolver/[id]/resolution-ceremony.tsx",
 ] as const;
+/**
+ * The controls an officer decides WITH on those pages, and `ControlLocked`, the placeholder a page renders in a control's place:
+ * a page condition that chooses between them is a lock (ruling 191 (2)).
+ */
+export const DECISION_CONTROLS = ["ResolveControls", "RecheckButton", "BulkResolveBar", "ResolutionCeremony", "EmergencyVoidControl", "ObjectionDecision", "VoidRoundControl", "ControlLocked"] as const;
+/** Ruling 192's neutral slots: the only props through which a page may hand a decision control a rendered line or neutral house data. */
+export const EXPOSURE_SLOT_PROPS = ["exposureSlot", "exposureState", "exposureCountTemplate"] as const;
+/** What names the VIEWER's own stake on a page (ruling 193's comparison, the requester tokens) … */
+export const PAGE_VIEWER_SEEDS = ["viewerClause", "requestedBy", "byRequester", "staffChosen"] as const;
+/** … and what names the house stake itself (ruling 194's reads and parts). */
+export const PAGE_HOUSE_SEEDS = ["houseStakeByMarket", "houseStakeForAudit", "houseStake", "houseStakes", "staffClause"] as const;
 
 /** Every identifier-shaped word of a decommented text (strings included: a page that spells a token in a string names it). */
 const wordsOf = (code: string): Set<string> => new Set(code.split(/[^A-Za-z0-9_$]+/).filter(Boolean));
+const lf = (code: string) => code.split("\r\n").join("\n");
+/** `code` with `from` replaced by `to`; throws unless `from` occurs exactly once (a plant that misses its anchor must not pass). */
+const plant = (code: string, from: string, to: string): string => {
+  const at = code.indexOf(from);
+  if (at < 0 || code.indexOf(from, at + from.length) >= 0) throw new Error(`plant anchor must occur exactly once: ${from.slice(0, 60)}`);
+  return code.slice(0, at) + to + code.slice(at + from.length);
+};
+
+/** An expression with parentheses, `as`, `!`, `satisfies` and `<T>` assertions taken off. */
+const bare = (e: ts.Expression): ts.Expression => {
+  let x = e;
+  while (ts.isParenthesizedExpression(x) || ts.isAsExpression(x) || ts.isNonNullExpression(x) || ts.isSatisfiesExpression(x) || ts.isTypeAssertionExpression(x)) x = x.expression;
+  return x;
+};
+/** The identifiers and string-literal texts under `node`; a nested function's body is skipped unless `intoFunctions`. */
+function namesUnder(node: ts.Node, intoFunctions: boolean): string[] {
+  const out: string[] = [];
+  const go = (m: ts.Node) => {
+    if (!intoFunctions && m !== node && ts.isFunctionLike(m)) return;
+    if (ts.isIdentifier(m)) out.push(m.text);
+    else if (ts.isStringLiteral(m) || ts.isNoSubstitutionTemplateLiteral(m)) out.push(m.text);
+    ts.forEachChild(m, go);
+  };
+  go(node);
+  return out;
+}
+const bindingNames = (name: ts.BindingName): string[] => (ts.isIdentifier(name) ? [name.text]
+  : name.elements.flatMap((e) => (ts.isBindingElement(e) ? bindingNames(e.name) : [])));
+const lineOf = (sf: ts.SourceFile, node: ts.Node) => sf.getLineAndCharacterOfPosition(node.getStart(sf)).line + 1;
+const snippet = (sf: ts.SourceFile, node: ts.Node) => node.getText(sf).replace(/\s+/g, " ").slice(0, 90);
+/** A type position carries no runtime value: a type annotation, `typeof x` in a type, an interface or a type alias. */
+const inTypePosition = (n: ts.Node): boolean => {
+  for (let p = n.parent; p; p = p.parent) if (ts.isTypeNode(p) || ts.isInterfaceDeclaration(p) || ts.isTypeAliasDeclaration(p)) return true;
+  return false;
+};
+const LOGICAL = [ts.SyntaxKind.AmpersandAmpersandToken, ts.SyntaxKind.BarBarToken, ts.SyntaxKind.QuestionQuestionToken];
 
 /**
- * TGT-38 over one service or action (ruling 191 (1)). A requester value is a token, or a variable bound from an expression
- * that reads one OUTSIDE a nested function (a `withLock` result whose callback reads the stake is not one — its callback
- * returns the decision, not the stake). Reported: a token or such a variable in an if / while / do / for / switch / ternary
- * condition or an `&&` / `||` operand, and in a `return` or on a line that answers `ok: false`.
+ * The names that carry a value read from `seeds`, to a fixed point: a variable or an assignment whose right side reads one
+ * outside a nested function (a `withLock` result whose callback reads the stake returns the decision, not the stake), and a
+ * function, method or function-valued variable or property one of whose own `return`s (or whose expression body) reads one —
+ * so a helper that answers "did this officer choose a stake?" carries the answer to its callers.
  */
-export function requesterRefusalProblems(file: string, code: string): string[] {
-  const sf = parse(file, code);
-  const tracked = new Set<string>(REQUESTER_TOKENS);
-  const idsIn = (node: ts.Node, intoFunctions: boolean): string[] => {
-    const out: string[] = [];
+function carriers(sf: ts.SourceFile, seeds: Iterable<string>): Set<string> {
+  const tracked = new Set<string>(seeds);
+  const reads = (node: ts.Node | undefined) => !!node && namesUnder(node, false).some((t) => tracked.has(t));
+  const returnsRead = (fn: ts.Node): boolean => {
+    const body = (fn as Any).body as ts.Node | undefined;
+    if (!body) return false;
+    if (!ts.isBlock(body)) return namesUnder(body, true).some((t) => tracked.has(t));
+    let hit = false;
     const go = (m: ts.Node) => {
-      if (!intoFunctions && m !== node && ts.isFunctionLike(m)) return;
-      if (ts.isIdentifier(m)) out.push(m.text);
-      else if (ts.isStringLiteral(m) || ts.isNoSubstitutionTemplateLiteral(m)) out.push(m.text);
+      if (hit || (m !== body && ts.isFunctionLike(m))) return;
+      if (ts.isReturnStatement(m) && m.expression && namesUnder(m.expression, true).some((t) => tracked.has(t))) { hit = true; return; }
       ts.forEachChild(m, go);
     };
-    go(node);
-    return out;
+    go(body);
+    return hit;
   };
-  const bindNames = (name: ts.BindingName): string[] => (ts.isIdentifier(name) ? [name.text]
-    : name.elements.flatMap((e) => (ts.isBindingElement(e) ? bindNames(e.name) : [])));
   for (let grew = true; grew;) {
     grew = false;
+    const add = (names: string[]) => { for (const name of names) if (!tracked.has(name)) { tracked.add(name); grew = true; } };
     walkTree(sf, (n) => {
-      let names: string[] = [];
-      let from: ts.Node | null = null;
-      if (ts.isVariableDeclaration(n) && n.initializer) { names = bindNames(n.name); from = n.initializer; }
-      else if (ts.isBinaryExpression(n) && n.operatorToken.kind === ts.SyntaxKind.EqualsToken && ts.isIdentifier(n.left)) { names = [n.left.text]; from = n.right; }
-      if (!from || !idsIn(from, false).some((t) => tracked.has(t))) return;
-      for (const name of names) if (!tracked.has(name)) { tracked.add(name); grew = true; }
+      if (ts.isVariableDeclaration(n) && n.initializer) {
+        const init = bare(n.initializer);
+        if (ts.isArrowFunction(init) || ts.isFunctionExpression(init)) { if (returnsRead(init)) add(bindingNames(n.name)); }
+        else if (reads(n.initializer)) add(bindingNames(n.name));
+      } else if (ts.isBinaryExpression(n) && n.operatorToken.kind === ts.SyntaxKind.EqualsToken && ts.isIdentifier(n.left) && reads(n.right)) add([n.left.text]);
+      else if ((ts.isFunctionDeclaration(n) || ts.isMethodDeclaration(n)) && n.name && ts.isIdentifier(n.name) && returnsRead(n)) add([n.name.text]);
+      else if (ts.isPropertyAssignment(n) && ts.isIdentifier(n.name)) {
+        const init = bare(n.initializer);
+        if ((ts.isArrowFunction(init) || ts.isFunctionExpression(init)) && returnsRead(init)) add([n.name.text]);
+      }
     });
   }
-  const reads = (node: ts.Node | undefined) => !!node && idsIn(node, true).some((t) => tracked.has(t));
+  return tracked;
+}
+
+/**
+ * TGT-38 over one service or action (ruling 191 (1)), in two layers.
+ *
+ * (A) POSITIONS — the ruling's positive rule. Every occurrence of a requester token, of a reader's alias, or of a name bound
+ * by `await <reader>(…)` must be one of: an import (static, or destructured from `await import(…)`); a type position; the name
+ * of a variable whose initializer is exactly `await <reader>(…)`, or that call's callee; the name of a variable initialised to
+ * an empty object `{}` (the bulk action's map); a top-level key of the `payload` object in `audit({…})`, or that key's value
+ * when the value is exactly the name; or the map write `map[key] = name`. Anything else is reported: a condition, a helper's
+ * `return`, an array predicate, an `ok: true` result, an argument to any other call.
+ *
+ * (B) KINDS — the same reads named by where they decide: a token or a carrier (above) in an if / while / do / for / switch /
+ * ternary condition, an `&&` / `||` operand, an array predicate (`filter`, `find`, `some`, `every` …), and a `return` or a
+ * line that answers `ok: false`.
+ */
+export function requesterScan(file: string, code: string): { problems: string[]; allowed: string[] } {
+  const sf = parse(file, code);
+  const readers = new Set<string>(REQUESTER_READERS);
+  walkTree(sf, (n) => {
+    if (ts.isBindingElement(n) && n.propertyName && ts.isIdentifier(n.propertyName) && readers.has(n.propertyName.text) && ts.isIdentifier(n.name)) readers.add(n.name.text);
+    if (ts.isImportSpecifier(n) && n.propertyName && readers.has(n.propertyName.text)) readers.add(n.name.text);
+  });
+  const readCall = (e: ts.Expression | undefined): ts.CallExpression | null => {
+    if (!e) return null;
+    const x = bare(e);
+    if (!ts.isAwaitExpression(x)) return null;
+    const call = bare(x.expression);
+    return ts.isCallExpression(call) && ts.isIdentifier(bare(call.expression)) && readers.has((bare(call.expression) as ts.Identifier).text) ? call : null;
+  };
+  const tracked = new Set<string>([...REQUESTER_TOKENS, ...readers]);
+  walkTree(sf, (n) => { if (ts.isVariableDeclaration(n) && readCall(n.initializer)) for (const name of bindingNames(n.name)) tracked.add(name); });
+
+  const inAuditPayload = (id: ts.Identifier): boolean => {
+    const prop = id.parent;
+    const own = (ts.isShorthandPropertyAssignment(prop) && prop.name === id)
+      || (ts.isPropertyAssignment(prop) && (prop.name === id || bare(prop.initializer) === id));
+    if (!own) return false;
+    const payloadObject = prop.parent;
+    const payload = payloadObject?.parent;
+    if (!payloadObject || !ts.isObjectLiteralExpression(payloadObject) || !payload || !ts.isPropertyAssignment(payload)
+      || !ts.isIdentifier(payload.name) || payload.name.text !== "payload" || bare(payload.initializer) !== payloadObject) return false;
+    const entry = payload.parent;
+    const call = entry?.parent;
+    return !!entry && ts.isObjectLiteralExpression(entry) && !!call && ts.isCallExpression(call) && call.arguments[0] === entry
+      && ts.isIdentifier(bare(call.expression)) && (bare(call.expression) as ts.Identifier).text === "audit";
+  };
+  const whyAllowed = (id: ts.Identifier): string | null => {
+    if (inTypePosition(id)) return "a type";
+    for (let p: ts.Node | undefined = id.parent; p && !ts.isSourceFile(p); p = p.parent) if (ts.isImportDeclaration(p)) return "an import";
+    const parent = id.parent;
+    if (ts.isBindingElement(parent) && (parent.name === id || parent.propertyName === id)) {
+      let decl: ts.Node | undefined = parent.parent;
+      while (decl && ts.isObjectBindingPattern(decl)) decl = decl.parent;
+      if (decl && ts.isVariableDeclaration(decl) && decl.initializer) {
+        let x = bare(decl.initializer);
+        if (ts.isAwaitExpression(x)) x = bare(x.expression);
+        if (ts.isCallExpression(x) && x.expression.kind === ts.SyntaxKind.ImportKeyword) return "an import";
+      }
+      return null;
+    }
+    if (ts.isVariableDeclaration(parent) && parent.name === id) {
+      if (readCall(parent.initializer)) return "the read's binding";
+      const init = parent.initializer ? bare(parent.initializer) : null;
+      if (init && ts.isObjectLiteralExpression(init) && init.properties.length === 0) return "an empty map";
+      return null;
+    }
+    if (ts.isCallExpression(parent) && parent.expression === id) {
+      let up: ts.Node = parent;
+      while (up.parent && (ts.isParenthesizedExpression(up.parent) || ts.isAwaitExpression(up.parent) || ts.isAsExpression(up.parent) || ts.isNonNullExpression(up.parent))) up = up.parent;
+      if (up.parent && ts.isVariableDeclaration(up.parent) && readCall(up.parent.initializer) === parent) return "the read";
+      return null;
+    }
+    if (inAuditPayload(id)) return "an audit payload";
+    const assign = ts.isElementAccessExpression(parent) && parent.expression === id ? parent.parent
+      : ts.isBinaryExpression(parent) && bare(parent.right) === id ? parent : null;
+    if (assign && ts.isBinaryExpression(assign) && assign.operatorToken.kind === ts.SyntaxKind.EqualsToken && ts.isExpressionStatement(assign.parent)
+      && ts.isElementAccessExpression(assign.left) && ts.isIdentifier(assign.left.expression) && tracked.has(assign.left.expression.text)
+      && ts.isIdentifier(bare(assign.right)) && tracked.has((bare(assign.right) as ts.Identifier).text)
+      && !namesUnder(assign.left.argumentExpression, true).some((t) => tracked.has(t))) return "the map write";
+    return null;
+  };
+
   const problems: string[] = [];
-  const say = (what: string, node: ts.Node) => problems.push(`${file}:${sf.getLineAndCharacterOfPosition(node.getStart(sf)).line + 1}: ${what} ${node.getText(sf).replace(/\s+/g, " ").slice(0, 90)}`);
+  const allowed: string[] = [];
+  walkTree(sf, (n) => {
+    if (ts.isIdentifier(n) && tracked.has(n.text)) {
+      const why = whyAllowed(n);
+      if (why) allowed.push(`${file}:${lineOf(sf, n)}: ${n.text} (${why})`);
+      else problems.push(`${file}:${lineOf(sf, n)}: a requester value outside a payload or its read: ${n.text} in ${snippet(sf, n.parent)}`);
+    } else if ((ts.isStringLiteral(n) || ts.isNoSubstitutionTemplateLiteral(n)) && (REQUESTER_TOKENS as readonly string[]).includes(n.text) && !inTypePosition(n)) {
+      problems.push(`${file}:${lineOf(sf, n)}: a requester token spelled as a string: ${snippet(sf, n.parent)}`);
+    }
+  });
+
+  const carried = carriers(sf, tracked);
+  const reads = (node: ts.Node | undefined) => !!node && namesUnder(node, true).some((t) => carried.has(t));
+  const say = (what: string, node: ts.Node) => problems.push(`${file}:${lineOf(sf, node)}: ${what} ${snippet(sf, node)}`);
+  const ARRAY_PREDICATES = new Set(["filter", "find", "findIndex", "findLast", "findLastIndex", "some", "every"]);
   walkTree(sf, (n) => {
     if ((ts.isIfStatement(n) || ts.isWhileStatement(n) || ts.isDoStatement(n)) && reads(n.expression)) say("a condition reads a requester value:", n.expression);
     else if (ts.isForStatement(n) && reads(n.condition)) say("a loop condition reads a requester value:", n.condition!);
@@ -932,12 +1083,15 @@ export function requesterRefusalProblems(file: string, code: string): string[] {
     else if (ts.isConditionalExpression(n) && reads(n.condition)) say("a ternary reads a requester value:", n.condition);
     else if (ts.isBinaryExpression(n) && [ts.SyntaxKind.AmpersandAmpersandToken, ts.SyntaxKind.BarBarToken].includes(n.operatorToken.kind) && (reads(n.left) || reads(n.right))) say("an && / || operand reads a requester value:", n);
     else if (ts.isReturnStatement(n) && n.expression && /\bok\s*:\s*false\b/.test(n.expression.getText(sf)) && reads(n.expression)) say("a refusal returns a requester value:", n);
+    else if (ts.isCallExpression(n) && ts.isPropertyAccessExpression(n.expression) && ARRAY_PREDICATES.has(n.expression.name.text)
+      && n.arguments.some((a) => ts.isFunctionLike(a) && reads(a))) say("an array predicate reads a requester value:", n);
   });
   code.split("\n").forEach((line, k) => {
-    if (/\bok\s*:\s*false\b/.test(line) && [...wordsOf(line)].some((t) => tracked.has(t))) problems.push(`${file}:${k + 1}: a line that answers ok: false names a requester value`);
+    if (/\bok\s*:\s*false\b/.test(line) && [...wordsOf(line)].some((t) => carried.has(t))) problems.push(`${file}:${k + 1}: a line that answers ok: false names a requester value`);
   });
-  return [...new Set(problems)];
+  return { problems: [...new Set(problems)], allowed };
 }
+export const requesterRefusalProblems = (file: string, code: string): string[] => requesterScan(file, code).problems;
 
 /** Ruling 191 (2) and (3): the words a page or a client control names. */
 export function requesterNamingProblems(file: string, code: string, forbidden: readonly string[]): string[] {
@@ -945,83 +1099,300 @@ export function requesterNamingProblems(file: string, code: string, forbidden: r
   return forbidden.filter((t) => words.has(t)).map((t) => `${file} names ${t}`);
 }
 
+/**
+ * Ruling 191 (2) beyond naming: no page CONDITION reads the house stake or the viewer's share of it to decide a control. From
+ * step 5 a page holds `viewerClause(view, session.userId)` — non-empty exactly when the viewer chose a stake — without ever
+ * spelling `requestedBy`, so a word check alone cannot see a UI lock. Carriers (above) start from the viewer seeds and the
+ * house seeds. Reported:
+ *   · a ternary or an `&&` / `||` / `??` whose condition part reads a carrier while a DECISION control sits in it;
+ *   · an `if` or `switch` reading one whose branches hold a control, or that returns early from a function rendering one;
+ *   · a decision control's prop reading the viewer's share (any prop but ruling 192's slots), or the house stake (any prop but
+ *     the slots and the bulk bar's `rows`, which carry ruling 192's neutral `exposureState`).
+ * Display stays free: `view ? <HouseLine/> : <UnreadLine/>`, `mine ? <span>{mine}</span> : null`, a slot holding the line.
+ */
+export function pageConditionProblems(file: string, code: string): { problems: string[]; controls: string[] } {
+  const sf = parse(file, code);
+  const viewer = carriers(sf, PAGE_VIEWER_SEEDS);
+  const any = carriers(sf, [...PAGE_VIEWER_SEEDS, ...PAGE_HOUSE_SEEDS]);
+  const readsIn = (set: Set<string>, node: ts.Node | undefined) => !!node && namesUnder(node, true).some((t) => set.has(t));
+  const controlTag = (n: ts.Node): string | null => {
+    if (!ts.isJsxOpeningElement(n) && !ts.isJsxSelfClosingElement(n)) return null;
+    const tag = n.tagName.getText(sf);
+    return (DECISION_CONTROLS as readonly string[]).includes(tag) ? tag : null;
+  };
+  const holdsControl = (node: ts.Node | null | undefined): boolean => {
+    if (!node) return false;
+    let hit = false;
+    const go = (m: ts.Node) => { if (hit) return; if (controlTag(m)) { hit = true; return; } ts.forEachChild(m, go); };
+    go(node);
+    return hit;
+  };
+  const ownReturn = (node: ts.Node): boolean => {
+    let hit = false;
+    const go = (m: ts.Node) => { if (hit || (m !== node && ts.isFunctionLike(m))) return; if (ts.isReturnStatement(m)) { hit = true; return; } ts.forEachChild(m, go); };
+    go(node);
+    return hit;
+  };
+  const enclosingBody = (n: ts.Node): ts.Node | null => {
+    for (let p = n.parent; p; p = p.parent) if (ts.isFunctionLike(p)) return ((p as Any).body as ts.Node | undefined) ?? null;
+    return null;
+  };
+  const controls = new Set<string>();
+  const problems: string[] = [];
+  const say = (what: string, node: ts.Node) => problems.push(`${file}:${lineOf(sf, node)}: ${what} ${snippet(sf, node)}`);
+  walkTree(sf, (n) => {
+    const tag = controlTag(n);
+    if (tag) {
+      controls.add(tag);
+      for (const attr of (n as ts.JsxOpeningElement | ts.JsxSelfClosingElement).attributes.properties) {
+        const name = ts.isJsxAttribute(attr) ? attr.name.getText(sf) : null;
+        if (name && (EXPOSURE_SLOT_PROPS as readonly string[]).includes(name)) continue;
+        const expr = ts.isJsxSpreadAttribute(attr) ? attr.expression : attr.initializer;
+        if (readsIn(viewer, expr)) say(`a decision control's prop reads the viewer's stake: <${tag}>`, attr);
+        else if (readsIn(any, expr) && !(tag === "BulkResolveBar" && name === "rows")) say(`a decision control's prop reads the house stake: <${tag}>`, attr);
+      }
+    }
+    if (ts.isConditionalExpression(n) && readsIn(any, n.condition) && holdsControl(n)) say("a ternary on house-stake data decides a control:", n);
+    else if (ts.isBinaryExpression(n) && LOGICAL.includes(n.operatorToken.kind) && readsIn(any, n.left) && holdsControl(n)) say("an && / || / ?? on house-stake data decides a control:", n);
+    else if (ts.isIfStatement(n) && readsIn(any, n.expression)
+      && (holdsControl(n.thenStatement) || holdsControl(n.elseStatement) || ((ownReturn(n.thenStatement) || (!!n.elseStatement && ownReturn(n.elseStatement))) && holdsControl(enclosingBody(n))))) {
+      say("an if on house-stake data decides a control:", n.expression);
+    } else if (ts.isSwitchStatement(n) && readsIn(any, n.expression) && (holdsControl(n.caseBlock) || holdsControl(enclosingBody(n)))) say("a switch on house-stake data decides a control:", n.expression);
+  });
+  return { problems: [...new Set(problems)], controls: [...controls].sort() };
+}
+
 /** Ruling 197 · the two KYC house figures, as identifiers. */
 export const KYC_HOUSE_FIELDS = ["houseBetCount", "houseStakedTzs"] as const;
 export const KYC_RISK_MODULE = "src/lib/server/kyc-risk.ts";
 export const KYC_CASE_PAGE = "src/app/admin/kyc/[id]/page.tsx";
+/** What kyc-risk.ts exports that carries the figures: the function and its result type. */
+export const KYC_FACTS_EXPORTS = ["kycMoneyFacts", "KycMoneyFacts"] as const;
 const isClientModule = (code: string) => /^\s*["']use client["']/.test(code);
+const isServerActionModule = (code: string) => /^\s*["']use server["']/.test(code);
+
+/** A file's imports of the KYC facts from kyc-risk.ts — static, or destructured from `await import(…)` — and the local names of the function. */
+function kycFactsImports(rel: string, code: string): { imports: boolean; fnNames: string[] } {
+  if (rel === KYC_RISK_MODULE || !code.includes("kyc-risk") || !KYC_FACTS_EXPORTS.some((x) => code.includes(x))) return { imports: false, fnNames: [] };
+  const sf = parse(rel, code);
+  const target = KYC_RISK_MODULE.replace(/\.ts$/, "");
+  const fnNames: string[] = [];
+  let imports = false;
+  const take = (original: string, local: string | null) => {
+    if (!(KYC_FACTS_EXPORTS as readonly string[]).includes(original)) return;
+    imports = true;
+    if (original === "kycMoneyFacts" && local) fnNames.push(local);
+  };
+  walkTree(sf, (n) => {
+    if (ts.isImportDeclaration(n) && ts.isStringLiteral(n.moduleSpecifier) && resolveSpec(rel, n.moduleSpecifier.text) === target) {
+      const b = n.importClause?.namedBindings;
+      if (b && ts.isNamedImports(b)) for (const e of b.elements) take((e.propertyName ?? e.name).text, e.name.text);
+    }
+    if (ts.isVariableDeclaration(n) && n.initializer && ts.isObjectBindingPattern(n.name)) {
+      let x = bare(n.initializer);
+      if (ts.isAwaitExpression(x)) x = bare(x.expression);
+      const spec = ts.isCallExpression(x) && x.expression.kind === ts.SyntaxKind.ImportKeyword ? literalText(x.arguments[0]) : null;
+      if (spec != null && resolveSpec(rel, spec) === target) {
+        for (const e of n.name.elements) {
+          const original = e.propertyName && ts.isIdentifier(e.propertyName) ? e.propertyName.text : ts.isIdentifier(e.name) ? e.name.text : "";
+          take(original, ts.isIdentifier(e.name) ? e.name.text : null);
+        }
+      }
+    }
+  });
+  return { imports, fnNames };
+}
 
 /**
- * Ruling 197's field-reader pin over `{rel, code}` files (decommented): `houseBetCount` / `houseStakedTzs` are named only in
- * `kyc-risk.ts` and in SERVER modules under `src/app/admin/`, and the KYC case page never hands `moneyFacts` whole (an
- * attribute or a spread) to a component imported from a `"use client"` module.
+ * Ruling 197's pin over `{rel, code}` files (decommented), following the OBJECT as well as the field names:
+ *   · `houseBetCount` / `houseStakedTzs` are named only in `kyc-risk.ts` and in server modules under `src/app/admin/` — never
+ *     a `"use client"` module, and never a `"use server"` module (its return value is delivered to the browser);
+ *   · `kycMoneyFacts` / `KycMoneyFacts` are imported only by such modules (the spec's "all kyc-risk importers are admin files");
+ *   · no importer hands the facts WHOLE to a component imported from a `"use client"` module — the `kycMoneyFacts(…)` call, a
+ *     variable bound to it, an alias of that variable, or an object or array spreading or holding one, as a prop or a spread.
  */
 export function kycHouseFieldProblems(files: Array<{ rel: string; code: string }>): string[] {
   const problems: string[] = [];
   const byRel = new Map(files.map((f) => [f.rel, f.code]));
   for (const { rel, code } of files) {
     const words = wordsOf(code);
-    if (!KYC_HOUSE_FIELDS.some((f) => words.has(f))) continue;
-    if (rel === KYC_RISK_MODULE) continue;
-    if (!rel.startsWith("src/app/admin/")) problems.push(`${rel} reads a KYC house figure outside the officer's console`);
-    else if (isClientModule(code)) problems.push(`${rel} is a client module and reads a KYC house figure`);
-  }
-  const page = byRel.get(KYC_CASE_PAGE);
-  if (page != null) {
-    const sf = parse(KYC_CASE_PAGE, page);
+    if (rel !== KYC_RISK_MODULE && KYC_HOUSE_FIELDS.some((f) => words.has(f))) {
+      if (!rel.startsWith("src/app/admin/")) problems.push(`${rel} reads a KYC house figure outside the officer's console`);
+      else if (isClientModule(code)) problems.push(`${rel} is a client module and reads a KYC house figure`);
+      else if (isServerActionModule(code)) problems.push(`${rel} is a "use server" module and reads a KYC house figure`);
+    }
+    const { imports, fnNames } = kycFactsImports(rel, code);
+    if (!imports) continue;
+    if (!rel.startsWith("src/app/admin/") || isClientModule(code) || isServerActionModule(code)) problems.push(`${rel} imports the KYC money facts and is not a server module under src/app/admin/`);
+    if (fnNames.length === 0) continue;
+    const sf = parse(rel, code);
+    const tracked = new Set<string>();
+    const whole = (e: ts.Node | undefined): boolean => {
+      if (!e || !ts.isExpression(e as ts.Node)) return false;
+      const x = bare(e as ts.Expression);
+      if (ts.isAwaitExpression(x)) return whole(x.expression);
+      if (ts.isIdentifier(x)) return tracked.has(x.text);
+      if (ts.isCallExpression(x)) return ts.isIdentifier(bare(x.expression)) && fnNames.includes((bare(x.expression) as ts.Identifier).text);
+      if (ts.isObjectLiteralExpression(x)) {
+        return x.properties.some((p) => (ts.isSpreadAssignment(p) ? whole(p.expression) : ts.isPropertyAssignment(p) ? whole(p.initializer)
+          : ts.isShorthandPropertyAssignment(p) ? tracked.has(p.name.text) : false));
+      }
+      if (ts.isArrayLiteralExpression(x)) return x.elements.some((el) => whole(ts.isSpreadElement(el) ? el.expression : el));
+      if (ts.isConditionalExpression(x)) return whole(x.whenTrue) || whole(x.whenFalse);
+      if (ts.isBinaryExpression(x) && LOGICAL.includes(x.operatorToken.kind)) return whole(x.left) || whole(x.right);
+      return false;
+    };
+    for (let grew = true; grew;) {
+      grew = false;
+      walkTree(sf, (n) => {
+        if (ts.isVariableDeclaration(n) && n.initializer && ts.isIdentifier(n.name) && !tracked.has(n.name.text) && whole(n.initializer)) { tracked.add(n.name.text); grew = true; }
+        else if (ts.isBinaryExpression(n) && n.operatorToken.kind === ts.SyntaxKind.EqualsToken && ts.isIdentifier(n.left) && !tracked.has(n.left.text) && whole(n.right)) { tracked.add(n.left.text); grew = true; }
+      });
+    }
     const imported = new Map<string, string>();
     walkTree(sf, (n) => {
       if (!ts.isImportDeclaration(n) || !ts.isStringLiteral(n.moduleSpecifier)) return;
       const clause = n.importClause;
       const names = [...(clause?.name ? [clause.name.text] : []),
         ...(clause?.namedBindings && ts.isNamedImports(clause.namedBindings) ? clause.namedBindings.elements.map((e) => e.name.text) : [])];
-      for (const name of names) imported.set(name, resolveSpec(KYC_CASE_PAGE, n.moduleSpecifier.text));
+      for (const name of names) imported.set(name, resolveSpec(rel, n.moduleSpecifier.text));
     });
     const clientTarget = (tag: string) => {
       const target = imported.get(tag.split(".")[0]);
       if (!target) return false;
-      const code = byRel.get(`${target}.tsx`) ?? byRel.get(`${target}.ts`) ?? byRel.get(`${target}/index.tsx`) ?? null;
-      return code != null && isClientModule(code);
+      const targetCode = byRel.get(`${target}.tsx`) ?? byRel.get(`${target}.ts`) ?? byRel.get(`${target}/index.tsx`) ?? null;
+      return targetCode != null && isClientModule(targetCode);
     };
     walkTree(sf, (n) => {
       const element = ts.isJsxAttribute(n) || ts.isJsxSpreadAttribute(n) ? n.parent?.parent : null;
       if (!element || !(ts.isJsxOpeningElement(element) || ts.isJsxSelfClosingElement(element))) return;
-      const whole = ts.isJsxSpreadAttribute(n) ? n.expression
-        : n.initializer && ts.isJsxExpression(n.initializer) ? n.initializer.expression : undefined;
-      if (whole && ts.isIdentifier(whole) && whole.text === "moneyFacts" && clientTarget(element.tagName.getText(sf))) {
-        problems.push(`${KYC_CASE_PAGE} passes moneyFacts whole to the client component ${element.tagName.getText(sf)}`);
+      const expr = ts.isJsxSpreadAttribute(n) ? n.expression : n.initializer && ts.isJsxExpression(n.initializer) ? n.initializer.expression : undefined;
+      if (whole(expr) && clientTarget(element.tagName.getText(sf))) {
+        problems.push(`${rel} passes the KYC money facts whole to the client component ${element.tagName.getText(sf)}`);
       }
     });
   }
   return problems;
 }
+/** The files that import the KYC money facts (the population ruling 197's pin keeps inside the officer's server). */
+export const kycFactsImporters = (files: Array<{ rel: string; code: string }>): string[] => files.filter((f) => kycFactsImports(f.rel, f.code).imports).map((f) => f.rel).sort();
+
+/**
+ * Ruling 187's CLOSED list of R9 payload sites, as `key · action · file`: `houseStake` on five Market decisions and `houseStakes`
+ * on the bulk Batch row's two writes (normal and aborted). The runtime cases (3.187.10) see only the audits the fixture triggers;
+ * this reads every audit call in `src/`.
+ */
+export const R9_AUDIT_SITES = [
+  "houseStake · market.adjudicated · src/lib/server/market-service.ts",
+  "houseStake · market.emergency_void · src/lib/server/market-service.ts",
+  "houseStake · market.resolve.bulk_override · src/app/admin/resolver-queue/bulk-resolve-action.ts",
+  "houseStake · objection.rejected · src/lib/server/objections-service.ts",
+  "houseStake · objection.upheld · src/lib/server/objections-service.ts",
+  "houseStakes · market.resolve.bulk · src/app/admin/resolver-queue/bulk-resolve-action.ts",
+  "houseStakes · market.resolve.bulk · src/app/admin/resolver-queue/bulk-resolve-action.ts",
+] as const;
+
+/**
+ * Every call to an audit writer in `{rel, code}` files (a callee whose name ends in "audit", any case: `audit`, `recordAudit`,
+ * `houseAudit` …): each `houseStake` / `houseStakes` key in its arguments (outside nested functions) is a SITE when it is a
+ * top-level key of the entry's `payload` object, and a PROBLEM anywhere else; a payload that is not an object literal, or a
+ * payload spread, naming a requester token is a problem too.
+ */
+export function r9AuditSites(files: Array<{ rel: string; code: string }>): { sites: string[]; problems: string[]; literalAuditCalls: number } {
+  const sites: string[] = [];
+  const problems: string[] = [];
+  let literalAuditCalls = 0;
+  const KEYS = new Set(["houseStake", "houseStakes"]);
+  const namesToken = (node: ts.Node) => namesUnder(node, false).some((t) => (REQUESTER_TOKENS as readonly string[]).includes(t));
+  for (const { rel, code } of files) {
+    if (!/audit\s*\(/i.test(code)) continue;
+    const sf = parse(rel, code);
+    walkTree(sf, (n) => {
+      if (!ts.isCallExpression(n)) return;
+      const callee = bare(n.expression);
+      const name = ts.isIdentifier(callee) ? callee.text : ts.isPropertyAccessExpression(callee) ? callee.name.text : "";
+      if (!/audit$/i.test(name)) return;
+      const first = n.arguments[0] ? bare(n.arguments[0]) : undefined;
+      const entry = first && ts.isObjectLiteralExpression(first) ? first : null;
+      const propOf = (o: ts.ObjectLiteralExpression, key: string) => o.properties.find((p): p is ts.PropertyAssignment =>
+        ts.isPropertyAssignment(p) && (ts.isIdentifier(p.name) || ts.isStringLiteral(p.name)) && p.name.text === key);
+      const actionProp = entry ? propOf(entry, "action") : undefined;
+      const action = actionProp ? literalText(bare(actionProp.initializer)) ?? "(non-literal)" : "(none)";
+      if (name === "audit" && actionProp && action !== "(non-literal)") literalAuditCalls++;
+      const payloadProp = entry ? propOf(entry, "payload") : undefined;
+      const payload = payloadProp ? bare(payloadProp.initializer) : undefined;
+      const payloadObject = payload && ts.isObjectLiteralExpression(payload) ? payload : null;
+      for (const arg of n.arguments) {
+        const go = (m: ts.Node) => {
+          if (m !== arg && ts.isFunctionLike(m)) return;
+          if ((ts.isPropertyAssignment(m) || ts.isShorthandPropertyAssignment(m)) && (ts.isIdentifier(m.name) || ts.isStringLiteral(m.name)) && KEYS.has(m.name.text)) {
+            if (payloadObject && m.parent === payloadObject) sites.push(`${m.name.text} · ${action} · ${rel}`);
+            else problems.push(`${rel}:${lineOf(sf, m)}: ${m.name.text} outside the top level of an audit payload (${action})`);
+          }
+          ts.forEachChild(m, go);
+        };
+        go(arg);
+      }
+      if (payload && !payloadObject && namesToken(payload)) problems.push(`${rel}:${lineOf(sf, payload)}: a payload that is not an object literal names a requester token (${action})`);
+      if (payloadObject) for (const p of payloadObject.properties) if (ts.isSpreadAssignment(p) && namesToken(p.expression)) problems.push(`${rel}:${lineOf(sf, p)}: a payload spread names a requester token (${action})`);
+    });
+  }
+  return { sites: sites.sort(), problems, literalAuditCalls };
+}
 
 if (STORE === "memory") {
-  section("§0 · C5 step 4 · ruling 191 (TGT-38: no refusal, page condition or client control reads a requester) and ruling 197 (the KYC house figures' readers)");
+  section("§0 · C5 step 4 · ruling 191 (TGT-38: no refusal, page condition or client control reads a requester), ruling 197 (the KYC house figures' readers) and ruling 187 (the closed list of R9 payload sites)");
+  // One read of src/ for every §0 step-4 pin; each group below runs in its own guard, so a plant whose anchor moved fails its
+  // own group without hiding the others.
+  const files = srcFiles().map((rel) => ({ rel, code: decomment(read(rel)) }));
+  const codeOf = (rel: string) => files.find((f) => f.rel === rel)?.code ?? null;
+  const lfOf = (rel: string) => lf(codeOf(rel) ?? "");
+  const objections = lfOf("src/lib/server/objections-service.ts");
+  const queuePage = codeOf("src/app/admin/resolver-queue/page.tsx") ?? "";
+  const bulkAction = lfOf("src/app/admin/resolver-queue/bulk-resolve-action.ts");
+  const marketService = lfOf("src/lib/server/market-service.ts");
+  const objectionsPage = codeOf("src/app/admin/objections/page.tsx") ?? "";
+  const marketsPage = codeOf("src/app/admin/markets/page.tsx") ?? "";
+  const pageCode = codeOf(KYC_CASE_PAGE) ?? "";
+  const actions = codeOf("src/app/admin/kyc/[id]/kyc-actions.ts") ?? "";
   await guard("0.step4", async () => {
-    const files = srcFiles().map((rel) => ({ rel, code: decomment(read(rel)) }));
-    const codeOf = (rel: string) => files.find((f) => f.rel === rel)?.code ?? null;
     const missing = [...TGT38_SERVICES, ...TGT38_PAGES, ...TGT38_CONTROLS].filter((rel) => codeOf(rel) == null);
-    const writers = ["src/lib/server/market-service.ts", "src/lib/server/objections-service.ts", "src/app/admin/resolver-queue/bulk-resolve-action.ts"]
-      .map((rel) => (codeOf(rel) ?? "").split("houseStakeForAudit(").length - 1);
-    ok("0.191.0 · the population is real: all 21 files are read, and the pin sees R9's readers in the writers (market-service 2, objections-service 2, the bulk action 1)",
-      missing.length === 0 && j(writers) === j([2, 2, 1]), j({ missing, writers }));
+    const WRITERS = ["src/lib/server/market-service.ts", "src/lib/server/objections-service.ts", "src/app/admin/resolver-queue/bulk-resolve-action.ts"];
+    const writers = WRITERS.map((rel) => (codeOf(rel) ?? "").split("houseStakeForAudit(").length - 1);
+    const allowedCounts = TGT38_SERVICES.map((rel) => requesterScan(rel, codeOf(rel) ?? "").allowed.length);
+    ok("0.191.0 · the population is real: all 21 files are read, the pin sees R9's readers in the writers (market-service 2, objections-service 2, the bulk action 1), and it ALLOWS exactly the R9 occurrences it finds — market-service 7, objections-service 7, the bulk action 9, every other service 0",
+      missing.length === 0 && j(writers) === j([2, 2, 1]) && j(allowedCounts) === j([7, 7, 0, 9, 0, 0, 0, 0, 0, 0]),
+      j({ missing, writers, allowedCounts, bulk: requesterScan(WRITERS[2], codeOf(WRITERS[2]) ?? "").allowed }));
     const services = TGT38_SERVICES.flatMap((rel) => requesterRefusalProblems(rel, codeOf(rel) ?? ""));
-    ok("0.191.1 · ⛔ TGT-38 · no service or action reads houseStake, staffChosen, requestedBy or their readers in a condition or a refusal", services.length === 0, services.join(" · "));
+    ok("0.191.1 · ⛔ TGT-38 · in every service and action a requester token, a reader's binding or a carrier appears only as an import, the read, its binding, the bulk map, an audit payload value or the map write — never in a condition, a predicate, a helper's return, a result or another call",
+      services.length === 0, services.join(" · "));
     const pages = TGT38_PAGES.flatMap((rel) => requesterNamingProblems(rel, codeOf(rel) ?? "", PAGE_FORBIDDEN_TOKENS));
     ok("0.191.2 · ⛔ no decision page names requestedBy or byRequester (the viewer comparison lives only in exposure-copy.ts)", pages.length === 0, pages.join(" · "));
     const controls = TGT38_CONTROLS.flatMap((rel) => requesterNamingProblems(rel, codeOf(rel) ?? "", REQUESTER_TOKENS));
     ok("0.191.3 · ⛔ the four client controls and the ceremony name none of the requester tokens", controls.length === 0, controls.join(" · "));
+    const pageScans = TGT38_PAGES.map((rel) => ({ rel, ...pageConditionProblems(rel, codeOf(rel) ?? "") }));
+    const WANT_CONTROLS: Record<string, string[]> = {
+      "src/app/admin/resolver-queue/page.tsx": ["BulkResolveBar", "ControlLocked", "RecheckButton", "ResolveControls"],
+      "src/app/admin/resolver/[id]/page.tsx": ["ControlLocked", "ResolutionCeremony"],
+      "src/app/admin/markets/page.tsx": ["ControlLocked", "EmergencyVoidControl"],
+      "src/app/admin/markets/[id]/page.tsx": [],
+      "src/app/admin/objections/page.tsx": ["ObjectionDecision"],
+      "src/app/admin/updown/rounds/page.tsx": ["ControlLocked", "VoidRoundControl"],
+    };
+    ok("0.191.4 · ⛔ TGT-38 · no decision page's condition reads the house stake or the viewer's share of it to show, hide, lock or feed a decision control — and the pin sees each page's controls (a renamed control cannot blind it)",
+      pageScans.every((s) => s.problems.length === 0) && pageScans.every((s) => j(s.controls) === j(WANT_CONTROLS[s.rel])),
+      j(pageScans.map((s) => ({ rel: s.rel, controls: s.controls, problems: s.problems }))));
 
-    const objections = (codeOf("src/lib/server/objections-service.ts") ?? "").split("\r\n").join("\n");
-    const plantedService = objections.replace("  await db.objection.update(objectionId, {\n    status: \"REJECTED\",",
-      "  const snap = await houseStakeForAudit(o.marketId);\n  const chose = snap?.staffChosen.requestedBy.includes(officerId);\n  if (chose) return { ok: false, error: \"You chose a stake on this market.\", code: \"CONFLICT\" };\n  await db.objection.update(objectionId, {\n    status: \"REJECTED\",");
+  });
+  await guard("0.step4.services", async () => {
+    const REJECT_UPDATE = "  await db.objection.update(objectionId, {\n    status: \"REJECTED\",";
+    const plantedService = plant(objections, REJECT_UPDATE,
+      `  const snap = await houseStakeForAudit(o.marketId);\n  const chose = snap?.staffChosen.requestedBy.includes(officerId);\n  if (chose) return { ok: false, error: "You chose a stake on this market.", code: "CONFLICT" };\n${REJECT_UPDATE}`);
     const plantedDirect = "export async function seal(me: string) {\n  const view = await houseStakeByMarket([id]);\n  return view.get(id)!.staffChosen.requestedBy.includes(me) ? { ok: false, code: \"CONFLICT\" } : { ok: true };\n}";
-    const queuePage = codeOf("src/app/admin/resolver-queue/page.tsx") ?? "";
     const plantedPage = `${queuePage}\nexport function Gate({ view, session, canResolve }: Any) {\n  const chosenByMe = view.staffChosen.requestedBy.includes(session.userId);\n  return canResolve && !chosenByMe ? null : null;\n}`;
     const plantedControl = `${codeOf("src/app/admin/markets/emergency-void-control.tsx") ?? ""}\nexport function Line({ houseStake }: { houseStake: number }) { return houseStake; }`;
     ok("0.191.c1 · CONTROL · a planted refusal branch in rejectObjection reading requestedBy is reported, and so is a refusing ternary on the reader",
-      plantedService !== objections && requesterRefusalProblems("src/lib/server/objections-service.ts", plantedService).length >= 2
+      requesterRefusalProblems("src/lib/server/objections-service.ts", plantedService).length >= 2
         && requesterRefusalProblems("src/planted.ts", plantedDirect).length >= 1, j(requesterRefusalProblems("src/lib/server/objections-service.ts", plantedService)));
     ok("0.191.c2 · CONTROL · a planted `canResolve && !chosenByMe` in the queue page (chosenByMe read from requestedBy) is reported, and a client control naming houseStake is",
       requesterNamingProblems("src/app/admin/resolver-queue/page.tsx", plantedPage, PAGE_FORBIDDEN_TOKENS).length === 1
@@ -1032,22 +1403,115 @@ if (STORE === "memory") {
         && requesterRefusalProblems("src/planted.ts", decomment(`${benign}\n// if (houseStake.staffChosen.requestedBy.includes(me)) return { ok: false };`)).length === 0,
       j(requesterRefusalProblems("src/planted.ts", benign)));
 
+    // The lock shapes a naming or a condition check alone never saw (C5 step 4 review): a helper, a method, an arrow, a predicate, a result, a call.
+    const CONFLICT = "return { ok: false, error: \"You chose a stake on this market.\", code: \"CONFLICT\" };";
+    const HELPER_BODY = "const v = await houseStakeForAudit(marketId);\n  return (v?.staffChosen.requestedBy ?? []).includes(officerId);";
+    const helperDecl = `${plant(objections, REJECT_UPDATE, `  if (await choseStake(o.marketId, officerId)) {\n    ${CONFLICT}\n  }\n${REJECT_UPDATE}`)}\nasync function choseStake(marketId: string, officerId: string) {\n  ${HELPER_BODY}\n}\n`;
+    const helperArrow = `${plant(objections, REJECT_UPDATE, `  if (await choseStake(o.marketId, officerId)) {\n    ${CONFLICT}\n  }\n${REJECT_UPDATE}`)}\nconst choseStake = async (marketId: string, officerId: string) => {\n  ${HELPER_BODY}\n};\n`;
+    const helperMethod = `${plant(objections, REJECT_UPDATE, `  if (await conflicts.chose(o.marketId, officerId)) {\n    ${CONFLICT}\n  }\n${REJECT_UPDATE}`)}\nconst conflicts = {\n  async chose(marketId: string, officerId: string) {\n  ${HELPER_BODY}\n  },\n};\n`;
+    const bulkFilter = plant(bulkAction, "    for (const id of unique) {",
+      "    const snap = await houseStakeByMarket(unique);\n    const allowedIds = unique.filter((id) => !(snap.get(id)?.staffChosen.requestedBy ?? []).includes(g.userId));\n    for (const id of allowedIds) {");
+    const bulkCall = plant(bulkAction, "    revalidatePath(\"/markets\");", "    sendToClient(houseStakes);\n    revalidatePath(\"/markets\");");
+    const okTrue = plant(marketService, "    return { ok: true as const, data: { refundedCount, refundedTzs } };", "    return { ok: true as const, data: { refundedCount, refundedTzs, houseStake } };");
+    const shapes = {
+      helperDecl: requesterRefusalProblems("src/lib/server/objections-service.ts", helperDecl),
+      helperArrow: requesterRefusalProblems("src/lib/server/objections-service.ts", helperArrow),
+      helperMethod: requesterRefusalProblems("src/lib/server/objections-service.ts", helperMethod),
+      bulkFilter: requesterRefusalProblems("src/app/admin/resolver-queue/bulk-resolve-action.ts", bulkFilter),
+      bulkCall: requesterRefusalProblems("src/app/admin/resolver-queue/bulk-resolve-action.ts", bulkCall),
+      okTrue: requesterRefusalProblems("src/lib/server/market-service.ts", okTrue),
+    };
+    ok("0.191.c4 · CONTROL · each lock shape a condition check alone missed is reported: a `function` helper answering \"did this officer choose?\", the same as an arrow and as an object method, a `filter` predicate dropping the chooser's markets, houseStakes handed to another call, and houseStake in emergencyVoidMarket's ok:true result",
+      Object.values(shapes).every((p) => p.length >= 1) && shapes.helperDecl.some((p) => p.includes("a condition reads a requester value"))
+        && shapes.helperMethod.some((p) => p.includes("a condition reads a requester value")) && shapes.bulkFilter.some((p) => p.includes("an array predicate reads a requester value"))
+        && shapes.okTrue.some((p) => p.includes("outside a payload or its read: houseStake")) && shapes.bulkCall.some((p) => p.includes("outside a payload or its read: houseStakes")),
+      j(Object.fromEntries(Object.entries(shapes).map(([k, v]) => [k, v.slice(0, 3)]))));
+    const kinds = (problems: string[], kind: string) => problems.filter((p) => p.includes(kind)).length;
+    const soloTernary = requesterRefusalProblems("src/planted.ts", "export async function f(me: string) {\n  const houseStake = await houseStakeForAudit(id);\n  const value = houseStake?.staffChosen.requestedBy.includes(me)\n    ? null\n    : houseStake;\n}");
+    const soloAnd = requesterRefusalProblems("src/planted.ts", "export async function f(me: string, canSeal: boolean) {\n  const snap = await houseStakeForAudit(id);\n  const blocked = canSeal && (snap?.staffChosen.requestedBy ?? []).includes(me);\n}");
+    ok("0.191.c5 · CONTROL · the ternary and the && / || detectors each answer on their own: a multi-line ternary with no ok:false is reported as exactly one ternary, and an && with no ok:false as exactly one && operand",
+      kinds(soloTernary, "a ternary reads a requester value") === 1 && kinds(soloTernary, "an && / || operand") === 0 && kinds(soloTernary, "ok: false") === 0
+        && kinds(soloAnd, "an && / || operand reads a requester value") === 1 && kinds(soloAnd, "a ternary") === 0 && kinds(soloAnd, "ok: false") === 0,
+      j({ soloTernary, soloAnd }));
+
+  });
+  await guard("0.step4.pages", async () => {
+    // Pages: the UI lock written the way step 5 will be able to write it — through viewerClause, never spelling requestedBy.
+    const pageLocks = {
+      ternary: pageConditionProblems("src/app/admin/resolver-queue/page.tsx", `${queuePage}\nexport function PlantedA({ view, session, canResolve }: Any) {\n  const mine = viewerClause(view, session.userId);\n  return canResolve && !mine ? <ResolveControls marketId="x" /> : null;\n}`).problems,
+      prop: pageConditionProblems("src/app/admin/objections/page.tsx", `${objectionsPage}\nexport function PlantedB({ parts, canDecide }: Any) {\n  return <ObjectionDecision canDecide={canDecide && !parts.viewerClause} />;\n}`).problems,
+      disabled: pageConditionProblems("src/app/admin/resolver-queue/page.tsx", `${queuePage}\nexport function PlantedC({ view, me }: Any) {\n  return <ResolveControls disabled={!!viewerClause(view, me)} />;\n}`).problems,
+      earlyReturn: pageConditionProblems("src/app/admin/resolver-queue/page.tsx", `${queuePage}\nexport function PlantedD({ parts }: Any) {\n  const mine = parts.viewerClause;\n  if (mine) return null;\n  return <RecheckButton marketId="x" />;\n}`).problems,
+      houseHidesVoid: pageConditionProblems("src/app/admin/markets/page.tsx", `${marketsPage}\nexport async function PlantedE({ m }: Any) {\n  const views = await houseStakeByMarket([m.id]);\n  return views.get(m.id)?.yes ? <ControlLocked /> : <EmergencyVoidControl marketId={m.id} title={m.titleEn} />;\n}`).problems,
+    };
+    ok("0.191.c6 · CONTROL · a page lock that never names requestedBy is reported: `canResolve && !viewerClause(…) ? <ResolveControls/>`, `canDecide={canDecide && !parts.viewerClause}`, `disabled={!!viewerClause(…)}`, an early return on the viewer's clause before a control, and a void control hidden on a house-held market",
+      Object.values(pageLocks).every((p) => p.length >= 1), j(pageLocks));
+    const pageBenign = {
+      viewerLine: pageConditionProblems("src/app/admin/resolver-queue/page.tsx", `${queuePage}\nexport function BenignA({ view, me }: Any) {\n  const mine = viewerClause(view, me);\n  return mine ? <span>{mine}</span> : null;\n}`).problems,
+      unreadLine: pageConditionProblems("src/app/admin/resolver-queue/page.tsx", `${queuePage}\nexport async function BenignB({ ids }: Any) {\n  let views = null;\n  try { views = await houseStakeByMarket(ids); } catch { views = null; }\n  return views ? <span>line</span> : <span>unread</span>;\n}`).problems,
+      slot: pageConditionProblems("src/app/admin/markets/page.tsx", `${marketsPage}\nexport function BenignC({ m, view, me }: Any) {\n  const slot = viewerClause(view, me) ? <span>{viewerClause(view, me)}</span> : null;\n  return <EmergencyVoidControl marketId={m.id} title={m.titleEn} exposureSlot={slot} />;\n}`).problems,
+    };
+    ok("0.191.c7 · CONTROL · display stays free: the viewer's line rendered on its own, the house line or its unread line, and a control handed the line through its exposureSlot are NOT reported",
+      Object.values(pageBenign).every((p) => p.length === 0), j(pageBenign));
+
+  });
+  await guard("0.step4.kyc", async () => {
     const kyc = kycHouseFieldProblems(files);
     const risk = codeOf(KYC_RISK_MODULE) ?? "";
-    const pageCode = codeOf(KYC_CASE_PAGE) ?? "";
-    ok("0.197.0 · the population is real: kyc-risk.ts declares and counts both house figures, and the KYC case page is read",
-      KYC_HOUSE_FIELDS.every((f) => risk.split(f).length - 1 >= 3) && pageCode.includes("kycMoneyFacts(txns)"), j(KYC_HOUSE_FIELDS.map((f) => risk.split(f).length - 1)));
-    ok("0.197.1 · ⛔ houseBetCount / houseStakedTzs are read only in kyc-risk.ts and server modules under src/app/admin/, and the case page never passes moneyFacts whole to a client component",
+    ok("0.197.0 · the population is real: kyc-risk.ts declares and counts both house figures, and the KYC case page — the only importer of the money facts — is read",
+      KYC_HOUSE_FIELDS.every((f) => risk.split(f).length - 1 >= 3) && pageCode.includes("kycMoneyFacts(txns)") && j(kycFactsImporters(files)) === j([KYC_CASE_PAGE]),
+      j({ counts: KYC_HOUSE_FIELDS.map((f) => risk.split(f).length - 1), importers: kycFactsImporters(files) }));
+    ok("0.197.1 · ⛔ houseBetCount / houseStakedTzs are read only in kyc-risk.ts and server modules under src/app/admin/, the facts are imported only there, and no importer passes them whole to a client component",
       kyc.length === 0, kyc.join(" · "));
     const plantedPlayer = [...files, { rel: "src/app/wallet/house-line.tsx", code: "export function L({ facts }: Any) { return facts.houseBetCount; }" }];
     const plantedClient = [...files, { rel: "src/app/admin/kyc/[id]/house-chip.tsx", code: "\"use client\";\nexport function C({ f }: Any) { return f.houseStakedTzs; }" }];
     const railLine = "<KycDecisionRail";
-    const plantedPass = files.map((f) => (f.rel === KYC_CASE_PAGE ? { rel: f.rel, code: f.code.replace(railLine, `${railLine} moneyFacts={moneyFacts}`) } : f));
-    const benignRead = files.map((f) => (f.rel === KYC_CASE_PAGE ? { rel: f.rel, code: `${f.code}\nexport function HouseLine({ moneyFacts }: Any) { return <span>{moneyFacts.houseBetCount}</span>; }` } : f));
+    const withPage = (code: string) => files.map((f) => (f.rel === KYC_CASE_PAGE ? { rel: f.rel, code } : f));
+    const plantedPass = withPage(plant(pageCode, railLine, `${railLine} moneyFacts={moneyFacts}`));
+    const benignRead = withPage(`${pageCode}\nexport function HouseLine({ moneyFacts }: Any) { return <span>{moneyFacts.houseBetCount}</span>; }`);
     ok("0.197.c1 · CONTROL · a planted player-side reader, a planted client reader under admin, and moneyFacts passed whole to KycDecisionRail are each reported; the server page reading the field is not",
       kycHouseFieldProblems(plantedPlayer).length === 1 && kycHouseFieldProblems(plantedClient).length === 1
-        && pageCode.includes(railLine) && kycHouseFieldProblems(plantedPass).length === 1 && kycHouseFieldProblems(benignRead).length === 0,
+        && kycHouseFieldProblems(plantedPass).length === 1 && kycHouseFieldProblems(benignRead).length === 0,
       j({ player: kycHouseFieldProblems(plantedPlayer), client: kycHouseFieldProblems(plantedClient), pass: kycHouseFieldProblems(plantedPass), benign: kycHouseFieldProblems(benignRead) }));
+    const FACTS_LINE = "  const moneyFacts = kycMoneyFacts(txns);";
+    const walletFacts = [...files,
+      { rel: "src/app/wallet/facts/page.tsx", code: "import { kycMoneyFacts } from \"@/lib/server/kyc-risk\";\nimport { FactsCard } from \"./facts-card\";\nexport default async function P({ txns }: Any) {\n  const f = kycMoneyFacts(txns);\n  return <FactsCard facts={f} />;\n}" },
+      { rel: "src/app/wallet/facts/facts-card.tsx", code: "\"use client\";\nexport function FactsCard({ facts }: Any) { return <span>{facts.betCount}</span>; }" }];
+    const objectShapes = {
+      playerImporter: kycHouseFieldProblems(walletFacts),
+      alias: kycHouseFieldProblems(withPage(plant(plant(pageCode, FACTS_LINE, `${FACTS_LINE}\n  const facts = moneyFacts;`), railLine, `${railLine} facts={facts}`))),
+      spreadCall: kycHouseFieldProblems(withPage(plant(pageCode, railLine, `${railLine} {...kycMoneyFacts(txns)}`))),
+      wrapped: kycHouseFieldProblems(withPage(plant(pageCode, railLine, `${railLine} data={{ ...moneyFacts, extra: 1 }}`))),
+      serverAction: kycHouseFieldProblems(files.map((f) => (f.rel === "src/app/admin/kyc/[id]/kyc-actions.ts" ? { rel: f.rel, code: `${actions}\nexport async function houseFigures(f: Any) { return { houseBetCount: f.houseBetCount }; }` } : f))),
+    };
+    ok("0.197.c2 · CONTROL · the pin follows the object, not only the field names: a player page importing kycMoneyFacts and handing the result to a client card, an alias of moneyFacts, a spread of the call, an object spreading moneyFacts, and a \"use server\" action returning a house figure are each reported",
+      objectShapes.playerImporter.length === 2 && objectShapes.alias.length === 1 && objectShapes.spreadCall.length === 1 && objectShapes.wrapped.length === 1 && objectShapes.serverAction.length === 1,
+      j(objectShapes));
+
+  });
+  await guard("0.step4.audit", async () => {
+    const audits = r9AuditSites(files);
+    ok("0.187.1 · ⛔ R9's payload sites are a CLOSED list across every audit write in src/: houseStake on market.adjudicated, market.emergency_void, objection.rejected, objection.upheld and market.resolve.bulk_override, houseStakes on the two market.resolve.bulk writes — and the key appears nowhere else in an audit call",
+      j(audits.sites) === j([...R9_AUDIT_SITES].sort()) && audits.problems.length === 0 && audits.literalAuditCalls >= 400,
+      j({ sites: audits.sites, problems: audits.problems, literalAuditCalls: audits.literalAuditCalls }));
+    const withFile = (rel: string, code: string) => files.map((f) => (f.rel === rel ? { rel, code } : f));
+    const auditPlants = {
+      triggerPayload: r9AuditSites(withFile("src/lib/server/market-service.ts", plant(marketService, "      aiDetermined: !!a?.determined,", "      houseStake: (await houseStakeByMarket([marketId])).get(marketId),\n      aiDetermined: !!a?.determined,"))),
+      clawbackNull: r9AuditSites(withFile("src/lib/server/market-service.ts", plant(marketService, "payload: cb });", "payload: { ...cb, houseStake: null } });"))),
+      movedToOverride: r9AuditSites(withFile("src/app/admin/resolver-queue/bulk-resolve-action.ts", plant(bulkAction, "sentinelEvidence: m.sentinelEvidence ?? null,", "sentinelEvidence: m.sentinelEvidence ?? null, houseStakes,"))),
+      newFile: r9AuditSites([...files, { rel: "src/app/admin/planted/audit.ts", code: "export function x(houseStake: unknown) { audit({ action: \"x.planted\", payload: { houseStake } }); }" }]),
+      outsidePayload: r9AuditSites([...files, { rel: "src/app/admin/planted/audit.ts", code: "export function x(houseStake: unknown) { audit({ action: \"market.reopened\", houseStake, payload: {} }); }" }]),
+      spread: r9AuditSites([...files, { rel: "src/app/admin/planted/audit.ts", code: "export function x(houseStake: unknown) { audit({ action: \"market.reopened\", payload: { ...{ houseStake } } }); }" }]),
+      comment: r9AuditSites([...files, { rel: "src/app/admin/planted/audit.ts", code: decomment("export function x() {\n  // audit({ action: \"x.planted\", payload: { houseStake } });\n}") }]),
+    };
+    const moved = (r: { sites: string[]; problems: string[] }) => j(r.sites) !== j([...R9_AUDIT_SITES].sort()) || r.problems.length > 0;
+    ok("0.187.c1 · CONTROL · a house stake added to an audit the fixture never triggers (market.resolve_trigger.human, as a read or a null on the clawback), houseStakes moved onto the override row, a new file's audit carrying houseStake, the key outside the payload and inside a payload spread are each reported; the words in a comment are not",
+      moved(auditPlants.triggerPayload) && auditPlants.triggerPayload.sites.includes("houseStake · market.resolve_trigger.human · src/lib/server/market-service.ts")
+        && auditPlants.clawbackNull.sites.includes("houseStake · affiliate.clawback.completed · src/lib/server/market-service.ts")
+        && auditPlants.movedToOverride.sites.includes("houseStakes · market.resolve.bulk_override · src/app/admin/resolver-queue/bulk-resolve-action.ts")
+        && auditPlants.newFile.sites.includes("houseStake · x.planted · src/app/admin/planted/audit.ts")
+        && auditPlants.outsidePayload.problems.length === 1 && auditPlants.spread.problems.length >= 1 && !moved(auditPlants.comment),
+      j(Object.fromEntries(Object.entries(auditPlants).map(([k, v]) => [k, { extraSites: v.sites.filter((s) => !(R9_AUDIT_SITES as readonly string[]).includes(s)), problems: v.problems }]))));
   });
 }
 
@@ -2031,7 +2495,9 @@ await guard("1.177", async () => {
 // Node's module hooks. Every store, lock, seal, audit and house read beneath the action is the product's.
 // ⭐ THE READ SPY. `houseBookStore.stakeRows` is wrapped for this section only: each call records the market ids, the `tx` it
 // was handed (never one, ruling 179) and the statuses of those markets' positions AS THE CALLER'S OWN TRANSACTION SEES THEM —
-// so an emergency void's read is proven to happen before its refunds on Postgres too, where a pool read cannot tell.
+// so an emergency void's read is proven to happen before its refunds on Postgres too, where a pool read cannot tell — plus
+// whether the reader was called inside a lock and whether that lock's transaction answered the status read, so the proof
+// cannot quietly fall back to the pool.
 const R34: Any = { ready: false };
 section("§3 · rulings 187–190 · R9: six payload sites in one shape, the Batch map, null on a failed read, oversight's requester, and the officer's own export (170)");
 await guard("3.R9", async () => {
@@ -2060,6 +2526,8 @@ await guard("3.R9", async () => {
     return id;
   };
   const A = await staff("ADMIN", "a"), B = await staff("ADMIN", "b"), C = await staff("ADMIN", "c"), MOD = await staff("MODERATOR", "m");
+  // A COMPLIANCE officer too: the emergency-void notice goes to ADMIN, COMPLIANCE and MODERATOR alike (ruling 195 keeps its recipients).
+  const CO = await staff("COMPLIANCE", "co");
   const show = (r: Any) => (r?.ok ? "ok" : `${r?.code ?? "?"}/${r?.error ?? r?.reason ?? "no-reason"}`);
   const bet = async (marketId: string, side: "YES" | "NO", stake: number, age = 10_000) => {
     const player = await w.user({ balance: 2_000_000 });
@@ -2115,18 +2583,23 @@ await guard("3.R9", async () => {
   // ── the read spy ──
   const book = w.dal.houseBookStore;
   const realStakeRows = book.stakeRows;
-  const reads: Array<{ ids: string[]; tx: unknown; statuses: string[] }> = [];
+  const reads: Array<{ ids: string[]; tx: unknown; statuses: string[]; inLock: boolean; viaLockTx: boolean }> = [];
   book.stakeRows = async function spiedStakeRows(ids: string[], tx?: unknown) {
+    // Taken before any await: the lock context the reader was called in, and whether that context carries a transaction.
+    const inLock = LOCKS.inLock() === true;
+    const lockTx = LOCKS.currentLockTx();
     let statuses: string[] = [];
     try {
       if (w.onPostgres) {
-        const client: Any = LOCKS.currentLockTx() ?? w.prisma();
+        const client: Any = lockTx ?? w.prisma();
         statuses = ((await client.$queryRawUnsafe(`SELECT "status"::text AS "s" FROM "Position" WHERE "marketId" = ANY($1::text[]) ORDER BY "id"`, ids)) as Any[]).map((r) => r.s);
       } else {
         for (const id of ids) for (const p of await w.mdal.positionStore.listForMarket(id)) statuses.push(p.status);
       }
     } catch (e) { statuses = [`status read failed: ${msg(e)}`]; }
-    reads.push({ ids: [...ids], tx, statuses });
+    // A handed transaction is recorded as a marker, never the client itself: the client is circular, and a detail that cannot
+    // print it would throw and hide every case after it — on exactly the defect the marker exists to catch.
+    reads.push({ ids: [...ids], tx: tx === undefined ? undefined : "(a transaction was handed in)", statuses, inLock, viaLockTx: lockTx != null });
     return realStakeRows.call(this, ids, tx);
   };
   const readsDuring = async (fn: () => Promise<Any>) => { const from = reads.length; const out = await fn(); return { out, reads: reads.slice(from) }; };
@@ -2259,20 +2732,46 @@ await guard("3.R9", async () => {
     await bet(stT.id, "YES", 20_000);
     await bet(stT.id, "NO", 9_000);
     await POL.setRequireTwoOfficerResolution(true, A);
-    let stage1: Any, sameOfficer: Any, stage1T: Any, countersigned: Any;
+    let stage1: Any, sameOfficer: Any, stage1T: Any, sameOfficerT: Any, mismatch: Any, countersigned: Any, countersignedT: Any;
     try {
       stage1 = await readsDuring(() => w.svc.resolveMarket({ marketId: st.id, outcome: "YES", officerId: A }));
       sameOfficer = await readsDuring(() => w.svc.resolveMarket({ marketId: st.id, outcome: "YES", officerId: A }));
       stage1T = await w.svc.resolveMarket({ marketId: stT.id, outcome: "YES", officerId: A });
+      sameOfficerT = await w.svc.resolveMarket({ marketId: stT.id, outcome: "YES", officerId: A });
+      // B passes the same-officer guard, so the stage-2 OUTCOME guard is the one that answers this call.
+      mismatch = await readsDuring(() => w.svc.resolveMarket({ marketId: st.id, outcome: "NO", officerId: B }));
       countersigned = await readsDuring(() => w.svc.resolveMarket({ marketId: st.id, outcome: "YES", officerId: B }));
+      countersignedT = await w.svc.resolveMarket({ marketId: stT.id, outcome: "YES", officerId: B });
     } finally {
       await POL.setRequireTwoOfficerResolution(false, A);
     }
     ok("3.188.3 · a two-admin STAGE-1 attestation makes no read, and the same officer's refused second call makes none either",
       stage1.out?.ok === true && stage1.out.data?.stage === "stage1" && stage1.reads.length === 0 && sameOfficer.out?.ok === false && sameOfficer.reads.length === 0,
       j({ stage1: stage1.out, s1reads: stage1.reads.length, same: sameOfficer.out, sameReads: sameOfficer.reads.length }));
+    ok("3.188.3b · a countersignature refused because its outcome differs from stage-1 makes no read — refused by the stage-2 outcome guard itself, not an earlier one",
+      mismatch.out?.ok === false && /^Stage-2 outcome must match/.test(String(mismatch.out?.error ?? "")) && mismatch.reads.length === 0,
+      j({ out: mismatch.out, reads: mismatch.reads.length }));
     const aSt = await r9Row(st.id, "market.adjudicated", () => true, S_A);
-    ok("3.188.4 · …the countersignature (B) reads once and records the shape", countersigned.out?.ok === true && countersigned.reads.length === 1 && aSt.exact, aSt.detail);
+    ok("3.188.4 · …the countersignature (B) reads once, on no transaction (the pool client), and records the shape",
+      countersigned.out?.ok === true && countersigned.reads.length === 1 && countersigned.reads[0].tx === undefined && aSt.exact,
+      j({ reads: countersigned.reads.map((r) => ({ ids: r.ids, tx: r.tx === undefined ? "none" : "HANDED" })), stake: aSt.detail }));
+    // Ruling 191's proof: two-admin ON decides a house-held market exactly like its no-house twin (st: a player's YES 20,000 beside
+    // A's NO 9,000; stT: a player's YES 20,000 beside a player's NO 9,000 — the same pools).
+    const aStT = await r9Row(stT.id, "market.adjudicated", () => true, ZERO);
+    const [rowSt, rowStT] = [await w.svc.getMarket(st.id), await w.svc.getMarket(stT.id)];
+    const verdictOf = (m: Any) => j({ status: m?.status, resolvedOutcome: m?.resolvedOutcome, stage1By: m?.resolutionStage1By, stage2By: m?.resolutionStage2By,
+      evidence: m?.resolutionEvidence ?? null, yesPool: m?.yesPool, noPool: m?.noPool, settledAt: m?.settledAt ?? null });
+    const TWIN_MASK = new Set(["houseStake", "objectionsClosedAt"]);
+    const maskedTwin = (p: Any) => j(Object.fromEntries(Object.entries(p ?? {}).map(([k, v]) => [k, TWIN_MASK.has(k) ? "(masked)" : v])));
+    const refusalOf = (r: Any) => j({ ok: r?.ok, code: r?.code, error: r?.error });
+    ok("3.191.1 · ⭐ two-admin ON decides a house-held market exactly like its no-house twin: the same officer's refusal, the countersignature's result, the market row (verdict, both officers, evidence, pools, not settled) and the adjudication audit with only houseStake and the window's instant masked (pools NOT masked) — the stake changes its own key and nothing else",
+      stage1T?.ok === true && sameOfficer.out?.ok === false && refusalOf(sameOfficer.out) === refusalOf(sameOfficerT)
+        && countersigned.out?.ok === true && countersignedT?.ok === true && countersigned.out?.data?.stage === "complete" && countersignedT?.data?.stage === "complete"
+        && j(Object.keys(countersigned.out.data)) === j(Object.keys(countersignedT.data)) && typeof countersigned.out.data.settlesAt === "string" && typeof countersignedT.data.settlesAt === "string"
+        && verdictOf(rowSt) === verdictOf(rowStT) && rowSt?.status === "RESOLVED" && rowSt?.resolutionStage1By === A && rowSt?.resolutionStage2By === B
+        && !!aSt.row && !!aStT.row && j(Object.keys(aSt.row.payload)) === j(Object.keys(aStT.row.payload)) && maskedTwin(aSt.row.payload) === maskedTwin(aStT.row.payload)
+        && aSt.row.payload.resolutionAuth === "two-officer" && aSt.row.payload.soloResolved === false && aStT.exact,
+      j({ refusals: [refusalOf(sameOfficer.out), refusalOf(sameOfficerT)], data: [countersigned.out?.data, countersignedT?.data], rows: [verdictOf(rowSt), verdictOf(rowStT)], house: aSt.row?.payload, twin: aStT.row?.payload }));
 
     // ════ emergency void ════
     const mB = await poll();
@@ -2285,8 +2784,9 @@ await guard("3.R9", async () => {
     ok("3.187.4 · B's target reaction YES 6,000 → requestedBy [B] on market.emergency_void, today's keys in order and houseStake LAST", voidB.out?.ok === true && vB.exact, vB.detail);
     ok("3.178.3 · …equal to oversight's fold, decided by a NON-chooser (C)",
       !!vB.row && vB.row?.actorId === C && j(vB.row.payload.houseStake?.staffChosen?.requestedBy) === j(await foldAt(mB.id, vB.row?.createdAt)), j(vB.row?.payload));
-    ok("3.188.5 · ⭐ the void read its stake BEFORE the refunds: once, on no transaction, while its own transaction still saw every position OPEN; a refused void (a moderator, a two-letter reason) read nothing",
-      voidB.reads.length === 1 && voidB.reads[0].tx === undefined && voidB.reads[0].statuses.length === 2 && voidB.reads[0].statuses.every((s) => s === "OPEN")
+    ok("3.188.5 · ⭐ the void read its stake BEFORE the refunds: once, on no transaction, INSIDE the void's lock — whose own transaction answered the status read on Postgres (the memory lock has none) — while that transaction still saw every position OPEN; a refused void (a moderator, a two-letter reason) read nothing",
+      voidB.reads.length === 1 && voidB.reads[0].tx === undefined && voidB.reads[0].inLock === true && voidB.reads[0].viaLockTx === (w.onPostgres === true)
+        && voidB.reads[0].statuses.length === 2 && voidB.reads[0].statuses.every((s) => s === "OPEN")
         && refusedRole.out?.ok === false && refusedRole.reads.length === 0 && refusedShort.out?.ok === false && refusedShort.reads.length === 0,
       j({ reads: voidB.reads, refusedRole: refusedRole.out, refusedShort: refusedShort.out }));
 
@@ -2326,6 +2826,8 @@ await guard("3.R9", async () => {
     const rej1 = await readsDuring(() => OBJ.rejectObjection(o1.data.objectionId, C, "The recorded verdict stands on the source."));
     const x1 = await r9Row(mAB.id, "objection.rejected", (e) => e.payload?.objectionId === o1.data.objectionId, S_AB);
     ok("3.187.7 · objection.rejected: today's keys in order, houseStake LAST, [A, B]", rej1.out?.ok === true && rej1.reads.length === 1 && x1.exact, x1.detail);
+    ok("3.188.5b · CONTROL · the rejection takes no lock (ruling 188) and its read says so — not in a lock, no lock transaction — so 3.188.5's lock facts are measured, not constant",
+      rej1.reads.length === 1 && rej1.reads[0].inLock === false && rej1.reads[0].viaLockTx === false, j(rej1.reads));
     ok("3.178.5 · …equal to oversight's fold, rejected by a NON-chooser (C)",
       !!x1.row && x1.row?.actorId === C && j(x1.row.payload.houseStake?.staffChosen?.requestedBy) === j(await foldAt(mAB.id, x1.row?.createdAt)));
     const up2 = await readsDuring(() => OBJ.upholdObjection(o2.data.objectionId, B, { remedy: "REVERSE", note: "The source contradicts the verdict." }));
@@ -2344,10 +2846,30 @@ await guard("3.R9", async () => {
     const rejAgain = await readsDuring(() => OBJ.rejectObjection(o1.data.objectionId, B, "A second answer to the same case."));
     const upAgain = await readsDuring(() => OBJ.upholdObjection(o2.data.objectionId, C, { remedy: "VOID", note: "A second answer to the same case." }));
     const hold = await OBJ.holdSettlementAsOfficer(C, { marketId: mAB.id, reason: "WRONG_OUTCOME", detail: "Holding while the source is read again." });
-    const selfReview = hold?.ok ? await readsDuring(() => OBJ.rejectObjection(hold.data.objectionId, C, "Releasing my own hold myself.")) : { out: hold, reads: [] };
-    ok("3.188.7 · refused rulings read nothing: a second rejection, a second uphold, and an officer ruling on their own hold",
-      rejAgain.out?.ok === false && rejAgain.reads.length === 0 && upAgain.out?.ok === false && upAgain.reads.length === 0 && selfReview.out?.ok === false && selfReview.reads.length === 0,
-      j({ rejAgain: rejAgain.out, upAgain: upAgain.out, selfReview: selfReview.out }));
+    const selfReview = hold?.ok ? await readsDuring(() => OBJ.rejectObjection(hold.data.objectionId, C, "Releasing my own hold myself.")) : { out: null, reads: [] };
+    ok("3.188.7 · refused rulings read nothing: a second rejection and a second uphold (each refused as already decided), and an officer ruling on their own hold (the hold WAS placed, and the self-review guard refused it, CONFLICT)",
+      rejAgain.out?.ok === false && /already been decided/.test(String(rejAgain.out?.error)) && rejAgain.reads.length === 0
+        && upAgain.out?.ok === false && /already been decided/.test(String(upAgain.out?.error)) && upAgain.reads.length === 0
+        && hold?.ok === true && selfReview.out?.ok === false && selfReview.out?.code === "CONFLICT" && selfReview.reads.length === 0,
+      j({ rejAgain: rejAgain.out, upAgain: upAgain.out, hold: show(hold), selfReview: selfReview.out }));
+
+    // ════ the refusals INSIDE upholdObjection's lock read nothing either (ruling 188: never on a refusal path) ════
+    const mV = await poll(); const pV = await bet(mV.id, "YES", 5_000); await manualA(mV.id);
+    const adjV = await w.svc.resolveMarket({ marketId: mV.id, outcome: "VOID", officerId: C });
+    const oV = await OBJ.fileObjection(pV.player, { marketId: mV.id, reason: "WRONG_OUTCOME", detail });
+    const mS = await poll(); const pS = await bet(mS.id, "YES", 5_000); await manualA(mS.id);
+    const adjS = await w.svc.resolveMarket({ marketId: mS.id, outcome: "YES", officerId: C });
+    const oS = await OBJ.fileObjection(pS.player, { marketId: mS.id, reason: "WRONG_OUTCOME", detail });
+    if (!adjV?.ok || !oV?.ok || !adjS?.ok || !oS?.ok) throw new Error(`fixture in-lock refusals: ${[adjV, oV, adjS, oS].map(show).join(" · ")}`);
+    const reverseVoid = await readsDuring(() => OBJ.upholdObjection(oV.data.objectionId, B, { remedy: "REVERSE", note: "The source contradicts the verdict." }));
+    const settledS = await w.svc.settleMarket(mS.id, { force: true });
+    const tooLate = await readsDuring(() => OBJ.upholdObjection(oS.data.objectionId, B, { remedy: "VOID", note: "Nobody can tell; refund everyone." }));
+    const tooLateRows = await ringRows("Market", mS.id, "objection.uphold_too_late");
+    ok("3.188.7b · an uphold refused INSIDE its lock reads nothing: REVERSE on a VOID verdict (\"Only a YES/NO verdict can be reversed\", the objection still OPEN) and VOID on a market settled under an open objection (\"already settled\", with its uphold_too_late row)",
+      reverseVoid.out?.ok === false && /^Only a YES\/NO verdict can be reversed/.test(String(reverseVoid.out?.error)) && reverseVoid.reads.length === 0
+        && (await w.db.objection.findById(oV.data.objectionId))?.status === "OPEN"
+        && settledS?.ok === true && tooLate.out?.ok === false && /already settled/.test(String(tooLate.out?.error)) && tooLate.reads.length === 0 && tooLateRows.length === 1,
+      j({ reverseVoid: reverseVoid.out, reverseReads: reverseVoid.reads.length, settled: show(settledS), tooLate: tooLate.out, tooLateReads: tooLate.reads.length, tooLateRows: tooLateRows.length }));
 
     // ════ bulk: the override rows and the Batch map ════
     const b1 = await poll(); await manualA(b1.id); await closeWithRead(b1.id, 99);
@@ -2402,7 +2924,7 @@ await guard("3.R9", async () => {
       j({ out: out4 && { resolved: out4.resolved, failed: out4.failed }, rows: batchRows4.map((r) => r.payload) }));
 
     // ════ ruling 190 · a failed read records null and the decision proceeds ════
-    const logged: string[] = [];
+    const errorCalls: unknown[][] = [];
     const realError = console.error;
     const nA = await poll(); const pN1 = await bet(nA.id, "YES", 5_000); await manualA(nA.id);
     const pN2 = (await w.svc.listPositionsForMarket(nA.id)).find((p: Any) => p.houseBotId == null && p.userId !== pN1.player && p.side === "YES");
@@ -2410,21 +2932,25 @@ await guard("3.R9", async () => {
     const n1 = await poll(); await manualA(n1.id); await closeWithRead(n1.id, 5);
     let nulls: Any = {};
     const flagSet = typeof EXP.failExposureReadForCases === "function";
+    // A writer that THROWS under the flag answers here as a refusal, so 3.190.1 goes red on its own line and §3 still finishes.
+    const attempt = async (f: () => Promise<Any>): Promise<Any> => { try { return await f(); } catch (e) { return { ok: false, code: "THREW", error: msg(e) }; } };
+    const readsBeforeFlag = reads.length;
     if (flagSet) EXP.failExposureReadForCases(true);
-    console.error = (...args: unknown[]) => { logged.push(args.map(String).join(" ")); };
+    console.error = (...args: unknown[]) => { errorCalls.push(args); };
     try {
-      nulls.adj = await w.svc.resolveMarket({ marketId: nA.id, outcome: "YES", officerId: C });
+      nulls.adj = await attempt(() => w.svc.resolveMarket({ marketId: nA.id, outcome: "YES", officerId: C }));
       const oa = await OBJ.fileObjection(pN1.player, { marketId: nA.id, reason: "WRONG_OUTCOME", detail });
       const ob = await OBJ.fileObjection(pN2?.userId, { marketId: nA.id, reason: "WRONG_OUTCOME", detail });
-      nulls.rej = oa?.ok ? await OBJ.rejectObjection(oa.data.objectionId, B, "The recorded verdict stands on the source.") : oa;
-      nulls.up = ob?.ok ? await OBJ.upholdObjection(ob.data.objectionId, B, { remedy: "VOID", note: "Refund everyone on this one." }) : ob;
+      nulls.rej = oa?.ok ? await attempt(() => OBJ.rejectObjection(oa.data.objectionId, B, "The recorded verdict stands on the source.")) : oa;
+      nulls.up = ob?.ok ? await attempt(() => OBJ.upholdObjection(ob.data.objectionId, B, { remedy: "VOID", note: "Refund everyone on this one." })) : ob;
       nulls.oa = oa; nulls.ob = ob;
-      nulls.void = await w.svc.emergencyVoidMarket({ marketId: nV.id, officerId: A, reason: `Flagged read void ${tag}` });
-      nulls.bulk = await bulk(C, [n1.id], { [n1.id]: OVERRIDE });
+      nulls.void = await attempt(() => w.svc.emergencyVoidMarket({ marketId: nV.id, officerId: A, reason: `Flagged read void ${tag}` }));
+      nulls.bulk = await attempt(() => bulk(C, [n1.id], { [n1.id]: OVERRIDE }));
     } finally {
       console.error = realError;
       if (flagSet) EXP.failExposureReadForCases(false);
     }
+    const readsWhileFlagged = reads.length - readsBeforeFlag;
     const nAdj = await r9Row(nA.id, "market.adjudicated", () => true, null);
     const nRej = await r9Row(nA.id, "objection.rejected", (e) => e.payload?.objectionId === nulls.oa?.data?.objectionId, null);
     const nUp = await r9Row(nA.id, "objection.upheld", (e) => e.payload?.objectionId === nulls.ob?.data?.objectionId, null);
@@ -2436,11 +2962,18 @@ await guard("3.R9", async () => {
         && nAdj.exact && nRej.exact && nUp.exact && nVoid.exact && nOv.exact
         && !!nBatch && "houseStakes" in nBatch.payload && nBatch.payload.houseStakes[n1.id] === null && n1.id in nBatch.payload.houseStakes,
       j({ nulls: Object.fromEntries(Object.entries(nulls).map(([k, v]: Any) => [k, show(v)])), adj: nAdj.detail, rej: nRej.detail, up: nUp.detail, void: nVoid.detail, ov: nOv.detail, batch: nBatch?.payload?.houseStakes }));
-    ok("3.190.2 · …each failed read logs the market and the action it was for (and nothing else identifying)",
-      [[nA.id, "market.adjudicated"], [nA.id, "objection.rejected"], [nA.id, "objection.upheld"], [nV.id, "market.emergency_void"], [n1.id, "market.resolve.bulk"]]
-        .every(([id, action]) => logged.some((l) => l.includes(id) && l.includes(action))), j(logged.filter((l) => l.includes("[house-stake]"))));
-    ok("3.190.c1 · CONTROL · the same writers with the flag off gave the exact shapes above (3.187.1–8, 3.189.1–4), and the flag is off again: a read now succeeds",
-      aAB.exact && vB.exact && x1.exact && u2.exact && ov1.exact && j(await EXP.houseStakeForAudit?.(mAB.id)) !== "null", j(await EXP.houseStakeForAudit?.(mAB.id)));
+    const houseLines = errorCalls.filter((args) => typeof args[0] === "string" && (args[0] as string).startsWith("[house-stake]"));
+    // Six reads failed: the five writers' own, and the bulk seal's two — resolveMarket's as market.adjudicated, then the action's own for its rows.
+    const wantLines = [[nA.id, "market.adjudicated"], [nA.id, "objection.rejected"], [nA.id, "objection.upheld"], [nV.id, "market.emergency_void"], [n1.id, "market.adjudicated"], [n1.id, "market.resolve.bulk"]]
+      .map(([id, action]) => `[house-stake] snapshot not read for market ${id} (${action})`);
+    ok("3.190.2 · …each failed read logs exactly one line with one argument, and that line is exactly the market and the action it was for — no error object, no officer, nothing else: six lines for six reads",
+      houseLines.length === wantLines.length && houseLines.every((args) => args.length === 1) && j(houseLines.map((args) => args[0]).sort()) === j([...wantLines].sort()),
+      j({ got: houseLines.map((args) => args.map((a) => String(a).slice(0, 160))), want: wantLines }));
+    const reread = { nA: await EXP.houseStakeForAudit?.(nA.id, "cases"), nV: await EXP.houseStakeForAudit?.(nV.id, "cases"), n1: await EXP.houseStakeForAudit?.(n1.id, "cases") };
+    ok("3.190.c1 · CONTROL · the flag, and only the flag, made those reads fail: no stake read reached the store while it was on, and with it off the SAME three fixtures read their exact shapes (nA and n1: A's NO 9,000; nV: B's YES 6,000) — the shapes the flag-off writers recorded on the same builders (aA 3.187.2, vB 3.187.4, the Batch map's manualA market 3.189.1)",
+      readsWhileFlagged === 0 && j(reread.nA) === j(S_A) && j(reread.nV) === j(S_B) && j(reread.n1) === j(S_A)
+        && aA.exact && vB.exact && canon(batchRow1?.payload?.houseStakes?.[b1.id]) === canon(S_A),
+      j({ readsWhileFlagged, reread }));
 
     // ════ the six sites R9 leaves byte-identical, each against a no-house twin ════
     const MASK = new Set(["objectionId", "marketId", "objectionsClosedAt"]);
@@ -2526,6 +3059,22 @@ await guard("3.R9", async () => {
         && sectionRows.filter((e) => UNCHANGED_ACTIONS.includes(e.action)).every((e) => !has(e, "houseStake") && !has(e, "houseStakes")),
       j({ stakeActions: [...new Set(withStake.map((e) => `${e.targetType}:${e.action}`))], stakesActions: [...new Set(stakesRows.map((e) => `${e.targetType}:${e.action}`))], unchanged: UNCHANGED_ACTIONS.map((a) => sectionRows.filter((e) => e.action === a).length) }));
 
+    // ════ ruling 187 · no decision's RESULT gains a house field ════
+    const BULK_RESULT_KEYS = ["ok", "batchId", "attempted", "resolved", "staged", "skipped", "alreadyApplied", "failed"];
+    const OUTCOME_KEYS = new Set(["marketId", "title", "outcome", "settlesAt", "overridden", "awaitingSecond", "reason", "detail"]);
+    const bucketsOk = (o: Any) => ["resolved", "staged", "skipped", "alreadyApplied", "failed"]
+      .every((b) => Array.isArray(o?.[b]) && (o[b] as Any[]).every((r) => Object.keys(r).every((k) => OUTCOME_KEYS.has(k))));
+    const results: Record<string, Any> = { adjAB: adjAB.out, stage1: stage1.out, countersigned: countersigned.out, voidB: voidB.out, rej1: rej1.out, up2: up2.out, batch: out1, staged: batch3.out, aborted: out4 };
+    const keysOf = (v: Any) => j(Object.keys(v ?? {}));
+    ok("3.187.11 · ⛔ no decision's RESULT gains a house field (ruling 187): on house-held markets resolveMarket answers {stage[, settlesAt]}, emergencyVoidMarket {refundedCount, refundedTzs}, upholdObjection {newOutcome}, rejectObjection {ok} and the bulk action today's buckets — no requester token and no vocabulary word at any depth, while the same decisions' audit rows carry houseStake",
+      keysOf(adjAB.out) === j(["ok", "data"]) && keysOf(adjAB.out?.data) === j(["stage", "settlesAt"]) && keysOf(stage1.out) === j(["ok", "data"]) && keysOf(stage1.out?.data) === j(["stage"])
+        && keysOf(countersigned.out?.data) === j(["stage", "settlesAt"])
+        && keysOf(voidB.out) === j(["ok", "data"]) && keysOf(voidB.out?.data) === j(["refundedCount", "refundedTzs"])
+        && keysOf(rej1.out) === j(["ok"]) && keysOf(up2.out) === j(["ok", "data"]) && keysOf(up2.out?.data) === j(["newOutcome"])
+        && [out1, batch3.out, out4].every((o) => keysOf(o) === j(BULK_RESULT_KEYS) && bucketsOk(o))
+        && r9Words(results).length === 0 && houseHits(j(results)).length === 0 && has(aAB.row, "houseStake") && has(vB.row, "houseStake"),
+      j({ keys: Object.fromEntries(Object.entries(results).map(([k, v]) => [k, { top: Object.keys(v ?? {}), data: v?.data ? Object.keys(v.data) : null }])), words: r9Words(results), hits: houseHits(j(results)).slice(0, 4) }));
+
     // ════ ruling 170 · the officer's own export ════
     const exp = await exportUserData(A);
     const expRows = exp.auditEntries.entries as Any[];
@@ -2537,7 +3086,7 @@ await guard("3.R9", async () => {
       DECISIONS.every((a) => expRows.some((e) => e.action === a)) && !expRows.some((e) => has(e, "houseStake") || has(e, "houseStakes")) && houseHits(j(exp)).length === 0,
       j({ hits: houseHits(j(exp)).slice(0, 6), actions: [...new Set(expRows.map((e) => e.action))] }));
 
-    Object.assign(R34, { ready: true, w, A, B, C, MOD, tag, mB, mB2, m0v, nV, pB2, pT, rB, rB2, fill, REASON_B, REASON_TWIN, vB, vB2, v0, nVoid, sectionStart });
+    Object.assign(R34, { ready: true, w, A, B, C, CO, MOD, tag, mB, mB2, m0v, nV, pB2, pT, rB, rB2, fill, REASON_B, REASON_TWIN, vB, vB2, v0, nVoid, sectionStart });
   } finally {
     book.stakeRows = realStakeRows;
     G[BULK_KEY.abortOn] = null;
@@ -2554,7 +3103,7 @@ await guard("3.R9", async () => {
 section("§4 · rulings 195, 197 · the void notice's house share equals the audit's stake; a no-house void's bell and email and every player's are today's bytes; the KYC house figures");
 await guard("4.S4", async () => {
   if (!R34.ready) { ok("4.0 · §3's R9 fixture was built", false, "§3.R9 threw before its fixture was ready"); return; }
-  const { w, A, B, C, MOD, tag, mB, mB2, m0v, nV, pB2, pT, rB, rB2, fill, REASON_B, REASON_TWIN, vB, vB2, v0, nVoid } = R34;
+  const { w, A, B, C, CO, MOD, tag, mB, mB2, m0v, nV, pB2, pT, rB, rB2, fill, REASON_B, REASON_TWIN, vB, vB2, v0, nVoid } = R34;
   const { createHash } = await import("node:crypto");
   const N: Any = await import("../../src/lib/server/notification-service.ts");
   const E: Any = await import("../../src/lib/server/email.ts");
@@ -2622,7 +3171,7 @@ await guard("4.S4", async () => {
   const emailOf = async (id: string) => (await w.db.user.findById(id))?.email as string;
 
   // ── ruling 195 · the house share in the admin bell equals the audit's stake ──
-  const officers = [A, B, C, MOD];
+  const officers = [A, B, C, CO, MOD];
   const wantB2 = { reason: REASON_TWIN, refundedCount: 5, refundedTzs: 43_000, houseTzs: 8_000, houseCount: 2 };
   const stakeB2 = vB2.row?.payload?.houseStake;
   const b2Bells = await Promise.all(officers.map((o) => bells(o, (n) => n.bodyEn?.includes(`${money(43_000)} refunded`) && n.bodyEn?.includes(REASON_TWIN))));
@@ -2652,11 +3201,20 @@ await guard("4.S4", async () => {
       && hashOf(E.marketCancelledAdminHtml(FIXED)) === TODAY_ADMIN_LETTER && hashOf(E.marketCancelledAdminHtml({ ...FIXED, houseRefundedTzs: 0, houseRefundedCount: 0 })) === TODAY_ADMIN_LETTER,
     j({ letters: zeroLetters.length, fixed: hashOf(E.marketCancelledAdminHtml(FIXED)) }));
   const rowLabel = "Of which house stakes";
-  ok("4.195.6 · the house-held void's admin letter adds exactly one detail row — its figure TZS 8,000 on 2 positions — and is otherwise the no-house render",
-    houseLetters.length === 1 && houseLetters[0].html.includes(rowLabel) && houseLetters[0].html.includes(`${money(8_000)} on 2 positions`)
-      && houseLetters[0].html === E.marketCancelledAdminHtml({ title: TITLE, reason: REASON_TWIN, refundedCount: 5, refundedTzs: 43_000, houseRefundedTzs: 8_000, houseRefundedCount: 2 })
-      && !E.marketCancelledAdminHtml({ title: TITLE, reason: REASON_TWIN, refundedCount: 5, refundedTzs: 43_000 }).includes(rowLabel),
-    j({ letters: houseLetters.length }));
+  // Related to the NO-house letter of the same void, never only to its own template: cut the one row out and the rest must be those bytes.
+  const noHouseLetter = E.marketCancelledAdminHtml({ title: TITLE, reason: REASON_TWIN, refundedCount: 5, refundedTzs: 43_000 });
+  const houseHtml = String(houseLetters[0]?.html ?? "");
+  const labelAt = houseHtml.indexOf(rowLabel);
+  const labelOnce = labelAt >= 0 && houseHtml.indexOf(rowLabel, labelAt + rowLabel.length) === -1;
+  const rowStart = labelAt >= 0 ? houseHtml.lastIndexOf("<tr>", labelAt) : -1;
+  const rowEnd = labelAt >= 0 ? houseHtml.indexOf("</tr>", labelAt) : -1;
+  const houseRowHtml = rowStart >= 0 && rowEnd >= 0 ? houseHtml.slice(rowStart, rowEnd + "</tr>".length) : "";
+  const withoutRow = houseRowHtml ? houseHtml.slice(0, rowStart) + houseHtml.slice(rowEnd + "</tr>".length) : "";
+  ok("4.195.6 · the house-held void's admin letter adds exactly one detail row — its figure TZS 8,000 on 2 positions — and with that row cut out it is byte-for-byte the no-house letter of the same void (heading, subtitle, every other row and the button unchanged)",
+    houseLetters.length === 1 && labelOnce && houseRowHtml.includes(`${money(8_000)} on 2 positions`) && withoutRow === noHouseLetter
+      && houseHtml === E.marketCancelledAdminHtml({ title: TITLE, reason: REASON_TWIN, refundedCount: 5, refundedTzs: 43_000, houseRefundedTzs: 8_000, houseRefundedCount: 2 })
+      && !noHouseLetter.includes(rowLabel),
+    j({ letters: houseLetters.length, labelOnce, sameWithoutRow: withoutRow === noHouseLetter, row: houseRowHtml.slice(0, 120) }));
 
   // ── the players' bells and letters, with and without house positions ──
   const refPh = pB2.positionId, refPt = pT.positionId;

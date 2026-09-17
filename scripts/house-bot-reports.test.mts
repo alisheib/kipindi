@@ -18,9 +18,11 @@
  * its verification added 11 cases on both stores (the NO side and the pure fold, the book's ranges and per-product open
  * exposure, the fee's product, window and null branches, and the window bounds of four readers): memory 152, Postgres 92.
  * C5 step 4 added §0's TGT-38 and KYC-reader pins (memory only), §3's R9 cases (rulings 170, 178, 187–190) and §4's
- * server-side void-notice and KYC cases (rulings 195, 197) on both stores: memory 213, Postgres 143.
+ * server-side void-notice and KYC cases (rulings 195, 197) on both stores: memory 213, Postgres 143. Its review fixes added the
+ * page-condition, KYC-object and R9-site pins with their controls (memory) and, on both stores, the stage-2 and in-lock
+ * refusals, the two-admin twin, the lock facts of the void's read and the decisions' result keys: memory 226, Postgres 148.
  * A section that stops running fails the floor even while every case that ran passed.
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 
-await runTwoStores({ suite: "test:house-bot-reports", casesFile: "scripts/lib/house-bot-reports-cases.mts", minPass: { memory: 213, postgres: 143 }, dbPrefix: "hb_reports" });
+await runTwoStores({ suite: "test:house-bot-reports", casesFile: "scripts/lib/house-bot-reports-cases.mts", minPass: { memory: 226, postgres: 148 }, dbPrefix: "hb_reports" });
