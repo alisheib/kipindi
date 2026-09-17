@@ -1,0 +1,123 @@
+export const meta = {
+  name: 'c7-step',
+  description: 'One Commit 7 console step: build its rulings, 3-lens adversarial review plus a visual lens, fix with cases seen red first (mutations batched at the commit close)',
+  phases: [
+    { title: 'Build', detail: 'one implementer: the step rulings, suites green, every render read, push' },
+    { title: 'Review', detail: 'read-only lenses: conformance, D19 leak hunt, test strength, visual' },
+    { title: 'Fix', detail: 'apply confirmed findings, re-run what the fixes touch, push' },
+  ],
+}
+
+// args: { step, rulings, tag, baseSha, task, nextRuling, scratch, visual?, conformanceExtra?, d19Extra?,
+//         strengthExtra?, visualExtra?, carryMisses?, machine?, root?, baseline?, mainCheckout?, heavyLock? }
+// Authored in the twelfth session for Commit 7, from plans/house-bots/tools/c5-step-fast.js. The difference that
+// matters: the governing spec is C7-SPEC.md (NOT C5-SPEC.md), ruling 453's neutral lexicon is a hard rule, and
+// ruling 460 makes an anchor re-grep a commit precondition.
+const A = args
+if (!A.scratch) throw new Error('args.scratch is required: the scratchpad directory of the session running this workflow')
+const SCR = A.scratch
+const MACHINE = A.machine || 'Ali-Blade15 (Windows 11, 16 GB)'
+const ROOT = A.root || 'C:/kipindi-house-bots'
+const BASE = A.baseline || 'C:/kipindi-old-build'
+const MAIN = A.mainCheckout || 'C:/kipindi-main'
+const LOCK = A.heavyLock ? `
+- Heavy Node (tsc, next build/start/dev, Playwright, any Postgres suite, test:all) runs through the shared lock: ${A.heavyLock}.` : ''
+const NEXT = A.nextRuling || 432
+const RULES = `
+STANDING RULES (non-negotiable):
+- Machine ${MACHINE}. Repo worktree ${ROOT}, branch house-bots (confirm with git branch --show-current before every commit). Push ONLY with: git push origin house-bots. NEVER push main, never put main in a refspec, never rebase, never force, never skip hooks. Never touch production (no railway, no production database, not even a read). Never turn the house-bot master switch on outside a scratch database. Never edit, stage, check out or build in ${MAIN} (another session's checkout). ${BASE} is a clean origin/main worktree with its own node_modules: run a suite there only to compare a red, and leave it clean.
+- Ruling 450 (this session): "live" means the house-bots BRANCH. The merge to main is Ali's own decision and is not yours to make or prepare beyond leaving the branch green.
+- You are the only writer in ${ROOT} while you run (agents of one workflow run one at a time). Never run npm ci, npm install or npm rebuild in ${ROOT}. ⛔ Never run npx prisma generate either: ruling 274 permitted it for checkpoint C5-5b alone, and a checkpoint that changes no schema field must not run it — Commit 7 adds no schema field. If a step truly needs one, stop and report it in openIssues.
+- Your scratch Postgres is 127.0.0.1:5433 (scripts/db-scratch.mts); never use ports 5434-5450. Servers only on port 3021 (never 3009/3011/3013/3014).
+- ⛔ Owner ruling D19 outranks everything: nothing about house bots may reach a player or the holder (no public text, no chip, no label, no notice, no house word/identifier/prop name/action name in client JavaScript, no house key/id/word in a releasable export or a public API route or a player-callable server action result).
+- ⛔ Owner ruling D20 (Ali, 2026-09-17), just below D19: house bots are ordinary players in every report, and every admin-only house tool is dropped. The console may NOT gain a results or P&L report, a CSV, a per-market house line, a house-liquidity figure, an internal record, a staff-edge alert or a report memo.
+- ⛔ Ruling 266: the console shows money ONLY as usage against a configured limit, written as usage. No result, no net, no book, no fee withheld, no bare balance anywhere (ruling 459 closed the last exception).
+- ⛔ Ruling 259 (a layout is not a gate) — the most important fact for this commit: every page, route handler and server action under src/app/admin streams its payload to ANY signed-in account, including an ordinary PLAYER; the layout's redirect and AdminSectionGate change what is PAINTED, not what is SENT, and a flight request whose router state names the admin layouts skips them. So every house read a console surface renders or returns goes through src/lib/server/house-console-read.ts as a NAMED reader with its CONSOLE_GATES arity entry, deciding on the viewer's STORED role for that route and failing closed. Ruling 260 measured 72 of 606 non-staff responses carrying house audit rows before the gating; this is a measured defect class, not a theory.
+- ⛔ Ruling 453 (the neutral lexicon, and it is a HARD rule): NOTHING the console renders names the feature, not even behind the gate. An entry is an "account", the section is "the desk", money moved is a "stake", a ceiling is a "limit". The words bot, house, liquidity and counter-stake NEVER appear in rendered text, aria-*, title, placeholder or route metadata anywhere under src/app/admin/desk/**. Identifiers and imports are exempt (the gated readers are server-only and verify:house-bot-bundle owns their client-reachability). The OFF sentence is "The desk is off. Nothing will be staked."; the Toggle's aria-label is "Desk master switch"; the fourth KPI tile is "Accounts". Step 1 adds the guard that proves it, importing scripts/lib/house-bot-vocabulary.mjs (ruling 175 — never a new house regex) with a planted control.
+- THE GOVERNING SPEC IS plans/house-bots/C7-SPEC.md — NOT C5-SPEC.md, which governs Commit 5. Read, IN FULL, before writing code: C7-SPEC.md §0 (authority and the completeness review's corrections), §1 (what it supersedes in PLAN §8 and 03-design-spec S1-S6), the §2 rulings for YOUR step, §3's entry for your step, §4's suites, §5's visual capture list, §6 (dropped mechanisms — never build one), and §8 (rulings 452-461, which OUTRANK §2 where they differ). Also plans/house-bots/C5-D20-REPLAN.md §4's Commit 7 scope and §5's rulings 264-275, and the D19 and D20 blocks in plans/house-bots/PROGRESS.md.
+- ⛔ Ruling 460 is a COMMIT PRECONDITION: checkpoint C5-5b edited code while C7-SPEC.md was being written, so EVERY Files-block anchor you rely on must be re-found by its QUOTED LINE TEXT at the current HEAD before you commit. An anchor you cannot re-find is reported in deviations, never guessed. Where the code disagrees with a ruling's factual premise, trust the code, apply the ruling's intent, and report the deviation.
+- Run heavy Node (npx tsc, next build/start/dev, Playwright, any Postgres suite, test:all) one at a time within your own agent. If a process dies with a V8 fatal error or 0xC0000005, or a Postgres case throws "Can't reach database server" once under load, re-run once before believing anything.
+- Pace (ruling 275): the INITIAL check of a change runs exactly as it always has; what is dropped is REPETITION. STILL REQUIRED, once: npx tsc --noEmit 0 before every push; every suite your changed files can actually REACH, on BOTH stores where the logic is store-dependent, with a case for each new or changed behaviour; test:guards-exist before a commit that adds a suite citation; and a render opened and READ of every surface C7-SPEC §5 makes mandatory for your step. NOT RUN AGAIN: a suite no changed file can reach (name it, with the reason); a second full two-store pass of a suite already green whose code a later fix did not touch; test:all red-by-red, which belongs to the commit close; the mutation batch, which the commit close runs once. ONE fresh next build per step, and off that SAME build run the renders, verify:house-bot-bundle and qa:house-bot-console-probe — ruling 275 drops a SECOND build, not the first. EVERY run you skip goes in notMeasured AND as a row you APPEND to plans/house-bots/DEFERRED-TESTS.md §1 (checkpoint, exact command, store, what it would prove, why the skip is safe), committed by name: a skip is tracked, not remembered, and a skipped test is never a passed test.
+- Suites: npm run --silent test:<key> prints NOTHING for a wrong key — grep package.json first. test:guards-exist REFUSES a cited suite key package.json lacks, so a ruling citing a new suite and the package.json key land in the SAME commit. Two-store suites run through scripts/lib/house-bot-two-stores.mts (runTwoStores); a Postgres half that never reached its store is NOT MEASURED, never passed. Run npx esbuild <cases file> --outfile=/dev/null (Git Bash) before a long run of an edited cases file.
+- Renders: admin renders use next start on a scratch database seeded by scripts/seed-admin-local.mts (+ scripts/seed-staff-local.mts where a staff role is needed) with DISABLE_ADMIN_TOTP=true. Screenshots are VIEWPORT tiles (never fullPage, nextjs-portal hidden), saved under ${SCR}/shots-${A.tag}, and you must OPEN and READ every PNG with the Read tool; a surface you did not read is NOT MEASURED. Kill a server with PowerShell taskkill /T /F /PID <pid> (only a PID you started), then list node.exe processes and kill orphaned .next postcss workers of ${ROOT} only.
+- ⛔ VISUAL LAW (Ali, standing: "perfection is only allowed"; "make sure logic and visual are perfect as we go"): the platform UI kit is the ONLY look — docs/DESIGN_AUTHORITY.md, the kit components, and the neighbouring admin pages /admin/house and /admin/agents as the closest precedents. An invented look, an invented word or a figure whose typography does not match its neighbour is a defect, not a preference. C7-SPEC §5 lists the mandatory widths and surfaces; never gold for money; status tones from status-tone.ts.
+- Traps: Tailwind scans comments and strings in src — never write class-shaped tokens like w-[..] in comments. The Edit tool and inline node -e decode backslash escapes into raw characters — write escape-sensitive code with the Write tool into a file and byte-check it. A replacement passed to String.prototype.replace must be a function. Git Bash mangles /-leading env values (MSYS_NO_PATHCONV=1). A module reached by import() and CommonJS loads twice; shared state lives on globalThis under Symbol.for. Memory-store db.* returns plain values (try/catch, never .catch). Wait on the database clock, never sleep margins. Assert that a pass DECIDES before asserting what it did not decide. Postgres rows carry houseBotId:null keys that memory rows omit. Postgres raw SQL: bind ISO times as ::timestamp (naive UTC), cast enum columns ::text, sums ::text then Number(), count(*)::int. House DAL pageLimit clamps list readers at 500 — never build a total from a paged reader; AdminPagination needs total:number, so a numbered pager needs a COUNTING reader beside the paged one. A raw-text guard reads comments too — reword prose, never the guard. The scratch Postgres runs Asia/Beirut. A served-page scan reads the body with the shared vocabulary AND the bot's label and id; a stack trace naming the folder kipindi-house-bots is not a leak (strip the root path, keep a planted control). AdminKpi writes title={value} itself, so a permitted money value ships a bare amount in an attribute — kit-internal mirrors are exempt, console-written money attributes are not. aria-valuetext cannot take a ReactNode (it stamps [object Object]).
+- Money paths: read the bet-concurrency rules in src/lib/server/market-service.ts before touching one; an abort must escape withLock; writes inside a lock take the caller's tx; emits after the outer lock.
+- Guards: never raise a ratchet or ceiling (test:type-scale, test:labels ADMIN_PROSE_RATCHET, test:decomment CARRIER_CEILING, test:red-anchors UNDECLARED_CEILING, test:orphans), never widen an exemption, never weaken an assertion to make it pass, never lower a floor. Read a guard's printed population before moving a pin. Import scripts/lib/decomment.mts, never write a new comment stripper. Every new store member gets both twins and a test:dal-parity case in the same commit. When you edit a line a red-anchors harness quotes, re-anchor it to the same defect.
+- Known inherited reds on clean origin/main (compare the failing LINES, never assume, never weaken): test:red-anchors 4 (rg-doors x2, 4.1/4.2), read-tiers 7.1, type-scale, decomment 2.1, orphans, lock-tx-threading 2.3, failure-reasons 10.1/10.2, updown-digest §7, recategorise 5, updown-source-class §2, grid-paging 2.2, chart-one-home 3.1, popup-fit 1.1, admin-act-gate §1, updown-handover 8.4d; admin-section-gate, revoked-deadend and needle-rest hard-code port 3009 (NOT MEASURED).
+- Git: stage files BY NAME (never git add -A / git add .). Commit messages start "WIP house-bots: C7 · " and end with a blank line then "Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>". Commit and push only green states; verify with git ls-remote origin refs/heads/house-bots. Do NOT edit plans/house-bots/PROGRESS.md (the orchestrator owns it) — report what it needs instead. You MAY append a newly needed ruling to C7-SPEC.md §2 under a "Added during the build" heading only if the step cannot be built without one; number it from ${NEXT} upward (334-339 and 376-379 are RESERVED and must stay unspent) and report it.${LOCK}
+- Report measured numbers only (suite name, store, passed/failed as printed). Anything you could not run is NOT MEASURED, stated plainly.
+`
+
+const REPORT = {
+  type: 'object',
+  properties: {
+    done: { type: 'array', items: { type: 'string' }, description: 'each ruling/clause implemented or verified, one line each with files' },
+    anchorsRegrepped: { type: 'array', items: { type: 'string' }, description: 'ruling 460: each anchor re-found by quoted text (or reported unfound) before the commit' },
+    commits: { type: 'array', items: { type: 'string' }, description: 'sha + subject, pushed' },
+    headSha: { type: 'string', description: 'the full sha of house-bots HEAD after your last push' },
+    suites: { type: 'array', items: { type: 'string' }, description: 'suite · store · printed result' },
+    renders: { type: 'array', items: { type: 'string' }, description: 'screenshot path · width · what was read in it' },
+    notMeasured: { type: 'array', items: { type: 'string' } },
+    deferredRows: { type: 'array', items: { type: 'string' }, description: 'the rows appended to plans/house-bots/DEFERRED-TESTS.md §1, verbatim' },
+    deviations: { type: 'array', items: { type: 'string' }, description: 'ruling · what differs · why (code over plan)' },
+    mutationsPlanned: { type: 'array', items: { type: 'string' }, description: 'id · file · exact from-text (occurs once) → replacement · suite (+ section filter) · the assertion id(s) that must go red, with store' },
+    openIssues: { type: 'array', items: { type: 'string' }, description: 'incl. PROGRESS register rows proposed (W/X/L), new rulings, anything for Ali' },
+  },
+  required: ['done', 'anchorsRegrepped', 'commits', 'headSha', 'suites', 'renders', 'notMeasured', 'deferredRows', 'deviations', 'mutationsPlanned', 'openIssues'],
+}
+const FINDINGS = {
+  type: 'object',
+  properties: {
+    findings: { type: 'array', items: { type: 'object', properties: {
+      id: { type: 'string' }, severity: { type: 'string', enum: ['blocker', 'major', 'minor'] },
+      where: { type: 'string', description: 'file:line' }, what: { type: 'string' }, evidence: { type: 'string' }, fix: { type: 'string' },
+    }, required: ['id', 'severity', 'where', 'what', 'evidence', 'fix'] } },
+    unconfirmedClaims: { type: 'array', items: { type: 'string' } },
+  },
+  required: ['findings', 'unconfirmedClaims'],
+}
+
+phase('Build')
+const build = await agent(`${RULES}
+
+YOUR TASK — Commit 7 ${A.step} (C7-SPEC.md §3), rulings ${A.rulings}. Base sha ${A.baseSha}.
+${A.task}
+- Commit in coherent green slices and push after each. Satisfy ruling 460 BEFORE your first commit and report the re-greps.
+- In mutationsPlanned, list EVERY mutation that must be run against this step's new code (at least one per new assertion, branch and SQL predicate; both twins of a store member separately), each naming the exact file, an exact from-text occurring exactly once, its replacement, the suite (with a section filter where supported) and the assertion id that must go red with its store. Do NOT run them; the commit close runs the batch once.
+Research first, build, then write your whole report ONCE at the end through the structured output.`, { label: `build:${A.tag}`, phase: 'Build', schema: REPORT })
+
+const LENSES = [
+  { key: 'conformance', prompt: `LENS: RULING CONFORMANCE. For each of rulings ${A.rulings} in plans/house-bots/C7-SPEC.md — and for §8's rulings 452-461, which outrank §2 — check the implementation clause by clause against the code now on branch house-bots (git log --oneline ${A.baseSha}..HEAD; git diff ${A.baseSha}..HEAD). Check each ruling's Proof line: does a case exist on the right store that can actually fail when the behaviour breaks (not vacuous, planted control present)? Check §6: no dropped mechanism was built. Check ruling 460 was satisfied — every anchor re-grepped, none guessed. Check §3's step exit for this step is met in full, and that every new suite key cited exists in package.json. Report each missing clause, wrong behaviour, vacuous case or undocumented deviation. ${A.conformanceExtra || ''}` },
+  { key: 'd19-hunt', prompt: `LENS: D19 LEAK HUNT, WITH RULING 259 ASSUMED. Assume the implementation missed something. The console is an ADMIN surface whose payload reaches any signed-in account, so hunt: every new page, route handler and server action, and what it SENDS (not paints) to a non-owner signed-in session; every house read that does not go through a NAMED reader in house-console-read.ts with its CONSOLE_GATES arity; 'use client' modules and every module they value-import (words, identifiers, prop names, action export names, dictionary keys); the RSC/flight payload of each new route for a non-audience viewer; ruling 453's neutral lexicon — grep every string literal reaching the DOM under src/app/admin/desk/** for the house vocabulary, including aria-*, title, placeholder and metadata, and including the nav label, route key and crumb; ruling 399 (a missing record and a refused viewer must answer identically, so the pages are not a bot-id oracle); the loader fallbacks; error and not-found surfaces; and log text echoed into a response. Also check the two data-rights doors and any player-callable action the step touched. ${A.d19Extra || ''}` },
+  { key: 'test-strength', prompt: `LENS: TEST STRENGTH AND CORRECTNESS. For every new or changed assertion in git diff ${A.baseSha}..HEAD -- scripts, design the single-line source mutation that should turn it red and check by reading that it would; flag vacuous assertions (a store where the property cannot differ, a missing planted control, >= where exact is needed, a fixture that cannot exercise the branch, a total built from a paged reader, a case passing on state an earlier section left behind, a guard whose population is empty so it cannot fail). Check every new store member's two twins against each other for semantic drift (NULL handling, ordering, boundaries, CASHED_OUT/VOID statuses, naive-UTC casts, Decimal conversion) and that each has a test:dal-parity case. Check any counting reader against its paged twin for the same predicate. For any money path, check the platform's four transaction rules. Check the implementer's mutationsPlanned: flag any whose from-text is not unique or that could not turn its named assertion red. ${A.strengthExtra || ''}` },
+  { key: 'visual', prompt: `LENS: VISUAL AND KIT CONSISTENCY. Ali's standing instruction is that visuals must be perfect and indistinguishable in quality from the rest of the platform. Open and READ with the Read tool every PNG the implementer lists under renders, and list ${SCR}/shots-${A.tag} for any it did not list. Check C7-SPEC §5's mandatory widths and surfaces for this step were ALL captured — a missing one is a finding. For each surface compare against its kit neighbour (/admin/house, /admin/agents) and docs/DESIGN_AUTHORITY.md: typography role and size, colour tokens (muted text, side words, NEVER gold for money), spacing and alignment with the neighbouring row, separators, the KPI band's value and delta rungs, table column order (money second), wrapping at 360 (nothing clipped, overlapping, overflowing or breaking inside a figure group; tap targets), sentence case, the same words for the same things as neighbouring surfaces, no double spaces or stray separators, the loader skeleton matching the real page's order, empty states naming their cause, failed-read states, and ruling 453's neutral lexicon as it READS on screen (a heading, chip, sentence or aria label that names the feature is a BLOCKER, not a minor). Report each defect with the PNG path, what is wrong, the kit reference and the exact fix (file:line). ${A.visualExtra || ''}` },
+]
+
+const verified = await pipeline(
+  LENSES,
+  (l) => agent(`${RULES}
+
+You are a READ-ONLY adversarial reviewer (do not edit, stage, commit or run heavy Node; reading files and git is fine). The implementer's report:
+${JSON.stringify(build)}
+
+${l.prompt}
+For every finding give: id (prefix ${l.key}-), severity, file:line, what is wrong, evidence (quote the code), exact fix. Research first; report once at the end through the structured output.`, { label: `review:${l.key}`, phase: 'Review', schema: FINDINGS }),
+  (rev, l) => ({ lens: l.key, unconfirmedClaims: (rev && rev.unconfirmedClaims) || [], findings: ((rev && rev.findings) || []).map((f) => ({ ...f, lens: l.key })) }),
+)
+
+phase('Fix')
+const fix = await agent(`${RULES}
+
+You are the FIXER for Commit 7 ${A.step} (rulings ${A.rulings}). Below: the implementer's report and every review finding.
+For EACH finding: read the code yourself and try to refute it first (reviewers can be wrong). If it is real, fix it; if a register row or ruling already records it as accepted or deferred, name that record; otherwise record precisely why it is refuted. Fix each real finding with a case that fails without the fix (both stores where logic is involved) and SEE that case red on the unfixed code first. Chase every unconfirmed implementer claim. Treat any ruling-453 finding (the feature named in rendered text, aria, title, placeholder or metadata) and any ruling-259 finding (a house read not behind a named gated reader) as a BLOCKER that must be fixed, never refuted on convenience.
+Then re-run every suite the fixes touch and npx tsc --noEmit. If a fix changed a rendered surface, re-render and READ it — reuse the build phase's server if it is still up; if a fresh build would be needed, say so in openIssues and add the register row instead of building twice. Commit green slices by name and push.
+
+IMPLEMENTER REPORT: ${JSON.stringify(build)}
+
+REVIEW FINDINGS:
+${JSON.stringify(verified)}
+
+In mutationsPlanned return the FINAL complete mutation list for THIS step, each with exact file, exact from-text occurring once at headSha, replacement, suite (+ section filter), and the assertion id(s) with store; WRITE it as a JSON array of strings to plans/house-bots/tools/c7-${A.tag}-mutations.json, commit it by name and push. Make sure plans/house-bots/DEFERRED-TESTS.md §1 holds a row for every run this step skipped, and return those rows in deferredRows. Set headSha to the full sha after your last push. In done, list each finding id with FIXED / REFUTED (why) / RECORDED (where). Research first; report once at the end through the structured output.`, { label: `fix:${A.tag}`, phase: 'Fix', schema: REPORT })
+
+return { build, verified, fix }

@@ -213,3 +213,20 @@ bots and what keeps D19 true").
      reasoning, and reported in the morning as a decision already taken — never as a pending item. The only exceptions
      are the two things no session may decide: an outward action on Ali's account (W20's repository visibility) and the
      merge to `main` (450).
+
+462. **C5-5b's unread 360 tiles are captured inside Commit 7 step 1's single server session.** Register rows 9 and 10
+     (the seven un-built surfaces whose changed region sat off-frame at 360, and the four phase-D dialogs) stayed
+     unread because the fixer had no server up and ruling 275 reserves one build per checkpoint. Step 1 of Commit 7 must
+     build and serve the admin anyway, so those captures ride that same server: one build, two purposes, no extra cost.
+     They remain open register rows until a tile is actually opened and READ. The exit-gate-A proof is meanwhile the
+     stronger one — all ten display files are byte-identical to `origin/main`, so no markup of a removed line can
+     survive by construction; the tiles confirm the eye, not the logic.
+463. **The bulk-resolve bar's 360 wrap is a PLATFORM defect (L58), not a C5-5b regression, and it is fixed in its own
+     commit after Commit 7 step 1.** Measured by the visual lens and re-derived by the fixer: at 360 the bulk bar's
+     summary column renders roughly one word per line, and that is `origin/main`'s own `min-w-0 flex-1` layout — step
+     5's struck `basis-[12rem]` had been masking it. It is not fixed inside C5-5b, whose exit gate requires those files
+     byte-identical to `origin/main`; fixing it there would have failed the gate that proves the un-build is complete.
+     Ali's standing instruction that visuals must be perfect still applies to it, so it is fixed deliberately, in a
+     standalone commit that names it as a platform fix, once the console page is in. Two neighbours found with it are
+     recorded the same way: the two-admin toggle's hard-coded "2-admin" label contradicting the single-admin state at
+     360, and the notifications tiles' clipped Needle disc.
