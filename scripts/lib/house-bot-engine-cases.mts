@@ -2599,6 +2599,30 @@ await guard("17", async () => {
     ok("17.67 · bulkMarketIds reads the batch's resolved list only", j(OV.bulkMarketIds({ selection: ["a", "b"], resolved: ["b"] })) === j(["b"]));
   }
 
+  /* ── 17.66b oversight through the ONE requester rule (C5-SPEC ruling 178): a targeted stake's requester is the officer
+     who ADDED the target, never the officer who later updated it ── */
+  {
+    const b = await botWith();
+    const m = await pollAt();
+    const adder = await w.user({ role: "ADMIN" }), updater = await w.user({ role: "ADMIN" });
+    const t = await target(b, m.id, { createdById: adder });
+    const upd = !t.threw ? await safe(() => S.targetStore.casUpdate(t.id, t.version, { delayMaxSec: 20 }, updater)) : t;
+    const trigger = `pos_hb_ovt_${process.pid}`;
+    const s = await insert(rowOf(b, m.id, { kind: "COUNTER", anchorKey: trigger, triggerPositionId: trigger, triggerUserId: null, targetId: t.id, status: "PLACED",
+      positionId: `pos_hb_ovt_placed_${process.pid}`, finishedAt: w.iso(-5_000), alertedAt: w.iso(), attempts: 1, staleAt: w.iso(10_000) }));
+    // The updater resolves first (not a requester: no alert), then the adder voids (the requester: one alert).
+    await AUD.audit({ category: "ADMIN", action: "market.adjudicated", actorId: updater, targetType: "Market", targetId: m.id, payload: { outcome: "YES" } });
+    await AUD.audit({ category: "COMPLIANCE", action: "market.emergency_void", actorId: adder, targetType: "Market", targetId: m.id, payload: { reason: "planner case" } });
+    const rec = recorder();
+    const o = await safe(async () => OV.oversightPass(rec.alerts, await dbNow()));
+    const resolved = rec.calls.filter((c) => c.key === `staff-stake-self-decided:${m.id}:resolved`);
+    const voided = rec.calls.filter((c) => c.key === `staff-stake-self-decided:${m.id}:voided`);
+    ok("17.66b · ruling 178 · the officer who only UPDATED the target decides the market → no self-decided alert",
+      !t.threw && upd?.ok === true && upd.row?.updatedById === updater && !s.threw && !o.threw && resolved.length === 0, j({ o, upd: upd?.ok, s: s.threw, resolved }));
+    ok("17.66c · …the officer who ADDED the target decides it → ONE alert, requestedBy exactly [the adder]",
+      voided.length === 1 && voided[0].m.detail.actorId === adder && j(voided[0].m.detail.requestedBy) === j([adder]), j(voided.map((c) => c.m.detail)));
+  }
+
   /* ── 17.68 cap pre-check (ruling 94) ── */
   {
     const facts = (o: Any = {}) => merge({

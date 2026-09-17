@@ -839,6 +839,16 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
       && /inWindow\(t\.createdAt\) \|\| inWindow\(t\.endedAt\) \|\| inWindow\(t\.removedAt\)/.test(member(memTargets, "listInWindow")));
   ok("16.userKinds · listByUserKinds reads by userId and kind in both twins (never by bot)",
     /"userId" = \$\{p\.raw\(userId, "text"\)\}/.test(member(priEvents, "listByUserKinds")) && /e\.userId === userId && want\.includes\(e\.kind\)/.test(member(memEvents, "listByUserKinds")));
+  // countByBot (ruling 177): the count beside listByBot reads the same two predicates, bot and optional kinds, in both twins.
+  const countByBotRules = (pri: string, mem: string) =>
+    /SELECT count\(\*\)::int AS "n" FROM "HouseBotEvent" WHERE \$\{where\.join\(" AND "\)\}/.test(pri) && /\[`"houseBotId" = \$\{p\.raw\(houseBotId, "text"\)\}`\]/.test(pri)
+      && /if \(opts\.kinds\) where\.push\(`"kind" = ANY\(/.test(pri)
+      && /\.filter\(\(e\) => e\.houseBotId === houseBotId && \(!kinds \|\| kinds\.includes\(e\.kind\)\)\)\.length/.test(mem);
+  ok("16.countByBot · countByBot counts the bot's events, narrowed by kinds when given, in both twins",
+    countByBotRules(member(priEvents, "countByBot"), member(memEvents, "countByBot")), `${member(priEvents, "countByBot").length}/${member(memEvents, "countByBot").length}`);
+  ok("16.countByBot.c1 · CONTROL · a Prisma twin that ignores kinds and a memory twin that counts every bot are each caught",
+    !countByBotRules(member(priEvents, "countByBot").replace("if (opts.kinds) where.push(", "if (false) where.push("), member(memEvents, "countByBot"))
+      && !countByBotRules(member(priEvents, "countByBot"), member(memEvents, "countByBot").replace("e.houseBotId === houseBotId && ", "")));
   ok("16.shared · listFeed/countFeed share feedWhere (Prisma) and memFeedMatches (memory); listRegister/countRegister share registerWhere and memRegisterMatches, which read purposes",
     /feedWhere\(filter, p\)/.test(member(priIntents, "listFeed")) && /feedWhere\(filter, p\)/.test(member(priIntents, "countFeed"))
       && /memFeedMatches\(filter\)/.test(member(memIntents, "listFeed")) && /memFeedMatches\(filter\)/.test(member(memIntents, "countFeed"))

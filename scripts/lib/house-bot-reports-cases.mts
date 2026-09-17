@@ -1276,6 +1276,30 @@ await guard("1", async () => {
     const hundred = await call(EXP.houseStakeByMarket, Array.from({ length: 100 }, (_, n) => `mkt_none_${n}`));
     ok("1.179.15 · at most 100 market ids per call: 101 throws naming the limit, 100 reads (all zero)",
       typeof tooMany?.threw === "string" && /100/.test(tooMany.threw) && hundred instanceof Map && hundred.size === 100, j({ tooMany, hundred: hundred instanceof Map ? hundred.size : hundred }));
+
+    // C5 step 3 verification · every stake above is YES, so a side the store or the fold spells wrong could not show. The
+    // Up & Down FILL h1 is the fixture's one marked NO stake (a WIN once its round settles, below it is already settled).
+    const udRows = await call(book.stakeRows?.bind(book), [udMarket]);
+    const udView = await call(EXP.houseStakeByMarket, [udMarket]);
+    ok("1.179.16 · a marked NO stake (the Up & Down FILL, settled WIN): the store's row says NO and settled, and the view puts 2,000 in no and in settledTzs",
+      j(Array.isArray(udRows) ? udRows.map((r: Any) => [r.side, r.open, r.staffChosen, r.kind, r.stakeTzs]) : udRows) === j([["NO", false, false, "FILL", 2_000]])
+        && j(udView instanceof Map ? udView.get(udMarket) : udView) === j({ yes: 0, no: 2_000, openTzs: 0, settledTzs: 2_000, staffChosen: { yes: 0, no: 0, requestedBy: [], byRequester: {} } }),
+      j({ udRows, udView: udView instanceof Map ? udView.get(udMarket) : udView }));
+    // The fold itself, over rows no fixture can place (a staff-chosen NO stake, a target whose creator is unknown): pure.
+    const row = (o: Any) => ({ marketId: "mkt_fold", side: "YES", open: true, staffChosen: false, kind: "FILL", requestedById: null, targetId: null, targetCreatedById: null, stakeTzs: 0, ...o });
+    const folded = typeof EXP.foldHouseStakes === "function" ? EXP.foldHouseStakes(["mkt_fold", "mkt_empty"], [
+      row({ side: "NO", open: false, staffChosen: true, kind: "COUNTER", targetId: "hbt_b", targetCreatedById: "usr_b", stakeTzs: 4_000 }),
+      row({ side: "NO", staffChosen: true, kind: "MANUAL", requestedById: "usr_a", stakeTzs: 1_000 }),
+      row({ staffChosen: true, kind: "MANUAL", requestedById: "usr_a", stakeTzs: 500 }),
+      row({ stakeTzs: 300 }),
+      row({ staffChosen: true, kind: "COUNTER", targetId: "hbt_gone", targetCreatedById: null, stakeTzs: 200 }),
+      row({ marketId: "mkt_not_asked", staffChosen: true, kind: "MANUAL", requestedById: "usr_c", stakeTzs: 9_000 }),
+    ]) : null;
+    ok("1.179.17 · foldHouseStakes (pure): sides, open and settled, staff-chosen per side, requesters sorted with their summed amounts; a target with no known creator counts with no requester; an id not asked for is dropped; an asked id with no row is the zero view",
+      folded instanceof Map && folded.size === 2 && !folded.has("mkt_not_asked")
+        && j(folded.get("mkt_fold")) === j({ yes: 1_000, no: 5_000, openTzs: 2_000, settledTzs: 4_000, staffChosen: { yes: 700, no: 5_000, requestedBy: ["usr_a", "usr_b"], byRequester: { usr_a: 1_500, usr_b: 4_000 } } })
+        && j(folded.get("mkt_empty")) === j({ yes: 0, no: 0, openTzs: 0, settledTzs: 0, staffChosen: { yes: 0, no: 0, requestedBy: [], byRequester: {} } }),
+      j(folded instanceof Map ? Object.fromEntries(folded) : folded));
   }
 
   /* ── §1.180/181 entryRows: the split, the identity, officers, settled statuses ── */
@@ -1402,6 +1426,25 @@ await guard("1", async () => {
       rowOf(A)?.won === 1 && rowOf(A)?.winRatePct === 100 && rowOf(B)?.won === 1 && rowOf(B)?.lost === 1 && rowOf(B)?.winRatePct === 50
         && rowOf(C)?.bets === 2 && rowOf(C)?.settled === 0 && rowOf(C)?.winRatePct === null, j(card?.officers));
     ok("1.180.6 · the scorecard names its month and window", card?.monthKey === MK && card?.fromIso === MKW.fromIso && card?.toIso === MKW.toIso, j({ monthKey: card?.monthKey, fromIso: card?.fromIso, toIso: card?.toIso }));
+
+    // C5 step 3 verification · the book's other two ranges and its per-product open exposure, which no case read.
+    const nowNow = Date.now();
+    const markedOf = async (botId: string) => ((await w.mdal.positionStore.values()) as Any[]).filter((p) => p.houseBotId === botId);
+    const s1Marked = await markedOf(S1.botId), tMarked = await markedOf(T.botId);
+    const todayKey = CLOCK.eatDayKey(nowNow);
+    const s1Life = await call(BOOK.houseBotBook, { houseBotId: S1.botId, range: "lifetime", nowMs: nowNow });
+    const s1Today = await call(BOOK.houseBotBook, { houseBotId: S1.botId, range: "today", nowMs: nowNow });
+    const tToday = await call(BOOK.houseBotBook, { houseBotId: T.botId, range: "today", nowMs: nowNow });
+    const tTodayWant = tMarked.filter((p) => CLOCK.eatDayKey(Date.parse(p.placedAt)) === todayKey).length;
+    ok("1.180.7 · houseBotBook's ranges: S1's lifetime holds all 5 of its marked stakes (placed in 2025-03), its EAT today none; bot T's today holds the stakes placed today",
+      s1Marked.length === 5 && s1Life?.bets === 5 && s1Today?.bets === 0 && tTodayWant >= 6 && tToday?.bets === tTodayWant,
+      j({ s1Life: s1Life?.bets, s1Today: s1Today?.bets, tToday: tToday?.bets, tTodayWant }));
+    const s1OpenWant = s1Marked.filter((p) => p.status === "OPEN").reduce((s, p) => s + Number(p.stake), 0);
+    const s1Mkt = await call(BOOK.houseBotBook, { houseBotId: S1.botId, range: { monthKey: MK }, productLine: "MARKET", nowMs: nowNow });
+    const s1Ud = await call(BOOK.houseBotBook, { houseBotId: S1.botId, range: { monthKey: MK }, productLine: "UPDOWN", nowMs: nowNow });
+    ok("1.180.8 · open exposure per product: S1's MARKET open stake is every OPEN marked stake it holds (the FILL and the planted no-intent 7,000), its UPDOWN 0, and with no product the same as MARKET",
+      s1OpenWant === 8_000 && s1Mkt?.openExposureTzs === s1OpenWant && s1Ud?.openExposureTzs === 0 && s1Life?.openExposureTzs === s1OpenWant,
+      j({ want: s1OpenWant, market: s1Mkt?.openExposureTzs, updown: s1Ud?.openExposureTzs, all: s1Life?.openExposureTzs }));
   }
 
   Object.assign(R12, { ready: true, w, BOOK, PAY, call, facts, S1, S2, F1, F3, T, m1, m3, udMarket, l1, l1h, l1Players, l2, l2h, l3, l3h, udOther, h1, a1, b1, k1, nowMs, monthIso });
@@ -1471,6 +1514,33 @@ await guard("2", async () => {
     shares instanceof Map && shares.get(l2h.positionId) === 0 && shares.get(l3h.positionId) === null && shares.get(h1.positionId) === udHouse
       && shares.get(a1.positionId) === (m1Fee * 9_000) / 15_000 && shares.get(b1.positionId) === (m1Fee * 6_000) / 15_000,
     j(shares instanceof Map ? Object.fromEntries(shares) : shares));
+
+  // C5 step 3 verification · the branches and bounds no fixture above decides.
+  const s1Ud = await feeOf(S1.botId, P, "UPDOWN");
+  ok("2.8 · the CASHOUT fee is reported under its own product only: S1's UPDOWN fee is 0 while its MARKET fee carries the 100",
+    s1Ud?.feeWithheldTzs === 0 && s1Market?.feeWithheldTzs === m1Fee + 100, j({ updown: s1Ud?.feeWithheldTzs, market: s1Market?.feeWithheldTzs }));
+  const l1Payout = payoutOf(l1h.positionId);
+  const edgeIn = await call(book.feeInputs?.bind(book), { fromIso: l1Payout?.createdAt, toIso: new Date(Date.parse(l1Payout?.createdAt) + 1).toISOString(), houseBotId: F1.botId });
+  const edgeOut = await call(book.feeInputs?.bind(book), { fromIso: new Date(Date.parse(l1Payout?.createdAt) - 60_000).toISOString(), toIso: l1Payout?.createdAt, houseBotId: F1.botId });
+  const hasL1 = (x: Any) => Array.isArray(x?.wins) && x.wins.some((win: Any) => win.positionId === l1h.positionId);
+  ok("2.9 · feeInputs' window is [from, to) on the payout's own instant: a window starting at it holds the L1 WIN, one ending at it does not",
+    !!l1Payout && hasL1(edgeIn) && Array.isArray(edgeOut?.wins) && !hasL1(edgeOut), j({ at: l1Payout?.createdAt, inWins: edgeIn?.wins?.length, outWins: edgeOut?.wins?.length }));
+  if (typeof BOOK.derivedFeeShares === "function") {
+    const snap = (await marketOf(m1.market.id)).feeSnapshot;
+    const mk = (marketId: string, settledAt: string | null, winnerId: string) => ({
+      marketId, productLine: "MARKET", yesPool: 10_000, noPool: 10_000, feeSnapshot: snap, settledAt,
+      positions: [{ id: winnerId, side: "YES", status: "WIN", stake: 10_000 }, { id: `${winnerId}_l`, side: "NO", status: "LOSS", stake: 10_000 }],
+    });
+    const win = (positionId: string, marketId: string) => ({ positionId, houseBotId: "hb_pure", marketId, side: "YES", payoutTxnId: `txn_${positionId}` });
+    const pure = BOOK.derivedFeeShares({
+      wins: [win("pos_unsettled", "mkt_unsettled"), win("pos_settled", "mkt_settled"), win("pos_lost_market", "mkt_missing")],
+      markets: [mk("mkt_unsettled", null, "pos_unsettled"), mk("mkt_settled", "2026-09-01T00:00:00.000Z", "pos_settled")],
+      cashOuts: [],
+    });
+    ok("2.10 · derivedFeeShares (pure): a WIN on a market with no settlement time is null, a WIN whose market was not read is null, the same market settled is its whole single-winner fee",
+      pure.get("pos_unsettled") === null && pure.get("pos_lost_market") === null && typeof pure.get("pos_settled") === "number" && pure.get("pos_settled") > 0,
+      j(Object.fromEntries(pure)));
+  } else ok("2.10 · derivedFeeShares is exported", false);
 
   if (w.onPostgres) {
     // ⭐ THE CROSS-CHECK, ZERO TOLERANCE: every marked WIN whose marked BET_PAYOUT landed in the window, against the
@@ -1598,6 +1668,17 @@ await guard("1.177", async () => {
     const listed = [...page.rows, ...rest.rows].map((r: Any) => r.id).sort();
     ok("1.177.8 · listInWindow: a target created in the window, and two created 40 days earlier that ENDED or were REMOVED in it; never one still ACTIVE from before; paged with total 3",
       page.total === 3 && j(listed) === j([fresh.id, oldEnded.id, oldRemoved.id].sort()) && !listed.includes(oldActive.id), j({ page, rest }));
+    // The bounds, on each of the three instants: a window starting AT it lists the target, one ending AT it does not.
+    const endedRow: Any = await S.targetStore.get(oldEnded.id), removedRow: Any = await S.targetStore.get(oldRemoved.id);
+    const bounds: Array<[string, string, string]> = [[fresh.id, "createdAt", fresh.createdAt], [oldEnded.id, "endedAt", endedRow?.endedAt], [oldRemoved.id, "removedAt", removedRow?.removedAt]];
+    const edges: Any[] = [];
+    for (const [id, col, at] of bounds) {
+      const starts = await S.targetStore.listInWindow({ fromIso: at, toIso: later(at, 1), houseBotId: EB.botId, limit: 500 });
+      const ends = await S.targetStore.listInWindow({ fromIso: later(at, -1_000), toIso: at, houseBotId: EB.botId, limit: 500 });
+      edges.push({ col, at, starts: starts.rows.some((r: Any) => r.id === id), ends: ends.rows.some((r: Any) => r.id === id) });
+    }
+    ok("1.177.8b · …each of createdAt, endedAt and removedAt is in [from, to): a window starting at the instant lists the target, a window ending at it does not",
+      edges.every((e) => typeof e.at === "string" && e.starts === true && e.ends === false), j(edges));
   }
 
   // ── bots: listOverlapping ──
@@ -1611,6 +1692,13 @@ await guard("1.177", async () => {
     ok("1.177.9 · listOverlapping: a REMOVED bot is listed for a window its life overlaps and not for one starting after its removal; a bot designated at the window's end is not in it",
       !!rx && inWindow.some((b: Any) => b.id === RX.botId) && !afterRemoval.some((b: Any) => b.id === RX.botId) && afterRemoval.some((b: Any) => b.id === LIVE.botId)
         && !beforeLive.some((b: Any) => b.id === LIVE.botId) && beforeLive.some((b: Any) => b.id === S1.botId), j({ rx: rx?.removedAt, n: [inWindow.length, afterRemoval.length, beforeLive.length] }));
+    // The two bounds on their own instants: removed AT the window's start overlaps it; designated at the window's end
+    // minus nothing is inside a window that ends one millisecond later.
+    const atRemoval = await S.houseBotStore.listOverlapping({ fromIso: rx.removedAt, toIso: later(nowIso(), 3_600_000) });
+    const liveDesignated = (await S.houseBotStore.get(LIVE.botId)).designatedAt;
+    const justAfter = await S.houseBotStore.listOverlapping({ fromIso: "2000-01-01T00:00:00.000Z", toIso: later(liveDesignated, 1) });
+    ok("1.177.9b · …a bot removed AT the window's start is listed (removedAt >= from), and a bot designated one millisecond before the window's end is listed (designatedAt < to)",
+      atRemoval.some((b: Any) => b.id === RX.botId) && justAfter.some((b: Any) => b.id === LIVE.botId), j({ removedAt: rx?.removedAt, n: [atRemoval.length, justAfter.length] }));
   }
 
   // ── the book: ledgerRows, positionsForUser, txnPageForUser ──
@@ -1628,6 +1716,16 @@ await guard("1.177", async () => {
     const udPayout = rows.find((r: Any) => r.houseBotId === S2.botId && r.type === "BET_PAYOUT");
     ok("1.177.10 · ledgerRows: per bot and type, the counts, amounts and fees of the marked CONFIRMED rows created in the window, nothing unmarked; the Up & Down payout under product UPDOWN and its market",
       rows.length > 0 && canon(got) === canon(want) && udPayout?.productLine === "UPDOWN" && udPayout?.marketId === udMarket, j({ got: canon(got), want: canon(want), udPayout }));
+    // The bounds on real instants: [the first marked row's time, the last marked row's time) — the rows AT the start are
+    // in, the rows AT the end are out (counted from the fixture's own rows, never from the reader).
+    const instants = [...new Set(inW.map((t) => Date.parse(t.createdAt)))].sort((a, b) => a - b);
+    const lo = instants[0], hi = instants[instants.length - 1];
+    const bounded = await S.houseBookStore.ledgerRows({ fromIso: new Date(lo).toISOString(), toIso: new Date(hi).toISOString() });
+    const boundedWant = inW.filter((t) => Date.parse(t.createdAt) >= lo && Date.parse(t.createdAt) < hi).length;
+    ok("1.177.10b · ledgerRows' window is [from, to) on marked rows' own instants: the rows at the start are counted, the rows at the end are not",
+      instants.length >= 3 && boundedWant > 0 && bounded.reduce((s: number, r: Any) => s + r.count, 0) === boundedWant
+        && inW.some((t) => Date.parse(t.createdAt) === lo) && inW.some((t) => Date.parse(t.createdAt) === hi),
+      j({ got: bounded.reduce((s: number, r: Any) => s + r.count, 0), want: boundedWant, instants: instants.length }));
 
     const holder = S1.userId;
     const marked = ((await w.mdal.positionStore.values()) as Any[]).filter((p) => p.userId === holder && p.houseBotId != null);
@@ -1672,6 +1770,13 @@ await guard("1.177", async () => {
       playerOnly.total === 0 && playerOnly.rows.length === 0 && playerAny.total === 1 && playerAny.rows[0]?.houseBotId == null, j({ only: playerOnly.total, any: playerAny.total }));
     const windowed = await S.houseBookStore.txnPageForUser({ userId: holder, marked: "only", fromIso: W.fromIso, toIso: W.toIso, limit: 500 });
     ok("1.177.13 · …and a window keeps only the rows created inside it", windowed.total === inW.filter((t) => t.userId === holder).length, j({ got: windowed.total }));
+    // Its bounds on the holder's own row instants, the same way: at the start in, at the end out.
+    const holderAt = [...new Set(mine.map((t) => Date.parse(t.createdAt)))].sort((a, b) => a - b);
+    const hLo = holderAt[0], hHi = holderAt[holderAt.length - 1];
+    const hBounded = await S.houseBookStore.txnPageForUser({ userId: holder, marked: "any", fromIso: new Date(hLo).toISOString(), toIso: new Date(hHi).toISOString(), limit: 500 });
+    const hWant = mine.filter((t) => Date.parse(t.createdAt) >= hLo && Date.parse(t.createdAt) < hHi).length;
+    ok("1.177.13b · …txnPageForUser's window is [from, to) on the holder's own instants: rows at the start are in, rows at the end are out, and the total agrees",
+      holderAt.length >= 3 && hWant > 0 && hBounded.total === hWant && hBounded.rows.length === hWant, j({ got: hBounded.total, want: hWant, instants: holderAt.length }));
   }
 
   // ── platform members ──

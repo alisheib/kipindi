@@ -14,9 +14,11 @@
  * (memory 58 passed · 40 failed, Postgres 14 passed · 44 failed), then made green by the readers.
  *
  * minPass is per store and MEASURED, and may only rise: C5 step 3 measured memory 141 (§0's pins and controls, §1, §2,
- * §1.177, §3, §11, the store case) and Postgres 81 (§1, §2 with the ledger cross-check, §1.177, §3, §11, the store case).
+ * §1.177, §3, §11, the store case) and Postgres 81 (§1, §2 with the ledger cross-check, §1.177, §3, §11, the store case);
+ * its verification added 11 cases on both stores (the NO side and the pure fold, the book's ranges and per-product open
+ * exposure, the fee's product, window and null branches, and the window bounds of four readers): memory 152, Postgres 92.
  * A section that stops running fails the floor even while every case that ran passed.
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 
-await runTwoStores({ suite: "test:house-bot-reports", casesFile: "scripts/lib/house-bot-reports-cases.mts", minPass: { memory: 141, postgres: 81 }, dbPrefix: "hb_reports" });
+await runTwoStores({ suite: "test:house-bot-reports", casesFile: "scripts/lib/house-bot-reports-cases.mts", minPass: { memory: 152, postgres: 92 }, dbPrefix: "hb_reports" });
