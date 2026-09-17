@@ -26,7 +26,7 @@ From a phone or any browser: https://github.com/alisheib/kipindi/blob/house-bots
 |---|---|---|
 | `PROGRESS.md` | Status, resume point, commit checklist, release steps, session log | **The only record of progress** |
 | `00-NEW-SESSION-PROMPT.md` | Paste into a new Claude Code session to build or resume | — |
-| `04-amendments.md` | Verified amendments, all mandatory: A1–A5 and A7–A24 (there is no A6: it became R5/G1) · C1–C15 (C4–C7 are in the second-to-last section) · R1–R9 (R1–R4 in the second-to-last section) · P1–P4 (P1 in the second-to-last section) · S1–S5 · F1–F9 (future safeguards) · G1–G2 (= R5/R9) · N1–N2 (Enter now; targeted polls and exact timing; last section) | **1st** |
+| `04-amendments.md` | Verified amendments, all mandatory: A1–A5 and A7–A24 (there is no A6: it became R5/G1) · C1–C15 (C4–C7 are in the second-to-last section) · R1–R9 (R1–R4 in the second-to-last section) · P1–P4 (P1 in the second-to-last section) · S1–S5 · F1–F9 (future safeguards) · G1–G2 (= R5/R9) · N1–N2 (Enter now; targeted polls and exact timing; last section). ⛔ **Superseded by D19 (Ali, 2026-09-16):** P1 (the privacy line, versions, chatbot bullet, FAQ sentence and disclosure tracking) and P2's announcement half are not mandatory: they are never built, because no public text about house bots is written. | **1st** |
 | `02-sealed-flows.md` | Every flow step by step (password lifecycle in depth) | 2nd |
 | `03-design-spec.md` | Screen-by-screen design law and the render/responsive protocol | 2nd |
 | `PLAN.md` | Approved plan: decisions D1–D16 and D17–D18 (§16b), invariants I1–I10, flows §1-F1…F11, data, engine, console, verification; §18 reconciles overlaps | 3rd |

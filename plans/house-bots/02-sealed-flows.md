@@ -9,6 +9,14 @@
 > the master switch and the notification click-throughs are not changed by D20. Read PROGRESS.md "OWNER RULING D20" and
 > `plans/house-bots/C5-D20-REPLAN.md` first.
 
+> # ⛔ EVERYTHING THE HOLDER WOULD SEE IS SUPERSEDED (D19)
+> **Owner ruling D19c (Ali, 2026-09-16): the holder sees nothing.** Stakes 50pick places on a holder's account look exactly
+> like the holder's own bets, and the holder receives no house-bot notices or emails at all; every alert about a bot goes
+> to admins only. Struck in this file: §2.2's holder notice, H1 (§2.3, §2.7), H2 and "Liquidity stakes resumed" (§2.6),
+> the holder notices in §3.2–§3.5, F6's holder notice, F10's chip, Sell-button line and chip test, and §5's "Holder
+> notices" row. The admin alerts, the password lifecycle, consent by password (D5), the console actions and the master
+> switch are not changed. Read PROGRESS.md "OWNER RULING D19" first.
+
 The plan's design holds up, but the real code turned up 12 gaps to fix before building (§0). The biggest:
 
 - **Password writers:** there are five places that write a password, not three.
@@ -97,7 +105,7 @@ The password writers must return the same results and take the same time as toda
 
 | Bot status before | After | Queued stakes | Event · audit | Admins | Holder |
 |---|---|---|---|---|---|
-| ACTIVE | AUTO_PAUSED(PASSWORD_CHANGED); `pausedFromStatus=ACTIVE`; details {method, changedAt, detectedBy, officerReset} | PENDING and CLAIMED → CANCELLED (conditional writes) | AUTO_PAUSED · COMPLIANCE `house_bot.auto_paused` | A1, bell + email | H1, bell + push |
+| ACTIVE | AUTO_PAUSED(PASSWORD_CHANGED); `pausedFromStatus=ACTIVE`; details {method, changedAt, detectedBy, officerReset} | PENDING and CLAIMED → CANCELLED (conditional writes) | AUTO_PAUSED · COMPLIANCE `house_bot.auto_paused` | A1, bell + email | ~~H1, bell + push~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** none; the holder receives no house-bot notice. |
 | PAUSED (NEW or MANUAL) | Status and reason unchanged; `credentialChangedAt` and method recorded | none queued | CREDENTIAL_CHANGED (new event kind) · SECURITY `house_bot.credential_changed` | A2 | none |
 | AUTO_PAUSED(PASSWORD_CHANGED), changed again | Details updated to the newest change | — | CREDENTIAL_CHANGED | A1 again (new key per X4) | none |
 | AUTO_PAUSED (any other reason) | Reason kept; credential fields set | — | CREDENTIAL_CHANGED | A2 | none |
@@ -108,14 +116,14 @@ New column `pausedFromStatus` (text, null, ACTIVE or PAUSED). It is set on every
 
 ### 2.3 Alert copy
 
-Admin copy is English only. Holder copy is shown in English; Swahili and Chinese are drafted and marked for native review.
+Admin copy is English only. ~~Holder copy is shown in English; Swahili and Chinese are drafted and marked for native review.~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** there is no holder copy; every alert below is an admin's.
 
 | Id | Title | Body | Link |
 |---|---|---|---|
 | A1 | `House bot "{label}" paused — password changed · {HH:MM:SS}` | `{holder} changed his 50pick password {how} at {HH:MM} EAT on {D MMM}. The bot stopped and cancelled {n} queued stake(s). No bet will be placed until you enter his new password.` | `/admin/house-bots/{id}?reverify=1`; email button "Enter new password" |
 | A2 | `House bot "{label}": holder changed his password · {HH:MM:SS}` | `The bot is {Paused / Auto-paused: cause}, so nothing stopped. Enter his new password before it can run again.` | same |
 | A2, officer reset | same title as A2 | `Support gave him a temporary password ({officer}, {HH:MM}). That is not his consent. Ask him to set his own password in Account settings, then enter it.` | `/admin/house-bots/{id}` (no modal) |
-| H1 | "Liquidity stakes paused" | "Your password changed, so 50pick stopped placing liquidity stakes from your account. Your balance and open stakes are unchanged." | `/positions` |
+| ~~H1~~ | ~~"Liquidity stakes paused"~~ | ~~"Your password changed, so 50pick stopped placing liquidity stakes from your account. Your balance and open stakes are unchanged."~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** there is no H1; the holder receives no house-bot notice, and admins get A1 or A2. | ~~`/positions`~~ |
 
 `{how}` is one of:
 - **SETTINGS:** "in his account settings".
@@ -192,14 +200,14 @@ Tests: every link maps to a real `page.tsx`; the param is gone after close; the 
 | Ready | 3 or more tries left (5 minus the fresh failure count) | muted "{N} tries left before his own sign-in locks for 30 minutes." | Enabled, focused |
 | Few tries left | 2 or fewer | warning Callout "Only {N} tries left before his sign-in locks for 30 minutes." | Same |
 | Wrong password | server rejects | Field error "Wrong password. This may be his OLD password — he changed it on {D MMM, HH:MM} EAT." Tries-left updates | Field cleared and refocused; modal stays |
-| Wrong, and this locks him | 5th failure | danger Callout "Too many wrong tries. His sign-in is locked until {HH:MM} EAT — he can't sign in either until then." | Field and Verify disabled; Cancel becomes "Close". SECURITY `verify_account_locked`. Holder H2 (bell + push): "Sign-in locked for 30 minutes — 50pick tried to confirm your password for liquidity stakes. Wait, or reset your password." |
+| Wrong, and this locks him | 5th failure | danger Callout "Too many wrong tries. His sign-in is locked until {HH:MM} EAT — he can't sign in either until then." | Field and Verify disabled; Cancel becomes "Close". SECURITY `verify_account_locked`. ~~Holder H2 (bell + push): "Sign-in locked for 30 minutes — 50pick tried to confirm your password for liquidity stakes. Wait, or reset your password."~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** there is no H2; the holder receives no house-bot notice, and every alert about a bot goes to admins only. |
 | Already locked when opened | lock time is in the future | Same Callout with `CountdownPill` | Re-enables at 0 |
 | Rate-limited | bucket empty | warning Callout "Too many checks from your console. Try again in {m:ss}." | Disabled until the wait ends. The holder's own counter is not touched. SECURITY `verify_rate_limited` |
 | Blocked while typing | officer reset, bot removed, or account closed in the meantime | Modal closes; overlay failure card with the §2.5 copy | Strip refreshes |
 | Another admin already verified | fingerprint already matches | Overlay success "Already verified by {name} at {HH:MM}" | — |
 | Password changed again | step 7 mismatch | Field error (text above), not counted | Refocused |
 | Verified, no resume | success | Overlay success "Password confirmed" / "Bot is paused — press Start when ready." | Refresh |
-| Verified and resumed | Start succeeds | "Password confirmed · bot running" (plus "Master switch is OFF — no bets until it's on" if so) | Holder notice "Liquidity stakes resumed" |
+| Verified and resumed | Start succeeds | "Password confirmed · bot running" (plus "Master switch is OFF — no bets until it's on" if so) | ~~Holder notice "Liquidity stakes resumed"~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** no holder notice; the holder is told nothing. |
 | Verified, but Start refused | Start returns a refusal | Overlay **failure** card, which stays: "Password confirmed · bot still paused", the Start refusal copy, and its fix button (for example "Set the missing caps" → `?tab=rules`) | Bot stays PAUSED(MANUAL) and never goes back to AUTO_PAUSED. No automatic retry. Only the VERIFIED event is written |
 
 **Tests (`test:house-bot-designation`):**
@@ -214,13 +222,13 @@ Tests: every link maps to a real `page.tsx`; the param is gone after close; the 
 **Changes his password in settings**
 - **Code path:** `password-section.tsx:23-54` → `profile/account/actions.ts:74-86`.
 - **Today he sees:** a "password updated" toast (`:40`), a SECURITY bell (`notification-service.ts:1504`) and an email (`password-reset.ts:34`).
-- **Added:** H1, if the bot was ACTIVE.
+- **Added:** ~~H1, if the bot was ACTIVE.~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** nothing is added for him; only admins are alerted (A1 or A2, §2.2).
 - **Bot:** §2.2.
 
 **Uses a reset link**
 - **Code path:** `reset-password/actions.ts:6-21`.
 - **Today he sees:** he is redirected to `/auth/login?reset=1` with a success panel (`login/page.tsx:24`).
-- **Added:** H1.
+- **Added:** ~~H1.~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** nothing is added for him; only admins are alerted (A1 or A2, §2.2).
 - **Bot:** §2.2.
 
 **Support gives him a temporary password**
@@ -308,7 +316,8 @@ This applies to every player, not just bot holders; the house-bot flows work eit
 - **Double submit:** `{ok:false,data:{botId}}` "This account is already a house bot." with fix "Open it".
 
 **After:**
-- **Holder** (bell + push + email): "Your account now provides liquidity" / "50pick will place liquidity stakes from your account as you agreed. You keep full use of it. Nothing is placed until 50pick starts them."
+- ~~**Holder** (bell + push + email): "Your account now provides liquidity" / "50pick will place liquidity stakes from your account as you agreed. You keep full use of it. Nothing is placed until 50pick starts them."~~
+- ⛔ **Superseded by D19 (Ali, 2026-09-16):** the holder receives no notice or email when designated; only the other admins are told.
 - **Other admins** (bell): `House bot "{label}" designated by {name} · {HH:MM:SS}`.
 
 **Tests:** `step=review` with nothing in memory lands on consent; the password is cleared on unmount; designating a previously removed account creates a new row.
@@ -330,7 +339,7 @@ This applies to every player, not just bot holders; the house-bot flows work eit
 - **Success:**
   - ACTIVE, reason cleared, `pausedFromStatus` cleared;
   - event STARTED and COMPLIANCE `house_bot.started`;
-  - holder notice "Liquidity stakes started";
+  - ~~holder notice "Liquidity stakes started";~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** no holder notice; the holder is told nothing;
   - overlay "Bot started", plus the master-OFF note if the switch is off.
 - **Repeat:** no-op "Already running".
 
@@ -339,7 +348,7 @@ This applies to every player, not just bot holders; the house-bot flows work eit
 - **Validation:** max 300 characters, "Reason can be at most 300 characters.", blocked before opening via `openGuard`.
 - **Success:**
   - ACTIVE → PAUSED(MANUAL); PENDING stakes → CANCELLED (a CLAIMED one is refused inside the lock);
-  - event PAUSED, ADMIN audit `house_bot.paused`, holder notice "Liquidity stakes paused";
+  - event PAUSED, ADMIN audit `house_bot.paused`~~, holder notice "Liquidity stakes paused"~~; ⛔ **Superseded by D19 (Ali, 2026-09-16):** no holder notice; the holder is told nothing;
   - overlay "Bot paused · {n} queued stakes cancelled. A stake already in its final step may still complete."
 - **Not ACTIVE:** no-op; an AUTO_PAUSED bot keeps its cause.
 
@@ -351,7 +360,7 @@ This applies to every player, not just bot holders; the house-bot flows work eit
   - → REMOVED; cancels PENDING and CLAIMED stakes.
   - Event REMOVED and awaited COMPLIANCE `house_bot.removed`.
 - **Notices:**
-  - **Holder** (bell + push + email): "Liquidity stakes ended" / "50pick no longer uses your account for liquidity stakes. Open stakes settle to your wallet as normal."
+  - ~~**Holder** (bell + push + email): "Liquidity stakes ended" / "50pick no longer uses your account for liquidity stakes. Open stakes settle to your wallet as normal."~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** the holder receives no notice or email when the bot is removed; only admins are told.
   - **Admins:** bell + email.
 - **After:** `router.replace("/admin/house-bots?tab=roster")`. A repeat is a no-op.
 
@@ -421,7 +430,7 @@ This applies to every player, not just bot holders; the house-bot flows work eit
 
 **F6 auto-pause (other causes)**
 - **Same pattern as §2.2.** Admin title `House bot "{label}" auto-paused — {cause} · {HH:MM:SS}`; body gives the cause, its end date if known, the number of stakes cancelled, and the way back.
-- **Holder:** gets a notice unless the cause is responsible-gambling.
+- ~~**Holder:** gets a notice unless the cause is responsible-gambling.~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** the holder gets no notice for any cause; the auto-pause alert goes to admins only.
 - **Seal:** every status and reason combination has an enabled way out (with X3).
 
 **F7 holder money events**
@@ -438,15 +447,16 @@ This applies to every player, not just bot holders; the house-bot flows work eit
 - **Test:** two identical events produce two rows.
 
 **F10 holder's own app**
-- **Chip** "50pick liquidity stake" on `position-card.tsx`, the market page's own-positions block, wallet rows and Up & Down history.
-- **Sell button:** `sell-button.tsx` shows "Liquidity stake — can't be cashed out".
+- ~~**Chip** "50pick liquidity stake" on `position-card.tsx`, the market page's own-positions block, wallet rows and Up & Down history.~~
+- ~~**Sell button:** `sell-button.tsx` shows "Liquidity stake — can't be cashed out".~~
 - **Cash-out callers** `markets/[id]/page.tsx:292` and `positions/page.tsx:189` pass `houseBotId`.
-- **Test:** the chip and marker are absent for every other viewer.
+- **Test:** ~~the chip and marker are absent for every other viewer.~~
+- ⛔ **Superseded by D19 (Ali, 2026-09-16):** there is no chip and no Sell-button line; a house stake looks exactly like the holder's own bet, and a house position is simply not sellable, reading as a closed exit (C4 ruling 147). The cash-out callers still pass `houseBotId`, and the test is the absence of any house word or marker on the pages served to the holder (`qa:house-bot-holder-view`, C4 ruling 155; C5-SPEC ruling 248 extends it to other viewers).
 
 **F11 resolvers**
 - ~~**Display:** "House stake: YES X · NO Y" on the resolver queue card, the resolution ceremony and the admin market page. Nothing renders when both are zero.~~
-- ~~**No lock:** display only, no officer lock.~~
-- ⛔ **Superseded by D20 (Ali, 2026-09-17):** no admin screen shows a house stake line. The resolver queue card, the resolution ceremony and the admin market page (and 04 R2's other sites) show a house bot's stake exactly as any player's stake (C5-SPEC rulings 192–194 struck; `C5-D20-REPLAN.md` §2).
+- **No lock:** ~~display only,~~ no officer lock.
+- ⛔ **Superseded by D20 (Ali, 2026-09-17):** no admin screen shows a house stake line. The resolver queue card, the resolution ceremony and the admin market page (and 04 R2's other sites) show a house bot's stake exactly as any player's stake (C5-SPEC rulings 192–194 struck; `C5-D20-REPLAN.md` §2). There is still no officer lock (PLAN I10).
 
 ## 5. Notification click-throughs
 
@@ -458,7 +468,7 @@ This applies to every player, not just bot holders; the house-bot flows work eit
 | Switch | `/admin/house-bots` | The strip shows the current state even if it flipped since |
 | Money event | `/admin/transactions?q={txnId}` | That exact row |
 | Engine alert | `/admin/house-bots/{id}?tab=activity&outcome=failed` | A removed bot's page still lists it, read-only |
-| Holder notices | `/positions` or `/positions/{positionId}` | Signed out → login with `?next=` (`proxy.ts:203-204`) |
+| ~~Holder notices~~ | ~~`/positions` or `/positions/{positionId}`~~ | ~~Signed out → login with `?next=` (`proxy.ts:203-204`)~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** there are no holder notices, so there is nothing to click through; every row above is an admin's. |
 
 ## 6. Future scenarios handled now
 

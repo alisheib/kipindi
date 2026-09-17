@@ -8,6 +8,14 @@
 > Nothing else in this file is touched by D20 (its holder-facing rows are D19c's, C4-SPEC rulings 143–150). Read
 > PROGRESS.md "OWNER RULING D20" and `plans/house-bots/C5-D20-REPLAN.md` first.
 
+> # ⛔ D19: THE HOLDER SEES NOTHING
+> **Owner ruling D19c (Ali, 2026-09-16; PROGRESS.md "OWNER RULING D19"): the holder receives no house-bot notice, email or
+> summary, and every alert goes to admins only.** It outranks this file; Commit 4 un-built the holder side (C4-SPEC rulings
+> 143–158). **Struck here, marked in place:** every holder emitter, notice, letter and cap (`notifyHouseBotOwner` and its
+> kinds, `notifyHouseBotOwnerStake`, `notifyHouseBotOwnerHourSummary`, `houseBotOwnerHtml`, H1, `holderNoticesPerHour`) in
+> §0–§6, the `HOUSE_BOT` appearance cases (ruling 150), and the Up & Down digest house split in §0, §9 and E13 (C5-SPEC
+> ruling 235 keeps only F6's email rule). The admin emitters, the A2 hook sites and the kill-switch drain stand.
+
 > Extracted read-only on 2026-09-15 (seventh session, OMEGA-COMPILE01) on branch `house-bots`, worktree
 > `F:/kipindi-house-bots`. **This file is not an authority.** `04-amendments.md` (`04`) > `02-sealed-flows.md` (`02`) /
 > `03-design-spec.md` (`03`) > `PLAN.md` (`PLAN`) > `01-scenario-register.md`; `C4-SPEC.md` rulings record what was
@@ -24,20 +32,20 @@
 |---|---|---|
 | `HOUSE_BOT` kind | `src/lib/server/comms-registry.ts:223` | `  "HOUSE_BOT",` |
 | `HOUSE_BOT` ∉ `MONEY_KINDS` | `comms-registry.ts:228-236` | list ends `"BONUS", "AFFILIATE",` … `"VERDICT",` — no `HOUSE_BOT` (C4-SPEC ruling 13, W17; PLAN:378's "∈ MONEY_KINDS" is superseded) |
-| `notifyHouseBotOwner` | `src/lib/server/notification-service.ts:2173` | `export async function notifyHouseBotOwner(userId: string, notice: HouseBotOwnerNotice, opts: { atMs?: number } = {}): Promise<StoredNotification \| null> {` |
-| `HouseBotOwnerNotice` (8 kinds) | `notification-service.ts:2158-2159` | `  \| "designated" \| "started" \| "paused" \| "password_paused" \| "removed" \| "reverified" \| "verify_reserved" \| "withdrew";` |
-| which owner notices email | `notification-service.ts:2162` | `const HOUSE_BOT_OWNER_EMAILED = ["designated", "removed", "reverified"] as const satisfies readonly HouseBotOwnerNotice[];` |
-| RG gate on every holder notice | `notification-service.ts:2174-2175` | `  const { isLockedOut } = await import("./responsible-gambling");` / `  if ((await isLockedOut(userId)).locked) return null;` (04:1060, A2 04:92) |
+| ~~`notifyHouseBotOwner`~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** deleted — the holder receives no house-bot notice (C4-SPEC ruling 149). | ~~`src/lib/server/notification-service.ts:2173`~~ | ~~`export async function notifyHouseBotOwner(userId: string, notice: HouseBotOwnerNotice, opts: { atMs?: number } = {}): Promise<StoredNotification \| null> {`~~ |
+| ~~`HouseBotOwnerNotice` (8 kinds)~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** deleted with its copy table (C4-SPEC ruling 149). | ~~`notification-service.ts:2158-2159`~~ | ~~`  \| "designated" \| "started" \| "paused" \| "password_paused" \| "removed" \| "reverified" \| "verify_reserved" \| "withdrew";`~~ |
+| ~~which owner notices email~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** none — the holder receives no house-bot email (C4-SPEC ruling 149). | ~~`notification-service.ts:2162`~~ | ~~`const HOUSE_BOT_OWNER_EMAILED = ["designated", "removed", "reverified"] as const satisfies readonly HouseBotOwnerNotice[];`~~ |
+| ~~RG gate on every holder notice~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** there is no holder notice to gate (C4-SPEC ruling 149). | ~~`notification-service.ts:2174-2175`~~ | ~~`  const { isLockedOut } = await import("./responsible-gambling");` / `  if ((await isLockedOut(userId)).locked) return null;` (04:1060, A2 04:92)~~ |
 | `notifyAdminsHouseBotErasureBlocked` | `notification-service.ts:2253` | `export async function notifyAdminsHouseBotErasureBlocked(opts: { botId: string; holderUserId: string }): Promise<number> {` — **the neighbour every new `notifyAdmins*` house emitter must look like** |
 | recipient resolver | `src/lib/server/house-bot/alerts.ts:16-19` | `export async function houseBotAlertRecipients(): Promise<StoredUser[]> {` … `const admins = await db.user.listByRoles(["ADMIN"]);` … `return admins.filter((u) => u.role === "ADMIN");` |
 | `{holder}` | `alerts.ts:25-27` | `export function playerHandle(userId: string): string {` → `displayLabel({ id: userId, displayName: null })` → `Player #TAIL` (R6 04:1249) |
-| holder email template | `src/lib/server/email.ts:2249` | `export function houseBotOwnerHtml({ kind, at }: { kind: HouseBotOwnerEmailKind; at: string }): string {` — `wrap(eyebrow → heading → subtitle(en) → subtitleSw(sw) → detailRows([{label:"When"…}]))`, **no CTA** |
+| ~~holder email template~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** `houseBotOwnerHtml` is deleted with its registry rows (C4-SPEC ruling 149). | ~~`src/lib/server/email.ts:2249`~~ | ~~`export function houseBotOwnerHtml({ kind, at }: { kind: HouseBotOwnerEmailKind; at: string }): string {` — `wrap(eyebrow → heading → subtitle(en) → subtitleSw(sw) → detailRows([{label:"When"…}]))`, **no CTA**~~ |
 | admin email template | `email.ts:2265` | `export function houseBotErasureBlockedAdminHtml({ botId, holder, botUrl }: { botId: string; holder: string; botUrl: string }): string {` — `wrap(eyebrow → heading → subtitle → detailRows → ctaButton(botUrl, "Open the bot"))` |
 | `notify()` | `notification-service.ts:81` | `export async function notify(input: NotifyInput, opts?: NotifyOptions): Promise<StoredNotification \| null> {` — swallows and logs; 90 s dedupe on (userId, kind, titleEn, bodyEn, href), `DEDUPE_WINDOW_MS = 90_000` at `:56` |
 | `NotifyOptions` | `notification-service.ts:70-79` | `pushTag?: string; push?: boolean; dedupe?: boolean` |
-| no bet receipt for a house stake | `market-service.ts:1718-1722` | `// H8 · no bet receipt, push or email for a house stake` / `// SEAM:receipts` / `if (ctx.kind === "house") {` — so `notifyHouseBotOwnerStake` is the holder's **only** per-stake notice |
+| no bet receipt for a house stake | `market-service.ts:1718-1722` | `// H8 · no bet receipt, push or email for a house stake` / `// SEAM:receipts` / `if (ctx.kind === "house") {` ~~— so `notifyHouseBotOwnerStake` is the holder's **only** per-stake notice~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** the holder gets no per-stake notice at all; `notifyHouseBotOwnerStake` is deleted (C4-SPEC ruling 149). |
 | live throttle counter | `house-bot-dal.ts:1393` | `bumpHourCount(key: string): Promise<{ hourKey: string; count: number }>;` (atomic, EAT hour from the DB clock, both twins) |
-| caps | `house-bot-dal.ts:150-151` | `bellAlertsPerHour: number;` / `holderNoticesPerHour: number;` — both CHECKed 0…60 (`:751-752`); defaults 20 / 6 (`:1870`) |
+| caps | `house-bot-dal.ts:150-151` | `bellAlertsPerHour: number;` ~~/ `holderNoticesPerHour: number;`~~ — both CHECKed 0…60 (`:751-752`); defaults 20 ~~/ 6~~ (`:1870`) ⛔ **Superseded by D19 (Ali, 2026-09-16):** `holderNoticesPerHour` is removed with its column, CHECK, DAL mapping and rules field (C4-SPEC ruling 153); `bellAlertsPerHour` stands. |
 | runtime keys | `src/lib/house-bot/constants.ts:656` (`RUNTIME_KEY`) | `global: "global"`, `bot: (botId) => \`bot:${botId}\`` |
 | AlertOnce keys | `constants.ts:656-719` (`ALERT_KEY`) | full list in §1.3 below |
 | `runOutsideLock` | `src/lib/server/locks.ts:74` | `export function runOutsideLock<T>(fn: () => T): T {` |
@@ -45,8 +53,9 @@
 
 **Not built yet:** every emitter except `notifyHouseBotOwner` and `notifyAdminsHouseBotErasureBlocked`;
 `CHANNEL_POLICY` / `channelAllowed`; the A9 drain; the `instrumentation.ts` engine start; the lifecycle
-`holderSweep` chore; every A2 hook call site; the Up & Down digest house split; the `test:house-bot-comms` and
-`test:house-bot-holder-lifecycle` package.json keys.
+`holderSweep` chore; every A2 hook call site; ~~the Up & Down digest house split;~~ the `test:house-bot-comms` and
+`test:house-bot-holder-lifecycle` package.json keys. ⛔ **Superseded by D19 (Ali, 2026-09-16):** the digest house split is
+struck, not to be built (D19c; C5-SPEC ruling 235; §9 below).
 
 ---
 
@@ -62,10 +71,10 @@ Injected as `PlannerDeps.alerts` (`planner.ts:71`), `TriggerDeps.alerts` (`trigg
 
 | # | Member (quoted) | Emitter(s) | Plan text? |
 |---|---|---|---|
-| 1 | `placed(intent: StoredHouseBotIntent): Promise<void>;` (`:68`) | **`notifyAdminsHouseBotBet`** (automatic rows) OR **`notifyAdminsHouseBotStaffChosen`** (`kind==='MANUAL' \|\| targetId != null`), **plus `notifyHouseBotOwnerStake`** always | PLAN:381/388; 04:3275-3276; 04:4177-4181 |
-| 2 | `once(key: string, message: EngineAlertMessage): Promise<void>;` (`:70`) | **multiplexer** on `message.code` → `notifyAdminsHouseBotAlert` for 17 codes, `notifyAdminsHouseBotHourSummary` for `HOUR_SUMMARY_ADMINS`, `notifyHouseBotOwnerHourSummary` for `HOUR_SUMMARY_HOLDER` | PLAN:382/386; C13 04:1062 |
+| 1 | `placed(intent: StoredHouseBotIntent): Promise<void>;` (`:68`) | **`notifyAdminsHouseBotBet`** (automatic rows) OR **`notifyAdminsHouseBotStaffChosen`** (`kind==='MANUAL' \|\| targetId != null`), ~~**plus `notifyHouseBotOwnerStake`** always~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** no holder per-stake notice (C4-SPEC ruling 149). | PLAN:381/388; 04:3275-3276; 04:4177-4181 |
+| 2 | `once(key: string, message: EngineAlertMessage): Promise<void>;` (`:70`) | **multiplexer** on `message.code` → `notifyAdminsHouseBotAlert` for 17 codes, `notifyAdminsHouseBotHourSummary` for `HOUR_SUMMARY_ADMINS`, ~~`notifyHouseBotOwnerHourSummary` for `HOUR_SUMMARY_HOLDER`~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** no holder hourly summary (C4-SPEC ruling 149). | PLAN:382/386; C13 04:1062 |
 | 3 | `security(message: EngineAlertMessage): Promise<void>;` (`:72`) | **`notifyAdminsHouseBotSwitch`** (defect branch) — see **E1** | ⚠ **no plan row names it** |
-| 4 | `botStopped(bot, change: { to: "AUTO_PAUSED" \| "REMOVED"; cause: PauseReason; cancelled: number })` (`:74`) | **`notifyAdminsHouseBotPaused`** + the holder's `paused` notice (except RG causes and `OWNER_LOSS_LIMIT`) | PLAN:383; C13 04:1046; 02 F6 02:413-416 |
+| 4 | `botStopped(bot, change: { to: "AUTO_PAUSED" \| "REMOVED"; cause: PauseReason; cancelled: number })` (`:74`) | **`notifyAdminsHouseBotPaused`** ~~+ the holder's `paused` notice (except RG causes and `OWNER_LOSS_LIMIT`)~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** no holder notice; admins only (C4-SPEC ruling 149). | PLAN:383; C13 04:1046; 02 F6 02:413-416 |
 | 5 | `switchedOff(change: { cause: OffCause; cancelled: number })` (`:76`) | **`notifyAdminsHouseBotSwitch`** (money branch) | PLAN:384; ruling 111 |
 
 `EngineAlertMessage` is `outcomes.ts:79`:
@@ -85,17 +94,23 @@ Injected as `PlannerDeps.alerts` (`planner.ts:71`), `TriggerDeps.alerts` (`trigg
 | 6 | `holderLockedOut(bot: StoredHouseBot): Promise<void>;` (`:61`) | **`notifyAdminsHouseBotAlert`**, code `HOLDER_LOCKED_OUT` | C13 04:1050 — copy needs `{t}`, **the member passes no `until`** (**E3**) |
 | 7 | `officerSetEmail(bot: StoredHouseBot): Promise<void>;` (`:63`) | **`notifyAdminsHouseBotAlert`**, code `OFFICER_SET_EMAIL` | A2 row 17 04:112 "bell only if officer-set"; ⚠ **no copy anywhere** (**E2**) |
 | 8 | `breakEnded(bot, untilIso: string): Promise<void>;` (`:65`) | **`notifyAdminsHouseBotAlert`**, code `RG_ENDED` | C8; C13 04:1049; ruling 16 |
-| 9 | `holderNotice(userId: string, notice: HolderNoticeKind): Promise<void>;` (`:67`) | **`notifyHouseBotOwner(userId, notice)`** directly | PLAN:387; ruling 132 |
+| ~~9~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** the `holderNotice` member is deleted from the holder hook's alert port (C4-SPEC ruling 149). | ~~`holderNotice(userId: string, notice: HolderNoticeKind): Promise<void>;` (`:67`)~~ | ~~**`notifyHouseBotOwner(userId, notice)`** directly~~ | ~~PLAN:387; ruling 132~~ |
 
-`HolderNoticeKind` is `holder-hook.ts:46`:
+~~`HolderNoticeKind` is `holder-hook.ts:46`:
 `export type HolderNoticeKind = Extract<HouseBotOwnerNotice, "password_paused" | "removed"> | "password_temp" | "role_changed" | "erasure_request";`
 — the last three **do not exist** in `HouseBotOwnerNotice` yet (ruling 132, 04:4132 area / C4-SPEC:412). `holder-hook.ts` compiles
-today only because the union widens; adding them to `HouseBotOwnerNotice` is step 9's job.
+today only because the union widens; adding them to `HouseBotOwnerNotice` is step 9's job.~~
+⛔ **Superseded by D19 (Ali, 2026-09-16):** no holder notice kind is added; `HouseBotOwnerNotice` and the `holderNotice`
+member are deleted (C4-SPEC ruling 149; ruling 132 is marked superseded there).
 
 **No member is unmapped**, but members 3, 2(Holder), 4(Holder), 5(Holder), 6(Holder), 7(Holder) have no plan-named
 emitter or no copy — flagged as **E1–E3**.
 
 ### 1.2 The ten (+3) emitters
+
+⛔ **Superseded by D19 (Ali, 2026-09-16):** the five holder rows are struck — `notifyHouseBotOwnerStake`,
+`notifyHouseBotOwnerHourSummary` and the three new `notifyHouseBotOwner` kinds (C4-SPEC ruling 149); the eight admin
+emitters stand.
 
 All thirteen are exported from **`src/lib/server/notification-service.ts`** (`test:cert-c3` §1 discovers
 `Object.keys(N).filter(k => k.startsWith("notify"))` at `scripts/comms-notification-truth.test.mts:161`, and
@@ -113,11 +128,11 @@ Legend: **cap** = counted against `bumpHourCount`. **Sev** = the bell tone the c
 | `notifyAdminsHouseBotMoneyEvent` | F7 money hooks (step 10; the emitter lands in step 9) | every recipient | bell + email; **never capped**; ACTIVE bots only (02:427) | none — "two identical events produce two rows" (02:429), so **`dedupe: false`** on `notify()` and a unique txn id in the body | info | 02:428: `House bot "{label}": {holder} {event} TZS {x} · {HH:MM:SS}` / `Transaction {txnId}. Balance now TZS {bal}.` plus an `OWNER_MONEY` event | `/admin/transactions?q=<txnId>&range=all` (04:1927 overrides PLAN:385 and 02:449) | same admin template |
 | `notifyAdminsHouseBotAlert` | `EngineAlerts.once` (17 codes), `EngineAlerts.security` fallback, `HolderAlerts.causeCleared` / `holderLockedOut` / `officerSetEmail` / `breakEnded` | every recipient | bell + email (PLAN:386) | key **already claimed by the caller** (`alertOnce` at `outcomes.ts:101-113` / `claimThen` at `holder-hook.ts:102-110`) — the emitter never claims. A failed send releases the claim, **except** `PENALTY_BOXED` (ruling 117: "a failed send never releases the claim, because that row IS the box") | info → danger by code | one `satisfies Record<AlertCode, Copy>` table (**E5**); the codes and their `detail` are §1.3 | default `/admin/house-bots/<botId>?tab=activity&range=all&outcome=failed&intent=<intentId>` (ruling 14; C13 04:1065); per-code overrides in §1.3 | same admin template |
 | `notifyAdminsHouseBotRoster` | commit-7 console actions + commit-3 designation (no commit-4 producer — **E8**) | every recipient passing C12's predicate | bell + email, **uncapped**, title ends `HH:MM:SS` (04:1053, 04:4167) | none | info | Events: DESIGNATED, VERIFIED, STARTED, manual PAUSED, REMOVED, RULES_SAVED / LIMITS_SAVED with a diff — e.g. `"Bot A: daily loss cap TZS 50,000 → TZS 200,000 by Juma M. at 14:02:11 EAT"` (04:1054). Targets (04:4170-4173): `"Bot A: target added on "{title}" — 10 s after each stake (held to 5:07), first stake only · by {name} at 14:02:11 EAT"`; `"…changed — delay 10 s → 20–40 s · by {name} at 14:05:40 EAT"`; `"…removed · by {name} at 14:09:03 EAT"`; `"…stopped with {n} queued reaction(s) cancelled (veto) · by {name} at 14:09:03 EAT"`. Body ends `"Reason recorded in this bot's history →"` and never quotes the reason (04:4174) | `/admin/house-bots/<botId>?tab=history&event=<eventId>` (04:1055, 04:4168) | same admin template |
-| `notifyHouseBotOwnerStake` | `EngineAlerts.placed` (always) | the holder | **bell + push**, never email, never SMS; returns early while `isLockedOut` (04:3282) | `bumpHourCount(RUNTIME_KEY.bot(botId))`, send while `count <= control.holderNoticesPerHour`; **0 = summary only** (`planner.ts` `hourlyDuties`: `const over = cap === 0 ? r.count : Math.max(0, r.count - cap);`) | info | en/sw/zh; **identical for a staff-chosen row — "it never says a person chose"** (04:3282) | `/positions/<positionId>` (PLAN:388, 04:1066 "the route exists") | none (bell + push) |
-| `notifyHouseBotOwnerHourSummary` | `EngineAlerts.once` code `HOUR_SUMMARY_HOLDER` | the holder | **bell only** (ruling 17: "house-only notices send no email"; F6 04:1720's "email only through the summary" is a ceiling, not a requirement) | claimed by `alertOnce(ALERT_KEY.summary("holder", botId), …)` in `hourlyDuties` | info | PLAN:389: `"50pick placed N liquidity stakes (TZS X) from your account between HH:00 and HH:00"`; en/sw/zh | `/positions` (PLAN:389; C13 04:1066) | none |
-| `notifyHouseBotOwner` + kind `password_temp` | ruling 132, A2 row 3 | the holder | bell + push | `notify()` default dedupe | info | en: `"Change the temporary password in Account settings"` (04:98, C4-SPEC:412). sw/zh **must be written and marked for native review** | `/positions` | `houseBotOwnerHtml` — **not emailed**, so no template row |
-| `notifyHouseBotOwner` + kind `role_changed` | ruling 132, A2 rows 12–13 | the holder | bell + push | default | info | en: a `"role changed"` notice (04:107-108). sw/zh to write, native review | `/positions` | — |
-| `notifyHouseBotOwner` + kind `erasure_request` | ruling 132, A2 row 14 | the holder | bell + push | default | info | en: `"stopped while we handle your request"` (04:109). sw/zh to write, native review | `/positions` | — |
+| ~~`notifyHouseBotOwnerStake`~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** deleted — the holder receives no per-stake notice (C4-SPEC ruling 149). | ~~`EngineAlerts.placed` (always)~~ | ~~the holder~~ | ~~**bell + push**, never email, never SMS; returns early while `isLockedOut` (04:3282)~~ | ~~`bumpHourCount(RUNTIME_KEY.bot(botId))`, send while `count <= control.holderNoticesPerHour`; **0 = summary only** (`planner.ts` `hourlyDuties`: `const over = cap === 0 ? r.count : Math.max(0, r.count - cap);`)~~ | ~~info~~ | ~~en/sw/zh; **identical for a staff-chosen row — "it never says a person chose"** (04:3282)~~ | ~~`/positions/<positionId>` (PLAN:388, 04:1066 "the route exists")~~ | ~~none (bell + push)~~ |
+| ~~`notifyHouseBotOwnerHourSummary`~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** deleted — the holder receives no hourly summary (C4-SPEC ruling 149). | ~~`EngineAlerts.once` code `HOUR_SUMMARY_HOLDER`~~ | ~~the holder~~ | ~~**bell only** (ruling 17: "house-only notices send no email"; F6 04:1720's "email only through the summary" is a ceiling, not a requirement)~~ | ~~claimed by `alertOnce(ALERT_KEY.summary("holder", botId), …)` in `hourlyDuties`~~ | ~~info~~ | ~~PLAN:389: `"50pick placed N liquidity stakes (TZS X) from your account between HH:00 and HH:00"`; en/sw/zh~~ | ~~`/positions` (PLAN:389; C13 04:1066)~~ | ~~none~~ |
+| ~~`notifyHouseBotOwner` + kind `password_temp`~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** deleted with `HouseBotOwnerNotice` — the holder receives no house-bot notice (C4-SPEC ruling 149). | ~~ruling 132, A2 row 3~~ | ~~the holder~~ | ~~bell + push~~ | ~~`notify()` default dedupe~~ | ~~info~~ | ~~en: `"Change the temporary password in Account settings"` (04:98, C4-SPEC:412). sw/zh **must be written and marked for native review**~~ | ~~`/positions`~~ | ~~`houseBotOwnerHtml` — **not emailed**, so no template row~~ |
+| ~~`notifyHouseBotOwner` + kind `role_changed`~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** deleted with `HouseBotOwnerNotice` — the holder receives no house-bot notice (C4-SPEC ruling 149). | ~~ruling 132, A2 rows 12–13~~ | ~~the holder~~ | ~~bell + push~~ | ~~default~~ | ~~info~~ | ~~en: a `"role changed"` notice (04:107-108). sw/zh to write, native review~~ | ~~`/positions`~~ | ~~—~~ |
+| ~~`notifyHouseBotOwner` + kind `erasure_request`~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** deleted with `HouseBotOwnerNotice` — the holder receives no house-bot notice (C4-SPEC ruling 149). | ~~ruling 132, A2 row 14~~ | ~~the holder~~ | ~~bell + push~~ | ~~default~~ | ~~info~~ | ~~en: `"stopped while we handle your request"` (04:109). sw/zh to write, native review~~ | ~~`/positions`~~ | ~~—~~ |
 
 > ⚠ **`notifyAdminsHouseBotManualEntry` does not exist.** 04:3275 says `notifyAdminsHouseBotStaffChosen` is "renamed
 > from `notifyAdminsHouseBotManualEntry`" — there is nothing to rename; build the new name only.
@@ -143,7 +158,7 @@ Derived by grepping the engine for `code: "…"` inside `alertOnce(` / `alerts.o
 | `BOUNDS_CANT_FIT` | `planner.ts:419` | `ALERT_KEY.boundsCantFit(botId, field, hash)` | `{ field, liveMinTzs, valueTzs }` | N1 §5, ruling 84 | bot rules tab |
 | `SETTLE_BLOCKED` | `planner.ts:467` | `ALERT_KEY.settleBlocked(botId)` + EAT day | `{ openStakeTzs }` | A16 HB-LC-10, ruling 112 — **danger**; "the alert carries counts only; step 9's emitter lists the markets" | bot money tab |
 | `HOUR_SUMMARY_ADMINS` | `planner.ts` `hourlyDuties` | `ALERT_KEY.summary("admins","all")` + `previousHour` | `{ fromIso, toIso, count, stakeTzs, beyondCap, staffChosen }` | C13 04:1062 | → `notifyAdminsHouseBotHourSummary` |
-| `HOUR_SUMMARY_HOLDER` | `planner.ts` `hourlyDuties` | `ALERT_KEY.summary("holder", botId)` + `previousHour` | `{ fromIso, toIso, count, stakeTzs, beyondCap }` | C13 | → `notifyHouseBotOwnerHourSummary` |
+| ~~`HOUR_SUMMARY_HOLDER`~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** the holder's hourly summary is deleted, so this code is neither raised nor rendered (C4-SPEC ruling 149). | ~~`planner.ts` `hourlyDuties`~~ | ~~`ALERT_KEY.summary("holder", botId)` + `previousHour`~~ | ~~`{ fromIso, toIso, count, stakeTzs, beyondCap }`~~ | ~~C13~~ | ~~→ `notifyHouseBotOwnerHourSummary`~~ |
 | `STAFF_STAKE_VOIDED` | `oversight.ts:112-114` | `ALERT_KEY.staffStakeVoided(marketId)` | `{ action, atIso, side, stakeTzs, titleEn }` | 04:3279 — `"Market "{title}" holding a staff-chosen house stake ({SIDE} TZS {x}, Bot "{label}") was {voided \| reopened} at {HH:MM} EAT."` | `/admin/markets/<marketId>` |
 | `STAFF_STAKE_SELF_DECIDED` | `oversight.ts:132-134` | `ALERT_KEY.staffStakeSelfDecided(marketId, action)` | `{ action, actorId, atIso, requestedBy[], titleEn }` | 04:3280 — `"Market "{title}" holding a house stake chosen by {name} was {resolved {OUTCOME} \| voided \| reopened \| objection upheld \| objection rejected} by {name} at {HH:MM} EAT. This is a record only; nothing was refused."` | `/admin/markets/<marketId>` |
 | `HOLDER_AGAINST_BOT` | `trigger.ts:297` | `ALERT_KEY.holderAgainst(botId, marketId)` (no day suffix) | `{ side, stakeTzs, botSide, botStakeTzs }` | A21 04:554 / C13 04:1051 — `"Holder of Bot A staked TZS 20,000 UP against Bot A's TZS 8,000 DOWN on BTC 5-min #412."` **bell + email** | `/admin/markets/<marketId>` (ruling 15) |
@@ -186,7 +201,7 @@ Holder-hook codes (claimed in `holder-hook.ts`, not by `alertOnce`): `CAUSE_CLEA
 
 | Bot status before | After | Queued stakes | Event · audit | Admins | Holder |
 |---|---|---|---|---|---|
-| **ACTIVE** (02:91) | `AUTO_PAUSED(PASSWORD_CHANGED)`; `pausedFromStatus=ACTIVE`; details `{method, changedAt, detectedBy, officerReset}` | `PENDING` and `CLAIMED` → `CANCELLED` (conditional writes) | `AUTO_PAUSED` · COMPLIANCE `house_bot.auto_paused` | **A1, bell + email** | **H1, bell + push** |
+| **ACTIVE** (02:91) | `AUTO_PAUSED(PASSWORD_CHANGED)`; `pausedFromStatus=ACTIVE`; details `{method, changedAt, detectedBy, officerReset}` | `PENDING` and `CLAIMED` → `CANCELLED` (conditional writes) | `AUTO_PAUSED` · COMPLIANCE `house_bot.auto_paused` | **A1, bell + email** | ~~**H1, bell + push**~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** none — the holder gets no notice (C4-SPEC ruling 149). |
 | **PAUSED (NEW or MANUAL)** (02:92) | Status and reason unchanged; `credentialChangedAt` and method recorded | none queued | `CREDENTIAL_CHANGED` · SECURITY `house_bot.credential_changed` | **A2** | none |
 | **AUTO_PAUSED(PASSWORD_CHANGED), changed again** (02:93) | Details updated to the newest change | — | `CREDENTIAL_CHANGED` | **A1 again (new key per X4)** | none |
 | **AUTO_PAUSED (any other reason)** (02:94) | Reason kept; credential fields set | — | `CREDENTIAL_CHANGED` | **A2** | none |
@@ -206,7 +221,7 @@ Two further rows of the same table that step 9's copy must cover:
 | **A1** | `House bot "{label}" paused — password changed · {HH:MM:SS}` | `{holder} changed his 50pick password {how} at {HH:MM} EAT on {D MMM}. The bot stopped and cancelled {n} queued stake(s). No bet will be placed until you enter his new password.` | `/admin/house-bots/{id}?reverify=1`; email button **"Enter new password"** |
 | **A2** | `House bot "{label}": holder changed his password · {HH:MM:SS}` | `The bot is {Paused / Auto-paused: cause}, so nothing stopped. Enter his new password before it can run again.` | same |
 | **A2, officer reset** | same title as A2 | `Support gave him a temporary password ({officer}, {HH:MM}). That is not his consent. Ask him to set his own password in Account settings, then enter it.` | `/admin/house-bots/{id}` (**no modal**) |
-| **H1** | `"Liquidity stakes paused"` | `"Your password changed, so 50pick stopped placing liquidity stakes from your account. Your balance and open stakes are unchanged."` | `/positions` |
+| ~~**H1**~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** the holder gets no H1 notice; `password_paused` is deleted with `HouseBotOwnerNotice` (C4-SPEC ruling 149). | ~~`"Liquidity stakes paused"`~~ | ~~`"Your password changed, so 50pick stopped placing liquidity stakes from your account. Your balance and open stakes are unchanged."`~~ | ~~`/positions`~~ |
 
 `{how}` (02:111-115): **SETTINGS** → `"in his account settings"`; **RESET_LINK** → `"with a reset link"`;
 **OFFICER_RESET** → `"— support issued a temporary password"`; **UNKNOWN** → left out.
@@ -215,9 +230,11 @@ Two further rows of the same table that step 9's copy must cover:
 (`holder-hook.ts:193` writes `officerReset: first.method === "OFFICER_TEMP"`). Map `SELF_CHANGE → SETTINGS` and
 `OFFICER_TEMP → OFFICER_RESET` in the emitter.
 
-H1 is **already built** — `notification-service.ts:2198-2203`, kind `password_paused`, in all three languages. Do not
+~~H1 is **already built** — `notification-service.ts:2198-2203`, kind `password_paused`, in all three languages. Do not
 rewrite it; the A1 path calls `HolderAlerts.holderNotice(userId, "password_paused")`, which `holder-hook.ts:201`
-already does (`first.method === "OFFICER_TEMP" ? "password_temp" : "password_paused"`).
+already does (`first.method === "OFFICER_TEMP" ? "password_temp" : "password_paused"`).~~
+⛔ **Superseded by D19 (Ali, 2026-09-16):** H1 and the `holderNotice` call are deleted — the holder receives no house-bot
+notice; A1 and A2 go to admins only (C4-SPEC ruling 149).
 
 **Link ruling (14):** `?reverify=1` replaces 03:275's `#reverify` (04:1064 — "`?reverify=1` replaces the design spec's
 `#reverify`; HashFocus still targets `id="reverify"`").
@@ -269,12 +286,15 @@ Notes for the builder:
 - `NOTIFICATION_KINDS` is at **`comms-registry.ts:212-224`** (04 says `:202`; re-derived, it moved). 18 kinds, ending
   `"HOUSE_BOT",` at `:223`.
 - `HOUSE_BOT` row is pinned by C13 04:1061 (`sms:'never'`). Ruling 17 makes house-only **email a ceiling, not a
-  requirement**, so `email:'template-only'` is the honest value for `HOUSE_BOT`: the three owner letters
-  (`designated`, `removed`, `reverified`, `notification-service.ts:2162`) and the admin templates go out; nothing
-  else does.
+  requirement**, so `email:'template-only'` is the honest value for `HOUSE_BOT`: ~~the three owner letters
+  (`designated`, `removed`, `reverified`, `notification-service.ts:2162`) and~~ the admin templates go out; nothing
+  else does. ⛔ **Superseded by D19 (Ali, 2026-09-16):** there are no owner letters — `houseBotOwnerHtml` is deleted and
+  the holder receives no house-bot email (C4-SPEC ruling 149).
 - `channelAllowed(kind, { houseOnly })` returns `{ sms: boolean; email: boolean }`; `houseOnly === true` forces
-  `sms: false` and `email: false` for every kind (04:1720's "all positions house-marked" rule), and the holder's
-  hourly summary is the one exception, sent by `notifyHouseBotOwnerHourSummary` on the bell only.
+  `sms: false` and `email: false` for every kind (04:1720's "all positions house-marked" rule), ~~and the holder's
+  hourly summary is the one exception, sent by `notifyHouseBotOwnerHourSummary` on the bell only~~. ⛔ **Superseded by
+  D19 (Ali, 2026-09-16):** there is no holder summary and no exception (C4-SPEC ruling 149); C5-SPEC ruling 235 removes
+  the holder-summary sentence from the `channelAllowed` docstring.
 - **Home:** `comms-registry.ts`, beside `NOTIFICATION_KINDS` and `MONEY_KINDS` — one home for the lens definitions
   (`src/lib/server/prisma-dal.ts:30` already records why re-listing them elsewhere is the drift). See **E10**.
 - **Exhaustive at compile time** (04:1724): `satisfies Record<NotificationKind, …>`, so a 19th kind cannot ship
@@ -293,17 +313,17 @@ C4-SPEC §7.5). What changes is emitters and templates.
 
 | Guard | File · row shape | What to add |
 |---|---|---|
-| `test:cert-c3` §1 (`scripts/comms-notification-truth.test.mts:159-172`) | `src/lib/server/comms-registry.ts` `NOTIFICATION_EMITTERS` (`:247+`), row shape `{ fn: "notifyX", kind: "HOUSE_BOT", audience: "player" \| "officer" }` — house rows today at `:334` and `:336` | **one row per new emitter** (10 new `notify*` exports) |
+| `test:cert-c3` §1 (`scripts/comms-notification-truth.test.mts:159-172`) | `src/lib/server/comms-registry.ts` `NOTIFICATION_EMITTERS` (`:247+`), row shape `{ fn: "notifyX", kind: "HOUSE_BOT", audience: "player" \| "officer" }` — house rows today at `:334` and `:336` | **one row per new emitter** (~~10~~ new `notify*` exports) ⛔ **Superseded by D19 (Ali, 2026-09-16):** eight, not ten — the two holder emitters are deleted (C4-SPEC ruling 149). |
 | `test:cert-c3` §1 fan-out list (`:169`) | `const FANOUT = [… "notifyAdminsHouseBotErasureBlocked"];` | add every new `notifyAdmins*` emitter that returns `void`/`number` instead of a row; otherwise §1's "every emitter is driven by this suite" (`:170-172`) goes red |
-| `test:cert-c3` §2 / §5 | `EMITTED` (`:72-157`) for row-returning emitters; `§5` drives (`:249-259`) for fan-outs | drive `notifyHouseBotOwner` with the **three new kinds** (existing rows at `:148-155` show the shape), and each admin fan-out in §5. §2 asserts `titleSw`, `titleZh`, `bodySw`, `bodyZh` present, **CJK in Chinese**, no emoji, no unreplaced `{placeholder}`, an `href` starting `/` |
+| `test:cert-c3` §2 / §5 | `EMITTED` (`:72-157`) for row-returning emitters; `§5` drives (`:249-259`) for fan-outs | drive ~~`notifyHouseBotOwner` with the **three new kinds** (existing rows at `:148-155` show the shape), and~~ each admin fan-out in §5. §2 asserts `titleSw`, `titleZh`, `bodySw`, `bodyZh` present, **CJK in Chinese**, no emoji, no unreplaced `{placeholder}`, an `href` starting `/` ⛔ **Superseded by D19 (Ali, 2026-09-16):** no holder kind is driven — `notifyHouseBotOwner` and its kinds are deleted (C4-SPEC ruling 149). |
 | `test:cert-c1` §1 (`scripts/comms-email-truth.test.mts:305-313`) | `EMAIL_TEMPLATES` in `comms-registry.ts:110-170`; house rows at `:168-169`, shape `{ template, trigger, audience, chrome, money }` | one row per new `*Html` export |
 | `test:cert-c1` §1 render coverage (`:317`) | `RENDERS` in `comms-email-truth.test.mts:81+`; house renders at `:293-298` with a **benign and a HOSTILE** input | one entry per new template |
 | `test:cert-c1` **the count pin** (`:334-337`) | `ok(\`the inventory is 66 templates (found ${exported.length})\`, exported.length === 66);` with the history comment at `:326-336` | move **66 → the measured number**, and extend the comment with the same shape ("⚠ 66 → N on 2026-09-15 (branch house-bots, build commit 4): …; measured the same way after the edit = N") |
 | `test:cert-c1` §2 wiring (`:341-366`) | the template name must appear in `spec.trigger` **and** within 10 lines above / 4 lines below a `sendEmail` / `sendEmailToUser` call, **or** be bound to a local later passed as `html: <name>` | keep the new admin template's build call inside the send, as `notifyAdminsHouseBotErasureBlocked` does (`notification-service.ts:2281-2283`) |
-| `test:cert-c1` `NO_CTA_TEMPLATES` (`comms-registry.ts:184-197`) | `"houseBotOwnerHtml", // a consent letter …` | only if a new template legitimately has no CTA |
+| `test:cert-c1` `NO_CTA_TEMPLATES` (`comms-registry.ts:184-197`) | ~~`"houseBotOwnerHtml", // a consent letter …`~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** that entry is gone with `houseBotOwnerHtml` (C4-SPEC ruling 149). | only if a new template legitimately has no CTA |
 | `test:kyc-copy-truth` §6 (`scripts/kyc-copy-truth.test.mts:1106-1121`) | `OFFICER_EMITTER = /^notifyAdmins?[A-Z]\w*$/`; every matching declaration in `notification-service.ts` must contain `adminUserId`, `listByRoles(`, or `houseBotAlertRecipients(` | every new `notifyAdminsHouseBot*` body **must call `houseBotAlertRecipients(`** — nothing else proves it addresses officers. The resolver itself is re-proven at `:1114-1116` (`listByRoles(["ADMIN"])` **and** `role === "ADMIN"` must both be literally present in `alerts.ts`) |
-| `test:position-permalink` 4.4 (`scripts/position-permalink.test.mts:95-97`) | `const ctas = [...email.matchAll(/ctaButton\(\s*("\/positions"\|\`\/positions\`)/g)];` must be length 0 | **no email may `ctaButton("/positions")`** — the holder's letters stay CTA-less (`houseBotOwnerHtml`'s rule, `email.ts:2245-2247`) |
-| `test:notifications-page` §1-§2 (`scripts/notifications-page.test.mts:46-70`, `:160-167`) | `src/lib/notification-appearance.ts` `iconFor` (`:48` `case "HOUSE_BOT": return I.activity;`) and `tintFor` (`:87` `case "HOUSE_BOT": return "border-info-border bg-info-bg/30 text-info-fg";`) | **nothing to add** — HOUSE_BOT already has an icon and a tint, and it is in neither `MONEY_FILTER_KINDS` nor `ACCOUNT_FILTER_KINDS`, so the two lenses stay disjoint |
+| `test:position-permalink` 4.4 (`scripts/position-permalink.test.mts:95-97`) | `const ctas = [...email.matchAll(/ctaButton\(\s*("\/positions"\|\`\/positions\`)/g)];` must be length 0 | **no email may `ctaButton("/positions")`** ~~— the holder's letters stay CTA-less (`houseBotOwnerHtml`'s rule, `email.ts:2245-2247`)~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** there are no holder letters (C4-SPEC ruling 149); the no-`/positions`-CTA rule stands. |
+| `test:notifications-page` §1-§2 (`scripts/notifications-page.test.mts:46-70`, `:160-167`) | `src/lib/notification-appearance.ts` ~~`iconFor` (`:48` `case "HOUSE_BOT": return I.activity;`) and `tintFor` (`:87` `case "HOUSE_BOT": return "border-info-border bg-info-bg/30 text-info-fg";`)~~ | **nothing to add** — ~~HOUSE_BOT already has an icon and a tint, and~~ it is in neither `MONEY_FILTER_KINDS` nor `ACCOUNT_FILTER_KINDS`, so the two lenses stay disjoint ⛔ **Superseded by D19 (Ali, 2026-09-16):** the two `case "HOUSE_BOT"` lines are removed, so admins' house alerts render with the default appearance; `HOUSE_BOT` is an admin-only kind with no client-side case (C4-SPEC ruling 150). |
 | `test:failure-reasons` §9b (`scripts/failure-reasons.test.mts:776-846`) | walks `src/lib/server` + `src/app` for `code: "X"` positions | never use one of the six deleted codes (§1.3 above); ruling 55 |
 | `test:failure-reasons` §8c | `control.ts` is a **named read-only caller** of `checkLossLimit` (ruling 56) | unchanged by step 9 |
 | `test:decomment` (`scripts/decomment.test.mts:204-212`) | `const CARRIER_CEILING = 20;` — shrink-only, and **lower it in the same commit if it drops** | a new suite must `import` `scripts/lib/decomment.mts`, never write its own stripper regex |
@@ -321,6 +341,9 @@ C4-SPEC §7.5). What changes is emitters and templates.
   { template: "houseBotErasureBlockedAdminHtml", trigger: "src/lib/server/notification-service.ts", audience: "officer", chrome: "royal", money: false },
 ```
 
+⛔ **Superseded by D19 (Ali, 2026-09-16):** the holder's letter row (`houseBotOwnerHtml`, above) is deleted (C4-SPEC ruling
+149); copy the admin row only.
+
 `NOTIFICATION_EMITTERS` row precedent (`comms-registry.ts:334-336`):
 
 ```
@@ -328,6 +351,9 @@ C4-SPEC §7.5). What changes is emitters and templates.
   // An erasure refused while the account is still a house bot (04 R6) — to `houseBotAlertRecipients()`.
   { fn: "notifyAdminsHouseBotErasureBlocked", kind: "HOUSE_BOT",  audience: "officer" },
 ```
+
+⛔ **Superseded by D19 (Ali, 2026-09-16):** the `notifyHouseBotOwner` row (above) is deleted (C4-SPEC ruling 149); every
+`HOUSE_BOT` emitter row is an officer's.
 
 ⛔ **`chrome: "gold"` is money chrome.** Every house-bot template is `royal` (`money: false`) — house notices state a
 figure only in the money-event and staff-chosen bodies, and `test:gold-is-money` / the C1 chrome check read the
@@ -348,8 +374,9 @@ registry, not the copy. Keep `money: false` unless a template actually promises 
 - Coverage pin: `:112` `for (const t of EMAIL_TEMPLATES) ok(\`${t.template} is rendered in the visual pass\`, covered.has(t.template));`
   — **every registry row must have a `PAGES` entry**, so a new template needs one there too.
 - House entries to copy (`:81-84`):
-  `{ name: "houseBotOwnerHtml", html: E.houseBotOwnerHtml({ kind: "designated", at: "15 Sep 2026, 14:02 EAT" }) },` plus
-  `.reverified`, `.removed`, and the erasure-blocked admin render.
+  ~~`{ name: "houseBotOwnerHtml", html: E.houseBotOwnerHtml({ kind: "designated", at: "15 Sep 2026, 14:02 EAT" }) },` plus
+  `.reverified`, `.removed`, and~~ the erasure-blocked admin render. ⛔ **Superseded by D19 (Ali, 2026-09-16):** the
+  three `houseBotOwnerHtml` entries are deleted with the template (C4-SPEC ruling 149); copy the admin render only.
 - ⚠ Needs Playwright Chromium. Not in `test:all` by design (`:20`).
 
 ### 5.2 Bells — `qa:cert-c3`
@@ -372,11 +399,13 @@ registry, not the copy. Keep `money: false` unless a template actually promises 
 - Output: **`.qa-shots/bell/`** (`:32`, wiped on each run).
 - Matrix 360 / 768 / 1280 / 1920 × en / sw / zh. **Locale is the `kp-locale` COOKIE, never `?lang=`** (`:61-63`: "The
   F1 pass lost an afternoon to this: the query param renders English three times while reporting success").
-- To see the new house rows, seed them first: the bell renders `db.notification` rows for the demo player, so a
+- To see the new house rows, seed them first: ~~the bell renders `db.notification` rows for the demo player, so a
   scratch script that calls `notifyHouseBotOwner(demoUserId, "password_temp")` etc. against the same dev server's
-  memory store is the cheapest path. The **admin** rows need an ADMIN session — `/admin/notifications` is commit 7;
+  memory store is the cheapest path.~~ The **admin** rows need an ADMIN session — `/admin/notifications` is commit 7;
   for commit 4, shoot the admin bodies through `qa:cert-c1`'s email render and record the admin bell as
-  **NOT MEASURED** until the console lands.
+  **NOT MEASURED** until the console lands. ⛔ **Superseded by D19 (Ali, 2026-09-16):** there are no holder house rows
+  to seed — `notifyHouseBotOwner` is deleted (C4-SPEC ruling 149), and a holder's served pages must carry no house word
+  (ruling 155).
 
 ### 5.3 What is proven without pixels
 
@@ -404,13 +433,13 @@ await runTwoStores({ suite: "test:house-bot-comms", casesFile: "scripts/lib/hous
 |---|---|---|
 | 1 | Matrix rows give exact recipients and channels | 04:1071 |
 | 2 | A second ADMIN saving rules → both ADMINs get the diff | 04:1072 (also A22 04:569) |
-| 3 | Re-verify gives 1 holder row in 3 locales plus an email. 2 wrong tries → 0 rows; reaching reserve → 1 row | 04:1073 |
+| 3 | ~~Re-verify gives 1 holder row in 3 locales plus an email. 2 wrong tries → 0 rows; reaching reserve → 1 row~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** inverted — the holder's inbox stays empty through the whole bot life, re-verify and the reserve included, and no email is sent; the two-attempt password reserve itself stays (C4-SPEC rulings 149, 152). | 04:1073 |
 | 4 | RG-locked holder: 0 HOUSE_BOT holder rows | 04:1074 |
 | 5 | Stubbed SMS fan-out is never called | 04:1075 |
 | 6 | Bets straddling 14:00 EAT: **20 bells plus 1 summary with N=5** | 04:1076 |
 | 7 | With now = event + 60 days, each href's route file exists and its resolver includes the event | 04:1077 |
 | 8 | Holder conflict: 1 alert, and the player's bet is never refused | 04:1078 |
-| 9 | With `SMS_PROVIDER=selcom` stubbed, 50 house outcomes give **0 SMS calls** and ≤ `holderNoticesPerHour` bells plus 1 summary | F6 04:1725 |
+| 9 | With `SMS_PROVIDER=selcom` stubbed, 50 house outcomes give **0 SMS calls** ~~and ≤ `holderNoticesPerHour` bells plus 1 summary~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** the holder gets no bell and no summary, and `holderNoticesPerHour` is removed (C4-SPEC rulings 149, 153). | F6 04:1725 |
 | 10 | The `CHANNEL_POLICY` is exhaustive at compile time | F6 04:1724 |
 | 11 | A planted fan-out that skips `channelAllowed` turns the pin red | F6 04:1726 (**E11**) |
 | 12 | A MANUAL row and a targeted row each reach 2 admins by **uncapped bell + email without consuming `countInHour`** | N1 04:3732 |
@@ -418,13 +447,13 @@ await runTwoStores({ suite: "test:house-bot-comms", casesFile: "scripts/lib/hous
 | 14 | A reason seeded with **NEEDLE** never appears in a body, and bodies end `"Reason recorded in the activity feed →"` | N1 04:3734 |
 | 15 | Titles survive the 90 s dedupe | N1 04:3735 |
 | 16 | hrefs render at +60 days, **including TARGET_\* history events** | N1 04:3736 |
-| 17 | The holder notice is capped | N1 04:3737 |
+| 17 | ~~The holder notice is capped~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** there is no holder notice to cap (C4-SPEC rulings 149, 153). | N1 04:3737 |
 | 18 | **Voided, self-decided** ~~**and staff-edge**~~ alerts reach every recipient | N1 04:3738 ~~(**E7** — the staff-edge producer is Commit 5)~~ ⛔ **Superseded by D20 (Ali, 2026-09-17):** the staff-edge half is struck (C5-SPEC rulings 218–223); the voided and self-decided alerts are not touched by D20. |
 | 19 | 0 SMS | N1 04:3739 |
 | 20 | Roster `TARGET_*` reach both admins by bell + email, uncapped, with an href resolving at +60 days | N2 04:4394 |
 | 21 | A targeted PLACED row → `notifyAdminsHouseBotStaffChosen` to both admins, **`countInHour` unchanged, 0 `notifyAdminsHouseBotBet` rows** | N2 04:4395 |
 | 22 | No reason text in any body; 0 SMS | N2 04:4396 |
-| 23 | (PLAN:519) admin and holder caps then summaries; **two identical money events → two rows**; every href maps to an existing `page.tsx`; holder notices trilingual | PLAN:519; 02:429 |
+| 23 | (PLAN:519) admin ~~and holder~~ caps then summaries; **two identical money events → two rows**; every href maps to an existing `page.tsx`; ~~holder notices trilingual~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** no holder cap, summary or notice (C4-SPEC ruling 149); the admin half stands. | PLAN:519; 02:429 |
 
 **`test:house-bot-holder-lifecycle`** (also a new key), from A2 04:115-119 and F8 04:1760-1761:
 
@@ -670,6 +699,13 @@ the 20 call sites import. It **never throws** (`:380-383` catch and log; the swe
 
 ## 9 · The Up & Down digest house split (A17 (h) 04:490)
 
+⛔ **Superseded by D19 (Ali, 2026-09-16):** the whole split is struck (D19c; C5-SPEC ruling 235, after C4-SPEC rulings
+143–144): no house line or label in `dailyTotalsByUser`, `digestCopy`, `notifyUpDownDigest` or `updownDigestHtml`, and
+the bell keeps its all-round figures. The A17 (h) liquidity-label quote below is superseded and left verbatim; struck
+in place: "the gap", the two label rows and "What to build". What stands is F6's email rule only: `DailySettledTotals`
+gains `ownRounds`, and a digest day whose positions are all house-marked sends no email (ruling 235; checked in C5-7,
+`C5-D20-REPLAN.md`). The re-derived anchors and the "do not break" row stand.
+
 ```
 04:486 *(h), list the emitters that get the liquidity label:*
 04:487 - selection-closed bell and email: personal figures exclude marked positions, and the house stake gets its own labelled line;
@@ -688,20 +724,23 @@ the 20 call sites import. It **never throws** (`:380-383` catch and log; the swe
 | result shape | `market-dal.ts:540-556` — `{ userId, rounds, wins, losses, refunds, staked, returned, wonPayout, lostStake, refundedStake }` |
 | memory twin | `market-dal.ts:744` |
 | SQL twin | `market-dal.ts:1303-1349` — `from "public"."Position" p join "public"."PredictionMarket" m on m."id" = p."marketId" where m."productLine"::text = $3 and p."status" in ('WIN','LOSS','VOID') and p."settledAt" >= $1::timestamp and p."settledAt" < $2::timestamp group by p."userId"` |
-| **the gap** | **neither twin filters or groups on `p."houseBotId"`** — a holder's digest today folds their liquidity stakes into their own losing day |
-| the label helper that already exists | `notification-service.ts:356-357` — `const LIQUIDITY_LINE = { en: " · 50pick liquidity stake", sw: " · Dau la ukwasi la 50pick", zh: " · 50pick 流动性投注" } as const;` and `const liquidityLine = (houseStake: boolean \| undefined, lang: keyof typeof LIQUIDITY_LINE): string => (houseStake ? LIQUIDITY_LINE[lang] : "");` |
-| the emitter that already splits | `notifySelectionClosed` `houseStake?: boolean` at `:645`, title prefix at `:682` |
+| ~~**the gap**~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** not a gap: D19c keeps the digest's all-round figures; only `ownRounds` is added, for F6's email rule (C5-SPEC ruling 235). | ~~**neither twin filters or groups on `p."houseBotId"`** — a holder's digest today folds their liquidity stakes into their own losing day~~ |
+| ~~the label helper that already exists~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** `LIQUIDITY_LINE` and `liquidityLine` are deleted (C4-SPEC ruling 143). | ~~`notification-service.ts:356-357` — `const LIQUIDITY_LINE = { en: " · 50pick liquidity stake", sw: " · Dau la ukwasi la 50pick", zh: " · 50pick 流动性投注" } as const;` and `const liquidityLine = (houseStake: boolean \| undefined, lang: keyof typeof LIQUIDITY_LINE): string => (houseStake ? LIQUIDITY_LINE[lang] : "");`~~ |
+| ~~the emitter that already splits~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** the separate labelled house notice and its title prefix are gone; selection closed is one notice per player (C4-SPEC ruling 144). | ~~`notifySelectionClosed` `houseStake?: boolean` at `:645`, title prefix at `:682`~~ |
 | the digest emitter | `notification-service.ts:570` — `export function notifyUpDownDigest(userId: string, opts: {` — **no `houseStake` parameter** |
 | the digest email template | `email.ts` `updownDigestHtml({ dayLabel, rounds, wins, losses, refunds, wonPayout, lostStake, refundedStake, staked, returned, net })` (driven at `comms-email-shots.mts:60`) |
-| C4-SPEC §2 record | `C4-HOOK-ANCHORS`-era note, C4-SPEC:88: "`updown-digest.ts`: `runUpDownDailyDigest` :216; rows `positionStore.dailyTotalsByUser` :232 … **There is no house split.**" |
+| C4-SPEC §2 record | `C4-HOOK-ANCHORS`-era note, C4-SPEC:88: "`updown-digest.ts`: `runUpDownDailyDigest` :216; rows `positionStore.dailyTotalsByUser` :232 … **There is no house split.**" ⛔ **Superseded by D19 (Ali, 2026-09-16):** and none is to be built; that C4-SPEC line is marked in place (C5-SPEC ruling 235). |
 | ⛔ do not break | C4-SPEC §7.12: `updown-digest.ts:209`'s `ops:updown-digest-preview` citation is on the inherited phantom list — **keep that comment when editing the digest** |
 
-**What to build** (shape is **E13**): `dailyTotalsByUser` grows a third grouping key so each user can come back as
+~~**What to build** (shape is **E13**): `dailyTotalsByUser` grows a third grouping key so each user can come back as
 two rows — personal (`p."houseBotId" IS NULL`) and house (`p."houseBotId" IS NOT NULL`) — in **both twins**, with
 `test:dal-parity` picking the new member up. The digest then sends one notice per user with the personal figures and
 **a separate labelled line** for the house total, reusing `LIQUIDITY_LINE`. A17's test (04:493-495) demands: a
 holder with mixed positions gets labelled notices and their personal payout excludes house money; **a non-holder's
-notices are byte-identical**.
+notices are byte-identical**.~~
+⛔ **Superseded by D19 (Ali, 2026-09-16):** nothing of this is built. C5-SPEC ruling 235's proof replaces it: a house-only
+day gives a bell byte-identical to a player's and no email; a mixed day gives one email with all-round figures; a
+non-holder is unchanged.
 
 ---
 
@@ -721,7 +760,7 @@ notices are byte-identical**.
 | **E10** | Where do `CHANNEL_POLICY` and `channelAllowed` live? | (a) `comms-registry.ts` beside `NOTIFICATION_KINDS`; (b) a new `channel-policy.ts`. | **(a).** `comms-registry.ts` is already the one home for the kind lists, and `prisma-dal.ts:30` records what a second home costs ("Re-listing MONEY_KINDS here is how a kind added to…"). |
 | **E11** | F6's pin "a planted fan-out that skips `channelAllowed` turns the pin red" (04:1726) has **nothing to police**: SMS is not live and `channelAllowed` would have zero production callers. A guard over an absent feature cannot fail. | (a) a source walk over every `sms.ts` send site asserting `channelAllowed(` within N lines, with a planted-violation control **and** a planted-compliant control; (b) defer the pin until SMS goes live; (c) ship the policy table only (compile-time exhaustiveness is real) and record the pin as NOT MEASURED. | **(a) + (c).** Ship `CHANNEL_POLICY` with its `satisfies` (that check is genuinely live), write the source walk over `sms.ts` with **both** controls, and record in PROGRESS that the behavioural half is NOT MEASURED until an SMS provider exists. Do not write a green assertion that would also pass with `channelAllowed` deleted. |
 | **E12** | Suite keys: `test:house-bot-comms` and `test:house-bot-holder-lifecycle` do not exist in `package.json`. One suite or two? Both stores? | (a) two keys, each `runTwoStores`; (b) one combined key; (c) memory only. | **(a).** PROGRESS and C4-SPEC:25 name four suites; the holder lifecycle needs Postgres for the freeze/KYC lock nesting and the comms suite needs it for `bumpHourCount`'s EAT hour from the DB clock. **Add both keys to `package.json` before any comment cites them** (`test:guards-exist`, C4-SPEC §7.12). |
-| **E13** | The digest house split's DAL shape. | (a) `dailyTotalsByUser` takes `split: "all" \| "personal" \| "house"` and the digest calls it twice; (b) it returns `{ userId, personal: Totals, house: Totals }`; (c) it groups by `(userId, houseBotId IS NOT NULL)` and returns two rows per user. | **(c).** One aggregate, one pass, one shape change, and the SQL stays a single `group by p."userId", (p."houseBotId" is not null)`. (a) doubles the query on every digest night; (b) is a bigger type change for every existing reader. `test:dal-parity` covers the new member in both twins automatically. |
+| **E13** ⛔ **Superseded by D19 (Ali, 2026-09-16):** moot — the digest house split is struck (D19c; C5-SPEC ruling 235), so no DAL shape is chosen; ruling 235 adds only `ownRounds` to the existing aggregate, for F6's email rule. | ~~The digest house split's DAL shape.~~ | ~~(a) `dailyTotalsByUser` takes `split: "all" \| "personal" \| "house"` and the digest calls it twice; (b) it returns `{ userId, personal: Totals, house: Totals }`; (c) it groups by `(userId, houseBotId IS NOT NULL)` and returns two rows per user.~~ | ~~**(c).** One aggregate, one pass, one shape change, and the SQL stays a single `group by p."userId", (p."houseBotId" is not null)`. (a) doubles the query on every digest night; (b) is a bigger type change for every existing reader. `test:dal-parity` covers the new member in both twins automatically.~~ |
 | **E14** | Where do the ten emitters live? `notification-service.ts` is already ~2,290 lines. | (a) all in `notification-service.ts`; (b) in `src/lib/server/house-bot/notices.ts`, re-exported from `notification-service.ts`. | **(a).** `test:cert-c3` §1 reads `Object.keys(N)` (a re-export would pass), but `test:kyc-copy-truth` §6 walks **`notification-service.ts`'s own literals** (`kyc-copy-truth.test.mts:1122-1129`) — copy living elsewhere silently leaves that population, which is a widening nobody would see. Commit 3 put the house copy there for the same reason. |
 | **E15** | `scripts/comms-bell-shots.mts` defaults to **:3011**, which is on the forbidden port list. | (a) run with `BELL_BASE=http://127.0.0.1:3021` against `npx next dev -p 3021`; (b) change the script's default and its header comment. | **(a) for this commit** — the override already exists (`comms-bell-shots.mts:31`) and changing a shared QA script's default is a platform edit outside house-bot scope. Record the port in PROGRESS so the next session does not re-derive it; propose (b) to Ali as a separate platform item. |
 

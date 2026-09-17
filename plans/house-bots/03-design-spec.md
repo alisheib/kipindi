@@ -13,6 +13,13 @@
 > house line beyond what a control needs. Read PROGRESS.md "OWNER RULING D20" and `plans/house-bots/C5-D20-REPLAN.md`
 > first.
 
+> # ⛔ THE PLAYER-FACING CHANGES ARE SUPERSEDED (D19)
+> **Owner ruling D19 (Ali, 2026-09-16): house bots are never public, and the holder sees nothing.** Struck in this file:
+> S8 (the holder chip and its explanation line, the `houseStakeChip` / `houseStakeLine` / `houseStakeNoExit` keys, the
+> SellButton `houseStake` note and the rules/terms text with its META bump), §3's "Player notices" line, §7 phase E's
+> `seed-house-stake` route, legal pages and chip and note assertions, and phase F's legal pages. The console screens,
+> the admin alerts and every engine rule are not changed by D19. Read PROGRESS.md "OWNER RULING D19" first.
+
 All citations are from `C:\kipindi-main` as it stands now. The laws come from `docs/DESIGN_AUTHORITY.md` ("DA"). The other docs are record (`DESIGN-BASELINE.md`, both `DESIGN-GATE-*-2026-08-28.md`), and `design-master-brief.md` is rationale.
 
 ## 0. Plan corrections found while verifying (fix before building)
@@ -336,6 +343,7 @@ AdminBody
 - REMOVED bots show no chip.
 
 ### S8 Player-facing changes (en/sw/zh)
+⛔ **Superseded by D19 (Ali, 2026-09-16):** this whole section is struck, with its width table: no holder chip or explanation line, no `market.houseStakeChip` / `houseStakeLine` / `houseStakeNoExit` keys, no SellButton `houseStake` prop or note row, and no rules or Terms text or META bump (D19a, D19c; C5-SPEC ruling 253). Nothing in it stands: a house stake looks exactly like the holder's own bet, and a house position is simply not sellable, reading as a closed exit (C4 ruling 147).
 - **Holder chip:** `Chip size="sm" variant="neutral"` (slate, informational, never next to claret).
   - Explanation line: `text-body-sm text-text-muted`, its own element, never inside the chip.
   - Keys go in the `market.*` namespace (e.g. `houseStakeChip`, `houseStakeLine`, `houseStakeNoExit`), with sw/zh not identical to en.
@@ -362,7 +370,7 @@ AdminBody
 - **Absolute times:** `formatTime` / `formatDateTime` on the server. Relative text never stands alone; it always carries the absolute time in `title`. Countdowns are client-side from ISO + `serverNow`.
 - **Missing values:** "—" plus a label (§C2). Never 0.
 - **Admin sentences:** built only in `src/lib/house-bot/feed-copy.ts` and a status lexicon: exhaustive `Record`s, sentence case, no enum tokens, "Player #XXXXXX" (`display-label.ts`).
-- **Player notices:** trilingual, "liquidity" wording, and the stated losses/refunds are neutral (§C4).
+- ~~**Player notices:** trilingual, "liquidity" wording, and the stated losses/refunds are neutral (§C4).~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** there are no house-bot player notices; a holder's outcome notices are byte-identical to any player's (C4 ruling 143).
 
 ## 4. Accessibility checklist (all screens)
 - Landmarks: exactly one `<main id="main-content">`, the shell's (§B7 rule 5). Pages never add one.
@@ -465,16 +473,17 @@ AdminBody
 
 **Phase E: player surfaces** (dev works for player routes).
 1. `next dev`, then `GET /auth/demo` (dev-only, `auth/demo/route.ts:1-14`).
-2. A new dev route, `src/app/api/dev-test/seed-house-stake/route.ts`:
-   - it returns the production 404 **before its first `await`** (`dev-route-guard.test.mts:17-20`, patterns `:55-60`) and requires the session (`seed-player-portfolio/route.ts:72-76` shape);
-   - it stamps `houseBotId` on one poll position + its transactions **and** one Up & Down position (the portfolio seed places polls only, DESIGN-BASELINE §3c).
+2. ~~A new dev route, `src/app/api/dev-test/seed-house-stake/route.ts`:~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** no dev seed route is built (C5-SPEC ruling 253); the house stakes are placed on a scratch database through the real services, and `qa:house-bot-holder-view` reads the pages served to the holder (C4 ruling 155, C5-SPEC ruling 248).
+   - ~~it returns the production 404 **before its first `await`** (`dev-route-guard.test.mts:17-20`, patterns `:55-60`) and requires the session (`seed-player-portfolio/route.ts:72-76` shape);~~
+   - ~~it stamps `houseBotId` on one poll position + its transactions **and** one Up & Down position (the portfolio seed places polls only, DESIGN-BASELINE §3c).~~
 3. Set the `kp-locale` cookie to en, sw, zh and assert `<html lang>`.
-4. Widths 360, 640, 768, 1024, 1280, 1920 on `/positions`, `/markets/<id>`, `/wallet` (expand the marked row), `/updown/history`, `/legal/rules/up-down`, `/legal/rules/yes-no`, `/legal/terms`, `/help`.
+4. Widths 360, 640, 768, 1024, 1280, 1920 on `/positions`, `/markets/<id>`, `/wallet` (expand the marked row), `/updown/history`~~, `/legal/rules/up-down`, `/legal/rules/yes-no`, `/legal/terms`, `/help`~~. ⛔ **Superseded by D19 (Ali, 2026-09-16):** the rulebooks, Terms and FAQ keep exactly the words they have on `main` (D19a), so there is nothing of this work on them to render.
 5. Assert:
    - zero overflow;
-   - the chip row wraps inside the card in SW at 360;
-   - houseStake shows the note row with no "Selling closed" and no countdown;
-   - a signed-out `/markets/<id>` has no chip.
+   - ~~the chip row wraps inside the card in SW at 360;~~
+   - ~~houseStake shows the note row with no "Selling closed" and no countdown;~~
+   - ~~a signed-out `/markets/<id>` has no chip.~~
+   - ⛔ **Superseded by D19 (Ali, 2026-09-16):** there is no chip or note row for any viewer, the holder included; the absence of every house word and marker is asserted on the served pages by `qa:house-bot-holder-view` (C4 ruling 155; C5-SPEC ruling 248 adds a signed-out visitor and another player).
 6. Run `MSYS_NO_PATHCONV=1 ONLY=/positions,/wallet,/updown/history LOCALES=en,sw,zh node scripts/responsive-audit.mjs` against dev. Under `next start` the audit's `/auth/demo` 404s and it runs as a guest (`responsive-audit.mjs:676-698`).
 7. `test:motion` runs against phase B's server.
 
@@ -483,7 +492,7 @@ AdminBody
 - Add `/admin/house-bots` to `ADMIN_ROUTES` (`routes.mjs:17-24`).
 - `qa:dg-shell` and `qa:dg-measure` with one shared login (`design-gate/session.mjs`); the tabs are expanded from the rail.
 - Open the master ON Modal and **cancel**. Search the picker and view a check card **without designating**.
-- Player legal pages in 3 locales (cookie).
+- ~~Player legal pages in 3 locales (cookie).~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** the legal pages keep exactly the words they have on `main` (D19a), so there is nothing of this work on them to check.
 - Every PNG is read.
 
 ### Critical Files for Implementation
