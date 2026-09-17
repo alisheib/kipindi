@@ -35,18 +35,32 @@ const OWN_AUDIT_EXCLUDED_ACTIONS: readonly string[] = [...Object.keys(HOUSE_AUDI
 
 /**
  * Rulings 154 and 170 · the house keys an audit payload whose actor can be a player carries: a house stake's bet audit
- * (`houseBotId`, `intentId`; `market-service.ts` SEAM:audit) and an officer's decision audit (`houseStake`,
- * `houseStakes`, R9, which names other officers). The durable rows and `/admin/audit` keep them whole. ⛔ If Commit 5
- * adds another house key to an audit whose actor can be a player, it is added here in the same commit.
+ * (`houseBotId`, `intentId`; `market-service.ts` SEAM:audit), an officer's decision audit (`houseStake`, `houseStakes`,
+ * R9, which names other officers), and an officer's fulfilled erasure (`privacy.dsar.fulfilled` spreads the routine's
+ * counts, `houseBots` and `houseBotNotificationsRedacted` among them, 0 for an ordinary account). The durable rows and
+ * `/admin/audit` keep them whole. ⛔ If Commit 5 adds another house key to an audit whose actor can be a player, it is
+ * added here in the same commit.
  */
-const HOUSE_AUDIT_PAYLOAD_KEYS_STRIPPED = ["houseBotId", "intentId", "houseStake", "houseStakes"] as const;
+const HOUSE_AUDIT_PAYLOAD_KEYS_STRIPPED = ["houseBotId", "intentId", "houseStake", "houseStakes", "houseBots", "houseBotNotificationsRedacted"] as const;
+/**
+ * A payload `reason` VALUE that names the feature, as the officer's own copy carries it: an erasure refused because the
+ * account is still a live house bot (`privacy.dsar.erasure_blocked`, `erasure.ts` `house_bot_live`) reads as the account
+ * not being erasable yet. Any other `house_` reason (server-only, ruling 148) reads as a plain refusal.
+ */
+const HOUSE_REASON_EXPORTED_AS: Readonly<Record<string, string>> = { house_bot_live: "not_erasable" };
+const exportedReason = (reason: unknown): unknown =>
+  typeof reason === "string" && reason.startsWith("house_") ? (HOUSE_REASON_EXPORTED_AS[reason] ?? "refused") : reason;
 function withoutHouseAuditKeys<T extends { entries: AuditEntry[] }>(page: T): T {
   return {
     ...page,
     entries: page.entries.map((e) => {
       const payload = e.payload as Record<string, unknown> | null | undefined;
-      if (!payload || typeof payload !== "object" || !HOUSE_AUDIT_PAYLOAD_KEYS_STRIPPED.some((k) => k in payload)) return e;
-      const rest = Object.fromEntries(Object.entries(payload).filter(([k]) => !(HOUSE_AUDIT_PAYLOAD_KEYS_STRIPPED as readonly string[]).includes(k)));
+      if (!payload || typeof payload !== "object") return e;
+      const namesHouse = HOUSE_AUDIT_PAYLOAD_KEYS_STRIPPED.some((k) => k in payload) || exportedReason(payload.reason) !== payload.reason;
+      if (!namesHouse) return e;
+      const rest = Object.fromEntries(Object.entries(payload)
+        .filter(([k]) => !(HOUSE_AUDIT_PAYLOAD_KEYS_STRIPPED as readonly string[]).includes(k))
+        .map(([k, v]) => [k, k === "reason" ? exportedReason(v) : v]));
       return { ...e, payload: rest } as AuditEntry;
     }),
   };
@@ -203,6 +217,7 @@ export async function getOwnActivity(
   userId: string,
   limit = 100,
 ): Promise<{ entries: AuditEntry[]; total: number; truncated: boolean }> {
-  // ⛔ D19 (ruling 170): the feed prints each row's action, so a house-owned action never reaches it.
-  return getAuditForActorDurable(userId, { limit, excludeActions: OWN_AUDIT_EXCLUDED_ACTIONS });
+  // ⛔ D19 (ruling 170): the feed prints each row's action, so a house-owned action never reaches it; and its rows leave
+  // this reader with the same key strip as the export, so no later caller can print a house key from a payload.
+  return withoutHouseAuditKeys(await getAuditForActorDurable(userId, { limit, excludeActions: OWN_AUDIT_EXCLUDED_ACTIONS }));
 }

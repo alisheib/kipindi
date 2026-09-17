@@ -14,7 +14,7 @@ import { isMonitoringEnabled } from "@/lib/server/monitoring";
 import { leadershipSnapshot } from "@/lib/server/leader";
 import { isAdminTotpEnforced } from "@/lib/server/admin-guard";
 import { redisHealth } from "@/lib/server/redis";
-import { emailHealth } from "@/lib/server/email";
+import { emailHealthPublic } from "@/lib/server/email";
 import { pingDatabase } from "@/lib/server/prisma";
 import { houseBotSchemaReady } from "@/lib/server/house-bot/schema-ready";
 
@@ -154,7 +154,9 @@ export async function GET() {
         // and verification link with NOTHING to see. In the sibling AWARKEH repo
         // exactly that happened and went unnoticed. `status` is a word, not a
         // boolean, for the same reason `adminTotp` is.
-        email: emailHealth(),
+        // ⛔ The failure reason is reduced to its class and codes (`emailHealthPublic`, C5-SPEC ruling 171): a provider's raw
+        // text can echo what was sent, and this body is public. The whole text stays in the log and `emailHealth()`.
+        email: emailHealthPublic(),
         // 🔴 Is the cross-container layer actually ON? Redis is armed by TWO variables
         // (`REDIS_ENABLED=true` AND `REDIS_URL`) precisely so configuring it and activating
         // it are separate acts — but that also means "is it on?" had four possible answers
@@ -229,8 +231,12 @@ export async function GET() {
       },
     );
   } catch (err) {
+    // ⛔ NO ERROR TEXT IN THE BODY (C5-SPEC ruling 171). This body is public, and a thrown message can name anything it
+    // touched — a database host (the readiness branch above keeps that to the log for the same reason) or a feature no
+    // visitor may read (owner ruling D19). The operator reads the reason in the server log.
+    console.error("[health] health check failed:", (err as Error)?.stack ?? err);
     return NextResponse.json(
-      { ok: false, error: "health-check-failed", message: String(err) },
+      { ok: false, error: "health-check-failed" },
       { status: 500, headers: { "cache-control": "no-store", "x-health": "error" } },
     );
   }

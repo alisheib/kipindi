@@ -320,6 +320,35 @@ export function emailHealth(): {
   };
 }
 
+/**
+ * The sentences this file itself writes as a failure's text. Published whole; anything else in a failure's text came from
+ * the provider and is not.
+ */
+const OWN_FAILURE_TEXT = ["email send timed out after ", "provider returned 2xx with no MessageID"] as const;
+
+/**
+ * A failure reason as `/api/health` publishes it: this file's own sentence whole, otherwise only its class and the
+ * provider's status and error codes (`provider error (statusCode=422, errorCode=300)`).
+ *
+ * ⛔ WHY NOT THE PROVIDER'S TEXT. `/api/health` is PUBLIC, and a provider's error message can echo what was sent — a tag
+ * or an address. Every mail this platform sends rides `sendEmail`, including the owner's internal alerts, so a raw
+ * message could publish a word no visitor may read (owner ruling D19; C5-SPEC ruling 171: no key or value of the public
+ * body names anything about house bots). The codes identify every Postmark API error; the whole text stays in the server
+ * log, in `emailHealth()` and in the `email.provider_down` audit.
+ */
+export function publicFailureReason(reason: string | null): string | null {
+  if (reason == null) return null;
+  if (OWN_FAILURE_TEXT.some((own) => reason.startsWith(own))) return reason;
+  const codes = /\(statusCode=[^(),]*, errorCode=[^()]*\)$/.exec(reason);
+  return codes ? `provider error ${codes[0]}` : "provider error";
+}
+
+/** `emailHealth()` as the public `/api/health` body carries it: the same counters, the failure reason reduced (above). */
+export function emailHealthPublic(): ReturnType<typeof emailHealth> {
+  const h = emailHealth();
+  return { ...h, lastFailureReason: publicFailureReason(h.lastFailureReason) };
+}
+
 /** Test seam — reset the counters between cases. Never called by product code. */
 export function resetEmailHealth(): void {
   globalThis.__50PICK_EMAIL_HEALTH = undefined;

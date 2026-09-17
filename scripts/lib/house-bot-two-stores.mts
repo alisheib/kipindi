@@ -14,8 +14,16 @@ import pg from "pg";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
-export async function runTwoStores(opts: { suite: string; casesFile: string; minPass: number; dbPrefix: string; timeoutMs?: number }): Promise<never> {
+/**
+ * The fewest assertions a child must pass: one number for both children, or one per store. A per-store floor is how a suite
+ * whose static pins run in ONE child (`test:house-bot-reports` §0, memory only) keeps them from silently not running while
+ * the other child still clears a lower floor.
+ */
+export type MinPass = number | { memory: number; postgres: number };
+
+export async function runTwoStores(opts: { suite: string; casesFile: string; minPass: MinPass; dbPrefix: string; timeoutMs?: number }): Promise<never> {
   let pass = 0, fail = 0;
+  const minFor = (store: "memory" | "postgres") => (typeof opts.minPass === "number" ? opts.minPass : opts.minPass[store]);
   const ok = (l: string, c: boolean, x = "") => { c ? pass++ : fail++; console.log(`${c ? "PASS" : "FAIL"} ${l}${x ? ` — ${x}` : ""}`); };
 
   const runChild = (store: "postgres" | "memory", env: Record<string, string>) => {
@@ -32,8 +40,8 @@ export async function runTwoStores(opts: { suite: string; casesFile: string; min
   };
 
   const mem = runChild("memory", { DATABASE_URL: "", USE_PRISMA_DAL: "false" });
-  ok("0.mem · the memory run exits 0 with assertions and no failure", mem.exit === 0 && mem.pass >= opts.minPass && mem.fail === 0,
-    `exit ${mem.exit} · ${mem.pass} passed · ${mem.fail} failed`);
+  ok("0.mem · the memory run exits 0 with assertions and no failure", mem.exit === 0 && mem.pass >= minFor("memory") && mem.fail === 0,
+    `exit ${mem.exit} · ${mem.pass} passed (at least ${minFor("memory")}) · ${mem.fail} failed`);
 
   const RAW = process.env.VERIFY_DATABASE_URL ?? "";
   if (!RAW) {
@@ -68,8 +76,8 @@ export async function runTwoStores(opts: { suite: string; casesFile: string; min
     ok("0.pg.migrate · prisma migrate deploy applies every migration to the scratch database", mig.status === 0, (mig.stderr ?? "").split("\n").slice(-3).join(" "));
     if (mig.status === 0) {
       const pgRun = runChild("postgres", { DATABASE_URL: url, USE_PRISMA_DAL: "true" });
-      ok("0.pg · the Postgres run exits 0 with assertions and no failure", pgRun.exit === 0 && pgRun.pass >= opts.minPass && pgRun.fail === 0,
-        `exit ${pgRun.exit} · ${pgRun.pass} passed · ${pgRun.fail} failed`);
+      ok("0.pg · the Postgres run exits 0 with assertions and no failure", pgRun.exit === 0 && pgRun.pass >= minFor("postgres") && pgRun.fail === 0,
+        `exit ${pgRun.exit} · ${pgRun.pass} passed (at least ${minFor("postgres")}) · ${pgRun.fail} failed`);
     }
   } finally {
     const drop = new pg.Client({ connectionString: RAW });
