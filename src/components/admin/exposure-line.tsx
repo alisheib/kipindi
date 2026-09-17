@@ -17,7 +17,11 @@ import { exposureParts, exposureQualifier, type ExposureRead, type ExposureSurfa
 import type { LabelProductLine } from "@/lib/side-label";
 import { formatTzs } from "@/lib/utils";
 
-const Dot = () => <span className="text-border"> · </span>;
+/** The separator between clauses, in the subtle ink its neighbours use; the space before it cannot break, so a wrapped line never starts with it. */
+const Dot = () => <span className="text-text-subtle">&nbsp;· </span>;
+
+/** "— couldn't read" held on one line, so the dash never hangs at a line's end with its words below. */
+const UNREAD_TAIL = /(— .*)$/;
 
 /** A shilling figure as `formatTzs` writes it ("TZS 9,000", "TZS −9,000"): the part of a clause that must never break. */
 const MONEY = /(TZS\s\S+)/;
@@ -49,7 +53,7 @@ export function ExposureLine({
   const qualifier = exposureQualifier(surface);
   return (
     <p data-exposure={surface} className={className ? `font-sans text-body-sm text-text-muted whitespace-normal ${className}` : "font-sans text-body-sm text-text-muted whitespace-normal"}>
-      {parts.label}
+      {parts.unread ? parts.label.split(UNREAD_TAIL).map((part, i) => (i === 1 ? <span key={i} className="whitespace-nowrap">{part}</span> : part)) : parts.label}
       {parts.groups.map((g, i) => (
         <Fragment key={g.side}>
           {i === 0 ? " " : <Dot />}

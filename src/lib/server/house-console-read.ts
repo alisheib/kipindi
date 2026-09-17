@@ -17,8 +17,10 @@
  * ⛔ AND THE AUDIT ROWS A CONSOLE PAGE RENDERS (ruling 260). The same measurement, extended to every console page, found
  * `/admin/players/<holder>` streaming the holder's `house_bot.password_verified` row, and `/admin/audit` every house row with
  * its payload, to a signed-in player. So every audit row a console file reads passes `houseAuditForConsole` before the page
- * uses it: whole for the route's audience, and for anyone else without a house action, a row about a house bot, or a house
- * key in a payload — the platform's own rows stay as they are.
+ * uses it: whole for the route's audience, and NO row for anyone else. Not a house-free filter: a platform row can carry a
+ * house VALUE (a deduped notice's kind, a failed letter's tag, an error's stack), and a refused erasure's reason exists only
+ * for a live house bot, so even a rewritten reason names the account. No list of actions, keys or values closes that; a
+ * viewer outside the audience is painted the section gate's restricted panel, so none of the page's rows is theirs to read.
  */
 import { db } from "./store";
 import { isStaffRole, isAdmin, isOwnerOnlyPath, domainForPath } from "./roles";
@@ -26,7 +28,6 @@ import { canView } from "./rbac";
 import { houseBotStore } from "./house-bot-dal";
 import { houseStakeByMarket, type HouseStakeView } from "./house-bot/exposure";
 import type { AuditEntry } from "./audit";
-import { OWN_AUDIT_EXCLUDED_ACTIONS as HOUSE_OWNED_AUDIT_ACTIONS, withoutHouseAuditKeys } from "./user-service";
 
 /**
  * True only for a signed-in STAFF account whose stored role may VIEW the console route `route` (the same question the
@@ -72,21 +73,17 @@ export async function houseBotLabelsForConsole(viewerUserId: string | null | und
 }
 
 /** What a console file's audit reader returns: the ring's rows, a durable page of them, or `null` from the page's own catch. */
-export type ConsoleAuditRead = AuditEntry[] | { entries: AuditEntry[] } | null | undefined;
-
-/** A house row (ruling 260): an action a house bot owns, a house report's generated / failed row, or a row about a house bot. */
-export function isHouseAuditRow(e: AuditEntry): boolean {
-  return HOUSE_OWNED_AUDIT_ACTIONS.includes(e.action) || e.targetType === "HouseBot";
-}
+export type ConsoleAuditRead = AuditEntry[] | { entries: AuditEntry[]; total?: number; truncated?: boolean } | null | undefined;
 
 /**
- * The audit rows a console page renders, for `viewerUserId` on `route`: exactly what was read for the route's audience;
- * for anyone else (fail closed, `houseConsoleAudience`) the house rows dropped and every house key stripped from the rest,
- * the way a player's own export strips them (rulings 154, 170). Takes the read itself, or its promise, and keeps its shape.
+ * The audit rows a console page renders, for `viewerUserId` on `route`: exactly what was read for the route's audience; for
+ * anyone else (fail closed, `houseConsoleAudience`) NO row — an empty array, or the durable page with no entries, a total of
+ * 0 and nothing truncated (a kept total beside fewer entries would count what was withheld). Takes the read itself, or its
+ * promise, keeps its shape, and lets a rejected read reject into the page's own catch.
  */
 export async function houseAuditForConsole<T extends ConsoleAuditRead>(viewerUserId: string | null | undefined, route: string, read: T | PromiseLike<T>): Promise<T> {
   const rows = await read;
   if (rows == null || (await houseConsoleAudience(viewerUserId, route))) return rows;
-  const withoutHouse = (entries: AuditEntry[]) => withoutHouseAuditKeys({ entries: entries.filter((e) => !isHouseAuditRow(e)) }).entries;
-  return (Array.isArray(rows) ? withoutHouse(rows) : { ...rows, entries: withoutHouse(rows.entries) }) as T;
+  if (Array.isArray(rows)) return [] as unknown as T;
+  return { ...rows, entries: [], ...("total" in rows ? { total: 0 } : {}), ...("truncated" in rows ? { truncated: false } : {}) } as T;
 }

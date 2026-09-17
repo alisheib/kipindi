@@ -29,10 +29,9 @@ import { HOUSE_REPORT_AUDIT_ACTIONS } from "./reports/house-report-ids";
  * catalogue `HOUSE_AUDIT`, imported here and never into `audit.ts`, so the platform audit module stays house-agnostic)
  * and the house reports' generated/failed rows (the closed list beside `REPORT_CATALOGUE`). Excluded in the READ, before
  * the limit, so a page of them cannot crowd a player's own history out of the window. A house stake's own bet audit
- * (`market.position.opened`) is NOT here: it is the holder's bet record and stays, key-stripped below. The console gate
- * (`house-console-read.ts`, ruling 260) drops the same actions, and strips the same keys, for a viewer outside a page's audience.
+ * (`market.position.opened`) is NOT here: it is the holder's bet record and stays, key-stripped below.
  */
-export const OWN_AUDIT_EXCLUDED_ACTIONS: readonly string[] = [...Object.keys(HOUSE_AUDIT), ...HOUSE_REPORT_AUDIT_ACTIONS];
+const OWN_AUDIT_EXCLUDED_ACTIONS: readonly string[] = [...Object.keys(HOUSE_AUDIT), ...HOUSE_REPORT_AUDIT_ACTIONS];
 
 /**
  * Rulings 154 and 170 · the house keys an audit payload whose actor can be a player carries: a house stake's bet audit
@@ -51,7 +50,7 @@ const HOUSE_AUDIT_PAYLOAD_KEYS_STRIPPED = ["houseBotId", "intentId", "houseStake
 const HOUSE_REASON_EXPORTED_AS: Readonly<Record<string, string>> = { house_bot_live: "not_erasable" };
 const exportedReason = (reason: unknown): unknown =>
   typeof reason === "string" && reason.startsWith("house_") ? (HOUSE_REASON_EXPORTED_AS[reason] ?? "refused") : reason;
-export function withoutHouseAuditKeys<T extends { entries: AuditEntry[] }>(page: T): T {
+function withoutHouseAuditKeys<T extends { entries: AuditEntry[] }>(page: T): T {
   return {
     ...page,
     entries: page.entries.map((e) => {

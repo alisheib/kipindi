@@ -463,6 +463,7 @@
     "qa:cert-c3": "tsx scripts/comms-bell-shots.mts",
     "qa:house-bot-holder-view": "tsx scripts/db-scratch.mts --run npx tsx scripts/house-bot-holder-view-shots.mts",
     "qa:house-bot-bells": "tsx scripts/db-scratch.mts --run npx tsx scripts/house-bot-bell-shots.mts",
+    "qa:house-bot-console-probe": "tsx scripts/db-scratch.mts --run npx tsx scripts/house-bot-console-probe.mts",
     "test:updown-proposal": "tsx scripts/updown-proposal.test.mts",
     "test:updown-e2e-flow": "tsx scripts/updown-e2e-flow.test.mts",
     "test:wallet-reach": "tsx scripts/wallet-reach.test.mts",

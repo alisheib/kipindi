@@ -186,7 +186,7 @@ export function BulkResolveBar({
           />
         </div>
 
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 basis-[12rem]">
           {/* DG-A-14: this line is read, not scanned as a heading — it is either "N selected ·
               TZS X held" or "Select all on this page — N on this page", and the held stake is
               a number an officer acts on. It was wearing a section eyebrow's dress (uppercase
@@ -194,7 +194,7 @@ export function BulkResolveBar({
               is gone and the size is on the smallest legible rung. */}
           <p className="font-mono text-body-sm text-text-muted">
             {chosen.length > 0
-              ? <>{chosen.length} {BULK_BAR.nSelected.en}<span className="text-border"> · </span><span className="text-text">{formatTzs(pool)} held</span>{exposureCountLines(chosen, exposureCountTemplate).map((line) => <React.Fragment key={line}><span className="text-border"> · </span><span>{line}</span></React.Fragment>)}</>
+              ? <>{chosen.length} {BULK_BAR.nSelected.en}<span className="text-border"> · </span><span className="text-text whitespace-nowrap">{formatTzs(pool)} held</span>{exposureCountLines(chosen, exposureCountTemplate).map((line) => <React.Fragment key={line}><span className="text-border">&nbsp;· </span><span>{line}</span></React.Fragment>)}</>
               : <>{BULK_BAR.selectAllOnPage.en} — {rows.length} on this page</>}
           </p>
           {/* ⛔ THE SCOPE IS STATED, ALWAYS. A "select all" that quietly means "this page
