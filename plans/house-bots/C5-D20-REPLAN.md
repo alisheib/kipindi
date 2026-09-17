@@ -230,3 +230,14 @@ bots and what keeps D19 true").
      standalone commit that names it as a platform fix, once the console page is in. Two neighbours found with it are
      recorded the same way: the two-admin toggle's hard-coded "2-admin" label contradicting the single-admin state at
      360, and the notifications tiles' clipped Needle disc.
+
+464. **A step captures §5's matrix for its OWN surfaces, not the whole commit's.** `C7-SPEC.md` §5 makes six widths
+     mandatory across nine surface groups — for Commit 7 entire, roughly 78 tiles for surface 1 alone. Shot at every
+     step that is repetition, which ruling 275 drops, and it would stall the page Ali is waiting for. So each step
+     captures: the DEFAULT state of each surface it builds at **all six widths** (360, 640, 768, 1024, 1280, 1920);
+     every OTHER state of those surfaces at **360 and 1280**, the two widths where layout actually decides; and the
+     restricted-panel and loader surfaces its own rulings name. **The escape hatch is the point:** if any state's 360
+     and 1280 tiles differ beyond simple reflow, that state owes the full six-width sweep before it may be called read.
+     The remaining sweeps are ONE register row for the commit-close visual pass, so the matrix is completed once, with a
+     server already up, rather than nine times. Every tile is still opened and READ — ruling 275 never permitted an
+     unread capture, and the visual lens caught seven tiles last checkpoint whose subject sat off-frame.
