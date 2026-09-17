@@ -7,7 +7,10 @@
  *
  * §0 are static source pins, each with a PLANTED control that must be reported and a BENIGN control that must not; they
  * run in the memory child only (a source file reads the same on both stores). Source is read through
- * `scripts/lib/decomment.mts`, never a new stripper (`test:decomment`). §3 and the ruling-171 slice of §11 run on both.
+ * `scripts/lib/decomment.mts`, never a new stripper (`test:decomment`). §1 (readers, the entry split, the scorecard, the
+ * EAT month), §2 (the fee withheld; its ledger cross-check is Postgres), §1.177 (every other new store member), §3 and the
+ * ruling-171 slice of §11 run on both. File order is not section order: §1–§2 run after §11 so §3's hook-sensitive filing
+ * runs first, and they build ONE fixture through the real seam that §2 and §1.177 read.
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { readFileSync, readdirSync } from "node:fs";
