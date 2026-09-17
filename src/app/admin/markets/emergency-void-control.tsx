@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useRef, useState, useTransition, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
 import { Button } from "@/components/ui/button";
@@ -16,7 +16,13 @@ import { useMayAct, ActReadOnly } from "@/components/admin/act-gate";
  * stake in full, in a single atomic action. Gated behind a confirm dialog that
  * REQUIRES a reason (≥5 chars), because it's irreversible and moves money.
  */
-export function EmergencyVoidControl({ marketId, title }: { marketId: string; title: string }) {
+export function EmergencyVoidControl({ marketId, title, exposureSlot }: {
+  marketId: string;
+  title: string;
+  /** A line the server page rendered for the confirmation (C5-SPEC ruling 192). Shown as given, outside the reason field,
+   *  and never copied into it: the reason is sent to every refunded player (ruling 196). Absent or empty, nothing shows. */
+  exposureSlot?: ReactNode;
+}) {
   // A1 — this control only ACTS, so a role holding VIEW without ACT is shown why rather
   // than being offered a button the server will refuse (and logged as a privilege
   // escalation for pressing it). See docs/ADMIN-CONSOLE-FINDINGS.md.
@@ -79,6 +85,7 @@ export function EmergencyVoidControl({ marketId, title }: { marketId: string; ti
         pending={pending}
         onCancel={() => { if (!pending) { setOpen(false); setReason(""); } }}
         onConfirm={fire}
+        exposureSlot={exposureSlot}
       />
 
       {result && (
@@ -99,7 +106,7 @@ export function EmergencyVoidControl({ marketId, title }: { marketId: string; ti
 }
 
 function ConfirmVoid({
-  open, title, reason, setReason, pending, onConfirm, onCancel,
+  open, title, reason, setReason, pending, onConfirm, onCancel, exposureSlot,
 }: {
   open: boolean;
   title: string;
@@ -108,6 +115,7 @@ function ConfirmVoid({
   pending: boolean;
   onConfirm: () => void;
   onCancel: () => void;
+  exposureSlot?: ReactNode;
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const canConfirm = reason.trim().length >= 5 && !pending;
@@ -139,6 +147,7 @@ function ConfirmVoid({
       <div className="text-[13px] text-text-muted leading-relaxed mb-3">
         <p><strong>This is final.</strong> Every open stake is refunded in full, the live pool closes, and an immutable compliance entry is recorded. No payouts, no fees.</p>
       </div>
+      {exposureSlot}
       <label className="block mb-4">
         <span className="block font-mono text-micro uppercase eyebrow font-bold text-text-subtle mb-1.5">
           Reason (required) · Sababu

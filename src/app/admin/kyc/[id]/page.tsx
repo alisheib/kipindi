@@ -16,6 +16,7 @@ import { KycDocViewer } from "./kyc-doc-viewer";
 import { Sensitive } from "@/components/ui/sensitive";
 import { maskDob } from "@/lib/server/sensitive-fields";
 import { KycDecisionRail } from "./kyc-decision-rail";
+import { BetsPlacedValue } from "./bets-placed";
 import { RefusedFundsPanel } from "./refused-funds-panel";
 import { ReopenRefusalControl } from "./reopen-refusal-control";
 import { isFinalRefusal, type FinalRefusalCode } from "@/lib/kyc-refusal";
@@ -389,10 +390,13 @@ export default async function KycWorkstationPage({ params }: { params: Promise<{
                 <Field
                   label="Bets placed"
                   value={
-                    <span className="font-mono tabular-nums">
-                      {adminCount(moneyFacts.betCount, "bet")}
-                      {canSeeMoney ? <>{" · "}<span className="whitespace-nowrap">{formatTzs(moneyFacts.stakedTzs)}</span> staked</> : ""}
-                    </span>
+                    <BetsPlacedValue
+                      betCount={moneyFacts.betCount}
+                      stakedTzs={moneyFacts.stakedTzs}
+                      houseBetCount={moneyFacts.houseBetCount}
+                      houseStakedTzs={moneyFacts.houseStakedTzs}
+                      canSeeMoney={canSeeMoney}
+                    />
                   }
                 />
                 <Field

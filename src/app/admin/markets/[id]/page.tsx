@@ -26,6 +26,10 @@ import { SELECTION } from "@/lib/admin-status-lexicon";
 import { MarketStatusBadge } from "@/components/admin/status-badge";
 import { AdminBody } from "@/components/admin/admin-body";
 import { KpiGrid } from "@/components/admin/admin-body";
+import { houseStakeByMarket } from "@/lib/server/house-bot/exposure";
+import { houseBotStore } from "@/lib/server/house-bot-dal";
+import { exposureReadOf, houseBotRowTag } from "@/lib/house-bot/exposure-copy";
+import { ExposureLine } from "@/components/admin/exposure-line";
 
 export const dynamic = "force-dynamic";
 
@@ -140,6 +144,19 @@ export default async function MarketPredictorsPage({
   const baseHref = buildBaseHref(`/admin/markets/${id}`, { q: sp.q, side: sp.side, status: sp.status, sort: sp.sort, dir: sp.dir });
   const hasFilter = !!query || !!sideFilter || !!statusFilter;
 
+  // The house stake on this market, for the line under the pool figures (C5-SPEC rulings 192–194): `null` when the read
+  // failed, and the line then says so. The row tag names the bot of each house-marked position on THIS page, one label
+  // read per distinct bot; a label that could not be read shows as "—".
+  let stakes: Awaited<ReturnType<typeof houseStakeByMarket>> | null = null;
+  try { stakes = await houseStakeByMarket([m.id]); } catch { stakes = null; }
+  const botLabels = new Map<string, string>();
+  for (const botId of new Set(paged.map((p) => p.houseBotId).filter((b): b is string => typeof b === "string"))) {
+    try {
+      const bot = await houseBotStore.get(botId);
+      if (bot) botLabels.set(botId, bot.label);
+    } catch { /* the tag shows "—" for this bot */ }
+  }
+
   // KPIs
   const yes = impliedYesPct(m);
   const yesPositions = allPositions.filter((p) => p.side === "YES");
@@ -230,6 +247,7 @@ export default async function MarketPredictorsPage({
               <span className="text-text font-semibold">{formatTzs(totalPool)}</span>
             </div>
           </div>
+          <ExposureLine surface="marketPage" read={exposureReadOf(stakes, m.id)} className="mt-2" />
 
           {/* THE FEE ARITHMETIC ON THIS POLL — and the lean/thin flag.
               An officer can see, before the result lands, exactly what we will take
@@ -391,6 +409,9 @@ export default async function MarketPredictorsPage({
                             <p className="text-micro font-mono text-text-tertiary truncate">{p.userId}</p>
                           </div>
                         </a>
+                        {typeof p.houseBotId === "string" && (
+                          <Chip size="sm" variant="neutral" className="mt-1">{houseBotRowTag(botLabels.get(p.houseBotId) ?? "—")}</Chip>
+                        )}
                       </td>
                       <td className="font-mono whitespace-nowrap text-text-muted">
                         {u ? <Sensitive field="phone" subjectId={u.id} value={u.phoneE164} /> : "—"}

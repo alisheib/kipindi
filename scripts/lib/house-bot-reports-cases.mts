@@ -18,7 +18,8 @@ import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import ts from "typescript";
 import { decomment } from "./decomment.mts";
-import { extendHouseWords, houseHits, HOUSE_WORD_SAMPLES, HOUSE_IDENTIFIER_SAMPLES, HOUSE_ID_SAMPLES } from "./house-bot-vocabulary.mjs";
+import { createHash } from "node:crypto";
+import { extendHouseWords, houseHits, houseHitsByFamily, HOUSE_WORD_SAMPLES, HOUSE_IDENTIFIER_SAMPLES, HOUSE_ID_SAMPLES } from "./house-bot-vocabulary.mjs";
 
 type Any = any;
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -383,10 +384,11 @@ export function declaredRegexes(file: string, code: string): Array<{ text: strin
 
 /**
  * The words OTHER areas proposed (ruling 175, ADJ 13) that the module does not hold yet: they land only after the
- * `origin/main` measurement, with the first client slot (192). A consumer that declares one is re-declaring vocabulary
- * ahead of that gate, so the pin probes with them too.
+ * `origin/main` measurement. A consumer that declares one is re-declaring vocabulary ahead of that gate, so the pin probes
+ * with them too. The R2 words (house stake(s), dau la nyumba, 平台投注, staff-chosen) were measured and added with the first
+ * client slot in C5 step 5 (ruling 192) and are shared samples now (0.175.r2); these four wait for the staff edge (step 7).
  */
-export const PROPOSED_WORD_SAMPLES = ["house stake", "house stakes", "dau la nyumba", "平台投注", "staff-chosen", "staff chosen", "staff edge", "enter now", "scorecard", "STAFF_EDGE"] as const;
+export const PROPOSED_WORD_SAMPLES = ["staff edge", "enter now", "scorecard", "STAFF_EDGE"] as const;
 
 /**
  * A text of the same SHAPE as `s` that says nothing: each letter becomes another letter of its own kind (a hex letter stays
@@ -545,7 +547,9 @@ if (STORE === "memory") {
     const codeScan = broaderLists("scripts/x.mts", `import { extendHouseWords } from "./house-bot-vocabulary.mjs";\nconst id = /houseBotId/; const act = /^house_bot\\./; extendHouseWords(["house"]);\n`);
     ok("0.175.c6 · CONTROL · code-scanning identifier regexes (/houseBotId/, /^house_bot\\./) in a broader-list file are not word lists", codeScan.ownWordLists.length === 0 && codeScan.extendsShared === 1, j(codeScan));
     const c7 = plant("scripts/dsar-export-secrets.test.mts", "const W = /dau la nyumba|house[ -]?stakes?/i;");
-    ok("0.175.c7 · CONTROL · a consumer that declares a PROPOSED word (dau la nyumba, house stake) before the measurement gate is reported", c7.own.length === 1, j(c7.own));
+    const c7b = plant("scripts/dsar-export-secrets.test.mts", "const W = /staff edge|scorecard/i;");
+    ok("0.175.c7b · CONTROL · a consumer that declares a word still PROPOSED (staff edge, scorecard) ahead of its measurement is reported", c7b.own.length === 1, j(c7b.own));
+    ok("0.175.c7 · CONTROL · a consumer that declares an R2 word of its own (dau la nyumba, house stake — shared words since C5 step 5) is reported", c7.own.length === 1, j(c7.own));
     const c8a = plant("scripts/house-bot-holder-view-shots.mts", "const W = /liquidity|\\w+/;");
     const c8b = plant("scripts/house-bot-holder-view-shots.mts", "const W = /liquidity|\\w+_\\w+/;");
     ok("0.175.c8 · CONTROL · a word list padded with a generic alternative (liquidity|\\w+, liquidity|\\w+_\\w+) is still reported", c8a.own.length === 1 && c8b.own.length === 1, j({ a: c8a.own, b: c8b.own }));
@@ -1340,6 +1344,149 @@ export function r9AuditSites(files: Array<{ rel: string; code: string }>): { sit
   return { sites: sites.sort(), problems, literalAuditCalls };
 }
 
+/* ═══ §0 · C5 step 5 · rulings 192 and 198 · the R2 words stay on the officer's server; no player surface changes ═══ */
+
+/** Ruling 198 · the two player files that must never import the R2 modules, and the modules. */
+export const PLAYER_SURFACE_FILES = ["src/components/markets/resolution-panel.tsx", "src/app/markets/[id]/page.tsx"] as const;
+export const R2_MODULES = ["src/lib/house-bot/exposure-copy", "src/lib/server/house-bot/exposure", "src/lib/house-bot/stake-snapshot"] as const;
+/** Every R2 module a file names — static import, re-export, `import()` or `require` — resolved through the `@/` alias and relative paths. */
+export const r2ImportsOf = (rel: string, code: string): string[] =>
+  importSpecifiers(rel, code).map((i) => resolveSpec(rel, i.spec)).filter((r) => (R2_MODULES as readonly string[]).includes(r));
+
+/**
+ * Ruling 198 · the player notices and the player letter whose BODIES stay what they are, as `[file, function]`. Their files
+ * legitimately import `exposure-copy.ts` since C5 step 4 (the admin twins beside them use it), so the pin reads each
+ * function's own declaration, never the module's imports.
+ */
+export const PLAYER_NOTIFIERS = [
+  ["src/lib/server/notification-service.ts", "notifyMarketCancelled"],
+  ["src/lib/server/notification-service.ts", "notifyObjectionDecided"],
+  ["src/lib/server/notification-service.ts", "notifyVerdictRecorded"],
+  ["src/lib/server/email.ts", "marketCancelledRefundHtml"],
+  ["src/lib/server/market-service.ts", "notifyVerdictRecordedForMarket"],
+] as const;
+/**
+ * The sha256 of each declaration's decommented text (trailing spaces and blank lines dropped), measured at `4c82c99b`
+ * before step 5's code. ⛔ A change here is a change to a player's notice: re-measure only with the change reviewed as one.
+ */
+export const PLAYER_NOTIFIER_HASHES: Readonly<Record<string, string>> = {
+  notifyMarketCancelled: "0feaad927016a8180cb40edf492b2c5710567d8b9fb716a2e93e9212449e1392",
+  notifyObjectionDecided: "72d9f9fe6b0a919bde881b47fc2f7863b54d55b1f9c38a2239fd23c2e219e6a2",
+  notifyVerdictRecorded: "42c58491831e558eb3e63b2c2bb1a17ad7637cf41a0bcb1c9b342f28a1c0b222",
+  marketCancelledRefundHtml: "9459244bfe07cd3e2166c2c9d56efb330290f00b133ac4a052e0d3159c8a1c9b",
+  notifyVerdictRecordedForMarket: "e9589970eac191406dcd3963c0742e795e3374c11d3f1936c8808b3ad63596a8",
+};
+/** One function declaration's own text (the fnBody of seam 6.h1b, cut by the syntax tree at its closing brace), or "". */
+export function functionDeclarationText(file: string, code: string, name: string): string {
+  let text = "";
+  walkTree(parse(file, code), (n) => { if (!text && ts.isFunctionDeclaration(n) && n.name?.text === name) text = n.getText(); });
+  return text;
+}
+const normalisedBody = (text: string) => lf(text).split("\n").map((l) => l.replace(/\s+$/, "")).filter((l) => l.length > 0).join("\n");
+/** The names `exposure-copy.ts` exports (functions, constants, types), read from its own syntax tree — so a new export is covered with no list to update. */
+export function exportedNames(file: string, code: string): string[] {
+  const out = new Set<string>();
+  walkTree(parse(file, code), (n) => {
+    const exported = (ts.canHaveModifiers(n) ? ts.getModifiers(n) ?? [] : []).some((m) => m.kind === ts.SyntaxKind.ExportKeyword);
+    if (!exported) return;
+    if ((ts.isFunctionDeclaration(n) || ts.isTypeAliasDeclaration(n) || ts.isInterfaceDeclaration(n)) && n.name) out.add(n.name.text);
+    if (ts.isVariableStatement(n)) for (const d of n.declarationList.declarations) for (const name of bindingNames(d.name)) out.add(name);
+  });
+  return [...out].sort();
+}
+/** Every string the declaration can print: string literals and the text parts of template literals. */
+function printedTexts(file: string, text: string): string {
+  const out: string[] = [];
+  walkTree(parse(file, text), (n) => {
+    if (ts.isStringLiteral(n) || ts.isNoSubstitutionTemplateLiteral(n) || ts.isTemplateHead(n) || ts.isTemplateMiddle(n) || ts.isTemplateTail(n)) out.push(n.text);
+  });
+  return out.join(" ");
+}
+/**
+ * One player notifier's problems: a missing declaration, a named R2 export, a house WORD in anything it can print (the
+ * vocabulary's words family over its strings and template text — its code keeps the standing option of C4 ruling 145,
+ * `houseOnly` and `houseBotId`, which the hash pins instead), and a body whose bytes moved.
+ */
+export function playerNotifierProblems(file: string, code: string, name: string, r2Exports: readonly string[], house: (s: string) => string[]): string[] {
+  const text = functionDeclarationText(file, code, name);
+  if (text.length < 200) return [`${file}: ${name} was not found (or is a stub)`];
+  const problems: string[] = [];
+  const named = r2Exports.filter((x) => wordsOf(text).has(x));
+  if (named.length > 0) problems.push(`${file}: ${name} names R2 exports ${named.join(", ")}`);
+  const words = house(printedTexts(file, text));
+  if (words.length > 0) problems.push(`${file}: ${name} carries house wording ${words.join(", ")}`);
+  const hash = createHash("sha256").update(normalisedBody(text)).digest("hex");
+  if (hash !== PLAYER_NOTIFIER_HASHES[name]) problems.push(`${file}: ${name}'s body is not the body measured at 4c82c99b (${hash.slice(0, 12)})`);
+  return problems;
+}
+
+/** Ruling 192 · the one server renderer of the R2 line, and the KYC card's server value. */
+export const R2_RENDERERS = ["src/components/admin/exposure-line.tsx", "src/app/admin/kyc/[id]/bets-placed.tsx"] as const;
+export const EXPOSURE_COPY_MODULE = "src/lib/house-bot/exposure-copy";
+/**
+ * Who may import the R2 copy or its renderers: the copy module only from server modules — the two notifier files of ruling
+ * 195, the two renderers, and server pages under `src/app/admin/`; each renderer only from server modules under
+ * `src/app/admin/`. Never a `"use client"` or `"use server"` module, and never outside those homes (ruling 192).
+ */
+export function r2ImporterProblems(files: Array<{ rel: string; code: string }>): { problems: string[]; copyImporters: string[]; rendererImporters: string[] } {
+  const problems: string[] = [];
+  const copyImporters: string[] = [];
+  const rendererImporters: string[] = [];
+  const COPY_HOMES = ["src/lib/server/notification-service.ts", "src/lib/server/email.ts", ...R2_RENDERERS];
+  for (const { rel, code } of files) {
+    const resolved = importSpecifiers(rel, code).filter((i) => !i.typeOnly).map((i) => resolveSpec(rel, i.spec));
+    const client = isClientModule(code), action = isServerActionModule(code);
+    if (resolved.includes(EXPOSURE_COPY_MODULE)) {
+      copyImporters.push(rel);
+      if (client || action) problems.push(`${rel} is a ${client ? "client" : "\"use server\""} module and imports the R2 copy`);
+      else if (!COPY_HOMES.includes(rel) && !rel.startsWith("src/app/admin/")) problems.push(`${rel} imports the R2 copy outside the officer's server`);
+    }
+    for (const renderer of R2_RENDERERS) {
+      if (!resolved.includes(renderer.replace(/\.tsx$/, ""))) continue;
+      rendererImporters.push(rel);
+      if (client || action || !rel.startsWith("src/app/admin/")) problems.push(`${rel} imports ${renderer} and is not a server module under src/app/admin/`);
+    }
+  }
+  return { problems, copyImporters: copyImporters.sort(), rendererImporters: [...new Set(rendererImporters)].sort() };
+}
+
+/** Ruling 192 · each client decision control and the neutral slot it takes; ruling 196 · the free-text setters a slot must never reach. */
+export const SLOT_CONTROLS: ReadonlyArray<readonly [file: string, props: readonly string[]]> = [
+  ["src/app/admin/markets/emergency-void-control.tsx", ["exposureSlot"]],
+  ["src/app/admin/objections/objection-decision.tsx", ["exposureSlot"]],
+  ["src/app/admin/updown/rounds/void-round-control.tsx", ["exposureSlot"]],
+  ["src/app/admin/resolver-queue/bulk-resolve-bar.tsx", ["exposureCountTemplate"]],
+];
+/**
+ * Ruling 196 in a client control: a slot is rendered as it is (a JSX child, or handed to its own dialog under the same
+ * name) and never reaches a field — no `useState(…)` initial value, no setter call, no `value` / `defaultValue` /
+ * `placeholder`, no `FormData` write, no template.
+ */
+export function slotFieldProblems(file: string, code: string, props: readonly string[]): string[] {
+  const sf = parse(file, code);
+  const problems: string[] = [];
+  const say = (what: string, node: ts.Node) => problems.push(`${file}:${lineOf(sf, node)}: ${what} ${snippet(sf, node)}`);
+  walkTree(sf, (n) => {
+    if (!ts.isIdentifier(n) || !props.includes(n.text) || inTypePosition(n)) return;
+    const p = n.parent;
+    if (ts.isBindingElement(p) || (ts.isPropertySignature(p) && p.name === n)) return;
+    if (ts.isJsxExpression(p) && (ts.isJsxElement(p.parent) || ts.isJsxFragment(p.parent))) return;
+    if (ts.isJsxExpression(p) && ts.isJsxAttribute(p.parent) && p.parent.name.getText(sf) === n.text) return;
+    if (ts.isJsxAttribute(p)) return;
+    if (ts.isCallExpression(p) && p.arguments.includes(n) && ts.isIdentifier(p.expression) && ["exposureCountLines"].includes(p.expression.text)) return;
+    let fieldish = false;
+    for (let q: ts.Node | undefined = p; q && !ts.isSourceFile(q); q = q.parent) {
+      if (ts.isCallExpression(q) && /^(useState|set[A-Z]\w*)$/.test(q.expression.getText(sf))) { fieldish = true; break; }
+      if (ts.isCallExpression(q) && ts.isPropertyAccessExpression(q.expression) && ["set", "append"].includes(q.expression.name.text)) { fieldish = true; break; }
+      if (ts.isJsxAttribute(q) && ["value", "defaultValue", "placeholder"].includes(q.name.getText(sf))) { fieldish = true; break; }
+      if (ts.isTemplateExpression(q)) { fieldish = true; break; }
+      if (ts.isFunctionLike(q) || ts.isJsxElement(q) || ts.isJsxSelfClosingElement(q)) break;
+    }
+    say(fieldish ? "a slot reaches a field:" : "a slot is used as anything but a rendered child:", p);
+  });
+  return problems;
+}
+
 if (STORE === "memory") {
   section("§0 · C5 step 4 · ruling 191 (TGT-38: no refusal, page condition or client control reads a requester), ruling 197 (the KYC house figures' readers) and ruling 187 (the closed list of R9 payload sites)");
   // One read of src/ for every §0 step-4 pin; each group below runs in its own guard, so a plant whose anchor moved fails its
@@ -1526,6 +1673,92 @@ if (STORE === "memory") {
         && auditPlants.outsidePayload.problems.length === 1 && auditPlants.spread.problems.length >= 1 && !moved(auditPlants.comment)
         && auditPlants.wholePayload.problems.some((p) => p.includes("a payload that is not an object literal names a requester token")),
       j(Object.fromEntries(Object.entries(auditPlants).map(([k, v]) => [k, { extraSites: v.sites.filter((s) => !(R9_AUDIT_SITES as readonly string[]).includes(s)), problems: v.problems }]))));
+  });
+
+  section("§0 · C5 step 5 · ruling 198 (no player surface imports or gains R2 words), ruling 192 (one server renderer, neutral client slots, the R2 words measured into the vocabulary) and ruling 196 (a slot never reaches a free-text field)");
+  const files5 = srcFiles().map((rel) => ({ rel, code: decomment(read(rel)) }));
+  const code5 = (rel: string) => files5.find((f) => f.rel === rel)?.code ?? "";
+  const copyExports = exportedNames(`${EXPOSURE_COPY_MODULE}.ts`, code5(`${EXPOSURE_COPY_MODULE}.ts`));
+  const r2Exports = [...copyExports, "houseStakeByMarket", "houseStakeForAudit", "toAuditShape", "foldHouseStakes", "requesterOf", "foldRequestedBy", "houseRefundedTzs", "houseRefundedCount"];
+  const words = (s: string) => houseHitsByFamily(s).filter((h) => h.family === "words").map((h) => h.word);
+  await guard("0.step5.198", async () => {
+    const imports = PLAYER_SURFACE_FILES.map((rel) => ({ rel, read: code5(rel).length, all: importSpecifiers(rel, code5(rel)).length, r2: r2ImportsOf(rel, code5(rel)) }));
+    ok("0.198.1 · ⛔ neither player surface (the resolution panel, the public market page) imports exposure-copy.ts, exposure.ts or stake-snapshot.ts — statically, by re-export, by import() or by require — and both are read with their imports",
+      imports.every((i) => i.read > 2_000 && i.all >= 5 && i.r2.length === 0), j(imports));
+    const panel = code5(PLAYER_SURFACE_FILES[0]), page = code5(PLAYER_SURFACE_FILES[1]);
+    const planted = {
+      alias: r2ImportsOf(PLAYER_SURFACE_FILES[0], `import { exposureParts } from "@/lib/house-bot/exposure-copy";\n${panel}`),
+      relative: r2ImportsOf(PLAYER_SURFACE_FILES[1], `import { houseStakeByMarket } from "../../../lib/server/house-bot/exposure";\n${page}`),
+      dynamic: r2ImportsOf(PLAYER_SURFACE_FILES[1], `${page}\nexport async function x() { return (await import("@/lib/house-bot/stake-snapshot")).requesterOf; }`),
+      reexport: r2ImportsOf(PLAYER_SURFACE_FILES[0], `${panel}\nexport { EXPOSURE_QUALIFIER } from "@/lib/house-bot/exposure-copy";`),
+      benign: r2ImportsOf(PLAYER_SURFACE_FILES[0], `import { outcomeWord } from "@/lib/side-label";\nimport type { ExposureParts } from "@/lib/house-bot/exposure-copy-notes";\n${panel}`),
+    };
+    ok("0.198.c1 · CONTROL · a planted import of each R2 module into a player surface is reported — through the @/ alias, a relative path, import() and a re-export — and the side vocabulary or a look-alike path is not",
+      planted.alias.length === 1 && planted.relative.length === 1 && planted.dynamic.length === 1 && planted.reexport.length === 1 && planted.benign.length === 0, j(planted));
+
+    const notifierProblems = PLAYER_NOTIFIERS.flatMap(([rel, name]) => playerNotifierProblems(rel, lf(code5(rel)), name, r2Exports, words));
+    const moduleImports = ["src/lib/server/notification-service.ts", "src/lib/server/email.ts"].map((rel) => importSpecifiers(rel, code5(rel)).some((i) => resolveSpec(rel, i.spec) === EXPOSURE_COPY_MODULE));
+    const adminTwin = functionDeclarationText("src/lib/server/notification-service.ts", lf(code5("src/lib/server/notification-service.ts")), "notifyAdminMarketCancelled");
+    ok("0.198.2 · ⛔ the player's cancellation notice, the objector's decision notice, both verdict notices and the player's refund letter name no R2 export, carry no house word and keep the bodies measured before step 5 — while their files DO import exposure-copy.ts (so a module-level check alone could not decide) and the admin twin beside them DOES call it",
+      notifierProblems.length === 0 && moduleImports.every(Boolean) && copyExports.includes("voidNoticeHouseClause") && copyExports.length >= 15 && wordsOf(adminTwin).has("voidNoticeHouseClause"),
+      j({ notifierProblems, moduleImports, copyExports }));
+    const notif = lf(code5("src/lib/server/notification-service.ts")), email = lf(code5("src/lib/server/email.ts"));
+    const CANCEL_TITLE = "    titleEn: `Market cancelled · ${formatTzs(opts.stake)} refunded`,";
+    const REFUND_ROW = "      { label: \"Refunded to wallet\", value: formatTzs(amount), tone: \"good\" },";
+    const plants = {
+      clause: playerNotifierProblems("src/lib/server/notification-service.ts", plant(notif, CANCEL_TITLE, `    titleEn: \`Market cancelled · \${formatTzs(opts.stake)} refunded\${voidNoticeHouseClause(opts, formatTzs)?.en ?? ""}\`,`), "notifyMarketCancelled", r2Exports, words),
+      row: playerNotifierProblems("src/lib/server/email.ts", plant(email, REFUND_ROW, `${REFUND_ROW}\n      { label: "Of which house stakes", value: formatTzs(amount) },`), "marketCancelledRefundHtml", r2Exports, words),
+      reworded: playerNotifierProblems("src/lib/server/notification-service.ts", plant(notif, CANCEL_TITLE, "    titleEn: `Market cancelled · ${formatTzs(opts.stake)} returned`,"), "notifyMarketCancelled", r2Exports, words),
+      stub: playerNotifierProblems("src/lib/server/notification-service.ts", "export function notifyMarketCancelled() {}", "notifyMarketCancelled", r2Exports, words),
+      twinUntouched: playerNotifierProblems("src/lib/server/notification-service.ts", plant(notif, "  const house = voidNoticeHouseClause(opts, formatTzs);", "  const house = voidNoticeHouseClause(opts, formatTzs) ?? null;"), "notifyMarketCancelled", r2Exports, words),
+    };
+    ok("0.198.c2 · CONTROL · a house clause planted in the player's cancellation notice (an R2 call), a house row planted in the refund letter (a house word), a one-word rewording (the bytes) and a stubbed notifier are each reported; an edit to the ADMIN twin beside them is not",
+      plants.clause.some((p) => p.includes("names R2 exports voidNoticeHouseClause")) && plants.row.some((p) => p.includes("carries house wording")) && plants.reworded.length === 1
+        && plants.reworded[0].includes("not the body measured") && plants.stub.length === 1 && plants.twinUntouched.length === 0, j(plants));
+  });
+  await guard("0.step5.192", async () => {
+    const r = r2ImporterProblems(files5);
+    const renderer = code5(R2_RENDERERS[0]);
+    ok("0.192.1 · ⛔ the R2 copy is imported only by the officer's server — the two notifier files, the two server renderers and server pages under src/app/admin/ — and each renderer only by server pages there; the renderer itself is no client module",
+      r.problems.length === 0 && !isClientModule(renderer) && renderer.includes("exposureParts(")
+        && ["src/lib/server/notification-service.ts", "src/lib/server/email.ts", ...R2_RENDERERS, "src/app/admin/resolver-queue/page.tsx", "src/app/admin/markets/[id]/page.tsx"].every((f) => r.copyImporters.includes(f))
+        && j(r.rendererImporters) === j(["src/app/admin/kyc/[id]/page.tsx", "src/app/admin/markets/[id]/page.tsx", "src/app/admin/markets/page.tsx", "src/app/admin/objections/page.tsx", "src/app/admin/resolver-queue/page.tsx", "src/app/admin/resolver/[id]/page.tsx", "src/app/admin/updown/rounds/page.tsx"]),
+      j(r));
+    const plantedFiles = [...files5,
+      { rel: "src/app/admin/markets/planted-client.tsx", code: "\"use client\";\nimport { ExposureLine } from \"@/components/admin/exposure-line\";\nexport const P = () => <ExposureLine surface=\"voidConfirm\" read={null} />;" },
+      { rel: "src/components/markets/planted-player.tsx", code: "import { EXPOSURE_QUALIFIER } from \"@/lib/house-bot/exposure-copy\";\nexport const Q = EXPOSURE_QUALIFIER;" },
+      { rel: "src/app/admin/objections/planted-action.ts", code: "\"use server\";\nimport { exposureParts } from \"../../../lib/house-bot/exposure-copy\";\nexport async function a() { return exposureParts(null, {} as never); }" },
+      { rel: "src/app/admin/kyc/planted-type.tsx", code: "import type { ExposureParts } from \"@/lib/house-bot/exposure-copy\";\nexport type T = ExposureParts;" },
+    ];
+    const pr = r2ImporterProblems(plantedFiles).problems.filter((p) => p.includes("planted"));
+    ok("0.192.c1 · CONTROL · a client component importing the renderer, a player component importing the copy and a \"use server\" action importing it by a relative path are each reported; a type-only import is not",
+      pr.length === 3 && pr.some((p) => p.includes("planted-client")) && pr.some((p) => p.includes("planted-player")) && pr.some((p) => p.includes("planted-action")), j(pr));
+
+    const slots = SLOT_CONTROLS.map(([rel, props]) => ({ rel, declared: props.every((p) => wordsOf(code5(rel)).has(p)), problems: slotFieldProblems(rel, code5(rel), props) }));
+    ok("0.196.1 · ⛔ each client decision control takes its neutral slot and renders it as a child only: never a reason or note field's initial value, a setter's argument, a value / defaultValue / placeholder, a FormData write or a template",
+      slots.every((s) => s.declared && s.problems.length === 0), j(slots));
+    const evc = code5(SLOT_CONTROLS[0][0]), od = code5(SLOT_CONTROLS[1][0]);
+    const fieldPlants = {
+      state: slotFieldProblems(SLOT_CONTROLS[0][0], plant(evc, "const [reason, setReason] = useState(\"\");", "const [reason, setReason] = useState(String(exposureSlot ?? \"\"));"), ["exposureSlot"]),
+      placeholder: slotFieldProblems(SLOT_CONTROLS[1][0], plant(od, "                placeholder=", "                defaultValue={String(exposureSlot)}\n                placeholder="), ["exposureSlot"]),
+      setter: slotFieldProblems(SLOT_CONTROLS[1][0], plant(od, "  const submit = () => {", "  const prefill = () => setNote(`${exposureSlot}`);\n  const submit = () => {"), ["exposureSlot"]),
+      formData: slotFieldProblems(SLOT_CONTROLS[0][0], plant(evc, "      fd.set(\"reason\", reason.trim());", "      fd.set(\"reason\", `${reason.trim()} ${exposureSlot}`);"), ["exposureSlot"]),
+    };
+    ok("0.196.c1 · CONTROL · a slot planted as the void reason's initial state, as the objection note's defaultValue, into a note setter and into the reason's FormData write are each reported",
+      Object.values(fieldPlants).every((p) => p.some((x) => x.includes("a slot reaches a field"))), j(fieldPlants));
+  });
+  await guard("0.step5.175", async () => {
+    const R2_WORD_SAMPLES = ["house stake", "House stakes", "dau la nyumba", "平台投注", "staff-chosen", "staff chosen"];
+    const families = R2_WORD_SAMPLES.map((s) => ({ s, families: [...new Set(houseHitsByFamily(s).map((h) => h.family))] }));
+    const stillProposed = PROPOSED_WORD_SAMPLES.map((s) => ({ s, hits: houseHits(s) }));
+    ok("0.175.r2 · ruling 192 · the R2 words measured on origin/main are in the vocabulary's WORDS family and sampled by every consumer's planted control; the words still proposed (staff edge, enter now, scorecard, STAFF_EDGE) are not in it yet",
+      families.every((f) => j(f.families) === j(["words"])) && R2_WORD_SAMPLES.every((s) => (HOUSE_WORD_SAMPLES as readonly string[]).includes(s))
+        && stillProposed.every((p) => p.hits.length === 0) && PROPOSED_WORD_SAMPLES.length === 4,
+      j({ families, stillProposed }));
+    const r2Lines = ["House stake: NO TZS 9,000 · of which chosen by staff TZS 9,000", "ikiwemo dau la nyumba TZS 8,000", "其中平台投注 TZS 8,000", "staffChosen"];
+    ok("0.175.r2c · CONTROL · the R2 sentences an officer reads are now vocabulary hits (so a client module that shipped one goes red in the walker and the bundle scan); the platform's House edge and /admin/house still are not",
+      r2Lines.slice(0, 3).every((s) => words(s).length >= 1) && words(r2Lines[3]).length === 1 && words("House edge on /admin/house").length === 0 && houseHits("Money held on this market until it resolves").length === 0,
+      j(r2Lines.map((s) => [s, houseHits(s)])));
   });
 }
 
@@ -3100,7 +3333,9 @@ await guard("3.R9", async () => {
       DECISIONS.every((a) => expRows.some((e) => e.action === a)) && !expRows.some((e) => has(e, "houseStake") || has(e, "houseStakes")) && houseHits(j(exp)).length === 0,
       j({ hits: houseHits(j(exp)).slice(0, 6), actions: [...new Set(expRows.map((e) => e.action))] }));
 
-    Object.assign(R34, { ready: true, w, A, B, C, CO, MOD, tag, mB, mB2, m0v, nV, pB2, pT, rB, rB2, fill, REASON_B, REASON_TWIN, vB, vB2, v0, nVoid, sectionStart });
+    Object.assign(R34, { ready: true, w, A, B, C, CO, MOD, tag, mB, mB2, m0v, nV, pB2, pT, rB, rB2, fill, REASON_B, REASON_TWIN, vB, vB2, v0, nVoid, sectionStart,
+      // C5 step 5 (§4.S5) renders the R2 line over these, and builds its objection pairs with the same builders.
+      poll, bet, manualA, OBJ, EXP, mAB, mA, m0, rdH, hv, hvT });
   } finally {
     book.stakeRows = realStakeRows;
     G[BULK_KEY.abortOn] = null;
@@ -3310,7 +3545,204 @@ await guard("4.S4", async () => {
   ]);
   ok("4.197.4 · the pure count: CONFIRMED BET_PLACED only, magnitudes (a negative stake counts 3,000), a PENDING or a refund row never; an unmarked stake in the totals only",
     pure.betCount === 3 && pure.stakedTzs === 4_500 && pure.houseBetCount === 2 && pure.houseStakedTzs === 3_500 && pure.depositedTzs === 50_000, j(pure));
+  R34.kyc = { hFacts, tFacts };
   void C; void B;
+});
+
+/* ═══ §4 · C5 step 5 · rulings 192–194, 196, 197 · the R2 line, its surfaces, the held title, the bulk count and the KYC line ═══ */
+// The parts and the per-surface rules are pure (memory child only); the SERVER OUTPUT of each surface is rendered here from the
+// real reader on both stores, over §3's fixtures: mAB (A's Enter now YES 9,000 beside a reaction on B's target YES 6,000 — the
+// seam refuses a second bot and opposite sides on one market, so "A and B on one market" is same-side), mB (B's YES 6,000,
+// emergency-voided: settled only), m0 (no house stake) and rdH (an Up & Down round with a house NO 2,000).
+section("§4 · C5 step 5 · rulings 192–197 · the R2 parts, viewerClause, the four surfaces' server output for A and C, the held title's three states, the bulk count, the KYC line and the objector's notice");
+await guard("4.S5", async () => {
+  if (!R34.ready) { ok("4.S5.0 · §3's R9 fixture was built", false, "§3.R9 threw before its fixture was ready"); return; }
+  const { w, A, B, C, tag, poll, bet, manualA, OBJ, EXP, mAB, mB, m0, rdH, hv, hvT } = R34;
+  const ReactNs: Any = await import("react");
+  (globalThis as Any).React = ReactNs.default ?? ReactNs;
+  const { renderToStaticMarkup }: Any = await import("react-dom/server");
+  const XC: Any = await import("../../src/lib/house-bot/exposure-copy.ts");
+  const { ExposureLine }: Any = await import("../../src/components/admin/exposure-line.tsx");
+  const { BetsPlacedValue }: Any = await import("../../src/app/admin/kyc/[id]/bets-placed.tsx");
+  const { exposureCountLines }: Any = await import("../../src/app/admin/resolver-queue/bulk-resolve-types.ts");
+  const U: Any = await import("../../src/lib/utils.ts");
+  const N: Any = await import("../../src/lib/server/notification-service.ts");
+  const money = U.formatTzs;
+  const R = (globalThis as Any).React;
+  const html = (props: Any) => renderToStaticMarkup(R.createElement(ExposureLine, props));
+  const DOT = "<span class=\"text-border\"> · </span>";
+  const clause = (text: string) => `${DOT}<span class="whitespace-nowrap">${text}</span>`;
+
+  if (STORE === "memory") {
+    // ── ruling 192 · the parts (pure) ──
+    const view = (o: Any) => ({ yes: 0, no: 0, openTzs: 0, settledTzs: 0, ...o, staffChosen: { yes: 0, no: 0, byRequester: {}, ...(o.staffChosen ?? {}) } });
+    const opt = (surface: string, viewerId: string | null = null, productLine = "MARKET") => ({ surface, viewerId, productLine, money });
+    const yesOnly = view({ yes: 9_000, openTzs: 9_000, staffChosen: { yes: 9_000, byRequester: { [A]: 9_000 } } });
+    const noOnly = view({ no: 9_000, openTzs: 9_000, staffChosen: { no: 9_000, byRequester: { [A]: 9_000 } } });
+    const both = view({ yes: 6_000, no: 9_000, openTzs: 15_000, staffChosen: { yes: 6_000, no: 9_000, byRequester: { [A]: 9_000, [B]: 6_000 } } });
+    const settled = view({ yes: 6_000, settledTzs: 6_000, staffChosen: { yes: 6_000, byRequester: { [B]: 6_000 } } });
+    const automatic = view({ no: 2_000, openTzs: 2_000 });
+    const g = (side: string, word: string, tzs: number) => ({ side, sideWord: word, amountText: money(tzs) });
+    const P = (label: string, groups: Any[], staffClause: string | null, viewerClause: string | null) => ({ label, groups, staffClause, viewerClause, unread: false });
+    ok("4.192.1 · ⭐ the parts: YES only, NO only and both sides (YES first, non-zero sides only), each with the staff clause (staff-chosen total) and — on the ceremony — the viewer's own clause",
+      j(XC.exposureParts(yesOnly, opt("ceremony", A))) === j(P("House stake:", [g("YES", "YES", 9_000)], `of which chosen by staff ${money(9_000)}`, `of which chosen by you: ${money(9_000)}`))
+        && j(XC.exposureParts(noOnly, opt("ceremony", C))) === j(P("House stake:", [g("NO", "NO", 9_000)], `of which chosen by staff ${money(9_000)}`, null))
+        && j(XC.exposureParts(both, opt("resolverQueue", B))) === j(P("House stake:", [g("YES", "YES", 6_000), g("NO", "NO", 9_000)], `of which chosen by staff ${money(15_000)}`, `of which chosen by you: ${money(6_000)}`)),
+      j([XC.exposureParts(yesOnly, opt("ceremony", A)), XC.exposureParts(noOnly, opt("ceremony", C)), XC.exposureParts(both, opt("resolverQueue", B))]));
+    ok("4.192.2 · settled only (nothing open) reads \"House stake settled:\"; an automatic stake has no staff clause; a market with no house stake, and no read at all, give nothing",
+      j(XC.exposureParts(settled, opt("marketPage", B))) === j(P("House stake settled:", [g("YES", "YES", 6_000)], `of which chosen by staff ${money(6_000)}`, null))
+        && j(XC.exposureParts(automatic, opt("resolverQueue", A))) === j(P("House stake:", [g("NO", "NO", 2_000)], null, null))
+        && XC.exposureParts(view({}), opt("ceremony", A)) === null && XC.exposureParts(null, opt("ceremony", A)) === null && XC.exposureParts(undefined, opt("ceremony", A)) === null,
+      j([XC.exposureParts(settled, opt("marketPage", B)), XC.exposureParts(automatic, opt("resolverQueue", A))]));
+    ok("4.192.3 · an Up & Down market uses the Up / Down words; the rounds lever and its dialog carry the house line only (no staff and no viewer clause, even with a staff-chosen figure planted)",
+      j(XC.exposureParts(both, opt("roundsLever", A, "UPDOWN"))) === j(P("House stake:", [g("YES", "Up", 6_000), g("NO", "Down", 9_000)], null, null))
+        && j(XC.exposureParts(both, opt("roundVoidDialog", A, "UPDOWN"))) === j(XC.exposureParts(both, opt("roundsLever", A, "UPDOWN"))),
+      j(XC.exposureParts(both, opt("roundsLever", A, "UPDOWN"))));
+    ok("4.190.u · a failed read is the unread line on every surface — never a figure, never a zero",
+      ["resolverQueue", "ceremony", "voidConfirm", "objectionsRow", "objectionDialog", "marketPage", "roundsLever", "roundVoidDialog"].every((s) =>
+        j(XC.exposureParts("unread", opt(s, A))) === j({ label: "House stake: — couldn't read", groups: [], staffClause: null, viewerClause: null, unread: true })));
+    // ── ruling 193 · viewerClause ──
+    const vc = (v: Any, who: Any) => XC.viewerClause(v, who, money);
+    ok("4.193.1 · ⭐ viewerClause: A sees A's own 9,000 and B sees B's own 6,000 on the market carrying both (never the 15,000 total); C and a zero-house market see nothing; no viewer, an empty id and prototype keys see nothing",
+      vc(both, A) === `of which chosen by you: ${money(9_000)}` && vc(both, B) === `of which chosen by you: ${money(6_000)}` && vc(both, C) === null && vc(view({}), A) === null
+        && vc(both, null) === null && vc(both, "") === null && vc(both, "__proto__") === null && vc(both, "constructor") === null && vc(both, "toString") === null,
+      j([vc(both, A), vc(both, B), vc(both, C)]));
+    const SURF = XC.EXPOSURE_SURFACES;
+    ok("4.193.2 · the viewer clause is on exactly the queue card, the ceremony, the void confirm and the objections row with its dialog; the market page, the rounds lever and its dialog never carry it; the X9 qualifier sits on the ceremony, the void confirm and the objection dialog only",
+      j(Object.keys(SURF).filter((k) => SURF[k].viewer).sort()) === j(["ceremony", "objectionDialog", "objectionsRow", "resolverQueue", "voidConfirm"])
+        && j(Object.keys(SURF).filter((k) => SURF[k].qualifier).sort()) === j(["ceremony", "objectionDialog", "voidConfirm"])
+        && j(Object.keys(SURF).filter((k) => !SURF[k].staff).sort()) === j(["roundVoidDialog", "roundsLever"]) && Object.keys(SURF).length === 8, j(SURF));
+    // ── ruling 194 · the held title, the bulk state and count (pure) ──
+    const today = "Player money held on this market until it resolves";
+    ok("4.194.1 · ⭐ the held chip's title in its three states: the house's OPEN stake named; \"Player\" dropped when the read failed; today's exact title for a market with no house stake, no read, or only a settled house stake",
+      XC.heldChipTitle(both, money) === `Money held on this market until it resolves, including house ${money(15_000)}` && XC.heldChipTitle("unread", money) === "Money held on this market until it resolves"
+        && XC.heldChipTitle(view({}), money) === today && XC.heldChipTitle(null, money) === today && XC.heldChipTitle(settled, money) === today && XC.HELD_CHIP_TITLE_TODAY === today);
+    const rows = ["held", "none", "held", "unread", "none", "held", "none", "none"].map((exposureState) => ({ exposureState }));
+    ok("4.194.2 · the bulk bar: each row's neutral state (held / none / unread) and the count from the one template — 3 of 8 selected held and 1 unread give two sentences; none held gives nothing; no template gives nothing",
+      XC.exposureStateOf(both) === "held" && XC.exposureStateOf(view({})) === "none" && XC.exposureStateOf(null) === "none" && XC.exposureStateOf("unread") === "unread"
+        && j(exposureCountLines(rows, XC.BULK_EXPOSURE_COUNT_TEMPLATE)) === j(["House stakes on 3 of these markets", "House stake couldn't be read on 1 of these markets"])
+        && j(exposureCountLines([{ exposureState: "none" }, {}], XC.BULK_EXPOSURE_COUNT_TEMPLATE)) === j([]) && j(exposureCountLines(rows, undefined)) === j([])
+        && j(exposureCountLines(rows.filter((r) => r.exposureState !== "unread"), XC.BULK_EXPOSURE_COUNT_TEMPLATE)) === j(["House stakes on 3 of these markets"]),
+      j(exposureCountLines(rows, XC.BULK_EXPOSURE_COUNT_TEMPLATE)));
+    ok("4.197.5 · the KYC line (pure): \"of which house stakes: N\", \" · TZS X\" only when an amount is passed, nothing for a count of 0",
+      XC.kycHouseBetsLine(2, 4_000, money) === `of which house stakes: 2 · ${money(4_000)}` && XC.kycHouseBetsLine(2, null, money) === "of which house stakes: 2" && XC.kycHouseBetsLine(0, 4_000, money) === null);
+  }
+
+  // ── the surfaces' server output from the REAL reader (both stores) ──
+  const views = await EXP.houseStakeByMarket([mAB.id, mB.id, m0.id, rdH.marketId]);
+  const read = (id: string) => XC.exposureReadOf(views, id);
+  const byRequesterAB = views.get(mAB.id)?.staffChosen?.byRequester;
+  ok("4.193.3 · the fixture reads as ruled: mAB open YES 15,000 with A 9,000 and B 6,000 staff-chosen; mB settled YES 6,000; m0 nothing; the round a house NO 2,000",
+    views.get(mAB.id)?.yes === 15_000 && views.get(mAB.id)?.openTzs === 15_000 && j(byRequesterAB) === j(Object.fromEntries([[A, 9_000], [B, 6_000]].sort((x, y) => (String(x[0]) < String(y[0]) ? -1 : 1))))
+      && views.get(mB.id)?.yes === 6_000 && views.get(mB.id)?.openTzs === 0 && views.get(m0.id)?.yes === 0 && views.get(m0.id)?.no === 0 && views.get(rdH.marketId)?.no === 2_000,
+    j(Object.fromEntries([...views.entries()])));
+  const VIEWER_SURFACES = ["resolverQueue", "ceremony", "voidConfirm", "objectionsRow", "objectionDialog"];
+  const QUALIFIED = new Set(["ceremony", "voidConfirm", "objectionDialog"]);
+  const expectedLine = (surface: string, viewerText: string | null) =>
+    `<p data-exposure="${surface}" class="text-body-sm text-text-muted">House stake: <span class="whitespace-nowrap"><span class="text-yes-300">YES</span> ${money(15_000)}</span>`
+    + clause(`of which chosen by staff ${money(15_000)}`) + (viewerText ? clause(viewerText) : "") + (QUALIFIED.has(surface) ? clause("staff only — never sent to players") : "") + "</p>";
+  const surfaceOut = VIEWER_SURFACES.map((surface) => ({
+    surface,
+    a: html({ surface, read: read(mAB.id), viewerId: A }), b: html({ surface, read: read(mAB.id), viewerId: B }), c: html({ surface, read: read(mAB.id), viewerId: C }),
+  }));
+  ok("4.193.4 · ⭐ each of the four surfaces' server output on the market carrying A's and B's stakes: A reads \"of which chosen by you: TZS 9,000\" (A's own, never the 15,000 total), B reads B's 6,000, C reads the same line with no viewer clause — word for word, with the X9 qualifier on the dialogs and the ceremony",
+    surfaceOut.every((s) => s.a === expectedLine(s.surface, `of which chosen by you: ${money(9_000)}`) && s.b === expectedLine(s.surface, `of which chosen by you: ${money(6_000)}`) && s.c === expectedLine(s.surface, null)),
+    j(surfaceOut.slice(0, 2)));
+  const noViewer = ["marketPage", "roundsLever", "roundVoidDialog"].map((surface) => ({ surface, a: html({ surface, read: read(mAB.id), viewerId: A }) }));
+  ok("4.193.5 · the admin market page carries the staff clause and no viewer clause even for A; the rounds lever and its dialog carry neither",
+    noViewer[0].a === `<p data-exposure="marketPage" class="text-body-sm text-text-muted">House stake: <span class="whitespace-nowrap"><span class="text-yes-300">YES</span> ${money(15_000)}</span>${clause(`of which chosen by staff ${money(15_000)}`)}</p>`
+      && noViewer.slice(1).every((s) => !s.a.includes("chosen by")), j(noViewer));
+  const zero = [...VIEWER_SURFACES, "marketPage", "roundsLever", "roundVoidDialog"].map((surface) => html({ surface, read: read(m0.id), viewerId: A }));
+  ok("4.193.6 · ⭐ a market with no house stake renders NOTHING on every surface for every viewer (the page is today's page)", zero.every((h) => h === ""), j(zero));
+  const settledHtml = html({ surface: "marketPage", read: read(mB.id), viewerId: B });
+  const roundHtml = html({ surface: "roundsLever", read: read(rdH.marketId), productLine: "UPDOWN" });
+  ok("4.192.4 · the voided market reads \"House stake settled: YES TZS 6,000\" with its staff clause; the Up & Down round's line uses the Down word in the NO colour",
+    settledHtml.includes(`House stake settled: <span class="whitespace-nowrap"><span class="text-yes-300">YES</span> ${money(6_000)}</span>`) && settledHtml.includes(`of which chosen by staff ${money(6_000)}`)
+      && roundHtml.includes(`<span class="text-no-300">Down</span> ${money(2_000)}`) && !roundHtml.includes("chosen by"), j({ settledHtml, roundHtml }));
+
+  // ── the held title and the unread line, through a page's own try / catch ──
+  const pageRead = async (ids: string[]) => { let s: Any = null; try { s = await EXP.houseStakeByMarket(ids); } catch { s = null; } return s; };
+  let failed: Any = "not run";
+  if (typeof EXP.failExposureReadForCases === "function") {
+    EXP.failExposureReadForCases(true);
+    try { failed = await pageRead([mAB.id, m0.id]); } finally { EXP.failExposureReadForCases(false); }
+  }
+  const afterFlag = await pageRead([mAB.id, m0.id]);
+  const unreadCeremony = html({ surface: "ceremony", read: XC.exposureReadOf(failed, mAB.id), viewerId: A });
+  const unreadQueue = html({ surface: "resolverQueue", read: XC.exposureReadOf(failed, m0.id), viewerId: A });
+  ok("4.194.3 · ⭐ the held chip's title from real reads: the house-held market names its open TZS 15,000; a failed read (the page's catch) drops \"Player\" on every market, the house-free one included; a successful read with no house stake, or only a settled one, is today's title",
+    failed === null && XC.heldChipTitle(read(mAB.id), money) === `Money held on this market until it resolves, including house ${money(15_000)}`
+      && XC.heldChipTitle(XC.exposureReadOf(failed, m0.id), money) === "Money held on this market until it resolves"
+      && XC.heldChipTitle(read(m0.id), money) === "Player money held on this market until it resolves" && XC.heldChipTitle(read(mB.id), money) === "Player money held on this market until it resolves",
+    j({ failed, titles: [read(mAB.id), read(m0.id)].map((r) => XC.heldChipTitle(r, money)) }));
+  ok("4.190.d · ⭐ a failed read renders the unread line on every card — the house-free market included — with the qualifier where the surface carries it, and the bulk state is unread; CONTROL: with the flag off the same page read decides again",
+    unreadCeremony === `<p data-exposure="ceremony" class="text-body-sm text-text-muted">House stake: — couldn&#x27;t read${clause("staff only — never sent to players")}</p>`
+      && unreadQueue === "<p data-exposure=\"resolverQueue\" class=\"text-body-sm text-text-muted\">House stake: — couldn&#x27;t read</p>"
+      && XC.exposureStateOf(XC.exposureReadOf(failed, m0.id)) === "unread" && afterFlag instanceof Map && XC.exposureStateOf(XC.exposureReadOf(afterFlag, mAB.id)) === "held"
+      && XC.exposureStateOf(XC.exposureReadOf(afterFlag, m0.id)) === "none",
+    j({ unreadCeremony, unreadQueue }));
+
+  // ── ruling 197 · the KYC card's value, rendered ──
+  const kyc = R34.kyc;
+  if (!kyc) { ok("4.197.6 · §4's KYC fixture was built", false); }
+  else {
+    const value = (f: Any, canSeeMoney: boolean) => renderToStaticMarkup(R.createElement(BetsPlacedValue, { betCount: f.betCount, stakedTzs: f.stakedTzs, houseBetCount: f.houseBetCount, houseStakedTzs: f.houseStakedTzs, canSeeMoney }));
+    // Today's value, captured from the page's JSX at 4c82c99b before step 5 moved it into its own server component.
+    const todayValue = (n: number, tzs: number, canSeeMoney: boolean) => canSeeMoney
+      ? `<span class="font-mono tabular-nums">${n} ${n === 1 ? "bet" : "bets"} · <span class="whitespace-nowrap">${money(tzs)}</span> staked</span>`
+      : `<span class="font-mono tabular-nums">${n} ${n === 1 ? "bet" : "bets"}</span>`;
+    const line = (text: string) => `<span data-exposure="kycCard" class="block text-body-sm text-text-muted">${text} · staff only — never sent to players</span>`;
+    const holderMoney = value(kyc.hFacts, true), holderNoMoney = value(kyc.hFacts, false);
+    ok("4.197.6 · ⭐ the holder's \"Bets placed\" shows today's totals and then one block line \"of which house stakes: 2 · TZS 4,000\" with the X9 qualifier",
+      holderMoney === todayValue(3, 6_000, true).replace(/<\/span>$/, `${line(`of which house stakes: 2 · ${money(4_000)}`)}</span>`), holderMoney);
+    ok("4.197.7 · ⛔ a role without the money view sees the house count and NO amount anywhere in the value",
+      holderNoMoney === todayValue(3, 6_000, false).replace(/<\/span>$/, `${line("of which house stakes: 2")}</span>`) && !holderNoMoney.includes("TZS"), holderNoMoney);
+    ok("4.197.8 · ⭐ a non-holder's value is byte-identical to today's, with and without the money view",
+      value(kyc.tFacts, true) === todayValue(3, 6_000, true) && value(kyc.tFacts, false) === todayValue(3, 6_000, false), j([value(kyc.tFacts, true), value(kyc.tFacts, false)]));
+  }
+
+  // ── ruling 196 · the objector's notice and the void-closed hold notice, house-held against a no-house twin ──
+  const bellsFor = async (userId: string, pred: (n: Any) => boolean, want: number) => {
+    for (let k = 0; k < 2_000; k++) {
+      const found = ((await N.listForUser(userId, 200)) as Any[]).filter(pred);
+      if (found.length >= want) return found;
+      await new Promise((r) => setTimeout(r, 5));
+    }
+    return ((await N.listForUser(userId, 200)) as Any[]).filter(pred);
+  };
+  const bellOf = (n: Any, marketId: string) => j({ kind: n?.kind, titleEn: n?.titleEn, titleSw: n?.titleSw, titleZh: n?.titleZh, bodyEn: n?.bodyEn, bodySw: n?.bodySw, bodyZh: n?.bodyZh, href: String(n?.href ?? "").split(marketId).join("{market}") });
+  const detail = "The official source says otherwise, please look again.";
+  const objected = async (withHouse: boolean) => {
+    const m = await poll();
+    await bet(m.id, "YES", 20_000);
+    if (withHouse) await manualA(m.id);
+    else { await bet(m.id, "YES", 20_000); await bet(m.id, "NO", 9_000); }
+    const objector = await bet(m.id, "NO", 3_000);
+    const resolved = await w.svc.resolveMarket({ marketId: m.id, outcome: "YES", officerId: C });
+    const filed = await OBJ.fileObjection(objector.player, { marketId: m.id, reason: "WRONG_OUTCOME", detail });
+    if (!resolved?.ok || !filed?.ok) throw new Error(`fixture objection pair: ${j({ resolved, filed })}`);
+    return { m, objector: objector.player as string, objectionId: filed.data.objectionId as string };
+  };
+  const NOTE_R = `Checked the source again ${tag}; the result stands.`;
+  const NOTE_U = `The source contradicts the verdict ${tag}; refund everyone.`;
+  const rH = await objected(true), rT = await objected(false), uH = await objected(true), uT = await objected(false);
+  const decided = [await OBJ.rejectObjection(rH.objectionId, C, NOTE_R), await OBJ.rejectObjection(rT.objectionId, C, NOTE_R),
+    await OBJ.upholdObjection(uH.objectionId, B, { remedy: "VOID", note: NOTE_U }), await OBJ.upholdObjection(uT.objectionId, B, { remedy: "VOID", note: NOTE_U })];
+  const stakeH = await EXP.houseStakeByMarket([rH.m.id, uH.m.id]);
+  const kindObjection = (n: Any) => n.kind === "OBJECTION";
+  const [bRH, bRT, bUH, bUT] = [await bellsFor(rH.objector, kindObjection, 1), await bellsFor(rT.objector, kindObjection, 1), await bellsFor(uH.objector, kindObjection, 1), await bellsFor(uT.objector, kindObjection, 1)];
+  ok("4.196.1 · ⭐ the objector's decision notice on a house-held market is byte-identical to the same decision on a no-house twin — rejected and upheld — and carries the officer's note verbatim, today's words and no house word",
+    decided.every((d) => d?.ok === true) && stakeH.get(rH.m.id)?.no === 9_000 && stakeH.get(uH.m.id)?.no === 9_000
+      && bRH.length === 1 && bRT.length === 1 && bUH.length === 1 && bUT.length === 1
+      && bellOf(bRH[0], rH.m.id) === bellOf(bRT[0], rT.m.id) && bellOf(bUH[0], uH.m.id) === bellOf(bUT[0], uT.m.id)
+      && bRH[0].bodyEn === `An officer reviewed your objection and the result stands. ${NOTE_R.slice(0, 120)}` && bUH[0].bodyEn === `An officer agreed with you and corrected the result before any payout. ${NOTE_U.slice(0, 120)}`
+      && [...bRH, ...bUH].every((n) => houseHits(j(n)).length === 0),
+    j({ decided: decided.map((d) => d?.ok), house: [bRH, bUH].map((b) => b.map((n) => bellOf(n, ""))), twin: [bRT, bUT].map((b) => b.map((n) => bellOf(n, ""))) }));
+  const holdBells = await bellsFor(C, (n) => n.kind === "OBJECTION" && String(n.bodyEn ?? "").includes(`Hold then void ${tag}`), 2);
+  const onHv = holdBells.filter((n) => String(n.href ?? "").includes(hv.id)), onHvT = holdBells.filter((n) => String(n.href ?? "").includes(hvT.id));
+  ok("4.196.2 · the emergency-void reason reaches an open objection's holder word for word on a house-held market exactly as on its no-house twin (the void-closed notice, §3's officer hold)",
+    onHv.length === 1 && onHvT.length === 1 && bellOf(onHv[0], hv.id) === bellOf(onHvT[0], hvT.id) && houseHits(j(onHv[0])).length === 0,
+    j({ hv: onHv.map((n) => bellOf(n, hv.id)), hvT: onHvT.map((n) => bellOf(n, hvT.id)) }));
 });
 
 /* ═══ both stores · the store this child really runs on ══════════════════════════════════════════════ */

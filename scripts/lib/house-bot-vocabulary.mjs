@@ -15,14 +15,20 @@
  *   · a raw `hb_` or `hbi_` prefix — those match base64url nonces and minified code. Ids are matched only in their
  *     bounded form: a house prefix and exactly 24 hex characters (`newHouseId` = prefix + `randomId(12)`).
  *
- * Words proposed by other areas (house stake, dau la nyumba, 平台投注, staff-chosen, staff edge, enter now, scorecard,
- * STAFF_EDGE and their sw/zh forms) are added ONLY after they are measured absent from clean `origin/main`'s client
- * bundle, client graph and signed-out served pages, and they land with the first client slot (ruling 175, 192) — not
- * before. A word that would go red on `origin/main` is recorded, never allowlisted.
+ * Words proposed by other areas are added ONLY after they are measured absent from clean `origin/main` (its client graph,
+ * its bundle and its signed-out served pages), and they land with the first client slot (ruling 175, 192) — not before. A
+ * word that would go red on `origin/main` is recorded, never allowlisted.
+ *
+ * ⭐ ADDED IN C5 STEP 5 (ruling 192, the R2 words), family `words`: house stake(s), dau la nyumba, 平台投注, staff-chosen /
+ * staff chosen. Measured 2026-09-17 against `origin/main` `03c798b6` (its `src/` identical to `b726cb7f`): 0 hits in
+ * `git grep -i` over `src/` and `public/` (the whole client graph and every string the served pages are built from is a
+ * subset), and 0 in every `.js`/`.mjs`/`.cjs`/`.css` file of `b726cb7f`'s `node_modules` (the bundle's only other
+ * source). Still proposed, measured with their own step: staff edge, enter now, scorecard, STAFF_EDGE and the staff-edge
+ * row's sw/zh words (C5 step 7).
  */
 
 /** The words, in the three locales, matched in any case. `house[_ -]?bots?` also covers `HouseBot` and `house_bots`. */
-export const HOUSE_WORD_SOURCE = String.raw`liquidity|ukwasi|流动性|house[_ -]?bots?|boti (?:za|ya) nyumba|平台机器人`;
+export const HOUSE_WORD_SOURCE = String.raw`liquidity|ukwasi|流动性|house[_ -]?bots?|boti (?:za|ya) nyumba|平台机器人|house[ -]?stakes?|dau la nyumba|平台投注|staff[- ]?chosen`;
 
 /**
  * The feature's identifiers, matched EXACTLY (case-sensitive), so the platform's own `HOUSE_FEE` transaction type is not
@@ -70,6 +76,7 @@ export function extendHouseWords(extra, flags = "i") {
 /** One sample per shared word family member — what every consumer's planted control and the subset pin plant. */
 export const HOUSE_WORD_SAMPLES = Object.freeze([
   "liquidity", "Ukwasi", "流动性", "house bot", "house-bots", "house_bot", "HouseBot", "boti za nyumba", "boti ya nyumba", "平台机器人",
+  "house stake", "House stakes", "dau la nyumba", "平台投注", "staff-chosen", "staff chosen",
 ]);
 /** One sample per identifier alternative, and the control the platform's `HOUSE_FEE` must stay. */
 export const HOUSE_IDENTIFIER_SAMPLES = Object.freeze(["house_bot_inactive", "HOUSE_BOT", "houseStake", "houseOnly", "houseBotId", "HouseBotStatus"]);

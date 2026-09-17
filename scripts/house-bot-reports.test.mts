@@ -21,8 +21,11 @@
  * server-side void-notice and KYC cases (rulings 195, 197) on both stores: memory 213, Postgres 143. Its review fixes added the
  * page-condition, KYC-object and R9-site pins with their controls (memory) and, on both stores, the stage-2 and in-lock
  * refusals, the two-admin twin, the lock facts of the void's read and the decisions' result keys: memory 226, Postgres 148.
+ * C5 step 5 added §0's ruling 198 player-surface pins, the R2 importer and slot pins and the R2 vocabulary words (memory only),
+ * and §4.S5's R2 parts, surface renders, held title, bulk count, KYC line and objector notices (rulings 192–197; the pure
+ * cases in the memory child): memory 258, Postgres 160.
  * A section that stops running fails the floor even while every case that ran passed.
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 
-await runTwoStores({ suite: "test:house-bot-reports", casesFile: "scripts/lib/house-bot-reports-cases.mts", minPass: { memory: 226, postgres: 148 }, dbPrefix: "hb_reports" });
+await runTwoStores({ suite: "test:house-bot-reports", casesFile: "scripts/lib/house-bot-reports-cases.mts", minPass: { memory: 258, postgres: 160 }, dbPrefix: "hb_reports" });

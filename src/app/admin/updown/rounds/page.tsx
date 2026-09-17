@@ -17,6 +17,9 @@ import { formatTzs, formatBalancePill } from "@/lib/utils";
 import { usd } from "@/lib/usd-price";
 import { AdminBody } from "@/components/admin/admin-body";
 import { KpiGrid } from "@/components/admin/admin-body";
+import { houseStakeByMarket } from "@/lib/server/house-bot/exposure";
+import { exposureReadOf } from "@/lib/house-bot/exposure-copy";
+import { ExposureLine } from "@/components/admin/exposure-line";
 
 export const metadata = { title: "Admin · Up & Down · Rounds" };
 export const dynamic = "force-dynamic";
@@ -121,6 +124,10 @@ export default async function AdminUpDownRoundsPage({
 
   const settled = total - unsettled;
   const pageVol = enriched.reduce((s, e) => s + e.volume, 0);
+  // The house stake on this page's UNSETTLED rounds, read once for the line in each lever row and its void dialog (C5-SPEC
+  // rulings 192–194): the house line only, in Up / Down words. `null` when the read failed: the line then says so.
+  let stakes: Awaited<ReturnType<typeof houseStakeByMarket>> | null = null;
+  try { stakes = await houseStakeByMarket([...new Set(rounds.filter((r) => !r.settledAt).map((r) => r.marketId))]); } catch { stakes = null; }
 
   // A round past the healer's deadline and still unresolved is the E-24 symptom
   // recurring, and it is the one number on this page that means money is not moving.
@@ -310,7 +317,10 @@ export default async function AdminUpDownRoundsPage({
                             and the SAME relationship the design had. `players` is a count, not
                             an amount, so it keeps `tabular-nums` and does NOT take `.amount`
                             (§M4 governs amounts only — see its own note on the population). */}
-                        <td className="px-4 py-3 text-right amount text-caption text-text-muted">{formatTzs(volume)}</td>
+                        <td className="px-4 py-3 text-right amount text-caption text-text-muted">
+                          {formatTzs(volume)}
+                          {!r.settledAt && <ExposureLine surface="roundsLever" read={exposureReadOf(stakes, r.marketId)} productLine="UPDOWN" className="mt-1" />}
+                        </td>
                         <td className="px-4 py-3 text-right font-mono text-caption tabular-nums text-text-muted">{players}</td>
                         <td className="px-4 py-3 text-right font-mono text-micro text-text-subtle whitespace-nowrap">{r.settledAt ? fmt(r.settledAt) : "—"}</td>
                         <td className="px-4 py-3 text-right whitespace-nowrap">
@@ -329,6 +339,7 @@ export default async function AdminUpDownRoundsPage({
                               label={`${asset?.key ?? "?"} ${durationMinutes}m #${r.roundNumber}`}
                               volume={formatTzs(volume)}
                               players={players}
+                              exposureSlot={<ExposureLine surface="roundVoidDialog" read={exposureReadOf(stakes, r.marketId)} productLine="UPDOWN" className="mb-3" />}
                             />
                           ) : (
                             <ControlLocked what="Void & refund" need={CONTROL_DOMAIN.voidUpDownRound} />

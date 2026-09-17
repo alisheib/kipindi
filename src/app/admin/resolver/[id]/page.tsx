@@ -19,6 +19,9 @@ import { ControlLocked } from "@/components/admin/control-locked";
 import { formatDateTime, formatTzs } from "@/lib/utils";
 import { CEREMONY, SELECTION, bi } from "@/lib/admin-status-lexicon";
 import { ResolutionCeremony } from "./resolution-ceremony";
+import { houseStakeByMarket } from "@/lib/server/house-bot/exposure";
+import { exposureReadOf } from "@/lib/house-bot/exposure-copy";
+import { ExposureLine } from "@/components/admin/exposure-line";
 
 export const metadata = { title: "Admin · Resolution ceremony" };
 export const dynamic = "force-dynamic";
@@ -56,6 +59,11 @@ export default async function ResolutionCeremonyPage({ params }: { params: Promi
   const canResolve = await canUseControl(session?.role, "resolveMarket");
 
   const [officerA, officerB] = await Promise.all([officerLabel(stage1By), officerLabel(stage2By)]);
+
+  // The house stake on this market, for the line under the pools (C5-SPEC rulings 192–194, 196). A failed read is `null`
+  // and the line says it could not read; the ceremony's controls never read it (TGT-38).
+  let stakes: Awaited<ReturnType<typeof houseStakeByMarket>> | null = null;
+  try { stakes = await houseStakeByMarket([m.id]); } catch { stakes = null; }
 
   // Evidence + attestation timeline from the immutable audit trail (bounded scan).
   const resolutionAudit = getAuditPage({ category: "ADMIN", limit: 500 })
@@ -160,6 +168,9 @@ export default async function ResolutionCeremonyPage({ params }: { params: Promi
               <p className="mt-2 amount text-caption text-text-subtle">
                 YES {yes}% · {formatTzs(m.yesPool)} &nbsp;|&nbsp; NO {100 - yes}% · {formatTzs(m.noPool)}
               </p>
+              {/* Under the pools, in the same card: the house line, the viewer's own share, and the X9 qualifier, because
+                  the evidence typed below becomes the public settlement proof (C5-SPEC rulings 193, 196). */}
+              <ExposureLine surface="ceremony" read={exposureReadOf(stakes, m.id)} viewerId={currentOfficerId} className="mt-1" />
             </AdminCard>
 
             {/* AI Sentinel evidence (if the market was AI-closed) — a suggestion, not a verdict. */}

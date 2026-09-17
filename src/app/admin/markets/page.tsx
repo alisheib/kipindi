@@ -19,6 +19,9 @@ import { canUseControl, CONTROL_DOMAIN } from "@/lib/server/control-gates";
 import { ControlLocked } from "@/components/admin/control-locked";
 import { AdminBody } from "@/components/admin/admin-body";
 import { KpiGrid } from "@/components/admin/admin-body";
+import { houseStakeByMarket } from "@/lib/server/house-bot/exposure";
+import { exposureReadOf } from "@/lib/house-bot/exposure-copy";
+import { ExposureLine } from "@/components/admin/exposure-line";
 
 export const metadata = { title: "Admin · Markets curation" };
 export const dynamic = "force-dynamic";
@@ -77,6 +80,10 @@ export default async function AdminMarketsPage({
   const page = parsePage(sp.page, sorted.length);
   const paged = sorted.slice((page - 1) * PER_PAGE, page * PER_PAGE);
   const baseHref = buildBaseHref("/admin/markets", { q: sp.q, status: sp.status, category: sp.category, sort: sp.sort, dir: sp.dir });
+  // The house stake on the paged markets an emergency void can reach (LIVE and CLOSED), read once for the void
+  // confirmation's line (C5-SPEC rulings 192–194, 196). `null` when the read failed: the line then says so.
+  let stakes: Awaited<ReturnType<typeof houseStakeByMarket>> | null = null;
+  try { stakes = await houseStakeByMarket(paged.filter((m) => m.status === "LIVE" || m.status === "CLOSED").map((m) => m.id)); } catch { stakes = null; }
 
   const live = all.filter((m) => m.status === "LIVE");
   const closed = all.filter((m) => m.status === "CLOSED");
@@ -230,7 +237,11 @@ export default async function AdminMarketsPage({
                       <td>
                         {(m.status === "LIVE" || m.status === "CLOSED") ? (
                           canEmergencyVoid ? (
-                            <EmergencyVoidControl marketId={m.id} title={m.titleEn} />
+                            <EmergencyVoidControl
+                              marketId={m.id}
+                              title={m.titleEn}
+                              exposureSlot={<ExposureLine surface="voidConfirm" read={exposureReadOf(stakes, m.id)} viewerId={session?.userId ?? null} className="mb-3" />}
+                            />
                           ) : (
                             <ControlLocked what="Emergency void" need={CONTROL_DOMAIN.emergencyVoidMarket} />
                           )

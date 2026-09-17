@@ -246,6 +246,29 @@ section("§4 · ruling 174 · no house word, prop name, action name, search fiel
   ok("4.c3 · CONTROL · a HOUSE_BOT tone key in a planted status-tone copy is found through its client importer", hitsOf("tone-user.tsx").some((w) => w.startsWith("HOUSE_BOT")), hitsOf("tone-user.tsx").join(", "));
   ok("4.c4 · CONTROL · the neutral twins (exposureSlot, exportInternalRecordAction) are not hits", hitsOf("neutral-card.tsx").length === 0 && hitsOf("neutral-button.tsx").length === 0,
     [...hitsOf("neutral-card.tsx"), ...hitsOf("neutral-button.tsx")].join(", "));
+  // C5 step 5 (rulings 174, 192) · the R2 slots. A client control takes a server-rendered line through a neutral prop; the
+  // three shapes that would ship the line's words or its module instead are each found, and the neutral slot names are not.
+  const slotFiles: Record<string, string> = {
+    [`${V}/app/bar-hardcoded.tsx`]: `"use client";\nexport const Bar = ({ n }: { n: number }) => <p>{\`House stakes on \${n} of these markets\`}</p>;`,
+    [`${V}/app/bar-neutral.tsx`]: `"use client";\nexport function Bar({ rows, exposureCountTemplate }: { rows: Array<{ exposureState?: string }>; exposureCountTemplate?: string }) { return <p>{rows.filter((r) => r.exposureState === "held").length}{exposureCountTemplate}</p>; }`,
+    [`${V}/app/void-sw.tsx`]: `"use client";\nexport const V = () => <p>{"ikiwemo dau la nyumba"}</p>;`,
+  };
+  const sr: Reader = { exists: (p) => norm(p) in slotFiles, read: (p) => slotFiles[norm(p)] };
+  const slotHits = (entry: string) => walkClientGraph([`${V}/app/${entry}`], sr, V).hits.map((h) => h.word);
+  ok("4.c6 · CONTROL · a client bar that spells the bulk count sentence itself, and a client dialog that spells the Swahili house share, are found; a bar holding only the neutral exposureState / exposureCountTemplate names is not",
+    slotHits("bar-hardcoded.tsx").includes("House stakes") && slotHits("void-sw.tsx").includes("dau la nyumba") && slotHits("bar-neutral.tsx").length === 0,
+    JSON.stringify({ hardcoded: slotHits("bar-hardcoded.tsx"), sw: slotHits("void-sw.tsx"), neutral: slotHits("bar-neutral.tsx") }));
+  // The REAL renderer, imported by a planted client file over the real tree: the walker follows it into exposure-copy.ts.
+  const plantedEntry = join(SRC, "app", "admin", "markets", "planted-slot-client.tsx");
+  const overlay: Reader = {
+    exists: (p) => p === plantedEntry || disk.exists(p),
+    read: (p) => (p === plantedEntry ? `"use client";\nimport { ExposureLine } from "@/components/admin/exposure-line";\nexport const P = () => <ExposureLine surface="voidConfirm" read={null} />;` : disk.read(p)),
+  };
+  const viaRenderer = walkClientGraph([plantedEntry], overlay, SRC);
+  const copyFile = join(SRC, "lib", "house-bot", "exposure-copy.ts");
+  ok("4.c7 · CONTROL · a client component importing the real server renderer (instead of receiving its output as exposureSlot) reaches src/lib/house-bot/exposure-copy.ts — 1.2's house module — and its R2 words",
+    viaRenderer.reached.has(copyFile) && viaRenderer.hits.some((h) => h.file === copyFile && h.word === "House stake"),
+    JSON.stringify(viaRenderer.hits.filter((h) => h.file === copyFile).map((h) => h.word).slice(0, 6)));
   const plantedTxn: TxnGrammar = { fields: { ...TXN_SEARCH.fields, house: { columns: ["houseBotId"] } }, default: [...TXN_SEARCH.default, "houseBotId"] };
   const plantedHouse = houseKeysOf(plantedTxn);
   ok("4.c5 · CONTROL · a planted `house` field, its column and a house default in a TXN_SEARCH copy are each reported by 4.1's own measure", plantedHouse.length === 3, plantedHouse.join(", "));
