@@ -127,10 +127,12 @@ ok("take is clamped to a sane maximum", sortAndPage(set, { take: 99_999 }).lengt
 {
   const marked = txn({ id: "txn_marked", houseBotId: "hb_0123456789abcdef01234567" } as Partial<StoredTxn>);
   const plain = txn({ id: "txn_plain" });
-  ok("D20 · a house-marked row is an ordinary row: no filter, by type and by query it answers exactly as its unmarked twin",
-    matchesFilters(marked, {}, NOW) === matchesFilters(plain, {}, NOW)
-      && matchesFilters(marked, { types: ["DEPOSIT"] }, NOW) === matchesFilters(plain, { types: ["DEPOSIT"] }, NOW)
-      && matchesFilters(marked, { types: ["WITHDRAWAL"] }, NOW) === matchesFilters(plain, { types: ["WITHDRAWAL"] }, NOW));
+  // ⛔ EQUALITY IS NOT ENOUGH (C5-5b review, test-strength-07): two rows both REFUSED are equal too. Each clause says what
+  // the filter DECIDES for the unmarked twin — matched, matched, refused — and only then that the marked row answers the same.
+  ok("D20 · a house-marked row is an ordinary row: with no filter and by its own type it MATCHES, by another type it is refused, and by query it answers exactly as its unmarked twin",
+    matchesFilters(plain, {}, NOW) === true && matchesFilters(plain, { types: ["DEPOSIT"] }, NOW) === true && matchesFilters(plain, { types: ["WITHDRAWAL"] }, NOW) === false
+      && matchesFilters(marked, {}, NOW) === true && matchesFilters(marked, { types: ["DEPOSIT"] }, NOW) === true && matchesFilters(marked, { types: ["WITHDRAWAL"] }, NOW) === false
+      && matchesFilters(marked, { q: "dep_abc" }, NOW) === matchesFilters(plain, { q: "dep_abc" }, NOW) && matchesFilters(plain, { q: "dep_abc" }, NOW) === true);
   ok("CONTROL · the marker really is on the row the filters read (so the case above is not vacuous)",
     marked.houseBotId === "hb_0123456789abcdef01234567" && plain.houseBotId === undefined);
 }

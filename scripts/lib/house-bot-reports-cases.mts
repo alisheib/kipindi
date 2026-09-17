@@ -994,7 +994,8 @@ export function functionDeclarationText(file: string, code: string, name: string
   return text;
 }
 const normalisedBody = (text: string) => lf(text).split("\n").map((l) => l.replace(/\s+$/, "")).filter((l) => l.length > 0).join("\n");
-/** The names `exposure-copy.ts` exports (functions, constants, types), read from its own syntax tree — so a new export is covered with no list to update. */
+/** The names a module exports (functions, constants, types), read from its own syntax tree — so a new export is covered with no
+ *  list to update. Read of `stake-snapshot.ts` (0.198.2's needles) and of the audit module (0.260.1's classification). */
 export function exportedNames(file: string, code: string): string[] {
   const out = new Set<string>();
   walkTree(parse(file, code), (n) => {
@@ -1106,7 +1107,8 @@ export const CONSOLE_GATES: Readonly<Record<string, number>> = { houseStakeForCo
 /** A console file: a page, layout, route, action or component the console serves — everything under the three admin folders. */
 export const inConsolePopulation = (rel: string) =>
   rel.startsWith("src/app/admin/") || rel.startsWith("src/app/api/admin/") || rel.startsWith("src/components/admin/");
-/** A house READ module: the house-bot server folder and the house store. (The pure R2 copy has its own importer law, 0.192.1.) */
+/** A house READ module: the house-bot server folder and the house store. (The pure copy folder `src/lib/house-bot/` is not a
+ *  read; what keeps it out of the public JavaScript is `test:house-bot-disclosure` §1.2, ruling 174's client-bundle law.) */
 const isHouseReadModule = (resolved: string) => resolved.startsWith("src/lib/server/house-bot/") || resolved === "src/lib/server/house-bot-dal";
 /** The console route a file under `src/app/admin/` serves (its folder, dynamic segments kept); `null` anywhere else. */
 export const consoleRouteOf = (rel: string): string | null =>
@@ -1749,6 +1751,189 @@ await guard("11.171", async () => {
   } finally {
     G.__50PICK_EMAIL_HEALTH = saved;
   }
+});
+
+/* ═══ §4 · rulings 259, 260 · the console gate D20 KEEPS: its audience, and NO audit row for anyone else ══════ */
+// ⛔ WHY THIS SECTION IS HERE AGAIN. Owner ruling D20 struck the house DISPLAY, so checkpoint C5-5b un-built rulings
+// 192–197 and the cases that read an exposure line. Removed with them were the only cases that ever CALLED the gate the
+// replan explicitly KEEPS (§2, rulings 259–260): `houseConsoleAudience` and `houseAuditForConsole`. The source pin 0.260.1
+// proves every console file hands its audit read to the gate — it cannot see what the gate RETURNS, and the served probe
+// asks four viewers on a built server, never the staff audience. So the gate's behaviour is proven here, on BOTH stores.
+//
+// Measured on this branch's production build before the gate existed: /admin/players/<holder> streamed the holder's
+// `house_bot.password_verified` row, and /admin/audit every house row with its payload, to a signed-in PLAYER — the holder
+// and a trigger player too — behind the layout's redirect (ruling 259: a layout is not a gate; W25 is unfixed on main).
+// A house-free filter is not enough: a PLATFORM row can carry a house VALUE (a deduped HOUSE_BOT notice's kind, a failed
+// letter's tag, an error's stack), and a refused erasure's reason exists only for a live house bot, so even a rewritten
+// reason names the account.
+//
+// The rows are PLANTED as the services write them (designation's password check and the designation, a house report's
+// generated row, the owner's per-bot export, an erasure refused on a live holder as privacy.ts writes it, the
+// provider-down alert as email.ts writes it, a server error as monitoring.ts writes it, an officer's own platform action,
+// a platform action about a house bot, and the marked stake's own BET row in the shape market-service.ts writes it) plus
+// ONE real deduped HOUSE_BOT notice through `notify()`. Two are there for a reason of their own: the `market.resolve.bulk`
+// Batch row carries `houseStakes` because a row STORED before ruling 187 was un-built keeps its keys and must still never
+// reach a non-staff viewer, and `player.suspended` carries no house word at all — the gate withholds every row of the
+// page, not the house-looking ones.
+section("§4 · rulings 259, 260 · the console audit gate: the audience on the STORED role, and no row for anyone outside it");
+await guard("4", async () => {
+  const { loadWorld, OFFICER }: Any = await import("./house-bot-world.mts");
+  const w: Any = await loadWorld();
+  const CR: Any = await import("../../src/lib/server/house-console-read.ts");
+  const AU: Any = await import("../../src/lib/server/audit.ts");
+  const RB: Any = await import("../../src/lib/server/rbac.ts");
+  const RL: Any = await import("../../src/lib/server/roles.ts");
+  const N: Any = await import("../../src/lib/server/notification-service.ts");
+  const tag = w.uid("g259");
+  // The officer row the designation fixture points at (a foreign key on Postgres); §3 may already have created it.
+  if (!(await w.db.user.findById(OFFICER))) await w.user({ id: OFFICER, role: "ADMIN" });
+  const A = await w.user({ role: "ADMIN" });
+  const CO = await w.user({ role: "COMPLIANCE" });
+  const MOD = await w.user({ role: "MODERATOR" });
+  const SUPPORT = await w.user({ role: "SUPPORT" });
+  const plainPlayer = await w.user({ balance: 10_000 });
+  const triggerAB = await w.user({ balance: 10_000 });
+  const b = await w.bot();
+  const holderAB = b.userId, botAB = b.botId;
+
+  const holderRows: Any[] = [
+    await AU.audit({ category: "SECURITY", action: "house_bot.password_verified", actorId: A, targetType: "User", targetId: holderAB, payload: { holderUserId: holderAB, outcome: "VERIFIED" } }),
+    await AU.audit({ category: "COMPLIANCE", action: "house_bot.designated", actorId: A, targetType: "HouseBot", targetId: botAB, payload: { botId: botAB, holderUserId: holderAB } }),
+    await AU.audit({ category: "ADMIN", action: "report.house-liquidity.generated", actorId: A, targetType: null, targetId: null, payload: { format: "xlsx", filename: `house-liquidity-${tag}.xlsx` } }),
+    await AU.audit({ category: "ADMIN", action: "house_bot.exported", actorId: A, targetType: "HouseBot", targetId: botAB, payload: { botId: botAB, code: "INTERNAL_RECORD" } }),
+    // privacy.ts's shape: the request is the target, the account is in the payload, the reason names the feature.
+    await AU.audit({ category: "COMPLIANCE", action: "privacy.dsar.erasure_blocked", actorId: A, targetType: "DsarRequest", targetId: `dsar_${tag}`, payload: { userId: holderAB, reason: "house_bot_live" } }),
+    // A row with NO house word: the gate withholds the whole page, never a house-looking subset.
+    await AU.audit({ category: "ADMIN", action: "player.suspended", actorId: A, targetType: "User", targetId: holderAB, payload: { reason: `fraud review ${tag}` } }),
+    // A platform action ABOUT a house bot (no house-owned action name).
+    await AU.audit({ category: "ADMIN", action: "alert.acknowledged", actorId: A, targetType: "HouseBot", targetId: botAB, payload: { note: `seen ${tag}` } }),
+    // email.ts's shape: the tag of the letter whose failure crossed the threshold.
+    await AU.audit({ category: "COMPLIANCE", action: "email.provider_down", actorId: null, targetType: "System", targetId: "email", payload: { consecutiveFailures: 5, reason: `timeout ${tag}`, tag: "house-bot-erasure-blocked", note: "5 consecutive transactional email failures" } }),
+    // monitoring.ts's shape: a thrown error's message and stack, kept whole.
+    await AU.audit({ category: "SYSTEM", action: "server.error", actorId: null, targetType: "Route", targetId: "/admin/markets/[id]", payload: { name: "Error", message: `house bot label read failed ${tag}`, stack: `Error: house bot ${botAB} label read failed`, method: "GET", digest: null, repeatsSuppressed: 0, monitorEnabled: false } }),
+    // market-service.ts's BET row for a marked stake: the holder is the actor, the position the target, the bot in the payload.
+    await AU.audit({ category: "BET", action: "market.position.opened", actorId: holderAB, targetType: "Position", targetId: `pos_${tag}`, payload: { marketId: `mkt_${tag}`, side: "NO", stake: 9_000, payoutIfWin: 18_000, kycStatus: "APPROVED", everApproved: true, houseBotId: botAB, intentId: `hbi_${tag}` } }),
+    // ⛔ A ROW STORED BEFORE RULING 187 WAS UN-BUILT KEEPS ITS KEYS (D20, C5-5b): nothing writes `houseStakes` any more,
+    // which is exactly why it is planted — the gate must still drop it for a viewer outside the route's audience.
+    await AU.audit({ category: "COMPLIANCE", action: "market.resolve.bulk", actorId: A, targetType: "Batch", targetId: `batch_${tag}`, payload: { batchId: `batch_${tag}`, resolved: [`mkt_${tag}`], houseStakes: { [`mkt_${tag}`]: { yes: 0, no: 9_000, staffChosen: { yes: 0, no: 9_000, requestedBy: [A] } } } } }),
+  ];
+  // notification-service.ts, for real: the same HOUSE_BOT notice twice inside the dedupe window writes notification.deduped.
+  const dupNotice = { userId: A, kind: "HOUSE_BOT", titleEn: `House bot paused ${tag}`, titleSw: `House bot paused ${tag}`, bodyEn: `Dar desk paused ${tag}`, bodySw: `Dar desk paused ${tag}`, href: "/admin" };
+  const firstNotice = await N.notify(dupNotice);
+  const secondNotice = await N.notify(dupNotice);
+  await AU.auditFlush();
+
+  // ── the audience: the page's own view grant on the STORED role (ruling 259) ──
+  const audience = {
+    coOnKyc: await CR.houseConsoleAudience(CO, "/admin/kyc"), coOnObjections: await CR.houseConsoleAudience(CO, "/admin/objections"),
+    modOnObjections: await CR.houseConsoleAudience(MOD, "/admin/objections"), modOnRounds: await CR.houseConsoleAudience(MOD, "/admin/updown/rounds"),
+    adminOwnerOnly: await CR.houseConsoleAudience(A, "/admin/staff"), modOwnerOnly: await CR.houseConsoleAudience(MOD, "/admin/staff"),
+    holderOnKyc: await CR.houseConsoleAudience(holderAB, "/admin/kyc"), playerOnMarkets: await CR.houseConsoleAudience(plainPlayer, "/admin/markets"),
+    noSession: await CR.houseConsoleAudience(null, "/admin/audit"), emptyId: await CR.houseConsoleAudience("", "/admin/audit"),
+    unknownId: await CR.houseConsoleAudience(`usr_nobody_${tag}`, "/admin/audit"), adminOffConsole: await CR.houseConsoleAudience(A, "/markets"),
+  };
+  ok("4.259.2 · the audience is the page's own view grant on the STORED role: COMPLIANCE sees the KYC case and the objections, the MODERATOR the Up and Down rounds and not the objections, an Owner-only path is ADMIN's alone, and the holder, a player, no session, an empty or unknown id and an ADMIN asking about a non-console route are all outside",
+    j(audience) === j({ coOnKyc: true, coOnObjections: true, modOnObjections: false, modOnRounds: true, adminOwnerOnly: true, modOwnerOnly: false, holderOnKyc: false, playerOnMarkets: false, noSession: false, emptyId: false, unknownId: false, adminOffConsole: false }), j(audience));
+
+  // A viewer read that fails is no viewer: the gate is asked while the user read throws.
+  const realFindById = w.db.user.findById;
+  let userReads = 0;
+  let adminWhileUserReadFails: Any = "not run";
+  w.db.user.findById = (...args: Any[]) => { userReads++; throw new Error(`user read failed (cases) ${args.length}`); };
+  try { adminWhileUserReadFails = await CR.houseConsoleAudience(A, "/admin/resolver-queue"); } finally { w.db.user.findById = realFindById; }
+  const adminAfterRestore = await CR.houseConsoleAudience(A, "/admin/resolver-queue");
+  ok("4.259.3 · ⛔ fail closed: while the viewer's own user read throws, even the ADMIN is outside the audience — CONTROL: the user read was really asked, and restored it answers true again",
+    adminWhileUserReadFails === false && userReads >= 1 && adminAfterRestore === true,
+    j({ adminWhileUserReadFails, userReads, adminAfterRestore }));
+
+  // ── ruling 260 · the audit rows a console page renders: whole for the route's audience, NONE for anyone else ──
+  const holderRead = () => [...AU.getAuditForActor(holderAB, 200), ...AU.getAuditForTarget("User", holderAB, 200)];
+  const logRead = () => AU.getAuditPage({ limit: 100_000 });
+  const inputHolder = holderRead(), inputLog = logRead();
+  const stakeRow = inputHolder.find((e: Any) => e.action === "market.position.opened" && typeof e.payload?.houseBotId === "string");
+  const r9Row = inputLog.find((e: Any) => e.payload && typeof e.payload === "object" && "houseStakes" in e.payload);
+  const dedupRow = inputLog.find((e: Any) => e.action === "notification.deduped" && e.targetId === firstNotice?.id);
+  const valueRowIds = [holderRows[3]?.id, holderRows[7]?.id, holderRows[8]?.id, dedupRow?.id].filter((x: Any): x is string => typeof x === "string");
+  const hitsOf = (rows: Any) => houseHits(j(rows));
+  const outsideRoute = async (viewer: Any, route: string, rows: Any) => CR.houseAuditForConsole(viewer, route, rows);
+  const outsideViews: Record<string, Any> = {
+    playerOnPlayers: await outsideRoute(plainPlayer, "/admin/players", holderRead()), holderOnPlayers: await outsideRoute(holderAB, "/admin/players", holderRead()),
+    triggerOnPlayers: await outsideRoute(triggerAB, "/admin/players", holderRead()), noSessionOnAudit: await outsideRoute(null, "/admin/audit", logRead()),
+    playerOnAudit: await outsideRoute(plainPlayer, "/admin/audit", logRead()), holderOnAudit: await outsideRoute(holderAB, "/admin/audit", logRead()),
+    triggerOnAudit: await outsideRoute(triggerAB, "/admin/audit", logRead()), holderOnOverview: await outsideRoute(holderAB, "/admin", logRead()),
+    unknownOnAudit: await outsideRoute(`usr_nobody_${tag}`, "/admin/audit", logRead()), supportOnAudit: await outsideRoute(SUPPORT, "/admin/audit", logRead()),
+    moderatorOnPlayers: await outsideRoute(MOD, "/admin/players", holderRead()), adminOffConsole: await outsideRoute(A, "/markets", logRead()),
+  };
+  const outsideFacts = Object.fromEntries(Object.entries(outsideViews).map(([k, rows]) => [k, {
+    isArray: Array.isArray(rows), rows: Array.isArray(rows) ? rows.length : -1, hits: hitsOf(rows).slice(0, 4),
+    valueRows: Array.isArray(rows) ? rows.filter((e: Any) => valueRowIds.includes(e.id)).map((e: Any) => `${e.action} ${j(e.payload).slice(0, 60)}`) : [],
+  }]));
+  ok("4.260.1 · ⛔ D19 · a console page's audit read gives NO row to a viewer outside the route's audience — a player, the holder and a trigger player on the player page and on the audit log, no session, an unknown id and SUPPORT on the audit log, the holder on the overview, the MODERATOR on the player page and an ADMIN asking about a non-console route — so no house action, no row about a house bot, no house key and no platform row carrying a house VALUE (the deduped HOUSE_BOT notice, the provider-down alert's letter tag, a house error's stack, the owner's export) reaches them; CONTROL: the rows read carry the house words, the holder's marked-stake row and a stored Batch row's houseStakes key, and every value row, the dedupe written by the real notify()",
+    hitsOf(inputHolder).length >= 3 && hitsOf(inputLog).length >= 10 && !!stakeRow && !!r9Row && !!firstNotice && secondNotice?.id === firstNotice?.id && !!dedupRow
+      && valueRowIds.length === 4 && valueRowIds.every((id: string) => inputLog.some((e: Any) => e.id === id)) && inputLog.some((e: Any) => e.id === holderRows[5]?.id)
+      && Object.values(outsideFacts).every((f: Any) => f.isArray && f.rows === 0 && f.hits.length === 0 && f.valueRows.length === 0),
+    j({ inputHits: [hitsOf(inputHolder).length, hitsOf(inputLog).length], stakeRow: !!stakeRow, r9Row: !!r9Row, dedup: [firstNotice?.id, secondNotice?.id, !!dedupRow], valueRowIds, outsideFacts }));
+
+  const whole = async (viewer: Any, route: string, rows: Any) => { const out = await CR.houseAuditForConsole(viewer, route, rows); return j(out) === j(rows) && hitsOf(out).length > 0; };
+  const insideViews = {
+    adminOnAudit: await whole(A, "/admin/audit", logRead()), adminOnPlayers: await whole(A, "/admin/players", holderRead()), adminOnStaff: await whole(A, "/admin/staff", holderRead()),
+    complianceOnAudit: await whole(CO, "/admin/audit", logRead()), complianceOnPlayers: await whole(CO, "/admin/players", holderRead()),
+    supportOnPlayers: await whole(SUPPORT, "/admin/players", holderRead()), supportOnOverview: await whole(SUPPORT, "/admin", logRead()), moderatorOnResolver: await whole(MOD, "/admin/resolver", logRead()),
+  };
+  const moderatorOnStaff = await CR.houseAuditForConsole(MOD, "/admin/staff", holderRead());
+  ok("4.260.2 · the audience reads every row whole, as the section gate would let it: the ADMIN on the audit log, the player page and the Owner-only staff page; COMPLIANCE on the audit log and the player page; SUPPORT on the player page and the overview; the MODERATOR on the resolver — while the MODERATOR on the Owner-only staff page gets no row",
+    Object.values(insideViews).every(Boolean) && Array.isArray(moderatorOnStaff) && moderatorOnStaff.length === 0 && holderRead().length > 0,
+    j({ insideViews, moderatorOnStaff: Array.isArray(moderatorOnStaff) ? moderatorOnStaff.length : moderatorOnStaff }));
+
+  const durable = { entries: holderRead(), total: 9_999, truncated: true };
+  const pageOut = await CR.houseAuditForConsole(holderAB, "/admin/kyc", durable);
+  const bareEntries = await CR.houseAuditForConsole(holderAB, "/admin/kyc", { entries: holderRead() });
+  const promised = await CR.houseAuditForConsole(holderAB, "/admin/players", Promise.resolve(holderRead()));
+  const nullRead = await CR.houseAuditForConsole(holderAB, "/admin/kyc", Promise.resolve(null));
+  let rejected: Any = "resolved";
+  try { await CR.houseAuditForConsole(A, "/admin/kyc", Promise.reject(new Error(`durable read failed ${tag}`))); } catch (e) { rejected = String((e as Error)?.message ?? e); }
+  ok("4.260.3 · the gate keeps the read's shape and says nothing about what it withheld: an outsider's durable page is no entries, a total of 0 and not truncated (a kept total beside fewer entries would count the rows withheld), a page with no total or flag gains none, a promised read is awaited, the page's own null stays null, and a failed read still rejects into the page's own catch",
+    j(pageOut) === j({ entries: [], total: 0, truncated: false }) && durable.entries.length > 0 && j(bareEntries) === j({ entries: [] })
+      && Array.isArray(promised) && promised.length === 0 && nullRead === null && rejected === `durable read failed ${tag}`,
+    j({ pageOut, bareEntries, promised, nullRead, rejected }));
+
+  const realFind = w.db.user.findById;
+  let auditUserReads = 0;
+  let adminWhileFailing: Any = "not run";
+  w.db.user.findById = (...args: Any[]) => { auditUserReads++; throw new Error(`user read failed (cases) ${args.length}`); };
+  try { adminWhileFailing = await CR.houseAuditForConsole(A, "/admin/audit", logRead()); } finally { w.db.user.findById = realFind; }
+  const restoredInput = logRead();
+  const adminRestored = await CR.houseAuditForConsole(A, "/admin/audit", restoredInput);
+  ok("4.260.4 · ⛔ fail closed: while the viewer's user read throws, even the ADMIN gets no row; CONTROL: the user read was really asked, and restored the ADMIN reads the rows whole again",
+    Array.isArray(adminWhileFailing) && adminWhileFailing.length === 0 && auditUserReads >= 1 && restoredInput.length > 0 && hitsOf(adminRestored).length > 0 && j(adminRestored) === j(restoredInput),
+    j({ whileFailing: Array.isArray(adminWhileFailing) ? adminWhileFailing.length : adminWhileFailing, auditUserReads, restoredHits: hitsOf(adminRestored).length }));
+
+  // ── the KYC case's DURABLE read, for real (AuditLog on Postgres, the ring's durable twin in memory) ──
+  const durableRead = () => AU.getAuditForTargetDurable("User", holderAB, { limit: 500 });
+  const durableIn = await durableRead();
+  const durableHolder = await CR.houseAuditForConsole(holderAB, "/admin/kyc", durableRead());
+  const durablePlayer = await CR.houseAuditForConsole(plainPlayer, "/admin/kyc", durableRead().catch(() => null));
+  const durableCo = await CR.houseAuditForConsole(CO, "/admin/kyc", durableRead());
+  ok("4.260.5 · ⛔ the KYC case's real durable read (getAuditForTargetDurable, as the page calls it): the holder and a player on /admin/kyc get no entries, a total of 0 and nothing truncated; COMPLIANCE, in the audience, reads the page whole; CONTROL: the durable page holds the holder's house_bot.password_verified row and a house word",
+    Array.isArray(durableIn?.entries) && durableIn.entries.some((e: Any) => e.id === holderRows[0]?.id) && hitsOf(durableIn).length > 0
+      && typeof durableIn.total === "number" && durableIn.total >= durableIn.entries.length
+      && j(durableHolder) === j({ entries: [], total: 0, truncated: false }) && j(durablePlayer) === j({ entries: [], total: 0, truncated: false })
+      && j(durableCo) === j(await durableRead()),
+    j({ input: { entries: durableIn?.entries?.length, total: durableIn?.total, hits: hitsOf(durableIn).slice(0, 3) }, durableHolder, durablePlayer, co: durableCo?.entries?.length }));
+
+  // ── the audience's staff clause: a grant row a PLAYER could be given does not seat a player ──
+  const auditDomain = RL.domainForPath("/admin/audit");
+  let playerGrantView: Any = "not run", playerWithGrant: Any = "not run", playerRowsWithGrant: Any = "not run";
+  await RB.setRoleGrant("PLAYER", auditDomain, true, false, A);
+  try {
+    playerGrantView = await RB.canView("PLAYER", auditDomain);
+    playerWithGrant = await CR.houseConsoleAudience(plainPlayer, "/admin/audit");
+    playerRowsWithGrant = await CR.houseAuditForConsole(plainPlayer, "/admin/audit", logRead());
+  } finally { await RB.setRoleGrant("PLAYER", auditDomain, false, false, A); }
+  const playerGrantAfter = await RB.canView("PLAYER", auditDomain);
+  ok("4.260.6 · ⛔ only a STAFF role is ever in the audience: while a grant row lets the PLAYER role view the audit log's domain, a player is still outside and reads no row; CONTROL: the grant really answered true, and restored it answers false",
+    playerGrantView === true && playerWithGrant === false && Array.isArray(playerRowsWithGrant) && playerRowsWithGrant.length === 0 && playerGrantAfter === false,
+    j({ auditDomain, playerGrantView, playerWithGrant, playerRows: Array.isArray(playerRowsWithGrant) ? playerRowsWithGrant.length : playerRowsWithGrant, playerGrantAfter }));
 });
 
 /* ═══ both stores · the store this child really runs on ══════════════════════════════════════════════ */

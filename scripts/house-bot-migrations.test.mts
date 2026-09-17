@@ -414,9 +414,13 @@ async function checkSchema(url: string, label: string): Promise<void> {
     ok(`${label}.seed · limitsVersion and limitsSchemaVersion are 1`, row.limitsVersion === 1 && row.limitsSchemaVersion === 1);
     // ⛔ D20 (rulings 265, 273 (a)): the staff-edge and Board-disclosure columns are un-built, so the control row has
     // neither — and a migration that re-adds one is reported here, by name, on a real cluster.
-    ok(`${label}.seed · the control row has no staff-edge and no Board-disclosure column (D20 un-built both)`,
-      ["gStaffEdgeWinRatePts", "gStaffEdgeNetTzs", "boardDisclosureSentAt", "boardDisclosureSections"].every((c) => !(c in row)),
-      JSON.stringify(Object.keys(row).filter((c) => /staffEdge|boardDisclosure/i.test(c))));
+    // ⛔ THE ABSENCE IS ANCHORED ON A PRESENCE (C5-5b review, test-strength-06): `row` falls back to `{}` when the seed
+    // read returns nothing, and an absence measured on an empty row is no measurement at all. Three columns that MUST be
+    // there are asserted in the same breath, so a projected or missing row fails this case instead of passing it.
+    const MUST_BE_ON_ROW = ["offCause", "gCapDailyStakeTzs", "limitsVersion"];
+    ok(`${label}.seed · the control row has no staff-edge and no Board-disclosure column (D20 un-built both), on a row that really carries its own three`,
+      ["gStaffEdgeWinRatePts", "gStaffEdgeNetTzs", "boardDisclosureSentAt", "boardDisclosureSections"].every((c) => !(c in row)) && MUST_BE_ON_ROW.every((c) => c in row),
+      JSON.stringify({ struck: Object.keys(row).filter((c) => /staffEdge|boardDisclosure/i.test(c)), missing: MUST_BE_ON_ROW.filter((c) => !(c in row)) }));
     const rt = (await c.query(`SELECT "key", "scopeFrom", "errorStreak" FROM "HouseBotRuntime"`)).rows;
     ok(`${label}.seed · one runtime row, global, out of scope (scopeFrom NULL) with no errors`,
       rt.length === 1 && rt[0].key === "global" && rt[0].scopeFrom === null && rt[0].errorStreak === 0, JSON.stringify(rt));

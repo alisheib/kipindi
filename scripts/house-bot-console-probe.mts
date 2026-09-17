@@ -410,11 +410,18 @@ try {
    * ⛔ THE POSITIVE CONTROL, RE-ANCHORED BY OWNER RULING D20 (C5-5b, 2026-09-18). It named the six R2/R9 display pages
    * until the un-build removed the display: those pages now carry house data for NOBODY, so expecting the ADMIN to see it
    * there would make 4.1 unfalsifiable — every viewer silent, the pass meaningless. What an ADMIN still receives, and the
-   * gate of rulings 259/260 still governs, is the house AUDIT rows: the audit log (default and by category) and the
-   * holder's and officer's player pages. If those go silent too, this control fails and 4.1's clean result is void.
+   * gate of rulings 259/260 still governs, is the house AUDIT rows: the audit log (default and by category), the holder's
+   * player page, and the KYC case — the two surfaces whose leak was MEASURED when ruling 260 was written. If those go
+   * silent too, this control fails and 4.1's clean result is void.
+   *
+   * ⛔ THE KYC CASE BELONGS HERE (C5-5b review, d19-hunt-03). It was dropped with the six display pages, but it is not one
+   * of them: `/admin/kyc/[id]` still reads the holder's durable audit rows through the gate
+   * (`houseAuditForConsole(…, "/admin/kyc", getAuditForTargetDurable("User", id, …))`), and this probe's own first-time
+   * designation writes `house_bot.password_verified` and `house_bot.designated` against that holder. A route the ADMIN no
+   * longer hits is reclassified NOT MEASURED by the loop below, so shrinking this list turns a proof into a non-measurement.
    */
-  const MUST_CARRY = ["/admin/audit", "/admin/audit?category=SYSTEM", "/admin/audit?category=COMPLIANCE", "/admin/audit?category=ADMIN", `/admin/players/[id]<holder>`, `/admin/players/[id]<holder>?tab=audit`];
-  ok("4.3 · CONTROL · the ADMIN's own responses still carry house data where it exists after D20's un-build — the audit log (default, SYSTEM, COMPLIANCE and ADMIN, where the house actions and the value rows are) and the holder's player page with and without its audit tab",
+  const MUST_CARRY = ["/admin/audit", "/admin/audit?category=SYSTEM", "/admin/audit?category=COMPLIANCE", "/admin/audit?category=ADMIN", `/admin/players/[id]<holder>`, `/admin/players/[id]<holder>?tab=audit`, `/admin/kyc/[id]<holder>`];
+  ok("4.3 · CONTROL · the ADMIN's own responses still carry house data where it exists after D20's un-build — the audit log (default, SYSTEM, COMPLIANCE and ADMIN, where the house actions and the value rows are), the holder's player page with and without its audit tab, and the KYC case's durable target read",
     MUST_CARRY.every((r) => adminHitRoutes.has(r)), `missing: ${MUST_CARRY.filter((r) => !adminHitRoutes.has(r)).join(", ") || "none"} · ADMIN carries house data on ${adminHitRoutes.size} route instances`);
   const silent = [...new Set(rows.map((r) => r.route))].filter((r) => !adminHitRoutes.has(r)).sort();
   for (const r of silent) notMeasured(`4.nm · ${r}`, "the ADMIN control carries no house data there, so its absence for the other viewers proves nothing about that page");

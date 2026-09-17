@@ -110,11 +110,14 @@ import {
 } from "../src/lib/house-bot/pause-reasons.ts";
 import {
   CLEAR_EXEMPT,
+  COUNT_LIMIT_FIELDS,
   CROSS_FIELD_RULES,
   DEFAULT_RULES_V1,
   FIELD_META,
   FIELD_ORDER,
+  LIMIT_FIELDS,
   LIMITS_TAB_HREF,
+  NULLABLE_LIMIT_FIELDS,
   MAX_BOTS_LOWERING_PREVIEW,
   NO_AUTOMATIC_MODE_LINE,
   REQUIRED_FOR_MASTER_ON,
@@ -547,13 +550,24 @@ section("§2 · bound matrix");
 
   // ⛔ OWNER RULING D20 (2026-09-17), ruling 265 · the staff-edge thresholds are UN-BUILT: a writer with no reader is a
   // control that lies. No limit list, no meta row and no exemption may name one again.
+  // ⛔ THE POPULATION IS EVERY LIST A RE-ADD WOULD TOUCH, not only FIELD_META's own rows: `saveLimits` writes what
+  // LIMIT_FIELDS names (`assertWritable` / `patchSets`), and NULLABLE_LIMIT_FIELDS is where a nullable threshold would
+  // land — a guard blind to those two would stay green while the column came back (C5-5b review, test-strength-02).
+  const isStaffEdge = (f: string) => /staffedge/i.test(f.replace(/[^A-Za-z]/g, ""));
   const limitIds = FIELD_ORDER.filter((id) => FIELD_META[id].group === "limits");
-  const staffEdgeNames = [...limitIds, ...Object.keys(FIELD_META), ...CLEAR_EXEMPT].filter((f) => /staffedge/i.test(f.replace(/[^A-Za-z]/g, "")));
-  ok("2.d20 · ⛔ D20 · no limits field, no meta row and no clear-exemption names a staff edge, and the limits tab holds the sealed 14",
-    staffEdgeNames.length === 0 && limitIds.length === 14 && !("gStaffEdgeWinRatePts" in FIELD_META) && !("gStaffEdgeNetTzs" in FIELD_META),
-    `${limitIds.length} limits · ${staffEdgeNames.join(", ")}`);
-  ok("2.d20c · CONTROL · the detector reads a planted name (a re-added threshold would be reported)",
-    ["gStaffEdgeWinRatePts", "staff_edge_net"].every((f) => /staffedge/i.test(f.replace(/[^A-Za-z]/g, ""))) && !/staffedge/i.test("gCapStaffChosenPerDay".replace(/[^A-Za-z]/g, "")));
+  const limitLists = [...LIMIT_FIELDS, ...NULLABLE_LIMIT_FIELDS, ...COUNT_LIMIT_FIELDS] as readonly string[];
+  const staffEdgeNames = [...limitIds, ...Object.keys(FIELD_META), ...CLEAR_EXEMPT, ...limitLists].filter(isStaffEdge);
+  ok("2.d20 · ⛔ D20 · no limits field, no meta row, no clear-exemption and no writable limit list (LIMIT_FIELDS, NULLABLE_LIMIT_FIELDS, COUNT_LIMIT_FIELDS) names a staff edge; the limits tab and the writable list are the SAME sealed 14, and the nullable 12 plus the two counts are exactly them",
+    staffEdgeNames.length === 0 && limitIds.length === 14 && LIMIT_FIELDS.length === 14 && NULLABLE_LIMIT_FIELDS.length === 12 && COUNT_LIMIT_FIELDS.length === 2
+      && same([...limitIds].sort(), [...LIMIT_FIELDS].sort()) && same([...LIMIT_FIELDS].sort(), [...NULLABLE_LIMIT_FIELDS, ...COUNT_LIMIT_FIELDS].sort())
+      && !("gStaffEdgeWinRatePts" in FIELD_META) && !("gStaffEdgeNetTzs" in FIELD_META),
+    `${limitIds.length} limits · ${LIMIT_FIELDS.length} writable · ${staffEdgeNames.join(", ")}`);
+  // The control's arms are SYNTHETIC on purpose: it measures the detector, never the population 2.d20 measures, so a
+  // re-added threshold reddens 2.d20 alone and this case still says whether the measure can see one.
+  const cleanList = ["gCapDailyStakeTzs", "gCapStaffChosenPerDay", "gStaffChosenMaxCounterpartyShare", "gTargetsMaxActive", "maxDesignatedBots"];
+  ok("2.d20c · CONTROL · 2.d20's OWN measure reports a planted threshold in a clean list, in either spelling, and reports none of the sealed staff-chosen fields",
+    [...cleanList, "gStaffEdgeWinRatePts"].filter(isStaffEdge).length === 1 && [...cleanList, "staff_edge_net"].filter(isStaffEdge).length === 1
+      && cleanList.filter(isStaffEdge).length === 0);
 
   // ⛔ CONTROL — "not set" coerced to 0 is the C1 defect: Number("") is 0, the validator's value is null.
   const unset = validateField("capPerMarketTzs", "", CTX);

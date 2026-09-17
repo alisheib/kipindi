@@ -188,7 +188,7 @@ function buildExpected(): Record<string, string> {
     "c11.a a BIGINT bot cap reads back as a number": "true:number:1000000000",
     "c11.b BIGINT limits read back as numbers": "number:1000000000:number:1000000000",
     "c11.c an intent stake reads back as a number": "number:1000000000",
-    "c11.d the struck columns are not writable on either twin (D20: staff edge, Board disclosure)": "gStaffEdgeNetTzs:refused|gStaffEdgeWinRatePts:refused|boardDisclosureSections:refused|boardDisclosureSentAt:refused|false",
+    "c11.d the struck columns are not writable on either twin (D20: staff edge, Board disclosure)": "gStaffEdgeNetTzs:refused|gStaffEdgeWinRatePts:refused|boardDisclosureSections:refused|boardDisclosureSentAt:refused|map:|row:|kept:3",
     // c12 · reading violations (pure)
     "c12.a an unknown unique violation names nothing": "null",
     "c12.b a raw-SQL violation names its index": "hbt_active_market_uq",
@@ -699,9 +699,13 @@ async function runCases(): Promise<void> {
     });
     // ⛔ OWNER RULING D20 (rulings 265, 273 (a)) · the staff-edge and Board-disclosure columns are un-built. The same
     // answer on both stores is the un-build's guard: a re-added column is not writable, whichever twin is asked.
+    // ⛔ TWO LAYERS, BECAUSE ONE REFUSES FOR THE WRONG REASON (C5-5b review, test-strength-03). `saveLimits` refuses an
+    // unknown key from the LIMIT_FIELDS whitelist, so the refusal alone would stay the same while the COLUMN came back to
+    // `HOUSE_BOT_CONTROL_COLUMNS` and `StoredHouseBotControl`. The column map itself is therefore recorded too, by name.
     await rec("c11.d the struck columns are not writable on either twin (D20: staff edge, Board disclosure)", async () => {
       const cur = await control.get();
-      const tried = await Promise.all(["gStaffEdgeNetTzs", "gStaffEdgeWinRatePts", "boardDisclosureSections", "boardDisclosureSentAt"].map(async (col) => {
+      const STRUCK = ["gStaffEdgeNetTzs", "gStaffEdgeWinRatePts", "boardDisclosureSections", "boardDisclosureSentAt"];
+      const tried = await Promise.all(STRUCK.map(async (col) => {
         try {
           await control.saveLimits(cur.limitsVersion, { [col]: col.startsWith("board") ? [] : 1 } as Any);
           return `${col}:WRITTEN`;
@@ -709,7 +713,11 @@ async function runCases(): Promise<void> {
           return `${col}:${String((e as Error).message).includes("not a writable column") ? "refused" : "other"}`;
         }
       }));
-      return `${tried.join("|")}|${"boardDisclosureSections" in cur}`;
+      const cols = dal.HOUSE_BOT_CONTROL_COLUMNS as Record<string, unknown>;
+      const mapped = STRUCK.filter((c) => c in cols);
+      const onRow = STRUCK.filter((c) => c in cur);
+      const kept = ["gCapDailyStakeTzs", "gStaffChosenMaxCounterpartyShare", "limitsVersion"].filter((c) => c in cols);
+      return `${tried.join("|")}|map:${mapped.join(",")}|row:${onRow.join(",")}|kept:${kept.length}`;
     });
   });
 

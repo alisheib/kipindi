@@ -260,8 +260,19 @@ section("§4 · ruling 174 · no house word, prop name, action name, search fiel
     JSON.stringify({ hardcoded: slotHits("bar-hardcoded.tsx"), sw: slotHits("void-sw.tsx"), neutral: slotHits("bar-neutral.tsx") }));
   // ⛔ OWNER RULING D20 (2026-09-17) · the real R2 renderer (`components/admin/exposure-line.tsx`) and its words
   // (`lib/house-bot/exposure-copy.ts`) were un-built in C5-5b, so the control that imported them from a planted client file
-  // went with them. The three virtual shapes above still decide the same rule: a client file that spells the words itself,
-  // or reaches a module that does, is found; a neutral prop is not.
+  // could not stay as it was. It is RE-ANCHORED to the same defect over a module that is still on disk, because every other
+  // control here runs on a virtual tree: without it, a break in the real resolver (a tsconfig alias, a new extension, a
+  // barrel file) would let §1.1 and §1.2 pass vacuously and no control would notice (C5-5b review, d19-hunt-04).
+  const plantedEntry = join(SRC, "app", "planted-client-entry.tsx");
+  const realCopy = join(SRC, "lib", "house-bot", "pause-reasons.ts");
+  const planted: Record<string, string> = {
+    [norm(plantedEntry)]: `"use client";\nimport { REMOVE_CAUSE_COPY } from "@/lib/house-bot/pause-reasons";\nexport const P = () => <b>{REMOVE_CAUSE_COPY.SUNSET}</b>;`,
+  };
+  const overlay: Reader = { exists: (p) => norm(p) in planted || disk.exists(p), read: (p) => planted[norm(p)] ?? disk.read(p) };
+  const viaReal = walkClientGraph([plantedEntry], overlay, SRC);
+  ok("4.c7 · CONTROL · over the REAL tree: a planted client file importing a real house copy module through the @/ alias reaches src/lib/house-bot/pause-reasons.ts on disk and its house words are reported — the resolver and the strip are proven on the tree §1 measures, not only on a virtual one",
+    viaReal.reached.has(realCopy) && viaReal.hits.some((h) => h.file === realCopy) && !reached.has(plantedEntry),
+    JSON.stringify({ reached: viaReal.reached.size, words: viaReal.hits.filter((h) => h.file === realCopy).map((h) => h.word).slice(0, 4) }));
   const plantedTxn: TxnGrammar = { fields: { ...TXN_SEARCH.fields, house: { columns: ["houseBotId"] } }, default: [...TXN_SEARCH.default, "houseBotId"] };
   const plantedHouse = houseKeysOf(plantedTxn);
   ok("4.c5 · CONTROL · a planted `house` field, its column and a house default in a TXN_SEARCH copy are each reported by 4.1's own measure", plantedHouse.length === 3, plantedHouse.join(", "));

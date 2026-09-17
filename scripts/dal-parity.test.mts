@@ -777,7 +777,34 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
     new RegExp("(^|[^A-Za-z])(async )?dayRows\\(", "m").test(houseDalSrc) && !new RegExp("(^|[^A-Za-z])(async )?entryRowsXyz\\(", "m").test(houseDalSrc));
   const filtersSrc = decomment(readFileSync(join(SRC, "lib/server/txn-filters.ts"), "utf8"));
   ok("16.d20.house · ⛔ D20 · no house filter survives in the transaction search grammar or its Prisma where (ruling 210 struck)",
-    !/f\.house/.test(filtersSrc) && !/house\?:/.test(filtersSrc) && !/houseBotId/.test(filtersSrc), filtersSrc.length.toString());
+    filtersSrc.length > 2_000 && !/f\.house/.test(filtersSrc) && !/house\?:/.test(filtersSrc) && !/houseBotId/.test(filtersSrc), filtersSrc.length.toString());
+  ok("16.d20.house.c1 · CONTROL · each of the three needles fires on the exact text ruling 210's un-build removed",
+    /f\.house/.test('if (f.house === "only" && t.houseBotId == null) return false;') && /house\?:/.test('  house?: "only" | "exclude";')
+      && /houseBotId/.test('and.push({ houseBotId: { not: null } })'));
+
+  // ⛔ D20a · BOTS ARE ORDINARY PLAYERS IN EVERY REPORT. Rulings 224 and 233 had added a house exclusion to two
+  // PLAYER-FACING aggregates — the compliance concentration list (`txn.topContributors`) and the public leaderboard
+  // (`positionStore.leaderboard({excludeHouse})`). Both are `main`'s code again in BOTH twins, and their parity cases went
+  // with the exclusions, so this holds what D20 now requires of them: no marker, no option, either twin (test-strength-04).
+  /** An arrow property's text inside a DAL delegate block: from the property to the next property at the same indent. */
+  const arrowProp = (block: string, name: string): string => {
+    const at = block.search(new RegExp(`^ {4}${name}: (?:async )?\\(`, "m"));
+    if (at < 0) return "";
+    const rest = block.slice(at);
+    const next = rest.slice(1).search(/\n {4}\w+: /);
+    return next < 0 ? rest : rest.slice(0, next + 1);
+  };
+  const topPri = arrowProp(region(dalSrc, "\n  txn: {"), "topContributors");
+  const topMem = arrowProp(region(storeSrc, "\n  txn: {"), "topContributors");
+  const lbMem = objectMethod(region(marketDalSrc, "const memoryPositions"), "leaderboard");
+  const lbPri = objectMethod(region(marketDalSrc, "const prismaPositions"), "leaderboard");
+  const houseFree = (body: string, anchor: string) => body.length > 200 && body.includes(anchor) && !/houseBotId/.test(body) && !/excludeHouse/.test(body);
+  ok("16.d20.aggregates · ⛔ D20 · neither player-facing aggregate excludes a house-marked row in either twin: top contributors (Prisma and memory) and the leaderboard (memory and SQL) name no marker and take no excludeHouse option",
+    houseFree(topPri, "payouts") && houseFree(topMem, "payouts") && houseFree(lbMem, "resolved") && houseFree(lbPri, "resolved"),
+    JSON.stringify({ topPri: topPri.length, topMem: topMem.length, lbMem: lbMem.length, lbPri: lbPri.length }));
+  ok("16.d20.aggregates.c1 · CONTROL · each needle fires on the exact text D20's un-build removed from those four bodies",
+    /houseBotId/.test('if (t.houseBotId != null) continue;') && /houseBotId/.test('and "houseBotId" is null')
+      && /excludeHouse/.test('if (opts?.excludeHouse && p.houseBotId != null) continue;') && /excludeHouse/.test('excludeHouse?: boolean;'));
 
   // Ruling 235 · `ownRounds` stays (the F6 email rule): unmarked positions counted in the same single aggregate, both twins.
   const dtMem = objectMethod(region(marketDalSrc, "const memoryPositions"), "dailyTotalsByUser");
