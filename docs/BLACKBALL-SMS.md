@@ -5,7 +5,7 @@ Endpoints: `POST /api/sms/send` · `POST /api/account/balance` (Swagger: `bulk-a
 Wired: 2026-09-16. Code: `src/lib/server/sms-blackball.ts` (transport), `src/lib/server/sms.ts`
 (facade), `src/app/api/webhooks/blackball/route.ts` (delivery receipts).
 
-## Status — 2026-09-16
+## Status — 2026-09-17
 
 | | |
 |---|---|
@@ -14,10 +14,10 @@ Wired: 2026-09-16. Code: `src/lib/server/sms-blackball.ts` (transport), `src/lib
 | Cloudflare | ✅ Configuration Rule: Browser Integrity Check **off for `/api/webhooks/*` only** (§4) — verified |
 | API configuration | ✅ `50pick-production` saved in the portal, status callback registered |
 | Sender ID | ✅ `50pick` |
-| Live sends | ✅ step 1 DELIVRD / Success in 2 s (received on the handset); ✅ step 2 batch of two accepted in one request, TZS 12 — **3 of 6** drive sends used |
-| Delivery callback | 🔴 **still not received** — after the Cloudflare fix too; no POST from Blackball has reached the app (§4) |
+| Live sends | ✅ step 1 DELIVRD / Success in 2 s (received on the handset); ✅ step 2 batch of two accepted in one request, TZS 12; ✅ step 3 (2026-09-17 09:30 UTC) one good + one unroutable msisdn **accepted whole** ("Successfully submitted 2 message(s)"), TZS 6 charged — **5 of 6** drive sends used |
+| Delivery callback | 🔴 **still not received** — re-tested 2026-09-17 while the vendor was answering questions: **no request of any kind** from Blackball in the 8 minutes after a send, with Railway's HTTP log proven to be recording (§4.3) |
 | Phone-code login | ⏸ `OTP_ENABLED` unset — deliberately (§7, step 6) |
-| Balance | TZS 232 |
+| Balance | TZS 226 |
 
 ---
 
@@ -122,8 +122,26 @@ wrong token → 401, the portal URL → `200 {"status":"Ok"}`.
 
 ### The status vocabulary
 
-**Observed:** `DELIVRD` / `Success` (first live send, portal Out SMS). Every other arm of
-`mapDlrStatus()` is still the SMPP seed.
+**Observed:** `DELIVRD` / `Success` (first live send, portal Out SMS).
+
+**The vendor's official list** (their developer, by email, 2026-09-17) — every token already maps, checked
+by running each through the real `mapDlrStatus()`:
+
+| Token | Their meaning | `mapDlrStatus()` |
+|---|---|---|
+| `DELIVRD` | SMS delivered | `DELIVERED` |
+| `UNDELIV` | failed to deliver after several attempts | `FAILED` |
+| `REJECTD` | could not be delivered (number format not recognised, not enough balance) | `FAILED` |
+| `SENT` | received by the network, waiting to deliver | `null` — the row stays `ACCEPTED` (correct: not yet a verdict) |
+| `EXPIRED` | failed to deliver after several attempts | `FAILED` |
+| `FAILED` | the network failed to deliver (e.g. sender ID not whitelisted) | `FAILED` |
+
+⚠️ **Their own example payload contradicts the list twice.** It spells the status `DELIVERD` (which maps to
+`null`, so a delivered message would stay "handed over"), and its `reference` is
+`6aabaaa7c5aea109abee145` — 23 hex characters, a shape we never send (ours are `sms_` + 24 hex). Neither
+is coded around: an unrecognised token is stored raw and audited as `sms.dlr.unmapped_status`, so if a
+real callback carries `DELIVERD` the evidence lands and the fix is one line — but the spelling and the
+reference echo are asked back (§8) rather than guessed.
 
 The portal's Out SMS **CSV export** for that message (supplied by Ali, 2026-09-16):
 
@@ -194,6 +212,22 @@ deployment returns nothing, which reads like "no traffic". Use both:
 railway logs --http --json --lines 2000 | grep webhooks            # every request that reached the app
 node scripts/live/ops/sms-receipts.cjs                            # what the receiver recorded
 ```
+
+### 4.3 Re-tested 2026-09-17, with the vendor engaged — still nothing
+
+Drive step 3 sent `sms_20c944fc48d687f677f532de` (to the test handset) and `sms_5a569ad82c0fde765135d8d2`
+(to the unroutable `25577`) at **09:30:18 UTC**. Then, measured:
+
+- **Our side is open.** `GET /api/webhooks/blackball` answered `200 {"status":"Ok"}` to `Java/1.8.0_292`,
+  `Apache-HttpClient/4.5.13 (Java/11)`, `okhttp/4.9.0` and `python-requests/2.31` at 09:32 UTC.
+- **The log is recording.** Those four probes appear in Railway's HTTP log for the current deployment —
+  so an empty result is not a logging gap.
+- **Blackball sent nothing.** No request of any method to the callback path from any other client, and
+  no receipt row on production, across 18 polls over the following 6 minutes — although earlier messages
+  were delivered in 2 seconds and the vendor says it retries 5 times.
+
+So the callback is not being attempted against our URL at all. The questions in §8 item 1 are the ones
+that decide it.
 
 ---
 
@@ -278,6 +312,12 @@ Each step is independently reversible, and none of the later ones is safe withou
 
 ## 8 · Still open with the vendor
 
+**Answered by their developer, 2026-09-17:** the status list (§3, with two contradictions in their own
+example) · callbacks retry **5 times** on a non-200 · **three** sender IDs are whitelisted on the account
+(the strings were not given) · no egress IPs ("you can whitelist URL") — we need none, the callback is
+authenticated by its token · the send-success question was answered with a callback example instead; not
+needed, the success body was measured (§1.3).
+
 1. 🔴 **Is the status callback enabled for `50pick-production`, and has our URL been whitelisted?**
    Three messages were delivered and no callback POST ever reached us — even after the Cloudflare fix.
    Did their side log an attempt, and what response did it get? Was the 14:42 UTC GET from
@@ -285,12 +325,15 @@ Each step is independently reversible, and none of the later ones is safe withou
    callback send? *(§4)*
 2. Can they **resend** the callbacks for the three messages, and do callbacks **retry** on a non-200?
    Does the callback echo **our `reference`** (the portal's Ref column shows the client id instead)?
-3. **Egress IP addresses**, for an allowlist.
-4. The full **status and description** value set — especially the failure tokens.
+3. ~~Egress IP addresses~~ — not needed (answered 2026-09-17).
+4. The status list is answered; still open: **`DELIVRD` or `DELIVERD`** in a real callback, and the
+   `CODE` value that accompanies each failure token.
 5. Billing per **segment** for UCS2 (70 chars) and long GSM7 messages.
 6. Must `reference` be **unique forever** on the account; what does a duplicate do?
 7. Any **rate limit** on `/api/sms/send`.
-8. Confirmation that sender ID `50pick` is **TCRA-registered**, and whether it is case-sensitive.
+8. The **exact strings of the three whitelisted sender IDs**, confirmation they are **TCRA-registered**, and
+   whether they are case-sensitive.
+9. The **interval** between the 5 callback retries.
 
 Answered already: sender ID, price, success body, `coding` values, balance endpoint.
 
