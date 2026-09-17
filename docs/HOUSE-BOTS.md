@@ -622,7 +622,7 @@ Warnings: EMAIL_UNVERIFIED · IDENTITY_NOT_APPROVED · RECRUITED · OPEN_POSITIO
 
 ⏳ Written in commit 5.
 
-- **Fee withheld per bot is not recorded per stake.** `houseBotBook` (`src/lib/server/house-bot/book.ts`, commit 1) returns `feeWithheldTzs: null`, never a confident 0: a payout transaction writes no fee, and the commission ledger line names no user and no transaction. Commit 5 derives it from the pool fee snapshot × the position's share. The record is PLAN §18, row "R3 fee withheld per bot".
+- **Fee withheld per bot is derived, and proven against the ledger** (C5-SPEC ruling 183). `houseBotBook` (`src/lib/server/house-bot/book.ts`) takes each marked WIN whose marked payout landed in the window, recomputes that poll's single fee from its FROZEN snapshot (`poolFee`), splits it exactly as settlement did (`allocateFeeShares` over `winnersForAllocation`), and adds the fee on marked CASHOUT rows. Settlement books the same share as the `SETTLEMENT_COMMISSION` line of ledger group `settle_<payout txn id>` (Postgres only), and `test:house-bot-reports` §2 holds the two equal per position with zero tolerance. The figure is null ("not recorded per stake"), never 0, when a contributing WIN sits on a market with no own snapshot. Reported per bot and per product, never per entry. PLAN §18's row "R3 fee withheld per bot" is superseded in place.
 
 ---
 

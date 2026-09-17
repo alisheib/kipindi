@@ -936,6 +936,7 @@ If he also holds his own stake, he may object.
 - **Evidence:** C:/kipindi-main/src/lib/server/market-service.ts:656-666 (rates frozen at creation), :2657 (cash-out reads the snapshot); C:/kipindi-main/src/lib/server/market-config.ts:282-299; C:/kipindi-main/src/lib/server/updown-config.ts:1119-1121 (chain edit affects future rounds only)
 - **Fix:** F2: state the preview source and the snapshot note. book.ts: fee from Transaction and HOUSE_FEE rows.
 - **Test:** test:house-bot-rules — preview with changed live config shows the note. test:house-bot-money — capped-commission round fee in book equals ledger.
+- ⛔ **Superseded in place (C5-SPEC ruling 183, §1 S26):** there is no HOUSE_FEE row and the payout writes `fee: 0`, so the book fee is recomputed from each market's FROZEN snapshot (never live rates, which is this row's concern) and cross-checked against the settlement's `SETTLEMENT_COMMISSION` ledger lines per marked WIN position. The capped-commission Up & Down round case lives in `test:house-bot-reports` §2 (Postgres cross-check), next to what it tests; `test:house-bot-money` §7 carries only the `feeInputs` EXPLAIN.
 
 ### HB-LC-25 [partial] Cutoff or resolution time moved after an intent was written (no production path today; a future edit feature would invalidate stored deadlineAt)
 - **Trigger:** Today only createMarket writes these times, category lead changes affect only new markets, and the dev fast-forward route is 404 in production. A future 'edit market times' action ships.

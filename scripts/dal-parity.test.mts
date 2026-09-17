@@ -756,5 +756,131 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
     !pgWhereBeforeTake("findByUser: async (userId: string, limit = 50, opts?: { excludeHouseBets?: boolean }) => { const rows = await pc().transaction.findMany({ where: { userId }, orderBy: { createdAt: \"desc\" }, take: limit }); }"));
 }
 
+/* ═══ §16 · C5 step 3 · the new readers' predicates in BOTH twins (C5-SPEC rulings 177–185, 210, 224, 233, 235) ═══ */
+{
+  // ⛔ WHY SOURCE-LEVEL HERE TOO. What each member RETURNS is proven on both stores by `test:house-bot-reports` §1, §2 and
+  // §1.177 (one fixture, literal answers). What this holds is the SHAPE a later edit could break on ONE twin while the
+  // other stays green: the predicate that defines each figure, written in both. Every rule has a planted control.
+  const memBook = region(houseDalSrc, "const memoryHouseBook:");
+  const priBook = region(houseDalSrc, "const prismaHouseBook:");
+  const member = (obj: string, name: string) => objectMethod(obj, name);
+  const NAMES = ["entryRows", "stakeRows", "feeInputs", "ledgerRows", "positionsForUser", "txnPageForUser"];
+  ok("16.0 · every new houseBookStore member resolves in both twins", NAMES.every((n) => member(memBook, n).length > 150 && member(priBook, n).length > 150),
+    NAMES.map((n) => `${n} ${member(memBook, n).length}/${member(priBook, n).length}`).join(" · "));
+
+  // stakeRows (ruling 179)
+  const stakeRules = {
+    prisma: (b: string) => /"status"::text <> 'CASHED_OUT'/.test(b) && /COALESCE\(i\."kind" = 'MANUAL' OR i\."targetId" IS NOT NULL, false\)/.test(b)
+      && /LEFT JOIN "HouseBotIntent" i ON i\."positionId" = p\."id"/.test(b) && /stakeMarketIds\(/.test(b) && /"houseBotId" IS NOT NULL/.test(b),
+    memory: (b: string) => /status !== "CASHED_OUT"/.test(b) && /houseBotId != null/.test(b) && /stakeMarketIds\(/.test(b) && /i != null && isStaffChosen\(i\)/.test(b),
+  };
+  ok("16.stakeRows · both twins exclude CASHED_OUT, read marked positions only, cap the ids, and make a no-intent position staff-chosen FALSE (COALESCE / i != null)",
+    stakeRules.prisma(member(priBook, "stakeRows")) && stakeRules.memory(member(memBook, "stakeRows")));
+  ok("16.stakeRows.c1 · CONTROL · a Prisma twin without the COALESCE and a memory twin counting CASHED_OUT are each caught",
+    !stakeRules.prisma(member(priBook, "stakeRows").replace("COALESCE(i.\"kind\" = 'MANUAL' OR i.\"targetId\" IS NOT NULL, false)", "(i.\"kind\" = 'MANUAL' OR i.\"targetId\" IS NOT NULL)"))
+      && !stakeRules.memory(member(memBook, "stakeRows").replace(`p.status !== "CASHED_OUT"`, "true")));
+
+  // entryRows (rulings 180–181): dayRows' cohort and returns word for word, the four entries, the one requester.
+  const dayPri = member(priBook, "dayRows");
+  const retCte = (b: string) => { const a = b.indexOf("ret AS ("); return a >= 0 ? b.slice(a, b.indexOf("GROUP BY", a)) : ""; };
+  const entryPri = member(priBook, "entryRows");
+  ok("16.entryRows.identity · the Prisma twin reuses dayRows' returned-money CTE exactly and its cohort predicate (placedAt window, marked, optional bot)",
+    retCte(dayPri).length > 100 && entryPri.includes(retCte(dayPri)) && entryPri.includes(`"houseBotId" IS NOT NULL AND "placedAt" >= $1::timestamp AND "placedAt" < $2::timestamp`),
+    retCte(dayPri).slice(0, 120));
+  const entryRules = {
+    prisma: (b: string) => /CASE WHEN i\."id" IS NULL THEN 'UNKNOWN' WHEN i\."kind" = 'MANUAL' THEN 'MANUAL' WHEN i\."targetId" IS NOT NULL THEN 'TARGETED' ELSE 'AUTOMATIC' END/.test(b)
+      && /CASE WHEN i\."kind" = 'MANUAL' THEN i\."requestedById" WHEN i\."targetId" IS NOT NULL THEN tg\."createdById" END/.test(b)
+      && /coalesce\(i\."productLine", m\."productLine"::text\)/.test(b) && /GROUP BY 1, 2, 3, 4/.test(b),
+    memory: (b: string, entryOfBody: string) => /entryOf\(i\)/.test(b) && /memTargets\.get\(i\.targetId\)\?\.createdById/.test(b) && /i\.kind === "MANUAL" \? i\.requestedById/.test(b)
+      && /return "UNKNOWN"/.test(entryOfBody) && /status === "CASHED_OUT"/.test(b) && /status === "VOID"/.test(b),
+  };
+  const entryOfBody = region(houseDalSrc, "function entryOf(");
+  ok("16.entryRows · both twins: UNKNOWN when there is no intent, MANUAL → requestedById, TARGETED → the target's creator, the four status buckets",
+    entryRules.prisma(entryPri) && entryRules.memory(member(memBook, "entryRows"), entryOfBody));
+  ok("16.entryRows.c1 · CONTROL · a Prisma CASE that folds UNKNOWN into AUTOMATIC, and a memory officer from updatedById, are each caught",
+    !entryRules.prisma(entryPri.replace(`WHEN i."id" IS NULL THEN 'UNKNOWN' `, ""))
+      && !entryRules.memory(member(memBook, "entryRows").replace("memTargets.get(i.targetId)?.createdById", "memTargets.get(i.targetId)?.updatedById"), entryOfBody));
+
+  // feeInputs (ruling 183): the LEDGER basis and no account.
+  const feeRules = {
+    prisma: (b: string) => /t\."type"::text = 'BET_PAYOUT' AND t\."status"::text = 'CONFIRMED' AND p\."status"::text = 'WIN'/.test(b)
+      && /t\."createdAt" >= \$1::timestamp AND t\."createdAt" < \$2::timestamp/.test(b) && /t\."type"::text = 'CASHOUT'/.test(b) && !/"userId"/.test(b),
+    memory: (b: string) => /t\.type !== "BET_PAYOUT"/.test(b) && /p\.status !== "WIN"/.test(b) && /t\.status === "CONFIRMED"/.test(b)
+      && /ms\(t\.createdAt\) < to/.test(b) && /t\.type !== "CASHOUT"/.test(b) && !/userId/.test(b),
+  };
+  ok("16.feeInputs · both twins select WIN positions by their marked CONFIRMED BET_PAYOUT in [from, to), add marked CASHOUT fees, and name no userId",
+    feeRules.prisma(member(priBook, "feeInputs")) && feeRules.memory(member(memBook, "feeInputs")));
+  ok("16.feeInputs.c1 · CONTROL · a window read by placement and a twin that selects the userId are each caught",
+    !feeRules.memory(member(memBook, "feeInputs").replace("ms(t.createdAt) < to", "ms(p.placedAt) < to"))
+      && !feeRules.prisma(member(priBook, "feeInputs").replace(`p."marketId" AS "marketId",`, `p."marketId" AS "marketId", p."userId",`)));
+
+  // ledgerRows (ruling 203), positionsForUser (237), txnPageForUser (177).
+  const ledgerRules = (pri: string, mem: string) => /t\."houseBotId" IS NOT NULL AND t\."status"::text = 'CONFIRMED'/.test(pri) && /GROUP BY 1, 2, 3, 4/.test(pri)
+    && /t\.houseBotId == null \|\| t\.status !== "CONFIRMED"/.test(mem);
+  ok("16.ledgerRows · both twins: marked CONFIRMED rows in the window, one group per bot × product × market × type", ledgerRules(member(priBook, "ledgerRows"), member(memBook, "ledgerRows")));
+  ok("16.ledgerRows.c1 · CONTROL · a twin that drops CONFIRMED is caught", !ledgerRules(member(priBook, "ledgerRows").replace(`AND t."status"::text = 'CONFIRMED'`, ""), member(memBook, "ledgerRows")));
+  const countedRules = (pri: string, mem: string, marker: RegExp, memMarker: RegExp) => /count\(\*\)::int AS "n"/.test(pri) && marker.test(pri) && /total: all\.length/.test(mem) && memMarker.test(mem);
+  ok("16.positionsForUser · both twins page marked positions only, and total counts the same population (count(*) / all.length)",
+    countedRules(member(priBook, "positionsForUser"), member(memBook, "positionsForUser"), /"userId" = \$1::text AND "houseBotId" IS NOT NULL/, /p\.houseBotId != null/));
+  ok("16.txnPageForUser · both twins: marked 'only' is houseBotId not null, and the total counts the page's own filter",
+    /input\.marked === "only"\) w\.push\(`"houseBotId" IS NOT NULL`\)/.test(member(priBook, "txnPageForUser")) && /count\(\*\)::int AS "n" FROM "Transaction" WHERE \$\{where\(cv\)/.test(member(priBook, "txnPageForUser"))
+      && /input\.marked === "any" \|\| t\.houseBotId != null/.test(member(memBook, "txnPageForUser")) && /total: all\.length/.test(member(memBook, "txnPageForUser")));
+  ok("16.counted.c1 · CONTROL · a total taken from the page's rows is caught", !countedRules("SELECT 1", "total: rows.length", /x/, /y/));
+
+  // The counted pages and counts beside the paged twins, sharing ONE predicate.
+  const memEvents = region(houseDalSrc, "const memoryHouseBotEvents:"), priEvents = region(houseDalSrc, "const prismaHouseBotEvents:");
+  const memIntents = region(houseDalSrc, "const memoryHouseBotIntents:"), priIntents = region(houseDalSrc, "const prismaHouseBotIntents:");
+  const memTargets = region(houseDalSrc, "const memoryHouseBotTargets:"), priTargets = region(houseDalSrc, "const prismaHouseBotTargets:");
+  const memPresses = region(houseDalSrc, "const memoryHouseBotPresses:"), priPresses = region(houseDalSrc, "const prismaHouseBotPresses:");
+  ok("16.windows · listByKindsInWindow and listInWindow: the end is exclusive and the total is a count of the same where, in both twins",
+    /"createdAt" < \$\{p\.col\("HouseBotEvent", "createdAt", input\.toIso\)\}/.test(member(priEvents, "listByKindsInWindow")) && /where\(pc\)/.test(member(priEvents, "listByKindsInWindow"))
+      && /ms\(e\.createdAt\) < to/.test(member(memEvents, "listByKindsInWindow")) && /total: all\.length/.test(member(memEvents, "listByKindsInWindow"))
+      && /"endedAt" >= \$\{from\} AND "endedAt" < \$\{to\}/.test(member(priTargets, "listInWindow")) && /"removedAt" >= \$\{from\} AND "removedAt" < \$\{to\}/.test(member(priTargets, "listInWindow"))
+      && /inWindow\(t\.createdAt\) \|\| inWindow\(t\.endedAt\) \|\| inWindow\(t\.removedAt\)/.test(member(memTargets, "listInWindow")));
+  ok("16.userKinds · listByUserKinds reads by userId and kind in both twins (never by bot)",
+    /"userId" = \$\{p\.raw\(userId, "text"\)\}/.test(member(priEvents, "listByUserKinds")) && /e\.userId === userId && want\.includes\(e\.kind\)/.test(member(memEvents, "listByUserKinds")));
+  ok("16.shared · listFeed/countFeed share feedWhere (Prisma) and memFeedMatches (memory); listRegister/countRegister share registerWhere and memRegisterMatches, which read purposes",
+    /feedWhere\(filter, p\)/.test(member(priIntents, "listFeed")) && /feedWhere\(filter, p\)/.test(member(priIntents, "countFeed"))
+      && /memFeedMatches\(filter\)/.test(member(memIntents, "listFeed")) && /memFeedMatches\(filter\)/.test(member(memIntents, "countFeed"))
+      && /registerWhere\(filter, p\)/.test(member(priPresses, "listRegister")) && /registerWhere\(filter, p\)/.test(member(priPresses, "countRegister"))
+      && /memRegisterMatches\(filter\)/.test(member(memPresses, "listRegister")) && /memRegisterMatches\(filter\)/.test(member(memPresses, "countRegister"))
+      && /"purpose" = ANY/.test(region(houseDalSrc, "function registerWhere(")) && /purposes\.includes\(p\.purpose\)/.test(region(houseDalSrc, "function memRegisterMatches(")));
+  ok("16.countered · counteredPositionsCount counts DISTINCT trigger positions of PLACED COUNTER rows, in both twins",
+    /count\(DISTINCT "triggerPositionId"\)::int/.test(member(priIntents, "counteredPositionsCount")) && /"kind" = 'COUNTER' AND "status" = 'PLACED'/.test(member(priIntents, "counteredPositionsCount"))
+      && /new Set\(triggers\)\.size/.test(member(memIntents, "counteredPositionsCount")) && /i\.kind === "COUNTER" && i\.status === "PLACED"/.test(member(memIntents, "counteredPositionsCount")));
+  const memBots = region(houseDalSrc, "const memoryHouseBots:"), priBots = region(houseDalSrc, "const prismaHouseBots:");
+  ok("16.overlapping · listOverlapping: designated before the end, not removed before the start (REMOVED included), in both twins",
+    /"designatedAt" < \$\{p\.col\("HouseBot", "designatedAt", toIso\)\}/.test(member(priBots, "listOverlapping")) && /"removedAt" IS NULL OR "removedAt" >= /.test(member(priBots, "listOverlapping"))
+      && /ms\(b\.designatedAt\) < to && \(b\.removedAt == null \|\| ms\(b\.removedAt\) >= from\)/.test(member(memBots, "listOverlapping")));
+
+  // Platform members (rulings 210, 224, 233, 235) — the files each twin lives in.
+  const filtersSrc = decomment(readFileSync(join(SRC, "lib/server/txn-filters.ts"), "utf8"));
+  const searchPri = (() => { const block = region(dalSrc, "\n  txn: {"); const a = block.indexOf("search: async ("); return a < 0 ? "" : block.slice(a, block.indexOf("\n    },", a)); })();
+  ok("16.txnSearch · ruling 210 · house only/exclude in matchesFilters (memory) and the Prisma where, as separate code",
+    /f\.house === "only" && t\.houseBotId == null\) return false/.test(filtersSrc) && /f\.house === "exclude" && t\.houseBotId != null\) return false/.test(filtersSrc)
+      && /f\.house === "only"\) and\.push\(\{ houseBotId: \{ not: null \} \}\)/.test(searchPri) && /f\.house === "exclude"\) and\.push\(\{ houseBotId: null \}\)/.test(searchPri));
+  const topPri = (() => { const block = region(dalSrc, "\n  txn: {"); const a = block.indexOf("topContributors: async ("); return a < 0 ? "" : block.slice(a, block.indexOf("\n    },", a)); })();
+  const topMem = (() => { const a = storeSrc.indexOf("topContributors: (limit: number)"); return a < 0 ? "" : storeSrc.slice(a, storeSrc.indexOf(".slice(0, limit)", a)); })();
+  ok("16.topContributors · ruling 224 · both twins skip house-marked rows before grouping",
+    /where "status" = 'CONFIRMED'[\s\S]*and "houseBotId" is null[\s\S]*group by "userId"/.test(topPri) && /if \(t\.houseBotId != null\) continue;/.test(topMem));
+  const lbMem = objectMethod(region(marketDalSrc, "const memoryPositions"), "leaderboard");
+  const lbPri = objectMethod(region(marketDalSrc, "const prismaPositions"), "leaderboard");
+  ok("16.leaderboard · ruling 233 · excludeHouse skips marked rows before grouping (memory) and puts the literal filter inside the where, no new bind (SQL)",
+    /if \(opts\?\.excludeHouse && p\.houseBotId != null\) continue;/.test(lbMem)
+      && /where p\."status" <> 'OPEN'[\s\S]*\$\{opts\?\.excludeHouse \? `and p\."houseBotId" is null` : ""\}[\s\S]*group by p\."userId"/.test(lbPri));
+  const dtMem = objectMethod(region(marketDalSrc, "const memoryPositions"), "dailyTotalsByUser");
+  const dtPri = objectMethod(region(marketDalSrc, "const prismaPositions"), "dailyTotalsByUser");
+  ok("16.ownRounds · ruling 235 · ownRounds counts unmarked positions in both twins, in the same single aggregate",
+    /if \(p\.houseBotId == null\) e\.ownRounds \+= 1;/.test(dtMem) && /\(count\(\*\) filter \(where p\."houseBotId" is null\)\)::int\s+as "ownRounds"/.test(dtPri) && /ownRounds: Number\(r\.ownRounds\)/.test(dtPri));
+  const auditSrc16 = decomment(readFileSync(join(SRC, "lib/server/audit.ts"), "utf8"));
+  const byActions = (() => { const a = auditSrc16.indexOf("export async function getAuditByActionsDurable("); return a < 0 ? "" : auditSrc16.slice(a, auditSrc16.indexOf("\nexport ", a + 10)); })();
+  const windowRules = (b: string) => /Date\.parse\(e\.createdAt\) >= fromMs/.test(b) && /Date\.parse\(e\.createdAt\) < toMs/.test(b)
+    && b.indexOf("Date.parse(e.createdAt) < toMs") < b.indexOf(".slice(0, limit)") && /lt: new Date\(toMs\)/.test(b) && /gte: new Date\(fromMs\)/.test(b)
+    && /const where = \{[^;]*\.\.\.window \};/.test(b) && /\.count\(\{ where \}\)/.test(b);
+  ok("16.auditWindow · ruling 185 · the window filters both branches before the limit, the end exclusive, and the count reads the same where", windowRules(byActions), byActions.slice(0, 160));
+  ok("16.auditWindow.c1 · CONTROL · an inclusive end (lte) and a ring that slices before it windows are each caught",
+    !windowRules(byActions.replace("lt: new Date(toMs)", "lte: new Date(toMs)")) && !windowRules(byActions.replace("Date.parse(e.createdAt) < toMs", "Date.parse(e.createdAt) <= toMs")));
+}
+
 console.log(`\ndal-parity: ${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);

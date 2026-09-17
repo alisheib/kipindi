@@ -40,6 +40,11 @@ export type TxnSearchFilters = {
   toMs?: number;
   /** Only rows that need an operator's eye (see `attentionOf`). */
   attentionOnly?: boolean;
+  /**
+   * The house marker (C5-SPEC ruling 210): "only" = rows carrying `houseBotId`, "exclude" = rows without it, absent = every
+   * row. A server-only filter, taken from a whitelisted URL parameter — never a field of the client search grammar.
+   */
+  house?: "only" | "exclude";
   skip?: number;
   take?: number;
   sort?: { field: TxnSortField; dir: "asc" | "desc" };
@@ -116,6 +121,8 @@ export function matchesFilters(t: StoredTxn, f: TxnSearchFilters, nowMs: number 
     if (!hay.includes(q)) return false;
   }
   if (f.attentionOnly && attentionOf(t, nowMs)?.level !== "warn") return false;
+  if (f.house === "only" && t.houseBotId == null) return false;
+  if (f.house === "exclude" && t.houseBotId != null) return false;
   return true;
 }
 

@@ -37,7 +37,8 @@ import { randomId } from "./crypto";
 import { marketStore, positionStore } from "./market-dal";
 import { assetStore, chainStore, roundStore } from "./updown-dal";
 import { snapshotOrLegacy } from "./market-config";
-import { db } from "./store";
+import { db, type StoredTxn } from "./store";
+import { toStoredTxn } from "./prisma-dal";
 import {
   HOUSE_ID_PREFIX, houseIntentKey, SUBMIT_ID_RE, RUNTIME_KEY, HOUSE_CONTROL_ID, TARGET_ARMING_SEC,
   PRESS_AUDIT_LEASE_MS, PRESS_AUDIT_REPAIR_AFTER_MS, PRESS_INTERRUPTED_AFTER_MS, PRESS_REFUSAL_INTERRUPTED,
@@ -365,6 +366,8 @@ export type PressRegisterFilter = {
   toIso: string;
   actorId?: string;
   houseBotId?: string;
+  /** Only these purposes (R1's Enter now register reads ENTER_NOW; the scorecard's presses ENTER_NOW and TARGET_ADD). */
+  purposes?: readonly PressPurpose[];
   cursor?: KeysetCursor | null;
   limit: number;
 };
@@ -377,6 +380,128 @@ export type HouseBookRawRow = {
   openStake: number;
   settledStake: number;
   returned: number;
+};
+
+/**
+ * How a marked stake entered (C5-SPEC rulings 180–181): AUTOMATIC (no target, not MANUAL: an untargeted COUNTER, a
+ * FILL, an OPENER), TARGETED (a reaction on a target), MANUAL (Enter now), UNKNOWN (a marked position with no intent
+ * row — written outside the bet path; expected to be 0).
+ */
+export type HouseEntry = "AUTOMATIC" | "TARGETED" | "MANUAL" | "UNKNOWN";
+export const HOUSE_ENTRIES: readonly HouseEntry[] = ["AUTOMATIC", "TARGETED", "MANUAL", "UNKNOWN"];
+
+/**
+ * `entryRows`' raw sums for positions PLACED in a window, per (bot, product line, entry, officer) (ruling 180). Returned
+ * money is `dayRows`' own: marked CONFIRMED payout, refund and cash-out rows created at or after the window's start.
+ * `productLine` is the intent's, else the market's RAW line (UNKNOWN has no intent). `officerId` is the one requester
+ * (MANUAL → requestedById, TARGETED → the target's createdById), null for AUTOMATIC and UNKNOWN.
+ * won = WIN, lost = LOSS, refunded = VOID, cashedOut = CASHED_OUT; settledStake is every status but OPEN.
+ */
+export type HouseEntryRawRow = {
+  houseBotId: string;
+  productLine: string | null;
+  entry: HouseEntry;
+  officerId: string | null;
+  bets: number;
+  staked: number;
+  openStake: number;
+  settledStake: number;
+  returned: number;
+  won: number;
+  wonStake: number;
+  wonReturned: number;
+  lost: number;
+  lostStake: number;
+  lostReturned: number;
+  refunded: number;
+  refundedStake: number;
+  refundedReturned: number;
+  cashedOut: number;
+  cashedOutStake: number;
+  cashedOutReturned: number;
+};
+
+/**
+ * One group of marked positions on a market (ruling 179): the RAW intent columns, never a folded requester — the one
+ * requester rule (`stake-snapshot.ts`) is applied by `exposure.ts`. CASHED_OUT positions are never in a row;
+ * `open` is status OPEN, otherwise WIN, LOSS or VOID. A marked position with no intent has `staffChosen: false` and
+ * null intent columns.
+ */
+export type HouseStakeRow = {
+  marketId: string;
+  side: IntentSide;
+  open: boolean;
+  staffChosen: boolean;
+  kind: IntentKind | null;
+  requestedById: string | null;
+  targetId: string | null;
+  targetCreatedById: string | null;
+  stakeTzs: number;
+};
+/** The most market ids one `stakeRows` read takes (ruling 179: callers pass a page of ids). */
+export const HOUSE_STAKE_MAX_IDS = 100;
+
+/**
+ * What the fee withheld from house winnings is DERIVED from (ruling 183) — never a userId. `wins` are the marked WIN
+ * positions whose marked CONFIRMED BET_PAYOUT was created in the window (the LEDGER basis), each with that payout's id
+ * (its settlement books the commission share in ledger group `settle_<payoutTxnId>`). `markets` are exactly the markets
+ * holding one of them, with their pools, frozen fee snapshot, settlement time and every position's id, side, status and
+ * stake. `cashOuts` are marked CONFIRMED CASHOUT rows created in the window, with their fee.
+ */
+export type HouseFeeInputs = {
+  wins: Array<{ positionId: string; houseBotId: string; marketId: string; side: IntentSide; payoutTxnId: string }>;
+  markets: Array<{
+    marketId: string;
+    productLine: string | null;
+    yesPool: number;
+    noPool: number;
+    feeSnapshot: unknown;
+    settledAt: string | null;
+    positions: Array<{ id: string; side: IntentSide; status: string; stake: number }>;
+  }>;
+  cashOuts: Array<{ txnId: string; positionId: string | null; houseBotId: string; marketId: string | null; productLine: string | null; feeTzs: number }>;
+};
+
+/** R1's LEDGER basis (ruling 203): marked CONFIRMED transactions created in a window, per bot × product × market × type. */
+export type HouseLedgerRow = {
+  houseBotId: string;
+  productLine: string | null;
+  marketId: string | null;
+  type: string;
+  count: number;
+  /** Σ amount as stored (a stake row is negative). */
+  amountTzs: number;
+  feeTzs: number;
+};
+
+/** A keyset page with the real size of the whole filtered set — for sections that must print "N of M" (C5-SPEC ruling 205). */
+export type CountedPage<T> = Page<T> & { total: number };
+
+/** Keyset position for a reader ordered by `("placedAt", id)` descending. */
+export type PlacedCursor = { placedAt: string; id: string };
+
+/** One marked position of an account (the internal record, ruling 237). */
+export type HouseUserPositionRow = {
+  id: string;
+  houseBotId: string;
+  marketId: string;
+  side: IntentSide;
+  stake: number;
+  status: string;
+  finalPayout: number | null;
+  placedAt: string;
+  settledAt: string | null;
+};
+
+/** The internal record's and the per-bot CSV's transaction reader (ruling 177): keyset, never the 500-clamped search. */
+export type HouseTxnPageInput = {
+  userId: string;
+  fromIso?: string;
+  toIso?: string;
+  /** "only" = house-marked rows; "any" = every row of the account. */
+  marked: "only" | "any";
+  cursor?: KeysetCursor | null;
+  limit: number;
 };
 
 // ---------------------------------------------------------------------------
@@ -1340,6 +1465,11 @@ export interface HouseBotStore {
   listByUserId(userId: string, tx?: HouseTx): Promise<StoredHouseBot[]>;
   /** Every non-REMOVED bot, oldest designation first. */
   listNonRemoved(tx?: HouseTx): Promise<StoredHouseBot[]>;
+  /**
+   * Bots whose life overlaps `[fromIso, toIso)` — designated before the end and not removed before the start — REMOVED
+   * included, oldest designation first (C5-SPEC ruling 177). One reader for R1's designation register and the GBT memo.
+   */
+  listOverlapping(input: { fromIso: string; toIso: string }, tx?: HouseTx): Promise<StoredHouseBot[]>;
   countLive(tx?: HouseTx): Promise<number>;
   /** Status move conditional on `from`. A removal stamps `removedAt` on the database clock. */
   setStatus(id: string, input: SetStatusInput, tx?: HouseTx): Promise<StoredHouseBot | null>;
@@ -1433,6 +1563,15 @@ export interface HouseBotEventStore {
   listByBot(houseBotId: string, opts: { limit: number; cursor?: KeysetCursor | null; kinds?: readonly HouseBotEventKind[] }, tx?: HouseTx): Promise<Page<StoredHouseBotEvent>>;
   /** Events of the given kinds, newest first. */
   listByKinds(kinds: readonly HouseBotEventKind[], opts: { houseBotId?: string; userId?: string; marketId?: string; sinceIso?: string; limit: number }, tx?: HouseTx): Promise<StoredHouseBotEvent[]>;
+  /**
+   * Events of the given kinds created in `[fromIso, toIso)`, newest first, keyset-paged (≤ 500 a page) with the real
+   * total (ruling 177): a report section pages it to completion and prints "N of M".
+   */
+  listByKindsInWindow(input: { kinds: readonly HouseBotEventKind[]; fromIso: string; toIso: string; houseBotId?: string; cursor?: KeysetCursor | null; limit: number }, tx?: HouseTx): Promise<CountedPage<StoredHouseBotEvent>>;
+  /** One account's events of the given kinds, newest first, keyset-paged with the real total (ruling 239; `(userId, kind, createdAt)`). */
+  listByUserKinds(userId: string, kinds: readonly HouseBotEventKind[], opts: { cursor?: KeysetCursor | null; limit: number }, tx?: HouseTx): Promise<CountedPage<StoredHouseBotEvent>>;
+  /** How many events `listByBot` would page through for these kinds (ruling 177). */
+  countByBot(houseBotId: string, opts: { kinds?: readonly HouseBotEventKind[] }, tx?: HouseTx): Promise<number>;
   /** The events a target or cancel press wrote (`payload.pressId`), for the audit repair. */
   listForPress(press: Pick<StoredHouseBotPress, "id" | "houseBotId" | "createdAt">, tx?: HouseTx): Promise<StoredHouseBotEvent[]>;
   /**
@@ -1531,6 +1670,13 @@ export interface HouseBotIntentStore {
   staffChosenPlacedToday(input: { houseBotId: string | null }, tx?: HouseTx): Promise<{ count: number; stakeTzs: number }>;
   /** The activity feed, newest first, keyset-paged (C7). */
   listFeed(filter: IntentFeedFilter, tx?: HouseTx): Promise<Page<StoredHouseBotIntent>>;
+  /** How many rows `listFeed` would page through for the same filter (ruling 177). */
+  countFeed(filter: Omit<IntentFeedFilter, "cursor" | "limit">, tx?: HouseTx): Promise<number>;
+  /**
+   * The distinct trigger positions of this account that the house countered (ruling 239): PLACED COUNTER rows, targeted
+   * ones included, `COUNT(DISTINCT triggerPositionId)`.
+   */
+  counteredPositionsCount(triggerUserId: string, tx?: HouseTx): Promise<number>;
 }
 
 export interface HouseBotTargetStore {
@@ -1564,6 +1710,11 @@ export interface HouseBotTargetStore {
   /** When the poll's latest stop happened, for the refusal copy. */
   lastStoppedAt(marketId: string, tx?: HouseTx): Promise<string | null>;
   countActive(input: { botId?: string }, tx?: HouseTx): Promise<number>;
+  /**
+   * Targets CREATED, ENDED or REMOVED in `[fromIso, toIso)` (R1 (g), (h); ruling 177), newest created first,
+   * keyset-paged (≤ 500 a page) with the real total.
+   */
+  listInWindow(input: { fromIso: string; toIso: string; houseBotId?: string; cursor?: KeysetCursor | null; limit: number }, tx?: HouseTx): Promise<CountedPage<StoredHouseBotTarget>>;
 }
 
 export interface HouseBotPressStore {
@@ -1591,6 +1742,8 @@ export interface HouseBotPressStore {
   listAuditRepair(limit: number): Promise<StoredHouseBotPress[]>;
   /** The R1 register, newest first, keyset-paged. */
   listRegister(filter: PressRegisterFilter, tx?: HouseTx): Promise<Page<StoredHouseBotPress>>;
+  /** How many presses `listRegister` would page through for the same filter (ruling 177). */
+  countRegister(filter: Omit<PressRegisterFilter, "cursor" | "limit">, tx?: HouseTx): Promise<number>;
 }
 
 export interface HouseBookStore {
@@ -1598,6 +1751,25 @@ export interface HouseBookStore {
   dayRows(input: { fromIso: string; toIso: string; houseBotId: string | null }, tx?: HouseTx): Promise<HouseBookRawRow[]>;
   /** Open stake per bot right now. */
   openExposure(houseBotId: string | null, tx?: HouseTx): Promise<Array<{ houseBotId: string; openStakeTzs: number }>>;
+  /**
+   * `dayRows`' cohort split by entry and officer (C5-SPEC ruling 180): positions placed in `[fromIso, toIso)`, grouped by
+   * (bot, product line, entry, officer), with the per-status counts, stakes and returns. The identity AUTOMATIC +
+   * TARGETED + MANUAL + UNKNOWN = `dayRows` holds by construction and is proven (`test:house-bot-reports` §1).
+   */
+  entryRows(input: { fromIso: string; toIso: string; houseBotId: string | null }, tx?: HouseTx): Promise<HouseEntryRawRow[]>;
+  /**
+   * Marked positions on these markets (at most HOUSE_STAKE_MAX_IDS), CASHED_OUT excluded, grouped by market, side, open,
+   * staff-chosen and the raw intent columns (ruling 179). ONE statement on Postgres.
+   */
+  stakeRows(marketIds: readonly string[], tx?: HouseTx): Promise<HouseStakeRow[]>;
+  /** What the fee withheld is derived from, on the LEDGER basis (ruling 183). Never a userId. */
+  feeInputs(input: { fromIso: string; toIso: string; houseBotId: string | null }, tx?: HouseTx): Promise<HouseFeeInputs>;
+  /** Marked CONFIRMED transactions created in `[fromIso, toIso)`, one GROUP BY per bot × product × market × type (ruling 203). */
+  ledgerRows(input: { fromIso: string; toIso: string }, tx?: HouseTx): Promise<HouseLedgerRow[]>;
+  /** One account's marked positions, newest placement first, keyset-paged (≤ 500 a page) with the real total (ruling 237). */
+  positionsForUser(input: { userId: string; cursor?: PlacedCursor | null; limit: number }, tx?: HouseTx): Promise<{ rows: HouseUserPositionRow[]; nextCursor: PlacedCursor | null; total: number }>;
+  /** One account's transactions, marked only or all, in an optional window, keyset-paged with the real total (ruling 177). */
+  txnPageForUser(input: HouseTxnPageInput, tx?: HouseTx): Promise<{ rows: StoredTxn[]; nextCursor: KeysetCursor | null; total: number }>;
 }
 
 /** One bot's PLACED rows in a window (hourly summaries, C4-SPEC ruling 80). Staff-chosen = MANUAL or targeted. */
@@ -1813,6 +1985,39 @@ function placedWindowSec(v: number): number {
 
 const STAFF_CHOSEN_SQL = `("kind" = 'MANUAL' OR "targetId" IS NOT NULL)`;
 const isStaffChosen = (i: Pick<StoredHouseBotIntent, "kind" | "targetId">): boolean => i.kind === "MANUAL" || i.targetId != null;
+
+/** `stakeRows`' ids: distinct, at most HOUSE_STAKE_MAX_IDS — refused identically by both stores (ruling 179). */
+function stakeMarketIds(ids: readonly string[]): string[] {
+  const unique = [...new Set(ids)];
+  if (unique.length > HOUSE_STAKE_MAX_IDS) throw new Error(`house-bot-dal: stakeRows takes at most ${HOUSE_STAKE_MAX_IDS} market ids (got ${unique.length})`);
+  return unique;
+}
+/** One JS order for grouped rows, applied by BOTH stores after the read, so the twins return the same sequence whatever
+ *  the database collation says about ids. */
+const cmpText = (a: string | null, b: string | null): number => (a === b ? 0 : a == null ? -1 : b == null ? 1 : a < b ? -1 : 1);
+const stakeRowOrder = (a: HouseStakeRow, b: HouseStakeRow): number =>
+  cmpText(a.marketId, b.marketId) || cmpText(a.side, b.side) || Number(b.open) - Number(a.open) || Number(a.staffChosen) - Number(b.staffChosen)
+  || cmpText(a.kind, b.kind) || cmpText(a.requestedById, b.requestedById) || cmpText(a.targetId, b.targetId) || cmpText(a.targetCreatedById, b.targetCreatedById);
+const entryRowOrder = (a: HouseEntryRawRow, b: HouseEntryRawRow): number =>
+  cmpText(a.houseBotId, b.houseBotId) || cmpText(a.productLine, b.productLine) || cmpText(a.entry, b.entry) || cmpText(a.officerId, b.officerId);
+const ledgerRowOrder = (a: HouseLedgerRow, b: HouseLedgerRow): number =>
+  cmpText(a.houseBotId, b.houseBotId) || cmpText(a.productLine, b.productLine) || cmpText(a.marketId, b.marketId) || cmpText(a.type, b.type);
+const byIdText = <R extends { id: string }>(a: R, b: R): number => cmpText(a.id, b.id);
+/** An empty `entryRows` group. */
+function emptyEntryRow(houseBotId: string, productLine: string | null, entry: HouseEntry, officerId: string | null): HouseEntryRawRow {
+  return {
+    houseBotId, productLine, entry, officerId, bets: 0, staked: 0, openStake: 0, settledStake: 0, returned: 0,
+    won: 0, wonStake: 0, wonReturned: 0, lost: 0, lostStake: 0, lostReturned: 0,
+    refunded: 0, refundedStake: 0, refundedReturned: 0, cashedOut: 0, cashedOutStake: 0, cashedOutReturned: 0,
+  };
+}
+/** The entry of a marked position: its intent's kind and target, or UNKNOWN with none (ruling 181). */
+function entryOf(i: Pick<StoredHouseBotIntent, "kind" | "targetId"> | null): HouseEntry {
+  if (i == null) return "UNKNOWN";
+  if (i.kind === "MANUAL") return "MANUAL";
+  if (i.targetId != null) return "TARGETED";
+  return "AUTOMATIC";
+}
 const RUNTIME_WRITABLE = Object.keys(HOUSE_BOT_RUNTIME_COLUMNS).filter((k) => k !== "key" && k !== "updatedAt");
 const RULES_WRITABLE: readonly string[] = ["rules", ...BOT_CAP_FIELDS];
 
@@ -2060,6 +2265,11 @@ const memoryHouseBots: HouseBotStore = {
     return [...memBots.values()].filter((b) => b.status !== "REMOVED")
       .sort((a, b) => ms(a.designatedAt) - ms(b.designatedAt)).map(clone);
   },
+  async listOverlapping({ fromIso, toIso }) {
+    const from = ms(fromIso), to = ms(toIso);
+    return [...memBots.values()].filter((b) => ms(b.designatedAt) < to && (b.removedAt == null || ms(b.removedAt) >= from))
+      .sort((a, b) => ms(a.designatedAt) - ms(b.designatedAt) || cmpText(a.id, b.id)).map(clone);
+  },
   async countLive() {
     return [...memBots.values()].filter((b) => b.status !== "REMOVED").length;
   },
@@ -2288,6 +2498,22 @@ const memoryHouseBotEvents: HouseBotEventStore = {
       .sort((a, b) => ms(b.createdAt) - ms(a.createdAt) || (a.id < b.id ? 1 : -1))
       .slice(0, pageLimit(opts.limit))
       .map(clone);
+  },
+  async listByKindsInWindow(input) {
+    const want: readonly string[] = input.kinds;
+    const from = ms(input.fromIso), to = ms(input.toIso);
+    const all = [...memEvents.values()].filter((e) => want.includes(e.kind) && ms(e.createdAt) >= from && ms(e.createdAt) < to
+      && (input.houseBotId === undefined || e.houseBotId === input.houseBotId));
+    return { ...memPage(all, input.cursor, input.limit), total: all.length };
+  },
+  async listByUserKinds(userId, kinds, opts) {
+    const want: readonly string[] = kinds;
+    const all = [...memEvents.values()].filter((e) => e.userId === userId && want.includes(e.kind));
+    return { ...memPage(all, opts.cursor, opts.limit), total: all.length };
+  },
+  async countByBot(houseBotId, opts) {
+    const kinds: readonly string[] | undefined = opts.kinds;
+    return [...memEvents.values()].filter((e) => e.houseBotId === houseBotId && (!kinds || kinds.includes(e.kind))).length;
   },
   async listForPress(press) {
     return [...memEvents.values()]
@@ -2566,18 +2792,32 @@ const memoryHouseBotIntents: HouseBotIntentStore = {
     });
   },
   async listFeed(filter) {
-    const kinds: readonly string[] | undefined = filter.kinds;
-    const statuses: readonly string[] | undefined = filter.statuses;
-    return memPage([...memIntents.values()].filter((i) =>
-      (filter.houseBotId === undefined || i.houseBotId === filter.houseBotId)
-      && (filter.productLine === undefined || i.productLine === filter.productLine)
-      && (!kinds || kinds.includes(i.kind))
-      && (!statuses || statuses.includes(i.status))
-      && (filter.targetId === undefined || i.targetId === filter.targetId)
-      && (filter.fromIso === undefined || ms(i.createdAt) >= ms(filter.fromIso))
-      && (filter.toIso === undefined || ms(i.createdAt) < ms(filter.toIso))), filter.cursor, filter.limit);
+    return memPage([...memIntents.values()].filter(memFeedMatches(filter)), filter.cursor, filter.limit);
+  },
+  async countFeed(filter) {
+    return [...memIntents.values()].filter(memFeedMatches(filter)).length;
+  },
+  async counteredPositionsCount(triggerUserId) {
+    const triggers = [...memIntents.values()]
+      .filter((i) => i.triggerUserId === triggerUserId && i.kind === "COUNTER" && i.status === "PLACED" && i.triggerPositionId != null)
+      .map((i) => i.triggerPositionId);
+    return new Set(triggers).size;
   },
 };
+
+/** The feed's predicate, shared by `listFeed` and `countFeed` so the count is over exactly the rows the pages hold. */
+function memFeedMatches(filter: Omit<IntentFeedFilter, "cursor" | "limit">): (i: StoredHouseBotIntent) => boolean {
+  const kinds: readonly string[] | undefined = filter.kinds;
+  const statuses: readonly string[] | undefined = filter.statuses;
+  return (i) =>
+    (filter.houseBotId === undefined || i.houseBotId === filter.houseBotId)
+    && (filter.productLine === undefined || i.productLine === filter.productLine)
+    && (!kinds || kinds.includes(i.kind))
+    && (!statuses || statuses.includes(i.status))
+    && (filter.targetId === undefined || i.targetId === filter.targetId)
+    && (filter.fromIso === undefined || ms(i.createdAt) >= ms(filter.fromIso))
+    && (filter.toIso === undefined || ms(i.createdAt) < ms(filter.toIso));
+}
 
 /**
  * `cancelLive` takes EXACTLY ONE scope. ⛔ There is no empty or combined scope: an unscoped
@@ -2680,6 +2920,13 @@ const memoryHouseBotTargets: HouseBotTargetStore = {
   async countActive({ botId }) {
     return [...memTargets.values()].filter((t) => t.status === "ACTIVE" && (botId === undefined || t.houseBotId === botId)).length;
   },
+  async listInWindow(input) {
+    const from = ms(input.fromIso), to = ms(input.toIso);
+    const inWindow = (at: string | null) => at != null && ms(at) >= from && ms(at) < to;
+    const all = [...memTargets.values()].filter((t) => (inWindow(t.createdAt) || inWindow(t.endedAt) || inWindow(t.removedAt))
+      && (input.houseBotId === undefined || t.houseBotId === input.houseBotId));
+    return { ...memPage(all, input.cursor, input.limit), total: all.length };
+  },
 };
 
 /** ENTER_NOW refusals whose press is audited (press flow step 6). */
@@ -2772,12 +3019,21 @@ const memoryHouseBotPresses: HouseBotPressStore = {
       .map(clone);
   },
   async listRegister(filter) {
-    return memPage([...memPresses.values()].filter((p) =>
-      ms(p.createdAt) >= ms(filter.fromIso) && ms(p.createdAt) < ms(filter.toIso)
-      && (filter.actorId === undefined || p.actorId === filter.actorId)
-      && (filter.houseBotId === undefined || p.houseBotId === filter.houseBotId)), filter.cursor, filter.limit);
+    return memPage([...memPresses.values()].filter(memRegisterMatches(filter)), filter.cursor, filter.limit);
+  },
+  async countRegister(filter) {
+    return [...memPresses.values()].filter(memRegisterMatches(filter)).length;
   },
 };
+
+/** The register's predicate, shared by `listRegister` and `countRegister`. */
+function memRegisterMatches(filter: Omit<PressRegisterFilter, "cursor" | "limit">): (p: StoredHouseBotPress) => boolean {
+  const purposes: readonly string[] | undefined = filter.purposes;
+  return (p) => ms(p.createdAt) >= ms(filter.fromIso) && ms(p.createdAt) < ms(filter.toIso)
+    && (filter.actorId === undefined || p.actorId === filter.actorId)
+    && (filter.houseBotId === undefined || p.houseBotId === filter.houseBotId)
+    && (!purposes || purposes.includes(p.purpose));
+}
 
 /** The ledger rows that return money to a stake (R3). Payout, refund and cash-out amounts are
  *  positive. */
@@ -2819,6 +3075,145 @@ const memoryHouseBook: HouseBookStore = {
       acc.set(p.houseBotId, (acc.get(p.houseBotId) ?? 0) + p.stake);
     }
     return [...acc.entries()].sort(([a], [b]) => (a < b ? -1 : 1)).map(([id, openStakeTzs]) => ({ houseBotId: id, openStakeTzs }));
+  },
+  async entryRows({ fromIso, toIso, houseBotId }) {
+    // `dayRows`' cohort and returns, exactly — then the intent (by positionId), its target's creator and the market's raw line.
+    const from = ms(fromIso), to = ms(toIso);
+    const pos = (await positionStore.values()).filter((p) => p.houseBotId != null
+      && (houseBotId == null || p.houseBotId === houseBotId) && ms(p.placedAt) >= from && ms(p.placedAt) < to);
+    const ids = new Set(pos.map((p) => p.id));
+    const returned = new Map<string, number>();
+    for (const t of await db.txn.listAll()) {
+      if (t.houseBotId == null || t.status !== "CONFIRMED" || !RETURN_TXN_TYPES.includes(t.type)) continue;
+      if (ms(t.createdAt) < from || t.positionId == null || !ids.has(t.positionId)) continue;
+      returned.set(t.positionId, (returned.get(t.positionId) ?? 0) + t.amount);
+    }
+    const intentOf = new Map<string, StoredHouseBotIntent>();
+    for (const i of memIntents.values()) if (i.positionId != null && ids.has(i.positionId)) intentOf.set(i.positionId, i);
+    const acc = new Map<string, HouseEntryRawRow>();
+    for (const p of pos) {
+      const i = intentOf.get(p.id) ?? null;
+      const entry = entryOf(i);
+      const officerId = i == null ? null : i.kind === "MANUAL" ? i.requestedById : i.targetId != null ? (memTargets.get(i.targetId)?.createdById ?? null) : null;
+      const productLine = i?.productLine ?? (((await marketStore.get(p.marketId))?.productLine as string | undefined) ?? null);
+      const key = JSON.stringify([p.houseBotId, productLine, entry, officerId]);
+      const row = acc.get(key) ?? emptyEntryRow(p.houseBotId as string, productLine, entry, officerId);
+      const back = returned.get(p.id) ?? 0;
+      row.bets += 1;
+      row.staked += p.stake;
+      row.returned += back;
+      if (p.status === "OPEN") row.openStake += p.stake;
+      else row.settledStake += p.stake;
+      if (p.status === "WIN") { row.won += 1; row.wonStake += p.stake; row.wonReturned += back; }
+      else if (p.status === "LOSS") { row.lost += 1; row.lostStake += p.stake; row.lostReturned += back; }
+      else if (p.status === "VOID") { row.refunded += 1; row.refundedStake += p.stake; row.refundedReturned += back; }
+      else if (p.status === "CASHED_OUT") { row.cashedOut += 1; row.cashedOutStake += p.stake; row.cashedOutReturned += back; }
+      acc.set(key, row);
+    }
+    return [...acc.values()].sort(entryRowOrder);
+  },
+  async stakeRows(marketIds) {
+    const ids = stakeMarketIds(marketIds);
+    const acc = new Map<string, HouseStakeRow>();
+    for (const marketId of ids) {
+      const marked = (await positionStore.listForMarket(marketId)).filter((p) => p.houseBotId != null && p.status !== "CASHED_OUT");
+      for (const p of marked) {
+        const i = [...memIntents.values()].find((x) => x.positionId === p.id) ?? null;
+        const row: HouseStakeRow = {
+          marketId: p.marketId, side: p.side, open: p.status === "OPEN", staffChosen: i != null && isStaffChosen(i),
+          kind: i?.kind ?? null, requestedById: i?.requestedById ?? null, targetId: i?.targetId ?? null,
+          targetCreatedById: i?.targetId != null ? (memTargets.get(i.targetId)?.createdById ?? null) : null, stakeTzs: 0,
+        };
+        const key = JSON.stringify([row.marketId, row.side, row.open, row.staffChosen, row.kind, row.requestedById, row.targetId, row.targetCreatedById]);
+        const cur = acc.get(key) ?? row;
+        cur.stakeTzs += p.stake;
+        acc.set(key, cur);
+      }
+    }
+    return [...acc.values()].map((r) => ({ ...r, stakeTzs: Math.round(r.stakeTzs) })).sort(stakeRowOrder);
+  },
+  async feeInputs({ fromIso, toIso, houseBotId }) {
+    const from = ms(fromIso), to = ms(toIso);
+    const marked = (await db.txn.listAll()).filter((t) => t.houseBotId != null && t.status === "CONFIRMED"
+      && ms(t.createdAt) >= from && ms(t.createdAt) < to && (houseBotId == null || t.houseBotId === houseBotId));
+    const wins: HouseFeeInputs["wins"] = [];
+    for (const t of marked) {
+      if (t.type !== "BET_PAYOUT" || t.positionId == null) continue;
+      const p = await positionStore.get(t.positionId);
+      if (!p || p.status !== "WIN") continue;
+      wins.push({ positionId: p.id, houseBotId: t.houseBotId as string, marketId: p.marketId, side: p.side, payoutTxnId: t.id });
+    }
+    const markets: HouseFeeInputs["markets"] = [];
+    for (const marketId of [...new Set(wins.map((x) => x.marketId))]) {
+      const m = await marketStore.get(marketId);
+      if (!m) continue;
+      markets.push({
+        marketId, productLine: (m.productLine as string | undefined) ?? null, yesPool: Number(m.yesPool), noPool: Number(m.noPool),
+        feeSnapshot: m.feeSnapshot == null ? null : structuredClone(m.feeSnapshot),
+        settledAt: m.settledAt ? new Date(ms(m.settledAt)).toISOString() : null,
+        positions: (await positionStore.listForMarket(marketId)).map((p) => ({ id: p.id, side: p.side, status: p.status as string, stake: p.stake })).sort(byIdText),
+      });
+    }
+    const cashOuts: HouseFeeInputs["cashOuts"] = [];
+    for (const t of marked) {
+      if (t.type !== "CASHOUT") continue;
+      const p = t.positionId ? await positionStore.get(t.positionId) : null;
+      const m = p ? await marketStore.get(p.marketId) : null;
+      cashOuts.push({ txnId: t.id, positionId: t.positionId, houseBotId: t.houseBotId as string, marketId: p?.marketId ?? null,
+        productLine: (m?.productLine as string | undefined) ?? null, feeTzs: Number(t.fee ?? 0) });
+    }
+    return {
+      wins: wins.sort((a, b) => cmpText(a.positionId, b.positionId)),
+      markets: markets.sort((a, b) => cmpText(a.marketId, b.marketId)),
+      cashOuts: cashOuts.sort((a, b) => cmpText(a.txnId, b.txnId)),
+    };
+  },
+  async ledgerRows({ fromIso, toIso }) {
+    const from = ms(fromIso), to = ms(toIso);
+    const acc = new Map<string, HouseLedgerRow>();
+    for (const t of await db.txn.listAll()) {
+      if (t.houseBotId == null || t.status !== "CONFIRMED" || ms(t.createdAt) < from || ms(t.createdAt) >= to) continue;
+      const p = t.positionId ? await positionStore.get(t.positionId) : null;
+      const m = p ? await marketStore.get(p.marketId) : null;
+      const row: HouseLedgerRow = { houseBotId: t.houseBotId, productLine: (m?.productLine as string | undefined) ?? null, marketId: p?.marketId ?? null, type: t.type, count: 0, amountTzs: 0, feeTzs: 0 };
+      const key = JSON.stringify([row.houseBotId, row.productLine, row.marketId, row.type]);
+      const cur = acc.get(key) ?? row;
+      cur.count += 1;
+      cur.amountTzs += Number(t.amount);
+      cur.feeTzs += Number(t.fee ?? 0);
+      acc.set(key, cur);
+    }
+    return [...acc.values()].sort(ledgerRowOrder);
+  },
+  async positionsForUser({ userId, cursor, limit }) {
+    const n = pageLimit(limit);
+    const all = (await positionStore.values()).filter((p) => p.userId === userId && p.houseBotId != null)
+      .sort((a, b) => ms(b.placedAt) - ms(a.placedAt) || cmpText(b.id, a.id));
+    const after = cursor
+      ? all.filter((p) => ms(p.placedAt) < ms(cursor.placedAt) || (ms(p.placedAt) === ms(cursor.placedAt) && p.id < cursor.id))
+      : all;
+    const page = after.slice(0, n + 1);
+    const rows: HouseUserPositionRow[] = page.slice(0, n).map((p) => ({
+      id: p.id, houseBotId: p.houseBotId as string, marketId: p.marketId, side: p.side, stake: p.stake, status: p.status,
+      finalPayout: p.finalPayout ?? null, placedAt: new Date(ms(p.placedAt)).toISOString(), settledAt: p.settledAt ? new Date(ms(p.settledAt)).toISOString() : null,
+    }));
+    const last = rows[rows.length - 1];
+    return { rows, nextCursor: page.length > n && last ? { placedAt: last.placedAt, id: last.id } : null, total: all.length };
+  },
+  async txnPageForUser(input) {
+    const n = pageLimit(input.limit);
+    const all = (await db.txn.listForUser(input.userId)).filter((t) => (input.marked === "any" || t.houseBotId != null)
+      && (input.fromIso === undefined || ms(t.createdAt) >= ms(input.fromIso))
+      && (input.toIso === undefined || ms(t.createdAt) < ms(input.toIso)))
+      .sort((a, b) => ms(b.createdAt) - ms(a.createdAt) || cmpText(b.id, a.id));
+    const cursor = input.cursor;
+    const after = cursor
+      ? all.filter((t) => ms(t.createdAt) < ms(cursor.createdAt) || (ms(t.createdAt) === ms(cursor.createdAt) && t.id < cursor.id))
+      : all;
+    const page = after.slice(0, n + 1);
+    const rows = page.slice(0, n).map((t) => ({ ...t }));
+    const last = rows[rows.length - 1];
+    return { rows, nextCursor: page.length > n && last ? { createdAt: last.createdAt, id: last.id } : null, total: all.length };
   },
 };
 
@@ -3210,6 +3605,12 @@ const prismaHouseBots: HouseBotStore = {
     const rows = await sql(tx, `SELECT * FROM "HouseBot" WHERE "status" <> 'REMOVED' ORDER BY "designatedAt" ASC`, []);
     return rows.map(toHouseBot);
   },
+  async listOverlapping({ fromIso, toIso }, tx) {
+    const p = new Params();
+    const rows = await sql(tx, `SELECT * FROM "HouseBot" WHERE "designatedAt" < ${p.col("HouseBot", "designatedAt", toIso)}`
+      + ` AND ("removedAt" IS NULL OR "removedAt" >= ${p.col("HouseBot", "removedAt", fromIso)})`, p.values);
+    return rows.map(toHouseBot).sort((a, b) => ms(a.designatedAt) - ms(b.designatedAt) || cmpText(a.id, b.id));
+  },
   async countLive(tx) {
     const rows = await sql(tx, `SELECT count(*)::int AS "n" FROM "HouseBot" WHERE "status" <> 'REMOVED'`, []);
     return Number(rows[0]?.n ?? 0);
@@ -3454,6 +3855,37 @@ const prismaHouseBotEvents: HouseBotEventStore = {
     const text = `SELECT * FROM "HouseBotEvent" WHERE ${where.join(" AND ")}`
       + ` ORDER BY "createdAt" DESC, "id" DESC LIMIT ${p.raw(pageLimit(opts.limit), "int")}`;
     return (await sql(tx, text, p.values)).map(toHouseBotEvent);
+  },
+  async listByKindsInWindow(input, tx) {
+    const where = (p: Params) => {
+      const w = [
+        `"kind" = ANY(${p.raw([...input.kinds], "text[]")})`,
+        `"createdAt" >= ${p.col("HouseBotEvent", "createdAt", input.fromIso)}`,
+        `"createdAt" < ${p.col("HouseBotEvent", "createdAt", input.toIso)}`,
+      ];
+      if (input.houseBotId !== undefined) w.push(`"houseBotId" = ${p.raw(input.houseBotId, "text")}`);
+      return w;
+    };
+    const pc = new Params();
+    const counted = await sql(tx, `SELECT count(*)::int AS "n" FROM "HouseBotEvent" WHERE ${where(pc).join(" AND ")}`, pc.values);
+    const pp = new Params();
+    const page = await sqlPage(tx, "HouseBotEvent", where(pp), pp, input.cursor, input.limit, toHouseBotEvent);
+    return { ...page, total: Number(counted[0]?.n ?? 0) };
+  },
+  async listByUserKinds(userId, kinds, opts, tx) {
+    const where = (p: Params) => [`"userId" = ${p.raw(userId, "text")}`, `"kind" = ANY(${p.raw([...kinds], "text[]")})`];
+    const pc = new Params();
+    const counted = await sql(tx, `SELECT count(*)::int AS "n" FROM "HouseBotEvent" WHERE ${where(pc).join(" AND ")}`, pc.values);
+    const pp = new Params();
+    const page = await sqlPage(tx, "HouseBotEvent", where(pp), pp, opts.cursor, opts.limit, toHouseBotEvent);
+    return { ...page, total: Number(counted[0]?.n ?? 0) };
+  },
+  async countByBot(houseBotId, opts, tx) {
+    const p = new Params();
+    const where = [`"houseBotId" = ${p.raw(houseBotId, "text")}`];
+    if (opts.kinds) where.push(`"kind" = ANY(${p.raw([...opts.kinds], "text[]")})`);
+    const rows = await sql(tx, `SELECT count(*)::int AS "n" FROM "HouseBotEvent" WHERE ${where.join(" AND ")}`, p.values);
+    return Number(rows[0]?.n ?? 0);
   },
   async listForPress(press, tx) {
     // Bounded by the bot's (houseBotId, createdAt) index: the event is written in the
@@ -3752,17 +4184,33 @@ const prismaHouseBotIntents: HouseBotIntentStore = {
   },
   async listFeed(filter, tx) {
     const p = new Params();
-    const where: string[] = [];
-    if (filter.houseBotId !== undefined) where.push(`"houseBotId" = ${p.raw(filter.houseBotId, "text")}`);
-    if (filter.productLine !== undefined) where.push(`"productLine" = ${p.raw(filter.productLine, "text")}`);
-    if (filter.kinds) where.push(`"kind" = ANY(${p.raw([...filter.kinds], "text[]")})`);
-    if (filter.statuses) where.push(`"status" = ANY(${p.raw([...filter.statuses], "text[]")})`);
-    if (filter.targetId !== undefined) where.push(`"targetId" = ${p.raw(filter.targetId, "text")}`);
-    if (filter.fromIso !== undefined) where.push(`"createdAt" >= ${p.col("HouseBotIntent", "createdAt", filter.fromIso)}`);
-    if (filter.toIso !== undefined) where.push(`"createdAt" < ${p.col("HouseBotIntent", "createdAt", filter.toIso)}`);
-    return sqlPage(tx, "HouseBotIntent", where, p, filter.cursor, filter.limit, toHouseBotIntent);
+    return sqlPage(tx, "HouseBotIntent", feedWhere(filter, p), p, filter.cursor, filter.limit, toHouseBotIntent);
+  },
+  async countFeed(filter, tx) {
+    const p = new Params();
+    const where = feedWhere(filter, p);
+    const rows = await sql(tx, `SELECT count(*)::int AS "n" FROM "HouseBotIntent" WHERE ${where.length ? where.join(" AND ") : "true"}`, p.values);
+    return Number(rows[0]?.n ?? 0);
+  },
+  async counteredPositionsCount(triggerUserId, tx) {
+    const rows = await sql(tx, `SELECT count(DISTINCT "triggerPositionId")::int AS "n" FROM "HouseBotIntent"`
+      + ` WHERE "triggerUserId" = $1::text AND "kind" = 'COUNTER' AND "status" = 'PLACED'`, [triggerUserId]);
+    return Number(rows[0]?.n ?? 0);
   },
 };
+
+/** The feed's WHERE, shared by `listFeed` and `countFeed`. */
+function feedWhere(filter: Omit<IntentFeedFilter, "cursor" | "limit">, p: Params): string[] {
+  const where: string[] = [];
+  if (filter.houseBotId !== undefined) where.push(`"houseBotId" = ${p.raw(filter.houseBotId, "text")}`);
+  if (filter.productLine !== undefined) where.push(`"productLine" = ${p.raw(filter.productLine, "text")}`);
+  if (filter.kinds) where.push(`"kind" = ANY(${p.raw([...filter.kinds], "text[]")})`);
+  if (filter.statuses) where.push(`"status" = ANY(${p.raw([...filter.statuses], "text[]")})`);
+  if (filter.targetId !== undefined) where.push(`"targetId" = ${p.raw(filter.targetId, "text")}`);
+  if (filter.fromIso !== undefined) where.push(`"createdAt" >= ${p.col("HouseBotIntent", "createdAt", filter.fromIso)}`);
+  if (filter.toIso !== undefined) where.push(`"createdAt" < ${p.col("HouseBotIntent", "createdAt", filter.toIso)}`);
+  return where;
+}
 
 const STOPPED_SQL = `("status" = 'REMOVED' OR "endCause" = 'VETOED')`;
 
@@ -3870,6 +4318,20 @@ const prismaHouseBotTargets: HouseBotTargetStore = {
     const rows = await sql(tx, `SELECT count(*)::int AS "n" FROM "HouseBotTarget" WHERE ${where.join(" AND ")}`, p.values);
     return Number(rows[0]?.n ?? 0);
   },
+  async listInWindow(input, tx) {
+    const where = (p: Params) => {
+      const from = p.col("HouseBotTarget", "createdAt", input.fromIso);
+      const to = p.col("HouseBotTarget", "createdAt", input.toIso);
+      const w = [`(("createdAt" >= ${from} AND "createdAt" < ${to}) OR ("endedAt" >= ${from} AND "endedAt" < ${to}) OR ("removedAt" >= ${from} AND "removedAt" < ${to}))`];
+      if (input.houseBotId !== undefined) w.push(`"houseBotId" = ${p.raw(input.houseBotId, "text")}`);
+      return w;
+    };
+    const pc = new Params();
+    const counted = await sql(tx, `SELECT count(*)::int AS "n" FROM "HouseBotTarget" WHERE ${where(pc).join(" AND ")}`, pc.values);
+    const pp = new Params();
+    const page = await sqlPage(tx, "HouseBotTarget", where(pp), pp, input.cursor, input.limit, toHouseBotTarget);
+    return { ...page, total: Number(counted[0]?.n ?? 0) };
+  },
 };
 
 const prismaHouseBotPresses: HouseBotPressStore = {
@@ -3965,15 +4427,26 @@ const prismaHouseBotPresses: HouseBotPressStore = {
   },
   async listRegister(filter, tx) {
     const p = new Params();
-    const where = [
-      `"createdAt" >= ${p.col("HouseBotPress", "createdAt", filter.fromIso)}`,
-      `"createdAt" < ${p.col("HouseBotPress", "createdAt", filter.toIso)}`,
-    ];
-    if (filter.actorId !== undefined) where.push(`"actorId" = ${p.raw(filter.actorId, "text")}`);
-    if (filter.houseBotId !== undefined) where.push(`"houseBotId" = ${p.raw(filter.houseBotId, "text")}`);
-    return sqlPage(tx, "HouseBotPress", where, p, filter.cursor, filter.limit, toHouseBotPress);
+    return sqlPage(tx, "HouseBotPress", registerWhere(filter, p), p, filter.cursor, filter.limit, toHouseBotPress);
+  },
+  async countRegister(filter, tx) {
+    const p = new Params();
+    const rows = await sql(tx, `SELECT count(*)::int AS "n" FROM "HouseBotPress" WHERE ${registerWhere(filter, p).join(" AND ")}`, p.values);
+    return Number(rows[0]?.n ?? 0);
   },
 };
+
+/** The register's WHERE, shared by `listRegister` and `countRegister`. */
+function registerWhere(filter: Omit<PressRegisterFilter, "cursor" | "limit">, p: Params): string[] {
+  const where = [
+    `"createdAt" >= ${p.col("HouseBotPress", "createdAt", filter.fromIso)}`,
+    `"createdAt" < ${p.col("HouseBotPress", "createdAt", filter.toIso)}`,
+  ];
+  if (filter.actorId !== undefined) where.push(`"actorId" = ${p.raw(filter.actorId, "text")}`);
+  if (filter.houseBotId !== undefined) where.push(`"houseBotId" = ${p.raw(filter.houseBotId, "text")}`);
+  if (filter.purposes) where.push(`"purpose" = ANY(${p.raw([...filter.purposes], "text[]")})`);
+  return where;
+}
 
 /**
  * The house book over the MARKERS (R3): stakes from marked positions, returned money only from
@@ -4009,6 +4482,172 @@ const prismaHouseBook: HouseBookStore = {
       + ` WHERE "houseBotId" IS NOT NULL AND "status"::text = 'OPEN' AND ($1::text IS NULL OR "houseBotId" = $1::text)`
       + ` GROUP BY "houseBotId" ORDER BY "houseBotId"`, [houseBotId]);
     return rows.map((r) => ({ houseBotId: String(r.houseBotId), openStakeTzs: Number(r.open) }));
+  },
+  async entryRows({ fromIso, toIso, houseBotId }, tx) {
+    // `dayRows`' pos and ret CTEs, word for word (plus "marketId"), then one GROUP BY over the entry and the one requester.
+    const from = bindValue("HouseBotIntent", "createdAt", HOUSE_BOT_INTENT_COLUMNS.createdAt, fromIso);
+    const to = bindValue("HouseBotIntent", "createdAt", HOUSE_BOT_INTENT_COLUMNS.createdAt, toIso);
+    const bucket = (status: string, name: string) =>
+      `(count(*) FILTER (WHERE pos."status"::text = '${status}'))::int AS "${name}",`
+      + ` coalesce(sum(pos."stake") FILTER (WHERE pos."status"::text = '${status}'), 0)::text AS "${name}Stake",`
+      + ` coalesce(sum(ret."returned") FILTER (WHERE pos."status"::text = '${status}'), 0)::text AS "${name}Returned"`;
+    const text = `WITH pos AS (SELECT "id", "houseBotId", "marketId", "stake", "status" FROM "Position"`
+      + ` WHERE "houseBotId" IS NOT NULL AND "placedAt" >= $1::timestamp AND "placedAt" < $2::timestamp`
+      + ` AND ($3::text IS NULL OR "houseBotId" = $3::text)),`
+      + ` ret AS (SELECT t."positionId", sum(t."amount") AS "returned" FROM "Transaction" t`
+      + ` WHERE t."houseBotId" IS NOT NULL AND t."createdAt" >= $1::timestamp AND t."status"::text = 'CONFIRMED'`
+      + ` AND t."type"::text IN ('BET_PAYOUT', 'BET_REFUND', 'CASHOUT') AND t."positionId" IN (SELECT "id" FROM pos)`
+      + ` GROUP BY t."positionId")`
+      + ` SELECT pos."houseBotId" AS "houseBotId", coalesce(i."productLine", m."productLine"::text) AS "productLine",`
+      + ` CASE WHEN i."id" IS NULL THEN 'UNKNOWN' WHEN i."kind" = 'MANUAL' THEN 'MANUAL' WHEN i."targetId" IS NOT NULL THEN 'TARGETED' ELSE 'AUTOMATIC' END AS "entry",`
+      + ` CASE WHEN i."kind" = 'MANUAL' THEN i."requestedById" WHEN i."targetId" IS NOT NULL THEN tg."createdById" END AS "officerId",`
+      + ` count(*)::int AS "bets", coalesce(sum(pos."stake"), 0)::text AS "staked",`
+      + ` coalesce(sum(pos."stake") FILTER (WHERE pos."status"::text = 'OPEN'), 0)::text AS "openStake",`
+      + ` coalesce(sum(pos."stake") FILTER (WHERE pos."status"::text <> 'OPEN'), 0)::text AS "settledStake",`
+      + ` coalesce(sum(ret."returned"), 0)::text AS "returned",`
+      + ` ${bucket("WIN", "won")}, ${bucket("LOSS", "lost")}, ${bucket("VOID", "refunded")}, ${bucket("CASHED_OUT", "cashedOut")}`
+      + ` FROM pos LEFT JOIN "HouseBotIntent" i ON i."positionId" = pos."id"`
+      + ` LEFT JOIN "HouseBotTarget" tg ON tg."id" = i."targetId"`
+      + ` LEFT JOIN "PredictionMarket" m ON m."id" = pos."marketId"`
+      + ` LEFT JOIN ret ON ret."positionId" = pos."id"`
+      + ` GROUP BY 1, 2, 3, 4`;
+    const rows = await sql(tx, text, [from, to, houseBotId]);
+    const n = (x: unknown) => Number(x ?? 0);
+    return rows.map((r): HouseEntryRawRow => ({
+      houseBotId: String(r.houseBotId), productLine: r.productLine == null ? null : String(r.productLine), entry: r.entry as HouseEntry,
+      officerId: r.officerId == null ? null : String(r.officerId),
+      bets: n(r.bets), staked: n(r.staked), openStake: n(r.openStake), settledStake: n(r.settledStake), returned: n(r.returned),
+      won: n(r.won), wonStake: n(r.wonStake), wonReturned: n(r.wonReturned),
+      lost: n(r.lost), lostStake: n(r.lostStake), lostReturned: n(r.lostReturned),
+      refunded: n(r.refunded), refundedStake: n(r.refundedStake), refundedReturned: n(r.refundedReturned),
+      cashedOut: n(r.cashedOut), cashedOutStake: n(r.cashedOutStake), cashedOutReturned: n(r.cashedOutReturned),
+    })).sort(entryRowOrder);
+  },
+  async stakeRows(marketIds, tx) {
+    const ids = stakeMarketIds(marketIds);
+    if (ids.length === 0) return [];
+    // ⛔ ONE STATEMENT, every column qualified: STAFF_CHOSEN_SQL is unqualified and reads NULL under a LEFT JOIN, hence
+    // the COALESCE — a marked position with no intent is staff-chosen FALSE, never NULL (ruling 179).
+    const text = `SELECT p."marketId" AS "marketId", p."side"::text AS "side", (p."status"::text = 'OPEN') AS "open",`
+      + ` COALESCE(i."kind" = 'MANUAL' OR i."targetId" IS NOT NULL, false) AS "staffChosen",`
+      + ` i."kind" AS "kind", i."requestedById" AS "requestedById", i."targetId" AS "targetId", t."createdById" AS "targetCreatedById",`
+      + ` round(coalesce(sum(p."stake"), 0))::text AS "stake"`
+      + ` FROM "Position" p LEFT JOIN "HouseBotIntent" i ON i."positionId" = p."id" LEFT JOIN "HouseBotTarget" t ON t."id" = i."targetId"`
+      + ` WHERE p."houseBotId" IS NOT NULL AND p."marketId" = ANY($1::text[]) AND p."status"::text <> 'CASHED_OUT'`
+      + ` GROUP BY 1, 2, 3, 4, 5, 6, 7, 8`;
+    const rows = await sql(tx, text, [ids]);
+    return rows.map((r): HouseStakeRow => ({
+      marketId: String(r.marketId), side: r.side as IntentSide, open: r.open, staffChosen: r.staffChosen,
+      kind: (r.kind ?? null) as IntentKind | null, requestedById: r.requestedById ?? null, targetId: r.targetId ?? null,
+      targetCreatedById: r.targetCreatedById ?? null, stakeTzs: Number(r.stake),
+    })).sort(stakeRowOrder);
+  },
+  async feeInputs({ fromIso, toIso, houseBotId }, tx) {
+    // ⭐ ONE STATEMENT: the wins (marked WIN positions by their marked CONFIRMED BET_PAYOUT's time — the LEDGER basis),
+    // exactly the markets holding one, those markets' positions, and the window's marked CASHOUT fees. Never a userId.
+    const text = `WITH wins AS (SELECT p."id" AS "positionId", t."houseBotId" AS "houseBotId", p."marketId" AS "marketId",`
+      + ` p."side"::text AS "side", t."id" AS "payoutTxnId" FROM "Transaction" t JOIN "Position" p ON p."id" = t."positionId"`
+      + ` WHERE t."houseBotId" IS NOT NULL AND t."createdAt" >= $1::timestamp AND t."createdAt" < $2::timestamp`
+      + ` AND t."type"::text = 'BET_PAYOUT' AND t."status"::text = 'CONFIRMED' AND p."status"::text = 'WIN'`
+      + ` AND ($3::text IS NULL OR t."houseBotId" = $3::text)),`
+      + ` mk AS (SELECT DISTINCT "marketId" FROM wins),`
+      + ` cash AS (SELECT t."id" AS "txnId", t."positionId" AS "positionId", t."houseBotId" AS "houseBotId", t."fee" AS "fee"`
+      + ` FROM "Transaction" t WHERE t."houseBotId" IS NOT NULL AND t."createdAt" >= $1::timestamp AND t."createdAt" < $2::timestamp`
+      + ` AND t."type"::text = 'CASHOUT' AND t."status"::text = 'CONFIRMED' AND ($3::text IS NULL OR t."houseBotId" = $3::text))`
+      + ` SELECT 'win' AS "row", w."positionId" AS "a", w."houseBotId" AS "b", w."marketId" AS "c", w."side" AS "d", w."payoutTxnId" AS "e",`
+      + ` NULL::text AS "f", NULL::jsonb AS "snapshot", NULL::timestamp AS "at" FROM wins w`
+      + ` UNION ALL SELECT 'market', m."id", m."productLine"::text, m."yesPool"::text, m."noPool"::text, NULL, NULL, m."feeSnapshot"::jsonb, m."settledAt"`
+      + ` FROM "PredictionMarket" m WHERE m."id" IN (SELECT "marketId" FROM mk)`
+      + ` UNION ALL SELECT 'position', p."id", p."marketId", p."side"::text, p."status"::text, p."stake"::text, NULL, NULL, NULL`
+      + ` FROM "Position" p WHERE p."marketId" IN (SELECT "marketId" FROM mk)`
+      + ` UNION ALL SELECT 'cashout', c."txnId", c."positionId", c."houseBotId", c."fee"::text, cp."marketId", cm."productLine"::text, NULL, NULL`
+      + ` FROM cash c LEFT JOIN "Position" cp ON cp."id" = c."positionId" LEFT JOIN "PredictionMarket" cm ON cm."id" = cp."marketId"`;
+    const rows = await sql(tx, text, [
+      bindValue("HouseBotIntent", "createdAt", HOUSE_BOT_INTENT_COLUMNS.createdAt, fromIso),
+      bindValue("HouseBotIntent", "createdAt", HOUSE_BOT_INTENT_COLUMNS.createdAt, toIso),
+      houseBotId,
+    ]);
+    const wins: HouseFeeInputs["wins"] = [];
+    const markets = new Map<string, HouseFeeInputs["markets"][number]>();
+    const positions: Array<{ marketId: string; id: string; side: IntentSide; status: string; stake: number }> = [];
+    const cashOuts: HouseFeeInputs["cashOuts"] = [];
+    for (const r of rows) {
+      if (r.row === "win") wins.push({ positionId: String(r.a), houseBotId: String(r.b), marketId: String(r.c), side: r.d as IntentSide, payoutTxnId: String(r.e) });
+      else if (r.row === "market") {
+        markets.set(String(r.a), { marketId: String(r.a), productLine: r.b == null ? null : String(r.b), yesPool: Number(r.c), noPool: Number(r.d),
+          feeSnapshot: r.snapshot ?? null, settledAt: r.at == null ? null : iso(r.at), positions: [] });
+      } else if (r.row === "position") positions.push({ marketId: String(r.b), id: String(r.a), side: r.c as IntentSide, status: String(r.d), stake: Number(r.e) });
+      else if (r.row === "cashout") {
+        cashOuts.push({ txnId: String(r.a), positionId: r.b == null ? null : String(r.b), houseBotId: String(r.c), marketId: r.e == null ? null : String(r.e),
+          productLine: r.f == null ? null : String(r.f), feeTzs: Number(r.d ?? 0) });
+      }
+    }
+    for (const p of positions) markets.get(p.marketId)?.positions.push({ id: p.id, side: p.side, status: p.status, stake: p.stake });
+    for (const m of markets.values()) m.positions.sort(byIdText);
+    return {
+      wins: wins.sort((a, b) => cmpText(a.positionId, b.positionId)),
+      markets: [...markets.values()].sort((a, b) => cmpText(a.marketId, b.marketId)),
+      cashOuts: cashOuts.sort((a, b) => cmpText(a.txnId, b.txnId)),
+    };
+  },
+  async ledgerRows({ fromIso, toIso }, tx) {
+    const text = `SELECT t."houseBotId" AS "houseBotId", m."productLine"::text AS "productLine", p."marketId" AS "marketId", t."type"::text AS "type",`
+      + ` count(*)::int AS "n", coalesce(sum(t."amount"), 0)::text AS "amount", coalesce(sum(t."fee"), 0)::text AS "fee"`
+      + ` FROM "Transaction" t LEFT JOIN "Position" p ON p."id" = t."positionId" LEFT JOIN "PredictionMarket" m ON m."id" = p."marketId"`
+      + ` WHERE t."houseBotId" IS NOT NULL AND t."status"::text = 'CONFIRMED' AND t."createdAt" >= $1::timestamp AND t."createdAt" < $2::timestamp`
+      + ` GROUP BY 1, 2, 3, 4`;
+    const rows = await sql(tx, text, [
+      bindValue("HouseBotIntent", "createdAt", HOUSE_BOT_INTENT_COLUMNS.createdAt, fromIso),
+      bindValue("HouseBotIntent", "createdAt", HOUSE_BOT_INTENT_COLUMNS.createdAt, toIso),
+    ]);
+    return rows.map((r): HouseLedgerRow => ({
+      houseBotId: String(r.houseBotId), productLine: r.productLine == null ? null : String(r.productLine), marketId: r.marketId == null ? null : String(r.marketId),
+      type: String(r.type), count: Number(r.n), amountTzs: Number(r.amount), feeTzs: Number(r.fee),
+    })).sort(ledgerRowOrder);
+  },
+  async positionsForUser({ userId, cursor, limit }, tx) {
+    const n = pageLimit(limit);
+    const counted = await sql(tx, `SELECT count(*)::int AS "n" FROM "Position" WHERE "userId" = $1::text AND "houseBotId" IS NOT NULL`, [userId]);
+    const values: unknown[] = [userId];
+    let keyset = "";
+    if (cursor) {
+      values.push(new Date(ms(cursor.placedAt)).toISOString(), cursor.id);
+      keyset = ` AND ("placedAt", "id") < ($2::timestamp, $3::text)`;
+    }
+    values.push(n + 1);
+    const raws = await sql(tx, `SELECT "id", "houseBotId", "marketId", "side"::text AS "side", "stake"::text AS "stake", "status"::text AS "status",`
+      + ` "finalPayout"::text AS "finalPayout", "placedAt", "settledAt" FROM "Position" WHERE "userId" = $1::text AND "houseBotId" IS NOT NULL${keyset}`
+      + ` ORDER BY "placedAt" DESC, "id" DESC LIMIT $${values.length}::int`, values);
+    const rows = raws.slice(0, n).map((r): HouseUserPositionRow => ({
+      id: String(r.id), houseBotId: String(r.houseBotId), marketId: String(r.marketId), side: r.side as IntentSide, stake: Number(r.stake),
+      status: String(r.status), finalPayout: r.finalPayout == null ? null : Number(r.finalPayout), placedAt: iso(r.placedAt), settledAt: iso(r.settledAt ?? null),
+    }));
+    const last = rows[rows.length - 1];
+    return { rows, nextCursor: raws.length > n && last ? { placedAt: last.placedAt, id: last.id } : null, total: Number(counted[0]?.n ?? 0) };
+  },
+  async txnPageForUser(input, tx) {
+    const n = pageLimit(input.limit);
+    const where = (values: unknown[]) => {
+      values.push(input.userId);
+      const w = [`"userId" = $${values.length}::text`];
+      if (input.marked === "only") w.push(`"houseBotId" IS NOT NULL`);
+      if (input.fromIso !== undefined) { values.push(new Date(ms(input.fromIso)).toISOString()); w.push(`"createdAt" >= $${values.length}::timestamp`); }
+      if (input.toIso !== undefined) { values.push(new Date(ms(input.toIso)).toISOString()); w.push(`"createdAt" < $${values.length}::timestamp`); }
+      return w;
+    };
+    const cv: unknown[] = [];
+    const counted = await sql(tx, `SELECT count(*)::int AS "n" FROM "Transaction" WHERE ${where(cv).join(" AND ")}`, cv);
+    const pv: unknown[] = [];
+    const w = where(pv);
+    if (input.cursor) {
+      pv.push(new Date(ms(input.cursor.createdAt)).toISOString(), input.cursor.id);
+      w.push(`("createdAt", "id") < ($${pv.length - 1}::timestamp, $${pv.length}::text)`);
+    }
+    pv.push(n + 1);
+    const raws = await sql(tx, `SELECT * FROM "Transaction" WHERE ${w.join(" AND ")} ORDER BY "createdAt" DESC, "id" DESC LIMIT $${pv.length}::int`, pv);
+    const rows = raws.slice(0, n).map((r) => toStoredTxn(r));
+    const last = rows[rows.length - 1];
+    return { rows, nextCursor: raws.length > n && last ? { createdAt: last.createdAt, id: last.id } : null, total: Number(counted[0]?.n ?? 0) };
   },
 };
 

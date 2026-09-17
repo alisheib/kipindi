@@ -625,18 +625,31 @@ export async function getAuditForTargetDurable(
  */
 export async function getAuditByActionsDurable(
   actions: readonly string[],
-  opts: { category?: AuditCategory; limit?: number } = {},
+  /**
+   * `fromIso` / `toIso` (C5-SPEC ruling 185): only rows with `createdAt >= fromIso` and `< toIso`, filtered BEFORE the
+   * limit in both branches, so `total` counts inside the window. Omitted, the read is exactly what it was.
+   * ⚠️ With no category the windowed read has no action index; measured on the scratch Postgres (PostgreSQL 18) at
+   * 1,000,000 rows it is a bitmap scan of `(category, createdAt)` by skip scan (13.7 ms for a 30-day window, no sequential
+   * scan), so "no category" is spelt as no category.
+   */
+  opts: { category?: AuditCategory; limit?: number; fromIso?: string; toIso?: string } = {},
 ): Promise<{ entries: AuditEntry[]; total: number; truncated: boolean }> {
   const limit = opts.limit ?? 500;
   const wanted = new Set(actions);
+  const fromMs = opts.fromIso !== undefined ? Date.parse(opts.fromIso) : null;
+  const toMs = opts.toIso !== undefined ? Date.parse(opts.toIso) : null;
   const db = prisma();
   if (!db) {
     const all = [...ring]
-      .filter((e) => wanted.has(e.action) && (!opts.category || e.category === opts.category))
+      .filter((e) => wanted.has(e.action) && (!opts.category || e.category === opts.category)
+        && (fromMs == null || Date.parse(e.createdAt) >= fromMs) && (toMs == null || Date.parse(e.createdAt) < toMs))
       .reverse();
     return { entries: all.slice(0, limit), total: all.length, truncated: all.length > limit };
   }
-  const where = { action: { in: [...wanted] }, ...(opts.category ? { category: opts.category } : {}) };
+  const window = fromMs != null || toMs != null
+    ? { createdAt: { ...(fromMs != null ? { gte: new Date(fromMs) } : {}), ...(toMs != null ? { lt: new Date(toMs) } : {}) } }
+    : {};
+  const where = { action: { in: [...wanted] }, ...(opts.category ? { category: opts.category } : {}), ...window };
   const total = await db.auditLog.count({ where });
   const rows = await db.auditLog.findMany({
     where,

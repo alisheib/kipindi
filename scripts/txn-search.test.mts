@@ -120,6 +120,18 @@ ok("default sort is newest-first", sortAndPage([
   txn({ id: "old", createdAt: ago(10 * 60_000) }), txn({ id: "new", createdAt: ago(60_000) }),
 ], {})[0].id === "new");
 ok("take is clamped to a sane maximum", sortAndPage(set, { take: 99_999 }).length === set.length);
+
+// ── THE HOUSE MARKER FILTER (C5-SPEC ruling 210) ──────────────────────────────
+// A server-only filter from a whitelisted URL parameter: "only" keeps rows carrying the marker, "exclude" keeps the rest,
+// absent keeps both. The Prisma DAL spells the same rule as its own where clause (`test:dal-parity` §16).
+{
+  const marked = txn({ id: "txn_marked", houseBotId: "hb_0123456789abcdef01234567" } as Partial<StoredTxn>);
+  const plain = txn({ id: "txn_plain" });
+  ok("house=only keeps a marked row and drops an unmarked one", matchesFilters(marked, { house: "only" }, NOW) && !matchesFilters(plain, { house: "only" }, NOW));
+  ok("house=exclude keeps an unmarked row and drops a marked one", matchesFilters(plain, { house: "exclude" }, NOW) && !matchesFilters(marked, { house: "exclude" }, NOW));
+  ok("no house filter keeps both", matchesFilters(marked, {}, NOW) && matchesFilters(plain, {}, NOW));
+  ok("the house filter combines with the others (a marked DEPOSIT is not a WITHDRAWAL)", !matchesFilters(marked, { house: "only", types: ["WITHDRAWAL"] }, NOW));
+}
 ok("a negative skip cannot underflow", sortAndPage(set, { skip: -5, take: 2 }).length === 2);
 
 console.log(`\ntxn-search: ${pass} passed, ${fail} failed`);

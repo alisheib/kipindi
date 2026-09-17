@@ -12,10 +12,15 @@
  * ⛔ NO FABRICATED TIME (ruling 79): a void time comes from the audit row that voided the market; without one the
  * alert carries no time rather than the moment the pass noticed.
  */
-import { ALERT_KEY, OVERSIGHT_LOOKBACK_DAYS, type StaffSelfDecidedAction } from "@/lib/house-bot/constants";
+import { ALERT_KEY, OVERSIGHT_LOOKBACK_DAYS } from "@/lib/house-bot/constants";
+import { foldRequestedBy, requesterOf } from "@/lib/house-bot/stake-snapshot";
 import { getAuditByActionsDurable, getAuditForTargetsDurable, type AuditEntry } from "../audit";
 import { houseBotIntentStore, houseSeamStore, targetStore, type StoredHouseBotIntent } from "../house-bot-dal";
+import { BULK_RESOLVE_ACTION, bulkMarketIds, selfDecidedAction } from "./decision-audits";
 import { alertOnce, type EngineAlerts } from "./outcomes";
+
+// The two readings live in `decision-audits.ts` (C5-SPEC ruling 186); their earlier callers import them from here.
+export { bulkMarketIds, selfDecidedAction };
 
 const DAY_MS = 86_400_000;
 const OVERSIGHT_ROW_LIMIT = 500;
@@ -30,48 +35,21 @@ const MARKET_TARGET_ACTIONS = [
   "objection.rejected",
 ] as const;
 /** `market.resolve.bulk` targets a Batch; its markets are read from the payload. */
-const BULK_ACTION = "market.resolve.bulk";
+const BULK_ACTION = BULK_RESOLVE_ACTION;
 /** The audit rows a VOIDED market's void time is taken from. */
 const VOID_TIME_ACTIONS: ReadonlySet<string> = new Set(["market.emergency_void", "market.adjudicated", "objection.upheld", "market.resolve.bulk_override", BULK_ACTION]);
 
-/** The markets a bulk resolution names, however its payload lists them (ids, or objects carrying an id). */
-export function bulkMarketIds(payload: unknown): string[] {
-  const p = (payload && typeof payload === "object" ? payload : {}) as Record<string, unknown>;
-  const out: string[] = [];
-  for (const key of ["marketIds", "markets", "resolved", "items"]) {
-    const list = p[key];
-    if (!Array.isArray(list)) continue;
-    for (const item of list) {
-      if (typeof item === "string") out.push(item);
-      else if (item && typeof item === "object") {
-        const o = item as Record<string, unknown>;
-        const id = typeof o.marketId === "string" ? o.marketId : typeof o.id === "string" ? o.id : null;
-        if (id) out.push(id);
-      }
-    }
-  }
-  return [...new Set(out)];
-}
-
-/** What a decision audit means for the self-decided key (N1 §4.5), or null when it is not one. */
-export function selfDecidedAction(entry: Pick<AuditEntry, "action" | "payload">): StaffSelfDecidedAction | null {
-  switch (entry.action) {
-    case "market.adjudicated":
-      return (entry.payload as Record<string, unknown> | undefined)?.outcome === "VOID" ? "voided" : "resolved";
-    case BULK_ACTION:
-    case "market.resolve.bulk_override":
-      return "resolved";
-    case "market.emergency_void":
-      return "voided";
-    case "market.reopened":
-      return "reopened";
-    case "objection.upheld":
-      return "objection_upheld";
-    case "objection.rejected":
-      return "objection_rejected";
-    default:
-      return null;
-  }
+/**
+ * Oversight's per-audit fold (C5-SPEC ruling 178): the officers who requested a stake on this market that was PLACED
+ * before the decision — `finishedAt < createdAt`, strictly — through the one requester rule, distinct and sorted.
+ * `creatorOf` maps each target id to its creator (read by the caller; a missing entry reads as no creator).
+ * ⛔ It recomputes from the stakes; it never reads a decision audit's `houseStake` payload.
+ */
+export function requestedByBefore(stakes: readonly StoredHouseBotIntent[], createdAtIso: string, creatorOf: ReadonlyMap<string, string | null>): string[] {
+  const decidedAt = Date.parse(createdAtIso);
+  return foldRequestedBy(stakes
+    .filter((s) => s.finishedAt != null && Date.parse(s.finishedAt) < decidedAt)
+    .map((s) => requesterOf(s, s.targetId != null ? (creatorOf.get(s.targetId) ?? null) : null)));
 }
 
 export type OversightResult = { markets: number; voided: number; selfDecided: number };
@@ -118,20 +96,16 @@ export async function oversightPass(alerts: EngineAlerts, nowMs: number): Promis
     for (const { entry } of onMarket) {
       const action = selfDecidedAction(entry);
       if (!action || entry.actorId == null) continue;
-      const requestedBy = new Set<string>();
+      // Each target's creator is read once, and only for a stake placed before this decision (as before the swap).
       for (const s of stakes) {
-        if (s.finishedAt == null || Date.parse(s.finishedAt) >= Date.parse(entry.createdAt)) continue;
-        if (s.kind === "MANUAL" && s.requestedById) requestedBy.add(s.requestedById);
-        if (s.targetId) {
-          if (!creatorOf.has(s.targetId)) creatorOf.set(s.targetId, (await targetStore.get(s.targetId))?.createdById ?? null);
-          const by = creatorOf.get(s.targetId);
-          if (by) requestedBy.add(by);
-        }
+        if (s.targetId == null || creatorOf.has(s.targetId) || s.finishedAt == null || Date.parse(s.finishedAt) >= Date.parse(entry.createdAt)) continue;
+        creatorOf.set(s.targetId, (await targetStore.get(s.targetId))?.createdById ?? null);
       }
-      if (!requestedBy.has(entry.actorId)) continue;
+      const requestedBy = requestedByBefore(stakes, entry.createdAt, creatorOf);
+      if (!requestedBy.includes(entry.actorId)) continue;
       if (await alertOnce(ALERT_KEY.staffStakeSelfDecided(marketId, action), alerts, {
         code: "STAFF_STAKE_SELF_DECIDED", marketId, botId: first.houseBotId,
-        detail: { action, actorId: entry.actorId, atIso: entry.createdAt, requestedBy: [...requestedBy], titleEn: view.titleEn },
+        detail: { action, actorId: entry.actorId, atIso: entry.createdAt, requestedBy, titleEn: view.titleEn },
       })) result.selfDecided++;
     }
   }

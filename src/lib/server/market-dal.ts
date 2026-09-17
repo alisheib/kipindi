@@ -441,6 +441,11 @@ export interface PositionStore {
     sort: LeaderSortKey;
     dir: "asc" | "desc";
     productLine?: ProductLineFilter;
+    /**
+     * C5-SPEC ruling 233 · true drops house-marked positions before grouping; default false. ⛔ The public board never
+     * passes it (D6, ruling 234): a reward or prize over positions passes it instead.
+     */
+    excludeHouse?: boolean;
   }): Promise<Array<{
     userId: string;
     resolved: number;
@@ -540,6 +545,8 @@ export interface PositionStore {
 export type DailySettledTotals = {
   userId: string;
   rounds: number;
+  /** Rounds on the account's OWN (unmarked) positions — 0 on a day whose every round was house-marked (C5-SPEC ruling 235). */
+  ownRounds: number;
   wins: number;
   losses: number;
   refunds: number;
@@ -712,6 +719,7 @@ const memoryPositions: PositionStore = {
     for (const p of positions.values()) {
       if (p.status === "OPEN") continue;
       if (pl && (markets.get(p.marketId)?.productLine ?? "MARKET") !== pl) continue;
+      if (opts?.excludeHouse && p.houseBotId != null) continue;
       const e = acc.get(p.userId) ?? { resolved: 0, staked: 0, paidOut: 0 };
       e.resolved += 1;
       e.staked += p.stake;
@@ -750,10 +758,11 @@ const memoryPositions: PositionStore = {
       if (!p.settledAt || p.settledAt < fromIso || p.settledAt >= toIso) continue;
       if ((markets.get(p.marketId)?.productLine ?? "MARKET") !== productLine) continue;
       const e = acc.get(p.userId) ?? {
-        userId: p.userId, rounds: 0, wins: 0, losses: 0, refunds: 0,
+        userId: p.userId, rounds: 0, ownRounds: 0, wins: 0, losses: 0, refunds: 0,
         staked: 0, returned: 0, wonPayout: 0, lostStake: 0, refundedStake: 0,
       };
       e.rounds += 1;
+      if (p.houseBotId == null) e.ownRounds += 1;
       e.staked += p.stake;
       e.returned += p.finalPayout ?? 0;
       if (p.status === "WIN") { e.wins += 1; e.wonPayout += p.finalPayout ?? 0; }
@@ -1253,6 +1262,7 @@ const prismaPositions: PositionStore = {
          ${pl ? `join "public"."PredictionMarket" m on m."id" = p."marketId"` : ""}
         where p."status" <> 'OPEN'
           ${pl ? `and coalesce(m."productLine", 'MARKET') = $2` : ""}
+          ${opts?.excludeHouse ? `and p."houseBotId" is null` : ""}
         group by p."userId"
         order by ${leaderboardOrderBy(opts)}
         limit $1`,
@@ -1317,11 +1327,12 @@ const prismaPositions: PositionStore = {
     // `Decimal(18,2)`, and letting the driver hand back a Decimal object turns
     // `a + b` into string concatenation somewhere downstream.
     const rows = await pc().$queryRawUnsafe<Array<{
-      userId: string; rounds: number; wins: number; losses: number; refunds: number;
+      userId: string; rounds: number; ownRounds: number; wins: number; losses: number; refunds: number;
       staked: string; returned: string; wonPayout: string; lostStake: string; refundedStake: string;
     }>>(
       `select p."userId",
               count(*)::int                                                                    as "rounds",
+              (count(*) filter (where p."houseBotId" is null))::int                            as "ownRounds",
               (count(*) filter (where p."status" = 'WIN'))::int                                as "wins",
               (count(*) filter (where p."status" = 'LOSS'))::int                               as "losses",
               (count(*) filter (where p."status" = 'VOID'))::int                               as "refunds",
@@ -1342,7 +1353,7 @@ const prismaPositions: PositionStore = {
     );
     return rows.map((r) => ({
       userId: r.userId,
-      rounds: Number(r.rounds), wins: Number(r.wins), losses: Number(r.losses), refunds: Number(r.refunds),
+      rounds: Number(r.rounds), ownRounds: Number(r.ownRounds), wins: Number(r.wins), losses: Number(r.losses), refunds: Number(r.refunds),
       staked: Number(r.staked), returned: Number(r.returned),
       wonPayout: Number(r.wonPayout), lostStake: Number(r.lostStake), refundedStake: Number(r.refundedStake),
     }));

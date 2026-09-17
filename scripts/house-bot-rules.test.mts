@@ -58,6 +58,8 @@ import {
   eatMinuteKey,
   eatMinuteOfDay,
   eatMonthKey,
+  eatMonthWindow,
+  EAT_OFFSET_MS,
   eatWeekday,
   formatAfterStake,
   formatEat,
@@ -350,7 +352,8 @@ section("§0 · module law");
   }
   ok("0.population · the import parser saw the modules' imports (≥ 8 statements)", importCount >= 8, `saw ${importCount}`);
   ok("0.population.files · the law reads the folder, and it holds at least the six known modules",
-    ["bet-path.ts", "clock.ts", "consent.ts", "constants.ts", "pause-reasons.ts", "rules.ts"].every((f) => (MODULE_FILES as readonly string[]).includes(f)),
+    // C5-SPEC rulings 178 and 192: the one requester rule is a module of this folder, under the same law.
+    ["bet-path.ts", "clock.ts", "consent.ts", "constants.ts", "pause-reasons.ts", "rules.ts", "stake-snapshot.ts"].every((f) => (MODULE_FILES as readonly string[]).includes(f)),
     MODULE_FILES.join(", "));
 
   // ⛔ CONTROLS — each check above can fail.
@@ -373,6 +376,16 @@ section("§0 · module law");
   ok("0.8c · CONTROL · a planted call is seen, and the declaration alone is not",
     SUSPEND.test("house.suspendInAppHolderHookForCases(true);") && SUSPEND.test("const n = HH.suspendedInAppHolderHookCallsForCases();")
       && !SUSPEND.test("export function suspendInAppHolderHookForCases(on: boolean) {".replace(/export function suspend(?:ed)?InAppHolderHook\w*ForCases\(/g, "")));
+
+  // C5-SPEC ruling 190 · the cases-only exposure fault switch is never called from product code: a production-reachable way
+  // to make every decision audit record "house stake not read" would be the hazard ruling 156 names.
+  const FAIL_SWITCH = new RegExp(["failExposure", "ReadForCases", String.raw`\s*\(`].join(""));
+  const switchCallers = srcFiles.filter((f) => FAIL_SWITCH.test(decomment(readFileSync(join(ROOT, f), "utf8")).replace(/export function failExposureReadForCases\(/g, "")));
+  ok("0.9 · ⛔ ruling 190 · no file under src/ calls failExposureReadForCases (only case files may)",
+    srcFiles.includes("src/lib/server/house-bot/exposure.ts") && switchCallers.length === 0, `callers: ${switchCallers.join(", ")}`);
+  ok("0.9c · CONTROL · a planted call is seen, and the declaration alone is not",
+    FAIL_SWITCH.test("EXP.failExposureReadForCases(true);")
+      && !FAIL_SWITCH.test("export function failExposureReadForCases(on: boolean): void {".replace(/export function failExposureReadForCases\(/g, "")));
 }
 
 /* ═══ §1 · C1 — one number parser for the form and the server ═══════════════════════════════ */
@@ -1640,6 +1653,20 @@ section("§13 · clock");
     r.formattedAt === "15 Sep, 00:00" && formatEat(Date.UTC(2026, 8, 14, 10, 7, 30), "HH:MM:SS") === "13:07:30" &&
       formatEat(Date.UTC(2026, 8, 14, 10), "D MMM YYYY") === "14 Sep 2026");
   ok("13.9 · EAT midnight is Tuesday, minute 0", r.weekdayAt === "TUE" && r.minuteOfDayAt === 0);
+  {
+    // C5-SPEC ruling 182 · the EAT calendar month a stake was placed in.
+    const sep = eatMonthWindow("2026-09");
+    ok("13.13 · ruling 182 · eatMonthWindow(\"2026-09\") = [2026-08-31T21:00Z, 2026-09-30T21:00Z)",
+      sep?.fromMs === Date.UTC(2026, 7, 31, 21) && sep?.toMs === Date.UTC(2026, 8, 30, 21), canon(sep));
+    ok("13.14 · …\"2026-12\" ends at 2026-12-31T21:00Z (the year turns), \"2026-02\" at 2026-02-28T21:00Z",
+      eatMonthWindow("2026-12")?.toMs === Date.UTC(2026, 11, 31, 21) && eatMonthWindow("2026-02")?.toMs === Date.UTC(2026, 1, 28, 21), canon([eatMonthWindow("2026-12"), eatMonthWindow("2026-02")]));
+    ok("13.15 · …null for anything that is not YYYY-MM with month 01–12: \"2026-13\", \"2026-9\", \"2026-00\", \" 2026-09\", \"2026-09-01\"",
+      ["2026-13", "2026-9", "2026-00", " 2026-09", "2026-09-01"].every((k) => eatMonthWindow(k) === null));
+    ok("13.16 · …the window agrees with eatMonthKey at 23:59:59.999 and 00:00:00.000 EAT on both ends",
+      !!sep && eatMonthKey(sep.fromMs - 1) === "2026-08" && eatMonthKey(sep.fromMs) === "2026-09" && eatMonthKey(sep.toMs - 1) === "2026-09" && eatMonthKey(sep.toMs) === "2026-10");
+    const y26 = eatMonthWindow("0026-08");
+    ok("13.17 · …a year below 100 is that year, never 19xx (\"0026-08\" starts in year 26)", !!y26 && new Date(y26.fromMs + EAT_OFFSET_MS).getUTCFullYear() === 26, canon(y26));
+  }
 
   // Two fresh processes under foreign zones. TZ is read at start-up, so it has to be a child, not an assignment.
   const tsxCli = createRequire(import.meta.url).resolve("tsx/cli");
