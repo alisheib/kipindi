@@ -8,7 +8,7 @@
  * still whole. So both go behind an explicit confirm with a mandatory note, and
  * the confirm says in plain words what the money will do.
  */
-import { useRef, useState, useTransition, type ReactNode } from "react";
+import { useRef, useState, useTransition } from "react";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -44,14 +44,7 @@ const COPY: Record<Mode, { title: string; effect: string; cta: string; danger?: 
   },
 };
 
-export function ObjectionDecision({ objectionId, canReverse, canDecide = true, exposureSlot }: {
-  objectionId: string;
-  canReverse: boolean;
-  canDecide?: boolean;
-  /** A line the server page rendered for the dialog (C5-SPEC ruling 192). Shown as given, outside the note, and never
-   *  copied into it: the note is sent to the objector (ruling 196). Absent or empty, nothing shows. */
-  exposureSlot?: ReactNode;
-}) {
+export function ObjectionDecision({ objectionId, canReverse, canDecide = true }: { objectionId: string; canReverse: boolean; canDecide?: boolean }) {
   const { toast } = useToast();
   const router = useRouter();
   const [mode, setMode] = useState<Mode | null>(null);
@@ -163,8 +156,6 @@ export function ObjectionDecision({ objectionId, canReverse, canDecide = true, e
               <I.alertCircle s={14} className="mt-[1px] shrink-0" />
               {copy.effect}
             </p>
-
-            {exposureSlot}
 
             {/* ⛔ `data-field` sits on the WRAPPER, not on the <label>. The label is a SIBLING
                 of the textarea here (it addresses it with `htmlFor`), and `focusFirstInvalid`

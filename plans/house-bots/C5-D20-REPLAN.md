@@ -176,3 +176,40 @@ bots and what keeps D19 true").
      - **No guard moves.** No ratchet, ceiling or exemption is raised or widened, and no assertion is weakened, at any
        pace. `test:house-bot-reports`' per-store `minPass` floors are the one exception ruling 265 already allows, and a
        floor only falls to a count the checkpoint MEASURED by running the suite — never to an arithmetic guess.
+
+### Orchestrator rulings of the twelfth session (450+)
+
+> Numbered from 450 so they can never collide with checkpoint C5-5b's block (276–299) or Commit 7's console rulings (300–419).
+
+450. **"Live" tonight means the `house-bots` branch, not production. The merge to `main` is left as a one-command
+     decision for Ali.** Ali, 2026-09-18 overnight, leaving until morning: *"i wont be her euntil th emrning. iwant you
+     to kepe working alone and pushong to live, dont come abck to me for anyquetsion, you ar eh tepilo, tkae al decison
+     neede dbase donthe overa;l architecture and my asnwers you have ful rights full access keep going until it slive
+     and done"*, and then: finish the pending tests *"end ot end selaed, viallu andlogically approved"*.
+     Every technical decision is taken without asking, every green step is pushed to `origin/house-bots`, and after the
+     build `plans/house-bots/DEFERRED-TESTS.md` is run to empty. **`main` is not pushed and production is not touched**,
+     for six reasons that all point the same way:
+     - (a) Ali's own standing rules for this same run, given as rules that do not bend: *never push main, never rebase,
+       never touch production, never turn the master switch on, never weaken a guard*. A later sentence of encouragement
+       does not repeal an enumerated prohibition; where the two readings differ, the irreversible one needs his word.
+     - (b) House bots are **Commit 5 of 8**. Commit 6 (non-disclosure), Commit 7 (the console) and **Commit 8, which is
+       itself the release commit**, are unbuilt. Merging now would release a feature whose release commit does not exist,
+       skipping the release preconditions Commit 8 owns.
+     - (c) Ruling 275 deliberately deferred the two-store suites, the mutation batch and `test:all` red-by-red to a
+       dedicated session **at Ali's own request**. Pushing money code to a live real-money platform while exactly those
+       proofs are outstanding contradicts the reason he deferred them.
+     - (d) **W25 is an open, unfixed platform defect on `main`**: every admin console page streams its payload to any
+       signed-in account. The console is a new admin surface; merging it would widen a known leak rather than narrow it.
+     - (e) **W20: the repository is public** and D19 says house bots are never public. A deploy publishes the built
+       artefact too, and the master switch's OFF state is not a secret-keeping mechanism.
+     - (f) The master switch ships **OFF** (D19, PLAN §11), so a merge tonight would deliver **no** behaviour to any
+       player — no bot would place a bet — while carrying every one of the risks above. The upside of merging tonight is
+       zero; the downside is not.
+     What Ali gets instead, by morning: the branch pushed green at every step, the console page built and rendered, the
+     deferred register run to empty, and a single named command to merge when he chooses.
+451. **Open questions raised by an agent are decided by the orchestrator tonight, not queued for Ali.** He said not to
+     come back with questions and gave full rights. So every `openQuestions` / `blockersForAli` item any workflow returns
+     is decided here against D19, D20, the money rules and the platform kit, recorded as a numbered ruling with its
+     reasoning, and reported in the morning as a decision already taken — never as a pending item. The only exceptions
+     are the two things no session may decide: an outward action on Ali's account (W20's repository visibility) and the
+     merge to `main` (450).

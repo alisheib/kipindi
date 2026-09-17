@@ -71,29 +71,7 @@ export type BulkRow = {
    *  what the confirmation dialog totals. */
   pool: number;
   verdict: BulkVerdictView;
-  /**
-   * A neutral state the server page derives for the bar's count (C5-SPEC ruling 192): `held`, `unread` when the page's read
-   * failed, `none` otherwise. It carries no figure and no word — the sentences arrive as one string from the page
-   * (`exposureCountTemplate`), and the client never learns more than which rows to count. Absent = `none`.
-   */
-  exposureState?: "none" | "held" | "unread";
 };
-
-/**
- * The bar's count sentences, from the page's template and the rows in scope: the first sentence counts `held` rows, the
- * second `unread` rows (`|` separates them, `{n}` is the count), and a sentence whose count is 0 is left out — so rows
- * that are all `none`, or no template, give nothing and the bar renders what it rendered before.
- */
-export function exposureCountLines(rows: ReadonlyArray<Pick<BulkRow, "exposureState">>, template: string | null | undefined): string[] {
-  if (!template) return [];
-  const [heldText = "", unreadText = ""] = template.split("|");
-  const held = rows.filter((r) => r.exposureState === "held").length;
-  const unread = rows.filter((r) => r.exposureState === "unread").length;
-  const out: string[] = [];
-  if (held > 0 && heldText) out.push(heldText.split("{n}").join(String(held)));
-  if (unread > 0 && unreadText) out.push(unreadText.split("{n}").join(String(unread)));
-  return out;
-}
 
 /** The paint-only projection of `BulkVerdict`. Same fields, no methods, no server types. */
 export type BulkVerdictView = {

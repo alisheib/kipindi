@@ -17,9 +17,6 @@ import { formatTzs, formatBalancePill } from "@/lib/utils";
 import { usd } from "@/lib/usd-price";
 import { AdminBody } from "@/components/admin/admin-body";
 import { KpiGrid } from "@/components/admin/admin-body";
-import { houseStakeForConsole } from "@/lib/server/house-console-read";
-import { exposureReadOf } from "@/lib/house-bot/exposure-copy";
-import { ExposureLine } from "@/components/admin/exposure-line";
 
 export const metadata = { title: "Admin · Up & Down · Rounds" };
 export const dynamic = "force-dynamic";
@@ -124,11 +121,6 @@ export default async function AdminUpDownRoundsPage({
 
   const settled = total - unsettled;
   const pageVol = enriched.reduce((s, e) => s + e.volume, 0);
-  // The house stake on this page's UNSETTLED rounds, read once for the line in each lever row and its void dialog (C5-SPEC
-  // rulings 192–194): the house line only, in Up / Down words. `null` when the read failed: the line then says so. Read
-  // through the console gate (ruling 259): a viewer outside this page's audience gets an empty read.
-  let stakes: Awaited<ReturnType<typeof houseStakeForConsole>> | null = null;
-  try { stakes = await houseStakeForConsole(session?.userId ?? null, "/admin/updown/rounds", [...new Set(rounds.filter((r) => !r.settledAt).map((r) => r.marketId))]); } catch { stakes = null; }
 
   // A round past the healer's deadline and still unresolved is the E-24 symptom
   // recurring, and it is the one number on this page that means money is not moving.
@@ -337,14 +329,10 @@ export default async function AdminUpDownRoundsPage({
                               label={`${asset?.key ?? "?"} ${durationMinutes}m #${r.roundNumber}`}
                               volume={formatTzs(volume)}
                               players={players}
-                              exposureSlot={<ExposureLine surface="roundVoidDialog" read={exposureReadOf(stakes, r.marketId)} productLine="UPDOWN" className="mb-3" />}
                             />
                           ) : (
                             <ControlLocked what="Void & refund" need={CONTROL_DOMAIN.voidUpDownRound} />
                           )}
-                          {/* The house line under the lever, bounded to the lever's own measure so the Remedy column stays in view
-                              at 1280 (a wider Volume cell pushed it out of the table's visible width) — C5-SPEC ruling 194. */}
-                          {!r.settledAt && <ExposureLine surface="roundsLever" read={exposureReadOf(stakes, r.marketId)} productLine="UPDOWN" className="mt-1 ml-auto max-w-[150px]" />}
                         </td>
                       </tr>
                     );

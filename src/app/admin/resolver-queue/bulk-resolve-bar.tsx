@@ -41,7 +41,7 @@ import { UnsavedChangesGuard, PendingChangesBar } from "@/components/ui/unsaved-
 import { useBulkSelection } from "./bulk-selection";
 import { BULK_REASON, composeOverrideJustification } from "./bulk-verdict-copy";
 import { bulkResolveMarketsAction } from "./bulk-resolve-action";
-import { exposureCountLines, type BulkRow, type BulkResolveResult } from "./bulk-resolve-types";
+import type { BulkRow, BulkResolveResult } from "./bulk-resolve-types";
 
 /**
  * ⛔ THERE IS NO `MIN_REASON` HERE ANY MORE, AND THAT IS THE POINT OF THIS CHANGE.
@@ -66,7 +66,6 @@ export function BulkResolveBar({
   requireTwoOfficer,
   canOverride,
   objectionWindowHours,
-  exposureCountTemplate,
 }: {
   /** The rows on THIS page, in render order. */
   rows: BulkRow[];
@@ -81,9 +80,6 @@ export function BulkResolveBar({
    *  listed total of player money for up to twenty markets. Read from the effective config,
    *  never assumed. */
   objectionWindowHours: number;
-  /** A neutral count template from the server page (C5-SPEC ruling 192), read with each row's `exposureState` by
-   *  `exposureCountLines`. Absent, or no row to count, and the summary and the confirmation are what they were. */
-  exposureCountTemplate?: string;
 }) {
   const mayAct = useMayAct();
   const { selected, setAll, clear, sharedReason, setSharedReason, someOn, allOn } = useBulkSelection();
@@ -186,7 +182,7 @@ export function BulkResolveBar({
           />
         </div>
 
-        <div className="min-w-0 flex-1 basis-[12rem]">
+        <div className="min-w-0 flex-1">
           {/* DG-A-14: this line is read, not scanned as a heading — it is either "N selected ·
               TZS X held" or "Select all on this page — N on this page", and the held stake is
               a number an officer acts on. It was wearing a section eyebrow's dress (uppercase
@@ -194,7 +190,7 @@ export function BulkResolveBar({
               is gone and the size is on the smallest legible rung. */}
           <p className="font-mono text-body-sm text-text-muted">
             {chosen.length > 0
-              ? <>{chosen.length} {BULK_BAR.nSelected.en}<span className="text-border"> · </span><span className="text-text whitespace-nowrap">{formatTzs(pool)} held</span>{exposureCountLines(chosen, exposureCountTemplate).map((line) => <React.Fragment key={line}><span className="text-border">&nbsp;· </span><span>{line}</span></React.Fragment>)}</>
+              ? <>{chosen.length} {BULK_BAR.nSelected.en}<span className="text-border"> · </span><span className="text-text">{formatTzs(pool)} held</span></>
               : <>{BULK_BAR.selectAllOnPage.en} — {rows.length} on this page</>}
           </p>
           {/* ⛔ THE SCOPE IS STATED, ALWAYS. A "select all" that quietly means "this page
@@ -329,7 +325,6 @@ export function BulkResolveBar({
         overridden={overridden}
         requireTwoOfficer={requireTwoOfficer}
         objectionWindowHours={objectionWindowHours}
-        exposureLines={exposureCountLines(willSeal, exposureCountTemplate)}
       />
 
       {/**
@@ -368,7 +363,7 @@ export function BulkResolveBar({
  * confirmation is how a typed gate stops being read.
  */
 function BulkConfirm({
-  open, onCancel, onConfirm, willSeal, willSkip, overridden, requireTwoOfficer, objectionWindowHours, exposureLines,
+  open, onCancel, onConfirm, willSeal, willSkip, overridden, requireTwoOfficer, objectionWindowHours,
 }: {
   open: boolean;
   onCancel: () => void;
@@ -378,8 +373,6 @@ function BulkConfirm({
   overridden: BulkRow[];
   requireTwoOfficer: boolean;
   objectionWindowHours: number;
-  /** The count sentences over the markets this confirmation seals (`exposureCountLines`); empty when there is none. */
-  exposureLines: string[];
 }) {
   const total = willSeal.reduce((s, r) => s + r.pool, 0);
   const hasOverride = overridden.length > 0;
@@ -494,10 +487,6 @@ function BulkConfirm({
             </span>
             <span className="amount text-body-sm font-bold text-text">{formatTzs(total)}</span>
           </p>
-
-          {exposureLines.length > 0 && (
-            <p className="text-body-sm text-text-muted">{exposureLines.join(" · ")}</p>
-          )}
 
           {willSkip.length > 0 && (
             <p className="font-mono text-caption text-text-subtle">

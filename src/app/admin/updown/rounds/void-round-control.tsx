@@ -28,7 +28,7 @@
  * is what the compliance record says about why a player's money was returned.
  */
 
-import { useRef, useState, useTransition, type ReactNode } from "react";
+import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { I } from "@/components/ui/glyphs";
 import { useDeferredToast } from "@/components/ui/toast";
@@ -43,16 +43,12 @@ export function VoidRoundControl({
   label,
   volume,
   players,
-  exposureSlot,
 }: {
   roundId: string;
   /** e.g. "GOLD 15m #155" — the operator must be able to tell rounds apart. */
   label: string;
   volume: string;
   players: number;
-  /** A line the server page rendered for the confirmation (C5-SPEC ruling 192), shown as given and outside the reason
-   *  field. Absent or empty, nothing shows. */
-  exposureSlot?: ReactNode;
 }) {
   // A1 — this control only ACTS, so a role holding VIEW without ACT is shown why rather
   // than being offered a button the server will refuse (and logged as a privilege
@@ -153,7 +149,6 @@ export function VoidRoundControl({
             when it has not — and say so in the reason.
           </p>
         </div>
-        {exposureSlot}
         <label className="block mb-4">
           <span className="block font-mono text-micro uppercase eyebrow font-bold text-text-subtle mb-1.5">
             Reason (required) · Sababu

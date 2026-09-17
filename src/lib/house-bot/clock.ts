@@ -106,24 +106,6 @@ export function eatPreviousMonthKey(atMs: number): string {
   return eatMonthKey(Date.UTC(y, m - 1, 1) - EAT_OFFSET_MS - 1);
 }
 
-/**
- * The half-open UTC window `[fromMs, toMs)` of one EAT calendar month (`YYYY-MM`, month 01–12), or null for any other
- * key: "2026-09" is [2026-08-31T21:00Z, 2026-09-30T21:00Z). C5-SPEC ruling 182: the staff-edge month and every scorecard
- * window are the EAT month a stake was PLACED in. It lives here, beside `eatPreviousMonthKey`, because this folder may
- * not value-import the server's own month helper (`report-money.ts` pulls in the market service).
- * ⛔ A caller that reads money treats null as an error, never as "no month" (the book throws, as it does for a day key).
- */
-export function eatMonthWindow(monthKey: string): { fromMs: number; toMs: number } | null {
-  const m = /^(\d{4})-(\d{2})$/.exec(monthKey);
-  if (!m) return null;
-  const year = Number(m[1]);
-  const month = Number(m[2]);
-  if (month < 1 || month > 12) return null;
-  // ⚠️ Not `Date.UTC(year, …)`: it reads a year below 100 as 19xx, so "0026-08" would silently become August 1926.
-  const startOf = (y: number, monthIndex: number) => new Date(0).setUTCFullYear(y, monthIndex, 1);
-  return { fromMs: startOf(year, month - 1) - EAT_OFFSET_MS, toMs: startOf(year, month) - EAT_OFFSET_MS };
-}
-
 /** The EAT minute (`YYYY-MM-DDTHH:MM`) an instant falls in — the Enter now preview throttle (N1 §6). */
 export function eatMinuteKey(atMs: number): string {
   return eatIso(atMs).slice(0, 16);

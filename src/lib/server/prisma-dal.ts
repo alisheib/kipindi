@@ -381,10 +381,8 @@ function toStoredBonusGrant(g: any): StoredBonusGrant {
   };
 }
 
-/** One Transaction row → StoredTxn. Exported for the house DAL's keyset reader (`houseBookStore.txnPageForUser`), so a
- *  raw-SQL read maps every column exactly as this DAL does (C5-SPEC ruling 177). */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function toStoredTxn(t: any): StoredTxn {
+function toStoredTxn(t: any): StoredTxn {
   return {
     id: t.id,
     walletId: t.walletId,
@@ -1667,7 +1665,6 @@ export const prismaDb = {
            from "public"."Transaction"
           where "status" = 'CONFIRMED'
             and "type" in ('BET_PLACED', 'BET_PAYOUT', 'CASHOUT')
-            and "houseBotId" is null
           group by "userId"
           order by (coalesce(sum(case when "type" = 'BET_PLACED' then abs("amount") else 0 end), 0)
                   - coalesce(sum(case when "type" in ('BET_PAYOUT', 'CASHOUT') then abs("amount") else 0 end), 0)) desc
@@ -1713,9 +1710,6 @@ export const prismaDb = {
           { AND: [{ status: "PROCESSING" as never }, { createdAt: { lt: new Date(Date.now() - STUCK_PROCESSING_MS) } }] },
         ] });
       }
-      // C5-SPEC ruling 210 · the house marker, mirroring `matchesFilters`.
-      if (f.house === "only") and.push({ houseBotId: { not: null } });
-      else if (f.house === "exclude") and.push({ houseBotId: null });
       const finalWhere: Prisma.TransactionWhereInput = and.length ? { AND: and } : {};
 
       const field = f.sort?.field ?? "createdAt";

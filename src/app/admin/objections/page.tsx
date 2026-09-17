@@ -16,9 +16,6 @@ import { ObjectionDecision } from "./objection-decision";
 import Link from "next/link";
 import { AdminBody } from "@/components/admin/admin-body";
 import { KpiGrid } from "@/components/admin/admin-body";
-import { houseStakeForConsole } from "@/lib/server/house-console-read";
-import { exposureReadOf } from "@/lib/house-bot/exposure-copy";
-import { ExposureLine } from "@/components/admin/exposure-line";
 
 export const dynamic = "force-dynamic";
 
@@ -63,11 +60,6 @@ export default async function AdminObjectionsPage({ searchParams }: { searchPara
   const page = parsePage(sp.page, rows.length);
   const pageRows = rows.slice((page - 1) * PER_PAGE, page * PER_PAGE);
   const base = buildBaseHref("/admin/objections", sp);
-  // The house stake on this page's OPEN actionable markets only — the rows join every objection ever filed — read once for
-  // the line beside "Pool held" and the decision dialog (C5-SPEC rulings 192–194, 196). `null` when the read failed. Read
-  // through the console gate (ruling 259): a viewer outside this page's audience gets an empty read.
-  let stakes: Awaited<ReturnType<typeof houseStakeForConsole>> | null = null;
-  try { stakes = await houseStakeForConsole(session?.userId ?? null, "/admin/objections", [...new Set(pageRows.filter((r) => r.actionable).map((r) => r.o.marketId))]); } catch { stakes = null; }
 
   return (
     <>
@@ -148,9 +140,6 @@ export default async function AdminObjectionsPage({ searchParams }: { searchPara
                     </td>
                     <td className="text-right font-mono tabular-nums text-text-muted">
                       {o.status === "OPEN" && market && !market.settledAt ? formatTzs(pool) : "—"}
-                      {actionable && (
-                        <ExposureLine surface="objectionsRow" read={exposureReadOf(stakes, o.marketId)} viewerId={session?.userId ?? null} className="mt-1 ml-auto w-[13rem]" />
-                      )}
                     </td>
                     <td className="font-mono text-[10.5px] text-text-subtle whitespace-nowrap">
                       {formatDateTime(o.createdAt)}
@@ -161,7 +150,6 @@ export default async function AdminObjectionsPage({ searchParams }: { searchPara
                           objectionId={o.id}
                           canReverse={market?.resolvedOutcome === "YES" || market?.resolvedOutcome === "NO"}
                           canDecide={canDecide}
-                          exposureSlot={<ExposureLine surface="objectionDialog" read={exposureReadOf(stakes, o.marketId)} viewerId={session?.userId ?? null} />}
                         />
                       ) : o.status === "OPEN" ? (
                         // Should be unreachable: an OPEN objection freezes settlement.

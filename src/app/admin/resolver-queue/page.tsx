@@ -32,9 +32,6 @@ import { formatDateTime } from "@/lib/utils";
 import { CEREMONY, SELECTION } from "@/lib/admin-status-lexicon";
 import { AdminBody } from "@/components/admin/admin-body";
 import { SORT_OPTIONS, parseSort, compareBy } from "./queue-order";
-import { houseStakeForConsole } from "@/lib/server/house-console-read";
-import { BULK_EXPOSURE_COUNT_TEMPLATE, exposureReadOf, exposureStateOf, heldChipTitle } from "@/lib/house-bot/exposure-copy";
-import { ExposureLine } from "@/components/admin/exposure-line";
 
 export const metadata = { title: "Admin · Resolver queue" };
 export const dynamic = "force-dynamic";
@@ -221,15 +218,6 @@ export default async function ResolverQueuePage({
    * which matches the failure direction of the registry read beside it.
    */
   const disabledCategories = new Set(await listDisabledCategories().catch(() => []));
-  /**
-   * ⭐ THE HOUSE STAKE ON THIS PAGE, READ ONCE (C5-SPEC rulings 192–194) — for every paged card's line and held-chip title,
-   * and reused for the bulk bar's rows. ⛔ A failed read is `null`, which every display says it could not read; it is
-   * never a zero. ⛔ Display only: no condition that shows, hides or locks a control reads it (TGT-38, ruling 191).
-   * ⛔ Through the console gate (ruling 259): a viewer outside this page's audience gets an empty read, so a player who
-   * requests the page gets no house line, no house title and no house count — the layouts' checks do not stop a page's payload.
-   */
-  let stakes: Awaited<ReturnType<typeof houseStakeForConsole>> | null = null;
-  try { stakes = await houseStakeForConsole(session?.userId ?? null, "/admin/resolver-queue", paged.map((m) => m.id)); } catch { stakes = null; }
   const bulkRows: BulkRow[] = await Promise.all(paged.map(async (m) => {
     const cfg = await getEffectiveConfig(m.id);
     const mode = await getEffectiveResolutionMode(m.resolutionMode);
@@ -261,7 +249,6 @@ export default async function ResolverQueuePage({
         // not judged by — and that number is now composed into the audit chain.
         threshold: cfg.resolveConfidenceThreshold,
       },
-      exposureState: exposureStateOf(exposureReadOf(stakes, m.id)),
     };
   }));
   const verdictById = new Map(bulkRows.map((r) => [r.marketId, r]));
@@ -365,7 +352,6 @@ export default async function ResolverQueuePage({
                 requireTwoOfficer={requireTwoOfficer}
                 canOverride={canOverride}
                 objectionWindowHours={objectionWindowHours}
-                exposureCountTemplate={BULK_EXPOSURE_COUNT_TEMPLATE}
               />
             ) : (
               <ControlLocked what="Resolve selected markets" need={CONTROL_DOMAIN.bulkResolveMarkets} block />
@@ -386,7 +372,6 @@ export default async function ResolverQueuePage({
               const t = timeUntil(m.resolutionAt);
               const yes = impliedYesPct(m);
               const stage1 = !!m.resolutionStage1By;
-              const house = exposureReadOf(stakes, m.id);
               return (
                 <AdminCard key={m.id} padding="p-0" data-market-id={m.id}>
                   <div className="flex items-start gap-4 p-4 border-b border-border">
@@ -478,15 +463,12 @@ export default async function ResolverQueuePage({
                       {m.yesPool + m.noPool > 0 && (
                         <span
                           className="inline-flex items-center gap-1 rounded-md border border-border bg-bg-overlay px-2 py-0.5 font-mono text-[10.5px] font-semibold text-text-muted whitespace-nowrap"
-                          title={heldChipTitle(house, formatTzs)}
+                          title="Player money held on this market until it resolves"
                         >
                           <I.wallet s={10} />
                           {formatTzs(m.yesPool + m.noPool)} held
                         </span>
                       )}
-                      {/* The house line after the held chip, for every paged card (C5-SPEC ruling 194); nothing on a
-                          market the house does not hold. */}
-                      <ExposureLine surface="resolverQueue" read={house} viewerId={session?.userId ?? null} />
                     </div>
                   </div>
 

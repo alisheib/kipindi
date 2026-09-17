@@ -1437,8 +1437,6 @@ const memoryDb = {
       const acc = new Map<string, { stakes: number; payouts: number }>();
       for (const t of store.txns.values()) {
         if (t.status !== "CONFIRMED") continue;
-        // C5-SPEC ruling 224 (class C) · the concentration list ranks players: house-marked money is not a contributor.
-        if (t.houseBotId != null) continue;
         const isStake = t.type === "BET_PLACED";
         const isPayout = t.type === "BET_PAYOUT" || t.type === "CASHOUT";
         if (!isStake && !isPayout) continue;
