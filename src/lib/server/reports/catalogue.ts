@@ -24,25 +24,9 @@ import { startOfEatDay, eatDateLabel } from "../report-money";
 import { AML_REVIEW_THRESHOLD_TZS } from "../payments";
 import { getGlobalConfig } from "../market-config";
 import type { Report, Row, SignatureRow, SummaryItem } from "./types";
+// Signatures, references and the masked player id live in the leaf `attest.ts` (C5-SPEC rulings 186, 201).
+import { makeReference, maskUserId, regulatorSignatures } from "./attest";
 import { formatDateTime, formatTzs } from "@/lib/utils";
-
-/** Standard regulator attestation block — three roles at the foot of every
- *  hand-off-grade report. Only "Prepared by" is filled (the real generator, who
- *  is known at build time). "Reviewed by" / "Approved by" are left BLANK
- *  signature lines — never-fabricate: we must not pre-print a Compliance/AML
- *  signer name that no identified person actually attested. The reviewer/approver
- *  countersigns (or e-signs) the issued copy; the blank line + "Signature & date"
- *  is what both renderers draw. Kept here so every report renders the same three
- *  columns in the same order. */
-async function regulatorSignatures(generatorId: string) {
-  const u = await db.user.findById(generatorId);
-  const generator = u?.displayName?.trim() || `Generator · ${generatorId}`;
-  return [
-    { role: "Prepared by",   name: generator, id: generatorId },
-    { role: "Reviewed by",   name: "" }, // countersigned on the issued copy — never pre-filled
-    { role: "Approved by",   name: "" },
-  ];
-}
 
 /**
  * Salted SHA-256 of one identifier for the self-exclusion register.
@@ -60,12 +44,6 @@ function hashIdentifier(value: string): string {
     throw new Error("SX_REGISTER_SALT must be set in production before generating the self-exclusion register.");
   }
   return createHash("sha256").update(`${salt ?? "tz-gbt-salt-dev-only"}:${value}`, "utf8").digest("hex");
-}
-
-function makeReference(acronym: string, generatorId: string): string {
-  const today = new Date().toISOString().slice(0, 10).replace(/-/g, "");
-  const tail = generatorId.replace(/^usr_/, "").slice(-6).toUpperCase();
-  return `${acronym}-${today}-${tail}`;
 }
 
 // ─────────────────────────────────────────────────────────────────────
@@ -780,7 +758,6 @@ export async function buildDailyOps(generatorId: string): Promise<Report> {
 // ─────────────────────────────────────────────────────────────────────
 
 const REVERIFY_MONTHS = 24;
-const maskUserId = (id: string) => `${id.replace(/^usr_/, "").slice(0, 4)}…${id.slice(-4)}`;
 const maskNidaTail = (n: string | null | undefined) => (n ? `•••• ${n.slice(-4)}` : "—");
 
 export async function buildKycReverify(generatorId: string): Promise<Report> {

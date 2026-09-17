@@ -58,6 +58,7 @@ All citations are from `C:\kipindi-main` as it stands now. The laws come from `d
 - Zero rows render `AdminTableEmpty` (`admin-table-empty.tsx:14-38`).
 
 **Status chips.** Always `<Chip size="sm" variant={TONE_CHIP[STATUS_TONE.HOUSE_BOT_*.admin]}>` (`status-tone.ts:78-88`). Never a variant typed beside the label. The chip words are "Active", "Paused", "Auto-paused", "Removed".
+⛔ **Superseded in place (C5-SPEC ruling 186, §1 S24):** the word and the chip variant come from the ONE server-side map `src/lib/server/house-bot/status-display.ts` (`HOUSE_BOT_STATUS_DISPLAY`, PLAN's tones through `TONE_CHIP`); `src/lib/status-tone.ts` is value-imported by client components and gets no HOUSE_BOT key (D19). The chip words above stand.
 
 **Feedback**
 - The agents runner: `useTransition` + `useActionOverlay` + `runAdminAction` + `focusFirstInvalid` (`agents/agents-client.tsx:31-42`). This is DA §F2's account/compliance class, whose primary channel is a popup.
@@ -314,7 +315,7 @@ AdminBody
 - At 360 the line wraps between the two sides; each "SIDE TZS x" group is nowrap.
 
 ### S7 Player profile chip (admin `/admin/players/[id]`)
-- It goes in the existing chip row (`players/[id]/page.tsx:226-259`): `Chip size="sm" variant={TONE_CHIP[…HOUSE_BOT_*.admin]}` reading "House bot · Active".
+- It goes in the existing chip row (`players/[id]/page.tsx:226-259`): `Chip size="sm" variant={TONE_CHIP[…HOUSE_BOT_*.admin]}` reading "House bot · Active". ⛔ Superseded in place (C5-SPEC ruling 186, §1 S24): the variant comes from `HOUSE_BOT_STATUS_DISPLAY` in `server/house-bot/status-display.ts`, never from `status-tone.ts`.
 - Owner: wrapped in `next/link` `Link` to the bot, following the KYC chip precedent at `:228` (Link rather than raw `<a>`).
 - Other staff: a plain chip, not a link. A link that ends at AdminRestricted is a dead end.
 - REMOVED bots show no chip.

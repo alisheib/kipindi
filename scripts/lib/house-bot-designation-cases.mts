@@ -453,6 +453,24 @@ section("§4 · designateHouseBot");
   const clash = await desig(h2, { label: "asha desk" });
   ok("4.2 · the same label in another case → field label with the C2 copy, and no attempt spent",
     clash.ok === false && clash.field === "label" && clash.message === "Another bot is already called “Asha Desk” (Paused). Choose a different label." && (await user(h2)).failedLoginCount === 0, j(clash));
+  {
+    // C5-SPEC ruling 186 (2) · the duplicate-label copy reads the ONE server-side status map (03 §1's chip words): an ACTIVE
+    // bot is "Active", never the private "Running" this file used to spell. The Asha Desk bot is set ACTIVE for the check
+    // and put back exactly as it was (PAUSED, pause reason NEW), so no later case sees a changed bot.
+    const SD: Any = await import("../../src/lib/server/house-bot/status-display.ts");
+    const asha = d.ok ? await bot(d.bot.id) : null;
+    const on = asha ? await w.dal.houseBotStore.setStatus(asha.id, { from: ["PAUSED"], to: "ACTIVE", pauseReason: null, pausedFromStatus: null }) : null;
+    const hActive = await holder();
+    const clashActive = await desig(hActive, { label: "ASHA desk" });
+    const back = on ? await w.dal.houseBotStore.setStatus(asha.id, { from: ["ACTIVE"], to: "PAUSED", pauseReason: "NEW", pausedFromStatus: null }) : null;
+    ok("4.2b · ruling 186 · a clash with an ACTIVE bot names it “(Active)” — the shared status word, never “Running” — and the bot is restored to PAUSED(NEW)",
+      !!on && clashActive.ok === false && clashActive.field === "label" && clashActive.message === "Another bot is already called “Asha Desk” (Active). Choose a different label."
+        && back?.status === "PAUSED" && back?.pauseReason === "NEW", j({ clashActive, back: back?.status }));
+    ok("4.2c · ruling 186 · one status map: Active, Paused, Auto-paused, Removed on the success, warning, claret and neutral chips (PLAN's tones)",
+      j(Object.fromEntries(Object.entries(SD.HOUSE_BOT_STATUS_DISPLAY).map(([k, v]: Any) => [k, [v.word, v.tone, v.chip]])))
+        === j({ ACTIVE: ["Active", "green", "success"], PAUSED: ["Paused", "amber", "warning"], AUTO_PAUSED: ["Auto-paused", "claret", "claret"], REMOVED: ["Removed", "slate", "neutral"] }),
+      j(SD.HOUSE_BOT_STATUS_DISPLAY));
+  }
 
   // A password change between the check and the insert: no row.
   const h3 = await holder();

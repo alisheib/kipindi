@@ -27,6 +27,8 @@ import { audit } from "@/lib/server/audit";
 import { db, TXN_TYPES } from "@/lib/server/store";
 import { attentionOf, type TxnSearchFilters } from "@/lib/server/txn-filters";
 import { resolveRange } from "@/lib/server/date-range";
+// RFC-4180 quoting + spreadsheet-formula neutralisation: ONE cell module for every console CSV (C5-SPEC ruling 186).
+import { csvCell as cell } from "@/lib/server/csv-cell";
 import type { StoredTxn } from "@/lib/server/store";
 
 export const dynamic = "force-dynamic";
@@ -39,13 +41,6 @@ const MAX_ROWS = 50_000;
 const TYPES: readonly string[] = TXN_TYPES;
 const STATUSES = ["PENDING", "PROCESSING", "AML_REVIEW", "CONFIRMED", "FAILED", "REVERSED", "CANCELLED"];
 const PROVIDERS = ["MPESA", "TIGO_PESA", "AIRTEL_MONEY", "HALO_PESA", "MIXX", "TTCL_PESA", "CARD", "BANK_TRANSFER", "INTERNAL"];
-
-/** RFC-4180 quoting + spreadsheet-formula neutralisation. */
-function cell(v: string | number | null | undefined): string {
-  const s = v == null ? "" : String(v);
-  const safe = /^[=+\-@\t\r]/.test(s) ? `'${s}` : s;
-  return `"${safe.replace(/"/g, '""')}"`;
-}
 
 /**
  * ⭐ THE COLUMN NAMES ITSELF `msisdn_masked` WHEN IT IS MASKED, AND THAT IS NOT COSMETIC. A CSV

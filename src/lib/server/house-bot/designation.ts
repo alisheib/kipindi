@@ -40,6 +40,7 @@ import {
   rulesStartProblems, validateLabel, validateNote, CAP_FIELDS, type HouseBotCaps, type RulesContext,
 } from "@/lib/house-bot/rules";
 import { formatEat } from "@/lib/house-bot/clock";
+import { houseBotStatusWord } from "./status-display";
 
 /* ═══ Audit ═══════════════════════════════════════════════════════════════════════════════════════ */
 
@@ -215,8 +216,6 @@ export async function verifyHouseBotPassword(input: {
 
 /* ═══ Designate (02 §3.2, 04 C4 designate order, C9, A3) ═══════════════════════════════════════════ */
 
-const STATUS_WORD: Record<HouseBotStatus, string> = { ACTIVE: "Running", PAUSED: "Paused", AUTO_PAUSED: "Auto-paused", REMOVED: "Removed" };
-
 export const DESIGNATE_COPY = {
   passwordChanged: "Their password changed a moment ago — enter the new one.",
   alreadyBot: "This account is already a house bot.",
@@ -266,7 +265,7 @@ export async function designateHouseBot(input: {
     return { ok: false, code: first.code === "ROSTER_FULL" ? "ROSTER_FULL" : "INELIGIBLE", message: first.message, row: first, href: first.href };
   }
   const clash = (await houseBotStore.listNonRemoved()).find((b) => b.labelKey === key);
-  if (clash) return { ok: false, code: "INVALID", field: "label", message: DUPLICATE_LABEL_COPY(clash.label, STATUS_WORD[clash.status]) };
+  if (clash) return { ok: false, code: "INVALID", field: "label", message: DUPLICATE_LABEL_COPY(clash.label, houseBotStatusWord(clash.status)) };
 
   const v = await verifyHouseBotPassword({ officerId, userId, password: input.password, submitId: input.submitId });
   if (!v.ok) return { ok: false, code: v.code, message: v.message, field: v.field, row: v.row, attemptsBeforeLock: v.attemptsBeforeLock, retryAfterSec: v.retryAfterSec };
@@ -300,7 +299,7 @@ export async function designateHouseBot(input: {
     const index = uniqueViolation(e);
     if (index === "HouseBot_labelKey_live_key") {
       const other = (await houseBotStore.listNonRemoved()).find((b) => b.labelKey === key);
-      return { ok: false, code: "INVALID", field: "label", message: DUPLICATE_LABEL_COPY(other?.label ?? label, other ? STATUS_WORD[other.status] : "Paused") };
+      return { ok: false, code: "INVALID", field: "label", message: DUPLICATE_LABEL_COPY(other?.label ?? label, houseBotStatusWord(other?.status ?? "PAUSED")) };
     }
     if (index === "HouseBot_userId_live_key") {
       const live = await houseBotStore.findLiveByUserId(userId);
