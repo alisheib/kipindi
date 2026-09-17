@@ -17,7 +17,7 @@ import { formatTzs, formatBalancePill } from "@/lib/utils";
 import { usd } from "@/lib/usd-price";
 import { AdminBody } from "@/components/admin/admin-body";
 import { KpiGrid } from "@/components/admin/admin-body";
-import { houseStakeByMarket } from "@/lib/server/house-bot/exposure";
+import { houseStakeForConsole } from "@/lib/server/house-console-read";
 import { exposureReadOf } from "@/lib/house-bot/exposure-copy";
 import { ExposureLine } from "@/components/admin/exposure-line";
 
@@ -125,9 +125,10 @@ export default async function AdminUpDownRoundsPage({
   const settled = total - unsettled;
   const pageVol = enriched.reduce((s, e) => s + e.volume, 0);
   // The house stake on this page's UNSETTLED rounds, read once for the line in each lever row and its void dialog (C5-SPEC
-  // rulings 192–194): the house line only, in Up / Down words. `null` when the read failed: the line then says so.
-  let stakes: Awaited<ReturnType<typeof houseStakeByMarket>> | null = null;
-  try { stakes = await houseStakeByMarket([...new Set(rounds.filter((r) => !r.settledAt).map((r) => r.marketId))]); } catch { stakes = null; }
+  // rulings 192–194): the house line only, in Up / Down words. `null` when the read failed: the line then says so. Read
+  // through the console gate (ruling 259): a viewer outside this page's audience gets an empty read.
+  let stakes: Awaited<ReturnType<typeof houseStakeForConsole>> | null = null;
+  try { stakes = await houseStakeForConsole(session?.userId ?? null, "/admin/updown/rounds", [...new Set(rounds.filter((r) => !r.settledAt).map((r) => r.marketId))]); } catch { stakes = null; }
 
   // A round past the healer's deadline and still unresolved is the E-24 symptom
   // recurring, and it is the one number on this page that means money is not moving.

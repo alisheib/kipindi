@@ -1394,11 +1394,11 @@ export function exportedNames(file: string, code: string): string[] {
   });
   return [...out].sort();
 }
-/** Every string the declaration can print: string literals and the text parts of template literals. */
+/** Every string a declaration or a file can print: string literals, the text parts of template literals and JSX text. */
 function printedTexts(file: string, text: string): string {
   const out: string[] = [];
   walkTree(parse(file, text), (n) => {
-    if (ts.isStringLiteral(n) || ts.isNoSubstitutionTemplateLiteral(n) || ts.isTemplateHead(n) || ts.isTemplateMiddle(n) || ts.isTemplateTail(n)) out.push(n.text);
+    if (ts.isStringLiteral(n) || ts.isNoSubstitutionTemplateLiteral(n) || ts.isTemplateHead(n) || ts.isTemplateMiddle(n) || ts.isTemplateTail(n) || ts.isJsxText(n)) out.push(n.text);
   });
   return out.join(" ");
 }
@@ -1529,8 +1529,8 @@ export function exposureWiring(file: string, code: string): { lines: string[]; p
   });
   return { lines: lines.sort(), problems };
 }
-/** Ruling 194 · the queue's held title and the bulk bar's neutral data, and ruling 197 · the KYC value's money gate, read from the pages. */
-export function heldAndBulkWiring(queue: string, kyc: string, market: string): string[] {
+/** Ruling 194 · the queue's held title and the bulk bar's neutral data, read from the page. */
+export function heldAndBulkWiring(queue: string): string[] {
   const problems: string[] = [];
   const q = parse("src/app/admin/resolver-queue/page.tsx", queue);
   let title = false, state = false, template = false;
@@ -1543,28 +1543,223 @@ export function heldAndBulkWiring(queue: string, kyc: string, market: string): s
   if (!/const house = exposureReadOf\(stakes, m\.id\);/.test(queue)) problems.push("the queue card's house is not its market's part of the page's one read");
   if (!state) problems.push("the bulk rows do not carry exposureState from the page's one read");
   if (!template) problems.push("the bulk bar is not handed BULK_EXPOSURE_COUNT_TEMPLATE");
-  const k = parse("src/app/admin/kyc/[id]/page.tsx", kyc);
-  let gate = false;
-  walkTree(k, (n) => {
-    if ((ts.isJsxSelfClosingElement(n) || ts.isJsxOpeningElement(n)) && n.tagName.getText(k) === "BetsPlacedValue") {
-      gate = n.attributes.properties.some((p) => ts.isJsxAttribute(p) && p.name.getText(k) === "canSeeMoney" && p.initializer != null && ts.isJsxExpression(p.initializer) && p.initializer.expression?.getText(k) === "canSeeMoney");
-    }
-  });
-  if (!gate) problems.push("the KYC card's value is not gated on the page's own canSeeMoney");
-  if (!market.includes("houseBotRowTag(botLabels.get(p.houseBotId) ?? \"—\")")) problems.push("the market page's row tag is not houseBotRowTag(label)");
   return problems;
 }
-/** Ruling 192 · each client control renders its slot as a JSX child (or hands it on under the same name), and the bar reads its template in both places. */
-export function slotRenderedCount(file: string, code: string, prop: string): number {
+/* ═══ §0 · C5 step 5 review · ruling 259 · a console page reads house data only through the viewer gate, once, in its own catch ═══ */
+
+/** The console readers (ruling 259): the house stake, the row tag's labels and the audience question, each gated on the viewer. */
+export const CONSOLE_READ_MODULE = "src/lib/server/house-console-read";
+/**
+ * Rulings 194 and 259 · each page's ONE house stake read: the console route it asks the gate about, the viewer it hands it,
+ * the markets it reads (by exact source text — a page that reads none, every market or the wrong rows is reported) and
+ * the ids its displays take their part of the read by.
+ */
+export const EXPOSURE_READS: Readonly<Record<string, { route: string; viewer: string; ids: string; readIds: readonly string[] }>> = {
+  "src/app/admin/resolver-queue/page.tsx": { route: "/admin/resolver-queue", viewer: "session?.userId ?? null", ids: "paged.map((m) => m.id)", readIds: ["m.id"] },
+  "src/app/admin/resolver/[id]/page.tsx": { route: "/admin/resolver", viewer: "currentOfficerId", ids: "[m.id]", readIds: ["m.id"] },
+  "src/app/admin/markets/[id]/page.tsx": { route: "/admin/markets", viewer: "session?.userId ?? null", ids: "[m.id]", readIds: ["m.id"] },
+  "src/app/admin/markets/page.tsx": { route: "/admin/markets", viewer: "session?.userId ?? null", ids: "paged.filter((m) => m.status === \"LIVE\" || m.status === \"CLOSED\").map((m) => m.id)", readIds: ["m.id"] },
+  "src/app/admin/objections/page.tsx": { route: "/admin/objections", viewer: "session?.userId ?? null", ids: "[...new Set(pageRows.filter((r) => r.actionable).map((r) => r.o.marketId))]", readIds: ["o.marketId"] },
+  "src/app/admin/updown/rounds/page.tsx": { route: "/admin/updown/rounds", viewer: "session?.userId ?? null", ids: "[...new Set(rounds.filter((r) => !r.settledAt).map((r) => r.marketId))]", readIds: ["r.marketId"] },
+};
+/** The ungated house readers a console page may never name: every house figure or label it shows goes through the gate. */
+export const UNGATED_HOUSE_READERS = ["houseStakeByMarket", "houseStakeForAudit", "houseBotStore", "houseBookStore", "houseBotIntentStore"] as const;
+const oneLine = (s: string) => s.replace(/\s+/g, " ").trim();
+/**
+ * Rulings 190, 194 and 259 in one page: no ungated house reader named; `let stakes … = null`; exactly one
+ * `try { stakes = await houseStakeForConsole(<viewer>, "<route>", <ids>); } catch { stakes = null; }` — so a failed read is
+ * the unread line, never a fabricated empty read and never a thrown page; and every `exposureReadOf` takes `stakes` by the
+ * page's own id.
+ */
+export function exposureReadWiring(file: string, code: string, spec: { route: string; viewer: string; ids: string; readIds: readonly string[] }): string[] {
   const sf = parse(file, code);
-  let count = 0;
+  const problems: string[] = [];
+  const say = (what: string, n?: ts.Node) => problems.push(`${file}${n ? `:${lineOf(sf, n)}` : ""}: ${what}`);
+  const calls: ts.CallExpression[] = [];
+  let declared = 0;
   walkTree(sf, (n) => {
-    if (!ts.isIdentifier(n) || n.text !== prop) return;
-    const p = n.parent;
-    if (ts.isJsxExpression(p) && (ts.isJsxElement(p.parent) || ts.isJsxFragment(p.parent))) count++;
-    else if (ts.isCallExpression(p) && ts.isIdentifier(p.expression) && p.expression.text === "exposureCountLines" && p.arguments[1] === n) count++;
+    if (ts.isIdentifier(n) && (UNGATED_HOUSE_READERS as readonly string[]).includes(n.text)) say(`names the ungated house reader ${n.text}`, n);
+    if (ts.isCallExpression(n) && ts.isIdentifier(n.expression) && n.expression.text === "houseStakeForConsole") calls.push(n);
+    if (ts.isVariableDeclaration(n) && n.name.getText(sf) === "stakes" && ts.isVariableDeclarationList(n.parent)
+      && (n.parent.flags & ts.NodeFlags.Let) !== 0 && n.initializer?.kind === ts.SyntaxKind.NullKeyword) declared++;
+    if (ts.isCallExpression(n) && ts.isIdentifier(n.expression) && n.expression.text === "exposureReadOf") {
+      const [a, b] = n.arguments.map((x) => x.getText(sf));
+      if (a !== "stakes" || !spec.readIds.includes(b ?? "")) say(`exposureReadOf takes another read or id: ${snippet(sf, n)}`, n);
+    }
   });
-  return count;
+  if (declared !== 1) say(`declares \`let stakes … = null\` ${declared} times, not once`);
+  if (calls.length !== 1) { say(`calls houseStakeForConsole ${calls.length} times, not once`); return problems; }
+  const call = calls[0];
+  const args = call.arguments.map((x) => oneLine(x.getText(sf)));
+  if (args[0] !== spec.viewer) say(`hands the gate another viewer: ${args[0]}`, call);
+  const route = call.arguments[1];
+  if (!(route && ts.isStringLiteral(route) && route.text === spec.route)) say(`asks the gate about another route: ${args[1]}`, call);
+  if (args.length !== 3 || args[2] !== oneLine(spec.ids)) say(`reads other markets: ${args.slice(2).join(", ")}`, call);
+  const aw = call.parent, assign = aw?.parent, stmt = assign?.parent, block = stmt?.parent, tryStmt = block?.parent;
+  const shaped = !!aw && ts.isAwaitExpression(aw) && !!assign && ts.isBinaryExpression(assign) && assign.operatorToken.kind === ts.SyntaxKind.EqualsToken
+    && assign.left.getText(sf) === "stakes" && !!stmt && ts.isExpressionStatement(stmt) && !!block && ts.isBlock(block) && block.statements.length === 1
+    && !!tryStmt && ts.isTryStatement(tryStmt) && tryStmt.tryBlock === block && !tryStmt.finallyBlock && !!tryStmt.catchClause
+    && tryStmt.catchClause.block.statements.length === 1 && oneLine(tryStmt.catchClause.block.statements[0].getText(sf)) === "stakes = null;";
+  if (!shaped) say("the read is not `try { stakes = await houseStakeForConsole(…); } catch { stakes = null; }`", call);
+  return problems;
+}
+/**
+ * Rulings 194 and 259 · the market page's row tag: the labels come from ONE gated read, and a row carries the tag only when
+ * that read holds its bot — so a viewer outside the page's audience sees no tag on a house-marked row.
+ */
+export function marketTagWiring(file: string, code: string): string[] {
+  const sf = parse(file, code);
+  const problems: string[] = [];
+  const reads: string[] = [];
+  const tags: string[] = [];
+  walkTree(sf, (n) => {
+    if (ts.isVariableDeclaration(n) && n.initializer && oneLine(n.initializer.getText(sf)).startsWith("await houseBotLabelsForConsole(")) reads.push(`${n.name.getText(sf)} = ${oneLine(n.initializer.getText(sf))}`);
+    if (ts.isCallExpression(n) && ts.isIdentifier(n.expression) && n.expression.text === "houseBotLabelsForConsole" && !(ts.isAwaitExpression(n.parent) && ts.isVariableDeclaration(n.parent.parent))) problems.push(`${file}:${lineOf(sf, n)}: a label read that is not the page's one binding`);
+    if (ts.isCallExpression(n) && ts.isIdentifier(n.expression) && n.expression.text === "houseBotRowTag") {
+      let guardText = "(not inside a condition)";
+      for (let p: ts.Node | undefined = n.parent; p && !ts.isSourceFile(p); p = p.parent) {
+        if (ts.isJsxExpression(p) && p.expression && ts.isBinaryExpression(p.expression)) {
+          const operands: string[] = [];
+          const collect = (e: ts.Expression) => {
+            if (ts.isBinaryExpression(e) && e.operatorToken.kind === ts.SyntaxKind.AmpersandAmpersandToken) { collect(e.left); collect(e.right); } else operands.push(oneLine(e.getText(sf)));
+          };
+          collect(p.expression);
+          guardText = operands.slice(0, -1).join(" && ");
+          break;
+        }
+      }
+      tags.push(`${oneLine(n.getText(sf))} when ${guardText}`);
+    }
+  });
+  if (j(reads) !== j(["botLabels = await houseBotLabelsForConsole(session?.userId ?? null, \"/admin/markets\", paged.map((p) => p.houseBotId).filter((b): b is string => typeof b === \"string\"))"])) problems.push(`the labels are not the page's one gated read: ${j(reads)}`);
+  if (j(tags) !== j(["houseBotRowTag(botLabels.get(p.houseBotId) ?? \"—\") when typeof p.houseBotId === \"string\" && botLabels.has(p.houseBotId)"])) problems.push(`the row tag is not shown only for a bot the gated read holds: ${j(tags)}`);
+  return problems;
+}
+/** Rulings 197 and 259 · the KYC value's five props, each exactly the page's own fact, with the house figures behind the gate. */
+export const KYC_VALUE_PROPS: Readonly<Record<string, string>> = {
+  betCount: "moneyFacts.betCount",
+  stakedTzs: "moneyFacts.stakedTzs",
+  houseBetCount: "houseVisible ? moneyFacts.houseBetCount : 0",
+  houseStakedTzs: "houseVisible ? moneyFacts.houseStakedTzs : 0",
+  canSeeMoney: "canSeeMoney",
+};
+export function kycValueWiring(file: string, code: string): string[] {
+  const sf = parse(file, code);
+  const problems: string[] = [];
+  const values: Array<Record<string, string>> = [];
+  const gates: string[] = [];
+  walkTree(sf, (n) => {
+    if ((ts.isJsxSelfClosingElement(n) || ts.isJsxOpeningElement(n)) && n.tagName.getText(sf) === "BetsPlacedValue") {
+      values.push(Object.fromEntries(n.attributes.properties.map((p) => [ts.isJsxAttribute(p) ? p.name.getText(sf) : "(spread)",
+        ts.isJsxAttribute(p) && p.initializer && ts.isJsxExpression(p.initializer) ? oneLine(p.initializer.expression?.getText(sf) ?? "") : oneLine(p.getText(sf))])));
+    }
+    if (ts.isVariableDeclaration(n) && n.name.getText(sf) === "houseVisible") gates.push(oneLine(n.initializer?.getText(sf) ?? ""));
+  });
+  if (values.length !== 1 || j(values[0]) !== j(KYC_VALUE_PROPS)) problems.push(`the KYC value is not handed exactly the page's facts behind the gate: ${j(values)}`);
+  if (j(gates) !== j(["await houseConsoleAudience(session?.userId ?? null, \"/admin/kyc\")"])) problems.push(`houseVisible is not the page's one gate question: ${j(gates)}`);
+  return problems;
+}
+
+/**
+ * Ruling 192 · the slot reaches the dialog: the exported control that takes `prop` renders it as a JSX child, or hands it on
+ * under the same name to a component of the same file that does (followed to any depth) — counting occurrences cannot
+ * tell a slot whose handoff was deleted from one that renders.
+ */
+export function slotChainProblems(file: string, code: string, prop: string): string[] {
+  const sf = parse(file, code);
+  const fns = new Map<string, ts.FunctionDeclaration>();
+  walkTree(sf, (n) => { if (ts.isFunctionDeclaration(n) && n.name) fns.set(n.name.text, n); });
+  const takes = (fn: ts.FunctionDeclaration) => {
+    const first = fn.parameters[0];
+    return !!first && ts.isObjectBindingPattern(first.name) && first.name.elements.some((e) => (e.propertyName ?? e.name).getText(sf) === prop);
+  };
+  const within = (fn: ts.FunctionDeclaration, visit: (n: ts.Node) => void) => { if (fn.body) { const go = (n: ts.Node) => { visit(n); ts.forEachChild(n, go); }; go(fn.body); } };
+  const rendersChild = (fn: ts.FunctionDeclaration) => {
+    let found = false;
+    within(fn, (n) => { if (ts.isIdentifier(n) && n.text === prop && ts.isJsxExpression(n.parent) && (ts.isJsxElement(n.parent.parent) || ts.isJsxFragment(n.parent.parent))) found = true; });
+    return found;
+  };
+  const handsTo = (fn: ts.FunctionDeclaration) => {
+    const out: string[] = [];
+    within(fn, (n) => {
+      if (ts.isJsxAttribute(n) && n.name.getText(sf) === prop && n.initializer && ts.isJsxExpression(n.initializer) && n.initializer.expression?.getText(sf) === prop) {
+        const owner = n.parent.parent;
+        if (ts.isJsxSelfClosingElement(owner) || ts.isJsxOpeningElement(owner)) out.push(owner.tagName.getText(sf));
+      }
+    });
+    return out;
+  };
+  const reaches = (name: string, seen: Set<string>): boolean => {
+    const fn = fns.get(name);
+    if (!fn || seen.has(name) || !takes(fn)) return false;
+    seen.add(name);
+    return rendersChild(fn) || handsTo(fn).some((t) => reaches(t, seen));
+  };
+  const exported = [...fns.values()].filter((fn) => (ts.getModifiers(fn) ?? []).some((m) => m.kind === ts.SyntaxKind.ExportKeyword) && takes(fn));
+  if (exported.length !== 1) return [`${file}: ${exported.length} exported controls take ${prop}, not one`];
+  const name = exported[0].name!.text;
+  return reaches(name, new Set()) ? [] : [`${file}: ${name} takes ${prop} and no component it renders shows it`];
+}
+/**
+ * Ruling 192 · the bulk bar: the summary shows one sentence per line of `exposureCountLines(chosen, exposureCountTemplate)`
+ * (the SELECTION, each line rendered), the confirmation is handed `exposureCountLines(willSeal, exposureCountTemplate)`, and
+ * BulkConfirm renders what it is handed — no third reading of the template.
+ */
+export function bulkBarProblems(file: string, code: string): string[] {
+  const sf = parse(file, code);
+  const problems: string[] = [];
+  const calls: string[] = [];
+  let summaryRendered = false, confirmHanded = false, confirmRenders = false;
+  walkTree(sf, (n) => {
+    if (ts.isCallExpression(n) && ts.isIdentifier(n.expression) && n.expression.text === "exposureCountLines") {
+      const text = oneLine(n.getText(sf));
+      calls.push(text);
+      const access = n.parent, mapCall = access?.parent;
+      if (text === "exposureCountLines(chosen, exposureCountTemplate)" && access && ts.isPropertyAccessExpression(access) && access.name.text === "map"
+        && mapCall && ts.isCallExpression(mapCall) && ts.isJsxExpression(mapCall.parent)) {
+        const cb = mapCall.arguments[0];
+        if (cb && (ts.isArrowFunction(cb) || ts.isFunctionExpression(cb)) && cb.parameters[0]?.name.getText(sf) === "line") {
+          let shown = false;
+          const go = (m: ts.Node) => { if (ts.isIdentifier(m) && m.text === "line" && ts.isJsxExpression(m.parent) && (ts.isJsxElement(m.parent.parent) || ts.isJsxFragment(m.parent.parent))) shown = true; ts.forEachChild(m, go); };
+          go(cb.body);
+          summaryRendered = shown;
+        }
+      }
+      const attr = n.parent?.parent;
+      if (text === "exposureCountLines(willSeal, exposureCountTemplate)" && ts.isJsxExpression(n.parent) && attr && ts.isJsxAttribute(attr) && attr.name.getText(sf) === "exposureLines") {
+        const owner = attr.parent.parent;
+        confirmHanded = (ts.isJsxSelfClosingElement(owner) || ts.isJsxOpeningElement(owner)) && owner.tagName.getText(sf) === "BulkConfirm";
+      }
+    }
+    if (ts.isFunctionDeclaration(n) && n.name?.text === "BulkConfirm" && n.body) {
+      const go = (m: ts.Node) => {
+        if (ts.isJsxExpression(m) && (ts.isJsxElement(m.parent) || ts.isJsxFragment(m.parent)) && m.expression && oneLine(m.expression.getText(sf)).startsWith("exposureLines.join(")) confirmRenders = true;
+        ts.forEachChild(m, go);
+      };
+      go(n.body);
+    }
+  });
+  if (j(calls.sort()) !== j(["exposureCountLines(chosen, exposureCountTemplate)", "exposureCountLines(willSeal, exposureCountTemplate)"])) problems.push(`the template is read other than once for the selection and once for the confirmation: ${j(calls)}`);
+  if (!summaryRendered) problems.push("the summary does not render each count line of the selection");
+  if (!confirmHanded) problems.push("BulkConfirm is not handed the count over the markets it seals");
+  if (!confirmRenders) problems.push("BulkConfirm does not render the count lines it is handed");
+  return problems;
+}
+
+/**
+ * Ruling 198, read from disk: every module a player can reach through a route or a shared component — everything under
+ * `src/app/` except `src/app/admin/`, and under `src/components/` except `src/components/admin/` (route handlers included)
+ * — imports none of the R2 modules or the console readers, by any form. The officer's server homes (the decision services,
+ * the notifier, the letters, the admin pages) live outside this population.
+ */
+export const HOUSE_READ_MODULES = [...R2_MODULES, CONSOLE_READ_MODULE] as const;
+export const inPlayerPopulation = (rel: string) =>
+  (rel.startsWith("src/app/") && !rel.startsWith("src/app/admin/")) || (rel.startsWith("src/components/") && !rel.startsWith("src/components/admin/"));
+export function playerImportProblems(files: Array<{ rel: string; code: string }>): { population: number; problems: string[] } {
+  const population = files.filter((f) => inPlayerPopulation(f.rel));
+  const problems = population.flatMap(({ rel, code }) =>
+    importSpecifiers(rel, code).map((i) => resolveSpec(rel, i.spec)).filter((r) => (HOUSE_READ_MODULES as readonly string[]).includes(r)).map((r) => `${rel} imports ${r}`));
+  return { population: population.length, problems };
 }
 
 if (STORE === "memory") {
@@ -1755,16 +1950,18 @@ if (STORE === "memory") {
       j(Object.fromEntries(Object.entries(auditPlants).map(([k, v]) => [k, { extraSites: v.sites.filter((s) => !(R9_AUDIT_SITES as readonly string[]).includes(s)), problems: v.problems }]))));
   });
 
-  section("§0 · C5 step 5 · ruling 198 (no player surface imports or gains R2 words), ruling 192 (one server renderer, neutral client slots, the R2 words measured into the vocabulary) and ruling 196 (a slot never reaches a free-text field)");
+  section("§0 · C5 step 5 · ruling 198 (no player surface imports or gains R2 words), ruling 192 (one server renderer, neutral client slots, the R2 words measured into the vocabulary), ruling 196 (a slot never reaches a free-text field) and ruling 259 (every console house read behind the viewer gate)");
   const files5 = srcFiles().map((rel) => ({ rel, code: decomment(read(rel)) }));
   const code5 = (rel: string) => files5.find((f) => f.rel === rel)?.code ?? "";
   const copyExports = exportedNames(`${EXPOSURE_COPY_MODULE}.ts`, code5(`${EXPOSURE_COPY_MODULE}.ts`));
   const r2Exports = [...copyExports, "houseStakeByMarket", "houseStakeForAudit", "toAuditShape", "foldHouseStakes", "requesterOf", "foldRequestedBy", "houseRefundedTzs", "houseRefundedCount"];
   const words = (s: string) => houseHitsByFamily(s).filter((h) => h.family === "words").map((h) => h.word);
   await guard("0.step5.198", async () => {
+    const players = playerImportProblems(files5);
     const imports = PLAYER_SURFACE_FILES.map((rel) => ({ rel, read: code5(rel).length, all: importSpecifiers(rel, code5(rel)).length, r2: r2ImportsOf(rel, code5(rel)) }));
-    ok("0.198.1 · ⛔ neither player surface (the resolution panel, the public market page) imports exposure-copy.ts, exposure.ts or stake-snapshot.ts — statically, by re-export, by import() or by require — and both are read with their imports",
-      imports.every((i) => i.read > 2_000 && i.all >= 5 && i.r2.length === 0), j(imports));
+    ok("0.198.1 · ⛔ no module a player can reach — every file under src/app/ and src/components/ outside their admin folders, route handlers included, read from disk — imports exposure-copy.ts, exposure.ts, stake-snapshot.ts or the console readers, statically, by re-export, by import() or by require; the population holds both named player surfaces, read with their imports",
+      players.problems.length === 0 && players.population >= 400 && PLAYER_SURFACE_FILES.every((f) => inPlayerPopulation(f)) && imports.every((i) => i.read > 2_000 && i.all >= 5 && i.r2.length === 0),
+      j({ population: players.population, problems: players.problems, imports }));
     const panel = code5(PLAYER_SURFACE_FILES[0]), page = code5(PLAYER_SURFACE_FILES[1]);
     const planted = {
       alias: r2ImportsOf(PLAYER_SURFACE_FILES[0], `import { exposureParts } from "@/lib/house-bot/exposure-copy";\n${panel}`),
@@ -1773,8 +1970,26 @@ if (STORE === "memory") {
       reexport: r2ImportsOf(PLAYER_SURFACE_FILES[0], `${panel}\nexport { EXPOSURE_QUALIFIER } from "@/lib/house-bot/exposure-copy";`),
       benign: r2ImportsOf(PLAYER_SURFACE_FILES[0], `import { outcomeWord } from "@/lib/side-label";\nimport type { ExposureParts } from "@/lib/house-bot/exposure-copy-notes";\n${panel}`),
     };
-    ok("0.198.c1 · CONTROL · a planted import of each R2 module into a player surface is reported — through the @/ alias, a relative path, import() and a re-export — and the side vocabulary or a look-alike path is not",
-      planted.alias.length === 1 && planted.relative.length === 1 && planted.dynamic.length === 1 && planted.reexport.length === 1 && planted.benign.length === 0, j(planted));
+    const withDisk = (rel: string, code: string) => [...files5.filter((f) => f.rel !== rel), { rel, code }];
+    const fromDisk = {
+      positions: playerImportProblems(withDisk("src/app/positions/page.tsx", `import { houseStakeByMarket } from "@/lib/server/house-bot/exposure";\n${code5("src/app/positions/page.tsx")}`)).problems,
+      route: playerImportProblems(withDisk("src/app/api/planted/route.ts", "export async function GET() { const r = await import(\"../../../lib/server/house-console-read\"); return Response.json(await r.houseStakeForConsole(null, \"/admin\", [])); }")).problems,
+      adminPage: playerImportProblems(withDisk("src/app/admin/planted/page.tsx", "import { houseStakeByMarket } from \"@/lib/server/house-bot/exposure\";\nexport default function P() { return null; }")).problems,
+    };
+    ok("0.198.c1 · CONTROL · a planted import of each R2 module into a player surface is reported — through the @/ alias, a relative path, import() and a re-export — and the side vocabulary or a look-alike path is not; from disk, the house reader prepended to /positions and the console reader import()ed by a planted API route are each reported, and an admin page importing it is not",
+      planted.alias.length === 1 && planted.relative.length === 1 && planted.dynamic.length === 1 && planted.reexport.length === 1 && planted.benign.length === 0
+        && fromDisk.positions.length === 1 && fromDisk.route.length === 1 && fromDisk.adminPage.length === 0,
+      j({ planted, fromDisk }));
+    const surfaceWords = PLAYER_SURFACE_FILES.map((rel) => ({ rel, printed: printedTexts(rel, code5(rel)).length, words: words(printedTexts(rel, code5(rel))) }));
+    ok("0.198.3 · ⛔ neither player surface PRINTS a house word: every string literal, template part and JSX text of the resolution panel and the public market page is read, and none is a vocabulary word",
+      surfaceWords.every((s) => s.printed > 1_000 && s.words.length === 0), j(surfaceWords));
+    const wordPlants = {
+      jsxText: words(printedTexts(PLAYER_SURFACE_FILES[1], `${page}\nexport function PlantedLine() { return <p>House stake: TZS 1,000</p>; }`)),
+      attribute: words(printedTexts(PLAYER_SURFACE_FILES[0], `${panel}\nexport const PlantedTitle = () => <span title="of which chosen by staff TZS 9,000" />;`)),
+      identifier: words(printedTexts(PLAYER_SURFACE_FILES[1], `${page}\nexport const plantedRow = { houseBotId: null, houseStake: 0 };`)),
+    };
+    ok("0.198.c3 · CONTROL · a house line planted as JSX text in the public market page and as an attribute string in the resolution panel are each found; house identifiers in code are not words",
+      wordPlants.jsxText.length >= 1 && wordPlants.attribute.length >= 1 && wordPlants.identifier.length === 0, j(wordPlants));
 
     const notifierProblems = PLAYER_NOTIFIERS.flatMap(([rel, name]) => playerNotifierProblems(rel, lf(code5(rel)), name, r2Exports, words));
     const moduleImports = ["src/lib/server/notification-service.ts", "src/lib/server/email.ts"].map((rel) => importSpecifiers(rel, code5(rel)).some((i) => resolveSpec(rel, i.spec) === EXPOSURE_COPY_MODULE));
@@ -1808,60 +2023,146 @@ if (STORE === "memory") {
       { rel: "src/app/admin/markets/planted-client.tsx", code: "\"use client\";\nimport { ExposureLine } from \"@/components/admin/exposure-line\";\nexport const P = () => <ExposureLine surface=\"voidConfirm\" read={null} />;" },
       { rel: "src/components/markets/planted-player.tsx", code: "import { EXPOSURE_QUALIFIER } from \"@/lib/house-bot/exposure-copy\";\nexport const Q = EXPOSURE_QUALIFIER;" },
       { rel: "src/app/admin/objections/planted-action.ts", code: "\"use server\";\nimport { exposureParts } from \"../../../lib/house-bot/exposure-copy\";\nexport async function a() { return exposureParts(null, {} as never); }" },
-      { rel: "src/app/admin/kyc/planted-type.tsx", code: "import type { ExposureParts } from \"@/lib/house-bot/exposure-copy\";\nexport type T = ExposureParts;" },
+      // Type-only imports placed where a VALUE import would be reported (a client module, a player component), so the
+      // type-only branch is what decides them.
+      { rel: "src/app/admin/markets/planted-client-type.tsx", code: "\"use client\";\nimport type { ExposureParts } from \"@/lib/house-bot/exposure-copy\";\nexport type T = ExposureParts;" },
+      { rel: "src/components/markets/planted-player-type.tsx", code: "import type { ExposureParts } from \"@/lib/house-bot/exposure-copy\";\nexport type T = ExposureParts;" },
     ];
     const pr = r2ImporterProblems(plantedFiles).problems.filter((p) => p.includes("planted"));
-    ok("0.192.c1 · CONTROL · a client component importing the renderer, a player component importing the copy and a \"use server\" action importing it by a relative path are each reported; a type-only import is not",
-      pr.length === 3 && pr.some((p) => p.includes("planted-client")) && pr.some((p) => p.includes("planted-player")) && pr.some((p) => p.includes("planted-action")), j(pr));
+    ok("0.192.c1 · CONTROL · a client component importing the renderer, a player component importing the copy and a \"use server\" action importing it by a relative path are each reported; a type-only import in a client module and in a player component — where a value import would be reported — is not",
+      pr.length === 3 && pr.some((p) => p.includes("planted-client.tsx")) && pr.some((p) => p.includes("planted-player.tsx")) && pr.some((p) => p.includes("planted-action")) && !pr.some((p) => p.includes("-type.tsx")), j(pr));
 
     const slots = SLOT_CONTROLS.map(([rel, props]) => ({ rel, declared: props.every((p) => wordsOf(code5(rel)).has(p)), problems: slotFieldProblems(rel, code5(rel), props) }));
     ok("0.196.1 · ⛔ each client decision control takes its neutral slot and renders it as a child only: never a reason or note field's initial value, a setter's argument, a value / defaultValue / placeholder, a FormData write or a template",
       slots.every((s) => s.declared && s.problems.length === 0), j(slots));
     const evc = code5(SLOT_CONTROLS[0][0]), od = code5(SLOT_CONTROLS[1][0]);
+    // Each plant reaches a field through ONE branch only (no template around it), so every branch decides a plant of its own.
     const fieldPlants = {
       state: slotFieldProblems(SLOT_CONTROLS[0][0], plant(evc, "const [reason, setReason] = useState(\"\");", "const [reason, setReason] = useState(String(exposureSlot ?? \"\"));"), ["exposureSlot"]),
-      placeholder: slotFieldProblems(SLOT_CONTROLS[1][0], plant(od, "                placeholder=", "                defaultValue={String(exposureSlot)}\n                placeholder="), ["exposureSlot"]),
-      setter: slotFieldProblems(SLOT_CONTROLS[1][0], plant(od, "  const submit = () => {", "  const prefill = () => setNote(`${exposureSlot}`);\n  const submit = () => {"), ["exposureSlot"]),
-      formData: slotFieldProblems(SLOT_CONTROLS[0][0], plant(evc, "      fd.set(\"reason\", reason.trim());", "      fd.set(\"reason\", `${reason.trim()} ${exposureSlot}`);"), ["exposureSlot"]),
+      defaultValue: slotFieldProblems(SLOT_CONTROLS[1][0], plant(od, "                placeholder=", "                defaultValue={String(exposureSlot)}\n                placeholder="), ["exposureSlot"]),
+      setter: slotFieldProblems(SLOT_CONTROLS[1][0], plant(od, "  const submit = () => {", "  const prefill = () => setNote(String(exposureSlot));\n  const submit = () => {"), ["exposureSlot"]),
+      formData: slotFieldProblems(SLOT_CONTROLS[0][0], plant(evc, "      fd.set(\"reason\", reason.trim());", "      fd.set(\"reason\", reason.trim());\n      fd.append(\"reason\", String(exposureSlot));"), ["exposureSlot"]),
+      template: slotFieldProblems(SLOT_CONTROLS[1][0], plant(od, "  const submit = () => {", "  const quoted = `${exposureSlot}`;\n  const submit = () => {"), ["exposureSlot"]),
     };
-    ok("0.196.c1 · CONTROL · a slot planted as the void reason's initial state, as the objection note's defaultValue, into a note setter and into the reason's FormData write are each reported",
-      Object.values(fieldPlants).every((p) => p.some((x) => x.includes("a slot reaches a field"))), j(fieldPlants));
-    const rendered = SLOT_CONTROLS.map(([rel, props]) => ({ rel, count: slotRenderedCount(rel, code5(rel), props[0]) }));
-    const unrendered = slotRenderedCount(SLOT_CONTROLS[0][0], plant(lf(evc), "      {exposureSlot}\n", ""), "exposureSlot");
-    ok("0.192.2 · each dialog control renders its slot as a child (the void confirm, the objection dialog, the round-void dialog) and the bulk bar reads its template in the summary AND the confirmation; CONTROL: the void confirm with its slot child removed renders none",
-      rendered.slice(0, 3).every((r) => r.count >= 1) && rendered[3].count === 2 && unrendered === 0, j({ rendered, unrendered }));
+    ok("0.196.c1 · CONTROL · a slot planted as the void reason's initial state (useState), as the objection note's defaultValue, as a note setter's argument (set…), into the reason's FormData (append) and into a template are each reported as reaching a field — each through its own branch",
+      Object.values(fieldPlants).every((p) => p.length === 1 && p[0].includes("a slot reaches a field")), j(fieldPlants));
+    const chains = SLOT_CONTROLS.slice(0, 3).map(([rel, props]) => ({ rel, problems: slotChainProblems(rel, code5(rel), props[0]) }));
+    const barFile = SLOT_CONTROLS[3][0];
+    const bar = bulkBarProblems(barFile, code5(barFile));
+    ok("0.192.2 · ⛔ each dialog control's exported component renders its slot — itself, or through the component it hands the slot to under the same name (the void confirm) — and the bulk bar renders one sentence per count line of the SELECTION and hands BulkConfirm the count over the markets it seals, which BulkConfirm renders",
+      chains.every((c) => c.problems.length === 0) && bar.length === 0, j({ chains, bar }));
+    const barCode = lf(code5(barFile));
+    const chainPlants = {
+      handoffCut: slotChainProblems(SLOT_CONTROLS[0][0], plant(lf(evc), "        exposureSlot={exposureSlot}\n", ""), "exposureSlot"),
+      childCut: slotChainProblems(SLOT_CONTROLS[0][0], plant(lf(evc), "      {exposureSlot}\n", ""), "exposureSlot"),
+      dialogChildCut: slotChainProblems(SLOT_CONTROLS[2][0], plant(lf(code5(SLOT_CONTROLS[2][0])), "        {exposureSlot}\n", ""), "exposureSlot"),
+      confirmUnrendered: bulkBarProblems(barFile, plant(barCode, "<p className=\"text-body-sm text-text-muted\">{exposureLines.join(\" · \")}</p>", "<p className=\"text-body-sm text-text-muted\" />")),
+      summaryUnrendered: bulkBarProblems(barFile, plant(barCode, ".map((line) => <React.Fragment key={line}><span className=\"text-border\"> · </span><span>{line}</span></React.Fragment>)", ".map(() => null)")),
+      wholePage: bulkBarProblems(barFile, plant(barCode, "exposureCountLines(chosen, exposureCountTemplate)", "exposureCountLines(rows, exposureCountTemplate)")),
+    };
+    ok("0.192.c2 · CONTROL · the void control's handoff to its confirm cut (its child left in place), the confirm's child cut, the round dialog's child cut, BulkConfirm's count paragraph emptied, the summary's lines mapped to nothing and the summary counting every row instead of the selection are each reported",
+      chainPlants.handoffCut.length === 1 && chainPlants.childCut.length === 1 && chainPlants.dialogChildCut.length === 1
+        && chainPlants.confirmUnrendered.some((p) => p.includes("does not render")) && chainPlants.summaryUnrendered.some((p) => p.includes("summary")) && chainPlants.wholePage.length >= 1,
+      j(chainPlants));
   });
   await guard("0.step5.194", async () => {
     const wiring = Object.keys(EXPOSURE_WIRING).map((rel) => ({ rel, ...exposureWiring(rel, code5(rel)) }));
     ok("0.194.1 · ⛔ each page renders the R2 line where ruling 194 puts it: the queue card, the ceremony, the market page, the void confirm's slot, the objections row and its dialog's slot, the rounds lever and its dialog's slot — each from the page's one read, the viewer surfaces with the signed-in officer, the rounds in Up / Down words",
       wiring.every((w) => w.problems.length === 0 && j(w.lines) === j([...EXPOSURE_WIRING[w.rel]].sort())), j(wiring));
-    const held = heldAndBulkWiring(code5("src/app/admin/resolver-queue/page.tsx"), code5("src/app/admin/kyc/[id]/page.tsx"), code5("src/app/admin/markets/[id]/page.tsx"));
-    ok("0.194.2 · the queue's held chip takes heldChipTitle over the card's own read, the bulk rows carry exposureState from the same read and the bar the one count template; the KYC value is gated on the page's canSeeMoney; the market page tags a marked row with houseBotRowTag",
-      held.length === 0, j(held));
+    const MARKET_PAGE = "src/app/admin/markets/[id]/page.tsx";
     const queue = code5("src/app/admin/resolver-queue/page.tsx"), ceremony = code5("src/app/admin/resolver/[id]/page.tsx"), rounds = code5("src/app/admin/updown/rounds/page.tsx");
+    const kycPage = code5(KYC_CASE_PAGE), marketPage = code5(MARKET_PAGE), objections = code5("src/app/admin/objections/page.tsx"), markets = code5("src/app/admin/markets/page.tsx");
+    const held = [...heldAndBulkWiring(queue), ...marketTagWiring(MARKET_PAGE, marketPage), ...kycValueWiring(KYC_CASE_PAGE, kycPage)];
+    ok("0.194.2 · the queue's held chip takes heldChipTitle over the card's own read, the bulk rows carry exposureState from the same read and the bar the one count template; the market page tags a marked row with houseBotRowTag only for a bot its ONE gated label read holds; the KYC value takes exactly the page's facts, the money gate its own canSeeMoney and the house figures behind houseConsoleAudience",
+      held.length === 0, j(held));
+    const reads = Object.entries(EXPOSURE_READS).map(([rel, spec]) => ({ rel, problems: exposureReadWiring(rel, code5(rel), spec) }));
+    ok("0.194.3 · ⛔ each page reads the house stake ONCE, through the console gate with the signed-in viewer and its own route, over exactly its ruled markets, inside its own `catch { stakes = null; }` (so a failed read is the unread line, never an empty read or a thrown page); no page names an ungated house reader, and every display takes the page's read by its own id",
+      Object.keys(EXPOSURE_READS).length === 6 && reads.every((r) => r.problems.length === 0), j(reads));
+    const specOf = (rel: string) => EXPOSURE_READS[rel];
+    const readLine = (rel: string) => `try { stakes = await houseStakeForConsole(${specOf(rel).viewer}, "${specOf(rel).route}", ${specOf(rel).ids}); } catch { stakes = null; }`;
+    const OBJ_PAGE = "src/app/admin/objections/page.tsx", QUEUE_PAGE = "src/app/admin/resolver-queue/page.tsx", ROUNDS_PAGE = "src/app/admin/updown/rounds/page.tsx", MARKETS_PAGE = "src/app/admin/markets/page.tsx";
+    const plantFirst = (code: string, from: string, to: string) => { const at = code.indexOf(from); if (at < 0) throw new Error(`plant anchor missing: ${from.slice(0, 60)}`); return code.slice(0, at) + to + code.slice(at + from.length); };
+    const readPlants = {
+      emptyOnFailure: exposureReadWiring(OBJ_PAGE, plant(objections, readLine(OBJ_PAGE), readLine(OBJ_PAGE).replace("catch { stakes = null; }", () => "catch { stakes = new Map(); }")), specOf(OBJ_PAGE)),
+      noCatch: exposureReadWiring(OBJ_PAGE, plant(objections, readLine(OBJ_PAGE), `stakes = await houseStakeForConsole(${specOf(OBJ_PAGE).viewer}, "${specOf(OBJ_PAGE).route}", ${specOf(OBJ_PAGE).ids});`), specOf(OBJ_PAGE)),
+      readsNothing: exposureReadWiring(QUEUE_PAGE, plant(queue, readLine(QUEUE_PAGE), readLine(QUEUE_PAGE).replace(specOf(QUEUE_PAGE).ids, () => "[]")), specOf(QUEUE_PAGE)),
+      closedObjections: exposureReadWiring(OBJ_PAGE, plant(objections, readLine(OBJ_PAGE), readLine(OBJ_PAGE).replace("r.actionable", () => "!r.actionable")), specOf(OBJ_PAGE)),
+      settledRounds: exposureReadWiring(ROUNDS_PAGE, plant(rounds, readLine(ROUNDS_PAGE), readLine(ROUNDS_PAGE).replace("!r.settledAt", () => "r.settledAt")), specOf(ROUNDS_PAGE)),
+      objectionIdNotMarket: exposureReadWiring(OBJ_PAGE, plantFirst(objections, "exposureReadOf(stakes, o.marketId)", "exposureReadOf(stakes, o.id)"), specOf(OBJ_PAGE)),
+      ungatedImport: exposureReadWiring(MARKETS_PAGE, `import { houseStakeByMarket } from "@/lib/server/house-bot/exposure";\n${markets}`, specOf(MARKETS_PAGE)),
+      literalViewer: exposureReadWiring(ROUNDS_PAGE, plant(rounds, readLine(ROUNDS_PAGE), readLine(ROUNDS_PAGE).replace(specOf(ROUNDS_PAGE).viewer, () => "\"usr_admin\"")), specOf(ROUNDS_PAGE)),
+      otherRoute: exposureReadWiring(QUEUE_PAGE, plant(queue, readLine(QUEUE_PAGE), readLine(QUEUE_PAGE).replace("\"/admin/resolver-queue\"", () => "\"/admin\"")), specOf(QUEUE_PAGE)),
+    };
+    ok("0.194.c3 · CONTROL · a page whose catch fabricates an empty read, a read with no catch, the queue reading no market, the objections reading closed rows, the rounds reading settled rounds, a display taking the objection's id for its market, a page importing the ungated reader, a literal viewer and another route are each reported",
+      Object.values(readPlants).every((p) => p.length >= 1), j(readPlants));
+    const TAG_LINE = "{typeof p.houseBotId === \"string\" && botLabels.has(p.houseBotId) && (";
+    const KYC_HOUSE_COUNT = "houseBetCount={houseVisible ? moneyFacts.houseBetCount : 0}";
     const plants = {
       noViewer: exposureWiring("src/app/admin/resolver/[id]/page.tsx", plant(ceremony, " viewerId={currentOfficerId}", "")).lines,
       otherViewer: exposureWiring("src/app/admin/resolver/[id]/page.tsx", plant(ceremony, "viewerId={currentOfficerId}", "viewerId={m.resolutionStage1By}")).problems,
       noUpDown: exposureWiring("src/app/admin/updown/rounds/page.tsx", plant(rounds, "productLine=\"UPDOWN\" className=\"mt-1 ml-auto max-w-[150px]\"", "className=\"mt-1 ml-auto max-w-[150px]\"")).lines,
-      staticTitle: heldAndBulkWiring(plant(queue, "title={heldChipTitle(house, formatTzs)}", "title=\"Player money held on this market until it resolves\""), code5("src/app/admin/kyc/[id]/page.tsx"), code5("src/app/admin/markets/[id]/page.tsx")),
-      moneyAlways: heldAndBulkWiring(queue, plant(code5("src/app/admin/kyc/[id]/page.tsx"), "canSeeMoney={canSeeMoney}", "canSeeMoney={true}"), code5("src/app/admin/markets/[id]/page.tsx")),
+      staticTitle: heldAndBulkWiring(plant(queue, "title={heldChipTitle(house, formatTzs)}", "title=\"Player money held on this market until it resolves\"")),
+      moneyAlways: kycValueWiring(KYC_CASE_PAGE, plant(kycPage, "canSeeMoney={canSeeMoney}", "canSeeMoney={true}")),
+      houseUngated: kycValueWiring(KYC_CASE_PAGE, plant(kycPage, KYC_HOUSE_COUNT, "houseBetCount={moneyFacts.houseBetCount}")),
+      houseSwapped: kycValueWiring(KYC_CASE_PAGE, plant(kycPage, KYC_HOUSE_COUNT, "houseBetCount={houseVisible ? moneyFacts.betCount : 0}")),
+      tagEveryRow: marketTagWiring(MARKET_PAGE, plant(marketPage, TAG_LINE, "{typeof p.houseBotId === \"string\" && (")),
     };
-    ok("0.194.c1 · CONTROL · the ceremony without the viewer, the ceremony handed another officer's id, the rounds lever in poll words, a static held title and a KYC value always shown money are each reported",
+    ok("0.194.c1 · CONTROL · the ceremony without the viewer, the ceremony handed another officer's id, the rounds lever in poll words, a static held title, a KYC value always shown money, its house count shown without the gate or swapped for the bet count, and a row tag on every marked row whatever the gated read holds are each reported",
       j(plants.noViewer) === j(["ceremony · no viewer · MARKET · page"]) && plants.otherViewer.length === 1 && j(plants.noUpDown) !== j([...EXPOSURE_WIRING["src/app/admin/updown/rounds/page.tsx"]].sort())
-        && plants.staticTitle.some((p) => p.includes("held chip title")) && plants.moneyAlways.some((p) => p.includes("canSeeMoney")), j(plants));
+        && plants.staticTitle.some((p) => p.includes("held chip title")) && plants.moneyAlways.length === 1 && plants.houseUngated.length === 1 && plants.houseSwapped.length === 1
+        && plants.tagEveryRow.some((p) => p.includes("row tag")), j(plants));
   });
   await guard("0.step5.175", async () => {
-    const R2_WORD_SAMPLES = ["house stake", "House stakes", "dau la nyumba", "平台投注", "staff-chosen", "staff chosen"];
+    const R2_WORD_SAMPLES = ["house stake", "House stakes", "dau la nyumba", "平台投注", "staff-chosen", "staff chosen", "chosen by staff", "chosen by you", "including house"];
     const families = R2_WORD_SAMPLES.map((s) => ({ s, families: [...new Set(houseHitsByFamily(s).map((h) => h.family))] }));
     const stillProposed = PROPOSED_WORD_SAMPLES.map((s) => ({ s, hits: houseHits(s) }));
-    ok("0.175.r2 · ruling 192 · the R2 words measured on origin/main are in the vocabulary's WORDS family and sampled by every consumer's planted control; the words still proposed (staff edge, enter now, scorecard, STAFF_EDGE) are not in it yet",
+    ok("0.175.r2 · rulings 175 and 192 · the R2 words measured on origin/main — including the three phrasings the copy ships (chosen by staff, chosen by you, including house) — are in the vocabulary's WORDS family and sampled by every consumer's planted control; the words still proposed (staff edge, enter now, scorecard, STAFF_EDGE) are not in it yet",
       families.every((f) => j(f.families) === j(["words"])) && R2_WORD_SAMPLES.every((s) => (HOUSE_WORD_SAMPLES as readonly string[]).includes(s))
         && stillProposed.every((p) => p.hits.length === 0) && PROPOSED_WORD_SAMPLES.length === 4,
       j({ families, stillProposed }));
-    const r2Lines = ["House stake: NO TZS 9,000 · of which chosen by staff TZS 9,000", "ikiwemo dau la nyumba TZS 8,000", "其中平台投注 TZS 8,000", "staffChosen"];
-    ok("0.175.r2c · CONTROL · the R2 sentences an officer reads are now vocabulary hits (so a client module that shipped one goes red in the walker and the bundle scan); the platform's House edge and /admin/house still are not",
-      r2Lines.slice(0, 3).every((s) => words(s).length >= 1) && words(r2Lines[3]).length === 1 && words("House edge on /admin/house").length === 0 && houseHits("Money held on this market until it resolves").length === 0,
+    const r2Lines = ["House stake: NO TZS 9,000", "ikiwemo dau la nyumba TZS 8,000", "其中平台投注 TZS 8,000", "of which chosen by staff TZS 9,000", "of which chosen by you: TZS 9,000", "Money held on this market until it resolves, including house TZS 8,000", "staffChosen"];
+    ok("0.175.r2c · CONTROL · each R2 sentence an officer reads is a vocabulary hit ON ITS OWN — the house line's label, the sw and zh shares, the staff clause, the viewer clause and the held title — so a client module that shipped any one of them goes red in the walker and the bundle scan; the identifier staffChosen is one word hit; the platform's House edge, /admin/house and a household are not",
+      r2Lines.slice(0, 6).every((s) => words(s).length >= 1) && words(r2Lines[6]).length === 1 && words("House edge on /admin/house").length === 0
+        && houseHits("including household costs").length === 0 && houseHits("Money held on this market until it resolves").length === 0,
       j(r2Lines.map((s) => [s, houseHits(s)])));
+    // ⭐ Built from the PRODUCT, not from the samples: every clause exposure-copy.ts can emit, taken alone, is a vocabulary
+    // hit — except the three sentences that deliberately say nothing about the house (the X9 qualifier, today's held title
+    // and the unread held title, which drops "Player" because the page cannot know). A copy change that drops the house word
+    // from any clause, or adds a clause the vocabulary cannot see, goes red here.
+    const XCp: Any = await import("../../src/lib/house-bot/exposure-copy.ts");
+    const U5: Any = await import("../../src/lib/utils.ts");
+    const fmt = U5.formatTzs;
+    const fig = (o: Any) => ({ yes: 0, no: 0, openTzs: 0, settledTzs: 0, ...o, staffChosen: { yes: 0, no: 0, byRequester: {}, ...(o.staffChosen ?? {}) } });
+    const views = [
+      fig({ yes: 9_000, openTzs: 9_000, staffChosen: { yes: 9_000, byRequester: { usr_a: 9_000 } } }),
+      fig({ no: 9_000, openTzs: 9_000, staffChosen: { no: 9_000, byRequester: { usr_a: 9_000 } } }),
+      fig({ yes: 6_000, no: 9_000, openTzs: 15_000, staffChosen: { yes: 6_000, no: 9_000, byRequester: { usr_a: 9_000, usr_b: 6_000 } } }),
+      fig({ yes: 6_000, settledTzs: 6_000, staffChosen: { yes: 6_000, byRequester: { usr_b: 6_000 } } }),
+      fig({ no: 2_000, openTzs: 2_000 }),
+    ];
+    const clauses = new Set<string>();
+    for (const surface of Object.keys(XCp.EXPOSURE_SURFACES)) {
+      for (const productLine of ["MARKET", "UPDOWN"]) {
+        for (const read of [...views, "unread"]) {
+          const p = XCp.exposureParts(read, { surface, viewerId: "usr_a", productLine, money: fmt });
+          if (!p) continue;
+          for (const c of [p.label, p.staffClause, p.viewerClause]) if (c) clauses.add(c);
+        }
+      }
+      const q = XCp.exposureQualifier(surface);
+      if (q) clauses.add(q);
+    }
+    for (const read of [...views, "unread", null]) clauses.add(XCp.heldChipTitle(read, fmt));
+    for (const s of String(XCp.BULK_EXPOSURE_COUNT_TEMPLATE).split("|")) clauses.add(s.replace("{n}", "3"));
+    clauses.add(XCp.houseBotRowTag("Dar evening desk"));
+    for (const c of [XCp.kycHouseBetsLine(2, 4_000, fmt), XCp.kycHouseBetsLine(2, null, fmt)]) if (c) clauses.add(c);
+    const share = { houseRefundedTzs: 8_000, houseRefundedCount: 2 };
+    const bell = XCp.voidNoticeHouseClause(share, fmt);
+    for (const c of [bell?.en, bell?.sw, bell?.zh, XCp.voidEmailHouseRow(share, fmt)?.label, XCp.EXPOSURE_UNREAD_LINE]) if (c) clauses.add(c);
+    const silent = [...clauses].filter((c) => houseHits(c).length === 0).sort();
+    const DECLARED_SILENT = [XCp.EXPOSURE_QUALIFIER, XCp.HELD_CHIP_TITLE_TODAY, "Money held on this market until it resolves"].sort();
+    ok("0.175.r2p · ⛔ every clause exposure-copy.ts emits — each surface's label, staff and viewer clause, the unread line, the held title's house state, both bulk sentences, the row tag, the KYC line, the bell's en / sw / zh share and the letter's row — is a vocabulary hit on its own; the only silent ones are exactly the X9 qualifier, today's held title and the unread held title",
+      clauses.size >= 16 && j(silent) === j(DECLARED_SILENT), j({ clauses: clauses.size, silent }));
   });
 }
 
@@ -3725,7 +4026,7 @@ await guard("4.S5", async () => {
     ok("4.194.2 · the bulk bar: each row's neutral state (held / none / unread) and the count from the one template — 3 of 8 selected held and 1 unread give two sentences; none held gives nothing; no template gives nothing",
       XC.exposureStateOf(both) === "held" && XC.exposureStateOf(view({})) === "none" && XC.exposureStateOf(null) === "none" && XC.exposureStateOf("unread") === "unread"
         && j(exposureCountLines(rows, XC.BULK_EXPOSURE_COUNT_TEMPLATE)) === j(["House stakes on 3 of these markets", "House stake couldn't be read on 1 of these markets"])
-        && j(exposureCountLines([{ exposureState: "none" }, {}], XC.BULK_EXPOSURE_COUNT_TEMPLATE)) === j([]) && j(exposureCountLines(rows, undefined)) === j([])
+        && j(exposureCountLines([{ exposureState: "none" }, {}], XC.BULK_EXPOSURE_COUNT_TEMPLATE)) === j([]) && (() => { try { return j(exposureCountLines(rows, undefined)); } catch (e) { return `threw ${String(e)}`; } })() === j([])
         && j(exposureCountLines(rows.filter((r) => r.exposureState !== "unread"), XC.BULK_EXPOSURE_COUNT_TEMPLATE)) === j(["House stakes on 3 of these markets"]),
       j(exposureCountLines(rows, XC.BULK_EXPOSURE_COUNT_TEMPLATE)));
     ok("4.197.5 · the KYC line (pure): \"of which house stakes: N\", \" · TZS X\" only when an amount is passed, nothing for a count of 0",
@@ -3773,7 +4074,7 @@ await guard("4.S5", async () => {
     settledHtml.includes(`House stake settled: <span class="whitespace-nowrap"><span class="text-yes-300">YES</span> ${money(6_000)}</span>`) && settledHtml.includes(`of which chosen by staff <span class="whitespace-nowrap">${money(6_000)}</span>`)
       && roundHtml.includes(`<span class="text-no-300">Down</span> ${money(2_000)}`) && !roundHtml.includes("chosen by"), j({ settledHtml, roundHtml }));
 
-  // ── the held title and the unread line, through a page's own try / catch ──
+  // ── the held title and the unread line, through the pages' try / catch shape (each page's own catch is pinned by §0 0.194.3) ──
   const pageRead = async (ids: string[]) => { let s: Any = null; try { s = await EXP.houseStakeByMarket(ids); } catch { s = null; } return s; };
   let failed: Any = "not run";
   if (typeof EXP.failExposureReadForCases === "function") {
@@ -3794,6 +4095,76 @@ await guard("4.S5", async () => {
       && XC.exposureStateOf(XC.exposureReadOf(failed, m0.id)) === "unread" && afterFlag instanceof Map && XC.exposureStateOf(XC.exposureReadOf(afterFlag, mAB.id)) === "held"
       && XC.exposureStateOf(XC.exposureReadOf(afterFlag, m0.id)) === "none",
     j({ unreadCeremony, unreadQueue }));
+
+  // ── ruling 259 · the console gate: what each viewer's page read holds (both stores) ──
+  // Measured on this branch's production build before the gate: a signed-in PLAYER, the holder and a trigger player who
+  // opened a console page as a plain document received the page's house line behind the layout's redirect. The page's read
+  // is what decides, so it is proven here for every viewer, against the ungated reader of the same market.
+  const CR: Any = await import("../../src/lib/server/house-console-read.ts");
+  const onAB = (await w.positionsOf(mAB.id)) as Any[];
+  const housePos = onAB.find((p) => typeof p.houseBotId === "string");
+  const holderAB = housePos?.userId as string | undefined;
+  const botAB = housePos?.houseBotId as string | undefined;
+  const triggerAB = onAB.find((p) => typeof p.houseBotId !== "string" && p.side === "NO" && p.stake === 10_000)?.userId as string | undefined;
+  const plainPlayer = await w.user({ balance: 10_000 });
+  const SUPPORT = await w.user({ role: "SUPPORT" });
+  const { CO, MOD } = R34;
+  const QUEUE = "/admin/resolver-queue";
+  const seen = async (viewer: Any, route = QUEUE) => {
+    const m = await CR.houseStakeForConsole(viewer, route, [mAB.id]);
+    const r = XC.exposureReadOf(m, mAB.id);
+    return { size: m.size, line: html({ surface: "resolverQueue", read: r, viewerId: viewer }), title: XC.heldChipTitle(r, money), state: XC.exposureStateOf(r) };
+  };
+  const NOTHING = j({ size: 0, line: "", title: "Player money held on this market until it resolves", state: "none" });
+  const outside: Record<string, Any> = {
+    player: await seen(plainPlayer), holder: await seen(holderAB), trigger: await seen(triggerAB), noSession: await seen(null), emptyId: await seen(""),
+    unknownId: await seen(`usr_nobody_${tag}`), supportOnQueue: await seen(SUPPORT), complianceOnQueue: await seen(CO), adminOffConsole: await seen(A, "/markets"),
+  };
+  const ungatedForPlayer = (await EXP.houseStakeByMarket([mAB.id])).get(mAB.id);
+  const inside = { admin: await seen(A), moderator: await seen(MOD) };
+  ok("4.259.1 · ⛔ D19 · a console page's house read gives NOTHING — no line, today's held title, a neutral bulk state — to a player, the holder, a trigger player, no session, an empty or unknown id, a staff role that may not view the queue (SUPPORT, COMPLIANCE) and an ADMIN asking about a non-console route; CONTROL: the ungated reader holds YES 15,000 for the same market, and the ADMIN and the MODERATOR (trading view) read the line — A's with A's own figure",
+    !!holderAB && !!triggerAB && holderAB !== triggerAB && ungatedForPlayer?.yes === 15_000
+      && Object.values(outside).every((v) => j(v) === NOTHING)
+      && inside.admin.line === expectedLine("resolverQueue", `of which chosen by you: ${money(9_000)}`) && inside.moderator.line === expectedLine("resolverQueue", null)
+      && inside.admin.title === `Money held on this market until it resolves, including house ${money(15_000)}` && inside.moderator.state === "held",
+    j({ holderAB, triggerAB, outside, inside }));
+  const audience = {
+    coOnKyc: await CR.houseConsoleAudience(CO, "/admin/kyc"), coOnObjections: await CR.houseConsoleAudience(CO, "/admin/objections"), modOnObjections: await CR.houseConsoleAudience(MOD, "/admin/objections"),
+    modOnRounds: await CR.houseConsoleAudience(MOD, "/admin/updown/rounds"), adminOwnerOnly: await CR.houseConsoleAudience(A, "/admin/staff"), modOwnerOnly: await CR.houseConsoleAudience(MOD, "/admin/staff"),
+    holderOnKyc: await CR.houseConsoleAudience(holderAB, "/admin/kyc"), playerOnMarkets: await CR.houseConsoleAudience(plainPlayer, "/admin/markets"),
+  };
+  ok("4.259.2 · the audience is the page's own view grant on the STORED role: COMPLIANCE sees the KYC case and the objections, the MODERATOR the Up & Down rounds and not the objections, an Owner-only path is ADMIN's alone, and the holder and a player see no console route",
+    j(audience) === j({ coOnKyc: true, coOnObjections: true, modOnObjections: false, modOnRounds: true, adminOwnerOnly: true, modOwnerOnly: false, holderOnKyc: false, playerOnMarkets: false }), j(audience));
+  // A failing stake read: the officer's page catches it and says "couldn't read"; a viewer outside gets nothing and nothing throws.
+  let adminFailed: Any = "not run", playerFailed: Any = "not run";
+  if (typeof EXP.failExposureReadForCases === "function") {
+    EXP.failExposureReadForCases(true);
+    try {
+      try { adminFailed = await CR.houseStakeForConsole(A, QUEUE, [mAB.id]); } catch (e) { adminFailed = `threw: ${String((e as Error)?.message ?? e)}`; }
+      try { playerFailed = await CR.houseStakeForConsole(holderAB, QUEUE, [mAB.id]); } catch (e) { playerFailed = `threw: ${String((e as Error)?.message ?? e)}`; }
+    } finally { EXP.failExposureReadForCases(false); }
+  }
+  // A viewer read that fails is no viewer: the gate is asked while the user read throws.
+  const realFindById = w.db.user.findById;
+  let userReads = 0;
+  let adminWhileUserReadFails: Any = "not run";
+  w.db.user.findById = (...args: Any[]) => { userReads++; throw new Error(`user read failed (cases) ${args.length}`); };
+  try { adminWhileUserReadFails = await CR.houseConsoleAudience(A, QUEUE); } finally { w.db.user.findById = realFindById; }
+  const adminAfterRestore = await CR.houseConsoleAudience(A, QUEUE);
+  ok("4.259.3 · ⛔ fail closed: while the stake read fails, the ADMIN's read THROWS (the page's catch shows \"couldn't read\") and the holder's returns an empty read without throwing (no unread line for a viewer outside); while the viewer's own user read throws, the ADMIN is outside the audience — CONTROL: the user read was really asked, and restored it answers true again",
+    typeof adminFailed === "string" && adminFailed.startsWith("threw:") && playerFailed instanceof Map && playerFailed.size === 0
+      && html({ surface: "resolverQueue", read: XC.exposureReadOf(playerFailed, mAB.id), viewerId: holderAB }) === ""
+      && adminWhileUserReadFails === false && userReads >= 1 && adminAfterRestore === true,
+    j({ adminFailed, playerFailed: playerFailed instanceof Map ? `Map(${playerFailed.size})` : playerFailed, adminWhileUserReadFails, userReads, adminAfterRestore }));
+  const labels = {
+    player: await CR.houseBotLabelsForConsole(plainPlayer, "/admin/markets", [botAB]), holder: await CR.houseBotLabelsForConsole(holderAB, "/admin/markets", [botAB]),
+    admin: await CR.houseBotLabelsForConsole(A, "/admin/markets", [botAB, botAB, `hb_${"0".repeat(24)}`]),
+  };
+  const realLabel = botAB ? (await w.dal.houseBotStore.get(botAB))?.label : undefined;
+  ok("4.259.4 · ⛔ the row tag's labels: a player and the holder get an EMPTY map (no marked row carries a tag); the ADMIN gets each distinct bot once with its real label, and \"—\" for a bot that cannot be read",
+    labels.player.size === 0 && labels.holder.size === 0 && typeof realLabel === "string" && realLabel.length > 0
+      && j([...labels.admin.entries()]) === j([[botAB, realLabel], [`hb_${"0".repeat(24)}`, "—"]]),
+    j({ player: [...labels.player.entries()], holder: [...labels.holder.entries()], admin: [...labels.admin.entries()], realLabel }));
 
   // ── ruling 197 · the KYC card's value, rendered ──
   const kyc = R34.kyc;

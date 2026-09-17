@@ -23,12 +23,17 @@
  * staff chosen. Measured 2026-09-17 against `origin/main` `03c798b6` (its `src/` identical to `b726cb7f`): 0 hits in
  * `git grep -i` over `src/` and `public/` (the whole client graph and every string the served pages are built from is a
  * subset), and 0 in every `.js`/`.mjs`/`.cjs`/`.css` file of `b726cb7f`'s `node_modules` (the bundle's only other
- * source). Still proposed, measured with their own step: staff edge, enter now, scorecard, STAFF_EDGE and the staff-edge
- * row's sw/zh words (C5 step 7).
+ * source). The step's review found three phrasings the R2 copy ships that none of those matched — "of which chosen by
+ * staff", "of which chosen by you" and the held chip's "including house" — so a staff or viewer clause, or the held title,
+ * could have reached a player unseen. "chosen by staff" / "chosen by you" and "including house" (word-bounded, so
+ * "household" is not one) were measured the same way on 2026-09-17 against `origin/main` `b726cb7f` (0 hits in `git grep -i`
+ * over `src/`, `public/`, `scripts/`, `prisma/` and `docs/`; 0 in its `node_modules` JS and CSS) and on this branch's fresh
+ * bundle and signed-out served pages, then added. Still proposed, measured with their own step: staff edge, enter now,
+ * scorecard, STAFF_EDGE and the staff-edge row's sw/zh words (C5 step 7).
  */
 
 /** The words, in the three locales, matched in any case. `house[_ -]?bots?` also covers `HouseBot` and `house_bots`. */
-export const HOUSE_WORD_SOURCE = String.raw`liquidity|ukwasi|流动性|house[_ -]?bots?|boti (?:za|ya) nyumba|平台机器人|house[ -]?stakes?|dau la nyumba|平台投注|staff[- ]?chosen`;
+export const HOUSE_WORD_SOURCE = String.raw`liquidity|ukwasi|流动性|house[_ -]?bots?|boti (?:za|ya) nyumba|平台机器人|house[ -]?stakes?|dau la nyumba|平台投注|staff[- ]?chosen|chosen by (?:staff|you)|including house\b`;
 
 /**
  * The feature's identifiers, matched EXACTLY (case-sensitive), so the platform's own `HOUSE_FEE` transaction type is not
@@ -77,6 +82,7 @@ export function extendHouseWords(extra, flags = "i") {
 export const HOUSE_WORD_SAMPLES = Object.freeze([
   "liquidity", "Ukwasi", "流动性", "house bot", "house-bots", "house_bot", "HouseBot", "boti za nyumba", "boti ya nyumba", "平台机器人",
   "house stake", "House stakes", "dau la nyumba", "平台投注", "staff-chosen", "staff chosen",
+  "chosen by staff", "chosen by you", "including house",
 ]);
 /** One sample per identifier alternative, and the control the platform's `HOUSE_FEE` must stay. */
 export const HOUSE_IDENTIFIER_SAMPLES = Object.freeze(["house_bot_inactive", "HOUSE_BOT", "houseStake", "houseOnly", "houseBotId", "HouseBotStatus"]);

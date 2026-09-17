@@ -19,7 +19,7 @@ import { ControlLocked } from "@/components/admin/control-locked";
 import { formatDateTime, formatTzs } from "@/lib/utils";
 import { CEREMONY, SELECTION, bi } from "@/lib/admin-status-lexicon";
 import { ResolutionCeremony } from "./resolution-ceremony";
-import { houseStakeByMarket } from "@/lib/server/house-bot/exposure";
+import { houseStakeForConsole } from "@/lib/server/house-console-read";
 import { exposureReadOf } from "@/lib/house-bot/exposure-copy";
 import { ExposureLine } from "@/components/admin/exposure-line";
 
@@ -61,9 +61,10 @@ export default async function ResolutionCeremonyPage({ params }: { params: Promi
   const [officerA, officerB] = await Promise.all([officerLabel(stage1By), officerLabel(stage2By)]);
 
   // The house stake on this market, for the line under the pools (C5-SPEC rulings 192–194, 196). A failed read is `null`
-  // and the line says it could not read; the ceremony's controls never read it (TGT-38).
-  let stakes: Awaited<ReturnType<typeof houseStakeByMarket>> | null = null;
-  try { stakes = await houseStakeByMarket([m.id]); } catch { stakes = null; }
+  // and the line says it could not read; the ceremony's controls never read it (TGT-38). Read through the console gate
+  // (ruling 259): a viewer outside this page's audience gets an empty read and no line.
+  let stakes: Awaited<ReturnType<typeof houseStakeForConsole>> | null = null;
+  try { stakes = await houseStakeForConsole(currentOfficerId, "/admin/resolver", [m.id]); } catch { stakes = null; }
 
   // Evidence + attestation timeline from the immutable audit trail (bounded scan).
   const resolutionAudit = getAuditPage({ category: "ADMIN", limit: 500 })

@@ -24,9 +24,11 @@
  * C5 step 5 added §0's ruling 198 player-surface pins, the R2 importer and slot pins and the R2 vocabulary words (memory only),
  * and §4.S5's R2 parts, surface renders, held title, bulk count, KYC line and objector notices (rulings 192–197; the pure
  * cases in the memory child): memory 258, Postgres 160; its render pass added the page-wiring and slot-rendering pins and
- * the two-group renderer case (memory): memory 263, Postgres 160.
+ * the two-group renderer case (memory): memory 263, Postgres 160. Its review added the console gate (ruling 259) — the pages'
+ * one gated read in its own catch, the row tag and KYC wiring, the slot chain, the player population read from disk, the
+ * player pages' printed words and the product-built vocabulary pin (memory), and §4.259 on both stores: memory 273, Postgres 164.
  * A section that stops running fails the floor even while every case that ran passed.
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 
-await runTwoStores({ suite: "test:house-bot-reports", casesFile: "scripts/lib/house-bot-reports-cases.mts", minPass: { memory: 263, postgres: 160 }, dbPrefix: "hb_reports" });
+await runTwoStores({ suite: "test:house-bot-reports", casesFile: "scripts/lib/house-bot-reports-cases.mts", minPass: { memory: 273, postgres: 164 }, dbPrefix: "hb_reports" });

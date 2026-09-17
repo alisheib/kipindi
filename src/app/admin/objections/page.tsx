@@ -16,7 +16,7 @@ import { ObjectionDecision } from "./objection-decision";
 import Link from "next/link";
 import { AdminBody } from "@/components/admin/admin-body";
 import { KpiGrid } from "@/components/admin/admin-body";
-import { houseStakeByMarket } from "@/lib/server/house-bot/exposure";
+import { houseStakeForConsole } from "@/lib/server/house-console-read";
 import { exposureReadOf } from "@/lib/house-bot/exposure-copy";
 import { ExposureLine } from "@/components/admin/exposure-line";
 
@@ -64,9 +64,10 @@ export default async function AdminObjectionsPage({ searchParams }: { searchPara
   const pageRows = rows.slice((page - 1) * PER_PAGE, page * PER_PAGE);
   const base = buildBaseHref("/admin/objections", sp);
   // The house stake on this page's OPEN actionable markets only — the rows join every objection ever filed — read once for
-  // the line beside "Pool held" and the decision dialog (C5-SPEC rulings 192–194, 196). `null` when the read failed.
-  let stakes: Awaited<ReturnType<typeof houseStakeByMarket>> | null = null;
-  try { stakes = await houseStakeByMarket([...new Set(pageRows.filter((r) => r.actionable).map((r) => r.o.marketId))]); } catch { stakes = null; }
+  // the line beside "Pool held" and the decision dialog (C5-SPEC rulings 192–194, 196). `null` when the read failed. Read
+  // through the console gate (ruling 259): a viewer outside this page's audience gets an empty read.
+  let stakes: Awaited<ReturnType<typeof houseStakeForConsole>> | null = null;
+  try { stakes = await houseStakeForConsole(session?.userId ?? null, "/admin/objections", [...new Set(pageRows.filter((r) => r.actionable).map((r) => r.o.marketId))]); } catch { stakes = null; }
 
   return (
     <>

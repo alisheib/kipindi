@@ -32,7 +32,7 @@ import { formatDateTime } from "@/lib/utils";
 import { CEREMONY, SELECTION } from "@/lib/admin-status-lexicon";
 import { AdminBody } from "@/components/admin/admin-body";
 import { SORT_OPTIONS, parseSort, compareBy } from "./queue-order";
-import { houseStakeByMarket } from "@/lib/server/house-bot/exposure";
+import { houseStakeForConsole } from "@/lib/server/house-console-read";
 import { BULK_EXPOSURE_COUNT_TEMPLATE, exposureReadOf, exposureStateOf, heldChipTitle } from "@/lib/house-bot/exposure-copy";
 import { ExposureLine } from "@/components/admin/exposure-line";
 
@@ -225,9 +225,11 @@ export default async function ResolverQueuePage({
    * ⭐ THE HOUSE STAKE ON THIS PAGE, READ ONCE (C5-SPEC rulings 192–194) — for every paged card's line and held-chip title,
    * and reused for the bulk bar's rows. ⛔ A failed read is `null`, which every display says it could not read; it is
    * never a zero. ⛔ Display only: no condition that shows, hides or locks a control reads it (TGT-38, ruling 191).
+   * ⛔ Through the console gate (ruling 259): a viewer outside this page's audience gets an empty read, so a player who
+   * requests the page gets no house line, no house title and no house count — the layouts' checks do not stop a page's payload.
    */
-  let stakes: Awaited<ReturnType<typeof houseStakeByMarket>> | null = null;
-  try { stakes = await houseStakeByMarket(paged.map((m) => m.id)); } catch { stakes = null; }
+  let stakes: Awaited<ReturnType<typeof houseStakeForConsole>> | null = null;
+  try { stakes = await houseStakeForConsole(session?.userId ?? null, "/admin/resolver-queue", paged.map((m) => m.id)); } catch { stakes = null; }
   const bulkRows: BulkRow[] = await Promise.all(paged.map(async (m) => {
     const cfg = await getEffectiveConfig(m.id);
     const mode = await getEffectiveResolutionMode(m.resolutionMode);

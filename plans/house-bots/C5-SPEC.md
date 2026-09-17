@@ -2582,6 +2582,47 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
      - **Proof:** `test:guards-exist`, `test:house-bot-rules` (the summary pin), `test:docs` where it pins an entry; a grep for
        "⏳ Written in commit 5", "holder chip" and "lands in commit 5" in the docs returns only superseded markings.
 
+### 6.J · Added during the build
+
+259. **Every house read a console page renders goes through a viewer gate; a layout is not a gate.** (Added in C5 step 5's
+     review, finding d19-hunt-01, 2026-09-17; the step could not close under D19 without it.)
+     - **Measured, not assumed.** On this branch's production build (`next start`, a scratch database, the step-5 render
+       fixture) a signed-in PLAYER, the holder and a trigger player each requested `/admin/resolver-queue`,
+       `/admin/resolver/<id>`, `/admin/markets`, `/admin/markets/<id>`, `/admin/objections`, `/admin/updown/rounds` and
+       `/admin/kyc/<holder>` as a plain document, as an `RSC: 1` flight and as a flight whose `Next-Router-State-Tree` names
+       the root, `admin` and the section segments. 54 of the 63 responses carried house words ("House stake", "chosen by
+       staff", "including house", "House bot · <label>", "of which house stakes"), all with status 200 — the document
+       included: `admin/layout.tsx`'s `redirect()` and `AdminSectionGate`'s restricted panel change what is PAINTED, not what
+       the page streams, and the tree header skips both layouts altogether. `/admin/markets` carried none only because its
+       slot sits inside the page's own `canEmergencyVoid`.
+     - **The gate.** `src/lib/server/house-console-read.ts` holds the only house readers a console page may call:
+       `houseStakeForConsole(viewerUserId, route, marketIds)`, `houseBotLabelsForConsole(viewerUserId, route, botIds)` and
+       `houseConsoleAudience(viewerUserId, route)`. The audience is the section gate's own question asked of the STORED role
+       (a staff role; Owner-only paths ADMIN only; every other path its domain's `canView`), never the cookie's photograph —
+       ruling 172's precedent. It fails closed (an unreadable viewer is outside). Outside the audience the stake read is an
+       EMPTY map and the labels an empty map, so every market reads as one with no house stake: no line, today's held title,
+       a neutral bulk state, no row tag, and no unread line; the KYC card's house figures pass as 0. Inside it, a failing stake
+       read still throws into the page's own `catch { stakes = null; }` and the officer sees "couldn't read" (ruling 190).
+     - The module lives outside `server/house-bot/` (I2 keeps every module there from importing `exposure.ts`, ruling 180) and
+       reads the KYC facts nowhere (ruling 197's reader pin); the KYC page asks `houseConsoleAudience` and passes
+       `houseVisible ? moneyFacts.houseBetCount : 0`.
+     - Ruling 194's "every display catches `houseStakeByMarket`'s throw" now reads: every display catches
+       `houseStakeForConsole`'s throw; no console page names `houseStakeByMarket`, `houseStakeForAudit` or a house store.
+     - **NOT fixed here, recorded for Ali (platform, `main`'s code):** the same measurement shows every console page streams its
+       server payload to any signed-in account — on `/admin/markets/<id>` a player received other players' display names and
+       stakes, on `/admin/objections` an objector's name. The gate above covers house data only.
+     - **Source:** C5 step 5 review (d19-hunt-01) with the measurement above; owner ruling D19; ruling 172's precedent.
+     - **Proof:** reports §0 0.194.2 / 0.194.3 (one gated read per page, exact viewer, route and markets, its own catch, no
+       ungated reader named, the row tag only for a bot the gated read holds, the KYC value's exact props) with controls
+       0.194.c1 / 0.194.c3, and 0.198.1's disk population (no player module imports the console readers); reports §4.259.1–4
+       on both stores (a player, the holder, a trigger player, no session, an unknown id, SUPPORT and COMPLIANCE on the
+       queue get nothing while the ungated reader and the ADMIN and MODERATOR hold the figures; the audience per role and
+       route; fail closed on a failing stake read and a failing user read; the labels). The served measurement above re-run
+       on the fixed build: 0 house words for the three non-staff viewers, with the ADMIN control still carrying them on
+       every route. Step 13's served layer (ruling 248) repeats it for every viewer. Mutations: a page's read handed a literal
+       viewer, another route or no catch; the gate returning the figures for a non-staff role; the KYC house count passed
+       ungated.
+
 ## 7. Guards that will move, and how to move each honestly
 
 Anchors as of `d15eeb70`. Run each named suite right after touching its file. Read a ratchet's printed population before

@@ -19,7 +19,7 @@ import { canUseControl, CONTROL_DOMAIN } from "@/lib/server/control-gates";
 import { ControlLocked } from "@/components/admin/control-locked";
 import { AdminBody } from "@/components/admin/admin-body";
 import { KpiGrid } from "@/components/admin/admin-body";
-import { houseStakeByMarket } from "@/lib/server/house-bot/exposure";
+import { houseStakeForConsole } from "@/lib/server/house-console-read";
 import { exposureReadOf } from "@/lib/house-bot/exposure-copy";
 import { ExposureLine } from "@/components/admin/exposure-line";
 
@@ -81,9 +81,10 @@ export default async function AdminMarketsPage({
   const paged = sorted.slice((page - 1) * PER_PAGE, page * PER_PAGE);
   const baseHref = buildBaseHref("/admin/markets", { q: sp.q, status: sp.status, category: sp.category, sort: sp.sort, dir: sp.dir });
   // The house stake on the paged markets an emergency void can reach (LIVE and CLOSED), read once for the void
-  // confirmation's line (C5-SPEC rulings 192–194, 196). `null` when the read failed: the line then says so.
-  let stakes: Awaited<ReturnType<typeof houseStakeByMarket>> | null = null;
-  try { stakes = await houseStakeByMarket(paged.filter((m) => m.status === "LIVE" || m.status === "CLOSED").map((m) => m.id)); } catch { stakes = null; }
+  // confirmation's line (C5-SPEC rulings 192–194, 196). `null` when the read failed: the line then says so. Read through the
+  // console gate (ruling 259): a viewer outside this page's audience gets an empty read.
+  let stakes: Awaited<ReturnType<typeof houseStakeForConsole>> | null = null;
+  try { stakes = await houseStakeForConsole(session?.userId ?? null, "/admin/markets", paged.filter((m) => m.status === "LIVE" || m.status === "CLOSED").map((m) => m.id)); } catch { stakes = null; }
 
   const live = all.filter((m) => m.status === "LIVE");
   const closed = all.filter((m) => m.status === "CLOSED");

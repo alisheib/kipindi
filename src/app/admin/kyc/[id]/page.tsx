@@ -11,6 +11,7 @@ import { listPendingKyc } from "@/lib/server/kyc-service";
 import { kycCaseRead, kycMoneyFacts, toBlockedCashOut, getApprovalRecommendation, KYC_MAKER_CHECKER_THRESHOLD, type BlockedCashOut } from "@/lib/server/kyc-risk";
 import { currentSession } from "@/lib/server/auth-service";
 import { canView } from "@/lib/server/rbac";
+import { houseConsoleAudience } from "@/lib/server/house-console-read";
 import { formatDateTime } from "@/lib/utils";
 import { KycDocViewer } from "./kyc-doc-viewer";
 import { Sensitive } from "@/components/ui/sensitive";
@@ -104,6 +105,9 @@ export default async function KycWorkstationPage({ params }: { params: Promise<{
   // 🔴 ASKED BEFORE THE WALLET IS READ (2026-09-13) — the same money gate as the roster and /admin/kyc. A
   // viewer without it sees the counts and dates on "Money at stake", never a shilling figure.
   const canSeeMoney = session ? await canView(session.role, "accounting") : false;
+  // The house figures on "Bets placed" only for a viewer this page's audience holds (ruling 259): the layouts' checks do not
+  // stop a page's payload, so a player who requests a holder's case gets today's value and no house line.
+  const houseVisible = await houseConsoleAudience(session?.userId ?? null, "/admin/kyc");
 
   const decided = kyc.status === "APPROVED" || kyc.status === "REJECTED";
   // ⭐ ONE TRANSACTION SCAN (2026-09-13). The risk score and the "Money at stake" card read the same rows:
@@ -393,8 +397,8 @@ export default async function KycWorkstationPage({ params }: { params: Promise<{
                     <BetsPlacedValue
                       betCount={moneyFacts.betCount}
                       stakedTzs={moneyFacts.stakedTzs}
-                      houseBetCount={moneyFacts.houseBetCount}
-                      houseStakedTzs={moneyFacts.houseStakedTzs}
+                      houseBetCount={houseVisible ? moneyFacts.houseBetCount : 0}
+                      houseStakedTzs={houseVisible ? moneyFacts.houseStakedTzs : 0}
                       canSeeMoney={canSeeMoney}
                     />
                   }
