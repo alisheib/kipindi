@@ -153,3 +153,26 @@ bots and what keeps D19 true").
      confirmed in Phase 0 that this is the only session on Ali-Blade15, and `prisma generate` writes only inside
      `node_modules/.prisma`, never the tracked tree. `npm ci`, `npm install` and `npm rebuild` stay forbidden. A later
      checkpoint that changes no schema field must not run it.
+
+275. **Ali, 2026-09-17 ~20:50 UTC, in two messages: "repetiv ehting sno need procee dveeopment and eysbting then later
+     we do dul test sesison" and "we need to si th eintial chekcs as we did but no nee dfor reotirv ethings make
+     develop,etm adn etsginrpeiroty."** The **initial** check of a change stays exactly as it has been run all along —
+     development AND testing are both the priority. What is dropped is **repetition**: running again something already
+     green that this checkpoint cannot reach.
+     - **Every checkpoint still runs, once, as before:** `npx tsc --noEmit` 0 before every push; every suite the
+       checkpoint's changed files can actually reach, on **both stores** where the logic is store-dependent, with a case
+       for each new or changed behaviour; `test:guards-exist` before a commit that adds a suite citation; the read-only
+       review lenses; and a render, opened and read at 1280 and 360, of any screen the checkpoint changes.
+     - **Not run again:** a suite no changed file can reach (name it in `notMeasured` with the reason); a second full
+       two-store pass of a suite already green whose code a later fix did not touch; a fresh `next build` +
+       `verify:house-bot-bundle` where the change can only REMOVE house words from the public bundle, so the result is
+       certain (C5-8's fresh build measures it once for the commit); `test:all` compared red by red, which belongs to
+       C5-8 alone, not to every checkpoint; and the mutation batch, which C5-8 runs once for the whole commit.
+     - **The skips are tracked, not remembered.** `plans/house-bots/DEFERRED-TESTS.md` is the register: a checkpoint may
+       not close without appending every run it skipped, with the exact command, the store, what the run would prove and
+       why the skip is safe. Commit 5 may not be marked ✅ until C5-8 has run that file to empty or Ali has released a row.
+     - **A skipped test is never a passed test.** Every PROGRESS entry says NOT MEASURED for what it skipped, and no
+       report may call a checkpoint verified on the strength of `tsc` alone.
+     - **No guard moves.** No ratchet, ceiling or exemption is raised or widened, and no assertion is weakened, at any
+       pace. `test:house-bot-reports`' per-store `minPass` floors are the one exception ruling 265 already allows, and a
+       floor only falls to a count the checkpoint MEASURED by running the suite — never to an arithmetic guess.
