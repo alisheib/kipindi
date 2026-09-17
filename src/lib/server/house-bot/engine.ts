@@ -335,7 +335,7 @@ export async function stopHouseBotEngine(ticks: Pick<EngineTicks, "requeueMine">
   state.started = false;
 }
 
-/** For `/api/health`: whether this instance runs the engine, and why not. No ids, no errors. */
+/** For the admin-gated reader (`engine-health.ts`, ruling 172 — never `/api/health`): whether this instance runs the engine, and why not. No ids, no errors. */
 export function houseBotEngineHealth(state: EngineState = engineState()) {
   return {
     started: state.started,

@@ -9,7 +9,7 @@ import { db } from "@/lib/server/store";
 import { sms, smsHealthSnapshot, smsBalanceSnapshot, smsConfigured } from "@/lib/server/sms";
 import { listMarkets } from "@/lib/server/market-service";
 import { auditRingSize } from "@/lib/server/audit";
-import { lifecycleTickerHealth } from "@/lib/server/lifecycle";
+import { LIFECYCLE_TASK, lifecycleTickerHealth } from "@/lib/server/lifecycle";
 import { isMonitoringEnabled } from "@/lib/server/monitoring";
 import { leadershipSnapshot } from "@/lib/server/leader";
 import { isAdminTotpEnforced } from "@/lib/server/admin-guard";
@@ -17,12 +17,21 @@ import { redisHealth } from "@/lib/server/redis";
 import { emailHealth } from "@/lib/server/email";
 import { pingDatabase } from "@/lib/server/prisma";
 import { houseBotSchemaReady } from "@/lib/server/house-bot/schema-ready";
-import { houseBotEngineHealth } from "@/lib/server/house-bot/engine";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 const BOOT_AT = Date.now();
+
+/**
+ * ⛔ AN ALLOWLIST OF THE PLATFORM'S OWN LEASE TASKS — owner ruling D19, C5-SPEC ruling 171 (a). This endpoint is PUBLIC,
+ * and `leadershipSnapshot()` names every task this process has ever leased. Measured when this was written: `acquireLeadership`
+ * is called for `LIFECYCLE_TASK` (`lifecycle.ts`) and for the engine planner (`house-bot/engine.ts`, whose engine starts by
+ * default with the master switch OFF) — so the planner's lease name went to any visitor. A task not on this list is never
+ * printed, so a lease added tomorrow cannot leak by default. REL-5 reads `leadership.lifecycle.isMe`, which stays.
+ */
+const PUBLIC_LEASE_TASKS: readonly string[] = [LIFECYCLE_TASK];
+const publicLeadership = () => Object.fromEntries(Object.entries(leadershipSnapshot()).filter(([task]) => PUBLIC_LEASE_TASKS.includes(task)));
 
 export async function GET() {
   try {
@@ -52,9 +61,10 @@ export async function GET() {
       // gets booleans and a latency.
       console.error(`[health] NOT READY — database reachable=${dbPing.reachable} migrated=${dbPing.tableExists}: ${dbPing.error ?? "(no error text)"}`);
     }
-    // 🔴 HOUSE BOTS (04 A23). Every Position and Transaction create writes `houseBotId`, so a build booted on a
-    // database without the house schema would fail every bet. Not ready here is a 503 for the same reason a
-    // missing migration is: it stops a broken deploy from taking over. Only asked once the database answers.
+    // 🔴 04 A23. Every Position and Transaction create writes the marker column, so a build booted on a database without
+    // that schema would fail every bet. Not ready here is a 503 for the same reason a missing migration is: it stops a
+    // broken deploy from taking over. Only asked once the database answers. ⛔ The BODY names none of it (owner ruling
+    // D19, C5-SPEC ruling 171): the reason goes to the server log below and to the admin-gated reader on /admin/system.
     const houseSchema = dbReady && dbPing.envSet ? await houseBotSchemaReady() : null;
     const ready = dbReady && (!dbPing.envSet || houseSchema?.ready === true);
     if (dbReady && !ready) {
@@ -118,13 +128,7 @@ export async function GET() {
         // reads `isMe: true`; with two it is the only way to see that exactly one of them
         // is sweeping, and which. `admission` stays per-container by design — see
         // docs/POLISH-BACKLOG.md §3 for the pool arithmetic that implies.
-        leadership: leadershipSnapshot(),
-        // House bots (04 A23, S2 REL-5): whether the house schema is here, and whether THIS instance runs the
-        // engine and why not. `schemaReady` is null only when the database itself did not answer.
-        houseBots: {
-          schemaReady: dbPing.envSet ? (houseSchema ? houseSchema.ready : null) : true,
-          engine: houseBotEngineHealth(),
-        },
+        leadership: publicLeadership(),
         // Whether anything would TELL you about an error, as opposed to recording it.
         // Server exceptions are durable on box either way (audit chain, scrubbed and
         // deduped); `alerting: false` means nobody is paged and someone has to go and

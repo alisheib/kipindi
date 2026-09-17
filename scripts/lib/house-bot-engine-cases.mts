@@ -445,10 +445,69 @@ await guard("10", async () => {
   ok(`10.6 · the real ${STORE} store is ready`, real.ready === true, j(real));
 
   const H: Any = await import("../../src/app/api/health/route.ts");
+  // ⛔ OWNER RULING D19, C5-SPEC rulings 171–172: /api/health is PUBLIC and names nothing about house bots. It is read
+  // AFTER this process has taken the planner's lease (and the lifecycle's, whose key REL-5 reads), because a lease this
+  // process holds is exactly what leadershipSnapshot() prints; ruling 171 chose (a), an allowlist of platform tasks.
+  const LEAD10: Any = await import("../../src/lib/server/leader.ts");
+  const { LIFECYCLE_TASK }: Any = await import("../../src/lib/server/lifecycle.ts");
+  const { houseHits }: Any = await import("./house-bot-vocabulary.mjs");
+  const tookPlanner = await LEAD10.acquireLeadership(K.HOUSE_PLANNER_TASK, { leaseMs: K.PLANNER_LEASE_MS, strictWrite: true });
+  const tookLifecycle = await LEAD10.acquireLeadership(LIFECYCLE_TASK);
   const res = await H.GET();
   const body: Any = await res.json();
-  ok("10.7 · /api/health answers 200 with houseBots.schemaReady true", res.status === 200 && body.houseBots?.schemaReady === true, `${res.status} ${j(body.houseBots)}`);
-  ok("10.8 · …and reports this instance's engine (not started in a suite)", body.houseBots?.engine?.started === false, j(body.houseBots?.engine));
+  /** Every key and every string value in the body, at any depth. */
+  const keysAndValues = (v: Any, out: string[] = []): string[] => {
+    if (Array.isArray(v)) v.forEach((x) => keysAndValues(x, out));
+    else if (v && typeof v === "object") for (const [k, x] of Object.entries(v)) { out.push(k); keysAndValues(x, out); }
+    else if (typeof v === "string") out.push(v);
+    return out;
+  };
+  const named = keysAndValues(body);
+  const snapshot = LEAD10.leadershipSnapshot();
+  ok("10.7 · ⭐ POSITIVE CONTROL · this process holds the planner's lease: the UNFILTERED leadershipSnapshot() names HOUSE_PLANNER_TASK",
+    tookPlanner === true && tookLifecycle === true && !!snapshot[K.HOUSE_PLANNER_TASK] && snapshot[K.HOUSE_PLANNER_TASK].isMe === true, j(snapshot));
+  ok("10.7a · ⛔ D19 · /api/health answers 200 with no houseBots key, no key or value equal to the planner's lease name, and no vocabulary hit at any depth",
+    res.status === 200 && body.ok === true && !("houseBots" in body) && !named.includes(K.HOUSE_PLANNER_TASK) && !named.includes("house-bot") && houseHits(JSON.stringify(body)).length === 0,
+    `${res.status} · ${j(houseHits(JSON.stringify(body)))} · leadership ${j(body.leadership)}`);
+  ok("10.7b · ruling 171 (a) · the planner's task key is absent from leadership, while the platform's lifecycle lease stays (REL-5 reads leadership.lifecycle.isMe)",
+    !(K.HOUSE_PLANNER_TASK in (body.leadership ?? {})) && body.leadership?.[LIFECYCLE_TASK]?.isMe === true, j(body.leadership));
+  await LEAD10.releaseLeadership(K.HOUSE_PLANNER_TASK);
+  await LEAD10.releaseLeadership(LIFECYCLE_TASK);
+
+  // 10.8 · the engine's health moved to the admin-gated SERVER reader (ruling 172): ADMIN only, decided on the stored role.
+  const EH: Any = await import("../../src/lib/server/house-bot/engine-health.ts");
+  const ALERTS10: Any = await import("../../src/lib/server/house-bot/alerts.ts");
+  const E10: Any = await import("../../src/lib/server/house-bot/engine.ts");
+  const { loadWorld: loadWorld10 }: Any = await import("./house-bot-world.mts");
+  const W10 = await loadWorld10();
+  const adminViewer = await W10.user({ role: "ADMIN" });
+  const staffViewers = await Promise.all(["COMPLIANCE", "FINANCE", "AUDITOR", "SUPPORT", "MODERATOR", "GROWTH", "PLAYER"].map((role) => W10.user({ role })));
+  const noopTicks = { pollerTick: async () => {}, plannerTick: async () => {}, sweepTick: async () => {} };
+  globalThis.__50PICK_HOUSE_BOT_ENGINE = undefined;
+  const refusedStart = await E10.startHouseBotEngine(noopTicks, { env: () => "false" });
+  const refusedView = await EH.houseEngineHealthFor(adminViewer);
+  ok("10.8 · ruling 172 · a REFUSED engine reads through the admin reader for an ADMIN: not started, the refusal named, the schema ready, the drop count a number",
+    refusedStart.refused === "ENV_DISABLED" && refusedView?.readable === true && refusedView.engine.started === false && refusedView.engine.refused === "ENV_DISABLED"
+      && refusedView.schema.ready === true && typeof refusedView.engine.hookDropped === "number", j(refusedView));
+  // A STARTED engine, as the process's one engine state records it. ⚠️ Set on the state, not through startHouseBotEngine:
+  // a real start writes this instance's boot row, and §11.16 proves a REFUSED start writes none (measured: starting one
+  // here turned 11.16 red). §11.17–11.30 prove the real start; this proves what the reader shows of it.
+  globalThis.__50PICK_HOUSE_BOT_ENGINE = undefined;
+  const startedState = E10.engineState();
+  Object.assign(startedState, { started: true, refused: null, bootAt: new Date().toISOString(), skewMs: 12, lastPlannerTickAt: Date.now() });
+  startedState.hook.dropped = 3;
+  const startedView = await EH.houseEngineHealthFor(adminViewer);
+  const staffViews = await Promise.all(staffViewers.map((id) => EH.houseEngineHealthFor(id)));
+  globalThis.__50PICK_HOUSE_BOT_ENGINE = undefined;
+  ok("10.8b · ruling 172 · a STARTED engine reads through the admin reader for an ADMIN: started, no refusal, its boot time, skew, last planner pass and X5's drop count",
+    startedView?.readable === true && startedView.engine.started === true && startedView.engine.refused === null && !!startedView.engine.bootAt
+      && startedView.engine.skewMs === 12 && !!startedView.engine.lastPlannerTickAt && startedView.engine.hookDropped === 3, j(startedView));
+  ok("10.8c · ⛔ ruling 172 · every other role — COMPLIANCE, FINANCE, AUDITOR, SUPPORT, MODERATOR, GROWTH, PLAYER — and no viewer at all get null",
+    staffViews.every((v: Any) => v === null) && (await EH.houseEngineHealthFor(null)) === null && (await EH.houseEngineHealthFor("usr_no_such_viewer")) === null, j(staffViews));
+  const roles = ["ADMIN", "COMPLIANCE", "FINANCE", "AUDITOR", "SUPPORT", "MODERATOR", "GROWTH", "PLAYER", "AGENT"];
+  const recipients = new Set(((await ALERTS10.houseBotAlertRecipients()) as Any[]).map((u) => u.role));
+  ok("10.8d · the reader's audience is the house-alert audience: inHouseAlertAudience admits exactly the roles houseBotAlertRecipients returns (ADMIN)",
+    j(roles.filter((r) => ALERTS10.inHouseAlertAudience(r))) === j(["ADMIN"]) && [...recipients].every((r) => ALERTS10.inHouseAlertAudience(r)) && recipients.has("ADMIN"), j([...recipients]));
 
   if (onPostgres) {
     const db = prisma();
@@ -459,7 +518,11 @@ await guard("10", async () => {
       ok("10.9 · a real missing table → not ready, naming it", !gone.ready && gone.missingTables.includes("HouseBotPress"), j(gone));
       const r503 = await H.GET();
       const b503: Any = await r503.json();
-      ok("10.10 · ⛔ /api/health answers 503 with houseBots.schemaReady false and ok false", r503.status === 503 && b503.houseBots?.schemaReady === false && b503.ok === false, `${r503.status} ${j(b503.houseBots)}`);
+      const why503 = await EH.houseEngineHealthFor(adminViewer);
+      ok("10.10 · ⛔ /api/health answers 503 with ok false and names nothing (no houseBots key, no vocabulary hit); the admin reader says why",
+        r503.status === 503 && b503.ok === false && !("houseBots" in b503) && houseHits(JSON.stringify(b503)).length === 0
+          && why503?.readable === true && why503.schema.ready === false && why503.schema.missingTables.includes("HouseBotPress"),
+        `${r503.status} · public ${j(Object.keys(b503))} · admin ${j(why503?.schema)}`);
       const head = await H.HEAD();
       ok("10.11 · HEAD agrees with GET (503)", head.status === 503, String(head.status));
       const E: Any = await import("../../src/lib/server/house-bot/engine.ts");

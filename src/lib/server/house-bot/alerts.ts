@@ -25,3 +25,12 @@ export async function houseBotAlertRecipients(): Promise<StoredUser[]> {
 export function playerHandle(userId: string): string {
   return displayLabel({ id: userId, displayName: null });
 }
+
+/**
+ * Is `role` in the house-alert audience? The rule `houseBotAlertRecipients` applies to accounts (today every ADMIN), for a
+ * reader that gates ONE viewer: the engine-health reader on `/admin/system` (C5-SPEC ruling 172). When commit 7's
+ * `requireHouseOwner` lands, both follow it; `test:house-bot-engine` 10.8 pins that they agree.
+ */
+export function inHouseAlertAudience(role: string | null | undefined): boolean {
+  return role === "ADMIN";
+}

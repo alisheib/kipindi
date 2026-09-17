@@ -590,6 +590,7 @@ Engine modules may not import `StoredMarket`.
 *§4.2:*
 - `houseBotSchemaReady()` checks the marker columns, the 6 tables and the seeded rows. With N1–N2 the check counts 8 tables (`HouseBotTarget`, `HouseBotPress`).
 - If false, the engine does not start and `/api/health` returns 503 (`houseBots.schemaReady=false`), because every Position create would fail.
+  - ⛔ **Superseded in part by C5-SPEC ruling 172 (owner ruling D19, 2026-09-17):** the 503 with `ok:false` stands; the public body no longer carries `houseBots.schemaReady` (or any house key, ruling 171). The schema state and the engine's health are read on the admin-gated server reader (`src/lib/server/house-bot/engine-health.ts`), rendered for ADMIN only on `/admin/system`.
 
 *Runbook:*
 - Deploy with the switch OFF unless the 60 s overlap is verified live.
@@ -1539,7 +1540,7 @@ Everything was checked against `C:\kipindi-main`. HEAD is `ac411357`, the KYC co
 | R2 | From this machine: `MSYS_NO_PATHCONV=1 DATABASE_URL=… npx prisma migrate deploy`. **On any failure:** preflight `--post` confirms no house object exists, then `prisma migrate resolve --rolled-back <name>`, then retry once later. **Never leave a failed row:** P3009 blocks every boot, and boot runs `migrate deploy`. | both rows finished |
 | R3 (old container still serving) | `houseBotSchemaReady()` query is true. `HouseBotControl.enabled=false`. `/api/health` `ok:true`. The Position count keeps rising (read-only check). | all true |
 | R4 | Merge `house-bots` into main as one merge commit, then push. There is an outage while `overlapSeconds` is null. | build green |
-| R5 (≤10 min) | `dpl=` shows the merge SHA. `/api/health` shows `houseBots.schemaReady=true` and `leadership.lifecycle.isMe=true`. After the 90 s boot grace, `ops:house-bots-status` shows: OFF, 0 bots, 0 marked rows, engine enabled, beats fresh. Run §12 production checks and §15 phase F. At +10 min: 0 marked rows and 0 HOUSE_BOT notifications. | all true |
+| R5 (≤10 min) | `dpl=` shows the merge SHA. `/api/health` shows ~~`houseBots.schemaReady=true` and~~ `ok:true` and `leadership.lifecycle.isMe=true` (⛔ *`houseBots.schemaReady` superseded by C5-SPEC ruling 172, owner ruling D19: the house schema state is read as ADMIN on `/admin/system` → Diagnostics, which must show it Ready*). After the 90 s boot grace, `ops:house-bots-status` shows: OFF, 0 bots, 0 marked rows, engine enabled, beats fresh. Run §12 production checks and §15 phase F. At +10 min: 0 marked rows and 0 HOUSE_BOT notifications. | all true |
 | R6 | Handover note "First switch-on" for Ali: limits → designate → rules → Start → ON → watch the feed for 15 min → OFF on any FAILED row or unexplained alert. | — |
 
 NO-GO before R4: nothing merges. NO-GO after R4: go to S3.

@@ -13,13 +13,106 @@ import { retrySnapshot } from "@/lib/server/retry";
 import { redisHealth } from "@/lib/server/redis";
 import { listMarkets, getSettlementHealth, type SettlementHealth } from "@/lib/server/market-service";
 import { hasDatabase, pingDatabase } from "@/lib/server/prisma";
-import { formatTime, formatTzs } from "@/lib/utils";
+import { formatDateTime, formatTime, formatTzs } from "@/lib/utils";
+import { currentSession } from "@/lib/server/auth-service";
+import { houseEngineHealthFor, type HouseEngineHealthView } from "@/lib/server/house-bot/engine-health";
+import type { EngineRefusal } from "@/lib/server/house-bot/engine";
 import { getPlatformConfig } from "@/lib/server/platform-config";
 import { AdminBody } from "@/components/admin/admin-body";
 import { KpiGrid } from "@/components/admin/admin-body";
 
 export const metadata = { title: "Admin · System" };
 export const dynamic = "force-dynamic";
+
+/**
+ * Why the engine is not running on this instance, in words (never the stored code interpolated into a sentence).
+ * ⛔ Admin copy, written HERE in the server page and passed to no client component (owner ruling D19, C5-SPEC ruling 172).
+ */
+const ENGINE_REFUSAL_WORDS: Record<EngineRefusal, string> = {
+  ENV_DISABLED: "HOUSE_BOT_ENGINE is set to false on this instance, so no engine timer runs here.",
+  SCHEMA_NOT_READY: "the house-bot schema is not ready, so the engine did not start and /api/health answers 503.",
+  DB_TIMEZONE: "the database time zone is not UTC, so the engine refused to start.",
+  BOOT_FAILED: "the engine's boot failed. The server log has the error.",
+};
+
+/** A tick time, or the honest word for one that has not happened on this instance. */
+const tickAt = (iso: string | null) => (iso ? formatTime(iso) : "not yet");
+
+/**
+ * ⛔ THE HOUSE BOT ENGINE CARD — ADMIN ONLY, SERVER-RENDERED (owner ruling D19; C5-SPEC ruling 172).
+ * It used to be public: `/api/health` printed a `houseBots` block to any visitor. `houseEngineHealthFor` returns `null`
+ * for every account outside the house-alert audience, and then nothing renders — no card, no placeholder. Every word is in
+ * this server component; nothing here reaches `system-client.tsx`.
+ */
+function HouseEngineCard({ view }: { view: HouseEngineHealthView }) {
+  if (!view.readable) {
+    return (
+      <AdminCard title="House bot engine" sw="Injini ya boti za nyumba">
+        <p className="flex items-center gap-1.5 text-body-sm text-danger">
+          <I.alertCircle s={14} className="shrink-0" />
+          The engine&apos;s health could not be read on this instance. It is not shown as healthy; check the server log.
+        </p>
+      </AdminCard>
+    );
+  }
+  const { engine, schema } = view;
+  const missing = [...schema.missingTables, ...schema.missingColumns];
+  const state = engine.started ? (engine.stopping ? "Stopping" : "Running") : "Not running";
+  return (
+    <AdminCard title="House bot engine" sw="Injini ya boti za nyumba">
+      {engine.started && !engine.stopping ? (
+        <p className="flex items-center gap-1.5 mb-3 text-body-sm text-success">
+          <I.check s={14} className="shrink-0" />
+          The engine runs on this instance{engine.bootAt ? ` since ${formatDateTime(engine.bootAt)}` : ""}.
+        </p>
+      ) : (
+        <p className="flex items-start gap-1.5 mb-3 text-body-sm text-text-muted">
+          <I.alertCircle s={14} className="mt-0.5 shrink-0" />
+          <span>
+            {engine.stopping
+              ? "The engine is stopping on this instance: it claims nothing new and hands its work back."
+              : engine.refused
+                ? `The engine is not running on this instance: ${ENGINE_REFUSAL_WORDS[engine.refused]}`
+                : "The engine has not started on this instance."}
+          </span>
+        </p>
+      )}
+      <KpiGrid>
+        <AdminKpi label="Engine" sw="Injini" value={state} tone={engine.started && !engine.stopping ? "success" : undefined} delta={`${engine.inFlight} in flight`} />
+        <AdminKpi
+          label="Schema" sw="Muundo"
+          value={schema.ready ? "Ready" : "Not ready"}
+          tone={schema.ready ? "success" : "danger"}
+          pulse={!schema.ready}
+          delta={schema.ready ? "tables, markers and seed rows present" : schema.probeFailed ? "the check itself failed" : `${missing.length} missing${schema.seeded ? "" : " · seed rows absent"}`}
+        />
+        <AdminKpi
+          label="Late reactions dropped" sw="Majibu yaliyoachwa"
+          value={String(engine.hookDropped)}
+          delta="since boot · the sweep decided each"
+        />
+        <AdminKpi
+          label="Clock skew" sw="Tofauti ya saa"
+          value={engine.skewMs === null ? "Not measured" : `${engine.skewMs} ms`}
+          delta="database minus this container"
+        />
+      </KpiGrid>
+      {!schema.ready && missing.length > 0 && (
+        <p className="mt-3 text-body-sm text-danger">
+          Missing: <span className="font-mono">{missing.join(", ")}</span>
+        </p>
+      )}
+      <dl className="mt-3 rounded-md border border-border bg-bg-overlay px-3 py-2 font-mono text-body-sm tabular-nums text-text-muted">
+        <div className="flex justify-between gap-3"><dt>Last poller pass</dt><dd className="text-text">{tickAt(engine.lastPollerTickAt)}</dd></div>
+        <div className="flex justify-between gap-3"><dt>Last planner pass</dt><dd className="text-text">{tickAt(engine.lastPlannerTickAt)}</dd></div>
+        <div className="flex justify-between gap-3"><dt>Last sweep</dt><dd className="text-text">{tickAt(engine.lastSweepTickAt)}</dd></div>
+      </dl>
+      <p className="mt-3 text-body-sm text-text-secondary">
+        Per instance, reset on deploy. Only the owner&apos;s staff role sees this card; /api/health is public and names none of it.
+      </p>
+    </AdminCard>
+  );
+}
 
 function bootstrapPhones(): string[] {
   return (process.env.ADMIN_BOOTSTRAP_PHONES ?? "")
@@ -92,6 +185,9 @@ export default async function AdminSystemPage({
   const dbConnected = ping.reachable && ping.tableExists;
   const dbWaiting = dbBackend === "postgres" && ping.reachable && !ping.tableExists;
   const bootstrap = bootstrapPhones();
+  // ⛔ D19 (ruling 172): read for the house-alert audience only — every other viewer gets null and renders nothing.
+  const sessionForHouse = await currentSession().catch(() => null);
+  const houseEngine = tab === "diagnostics" ? await houseEngineHealthFor(sessionForHouse?.userId).catch((): HouseEngineHealthView | null => null) : null;
 
   return (
     <>
@@ -383,6 +479,8 @@ export default async function AdminSystemPage({
         </>)}
 
         {tab === "diagnostics" && (<>
+
+        {houseEngine && <HouseEngineCard view={houseEngine} />}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <AdminCard title="Audit chain integrity" sw="Mlolongo · uadilifu">

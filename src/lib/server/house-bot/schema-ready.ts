@@ -4,8 +4,9 @@
  * ⛔ WHY A GATE. Every Position and Transaction create writes `houseBotId` (build commit 2). A build that boots
  * against a database without the marker columns or the house tables would fail every bet, and an engine started
  * against half a schema would write rows nobody can read. So the build asks the database, and when the answer
- * is no, the engine does not start and `/api/health` answers 503 with `houseBots.schemaReady=false` — the deploy
- * gate stops a broken release taking over from a working one.
+ * is no, the engine does not start and `/api/health` answers 503 with `ok:false` — the deploy gate stops a broken
+ * release taking over from a working one. The public body names nothing about why (owner ruling D19, C5-SPEC ruling 171);
+ * the server log and the admin-gated reader on `/admin/system` (`engine-health.ts`) do.
  *
  * What "ready" means: the 8 house tables, the 7 marker columns, and the two seeded rows (`HouseBotControl` id
  * `global`, `HouseBotRuntime` key `global`). `test:house-bot-migrations` pins the same lists against the
