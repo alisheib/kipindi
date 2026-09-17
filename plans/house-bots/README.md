@@ -1,5 +1,16 @@
 # House Bots — START HERE (any machine, any session)
 
+> # ⛔ TWO OWNER RULINGS OUTRANK EVERY FILE BELOW: D19 AND D20
+> **D19 (Ali, 2026-09-16): house bots are never public** — nothing about them reaches a player or the holder.
+> **D20 (Ali, 2026-09-17), just below D19: house bots are ordinary players in every report.** Every report, statutory
+> filing (Gaming Board monthly pack, FIU SAR, match integrity, daily ops), admin count, finance or insights figure and
+> harm/AML detector treats a house bot's account exactly like any player's account; none of them names house bots or
+> splits house money out, and every admin-only house tool is dropped. In `04-amendments.md` terms that strikes R1's
+> house-liquidity report and CSV, R2's exposure lines, R3's statutory notes and PLAN §9's splits, R5's house data-rights
+> record, R9's decision-audit and KYC-card figures, and the staff-edge alert. Commit 7's console still CONTROLS the bots.
+> The "Order of authority" below applies only where D19 and D20 are silent. Read PROGRESS.md "OWNER RULING D19" and
+> "OWNER RULING D20", then `C5-D20-REPLAN.md` (the ruling-by-ruling table), before any other file.
+
 **What this is:** the approved plan and live progress tracker for **House Bots**. The owner designates real 50pick accounts, and a
 server engine stakes from them on Up & Down rounds and polls, so players see real money to win. It was planned and approved
 2026-09-13 and is being built on branch **`house-bots`**. It never reaches `main` before release step REL-4.

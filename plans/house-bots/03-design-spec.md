@@ -1,5 +1,18 @@
 # House bots: design-system conformance spec
 
+> # ⛔ THE ADMIN HOUSE-STAKE LINE AND THE PLAYER-PAGE HOUSE CHIP ARE SUPERSEDED (D20)
+> **Owner ruling D20 (Ali, 2026-09-17): every report and admin screen treats a house bot's account exactly like any
+> player's account; no admin screen names house bots or splits house money out.** Struck in this file: S6 (the resolver
+> exposure line on the resolver queue card, the ceremony and the admin market page; C5-SPEC rulings 192–194), S7 (the
+> "House bot · Active" chip on `/admin/players/[id]` and its owner link; ruling 241) and their §7 phase C fixtures.
+> D19 still binds everything. The console screens S1–S5 stay: Commit 7's console CONTROLS bots (designate, rules and
+> limits, Start/pause, the master switch, Enter now, targets, engine health, the action feed, cap usage). **Not struck
+> here, left to Commit 7's rulings:** S1's "Live exposure" and "Today's net" KPIs and the roster's "Today net" and
+> "Open exposure" columns, S3's "Today's net" and "Open exposure" KPIs, the overview "Book" card and the money tab's
+> "House stake" chip; `C5-D20-REPLAN.md` §4 sets those rulings' default to no results/P&L report, CSV or per-market
+> house line beyond what a control needs. Read PROGRESS.md "OWNER RULING D20" and `plans/house-bots/C5-D20-REPLAN.md`
+> first.
+
 All citations are from `C:\kipindi-main` as it stands now. The laws come from `docs/DESIGN_AUTHORITY.md` ("DA"). The other docs are record (`DESIGN-BASELINE.md`, both `DESIGN-GATE-*-2026-08-28.md`), and `design-master-brief.md` is rationale.
 
 ## 0. Plan corrections found while verifying (fix before building)
@@ -305,6 +318,7 @@ AdminBody
 - The time is formatted on the server.
 
 ### S6 Resolver exposure display (display only)
+⛔ **Superseded by D20 (Ali, 2026-09-17):** this whole section is struck. No resolver queue card, ceremony, admin market page or other admin screen shows a "House stake" line; a house bot's stake counts exactly as any player's (C5-SPEC rulings 192–194, built in Commit 5 step 5 and un-built in checkpoint C5-5b). Nothing in it stands.
 - One line, `text-body-sm text-text-muted`: "House stake:" + side word via `sideWord` + `.amount` figure, joined with " · ".
 - Placement:
   - resolver queue card next to "{pool} held" (`resolver-queue/page.tsx:463-469`);
@@ -315,6 +329,7 @@ AdminBody
 - At 360 the line wraps between the two sides; each "SIDE TZS x" group is nowrap.
 
 ### S7 Player profile chip (admin `/admin/players/[id]`)
+⛔ **Superseded by D20 (Ali, 2026-09-17):** this whole section is struck, with its owner link to the bot. `/admin/players/[id]` shows a house bot's holder exactly like any player: no chip and no transactions-tab row tag (C5-SPEC ruling 241, not built). Nothing in it stands; §1's status-chip rule for the console is not affected.
 - It goes in the existing chip row (`players/[id]/page.tsx:226-259`): `Chip size="sm" variant={TONE_CHIP[…HOUSE_BOT_*.admin]}` reading "House bot · Active". ⛔ Superseded in place (C5-SPEC ruling 186, §1 S24): the variant comes from `HOUSE_BOT_STATUS_DISPLAY` in `server/house-bot/status-display.ts`, never from `status-tone.ts`.
 - Owner: wrapped in `next/link` `Link` to the bot, following the KYC chip precedent at `:228` (Link rather than raw `<a>`).
 - Other staff: a plain chip, not a link. A link that ends at AdminRestricted is a dead end.
@@ -420,8 +435,8 @@ AdminBody
    - rules form clean and with errors, plus the timing preview;
    - wizard steps with balances 0, 1,000 and 2,500,000, and ineligible rows;
    - money and history tables;
-   - the S6 lines;
-   - the S7 chip.
+   - ~~the S6 lines;~~ ⛔ **Superseded by D20 (Ali, 2026-09-17):** S6 is struck, so there is no house stake line to render.
+   - ~~the S7 chip.~~ ⛔ **Superseded by D20 (Ali, 2026-09-17):** S7 is struck, so there is no house chip to render.
 4. **Widths:** 320, 360, 640, 768, 1024, 1280, 1920.
 5. **Assertions per cell:**
    - (a) `scrollWidth ≤ clientWidth+1`;

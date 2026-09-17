@@ -211,7 +211,7 @@ Ali was shown the exact sentences the change would touch and the risk in leaving
 | # | Ruling |
 |---|---|
 | D19a | **No public text.** The two rulebooks, Terms, the privacy notice, the FAQ, the home copy and the chatbot keep the words they have today: no prohibited-conduct carve-out, no disclosure line, no Terms §4 paragraph, no privacy lawful-basis line, no META or `TERMS_VERSION` bump, no announcement. **This reverses D2/D7 and P1**, and it leaves the published rulebooks prohibiting bots and shared accounts while 50pick operates house accounts (accepted risk 21). Ali reports that the Gaming Board of Tanzania told him his answers are legally valid; no document is on file. |
-| D19b | The **private** Gaming Board draft (`BOARD-DISCLOSURE-HOUSE-BOTS.md`, DRAFT FOR ALI) and the admin-console house-liquidity report and CSV are still built. Ali decides if and when the draft is sent. |
+| D19b | ⛔ **Report half reversed by D20 (2026-09-17): no house-liquidity report or CSV is built; the private draft stays.** (Was:) The **private** Gaming Board draft (`BOARD-DISCLOSURE-HOUSE-BOTS.md`, DRAFT FOR ALI) and the admin-console house-liquidity report and CSV are still built. Ali decides if and when the draft is sent. |
 | D19c | **The holder sees nothing.** Stakes 50pick places on a holder's account look exactly like the holder's own bets — no chip, no explanatory line, no liquidity label on outcome notices, no house wording in any refusal — and the holder receives **no** house-bot notices or emails at all. Every alert goes to admins only. Consent stays what D5 says it is: the holder types their password. |
 | D19d | The chatbot **discloses nothing and may never lie**: a guard keeps "never bets against you", "independent", "cannot influence", "all stakes are from real players", "fully automated", "only automated", "no person decides", "no one at 50pick chooses" and any naming or confirming of an account out of the system prompt and `faq8a`, in all three locales. |
 | D19e | W18 is moot (no rule text moves) and W19 is superseded (there is no privacy line). |
@@ -219,6 +219,21 @@ Ali was shown the exact sentences the change would touch and the risk in leaving
 D19 outranks the plan documents; the branch record is `plans/house-bots/PROGRESS.md` under "OWNER RULING D19". The
 disclosure built into commit 4 (the liquidity label and the holder notices) is removed before commit 4 closes. **Nothing
 of it ever reached production.**
+
+### Owner ruling D20 (Ali, 2026-09-17) — house bots are normal players in every report
+
+Asked with options, Ali answered: "aren't the bots real users' accounts? I don't want this. Keep them in reports as normal
+players" — "normal players everywhere" for reports, and "drop them all" for the admin-only house tools.
+
+| # | Ruling |
+|---|---|
+| D20a | **Reports treat a house account exactly like any player's account.** The Gaming Board monthly pack, the FIU SAR, the match-integrity report, daily ops, every admin count (active and unique players, predictors, top contributors), the finance and insights figures and the harm and AML detectors carry no house memo, column, split, exclusion or line. |
+| D20b | **No admin-only house tools:** no house-liquidity report or house-market statement, no house filter or `house_bot_id` column on the transactions CSV, no per-bot CSV, no staff-edge alert, no house lines on admin screens, no house stake in decision audits, no house share in the emergency-void notice, no KYC house line, no internal record and no staff chip or row tag. This reverses D19b's report half; the private Board draft stays. |
+| D20c | **Unchanged:** D19 in full (nothing about house bots reaches a player or the holder), the console's gate that keeps house audit rows from any non-staff session, report completeness under house audit volume, erasure safety, marker integrity, the money rules (house stakes are cash only, never cashed out, and earn no wagering progress, commission or reward), the engine, consent, caps, the kill switch, admin alerts about a bot's state, and the console that controls the bots. |
+| D20d | **Accepted consequences:** statutory figures (GGR, levies, player counts) include 50pick's own house stakes as player activity; the harm and AML detectors can flag a house account like any player's. |
+
+The branch record is `plans/house-bots/PROGRESS.md` under "OWNER RULING D20" and `plans/house-bots/C5-D20-REPLAN.md`.
+Nothing of the struck work ever reached production.
 
 ### Supersedes
 
@@ -233,6 +248,7 @@ of it ever reached production.**
 | Bots prohibited | the published rulebooks' prohibited-conduct lists | ⛔ **nothing — reversed by D19a (2026-09-16).** The rulebooks are not amended, so their prohibition still stands as published while 50pick operates house accounts (accepted risk 21). The struck plan was a carve-out plus one disclosure line (D2/D7). |
 | 14-day notice | Terms §10 | this change only (below) |
 | "Awaiting Ali's decision" | `docs/feature-backlog.md`, F6 | decided: build as house bots |
+| House money split out of reports; the admin house report, staff edge and resolver exposure lines | `plans/house-bots/04-amendments.md` R1–R3, R5, R9; `PLAN.md` §9 | ⛔ **reversed by D20 (2026-09-17):** house accounts are reported as ordinary player accounts, with no admin-only house tool |
 
 ### Do not restore
 - No human-typed side.

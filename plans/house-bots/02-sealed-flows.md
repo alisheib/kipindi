@@ -1,5 +1,14 @@
 # House Bots: sealed flow specifications
 
+> # ⛔ THE RESOLVER HOUSE-STAKE DISPLAY IS SUPERSEDED (D20)
+> **Owner ruling D20 (Ali, 2026-09-17): every report and admin screen treats a house bot's account exactly like any
+> player's account; no admin screen names house bots or splits house money out.** Struck in this file: §4 F11 (the
+> "House stake: YES X · NO Y" line on the resolver queue card, the resolution ceremony and the admin market page;
+> C5-SPEC rulings 192–194, built in Commit 5 step 5 and un-built in checkpoint C5-5b). D19 still binds everything. The
+> password lifecycle, the console actions, the admin alerts about a bot's status and its holder's money events (F6, F7),
+> the master switch and the notification click-throughs are not changed by D20. Read PROGRESS.md "OWNER RULING D20" and
+> `plans/house-bots/C5-D20-REPLAN.md` first.
+
 The plan's design holds up, but the real code turned up 12 gaps to fix before building (§0). The biggest:
 
 - **Password writers:** there are five places that write a password, not three.
@@ -435,8 +444,9 @@ This applies to every player, not just bot holders; the house-bot flows work eit
 - **Test:** the chip and marker are absent for every other viewer.
 
 **F11 resolvers**
-- **Display:** "House stake: YES X · NO Y" on the resolver queue card, the resolution ceremony and the admin market page. Nothing renders when both are zero.
-- **No lock:** display only, no officer lock.
+- ~~**Display:** "House stake: YES X · NO Y" on the resolver queue card, the resolution ceremony and the admin market page. Nothing renders when both are zero.~~
+- ~~**No lock:** display only, no officer lock.~~
+- ⛔ **Superseded by D20 (Ali, 2026-09-17):** no admin screen shows a house stake line. The resolver queue card, the resolution ceremony and the admin market page (and 04 R2's other sites) show a house bot's stake exactly as any player's stake (C5-SPEC rulings 192–194 struck; `C5-D20-REPLAN.md` §2).
 
 ## 5. Notification click-throughs
 

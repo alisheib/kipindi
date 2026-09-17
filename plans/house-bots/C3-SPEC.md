@@ -1,5 +1,13 @@
 # Commit 3 · designation services: build spec and rulings
 
+> # ⛔ ONE COMMIT 5 POINTER HERE IS STRUCK (D20)
+> **Owner ruling D20 (Ali, 2026-09-17), just below D19: every report, statutory filing, admin count, finance or insights
+> figure and harm/AML detector treats a house bot's account exactly like any player's account, and every admin-only
+> house tool is dropped.** Struck here, marked in place: §4's "Commit 5: DSAR view" (R5's house view; C5-SPEC rulings
+> 236–238, 240–242, 246). Its neighbours on that line stand: `test:dsar-secrets`'s absence proof (243) and the
+> `test:erasure` house buckets (244–245). Nothing else in this file is touched by D20; D19 still binds everything. Read
+> PROGRESS.md "OWNER RULING D20" and `plans/house-bots/C5-D20-REPLAN.md` first.
+
 > Working aid, written 2026-09-14 on OMEGA-COMPILE01 from a read-only extraction of `04-amendments.md` (`04`), `02-sealed-flows.md` (`02`), `01-scenario-register.md` (`01`), `PLAN.md`, `docs/HOUSE-BOTS.md` (`HB`) and the code at `b6971618`. **It is not an authority.** The documents it cites win, and every `file:line` must be re-derived before use. §6 records the rulings this build takes where the documents disagree or are silent; each ruling becomes a PLAN §18 row when the commit closes.
 
 ## 0. Scope of record
@@ -111,7 +119,7 @@ Same update as the hash:
 ## 4. Not in commit 3
 - Commit 7: every `*Action`, `requireHouseOwner`, the wizard and picker DAL, `houseBotsLive()`.
 - Commit 4: `holder-hook.ts` and the writer call sites (A2 (l)), the L2 sweep, the mapper, closure → REMOVED(ACCOUNT_CLOSED), the credential detection matrix, the admin emitters, the writer walker (`test:house-bot-holder-lifecycle`).
-- Commit 5: DSAR view, `test:dsar-secrets`, the `test:erasure` house buckets.
+- Commit 5: ~~DSAR view,~~ `test:dsar-secrets`, the `test:erasure` house buckets. ⛔ **Superseded by D20 (Ali, 2026-09-17):** no DSAR view carries a house section: R5's owner-only internal record is struck (C5-SPEC rulings 236–238, 240–242, 246) and both releasable doors are house-free (168–169); `test:dsar-secrets`'s absence proof (243) and the `test:erasure` house buckets (244–245) stand.
 - No migration, no CHECK change. Master switch OFF; designate only on memory or the scratch Postgres.
 
 ## 5. Open points found in the documents
