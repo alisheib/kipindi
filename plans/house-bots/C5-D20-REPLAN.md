@@ -143,3 +143,13 @@ bots and what keeps D19 true").
 273. **D19's in-place marks are applied now, not at C5-8.** The plan documents never received them (PLAN, the scenario
      register, 04, 02/03's S8 and holder notices, C4-SPEC's digest split, HOUSE-BOTS.md's holder leftovers); workflow
      `wf_1694cc9f-878` marks them in place, so ruling 258's docs pass has only the code-facing docs left. Decided with it: (a) P1's disclosure tracking is struck everywhere it reaches — 04's N1/N2 Board-disclosure lines, C6's checklist and Commit 7's ON-modal "not recorded as sent" line — so the Commit 1 control columns `boardDisclosureSentAt` / `boardDisclosureSections` and the DAL writer `recordDisclosure` have no reader and no caller and are un-built in C5-5b with the staff-edge columns (265), and CRA-24 counts through the Board draft alone; (b) with no rule or Terms text changing (D19a), no Terms §10 notice is due, so the COMPLIANCE entry's waiver, its supersede row, W3 and the Board draft's "notice waiver" section are moot; (c) the admin house chip on `/admin/agents/[id]` (HB-ACC-24) and the "House stake" row chip in 03's transactions table are struck with D20's other chips and tags.
+
+274. **`npx prisma generate` is permitted in `C:/kipindi-house-bots` for checkpoint C5-5b, and only there.** Ruling 265
+     removes `gStaffEdgeWinRatePts` / `gStaffEdgeNetTzs` and ruling 273 (a) removes `boardDisclosureSentAt` /
+     `boardDisclosureSections` from `prisma/schema.prisma` and the undeployed house migration, so the generated client
+     must be regenerated or every DAL twin, `tsc` and every Postgres suite half reads a client that still has the columns
+     (measured at the start of the twelfth session: `node_modules/.prisma/client/index.d.ts` carries 36 occurrences of
+     `gStaffEdgeWinRatePts`). The standing rule against it exists to protect a parallel session's `node_modules`; Ali
+     confirmed in Phase 0 that this is the only session on Ali-Blade15, and `prisma generate` writes only inside
+     `node_modules/.prisma`, never the tracked tree. `npm ci`, `npm install` and `npm rebuild` stay forbidden. A later
+     checkpoint that changes no schema field must not run it.
