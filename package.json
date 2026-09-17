@@ -284,6 +284,7 @@
     "test:house-bot-comms": "tsx scripts/db-scratch.mts --run npx tsx scripts/house-bot-comms.test.mts",
     "test:house-bot-holder-lifecycle": "tsx scripts/house-bot-holder-lifecycle.test.mts",
     "test:house-bot-info-edge": "tsx scripts/db-scratch.mts --run npx tsx scripts/house-bot-info-edge.test.mts",
+    "test:house-bot-reports": "tsx scripts/db-scratch.mts --run npx tsx scripts/house-bot-reports.test.mts",
     "test:house-bot-disclosure": "tsx scripts/house-bot-disclosure.test.mts",
     "verify:house-bot-bundle": "node scripts/verify-house-bot-bundle.mjs",
     "verify:house-bot-migrations-old-build": "tsx scripts/db-scratch.mts --run npx tsx scripts/house-bot-migrations-old-build.mts",
