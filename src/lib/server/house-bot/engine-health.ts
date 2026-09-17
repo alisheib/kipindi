@@ -5,8 +5,8 @@
  * state, engine started/refused, tick times, the late-reaction drop count) to any visitor. Under D19 nothing about house
  * bots is public, so the same facts live here, behind the house-alert audience, and render on `/admin/system` from its
  * SERVER page. `/api/health` keeps only the readiness gate: a missing house schema still answers 503 with `ok:false`,
- * and the reason is in the server log and on this reader. Commit 7's strip and Commit 8's `ops:house-bots-status` read
- * this reader too.
+ * and the reason is in the server log and on this reader. Commit 7's strip and Commit 8's house-bot status command (not
+ * built yet, so not named as a script here) read this reader too.
  *
  * ⛔ THE GATE DECIDES ON THE STORED ROLE, never the session cookie's photograph of it (`session.ts`): the viewer's account
  * is read, and only the house-alert audience (`inHouseAlertAudience`, the rule `houseBotAlertRecipients` follows — every
