@@ -2333,13 +2333,14 @@ if (STORE === "memory") {
       fakeSession: run(AUDIT, plant(audit, AUDIT_GATE, AUDIT_GATE.replace("session?.userId", () => "staff?.userId")).replace("export default async function AdminAuditPage(", () => "const staff = { userId: \"usr_admin\" };\nexport default async function AdminAuditPage(")),
       otherDomainRoute: run(AUDIT, plant(audit, AUDIT_GATE, AUDIT_GATE.replace("\"/admin/audit\"", () => "\"/admin/players\""))),
       overviewPrefix: run(AUDIT, plant(audit, AUDIT_GATE, AUDIT_GATE.replace("\"/admin/audit\"", () => "\"/admin\""))),
+      sameDomainOtherPage: run(AUDIT, plant(audit, AUDIT_GATE, AUDIT_GATE.replace("\"/admin/audit\"", () => "\"/admin/kyc\""))),
       kycCatchKept: run(KYC, kyc),
     };
-    ok("0.260.c1 · CONTROL · the player page's measured leak restored (both readers ungated), a reader filtered before the gate, a literal viewer, a viewer that is not the session read from currentSession(), another domain's route and the overview's broader \"/admin\" prefix are each reported; the KYC page's read through await, .catch and the gate is not",
+    ok("0.260.c1 · CONTROL · the player page's measured leak restored (both readers ungated), a reader filtered before the gate, a literal viewer, a viewer that is not the session read from currentSession(), another domain's route, the overview's broader \"/admin\" prefix and another page of the same domain are each reported; the KYC page's read through await, .catch and the gate is not",
       gatePlants.playerUngated.filter((p) => p.includes("is not handed straight")).length === 2 && gatePlants.filteredFirst.some((p) => p.includes("getAuditPage(…) is not handed straight"))
         && gatePlants.literalViewer.some((p) => p.includes("not the signed-in session's id")) && gatePlants.fakeSession.some((p) => p.includes("not the signed-in session's id"))
         && gatePlants.otherDomainRoute.some((p) => p.includes("asks the gate about /admin/players")) && gatePlants.overviewPrefix.some((p) => p.includes("asks the gate about /admin,"))
-        && gatePlants.kycCatchKept.length === 0,
+        && gatePlants.sameDomainOtherPage.some((p) => p.includes("asks the gate about /admin/kyc,")) && gatePlants.kycCatchKept.length === 0,
       j(gatePlants));
 
     const planted = (rel: string, code: string) => run(rel, code);
@@ -4359,10 +4360,17 @@ await guard("4.S5", async () => {
     admin: await CR.houseBotLabelsForConsole(A, "/admin/markets", [botAB, botAB, `hb_${"0".repeat(24)}`]),
   };
   const realLabel = botAB ? (await w.dal.houseBotStore.get(botAB))?.label : undefined;
-  ok("4.259.4 · ⛔ the row tag's labels: a player and the holder get an EMPTY map (no marked row carries a tag); the ADMIN gets each distinct bot once with its real label, and \"—\" for a bot that cannot be read",
+  // A label read that THROWS (not a missing bot): the ADMIN's tag still reads "—", never a thrown page.
+  const realBotGet = w.dal.houseBotStore.get;
+  let labelReads = 0;
+  let labelsWhileFailing: Any = "not run";
+  w.dal.houseBotStore.get = (...args: Any[]) => { labelReads++; throw new Error(`label read failed (cases) ${args.length}`); };
+  try { labelsWhileFailing = [...(await CR.houseBotLabelsForConsole(A, "/admin/markets", [botAB])).entries()]; } catch (e) { labelsWhileFailing = `threw: ${String((e as Error)?.message ?? e)}`; } finally { w.dal.houseBotStore.get = realBotGet; }
+  ok("4.259.4 · ⛔ the row tag's labels: a player and the holder get an EMPTY map (no marked row carries a tag); the ADMIN gets each distinct bot once with its real label, \"—\" for a bot that is not found, and \"—\" (never a throw) while the label read itself fails",
     labels.player.size === 0 && labels.holder.size === 0 && typeof realLabel === "string" && realLabel.length > 0
-      && j([...labels.admin.entries()]) === j([[botAB, realLabel], [`hb_${"0".repeat(24)}`, "—"]]),
-    j({ player: [...labels.player.entries()], holder: [...labels.holder.entries()], admin: [...labels.admin.entries()], realLabel }));
+      && j([...labels.admin.entries()]) === j([[botAB, realLabel], [`hb_${"0".repeat(24)}`, "—"]])
+      && j(labelsWhileFailing) === j([[botAB, "—"]]) && labelReads >= 1,
+    j({ player: [...labels.player.entries()], holder: [...labels.holder.entries()], admin: [...labels.admin.entries()], realLabel, labelsWhileFailing, labelReads }));
 
   // ── ruling 260 · the audit rows a console page renders: whole for the route's audience, house-free for anyone else ──
   // Measured on this branch's production build before the gate: /admin/players/<holder> streamed the holder's
@@ -4378,6 +4386,8 @@ await guard("4.S5", async () => {
     await AU.audit({ category: "ADMIN", action: "house_bot.exported", actorId: A, targetType: "HouseBot", targetId: botAB, payload: { botId: botAB, code: "INTERNAL_RECORD" } }),
     await AU.audit({ category: "COMPLIANCE", action: "privacy.dsar.erasure_blocked", actorId: A, targetType: "User", targetId: holderAB, payload: { reason: "house_bot_live", requestId: `dsar_${tag}` } }),
     await AU.audit({ category: "ADMIN", action: "player.suspended", actorId: A, targetType: "User", targetId: holderAB, payload: { reason: `fraud review ${tag}` } }),
+    // A platform action ABOUT a house bot (no house-owned action name): dropped by its target alone.
+    await AU.audit({ category: "ADMIN", action: "alert.acknowledged", actorId: A, targetType: "HouseBot", targetId: botAB, payload: { note: `seen ${tag}` } }),
   ];
   await AU.auditFlush();
   // The console reads exactly as the pages do: the ring's rows for the holder (actor and target), plus the audit log's page.
@@ -4405,7 +4415,7 @@ await guard("4.S5", async () => {
   const keptStake = stakeRow ? survivor(playerView, stakeRow.id) : undefined;
   const keptBlocked = survivor(playerView, holderRows[4]?.id);
   ok("4.260.1 · ⛔ D19 · the rows a console page renders carry NO house action, no row about a house bot and no house key or word at any depth for a player, the holder and a trigger player on the player page, no session, a player, an unknown id and SUPPORT on the audit log, the holder on the overview, the MODERATOR on the player page and an ADMIN asking about a non-console route; CONTROL: the rows read carry the house words, the holder's own stake audit and the refused erasure survive with their other keys, and an officer's platform action is untouched",
-    hitsOf(inputHolder).length >= 5 && hitsOf(inputLog).length >= 10 && !!stakeRow && !!r9Row && !!platformRow
+    hitsOf(inputHolder).length >= 5 && hitsOf(inputLog).length >= 10 && !!stakeRow && !!r9Row && !!platformRow && inputLog.some((e: Any) => e.id === holderRows[6]?.id)
       && Object.values(outsideFacts).every((f: Any) => f.rows > 0 && f.hits.length === 0 && f.houseActions === 0)
       && !!keptStake && keptStake.payload.houseBotId === undefined && keptStake.payload.intentId === undefined && j(Object.keys(keptStake.payload).sort()) === j(Object.keys(stakeRow.payload).filter((k) => !["houseBotId", "intentId"].includes(k)).sort())
       && !!keptBlocked && keptBlocked.payload.reason === "not_erasable" && keptBlocked.payload.requestId === `dsar_${tag}`

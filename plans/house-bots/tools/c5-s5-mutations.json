@@ -1,0 +1,1262 @@
+[
+ {
+  "id": "S5-M01",
+  "file": "src/lib/house-bot/exposure-copy.ts",
+  "from": "if (read === \"unread\") return { label: EXPOSURE_UNREAD_LINE, groups: [], staffClause: null, viewerClause: null, unread: true };",
+  "to": "if (read === \"unread\") return null;",
+  "suite": "test:house-bot-reports",
+  "red": "4.190.u [memory]; 4.190.d [memory, postgres]",
+  "note": ""
+ },
+ {
+  "id": "S5-M02",
+  "file": "src/lib/house-bot/exposure-copy.ts",
+  "from": "const holdsHouse = (v: ExposureFigures) => v.yes + v.no > 0;",
+  "to": "const holdsHouse = (v: ExposureFigures) => v.yes + v.no >= 0;",
+  "suite": "test:house-bot-reports",
+  "red": "4.192.2, 4.194.2 [memory]; 4.193.6 [memory, postgres]",
+  "note": ""
+ },
+ {
+  "id": "S5-M03",
+  "file": "src/lib/house-bot/exposure-copy.ts",
+  "from": "if (read.no > 0) groups.push(",
+  "to": "if (read.no > 0) groups.unshift(",
+  "suite": "test:house-bot-reports",
+  "red": "4.192.1, 4.192.5 [memory]",
+  "note": ""
+ },
+ {
+  "id": "S5-M04",
+  "file": "src/lib/house-bot/exposure-copy.ts",
+  "from": "label: read.openTzs > 0 ? \"House stake:\" : \"House stake settled:\",",
+  "to": "label: read.openTzs >= 0 ? \"House stake:\" : \"House stake settled:\",",
+  "suite": "test:house-bot-reports",
+  "red": "4.192.2 [memory]; 4.192.4 [memory, postgres]",
+  "note": ""
+ },
+ {
+  "id": "S5-M05",
+  "file": "src/lib/house-bot/exposure-copy.ts",
+  "from": "const chosen = read.staffChosen.yes + read.staffChosen.no;",
+  "to": "const chosen = read.staffChosen.yes;",
+  "suite": "test:house-bot-reports",
+  "red": "4.192.1 [memory]",
+  "note": ""
+ },
+ {
+  "id": "S5-M06",
+  "file": "src/lib/house-bot/exposure-copy.ts",
+  "from": "staffClause: surface.staff && chosen > 0 ?",
+  "to": "staffClause: chosen > 0 ?",
+  "suite": "test:house-bot-reports",
+  "red": "4.192.3 [memory]",
+  "note": ""
+ },
+ {
+  "id": "S5-M07",
+  "file": "src/lib/house-bot/exposure-copy.ts",
+  "from": "viewerClause: surface.viewer ? viewerClause(read, o.viewerId, o.money) : null,",
+  "to": "viewerClause: viewerClause(read, o.viewerId, o.money),",
+  "suite": "test:house-bot-reports",
+  "red": "4.193.5 [memory, postgres]; 4.192.2 [memory]",
+  "note": ""
+ },
+ {
+  "id": "S5-M08",
+  "file": "src/lib/house-bot/exposure-copy.ts",
+  "from": "? view.staffChosen.byRequester[viewerId] : 0;",
+  "to": "? view.staffChosen.yes + view.staffChosen.no : 0;",
+  "suite": "test:house-bot-reports",
+  "red": "4.193.1 [memory]; 4.193.4 [memory, postgres]",
+  "note": "ruling 193: the staff-chosen total instead of byRequester"
+ },
+ {
+  "id": "S5-M09",
+  "file": "src/lib/house-bot/exposure-copy.ts",
+  "from": "const own = Object.prototype.hasOwnProperty.call(view.staffChosen.byRequester, viewerId) ? view.staffChosen.byRequester[viewerId] : 0;",
+  "to": "const own = Object.values(view.staffChosen.byRequester)[0] ?? 0;",
+  "suite": "test:house-bot-reports",
+  "red": "4.193.1 [memory]; 4.193.4 [memory, postgres]",
+  "note": "ruling 193: the line shown to every viewer"
+ },
+ {
+  "id": "S5-M10",
+  "file": "src/lib/house-bot/exposure-copy.ts",
+  "from": "return EXPOSURE_SURFACES[surface].qualifier ? EXPOSURE_QUALIFIER : null;",
+  "to": "return EXPOSURE_QUALIFIER;",
+  "suite": "test:house-bot-reports",
+  "red": "4.193.4, 4.190.d [memory, postgres]",
+  "note": ""
+ },
+ {
+  "id": "S5-M11",
+  "file": "src/lib/house-bot/exposure-copy.ts",
+  "from": "  objectionsRow: { staff: true, viewer: true, qualifier: false },",
+  "to": "  objectionsRow: { staff: true, viewer: false, qualifier: false },",
+  "suite": "test:house-bot-reports",
+  "red": "4.193.2 [memory]; 4.193.4 [memory, postgres]",
+  "note": ""
+ },
+ {
+  "id": "S5-M12",
+  "file": "src/lib/house-bot/exposure-copy.ts",
+  "from": "  ceremony: { staff: true, viewer: true, qualifier: true },",
+  "to": "  ceremony: { staff: true, viewer: true, qualifier: false },",
+  "suite": "test:house-bot-reports",
+  "red": "4.193.2 [memory]; 4.193.4, 4.190.d [memory, postgres]",
+  "note": "ruling 196 X9"
+ },
+ {
+  "id": "S5-M13",
+  "file": "src/lib/house-bot/exposure-copy.ts",
+  "from": "if (read === \"unread\") return \"Money held on this market until it resolves\";",
+  "to": "if (read === \"unread\") return HELD_CHIP_TITLE_TODAY;",
+  "suite": "test:house-bot-reports",
+  "red": "4.194.1 [memory]; 4.194.3 [memory, postgres]",
+  "note": ""
+ },
+ {
+  "id": "S5-M14",
+  "file": "src/lib/house-bot/exposure-copy.ts",
+  "from": "if (read != null && read.openTzs > 0) return",
+  "to": "if (read != null && read.yes + read.no > 0) return",
+  "suite": "test:house-bot-reports",
+  "red": "4.194.1 [memory]; 4.194.3 [memory, postgres]",
+  "note": ""
+ },
+ {
+  "id": "S5-M15",
+  "file": "src/lib/house-bot/exposure-copy.ts",
+  "from": "export const HELD_CHIP_TITLE_TODAY = \"Player money held on this market until it resolves\";",
+  "to": "export const HELD_CHIP_TITLE_TODAY = \"Money held on this market until it resolves\";",
+  "suite": "test:house-bot-reports",
+  "red": "4.194.1 [memory]; 4.194.3, 4.259.1 [memory, postgres]",
+  "note": "ruling 194 byte identity"
+ },
+ {
+  "id": "S5-M16",
+  "file": "src/lib/house-bot/exposure-copy.ts",
+  "from": "return read != null && holdsHouse(read) ? \"held\" : \"none\";",
+  "to": "return read != null ? \"held\" : \"none\";",
+  "suite": "test:house-bot-reports",
+  "red": "4.194.2 [memory]; 4.190.d [memory, postgres]",
+  "note": ""
+ },
+ {
+  "id": "S5-M17",
+  "file": "src/lib/house-bot/exposure-copy.ts",
+  "from": "if (read === \"unread\") return \"unread\";",
+  "to": "if (read === \"unread\") return \"none\";",
+  "suite": "test:house-bot-reports",
+  "red": "4.194.2 [memory]; 4.190.d [memory, postgres]",
+  "note": ""
+ },
+ {
+  "id": "S5-M18",
+  "file": "src/lib/house-bot/exposure-copy.ts",
+  "from": "if (stakes === null) return \"unread\";",
+  "to": "if (stakes === null) return null;",
+  "suite": "test:house-bot-reports",
+  "red": "4.190.d, 4.194.3 [memory, postgres]",
+  "note": ""
+ },
+ {
+  "id": "S5-M19",
+  "file": "src/lib/house-bot/exposure-copy.ts",
+  "from": "export const BULK_EXPOSURE_COUNT_TEMPLATE = \"House stakes on {n} of these markets|House stake couldn't be read on {n} of these markets\";",
+  "to": "export const BULK_EXPOSURE_COUNT_TEMPLATE = \"House stakes on {n} of these markets\";",
+  "suite": "test:house-bot-reports",
+  "red": "4.194.2 [memory]",
+  "note": "ruling 261: the shipped words"
+ },
+ {
+  "id": "S5-M20",
+  "file": "src/lib/house-bot/exposure-copy.ts",
+  "from": "if (!(Number.isFinite(houseCount) && houseCount > 0)) return null;",
+  "to": "if (!Number.isFinite(houseCount)) return null;",
+  "suite": "test:house-bot-reports",
+  "red": "4.197.5 [memory]; 4.197.8 [memory, postgres]",
+  "note": ""
+ },
+ {
+  "id": "S5-M21",
+  "file": "src/lib/house-bot/exposure-copy.ts",
+  "from": "export const EXPOSURE_UNREAD_LINE = \"House stake: — couldn't read\";",
+  "to": "export const EXPOSURE_UNREAD_LINE = \"House stake: TZS 0\";",
+  "suite": "test:house-bot-reports",
+  "red": "4.190.u [memory]; 4.190.d [memory, postgres]",
+  "note": "ruling 190: never a zero"
+ },
+ {
+  "id": "S5-M22",
+  "file": "src/lib/house-bot/exposure-copy.ts",
+  "from": "const amount = stakedTzs != null && Number.isFinite(stakedTzs) ? ` · ${money(stakedTzs)}` : \"\";",
+  "to": "const amount = ` · ${money(stakedTzs ?? 0)}`;",
+  "suite": "test:house-bot-reports",
+  "red": "4.197.5 [memory]; 4.197.7 [memory, postgres]",
+  "note": ""
+ },
+ {
+  "id": "S5-M23",
+  "file": "src/components/admin/exposure-line.tsx",
+  "from": "<span className={g.side === \"YES\" ? \"text-yes-300\" : \"text-no-300\"}>",
+  "to": "<span className=\"text-yes-300\">",
+  "suite": "test:house-bot-reports",
+  "red": "4.192.4 [memory, postgres]; 4.192.5 [memory]",
+  "note": ""
+ },
+ {
+  "id": "S5-M24",
+  "file": "src/components/admin/exposure-line.tsx",
+  "from": "{i === 0 ? \" \" : <Dot />}",
+  "to": "{\" \"}",
+  "suite": "test:house-bot-reports",
+  "red": "4.192.5 [memory]",
+  "note": ""
+ },
+ {
+  "id": "S5-M25",
+  "file": "src/components/admin/exposure-line.tsx",
+  "from": "{qualifier ? <><Dot /><Clause text={qualifier} /></> : null}",
+  "to": "{null}",
+  "suite": "test:house-bot-reports",
+  "red": "4.193.4, 4.190.d [memory, postgres]",
+  "note": "ruling 196: the X9 qualifier dropped"
+ },
+ {
+  "id": "S5-M26",
+  "file": "src/components/admin/exposure-line.tsx",
+  "from": "i % 2 === 1 ? <span key={i} className=\"whitespace-nowrap\">{part}</span> : part",
+  "to": "part",
+  "suite": "test:house-bot-reports",
+  "red": "4.193.4, 4.193.5 [memory, postgres]",
+  "note": ""
+ },
+ {
+  "id": "S5-M27",
+  "file": "src/components/admin/exposure-line.tsx",
+  "from": "{parts.viewerClause ? <><Dot /><Clause text={parts.viewerClause} /></> : null}",
+  "to": "{null}",
+  "suite": "test:house-bot-reports",
+  "red": "4.193.4 [memory, postgres]; 4.259.1 [memory, postgres]",
+  "note": ""
+ },
+ {
+  "id": "S5-M28",
+  "file": "src/app/admin/resolver-queue/bulk-resolve-types.ts",
+  "from": "if (held > 0 && heldText)",
+  "to": "if (heldText)",
+  "suite": "test:house-bot-reports",
+  "red": "4.194.2 [memory]",
+  "note": ""
+ },
+ {
+  "id": "S5-M29",
+  "file": "src/app/admin/resolver-queue/bulk-resolve-types.ts",
+  "from": "if (unread > 0 && unreadText)",
+  "to": "if (unreadText)",
+  "suite": "test:house-bot-reports",
+  "red": "4.194.2 [memory]",
+  "note": ""
+ },
+ {
+  "id": "S5-M30",
+  "file": "src/app/admin/resolver-queue/bulk-resolve-types.ts",
+  "from": "if (!template) return [];",
+  "to": "if (template === null) return [];",
+  "suite": "test:house-bot-reports",
+  "red": "4.194.2 [memory] — seen red 2026-09-17 at step 5's close (279 passed 1 failed, no '4.S5 · threw'), corrected from the review's test-strength-06",
+  "note": ""
+ },
+ {
+  "id": "S5-M31",
+  "file": "src/app/admin/kyc/[id]/bets-placed.tsx",
+  "from": "kycHouseBetsLine(houseBetCount, canSeeMoney ? houseStakedTzs : null, formatTzs)",
+  "to": "kycHouseBetsLine(houseBetCount, houseStakedTzs, formatTzs)",
+  "suite": "test:house-bot-reports",
+  "red": "4.197.7 [memory, postgres]",
+  "note": "ruling 197: the amount without canSeeMoney"
+ },
+ {
+  "id": "S5-M32",
+  "file": "src/app/admin/kyc/[id]/bets-placed.tsx",
+  "from": "{house.split(MONEY).map((part, i) => (i % 2 === 1 ? <span key={i} className=\"whitespace-nowrap\">{part}</span> : part))}",
+  "to": "{house}",
+  "suite": "test:house-bot-reports",
+  "red": "4.197.6 [memory, postgres]",
+  "note": ""
+ },
+ {
+  "id": "S5-M33",
+  "file": "src/app/admin/resolver-queue/page.tsx",
+  "from": "title={heldChipTitle(house, formatTzs)}",
+  "to": "title=\"Player money held on this market until it resolves\"",
+  "suite": "test:house-bot-reports",
+  "red": "0.194.2 [memory]",
+  "note": ""
+ },
+ {
+  "id": "S5-M34",
+  "file": "src/app/admin/resolver-queue/page.tsx",
+  "from": "      exposureState: exposureStateOf(exposureReadOf(stakes, m.id)),\n",
+  "to": "",
+  "suite": "test:house-bot-reports",
+  "red": "0.194.2 [memory]",
+  "note": ""
+ },
+ {
+  "id": "S5-M35",
+  "file": "src/app/admin/resolver-queue/page.tsx",
+  "from": "                exposureCountTemplate={BULK_EXPOSURE_COUNT_TEMPLATE}\n",
+  "to": "",
+  "suite": "test:house-bot-reports",
+  "red": "0.194.2 [memory]",
+  "note": ""
+ },
+ {
+  "id": "S5-M36",
+  "file": "src/app/admin/resolver/[id]/page.tsx",
+  "from": " viewerId={currentOfficerId}",
+  "to": "",
+  "suite": "test:house-bot-reports",
+  "red": "0.194.1 [memory]",
+  "note": ""
+ },
+ {
+  "id": "S5-M37",
+  "file": "src/app/admin/updown/rounds/page.tsx",
+  "from": "productLine=\"UPDOWN\" className=\"mt-1 ml-auto max-w-[150px]\"",
+  "to": "className=\"mt-1 ml-auto max-w-[150px]\"",
+  "suite": "test:house-bot-reports",
+  "red": "0.194.1 [memory]",
+  "note": ""
+ },
+ {
+  "id": "S5-M38",
+  "file": "src/app/admin/markets/page.tsx",
+  "from": "<ExposureLine surface=\"voidConfirm\"",
+  "to": "<ExposureLine surface=\"marketPage\"",
+  "suite": "test:house-bot-reports",
+  "red": "0.194.1 [memory]",
+  "note": ""
+ },
+ {
+  "id": "S5-M39",
+  "file": "src/app/admin/objections/page.tsx",
+  "from": "<ExposureLine surface=\"objectionDialog\"",
+  "to": "<ExposureLine surface=\"objectionsRow\"",
+  "suite": "test:house-bot-reports",
+  "red": "0.194.1 [memory]",
+  "note": ""
+ },
+ {
+  "id": "S5-M40",
+  "file": "src/app/admin/kyc/[id]/page.tsx",
+  "from": "canSeeMoney={canSeeMoney}",
+  "to": "canSeeMoney={true}",
+  "suite": "test:house-bot-reports",
+  "red": "0.194.2 [memory] (kycValueWiring; was 0.194.2 through the old money-gate check)",
+  "note": ""
+ },
+ {
+  "id": "S5-M41",
+  "file": "src/app/admin/markets/[id]/page.tsx",
+  "from": "houseBotRowTag(botLabels.get(p.houseBotId) ?? \"—\")",
+  "to": "botLabels.get(p.houseBotId) ?? \"—\"",
+  "suite": "test:house-bot-reports",
+  "red": "0.194.2 [memory] (marketTagWiring)",
+  "note": ""
+ },
+ {
+  "id": "S5-M42",
+  "file": "src/app/admin/markets/emergency-void-control.tsx",
+  "from": "      {exposureSlot}\n",
+  "to": "",
+  "suite": "test:house-bot-reports",
+  "red": "0.192.2 [memory] (the confirm's child cut, followed through the handoff)",
+  "note": ""
+ },
+ {
+  "id": "S5-M43",
+  "file": "src/app/admin/objections/objection-decision.tsx",
+  "from": "            {exposureSlot}\n",
+  "to": "",
+  "suite": "test:house-bot-reports",
+  "red": "0.192.2 [memory]",
+  "note": ""
+ },
+ {
+  "id": "S5-M44",
+  "file": "src/app/admin/updown/rounds/void-round-control.tsx",
+  "from": "        {exposureSlot}\n",
+  "to": "",
+  "suite": "test:house-bot-reports",
+  "red": "0.192.2 [memory]",
+  "note": ""
+ },
+ {
+  "id": "S5-M45",
+  "file": "src/app/admin/resolver-queue/bulk-resolve-bar.tsx",
+  "from": "exposureLines={exposureCountLines(willSeal, exposureCountTemplate)}",
+  "to": "exposureLines={exposureCountLines(willSeal, undefined)}",
+  "suite": "test:house-bot-reports",
+  "red": "0.192.2 [memory]",
+  "note": ""
+ },
+ {
+  "id": "S5-M46",
+  "file": "src/app/admin/markets/emergency-void-control.tsx",
+  "from": "const [reason, setReason] = useState(\"\");",
+  "to": "const [reason, setReason] = useState(String(exposureSlot ?? \"\"));",
+  "suite": "test:house-bot-reports",
+  "red": "0.196.1 [memory]",
+  "note": "ruling 196 prefill, proven by the slot-field pin (ruling 262)"
+ },
+ {
+  "id": "S5-M47",
+  "file": "src/app/admin/markets/emergency-void-control.tsx",
+  "from": "export function EmergencyVoidControl({ marketId, title, exposureSlot }: {",
+  "to": "export function EmergencyVoidControl({ marketId, title, exposureSlot, houseStake }: {",
+  "suite": "test:house-bot-disclosure",
+  "red": "1.1 (no store); also test:house-bot-reports 0.191.3 [memory]",
+  "note": "ruling 192: a client prop named houseStake"
+ },
+ {
+  "id": "S5-M48",
+  "file": "src/components/markets/resolution-panel.tsx",
+  "from": "import { ObjectionDialog } from \"./objection-dialog\";",
+  "to": "import { ObjectionDialog } from \"./objection-dialog\";\nimport { EXPOSURE_QUALIFIER } from \"@/lib/house-bot/exposure-copy\";",
+  "suite": "test:house-bot-reports",
+  "red": "0.198.1 [memory]",
+  "note": "ruling 198 planted player import (now through the disk population and the named-surface imports)"
+ },
+ {
+  "id": "S5-M49",
+  "file": "src/lib/server/notification-service.ts",
+  "from": "    titleEn: opts.upheld ? \"Your objection was upheld\" : \"Your objection was reviewed\",",
+  "to": "    titleEn: opts.upheld ? \"Your objection was upheld\" : \"Your objection was reviewed (house stake held)\",",
+  "suite": "test:house-bot-reports",
+  "red": "0.198.2 [memory]; 4.196.1 [memory, postgres]",
+  "note": ""
+ },
+ {
+  "id": "S5-M50",
+  "file": "src/lib/server/email.ts",
+  "from": "      { label: \"Refunded to wallet\", value: formatTzs(amount), tone: \"good\" },",
+  "to": "      { label: \"Refunded to wallet\", value: formatTzs(amount), tone: \"good\" },\n      { label: \"Of which house stakes\", value: formatTzs(amount) },",
+  "suite": "test:house-bot-reports",
+  "red": "0.198.2 [memory]; 4.195.9 [memory, postgres]",
+  "note": ""
+ },
+ {
+  "id": "S5-M51",
+  "file": "src/lib/server/objections-service.ts",
+  "from": "notifyObjectionDecided(o.userId, { upheld: false, marketId: o.marketId, note: reviewNote })",
+  "to": "notifyObjectionDecided(o.userId, { upheld: false, marketId: o.marketId, note: `${reviewNote}${(await houseStakeForAudit(o.marketId, \"objection.rejected\"))?.no ? \" · house stake NO\" : \"\"}` })",
+  "suite": "test:house-bot-reports",
+  "red": "4.196.1 [memory, postgres]",
+  "note": "ruling 196"
+ },
+ {
+  "id": "S5-M52",
+  "file": "src/lib/server/objections-service.ts",
+  "from": "note: `The market was voided and your stake was refunded in full. ${reason}` }",
+  "to": "note: `The market was voided and your stake was refunded in full. ${reason}${(await houseStakeForAudit(marketId, \"market.emergency_void\"))?.no ? \" · house stake\" : \"\"}` }",
+  "suite": "test:house-bot-reports",
+  "red": "4.196.2 [memory, postgres]",
+  "note": ""
+ },
+ {
+  "id": "S5-M53",
+  "file": "scripts/lib/house-bot-vocabulary.mjs",
+  "from": "|house[ -]?stakes?|dau la nyumba|平台投注|staff[- ]?chosen|chosen by (?:staff|you)|including house\\b`;",
+  "to": "|dau la nyumba|平台投注|staff[- ]?chosen|chosen by (?:staff|you)|including house\\b`;",
+  "suite": "test:house-bot-reports",
+  "red": "0.175.r2, 0.175.r2c, 0.175.r2p [memory]; also test:house-bot-disclosure 2.v words, 4.c6, 4.c7",
+  "note": "from-text re-derived: the vocabulary line gained the three phrasings in eff16f35"
+ },
+ {
+  "id": "S5-M54",
+  "file": "scripts/lib/house-bot-vocabulary.mjs",
+  "from": "|house[ -]?stakes?|dau la nyumba|平台投注|staff[- ]?chosen|chosen by (?:staff|you)|including house\\b`;",
+  "to": "|house[ -]?stakes?|平台投注|staff[- ]?chosen|chosen by (?:staff|you)|including house\\b`;",
+  "suite": "test:house-bot-reports",
+  "red": "0.175.r2, 0.175.r2c, 0.175.r2p [memory]; test:house-bot-disclosure 4.c6",
+  "note": ""
+ },
+ {
+  "id": "S5-M55",
+  "file": "scripts/lib/house-bot-vocabulary.mjs",
+  "from": "|house[ -]?stakes?|dau la nyumba|平台投注|staff[- ]?chosen|chosen by (?:staff|you)|including house\\b`;",
+  "to": "|house[ -]?stakes?|dau la nyumba|staff[- ]?chosen|chosen by (?:staff|you)|including house\\b`;",
+  "suite": "test:house-bot-reports",
+  "red": "0.175.r2, 0.175.r2c, 0.175.r2p [memory]; test:house-bot-disclosure 2.v words",
+  "note": ""
+ },
+ {
+  "id": "S5-M56",
+  "file": "scripts/lib/house-bot-vocabulary.mjs",
+  "from": "|house[ -]?stakes?|dau la nyumba|平台投注|staff[- ]?chosen|chosen by (?:staff|you)|including house\\b`;",
+  "to": "|house[ -]?stakes?|dau la nyumba|平台投注|chosen by (?:staff|you)|including house\\b`;",
+  "suite": "test:house-bot-reports",
+  "red": "0.175.r2, 0.175.r2c [memory]; test:house-bot-disclosure 2.v words",
+  "note": ""
+ },
+ {
+  "id": "S5-M57",
+  "file": "scripts/lib/house-bot-reports-cases.mts",
+  "from": ".filter((r) => (R2_MODULES as readonly string[]).includes(r));",
+  "to": ".filter((r) => r === \"src/lib/house-bot/exposure-copy\");",
+  "suite": "test:house-bot-reports",
+  "red": "0.198.c1 [memory]",
+  "note": ""
+ },
+ {
+  "id": "S5-M58",
+  "file": "scripts/lib/house-bot-reports-cases.mts",
+  "from": "if (hash !== PLAYER_NOTIFIER_HASHES[name])",
+  "to": "if (false)",
+  "suite": "test:house-bot-reports",
+  "red": "0.198.c2 [memory]",
+  "note": ""
+ },
+ {
+  "id": "S5-M59",
+  "file": "scripts/lib/house-bot-reports-cases.mts",
+  "from": "if (ts.isStringLiteral(n) || ts.isNoSubstitutionTemplateLiteral(n) || ts.isTemplateHead(n) || ts.isTemplateMiddle(n) || ts.isTemplateTail(n) || ts.isJsxText(n)) out.push(n.text);",
+  "to": "if (ts.isNoSubstitutionTemplateLiteral(n)) out.push(n.text);",
+  "suite": "test:house-bot-reports",
+  "red": "0.198.c2, 0.198.c3 [memory]",
+  "note": "from-text re-derived: printedTexts gained JsxText in eff16f35"
+ },
+ {
+  "id": "S5-M60",
+  "file": "scripts/lib/house-bot-reports-cases.mts",
+  "from": "else if (!COPY_HOMES.includes(rel) && !rel.startsWith(\"src/app/admin/\"))",
+  "to": "else if (false)",
+  "suite": "test:house-bot-reports",
+  "red": "0.192.c1 [memory]",
+  "note": ""
+ },
+ {
+  "id": "S5-M61",
+  "file": "scripts/lib/house-bot-reports-cases.mts",
+  "from": "if (ts.isJsxAttribute(q) && [\"value\", \"defaultValue\", \"placeholder\"].includes(q.name.getText(sf))) { fieldish = true; break; }",
+  "to": "if (ts.isJsxAttribute(q) && [\"value\"].includes(q.name.getText(sf))) { fieldish = true; break; }",
+  "suite": "test:house-bot-reports",
+  "red": "0.196.c1 [memory]",
+  "note": ""
+ },
+ {
+  "id": "S5-M62",
+  "file": "scripts/lib/house-bot-reports-cases.mts",
+  "from": "if (viewer != null && !VIEWER_EXPRESSIONS.includes(viewer)) problems.push",
+  "to": "if (false) problems.push",
+  "suite": "test:house-bot-reports",
+  "red": "0.194.c1 [memory]",
+  "note": ""
+ },
+ {
+  "id": "S5-M63",
+  "file": "scripts/house-bot-disclosure.test.mts",
+  "from": "if (spec.startsWith(\"@/\")) base = P.join(srcRoot, spec.slice(2));",
+  "to": "if (spec.startsWith(\"@/\")) return null;",
+  "suite": "test:house-bot-disclosure",
+  "red": "4.c7 (and 1.0) (no store)",
+  "note": ""
+ },
+ {
+  "id": "S5-M64",
+  "file": "src/components/admin/exposure-line.tsx",
+  "from": "font-sans text-body-sm text-text-muted whitespace-normal ${className}",
+  "to": "font-sans text-body-sm text-text-muted ${className}",
+  "suite": "test:house-bot-reports",
+  "red": "4.192.5 [memory] (its withLayout render)",
+  "note": ""
+ },
+ {
+  "id": "S5-M65",
+  "file": "scripts/lib/house-bot-vocabulary.mjs",
+  "from": "|house[ -]?stakes?|dau la nyumba|平台投注|staff[- ]?chosen|chosen by (?:staff|you)|including house\\b`;",
+  "to": "|house[ -]?stakes?|dau la nyumba|平台投注|staff[- ]?chosen|including house\\b`;",
+  "suite": "test:house-bot-reports",
+  "red": "0.175.r2, 0.175.r2c, 0.175.r2p [memory]; test:house-bot-disclosure 2.v words",
+  "note": "new word: chosen by staff / chosen by you"
+ },
+ {
+  "id": "S5-M66",
+  "file": "scripts/lib/house-bot-vocabulary.mjs",
+  "from": "|house[ -]?stakes?|dau la nyumba|平台投注|staff[- ]?chosen|chosen by (?:staff|you)|including house\\b`;",
+  "to": "|house[ -]?stakes?|dau la nyumba|平台投注|staff[- ]?chosen|chosen by (?:staff|you)|including house`;",
+  "suite": "test:house-bot-reports",
+  "red": "0.175.r2c [memory] (\"including household costs\" becomes a hit)",
+  "note": "the word bound on including house"
+ },
+ {
+  "id": "S5-M67",
+  "file": "scripts/lib/house-bot-vocabulary.mjs",
+  "from": "|house[ -]?stakes?|dau la nyumba|平台投注|staff[- ]?chosen|chosen by (?:staff|you)|including house\\b`;",
+  "to": "|house[ -]?stakes?|dau la nyumba|平台投注|staff[- ]?chosen|chosen by (?:staff|you)`;",
+  "suite": "test:house-bot-reports",
+  "red": "0.175.r2, 0.175.r2c, 0.175.r2p [memory]",
+  "note": "new word: including house"
+ },
+ {
+  "id": "S5-M68",
+  "file": "scripts/lib/house-bot-vocabulary.mjs",
+  "from": "  \"chosen by staff\", \"chosen by you\", \"including house\",",
+  "to": "",
+  "suite": "test:house-bot-reports",
+  "red": "0.175.r2 [memory]; test:house-bot-disclosure and verify:house-bot-bundle planted-sample counts",
+  "note": "the three samples every consumer's planted control uses"
+ },
+ {
+  "id": "S5-M69",
+  "file": "scripts/lib/house-bot-reports-cases.mts",
+  "from": " || ts.isTemplateTail(n) || ts.isJsxText(n)) out.push(n.text);",
+  "to": " || ts.isTemplateTail(n)) out.push(n.text);",
+  "suite": "test:house-bot-reports",
+  "red": "0.198.c3 [memory] (the JSX-text plant)",
+  "note": ""
+ },
+ {
+  "id": "S5-M70",
+  "file": "src/lib/server/house-console-read.ts",
+  "from": "    if (isOwnerOnlyPath(route)) return isAdmin(viewer.role);",
+  "to": "    if (isOwnerOnlyPath(route)) return true;",
+  "suite": "test:house-bot-reports",
+  "red": "4.259.2, 4.260.2 [memory, postgres]",
+  "note": "ruling 259 audience: Owner-only paths are ADMIN's"
+ },
+ {
+  "id": "S5-M71",
+  "file": "src/lib/server/house-console-read.ts",
+  "from": "    return (await canView(viewer.role, domainForPath(route))) === true;",
+  "to": "    return true;",
+  "suite": "test:house-bot-reports",
+  "red": "4.259.1, 4.259.2, 4.260.1 [memory, postgres]",
+  "note": "the audience ignores the route's view grant (SUPPORT/COMPLIANCE on the queue, SUPPORT on the audit log)"
+ },
+ {
+  "id": "S5-M72",
+  "file": "src/lib/server/house-console-read.ts",
+  "from": "if (typeof viewerUserId !== \"string\" || viewerUserId.length === 0 || !route.startsWith(\"/admin\")) return false;",
+  "to": "if (typeof viewerUserId !== \"string\" || viewerUserId.length === 0) return false;",
+  "suite": "test:house-bot-reports",
+  "red": "4.259.1, 4.260.1 [memory, postgres] (adminOffConsole)",
+  "note": ""
+ },
+ {
+  "id": "S5-M73",
+  "file": "src/lib/server/house-console-read.ts",
+  "from": "  } catch {\n    return false;\n  }",
+  "to": "  } catch {\n    return true;\n  }",
+  "suite": "test:house-bot-reports",
+  "red": "4.259.3, 4.260.4 [memory, postgres]",
+  "note": "fail closed"
+ },
+ {
+  "id": "S5-M74",
+  "file": "src/lib/server/house-console-read.ts",
+  "from": "  if (!(await houseConsoleAudience(viewerUserId, route))) return new Map();",
+  "to": "  if (!(await houseConsoleAudience(viewerUserId, route)) && false) return new Map();",
+  "suite": "test:house-bot-reports",
+  "red": "4.259.1, 4.259.3 [memory, postgres]",
+  "note": "the stake gate returning the figures for a non-staff viewer"
+ },
+ {
+  "id": "S5-M75",
+  "file": "src/lib/server/house-console-read.ts",
+  "from": "  return houseStakeByMarket(marketIds);",
+  "to": "  return houseStakeByMarket(marketIds).catch(() => new Map());",
+  "suite": "test:house-bot-reports",
+  "red": "4.259.3 [memory, postgres]",
+  "note": "a fabricated empty read inside the gate: the officer would see no line instead of couldn't read"
+ },
+ {
+  "id": "S5-M76",
+  "file": "src/lib/server/house-console-read.ts",
+  "from": "  if (!(await houseConsoleAudience(viewerUserId, route))) return labels;",
+  "to": "  if (!(await houseConsoleAudience(viewerUserId, route)) && false) return labels;",
+  "suite": "test:house-bot-reports",
+  "red": "4.259.4 [memory, postgres]",
+  "note": ""
+ },
+ {
+  "id": "S5-M77",
+  "file": "src/lib/server/house-console-read.ts",
+  "from": "      labels.set(botId, bot ? bot.label : \"—\");",
+  "to": "      labels.set(botId, bot ? bot.label : \"\");",
+  "suite": "test:house-bot-reports",
+  "red": "4.259.4 [memory, postgres]",
+  "note": ""
+ },
+ {
+  "id": "S5-M78",
+  "file": "src/lib/server/house-console-read.ts",
+  "from": "      labels.set(botId, \"—\");\n",
+  "to": "      throw new Error(\"label read failed\");\n",
+  "suite": "test:house-bot-reports",
+  "red": "4.259.4 [memory, postgres] (the throwing label read, added at the close)",
+  "note": ""
+ },
+ {
+  "id": "S5-M79",
+  "file": "src/app/admin/resolver-queue/page.tsx",
+  "from": "houseStakeForConsole(session?.userId ?? null, \"/admin/resolver-queue\", paged.map((m) => m.id))",
+  "to": "houseStakeForConsole(\"usr_admin\", \"/admin/resolver-queue\", paged.map((m) => m.id))",
+  "suite": "test:house-bot-reports",
+  "red": "0.194.3 [memory]",
+  "note": "a literal viewer"
+ },
+ {
+  "id": "S5-M80",
+  "file": "src/app/admin/resolver/[id]/page.tsx",
+  "from": "houseStakeForConsole(currentOfficerId, \"/admin/resolver\", [m.id])",
+  "to": "houseStakeForConsole(currentOfficerId, \"/admin\", [m.id])",
+  "suite": "test:house-bot-reports",
+  "red": "0.194.3 [memory]",
+  "note": "another route"
+ },
+ {
+  "id": "S5-M81",
+  "file": "src/app/admin/markets/[id]/page.tsx",
+  "from": "try { stakes = await houseStakeForConsole(session?.userId ?? null, \"/admin/markets\", [m.id]); } catch { stakes = null; }",
+  "to": "stakes = await houseStakeForConsole(session?.userId ?? null, \"/admin/markets\", [m.id]);",
+  "suite": "test:house-bot-reports",
+  "red": "0.194.3 [memory]",
+  "note": "no catch"
+ },
+ {
+  "id": "S5-M82",
+  "file": "src/app/admin/markets/page.tsx",
+  "from": ".map((m) => m.id)); } catch { stakes = null; }",
+  "to": ".map((m) => m.id)); } catch { stakes = new Map(); }",
+  "suite": "test:house-bot-reports",
+  "red": "0.194.3 [memory]",
+  "note": "a fabricated empty catch"
+ },
+ {
+  "id": "S5-M83",
+  "file": "src/app/admin/objections/page.tsx",
+  "from": "pageRows.filter((r) => r.actionable).map((r) => r.o.marketId)",
+  "to": "pageRows.map((r) => r.o.marketId)",
+  "suite": "test:house-bot-reports",
+  "red": "0.194.3 [memory]",
+  "note": "the wrong market list (closed rows read)"
+ },
+ {
+  "id": "S5-M84",
+  "file": "src/app/admin/updown/rounds/page.tsx",
+  "from": "rounds.filter((r) => !r.settledAt).map((r) => r.marketId)",
+  "to": "rounds.map((r) => r.marketId)",
+  "suite": "test:house-bot-reports",
+  "red": "0.194.3 [memory]",
+  "note": "the wrong market list (settled rounds read)"
+ },
+ {
+  "id": "S5-M85",
+  "file": "src/app/admin/markets/page.tsx",
+  "from": "import { exposureReadOf } from \"@/lib/house-bot/exposure-copy\";",
+  "to": "import { exposureReadOf } from \"@/lib/house-bot/exposure-copy\";\nimport { houseStakeByMarket } from \"@/lib/server/house-bot/exposure\";",
+  "suite": "test:house-bot-reports",
+  "red": "0.194.3, 0.260.1 [memory]",
+  "note": "an ungated reader named by a console page"
+ },
+ {
+  "id": "S5-M86",
+  "file": "src/app/admin/markets/[id]/page.tsx",
+  "from": "{typeof p.houseBotId === \"string\" && botLabels.has(p.houseBotId) && (",
+  "to": "{typeof p.houseBotId === \"string\" && (",
+  "suite": "test:house-bot-reports",
+  "red": "0.194.2 [memory]",
+  "note": "the row tag on every marked row whatever the gated read holds"
+ },
+ {
+  "id": "S5-M87",
+  "file": "src/app/admin/markets/[id]/page.tsx",
+  "from": "houseBotLabelsForConsole(session?.userId ?? null, \"/admin/markets\", paged.map",
+  "to": "houseBotLabelsForConsole(\"usr_admin\", \"/admin/markets\", paged.map",
+  "suite": "test:house-bot-reports",
+  "red": "0.194.2 [memory]",
+  "note": "the label read handed a literal viewer"
+ },
+ {
+  "id": "S5-M88",
+  "file": "src/app/admin/kyc/[id]/page.tsx",
+  "from": "houseBetCount={houseVisible ? moneyFacts.houseBetCount : 0}",
+  "to": "houseBetCount={moneyFacts.houseBetCount}",
+  "suite": "test:house-bot-reports",
+  "red": "0.194.2 [memory]",
+  "note": "the KYC house count passed ungated"
+ },
+ {
+  "id": "S5-M89",
+  "file": "src/app/admin/kyc/[id]/page.tsx",
+  "from": "houseStakedTzs={houseVisible ? moneyFacts.houseStakedTzs : 0}",
+  "to": "houseStakedTzs={houseVisible ? moneyFacts.stakedTzs : 0}",
+  "suite": "test:house-bot-reports",
+  "red": "0.194.2 [memory]",
+  "note": "the KYC exact props: the total staked as the house figure"
+ },
+ {
+  "id": "S5-M90",
+  "file": "src/app/admin/kyc/[id]/page.tsx",
+  "from": "const houseVisible = await houseConsoleAudience(session?.userId ?? null, \"/admin/kyc\");",
+  "to": "const houseVisible = await houseConsoleAudience(session?.userId ?? null, \"/admin/markets\");",
+  "suite": "test:house-bot-reports",
+  "red": "0.194.2 [memory]",
+  "note": "the KYC gate asked about another route"
+ },
+ {
+  "id": "S5-M91",
+  "file": "src/app/admin/markets/emergency-void-control.tsx",
+  "from": "        exposureSlot={exposureSlot}\n",
+  "to": "",
+  "suite": "test:house-bot-reports",
+  "red": "0.192.2 [memory]",
+  "note": "the slot chain's handoff cut, ConfirmVoid's child left in place"
+ },
+ {
+  "id": "S5-M92",
+  "file": "src/app/admin/resolver-queue/bulk-resolve-bar.tsx",
+  "from": "<p className=\"text-body-sm text-text-muted\">{exposureLines.join(\" · \")}</p>",
+  "to": "<p className=\"text-body-sm text-text-muted\" />",
+  "suite": "test:house-bot-reports",
+  "red": "0.192.2 [memory]",
+  "note": "BulkConfirm's paragraph emptied"
+ },
+ {
+  "id": "S5-M93",
+  "file": "src/app/admin/resolver-queue/bulk-resolve-bar.tsx",
+  "from": ".map((line) => <React.Fragment key={line}><span className=\"text-border\"> · </span><span>{line}</span></React.Fragment>)",
+  "to": ".map(() => null)",
+  "suite": "test:house-bot-reports",
+  "red": "0.192.2 [memory]",
+  "note": "the summary's lines mapped to nothing"
+ },
+ {
+  "id": "S5-M94",
+  "file": "src/app/admin/resolver-queue/bulk-resolve-bar.tsx",
+  "from": "exposureCountLines(chosen, exposureCountTemplate)",
+  "to": "exposureCountLines(rows, exposureCountTemplate)",
+  "suite": "test:house-bot-reports",
+  "red": "0.192.2 [memory]",
+  "note": "chosen → rows: the summary counts the page, not the selection"
+ },
+ {
+  "id": "S5-M95",
+  "file": "scripts/lib/house-bot-reports-cases.mts",
+  "from": "const resolved = importSpecifiers(rel, code).filter((i) => !i.typeOnly).map((i) => resolveSpec(rel, i.spec));",
+  "to": "const resolved = importSpecifiers(rel, code).map((i) => resolveSpec(rel, i.spec));",
+  "suite": "test:house-bot-reports",
+  "red": "0.192.c1 [memory]",
+  "note": "the type-only filter"
+ },
+ {
+  "id": "S5-M96",
+  "file": "scripts/lib/house-bot-reports-cases.mts",
+  "from": "/^(useState|set[A-Z]\\w*)$/.test(q.expression.getText(sf))",
+  "to": "/^(useState)$/.test(q.expression.getText(sf))",
+  "suite": "test:house-bot-reports",
+  "red": "0.196.c1 [memory]",
+  "note": "the setter branch"
+ },
+ {
+  "id": "S5-M97",
+  "file": "scripts/lib/house-bot-reports-cases.mts",
+  "from": "[\"set\", \"append\"].includes(q.expression.name.text)",
+  "to": "[\"set\"].includes(q.expression.name.text)",
+  "suite": "test:house-bot-reports",
+  "red": "0.196.c1 [memory]",
+  "note": "the FormData branch (the plant appends)"
+ },
+ {
+  "id": "S5-M98",
+  "file": "scripts/lib/house-bot-reports-cases.mts",
+  "from": "(rel.startsWith(\"src/app/\") && !rel.startsWith(\"src/app/admin/\")) || (rel.startsWith(\"src/components/\") && !rel.startsWith(\"src/components/admin/\"));",
+  "to": "(rel.startsWith(\"src/components/\") && !rel.startsWith(\"src/components/admin/\"));",
+  "suite": "test:house-bot-reports",
+  "red": "0.198.1, 0.198.c1 [memory]",
+  "note": "the disk population loses src/app"
+ },
+ {
+  "id": "S5-M99",
+  "file": "scripts/lib/house-bot-reports-cases.mts",
+  "from": "export const HOUSE_READ_MODULES = [...R2_MODULES, CONSOLE_READ_MODULE] as const;",
+  "to": "export const HOUSE_READ_MODULES = [...R2_MODULES] as const;",
+  "suite": "test:house-bot-reports",
+  "red": "0.198.c1 [memory]",
+  "note": "the console readers dropped from the player population's forbidden list"
+ },
+ {
+  "id": "S5-M100",
+  "file": "src/lib/house-bot/exposure-copy.ts",
+  "from": "staffClause: surface.staff && chosen > 0 ? `of which chosen by staff ${o.money(chosen)}` : null,",
+  "to": "staffClause: surface.staff && chosen > 0 ? `of which picked by staff ${o.money(chosen)}` : null,",
+  "suite": "test:house-bot-reports",
+  "red": "0.175.r2p [memory]; 4.192.1, 4.192.2, 4.192.5 [memory]; 4.193.4 [memory, postgres]",
+  "note": "the product-built vocabulary pin: a staff clause the vocabulary cannot see"
+ },
+ {
+  "id": "S5-M101",
+  "file": "src/lib/house-bot/exposure-copy.ts",
+  "from": "`Money held on this market until it resolves, including house ${money(read.openTzs)}`",
+  "to": "`Money held on this market until it resolves, of which ours ${money(read.openTzs)}`",
+  "suite": "test:house-bot-reports",
+  "red": "0.175.r2p [memory]; 4.194.1 [memory]; 4.194.3, 4.259.1 [memory, postgres]",
+  "note": "the held title's house state silent to the vocabulary"
+ },
+ {
+  "id": "S5-M102",
+  "file": "scripts/lib/house-bot-reports-cases.mts",
+  "from": "  if (args[0] !== spec.viewer) say(`hands the gate another viewer: ${args[0]}`, call);",
+  "to": "  if (false) say(`hands the gate another viewer: ${args[0]}`, call);",
+  "suite": "test:house-bot-reports",
+  "red": "0.194.c3 [memory] (literalViewer)",
+  "note": ""
+ },
+ {
+  "id": "S5-M103",
+  "file": "scripts/lib/house-bot-reports-cases.mts",
+  "from": "  if (!shaped) say(\"the read is not `try { stakes = await houseStakeForConsole(…); } catch { stakes = null; }`\", call);",
+  "to": "  if (false) say(\"the read is not `try { stakes = await houseStakeForConsole(…); } catch { stakes = null; }`\", call);",
+  "suite": "test:house-bot-reports",
+  "red": "0.194.c3 [memory] (emptyOnFailure, noCatch)",
+  "note": ""
+ },
+ {
+  "id": "S5-M104",
+  "file": "scripts/lib/house-bot-reports-cases.mts",
+  "from": "    if (ts.isIdentifier(n) && (UNGATED_HOUSE_READERS as readonly string[]).includes(n.text)) say(`names the ungated house reader ${n.text}`, n);",
+  "to": "    if (false) say(`names the ungated house reader ${n.text}`, n);",
+  "suite": "test:house-bot-reports",
+  "red": "0.194.c3 [memory] (ungatedImport)",
+  "note": ""
+ },
+ {
+  "id": "S5-M105",
+  "file": "src/lib/server/house-console-read.ts",
+  "from": "  if (rows == null || (await houseConsoleAudience(viewerUserId, route))) return rows;",
+  "to": "  if (rows == null || (await houseConsoleAudience(viewerUserId, route)) || true) return rows;",
+  "suite": "test:house-bot-reports",
+  "red": "4.260.1, 4.260.2, 4.260.3, 4.260.4 [memory, postgres]",
+  "note": "the gate returning the rows for a viewer outside"
+ },
+ {
+  "id": "S5-M106",
+  "file": "src/lib/server/house-console-read.ts",
+  "from": "  return HOUSE_OWNED_AUDIT_ACTIONS.includes(e.action) || e.targetType === \"HouseBot\";",
+  "to": "  return e.targetType === \"HouseBot\";",
+  "suite": "test:house-bot-reports",
+  "red": "4.260.1 [memory, postgres] (password_verified targets the holder, the report row targets nothing)",
+  "note": "the row filter's action rule dropped"
+ },
+ {
+  "id": "S5-M107",
+  "file": "src/lib/server/house-console-read.ts",
+  "from": "  return HOUSE_OWNED_AUDIT_ACTIONS.includes(e.action) || e.targetType === \"HouseBot\";",
+  "to": "  return HOUSE_OWNED_AUDIT_ACTIONS.includes(e.action);",
+  "suite": "test:house-bot-reports",
+  "red": "4.260.1 [memory, postgres] (alert.acknowledged on a HouseBot, added at the close)",
+  "note": "the HouseBot target rule dropped"
+ },
+ {
+  "id": "S5-M108",
+  "file": "src/lib/server/house-console-read.ts",
+  "from": "  const withoutHouse = (entries: AuditEntry[]) => withoutHouseAuditKeys({ entries: entries.filter((e) => !isHouseAuditRow(e)) }).entries;",
+  "to": "  const withoutHouse = (entries: AuditEntry[]) => entries.filter((e) => !isHouseAuditRow(e));",
+  "suite": "test:house-bot-reports",
+  "red": "4.260.1, 4.260.3, 4.260.4 [memory, postgres]",
+  "note": "the key strip dropped"
+ },
+ {
+  "id": "S5-M109",
+  "file": "src/lib/server/house-console-read.ts",
+  "from": "{ ...rows, entries: withoutHouse(rows.entries) }",
+  "to": "rows",
+  "suite": "test:house-bot-reports",
+  "red": "4.260.3 [memory, postgres]",
+  "note": "a durable page passed through unfiltered"
+ },
+ {
+  "id": "S5-M110",
+  "file": "src/lib/server/user-service.ts",
+  "from": "[...Object.keys(HOUSE_AUDIT), ...HOUSE_REPORT_AUDIT_ACTIONS];",
+  "to": "[...Object.keys(HOUSE_AUDIT)];",
+  "suite": "test:house-bot-reports",
+  "red": "4.260.1 [memory, postgres] (the house report row's \"liquidity\"); also 3.x per mutate-c5-s12 M13",
+  "note": "same from-text as step 1-2's M13: the shared list now also feeds the console gate"
+ },
+ {
+  "id": "S5-M111",
+  "file": "src/app/admin/page.tsx",
+  "from": "await houseAuditForConsole(session?.userId ?? null, \"/admin\", getAuditPage({ limit: 12 }))",
+  "to": "getAuditPage({ limit: 12 })",
+  "suite": "test:house-bot-reports",
+  "red": "0.260.1 [memory]",
+  "note": "ruling 260: this page's audit read handed to no gate (the served probe's measured leak class)"
+ },
+ {
+  "id": "S5-M112",
+  "file": "src/app/admin/audit/page.tsx",
+  "from": "await houseAuditForConsole(session?.userId ?? null, \"/admin/audit\", getAuditPage({ limit: 100_000 }))",
+  "to": "getAuditPage({ limit: 100_000 })",
+  "suite": "test:house-bot-reports",
+  "red": "0.260.1 [memory]",
+  "note": "ruling 260: this page's audit read handed to no gate (the served probe's measured leak class)"
+ },
+ {
+  "id": "S5-M113",
+  "file": "src/app/admin/approvals/page.tsx",
+  "from": "await houseAuditForConsole(session?.userId ?? null, \"/admin/approvals\", getAuditPage({ category: \"ADMIN\", limit: 60 }))",
+  "to": "getAuditPage({ category: \"ADMIN\", limit: 60 })",
+  "suite": "test:house-bot-reports",
+  "red": "0.260.1 [memory]",
+  "note": "ruling 260: this page's audit read handed to no gate (the served probe's measured leak class)"
+ },
+ {
+  "id": "S5-M114",
+  "file": "src/app/admin/compliance/page.tsx",
+  "from": "await houseAuditForConsole(session?.userId ?? null, \"/admin/compliance\", getAuditPage({ category: \"COMPLIANCE\", limit: 200 }))",
+  "to": "getAuditPage({ category: \"COMPLIANCE\", limit: 200 })",
+  "suite": "test:house-bot-reports",
+  "red": "0.260.1 [memory]",
+  "note": "ruling 260: this page's audit read handed to no gate (the served probe's measured leak class)"
+ },
+ {
+  "id": "S5-M115",
+  "file": "src/app/admin/config/page.tsx",
+  "from": "(await houseAuditForConsole(session?.userId ?? null, \"/admin/config\", getAuditPage({ category: \"ADMIN\", limit: 50 })))",
+  "to": "getAuditPage({ category: \"ADMIN\", limit: 50 })",
+  "suite": "test:house-bot-reports",
+  "red": "0.260.1 [memory]",
+  "note": "ruling 260: this page's audit read handed to no gate (the served probe's measured leak class)"
+ },
+ {
+  "id": "S5-M116",
+  "file": "src/app/admin/kyc/[id]/page.tsx",
+  "from": "await houseAuditForConsole(session?.userId ?? null, \"/admin/kyc\", getAuditForTargetDurable(\"User\", id, { limit: 500 }).catch(() => null))",
+  "to": "await getAuditForTargetDurable(\"User\", id, { limit: 500 }).catch(() => null)",
+  "suite": "test:house-bot-reports",
+  "red": "0.260.1 [memory]",
+  "note": "ruling 260: this page's audit read handed to no gate (the served probe's measured leak class)"
+ },
+ {
+  "id": "S5-M117",
+  "file": "src/app/admin/live/page.tsx",
+  "from": "await houseAuditForConsole(session?.userId ?? null, \"/admin/live\", getAuditPage({ category: \"BET\", limit: BET_FEED }))",
+  "to": "getAuditPage({ category: \"BET\", limit: BET_FEED })",
+  "suite": "test:house-bot-reports",
+  "red": "0.260.1 [memory]",
+  "note": "ruling 260: this page's audit read handed to no gate (the served probe's measured leak class)"
+ },
+ {
+  "id": "S5-M118",
+  "file": "src/app/admin/players/[id]/page.tsx",
+  "from": "(await houseAuditForConsole(viewer?.userId ?? null, \"/admin/players\", [...(getAuditForActor(id, 200) ?? []), ...(getAuditForTarget(\"User\", id, 200) ?? [])]))",
+  "to": "[...(getAuditForActor(id, 200) ?? []), ...(getAuditForTarget(\"User\", id, 200) ?? [])]",
+  "suite": "test:house-bot-reports",
+  "red": "0.260.1 [memory]",
+  "note": "ruling 260: this page's audit read handed to no gate (the served probe's measured leak class)"
+ },
+ {
+  "id": "S5-M119",
+  "file": "src/app/admin/reports/page.tsx",
+  "from": "(await houseAuditForConsole(session.userId, \"/admin/reports\", getAuditPage({ category: \"ADMIN\", limit: 10000 })))",
+  "to": "getAuditPage({ category: \"ADMIN\", limit: 10000 })",
+  "suite": "test:house-bot-reports",
+  "red": "0.260.1 [memory]",
+  "note": "ruling 260: this page's audit read handed to no gate (the served probe's measured leak class)"
+ },
+ {
+  "id": "S5-M120",
+  "file": "src/app/admin/resolver/[id]/page.tsx",
+  "from": "(await houseAuditForConsole(session?.userId ?? null, \"/admin/resolver\", getAuditPage({ category: \"ADMIN\", limit: 500 })))",
+  "to": "getAuditPage({ category: \"ADMIN\", limit: 500 })",
+  "suite": "test:house-bot-reports",
+  "red": "0.260.1 [memory]",
+  "note": "ruling 260: this page's audit read handed to no gate (the served probe's measured leak class)"
+ },
+ {
+  "id": "S5-M121",
+  "file": "src/app/admin/retention/page.tsx",
+  "from": "(await houseAuditForConsole(session?.userId ?? null, \"/admin/retention\", getAuditPage({ limit: 100_000 })))",
+  "to": "getAuditPage({ limit: 100_000 })",
+  "suite": "test:house-bot-reports",
+  "red": "0.260.1 [memory]",
+  "note": "ruling 260: this page's audit read handed to no gate (the served probe's measured leak class)"
+ },
+ {
+  "id": "S5-M122",
+  "file": "src/app/admin/staff/[id]/page.tsx",
+  "from": "await houseAuditForConsole(session.userId, \"/admin/staff\", getAuditForTarget(\"User\", id, 100))",
+  "to": "getAuditForTarget(\"User\", id, 100)",
+  "suite": "test:house-bot-reports",
+  "red": "0.260.1 [memory]",
+  "note": "ruling 260: this page's audit read handed to no gate (the served probe's measured leak class)"
+ },
+ {
+  "id": "S5-M123",
+  "file": "src/app/admin/system/page.tsx",
+  "from": "(await houseAuditForConsole(session?.userId ?? null, \"/admin/system\", getAuditPage({ limit: 100_000 })))",
+  "to": "getAuditPage({ limit: 100_000 })",
+  "suite": "test:house-bot-reports",
+  "red": "0.260.1 [memory]",
+  "note": "ruling 260: this page's audit read handed to no gate (the served probe's measured leak class)"
+ },
+ {
+  "id": "S5-M124",
+  "file": "src/app/admin/agents/[id]/page.tsx",
+  "from": "houseAuditForConsole(session?.userId ?? null, \"/admin/agents\", getAuditForTargetDurable(\"AgentApplication\", app.id, { limit: 40 }))",
+  "to": "getAuditForTargetDurable(\"AgentApplication\", app.id, { limit: 40 })",
+  "suite": "test:house-bot-reports",
+  "red": "0.260.1 [memory]",
+  "note": "ruling 260: this page's audit read handed to no gate (the served probe's measured leak class)"
+ },
+ {
+  "id": "S5-M125",
+  "file": "src/app/admin/audit/page.tsx",
+  "from": "houseAuditForConsole(session?.userId ?? null, \"/admin/audit\", getAuditPage",
+  "to": "houseAuditForConsole(\"usr_admin\", \"/admin/audit\", getAuditPage",
+  "suite": "test:house-bot-reports",
+  "red": "0.260.1 [memory]",
+  "note": "a literal viewer"
+ },
+ {
+  "id": "S5-M126",
+  "file": "src/app/admin/players/[id]/page.tsx",
+  "from": "houseAuditForConsole(viewer?.userId ?? null, \"/admin/players\", [",
+  "to": "houseAuditForConsole(viewer?.userId ?? null, \"/admin\", [",
+  "suite": "test:house-bot-reports",
+  "red": "0.260.1 [memory]",
+  "note": "the player page asks about the overview's broader audience"
+ },
+ {
+  "id": "S5-M127",
+  "file": "src/app/admin/compliance/page.tsx",
+  "from": "  const session = await currentSession();\n  const recentApprovals",
+  "to": "  const session = { userId: null as string | null };\n  const recentApprovals",
+  "suite": "test:house-bot-reports",
+  "red": "0.260.1 [memory]",
+  "note": "a viewer binding that is not read from currentSession()"
+ },
+ {
+  "id": "S5-M128",
+  "file": "scripts/lib/house-bot-reports-cases.mts",
+  "from": "        if (!gated) say(`${reader}(…) is not handed straight to houseAuditForConsole: ${snippet(sf, n)}`, n);",
+  "to": "        if (false) say(`${reader}(…) is not handed straight to houseAuditForConsole: ${snippet(sf, n)}`, n);",
+  "suite": "test:house-bot-reports",
+  "red": "0.260.c1, 0.260.c2 [memory]",
+  "note": ""
+ },
+ {
+  "id": "S5-M129",
+  "file": "scripts/lib/house-bot-reports-cases.mts",
+  "from": "        if (!m || !sessions.has(m[1])) say(",
+  "to": "        if (!m) say(",
+  "suite": "test:house-bot-reports",
+  "red": "0.260.c1 [memory] (fakeSession)",
+  "note": ""
+ },
+ {
+  "id": "S5-M130",
+  "file": "scripts/lib/house-bot-reports-cases.mts",
+  "from": " && (fileRoute === r || fileRoute.startsWith(`${r}/`))",
+  "to": "",
+  "suite": "test:house-bot-reports",
+  "red": "0.260.c1 [memory] (sameDomainOtherPage, added at the close)",
+  "note": ""
+ },
+ {
+  "id": "S5-M131",
+  "file": "scripts/lib/house-bot-reports-cases.mts",
+  "from": "\n          && roles.domainForPath(r) === roles.domainForPath(fileRoute) && roles.isOwnerOnlyPath(r) === roles.isOwnerOnlyPath(fileRoute);",
+  "to": ";",
+  "suite": "test:house-bot-reports",
+  "red": "0.260.c1 [memory] (overviewPrefix)",
+  "note": ""
+ },
+ {
+  "id": "S5-M132",
+  "file": "scripts/lib/house-bot-reports-cases.mts",
+  "from": "      return ts.isVoidExpression(at.parent);",
+  "to": "      return true;",
+  "suite": "test:house-bot-reports",
+  "red": "0.260.c2 [memory] (houseDynamic, hookKept)",
+  "note": ""
+ },
+ {
+  "id": "S5-M133",
+  "file": "scripts/lib/house-bot-reports-cases.mts",
+  "from": "      return ts.isVoidExpression(at.parent);",
+  "to": "      return false;",
+  "suite": "test:house-bot-reports",
+  "red": "0.260.1 [memory] (the three fire-and-forget hooks reported)",
+  "note": ""
+ },
+ {
+  "id": "S5-M134",
+  "file": "scripts/lib/house-bot-reports-cases.mts",
+  "from": "if (resolved === AUDIT_MODULE && (i.names.includes(\"(dynamic)\") || i.names.includes(\"(re-export)\"))) say(",
+  "to": "if (false) say(",
+  "suite": "test:house-bot-reports",
+  "red": "0.260.c2 [memory] (dynamicInRoute)",
+  "note": ""
+ },
+ {
+  "id": "S5-M135",
+  "file": "scripts/lib/house-bot-reports-cases.mts",
+  "from": "          if (bindings && ts.isNamespaceImport(bindings)) namespaces.add(bindings.name.text);\n",
+  "to": "",
+  "suite": "test:house-bot-reports",
+  "red": "0.260.c2 [memory] (namespace)",
+  "note": ""
+ },
+ {
+  "id": "S5-M136",
+  "file": "scripts/lib/house-bot-reports-cases.mts",
+  "from": "readerLocals.set(e.name.text, imported);",
+  "to": "readerLocals.set(imported, imported);",
+  "suite": "test:house-bot-reports",
+  "red": "0.260.c2 [memory] (alias)",
+  "note": ""
+ },
+ {
+  "id": "S5-M137",
+  "file": "scripts/lib/house-bot-reports-cases.mts",
+  "from": "\"getAuditPage\", \"getAuditPageDurable\"] as const;",
+  "to": "\"getAuditPageDurable\"] as const;",
+  "suite": "test:house-bot-reports",
+  "red": "0.260.1 [memory] (the reader list no longer equals the audit module's exports; the readers go unseen)",
+  "note": ""
+ },
+ {
+  "id": "S5-M138",
+  "file": "scripts/lib/house-bot-reports-cases.mts",
+  "from": "        if (isHouseReadModule(resolved) && !typeOnly && !houseAllowed(resolved)) houseSays(resolved, \"imports\", n);",
+  "to": "        if (false) houseSays(resolved, \"imports\", n);",
+  "suite": "test:house-bot-reports",
+  "red": "0.260.c2 [memory] (houseStore)",
+  "note": ""
+ },
+ {
+  "id": "S5-M139",
+  "file": "scripts/lib/house-bot-reports-cases.mts",
+  "from": "  \"src/app/admin/system/page.tsx\": [\"src/lib/server/house-bot/engine-health\"],\n",
+  "to": "",
+  "suite": "test:house-bot-reports",
+  "red": "0.260.1 [memory] (the engine card's import reported)",
+  "note": ""
+ },
+ {
+  "id": "S5-M140",
+  "file": "scripts/lib/house-bot-reports-cases.mts",
+  "from": "  rel.startsWith(\"src/app/admin/\") || rel.startsWith(\"src/app/api/admin/\") || rel.startsWith(\"src/components/admin/\");",
+  "to": "  rel.startsWith(\"src/app/admin/\");",
+  "suite": "test:house-bot-reports",
+  "red": "0.260.c2 [memory] (dynamicInRoute, component)",
+  "note": ""
+ }
+]

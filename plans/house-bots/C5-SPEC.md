@@ -2669,15 +2669,16 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
        straight to the gate with the session's id and the file's own route, no `import()` of the audit module, no kept house
        read module outside the named homes) with controls 0.260.c1 (the player page's measured leak restored, a reader
        filtered before the gate, a literal viewer, a viewer not read from `currentSession()`, another domain's route, the
-       overview's broader prefix; the KYC page's `await … .catch` read not reported) and 0.260.c2 (an aliased reader, a
+       overview's broader prefix, another page of the same domain; the KYC page's `await … .catch` read not reported) and 0.260.c2 (an aliased reader, a
        namespace reader, the audit module `import()`ed by an admin route, a component gating with a route it does not serve,
        the house store in a console page, a house module `import()`ed and kept, a hook whose result an action returns; a
        fire-and-forget hook, `verifyChain` and type-only imports not reported). Reports §4.260.1–4 on both stores (a player,
        the holder, a trigger player, no session, an unknown id, SUPPORT on the audit log, the holder on the overview, the
-       MODERATOR on the player page and an ADMIN off the console get no house action, row or word, while the holder's own
-       stake audit and the refused erasure keep their other keys and an officer's platform row is untouched; the ADMIN,
+       MODERATOR on the player page and an ADMIN off the console get no house action, row or word — a platform action about a
+       house bot included — while the holder's own stake audit and the refused erasure keep their other keys and an officer's
+       platform row is untouched; the ADMIN,
        COMPLIANCE, SUPPORT and the MODERATOR each read their routes whole, the MODERATOR not the Owner-only staff page; the
-       read's shapes; fail closed on a failing user read). The served probe re-run on the fixed build: **0 of 606 non-staff
+       read's shapes; fail closed on a failing user read); 4.259.4 gains the label read that throws. The served probe re-run on the fixed build: **0 of 606 non-staff
        responses carry house data**, the ADMIN control still carries it on the same 19 route instances. Mutations: a page's
        read handed to no gate, a literal viewer or another route; the gate returning the rows for a viewer outside; the row
        filter and the key strip each dropped; the `HouseBot` target rule dropped.
