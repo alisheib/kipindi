@@ -158,6 +158,11 @@ ok("CONTROL: the raw stored row carries the future column and the house marker (
 
 const playerAfter = await exportUserData(userId);
 const officerAfter = await buildDsarBundle(userId);
+// Ruling 175 · this consumer's planted-hit control: the absence checks below read `houseHits`, so it must be seen FINDING
+// each family in a door-shaped file first — a word, an identifier and a bounded id.
+const plantedDoor = houseHits(JSON.stringify({ ...playerAfter, planted: { note: "house bot", key: "houseBotId", id: MARKER } }));
+ok("CONTROL: houseHits finds a planted word, identifier and bounded id in a door-shaped file (so a zero below means something)",
+  ["house bot", "houseBotId", MARKER].every((s) => plantedDoor.includes(s)), plantedDoor.join(", "));
 const doors: Array<[string, unknown]> = [["player export", playerAfter], ["officer bundle", officerAfter]];
 for (const [door, file] of doors) {
   const json = JSON.stringify(file);
@@ -167,11 +172,15 @@ for (const [door, file] of doors) {
     !json.includes(MARKER) && !json.includes("houseBotId") && houseHits(json).length === 0, houseHits(json).slice(0, 5).join(", "));
 }
 
+// ⛔ WRITTEN OUT, never imported from the module under test (C5-SPEC ruling 169): origin/main's 23 `StoredTxn` keys in
+// `toStoredTxn`'s order at `b726cb7f`. A column added to the mapper, DSAR_TXN_KEYS and dsarTxnView together goes red here.
+const MAIN_TXN_KEYS = "id,walletId,userId,type,status,amount,fee,taxWithheld,balanceAfter,currency,provider,providerRef,providerStatus,payoutRail,msisdn,description,positionId,amlReason,createdAt,updatedAt,completedAt,idempotencyKey,pendingNotifiedAt";
+ok("DSAR_TXN_KEYS is exactly origin/main's 23 transaction keys, in order", DSAR_TXN_KEYS.join(",") === MAIN_TXN_KEYS, DSAR_TXN_KEYS.join(","));
 const txnKeySets = (rows: Array<Record<string, unknown>>) => [...new Set(rows.map((r) => Object.keys(r).join(",")))];
 const playerTxnKeys = txnKeySets(playerAfter.transactions as Array<Record<string, unknown>>);
 const officerTxnKeys = txnKeySets((officerAfter?.transactions ?? []) as Array<Record<string, unknown>>);
-ok("the player export and the officer bundle expose an IDENTICAL transaction field set — exactly DSAR_TXN_KEYS, in order",
-  playerTxnKeys.length === 1 && officerTxnKeys.length === 1 && playerTxnKeys[0] === officerTxnKeys[0] && playerTxnKeys[0] === DSAR_TXN_KEYS.join(","),
+ok("the player export and the officer bundle expose an IDENTICAL transaction field set — exactly origin/main's 23 keys, in order",
+  playerTxnKeys.length === 1 && officerTxnKeys.length === 1 && playerTxnKeys[0] === officerTxnKeys[0] && playerTxnKeys[0] === MAIN_TXN_KEYS,
   `player: ${playerTxnKeys.join(" | ")}\n       officer: ${officerTxnKeys.join(" | ")}`);
 const projectedTxn = JSON.stringify(dsarTxnView({ ...(rawTxn as never), anotherFutureSecret: "SENTINEL-TXN-b2" } as never));
 ok("⛔ dsarTxnView itself drops a column it has never heard of", !projectedTxn.includes("SENTINEL-TXN-b2") && !projectedTxn.includes(FUTURE_TXN) && !projectedTxn.includes(MARKER));

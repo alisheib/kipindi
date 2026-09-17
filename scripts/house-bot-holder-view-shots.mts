@@ -171,6 +171,10 @@ try {
   const trace = `at X (${ROOT}${String.fromCharCode(92)}x.js) · /Server/F:%5C${folder}`;
   ok("2.c · CONTROL · the checkout path is taken out of a trace, and a product sentence beside it is still caught",
     folder.length > 0 && leaks(trace).length === 0 && leaks(`${trace} · 50pick house-bots desk`).includes("house-bots"), JSON.stringify(leaks(trace)));
+  // Ruling 175 · one planted hit per word family, not only the words: an identifier and a bounded id beside the trace.
+  ok("2.c2 · CONTROL · a planted identifier (houseBotId) and a planted bounded id (hb_ + 24 hex) are caught beside the same trace",
+    leaks(`${trace} · {"houseBotId":1}`).includes("houseBotId") && leaks(`${trace} · hb_0123456789abcdef01234567`).includes("hb_0123456789abcdef01234567"),
+    JSON.stringify([leaks(`${trace} · {"houseBotId":1}`), leaks(`${trace} · hb_0123456789abcdef01234567`)]));
   // ── §2 · every page the holder can open, read whole (RSC payload included) ──
   const pages = [
     ["positions (open)", "/positions"],

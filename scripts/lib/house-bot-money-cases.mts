@@ -17,6 +17,11 @@ const ok = (l: string, c: boolean, x = "") => {
 };
 const section = (t: string) => console.log(`\n[${STORE}] ${t}`);
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+/**
+ * Resolves once this process's clock has passed `iso` — the clock that stamps the rows these cases order (`audit.ts` and the
+ * wallet services stamp `createdAt` with `new Date()`). A wait on the condition, never a guessed margin.
+ */
+const clockPast = async (iso: string) => { const at = Date.parse(iso); while (Date.now() <= at) await new Promise((r) => setImmediate(r)); };
 const show = (r: Any) => (r?.ok ? `ok${r.data?.replayed ? " (replayed)" : ""}` : `${r?.code ?? "?"}/${r?.reason ?? "no-reason"}${r?.detail ? ` ${JSON.stringify(r.detail)}` : ""}`);
 
 const w = await loadWorld();
@@ -115,11 +120,22 @@ section("§1 · a house stake places once, marked on every row");
   const PRIV: Any = await import("../../src/lib/server/privacy.ts");
   const AUD: Any = await import("../../src/lib/server/audit.ts");
   await AUD.auditFlush();
-  const KEYS: string[] = [...PRIV.DSAR_TXN_KEYS];
+  /**
+   * ⛔ origin/main's 23 `StoredTxn` keys, in `toStoredTxn`'s order, WRITTEN OUT HERE — read from `prisma-dal.ts` at
+   * `b726cb7f` (C5-SPEC ruling 169). Never imported from the module under test: an edit that adds a column to
+   * `toStoredTxn`, `DSAR_TXN_KEYS` and `dsarTxnView` together would otherwise pass every assertion below.
+   */
+  const KEYS: string[] = [
+    "id", "walletId", "userId", "type", "status", "amount", "fee", "taxWithheld", "balanceAfter", "currency", "provider",
+    "providerRef", "providerStatus", "payoutRail", "msisdn", "description", "positionId", "amlReason", "createdAt", "updatedAt",
+    "completedAt", "idempotencyKey", "pendingNotifiedAt",
+  ];
+  ok("1.14.keys · ruling 169 · the module's DSAR_TXN_KEYS is exactly origin/main's 23 keys, in order", JSON.stringify([...PRIV.DSAR_TXN_KEYS]) === JSON.stringify(KEYS),
+    JSON.stringify([...PRIV.DSAR_TXN_KEYS]));
   /** Rows whose in-process key list is not exactly the 23 allowlisted keys, in order (an undefined value still counts). */
   const offKeys = (rows: Any[]) => rows.filter((r) => JSON.stringify(Object.keys(r)) !== JSON.stringify(KEYS)).map((r) => Object.keys(r));
-  /** origin/main's mapper: `toStoredTxn` before the marker column existed — the raw row without `houseBotId`. */
-  const mainMapper = (r: Any) => { const { houseBotId: _marker, ...rest } = r; return rest; };
+  /** origin/main's mapper output for a stored row: exactly the 23 keys above, in order (a key a memory row lacks stays absent). */
+  const mainMapper = (r: Any) => Object.fromEntries(KEYS.filter((k) => k in r).map((k) => [k, r[k]]));
   const canon = (v: Any): Any => Array.isArray(v) ? v.map(canon) : v && typeof v === "object" ? Object.fromEntries(Object.keys(v).sort().map((k) => [k, canon(v[k])])) : v;
   /** Postgres: BYTE-equal JSON. Memory: DEEP-equal (a memory row keeps its writer's key order, `store.ts` txn.findByUser). */
   const sameAsMain = (projected: Any[], raw: Any[]) => w.onPostgres
@@ -136,9 +152,17 @@ section("§1 · a house stake places once, marked on every row");
   ok(`1.14.eq · ruling 169 · the export's rows equal origin/main's mapper output for the same rows (${w.onPostgres ? "byte-equal JSON" : "deep-equal"})`,
     sameAsMain(exported.transactions as Any[], rawRows), JSON.stringify((exported.transactions as Any[])[0]).slice(0, 200));
   const betAudit = (exported.auditEntries.entries as Any[]).find((e) => e.action === "market.position.opened" && e.targetId === pos?.id);
-  ok("1.14.audit · rulings 154, 168 · the house stake's bet audit is in the export as an own bet: the row stays, no house key, and the file names nothing",
-    !!betAudit && !("houseBotId" in betAudit.payload) && !("intentId" in betAudit.payload) && houseHits(JSON.stringify(exported)).length === 0,
-    JSON.stringify({ found: !!betAudit, keys: betAudit ? Object.keys(betAudit.payload) : null, hits: houseHits(JSON.stringify(exported)).slice(0, 5) }));
+  // CONTROL first: the strip below can only be seen working while SEAM:audit really writes the keys it strips.
+  const durableBet = ((await AUD.getAuditForActorDurable(b.userId, { limit: 1000 })).entries as Any[]).find((e) => e.action === "market.position.opened" && e.targetId === pos?.id);
+  ok("1.14.audit.c · CONTROL · the DURABLE bet row carries the bot and intent (SEAM:audit), so their absence from the export means something",
+    durableBet?.payload?.houseBotId === b.botId && durableBet?.payload?.intentId === i.id, JSON.stringify(durableBet?.payload ?? null));
+  // The world mints ids its own way (`hb_<pid>_<n>`, `hbi_x_<pid>_<n>`), which the shared bounded-id pattern does not match,
+  // so the fixture's own ids are looked for by value as well (ruling 168).
+  const exportedJson = JSON.stringify(exported);
+  ok("1.14.audit · rulings 154, 168 · the house stake's bet audit is in the export as an own bet: the row stays, no house key, and the file names nothing (no vocabulary word, no bot or intent id, no hb:)",
+    !!betAudit && !("houseBotId" in betAudit.payload) && !("intentId" in betAudit.payload) && houseHits(exportedJson).length === 0
+      && ![b.botId, i.id, "hb:"].some((s) => exportedJson.includes(s)),
+    JSON.stringify({ found: !!betAudit, keys: betAudit ? Object.keys(betAudit.payload) : null, hits: houseHits(exportedJson).slice(0, 5), ids: [b.botId, i.id, "hb:"].filter((s) => exportedJson.includes(s)) }));
 
   const bundle: Any = await PRIV.buildDsarBundle(b.userId);
   const bundleJson = JSON.stringify(bundle);
@@ -173,7 +197,7 @@ section("§1 · a house stake places once, marked on every row");
   ok("1.14d.1 · ruling 170 · …it reaches neither exportUserData().auditEntries nor the /profile/account feed, while the holder's own bet does",
     ownBet.ok === true && houseActions(exp2.auditEntries.entries).length === 0 && houseActions(feed.entries).length === 0
       && (exp2.auditEntries.entries as Any[]).some((e) => e.action === "market.position.opened") && (feed.entries as Any[]).some((e) => e.action === "market.position.opened")
-      && houseHits(JSON.stringify(exp2)).length === 0,
+      && houseHits(JSON.stringify(exp2)).length === 0 && !JSON.stringify(exp2).includes(b2.botId) && !JSON.stringify(feed).includes(b2.botId),
     JSON.stringify({ exp: houseActions(exp2.auditEntries.entries), feed: houseActions(feed.entries), hits: houseHits(JSON.stringify(exp2)).slice(0, 5) }));
 
   // 1.14e · the widened strip: an officer's decision audit carrying R9's snapshot keys, in that officer's own export.
@@ -190,19 +214,30 @@ section("§1 · a house stake places once, marked on every row");
     JSON.stringify({ exported: adj ? Object.keys(adj.payload) : null, durable: durable ? Object.keys(durable.payload) : null }));
 
   // 1.14f · the exclusion is IN THE READ: before the limit, and total counts over the same filter.
+  // Every row is stamped strictly after the one before it, waiting on the stamping clock (audit.ts `createdAt` is the app's
+  // `new Date()`, and Postgres orders by it) — never a sleep. The four report actions are the reports route's own names,
+  // written out (not derived from house-report-ids.ts, so a renamed id there goes red here).
   const actor = await w.user({});
-  AUD.audit({ category: "AUTH", action: "user.profile.updated", actorId: actor, targetType: "User", targetId: actor, payload: {} });
-  await AUD.auditFlush();
-  await sleep(25);
-  for (const action of ["house_bot.exported", "house_bot.holder_withdrew_consent", "report.house-liquidity.generated", "report.house-market-statement.failed"]) {
-    AUD.audit({ category: "ADMIN", action, actorId: actor, targetType: "User", targetId: actor, payload: {} });
-    await sleep(5);
+  let last = await AUD.audit({ category: "AUTH", action: "user.profile.updated", actorId: actor, targetType: "User", targetId: actor, payload: {} });
+  const HOUSE_ACTOR_ROWS = [
+    "house_bot.exported", "house_bot.holder_withdrew_consent",
+    "report.house-liquidity.generated", "report.house-liquidity.failed", "report.house-market-statement.generated", "report.house-market-statement.failed",
+  ];
+  for (const action of HOUSE_ACTOR_ROWS) {
+    await clockPast(last.createdAt);
+    last = await AUD.audit({ category: "ADMIN", action, actorId: actor, targetType: "User", targetId: actor, payload: {} });
   }
   await AUD.auditFlush();
   const narrow = await getOwnActivity(actor, 2);
   const unfiltered = await AUD.getAuditForActorDurable(actor, { limit: 2 });
-  ok("1.14f · ruling 170 · CONTROL · without the exclusion the newest 2 of the actor's 5 rows are house rows",
-    unfiltered.total === 5 && (unfiltered.entries as Any[]).every((e) => houseActions([e]).length === 1), JSON.stringify({ total: unfiltered.total, actions: (unfiltered.entries as Any[]).map((e) => e.action) }));
+  const everyRow = await AUD.getAuditForActorDurable(actor, { limit: 50 });
+  ok("1.14f · ruling 170 · CONTROL · all 7 of the actor's rows are in the chain, and without the exclusion the newest 2 are house rows",
+    unfiltered.total === 7 && (unfiltered.entries as Any[]).every((e) => houseActions([e]).length === 1)
+      && HOUSE_ACTOR_ROWS.every((a) => (everyRow.entries as Any[]).some((e) => e.action === a)),
+    JSON.stringify({ total: unfiltered.total, actions: (unfiltered.entries as Any[]).map((e) => e.action) }));
+  const wide = await getOwnActivity(actor, 50);
+  ok("1.14f.2 · ruling 170 · every one of the six house actions — the two house_bot rows and all four report.house-* rows — is excluded from the feed",
+    wide.total === 1 && (wide.entries as Any[]).every((e) => !HOUSE_ACTOR_ROWS.includes(e.action)), JSON.stringify((wide.entries as Any[]).map((e) => e.action)));
   ok("1.14f.1 · ruling 170 · with a limit of 2 the feed still returns the own row: excluded before the limit, total 1 over the same filter, not truncated",
     narrow.entries.length === 1 && narrow.entries[0].action === "user.profile.updated" && narrow.total === 1 && narrow.truncated === false,
     JSON.stringify({ total: narrow.total, truncated: narrow.truncated, actions: narrow.entries.map((e: Any) => e.action) }));
@@ -828,10 +863,15 @@ section("§11 · ruling 173 · the four money reads exclude house rows before th
   const AFF: Any = await import("../../src/lib/server/affiliate-service.ts");
   const AFFCFG: Any = await import("../../src/lib/server/affiliate-config.ts");
   const nowIso = () => new Date().toISOString();
-  /** `n` house-marked BET_PLACED rows for the holder, each written after the target (a fixture of VOLUME, through the DAL). */
+  /**
+   * `n` house-marked BET_PLACED rows for the holder, each stamped strictly AFTER the holder's newest row (a fixture of
+   * VOLUME, through the DAL). The rows are ordered by `createdAt` on Postgres, and every row here is stamped by this
+   * process's clock, so the fill waits for that clock to pass the newest row's stamp — never a sleep.
+   */
   const markedRows = async (b: { botId: string; userId: string }, n: number, tag: string) => {
     const wallet = (await w.db.wallet.findByUserId(b.userId)) as Any;
-    await sleep(5);
+    const newest = ((await w.db.txn.findByUser(b.userId, 1)) as Any[])[0];
+    if (newest) await clockPast(newest.createdAt);
     for (let k = 0; k < n; k++) {
       const at = nowIso();
       await w.db.txn.create({
@@ -910,8 +950,10 @@ section("§11 · ruling 173 · the four money reads exclude house rows before th
       await recruited(b);
       await confirmedDeposit(b.userId, 6_000, "first");
       await markedRows(b, 1_001, "dep");
-      const plain = ((await w.db.txn.findByUser(b.userId, 1000)) as Any[]).filter((t) => t.type === "DEPOSIT" && t.status === "CONFIRMED").reduce((s, t) => s + t.amount, 0);
+      const depositSum = (rows: Any[]) => rows.filter((t) => t.type === "DEPOSIT" && t.status === "CONFIRMED").reduce((s, t) => s + t.amount, 0);
+      const plain = depositSum((await w.db.txn.findByUser(b.userId, 1000)) as Any[]);
       const wallet = (await w.db.wallet.findByUserId(b.userId)) as Any;
+      await clockPast(((await w.db.txn.findByUser(b.userId, 1)) as Any[])[0].createdAt);
       const at = nowIso();
       const ref = `hb173_second_${process.pid}`;
       await w.db.txn.create({
@@ -919,11 +961,13 @@ section("§11 · ruling 173 · the four money reads exclude house rows before th
         balanceAfter: null, currency: "TZS", provider: "MPESA", providerRef: ref, msisdn: null, description: "deposit", positionId: null, amlReason: null,
         createdAt: at, updatedAt: at, completedAt: null,
       } as Any);
-      const plainAfter = plain + 6_000;
       const settled = await WS.settlePaymentWebhook({ providerRef: ref, status: "CONFIRMED" });
       const prizes = await prizesFor(b.userId);
-      ok("11.5 · CONTROL · with 1,001 house rows after the first deposit, the plain 1,000-row read would count only the second (6,000 < the 10,000 threshold)",
-        set.ok === true && plain === 0 && plainAfter === 6_000, JSON.stringify({ set: set.ok, plain }));
+      // READ, not arithmetic: after the confirmation, the plain window holds only the second deposit, the option both.
+      const plainAfter = depositSum((await w.db.txn.findByUser(b.userId, 1000)) as Any[]);
+      const excludedAfter = depositSum((await w.db.txn.findByUser(b.userId, 1000, { excludeHouseBets: true })) as Any[]);
+      ok("11.5 · CONTROL · with 1,001 house rows after the first deposit, the plain 1,000-row read counts only the second (6,000 < the 10,000 threshold), the option both (12,000)",
+        set.ok === true && plain === 0 && plainAfter === 6_000 && excludedAfter === 12_000, JSON.stringify({ set: set.ok, plain, plainAfter, excludedAfter }));
       ok("11.6 · ⭐ ruling 173 · the real deposit confirmation counts BOTH deposits (12,000) and the recruiter's DEPOSIT_THRESHOLD prize is paid once",
         settled.handled === true && prizes.length === 1, JSON.stringify({ settled, prizes: prizes.map((p) => [p.type, p.status, p.amountTzs]) }));
     }

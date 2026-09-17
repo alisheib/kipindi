@@ -219,7 +219,10 @@ section("§4 · ruling 174 · no house word, prop name, action name, search fiel
   const unread = MUST_BE_READ.filter((p) => !reachedRel.has(p));
   ok("4.0 · the law's named client surfaces are inside §1's population (status-tone, the search grammar, the search box, the system client)", unread.length === 0, unread.join(", "));
   const { TXN_SEARCH } = await import("../src/lib/search/fields.ts") as { TXN_SEARCH: { fields: Record<string, { columns: string[] }>; default: string[] } };
-  const txnHouse = [...Object.keys(TXN_SEARCH.fields), ...Object.values(TXN_SEARCH.fields).flatMap((x) => x.columns), ...TXN_SEARCH.default].filter((k) => /house/i.test(k));
+  type TxnGrammar = { fields: Record<string, { columns: string[] }>; default?: string[] };
+  /** 4.1's ONE measure, used by 4.1 and its control alike: every field name, column and default that says house. */
+  const houseKeysOf = (s: TxnGrammar) => [...Object.keys(s.fields), ...Object.values(s.fields).flatMap((x) => x.columns), ...(s.default ?? [])].filter((k) => /house/i.test(k));
+  const txnHouse = houseKeysOf(TXN_SEARCH);
   ok("4.1 · R1's house filter is never a TXN_SEARCH field, column or default (the client search box imports it)", Object.keys(TXN_SEARCH.fields).length >= 5 && txnHouse.length === 0, txnHouse.join(", "));
   const reportsReached = [...reachedRel].filter((p) => p.startsWith("src/lib/server/reports/"));
   ok("4.2 · no report builder module (src/lib/server/reports/) is reachable from a client component", reportsReached.length === 0, reportsReached.join(", "));
@@ -243,9 +246,9 @@ section("§4 · ruling 174 · no house word, prop name, action name, search fiel
   ok("4.c3 · CONTROL · a HOUSE_BOT tone key in a planted status-tone copy is found through its client importer", hitsOf("tone-user.tsx").some((w) => w.startsWith("HOUSE_BOT")), hitsOf("tone-user.tsx").join(", "));
   ok("4.c4 · CONTROL · the neutral twins (exposureSlot, exportInternalRecordAction) are not hits", hitsOf("neutral-card.tsx").length === 0 && hitsOf("neutral-button.tsx").length === 0,
     [...hitsOf("neutral-card.tsx"), ...hitsOf("neutral-button.tsx")].join(", "));
-  const plantedTxn = { fields: { ...TXN_SEARCH.fields, house: { columns: ["houseBotId"] } }, default: TXN_SEARCH.default };
-  const plantedHouse = [...Object.keys(plantedTxn.fields), ...Object.values(plantedTxn.fields).flatMap((x) => x.columns)].filter((k) => /house/i.test(k));
-  ok("4.c5 · CONTROL · a planted `house` field in a TXN_SEARCH copy is reported by 4.1's measure", plantedHouse.length === 2, plantedHouse.join(", "));
+  const plantedTxn: TxnGrammar = { fields: { ...TXN_SEARCH.fields, house: { columns: ["houseBotId"] } }, default: [...TXN_SEARCH.default, "houseBotId"] };
+  const plantedHouse = houseKeysOf(plantedTxn);
+  ok("4.c5 · CONTROL · a planted `house` field, its column and a house default in a TXN_SEARCH copy are each reported by 4.1's own measure", plantedHouse.length === 3, plantedHouse.join(", "));
 }
 
 console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — house-bot-disclosure: ${pass} passed, ${fail} failed`);

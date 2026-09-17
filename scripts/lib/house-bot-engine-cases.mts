@@ -489,21 +489,12 @@ await guard("10", async () => {
   ok("10.8 · ruling 172 · a REFUSED engine reads through the admin reader for an ADMIN: not started, the refusal named, the schema ready, the drop count a number",
     refusedStart.refused === "ENV_DISABLED" && refusedView?.readable === true && refusedView.engine.started === false && refusedView.engine.refused === "ENV_DISABLED"
       && refusedView.schema.ready === true && typeof refusedView.engine.hookDropped === "number", j(refusedView));
-  // A STARTED engine, as the process's one engine state records it. ⚠️ Set on the state, not through startHouseBotEngine:
-  // a real start writes this instance's boot row, and §11.16 proves a REFUSED start writes none (measured: starting one
-  // here turned 11.16 red). §11.17–11.30 prove the real start; this proves what the reader shows of it.
-  globalThis.__50PICK_HOUSE_BOT_ENGINE = undefined;
-  const startedState = E10.engineState();
-  Object.assign(startedState, { started: true, refused: null, bootAt: new Date().toISOString(), skewMs: 12, lastPlannerTickAt: Date.now() });
-  startedState.hook.dropped = 3;
-  const startedView = await EH.houseEngineHealthFor(adminViewer);
+  // A STARTED engine is read through the reader in §11 (11.17b), straight after §11.17's REAL start — never a state set by
+  // hand here: a real start writes this instance's boot row, and §11.16 proves a refused start writes none.
   const staffViews = await Promise.all(staffViewers.map((id) => EH.houseEngineHealthFor(id)));
   globalThis.__50PICK_HOUSE_BOT_ENGINE = undefined;
-  ok("10.8b · ruling 172 · a STARTED engine reads through the admin reader for an ADMIN: started, no refusal, its boot time, skew, last planner pass and X5's drop count",
-    startedView?.readable === true && startedView.engine.started === true && startedView.engine.refused === null && !!startedView.engine.bootAt
-      && startedView.engine.skewMs === 12 && !!startedView.engine.lastPlannerTickAt && startedView.engine.hookDropped === 3, j(startedView));
   ok("10.8c · ⛔ ruling 172 · every other role — COMPLIANCE, FINANCE, AUDITOR, SUPPORT, MODERATOR, GROWTH, PLAYER — and no viewer at all get null",
-    staffViews.every((v: Any) => v === null) && (await EH.houseEngineHealthFor(null)) === null && (await EH.houseEngineHealthFor("usr_no_such_viewer")) === null, j(staffViews));
+    staffViews.length === 7 && staffViews.every((v: Any) => v === null) && (await EH.houseEngineHealthFor(null)) === null && (await EH.houseEngineHealthFor("usr_no_such_viewer")) === null, j(staffViews));
   const roles = ["ADMIN", "COMPLIANCE", "FINANCE", "AUDITOR", "SUPPORT", "MODERATOR", "GROWTH", "PLAYER", "AGENT"];
   const recipients = new Set(((await ALERTS10.houseBotAlertRecipients()) as Any[]).map((u) => u.role));
   ok("10.8d · the reader's audience is the house-alert audience: inHouseAlertAudience admits exactly the roles houseBotAlertRecipients returns (ADMIN)",
@@ -585,6 +576,21 @@ await guard("11", async () => {
   ok("11.18 · A24: startHouseBotEngine called twice arms ONE timer", again.started === true && EN2.engineState().timers.first === firstTimer);
   const row = await HDAL.houseBotRuntimeStore.get(`engine:${INSTANCE_ID}`);
   ok("11.19 · the boot row engine:<instance> says enabled, with a boot time", row?.engineEnabled === true && !!row?.bootAt, j(row));
+  // 11.17b · ruling 172 · the admin-gated reader over THIS real start (moved from 10.8b, which set the state by hand). The
+  // late-reaction drop counter is advanced as the hook itself advances it (X5), since no hook call runs in this section.
+  {
+    const EH11: Any = await import("../../src/lib/server/house-bot/engine-health.ts");
+    const W11 = await (await import("./house-bot-world.mts")).loadWorld();
+    const admin11 = await W11.user({ role: "ADMIN" });
+    const compliance11 = await W11.user({ role: "COMPLIANCE" });
+    EN2.engineState().hook.dropped += 3;
+    const live = await EH11.houseEngineHealthFor(admin11);
+    ok("11.17b · ruling 172 · the REAL started engine reads through the admin reader for an ADMIN: started, no refusal, the boot row's time, the measured skew, X5's drop count",
+      on.started === true && live?.readable === true && live.engine.started === true && live.engine.refused === null
+        && !!live.engine.bootAt && Math.abs(live.engine.skewMs - 1_000) <= 50 && live.engine.hookDropped === EN2.engineState().hook.dropped && live.engine.hookDropped >= 3,
+      j({ live, bootRow: row?.bootAt }));
+    ok("11.17c · ⛔ ruling 172 · …and a COMPLIANCE viewer of that same started engine gets null", (await EH11.houseEngineHealthFor(compliance11)) === null);
+  }
   let requeued: Any = null;
   await EN2.stopHouseBotEngine({ requeueMine: async (id: string, exclude: string[]) => { requeued = { id, exclude }; return 0; } }, "test");
   await sleep(10);
