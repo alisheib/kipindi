@@ -174,17 +174,17 @@ ${lines}
 Pick a question that one of these official sources will settle. Do NOT cite any other domain, however authoritative it seems.\n`;
 }
 
-function buildSystemPrompt(opts: {
+/** The generation system prompt. Exported so `test:ai-polls` can pin what the model is told —
+ *  above all that it names NO latest resolution date (owner decision, 2026-09-17). */
+export function buildSystemPrompt(opts: {
   nowIso: string;
   category: string;
   minLeadHours: number;
-  maxLeadDays: number;
   webSearch: boolean;
   avoidTitles?: string[];
   allowedSources?: AllowedSource[];
 }): string {
   const earliest = new Date(Date.now() + opts.minLeadHours * 3_600_000).toISOString();
-  const latest = new Date(Date.now() + opts.maxLeadDays * 86_400_000).toISOString();
   // Cap the list so the prompt stays small even with a big board.
   const avoid = (opts.avoidTitles ?? []).slice(0, 60);
   const avoidBlock = avoid.length
@@ -206,7 +206,7 @@ WHAT MAKES A GREAT 50pick MARKET (aim for ALL of these):
 HARD RULES:
 1. The question MUST have a clear, binary YES/NO outcome.
 2. The event MUST still be genuinely open right now — it must NOT have already happened or been decided. ${opts.webSearch ? "Use web search to confirm the event is real, still upcoming, and unresolved, and to pin down exact names, dates and figures." : "Be conservative: if you are not certain an event is still in the future, do not use it."}
-3. resolutionAt MUST be between ${earliest} and ${latest} (i.e. ${opts.minLeadHours}h to ${opts.maxLeadDays}d from now). Never a past date. Note: betting closes BEFORE the resolution date (e.g. 1h before for sports, 2h for crypto, 1–2 days for macro). Pick events where this lead time makes sense.
+3. resolutionAt MUST be no earlier than ${earliest} (i.e. at least ${opts.minLeadHours}h from now). Never a past date. There is NO latest date — an event months or a year away (a full league season, next year's tournament) is allowed. Note: betting closes BEFORE the resolution date (e.g. 1h before for sports, 2h for crypto, 1–2 days for macro). Pick events where this lead time makes sense.
 4. resolutionCriterion MUST name a specific, publicly verifiable source (official body, regulator, data provider, or major news agency) and the exact condition for a YES.
 4b. resolutionCriterion is THE SENTENCE THE PAYOUT TURNS ON, and players read it in Kiswahili and Chinese too. Provide resolutionCriterionSw and resolutionCriterionZh whenever you can translate it EXACTLY — same threshold, same source, same date, same YES condition. If you cannot, OMIT the field entirely: a missing translation is shown to the player as the English with a note explaining why, which is honest, whereas a translation that drifts from the English describes a DIFFERENT BET and is read as the rule that decides their money. Never copy the English into either field.
 5. Provide at least one REAL, reachable source URL whose domain is on the SOURCE ALLOWLIST above. ${opts.webSearch ? "Use web search to find the real page on one of those approved domains — never invent a URL, and never substitute a different domain." : "Cite the specific approved domain from the allowlist."}
@@ -267,7 +267,6 @@ export class ClaudeProvider implements AIProvider {
           nowIso,
           category,
           minLeadHours: cfg.minLeadTimeHours,
-          maxLeadDays: cfg.maxLeadTimeDays,
           webSearch: cfg.webSearchEnabled,
           avoidTitles: req.avoidTitles,
           allowedSources: req.allowedSources,
@@ -360,7 +359,7 @@ export class ClaudeProvider implements AIProvider {
       const resp = await client.messages.create({
         model: IDEATION_MODEL,
         max_tokens: 1500,
-        system: buildIdeationPrompt({ nowIso, minLeadHours: cfg.minLeadTimeHours, maxLeadDays: cfg.maxLeadTimeDays, categories, count, avoidTitles: req.avoidTitles, allowedSources: req.allowedSources }),
+        system: buildIdeationPrompt({ nowIso, minLeadHours: cfg.minLeadTimeHours, categories, count, avoidTitles: req.avoidTitles, allowedSources: req.allowedSources }),
         tool_choice: { type: "tool", name: "submit_ideas" },
         tools: [buildSubmitIdeasTool(categories) as unknown as Anthropic.Messages.Tool],
         messages: [{ role: "user", content: userPrompt }],
@@ -567,17 +566,16 @@ function parseProposalFromText(text: string): UpDownProposalGeneration | null {
   }
 }
 
-function buildIdeationPrompt(opts: {
+/** The Tier-1 ideation prompt. Exported for the same `test:ai-polls` pin as buildSystemPrompt. */
+export function buildIdeationPrompt(opts: {
   nowIso: string;
   minLeadHours: number;
-  maxLeadDays: number;
   categories: string[];
   count: number;
   avoidTitles?: string[];
   allowedSources?: AllowedSource[];
 }): string {
   const earliest = new Date(Date.now() + opts.minLeadHours * 3_600_000).toISOString().slice(0, 10);
-  const latest = new Date(Date.now() + opts.maxLeadDays * 86_400_000).toISOString().slice(0, 10);
   const avoid = (opts.avoidTitles ?? []).slice(0, 60);
   const avoidBlock = avoid.length
     ? `\n\nDO NOT repeat anything equivalent to these existing questions:\n${avoid.map((t) => `- ${t}`).join("\n")}\n`
@@ -591,10 +589,10 @@ function buildIdeationPrompt(opts: {
 
 CURRENT DATE: ${opts.nowIso}
 
-For EACH idea give: titleEn (a crisp binary YES/NO question), category (one of: ${opts.categories.join(", ")}), resolutionDateGuess (approx resolution date between ${earliest} and ${latest}), and why (one line: why it's hot + genuinely uncertain).
+For EACH idea give: titleEn (a crisp binary YES/NO question), category (one of: ${opts.categories.join(", ")}), resolutionDateGuess (approx resolution date, on or after ${earliest}), and why (one line: why it's hot + genuinely uncertain).
 
 RULES:
-- Each idea = a real, named, UPCOMING event resolving between ${earliest} and ${latest}. Never already-decided.
+- Each idea = a real, named, UPCOMING event resolving on or after ${earliest}. There is no latest date — a season-long or next-year event is fine. Never already-decided.
 - Genuinely uncertain (coin-flip-ish), crisp and specific. No vague/evergreen filler.
 - Anchor in Tanzania / East Africa where possible (global ok for crypto, weather, major world sport).
 - Each idea must be settleable by one of the approved official sources listed above for its category.

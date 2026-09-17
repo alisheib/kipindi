@@ -147,7 +147,6 @@ export async function updatePollConfigAction(formData: FormData) {
           : undefined,
         dailyTarget: num("dailyTarget"),
         minLeadTimeHours: num("minLeadTimeHours"),
-        maxLeadTimeDays: num("maxLeadTimeDays"),
         minConfidence: num("minConfidence"),
         maxBatchPerRun: num("maxBatchPerRun"),
         selectionLeadTimeHours,
@@ -196,7 +195,7 @@ export async function rejectPollAction(formData: FormData) {
 
   const VALID_FILTER_REASONS: Set<string> = new Set([
     "empty_title", "empty_criterion", "invalid_date", "past_date",
-    "resolution_too_soon", "resolution_too_far", "no_options",
+    "resolution_too_soon", "no_options",
     "duplicate_options", "too_few_options", "invalid_category",
     "banned_category", "low_confidence", "title_too_long",
     "criterion_too_long", "xss_detected", "null_bytes",

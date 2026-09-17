@@ -867,7 +867,6 @@ export function ConfigPanel({ config }: { config: AIPollConfig }) {
   const [webSearch, setWebSearch] = useState(config.webSearchEnabled);
   const [dailyTarget, setDailyTarget] = useState(String(config.dailyTarget));
   const [minLead, setMinLead] = useState(String(config.minLeadTimeHours));
-  const [maxLead, setMaxLead] = useState(String(config.maxLeadTimeDays));
   const [minConf, setMinConf] = useState(String(config.minConfidence));
   const [maxBatch, setMaxBatch] = useState(String(config.maxBatchPerRun));
   /* ⛔ ONE HOME for the resting lead times — the seed and the dirty comparison read one builder,
@@ -878,13 +877,12 @@ export function ConfigPanel({ config }: { config: AIPollConfig }) {
   const router = useRouter();
   const { deferToast } = useDeferredToast(pending);
 
-  /* Eight settings that govern how many markets the AI writes and how confident it must be —
+  /* The settings that govern how many markets the AI writes and how confident it must be —
      held here until Save. An owner who retuned them and left kept the old generator running. */
   const configDirty =
     webSearch !== config.webSearchEnabled ||
     dailyTarget !== String(config.dailyTarget) ||
     minLead !== String(config.minLeadTimeHours) ||
-    maxLead !== String(config.maxLeadTimeDays) ||
     minConf !== String(config.minConfidence) ||
     maxBatch !== String(config.maxBatchPerRun) ||
     JSON.stringify(leadTimes) !== JSON.stringify(freshLeadTimes());
@@ -892,7 +890,6 @@ export function ConfigPanel({ config }: { config: AIPollConfig }) {
     setWebSearch(config.webSearchEnabled);
     setDailyTarget(String(config.dailyTarget));
     setMinLead(String(config.minLeadTimeHours));
-    setMaxLead(String(config.maxLeadTimeDays));
     setMinConf(String(config.minConfidence));
     setMaxBatch(String(config.maxBatchPerRun));
     setLeadTimes(freshLeadTimes());
@@ -904,7 +901,6 @@ export function ConfigPanel({ config }: { config: AIPollConfig }) {
       fd.set("webSearchEnabled", String(override?.webSearchEnabled ?? webSearch));
       fd.set("dailyTarget", dailyTarget);
       fd.set("minLeadTimeHours", minLead);
-      fd.set("maxLeadTimeDays", maxLead);
       fd.set("minConfidence", minConf);
       fd.set("maxBatchPerRun", maxBatch);
       for (const [cat, mins] of Object.entries(leadTimes)) {
@@ -918,7 +914,6 @@ export function ConfigPanel({ config }: { config: AIPollConfig }) {
         setWebSearch(r.config.webSearchEnabled);
         setDailyTarget(String(r.config.dailyTarget));
         setMinLead(String(r.config.minLeadTimeHours));
-        setMaxLead(String(r.config.maxLeadTimeDays));
         setMinConf(String(r.config.minConfidence));
         setMaxBatch(String(r.config.maxBatchPerRun));
         if (r.config.selectionLeadTimeHours) {
@@ -971,7 +966,6 @@ export function ConfigPanel({ config }: { config: AIPollConfig }) {
         {numField("Min confidence", "Floor 0–100 to reach review", minConf, setMinConf)}
         {numField("Max per batch", "Cap on one batch run", maxBatch, setMaxBatch)}
         {numField("Min lead time (h)", "Earliest a poll may resolve", minLead, setMinLead)}
-        {numField("Max horizon (d)", "Latest a poll may resolve", maxLead, setMaxLead)}
       </div>
 
       {/* ── Selection lead times per category ── */}
@@ -1080,7 +1074,7 @@ const REASON_LABELS: Record<string, string> = {
   invalid_date: "Invalid resolution date",
   past_date: "Resolution date is in the past",
   resolution_too_soon: "Resolves too soon (under lead-time floor)",
-  resolution_too_far: "Resolves too far out (over horizon)",
+  resolution_too_far: "Resolves too far out (the 240-day limit, removed 2026-09-17)",
   no_options: "No betting options",
   duplicate_options: "Duplicate options detected",
   too_few_options: "Too few options (need 2+)",

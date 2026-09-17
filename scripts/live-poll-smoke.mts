@@ -30,7 +30,7 @@ const CATEGORIES = ["sports", "macro", "weather", "crypto", "culture", "infrastr
 const ACTOR = "live_smoke";
 
 // Web search ON so we see grounded, real-source polls.
-updateAIPollConfig({ webSearchEnabled: true, minConfidence: 60, minLeadTimeHours: 24, maxLeadTimeDays: 180 }, ACTOR);
+updateAIPollConfig({ webSearchEnabled: true, minConfidence: 60, minLeadTimeHours: 24 }, ACTOR);
 seedDefaultSources();
 
 console.log("\n" + "=".repeat(72));

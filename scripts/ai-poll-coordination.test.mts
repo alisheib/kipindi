@@ -83,7 +83,7 @@ const ideaT = (title: string, opts: Partial<PollIdea> = {}): PollIdea => ({ titl
     ideaT("T2 valid two"),
     ideaT("T2 bad cat", { category: "nonsensecat" }),
     ideaT("T2 also bad cat", { category: "politics" }),
-    ideaT("T2 too far", { resolutionDateGuess: new Date(Date.now() + 400 * DAY).toISOString().slice(0, 10) }),
+    ideaT("T2 already past", { resolutionDateGuess: new Date(Date.now() - 3 * DAY).toISOString().slice(0, 10) }),
   ];
   const fake = new FakeProvider(pool);
   setAIProvider(fake);
