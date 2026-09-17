@@ -57,7 +57,8 @@ function HouseEngineCard({ view }: { view: HouseEngineHealthView }) {
   }
   const { engine, schema } = view;
   const missing = [...schema.missingTables, ...schema.missingColumns];
-  const state = engine.started ? (engine.stopping ? "Stopping" : "Running") : "Not running";
+  // ⚠️ SHORT VALUES ON PURPOSE: a KPI value truncates at 360 px ("Not runn…" was measured on the first render).
+  const state = engine.started ? (engine.stopping ? "Stopping" : "Running") : engine.refused ? "Refused" : "Idle";
   return (
     <AdminCard title="House bot engine" sw="Injini ya boti za nyumba">
       {engine.started && !engine.stopping ? (
@@ -81,21 +82,13 @@ function HouseEngineCard({ view }: { view: HouseEngineHealthView }) {
         <AdminKpi label="Engine" sw="Injini" value={state} tone={engine.started && !engine.stopping ? "success" : undefined} delta={`${engine.inFlight} in flight`} />
         <AdminKpi
           label="Schema" sw="Muundo"
-          value={schema.ready ? "Ready" : "Not ready"}
+          value={schema.ready ? "Ready" : "Missing"}
           tone={schema.ready ? "success" : "danger"}
           pulse={!schema.ready}
-          delta={schema.ready ? "tables, markers and seed rows present" : schema.probeFailed ? "the check itself failed" : `${missing.length} missing${schema.seeded ? "" : " · seed rows absent"}`}
+          delta={schema.ready ? "all present" : schema.probeFailed ? "check failed" : `${missing.length} missing`}
         />
-        <AdminKpi
-          label="Late reactions dropped" sw="Majibu yaliyoachwa"
-          value={String(engine.hookDropped)}
-          delta="since boot · the sweep decided each"
-        />
-        <AdminKpi
-          label="Clock skew" sw="Tofauti ya saa"
-          value={engine.skewMs === null ? "Not measured" : `${engine.skewMs} ms`}
-          delta="database minus this container"
-        />
+        <AdminKpi label="Dropped" sw="Zilizoachwa" value={String(engine.hookDropped)} delta="since boot" />
+        <AdminKpi label="Clock skew" sw="Tofauti ya saa" value={engine.skewMs === null ? "Unknown" : `${engine.skewMs} ms`} delta="DB vs container" />
       </KpiGrid>
       {!schema.ready && missing.length > 0 && (
         <p className="mt-3 text-body-sm text-danger">
@@ -108,7 +101,11 @@ function HouseEngineCard({ view }: { view: HouseEngineHealthView }) {
         <div className="flex justify-between gap-3"><dt>Last sweep</dt><dd className="text-text">{tickAt(engine.lastSweepTickAt)}</dd></div>
       </dl>
       <p className="mt-3 text-body-sm text-text-secondary">
-        Per instance, reset on deploy. Only the owner&apos;s staff role sees this card; /api/health is public and names none of it.
+        {/* ⚠️ The explicit {" "} after each strong is load-bearing: the first render served "Droppedcounts" and "Clock skewis". */}
+        <strong className="text-text">Dropped</strong>{" "}counts the Up &amp; Down reactions the bet hook let go because it
+        was full; the sweep decided each of them late. <strong className="text-text">Clock skew</strong>{" "}is the database
+        clock minus this container&apos;s; the engine claims nothing while it is unknown or over 5 seconds. Every figure is for
+        this instance and resets on deploy. Only the owner&apos;s role sees this card; /api/health is public and names none of it.
       </p>
     </AdminCard>
   );
