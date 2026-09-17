@@ -15,7 +15,7 @@
 import { runOutsideLock } from "./locks";
 import { audit } from "./audit";
 import { db } from "./store";
-import type { StoredUser } from "./store";
+import type { StoredTxn, StoredUser } from "./store";
 import { loadConfig, loadConfigResult, saveConfig } from "./config-store";
 import { anonymizeClosedAccount, type AnonymizeOutcome } from "./erasure";
 // 🔴 THE DSAR BUNDLE INVENTED A THIRD ADDRESS. `privacy@50pick.tz` appeared nowhere else in
@@ -288,6 +288,58 @@ export function dsarUserView(user: StoredUser) {
 }
 
 /**
+ * The transaction keys a data-rights file carries, in `toStoredTxn`'s order (`prisma-dal.ts`) — exactly the 23 keys a
+ * `StoredTxn` had before house bots (C5-SPEC ruling 169).
+ */
+export const DSAR_TXN_KEYS = [
+  "id", "walletId", "userId", "type", "status", "amount", "fee", "taxWithheld", "balanceAfter", "currency", "provider",
+  "providerRef", "providerStatus", "payoutRail", "msisdn", "description", "positionId", "amlReason", "createdAt", "updatedAt",
+  "completedAt", "idempotencyKey", "pendingNotifiedAt",
+] as const;
+
+/**
+ * ⭐ ONE TRANSACTION PROJECTION FOR BOTH RELEASABLE DOORS (owner ruling D19; C5-SPEC rulings 168–169).
+ *
+ * 🔴 THE DEFECT IT CLOSES. `buildDsarBundle` returned `db.txn.findByUser` rows WHOLE. On Postgres every row carries the
+ * key `houseBotId` — null for a player, a bot's id on a house stake's rows — and this file goes to the data subject.
+ * The player door had a key-removing destructure instead; two doors, two mechanisms, one of them leaking.
+ *
+ * ⛔ AN ALLOWLIST, FOR THE REASON `dsarUserView` IS ONE: a column added to `Transaction` tomorrow must not reach a
+ * subject's file by default. A house stake's rows stay in the file as the holder's own rows — exactly like their own bets,
+ * never removed and never marked (D19c).
+ *
+ * ⚠️ VALUES ARE COPIED VERBATIM, never `?? null`: a memory row may lack `providerStatus` or `payoutRail`, and
+ * `JSON.stringify` drops an `undefined` exactly as the unprojected row did, so the file a player downloads is unchanged.
+ */
+export function dsarTxnView(t: StoredTxn) {
+  return {
+    id: t.id,
+    walletId: t.walletId,
+    userId: t.userId,
+    type: t.type,
+    status: t.status,
+    amount: t.amount,
+    fee: t.fee,
+    taxWithheld: t.taxWithheld,
+    balanceAfter: t.balanceAfter,
+    currency: t.currency,
+    provider: t.provider,
+    providerRef: t.providerRef,
+    providerStatus: t.providerStatus,
+    payoutRail: t.payoutRail,
+    msisdn: t.msisdn,
+    description: t.description,
+    positionId: t.positionId,
+    amlReason: t.amlReason,
+    createdAt: t.createdAt,
+    updatedAt: t.updatedAt,
+    completedAt: t.completedAt,
+    idempotencyKey: t.idempotencyKey,
+    pendingNotifiedAt: t.pendingNotifiedAt,
+  };
+}
+
+/**
  * Build a full DSAR access bundle for a user. Returns a serialisable object
  * containing every piece of data the platform holds about that user. The
  * output is deliberately verbose — we choose oversharing over undersharing
@@ -310,7 +362,8 @@ export async function buildDsarBundle(userId: string) {
     schemaVersion: 1,
     user: dsarUserView(user),
     wallet,
-    transactions: txns,
+    // ⛔ D19, ruling 169: through the one allowlist, never the raw rows (which carry `houseBotId` on Postgres).
+    transactions: txns.map(dsarTxnView),
     kyc,
     responsibleGambling: responsible,
     notificationsCount: notifications.length,

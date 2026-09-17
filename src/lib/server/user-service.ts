@@ -13,7 +13,7 @@
 import { runOutsideLock } from "./locks";
 import { audit, getAuditForActorDurable, type AuditEntry } from "./audit";
 import { db } from "./store";
-import { dsarUserView } from "./privacy";
+import { dsarTxnView, dsarUserView } from "./privacy";
 import { destroySession } from "./session";
 import { revokeUserSessions } from "./session-registry";
 import { sendEmailToUser, accountClosedHtml } from "./email";
@@ -21,26 +21,32 @@ import { notify } from "./notification-service";
 import { displayLabel } from "@/lib/display-label";
 import type { ServiceResult } from "./auth-service";
 import { currentFreezeReasons } from "@/lib/wallet-freeze-reasons";
+import { HOUSE_AUDIT } from "@/lib/house-bot/constants";
+import { HOUSE_REPORT_AUDIT_ACTIONS } from "./reports/house-report-ids";
 
-export type UserDataExport = {
-  generatedAt: string;
-  /** Projected through `dsarUserView` — never the raw row. See exportUserData. */
-  user: ReturnType<typeof dsarUserView> | null;
-  kyc: ReturnType<typeof db.kyc.findByUserId>;
-  wallet: ReturnType<typeof db.wallet.findByUserId>;
-  responsibleGambling: ReturnType<typeof db.responsible.get>;
-  transactions: ReturnType<typeof db.txn.findByUser>;
-  auditEntries: AuditEntry[];
-};
+/**
+ * ⛔ D19 (C5-SPEC ruling 170) · the actions a player's OWN audit reads never return: every house-owned action (the
+ * catalogue `HOUSE_AUDIT`, imported here and never into `audit.ts`, so the platform audit module stays house-agnostic)
+ * and the house reports' generated/failed rows (the closed list beside `REPORT_CATALOGUE`). Excluded in the READ, before
+ * the limit, so a page of them cannot crowd a player's own history out of the window. A house stake's own bet audit
+ * (`market.position.opened`) is NOT here: it is the holder's bet record and stays, key-stripped below.
+ */
+const OWN_AUDIT_EXCLUDED_ACTIONS: readonly string[] = [...Object.keys(HOUSE_AUDIT), ...HOUSE_REPORT_AUDIT_ACTIONS];
 
-/** Ruling 154 · the house keys a bet audit's payload carries for a house stake (`market-service.ts` SEAM:audit). */
+/**
+ * Rulings 154 and 170 · the house keys an audit payload whose actor can be a player carries: a house stake's bet audit
+ * (`houseBotId`, `intentId`; `market-service.ts` SEAM:audit) and an officer's decision audit (`houseStake`,
+ * `houseStakes`, R9, which names other officers). The durable rows and `/admin/audit` keep them whole. ⛔ If Commit 5
+ * adds another house key to an audit whose actor can be a player, it is added here in the same commit.
+ */
+const HOUSE_AUDIT_PAYLOAD_KEYS_STRIPPED = ["houseBotId", "intentId", "houseStake", "houseStakes"] as const;
 function withoutHouseAuditKeys<T extends { entries: AuditEntry[] }>(page: T): T {
   return {
     ...page,
     entries: page.entries.map((e) => {
       const payload = e.payload as Record<string, unknown> | null | undefined;
-      if (!payload || typeof payload !== "object" || !("houseBotId" in payload || "intentId" in payload)) return e;
-      const { houseBotId: _houseBot, intentId: _houseIntent, ...rest } = payload;
+      if (!payload || typeof payload !== "object" || !HOUSE_AUDIT_PAYLOAD_KEYS_STRIPPED.some((k) => k in payload)) return e;
+      const rest = Object.fromEntries(Object.entries(payload).filter(([k]) => !(HOUSE_AUDIT_PAYLOAD_KEYS_STRIPPED as readonly string[]).includes(k)));
       return { ...e, payload: rest } as AuditEntry;
     }),
   };
@@ -65,9 +71,10 @@ export async function exportUserData(userId: string) {
     kyc: await db.kyc.findByUserId(userId),
     wallet: await db.wallet.findByUserId(userId),
     responsibleGambling: await db.responsible.get(userId),
-    // ⛔ D19c, C4 ruling 154 (W2's recorded default, waiting on Ali and a lawyer): the holder's own money rows stay, but
-    // never the house marker a house-bot stake's rows carry — the file a holder downloads says nothing about house bots.
-    transactions: (await db.txn.findByUser(userId, 1000)).map(({ houseBotId: _houseMarker, ...row }) => row),
+    // ⛔ D19c, C5-SPEC rulings 168–169 (W2's default, waiting on Ali and a lawyer): the holder's own money rows stay, a
+    // house stake's rows among them exactly like their own bets, through the ONE allowlist both releasable doors share —
+    // never the raw row (whose `houseBotId` key names the feature) and never a house exclusion (which would leave gaps).
+    transactions: (await db.txn.findByUser(userId, 1000)).map(dsarTxnView),
     /**
      * 🔴 THIS READ WAS THE RING, ON THE GDPR ART. 15 DOOR. The file a player downloads to
      * exercise a statutory right of access contained only whatever of their events happened to
@@ -81,9 +88,9 @@ export async function exportUserData(userId: string) {
      * access export is defensible; a capped export that does not say it is capped is not — the
      * recipient cannot tell an empty history from a withheld one.
      */
-    // ⛔ D19c, ruling 154: a house stake's own bet audit names the holder as actor and carries its bot and intent; the row
-    // is the holder's bet record and stays, the two house keys do not.
-    auditEntries: withoutHouseAuditKeys(await getAuditForActorDurable(userId, { limit: 1000 })),
+    // ⛔ D19c, rulings 154 and 170: a house stake's own bet audit names the holder as actor and carries its bot and intent;
+    // the row is the holder's bet record and stays, the house keys do not. House-owned actions are not read at all.
+    auditEntries: withoutHouseAuditKeys(await getAuditForActorDurable(userId, { limit: 1000, excludeActions: OWN_AUDIT_EXCLUDED_ACTIONS })),
   };
 }
 
@@ -196,5 +203,6 @@ export async function getOwnActivity(
   userId: string,
   limit = 100,
 ): Promise<{ entries: AuditEntry[]; total: number; truncated: boolean }> {
-  return getAuditForActorDurable(userId, { limit });
+  // ⛔ D19 (ruling 170): the feed prints each row's action, so a house-owned action never reaches it.
+  return getAuditForActorDurable(userId, { limit, excludeActions: OWN_AUDIT_EXCLUDED_ACTIONS });
 }

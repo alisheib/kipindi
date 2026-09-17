@@ -6,7 +6,7 @@
 import { loadWorld, HOLDER_HASH, OFFICER } from "./house-bot-world.mts";
 import { EXIT_WINDOW_GRID, exitGridCase } from "./house-bot-exit-grid.mts";
 // Ruling 175 · this suite's notice words are deliberately BROADER than the shared absence words (bare house, nyumba, 50pick).
-import { extendHouseWords } from "./house-bot-vocabulary.mjs";
+import { extendHouseWords, houseHits } from "./house-bot-vocabulary.mjs";
 
 type Any = any;
 const STORE = process.env.HB_MONEY_STORE ?? "unknown";
@@ -108,13 +108,104 @@ section("§1 · a house stake places once, marked on every row");
       sellPlayer?.ok === true && (await w.mdal.positionStore.get(playerPos!.id)).status === "CASHED_OUT", show(sellPlayer));
   }
 
-  // D19c, C4 ruling 154: the holder's own data export keeps their money rows but never the house marker.
-  const { exportUserData } = await import("../../src/lib/server/user-service.ts");
+  // ═══ 1.14–1.14f · the two RELEASABLE data-rights doors (owner ruling D19; C5-SPEC rulings 168–170) ═══
+  // The player's "Export my data" (exportUserData) and the officer's deliverable for the data subject (buildDsarBundle)
+  // carry a house stake exactly as an own bet: its rows stay, through one allowlist, with no house key, id or word.
+  const { exportUserData, getOwnActivity } = await import("../../src/lib/server/user-service.ts");
+  const PRIV: Any = await import("../../src/lib/server/privacy.ts");
+  const AUD: Any = await import("../../src/lib/server/audit.ts");
+  await AUD.auditFlush();
+  const KEYS: string[] = [...PRIV.DSAR_TXN_KEYS];
+  /** Rows whose in-process key list is not exactly the 23 allowlisted keys, in order (an undefined value still counts). */
+  const offKeys = (rows: Any[]) => rows.filter((r) => JSON.stringify(Object.keys(r)) !== JSON.stringify(KEYS)).map((r) => Object.keys(r));
+  /** origin/main's mapper: `toStoredTxn` before the marker column existed — the raw row without `houseBotId`. */
+  const mainMapper = (r: Any) => { const { houseBotId: _marker, ...rest } = r; return rest; };
+  const canon = (v: Any): Any => Array.isArray(v) ? v.map(canon) : v && typeof v === "object" ? Object.fromEntries(Object.keys(v).sort().map((k) => [k, canon(v[k])])) : v;
+  /** Postgres: BYTE-equal JSON. Memory: DEEP-equal (a memory row keeps its writer's key order, `store.ts` txn.findByUser). */
+  const sameAsMain = (projected: Any[], raw: Any[]) => w.onPostgres
+    ? JSON.stringify(projected) === JSON.stringify(raw.map(mainMapper))
+    : JSON.stringify(canon(JSON.parse(JSON.stringify(projected)))) === JSON.stringify(canon(JSON.parse(JSON.stringify(raw.map(mainMapper)))));
+
   const exported = await exportUserData(b.userId);
+  const rawRows = (await w.db.txn.findByUser(b.userId, 1000)) as Any[];
   const rowOut = (exported.transactions as Any[]).find((t) => t.id === placedTxn?.id);
-  ok("1.14 · ruling 154 · the holder's export carries the house stake's transaction WITHOUT the house marker (the raw row has it)",
-    placedTxn?.houseBotId === b.botId && !!rowOut && !("houseBotId" in rowOut) && !JSON.stringify(exported).includes(b.botId),
-    JSON.stringify({ raw: placedTxn?.houseBotId, exported: rowOut ? Object.keys(rowOut) : null }));
+  ok("1.14 · ruling 169 · the holder's export carries the house stake's transaction, and EVERY row has exactly the 23 allowlisted keys (the raw row has the marker)",
+    placedTxn?.houseBotId === b.botId && !!rowOut && exported.transactions.length === rawRows.length && exported.transactions.length > 1
+      && offKeys(exported.transactions).length === 0 && !JSON.stringify(exported).includes(b.botId),
+    JSON.stringify({ raw: placedTxn?.houseBotId, rows: exported.transactions.length, off: offKeys(exported.transactions).slice(0, 2) }));
+  ok(`1.14.eq · ruling 169 · the export's rows equal origin/main's mapper output for the same rows (${w.onPostgres ? "byte-equal JSON" : "deep-equal"})`,
+    sameAsMain(exported.transactions as Any[], rawRows), JSON.stringify((exported.transactions as Any[])[0]).slice(0, 200));
+  const betAudit = (exported.auditEntries.entries as Any[]).find((e) => e.action === "market.position.opened" && e.targetId === pos?.id);
+  ok("1.14.audit · rulings 154, 168 · the house stake's bet audit is in the export as an own bet: the row stays, no house key, and the file names nothing",
+    !!betAudit && !("houseBotId" in betAudit.payload) && !("intentId" in betAudit.payload) && houseHits(JSON.stringify(exported)).length === 0,
+    JSON.stringify({ found: !!betAudit, keys: betAudit ? Object.keys(betAudit.payload) : null, hits: houseHits(JSON.stringify(exported)).slice(0, 5) }));
+
+  const bundle: Any = await PRIV.buildDsarBundle(b.userId);
+  const bundleJson = JSON.stringify(bundle);
+  const bundleRaw = (await w.db.txn.findByUser(b.userId, 10_000)) as Any[];
+  const needles = [b.botId, i.id, "hb:", "houseBotId"];
+  ok("1.14b · ruling 169 · the holder's officer bundle: every transaction through the allowlist, schemaVersion 1, and no bot id, intent id, hb: or houseBotId anywhere",
+    !!bundle && bundle.schemaVersion === 1 && bundle.transactions.length === bundleRaw.length && offKeys(bundle.transactions).length === 0
+      && needles.every((s) => !bundleJson.includes(s)) && houseHits(bundleJson).length === 0 && !("houseLiquidity" in bundle) && !("houseAuditCount" in bundle),
+    JSON.stringify({ found: needles.filter((s) => bundleJson.includes(s)), hits: houseHits(bundleJson).slice(0, 5), off: offKeys(bundle?.transactions ?? []).slice(0, 2) }));
+  ok(`1.14b.eq · ruling 169 · the bundle's rows equal origin/main's mapper output (${w.onPostgres ? "byte-equal JSON" : "deep-equal"})`, sameAsMain(bundle.transactions, bundleRaw));
+
+  const { player: nonHolder } = await pollWithLockedNo(2_000);
+  const nhRaw = (await w.db.txn.findByUser(nonHolder, 100)) as Any[];
+  const nhJson = JSON.stringify(await PRIV.buildDsarBundle(nonHolder));
+  ok(`1.14c · ruling 169 · a NON-holder's officer bundle has no houseBotId key${w.onPostgres ? " — CONTROL: every raw Postgres row carries the key (null)" : " (vacuous on memory: its raw rows never had the key; Postgres proves it)"}`,
+    nhRaw.length > 0 && !nhJson.includes('"houseBotId"') && (w.onPostgres ? nhRaw.every((r) => "houseBotId" in r && r.houseBotId === null) : true),
+    JSON.stringify({ rawKeys: nhRaw[0] ? "houseBotId" in nhRaw[0] : null, leaked: nhJson.includes('"houseBotId"') }));
+
+  // 1.14d · the latent F4: a HOUSE audit row with the HOLDER as its actor, written through today's withdrawHouseConsent.
+  const b2 = await w.bot();
+  const ownBet = await w.svc.buyPosition(b2.userId, { marketId: market.id, side: "NO", stake: 1_000, idempotencyKey: crypto.randomUUID() });
+  const DES: Any = await import("../../src/lib/server/house-bot/designation.ts");
+  const withdrew = await DES.withdrawHouseConsent(b2.userId);
+  await AUD.auditFlush();
+  const chain = await AUD.getAuditByActionsDurable(["house_bot.holder_withdrew_consent"], { category: "COMPLIANCE", limit: 50 });
+  const holderRows = (chain.entries as Any[]).filter((e) => e.actorId === b2.userId);
+  const exp2 = await exportUserData(b2.userId);
+  const feed = await getOwnActivity(b2.userId, 200);
+  const houseActions = (entries: Any[]) => entries.filter((e) => /^house_bot\./.test(e.action) || /^report\.house-/.test(e.action)).map((e) => e.action);
+  ok("1.14d · ruling 170 · CONTROL · withdrawHouseConsent wrote house_bot.holder_withdrew_consent with the HOLDER as actor, into the chain",
+    withdrew?.voided === true && holderRows.length === 1, JSON.stringify({ withdrew, holderRows: holderRows.length }));
+  ok("1.14d.1 · ruling 170 · …it reaches neither exportUserData().auditEntries nor the /profile/account feed, while the holder's own bet does",
+    ownBet.ok === true && houseActions(exp2.auditEntries.entries).length === 0 && houseActions(feed.entries).length === 0
+      && (exp2.auditEntries.entries as Any[]).some((e) => e.action === "market.position.opened") && (feed.entries as Any[]).some((e) => e.action === "market.position.opened")
+      && houseHits(JSON.stringify(exp2)).length === 0,
+    JSON.stringify({ exp: houseActions(exp2.auditEntries.entries), feed: houseActions(feed.entries), hits: houseHits(JSON.stringify(exp2)).slice(0, 5) }));
+
+  // 1.14e · the widened strip: an officer's decision audit carrying R9's snapshot keys, in that officer's own export.
+  const officer = await w.user({ role: "ADMIN" });
+  AUD.audit({ category: "ADMIN", action: "market.adjudicated", actorId: officer, targetType: "Market", targetId: market.id,
+    payload: { marketId: market.id, outcome: "YES", houseStake: { yes: 3_000, no: 0, requestedBy: [OFFICER] }, houseStakes: { [market.id]: { yes: 3_000, no: 0 } } } });
+  await AUD.auditFlush();
+  const officerExport = await exportUserData(officer);
+  const adj = (officerExport.auditEntries.entries as Any[]).find((e) => e.action === "market.adjudicated");
+  const durable = ((await AUD.getAuditForActorDurable(officer, { limit: 10 })).entries as Any[]).find((e) => e.action === "market.adjudicated");
+  ok("1.14e · ruling 170 · an officer's own export keeps the decision row but strips houseStake and houseStakes (the durable row keeps both)",
+    !!adj && adj.payload.marketId === market.id && adj.payload.outcome === "YES" && !("houseStake" in adj.payload) && !("houseStakes" in adj.payload)
+      && !!durable && "houseStake" in durable.payload && "houseStakes" in durable.payload && houseHits(JSON.stringify(officerExport)).length === 0,
+    JSON.stringify({ exported: adj ? Object.keys(adj.payload) : null, durable: durable ? Object.keys(durable.payload) : null }));
+
+  // 1.14f · the exclusion is IN THE READ: before the limit, and total counts over the same filter.
+  const actor = await w.user({});
+  AUD.audit({ category: "AUTH", action: "user.profile.updated", actorId: actor, targetType: "User", targetId: actor, payload: {} });
+  await AUD.auditFlush();
+  await sleep(25);
+  for (const action of ["house_bot.exported", "house_bot.holder_withdrew_consent", "report.house-liquidity.generated", "report.house-market-statement.failed"]) {
+    AUD.audit({ category: "ADMIN", action, actorId: actor, targetType: "User", targetId: actor, payload: {} });
+    await sleep(5);
+  }
+  await AUD.auditFlush();
+  const narrow = await getOwnActivity(actor, 2);
+  const unfiltered = await AUD.getAuditForActorDurable(actor, { limit: 2 });
+  ok("1.14f · ruling 170 · CONTROL · without the exclusion the newest 2 of the actor's 5 rows are house rows",
+    unfiltered.total === 5 && (unfiltered.entries as Any[]).every((e) => houseActions([e]).length === 1), JSON.stringify({ total: unfiltered.total, actions: (unfiltered.entries as Any[]).map((e) => e.action) }));
+  ok("1.14f.1 · ruling 170 · with a limit of 2 the feed still returns the own row: excluded before the limit, total 1 over the same filter, not truncated",
+    narrow.entries.length === 1 && narrow.entries[0].action === "user.profile.updated" && narrow.total === 1 && narrow.truncated === false,
+    JSON.stringify({ total: narrow.total, truncated: narrow.truncated, actions: narrow.entries.map((e: Any) => e.action) }));
 }
 
 // ═══ §2 · refusals that must move nothing ═══════════════════════════════════════════════════
@@ -570,10 +661,14 @@ if (w.onPostgres) {
     const cold = await Promise.all(Array.from({ length: 9 }, () => w.poll({ graceMin: 0 })));
     const who = await w.user({ balance: 0 });
     const pc = w.prisma()!;
+    // ⚠️ Every row is placed at least LOCK_MARGIN_MS (7 s) plus g seconds before the database clock, so 7.6's "all locked"
+    // is a property of the fixture, not of how long the fills below take. At `g * 1 second` alone the newest rows were
+    // locked only on a machine slow enough to spend 7 s on the fills (measured on Ali-Blade15, C5 step 2: 1 and then 3
+    // rows short on two runs, with no change to lockedPool).
     const fill = (marketId: string, n: number) => pc.$executeRawUnsafe(
       `INSERT INTO "Position" ("id", "userId", "marketId", "side", "stake", "bonusStakeTzs", "potentialPayout", "status", "placedAt")`
       + ` SELECT 'pos_explain_' || $1 || '_' || g, $2, $1, (CASE WHEN g % 2 = 0 THEN 'YES' ELSE 'NO' END)::"MarketSide", 1000, 0, 2000, 'OPEN'::"PositionStatus",`
-      + ` (clock_timestamp() AT TIME ZONE 'UTC') - (g * interval '1 second') FROM generate_series(1, $3::int) g`, marketId, who, n);
+      + ` (clock_timestamp() AT TIME ZONE 'UTC') - ($4::int * interval '1 millisecond') - (g * interval '1 second') FROM generate_series(1, $3::int) g`, marketId, who, n, w.constants.LOCK_MARGIN_MS);
     await fill(hot.id, 20_000);
     for (const m of cold) await fill(m.id, 20_000);
     await pc.$executeRawUnsafe(`ANALYZE "Position"`);

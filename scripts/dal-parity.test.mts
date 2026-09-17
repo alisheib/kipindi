@@ -701,5 +701,35 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
     !/deliveredAt: "date"/.test(`  deliveredAt: "plain",`));
 }
 
+/* ═══ §14 · the actor-side audit read excludes in BOTH branches, before the limit (C5-SPEC ruling 170) ═══ */
+{
+  // ⛔ WHY SOURCE-LEVEL HERE TOO. The behaviour is proven on both stores by test:house-bot-money 1.14d–1.14f; what this
+  // holds is the shape a later edit could quietly break on ONE branch: the ring filters before its slice, Prisma's count
+  // and read share one where, and the exclusion is an exact list (no prefix match: "_" is a LIKE wildcard).
+  const auditSrc = decomment(readFileSync(join(SRC, "lib/server/audit.ts"), "utf8"));
+  /** A top-level function's text: from its declaration to the next top-level export. */
+  const fnText = (src: string, decl: string) => { const a = src.indexOf(decl); if (a < 0) return ""; const b = src.indexOf("\nexport ", a + decl.length); return src.slice(a, b < 0 ? undefined : b); };
+  const ringFiltersBeforeLimit = (body: string) => {
+    const ringAt = body.search(/\[\.\.\.ring\]\s*\.filter\(/);
+    const hasAt = body.indexOf("excluded.has(e.action)", ringAt);
+    const sliceAt = body.indexOf(".slice(0, limit)", ringAt);
+    return ringAt >= 0 && hasAt > ringAt && sliceAt > hasAt;
+  };
+  const prismaSharesWhere = (body: string) =>
+    /const where = [^\n]*\bNOT:\s*\{\s*action:\s*\{\s*in:\s*\[\.\.\.excluded\]/.test(body)
+    && /\.count\(\{\s*where\s*\}\)/.test(body) && /\.findMany\(\{\s*where,/.test(body);
+  const noPrefixMatch = (body: string) => !/\baction\b[^\n]*\b(?:startsWith|endsWith|contains)\b|\bLIKE\b/.test(body);
+  const body = fnText(auditSrc, "export async function getAuditForActorDurable(");
+  ok("14.0 · getAuditForActorDurable resolves and takes excludeActions", body.length > 500 && /excludeActions\?:\s*readonly string\[\]/.test(body), `${body.length} chars`);
+  ok("14.ring · the ring branch filters the excluded actions BEFORE .slice(0, limit), so total counts over the filter", ringFiltersBeforeLimit(body));
+  ok("14.prisma · the Prisma branch puts NOT action in excluded into the one where that both count and findMany read", prismaSharesWhere(body));
+  ok("14.exact · the exclusion is an exact list, never a prefix or LIKE match", noPrefixMatch(body));
+  ok("14.c1 · CONTROL · a ring branch that slices before it filters is caught",
+    !ringFiltersBeforeLimit("const all = [...ring].filter((e) => e.actorId === actorId).reverse().slice(0, limit).filter((e) => !excluded.has(e.action));"));
+  ok("14.c2 · CONTROL · a Prisma count over the bare actor is caught",
+    !prismaSharesWhere("const where = { actorId, NOT: { action: { in: [...excluded] } } };\nconst total = await db.auditLog.count({ where: { actorId } });\nconst rows = await db.auditLog.findMany({ where, take: limit });"));
+  ok("14.c3 · CONTROL · a startsWith exclusion is caught", !noPrefixMatch("where: { actorId, NOT: { action: { startsWith: \"house_bot.\" } } }"));
+}
+
 console.log(`\ndal-parity: ${pass} passed, ${fail} failed`);
 if (fail > 0) process.exit(1);

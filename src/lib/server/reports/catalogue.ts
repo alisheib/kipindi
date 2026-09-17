@@ -1061,3 +1061,6 @@ export const REPORT_CATALOGUE = {
 } as const;
 
 export type ReportId = keyof typeof REPORT_CATALOGUE;
+
+/** The house entries' ids and the audit actions the route writes for them — a closed list (C5-SPEC ruling 170). */
+export { HOUSE_REPORT_IDS, HOUSE_REPORT_AUDIT_ACTIONS } from "./house-report-ids";

@@ -31,7 +31,10 @@ process.env.SESSION_SECRET ??= "test-only-session-secret-32chars-min-aaaa";
 
 import { db } from "../src/lib/server/store.ts";
 import { exportUserData } from "../src/lib/server/user-service.ts";
-import { buildDsarBundle, dsarUserView } from "../src/lib/server/privacy.ts";
+import { buildDsarBundle, dsarUserView, dsarTxnView, DSAR_TXN_KEYS } from "../src/lib/server/privacy.ts";
+// Owner ruling D19 · the absence vocabulary is the one module every absence proof imports (C5-SPEC ruling 175) — never
+// `scripts/house-bot-disclosure.test.mts`, which runs top-level code.
+import { houseHits } from "./lib/house-bot-vocabulary.mjs";
 
 let pass = 0, fail = 0;
 const ok = (label: string, cond: boolean, extra?: string) => {
@@ -128,6 +131,53 @@ ok("the player export and the officer bundle expose an IDENTICAL user field set"
   `player: ${playerKeys}\n       officer: ${officerKeys}`);
 ok("and that set is exactly what dsarUserView returns",
   playerKeys === Object.keys(dsarUserView((await db.user.findById(userId))!)).sort().join(","));
+
+// ── 9 · Transactions: one ALLOWLIST projection for both doors (C5-SPEC ruling 169) ──────
+section("9 · a NEW Transaction column, and the house marker, reach neither door");
+
+/**
+ * The officer bundle returned `db.txn.findByUser` rows WHOLE, and the player door removed one known key — the same
+ * denylist-versus-allowlist mistake section 4 exists for, on the money rows. So: a row carrying a column no projection has
+ * heard of, and the house marker (owner ruling D19: a subject's file names nothing about house bots), through both doors.
+ */
+const FUTURE_TXN = "SENTINEL-FUTURE-TXN-COLUMN-7d1e9a";
+const MARKER = "hb_0123456789abcdef01234567";
+const txnNow = new Date().toISOString();
+await db.txn.create({
+  id: "txn_dsar_future_column", walletId: "wal_dsar_secrets", userId, type: "DEPOSIT", status: "CONFIRMED",
+  amount: 5_000, fee: 0, taxWithheld: 0, balanceAfter: 5_000, currency: "TZS", provider: "MPESA", providerRef: "dsar-ref",
+  msisdn: null, description: "probe deposit", positionId: null, amlReason: null,
+  createdAt: txnNow, updatedAt: txnNow, completedAt: txnNow,
+  // Pretend a later migration added this column, and the row is a house stake's.
+  recoveryCodeHash: FUTURE_TXN,
+  houseBotId: MARKER,
+} as never);
+const rawTxn = ((await db.txn.findByUser(userId, 100)) as Array<Record<string, unknown>>).find((t) => t.id === "txn_dsar_future_column");
+ok("CONTROL: the raw stored row carries the future column and the house marker (so their absence below means something)",
+  rawTxn?.recoveryCodeHash === FUTURE_TXN && rawTxn?.houseBotId === MARKER, JSON.stringify(rawTxn ?? null).slice(0, 160));
+
+const playerAfter = await exportUserData(userId);
+const officerAfter = await buildDsarBundle(userId);
+const doors: Array<[string, unknown]> = [["player export", playerAfter], ["officer bundle", officerAfter]];
+for (const [door, file] of doors) {
+  const json = JSON.stringify(file);
+  ok(`⛔ the ${door} carries the row but not the future column's value or name`,
+    json.includes("txn_dsar_future_column") && !json.includes(FUTURE_TXN) && !json.includes("recoveryCodeHash"));
+  ok(`⛔ D19 · the ${door} carries no house marker, key or vocabulary word at any depth`,
+    !json.includes(MARKER) && !json.includes("houseBotId") && houseHits(json).length === 0, houseHits(json).slice(0, 5).join(", "));
+}
+
+const txnKeySets = (rows: Array<Record<string, unknown>>) => [...new Set(rows.map((r) => Object.keys(r).join(",")))];
+const playerTxnKeys = txnKeySets(playerAfter.transactions as Array<Record<string, unknown>>);
+const officerTxnKeys = txnKeySets((officerAfter?.transactions ?? []) as Array<Record<string, unknown>>);
+ok("the player export and the officer bundle expose an IDENTICAL transaction field set — exactly DSAR_TXN_KEYS, in order",
+  playerTxnKeys.length === 1 && officerTxnKeys.length === 1 && playerTxnKeys[0] === officerTxnKeys[0] && playerTxnKeys[0] === DSAR_TXN_KEYS.join(","),
+  `player: ${playerTxnKeys.join(" | ")}\n       officer: ${officerTxnKeys.join(" | ")}`);
+const projectedTxn = JSON.stringify(dsarTxnView({ ...(rawTxn as never), anotherFutureSecret: "SENTINEL-TXN-b2" } as never));
+ok("⛔ dsarTxnView itself drops a column it has never heard of", !projectedTxn.includes("SENTINEL-TXN-b2") && !projectedTxn.includes(FUTURE_TXN) && !projectedTxn.includes(MARKER));
+ok("CONTROL: the projection still emits the money fields a subject is entitled to",
+  projectedTxn.includes("txn_dsar_future_column") && projectedTxn.includes("5000") && projectedTxn.includes("dsar-ref"),
+  "If this fails the projection is empty and the assertions above are vacuous.");
 
 console.log("");
 console.log("─".repeat(64));

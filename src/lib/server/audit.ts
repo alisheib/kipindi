@@ -748,17 +748,26 @@ export async function getAuditForTargetsDurable(input: {
  */
 export async function getAuditForActorDurable(
   actorId: string,
-  opts: { limit?: number } = {},
+  opts: {
+    limit?: number;
+    /**
+     * Actions this read never returns, applied IN THE READ on both branches — before the limit, and `total` counts over
+     * the same filter — so rows the caller must not show can neither crowd its window nor inflate its count. An exact
+     * list, never a prefix: `_` is a LIKE wildcard. The caller owns the list; this module names no feature's actions.
+     */
+    excludeActions?: readonly string[];
+  } = {},
 ): Promise<{ entries: AuditEntry[]; total: number; truncated: boolean }> {
   const limit = opts.limit ?? 200;
+  const excluded = new Set(opts.excludeActions ?? []);
   const db = prisma();
   if (!db) {
     // No database (tests, local no-DB runs) — the ring is all there is. Report honestly rather
     // than implying completeness, exactly as the target-side twin does.
-    const all = [...ring].filter((e) => e.actorId === actorId).reverse();
+    const all = [...ring].filter((e) => e.actorId === actorId && !excluded.has(e.action)).reverse();
     return { entries: all.slice(0, limit), total: all.length, truncated: all.length > limit };
   }
-  const where = { actorId };
+  const where = excluded.size > 0 ? { actorId, NOT: { action: { in: [...excluded] } } } : { actorId };
   const total = await db.auditLog.count({ where });
   const rows = await db.auditLog.findMany({
     where,

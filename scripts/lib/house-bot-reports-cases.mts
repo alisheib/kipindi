@@ -84,8 +84,12 @@ export const HOLDER_ACTOR = /^(?:holder\w*|botUserId|(?:[\w$]+\.)*(?:userId|hold
  */
 export const HOLDER_ACTOR_DEBT = ["withdrawHouseConsent"] as const;
 
-/** A file whose code can write a house audit row: it names the catalogue, the writer, the consent void or a house action. */
-const writesHouseAudit = (code: string) => /\bHOUSE_AUDIT\b|\bhouseAudit\s*\(|\bvoidHouseConsent\s*\(|["'`]house_bot\./.test(code);
+/**
+ * A file whose code can WRITE a house audit row: it indexes the catalogue for a category (`HOUSE_AUDIT[action]`), calls the
+ * writer or the consent void, or writes a house action literal. A file that only READS the catalogue (`user-service.ts`
+ * excludes `Object.keys(HOUSE_AUDIT)`) is not a writer, and its own audits name their own actors.
+ */
+const writesHouseAudit = (code: string) => /\bHOUSE_AUDIT\s*\[|\bhouseAudit\s*\(|\bvoidHouseConsent\s*\(|\baction\s*:\s*["'`]house_bot\./.test(code);
 
 /** Every actor expression a house-audit-writing file supplies: `houseAudit(action, ACTOR, …)` and every `actorId: VALUE`. */
 export function holderActorSites(code: string): Array<{ at: number; actor: string }> {
@@ -148,6 +152,76 @@ if (STORE === "memory") {
     const benign = holderActorViolations([{ rel: "src/benign.ts", code: `async function houseAudit(action: A, actorId: string | null, t: T, p: P) {}\nawait houseAudit("house_bot.started", officerId, target, { holderUserId: bot.userId });\nawait voidHouseConsent({ userId: bot.userId, cause: code, actorId: null });\nexport function withdrawHouseConsent(holderUserId: string) { return 1; }` }]);
     ok("0.170.c4 · CONTROL · an officer actor, a holder id in the PAYLOAD, a null actor, the signature and the debt's own definition are not reported",
       benign.holder.length === 0 && benign.callers.length === 0, j(benign));
+    const reader = holderActorViolations([{ rel: "src/reader.ts", code: `import { HOUSE_AUDIT } from "x";\nconst EXCLUDED = Object.keys(HOUSE_AUDIT);\naudit({ category: "COMPLIANCE", action: "user.account.closed", actorId: userId });` }]);
+    const writer = holderActorViolations([{ rel: "src/writer.ts", code: `audit({ category: HOUSE_AUDIT[action], action, actorId: userId });` }]);
+    ok("0.170.c5 · CONTROL · a file that only READS the catalogue keeps its own player-acted audits; indexing it for a category makes a writer",
+      reader.holder.length === 0 && writer.holder.length === 1, j({ reader, writer }));
+  });
+}
+
+/* ═══ §0 · ruling 169 · no data-rights door returns transaction rows unprojected ═════════════════════════ */
+
+/** The two releasable doors' files (`exportUserData`, `buildDsarBundle`; C5-SPEC ruling 168). */
+export const DSAR_DOOR_FILES = ["src/lib/server/user-service.ts", "src/lib/server/privacy.ts"] as const;
+
+/** Index just past the `)` that closes the call whose `(` is at `open`. */
+function callEnd(src: string, open: number): number {
+  let depth = 0;
+  for (let i = open; i < src.length; i++) {
+    if (src[i] === "(") depth++;
+    else if (src[i] === ")" && --depth === 0) return i + 1;
+  }
+  return src.length;
+}
+
+/**
+ * Every `db.txn.findByUser(…)` read in a door file whose rows are not mapped through `dsarTxnView`: either directly
+ * (`(await db.txn.findByUser(…)).map(dsarTxnView)`) or through a const whose every later use is `NAME.map(dsarTxnView)`.
+ * A key-removing destructure is NOT a projection (it is the denylist ruling 169 replaced).
+ */
+export function unprojectedTxnReads(code: string): string[] {
+  const out: string[] = [];
+  for (const m of code.matchAll(/\bdb\.txn\.findByUser\s*\(/g)) {
+    const end = callEnd(code, m.index! + m[0].length - 1);
+    const call = code.slice(m.index!, end);
+    if (/^\s*\)?\s*\.map\(\s*dsarTxnView\s*\)/.test(code.slice(end, end + 60))) continue;
+    const bound = /(?:const|let)\s+(\w+)\s*=\s*(?:\(?\s*await\s+)?$/.exec(code.slice(Math.max(0, m.index! - 60), m.index!));
+    if (bound) {
+      const rest = code.slice(end);
+      const uses = [...rest.matchAll(new RegExp(String.raw`\b${bound[1]}\b`, "g"))];
+      const projectedUses = uses.filter((u) => /^\s*\.map\(\s*dsarTxnView\s*\)/.test(rest.slice(u.index! + bound[1].length, u.index! + bound[1].length + 40)));
+      if (uses.length > 0 && projectedUses.length === uses.length) continue;
+    }
+    out.push(call);
+  }
+  return out;
+}
+
+if (STORE === "memory") {
+  section("§0 · ruling 169 · no data-rights door returns db.txn.findByUser rows unprojected");
+  await guard("0.169", () => {
+    const reads = DSAR_DOOR_FILES.map((rel) => ({ rel, code: decomment(read(rel)) }));
+    const count = reads.reduce((n, r) => n + (r.code.match(/\bdb\.txn\.findByUser\s*\(/g) ?? []).length, 0);
+    ok("0.169.0 · the population is real: both door files are read and hold the doors' transaction reads (≥ 2)",
+      reads.every((r) => r.code.length > 2_000) && count >= 2 && /export async function exportUserData\(/.test(reads[0].code) && /export async function buildDsarBundle\(/.test(reads[1].code), `${count} reads`);
+    for (const r of reads) {
+      const bad = unprojectedTxnReads(r.code);
+      ok(`0.169.${r.rel.split("/").pop()} · ⛔ D19 · every db.txn.findByUser read goes through dsarTxnView`, bad.length === 0, bad.join(" · "));
+    }
+    const planted = [
+      "const txns = await db.txn.findByUser(userId, 10_000);\nreturn { transactions: txns };",
+      "return { transactions: await db.txn.findByUser(userId, 1000) };",
+      "transactions: (await db.txn.findByUser(userId, 1000)).map(({ houseBotId: _m, ...row }) => row),",
+      "const txns = await db.txn.findByUser(userId, 10_000);\nconst n = txns.length;\nreturn { transactions: txns.map(dsarTxnView), n };",
+    ];
+    const caught = planted.filter((p) => unprojectedTxnReads(p).length === 1);
+    ok("0.169.c1 · CONTROL · a raw bound return, a raw inline return, the old key-removing destructure and a half-projected const are each reported",
+      caught.length === planted.length, j(planted.filter((p) => !caught.includes(p))));
+    const benign = [
+      "const txns = await db.txn.findByUser(userId, 10_000);\nreturn { transactions: txns.map(dsarTxnView) };",
+      "transactions: (await db.txn.findByUser(userId, 1000)).map(dsarTxnView),",
+    ];
+    ok("0.169.c2 · CONTROL · a bound read mapped at its only use, and an inline mapped read, are not reported", benign.every((b) => unprojectedTxnReads(b).length === 0), j(benign.map(unprojectedTxnReads)));
   });
 }
 
@@ -217,6 +291,7 @@ export const VOCABULARY_CONSUMERS = [
   "scripts/house-bot-disclosure.test.mts",
   "scripts/verify-house-bot-bundle.mjs",
   "scripts/house-bot-holder-view-shots.mts",
+  "scripts/dsar-export-secrets.test.mts",
   "scripts/lib/house-bot-reports-cases.mts",
 ] as const;
 /** The deliberately broader lists that import the shared words and extend them, with the extensions each must make. */
