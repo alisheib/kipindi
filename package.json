@@ -810,7 +810,13 @@
     "test:chart-series": "tsx scripts/chart-series.test.mts",
     "test:updown-clock-guard": "tsx scripts/updown-clock-guard.test.mts",
     "test:client-error-report": "tsx scripts/client-error-report.test.mts",
-    "test:translation-safety": "tsx scripts/translation-safety.test.mts"
+    "test:translation-safety": "tsx scripts/translation-safety.test.mts",
+    "diag:updown-translate-crash": "node scripts/live/translate-crash-repro.mjs",
+    "diag:updown-bet-crash": "node scripts/live/updown-bet-crash-repro.mjs",
+    "diag:updown-url-crash": "node scripts/live/updown-url-crash-probe.mjs",
+    "diag:updown-404-drive": "node scripts/live/updown-404-drive.mjs",
+    "diag:updown-404-local": "node scripts/live/updown-404-local.mjs",
+    "diag:updown-chart-crash": "node scripts/live/updown-chart-crash-matrix.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",
