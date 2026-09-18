@@ -51,7 +51,11 @@ const REPRESENTATIVE = [
   ["support", "/admin/players"],
 ];
 
-const OWNER_ONLY = ["/admin/staff", "/admin/roles"];
+/* ⭐ C7-SPEC ruling 328 · the desk is the THIRD Owner-only surface. §0 asserts `isOwnerOnlyPath` with the
+   product's own resolver and §2 drives all seven roles: the Owner must ARRIVE (on the path and not restricted, not
+   merely "not restricted"), and each of the six others must be refused — regardless of any `ops` grant, because the
+   grant matrix is DB-backed and `/admin/roles` edits it live. */
+const OWNER_ONLY = ["/admin/staff", "/admin/roles", "/admin/desk"];
 
 const r = recorder("qa:admin-view-matrix — the VIEW gate, driven, 7 roles × 7 domains");
 

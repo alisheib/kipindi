@@ -32,6 +32,7 @@
  * for a live house bot, so even a rewritten reason names the account. No list of actions, keys or values closes that; a
  * viewer outside the audience is painted the section gate's restricted panel, so none of the page's rows is theirs to read.
  */
+import { cache } from "react";
 import { db } from "./store";
 import { isStaffRole, isAdmin, isOwnerOnlyPath, domainForPath } from "./roles";
 import { canView } from "./rbac";
@@ -74,10 +75,26 @@ export function isHouseConsoleRoute(route: string): boolean {
  * section gate asks: Owner-only paths for ADMIN, every other path by its domain's view grant). Never throws.
  * ⛔ The console section is answered by `HOUSE_CONSOLE_PREFIX` FIRST, before `isOwnerOnlyPath` and before `canView`.
  */
+/**
+ * ⛔ WHO IS LOOKING — RESOLVED ONCE PER RENDER PASS, NOT ONCE PER GATED QUESTION (C7-SPEC ruling 342).
+ *
+ * `db.user.findById` is a real `findUnique` that returns the WHOLE row including `avatarDataUrl`, a column
+ * `user.list()` explicitly omits for exactly this reason and which is capped at 96 kB. The console asks the audience
+ * question several times in one render — the page's own verdict, the panel reader's, and every audit reader a console
+ * surface calls — so without this it is an N+1 of the most expensive shape available. `sensitive.tsx:46` measured and
+ * closed the identical N+1 for the identical lookup, and this is that shape, not a second idiom.
+ *
+ * ⛔ THE MEMO IS PER RENDER PASS AND NOTHING ELSE: never a TTL, never across requests, and never the VERDICT (the
+ * route is part of the decision, so only the ROW is memoised). ⚠️ MEASURED 2026-09-18: React `cache()` is a
+ * pass-through OUTSIDE a render pass, so no suite can see this memo and `test:house-bot-console` 1.342 asserts its
+ * SOURCE and records that limit in its own label rather than claiming a proof it cannot have.
+ */
+const viewerRow = cache(async (viewerUserId: string) => db.user.findById(viewerUserId));
+
 export async function houseConsoleAudience(viewerUserId: string | null | undefined, route: string): Promise<boolean> {
   if (typeof viewerUserId !== "string" || viewerUserId.length === 0 || !route.startsWith("/admin")) return false;
   try {
-    const viewer = await db.user.findById(viewerUserId);
+    const viewer = await viewerRow(viewerUserId);
     if (!viewer || !isStaffRole(viewer.role)) return false;
     if (isHouseConsoleRoute(route)) return isAdmin(viewer.role);
     if (isOwnerOnlyPath(route)) return isAdmin(viewer.role);

@@ -13,11 +13,20 @@
  * designated and started bot, staff-chosen and reaction stakes on closed markets, objections, emergency voids, an Up & Down
  * round, the holder's KYC case — and the platform rows that carry a house VALUE (a deduped HOUSE_BOT notice through the real
  * notifier; the provider-down alert, a server error, a refused and a fulfilled erasure and a bulk resolve written as their
- * writers write them). Then, on `next start` over the FRESH build, it signs in a player, the holder, a trigger player and
+ * writers write them). Then, on `next start` over the FRESH build, it signs in a player, the holder, a trigger player, a
+ * NON-OWNER STAFF officer (ruling 393 — the owner-only branch of the gate had never been driven over the wire) and
  * the ADMIN, and requests every console page enumerated from disk (every `page.tsx` under `src/app/admin/`, each dynamic
  * segment filled from the fixture, each `tab === "…"` the page names, every audit category and actor filter) as a plain
  * document, an `RSC: 1` flight and a flight whose `Next-Router-State-Tree` names the section segments, plus every admin
- * API GET route on disk. Each body is read with the shared vocabulary (ruling 175) and the bot's label and id.
+ * API GET route on disk. Each body is read with the shared vocabulary (ruling 175), the accounts' labels and ids, and
+ * the CANARY amounts (ruling 374) — a TZS figure is none of the first three, so without them a clean sheet proved
+ * nothing at all about a leaked money figure.
+ *
+ * ⛔ THE CLASSIFICATION IS AUDIENCE-AWARE (ruling 393). On the console's OWN routes — owner-only, hard-coded here
+ * rather than recomputed from `isOwnerOnlyPath`, because a test that recomputes the code's own answer proves nothing —
+ * the staff officer is held to the PLAYER's standard: zero hits, in all three modes. Everywhere else its hits are
+ * REPORTED, not failed: ruling 260's design is deliberately "whole for the route's audience", and register row X13
+ * records that a staff viewer legitimately sees house audit rows on `/admin/players/[id]`.
  *
  * ⭐ WHAT PASSES AND WHAT IS NOT MEASURED. A non-staff response carrying any house word, label or id FAILS. The ADMIN is the
  * control: it must carry house data on the pages that show it, and a route instance whose ADMIN response carries none is
@@ -36,6 +45,30 @@ import { spawn, spawnSync } from "node:child_process";
 import { mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { houseHits } from "./lib/house-bot-vocabulary.mjs";
+import { LOCAL_STAFF } from "./local-staff.mjs";
+
+/**
+ * ⛔ THE CANARY AMOUNTS (C7-SPEC ruling 374). The probe's other needles are the shared vocabulary, the account's
+ * LABEL and its id — and a TZS figure is NONE of those, so before these existed a clean sheet proved nothing
+ * whatever about a leaked money figure. A unique amount is the only needle a money figure can have.
+ *
+ * ⛔ EACH ONE IS SHOWN ABSENT FROM THE REPOSITORY FIRST (`0.canary` below, over `src/`, `scripts/`, `prisma/` and
+ * `public/`, this file excepted), or the zero it produces is meaningless: an amount that already occurs somewhere
+ * would be found in a body for reasons that have nothing to do with the desk.
+ * ⛔ AND THEY ARE MATCHED IN BOTH FORMS — the raw digits and `formatTzs`' grouped form — because the console renders
+ * the grouped one and a payload can carry either.
+ * ⚠️ Every value is under `900_000_000`, the world fixture's own open-cap ceiling, so no cap the fixture relies on
+ * is tightened by planting one.
+ */
+const CANARY = {
+  gStake: 818_273_645,
+  gLoss: 729_384_617,
+  gExposure: 636_451_829,
+  gStaffChosen: 318_492_756,
+  botLoss: 483_920_175,
+  botExposure: 517_284_930,
+} as const;
+const CANARY_STRINGS = Object.values(CANARY).flatMap((n) => [String(n), n.toLocaleString("en-US")]);
 
 type Any = any;
 const ROOT = join(import.meta.dirname, "..");
@@ -117,7 +150,8 @@ try {
   const A = (await w.db.user.findByPhone("+255700000000")).id as string;
   await w.user({ id: OFFICER, role: "ADMIN" });
   const B = await w.user({ role: "ADMIN" });
-  await w.limits();
+  /* ⭐ 374 · THE GLOBAL LIMITS CARRY CANARY AMOUNTS, so the limits tab has a figure only this pass can produce. */
+  await w.limits({ gCapDailyStakeTzs: CANARY.gStake, gCapDailyLossTzs: CANARY.gLoss, gCapOpenExposureTzs: CANARY.gExposure, gCapStaffChosenDailyTzs: CANARY.gStaffChosen });
   await w.switchOn(); // the scratch database only
   const PW = "Tembo-Kubwa-2026!";
   const holder = await w.user({ balance: 5_000_000 });
@@ -133,12 +167,33 @@ try {
   const rules = structuredClone(RULES.DEFAULT_RULES_V1(CTX));
   rules.scope.products.polls = true; rules.scope.categories = ["macro"]; rules.modes.polls.fill = true;
   const b0 = await w.dal.houseBotStore.get(botId);
-  await w.dal.houseBotStore.saveRules(botId, b0.rulesVersion, { rules, ...w.OPEN_CAPS, freqMinGapSec: 20 });
+  /* ⭐ 374 · and the account's own two money caps, which the ROSTER renders as usage. */
+  await w.dal.houseBotStore.saveRules(botId, b0.rulesVersion, { rules, ...w.OPEN_CAPS, capDailyLossTzs: CANARY.botLoss, capOpenExposureTzs: CANARY.botExposure, freqMinGapSec: 20 });
   const started = await D.startHouseBot({ officerId: A, botId, rulesContext: CTX });
   ok("1.start · the bot is started through the real service (house_bot.started)", !!started?.ok, JSON.stringify(started).slice(0, 200));
   const b1 = await w.dal.houseBotStore.get(botId);
-  await w.dal.houseBotStore.saveRules(botId, b1.rulesVersion, { rules, ...w.OPEN_CAPS, freqMinGapSec: 0 });
+  await w.dal.houseBotStore.saveRules(botId, b1.rulesVersion, { rules, ...w.OPEN_CAPS, capDailyLossTzs: CANARY.botLoss, capOpenExposureTzs: CANARY.botExposure, freqMinGapSec: 0 });
   const bot = { botId, userId: holder };
+
+  /**
+   * ⭐ 392(b) · A SECOND ACCOUNT, REMOVED. The console's `[id]` route takes THREE fixture values — a designated
+   * account, a REMOVED one and an unknown id — so that when C7 step 4 builds that page, ruling 399's identical-answer
+   * measurement (same status, same body length for every non-audience viewer) has something to measure.
+   * ⛔ It also earns its place TODAY: `listNonRemoved()` excludes it from the roster while `houseDayBook(day, null)`
+   * and `houseOpenExposure(null)` still count its money, which is ruling 432(l)'s wrong-population defect made real
+   * on a served page rather than only in a unit fixture.
+   */
+  const holder2 = await w.user({ balance: 2_000_000 });
+  const h2Salt = CRYPTO.randomId(16);
+  await w.setUserFields(holder2, { displayName: "Probe Holder Two", passwordHash: await CRYPTO.hashPassword(PW, h2Salt), passwordSalt: h2Salt, passwordSetAt: new Date().toISOString(), passwordSetVia: "SELF_CHANGE" });
+  const LABEL2 = "Probe morning desk";
+  const designated2 = await D.designateHouseBot({ officerId: A, userId: holder2, label: LABEL2, note: null, password: PW, submitId: null });
+  const removedBotId: string | null = designated2?.ok ? (designated2.bot.id as string) : null;
+  if (removedBotId) {
+    await w.dal.houseBotStore.setStatus(removedBotId, { from: ["PAUSED"], to: "REMOVED", pauseReason: null, pausedFromStatus: null, removal: { byId: A, reason: "probe fixture", cause: "MANUAL" } });
+  }
+  ok("1.removed · 392(b) · a SECOND account is designated and REMOVED, so the console's `[id]` route has its three fixture values",
+    removedBotId !== null, JSON.stringify(designated2).slice(0, 160));
 
   const poll = async (title: string) => {
     const m = await w.poll({ graceMin: 0 });
@@ -228,6 +283,20 @@ try {
   };
   const kycSubmitted = await kycOf(holder, "19900101000000009100", "Probe Holder");
   ok("1.kyc · the holder's KYC case is submitted", !!kycSubmitted?.ok, JSON.stringify(kycSubmitted).slice(0, 160));
+  /**
+   * ⛔ AND IT IS FINALLY REFUSED, WHICH IS WHAT MAKES RULING 530's CONTROL ABLE TO FIRE AT ALL.
+   * MEASURED at this head, correcting 530's own premise: `/admin/kyc/[id]` READS the holder's durable audit rows
+   * through the gate but RENDERS only (a) blocked cash-out counts, dates and amounts and (b) the four
+   * `REFUSED_FUNDS_ACTION` decision rows — and `priorDecisions` is built ONLY when the case is `REJECTED` with a
+   * FINAL refusal code. A read is not a render: only rendered output is serialised, which is exactly why the ADMIN's
+   * own body carried no house data there and the control was blind. So the case is refused finally, and the decision
+   * row planted below then renders.
+   * ⚠️ AFTER every house stake is placed, and the engine is off in this pass, so the account's stored status does
+   * not move: the roster still renders it.
+   */
+  const kycRefused = await KYC.reviewKyc({ officerId: A, userId: holder, decision: "REJECT", reason: "The identity submitted matches a sanctions listing; this is a final refusal.", rejectCode: "SANCTIONED" }).catch((e: unknown) => ({ ok: false, error: String(e) }));
+  ok("1.kyc · 530 · …and FINALLY refused, so the case page builds its prior-decision list and the ADMIN control can fire there",
+    !!(kycRefused as Any)?.ok, JSON.stringify(kycRefused).slice(0, 200));
 
   // ── an agent application, so the agent page's own audit read runs over a real record (self-service needs approved KYC) ──
   const applicant = await w.user({ balance: 50_000 });
@@ -251,6 +320,25 @@ try {
   await AUD.audit({ category: "COMPLIANCE", action: "market.resolve.bulk", actorId: A, targetType: "Batch", targetId: "batch_probe", payload: { batchId: "batch_probe", resolved: [Q1.id], houseStakes: { [Q1.id]: { yes: 0, no: 9_000, staffChosen: { yes: 0, no: 9_000, requestedBy: [A] } } } } });
   await AUD.audit({ category: "ADMIN", action: "report.house-liquidity.generated", actorId: A, targetType: null, targetId: null, payload: { format: "xlsx", filename: "house-liquidity-2026-08.xlsx" } });
   await AUD.audit({ category: "ADMIN", action: "house_bot.exported", actorId: A, targetType: "HouseBot", targetId: botId, payload: { botId, holderUserId: holder } });
+  /**
+   * ⛔ RULING 530 · THE ONE CONTROL THE RELEASE GATE LEFT BLIND, FIXED HERE RATHER THAN CARRIED TO COMMIT 8.
+   * Ruling 529 measured `leaks: 0` over 1,544 requests and then found that 4.3's positive control FAILED on a single
+   * instance — `/admin/kyc/[id]<holder>`. MEASURED why, at this head: that page reads ALL of the holder's durable
+   * audit rows through the gate (`houseAuditForConsole(…, "/admin/kyc", getAuditForTargetDurable("User", id, …))`)
+   * but RENDERS only the blocked cash-outs and the four `REFUSED_FUNDS_ACTION` decision rows — so the
+   * `house_bot.password_verified` and `house_bot.designated` rows the designation writes never reach the body, and
+   * the ADMIN's own response carried no house data. The absence of house data for the other viewers there therefore
+   * proved NOTHING about that page: a blind control, not a leak.
+   * ⛔ THE FIX IS A ROW THE PAGE ACTUALLY RENDERS, AND IT IS THE REAL DEFECT CLASS, NOT A CONTRIVANCE. Ruling 260's
+   * own words: "a platform row can carry a house VALUE". A refused-funds decision's `justification` is officer prose
+   * rendered verbatim on that page, and an officer refusing funds on a desk account's holder writes exactly this.
+   * The gate drops the whole row for a viewer outside the audience, so 4.1 stays at zero while 4.3 can finally fire.
+   * ⛔ IT IS NOT MADE GREEN BY SHRINKING `MUST_CARRY`: that is the opposite of what the control is for.
+   */
+  await AUD.audit({
+    category: "COMPLIANCE", action: "kyc.refused_funds.held_pending_appeal", actorId: A, targetType: "User", targetId: holder,
+    payload: { decisionId: `rfd_probe_${process.pid}`, justification: `Held pending appeal: this account is the holder of house bot ${botId} and the balance is not the holder's alone.`, balanceBefore: 5_000_000, returnedTzs: 0, forfeitedTzs: 0 },
+  });
   await AUD.auditFlush();
 
   // ── the viewers: a signed-in session minted as the session route mints one ──
@@ -262,7 +350,20 @@ try {
     const now = Date.now();
     return `kp_session=${CRYPTO.signSession({ userId, sessionId, phoneE164: u.phoneE164, role: u.role, kycStatus: u.kycStatus ?? "NOT_STARTED", iat: now, exp: now + 6 * 86_400_000, lastSeenAt: now, playStartedAt: now })}`;
   };
-  const viewers: Array<[string, string]> = [["player", player], ["holder", holder], ["trigger", triggers[0]], ["admin", A]];
+  /**
+   * ⛔ 393 · A NON-OWNER STAFF VIEWER, AND WITHOUT IT ONE OF THE GATE'S TWO BRANCHES HAD NEVER BEEN DRIVEN OVER THE
+   * WIRE. `houseConsoleAudience` answers `isAdmin(role)` for the console's own prefix and a DOMAIN GRANT for
+   * everything else; the four viewers above are a player, the holder, a trigger player and the ADMIN, so the
+   * owner-only branch the whole console depends on was measured by no served request at all. The second belt
+   * (`OWNER_ONLY_PREFIXES`) is why forgetting it would be caught by nothing else.
+   * ⚠️ COMPLIANCE is the persona `seed-staff-local.mts` already writes — a real staff session, not a synthesised
+   * one — and its `ops` view grant is whatever the default matrix gives it, which is the point: the console must
+   * refuse it on its own prefix regardless.
+   */
+  const staffPhone = `+255${LOCAL_STAFF.COMPLIANCE}`;
+  const staffUser = await w.db.user.findByPhone(staffPhone);
+  ok("0.staff · 393 · the non-owner staff persona exists and is NOT an ADMIN", !!staffUser && staffUser.role === "COMPLIANCE", `${staffPhone} → ${staffUser?.role ?? "missing"}`);
+  const viewers: Array<[string, string]> = [["player", player], ["holder", holder], ["trigger", triggers[0]], ["staff", staffUser!.id], ["admin", A]];
   const cookies: Record<string, string> = {};
   for (const [k, id] of viewers) cookies[k] = await mint(id);
 
@@ -281,6 +382,11 @@ try {
     "/admin/ai-polls/[id]": [["unknown", "zz_not_a_record_000000000000"]], "/admin/invites/[id]": [["unknown", "zz_not_a_record_000000000000"]],
     "/admin/house/[marketId]": [["Q2", Q2.id]], "/admin/kyc/[id]": [["holder", holder]], "/admin/markets/[id]": [["Q2", Q2.id], ["V1", V1.id]],
     "/admin/players/[id]": [["holder", holder], ["A", A], ["trigger", triggers[0]]], "/admin/resolver/[id]": [["Q2", Q2.id]], "/admin/staff/[id]": [["A", A]],
+    /* ⭐ 392(b) · THE CONSOLE'S OWN RECORD ROUTE, with its three values. The page is C7 step 4's, so this entry is
+       INERT today (the disk walk finds no `page.tsx` under `/admin/desk/[id]`) — and it lands NOW because the check
+       below turns an unfilled CONSOLE route into a FAILURE rather than a soft `notMeasured`, and a failure with no
+       fixture ready is a step 4 that cannot run its own probe. */
+    "/admin/desk/[id]": [["designated", botId], ["removed", removedBotId ?? "zz_not_a_record_000000000000"], ["unknown", "zz_not_a_record_000000000000"]],
   };
   const AUDIT_CATEGORIES = [...readFileSync(join(ROOT, "src/lib/server/audit.ts"), "utf8").match(/export type AuditCategory = ([^;]+);/)?.[1].matchAll(/"([A-Z]+)"/g) ?? []].map((m) => m[1]);
   const queriesFor = (route: string, file: string) => {
@@ -306,7 +412,28 @@ try {
     }
   }
   if (unfilled.length) notMeasured("2.routes · dynamic console routes with no fixture value", unfilled.join(", "));
-  ok("2.routes · every console page is enumerated from disk and requested", pageRoutes.length >= 50 && ROUTES.length >= pageRoutes.length, `${pageRoutes.length} pages · ${ROUTES.length} route instances`);
+  /**
+   * ⛔ 392(c) · AN UNFILLED CONSOLE ROUTE IS A FAILURE, NOT A `notMeasured`. The soft report above stays for the
+   * rest of the tree, where a page with no fixture is a gap in coverage. Under the console's own prefix it is worse
+   * than a gap: a detail route that can be requested by NOBODY leaves 4.1 printing a clean sheet over a population
+   * that never included the page most likely to leak a record id — the measure-the-right-population failure this
+   * whole instrument exists to prevent.
+   */
+  const CONSOLE_PREFIX = "/admin/desk";
+  const consoleUnfilled = unfilled.filter((r) => r === CONSOLE_PREFIX || r.startsWith(`${CONSOLE_PREFIX}/`));
+  ok("2.routes.console · ⛔ 392(c) · every DYNAMIC console route on disk has a FILL value — an unfilled console route FAILS here, where the rest of the tree only reports",
+    consoleUnfilled.length === 0, consoleUnfilled.join(", ") || "none unfilled");
+  const consoleInstances = ROUTES.filter((r) => r.name === CONSOLE_PREFIX || r.name.startsWith(`${CONSOLE_PREFIX}?`) || r.name.startsWith(`${CONSOLE_PREFIX}/`));
+  /* ⛔ THE FLOOR IS RAISED IN THE SCRIPT TO WHAT THIS PASS MEASURES (392(e)) — never compared against a number
+   * recorded in a plan document, because a gate that is not in the pipeline is not a gate. */
+  ok("2.routes · every console page is enumerated from disk and requested", pageRoutes.length >= 55 && ROUTES.length >= pageRoutes.length, `${pageRoutes.length} pages · ${ROUTES.length} route instances · ${consoleInstances.length} of them under ${CONSOLE_PREFIX}: ${consoleInstances.map((r) => r.name).join(", ")}`);
+  /* ⛔ AND THE DESK'S OWN TABS ARE ENUMERATED, BY NAME. Ruling 315: the probe discovers tabs by matching
+   * `tab === "…"` in the page FILE, so any other shape leaves panels silently unrequested — and a COMMENT that
+   * quotes the idiom invents an instance no panel answers. The count is printed and read, not assumed. */
+  ok("2.routes.tabs · 315 · the desk's bare route and every tab its page names are requested, and nothing else",
+    consoleInstances.length >= 3 && consoleInstances.some((r) => r.name === CONSOLE_PREFIX)
+      && consoleInstances.some((r) => r.name === `${CONSOLE_PREFIX}?tab=limits`),
+    consoleInstances.map((r) => r.name).join(", "));
   const apiRoutes: string[] = [];
   const walkApi = (dir: string, rel: string) => {
     for (const e of readdirSync(dir, { withFileTypes: true })) {
@@ -323,6 +450,28 @@ try {
     ? ["/api/admin/reports/house-liquidity?format=pdf", "/api/admin/reports/audit-trail-export?format=xlsx"]
     : [`${r}${API_FILL[r] ?? ""}`]);
 
+  /**
+   * ⛔ 374 · EACH CANARY IS SHOWN ABSENT FROM THE REPOSITORY BEFORE IT IS LOOKED FOR. A needle that already occurs
+   * somewhere would be found in a body for reasons that have nothing to do with the desk, and the zero it then
+   * produced would be worth nothing. This file is excepted: it is where the constants are declared.
+   */
+  {
+    const SELF = join(ROOT, "scripts", "house-bot-console-probe.mts");
+    const found: string[] = [];
+    const scan = (dir: string) => {
+      for (const e of readdirSync(dir, { withFileTypes: true })) {
+        const f = join(dir, e.name);
+        if (e.isDirectory()) { scan(f); continue; }
+        if (f === SELF || !/\.(ts|tsx|mts|mjs|js|json|sql|md|css)$/.test(e.name)) continue;
+        const body = readFileSync(f, "utf8");
+        for (const c of CANARY_STRINGS) if (body.includes(c)) found.push(`${relative(ROOT, f)}: ${c}`);
+      }
+    };
+    for (const d of ["src", "scripts", "prisma", "public"]) scan(join(ROOT, d));
+    ok(`0.canary · 374 · every canary amount is absent from src/, scripts/, prisma/ and public/ before it is planted (${CANARY_STRINGS.length} forms)`,
+      found.length === 0 && CANARY_STRINGS.length === 12, found.slice(0, 6).join(" · "));
+  }
+
   // ── the server over the fresh build ──
   server = spawn("npx", ["next", "start", "-p", String(PORT)], { cwd: ROOT, shell: isWin, stdio: ["ignore", "pipe", "pipe"],
     env: { ...process.env, ...SECRETS, DATABASE_URL, USE_PRISMA_DAL: "true", DISABLE_ADMIN_TOTP: "true", HOUSE_BOT_ENGINE: "false", MARKET_SCHEDULER: "false", UPDOWN_SCHEDULER: "false", NODE_ENV: "production" } });
@@ -336,13 +485,23 @@ try {
 
   // ── the needles: the shared vocabulary, the bot's label and id; the repo's own folder name stripped from stack traces ──
   const rootForms = [ROOT, ROOT.replace(/\\/g, "/"), ROOT.replace(/\\/g, "\\\\"), "kipindi-house-bots"];
+  /* ⛔ 374 · THE CANARY AMOUNTS ARE NEEDLES TOO, and that is what makes a money figure measurable at all: the
+   * shared vocabulary, the account's label and its id are none of them a TZS amount, so before this the probe's zero
+   * said nothing whatever about a leaked figure. Both forms are matched — the raw digits and the grouped form the
+   * console renders. ⛔ And because they are needles, the ADMIN control (4.3) can finally fire on `?tab=limits`,
+   * whose body carries no account label at all: its only house data IS the money. */
   const needles = (body: string) => {
     let text = body;
     for (const r of rootForms) text = text.split(r).join("<root>");
-    return [...new Set([...houseHits(text), ...[LABEL, botId].filter((x) => text.includes(x))])];
+    return [...new Set([...houseHits(text),
+      ...[LABEL, LABEL2, botId, ...(removedBotId ? [removedBotId] : [])].filter((x) => text.includes(x)),
+      ...CANARY_STRINGS.filter((c) => text.includes(c))])];
   };
-  ok("3.needles · CONTROL · a house word, the label and the bot id are each found; the repo's own folder in a stack trace is not",
-    needles("House stake: YES").length >= 1 && needles(`tag ${LABEL}`).length === 1 && needles(`id ${botId}`).length >= 1 && needles(`at ${ROOT.replace(/\\/g, "/")}/src/x.ts (kipindi-house-bots)`).length === 0);
+  ok("3.needles · CONTROL · a house word, the label, the bot id and a CANARY amount in both its forms are each found; the repo's own folder in a stack trace is not",
+    needles("House stake: YES").length >= 1 && needles(`tag ${LABEL}`).length === 1 && needles(`id ${botId}`).length >= 1
+      && needles(`used TZS ${CANARY.gStake.toLocaleString("en-US")} of`).length === 1
+      && needles(`${CANARY.botExposure}`).length === 1
+      && needles(`at ${ROOT.replace(/\\/g, "/")}/src/x.ts (kipindi-house-bots)`).length === 0);
 
   const treeOf = (segs: unknown[]) => {
     let node: unknown[] = [segs[segs.length - 1], {}];
@@ -365,8 +524,24 @@ try {
   await fetchFollowingRsc(`/admin/players/${holder}`, { cookie: cookies.admin, "sec-fetch-mode": "navigate" });
   const rows: Any[] = [];
   // The audit log and the overview first, before the probe's own page views write rows ahead of the fixture's.
-  const FIRST = (n: string) => n === "/admin" || n.startsWith("/admin/audit");
-  ROUTES.sort((x, y) => Number(!FIRST(x.name)) - Number(!FIRST(y.name)));
+  /* ⛔ THE PROBE'S OWN PAGE VIEWS POLLUTE THE RING IT MEASURES. `/admin/players/[id]` WRITES a COMPLIANCE
+   * `admin.player.viewed` row on every render, and its Activity and Audit panels read the RING
+   * (`getAuditForActor` + `getAuditForTarget`, newest first, sliced). MEASURED at this head: by the time
+   * `?tab=audit` was requested, ~100 of the probe's own view rows sat ahead of the fixture's two `house_bot.*` rows,
+   * so the ADMIN control read the page as SILENT and 4.3 reported a blind control on an instance that is not blind at
+   * all. The holder's instances therefore join the audit log in the FIRST group, which is the same reason the
+   * comment below already gives for `/admin/audit`. */
+  /* ⛔ AND THE ORDER INSIDE THE FIRST GROUP MATTERS TOO, MEASURED. Putting the holder's instances first was not
+   * enough: the BARE instance is requested by five viewers in three modes before `?tab=audit` is reached, and every
+   * one of those fifteen renders writes its own `admin.player.viewed` row against the same target — so the decay is
+   * monotonic and visible inside a single instance (`?tab=activity` carried on `document` and `flight` and not on
+   * `flight+tree`). The instance whose control depends on the ring window is therefore requested FIRST of all, when
+   * only the warm-up's single row sits ahead of the fixture's. ⛔ This is ordering, not population: nothing is
+   * dropped from `MUST_CARRY`, and the pollutant is the probe's own traffic, not the product. */
+  const RING_FIRST = (n: string) => n === "/admin/players/[id]<holder>?tab=audit";
+  const FIRST = (n: string) => n === "/admin" || n.startsWith("/admin/audit") || n.startsWith("/admin/players/[id]<holder>");
+  const rank = (n: string) => (RING_FIRST(n) ? 0 : FIRST(n) ? 1 : 2);
+  ROUTES.sort((x, y) => rank(x.name) - rank(y.name));
   for (const route of ROUTES) {
     for (const [viewer] of viewers) {
       const modes: Array<[string, Record<string, string>]> = [
@@ -396,15 +571,57 @@ try {
   }
   writeFileSync(join(OUT, "results.json"), JSON.stringify(rows, null, 2));
 
+  /**
+   * ⛔ THE AUDIENCE-AWARE CLASSIFICATION (ruling 393), AND WHY IT IS NOT ONE RULE FOR EVERYONE.
+   * A player, the holder and a trigger player are outside EVERY console audience, so a single house hit anywhere is a
+   * leak. A non-owner STAFF officer is different by design: ruling 260 gates the audit rows "whole for the route's
+   * audience", and register row X13 records that a COMPLIANCE officer legitimately reads house audit rows on
+   * `/admin/players/[id]`. So its hits are FAILURES on the console's own prefix — owner-only — and REPORTED
+   * everywhere else.
+   * ⛔ THE CONSOLE'S EXPECTATION IS A LITERAL HERE, never `isOwnerOnlyPath`: a test that recomputes the code's own
+   * answer proves nothing about the code.
+   */
+  const PLAYER_STANDARD = new Set(["player", "holder", "trigger"]);
+  const onConsole = (route: string) => route === CONSOLE_PREFIX || route.startsWith(`${CONSOLE_PREFIX}?`) || route.startsWith(`${CONSOLE_PREFIX}/`);
   const nonStaff = rows.filter((r) => r.viewer !== "admin");
-  const leaks = nonStaff.filter((r) => (r.hits?.length ?? 0) > 0);
+  const leaks = nonStaff.filter((r) => (r.hits?.length ?? 0) > 0 && (PLAYER_STANDARD.has(r.viewer) || onConsole(r.route)));
+  const staffElsewhere = rows.filter((r) => r.viewer === "staff" && (r.hits?.length ?? 0) > 0 && !onConsole(r.route));
   const errored = rows.filter((r) => r.error);
   ok("4.0 · every request was answered (no transport error)", errored.length === 0, errored.slice(0, 5).map((r) => `${r.viewer} ${r.route} ${r.mode}: ${r.error}`).join(" · "));
-  ok(`4.1 · ⛔ D19 · no response to a player, the holder or a trigger player carries a house word, the bot's label or its id (${nonStaff.length} responses over ${ROUTES.length} page instances and ${API_PATHS.length} API routes)`,
+  ok(`4.1 · ⛔ D19 · no response carries a house word, an account's label or id, or a canary amount — to a player, the holder or a trigger player ANYWHERE, or to a non-owner staff officer on ${CONSOLE_PREFIX} (${nonStaff.length} responses from four non-audience viewers over ${ROUTES.length} page instances and ${API_PATHS.length} API routes)`,
     nonStaff.length > 0 && leaks.length === 0, leaks.slice(0, 12).map((r) => `${r.viewer} ${r.route} ${r.mode} ${r.status}: ${r.hits.slice(0, 3).join("|")}`).join(" · "));
-  const apiNonStaff = nonStaff.filter((r) => r.mode === "api");
+  /**
+   * ⛔ 4.1b · 393 · THE OWNER-ONLY BRANCH, DRIVEN BY A REAL STAFF SESSION OVER THE WIRE, WITH ITS CONTROL.
+   * Zero hits for this viewer is worth something only where the ADMIN has non-zero on the SAME instance — otherwise
+   * it is a page that says nothing to anybody, and the silence proves nothing.
+   */
+  const staffConsole = rows.filter((r) => r.viewer === "staff" && onConsole(r.route));
+  const staffConsoleHits = staffConsole.filter((r) => (r.hits?.length ?? 0) > 0);
+  const adminConsoleHitInstances = new Set(rows.filter((r) => r.viewer === "admin" && onConsole(r.route) && (r.hits?.length ?? 0) > 0).map((r) => r.route));
+  ok(`4.1b · 393 · a NON-OWNER STAFF officer receives NOTHING from any console instance, in all three modes — with the ADMIN carrying house data on the same instances (${staffConsole.length} staff responses)`,
+    staffConsole.length > 0 && staffConsoleHits.length === 0 && adminConsoleHitInstances.size >= 2,
+    `${staffConsoleHits.slice(0, 6).map((r) => `${r.route} ${r.mode} ${r.status}: ${r.hits.slice(0, 3).join("|")}`).join(" · ")} | ADMIN carries on: ${[...adminConsoleHitInstances].sort().join(", ")}`);
+  ok("4.1b · 393 · …and that staff session really was signed in, not merely refused at the edge — it reached a route its own domain grants",
+    rows.some((r) => r.viewer === "staff" && r.route.startsWith("/admin/audit") && (r.status ?? 0) === 200),
+    [...new Set(rows.filter((r) => r.viewer === "staff").map((r) => `${r.status}`))].join(","));
+  /* ⛔ REPORTED, NOT FAILED (393): outside the console's prefix a staff officer's hits are ruling 260's own design. */
+  for (const r of [...new Set(staffElsewhere.map((r) => r.route))].sort()) {
+    notMeasured(`4.1b.x · ${r}`, "a non-owner staff officer sees house data here, which ruling 260 grants by the route's own audience (X13) — reported, never failed");
+  }
+  /* ⛔ 4.2's POPULATION IS THE NON-STAFF VIEWERS, NOT "EVERYONE BUT THE ADMIN" (corrected with ruling 393's staff
+   * viewer). A COMPLIANCE officer is STAFF: `/api/admin/kyc-doc` and `/api/admin/transactions/export` answering it
+   * 200 is the product working, and folding it into this assertion would have turned a correct grant into a failure
+   * — and, worse, taught the next session to relax the rule. What the staff officer must not receive is measured by
+   * 4.1b, on the console's own prefix. */
+  const apiNonStaff = nonStaff.filter((r) => r.mode === "api" && PLAYER_STANDARD.has(r.viewer));
   ok("4.2 · every admin API route refuses a non-staff account (status 400 or above)", apiNonStaff.length > 0 && apiNonStaff.every((r) => (r.status ?? 0) >= 400),
     [...new Set(apiNonStaff.map((r) => `${r.route} ${r.status}`))].join(" · "));
+  /* ⛔ AND THE STAFF OFFICER'S OWN API RESULTS ARE PRINTED RATHER THAN ASSERTED: a role's API grants are the RBAC
+   * suites' subject, not this probe's, and an assertion here would be a second, weaker copy of them. */
+  const apiStaff = rows.filter((r) => r.mode === "api" && r.viewer === "staff");
+  ok("4.2b · 393 · the staff officer's admin API results are recorded, and none of them carries a house needle",
+    apiStaff.length > 0 && apiStaff.every((r) => (r.hits?.length ?? 0) === 0),
+    [...new Set(apiStaff.map((r) => `${r.route} ${r.status}`))].join(" · "));
   const adminHitRoutes = new Set(rows.filter((r) => r.viewer === "admin" && (r.hits?.length ?? 0) > 0).map((r) => r.route));
   /**
    * ⛔ THE POSITIVE CONTROL, RE-ANCHORED BY OWNER RULING D20 (C5-5b, 2026-09-18). It named the six R2/R9 display pages
@@ -431,12 +648,16 @@ try {
    * (the strip's own sentence being a words-family hit) does not hold under ruling 453, which made every rendered
    * sentence neutral. The label is the hit, and the label is on the roster.
    */
-  const MUST_CARRY = ["/admin/audit", "/admin/audit?category=SYSTEM", "/admin/audit?category=COMPLIANCE", "/admin/audit?category=ADMIN", `/admin/players/[id]<holder>`, `/admin/players/[id]<holder>?tab=audit`, `/admin/kyc/[id]<holder>`, "/admin/desk"];
+  const MUST_CARRY = ["/admin/audit", "/admin/audit?category=SYSTEM", "/admin/audit?category=COMPLIANCE", "/admin/audit?category=ADMIN", `/admin/players/[id]<holder>`, `/admin/players/[id]<holder>?tab=audit`, `/admin/kyc/[id]<holder>`,
+    /* ⭐ EVERY CONSOLE INSTANCE, and `?tab=limits` is the one that needed ruling 374 to be measurable at all: its
+       body carries no account label — the roster's needle — because it renders limits and usage only. Its house
+       data IS the money, and the canary amounts are what make money a needle. */
+    "/admin/desk", "/admin/desk?tab=roster", "/admin/desk?tab=limits"];
   ok("4.3 · CONTROL · the ADMIN's own responses still carry house data where it exists after D20's un-build — the audit log (default, SYSTEM, COMPLIANCE and ADMIN, where the house actions and the value rows are), the holder's player page with and without its audit tab, the KYC case's durable target read, and the desk's own roster",
     MUST_CARRY.every((r) => adminHitRoutes.has(r)), `missing: ${MUST_CARRY.filter((r) => !adminHitRoutes.has(r)).join(", ") || "none"} · ADMIN carries house data on ${adminHitRoutes.size} route instances`);
   const silent = [...new Set(rows.map((r) => r.route))].filter((r) => !adminHitRoutes.has(r)).sort();
   for (const r of silent) notMeasured(`4.nm · ${r}`, "the ADMIN control carries no house data there, so its absence for the other viewers proves nothing about that page");
-  const summary = { requests: rows.length, nonStaff: nonStaff.length, leaks: leaks.length, adminRouteInstancesWithHouseData: [...adminHitRoutes].sort(), notMeasured: silent,
+  const summary = { requests: rows.length, nonStaff: nonStaff.length, leaks: leaks.length, staffConsoleResponses: staffConsole.length, staffElsewhereReported: staffElsewhere.length, canaryForms: CANARY_STRINGS.length, consoleInstances: consoleInstances.length, adminRouteInstancesWithHouseData: [...adminHitRoutes].sort(), notMeasured: silent,
     statusesNonStaff: Object.entries(nonStaff.reduce((m: Record<string, number>, r) => { const k = String(r.status ?? "ERR"); m[k] = (m[k] ?? 0) + 1; return m; }, {})) };
   writeFileSync(join(OUT, "summary.json"), JSON.stringify(summary, null, 2));
   console.log(`\nsummary: ${JSON.stringify({ ...summary, adminRouteInstancesWithHouseData: summary.adminRouteInstancesWithHouseData.length, notMeasured: silent.length })}`);

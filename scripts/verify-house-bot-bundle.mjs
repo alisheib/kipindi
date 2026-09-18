@@ -144,5 +144,74 @@ if (empty.length > 0) { console.log(`NOT MEASURED — no files in ${empty.map((p
 const { total, report } = scanPopulations(populations);
 console.log(`scanned ${populations.map((p) => `${p.files.length} files under ${p.name}`).join(" · ")} (build ${new Date(builtAt).toISOString()})`);
 for (const [key, r] of report) console.log(`FOUND ${key} ×${r.n} in ${r.files.size} file(s) · e.g. …${r.ctx}…`);
+
+/**
+ * ⛔ THE POSITIVE PRESENCE CONTROL (C7-SPEC ruling 396). A zero above means "no house vocabulary in the artefact"
+ * ONLY if the artefact actually CONTAINS the console. The freshness check two blocks up compares mtimes; it cannot
+ * tell a build that included the section from one produced before it existed, from a different checkout, or with the
+ * route tree-shaken away. So one declared NEUTRAL needle from the console's own client code must be FOUND under
+ * `.next/static`, or this pass prints NOT MEASURED instead of a pass.
+ *
+ * ⚠️ THE NEEDLE IS NEUTRAL BY CONSTRUCTION and that is the point: ruling 453 forbids the section from putting a
+ * feature word anywhere, so the thing that proves the console is in the build cannot itself be a house word. It is
+ * the custom window-event name the desk's own live strip registers — a string literal inside a `"use client"`
+ * component, used in its effect, so it survives tree-shaking.
+ * ⛔ IT IS READ FROM THE SOURCE, NEVER TYPED HERE: a needle typed twice is a needle that drifts, and this one would
+ * drift silently into "found nothing, therefore green".
+ */
+const CONSOLE_CLIENT = path.join(root, "src", "app", "admin", "desk", "desk-live.tsx");
+const staticFiles = populations.find((p) => p.name === ".next/static")?.files ?? [];
+let presenceOk = false;
+let presenceNeedle = "";
+let presenceFile = "";
+if (!fs.existsSync(CONSOLE_CLIENT)) {
+  console.log(`NOT MEASURED — the console's client module is not at ${path.relative(root, CONSOLE_CLIENT)}, so this scan cannot show the build contains the section`);
+  process.exit(2);
+}
+{
+  const src = fs.readFileSync(CONSOLE_CLIENT, "utf8");
+  presenceNeedle = (src.match(/"(50pick:desk:[a-z]+)"/) ?? [])[1] ?? "";
+  if (!presenceNeedle) {
+    console.log(`NOT MEASURED — ${path.relative(root, CONSOLE_CLIENT)} declares no neutral presence needle for this scan to look for`);
+    process.exit(2);
+  }
+  for (const f of staticFiles) {
+    if (!TEXT.test(f)) continue;
+    if (fs.readFileSync(f, "utf8").includes(presenceNeedle)) { presenceOk = true; presenceFile = path.relative(next, f).replace(/\\/g, "/"); break; }
+  }
+}
+if (!presenceOk) {
+  console.log(`NOT MEASURED — the console's own neutral needle ${JSON.stringify(presenceNeedle)} is in NO file under .next/static, so this build does not demonstrably contain the section and its zero proves nothing`);
+  process.exit(2);
+}
+console.log(`PRESENCE · the build contains the console: ${JSON.stringify(presenceNeedle)} found in ${presenceFile}`);
+
+/**
+ * ⛔ 385's PROVENANCE SECTION, over the SAME populations (ruling 396). The console's copy is written on the SERVER
+ * and handed to the client as finished strings; ruling 453 makes every one of those strings neutral, so the house
+ * vocabulary scan above can no longer see them at all. What a served artefact must still not contain is the console's
+ * own SENTENCES — a server sentence in a public chunk means a client module has re-typed it, which is the first step
+ * back to a client file that knows what the desk is.
+ * ⛔ THE SENTENCES ARE READ FROM THE SERVER SOURCE, not listed here, so the section cannot rot away from the copy.
+ */
+{
+  const GATE = path.join(root, "src", "lib", "server", "house-console-read.ts");
+  const sentences = fs.existsSync(GATE)
+    ? [...fs.readFileSync(GATE, "utf8").matchAll(/"([A-Z][^"\\]{24,120}[.?→])"/g)].map((m) => m[1])
+    : [];
+  const provenance = [];
+  for (const pop of populations) {
+    for (const f of pop.files) {
+      if (!TEXT.test(f)) continue;
+      const body = fs.readFileSync(f, "utf8");
+      for (const sent of sentences) if (body.includes(sent)) provenance.push(`${path.relative(pop.base, f).replace(/\\/g, "/")}: ${JSON.stringify(sent.slice(0, 48))}`);
+    }
+  }
+  const CONTROL = sentences[0] ?? "";
+  const controlWorks = CONTROL.length > 0 && `var a=${JSON.stringify(CONTROL)};`.includes(CONTROL);
+  console.log(`${provenance.length === 0 && sentences.length >= 5 && controlWorks ? "PASS" : "FAIL"} provenance · 385 · none of the ${sentences.length} server-written console sentences appears in the public bundle, the prerendered documents or public/${provenance.length ? ` — ${provenance.slice(0, 5).join(" · ")}` : ""}${sentences.length < 5 ? " — the sentence list is too small to be a population" : ""}`);
+  if (provenance.length > 0 || sentences.length < 5 || !controlWorks) process.exit(1);
+}
+
 console.log(total === 0 ? "ALL PASS — verify:house-bot-bundle: no house-bot vocabulary in the public bundle, the prerendered documents or public/" : `FAIL — verify:house-bot-bundle: ${total} hit(s)`);
 process.exit(total === 0 ? 0 : 1);

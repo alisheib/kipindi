@@ -12,6 +12,7 @@ import { refusedFundsReport, awaitsOfficer, type RefusedAccountRow } from "@/lib
 import { REFUSED_FUNDS_OUTCOME_COPY, REFUSED_FUNDS_OUTCOMES } from "@/lib/refused-funds-outcomes";
 import { currentSession } from "@/lib/server/auth-service";
 import { canView } from "@/lib/server/rbac";
+import { houseConsoleAudience } from "@/lib/server/house-console-read";
 import { txnStatusLabel } from "@/components/admin/status-badge";
 import type { StoredTxn } from "@/lib/server/store";
 import { isFinalRefusal, type FinalRefusalCode } from "@/lib/kyc-refusal";
@@ -73,6 +74,28 @@ export default async function RefusedFundsReportPage({
   // page. This report rendered every refused player's balance to any role the compliance route admits; without money
   // rights the service reads no wallet, and every figure below reads "not in your role".
   const session = await currentSession();
+  /**
+   * ⛔ THE AUDIENCE IS DECIDED HERE, ON THE STORED ROLE, BEFORE ANY ROW IS READ (C5-SPEC rulings 259/260; C7-SPEC
+   * ruling 434, taken on a MEASURED leak).
+   *
+   * MEASURED 2026-09-18 by `qa:house-bot-console-probe`: this page rendered an officer's refused-funds
+   * JUSTIFICATION verbatim, in a `<td>`, with status 200, to a signed-in PLAYER, the holder and a trigger player, in
+   * all three modes. A layout's verdict changes what is PAINTED, not what is SENT, and `AdminSectionGate` above this
+   * file does not stop the page's own async function from running and streaming its payload.
+   * ⛔ WHY THAT IS A HOUSE MATTER AND NOT ONLY A PLATFORM ONE. Ruling 260 gates "every audit row a console file
+   * reads", and this page reads audit rows — through `refusedFundsReport` → `getAuditByActionsDurable` over the four
+   * `REFUSED_FUNDS_ACTION`s. That reader sits in `AUDIT_READERS_OUTSIDE_CONSOLE` on the ground that its ACTIONS are
+   * never house actions, which is true of the action and false of the PAYLOAD: 260's own text says a platform row can
+   * carry a house VALUE, and a justification written about a desk account's holder names the account. So the
+   * classification excused the reader and left the PAGE ungated.
+   * ⛔ THE VERDICT IS THE VIEWER'S STORED ROLE, not the cookie's photograph of it — the shape `AdminSectionGate` and
+   * `houseConsoleAudience` already share, and the reason the money check below is NOT the belt: `session.role` is the
+   * role baked into the signed cookie, so a demoted account's old cookie still answers yes.
+   * ⚠️ `null` is the same answer `/admin/desk` gives: this section HAS a `layout.tsx` with `AdminSectionGate`, so a
+   * staff viewer whose role may not view compliance still sees the restricted panel, and a non-staff account never
+   * painted this page at all — it only ever reached it through the hole this closes.
+   */
+  if (!(await houseConsoleAudience(session?.userId ?? null, "/admin/kyc/refused"))) return null;
   const canSeeMoney = session ? await canView(session.role, "accounting") : false;
   let report: Awaited<ReturnType<typeof refusedFundsReport>> | null = null;
   try { report = await refusedFundsReport({ money: canSeeMoney }); } catch { report = null; }

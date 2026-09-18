@@ -1050,6 +1050,43 @@ section("§2 · the strip, the band, the roster and every failure");
       dead.live === false, j({ live: dead.live, rows: dead.rows.length }));
   }
 
+  /* ⛔ 1.393 · A NON-OWNER STAFF VIEWER IS OUTSIDE THE CONSOLE'S AUDIENCE, ON BOTH BELTS. `houseConsoleAudience`
+   * has two branches and only one of them was ever driven: until C7 step 2 the probe's viewers were a player, the
+   * holder, a trigger player and the ADMIN, so the OWNER-ONLY branch the whole console depends on had never been
+   * exercised by a real staff session. The static half is asserted here; the SERVED half is the probe's 4.1b. */
+  {
+    const STAFF = ["SUPPORT", "COMPLIANCE", "MODERATOR", "FINANCE", "GROWTH", "AUDITOR"];
+    const ids: Array<[string, string]> = [];
+    for (const role of STAFF) ids.push([role, await w.user({ role })]);
+    const verdicts: Record<string, boolean> = {};
+    for (const [role, id] of ids) {
+      verdicts[role] = (await GATEM.houseConsoleAudience(id, "/admin/desk"))
+        || (await GATEM.houseConsoleAudience(id, "/admin/desk/new"))
+        || (await GATEM.houseConsoleAudience(id, "/admin/desk/hb_0123456789abcdef01234567"));
+    }
+    ok("1.393 · no non-owner staff role is in the audience of ANY console route — the section, the wizard and a record path alike",
+      STAFF.every((r) => verdicts[r] === false) && ROLES.isOwnerOnlyPath(CR.CONSOLE_ROUTE) === true, j(verdicts));
+    ok("1.393 · CONTROL · the same six roles ARE in the audience of a route their domain grants, so the six falses above are a measurement and not an unreachable call",
+      (await GATEM.houseConsoleAudience(ids.find(([r]) => r === "COMPLIANCE")![1], "/admin/audit")) === true, "");
+  }
+
+  /* ⛔ 1.332 · X13 · AN ADMIN WHO ALSO HOLDS A LIVE ACCOUNT KEEPS THE CONSOLE. Asserted deliberately, so a future
+   * silent holder-exclusion turns this case red and has to be RULED rather than slipped in: on a one-owner platform
+   * the alternative locks Ali out of the very controls that stop his own desk the moment he designates his own
+   * account, and a "not a holder" test would need the holder set read on every gate call — a second read whose
+   * failure mode is a locked-out owner. */
+  {
+    const adminHolder = await w.user({ role: "ADMIN" });
+    const held = await w.bot({ holderId: adminHolder });
+    const verdict = await GATEM.houseConsoleAudience(adminHolder, "/admin/desk");
+    const view = await GATEM.houseRosterForConsole(adminHolder, "/admin/desk");
+    ok("1.332 · X13 · an ADMIN who HOLDS a live account is still in the console's audience, and still reads its rows",
+      verdict === true && view !== null && view.rows.some((r: Any) => r.id === held.botId),
+      j({ verdict, rows: view?.rows?.length }));
+    ok("1.332 · X13 · CONTROL · that account really is a live holder in this run, so the verdict above is the combination X13 names and not an ordinary ADMIN",
+      (await w.dal.houseBotStore.findLiveByUserId(adminHolder))?.id === held.botId, "");
+  }
+
   /* ⛔ AND EVERY ONE OF THEM IS HANDED TO §3's LEXICON SCAN. A painted branch nobody scans is a branch 453 does not
    * cover, and 453 is a HARD rule on everything the console renders. */
   STATES.push(["default", v], ["roster-failed", plants.roster], ["money-failed", plants.day],
@@ -1704,6 +1741,215 @@ export default function Ruling513Control() {
     gateCode.includes("control?.switchedById") && !/displayLabel|displayName|phoneE164/.test(gateCode), "");
   ok("1.420 · `playerHandle` is used for the HOLDER only, never for a staff actor",
     (gateCode.match(/playerHandle\(/g) ?? []).length === 1 && gateCode.includes("playerHandle(bot.userId)"), "");
+
+  /* ════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+   * §5 · THE D19 SECTION (C7-SPEC ruling 398; the assignments are replan ruling 506's)
+   *
+   * ⛔ WHY IT IS ITS OWN SECTION. Ruling 398 gives this suite the D19 source pins of Area 5 — 380 to 399 — "every one
+   * built on the SHARED vocabulary, and every one with a PLANTED CONTROL in the same run that shows the assertion can
+   * fail". Replan ruling 506 then found that TWELVE of those assertions were named by a ruling's Proof clause as its
+   * only guard and appeared in NO step's prose, NO §4 row and NO case: they would have been lost between the steps
+   * rather than decided. Seven of them land here, at step 2, because their subjects are already built.
+   *
+   * ⛔ AND THE SECTION HAS A ROLL-CALL OF ITS OWN (398, corrected by 506). Until now 398 only checked that assertions
+   * which EXIST have planted controls — so an assertion that was NEVER WRITTEN was invisible to the guard that exists
+   * to find exactly that, which is how the twelve went missing. The roll-call below holds the section's ACTUAL case
+   * ids against 398's own enumerated closed list, with the STEP each is owed at, so a missing assertion is a printed
+   * line rather than a silence.
+   * ════════════════════════════════════════════════════════════════════════════════════════════════════════════════ */
+  section("§5 · D19 for the console itself");
+  {
+    const liveFile = `${SECTION}/desk-live.tsx`;
+    const clientFiles = sectionFiles.filter((f) => read(f).includes('"use client"'));
+    const clientCode = clientFiles.map((f) => decomment(read(f))).join("\n");
+
+    /* ── 1.381 · ONE NEUTRAL CODENAME, AND IT IS `desk` ──────────────────────────────────────────────────────────
+     * Three server-rendered strings are not free even behind the gate: the route's `metadata.title` (the document
+     * `<title>` is emitted into a response served 200 to ANY signed-in account under ruling 259), the loader's head,
+     * and the section gate's restricted-panel heading, which is computed from the last URL segment — a second,
+     * independent reason the console adds no `CRUMB_LABELS` entry. */
+    ok("1.381 · the codename is `desk` and it is a hit in NO family of the shared vocabulary — so it names the feature to nobody",
+      houseHits("desk").length === 0 && houseHits("Desk").length === 0 && houseHits("/admin/desk").length === 0
+        && CR.CONSOLE_ROUTE === "/admin/desk", j(houseHits("/admin/desk")));
+    ok("1.381 · the three server-rendered strings take the codename: the route's `metadata.title`, the loader's head, and the crumb the gate computes from the segment",
+      /export const metadata = \{ title: "Admin · Desk" \}/.test(pageCode)
+        && /<AdminPageHead title="Desk"/.test(decomment(read(LOADING)))
+        && NAV.crumbsFromPath("/admin/desk").at(-1) === "Desk"
+        && houseHits(["Admin · Desk", "Desk", NAV.crumbsFromPath("/admin/desk").join(" ")].join(" ")).length === 0, "");
+    /* ⛔ AND THE CODENAME IS NOT ADDED TO `HOUSE_BENIGN_SAMPLES` (381, §6 item 19): that list holds LOOK-ALIKES that
+     * must NOT match, and `desk` resembles no needle, so the entry would be a control that cannot fail. */
+    ok("1.381 · CONTROL · the vocabulary really can see a codename that DOES name the feature, so the zero above is a measurement",
+      houseHits("/admin/house-bots").length > 0 && houseHits("exposure-console").length === 0
+        && !(await import("./house-bot-vocabulary.mjs") as Any).HOUSE_BENIGN_SAMPLES.includes("desk"), "");
+
+    /* ── 1.384 · NO CONSOLE CLIENT MODULE REACHES A HOUSE MODULE, BY VALUE OR BY TYPE ────────────────────────────
+     * A type-only import is ERASED by the bundler and invisible to the disclosure walker (its own 2.c3/2.c6
+     * controls say so), which makes it the exact shape that survives review and becomes a value import in one
+     * careless edit. The pin is therefore on the import SPECIFIER, which catches both. */
+    const HOUSE_SPECIFIERS = ["@/lib/house-bot/", "@/lib/server/house-bot", "house-bot-dal", "house-console-read",
+      "feed-copy", "alert-copy", "pause-reasons", "status-display"];
+    ok("1.384 · no client file of the section carries a house module SPECIFIER in any import form — `import`, `import type`, `require` or `import()`",
+      clientFiles.length >= 1 && HOUSE_SPECIFIERS.every((m) => !clientCode.includes(m)),
+      j({ clientFiles, hits: HOUSE_SPECIFIERS.filter((m) => clientCode.includes(m)) }));
+    ok("1.384 · CONTROL · the same test fires on a planted `import type` — the form 1.1 and 1.2 are blind to, which is the whole reason this assertion exists",
+      (() => {
+        const planted = `${clientCode}\nimport type { ConsoleTab } from "@/lib/house-bot/console-routes";`;
+        return HOUSE_SPECIFIERS.some((m) => planted.includes(m));
+      })(), "");
+    ok("1.384 · every client file receives a plain view model: no house-shaped prop name, and nothing but primitives crosses the boundary",
+      clientFiles.every((f) => !/\b(bot|house|liquidity|counterStake)[A-Za-z]*\s*[?:]/.test(decomment(read(f))))
+        && /export function DeskLive\(\{ live \}: \{ live: boolean \}\)/.test(decomment(read(liveFile))), "");
+
+    /* ── 1.386 · THE LIVE-REFRESH TRIGGER NAMES NO NOTIFICATION KIND ────────────────────────────────────────────
+     * `HOUSE_BOT` is matched by the identifier family, so a kind comparison in client code is a hit in the
+     * disclosure walk AND in the bundle scan. The filter buys nothing: `notification:new` is USER_SCOPED, so the SSE
+     * route forwards a notification only to the account it belongs to, and every house alert goes to admins only. */
+    const EVENT_STREAM = decomment(read("src/lib/use-event-stream.ts"));
+    const windowEventName = /"notification:new":\s*"([^"]+)"/.exec(EVENT_STREAM)?.[1] ?? "";
+    ok("1.386 · the strip listens for the GENERIC window event `EVENT_MAP` gives `notification:new`, read from the hook's own map — never the wire type, which nothing dispatches on `window`",
+      windowEventName === "50pick:sse:notification"
+        && clientCode.includes(`eventName="${windowEventName}"`)
+        && !clientCode.includes('"notification:new"'), j({ windowEventName }));
+    ok("1.386 · and it inspects NO kind: no `HOUSE_BOT` literal, no `detail.notification.kind`, and no import of the notification registry or its filters",
+      !/HOUSE_BOT|detail\.notification|notification-filters|comms-registry|NOTIFICATION_KINDS/.test(clientCode), "");
+    ok("1.386 · CONTROL · a planted kind comparison IS a hit in the shared vocabulary, so the absence above is a measurement",
+      houseHits('if (e.detail.notification.kind === "HOUSE_BOT") router.refresh();').length > 0, "");
+
+    /* ── 1.389 · THE COUNTDOWN ADDS NO CLIENT MODULE, NO HOUSE WORD AND NO SERVER-CONFIG REACH ───────────────────
+     * ⚠️ RECORDED, NOT OVERSTATED: the console has no countdown until C7 step 4's action row. What IS asserted now
+     * is the rule that decides what step 4 may add — no new countdown component under the section, and no client
+     * file reaching `@/lib/utils`' date helpers, which pull server platform config into a chunk (trap E-322). */
+    ok("1.389 · no client file of the section imports `@/lib/utils`' date helpers, which reach server platform config from a chunk (trap E-322)",
+      !/from "@\/lib\/utils"/.test(clientCode) && !/formatEat|getPlatformTimezone|eatDayKey/.test(clientCode), "");
+    ok("1.389 · the section adds NO countdown component of its own — the kit's `CountdownPill` is the one home, and it takes server-computed seconds",
+      sectionFiles.every((f) => !/function\s+\w*Countdown|const\s+\w*Countdown\s*=/.test(decomment(read(f))))
+        && existsSync(join(ROOT, "src/components/ui/countdown-pill.tsx")), "");
+    /* ⛔ AND BOTH HALVES OF THAT ASSERTION CAN FIRE: a planted date-helper import and a planted local countdown are
+     * each caught by the very expressions above, so the two absences are measurements and not unreached scans. */
+    ok("1.389 · CONTROL · a planted `@/lib/utils` date import and a planted local Countdown component are each reported by the same two scans",
+      /from "@\/lib\/utils"/.test(`${clientCode}
+import { formatEat } from "@/lib/utils";`)
+        && /function\s+\w*Countdown|const\s+\w*Countdown\s*=/.test("function DeskCountdown() { return null; }"), "");
+
+    /* ── 1.342 · THE AUDIENCE VERDICT IS RESOLVED ONCE PER RENDER PASS, INSIDE THE MODULE ────────────────────────
+     * `db.user.findById` is a real `findUnique` returning the WHOLE row including `avatarDataUrl` — a column
+     * `user.list()` explicitly omits for this reason — and the console asks the audience question several times per
+     * page. `sensitive.tsx` measured and closed this exact N+1 for the same lookup, and its shape is the one used.
+     * ⛔ AND THE LIMIT OF THE PROOF IS MEASURED AND WRITTEN DOWN RATHER THAN GLOSSED. React's `cache()` memoises
+     * per RENDER PASS; outside one it is a pass-through, MEASURED 2026-09-18 on this repo's own React (three calls
+     * of a `cache()`d function invoked the body three times). So a spy in this suite cannot see the memo, and a case
+     * asserting "exactly one lookup" here would be green for a reason that has nothing to do with production. What
+     * is asserted is what CAN be: the wrapper is in the module, the lookup is named ONCE, and no console file
+     * resolves or receives the verdict itself. */
+    ok("1.342 · the viewer lookup is wrapped in React `cache()` inside the gate module, and `db.user.findById` is named EXACTLY ONCE there",
+      /cache\(/.test(gateCode) && /import \{ cache \} from "react";/.test(gateCode)
+        && (gateCode.match(/db\.user\.findById/g) ?? []).length === 1, j((gateCode.match(/db\.user\.findById/g) ?? []).length));
+    ok("1.342 · …and it is the SAME shape `sensitive.tsx` already uses for the same lookup, so the console did not invent a second memo idiom",
+      /const viewerRole = cache\(async \(\) => \{/.test(decomment(read("src/components/ui/sensitive.tsx"))), "");
+    ok("1.342 · no file under the section resolves the verdict itself or takes it as a prop — the answer stays in the module that gates on it",
+      !/viewer\s*[?:]|role\s*[?:]\s*(Role|string)|mayView|isOwner|isAdmin|canView|findById/.test(sectionCode), "");
+    ok("1.342 · CONTROL · MEASURED LIMIT, not a claim · React `cache()` does NOT memoise outside a render pass, so this suite cannot prove the per-pass reduction and does not pretend to",
+      await (async () => {
+        const { cache }: Any = await import("react");
+        let n = 0;
+        const f = cache(async () => { n++; return n; });
+        await f(); await f(); await f();
+        return n === 3;
+      })(), "three calls, three invocations — the memo is a render-pass property and is proved by its source, not by a spy here");
+
+    /* ── 1.343 · THE ROUTE A GATE CALL NAMES IS A STRING LITERAL EQUAL TO THE FILE'S OWN CONSOLE ROUTE ───────────
+     * `test:house-bot-reports` 0.260.1 holds every gate call to the signed-in viewer and the file's own route; what
+     * is added here is the shape that pin cannot see from the other side: nothing under the section BUILDS that
+     * argument from a header or a search param, which would report as a value rather than as a literal and would
+     * let a mistyped route widen a page's read audience to a whole RBAC domain. */
+    const gateCalls = [...pageCode.matchAll(/house(?:ConsoleAudience|RosterForConsole|UsageForConsole|AuditForConsole)\(([^;]*?)\)/g)].map((m) => m[1]);
+    ok("1.343 · every gate call under the section passes the literal `\"/admin/desk\"` as its route, and there are at least three of them",
+      gateCalls.length >= 3 && gateCalls.every((a) => a.includes('"/admin/desk"')), j(gateCalls));
+    ok("1.343 · and no gate argument is built from a header, a search param or the route module — a literal is what the pin can measure",
+      !/headers\(\)|x-pathname|sp\.tab.*houseConsole|CONSOLE_ROUTE/.test(pageCode)
+        && (pageCode.match(/"\/admin\/desk"/g) ?? []).length === gateCalls.length, j(pageCode.match(/"\/admin\/desk"/g)));
+    /* ⛔ THE CONTROL IS THE DERIVED FORM 343 REFUSES: a header value reads as a VALUE to the arity/own-route pin,
+     * not as the literal it insists on, so a mistyped route would silently widen a page's read audience to a whole
+     * RBAC domain — and the scan above must be able to see it. */
+    ok("1.343 · CONTROL · the same scan fires on a planted header-derived route argument, so the absence above is a measurement",
+      /headers\(\)|x-pathname/.test(`${pageCode}
+const r = headers().get("x-pathname");`), "");
+
+    /* ── 1.332 · X13 · A HOLDER WHO IS ALSO AN ADMIN STAYS INSIDE THE AUDIENCE ───────────────────────────────────
+     * Asserted DELIBERATELY, so a future silent holder-exclusion turns this case red and has to be ruled rather
+     * than slipped in. The alternative locks a one-owner platform out of the very controls that stop its own desk. */
+    ok("1.332 · X13 · designating an account that holds a STAFF role is refused outright — which is why the combination can only arise by PROMOTING an existing holder",
+      /staff/i.test(decomment(read("src/lib/server/house-bot/eligibility.ts")).slice(0, 200_000))
+        && decomment(read("src/lib/server/house-bot/eligibility.ts")).includes("STAFF_ACCOUNT"), "");
+    ok("1.332 · X13 · no holder-exclusion clause exists in the gate: the audience is the STORED ROLE and nothing else",
+      !/holder|findLiveByUserId|houseBotStore\.find/.test(decomment(read(GATE)).split("export type ConsoleAuditRead")[0]), "");
+  }
+
+  /* ⛔ 1.398's ROLL-CALL · THE D19 SECTION'S ACTUAL CASE IDS AGAINST ITS OWN CLOSED LIST (ruling 398, corrected by
+   * replan ruling 506). Until this existed, 398 checked only that assertions which EXIST have planted controls — so
+   * an assertion that was NEVER WRITTEN was invisible to the guard whose whole purpose is to find exactly that, and
+   * TWELVE went missing that way. The list below is 398's own enumeration of Area 5 plus 506's three additions, each
+   * with the STEP it is owed at and the instrument that owns it. Every entry due at or before the step this tree has
+   * BUILT must appear in the labels THIS RUN printed; every later one is printed with its step, so a missing
+   * assertion is a line on the screen rather than a silence. ⛔ `BUILT_THROUGH` only ever rises, and it rises in the
+   * commit that builds the step. */
+  {
+    const BUILT_THROUGH = 3;
+    type Owed = { id: string; step: number; owner: string; what: string };
+    const D19: Owed[] = [
+      { id: "1.380", step: 1, owner: "console", what: "the gate's position, the literal route, force-dynamic, no gate in the loader" },
+      { id: "1.381", step: 2, owner: "console", what: "ONE neutral codename, and the three server-rendered strings that take it" },
+      { id: "1.382", step: 6, owner: "console", what: "every action export name and guard label is house-free" },
+      { id: "1.383", step: 6, owner: "console", what: "the guard is first and the refusal is not an oracle" },
+      { id: "1.384", step: 2, owner: "console", what: "no client module reaches a house module, by value OR by type" },
+      { id: "1.385", step: 6, owner: "console", what: "copy provenance: no server sentence appears in a client module" },
+      { id: "1.386", step: 2, owner: "console", what: "the live-refresh trigger names no notification kind" },
+      { id: "1.387", step: 6, owner: "console", what: "the account picker is neutral and is not an enumeration oracle" },
+      { id: "1.388", step: 6, owner: "console", what: "dialog copy comes from the server; no typed word names a bot" },
+      { id: "1.389", step: 2, owner: "console", what: "the countdown adds no client module and no server-config reach" },
+      { id: "1.390", step: 7, owner: "console", what: "no action throws an Error whose message names the feature" },
+      { id: "1.391", step: 7, owner: "console", what: "client drafts live outside the house modules and hold no secret" },
+      { id: "1.392", step: 2, owner: "qa:house-bot-console-probe", what: "the probe's population GROWS, and an unfilled console route FAILS" },
+      { id: "1.393", step: 2, owner: "console", what: "a non-owner staff viewer is outside the audience, on both belts" },
+      { id: "1.394", step: 2, owner: "qa:house-bot-console-probe", what: "the action pass is selected by the manifest's filename" },
+      { id: "1.395", step: 7, owner: "console", what: "the console adds no admin API route, over the WALKED inventory" },
+      { id: "1.396", step: 2, owner: "verify:house-bot-bundle", what: "ZERO, on a build first shown to CONTAIN the console" },
+      { id: "1.397", step: 7, owner: "console", what: "the vocabulary grows by one MEASURED word, never by a new regex" },
+      { id: "1.398", step: 2, owner: "console", what: "this roll-call, and every assertion shown able to fail" },
+      /* ⚠️ 1.399 IS STEP 4's, NOT STEP 2's, AND THE REASON IS MEASURED. Its subject is the `[id]` route answering
+       * identically for "no such record", "removed" and "not the audience" — and `/admin/desk/[id]` has no page
+       * until step 4, so neither the probe's three fixtures nor the source pin on `notFound()` has anything to read.
+       * §4's row 2 scheduled it here; the code says otherwise and the code wins (§0). RECORDED, not skipped. */
+      { id: "1.399", step: 4, owner: "console", what: "a missing record and a refused viewer answer identically" },
+      { id: "1.332", step: 2, owner: "console", what: "X13 · a holder who is also an ADMIN stays inside the audience" },
+      { id: "1.342", step: 2, owner: "console", what: "the audience verdict is resolved ONCE per render pass, in the module" },
+      { id: "1.343", step: 2, owner: "console", what: "the route a gate call names is a STRING LITERAL, never a header" },
+    ];
+    /* ⚠️ 1.398 ITSELF IS EXCLUDED FROM ITS OWN ROLL-CALL, and that is not an exemption: `emitted` is the list of
+     * labels printed SO FAR, and this case's own label is appended by `ok()` after the predicate is evaluated — so
+     * including it would make the roll-call report itself missing, every run, for ever. It is present by
+     * construction: if this case did not run, nothing below would print at all. */
+    const dueHere = D19.filter((d) => d.step <= BUILT_THROUGH && d.owner === "console" && d.id !== "1.398");
+    const missing = dueHere.filter((d) => !emitted.some((l) => l.startsWith(`${d.id} `)));
+    const later = D19.filter((d) => d.step > BUILT_THROUGH || d.owner !== "console");
+    ok("1.398 · ROLL-CALL · every D19 assertion owed at or before the step this tree has built was PRINTED by this run, and every later one is named with its step and its instrument",
+      missing.length === 0 && dueHere.length >= 9 && D19.length === 23,
+      j({ builtThrough: BUILT_THROUGH, dueHere: dueHere.length, missing: missing.map((d) => `${d.id} (${d.what})`), later: later.map((d) => `${d.id}@step${d.step}:${d.owner}`) }));
+    /* ⛔ THE CONTROL IS THE POINT: the roll-call must be able to report an id that was never written, which is the
+     * failure mode it exists for. An invented id is looked for and must NOT be found; a real one must be. */
+    ok("1.398 · CONTROL · the roll-call reads this run's own labels — an id that was never written IS reported, and one that was is not",
+      !emitted.some((l) => l.startsWith("1.997 ")) && emitted.some((l) => l.startsWith("1.381 "))
+        && D19.filter((d) => d.id === "1.997").length === 0
+        && [{ id: "1.997", step: 1, owner: "console", what: "an assertion nobody wrote" }]
+             .filter((d) => !emitted.some((l) => l.startsWith(`${d.id} `))).length === 1, "");
+    /* ⛔ AND EVERY ASSERTION IN THIS SECTION HAS A PLANTED CONTROL IN THE SAME RUN (398's original half, kept): the
+     * section's own labels are counted, and each `id · CONTROL ·` is matched to an id that printed. */
+    const controls = emitted.filter((l) => / · CONTROL · /.test(l)).map((l) => l.split(" ")[0]);
+    ok("1.398 · every D19 assertion printed here carries a planted CONTROL of its own in the same run",
+      dueHere.filter((d) => d.owner === "console" && d.step === 2).every((d) => controls.includes(d.id))
+        && controls.length >= 20,
+      j({ controls: [...new Set(controls)].sort(), dueAtStep2: dueHere.filter((d) => d.step === 2).map((d) => d.id) }));
+  }
 
   /* ⛔ 1.318's ROLL-CALL OVER THE DECLARED MUTATIONS, AND IT MUST BE LAST — it reads the labels THIS run printed.
    * `red:house-bot-console` matches a run's FAIL lines with `result.fails.find((l) => l.includes(d.expect))`, so an
