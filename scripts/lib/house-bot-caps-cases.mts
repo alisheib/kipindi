@@ -838,19 +838,46 @@ section("§9 · ruling 542 · loadCapFacts measures every figure on the day it w
     return loadCapFacts(bot, m.id, { control, nowMs: atMs, staffChosen: true, counterpartyUserId: null });
   };
 
+  /* ⛔ THE ASSERTION IS AN AGREEMENT, NOT A ZERO — AND THE FIRST FORM OF IT WAS DATE-FRAGILE.
+   * It read "yesterday is empty", which is true only while the whole suite runs inside ONE EAT day. Measured:
+   * the same case was green at 21:00 and RED at 00:50, because sections §0-§8 had placed their stakes before EAT
+   * midnight and §9's "yesterday" was no longer empty — a fixture that decides its own answer from the clock.
+   * What 542 is actually about is that EVERY figure in one decision names the SAME day, so that is what is
+   * asserted: each of the gate's five reads is compared with an INDEPENDENT read of the day it was given. */
+  const yKey = eatDayKey(yesterdayMs);
+  const tKey = eatDayKey(nowMs);
+  const own = async (dayKey: string, botId: string) => ({
+    bookBot: (await houseDayBook(dayKey, botId)).stakedTzs,
+    bookAll: (await houseDayBook(dayKey, null)).stakedTzs,
+    staffBot: await w.dal.houseBotIntentStore.staffChosenPlacedToday({ houseBotId: botId, dayKey }),
+    staffAll: await w.dal.houseBotIntentStore.staffChosenPlacedToday({ houseBotId: null, dayKey }),
+  });
+  const yOwn = await own(yKey, b.botId);
+  const tOwn = await own(tKey, b.botId);
+
   const y = await load(yesterdayMs);
-  ok("9.3 · ⛔ 542 · asked about YESTERDAY, the day books AND the staff-chosen windows are BOTH yesterday's — one decision, one clock",
-    y.stakedToday === 0 && y.globalStakedToday === 0 && y.projectedLossToday === 0
-      && y.staffChosen !== null && y.staffChosen.count === 0 && y.staffChosen.tzs === 0
-      && y.staffChosen.globalCount === 0 && y.staffChosen.globalTzs === 0,
-    JSON.stringify({ dayBooks: { bot: y.stakedToday, all: y.globalStakedToday }, staffChosen: y.staffChosen }));
+  ok("9.3 · ⛔ 542 · asked about YESTERDAY, every one of the gate's five reads answers for YESTERDAY — one decision, one clock",
+    y.stakedToday === yOwn.bookBot && y.globalStakedToday === yOwn.bookAll
+      && y.staffChosen !== null
+      && y.staffChosen.count === yOwn.staffBot.count && y.staffChosen.tzs === yOwn.staffBot.stakeTzs
+      && y.staffChosen.globalCount === yOwn.staffAll.count && y.staffChosen.globalTzs === yOwn.staffAll.stakeTzs,
+    JSON.stringify({ gate: { bot: y.stakedToday, all: y.globalStakedToday, staff: y.staffChosen }, day: yOwn }));
 
   const t = await load(nowMs);
-  ok("9.4 · CONTROL · asked about TODAY, the same five reads DO see that stake — so 9.3 measured the day and not an empty store",
-    t.globalStakedToday >= staked && t.stakedToday >= staked
-      && t.staffChosen !== null && t.staffChosen.count >= 1 && t.staffChosen.tzs >= staked
-      && t.staffChosen.globalCount >= 1 && t.staffChosen.globalTzs >= staked,
-    JSON.stringify({ dayBooks: { bot: t.stakedToday, all: t.globalStakedToday }, staffChosen: t.staffChosen }));
+  ok("9.4 · CONTROL · asked about TODAY, the SAME five reads answer for today instead — so 9.3 measured the day it was given",
+    t.stakedToday === tOwn.bookBot && t.globalStakedToday === tOwn.bookAll
+      && t.staffChosen !== null
+      && t.staffChosen.count === tOwn.staffBot.count && t.staffChosen.tzs === tOwn.staffBot.stakeTzs
+      && t.staffChosen.globalCount === tOwn.staffAll.count && t.staffChosen.globalTzs === tOwn.staffAll.stakeTzs
+      && t.staffChosen.tzs >= staked,
+    JSON.stringify({ gate: { bot: t.stakedToday, all: t.globalStakedToday, staff: t.staffChosen }, day: tOwn }));
+
+  /* ⛔ AND THE TWO DAYS REALLY DO DIFFER, or 9.3 and 9.4 could both be satisfied by a gate that answers one
+   * day for every question. This is the fixture's whole job: a staff-chosen stake placed TODAY that yesterday's
+   * window cannot contain. */
+  ok("9.4 · CONTROL · the two EAT days give DIFFERENT staff-chosen answers, so 9.3 and 9.4 cannot both be satisfied by one day",
+    tOwn.staffAll.stakeTzs !== yOwn.staffAll.stakeTzs && tOwn.staffBot.stakeTzs !== yOwn.staffBot.stakeTzs,
+    JSON.stringify({ today: tOwn.staffAll, yesterday: yOwn.staffAll }));
   /**
    * ⛔ AND THE CLASS, NOT THE ONE CALL THE REVIEW HAPPENED TO OPEN (replan ruling 542's own lesson). 9.3 measures the
    * GATE. The same member is reached from the seam's H2 and H4 inside the bet's own locks, from the Enter now
