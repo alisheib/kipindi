@@ -528,6 +528,9 @@ bots and what keeps D19 true").
        `dal-parity.test.mts`'s `NEVER` array so a silent re-add goes red. Its only consumer was R1's presses register,
        struck by D20, and ruling 345 already forbids re-adding its siblings. A paged house READ wired into both twins
        with no caller is precisely what ruling 259 makes dangerous.
+       > ⛔ **REVERSED 2026-09-18 by ruling 517 below, on measurement — this bullet is NOT carried out, and the rest of
+       > 504 stands unchanged.** The premise "its only consumer was R1's presses register" was true at the audit's pin
+       > `5005c811` and false by the time the ruling was written: C5-6's R6 erasure sweep gave it a named caller.
      - **`lastStoppedAt` and `veto` — KEPT ONLY IF NAMED.** C7 step 4's refusal copy is the candidate consumer; step 4
        either calls each by name with a behavioural case, or deletes it the same way in the same commit. ⛔ Not carried
        past step 4 undecided a second time.
@@ -635,3 +638,36 @@ bots and what keeps D19 true").
      (ii) every ruling it supersedes carries a supersede banner in place, (iii) the next-free-ruling number is
      corrected wherever it is written, and (iv) any generator that would re-raise the closed matter — the autonomous
      run prompt's Phase 0 among them — is edited, not just the copies it generates.
+
+517. **Ruling 504's `listRegister` bullet is REVERSED on measurement: the member is KEPT, and the guard it asked for is
+     rebuilt pointing the other way.** Taken under 500(e) — *a decision that turns out wrong is reversed by a new
+     numbered ruling that says what was believed, what was measured, and what changed.*
+     - **What was believed.** 504: *"Its only consumer was R1's presses register, struck by D20 … A paged house READ
+       wired into both twins with no caller is precisely what ruling 259 makes dangerous."*
+     - **What was measured**, at `8c3b90d3`, by the session that was told to delete it. `listRegister` HAS a caller:
+       `scripts/erasure.test.mts:711` reads the presses table through it (`pressStore.listRegister({ fromIso, toIso,
+       houseBotId, limit })`), `houseBotPresses` is one of that suite's §8 `MUST_HAVE_CONTENT` buckets, and its `8.0e`
+       requires the bucket to hold at least one row. `git log -L` dates the caller to **C5-6's R6 sweep, `8b64e5a4`** —
+       so 504's premise was TRUE at the audit's pin `5005c811` and had stopped being true by the time it was written.
+       `npm run test:erasure` at this head: **225 passed, 0 failed**, §8 executed.
+     - **What changes.** The member and its filter type stay. Deleting them would have deleted a live proof that an
+       erased holder leaves no trace in the presses table — ⛔ ruling 500(c)'s named prohibition, and the reason the
+       deletion was not simply carried out and reported. C5-5b's own exit rule is satisfied as written: *kept only with
+       a named remaining caller*, and there is one. ⛔ The `NEVER` entries are NOT added: `NEVER` asserts the member is
+       absent from the DAL, so adding them to a list while the member is present would have put a guard in the tree that
+       could not pass.
+     - **The guard is still built, in the direction the defect actually runs.** `dal-parity.test.mts` §16 gains
+       `KEPT_BY_A_NAMED_CALLER` and case **16.504**: every member kept only by a caller must still be the interface plus
+       BOTH twins, and that caller must still call it exactly once — so the day the erasure sweep stops reading presses,
+       the DAL member goes red as callerless instead of sitting there unread. `16.504.c1` plants four failures (member
+       gone, filter type gone, call gone, caller unreadable) and each must fire; the assertion was ALSO seen red on the
+       real tree with the erasure call swapped for another reader, then restored byte for byte.
+     - ⛔ **`lastStoppedAt` and `veto` are untouched**, exactly as 504 orders: they are C7 step 4's to name or delete,
+       and this session neither deleted nor pinned them. Measured at this head for step 4's benefit, because the two are
+       NOT in the same position and 504 treats them as one:
+       · `veto` — three occurrences in the house DAL (interface plus both twins), **no caller in `src/`**, but two
+         behavioural callers in `scripts/`: `scripts/lib/house-bot-dal-cases.mts:557` and `:560` (the c08 veto and its
+         no-op repeat) and `scripts/lib/house-bot-engine-cases.mts:1971`. So it already meets C5-5b's exit rule the way
+         `listRegister` does, and step 4's question about it is only whether a PRODUCT caller is still wanted.
+       · `lastStoppedAt` — three occurrences in the house DAL and **zero anywhere else in the repository**: no `src/`
+         caller, no `scripts/` caller, no case. It is the one of the two that is genuinely undecided.

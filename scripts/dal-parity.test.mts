@@ -775,6 +775,64 @@ const HOUSE_TS_KEYS = new Set(["dueAt", "staleAt", "deadlineAt", "claimedUntil",
     declared.length === 0, declared.join(", "));
   ok("16.d20.c1 · CONTROL · the detector finds a member that IS there (dayRows) and not one that never was",
     new RegExp("(^|[^A-Za-z])(async )?dayRows\\(", "m").test(houseDalSrc) && !new RegExp("(^|[^A-Za-z])(async )?entryRowsXyz\\(", "m").test(houseDalSrc));
+
+  /**
+   * ⛔ RULING 504, AND THE MEASUREMENT THAT REVERSED HALF OF IT (replan ruling 517, 2026-09-18). 504 ordered
+   * `listRegister` and `PressRegisterFilter` DELETED from the interface and both twins and their names added to `NEVER`
+   * above, on the stated ground that "its only consumer was R1's presses register, struck by D20". That was TRUE at the
+   * audit's pin `5005c811` and is FALSE at this head: C5-6's R6 erasure sweep (`8b64e5a4`) gave the member a named
+   * caller. `scripts/erasure.test.mts` reads the presses table through it, `houseBotPresses` is one of that suite's §8
+   * `MUST_HAVE_CONTENT` buckets, and its `8.0e` requires the bucket to hold at least one row — so deleting the member
+   * would have deleted a live proof that an erased holder leaves no trace in the presses table. Ruling 500(c) refuses
+   * exactly that. C5-5b's own exit rule — KEPT with a named remaining caller — is what keeps it.
+   *
+   * ⛔ SO THE GUARD CHANGES SHAPE INSTEAD OF DISAPPEARING, and it points the other way from `NEVER`. `NEVER` catches a
+   * struck member coming BACK; this catches the defect 504 was actually aiming at — a member whose LAST caller quietly
+   * goes away, leaving a paged house READ wired into both twins with no consumer, which is ruling 259's shape. Both
+   * halves are read from disk: the member must still be the interface plus BOTH twins, and the named caller must still
+   * call it exactly once. ⛔ A row leaves this table only when the MEMBER is deleted — never by deleting the row.
+   */
+  const KEPT_BY_A_NAMED_CALLER: ReadonlyArray<{ member: string; type?: string; caller: string; call: string; why: string }> = [
+    {
+      member: "listRegister", type: "PressRegisterFilter", caller: "scripts/erasure.test.mts",
+      call: "pressStore.listRegister({",
+      why: "R6's erasure sweep reads the presses table for the erased holder's bot; that suite's houseBotPresses bucket and its 8.0e row count both die with the member",
+    },
+  ];
+  /** One row's problems, read from the two files it names. Both sources are DECOMMENTED, so a member or a call that survives only inside a comment counts as gone. */
+  const keptProblems = (row: { member: string; type?: string; caller: string; call: string }, dal: string, callerSrc: string | null): string[] => {
+    const out: string[] = [];
+    const inDal = dal.split(`${row.member}(`).length - 1;
+    if (inDal < 3) out.push(`${row.member}: named ${inDal} times in the house DAL, not the interface plus BOTH twins`);
+    if (row.type && !dal.includes(row.type)) out.push(`${row.member}: its filter type ${row.type} is gone from the house DAL`);
+    if (callerSrc === null) { out.push(`${row.member}: its named caller ${row.caller} could not be read`); return out; }
+    const calls = callerSrc.split(row.call).length - 1;
+    if (calls !== 1) out.push(`${row.member}: ${row.caller} calls it ${calls} times, not exactly once — this member is kept ONLY by that caller`);
+    return out;
+  };
+  const keptSrc = new Map([...new Set(KEPT_BY_A_NAMED_CALLER.map((r) => r.caller))]
+    .map((rel) => [rel, decomment(readFileSync(join(ROOT, rel), "utf8"))] as const));
+  const keptRows = KEPT_BY_A_NAMED_CALLER.flatMap((r) => keptProblems(r, houseDalSrc, keptSrc.get(r.caller) ?? null));
+  ok("16.504 · ⛔ 504/517 · every house DAL member kept ONLY by a named caller is still the interface plus BOTH twins, and that caller still calls it exactly once",
+    KEPT_BY_A_NAMED_CALLER.length >= 1 && keptRows.length === 0, keptRows.join(" · "));
+  {
+    const R0 = KEPT_BY_A_NAMED_CALLER[0];
+    const erasureSrc = keptSrc.get(R0.caller) ?? "";
+    const fired = {
+      memberGone: keptProblems(R0, houseDalSrc.split(`${R0.member}(`).join("xxRegister("), erasureSrc),
+      typeGone: keptProblems(R0, houseDalSrc.split("PressRegisterFilter").join("PressXFilter"), erasureSrc),
+      callerGone: keptProblems(R0, houseDalSrc, erasureSrc.split(R0.call).join("pressStore.listAuditRepair(")),
+      callerUnreadable: keptProblems(R0, houseDalSrc, null),
+      untouched: keptProblems(R0, houseDalSrc, erasureSrc),
+    };
+    ok("16.504.c1 · CONTROL · the member gone from the DAL, its filter type gone, the named caller's call gone and an unreadable caller are each reported; the unmodified pair is not",
+      fired.memberGone.some((p) => p.includes("not the interface plus BOTH twins"))
+        && fired.typeGone.some((p) => p.includes("filter type PressRegisterFilter is gone"))
+        && fired.callerGone.some((p) => p.includes("calls it 0 times"))
+        && fired.callerUnreadable.some((p) => p.includes("could not be read"))
+        && fired.untouched.length === 0,
+      JSON.stringify(fired));
+  }
   const filtersSrc = decomment(readFileSync(join(SRC, "lib/server/txn-filters.ts"), "utf8"));
   ok("16.d20.house · ⛔ D20 · no house filter survives in the transaction search grammar or its Prisma where (ruling 210 struck)",
     filtersSrc.length > 2_000 && !/f\.house/.test(filtersSrc) && !/house\?:/.test(filtersSrc) && !/houseBotId/.test(filtersSrc), filtersSrc.length.toString());
