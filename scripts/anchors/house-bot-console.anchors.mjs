@@ -171,8 +171,8 @@ export const MUTATIONS = [
   {
     name: "346-countlive · the Accounts tile takes a second count, which can disagree with the table beside it",
     file: GATE,
-    from: `        ? { label: "Accounts", value: \`\${formatNumber(roster.length)} of \${formatNumber(control.maxDesignatedBots)}\`, delta: "designated of max" }`,
-    to: `        ? { label: "Accounts", value: \`\${formatNumber(await houseBotStore.countLive())} of \${formatNumber(control.maxDesignatedBots)}\`, delta: "designated of max" }`,
+    from: `        ? { label: "Accounts", value: \`\${formatNumber(roster.length)} of \${formatNumber(control.maxDesignatedBots)}\`, delta: "designated and the maximum" }`,
+    to: `        ? { label: "Accounts", value: \`\${formatNumber(await houseBotStore.countLive())} of \${formatNumber(control.maxDesignatedBots)}\`, delta: "designated and the maximum" }`,
     expect: "1.346 · exactly ONE `listNonRemoved` and ZERO `countLive` per render",
     suite: "console-mem",
   },
@@ -1178,6 +1178,26 @@ import { formatEat } from "@/lib/utils";`,
     from: 'expect: "1.356 ' + '· ZERO wallet reads",',
     to: 'expect: "1.356 ' + '· ZERO wallet reads from the holder",',
     expect: "1.318 · every declared `console-mem` mutation names an assertion THIS run actually printed",
+    suite: "console-mem",
+  },
+  /* ── C7 step 3's VISUAL pass · rulings 544 and 432(n), both found by reading a served tile. ───────────── */
+  {
+    /* ⚠️ THE MUTATION IS THE CODE AS IT SHIPPED BEFORE 544, which is the point: `ProgressBar` clamps at 100%, so
+     * `limits-at-1280.png` and `limits-over-1280.png` are pixel-identical in the meter and the clause is the only
+     * discriminator there is. Untoned, it is four grey words at the end of five grey lines. */
+    name: "544-edge-tone · the bar's at/over clause goes back to the sentence's own tone, where the geometry cannot say it",
+    file: PAGE,
+    from: `          {row.edgeText ? <span className="text-warning-fg">{row.edgeText}</span> : null}`,
+    to: `          {row.edgeText}`,
+    expect: "1.544 · the BAR's at/over clause carries the warning tone",
+    suite: "console-mem",
+  },
+  {
+    name: "432n-placeholder · an unset limit says \"Not set\" twice in one field — once in the box, once in the caption below it",
+    file: FORM,
+    from: `                    placeholder={row.optional && !row.unset ? "Not set" : undefined}`,
+    to: `                    placeholder={row.optional ? "Not set" : undefined}`,
+    expect: "2.537 · RENDERED · 432(n) · an UNSET limit says",
     suite: "console-mem",
   },
 ];

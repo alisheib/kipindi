@@ -1276,3 +1276,87 @@ bots and what keeps D19 true").
      - **Scheduled: before Commit 8**, with ruling 501's ISO work, because both touch the audit export and
        both are regulator-facing. ⛔ Not at C7 step 4 — the ceremony step must not also be re-writing the
        platform's audit contract underneath itself.
+
+### Rulings of C7 step 3's VISUAL pass (544-546, 2026-09-19, OMEGA-COMPILE01)
+
+544. **THE USAGE BAR CANNOT SAY WHETHER A CAP HAS BEEN BREACHED, AND FOUR GREY WORDS WERE THE ONLY THING THAT
+     COULD — so the clause takes the tone the same card already spends on a cap that stops money.** Found by
+     doing the thing §5 asks for and nobody had done: rendering `?tab=limits` with usage AT and OVER a cap.
+     - **What was measured**, on a served build against a scratch Postgres carrying the step-1 fixture's five
+       accounts and six real positions (7,430,000 of open stake), at all six mandatory widths:
+       · AT: caps set to 7,430,000 — three bars at `fillW 638/640`, captions ending "— at the limit", the KPI
+         deltas reading "100% of daily stake limit".
+       · OVER: caps set to 5,000,000 / 4,000,000 / 6,000,000 — the SAME three bars at `fillW 638/640`, captions
+         ending "— over the limit", deltas reading "148%", "185%", "123%".
+       · `limits-at-1280.png` and `limits-over-1280.png` are **pixel-identical in the meter**. `ProgressBar` is
+         `Math.max(0, Math.min(100, …))` by construction (a zero max is not 100% done), so the geometry cannot
+         carry the difference and was never going to.
+     - **What the clause was.** `UsageBar` rendered `{row.edgeText}` bare, inheriting the caption's
+       `text-body-sm text-text-muted`: on a card of five near-identical grey lines, the row saying the gate is
+       refusing every stake looked exactly like the four that are not. Ruling 367 decided the clause is the
+       signal; it was never decided that the signal should be unreadable at a glance.
+     - **The decision.** On the BAR, and only on the bar, the clause is wrapped in `text-warning-fg` — the tone
+       this very card already spends on an unset cap, which is the other state in which the gate refuses. No new
+       colour enters the section. ⛔ **Colour is the SECOND signal, never the only one**: the words "— at the
+       limit" / "— over the limit" stay exactly as 367 wrote them, and `captionText` (the `aria-valuetext`) is
+       untouched, so nothing announced to assistive tech changed and no markup entered a string attribute.
+     - ⛔ **The ROSTER CELL is deliberately NOT changed.** `Usage` states its own reason in its own words — a
+       roster row has a status chip where a stopped account is coloured — and a bar has none. `1.544`'s control
+       asserts the cell is still untoned, so a sweep that coloured every `edgeText` is as red as one that
+       coloured none. Declared mutation `544-edge-tone`.
+
+545. **THE DESK'S `loading.tsx` GHOSTS A SIX-COLUMN TABLE FOR WHAT IS NOW A FOURTEEN-FIELD FORM, and a
+     `loading.tsx` cannot be told which tab is coming — so this is RECORDED with its measurement and owed to the
+     step that can fix it, not patched blind.** Ruling 417 asks for card-for-card.
+     - **What was measured**, on a served build, by holding an `ACCESS EXCLUSIVE` lock on `HouseBotControl` from
+       a second connection so the page's own control read really blocks and Next flushes the fallback:
+       · the loader is card-for-card CORRECT for the DEFAULT tab — at 1280 the loader is **940px** and
+         `/admin/desk?tab=roster` is **940px**, an exact match, which is what ruling 417 bought;
+       · on `?tab=limits` the same loader is 940px against a page of **2,129px** — a **1,189px** jump at 1280
+         and **2,553px** at 360 (973 → 3,526) — and what it ghosts is a table with six columns and five rows
+         while the page paints a usage card of five meters and a two-column form of fourteen boxes.
+     - **Why it is not simply fixed.** A `loading.tsx` is a Suspense fallback for the ROUTE SEGMENT: it receives
+       no props and cannot read `?tab=`. Replacing the table ghost with a neutral block would destroy the exact
+       roster match above to soften the other tab, which is a net loss. The two admissible fixes both belong to a
+       step that is already restructuring the panels: per-panel `<Suspense>` boundaries inside the page, or tabs
+       as route segments.
+     - ⚠️ **AND THE EXPOSURE IS NARROWER THAN IT LOOKS, measured rather than assumed:** a SOFT navigation — the
+       rail's own tab link, and the strip's "Set N global limits first →" — does **not** paint the fallback at
+       all (driven with the RSC fetch delayed 2,500 ms; the ghost never appeared). Only a cold load or a refresh
+       of `?tab=limits` shows it. ⛔ That is a mitigation, not an answer: a refresh after saving a limit is the
+       most ordinary thing an officer does on that tab.
+     - **Owed to:** C7 step 4 or 5, whichever first adds a third panel. ⛔ `test:layout-staleness` walks
+       `layout.tsx` only and never `loading.tsx`, so its 67/0 says nothing here and must not be cited as cover.
+
+546. **THE REPORT PACK CARD HAD NEVER BEEN RENDERED — C5-6 built on it with no review and no renders — and the
+     first tiles found a 10px sentence it added, two sub-floor signature lines it inherited, and a statutory
+     ceremony whose last three steps are invisible at 360.** These are C5-6's owed renders, taken here.
+     - **Fixed, and both ratchets fell.** Three prose/label sites moved off hand-typed sizes onto `text-body-sm`
+       (13px, the lowest rung above §T4's 12.5px reading floor): the sentence C5-6 added under the pack's one
+       control ("Submit stays locked until the pack is prepared by one officer and approved by a second." at
+       `text-[10px]`, centred), the timestamp of an officer's signature (`text-[10px]`) and the
+       awaiting-signature state (`text-[11px]`). The platform's own shape for a second line under a name is
+       `font-mono text-body-sm` in a subdued tone — `/admin/agents` and the desk's own roster both say so in
+       writing, and both chose it BECAUSE it clears the floor. Measured: `test:type-scale` §3 **747 → 744**,
+       §4 **909 → 906**, and both ratchets lowered to those numbers in the same commit.
+       ⭐ **That took `test:type-scale` from RED to ALL PASS.** §4's "+1 NEW" against a ceiling of 908 was an
+       inherited red with no owner on either branch; it was never found because nobody had rendered this card.
+     - **RECORDED, not fixed: the signing chain is cut at 360.** Measured: the `ScrollX` region is **286px**
+       holding **528px** of content, so of DRAFT · PREPARED · APPROVED · SUBMITTED · ACKNOWLEDGED the third label
+       is clipped mid-word and the last two are entirely off-screen, on a five-step maker-checker ceremony for a
+       Gaming Board filing. `ScrollX`'s affordance is a thin scrollbar; headless Chromium paints overlay
+       scrollbars (`offsetHeight − clientHeight === 0` on this region AND on the desk's own roster table), so
+       whether a real browser paints one here is **NOT MEASURED**. Either way a scrollbar is a weak answer for
+       three missing steps of a statutory chain. The chain is ADM1-era, not C5-6's, and a narrow-width redesign
+       of a shared statutory component is not a visual pass's call: it is owed, with this measurement.
+     - **Ruling 528's side-by-side, TAKEN AT LAST, with the probe fixed.** Ruling 540(d) recorded that the old
+       probe selected `".bg-bg-overlay.rounded-md"`, matched the first such node in document order — a 40px,
+       zero-padding, EMPTY-TEXT element in the top bar — and reported its geometry as the strip's. The probe now
+       selects by a semantic hook, requires the match to be UNIQUE, and **asserts non-empty text before it records
+       any geometry**. Both boxes were made to render together on a real database (55 `pack.prepared` rows to
+       truncate the history, so the danger box paints, with a `sha256` payload so the artefact strip paints).
+       Measured at 360, 640, 768, 1024, 1280 and 1920, identical at every width:
+       **the danger box is `padding: 12px` top and bottom (`py-2`) and the metadata strip is `10px` (`py-2.5`)**
+       — the inverted scale exactly as 528 described, and the 2px difference is invisible beside a box with its
+       own border and ground, exactly as 528 predicted. 528's fix is confirmed on screen and its owed render is
+       no longer owed.

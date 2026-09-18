@@ -161,7 +161,18 @@ function UsageBar({ row, unsetHref }: { row: ConsoleUsageRow; unsetHref: string 
               <span className="whitespace-nowrap">{h.word}{" "}<span className="amount tabular-nums">{h.figure}</span>{h.suffix}</span>
             </Fragment>
           ))}
-          {row.edgeText}
+          {/* ⭐ RULING 544 — READ OFF THE TILES, AND THE MEASUREMENT IS THE WHOLE ARGUMENT. The bar is
+              `Math.min(100, …)`, so 100% and 185% paint the SAME full track: `limits-at-1280.png` and
+              `limits-over-1280.png` are pixel-identical in the meter and differ only in this clause. Set in
+              the sentence's own tone it is four words at the end of five near-identical grey lines, on the
+              one card that says whether the gate is refusing every stake.
+              ⛔ COLOUR IS NOT THE SIGNAL, IT IS THE SECOND ONE: the words "— at the limit" / "— over the
+              limit" stay, and `captionText` (the `aria-valuetext`) is untouched, so nothing here is carried
+              by colour alone. The tone is the one THIS CARD already spends on a cap that stops money — the
+              unset caption two branches up — so no new colour enters the section.
+              ⛔ THE ROSTER CELL IS DELIBERATELY NOT CHANGED. `Usage` states its own reason for staying
+              `text-text-secondary` — a roster row has a status chip to colour — and a bar has none. */}
+          {row.edgeText ? <span className="text-warning-fg">{row.edgeText}</span> : null}
         </>
       }
     />

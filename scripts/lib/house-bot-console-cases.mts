@@ -1684,6 +1684,33 @@ section("§2b · the limits save");
           && headings(withTitle).length === headings(html).length - 1 && headings(withTitle).length >= 2,
         j({ withoutOmit: headings(html), withOmit: headings(withTitle) }));
     }
+    /* ⛔ 432(n) AGAIN, AND THE SECOND HALF IS WHAT MAKES IT A GUARD. Read off `form-dirty-360.png`: an unset cap
+     * painted the placeholder "Not set" INSIDE the box and the caption "Not set — the master switch cannot be
+     * turned on." 30px below it — one fact twice in one field, on the tab whose whole job is to say which limits
+     * are missing. The placeholder is suppressed exactly when the row is already saying it, and KEPT on a row that
+     * is optional and SET, which is the one state where it says something new: an officer who has just emptied a
+     * saved box. A suppression that swallowed every placeholder would be as wrong as none at all, so the count is
+     * derived from the rows in both directions. */
+    {
+      const placeholders = (html.match(/placeholder="Not set"/g) ?? []).length;
+      const optionalSet = v.limits.filter((l: Any) => l.optional && !l.unset).length;
+      const optionalUnset = v.limits.filter((l: Any) => l.optional && l.unset).length;
+      const unsetKeys = v.limits.filter((l: Any) => l.unset).map((l: Any) => l.key);
+      /* The field's own markup slice, so "no placeholder HERE" is not satisfied by the whole document. */
+      const sliceOf = (key: string) => {
+        const a = html.indexOf(`data-field="${key}"`);
+        const b = html.indexOf("data-field=", a + 1);
+        return a < 0 ? "" : html.slice(a, b < 0 ? html.length : b);
+      };
+      ok("2.537 · RENDERED · 432(n) · an UNSET limit says \"Not set\" ONCE — the caption keeps it, the box's placeholder gives it up",
+        optionalUnset >= 1 && optionalSet >= 1 && placeholders === optionalSet
+          && unsetKeys.every((k: string) => !sliceOf(k).includes('placeholder="Not set"'))
+          && unsetKeys.every((k: string) => /Not set —/.test(sliceOf(k))),
+        j({ placeholders, optionalSet, optionalUnset, unsetKeys }));
+      ok("2.537 · RENDERED · CONTROL · …and a row that is optional and SET still carries the placeholder, so the suppression is keyed on the STATE and not on the field",
+        v.limits.filter((l: Any) => l.optional && !l.unset)
+          .every((l: Any) => sliceOf(l.key).includes('placeholder="Not set"')), "");
+    }
     await w.limits({ gCapDailyLossTzs: 100_000, gCapStaffChosenDailyTzs: 100_000 });
   }
 
@@ -2469,6 +2496,28 @@ export default function Ruling513Control() {
     ok("1.409 · `captionText` is PLAIN — no markup, no `<span`, and it carries 361's grammar after the cap's name",
       decomment(read(GATE)).includes("captionText: `${name} · ${cell.text}`")
         && !/captionText=\{[^}]*</.test(pageCode), "");
+    /* ⛔ 1.544 · THE BAR'S AT/OVER CLAUSE IS THE ONLY THING THAT SEPARATES 100% FROM 185%, AND IT IS MEASURED
+     * RATHER THAN ARGUED. `ProgressBar` clamps at `Math.min(100, …)`, so `limits-at-1280.png` and
+     * `limits-over-1280.png` — taken on a served build with usage at 7,430,000 against caps of 7,430,000 and
+     * 5,000,000 — are pixel-identical in the meter. Set in the sentence's own tone the clause is four grey words
+     * at the end of five near-identical grey lines, on the card that says whether the gate is refusing stakes.
+     * ⛔ THE THREE TERMS ARE A SET, AND EACH ONE ALONE WOULD BE A GUARD THAT CANNOT FAIL:
+     *   (a) the BAR's clause is toned, and the tone is the one this card already spends on a cap that stops money;
+     *   (b) `captionText` is UNTOUCHED, so the announced sentence gained no markup (the `aria-valuetext` trap);
+     *   (c) the ROSTER CELL's clause is NOT toned — a roster row has a status chip to colour and the module says
+     *       so in its own words, so a sweep that coloured every `edgeText` would be just as red as one that
+     *       coloured none.
+     * The clause itself stays in the markup either way, so colour is the SECOND signal here and never the only
+     * one. Declared mutation: `544-edge-tone`. */
+    {
+      const barEdge = /\{row\.edgeText \? <span className="text-warning-fg">\{row\.edgeText\}<\/span> : null\}/.test(pageCode);
+      const cellEdge = /\{cell\.edgeText \? <span className="text-text-secondary">\{cell\.edgeText\}<\/span> : null\}/.test(pageCode);
+      ok("1.544 · the BAR's at/over clause carries the warning tone the card already spends on a cap that stops money — the geometry saturates and cannot say it",
+        barEdge && (pageCode.match(/row\.edgeText/g) ?? []).length === 2, j({ barEdge, n: (pageCode.match(/row\.edgeText/g) ?? []).length }));
+      ok("1.544 · CONTROL · the ROSTER CELL's clause is NOT toned, and `captionText` gained no markup — a sweep that coloured every clause would fail here",
+        cellEdge && !/text-warning-fg/.test(/function Usage\(\{ cell[\s\S]*?\n\}/.exec(pageCode)?.[0] ?? "")
+          && !/captionText=\{[^}]*text-warning-fg/.test(pageCode), j({ cellEdge }));
+    }
   }
 
   /* ⛔ 1.405 · THE RAIL IS THE KIT'S LINE VARIANT, URL-BACKED, WITH ITS COUNT THROUGH `CountBadge`. */

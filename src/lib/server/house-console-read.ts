@@ -540,9 +540,14 @@ function deskShell(core: DeskCore): ConsoleDeskShell {
         ? moneyTile("Open exposure", exposureUsed, control.gCapOpenExposureTzs, FIELD_META.gCapOpenExposureTzs.label)
         : unavailableTile("Open exposure"),
       /* ⛔ 453 · "Accounts", reading "2 of 5". The count is the length of the ONE roster read (346) — never a second
-       * `countLive()`, which could disagree with the table beside it inside a single render. */
+       * `countLive()`, which could disagree with the table beside it inside a single render.
+       * ⛔ AND THE DELTA MAY NOT SPEND "of" A SECOND TIME. It read "designated of max" under a value of "5 of 5",
+       * so the tile said "5 of 5 · designated of max" — the relation twice, and at 360 (152px of tile, 10px of
+       * delta) it wrapped to "· designated of" / "max", leaving a one-word orphan line. Measured off
+       * `limits-allset-360.png`. The three money tiles beside it name what their second figure IS; this one now
+       * does the same, with no second "of" to wrap around. */
       roster != null
-        ? { label: "Accounts", value: `${formatNumber(roster.length)} of ${formatNumber(control.maxDesignatedBots)}`, delta: "designated of max" }
+        ? { label: "Accounts", value: `${formatNumber(roster.length)} of ${formatNumber(control.maxDesignatedBots)}`, delta: "designated and the maximum" }
         : unavailableTile("Accounts"),
     ];
 

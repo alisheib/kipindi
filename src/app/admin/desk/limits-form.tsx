@@ -150,7 +150,13 @@ export function DeskLimitFields({
                 >
                   {/* ⛔ THE NAME IS THE SERVER'S NEUTRAL KEY, AT ITS OWN CALL SITE. Nothing here derives a name,
                       abbreviates one or falls back to one: a field with no key would post nothing and be refused
-                      by the save, which is the correct failure. */}
+                      by the save, which is the correct failure.
+                      ⛔ AND THE PLACEHOLDER IS SUPPRESSED ON A ROW THAT ALREADY SAYS IT (432(n)) — read off
+                      `form-dirty-360.png`: an unset cap painted "Not set" inside the box AND the caption
+                      "Not set — the master switch cannot be turned on." 30px below it, one fact twice in one
+                      field. It still earns its place in the one state that says something new: a SAVED limit
+                      the officer has just emptied, where the caption still reads "Saved TZS …" and only the
+                      placeholder names what leaving the box empty will mean. */}
                   <Input
                     name={row.key}
                     id={`desk-limit-${row.key}`}
@@ -158,7 +164,7 @@ export function DeskLimitFields({
                     mono
                     inputMode="numeric"
                     defaultValue={row.input}
-                    placeholder={row.optional ? "Not set" : undefined}
+                    placeholder={row.optional && !row.unset ? "Not set" : undefined}
                     prefix={row.unit === "TZS" ? "TZS" : undefined}
                     trailing={row.unit === "%" ? "%" : undefined}
                     error={!!error}
