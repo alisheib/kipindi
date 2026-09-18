@@ -20,6 +20,9 @@ import { fileURLToPath } from "node:url";
 import ts from "typescript";
 import { decomment } from "./decomment.mts";
 import { houseHits, consoleNeutralRegExp, HOUSE_WORD_SAMPLES, CONSOLE_EXTRA_SAMPLES } from "./house-bot-vocabulary.mjs";
+/* ⛔ THE DECLARED MUTATIONS ARE READ BY THIS SUITE, so an `expect` that names no label it can print is reported HERE,
+ * by a suite that runs every day, instead of by a drive nobody has run (§4's roll-call at the foot of this file). */
+import { MUTATIONS as DECLARED_MUTATIONS } from "../anchors/house-bot-console.anchors.mjs";
 import { loadWorld, OFFICER } from "./house-bot-world.mts";
 
 type Any = any;
@@ -279,10 +282,11 @@ section("§2 · the strip, the band, the roster and every failure");
   const gone = await w.bot();
   await w.dal.houseBotStore.setStatus(gone.botId, { from: ["ACTIVE"], to: "REMOVED", pauseReason: null, pausedFromStatus: null, removal: { byId: OFFICER, reason: "fixture", cause: "MANUAL" } });
 
-  const spy = { list: 0, live: 0, day: 0, exposure: 0, wallet: 0 };
+  const spy = { list: 0, live: 0, day: 0, exposure: 0, wallet: 0, user: 0 };
   const orig = {
     list: w.dal.houseBotStore.listNonRemoved, live: w.dal.houseBotStore.countLive,
     day: w.dal.houseBookStore.dayRows, exposure: w.dal.houseBookStore.openExposure, wallet: w.db.wallet.findByUserId,
+    user: w.db.user.findById,
   };
   try {
     w.dal.houseBotStore.listNonRemoved = (...a: Any[]) => { spy.list++; return orig.list.apply(w.dal.houseBotStore, a as Any); };
@@ -290,10 +294,13 @@ section("§2 · the strip, the band, the roster and every failure");
     w.dal.houseBookStore.dayRows = (...a: Any[]) => { spy.day++; return orig.day.apply(w.dal.houseBookStore, a as Any); };
     w.dal.houseBookStore.openExposure = (...a: Any[]) => { spy.exposure++; return orig.exposure.apply(w.dal.houseBookStore, a as Any); };
     w.db.wallet.findByUserId = (...a: Any[]) => { spy.wallet++; return orig.wallet.apply(w.db.wallet, a as Any); };
+    /* ⛔ THE POSITIVE CONTROL FOR THE WALLET ZERO, ON THE SAME OBJECT AND THROUGH THE SAME RENDER (see below). */
+    w.db.user.findById = (...a: Any[]) => { spy.user++; return orig.user.apply(w.db.user, a as Any); };
     v = await GATEM.houseRosterForConsole(OFFICER, "/admin/desk");
   } finally {
     w.dal.houseBotStore.listNonRemoved = orig.list; w.dal.houseBotStore.countLive = orig.live;
     w.dal.houseBookStore.dayRows = orig.day; w.dal.houseBookStore.openExposure = orig.exposure; w.db.wallet.findByUserId = orig.wallet;
+    w.db.user.findById = orig.user;
   }
   ok("1.346 · exactly ONE `listNonRemoved` and ZERO `countLive` per render — two reads of one question can disagree inside a render",
     spy.list === 1 && spy.live === 0, j(spy));
@@ -303,18 +310,28 @@ section("§2 · the strip, the band, the roster and every failure");
   /* ⛔ THE POSITIVE CONTROL FOR THE TWO ZEROS, and without it they were UNPROVEN NEGATIVES: nothing in the run showed
    * that those two spies CAN increment, so a patch that never reached the module under test — the documented
    * double-load trap, where a module reached by a second specifier loads twice — would read exactly like compliance.
-   * The three `=== 1` spies prove themselves; these two could not. */
+   * The three `=== 1` spies prove themselves; these two could not.
+   *
+   * ⛔ AND THE FIRST CONTROL WAS A TAUTOLOGY, WHICH IS WORSE THAN NO CONTROL. It patched the two handles and then
+   * called THEM DIRECTLY — `await w.db.wallet.findByUserId(...)` — so it asserted a counter it had just incremented
+   * itself, through no product code at all. The hazard it names is specifically that `w.db` may not be the object
+   * `house-console-read.ts` imports (`w` reaches it as `../../src/lib/server/store.ts`, the gate as `./store`), and
+   * calling the patch by hand cannot tell those two objects apart. The discriminating control is a read the RENDER
+   * itself performs on the SAME object: `houseConsoleAudience` calls `db.user.findById(viewerUserId)` on every reader
+   * call, so `spy.user >= 1` measured through the render above proves `w.db` IS the gate's `db` — and only then is
+   * `spy.wallet === 0` on that same object a measurement rather than an unreached patch.
+   * `countLive` lives on `w.dal.houseBotStore`, whose reachability the `spy.list === 1` above already proves. */
+  ok("1.346 / 1.356 · CONTROL · the render itself fired a `db.user` read through the very object the wallet spy watches — so `wallet === 0` is a measurement on the module under test, not an unreached patch",
+    spy.user >= 1 && spy.list === 1, j(spy));
   {
-    const before = { live: spy.live, wallet: spy.wallet };
-    const orig2 = { live: w.dal.houseBotStore.countLive, wallet: w.db.wallet.findByUserId };
+    const before = spy.live;
+    const orig2 = w.dal.houseBotStore.countLive;
     try {
-      w.dal.houseBotStore.countLive = (...a: Any[]) => { spy.live++; return orig2.live.apply(w.dal.houseBotStore, a as Any); };
-      w.db.wallet.findByUserId = (...a: Any[]) => { spy.wallet++; return orig2.wallet.apply(w.db.wallet, a as Any); };
+      w.dal.houseBotStore.countLive = (...a: Any[]) => { spy.live++; return orig2.apply(w.dal.houseBotStore, a as Any); };
       await w.dal.houseBotStore.countLive();
-      await w.db.wallet.findByUserId(b1.userId);
-    } finally { w.dal.houseBotStore.countLive = orig2.live; w.db.wallet.findByUserId = orig2.wallet; }
-    ok("1.346 / 1.356 · CONTROL · the `countLive` and wallet spies CAN fire through the same handles the render uses — so the two zeros above are a measurement, not an unreached patch",
-      spy.live === before.live + 1 && spy.wallet === before.wallet + 1, j(spy));
+    } finally { w.dal.houseBotStore.countLive = orig2; }
+    ok("1.346 · CONTROL · the `countLive` spy CAN fire through the same handle the render reads, so its zero above is a measurement",
+      spy.live === before + 1, j(spy));
   }
 
   /* ⛔ KEYED BY ID, NEVER BY POSITION. Both twins order on `designatedAt` alone with no id tie-break, and this fixture
@@ -325,8 +342,21 @@ section("§2 · the strip, the band, the roster and every failure");
   ok("1.310 · the roster holds every non-REMOVED account and the REMOVED one is ABSENT",
     v.rows.length === 3 && !byId.has(gone.botId) && [b1, b2, b3].every((b: Any) => byId.has(b.botId)),
     j(v.rows.map((r: Any) => [r.id, r.statusWord])));
-  ok("1.310 · …oldest first, over the ids the fixture designated in sequence",
-    j(v.rows.map((r: Any) => r.id)) === j([b1.botId, b2.botId, b3.botId]), j(v.rows.map((r: Any) => r.id)));
+  /* ⛔ THE ORDER IS ASSERTED AGAINST THE STORED INSTANT, NOT AGAINST THE FIXTURE'S CREATION SEQUENCE, and the comment
+   * six lines above is why: both twins order on `designatedAt` alone with NO id tie-break, so two rows sharing a
+   * millisecond come back in an arbitrary order on Postgres while memory's `Array.prototype.sort` is stable. A
+   * positional expectation over the creation sequence is therefore a two-store flake dressed as an ordering failure —
+   * the file said so and then asserted the position anyway. Non-decreasing in the stored instant is the only order
+   * BOTH twins define, it still catches a reversed sort, and its own precondition (the instants are not all equal,
+   * or there is nothing to order) is asserted beside it instead of assumed. */
+  const stampOf = new Map<string, number>(await Promise.all([b1, b2, b3].map(async (b: Any): Promise<[string, number]> =>
+    [b.botId, Date.parse((await w.dal.houseBotStore.get(b.botId)).designatedAt)])));
+  const renderedStamps = v.rows.map((r: Any) => stampOf.get(r.id) ?? Number.NaN);
+  ok("1.310 · …oldest first — the rendered order is non-decreasing in the stored `designatedAt`, the only order both twins define",
+    renderedStamps.every((t: number, i: number) => Number.isFinite(t) && (i === 0 || renderedStamps[i - 1] <= t)),
+    j({ ids: v.rows.map((r: Any) => r.id), stamps: renderedStamps }));
+  ok("1.310 · CONTROL · the fixture's three instants are not all equal, so the order above has something to decide",
+    new Set([...stampOf.values()]).size >= 2, j([...stampOf.values()]));
   ok("1.310 · the three statuses render the ONE display map's word and chip, never a word typed beside a chip",
     ([[b1, "ACTIVE"], [b2, "PAUSED"], [b3, "AUTO_PAUSED"]] as Array<[Any, string]>).every(([b, s]) =>
       byId.get(b.botId)!.statusWord === SD.HOUSE_BOT_STATUS_DISPLAY[s].word
@@ -336,9 +366,38 @@ section("§2 · the strip, the band, the roster and every failure");
     v.rows.every((r: Any) => /^Player #/.test(r.handle)) && !/\bnet\b|\bbalance\b/i.test(all(v.rows)), j(v.rows.map((r: Any) => r.handle)));
   /* ⛔ AND NO ROW CARRIES A WAY-OUT HREF WHILE THE PAGE IT OPENS IS UNBUILT (ruling 432(h)). The view model's own
    * `href` field is gone with the column, so a later step cannot re-render a 404 link by accident. */
-  ok("1.310 / 432(h) · a row carries an `href` EXACTLY when the detail page exists — today it has neither",
-    existsSync(join(ROOT, DETAIL_PAGE)) === v.rows.every((r: Any) => typeof r.href === "string"),
+  /* ⛔ PER ROW, IN BOTH DIRECTIONS. The first form was `existsSync(page) === rows.every(hasHref)`, which — while the
+   * page is absent — is satisfied by ONE href-less row out of three: a reader that put a live `href` on SOME rows,
+   * which is exactly the 404-link defect 432(h) exists to refuse, passed it. */
+  ok("1.310 / 432(h) · EVERY row carries an `href` exactly when the detail page exists — today not one of them does",
+    v.rows.length >= 3 && v.rows.every((r: Any) => (typeof r.href === "string") === existsSync(join(ROOT, DETAIL_PAGE))),
     j({ detailPage: existsSync(join(ROOT, DETAIL_PAGE)), hrefs: v.rows.filter((r: Any) => r.href != null).length }));
+
+  /* ⛔ ONE UNKNOWN, ONE TREATMENT (ruling 416 / §C2), AND NO CASE HAD EVER PRODUCED THIS CELL. A rule set the reader
+   * cannot parse rendered the words "couldn't read" — lowercase, a sentence fragment, mid-table, in
+   * `text-text-secondary` — while a money or count read that FAILED in the SAME ROW rendered the kit's em dash in
+   * `text-text-tertiary`. Two paints for one class of unknown inside one row. Every other failure string on this
+   * page is sentence-cased ("Couldn't load the roster", "COULDN'T COMPUTE"), and this cell appears in no captured
+   * tile at any width, so nobody had looked at it. */
+  {
+    const realList4 = w.dal.houseBotStore.listNonRemoved;
+    let unparsed: Any;
+    try {
+      w.dal.houseBotStore.listNonRemoved = async (...a: Any[]) => {
+        const rows = await realList4.apply(w.dal.houseBotStore, a as Any);
+        /* A rule set from a FUTURE schema: `parseHouseBotRules` answers `{ ok: false, code: "RULES_FROM_FUTURE" }`,
+         * which is the branch the Products cell paints and which no fixture had ever reached. */
+        return rows.map((b: Any, i: number) => (i === 0 ? { ...b, rules: { schemaVersion: 9_999 } } : b));
+      };
+      unparsed = await GATEM.houseRosterForConsole(OFFICER, "/admin/desk");
+    } finally { w.dal.houseBotStore.listNonRemoved = realList4; }
+    ok("1.310 · 416 · a rule set the reader cannot parse renders ONE sentence-cased unknown, the way every other failure string on this page reads",
+      unparsed.rows.length === 3 && unparsed.rows[0].products === "Couldn't read"
+        && unparsed.rows.slice(1).every((r: Any) => r.products !== "Couldn't read" && r.products.length > 0),
+      j(unparsed.rows.map((r: Any) => r.products)));
+    ok("1.310 · 416 · CONTROL · the plant really did reach the parser — the other two rows still name their products, so the cell above is the parse failure and not an empty roster",
+      unparsed.rows.slice(1).some((r: Any) => /Up|Poll|None/i.test(r.products)), j(unparsed.rows.map((r: Any) => r.products)));
+  }
   ok("1.310 · an account with NO stakes today reads used TZS 0 of its limit — a documented zero, not a failure",
     byId.get(b1.botId)!.lossCell.text === `used ${formatTzs(0)} of ${formatTzs(50_000)}`
       && byId.get(b1.botId)!.lossCell.used === `used ${formatTzs(0)}` && byId.get(b1.botId)!.lossCell.limit === `of ${formatTzs(50_000)}`,
@@ -389,8 +448,10 @@ section("§2 · the strip, the band, the roster and every failure");
    * the band is asserted equal to the total over BOTH — the gate's own population — while the per-row cells stay
    * per-account and are asserted on their painted strings. */
   {
-    /* Global limits small enough that a proportion is meaningful — the defaults are 900,000,000, which floors to 0%. */
-    await w.limits({ gCapDailyStakeTzs: 100_000, gCapDailyLossTzs: 100_000, gCapOpenExposureTzs: 30_000 });
+    /* Global limits small enough that a proportion is meaningful — the defaults are 900,000,000, which floors to 0%.
+     * ⛔ AND THE EXPOSURE CAP IS 21,001, NOT A ROUND NUMBER, ON PURPOSE (see 1.404 below): against 21,000 of usage a
+     * round cap made floor and round agree to the character, so `Math.floor` → `Math.round` was invisible. */
+    await w.limits({ gCapDailyStakeTzs: 100_000, gCapDailyLossTzs: 100_000, gCapOpenExposureTzs: 21_001 });
     const realDayP = w.dal.houseBookStore.dayRows;
     const realExpP = w.dal.houseBookStore.openExposure;
     let planted: Any;
@@ -427,11 +488,19 @@ section("§2 · the strip, the band, the roster and every failure");
         && planted.tiles[2].value !== formatTzsCompact(12_000),
       j({ rosterOnly: [formatTzsCompact(40_000), formatTzsCompact(29_000), formatTzsCompact(12_000)] }));
     /* ⛔ `Math.floor`, NEVER `round`: a rounded proportion prints "100%" at 99.6%, which is not true. */
+    /* ⛔ AND THE FIXTURE NOW DISCRIMINATES FLOOR FROM ROUND, WHICH IT DID NOT. The cap was 30,000 against 21,000 of
+     * usage — exactly 70%, where floor and round agree to the character — and the CONTROL beside it recomputed the
+     * expected value with the very expression it was asserting, through no product code at all: `Math.floor` →
+     * `Math.round` in `moneyTile` was invisible to the entire suite, and no declared mutation existed for it. At a
+     * cap of 21,001 the true proportion is 99.995%: the product must print "99%", and a rounding reader prints
+     * "100%" — a desk one shilling from its stop reported as having room. */
+    const capLabel = R.FIELD_META.gCapOpenExposureTzs.label.toLowerCase();
     ok("1.404 · the delta is the FLOORED proportion of its OWN GLOBAL cap, named, with no second amount",
-      planted.tiles[2].delta === `${formatNumber(Math.floor((21_000 / 30_000) * 100))}% of ${R.FIELD_META.gCapOpenExposureTzs.label.toLowerCase()}`
+      planted.tiles[2].delta === `${formatNumber(99)}% of ${capLabel}`
         && !/TZS/.test(String(planted.tiles[2].delta)), j(planted.tiles[2]));
-    ok("1.404 · CONTROL · a proportion one unit short of the cap floors DOWN, it never rounds up to 100%",
-      formatNumber(Math.floor(((30_000 - 1) / 30_000) * 100)) === "99", "");
+    ok("1.404 · CONTROL · this fixture DISCRIMINATES floor from round — 21,000 of 21,001 floors to 99% and rounds to 100%, so a rounding reader cannot pass the case above",
+      Math.floor((21_000 / 21_001) * 100) === 99 && Math.round((21_000 / 21_001) * 100) === 100
+        && planted.tiles[2].delta !== `${formatNumber(100)}% of ${capLabel}`, j(planted.tiles[2].delta));
     await w.limits();
   }
 
@@ -571,8 +640,19 @@ section("§2 · the strip, the band, the roster and every failure");
     /^On since \d\d:\d\d:\d\d EAT/.test(onView.stateSentence) && onView.stateSentence.includes(`${SEP}switched by `)
       && onView.stateSentence.includes(OFFICER) && onView.chip.word === "On",
     j(onView.stateSentence));
-  ok("1.306 · 432(p) · a list never breaks onto a dangling separator — the space before every '·' is a no-break space",
-    onView.stateSentence.split("·").length >= 3 && !/ · /.test(onView.stateSentence), j(onView.stateSentence));
+  /* ⛔ THE LABEL USED TO SAY THE OPPOSITE OF THE CODE, AND THE PREDICATE COULD NOT TELL THE TWO APART. It read "the
+   * space BEFORE every '·' is a no-break space" while the reader binds the no-break space AFTER the dot — which is
+   * the whole point, and which the file's own comment records as the first attempt's measured defect. And
+   * `!/ · /` passes with the no-break space on EITHER side, so the one defect that was actually seen on a screen
+   * (the dot ending a line) was guarded by nothing but a screenshot. The side is now asserted, with a control that
+   * REJECTS both wrong forms. */
+  const NBSP = String.fromCharCode(0xa0);
+  const sepOk = (s: string): boolean =>
+    s.split("·").length >= 3 && s.includes(SEP) && !s.includes(`${NBSP}· `) && !/ · /.test(s);
+  ok("1.306 · 432(p) · a list never breaks onto a dangling separator — the no-break space is AFTER every '·', so the dot belongs to the word that FOLLOWS it",
+    sepOk(onView.stateSentence), j(onView.stateSentence));
+  ok("1.306 · 432(p) · CONTROL · the same test REJECTS the no-break space on the wrong side, and rejects a plain space on both sides",
+    !sepOk(`a${NBSP}· b${NBSP}· c`) && !sepOk("a · b · c") && sepOk(`a${SEP}b${SEP}c`), "");
 
   /* ⛔ THE CONTROL ROW IS DOCTORED FOR THE BRANCHES THE STORE CANNOT REACH. `switchOn` clears the off cause, so a
    * STALE cause under a live switch, a NULL actor and a SUNSET desk can only be produced by planting the read. */
@@ -619,6 +699,44 @@ section("§2 · the strip, the band, the roster and every failure");
   const plainFull = await withControl({ enabled: false, offCause: "MANUAL", maxDesignatedBots: 3 });
   ok("432(m) · CONTROL · the same roster at the same maximum with an ordinary off cause DOES carry the remedy",
     plainFull.rosterFullReason === D.DESIGNATE_COPY.rosterFull(3, 3), j(plainFull.rosterFullReason));
+
+  /* ⛔ 432(j) WITH 432(n) BESIDE IT, AND THE SECOND HALF IS WHAT THE SCREEN SHOWED. Every disabled control on this
+   * rung carries a reason (432(j)) — but both reasons were the SAME SEVEN WORDS, "Not ready on this build yet.",
+   * painted about 105px apart at 1280 and two blocks apart at 360: once beside the disabled "Designate an account"
+   * in the head and once beside the disabled Toggle in the strip, in EVERY state where the roster is not full (read
+   * off desk-notfull-1280.png and desk-notfull-360.png, and present again in the schema, roster-failed and
+   * money-failed tiles). 432(n) is "NO STATE SAYS THE SAME FACT TWICE": two identical right-aligned sentences read
+   * as a rendering fault, not as two reasons, and neither one says WHICH control it is about.
+   * ⛔ AND 432(j) HAD NO CASE OF ITS OWN: it was guarded only through 432(m)'s SUNSET case, whose label names another
+   * ruling, so the declared mutation for it reported under the wrong ruling's name. */
+  ok("432(j) · 432(n) · every disabled control on this rung carries its OWN reason, and no two controls on one screen say the same words",
+    [plainFull, sunsetFull].every((x: Any) =>
+      typeof x.actionReason === "string" && x.actionReason.length > 8
+      && typeof x.switchReason === "string" && x.switchReason.length > 8
+      && x.actionReason !== x.switchReason),
+    j({ action: plainFull.actionReason, sw: plainFull.switchReason }));
+  ok("432(j) · CONTROL · both reasons were really read, and each names the CONTROL it belongs to rather than the build alone",
+    plainFull.actionReason.toLowerCase().includes("designat") && plainFull.switchReason.toLowerCase().includes("switch"),
+    j({ action: plainFull.actionReason, sw: plainFull.switchReason }));
+
+  /* ⛔ AN INERT POINTER CARRIES NO ARROW (ruling 432(i)), AND THIS IS THE HALF THAT WAS MISSED. The server's
+   * roster-full sentence is written for a LINK and ENDS "…raise the roster limit on Limits →". While the limits tab
+   * has no panel the page paints it as PLAIN TEXT — arrow and all — so the head promised a navigation to a tab
+   * `consoleTab()` resolves straight back to this same page, and named a rail option that is not on the rail (read
+   * off desk-default-1280.png and desk-default-360.png, where the rail below reads only "Roster"). The strip's own
+   * sibling forty lines down already drops its arrow when inert ("Set N global limits first"), so the page was
+   * treating two inert pointers two different ways with no reason recorded anywhere.
+   * ⛔ `rosterFullReason` STAYS BYTE-IDENTICAL to `DESIGNATE_COPY.rosterFull(n, max)` (432(c), 1.314): the linked
+   * form is what the page renders in the same change as the panel it points at. */
+  ok("1.314 · 432(i) · the PLAIN form of the roster-full sentence is the linked one WITHOUT its tail — an arrow on inert text promises a navigation that resolves back to this page",
+    plainFull.rosterFullReason.endsWith("→")
+      && !plainFull.rosterFullPlain.includes("→")
+      && plainFull.rosterFullReason.startsWith(plainFull.rosterFullPlain)
+      && plainFull.rosterFullPlain.length > 20,
+    j({ linked: plainFull.rosterFullReason, plain: plainFull.rosterFullPlain }));
+  ok("1.314 · 432(i) · CONTROL · with no roster-full state there is no sentence in either form, so the pair cannot drift apart",
+    sunsetFull.rosterFullReason === null && sunsetFull.rosterFullPlain === null,
+    j({ linked: sunsetFull.rosterFullReason, plain: sunsetFull.rosterFullPlain }));
 
   /* 1.310's empty-state precedence, which no case had produced: the switch's own state beats "none yet".
    * ⛔ The roster read is PLANTED empty rather than the fixture's accounts removed, so §3 and §4 still see real rows. */
@@ -930,6 +1048,36 @@ if (STORE === "memory") {
       && CR.LIMITS_TAB_READY === false && CR.consoleTab("limits") === "roster", j({ ready: CR.LIMITS_TAB_READY }));
   ok("1.312a · 432(i) · …and no `<Link href=` in the section points anywhere but that one guarded href",
     [...pageCode.matchAll(/<Link href=\{([^}]*)\}/g)].every((m) => m[1].includes("view.limitsHref")), "");
+  /* ⛔ AND THE LINKED SENTENCE IS PAINTED ONLY INSIDE THAT ONE `<Link>`. Everywhere else the head paints the PLAIN
+   * form, because the server's sentence ends in an arrow and an arrow on inert text is a promise of navigation to a
+   * tab that is not on the rail. The sibling in the strip already did this by writing two different strings; the
+   * head passed the linked string straight through. */
+  /* ⛔ `rosterFull` READS the field as a predicate, which is not PAINTING it, so that one line is named and removed
+   * before the rest of the file is scanned for a paint. Everything else that reaches the DOM must be the plain form. */
+  const outsideLink = pageCode
+    .replace(new RegExp("<Link[^]*?</Link>", "g"), () => "")
+    .replace("const rosterFull = view.rosterFullReason !== null;", () => "");
+  ok("1.312a · 432(i) · the head paints the LINKED roster-full sentence only inside the one guarded `<Link>`, and the PLAIN one everywhere else",
+    /<Link[^>]*>\{view\.rosterFullReason\}<\/Link>/.test(pageCode)
+      && pageCode.includes("view.rosterFullPlain")
+      && !outsideLink.includes("view.rosterFullReason"),
+    j({ paintedOutsideTheLink: outsideLink.includes("view.rosterFullReason") }));
+
+  /* ⛔ 432(n) IN THE HALF NOBODY CHECKED: THE CALLOUT BODIES. "NO STATE SAYS THE SAME FACT TWICE" was applied to the
+   * empty states and not to the three auto-off Callouts, every one of which ended "Nothing will be staked." — the
+   * strip's own fixed OFF sentence, repeated one card below it, about 60px away at 1280 and about 150px at 360 (read
+   * off desk-sunset-full-1280.png and desk-sunset-full-360.png, where "The desk is off. Nothing will be staked."
+   * sits directly above "The desk has been withdrawn. Nothing will be staked, and nothing can be designated.").
+   * ⛔ THIS IS NOT THE 453-versus-432(n) COLLISION IT LOOKS LIKE. Ruling 453 fixes the STRIP sentence verbatim "for
+   * every off cause" and says nothing whatever about the Callout bodies, which are this commit's own copy: the strip
+   * owns "the desk is off", the Callout owns WHY, and neither has to say the other's sentence. */
+  const calloutBodies = [...pageCode.matchAll(new RegExp("<Callout[^>]*>([^]*?)</Callout>", "g"))]
+    .map((m) => m[1].replace(/\s+/g, " ").trim());
+  ok("1.308 · 432(n) · no auto-off Callout body repeats the strip's own OFF sentence — the strip says the desk is off, the Callout says WHY",
+    calloutBodies.length >= 3 && calloutBodies.every((b) => !b.includes("Nothing will be staked")), j(calloutBodies));
+  ok("1.308 · 432(n) · CONTROL · the Callout bodies were really read, and the clause the strip owns IS the reader's own OFF sentence",
+    calloutBodies.length >= 3 && calloutBodies.every((b) => b.length > 40)
+      && gateCode.includes("The desk is off. Nothing will be staked."), j(calloutBodies.map((b) => b.length)));
 
   /* 1.361 · no banned formatter, here or in the gated reader. */
   const BANNED = ["formatTzsSigned", "formatTzsAbs", "formatWhole", "toLocaleString"];
@@ -952,11 +1100,22 @@ if (STORE === "memory") {
 
   /* 1.313 / 1.417 · the loaders. */
   ok("1.313 · the roster loader carries the REAL neutral head, and no string in it matches the shared vocabulary",
-    /<AdminPageHead title="Desk" sw="Dawati" \/>/.test(decomment(read(LOADING)))
+    /<AdminPageHead title="Desk" sw="Dawati"/.test(decomment(read(LOADING)))
       && domLiterals(LOADING, read(LOADING)).every((s) => houseHits(s).length === 0), "");
   const ghosts = [...decomment(read(LOADING)).matchAll(/<(Sk[A-Za-z]+|div)\b/g)].map((m) => m[1]);
-  ok("1.417 · the loader's ghost sequence matches the page's card sequence, one ghost per card, in order: strip, band, rail, table",
-    j(ghosts) === j(["SkCard", "SkKpiRow", "div", "SkTableCard"]), j(ghosts));
+  ok("1.417 · the loader's ghost sequence matches the page's card sequence, one ghost per card, in order: the head's action, the strip, the band, the rail, the table",
+    j(ghosts) === j(["SkChip", "SkCard", "SkKpiRow", "div", "SkTableCard"]), j(ghosts));
+  /* ⛔ AND THE HEAD'S OWN ACTION ROW IS GHOSTED, AT THE HEIGHT THE CONTROL REALLY IS. The page's head ALWAYS renders a
+   * 44px disabled primary and its reason (432(a), 432(j)) and the loader's head carried NO `actions` at all;
+   * `AdminPageHead` is `flex items-end justify-between gap-4 flex-wrap`, so at 360 the real actions wrap onto their
+   * own row and the whole page drops about 105px on the swap (read off desk-default-360.json: the button alone is
+   * t=239 h=44, ending at y=283, against a ghost head that ends near y=195). The closest kit neighbour states the
+   * rule in its own words and obeys it — `/admin/house/loading.tsx` passes `actions={<SkChip … />}` with the comment
+   * "a ghost the wrong height is a layout jump". Ruling 417's own read was taken at 1280, where the title block is
+   * taller than the action row and hides the defect entirely. */
+  ok("1.417 · the loader ghosts the head's action row whenever the page's head renders a control, at that control's own height",
+    /<Button[^>]*size="md"/.test(pageCode) === /actions=\{<SkChip[^>]*h-\[44px\]/.test(decomment(read(LOADING))),
+    j({ pageControl: /<Button[^>]*size="md"/.test(pageCode) }));
   /* ⛔ `cellPy` IS A FACT ABOUT THE PAGE, NOT A DEFAULT. The page overrides every cell to `p-3`, which is 16px on this
      repo's own spacing scale, so a 12px ghost is 8px short on every row — measured on the swap at 1280 (279px of ghost
      against 361px of table). The assertion reads the PAGE's own padding class and requires the ghost to agree with it,
@@ -1021,6 +1180,45 @@ if (STORE === "memory") {
     gateCode.includes("control?.switchedById") && !/displayLabel|displayName|phoneE164/.test(gateCode), "");
   ok("1.420 · `playerHandle` is used for the HOLDER only, never for a staff actor",
     (gateCode.match(/playerHandle\(/g) ?? []).length === 1 && gateCode.includes("playerHandle(bot.userId)"), "");
+
+  /* ⛔ 1.318's ROLL-CALL OVER THE DECLARED MUTATIONS, AND IT MUST BE LAST — it reads the labels THIS run printed.
+   * `red:house-bot-console` matches a run's FAIL lines with `result.fails.find((l) => l.includes(d.expect))`, so an
+   * `expect` that is not a substring of any label this suite can print is classed WRONG-ASSERTION, `missed++`, and
+   * the drive exits 1 — red for the wrong reason, which is the one thing the drive exists to refuse.
+   * MEASURED 2026-09-18: THREE of the 59 declarations had rotted this way and nothing reported it. `453-off` and
+   * `453-accounts` — the two mutations that exist to prove ruling 453's runtime lexicon scan can fire — both named
+   * "3.453 · not one painted string carries a house-vocabulary word" after the case had been reworded to "…not one
+   * painted string of ANY state carries…", and `373-subject` named "only the SUBJECT column carries a floor" after
+   * its case became "the SUBJECT and STATUS columns". `test:red-anchors` §3 is structurally blind to this: it
+   * resolves the `from` TEXT and never looks at `expect`, so all 59 printed "anchor resolves exactly once" while
+   * three of them could not report through the assertion they name.
+   * ⛔ `console-mem` ONLY: the `rbac` and `admin-nav` entries name labels of other suites, which this run cannot
+   * print — they are counted and named in the extra so the exclusion is visible rather than silent. */
+  {
+    /* ⛔ TWO TIERS, AND THE SECOND ONE IS NOT A WEAKENING — IT IS THE ONLY WAY TO SEE A CATCH-BRANCH LABEL. Two of the
+     * declarations name assertions a GREEN run never prints: `0.throw` is emitted only from the behavioural region's
+     * own catch, and this roll-call's own two labels are appended after the check runs. So an expect counts as
+     * REACHABLE when the run printed it OR when the label literal is in this suite's DECOMMENTED source — the repo's
+     * own stripper (ruling: never write a second one), so a stale expect quoted in a comment cannot launder itself.
+     * The source-only entries are NAMED in the extra, so a mutation drifting into that tier is visible, not silent. */
+    const selfCode = decomment(readFileSync(fileURLToPath(import.meta.url), "utf8"));
+    const LBL = "1.318 · every declared `console-mem` mutation names an assertion THIS run actually printed — an `expect` that matches no label can only ever report WRONG-ASSERTION";
+    const LBLC = "1.318 · CONTROL · the roll-call reads this run's own labels and this suite's own source, so a drifted `expect` IS reported and an invented one is never found";
+    const printed = (x: string) => emitted.some((l) => l.includes(x)) || LBL.includes(x) || LBLC.includes(x);
+    const mine = (DECLARED_MUTATIONS as Any[]).filter((m) => m.suite === "console-mem");
+    const elsewhere = (DECLARED_MUTATIONS as Any[]).filter((m) => m.suite !== "console-mem").map((m) => `${m.suite}:${m.name.split(" ")[0]}`);
+    const sourceOnly = mine.filter((m) => !printed(m.expect) && selfCode.includes(m.expect)).map((m) => m.name.split(" ")[0]);
+    const stale = mine.filter((m) => !printed(m.expect) && !selfCode.includes(m.expect)).map((m) => `${m.name.split(" ")[0]} → ${m.expect}`);
+    ok(LBL, mine.length >= 40 && stale.length === 0,
+      j({ declared: mine.length, otherSuites: elsewhere, printedOnlyInSource: sourceOnly, stale }));
+    /* ⚠️ THE SENTINEL IS BUILT BY CONCATENATION, and it has to be: the source tier reads THIS FILE, so a sentinel
+     * written as one literal would find itself and the control could never fail. */
+    const SENTINEL = "1.318 · an assertion that " + "does not exist in this suite";
+    ok(LBLC,
+      emitted.length > 120 && emitted.some((l) => l.includes(mine[0].expect))
+        && !printed(SENTINEL) && !selfCode.includes(SENTINEL),
+      `${emitted.length} labels, ${mine.length} console-mem mutations`);
+  }
 }
 
 console.log(`\n@@SUMMARY ${JSON.stringify({ pass, fail })}`);

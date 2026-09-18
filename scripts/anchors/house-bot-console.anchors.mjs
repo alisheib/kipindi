@@ -21,6 +21,8 @@ const ROUTES = "src/lib/house-bot/console-routes.ts";
 const NAV = "src/components/admin/admin-nav-groups.ts";
 const ROLES = "src/lib/server/roles.ts";
 const DESIG = "src/lib/server/house-bot/designation.ts";
+/* ⛔ THIS FILE IS ITSELF A TARGET, for the one assertion whose subject is this file: 1.318's roll-call. */
+const ANCHORS = "scripts/anchors/house-bot-console.anchors.mjs";
 
 export const MUTATIONS = [
   /* ── Ruling 453 · THE NEUTRAL LEXICON. Four mutations, one per sentence the ruling fixes. ─────────────────────── */
@@ -45,7 +47,7 @@ export const MUTATIONS = [
     file: GATE,
     from: `        : "The desk is off. Nothing will be staked.";`,
     to: `        : "House bots are off. No bot will place a bet.";`,
-    expect: "3.453 · not one painted string carries a house-vocabulary word",
+    expect: "3.453 · not one painted string of ANY state carries a house-vocabulary word",
     suite: "console-mem",
   },
   {
@@ -53,7 +55,7 @@ export const MUTATIONS = [
     file: GATE,
     from: `        ? { label: "Accounts", value:`,
     to: `        ? { label: "Bots", value:`,
-    expect: "3.453 · not one painted string carries a house-vocabulary word",
+    expect: "3.453 · not one painted string of ANY state carries a house-vocabulary word",
     suite: "console-mem",
   },
 
@@ -243,8 +245,8 @@ export const MUTATIONS = [
   {
     name: "313-loader · the loader's head names the feature, in a body rendered for whoever asked",
     file: LOADING,
-    from: `      <AdminPageHead title="Desk" sw="Dawati" />`,
-    to: `      <AdminPageHead title="House bots" sw="Dawati" />`,
+    from: `      <AdminPageHead title="Desk" sw="Dawati" actions={<SkChip className="h-[44px] w-48" />} />`,
+    to: `      <AdminPageHead title="House bots" sw="Dawati" actions={<SkChip className="h-[44px] w-48" />} />`,
     expect: "1.313 · the roster loader carries the REAL neutral head",
     suite: "console-mem",
   },
@@ -285,7 +287,7 @@ export const MUTATIONS = [
     file: PAGE,
     from: `                      <th scope="col" className="text-left p-3 min-w-[150px]">Account</th>`,
     to: `                      <th scope="col" className="text-left p-3">Account</th>`,
-    expect: "1.373 · …and only the SUBJECT column carries a floor",
+    expect: "1.373 · …and only the SUBJECT and STATUS columns carry a floor",
     suite: "console-mem",
   },
   {
@@ -390,11 +392,15 @@ export const MUTATIONS = [
     suite: "console-mem",
   },
   {
+    /* ⛔ IT REPORTED UNDER ANOTHER RULING'S NAME. The declared `expect` was 432(m)'s SUNSET label, so the drive
+     * printed this defect as caught by an assertion about the roster-full remedy, and ruling 432(j)'s own clause
+     * ("a disabled control carries a reason on screen in EVERY state") was guarded only through that case's
+     * `actionReason.length > 8` half. It now names the dedicated case added at this finish. */
     name: "432j-action-reason · the disabled head action loses the reason it carries when the roster is not full",
     file: GATE,
-    from: `    actionReason: "Not ready on this build yet.",`,
+    from: `    actionReason: "Designating an account is not ready on this build yet.",`,
     to: `    actionReason: "",`,
-    expect: "432(m) · a SUNSET desk at its maximum offers NO roster-full remedy",
+    expect: "432(j) · 432(n) · every disabled control on this rung carries its OWN reason",
     suite: "console-mem",
   },
   {
@@ -497,8 +503,11 @@ export const MUTATIONS = [
   {
     name: "417-docblock · the loader's docblock contradicts its own call site about the cell padding again",
     file: LOADING,
-    from: ` * the page's own 16px cell padding (`,
-    to: ` * 12px cell padding, because this page overrides no cell padding (`,
+    /* ⚠️ RE-ANCHORED at step 1's finish, to the SAME defect: the docblock's sentence moved onto a new line when
+     * the head's action ghost was added, so the old anchor (` * the page's own 16px cell padding (`) no longer
+     * resolved. The line quoted here still carries the claim the call site would contradict. */
+    from: `the page's own 16px cell padding (\`p-3\` on every cell`,
+    to: `12px cell padding, because this page overrides no cell padding (\`p-3\` on every cell`,
     expect: "1.417 · …and the loader's own prose does not contradict it",
     suite: "console-mem",
   },
@@ -517,6 +526,103 @@ export const MUTATIONS = [
     from: `  const rows: ConsoleRosterRow[] | null = schemaMissing ? [] : roster == null ? null : roster.map((bot) => {`,
     to: `  const rows: ConsoleRosterRow[] | null = schemaMissing ? null : roster == null ? null : roster.map((bot) => {`,
     expect: "0.throw · no behavioural case threw",
+    suite: "console-mem",
+  },
+  /* --------------------------------------------------------------------------------------------------------------
+   * ADDED BY STEP 1's FIXER (2026-09-18, the review pass): one declared mutation per assertion this pass added.
+   * -------------------------------------------------------------------------------------------------------------- */
+  {
+    /* ⛔ 432(n) IN THE CALLOUT BODIES — the half that was applied to the empty states and not to the Callouts. */
+    name: "432n-callout · an auto-off Callout repeats the strip's own OFF sentence one card below it",
+    file: PAGE,
+    from: `            The desk has been withdrawn, and nothing can be designated.`,
+    to: `            The desk has been withdrawn. Nothing will be staked, and nothing can be designated.`,
+    expect: "1.308 · 432(n) · no auto-off Callout body repeats the strip's own OFF sentence",
+    suite: "console-mem",
+  },
+  {
+    /* ⛔ 432(j) + 432(n) · the master switch's reason goes back to the head action's WORD FOR WORD. */
+    name: "432j-switch-reason · both disabled controls say the same seven words again",
+    file: GATE,
+    from: `    switchReason: "The switch is not ready on this build yet.",`,
+    to: `    switchReason: "Designating an account is not ready on this build yet.",`,
+    expect: "432(j) · 432(n) · every disabled control on this rung carries its OWN reason",
+    suite: "console-mem",
+  },
+  {
+    /* ⛔ 432(i) · the reader stops stripping the linked tail, so the inert sentence carries an arrow again. */
+    name: "432i-arrow-strip · the PLAIN form of the roster-full sentence keeps the tail it is written for a link with",
+    file: GATE,
+    from: `  const rosterFullPlain = rosterFullReason === null ? null : stripLinkedTail(rosterFullReason);`,
+    to: `  const rosterFullPlain = rosterFullReason;`,
+    expect: "1.314 · 432(i) · the PLAIN form of the roster-full sentence is the linked one WITHOUT its tail",
+    suite: "console-mem",
+  },
+  {
+    /* ⛔ 432(i) · the PAGE paints the linked form in the inert branch again — an arrow with no navigation behind it. */
+    name: "432i-arrow-paint · the head paints the LINKED sentence where there is no link",
+    file: PAGE,
+    from: `                : rosterFull ? view.rosterFullPlain : view.actionReason}`,
+    to: `                : rosterFull ? view.rosterFullReason : view.actionReason}`,
+    expect: "1.312a · 432(i) · the head paints the LINKED roster-full sentence only inside the one guarded `<Link>`",
+    suite: "console-mem",
+  },
+  {
+    /* ⛔ 417 · the loader's head loses its action ghost, which is a ~105px jump at 360 on the swap. */
+    name: "417-head-ghost · the loader's head stops ghosting the action row the page always renders",
+    file: LOADING,
+    from: ` actions={<SkChip className="h-[44px] w-48" />} />`,
+    to: ` />`,
+    expect: "1.417 · the loader ghosts the head's action row whenever the page's head renders a control",
+    suite: "console-mem",
+  },
+  {
+    /* ⛔ 404 · the proportion ROUNDS, so a desk one shilling from its stop prints "100% of" — invisible until the
+     * fixture's cap stopped being a round number (21,001 against 21,000 of usage). */
+    name: "404-round · the cap proportion rounds up, so 99.995% prints 100%",
+    file: GATE,
+    from: `  const pct = limit > 0 ? Math.floor((shown / limit) * 100) : 100;`,
+    to: `  const pct = limit > 0 ? Math.round((shown / limit) * 100) : 100;`,
+    expect: "1.404 · the delta is the FLOORED proportion of its OWN GLOBAL cap",
+    suite: "console-mem",
+  },
+  {
+    /* ⛔ 432(p) · the no-break space moves to the WRONG SIDE of the dot — the measured defect, which the old
+     * predicate (`!/ · /`) passed either way. */
+    name: "432p-wrong-side · the no-break space binds the dot to the word BEFORE it, so a line may end on a bare dot",
+    file: GATE,
+    /* ⚠️ SINGLE-quoted, never a template literal: a backtick-quoted `from` would INTERPOLATE
+     * `${String.fromCharCode(0xa0)}` at import time and the anchor would hunt a raw no-break space that is
+     * not in the source. Measured here, 2026-09-18: the first attempt resolved to `const SEP = ` · `;`. */
+    from: 'const SEP = ` ·${String.fromCharCode(0xa0)}`;',
+    to: 'const SEP = `${String.fromCharCode(0xa0)}· `;',
+    expect: "1.306 · 432(p) · a list never breaks onto a dangling separator",
+    suite: "console-mem",
+  },
+  {
+    /* ⛔ 416 · the unparsed Products cell goes back to a lowercase sentence fragment beside an em dash. */
+    name: "416-products-case · an unreadable rule set renders a lowercase fragment mid-table again",
+    file: GATE,
+    from: `      products: parsed == null ? "Couldn't read"`,
+    to: `      products: parsed == null ? "couldn't read"`,
+    expect: "1.310 · 416 · a rule set the reader cannot parse renders ONE sentence-cased unknown",
+    suite: "console-mem",
+  },
+  {
+    /* ⛔ 318 · THE ROLL-CALL'S OWN MUTATION, and its subject is this file. A declared `expect` that names no label
+     * the suite can print makes the drive report WRONG-ASSERTION instead of CAUGHT — measured three times over on
+     * 2026-09-18 — and `test:red-anchors` §3 is structurally blind to it, because it resolves `from` and never reads
+     * `expect`. `356-wallet`'s expect is drifted here because it is unique in this file. */
+    name: "318-expect-drift · a declared mutation names an assertion the suite cannot print",
+    file: ANCHORS,
+    /* ⚠️ BUILT BY CONCATENATION, AND IT HAS TO BE. This mutation's subject is THIS FILE, so a `from` written as
+     * one literal would occur TWICE — once in the declaration it targets and once here — and the shared resolver
+     * refuses an ambiguous anchor. Split across a `+`, with the separator as an escape, the file contains no second
+     * copy of the needle while JS still builds the exact line. `356-wallet`'s expect is the target because it is the
+     * only one that is unique in this file. */
+    from: 'expect: "1.356 ' + '· ZERO wallet reads",',
+    to: 'expect: "1.356 ' + '· ZERO wallet reads from the holder",',
+    expect: "1.318 · every declared `console-mem` mutation names an assertion THIS run actually printed",
     suite: "console-mem",
   },
 ];

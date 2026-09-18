@@ -175,11 +175,19 @@ export type ConsoleRosterView = {
    *  (`LIMITS_TAB_READY`): until then `?tab=limits` resolves back to the roster, so a link here would repaint the
    *  identical page with no limits form and no explanation — ruling 432(i). */
   limitsHref: string;
-  /** The head action's VISIBLE disabled reason when the roster is full (314), or its plain not-ready reason (432(j)). */
+  /** The head action's VISIBLE disabled reason when the roster is full (314), or its plain not-ready reason (432(j)).
+   *  ⛔ BYTE-IDENTICAL to `DESIGNATE_COPY.rosterFull(n, max)` (432(c)) and therefore ENDS IN "→": it is written for a
+   *  LINK, and the page paints this form only inside one. */
   rosterFullReason: string | null;
-  /** Why the head action is disabled when the roster is NOT full — a disabled control with no reason reads as broken. */
+  /** The SAME sentence without its linked tail, for the states where the limits panel does not exist and the page
+   *  paints plain text — an arrow on inert text promises a navigation that resolves back to this page (432(i)). */
+  rosterFullPlain: string | null;
+  /** Why the head action is disabled when the roster is NOT full — a disabled control with no reason reads as broken.
+   *  ⛔ It names ITS OWN control: this sentence and `switchReason` are painted on the same screen, and 432(n) forbids
+   *  one state saying the same fact twice. */
   actionReason: string;
-  /** Why the master switch is disabled, beside it, whenever it is drawn (432(j)). */
+  /** Why the master switch is disabled, beside it, whenever it is drawn (432(j)). ⛔ Never the same words as
+   *  `actionReason` — the two sit about 105px apart at 1280 and read as a rendering fault when they match. */
   switchReason: string;
   /** The band (303, 304, 404). Empty when there is no control row to measure against (421). */
   tiles: ConsoleKpiTile[];
@@ -271,6 +279,15 @@ function unavailableTile(label: string): ConsoleKpiTile {
  */
 const SEP = ` ·${String.fromCharCode(0xa0)}`;
 
+/**
+ * A sentence written for a LINK, painted as plain text: the trailing "→" comes off (ruling 432(i)).
+ * ⛔ An arrow on inert text is a promise of navigation, and the tab it points at has no panel on this build.
+ * ⚠️ `endsWith`/`slice`, never a regex: nothing here depends on a backslash escape surviving a tool.
+ */
+function stripLinkedTail(s: string): string {
+  return s.endsWith("→") ? s.slice(0, -1).trimEnd() : s;
+}
+
 /** The scope words a row shows, from `FIELD_META`'s own labels — never typed beside the field. */
 function productWords(updown: boolean, polls: boolean): string {
   const on: string[] = [];
@@ -359,9 +376,13 @@ export async function houseRosterForConsole(
       lossCell: dayBooks == null ? UNREADABLE : moneyUsage(book?.projectedLossTzs ?? 0, bot.capDailyLossTzs),
       exposureCell: exposure == null ? UNREADABLE : moneyUsage(open ?? 0, bot.capOpenExposureTzs),
       betsCell: dayBooks == null ? UNREADABLE : countUsage(book?.bets ?? 0, bot.freqMaxPerDay, "bets"),
-      products: parsed == null ? "couldn't read"
+      /* ⛔ ONE UNKNOWN, ONE TREATMENT (ruling 416 / §C2). It read "couldn't read" — lowercase, a sentence fragment,
+       * mid-table — while a money or count read that FAILED in the SAME ROW rendered the em dash above. Every other
+       * failure string on this page is sentence-cased ("Couldn't load the roster", "COULDN'T COMPUTE"), and this
+       * cell is in no captured tile at any width, so nobody had looked at it. */
+      products: parsed == null ? "Couldn't read"
         : parsed.ok ? productWords(parsed.rules.scope.products.updown, parsed.rules.scope.products.polls)
-          : "couldn't read",
+          : "Couldn't read",
     };
   });
 
@@ -408,6 +429,15 @@ export async function houseRosterForConsole(
   const rosterFullReason = control && roster && roster.length >= control.maxDesignatedBots && control.offCause !== "SUNSET"
     ? DESIGNATE_COPY.rosterFull(roster.length, control.maxDesignatedBots)
     : null;
+  /* ⛔ AND THE INERT FORM CARRIES NO ARROW (ruling 432(i)). `DESIGNATE_COPY.rosterFull` is written for a LINK and ENDS
+   * "…raise the roster limit on Limits →"; while `LIMITS_TAB_READY` is false the page paints it as PLAIN TEXT, so the
+   * head promised a navigation to a tab `consoleTab()` resolves straight back to this page and named a rail option
+   * that is not on the rail (the rail reads only "Roster"). The strip's sibling already drops its own arrow when
+   * inert; the head passed the linked string straight through. ⛔ `rosterFullReason` itself stays BYTE-IDENTICAL —
+   * 432(c) amended that copy in its one home and 1.314 pins it character for character, and it is the form the page
+   * renders again in the same change as the panel it points at.
+   * ⚠️ No regex: written with `endsWith`/`slice` so nothing in this line depends on an escape surviving a tool. */
+  const rosterFullPlain = rosterFullReason === null ? null : stripLinkedTail(rosterFullReason);
 
   /* ⛔ 310's empty-state precedence: the switch's own state beats "none yet"; a FAILED read beats both and is
    * `rows === null`. ⛔ AND NO STATE SAYS THE SAME FACT TWICE (ruling 432(n)): the block ABOVE the table owns the
@@ -435,10 +465,15 @@ export async function houseRosterForConsole(
     unsetRequired,
     limitsHref: CONSOLE_LIMITS_HREF,
     rosterFullReason,
+    rosterFullPlain,
     /* 432(j) · a disabled control with no reason on screen reads as a broken page, and in four of the captured states
-     * the roster-full sentence is null — so every state carries one. */
-    actionReason: "Not ready on this build yet.",
-    switchReason: "Not ready on this build yet.",
+     * the roster-full sentence is null — so every state carries one.
+     * ⛔ AND EACH ONE NAMES ITS OWN CONTROL (ruling 432(n)). Both said "Not ready on this build yet.", and the page
+     * paints them on ONE screen — beside the disabled "Designate an account" in the head and beside the disabled
+     * Toggle in the strip, about 105px apart at 1280 and two blocks apart at 360. Two identical right-aligned
+     * sentences read as a rendering fault rather than as two reasons, and neither said which control it was about. */
+    actionReason: "Designating an account is not ready on this build yet.",
+    switchReason: "The switch is not ready on this build yet.",
     tiles,
     rows,
     empty,

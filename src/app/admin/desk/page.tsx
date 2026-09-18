@@ -126,9 +126,14 @@ export default async function AdminDeskPage({ searchParams }: { searchParams: Pr
                 with nothing beside it reads as a broken page, and "0 of 5" is exactly when designation is
                 legitimate. */}
             <span className="text-body-sm text-text-secondary max-w-[38ch]">
+              {/* ⛔ THE INERT BRANCH PAINTS THE PLAIN FORM (ruling 432(i)). The server's sentence is written for a
+                  LINK and ENDS "…on Limits →"; rendered as plain text that arrow promised a navigation to a tab
+                  `consoleTab()` resolves straight back to this page, and named a rail option that is not on the rail
+                  — the rail below carries "Roster" alone. The sibling forty lines down already drops its arrow when
+                  inert; this site passed the linked string straight through. */}
               {rosterFull && LIMITS_TAB_READY
                 ? <Link href={view.limitsHref as Route} className="inline-flex items-center min-h-[var(--tap-min)] hover:text-brand-300 hover:underline">{view.rosterFullReason}</Link>
-                : rosterFull ? view.rosterFullReason : view.actionReason}
+                : rosterFull ? view.rosterFullPlain : view.actionReason}
             </span>
             <Button size="md" variant="primary" disabled>Designate an account</Button>
           </span>
@@ -201,22 +206,28 @@ export default async function AdminDeskPage({ searchParams }: { searchParams: Pr
           </Callout>
         )}
 
-        {/* 308 · one branch per auto-off cause. A stale cause left on the row while the switch is ON renders none. */}
+        {/* 308 · one branch per auto-off cause. A stale cause left on the row while the switch is ON renders none.
+            ⛔ AND NO BODY HERE REPEATS THE STRIP'S OWN SENTENCE (ruling 432(n)). The strip two cards up says "The desk
+            is off. Nothing will be staked." — ruling 453 fixes those words verbatim for EVERY off cause — and all
+            three bodies below said the same thing again about 60px lower at 1280 and about 150px lower at 360 (read
+            off desk-sunset-full-1280.png and -360.png, where both sentences sit in one viewport). 453 governs the
+            STRIP sentence and says nothing about these bodies, which are this commit's own copy: the strip owns "the
+            desk is off", the Callout owns WHY, and neither has to say the other's sentence. */}
         {view.offCause === "GLOBAL_LOSS_STOP" && (
           <Callout tone="warning" title="Switched off by the daily loss limit">
-            The day&apos;s loss reached the limit, so the desk stopped itself. Nothing will be staked until it is
-            switched on again.
+            The day&apos;s loss reached the limit, so the desk stopped itself. It stays off until it is switched on
+            again.
           </Callout>
         )}
         {(view.offCause === "ENGINE_FAULT" || view.offCause === "ENGINE_ERRORS") && (
           <Callout tone="danger" emphasis="strong" size="md" surface="panel" title="Switched off by a fault">
-            The desk stopped itself after a fault it could not recover from. Nothing will be staked until the cause is
+            The desk stopped itself after a fault it could not recover from. It stays off until the cause is
             understood and it is switched on again.
           </Callout>
         )}
         {view.offCause === "SUNSET" && (
           <Callout tone="neutral" title="Withdrawn">
-            The desk has been withdrawn. Nothing will be staked, and nothing can be designated.
+            The desk has been withdrawn, and nothing can be designated.
           </Callout>
         )}
 

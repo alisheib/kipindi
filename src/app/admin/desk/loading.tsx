@@ -1,6 +1,6 @@
 import { AdminPageHead } from "@/components/admin/admin-shell";
 import { AdminBody } from "@/components/admin/admin-body";
-import { SkCard, SkKpiRow, SkTableCard } from "@/components/admin/admin-skeletons";
+import { SkCard, SkChip, SkKpiRow, SkTableCard } from "@/components/admin/admin-skeletons";
 
 /**
  * What is coming, card for card and in the page's own order (C7-SPEC rulings 313, 417): the head, the master-switch
@@ -13,16 +13,24 @@ import { SkCard, SkKpiRow, SkTableCard } from "@/components/admin/admin-skeleton
  * and after the rename that title names nothing. ⛔ The detail route's loader is the exception — its real title is a
  * gated value — and it carries no title string at all.
  *
- * ⛔ EVERY GHOST STATES THE PAGE'S REAL FACTS: one strip line with no title and no gloss, four tiles on the page's own
- * ladder, the rail at 44px (a missing rail ghost is a 64px jump on the swap), and the roster table at SIX columns with
- * the page's own 16px cell padding (`p-3` on every cell, which is 16px on this repo's overridden spacing scale — see
- * the call site below, where that number is stated once and measured by `test:house-bot-console` 1.417).
+ * ⛔ EVERY GHOST STATES THE PAGE'S REAL FACTS: the head's own action row, one strip line with no title and no gloss,
+ * four tiles on the page's own ladder, the rail at 44px (a missing rail ghost is a 64px jump on the swap), and the
+ * roster table at SIX columns with the page's own 16px cell padding (`p-3` on every cell, which is 16px on this
+ * repo's overridden spacing scale — see the call site below, where that number is stated once and measured by
+ * `test:house-bot-console` 1.417).
  * ⛔ NO PAGER GHOST: the roster is bounded by the configured maximum (1–20), so it renders none.
  */
 export default function AdminDeskLoading() {
   return (
     <>
-      <AdminPageHead title="Desk" sw="Dawati" />
+      {/* ⛔ THE HEAD'S ACTION ROW IS GHOSTED AT THE CONTROL'S OWN HEIGHT, AND THE FIRST VERSION HAD NO `actions` AT
+          ALL. The page's head ALWAYS renders a 44px disabled primary and its reason (432(a), 432(j)), and
+          `AdminPageHead` is `flex items-end justify-between gap-4 flex-wrap`: at 360 the real actions wrap onto their
+          own row, so the real head is about 105px taller than a head-only ghost and the whole page drops on the swap
+          (read off desk-default-360.json — the button alone is t=239 h=44, ending at y=283). `/admin/house`'s loader
+          states the rule in its own words and obeys it: "a ghost the wrong height is a layout jump". Ruling 417's own
+          read was taken at 1280, where the title block is taller than the action row and hides it entirely. */}
+      <AdminPageHead title="Desk" sw="Dawati" actions={<SkChip className="h-[44px] w-48" />} />
       <AdminBody>
         <SkCard lines={1} title={false} sw={false} />
         <SkKpiRow count={4} />
