@@ -21,6 +21,33 @@ import { DWELL_HANDOVER_HOLD_MS } from "@/lib/feedback-timing";
 
 export type RoundPhaseState = "open" | "locked" | "closing" | "confirming" | "resolved" | "void";
 
+/**
+ * An ISO instant as epoch-ms, or `null` when it is not an instant at all.
+ *
+ * 🔴 THE ONE SPELLING FOR CROSSING THAT BOUNDARY, because the obvious spelling is wrong.
+ * `x ? Date.parse(x) : null` looks total and is not: `Date.parse` returns **NaN** for any
+ * string it cannot read, NaN is a number, and `NaN != null` is `true` — so every downstream
+ * `!= null` guard waves it through.
+ *
+ * ✅ WHAT THIS REPAIRS: `formatClock(NaN)` in `updown-card.tsx` threw `RangeError: Invalid time
+ * value` out of render — `Intl.DateTimeFormat.format` throws on an invalid date where
+ * `toLocaleTimeString` merely returns `"Invalid Date"` — tripping the route error boundary and
+ * replacing a whole board with an error page (2026-09-18).
+ *
+ * ⛔ WHAT IT DOES NOT REPAIR, stated so the next reader does not over-trust it: `roundPhase`
+ * below tests `now >= selectionClosesAtMs`, and that collapses to `false` for NaN **and** for
+ * null alike — so an unreadable lock instant still reads as "no betting window", exactly as it
+ * did before. The server's `state === "locked"` is what actually holds such a round shut.
+ *
+ * ⭐ `Number.isFinite` is the test that actually holds: it rejects NaN AND ±Infinity, where
+ * `!Number.isNaN` would let `Infinity` through. Guard: `npm run test:updown-clock-guard`.
+ */
+export function msOrNull(iso: string | null | undefined): number | null {
+  if (!iso) return null;
+  const ms = Date.parse(iso);
+  return Number.isFinite(ms) ? ms : null;
+}
+
 export type RoundPhase = {
   /** Bets are closed but the round has not closed — the "result in" window. */
   locked: boolean;

@@ -214,12 +214,30 @@ function formatCount(n: number): string {
 }
 
 /**
- * The wall-clock time the lock happened, in the player's own locale — the identical output of
- * `new Date(ms).toLocaleTimeString(undefined, { hour, minute, second })`, from one formatter.
+ * The wall-clock time the lock happened, in the player's own locale, from one formatter.
  * ⚠️ Lazy for the same reason: most cards never render the locked branch.
+ *
+ * 🔴 IT RETURNS `null` FOR A TIME THAT IS NOT A TIME, AND THAT IS THE WHOLE POINT (2026-09-18).
+ *
+ * ⛔ THIS HEADER USED TO CLAIM THIS WAS "the identical output of
+ * `new Date(ms).toLocaleTimeString(undefined, { hour, minute, second })`". IT IS NOT, on exactly
+ * one input, and that input reaches here:
+ *   · `toLocaleTimeString` on an invalid date returns the STRING `"Invalid Date"` — ugly, harmless;
+ *   · `Intl.DateTimeFormat.prototype.format` on one THROWS `RangeError: Invalid time value`.
+ * So the refactor to "one formatter" silently converted a cosmetic degradation into a throw
+ * during render, which escapes to the route error boundary and replaces the whole board with
+ * *"Ukurasa huu umekumbana na tatizo"* — a page lost to a clock caption.
+ *
+ * ⭐ AND THE CALL SITE'S GUARD DOES NOT STOP IT. It tests `selectionClosesAtMs != null`, but the
+ * value is built with `Date.parse(...)`, which returns **NaN** — not null — for any string it
+ * cannot read. `NaN != null` is `true`, so NaN walks straight through the guard into the throw.
+ * `Number.isFinite` is the test that actually holds; its sibling `clockOf` in
+ * `updown-bet-receipt-modal.tsx` already used it, so the two now agree.
+ * Guard: `npm run test:updown-clock-guard`.
  */
 let CLOCK_FORMAT: Intl.DateTimeFormat | null = null;
-function formatClock(ms: number): string {
+function formatClock(ms: number): string | null {
+  if (!Number.isFinite(ms)) return null;
   if (CLOCK_FORMAT === null) {
     CLOCK_FORMAT = new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit" });
   }

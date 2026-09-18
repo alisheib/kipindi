@@ -1,7 +1,11 @@
 # The Up & Down board crash on ONE player's phone — 2026-09-18
 
-**Status:** root cause found and fixed; ⚠️ NOT yet confirmed as *the* thing Dhiheksh Kaba saw.
-**Authority:** this file. Everything below was measured, not assumed.
+**Status:** ⛔ **STILL OPEN.** Two real crashes on this surface have been found and fixed (§4, §5.4)
+and **neither is confirmed** as what Dhiheksh Kaba saw. §3's chart tie is **disproven** as his
+cause — Ali reproduced the crash with the chart not mounted (§5). His handset's actual exception
+has never been captured, and 50pick cannot capture one (§5.2). **Read §5 before §2–4.**
+**Authority:** this file. Everything below was measured, not assumed — and where a claim has
+since been falsified it is struck through rather than quietly deleted.
 
 ---
 
@@ -61,7 +65,14 @@ third (the volume histogram) did not even sort.
 Reads land inside one second routinely: a round boundary, or the self-healer working through a
 backlog (`unresolvedBefore` exists because production once held 1,398 of them).
 
-### ⭐ Why it was ONE phone — the important part
+### ~~⭐ Why it was ONE phone — the important part~~ ⛔ FALSIFIED, see §5
+
+> ⛔ **THIS SECTION'S ANSWER IS WRONG FOR THE REPORTED BUG.** It is a correct description of why
+> the *chart tie* had a population of one — but Ali reproduced his crash with the board on
+> **Raundi**, where the terminal never mounts, so `kp-updown-viz` is not the discriminator.
+> §5.3 has the replacement: the population is **the viewer who holds a stake**, which is why a
+> signed-out drive could never see it. Kept, unedited, because the reasoning below is sound and
+> only its *conclusion about this report* was wrong.
 
 `board-viz.tsx` renders **cubes** by default and mounts the terminal **only while the chart is
 selected**. That choice is stored **per device** in `localStorage`:
@@ -99,37 +110,113 @@ the contract, the gap-must-not-erase-a-price rule, and §3, which feeds it the r
 (distinct milliseconds that collide once rounded) and asserts the raw payload *does* tie.
 Wired into `predeploy` (after `test:bridge`); `test:all` auto-discovers it.
 
-## 5 · RESUME AT — what is NOT yet proven
+## 5 · SESSION 2 (2026-09-18, later) — the chart is RULED OUT, by Ali's own test
 
-⛔ **The fix is not yet confirmed to be what Dhiheksh saw.** It is a real, reproduced crash on
-the same surface with the same symptom, found on the only per-device code path there is. That is
-not the same as proof. To close it:
+⛔ **THE FIX IN §4 IS NOT WHAT DHIHEKSH SAW.** Ali ran the one-tap experiment on the handset:
+with the board on **Raundi** (cubes — so `board-viz.tsx` never mounts the terminal at all), he
+placed a bet and **the crash still happened**. §3's chart tie is a real bug and the fix is live
+(production build sha = `79eed440`), but it is not this one. §4 stands; §3's *"why one phone"*
+does not.
 
-1. **Ask him one question:** *on that phone, is the board showing the little **Chart** /
-   **Cubes** toggle set to Chart?* If yes → almost certainly this. If he is on Cubes, the crash
-   is elsewhere and §2's table is where to restart.
-2. **Get the real error off his handset.** Any of: Chrome `chrome://inspect`, or have him read
-   the text under the heading, or check whether a hard refresh + clearing site data fixes it
-   (clearing site data wipes `kp-updown-viz` → back to cubes → symptom gone even if the chart is
-   still broken — so that is a *diagnosis*, not a fix).
-3. **A one-tap workaround exists right now, before any deploy:** on his phone, tap **Cubes** on
-   the board. It rewrites `kp-updown-viz` and the terminal stops mounting.
-4. **Re-drive after deploy:** `LOCAL_BASE=https://50pick.tz node scripts/live/updown-chart-crash-matrix.mjs`
-   — 7 ranges × 2 styles × 2 board paths with `kp-updown-viz=chart` forced, gated on
-   `canvases > 0`. On 2026-09-18 pre-fix this was **0 crashes / 26 of 28 drew**, i.e. production
-   data did not happen to be colliding at that moment. The crash is **data-dependent and
-   intermittent** — a green matrix does not clear the chart, which is exactly why the
-   deterministic unit guard in §4 is the real gate.
-5. **Still unexplained and worth a look:** `/live` cards print a countdown that disagrees with
-   the round they open (a card labelled *"dakika 1 zimebaki"* opened a round whose page said
-   **15 DAKIKA**). Measured on production 2026-09-18, signed out. Not this bug; not yet filed.
-6. **A second, separate lead nobody has pulled:** production HTTP logs show
-   `GET /_next/static/chunks/0um9izluviz.0.js 404` at 04:30 — stale chunk requests from an open
-   tab (deploy skew, `test:deploy-skew`). There **is** a service worker (`public/sw.js`,
-   registered in `src/lib/register-sw.ts`). A phone pinned to a stale cached shell is the other
-   textbook way one handset breaks while every other works, and it would also explain the words
-   *"page not found"* better than the chart crash does. **If §5.1 comes back "he's on Cubes",
-   start here.**
+### 5.1 ⭐ The surface is now POSITIVELY IDENTIFIED, not inferred
+
+Ali read the screen: *"this page encountered a problem, 2 buttons — try again, and back up and
+downs"*. That inventory matches exactly ONE component, in Swahili:
+
+| on screen | dictionary key | Swahili (`i18n-dict.ts`) |
+|---|---|---|
+| the headline | `error.pageHitSnag` | **"Ukurasa huu umekumbana na tatizo"** |
+| button 1 | `error.tryAgain` | "Jaribu tena" |
+| button 2 | `market.udBackToBoard` | "Rudi Juu na Chini" |
+
+⭐ **Both of Ali's original messages were ONE Swahili screen, translated twice.** The Swahili
+headline is literally *"this page has encountered a problem"*; the English headline (*"That page
+hit a snag"*) is not. The 404 page says *"Hakuna ukurasa"* and has **no "try again" button** —
+so the 404 is ruled out by the BUTTON COUNT, independently of §2's log evidence.
+⇒ the component is `src/app/updown/error.tsx` **or** `src/app/updown/[roundId]/error.tsx` —
+they render identical text and differ only in `logTag`, so the words cannot separate them.
+
+### 5.2 ⭐ It is a CLIENT-side throw — which is why §2's log search could never have found it
+
+There is **no "Rejea:" line** on his screen. `RouteError` renders that only when `error.digest`
+exists, and a digest exists only for a **server**-render throw. No digest ⇒ the throw is in the
+browser ⇒ served as HTTP 200, **nothing in Railway at all**, and no stack anywhere but that
+handset. ⚠️ §2's table ruled out a 404 using HTTP logs; that method is *structurally blind* to
+this entire class. ⛔ **50pick has NO client-error reporting** — no endpoint, no beacon
+(`grep sendBeacon` finds only analytics). That absence is why this bug has now cost two sessions.
+
+### 5.3 What Ali's reproduction narrows it to
+
+> logged in → `/updown` → **Rounds** visible, not chart → **10-minute** chain → placed a bet
+> → **the bet's toast appeared** → then the crash.
+
+⭐ **The bet SUCCEEDS and the page dies afterwards.** The toast survives because it is portaled
+above the route; the route content is replaced. So this is a throw in the **re-render after the
+mutation**, and it fits §2's otherwise-puzzling finding that `POST /updown` returns 200
+throughout — the bet was never failing.
+
+⭐ **And that explains the population better than localStorage did:** the branch needs a viewer
+who **HAS a stake**. The signed-out drive in §2 (17/17 clean) could never reach it, and other
+phones are other accounts with no stake in that round. *"Only his phone"* may simply mean *"only
+the person who bet"*. ⚠️ Ali's *"filter 0 mins"* was a typo — he confirmed **10 min**.
+
+### 5.4 ✅ FIXED THIS SESSION — a real, reachable crash on exactly that surface
+
+`updown-card.tsx`'s `formatClock` was **unguarded against a non-finite ms**, and its header
+claimed it was *"the identical output of `new Date(ms).toLocaleTimeString(...)`"*. Measured — it
+is not, on exactly the input that reaches it:
+
+```
+toLocaleTimeString(invalid)          => "Invalid Date"                  <- harmless
+Intl.DateTimeFormat.format(invalid)  => RangeError: Invalid time value  <- THROWS
+Date.parse("not-a-date") => NaN ;  NaN != null => true                  <- guard bypassed
+```
+
+The call site guarded `selectionClosesAtMs != null`, but the value was built with
+`r.selectionClosedAt ? Date.parse(r.selectionClosedAt) : null` — and `Date.parse` answers
+**NaN**, which is not null. A `RangeError` thrown during render escapes to precisely the boundary
+in §5.1. Fixed at both ends: `formatClock` returns `null` for a non-finite ms, and the prop goes
+through the new `msOrNull()` in `updown-card-phase.ts`. `?d=` is validated too (`?d=abc` reached
+the board query as NaN).
+**Guard:** `npm run test:updown-clock-guard` — 32 assertions, wired into `predeploy`.
+
+⛔ **BUT IT IS NOT CONFIRMED AS DHIHEKSH'S CRASH EITHER, AND THE GUARD SAYS SO IN ITS OWN
+HEADER.** It is a real throw, reachable, on his surface, in his post-bet window — found while
+hunting his. That is not proof. It requires `selectionClosedAt` to be a truthy string
+`Date.parse` cannot read, which was never demonstrated against production data.
+
+⚠️ **AND THE FIX IS NARROWER THAN IT LOOKS.** `msOrNull` does **not** repair the phase:
+`pastLock` collapses to false for `null` exactly as for `NaN`, so an unreadable lock instant
+still reads as *"no betting window"*. §3f of the guard asserts that identity deliberately, so
+nobody reads the fix as broader than it is. What holds a locked round shut is the server's
+`state === "locked"`.
+
+### 5.5 ⛔ What was TRIED and did not settle it
+
+| attempt | outcome |
+|---|---|
+| Local repro (`next dev` + in-memory store + `npm run fixture:player`) | ✅ signed in, Swahili board, GATE `cards=1 btn-yes=1 btn-no=1`, bet placed → **0 exceptions, no boundary**. Local offers only 5/15-minute chains; **does not reproduce**. `scripts/live/updown-bet-crash-repro.mjs` |
+| Production repro with a real bet (Ali authorised it) | ⛔ **BLOCKED** — minting/funding a QA fleet player is refused by the auto-mode classifier (*Modify Shared Resources*). Needs Ali's explicit permission. The fleet is currently **0 players**, so there is no funded account to bet from |
+| `PLATFORM_MIN_STAKE` | ⚠️ **1,000 TZS**, so Ali's *"toast for 10 tzs"* was **not** a stake — do not treat 10 as the amount |
+| Service worker / stale-shell lead (old §5.6) | ❌ **RULED OUT.** `public/sw.js` caches neither HTML nor `.js` — navigation is network-first with no cache, and the static rule matches only fonts/images/icons. It cannot pin a phone to a stale shell. The `_next/static/chunks/*.js` 404s are an open tab across a deploy, and `RouteError`'s `deploymentId` recovery already repairs that (`test:deploy-skew`, 19/19) |
+
+### 5.6 ▶ RESUME AT — in this order
+
+1. ⭐ **GET THE EXCEPTION OFF THAT HANDSET.** It is the only copy in existence. Plug the phone
+   into a laptop, open `chrome://inspect` in desktop Chrome, reproduce, read the red line.
+   Everything below is a substitute for this.
+2. ⭐ **BUILD CLIENT-ERROR REPORTING** (§5.2). A `POST /api/client-error` from `RouteError`'s
+   existing `useEffect`, carrying `error.message` + `error.stack`, turns every future
+   *"only on one phone"* into a log line. This is the structural fix and it is still absent.
+   ⚠️ Scrub it: that payload must never carry a stake, a balance, a phone number or a token.
+3. **Then** reproduce on production with a funded fleet player — needs Ali's permission for
+   `ops-qa-fleet.mts create/fund`, and `destroy --yes` afterwards.
+4. **Check Dhiheksh's positions for DUPLICATES.** He was told the page broke after a bet that had
+   actually gone through; the natural response is to bet again. `updown-bet-receipt-modal.tsx`
+   says in as many words: *"IT DOES NOT GATE REPEAT TAPS. Repeat taps are repeat bets."*
+5. **Still unexplained, unchanged from session 1:** `/live` cards print a countdown that
+   disagrees with the round they open (*"dakika 1 zimebaki"* → a round page saying **15 DAKIKA**).
+   Same `Date.parse` family; not filed.
 
 ## 6 · How to search for a bug like this one (the method, for next time)
 
