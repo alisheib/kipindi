@@ -1482,6 +1482,11 @@ export const CONSOLE_GATE_NON_READERS = ["ConsoleAuditRead", "ConsoleDeskShell",
   "ConsoleRosterView", "ConsoleUsageCell",
   "ConsoleUsageHalf", "ConsoleUsageQuery", "ConsoleUsageRow", "HOUSE_CONSOLE_PREFIX", "OPERATOR_DATA_EXEMPT",
   "TARGETED_DAILY_TZS_FIELD", "clampOperatorText", "consoleLimitLabel",
+  /* ⭐ C7 step 4 · ruling 432(f)'s neutral way-out override. Both are PURE COPY: `consoleWayOutKey` maps a live cause
+     to the key its sentence is overridden by, and `consoleWayOutCopy` picks the console's sentence or the shared one
+     and fills its `{label}`. Neither awaits, reaches `db.`, names a store member or decides an audience — which is
+     what 0.512b checks rather than takes on trust. */
+  "consoleWayOutCopy", "consoleWayOutKey",
   "isHouseConsoleRoute", "unsetCaptionFor"] as const;
 
 /**
