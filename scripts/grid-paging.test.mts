@@ -153,6 +153,12 @@ console.log("\n§2 · every page.tsx with a <table> either pages or declares why
  */
 const FIXED_GRIDS: Record<string, string> = {
   "src/app/admin/insights/page.tsx": "renders a fixed analytic summary — the row count is the number of metrics, set in code",
+  // ⭐ A TOP-N REPORT, BOUNDED AT THE QUERY, not a truncated list. `siteVisitsReport(from, to, 20)`
+  // caps both tables server-side — `take: top` in the Prisma groupBy and `rank(…, top)` in the
+  // memory path — so the page renders ALL the rows it is given and there is no page 2 to reach.
+  // ⛔ If that bound is ever lifted, or the call stops passing one, this entry must go and the
+  // page gains a pager: an unbounded list rendered whole is the defect this gate exists for.
+  "src/app/admin/traffic/page.tsx": "top-20 pages and referrers — bounded at the query (`siteVisitsReport(…, 20)`, `take: top`), so the grid shows every row it receives",
   "src/app/admin/retention/page.tsx": "one row per retention policy; the policy set is defined in code, not by data",
   "src/app/admin/staff/page.tsx": "one row per staff account. Bounded by hiring, and an operator must see ALL of them at once — paging the privilege list is how a forgotten admin hides on page 2",
   "src/app/admin/staff/[id]/page.tsx": "one staff member's recent actions, explicitly a recent-activity excerpt with the full history a click away in the audit log",
