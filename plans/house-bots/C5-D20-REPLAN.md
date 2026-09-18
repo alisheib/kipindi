@@ -1103,3 +1103,110 @@ bots and what keeps D19 true").
        the ABSENCE of a save and must be rewritten to fail in BOTH directions.
      - The precedent is `src/app/admin/config/{actions.ts,config-form.tsx}` — a global-settings form with a
        guarded save. It is copied, not reinvented: the platform kit is the only look.
+
+
+538. **THREE UNGATED ADMIN PAGES ARE W25's FIRST MEASURED TARGETS, NOT A BLIND PATCH HERE — and this is
+     the most serious open item on the platform.** The D19 lens walked the whole of
+     `AUDIT_READERS_OUTSIDE_CONSOLE` against its consumers, which ruling 434 opened and nobody had done.
+     Measured at `42a4c8ca`:
+     - `/admin/kyc/[id]` (`page.tsx:114`) calls `getApprovalRecommendation(id)` with **no audience check**.
+       That resolves an officer's identity (`kyc-risk.ts:336` → `db.user.findById(latest.actorId)` →
+       `officerName`) and passes it at `:497` as `recommenderName` into `KycDecisionRail`, a `"use client"`
+       component — **so it is SERIALISED into the flight payload**. The page's only session use is
+       `canView(session.role, "accounting")` — the COOKIE role, which ruling 522 measured cannot answer the
+       demoted-account question, and which 434's own docblock says is not the belt.
+     - `/admin/kyc` (`page.tsx:114`) and `/admin/approvals` (`page.tsx:99`) read audit rows through
+       `readBlockedCashOuts()` with no gate. `/admin/approvals` gates its RING read at `:91` and then reads
+       ungated eight lines later, and renders a KYC applicant's **legal name** in a `<td>` at `:291`.
+     - ⛔ **Why the probe read `leaks: 0`:** its needle set is the house vocabulary, the account label, the
+       bot ids and six canary amounts. None of these payloads carries one. This is ruling 260's *"true of
+       the action, false of the payload"* one level further out, and **the probe cannot see the class.**
+     **The decision.** These are PLAYER and STAFF PII, not house data — so they are **W25's**, and ruling
+     524 governs: *the instrument first, seen RED against the unfixed code, before any fix.* They become
+     W25's opening measurement, and its platform-PII probe must fail on all three before a line is changed.
+     ⛔ **They are NOT patched on the house-bots branch.** Patching blind would close the one measurement
+     that could prove the class shut, which is this project's oldest and most expensive mistake.
+     ⚠️ **Told to Ali plainly:** these pages are on `main` and therefore live. The leak predates this
+     programme by months; W25 is the very next work item and its instrument is hours, not weeks. The
+     judgement is that a few hours of measured delay buys a proof that the whole class is closed, where a
+     blind patch buys three fixed pages and no way to know about the fourth.
+
+539. **RULING 453's GUARD HAD TWO INDEPENDENT HOLES, AND THE FEATURE'S OWN MECHANISM WAS PAINTING THROUGH
+     BOTH.** Measured at `42a4c8ca`: `/admin/desk?tab=limits` renders **"Counters per player per day"**
+     (`rules.ts:765`), **"Counter TZS per player per day"** (`:770`) and **"Counterparty share limit"**
+     (`:802`) — three labels naming the counter-stake, the feature's mechanism, on the one surface 453
+     exists to keep neutral, in a public repository where a screenshot is the disclosure channel.
+     - **Hole 1 — the lexicon matches a VOCABULARY, not a meaning.** `CONSOLE_EXTRA_WORDS`
+       (`house-bot-vocabulary.mjs:109`) spells `counter[- ]?stakes?`, which **requires "stake" to follow**.
+       Measured directly: the regex CATCHES `"counter-stake"` and PASSES all three rendered labels. So
+       `test:house-bot-console` 4.453 and the served gate §5.6 both reported clean, and 432(f)'s amendment
+       — which audited `FIELD_META` *against that same regex* — caught `staff[- ]?chosen` and missed these.
+     - **Hole 2 — the served scan never visited the tab.** `qa-house-bots-visual.mjs:49` defaults
+       `KP_ROUTES` to `/admin/desk` alone, so the entire limits surface went through **none** of §5.1,
+       §5.3, §5.4 or §5.6. The instrument that reads RENDERED text never saw the page that was leaking.
+     - ⛔ **Both holes are fixed, and the labels are overridden — in that order.** The lexicon takes the
+       bare stem so the next label cannot re-land it; the route population becomes every tab whose panel
+       exists, derived from `CONSOLE_TABS` rather than typed; and only THEN are the three labels added to
+       `CONSOLE_LIMIT_LABEL`. ⛔ **Fixing the three labels alone would have been the hand-chosen
+       population** — the visual lens found these by reading pixels, and six more limit rows sit below the
+       fold of every captured tile, unread. The guard must enumerate the population, not a reviewer.
+     - ⚠️ **NOT LIVE.** The limits tab landed at `3b17b03e`, after `origin/main` (`66db674c`), so nothing
+       of this reached production. It is a branch-only correction.
+
+540. **FOUR INSTRUMENTS IN THIS BUILD REPORTED SUCCESS THEY DID NOT MEASURE, and none of them could have
+     failed.** Each is the same class — an instrument bent, by accident, into reporting its own success —
+     and all four are fixed before this step closes.
+     - **(a) A control built from the value it checks.** `verify-house-bot-bundle.mjs:207-209`:
+       `` const controlWorks = CONTROL.length > 0 && `var a=${JSON.stringify(CONTROL)};`.includes(CONTROL) ``
+       — it builds a string containing `CONTROL` and asks whether it contains `CONTROL`. The sentence regex
+       excludes `"` and `\`, so `JSON.stringify` never escapes, and the predicate is **tautologically
+       true**. Ruling 396 asks for a control that proves the provenance scan can find a planted sentence in
+       a real artefact; this proves nothing. *Would it still pass if the feature were absent?* Yes.
+     - **(b) A wait that swallows its own timeout.** `qa-house-bots-visual.mjs:100-102`:
+       `waitForSelector(…).catch(() => null)` followed by `waitForTimeout(600)`. Previously a page that
+       never settled threw and became NOT MEASURED; now it is screenshotted and every downstream check runs
+       against a shell. The claim "no assertion was weakened" is true of the 20 checks and false of the
+       thing deciding whether they measure a painted page. The sleep margin also replaces a quiescence
+       property with a timer, which the standing traps forbid.
+     - **(c) A harness failure reported as a pass.** `render6-s3s2.log` ends
+       `FAIL 0.visual · qa:house-bots-visual on the limits tab at 360 and 1280 — exit 3` /
+       `FAILURES — render-s3s2: 1`. The build report carried the INNER tally, `20/0, 2 NOT MEASURED`, and
+       omitted that the harness's own case failed.
+     - **(d) A probe that measured the wrong node.** The metadata-strip selector
+       `".bg-bg-overlay.rounded-md"` matched the FIRST such node in document order — a 40px, zero-padding,
+       empty-text element at `top: 48` (the top bar) — and its geometry was reported as the strip's. That
+       became "the `py-2.5` strip does not render". It rendered nothing of the sort. ⛔ This is **worse than
+       NOT MEASURED**: ruling 528's side-by-side has still never been taken, and the record said it had.
+     ⛔ Each fix is SEEN RED first — a control that has never been shown to reject anything is not a
+     control, which is the whole finding.
+
+541. **FOUR DECLARED MUTATIONS CANNOT TURN THE ASSERTION THEY NAME RED, AND ONE REAL DEFECT HAS NO
+     MUTATION AT ALL.** The strength lens did not argue this — it SIMULATED it, applying each mutation to a
+     copy and re-evaluating the predicates. That is the standard, and it is why these were found.
+     - **(a) `406-strip` aims at nothing.** It wraps the poller in place (`<DeskLive …>` →
+       `{tab === "roster" ? <DeskLive …> : null}`), but `1.406` measures SOURCE OFFSETS
+       (`sites.every(([, at]) => at > 0 && at < firstPanel)`). The insert shifts both indices equally, so
+       every term stays true. Measured: `BASE {p1406:true,p1406c:true,p1316:true}` /
+       `406-MUT {p1406:true,p1406c:true,p1316:true}`. ⛔ **No assertion in the suite can see the desk's one
+       live trigger move inside a tab group** — the whole defect 406 and 316 exist for. The fix asserts TAB
+       OWNERSHIP, not offset.
+     - **(b) `306-anchor-href` aims at nothing.** It swaps the strip's `view.limitsFirstUnsetHref` for
+       `view.limitsHref`, and names an assertion that reads **only `console-routes.ts`** and never touches
+       `page.tsx`. The one page-side pin (`:1456`) was WIDENED BY AN OR in this same build —
+       `/view\.limitsHref|view\.limitsFirstUnsetHref|unsetHref/` — which makes the three interchangeable at
+       every link site and is what lets the mutation survive. ⛔ **An OR widens.** The officer landing on
+       the tab and hunting for the field is caught by nothing.
+     - **(c) `306-anchor-everywhere` has a fixture in the one shape that cannot fail.** The plant unsets
+       exactly ONE member of `REQUIRED_FOR_MASTER_ON`, so `unset && required` and
+       `unset && required && !firstUnsetTaken` produce the same single flag and the mutation passes. Two
+       unset members discriminate.
+     - **(d) `421-limits` removes a DEAD DISJUNCT.** `schemaMissing` implies `control === null` in every
+       reachable state, so `schemaMissing ||` changes nothing and its removal is invisible.
+     - **(e) And `432i-dead-link`'s inversion left half the assertion unguarded.** The polarity flip is
+       correct, but the other half — *both limits pointers are still GUARDED by the flag* — is exercised by
+       **no declared mutation**, and `1.318`'s roll-call only checks `expect`-drift, never that an assertion
+       HAS a declaration. A new `432i-unguarded` is owed.
+     ⛔ **The rule this sets:** a declared mutation is not accepted on the strength of resolving exactly
+     once. `test:red-anchors` proves RESOLUTION; only applying it and re-evaluating the predicate proves it
+     turns its assertion RED. The two are not the same, and this build shipped 100 declarations on the
+     first kind of proof alone.
