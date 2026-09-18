@@ -1238,3 +1238,41 @@ bots and what keeps D19 true").
        surface a defect was noticed on, rather than to the class, leaves the more expensive half standing.
        When a clock, a key or a window is derived twice, every call site of that member is re-measured —
        not only the one the review happened to open.
+
+
+543. **`audit()` DOCUMENTS A CONTRACT IT DOES NOT KEEP, AND THREE HOUSE WRITERS RELY ON IT — so a write
+     that LANDED can be reported to an officer as a write that failed.** Found by the ruling-537 builder on
+     a SERVED build, not by any suite: a limits save that had reached the database printed
+     *"Nothing was saved."* while the row showed the new value. That is
+     [[a-save-that-never-lands-looks-like-one-that-did]] **inverted**, and the inverted form is worse,
+     because the operator's correct response — do it again — is the one action the record cannot survive.
+     - **What the contract says.** `src/lib/server/audit.ts:345`: *"`audit()` turns that into a fail-open
+       in-memory entry so the request never dies."* Callers are written against that promise and do not
+       guard.
+     - **What was measured.** `chainSecret()` (`audit.ts:87-100`) **throws outright** when
+       `NODE_ENV === "production"` and `AUDIT_CHAIN_SECRET` is absent or equal to `SESSION_SECRET` — and it
+       throws during signing, PAST the in-memory fallback that the docblock's promise rests on. So `audit()`
+       can reject, and the sentence above it is false in exactly that condition.
+     - **Who is exposed.** Three house writers `await audit(...)` AFTER their own write has already landed
+       and use the result: `designation.ts:54` (`houseAudit`), `outcomes.ts:95` (`engineAudit` — Start, the
+       kill switch, the planner) and `press-audit.ts:90` (`writePressAudit`, every press). A throw there
+       reports a completed designation, a completed Start or a completed press as a failure.
+     - ⚠️ **NOT LIVE, and the measurement says so.** `docs/CLOUDFLARE-SETUP-GUIDE.md:123` records
+       `AUDIT_CHAIN_SECRET` as **set in production** — a 64-char base64url secret, distinct from
+       `SESSION_SECRET` — and `docs/LAUNCH-GO-NO-GO.md:48` gates release on it. So no production request
+       takes the throwing branch today. This is a latent contract defect, not an incident, and it is ruled
+       rather than hot-fixed.
+     - **The fix, and it is the contract that moves, not the callers.** Either `audit()` genuinely never
+       rejects (catch the secret failure, fail open to the in-memory entry the docblock already promises,
+       and surface the gap in the RETURNED value the way ruling 537's save now does with `recorded: false`),
+       or the docblock is corrected and **every** `await audit(...)` call site is guarded in the same
+       change. ⛔ The first is correct: a caller cannot reasonably be asked to guard a function whose own
+       documentation says guarding is unnecessary, and the fail-open path already exists eight lines away.
+     - ⛔ **A guard pins it, because a corrected comment is not a proof:** a case that drives `audit()` with
+       `NODE_ENV=production` and no distinct secret and requires it to RESOLVE with the shortfall named,
+       never to reject — with its own planted control. Ruling 537's limits save already carries the
+       operator-facing half (`recorded: false` → a WARNING, the save still reported as landed), and that is
+       the shape the other three adopt.
+     - **Scheduled: before Commit 8**, with ruling 501's ISO work, because both touch the audit export and
+       both are regulator-facing. ⛔ Not at C7 step 4 — the ceremony step must not also be re-writing the
+       platform's audit contract underneath itself.
