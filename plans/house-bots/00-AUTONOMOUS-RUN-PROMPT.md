@@ -9,11 +9,13 @@ Continue building **House Bots** for 50pick on branch `house-bots` of github.com
 Ali will be away all day. He approves permissions and answers questions **only now**. After Phase 0 you never wait on him.
 
 1. **Fetch and read, fast:** first make sure nothing else writes `F:/kipindi-house-bots` (`git status --short`; list `node.exe`/`postgres.exe`/`claude.exe` command lines — an earlier session's workflow can still be running there; if one is, tell Ali in one line and wait for him to close it, never kill another Claude session yourself). Then `git fetch origin` and fast-forward; read **PROGRESS's "OWNER RULING D20" and "OWNER RULING D19" blocks in full**, then `plans/house-bots/C5-D20-REPLAN.md` whole, then PROGRESS "Status now", RESUME AT (▶ twelfth session), "Waiting on Ali" and "🧷 Later — sealing to-do".
-2. **Ask nothing, but tell Ali two things, one line each: W20 and W25.** W20: the GitHub repository is still **public**
-   (re-measure `api.github.com/repos/alisheib/kipindi`), and D19 says house bots are never public — only he can change it
-   (GitHub → Settings → General → Danger Zone → Change visibility → Private, then check Railway still deploys `main`).
-   W25: on `main`, every admin console page sends its data (other players' names and stakes) to any signed-in account — a
-   platform fix for him to order. Carry on either way.
+2. **Ask nothing.** ⛔ **W20 is CLOSED (ruling 469, 2026-09-18) and this step no longer measures or mentions it.** The
+   owner decided the repository stays public and asked for the matter to leave the plan; raising it again is how it came
+   back five times. *(Deleted here on 2026-09-18 under ruling 516 (iv), because this file is the GENERATOR: leaving the
+   order in it is how the closed matter would be re-raised a seventh time, whatever the copies it generates say.)*
+   **W25** (on `main`, every admin console page sends its data — other players' names and stakes — to any signed-in
+   account) is now scheduled work rather than something to tell him about: its decision, scope and probe are ruling 472
+   in `plans/house-bots/C5-D20-REPLAN.md` §5. Read it there.
    ⛔ Do NOT re-ask W1–W24 or X3/X7/X8, and do not re-ask D19 or D20: they are recorded at the top of PROGRESS and in
    `docs/COMPLIANCE-DECISIONS.md`. Ali's standing instruction is to decide the rest yourself. If something genuinely new
    appears, put it in "Waiting on Ali" with a recommended default and build the default.

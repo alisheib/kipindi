@@ -84,7 +84,7 @@ and fix the document in the same commit.
   7. Fix every confirmed finding.
   8. Update `docs/HOUSE-BOTS.md` and `PROGRESS.md`.
   9. Commit, then push `house-bots`.
-- **The public repo is ANSWERED** (W1, Ali 2026-09-13: keep it public for now and push the engine code anyway), so pushing `house-bots` never waits on him. ⚠️ D19 changed what that costs: W20 asks Ali to make the repository private, and only he can do it. Keep pushing meanwhile — the branch is the work's only backup.
+- **The public repo is ANSWERED** (W1, Ali 2026-09-13: keep it public for now and push the engine code anyway), so pushing `house-bots` never waits on him. ⛔ **W20 is CLOSED (ruling 469, 2026-09-18): the owner decided the repository stays public and asked for the matter to leave the plan, so no session raises it, re-measures it or reports it again.** D19 itself is unchanged — house bots still reach no player and no holder; the branch being readable is an accepted disclosure of the plan and the code, never a licence to paint a house word on a player's screen. Keep pushing `house-bots` — the branch is the work's only backup.
 - **Green is not verification.** Drive real behaviour against the `db:scratch` Postgres (loopback only), and render real screens per PLAN §15, phases A–F.
   - Open and read every screenshot.
   - Report anything you couldn't measure as NOT MEASURED, never as passed.
