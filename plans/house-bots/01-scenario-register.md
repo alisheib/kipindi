@@ -33,7 +33,7 @@
 If the bot was ACTIVE:
 - AUTO_PAUSED(PASSWORD_CHANGED), written under wallet:<botUser>, with pauseDetail {via: SELF_CHANGE, changedAt, wasActive: true}.
 - PENDING and CLAIMED intents → CANCELLED(BOT_NOT_ACTIVE). An AUTO_PAUSED event is appended and an awaited COMPLIANCE audit `house_bot.auto_paused` is written.
-- Admins get bell + email: "Bot A paused — the holder changed his password (Account settings, 13 Sep 14:02 EAT). Enter the new password to resume." Link: /admin/house-bots/<id>.
+- Admins get bell + email: "Bot A paused — the holder changed his password (Account settings, 13 Sep 14:02 EAT). Enter the new password to resume." Link: /admin/desk/<id>.
 - ~~The holder gets bell + push:~~
   - ~~en: "Liquidity stakes on your account are paused because your password changed. Your balance and your own bets are not affected. 50pick will ask for your permission again before resuming."~~
   - ~~sw: "Dau za ukwasi kwenye akaunti yako zimesimamishwa kwa sababu nenosiri lako limebadilishwa. Salio lako na dau zako binafsi haziathiriki. 50pick itaomba ruhusa yako tena kabla ya kuendelea."~~
@@ -423,7 +423,7 @@ If an officer reopens the refusal: Re-verify, then Start.
 - A red mutation removing the reserve lets the admin lock the account and must fail.
 
 ### HB-ACC-20 [partial] The admin resumes the bot after a password change: the exact re-verify modal, the resume-after-verify option, and Start being refused after a successful verify.
-- **Trigger:** The Re-verify button on the /admin/house-bots/<id> strip, while CONSENT_STALE stands.
+- **Trigger:** The Re-verify button on the /admin/desk/<id> strip, while CONSENT_STALE stands.
 - **Expected:** The modal:
 - Title "Enter the new password to resume".
 - Body "Bot A · Player #A3F2K8 · password changed 13 Sep 14:02 EAT in Account settings. Checked once and never stored."
@@ -1472,7 +1472,7 @@ If he also holds his own stake, he may object.
 - **Test:** test:house-bot-designation: changePassword on an ACTIVE bot holder → registry row gone, getSession null for both cookies, bot AUTO_PAUSED(PASSWORD_CHANGED) with zero fires, exactly one admin alert (AlertOnce), re-verify with the old password refused and counted, new password accepted. The same assertions for consumeResetToken and adminResetPassword. New key test:password-change-signout for non-bot users. red:house-bot-console: removing revokeUserSessions must fail.
 - ⛔ **Superseded by D19 (Ali, 2026-09-16):** the holder receives no house-bot notice (D19c; C4 ruling 149); the platform-wide sign-out, the pause and the admin alert stand. Coverage gate: partly struck by D19.
 
-### CA-04 [gap] The owner working inside /admin/house-bots never sees admin bell alerts, and the plan's 'notification:new triggers an immediate refresh' can never fire, because the console mounts neither a bell nor the SSE stream.
+### CA-04 [gap] The owner working inside /admin/desk never sees admin bell alerts, and the plan's 'notification:new triggers an immediate refresh' can never fire, because the console mounts neither a bell nor the SSE stream.
 - **Trigger:** While the owner is on ?tab=limits, the engine auto-pauses Bot A (holder self-excludes), or the planner switches the master OFF (GLOBAL_LOSS_STOP), or a deposit lands on an ACTIVE holder's account.
 - **Expected:** The strip shows the new state within ~5 s over SSE, or within 20 s by polling as fallback. A polite live region announces once: "Bot A auto-paused: self-exclusion (14:03 EAT)". A chip on the strip, "3 new house-bot alerts", links to ?tab=history (money events link to /admin/transactions). Unsaved form input is never lost. Email still arrives as §7 says. The same bell rows are visible on the player-side bell.
 - **Plan:** §8 Live state; §7 Notifications
@@ -1505,11 +1505,11 @@ If he also holds his own stake, he may object.
 - **Test:** test:house-bot-console: swap the registry row to another session id → action returns REAUTH_LOGIN with the other-device reason, zero writes.
 
 ### CA-08 [gap] A deep link to an unknown, mistyped or malformed bot id shows the player-facing 404 with player recovery links instead of a console page.
-- **Trigger:** Owner opens /admin/house-bots/hb_doesnotexist, or an old email link, or /admin/house-bots/%27%3B from a mangled paste.
-- **Expected:** The console sidebar and top bar stay, with AdminPageHead "House bots" and an empty state "No house bot with that id" / "It may have been mistyped. Removed bots still open from the roster." plus a primary "Back to house bots" (→ /admin/house-bots?tab=roster). A malformed id (not matching the hb_ id shape) renders the same state without a DB query or thrown error. A REMOVED bot still renders read-only as the plan says, with "Removed on {date} by {name}".
+- **Trigger:** Owner opens /admin/desk/hb_doesnotexist, or an old email link, or /admin/desk/%27%3B from a mangled paste.
+- **Expected:** The console sidebar and top bar stay, with AdminPageHead "House bots" and an empty state "No house bot with that id" / "It may have been mistyped. Removed bots still open from the roster." plus a primary "Back to house bots" (→ /admin/desk?tab=roster). A malformed id (not matching the hb_ id shape) renders the same state without a DB query or thrown error. A REMOVED bot still renders read-only as the plan says, with "Removed on {date} by {name}".
 - **Plan:** §8 Routes ('An unknown bot gives notFound()')
 - **Evidence:** src/app/admin contains error.tsx but no not-found.tsx (directory listing), so the nearest boundary is src/app/not-found.tsx:80-119: the player 404 with Home and markets recovery links, outside the console chrome. Precedent src/app/admin/agents/[id]/page.tsx:47 calls notFound() into that same page.
-- **Fix:** §8: add src/app/admin/house-bots/[botId]/not-found.tsx (AdminPageHead + AdminTableEmpty + Back link). page.tsx checks the id shape before querying. Keep the matching loading.tsx skeleton order.
+- **Fix:** §8: add src/app/admin/desk/[id]/not-found.tsx (AdminPageHead + AdminTableEmpty + Back link). page.tsx checks the id shape before querying. Keep the matching loading.tsx skeleton order.
 - **Test:** test:house-bot-console: route files include [botId]/not-found.tsx; the view renders the exact copy; a malformed id makes no store call (spy). qa:house-bots-visual fixture of the not-found view at 360 and 1280.
 
 ### CA-09 [gap] On the consent step or the Re-verify modal, the browser password manager autofills the OWNER's saved 50pick password (same origin), or offers to save the holder's password under the owner's login.
@@ -1577,11 +1577,11 @@ If he also holds his own stake, he may object.
 - **Test:** test:house-bot-console source pin: no DurationInput bound to a field whose name ends in Sec; qa:house-bots-visual control-height ≥ 40 assertion across the rules form.
 
 ### CA-17 [gap] The owner prints or needs a record of a bot's money and activity for out-of-band reimbursement or the Board, and the console has no print styling or export.
-- **Trigger:** Owner presses Ctrl+P on /admin/house-bots/<id>?tab=money, or asks for the holder's movements since designation to settle reimbursement.
+- **Trigger:** Owner presses Ctrl+P on /admin/desk/<id>?tab=money, or asks for the holder's movements since designation to settle reimbursement.
 - **Expected:** No print layout is promised. ~~The money and activity tabs offer "Download CSV" for the current filters: EAT timestamps, txn id, type, amount, house-marked flag, intent id, market, outcome, and a header row naming the bot, holder masked phone, range and generated-at.~~ As a minimum, if he prints, the console sidebar, top bar, PendingChangesBar and overlays are hidden and tables print unclipped.
 - **Plan:** §8 Console UX (money/activity tabs); §12 Verification
 - **Evidence:** No @media print rule exists in src/app/globals.css (grep), so printing reproduces the sidebar, top bar and the fixed PendingChangesBar (src/components/ui/unsaved-changes.tsx:243), and ScrollX tables clip. src/lib/server/admin-guard.ts:23-28,46-54: checkAdminTotp is the non-throwing check intended for download route handlers.
-- **Fix:** ~~§8: add an owner-only route handler /admin/house-bots/[botId]/export?tab=money|activity&... guarded by session + ADMIN + checkAdminTotp (403 on failure), with an ADMIN audit house_bot.exported.~~ Add print:hidden to the house-bots strip, bars and overlays only (don't touch the shell files owned by the parallel session). ~~Owner decides whether CSV is wanted in v1.~~
+- **Fix:** ~~§8: add an owner-only route handler /admin/desk/[id]/export?tab=money|activity&... guarded by session + ADMIN + checkAdminTotp (403 on failure), with an ADMIN audit house_bot.exported.~~ Add print:hidden to the house-bots strip, bars and overlays only (don't touch the shell files owned by the parallel session). ~~Owner decides whether CSV is wanted in v1.~~
 - **Test:** ~~test:house-bot-console: export as a non-owner → 403 plus SECURITY row; CSV header and columns pinned;~~ qa:house-bots-visual emulateMedia('print') screenshot shows no sidebar.
 - ⛔ **Superseded by D20 (Ali, 2026-09-17):** there is no per-bot CSV export and no `house_bot.exported` writer for it (C5-SPEC ruling 213; Commit 7's console carries no results or P&L CSV); the print minimum is untouched by D20. Coverage gate: partly struck by D20.
 
@@ -1699,7 +1699,7 @@ If he also holds his own stake, he may object.
 
 ### CA-32 [partial] Notification and email deep links: time-relative query strings resolve to the wrong window when opened later, so the owner lands on an empty list.
 - **Trigger:** Owner opens a money-event email 5 weeks later; opens an hour-summary bell row the next morning; opens a per-bet alert from last week; ~~the holder taps a stake notice while signed out~~.
-- **Expected:** Every link shows its event whenever it is opened. Money: /admin/transactions?q=<txnId>&range=all (exactly that row). Hour summary: /admin/house-bots?tab=activity&range=custom&from=<YYYY-MM-DDTHH:00>&to=<+1h>. Per-bet: /admin/house-bots/<botId>?tab=activity&range=all&intent=<intentId> (row highlighted on the page containing it). Alert: the same with &outcome=failed. Pause and switch alerts: bot page or roster (current state) with History reachable. A REMOVED bot's links still render read-only. ~~Holder: /positions/<positionId> (signed out → login, then back; another account → 404) and /positions.~~
+- **Expected:** Every link shows its event whenever it is opened. Money: /admin/transactions?q=<txnId>&range=all (exactly that row). Hour summary: /admin/desk?tab=activity&range=custom&from=<YYYY-MM-DDTHH:00>&to=<+1h>. Per-bet: /admin/desk/<botId>?tab=activity&range=all&intent=<intentId> (row highlighted on the page containing it). Alert: the same with &outcome=failed. Pause and switch alerts: bot page or roster (current state) with History reachable. A REMOVED bot's links still render read-only. ~~Holder: /positions/<positionId> (signed out → login, then back; another account → 404) and /positions.~~
 - **Plan:** §7 Notifications href column
 - **Evidence:** src/app/admin/transactions/page.tsx:76 defaults the window to '28d' and :80 reads q. src/lib/search/fields.ts:92-93: TXN search default columns include id. src/lib/server/date-range.ts:112-125 presets are today/24h/7d/28d/all, and :95-106 handles custom from/to in EAT. src/app/positions/[positionId]/page.tsx:33,40: login redirect with next, ownership notFound. src/components/layout/notifications-panel.tsx:408-415: same-origin router.push. Plan §7 uses '/admin/transactions?q=<txnId>' and 'range=today'.
 - **Fix:** §7: replace the hrefs as above. §8 feed: support intent=<id>, which computes the page and highlights the row.
@@ -1779,17 +1779,17 @@ If he also holds his own stake, he may object.
 - ⛔ **Superseded by D19 (Ali, 2026-09-16):** the holder receives no designation notice (D19c; C4 ruling 149). Coverage gate: partly struck by D19.
 
 ### CA-42 [covered] Wizard deep links: step=review or consent with nothing in memory, a malformed or unknown ?user=, a previously REMOVED account, staff or the owner's own account.
-- **Trigger:** The owner opens /admin/house-bots/new?user=u_x&step=review in a new tab, or ?user=garbage, or the id of a removed bot's holder, a staff member or himself.
+- **Trigger:** The owner opens /admin/desk/new?user=u_x&step=review in a new tab, or ?user=garbage, or the id of a removed bot's holder, a staff member or himself.
 - **Expected:** Empty memory → replace to step=consent with "Enter the password again — it is never kept". Unknown or malformed id → empty state with "Search again". REMOVED holder → "Removed on {date} by {name}" plus "Designate again" (creates a new row). Staff, AGENT or own account → check card blocking row with Continue disabled and the reason.
 - **Plan:** F1 Wizard states and edge cases; §6 eligibility
 - **Evidence:** Plan F1 edge-case bullets and the §6 houseBotEligibility blocking rows (role ≠ PLAYER, owner's own account, already a live bot).
 - **Test:** test:house-bot-console: 'wizard step=review with empty memory → consent'; the designation suite covers the blocking rows per context.
 
 ### CA-43 [covered] Non-owner staff reach the house-bots console by nav, URL or a forged action call, including the /admin/house prefix trap.
-- **Trigger:** A FINANCE or COMPLIANCE officer types /admin/house-bots, opens /admin/house, or posts a house-bot action directly.
-- **Expected:** The nav item is hidden for all 8 non-ADMIN roles. /admin/house-bots/** renders the restricted card "Owner (ADMIN) only". Every action refuses with a SECURITY privilege_escalation_blocked row (as NOT_OWNER per CA-27). /admin/house still highlights House, and /admin/house-bots highlights House bots.
+- **Trigger:** A FINANCE or COMPLIANCE officer types /admin/desk, opens /admin/house, or posts a house-bot action directly.
+- **Expected:** The nav item is hidden for all 8 non-ADMIN roles. /admin/desk/** renders the restricted card "Owner (ADMIN) only". Every action refuses with a SECURITY privilege_escalation_blocked row (as NOT_OWNER per CA-27). /admin/house still highlights House, and /admin/desk highlights House bots.
 - **Plan:** §8 Nav and RBAC; §12 test:house-bot-console
-- **Evidence:** src/components/admin/admin-nav-groups.ts:81 (House item) and :213 (ROUTE_KEYS '/admin/house', which must follow '/admin/house-bots'). src/lib/server/roles.ts:337-340 OWNER_ONLY_PREFIXES and isOwnerOnlyPath. src/app/admin/layout.tsx:166-168,238-239 restricted render. scripts/admin-view-matrix-drive.mjs:54 OWNER_ONLY list.
+- **Evidence:** src/components/admin/admin-nav-groups.ts:81 (House item) and :213 (ROUTE_KEYS '/admin/house', which must follow '/admin/desk'). src/lib/server/roles.ts:337-340 OWNER_ONLY_PREFIXES and isOwnerOnlyPath. src/app/admin/layout.tsx:166-168,238-239 restricted render. scripts/admin-view-matrix-drive.mjs:54 OWNER_ONLY list.
 - **Test:** test:house-bot-console, test:admin-nav, test:rbac pins as planned.
 
 ### CA-44 [covered] Removing a bot that has PENDING/CLAIMED intents and open house positions, including the last bot.
@@ -1913,7 +1913,7 @@ Also:
 - a HouseBotEvent and an awaited house_bot.auto_paused row are written, and admins get bell + email
 - open house positions settle normally.
 
-(b) Erasure while designated. anonymizeClosedAccount refuses with reason house_bot_live and 'Remove the house bot designation first — /admin/house-bots/<id>' while any HouseBot row for the user is not REMOVED. The request stays PENDING and privacy.dsar.erasure_blocked is written.
+(b) Erasure while designated. anonymizeClosedAccount refuses with reason house_bot_live and 'Remove the house bot designation first — /admin/desk/<id>' while any HouseBot row for the user is not REMOVED. The request stays PENDING and privacy.dsar.erasure_blocked is written.
 
 (c) After REMOVED:
 - HouseBot, HouseBotEvent, HouseBotIntent and the markers are kept (the 7-year record behind the house positions)
@@ -2668,7 +2668,7 @@ test:house-bot-seam: stakeBoundsForMarket equals the old inline result for a pol
 - **Expected:** House money-day, hour keys and schedule are pinned to Africa/Dar_es_Salaam in one module, like the statutory report packs. Every house console time renders through that module with an explicit 'EAT' suffix. Changing the platform timezone changes nothing in house caps, windows, keys or labels.
 - **Plan:** §5 Schedule 'EAT'; §3 loss 'per EAT-day cohort'; §8 'Due times show as absolute EAT'
 - **Evidence:** src/lib/server/platform-config.ts:10-13, :33, :61-78, :94-98 (timezone admin-configurable, env fallback); src/lib/utils.ts:258-279 (formatDate* use the platform tz()); src/lib/server/report-pack.ts:55 and :69 (statutory periods pinned to Africa/Dar_es_Salaam)
-- **Fix:** Add `src/lib/house-bot/clock.ts` (eatDayKey, eatHourKey, formatEat, windowContains) as the single time source for rules.ts, book.ts, alerts.ts and the console. Source pin: no formatDate/formatDateTime import under src/app/admin/house-bots/**. HOUSE-BOTS.md rule.
+- **Fix:** Add `src/lib/house-bot/clock.ts` (eatDayKey, eatHourKey, formatEat, windowContains) as the single time source for rules.ts, book.ts, alerts.ts and the console. Source pin: no formatDate/formatDateTime import under src/app/admin/desk/**. HOUSE-BOTS.md rule.
 - **Test:** test:house-bot-rules: platform tz set to 'UTC' → eatDayKey boundary stays at 21:00Z and window checks are unchanged. The source pin passes, and a planted formatDateTime import turns it red.
 
 ### FS-28 [partial] Later the owner asks to let the bot exit when a market turns, or a partial cash-out or sell-back product is added. A house exit after luring counterparties turns liquidity into bait.
@@ -3045,7 +3045,7 @@ test:house-bot-seam: stakeBoundsForMarket equals the old inline result for a pol
   - (b) Both pass the pre-checks, and H2 under `wallet:<botUser>` serializes them: 1 PLACED + 1 SKIPPED(CAP_STAFF_CHOSEN_PER_DAY). The declared H2 order puts staff-chosen caps before the deferrable MIN_GAP, so the loser never reports CAP_MIN_GAP.
   - (c) The targeted COUNTER counts against the same cap, because the count covers `kind='MANUAL' OR "targetId" IS NOT NULL`. The press is refused as in (a).
   - (d) H4 under `house:control` gives exactly 3 PLACED + 7 SKIPPED(CAP_GLOBAL_STAFF_CHOSEN_PER_DAY). The TZS run gives 3 + 7 SKIPPED(CAP_GLOBAL_STAFF_CHOSEN_DAILY_STAKE).
-  - (e) Every press is refused with `field` `gCapStaffChosenPerDay` and href `/admin/house-bots?tab=limits`.
+  - (e) Every press is refused with `field` `gCapStaffChosenPerDay` and href `/admin/desk?tab=limits`.
     - The fix link closes the modal first (its `submitId` is discarded; the reason draft is kept), then `router.push`, then `focusFirstInvalid`.
     - Switching house bots ON is not blocked: PLAN F3's "Set N global limits first" list excludes staff-chosen caps.
   - (f) The clear is allowed: staff-chosen caps are exempt from 02 §3.8.
@@ -3683,7 +3683,7 @@ test:house-bot-seam: stakeBoundsForMarket equals the old inline result for a pol
     - the press becomes DONE; commit.
   - **After the locks are released:**
     - one COMPLIANCE `house_bot.target_removed {botId, marketId, targetId, outcome:'VETOED', cancelled:[{intentId, side, stakeTzs}], reason}`, through the press lease (no separate `staff_intent_cancelled` row);
-    - one roster alert to every recipient, linking to `/admin/house-bots/<id>?tab=history&event=<eventId>`, with no reason quoted.
+    - one roster alert to every recipient, linking to `/admin/desk/<id>?tab=history&event=<eventId>`, with no reason quoted.
   - **No re-add:** both add attempts are refused with REFUSED press rows: "This poll's target was stopped at 14:02 EAT; it can't be targeted again."
   - **Trigger consumed:** the 14:00:00 trigger stays consumed, and no bot reacts to it (risk 18). Later stakes on P may still get automated scope counters.
   - **EVERY variant:** one veto per poll, ever. Selective vetoing of each wrong-side reaction is impossible.
@@ -3694,7 +3694,7 @@ test:house-bot-seam: stakeBoundsForMarket equals the old inline result for a pol
 - **Test:**
   - `test:house-bot-engine` veto matrix, including EVERY.
   - `test:house-bot-console`: reason required; re-add refused for the same bot and for another bot; exactly one `target_removed` row whose `cancelled[]` lists each cancelled intent, and 0 `staff_intent_cancelled` rows; no reason text in any payload.
-  - A19 source scan extended to `src/app/admin/house-bots/**` and `src/lib/server/house-bot/**`.
+  - A19 source scan extended to `src/app/admin/desk/**` and `src/lib/server/house-bot/**`.
   - With the audit queue delayed 5 s, the remove runs concurrently with a house bet and a holder withdrawal, and both finish in under 1 s.
   - `red:house-bot-console`: "re-add allowed after veto" and "removal with a live reaction writes REMOVED" must fail.
 - ⛔ **Superseded by D20 (Ali, 2026-09-17):** there is no R1 vetoes section or targets register (C5-SPEC rulings 199–207); the veto's events, COMPLIANCE row and roster alert are untouched by D20. Coverage gate: partly struck by D20.

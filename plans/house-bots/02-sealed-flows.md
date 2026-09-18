@@ -39,7 +39,7 @@ On the owner's request, "if the user changes his password, we get requested to l
 | X4 | The alert-once key `bot:<id>:<code>:<EAT day>` would silence a second password change on the same day. | Key password alerts as `pw:<botId>:<newFingerprint>`. |
 | X5 | Login checks the password against the row read before the lock (`auth-service.ts:967` uses `user.passwordHash`, not `freshUser`). | The bot verifier re-reads the row inside the lock and uses it for both the hash and the attempt counter. |
 | X6 | `passwordFingerprint` already exists (`password-reset.ts:74-76`). Every write makes a new salt (`:240`, `:269`, `:324`), so even re-setting the same password changes the fingerprint. | Reuse it; don't write a second one. |
-| X7 | The §7 pause alert link cannot open the password modal. | Use `/admin/house-bots/<botId>?reverify=1` (§2.4). |
+| X7 | The §7 pause alert link cannot open the password modal. | Use `/admin/desk/<botId>?reverify=1` (§2.4). |
 | X8 | `PasswordInput` small is 36px (`password-input.tsx:43`); medium is 44px (`:44`). | Use medium in every house-bot modal so control heights match. |
 | X9 | The kit Toggle names `gold` as the "master money-lever" tone (`toggle.tsx:7-13`); the plan says brand. | Master switch uses `tone="gold"` (check `test:gold-is-money`). Other toggles stay brand. |
 | X10 | `requireOwner` accepts any ADMIN (`rbac-guard.ts:212`). | Copy says "an admin". Alerts go to ADMINs, so everyone who receives one can act on it. |
@@ -120,9 +120,9 @@ Admin copy is English only. ~~Holder copy is shown in English; Swahili and Chine
 
 | Id | Title | Body | Link |
 |---|---|---|---|
-| A1 | `House bot "{label}" paused — password changed · {HH:MM:SS}` | `{holder} changed his 50pick password {how} at {HH:MM} EAT on {D MMM}. The bot stopped and cancelled {n} queued stake(s). No bet will be placed until you enter his new password.` | `/admin/house-bots/{id}?reverify=1`; email button "Enter new password" |
+| A1 | `House bot "{label}" paused — password changed · {HH:MM:SS}` | `{holder} changed his 50pick password {how} at {HH:MM} EAT on {D MMM}. The bot stopped and cancelled {n} queued stake(s). No bet will be placed until you enter his new password.` | `/admin/desk/{id}?reverify=1`; email button "Enter new password" |
 | A2 | `House bot "{label}": holder changed his password · {HH:MM:SS}` | `The bot is {Paused / Auto-paused: cause}, so nothing stopped. Enter his new password before it can run again.` | same |
-| A2, officer reset | same title as A2 | `Support gave him a temporary password ({officer}, {HH:MM}). That is not his consent. Ask him to set his own password in Account settings, then enter it.` | `/admin/house-bots/{id}` (no modal) |
+| A2, officer reset | same title as A2 | `Support gave him a temporary password ({officer}, {HH:MM}). That is not his consent. Ask him to set his own password in Account settings, then enter it.` | `/admin/desk/{id}` (no modal) |
 | ~~H1~~ | ~~"Liquidity stakes paused"~~ | ~~"Your password changed, so 50pick stopped placing liquidity stakes from your account. Your balance and open stakes are unchanged."~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** there is no H1; the holder receives no house-bot notice, and admins get A1 or A2. | ~~`/positions`~~ |
 
 `{how}` is one of:
@@ -289,7 +289,7 @@ This applies to every player, not just bot holders; the house-bot flows work eit
   - "Your own account"
   - "Roster full ({n} of {max})"
   - "Sign-in locked until {HH:MM}"
-- **Success:** picking an eligible row → `router.push("/admin/house-bots/new?user={id}&step=check")`.
+- **Success:** picking an eligible row → `router.push("/admin/desk/new?user={id}&step=check")`.
 - **Tests:** stale answers dropped; a pasted "Player #…" handle resolves; no audit row per search, same as the players roster search.
 
 ### 3.2 Designate (wizard + `designateHouseBotAction`)
@@ -299,7 +299,7 @@ This applies to every player, not just bot holders; the house-bot flows work eit
 | check | Server-rendered account card with blocking and warning rows. Continue disabled while anything blocks | → `step=consent` | Balance read failed: row "Balance unavailable — try again" + Refresh. Unknown `?user`: `EmptyState` "No account with that ID." with "Search again" |
 | consent | Label (2–32): "Label needs 2 to 32 characters." `Textarea` note (max 300): "Note can be at most 300 characters." `PasswordInput md`: "Enter his password." Live tries-left line | Password kept in component memory only → `step=review` | Reload or Back loses it: "Enter the password again — it is never kept", focus on the password |
 | review | Balance re-read, summary, **Designate** (primary) | See "Server" below | See "Review failures" below |
-| after | Overlay "Bot "{label}" designated" → `router.replace("/admin/house-bots/{id}?tab=rules")`; password cleared | See "After" below | — |
+| after | Overlay "Bot "{label}" designated" → `router.replace("/admin/desk/{id}?tab=rules")`; password cleared | See "After" below | — |
 
 **Server on Designate:**
 - `requireOwner`.
@@ -362,7 +362,7 @@ This applies to every player, not just bot holders; the house-bot flows work eit
 - **Notices:**
   - ~~**Holder** (bell + push + email): "Liquidity stakes ended" / "50pick no longer uses your account for liquidity stakes. Open stakes settle to your wallet as normal."~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** the holder receives no notice or email when the bot is removed; only admins are told.
   - **Admins:** bell + email.
-- **After:** `router.replace("/admin/house-bots?tab=roster")`. A repeat is a no-op.
+- **After:** `router.replace("/admin/desk?tab=roster")`. A repeat is a no-op.
 
 ### 3.6 Save rules (`saveHouseBotRulesAction`)
 - **Form:** `FormColumn measure="form"`, controls built from the `rules.ts` field metadata, `UnsavedChangesGuard` (`unsaved-changes.tsx:381`). "Use recommended values" only fills the form: "Recommended values filled — review, then Save."
@@ -462,12 +462,12 @@ This applies to every player, not just bot holders; the house-bot flows work eit
 
 | Notice | Lands on | Behaviour |
 |---|---|---|
-| Per-bet bell | `/admin/house-bots/{id}?tab=activity#hbi_{intentId}` | `HashFocus` scrolls to the row. If it's on an older page: "This stake is on an older page" with a link to that page |
-| Hourly summary | `/admin/house-bots?tab=activity&range=today` | Filters preset |
-| Auto-pause | `/admin/house-bots/{id}`; for password changes `?reverify=1` | §2.4 |
-| Switch | `/admin/house-bots` | The strip shows the current state even if it flipped since |
+| Per-bet bell | `/admin/desk/{id}?tab=activity#hbi_{intentId}` | `HashFocus` scrolls to the row. If it's on an older page: "This stake is on an older page" with a link to that page |
+| Hourly summary | `/admin/desk?tab=activity&range=today` | Filters preset |
+| Auto-pause | `/admin/desk/{id}`; for password changes `?reverify=1` | §2.4 |
+| Switch | `/admin/desk` | The strip shows the current state even if it flipped since |
 | Money event | `/admin/transactions?q={txnId}` | That exact row |
-| Engine alert | `/admin/house-bots/{id}?tab=activity&outcome=failed` | A removed bot's page still lists it, read-only |
+| Engine alert | `/admin/desk/{id}?tab=activity&outcome=failed` | A removed bot's page still lists it, read-only |
 | ~~Holder notices~~ | ~~`/positions` or `/positions/{positionId}`~~ | ~~Signed out → login with `?next=` (`proxy.ts:203-204`)~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** there are no holder notices, so there is nothing to click through; every row above is an admin's. |
 
 ## 6. Future scenarios handled now

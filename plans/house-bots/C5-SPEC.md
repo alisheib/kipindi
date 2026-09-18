@@ -432,7 +432,7 @@ well where the step's harness already takes them). Viewport tiles, never full-pa
 | The holder | the existing ten holder pages, plus `/profile/account`, `/profile/activity`, `/updown/history`, `/updown/<roundId>` with a house Up & Down stake, `/api/positions/settled?markets=`, `/api/events` (the holder's session); their export and their officer-built bundle |
 | A trigger player (boxed through the real sweep or `boxAccount`) | the same pages and both files |
 | A signed-out visitor, and another player | `/`, `/markets`, `/markets/<id>`, `/live`, `/updown`, `/updown/<roundId>`, `/leaderboard`, `/results`, `/api/fairness/recent`, `/api/health`, `/api/og/market/<id>` (status and headers) |
-| ⛔ **Superseded by D20 (Ali, 2026-09-17):** struck (ruling 213: no per-bot CSV route). ~~A PLAYER session, the holder's included, on the production-posture pass (213 (1))~~ | ~~`/admin/house-bots/<existing bot id>/export` and `/admin/house-bots/<unknown bot id>/export`, each compared with a non-existent sibling path under `/admin/` (status, body, every header except Date and request ids)~~ |
+| ⛔ **Superseded by D20 (Ali, 2026-09-17):** struck (ruling 213: no per-bot CSV route). ~~A PLAYER session, the holder's included, on the production-posture pass (213 (1))~~ | ~~`/admin/desk/<existing bot id>/export` and `/admin/desk/<unknown bot id>/export`, each compared with a non-existent sibling path under `/admin/` (status, body, every header except Date and request ids)~~ |
 | Production posture (engine on by default, master OFF, planner lease held) | `/api/health` |
 
 ## 6. Rulings this build takes (168+)
@@ -1644,7 +1644,7 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
 
 213. **The owner-only per-bot CSV route ships in Commit 5, behind a gate that never confirms the feature to a player.**
      ⛔ **STRUCK by D20 (2026-09-17)** — never build; un-built in C5-5b where built.
-     - **Placement:** `src/app/admin/house-bots/[botId]/export/route.ts` (the `[botId]` slug matches 03 S3 and 04:3353; 04
+     - **Placement:** `src/app/admin/desk/[id]/export/route.ts` (the `[botId]` slug matches 03 S3 and 04:3353; 04
        R1 at 04:1977 and N1 §9's CSV columns at 04:3576 place it in Commit 5, and PROGRESS's Commit 7 scope lists no CSV).
        Commit 7 renders the buttons with the tabs.
      - **Gate, in this order, before any bot lookup** (ADJ 11; `src/proxy.ts:208-221` checks only that the session cookie is
@@ -2067,7 +2067,7 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
         render through `houseBotStore.listNonRemoved()` (`house-bot-dal.ts:1342`) mapped by `userId` (never
         `findLiveByUserId` per row). The word and variant come from the one server-side map (186): a word, never the stored
         token (`test:labels` §3, `test:chip-contract`). In Commit 5 it is a plain chip for every admin; the owner's link to
-        `/admin/house-bots/<id>` is added when that route exists (Commit 7, the P24 precedent), a deferral recorded against
+        `/admin/desk/<id>` is added when that route exists (Commit 7, the P24 precedent), a deferral recorded against
         CRA-18 (255). Nothing is suppressed and no action is taken. Its visibility to COMPLIANCE is an accepted residual
         under 💡 X10 (§2 row 38).
      - **Source:** R3 NEW-harm-exclusion AMENDED.
@@ -2356,7 +2356,7 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
      under D19; 03 S7). In the server page's chip row (`players/[id]/page.tsx:240-275`; the KYC chip precedent at `:244`),
      from `houseBotStore.findLiveByUserId(id)` (it excludes REMOVED): "House bot · <status word>", with the word and variant
      from ruling 186's server-side map ("Active", "Paused", "Auto-paused"); REMOVED shows no chip.
-     - A plain `Chip` for every staff role until Commit 7's `/admin/house-bots/<id>` route exists; the owner's `Link` lands
+     - A plain `Chip` for every staff role until Commit 7's `/admin/desk/<id>` route exists; the owner's `Link` lands
        with the route (03 S7: a link that ends at AdminRestricted is a dead end).
      - A failed read renders "House bot · couldn't read" (warning) and is never hidden.
      - The tone map lives server-side and NEVER in `src/lib/status-tone.ts`, which four client components value-import (a
@@ -2671,7 +2671,7 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
        per-bot CSV route's `house-bots` segment (213) is read by 175's path scan on the fresh build; if it appears in any file
        path under `.next/static`, the segment is renamed neutrally (with 03 S3 and 04:3353 marked) before Commit 5 closes.
      - **Commit 7 — `withdrawHouseConsent`** reshaped with the officer as actor (170; L49).
-     - **Commit 7 — the owner links** to `/admin/house-bots/<id>` on the S7 chip (241) and the compliance chip (230; CRA-18).
+     - **Commit 7 — the owner links** to `/admin/desk/<id>` on the S7 chip (241) and the compliance chip (230; CRA-18).
      - **Commit 7 — the +60-day href-route test** for the staff-edge link (C4 ruling 23; L38).
      - **Commit 7 — two writers of `house_bot.exported`** (236, 213; L48); per-action category and payload assertions for the
        audit index (207); the per-bot CSV's buttons (213); the R2 overview split and CAP_EXPOSURE amount (254); L16's admin bell
@@ -3012,7 +3012,7 @@ moving any pin; never raise a ratchet; never allowlist a D19 guard's hit. One ro
 | **L30** | **A dead RG counter:** `admin/compliance/page.tsx:73` counts `rg.reality_check.continued`, which nothing writes (ruling 214). | The counter always reads 0. | A `main`-branch fix. `RG_AUDIT_ACTIONS` excludes it on purpose. |
 | **L31** | ⛔ **Superseded by D20 (Ali, 2026-09-17):** struck with ruling 242. ~~**The player export caps transactions at 1,000 without saying so**, and both doors crowd out a holder's own deposits (ruling 242).~~ | ~~A data-subject answer that silently loses the subject's own money rows.~~ | ~~Waits on Ali (W2 addendum 1). Not built without his yes.~~ |
 | **L32** | ⛔ **Superseded by D20 (Ali, 2026-09-17):** struck with the internal record (239's struck half). ~~**A penalty box whose event write failed (C4 ruling 117) is not listed in the internal record** (ruling 239).~~ | ~~The AlertOnce row that is the box purges after 30 days.~~ | ~~Recorded; the record carries a fixed note. No AlertOnce reader by prefix is added.~~ |
-| **L33** | **Commit 7's nav label, `/admin/house-bots` href and action names would ship in public chunks** (`admin-nav-groups.ts` is imported by client components; action export names ship; ruling 255). | A D19 disclosure in the first console commit. | Commit 7: neutral action names, a server-injected nav entry, a route segment checked by the path scan. |
+| **L33** | ✅ **ANSWERED by Commit 7 step 1 (rulings 320, 452, 453); this row keeps the OLD spelling deliberately, as the record of the risk that FORCED the rename** (note added 2026-09-18). *(As raised:)* **Commit 7's nav label, `/admin/house-bots` href and action names would ship in public chunks** (`admin-nav-groups.ts` is imported by client components; action export names ship; ruling 255). | A D19 disclosure in the first console commit. | **Built:** the section shipped at **`/admin/desk`** with `[id]` as its dynamic segment — neutral action names, no house word in the nav label, route or tab keys, one route home, and ruling 453's lexicon guard over the painted strings. `src/` contains zero occurrences of the old segment. |
 | **L34** | ⛔ **Superseded by D20 (Ali, 2026-09-17):** closed — correct under D20: bots are players in admin counts, so this is not a defect. **Admin counts that include bots:** the queue card's predictors, the ceremony's "N predictors · M open", the `/admin/markets` predictors cell, the rounds lever's "from N players", the emergency-void toast and notice "refunded to N players", the KYC refused-balance line (ruling 255). | ~~Admin wording that calls bot positions players.~~ | ~~Commit 7's copy decision (D6 keeps bots counted publicly).~~ |
 | **L35** | ⛔ **Superseded by D20 (Ali, 2026-09-17):** struck — R1 (e) is never built (206; `C5-D20-REPLAN.md` §4). ~~**Two-admin mode: a chooser who attests stage 1 is never flagged as self-decided** (oversight matches only the stage-2 actor; ruling 255).~~ | ~~R1 (e) could miss a market decided by its chooser.~~ | ~~Commit 7 / R1 (e); two-admin mode ships OFF.~~ |
 | **L36** | **The console still says "liquidity stakes"** (`pause-reasons.ts:311`; `eligibility.ts:247-248`, `:316`, `:413`; `designation.ts:331`, `:591`) (ruling 197). | The same words for the same things: ~~the KYC card and R2 say "house stakes"~~. ⛔ **Superseded in part by D20 (Ali, 2026-09-17):** the KYC card and R2 lines it compares with are struck (197, 192). | Commit 7's copy pass. |

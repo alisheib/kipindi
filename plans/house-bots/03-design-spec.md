@@ -110,7 +110,7 @@ All citations are from `C:\kipindi-main` as it stands now. The laws come from `d
 
 ## 2. Screens: component tree, responsive table, states, accessibility
 
-### S1 `/admin/house-bots` (owner only)
+### S1 `/admin/desk` (owner only)
 
 **Tree** (server `page.tsx`, `export const dynamic="force-dynamic"`)
 ```
@@ -183,7 +183,7 @@ AdminBody
 - Callout engine-stale uses `role="alert"`, rendered stably keyed so a refresh doesn't re-announce it.
 - Reduced motion: ProgressBar is `motion-safe` (`progress-bar.tsx` header); no pulse anywhere.
 
-### S2 `/admin/house-bots/new` (wizard)
+### S2 `/admin/desk/new` (wizard)
 
 **Tree**
 ```
@@ -236,7 +236,7 @@ AdminBody › FormColumn measure="form"
 
 **Accessibility:** focus lands on the step's card heading (`tabIndex=-1`) after navigation. Keyboard in the picker: ↑↓ Home End Enter Esc Tab. A wrong password focuses the password field (`focusFirstInvalid`).
 
-### S3 `/admin/house-bots/[botId]`
+### S3 `/admin/desk/[id]`
 
 **Tree**
 ```
@@ -293,7 +293,7 @@ AdminBody
 **The owner's ask: "user changes his password → we must enter the new one"**
 - AUTO_PAUSED(PASSWORD_CHANGED) is the only state where Re-verify is the primary button.
 - The strip sentence names it plainly.
-- The bell/email href is `/admin/house-bots/<id>#reverify`. The strip sits above the rail on every tab, so the anchor always renders (`test:tab-anchors`), and HashFocus moves focus to the CTA.
+- The bell/email href is `/admin/desk/<id>#reverify`. The strip sits above the rail on every tab, so the anchor always renders (`test:tab-anchors`), and HashFocus moves focus to the CTA.
 - After re-verify: overlay "Password confirmed — press Start when ready". Start then becomes primary.
 
 ### S4 Modals and dialogs
@@ -428,7 +428,7 @@ AdminBody
 
 **Phase B: a build is not a render.**
 1. Run `npm run build && npm run start` in the worktree (production mode; dev-test routes return 404 via `proxy.ts:183-185`).
-2. Playwright GETs every `PLAYER_PUBLIC` route (`routes.mjs`), `/legal/rules/*`, `/legal/terms`, and `/admin/house-bots` (expect the login redirect, not a 500).
+2. Playwright GETs every `PLAYER_PUBLIC` route (`routes.mjs`), `/legal/rules/*`, `/legal/terms`, and `/admin/desk` (expect the login redirect, not a 500).
 3. Assert HTTP status is not 5xx, `document.body.innerText.length > 200`, and no "Attempted to call … from the server" in the console.
 4. Open the compiled CSS: it must parse (a 500 on every route is the comment-scan outage).
 
@@ -468,7 +468,7 @@ AdminBody
    - picker ↑↓/Home/End/Enter/Esc;
    - Tab focus order;
    - Esc, then check focus returns to the trigger.
-5. Also run `qa:chaos` (`chaos-render.mjs`, widths 320–2560, `ROUTES=` via `MSYS_NO_PATHCONV=1`, `LIVE_BASE=http://localhost:3000`) and `qa:pending-bar ROUTE=/admin/house-bots/<id>?tab=rules FIELD=…`.
+5. Also run `qa:chaos` (`chaos-render.mjs`, widths 320–2560, `ROUTES=` via `MSYS_NO_PATHCONV=1`, `LIVE_BASE=http://localhost:3000`) and `qa:pending-bar ROUTE=/admin/desk/<id>?tab=rules FIELD=…`.
 6. These drives log in through `scripts/live/harness.mjs` personas (`:29,204`), so the seed must create a matching persona. **If the local admin login fails, record NOT MEASURED. Never fall back to `next dev`.**
 
 **Phase E: player surfaces** (dev works for player routes).
@@ -489,7 +489,7 @@ AdminBody
 
 **Phase F: production, read-only, after the merge.**
 - `dpl=` SHA check.
-- Add `/admin/house-bots` to `ADMIN_ROUTES` (`routes.mjs:17-24`).
+- Add `/admin/desk` to `ADMIN_ROUTES` (`routes.mjs:17-24`).
 - `qa:dg-shell` and `qa:dg-measure` with one shared login (`design-gate/session.mjs`); the tabs are expanded from the rail.
 - Open the master ON Modal and **cancel**. Search the picker and view a check card **without designating**.
 - ~~Player legal pages in 3 locales (cookie).~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** the legal pages keep exactly the words they have on `main` (D19a), so there is nothing of this work on them to check.

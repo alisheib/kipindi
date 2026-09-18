@@ -415,7 +415,7 @@ Pure (no database, no server); it renders the JSX maps the way `test:rules-copy`
 
 **§9 · the §10 waiver record (P2)** (04:1362-1365)
 - 9.1 the House bots COMPLIANCE entry contains "waived on Ali's ruling alone", "smsConfigured" and "no re-acceptance" — ⚠️ re-derive against `CD:240`, which already carries all three, and against P:824 (the entry says **in-app**, not "in-app + SMS").
-- 9.2 **no file under `src/lib/server/house-bot/**` or `src/app/admin/house-bots/**` imports `setAnnouncementAction` or `setPlatformConfig`** — with a population floor (the house tree has ≥ N files) and a planted control, or the assertion is vacuous while the console does not exist (T17).
+- 9.2 **no file under `src/lib/server/house-bot/**` or `src/app/admin/desk/**` imports `setAnnouncementAction` or `setPlatformConfig`** — with a population floor (the house tree has ≥ N files) and a planted control, or the assertion is vacuous while the console does not exist (T17).
 - 9.3 both legal pages carry the house META comment block (04:1360).
 - 9.4 the house COMPLIANCE heading is unique in the file (04:3755).
 
@@ -561,8 +561,12 @@ recorded in `PROGRESS.md`. Expect a `predeploy` merge conflict with `main` (ever
 hard-coded `["en","sw","zh"]` (FS-30 01:2589-2592); assert the list has ≥ 3 entries so an empty derivation fails.
 
 **T17 · The "nothing is broadcast" assertion (P2 04:1364).** As written ("no file under house-bots imports
-`setAnnouncementAction` or `setPlatformConfig`") it is vacuous today: `src/app/admin/house-bots/**` does not exist yet,
+`setAnnouncementAction` or `setPlatformConfig`") it was vacuous when written: the console directory did not exist,
 and `src/lib/server/house-bot/control.ts` legitimately reads platform config through `loadConfigResult` (F7).
+⛔ **Updated 2026-09-18 with the route re-point.** The glob is now `src/app/admin/desk/**` (the console shipped at
+`/admin/desk`, ruling 320 — the old `admin/house-bots` segment is abolished and `src/` holds zero occurrences of it),
+and that directory **now EXISTS** as of Commit 7 step 1, so the assertion has a population and is no longer vacuous —
+which is exactly why its population floor must be asserted rather than assumed. Re-derive the floor from a run.
 **Recommended:** scope it to the two globs, require a population floor (files found > 0) and a planted control, and
 ban only the two **writer** symbols (`setAnnouncementAction`, `setPlatformConfig(`), naming the read path that is
 allowed. Re-check the glob in commit 7 when the console lands.

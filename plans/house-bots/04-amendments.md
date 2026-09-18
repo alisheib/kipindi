@@ -843,7 +843,7 @@ Merged: CA-15.
 - "bots on", " BOTS  ON " and "remove" all arm. "BOTSON" and "BOT ON" don't: "Type BOTS ON to continue".
 - A bypassed client refused by the server gets an inline error on `confirmWord`, "Type BOTS ON exactly to switch house bots on.", and the modal stays open.
 
-**Test:** one truth table drives both the client arm and the server check. A source pin forbids any other `toUpperCase()` comparison under `src/app/admin/house-bots/**`.
+**Test:** one truth table drives both the client arm and the server check. A source pin forbids any other `toUpperCase()` comparison under `src/app/admin/desk/**`.
 
 ---
 
@@ -1096,7 +1096,7 @@ Merged: HB-ACC-08, -10, -11, -31, -33, HB-LC-28, FS-09, FS-16, FS-17, CA-32 (eng
 
 - **Roster alerts.** `notifyAdminsHouseBotRoster` goes to every recipient passing C12's predicate: bell + email, uncapped, title ends HH:MM:SS.
   - Events: DESIGNATED, VERIFIED, STARTED, manual PAUSED, REMOVED, and RULES_SAVED / LIMITS_SAVED with a diff, e.g. "Bot A: daily loss cap TZS 50,000 → TZS 200,000 by Juma M. at 14:02:11 EAT".
-  - Link: `/admin/house-bots/<id>?tab=history&event=<eventId>`.
+  - Link: `/admin/desk/<id>?tab=history&event=<eventId>`.
 - ~~**Holder transparency.** `notifyHouseBotOwner` gains two kinds (sw/zh drafted for native review):~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** `notifyHouseBotOwner` and every holder notice are deleted (C4 ruling 149): the holder is told nothing when consent is re-verified, a password try is reserved or the bot is designated; the admins' alerts stand.
   - ~~`reverified` (bell + push + email): "50pick confirmed your permission for liquidity stakes with your current password at {HH:MM} EAT. If you did not give your password to 50pick, change it now — that stops liquidity stakes at once."~~
   - ~~`verify_reserved` (bell): "Someone at 50pick tried to confirm your permission with a wrong password. Your sign-in is not locked."~~
@@ -1160,7 +1160,7 @@ Merged: HB-LC-12, -19 (preview), -23, -24, FS-07, -10, -11, -15 (rules part), -2
 - Refill 2/min → floor 100s, and a saved 30s bot becomes invalid.
 - Paid exit window 60 → counter `never` for polls.
 - 20 bets by 13:59 plus one at 14:00:30 → CAP_PER_HOUR.
-- Platform timezone set to UTC: the EAT day boundary stays at 21:00Z. Source pin: no `formatDateTime` import under `admin/house-bots/**`.
+- Platform timezone set to UTC: the EAT day boundary stays at 21:00Z. Source pin: no `formatDateTime` import under `admin/desk/**`.
 
 ---
 
@@ -1296,7 +1296,7 @@ I read the code in `C:\kipindi-main` at HEAD `ac411357`, without editing anythin
 
 **A5 erasure step, add:**
 - For each bot row of the user, run `db.notification.redactFragment('"'+label+'"', '"Erased bot '+tail+'"')`. Count it as `houseBotNotificationsRedacted` in the `privacy.erasure.completed` payload.
-- `AnonymizeOutcome.reason` gains `house_bot_live`, with the error: "This account is still house bot hb_…. The owner must remove it at /admin/house-bots/<id> before it can be erased."
+- `AnonymizeOutcome.reason` gains `house_bot_live`, with the error: "This account is still house bot hb_…. The owner must remove it at /admin/desk/<id> before it can be erased."
 - Also send AlertOnce `erasure-blocked:<botId>` to the owner by bell and email.
 
 **A2/A5, add:** the holder hook and closure removal run whatever `HOUSE_BOT_ENGINE` says. The env variable gates only the poller, the planner and the bet-trigger hook.
@@ -1457,7 +1457,7 @@ I read the code in `C:\kipindi-main` at HEAD `ac411357`, without editing anythin
 **§10 Docs, add:**
 - **RULES.md:**
   - §1 row "House liquidity stakes | accounts 50pick operates may stake; same fee, bounds and cut-offs; no cash-out, wagering, commission or objection standing | Both".
-  - New "### 2.11 · House liquidity stakes", covering decided (the COMPLIANCE entry), enforced (H0–H4 and (d)–(g)), configured (`/admin/house-bots`) ~~and stated (rules §8 carve-out, §3/§4, terms §4, privacy §3)~~. ⛔ **Superseded by D19 (Ali, 2026-09-16):** no public surface states it; the rulebooks, Terms and privacy notice carry no house text (D19a).
+  - New "### 2.11 · House liquidity stakes", covering decided (the COMPLIANCE entry), enforced (H0–H4 and (d)–(g)), configured (`/admin/desk`) ~~and stated (rules §8 carve-out, §3/§4, terms §4, privacy §3)~~. ⛔ **Superseded by D19 (Ali, 2026-09-16):** no public surface states it; the rulebooks, Terms and privacy notice carry no house text (D19a).
   - One cross-reference line each in §2.4, §2.5, §2.6 and §2.10, plus a §6 history row.
 - **FLOWS.md:** new "## 9. House liquidity gates". Correct §3 `:66` to "single admin by default; two officers when enabled".
 - **FAILURE-INVENTORY.md:** §6 rows (as planned) and new §7.1 families: HouseBot status, pause reasons and causes, HouseBotIntent status, EngineCode. Admin words come from `status-tone.ts` and `feed-copy.ts`; ~~the player sees only the holder chip~~. ⛔ **Superseded by D19 (Ali, 2026-09-16):** a player, the holder included, sees no house chip or house word (D19c).
@@ -1962,7 +1962,7 @@ NO-GO before R4: nothing merges. NO-GO after R4: go to S3.
 **C7 · MINOR · Modals, routes, feed, accessibility, 360 px.** Merged: CA-08, CA-29, CA-32, CA-33, CA-38, CA-39, CA-40.
 
 *Evidence:*
-- `/admin/house-bots` has no `not-found.tsx`; the only admin one is `admin/ai-polls/[id]/not-found.tsx`. So `notFound()` shows the player 404.
+- `/admin/desk` has no `not-found.tsx`; the only admin one is `admin/ai-polls/[id]/not-found.tsx`. So `notFound()` shows the player 404.
 - Tapping outside a modal closes it by default (`modal.tsx:173`, `:282`).
 - ActionOverlay's running state is its own Modal (`action-overlay.tsx:115-122`), so it would stack on top of a form modal.
 - The transactions page defaults to the last 28 days (`admin/transactions/page.tsx:76`).
@@ -2654,7 +2654,7 @@ The order is pinned as `H2_ORDER` in `scripts/anchors/house-bot-seam.anchors.mjs
   - the poll sweep in `trigger.ts`;
   - `planner.ts` (for `endTargets`, N2 §4);
   - the H3 site in `market-service.ts`;
-  - `src/app/admin/house-bots/actions.ts` (target add refusal 11 and `previewHouseBotTargetAction`, N2 §6).
+  - `src/app/admin/desk/actions.ts` (target add refusal 11 and `previewHouseBotTargetAction`, N2 §6).
 - **`decide.ts` never imports it.** `decide.ts` receives `blocked` as an injected argument (source pin).
 - **Where the result can go:** a refusal code or `reasonCode=INFO_BLACKOUT` only. Never `side`, `stakeTzs`, `dueAt`, `why` or any other `decision` field.
 - **PLAN §18 rows:**
@@ -3139,7 +3139,7 @@ Every one gets a `feed-copy.ts` sentence, typed `satisfies Record<…, string>`.
   - Start refuses while `enterNow.enabled` (C14 row above).
 - **Caps below the live minimum.** When `capStaffChosenDailyTzs` is below the live minimum and `targeting.enabled` is on, the same alert names targets. Target reactions skip at H2 with CAP_STAFF_CHOSEN_DAILY_STAKE until the owner saves.
 
-#### N1 §6 Owner actions (commit 7, `src/app/admin/house-bots/actions.ts`)
+#### N1 §6 Owner actions (commit 7, `src/app/admin/desk/actions.ts`)
 Every action starts with `requireHouseOwner()` (C12: `REAUTH_LOGIN | REAUTH_TOTP | NOT_OWNER`; NOT_OWNER writes SECURITY `privilege_escalation_blocked`). It runs before any read or write, so a refused guard writes no press row. `runAdminAction` maps `UnrecognizedActionError` to `STALE_BUILD`. Every `href` in a refusal is an absolute path.
 
 | Export | Input | Writes | Audit (R7) |
@@ -3225,7 +3225,7 @@ Every action starts with `requireHouseOwner()` (C12: `REAUTH_LOGIN | REAUTH_TOTP
 5. **Master:**
    - `MASTER_OFF`: "House bots are off. Switch them on to use Enter now."
    - `SWITCHED_OFF_SINCE` (a SWITCH_OFF newer than `seenSwitchedAt`): "House bots were switched off by {name | the system: {cause}} at {HH:MM:SS} EAT after you opened this. Nothing was placed."
-6. `STAFF_LIMITS_UNSET` (any of `gCapStaffChosenPerDay`, `gCapStaffChosenDailyTzs` or `gStaffChosenMaxCounterpartyShare` is NULL): "Enter now is off for every bot: set {Staff-chosen stakes per day | Staff-chosen TZS per day | Largest player share} on Limits first →". The field is the first NULL one; href `/admin/house-bots?tab=limits`.
+6. `STAFF_LIMITS_UNSET` (any of `gCapStaffChosenPerDay`, `gCapStaffChosenDailyTzs` or `gStaffChosenMaxCounterpartyShare` is NULL): "Enter now is off for every bot: set {Staff-chosen stakes per day | Staff-chosen TZS per day | Largest player share} on Limits first →". The field is the first NULL one; href `/admin/desk?tab=limits`.
 7. **Bot:**
    - `BOT_MISSING`: "That bot no longer exists."
    - `BOT_REMOVED`: "This bot was removed."
@@ -3234,9 +3234,9 @@ Every action starts with `requireHouseOwner()` (C12: `REAUTH_LOGIN | REAUTH_TOTP
 8. `HOLDER_CAUSE` (`holderCauses` non-empty, or `!consentValid`): the first cause's C8/C9 copy + " Enter now is off until this is fixed."
 9. **Rules:**
    - `RULES_FROM_FUTURE`: "Bot A's rules were saved by a newer 50pick build (v{n}). Enter now is off until that build is back."
-   - `RULES_REVIEW` (RULES_OUTDATED or RULES_INVALID): "Bot A's rules need review: Rules → Save → Start." href `/admin/house-bots/<botId>?tab=rules`.
+   - `RULES_REVIEW` (RULES_OUTDATED or RULES_INVALID): "Bot A's rules need review: Rules → Save → Start." href `/admin/desk/<botId>?tab=rules`.
 10. **Option:**
-    - `ENTER_NOW_OFF`: "Enter now is off for Bot A. Turn it on in Rules →". Field `enterNow.enabled`; href `/admin/house-bots/<botId>?tab=rules`.
+    - `ENTER_NOW_OFF`: "Enter now is off for Bot A. Turn it on in Rules →". Field `enterNow.enabled`; href `/admin/desk/<botId>?tab=rules`.
     - `OPTION_UNSET`: "Set Bot A's {Enter now thin stake | Enter now opener stake | staff-chosen stakes per day | staff-chosen TZS per day} first →". The field is the missing one; same href.
 11. **Market** (PublicMarketView + A12):
     - `MARKET_MISSING`: "That market no longer exists."
@@ -3247,7 +3247,7 @@ Every action starts with `requireHouseOwner()` (C12: `REAUTH_LOGIN | REAUTH_TOTP
 12. **Scope:**
     - `SCOPE_PRODUCT`: "Bot A isn't set up for polls. Turn polls on in Rules →"
     - `SCOPE_CATEGORY`: "{Sports} isn't in Bot A's scope. Add it in Rules first →"
-    - Both link to `/admin/house-bots/<botId>?tab=rules`.
+    - Both link to `/admin/desk/<botId>?tab=rules`.
 13. `INFO_BLACKOUT` (C8 raw re-read). It also writes the refused audit.
     - AI stamp or a young resolve claim: "Not available: an AI result check is recorded on this market."
     - `reopenedAt` set: "Not available: this market was reopened after a result check."
@@ -3330,10 +3330,10 @@ Every action starts with `requireHouseOwner()` (C12: `REAUTH_LOGIN | REAUTH_TOTP
 
 | Emitter | Audience · channel | When | Copy / href |
 |---|---|---|---|
-| `notifyAdminsHouseBotStaffChosen` (renamed from `notifyAdminsHouseBotManualEntry`) | every `houseBotAlertRecipients()` (A22) · bell + email · **uncapped**, not counted in `countInHour` | after the A8 `alertedAt` claim on a PLACED row with `kind='MANUAL' OR "targetId" IS NOT NULL`; A8 repairs a missed one | Title `Staff-chosen · Bot "{label}" {SIDE} TZS {x} on {market} · {Enter now by {name} \| target by {name}} · {HH:MM:SS} · {intent ref}`. Body "Placed at {HH:MM:SS} EAT. Side rule: {the thinner side — players' locked money YES TZS {y} · NO TZS {n} \| an empty poll — side drawn once for this poll \| a counter to Player #{handle}'s TZS {t} {SIDE} stake}. Reason recorded in the activity feed →" · `/admin/house-bots/<botId>?tab=activity&range=all&intent=<intentId>` |
+| `notifyAdminsHouseBotStaffChosen` (renamed from `notifyAdminsHouseBotManualEntry`) | every `houseBotAlertRecipients()` (A22) · bell + email · **uncapped**, not counted in `countInHour` | after the A8 `alertedAt` claim on a PLACED row with `kind='MANUAL' OR "targetId" IS NOT NULL`; A8 repairs a missed one | Title `Staff-chosen · Bot "{label}" {SIDE} TZS {x} on {market} · {Enter now by {name} \| target by {name}} · {HH:MM:SS} · {intent ref}`. Body "Placed at {HH:MM:SS} EAT. Side rule: {the thinner side — players' locked money YES TZS {y} · NO TZS {n} \| an empty poll — side drawn once for this poll \| a counter to Player #{handle}'s TZS {t} {SIDE} stake}. Reason recorded in the activity feed →" · `/admin/desk/<botId>?tab=activity&range=all&intent=<intentId>` |
 | `notifyAdminsHouseBotBet` | unchanged cap | **excludes** staff-chosen rows | — |
 | `notifyAdminsHouseBotHourSummary` | unchanged | hourly | its beyond-the-cap count excludes staff-chosen rows; adds "{s} staff-chosen stakes were alerted one by one" when s > 0 |
-| `notifyAdminsHouseBotRoster` | every recipient · bell + email · uncapped | TARGET_ADDED, TARGET_UPDATED, TARGET_REMOVED (copy in N2 §7) | `/admin/house-bots/<botId>?tab=history&event=<eventId>` |
+| `notifyAdminsHouseBotRoster` | every recipient · bell + email · uncapped | TARGET_ADDED, TARGET_UPDATED, TARGET_REMOVED (copy in N2 §7) | `/admin/desk/<botId>?tab=history&event=<eventId>` |
 | `notifyAdminsHouseBotAlert`, AlertOnce `staff-stake-voided:<marketId>` | every recipient · bell + email | planner: a void or a reopen (`reopenedAt`) of a market holding a PLACED staff-chosen stake | "Market “{title}” holding a staff-chosen house stake ({SIDE} TZS {x}, Bot “{label}”) was {voided \| reopened} at {HH:MM} EAT." · `/admin/markets/<marketId>` |
 | `notifyAdminsHouseBotAlert`, AlertOnce `staff-stake-self-decided:<marketId>:<action>` | every recipient · bell + email | planner: the decision's actor is in ~~`houseStake.staffChosen.requestedBy`~~ (INT-06) ⛔ **Superseded by D20 (Ali, 2026-09-17):** decision audits carry no `houseStake` (C5-SPEC rulings 187–191); the actor is compared with `requestedBy` as N1 §4.5 defines it, which `oversight.ts` recomputes from the stakes | "Market “{title}” holding a house stake chosen by {name} was {resolved {OUTCOME} \| voided \| reopened \| objection upheld \| objection rejected} by {name} at {HH:MM} EAT. This is a record only; nothing was refused." · `/admin/markets/<marketId>` |
 | ~~`notifyAdminsHouseBotAlert`, AlertOnce `staff-edge:<officerId>:<YYYY-MM>`~~ ⛔ **Superseded by D20 (Ali, 2026-09-17):** this row is struck; the staff-edge alert is never built (C5-SPEC rulings 218–223) | ~~every recipient · bell + email~~ | ~~planner, monthly (INT-07)~~ | ~~"{name}'s staff-chosen stakes placed in {Month YYYY}: {n} settled, {w}% won against {a}% for automatic stakes on the same products; net {±TZS x}. See the staff-chosen scorecard →" · `/admin/reports?tab=library&range=custom&from=<YYYY-MM-01>&to=<YYYY-MM-last>` (pinned by the C13 +60-day test)~~ |
@@ -3362,7 +3362,7 @@ Every action starts with `requireHouseOwner()` (C12: `REAUTH_LOGIN | REAUTH_TOTP
 #### N1 §8 Console (commit 7; 03 law: kit controls `size="md"`, tokens only, no gold, side words via `side-label.ts`, never `yes`/`no` button variants, `clock.ts` EAT, no class-shaped strings in copy)
 
 **Where the control lives**
-- **Placement.** Only on `/admin/house-bots/[botId]`, in the BotStrip action row: Start · Pause · **Enter now** (`Button md variant="primary"`) · Re-verify · Remove.
+- **Placement.** Only on `/admin/desk/[id]`, in the BotStrip action row: Start · Pause · **Enter now** (`Button md variant="primary"`) · Re-verify · Remove.
 - **Visibility (UX-20):**
   - The button is not rendered while the saved rules have `enterNow.enabled=false`, or on a REMOVED bot.
   - When it is rendered but `enterNow.available=false`, it is disabled and the status action's reason shows as visible text beneath the row.
@@ -3408,7 +3408,7 @@ Every action starts with `requireHouseOwner()` (C12: `REAUTH_LOGIN | REAUTH_TOTP
 - **`mayAct=false`:** input and options are disabled.
 - **At 360 px:** options wrap to several lines and push the modal body, which scrolls.
 
-**Enter now modal** (`src/app/admin/house-bots/[botId]/enter-now-modal.tsx`)
+**Enter now modal** (`src/app/admin/desk/[id]/enter-now-modal.tsx`)
 - **Props:** `Modal maxWidth={420} closeOnScrim={false} initialFocus={pickerRef} labelledBy={titleId}`. `ariaBusy` is set while Placing, Still checking or Retrying.
 - It uses a modal-local runner, never ActionOverlay while open.
 - ✕ and Esc close it in every state, including Placing and Retrying. This overrides 03 S4's "Esc closes unless pending" for this modal, because the press carries on in the server.
@@ -3477,14 +3477,14 @@ Body order:
 | Placing | request sent | "Placing…" (Spinner). At 8 s: "Still working — slow connection. It carries on if you close this window. The result will show on this page and in Activity." At 45 s or a transport failure: "No answer from 50pick — we don't know if this was placed." | "Check now" (status) · "Try again" (status first; resend the same submitId only on NO_RECORD) |
 | Still checking | press CHECKING | "Still checking this press…" | status every 2 s |
 | Retrying | PENDING and `nextAttemptAt < staleAt` | "50pick is busy — still trying until {HH:MM:SS} EAT." | status every 2 s |
-| Placed | PLACED | the success copy; after an OFF: "Placed — it was already in its final step when house bots were switched off." | "Done" (close, then one refresh) · "View in activity" `/admin/house-bots/<botId>?tab=activity&range=all&intent=<intentId>` |
+| Placed | PLACED | the success copy; after an OFF: "Placed — it was already in its final step when house bots were switched off." | "Done" (close, then one refresh) · "View in activity" `/admin/desk/<botId>?tab=activity&range=all&intent=<intentId>` |
 | Not placed | SKIPPED, EXPIRED, CANCELLED, FAILED | "Not placed: {sentence}. Nothing moved." Auto-pause: "Not placed — Bot A auto-paused: {cause}. Nothing moved." Master OFF: "Cancelled — house bots were switched off. Nothing moved." | "Choose another poll" (clears the selection; new submitId) · "Close" |
 | No record | status NO_RECORD | "No stake was recorded for this press. Nothing moved. You can press Enter now again." | back to the preview (new submitId) |
 | Refused | press REFUSED | the refusal Callout inside the preview body | "Check again"; new submitId |
 | Stale preview | PREVIEW_STALE | warning Callout with the returned figures | press again (new submitId) |
-| Re-auth, not owner, deploy | the press returns REAUTH_TOTP, REAUTH_LOGIN, NOT_OWNER or STALE_BUILD | C12 copy, which is true here because the action never ran. The reason stays in `hb:draft:/admin/house-bots/<botId>:enter-now`; the submitId is never in the draft | C12 buttons |
+| Re-auth, not owner, deploy | the press returns REAUTH_TOTP, REAUTH_LOGIN, NOT_OWNER or STALE_BUILD | C12 copy, which is true here because the action never ran. The reason stays in `hb:draft:/admin/desk/<botId>:enter-now`; the submitId is never in the draft | C12 buttons |
 
-**Staff-cancel dialog** (`src/app/admin/house-bots/[botId]/staff-cancel-modal.tsx`)
+**Staff-cancel dialog** (`src/app/admin/desk/[id]/staff-cancel-modal.tsx`)
 - **Opened by** the activity feed's "Cancel" on a PENDING staff-chosen row.
 - **Modal:** `Modal maxWidth={420} closeOnScrim={false}`, titled "Cancel a staff-chosen stake?".
 - **Body:**
@@ -3499,7 +3499,7 @@ Body order:
   - AdminCard "Enter now": a Toggle row + `HouseNumberField prefix="TZS"` for the thin and opener stakes.
   - The per-bot staff-chosen caps sit in the Limits group (fields and copy: N1 §5).
   - The timing preview gains the `effectiveTiming.enterNow` line.
-- **Limits tab (`/admin/house-bots?tab=limits`):**
+- **Limits tab (`/admin/desk?tab=limits`):**
   - AdminCard "Staff-chosen stakes" with `gCapStaffChosenPerDay`, `gCapStaffChosenDailyTzs`, `gTargetsMaxActive`, `gStaffChosenMaxCounterpartyShare`, `gStaffEdgeWinRatePts` and `gStaffEdgeNetTzs` (bounds and copy: N1 §5). ⛔ **Superseded by D20 (Ali, 2026-09-17):** the staff-edge alert behind the last two fields is struck (C5-SPEC rulings 218–223); whether this card still shows them is left to Commit 7's rulings (N1 §5).
   - "Today's usage" ProgressBars "Staff-chosen stakes" and "Staff-chosen TZS".
   - Clearing any staff-chosen cap while house bots are ON is allowed (MON-14), with the consequence preview "Enter now and targets will be off for every bot. {n} queued staff-chosen stakes will be skipped."
@@ -3575,13 +3575,13 @@ Body order:
 | File | `test:unsaved-changes` | `test:admin-act-gate` |
 |---|---|---|
 | `src/components/admin/market-picker.tsx` | outside the population (`src/app/admin` only); no entry | outside its scope; receives `mayAct` and renders disabled when false |
-| `src/app/admin/house-bots/[botId]/bot-strip.tsx` (extended: Enter now button, `EnterNowHost`, pending Callout) | no raw typed control; no entry | `useMayAct()` before any early return |
-| `src/app/admin/house-bots/[botId]/enter-now-modal.tsx` | renders `HouseTextField` and `MarketPicker`, no raw `<Input`, `<Textarea` or `<Select`; **no entry** (an entry would fail the stale-exemption check) | `useMayAct()` before any early return |
-| `src/app/admin/house-bots/[botId]/staff-cancel-modal.tsx` | same as the Enter now modal; no entry | `useMayAct()` |
+| `src/app/admin/desk/[id]/bot-strip.tsx` (extended: Enter now button, `EnterNowHost`, pending Callout) | no raw typed control; no entry | `useMayAct()` before any early return |
+| `src/app/admin/desk/[id]/enter-now-modal.tsx` | renders `HouseTextField` and `MarketPicker`, no raw `<Input`, `<Textarea` or `<Select`; **no entry** (an entry would fail the stale-exemption check) | `useMayAct()` before any early return |
+| `src/app/admin/desk/[id]/staff-cancel-modal.tsx` | same as the Enter now modal; no entry | `useMayAct()` |
 | N2 §8 target client files | same rule | `useMayAct()` |
 
 - A house-bot file that does render a raw `<Input`, `<Textarea` or `<Select` gets a class-① EXEMPT entry worded "① fields open inside <Modal>, scrim-close disabled, and the reason survives Cancel via the C12 draft".
-- `draft.ts` declares `hb:pendingEnterNow:<botId>` and the staff-cancel draft `hb:draft:/admin/house-bots/<botId>:staff-cancel:<intentId>` as allowed keys.
+- `draft.ts` declares `hb:pendingEnterNow:<botId>` and the staff-cancel draft `hb:draft:/admin/desk/<botId>:staff-cancel:<intentId>` as allowed keys.
 
 **Visual fixtures (C7; `qa:house-bots-visual`)**
 - **Picker:**
@@ -3838,7 +3838,7 @@ Body order:
     - UX-08: the next-possible line;
     - UX-09: a dirty form + Enter now → dialog; a refused save never opens the modal (spy);
     - UX-10: after an ok result, `document.activeElement` is the result heading and the polite region equals the success copy;
-    - UX-11: the refusal-10 fixture → modal closed, URL `/admin/house-bots/<botId>?tab=rules`, focus on the Enter now Toggle;
+    - UX-11: the refusal-10 fixture → modal closed, URL `/admin/desk/<botId>?tab=rules`, focus on the Enter now Toggle;
     - UX-13: the gate-outcome source pin;
     - no gold; `Button` variant never yes or no.
   - **Deploy skew:** `test:deploy-skew` STALE_BUILD arms for `enterNowHouseBotAction` and `getEnterNowStatusAction`.
@@ -4070,7 +4070,7 @@ Nothing in H0 or H1 is target-specific. N1 §3's ordered H0 applies: status is n
     - **Remove bot:** its targets → ENDED(BOT_REMOVED) in the Remove service transaction.
     - **Master OFF:** targets unchanged; intents CANCELLED (A9).
     - **`ops:house-bots-sunset` (F2):** targets → ENDED(SUNSET); a second run changes nothing.
-    - **Start confirm (02 §3.3)** lists "Active targets: {n} →", linking to `/admin/house-bots/<botId>?tab=targets&status=active`.
+    - **Start confirm (02 §3.3)** lists "Active targets: {n} →", linking to `/admin/desk/<botId>?tab=targets&status=active`.
 11. **Consumed trigger.** A reaction decided from an ACTIVE target keeps its trigger, even if the target is later removed, vetoed or ended. No other bot may react to that trigger (one row per trigger; risk 18). Step 4.6 makes the removal race exact, so a trigger decided after a removal commits is never consumed by the removed target.
 12. **Exact timing on Up & Down (A3):**
     - This is the chain-scoped COUNTER with delay min = max, bounds 5–600 s unchanged. `staleAt = dueAt + 30 s` (A24).
@@ -4123,7 +4123,7 @@ Nothing in H0 or H1 is target-specific. N1 §3's ordered H0 applies: status is n
 - The rules-tab preview adds the Up & Down COUNTER line "3-min rounds: exactly {n} s after the stake (usually +2–5 s)".
 - The COUNTER `effectiveTiming()` rows for polls are unchanged.
 
-#### N2 §6 Owner actions (commit 7, `src/app/admin/house-bots/actions.ts`)
+#### N2 §6 Owner actions (commit 7, `src/app/admin/desk/actions.ts`)
 Every action starts with `requireHouseOwner()` (C12). Then it validates input (reason 5–300 code points, C2; ids and `submitId` format), then runs N1 §6's press flow:
 - The press is inserted CHECKING before any other read.
 - A refusal marks the press `REFUSED` with its code; one found inside the locks first rolls the transaction back.
@@ -4137,7 +4137,7 @@ Every action starts with `requireHouseOwner()` (C12). Then it validates input (r
 2. Re-read the target row `FOR UPDATE`. Run the in-lock checks. Insert, CAS-update or remove. Append the events, each carrying `pressId`. Move the press to DONE (`WHERE id=$1 AND state='CHECKING'`; 0 rows → roll back and return the press's current state). Commit.
 3. A lock timeout (55P03) → refusal `BUSY` "Bot A is placing a stake right now — nothing changed. Try again in a few seconds."
 4. After the locks are released, write the awaited COMPLIANCE audit through the press lease (N1 §6 press flow step 6), then send the roster alert (N2 §7). The planner repairs a DONE press whose `auditId` is null.
-5. A19's source scan ("no `audit(` inside a `withLock` callback") extends to `src/app/admin/house-bots/**` and `src/lib/server/house-bot/**`.
+5. A19's source scan ("no `audit(` inside a `withLock` callback") extends to `src/app/admin/desk/**` and `src/lib/server/house-bot/**`.
 6. `gTargetsMaxActive` is a plain read, not under `house:control`. A concurrent lowering can leave the count above the new limit, which C6's preview already allows.
 
 | Export | Input | Writes | Audit (R7 COMPLIANCE) |
@@ -4168,13 +4168,13 @@ Every action starts with `requireHouseOwner()` (C12). Then it validates input (r
      - PAUSED and AUTO_PAUSED are allowed: the target stays inert until Start.
   6. Rules:
      - `RULES_FROM_FUTURE` "Bot A's rules were saved by a newer 50pick build (v{n}). Targets can't be added until that build is back.";
-     - `RULES_REVIEW` "Bot A's rules need review: Rules → Save." href `/admin/house-bots/<botId>?tab=rules`.
-  7. `TARGETING_OFF`: "Targets are off for Bot A. Turn them on in Rules →" (field `targeting.enabled`, href `/admin/house-bots/<botId>?tab=rules`).
+     - `RULES_REVIEW` "Bot A's rules need review: Rules → Save." href `/admin/desk/<botId>?tab=rules`.
+  7. `TARGETING_OFF`: "Targets are off for Bot A. Turn them on in Rules →" (field `targeting.enabled`, href `/admin/desk/<botId>?tab=rules`).
   8. Limits not set:
-     - `TARGETS_LIMIT_UNSET` "Set Bot A's Max active targets first →" (field `targetsMaxActive`, href `/admin/house-bots/<botId>?tab=rules`);
-     - `GLOBAL_TARGETS_LIMIT_UNSET` "Targets are off for every bot: set Max active targets (all bots) first →" (field `gTargetsMaxActive`, href `/admin/house-bots?tab=limits`);
-     - `STAFF_CAPS_UNSET` "Set Bot A's staff-chosen limits first — without them a target can't bet →" (field `capStaffChosenPerDay`, href `/admin/house-bots/<botId>?tab=rules`);
-     - `GLOBAL_STAFF_CAPS_UNSET` "Staff-chosen stakes are off for every bot: set the staff-chosen limits first →" (field `gCapStaffChosenPerDay`, href `/admin/house-bots?tab=limits`).
+     - `TARGETS_LIMIT_UNSET` "Set Bot A's Max active targets first →" (field `targetsMaxActive`, href `/admin/desk/<botId>?tab=rules`);
+     - `GLOBAL_TARGETS_LIMIT_UNSET` "Targets are off for every bot: set Max active targets (all bots) first →" (field `gTargetsMaxActive`, href `/admin/desk?tab=limits`);
+     - `STAFF_CAPS_UNSET` "Set Bot A's staff-chosen limits first — without them a target can't bet →" (field `capStaffChosenPerDay`, href `/admin/desk/<botId>?tab=rules`);
+     - `GLOBAL_STAFF_CAPS_UNSET` "Staff-chosen stakes are off for every bot: set the staff-chosen limits first →" (field `gCapStaffChosenPerDay`, href `/admin/desk?tab=limits`).
   9. Market (`PublicMarketView` + A12):
      - `MARKET_MISSING` "That poll no longer exists.";
      - `NOT_POLL` (an Up & Down id) "Targets are for polls only. For exact timing on Up & Down, set the Counter delay in Rules.";
@@ -4183,7 +4183,7 @@ Every action starts with `requireHouseOwner()` (C12). Then it validates input (r
      - `NO_CUTOFF` "This poll takes stakes until its result, so the house stays out."
   10. Scope:
       - `SCOPE_PRODUCT` "Bot A isn't set up for polls. Turn them on in Rules →";
-      - `SCOPE_CATEGORY` "{Sports} isn't in Bot A's scope. Add it in Rules first →" (both href `/admin/house-bots/<botId>?tab=rules`).
+      - `SCOPE_CATEGORY` "{Sports} isn't in Bot A's scope. Add it in Rules first →" (both href `/admin/desk/<botId>?tab=rules`).
   11. Blackout (N1 §3): `INFO_BLACKOUT` "Not available: an AI result check is recorded on this market.", or, when `reopenedAt` is set, "Not available: this market was reopened after a result check."
   12. `TOO_LATE` (`never`): "Too late to target this poll: a stake placed from {HH:MM:SS} EAT would be held past Bot A's cutoff ({HH:MM} EAT)."
   13. Inside the locks, never-retarget: `TARGET_STOPPED_BEFORE` "This poll's target was stopped at {HH:MM} EAT; it can't be targeted again."
@@ -4193,8 +4193,8 @@ Every action starts with `requireHouseOwner()` (C12). Then it validates input (r
       - `OWNER_POSITION` "The holder has their own open stake on this poll, so Bot A can't react there.";
       - a `uniqueViolation` on `hbt_active_market_uq` rolls back, re-reads the ACTIVE row and returns one of the first two.
   15. Inside the locks, counts:
-      - `TARGETS_LIMIT_REACHED` "Bot A has {n} of {max} active targets. Remove one or raise the limit →" (field `targetsMaxActive`, href `/admin/house-bots/<botId>?tab=rules`);
-      - `GLOBAL_TARGETS_LIMIT_REACHED` "House bots have {n} of {g} active targets. Remove one or raise the limit →" (field `gTargetsMaxActive`, href `/admin/house-bots?tab=limits`).
+      - `TARGETS_LIMIT_REACHED` "Bot A has {n} of {max} active targets. Remove one or raise the limit →" (field `targetsMaxActive`, href `/admin/desk/<botId>?tab=rules`);
+      - `GLOBAL_TARGETS_LIMIT_REACHED` "House bots have {n} of {g} active targets. Remove one or raise the limit →" (field `gTargetsMaxActive`, href `/admin/desk?tab=limits`).
   16. `BUSY` (lock timeout).
   - **Success:** `{ok:true, data:{targetId, armedFromIso, armedFromEat, sentence, short}}`. Copy: "Target added on “{title}”. Armed from {HH:MM:SS} EAT — {sentence}". "Armed from" comes only from this response.
 - **`updateHouseBotTargetAction`:**
@@ -4225,7 +4225,7 @@ Every action starts with `requireHouseOwner()` (C12). Then it validates input (r
 #### N2 §7 Notifications (commit 4; `comms-registry` rows; C13 matrix rows; never SMS)
 - **`notifyAdminsHouseBotRoster`, add TARGET_ADDED, TARGET_UPDATED and TARGET_REMOVED** (N1 §7, UX-07). Also TARGET_ENDED with `endCause=VETOED` from a staff cancel.
   - Audience and channel: every `houseBotAlertRecipients()`, bell + email, uncapped, title ending HH:MM:SS.
-  - Href: `/admin/house-bots/<botId>?tab=history&event=<eventId>`.
+  - Href: `/admin/desk/<botId>?tab=history&event=<eventId>`.
   - Titles:
     - "Bot A: target added on “{title}” — 10 s after each stake (held to 5:07), first stake only · by {name} at 14:02:11 EAT";
     - "Bot A: target on “{title}” changed — delay 10 s → 20–40 s · by {name} at 14:05:40 EAT";
@@ -4237,7 +4237,7 @@ Every action starts with `requireHouseOwner()` (C12). Then it validates input (r
 - **Reactions.** A PLACED targeted row alerts through `notifyAdminsHouseBotStaffChosen`, after the A8 `alertedAt` claim.
   - Every recipient, bell + email, uncapped, not counted in `countInHour`.
   - Title and body: N1 §7 `notifyAdminsHouseBotStaffChosen`, using its "target by {name}" and "a counter to Player #{handle}'s TZS {t} {SIDE} stake" branches, with " (asked {delay}, held to {h})" added after the side rule.
-  - Href: `/admin/house-bots/<botId>?tab=activity&range=all&intent=<intentId>`.
+  - Href: `/admin/desk/<botId>?tab=activity&range=all&intent=<intentId>`.
   - `notifyAdminsHouseBotBet` excludes staff-chosen rows. ~~The holder notice `notifyHouseBotOwnerStake` is unchanged and capped.~~ ⛔ **Superseded by D19 (Ali, 2026-09-16):** `notifyHouseBotOwnerStake` is deleted, and the holder receives no house-bot notice (C4 ruling 149).
   - Targeted rows count as staff-chosen for N1 §7's `staff-stake-voided`, `staff-stake-self-decided` ~~and `staff-edge`~~ alerts, with `requestedBy` = the target's `createdById`. ⛔ **Superseded by D20 (Ali, 2026-09-17):** the staff-edge alert is struck (C5-SPEC rulings 218–223).
 - **Skipped, expired or cancelled reactions:** no bell. The feed ~~and R1~~ record them. ⛔ **Superseded by D20 (Ali, 2026-09-17):** R1 is struck (C5-SPEC rulings 199–213); the activity feed records them.
@@ -4245,7 +4245,7 @@ Every action starts with `requireHouseOwner()` (C12). Then it validates input (r
 
 #### N2 §8 Console (commit 7; 03 law)
 **Targets tab**
-- **Tab order on `/admin/house-bots/[botId]`:** overview · rules · targets · activity · money · history. `targets` shows a `CountBadge` with the active count.
+- **Tab order on `/admin/desk/[id]`:** overview · rules · targets · activity · money · history. `targets` shows a `CountBadge` with the active count.
   - The tab is found through `data-section-rail`, so `routes.mjs` gains no `?tab=`. Update `test:section-rail` and `test:tab-anchors`.
   - It is a tab, not part of the rules tab, because targets save per row. The rules form's singleton `PendingChangesBar` (03 trap 17) and C11's no-refresh-while-dirty rule would otherwise swallow target changes.
 - **Params (UX-07):**
@@ -4269,7 +4269,7 @@ Every action starts with `requireHouseOwner()` (C12). Then it validates input (r
   - Each "SIDE TZS x" and "TZS x" group is a nowrap span with `.amount` on the figure, wrapping only at " · " (UX-19).
 - **Empty states:**
   - "No targeted polls. Add one to have Bot A react to stakes on a specific poll.";
-  - with targeting off: "Targets are off for Bot A. Turn them on in Rules →" (href `/admin/house-bots/<botId>?tab=rules`);
+  - with targeting off: "Targets are off for Bot A. Turn them on in Rules →" (href `/admin/desk/<botId>?tab=rules`);
   - read failure: `AdminLoadError what="the targets"`.
 - **Pagination:** `AdminPagination` 20 rows, keyset cursor (C7).
 
@@ -4335,12 +4335,12 @@ Every action starts with `requireHouseOwner()` (C12). Then it validates input (r
 - **Open dialog counts as dirty (UX-04).** Any open target, remove or cancel dialog marks `HouseBotFormContext` dirty. C11 shows its change Callout instead of `50pick:refresh`, and runs exactly one refresh when the dialog closes. The dialog lives in a component that stays mounted whatever the refreshed props say.
 - **Focus and announcement (UX-10).** `ariaBusy` while submitting. A result or refusal renders a heading with an id and `tabIndex=-1`, which receives focus. Final outcomes are announced once through C7's single polite region (03 §4 amended: "Enter now and target results announce once, politely"). Field errors use `focusFirstInvalid`.
 - **Fix links (UX-11).** Every fix link closes the modal first (its submitId is discarded; the reason draft persists), then `router.push(absolute href)`, then `focusFirstInvalid` after render.
-- **Drafts (C12).** sessionStorage `hb:draft:/admin/house-bots/<botId>:target-add`, `:target-edit:<targetId>`, `:target-remove:<targetId>` and `:staff-cancel:<intentId>` hold reason and fields, never a submitId. REAUTH, NOT_OWNER and STALE_BUILD show C12 copy.
+- **Drafts (C12).** sessionStorage `hb:draft:/admin/desk/<botId>:target-add`, `:target-edit:<targetId>`, `:target-remove:<targetId>` and `:staff-cancel:<intentId>` hold reason and fields, never a submitId. REAUTH, NOT_OWNER and STALE_BUILD show C12 copy.
 - **Success.** The body is replaced by the success Callout + "Done" (closes, then the single refresh).
 
 **Other surfaces:**
-- **Rules tab:** AdminCard "Targets" with a Toggle row "Targets", its hint, and "Active targets: {n} →" (href `/admin/house-bots/<botId>?tab=targets&status=active`). The Limits group gains `targetsMaxActive`.
-- **Limits tab (`/admin/house-bots?tab=limits`):** `gTargetsMaxActive`, and the C6 previews of N2 §5.
+- **Rules tab:** AdminCard "Targets" with a Toggle row "Targets", its hint, and "Active targets: {n} →" (href `/admin/desk/<botId>?tab=targets&status=active`). The Limits group gains `targetsMaxActive`.
+- **Limits tab (`/admin/desk?tab=limits`):** `gTargetsMaxActive`, and the C6 previews of N2 §5.
 - **Activity feed:** `entry=target` filter (N1 §8). The Cancel button on staff-chosen rows opens the staff cancel modal.
 - **History tab:** TARGET_* and STAFF_INTENT_CANCELLED events with actor and reason; `event=<eventId>` highlights its row (C13).
 - **Gate outcomes (UX-13):**
@@ -4515,7 +4515,7 @@ Where the rest of the placement lives: the N1/N2 bullet of each commit is in PRO
    - The hold is absolute and now waits `LOCK_MARGIN_MS` past the exit close.
    - **A future request** needs its own amendment that amends A15, a post-placement exit detector, caps inside the locks and a COMPLIANCE ruling.
 2. **A human-typed side or amount.** It would be an informed directional bet by the entity that settles (F6 §3.1/§3.3; I2). I10 forbids the only structural counter, an officer lock.
-3. **Enter now or target controls on the roster, the admin market page, the resolver queue or ceremony, objections, or any Sentinel/AI surface.** Those surfaces show private data or serve non-owner roles. One owner-only surface (`/admin/house-bots/[botId]`) keeps RBAC and the information edge simple.
+3. **Enter now or target controls on the roster, the admin market page, the resolver queue or ceremony, objections, or any Sentinel/AI surface.** Those surfaces show private data or serve non-owner roles. One owner-only surface (`/admin/desk/[id]`) keeps RBAC and the information edge simple.
 4. **Enter now on Up & Down.**
    - **Why not:** a person watching a live exchange feed would choose the moment. The closeness check can use a vendor 1-min bar up to 120 s old (04 A15), from a cache refreshed every 30 s (`updown-terminal-vendor.ts:51`). That undoes the closeness rule's "the house never cherry-picks the side that is already winning" (PLAN §1-F4) and brings back UPDOWN D3's "seeding at open is gameable".
    - **Refusal:** a posted Up & Down market id gets "Enter now is for polls only. Up & Down entries are automatic." The HouseBotIntent CHECK makes a MANUAL Up & Down row impossible.

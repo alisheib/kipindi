@@ -100,7 +100,7 @@ Same update as the hash:
 | `emailSetByOfficerAt` | the officer email writer (`setPlayerEmailAction` → `setUserEmail`) |
 
 ### 2.8 Erasure (A5 04:209-213, R6 04:1251-1254)
-- `anonymizeClosedAccount` refuses `house_bot_live` while any non-REMOVED bot row exists, before any destructive write. Error: "This account is still house bot hb_…. The owner must remove it at /admin/house-bots/<id> before it can be erased." AlertOnce `erasure-blocked:<botId>` to the owner by bell and email.
+- `anonymizeClosedAccount` refuses `house_bot_live` while any non-REMOVED bot row exists, before any destructive write. Error: "This account is still house bot hb_…. The owner must remove it at /admin/desk/<id> before it can be erased." AlertOnce `erasure-blocked:<botId>` to the owner by bell and email.
 - On success: `pseudonymiseForUser`; for each bot row `db.notification.redactFragment('"'+label+'"', '"Erased bot '+tail+'"')`; counts `houseBots` and `houseBotNotificationsRedacted` in `privacy.erasure.completed`.
 - `{holder}` in admin HOUSE_BOT copy is "Player #TAIL" (never a name or phone).
 
