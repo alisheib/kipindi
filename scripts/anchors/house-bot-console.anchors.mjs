@@ -857,6 +857,15 @@ import type { ConsoleTab } from "@/lib/house-bot/console-routes";`,
     suite: "console-mem",
   },
   {
+    name: "537-dup-heading · the limits card names its own section twice — the card's title and the form's first group, 34px apart",
+    file: FORM,
+    from: `          {section.name === omitSection ? null : <p className="text-body-sm font-semibold text-text">{section.name}</p>}`
+      + ``,
+    to: `          <p className="text-body-sm font-semibold text-text">{section.name}</p>`,
+    expect: "2.537 · RENDERED · 432(n) · the group whose name the card already carries loses its heading",
+    suite: "console-mem",
+  },
+  {
     name: "537-recorded · a compliance row that did not write is reported as written — the officer is told the record is safe when it is not",
     file: SAVE,
     from: `    recorded = false;`,

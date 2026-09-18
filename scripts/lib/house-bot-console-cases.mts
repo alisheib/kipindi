@@ -1671,6 +1671,19 @@ section("§2b · the limits save");
       html.includes("Not set — the master switch cannot be turned on.")
         && /<span class="amount tabular-nums">TZS /.test(html),
       "");
+    /* ⛔ 432(n) · RENDERED, BOTH WAYS. The page's card is headed with a section's own name, and the form's first
+     * group printed it again 34px below — read off the first render at 1280 AND 360. The suppression is measured
+     * on the MARKUP and in both directions: the heading is gone exactly when the card carries it, and present when
+     * it does not, so a suppression that swallowed every heading would be just as red. */
+    {
+      const first = (v.limits[0].section as string);
+      const withTitle = renderToStaticMarkup(h(DeskLimitFields, { rows: v.limits, anchorId: "x", errors: {}, omitSection: first }));
+      const headings = (t: string) => [...t.matchAll(/<p class="text-body-sm font-semibold text-text">([^<]*)<\/p>/g)].map((m: Any) => m[1]);
+      ok("2.537 · RENDERED · 432(n) · the group whose name the card already carries loses its heading, and every other group keeps one",
+        headings(html).includes(first) && !headings(withTitle).includes(first)
+          && headings(withTitle).length === headings(html).length - 1 && headings(withTitle).length >= 2,
+        j({ withoutOmit: headings(html), withOmit: headings(withTitle) }));
+    }
     await w.limits({ gCapDailyLossTzs: 100_000, gCapStaffChosenDailyTzs: 100_000 });
   }
 
@@ -2586,7 +2599,7 @@ export default function Ruling513Control() {
     /* ⛔ NO FORM WITHOUT A BASE VERSION, AND THE ANCHOR'S LITERAL STAYS IN THE PAGE. */
     ok("1.412 · 537 · the page renders the form ONLY with a base version, hands it the anchor id as a literal, and passes the action down itself",
       /limitRows === null \|\| limitsVersion === null/.test(pageCode)
-        && /<DeskLimitsForm rows=\{limitRows\} baseVersion=\{limitsVersion\} id="limits-first-unset" onSave=\{saveDeskLimitsAction\} \/>/.test(pageCode)
+        && /<DeskLimitsForm rows=\{limitRows\} baseVersion=\{limitsVersion\} id="limits-first-unset" omitSection=\{LIMITS_CARD_TITLE\} onSave=\{saveDeskLimitsAction\} \/>/.test(pageCode)
         && pageCode.includes('id="limits-first-unset"'), "");
     /* ⛔ EVERY FIELD IS ADDRESSABLE, AND THE ADDRESS IS THE SERVER'S NEUTRAL KEY — DG-S-05/06's whole point is that
      * a refusal without an address can take nobody anywhere. */
@@ -2595,6 +2608,17 @@ export default function Ruling513Control() {
       /dataField=\{row\.key\}/.test(formCode) && /name=\{row\.key\}/.test(formCode)
         && /focusFirstInvalid\(form, \[result\.field\]\)/.test(formCode)
         && /landed\.reason === "not-rendered" && landed\.ownedByTab/.test(formCode), "");
+    /* ⛔ 432(n) · THE CARD'S HEADING IS NOT SAID TWICE, AND THE THING THE FORM SUPPRESSES IS THE CARD'S OWN TITLE.
+     * READ OFF THE FIRST RENDER of this form: `<AdminCard title="Global limits">` and the form's first group printed
+     * the same two words 34px apart, at 1280 and at 360 — one state saying one fact twice. A literal typed in the
+     * form and compared against another literal typed in the page would hide the heading for whichever spelling was
+     * guessed; the page passes its OWN title, so a rename on either side brings the heading straight back instead of
+     * staying silently hidden. */
+    ok("1.412 · 432(n) · the limits card names its section ONCE — the form suppresses the heading the card already carries, from the card's own one home",
+      /const LIMITS_CARD_TITLE = "[^"]+";/.test(pageCode)
+        && (pageCode.match(/LIMITS_CARD_TITLE/g) ?? []).length === 3
+        && !/title="Global limits"/.test(pageCode)
+        && /section\.name === omitSection \? null :/.test(formCode), "");
   }
 
   /* ⛔ 1.537 · THE SAVE'S ONLY GATE IS INSIDE THE ACTION (rulings 259, 522, 523).

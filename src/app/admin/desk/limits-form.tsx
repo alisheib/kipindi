@@ -82,11 +82,20 @@ export function DeskLimitFields({
   rows,
   anchorId,
   errors,
+  omitSection,
 }: {
   rows: DeskLimitRow[];
   /** The fragment the strip's "Set N global limits first →" points at. The PAGE owns this literal. */
   anchorId: string;
   errors: Record<string, string>;
+  /**
+   * ⛔ THE SECTION WHOSE NAME THE CARD ALREADY CARRIES, so the page does not say the same thing twice
+   * (432(n)). READ OFF THE FIRST RENDER: the card is headed "Global limits" and the form's first group
+   * printed "Global limits" again 34px below it, at 1280 AND at 360. The card's title is passed in from its
+   * ONE home rather than compared against a literal typed here, so a section that is renamed, or a card that
+   * is, brings its heading straight back instead of staying silently hidden.
+   */
+  omitSection?: string;
 }) {
   /* Sections in the order `LIMIT_FIELDS` puts them in — the form's own order, and the order a refusal is
      reported in. ⛔ Derived from the rows, never a second list: a section list typed here would stop covering
@@ -106,7 +115,7 @@ export function DeskLimitFields({
               every sub-floor prose site into a ratchet that may only shrink; this section made the same choice for
               its disabled-reason sentences (ruling 310, corrected). 13px semibold reads as a heading without
               spending a rung the ratchet is trying to reclaim. */}
-          <p className="text-body-sm font-semibold text-text">{section.name}</p>
+          {section.name === omitSection ? null : <p className="text-body-sm font-semibold text-text">{section.name}</p>}
           {/* 412 · numeric caps lay out as `grid grid-cols-1 sm:grid-cols-2 gap-3`. */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {section.rows.map((row) => {
@@ -179,6 +188,7 @@ export function DeskLimitsForm({
   rows,
   baseVersion,
   id,
+  omitSection,
   onSave,
 }: {
   rows: DeskLimitRow[];
@@ -186,6 +196,8 @@ export function DeskLimitsForm({
   baseVersion: number;
   /** The anchor id, named by the page (see `DeskLimitFields`). */
   id: string;
+  /** The card's own title, so the first group does not repeat it (see `DeskLimitFields`). */
+  omitSection?: string;
   /**
    * The server action, handed down by the page. ⛔ Typed structurally, so the gated writer's own result type is
    * checked against this where the two meet — at the page — without a house module specifier ever entering this
@@ -269,7 +281,7 @@ export function DeskLimitsForm({
 
   return (
     <form ref={formRef} {...formProps} onSubmit={onSubmit} className="space-y-4">
-      <DeskLimitFields rows={rows} anchorId={id} errors={errors} />
+      <DeskLimitFields rows={rows} anchorId={id} errors={errors} omitSection={omitSection} />
 
       <PendingChangesBar
         dirty={armed}

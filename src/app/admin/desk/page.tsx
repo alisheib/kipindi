@@ -64,6 +64,11 @@ export const dynamic = "force-dynamic";
 
 const TAB_LABEL: Record<(typeof CONSOLE_TABS)[number], string> = { roster: "Roster", limits: "Limits" };
 
+/** The limits card's heading, in ONE home: it is also what the form suppresses so the page does not say it
+ *  twice (432(n)) — read off the first render of the form, where the card's title and the form's first group
+ *  printed the same two words 34px apart, at 1280 and at 360. */
+const LIMITS_CARD_TITLE = "Global limits";
+
 /**
  * One usage cell's two halves. The server owns the sentence (ruling 361's one grammar); this only lays it out, so the
  * used figure and its limit can sit on two lines in a narrow column while each half stays indivisible.
@@ -515,7 +520,7 @@ export default async function AdminDeskPage({ searchParams }: { searchParams: Pr
               ⛔ NO FORM WITHOUT A BASE VERSION. `limitsVersion` is null exactly when there is no row to save
               against, and a form whose base version is unknown could only ever clobber a second writer. */}
           {!view.schemaMissing && (
-          <AdminCard title="Global limits">
+          <AdminCard title={LIMITS_CARD_TITLE}>
             {limitRows === null || limitsVersion === null ? (
               <AdminLoadError what="the global limits" />
             ) : (
@@ -527,7 +532,7 @@ export default async function AdminDeskPage({ searchParams }: { searchParams: Pr
                     component sits ABOVE every tab group and reads as "above the rail". Both were measured on this
                     file. So the page NAMES the anchor and the form PLACES it, on the first unset required limit —
                     which is what the strip's "Set N global limits first →" promises the officer will find. */}
-                <DeskLimitsForm rows={limitRows} baseVersion={limitsVersion} id="limits-first-unset" onSave={saveDeskLimitsAction} />
+                <DeskLimitsForm rows={limitRows} baseVersion={limitsVersion} id="limits-first-unset" omitSection={LIMITS_CARD_TITLE} onSave={saveDeskLimitsAction} />
               </FormColumn>
             )}
           </AdminCard>
