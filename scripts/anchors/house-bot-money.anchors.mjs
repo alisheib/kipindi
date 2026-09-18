@@ -13,6 +13,8 @@
 const SVC = "src/lib/server/market-service.ts";
 const SEAM = "src/lib/server/house-bot/seam.ts";
 const DAL = "src/lib/server/house-bot-dal.ts";
+const PRECHECK = "src/lib/server/house-bot/cap-precheck.ts";
+const ENTERNOW = "src/lib/server/house-bot/enter-now.ts";
 
 export const MUTATIONS = [
   // ── N1 (04 N1 Tests, red:house-bot-money) ─────────────────────────────────────────────────────────
@@ -43,8 +45,10 @@ export const MUTATIONS = [
   {
     name: "N1-3b · the H2 staff-chosen gate forgets targeted reactions",
     file: SEAM,
-    from: `  if (intent.kind === "MANUAL" || intent.targetId != null) {\n    const staff = await houseBotIntentStore.staffChosenPlacedToday({ houseBotId: ctx.botId }, tx);`,
-    to: `  if (intent.kind === "MANUAL") {\n    const staff = await houseBotIntentStore.staffChosenPlacedToday({ houseBotId: ctx.botId }, tx);`,
+    /* ⚠️ RE-ANCHORED, SAME DEFECT (replan ruling 542): the H2 staff-chosen read now takes the pass's own
+       `dayKey`, so the quoted line moved. The mutation still drops `|| intent.targetId != null` and nothing else. */
+    from: `  if (intent.kind === "MANUAL" || intent.targetId != null) {\n    const staff = await houseBotIntentStore.staffChosenPlacedToday({ houseBotId: ctx.botId, dayKey: day }, tx);`,
+    to: `  if (intent.kind === "MANUAL") {\n    const staff = await houseBotIntentStore.staffChosenPlacedToday({ houseBotId: ctx.botId, dayKey: day }, tx);`,
     expect: "1.21 · one Enter now + one targeted reaction placed",
     suite: "caps-mem",
   },
@@ -366,5 +370,49 @@ export const MUTATIONS = [
     to: "      + ` WHERE coalesce(\"houseBotId\", '') <> '' AND \"status\"::text = 'OPEN' AND ($1::text IS NULL OR \"houseBotId\" = $1::text)`",
     expect: "7.15 · A24 · EXPLAIN at 1M/20k: openExposure, every bot — no sequential scan on Position",
     suite: "money-pg",
+  },
+  // ── replan ruling 542 · the money gate reads ONE clock ───────────────────────────────────────
+  // Each of the four call sites is its OWN mutation, because one declaration covering all of them would pass the
+  // moment any single site kept its key — and the whole finding is that a fix applied to the site a review opened
+  // leaves the others standing.
+  {
+    name: "542-gate-bot · the gate takes the bot's staff-chosen usage from a second clock while its day books honour the pass's day",
+    file: PRECHECK,
+    from: `    const mine = await houseBotIntentStore.staffChosenPlacedToday({ houseBotId: bot.id, dayKey: day });`,
+    to: `    const mine = await houseBotIntentStore.staffChosenPlacedToday({ houseBotId: bot.id });`,
+    expect: "9.3 ·",
+    suite: "caps-mem",
+  },
+  {
+    name: "542-gate-all · the same split on the GLOBAL staff-chosen read, which is the one an all-accounts limit refuses on",
+    file: PRECHECK,
+    from: `    const all = await houseBotIntentStore.staffChosenPlacedToday({ houseBotId: null, dayKey: day });`,
+    to: `    const all = await houseBotIntentStore.staffChosenPlacedToday({ houseBotId: null });`,
+    expect: "9.3 ·",
+    suite: "caps-mem",
+  },
+  {
+    name: "542-seam-h2 · H2's staff-chosen read derives its own day again, inside the bet's own lock",
+    file: SEAM,
+    from: `    const staff = await houseBotIntentStore.staffChosenPlacedToday({ houseBotId: ctx.botId, dayKey: day }, tx);`,
+    to: `    const staff = await houseBotIntentStore.staffChosenPlacedToday({ houseBotId: ctx.botId }, tx);`,
+    expect: "9.5 ·",
+    suite: "caps-mem",
+  },
+  {
+    name: "542-seam-h4 · H4's global staff-chosen read derives its own day again",
+    file: SEAM,
+    from: `    const staff = await houseBotIntentStore.staffChosenPlacedToday({ houseBotId: null, dayKey: day }, tx);`,
+    to: `    const staff = await houseBotIntentStore.staffChosenPlacedToday({ houseBotId: null }, tx);`,
+    expect: "9.5 ·",
+    suite: "caps-mem",
+  },
+  {
+    name: "542-preview · the Enter now preview promises a day its own day books did not measure",
+    file: ENTERNOW,
+    from: `  const botStaff = await houseBotIntentStore.staffChosenPlacedToday({ houseBotId: botId, dayKey });`,
+    to: `  const botStaff = await houseBotIntentStore.staffChosenPlacedToday({ houseBotId: botId });`,
+    expect: "9.5 ·",
+    suite: "caps-mem",
   },
 ];

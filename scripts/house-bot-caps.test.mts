@@ -26,7 +26,10 @@
  * 90 + 1 failed; the GREEN run prints 91, and 91 is therefore the floor. ⛔ This costs nothing in noise — `0.pg` is a
  * single assertion that already requires `fail === 0`, so a flaking 8.2 fails that line with or without the floor.
  * The flake itself is a finding for the next session, recorded here rather than left in a terminal.
+ * ⭐ RAISED AGAIN at replan ruling 542's §9 — the gate's clock split, its control and its call-site roll-call — to what
+ * `npm run test:house-bot-caps` PRINTED on this run: **memory 88, Postgres 95**. ⛔ A floor only ever rises, and only to
+ * a count a run printed.
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 
-await runTwoStores({ suite: "test:house-bot-caps", casesFile: "scripts/lib/house-bot-caps-cases.mts", minPass: { memory: 82, postgres: 91 }, dbPrefix: "hb_caps" });
+await runTwoStores({ suite: "test:house-bot-caps", casesFile: "scripts/lib/house-bot-caps-cases.mts", minPass: { memory: 88, postgres: 95 }, dbPrefix: "hb_caps" });
