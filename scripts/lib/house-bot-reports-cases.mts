@@ -18,7 +18,10 @@ import { dirname, join, relative } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import ts from "typescript";
 import { decomment } from "./decomment.mts";
-import { ROLL_CALL_SITES, ROLL_CALL_OWED, type DeclaredMutation } from "./house-bot-expect-drift.mts";
+import { ROLL_CALL_SITES, ROLL_CALL_OWED, expectDriftReport, expectDriftControl, type DeclaredMutation } from "./house-bot-expect-drift.mts";
+/* ⛔ The `reports-mem` declarations live in the console anchors file (ruling 434's is the first), and this suite
+ * audits its own key there — 505's whole rule is that a suite key with no roll-call is audited by nobody. */
+import { MUTATIONS as CONSOLE_ANCHORS } from "../anchors/house-bot-console.anchors.mjs";
 import { createHash } from "node:crypto";
 import { extendHouseWords, houseHits, houseHitsByFamily, HOUSE_WORD_SAMPLES, HOUSE_IDENTIFIER_SAMPLES, HOUSE_ID_SAMPLES } from "./house-bot-vocabulary.mjs";
 
@@ -26,8 +29,11 @@ type Any = any;
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const STORE = process.env.HB_MONEY_STORE ?? "unknown";
 let pass = 0, fail = 0;
+/** Every label this run emitted, so the `reports-mem` roll-call can measure the suite instead of asserting `true`. */
+const emitted: string[] = [];
 const ok = (l: string, c: boolean, x = "") => {
   c ? pass++ : fail++;
+  emitted.push(l);
   console.log(`${c ? "PASS" : "FAIL"} [${STORE}] ${l}${x ? ` — ${x}` : ""}`);
 };
 const section = (t: string) => console.log(`\n[${STORE}] ${t}`);
@@ -2692,6 +2698,25 @@ await guard("store", async () => {
   const P: Any = await import("../../src/lib/server/prisma.ts");
   ok(`store.1 · the ${STORE} child ${STORE === "postgres" ? "has" : "has no"} database`, P.hasDatabase() === (STORE === "postgres"), `hasDatabase=${P.hasDatabase()}`);
 });
+
+/* ━━ THE `reports-mem` ROLL-CALL, AND IT MUST BE LAST — it reads the labels THIS run printed ━━━━━━━━━━━━━━
+ * Ruling 505: a suite key declared in a house anchors file with no roll-call is audited by nobody, and an `expect`
+ * that matches no label this suite can print is classed WRONG-ASSERTION by the drive — red for the wrong reason.
+ * `reports-mem` arrived with ruling 434's mutation and 0.505 reported it the same day, which is the guard working.
+ * ⚠️ MEMORY CHILD ONLY: §0's source pins run there, and the Postgres child prints none of their labels. */
+if (STORE === "memory") {
+  const selfCode = decomment(read("scripts/lib/house-bot-reports-cases.mts"));
+  const LBL = "0.505b · every declared `reports-mem` mutation names an assertion THIS run actually printed — an `expect` that matches no label can only ever report WRONG-ASSERTION";
+  const LBLC = "0.505b · CONTROL · the roll-call reads this run's own labels and this suite's own source, so a drifted `expect` IS reported and an invented one is never found";
+  const input = {
+    suiteKeys: ["reports-mem"], declarations: CONSOLE_ANCHORS as DeclaredMutation[],
+    emitted, source: selfCode, ownLabels: [LBL, LBLC],
+  };
+  const rc = expectDriftReport(input);
+  ok(LBL, rc.declared >= 1 && rc.stale.length === 0, j(rc));
+  const control = expectDriftControl(input, 40);
+  ok(LBLC, control.pass, control.extra);
+}
 
 console.log(`\n@@SUMMARY ${JSON.stringify({ pass, fail, store: STORE })}`);
 process.exit(fail === 0 ? 0 : 1);
