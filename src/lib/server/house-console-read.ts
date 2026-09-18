@@ -768,10 +768,20 @@ const LIMIT_FIELD_BY_KEY: ReadonlyMap<string, LimitField> =
  */
 const CONSOLE_LIMIT_HINT: Readonly<Record<string, string>> = {
   gCapDailyLossTzs: "Counted by the day a stake was placed, restarting at 00:00 EAT. Losses that settle today can include stakes from earlier days. Today's open stakes count as lost until they settle; the desk stops itself only on settled losses.",
-  gCapStaffChosenPerDay: "Every account together, this EAT day. Not set — targeted and manual stakes cannot be placed, and the master switch does not need this limit.",
-  gCapStaffChosenDailyTzs: "Every account together, this EAT day. Not set — targeted and manual stakes cannot be placed, and the master switch does not need this limit.",
-  gTargetsMaxActive: "Across every account. Not set — no target can be added, and the master switch does not need this limit.",
-  gStaffChosenMaxCounterpartyShare: "A manual stake is refused when one player already holds more than this share of the players' locked money it would add to. Not set — manual entry is off.",
+  /* ⛔ NOT ONE HINT SAYS "Not set", AND THAT IS RULING 364's OWN RULE APPLIED TO THE HINT (432(n)). These four were
+   * rewritten from `FIELD_META`'s neutral-word originals, which each END in a "Not set = …" clause, and the clause
+   * came across with them. Read off `limits-unset-exempt-unsetfield-1280.png`, and it is wrong in BOTH states:
+   *   · UNSET, the panel said the consequence TWICE, 40px apart — "Not set — targeted and manual stakes cannot be
+   *     placed." as 364's amber caption, and the same sentence again inside the grey hint below it;
+   *   · SET, a field reading 200 printed "Not set — targeted and manual stakes cannot be placed" under its own
+   *     saved value, which is a flat contradiction on the panel whose job is to say which limits are missing.
+   * The unset consequence has ONE home — `unsetCaptionFor` — and it is rendered exactly when the field is unset.
+   * What the caption does NOT carry is that these caps are outside `REQUIRED_FOR_MASTER_ON`, which is true in every
+   * state, so that is what stays here. */
+  gCapStaffChosenPerDay: "Every account together, this EAT day. The master switch does not need this limit.",
+  gCapStaffChosenDailyTzs: "Every account together, this EAT day. The master switch does not need this limit.",
+  gTargetsMaxActive: "Across every account. The master switch does not need this limit.",
+  gStaffChosenMaxCounterpartyShare: "A manual stake is refused when one player already holds more than this share of the players' locked money it would add to. The master switch does not need this limit.",
   bellAlertsPerHour: "How many bet rows each admin can be sent in an hour, on top of summaries and the pause, money and switch alerts.",
 };
 

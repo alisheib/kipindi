@@ -1733,6 +1733,23 @@ section("§2b · the limits save");
         }),
       j({ needs: hintNeeds, overridden: hintOverridden, missing: hintNeeds.filter((f) => !hintOverridden.includes(f)), spurious: hintOverridden.filter((f) => !hintNeeds.includes(f)) }));
 
+    /* ⛔ 432(n) · THE UNSET CONSEQUENCE HAS EXACTLY ONE HOME, AND A HINT IS NOT IT. Read off
+     * `limits-unset-exempt-unsetfield-1280.png`: four hints had carried their shared table's "Not set = …" clause
+     * across the neutral rewrite, so the panel said the consequence TWICE when the field was unset (364's amber
+     * caption, then the same sentence again in the grey hint 40px below it) and — worse — printed
+     * "Not set — targeted and manual stakes cannot be placed" under a field whose own value read 200. A hint is
+     * true in EVERY state; a consequence of being unset is true in one, and `unsetCaptionFor` owns it.
+     * ⛔ THE POPULATION IS EVERY HINT THE PANEL RENDERS, derived from the rows, not the four that were wrong. */
+    {
+      const hints = view0.limits.map((l: Any) => l.hint).filter((h: Any) => typeof h === "string") as string[];
+      const captions = LIMITS.map((f) => GATEM.unsetCaptionFor(f));
+      ok("2.537 · 432(n) · not one hint this panel renders says \"Not set\" — the unset consequence has ONE home, and a hint is true in every state",
+        hints.length >= 8 && hints.every((h) => !/Not set/i.test(h)), j(hints.filter((h) => /Not set/i.test(h))));
+      ok("2.537 · 432(n) · CONTROL · the ONE home really does say it — every caption `unsetCaptionFor` produces opens with \"Not set\", so the absence above is a measurement and not an empty population",
+        captions.length === LIMITS.length && captions.every((c: string) => c.startsWith("Not set —"))
+          && new Set(captions).size >= 2, j([...new Set(captions)]));
+    }
+
     /* The refusal side, measured the same way: which LIMITS-scope REFUSE rules carry a word in their shared copy. */
     const limitRules = (R.CROSS_FIELD_RULES as ReadonlyArray<Any>)
       .filter((r) => (r.scopes as readonly string[]).includes("LIMITS") && r.kind === "REFUSE");

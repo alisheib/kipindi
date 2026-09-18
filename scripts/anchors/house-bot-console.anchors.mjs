@@ -1200,4 +1200,15 @@ import { formatEat } from "@/lib/utils";`,
     expect: "2.537 · RENDERED · 432(n) · an UNSET limit says",
     suite: "console-mem",
   },
+  {
+    /* ⚠️ THE MUTATION PUTS BACK THE SHARED TABLE'S OWN CLAUSE, NEUTRALISED — which is exactly how it got in.
+       Under a SET field it prints "Not set" beside the field's own value; under an unset one it says 364's
+       caption a second time, 40px lower. */
+    name: "432n-hint-notset · a hint carries the unset consequence again, so the panel says it twice — and says it under a field that is SET",
+    file: GATE,
+    from: `  gTargetsMaxActive: "Across every account. The master switch does not need this limit.",`,
+    to: `  gTargetsMaxActive: "Across every account. Not set — no target can be added, and the master switch does not need this limit.",`,
+    expect: "2.537 · 432(n) · not one hint this panel renders says",
+    suite: "console-mem",
+  },
 ];
