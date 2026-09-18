@@ -26,6 +26,8 @@ const ANCHORS = "scripts/anchors/house-bot-console.anchors.mjs";
 /* ⭐ C7 step 3 · the kit file the caption pair lives in, and the section's first client module. */
 const BAR = "src/components/ui/progress-bar.tsx";
 const LIVE = "src/app/admin/desk/desk-live.tsx";
+/** The page ruling 434 was taken on — a platform surface, not a console one. */
+const REFUSED = "src/app/admin/kyc/refused/page.tsx";
 
 export const MUTATIONS = [
   /* ── Ruling 453 · THE NEUTRAL LEXICON. Four mutations, one per sentence the ruling fixes. ─────────────────────── */
@@ -659,6 +661,18 @@ export const MUTATIONS = [
   const control = await houseBotControlStore.get().catch(() => null);`,
     expect: "1.306 · 1.312 · each render pass reads the control row EXACTLY ONCE",
     suite: "console-mem",
+  },
+  {
+    /* ⛔ RULING 434 HAD NO DECLARED MUTATION AND NO CASE IN `test:all` — the only instrument that went red without
+       the fix was `qa:house-bot-console-probe`, which `test:all` does not run. This is the leak it was taken on,
+       put back: the page reads `refusedFundsReport` — an officer's free-text justification, rendered in a `<td>`
+       — and 259 measured that a layout's redirect changes what is PAINTED, not what is SENT. */
+    name: "434-refused-ungated · the refused-funds page reads before it decides its audience, streaming an officer's justification to any signed-in account",
+    file: REFUSED,
+    from: `  if (!(await houseConsoleAudience(session?.userId ?? null, "/admin/kyc/refused"))) return null;`,
+    to: `  void houseConsoleAudience;`,
+    expect: "0.434 · ⛔ D19/259 · every admin page that imports from an audit reader whose ROWS are handed on",
+    suite: "reports-mem",
   },
   {
     /* ⛔ 306 scopes the sentence to *when the switch cannot be turned on*. Without the `on !== true` term the

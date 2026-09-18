@@ -40,6 +40,9 @@ const SUITES = {
   "console-pg": { cmd: "npx tsx scripts/db-scratch.mts --run npx tsx scripts/house-bot-console.test.mts", env: {} },
   rbac: { cmd: "npx tsx scripts/rbac.test.mts", env: {} },
   "admin-nav": { cmd: "npx tsx scripts/admin-nav.test.mts", env: {} },
+  /* ⭐ The reports cases, memory child only — §0's source pins (0.260.1, 0.434, 0.512) run there and a Postgres
+     round trip measures nothing they assert. Added with ruling 434's first declared mutation. */
+  "reports-mem": { cmd: "npx tsx scripts/lib/house-bot-reports-cases.mts", env: MEM_ENV },
 };
 const SUMMARY = /^\s*(?:ALL PASS|FAILURES) — /;
 

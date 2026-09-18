@@ -1158,11 +1158,45 @@ export const AUDIT_READERS_OUTSIDE_CONSOLE: Readonly<Record<string, string>> = {
   "src/lib/server/house-bot/oversight.ts": "Commit 4's oversight alerts about what staff did with a bot: rows read by action and folded into two AlertOnce keys (ruling 264)",
   "src/lib/server/kyc-risk.ts": "the KYC withdrawal refusals and the aml approvals, read by action and folded into counts and a recommendation",
   "src/lib/server/notification-service.ts": "a KYC case's own history, read to word that case's KYC notice",
-  "src/lib/server/refused-funds.ts": "the refused-funds decisions only, read by their actions (REFUSED_FUNDS_ACTION)",
+  /* ⛔ RULING 434, AND THE OLD REASONING WAS MEASURED FALSE. It read "the refused-funds decisions only, read by
+     their actions" — true of the ACTION, false of the PAYLOAD. `/admin/kyc/refused` rendered an officer's refused-
+     funds JUSTIFICATION verbatim, in a `<td>`, status 200, to a signed-in PLAYER, the holder and a trigger player
+     in all three modes (9 responses captured). A reader classified by the ACTIONS it reads says nothing about what
+     its rows CARRY, and 0.434 below is the guard that closes the class rather than the one page. */
+  "src/lib/server/refused-funds.ts": "the refused-funds decisions only, read by their actions (REFUSED_FUNDS_ACTION) — but its ROWS carry an officer's free-text justification, so every page that renders them decides its audience on the STORED role first (434, guard 0.434)",
   "src/lib/server/report-pack.ts": "a report pack's own pack.* rows",
   "src/lib/server/reports/catalogue.ts": "report files behind the platform's report gate: the ISO 27001 chain export and the RG engagement report's rg.* rows",
   "src/lib/server/user-service.ts": "a player's own export and feed: house actions excluded in the read and house keys stripped (rulings 154, 170)",
 };
+/**
+ * ⛔ WHAT EACH CLASSIFIED READER'S ROWS DO — the half the table above never carried, and the half ruling 434 turned on.
+ *
+ * Every entry above says WHY a module outside the console may call an audit row reader. None of them said what its rows
+ * then CARRY, and that is the distinction 434 was taken on: `refused-funds.ts` was excused because "its ACTIONS are
+ * never house actions" — true of the action, FALSE of the payload, which is an officer's free-text justification
+ * rendered in a `<td>` at status 200 to any signed-in account (9 responses captured, ruling 259's class).
+ *
+ *   · `handedOn` — the rows, or a value resolved from them, reach a PAGE's payload intact. Every admin page that
+ *     imports from one of these decides its audience on the STORED role before it reads (guard 0.434).
+ *   · `folded`   — the rows are reduced to counts, keys or one notice inside the module; no row leaves it.
+ *   · `stripped` — the read itself excludes house actions and strips house keys (rulings 154, 170).
+ *   · `gated`    — the rows leave only through the platform's own report gate, which decides its own audience.
+ *
+ * ⛔ EVERY KEY OF `AUDIT_READERS_OUTSIDE_CONSOLE` MUST APPEAR HERE, and 0.434 asserts it: a module added to that table
+ * without a payload classification would otherwise be outside this guard on the day it lands, which is the class.
+ */
+export const AUDIT_ROW_PAYLOAD: Readonly<Record<string, "handedOn" | "folded" | "stripped" | "gated">> = {
+  "src/app/api/dev-test/stress-regulator-grade/route.ts": "folded",
+  "src/lib/server/house-bot/eligibility.ts": "folded",
+  "src/lib/server/house-bot/oversight.ts": "folded",
+  "src/lib/server/kyc-risk.ts": "handedOn",
+  "src/lib/server/notification-service.ts": "folded",
+  "src/lib/server/refused-funds.ts": "handedOn",
+  "src/lib/server/report-pack.ts": "gated",
+  "src/lib/server/reports/catalogue.ts": "gated",
+  "src/lib/server/user-service.ts": "stripped",
+};
+
 /**
  * The ONE console file that may name a house read module other than the gate: the system page's engine card, whose reader
  * is its own ADMIN-only gate (ruling 172, pin 0.172).
@@ -1435,9 +1469,52 @@ export const CONSOLE_GATE_STRUCK = ["houseBotLabelsForConsole", "houseStakeForCo
  */
 export const CONSOLE_GATE_NON_READERS = ["ConsoleAuditRead", "ConsoleDeskShell", "ConsoleEmpty", "ConsoleKpiTile",
   "ConsoleLimitRow", "ConsoleLimitsView", "ConsoleRosterRow", "ConsoleRosterView", "ConsoleUsageCell",
-  "ConsoleUsageHalf", "ConsoleUsageQuery", "ConsoleUsageRow", "HOUSE_CONSOLE_PREFIX", "TARGETED_DAILY_TZS_FIELD",
-  "consoleLimitLabel",
+  "ConsoleUsageHalf", "ConsoleUsageQuery", "ConsoleUsageRow", "HOUSE_CONSOLE_PREFIX", "OPERATOR_DATA_EXEMPT",
+  "TARGETED_DAILY_TZS_FIELD", "clampOperatorText", "consoleLimitLabel",
   "isHouseConsoleRoute", "unsetCaptionFor"] as const;
+
+/**
+ * ⛔ A DECLARATION IS NOT A PROOF — EVERY VALUE EXPORT CLASSED A NON-READER IS CHECKED AGAINST WHAT IT DOES.
+ *
+ * The list above is an EXEMPTION from 0.512's completeness rule, and nothing verified that a name on it earns its
+ * place: it gained eight entries at C7 step 3, two of them exported FUNCTIONS (`consoleLimitLabel`,
+ * `unsetCaptionFor`), and a "non-reader" that later grew a `houseBotStore.…` call or an audience decision would have
+ * kept 0.512 green while shipping exactly the hole ruling 259 measured. An exemption list is how a completeness check
+ * comes to exempt the thing it exists to police, which the list's own docblock says three lines above.
+ *
+ * What a non-reader may not contain, in its own declaration: `await` (every gated reader is async and every store
+ * read on this path is awaited), `db.`, any `…Store.` member access, or `houseConsoleAudience` — the audience
+ * decision itself. Type aliases and interfaces have no body and are skipped BY NAME COUNT, which the caller floors,
+ * so "no value declarations found" cannot read as compliance.
+ */
+export function consoleNonReaderProblems(file: string, code: string): { checked: string[]; problems: string[] } {
+  const FORBIDDEN: Array<[string, RegExp]> = [
+    ["await", /\bawait\b/],
+    ["db.", /\bdb\./],
+    ["a store member", /\b\w*Store\./],
+    ["houseConsoleAudience", /\bhouseConsoleAudience\b/],
+  ];
+  const names = new Set(CONSOLE_GATE_NON_READERS as readonly string[]);
+  const checked: string[] = [];
+  const problems: string[] = [];
+  const inspect = (name: string, text: string) => {
+    checked.push(name);
+    for (const [what, re] of FORBIDDEN) {
+      if (re.test(text)) problems.push(`${file}: ${name} is declared a NON-READER but its body names ${what} — an exemption is not a licence to read`);
+    }
+  };
+  walkTree(parse(file, code), (n) => {
+    const exported = (ts.canHaveModifiers(n) ? ts.getModifiers(n) ?? [] : []).some((m) => m.kind === ts.SyntaxKind.ExportKeyword);
+    if (!exported) return;
+    if (ts.isFunctionDeclaration(n) && n.name && names.has(n.name.text)) inspect(n.name.text, n.getText());
+    if (ts.isVariableStatement(n)) {
+      for (const d of n.declarationList.declarations) {
+        for (const nm of bindingNames(d.name)) if (names.has(nm)) inspect(nm, d.getText());
+      }
+    }
+  });
+  return { checked, problems };
+}
 
 /**
  * Ruling 512. `CONSOLE_GATES` is five names typed by hand and nothing compared it with the module it describes, while
@@ -1705,6 +1782,67 @@ if (STORE === "memory") {
     const auditReaders = exportedNames(`${AUDIT_MODULE}.ts`, auditCode).filter((n) => /^getAudit/.test(n));
     const auditExports = auditExportProblems(`${AUDIT_MODULE}.ts`, auditCode);
     const MEASURED_LEAKS = ["src/app/admin/audit/page.tsx", "src/app/admin/players/[id]/page.tsx"];
+    /* ━━ 0.434 · A READER CLASSIFIED BY ITS ACTIONS SAYS NOTHING ABOUT WHAT ITS ROWS CARRY ━━━━━━━━━━━━━━━━━━
+     *
+     * ⛔ RULING 434 HAD NO CASE AND NO MUTATION. It was taken on a MEASURED leak — `/admin/kyc/refused` streaming an
+     * officer's refused-funds justification, in a `<td>`, status 200, to a signed-in PLAYER — and the only instrument
+     * that went red without the fix was `qa:house-bot-console-probe`, which is not in `test:all`. So the fix was one
+     * page deep and nothing would have reported the next one.
+     * ⛔ THE POPULATION IS THE IMPORT GRAPH, NOT A LIST. Every admin `page.tsx` whose imports reach a module
+     * classified in `AUDIT_READERS_OUTSIDE_CONSOLE` must AWAIT `houseConsoleAudience` before it calls anything it
+     * imported from that module. Ruling 259 is why: a layout's redirect changes what is PAINTED, not what is SENT.
+     * ⚠️ THE THREE PAGES BELOW ARE REPORTED, NOT EXEMPTED, AND THEY ARE W25's (replan ruling 538). They are PLAYER and
+     * STAFF PII, not house data; they are on `main` and therefore LIVE; and ruling 524 governs — the instrument first,
+     * seen RED against the unfixed code, before any fix. Patching them blind here would close the one measurement that
+     * could prove the whole class shut. The list is NAMED and DATED and it may only SHRINK: a fourth page joining it
+     * goes red here on the day it lands. */
+    const W25_OWED: Readonly<Record<string, string>> = {
+      "src/app/admin/kyc/[id]/page.tsx": "2026-09-18 · W25 · `getApprovalRecommendation(id)` with no audience check resolves an officer's identity and passes `recommenderName` into a client component, so it is SERIALISED into the flight payload",
+      "src/app/admin/kyc/page.tsx": "2026-09-18 · W25 · `readBlockedCashOuts()` read with no gate",
+      "src/app/admin/approvals/page.tsx": "2026-09-18 · W25 · gates its RING read and then reads audit rows ungated eight lines later, and renders a KYC applicant's legal name in a `<td>`",
+    };
+    const handedOn = Object.entries(AUDIT_ROW_PAYLOAD).filter(([, k]) => k === "handedOn").map(([f]) => f.replace(/\.tsx?$/, ""));
+    /** The page's own problems: it imports from a `handedOn` reader module and does not decide its audience first. */
+    const gateFirstProblems = (rel: string, code: string): string[] => {
+      /* ⛔ DIRECT IMPORTS, NOT THE TRANSITIVE GRAPH. What a page can RENDER is what it imported and called; the
+         transitive reach pulls in every shared module and reports pages whose classified read is `stripped`. */
+      const hits = [...new Set(importSpecifiers(rel, code).map((i) => resolveSpec(rel, i.spec)).filter((m) => handedOn.includes(m)))];
+      if (hits.length === 0) return [];
+      const imported = importSpecifiers(rel, code)
+        .filter((i) => hits.includes(resolveSpec(rel, i.spec)))
+        .flatMap((i) => i.names.filter((n) => n !== "*" && n !== "default" && n !== "(re-export)"));
+      const firstCallAt = imported
+        .map((n) => code.indexOf(`${n}(`))
+        .filter((at) => at >= 0)
+        .reduce((a, b) => Math.min(a, b), Number.MAX_SAFE_INTEGER);
+      const gateAt = code.indexOf("houseConsoleAudience(");
+      if (firstCallAt === Number.MAX_SAFE_INTEGER) return [];
+      if (gateAt < 0) return [`${rel}: reaches ${hits.join(", ")} and never awaits houseConsoleAudience — ruling 259: a layout changes what is PAINTED, not what is SENT`];
+      if (gateAt > firstCallAt) return [`${rel}: reaches ${hits.join(", ")} and reads before it decides its audience`];
+      return [];
+    };
+    const adminPages = files5.filter((f) => /^src\/app\/admin\/.*\/page\.tsx$/.test(f.rel));
+    const gateFirst = adminPages.flatMap((f) => gateFirstProblems(f.rel, f.code));
+    const owed = Object.keys(W25_OWED).sort();
+    const reported = [...new Set(gateFirst.map((x) => x.split(":")[0]))].sort();
+    ok("0.434 · ⛔ D19/259 · every admin page that imports from an audit reader whose ROWS are handed on decides its audience on the STORED role BEFORE it reads — except the three W25 owes, which are REPORTED by name and date, never exempted",
+      j(reported) === j(owed) && adminPages.length >= 30
+        /* ⛔ AND EVERY CLASSIFIED READER CARRIES A PAYLOAD CLASSIFICATION: a module added to the outside table with
+           no entry here would be outside this guard on the day it lands, which is the class 434 is about. */
+        && j(Object.keys(AUDIT_ROW_PAYLOAD).sort()) === j(Object.keys(AUDIT_READERS_OUTSIDE_CONSOLE).sort())
+        && handedOn.length >= 2,
+      j({ adminPages: adminPages.length, handedOn, reported, owedToW25: W25_OWED, problems: gateFirst }));
+    /* ⛔ AND THE GUARD CAN FIRE ON A PAGE THAT IS COMPLIANT TODAY: `/admin/kyc/refused` minus its one guard line is
+     * the defect ruling 434 measured, put back. A control that has never been shown to reject anything is not one. */
+    const REFUSED = "src/app/admin/kyc/refused/page.tsx";
+    const refusedCode = code5(REFUSED);
+    const GUARD_LINE = 'if (!(await houseConsoleAudience(session?.userId ?? null, "/admin/kyc/refused"))) return null;';
+    const ungated = refusedCode.replace(GUARD_LINE, "");
+    ok("0.434.c1 · CONTROL · `/admin/kyc/refused` passes today, and the SAME scan reports it the moment ruling 434's guard line is taken out",
+      refusedCode.includes(GUARD_LINE) && gateFirstProblems(REFUSED, refusedCode).length === 0
+        && ungated !== refusedCode
+        && gateFirstProblems(REFUSED, ungated).some((x) => x.includes("never awaits houseConsoleAudience")),
+      j({ withGuard: gateFirstProblems(REFUSED, refusedCode), withoutGuard: gateFirstProblems(REFUSED, ungated) }));
     ok("0.260.1 · ⛔ D19 · every audit row a console file reads — every file under src/app/admin/, src/app/api/admin/ and src/components/admin/, read from disk, and every row reader the audit module exports, its exports classified to the last name — goes straight to houseAuditForConsole; EVERY call of every gate export names the signed-in viewer and the file's own console route; the three struck display readers (D20) are called NOWHERE; no console file reaches the audit module or the gate by import(), a namespace or a re-export, and none imports a house read module — or keeps what one returns — outside the system page's engine card (only the fire-and-forget holder and money hooks read nothing back); and every file OUTSIDE the console that calls a row reader is classified",
       r.problems.length === 0 && auditExports.length === 0 && r.population >= 200 && j(auditReaders) === j([...AUDIT_ROW_READERS].sort()) && r.readerCalls >= 18 && r.gateCalls >= 17
         && r.consoleGateCalls.houseAuditForConsole >= 17
@@ -1760,6 +1898,35 @@ export async function houseStakeForConsole(viewerUserId: string | null, route: s
           && fired.nonReaderGone.some((p) => p.includes("no longer exports ConsoleKpiTile"))
           && fired.untouched.length === 0,
         j(fired));
+      /* ⛔ 0.512b · A DECLARATION IS NOT A PROOF (replan review, 2026-09-18). `CONSOLE_GATE_NON_READERS` is the ONE
+       * exemption 0.512 grants, it gained eight names at C7 step 3 — two of them exported FUNCTIONS — and NOTHING
+       * verified that an exempted export performs no store read and takes no audience decision. One that later grew a
+       * `houseBotStore.…` call would have kept 0.512 green while shipping the hole ruling 259 measured. */
+      const nonReaders = consoleNonReaderProblems(CONSOLE_GATE_MODULE, gateModuleCode);
+      ok("0.512b · ⛔ D19 · every VALUE export declared a non-reader really is one — no await, no `db.`, no store member and no audience decision in its own declaration",
+        nonReaders.problems.length === 0 && nonReaders.checked.length >= 5,
+        j({ checked: nonReaders.checked, problems: nonReaders.problems }));
+      /* ⛔ AND THE CHECK CAN FIRE, on each of the four things it refuses, planted into a REAL declared non-reader. */
+      const plantInto = (body: string) => plant(
+        gateModuleCode,
+        "export function consoleLimitLabel(field: LimitField): string {",
+        `export function consoleLimitLabel(field: LimitField): string {
+  ${body}`,
+      );
+      const firedNR = {
+        awaited: consoleNonReaderProblems(CONSOLE_GATE_MODULE, plantInto("await Promise.resolve();")).problems,
+        db: consoleNonReaderProblems(CONSOLE_GATE_MODULE, plantInto("void db.user;")).problems,
+        store: consoleNonReaderProblems(CONSOLE_GATE_MODULE, plantInto("void houseBotStore.listNonRemoved;")).problems,
+        audience: consoleNonReaderProblems(CONSOLE_GATE_MODULE, plantInto("void houseConsoleAudience;")).problems,
+        untouched: nonReaders.problems,
+      };
+      ok("0.512b.c1 · CONTROL · an await, a `db.` reach, a store member and an audience decision planted into a REAL declared non-reader are each reported — and the real module is not",
+        firedNR.awaited.some((x) => x.includes("names await"))
+          && firedNR.db.some((x) => x.includes("names db."))
+          && firedNR.store.some((x) => x.includes("names a store member"))
+          && firedNR.audience.some((x) => x.includes("names houseConsoleAudience"))
+          && firedNR.untouched.length === 0,
+        j(firedNR));
     }
 
     const PLAYER = "src/app/admin/players/[id]/page.tsx", AUDIT = "src/app/admin/audit/page.tsx", KYC = "src/app/admin/kyc/[id]/page.tsx";
