@@ -502,4 +502,21 @@ export const MUTATIONS = [
     expect: "1.417 · …and the loader's own prose does not contradict it",
     suite: "console-mem",
   },
+
+  /* --------------------------------------------------------------------------------------------------------------
+   * ADDED AT STEP 1's FINISH (2026-09-18): the mutation for the ONE assertion this run added.
+   * -------------------------------------------------------------------------------------------------------------- */
+  {
+    /* ⛔ THE ONLY ASSERTION THAT CAN REPORT THIS DEFECT IS `0.throw`, WHICH IS WHY IT EXISTS. 432(e) fixes the schema
+     * state's roster at `[]` so `AdminTableEmpty` may name the cause; `null` is the FAILED-READ shape and would paint
+     * "Couldn't load the roster" over a state the page knows perfectly well. The case that would catch it reads
+     * `.rows.length`, so under this defect it THROWS during its own argument evaluation and never reaches `ok()` —
+     * before the guard added at this finish, that throw also skipped the lexicon scan and the whole source law. */
+    name: "0-throw-schema-rows · the schema state hands the page a null roster, so the case that reads its length throws",
+    file: GATE,
+    from: `  const rows: ConsoleRosterRow[] | null = schemaMissing ? [] : roster == null ? null : roster.map((bot) => {`,
+    to: `  const rows: ConsoleRosterRow[] | null = schemaMissing ? null : roster == null ? null : roster.map((bot) => {`,
+    expect: "0.throw · no behavioural case threw",
+    suite: "console-mem",
+  },
 ];
