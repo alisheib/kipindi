@@ -166,6 +166,17 @@ const FIXED_GRIDS: Record<string, string> = {
   "src/app/admin/updown/page.tsx": "one row per chain. Chains are created by an operator one at a time and every one must be visible to be controlled",
   "src/app/admin/sources/page.tsx": "the trusted-source allowlist. It grows only when a compliance officer adds a domain, and the whole allowlist must be readable in one view to be auditable",
   "src/app/admin/live/page.tsx": "its table is live matches in progress — bounded by reality, not by a limit. Its two audit feeds are deliberately a newest-few glance, and each already links to /admin/audit?category=…, which IS fully paged and filterable. A second pager here would duplicate that surface on a page an operator refreshes constantly",
+  // ⭐ BOUNDED BY AN OPERATOR-SET CEILING THE PAGE ITSELF RENDERS. The desk's roster holds one row per
+  // designated account, and the count is capped by `maxDesignatedBots` — the same ceiling the page prints
+  // beside it as "N of M" and the same one the designation service refuses against (ROSTER_FULL). So the
+  // grid cannot outgrow a number the operator chose and is looking at.
+  // ⛔ AND PAGING IT WOULD BREAK THE SECTION'S PURPOSE, which is the /admin/staff and /admin/updown reason
+  // sharpened: every one of these must be visible AT ONCE to be controlled. An account on page 2 is an
+  // account nobody pauses — and unlike a staff row, this one can be moving money while it hides.
+  // ⛔ If the ceiling is ever lifted to a number an operator cannot hold on one screen, this entry goes
+  // and the roster gains a pager with a COUNTING reader beside its paged one (AdminPagination needs a real
+  // total, and the house DAL clamps list readers at 500 — a total built from a paged reader would lie).
+  "src/app/admin/desk/page.tsx": "one row per designated account, capped by the operator-set maxDesignatedBots the page prints beside it as \"N of M\" and the designation service refuses against. Every row must be visible at once to be controlled — a row on page 2 is one nobody pauses, and this one can be moving money while it hides",
 };
 
 /**

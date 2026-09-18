@@ -836,3 +836,37 @@ bots and what keeps D19 true").
    exists.
 7. `PROGRESS.md:572`'s W6 — ruled at 527 above.
 8. `PROGRESS.md:638`'s L17 — ruled at 526 above.
+
+528. **A SHAPE RULE THAT REFUSES A STRING LITERAL WAS NARROWER THAN THE PROPERTY IT GUARDS — widened in one
+     direction, narrowed in another, and given the control it never had.** Found by the release gate, not by a
+     review: `test:layout-staleness` 1.0, `test:grid-paging` 2.2 and `test:spacing-scale` all failed on this
+     branch and passed on clean `origin/main`, and all three were invisible to Commit 7 step 1's own review
+     because that step ran the house suites and a named list rather than `test:all`. That is the finding behind
+     the finding: **a step's own suite list is not a regression gate, and only the red-by-red comparison is.**
+     - **`layout-staleness` 1.0** required each console section layout to match a regex spelling `<AdminSectionGate>`
+       with NO props and a single-line comment. Ruling 301 had given `/admin/desk`'s layout `title="Desk"`, and that
+       title is a DISCLOSURE FIX: without it `AdminSectionGate` heads the restricted panel on `/admin/desk/<id>`
+       with the raw record id, which the layout streams to any signed-in account. So the regex forced a choice
+       between a stale-value guard and a leak fix — a false choice it had created itself. The property this file
+       actually protects is that a layout may not COMPUTE a per-request value, because a layout is not re-executed
+       on a soft navigation. A string literal written in the source has no request in it and cannot go stale.
+       So the shape now admits an optional prop **only** as a double-quoted literal with no `${`, no braces and no
+       call — and **1.0b plants the dangerous spellings** (a header read, a function call, an interpolation, a bare
+       identifier, and a literal sitting beside a computed one) and requires every one to be REFUSED. ⛔ The
+       widening is only defensible because the control exists: a shape rule that has never been shown to reject
+       anything is not a guard. Measured after: 67 passed, 0 failed, with 1.0b green.
+     - **`grid-paging` 2.2** refuses any grid rendered without a pager, a declared reason or a backlog entry. The
+       desk's roster is genuinely bounded — one row per designated account, capped by the operator-set
+       `maxDesignatedBots` the page itself prints beside it as "N of M" and the designation service refuses against
+       (ROSTER_FULL) — so it belongs in `FIXED_GRIDS`, the map for bounded grids, and NOT in `UNPAGED_DEBT`, which
+       the file forbids adding to. The reason written there is the `/admin/staff` and `/admin/updown` reason
+       sharpened: every row must be visible AT ONCE to be controlled, and unlike a staff row this one can be moving
+       money while it hides on page 2. ⛔ If the ceiling is ever raised past what one screen holds, that entry goes
+       and the roster gains a pager with a COUNTING reader beside its paged one — `AdminPagination` needs a real
+       total and the house DAL clamps list readers at 500, so a total built from a paged reader would lie.
+     - **`spacing-scale`** counted 476 inverted usages against a ceiling of 475 — ONE new. Located by diffing the
+       token census of both worktrees rather than by reading: `report-pack-card.tsx` had gained a second `py-2.5`,
+       C5-6's danger box having copied it from the metadata strip below. In this project's scale `2.5` paints 10px
+       while `2` paints 12px, so the token that reads bigger paints smaller. ⛔ Fixed by changing the NEW usage to
+       `py-2`, never by raising the ceiling: the strip's own `2.5` is counted debt and the ratchet only falls. 2px
+       on a box with its own border and ground is not a visible difference; a broken ratchet is.

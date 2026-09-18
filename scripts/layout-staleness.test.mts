@@ -79,15 +79,59 @@ const allLayouts = walkLayouts("src/app").sort();
 /**
  * ⭐ E-381 §6 item 10 (2026-09-14) · THE SECTION-GATE LAYOUTS ARE A CLASS OF THEIR OWN. Each console section has a
  * layout whose whole body renders `AdminSectionGate` — the view/act gate moved there BECAUSE a section's own layout is
- * re-executed when a navigation enters it. They are verified by SHAPE below (exactly the wrapper, nothing else), so the
- * ratchet on the layouts that can freeze a value stays at the four that exist.
+ * re-executed when a navigation enters it. They are verified by SHAPE below, so the ratchet on the layouts that can
+ * freeze a value stays at the four that exist.
+ *
+ * ⛔ WHAT THE SHAPE IS ACTUALLY FOR, restated 2026-09-18 (house-bots ruling 528) because the first spelling of it was
+ * narrower than the property it guards. The finding behind this file is that a LAYOUT-COMPUTED, PER-REQUEST value
+ * freezes across a soft navigation. So what a section layout may never do is COMPUTE something: read a header, resolve
+ * a session, call a function, interpolate a variable. A STRING LITERAL written in the source cannot freeze — there is
+ * no request in it to go stale — and refusing one bought no safety while forbidding a fix that was needed elsewhere.
+ * `/admin/desk`'s layout must pass `title="Desk"`, because without it `AdminSectionGate` heads the restricted panel on
+ * `/admin/desk/<id>` with the RAW RECORD ID, which this layout streams to any signed-in account (C7-SPEC ruling 301).
+ * Choosing between a stale-value guard and a disclosure fix was a false choice created by the regex, not by the risk.
+ *
+ * ⛔ SO THE SHAPE IS WIDENED IN EXACTLY ONE DIRECTION AND NARROWED IN ANOTHER: an optional prop is allowed ONLY as a
+ * double-quoted literal with no `${`, no braces and no call; and 1.0b below PLANTS the dangerous spellings — a header
+ * read, a function call, an interpolation and a bare identifier — and requires every one of them to be REFUSED. A
+ * shape rule with no control is a rule that has never been shown to reject anything.
  */
-const SECTION_GATE_BODY = /^import \{ AdminSectionGate \} from "@\/components\/admin\/admin-section-gate";\n\n\/\*\*[^\n]*\*\/\nexport default function SectionLayout\(\{ children \}: \{ children: React\.ReactNode \}\) \{\n  return <AdminSectionGate>\{children\}<\/AdminSectionGate>;\n\}\n$/;
+const SECTION_GATE_BODY = new RegExp(
+  '^import \\{ AdminSectionGate \\} from "@/components/admin/admin-section-gate";\\n'
+  + '\\n'
+  + '/\\*\\*[\\s\\S]*?\\*/\\n'
+  + 'export default function SectionLayout\\(\\{ children \\}: \\{ children: React\\.ReactNode \\}\\) \\{\\n'
+  + '  return <AdminSectionGate(?: [a-zA-Z]+="[^"{}$]*")*>\\{children\\}</AdminSectionGate>;\\n'
+  + '\\}\\n$',
+);
 const sectionGates = allLayouts.filter((f) => f.startsWith("src/app/admin/") && f !== "src/app/admin/layout.tsx" && /AdminSectionGate/.test(read(f)));
 const layouts = allLayouts.filter((f) => !sectionGates.includes(f));
 ok(`1.0 ${sectionGates.length} console section layouts are EXACTLY the gate wrapper (they decide nothing else)`,
    sectionGates.length >= 38 && sectionGates.every((f) => SECTION_GATE_BODY.test(read(f))),
    sectionGates.filter((f) => !SECTION_GATE_BODY.test(read(f))).join(" · "));
+
+/* ⛔ 1.0b · THE CONTROL FOR 1.0's SHAPE. Without it, widening the prop above would be a rule nobody has seen reject
+   anything — and this file exists because a layout that COMPUTES is the defect. Each planted body below is the wrapper
+   with one dangerous prop spelling; every one must fail the shape. The literal form must pass, or 1.0 is vacuous. */
+const plantGate = (prop: string) =>
+  'import { AdminSectionGate } from "@/components/admin/admin-section-gate";\n'
+  + "\n/** planted */\n"
+  + "export default function SectionLayout({ children }: { children: React.ReactNode }) {\n"
+  + `  return <AdminSectionGate${prop}>{children}</AdminSectionGate>;\n`
+  + "}\n";
+const DANGEROUS_PROPS = [
+  ' title={headers().get("x-pathname")}',   // the exact defect this file is named for
+  " title={sectionTitle()}",                 // any call — a per-request value can hide behind one
+  " title={`Desk ${id}`}",                   // an interpolation
+  " title={title}",                          // a bare identifier, resolved who knows where
+  ' title="Desk" data-id={id}',              // a literal beside a computed one
+];
+const refused = DANGEROUS_PROPS.filter((p) => !SECTION_GATE_BODY.test(plantGate(p)));
+ok("1.0b · CONTROL · every computed prop spelling is REFUSED by 1.0's shape, and a plain literal is accepted — so the shape rejects what it is for",
+   refused.length === DANGEROUS_PROPS.length
+   && SECTION_GATE_BODY.test(plantGate(' title="Desk"'))
+   && SECTION_GATE_BODY.test(plantGate("")),
+   `refused ${refused.length}/${DANGEROUS_PROPS.length} · literal accepted ${SECTION_GATE_BODY.test(plantGate(' title="Desk"'))} · bare accepted ${SECTION_GATE_BODY.test(plantGate(""))}`);
 /**
  * ⛔ A RATCHET, AND IT MAY ONLY BE RAISED BY A HUMAN WHO READ THIS FILE. A new layout is a new
  * place for a per-request value to freeze, and the whole finding is that nobody thinks about that

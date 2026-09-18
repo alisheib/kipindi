@@ -56,8 +56,13 @@ export async function ReportPackCard() {
           be read to the end, so the chain, both signature slots and the state chip below are derived
           from a window that may not hold every transition. It is stated where the officer looks
           FIRST, because everything under it is the thing they must not trust. */}
+      {/* ⛔ `py-2`, NOT the `py-2.5` of the metadata strip this box was first copied from. This project's
+          spacing scale is INVERTED at that key — 2.5 paints 10px while 2 paints 12px — so the token that
+          reads bigger paints smaller, and `test:spacing-scale` ratchets that backlog DOWNWARD: the strip's
+          own 2.5 is counted debt, and a NEW one may not be added. 12px against 10px on a box with its own
+          border and ground is not a visible difference; a broken ratchet is. */}
       {pack.historyIncomplete && (
-        <div className="mb-3 flex items-start gap-2 rounded-md border border-danger-border bg-danger-bg px-3 py-2.5 text-body-sm text-danger-fg">
+        <div className="mb-3 flex items-start gap-2 rounded-md border border-danger-border bg-danger-bg px-3 py-2 text-body-sm text-danger-fg">
           <I.alertCircle s={15} className="mt-0.5 shrink-0" />
           <div>
             <p className="font-semibold">{PACK_HISTORY_INCOMPLETE_LINE}</p>
