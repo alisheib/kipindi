@@ -2,7 +2,9 @@
  * qa:house-bots-visual — the desk's own visual gate (C7-SPEC rulings 318, 374, 404, 407, 419; §5's capture list).
  *
  *   KP_BASE=http://127.0.0.1:3021 npm run qa:house-bots-visual
- *   KP_BASE=… KP_ROUTES=/admin/desk KP_WIDTHS=360,1280 npm run qa:house-bots-visual
+ *   KP_BASE=… KP_ROUTES=/admin/desk KP_WIDTHS=360,1280 npm run qa:house-bots-visual   # KP_ROUTES OVERRIDES the
+ *   derived population — with it unset the routes are every tab of `CONSOLE_TABS`, read from the section's own
+ *   route module, so a tab added by a later step is inside this gate on the day its panel lands (ruling 539).
  *
  * ⛔ IT DRIVES A LOCAL `next start` AND NOTHING ELSE. `scripts/live/harness.mjs` defaults to production and holds
  * Ali's own console password; signing in with it would revoke his live session (50pick keeps ONE live session per
@@ -35,10 +37,10 @@
  * Tiles are VIEWPORT tiles, never `fullPage`, written under `KP_SHOTS` (default `.qa-house-bots/`, gitignored by the
  * `.qa-` prefix rule). Evidence is regenerable and stays out of the tracked tree (W20).
  */
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { chromium } from "playwright";
-import { houseHits, consoleNeutralRegExp, CONSOLE_EXTRA_SAMPLES } from "./lib/house-bot-vocabulary.mjs";
+import { houseHits, consoleNeutralRegExp, CONSOLE_EXTRA_SAMPLES, CONSOLE_BENIGN_SAMPLES } from "./lib/house-bot-vocabulary.mjs";
 
 const BASE = process.env.KP_BASE ?? "http://127.0.0.1:3021";
 if (!/^https?:\/\/(127\.0\.0\.1|localhost|\[::1\])(:\d+)?$/.test(BASE)) {
@@ -46,7 +48,34 @@ if (!/^https?:\/\/(127\.0\.0\.1|localhost|\[::1\])(:\d+)?$/.test(BASE)) {
   process.exit(2);
 }
 const WIDTHS = (process.env.KP_WIDTHS ?? "360,640,768,1024,1280,1920").split(",").map((n) => Number(n.trim())).filter(Boolean);
-const ROUTES = (process.env.KP_ROUTES ?? "/admin/desk").split(",").map((s) => s.trim()).filter(Boolean);
+/**
+ * ⛔ THE ROUTE POPULATION IS THE SECTION'S OWN TAB LIST, READ FROM DISK (replan ruling 539, hole 2).
+ * It was the single typed string "/admin/desk", so the entire limits tab — its five usage rows, its whole
+ * limits list, its `AdminLoadError` branches — went through NONE of §5.1, §5.3, §5.4 or §5.6, and the three
+ * labels naming the feature's own mechanism were painted for a day on the one surface this gate exists to keep
+ * neutral. The instrument that reads RENDERED text had never visited the page that was leaking.
+ * ⛔ IT IS PARSED, NOT IMPORTED, because this file is `.mjs` and `console-routes.ts` is TypeScript — and it is
+ * REFUSED rather than defaulted when the parse finds nothing: a derived population that silently falls back to a
+ * typed one is the typed one, with a comment claiming otherwise.
+ */
+function consoleRoutesFromSource() {
+  const src = readFileSync("src/lib/house-bot/console-routes.ts", "utf8");
+  const route = /export const CONSOLE_ROUTE = "([^"]+)"/.exec(src)?.[1] ?? "";
+  const tabsRaw = /export const CONSOLE_TABS = \[([^\]]*)\]/.exec(src)?.[1] ?? "";
+  const dflt = /export const DEFAULT_TAB: ConsoleTab = "([^"]+)"/.exec(src)?.[1] ?? "";
+  const tabs = [...tabsRaw.matchAll(/"([^"]+)"/g)].map((m) => m[1]);
+  if (!route || !dflt || tabs.length === 0 || !tabs.includes(dflt)) return null;
+  return tabs.map((t) => (t === dflt ? route : `${route}?tab=${t}`));
+}
+const DERIVED_ROUTES = consoleRoutesFromSource();
+if (!process.env.KP_ROUTES && !DERIVED_ROUTES) {
+  console.error("REFUSED — qa:house-bots-visual could not read CONSOLE_ROUTE/CONSOLE_TABS/DEFAULT_TAB out of src/lib/house-bot/console-routes.ts.");
+  process.exit(2);
+}
+const ROUTES = process.env.KP_ROUTES
+  ? process.env.KP_ROUTES.split(",").map((s) => s.trim()).filter(Boolean)
+  : DERIVED_ROUTES;
+console.log(`routes (${process.env.KP_ROUTES ? "KP_ROUTES" : "derived from CONSOLE_TABS"}): ${ROUTES.join(" ")}`);
 const SHOTS = process.env.KP_SHOTS ?? ".qa-house-bots";
 const PHONE = "+255700000000";
 const PASSWORD = process.env.KP_ADMIN_PASSWORD ?? "QaAdmin2026!";
@@ -99,8 +128,28 @@ try {
          still comes after an explicit settle, so a late paint is not caught mid-frame. */
       const resp = await p.goto(BASE + route, { waitUntil: "load", timeout: 60_000 });
       if (!resp || /\/auth\//.test(p.url())) { nm(`${route} @${width}`, `landed on ${p.url()}`); await p.close(); continue; }
-      await p.waitForSelector("[data-section-rail], .admin-tbl, [data-field-measure]", { timeout: 30_000 }).catch(() => null);
-      await p.waitForTimeout(600);
+      /* ⛔ THE DATA WAIT DECIDES WHETHER THIS TILE IS MEASURED AT ALL, AND IT MAY NOT SWALLOW ITS OWN TIMEOUT
+         (replan ruling 540(b)). It was `.catch(() => null)`, so a page whose gated reader never returned was
+         screenshotted anyway and all twenty checks below ran against an empty shell — zero clipped figures, zero
+         short controls, zero house words, and every one of them a PASS. A page that never painted its data is
+         NOT MEASURED, which is a report, not a verdict.
+         ⛔ AND IT IS `[data-section-rail]` ALONE. The three-way OR admitted `.admin-tbl` and
+         `[data-field-measure]` — nodes the admin chrome paints on pages that never render the console's rail at
+         all — so the wait could be satisfied by something that is not this section. `Tabs` marks a rail whose
+         options own a URL with `data-section-rail`, and the console renders it only after its gated reader
+         returns, on EVERY tab and in the schema-missing state alike. */
+      try {
+        await p.waitForSelector("[data-section-rail]", { timeout: 30_000 });
+      } catch {
+        nm(`${route} @${width}`, "the section rail never painted, so the page's data never landed — no check below would have measured anything");
+        await p.close();
+        continue;
+      }
+      /* ⛔ A CONDITION, NOT A SLEEP MARGIN (the standing trap: wait on the clock, never on a margin). Web fonts
+         decide every text metric this gate measures, and a tile taken before they load measures the fallback
+         face; two consecutive frames after that is the paint actually settling. `waitForTimeout(600)` asserted
+         neither and would have been wrong on a slower machine in exactly the direction that reads as a pass. */
+      await p.evaluate(() => document.fonts.ready.then(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))));
       // The dev overlay is never part of a tile.
       await p.addStyleTag({ content: "nextjs-portal{display:none!important}" });
       const tag = `${route.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "") || "root"}-${width}`;
@@ -190,8 +239,13 @@ try {
         const scrollable = region ? region.scrollWidth > region.clientWidth + 1 : false;
         /* The console's own content region, for 453's stricter scan — the sidebar's "House" nav label is not ours. */
         const own = document.querySelector("main") ?? document.body;
-        const attrs = [...own.querySelectorAll("*")].flatMap((el) =>
-          ["aria-label", "title", "placeholder", "alt"].map((a) => el.getAttribute(a)).filter(Boolean));
+        /* ⛔ EVERY `aria-*` ATTRIBUTE, DERIVED FROM THE NODE (ruling 453 names `aria-*`, not four of them). The
+           list was hand-typed, and C7 step 3 shipped `aria-valuetext` on every usage bar carrying server copy —
+           a sentence written by the gated reader, outside this scan on the day it landed. */
+        const attrs = [...own.querySelectorAll("*")].flatMap((el) => [
+          ...[...el.attributes].filter((a) => a.name.startsWith("aria-")).map((a) => a.value),
+          ...["title", "placeholder", "alt"].map((a) => el.getAttribute(a)),
+        ].filter(Boolean));
         const emptyBoxes = [...document.querySelectorAll("table.admin-tbl tbody td[colspan]")].filter(vis).map((td) => {
           const r = td.querySelector("div")?.getBoundingClientRect() ?? td.getBoundingClientRect();
           return { left: Math.round(r.left), right: Math.round(r.right) };
@@ -221,8 +275,15 @@ try {
         const hits453 = [...subject.matchAll(neutral)].map((m) => m[0]);
         ok(`§5.6 ${route} @${width} · ⛔ RULING 453 · neither the console's own text NOR any of its aria-label/title/placeholder/alt names the feature`,
           hits453.length === 0, hits453.slice(0, 6).join(","));
-        ok(`§5.6 ${route} @${width} · CONTROL · the 453 scan fires on each of the words it adds, and the attributes were really collected`,
-          CONSOLE_EXTRA_SAMPLES.every((s) => consoleNeutralRegExp().test(s)) && facts.attrs.length > 0, `${facts.attrs.length} attributes`);
+        /* ⛔ BOTH DIRECTIONS, AND A MEASURED FLOOR (ruling 539; finding M9). `> 0` is satisfied by one stray
+           `alt`; this console paints an `aria-label` on the rail, on the switch and on every usage bar, plus each
+           bar's `aria-valuetext`. And a lexicon widened to a bare stem is worth nothing until it has been shown
+           to LET AN INNOCENT WORD THROUGH. */
+        ok(`§5.6 ${route} @${width} · CONTROL · the 453 scan fires on every word it adds, does NOT fire on an innocent look-alike, and really collected this page's aria-* attributes`,
+          CONSOLE_EXTRA_SAMPLES.every((s) => consoleNeutralRegExp().test(s))
+            && CONSOLE_BENIGN_SAMPLES.every((s) => !consoleNeutralRegExp().test(s))
+            && facts.attrs.length >= 6,
+          `${facts.attrs.length} attributes · benign hits ${JSON.stringify(CONSOLE_BENIGN_SAMPLES.filter((s) => consoleNeutralRegExp().test(s)))}`);
       }
       if (facts.firstCells.length) {
         const [subject, first, second] = facts.firstCells;

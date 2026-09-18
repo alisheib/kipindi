@@ -608,11 +608,17 @@ export async function houseRosterForConsole(
 /**
  * ⛔ THE CONSOLE'S OWN LABEL FOR A LIMIT, WHERE `FIELD_META`'s CARRIES A WORD RULING 453 FORBIDS (432(f), amended).
  *
- * MEASURED 2026-09-18 against `scripts/lib/house-bot-vocabulary.mjs`: four `FIELD_META` labels and one section name
+ * MEASURED 2026-09-18 against `scripts/lib/house-bot-vocabulary.mjs`: seven `FIELD_META` labels and one section name
  * are unrenderable on this section. 432(f) named three of them (`maxDesignatedBots`, `gCapStaffChosenPerDay`,
  * `gTargetsMaxActive`, each on "bots") and MISSED the one ruling 364 requires a usage row for —
  * `gCapStaffChosenDailyTzs`, "Staff-chosen daily limit", where the needle is `staff[- ]?chosen`, a word of the SHARED
  * vocabulary and not one of 453's four. The section name "Staff-chosen" is the same word again.
+ * ⛔ AND IT MISSED THREE MORE, WHICH WERE PAINTED LIVE ON THE TAB (replan ruling 539): the two `gCounterPerPlayer*`
+ * labels and `gStaffChosenMaxCounterpartyShare`'s. 432(f) audited `FIELD_META` against the SAME regex that was
+ * letting them through, so an audit and its subject shared one defect. The map's exhaustiveness is no longer a
+ * count anybody typed: `test:house-bot-console` 1.364 derives it — every limit field whose `FIELD_META` label
+ * carries a word gets an entry here, and every entry here must replace a label that really does carry one, so an
+ * override for an already-neutral label is reported as loudly as a missing one.
  *
  * ⛔ WHY AN OVERRIDE AND NOT A REWRITE OF `FIELD_META`. Those labels are also the engine's and the admin bell's
  * internal vocabulary, which D19 exempts (an alert about a bot goes to admins only) and which no player-facing or
@@ -627,6 +633,17 @@ const CONSOLE_LIMIT_LABEL: Readonly<Record<string, string>> = {
   gCapStaffChosenPerDay: "Targeted and manual stakes per day (all accounts)",
   gCapStaffChosenDailyTzs: "Targeted and manual daily limit",
   gTargetsMaxActive: "Max active targets (all accounts)",
+  /* ⛔ THE THREE THAT NAMED THE MECHANISM ITSELF (replan ruling 539). Their `FIELD_META` labels read
+     "Counters per player per day", "Counter TZS per player per day" and "Counterparty share limit" — the
+     feature's own mechanism, painted on the one surface 453 exists to keep neutral, in a public repository where a
+     screenshot is the disclosure channel. They passed because the lexicon spelled the word as `counter[- ]?stakes?`
+     and required "stake" to follow; the stem is bare now, and these are the labels the widened guard reported.
+     ⛔ THE KEYS ARE IDENTIFIERS, NOT STRING LITERALS, which is what keeps `gStaffChosenMaxCounterpartyShare` off
+     4.453's own scan — the same reason `TARGETED_DAILY_TZS_FIELD` below is selected by PROPERTY rather than typed:
+     as a VALUE that field id is a literal, and a literal carrying the word is exactly what the guard reads. */
+  gCounterPerPlayerPerDay: "Stakes against one player per day",
+  gCounterPerPlayerTzsPerDay: "TZS against one player per day",
+  gStaffChosenMaxCounterpartyShare: "One player’s share limit",
 };
 /** The same, for `FIELD_META`'s section names. ⛔ The KEY is READ from the field table, never typed: the word it
  *  replaces is itself a needle, so typing it here would put it in a string literal of the module 4.453 scans. */

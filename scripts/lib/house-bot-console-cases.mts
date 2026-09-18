@@ -19,7 +19,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import ts from "typescript";
 import { decomment } from "./decomment.mts";
-import { houseHits, consoleNeutralRegExp, HOUSE_WORD_SAMPLES, CONSOLE_EXTRA_SAMPLES } from "./house-bot-vocabulary.mjs";
+import { houseHits, consoleNeutralRegExp, HOUSE_WORD_SAMPLES, CONSOLE_EXTRA_SAMPLES, CONSOLE_BENIGN_SAMPLES } from "./house-bot-vocabulary.mjs";
 /* ⛔ THE DECLARED MUTATIONS ARE READ BY THIS SUITE, so an `expect` that names no label it can print is reported HERE,
  * by a suite that runs every day, instead of by a drive nobody has run (§4's roll-call at the foot of this file). */
 import { MUTATIONS as DECLARED_MUTATIONS } from "../anchors/house-bot-console.anchors.mjs";
@@ -56,6 +56,8 @@ const SECTION = "src/app/admin/desk";
 const PAGE = `${SECTION}/page.tsx`;
 const LAYOUT = `${SECTION}/layout.tsx`;
 const LOADING = `${SECTION}/loading.tsx`;
+/** ⭐ C7 step 3's own client module — NAMED, because 513's floor is a count and a count cannot notice which file left. */
+const LIVE = `${SECTION}/desk-live.tsx`;
 const GATE = "src/lib/server/house-console-read.ts";
 const ROUTES_MODULE = "src/lib/house-bot/console-routes.ts";
 const read = (rel: string) => readFileSync(join(ROOT, rel), "utf8");
@@ -933,11 +935,27 @@ section("§2 · the strip, the band, the roster and every failure");
     const painted = [...u3.limits.flatMap((l: Any) => [l.name, l.section, l.value]), ...u3.usage.map((r: Any) => r.name)];
     ok("1.364 · 453 · every limit name, section and value the panel paints is neutral, over the WHOLE limit table",
       painted.length >= 40 && painted.every((s: string) => !NEUTRAL.test(s)), j(painted.filter((s: string) => NEUTRAL.test(s))));
-    ok("1.364 · CONTROL · the four `FIELD_META` labels and the one section name this overrides really DO carry a word — so the override is doing the work",
-      ["maxDesignatedBots", "gCapStaffChosenPerDay", "gCapStaffChosenDailyTzs", "gTargetsMaxActive"]
-        .every((f) => NEUTRAL.test(R.FIELD_META[f].label) && !NEUTRAL.test(GATEM.consoleLimitLabel(f)))
+    /* ⛔ THE OVERRIDE POPULATION IS DERIVED, IN BOTH DIRECTIONS (replan ruling 539). It was a list of FOUR typed
+     * here, so the three labels `/admin/desk?tab=limits` was actually painting — the two `gCounterPerPlayer*` and
+     * `gStaffChosenMaxCounterpartyShare` — were outside the control that exists to find exactly them, and only a
+     * reviewer's eyes could have found them. NEEDS is every limit field whose `FIELD_META` label carries a word;
+     * OVERRIDDEN is every field the console actually renames. The two sets must be EQUAL: a missing override
+     * paints the word, and an override for an already-neutral label is a rename nobody ruled. */
+    const LIMITS = R.LIMIT_FIELDS as readonly string[];
+    const NEEDS = LIMITS.filter((f) => NEUTRAL.test(R.FIELD_META[f].label));
+    const OVERRIDDEN = LIMITS.filter((f) => GATEM.consoleLimitLabel(f) !== R.FIELD_META[f].label);
+    ok("1.364 · CONTROL · every `FIELD_META` label this overrides really DOES carry a word, and every label that carries one IS overridden — the population is derived, never a typed four",
+      NEEDS.length >= 7 && j(NEEDS) === j(OVERRIDDEN)
+        && OVERRIDDEN.every((f) => !NEUTRAL.test(GATEM.consoleLimitLabel(f)))
         && NEUTRAL.test(R.FIELD_META.gCapStaffChosenDailyTzs.section),
-      j(["maxDesignatedBots", "gCapStaffChosenPerDay", "gCapStaffChosenDailyTzs", "gTargetsMaxActive"].map((f) => [R.FIELD_META[f].label, GATEM.consoleLimitLabel(f)])));
+      j({ needs: NEEDS, overridden: OVERRIDDEN, missing: NEEDS.filter((f) => !OVERRIDDEN.includes(f)), spurious: OVERRIDDEN.filter((f) => !NEEDS.includes(f)) }));
+    /* ⛔ AND THE THREE RULING 539 FOUND ARE NAMED, so a future widening of the lexicon cannot quietly drop them
+     * out of NEEDS and take the assertion above green with it. Their `FIELD_META` labels are the mechanism's
+     * own name; the console's are not. */
+    ok("1.364 · 539 · the three labels that were painting the mechanism on the limits tab are each overridden, and each original still reads as a hit",
+      ["gCounterPerPlayerPerDay", "gCounterPerPlayerTzsPerDay", "gStaffChosenMaxCounterpartyShare"]
+        .every((f) => NEUTRAL.test(R.FIELD_META[f].label) && !NEUTRAL.test(GATEM.consoleLimitLabel(f)) && GATEM.consoleLimitLabel(f) !== R.FIELD_META[f].label),
+      j(["gCounterPerPlayerPerDay", "gCounterPerPlayerTzsPerDay", "gStaffChosenMaxCounterpartyShare"].map((f) => [R.FIELD_META[f].label, GATEM.consoleLimitLabel(f)])));
     STATES.push(["limits-panel", u3], ["limits-unset-required", u2]);
   }
 
@@ -1117,9 +1135,18 @@ section("§2 · the strip, the band, the roster and every failure");
 
 section("§3 · nothing the desk renders names the feature, in ANY state");
 {
-  /** Every COPY field of one painted view. ⛔ `label`, `handle` and `id` are a record's own VALUES, not copy. */
+  /**
+   * Every COPY field of one painted view. ⛔ `label`, `handle` and `id` are a record's own VALUES, not copy — they
+   * are nested inside a row and this sweep never reaches them.
+   * ⛔ THE TOP LEVEL IS SWEPT, NOT TYPED. It was a hand-written list and it had already stopped covering:
+   * `rosterFullPlain` — the sentence C7 step 3 paints at `page.tsx` when the limits panel is not linkable — was
+   * added to the view model and never added here, so 453's strictest scan did not read it. Every string-valued
+   * key of the shell is now in the population on the day it lands, hrefs and the day key included: 453 names
+   * route metadata too, and a neutral value costs nothing to scan.
+   */
   const copyOf = (view: Any): string[] => [
-    view.stateSentence, view.rosterFullReason, view.actionReason, view.switchReason, view.empty?.title, view.empty?.body,
+    ...Object.values(view).filter((v: unknown): v is string => typeof v === "string"),
+    view.empty?.title, view.empty?.body,
     ...(view.tiles ?? []).flatMap((t: Any) => [t.label, t.value, t.delta]),
     ...(view.rows ?? []).flatMap((r: Any) => [r.statusWord, r.lossCell.text, r.exposureCell.text, r.betsCell.text, r.products,
       ...[r.lossCell, r.exposureCell, r.betsCell].flatMap((c: Any) => c.halves.flatMap((h: Any) => [h.word, h.suffix, c.edgeText]))]),
@@ -1129,7 +1156,6 @@ section("§3 · nothing the desk renders names the feature, in ANY state");
     ...(view.usage ?? []).flatMap((r: Any) => [r.name, r.captionText, r.unsetCaption, r.edgeText,
       ...r.halves.flatMap((h: Any) => [h.word, h.suffix])]),
     ...(view.limits ?? []).flatMap((l: Any) => [l.section, l.name, l.value, l.caption]),
-    view.formReason,
     view.chip?.word,
   ].filter((s: unknown): s is string => typeof s === "string");
 
@@ -1140,7 +1166,7 @@ section("§3 · nothing the desk renders names the feature, in ANY state");
   /* ⛔ THE FLOOR IS OVER THE STATES AND THE STRINGS BOTH: a scan of one state, or of a view whose branches are all
    * null, is not a scan. Sixteen states were produced above; each carries at least a sentence and four tile labels. */
   ok("3.453 · not one painted string of ANY state carries a house-vocabulary word, or the words bot, house, liquidity or counter-stake",
-    scanned.length >= 22 && total >= 260 && hits.length === 0, j({ states: scanned.length, scanned: total, hits }));
+    scanned.length >= 23 && total >= 1434 && hits.length === 0, j({ states: scanned.length, scanned: total, hits }));
   /* ⛔ AND THE BRANCHES MOST LIKELY TO CARRY ONE ARE PROVEN PRESENT IN THE SCAN, by name — a state list that quietly
    * stopped producing the OFF sentence or an empty state would otherwise read as compliance. */
   const seen = new Set(scanned.flatMap(([, c]) => c));
@@ -1150,10 +1176,24 @@ section("§3 · nothing the desk renders names the feature, in ANY state");
       && [...seen].some((s) => /The roster is full/.test(s))
       && seen.has("n/a") && seen.has("No accounts yet") && seen.has("No roster"),
     j({ states: scanned.map(([n]) => n) }));
-  ok("3.453.c1 · CONTROL · the same test fires on each of the shared vocabulary's own samples, and on the words 453 adds",
+  /* ⛔ THE SWEEP REALLY IS A SWEEP. A `copyOf` that quietly returned only the keys it used to type would pass
+   * every assertion above, so the keys the typed list MISSED are named here — and nothing else names them. */
+  {
+    const full = await GATEM.houseRosterForConsole(OFFICER, "/admin/desk");
+    const sweptKeys = Object.keys(full).filter((k) => typeof (full as Any)[k] === "string");
+    ok("3.453 · CONTROL · the top-level sweep reaches every string key of the shell, `rosterFullPlain`, the two hrefs and the day key included — the four a typed list had left out",
+      sweptKeys.length >= 5 && sweptKeys.every((k) => copyOf(full).includes((full as Any)[k]))
+        && copyOf(full).includes(full.limitsFirstUnsetHref) && copyOf(full).includes(full.dayKey),
+      j({ sweptKeys, copied: copyOf(full).length }));
+  }
+  ok("3.453.c1 · CONTROL · the same test fires on each of the shared vocabulary's own samples and on the words 453 adds, and does NOT fire on an innocent word that merely contains one",
     HOUSE_WORD_SAMPLES.every((s: string) => NEUTRAL.test(s)) && CONSOLE_EXTRA_SAMPLES.every((s: string) => NEUTRAL.test(s))
+      /* ⛔ BOTH DIRECTIONS (ruling 539). The stem widened from `counter[- ]?stakes?` to the bare word, and a
+       * widening with no accept side is the guard that cries wolf until somebody switches it off. */
+      && CONSOLE_BENIGN_SAMPLES.every((s: string) => !NEUTRAL.test(s))
       && !NEUTRAL.test("The desk is off. Nothing will be staked.")
-      && !NEUTRAL.test("nothing can be staked until this limit is set"), "");
+      && !NEUTRAL.test("nothing can be staked until this limit is set"),
+    j(CONSOLE_BENIGN_SAMPLES.filter((s: string) => NEUTRAL.test(s))));
 }
 
 /* ════════════════════════════════════════════════════════════════════════════════════════════════════════════════
@@ -1176,8 +1216,8 @@ if (STORE === "memory") {
    * is refused outright rather than quietly dropped. Every number is PRINTED, so the next session raises the floor to
    * what a run measured instead of guessing at one. ⛔ A floor only ever rises. */
   ok("4.453 · ⛔ RULING 453 · no string that can reach the DOM — in the section OR in the reader that writes its copy — carries a house word, in text, aria-*, title, placeholder or route metadata",
-    allLits.length >= 120 && litHits.length === 0
-      && sectionFiles.length >= 3 && [PAGE, LAYOUT, LOADING].every((f) => sectionFiles.includes(f))
+    allLits.length >= 297 && litHits.length === 0
+      && sectionFiles.length >= 4 && [PAGE, LAYOUT, LOADING, LIVE].every((f) => sectionFiles.includes(f))
       && sectionUnscannable.length === 0 && lexiconFiles.length === sectionFiles.length + 1,
     j({ files: lexiconFiles.length, section: sectionFiles.length, walked: sectionAllFiles, unscannable: sectionUnscannable, literals: allLits.length, hits: litHits }));
   /* ⛔ AND THE JSX PROSE IS PROVABLY IN THE POPULATION. `ts.isStringLiteral` does not match a `JsxText` node, so
