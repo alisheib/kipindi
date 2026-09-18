@@ -572,12 +572,17 @@ if (STORE === "memory") {
     const anchorDir = join(ROOT, "scripts/anchors");
     const anchorFiles = readdirSync(anchorDir).filter((f) => f.startsWith("house") && f.endsWith(".anchors.mjs")).sort();
     const keys = new Map<string, number>();
+    /** Which keys each anchors FILE declares — the population ruling 518's pin below reads. */
+    const keysByFile = new Map<string, Set<string>>();
     for (const f of anchorFiles) {
       const mod: Any = await import(pathToFileURL(join(anchorDir, f)).href);
+      const here = new Set<string>();
       for (const d of (mod.MUTATIONS ?? []) as DeclaredMutation[]) {
         const k = d.suite ?? "(none)";
         keys.set(k, (keys.get(k) ?? 0) + 1);
+        here.add(k);
       }
+      keysByFile.set(f, here);
     }
     const declared = [...keys.keys()].sort();
     const problems: string[] = [];
@@ -589,6 +594,26 @@ if (STORE === "memory") {
     for (const k of [...Object.keys(ROLL_CALL_SITES), ...Object.keys(ROLL_CALL_OWED)]) {
       if (!keys.has(k)) problems.push(`suite key ${k} is listed but appears in no house anchors file (the table is stale)`);
     }
+    /**
+     * ⛔ RULING 518 · A DECLARATION THAT LOSES ITS `suite` FIELD LEAVES EVERY ROLL-CALL, AND NOTHING SAID SO.
+     * MEASURED 2026-09-18 on the real tree, before this pin existed: deleting the `suite` line from ONE
+     * `house-bot-console.anchors.mjs` declaration left `test:house-bot-console` 1.318 GREEN at 154 (the declaration is no
+     * longer "mine") AND left 0.505 GREEN at 117 (its key became "(none)", which `house-book` and `house-page`
+     * legitimately own, since those two files are single-suite). So the declaration was audited by nobody, and
+     * `red:house-bot-console` would have thrown `unknown suite undefined` inside C5-8's single batch run — the
+     * WRONG-ASSERTION class one level up, in the guard written to end it. The rule is STRUCTURAL, so it needs no second
+     * typed list and cannot drift: a suiteless declaration is readable only in a file whose declarations are ALL
+     * suiteless.
+     */
+    const suitelessProblems = (byFile: ReadonlyMap<string, ReadonlySet<string>>): string[] => {
+      const out: string[] = [];
+      for (const [f, set] of [...byFile].sort((a, b) => a[0].localeCompare(b[0]))) {
+        if (!set.has("(none)") || set.size === 1) continue;
+        out.push(`${f} declares a mutation with NO suite field beside ${[...set].filter((k) => k !== "(none)").sort().join(", ")} — a suiteless declaration is readable only in a single-suite anchors file, so here no roll-call audits it and red:* cannot resolve its suite`);
+      }
+      return out;
+    };
+    problems.push(...suitelessProblems(keysByFile));
     const audited = declared.filter((k) => Object.prototype.hasOwnProperty.call(ROLL_CALL_SITES, k)).reduce((n, k) => n + (keys.get(k) ?? 0), 0);
     const owed = declared.filter((k) => !Object.prototype.hasOwnProperty.call(ROLL_CALL_SITES, k)).reduce((n, k) => n + (keys.get(k) ?? 0), 0);
     ok("0.505 · ⛔ RULING 505 · every suite key declared in ANY scripts/anchors/house*.anchors.mjs — the files walked from disk, never typed — either HAS an expect-drift roll-call or is recorded as owed with its reason, and neither table names a key no anchors file declares",
@@ -607,6 +632,13 @@ if (STORE === "memory") {
         && detect(keys, { ...ROLL_CALL_SITES, "ghost-mem": "nowhere" }, ROLL_CALL_OWED).includes("stale:ghost-mem")
         && detect(keys, ROLL_CALL_SITES, ROLL_CALL_OWED).length === 0,
       j({ withNewKey: detect(withNewKey, ROLL_CALL_SITES, ROLL_CALL_OWED), real: detect(keys, ROLL_CALL_SITES, ROLL_CALL_OWED) }));
+    /* ⛔ AND THE CONTROL FOR 518, over the same detector: one multi-suite file given a suiteless declaration. */
+    const mixed = new Map<string, Set<string>>();
+    for (const [f, set] of keysByFile) mixed.set(f, new Set(set));
+    mixed.set("house-bot-console.anchors.mjs", new Set(["console-mem", "(none)"]));
+    ok("0.505.c2 · CONTROL · ⛔ 518 · a declaration that LOST its suite field inside a MULTI-suite anchors file is reported, and the six real files are reported clean",
+      suitelessProblems(mixed).some((p) => p.startsWith("house-bot-console.anchors.mjs")) && suitelessProblems(keysByFile).length === 0,
+      j({ mixed: suitelessProblems(mixed), real: suitelessProblems(keysByFile) }));
   });
 }
 

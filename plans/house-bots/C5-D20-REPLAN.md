@@ -671,3 +671,54 @@ bots and what keeps D19 true").
          `listRegister` does, and step 4's question about it is only whether a PRODUCT caller is still wanted.
        · `lastStoppedAt` — three occurrences in the house DAL and **zero anywhere else in the repository**: no `src/`
          caller, no `scripts/` caller, no case. It is the one of the two that is genuinely undecided.
+
+518. **The `expect`-drift roll-call's own population misses a declaration that LOSES its `suite` field, and `0.505` now
+     refuses one.** Ruling 505 gave the roll-call six call sites and 0.505 walks the anchors files from disk so a seventh
+     suite key cannot arrive unaudited. MEASURED on the real tree, 2026-09-18, by deleting the `suite:` line from ONE
+     declaration in `scripts/anchors/house-bot-console.anchors.mjs`:
+     - `test:house-bot-console` 1.318 stayed GREEN at **154 passed, 0 failed** — the declaration is no longer one of its
+       own, so the roll-call classes it under `otherSuites` and never looks at its `expect`.
+     - `test:house-bot-reports` 0.505 stayed GREEN at **117 passed, 0 failed** — the key became `"(none)"`, which
+       `house-book` and `house-page` legitimately own because those two anchors files are single-suite.
+     So the declaration was audited by NOBODY and nothing said so, and `red:house-bot-console` (`scripts/red-house-bot-console.mjs:55`,
+     `if (!s) throw new Error(...)`) would have THROWN `unknown suite undefined` inside C5-8's single batch run — the
+     WRONG-ASSERTION class one level up, inside the guard written to end it. ⛔ The fix is STRUCTURAL, so it needs no
+     second typed list and cannot drift: **a suiteless declaration is readable only in a file whose declarations are ALL
+     suiteless.** 0.505 now walks key-sets PER FILE and reports any file that mixes `"(none)"` with a real key;
+     `0.505.c2` plants exactly that mix on `house-bot-console.anchors.mjs` and requires the real six files to be clean.
+     Seen red on the real tree, then restored; `test:house-bot-reports` memory 117 → **118** in the same commit.
+
+519. **Every house suite outside the two-store runner gets a MEASURED floor, and three of them could print "ALL PASS" on
+     ZERO assertions.** Ruling 515 raised every `minPass` the runner carries and says in its own sentence that *every*
+     house suite's floor is checked against its last printed count — but seven house suites do not go through
+     `runTwoStores` and so had no floor to raise. Measured at `670a0bc1`:
+     - **No floor and no zero-guard at all** — `test:house-bot-disclosure` (29), `test:house-bot-holder-lifecycle` (16)
+       and `test:house-solvency` (21) end at `process.exit(fail === 0 ? 0 : 1)`, so a run in which every case silently
+       stopped executing printed "ALL PASS — 0 passed, 0 failed" and exited 0. This is the suite-never-executed class,
+       live in three suites, one of them the D19 absence proof.
+     - **A zero-guard only** — `test:house-bot-seam` (98) and `test:house-bot-rules` (521) refuse `pass + fail === 0`,
+       so they could lose all but one case and still exit 0.
+     - ⚠️ **And the previous pass's report was WRONG about two of them.** It listed `test:house-book` (58) and
+       `test:house-page` (89) as having "no count floor at all". They carry an INDIRECT one: ruling 505's
+       `expectDriftControl(input, 50)` / `(input, 80)` fails unless the run emitted at least 50 / 80 labels. That is a
+       real floor and it is 34% and 10% below the measured counts, so they get an explicit one too — but the record must
+       not say a guard is absent when it is present and merely loose.
+     Each of the seven gains `MIN_ASSERTIONS`, set to the count its own green run PRINTED at `670a0bc1`, checked before
+     the exit and exiting **4** with the count and the floor named. ⛔ Each was SEEN RED first with the floor one above
+     the measured count (all seven exited 4), then set to the measured count and re-run green. A floor only ever RISES.
+     `test:house-bot-migrations` is not in this pass: no file it loads changed and it boots Postgres many times; its
+     floor is owed at the next run that measures it.
+
+520. **The ISO 27001 entry's own measurement understates who writes house audit rows, and a regulator-facing record may
+     not understate.** Ruling 501 said `targetType: "HouseBot"` comes "from three live call sites"; the pass that wrote
+     the entry could not reproduce that (it grepped the literal `targetType: "HouseBot"`, found two) and wrote instead
+     that the value is *"written by `src/lib/server/house-bot/press-audit.ts`"* — one module. MEASURED at this head, the
+     writers are FOUR and the target types are THREE: `designation.ts` (`houseAudit`, targets `HouseBot` and `User`),
+     `outcomes.ts` (`engineAudit`, targets `HouseBot` and **`HouseBotControl`** — `kill-switch.ts:80`,
+     `outcomes.ts:207`, `planner.ts:241`), `holder-hook.ts:227` and `press-audit.ts:33`. `HouseBotControl` names the
+     feature in the export's `target` column exactly as `HouseBot` does, and the entry named neither it nor three of the
+     four writers. ⛔ **The DECISION is unchanged and is what makes this safe:** the exclusion is by ACTION name
+     (`Object.keys(HOUSE_AUDIT)`, 31 names, re-measured at this head), and every row from every one of those writers
+     carries a `house_bot.*` action — so excluding by action covers all four writers and all three target types, which
+     naming one writer would have hidden rather than fixed. The entry is corrected in place with a dated note, and 501's
+     "three live call sites" is recorded as the figure that was wrong in both directions.

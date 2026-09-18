@@ -219,4 +219,18 @@ const plantedIrrelevant = `await db.user.update(userId, { avatarDataUrl: null })
 ok("4.5 · CONTROL · a write of a field A2 does not read is not a writer", writersIn("src/lib/server/planted.ts", plantedIrrelevant).length === 0);
 
 console.log(`\n${fail === 0 ? "ALL PASS" : "FAILURES"} — house-bot-holder-lifecycle: ${pass} passed, ${fail} failed`);
+/**
+ * ⛔ RULING 519 · THE FLOOR, AND WHY THIS SUITE HAD NONE. Ruling 515 raised every `minPass` the two-store runner
+ * carries, and its own sentence says EVERY house suite's floor is checked against its last printed count. This suite is
+ * not a two-store suite, so it had no floor to raise — and no floor at all is strictly worse than a stale one:
+ * with `process.exit(fail === 0 ? 0 : 1)` and nothing else, a run in which EVERY case silently stopped
+ * executing printed "ALL PASS — 0 passed, 0 failed" and exited 0.
+ * The floor below is the count `npm run test:house-bot-holder-lifecycle` PRINTED at `670a0bc1` on 2026-09-18, in the run this commit records. It
+ * only ever RISES, and only to a number a run printed — never to an arithmetic guess.
+ */
+const MIN_ASSERTIONS = 16;
+if (pass < MIN_ASSERTIONS) {
+  console.error(`\n!! FLOOR — test:house-bot-holder-lifecycle ran ${pass} assertion(s), fewer than the ${MIN_ASSERTIONS} a green run printed. Cases that stop running are not cases that pass.`);
+  process.exit(4);
+}
 process.exit(fail === 0 ? 0 : 1);

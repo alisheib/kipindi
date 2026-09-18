@@ -40,7 +40,7 @@
  * and the floors rose again to the measured **memory 113, Postgres 33**.
  *
  * ⭐ RAISED AGAIN 2026-09-18 (replan ruling 515), to what `npm run test:house-bot-reports` PRINTED at `d2f20795`:
- * **memory 117, Postgres 33**. Postgres is unchanged because both cases added since — ruling 512's 0.512 export
+ * **memory 117, Postgres 33**, and RAISED AGAIN to **memory 118** the same day when ruling 518 added `0.505.c2` — the count that run printed, not an arithmetic guess. Postgres is unchanged because both cases added since — ruling 512's 0.512 export
  * completeness check with its control, and ruling 505's 0.505 roll-call population check with its control — are §0
  * source pins and run in the MEMORY child only, which is exactly why this floor is a pair and not a number.
  *
@@ -59,4 +59,4 @@
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 
-await runTwoStores({ suite: "test:house-bot-reports", casesFile: "scripts/lib/house-bot-reports-cases.mts", minPass: { memory: 117, postgres: 33 }, dbPrefix: "hb_reports" });
+await runTwoStores({ suite: "test:house-bot-reports", casesFile: "scripts/lib/house-bot-reports-cases.mts", minPass: { memory: 118, postgres: 33 }, dbPrefix: "hb_reports" });
