@@ -408,3 +408,207 @@ bots and what keeps D19 true").
        owns the reason field) and **step 6's wizard** (which owns the label) each carry one line at the point of entry
        saying the text appears on screen and in any screenshot of it. That is the only place a warning can change what
        a person does.
+
+### Orchestrator rulings from 500 (2026-09-18 onward)
+
+> **Why the number jumps.** 475-499 were handed to the checkpoint workflows as their build-ruling band (C5-6 was
+> launched with `nextRuling: 475` and took none before its session limit), so the orchestrator's own rulings continue
+> at **500** and the two can never collide.
+>
+> **What produced 501-516.** A read-only audit of the branch (workflow `wf_00480703-e0e`, 106 agents, pinned to
+> `5005c811` so a concurrently-edited working tree could not blur it): eleven blind finders returned 102 findings,
+> 94 went to an adversarial verifier whose default answer was REFUTED, and **44 survived**. Every question it surfaced
+> is ruled below in one pass, as ruling 500(a) requires. Twelve findings the per-finder cap dropped were pulled out of
+> the journal and put through the same test rather than left to the cap.
+
+500. **FULL DECISION AUTHORITY, AND THE STANDARD IS THE PLATFORM'S PERFECTION. This is standing, not a single night's
+     licence.** Ali, 2026-09-18: *"u tae any deicson u have ful autorit base don fperfection th epaltomf to satsidy
+     it"*. This extends ruling 451 (which bound only the twelfth session's night) into a permanent rule:
+
+     **(a) Every open question is DECIDED, here, as a numbered ruling with its reasoning — never queued.** A plan that
+     carries an undecided question across a session boundary has failed: the next session either re-derives it badly or
+     silently picks a default nobody chose.
+
+     **(b) The standard is PERFECTION, and it decides ties in one direction.** Where two options both work, the one
+     that matches the platform kit and reads like the rest of the product wins over the merely defensible; where the
+     choice is ship-sooner against correct, correct wins; where a guard could be made to pass by weakening it or by
+     fixing the code, the code is fixed. A figure whose typography does not match its neighbour is a defect, not a
+     preference — his phrasing, and it is the tie-breaker.
+
+     **(c) What this authority does NOT reach:** ⛔ turning the master switch ON (the act that puts a real bot staking
+     real money against real players — a business decision with money at the end of it, and no amount of technical
+     authority converts into it; it ships OFF and only Ali turns it on); ⛔ weakening a guard, lowering a floor,
+     widening an exemption or deleting a proof to make something pass (perfection is the standard being invoked, so an
+     instrument bent to report success is the opposite of what this was granted for); ⛔ an outward action on Ali's own
+     accounts beyond what he has named — repository visibility (469) and the merge to `main` (471).
+
+     **(d) Authority to decide is not authority to hide.** Every decision taken under this ruling is reported to Ali in
+     plain language in the session report, never buried in a commit message. He delegated the deciding so he would not
+     be a bottleneck, not so he would stop knowing what his platform does.
+
+     **(e) A decision that turns out wrong is reversed by a new numbered ruling** that says what was believed, what was
+     measured, and what changed. A ruling is a record of reasoning, not a position to defend.
+
+501. **The ISO 27001 regulator hand-off EXCLUDES house audit rows by category, and SAYS SO with the excluded count.**
+     Measured: `catalogue.ts:474` reads the whole durable audit table unfiltered (`getAuditPageDurable({limit:
+     ISO_EXPORT_LIMIT})` — the reader offers only `limit` and `category`, never an action filter) and prints
+     `action: e.action` at `:553` and `target: ${e.targetType}:…` at `:555` verbatim. House rows carry 31 literal
+     `house_bot.*` action names and `targetType: "HouseBot"` from three live call sites. The file classifies itself
+     `classification: "Regulator hand-off"` at `:490`. So the one artefact that physically leaves the company names the
+     feature and its record ids — and D20 already ruled the general case: *no report, CSV, memo, column, line, chip,
+     tag or record names house bots anywhere*. D20 struck the purpose-built regulator index that read this table and
+     left the generic one behind; this is a conformance gap, not an open question of principle.
+     - **EXCLUDE, not neutralise, and not leave.** `getAuditPageDurable` gains the `excludeActions` parameter its
+       sibling `getAuditForActorDurable` already carries for ruling 170; the ISO builder passes `Object.keys(HOUSE_AUDIT)`;
+       and **the report's own notes state that rows were excluded and how many.** Renaming house actions into a neutral
+       form would falsify an audit trail, which for an ISO 27001 artefact is worse than omitting from it; dropping rows
+       silently would make a regulator document lie by omission. Stating the exclusion and its count is the only option
+       that is both D20-compliant and honest.
+     - The read goes behind a NAMED reader with a pin, and `house-bot-reports-cases.mts:1082`'s entry for
+       `catalogue.ts` is re-worded to assert a CONTENT property, not only the gating property it asserts today — the
+       half-answer is why the file passed its own review.
+     - **Timing:** before Commit 8. It is prospective, not live: the master switch ships OFF, so no `house_bot.*` row
+       exists on production today, and that is precisely why it must be settled before the release commit rather than
+       after. Reachable by ADMIN plus any role holding `accounting` view (COMPLIANCE, FINANCE, AUDITOR by default),
+       each behind TOTP; ⛔ **not reachable by a PLAYER or an AGENT** — `DEFAULT_GRANTS` excludes them by type.
+     - ⚠️ **Flagged to Ali in the session report as the one decision here with a regulatory consequence.** It is taken
+       under 500, not queued, but he should know it exists and may want his compliance advisor's eye on the wording of
+       the exclusion note.
+
+502. **The skipped-run register's blocking rule is SCOPED: §1 and §2 gate Commit 5; §1b gates Commit 7's close.**
+     As written ("Commit 5 may not be marked ✅ until C5-8 has run this file to empty") the rule is UNSATISFIABLE —
+     row 16 asks for the restricted panel on `/admin/desk/<id>` as a non-ADMIN staff viewer, and that route has no page
+     until C7 step 4, so no effort at C5-8 can clear it. A blocking rule that cannot be satisfied is not a gate; it is
+     a thing sessions learn to step over, which is how every other gate in the file loses its force. So: §1 and §2 must
+     be empty before Commit 5 is ✅; §1b carries its own blocking sentence naming **Commit 7's close (C7 step 7)**,
+     which C7-SPEC §3 already schedules by name. Rows 12, 19 and 23 stay in C5-8's scope because they already point at
+     §2 rows B, D and F, which C5-8 runs regardless.
+
+503. **D5 is the OWNER typing the HOLDER's account password, verified like a sign-in and never creating a session. The
+     compliance record is corrected to match the built code.** The record contradicts itself: `COMPLIANCE-DECISIONS.md:158`
+     ("the owner types the account's password") and `:201` ("An owner designates an existing PLAYER account by typing
+     its password") against `:307` ("they agree privately and type their own password"). The code is the measured fact
+     and is unambiguous — `designation.ts:79` `empty: "Enter their password."`, `:102` "That isn't their current
+     password.", `:109` "Check the holder's password for an owner" — the OFFICER is addressed throughout, and
+     `C7-SPEC.md:1125` already specifies an officer-operated field. So `:158` and `:201` stand; `:307` and any sibling
+     saying the holder types it directly are corrected with a dated note. W24 closes with this ruling. ⛔ The consent
+     itself is unchanged: the holder agrees privately and gives the owner their password; what the record must stop
+     saying is that the holder types it into the wizard, because no such field exists.
+
+504. **The three DAL members ruling 350's mechanism left undecided are resolved member by member, and 350 stops
+     claiming to be exhaustive.** Measured: 73 of 119 declared store members are named in neither half of 350, so its
+     own sentence — "a member named in neither half is a member this mechanism leaves undecided" — describes most of
+     the interface. C5-5b's exit rule was *kept only with a named remaining caller or a cited Commit 7 scope line*, and
+     it deleted `recordDisclosure` for exactly this reason, so leaving these is an inconsistency in how one rule is
+     applied:
+     - **`listRegister` + `PressRegisterFilter` — DELETED** from the interface and both twins, with both names added to
+       `dal-parity.test.mts`'s `NEVER` array so a silent re-add goes red. Its only consumer was R1's presses register,
+       struck by D20, and ruling 345 already forbids re-adding its siblings. A paged house READ wired into both twins
+       with no caller is precisely what ruling 259 makes dangerous.
+     - **`lastStoppedAt` and `veto` — KEPT ONLY IF NAMED.** C7 step 4's refusal copy is the candidate consumer; step 4
+       either calls each by name with a behavioural case, or deletes it the same way in the same commit. ⛔ Not carried
+       past step 4 undecided a second time.
+     - Ruling 350's claim of exhaustiveness is corrected in place: it decides the members it names, and the remaining
+       73 are decided by the same rule (a named caller or a cited scope line) at the step that would use them.
+
+505. **The `expect`-drift roll-call is GENERALISED to every house anchors file.** Step 1 found three declared mutations
+     (`453-off`, `453-accounts`, `373-subject`) whose `expect` named a label no longer printable, so the harness would
+     report WRONG-ASSERTION — which reads like success — and it was found only because someone went looking. The 1.318
+     block is lifted into a shared helper taking (declaration file, this run's emitted labels, this suite's decommented
+     source) and called at the end of `house-bot-engine-cases`, `house-bot-money-cases`, `house-bot-seam.test`,
+     `house-book.test` and `house-page.test`, each filtered to its own suite keys. 84 declarations are unaudited today.
+     The cost of generalising is one block per cases file; the cost of not doing it is a false alarm inside C5-8's
+     single batch run. In the same commit, `DEFERRED-TESTS` row 18's sentence and `tools/c7-s1b-mutations.json`'s
+     header are corrected — both currently claim the class is guarded daily, and it is guarded in one file.
+
+506. **The twelve homeless assertions are assigned to the step that builds their subject, in `C7-SPEC.md` §4's table,
+     in one scheduling pass.** 1.332, 1.342, 1.343, 1.350, 1.381, 1.384, 1.386, 1.389, 1.401, 1.405, 1.406 and 1.408
+     are each named by a ruling's Proof clause as its only guard, and appear in no §3 step's prose, no §4 row and no
+     case of the built suite. This is ruling 473's class with eleven more members. 1.384/1.386/1.389 join step 2 with
+     the other D19 pins; the rest go to their builder's step. ⛔ **And ruling 398's case gains a roll-call** comparing
+     the D19 section's ACTUAL case ids against 398's own enumerated closed list — today 398 only checks that assertions
+     which EXIST have planted controls, so an assertion that was never written is invisible to the guard that exists to
+     find exactly that.
+
+507. **Of the five proposed console controls, X6 and X1's duty-name half are BUILT; X2, X4 and X5 are STRUCK with
+     their reasons.** X6 (settlement-blocked chip) is the sharpest and is built at step 4: a missing holder wallet
+     blocks settlement for every player in that market, and the register itself says that must not live only in an
+     alert — a condition that stops other people's money is a console state, not a notification. X1's duty-name half is
+     built with it, because it rides the same heartbeat-row `extra` field. X2 (scope-start), X4 (bounds-change callout)
+     and X5 (strip chip) are struck into `C7-SPEC.md` §6 with the reason written in place: each adds a surface that
+     shows the operator something no control acts on, which is the dead-control class ruling 432(a) already refuses.
+
+508. **The detail route's `rules` and `targets` panels and the "Enter now" control are SCHEDULED, not struck** — rules
+     and targets at step 4 with the detail page, "Enter now" at step 4 with the action row — and `C7-SPEC` §4's rows and
+     ruling 319's closed tab list are updated in the same edit. §5 already captures all three and step 7 must open and
+     READ that capture set, so leaving them unbuilt would have made step 7's own gate unmeetable. Their content is
+     specified at lower rank (`03-design-spec.md:249`, `:260-271`, `:276`) and they are already inside PROGRESS's
+     Commit 7 scope, and bells and letters that already shipped link to `?tab=rules` — striking them would break live
+     hrefs to fix a drafting gap.
+
+509. **Ruling 319's module path is AMENDED to the built path, not the file moved.** 319 specified
+     `src/lib/server/house-bot/console-routes.ts` and gave server-only placement as the reason; step 1 built it at
+     `src/lib/house-bot/console-routes.ts`. Moving it is refuted by measurement: `src/lib/house-bot/rules.ts:25`
+     VALUE-imports `./console-routes`, and `scripts/house-bot-rules.test.mts:341` refuses a non-type import of
+     `@/lib/server/**` as a class check no allowlist entry can exempt — the move turns a green guard red. The built
+     path is safe for the reason the module's own header records: it is a PURE module under the house folder's module
+     law, with no client directive, no server value import and no node import, and `test:house-bot-disclosure` 1.2
+     still watches it by name. 319 is amended in place with that measured reason, recorded as a 432 clause.
+
+510. **`plans/house-bots/tools/c7-s1-mutations.json` is DELETED and row 5's glob is narrowed to named files.** Its 58
+     entries are wholly contained and corrected in `c7-s1b-mutations.json`'s 68, and six of its `from` texts assert the
+     PRE-fix text of ruling 432(o) and cannot be injected at all. A register that misstates what a step built is worse
+     than no register, and an over-wide glob (`tools/*.json`) is how the dead file would have been picked up by C5-8's
+     single batch run and reported as a mutation that "could not be applied".
+
+511. **`scripts/lib/house-bot-vocabulary.mjs`'s header stops instructing the next session to add the staff-edge words.**
+     It currently tells a reader to add "staff edge, enter now, scorecard, STAFF_EDGE and the staff-edge row's sw/zh
+     words (C5 step 7)". Measured: those words are struck with rulings 218-223 and can now match nothing on this
+     branch, and the module's own rule is that a word is added only after being measured absent from clean
+     `origin/main` — so adding them would dilute the list that keeps the house word off a player's screen. "Enter now"
+     is a live console word governed by 453's `CONSOLE_EXTRA_WORDS`, not a vocabulary addition. The header is replaced
+     with what `C5-SPEC.md:655` already ruled, and no word addition is scheduled at C5-7.
+
+512. **`CONSOLE_GATES` gets an export-completeness check, because a hand-typed gate table is a gate with a hole in it.**
+     It is five names typed by hand and nothing compares it against the gate module's own exports — while case 0.260.1
+     already holds the AUDIT module's exports to the last name, so the pattern exists in the same file and was simply
+     not applied here. A new gated reader added without its entry is exactly ruling 259's measured defect class (72 of
+     606 non-staff responses carried house audit rows before gating), and it would ship silently. The check compares
+     the table against the module's exported reader names in both directions: an export with no entry is red, an entry
+     naming no export is red.
+
+513. **Ruling 453's lexicon guard derives its population from the directory, with a floor — it stops being a typed
+     list.** Today it walks `[PAGE, LAYOUT, LOADING].filter(existsSync)`, so every file C7 steps 3-6 add under
+     `src/app/admin/desk/**` — the limits form, the detail page, the wizard, every panel — is outside the guard that
+     exists to keep the feature's name off the owner's screen, and nothing goes red when that happens. The population
+     becomes every file under `src/app/admin/desk/**` plus the gate module, with a printed count and a floor that only
+     rises. This is the same shape as 512 and as findings 6 and 12, and it is the class this project keeps paying for:
+     **a guard whose population is hand-maintained silently stops covering what it was written to cover.**
+
+514. **A24's poller-failure alert is WIRED at C7 step 4, and Commit 4's ✅ is recorded as carrying this named gap.**
+     Measured: `POLLER_FAILURE_ALERT_AFTER = 10` has exactly one occurrence in the whole tree — its own definition —
+     and `ALERT_KEY.pollerFailing` has no writer. The alert is dead end to end inside a commit marked ✅ CLOSED. It is
+     not struck, because a silently failing poller is precisely the condition the engine cannot otherwise report, and
+     the console's engine-health Callout (step 4, rulings 309/352/353/354/414) is its natural consumer and reader. ⛔
+     Commit 4's closing record gains one line naming this: a commit marked closed that contains a dead alert is a
+     record that overstates itself, and the correction belongs in the record, not only in the fix.
+
+515. **`test:house-bot-console`'s `minPass` floors rise to the measured counts, and a floor that has never risen is
+     itself a finding.** `minPass: { memory: 60, postgres: 28 }` is the value the suite was born with at `a897e47a`,
+     while the measured counts at `98b5a2be` are **memory 153, Postgres 86** — so the floor would not notice 93 memory
+     cases and 58 Postgres cases vanishing. A floor only ever rises, and only to a count measured by running the suite;
+     it is raised in the same commit as the run that measured it, and every house suite's floor is checked against its
+     last printed count in the same pass.
+
+516. **Every ruling this session takes is PROPAGATED in the same commit that takes it, and a ruling that reached only
+     its own file is treated as not yet taken.** The audit's costliest finding was mine: rulings 469-474 were recorded
+     in `C5-D20-REPLAN.md` and reached no other document, so `PROGRESS.md:70` still read "This branch never pushes
+     `main` before REL-4", `:150`'s standing list still said "never push `main` … new rulings from **465**" while
+     465-474 were all taken, `:17` still carried the W20 blocker ruling 469 names as the line to delete, and ruling
+     450's bolded prohibition carried no supersede banner. A session obeying RESUME AT — the block the plan itself
+     names as the truth source — would have refused the C5-8 merge Ali explicitly delegated, and would have allocated
+     465 as its next free ruling number against ten already recorded. **So the rule, and it binds this session first:**
+     a ruling is not taken until (i) `PROGRESS.md`'s RESUME AT, standing list and affected register rows carry it,
+     (ii) every ruling it supersedes carries a supersede banner in place, (iii) the next-free-ruling number is
+     corrected wherever it is written, and (iv) any generator that would re-raise the closed matter — the autonomous
+     run prompt's Phase 0 among them — is edited, not just the copies it generates.
