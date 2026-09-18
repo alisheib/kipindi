@@ -546,9 +546,11 @@ section("§2 · the strip, the band, the roster and every failure");
   ok("1.421 · …and the roster it CAN read is still rendered, with no fabricated figure in it",
     plants.generic?.rows != null && plants.generic.rows.length === 3, j(plants.generic?.rows?.length));
 
-  /* ⛔ THE SEPARATOR IS A NO-BREAK SPACE BEFORE THE DOT (ruling 432(p)), built the same way the reader builds it —
-   * `String.fromCharCode`, never a typed escape, because the Edit tool decodes a backslash-u into the raw character. */
-  const SEP = `${String.fromCharCode(0xa0)}· `;
+  /* ⛔ THE SEPARATOR BINDS THE DOT TO THE WORD THAT FOLLOWS IT (ruling 432(p)) — a breakable space, the dot, then a
+   * NO-BREAK space — built the same way the reader builds it: `String.fromCharCode`, never a typed escape, because
+   * the Edit tool decodes a backslash-u into the raw character. ⚠️ The first attempt put the no-break space BEFORE
+   * the dot, which bound it to the preceding word and left the dot ENDING the line; only the render showed it. */
+  const SEP = ` ·${String.fromCharCode(0xa0)}`;
 
   await w.switchOff();
   const offView = await GATEM.houseRosterForConsole(OFFICER, "/admin/desk");
@@ -853,8 +855,11 @@ if (STORE === "memory") {
    * right-aligned — PINNED the figure to that far edge: read off the 360 tile, the header's ")" and the row's
    * "used TZS 0" were both sliced by the card's right edge. §A5 is never clip money. */
   ok("1.373 · 432(o) · every money-bearing header may WRAP, so a long basis costs thead height and not a clipped figure",
-    (thead.match(/whitespace-normal/g) ?? []).length === 3
-      && /<th scope="col" className="text-right p-3 whitespace-normal">Loss today \(projected\)<\/th>/.test(pageCode), "");
+    (thead.match(/!whitespace-normal/g) ?? []).length === 3
+      && /<th scope="col" className="text-right p-3 !whitespace-normal">Loss today \(projected\)<\/th>/.test(pageCode)
+      /* ⛔ THE `!` IS THE ASSERTION. `.admin-tbl th` is (0,1,1) and a bare utility is (0,1,0), so the class LOST to
+         the stylesheet: the first fix compiled, passed every source pin, and left the figure sliced on screen. */
+      && !/className="text-right p-3 whitespace-normal"/.test(pageCode), "");
   /* ⛔ AND THE BAND AND THE COLUMN CALL THE SAME FIGURE THE SAME THING (432(o)): the tile above reads "Open exposure"
    * and the column below it read "Exposure", which is the one word a reader uses to tie the two together. */
   ok("1.373 · 432(o) · every money column's header is the label of the tile that measures the same figure",
@@ -862,7 +867,7 @@ if (STORE === "memory") {
   /* ⛔ AND THE COUNT USAGE READS ON THE SAME AXIS AS THE TWO MONEY USAGES BESIDE IT (432(o)): same grammar, same
    * shape, three adjacent figures — left-aligning one of them put them on two axes. */
   ok("1.407 · 432(o) · every usage column is right-aligned, so three adjacent usage figures read on ONE axis",
-    (pageCode.match(/<th scope="col" className="text-right p-3 whitespace-normal">/g) ?? []).length === 3
+    (pageCode.match(/<th scope="col" className="text-right p-3 !whitespace-normal">/g) ?? []).length === 3
       && (pageCode.match(/<td className="p-3 text-right(?: text-text-secondary)?"><Usage cell=/g) ?? []).length === 3, "");
   ok("1.373 · no header reads 'House stake', 'Today net' or 'Live balance'",
     !/House stake|house stake|Today net|Live balance/.test(pageCode), "");

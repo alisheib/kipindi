@@ -264,12 +264,19 @@ export default async function AdminDeskPage({ searchParams }: { searchParams: Pr
                           money", and a clipped number is a WRONG number (§M4a). Letting the HEADER wrap to two lines
                           costs one row of thead height and takes the column's minimum down to the cell's own
                           ~150px, which puts the first money answer inside the strip at 360.
+                          ⛔ THE `!` IS LOAD-BEARING AND IT WAS MEASURED, NOT ASSUMED. `.admin-tbl th` is (0,1,1) and a
+                          bare `whitespace-normal` utility is (0,1,0), so the class LOST to the stylesheet and the
+                          header stayed on one line: the first fix compiled, passed every source pin, and changed
+                          nothing on screen — read off the 360 tile, "used TZS 0" still sliced at x=339. `!` emits
+                          `white-space: normal !important`, which the repo already uses for exactly this
+                          (`!text-claret-300`, `!text-gold-300`). ⛔ The kit rule is NOT edited: it governs ~170
+                          other headers.
                           ⛔ Ruling 373's "the basis is NAMED IN THE HEADER" is KEPT — "(projected)" still reads,
                           on the second line. */}
-                      <th scope="col" className="text-right p-3 whitespace-normal">Loss today (projected)</th>
+                      <th scope="col" className="text-right p-3 !whitespace-normal">Loss today (projected)</th>
                       {/* ⛔ "Open exposure", not "Exposure": the band's tile above measures the SAME figure and calls
                           it that, and the one thing a reader uses to tie a band to a column is the name (432(o)). */}
-                      <th scope="col" className="text-right p-3 whitespace-normal">Open exposure</th>
+                      <th scope="col" className="text-right p-3 !whitespace-normal">Open exposure</th>
                       {/* ⛔ A FLOOR ON THE STATUS COLUMN, MEASURED (ruling 432(o)). Read off the 1280 tile: the
                           AUTO-PAUSED chip rendered as a TWO-LINE pill — "AUTO-" / "PAUSED", a ~34px box — beside
                           22px single-line ACTIVE and PAUSED pills in the same column, at 360, 640, 768, 1024 AND
@@ -282,7 +289,7 @@ export default async function AdminDeskPage({ searchParams }: { searchParams: Pr
                       <th scope="col" className="text-left p-3 min-w-[128px]">Status</th>
                       {/* ⛔ RIGHT-ALIGNED like the two money usages beside it: same grammar, same shape, so three
                           adjacent usage figures read on ONE axis instead of two (432(o)). */}
-                      <th scope="col" className="text-right p-3 whitespace-normal">Bets today</th>
+                      <th scope="col" className="text-right p-3 !whitespace-normal">Bets today</th>
                       <th scope="col" className="text-left p-3">Products</th>
                       {/* ⛔ NO WAY-OUT COLUMN AT THIS CHECKPOINT (ruling 432(h)) — `/admin/desk/[id]` has no page
                           until C7 step 4, so every row's "open →" answered the app-root 404. It is the same rule

@@ -261,12 +261,15 @@ function unavailableTile(label: string): ConsoleKpiTile {
 
 /**
  * The ONE separator every list on this section joins with.
- * ⛔ THE SPACE BEFORE THE DOT IS A NO-BREAK SPACE, and it was measured: with a plain space the Products cell broke as
- * "Up & Down ·" / "Polls" on two of five rows at 1280 and 1024, and the ON sentence ended a line on a bare "·" at 360.
- * A separator belongs to the item that FOLLOWS it. ⚠️ Written with `String.fromCharCode`, never as a typed escape:
- * the Edit tool and inline `node -e` decode a backslash-u into the RAW character in the source file.
+ * ⛔ THE NO-BREAK SPACE GOES AFTER THE DOT, NOT BEFORE IT, and the first attempt had it backwards — READ off the ON
+ * sentence at 360, where `"<NBSP>· "` bound the dot to the word BEFORE it and line 2 ended
+ * "usr_95b294078c2d39f9683b042a ·", which is the very defect being fixed. A separator belongs to the item that
+ * FOLLOWS it, so the breakable space is before the dot and the bound one after: `" ·<NBSP>"`. Measured first as
+ * "Up & Down ·" / "Polls" on two of five Products rows at 1280 and 1024.
+ * ⚠️ Written with `String.fromCharCode`, never as a typed escape: the Edit tool and inline `node -e` decode a
+ * backslash-u into the RAW character in the source file.
  */
-const SEP = `${String.fromCharCode(0xa0)}· `;
+const SEP = ` ·${String.fromCharCode(0xa0)}`;
 
 /** The scope words a row shows, from `FIELD_META`'s own labels — never typed beside the field. */
 function productWords(updown: boolean, polls: boolean): string {
