@@ -897,3 +897,88 @@ bots and what keeps D19 true").
      **Verdict: the merge to `main` is taken on this evidence.** What ships is a section that is Owner-only, renders
      real data, and stakes nothing: the master switch ships OFF (D19, PLAN §11) and no account is designated, so the
      deploy delivers a page to look at and no behaviour to any player. The two migrations are purely additive.
+
+
+### Orchestrator rulings of the seventeenth session (530-533, 2026-09-18, OMEGA-COMPILE01)
+
+530. **The blind positive control ruling 529 left open is fixed AT C7 STEP 2, not deferred to
+     Commit 8.** 529 measured the house console probe at 1,544 requests / 1,158 non-staff /
+     `leaks: 0`, but its positive control **4.3 FAILED on one route instance** —
+     `/admin/kyc/[id]` for the holder. The ADMIN's own response carried no house data there, so the
+     absence of house data for every other viewer on that page proves NOTHING about that page. It is
+     a blind control, not a leak. 529 scheduled the fix "before Commit 8" and gave it a register row.
+     **Measured against that:** step 2 is the step that extends the probe (rulings 392, 393, 374 all
+     edit it), so the fixture row costs nothing there, while a fix parked on a register row rides to
+     Commit 8 on the assumption that somebody re-measures it — and this project's record is that
+     nobody does. The fix is a holder KYC case in the probe's own fixture, so the ADMIN response
+     carries house data on that route and 4.3 can fire.
+     ⛔ **It may NOT be made green by removing that instance from `MUST_CARRY`.** Shrinking a
+     population to make a control pass is the exact defect the control exists to catch.
+
+---
+
+531. **`origin/main` NOW CONTAINS THE WHOLE HOUSE-BOTS PROGRAMME, and ruling 524's stated reason for
+     a sibling probe is therefore obsolete — though its DECISION stands.** Measured at
+     `66db674c`, 2026-09-18: `origin/main` == `origin/house-bots` == local HEAD, and
+     `git show origin/main:prisma/schema.prisma` holds **8 `HouseBot*` models**,
+     `origin/main` carries `scripts/house-bot-console-probe.mts`, and
+     `git ls-tree origin/main -- src/app/admin/desk/` returns all three files
+     (`layout.tsx`, `loading.tsx`, `page.tsx`). Ruling 529's gate passed and the merge to `main` was
+     taken on that evidence.
+     - **What is now false.** Ruling 524 justified a SIBLING platform-PII probe partly with
+       *"W25 ships on its own branch off `origin/main`, where the house probe does not exist."*
+       It does exist there now. A ruling's reasoning is a record, so the sentence is corrected in
+       place rather than quietly relied upon.
+     - **What is unchanged, and why.** The probe stays a SIBLING. The reason is now the better one:
+       the two instruments measure **different classes** — one a feature's vocabulary and its
+       account labels, the other an ordinary player's name, phone and stake — and folding a second
+       vocabulary into the house probe would couple two unrelated instruments so that a change to
+       either could blind the other. Ruling 524's ADMIN-control requirement is unchanged and is the
+       half that matters.
+     - **What improves.** Because the house probe now exists on the W25 branch's own base, W25 may
+       **REUSE its audited three-mode transport** (plain document; `RSC: 1`; `RSC: 1` with a
+       `Next-Router-State-Tree` naming the admin layouts) instead of re-deriving it. An audited
+       change is measured with the audited instrument; re-writing a transport that has already been
+       proven is how a second, unproven transport enters the tree.
+     - ⛔ **D19 is NOT loosened by this.** The feature's CODE being on a public `main` is Ali's own
+       decision (rulings 469, 471, 529). What D19 forbids is unchanged: nothing about house bots
+       reaches a PLAYER or the HOLDER, and ruling 453's neutral lexicon still governs every rendered
+       string. W20 stays closed.
+
+---
+
+532. **The W25 worktree takes its `node_modules` by COPY from `F:/kipindi-house-bots`, never from
+     the baseline, and never from an install.** `npm ci`, `npm install` and `npm rebuild` are
+     forbidden everywhere in this programme, and a new worktree has no `node_modules` of its own
+     (measured: `kipindi-house-bots` 331 entries, `kipindi-old-build` 328, `kipindi-main` 328, each
+     a real directory, none a symlink).
+     - ⛔ **Not from `F:/kipindi-old-build`.** It is detached at `60142ace`, which PREDATES the house
+       schema, so its generated Prisma client carries none of the 8 `HouseBot*` models. W25 branches
+       off `origin/main` `66db674c`, which has them. A client that does not match its schema is the
+       `prisma-client-stale-after-pull` trap, and it would fail in a way that looks like a code bug.
+     - The source is `F:/kipindi-house-bots/node_modules`, whose client was regenerated this session
+       under ruling 465 against the current schema.
+     - A Windows junction is an acceptable substitute for the copy **because W25 never runs
+       concurrently with a house-bots checkpoint** (ruling 472), so the two cannot contend. If
+       neither copy nor junction is possible, **STOP and report** — do not install.
+
+---
+
+533. **`F:/kipindi-old-build` IS NO LONGER A BASELINE, and must be moved before the next red-by-red
+     comparison.** Measured 2026-09-18: the baseline worktree is detached at `60142ace` while
+     `origin/main` is `66db674c` — the entire house-bots programme behind. Ruling 467 wrote the rule
+     for exactly this and ruling 516(a) made it a precondition of C5-8's `test:all`: *a baseline
+     behind the branch's merge base does not measure what it claims — every red `main` acquired
+     since appears only on the branch side and is blamed on the branch, and every red `main` has
+     since fixed appears only on the baseline side and is silently excused.*
+     - ⚠️ **Right now the comparison is not merely stale, it is empty:** `house-bots` and
+       `origin/main` are the SAME commit, so there is nothing to compare. The baseline regains
+       meaning the moment this session's first step commits, which is why the move is owed now and
+       not at the close.
+     - **The move:** `git -C F:/kipindi-old-build checkout --detach 66db674c` (or the then-current
+       `origin/main`), then ruling 465's own test — `git diff --stat <old>..<new> -- prisma/schema.prisma`;
+       non-empty ⇒ `npx prisma generate` **in that worktree only**. The old→new diff here is
+       non-empty (the 8 house models), so that generate is required.
+     - ⛔ `npm ci` / `npm install` / `npm rebuild` stay forbidden there as everywhere.
+     - **The sha is written into the PROGRESS row.** A baseline whose commit is not recorded is not
+       a control.
