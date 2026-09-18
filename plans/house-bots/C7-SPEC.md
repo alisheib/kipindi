@@ -1419,13 +1419,86 @@ step 4 must rule the neutral rewrite of that map before it renders any of it. Th
 for the three `FIELD_META` labels measured to carry the word — `maxDesignatedBots`, `gCapStaffChosenPerDay`,
 `gTargetsMaxActive`, all three on the LIMITS tab, step 3.
 
-**(g) Two columns and one anchor arrive with their readers, not before.** The roster renders SEVEN columns, not 310's
-eight: "Last bet" needs a last-placement instant, and the only reader that has one is `botRateUsage` — ruling 351, step
+**(g) Two columns and one anchor arrive with their readers, not before.** The roster renders SIX columns, not 310's
+eight (SEVEN when this clause was written; 432(h) took the way-out column too): "Last bet" needs a last-placement instant, and the only reader that has one is `botRateUsage` — ruling 351, step
 5, where adding a store member also brings `test:dal-parity` and both twins. And `CONSOLE_LIMITS_FIRST_UNSET_HREF` is
 not written: `test:tab-anchors` requires the id a `#fragment` names to be RENDERED on the tab the href selects, and the
 limits panel that carries `#limits-first-unset` is step 3's — so the strip links to `CONSOLE_LIMITS_HREF` until then.
 ⛔ Likewise `REACHED_WITHOUT_NAV` gains its two rows with the pages they excuse: §7's own staleness half reports a row
 whose page the crawler cannot find, so the allowlist may not PRECEDE the pages either.
+
+**(h) A ROW's way-out column arrives with the page it opens, and the view model carries no `href` until then.**
+432(a) was applied to the head action and the master switch and silently NOT to the roster's `open →` link: every row
+shipped a live `<Link>` to `/admin/desk/<id>` while `src/app/admin/desk/` held only `layout.tsx`, `loading.tsx` and
+`page.tsx`, so the first control an officer reaches on the deliverable answered the app-root 404. The roster renders
+SIX columns at this step; the seventh lands with `/admin/desk/[id]/page.tsx` at step 4, and
+`test:house-bot-console` 1.407 ties the two together by FILE EXISTENCE (`existsSync`), so no checkpoint in between can
+ship a 404 link and step 4 cannot forget the column. `ConsoleRosterRow.href` is gone with it, and 1.310 pins its
+absence the same way. The same assertion covers `/admin/desk/new` and the Designate button.
+
+**(i) A RENDERED link never names a `?tab=` value with no panel behind it, and a KPI delta never carries an arrow.**
+`consoleTab()` resolves an unknown tab BACK to the roster, so the head's roster-full sentence and the strip's
+"Set N global limits first →" — the desk's only call to action in the unset state — repainted the IDENTICAL page with
+no limits form, no message and no feedback. That is 432(a)'s defect in its honest-looking half: the disabled controls
+at least say they are not ready. `console-routes.ts` gains `consoleTabExists()` and `LIMITS_TAB_READY`, the page paints
+plain text while it is false, and step 3 turns both into links in the SAME change as the panel. Separately, the
+unset-limit tile's delta said "nothing can be staked — set it on Limits →" inside `AdminKpi`'s delta slot, which is a
+plain `<span>` and has never been a link: it now names the consequence with no arrow.
+
+**(j) A disabled control carries a reason on screen in EVERY state, not only when the roster is full.**
+Read off four captured tiles (0 of 5, 1 of 5, 5 of 20, the schema state): a dead primary action with nothing beside
+it, in exactly the states where designation is legitimate — and the master switch with no reason at all in the default
+OFF state. The reader returns `actionReason` and `switchReason`, and the page renders each beside its control.
+
+**(k) Ruling 420's null-actor string is "System", not "System — house bot engine".** 453 outranks 420 on a rendered
+string and 420's own text carries two forbidden words. Recorded here because the substitution was made silently and
+had no case: `test:house-bot-console` 1.420 now asserts the rendered sentence, not only the source grep.
+
+**(l) THE BAND MEASURES THE GATE's POPULATION, NOT THE ROSTER'S — and this was a WRONG-POPULATION defect, not a
+style.** The band's three money figures are the three GLOBAL limits the seam enforces, and `cap-precheck.ts` reads
+them over EVERY bot: `houseDayBook(day, null)` and `houseOpenExposure(null)`, neither of which filters REMOVED and
+neither of which can, because a removed account's stakes and open positions are still the desk's money today. The
+first pass folded both maps over `listNonRemoved()`'s ids, so a holder closing their account at 15:00 silently dropped
+that day's stake, projected loss and open exposure out of the band while the gate kept counting them: the owner reads
+"40% of the daily stake limit" while every stake is refused at 100%, with nothing on the page to explain it. The fold
+is over the MAP. 1.347 was also `0 === 0` — no case in the suite had ever produced a non-zero usage — so it now plants
+real money for a rendered account AND for a REMOVED one and asserts the band equals the total over both.
+
+**(m) A WITHDRAWN desk is offered no remedy.** The SUNSET Callout says "nothing can be designated", so
+`rosterFullReason` is suppressed while `offCause === "SUNSET"`: two opposite instructions on one screen is the defect
+432(e) was written for, one card over.
+
+**(n) NO STATE SAYS THE SAME FACT TWICE, AND NO EMPTY STATE INSTRUCTS A DISABLED CONTROL.** The schema state printed
+its sentence in a Callout and again, word for word, as the empty state's own title AND body 200px below (432(e) removed
+the third copy and left the second); the OFF state repeated "Nothing will be staked." the same way. And the zero-roster
+body read "Designate an account to build the roster, or switch the desk on" — the only call to action on an empty
+page, naming the two controls this checkpoint renders disabled. The block ABOVE the table owns the cause; the table
+says what the TABLE is.
+
+**(o) THE FIRST MONEY ANSWER WAS CLIPPED AT 360, AND THE FIX IS A WRAPPING HEADER — 432(b) closed half of it.**
+Read off `desk-default-off-360.png`: the header rendered `LOSS TODAY (PROJECTED)` with its closing ")" cut by the
+card's right edge at x≈339, and row 1 rendered `used TZS 0` with the "0" SLICED VERTICALLY at the same edge. The cause
+is not the figure, it is the HEADER: `.admin-tbl th` is `white-space: nowrap`, so 22 characters of tracked mono set
+the column's minimum at ~210px and, the cells being right-aligned, PINNED the figure to that far edge. 432(b)
+measured the CELL and fixed the cell. `whitespace-normal` on each money header costs one row of thead height and
+takes the column's minimum down to the cell's own ~150px, which puts the first answer inside the strip — and ruling
+373's "the basis is NAMED IN THE HEADER" is kept, on the second line. Three more readings came with it: the
+AUTO-PAUSED chip rendered as a TWO-LINE pill at every width up to 1280 (the Chip sets `whiteSpace: "normal"` as an
+INLINE style, so only a column floor can fix it — `min-w-[128px]`, measured from the 1920 tile's 96px chip); the band
+said "Loss today"/"Open exposure" while the columns said "Loss today (projected)"/"Exposure", so the column headers
+now carry the tile's own label; and the count usage was left-aligned beside two right-aligned money usages of the same
+grammar, so three adjacent figures read on two axes.
+
+**(p) ONE SEPARATOR, WITH A NO-BREAK SPACE BEFORE THE DOT.** Measured: the Products cell broke as "Up & Down ·" /
+"Polls" on two of five rows at 1280 and 1024, and the ON sentence ended a line on a bare "·" at 360. A separator
+belongs to the item that FOLLOWS it. ⚠️ It is written `String.fromCharCode(0xa0)` in both the reader and the case,
+never as a typed escape: the Edit tool and inline `node -e` decode a backslash-u into the RAW character in source.
+
+**(q) THE READ SET IS FIVE, NOT FOUR, AND THE FIFTH IS NAMED.** §3 step 1 fixes the roster reader at four reads;
+the Products column's words need `loadParseContext()`, which itself issues two platform reads (`listAssets` +
+`listChains`). It was disclosed in the checkpoint's report and NOT recorded as a deviation, and nothing pinned it, so
+a later step could have added a second context read with nothing going red. It is held at exactly ONE call by
+1.347, beside the four house reads.
 
 **Why.** Every clause above was found by reading a render or a guard's printed population, not by re-reading the spec.
 A step that silently deviates teaches the next step a false premise, which is the wrong-AUTHORITY class this programme
@@ -1435,8 +1508,7 @@ has paid for repeatedly.
 measurements above, taken before and after, plus `test:house-bot-console` 1.373 and 1.407 re-anchored to the same
 defect; (c) 1.314's byte-identity pin; (d) read off the tile; (e) 1.421, extended to assert `rows.length === 0` and a
 cause-naming empty state, with its own declared mutation; (f) recorded here and in `openIssues` — no code renders the
-copy, so there is nothing to assert yet; (g) 1.310's header case is written for the seven columns that exist and names
-the eighth as step 5's, so it must be updated when the column lands.
+copy, so there is nothing to assert yet; (g) 1.310's header case is written for the columns that exist and names the deferred ones by step, so it must be updated when each lands. **(h)-(q) added by this step's FIXER, each with its own case and its own declared mutation in `scripts/anchors/house-bot-console.anchors.mjs` (58 declared, every `from` resolved exactly once by `test:red-anchors` §3): (h) 1.310 + 1.407 against `existsSync`; (i) 1.312a + 1.304; (j) 432(m)'s case reads `actionReason`; (k) 1.420's rendered-sentence case; (l) 1.347's planted non-zero money over the gate's own population, plus 1.355's roster-failure split; (m) 432(m) with its control; (n) 1.421 + 1.310's empty-state cases; (o) 1.373 + 1.407 over the wrapping headers, the two column floors and the one axis; (p) 1.306's no-break-space case; (q) 1.347's one-call pin. The screen readings behind (j), (o) and (p) were taken from the step's own 41 tiles, re-read by the fixer.**
 
 ---
 

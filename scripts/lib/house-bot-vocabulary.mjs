@@ -76,6 +76,25 @@ export function extendHouseWords(extra, flags = "i") {
   return new RegExp([`(?:${HOUSE_WORD_SOURCE})`, ...more].join("|"), flags);
 }
 
+/**
+ * ⛔ THE CONSOLE'S OWN LEXICON (owner-delegated ruling 453), COMPOSED ONCE AND SHARED — never a new regex (ruling 175).
+ * 453 is stricter than the shared vocabulary: nothing the console renders may name the feature AT ALL, so the bare
+ * words `bot`/`bots`, the bare word `house` and `counter-stake` are refused too, on top of every shared word.
+ * ⛔ IT IS A FUNCTION, NOT A CONSTANT, because a shared `RegExp` object is a mutable thing to hand two consumers
+ * (`lastIndex`, and `.test` on a `/g/` instance carries state); each caller gets its own.
+ * ⚠️ IT IS NOT FOR A WHOLE PAGE BODY. The admin sidebar legitimately renders the nav label "House" for `/admin/house`,
+ * so a consumer scanning a SERVED page passes the console section's own subtree, not `document.body`.
+ */
+export const CONSOLE_EXTRA_WORDS = Object.freeze([String.raw`\bbots?\b`, String.raw`\bhouse\b`, String.raw`counter[- ]?stakes?`]);
+
+/** The composed console lexicon — the shared words plus 453's four. One definition, two consumers (the suite and the visual gate). */
+export function consoleNeutralRegExp(flags = "i") {
+  return extendHouseWords([...CONSOLE_EXTRA_WORDS], flags);
+}
+
+/** What 453's own planted control plants, beside `HOUSE_WORD_SAMPLES`. */
+export const CONSOLE_EXTRA_SAMPLES = Object.freeze(["bot", "Bots", "the house", "counter-stake", "Counter stakes"]);
+
 /** One sample per shared word family member — what every consumer's planted control and the subset pin plant. */
 export const HOUSE_WORD_SAMPLES = Object.freeze([
   "liquidity", "Ukwasi", "流动性", "house bot", "house-bots", "house_bot", "HouseBot", "boti za nyumba", "boti ya nyumba", "平台机器人",

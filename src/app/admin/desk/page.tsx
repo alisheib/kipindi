@@ -27,6 +27,7 @@
  *
  * @see src/lib/server/house-console-read.ts · src/lib/house-bot/console-routes.ts · plans/house-bots/C7-SPEC.md
  */
+import { Fragment } from "react";
 import type { Route } from "next";
 import Link from "next/link";
 import { AdminPageHead, AdminKpi, AdminCard, AdminLoadError } from "@/components/admin/admin-shell";
@@ -40,7 +41,7 @@ import { Tabs } from "@/components/ui/tabs";
 import { Toggle } from "@/components/ui/toggle";
 import { currentSession } from "@/lib/server/auth-service";
 import { houseRosterForConsole, houseConsoleAudience, type ConsoleUsageCell } from "@/lib/server/house-console-read";
-import { CONSOLE_TABS, consoleTab, consoleTabHref } from "@/lib/house-bot/console-routes";
+import { CONSOLE_TABS, LIMITS_TAB_READY, consoleTab, consoleTabHref } from "@/lib/house-bot/console-routes";
 
 /** ⛔ A static neutral title (ruling 402). No route here exports a `generateMetadata` that reads a record. */
 export const metadata = { title: "Admin · Desk" };
@@ -52,15 +53,32 @@ const TAB_LABEL: Record<(typeof CONSOLE_TABS)[number], string> = { roster: "Rost
 
 /**
  * One usage cell's two halves. The server owns the sentence (ruling 361's one grammar); this only lays it out, so the
- * used figure and its limit can sit on two lines in a narrow column while each amount stays indivisible.
- * ⛔ `tabular-nums` on the SPANS, not the cell: it is what keeps digits aligned column to column, and putting it on the
- * `<td>` would re-bind the pair into one unbreakable line through the kit's own `.admin-tbl td.tabular-nums` rule.
+ * used figure and its limit can sit on two lines in a narrow column while each half stays indivisible.
+ *
+ * ⛔ ONLY THE FIGURE IS IN `.amount` (ruling 409), and that is a width decision as much as a semantic one. `.amount`
+ * means "this is a money figure" everywhere else in the kit and it is `white-space: nowrap`; wrapping the connective
+ * words "used" and "of" inside it put prose in the money face AND made each unbreakable unit wider than the figure it
+ * was protecting — the constraint 432(b) was solving. The half's own `whitespace-nowrap` keeps `used TZS 0` together;
+ * the space BETWEEN halves is breakable, so the cell may wrap and the figures may not.
+ * ⛔ `tabular-nums` on the FIGURE, not the cell: putting it on the `<td>` would re-bind the pair into one unbreakable
+ * line through the kit's own `.admin-tbl td.tabular-nums` rule.
+ * ⛔ A count is not money: `0` and `200 bets` get the mono/tabular face without `.amount`'s money meaning.
+ * ⚠️ Every space is an explicit `{" "}`: SWC has been measured dropping the space before text that follows a
+ * `{expression}` across a line break on this codebase's own served pages ("hour<!-- -->of").
  */
 function Usage({ cell }: { cell: ConsoleUsageCell }) {
+  if (cell.halves.length === 0) return <span className="text-text-tertiary">{cell.text}</span>;
+  const figure = cell.money ? "amount tabular-nums" : "font-mono tabular-nums";
   return (
     <>
-      <span className="amount tabular-nums">{cell.used}</span>
-      {cell.limit && <> <span className="amount tabular-nums">{cell.limit}</span></>}
+      {cell.halves.map((h, i) => (
+        /* ⛔ THE BREAKABLE SPACE IS OUTSIDE THE NOWRAP SPAN. Inside it, the cell could never break between the two
+           halves at all, which is the whole point of splitting them (432(b)). */
+        <Fragment key={h.word + h.figure}>
+          {i > 0 ? " " : null}
+          <span className="whitespace-nowrap">{h.word}{" "}<span className={figure}>{h.figure}</span>{h.suffix}</span>
+        </Fragment>
+      ))}
     </>
   );
 }
@@ -94,19 +112,24 @@ export default async function AdminDeskPage({ searchParams }: { searchParams: Pr
            page it opens, in the same change. */
         actions={
           <span className="flex items-center gap-2 flex-wrap justify-end">
-            {rosterFull && (
-              /* ⛔ `text-body-sm` (13px), NOT `text-caption` (11px). Ruling 310 wrote `text-caption` for the
-                 section's secondary lines, but §T4's reading floor is 12.5px and `test:type-scale` §3 counts every
-                 sub-floor prose site into a ratchet that may only shrink: 13px is the SMALLEST key above the floor,
-                 and this is a sentence an officer must read to know why a button is disabled. */
-              /* ⛔ THE WHOLE SENTENCE IS THE LINK, and the first render is why: the server's sentence already ENDS
-                 "…raise the roster limit on Limits →", so appending a separate "Limits" link printed the word twice
-                 with the arrow orphaned between them ("on Limits → Limits"). The sentence is the server's to own
-                 (ruling 314), so the call site links it rather than adding words of its own. */
-              <Link href={view.limitsHref as Route} className="inline-flex items-center min-h-[var(--tap-min)] text-body-sm text-text-secondary hover:text-brand-300 hover:underline max-w-[38ch]">
-                {view.rosterFullReason}
-              </Link>
-            )}
+            {/* ⛔ `text-body-sm` (13px), NOT `text-caption` (11px). Ruling 310 wrote `text-caption` for the
+                section's secondary lines, but §T4's reading floor is 12.5px and `test:type-scale` §3 counts every
+                sub-floor prose site into a ratchet that may only shrink: 13px is the SMALLEST key above the floor,
+                and this is a sentence an officer must read to know why a button is disabled.
+                ⛔ THE WHOLE SENTENCE IS THE LINK ONCE THERE IS A PANEL TO LINK TO, and the first render is why: the
+                server's sentence already ENDS "…raise the roster limit on Limits →", so appending a separate
+                "Limits" link printed the word twice with the arrow orphaned between them ("on Limits → Limits").
+                ⛔ AND IT IS NOT A LINK YET (ruling 432(i)): `?tab=limits` resolves BACK to the roster while the
+                closed tab list holds only `roster`, so a live link here repaints the identical page with no limits
+                form and no explanation — a dead control in the honest-looking half of 432(a).
+                ⛔ WHEN THE ROSTER IS NOT FULL THERE IS STILL A REASON ON SCREEN (432(j)): a disabled primary action
+                with nothing beside it reads as a broken page, and "0 of 5" is exactly when designation is
+                legitimate. */}
+            <span className="text-body-sm text-text-secondary max-w-[38ch]">
+              {rosterFull && LIMITS_TAB_READY
+                ? <Link href={view.limitsHref as Route} className="inline-flex items-center min-h-[var(--tap-min)] hover:text-brand-300 hover:underline">{view.rosterFullReason}</Link>
+                : rosterFull ? view.rosterFullReason : view.actionReason}
+            </span>
             <Button size="md" variant="primary" disabled>Designate an account</Button>
           </span>
         }
@@ -120,32 +143,52 @@ export default async function AdminDeskPage({ searchParams }: { searchParams: Pr
             an empty state that said it a third time. 421 asks for ONE Callout; the strip stands down and lets it be. */}
         {!view.schemaMissing && (
         <AdminCard padding="p-4">
+          {view.controlUnreadable ? (
+            /* ⛔ 421's OTHER HALF, AND IT IS THE KIT'S FAILURE TREATMENT, NOT A STATE (rulings 304, 355, 421). A
+               rejection that is not a missing schema leaves the switch's state UNKNOWN. The first pass painted the OFF
+               sentence here — "The desk is off. Nothing will be staked." — while the desk may have been ON and money
+               moving, and dropped the whole band. A failed read is never a state and never a zero. */
+            <AdminLoadError what={"the desk's own state"} />
+          ) : (
           <div className="flex items-center justify-between gap-4 flex-wrap">
             <div className="flex items-start gap-3 min-w-0">
               {view.chip && <Chip size="sm" variant={view.chip.variant}>{view.chip.word}</Chip>}
               <p className="text-body-sm text-text-secondary min-w-0">{view.stateSentence}</p>
             </div>
-            <div className="flex items-center gap-3 flex-wrap justify-end">
+            {/* ⛔ `justify-start sm:justify-end` — at 360 this group wraps onto its own line under a left-ragged
+                sentence, and `justify-end` alone put its two lines on a third axis inside one small card. Above 640
+                it is the card's right half and hangs right, as it should. */}
+            <div className="flex items-center gap-3 flex-wrap justify-start sm:justify-end">
               {/* 306 · the count is DERIVED at render time over the limits the switch requires — never a typed
                   number and never a hand-copied list, because a typed count renders "Set 0" while the press fails
-                  with no explanation on screen. */}
+                  with no explanation on screen. ⛔ Not a link until the limits panel exists (432(i)). */}
               {view.unsetRequired > 0 && (
-                <Link href={view.limitsHref as Route} className="inline-flex items-center min-h-[var(--tap-min)] text-body-sm text-warning-fg hover:underline">
-                  Set {view.unsetRequired} global limit{view.unsetRequired === 1 ? "" : "s"} first →
-                </Link>
+                LIMITS_TAB_READY ? (
+                  <Link href={view.limitsHref as Route} className="inline-flex items-center min-h-[var(--tap-min)] text-body-sm text-warning-fg hover:underline">
+                    Set {view.unsetRequired} global limit{view.unsetRequired === 1 ? "" : "s"} first →
+                  </Link>
+                ) : (
+                  <span className="text-body-sm text-warning-fg">
+                    Set {view.unsetRequired} global limit{view.unsetRequired === 1 ? "" : "s"} first
+                  </span>
+                )
               )}
               {view.on !== null && (
-                <span className="flex items-center gap-2">
+                <span className="flex items-center gap-2 flex-wrap">
                   <span className="text-body-sm font-semibold text-text">Master switch</span>
                   {/* ⛔ `tone="brand"` in BOTH states: gold is earned money only, and claret means ON MEANS STOPPED —
                       here ON means money can move. ⛔ DISABLED at this checkpoint, and that is a STATE, not a pending
                       control: the switch's own ceremony (the typed word, the Master-ON modal, the kill switch) is
-                      C7 step 4's, and an operable-looking switch with nothing behind it would be a lie. */}
+                      C7 step 4's, and an operable-looking switch with nothing behind it would be a lie.
+                      ⛔ AND ITS REASON IS ON SCREEN BESIDE IT (432(j)) — a disabled control with no reason reads as a
+                      broken page, which is what the default OFF state showed on the first render. */}
                   <Toggle on={view.on} tone="brand" disabled aria-label="Desk master switch" />
+                  <span className="text-body-sm text-text-tertiary">{view.switchReason}</span>
                 </span>
               )}
             </div>
           </div>
+          )}
         </AdminCard>
         )}
 
@@ -213,19 +256,45 @@ export default async function AdminDeskPage({ searchParams }: { searchParams: Pr
                           account column absorbed the whole shortfall and laid out at 93px at 360 — the label and the
                           handle crushed together, which is the G-4/G-5 defect the kit documents one file over. */}
                       <th scope="col" className="text-left p-3 min-w-[150px]">Account</th>
-                      <th scope="col" className="text-right p-3">Loss today (projected)</th>
-                      <th scope="col" className="text-right p-3">Exposure</th>
-                      <th scope="col" className="text-left p-3">Status</th>
-                      <th scope="col" className="text-left p-3">Bets today</th>
+                      {/* ⛔ `whitespace-normal`, AND IT IS THE FIX FOR A CLIPPED MONEY FIGURE (ruling 432(o)).
+                          `.admin-tbl th` is `white-space: nowrap`, so "LOSS TODAY (PROJECTED)" — 22 characters of
+                          tracked mono — set this column's minimum at ~210px, and because the cells are right-aligned
+                          the figure was pinned to that far edge: READ off the 360 tile, the header's own ")" and the
+                          row's "used TZS 0" were both SLICED by the card's right edge at x≈339. §A5 is "never clip
+                          money", and a clipped number is a WRONG number (§M4a). Letting the HEADER wrap to two lines
+                          costs one row of thead height and takes the column's minimum down to the cell's own
+                          ~150px, which puts the first money answer inside the strip at 360.
+                          ⛔ Ruling 373's "the basis is NAMED IN THE HEADER" is KEPT — "(projected)" still reads,
+                          on the second line. */}
+                      <th scope="col" className="text-right p-3 whitespace-normal">Loss today (projected)</th>
+                      {/* ⛔ "Open exposure", not "Exposure": the band's tile above measures the SAME figure and calls
+                          it that, and the one thing a reader uses to tie a band to a column is the name (432(o)). */}
+                      <th scope="col" className="text-right p-3 whitespace-normal">Open exposure</th>
+                      {/* ⛔ A FLOOR ON THE STATUS COLUMN, MEASURED (ruling 432(o)). Read off the 1280 tile: the
+                          AUTO-PAUSED chip rendered as a TWO-LINE pill — "AUTO-" / "PAUSED", a ~34px box — beside
+                          22px single-line ACTIVE and PAUSED pills in the same column, at 360, 640, 768, 1024 AND
+                          1280, coming right only at 1920 where the same chip measures ~96px. A status word on two
+                          lines is not a status word. ⛔ It CANNOT be fixed on the Chip: `chip.tsx` sets
+                          `whiteSpace: "normal"` as an INLINE style, which beats any class, and the wrapping element
+                          is the chip itself, so a nowrap parent does not reach it. 96px + the cell's 32px of
+                          padding = 128. ⛔ This is a COLUMN floor, never the TABLE's (373): at 360 the table is
+                          already wider than its card, so columns 1–3 keep their own minimums and nothing moves. */}
+                      <th scope="col" className="text-left p-3 min-w-[128px]">Status</th>
+                      {/* ⛔ RIGHT-ALIGNED like the two money usages beside it: same grammar, same shape, so three
+                          adjacent usage figures read on ONE axis instead of two (432(o)). */}
+                      <th scope="col" className="text-right p-3 whitespace-normal">Bets today</th>
                       <th scope="col" className="text-left p-3">Products</th>
-                      <th scope="col" className="text-right p-3">Open</th>
+                      {/* ⛔ NO WAY-OUT COLUMN AT THIS CHECKPOINT (ruling 432(h)) — `/admin/desk/[id]` has no page
+                          until C7 step 4, so every row's "open →" answered the app-root 404. It is the same rule
+                          432(a) applied to the head action and the master switch, and the same shape as 432(g)'s
+                          deferred columns: the column arrives with the page it opens. */}
                     </tr>
                   </thead>
                   <tbody>
                     {view.empty ? (
                       /* 416 with 310's precedence — the state the table is in NAMES ITS CAUSE: the desk being off
                          beats "none designated yet", and a failed read beat both above. */
-                      <AdminTableEmpty colSpan={7} title={view.empty.title} body={view.empty.body} />
+                      <AdminTableEmpty colSpan={6} title={view.empty.title} body={view.empty.body} />
                     ) : (
                       view.rows.map((r) => (
                         <tr key={r.id} className="border-b border-border-subtle">
@@ -243,11 +312,8 @@ export default async function AdminDeskPage({ searchParams }: { searchParams: Pr
                           <td className="p-3 text-right"><Usage cell={r.lossCell} /></td>
                           <td className="p-3 text-right"><Usage cell={r.exposureCell} /></td>
                           <td className="p-3"><Chip size="sm" variant={r.statusChip}>{r.statusWord}</Chip></td>
-                          <td className="p-3 text-text-secondary"><Usage cell={r.betsCell} /></td>
+                          <td className="p-3 text-right text-text-secondary"><Usage cell={r.betsCell} /></td>
                           <td className="p-3 text-text-secondary">{r.products}</td>
-                          <td className="p-3 text-right">
-                            <Link href={r.href as Route} className="row-link whitespace-nowrap text-brand-300 hover:underline">open →</Link>
-                          </td>
                         </tr>
                       ))
                     )}

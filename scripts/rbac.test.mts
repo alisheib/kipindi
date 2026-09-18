@@ -213,7 +213,11 @@ async function navKeysFor(role: Role): Promise<Set<string>> {
 {
   __resetGrantsForTest();
   await setRoleGrant("SUPPORT", "ops", true, false, "tester");
-  ok("13 · a live `ops` view grant does NOT open the desk — it is still Owner-only", isOwnerOnlyPath("/admin/desk"));
+  /* ⚠️ THIS FIRST PIN IS A CONSTANT, AND ITS LABEL SAYS SO NOW. `isOwnerOnlyPath` reads a code list and consults no
+   * grant, so it is character-identical in effect to §7's pin and would pass even if the grant DID open the desk —
+   * the block's real measurements are the two below it, and the GATE itself is measured on both stores by
+   * `test:house-bot-console` 1.341, which calls `houseConsoleAudience` with the same live grant in force. */
+  ok("13 · the Owner-only list still holds the desk while an `ops` grant is live (a constant, not the grant path)", isOwnerOnlyPath("/admin/desk"));
   ok("13 · …and SUPPORT holds the ops view grant that was just written", await canView("SUPPORT", "ops"));
   const sup = await navKeysFor("SUPPORT");
   ok("13 · …and the desk is still absent from SUPPORT's nav (ownerOnly, not the domain)", !sup.has("desk"), [...sup].join(","));

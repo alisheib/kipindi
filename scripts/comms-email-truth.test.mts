@@ -291,13 +291,13 @@ const RENDERS: Rendered[] = [
   // House bots (build commit 3). The officer alert puts the payload in every free-text position. (The holder letter
   // was removed by owner ruling D19c, C4 ruling 149 — the holder receives no house-bot email.)
   { template: "houseBotErasureBlockedAdminHtml",
-    benign:  E.houseBotErasureBlockedAdminHtml({ botId: "hb_a1b2c3d4e5f6", holder: "Player #A3F2K8", botUrl: "/admin/house-bots/hb_a1b2c3d4e5f6" }),
-    hostile: E.houseBotErasureBlockedAdminHtml({ botId: HOSTILE, holder: HOSTILE, botUrl: "/admin/house-bots/hb_a1b2c3d4e5f6" }) },
+    benign:  E.houseBotErasureBlockedAdminHtml({ botId: "hb_a1b2c3d4e5f6", holder: "Player #A3F2K8", botUrl: "/admin/desk/hb_a1b2c3d4e5f6" }),
+    hostile: E.houseBotErasureBlockedAdminHtml({ botId: HOSTILE, holder: HOSTILE, botUrl: "/admin/desk/hb_a1b2c3d4e5f6" }) },
   // House bots (build commit 4, step 9). The one parametrised admin letter: every free-text position takes the
   // hostile payload, including a detail row's label and value, because every one of them is caller text.
   { template: "houseBotAdminHtml",
-    benign:  E.houseBotAdminHtml({ eyebrow: "House bots · paused", heading: "A running house bot stopped", subtitle: "Player #A3F2K8 changed their 50pick password in their account settings at 14:02 EAT.", rows: [{ label: "Bot", value: "Bot A" }, { label: "Stakes cancelled", value: "2" }], cta: { href: "/admin/house-bots/hb_a1b2c3d4e5f6?reverify=1", label: "Enter new password" } }),
-    hostile: E.houseBotAdminHtml({ eyebrow: HOSTILE, heading: HOSTILE, subtitle: HOSTILE, rows: [{ label: HOSTILE, value: HOSTILE }], cta: { href: "/admin/house-bots/hb_a1b2c3d4e5f6", label: HOSTILE } }) },
+    benign:  E.houseBotAdminHtml({ eyebrow: "House bots · paused", heading: "A running house bot stopped", subtitle: "Player #A3F2K8 changed their 50pick password in their account settings at 14:02 EAT.", rows: [{ label: "Bot", value: "Bot A" }, { label: "Stakes cancelled", value: "2" }], cta: { href: "/admin/desk/hb_a1b2c3d4e5f6?reverify=1", label: "Enter new password" } }),
+    hostile: E.houseBotAdminHtml({ eyebrow: HOSTILE, heading: HOSTILE, subtitle: HOSTILE, rows: [{ label: HOSTILE, value: HOSTILE }], cta: { href: "/admin/desk/hb_a1b2c3d4e5f6", label: HOSTILE } }) },
 ];
 
 // ── 1 · The registry is the inventory, and it matches reality ───────────────────

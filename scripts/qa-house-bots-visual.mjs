@@ -11,13 +11,21 @@
  *
  * ⛔ IT IS NOT A SCREENSHOT SCRIPT. §5 names what is being LOOKED FOR, and each of those is asserted here, per width,
  * because a tile nobody reads is not a measurement:
- *   1. no node whose text starts "TZS" is clipped, ellipsised or wrapped (§A5: never clip money or a timestamp);
- *   2. at 360, every table's first THREE columns — the account and both money answers — are inside the visible strip
- *      without scrolling (the defect measured on /admin/house: 4 of 6 money cells out of view);
- *   3. no tile carries two amounts, and no KPI delta carries a currency-prefixed figure (ruling 404);
+ *   1. no money figure is clipped by the box that holds it (§A5: never clip money or a timestamp) — measured with a
+ *      Range against the cell's own content box and against the SCROLL CONTAINER's visible edge, never with
+ *      `scrollWidth > clientWidth`, which is `0 > 1` for an inline non-replaced span and therefore always false;
+ *   2. the SUBJECT column and the FIRST money answer are inside the visible strip of the scroll container without
+ *      scrolling, at every width; the SECOND money answer joins them from 640 up. ⛔ NOT all three at 360: two
+ *      usage PAIRS plus a readable subject column cannot fit 360px, which is 432(b)'s own arithmetic, and the kit's
+ *      documented answer for a figure wider than its box is one ScrollX scroll. What is NOT acceptable is a figure
+ *      SLICED by the card edge, which is check 1;
+ *   3. no tile carries two amounts, and no KPI delta carries a currency-prefixed figure (ruling 404) — read off the
+ *      tile's LAST titled span, because `AdminKpi` gives its LABEL a `title` too and renders it first;
  *   4. every interactive control is at least 44px tall (§tap-min), at every width;
  *   5. every empty-state message box is inside the viewport;
- *   6. ⛔ no house-vocabulary word anywhere in the rendered body — the shared vocabulary, never a new regex.
+ *   6. ⛔ no house-vocabulary word anywhere in the rendered body — the shared vocabulary, never a new regex — AND, in
+ *      the console's OWN subtree, none of ruling 453's four extra words either, in text or in an attribute. The
+ *      sidebar legitimately renders "House" for /admin/house, so the 453 scan is scoped to the content region.
  *
  * ⛔ NO POSTGRES OR NO SERVER IS A FAILURE, NOT A SKIP (exit 3, NOT MEASURED) — a visual gate that skips silently is
  * the "not applicable" verdict this programme has paid for twice.
@@ -28,7 +36,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { chromium } from "playwright";
-import { houseHits } from "./lib/house-bot-vocabulary.mjs";
+import { houseHits, consoleNeutralRegExp, CONSOLE_EXTRA_SAMPLES } from "./lib/house-bot-vocabulary.mjs";
 
 const BASE = process.env.KP_BASE ?? "http://127.0.0.1:3021";
 if (!/^https?:\/\/(127\.0\.0\.1|localhost|\[::1\])(:\d+)?$/.test(BASE)) {
@@ -83,39 +91,95 @@ try {
           return r.width > 0 && r.height > 0 && cs.visibility !== "hidden" && cs.display !== "none" && el.closest("[hidden]") === null;
         };
         const money = [...document.querySelectorAll(".amount, [class*='amount']")].filter(vis);
+        /* ⛔ `scrollWidth > clientWidth` IS DEAD ON AN INLINE SPAN: both are 0 on an inline non-replaced box, so the
+           old predicate was `0 > 1` for every `.amount` in a table cell — the exact cells 432(b) re-laid out were
+           the ones this check could not see. A Range measures the span's own ink; the box that clips it is the
+           nearest scroll container (the ScrollX region), or the viewport when there is none. */
+        const clipBox = (el) => {
+          for (let p = el.parentElement; p; p = p.parentElement) {
+            const cs = getComputedStyle(p);
+            if (/auto|scroll|hidden/.test(cs.overflowX)) return p.getBoundingClientRect();
+          }
+          return { left: 0, right: window.innerWidth };
+        };
         const clipped = money
-          .filter((el) => (el.textContent ?? "").trim().startsWith("TZS"))
-          .filter((el) => el.scrollWidth > el.clientWidth + 1 || el.getClientRects().length > 1)
-          .map((el) => (el.textContent ?? "").trim());
+          .filter((el) => /TZS|^[\d,]+$/.test((el.textContent ?? "").trim()))
+          .map((el) => {
+            const r = document.createRange();
+            r.selectNodeContents(el);
+            const ink = r.getBoundingClientRect();
+            const box = clipBox(el);
+            return { t: (el.textContent ?? "").trim(), l: Math.round(ink.left), r: Math.round(ink.right), bl: Math.round(box.left), br: Math.round(box.right), rects: el.getClientRects().length };
+          })
+          .filter((m) => m.r > m.br + 1 || m.l < m.bl - 1 || m.rects > 1)
+          .map((m) => `${m.t} @${m.l}→${m.r} in ${m.bl}→${m.br}`);
         const tiles = [...document.querySelectorAll(".admin-kpi")].filter(vis).map((t) => ({
           text: (t.textContent ?? "").trim(),
           amounts: ((t.textContent ?? "").match(/TZS/g) ?? []).length,
-          delta: (t.querySelector("span[title]")?.textContent ?? "").trim(),
+          /* ⛔ THE LAST titled span, not the first: `AdminKpi` renders its LABEL with `title={label}` BEFORE the
+             delta's own titled span, so `querySelector("span[title]")` read "Stake today" and the check that no
+             delta carries a currency figure could never fail. */
+          delta: ([...t.querySelectorAll("span[title]")].pop()?.textContent ?? "").trim(),
         }));
         const shortControls = [...document.querySelectorAll("button, a[href], [role='switch'], input, select")]
           .filter(vis)
           .filter((el) => el.getBoundingClientRect().height < 44 - 0.5 && !el.closest("thead"))
           .map((el) => `${el.tagName.toLowerCase()}:${Math.round(el.getBoundingClientRect().height)}px:${(el.textContent ?? "").trim().slice(0, 24)}`);
-        const firstCells = [...document.querySelectorAll("table.admin-tbl tbody tr")].slice(0, 1).flatMap((tr) =>
-          [...tr.children].slice(0, 3).map((td) => {
+        /* ⛔ AGAINST THE SCROLL CONTAINER'S VISIBLE EDGE, NOT THE VIEWPORT'S. The first render's own defect was
+           measured this way: the loss cell ended at x=358 on a 360 viewport — inside it — while the card that holds
+           the table clips at x≈339, so the figure was sliced and a viewport test passed. */
+        const firstCells = [...document.querySelectorAll("table.admin-tbl tbody tr")].slice(0, 1).flatMap((tr) => {
+          const region = tr.closest("[role='region']") ?? tr.closest("div");
+          const box = region ? region.getBoundingClientRect() : { left: 0, right: window.innerWidth };
+          return [...tr.children].slice(0, 3).map((td) => {
             const r = td.getBoundingClientRect();
-            return { text: (td.textContent ?? "").trim().slice(0, 24), left: Math.round(r.left), right: Math.round(r.right) };
-          }));
+            return { text: (td.textContent ?? "").trim().slice(0, 24), left: Math.round(r.left), right: Math.round(r.right), boxLeft: Math.round(box.left), boxRight: Math.round(box.right) };
+          });
+        });
+        const region = document.querySelector("table.admin-tbl")?.closest("[role='region']") ?? null;
+        const scrollable = region ? region.scrollWidth > region.clientWidth + 1 : false;
+        /* The console's own content region, for 453's stricter scan — the sidebar's "House" nav label is not ours. */
+        const own = document.querySelector("main") ?? document.body;
+        const attrs = [...own.querySelectorAll("*")].flatMap((el) =>
+          ["aria-label", "title", "placeholder", "alt"].map((a) => el.getAttribute(a)).filter(Boolean));
         const emptyBoxes = [...document.querySelectorAll("table.admin-tbl tbody td[colspan]")].filter(vis).map((td) => {
           const r = td.querySelector("div")?.getBoundingClientRect() ?? td.getBoundingClientRect();
           return { left: Math.round(r.left), right: Math.round(r.right) };
         });
-        return { clipped, tiles, shortControls, firstCells, emptyBoxes, body: document.body.innerText, vw: window.innerWidth };
+        return { clipped, tiles, shortControls, firstCells, emptyBoxes, scrollable, ownText: own.innerText, attrs, body: document.body.innerText, vw: window.innerWidth };
       });
 
-      ok(`§5.1 ${route} @${width} · no TZS figure is clipped, ellipsised or wrapped`, facts.clipped.length === 0, facts.clipped.join(" | "));
+      ok(`§5.1 ${route} @${width} · no money figure is clipped by the box that holds it`, facts.clipped.length === 0, facts.clipped.join(" | "));
       ok(`§5.3 ${route} @${width} · no tile carries two amounts`, facts.tiles.every((t) => t.amounts <= 1), facts.tiles.filter((t) => t.amounts > 1).map((t) => t.text).join(" | "));
       ok(`§5.3 ${route} @${width} · no KPI delta carries a currency-prefixed figure`, facts.tiles.every((t) => !/TZS\s*[\d,]/.test(t.delta)), facts.tiles.map((t) => t.delta).filter((d) => /TZS\s*[\d,]/.test(d)).join(" | "));
+      // ⛔ A CONTROL FOR THE CHECK ABOVE: an empty selector reads exactly like compliance.
+      ok(`§5.3 ${route} @${width} · CONTROL · at least one tile's delta was actually READ`, facts.tiles.length === 0 || facts.tiles.some((t) => t.delta.length > 0), JSON.stringify(facts.tiles.map((t) => t.delta)));
       ok(`§5.4 ${route} @${width} · every interactive control is at least 44px tall`, facts.shortControls.length === 0, facts.shortControls.join(" | "));
       ok(`§5.6 ${route} @${width} · no house-vocabulary word anywhere in the rendered body`, houseHits(facts.body).length === 0, houseHits(facts.body).slice(0, 6).join(","));
+      {
+        // ⛔ RULING 453, over the console's OWN region and its attributes — the words `bot`, `house` and
+        // `counter-stake` on top of the shared list, composed in the vocabulary module and never here (ruling 175).
+        const neutral = consoleNeutralRegExp("gi");
+        const subject = `${facts.ownText}\n${facts.attrs.join("\n")}`;
+        const hits453 = [...subject.matchAll(neutral)].map((m) => m[0]);
+        ok(`§5.6 ${route} @${width} · ⛔ RULING 453 · neither the console's own text NOR any of its aria-label/title/placeholder/alt names the feature`,
+          hits453.length === 0, hits453.slice(0, 6).join(","));
+        ok(`§5.6 ${route} @${width} · CONTROL · the 453 scan fires on each of the words it adds, and the attributes were really collected`,
+          CONSOLE_EXTRA_SAMPLES.every((s) => consoleNeutralRegExp().test(s)) && facts.attrs.length > 0, `${facts.attrs.length} attributes`);
+      }
       if (facts.firstCells.length) {
-        const inView = facts.firstCells.every((c) => c.left >= -1 && c.right <= facts.vw + 1);
-        ok(`§5.2 ${route} @${width} · the account and BOTH money answers are inside the visible strip without scrolling`, inView, JSON.stringify(facts.firstCells));
+        const [subject, first, second] = facts.firstCells;
+        const inBox = (c) => c.left >= c.boxLeft - 1 && c.right <= c.boxRight + 1;
+        ok(`§5.2 ${route} @${width} · the SUBJECT column and the FIRST money answer are inside the visible strip without scrolling`,
+          inBox(subject) && inBox(first), JSON.stringify(facts.firstCells.slice(0, 2)));
+        if (width >= 640) {
+          ok(`§5.2 ${route} @${width} · …and from 640 up the SECOND money answer is in the strip too`, second == null || inBox(second), JSON.stringify(second));
+        } else {
+          // 432(b)'s arithmetic: two usage pairs plus a readable subject column do not fit 360, so the second answer
+          // is one scroll away BY DESIGN — and the region must actually be scrollable for that to be an answer.
+          ok(`§5.2 ${route} @${width} · …and the second money answer is reachable: the table's region really does scroll`,
+            second == null || inBox(second) || facts.scrollable, JSON.stringify({ second, scrollable: facts.scrollable }));
+        }
       } else {
         nm(`§5.2 ${route} @${width}`, "no roster row was rendered, so the money columns' position was not measured");
       }

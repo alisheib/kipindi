@@ -37,7 +37,7 @@ import { isStaffRole, isAdmin, isOwnerOnlyPath, domainForPath } from "./roles";
 import { canView } from "./rbac";
 import type { AuditEntry } from "./audit";
 import { formatTzs, formatTzsCompact, formatNumber } from "@/lib/utils";
-import { CONSOLE_ROUTE, CONSOLE_NEW_ROUTE, CONSOLE_LIMITS_HREF, DEFAULT_TAB, consoleBotHref, type ConsoleTab } from "@/lib/house-bot/console-routes";
+import { CONSOLE_ROUTE, CONSOLE_LIMITS_HREF, DEFAULT_TAB, type ConsoleTab } from "@/lib/house-bot/console-routes";
 import { eatDayKey, formatEat } from "@/lib/house-bot/clock";
 import { FIELD_META, REQUIRED_FOR_MASTER_ON, parseHouseBotRules } from "@/lib/house-bot/rules";
 import { TONE_CHIP, type StatusChipVariant } from "@/lib/status-tone";
@@ -126,7 +126,11 @@ export type ConsoleKpiTile = { label: string; value: string; delta?: string; una
 /** One roster row, painted. ⛔ No net, no balance, no lifetime figure (rulings 266, 310, 360, 368). */
 export type ConsoleRosterRow = {
   id: string;
-  href: string;
+  /* ⛔ NO `href` AT THIS CHECKPOINT, AND IT IS RULING 432(a)'s OWN RULE APPLIED WHERE THE FIRST PASS MISSED IT
+   * (ruling 432(h)). `/admin/desk/[id]` has no page until C7 step 4, so a way-out link on every row would be the
+   * one control an officer reaches first answering the app-root 404 — the same defect the head action and the
+   * master switch are rendered disabled for. The column arrives with the page it opens, the way "Last bet" arrives
+   * with its reader (432(g)), and `test:house-bot-console` 4.432h ties the two together so step 4 cannot forget it. */
   /** A gated value: the account's own label. */
   label: string;
   /** `playerHandle(userId)` — "Player #TAIL". ⛔ Never a name, a phone or an email (04 R6). */
@@ -149,7 +153,16 @@ export type ConsoleEmpty = { title: string; body: string };
 export type ConsoleRosterView = {
   /** ⛔ 421: the feature's tables are not on this database. A STATE, not a failure and not a zero. */
   schemaMissing: boolean;
-  /** The master switch's own state. `null` when there is no control row to switch (421). */
+  /**
+   * ⛔ 421's OTHER HALF, AND IT IS NOT THE SAME STATE (rulings 304, 355, 421). The control row's read FAILED for a
+   * reason that is not a missing schema — a transient connection, a lock timeout, anything. The switch's state is then
+   * UNKNOWN, so nothing on this page may say the desk is off: `on` is null, the chip is null, the strip renders the
+   * kit's failure treatment, and the band renders four `unavailable` tiles rather than no band at all.
+   * ⛔ The first pass collapsed this into the OFF sentence — "The desk is off. Nothing will be staked." — while the
+   * switch may have been ON and money moving, which is the fabricated state ruling 355 forbids.
+   */
+  controlUnreadable: boolean;
+  /** The master switch's own state. `null` when there is no control row to switch (421), and when it could not be read. */
   on: boolean | null;
   chip: { word: string; variant: StatusChipVariant } | null;
   /** The OFF or ON sentence, formatted on the server. */
@@ -158,12 +171,16 @@ export type ConsoleRosterView = {
   offCause: string | null;
   /** How many members of `REQUIRED_FOR_MASTER_ON` are unset — COUNTED, never typed (306). */
   unsetRequired: number;
+  /** Where the limits panel WILL be (step 3). ⚠️ Painted as a LINK only once `CONSOLE_TABS` holds `limits`
+   *  (`LIMITS_TAB_READY`): until then `?tab=limits` resolves back to the roster, so a link here would repaint the
+   *  identical page with no limits form and no explanation — ruling 432(i). */
   limitsHref: string;
-  /** The head action, and its VISIBLE disabled reason when the roster is full (314). */
-  /** The wizard's own route. ⚠️ Painted but NOT LINKED at C7 step 1: `/admin/desk/new` has no page until step 6, and a
-   *  primary action that answers 404 is a dead control. The head renders the button disabled until then. */
-  designateHref: string;
+  /** The head action's VISIBLE disabled reason when the roster is full (314), or its plain not-ready reason (432(j)). */
   rosterFullReason: string | null;
+  /** Why the head action is disabled when the roster is NOT full — a disabled control with no reason reads as broken. */
+  actionReason: string;
+  /** Why the master switch is disabled, beside it, whenever it is drawn (432(j)). */
+  switchReason: string;
   /** The band (303, 304, 404). Empty when there is no control row to measure against (421). */
   tiles: ConsoleKpiTile[];
   /** The roster. ⛔ `null` means the READ FAILED — `AdminLoadError`, never an empty state (355). */
@@ -186,26 +203,41 @@ export type ConsoleRosterView = {
  * pair wraps instead — two amounts, each indivisible, on two lines in a narrow cell. Nothing is compacted, nothing is
  * clipped, and the limit stays beside its usage, which is what ruling 266 requires.
  */
-export type ConsoleUsageCell = { text: string; used: string; limit: string | null };
+export type ConsoleUsageCell = { text: string; used: string; limit: string | null; money: boolean; halves: ConsoleUsageHalf[] };
+
+/**
+ * One half of a usage sentence, split so the page can put ONLY THE FIGURE in an `.amount` span (ruling 409: "only the
+ * two FIGURES sit inside `.amount` spans; the sentence itself is `text-body-sm`").
+ * ⛔ WHY IT MATTERS BEYOND SEMANTICS. `.amount` is `white-space: nowrap`, so wrapping the connective words inside it
+ * made each unbreakable unit wider than the figure it was protecting — the very constraint 432(b) was solving. The
+ * page renders `{word} <figure>{suffix}` inside ONE nowrap span per half, so a half never breaks and the cell may.
+ */
+export type ConsoleUsageHalf = { word: string; figure: string; suffix: string };
 
 /** 361's one usage grammar for money. An unset limit is a STATE, never a figure and never a bar at zero. */
 function moneyUsage(used: number, limit: number | null): ConsoleUsageCell {
-  if (limit == null) return { text: "Not set", used: "Not set", limit: null };
-  const u = `used ${formatTzs(Math.max(0, used))}`;
-  const l = `of ${formatTzs(limit)}`;
-  return { text: `${u} ${l}`, used: u, limit: l };
+  if (limit == null) return { text: "Not set", used: "Not set", limit: null, money: true, halves: [] };
+  const uf = formatTzs(Math.max(0, used));
+  const lf = formatTzs(limit);
+  return {
+    text: `used ${uf} of ${lf}`, used: `used ${uf}`, limit: `of ${lf}`, money: true,
+    halves: [{ word: "used", figure: uf, suffix: "" }, { word: "of", figure: lf, suffix: "" }],
+  };
 }
 
-/** 361's one usage grammar for a count limit. */
+/** 361's one usage grammar for a count limit. ⛔ The noun is a WORD, so it sits outside the figure's span. */
 function countUsage(used: number, limit: number | null, noun: string): ConsoleUsageCell {
-  if (limit == null) return { text: "Not set", used: "Not set", limit: null };
-  const u = `used ${formatNumber(Math.max(0, used))}`;
-  const l = `of ${formatNumber(limit)} ${noun}`;
-  return { text: `${u} ${l}`, used: u, limit: l };
+  if (limit == null) return { text: "Not set", used: "Not set", limit: null, money: false, halves: [] };
+  const uf = formatNumber(Math.max(0, used));
+  const lf = formatNumber(limit);
+  return {
+    text: `used ${uf} of ${lf} ${noun}`, used: `used ${uf}`, limit: `of ${lf} ${noun}`, money: false,
+    halves: [{ word: "used", figure: uf, suffix: "" }, { word: "of", figure: lf, suffix: ` ${noun}` }],
+  };
 }
 
 /** A read that FAILED renders an em dash — never a zero, and never an empty cell (ruling 355). */
-const UNREADABLE: ConsoleUsageCell = { text: "—", used: "—", limit: null };
+const UNREADABLE: ConsoleUsageCell = { text: "—", used: "—", limit: null, money: false, halves: [] };
 
 /**
  * One money tile: ONE compact amount in the value, the limit NAMED in the delta as a proportion with no second
@@ -213,10 +245,13 @@ const UNREADABLE: ConsoleUsageCell = { text: "—", used: "—", limit: null };
  * ⛔ `Math.floor`, not `round`: a rounded proportion prints "100%" at 99.6%, which is not true.
  */
 function moneyTile(label: string, used: number, limit: number | null, limitLabel: string): ConsoleKpiTile {
-  if (limit == null) return { label, value: "Not set", delta: "nothing can be staked — set it on Limits →" };
+  /* ⛔ NO ARROW IN A DELTA (ruling 432(i)). The delta slot is a plain `<span>` inside `AdminKpi` — it has never been a
+   * link and cannot become one — so "set it on Limits →" pointed an officer at a control that does not exist on this
+   * rung and at a tab that has no panel until step 3. It names the CONSEQUENCE instead. */
+  if (limit == null) return { label, value: "Not set", delta: "nothing can be staked until this limit is set" };
   const shown = Math.max(0, used);
   const pct = limit > 0 ? Math.floor((shown / limit) * 100) : 100;
-  return { label, value: formatTzsCompact(shown), delta: `${formatNumber(pct)}% of the ${limitLabel.toLowerCase()}` };
+  return { label, value: formatTzsCompact(shown), delta: `${formatNumber(pct)}% of ${limitLabel.toLowerCase()}` };
 }
 
 /** The tile the kit paints when a read FAILED. ⛔ Not the same as a genuine zero. */
@@ -224,12 +259,21 @@ function unavailableTile(label: string): ConsoleKpiTile {
   return { label, value: "n/a", unavailable: true };
 }
 
+/**
+ * The ONE separator every list on this section joins with.
+ * ⛔ THE SPACE BEFORE THE DOT IS A NO-BREAK SPACE, and it was measured: with a plain space the Products cell broke as
+ * "Up & Down ·" / "Polls" on two of five rows at 1280 and 1024, and the ON sentence ended a line on a bare "·" at 360.
+ * A separator belongs to the item that FOLLOWS it. ⚠️ Written with `String.fromCharCode`, never as a typed escape:
+ * the Edit tool and inline `node -e` decode a backslash-u into the RAW character in the source file.
+ */
+const SEP = `${String.fromCharCode(0xa0)}· `;
+
 /** The scope words a row shows, from `FIELD_META`'s own labels — never typed beside the field. */
 function productWords(updown: boolean, polls: boolean): string {
   const on: string[] = [];
   if (updown) on.push(FIELD_META["scope.products.updown"].label);
   if (polls) on.push(FIELD_META["scope.products.polls"].label);
-  return on.length ? on.join(" · ") : "None";
+  return on.length ? on.join(SEP) : "None";
 }
 
 /**
@@ -265,6 +309,10 @@ export async function houseRosterForConsole(
   /* 421 · a schema the migration has not reached is a STATE. It is never an error boundary, never `AdminLoadError`
    * and never an empty roster with no cause. */
   const schemaMissing = controlR.status === "rejected" && controlR.reason instanceof HouseSchemaNotReady;
+  /* ⛔ AND THE OTHER HALF OF 421, WHICH THE FIRST PASS COLLAPSED (rulings 304, 355, 421). A rejection that is NOT a
+   * missing schema leaves the switch's state UNKNOWN — so the page may not say the desk is off, may not draw a chip
+   * or a Toggle, and may not drop the band: it renders the kit's failure treatment and four `unavailable` tiles. */
+  const controlUnreadable = controlR.status === "rejected" && !schemaMissing;
   const control: StoredHouseBotControl | null = controlR.status === "fulfilled" ? controlR.value : null;
   const roster: StoredHouseBot[] | null = rosterR.status === "fulfilled" ? rosterR.value : null;
   const dayBooks: Map<string, HouseDayBook> | null = dayR.status === "fulfilled" ? dayR.value : null;
@@ -279,11 +327,15 @@ export async function houseRosterForConsole(
    * way `/admin/audit` already does (ruling 420) — never a display name, a phone or an email, and never a second read. */
   const stateSentence = schemaMissing
     ? "The desk's tables are not present on this database. Nothing can be staked."
-    : on === true
-      ? [`On since ${switchedAt ?? "an unrecorded time"} EAT`,
-         `switched by ${control?.switchedById ?? "System"}`,
-         ...(control?.switchedReason ? [`reason: ${control.switchedReason}`] : [])].join(" · ")
-      : "The desk is off. Nothing will be staked.";
+    : controlUnreadable
+      ? "The desk's own state could not be read, so nothing here says whether it is on."
+      : on === true
+        ? [`On since ${switchedAt ?? "an unrecorded time"} EAT`,
+           /* ⛔ AN ACTOR IS AN ID (ruling 420), and the null actor reads "System" — 420's own string was
+            * "System — house bot engine", which ruling 453 forbids on the screen (432(k)). */
+           `switched by ${control?.switchedById ?? "System"}`,
+           ...(control?.switchedReason ? [`reason: ${control.switchedReason}`] : [])].join(SEP)
+        : "The desk is off. Nothing will be staked.";
 
   /* ⛔ 421 · WITH NO CONTROL ROW THE ROSTER IS NOT RENDERED AT ALL, and that is a correction the first render forced.
    * A page headed "The desk is not set up on this database" with five accounts listed beneath it says two opposite
@@ -296,7 +348,6 @@ export async function houseRosterForConsole(
     const display = HOUSE_BOT_STATUS_DISPLAY[bot.status];
     return {
       id: bot.id,
-      href: consoleBotHref(bot.id),
       label: bot.label,
       handle: playerHandle(bot.userId),
       statusWord: display.word,
@@ -311,58 +362,80 @@ export async function houseRosterForConsole(
     };
   });
 
-  /* The band. ⛔ The three money figures are summed over the ROSTER's own rows, so the band and the columns are one
-   * fact read once (347). No control row means nothing to measure against, so 421 renders no band at all. */
-  const ids = roster?.map((b) => b.id) ?? [];
+  /* ⛔ THE BAND MEASURES THE POPULATION THE GATE MEASURES, AND THAT IS NOT THE ROSTER (ruling 432(l)).
+   * The three global limits in the band are the three the seam enforces, and `cap-precheck.ts` reads them over EVERY
+   * bot: `houseDayBook(day, null)` and `houseOpenExposure(null)` — neither filters REMOVED, and neither can, because a
+   * removed account's stakes and open positions are still the desk's money today. The first pass folded these two maps
+   * over `listNonRemoved()`'s ids, so a holder who closed their account at 15:00 silently dropped that day's stake,
+   * projected loss and open exposure out of the band while the gate kept counting them: the owner would read "40% of
+   * the daily stake limit" while every stake was being refused at 100%. So the fold is over the MAP, which is the same
+   * total the gate reads. ⛔ The per-row cells stay per-account and are unchanged.
+   * ⛔ AND EACH TILE'S READABILITY IS ITS OWN READ'S (355): a failed ROSTER read blanks the Accounts tile, not the
+   * money tiles, whose figures never came from the roster. */
   const sumDay = (pick: (b: HouseDayBook) => number) =>
-    ids.reduce((n, id) => n + (dayBooks?.get(id) ? pick(dayBooks.get(id)!) : 0), 0);
+    [...(dayBooks?.values() ?? [])].reduce((n, b) => n + pick(b), 0);
   const stakeUsed = sumDay((b) => b.stakedTzs);
   const lossUsed = Math.max(0, sumDay((b) => b.projectedLossTzs));
-  const exposureUsed = ids.reduce((n, id) => n + (exposure?.get(id) ?? 0), 0);
-  const moneyReadable = roster != null;
+  const exposureUsed = [...(exposure?.values() ?? [])].reduce((n, v) => n + v, 0);
 
-  const tiles: ConsoleKpiTile[] = !control ? [] : [
-    moneyReadable && dayBooks
-      ? moneyTile("Stake today", stakeUsed, control.gCapDailyStakeTzs, FIELD_META.gCapDailyStakeTzs.label)
-      : unavailableTile("Stake today"),
-    moneyReadable && dayBooks
-      ? moneyTile("Loss today", lossUsed, control.gCapDailyLossTzs, FIELD_META.gCapDailyLossTzs.label)
-      : unavailableTile("Loss today"),
-    moneyReadable && exposure
-      ? moneyTile("Open exposure", exposureUsed, control.gCapOpenExposureTzs, FIELD_META.gCapOpenExposureTzs.label)
-      : unavailableTile("Open exposure"),
-    /* ⛔ 453 · "Accounts", reading "2 of 5". The count is the length of the ONE roster read (346) — never a second
-     * `countLive()`, which could disagree with the table beside it inside a single render. */
-    roster != null
-      ? { label: "Accounts", value: `${formatNumber(roster.length)} of ${formatNumber(control.maxDesignatedBots)}`, delta: "designated of max" }
-      : unavailableTile("Accounts"),
-  ];
+  const tiles: ConsoleKpiTile[] = controlUnreadable
+    ? ["Stake today", "Loss today", "Open exposure", "Accounts"].map(unavailableTile)
+    : !control ? [] : [
+      dayBooks
+        ? moneyTile("Stake today", stakeUsed, control.gCapDailyStakeTzs, FIELD_META.gCapDailyStakeTzs.label)
+        : unavailableTile("Stake today"),
+      dayBooks
+        ? moneyTile("Loss today", lossUsed, control.gCapDailyLossTzs, FIELD_META.gCapDailyLossTzs.label)
+        : unavailableTile("Loss today"),
+      exposure
+        ? moneyTile("Open exposure", exposureUsed, control.gCapOpenExposureTzs, FIELD_META.gCapOpenExposureTzs.label)
+        : unavailableTile("Open exposure"),
+      /* ⛔ 453 · "Accounts", reading "2 of 5". The count is the length of the ONE roster read (346) — never a second
+       * `countLive()`, which could disagree with the table beside it inside a single render. */
+      roster != null
+        ? { label: "Accounts", value: `${formatNumber(roster.length)} of ${formatNumber(control.maxDesignatedBots)}`, delta: "designated of max" }
+        : unavailableTile("Accounts"),
+    ];
 
   /* 314 · the head action's VISIBLE disabled reason, from the server's own sentence, with the CONFIGURED max.
    * ⛔ A FAILED COUNT LEAVES THE BUTTON ENABLED: the wizard's own ROSTER_FULL refusal is the backstop, and a failed
    * read must not silently forbid a legitimate designation. */
-  const rosterFullReason = control && roster && roster.length >= control.maxDesignatedBots
+  /* ⛔ AND A WITHDRAWN DESK IS OFFERED NO REMEDY (ruling 432(m)): the SUNSET Callout says "nothing can be designated",
+   * so a sentence beside it saying "raise the roster limit" would contradict it on the same screen. */
+  const rosterFullReason = control && roster && roster.length >= control.maxDesignatedBots && control.offCause !== "SUNSET"
     ? DESIGNATE_COPY.rosterFull(roster.length, control.maxDesignatedBots)
     : null;
 
-  /* 310's empty-state precedence: the switch's own state beats "none yet"; a FAILED read beats both and is `rows === null`. */
+  /* ⛔ 310's empty-state precedence: the switch's own state beats "none yet"; a FAILED read beats both and is
+   * `rows === null`. ⛔ AND NO STATE SAYS THE SAME FACT TWICE (ruling 432(n)): the block ABOVE the table owns the
+   * cause — the Callout in the schema state, the strip in the off state — so the table says only what the TABLE is.
+   * The first render printed the schema sentence in a Callout and again, word for word, as the empty state's own
+   * title and body 200px below it. ⛔ And nothing instructs the reader to use a control this checkpoint renders
+   * disabled: "Designate an account … or switch the desk on" was the only call to action on an empty page, and
+   * neither control can be pressed until steps 4 and 6. */
   const empty: ConsoleEmpty | null = rows == null || rows.length > 0 ? null
     : schemaMissing
-      ? { title: "The desk is not set up on this database", body: "Its tables are not present here, so nothing can be staked and nothing can be designated." }
-      : on === false
-        ? { title: "The desk is off", body: "Nothing will be staked. Designate an account to build the roster, or switch the desk on." }
-        : { title: "No accounts yet", body: "Designate an account and it appears here, oldest first." };
+      ? { title: "No roster", body: "The desk's tables are not on this database — see the notice above." }
+      : controlUnreadable
+        ? { title: "No roster", body: "The desk's own state could not be read — see the notice above." }
+        : on === false
+          ? { title: "The desk is off", body: "No account has been designated yet." }
+          : { title: "No accounts yet", body: "Designated accounts appear here, oldest first." };
 
   return {
     schemaMissing,
+    controlUnreadable,
     on,
-    chip: schemaMissing || on == null ? null : on ? { word: "On", variant: TONE_CHIP.green } : { word: "Off", variant: TONE_CHIP.slate },
+    chip: schemaMissing || controlUnreadable || on == null ? null : on ? { word: "On", variant: TONE_CHIP.green } : { word: "Off", variant: TONE_CHIP.slate },
     stateSentence,
     offCause: control && control.enabled === false && control.offCause && control.offCause !== "MANUAL" ? control.offCause : null,
     unsetRequired,
     limitsHref: CONSOLE_LIMITS_HREF,
-    designateHref: CONSOLE_NEW_ROUTE,
     rosterFullReason,
+    /* 432(j) · a disabled control with no reason on screen reads as a broken page, and in four of the captured states
+     * the roster-full sentence is null — so every state carries one. */
+    actionReason: "Not ready on this build yet.",
+    switchReason: "Not ready on this build yet.",
     tiles,
     rows,
     empty,

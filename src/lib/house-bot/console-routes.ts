@@ -58,9 +58,27 @@ export function consoleTabHref(tab: ConsoleTab): string {
 /**
  * Where a limits refusal sends the owner. Absolute, like every refusal href (04 N1 §6).
  * ⚠️ `limits` has no panel yet (`CONSOLE_TABS`), so today this resolves to the roster (ruling 302) — which is the
- * honest answer while the panel is unbuilt, and becomes the limits panel the moment step 3 adds the key.
+ * honest answer for a SEALED REFUSAL carried in a letter or a bell (it lands on the section, not on a 404), and
+ * becomes the limits panel the moment step 3 adds the key.
  */
 export const CONSOLE_LIMITS_HREF = `${CONSOLE_ROUTE}?tab=limits`;
+
+/** True when the tab key `t` has a panel behind it — so a surface can tell a live link from a dead one. */
+export function consoleTabExists(t: string): boolean {
+  return (CONSOLE_TABS as readonly string[]).includes(t);
+}
+
+/**
+ * ⛔ WHETHER THE CONSOLE MAY RENDER A LINK TO THE LIMITS TAB AT ALL (ruling 432(i)).
+ * `consoleTab()` resolves an unknown `?tab=` back to the roster, so while `limits` is absent from `CONSOLE_TABS` a
+ * link to `CONSOLE_LIMITS_HREF` repaints the IDENTICAL page — no limits form, no message, no feedback. Measured on the
+ * first render: the desk's only call to action in the unset-limits state, and the whole roster-full sentence in the
+ * head, both pointed there. That is the dead control 432(a) refuses, in its honest-looking half — the head action and
+ * the master switch at least say they are disabled. So a RENDERED surface reads this flag and paints plain text until
+ * the panel lands; a letter's or a bell's href is unaffected, because landing on the section is not a dead control.
+ * ⛔ Step 3 adds `"limits"` to `CONSOLE_TABS` and both sentences become links in the SAME change as the panel.
+ */
+export const LIMITS_TAB_READY: boolean = consoleTabExists("limits");
 
 /*
  * ⛔ NO `#limits-first-unset` BUILDER YET, AND THAT IS DELIBERATE (ruling 306's strip sentence, deferred to step 3).
