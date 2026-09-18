@@ -54,10 +54,48 @@ export function RouteError({
 }) {
   const { t } = useT();
 
+  /**
+   * ⭐ REPORT IT OFF THE DEVICE — added 2026-09-18, after an outage nobody could see.
+   *
+   * ⛔ THE CONSOLE LINE BELOW USED TO BE THE ONLY RECORD, and its own comment said *"the
+   * server-side audit already logged the stack"*. **That is true only for a SERVER throw.** A
+   * throw in a client component renders this boundary with the response still HTTP **200**, with
+   * no `error.digest` minted, and with the stack existing nowhere but that browser's console —
+   * which, on a player's phone, nobody will ever read. On 2026-09-18 a player was shown this
+   * surface on `/updown` after a bet that had succeeded, and the investigation had literally
+   * nothing to work with: no status code, no reference, no log line. Two candidate crashes were
+   * found and fixed by inspection and NEITHER could be confirmed.
+   *
+   * ⭐ `sendBeacon`, NOT `fetch`, AND THE REASON IS THE EFFECT DIRECTLY BELOW THIS ONE: on a
+   * stale build it calls `location.reload()`. A pending `fetch` dies with the document; a beacon
+   * is specified to outlive unload, so the report survives the very recovery that hides the
+   * symptom. Declared FIRST so it is queued before that reload is requested.
+   * ⚠️ The analytics transport guard (`google-tag.tsx`) wraps `sendBeacon`, but forwards any
+   * non-analytics URL with its original arguments — verified, so the Blob body is safe here.
+   * ⛔ Scrubbing is SERVER-side (`lib/server/client-error.ts`): a stake, a balance, a phone
+   * number or a token must never reach a log line, and a browser-side scrub is only advice.
+   * ⛔ The whole thing is wrapped: the one surface that must never throw is this one.
+   */
   useEffect(() => {
-    // Client telemetry only — the server-side audit already logged the stack.
-    // Kept dumb-simple so the error surface itself can never throw.
     console.warn(`[50pick${logTag ? `/${logTag}` : ""}] error boundary fired`, { digest: error.digest });
+    try {
+      const body = JSON.stringify({
+        message: String(error?.message ?? "unknown").slice(0, 1_000),
+        stack: String(error?.stack ?? "").slice(0, 4_000),
+        path: window.location.pathname,
+        digest: error?.digest ?? null,
+        build: String((globalThis as { NEXT_DEPLOYMENT_ID?: string }).NEXT_DEPLOYMENT_ID ?? "") || null,
+      });
+      if (typeof navigator.sendBeacon === "function") {
+        navigator.sendBeacon("/api/client-error", new Blob([body], { type: "application/json" }));
+      } else {
+        void fetch("/api/client-error", {
+          method: "POST", body, keepalive: true, headers: { "content-type": "application/json" },
+        }).catch(() => undefined);
+      }
+    } catch {
+      /* reporting is a nice-to-have; the page is not */
+    }
   }, [error, logTag]);
 
   /**

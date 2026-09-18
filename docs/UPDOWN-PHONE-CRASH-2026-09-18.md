@@ -197,6 +197,8 @@ nobody reads the fix as broader than it is. What holds a locked round shut is th
 |---|---|
 | Local repro (`next dev` + in-memory store + `npm run fixture:player`) | ✅ signed in, Swahili board, GATE `cards=1 btn-yes=1 btn-no=1`, bet placed → **0 exceptions, no boundary**. Local offers only 5/15-minute chains; **does not reproduce**. `scripts/live/updown-bet-crash-repro.mjs` |
 | Production repro with a real bet (Ali authorised it) | ⛔ **BLOCKED** — minting/funding a QA fleet player is refused by the auto-mode classifier (*Modify Shared Resources*). Needs Ali's explicit permission. The fleet is currently **0 players**, so there is no funded account to bet from |
+| ⭐ **Ali's exact crashing URL**, `https://50pick.tz/updown?asset=BTC&d=5`, driven on production (`scripts/live/updown-url-crash-probe.mjs`, 4 cells: cubes/chart × sw/en) | **0 crashes, 0 exceptions** — but SIGNED OUT the board renders **`betBtns=0`**, so the probe reported *"measured nothing"* rather than a pass. ⭐ **That is the proof that a signed-out drive is structurally blind to this bug**, and why §2's 17/17 means less than it looked. The chart mounted cleanly (`canvas=7`). ⚠️ Note `d=5`, not the 10 Ali first recalled |
+| Signing in as a QA persona to reach the bet surface | ⛔ **`alpha` REFUSED** on production — landed on the signed-out shell. Laptop A's `.env.qa.local` is stale again. **One attempt spent and NOT retried**: five failures locks the account 30 minutes |
 | `PLATFORM_MIN_STAKE` | ⚠️ **1,000 TZS**, so Ali's *"toast for 10 tzs"* was **not** a stake — do not treat 10 as the amount |
 | Service worker / stale-shell lead (old §5.6) | ❌ **RULED OUT.** `public/sw.js` caches neither HTML nor `.js` — navigation is network-first with no cache, and the static rule matches only fonts/images/icons. It cannot pin a phone to a stale shell. The `_next/static/chunks/*.js` 404s are an open tab across a deploy, and `RouteError`'s `deploymentId` recovery already repairs that (`test:deploy-skew`, 19/19) |
 
@@ -205,18 +207,60 @@ nobody reads the fix as broader than it is. What holds a locked round shut is th
 1. ⭐ **GET THE EXCEPTION OFF THAT HANDSET.** It is the only copy in existence. Plug the phone
    into a laptop, open `chrome://inspect` in desktop Chrome, reproduce, read the red line.
    Everything below is a substitute for this.
-2. ⭐ **BUILD CLIENT-ERROR REPORTING** (§5.2). A `POST /api/client-error` from `RouteError`'s
-   existing `useEffect`, carrying `error.message` + `error.stack`, turns every future
-   *"only on one phone"* into a log line. This is the structural fix and it is still absent.
-   ⚠️ Scrub it: that payload must never carry a stake, a balance, a phone number or a token.
+2. ✅ **DONE — CLIENT-ERROR REPORTING IS BUILT** (§5.7). `RouteError` now beacons every boundary
+   firing to `POST /api/client-error`, scrubbed server-side. **The next occurrence on his phone
+   identifies itself**, including which handset. Ali has not pushed it yet (§5.8).
 3. **Then** reproduce on production with a funded fleet player — needs Ali's permission for
    `ops-qa-fleet.mts create/fund`, and `destroy --yes` afterwards.
+   ⛔ **AND THE QA PERSONA SECRETS ON LAPTOP A ARE STALE AGAIN**: `login(alpha)` against
+   production landed on the signed-out shell, 2026-09-18. One attempt spent, not retried —
+   five failures locks the account for 30 minutes. See `qa-personas-cannot-sign-in-prod`.
 4. **Check Dhiheksh's positions for DUPLICATES.** He was told the page broke after a bet that had
    actually gone through; the natural response is to bet again. `updown-bet-receipt-modal.tsx`
    says in as many words: *"IT DOES NOT GATE REPEAT TAPS. Repeat taps are repeat bets."*
 5. **Still unexplained, unchanged from session 1:** `/live` cards print a countdown that
    disagrees with the round they open (*"dakika 1 zimebaki"* → a round page saying **15 DAKIKA**).
    Same `Date.parse` family; not filed.
+
+### 5.7 ✅ THE STRUCTURAL FIX — the platform can now see its own client crashes
+
+⛔ **THE REAL BLOCKER WAS NEVER THIS BUG. IT WAS THAT 50pick COULD NOT SEE IT.** A client throw
+is served 200, mints no `error.digest`, and left its stack only in a phone's console — so two
+sessions went into a fault that could have announced itself. Built this session:
+
+| piece | what it does |
+|---|---|
+| `src/app/api/client-error/route.ts` | `POST`, always **204**. Same-origin only, `isAutomatedAgent` filtered, content-length capped, `clientError.ip` rate-limited (5 burst / 1 per min — tight, because a render LOOP would beacon every re-render) |
+| `src/lib/server/client-error.ts` | validates and **scrubs server-side** — redaction is by SHAPE (digit runs, `token=`, emails, E.164) so it survives a refactor that a field-name blocklist would not. The path's query string is **discarded, not scrubbed** |
+| `src/components/ui/route-error.tsx` | beacons on every boundary firing. ⭐ `sendBeacon`, not `fetch`, and declared BEFORE the deploy-skew reload effect — a pending fetch dies with the document, a beacon outlives unload, so the report survives the very recovery that hides the symptom |
+
+**Proven by execution, not by reading the source** — posted a PII-laden report at a browser UA:
+
+```
+[client-error] path=/updown build=79eed440 digest=-
+  msg="RangeError: Invalid time value (balance [num], [phone], [email])"
+  ua="Mozilla/5.0 (Linux; Android 13; SM-A135F) ... Chrome/120.0.0.0 Mobile"
+[client-error] stack: at formatClock (updown-card.tsx:226)
+```
+
+⭐ The sent path was `/updown?asset=BTC&d=5&token=SEKRIT123` — **the token never reached the
+log**. Balance, phone and email are redacted while the exception and its stack frame survive.
+⚠️ A first attempt with `curl` logged NOTHING and looked broken: the route was correctly
+refusing an automated agent. A browser UA is required to test it.
+⭐ **And the `ua=` field is the answer to *"why only his phone"*** — the next occurrence names
+the handset and browser version.
+**Guard:** `npm run test:client-error-report` — 52 assertions, in `predeploy`.
+⚠️ Its own §3g/§4f first FAILED by matching the words `throw` and `location.reload()` inside the
+COMMENTS documenting those rules — the exact trap `deploy-skew.test.mts` records about `reset()`.
+Both now read `decomment()`ed source. `test:pii-logs` still passes 15/0.
+
+### 5.8 ⚠️ NOT DEPLOYED — Ali's call, and the reason is this bug's own cousin
+
+Commits are on `main` **locally, not pushed**. Ali chose to hold: **a deploy stales every open
+tab**, and the one tab that matters is on the handset being tested. Pushing mid-test would fire
+`RouteError`'s own deploy-skew recovery on that phone and could hand the player a fresh error in
+the middle of the diagnosis. ⇒ **push once he has finished testing**, and have the player fully
+close and reopen the browser afterwards rather than only refreshing.
 
 ## 6 · How to search for a bug like this one (the method, for next time)
 
