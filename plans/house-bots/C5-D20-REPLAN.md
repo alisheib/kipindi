@@ -268,3 +268,57 @@ bots and what keeps D19 true").
        (ruling 275), or any test whose result is already certain.
      - What is NEVER trimmed: `tsc` before a push, a case for each new or changed behaviour, the render of a screen the
        step changes, the adversarial review of NEW code, and the register row for anything skipped.
+
+### Orchestrator rulings of the thirteenth session (467+, 2026-09-18, OMEGA-COMPILE01)
+
+467. **The baseline worktree is moved to the SAME `origin/main` commit C5-8 merges, before the red-by-red — and
+     `prisma generate` runs there if that move changed the schema.** Measured at this session's Phase 0:
+     `F:/kipindi-old-build` is clean and detached at **`b726cb7f`**, while `origin/main` has advanced twice since —
+     `05ae425f` (the AI-poll horizon cap) and now **`79eed440`** ("UP & DOWN · the board crashed on ONE phone").
+     A `test:all` comparison against a baseline three commits behind the branch's merge base does not measure what it
+     claims: every red `main` acquired in those three commits appears only on the house-bots side and is attributed to
+     this branch, and every red `main` has since FIXED appears only on the baseline side and is silently excused. The
+     instrument must be the audited one. So C5-8, after merging `origin/main` and before running `test:all` anywhere:
+     `git -C F:/kipindi-old-build checkout --detach <the merged main sha>`, then ruling 465's own test
+     (`git diff --stat <old>..<new> -- prisma/schema.prisma`; non-empty → `npx prisma generate` in that worktree), then
+     both suites. `npm ci`, `npm install` and `npm rebuild` stay forbidden there as everywhere. The baseline is left
+     clean, and the PROGRESS row records the sha it was measured at — a baseline whose commit is not written down is
+     not a control.
+
+468. **Commit 7 step 1's remaining work is a RENDER pass and a TEST-STRENGTH pass, not a code-fix pass: seven of the
+     eight findings the RESUME AT bullet enumerates are already BUILT, and the bullet is stale rather than wrong.**
+     The twelfth session drafted that list from its review, then its recovered fixer pushed `ae09672b` and `37cf48c3`
+     and the list was never re-cut against them. Re-cut here by direct measurement at `204155bb`, finding by finding,
+     so that no agent re-opens decided work (ruling 466) and no agent "fixes" correct code:
+     - **(a) the blocker — a failed control read painted as the STATEMENT "The desk is off. Nothing will be staked."**
+       ✅ BUILT. `house-console-read.ts:333-336` branches `controlUnreadable` to *"The desk's own state could not be
+       read, so nothing here says whether it is on."*; `page.tsx:150` renders `AdminLoadError` instead of the strip;
+       cases `house-bot-console-cases.mts:533-538` assert `threw.generic === false`, `controlUnreadable === true` and
+       `/could not be read/`; mutations `house-bot-console.anchors.mjs:313` and `:321` exist for both halves.
+     - **(b) the 360 money column** and **(c) the two-line AUTO-PAUSED chip** — ✅ CODE BUILT (`!whitespace-normal` on
+       the Bets-today header; a measured `min-w-[128px]` status-column floor, ruling 432(o)), ⬜ **NOT RE-PHOTOGRAPHED.**
+       That is the open half, and it is the half that decides: 432(o)'s own note records the first attempt at this
+       defect changing nothing on screen.
+     - **(d) the dead links** — ✅ BUILT AND DECIDED, and the decision is the one this ruling would have taken anyway:
+       inert until the panel exists, never a shell. `LIMITS_TAB_READY` (`console-routes.ts`, ruling 432(i)) gates both
+       rendered limits sites (`page.tsx:129`, `:166`) to plain text, and the row's whole "open →" column is REMOVED
+       until `/admin/desk/[id]` exists at step 4 (ruling 432(h)). Ruling 312's law — the tab list grows with the
+       panels, never ahead of them — forbids the shell alternative outright. The remaining `CONSOLE_LIMITS_HREF` sites
+       are a letter's and a bell's hrefs, which land on the section and are not dead controls.
+     - **(f) the disabled "Designate an account" with no reason** — ✅ BUILT: `view.actionReason` renders beside it in
+       the not-full state (ruling 432(j)), ⬜ **NOT RE-PHOTOGRAPHED** in all four states.
+     - **(g) the band's population** — ✅ BUILT: the fold is over the day-book MAP, not `listNonRemoved()`'s ids
+       (ruling 432(l)), with mutations at `:339` and `:347`.
+     - **(h) the test-strength set** — PART BUILT: `j()` is fixed (`house-bot-console-cases.mts:41` — *"`all()` is the
+       haystack; `j()` prints"* — and every scanning assertion now reads `all(...)`), and ruling 308's `offCause` now
+       has three mutations (`:371`, `:379`, `:387`). ⬜ **STILL OPEN: whether `355-all`, `321-nav` and `1.347` can
+       actually go red, and whether `offCause` has a CASE behind those mutations** — and that is decided by RUNNING
+       them, not by reading them (memory's standing lesson: a guard that cannot fail reads exactly like one that
+       passes). Each is run INDIVIDUALLY, seen red, never as the batch — ruling 275 keeps the batch for C5-8, and the
+       initial check of a change it never dropped.
+     - **(e) the failed-roster-read and failed-money-read states** — ⬜ OPEN, never captured at any width; ruling 464
+       requires both at 360 and 1280.
+     The consequence for the run: one `next build`, a served admin, and the four render sets above; the three mutations
+     and the `offCause` case; ruling 460's anchor re-grep; nothing else re-opened. DEFERRED-TESTS rows 9 and 10 stay
+     with **C5-7**, which owns the fixture that makes them photographable — a tile whose subject is absent measures
+     nothing, and step 1's database still holds no market, objection, round or KYC case.
