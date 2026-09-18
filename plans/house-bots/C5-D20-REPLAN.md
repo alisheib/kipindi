@@ -722,3 +722,117 @@ bots and what keeps D19 true").
      carries a `house_bot.*` action — so excluding by action covers all four writers and all three target types, which
      naming one writer would have hidden rather than fixed. The entry is corrected in place with a dated note, and 501's
      "three live call sites" is recorded as the figure that was wrong in both directions.
+
+521. **W25 is far larger than its register row said, and this ruling replaces the row's scope with what was measured.**
+     The row described one symptom — admin pages streaming their payload to any signed-in account. The audit's scoping
+     pass (workflow `wf_00480703-e0e`) measured the shape of it, and it is three blockers, not one:
+     - `src/proxy.ts:36` — `PROTECTED_PREFIXES` contains `"/admin"`, and the ONLY question asked of a protected path
+       is whether the cookie's HMAC verifies and has not expired. It is a session-EXISTS gate, not a role gate. Any
+       signed-in PLAYER passes the edge and reaches the admin render. `git grep -nE "role|isStaffRole|canView" --
+       src/proxy.ts` returns nothing.
+     - **40 of the 55 admin `page.tsx` files decide NOTHING about the viewer inside the page component.** Their only
+       belt is a layout, and a flight request whose `Next-Router-State-Tree` names those layouts skips them — the page's
+       own async function then runs and streams its payload. Named blockers inside that 40: `markets/[id]` (every
+       position joined to its owner's display name and phone, rendered raw), `kyc/[id]` (the identity submission, the
+       source-of-funds record and the risk score, read before the page asks anything at all about the viewer), and
+       `audit` (up to 100,000 rows — AUTH, KYC, WALLET, COMPLIANCE, SECURITY, with actorId, targetId and payload —
+       where only the HOUSE rows are redacted, correctly, by a gate scoped to house rows).
+     - `players/[id]` is worse than a read: it has no viewer gate, reads the full user row, and then **WRITES a
+       COMPLIANCE audit row attributing the PII record view to whoever made the request**. A player who forces the
+       flight both receives the record and writes themselves into the compliance trail as the officer who opened it.
+       That is evidence corruption, not only disclosure, and it is why W25 outranks the rest of the platform queue.
+
+522. **The W25 fix is TWO BELTS, and the second one reads the STORED ROW — because the first cannot.** The audit found
+     the trap: the 15 admin pages that DO gate themselves ask `session.role`, the role baked into the signed cookie,
+     while `PROGRESS` states the per-page check exists precisely "for a demoted account's old cookie". A check built on
+     the cookie's photograph of the role cannot answer that question — so copying the existing in-page pattern onto the
+     other 40 would deliver a belt that does not do the job it is being added for. Therefore:
+     - **Belt 1, the edge:** `proxy.ts` refuses a non-staff cookie for `/admin/**`, and `"/api/admin"` is ADDED to
+       `PROTECTED_PREFIXES` (it is not there at all today, so the edge currently forwards even an unauthenticated
+       request to those seven handlers; they each refuse on their own, so nothing leaks, but the edge contributes
+       nothing). ⛔ The `/api/admin` prefix must keep answering JSON 401s and must NOT turn them into 307s to the player
+       login page. The Edge runtime cannot read the database, so this belt is explicitly a CHEAP FIRST REFUSAL on a
+       claim, and is documented as such in the file.
+     - **Belt 2, the page:** every one of the 55 admin pages gates in-page on the **stored row**
+       (`db.user.findById(session.userId).role`), the shape `AdminSectionGate` and `houseConsoleAudience` already use —
+       and the 15 existing `session.role` checks are retrofitted in the SAME change, so the console does not end up
+       with two gate idioms of different strength and no rule saying which is correct.
+     - `test:admin-section-gate` is extended to fail for a page whose gate is only in a layout — today it enumerates
+       pages from disk and fails only for a page not under the gate at all.
+     - Separately: `recordAudit` refuses a non-staff `actorId` outright, so the compliance-trail write in 521 can never
+       happen again from a future surface that repeats the mistake.
+
+523. **Server actions are NOT covered by a path rule, and get a structural guard instead.** A Next server action is a
+     POST to whatever URL the browser is on, carrying a `Next-Action` id — not to the action's source path. So a role
+     rule keyed on `/admin/**` and `/api/admin/**` cannot see an admin action invoked from `/` or `/markets/[id]`.
+     `proxy.ts` already reads that header, so the codebase knows the shape exists and makes no decision on it. The fix
+     states this exclusion in its own scope, and adds a guard that **every exported function in a `"use server"` file
+     under `src/app/admin` calls a gate before its first read or write** — a structural check, not a review habit.
+
+524. **W25 gets its OWN instrument before it gets its fix, and it is a new sibling probe.** Measured: no suite or probe
+     in this repo would go red if another player's display name, phone or stake appeared in a non-staff response — the
+     only three-mode walk asserts the house vocabulary and the bot's label and id, nothing else. So the recommended fix
+     would have been "proven" by the instrument that was blind to the class in the first place, which is this project's
+     oldest and most expensive mistake. Before any fix lands: a **platform-PII probe**, a sibling of the house one,
+     seeding a named player with a known display name, phone and stake and failing any non-staff response whose body
+     contains them in all three modes (plain document, `RSC: 1`, `RSC: 1` with a router-state tree naming the admin
+     layouts). ⛔ The ADMIN control must be REQUIRED to contain them, so a page that shows nothing to anybody prints
+     NOT MEASURED rather than PASS. A sibling, not a second vocabulary inside the house probe: W25 ships on its own
+     branch off `origin/main`, where the house probe does not exist.
+     **Order of work on that branch: the probe first, seen RED against the unfixed code, then the fix, then the probe
+     green with its control firing.** A fix that lands before its instrument cannot be shown to have fixed anything.
+
+525. **The three ownerless `main` defects and the two undecided console items are dispositioned rather than carried.**
+     - **L29, L30 and L57** are dispositioned only as "a main-branch fix" with no branch, no commit and no schedule,
+       while rulings 463 and 472 gave L58 and W25 exactly those three things. They join the same standalone main-side
+       lane: one commit, after W25, touching only admin and report code. Carrying a defect under a category name rather
+       than a schedule is how it stops being anyone's.
+     - **L52** (the `housebot.verify` rate-limit bucket, whose name would be legible on `/admin/system`'s rate-limiter
+       card) takes branch (1): the bucket is renamed to a neutral id at `rate-limit.ts` and its caller in
+       `designation.ts`, and ruling 453's guard population widens to cover `src/lib/server/rate-limit.ts`. Cheaper than
+       gating the card, and it needs no new gate. Taken BEFORE C7 step 6, which gives the bucket its first live caller.
+     - **L16** (the appearance of an admin's HOUSE_BOT bell) is ruled at **C7 step 5**, which owns the feed and its
+       copy: the server maps `HOUSE_BOT` to an appearance **already in the kit**, so no new literal ships, with an
+       assertion in `test:house-bot-console` and a declared mutation — exactly the shape ruling 473 gave the
+       `RefreshPoller`. An appearance deferred to "the visual pass" with no step and no assertion is ruling 473's class
+       again.
+
+526. **L17 is DECIDED: `getPlatformTimezone`'s import moves out of `utils.ts`, and it moves on the platform lane.**
+     The chain `utils.ts → prisma.ts` is client-reachable, and the only thing keeping every Prisma model name out of a
+     public chunk today is the bundler's tree-shaking — a property of the build, not of the source. `verify:house-bot-bundle`,
+     the guard that would catch it, runs only at commit closes and REL-0, so a single refactor of `utils.ts` between two
+     closes ships the model names and nothing goes red until the next close. A latent disclosure whose only defence is a
+     bundler's current behaviour is not defended. It moves with the W25 / L58 platform lane, not inside a house-bots
+     checkpoint.
+
+527. **W6 is DECIDED: the pointer to this programme lands in C5-8's own merge commit to `main`.** The row's default named
+     no session and no step, and the condition it was written under — that this branch never pushes `main` — was repealed
+     by ruling 471. Since C5-8 now merges and pushes `main`, it adds the pointer in `CLAUDE.md` / `NEXT-PLAN.md` in that
+     same commit. Otherwise the next session working on `main` finds no trace of this programme, which is the whole reason
+     W6 was raised.
+
+### The eight findings the audit's per-finder cap dropped, pulled from the journal and read (all minor, all staleness)
+
+⛔ These were never put to the verifier, so each is CHECKED before it is acted on. They belong to the propagation pass.
+
+1. `docs/HOUSE-BOTS.md:747` and `docs/COMPLIANCE-DECISIONS.md:214` describe `BOARD-DISCLOSURE-HOUSE-BOTS.md` **in the
+   present tense, and the file does not exist** — it is Commit 6's, unbuilt. Under D19 and D20 that draft is the ONLY
+   paper that discloses anything to anyone, so the disclosure-surface inventory currently asserts the content of a
+   document nobody can read. Both sentences take the ⏳ marker the same files already use elsewhere for unbuilt work.
+2. `C7-SPEC.md` §7's **eight "open questions for Ali" were all answered by §8's rulings 452-461 and still read as open**,
+   each with "my ruling, ships today" beside option (1) — and Q2's option (1) is the page body saying "House bots", which
+   453 struck, while Q8's is the bare balance 459 refused. A handover greps for "open questions"; it would find eight
+   live-looking decisions, two of them disclosures the owner killed. §7 gets a header marking every question ANSWERED
+   with its ruling number.
+3. `docs/RULES.md:566` (§2.11) cites "(owner rulings D1–D18)". **D20 is named nowhere in RULES.md at all** — and RULES.md
+   is the law file, §2.11 the place a reader learns what house stakes may do. D20 is what makes house accounts ordinary
+   players in every report and levy figure.
+4. `docs/FLOWS.md:133` still says "nothing calls `placeHouseBet` until the engine (build commit 4)". Commit 4 is built and
+   the engine calls it: the sentence says the gates are dormant when they are live behind the master switch.
+5. `docs/AGENT-PROGRAMME.md:226` marks the no-reward-on-house-stakes rule "⏳ lands in build commit 2" — built, and in the
+   affiliate service. A ⏳ on built work is the mirror of a ✅ on unbuilt work: it invites a second build.
+6. `PROGRESS.md:616`'s X14 row reads as a live proposal while C5-SPEC marks it MOOT under D20 — every neighbouring struck
+   row (X9, X10, X11, X13) carries its ⛔ mark and X14 alone does not, so the register reports one more open question than
+   exists.
+7. `PROGRESS.md:572`'s W6 — ruled at 527 above.
+8. `PROGRESS.md:638`'s L17 — ruled at 526 above.
