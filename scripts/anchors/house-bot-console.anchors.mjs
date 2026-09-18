@@ -32,6 +32,8 @@ const FORM = "src/app/admin/desk/limits-form.tsx";
 const SAVE = "src/lib/server/house-bot/limits-save.ts";
 /** The page ruling 434 was taken on — a platform surface, not a console one. */
 const REFUSED = "src/app/admin/kyc/refused/page.tsx";
+/* ⭐ C7 step 4 · the house DAL, for `botRateUsage` — the one new seam member ruling 351 allows. */
+const DAL = "src/lib/server/house-bot-dal.ts";
 
 export const MUTATIONS = [
   /* ── Ruling 453 · THE NEUTRAL LEXICON. Four mutations, one per sentence the ruling fixes. ─────────────────────── */
@@ -1209,6 +1211,29 @@ import { formatEat } from "@/lib/utils";`,
     from: `  gTargetsMaxActive: "Across every account. The master switch does not need this limit.",`,
     to: `  gTargetsMaxActive: "Across every account. Not set — no target can be added, and the master switch does not need this limit.",`,
     expect: "2.537 · 432(n) · not one hint this panel renders says",
+    suite: "console-mem",
+  },
+  /* ── C7 step 4 · ruling 351's one new seam member. Both mutations land on the MEMORY twin, which is the twin
+     the `console-mem` child runs; the PRISMA twin's shape is `test:dal-parity` 16.botRateUsage's subject. ───── */
+  {
+    /* The two windows collapse into one, so the hour count reads the day's. The fixture places one stake NOW, one
+       two hours ago and one two days ago precisely so the two numbers differ — 1 and 2 — and a reader that answers
+       the same number twice cannot hide behind a fixture where they happen to agree. */
+    name: "351-window · the hour window becomes the day window, so `bets this hour` reads today's count",
+    file: DAL,
+    from: `      if (at > now - HOUR_MS) row.placedLastHour++;`,
+    to: `      if (at > now - DAY_MS) row.placedLastHour++;`,
+    expect: "1.351 · one account's rate usage",
+    suite: "console-mem",
+  },
+  {
+    /* `lastPlacedAt` takes the OLDEST placement instead of the newest — the `min`/`max` slip, which paints a
+       "Last bet" of two days ago on an account that staked a minute ago. */
+    name: "351-oldest · `lastPlacedAt` keeps the OLDEST placement instead of the newest",
+    file: DAL,
+    from: `      if (row.lastPlacedAt == null || at > ms(row.lastPlacedAt)) row.lastPlacedAt = new Date(at).toISOString();`,
+    to: `      if (row.lastPlacedAt == null || at < ms(row.lastPlacedAt)) row.lastPlacedAt = new Date(at).toISOString();`,
+    expect: "1.351 · one account's rate usage",
     suite: "console-mem",
   },
 ];

@@ -1792,6 +1792,102 @@ section("§2b · the limits save");
   }
 }
 
+/* ════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+ * §2c · `botRateUsage` — C7 STEP 4's ONE NEW SEAM MEMBER (C7-SPEC ruling 351), BEHAVIOURAL, ON BOTH STORES
+ *
+ * The detail page's "Limit usage" card carries TWO COUNT ROWS — bets this hour and bets today — and the roster's
+ * "Last bet" column needs a last-placement instant (ruling 363, and 432(g), which deferred that column to the step
+ * that brings this reader). Neither figure exists on any reader the console already has:
+ *   · `botUsage` REQUIRES a `marketId` and must keep requiring it — a caller with no market reads `countOnMarket: 0`
+ *     and `stakeOnMarket: 0`, which are the PER_MARKET and PER_MARKET_COUNT gate figures, so an optional market
+ *     would turn a gate reader into one that waves a stake through;
+ *   · `placedTimes(...).length` is an UNBOUNDED row read on a page render in both twins.
+ * So one new member, one statement per call, the same rolling windows on the DATABASE clock — and the identity with
+ * `botUsage` is asserted here, on both stores, because that is what makes "the same terms" a measurement.
+ * ════════════════════════════════════════════════════════════════════════════════════════════════════════════════ */
+
+section("§2c · botRateUsage — the market-free rate reader (ruling 351)");
+try {
+  await w.limits();
+  await w.switchOn();
+  const seam = w.dal.houseSeamStore;
+  const rb = await w.bot();
+  const other = await w.bot();
+  const quiet = await w.bot();
+
+  /** One OPENER stake on a fresh poll, returned as its position id. */
+  const placeOne = async (b: Any): Promise<string> => {
+    const market = await w.poll({ graceMin: 0 });
+    const i = await w.intent(b, market.id, { kind: "OPENER", side: "YES", stakeTzs: 1_000 });
+    const r = await w.place(b, i);
+    if (!r.ok) throw new Error(`§2c fixture bet refused: ${JSON.stringify(r).slice(0, 200)}`);
+    return r.data.positionId;
+  };
+
+  /* Three stakes for one account: one NOW, one two hours ago, one two days ago. So the hour window holds 1 and the
+   * day window holds 2 — two DIFFERENT numbers, which is what stops a reader that returns the same count twice. */
+  const pNow = await placeOne(rb);
+  const pHour = await placeOne(rb);
+  const pDay = await placeOne(rb);
+  await w.backdate(pHour, 2 * 60 * 60 * 1_000);
+  await w.backdate(pDay, 2 * 24 * 60 * 60 * 1_000);
+  /* And one for a SECOND account, so the roster-wide call has more than one row to group. */
+  await placeOne(other);
+  /* `quiet` never places: a bot with no marked position must come back as NO ROW, so the console defaults it to
+   * zero itself rather than reading a fabricated zero out of the store. */
+  void quiet;
+
+  const mine = await seam.botRateUsage({ houseBotId: rb.botId });
+  /* ⛔ `lastPlacedAt` IS THE NEWEST, NOT THE OLDEST — asserted against the two backdated instants rather than
+   * against a clock reading, so a reader returning `min("placedAt")` is red and a slow run is not. */
+  const lastMs = mine[0] ? Date.parse(mine[0].lastPlacedAt ?? "") : NaN;
+  ok("1.351 · one account's rate usage: the HOUR and DAY windows are counted separately, on the database clock, and the NEWEST placement comes back with them",
+    mine.length === 1 && mine[0].houseBotId === rb.botId
+      && mine[0].placedLastHour === 1 && mine[0].placedLastDay === 2
+      && Number.isFinite(lastMs) && lastMs > Date.now() - 60 * 60 * 1_000,
+    j({ row: mine[0], placed: [pNow, pHour, pDay].length }));
+
+  /* ⛔ THE IDENTITY RULING 351 ASSERTS: "the same market-free terms `botUsage` computes". If the two ever disagree,
+   * the console's count rows and the gate's own rate refusal are reading two different facts about one account. */
+  const viaBotUsage = await seam.botUsage({ houseBotId: rb.botId, marketId: (await w.poll({ graceMin: 0 })).id });
+  ok("1.351 · …and every one of those three terms EQUALS what `botUsage` computes for the same account — the same windows, read two ways",
+    mine[0].placedLastHour === viaBotUsage.placedLastHour
+      && mine[0].placedLastDay === viaBotUsage.placedLastDay
+      && mine[0].lastPlacedAt === viaBotUsage.lastPlacedAt,
+    j({ rate: mine[0], usage: viaBotUsage }));
+
+  /* ⛔ ONE STATEMENT FOR THE WHOLE ROSTER, NEVER A PER-BOT LOOP (ruling 351). The spy counts CALLS, which is the
+   * half a suite can see; the ONE-STATEMENT half is `test:dal-parity` 16.botRateUsage over the Prisma body. */
+  const realRate = seam.botRateUsage;
+  let calls = 0;
+  let everyone: Any;
+  try {
+    seam.botRateUsage = async (...a: Any[]) => { calls++; return realRate.call(seam, ...a); };
+    everyone = await seam.botRateUsage({ houseBotId: null });
+  } finally { seam.botRateUsage = realRate; }
+  const ids = everyone.map((r: Any) => r.houseBotId);
+  ok("1.351 · a NULL account reads the whole roster in ONE call, ordered by account, with a row only for an account that has placed",
+    calls === 1 && ids.includes(rb.botId) && ids.includes(other.botId) && !ids.includes(quiet.botId)
+      && j(ids) === j([...ids].sort()),
+    j({ calls, ids }));
+  ok("1.351 · CONTROL · the spy really fires, so the ONE above is a measurement and not an uncalled counter",
+    calls === 1 && everyone.length >= 2, j({ calls, rows: everyone.length }));
+
+  /* ⛔ AND `botUsage`'s MARKET STAYS REQUIRED (ruling 351's own prohibition), asserted on the FUNCTION rather than
+   * on the type, because a type alone disappears at runtime: called with no market it must NOT answer as though the
+   * per-market gate figures were zero. */
+  /* ⚠️ ON THE BOUND FUNCTION, NOT ITS ARITY. `Function.length` is 1 on the memory twin (`({…})`) and 2 on the
+   * Prisma one (`({…}, tx)`), so an arity pin is a per-store number pretending to be a rule. What is the same on
+   * both stores is that the body NAMES `marketId` and gives it no default — which is the thing 351 forbids. The
+   * INTERFACE's own signature is pinned in `test:dal-parity` 16.botRateUsage. */
+  ok("1.351 · `botUsage` still NAMES its market and gives it no default — this reader is why it did not have to become optional",
+    /marketId/.test(String(seam.botUsage)) && !/marketId\s*=[^=]/.test(String(seam.botUsage)),
+    String(seam.botUsage).slice(0, 80));
+  await w.switchOff();
+} catch (err) {
+  ok("1.351 · the rate reader's fixture ran", false, String((err as Any)?.stack ?? err).replace(/\s+/g, " ").slice(0, 400));
+}
+
 } catch (err) {
   /* ⛔ NOT A SWALLOW. The throw is an assertion of its own, it is printed with its stack, and §3 and §4 still run — a
    * partially filled `STATES` makes 3.453's own population floor fail too, which is the correct second report. */

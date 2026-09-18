@@ -1553,8 +1553,14 @@ export interface HouseBotTargetStore {
   activeForMarket(marketId: string, tx?: HouseTx): Promise<StoredHouseBotTarget | null>;
   /** ⛔ The never-retarget rule: true once any target on the poll was REMOVED or VETOED. */
   everStopped(marketId: string, tx?: HouseTx): Promise<boolean>;
-  /** When the poll's latest stop happened, for the refusal copy. */
-  lastStoppedAt(marketId: string, tx?: HouseTx): Promise<string | null>;
+  /* ⛔ `lastStoppedAt` WAS HERE AND IS DELETED (replan ruling 504, decided at C7 step 4). It had ZERO occurrences
+   * anywhere outside this file — no `src/` caller, no behavioural case, and no entry in `dal-parity`'s own sealed
+   * list — while `everStopped`, the predicate the never-retarget rule actually decides on, has both twins and two
+   * cases. 504 gave step 4 one choice: call it by name with a behavioural case, or delete it from the interface and
+   * both twins with its name in `dal-parity.test.mts`'s `NEVER` array. The console cannot be the caller that saves
+   * it: the figure is PER MARKET, so a targets panel would have to issue one read per row on a page render, which is
+   * the per-bot loop ruling 351 refuses in as many words. Ruling 350 had already put it in its NOT-NEEDED half.
+   * A paged house READ wired into both twins with no consumer is ruling 259's own shape. */
   countActive(input: { botId?: string }, tx?: HouseTx): Promise<number>;
 }
 
@@ -1640,6 +1646,22 @@ export type HouseMarketUsage = {
 /** Every bot's marked positions in rolling windows (H4 GLOBAL_BETS_PER_MINUTE / _PER_DAY). */
 export type HouseGlobalUsage = { betsLastMinute: number; betsLastDay: number };
 
+/**
+ * One bot's MARKET-FREE rate usage — the same rolling windows `botUsage` counts, without a market (C7-SPEC ruling 351).
+ *
+ * ⛔ WHY IT IS NOT `botUsage` WITH AN OPTIONAL MARKET. `botUsage`'s `marketId` stays REQUIRED and undefaulted: a caller
+ * with no market would read `countOnMarket: 0` and `stakeOnMarket: 0`, which are the PER_MARKET and PER_MARKET_COUNT
+ * gate figures, so an optional market would turn a gate reader into one that waves a stake through.
+ */
+export type HouseBotRateUsage = {
+  houseBotId: string;
+  /** Marked positions of this bot placed in the last 3,600 s / 86,400 s, on the DATABASE clock. */
+  placedLastHour: number;
+  placedLastDay: number;
+  /** The newest marked position of this bot, any market, any day. `null` when it has never placed. */
+  lastPlacedAt: string | null;
+};
+
 /** What house stakes have been set against one player today (H4 COUNTERPARTY_COUNT / _TZS). */
 export type CounterpartyToday = { userId: string; count: number; tzs: number };
 
@@ -1724,6 +1746,17 @@ export interface HouseSeamStore {
   botUsage(input: { houseBotId: string; marketId: string }, tx?: HouseTx): Promise<HouseBotUsage>;
   marketUsage(input: { houseBotId: string; marketId: string }, tx?: HouseTx): Promise<HouseMarketUsage>;
   globalUsage(tx?: HouseTx): Promise<HouseGlobalUsage>;
+  /**
+   * ⭐ C7 STEP 4 (C7-SPEC ruling 351). Every bot's market-free rate usage in ONE statement, ordered by `houseBotId`:
+   * one bot's (`houseBotId`), or every bot's (`null`). The console's per-account count rows ("bets this hour",
+   * "bets today") and its "Last bet" column read this.
+   * ⛔ ONE STATEMENT FOR THE WHOLE ROSTER, never a per-bot LOOP of `botUsage` calls — `openExposure(null)` and
+   * `dayRows({houseBotId: null})` already set that shape, and a loop on a page render is N reads for one answer.
+   * ⛔ AND NEVER `placedTimes(...).length`: BOTH twins of that member are unbounded (the memory twin collects every
+   * matching instant into an array and sorts it; the Prisma twin is `SELECT "placedAt" … ORDER BY … DESC` with NO
+   * `LIMIT`), so `.length` as a count is an unbounded row read on a page render.
+   */
+  botRateUsage(input: { houseBotId: string | null }, tx?: HouseTx): Promise<HouseBotRateUsage[]>;
   /**
    * The placement instants of marked positions in the last `withinSec` seconds (1–86,400) on the database clock,
    * newest first: one bot's (`houseBotId`), or every bot's (null). The Enter now rate facts (N1 §4.2 step 11) read
@@ -2658,13 +2691,6 @@ const memoryHouseBotTargets: HouseBotTargetStore = {
   async everStopped(marketId) {
     return [...memTargets.values()].some((t) => t.marketId === marketId && stoppedTarget(t));
   },
-  async lastStoppedAt(marketId) {
-    const times = [...memTargets.values()]
-      .filter((t) => t.marketId === marketId && stoppedTarget(t))
-      .map((t) => ms(t.status === "REMOVED" ? t.removedAt : t.endedAt))
-      .filter((n) => Number.isFinite(n));
-    return times.length ? new Date(Math.max(...times)).toISOString() : null;
-  },
   async countActive({ botId }) {
     return [...memTargets.values()].filter((t) => t.status === "ACTIVE" && (botId === undefined || t.houseBotId === botId)).length;
   },
@@ -2859,6 +2885,24 @@ const memoryHouseSeam: HouseSeamStore = {
       if (at > now - DAY_MS) betsLastDay++;
     }
     return { betsLastMinute, betsLastDay };
+  },
+  /**
+   * ⛔ ONE PASS, AND NO PER-ROW ARRAY (ruling 351). The accumulator is a Map keyed by bot; nothing collects the
+   * matching positions themselves, which is what separates this from `placedTimes`.
+   */
+  async botRateUsage({ houseBotId }) {
+    const now = Date.now();
+    const acc = new Map<string, HouseBotRateUsage>();
+    for (const p of await positionStore.values()) {
+      if (p.houseBotId == null || (houseBotId != null && p.houseBotId !== houseBotId)) continue;
+      const at = ms(p.placedAt);
+      const row = acc.get(p.houseBotId) ?? { houseBotId: p.houseBotId, placedLastHour: 0, placedLastDay: 0, lastPlacedAt: null };
+      if (row.lastPlacedAt == null || at > ms(row.lastPlacedAt)) row.lastPlacedAt = new Date(at).toISOString();
+      if (at > now - HOUR_MS) row.placedLastHour++;
+      if (at > now - DAY_MS) row.placedLastDay++;
+      acc.set(p.houseBotId, row);
+    }
+    return [...acc.values()].sort((a, b) => (a.houseBotId < b.houseBotId ? -1 : 1));
   },
   async placedTimes({ houseBotId, withinSec }) {
     const since = Date.now() - placedWindowSec(withinSec) * 1000;
@@ -3848,11 +3892,6 @@ const prismaHouseBotTargets: HouseBotTargetStore = {
     const rows = await sql(tx, `SELECT EXISTS (SELECT 1 FROM "HouseBotTarget" WHERE "marketId" = $1::text AND ${STOPPED_SQL}) AS "stopped"`, [marketId]);
     return rows[0]?.stopped === true;
   },
-  async lastStoppedAt(marketId, tx) {
-    const rows = await sql(tx, `SELECT max(CASE WHEN "status" = 'REMOVED' THEN "removedAt" ELSE "endedAt" END) AS "at"`
-      + ` FROM "HouseBotTarget" WHERE "marketId" = $1::text AND ${STOPPED_SQL}`, [marketId]);
-    return iso(rows[0]?.at ?? null);
-  },
   async countActive({ botId }, tx) {
     const p = new Params();
     const where = [`"status" = 'ACTIVE'`];
@@ -4035,6 +4074,25 @@ const prismaHouseSeam: HouseSeamStore = {
       + ` count(*)::int AS "day"`
       + ` FROM "Position" WHERE "houseBotId" IS NOT NULL AND "placedAt" > ${DB_CLOCK_UTC_SQL} - interval '1 day'`, []);
     return { betsLastMinute: Number(rows[0].minute), betsLastDay: Number(rows[0].day) };
+  },
+  /**
+   * ⛔ WRITTEN IN `globalUsage`'s OWN SHAPE (ruling 351): `count(*) FILTER (…)` over the DATABASE clock with a
+   * `GROUP BY "houseBotId"`, never a row projection. The outer WHERE carries NO time bound, because `lastPlacedAt`
+   * is all-time — the same term `botUsage`'s `max("placedAt")` reads.
+   */
+  async botRateUsage({ houseBotId }, tx) {
+    const who = houseBotId == null ? `"houseBotId" IS NOT NULL` : `"houseBotId" = $1::text`;
+    const rows = await sql(tx, `SELECT "houseBotId", max("placedAt") AS "last",`
+      + ` count(*) FILTER (WHERE "placedAt" > ${DB_CLOCK_UTC_SQL} - interval '1 hour')::int AS "hour",`
+      + ` count(*) FILTER (WHERE "placedAt" > ${DB_CLOCK_UTC_SQL} - interval '1 day')::int AS "day"`
+      + ` FROM "Position" WHERE ${who} GROUP BY "houseBotId" ORDER BY "houseBotId"`,
+      houseBotId == null ? [] : [houseBotId]);
+    return rows.map((r) => ({
+      houseBotId: String(r.houseBotId),
+      placedLastHour: Number(r.hour),
+      placedLastDay: Number(r.day),
+      lastPlacedAt: r.last == null ? null : iso(r.last),
+    }));
   },
   async placedTimes({ houseBotId, withinSec }, tx) {
     const secs = placedWindowSec(withinSec);

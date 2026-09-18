@@ -41,6 +41,9 @@
  * `npm run test:house-bot-console` PRINTED on that run: **memory 313, Postgres 173**. Both new assertions came
  * off a served tile, not off the source: `limits-at-1280.png` and `limits-over-1280.png` are pixel-identical in
  * the meter, `form-dirty-360.png` showed one field saying "Not set" twice, and `limits-unset-exempt-unsetfield-1280.png` showed four HINTS carrying the unset consequence a second time — one of them under a field whose own value read 200.
+ * ⭐ RAISED AGAIN at C7 step 4's first slice — `botRateUsage`, the one new seam member ruling 351 allows, with its
+ * hour/day windows, its identity with `botUsage`, its one-call roster read and the account that has never placed —
+ * to what `npm run test:house-bot-console` PRINTED on that run: **memory 318, Postgres 178**.
  * ⛔ A floor only ever rises, and
  * only to a count a run printed — never to an arithmetic guess.
  *
@@ -51,6 +54,6 @@ import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 await runTwoStores({
   suite: "test:house-bot-console",
   casesFile: "scripts/lib/house-bot-console-cases.mts",
-  minPass: { memory: 313, postgres: 173 },
+  minPass: { memory: 318, postgres: 178 },
   dbPrefix: "hb_console",
 });
