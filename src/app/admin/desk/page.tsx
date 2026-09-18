@@ -198,7 +198,7 @@ export default async function AdminDeskPage({ searchParams }: { searchParams: Pr
   if (!view) return null;
 
   const rosterFull = view.rosterFullReason !== null;
-  /* ⚠️ HOISTED SO EACH TAB GROUP CAN BE WRITTEN IN THE SHIPPED IDIOM — a tab-group opener with its fragment with NOTHING else in
+  /* ⚠️ HOISTED SO EACH TAB GROUP CAN BE WRITTEN IN THE SHIPPED IDIOM — a tab test opening its fragment, with NOTHING else in
      the condition. `test:tab-anchors` decides which tab OWNS a rendered `id` by that exact opener, and the served
      probe discovers a page's tabs by `tab === "…"`; a second term in the condition made the limits anchor read as
      "above the rail (every tab)", which is a PASS that proves nothing. Measured on this file, 2026-09-18.
@@ -230,18 +230,10 @@ export default async function AdminDeskPage({ searchParams }: { searchParams: Pr
                 ⛔ THE WHOLE SENTENCE IS THE LINK ONCE THERE IS A PANEL TO LINK TO, and the first render is why: the
                 server's sentence already ENDS "…raise the roster limit on Limits →", so appending a separate
                 "Limits" link printed the word twice with the arrow orphaned between them ("on Limits → Limits").
-                ⛔ AND IT IS NOT A LINK YET (ruling 432(i)): `?tab=limits` resolves BACK to the roster while the
-                closed tab list holds only `roster`, so a live link here repaints the identical page with no limits
-                form and no explanation — a dead control in the honest-looking half of 432(a).
                 ⛔ WHEN THE ROSTER IS NOT FULL THERE IS STILL A REASON ON SCREEN (432(j)): a disabled primary action
                 with nothing beside it reads as a broken page, and "0 of 5" is exactly when designation is
                 legitimate. */}
             <span className="text-body-sm text-text-secondary max-w-[38ch]">
-              {/* ⛔ THE INERT BRANCH PAINTS THE PLAIN FORM (ruling 432(i)). The server's sentence is written for a
-                  LINK and ENDS "…on Limits →"; rendered as plain text that arrow promised a navigation to a tab
-                  `consoleTab()` resolves straight back to this page, and named a rail option that is not on the rail
-                  — the rail below carries "Roster" alone. The sibling forty lines down already drops its arrow when
-                  inert; this site passed the linked string straight through. */}
               {rosterFull && LIMITS_TAB_READY
                 ? <Link href={view.limitsHref as Route} className="inline-flex items-center min-h-[var(--tap-min)] hover:text-brand-300 hover:underline">{view.rosterFullReason}</Link>
                 : rosterFull ? view.rosterFullPlain : view.actionReason}
@@ -387,8 +379,8 @@ export default async function AdminDeskPage({ searchParams }: { searchParams: Pr
         />
 
         {/* ⚠️ THE `(<>` … `</>)}` FORM IS LOAD-BEARING, NOT A HABIT. `test:tab-anchors` decides WHICH TAB owns a
-            rendered `id` by finding the last a tab-group opener with its fragment opener before it with no `</>)}` between them; a
-            panel written the same opener without one reads as ABOVE the rail, which is the strongest possible answer and
+            rendered `id` by finding the nearest tab-group opener above it with no `</>)}` in between; a panel whose
+            opener does not take this exact form reads as ABOVE the rail, which is the strongest possible answer and
             would let the limits anchor pass while sitting on any tab at all. */}
         {tab === "roster" && (<>
           <AdminCard padding="p-0">
@@ -533,7 +525,7 @@ export default async function AdminDeskPage({ searchParams }: { searchParams: Pr
                 <div className="space-y-3">
                   {/* ⛔ THE `id` IS A LITERAL, IN BOTH BRANCHES, AND WRITTEN HERE RATHER THAN IN A COMPONENT.
                       `test:tab-anchors` reads this FILE as text for `id="limits-first-unset"` and decides which tab
-                      owns it by the nearest a tab-group opener with its fragment opener above it: an
+                      owns it by the nearest tab-group opener above it: an
                       `id={cond ? "limits-first-unset" : undefined}` compiles, paints correctly and is INVISIBLE to
                       it, and the same literal inside a helper function sits ABOVE every tab group and reads as
                       "above the rail". Both were measured on this file. The guard is what proves the strip's

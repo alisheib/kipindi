@@ -525,7 +525,8 @@ try {
   const rows: Any[] = [];
   // The audit log and the overview first, before the probe's own page views write rows ahead of the fixture's.
   /* ⛔ THE PROBE'S OWN PAGE VIEWS POLLUTE THE RING IT MEASURES. `/admin/players/[id]` WRITES a COMPLIANCE
-   * `admin.player.viewed` row on every render, and its Activity and Audit panels read the RING
+   * `player.record_viewed` row on every render (`players/[id]/page.tsx:96` — the docblock said
+   * `admin.player.viewed`, which is not an action this platform writes), and its Activity and Audit panels read the RING
    * (`getAuditForActor` + `getAuditForTarget`, newest first, sliced). MEASURED at this head: by the time
    * `?tab=audit` was requested, ~100 of the probe's own view rows sat ahead of the fixture's two `house_bot.*` rows,
    * so the ADMIN control read the page as SILENT and 4.3 reported a blind control on an instance that is not blind at
@@ -533,7 +534,7 @@ try {
    * comment below already gives for `/admin/audit`. */
   /* ⛔ AND THE ORDER INSIDE THE FIRST GROUP MATTERS TOO, MEASURED. Putting the holder's instances first was not
    * enough: the BARE instance is requested by five viewers in three modes before `?tab=audit` is reached, and every
-   * one of those fifteen renders writes its own `admin.player.viewed` row against the same target — so the decay is
+   * one of those fifteen renders writes its own `player.record_viewed` row against the same target — so the decay is
    * monotonic and visible inside a single instance (`?tab=activity` carried on `document` and `flight` and not on
    * `flight+tree`). The instance whose control depends on the ring window is therefore requested FIRST of all, when
    * only the warm-up's single row sits ahead of the fixture's. ⛔ This is ordering, not population: nothing is
@@ -543,7 +544,16 @@ try {
   const rank = (n: string) => (RING_FIRST(n) ? 0 : FIRST(n) ? 1 : 2);
   ROUTES.sort((x, y) => rank(x.name) - rank(y.name));
   for (const route of ROUTES) {
-    for (const [viewer] of viewers) {
+    /* ⛔ AND ON A RING_FIRST INSTANCE THE ADMIN GOES FIRST, which is the other half of the ordering above. The
+       viewer loop runs `player, holder, trigger, staff, admin`, and each of the four earlier renders writes its
+       own `player.record_viewed` row against the same target — so the ADMIN, whose non-zero body is the CONTROL
+       that makes every other viewer's zero worth anything, read the ring AFTER four more rows had pushed the
+       fixture's down it. A control that decays with request order is a control that will one day report a blind
+       instance as a measured one. ⛔ Ordering only: no viewer and no instance is dropped. */
+    const order = RING_FIRST(route.name)
+      ? [...viewers].sort((a, b) => Number(b[0] === "admin") - Number(a[0] === "admin"))
+      : viewers;
+    for (const [viewer] of order) {
       const modes: Array<[string, Record<string, string>]> = [
         ["document", { cookie: cookies[viewer], "sec-fetch-mode": "navigate" }],
         ["flight", { cookie: cookies[viewer], RSC: "1" }],
@@ -588,8 +598,14 @@ try {
   const staffElsewhere = rows.filter((r) => r.viewer === "staff" && (r.hits?.length ?? 0) > 0 && !onConsole(r.route));
   const errored = rows.filter((r) => r.error);
   ok("4.0 · every request was answered (no transport error)", errored.length === 0, errored.slice(0, 5).map((r) => `${r.viewer} ${r.route} ${r.mode}: ${r.error}`).join(" · "));
-  ok(`4.1 · ⛔ D19 · no response carries a house word, an account's label or id, or a canary amount — to a player, the holder or a trigger player ANYWHERE, or to a non-owner staff officer on ${CONSOLE_PREFIX} (${nonStaff.length} responses from four non-audience viewers over ${ROUTES.length} page instances and ${API_PATHS.length} API routes)`,
-    nonStaff.length > 0 && leaks.length === 0, leaks.slice(0, 12).map((r) => `${r.viewer} ${r.route} ${r.mode} ${r.status}: ${r.hits.slice(0, 3).join("|")}`).join(" · "));
+  /* ⛔ THE TWO POPULATIONS ARE PRINTED SEPARATELY, BECAUSE THEY ARE HELD TO DIFFERENT STANDARDS. The label read
+     "N responses from four non-audience viewers" over the whole `nonStaff` count, while `leaks` holds the PLAYER
+     standard everywhere and the STAFF viewer only on the console prefix — so the printed number was larger than
+     the population the assertion actually judges by that standard, and a reader could not tell which was which. */
+  const judgedEverywhere = nonStaff.filter((r) => PLAYER_STANDARD.has(r.viewer));
+  const judgedOnConsole = nonStaff.filter((r) => !PLAYER_STANDARD.has(r.viewer) && onConsole(r.route));
+  ok(`4.1 · ⛔ D19 · no response carries a house word, an account's label or id, or a canary amount — to a player, the holder or a trigger player ANYWHERE (${judgedEverywhere.length} responses from three viewers), or to a non-owner staff officer on ${CONSOLE_PREFIX} (${judgedOnConsole.length} responses), over ${ROUTES.length} page instances and ${API_PATHS.length} API routes; ${nonStaff.length} non-staff responses in all`,
+    judgedEverywhere.length > 0 && judgedOnConsole.length > 0 && leaks.length === 0, leaks.slice(0, 12).map((r) => `${r.viewer} ${r.route} ${r.mode} ${r.status}: ${r.hits.slice(0, 3).join("|")}`).join(" · "));
   /**
    * ⛔ 4.1b · 393 · THE OWNER-ONLY BRANCH, DRIVEN BY A REAL STAFF SESSION OVER THE WIRE, WITH ITS CONTROL.
    * Zero hits for this viewer is worth something only where the ADMIN has non-zero on the SAME instance — otherwise

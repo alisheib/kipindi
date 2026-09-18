@@ -199,17 +199,36 @@ console.log(`PRESENCE · the build contains the console: ${JSON.stringify(presen
   const sentences = fs.existsSync(GATE)
     ? [...fs.readFileSync(GATE, "utf8").matchAll(/"([A-Z][^"\\]{24,120}[.?→])"/g)].map((m) => m[1])
     : [];
+  /** The scan itself, over one body — the exact expression the sweep below uses, so the control can re-run it. */
+  const hitsIn = (body) => sentences.filter((sent) => body.includes(sent));
   const provenance = [];
+  /* The FIRST real scanned body, kept for the control: a plant must go into an artefact this scan really walks. */
+  let controlFile = "";
+  let controlBody = "";
   for (const pop of populations) {
     for (const f of pop.files) {
       if (!TEXT.test(f)) continue;
       const body = fs.readFileSync(f, "utf8");
-      for (const sent of sentences) if (body.includes(sent)) provenance.push(`${path.relative(pop.base, f).replace(/\\/g, "/")}: ${JSON.stringify(sent.slice(0, 48))}`);
+      if (!controlBody && hitsIn(body).length === 0) { controlBody = body; controlFile = path.relative(pop.base, f).replace(/\\/g, "/"); }
+      for (const sent of hitsIn(body)) provenance.push(`${path.relative(pop.base, f).replace(/\\/g, "/")}: ${JSON.stringify(sent.slice(0, 48))}`);
     }
   }
+  /**
+   * ⛔ THE CONTROL EXERCISES THE SCAN, NOT A STRING IT JUST BUILT (replan ruling 540(a)).
+   * It read ``CONTROL.length > 0 && `var a=${JSON.stringify(CONTROL)};`.includes(CONTROL)`` — a string built to
+   * contain `CONTROL`, asked whether it contained `CONTROL`. The sentence regex excludes `"` and `\`, so
+   * `JSON.stringify` never escapes anything and the predicate was TAUTOLOGICALLY TRUE for any non-empty sentence,
+   * while it GATED `process.exit(1)`. Ruling 396 asks for a control that proves this scan can find a planted sentence
+   * in a REAL artefact; that proved nothing. *Would it still pass if the feature were absent?* Yes.
+   * Now: a server sentence is planted into a COPY of a real scanned body, the SAME `hitsIn` loop is re-run over it and
+   * must report exactly that sentence, and the ORIGINAL must still report none.
+   */
   const CONTROL = sentences[0] ?? "";
-  const controlWorks = CONTROL.length > 0 && `var a=${JSON.stringify(CONTROL)};`.includes(CONTROL);
+  const plantedHits = controlBody ? hitsIn(`${controlBody}\n/* ${CONTROL} */`) : [];
+  const controlWorks = CONTROL.length > 0 && controlBody.length > 0
+    && plantedHits.length === 1 && plantedHits[0] === CONTROL && hitsIn(controlBody).length === 0;
   console.log(`${provenance.length === 0 && sentences.length >= 5 && controlWorks ? "PASS" : "FAIL"} provenance · 385 · none of the ${sentences.length} server-written console sentences appears in the public bundle, the prerendered documents or public/${provenance.length ? ` — ${provenance.slice(0, 5).join(" · ")}` : ""}${sentences.length < 5 ? " — the sentence list is too small to be a population" : ""}`);
+  console.log(`${controlWorks ? "PASS" : "FAIL"} provenance · CONTROL · 396 · the same scan reports a server sentence planted into ${JSON.stringify(controlFile)} — a real artefact it walks — and reports none in the original${controlWorks ? "" : ` — plantedHits ${plantedHits.length}, body ${controlBody.length} chars`}`);
   if (provenance.length > 0 || sentences.length < 5 || !controlWorks) process.exit(1);
 }
 

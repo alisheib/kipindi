@@ -912,22 +912,34 @@ section("§2 · the strip, the band, the roster and every failure");
   {
     await w.limits({ gCapPerMarketTzs: null, gMaxBetsPerDay: null });
     const realCtl = w.dal.houseBotControlStore.get;
-    const spyCtl = { roster: 0, usage: 0, direct: 0 };
+    const spyCtl = { roster: 0, usage: 0, sawSpy: 0, sawReal: 0 };
     let rosterPass: Any, usagePass: Any;
+    /* ⛔ THE IDENTITY THE CONTROL BELOW CHECKS. Each spy records, FROM INSIDE ITS OWN BODY, which function object was
+     * installed on the store at the moment the reader called it. That is what proves the patch reached the module
+     * under test — the old control called through the handle it had just patched, so it incremented whatever the
+     * readers had done and could not fail. A control that fires either way is not a control. */
+    let rosterSpy: Any, usageSpy: Any;
     try {
-      w.dal.houseBotControlStore.get = (...a: Any[]) => { spyCtl.roster++; return realCtl.apply(w.dal.houseBotControlStore, a as Any); };
+      rosterSpy = (...a: Any[]) => {
+        spyCtl.roster++;
+        if (w.dal.houseBotControlStore.get === rosterSpy) spyCtl.sawSpy++; else spyCtl.sawReal++;
+        return realCtl.apply(w.dal.houseBotControlStore, a as Any);
+      };
+      w.dal.houseBotControlStore.get = rosterSpy;
       rosterPass = await GATEM.houseRosterForConsole(OFFICER, "/admin/desk");
-      w.dal.houseBotControlStore.get = (...a: Any[]) => { spyCtl.usage++; return realCtl.apply(w.dal.houseBotControlStore, a as Any); };
+      usageSpy = (...a: Any[]) => {
+        spyCtl.usage++;
+        if (w.dal.houseBotControlStore.get === usageSpy) spyCtl.sawSpy++; else spyCtl.sawReal++;
+        return realCtl.apply(w.dal.houseBotControlStore, a as Any);
+      };
+      w.dal.houseBotControlStore.get = usageSpy;
       usagePass = await GATEM.houseUsageForConsole(OFFICER, "/admin/desk", { houseBotId: null });
-      /* ⛔ THE CONTROL FOR THE TWO ONES, ON THE SAME HANDLE AND IN THE SAME RUN: without it, a patch that never
-       * reached the module under test would read exactly like compliance (the double-load trap). */
-      w.dal.houseBotControlStore.get = (...a: Any[]) => { spyCtl.direct++; return realCtl.apply(w.dal.houseBotControlStore, a as Any); };
-      await w.dal.houseBotControlStore.get();
     } finally { w.dal.houseBotControlStore.get = realCtl; }
     ok("1.306 · 1.312 · each render pass reads the control row EXACTLY ONCE — the strip's count and the rail's badge can never be two different reads",
       spyCtl.roster === 1 && spyCtl.usage === 1, j(spyCtl));
-    ok("1.306 · CONTROL · the spy CAN fire through the same handle the readers use, so the two ones above are a measurement",
-      spyCtl.direct === 1, j(spyCtl));
+    ok("1.306 · CONTROL · IDENTITY · both reads went through the patched handle itself — not through a second copy of the DAL, and not through a control that called its own patch",
+      spyCtl.sawSpy === 2 && spyCtl.sawReal === 0 && rosterSpy !== usageSpy
+        && w.dal.houseBotControlStore.get === realCtl, j(spyCtl));
     ok("1.306 · 1.312 · …and both panels report the SAME derived count, which is the number the badge and the sentence both paint",
       rosterPass.unsetRequired === 2 && usagePass.unsetRequired === rosterPass.unsetRequired,
       j({ roster: rosterPass.unsetRequired, usage: usagePass.unsetRequired }));
@@ -1700,8 +1712,18 @@ export default function Ruling513Control() {
       && !/className="text-right p-3 whitespace-normal"/.test(pageCode), "");
   /* ⛔ AND THE BAND AND THE COLUMN CALL THE SAME FIGURE THE SAME THING (432(o)): the tile above reads "Open exposure"
    * and the column below it read "Exposure", which is the one word a reader uses to tie the two together. */
-  ok("1.373 · 432(o) · every money column's header is the label of the tile that measures the same figure",
-    headers[2] === "Open exposure" && gateCode.includes('moneyTile("Open exposure"') && gateCode.includes('moneyTile("Loss today"'), j(headers));
+  /* ⚠️ IT NOW COMPARES THEM. The label said "every money column's header is the label of the tile that measures the
+   * same figure" while the predicate checked one literal and two `includes` — it never put the two sides together, so
+   * renaming BOTH in step would have passed and renaming one would have passed too. The tile labels are read out of
+   * the gate module; the basis parenthetical 373(b) requires is stripped before the comparison, not typed around. */
+  {
+    const tileLabels = [...gateCode.matchAll(/moneyTile\("([^"]+)"/g)].map((m) => m[1]);
+    const moneyHeaders = [headers[1], headers[2]].map((h: string) => h.replace(/ \([^)]*\)$/, ""));
+    ok("1.373 · 432(o) · every money column's header IS the label of the tile that measures the same figure — compared, not asserted twice",
+      tileLabels.length >= 3 && moneyHeaders.every((h) => tileLabels.includes(h))
+        && j(moneyHeaders) === j(["Loss today", "Open exposure"]),
+      j({ tileLabels, moneyHeaders, headers }));
+  }
   /* ⛔ AND THE COUNT USAGE READS ON THE SAME AXIS AS THE TWO MONEY USAGES BESIDE IT (432(o)): same grammar, same
    * shape, three adjacent figures — left-aligning one of them put them on two axes. */
   ok("1.407 · 432(o) · every usage column is right-aligned, so three adjacent usage figures read on ONE axis",
@@ -1978,6 +2000,21 @@ export default function Ruling513Control() {
     ok("1.316 · `enabled` is composed from REACT STATE and the server's own verdict — and no file under the section asks the DOM whether a dialog is open",
       /useState/.test(liveCode) && /enabled=\{deskPollerEnabled\(live, holds\)\}/.test(liveCode)
         && !/querySelector|\[role=.?dialog|getElementsBy/.test(sectionFiles.map((f) => decomment(read(f))).join("\n")), "");
+    /* ⛔ 316's HOLD HAS NO DISPATCHER TODAY, AND THAT IS TIED TO THE POPULATION BEING EMPTY (432(h)'s idiom).
+     * `DESK_HOLD_EVENT` and `DESK_RELEASE_EVENT` have a listener and no sender, so `holds` is permanently 0 and
+     * `deskPollerEnabled(live, holds)` reduces to `live`. That is LEGITIMATE while the section renders no dialog —
+     * and it is exactly the state in which nothing would notice step 4 adding one without raising the hold, which is
+     * the defect 316 is written against: a 20-second `router.refresh()` under an open ceremony. So the two are tied
+     * by EXISTENCE now, while the tie costs nothing.
+     * ⚠️ SCOPE, STATED: this is the DIALOG half. The dirty-FORM half arrives with ruling 537's limits save and is
+     * `test:unsaved-changes`' population rule, which 1.412 already ties to the typed control. The typed-control flag
+     * is PRINTED here so the day it changes is visible rather than silent. */
+    const sectionAll = sectionFiles.map((f) => decomment(read(f))).join("\n");
+    const hasDialog = /<Modal\b|<ConfirmDialog\b|role="dialog"|<Drawer\b/.test(sectionAll);
+    const dispatchesHold = /dispatchEvent\(/.test(sectionAll) && /DESK_HOLD_EVENT/.test(sectionAll.replace(/export const DESK_HOLD_EVENT[^\n]*/, ""));
+    ok("1.316 · 432(h) · the section raises the poller's HOLD exactly when it renders a dialog — neither today, so the listener is honest rather than dead by accident",
+      hasDialog === dispatchesHold && /DESK_HOLD_EVENT/.test(liveCode) && /DESK_RELEASE_EVENT/.test(liveCode),
+      j({ hasDialog, dispatchesHold, typedControl: /<Input\b|<Textarea\b|<Select\b|<input\b/.test(sectionAll) }));
   }
 
   /* ⛔ 1.362 / 1.409 · THE KIT'S NEW CAPTION PAIR, AND THE ONE EXISTING CALLER IS UNTOUCHED. */
