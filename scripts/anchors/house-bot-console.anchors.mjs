@@ -602,7 +602,9 @@ export const MUTATIONS = [
   {
     name: "409-count-as-money · a bets-per-day COUNT is painted in `.amount`, the class that means money everywhere else in this kit",
     file: GATE,
-    from: `      money: FIELD_META[field].unit === "TZS",`,
+    /* ⚠️ RE-ANCHORED, SAME DEFECT (replan ruling 537): the limits row now reads its unit ONCE into a local,
+       because the form needs the same unit for the money prefix and the percent suffix, so the quoted line moved. */
+    from: `      money: unit === "TZS",`,
     to: `      money: true,`,
     expect: "1.409 · every limit row says whether it is MONEY",
     suite: "console-mem",
@@ -787,12 +789,29 @@ import type { ConsoleTab } from "@/lib/house-bot/console-routes";`,
     expect: "2.537 · a PLAYER, a signed-in AUDITOR and an anonymous caller are each REFUSED",
     suite: "console-mem",
   },
+  /* ⚠️ THE FIRST FORM OF THIS DECLARATION WAS AIMED AT NOTHING (replan ruling 541's class, caught by driving it).
+     It re-read the version immediately before the write — but BOTH writers await that read before EITHER writes, so
+     both re-read the same number and the store's own conditional write still decided between them: the suite stayed
+     GREEN with the defect injected. What actually defeats "refuse, never clobber" is a RETRY: the loser re-reads
+     after losing and writes over the winner. That is the shape a well-meaning fix takes, and it is the one this
+     declaration now injects. */
   {
-    name: "537-cas · the save re-reads the version immediately before writing, so two officers on two tabs both land and one silently loses their change",
+    name: "537-cas · the loser of the CAS RETRIES on the fresh version instead of being refused, so the second officer silently overwrites the first",
     file: SAVE,
-    from: `  const cas = await houseBotControlStore.saveLimits(input.baseVersion, patch);`,
-    to: `  const cas = await houseBotControlStore.saveLimits((await houseBotControlStore.get()).limitsVersion, patch);`,
+    from: `  const cas = await houseBotControlStore.saveLimits(input.baseVersion, patch);
+  if (!cas.ok) return { ok: false, code: "CONFLICT" };`,
+    to: `  let cas = await houseBotControlStore.saveLimits(input.baseVersion, patch);
+  if (!cas.ok) cas = await houseBotControlStore.saveLimits((await houseBotControlStore.get()).limitsVersion, patch);
+  if (!cas.ok) return { ok: false, code: "CONFLICT" };`,
     expect: "2.537 · TWO REAL WRITERS on ONE base version",
+    suite: "console-mem",
+  },
+  {
+    name: "537-cheap · a stale tab reaches the roster and the platform config before the CAS refuses it — three reads for a save that cannot land",
+    file: SAVE,
+    from: `  if (!Number.isInteger(input.baseVersion) || control.limitsVersion !== input.baseVersion) {`,
+    to: `  if (!Number.isInteger(input.baseVersion)) {`,
+    expect: "2.537 · a tab rendered from an older version is refused",
     suite: "console-mem",
   },
   {

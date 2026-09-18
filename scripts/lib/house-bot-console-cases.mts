@@ -1500,10 +1500,19 @@ section("§2b · the limits save");
     ok("2.537 · …and the loser is TOLD, in one sentence that says nothing was saved and names no field to fix",
       refusal.ok === false && /Nothing was saved/.test(refusal.error) && refusal.field === undefined && !NEUTRAL.test(refusal.error),
       j(refusal));
-    /* A stale tab is the same refusal by the cheap half of the check, before any other read. */
-    const stale = await save(OFFICER, postAt(v, { [keyOf("gCapDailyStakeTzs")]: "333000" }));
-    ok("2.537 · a tab rendered from an older version is refused the same way, and its value never reaches the row",
-      stale.ok === false && /Nothing was saved/.test(stale.error) && (await control()).gCapDailyStakeTzs !== 333_000, j(stale));
+    /* ⛔ A STALE TAB IS REFUSED BY THE CHEAP HALF OF THE CHECK, BEFORE ANYTHING ELSE IS READ. The CAS would refuse
+     * it too, so the cheap check earns its place only if it saves the reads — which is asserted, not claimed: the
+     * roster read is spied, and a save that cannot possibly land must not take it. */
+    const realList = w.dal.houseBotStore.listNonRemoved;
+    let listCalls = 0;
+    let stale: Any;
+    try {
+      w.dal.houseBotStore.listNonRemoved = (...a: Any[]) => { listCalls++; return realList.apply(w.dal.houseBotStore, a as Any); };
+      stale = await save(OFFICER, postAt(v, { [keyOf("gCapDailyStakeTzs")]: "333000" }));
+    } finally { w.dal.houseBotStore.listNonRemoved = realList; }
+    ok("2.537 · a tab rendered from an older version is refused before the roster is read at all, and its value never reaches the row",
+      stale.ok === false && /Nothing was saved/.test(stale.error) && listCalls === 0
+        && (await control()).gCapDailyStakeTzs !== 333_000, j({ stale, listCalls }));
   }
 
   /* ⛔ 537 / 412 · EVERY REFUSAL SENTENCE IS THE SERVER'S, AND IT COMES HOME BY THE FORM'S OWN NEUTRAL KEY. */
