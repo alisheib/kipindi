@@ -190,8 +190,24 @@ export type ConsoleDeskShell = {
   stateSentence: string;
   /** The auto-off cause, when the switch is off for one (308). */
   offCause: string | null;
-  /** How many members of `REQUIRED_FOR_MASTER_ON` are unset — COUNTED, never typed (306). */
+  /** How many members of `REQUIRED_FOR_MASTER_ON` are unset — COUNTED, never typed (306). The rail's `CountBadge`
+   *  reads this; the STRIP reads the sentence below, which is built from this same number. */
   unsetRequired: number;
+  /**
+   * ⛔ THE STRIP'S "Set N global limits first →" SENTENCE, WRITTEN HERE, AND `null` WHEN THE SWITCH IS ALREADY ON.
+   *
+   * Ruling 306 scopes this sentence to *when the switch cannot be turned on because global limits are unset*. The
+   * page rendered it on `unsetRequired > 0` ALONE, so the first 1280 tile of this panel showed the chip reading ON,
+   * "On since 20:14:12 EAT …" beside it, and "Set 1 global limit first →" in the same strip: two opposite
+   * instructions on one screen, in the card that stops money. A limit can be cleared after the switch is on, so the
+   * state is reachable, and 432(m)/(n) is the class.
+   * ⛔ IT IS THE SERVER'S SENTENCE, IN ONE HOME. It was spelled out TWICE in JSX — once linked, once inert — with
+   * no single home and no assertion on its text at all; only the NUMBER was ever asserted. The rail badge keeps
+   * reading `unsetRequired`, because a COUNT is honest in either state.
+   */
+  limitsFirstReason: string | null;
+  /** The same sentence without its linked tail, for the states where the limits panel is not linkable (432(i)). */
+  limitsFirstPlain: string | null;
   /** The limits panel. ⭐ Painted as a LINK from C7 step 3, when `CONSOLE_TABS` gained `limits` (`LIMITS_TAB_READY`). */
   limitsHref: string;
   /** The same panel, scrolled to the FIRST unset required limit — the strip's "Set N global limits first →". */
@@ -343,6 +359,32 @@ function unavailableTile(label: string): ConsoleKpiTile {
 const SEP = ` ·${String.fromCharCode(0xa0)}`;
 
 /**
+ * ⛔ RULING 474 — THE TWO OPERATOR-TYPED VALUES THIS CONSOLE PAINTS, NAMED, BECAUSE AN EXEMPTION THAT IS NOT
+ * WRITTEN DOWN IS A GUARD WHOSE POPULATION IS A LIE.
+ *
+ * Ruling 453's lexicon binds this section's COPY. These two are not copy — they are DATA an operator typed, and
+ * the console may not silently rewrite them: a switch reason that does not say what was typed is a worse defect
+ * than the word it hides, and an account's label is the gated value the Owner chose to identify it by. So they are
+ * rendered verbatim, BOUNDED, and exempted by name rather than passed by accident. The warning belongs where the
+ * typing happens — step 4's Master-ON ceremony and step 6's wizard — not here, where the painting does.
+ * ⛔ THE BOUND IS RESTATED AT THE RENDER SITE, NOT INHERITED FROM STORAGE. `HouseBot_label_check` allows 32 code
+ * points and `HouseBotControl_switchedReason_check` 300; a storage invariant is not a render decision, and a later
+ * widening of either check would otherwise walk straight onto the screen — and into every screenshot of it.
+ */
+export const OPERATOR_DATA_EXEMPT = Object.freeze([
+  { value: "label", where: "the Account column's first line", maxCodePoints: 32 },
+  { value: "switchedReason", where: "the ON sentence's reason tail", maxCodePoints: 120 },
+]);
+
+/** ⛔ CODE POINTS, NOT UTF-16 UNITS — the DAL's own checks count code points, and slicing a surrogate pair in half
+ *  paints a replacement glyph. The ellipsis is one character and is INSIDE the bound. */
+export function clampOperatorText(text: string, maxCodePoints: number): string {
+  const cps = [...text];
+  return cps.length <= maxCodePoints ? text : `${cps.slice(0, Math.max(0, maxCodePoints - 1)).join("")}\u2026`;
+}
+const operatorBound = (value: string): number => OPERATOR_DATA_EXEMPT.find((e) => e.value === value)!.maxCodePoints;
+
+/**
  * A sentence written for a LINK, painted as plain text: the trailing "→" comes off (ruling 432(i)).
  * ⛔ An arrow on inert text is a promise of navigation, and the tab it points at has no panel on this build.
  * ⚠️ `endsWith`/`slice`, never a regex: nothing here depends on a backslash escape surviving a tool.
@@ -444,6 +486,17 @@ function deskShell(core: DeskCore): ConsoleDeskShell {
   const unsetRequired = control ? REQUIRED_FOR_MASTER_ON.filter((f) => control[f] == null).length : 0;
   const on = control ? control.enabled : null;
   const switchedAt = control?.switchedAt ? formatEat(Date.parse(control.switchedAt), "HH:MM:SS") : null;
+  /* ⛔ RULING 474 · OPERATOR DATA, VERBATIM BUT BOUNDED. Never censored, never rewritten — clamped, so a
+   * 300-code-point reason cannot run the length of the strip and out of the card, and into every screenshot
+   * of it. ⚠️ ITS OWN STATEMENT, so the declared mutation that removes the bound can anchor on a line that is
+   * not a template literal — an anchor cannot carry a backtick or a `${}`.
+   */
+  const reasonText = control?.switchedReason ? clampOperatorText(control.switchedReason, operatorBound("switchedReason")) : null;
+  /* ⛔ 306 · THE SENTENCE EXPLAINS WHY THE SWITCH CANNOT BE TURNED ON, so it is not painted beside a switch that
+   * is already ON — see `ConsoleDeskShell.limitsFirstReason`. ONE home, both forms, from the ONE count above. */
+  const limitsFirstReason = unsetRequired > 0 && on !== true
+    ? `Set ${unsetRequired} global limit${unsetRequired === 1 ? "" : "s"} first →`
+    : null;
 
   /* ⛔ 453 · ONE OFF SENTENCE FOR EVERY OFF CAUSE, and it names nothing. The ON sentence names the ACTOR BY ID, the
    * way `/admin/audit` already does (ruling 420) — never a display name, a phone or an email, and never a second read. */
@@ -456,7 +509,7 @@ function deskShell(core: DeskCore): ConsoleDeskShell {
            /* ⛔ AN ACTOR IS AN ID (ruling 420), and the null actor reads "System" — 420's own string was
             * "System — house bot engine", which ruling 453 forbids on the screen (432(k)). */
            `switched by ${control?.switchedById ?? "System"}`,
-           ...(control?.switchedReason ? [`reason: ${control.switchedReason}`] : [])].join(SEP)
+           ...(reasonText ? [`reason: ${reasonText}`] : [])].join(SEP)
         : "The desk is off. Nothing will be staked.";
 
   /* ⛔ THE BAND MEASURES THE POPULATION THE GATE MEASURES, AND THAT IS NOT THE ROSTER (ruling 432(l)).
@@ -524,6 +577,8 @@ function deskShell(core: DeskCore): ConsoleDeskShell {
     stateSentence,
     offCause: control && control.enabled === false && control.offCause && control.offCause !== "MANUAL" ? control.offCause : null,
     unsetRequired,
+    limitsFirstReason,
+    limitsFirstPlain: limitsFirstReason === null ? null : stripLinkedTail(limitsFirstReason),
     limitsHref: CONSOLE_LIMITS_HREF,
     limitsFirstUnsetHref: CONSOLE_LIMITS_FIRST_UNSET_HREF,
     rosterFullReason,
@@ -573,7 +628,8 @@ export async function houseRosterForConsole(
     const display = HOUSE_BOT_STATUS_DISPLAY[bot.status];
     return {
       id: bot.id,
-      label: bot.label,
+      /* ⛔ RULING 474 · OPERATOR DATA, VERBATIM BUT BOUNDED (see `OPERATOR_DATA_EXEMPT`). */
+      label: clampOperatorText(bot.label, operatorBound("label")),
       handle: playerHandle(bot.userId),
       statusWord: display.word,
       statusChip: display.chip,
@@ -816,8 +872,19 @@ export async function houseUsageForConsole(
   const shell = deskShell(core);
   const { control, dayBooks, exposure, schemaMissing } = core;
 
-  /* 421 · with no control row there are no limits to measure against, and the page's own Callout owns the cause. */
-  const usage: ConsoleUsageRow[] | null = schemaMissing || !control ? null : (() => {
+  /*
+   * ⛔ 421 · A MISSING SCHEMA IS A STATE; ONLY A FAILED READ IS `null`. It was `schemaMissing || !control ? null`,
+   * so `?tab=limits` on a database without the migration painted TWO `AdminLoadError` cards — "limit usage" and
+   * "the global limits" — UNDER the 421 Callout that had already said why. 421 asks for ONE Callout; 355 reserves
+   * `AdminLoadError` for a read that FAILED, and a table that is not on the database has not failed to be read;
+   * 432(n) forbids one state saying the same fact three times. The roster was corrected for exactly this at
+   * 432(e) and this is the same shape: `[]` in the schema state, `null` only when a read really failed.
+   * ⛔ AND `schemaMissing ||` WAS A DEAD DISJUNCT (replan ruling 541(d)): `schemaMissing` is only ever true when
+   * the control read REJECTED, so it implies `control === null` in every reachable state and the declared mutation
+   * that removed it changed nothing. The two states are now genuinely distinct and the mutation has something to
+   * take away.
+   */
+  const usage: ConsoleUsageRow[] | null = schemaMissing ? [] : !control ? null : (() => {
     const money = (field: LimitField, used: number | null, scope?: string) => {
       const name = scope ? `${consoleLimitLabel(field)} (${scope})` : consoleLimitLabel(field);
       const limit = control[field];
@@ -841,7 +908,9 @@ export async function houseUsageForConsole(
    * `REQUIRED_FOR_MASTER_ON` carries `#limits-first-unset` — the anchor the strip's "Set N global limits first →"
    * and every sealed refusal link to, and the id `test:tab-anchors` requires to be RENDERED on this tab. */
   let firstUnsetTaken = false;
-  const limits: ConsoleLimitRow[] | null = !control ? null : LIMIT_FIELDS.map((field) => {
+  /* ⛔ THE SAME RULE AS `usage` ABOVE (421, 432(n)): a missing schema is a STATE with nothing to list, never the
+   * kit's failure treatment. */
+  const limits: ConsoleLimitRow[] | null = schemaMissing ? [] : !control ? null : LIMIT_FIELDS.map((field) => {
     const raw = control[field] as number | null;
     const unset = raw == null;
     const required = (REQUIRED_FOR_MASTER_ON as readonly string[]).includes(field);

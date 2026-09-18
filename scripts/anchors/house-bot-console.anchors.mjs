@@ -648,6 +648,36 @@ export const MUTATIONS = [
     suite: "console-mem",
   },
   {
+    /* ⛔ 306 scopes the sentence to *when the switch cannot be turned on*. Without the `on !== true` term the
+       strip paints "Set 1 global limit first →" beside a chip reading ON and "On since 20:14:12 EAT" — two
+       opposite instructions on one screen, in the card that stops money. Measured on the first 1280 tile. */
+    name: "306-sentence-on · the strip instructs an officer to set limits beside a switch that is already ON",
+    file: GATE,
+    from: `  const limitsFirstReason = unsetRequired > 0 && on !== true`,
+    to: `  const limitsFirstReason = unsetRequired > 0`,
+    expect: "1.306 · 432(m) · with the switch ON the sentence is NOT painted",
+    suite: "console-mem",
+  },
+  {
+    /* ⛔ RULING 474: operator data is rendered verbatim but BOUNDED. Unclamped, a 300-code-point reason runs the
+       length of the strip — and into every screenshot of it. */
+    name: "474-reason-unclamped · an operator's 300-character switch reason is painted whole",
+    file: GATE,
+    from: `  const reasonText = control?.switchedReason ? clampOperatorText(control.switchedReason, operatorBound("switchedReason")) : null;`,
+    to: `  const reasonText = control?.switchedReason ?? null;`,
+    expect: "1.474 · a 300-code-point switch reason is BOUNDED at the render site",
+    suite: "console-mem",
+  },
+  {
+    /* ⛔ The second of 474's two exemptions, at ITS render site. */
+    name: "474-label-unclamped · an account's operator-chosen label is painted with no bound of its own",
+    file: GATE,
+    from: `      label: clampOperatorText(bot.label, operatorBound("label")),`,
+    to: `      label: bot.label,`,
+    expect: "1.474 · exactly TWO operator-typed values are exempted from 453",
+    suite: "console-mem",
+  },
+  {
     /* ⛔ THE OTHER HALF OF 1.312a, WHICH NO DECLARED MUTATION EXERCISED (replan ruling 541(e)). `432i-dead-link`'s
        polarity flip proves the LINK branch; nothing proved that both limits pointers are still GUARDED by the flag.
        `1.318`'s roll-call only checks `expect`-drift — it never asks whether an assertion HAS a declaration — so the
@@ -758,11 +788,27 @@ import { formatEat } from "@/lib/utils";`,
     suite: "console-mem",
   },
   {
-    name: "421-limits · the limits panel paints bars with no control row, against limits it could not read",
+    /* ⚠️ RE-AIMED 2026-09-18 (replan ruling 541(d)). It removed `schemaMissing ||` — a DEAD DISJUNCT, because
+       `schemaMissing` is only true when the control read REJECTED and therefore implies `control === null` in
+       every reachable state. The mutation changed nothing and could turn nothing red. The source no longer
+       carries the disjunct at all: a missing schema is a STATE (`[]`) and only a failed read is `null`, so the
+       two branches are genuinely distinct and there is something to take away. */
+    name: "421-limits · a missing schema is painted as a FAILED READ again — two AdminLoadError cards under the Callout that already said why",
     file: GATE,
-    from: `  const usage: ConsoleUsageRow[] | null = schemaMissing || !control ? null : (() => {`,
-    to: `  const usage: ConsoleUsageRow[] | null = !control ? null : (() => {`,
-    expect: "1.421 · with no control row the limits panel has nothing to measure against",
+    from: `  const usage: ConsoleUsageRow[] | null = schemaMissing ? [] : !control ? null : (() => {`,
+    to: `  const usage: ConsoleUsageRow[] | null = schemaMissing ? null : !control ? null : (() => {`,
+    expect: "1.421 · a missing schema leaves the limits panel with nothing to LIST",
+    suite: "console-mem",
+  },
+  {
+    /* ⛔ AND THE OTHER DIRECTION, WHICH IS THE HALF 355 ACTUALLY RESERVES `AdminLoadError` FOR. A read that
+       really failed must not become an empty card: an empty state is a fact about the data, and there is no
+       fact here — the row could not be read. */
+    name: "421-limits-failed · a control read that FAILED becomes an empty panel instead of the kit's failure treatment",
+    file: GATE,
+    from: `  const usage: ConsoleUsageRow[] | null = schemaMissing ? [] : !control ? null : (() => {`,
+    to: `  const usage: ConsoleUsageRow[] | null = schemaMissing ? [] : !control ? [] : (() => {`,
+    expect: "1.421 · CONTROL · a GENERIC control failure is NOT that state",
     suite: "console-mem",
   },
   {

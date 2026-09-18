@@ -274,6 +274,86 @@ section("§2 · the strip, the band, the roster and every failure");
   v = await GATEM.houseRosterForConsole(OFFICER, "/admin/desk");
   ok("1.306 · with exactly two required limits unset it counts 2", v.unsetRequired === 2, j({ got: v.unsetRequired }));
 
+  /* ━━ 1.306 · THE SENTENCE ITSELF, IN BOTH FORMS, AND THE STATE IT MUST NOT APPEAR IN ━━━━━━━━━━━━━━━━━━━━
+   * ⛔ NO SUITE ASSERTED THE TEXT AT ALL — only the NUMBER. Both forms were spelled out twice in JSX with no single
+   * home, so the words an officer reads beside the switch that stops money were unproved in either branch.
+   * ⛔ AND IT MUST NOT APPEAR BESIDE A SWITCH THAT IS ALREADY ON (ruling 306: the sentence explains why the switch
+   * CANNOT be turned on). Read off the implementer's own 1280 tile: chip ON, "On since 20:14:12 EAT …", and
+   * "Set 1 global limit first →" beside it — two opposite instructions on one screen, 432(m)/(n)'s class. The state
+   * is reachable because a limit can be cleared after the desk is switched on.
+   * ⛔ N IS READ FROM `REQUIRED_FOR_MASTER_ON`, never typed, so a ninth field cannot silently pass. */
+  {
+    const sentence = (n: number) => `Set ${n} global limit${n === 1 ? "" : "s"} first →`;
+    ok("1.306 · 432(m) · with two required limits unset and the switch OFF the strip says so in words — the LINKED form, and the plain form without its arrow",
+      v.limitsFirstReason === sentence(2) && v.limitsFirstPlain === "Set 2 global limits first"
+        && v.limitsFirstReason.endsWith("→") && !v.limitsFirstPlain.includes("→"),
+      j({ linked: v.limitsFirstReason, plain: v.limitsFirstPlain }));
+
+    await w.limits({ gCapDailyStakeTzs: null });
+    const one = await GATEM.houseRosterForConsole(OFFICER, "/admin/desk");
+    ok("1.306 · ONE unset required limit is singular — `limit`, not `limits` — and the sentence is built from the count, not typed twice",
+      one.limitsFirstReason === sentence(1) && one.unsetRequired === 1
+        && one.limitsFirstReason.includes(` ${one.unsetRequired} `), j({ got: one.limitsFirstReason }));
+
+    await w.limits(Object.fromEntries(ALL.map((f) => [f, null])) as Any);
+    const all8 = await GATEM.houseRosterForConsole(OFFICER, "/admin/desk");
+    ok(`1.306 · with every required limit unset the sentence counts ${ALL.length}, read from REQUIRED_FOR_MASTER_ON and never typed`,
+      all8.limitsFirstReason === sentence(ALL.length) && all8.unsetRequired === ALL.length, j({ got: all8.limitsFirstReason }));
+
+    /* ⛔ THE STATE THE FIRST RENDER ACTUALLY SHOWED: the switch ON with a required limit still unset. */
+    await w.limits({ gCapDailyStakeTzs: null });
+    await w.switchOn();
+    const onUnset = await GATEM.houseRosterForConsole(OFFICER, "/admin/desk");
+    ok("1.306 · 432(m) · with the switch ON the sentence is NOT painted, though the limit is still unset — the strip never gives two opposite instructions",
+      onUnset.on === true && onUnset.unsetRequired === 1
+        && onUnset.limitsFirstReason === null && onUnset.limitsFirstPlain === null,
+      j({ on: onUnset.on, unsetRequired: onUnset.unsetRequired, reason: onUnset.limitsFirstReason }));
+    /* ⛔ AND THE RAIL'S BADGE STILL COUNTS, because a COUNT is honest in either state — the badge is not the
+     * instruction, and suppressing it would hide a real fact from the one screen that can act on it. */
+    ok("1.306 · CONTROL · …and the badge's number survives that, so the two are not the same decision",
+      onUnset.unsetRequired === 1 && onUnset.stateSentence.startsWith("On since"), j({ sentence: onUnset.stateSentence }));
+    STATES.push(["strip-on-with-unset", onUnset]);
+
+    /* ━━ 1.474 · THE TWO OPERATOR-TYPED VALUES, NAMED AND BOUNDED ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     * Ruling 474 requires `bot.label` and `control.switchedReason` to render as plain text WITH A LENGTH CLAMP and
+     * to be NAMED as explicit operator-data exemptions from 453's lexicon. Neither render site clamped: the only
+     * bound was a DAL storage invariant, which is not a render decision — a widening of either check would have
+     * walked straight onto the screen. And the exemption was not written down at all: `copyOf` dropped `label` under
+     * a comment that never named 474, and `switchedReason` was not excluded anywhere — it passed only because the
+     * fixture's value happened to be neutral. An Owner typing "bots on for the weekend" paints the word the whole
+     * lexicon exists to keep off the screen. */
+    {
+      const EX = GATEM.OPERATOR_DATA_EXEMPT as ReadonlyArray<Any>;
+      ok("1.474 · exactly TWO operator-typed values are exempted from 453, each NAMED with where it paints and the bound it paints under",
+        EX.length === 2 && j(EX.map((e: Any) => e.value)) === j(["label", "switchedReason"])
+          && EX.every((e: Any) => typeof e.where === "string" && e.where.length > 0 && e.maxCodePoints > 0), j(EX));
+      /* ⛔ CODE POINTS, NOT UTF-16 UNITS, and the ellipsis is INSIDE the bound — a clamp that slices a surrogate
+         pair in half paints a replacement glyph, and one that appends past its own bound is not a bound. */
+      const clamp = GATEM.clampOperatorText as (t: string, n: number) => string;
+      const astral = "\u{1F600}".repeat(10);
+      ok("1.474 · the clamp cuts at CODE POINTS, keeps the text verbatim up to the bound, and its ellipsis is inside it",
+        clamp("abcdef", 10) === "abcdef" && clamp("abcdef", 4) === "abc\u2026"
+          && [...clamp(astral, 4)].length === 4 && !clamp(astral, 4).includes("\uFFFD"),
+        j({ short: clamp("abcdef", 4), astral: clamp(astral, 4) }));
+      /* ⛔ AND IT IS APPLIED WHERE THE TEXT IS PAINTED. The reason's storage bound is 300 code points; the render
+         bound is 120, so this is a branch a real Owner can reach, not a theoretical one. */
+      const bound = EX.find((e: Any) => e.value === "switchedReason")!.maxCodePoints;
+      await w.dal.houseBotControlStore.switchOff({ cause: "MANUAL", byId: OFFICER, reason: "test" });
+      await w.dal.houseBotControlStore.switchOn({ byId: OFFICER, reason: "R".repeat(300) });
+      const longReason = await GATEM.houseRosterForConsole(OFFICER, "/admin/desk");
+      const tail = longReason.stateSentence.slice(longReason.stateSentence.indexOf("reason: ") + 8);
+      ok("1.474 · a 300-code-point switch reason is BOUNDED at the render site — verbatim up to the bound, never censored, never the whole 300",
+        [...tail].length === bound && tail.endsWith("\u2026") && tail.startsWith("R".repeat(20))
+          && (await w.dal.houseBotControlStore.get()).switchedReason.length === 300,
+        j({ painted: [...tail].length, bound, stored: 300 }));
+      STATES.push(["strip-long-reason", longReason]);
+      await w.dal.houseBotControlStore.switchOff({ cause: "MANUAL", byId: OFFICER, reason: "test" });
+    }
+    await w.switchOff();
+    await w.limits({ gCapDailyStakeTzs: null, gCapDailyLossTzs: null });
+    v = await GATEM.houseRosterForConsole(OFFICER, "/admin/desk");
+  }
+
   /* 1.304 · an unset money cap renders a BLOCK, never a zero — and the band's text then carries no TZS at all. */
   await w.limits({ gCapDailyStakeTzs: null, gCapDailyLossTzs: null, gCapOpenExposureTzs: null });
   v = await GATEM.houseRosterForConsole(OFFICER, "/admin/desk");
@@ -1162,9 +1242,27 @@ section("§2 · the strip, the band, the roster and every failure");
       w.dal.houseBotControlStore.get = async () => { throw new HouseSchemaNotReady("planted"); };
       schemaView = await GATEM.houseUsageForConsole(OFFICER, "/admin/desk", { houseBotId: null });
     } finally { w.dal.houseBotControlStore.get = realCtl2; }
-    ok("1.421 · with no control row the limits panel has nothing to measure against: no usage, no list, and the page's own Callout owns the cause",
-      schemaView.schemaMissing === true && schemaView.usage === null && schemaView.limits === null && schemaView.tiles.length === 0,
+    /* ⛔ A MISSING SCHEMA IS A STATE; ONLY A FAILED READ IS `null` (421, 355, 432(n)). The reader answered `null`
+       for both, so `?tab=limits` on a database without the migration painted TWO `AdminLoadError` cards UNDER the
+       Callout that had already said why — the same fact three times, with the kit's failure treatment standing in
+       for a state. The old case could not have caught it: its label claimed "the page's own Callout owns the cause"
+       while it asserted only the READER's nulls. */
+    ok("1.421 · a missing schema leaves the limits panel with nothing to LIST — empty, not failed, and never the kit's failure treatment",
+      schemaView.schemaMissing === true && Array.isArray(schemaView.usage) && schemaView.usage.length === 0
+        && Array.isArray(schemaView.limits) && schemaView.limits.length === 0 && schemaView.tiles.length === 0,
       j({ schemaMissing: schemaView.schemaMissing, usage: schemaView.usage, limits: schemaView.limits }));
+    /* ⛔ AND A READ THAT REALLY FAILED IS STILL `null`, so `AdminLoadError` keeps meaning what it says. */
+    const realCtl3 = w.dal.houseBotControlStore.get;
+    let unreadableView: Any;
+    try {
+      w.dal.houseBotControlStore.get = async () => { throw new Error("planted generic control failure"); };
+      unreadableView = await GATEM.houseUsageForConsole(OFFICER, "/admin/desk", { houseBotId: null });
+    } finally { w.dal.houseBotControlStore.get = realCtl3; }
+    ok("1.421 · CONTROL · a GENERIC control failure is NOT that state: usage and limits are `null`, which is what the kit's failure treatment is for",
+      unreadableView.schemaMissing === false && unreadableView.controlUnreadable === true
+        && unreadableView.usage === null && unreadableView.limits === null,
+      j({ schemaMissing: unreadableView.schemaMissing, unreadable: unreadableView.controlUnreadable }));
+    STATES.push(["limits-unreadable", unreadableView]);
     STATES.push(["limits-day-failed", dayFailed], ["limits-schema", schemaView]);
   }
 
@@ -1252,6 +1350,14 @@ section("§2 · the strip, the band, the roster and every failure");
 section("§3 · nothing the desk renders names the feature, in ANY state");
 {
   /**
+   * ⛔ RULING 474's TWO EXEMPTIONS, WRITTEN DOWN — an exemption nobody wrote down is a guard whose population is a
+   * lie. `bot.label` and `control.switchedReason` are DATA an operator typed, not this console's copy, and 453 may
+   * not silently rewrite them. They are therefore removed from the scan BY NAME, from the one list the reader also
+   * publishes (`OPERATOR_DATA_EXEMPT`), and the control below plants a house word into each and requires that the
+   * scan does NOT fire — and plants the same word into a NON-exempt field and requires that it DOES.
+   */
+  const operatorExempt = (s: string): string => s.replace(/ ·\u00a0reason: [\s\S]*$/, "");
+  /**
    * Every COPY field of one painted view. ⛔ `label`, `handle` and `id` are a record's own VALUES, not copy — they
    * are nested inside a row and this sweep never reaches them.
    * ⛔ THE TOP LEVEL IS SWEPT, NOT TYPED. It was a hand-written list and it had already stopped covering:
@@ -1261,7 +1367,7 @@ section("§3 · nothing the desk renders names the feature, in ANY state");
    * route metadata too, and a neutral value costs nothing to scan.
    */
   const copyOf = (view: Any): string[] => [
-    ...Object.values(view).filter((v: unknown): v is string => typeof v === "string"),
+    ...Object.values(view).filter((v: unknown): v is string => typeof v === "string").map(operatorExempt),
     view.empty?.title, view.empty?.body,
     ...(view.tiles ?? []).flatMap((t: Any) => [t.label, t.value, t.delta]),
     ...(view.rows ?? []).flatMap((r: Any) => [r.statusWord, r.lossCell.text, r.exposureCell.text, r.betsCell.text, r.products,
@@ -1298,9 +1404,33 @@ section("§3 · nothing the desk renders names the feature, in ANY state");
     const full = await GATEM.houseRosterForConsole(OFFICER, "/admin/desk");
     const sweptKeys = Object.keys(full).filter((k) => typeof (full as Any)[k] === "string");
     ok("3.453 · CONTROL · the top-level sweep reaches every string key of the shell, `rosterFullPlain`, the two hrefs and the day key included — the four a typed list had left out",
-      sweptKeys.length >= 5 && sweptKeys.every((k) => copyOf(full).includes((full as Any)[k]))
+      /* ⛔ THROUGH `operatorExempt`, because that is what the sweep itself does (474): the ON sentence carries an
+         operator-typed tail, and comparing against the RAW value would make this control fail whenever the desk
+         happens to be on — for a reason that has nothing to do with whether the sweep reached the key. */
+      sweptKeys.length >= 5 && sweptKeys.every((k) => copyOf(full).includes(operatorExempt((full as Any)[k])))
         && copyOf(full).includes(full.limitsFirstUnsetHref) && copyOf(full).includes(full.dayKey),
       j({ sweptKeys, copied: copyOf(full).length }));
+  }
+  /* ⛔ 474's EXEMPTION, PROVEN IN BOTH DIRECTIONS. An exemption that has never been shown to let its own value
+   * through, and to still catch everything else, is an exemption nobody can audit. */
+  {
+    const base = await GATEM.houseRosterForConsole(OFFICER, "/admin/desk");
+    const withReason = { ...base, stateSentence: `On since 20:14:12 EAT ·\u00a0switched by ${OFFICER} ·\u00a0reason: bots on for the weekend` };
+    const withCopy = { ...base, actionReason: "bots on for the weekend" };
+    const exemptNames = (GATEM.OPERATOR_DATA_EXEMPT as ReadonlyArray<Any>).map((e: Any) => e.value);
+    ok("3.453 · 474 · CONTROL · an operator's typed reason carrying a house word does NOT fire the lexicon — and the same words in the console's OWN copy DO",
+      copyOf(withReason).filter((c: string) => NEUTRAL.test(c)).length === 0
+        && copyOf(withCopy).filter((c: string) => NEUTRAL.test(c)).length === 1
+        && j(exemptNames) === j(["label", "switchedReason"]),
+      j({ exempted: copyOf(withReason).filter((c: string) => NEUTRAL.test(c)), copy: copyOf(withCopy).filter((c: string) => NEUTRAL.test(c)) }));
+    /* ⛔ AND THE OTHER EXEMPTION IS A ROW'S `label`, which this sweep never reaches by construction — asserted, not
+     * assumed, because "it is nested" is exactly the kind of claim that stops being true. */
+    const labelled = { ...base, rows: [{ statusWord: "ACTIVE", label: "house bot", handle: "@x", products: "None",
+      lossCell: { text: "", halves: [], edgeText: "" }, exposureCell: { text: "", halves: [], edgeText: "" }, betsCell: { text: "", halves: [], edgeText: "" } }] };
+    const loud = { ...labelled, rows: [{ ...labelled.rows[0], label: "ok", statusWord: "house bot" }] };
+    ok("3.453 · 474 · CONTROL · a row's operator-chosen `label` is outside the scan, while the same words in the row's own STATUS word are inside it",
+      copyOf(labelled).filter((c: string) => NEUTRAL.test(c)).length === 0
+        && copyOf(loud).filter((c: string) => NEUTRAL.test(c)).length === 1, "");
   }
   ok("3.453.c1 · CONTROL · the same test fires on each of the shared vocabulary's own samples and on the words 453 adds, and does NOT fire on an innocent word that merely contains one",
     HOUSE_WORD_SAMPLES.every((s: string) => NEUTRAL.test(s)) && CONSOLE_EXTRA_SAMPLES.every((s: string) => NEUTRAL.test(s))
@@ -1854,17 +1984,44 @@ export default function Ruling513Control() {
     ok("1.405 · the rail is `variant=\"line\"`, URL-backed from 319's one home, and carries no eyebrow, uppercase or tracking of its own",
       /variant="line"/.test(rail) && /href: consoleTabHref\(k\)/.test(rail)
         && !/eyebrow|uppercase|tracking-|rank="dense"|data-filter-rail|ScrollX/.test(rail), j(rail.replace(/\s+/g, " ").slice(0, 200)));
-    ok("1.405 · the labels are English sentence case, one per key of the closed list",
-      j(CR.CONSOLE_TABS.map((k: string) => ({ roster: "Roster", limits: "Limits" } as Any)[k])) === j(["Roster", "Limits"])
-        && /TAB_LABEL: Record<\(typeof CONSOLE_TABS\)\[number\], string>/.test(pageCode), "");
+    /* ⛔ THE LABELS ARE READ FROM `TAB_LABEL` IN `page.tsx`, NOT TYPED HERE. It mapped `CONSOLE_TABS` through a
+     * label table written INSIDE this test and compared the result with a literal also written inside this test, so
+     * it never read the product at all: changing the page to `limits: "Caps"` left it green. A check built from the
+     * value it checks is the class this whole review is about.
+     * ⛔ AND THE RULE IS DERIVED, NOT LISTED: the rail's English label is the tab KEY in sentence case — which is
+     * what `roster`/`limits` are, and what `activity`, `history`, `rules` and `targets` will be at steps 4-6. A tab
+     * that genuinely needs another word fails HERE and takes a ruling, which is the right way round. */
+    const tabTable = pageCode.slice(pageCode.indexOf("const TAB_LABEL"), pageCode.indexOf("};", pageCode.indexOf("const TAB_LABEL")));
+    const parsed = [...tabTable.matchAll(/(\w+):\s*"([^"]*)"/g)].map((m) => [m[1], m[2]] as const);
+    const sentenceCase = (k: string) => `${k[0].toUpperCase()}${k.slice(1)}`;
+    ok("1.405 · the rail's labels are the PAGE's own `TAB_LABEL`, one per key of the closed list, each the key in English sentence case",
+      parsed.length > 0 && j(parsed.map(([k]) => k)) === j([...CR.CONSOLE_TABS])
+        && parsed.every(([k, v]) => v === sentenceCase(k))
+        && /TAB_LABEL: Record<\(typeof CONSOLE_TABS\)\[number\], string>/.test(pageCode)
+        && /labelEn: TAB_LABEL\[k\]/.test(pageCode),
+      j({ parsed, tabs: [...CR.CONSOLE_TABS] }));
+    ok("1.405 · CONTROL · the parse really read the page's table — not an empty match set that would pass every term above",
+      parsed.length === (CR.CONSOLE_TABS as readonly string[]).length && parsed.every(([, v]) => v.length >= 4),
+      j(parsed));
     /* ⛔ THE COUNT IS THE STRIP'S OWN NUMBER, PASSED AS `TabItem.count` SO THE KIT'S `CountBadge` PAINTS IT — never
      * a bare number typed into a label, and never a second derivation. `CountBadge` renders nothing at 0, which is
      * why a count may not stand in for a read's health (312). */
-    ok("1.405 · the limits badge is `TabItem.count` — the kit's `CountBadge` — and it is the SAME field the strip's sentence reads",
+    /* ⛔ ONE VALUE, TWO SURFACES. The badge takes `view.unsetRequired` and the strip's sentence is BUILT from the
+     * same number on the server — so the page spends the raw count EXACTLY ONCE, and a badge that disagrees with the
+     * sentence 40px above it has nowhere to come from. Both forms of the sentence used to be spelled out in JSX
+     * here, which is how the strip came to paint it beside a switch that was already on. */
+    ok("1.405 · the limits badge is `TabItem.count` — the kit's `CountBadge` — and the page spends the raw count EXACTLY ONCE, the strip's sentence coming from the server",
       /count: k === "limits" \? view\.unsetRequired : undefined/.test(pageCode)
+        && (pageCode.match(/view\.unsetRequired/g) ?? []).length === 1
+        /* twice: the branch test and the LINK's own child. The plain form once, in the inert branch. */
+        && (pageCode.match(/view\.limitsFirstReason/g) ?? []).length === 2
+        && (pageCode.match(/view\.limitsFirstPlain/g) ?? []).length === 1
+        /* ⛔ AND THE WORDS ARE NOT SPELLED HERE AT ALL — no interpolated count, no hand-written sentence. */
+        && !/Set \{?view/.test(pageCode) && !/global limits? first/.test(pageCode)
         && !/REQUIRED_FOR_MASTER_ON/.test(pageCode) && !/\.filter\(/.test(pageCode)
         && /count\?: number;/.test(read("src/components/ui/tabs.tsx"))
-        && read("src/components/ui/tabs.tsx").includes("CountBadge"), "");
+        && read("src/components/ui/tabs.tsx").includes("CountBadge"),
+      j({ unsetRequired: (pageCode.match(/view\.unsetRequired/g) ?? []).length }));
   }
 
   /* ⛔ 1.406 · THE SWITCH, THE ENGINE STATE AND EVERY CAP BREACH LIVE ABOVE THE RAIL ON EVERY TAB — provable now

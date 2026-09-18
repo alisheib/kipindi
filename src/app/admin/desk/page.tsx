@@ -284,19 +284,26 @@ export default async function AdminDeskPage({ searchParams }: { searchParams: Pr
               {/* 306 · the count is DERIVED at render time over the limits the switch requires — never a typed
                   number and never a hand-copied list, because a typed count renders "Set 0" while the press fails
                   with no explanation on screen. ⛔ Not a link until the limits panel exists (432(i)). */}
-              {view.unsetRequired > 0 && (
+              {/* ⛔ THE SENTENCE IS THE SERVER'S, AND IT IS `null` WHEN THE SWITCH IS ALREADY ON (ruling 306).
+                  This read `view.unsetRequired > 0` with no reference to `view.on`, and the state is reachable — a
+                  limit can be cleared after the desk is switched on. Read off the first 1280 tile: the chip said ON,
+                  "On since 20:14:12 EAT …" sat beside it, and "Set 1 global limit first →" sat beside THAT. Two
+                  opposite instructions on one screen, in the card that stops money — 432(m)/(n)'s class.
+                  ⛔ AND THE WORDS HAVE ONE HOME. Both forms were spelled out here in JSX, so the only thing any suite
+                  could assert was the NUMBER; the text itself was unproved. The server writes both, from the ONE
+                  count the rail's badge also reads, and this site chooses only the SKIN. The badge keeps reading
+                  `view.unsetRequired` directly, because a COUNT stays honest in either state. */}
+              {view.limitsFirstReason !== null && (
                 /* ⛔ THE LINK CARRIES THE FRAGMENT, NOT JUST THE TAB (rulings 306, 406). `#limits-first-unset` is
                    rendered on the FIRST unset required limit of the panel this href selects, and
                    `test:tab-anchors` holds the two together — the id and the builder landed in the same change,
                    because a fragment pointing at an anchor nothing renders is the defect that suite exists for. */
                 LIMITS_TAB_READY ? (
                   <Link href={view.limitsFirstUnsetHref as Route} className="inline-flex items-center min-h-[var(--tap-min)] text-body-sm text-warning-fg hover:underline">
-                    Set {view.unsetRequired} global limit{view.unsetRequired === 1 ? "" : "s"} first →
+                    {view.limitsFirstReason}
                   </Link>
                 ) : (
-                  <span className="text-body-sm text-warning-fg">
-                    Set {view.unsetRequired} global limit{view.unsetRequired === 1 ? "" : "s"} first
-                  </span>
+                  <span className="text-body-sm text-warning-fg">{view.limitsFirstPlain}</span>
                 )
               )}
               {view.on !== null && (
@@ -483,6 +490,13 @@ export default async function AdminDeskPage({ searchParams }: { searchParams: Pr
               ⛔ NO ROW FOR THE PER-MARKET, PER-PLAYER OR COUNTERPARTY-SHARE CAPS (365): this console renders no
               per-market, per-player or per-officer money figure, so a usage bar for one would be a figure with no
               population an officer could act on. They appear in the list below as VALUES, which is not a usage. */}
+          {/* ⛔ NOT RENDERED IN 421's SCHEMA STATE, FOR THE REASON THE STRIP IS NOT (432(e), 432(n)). With no
+              control row this card and the one below it each painted an `AdminLoadError` — "limit usage" and "the
+              global limits" — directly under the Callout that had already said the tables are not on this database.
+              421 asks for ONE Callout; 355 reserves the kit's failure treatment for a read that FAILED, and a table
+              that is not on the database has not failed to be read. The reader now answers `[]` in that state and
+              `null` only for a real failure, so `AdminLoadError` below still means what it says. */}
+          {!view.schemaMissing && (
           <AdminCard title="Limit usage">
             {usageRows === null ? (
               /* 372(c) · a whole-panel failure is the kit's own treatment — never a card of bars at zero. */
@@ -501,6 +515,7 @@ export default async function AdminDeskPage({ searchParams }: { searchParams: Pr
               </FormColumn>
             )}
           </AdminCard>
+          )}
 
           {/* ⛔ READ-ONLY, WITH ITS REASON ON SCREEN (ruling 433, applying 432(a) and 432(j)). There is no
               limits-SAVE service in this repository — `saveLimits` has no caller under `src/` and
@@ -509,6 +524,7 @@ export default async function AdminDeskPage({ searchParams }: { searchParams: Pr
               a form whose save is dead is the same dead control the head action and the master switch are rendered
               disabled for. `FormColumn measure="form"` is already the column the form will land in (412), so the
               measure does not move when it does. */}
+          {!view.schemaMissing && (
           <AdminCard title="Global limits" action={<span className="text-body-sm text-text-tertiary">{limitsView?.formReason}</span>}>
             {limitRows === null ? (
               <AdminLoadError what="the global limits" />
@@ -529,6 +545,7 @@ export default async function AdminDeskPage({ searchParams }: { searchParams: Pr
               </FormColumn>
             )}
           </AdminCard>
+          )}
         </>)}
       </AdminBody>
     </>
