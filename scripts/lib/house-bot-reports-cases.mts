@@ -15,9 +15,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { readFileSync, readdirSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import ts from "typescript";
 import { decomment } from "./decomment.mts";
+import { ROLL_CALL_SITES, ROLL_CALL_OWED, type DeclaredMutation } from "./house-bot-expect-drift.mts";
 import { createHash } from "node:crypto";
 import { extendHouseWords, houseHits, houseHitsByFamily, HOUSE_WORD_SAMPLES, HOUSE_IDENTIFIER_SAMPLES, HOUSE_ID_SAMPLES } from "./house-bot-vocabulary.mjs";
 
@@ -558,6 +559,54 @@ if (STORE === "memory") {
     const moved = VOCABULARY_PATTERN_ALLOWLIST["scripts/house-bot-disclosure.test.mts"][0];
     const c10 = plant("scripts/verify-house-bot-bundle.mjs", `const P = ${moved};`);
     ok("0.175.c10 · CONTROL · an allowlisted pattern planted in ANOTHER consumer is reported (the allowlist is per file)", !!disclosure && c10.own.length === 1, j(c10.own));
+  });
+
+  /* ⛔ 0.505 · THE ROLL-CALL'S OWN POPULATION. Ruling 505 gave the expect-drift roll-call six call sites, which makes
+   * the SET OF CALL SITES a hand-maintained population — the exact class 505, 512 and 513 all exist for. A seventh
+   * house anchors file, or a seventh suite key inside one that already exists, would be audited by nobody and nothing
+   * would say so. So the anchors FILES are walked from `scripts/anchors/` rather than typed, every suite key found in
+   * them is required to be in `ROLL_CALL_SITES` (it has a roll-call) or `ROLL_CALL_OWED` (it does not, and the reason
+   * is written down), a key in either table that appears in NO house anchors file is reported STALE, and the owed
+   * list's LENGTH is pinned so it cannot quietly absorb a new key. */
+  await guard("0.505", async () => {
+    const anchorDir = join(ROOT, "scripts/anchors");
+    const anchorFiles = readdirSync(anchorDir).filter((f) => f.startsWith("house") && f.endsWith(".anchors.mjs")).sort();
+    const keys = new Map<string, number>();
+    for (const f of anchorFiles) {
+      const mod: Any = await import(pathToFileURL(join(anchorDir, f)).href);
+      for (const d of (mod.MUTATIONS ?? []) as DeclaredMutation[]) {
+        const k = d.suite ?? "(none)";
+        keys.set(k, (keys.get(k) ?? 0) + 1);
+      }
+    }
+    const declared = [...keys.keys()].sort();
+    const problems: string[] = [];
+    for (const k of declared) {
+      if (!Object.prototype.hasOwnProperty.call(ROLL_CALL_SITES, k) && !Object.prototype.hasOwnProperty.call(ROLL_CALL_OWED, k)) {
+        problems.push(`suite key ${k} (${keys.get(k)} declaration(s)) is audited by no roll-call and is not recorded as owed`);
+      }
+    }
+    for (const k of [...Object.keys(ROLL_CALL_SITES), ...Object.keys(ROLL_CALL_OWED)]) {
+      if (!keys.has(k)) problems.push(`suite key ${k} is listed but appears in no house anchors file (the table is stale)`);
+    }
+    const audited = declared.filter((k) => Object.prototype.hasOwnProperty.call(ROLL_CALL_SITES, k)).reduce((n, k) => n + (keys.get(k) ?? 0), 0);
+    const owed = declared.filter((k) => !Object.prototype.hasOwnProperty.call(ROLL_CALL_SITES, k)).reduce((n, k) => n + (keys.get(k) ?? 0), 0);
+    ok("0.505 · ⛔ RULING 505 · every suite key declared in ANY scripts/anchors/house*.anchors.mjs — the files walked from disk, never typed — either HAS an expect-drift roll-call or is recorded as owed with its reason, and neither table names a key no anchors file declares",
+      problems.length === 0 && anchorFiles.length >= 6 && audited + owed >= 185 && Object.keys(ROLL_CALL_OWED).length === 7,
+      j({ anchorFiles, keys: Object.fromEntries([...keys].sort()), audited, owed, problems }));
+    /* ⛔ AND THE CONTROL, over the same detector: a key that no table names, and a table entry no file declares. */
+    const detect = (ks: Map<string, number>, sites: Record<string, string>, owedList: Record<string, string>): string[] => {
+      const out: string[] = [];
+      for (const k of [...ks.keys()].sort()) if (!Object.prototype.hasOwnProperty.call(sites, k) && !Object.prototype.hasOwnProperty.call(owedList, k)) out.push(`unlisted:${k}`);
+      for (const k of [...Object.keys(sites), ...Object.keys(owedList)]) if (!ks.has(k)) out.push(`stale:${k}`);
+      return out;
+    };
+    const withNewKey = new Map(keys).set("limits-mem", 4);
+    ok("0.505.c1 · CONTROL · a NEW suite key in an anchors file that no table names is reported, a table entry no file declares is reported stale, and the real pair is reported clean",
+      detect(withNewKey, ROLL_CALL_SITES, ROLL_CALL_OWED).includes("unlisted:limits-mem")
+        && detect(keys, { ...ROLL_CALL_SITES, "ghost-mem": "nowhere" }, ROLL_CALL_OWED).includes("stale:ghost-mem")
+        && detect(keys, ROLL_CALL_SITES, ROLL_CALL_OWED).length === 0,
+      j({ withNewKey: detect(withNewKey, ROLL_CALL_SITES, ROLL_CALL_OWED), real: detect(keys, ROLL_CALL_SITES, ROLL_CALL_OWED) }));
   });
 }
 

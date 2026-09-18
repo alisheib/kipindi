@@ -31,6 +31,46 @@
 /** One declared mutation, as the anchors files write them. `suite` is absent in the single-suite files. */
 export type DeclaredMutation = { readonly name: string; readonly expect: string; readonly suite?: string };
 
+/* ─── the roll-call's OWN population — ruling 505's fix applied to ruling 505 ──────────────────────────────────── */
+
+/**
+ * ⛔ THE ROLL-CALL IS NOW SIX CALL SITES, WHICH IS ITSELF A HAND-MAINTAINED POPULATION — the exact class this fix
+ * exists for. A seventh house anchors file, or a seventh suite key inside an existing one, would be audited by nobody
+ * and nothing would say so. So the two tables below are read from disk by `test:house-bot-reports` 0.505 against EVERY
+ * `scripts/anchors/house*.anchors.mjs` the directory holds — the file list is walked, never typed — and a key in
+ * neither table is RED.
+ *
+ * Every suite key that HAS a roll-call, and where it runs. `(none)` is the key of a declaration that carries no
+ * `suite` field at all: `house-book.anchors.mjs` and `house-page.anchors.mjs` are single-suite files.
+ */
+export const ROLL_CALL_SITES: Readonly<Record<string, string>> = {
+  "console-mem": "scripts/lib/house-bot-console-cases.mts · 1.318",
+  "engine-mem": "scripts/lib/house-bot-engine-cases.mts · 1.505",
+  "engine-pg": "scripts/lib/house-bot-engine-cases.mts · 1.505",
+  "money-mem": "scripts/lib/house-bot-money-cases.mts · 1.505",
+  "money-pg": "scripts/lib/house-bot-money-cases.mts · 1.505",
+  seam: "scripts/house-bot-seam.test.mts · 8.505 (reads BOTH anchors files that declare a seam entry)",
+  "(none)": "scripts/house-book.test.mts · 16.505 and scripts/house-page.test.mts · 16.505, by SECTION TOKEN",
+};
+
+/**
+ * ⛔ THE KEYS RULING 505 DID NOT GIVE A ROLL-CALL, EACH NAMED. This is a RECORD OF WHAT IS OWED, never a permission:
+ * every declaration under one of these keys can still rot into WRONG-ASSERTION unseen. Ruling 505 named five call
+ * sites plus the console; these seven keys were outside it. Measured at `46117372`: 164 of the 185 declarations in the
+ * house anchors files are audited, and these 21 are not.
+ * ⛔ Its LENGTH is pinned by 0.505, so a new key cannot be dropped in here to silence the check without the pin being
+ * edited in the same change — and a key listed here that appears in NO house anchors file is reported STALE.
+ */
+export const ROLL_CALL_OWED: Readonly<Record<string, string>> = {
+  "caps-mem": "12 declarations · scripts/lib/house-bot-caps-cases.mts — the largest remainder, and the first candidate for the next ruling",
+  "caps-pg": "2 declarations · scripts/house-bot-caps.test.mts, the Postgres child of the same cases file",
+  "designation-mem": "2 declarations · scripts/lib/house-bot-designation-cases.mts",
+  "comms-mem": "1 declaration · scripts/lib/house-bot-comms-cases.mts",
+  "info-edge-mem": "1 declaration · scripts/lib/house-bot-info-edge-cases.mts",
+  rbac: "2 declarations · scripts/rbac.test.mts — a PLATFORM suite, outside the house campaign's files",
+  "admin-nav": "1 declaration · scripts/admin-nav.test.mts — a PLATFORM suite, outside the house campaign's files",
+};
+
 export type DriftReport = {
   /** Declarations this suite owns. */
   declared: number;
