@@ -74,12 +74,15 @@ export const MUTATIONS = [
   {
     name: "340-null · the reader reads first and decides afterwards",
     file: GATE,
+    /* ⚠️ RE-ANCHORED 2026-09-18 (B2, ruling 348): `readDeskCore` now takes a FACTORY, so the second quoted
+       line moved. THE DEFECT IS UNCHANGED — the verdict is resolved and then not acted on, and every read
+       below runs for a viewer outside the audience. */
     from: `  if (!(await houseConsoleAudience(viewerUserId, route))) return null;
 
-  const { core, extra: parseCtx } = await readDeskCore(loadParseContext());`,
+  const { core, extra: parseCtx } = await readDeskCore(() => loadParseContext());`,
     to: `  const mayView = await houseConsoleAudience(viewerUserId, route);
 
-  const { core, extra: parseCtx } = await readDeskCore(loadParseContext());`,
+  const { core, extra: parseCtx } = await readDeskCore(() => loadParseContext());`,
     expect: "1.300 · the reader refuses a PLAYER with `null` and performs ZERO store calls",
     suite: "console-mem",
   },
@@ -437,9 +440,11 @@ export const MUTATIONS = [
   {
     name: "432q-second-context · a second parse-context read inside one render",
     file: GATE,
-    from: `  const { core, extra: parseCtx } = await readDeskCore(loadParseContext());`,
+    /* ⚠️ RE-ANCHORED 2026-09-18 (B2, ruling 348) — the factory form. Same defect: a SECOND parse-context
+       read inside one render, outside the one settled set. */
+    from: `  const { core, extra: parseCtx } = await readDeskCore(() => loadParseContext());`,
     to: `  await loadParseContext();
-  const { core, extra: parseCtx } = await readDeskCore(loadParseContext());`,
+  const { core, extra: parseCtx } = await readDeskCore(() => loadParseContext());`,
     expect: "1.347 · 432(q) · the reader's read set is the four house reads plus EXACTLY ONE `loadParseContext()`",
     suite: "console-mem",
   },
@@ -472,12 +477,16 @@ export const MUTATIONS = [
   {
     name: "372-verdict · the USAGE reader reads first and decides afterwards — the second door past the gate",
     file: GATE,
+    /* ⚠️ RE-ANCHORED 2026-09-18 (B2, ruling 348): the fifth read is now built by a factory that takes the
+       render's day key, so the quoted second line moved. THE DEFECT IS UNCHANGED — the usage reader resolves
+       its verdict and then reads anyway, the second door past the gate. The comment line is part of the anchor
+       only because the guard line alone is not unique: the roster reader opens with the identical statement. */
     from: `  if (!(await houseConsoleAudience(viewerUserId, route))) return null;
 
-  const { core, extra: staffChosen } = await readDeskCore(houseBotIntentStore.staffChosenPlacedToday({ houseBotId: query.houseBotId }));`,
+  /* The render's own day key, passed to the fifth read`,
     to: `  const mayView = await houseConsoleAudience(viewerUserId, route);
 
-  const { core, extra: staffChosen } = await readDeskCore(houseBotIntentStore.staffChosenPlacedToday({ houseBotId: query.houseBotId }));`,
+  /* The render's own day key, passed to the fifth read`,
     expect: "1.372 · the usage reader refuses a viewer outside the audience with `null` and performs ZERO store calls",
     suite: "console-mem",
   },
@@ -600,7 +609,7 @@ export const MUTATIONS = [
     file: PAGE,
     from: `              <DeskLive live={view.live} />`,
     to: `              {tab === "roster" ? <DeskLive live={view.live} /> : null}`,
-    expect: "1.406 · the strip, both Callouts, the band, the rail and the live trigger are ALL rendered before the first",
+    expect: "1.406 · the strip, both Callouts, the band, the rail and the live trigger are ALL rendered before ANY `tab === ` condition",
     suite: "console-mem",
   },
   {
@@ -639,6 +648,20 @@ export const MUTATIONS = [
     suite: "console-mem",
   },
   {
+    /* ⛔ THE OTHER HALF OF 1.312a, WHICH NO DECLARED MUTATION EXERCISED (replan ruling 541(e)). `432i-dead-link`'s
+       polarity flip proves the LINK branch; nothing proved that both limits pointers are still GUARDED by the flag.
+       `1.318`'s roll-call only checks `expect`-drift — it never asks whether an assertion HAS a declaration — so the
+       gap was invisible. Dropping the guard ships the link unconditionally, which is the dead control 432(i) exists
+       for: the moment `limits` leaves `CONSOLE_TABS`, `consoleTab()` resolves the href back to the roster and the
+       sentence repaints the identical page with no explanation. */
+    name: "432i-unguarded · the head's roster-full sentence links whatever `CONSOLE_TABS` holds, so the flag stops deciding",
+    file: PAGE,
+    from: `              {rosterFull && LIMITS_TAB_READY`,
+    to: `              {rosterFull`,
+    expect: "1.312a · 432(i) · both limits pointers are still GUARDED by the flag",
+    suite: "console-mem",
+  },
+  {
     name: "306-anchor-everywhere · every unset row carries the anchor, so `#limits-first-unset` names several elements",
     file: GATE,
     from: `    const firstUnset = unset && required && !firstUnsetTaken;`,
@@ -651,7 +674,7 @@ export const MUTATIONS = [
     file: PAGE,
     from: `                  <Link href={view.limitsFirstUnsetHref as Route} className="inline-flex items-center min-h-[var(--tap-min)] text-body-sm text-warning-fg hover:underline">`,
     to: `                  <Link href={view.limitsHref as Route} className="inline-flex items-center min-h-[var(--tap-min)] text-body-sm text-warning-fg hover:underline">`,
-    expect: "1.306 · the first-unset href is a literal the anchor guard can see",
+    expect: "1.306 · 432(i) · 541(b) · every `<Link href=` in the section is pinned BY POSITION",
     suite: "console-mem",
   },
   {

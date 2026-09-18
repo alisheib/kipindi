@@ -899,18 +899,34 @@ section("§2 · the strip, the band, the roster and every failure");
       unset.limitTzs === null && unset.usedTzs === null && unset.halves.length === 0
         && unset.unsetCaption === "Not set — targeted and manual stakes cannot be placed." && unset.unsetLinked === false,
       j(unset));
-    /* ⛔ AND A REQUIRED cap's unset caption IS linked, because the field that fixes it is on this very page. */
-    await w.limits({ gCapDailyStakeTzs: null });
+    /* ⛔ AND A REQUIRED cap's unset caption IS linked, because the field that fixes it is on this very page.
+       ⛔ TWO REQUIRED LIMITS ARE UNSET, NOT ONE, AND THAT IS WHAT MAKES THE NEXT ASSERTION ABLE TO FAIL (replan
+       ruling 541(c)). With exactly one unset member of `REQUIRED_FOR_MASTER_ON`, `unset && required` and
+       `unset && required && !firstUnsetTaken` produce the SAME single flag — so the declared mutation
+       `306-anchor-everywhere`, which drops `!firstUnsetTaken`, passed. A fixture in the one shape that cannot
+       discriminate is not a fixture. */
+    await w.limits({ gCapDailyStakeTzs: null, gCapOpenExposureTzs: null });
     const u2 = await GATEM.houseUsageForConsole(OFFICER, "/admin/desk", { houseBotId: null });
     ok("1.364 · a REQUIRED cap's unset caption names the master switch and carries the link to the field that fixes it",
       u2.usage[0].limitTzs === null && u2.usage[0].unsetCaption === "Not set — the master switch cannot be turned on." && u2.usage[0].unsetLinked === true,
       j(u2.usage[0]));
     /* ⛔ THE ANCHOR IS ON THE FIRST UNSET REQUIRED LIMIT, AND ON EXACTLY ONE ROW. */
     const flagged = u2.limits.filter((l: Any) => l.firstUnset);
-    ok("1.306 · exactly ONE row of the limits list carries the anchor, and it is the FIRST unset REQUIRED limit in form order",
+    ok("1.306 · exactly ONE row of the limits list carries the anchor, and it is the FIRST unset REQUIRED limit in form order — with TWO of them unset, so the `!firstUnsetTaken` term is doing the deciding",
       flagged.length === 1 && flagged[0].name === GATEM.consoleLimitLabel("gCapDailyStakeTzs")
+        && u2.limits.filter((l: Any) => l.unset && (R.REQUIRED_FOR_MASTER_ON as readonly string[]).some((f) => GATEM.consoleLimitLabel(f) === l.name)).length >= 2
         && u2.limits.findIndex((l: Any) => l.firstUnset) === u2.limits.findIndex((l: Any) => l.unset),
       j({ flagged: flagged.map((l: Any) => l.name), list: u2.limits.map((l: Any) => [l.name, l.unset, l.firstUnset]) }));
+    /* ⛔ AND THE ONE-UNSET BOUNDARY IS KEPT BESIDE IT. 541(c)'s fixture is a STRENGTHENING, not a replacement:
+       the single-unset state is the one an officer actually meets most often, it is the state the strip's
+       "Set 1 global limit first →" is written for, and dropping it would quietly take two painted strings and a
+       whole state out of §3's lexicon scan. */
+    await w.limits({ gCapDailyStakeTzs: null });
+    const u2one = await GATEM.houseUsageForConsole(OFFICER, "/admin/desk", { houseBotId: null });
+    ok("1.306 · with exactly ONE required limit unset the anchor is on it, and the strip's count agrees",
+      u2one.limits.filter((l: Any) => l.firstUnset).length === 1 && u2one.unsetRequired === 1
+        && u2.unsetRequired === 2,
+      j({ one: u2one.unsetRequired, two: u2.unsetRequired }));
     /* ⛔ WITH EVERY LIMIT SET, NO ROW CARRIES IT — an anchor that always renders is an anchor that means nothing. */
     /* ⚠️ `gTargetsMaxActive` is NOT in the world's OPEN_LIMITS, so it is set explicitly here: an "everything set"
        control that leaves one field null is not the control it claims to be. */
@@ -956,7 +972,7 @@ section("§2 · the strip, the band, the roster and every failure");
       ["gCounterPerPlayerPerDay", "gCounterPerPlayerTzsPerDay", "gStaffChosenMaxCounterpartyShare"]
         .every((f) => NEUTRAL.test(R.FIELD_META[f].label) && !NEUTRAL.test(GATEM.consoleLimitLabel(f)) && GATEM.consoleLimitLabel(f) !== R.FIELD_META[f].label),
       j(["gCounterPerPlayerPerDay", "gCounterPerPlayerTzsPerDay", "gStaffChosenMaxCounterpartyShare"].map((f) => [R.FIELD_META[f].label, GATEM.consoleLimitLabel(f)])));
-    STATES.push(["limits-panel", u3], ["limits-unset-required", u2]);
+    STATES.push(["limits-panel", u3], ["limits-unset-required", u2], ["limits-unset-one", u2one]);
   }
 
   /* ━━ 1.348 · THE EAT DAY IS DERIVED ONCE PER RENDER, AND EVERY READ THAT NEEDS ONE IS GIVEN IT ━━━━━━━━━━━
@@ -1266,7 +1282,7 @@ section("§3 · nothing the desk renders names the feature, in ANY state");
   /* ⛔ THE FLOOR IS OVER THE STATES AND THE STRINGS BOTH: a scan of one state, or of a view whose branches are all
    * null, is not a scan. Sixteen states were produced above; each carries at least a sentence and four tile labels. */
   ok("3.453 · not one painted string of ANY state carries a house-vocabulary word, or the words bot, house, liquidity or counter-stake",
-    scanned.length >= 23 && total >= 1434 && hits.length === 0, j({ states: scanned.length, scanned: total, hits }));
+    scanned.length >= 24 && total >= 1528 && hits.length === 0, j({ states: scanned.length, scanned: total, hits }));
   /* ⛔ AND THE BRANCHES MOST LIKELY TO CARRY ONE ARE PROVEN PRESENT IN THE SCAN, by name — a state list that quietly
    * stopped producing the OFF sentence or an empty state would otherwise read as compliance. */
   const seen = new Set(scanned.flatMap(([, c]) => c));
@@ -1593,10 +1609,28 @@ export default function Ruling513Control() {
   ok("1.312a · 432(i) · the inert form is still BUILT and still reachable from the page, though its branch no longer executes",
     pageCode.includes("view.rosterFullPlain") && read(GATE).includes("function stripLinkedTail(")
       && decomment(read(GATE)).includes("stripLinkedTail(rosterFullReason)"), "");
-  ok("1.312a · 432(i) · …and every `<Link href=` in the section points at one of the gate's own console hrefs, never a literal",
-    [...pageCode.matchAll(/<Link href=\{([^}]*)\}/g)].length >= 2
-      && [...pageCode.matchAll(/<Link href=\{([^}]*)\}/g)].every((m) => /view\.limitsHref|view\.limitsFirstUnsetHref|unsetHref/.test(m[1])),
-    j([...pageCode.matchAll(/<Link href=\{([^}]*)\}/g)].map((m) => m[1])));
+  /* ⛔ EACH LINK SITE IS PINNED BY POSITION, AS AN EXACT ORDERED LIST — AN `OR` WIDENS (replan ruling 541(b)).
+   * This read `every(m => /view\.limitsHref|view\.limitsFirstUnsetHref|unsetHref/.test(m[1]))`, which makes the three
+   * hrefs INTERCHANGEABLE at every site: the declared mutation `306-anchor-href` swaps the strip's
+   * `limitsFirstUnsetHref` for `limitsHref` — sending an officer to the tab to hunt for the field the sentence
+   * promised — and this still passed, while the assertion the mutation NAMED reads only `console-routes.ts` and
+   * never touches the page at all. The three sites are different answers to different questions and are held apart:
+   * the bar's "Set it below →" takes the prop, the head's roster-full sentence takes the TAB, and the strip's
+   * "Set N global limits first →" takes the FRAGMENT, because it names a field the reader must land on. */
+  {
+    const linkExprs = [...pageCode.matchAll(/<Link href=\{([^}]*)\}/g)].map((m) => m[1].trim());
+    const WANT = ["unsetHref as Route", "view.limitsHref as Route", "view.limitsFirstUnsetHref as Route"];
+    ok("1.306 · 432(i) · 541(b) · every `<Link href=` in the section is pinned BY POSITION — the bar's prop, then the head's tab href, then the strip's FRAGMENT href",
+      j(linkExprs) === j(WANT), j({ found: linkExprs, want: WANT }));
+    /* ⛔ AND THE FRAGMENT HREF IS SPENT TWICE, both times on the field the strip promises: once as the strip's own
+     * link and once as the prop every unset usage bar links through. A count is what notices one of them being
+     * swapped for the bare tab href even if a future site reorders the list above. */
+    ok("1.306 · 541(b) · `view.limitsFirstUnsetHref` is spent exactly TWICE — the strip's link and the bars' prop — and `view.limitsHref` exactly once",
+      (pageCode.match(/view\.limitsFirstUnsetHref/g) ?? []).length === 2
+        && (pageCode.match(/view\.limitsHref/g) ?? []).length === 1
+        && /unsetHref=\{view\.limitsFirstUnsetHref\}/.test(pageCode),
+      j({ firstUnset: (pageCode.match(/view\.limitsFirstUnsetHref/g) ?? []).length, limits: (pageCode.match(/view\.limitsHref/g) ?? []).length }));
+  }
   /* ⛔ THE ANCHOR'S HREF IS ONE LITERAL — because `test:tab-anchors` reads SOURCE TEXT and a template built from
    * `${CONSOLE_ROUTE}` is invisible to it — and it is held EQUAL to the composed form so the literal cannot rot. */
   ok("1.306 · the first-unset href is a literal the anchor guard can see, and it equals the composed form exactly",
@@ -1774,10 +1808,15 @@ export default function Ruling513Control() {
     const stripAt = pageCode.indexOf("<AdminCard padding=\"p-4\">");
     const pollerAt = pageCode.indexOf("<DeskLive live={view.live} />");
     const railAt = pageCode.indexOf("<Tabs");
-    ok("1.316 · exactly ONE `RefreshPoller` in the whole section, and it is mounted from the strip — ABOVE the rail, so no tab switch remounts it",
+    /* ⛔ AND NOTHING CONDITIONAL ON THE TAB MAY LIE BETWEEN THE STRIP AND THE POLLER (replan ruling 541(a)). The
+       ordering terms alone survive `406-strip`, which wraps the poller in place: both indices shift together. What
+       the defect actually does is put a `tab === ` between them, so that is what is refused. */
+    ok("1.316 · exactly ONE `RefreshPoller` in the whole section, and it is mounted from the strip — ABOVE the rail, with no tab condition between them, so no tab switch remounts it",
       (sectionFiles.map((f) => decomment(read(f))).join("\n").match(/<RefreshPoller/g) ?? []).length === 1
         && (pageCode.match(/<DeskLive /g) ?? []).length === 1
-        && stripAt > 0 && pollerAt > stripAt && railAt > pollerAt, j({ stripAt, pollerAt, railAt }));
+        && stripAt > 0 && pollerAt > stripAt && railAt > pollerAt
+        && !pageCode.slice(stripAt, pollerAt).includes("tab === "),
+      j({ stripAt, pollerAt, railAt, between: pageCode.slice(stripAt, pollerAt).includes("tab === ") }));
     ok("1.316 · it polls on `LIVE_ROUND_MS` (20s, against ruling 353's 30s staleness threshold), never the component's 30s default",
       /intervalMs=\{LIVE_ROUND_MS\}/.test(liveCode) && liveCode.includes('from "@/lib/refresh-cadence"')
         && (await import("../../src/lib/refresh-cadence.ts") as Any).LIVE_ROUND_MS === 20_000, "");
@@ -1831,6 +1870,18 @@ export default function Ruling513Control() {
   /* ⛔ 1.406 · THE SWITCH, THE ENGINE STATE AND EVERY CAP BREACH LIVE ABOVE THE RAIL ON EVERY TAB — provable now
    * that a second panel exists. Each of them is rendered OUTSIDE the `?tab=` switch, so no tab can own one. */
   {
+    /* ⛔ TAB OWNERSHIP, NOT A SOURCE OFFSET — AND THE OFFSET FORM WAS A MUTATION AIMED AT NOTHING (replan ruling
+     * 541(a)). This read `at < firstPanel`, where `firstPanel` is the index of the first tab group. The declared
+     * mutation `406-strip` wraps the poller IN PLACE (`<DeskLive …>` → `{tab === "roster" ? <DeskLive …> : null}`),
+     * so the insert shifts `pollerAt` AND `firstPanel` by the same amount and every term stayed true. SIMULATED on a
+     * copy: BASE {p1406:true} / 406-MUT {p1406:true}. No assertion in the suite could see the desk's one live
+     * trigger move inside a tab group — the whole defect 406 and 316 exist for.
+     * ⛔ WHAT DECIDES OWNERSHIP IS WHETHER A `tab === ` CONDITION LIES BETWEEN THE BODY AND THE SITE. The search
+     * starts at `<AdminBody>` deliberately: the reader selection thirty lines above (`tab === "roster" ? await
+     * houseRosterForConsole(…)`) is a `tab ===` that is not a tab GROUP, and starting at 0 would make every site
+     * fail for the wrong reason — a guard that goes red for the wrong reason goes green for the wrong reason too. */
+    const bodyAt = pageCode.indexOf("<AdminBody>");
+    const firstTabCond = pageCode.indexOf('tab === "', bodyAt);
     const firstPanel = pageCode.indexOf('{tab === "roster" && (<>');
     const sites: Array<[string, number]> = [
       ["the master-switch strip", pageCode.indexOf("Desk master switch")],
@@ -1840,10 +1891,14 @@ export default function Ruling513Control() {
       ["the rail", pageCode.indexOf("<Tabs")],
       ["the live poller", pageCode.indexOf("<DeskLive")],
     ];
-    ok("1.406 · the strip, both Callouts, the band, the rail and the live trigger are ALL rendered before the first `?tab=` group — no tab owns a control that stops money",
-      firstPanel > 0 && sites.every(([, at]) => at > 0 && at < firstPanel), j({ firstPanel, sites }));
-    ok("1.406 · CONTROL · the two panels really are inside `?tab=` groups, so the comparison above has something to decide",
-      pageCode.indexOf('{tab === "limits" && (<>') > firstPanel && (pageCode.match(/\{tab === "[a-z-]+" && \(<>/g) ?? []).length === 2, "");
+    ok("1.406 · the strip, both Callouts, the band, the rail and the live trigger are ALL rendered before ANY `tab === ` condition in the body — no tab owns a control that stops money",
+      bodyAt > 0 && firstTabCond > bodyAt && sites.every(([, at]) => at > bodyAt && at < firstTabCond),
+      j({ bodyAt, firstTabCond, inside: sites.filter(([, at]) => !(at > bodyAt && at < firstTabCond)) }));
+    ok("1.406 · CONTROL · the two panels really are inside `?tab=` groups, and the FIRST condition in the body is a tab GROUP opener — so the assertion above has something to decide",
+      firstPanel > 0 && firstTabCond === firstPanel + 1
+        && pageCode.indexOf('{tab === "limits" && (<>') > firstPanel
+        && (pageCode.match(/\{tab === "[a-z-]+" && \(<>/g) ?? []).length === 2,
+      j({ firstPanel, firstTabCond }));
   }
 
   /* ⛔ 1.412 / 433 · THE LIMITS PANEL IS READ-ONLY, AND THAT IS TIED TO THE SERVICE THAT WOULD MAKE IT WRITABLE.

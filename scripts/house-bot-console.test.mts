@@ -31,7 +31,8 @@
  * Postgres 121**, and once more with the limits list's money/count face pinned: **memory 240, Postgres 122**,
  * and again at replan ruling 539's fixes — the widened counter stem, the derived override population, the swept
  * top-level copy and 513's raised floor: **memory 242, Postgres 124**, and again with ruling 348's own Proof
- * written for the first time (1.348): **memory 248, Postgres 128**.
+ * written for the first time (1.348): **memory 248, Postgres 128**, and again at ruling 541's four dead
+ * mutations: **memory 250, Postgres 129**.
  * ⛔ A floor only ever rises, and
  * only to a count a run printed — never to an arithmetic guess.
  *
@@ -42,6 +43,6 @@ import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 await runTwoStores({
   suite: "test:house-bot-console",
   casesFile: "scripts/lib/house-bot-console-cases.mts",
-  minPass: { memory: 248, postgres: 128 },
+  minPass: { memory: 250, postgres: 129 },
   dbPrefix: "hb_console",
 });

@@ -810,13 +810,7 @@ export async function houseUsageForConsole(
 ): Promise<ConsoleLimitsView | null> {
   if (!(await houseConsoleAudience(viewerUserId, route))) return null;
 
-  /* ⛔ THE RENDER'S OWN DAY KEY, PASSED (C7-SPEC ruling 348). The call was `staffChosenPlacedToday({ houseBotId })`
-     and the DAL then derived a SECOND day of its own — `eatDayKey(Date.now())` in the memory twin, the DATABASE
-     CLOCK in the Prisma one. 348 fixes the key at ONE derivation per render, from the SEAM's clock, precisely so
-     that a page cannot straddle EAT midnight and paint two days on one card; this reader's own docblock said
-     'DERIVED ONCE PER RENDER, HERE' while this row was deriving its own. `readDeskCore` therefore takes a
-     FACTORY rather than a promise, so the extra read is created with the key already in hand and stays inside
-     the one settled set (432(q)). */
+  /* The render's own day key, passed to the fifth read (C7-SPEC ruling 348; the whole story is on readDeskCore). */
   const { core, extra: staffChosen } = await readDeskCore((dayKey) =>
     houseBotIntentStore.staffChosenPlacedToday({ houseBotId: query.houseBotId, dayKey }));
   const shell = deskShell(core);
