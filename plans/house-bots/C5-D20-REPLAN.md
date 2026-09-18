@@ -1360,3 +1360,30 @@ bots and what keeps D19 true").
        — the inverted scale exactly as 528 described, and the 2px difference is invisible beside a box with its
        own border and ground, exactly as 528 predicted. 528's fix is confirmed on screen and its owed render is
        no longer owed.
+
+547. **RULING 306's DEFECT SURVIVES ONE CARD LOWER: with the desk ON, the usage card still says "the master switch
+     cannot be turned on" — and this is RECORDED for the step that owns the switch, not patched under it.** Found by
+     rendering the ON state, which no tile of this section had ever carried.
+     - **What was measured**, on a served build at 360 and 1280, with `enabled = true` and `gCapOpenExposureTzs`
+       cleared (`strip-on-360.png`, `strip-on-1280.png`):
+       · the chip reads **ON** and the strip reads "On since 01:03:28 EAT · switched by … · reason: weekend cover";
+       · ruling 306's own fix holds — "Set N global limits first →" is correctly ABSENT, because `limitsFirstReason`
+         is null when the switch is on;
+       · but ~500px lower the usage card still paints **"Not set — the master switch cannot be turned on."**, and
+         the rail still carries its `1` badge. Two opposite statements about the same switch, on one screen.
+     - **Why.** `unsetCaptionFor(field)` chooses by MEMBERSHIP in `REQUIRED_FOR_MASTER_ON` alone and has no
+       reference to `on`. That is exactly the shape ruling 306 corrected in the STRIP (the review's M14) and it was
+       corrected only there; the caption and the badge were left unconditional.
+     - **And the true consequence is already written elsewhere on the same page.** With the desk ON and a required
+       cap unset, `over(cap, value)` in the seam is `cap == null || value > cap`, so an unset cap REFUSES EVERY
+       STAKE — which is what the KPI tile's own delta already says: "nothing can be staked until this limit is set".
+       So the correct caption for `required && on` exists in the product and is simply not reached.
+     - **The fix, for the step that owns the switch.** `unsetCaptionFor` takes the render's `on` and the REQUIRED
+       branch splits: `!on` keeps "the master switch cannot be turned on."; `on` takes the consequence the KPI tile
+       already spells. `1.364`, its derived-population control and the served 453 scan move with it.
+     - ⛔ **Why it is not fixed here.** The Toggle ships DISABLED on this build (ruling 306's own note: the ceremony
+       is C7 step 4's), so the ON state is reachable today only by writing the row directly — which is how this tile
+       was taken. `unsetCaptionFor` is pinned by three assertions and by the served scan, and re-shaping it to carry
+       a second argument in a visual pass, on the same day step 4 will rebuild the switch's whole story, is churn
+       for no reachable defect. It is written down with its measurement so step 4 cannot ship the ceremony without
+       meeting it.
