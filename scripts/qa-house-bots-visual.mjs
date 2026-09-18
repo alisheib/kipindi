@@ -76,6 +76,26 @@ const ROUTES = process.env.KP_ROUTES
   ? process.env.KP_ROUTES.split(",").map((s) => s.trim()).filter(Boolean)
   : DERIVED_ROUTES;
 console.log(`routes (${process.env.KP_ROUTES ? "KP_ROUTES" : "derived from CONSOLE_TABS"}): ${ROUTES.join(" ")}`);
+/**
+ * ⛔ RULING 474's TWO OPERATOR-DATA VALUES, READ FROM THE READER'S OWN LIST — never typed here.
+ * `bot.label` and `control.switchedReason` are DATA an operator typed, not this console's copy: 453 may not
+ * silently rewrite them, and 474 exempts them BY NAME. This gate had no such exemption, so a roster whose
+ * accounts are labelled "Bot 1–3" made §5.6 red at all six widths on a value the ruling says must never fail it.
+ * ⛔ IT IS REFUSED rather than defaulted when the list cannot be read, and the two names are required to be
+ * EXACTLY the two: a third exemption cannot arrive here without being ruled.
+ */
+function operatorExemptNames() {
+  const src = readFileSync("src/lib/server/house-console-read.ts", "utf8");
+  const block = /export const OPERATOR_DATA_EXEMPT = Object\.freeze\(\[([\s\S]*?)\]\);/.exec(src)?.[1] ?? "";
+  return [...block.matchAll(/value:\s*"([^"]+)"/g)].map((m) => m[1]);
+}
+const OPERATOR_EXEMPT = operatorExemptNames();
+if (JSON.stringify(OPERATOR_EXEMPT) !== JSON.stringify(["label", "switchedReason"])) {
+  console.error(`REFUSED — OPERATOR_DATA_EXEMPT in src/lib/server/house-console-read.ts is ${JSON.stringify(OPERATOR_EXEMPT)}; this gate implements exactly ["label","switchedReason"] (ruling 474) and will not guess at a third.`);
+  process.exit(2);
+}
+/** The ON sentence's operator-typed tail — the same rule `test:house-bot-console` §3 applies to `stateSentence`. */
+const stripReasonTail = (text) => text.replace(/ ·\u00a0reason: [^\n]*/g, "");
 const SHOTS = process.env.KP_SHOTS ?? ".qa-house-bots";
 const PHONE = "+255700000000";
 const PASSWORD = process.env.KP_ADMIN_PASSWORD ?? "QaAdmin2026!";
@@ -235,6 +255,7 @@ try {
             return { text: (td.textContent ?? "").trim().slice(0, 24), left: Math.round(r.left), right: Math.round(r.right), boxLeft: Math.round(box.left), boxRight: Math.round(box.right) };
           });
         });
+        const tableCount = document.querySelectorAll("table.admin-tbl").length;
         const region = document.querySelector("table.admin-tbl")?.closest("[role='region']") ?? null;
         const scrollable = region ? region.scrollWidth > region.clientWidth + 1 : false;
         /* The console's own content region, for 453's stricter scan — the sidebar's "House" nav label is not ours. */
@@ -250,7 +271,12 @@ try {
           const r = td.querySelector("div")?.getBoundingClientRect() ?? td.getBoundingClientRect();
           return { left: Math.round(r.left), right: Math.round(r.right) };
         });
-        return { clipped, moneyCount: money.length, tiles, shortControls, controlCount: controls.length, tap, firstCells, emptyBoxes, scrollable, ownText: own.innerText, attrs, body: document.body.innerText, vw: window.innerWidth };
+        /* ⛔ RULING 474 · THE OPERATOR'S OWN TEXT, COLLECTED SEPARATELY so the 453 scan can exempt exactly those
+           nodes and nothing else. The hook is written at the render site, so the exemption is VISIBLE in the DOM
+           rather than inferred from position. */
+        const operatorNodes = [...own.querySelectorAll("[data-operator-text]")];
+        const operatorText = operatorNodes.map((el) => (el.textContent ?? "").trim()).filter(Boolean);
+        return { clipped, moneyCount: money.length, tiles, shortControls, controlCount: controls.length, tap, firstCells, tableCount, emptyBoxes, scrollable, ownText: own.innerText, attrs, operatorText, body: document.body.innerText, vw: window.innerWidth };
       });
 
       ok(`§5.1 ${route} @${width} · no money figure is clipped by a box that cannot scroll, and none is broken across two lines`, facts.clipped.length === 0, facts.clipped.join(" | "));
@@ -271,7 +297,10 @@ try {
         // ⛔ RULING 453, over the console's OWN region and its attributes — the words `bot`, `house` and
         // `counter-stake` on top of the shared list, composed in the vocabulary module and never here (ruling 175).
         const neutral = consoleNeutralRegExp("gi");
-        const subject = `${facts.ownText}\n${facts.attrs.join("\n")}`;
+        /* ⛔ 474's TWO EXEMPTIONS, REMOVED BY NAME AND NOTHING ELSE: the marked nodes' own text, and the ON
+           sentence's `· reason:` tail. Everything else on the page stays in the subject. */
+        const exempted = facts.operatorText.reduce((acc, t) => acc.split(t).join(" "), `${facts.ownText}\n${facts.attrs.join("\n")}`);
+        const subject = stripReasonTail(exempted);
         const hits453 = [...subject.matchAll(neutral)].map((m) => m[0]);
         ok(`§5.6 ${route} @${width} · ⛔ RULING 453 · neither the console's own text NOR any of its aria-label/title/placeholder/alt names the feature`,
           hits453.length === 0, hits453.slice(0, 6).join(","));
@@ -284,6 +313,22 @@ try {
             && CONSOLE_BENIGN_SAMPLES.every((s) => !consoleNeutralRegExp().test(s))
             && facts.attrs.length >= 6,
           `${facts.attrs.length} attributes · benign hits ${JSON.stringify(CONSOLE_BENIGN_SAMPLES.filter((s) => consoleNeutralRegExp().test(s)))}`);
+        /* ⛔ AND THE EXEMPTION IS EXACTLY THE TWO VALUES 474 NAMES. An exemption nobody measures is a guard whose
+           population is a lie: a house word planted into the page's NON-exempt text must still fire, and the
+           removal must take only the marked nodes. */
+        {
+          const planted = `${subject} the house bots desk`;
+          const untouched = `${facts.ownText}\n${facts.attrs.join("\n")}`;
+          ok(`§5.6 ${route} @${width} · CONTROL · 474 · the operator-data exemption is exactly ${JSON.stringify(OPERATOR_EXEMPT)}, removes only the marked nodes, and a house word in the page's OWN text still fires`,
+            /* the plant fires — the exemption did not switch the scan off */
+            [...planted.matchAll(consoleNeutralRegExp("gi"))].length > 0
+              /* each marked node's text is gone … */
+              && facts.operatorText.every((t) => !subject.includes(t))
+              /* … and something was actually removed when there was anything to remove, so an exemption that
+                 matched nothing cannot read as one that worked */
+              && (facts.operatorText.length === 0 || subject.length < untouched.length),
+            `${facts.operatorText.length} operator node(s): ${JSON.stringify(facts.operatorText.slice(0, 4))}`);
+        }
       }
       if (facts.firstCells.length) {
         const [subject, first, second] = facts.firstCells;
@@ -298,8 +343,16 @@ try {
           ok(`§5.2 ${route} @${width} · …and the second money answer is reachable: the table's region really does scroll`,
             second == null || inBox(second) || facts.scrollable, JSON.stringify({ second, scrollable: facts.scrollable }));
         }
+      } else if (facts.tableCount === 0) {
+        /* ⛔ A SURFACE THAT RENDERS NO TABLE IS A POSITIVE FACT, NOT A SKIP. §5.2 asks where a money CELL sits in a
+           scroll container; a surface with no `.admin-tbl` has no such cell, and printing NOT MEASURED for it would
+           make this gate exit 3 for ever the moment its route population grew past the roster — which is how a gate
+           stops being read. What IS asserted instead is the fact itself, WITH the figures §5.1 measured on that same
+           surface, so "no table" cannot stand in for "nothing rendered". */
+        ok(`§5.2 ${route} @${width} · this surface renders no `+"`.admin-tbl`"+`, so it has no money CELL to push out of a scroll strip — and §5.1 measured its figures where they are`,
+          facts.moneyCount >= 1, `${facts.moneyCount} money spans, ${facts.tableCount} tables`);
       } else {
-        nm(`§5.2 ${route} @${width}`, "no roster row was rendered, so the money columns' position was not measured");
+        nm(`§5.2 ${route} @${width}`, `a money table rendered with NO row (${facts.tableCount} table(s)), so the money columns' position was not measured`);
       }
       if (facts.emptyBoxes.length) {
         ok(`§5.5 ${route} @${width} · every empty-state message box is inside the viewport`,

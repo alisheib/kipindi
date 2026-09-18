@@ -449,7 +449,13 @@ export default async function AdminDeskPage({ searchParams }: { searchParams: Pr
                       rosterRows.map((r) => (
                         <tr key={r.id} className="border-b border-border-subtle">
                           <td className="p-3">
-                            <div className="text-text">{r.label}</div>
+                            {/* ⛔ RULING 474 · THIS TEXT IS OPERATOR DATA, AND THE DOM SAYS SO. `bot.label` is what
+                                the Owner typed to identify an account; 453's lexicon binds this section's COPY and may
+                                not silently rewrite it, so it is exempted BY NAME — and an exemption a scanner cannot
+                                SEE is one that gets applied to whatever happens to be nearby. MEASURED 2026-09-18: the
+                                served gate had no such hook, so a fixture whose accounts were labelled "Bot 1–3" made
+                                §5.6 red at all six widths — on a value 474 says must never fail it. */}
+                            <div className="text-text" data-operator-text="label">{r.label}</div>
                             {/* The holder, as a HANDLE and nothing else (04 R6) — never a name, a phone or an email,
                                 because a row outlives the holder's erasure. 13px mono in a subdued tone is
                                 /admin/agents' own shape for the same thing, and it clears §T4's 12.5px floor. */}
