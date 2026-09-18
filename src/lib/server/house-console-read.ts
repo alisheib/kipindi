@@ -41,6 +41,7 @@ import { formatTzs, formatTzsCompact, formatNumber } from "@/lib/utils";
 import { CONSOLE_ROUTE, CONSOLE_LIMITS_HREF, CONSOLE_LIMITS_FIRST_UNSET_HREF, DEFAULT_TAB, type ConsoleTab } from "@/lib/house-bot/console-routes";
 import { eatDayKey, formatEat } from "@/lib/house-bot/clock";
 import { FIELD_META, LIMIT_FIELDS, REQUIRED_FOR_MASTER_ON, isClearExempt, parseHouseBotRules, type LimitField } from "@/lib/house-bot/rules";
+import { saveHouseBotLimits } from "./house-bot/limits-save";
 import { TONE_CHIP, type StatusChipVariant } from "@/lib/status-tone";
 import { houseBotControlStore, houseBotStore, houseBookStore, houseBotIntentStore, HouseSchemaNotReady, type StoredHouseBot, type StoredHouseBotControl } from "./house-bot-dal";
 import { houseDayBooks, type HouseDayBook } from "./house-bot/book";
@@ -714,6 +715,78 @@ const CONSOLE_LIMIT_LABEL: Readonly<Record<string, string>> = {
  *  replaces is itself a needle, so typing it here would put it in a string literal of the module 4.453 scans. */
 const CONSOLE_LIMIT_SECTION: Readonly<Record<string, string>> = { [FIELD_META.gCapStaffChosenDailyTzs.section]: "Targeted and manual" };
 
+/**
+ * ⛔ THE FORM'S OWN NAME FOR A LIMIT — THE ONLY ONE THAT REACHES A BROWSER (owner ruling D19; ruling 453; 372(b)).
+ *
+ * The limits form is this section's FIRST TYPED CONTROL, and a field's `name` is not copy: it ships inside the
+ * client chunk, it is what the POST body carries, and it is the address a refusal names and `focusFirstInvalid`
+ * queries. `name="gCapStaffChosenDailyTzs"` would put the shared vocabulary's own word into all three, with a
+ * perfectly neutral label rendered above it — which is why 453's scan of RENDERED text could never have caught it.
+ * So the column name stops at this module: the browser is given a neutral key, the save maps it back here, and a
+ * refusal comes home by the same key.
+ * ⛔ THE KEYS ARE IDENTIFIERS AND THE VALUES ARE THE LITERALS, which is the right way round: the identifiers are
+ * server-only (453 exempts them and `verify:house-bot-bundle` owns their reachability) and the literals are what
+ * 4.453 reads. `Record<LimitField, string>` makes tsc prove the table is exhaustive, so a new limit column cannot
+ * ship without a key.
+ */
+const CONSOLE_LIMIT_KEY: Readonly<Record<LimitField, string>> = {
+  gCapDailyStakeTzs: "daily-stake",
+  gCapDailyLossTzs: "daily-loss",
+  gCapOpenExposureTzs: "open-exposure",
+  gCapPerMarketTzs: "per-market",
+  gMaxBetsPerMinute: "bets-per-minute",
+  gMaxBetsPerDay: "bets-per-day",
+  gCounterPerPlayerPerDay: "one-player-bets-per-day",
+  gCounterPerPlayerTzsPerDay: "one-player-tzs-per-day",
+  maxDesignatedBots: "max-accounts",
+  bellAlertsPerHour: "alerts-per-hour",
+  gCapStaffChosenPerDay: "targeted-bets-per-day",
+  gCapStaffChosenDailyTzs: "targeted-daily-tzs",
+  gTargetsMaxActive: "max-active-targets",
+  gStaffChosenMaxCounterpartyShare: "one-player-share",
+};
+
+/** Key → column, built from the one table above so the two can never disagree. ⛔ An unknown key is REFUSED. */
+const LIMIT_FIELD_BY_KEY: ReadonlyMap<string, LimitField> =
+  new Map(LIMIT_FIELDS.map((f) => [CONSOLE_LIMIT_KEY[f], f] as [string, LimitField]));
+
+/**
+ * ⛔ THE CONSOLE'S OWN HINT, WHERE `FIELD_META`'s CARRIES A WORD 453 FORBIDS — the same mechanism as
+ * `CONSOLE_LIMIT_LABEL`, for the same reason, on the half of the field table the read-only panel never rendered.
+ * MEASURED 2026-09-18: five of the fourteen limit hints name the feature (`LOSS_CAP_HINT`'s "bots stop only on
+ * settled losses", `STAFF_GLOBAL_HINT` twice, the targets hint's "any bot" and "switch house bots on", the share
+ * hint's "off for every bot"), and a sixth carries `{n}` placeholders this surface has no figures to fill. Every
+ * one of them would have been painted the moment a hint landed under a field.
+ * ⛔ The population is DERIVED, not typed: `test:house-bot-console` 1.412 requires an entry for every limit whose
+ * `FIELD_META` hint carries a word or a placeholder, AND requires every entry here to replace one that really does
+ * — so an override for an already-clean hint is reported as loudly as a missing one.
+ */
+const CONSOLE_LIMIT_HINT: Readonly<Record<string, string>> = {
+  gCapDailyLossTzs: "Counted by the day a stake was placed, restarting at 00:00 EAT. Losses that settle today can include stakes from earlier days. Today's open stakes count as lost until they settle; the desk stops itself only on settled losses.",
+  gCapStaffChosenPerDay: "Every account together, this EAT day. Not set — targeted and manual stakes cannot be placed, and the master switch does not need this limit.",
+  gCapStaffChosenDailyTzs: "Every account together, this EAT day. Not set — targeted and manual stakes cannot be placed, and the master switch does not need this limit.",
+  gTargetsMaxActive: "Across every account. Not set — no target can be added, and the master switch does not need this limit.",
+  gStaffChosenMaxCounterpartyShare: "A manual stake is refused when one player already holds more than this share of the players' locked money it would add to. Not set — manual entry is off.",
+  bellAlertsPerHour: "How many bet rows each admin can be sent in an hour, on top of summaries and the pause, money and switch alerts.",
+};
+
+/**
+ * ⛔ THE CONSOLE'S OWN REFUSAL SENTENCE, WHERE THE VALIDATOR'S CARRIES A WORD 453 FORBIDS.
+ *
+ * Every refusal this form paints is the SERVER'S own (ruling 412) — and three of the five cross-field rules the
+ * limits scope can produce name the feature in their message: `N1-c` ("Staff-chosen daily limit…"),
+ * `L-CPP-LE-DAY` ("Counters per player per day…") and `X-CLEAR-ON` ("…while bots are on"). Those messages are
+ * also the ENGINE's and the admin bell's, which D19 exempts, so the shared table is not rewritten: the console
+ * substitutes its own sentence, keyed by the rule id the error already carries.
+ * ⛔ Derived population again: 1.412 requires an entry for every LIMITS-scope REFUSE rule whose message carries a
+ * word, and requires every entry to replace one that does.
+ */
+const CONSOLE_LIMIT_REFUSAL: Readonly<Record<string, string>> = {
+  "N1-c": "The targeted and manual daily limit can't be above the daily stake limit.",
+  "L-CPP-LE-DAY": "Stakes against one player per day can't be above bets per day.",
+  "X-CLEAR-ON": "A limit can't be cleared while the desk is on. Switch the desk off first.",
+};
+
 /** What the console calls limit `field`. ⛔ One definition site, and it is read by the panel AND by the usage rows. */
 export function consoleLimitLabel(field: LimitField): string {
   return CONSOLE_LIMIT_LABEL[field] ?? FIELD_META[field].label;
@@ -781,12 +854,27 @@ export type ConsoleUsageRow = {
   unreadable: boolean;
 };
 
-/** One row of the read-only limits list: every global limit, in `LIMIT_FIELDS` order, with its section. */
+/**
+ * One row of the limits FORM: every global limit, in `LIMIT_FIELDS` order, with its section.
+ *
+ * ⛔ 372(b) — ONLY WHAT IS PAINTED, AND NO COLUMN NAME. `key` is the form's neutral name for this limit and is
+ * the only identifier that crosses into the browser; the `LimitField` it stands for never leaves this module.
+ */
 export type ConsoleLimitRow = {
+  /** The field's `name`, its `data-field` address and the key a refusal comes home by. Neutral, always. */
+  key: string;
   section: string;
   name: string;
   /** The stored value, formatted for its unit, or "Not set". */
   value: string;
+  /** What the input starts with: the stored number as plain digits, or "" when the limit is not set. */
+  input: string;
+  /** The field's hint, in the console's own words where the shared table's carries a word 453 forbids. */
+  hint: string | null;
+  /** How the field is dressed: the kit's money prefix, its percent suffix, or a plain count. */
+  unit: "TZS" | "%" | "count";
+  /** An empty field saves as "not set" instead of being refused — `FIELD_META`'s own `nullable`. */
+  optional: boolean;
   /** ⛔ A COUNT IS NOT MONEY (ruling 409, and the roster's own `ConsoleUsageCell.money`). `.amount` means "this is a
    *  money figure" everywhere in this kit and it is `white-space: nowrap`; putting a bets-per-day count of 20 inside
    *  it says the wrong thing about the number and buys nothing. The page reads this to choose the face. */
@@ -803,8 +891,15 @@ export type ConsoleLimitsView = ConsoleDeskShell & {
   usage: ConsoleUsageRow[] | null;
   /** ⛔ `null` means the control row could not be read at all. */
   limits: ConsoleLimitRow[] | null;
-  /** Why the panel's save control is disabled (ruling 433, 432(a)/(j)). */
-  formReason: string;
+  /**
+   * ⛔ THE CAS TOKEN THE FORM CARRIES BACK (ruling 537). `null` when there is no row to save against — the
+   * schema state and a failed read — and the page renders no form in either.
+   * ⚠️ RECORDED AGAINST 372(b), which says the row shape carries "only what is painted". This is not a row
+   * field and it is not painted: it is the version this render was built from, and without it the save cannot
+   * refuse a second writer instead of clobbering them. It names no column, no bot and no route, and an integer
+   * counter tells a signed-in player nothing about the feature.
+   */
+  limitsVersion: number | null;
 };
 
 /** Formats one stored limit for its own unit. ⛔ Money goes through `formatTzs`, the console's only money formatter (361). */
@@ -916,11 +1011,21 @@ export async function houseUsageForConsole(
     const required = (REQUIRED_FOR_MASTER_ON as readonly string[]).includes(field);
     const firstUnset = unset && required && !firstUnsetTaken;
     if (firstUnset) firstUnsetTaken = true;
+    const unit = FIELD_META[field].unit;
     return {
+      key: CONSOLE_LIMIT_KEY[field],
       section: CONSOLE_LIMIT_SECTION[FIELD_META[field].section] ?? FIELD_META[field].section,
       name: consoleLimitLabel(field),
       value: limitValue(field, raw),
-      money: FIELD_META[field].unit === "TZS",
+      /* ⛔ PLAIN DIGITS, NEVER THE FORMATTED FIGURE. `formatTzs` groups with a separator and the kit's strict
+         numeric input strips every non-digit on the first keystroke — so a field seeded with "TZS 500,000" would
+         read back as 500000 only by luck, and an untouched form would post a different number from the one on
+         screen. The FORMATTED value stays in `value`, which is what a reader sees when a row is not being typed. */
+      input: raw == null ? "" : String(raw),
+      hint: CONSOLE_LIMIT_HINT[field] ?? FIELD_META[field].hint ?? null,
+      unit: unit === "TZS" ? "TZS" : unit === "%" ? "%" : "count",
+      optional: FIELD_META[field].nullable,
+      money: unit === "TZS",
       unset,
       caption: unset ? unsetCaptionFor(field) : null,
       firstUnset,
@@ -931,11 +1036,81 @@ export async function houseUsageForConsole(
     ...shell,
     usage,
     limits,
-    /* ⛔ 432(a)/(j) · A CONTROL WHOSE SERVICE IS NOT BUILT IS RENDERED DISABLED, WITH ITS REASON ON SCREEN — the same
-     * rule the head action and the master switch already obey. Ruling 433: there is no limits-SAVE service anywhere
-     * in this repository (`houseBotControlStore.saveLimits` has no caller in `src/`, and `house_bot.limits_saved` has
-     * no writer), so this panel READS. An editable field that discards what an officer types is worse than a disabled
-     * one, which is why the panel renders no typed control at all. */
-    formReason: "Editing limits is not ready on this build yet.",
+    /* ⛔ THE VERSION THIS RENDER WAS BUILT FROM (ruling 537). `null` in the two states that have no row to save
+     * against, and the page renders no form in either — a form whose base version is unknown could only ever
+     * clobber. Ruling 433's `formReason` is GONE with the read-only panel it explained: 432(a) refuses a control
+     * with nothing behind it, and there is something behind this one now. */
+    limitsVersion: control ? control.limitsVersion : null,
+  };
+}
+
+/* ═══ THE LIMITS SAVE (rulings 259, 340, 412, 420, 512, 522, 523, 537) ════════════════════════════════════════ */
+
+/** What the limits form posts: the version it was rendered from, and one raw string per neutral key. */
+export type ConsoleLimitsSaveInput = { baseVersion: number; values: Record<string, string> };
+
+/**
+ * What it gets back. ⛔ `field` is the FORM's neutral key — the `data-field` the officer's browser can find —
+ * never a column name (372(b), D19).
+ */
+export type ConsoleLimitsSaveResult =
+  | { ok: true; limitsVersion: number; changed: number }
+  | { ok: false; error: string; field?: string };
+
+/**
+ * ⛔ EVERY SENTENCE THIS SAVE CAN PAINT, IN ONE HOME, AND NEUTRAL (rulings 412, 453). A refusal an officer reads
+ * is the server's own; none of them names the feature, and 4.453 scans this module's literals.
+ */
+const SAVE_COPY = {
+  refused: "You can't change these limits.",
+  stale: "This form is out of date. Reload the page and make the change again — nothing was saved.",
+  SCHEMA: "The desk's tables are not present on this database, so nothing was saved.",
+  UNREADABLE: "The desk's own state could not be read, so nothing was saved.",
+  CONFLICT: "Someone else changed these limits while this page was open. Nothing was saved — reload the page and make the change again.",
+} as const;
+
+/**
+ * THE LIMITS SAVE, GATED (ruling 537). One NAMED writer with its `CONSOLE_GATES` arity entry, the way every console
+ * read already goes — because ruling 523 measured that a server action is a POST to whatever URL the browser
+ * happens to be on, carrying a `Next-Action` id, so NO path rule can see it and the gate has to be IN the action's
+ * own path. The verdict is the first statement, it is taken on the viewer's STORED role (ruling 522: a cookie's
+ * photograph of a role cannot answer the demoted-account question), and it fails closed.
+ *
+ * ⛔ IT DECIDES BEFORE IT READS OR WRITES ANYTHING. A viewer outside the audience is refused without the control
+ * row, the roster or the platform config ever being read, so a refused caller's response carries no figure, no
+ * limit and no sentence about the desk's state.
+ *
+ * ⛔ THE COLUMN NAMES DO NOT CROSS THIS LINE, IN EITHER DIRECTION: the browser posts neutral keys, an unknown key
+ * is refused rather than ignored, and a refusal that names a field names it by the same neutral key.
+ */
+export async function houseLimitsSaveForConsole(
+  viewerUserId: string | null | undefined,
+  route: string,
+  input: ConsoleLimitsSaveInput,
+): Promise<ConsoleLimitsSaveResult> {
+  if (!(await houseConsoleAudience(viewerUserId, route)) || typeof viewerUserId !== "string") {
+    return { ok: false, error: SAVE_COPY.refused };
+  }
+  /* ⛔ THE WHOLE FORM OR NOTHING, AND AN UNKNOWN KEY IS REFUSED. A partial post would leave the missing fields to
+   * the validator's "unset" branch and silently CLEAR limits the officer never touched; an unknown key means the
+   * page and this module disagree about what the form is, which is a reload, not a guess. */
+  const values = {} as Record<LimitField, unknown>;
+  for (const field of LIMIT_FIELDS) {
+    const raw = input.values[CONSOLE_LIMIT_KEY[field]];
+    if (typeof raw !== "string") return { ok: false, error: SAVE_COPY.stale };
+    values[field] = raw.trim();
+  }
+  for (const key of Object.keys(input.values)) {
+    if (!LIMIT_FIELD_BY_KEY.has(key)) return { ok: false, error: SAVE_COPY.stale };
+  }
+
+  const saved = await saveHouseBotLimits({ actorId: viewerUserId, baseVersion: input.baseVersion, values });
+  if (saved.ok) return { ok: true, limitsVersion: saved.limitsVersion, changed: saved.changes.length };
+  if (saved.code !== "INVALID") return { ok: false, error: SAVE_COPY[saved.code] };
+  return {
+    ok: false,
+    /* The validator's own sentence, unless the rule's shared copy names the feature (see `CONSOLE_LIMIT_REFUSAL`). */
+    error: (saved.rule !== null ? CONSOLE_LIMIT_REFUSAL[saved.rule] : undefined) ?? saved.message,
+    field: CONSOLE_LIMIT_KEY[saved.field],
   };
 }

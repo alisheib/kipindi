@@ -56,6 +56,9 @@ const SECTION = "src/app/admin/desk";
 const PAGE = `${SECTION}/page.tsx`;
 const LAYOUT = `${SECTION}/layout.tsx`;
 const LOADING = `${SECTION}/loading.tsx`;
+/* ⭐ replan ruling 537 · the section's first server action and its first typed control. */
+const ACTIONS = `${SECTION}/actions.ts`;
+const FORM = `${SECTION}/limits-form.tsx`;
 /** ⭐ C7 step 3's own client module — NAMED, because 513's floor is a count and a count cannot notice which file left. */
 const LIVE = `${SECTION}/desk-live.tsx`;
 const GATE = "src/lib/server/house-console-read.ts";
@@ -1373,6 +1376,320 @@ section("§2 · the strip, the band, the roster and every failure");
     ["no-actor", noActor], ["sunset-full", sunsetFull], ["roster-full", plainFull],
     ["empty-off", emptyOff], ["empty-on", emptyOn]);
 }
+/* ════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+ * §2b · THE LIMITS SAVE — the console's first working control (replan ruling 537, which REVERSES ruling 433(a))
+ *
+ * ⛔ WHAT 433(a) BELIEVED, AND WHAT WAS MEASURED. Step 3 shipped this panel read-only because "there is no
+ * limits-SAVE service in this repository". `houseBotControlStore.saveLimits` exists in BOTH twins with CAS
+ * semantics, its validation surface is green at `test:house-bot-rules` 521/0, and `house_bot.limits_saved` was
+ * already classified COMPLIANCE with no writer — the dead-row class ruling 514 named. What was missing was one
+ * server action. So this section proves the whole round trip, on BOTH stores: the refusal, the write, the audit
+ * row, the CAS conflict under TWO REAL WRITERS, every refusal sentence, and the neutral keys.
+ * ════════════════════════════════════════════════════════════════════════════════════════════════════════════════ */
+section("§2b · the limits save");
+{
+  const { auditFlush, getAuditPage }: Any = await import("../../src/lib/server/audit.ts");
+  const CONST: Any = await import("../../src/lib/house-bot/constants.ts");
+  /* ⛔ A BASELINE THE EDITS BELOW CANNOT VIOLATE BY ACCIDENT. The world's open limits set the daily LOSS and the
+     targeted daily cap to the same 900,000,000 as the daily STAKE, so every case that lowers the stake would trip
+     `L-LOSS-LE-DAY` or `N1-c` and be refused for a reason it was not written to measure — a case that goes red for
+     the wrong reason goes green for the wrong reason too. Both are put well below every stake this section types. */
+  await w.limits({ gCapDailyLossTzs: 100_000, gCapStaffChosenDailyTzs: 100_000 });
+  await w.switchOff();
+  const LIMITS = R.LIMIT_FIELDS as readonly string[];
+  const view0 = await GATEM.houseUsageForConsole(OFFICER, "/admin/desk", { houseBotId: null });
+  const keyOf = (field: string): string => view0.limits[LIMITS.indexOf(field)].key;
+  const control = () => w.dal.houseBotControlStore.get() as Promise<Any>;
+  const versionNow = async () => (await control()).limitsVersion as number;
+  /** Exactly what the form posts: every neutral key, with the saved digits, and the caller's own edits on top. */
+  const postAt = (v: number, patch: Record<string, string> = {}) => ({
+    baseVersion: v,
+    values: { ...Object.fromEntries(view0.limits.map((l: Any) => [l.key, l.input])), ...patch } as Record<string, string>,
+  });
+  const save = (viewer: string | null, body: Any) => GATEM.houseLimitsSaveForConsole(viewer, "/admin/desk", body) as Promise<Any>;
+
+  ok("2.537 · fixture · the panel hands the form a base version and one row per limit, each with a neutral key of its own",
+    typeof view0.limitsVersion === "number" && view0.limits.length === LIMITS.length
+      && new Set(view0.limits.map((l: Any) => l.key)).size === LIMITS.length,
+    j({ version: view0.limitsVersion, rows: view0.limits.length }));
+
+  /* ⛔ 537 / 522 / 523 · A VIEWER OUTSIDE THE AUDIENCE IS REFUSED BEFORE ANYTHING IS READ OR WRITTEN. A server
+   * action is a POST to whatever URL the browser is on, so no path rule can see it: this is the only gate there is,
+   * and it decides on the STORED row. The spy counts the same three doors 1.300 counts, plus the WRITE itself. */
+  {
+    const player = await w.user({ role: "PLAYER" });
+    const auditor = await w.user({ role: "AUDITOR" });
+    const realCtl = w.dal.houseBotControlStore.get;
+    const realSave = w.dal.houseBotControlStore.saveLimits;
+    const realList = w.dal.houseBotStore.listNonRemoved;
+    let calls = 0;
+    let refusedPlayer: Any, refusedAuditor: Any, refusedAnon: Any;
+    try {
+      w.dal.houseBotControlStore.get = (...a: Any[]) => { calls++; return realCtl.apply(w.dal.houseBotControlStore, a as Any); };
+      w.dal.houseBotControlStore.saveLimits = (...a: Any[]) => { calls++; return realSave.apply(w.dal.houseBotControlStore, a as Any); };
+      w.dal.houseBotStore.listNonRemoved = (...a: Any[]) => { calls++; return realList.apply(w.dal.houseBotStore, a as Any); };
+      const body = postAt(view0.limitsVersion, { [keyOf("gCapDailyStakeTzs")]: "123000" });
+      refusedPlayer = await save(player, body);
+      refusedAuditor = await save(auditor, body);
+      refusedAnon = await save(null, body);
+    } finally {
+      w.dal.houseBotControlStore.get = realCtl;
+      w.dal.houseBotControlStore.saveLimits = realSave;
+      w.dal.houseBotStore.listNonRemoved = realList;
+    }
+    const after = await control();
+    ok("2.537 · a PLAYER, a signed-in AUDITOR and an anonymous caller are each REFUSED, with ZERO store calls and not one column touched",
+      [refusedPlayer, refusedAuditor, refusedAnon].every((r) => r.ok === false && typeof r.error === "string" && r.field === undefined)
+        && calls === 0 && after.limitsVersion === view0.limitsVersion && after.gCapDailyStakeTzs !== 123_000,
+      j({ calls, version: after.limitsVersion, player: refusedPlayer, auditor: refusedAuditor }));
+    ok("2.537 · CONTROL · the spy was live — the SAME body from the Owner reaches the store and lands",
+      await (async () => {
+        let owned = 0;
+        const r2 = w.dal.houseBotControlStore.saveLimits;
+        try {
+          w.dal.houseBotControlStore.saveLimits = (...a: Any[]) => { owned++; return r2.apply(w.dal.houseBotControlStore, a as Any); };
+          const done = await save(OFFICER, postAt(await versionNow(), { [keyOf("gCapDailyStakeTzs")]: "123000" }));
+          return done.ok === true && owned === 1 && (await control()).gCapDailyStakeTzs === 123_000;
+        } finally { w.dal.houseBotControlStore.saveLimits = r2; }
+      })(), "");
+  }
+
+  /* ⛔ 537 · THE SAVE LANDS, AND `house_bot.limits_saved` GAINS ITS WRITER (the dead-row class of ruling 514). */
+  {
+    const v = await versionNow();
+    const done = await save(OFFICER, postAt(v, { [keyOf("gCapDailyStakeTzs")]: "777000" }));
+    const row = await control();
+    ok("2.537 · the Owner's save lands: the column moves, the version advances by exactly one, and the result counts what changed",
+      done.ok === true && done.limitsVersion === v + 1 && done.changed === 1
+        && row.gCapDailyStakeTzs === 777_000 && row.limitsVersion === v + 1,
+      j({ done, version: row.limitsVersion, value: row.gCapDailyStakeTzs }));
+
+    await auditFlush();
+    const rows = (getAuditPage({ limit: 10_000 }) as Any[]).filter((e) => e.action === "house_bot.limits_saved");
+    const entry = rows.find((e) => e.payload?.limitsVersion === v + 1) ?? null;
+    ok("2.537 · …and it writes the COMPLIANCE row `house_bot.limits_saved` — which had a classification and no writer at all until now",
+      rows.length >= 1 && entry !== null && entry.category === CONST.HOUSE_AUDIT["house_bot.limits_saved"]
+        && entry.targetType === "HouseBotControl" && entry.targetId === CONST.HOUSE_CONTROL_ID,
+      j({ found: rows.length, entry: entry && { action: entry.action, category: entry.category, target: entry.targetId } }));
+    ok("2.537 · 420 · the row names the ACTOR BY ID and the payload carries only the version and the fields that moved — no label, no handle, no name",
+      entry !== null && entry.actorId === OFFICER
+        && j(entry.payload.changes) === j([{ field: "gCapDailyStakeTzs", before: 123_000, after: 777_000 }])
+        && CONST.isAllowedHouseAuditPayload(entry.payload) === true
+        && !/label|displayName|phone|handle|Player #/i.test(all(entry.payload)),
+      j({ actorId: entry?.actorId, payload: entry?.payload }));
+  }
+
+  /* ⛔ 537 · THE CAS ROUND TRIP, WITH TWO REAL WRITERS. A "concurrency check" that serialises itself proves nothing,
+   * so both saves are issued against the SAME base version and awaited together: one lands, the other is REFUSED and
+   * told, and the loser's value is nowhere in the row. ⛔ The winner is not asserted — either may win; what is
+   * asserted is that exactly one did and that nothing was merged. */
+  {
+    const v = await versionNow();
+    const [ra, rb] = await Promise.all([
+      save(OFFICER, postAt(v, { [keyOf("gCapDailyStakeTzs")]: "111000" })),
+      save(OFFICER, postAt(v, { [keyOf("gCapDailyStakeTzs")]: "222000" })),
+    ]);
+    const row = await control();
+    const winner = ra.ok ? 111_000 : 222_000;
+    const loser = ra.ok ? 222_000 : 111_000;
+    ok("2.537 · TWO REAL WRITERS on ONE base version: exactly one lands, the other is REFUSED with the server's own sentence, and nothing is clobbered or merged",
+      [ra, rb].filter((r) => r.ok === true).length === 1 && [ra, rb].filter((r) => r.ok === false).length === 1
+        && row.limitsVersion === v + 1 && row.gCapDailyStakeTzs === winner && row.gCapDailyStakeTzs !== loser,
+      j({ ra, rb, version: row.limitsVersion, value: row.gCapDailyStakeTzs }));
+    const refusal = (ra.ok ? rb : ra) as Any;
+    ok("2.537 · …and the loser is TOLD, in one sentence that says nothing was saved and names no field to fix",
+      refusal.ok === false && /Nothing was saved/.test(refusal.error) && refusal.field === undefined && !NEUTRAL.test(refusal.error),
+      j(refusal));
+    /* A stale tab is the same refusal by the cheap half of the check, before any other read. */
+    const stale = await save(OFFICER, postAt(v, { [keyOf("gCapDailyStakeTzs")]: "333000" }));
+    ok("2.537 · a tab rendered from an older version is refused the same way, and its value never reaches the row",
+      stale.ok === false && /Nothing was saved/.test(stale.error) && (await control()).gCapDailyStakeTzs !== 333_000, j(stale));
+  }
+
+  /* ⛔ 537 / 412 · EVERY REFUSAL SENTENCE IS THE SERVER'S, AND IT COMES HOME BY THE FORM'S OWN NEUTRAL KEY. */
+  {
+    const v = await versionNow();
+    const bad = await save(OFFICER, postAt(v, {
+      [keyOf("gCapDailyStakeTzs")]: "100000",
+      [keyOf("gCapDailyLossTzs")]: "200000",
+      [keyOf("gCapStaffChosenDailyTzs")]: "50000",
+    }));
+    ok("2.537 · a cross-field rule REFUSES, names the field by its NEUTRAL key, gives the validator's own sentence — and writes nothing",
+      bad.ok === false && bad.field === keyOf("gCapDailyLossTzs") && bad.error === R.ruleCopy("L-LOSS-LE-DAY")
+        && (await versionNow()) === v,
+      j(bad));
+    /* ⛔ AND WHERE THE SHARED SENTENCE NAMES THE FEATURE, THE CONSOLE SUBSTITUTES ITS OWN (453). Both halves are
+     * asserted: the console's sentence is painted, AND the sentence it replaced really does carry a word — an
+     * override whose original was already clean would be a rename nobody ruled. */
+    const cpp = await save(OFFICER, postAt(v, {
+      [keyOf("gCounterPerPlayerPerDay")]: "1000",
+      [keyOf("gMaxBetsPerDay")]: "100",
+    }));
+    ok("2.537 · 453 · a refusal whose SHARED copy names the mechanism is painted in the console's own words — and the copy it replaced really does carry one",
+      cpp.ok === false && cpp.field === keyOf("gCounterPerPlayerPerDay")
+        && !NEUTRAL.test(cpp.error) && NEUTRAL.test(R.ruleCopy("L-CPP-LE-DAY")) && cpp.error !== R.ruleCopy("L-CPP-LE-DAY"),
+      j({ painted: cpp.error, shared: R.ruleCopy("L-CPP-LE-DAY") }));
+    /* A bound refusal is the validator's own and is already neutral — asserted, not assumed. */
+    const low = await save(OFFICER, postAt(v, { [keyOf("gCapDailyStakeTzs")]: "1" }));
+    ok("2.537 · a bound refusal comes back on its own field, in the validator's own words, and needs no override",
+      low.ok === false && low.field === keyOf("gCapDailyStakeTzs") && /At least TZS/.test(low.error) && !NEUTRAL.test(low.error), j(low));
+  }
+
+  /* ⛔ X-CLEAR-ON: a set limit may not be cleared while the desk is ON, and that sentence names the feature too. */
+  {
+    await w.limits();
+    await w.switchOn();
+    const v = await versionNow();
+    const cleared = await save(OFFICER, postAt(v, { [keyOf("gCapDailyStakeTzs")]: "" }));
+    ok("2.537 · 453 · clearing a required limit while the desk is ON is refused in the console's own words, and the shared sentence it replaces carries a word",
+      cleared.ok === false && cleared.field === keyOf("gCapDailyStakeTzs")
+        && !NEUTRAL.test(cleared.error) && NEUTRAL.test(R.ruleCopy("X-CLEAR-ON"))
+        && (await versionNow()) === v && (await control()).gCapDailyStakeTzs !== null,
+      j({ painted: cleared.error, shared: R.ruleCopy("X-CLEAR-ON") }));
+    await w.switchOff();
+  }
+
+  /* ⛔ THE WHOLE FORM OR NOTHING, AND AN UNKNOWN KEY IS REFUSED RATHER THAN IGNORED. A partial post would leave the
+   * missing fields to the validator's "unset" branch and silently CLEAR limits the officer never touched. */
+  {
+    const v = await versionNow();
+    const body = postAt(v);
+    const partial = { baseVersion: v, values: { ...body.values } };
+    delete partial.values[keyOf("gMaxBetsPerDay")];
+    const missing = await save(OFFICER, partial);
+    const unknown = await save(OFFICER, { baseVersion: v, values: { ...body.values, gCapDailyStakeTzs: "5000" } });
+    const row = await control();
+    ok("2.537 · a post missing a field, and a post carrying a COLUMN NAME as a key, are both refused — and neither writes",
+      missing.ok === false && unknown.ok === false && row.limitsVersion === v && row.gMaxBetsPerDay !== null,
+      j({ missing, unknown }));
+  }
+
+  /* ⛔ D19 · THE KEYS THAT CROSS INTO THE BROWSER ARE NEUTRAL, AND NONE OF THEM IS A COLUMN NAME. This is the half
+   * ruling 453's scan of RENDERED TEXT cannot see: a `name` is not copy, and it ships in the chunk and in the POST. */
+  {
+    const keys = view0.limits.map((l: Any) => l.key);
+    ok("2.537 · D19 · every key the form posts is neutral, is not the column's own name, and the fourteen are distinct",
+      keys.length === LIMITS.length && new Set(keys).size === LIMITS.length
+        && keys.every((k: string) => !NEUTRAL.test(k)) && keys.every((k: string, i: number) => k !== LIMITS[i])
+        && keys.every((k: string) => /^[a-z][a-z0-9-]*$/.test(k)),
+      j(keys));
+    /* ⚠️ MEASURED, NOT GUESSED: THREE, not four. The two `gCounterPerPlayer*` identifiers do NOT match the
+       lexicon — `\bcounter\b` needs a word boundary after the stem and "gCounterPerPlayerPerDay" has a capital P
+       there — so what the keys stand in for is the three `StaffChosen` columns. Their LABELS are a separate matter
+       and are overridden by `CONSOLE_LIMIT_LABEL` (1.364). The floor is what this run printed. */
+    ok("2.537 · D19 · CONTROL · the column names the keys stand in for DO carry a word, so the substitution is doing work",
+      LIMITS.filter((f) => NEUTRAL.test(f)).length >= 3, j(LIMITS.filter((f) => NEUTRAL.test(f))));
+    ok("2.537 · D19 · every hint and every saved value the form paints is neutral too — the half a label-only scan misses",
+      view0.limits.every((l: Any) => !NEUTRAL.test(String(l.hint ?? "")) && !NEUTRAL.test(l.value) && !NEUTRAL.test(l.input) && !NEUTRAL.test(l.section)),
+      j(view0.limits.filter((l: Any) => NEUTRAL.test(String(l.hint ?? ""))).map((l: Any) => l.hint)));
+  }
+
+  /* ⛔ RENDERED, NOT GREPPED — AND THAT IS THE WHOLE POINT OF THE NEUTRAL-KEY RULE.
+   *
+   * Everything above is about the view MODEL. A `name`, a `data-field` and a fragment anchor only exist in MARKUP,
+   * and markup is what ships: the POST body carries the name, the client chunk carries it, and a screenshot carries
+   * whatever is painted beside it. `DeskLimitFields` is a pure function of its rows for exactly this reason — it
+   * takes no hook, so it renders outside the admin shell and outside a router, and this reads what it produced.
+   * ⛔ WITH A PLANTED CONTROL: the same render with one key put back to a house word MUST fire the lexicon, or the
+   * zero above is not a measurement. */
+  {
+    const { createElement: h }: Any = await import("react");
+    const { renderToStaticMarkup }: Any = await import("react-dom/server");
+    const { DeskLimitFields }: Any = await import("../../src/app/admin/desk/limits-form.tsx");
+    await w.limits({ gCapOpenExposureTzs: null });
+    const v = await GATEM.houseUsageForConsole(OFFICER, "/admin/desk", { houseBotId: null });
+    const errKey = keyOf("gCapDailyStakeTzs");
+    const html = renderToStaticMarkup(h(DeskLimitFields, {
+      rows: v.limits, anchorId: "limits-first-unset", errors: { [errKey]: "At least TZS 1,000." },
+    }));
+    const names = [...html.matchAll(/name="([^"]*)"/g)].map((m: Any) => m[1]);
+    const fields = [...html.matchAll(/data-field="([^"]*)"/g)].map((m: Any) => m[1]);
+    ok("2.537 · RENDERED · D19 · every field's `name` and `data-field` is the server's neutral key, one per limit, and not one house word reaches the markup",
+      names.length === LIMITS.length && j(names) === j(v.limits.map((l: Any) => l.key)) && j(fields) === j(names)
+        && !NEUTRAL.test(html),
+      j({ names, hit: NEUTRAL.exec(html)?.[0] ?? null }));
+    ok("2.537 · RENDERED · CONTROL · the same render with ONE key put back to a house word DOES fire the lexicon — so the clean markup above is a measurement",
+      NEUTRAL.test(renderToStaticMarkup(h(DeskLimitFields, {
+        rows: v.limits.map((l: Any, i: number) => (i === 0 ? { ...l, key: "house-bots-daily" } : l)),
+        anchorId: "limits-first-unset", errors: {},
+      }))), "");
+    const at = html.indexOf('id="limits-first-unset"');
+    const anchored = at < 0 ? null : (/data-field="([^"]*)"/.exec(html.slice(at))?.[1] ?? null);
+    ok("2.537 · RENDERED · the strip's fragment lands on the FIRST unset required limit, exactly once — the field the sentence promises the officer will find",
+      (html.match(/id="limits-first-unset"/g) ?? []).length === 1 && anchored === keyOf("gCapOpenExposureTzs"),
+      j({ anchored, want: keyOf("gCapOpenExposureTzs") }));
+    ok("2.537 · RENDERED · 412 · the refusal is painted under ITS OWN field, money fields carry the kit's TZS prefix, the percent field its suffix, and every box is on the 44px rung",
+      html.includes("At least TZS 1,000.") && (html.match(/>TZS</g) ?? []).length >= 5 && html.includes(">%<")
+        && (html.match(/h-\[var\(--h-input\)\]/g) ?? []).length === LIMITS.length,
+      j({ tzs: (html.match(/>TZS</g) ?? []).length, pct: html.includes(">%<") }));
+    ok("2.537 · RENDERED · 364 · an unset REQUIRED limit paints the caption naming what it costs, and a set one paints its saved value in the money face",
+      html.includes("Not set — the master switch cannot be turned on.")
+        && /<span class="amount tabular-nums">TZS /.test(html),
+      "");
+    await w.limits({ gCapDailyLossTzs: 100_000, gCapStaffChosenDailyTzs: 100_000 });
+  }
+
+  /* ⛔ THE TWO OVERRIDE POPULATIONS ARE DERIVED, IN BOTH DIRECTIONS (the shape ruling 539 forced on the labels).
+   * A hand-typed list of overrides stops covering the day a shared sentence is reworded, which is exactly how three
+   * limit labels came to be painted live on this tab. So: every hint the shared table carries that names the
+   * feature — or that carries a `{placeholder}` this surface has no figures to fill — must be replaced, and every
+   * hint this console replaces must really have been one of those. */
+  {
+    const hintNeeds = LIMITS.filter((f) => {
+      const h = R.FIELD_META[f].hint;
+      return typeof h === "string" && (NEUTRAL.test(h) || h.includes("{"));
+    });
+    const hintOverridden = LIMITS.filter((f, i) => (view0.limits[i].hint ?? null) !== (R.FIELD_META[f].hint ?? null));
+    ok("2.537 · 453 · every shared HINT that names the feature or carries a placeholder is replaced, and every replacement really did replace one — the population is derived, never typed",
+      hintNeeds.length >= 6 && j(hintNeeds) === j(hintOverridden)
+        && hintOverridden.every((f) => {
+          const h = view0.limits[LIMITS.indexOf(f)].hint as string;
+          return typeof h === "string" && !NEUTRAL.test(h) && !h.includes("{");
+        }),
+      j({ needs: hintNeeds, overridden: hintOverridden, missing: hintNeeds.filter((f) => !hintOverridden.includes(f)), spurious: hintOverridden.filter((f) => !hintNeeds.includes(f)) }));
+
+    /* The refusal side, measured the same way: which LIMITS-scope REFUSE rules carry a word in their shared copy. */
+    const limitRules = (R.CROSS_FIELD_RULES as ReadonlyArray<Any>)
+      .filter((r) => (r.scopes as readonly string[]).includes("LIMITS") && r.kind === "REFUSE");
+    const needsCopy = limitRules.filter((r) => NEUTRAL.test(String(r.messages[0]))).map((r) => r.id as string);
+    ok("2.537 · 453 · CONTROL · exactly three of the limits scope's refusal sentences name the feature, and they are the three the console substitutes for — a fourth would be reported here",
+      limitRules.length >= 5 && j(needsCopy.slice().sort()) === j(["L-CPP-LE-DAY", "N1-c", "X-CLEAR-ON"].sort()),
+      j({ rules: limitRules.map((r) => r.id), needsCopy }));
+
+    /* And the third of those three, painted — the two others are exercised above. */
+    const v = await versionNow();
+    const n1c = await save(OFFICER, postAt(v, {
+      [keyOf("gCapDailyStakeTzs")]: "150000",
+      [keyOf("gCapStaffChosenDailyTzs")]: "200000",
+    }));
+    ok("2.537 · 453 · the third feature-naming refusal is painted in the console's own words too, on its own neutral key",
+      n1c.ok === false && n1c.field === keyOf("gCapStaffChosenDailyTzs")
+        && !NEUTRAL.test(n1c.error) && NEUTRAL.test(R.ruleCopy("N1-c", 0)) && n1c.error !== R.ruleCopy("N1-c", 0)
+        && (await versionNow()) === v,
+      j({ painted: n1c.error, shared: R.ruleCopy("N1-c", 0) }));
+  }
+
+  /* ⛔ THE ROUND TRIP AN OFFICER ACTUALLY MAKES: an unset REQUIRED limit is set, and the strip's count, the rail's
+   * badge and the anchor all move with it — from the ONE read, on the next render. */
+  {
+    await w.limits({ gCapOpenExposureTzs: null });
+    const before = await GATEM.houseUsageForConsole(OFFICER, "/admin/desk", { houseBotId: null });
+    const anchored = before.limits.find((l: Any) => l.firstUnset) ?? null;
+    const fixed = await save(OFFICER, {
+      baseVersion: before.limitsVersion,
+      values: { ...Object.fromEntries(before.limits.map((l: Any) => [l.key, l.input])), [keyOf("gCapOpenExposureTzs")]: "400000" },
+    });
+    const after = await GATEM.houseUsageForConsole(OFFICER, "/admin/desk", { houseBotId: null });
+    ok("2.537 · setting the FIRST unset required limit clears it everywhere at once: the count, the badge's number, the anchor and the usage bar",
+      anchored !== null && anchored.key === keyOf("gCapOpenExposureTzs")
+        && fixed.ok === true && after.unsetRequired === before.unsetRequired - 1
+        && after.limits.every((l: Any) => l.firstUnset === false)
+        && after.limits[LIMITS.indexOf("gCapOpenExposureTzs")].unset === false,
+      j({ before: before.unsetRequired, after: after.unsetRequired, anchored: anchored && anchored.key }));
+    await w.limits();
+  }
+}
+
 } catch (err) {
   /* ⛔ NOT A SWALLOW. The throw is an assertion of its own, it is printed with its stack, and §3 and §4 still run — a
    * partially filled `STATES` makes 3.453's own population floor fail too, which is the correct second report. */
@@ -1414,7 +1731,11 @@ section("§3 · nothing the desk renders names the feature, in ANY state");
        likely to break 453 on this checkpoint is the one that would have been outside the scan. */
     ...(view.usage ?? []).flatMap((r: Any) => [r.name, r.captionText, r.unsetCaption, r.edgeText,
       ...r.halves.flatMap((h: Any) => [h.word, h.suffix])]),
-    ...(view.limits ?? []).flatMap((l: Any) => [l.section, l.name, l.value, l.caption]),
+    /* ⭐ replan ruling 537 · THE FORM'S OWN FOUR. `key` is the field's `name` and its `data-field`, `hint` is
+       the sentence under it, `input` is what the box starts with and `unit` dresses it — every one of them
+       reaches the DOM, and the KEY reaches the POST body as well, which is the half a scan of rendered TEXT
+       cannot see. A row field added to the view model and not added here is outside 453's strictest scan. */
+    ...(view.limits ?? []).flatMap((l: Any) => [l.section, l.name, l.value, l.caption, l.key, l.hint, l.input, l.unit]),
     view.chip?.word,
   ].filter((s: unknown): s is string => typeof s === "string");
 
@@ -1621,10 +1942,13 @@ export default function Ruling513Control() {
   const sectionCode = sectionFiles.map((f) => decomment(read(f))).join("\n");
   ok("1.305 / 1.349 · no file under the section names a struck reader, a result field or a fee derivation",
     STRUCK.every((n) => !sectionCode.includes(n)), STRUCK.filter((n) => sectionCode.includes(n)).join(","));
-  ok("1.340 · the page imports house data ONLY from the gate module — no `house-bot/*`, no DAL, no book, no cap-precheck",
+  /* ⛔ WIDENED FROM THE PAGE TO THE WHOLE SECTION (replan ruling 537). The section gained a `"use server"` action,
+   * and an action is exactly the file a later step would reach for a store from — it is not a page, so a pin
+   * written for `page.tsx` would never have looked at it. Every file under the section is held to the one door. */
+  ok("1.340 · NO file under the section imports house data except from the gate module — no `house-bot/*`, no DAL, no book, no cap-precheck",
     /from "@\/lib\/server\/house-console-read"/.test(pageCode)
-      && !/from "@\/lib\/server\/house-bot/.test(pageCode) && !/house-bot-dal/.test(pageCode)
-      && !/house-bot\/book|cap-precheck/.test(pageCode), "");
+      && !/from "@\/lib\/server\/house-bot/.test(sectionCode) && !/house-bot-dal/.test(sectionCode)
+      && !/house-bot\/book|cap-precheck/.test(sectionCode), "");
   ok("1.305 · and `houseBotBook` still has no caller anywhere under src/ but its own declaration",
     (() => {
       const hits: string[] = [];
@@ -1642,7 +1966,13 @@ export default function Ruling513Control() {
   /* 1.319 · ONE home for the route. The RBAC and nav tables are named, because a route prefix CANNOT stay in one
    * file: the gate needs it in `roles.ts` and the sidebar highlight needs it in `admin-nav-groups.ts`, and both are
    * in the client import graph — which is ruling 320's whole reason for choosing a neutral segment. */
-  const ALLOWED_ROUTE_FILES = new Set([ROUTES_MODULE, "src/lib/server/roles.ts", "src/components/admin/admin-nav-groups.ts", GATE, PAGE, LAYOUT]);
+  /* ⛔ THE ACTION IS FORCED TO TYPE THE LITERAL, AND BY THE GATE PIN ITSELF (replan ruling 537). Case 0.260.1 in
+   * `house-bot-reports-cases.mts` requires arg 1 of every `CONSOLE_GATES` door to be a STRING LITERAL equal to the
+   * calling file's own console route — a door asked about a route read from a constant could not be measured at
+   * all. `page.tsx` is on this list for exactly that reason and the save action is now on it for the same one.
+   * ⛔ THE LIST IS PINNED AT ITS LENGTH BELOW, so it cannot be padded to quiet a new typer, and every member is
+   * required to really contain the literal, so a stale entry cannot sit here earning nothing. */
+  const ALLOWED_ROUTE_FILES = new Set([ROUTES_MODULE, "src/lib/server/roles.ts", "src/components/admin/admin-nav-groups.ts", PAGE, ACTIONS]);
   const typers: string[] = [];
   const walkAll = (dir: string) => {
     for (const e of readdirSync(join(ROOT, dir))) {
@@ -1654,6 +1984,10 @@ export default function Ruling513Control() {
   walkAll("src");
   ok("1.319 · the console's route segment is typed in ONE module plus the RBAC and nav tables that must hold the prefix, and nowhere else in src/",
     typers.length === 0, typers.join(", "));
+  ok("1.319 · CONTROL · the allowance is exactly five files and every one of them really does hold the literal — a list that can be padded, or that carries a name earning nothing, is not a rule",
+    ALLOWED_ROUTE_FILES.size === 5
+      && [...ALLOWED_ROUTE_FILES].every((f) => decomment(read(f)).includes("/admin/desk")),
+    j([...ALLOWED_ROUTE_FILES].filter((f) => !decomment(read(f)).includes("/admin/desk"))));
   ok("1.319 · the two sealed refusals take their href from that module, never from a literal",
     !decomment(read("src/lib/server/house-bot/designation.ts")).includes('"/admin/desk')
       && !decomment(read("src/lib/server/house-bot/eligibility.ts")).includes('"/admin/desk'), "");
@@ -1966,16 +2300,21 @@ export default function Ruling513Control() {
      * arrives as an already-formatted STRING from the server, so that detector is blind to the entire section. The
      * source fact is asserted directly: every element that paints a money value carries `amount` at its OWN call
      * site, and no money value is passed into a tracked or sub-body rung without it. */
-    const moneySites = [...pageCode.matchAll(/"([^"]*\bamount\b[^"]*)"/g)].map((m) => m[1]);
+    /* ⛔ THE POPULATION IS THE WHOLE SECTION, NOT THE PAGE (replan ruling 537). The limits list's money value moved
+     * into `limits-form.tsx` when the panel gained its inputs, and a pin that had stayed on `page.tsx` would have
+     * gone on passing while the one figure it was written for was painted somewhere it never looked — the
+     * pinned-to-a-path class. The rule is unchanged; the population now follows the money. */
+    const moneySites = [...sectionCode.matchAll(/"([^"]*\bamount\b[^"]*)"/g)].map((m) => m[1]);
     ok("1.401 · every money element under the section carries `amount` at its own call site, and none of them is on a tracked or micro rung",
       moneySites.length >= 3 && moneySites.every((c) => !/text-micro|text-caption|tracking-/.test(c)),
       j(moneySites));
-    ok("1.401 · 409 · the limits list chooses its face from the ROW, so a count never lands in `.amount`",
-      /row\.money \? "amount tabular-nums text-body-sm text-text" : "font-mono tabular-nums text-body-sm text-text"/.test(pageCode), "");
-    ok("1.401 · CONTROL · the walked money sites are the ones the page really paints — the roster's figure, the bar caption's figures and the limit list's value",
+    ok("1.401 · 409 · the limits form chooses its face from the ROW, so a count never lands in `.amount`",
+      /row\.money \? "amount tabular-nums" : "font-mono tabular-nums"/.test(decomment(read(FORM))), "");
+    ok("1.401 · CONTROL · the walked money sites are the ones the section really paints — the roster's figure, the bar caption's figures and the limits form's saved value",
       pageCode.includes('const figure = cell.money ? "amount tabular-nums"')
         && pageCode.includes('<span className="amount tabular-nums">{h.figure}</span>')
-        && pageCode.includes('"amount tabular-nums text-body-sm text-text"'), j(moneySites));
+        && decomment(read(FORM)).includes('<span className={row.money ? "amount tabular-nums" : "font-mono tabular-nums"}>{row.value}</span>'),
+      j(moneySites));
   }
 
   /* ⛔ 1.316 / 473 · THE PAGE'S ONE LIVE TRIGGER, IN THE STRIP, ON `LIVE_ROUND_MS`, ENABLED FROM REACT STATE. */
@@ -2006,15 +2345,25 @@ export default function Ruling513Control() {
      * and it is exactly the state in which nothing would notice step 4 adding one without raising the hold, which is
      * the defect 316 is written against: a 20-second `router.refresh()` under an open ceremony. So the two are tied
      * by EXISTENCE now, while the tie costs nothing.
-     * ⚠️ SCOPE, STATED: this is the DIALOG half. The dirty-FORM half arrives with ruling 537's limits save and is
-     * `test:unsaved-changes`' population rule, which 1.412 already ties to the typed control. The typed-control flag
-     * is PRINTED here so the day it changes is visible rather than silent. */
+     * ⭐ THE DIRTY-FORM HALF LANDED (replan ruling 537), so the tie gains its second antecedent. It read
+     * `hasDialog === dispatchesHold` and was true of NEITHER; the limits form is a control an officer types into for
+     * minutes at a time under a 20-second `router.refresh()`, which is the same defect as an open dialog and the
+     * more likely one. The equality is kept — a hold raised by nothing would still be red — and the antecedent is
+     * now "a dialog OR a typed form", so the day step 4 adds a dialog it is inside this assertion too. */
     const sectionAll = sectionFiles.map((f) => decomment(read(f))).join("\n");
     const hasDialog = /<Modal\b|<ConfirmDialog\b|role="dialog"|<Drawer\b/.test(sectionAll);
+    const hasTypedForm = /<Input\b|<Textarea\b|<Select\b|<input\b|<textarea\b|<select\b/.test(sectionAll);
     const dispatchesHold = /dispatchEvent\(/.test(sectionAll) && /DESK_HOLD_EVENT/.test(sectionAll.replace(/export const DESK_HOLD_EVENT[^\n]*/, ""));
-    ok("1.316 · 432(h) · the section raises the poller's HOLD exactly when it renders a dialog — neither today, so the listener is honest rather than dead by accident",
-      hasDialog === dispatchesHold && /DESK_HOLD_EVENT/.test(liveCode) && /DESK_RELEASE_EVENT/.test(liveCode),
-      j({ hasDialog, dispatchesHold, typedControl: /<Input\b|<Textarea\b|<Select\b|<input\b/.test(sectionAll) }));
+    ok("1.316 · 432(h) · 537 · the section raises the poller's HOLD exactly when it renders something that would lose work to a refresh — a dialog or a typed form",
+      (hasDialog || hasTypedForm) === dispatchesHold && /DESK_HOLD_EVENT/.test(liveCode) && /DESK_RELEASE_EVENT/.test(liveCode),
+      j({ hasDialog, hasTypedForm, dispatchesHold }));
+    /* ⛔ AND THE HOLD IS RAISED FROM THE FORM'S OWN DIRTY STATE, NOT FROM A MOUNT. A hold taken on mount would
+     * silence the poller for as long as the tab is open, whether or not anything is being typed — which is the
+     * opposite defect and just as invisible. */
+    ok("1.316 · 537 · the hold follows the form's DIRTY state and is released again, in one effect with a cleanup",
+      /useEffect\(\(\) => \{\s*if \(!armed\) return undefined;/.test(decomment(read(FORM)))
+        && /window\.dispatchEvent\(new Event\(DESK_HOLD_EVENT\)\);/.test(decomment(read(FORM)))
+        && /window\.dispatchEvent\(new Event\(DESK_RELEASE_EVENT\)\);/.test(decomment(read(FORM))), "");
   }
 
   /* ⛔ 1.362 / 1.409 · THE KIT'S NEW CAPTION PAIR, AND THE ONE EXISTING CALLER IS UNTOUCHED. */
@@ -2144,13 +2493,17 @@ export default function Ruling513Control() {
       j({ firstPanel, firstTabCond }));
   }
 
-  /* ⛔ 1.412 / 433 · THE LIMITS PANEL IS READ-ONLY, AND THAT IS TIED TO THE SERVICE THAT WOULD MAKE IT WRITABLE.
-   * There is no limits-SAVE anywhere in this repository: `saveLimits` has no caller under `src/` and
-   * `house_bot.limits_saved` has no writer. So the panel renders NO typed control — an editable field that discards
-   * what an officer types is worse than one that says it cannot be edited (432(a)) — and the reason is on screen
-   * beside it (432(j)). ⛔ THE TWO ARE TIED BY EXISTENCE, the same shape 432(h) used for the way-out column, so the
-   * step that builds the save cannot ship inputs without `UnsavedChangesGuard`, and cannot ship the guard without
-   * the inputs. */
+  /* ⛔ 1.412 / 537 · THE TYPED CONTROL, THE WIRED SAVE AND THE UNSAVED-CHANGES GUARD STAND OR FALL TOGETHER.
+   *
+   * ⚠️ THIS ASSERTION USED TO POINT THE OTHER WAY, and it had to be rewritten rather than deleted. Under ruling
+   * 433(a) it read `typed === saveWired` with BOTH false — a true statement about a panel with no service behind
+   * it. Ruling 537 measured that the service exists in both twins, tested and CAS-safe, so 433(a) is reversed and
+   * both halves are now TRUE. An equality that has only ever been checked in one direction is exactly the shape
+   * this project keeps paying for, so the tie is a CHAIN: a typed control with no wired save is red, a wired save
+   * with no `UnsavedChangesGuard` in front of it is red, and a guard with no bar beside it is red. Each of the four
+   * has a declared mutation of its own.
+   * ⛔ `test:unsaved-changes`' population rule is the same rule from the other side: any `.tsx` under `src/app/admin`
+   * with a typed control must carry the guard or be a NAMED exemption, and this form is neither exempt nor exempted. */
   {
     const saveWired = (() => {
       const hits: string[] = [];
@@ -2165,16 +2518,71 @@ export default function Ruling513Control() {
       return hits.length > 0;
     })();
     const typed = /<Input\b|<Textarea\b|<Select\b|<input\b|<textarea\b|<select\b/.test(sectionCode);
-    ok("1.412 · 433 · the section renders a typed control EXACTLY when a limits-save is wired — today neither, with the reason on screen beside the panel",
-      typed === saveWired && decomment(read(GATE)).includes("Editing limits is not ready on this build yet.")
-        && pageCode.includes("{limitsView?.formReason}"),
-      j({ typedControl: typed, saveWired }));
-    ok("1.412 · and when it lands it lands guarded: a typed control under this section requires `UnsavedChangesGuard`, which is `test:unsaved-changes`' own population rule",
-      typed === /<UnsavedChangesGuard\b/.test(sectionCode), j({ typedControl: typed }));
-    /* ⛔ THE FORM'S COLUMN IS ALREADY THE FORM TIER, so the measure does not move when the inputs arrive (412). */
-    ok("1.412 · the limits column is `FormColumn measure=\"form\"` (640) already, and nothing under the section uses the `sm` rungs",
+    const guarded = /<UnsavedChangesGuard\b/.test(sectionCode);
+    const bars = (sectionCode.match(/<PendingChangesBar\b/g) ?? []).length;
+    const forms = (sectionCode.match(/<form\b/g) ?? []).length;
+    ok("1.412 · 537 · a typed control, a wired limits SAVE and an `UnsavedChangesGuard` exist TOGETHER or not at all — each one is red without the other two",
+      typed === saveWired && saveWired === guarded && typed === true,
+      j({ typedControl: typed, saveWired, guarded }));
+    ok("1.412 · EXACTLY ONE guarded form on the tab, with the singleton `PendingChangesBar` beside it — the bar is a singleton and two would elect one painter and hide the other",
+      forms === 1 && bars === 1 && guarded, j({ forms, bars }));
+    /* ⛔ THE FORM'S COLUMN IS THE FORM TIER, AND IT DID NOT MOVE WHEN THE INPUTS ARRIVED (412). */
+    ok("1.412 · the limits column is `FormColumn measure=\"form\"` (640), every control is `size=\"md\"`, and nothing under the section uses the `sm` rungs",
       /<FormColumn measure="form">/.test(pageCode) && !/<(Input|Select|Textarea|Button)\b[^>]*size="sm"/.test(sectionCode)
-        && (pageCode.match(/size="md"/g) ?? []).length >= 1, "");
+        && (sectionCode.match(/size="md"/g) ?? []).length >= 2, "");
+    /* ⛔ RULING 433's READ-ONLY REASON IS GONE FROM BOTH OF ITS PINS, IN THIS SAME CHANGE. A sentence saying
+     * "editing is not ready" beside a form an officer can type into is 432(j) inverted — the disabled-control rule
+     * telling a lie about a control that works — and leaving the string behind would have made this case pass on
+     * the WORD rather than on the shape. */
+    ok("1.412 · 537 · the read-only reason is gone from the reader AND from the page, in the same change as the form",
+      !decomment(read(GATE)).includes("Editing limits is not ready on this build yet.")
+        && !decomment(read(GATE)).includes("formReason") && !pageCode.includes("formReason"),
+      "");
+    /* ⛔ NO FORM WITHOUT A BASE VERSION, AND THE ANCHOR'S LITERAL STAYS IN THE PAGE. */
+    ok("1.412 · 537 · the page renders the form ONLY with a base version, hands it the anchor id as a literal, and passes the action down itself",
+      /limitRows === null \|\| limitsVersion === null/.test(pageCode)
+        && /<DeskLimitsForm rows=\{limitRows\} baseVersion=\{limitsVersion\} id="limits-first-unset" onSave=\{saveDeskLimitsAction\} \/>/.test(pageCode)
+        && pageCode.includes('id="limits-first-unset"'), "");
+    /* ⛔ EVERY FIELD IS ADDRESSABLE, AND THE ADDRESS IS THE SERVER'S NEUTRAL KEY — DG-S-05/06's whole point is that
+     * a refusal without an address can take nobody anywhere. */
+    const formCode = decomment(read(FORM));
+    ok("1.412 · §K 7d · every field carries `dataField` and `name` from the SAME server key, and the refusal's result UNION is handled rather than dropped",
+      /dataField=\{row\.key\}/.test(formCode) && /name=\{row\.key\}/.test(formCode)
+        && /focusFirstInvalid\(form, \[result\.field\]\)/.test(formCode)
+        && /landed\.reason === "not-rendered" && landed\.ownedByTab/.test(formCode), "");
+  }
+
+  /* ⛔ 1.537 · THE SAVE'S ONLY GATE IS INSIDE THE ACTION (rulings 259, 522, 523).
+   *
+   * A Next server action is a POST to whatever URL the browser happens to be on, carrying a `Next-Action` id in a
+   * header — it has no path of its own, so no middleware rule, no layout and no `AdminSectionGate` can see it. The
+   * action therefore decides for itself, through the one named door, on the viewer's STORED row. */
+  {
+    const actionsRaw = read(ACTIONS);
+    const actionsCode = decomment(actionsRaw);
+    ok("1.537 · 523 · the action is `\"use server\"`, resolves the session itself, and hands the gated writer the session's USER ID and its own route literal",
+      /^"use server";/.test(actionsRaw.replace(/^\uFEFF/, ""))
+        && /const session = await currentSession\(\);/.test(actionsCode)
+        && /houseLimitsSaveForConsole\(session\?\.userId \?\? null, "\/admin\/desk", input\)/.test(actionsCode),
+      j(actionsCode.replace(/\s+/g, " ").slice(0, 200)));
+    ok("1.537 · 522 · the action reads NO role of its own — a cookie's photograph of a role cannot answer the demoted-account question, so the action never asks it",
+      !/\.role\b/.test(actionsCode) && !/isAdmin|canAct|canView|requireStaff|requireOwner/.test(actionsCode), "");
+    ok("1.537 · 340 · the action names no store, no house read module and no column — the reads and the write are behind the door",
+      !/from "@\/lib\/server\/house-bot/.test(actionsCode) && !/house-bot-dal/.test(actionsCode)
+        && !/\bdb\./.test(actionsCode) && !/Store\./.test(actionsCode)
+        && (R.LIMIT_FIELDS as readonly string[]).every((f) => !actionsCode.includes(f)), "");
+    /* ⛔ A REFUSAL CHANGED NOTHING, SO IT MUST NOT INVALIDATE THE RENDER: a `revalidatePath` on the refusal path
+     * would replace the officer's own typing with a fresh server payload at the exact moment they are being told
+     * to fix one field. */
+    ok("1.537 · only a save that LANDED revalidates the section — a refusal leaves the officer's typing alone",
+      /if \(result\.ok\) revalidatePath\(CONSOLE_ROUTE\);/.test(actionsCode), "");
+    /* ⛔ AND THE DOOR ITSELF DECIDES BEFORE IT READS: the audience call is the FIRST statement of the writer. */
+    const gateSrc = decomment(read(GATE));
+    const at = gateSrc.indexOf("export async function houseLimitsSaveForConsole");
+    const body = gateSrc.slice(at, at + 900);
+    ok("1.537 · 259 · the gated writer's FIRST statement is the audience verdict, before any read, any write and any mapping",
+      at > 0 && /^\s*if \(!\(await houseConsoleAudience\(viewerUserId, route\)\)/m.test(body.slice(body.indexOf("): Promise<ConsoleLimitsSaveResult> {") + 36))
+        && body.indexOf("houseConsoleAudience") < body.indexOf("saveHouseBotLimits"), j(body.replace(/\s+/g, " ").slice(0, 200)));
   }
 
   /* 1.333 · the nav item carries no badge. */

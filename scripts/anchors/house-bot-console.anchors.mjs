@@ -26,6 +26,10 @@ const ANCHORS = "scripts/anchors/house-bot-console.anchors.mjs";
 /* ⭐ C7 step 3 · the kit file the caption pair lives in, and the section's first client module. */
 const BAR = "src/components/ui/progress-bar.tsx";
 const LIVE = "src/app/admin/desk/desk-live.tsx";
+/* ⭐ replan ruling 537 · the limits SAVE: the action, the client form and the service behind them. */
+const ACTIONS = "src/app/admin/desk/actions.ts";
+const FORM = "src/app/admin/desk/limits-form.tsx";
+const SAVE = "src/lib/server/house-bot/limits-save.ts";
 /** The page ruling 434 was taken on — a platform surface, not a console one. */
 const REFUSED = "src/app/admin/kyc/refused/page.tsx";
 
@@ -743,13 +747,150 @@ import type { ConsoleTab } from "@/lib/house-bot/console-routes";`,
     expect: "1.330 · 1.401 · no client file of the section names a house module in ANY import form",
     suite: "console-mem",
   },
+  /* ⚠️ RE-ANCHORED, SAME DEFECT, OTHER SIDE (replan ruling 537). It used to plant a typed control into a panel that
+     had none, which proved the tie while `typed` was false. The panel now HAS its control and its save, so the
+     declaration that still measures the tie is the one that takes the SAVE away and leaves the control standing —
+     the exact state 432(a) refuses, and the state ruling 433(a) believed the repository was already in. */
   {
-    name: "412-typed · a typed control ships on the limits panel with no save behind it, discarding what an officer types",
-    file: PAGE,
-    from: `                  {limitRows.map((row) => (row.firstUnset`,
-    to: `                  <input readOnly value="" />
-                  {limitRows.map((row) => (row.firstUnset`,
-    expect: "1.412 · 433 · the section renders a typed control EXACTLY when a limits-save is wired",
+    name: "412-typed · the typed limits control stands with no save behind it, discarding what an officer types",
+    file: SAVE,
+    from: `  const cas = await houseBotControlStore.saveLimits(input.baseVersion, patch);`,
+    to: `  const cas = { ok: true, row: { ...control, limitsVersion: input.baseVersion + 1 } };`,
+    expect: "1.412 · 537 · a typed control, a wired limits SAVE",
+    suite: "console-mem",
+  },
+  {
+    name: "537-guard · the guarded form loses its UnsavedChangesGuard, so an in-app link discards what was typed in silence",
+    file: FORM,
+    from: `      <UnsavedChangesGuard
+        dirty={armed}`,
+    to: `      <UnsavedChangesGuardOff
+        dirty={armed}`,
+    expect: "1.412 · 537 · a typed control, a wired limits SAVE",
+    suite: "console-mem",
+  },
+  {
+    name: "537-bar · the singleton PendingChangesBar goes, so Save leaves the viewport on a form taller than the screen",
+    file: FORM,
+    from: `      <PendingChangesBar
+        dirty={armed}`,
+    to: `      <PendingChangesBarOff
+        dirty={armed}`,
+    expect: "1.412 · EXACTLY ONE guarded form on the tab",
+    suite: "console-mem",
+  },
+  {
+    name: "537-gate · the save stops deciding its audience — ruling 523's defect, on a POST no path rule can see",
+    file: GATE,
+    from: `  if (!(await houseConsoleAudience(viewerUserId, route)) || typeof viewerUserId !== "string") {`,
+    to: `  if (typeof viewerUserId !== "string") {`,
+    expect: "2.537 · a PLAYER, a signed-in AUDITOR and an anonymous caller are each REFUSED",
+    suite: "console-mem",
+  },
+  {
+    name: "537-cas · the save re-reads the version immediately before writing, so two officers on two tabs both land and one silently loses their change",
+    file: SAVE,
+    from: `  const cas = await houseBotControlStore.saveLimits(input.baseVersion, patch);`,
+    to: `  const cas = await houseBotControlStore.saveLimits((await houseBotControlStore.get()).limitsVersion, patch);`,
+    expect: "2.537 · TWO REAL WRITERS on ONE base version",
+    suite: "console-mem",
+  },
+  {
+    name: "537-partial · a post missing a field is accepted, so limits the officer never touched are silently CLEARED",
+    file: GATE,
+    from: `    if (typeof raw !== "string") return { ok: false, error: SAVE_COPY.stale };`,
+    to: `    if (typeof raw !== "string") continue;`,
+    expect: "2.537 · a post missing a field",
+    suite: "console-mem",
+  },
+  {
+    name: "537-unknown · a key the form does not own is ignored rather than refused",
+    file: GATE,
+    from: `  for (const key of Object.keys(input.values)) {
+    if (!LIMIT_FIELD_BY_KEY.has(key)) return { ok: false, error: SAVE_COPY.stale };
+  }`,
+    to: `  void LIMIT_FIELD_BY_KEY;`,
+    expect: "2.537 · a post missing a field",
+    suite: "console-mem",
+  },
+  {
+    name: "537-key-leak · a field's posted NAME becomes the column's own, which ships in the chunk and in the POST body under a neutral label",
+    file: GATE,
+    from: `  gCapStaffChosenDailyTzs: "targeted-daily-tzs",`,
+    to: `  gCapStaffChosenDailyTzs: "gCapStaffChosenDailyTzs",`,
+    expect: "2.537 · D19 · every key the form posts is neutral",
+    suite: "console-mem",
+  },
+  {
+    name: "537-name-drift · the rendered field name is derived from the label instead of the server's key, so the refusal's address stops matching it",
+    file: FORM,
+    from: `                    name={row.key}`,
+    to: `                    name={row.name.toLowerCase().replace(/ /g, "-")}`,
+    expect: "2.537 · RENDERED · D19 · every field's `name` and `data-field`",
+    suite: "console-mem",
+  },
+  {
+    name: "537-anchor · the strip's fragment is rendered on no field at all, so \"Set N global limits first →\" scrolls nowhere",
+    file: FORM,
+    from: `              return row.firstUnset ? (`,
+    to: `              return false ? (`,
+    expect: "2.537 · RENDERED · the strip's fragment lands on the FIRST unset required limit",
+    suite: "console-mem",
+  },
+  {
+    name: "537-audit-actor · the compliance row stops naming the officer who made the change",
+    file: SAVE,
+    from: `    actorId: input.actorId,`,
+    to: `    actorId: null,`,
+    expect: "2.537 · 420 · the row names the ACTOR BY ID",
+    suite: "console-mem",
+  },
+  {
+    name: "537-audit-action · the save writes its record under another action, so `house_bot.limits_saved` goes back to having no writer",
+    file: SAVE,
+    from: `    action: "house_bot.limits_saved",`,
+    to: `    action: "house_bot.rules_saved",`,
+    expect: "2.537 · …and it writes the COMPLIANCE row",
+    suite: "console-mem",
+  },
+  {
+    name: "537-hint-leak · the loss limit's hint falls back to the shared table's, which says the feature's name under a neutral label",
+    file: GATE,
+    from: `  gCapDailyLossTzs: "Counted by the day a stake was placed,`,
+    to: `  gCapDailyLossTzsUnused: "Counted by the day a stake was placed,`,
+    expect: "2.537 · 453 · every shared HINT that names the feature",
+    suite: "console-mem",
+  },
+  {
+    name: "537-refusal-leak · the clear-while-on refusal falls back to the shared sentence, which names the feature on the screen that refuses",
+    file: GATE,
+    from: `  "X-CLEAR-ON": "A limit can't be cleared while the desk is on.`,
+    to: `  "X-CLEAR-ON-UNUSED": "A limit can't be cleared while the desk is on.`,
+    expect: "2.537 · 453 · clearing a required limit while the desk is ON",
+    suite: "console-mem",
+  },
+  {
+    name: "537-focus · the refusal names a field and nothing takes the officer to it — §K rule 7d's own defect",
+    file: FORM,
+    from: `        const landed = focusFirstInvalid(form, [result.field]);`,
+    to: `        const landed = { ok: true, field: result.field, reason: "", ownedByTab: "" };`,
+    expect: "1.412 · §K 7d · every field carries `dataField` and `name`",
+    suite: "console-mem",
+  },
+  {
+    name: "537-revalidate · a REFUSED save revalidates the section, replacing the officer's own typing at the moment they are told to fix one field",
+    file: ACTIONS,
+    from: `    if (result.ok) revalidatePath(CONSOLE_ROUTE);`,
+    to: `    revalidatePath(CONSOLE_ROUTE);`,
+    expect: "1.537 · only a save that LANDED revalidates the section",
+    suite: "console-mem",
+  },
+  {
+    name: "537-action-route · the action asks the door about another section's route, which its own section gate does not answer for",
+    file: ACTIONS,
+    from: `houseLimitsSaveForConsole(session?.userId ?? null, "/admin/desk", input)`,
+    to: `houseLimitsSaveForConsole(session?.userId ?? null, "/admin/house", input)`,
+    expect: "1.537 · 523 · the action is",
     suite: "console-mem",
   },
   /* ── C7 STEP 2 · the D19 section's own seven, each naming the assertion 506 assigned to this step ───────── */

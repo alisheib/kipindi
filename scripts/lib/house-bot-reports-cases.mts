@@ -1232,7 +1232,11 @@ export const HOUSE_HOOK_MODULES = ["src/lib/server/house-bot/holder-hook", "src/
  * and an entry naming no export is red the day the reader goes. Only `CONSOLE_GATE_STRUCK`'s two D20 needles may sit
  * here without an export, and only while the run measures them at 0 calls.
  */
-export const CONSOLE_GATES: Readonly<Record<string, number>> = { houseStakeForConsole: 3, houseBotLabelsForConsole: 3, houseConsoleAudience: 2, houseAuditForConsole: 3, houseRosterForConsole: 2, houseUsageForConsole: 3 };
+/* ⭐ C7 step 3b · replan ruling 537 · `houseLimitsSaveForConsole` is the section's first WRITER, and it joins this
+ * table for the same reason every reader does: ruling 523 measured that a server action is a POST to whatever URL the
+ * browser is on, carrying a `Next-Action` id, so NO path rule can see it — the arity pin, the signed-in-viewer pin
+ * and the own-route pin are the only things standing between it and ruling 259's measured defect class. */
+export const CONSOLE_GATES: Readonly<Record<string, number>> = { houseStakeForConsole: 3, houseBotLabelsForConsole: 3, houseConsoleAudience: 2, houseAuditForConsole: 3, houseRosterForConsole: 2, houseUsageForConsole: 3, houseLimitsSaveForConsole: 3 };
 /** A console file: a page, layout, route, action or component the console serves — everything under the three admin folders. */
 export const inConsolePopulation = (rel: string) =>
   rel.startsWith("src/app/admin/") || rel.startsWith("src/app/api/admin/") || rel.startsWith("src/components/admin/");
@@ -1474,7 +1478,8 @@ export const CONSOLE_GATE_STRUCK = ["houseBotLabelsForConsole", "houseStakeForCo
  * signed-in-viewer and its own-route pins.
  */
 export const CONSOLE_GATE_NON_READERS = ["ConsoleAuditRead", "ConsoleDeskShell", "ConsoleEmpty", "ConsoleKpiTile",
-  "ConsoleLimitRow", "ConsoleLimitsView", "ConsoleRosterRow", "ConsoleRosterView", "ConsoleUsageCell",
+  "ConsoleLimitRow", "ConsoleLimitsSaveInput", "ConsoleLimitsSaveResult", "ConsoleLimitsView", "ConsoleRosterRow",
+  "ConsoleRosterView", "ConsoleUsageCell",
   "ConsoleUsageHalf", "ConsoleUsageQuery", "ConsoleUsageRow", "HOUSE_CONSOLE_PREFIX", "OPERATOR_DATA_EXEMPT",
   "TARGETED_DAILY_TZS_FIELD", "clampOperatorText", "consoleLimitLabel",
   "isHouseConsoleRoute", "unsetCaptionFor"] as const;
@@ -1862,6 +1867,9 @@ if (STORE === "memory") {
         && r.consoleGateCalls.houseConsoleAudience >= 1 && r.consoleGateCalls.houseRosterForConsole >= 1
         /* ⭐ C7 step 3 · the limits panel's own gated reader, query-shaped and arity-pinned like the roster's. */
         && r.consoleGateCalls.houseUsageForConsole >= 1
+        /* ⭐ replan ruling 537 · the limits SAVE. A floor at the count this commit measures, never a loose `>= 0`:
+         * an action that stopped calling the gated writer would otherwise read as compliance. */
+        && r.consoleGateCalls.houseLimitsSaveForConsole >= 1
         && r.readerFiles.length >= 14 && MEASURED_LEAKS.every((f) => r.readerFiles.includes(f)) && j(r.outsideReaderFiles) === j(Object.keys(AUDIT_READERS_OUTSIDE_CONSOLE).sort()),
       j({ population: r.population, readerCalls: r.readerCalls, gateCalls: r.gateCalls, consoleGateCalls: r.consoleGateCalls, readerFiles: r.readerFiles, outsideReaderFiles: r.outsideReaderFiles, auditReaders, auditExports, problems: r.problems }));
 

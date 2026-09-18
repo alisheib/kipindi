@@ -42,9 +42,19 @@ import { ScrollX } from "@/components/ui/scroll-x";
 import { Tabs } from "@/components/ui/tabs";
 import { Toggle } from "@/components/ui/toggle";
 import { currentSession } from "@/lib/server/auth-service";
-import { houseRosterForConsole, houseUsageForConsole, houseConsoleAudience, type ConsoleDeskShell, type ConsoleLimitRow, type ConsoleUsageCell, type ConsoleUsageRow } from "@/lib/server/house-console-read";
+import { houseRosterForConsole, houseUsageForConsole, houseConsoleAudience, type ConsoleDeskShell, type ConsoleUsageCell, type ConsoleUsageRow } from "@/lib/server/house-console-read";
 import { CONSOLE_TABS, LIMITS_TAB_READY, consoleTab, consoleTabHref } from "@/lib/house-bot/console-routes";
 import { DeskLive } from "./desk-live";
+import { DeskLimitsForm } from "./limits-form";
+/* ⛔ THE PAGE OWNS THE IMPORT OF THE ACTION AND HANDS IT DOWN (ruling 422). A client component under
+ * `src/app/admin` that imports an actions module is in `test:admin-act-gate`'s population and must consult the
+ * act gate — and on an Owner-only route `mayAct` is `mayView`, so that consultation would be a branch that can
+ * never be false, which 1.422 refuses under this section by name. A Server Component is outside that population
+ * and is the right owner of the reference anyway.
+ * ⚠️ AND THE DIRECTIVE IS NOT QUOTED HERE. `test:house-bot-console` decides which files of the section are
+ * CLIENT files by reading each one RAW for that directive, comments included — so writing it in this sentence
+ * put `page.tsx` into the client population and made four unrelated assertions red. Measured 2026-09-18. */
+import { saveDeskLimitsAction } from "./actions";
 
 /** ⛔ A static neutral title (ruling 402). No route here exports a `generateMetadata` that reads a record. */
 export const metadata = { title: "Admin · Desk" };
@@ -153,29 +163,6 @@ function UsageBar({ row, unsetHref }: { row: ConsoleUsageRow; unsetHref: string 
   );
 }
 
-/**
- * THE BODY OF ONE ROW OF THE READ-ONLY GLOBAL LIMITS LIST — the row's own `<div>` is written at the call site, because
- * the ANCHOR has to be (see the limits panel below).
- *
- * ⛔ THE VALUE IS `.amount` AT ITS OWN CALL SITE (ruling 401), because the server hands the page a formatted STRING
- * and `test:type-scale` can only see money through a literal `formatTzs*` call inside the element — so the money
- * guards are told what this is here, where it is painted.
- */
-function LimitBody({ row }: { row: ConsoleLimitRow }) {
-  return (
-    <>
-      <div className="flex items-baseline justify-between gap-3 flex-wrap">
-        <span className="text-body-sm text-text">{row.name}</span>
-        <span className={row.unset ? "text-body-sm text-text-tertiary" : row.money ? "amount tabular-nums text-body-sm text-text" : "font-mono tabular-nums text-body-sm text-text"}>{row.value}</span>
-      </div>
-      {row.caption ? <p className="mt-0.5 text-body-sm text-warning-fg">{row.caption}</p> : null}
-    </>
-  );
-}
-
-/** One row of that list. ⛔ A class written twice is a class that drifts, so it is written once. */
-const LIMIT_ROW_CLS = "border-b border-border-subtle pb-3 last:border-0 last:pb-0";
-
 export default async function AdminDeskPage({ searchParams }: { searchParams: Promise<{ tab?: string | string[] }> }) {
   /* ⛔ THE VERDICT IS AWAITED FIRST, BEFORE ANY READ (rulings 300, 380). */
   const session = await currentSession();
@@ -208,6 +195,8 @@ export default async function AdminDeskPage({ searchParams }: { searchParams: Pr
   const rosterEmpty = rosterView?.empty ?? null;
   const usageRows = limitsView?.usage ?? null;
   const limitRows = limitsView?.limits ?? null;
+  /* The CAS token the form carries back. `null` on the roster tab and in both states with no row to save. */
+  const limitsVersion = limitsView?.limitsVersion ?? null;
 
   return (
     <>
@@ -515,31 +504,30 @@ export default async function AdminDeskPage({ searchParams }: { searchParams: Pr
           </AdminCard>
           )}
 
-          {/* ⛔ READ-ONLY, WITH ITS REASON ON SCREEN (ruling 433, applying 432(a) and 432(j)). There is no
-              limits-SAVE service in this repository — `saveLimits` has no caller under `src/` and
-              `house_bot.limits_saved` has no writer — so this panel renders no typed control at all. An editable
-              field that silently discards what an officer types is worse than one that says it cannot be edited, and
-              a form whose save is dead is the same dead control the head action and the master switch are rendered
-              disabled for. `FormColumn measure="form"` is already the column the form will land in (412), so the
-              measure does not move when it does. */}
+          {/* ⭐ THE PANEL STOPS BEING READ-ONLY (replan ruling 537, which REVERSES ruling 433(a)).
+              433(a) shipped this list read-only on the ground that "there is no limits-SAVE service in this
+              repository". Measured since: `houseBotControlStore.saveLimits` EXISTS in both twins with CAS
+              semantics, its whole validation surface is green, and `house_bot.limits_saved` is already classified
+              — what was missing was ONE SERVER ACTION. 432(a) forbids a control with nothing behind it; it does
+              not license leaving a control unbuilt when the thing behind it is built, tested and CAS-safe.
+              ⛔ THE COLUMN STAYS `FormColumn measure="form"` (412), which is why the measure did not move when the
+              inputs arrived — the read-only pass was already standing in the form's own column.
+              ⛔ NO FORM WITHOUT A BASE VERSION. `limitsVersion` is null exactly when there is no row to save
+              against, and a form whose base version is unknown could only ever clobber a second writer. */}
           {!view.schemaMissing && (
-          <AdminCard title="Global limits" action={<span className="text-body-sm text-text-tertiary">{limitsView?.formReason}</span>}>
-            {limitRows === null ? (
+          <AdminCard title="Global limits">
+            {limitRows === null || limitsVersion === null ? (
               <AdminLoadError what="the global limits" />
             ) : (
               <FormColumn measure="form">
-                <div className="space-y-3">
-                  {/* ⛔ THE `id` IS A LITERAL, IN BOTH BRANCHES, AND WRITTEN HERE RATHER THAN IN A COMPONENT.
-                      `test:tab-anchors` reads this FILE as text for `id="limits-first-unset"` and decides which tab
-                      owns it by the nearest tab-group opener above it: an
-                      `id={cond ? "limits-first-unset" : undefined}` compiles, paints correctly and is INVISIBLE to
-                      it, and the same literal inside a helper function sits ABOVE every tab group and reads as
-                      "above the rail". Both were measured on this file. The guard is what proves the strip's
-                      "Set N global limits first →" lands on a screen holding the field it promises. */}
-                  {limitRows.map((row) => (row.firstUnset
-                    ? <div key={row.name} id="limits-first-unset" className={LIMIT_ROW_CLS}><LimitBody row={row} /></div>
-                    : <div key={row.name} className={LIMIT_ROW_CLS}><LimitBody row={row} /></div>))}
-                </div>
+                {/* ⛔ THE `id` IS A LITERAL AND IT IS WRITTEN HERE, IN THE PAGE, NOT IN THE FORM.
+                    `test:tab-anchors` reads THIS FILE as text for `id="limits-first-unset"` and decides which tab
+                    owns it by the nearest tab-group opener above it: an `id={cond ? "limits-first-unset" :
+                    undefined}` compiles, paints correctly and is INVISIBLE to it, and the same literal inside a
+                    component sits ABOVE every tab group and reads as "above the rail". Both were measured on this
+                    file. So the page NAMES the anchor and the form PLACES it, on the first unset required limit —
+                    which is what the strip's "Set N global limits first →" promises the officer will find. */}
+                <DeskLimitsForm rows={limitRows} baseVersion={limitsVersion} id="limits-first-unset" onSave={saveDeskLimitsAction} />
               </FormColumn>
             )}
           </AdminCard>
