@@ -12,14 +12,21 @@ import { readFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { decomment } from "./decomment.mts";
+/* ⛔ THE DECLARED MUTATIONS ARE READ BY THIS SUITE (ruling 505), so an `expect` that names no label it can print is
+ * reported HERE, by a suite that runs every day, instead of by a drive nobody has run — see the roll-call at the foot. */
+import { MUTATIONS as DECLARED_MUTATIONS } from "../anchors/house-bot-engine.anchors.mjs";
+import { expectDriftReport, expectDriftControl, type DeclaredMutation } from "./house-bot-expect-drift.mts";
 
 type Any = any;
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const STORE = process.env.HB_MONEY_STORE ?? "unknown";
 const onPostgres = !!process.env.DATABASE_URL && process.env.USE_PRISMA_DAL !== "false";
 let pass = 0, fail = 0;
+/** Every label this run emitted, so ruling 505's roll-call at the foot of this file measures the suite instead of asserting `true`. */
+const emitted: string[] = [];
 const ok = (l: string, c: boolean, x = "") => {
   c ? pass++ : fail++;
+  emitted.push(l);
   console.log(`${c ? "PASS" : "FAIL"} [${STORE}] ${l}${x ? ` — ${x}` : ""}`);
 };
 const section = (t: string) => console.log(`\n[${STORE}] ${t}`);
@@ -4232,5 +4239,31 @@ await guard("19", async () => {
   await S.houseBotIntentStore.cancelLive({ all: true }, "MASTER_OFF");
 });
 HH.suspendInAppHolderHookForCases(false);
+
+/* ⛔ RULING 505's ROLL-CALL OVER THE DECLARED MUTATIONS, AND IT MUST BE LAST — it reads the labels THIS run printed.
+ * `red:house-bot-engine` matches a run's FAIL lines with `result.fails.find((l) => l.includes(d.expect))`, so an
+ * `expect` that is not a substring of any label this suite can print is classed WRONG-ASSERTION, `missed++`, and the
+ * drive exits 1 — red for the wrong reason, which inside C5-8's single batch run reads exactly like success.
+ * ⛔ SKIPPED, AND SAID SO, WHEN THE RUN IS SECTION-FILTERED. `HB_ENGINE_SECTIONS` runs a subset for a mutation drive,
+ * and a partial run's labels are a partial population — a roll-call over one would report every unrun section's
+ * declarations as stale, which is the very defect it exists to catch. The full suite always runs every section.
+ * ⛔ The `caps-pg`, `comms-mem`, `designation-mem` and `info-edge-mem` entries name labels of OTHER suites, which this
+ * run cannot print — they are counted and NAMED in the extra, so the exclusion is visible rather than silent. */
+if (ONLY_SECTIONS.length > 0) {
+  console.log(`\n[${STORE}] 1.505 · NOT MEASURED — this run was section-filtered (HB_ENGINE_SECTIONS=${ONLY_SECTIONS.join(",")}), so its labels are not the suite's population`);
+} else {
+  const KEY = STORE === "memory" ? "engine-mem" : "engine-pg";
+  const selfCode = decomment(readFileSync(fileURLToPath(import.meta.url), "utf8"));
+  const LBL = `1.505 · every declared \`${KEY}\` mutation names an assertion THIS run actually printed — an \`expect\` that matches no label can only ever report WRONG-ASSERTION`;
+  const LBLC = `1.505 · CONTROL · the roll-call reads this run's own labels and this suite's own source, so a drifted \`expect\` IS reported and an invented one is never found`;
+  const input = {
+    suiteKeys: [KEY], declarations: DECLARED_MUTATIONS as DeclaredMutation[],
+    emitted, source: selfCode, ownLabels: [LBL, LBLC],
+  };
+  const rc = expectDriftReport(input);
+  ok(LBL, rc.declared >= (STORE === "memory" ? 22 : 6) && rc.stale.length === 0, j(rc));
+  const control = expectDriftControl(input, 300);
+  ok(LBLC, control.pass, control.extra);
+}
 console.log(`\n@@SUMMARY ${JSON.stringify({ pass, fail })}`);
 process.exit(fail === 0 ? 0 : 1);

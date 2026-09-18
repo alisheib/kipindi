@@ -21,6 +21,12 @@ import { fileURLToPath } from "node:url";
 import { EXIT_WINDOW_GRID, exitGridCase } from "./lib/house-bot-exit-grid.mts";
 // Ruling 175 · the notice pins below are deliberately BROADER than the shared absence words, so they extend them.
 import { extendHouseWords } from "./lib/house-bot-vocabulary.mjs";
+import { decomment } from "./lib/decomment.mts";
+/* ⛔ THE DECLARED MUTATIONS ARE READ BY THIS SUITE (ruling 505). The `seam` key is declared in TWO files, and both are
+ * read at the roll-call at the foot — a declaration audited in neither file is the hole 505 exists to close. */
+import { MUTATIONS as SEAM_MUTATIONS } from "./anchors/house-bot-seam.anchors.mjs";
+import { MUTATIONS as MONEY_MUTATIONS } from "./anchors/house-bot-money.anchors.mjs";
+import { expectDriftReport, expectDriftControl, type DeclaredMutation } from "./lib/house-bot-expect-drift.mts";
 
 process.env.DATABASE_URL = "";
 process.env.USE_PRISMA_DAL = "false";
@@ -32,7 +38,9 @@ const root = join(here, "..");
 /* ═══ Harness ═══════════════════════════════════════════════════════════════════════════════ */
 
 let pass = 0, fail = 0;
-const ok = (l: string, c: boolean, x = "") => { c ? pass++ : fail++; console.log(`${c ? "PASS" : "FAIL"} ${l}${x ? ` — ${x}` : ""}`); };
+/** Every label this run emitted, so ruling 505's roll-call at the foot of this file measures the suite instead of asserting `true`. */
+const emitted: string[] = [];
+const ok = (l: string, c: boolean, x = "") => { c ? pass++ : fail++; emitted.push(l); console.log(`${c ? "PASS" : "FAIL"} ${l}${x ? ` — ${x}` : ""}`); };
 const section = (title: string) => console.log(`\n${title}`);
 
 /** Canonical JSON (sorted keys, `undefined` dropped the way JSON drops it). */
@@ -480,6 +488,27 @@ section("§7 · blackout and attribution");
   const edge = attributeStake(1_000, [{ userId: "u25", lockedTzs: 2_500 }], 10_000);
   ok("7.7 · exactly 25% is attributed (floor)", edge.length === 1 && edge[0].attributedTzs === 250, JSON.stringify(edge));
   ok("7.8 · no locked money → no attribution", attributeStake(1_000, [], 0).length === 0);
+}
+
+/* ⛔ RULING 505's ROLL-CALL OVER THE DECLARED MUTATIONS, AND IT MUST BE LAST — it reads the labels THIS run printed.
+ * The `seam` suite is declared in TWO anchors files — `house-bot-seam.anchors.mjs` in full, and three entries of
+ * `house-bot-money.anchors.mjs` — and BOTH are read here, because a declaration audited in neither file is exactly the
+ * hole 505 exists to close. `red:house-bot-money` and `red:house-bot-engine` both run this suite and both match a FAIL
+ * line with `l.includes(d.expect)`, so an `expect` no label here can match reports WRONG-ASSERTION, never a caught
+ * mutation. MEASURED at this head: 7 + 3 declarations, 0 stale. */
+{
+  const selfCode = decomment(readFileSync(fileURLToPath(import.meta.url), "utf8"));
+  const LBL = "8.505 · every declared `seam` mutation — from BOTH anchors files that declare one — names an assertion THIS run actually printed";
+  const LBLC = "8.505 · CONTROL · the roll-call reads this run's own labels and this suite's own source, so a drifted `expect` IS reported and an invented one is never found";
+  const input = {
+    suiteKeys: ["seam"],
+    declarations: [...SEAM_MUTATIONS, ...MONEY_MUTATIONS] as DeclaredMutation[],
+    emitted, source: selfCode, ownLabels: [LBL, LBLC],
+  };
+  const rc = expectDriftReport(input);
+  ok(LBL, rc.declared >= 10 && rc.stale.length === 0, JSON.stringify(rc));
+  const control = expectDriftControl(input, 80);
+  ok(LBLC, control.pass, control.extra);
 }
 
 /* ═══ Result ════════════════════════════════════════════════════════════════════════════════ */

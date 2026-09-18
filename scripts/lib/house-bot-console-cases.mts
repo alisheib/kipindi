@@ -14,7 +14,7 @@
  *      loader's ghosts card for card (rulings 302, 305, 312, 313, 319, 330, 333, 349, 356, 373, 403, 404, 407, 417, 422)
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { readFileSync, readdirSync, existsSync, statSync } from "node:fs";
+import { readFileSync, readdirSync, existsSync, statSync, writeFileSync, unlinkSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import ts from "typescript";
@@ -23,6 +23,7 @@ import { houseHits, consoleNeutralRegExp, HOUSE_WORD_SAMPLES, CONSOLE_EXTRA_SAMP
 /* ⛔ THE DECLARED MUTATIONS ARE READ BY THIS SUITE, so an `expect` that names no label it can print is reported HERE,
  * by a suite that runs every day, instead of by a drive nobody has run (§4's roll-call at the foot of this file). */
 import { MUTATIONS as DECLARED_MUTATIONS } from "../anchors/house-bot-console.anchors.mjs";
+import { expectDriftReport, expectDriftControl, type DeclaredMutation } from "./house-bot-expect-drift.mts";
 import { loadWorld, OFFICER } from "./house-bot-world.mts";
 
 type Any = any;
@@ -58,7 +59,30 @@ const LOADING = `${SECTION}/loading.tsx`;
 const GATE = "src/lib/server/house-console-read.ts";
 const ROUTES_MODULE = "src/lib/house-bot/console-routes.ts";
 const read = (rel: string) => readFileSync(join(ROOT, rel), "utf8");
-const sectionFiles = [PAGE, LAYOUT, LOADING].filter((f) => existsSync(join(ROOT, f)));
+/**
+ * ⛔ RULING 513 · THE SECTION'S POPULATION IS THE DIRECTORY, NEVER A TYPED LIST — and this is the class this project
+ * keeps paying for. It was `[PAGE, LAYOUT, LOADING].filter(existsSync)`, three names typed by hand, so every file C7
+ * steps 3-6 add under `src/app/admin/desk/**` — the limits form, the detail page, the wizard, every panel — would have
+ * fallen OUTSIDE the guard that exists to keep the feature's name off the owner's screen, and NOTHING would have gone
+ * red on the day it happened. Walked from disk instead, with the count PRINTED and a floor that only ever rises,
+ * because a walk that finds nothing is the population trap in its purest form.
+ * ⛔ AND A FILE THE SCANNER CANNOT PARSE IS REPORTED, NOT SKIPPED. `domLiterals` parses TypeScript; a `.css` or `.json`
+ * dropped into the section would otherwise be silently outside the lexicon while sitting inside the route. The walk
+ * collects EVERY file; `sectionUnscannable` is what 4.453 refuses.
+ */
+const walkSection = (dir: string, out: string[] = []): string[] => {
+  for (const entry of readdirSync(join(ROOT, dir)).sort()) {
+    const rel = `${dir}/${entry}`;
+    if (statSync(join(ROOT, rel)).isDirectory()) walkSection(rel, out);
+    else out.push(rel);
+  }
+  return out;
+};
+const sectionWalk = () => (existsSync(join(ROOT, SECTION)) ? walkSection(SECTION) : []);
+const isScannable = (rel: string) => rel.endsWith(".ts") || rel.endsWith(".tsx");
+const sectionAllFiles = sectionWalk();
+const sectionFiles = sectionAllFiles.filter(isScannable);
+const sectionUnscannable = sectionAllFiles.filter((f) => !isScannable(f));
 /**
  * ⛔ THE FILES 4.453 WALKS, AND THE GATED READER IS ONE OF THEM. Almost every painted SENTENCE of this section is
  * written in `house-console-read.ts` (the module header says so: "THE COPY IS BUILT HERE, NOT IN THE PAGE"), and the
@@ -832,8 +856,15 @@ if (STORE === "memory") {
   const allLits = lexiconFiles.flatMap((f) => domLiterals(f, read(f)).map((s) => [f, s] as const));
   const litHits = allLits.filter(([, s]) => NEUTRAL.test(s));
   const jsxLits = domLiterals(PAGE, pageRaw);
+  /* ⛔ 513's FLOORS, AND WHY THEY ARE THREE AND NOT ONE. `sectionFiles.length >= 3` alone would pass on a walk that
+   * found three OTHER files; the entry files are therefore named and required, and any file the scanner cannot parse
+   * is refused outright rather than quietly dropped. Every number is PRINTED, so the next session raises the floor to
+   * what a run measured instead of guessing at one. ⛔ A floor only ever rises. */
   ok("4.453 · ⛔ RULING 453 · no string that can reach the DOM — in the section OR in the reader that writes its copy — carries a house word, in text, aria-*, title, placeholder or route metadata",
-    allLits.length >= 120 && litHits.length === 0, j({ files: lexiconFiles.length, literals: allLits.length, hits: litHits }));
+    allLits.length >= 120 && litHits.length === 0
+      && sectionFiles.length >= 3 && [PAGE, LAYOUT, LOADING].every((f) => sectionFiles.includes(f))
+      && sectionUnscannable.length === 0 && lexiconFiles.length === sectionFiles.length + 1,
+    j({ files: lexiconFiles.length, section: sectionFiles.length, walked: sectionAllFiles, unscannable: sectionUnscannable, literals: allLits.length, hits: litHits }));
   /* ⛔ AND THE JSX PROSE IS PROVABLY IN THE POPULATION. `ts.isStringLiteral` does not match a `JsxText` node, so
    * every string written as element content — every table header, every Callout body, the primary button's label —
    * was outside this guard, and the control could not reveal it because all three of its plants were attributes. */
@@ -863,6 +894,42 @@ if (STORE === "memory") {
   ok("4.453 · the three sentences ruling 453 FIXES are the ones in the code, word for word",
     gateCode.includes("The desk is off. Nothing will be staked.") && pageCode.includes('aria-label="Desk master switch"')
       && pageCode.includes('title="Desk"') && gateCode.includes('label: "Accounts"'), "");
+
+  /* ⛔ 4.453.c2 · RULING 513's OWN CONTROL, AND IT IS A REAL FILE ON DISK. A virtual injection would prove the SCANNER
+   * works; only a file actually written under `src/app/admin/desk/` proves the POPULATION is the directory, which is
+   * the whole of 513 — every panel C7 steps 3-6 add lands exactly this way. Written, walked, scanned, then removed in a
+   * `finally`, and the walk is re-run afterwards so a control that leaks its own plant is itself red. The name is not
+   * one Next routes (`page`/`layout`/`route`/`loading`/`template`/`default`/`error`), so it serves nothing even in the
+   * milliseconds it exists, and §4 runs in the MEMORY child only, so there is exactly one writer. */
+  {
+    const PLANT_REL = `${SECTION}/zz-ruling-513-control.tsx`;
+    const PLANT_BODY = `
+export default function Ruling513Control() {
+  return <p title="House bots">Liquidity desk</p>;
+}
+`;
+    const before = sectionWalk();
+    let walkedWith: string[] = [];
+    let plantHits: Array<readonly [string, string]> = [];
+    let threw = "";
+    writeFileSync(join(ROOT, PLANT_REL), PLANT_BODY);
+    try {
+      walkedWith = sectionWalk();
+      const filesWith = [...walkedWith.filter(isScannable), GATE];
+      plantHits = filesWith.flatMap((f) => domLiterals(f, read(f)).map((s) => [f, s] as const))
+        .filter(([f, s]) => f === PLANT_REL && NEUTRAL.test(s));
+    } catch (e) {
+      threw = String((e as Error)?.message ?? e);
+    } finally {
+      unlinkSync(join(ROOT, PLANT_REL));
+    }
+    const after = sectionWalk();
+    ok("4.453.c2 · CONTROL · ⛔ 513 · a file WRITTEN under src/app/admin/desk/ is picked up by the walk and BOTH its painted house words — an attribute and JSX prose — are reported; the plant is gone again afterwards and the walk is back to what it was",
+      threw === "" && !before.includes(PLANT_REL) && walkedWith.includes(PLANT_REL) && walkedWith.length === before.length + 1
+        && plantHits.some(([, s]) => s === "House bots") && plantHits.some(([, s]) => s === "Liquidity desk")
+        && !after.includes(PLANT_REL) && j(after) === j(before),
+      j({ before: before.length, withPlant: walkedWith.length, after: after.length, hits: plantHits.map(([, s]) => s), threw }));
+  }
 
   /* 1.301 · THE SECTION GATE'S NEUTRAL `title`, AND WHY IT IS AN ID FIX RATHER THAN A WORD FIX. The gate titles its own
    * restricted panel from the LAST URL SEGMENT, and `looksLikeId` keeps a prefixed, digit-bearing segment VERBATIM — so
@@ -1195,29 +1262,22 @@ if (STORE === "memory") {
    * ⛔ `console-mem` ONLY: the `rbac` and `admin-nav` entries name labels of other suites, which this run cannot
    * print — they are counted and named in the extra so the exclusion is visible rather than silent. */
   {
-    /* ⛔ TWO TIERS, AND THE SECOND ONE IS NOT A WEAKENING — IT IS THE ONLY WAY TO SEE A CATCH-BRANCH LABEL. Two of the
-     * declarations name assertions a GREEN run never prints: `0.throw` is emitted only from the behavioural region's
-     * own catch, and this roll-call's own two labels are appended after the check runs. So an expect counts as
-     * REACHABLE when the run printed it OR when the label literal is in this suite's DECOMMENTED source — the repo's
-     * own stripper (ruling: never write a second one), so a stale expect quoted in a comment cannot launder itself.
-     * The source-only entries are NAMED in the extra, so a mutation drifting into that tier is visible, not silent. */
+    /* ⛔ THE BLOCK THAT USED TO BE WRITTEN OUT HERE IS NOW `scripts/lib/house-bot-expect-drift.mts` (ruling 505), and
+     * it is called at the end of `house-bot-engine-cases`, `house-bot-money-cases`, `house-bot-seam.test`,
+     * `house-book.test` and `house-page.test` as well — 84 declarations were unaudited while this class was guarded in
+     * ONE file. The two tiers, the sentinel-by-concatenation and the naming of other suites' entries all moved with it;
+     * the two LABELS are unchanged to the byte, because the declared mutation `318-expect-drift` names `1.318`. */
     const selfCode = decomment(readFileSync(fileURLToPath(import.meta.url), "utf8"));
     const LBL = "1.318 · every declared `console-mem` mutation names an assertion THIS run actually printed — an `expect` that matches no label can only ever report WRONG-ASSERTION";
     const LBLC = "1.318 · CONTROL · the roll-call reads this run's own labels and this suite's own source, so a drifted `expect` IS reported and an invented one is never found";
-    const printed = (x: string) => emitted.some((l) => l.includes(x)) || LBL.includes(x) || LBLC.includes(x);
-    const mine = (DECLARED_MUTATIONS as Any[]).filter((m) => m.suite === "console-mem");
-    const elsewhere = (DECLARED_MUTATIONS as Any[]).filter((m) => m.suite !== "console-mem").map((m) => `${m.suite}:${m.name.split(" ")[0]}`);
-    const sourceOnly = mine.filter((m) => !printed(m.expect) && selfCode.includes(m.expect)).map((m) => m.name.split(" ")[0]);
-    const stale = mine.filter((m) => !printed(m.expect) && !selfCode.includes(m.expect)).map((m) => `${m.name.split(" ")[0]} → ${m.expect}`);
-    ok(LBL, mine.length >= 40 && stale.length === 0,
-      j({ declared: mine.length, otherSuites: elsewhere, printedOnlyInSource: sourceOnly, stale }));
-    /* ⚠️ THE SENTINEL IS BUILT BY CONCATENATION, and it has to be: the source tier reads THIS FILE, so a sentinel
-     * written as one literal would find itself and the control could never fail. */
-    const SENTINEL = "1.318 · an assertion that " + "does not exist in this suite";
-    ok(LBLC,
-      emitted.length > 120 && emitted.some((l) => l.includes(mine[0].expect))
-        && !printed(SENTINEL) && !selfCode.includes(SENTINEL),
-      `${emitted.length} labels, ${mine.length} console-mem mutations`);
+    const input = {
+      suiteKeys: ["console-mem"], declarations: DECLARED_MUTATIONS as DeclaredMutation[],
+      emitted, source: selfCode, ownLabels: [LBL, LBLC],
+    };
+    const rc = expectDriftReport(input);
+    ok(LBL, rc.declared >= 40 && rc.stale.length === 0, j(rc));
+    const control = expectDriftControl(input, 120);
+    ok(LBLC, control.pass, control.extra);
   }
 }
 

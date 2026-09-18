@@ -17,13 +17,20 @@ import { readFileSync, existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { decomment } from "./lib/decomment.mts";
+/* ⛔ THE DECLARED MUTATIONS ARE READ BY THIS SUITE (ruling 505), so an `expect` that names no section it can print is
+ * reported HERE, by a suite that runs every day, instead of by a drive nobody has run — see the roll-call at the foot. */
+import { MUTATIONS as DECLARED_MUTATIONS } from "./anchors/house-page.anchors.mjs";
+import { expectDriftReport, expectDriftControl, type DeclaredMutation } from "./lib/house-bot-expect-drift.mts";
 
 const ROOT = process.env.HP_ROOT ?? join(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (rel: string) => readFileSync(join(ROOT, rel), "utf8").replace(/\r\n/g, "\n");
 
 let pass = 0;
 const fails: string[] = [];
+/** Every label this run emitted, so ruling 505's roll-call at the foot of this file measures the suite instead of asserting `true`. */
+const emitted: string[] = [];
 const ok = (n: string, c: boolean, d = "") => {
+  emitted.push(n);
   if (c) { pass++; console.log(`  ok   ${n}`); }
   else { fails.push(`${n}${d ? ` — ${d}` : ""}`); console.log(`  FAIL ${n}${d ? `\n         ${d}` : ""}`); }
   return c;
@@ -385,6 +392,26 @@ console.log("\n§15 · ⭐ with no database, every reader returns null — not 0
   ok("15.1 · ⭐ …so the page's composition yields NO position at all",
     (reads[0][1] === null && reads[1][1] === null),
     "and `accounts && cash && …` therefore renders every tile `unavailable`");
+}
+
+/* ⛔ RULING 505's ROLL-CALL OVER THE DECLARED MUTATIONS, AND IT MUST BE LAST — it reads the labels THIS run printed.
+ * ⛔ AND IT MATCHES THE WAY THIS SUITE'S DRIVE MATCHES, NOT THE WAY THE OTHER FIVE DO. `red:house-page` does not do
+ * `includes`: it takes each FAIL line, strips the verdict word and compares the label's FIRST TOKEN with the declared
+ * `expect` (`failedSections`). A roll-call here using `includes` would accept declarations the drive then rejects —
+ * the "check that passes through the wrong field" class — so `match: "section"` is the drive's own rule, and the
+ * source tier is off by construction (a token such as `3.1` is a substring of half this file). Every label this suite
+ * owns is printed on a green run, so the printed tier is the whole population. */
+{
+  const LBL = "16.505 · every declared house-page mutation names a SECTION this run actually printed — an expect whose token no label carries can only ever report a MISS";
+  const LBLC = "16.505 · CONTROL · the roll-call reads this run's own section tokens, so a real declaration is found and an invented one is never found";
+  const input = {
+    suiteKeys: [] as string[], declarations: DECLARED_MUTATIONS as DeclaredMutation[],
+    emitted, source: "", ownLabels: [LBL, LBLC], match: "section" as const,
+  };
+  const rc = expectDriftReport(input);
+  ok(LBL, rc.declared >= 16 && rc.stale.length === 0, JSON.stringify(rc));
+  const control = expectDriftControl(input, 80);
+  ok(LBLC, control.pass, control.extra);
 }
 
 /* ═══ FOOTER ══════════════════════════════════════════════════════════════════════════ */

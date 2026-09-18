@@ -3,16 +3,26 @@
  * Postgres, one on the memory store — never on its own. Every line carries its store.
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { loadWorld, HOLDER_HASH, OFFICER } from "./house-bot-world.mts";
 import { EXIT_WINDOW_GRID, exitGridCase } from "./house-bot-exit-grid.mts";
 // Ruling 175 · this suite's notice words are deliberately BROADER than the shared absence words (bare house, nyumba, 50pick).
 import { extendHouseWords, houseHits } from "./house-bot-vocabulary.mjs";
+import { decomment } from "./decomment.mts";
+/* ⛔ THE DECLARED MUTATIONS ARE READ BY THIS SUITE (ruling 505), so an `expect` that names no label it can print is
+ * reported HERE, by a suite that runs every day, instead of by a drive nobody has run — see the roll-call at the foot. */
+import { MUTATIONS as DECLARED_MUTATIONS } from "../anchors/house-bot-money.anchors.mjs";
+import { expectDriftReport, expectDriftControl, type DeclaredMutation } from "./house-bot-expect-drift.mts";
 
 type Any = any;
 const STORE = process.env.HB_MONEY_STORE ?? "unknown";
 let pass = 0, fail = 0;
+/** Every label this run emitted, so ruling 505's roll-call at the foot of this file measures the suite instead of asserting `true`. */
+const emitted: string[] = [];
 const ok = (l: string, c: boolean, x = "") => {
   c ? pass++ : fail++;
+  emitted.push(l);
   console.log(`${c ? "PASS" : "FAIL"} [${STORE}] ${l}${x ? ` — ${x}` : ""}`);
 };
 const section = (t: string) => console.log(`\n[${STORE}] ${t}`);
@@ -1020,6 +1030,27 @@ section("§11 · ruling 173 · the four money reads exclude house rows before th
       positionId: null, amlReason: null, createdAt: at, updatedAt: at, completedAt: at,
     } as Any);
   }
+}
+
+/* ⛔ RULING 505's ROLL-CALL OVER THE DECLARED MUTATIONS, AND IT MUST BE LAST — it reads the labels THIS run printed.
+ * `red:house-bot-money` matches a run's FAIL lines with `fails.find((l) => l.includes(d.expect))`, so an `expect` that
+ * is not a substring of any label this suite can print is classed WRONG-ASSERTION, `missed++`, and the drive exits 1 —
+ * red for the wrong reason, which inside C5-8's single batch run reads exactly like success.
+ * ⛔ The `caps-mem`, `caps-pg`, `seam` and `designation-mem` entries in this same file name labels of OTHER suites,
+ * which this run cannot print — they are counted and NAMED in the extra, so the exclusion is visible, not silent. */
+{
+  const KEY = STORE === "memory" ? "money-mem" : "money-pg";
+  const selfCode = decomment(readFileSync(fileURLToPath(import.meta.url), "utf8"));
+  const LBL = `1.505 · every declared \`${KEY}\` mutation names an assertion THIS run actually printed — an \`expect\` that matches no label can only ever report WRONG-ASSERTION`;
+  const LBLC = `1.505 · CONTROL · the roll-call reads this run's own labels and this suite's own source, so a drifted \`expect\` IS reported and an invented one is never found`;
+  const input = {
+    suiteKeys: [KEY], declarations: DECLARED_MUTATIONS as DeclaredMutation[],
+    emitted, source: selfCode, ownLabels: [LBL, LBLC],
+  };
+  const rc = expectDriftReport(input);
+  ok(LBL, rc.declared >= (STORE === "memory" ? 23 : 2) && rc.stale.length === 0, JSON.stringify(rc));
+  const control = expectDriftControl(input, 80);
+  ok(LBLC, control.pass, control.extra);
 }
 
 console.log(`\n@@SUMMARY ${JSON.stringify({ pass, fail, store: STORE })}`);
