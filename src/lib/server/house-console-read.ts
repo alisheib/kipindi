@@ -1054,7 +1054,8 @@ export type ConsoleLimitsSaveInput = { baseVersion: number; values: Record<strin
  * never a column name (372(b), D19).
  */
 export type ConsoleLimitsSaveResult =
-  | { ok: true; limitsVersion: number; changed: number }
+  /** ⛔ `recorded: false` means the limits DID change and the compliance row did not — the page says both. */
+  | { ok: true; limitsVersion: number; changed: number; recorded: boolean }
   | { ok: false; error: string; field?: string };
 
 /**
@@ -1105,7 +1106,7 @@ export async function houseLimitsSaveForConsole(
   }
 
   const saved = await saveHouseBotLimits({ actorId: viewerUserId, baseVersion: input.baseVersion, values });
-  if (saved.ok) return { ok: true, limitsVersion: saved.limitsVersion, changed: saved.changes.length };
+  if (saved.ok) return { ok: true, limitsVersion: saved.limitsVersion, changed: saved.changes.length, recorded: saved.recorded };
   if (saved.code !== "INVALID") return { ok: false, error: SAVE_COPY[saved.code] };
   return {
     ok: false,

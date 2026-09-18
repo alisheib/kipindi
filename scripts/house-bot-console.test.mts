@@ -36,7 +36,7 @@
  * state: **memory 262, Postgres 140**.
  * ⭐ RAISED AGAIN at replan ruling 537 — the limits SAVE, its refusal, its audit row, its CAS conflict under two
  * real writers, its neutral keys and the rendered field list — to what `npm run test:house-bot-console` PRINTED
- * on this run: **memory 303, Postgres 166**.
+ * on this run: **memory 305, Postgres 168** (303/166 before the served drive found the audit-failure lie).
  * ⛔ A floor only ever rises, and
  * only to a count a run printed — never to an arithmetic guess.
  *
@@ -47,6 +47,6 @@ import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 await runTwoStores({
   suite: "test:house-bot-console",
   casesFile: "scripts/lib/house-bot-console-cases.mts",
-  minPass: { memory: 303, postgres: 166 },
+  minPass: { memory: 305, postgres: 168 },
   dbPrefix: "hb_console",
 });

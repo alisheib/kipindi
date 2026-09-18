@@ -1459,8 +1459,8 @@ section("§2b · the limits save");
     const v = await versionNow();
     const done = await save(OFFICER, postAt(v, { [keyOf("gCapDailyStakeTzs")]: "777000" }));
     const row = await control();
-    ok("2.537 · the Owner's save lands: the column moves, the version advances by exactly one, and the result counts what changed",
-      done.ok === true && done.limitsVersion === v + 1 && done.changed === 1
+    ok("2.537 · the Owner's save lands: the column moves, the version advances by exactly one, the result counts what changed and says its record was written",
+      done.ok === true && done.limitsVersion === v + 1 && done.changed === 1 && done.recorded === true
         && row.gCapDailyStakeTzs === 777_000 && row.limitsVersion === v + 1,
       j({ done, version: row.limitsVersion, value: row.gCapDailyStakeTzs }));
 
@@ -1477,6 +1477,42 @@ section("§2b · the limits save");
         && CONST.isAllowedHouseAuditPayload(entry.payload) === true
         && !/label|displayName|phone|handle|Player #/i.test(all(entry.payload)),
       j({ actorId: entry?.actorId, payload: entry?.payload }));
+  }
+
+  /* ⛔ A SAVE THAT LANDED MAY NOT REPORT THAT NOTHING WAS SAVED — AND THIS WAS MEASURED ON A SERVED BUILD.
+   *
+   * The audit module is documented as never rejecting and it fails OPEN on a database outage, so the first pass
+   * awaited it after the write and let it speak for itself. Driven against `next start`, `chainSecret()` threw
+   * outright (`NODE_ENV=production` without a distinct `AUDIT_CHAIN_SECRET`) — past the in-memory fallback too —
+   * and the officer was told "Nothing was saved. Reload the page and try again." while the control row HAD moved.
+   * The next thing an officer does with that sentence is type the change again.
+   * ⛔ THE FAULT IS INJECTED THROUGH THE AUDIT MODULE'S OWN PRECONDITION, not through a seam invented for a test:
+   * under `NODE_ENV=production` it REQUIRES a chain secret distinct from the session secret, and both halves of
+   * that are restored in a `finally`. ⛔ And the gap is never swallowed: `recorded` is FALSE, which is what makes
+   * the page render a warning instead of a success. */
+  {
+    const v = await versionNow();
+    const before = (await control()).gCapPerMarketTzs;
+    const env0 = { node: process.env.NODE_ENV, chain: process.env.AUDIT_CHAIN_SECRET, session: process.env.SESSION_SECRET };
+    let landed: Any;
+    try {
+      (process.env as Any).NODE_ENV = "production";
+      process.env.SESSION_SECRET = "same-secret-for-both-32-characters";
+      process.env.AUDIT_CHAIN_SECRET = "same-secret-for-both-32-characters";
+      landed = await save(OFFICER, postAt(v, { [keyOf("gCapPerMarketTzs")]: "44000" }));
+    } finally {
+      (process.env as Any).NODE_ENV = env0.node;
+      if (env0.chain === undefined) delete process.env.AUDIT_CHAIN_SECRET; else process.env.AUDIT_CHAIN_SECRET = env0.chain;
+      if (env0.session === undefined) delete process.env.SESSION_SECRET; else process.env.SESSION_SECRET = env0.session;
+    }
+    const row = await control();
+    ok("2.537 · a save whose COMPLIANCE ROW cannot be written still reports the truth: it LANDED, and it says the record did not",
+      landed.ok === true && landed.recorded === false && landed.limitsVersion === v + 1
+        && row.gCapPerMarketTzs === 44_000 && row.limitsVersion === v + 1 && before !== 44_000,
+      j({ landed, before, after: row.gCapPerMarketTzs }));
+    const good = await save(OFFICER, postAt(await versionNow(), { [keyOf("gCapPerMarketTzs")]: "45000" }));
+    ok("2.537 · CONTROL · with the chain secret back, the same save reports its record WRITTEN — so the flag above is a measurement and not a constant",
+      good.ok === true && good.recorded === true, j(good));
   }
 
   /* ⛔ 537 · THE CAS ROUND TRIP, WITH TWO REAL WRITERS. A "concurrency check" that serialises itself proves nothing,

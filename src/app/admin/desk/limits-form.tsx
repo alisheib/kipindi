@@ -192,7 +192,7 @@ export function DeskLimitsForm({
    * file (384). A refusal carries the sentence AND, when there is one to fix, the field's neutral key.
    */
   onSave: (input: { baseVersion: number; values: Record<string, string> }) => Promise<
-    { ok: true; limitsVersion: number; changed: number } | { ok: false; error: string; field?: string }
+    { ok: true; limitsVersion: number; changed: number; recorded: boolean } | { ok: false; error: string; field?: string }
   >;
 }) {
   const [pending, start] = useTransition();
@@ -255,10 +255,14 @@ export function DeskLimitsForm({
       setErrors({});
       markSaved();
       router.refresh();
+      /* ⛔ A SAVE THAT LANDED WITHOUT ITS COMPLIANCE ROW SAYS SO. The change is real either way — telling the
+         officer it failed would send them to type it a second time — but a permanent record that did not write
+         is not a success, so the tone and the sentence are the warning ones. */
+      const changed = result.changed === 1 ? "1 limit changed." : `${result.changed} limits changed.`;
       deferToast({
         title: "Limits saved",
-        description: result.changed === 1 ? "1 limit changed." : `${result.changed} limits changed.`,
-        variant: "success",
+        description: result.recorded ? changed : `${changed} The permanent record could not be written — tell an administrator.`,
+        variant: result.recorded ? "success" : "warning",
       });
     });
   };
