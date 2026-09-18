@@ -950,7 +950,14 @@ section("§2 · the strip, the band, the roster and every failure");
   {
     const REQ = R.REQUIRED_FOR_MASTER_ON as readonly string[];
     const EXEMPT = R.CLEAR_EXEMPT as readonly string[];
-    const UNCONDITIONAL = ["stakeMinTzs", "stakeMaxTzs", "capPerMarketTzs", "balanceFloorTzs", "capDailyStakeTzs", "capDailyLossTzs", "capOpenExposureTzs"];
+    /* ⛔ THE THIRD POPULATION IS DERIVED FROM `cap-precheck.ts`, NOT TYPED. It was a list of seven written here,
+     * and the control below only VALIDATED each typed name against the source — so a cap that BECAME unconditional,
+     * or a new one, was invisible to the guard whose whole subject is "which caption does this field get". The
+     * fields the seam reads before it ever enters `if (f.staffChosen)` are read off the function itself. */
+    const precheckSrc = decomment(read("src/lib/server/house-bot/cap-precheck.ts"));
+    const fnAt = precheckSrc.indexOf("export function capPrecheck(");
+    const preStaff = precheckSrc.slice(fnAt, precheckSrc.indexOf("if (f.staffChosen)", fnAt));
+    const UNCONDITIONAL = [...new Set([...preStaff.matchAll(/\bb\.(\w+)/g)].map((m) => m[1]))];
     const MASTER = "Not set — the master switch cannot be turned on.";
     const TARGETED = "Not set — targeted and manual stakes cannot be placed.";
     const ACCOUNT = "Not set — this account cannot place a bet.";
@@ -968,13 +975,16 @@ section("§2 · the strip, the band, the roster and every failure");
         && (R.LIMIT_FIELDS as readonly string[]).filter((f) => EXEMPT.includes(f) && R.FIELD_META[f].unit === "TZS").length === 1
         && !REQ.some((f) => EXEMPT.includes(f)) && !UNCONDITIONAL.some((f) => REQ.includes(f) || EXEMPT.includes(f)),
       j({ req: REQ.length, exempt: EXEMPT.length, uncond: UNCONDITIONAL.length }));
-    /* ⛔ AND THE CAPS THE SEAM READS UNCONDITIONALLY ARE READ FROM `cap-precheck.ts` ITSELF, not typed here: the list
-     * above is only useful while it is the code's own list. A cap that becomes conditional fails this. */
-    const precheck = decomment(read("src/lib/server/house-bot/cap-precheck.ts"));
-    const staffBlock = precheck.slice(precheck.indexOf("if (f.staffChosen)"));
-    ok("1.364 · CONTROL · every cap named unconditional really is read OUTSIDE `if (f.staffChosen)` in `cap-precheck.ts`",
-      UNCONDITIONAL.every((f) => precheck.includes(`b.${f}`) && !staffBlock.includes(`b.${f}`)),
-      j(UNCONDITIONAL.filter((f) => !precheck.includes(`b.${f}`) || staffBlock.includes(`b.${f}`))));
+    /* ⛔ AND THE DERIVATION IS SHOWN TO HAVE READ SOMETHING, AND TO HAVE READ THE RIGHT HALF. A slice that found
+     * nothing yields an EMPTY population, and `[].every(…)` is the absence trap in its purest form; a slice that ran
+     * past `if (f.staffChosen)` would drag the staff-chosen caps in and give them the wrong caption. Both are
+     * refused: a floor of seven, and every derived name must be absent from the staff-chosen block. */
+    const staffBlock = precheckSrc.slice(precheckSrc.indexOf("if (f.staffChosen)"));
+    ok("1.364 · CONTROL · the unconditional population is DERIVED from `cap-precheck.ts` — at least seven caps, each really read OUTSIDE `if (f.staffChosen)`",
+      fnAt > 0 && UNCONDITIONAL.length >= 7
+        && UNCONDITIONAL.every((f) => precheckSrc.includes(`b.${f}`) && !staffBlock.includes(`b.${f}`))
+        && (R.CLEAR_EXEMPT as readonly string[]).every((f) => !UNCONDITIONAL.includes(f)),
+      j({ derived: UNCONDITIONAL }));
   }
 
   /* 1.364 / 1.372 / 1.409 · the panel itself: five usage rows, an unset cap with NO bar, and the read-only list. */
@@ -1980,6 +1990,30 @@ export default function Ruling513Control() {
       /caption\?: undefined; captionText\?: undefined/.test(bar) && /caption: ReactNode;/.test(bar) && /captionText: string;/.test(bar), "");
     ok("1.362 · the one existing caller passes no caption and keeps the kit's own line (§K5: extend the kit, never fork it)",
       !/caption(Text)?=/.test(decomment(read("src/app/admin/retention/purge-chain-card.tsx"))), "");
+    /* ⛔ AND THE PAIR IS RENDERED, NOT GREPPED (replan review, 2026-09-18). Every term above is a regex over source
+     * text, and `ProgressBar` is rendered by no suite at all — so a version that painted BOTH lines, or that stamped
+     * `[object Object]` into `aria-valuetext`, would satisfy the whole proof of the discriminated pair. The kit's own
+     * `admin-charts.test.mts` already renders its components with `renderToStaticMarkup`; this does the same. */
+    {
+      const { createElement: h }: Any = await import("react");
+      const { renderToStaticMarkup }: Any = await import("react-dom/server");
+      const { ProgressBar }: Any = await import("../../src/components/ui/progress-bar.tsx");
+      const withCaption = renderToStaticMarkup(h(ProgressBar, {
+        value: 4_000, max: 10_000, label: "Daily stake limit", captionText: "Daily stake limit · used TZS 4,000 of TZS 10,000",
+        caption: h("span", null, "Daily stake limit · used TZS 4,000 of TZS 10,000"),
+      }));
+      const without = renderToStaticMarkup(h(ProgressBar, { value: 1, max: 2, label: "Rows purged" }));
+      ok("1.362 · RENDERED · with a caption the bar paints EXACTLY ONE line, the kit's own tracked number is gone, and `aria-valuetext` carries the PLAIN sentence",
+        (withCaption.match(/<p /g) ?? []).length === 1
+          && !withCaption.includes("4,000 of 10,000")
+          && withCaption.includes('aria-valuetext="Daily stake limit · used TZS 4,000 of TZS 10,000"')
+          && !withCaption.includes("[object Object]"),
+        j({ paragraphs: (withCaption.match(/<p /g) ?? []).length }));
+      ok("1.362 · RENDERED · CONTROL · without a caption the SAME component paints the kit's built-in line and carries no `aria-valuetext` — so the branch above is a measurement",
+        (without.match(/<p /g) ?? []).length === 1 && without.includes("1 of 2")
+          && !without.includes("aria-valuetext") && !without.includes("[object Object]"),
+        j({ builtIn: /1 of 2/.test(without), valuetext: without.includes("aria-valuetext") }));
+    }
     /* ⛔ EVERY MONEY BAR UNDER THE SECTION PASSES BOTH PROPS, BUILT FROM THE SAME EXPRESSIONS, AND NONE IS CLARET. */
     const bars = [...pageCode.matchAll(/<ProgressBar[\s\S]*?\/>/g)].map((m) => m[0]);
     ok("1.409 · every money bar passes BOTH caption props from the same row, names its cap FIRST, and is never claret",
@@ -2197,17 +2231,34 @@ export default function Ruling513Control() {
      * ⚠️ RECORDED, NOT OVERSTATED: the console has no countdown until C7 step 4's action row. What IS asserted now
      * is the rule that decides what step 4 may add — no new countdown component under the section, and no client
      * file reaching `@/lib/utils`' date helpers, which pull server platform config into a chunk (trap E-322). */
+    /* ⛔ A POSITIVE TERM, BECAUSE A PURE ABSENCE READS AN EMPTY POPULATION AS COMPLIANCE. With no client file — or
+     * with one the walk failed to read — every `!test` below is trivially true. */
     ok("1.389 · no client file of the section imports `@/lib/utils`' date helpers, which reach server platform config from a chunk (trap E-322)",
-      !/from "@\/lib\/utils"/.test(clientCode) && !/formatEat|getPlatformTimezone|eatDayKey/.test(clientCode), "");
+      clientFiles.length >= 1 && clientCode.length > 200
+        && !/from "@\/lib\/utils"/.test(clientCode) && !/formatEat|getPlatformTimezone|eatDayKey/.test(clientCode),
+      j({ clientFiles, chars: clientCode.length }));
     ok("1.389 · the section adds NO countdown component of its own — the kit's `CountdownPill` is the one home, and it takes server-computed seconds",
       sectionFiles.every((f) => !/function\s+\w*Countdown|const\s+\w*Countdown\s*=/.test(decomment(read(f))))
         && existsSync(join(ROOT, "src/components/ui/countdown-pill.tsx")), "");
     /* ⛔ AND BOTH HALVES OF THAT ASSERTION CAN FIRE: a planted date-helper import and a planted local countdown are
      * each caught by the very expressions above, so the two absences are measurements and not unreached scans. */
-    ok("1.389 · CONTROL · a planted `@/lib/utils` date import and a planted local Countdown component are each reported by the same two scans",
-      /from "@\/lib\/utils"/.test(`${clientCode}
-import { formatEat } from "@/lib/utils";`)
-        && /function\s+\w*Countdown|const\s+\w*Countdown\s*=/.test("function DeskCountdown() { return null; }"), "");
+    /* ⛔ THE CONTROL EXERCISES THE SCAN, IN BOTH DIRECTIONS, AGAINST THE REAL POPULATION — it did not. It built a
+     * string containing the pattern and asked whether it contained the pattern (and the second half tested a pattern
+     * against a CONSTANT), so it was true for an empty `clientCode` and for a `sectionFiles` that found nothing: a
+     * control that has never been shown to REJECT anything is not a control. The plant now goes into a copy of the
+     * real files, the same expression is re-run over it, and the ORIGINAL is required to stay clean. */
+    ok("1.389 · CONTROL · planting a date-helper import into the REAL client code, and a local Countdown into a REAL section file, makes the same two scans report — and the originals do not",
+      (() => {
+        const plantedClient = `${clientCode}\nimport { formatEat } from "@/lib/utils";`;
+        const bodies = sectionFiles.map((f) => decomment(read(f)));
+        const plantedSection = [...bodies, "function DeskCountdown() { return null; }"];
+        const scanImport = (code: string) => /from "@\/lib\/utils"/.test(code) || /formatEat|getPlatformTimezone|eatDayKey/.test(code);
+        const scanCountdown = (all: string[]) => !all.every((b) => !/function\s+\w*Countdown|const\s+\w*Countdown\s*=/.test(b));
+        return clientFiles.length >= 1 && bodies.length >= 4
+          && scanImport(plantedClient) && !scanImport(clientCode)
+          && scanCountdown(plantedSection) && !scanCountdown(bodies);
+      })(),
+      j({ clientFiles: clientFiles.length, sectionFiles: sectionFiles.length }));
 
     /* ── 1.342 · THE AUDIENCE VERDICT IS RESOLVED ONCE PER RENDER PASS, INSIDE THE MODULE ────────────────────────
      * `db.user.findById` is a real `findUnique` returning the WHOLE row including `avatarDataUrl` — a column
@@ -2249,9 +2300,15 @@ import { formatEat } from "@/lib/utils";`)
     /* ⛔ THE CONTROL IS THE DERIVED FORM 343 REFUSES: a header value reads as a VALUE to the arity/own-route pin,
      * not as the literal it insists on, so a mistyped route would silently widen a page's read audience to a whole
      * RBAC domain — and the scan above must be able to see it. */
-    ok("1.343 · CONTROL · the same scan fires on a planted header-derived route argument, so the absence above is a measurement",
-      /headers\(\)|x-pathname/.test(`${pageCode}
-const r = headers().get("x-pathname");`), "");
+    /* ⛔ BOTH DIRECTIONS, AGAINST THE REAL PAGE. It tested the pattern against a string it had just put the
+     * pattern into, so it was true whatever `pageCode` held — including nothing at all. */
+    ok("1.343 · CONTROL · planting a header-derived route argument into the REAL page makes the same scan report, and the real page does not",
+      (() => {
+        const scan = (code: string) => /headers\(\)|x-pathname/.test(code);
+        return pageCode.length > 2_000 && gateCalls.length >= 3
+          && scan(`${pageCode}\nconst r = headers().get("x-pathname");`) && !scan(pageCode);
+      })(),
+      j({ pageChars: pageCode.length, gateCalls: gateCalls.length }));
 
     /* ── 1.332 · X13 · A HOLDER WHO IS ALSO AN ADMIN STAYS INSIDE THE AUDIENCE ───────────────────────────────────
      * Asserted DELIBERATELY, so a future silent holder-exclusion turns this case red and has to be ruled rather
@@ -2272,7 +2329,15 @@ const r = headers().get("x-pathname");`), "");
    * assertion is a line on the screen rather than a silence. ⛔ `BUILT_THROUGH` only ever rises, and it rises in the
    * commit that builds the step. */
   {
-    const BUILT_THROUGH = 3;
+    /* ⛔ `BUILT_THROUGH` IS READ OFF THE TREE, NOT TYPED. It was a hand ratchet with no tie to anything the build
+     * produces, so a step-4 build that forgot to bump it would silently stop requiring 1.399 — the roll-call would
+     * report every owed assertion as present because none was owed. Each rung is the artefact that step creates. */
+    const BUILT_THROUGH =
+      existsSync(join(ROOT, `${SECTION}/new/page.tsx`)) ? 6
+        : (CR.CONSOLE_TABS as readonly string[]).includes("activity") ? 5
+          : existsSync(join(ROOT, DETAIL_PAGE)) ? 4
+            : (CR.CONSOLE_TABS as readonly string[]).includes("limits") ? 3
+              : 1;
     type Owed = { id: string; step: number; owner: string; what: string };
     const D19: Owed[] = [
       { id: "1.380", step: 1, owner: "console", what: "the gate's position, the literal route, force-dynamic, no gate in the loader" },
@@ -2310,9 +2375,29 @@ const r = headers().get("x-pathname");`), "");
     const dueHere = D19.filter((d) => d.step <= BUILT_THROUGH && d.owner === "console" && d.id !== "1.398");
     const missing = dueHere.filter((d) => !emitted.some((l) => l.startsWith(`${d.id} `)));
     const later = D19.filter((d) => d.step > BUILT_THROUGH || d.owner !== "console");
+    /* ⛔ THE POPULATION IS DERIVED FROM THE SPEC, NOT COUNTED BY HAND. `D19.length === 23` was a number tied to
+     * nothing on disk: a ruling added to Area 5 would have joined the spec and never the roll-call, which is the
+     * exact failure 506 found twelve instances of. Area 5's own `#### <n>.` headings ARE the closed list. */
+    const area5Src = (() => {
+      const spec = read("plans/house-bots/C7-SPEC.md");
+      const from = spec.indexOf("### Area 5 — D19 for the console itself");
+      const to = spec.indexOf("### Area 6 —", from);
+      return from >= 0 && to > from ? spec.slice(from, to) : "";
+    })();
+    const area5 = [...area5Src.matchAll(/^#### (3[89]\d)\. /gm)].map((m) => `1.${m[1]}`);
+    const extras = D19.map((d) => d.id).filter((id) => !area5.includes(id));
     ok("1.398 · ROLL-CALL · every D19 assertion owed at or before the step this tree has built was PRINTED by this run, and every later one is named with its step and its instrument",
-      missing.length === 0 && dueHere.length >= 9 && D19.length === 23,
-      j({ builtThrough: BUILT_THROUGH, dueHere: dueHere.length, missing: missing.map((d) => `${d.id} (${d.what})`), later: later.map((d) => `${d.id}@step${d.step}:${d.owner}`) }));
+      missing.length === 0 && dueHere.length >= 9
+        && area5.length >= 19 && area5.every((id) => D19.some((d) => d.id === id))
+        && j(extras) === j(["1.332", "1.342", "1.343"]),
+      j({ builtThrough: BUILT_THROUGH, dueHere: dueHere.length, area5: area5.length, notInRollCall: area5.filter((id) => !D19.some((d) => d.id === id)), missing: missing.map((d) => `${d.id} (${d.what})`), later: later.map((d) => `${d.id}@step${d.step}:${d.owner}`) }));
+    /* ⛔ AND THE DERIVATION IS SHOWN TO HAVE READ THE SPEC: an empty slice makes `every` trivially true, which is
+     * the population trap the roll-call itself was written against. */
+    ok("1.398 · CONTROL · Area 5 was really parsed out of C7-SPEC §2, and `BUILT_THROUGH` is read off the tree rather than typed",
+      area5Src.length > 2_000 && area5.includes("1.380") && area5.includes("1.399")
+        && BUILT_THROUGH === ((CR.CONSOLE_TABS as readonly string[]).includes("limits") ? 3 : 1)
+        && !existsSync(join(ROOT, DETAIL_PAGE)) && !existsSync(join(ROOT, `${SECTION}/new/page.tsx`)),
+      j({ area5Chars: area5Src.length, area5, builtThrough: BUILT_THROUGH }));
     /* ⛔ THE CONTROL IS THE POINT: the roll-call must be able to report an id that was never written, which is the
      * failure mode it exists for. An invented id is looked for and must NOT be found; a real one must be. */
     ok("1.398 · CONTROL · the roll-call reads this run's own labels — an id that was never written IS reported, and one that was is not",

@@ -569,7 +569,20 @@ export const MUTATIONS = [
     file: BAR,
     from: `        aria-valuetext={captionText}`,
     to: `        aria-label={label}`,
-    expect: "1.362 · the kit's built-in numeric line renders ONLY when no caption is given",
+    /* ⚠️ RE-POINTED 2026-09-18: it named the BUILT-IN LINE assertion, which is a different subject. The
+       rendered case is the one that can see an announcement that never reaches the DOM. */
+    expect: "1.362 · RENDERED · with a caption the bar paints EXACTLY ONE line",
+    suite: "console-mem",
+  },
+  {
+    /* ⛔ THE DEFECT RULING 362 SPLIT THE PAIR FOR: `aria-valuetext` is a STRING attribute, so a ReactNode stamps
+       `[object Object]` into the DOM for every screen-reader user AND into any served body a scanner reads. No
+       source regex can see that — only a render can. */
+    name: "362-valuetext-node · the ReactNode caption is handed to `aria-valuetext`, which stamps [object Object]",
+    file: BAR,
+    from: `        aria-valuetext={captionText}`,
+    to: `        aria-valuetext={(caption ?? captionText) as unknown as string}`,
+    expect: "1.362 · RENDERED · with a caption the bar paints EXACTLY ONE line",
     suite: "console-mem",
   },
   {
