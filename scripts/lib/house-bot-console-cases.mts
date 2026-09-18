@@ -346,6 +346,21 @@ section("§2 · the strip, the band, the roster and every failure");
         [...tail].length === bound && tail.endsWith("\u2026") && tail.startsWith("R".repeat(20))
           && (await w.dal.houseBotControlStore.get()).switchedReason.length === 300,
         j({ painted: [...tail].length, bound, stored: 300 }));
+      /* ⛔ THE LABEL'S CLAMP IS PINNED AT SOURCE, AND THAT IS THE HONEST INSTRUMENT FOR IT.
+         `HouseBot_label_check` bounds a label at the SAME 32 code points, so the clamp cannot fire from any
+         reachable fixture — measured: the declared mutation `474-label-unclamped` left every behavioural
+         assertion green. It exists so that a widening of that storage check cannot walk straight onto the screen,
+         and a pin on the call site is what makes that intent enforceable. The bound itself is read from the named
+         list, never typed at the site, so the two can never drift. */
+      if (STORE === "memory") {
+        const gateSrc = decomment(read(GATE));
+        ok("1.474 · both exemptions are CLAMPED at their own render site, with the bound read from the named list rather than typed there",
+          /label: clampOperatorText\(bot\.label, operatorBound\("label"\)\)/.test(gateSrc)
+            && /const reasonText = control\?\.switchedReason \? clampOperatorText\(control\.switchedReason, operatorBound\("switchedReason"\)\) : null;/.test(gateSrc)
+            && (gateSrc.match(/clampOperatorText\(/g) ?? []).length === 3
+            && !/maxCodePoints: \d+/.test(gateSrc.slice(gateSrc.indexOf("function clampOperatorText"))),
+          j({ sites: (gateSrc.match(/clampOperatorText\(/g) ?? []).length }));
+      }
       STATES.push(["strip-long-reason", longReason]);
       await w.dal.houseBotControlStore.switchOff({ cause: "MANUAL", byId: OFFICER, reason: "test" });
     }

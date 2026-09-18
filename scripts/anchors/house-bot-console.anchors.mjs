@@ -674,7 +674,7 @@ export const MUTATIONS = [
     file: GATE,
     from: `      label: clampOperatorText(bot.label, operatorBound("label")),`,
     to: `      label: bot.label,`,
-    expect: "1.474 · exactly TWO operator-typed values are exempted from 453",
+    expect: "1.474 · both exemptions are CLAMPED at their own render site",
     suite: "console-mem",
   },
   {
