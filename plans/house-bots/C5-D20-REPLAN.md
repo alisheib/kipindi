@@ -982,3 +982,75 @@ bots and what keeps D19 true").
      - ⛔ `npm ci` / `npm install` / `npm rebuild` stay forbidden there as everywhere.
      - **The sha is written into the PROGRESS row.** A baseline whose commit is not recorded is not
        a control.
+
+
+534. **A MERGE TO `main` IS A PRODUCTION DEPLOY, so it happens only at a GREEN COMPLETE checkpoint
+     on ruling 529's own evidence — never after a slice.** Measured from the repository's own docs,
+     not assumed: `docs/bonus-wallet-plan.md:469` records *"Deploy: Railway auto-deploys on push
+     (https://www.50pick.tz)"*, and `docs/gli-remediation-tracker.md:42` carries
+     *"Disable Railway auto-deploy from `main`; prod from tagged releases"* as an **unchecked `[ ]`
+     blocker**. So the remediation that would have separated `main` from production has NOT been
+     done, and pushing `main` ships to players.
+     - ⚠️ **Consequence already in effect:** ruling 529's merge means the desk is in all likelihood
+       ALREADY on production — Owner-only, master switch OFF, no account designated, so a page to
+       look at and no behaviour to any player. ⛔ NOT VERIFIED and deliberately so: this programme
+       may not touch production, *not even a read*, so no session confirms it by probing. Ali is
+       told to look for himself.
+     - **The rule.** Ruling 471 delegates the merge and Ali re-confirmed it 2026-09-18 with full
+       scope (ruling 536). It is exercised only when the branch is green by the SAME evidence 529
+       required: no failing suite clean `origin/main` does not also have (the red-by-red against the
+       baseline at its recorded sha, ruling 533); D19 proven in the ARTEFACT by a fresh
+       `next build` + `verify:house-bot-bundle` **with its planted control firing**; and
+       `qa:house-bot-console-probe` at `leaks: 0` **with a non-zero ADMIN control on every console
+       instance**. A scanner that finds nothing and a broken scanner print the same line.
+     - ⛔ The branch is pushed CONSTANTLY; `main` is pushed DELIBERATELY. The two are not the same
+       act and must not acquire the same cadence.
+     - ⛔ The master switch ships OFF and no session turns it on (D19, PLAN §11, ruling 500(c)).
+       What a deploy delivers is a console, never a stake.
+
+535. **THE SKIPPED-RUN REGISTER HAS THREE DEFECTS OF ITS OWN, and a register that misstates itself
+     is the instrument this programme most depends on.** Found 2026-09-18 while counting the
+     remaining work, not by a review:
+     - **(a) Row 29 is used TWICE, for two unrelated items.** §1d row 29 is the ONE mutation batch
+       for the assertions rulings 505/512/513/517/518/519 added; §3 row 29 is the release gate's
+       blind probe control. Two rows under one id means a session clearing "29" clears whichever it
+       read first and believes the other is done.
+     - **(b) The blind control is filed under §3 "Cleared" while its own text says NOT MEASURED.**
+       Ruling 529 ordered it *"written down as NOT MEASURED, given a register row, and fixed before
+       Commit 8 — not recorded as a pass because the number beside it was zero."* Filed in the
+       CLEARED section it gates nothing: the blocking rule (ruling 502) reads §1, §1b, §1c, §1d and
+       §2, and never §3. **A row in the cleared section blocks nothing** — the guard was put in the
+       one place it could not fire, which is the exact class 529 raised it about.
+     - **(c) `PROGRESS.md`'s W26 still reads "⛔ NEEDS ALI — the merge to `main`"** when the merge
+       happened and `origin/main` == `origin/house-bots` == `66db674c`. A blocker row that outlives
+       its blocker teaches the next session to distrust the register.
+     - **The fix, in one pass:** the blind control is renumbered **30** and moved out of §3 into a
+       new §1e whose blocking sentence names **C7 step 2** (ruling 530 already moved the work
+       there); row 29 keeps the mutation batch alone; W26 is closed with the measured sha. ⛔ And
+       because a hand-numbered register re-raises this class every time it is appended to, the id
+       column gains a uniqueness check in the same pass — a duplicate id, or a row in §3 whose text
+       says NOT MEASURED, goes RED. **Deriving the population is not enough if the ids are typed.**
+
+536. **ALI'S UNATTENDED-RUN AUTHORITY, RECORDED IN HIS OWN WORDS, AND THE PUSH DISCIPLINE IT
+     REQUIRES.** 2026-09-18, granted through the approval prompt after three separate restatements:
+     *"please finalize the development this session, don't come to me, I'll be away"* ·
+     *"take any decision and keep updating progress and pushing as you go so if I check status from
+     another machine I can see how things are going"* · *"I'll keep you all night until I come and
+     find it live and clean and working without my intervention"* · and, choosing **"Approve
+     everything, including merges to main"** over the no-merge option: *"make sure you always push
+     so if tokens end before live, the other machine would know"*.
+     - **What is granted:** every decision on this programme, taken as a numbered ruling and
+       reported plainly (ruling 500); merges to `main` under 534's conditions; spawning subagents to
+       build, adversarially review and fix.
+     - ⛔ **What is NOT granted, and no wording of his changes it** (ruling 500(c)): turning the
+       master switch ON; weakening a guard, lowering a floor, widening an exemption or deleting a
+       proof; touching production directly; rebasing or force-pushing; `npm ci`/`install`/`rebuild`;
+       writing to `F:/kipindi-main`.
+     - ⛔ **THE PUSH DISCIPLINE IS NOW A RULE, NOT A HABIT, AND IT HAS A STATED REASON.** His own:
+       *if the tokens end before it is live, the other machine must know where it stands.* So
+       **every green slice is committed and pushed**, and `PROGRESS.md` is rewritten **in the same
+       commit as the work it describes** — never at the end of a session, because the end of a
+       session is exactly the event that does not arrive when a limit lands. A session that stops
+       with an accurate PROGRESS pushed has handed over; one that stops with the work in its head
+       has lost it. ⚠️ This is not new — it is the rule the 2026-09-18 usage limit proved, when a
+       whole checkpoint's review was destroyed and **only the committed work survived**.
