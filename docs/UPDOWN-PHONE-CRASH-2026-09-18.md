@@ -1,7 +1,7 @@
 # The Up & Down board crash on ONE player's phone — 2026-09-18
 
 **Status:** ⛔ **STILL OPEN.** Two real crashes on this surface have been found and fixed (§4, §5.4)
-and **neither is confirmed** as what Dhiheksh Kaba saw. §3's chart tie is **disproven** as his
+and **neither is confirmed** as what Dhiresh Kaba saw. §3's chart tie is **disproven** as his
 cause — Ali reproduced the crash with the chart not mounted (§5). His handset's actual exception
 has never been captured, and 50pick cannot capture one (§5.2). **Read §5 before §2–4.**
 **Authority:** this file. Everything below was measured, not assumed — and where a claim has
@@ -15,7 +15,7 @@ Ali, 2026-09-18, two messages:
 
 1. *"in up and down market management, reporting that on Bitcoin up and down or some other
    up and down market, when they try to bet it shows page not found."*
-2. *"this page has encountered a problem — only on Dhiheksh Kaba's phone. Other phones work."*
+2. *"this page has encountered a problem — only on Dhiresh Kaba's phone. Other phones work."*
 
 The second message changes the diagnosis. **"This page has encountered a problem" is the route
 ERROR BOUNDARY, not the 404 page.** The two look alike to a player and are completely different
@@ -112,7 +112,7 @@ Wired into `predeploy` (after `test:bridge`); `test:all` auto-discovers it.
 
 ## 5 · SESSION 2 (2026-09-18, later) — the chart is RULED OUT, by Ali's own test
 
-⛔ **THE FIX IN §4 IS NOT WHAT DHIHEKSH SAW.** Ali ran the one-tap experiment on the handset:
+⛔ **THE FIX IN §4 IS NOT WHAT DHIRESH SAW.** Ali ran the one-tap experiment on the handset:
 with the board on **Raundi** (cubes — so `board-viz.tsx` never mounts the terminal at all), he
 placed a bet and **the crash still happened**. §3's chart tie is a real bug and the fix is live
 (production build sha = `79eed440`), but it is not this one. §4 stands; §3's *"why one phone"*
@@ -180,7 +180,7 @@ through the new `msOrNull()` in `updown-card-phase.ts`. `?d=` is validated too (
 the board query as NaN).
 **Guard:** `npm run test:updown-clock-guard` — 32 assertions, wired into `predeploy`.
 
-⛔ **BUT IT IS NOT CONFIRMED AS DHIHEKSH'S CRASH EITHER, AND THE GUARD SAYS SO IN ITS OWN
+⛔ **BUT IT IS NOT CONFIRMED AS DHIRESH'S CRASH EITHER, AND THE GUARD SAYS SO IN ITS OWN
 HEADER.** It is a real throw, reachable, on his surface, in his post-bet window — found while
 hunting his. That is not proof. It requires `selectionClosedAt` to be a truthy string
 `Date.parse` cannot read, which was never demonstrated against production data.
@@ -215,7 +215,7 @@ nobody reads the fix as broader than it is. What holds a locked round shut is th
    ⛔ **AND THE QA PERSONA SECRETS ON LAPTOP A ARE STALE AGAIN**: `login(alpha)` against
    production landed on the signed-out shell, 2026-09-18. One attempt spent, not retried —
    five failures locks the account for 30 minutes. See `qa-personas-cannot-sign-in-prod`.
-4. **Check Dhiheksh's positions for DUPLICATES.** He was told the page broke after a bet that had
+4. **Check Dhiresh's positions for DUPLICATES.** He was told the page broke after a bet that had
    actually gone through; the natural response is to bet again. `updown-bet-receipt-modal.tsx`
    says in as many words: *"IT DOES NOT GATE REPEAT TAPS. Repeat taps are repeat bets."*
 5. **Still unexplained, unchanged from session 1:** `/live` cards print a countdown that
