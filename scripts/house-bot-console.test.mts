@@ -21,6 +21,13 @@
  * floor is a PER-STORE pair: a suite whose static half runs in one child must not let the other child's lower count
  * hide it.
  *
+ * ⛔ AND THE PAIR IS NOW THE MEASURED COUNT (replan ruling 515, 2026-09-18). It stood at `{ memory: 60, postgres: 28 }`
+ * — the value the suite was BORN with at `a897e47a` — while the run printed memory 153 / Postgres 86 at `98b5a2be`,
+ * so the floor would not have noticed 93 memory cases and 58 Postgres cases vanishing. A floor that has never risen
+ * is itself a finding, which is what 515 is. Raised to what `npm run test:house-bot-console` PRINTED at `d2f20795`:
+ * **memory 154, Postgres 86** (ruling 513 added 4.453.c2, hence 154 rather than 153). ⛔ A floor only ever rises, and
+ * only to a count a run printed — never to an arithmetic guess.
+ *
  * ⚠️ `red:house-bot-console` carries the mutations for every assertion here; it is run once at the commit close.
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
@@ -28,6 +35,6 @@ import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 await runTwoStores({
   suite: "test:house-bot-console",
   casesFile: "scripts/lib/house-bot-console-cases.mts",
-  minPass: { memory: 60, postgres: 28 },
+  minPass: { memory: 154, postgres: 86 },
   dbPrefix: "hb_console",
 });

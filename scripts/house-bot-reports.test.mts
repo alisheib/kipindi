@@ -39,6 +39,11 @@
  * own read and renders the platform read-failed state; a transition that cannot read at all REFUSES),
  * and the floors rose again to the measured **memory 113, Postgres 33**.
  *
+ * ⭐ RAISED AGAIN 2026-09-18 (replan ruling 515), to what `npm run test:house-bot-reports` PRINTED at `d2f20795`:
+ * **memory 117, Postgres 33**. Postgres is unchanged because both cases added since — ruling 512's 0.512 export
+ * completeness check with its control, and ruling 505's 0.505 roll-call population check with its control — are §0
+ * source pins and run in the MEMORY child only, which is exactly why this floor is a pair and not a number.
+ *
  * ⛔ WHAT C5-5b REMOVED AND ITS FIXER PUT BACK: §4's BEHAVIOURAL cases for the gate D20 KEEPS (the replan's §2 row for
  * rulings 259–260). They went out with the display section that held them, leaving `houseConsoleAudience` and
  * `houseAuditForConsole` — the only thing standing between a signed-in player and every house audit row a console page
@@ -54,4 +59,4 @@
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 
-await runTwoStores({ suite: "test:house-bot-reports", casesFile: "scripts/lib/house-bot-reports-cases.mts", minPass: { memory: 113, postgres: 33 }, dbPrefix: "hb_reports" });
+await runTwoStores({ suite: "test:house-bot-reports", casesFile: "scripts/lib/house-bot-reports-cases.mts", minPass: { memory: 117, postgres: 33 }, dbPrefix: "hb_reports" });

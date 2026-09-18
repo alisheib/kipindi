@@ -12,7 +12,12 @@
  * the consent. Erasure refuses while the account is a house bot and, once it runs, leaves no label behind.
  *
  * ⛔ NO POSTGRES IS A FAILURE, NOT A SKIP (exit 3, NOT MEASURED).
+ *
+ * ⛔ THE FLOOR IS PER STORE AND MEASURED (replan ruling 515, 2026-09-18). It was the scalar `120` while the run
+ * prints memory 169 and Postgres 161, so it would not have noticed 49 memory cases and 41 Postgres cases vanishing.
+ * Raised to the counts `npm run test:house-bot-designation` PRINTED at `d2f20795`, never to an arithmetic guess, and a
+ * SCALAR becomes a PAIR because one number is bounded by the SMALLER child.
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 
-await runTwoStores({ suite: "test:house-bot-designation", casesFile: "scripts/lib/house-bot-designation-cases.mts", minPass: 120, dbPrefix: "hb_desig" });
+await runTwoStores({ suite: "test:house-bot-designation", casesFile: "scripts/lib/house-bot-designation-cases.mts", minPass: { memory: 169, postgres: 161 }, dbPrefix: "hb_desig" });

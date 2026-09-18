@@ -10,7 +10,12 @@
  * duplicate window are store behaviour.
  *
  * ⛔ NO POSTGRES IS A FAILURE, NOT A SKIP (exit 3, NOT MEASURED).
+ *
+ * ⛔ THE FLOOR IS PER STORE AND MEASURED (replan ruling 515, 2026-09-18). It was the scalar `30` — the value this
+ * suite was born with — while the run prints memory 42 and Postgres 42, so it would not have noticed 12 cases
+ * vanishing in either child. Raised to the counts `npm run test:house-bot-comms` PRINTED at `d2f20795`, never to an
+ * arithmetic guess, and a SCALAR becomes a PAIR because one number is bounded by the SMALLER child.
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 
-await runTwoStores({ suite: "test:house-bot-comms", casesFile: "scripts/lib/house-bot-comms-cases.mts", minPass: 30, dbPrefix: "hb_comms" });
+await runTwoStores({ suite: "test:house-bot-comms", casesFile: "scripts/lib/house-bot-comms-cases.mts", minPass: { memory: 42, postgres: 42 }, dbPrefix: "hb_comms" });

@@ -14,7 +14,12 @@
  * every line it prints carries its store. A case that passes in memory and fails on Postgres is a FAIL.
  *
  * ⛔ NO POSTGRES IS A FAILURE, NOT A SKIP (exit 3, NOT MEASURED).
+ *
+ * ⛔ THE FLOOR IS PER STORE AND MEASURED (replan ruling 515, 2026-09-18). It was the scalar `50` while the run
+ * prints memory 115 and Postgres 133, so it would not have noticed 65 memory cases and 83 Postgres cases vanishing.
+ * Raised to the counts `npm run test:house-bot-money` PRINTED at `d2f20795`, never to an arithmetic guess, and a SCALAR
+ * becomes a PAIR because one number is bounded by the SMALLER child.
  */
 import { runTwoStores } from "./lib/house-bot-two-stores.mts";
 
-await runTwoStores({ suite: "test:house-bot-money", casesFile: "scripts/lib/house-bot-money-cases.mts", minPass: 50, dbPrefix: "hb_money" });
+await runTwoStores({ suite: "test:house-bot-money", casesFile: "scripts/lib/house-bot-money-cases.mts", minPass: { memory: 115, postgres: 133 }, dbPrefix: "hb_money" });
