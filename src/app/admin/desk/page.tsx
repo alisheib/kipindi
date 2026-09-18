@@ -36,12 +36,15 @@ import { AdminTableEmpty } from "@/components/admin/admin-table-empty";
 import { Button } from "@/components/ui/button";
 import { Callout } from "@/components/ui/callout";
 import { Chip } from "@/components/ui/chip";
+import { FormColumn } from "@/components/ui/form-column";
+import { ProgressBar } from "@/components/ui/progress-bar";
 import { ScrollX } from "@/components/ui/scroll-x";
 import { Tabs } from "@/components/ui/tabs";
 import { Toggle } from "@/components/ui/toggle";
 import { currentSession } from "@/lib/server/auth-service";
-import { houseRosterForConsole, houseConsoleAudience, type ConsoleUsageCell } from "@/lib/server/house-console-read";
+import { houseRosterForConsole, houseUsageForConsole, houseConsoleAudience, type ConsoleDeskShell, type ConsoleLimitRow, type ConsoleUsageCell, type ConsoleUsageRow } from "@/lib/server/house-console-read";
 import { CONSOLE_TABS, LIMITS_TAB_READY, consoleTab, consoleTabHref } from "@/lib/house-bot/console-routes";
+import { DeskLive } from "./desk-live";
 
 /** ⛔ A static neutral title (ruling 402). No route here exports a `generateMetadata` that reads a record. */
 export const metadata = { title: "Admin · Desk" };
@@ -49,7 +52,7 @@ export const metadata = { title: "Admin · Desk" };
  *  audience and served to another — the population the bundle scan reads (rulings 302, 356, 380). */
 export const dynamic = "force-dynamic";
 
-const TAB_LABEL: Record<(typeof CONSOLE_TABS)[number], string> = { roster: "Roster" };
+const TAB_LABEL: Record<(typeof CONSOLE_TABS)[number], string> = { roster: "Roster", limits: "Limits" };
 
 /**
  * One usage cell's two halves. The server owns the sentence (ruling 361's one grammar); this only lays it out, so the
@@ -79,24 +82,132 @@ function Usage({ cell }: { cell: ConsoleUsageCell }) {
           <span className="whitespace-nowrap">{h.word}{" "}<span className={figure}>{h.figure}</span>{h.suffix}</span>
         </Fragment>
       ))}
+      {/* ⛔ RULING 367 — AND IN THIS CELL IT IS THE ONLY SIGNAL THERE IS. A roster cell has no bar, so nothing
+          else can say that a cap has been reached; on a bar it is what separates 100% from 140%, which the geometry
+          cannot. The clause carries its own leading space and is "" when the cap is not reached, so there is no
+          branch here to forget. ⛔ The tone is `text-text-secondary`, not a warning colour: colour is never this
+          signal (§A4), and the roster's own status chip is where a stopped account is coloured. */}
+      {cell.edgeText ? <span className="text-text-secondary">{cell.edgeText}</span> : null}
     </>
   );
 }
+
+/**
+ * ONE USAGE BAR ON THE LIMITS TAB (rulings 362, 364, 367, 409).
+ *
+ * ⛔ AN UNSET LIMIT RENDERS NO BAR. `over(cap, value)` in the seam is `cap == null || value > cap`, so an unset cap
+ * REFUSES every stake — a bar at 0% would say "headroom" where the gate says "nothing at all". What renders instead
+ * is ONE of ruling 364's three captions, chosen by the field's own membership in the reader, never a blanket sentence.
+ * ⛔ A FAILED READ IS NOT A ZERO EITHER (372(c)): it says so, in words, and draws no bar.
+ * ⛔ THE CAPTION OPENS WITH THE CAP'S NAME, because `ProgressBar`'s `label` is `aria-label` ONLY and paints nothing
+ * — without it a card of five bars names its caps to a screen reader and to nobody else (409).
+ * ⛔ ONLY THE FIGURES ARE `.amount`, at their own call site (401): that class is `white-space: nowrap`, so wrapping
+ * the whole sentence in it would overflow a 360 card (§A6). The words wrap; the amounts do not.
+ */
+function UsageBar({ row, unsetHref }: { row: ConsoleUsageRow; unsetHref: string }) {
+  if (row.unreadable) {
+    return (
+      <div>
+        <p className="text-body-sm text-text-secondary">{row.name}</p>
+        <p className="text-body-sm text-warning-fg">Couldn&apos;t read — this is not zero.</p>
+      </div>
+    );
+  }
+  if (row.limitTzs === null) {
+    return (
+      <div>
+        <p className="text-body-sm text-text-secondary">{row.name}</p>
+        <p className="text-body-sm text-warning-fg">
+          {row.unsetCaption}
+          {row.unsetLinked ? (
+            <>
+              {" "}
+              <Link href={unsetHref as Route} className="inline-flex items-center min-h-[var(--tap-min)] hover:underline">Set it below →</Link>
+            </>
+          ) : null}
+        </p>
+      </div>
+    );
+  }
+  return (
+    <ProgressBar
+      value={row.usedTzs ?? 0}
+      max={row.limitTzs}
+      tone="brand"
+      label={row.name}
+      captionText={row.captionText}
+      caption={
+        <>
+          {row.name}
+          {" · "}
+          {row.halves.map((h, i) => (
+            <Fragment key={h.word + h.figure}>
+              {i > 0 ? " " : null}
+              <span className="whitespace-nowrap">{h.word}{" "}<span className="amount tabular-nums">{h.figure}</span>{h.suffix}</span>
+            </Fragment>
+          ))}
+          {row.edgeText}
+        </>
+      }
+    />
+  );
+}
+
+/**
+ * THE BODY OF ONE ROW OF THE READ-ONLY GLOBAL LIMITS LIST — the row's own `<div>` is written at the call site, because
+ * the ANCHOR has to be (see the limits panel below).
+ *
+ * ⛔ THE VALUE IS `.amount` AT ITS OWN CALL SITE (ruling 401), because the server hands the page a formatted STRING
+ * and `test:type-scale` can only see money through a literal `formatTzs*` call inside the element — so the money
+ * guards are told what this is here, where it is painted.
+ */
+function LimitBody({ row }: { row: ConsoleLimitRow }) {
+  return (
+    <>
+      <div className="flex items-baseline justify-between gap-3 flex-wrap">
+        <span className="text-body-sm text-text">{row.name}</span>
+        <span className={row.unset ? "text-body-sm text-text-tertiary" : "amount tabular-nums text-body-sm text-text"}>{row.value}</span>
+      </div>
+      {row.caption ? <p className="mt-0.5 text-body-sm text-warning-fg">{row.caption}</p> : null}
+    </>
+  );
+}
+
+/** One row of that list. ⛔ A class written twice is a class that drifts, so it is written once. */
+const LIMIT_ROW_CLS = "border-b border-border-subtle pb-3 last:border-0 last:pb-0";
 
 export default async function AdminDeskPage({ searchParams }: { searchParams: Promise<{ tab?: string | string[] }> }) {
   /* ⛔ THE VERDICT IS AWAITED FIRST, BEFORE ANY READ (rulings 300, 380). */
   const session = await currentSession();
   if (!(await houseConsoleAudience(session?.userId ?? null, "/admin/desk"))) return null;
 
-  const view = await houseRosterForConsole(session?.userId ?? null, "/admin/desk");
-  if (!view) return null;
-
   /* An unknown `?tab=` resolves to the roster (ruling 302): a query string is not a resource, so it is never a 404
      and never a redirect, which would rewrite a bookmarked URL on every bare visit. */
   const sp = await searchParams;
   const tab = consoleTab(sp.tab);
 
+  /* ⛔ EXACTLY ONE GATED READER PER RENDER PASS, AND THE PANEL DECIDES WHICH (rulings 346, 406).
+   * Each reader returns the SAME shell — the strip, the auto-off Callout, the band and the rail's counts — built
+   * from its own single read set, so the strip is identical on every tab and the "Set N global limits first →"
+   * count beside the switch cannot disagree with the limits panel one click away. Calling both would put TWO control
+   * reads in one render, and two reads of one question can disagree inside a render (346's own defect, and the
+   * reason `countLive` is banned here). */
+  const rosterView = tab === "roster" ? await houseRosterForConsole(session?.userId ?? null, "/admin/desk") : null;
+  const limitsView = tab === "limits" ? await houseUsageForConsole(session?.userId ?? null, "/admin/desk", { houseBotId: null }) : null;
+  const view: ConsoleDeskShell | null = rosterView ?? limitsView;
+  if (!view) return null;
+
   const rosterFull = view.rosterFullReason !== null;
+  /* ⚠️ HOISTED SO EACH TAB GROUP CAN BE WRITTEN IN THE SHIPPED IDIOM — a tab-group opener with its fragment with NOTHING else in
+     the condition. `test:tab-anchors` decides which tab OWNS a rendered `id` by that exact opener, and the served
+     probe discovers a page's tabs by `tab === "…"`; a second term in the condition made the limits anchor read as
+     "above the rail (every tab)", which is a PASS that proves nothing. Measured on this file, 2026-09-18.
+     ⛔ `?? null` is not a lost failure state: the page returned `null` above when the gate refused, and exactly one
+     of the two readers ran, so on each tab its own slice is the reader's own answer. */
+  const rosterRows = rosterView?.rows ?? null;
+  const rosterEmpty = rosterView?.empty ?? null;
+  const usageRows = limitsView?.usage ?? null;
+  const limitRows = limitsView?.limits ?? null;
 
   return (
     <>
@@ -134,6 +245,12 @@ export default async function AdminDeskPage({ searchParams }: { searchParams: Pr
               {rosterFull && LIMITS_TAB_READY
                 ? <Link href={view.limitsHref as Route} className="inline-flex items-center min-h-[var(--tap-min)] hover:text-brand-300 hover:underline">{view.rosterFullReason}</Link>
                 : rosterFull ? view.rosterFullPlain : view.actionReason}
+              {/* ⭐ C7 STEP 3 TURNED THIS ON. `LIMITS_TAB_READY` is now true, so the whole sentence is the LINK and
+                  its trailing arrow means what it says. ⛔ THE INERT BRANCH STAYS: the flag is derived from
+                  `CONSOLE_TABS`, and steps 4 and 5 add `activity`, `history`, `rules` and `targets` under exactly
+                  this rule — a rendered link may never name a `?tab=` value with no panel behind it. Its proof moved
+                  to the FUNCTION level (`stripLinkedTail`, `rosterFullPlain`) rather than being deleted, because a
+                  branch whose proof is deleted the day it stops executing is how the next dead control ships. */}
             </span>
             <Button size="md" variant="primary" disabled>Designate an account</Button>
           </span>
@@ -168,8 +285,12 @@ export default async function AdminDeskPage({ searchParams }: { searchParams: Pr
                   number and never a hand-copied list, because a typed count renders "Set 0" while the press fails
                   with no explanation on screen. ⛔ Not a link until the limits panel exists (432(i)). */}
               {view.unsetRequired > 0 && (
+                /* ⛔ THE LINK CARRIES THE FRAGMENT, NOT JUST THE TAB (rulings 306, 406). `#limits-first-unset` is
+                   rendered on the FIRST unset required limit of the panel this href selects, and
+                   `test:tab-anchors` holds the two together — the id and the builder landed in the same change,
+                   because a fragment pointing at an anchor nothing renders is the defect that suite exists for. */
                 LIMITS_TAB_READY ? (
-                  <Link href={view.limitsHref as Route} className="inline-flex items-center min-h-[var(--tap-min)] text-body-sm text-warning-fg hover:underline">
+                  <Link href={view.limitsFirstUnsetHref as Route} className="inline-flex items-center min-h-[var(--tap-min)] text-body-sm text-warning-fg hover:underline">
                     Set {view.unsetRequired} global limit{view.unsetRequired === 1 ? "" : "s"} first →
                   </Link>
                 ) : (
@@ -191,6 +312,10 @@ export default async function AdminDeskPage({ searchParams }: { searchParams: Pr
                   <span className="text-body-sm text-text-tertiary">{view.switchReason}</span>
                 </span>
               )}
+              {/* ⭐ THE PAGE'S ONE LIVE TRIGGER (rulings 316, 473), AND IT IS IN THE STRIP FOR A REASON: the strip
+                  renders above the rail on EVERY tab, so a tab switch never remounts it and the page can never end
+                  up with two timers. It paints nothing. */}
+              <DeskLive live={view.live} />
             </div>
           </div>
           )}
@@ -247,12 +372,20 @@ export default async function AdminDeskPage({ searchParams }: { searchParams: Pr
           variant="line"
           ariaLabel="Desk sections"
           value={tab}
-          tabs={CONSOLE_TABS.map((k) => ({ value: k, labelEn: TAB_LABEL[k], href: consoleTabHref(k) }))}
+          /* ⛔ THE BADGE AND THE STRIP'S SENTENCE ARE THE SAME NUMBER FROM THE SAME READ (rulings 306, 312). It is
+             one field of one object built from one control row, never counted twice: a badge that disagrees with the
+             sentence 40px above it is the defect this is written against, and `CountBadge` renders nothing at zero,
+             so a count may never stand in for a read's health. */
+          tabs={CONSOLE_TABS.map((k) => ({ value: k, labelEn: TAB_LABEL[k], href: consoleTabHref(k), count: k === "limits" ? view.unsetRequired : undefined }))}
         />
 
-        {tab === "roster" && (
+        {/* ⚠️ THE `(<>` … `</>)}` FORM IS LOAD-BEARING, NOT A HABIT. `test:tab-anchors` decides WHICH TAB owns a
+            rendered `id` by finding the last a tab-group opener with its fragment opener before it with no `</>)}` between them; a
+            panel written the same opener without one reads as ABOVE the rail, which is the strongest possible answer and
+            would let the limits anchor pass while sitting on any tab at all. */}
+        {tab === "roster" && (<>
           <AdminCard padding="p-0">
-            {view.rows === null ? (
+            {rosterRows === null ? (
               /* 355 · a FAILED read is never an empty state and never a zero. */
               <div className="p-4"><AdminLoadError what="the roster" /></div>
             ) : (
@@ -309,12 +442,12 @@ export default async function AdminDeskPage({ searchParams }: { searchParams: Pr
                     </tr>
                   </thead>
                   <tbody>
-                    {view.empty ? (
+                    {rosterEmpty ? (
                       /* 416 with 310's precedence — the state the table is in NAMES ITS CAUSE: the desk being off
                          beats "none designated yet", and a failed read beat both above. */
-                      <AdminTableEmpty colSpan={6} title={view.empty.title} body={view.empty.body} />
+                      <AdminTableEmpty colSpan={6} title={rosterEmpty.title} body={rosterEmpty.body} />
                     ) : (
-                      view.rows.map((r) => (
+                      rosterRows.map((r) => (
                         <tr key={r.id} className="border-b border-border-subtle">
                           <td className="p-3">
                             <div className="text-text">{r.label}</div>
@@ -340,7 +473,55 @@ export default async function AdminDeskPage({ searchParams }: { searchParams: Pr
               </ScrollX>
             )}
           </AdminCard>
-        )}
+        </>)}
+
+        {tab === "limits" && (<>
+          {/* 364 · the all-bots twins of the per-account usage card: the daily stake cap, the daily loss cap read
+              TWICE against ONE limit (366 — the seam refuses a new stake on PROJECTED loss and a stop fires only on
+              SETTLED loss, so collapsing them would hide the figure one of the two controls acts on), the open
+              exposure cap scoped "open now", and the targeted-and-manual daily cap.
+              ⛔ NO ROW FOR THE PER-MARKET, PER-PLAYER OR COUNTERPARTY-SHARE CAPS (365): this console renders no
+              per-market, per-player or per-officer money figure, so a usage bar for one would be a figure with no
+              population an officer could act on. They appear in the list below as VALUES, which is not a usage. */}
+          <AdminCard title="Limit usage">
+            {usageRows === null ? (
+              /* 372(c) · a whole-panel failure is the kit's own treatment — never a card of bars at zero. */
+              <AdminLoadError what="limit usage" />
+            ) : (
+              <div className="space-y-4">
+                {usageRows.map((r) => <UsageBar key={r.name} row={r} unsetHref={view.limitsFirstUnsetHref} />)}
+              </div>
+            )}
+          </AdminCard>
+
+          {/* ⛔ READ-ONLY, WITH ITS REASON ON SCREEN (ruling 433, applying 432(a) and 432(j)). There is no
+              limits-SAVE service in this repository — `saveLimits` has no caller under `src/` and
+              `house_bot.limits_saved` has no writer — so this panel renders no typed control at all. An editable
+              field that silently discards what an officer types is worse than one that says it cannot be edited, and
+              a form whose save is dead is the same dead control the head action and the master switch are rendered
+              disabled for. `FormColumn measure="form"` is already the column the form will land in (412), so the
+              measure does not move when it does. */}
+          <AdminCard title="Global limits" action={<span className="text-body-sm text-text-tertiary">{limitsView?.formReason}</span>}>
+            {limitRows === null ? (
+              <AdminLoadError what="the global limits" />
+            ) : (
+              <FormColumn measure="form">
+                <div className="space-y-3">
+                  {/* ⛔ THE `id` IS A LITERAL, IN BOTH BRANCHES, AND WRITTEN HERE RATHER THAN IN A COMPONENT.
+                      `test:tab-anchors` reads this FILE as text for `id="limits-first-unset"` and decides which tab
+                      owns it by the nearest a tab-group opener with its fragment opener above it: an
+                      `id={cond ? "limits-first-unset" : undefined}` compiles, paints correctly and is INVISIBLE to
+                      it, and the same literal inside a helper function sits ABOVE every tab group and reads as
+                      "above the rail". Both were measured on this file. The guard is what proves the strip's
+                      "Set N global limits first →" lands on a screen holding the field it promises. */}
+                  {limitRows.map((row) => (row.firstUnset
+                    ? <div key={row.name} id="limits-first-unset" className={LIMIT_ROW_CLS}><LimitBody row={row} /></div>
+                    : <div key={row.name} className={LIMIT_ROW_CLS}><LimitBody row={row} /></div>))}
+                </div>
+              </FormColumn>
+            )}
+          </AdminCard>
+        </>)}
       </AdminBody>
     </>
   );

@@ -1,5 +1,32 @@
 # Changelog (reconstructed)
 
+## 2026-09-18 (design-system · progress-bar) — a bar that can name what it is measuring, in two props not one
+
+**`ProgressBar` gains `caption` and `captionText`** (`src/components/ui/progress-bar.tsx`), added together as a
+DISCRIMINATED PAIR: the type accepts neither or both, never one. Both are PROPS on the existing component, never a
+fork (§K5 / §B9), and no second bar was created for money.
+
+**Why it was needed.** The kit's built-in line is
+`font-mono text-micro uppercase tracking-widest` over `value.toLocaleString()` — a bare, letter-spaced number with no
+unit, under a bar whose `label` is `aria-label` ONLY and paints nothing. A card of several bars therefore named its
+subjects to a screen reader and to nobody else, and §M4 forbids tracking over an amount. A caller that needs to say
+WHAT is being measured now REPLACES that line rather than printing a second one beneath it.
+
+**⛔ TWO PROPS, AND THAT IS THE WHOLE POINT.** `aria-valuetext` is a STRING attribute. A caption that must carry
+`.amount` spans is a `ReactNode`, and `aria-valuetext={caption}` stamps `[object Object]` into the DOM for every
+screen-reader user and into any served body a scanner reads. So `caption` is the painted node and `captionText` is the
+announced sentence; the caller builds both from ONE expression so they cannot disagree, and the type makes a caption
+without its text a compile error.
+
+**⛔ THE SENTENCE IS NOT `.amount`.** That class is `white-space: nowrap`, so a whole nowrap caption overflows a 360
+card (§A6). Only the FIGURES sit in `.amount` spans; the connective words are ordinary `text-body-sm` text and wrap
+around them.
+
+`value` and `max` stay raw integers, so `aria-valuemin`/`max`/`now` still report the real range. `tone` is untouched.
+
+Consumers unchanged: the one existing call site (`src/app/admin/retention/purge-chain-card.tsx`) passes no caption and
+is byte-identical, and it keeps the built-in line.
+
 ## 2026-08-28 (design-system · checkbox) — the third state, and an accessible name that was never there
 
 **`Checkbox` gains two props — `indeterminate` and `ariaLabel`** (`src/components/ui/checkbox.tsx`).

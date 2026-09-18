@@ -23,6 +23,9 @@ const ROLES = "src/lib/server/roles.ts";
 const DESIG = "src/lib/server/house-bot/designation.ts";
 /* ⛔ THIS FILE IS ITSELF A TARGET, for the one assertion whose subject is this file: 1.318's roll-call. */
 const ANCHORS = "scripts/anchors/house-bot-console.anchors.mjs";
+/* ⭐ C7 step 3 · the kit file the caption pair lives in, and the section's first client module. */
+const BAR = "src/components/ui/progress-bar.tsx";
+const LIVE = "src/app/admin/desk/desk-live.tsx";
 
 export const MUTATIONS = [
   /* ── Ruling 453 · THE NEUTRAL LEXICON. Four mutations, one per sentence the ruling fixes. ─────────────────────── */
@@ -71,8 +74,12 @@ export const MUTATIONS = [
   {
     name: "340-null · the reader reads first and decides afterwards",
     file: GATE,
-    from: `  if (!(await houseConsoleAudience(viewerUserId, route))) return null;`,
-    to: `  const mayView = await houseConsoleAudience(viewerUserId, route);`,
+    from: `  if (!(await houseConsoleAudience(viewerUserId, route))) return null;
+
+  const { core, extra: parseCtx } = await readDeskCore(loadParseContext());`,
+    to: `  const mayView = await houseConsoleAudience(viewerUserId, route);
+
+  const { core, extra: parseCtx } = await readDeskCore(loadParseContext());`,
     expect: "1.300 · the reader refuses a PLAYER with `null` and performs ZERO store calls",
     suite: "console-mem",
   },
@@ -179,8 +186,8 @@ export const MUTATIONS = [
   {
     name: "355-all · the reads are combined with Promise.all, so one failure blanks the page",
     file: GATE,
-    from: `  const [controlR, rosterR, dayR, exposureR, ctxR] = await Promise.allSettled([`,
-    to: `  const [controlR, rosterR, dayR, exposureR, ctxR] = await Promise.all([`,
+    from: `  const [controlR, rosterR, dayR, exposureR, extraR] = await Promise.allSettled([`,
+    to: `  const [controlR, rosterR, dayR, exposureR, extraR] = await Promise.all([`,
     expect: "1.355 · the gated readers combine their reads with a SETTLING combinator",
     suite: "console-mem",
   },
@@ -195,7 +202,7 @@ export const MUTATIONS = [
   {
     name: "361-grammar · the usage caption becomes a slash pair instead of the one fixed grammar",
     file: GATE,
-    from: `    text: \`used \${uf} of \${lf}\`, used: \`used \${uf}\`, limit: \`of \${lf}\`, money: true,`,
+    from: `    text: \`used \${uf} of \${lf}\${edgeText}\`, used: \`used \${uf}\`, limit: \`of \${lf}\`, money: true,`,
     to: `    text: \`\${uf} / \${lf}\`, used: \`used \${uf}\`, limit: \`of \${lf}\`, money: true,`,
     expect: "1.361 · every usage cell matches the one fixed grammar",
     suite: "console-mem",
@@ -221,8 +228,8 @@ export const MUTATIONS = [
   {
     name: "312-rail · a tab key is added to the closed list with no panel behind it",
     file: ROUTES,
-    from: `export const CONSOLE_TABS = ["roster"] as const;`,
-    to: `export const CONSOLE_TABS = ["roster", "limits"] as const;`,
+    from: `export const CONSOLE_TABS = ["roster", "limits"] as const;`,
+    to: `export const CONSOLE_TABS = ["roster", "limits", "activity"] as const;`,
     expect: "1.312a · the rail's options come from the closed list",
     suite: "console-mem",
   },
@@ -312,8 +319,8 @@ export const MUTATIONS = [
   {
     name: "421-unreadable · a generic control-read failure is collapsed back into the no-control-row state",
     file: GATE,
-    from: `  const controlUnreadable = controlR.status === "rejected" && !schemaMissing;`,
-    to: `  const controlUnreadable = false as boolean;`,
+    from: `      controlUnreadable: controlR.status === "rejected" && !schemaMissing,`,
+    to: `      controlUnreadable: false as boolean,`,
     expect: "1.421 · a GENERIC control failure is NOT collapsed into the schema state",
     suite: "console-mem",
   },
@@ -336,8 +343,8 @@ export const MUTATIONS = [
   {
     name: "432l-day-fold · the band's day figures are folded over the ROSTER again, under-counting the limit the gate enforces",
     file: GATE,
-    from: `    [...(dayBooks?.values() ?? [])].reduce((n, b) => n + pick(b), 0);`,
-    to: `    (roster ?? []).reduce((n, b) => n + (dayBooks?.get(b.id) ? pick(dayBooks.get(b.id)!) : 0), 0);`,
+    from: `  const stakeUsed = sumDay(dayBooks, (b) => b.stakedTzs);`,
+    to: `  const stakeUsed = sumDay(dayBooks, (b) => ((roster ?? []).some((r) => r.id === b.houseBotId) ? b.stakedTzs : 0));`,
     expect: "1.347 · 432(l) · the band measures the GATE's population",
     suite: "console-mem",
   },
@@ -430,8 +437,9 @@ export const MUTATIONS = [
   {
     name: "432q-second-context · a second parse-context read inside one render",
     file: GATE,
-    from: `    loadParseContext(),`,
-    to: `    loadParseContext(), loadParseContext(),`,
+    from: `  const { core, extra: parseCtx } = await readDeskCore(loadParseContext());`,
+    to: `  await loadParseContext();
+  const { core, extra: parseCtx } = await readDeskCore(loadParseContext());`,
     expect: "1.347 · 432(q) · the reader's read set is the four house reads plus EXACTLY ONE `loadParseContext()`",
     suite: "console-mem",
   },
@@ -453,11 +461,215 @@ export const MUTATIONS = [
     suite: "console-mem",
   },
   {
-    name: "432i-dead-link · the limits sentence is a live link again while that tab has no panel",
+    name: "432i-dead-link · the link flag stops being DERIVED from the closed list, so a rail option and its link can drift apart",
     file: ROUTES,
     from: `export const LIMITS_TAB_READY: boolean = consoleTabExists("limits");`,
-    to: `export const LIMITS_TAB_READY: boolean = true;`,
-    expect: "1.312a · 432(i) · the page renders a LINK to the limits tab only when",
+    to: `export const LIMITS_TAB_READY: boolean = consoleTabExists("activity");`,
+    expect: "1.312a · 432(i) · both limits pointers are still GUARDED by the flag",
+    suite: "console-mem",
+  },
+  /* ── C7 STEP 3 · the limits tab, the kit's caption pair, 367's clause and the one live trigger ─────────────── */
+  {
+    name: "372-verdict · the USAGE reader reads first and decides afterwards — the second door past the gate",
+    file: GATE,
+    from: `  if (!(await houseConsoleAudience(viewerUserId, route))) return null;
+
+  const { core, extra: staffChosen } = await readDeskCore(houseBotIntentStore.staffChosenPlacedToday({ houseBotId: query.houseBotId }));`,
+    to: `  const mayView = await houseConsoleAudience(viewerUserId, route);
+
+  const { core, extra: staffChosen } = await readDeskCore(houseBotIntentStore.staffChosenPlacedToday({ houseBotId: query.houseBotId }));`,
+    expect: "1.372 · the usage reader refuses a viewer outside the audience with `null` and performs ZERO store calls",
+    suite: "console-mem",
+  },
+  {
+    name: "372-zero · a FAILED money read renders a bar at TZS 0 instead of saying it could not be read",
+    file: GATE,
+    from: `  if (used === null) {`,
+    to: `  if (false as boolean) {`,
+    expect: "1.372 · a failed day read makes the stake and both loss rows say so",
+    suite: "console-mem",
+  },
+  {
+    name: "364-blanket · the draft's blanket caption is put back, so a staff-chosen cap is told it cannot place a bet",
+    file: GATE,
+    from: `  if (isClearExempt(field)) return "Not set — targeted and manual stakes cannot be placed.";`,
+    to: `  if (false as boolean) return "Not set — targeted and manual stakes cannot be placed.";`,
+    expect: "1.364 · every member of `CLEAR_EXEMPT` gets the targeted-and-manual caption",
+    suite: "console-mem",
+  },
+  {
+    name: "364-master · the required caption stops naming the master switch, so an unset required limit explains nothing",
+    file: GATE,
+    from: `  if ((REQUIRED_FOR_MASTER_ON as readonly string[]).includes(field)) return "Not set — the master switch cannot be turned on.";`,
+    to: `  if (false as boolean) return "Not set — the master switch cannot be turned on.";`,
+    expect: "1.364 · every member of `REQUIRED_FOR_MASTER_ON` gets the master-switch caption",
+    suite: "console-mem",
+  },
+  {
+    name: "364-label · the console's neutral label override is dropped, so `FIELD_META`'s own words reach the screen",
+    file: GATE,
+    from: `  return CONSOLE_LIMIT_LABEL[field] ?? FIELD_META[field].label;`,
+    to: `  return FIELD_META[field].label;`,
+    expect: "1.364 · 453 · every limit name, section and value the panel paints is neutral",
+    suite: "console-mem",
+  },
+  {
+    name: "364-bar-at-zero · an UNSET cap renders a bar at zero, saying headroom where the gate refuses everything",
+    file: GATE,
+    from: `      return limit == null ? unsetUsageRow(name, field) : usageRow(name, used, limit);`,
+    to: `      return usageRow(name, used ?? 0, limit ?? 0);`,
+    expect: "1.364 · an UNSET cap renders NO bar and one of the three captions",
+    suite: "console-mem",
+  },
+  {
+    name: "366-clamp · the settled loss row renders a cohort's PROFIT as a negative amount — today's net wearing a cap's label",
+    file: GATE,
+    from: `  const shown = Math.max(0, used);
+  const cell = moneyUsage(shown, limit);`,
+    to: `  const shown = used;
+  const cell = moneyUsage(shown, limit);`,
+    expect: "1.366 · the two loss rows are separate, share ONE cap, and the SETTLED one renders a profit as zero",
+    suite: "console-mem",
+  },
+  {
+    name: "367-clamp · the usage text is clamped to the limit, so 140% reads as 100% and the officer cannot see the breach",
+    file: GATE,
+    from: `  const uf = formatTzs(shown);`,
+    to: `  const uf = formatTzs(Math.min(shown, limit));`,
+    expect: "1.367 · usage OVER its limit says so in words",
+    suite: "console-mem",
+  },
+  {
+    name: "367-silent · the at/over clause is dropped, leaving a saturated bar as the only signal that a cap is reached",
+    file: GATE,
+    from: `  if (used === limit) return \` \${EM_DASH} at the limit\`;`,
+    to: `  if (false as boolean) return \` \${EM_DASH} at the limit\`;`,
+    expect: "1.367 · usage EQUAL to its limit says so in words",
+    suite: "console-mem",
+  },
+  {
+    name: "362-double · the kit prints BOTH lines, so a named cap sits above a tracked bare number",
+    file: BAR,
+    from: `      {caption ? (`,
+    to: `      {false ? (`,
+    expect: "1.362 · the kit's built-in numeric line renders ONLY when no caption is given",
+    suite: "console-mem",
+  },
+  {
+    name: "362-aria · the bar stops announcing its value, so the caption reaches the eye and nobody else",
+    file: BAR,
+    from: `        aria-valuetext={captionText}`,
+    to: `        aria-label={label}`,
+    expect: "1.362 · the kit's built-in numeric line renders ONLY when no caption is given",
+    suite: "console-mem",
+  },
+  {
+    name: "409-name · the caption drops the cap's NAME, and `label` is aria-only, so a card of bars names its caps to nobody",
+    file: GATE,
+    from: `    captionText: \`\${name} · \${cell.text}\`,`,
+    to: `    captionText: cell.text,`,
+    expect: "1.409 · `captionText` is PLAIN",
+    suite: "console-mem",
+  },
+  {
+    name: "409-amount · the caption's figures lose `.amount`, so money is painted in prose and may break mid-number",
+    file: PAGE,
+    from: `              <span className="whitespace-nowrap">{h.word}{" "}<span className="amount tabular-nums">{h.figure}</span>{h.suffix}</span>`,
+    to: `              <span className="whitespace-nowrap">{h.word}{" "}<span className="tabular-nums">{h.figure}</span>{h.suffix}</span>`,
+    expect: "1.409 · the caption's FIRST text node is the cap's name",
+    suite: "console-mem",
+  },
+  {
+    name: "405-badge · the rail's count is derived a SECOND time, so the badge can disagree with the sentence above it",
+    file: PAGE,
+    from: `count: k === "limits" ? view.unsetRequired : undefined`,
+    to: `count: k === "limits" ? view.tiles.filter((t) => t.value === "Not set").length : undefined`,
+    expect: "1.405 · the limits badge is `TabItem.count`",
+    suite: "console-mem",
+  },
+  {
+    name: "406-strip · the live trigger moves inside a tab group, so a tab switch remounts it and two timers can race",
+    file: PAGE,
+    from: `              <DeskLive live={view.live} />`,
+    to: `              {tab === "roster" ? <DeskLive live={view.live} /> : null}`,
+    expect: "1.406 · the strip, both Callouts, the band, the rail and the live trigger are ALL rendered before the first",
+    suite: "console-mem",
+  },
+  {
+    name: "316-interval · the poller falls back to the kit's 30s default, which is the same size as 353's staleness threshold",
+    file: LIVE,
+    from: `      intervalMs={LIVE_ROUND_MS}`,
+    to: `      eventName="50pick:sse:notification"`,
+    expect: "1.316 · it polls on `LIVE_ROUND_MS`",
+    suite: "console-mem",
+  },
+  {
+    name: "316-dom · the hold is read from the DOM instead of React state — a CLOSED dialog left in the tree then silences the page",
+    file: LIVE,
+    from: `      enabled={deskPollerEnabled(live, holds)}`,
+    to: `      enabled={deskPollerEnabled(live, document.querySelectorAll("[role=dialog]").length)}`,
+    expect: "1.316 · `enabled` is composed from REACT STATE",
+    suite: "console-mem",
+  },
+  {
+    name: "316-live · `live` is always true, so a dead desk with the switch off and no account still polls every 20s",
+    file: GATE,
+    from: `  const live = on === true || (roster ?? []).some((b) => b.status === "ACTIVE" || b.status === "AUTO_PAUSED");`,
+    to: `  const live = true;`,
+    expect: "1.316 · CONTROL · with the switch off and no account at all `live` is FALSE",
+    suite: "console-mem",
+  },
+  {
+    name: "306-second-read · the limits panel reads the control row a SECOND time, so the badge and the sentence can disagree",
+    file: GATE,
+    from: `  const shell = deskShell(core);
+  const { control, dayBooks, exposure, schemaMissing } = core;`,
+    to: `  const shell = deskShell(core);
+  const { dayBooks, exposure, schemaMissing } = core;
+  const control = await houseBotControlStore.get().catch(() => null);`,
+    expect: "1.306 · 1.312 · each render pass reads the control row EXACTLY ONCE",
+    suite: "console-mem",
+  },
+  {
+    name: "306-anchor-everywhere · every unset row carries the anchor, so `#limits-first-unset` names several elements",
+    file: GATE,
+    from: `    const firstUnset = unset && required && !firstUnsetTaken;`,
+    to: `    const firstUnset = unset && required;`,
+    expect: "1.306 · exactly ONE row of the limits list carries the anchor",
+    suite: "console-mem",
+  },
+  {
+    name: "306-anchor-href · the strip's link drops the fragment, so the officer lands on the tab and hunts for the field",
+    file: PAGE,
+    from: `                  <Link href={view.limitsFirstUnsetHref as Route} className="inline-flex items-center min-h-[var(--tap-min)] text-body-sm text-warning-fg hover:underline">`,
+    to: `                  <Link href={view.limitsHref as Route} className="inline-flex items-center min-h-[var(--tap-min)] text-body-sm text-warning-fg hover:underline">`,
+    expect: "1.306 · the first-unset href is a literal the anchor guard can see",
+    suite: "console-mem",
+  },
+  {
+    name: "401-client-house · the section's client file imports a house module by TYPE, which the bundler erases and the walker cannot see",
+    file: LIVE,
+    from: `import { LIVE_ROUND_MS } from "@/lib/refresh-cadence";`,
+    to: `import { LIVE_ROUND_MS } from "@/lib/refresh-cadence";
+import type { ConsoleTab } from "@/lib/house-bot/console-routes";`,
+    expect: "1.330 · 1.401 · no client file of the section names a house module in ANY import form",
+    suite: "console-mem",
+  },
+  {
+    name: "412-typed · a typed control ships on the limits panel with no save behind it, discarding what an officer types",
+    file: PAGE,
+    from: `                  {limitRows.map((row) => (row.firstUnset`,
+    to: `                  <input readOnly value="" />
+                  {limitRows.map((row) => (row.firstUnset`,
+    expect: "1.412 · 433 · the section renders a typed control EXACTLY when a limits-save is wired",
+    suite: "console-mem",
+  },
+  {
+    name: "421-limits · the limits panel paints bars with no control row, against limits it could not read",
+    file: GATE,
+    from: `  const usage: ConsoleUsageRow[] | null = schemaMissing || !control ? null : (() => {`,
+    to: `  const usage: ConsoleUsageRow[] | null = !control ? null : (() => {`,
+    expect: "1.421 · with no control row the limits panel has nothing to measure against",
     suite: "console-mem",
   },
   {

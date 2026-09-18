@@ -788,6 +788,268 @@ section("§2 · the strip, the band, the roster and every failure");
     [emptyOff, emptyOn].every((x: Any) => x.empty.body !== x.stateSentence && !x.stateSentence.includes(x.empty.body)),
     j([emptyOff.stateSentence, emptyOff.empty.body]));
 
+  /* ══════════════════════════════════════════════════════════════════════════════════════════════════════════════
+   * §2b · THE LIMITS PANEL (C7 step 3 · rulings 362, 364, 366, 367, 372, 409, 412, and 306/312's ONE derived count)
+   * ══════════════════════════════════════════════════════════════════════════════════════════════════════════════ */
+
+  /* 1.372(a) · QUERY-shaped, audience FIRST, and a refused viewer gets `null` with ZERO store calls — the same
+   * proof the roster reader carries, because a second door is a second way past the gate. */
+  {
+    const playerId = await w.user({ role: "PLAYER" });
+    const realCtl = w.dal.houseBotControlStore.get;
+    let calls = 0;
+    let refused: Any;
+    try {
+      w.dal.houseBotControlStore.get = (...a: Any[]) => { calls++; return realCtl.apply(w.dal.houseBotControlStore, a as Any); };
+      refused = await GATEM.houseUsageForConsole(playerId, "/admin/desk", { houseBotId: null });
+    } finally { w.dal.houseBotControlStore.get = realCtl; }
+    ok("1.372 · the usage reader refuses a viewer outside the audience with `null` and performs ZERO store calls",
+      refused === null && calls === 0, j({ refused, calls }));
+  }
+
+  /* ⛔ 1.306 / 1.312 · ONE CONTROL READ PER RENDER PASS, AND THE STRIP'S NUMBER IS THE BADGE'S NUMBER.
+   * The rail's `limits` badge and the strip's "Set N global limits first →" are the SAME field of the SAME object,
+   * built from ONE control row. Two reads inside one render can disagree — 346's own defect — and a badge that
+   * disagrees with the sentence 40px above it is what this case exists against. The page therefore calls exactly ONE
+   * gated reader per render, and each reader reads the control row exactly once. */
+  {
+    await w.limits({ gCapPerMarketTzs: null, gMaxBetsPerDay: null });
+    const realCtl = w.dal.houseBotControlStore.get;
+    const spyCtl = { roster: 0, usage: 0, direct: 0 };
+    let rosterPass: Any, usagePass: Any;
+    try {
+      w.dal.houseBotControlStore.get = (...a: Any[]) => { spyCtl.roster++; return realCtl.apply(w.dal.houseBotControlStore, a as Any); };
+      rosterPass = await GATEM.houseRosterForConsole(OFFICER, "/admin/desk");
+      w.dal.houseBotControlStore.get = (...a: Any[]) => { spyCtl.usage++; return realCtl.apply(w.dal.houseBotControlStore, a as Any); };
+      usagePass = await GATEM.houseUsageForConsole(OFFICER, "/admin/desk", { houseBotId: null });
+      /* ⛔ THE CONTROL FOR THE TWO ONES, ON THE SAME HANDLE AND IN THE SAME RUN: without it, a patch that never
+       * reached the module under test would read exactly like compliance (the double-load trap). */
+      w.dal.houseBotControlStore.get = (...a: Any[]) => { spyCtl.direct++; return realCtl.apply(w.dal.houseBotControlStore, a as Any); };
+      await w.dal.houseBotControlStore.get();
+    } finally { w.dal.houseBotControlStore.get = realCtl; }
+    ok("1.306 · 1.312 · each render pass reads the control row EXACTLY ONCE — the strip's count and the rail's badge can never be two different reads",
+      spyCtl.roster === 1 && spyCtl.usage === 1, j(spyCtl));
+    ok("1.306 · CONTROL · the spy CAN fire through the same handle the readers use, so the two ones above are a measurement",
+      spyCtl.direct === 1, j(spyCtl));
+    ok("1.306 · 1.312 · …and both panels report the SAME derived count, which is the number the badge and the sentence both paint",
+      rosterPass.unsetRequired === 2 && usagePass.unsetRequired === rosterPass.unsetRequired,
+      j({ roster: rosterPass.unsetRequired, usage: usagePass.unsetRequired }));
+    /* ⛔ AND THE SHELL IS THE SAME SHELL ON BOTH TABS (ruling 406): the switch, the auto-off cause and the band live
+     * above the rail, so a reader that built its own version of them would let one tab say the desk is off while the
+     * other said it was on. */
+    ok("1.406 · the strip, the auto-off cause and the band are the SAME values on both panels — one shell, built once",
+      usagePass.stateSentence === rosterPass.stateSentence && usagePass.offCause === rosterPass.offCause
+        && j(usagePass.tiles) === j(rosterPass.tiles) && usagePass.on === rosterPass.on
+        && usagePass.limitsFirstUnsetHref === rosterPass.limitsFirstUnsetHref,
+      j({ roster: rosterPass.stateSentence, usage: usagePass.stateSentence }));
+    await w.limits();
+  }
+
+  /* ⛔ 1.364 · THE THREE UNSET CAPTIONS, CHOSEN BY MEMBERSHIP, ASSERTED AT THE FUNCTION LEVEL.
+   * The LIMITS tab renders GLOBALS only, so every row on it falls in one of the first two branches — the third
+   * would be an unexecuted branch with no proof until step 4 builds the per-account page. So the chooser is asserted
+   * over the three populations READ FROM THE SOURCE OF TRUTH (`REQUIRED_FOR_MASTER_ON`, `CLEAR_EXEMPT`, and the caps
+   * `cap-precheck.ts` reads unconditionally), and moving a field between those sets fails HERE. */
+  {
+    const REQ = R.REQUIRED_FOR_MASTER_ON as readonly string[];
+    const EXEMPT = R.CLEAR_EXEMPT as readonly string[];
+    const UNCONDITIONAL = ["stakeMinTzs", "stakeMaxTzs", "capPerMarketTzs", "balanceFloorTzs", "capDailyStakeTzs", "capDailyLossTzs", "capOpenExposureTzs"];
+    const MASTER = "Not set — the master switch cannot be turned on.";
+    const TARGETED = "Not set — targeted and manual stakes cannot be placed.";
+    const ACCOUNT = "Not set — this account cannot place a bet.";
+    ok("1.364 · every member of `REQUIRED_FOR_MASTER_ON` gets the master-switch caption, and the list is not empty",
+      REQ.length >= 8 && REQ.every((f) => GATEM.unsetCaptionFor(f) === MASTER), j(REQ.filter((f) => GATEM.unsetCaptionFor(f) !== MASTER)));
+    ok("1.364 · every member of `CLEAR_EXEMPT` gets the targeted-and-manual caption — the blanket sentence would be a LIE on a staff-chosen cap",
+      EXEMPT.length >= 7 && EXEMPT.every((f) => GATEM.unsetCaptionFor(f) === TARGETED), j(EXEMPT.filter((f) => GATEM.unsetCaptionFor(f) !== TARGETED)));
+    ok("1.364 · every cap the seam reads UNCONDITIONALLY gets the third caption, and it says `account` — ruling 453 outranks 364's own wording",
+      UNCONDITIONAL.every((f) => GATEM.unsetCaptionFor(f) === ACCOUNT) && !NEUTRAL.test(ACCOUNT), j(UNCONDITIONAL.map((f) => GATEM.unsetCaptionFor(f))));
+    /* ⛔ THE THREE POPULATIONS DO NOT OVERLAP, so the chooser's ORDER is not doing the deciding for it. */
+    ok("1.364 · CONTROL · the three populations are disjoint and the three captions differ, so the branch order is not what makes the case pass",
+      new Set([MASTER, TARGETED, ACCOUNT]).size === 3
+        /* ⛔ AND THE ONE FIELD THE PANEL SELECTS BY PROPERTY RATHER THAN BY NAME REALLY IS UNIQUE (453). */
+        && GATEM.TARGETED_DAILY_TZS_FIELD === "gCapStaffChosenDailyTzs"
+        && (R.LIMIT_FIELDS as readonly string[]).filter((f) => EXEMPT.includes(f) && R.FIELD_META[f].unit === "TZS").length === 1
+        && !REQ.some((f) => EXEMPT.includes(f)) && !UNCONDITIONAL.some((f) => REQ.includes(f) || EXEMPT.includes(f)),
+      j({ req: REQ.length, exempt: EXEMPT.length, uncond: UNCONDITIONAL.length }));
+    /* ⛔ AND THE CAPS THE SEAM READS UNCONDITIONALLY ARE READ FROM `cap-precheck.ts` ITSELF, not typed here: the list
+     * above is only useful while it is the code's own list. A cap that becomes conditional fails this. */
+    const precheck = decomment(read("src/lib/server/house-bot/cap-precheck.ts"));
+    const staffBlock = precheck.slice(precheck.indexOf("if (f.staffChosen)"));
+    ok("1.364 · CONTROL · every cap named unconditional really is read OUTSIDE `if (f.staffChosen)` in `cap-precheck.ts`",
+      UNCONDITIONAL.every((f) => precheck.includes(`b.${f}`) && !staffBlock.includes(`b.${f}`)),
+      j(UNCONDITIONAL.filter((f) => !precheck.includes(`b.${f}`) || staffBlock.includes(`b.${f}`))));
+  }
+
+  /* 1.364 / 1.372 / 1.409 · the panel itself: five usage rows, an unset cap with NO bar, and the read-only list. */
+  {
+    await w.limits({ gCapDailyStakeTzs: 100_000, gCapDailyLossTzs: 100_000, gCapOpenExposureTzs: 100_000, gCapStaffChosenDailyTzs: null });
+    const u = await GATEM.houseUsageForConsole(OFFICER, "/admin/desk", { houseBotId: null });
+    ok("1.364 · the panel carries the five all-account usage rows — the daily stake cap, the loss cap TWICE, the exposure cap scoped, and the targeted-and-manual cap",
+      u.usage.length === 5
+        && u.usage[1].name.endsWith("(projected)") && u.usage[2].name.endsWith("(settled)")
+        && u.usage[1].name.slice(0, -12) === u.usage[2].name.slice(0, -10)
+        && u.usage[3].name.endsWith("(open now)"),
+      j(u.usage.map((r: Any) => r.name)));
+    ok("1.365 · and NO usage row for a per-market, per-player or counterparty-share cap — this console renders no such figure",
+      !/per-market|per player|Counterparty/i.test(all(u.usage.map((r: Any) => r.name))), j(u.usage.map((r: Any) => r.name)));
+    const unset = u.usage[4];
+    ok("1.364 · an UNSET cap renders NO bar and one of the three captions — never a bar at zero, which would say headroom where the gate refuses everything",
+      unset.limitTzs === null && unset.usedTzs === null && unset.halves.length === 0
+        && unset.unsetCaption === "Not set — targeted and manual stakes cannot be placed." && unset.unsetLinked === false,
+      j(unset));
+    /* ⛔ AND A REQUIRED cap's unset caption IS linked, because the field that fixes it is on this very page. */
+    await w.limits({ gCapDailyStakeTzs: null });
+    const u2 = await GATEM.houseUsageForConsole(OFFICER, "/admin/desk", { houseBotId: null });
+    ok("1.364 · a REQUIRED cap's unset caption names the master switch and carries the link to the field that fixes it",
+      u2.usage[0].limitTzs === null && u2.usage[0].unsetCaption === "Not set — the master switch cannot be turned on." && u2.usage[0].unsetLinked === true,
+      j(u2.usage[0]));
+    /* ⛔ THE ANCHOR IS ON THE FIRST UNSET REQUIRED LIMIT, AND ON EXACTLY ONE ROW. */
+    const flagged = u2.limits.filter((l: Any) => l.firstUnset);
+    ok("1.306 · exactly ONE row of the limits list carries the anchor, and it is the FIRST unset REQUIRED limit in form order",
+      flagged.length === 1 && flagged[0].name === GATEM.consoleLimitLabel("gCapDailyStakeTzs")
+        && u2.limits.findIndex((l: Any) => l.firstUnset) === u2.limits.findIndex((l: Any) => l.unset),
+      j({ flagged: flagged.map((l: Any) => l.name), list: u2.limits.map((l: Any) => [l.name, l.unset, l.firstUnset]) }));
+    /* ⛔ WITH EVERY LIMIT SET, NO ROW CARRIES IT — an anchor that always renders is an anchor that means nothing. */
+    /* ⚠️ `gTargetsMaxActive` is NOT in the world's OPEN_LIMITS, so it is set explicitly here: an "everything set"
+       control that leaves one field null is not the control it claims to be. */
+    await w.limits({ gTargetsMaxActive: 50 });
+    const u3 = await GATEM.houseUsageForConsole(OFFICER, "/admin/desk", { houseBotId: null });
+    ok("1.306 · CONTROL · with every limit set no row carries the anchor and no row carries a caption",
+      u3.limits.every((l: Any) => l.firstUnset === false && l.unset === false && l.caption === null)
+        && u3.limits.length === (R.LIMIT_FIELDS as readonly string[]).length,
+      j({ rows: u3.limits.length, want: (R.LIMIT_FIELDS as readonly string[]).length }));
+    /* ⛔ AND EVERY LABEL AND SECTION THE PANEL PAINTS IS NEUTRAL (ruling 453, 432(f) amended): four `FIELD_META`
+     * labels and one section name carry a word this section may not render, and `gCapStaffChosenDailyTzs` — the one
+     * ruling 364 requires a USAGE ROW for — is the one 432(f) missed. */
+    const painted = [...u3.limits.flatMap((l: Any) => [l.name, l.section, l.value]), ...u3.usage.map((r: Any) => r.name)];
+    ok("1.364 · 453 · every limit name, section and value the panel paints is neutral, over the WHOLE limit table",
+      painted.length >= 40 && painted.every((s: string) => !NEUTRAL.test(s)), j(painted.filter((s: string) => NEUTRAL.test(s))));
+    ok("1.364 · CONTROL · the four `FIELD_META` labels and the one section name this overrides really DO carry a word — so the override is doing the work",
+      ["maxDesignatedBots", "gCapStaffChosenPerDay", "gCapStaffChosenDailyTzs", "gTargetsMaxActive"]
+        .every((f) => NEUTRAL.test(R.FIELD_META[f].label) && !NEUTRAL.test(GATEM.consoleLimitLabel(f)))
+        && NEUTRAL.test(R.FIELD_META.gCapStaffChosenDailyTzs.section),
+      j(["maxDesignatedBots", "gCapStaffChosenPerDay", "gCapStaffChosenDailyTzs", "gTargetsMaxActive"].map((f) => [R.FIELD_META[f].label, GATEM.consoleLimitLabel(f)])));
+    STATES.push(["limits-panel", u3], ["limits-unset-required", u2]);
+  }
+
+  /* ⛔ 1.366 / 1.367 · TWO LOSS ROWS AGAINST ONE CAP, THE DISPLAY CLAMPED AT ZERO, AND AT/OVER SAID IN WORDS.
+   * The reader is NOT clamped: `foldDayBook` keeps a negative realised loss, which is a PROFIT, and every gate and
+   * stop still reads it. What is clamped is the RENDER, because "−TZS 12,000 of TZS 50,000" is "Today's net" wearing
+   * a cap's label — the figure ruling 266 struck. */
+  {
+    await w.limits({ gCapDailyStakeTzs: 40_000, gCapDailyLossTzs: 50_000, gCapOpenExposureTzs: 10_000, gCapStaffChosenDailyTzs: 100_000 });
+    const realDay = w.dal.houseBookStore.dayRows;
+    const realExp = w.dal.houseBookStore.openExposure;
+    let planted: Any;
+    try {
+      /* staked 40,000 = the cap exactly (AT); projected loss 30,000 − 11,000 + 12,000 = 31,000 (under);
+       * realised loss 30,000 − 41,000 = −11,000, a PROFIT, which must RENDER as zero;
+       * projected loss = realised + open = −11,000 + 12,000 = 1,000, which is under the 50,000 cap. */
+      w.dal.houseBookStore.dayRows = async () => [
+        { houseBotId: b1.botId, bets: 3, staked: 40_000, openStake: 12_000, settledStake: 30_000, returned: 41_000 },
+      ];
+      /* exposure 12,000 against a cap of 10,000 — OVER. */
+      w.dal.houseBookStore.openExposure = async () => [{ houseBotId: b1.botId, openStakeTzs: 12_000 }];
+      planted = await GATEM.houseUsageForConsole(OFFICER, "/admin/desk", { houseBotId: null });
+    } finally { w.dal.houseBookStore.dayRows = realDay; w.dal.houseBookStore.openExposure = realExp; }
+
+    const [stake, projected, settled, exposure] = planted.usage;
+    ok("1.366 · the two loss rows are separate, share ONE cap, and the SETTLED one renders a profit as zero — never a signed amount",
+      projected.limitTzs === settled.limitTzs && projected.limitTzs === 50_000
+        && projected.usedTzs === 1_000 && settled.usedTzs === 0
+        && settled.captionText.includes(`used ${formatTzs(0)} of ${formatTzs(50_000)}`)
+        && !/[-−+]/.test(settled.captionText.replace(/—/g, "")),
+      j({ projected: projected.captionText, settled: settled.captionText }));
+    ok("1.366 · CONTROL · the READER is not clamped — `foldDayBook` still returns the negative realised loss the gates and stops read",
+      (await import("../../src/lib/server/house-bot/book.ts") as Any)
+        .foldDayBook({ bets: 3, staked: 40_000, openStake: 12_000, settledStake: 30_000, returned: 41_000 }, "x", "2026-01-01").realisedLossTzs === -11_000, "");
+    ok("1.367 · usage EQUAL to its limit says so in words, and carries the true amount in full",
+      stake.usedTzs === 40_000 && stake.edgeText === " — at the limit" && stake.captionText.endsWith(" — at the limit")
+        && stake.captionText.includes(`used ${formatTzs(40_000)} of ${formatTzs(40_000)}`),
+      j(stake.captionText));
+    ok("1.367 · usage OVER its limit says so in words, and is NOT clamped to the limit — the bar saturates and cannot tell 100% from 140%",
+      exposure.usedTzs === 12_000 && exposure.edgeText === " — over the limit"
+        && exposure.captionText.includes(`used ${formatTzs(12_000)} of ${formatTzs(10_000)}`)
+        && !exposure.captionText.includes(`used ${formatTzs(10_000)} of ${formatTzs(10_000)}`),
+      j(exposure.captionText));
+    ok("1.367 · and a row UNDER its limit carries no clause at all, so the clause is a signal and not decoration",
+      projected.edgeText === "" && !/the limit/.test(projected.captionText), j(projected.captionText));
+    /* ⛔ AT EVERY RENDER SITE (367): the caption, the plain `captionText` the bar's `aria-valuetext` takes, AND an
+     * `.admin-tbl` usage cell, which has no bar at all and where the clause is the only signal there is. */
+    let rosterPlanted: Any;
+    try {
+      w.dal.houseBookStore.dayRows = async () => [
+        { houseBotId: b1.botId, bets: 200, staked: 40_000, openStake: 12_000, settledStake: 30_000, returned: 41_000 },
+      ];
+      w.dal.houseBookStore.openExposure = async () => [{ houseBotId: b1.botId, openStakeTzs: 400_000 }];
+      rosterPlanted = await GATEM.houseRosterForConsole(OFFICER, "/admin/desk");
+    } finally { w.dal.houseBookStore.dayRows = realDay; w.dal.houseBookStore.openExposure = realExp; }
+    const rowB1 = rosterPlanted.rows.find((r: Any) => r.id === b1.botId);
+    ok("1.367 · the SAME clause lands in a roster cell, where there is no bar and it is the only signal there is",
+      rowB1.exposureCell.edgeText === " — over the limit" && rowB1.exposureCell.text.endsWith(" — over the limit")
+        && rowB1.exposureCell.text.includes(`used ${formatTzs(400_000)} of ${formatTzs(300_000)}`)
+        && rowB1.betsCell.edgeText === " — at the limit" && rowB1.betsCell.text.endsWith(" — at the limit"),
+      j({ exposure: rowB1.exposureCell.text, bets: rowB1.betsCell.text }));
+    ok("1.367 · CONTROL · the clause is written with a real em dash from `String.fromCharCode`, not a hyphen, and the same three sites agree on it",
+      rowB1.exposureCell.edgeText === ` ${String.fromCharCode(0x2014)} over the limit`
+        && exposure.edgeText === rowB1.exposureCell.edgeText
+        && exposure.captionText.endsWith(exposure.edgeText), j(rowB1.exposureCell.edgeText));
+    STATES.push(["limits-at-over", planted], ["roster-at-over", rosterPlanted]);
+    await w.limits();
+  }
+
+  /* ⛔ 1.372(c) · A FAILED READ IS NEVER A ZERO, AND EACH ROW'S READABILITY IS ITS OWN READ'S (355). */
+  {
+    const realDay = w.dal.houseBookStore.dayRows;
+    let dayFailed: Any;
+    try {
+      w.dal.houseBookStore.dayRows = async () => { throw new Error("planted day failure"); };
+      dayFailed = await GATEM.houseUsageForConsole(OFFICER, "/admin/desk", { houseBotId: null });
+    } finally { w.dal.houseBookStore.dayRows = realDay; }
+    ok("1.372 · a failed day read makes the stake and both loss rows say so — and NEVER `used TZS 0 of TZS 50,000`",
+      dayFailed.usage.slice(0, 3).every((r: Any) => r.unreadable === true && r.usedTzs === null && r.halves.length === 0
+        && /couldn't read/i.test(r.captionText) && !/TZS\s*0\b/.test(r.captionText)),
+      j(dayFailed.usage.map((r: Any) => [r.name, r.unreadable, r.captionText])));
+    ok("1.372 · …and the exposure row, whose own read succeeded, is still REAL — one failure never blanks the panel",
+      dayFailed.usage[3].unreadable === false && dayFailed.usage[3].usedTzs !== null, j(dayFailed.usage[3]));
+    const realCtl2 = w.dal.houseBotControlStore.get;
+    let schemaView: Any;
+    try {
+      const { HouseSchemaNotReady }: Any = await import("../../src/lib/server/house-bot-dal.ts");
+      w.dal.houseBotControlStore.get = async () => { throw new HouseSchemaNotReady("planted"); };
+      schemaView = await GATEM.houseUsageForConsole(OFFICER, "/admin/desk", { houseBotId: null });
+    } finally { w.dal.houseBotControlStore.get = realCtl2; }
+    ok("1.421 · with no control row the limits panel has nothing to measure against: no usage, no list, and the page's own Callout owns the cause",
+      schemaView.schemaMissing === true && schemaView.usage === null && schemaView.limits === null && schemaView.tiles.length === 0,
+      j({ schemaMissing: schemaView.schemaMissing, usage: schemaView.usage, limits: schemaView.limits }));
+    STATES.push(["limits-day-failed", dayFailed], ["limits-schema", schemaView]);
+  }
+
+  /* ⛔ 1.316 / 473 · IS THE DESK WORTH RE-ASKING ABOUT? The poller is enabled from this server verdict AND from the
+   * client's own REACT state. The three branches of the client predicate are asserted directly, because none of them
+   * can be reached from a render today: no dialog and no form exists on this section until step 4. */
+  {
+    const LIVE: Any = await import("../../src/app/admin/desk/desk-live.tsx");
+    ok("1.316 · the poller's predicate is pure and all three of its branches answer — live and unheld polls, a hold stops it, and nothing live never polls",
+      LIVE.deskPollerEnabled(true, 0) === true && LIVE.deskPollerEnabled(true, 1) === false
+        && LIVE.deskPollerEnabled(false, 0) === false && LIVE.deskPollerEnabled(false, 2) === false, "");
+    await w.switchOff();
+    const offLive = await GATEM.houseRosterForConsole(OFFICER, "/admin/desk");
+    await w.switchOn();
+    const onLive = await GATEM.houseRosterForConsole(OFFICER, "/admin/desk");
+    ok("1.316 · `live` is true with the switch ON, and true with the switch OFF while an account is ACTIVE or AUTO_PAUSED — the engine can still move it",
+      onLive.live === true && offLive.live === true, j({ on: onLive.live, off: offLive.live }));
+    const realList4 = w.dal.houseBotStore.listNonRemoved;
+    let dead: Any;
+    try {
+      await w.switchOff();
+      w.dal.houseBotStore.listNonRemoved = async () => [];
+      dead = await GATEM.houseRosterForConsole(OFFICER, "/admin/desk");
+    } finally { w.dal.houseBotStore.listNonRemoved = realList4; await w.switchOn(); }
+    ok("1.316 · CONTROL · with the switch off and no account at all `live` is FALSE — so a 20s refresh is not registered on a page nothing can change",
+      dead.live === false, j({ live: dead.live, rows: dead.rows.length }));
+  }
+
   /* ⛔ AND EVERY ONE OF THEM IS HANDED TO §3's LEXICON SCAN. A painted branch nobody scans is a branch 453 does not
    * cover, and 453 is a HARD rule on everything the console renders. */
   STATES.push(["default", v], ["roster-failed", plants.roster], ["money-failed", plants.day],
@@ -814,7 +1076,14 @@ section("§3 · nothing the desk renders names the feature, in ANY state");
     view.stateSentence, view.rosterFullReason, view.actionReason, view.switchReason, view.empty?.title, view.empty?.body,
     ...(view.tiles ?? []).flatMap((t: Any) => [t.label, t.value, t.delta]),
     ...(view.rows ?? []).flatMap((r: Any) => [r.statusWord, r.lossCell.text, r.exposureCell.text, r.betsCell.text, r.products,
-      ...[r.lossCell, r.exposureCell, r.betsCell].flatMap((c: Any) => c.halves.flatMap((h: Any) => [h.word, h.suffix]))]),
+      ...[r.lossCell, r.exposureCell, r.betsCell].flatMap((c: Any) => c.halves.flatMap((h: Any) => [h.word, h.suffix, c.edgeText]))]),
+    /* ⭐ C7 step 3 · THE LIMITS PANEL'S OWN COPY. Its five usage names come from `FIELD_META`, four of whose labels
+       and one of whose section names carry a word this section may not render (432(f), amended) — so the branch most
+       likely to break 453 on this checkpoint is the one that would have been outside the scan. */
+    ...(view.usage ?? []).flatMap((r: Any) => [r.name, r.captionText, r.unsetCaption, r.edgeText,
+      ...r.halves.flatMap((h: Any) => [h.word, h.suffix])]),
+    ...(view.limits ?? []).flatMap((l: Any) => [l.section, l.name, l.value, l.caption]),
+    view.formReason,
     view.chip?.word,
   ].filter((s: unknown): s is string => typeof s === "string");
 
@@ -825,7 +1094,7 @@ section("§3 · nothing the desk renders names the feature, in ANY state");
   /* ⛔ THE FLOOR IS OVER THE STATES AND THE STRINGS BOTH: a scan of one state, or of a view whose branches are all
    * null, is not a scan. Sixteen states were produced above; each carries at least a sentence and four tile labels. */
   ok("3.453 · not one painted string of ANY state carries a house-vocabulary word, or the words bot, house, liquidity or counter-stake",
-    scanned.length >= 16 && total >= 200 && hits.length === 0, j({ states: scanned.length, scanned: total, hits }));
+    scanned.length >= 22 && total >= 260 && hits.length === 0, j({ states: scanned.length, scanned: total, hits }));
   /* ⛔ AND THE BRANCHES MOST LIKELY TO CARRY ONE ARE PROVEN PRESENT IN THE SCAN, by name — a state list that quietly
    * stopped producing the OFF sentence or an empty state would otherwise read as compliance. */
   const seen = new Set(scanned.flatMap(([, c]) => c));
@@ -1030,14 +1299,26 @@ export default function Ruling513Control() {
    * to it. ⛔ A rail option whose panel is not written is a dead control. */
   ok("1.312a · the rail's options come from the closed list, and the page renders a panel for every key in it",
     /CONSOLE_TABS\.map/.test(pageCode) && CR.CONSOLE_TABS.every((k: string) => pageCode.includes(`tab === "${k}"`))
-      && CR.CONSOLE_TABS.length === 1 && CR.CONSOLE_TABS[0] === "roster", j(CR.CONSOLE_TABS));
-  for (const raw of [undefined, "", "limitz", "limits", ["roster", "limits"] as Any]) {
+      && CR.CONSOLE_TABS.length === 2 && j([...CR.CONSOLE_TABS]) === j(["roster", "limits"]), j(CR.CONSOLE_TABS));
+  /* ⛔ A TAB EXISTS ONLY WITH ITS PANEL (ruling 312), AND THE LIST GROWS ONE KEY PER PANEL. The `limits` key joined
+   * it at C7 step 3 with the panel below; `activity` and `history` join at step 5. This case is what stops a rail
+   * option shipping ahead of the thing it opens — a dead control in its honest-looking half (432(i)). */
+  ok("1.312a · the closed list holds a key for EVERY panel the page renders, and a panel for every key — neither ahead of the other",
+    j([...new Set([...pageCode.matchAll(/tab === "([a-z-]+)"/g)].map((m) => m[1]))].sort()) === j([...CR.CONSOLE_TABS].sort()), "");
+  for (const raw of [undefined, "", "limitz", "roster", ["roster", "limits"] as Any]) {
     ok(`1.302 · \`?tab=${j(raw)}\` resolves to the roster — never a 404 and never a redirect`, CR.consoleTab(raw) === "roster", j(CR.consoleTab(raw)));
   }
+  ok("1.302 · `?tab=limits` now resolves to the LIMITS panel, because the panel exists", CR.consoleTab("limits") === "limits", j(CR.consoleTab("limits")));
   ok("1.302 · `notFound()` is not called anywhere in the section — it is reserved for a missing RECORD on the detail route",
     !sectionCode.includes("notFound"), "");
-  ok("1.315 · the tab selection is written in the shipped idiom the served probe discovers tabs by",
-    [...pageCode.matchAll(/tab === "([a-z-]+)"/g)].map((m) => m[1]).join(",") === CR.CONSOLE_TABS.join(","), "");
+  /* ⛔ THE PROBE READS THE FILE RAW, COMMENTS AND ALL. `house-bot-console-probe.mts` discovers a page's tabs with
+   * `/tab === "([a-z-]+)"/g` over `readFileSync`, so a COMMENT that quotes the idiom invents a `?tab=` instance that
+   * no panel answers and the probe then requests a page that does not exist. Both forms are asserted: the RAW file
+   * must yield exactly the closed list, in rail order. */
+  ok("1.315 · the tab selection is written in the shipped idiom the served probe discovers tabs by — in the RAW file, comments included",
+    [...new Set([...pageRaw.matchAll(/tab === "([a-z-]+)"/g)].map((m) => m[1]))].join(",") === CR.CONSOLE_TABS.join(",")
+      && [...new Set([...pageCode.matchAll(/tab === "([a-z-]+)"/g)].map((m) => m[1]))].join(",") === CR.CONSOLE_TABS.join(","),
+    j([...pageRaw.matchAll(/tab === "([a-z-]+)"/g)].map((m) => m[1])));
 
   /* 1.373 / 1.407 · money SECOND and THIRD, every money cell `tabular` + `.amount`, no min-width on a money table. */
   const thead = /<thead[\s\S]*?<\/thead>/.exec(pageCode)?.[0] ?? "";
@@ -1109,12 +1390,46 @@ export default function Ruling513Control() {
     j({ newPage: existsSync(join(ROOT, `${SECTION}/new/page.tsx`)) }));
   /* ⛔ AND NO RENDERED LINK NAMES A `?tab=` VALUE WITH NO PANEL BEHIND IT (ruling 432(i)). `consoleTab()` resolves an
    * unknown tab BACK to the roster, so such a link repaints the identical page with no message — a dead control. */
-  ok("1.312a · 432(i) · the page renders a LINK to the limits tab only when that tab has a panel — today it renders the sentence as plain text",
+  /* ⭐ C7 STEP 3 TURNED BOTH SITES ON, AND THE FLAG STILL DECIDES. `LIMITS_TAB_READY` is derived from
+   * `CONSOLE_TABS`, so the two guarded sites paint LINKS today and would fall back to plain text the moment the key
+   * left the list — which is exactly the rule steps 4 and 5 inherit for `activity`, `history`, `rules` and
+   * `targets`. ⛔ BOTH BRANCHES ARE STILL GUARDED IN SOURCE: deleting the ternary would ship the link
+   * unconditionally, which is the dead control 432(i) was written for. */
+  ok("1.312a · 432(i) · both limits pointers are still GUARDED by the flag, and the flag is derived from the closed list — never typed",
     (pageCode.match(/LIMITS_TAB_READY/g) ?? []).length === 3
       && CR.LIMITS_TAB_READY === CR.CONSOLE_TABS.includes("limits")
-      && CR.LIMITS_TAB_READY === false && CR.consoleTab("limits") === "roster", j({ ready: CR.LIMITS_TAB_READY }));
-  ok("1.312a · 432(i) · …and no `<Link href=` in the section points anywhere but that one guarded href",
-    [...pageCode.matchAll(/<Link href=\{([^}]*)\}/g)].every((m) => m[1].includes("view.limitsHref")), "");
+      && CR.LIMITS_TAB_READY === true && CR.consoleTab("limits") === "limits", j({ ready: CR.LIMITS_TAB_READY }));
+  /* ⛔ AND THE INERT BRANCH KEEPS ITS PROOF, AT THE FUNCTION LEVEL. `LIMITS_TAB_READY` is now true, so the
+   * plain-text branch cannot execute in any render — and a proof deleted the day its branch stops running is how the
+   * next dead control ships. `stripLinkedTail`'s behaviour and the reader's `rosterFullPlain` are therefore asserted
+   * DIRECTLY (§2 above, 1.314/432(i)), and the page is held to still carrying the plain form for the states
+   * steps 4 and 5 will re-open. */
+  ok("1.312a · 432(i) · the inert form is still BUILT and still reachable from the page, though its branch no longer executes",
+    pageCode.includes("view.rosterFullPlain") && read(GATE).includes("function stripLinkedTail(")
+      && decomment(read(GATE)).includes("stripLinkedTail(rosterFullReason)"), "");
+  ok("1.312a · 432(i) · …and every `<Link href=` in the section points at one of the gate's own console hrefs, never a literal",
+    [...pageCode.matchAll(/<Link href=\{([^}]*)\}/g)].length >= 2
+      && [...pageCode.matchAll(/<Link href=\{([^}]*)\}/g)].every((m) => /view\.limitsHref|view\.limitsFirstUnsetHref|unsetHref/.test(m[1])),
+    j([...pageCode.matchAll(/<Link href=\{([^}]*)\}/g)].map((m) => m[1])));
+  /* ⛔ THE ANCHOR'S HREF IS ONE LITERAL — because `test:tab-anchors` reads SOURCE TEXT and a template built from
+   * `${CONSOLE_ROUTE}` is invisible to it — and it is held EQUAL to the composed form so the literal cannot rot. */
+  ok("1.306 · the first-unset href is a literal the anchor guard can see, and it equals the composed form exactly",
+    CR.CONSOLE_LIMITS_FIRST_UNSET_HREF === `${CR.CONSOLE_LIMITS_HREF}#${CR.LIMITS_FIRST_UNSET_ID}`
+      && CR.CONSOLE_LIMITS_FIRST_UNSET_HREF === "/admin/desk?tab=limits#limits-first-unset"
+      && read(ROUTES_MODULE).includes('"/admin/desk?tab=limits#limits-first-unset"'), CR.CONSOLE_LIMITS_FIRST_UNSET_HREF);
+  /* ⛔ AND THE ID IS RENDERED INSIDE THE LIMITS GROUP, AS A LITERAL, IN BOTH BRANCHES. Measured on this file:
+   * `id={cond ? "limits-first-unset" : undefined}` is invisible to the guard, and the same literal inside a helper
+   * FUNCTION sits above every tab group and reads as "above the rail (every tab)" — a PASS that proves nothing. */
+  {
+    const open = pageCode.indexOf('{tab === "limits" && (<>');
+    const close = pageCode.indexOf("</>)}", open);
+    const idAt = pageCode.indexOf('id="limits-first-unset"');
+    ok("1.306 · the anchor is rendered as a LITERAL id inside the limits group — the form `test:tab-anchors` can actually see",
+      open > 0 && idAt > open && close > idAt
+        && (pageCode.match(/id="limits-first-unset"/g) ?? []).length === 1
+        && !/id=\{[^}]*limits-first-unset/.test(pageCode),
+      j({ open, idAt, close }));
+  }
   /* ⛔ AND THE LINKED SENTENCE IS PAINTED ONLY INSIDE THAT ONE `<Link>`. Everywhere else the head paints the PLAIN
    * form, because the server's sentence ends in an arrow and an arrow on inert text is a promise of navigation to a
    * tab that is not on the rail. The sibling in the strip already did this by writing two different strings; the
@@ -1230,9 +1545,151 @@ export default function Ruling513Control() {
       emitted.length > 60 && !emitted.some((l) => l.includes("1.999 · a case that does not exist")), `${emitted.length} labels`);
   }
 
-  /* 1.330 · no client module under the section — there is none at this step — and no route key in one. */
-  ok("1.330 · no file under the section is a client module, so no href literal and no route key can reach a chunk from here",
-    sectionFiles.every((f) => !read(f).includes('"use client"')), "");
+  /* ⛔ 1.330 / 1.401 · THE SECTION'S CLIENT FILES, AND WHAT MAY NOT BE IN ONE. C7 step 3 added the first
+   * (`desk-live.tsx`, the strip's one `RefreshPoller`), so this assertion has a population for the first time.
+   * ⛔ NO HOUSE MODULE, BY VALUE OR BY TYPE (384): a type-only import is erased by the bundler and invisible to the
+   * disclosure walker, which is exactly the shape that survives review and becomes a value import in one careless
+   * edit — so the pin is on the SPECIFIER, which catches both.
+   * ⛔ NO ROUTE LITERAL AND NO ROUTE KEY (330): `admin-nav-groups.ts`'s tables ship verbatim in a public chunk, and
+   * the console's whole segment choice rests on nothing else naming it from a client file. */
+  {
+    const clientFiles = sectionFiles.filter((f) => read(f).includes('"use client"'));
+    const HOUSE_SPECIFIERS = ["@/lib/house-bot/", "@/lib/server/house-bot", "house-bot-dal", "house-console-read", "./console-routes"];
+    const clientCode = clientFiles.map((f) => decomment(read(f))).join("\n");
+    ok("1.330 · 1.401 · no client file of the section names a house module in ANY import form, or types the console's route or route key",
+      clientFiles.length >= 1
+        && HOUSE_SPECIFIERS.every((m) => !clientCode.includes(m))
+        && !clientCode.includes("/admin/desk") && !/ROUTE_KEYS|CRUMB_LABELS|NAV_GROUPS/.test(clientCode),
+      j({ clientFiles, hits: HOUSE_SPECIFIERS.filter((m) => clientCode.includes(m)) }));
+    ok("1.401 · no client file of the section names a notification KIND or reaches the notification registry (386)",
+      !/HOUSE_BOT|notification-filters|comms-registry|detail\.notification/.test(clientCode)
+        && clientCode.includes('eventName="50pick:sse:notification"'), "");
+    /* ⛔ AND THE MONEY GUARDS ARE TOLD HOW TO SEE THIS SECTION'S MONEY (401). `test:type-scale` detects money only
+     * through a literal `formatTzs*` call inside an element whose whole content is text — and every figure here
+     * arrives as an already-formatted STRING from the server, so that detector is blind to the entire section. The
+     * source fact is asserted directly: every element that paints a money value carries `amount` at its OWN call
+     * site, and no money value is passed into a tracked or sub-body rung without it. */
+    const moneySites = [...pageCode.matchAll(/"([^"]*\bamount\b[^"]*)"/g)].map((m) => m[1]);
+    ok("1.401 · every money element under the section carries `amount` at its own call site, and none of them is on a tracked or micro rung",
+      moneySites.length >= 3 && moneySites.every((c) => !/text-micro|text-caption|tracking-/.test(c)),
+      j(moneySites));
+    ok("1.401 · CONTROL · the walked money sites are the ones the page really paints — the roster's figure, the bar caption's figures and the limit list's value",
+      pageCode.includes('const figure = cell.money ? "amount tabular-nums"')
+        && pageCode.includes('<span className="amount tabular-nums">{h.figure}</span>')
+        && pageCode.includes('"amount tabular-nums text-body-sm text-text"'), j(moneySites));
+  }
+
+  /* ⛔ 1.316 / 473 · THE PAGE'S ONE LIVE TRIGGER, IN THE STRIP, ON `LIVE_ROUND_MS`, ENABLED FROM REACT STATE. */
+  {
+    const liveFile = `${SECTION}/desk-live.tsx`;
+    const liveCode = decomment(read(liveFile));
+    const stripAt = pageCode.indexOf("<AdminCard padding=\"p-4\">");
+    const pollerAt = pageCode.indexOf("<DeskLive live={view.live} />");
+    const railAt = pageCode.indexOf("<Tabs");
+    ok("1.316 · exactly ONE `RefreshPoller` in the whole section, and it is mounted from the strip — ABOVE the rail, so no tab switch remounts it",
+      (sectionFiles.map((f) => decomment(read(f))).join("\n").match(/<RefreshPoller/g) ?? []).length === 1
+        && (pageCode.match(/<DeskLive /g) ?? []).length === 1
+        && stripAt > 0 && pollerAt > stripAt && railAt > pollerAt, j({ stripAt, pollerAt, railAt }));
+    ok("1.316 · it polls on `LIVE_ROUND_MS` (20s, against ruling 353's 30s staleness threshold), never the component's 30s default",
+      /intervalMs=\{LIVE_ROUND_MS\}/.test(liveCode) && liveCode.includes('from "@/lib/refresh-cadence"')
+        && (await import("../../src/lib/refresh-cadence.ts") as Any).LIVE_ROUND_MS === 20_000, "");
+    ok("1.316 · `enabled` is composed from REACT STATE and the server's own verdict — and no file under the section asks the DOM whether a dialog is open",
+      /useState/.test(liveCode) && /enabled=\{deskPollerEnabled\(live, holds\)\}/.test(liveCode)
+        && !/querySelector|\[role=.?dialog|getElementsBy/.test(sectionFiles.map((f) => decomment(read(f))).join("\n")), "");
+  }
+
+  /* ⛔ 1.362 / 1.409 · THE KIT'S NEW CAPTION PAIR, AND THE ONE EXISTING CALLER IS UNTOUCHED. */
+  {
+    const bar = decomment(read("src/components/ui/progress-bar.tsx"));
+    ok("1.362 · the kit's built-in numeric line renders ONLY when no caption is given — never two lines, and never a tracked bare number under a named cap",
+      /\{caption \? \(/.test(bar) && /aria-valuetext=\{captionText\}/.test(bar)
+        && (bar.match(/value\.toLocaleString\(\)/g) ?? []).length === 1, "");
+    ok("1.362 · the two caption props are a PAIR the type refuses to split — a ReactNode cannot be an aria attribute, and one without the other stamps `[object Object]`",
+      /caption\?: undefined; captionText\?: undefined/.test(bar) && /caption: ReactNode;/.test(bar) && /captionText: string;/.test(bar), "");
+    ok("1.362 · the one existing caller passes no caption and keeps the kit's own line (§K5: extend the kit, never fork it)",
+      !/caption(Text)?=/.test(decomment(read("src/app/admin/retention/purge-chain-card.tsx"))), "");
+    /* ⛔ EVERY MONEY BAR UNDER THE SECTION PASSES BOTH PROPS, BUILT FROM THE SAME EXPRESSIONS, AND NONE IS CLARET. */
+    const bars = [...pageCode.matchAll(/<ProgressBar[\s\S]*?\/>/g)].map((m) => m[0]);
+    ok("1.409 · every money bar passes BOTH caption props from the same row, names its cap FIRST, and is never claret",
+      bars.length === 1 && bars.every((b) => /captionText=\{row\.captionText\}/.test(b) && /caption=\{/.test(b)
+        && /\{row\.name\}/.test(b) && /tone="brand"/.test(b) && !/tone="claret"/.test(b)), j(bars.length));
+    ok("1.409 · the caption's FIRST text node is the cap's name and each figure sits in its OWN `.amount` span — `label` is `aria-label` and paints nothing",
+      /caption=\{\s*<>\s*\{row\.name\}/.test(pageCode)
+        && /<span className="amount tabular-nums">\{h\.figure\}<\/span>/.test(pageCode), "");
+    ok("1.409 · `captionText` is PLAIN — no markup, no `<span`, and it carries 361's grammar after the cap's name",
+      decomment(read(GATE)).includes("captionText: `${name} · ${cell.text}`")
+        && !/captionText=\{[^}]*</.test(pageCode), "");
+  }
+
+  /* ⛔ 1.405 · THE RAIL IS THE KIT'S LINE VARIANT, URL-BACKED, WITH ITS COUNT THROUGH `CountBadge`. */
+  {
+    const rail = /<Tabs[\s\S]*?\/>/.exec(pageCode)?.[0] ?? "";
+    ok("1.405 · the rail is `variant=\"line\"`, URL-backed from 319's one home, and carries no eyebrow, uppercase or tracking of its own",
+      /variant="line"/.test(rail) && /href: consoleTabHref\(k\)/.test(rail)
+        && !/eyebrow|uppercase|tracking-|rank="dense"|data-filter-rail|ScrollX/.test(rail), j(rail.replace(/\s+/g, " ").slice(0, 200)));
+    ok("1.405 · the labels are English sentence case, one per key of the closed list",
+      j(CR.CONSOLE_TABS.map((k: string) => ({ roster: "Roster", limits: "Limits" } as Any)[k])) === j(["Roster", "Limits"])
+        && /TAB_LABEL: Record<\(typeof CONSOLE_TABS\)\[number\], string>/.test(pageCode), "");
+    /* ⛔ THE COUNT IS THE STRIP'S OWN NUMBER, PASSED AS `TabItem.count` SO THE KIT'S `CountBadge` PAINTS IT — never
+     * a bare number typed into a label, and never a second derivation. `CountBadge` renders nothing at 0, which is
+     * why a count may not stand in for a read's health (312). */
+    ok("1.405 · the limits badge is `TabItem.count` — the kit's `CountBadge` — and it is the SAME field the strip's sentence reads",
+      /count: k === "limits" \? view\.unsetRequired : undefined/.test(pageCode)
+        && !/REQUIRED_FOR_MASTER_ON/.test(pageCode) && !/\.filter\(/.test(pageCode)
+        && /count\?: number;/.test(read("src/components/ui/tabs.tsx"))
+        && read("src/components/ui/tabs.tsx").includes("CountBadge"), "");
+  }
+
+  /* ⛔ 1.406 · THE SWITCH, THE ENGINE STATE AND EVERY CAP BREACH LIVE ABOVE THE RAIL ON EVERY TAB — provable now
+   * that a second panel exists. Each of them is rendered OUTSIDE the `?tab=` switch, so no tab can own one. */
+  {
+    const firstPanel = pageCode.indexOf('{tab === "roster" && (<>');
+    const sites: Array<[string, number]> = [
+      ["the master-switch strip", pageCode.indexOf("Desk master switch")],
+      ["the auto-off Callout", pageCode.indexOf("<Callout tone=\"warning\"")],
+      ["the schema Callout", pageCode.indexOf("<Callout tone=\"neutral\"")],
+      ["the KPI band", pageCode.indexOf("<KpiGrid")],
+      ["the rail", pageCode.indexOf("<Tabs")],
+      ["the live poller", pageCode.indexOf("<DeskLive")],
+    ];
+    ok("1.406 · the strip, both Callouts, the band, the rail and the live trigger are ALL rendered before the first `?tab=` group — no tab owns a control that stops money",
+      firstPanel > 0 && sites.every(([, at]) => at > 0 && at < firstPanel), j({ firstPanel, sites }));
+    ok("1.406 · CONTROL · the two panels really are inside `?tab=` groups, so the comparison above has something to decide",
+      pageCode.indexOf('{tab === "limits" && (<>') > firstPanel && (pageCode.match(/\{tab === "[a-z-]+" && \(<>/g) ?? []).length === 2, "");
+  }
+
+  /* ⛔ 1.412 / 433 · THE LIMITS PANEL IS READ-ONLY, AND THAT IS TIED TO THE SERVICE THAT WOULD MAKE IT WRITABLE.
+   * There is no limits-SAVE anywhere in this repository: `saveLimits` has no caller under `src/` and
+   * `house_bot.limits_saved` has no writer. So the panel renders NO typed control — an editable field that discards
+   * what an officer types is worse than one that says it cannot be edited (432(a)) — and the reason is on screen
+   * beside it (432(j)). ⛔ THE TWO ARE TIED BY EXISTENCE, the same shape 432(h) used for the way-out column, so the
+   * step that builds the save cannot ship inputs without `UnsavedChangesGuard`, and cannot ship the guard without
+   * the inputs. */
+  {
+    const saveWired = (() => {
+      const hits: string[] = [];
+      const walkSrc = (dir: string) => {
+        for (const e of readdirSync(join(ROOT, dir))) {
+          const rel = `${dir}/${e}`;
+          if (statSync(join(ROOT, rel)).isDirectory()) walkSrc(rel);
+          else if (/\.tsx?$/.test(e) && rel !== "src/lib/server/house-bot-dal.ts" && decomment(read(rel)).includes("saveLimits(")) hits.push(rel);
+        }
+      };
+      walkSrc("src");
+      return hits.length > 0;
+    })();
+    const typed = /<Input\b|<Textarea\b|<Select\b|<input\b|<textarea\b|<select\b/.test(sectionCode);
+    ok("1.412 · 433 · the section renders a typed control EXACTLY when a limits-save is wired — today neither, with the reason on screen beside the panel",
+      typed === saveWired && decomment(read(GATE)).includes("Editing limits is not ready on this build yet.")
+        && pageCode.includes("{limitsView?.formReason}"),
+      j({ typedControl: typed, saveWired }));
+    ok("1.412 · and when it lands it lands guarded: a typed control under this section requires `UnsavedChangesGuard`, which is `test:unsaved-changes`' own population rule",
+      typed === /<UnsavedChangesGuard\b/.test(sectionCode), j({ typedControl: typed }));
+    /* ⛔ THE FORM'S COLUMN IS ALREADY THE FORM TIER, so the measure does not move when the inputs arrive (412). */
+    ok("1.412 · the limits column is `FormColumn measure=\"form\"` (640) already, and nothing under the section uses the `sm` rungs",
+      /<FormColumn measure="form">/.test(pageCode) && !/<(Input|Select|Textarea|Button)\b[^>]*size="sm"/.test(sectionCode)
+        && (pageCode.match(/size="md"/g) ?? []).length >= 1, "");
+  }
 
   /* 1.333 · the nav item carries no badge. */
   const nav = decomment(read("src/components/admin/admin-nav-groups.ts"));

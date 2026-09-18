@@ -1192,7 +1192,7 @@ export const HOUSE_HOOK_MODULES = ["src/lib/server/house-bot/holder-hook", "src/
  * and an entry naming no export is red the day the reader goes. Only `CONSOLE_GATE_STRUCK`'s two D20 needles may sit
  * here without an export, and only while the run measures them at 0 calls.
  */
-export const CONSOLE_GATES: Readonly<Record<string, number>> = { houseStakeForConsole: 3, houseBotLabelsForConsole: 3, houseConsoleAudience: 2, houseAuditForConsole: 3, houseRosterForConsole: 2 };
+export const CONSOLE_GATES: Readonly<Record<string, number>> = { houseStakeForConsole: 3, houseBotLabelsForConsole: 3, houseConsoleAudience: 2, houseAuditForConsole: 3, houseRosterForConsole: 2, houseUsageForConsole: 3 };
 /** A console file: a page, layout, route, action or component the console serves — everything under the three admin folders. */
 export const inConsolePopulation = (rel: string) =>
   rel.startsWith("src/app/admin/") || rel.startsWith("src/app/api/admin/") || rel.startsWith("src/components/admin/");
@@ -1433,8 +1433,11 @@ export const CONSOLE_GATE_STRUCK = ["houseBotLabelsForConsole", "houseStakeForCo
  * gating — cannot ship without a `CONSOLE_GATES` entry, and therefore cannot ship without its arity, its
  * signed-in-viewer and its own-route pins.
  */
-export const CONSOLE_GATE_NON_READERS = ["ConsoleAuditRead", "ConsoleEmpty", "ConsoleKpiTile", "ConsoleRosterRow",
-  "ConsoleRosterView", "ConsoleUsageCell", "ConsoleUsageHalf", "HOUSE_CONSOLE_PREFIX", "isHouseConsoleRoute"] as const;
+export const CONSOLE_GATE_NON_READERS = ["ConsoleAuditRead", "ConsoleDeskShell", "ConsoleEmpty", "ConsoleKpiTile",
+  "ConsoleLimitRow", "ConsoleLimitsView", "ConsoleRosterRow", "ConsoleRosterView", "ConsoleUsageCell",
+  "ConsoleUsageHalf", "ConsoleUsageQuery", "ConsoleUsageRow", "HOUSE_CONSOLE_PREFIX", "TARGETED_DAILY_TZS_FIELD",
+  "consoleLimitLabel",
+  "isHouseConsoleRoute", "unsetCaptionFor"] as const;
 
 /**
  * Ruling 512. `CONSOLE_GATES` is five names typed by hand and nothing compared it with the module it describes, while
@@ -1713,6 +1716,8 @@ if (STORE === "memory") {
          * ⛔ The two struck display readers stay pinned at EXACTLY 0. */
         && r.consoleGateCalls.houseStakeForConsole === 0 && r.consoleGateCalls.houseBotLabelsForConsole === 0
         && r.consoleGateCalls.houseConsoleAudience >= 1 && r.consoleGateCalls.houseRosterForConsole >= 1
+        /* ⭐ C7 step 3 · the limits panel's own gated reader, query-shaped and arity-pinned like the roster's. */
+        && r.consoleGateCalls.houseUsageForConsole >= 1
         && r.readerFiles.length >= 14 && MEASURED_LEAKS.every((f) => r.readerFiles.includes(f)) && j(r.outsideReaderFiles) === j(Object.keys(AUDIT_READERS_OUTSIDE_CONSOLE).sort()),
       j({ population: r.population, readerCalls: r.readerCalls, gateCalls: r.gateCalls, consoleGateCalls: r.consoleGateCalls, readerFiles: r.readerFiles, outsideReaderFiles: r.outsideReaderFiles, auditReaders, auditExports, problems: r.problems }));
 
@@ -1726,7 +1731,7 @@ if (STORE === "memory") {
     const gateExports = consoleGateExportProblems(CONSOLE_GATE_MODULE, gateModuleCode, CONSOLE_GATES, r.consoleGateCalls);
     ok("0.512 · ⛔ D19 · CONSOLE_GATES and the gate module's own exports agree to the last name in BOTH directions — no exported reader without an entry, no entry without an export, and the two D20-struck needles are exempt only while THIS run measures them at exactly 0 calls",
       gateExports.problems.length === 0 && gateModuleCode.length > 5_000 && gateExports.exports.length >= 12
-        && Object.keys(CONSOLE_GATES).length >= 5 && CONSOLE_GATE_STRUCK.length === 2,
+        && Object.keys(CONSOLE_GATES).length >= 6 && CONSOLE_GATE_STRUCK.length === 2,
       j({ exports: gateExports.exports, entries: Object.keys(CONSOLE_GATES), struck: CONSOLE_GATE_STRUCK, problems: gateExports.problems }));
     {
       /* ⛔ THE PLANTS ARE WHOLE DECLARATIONS APPENDED TO THE MODULE, not string edits, so each one is a thing the

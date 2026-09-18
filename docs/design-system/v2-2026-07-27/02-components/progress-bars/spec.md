@@ -10,6 +10,10 @@
 GIVEN (kit/atoms.jsx):
 - ProbabilityBar { yesPct, size: micro|large, resolved?, showLabels?, variant: split|segmented|minimal|lean } — the market read-out; yes/no colour is legal here (it summarises betting positions).
 - ProgressBar { value, max=100, tone: teal|yes|no|gold|warning|danger|info, size: sm(4px)|md(8px)|lg(12px), label?, showValue? } — track --bg-overlay + 1px --border, r-pill, gradient fill + soft glow.
+- ⭐ BUILT, 2026-09-18 (`07-provenance/CHANGELOG.md`): the shipped `ProgressBar` is
+  `{ value, max, label, tone: brand|claret, className?, caption?, captionText? }`. `caption` + `captionText` are a
+  discriminated PAIR — neither or both — and `caption` REPLACES the built-in numeric line. `label` is `aria-label`
+  only and paints nothing, which is why a bar that must name its subject on screen needs the caption.
 - SteppedProgress { steps, current } — 4px segments, teal-400 done / teal-500 current / --bg-overlay todo.
 - CircularProgress { value, size=56, stroke=5, tone, label? }.
 
