@@ -870,3 +870,30 @@ bots and what keeps D19 true").
        while `2` paints 12px, so the token that reads bigger paints smaller. ⛔ Fixed by changing the NEW usage to
        `py-2`, never by raising the ceiling: the strip's own `2.5` is counted debt and the ratchet only falls. 2px
        on a box with its own border and ground is not a visible difference; a broken ratchet is.
+
+529. **The release gate's verdict, stated in full, and the ONE control left blind by it.** Ali asked on 2026-09-18
+     for the branch to be merged and deployed so he could see the section in his own navbar. Under ruling 471 the
+     merge is delegated; under ruling 500 the standard is the platform's perfection. So the gate was run first and
+     this is what it measured, in the order it matters:
+     - **No regression.** `test:all` on the branch: 359/375, 16 failing. On the baseline worktree moved to the exact
+       merged main sha (ruling 467): 348/362, 14 failing. Eleven identical; three failed here and passed there, and
+       all three are FIXED at `8d3406dd` (ruling 528). The branch now carries **no failing suite clean `origin/main`
+       does not also have**, and passes one — `test:kyc-restart-docs` — that main fails.
+     - **D19 holds in the ARTEFACT, not merely in the source.** A fresh `next build`, then
+       `verify:house-bot-bundle`: ALL PASS over 167 files under `.next/static`, 9 prerendered documents and 35 files
+       under `public/`, **with its planted control firing** (32 family samples and a planted house-bots path found;
+       `HOUSE_FEE`, `/admin/house` and raw `hb_` look-alikes correctly not). A scanner that finds nothing and a
+       broken scanner print the same line; only the control separates them.
+     - **No house data reaches a non-staff account.** `qa:house-bot-console-probe`: **1,544 requests, 1,158
+       non-staff, `leaks: 0`**, ADMIN carrying house data on 17 route instances.
+     - ⚠️ **AND THE ONE THING THAT IS NOT PROVEN, named rather than rounded off.** The probe's positive control 4.3
+       FAILED on a single route instance: `/admin/kyc/[id]<holder>`. The ADMIN's own response carried no house data
+       there, so the absence of house data for the other viewers on that page proves nothing about that page. This
+       is a BLIND CONTROL, not a leak — `leaks` is 0 and the page's read goes through `houseAuditForConsole` — and
+       the same durable read with the same viewers IS measured on BOTH stores at unit level by
+       `test:house-bot-reports` 4.260.5. But a control that cannot fire is exactly the class this project has paid
+       for most often, so it is written down as NOT MEASURED, given a register row, and fixed before Commit 8 — not
+       recorded as a pass because the number beside it was zero.
+     **Verdict: the merge to `main` is taken on this evidence.** What ships is a section that is Owner-only, renders
+     real data, and stakes nothing: the master switch ships OFF (D19, PLAN §11) and no account is designated, so the
+     deploy delivers a page to look at and no behaviour to any player. The two migrations are purely additive.
