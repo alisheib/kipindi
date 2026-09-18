@@ -26,8 +26,29 @@
  * `origin/main` build: `git grep -i -E` over `origin/main` `b726cb7f`'s `src/`, `public/`, `scripts/`, `prisma/` and `docs/`
  * (re-measured 2026-09-17: 0 lines for every sample except `house[ -]?stakes?`, 2 lines in `docs/F6-LIQUIDITY-DESIGN.md`,
  * a design note that is neither bundled nor served); 0 of the 13,718 `.js`/`.mjs`/`.cjs`/`.css` files of its
- * `node_modules`; and this branch's fresh bundle and signed-out served pages. Still proposed, measured with their own step: staff edge, enter now,
- * scorecard, STAFF_EDGE and the staff-edge row's sw/zh words (C5 step 7).
+ * `node_modules`; and this branch's fresh bundle and signed-out served pages.
+ *
+ * ⛔ NOTHING IS PROPOSED FOR C5 STEP 7, AND THE LIST THIS HEADER USED TO CARRY IS WITHDRAWN (replan ruling 511).
+ * It told the next session to add "staff edge, enter now, scorecard, STAFF_EDGE and the staff-edge row's sw/zh words
+ * (C5 step 7)". Three of those families belong to rulings 199-213 and 218-223, which owner ruling D20 STRUCK and C5-5b
+ * un-built, and the fourth is a live control — so a header meant to protect the list was instructing a reader to dilute
+ * the one list that keeps the feature's name off a player's screen. C5-SPEC ruling 175's own superseded note
+ * (`C5-SPEC.md:655`) already ruled this; this is that ruling, written where the next session will actually read it.
+ * MEASURED 2026-09-18 on this branch AND on clean `origin/main` `b726cb7f` (`git grep -i -E` over `src/`, `public/`,
+ * `scripts/`, `prisma/`, `docs/`):
+ *   · `staff[ -]edge` — 0 lines on `origin/main`. On this branch, 4 lines and every one of them inside a COMMENT
+ *     (`src/lib/house-bot/clock.ts:54`, `src/lib/house-bot/rules.ts:539`, `:856`, `:872`). A word that can only match a
+ *     comment proves nothing and costs every consumer a scan.
+ *   · `STAFF_EDGE` — 0 lines on `origin/main`, 0 lines in this branch's `src/`. The row it named was never built.
+ *   · `scorecard` — 0 in `src/` on both, but 3 lines on clean `origin/main` OUTSIDE it (`docs/MOBILE-APP-PLAN.md`,
+ *     `docs/README.md`, `scripts/stress-regulator-grade.mjs`), so by this module's own rule it is RECORDED, not added.
+ *   · `enter now` — ⛔ NOT a vocabulary word, whatever it measures. It is a LIVE console control (replan ruling 508
+ *     builds it at C7 step 4) and live server copy today (`src/lib/house-bot/feed-copy.ts:167`, `:205`). Which words
+ *     the console may not render is `CONSOLE_EXTRA_WORDS` below (ruling 453), and that list deliberately does not hold
+ *     this one: adding it HERE would turn the console's own button red on the guard that exists to keep the FEATURE's
+ *     name off the owner's screen.
+ * The addition rule itself is unchanged — a word joins only after it is MEASURED absent from clean `origin/main`.
+ * What changes is that no addition is scheduled, at C5-7 or anywhere else.
  */
 
 /** The words, in the three locales, matched in any case. `house[_ -]?bots?` also covers `HouseBot` and `house_bots`. */

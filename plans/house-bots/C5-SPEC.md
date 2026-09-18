@@ -673,8 +673,11 @@ and the mutations, each run from a scratchpad worktree harness and seen red on i
      - `verify:house-bot-bundle` also matches each file's PATH under `.next/static`, with a planted file-name control.
        Every consumer keeps a planted-hit control.
      - **Words proposed by the other areas** (ADJ 13): house stake(s) (`house[ -]?stakes?`), `dau la nyumba`, `平台投注`,
-       staff-chosen / staff chosen, staff edge, enter now, scorecard, the literal `STAFF_EDGE`, and the Swahili and Chinese
-       staff-edge words the STAFF_EDGE row and R1 use. Each is added ONLY after the builder measures that it matches no
+       staff-chosen / staff chosen, ~~staff edge, enter now, scorecard, the literal `STAFF_EDGE`, and the Swahili and Chinese
+       staff-edge words the STAFF_EDGE row and R1 use~~ — ⛔ **WITHDRAWN 2026-09-18, replan ruling 511** (the :655 note above,
+       applied to the line it governs): the three struck families and the one LIVE console word are not proposed, at C5-7 or
+       anywhere else, and `scripts/lib/house-bot-vocabulary.mjs`'s header now carries the measurement in place of the
+       instruction. Each remaining proposal is added ONLY after the builder measures that it matches no
        legitimate platform client code today: a scan of a fresh build of clean `origin/main`'s `.next/static` and the
        disclosure walker over `origin/main`'s client graph. A word that would go red on `origin/main`'s own client bundle is
        RECORDED in PROGRESS with its measured hit and NOT added (never allowlisted). The measurement also runs each proposed
